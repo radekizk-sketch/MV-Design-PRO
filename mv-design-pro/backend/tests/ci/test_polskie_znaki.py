@@ -58,9 +58,12 @@ CYTATY_PRODUCENTA = ("network_model/catalog/",)
 #: Zapadka FROZEN: plik (względem ``src``) -> liczba literałów ze słowem bez znaków.
 #: Pomiar 2026-09-24 po naprawie klasy poza rdzeniami. Pozycje do decyzji
 #: właściciela (B-01) — meldunek karty PL-ZNAKI.
+#: Karta #145 (2026-09-25): zdjęte `conductor_thermal_withstand.py` (7 -> 0),
+#: `machine_sc_iec60909.py` (7 -> 0) i `power_flow_oltc_studies.py` (27 -> 0) — pliki
+#: spoza listy B-01 (`scripts/rdzenie_b01.py`), teksty trafiające na ekrany wyników
+#: naprawione u źródła (pomiar skanem tego testu po zmianie).
 ZAMROZONE_TRAFIENIA: dict[str, int] = {
     "network_model/solvers/cable_voltage_drop.py": 15,
-    "network_model/solvers/conductor_thermal_withstand.py": 7,
     "network_model/solvers/der_selection_preview.py": 2,
     "network_model/solvers/dynamika/calkowanie.py": 4,
     "network_model/solvers/dynamika/kontrakty.py": 8,
@@ -90,8 +93,6 @@ ZAMROZONE_TRAFIENIA: dict[str, int] = {
     "network_model/solvers/equipment_checks/ct_burden_saturation.py": 6,
     "network_model/solvers/equipment_checks/transformer_losses.py": 3,
     "network_model/solvers/equipment_checks/vt_burden_voltage_drop.py": 8,
-    "network_model/solvers/machine_sc_iec60909.py": 7,
-    "network_model/solvers/power_flow_oltc_studies.py": 27,
     "network_model/solvers/transformer_rated_currents.py": 6,
     "network_model/solvers/v126_academic.py": 6,
 }

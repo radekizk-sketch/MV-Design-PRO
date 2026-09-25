@@ -157,7 +157,7 @@ class ProtectionComparisonService:
         trace_steps.append(
             ProtectionComparisonTraceStep(
                 step="MATCH_EVALUATIONS",
-                description_pl="Dopasowanie ewaluacji po (element chroniony, punkt zwarcia)",
+                description_pl="Dopasowanie ocen zabezpieczeń obu biegów po parze (element chroniony, punkt zwarcia)",
                 inputs={
                     "evaluations_a_count": len(evaluations_a),
                     "evaluations_b_count": len(evaluations_b),
@@ -168,7 +168,7 @@ class ProtectionComparisonService:
         rows, matched_count = self._match_evaluations(evaluations_a, evaluations_b)
         trace_steps[-1] = ProtectionComparisonTraceStep(
             step="MATCH_EVALUATIONS",
-            description_pl="Dopasowanie ewaluacji po (element chroniony, punkt zwarcia)",
+            description_pl="Dopasowanie ocen zabezpieczeń obu biegów po parze (element chroniony, punkt zwarcia)",
             inputs={
                 "evaluations_a_count": len(evaluations_a),
                 "evaluations_b_count": len(evaluations_b),
@@ -211,7 +211,7 @@ class ProtectionComparisonService:
         trace_steps.append(
             ProtectionComparisonTraceStep(
                 step="RANK_ISSUES",
-                description_pl="Generowanie rankingu problemów wg severity (5→1)",
+                description_pl="Ranking problemów według wagi (od 5 do 1)",
                 inputs={
                     "row_count": len(rows),
                     "delay_threshold_s": DELAY_CHANGE_THRESHOLD_S,
@@ -224,7 +224,7 @@ class ProtectionComparisonService:
         severity_counts = self._count_severities(ranking)
         trace_steps[-1] = ProtectionComparisonTraceStep(
             step="RANK_ISSUES",
-            description_pl="Generowanie rankingu problemów wg severity (5→1)",
+            description_pl="Ranking problemów według wagi (od 5 do 1)",
             inputs={
                 "row_count": len(rows),
                 "delay_threshold_s": DELAY_CHANGE_THRESHOLD_S,

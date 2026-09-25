@@ -323,12 +323,6 @@ export const KLUCZ_WIERSZA_STUDIUM = 'identyfikator';
 export function kolumnyStudium(): DefinicjaKolumny[] {
   return [
     { klucz: 'wariant', etykieta: STUDIUM_STRINGS.kolWariant },
-    {
-      klucz: KLUCZ_WIERSZA_STUDIUM,
-      etykieta: STUDIUM_STRINGS.kolIdentyfikator,
-      mono: true,
-      tylkoEkspercki: true,
-    },
     { klucz: 'moc', etykieta: STUDIUM_STRINGS.kolMoc, jednostka: STUDIUM_STRINGS.jednMW, mono: true },
     {
       klucz: 'straty',

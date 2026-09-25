@@ -123,13 +123,6 @@ export const KOLUMNY_SKLADOWYCH: DefinicjaKolumny[] = [
   { klucz: 'kappa', etykieta: T.kolKappa, mono: true, tylkoEkspercki: true },
   { klucz: 'ikss', etykieta: T.kolIkss, jednostka: T.jednKA, mono: true },
   { klucz: 'werdykt', etykieta: T.kolWerdykt, wyrownanie: 'lewo', sortowalna: false },
-  {
-    klucz: KLUCZ_PUNKT,
-    etykieta: T.kolIdentyfikator,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
 ];
 
 function komorka(
@@ -143,9 +136,9 @@ function komorka(
   return { wartosc: format(wartosc), sortKey: wartosc, dowodRef };
 }
 
-/** Werdykt raportowalności wiersza — PL z backendu; starszy wynik → kreska. */
+/** Werdykt raportowalności wiersza — PL z backendu; brak etykiety → kreska, nigdy kod (#145). */
 export function werdyktPL(row: ShortCircuitRow): string {
-  return row.reporting_status_pl ?? row.reporting_status ?? T.kreska;
+  return row.reporting_status_pl ?? T.kreska;
 }
 
 export function naWierszeSkladowych(rows: readonly ShortCircuitRow[]): WierszTabeli[] {

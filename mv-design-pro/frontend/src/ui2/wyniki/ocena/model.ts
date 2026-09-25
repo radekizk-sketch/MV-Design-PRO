@@ -166,10 +166,16 @@ export function podstawaOcenyPL(pozycja: PozycjaOceny): string {
 }
 
 /** Nazwa przedmiotu oceny (element modelu albo agregat całej sieci). */
-export function nazwaPrzedmiotu(element: OcenaElementu): string {
-  if (element.element_nazwa && element.element_nazwa !== '') return element.element_nazwa;
-  if (element.element_id === null || element.element_id === 'network') return T.elementAgregat;
-  return element.element_id;
+export function nazwaPrzedmiotu(
+  element: OcenaElementu,
+  nazwa: (ref: string, nazwaZWyniku?: string | null) => string,
+): string {
+  if (element.element_id === null || element.element_id === 'network') {
+    return element.element_nazwa && element.element_nazwa !== '' ? element.element_nazwa : T.elementAgregat;
+  }
+  // Karta #145: nazwa z modelu przez most nazw wyników (identyfikator grafu, `ref_id`),
+  // nazwa backendu jako druga, etykieta zapasowa — nigdy identyfikator jako tekst.
+  return nazwa(element.element_id, element.element_nazwa);
 }
 
 /** Typ elementu interfejsu dla semantyki domeny (pętla decyzji / zaznaczenie na schemacie). */

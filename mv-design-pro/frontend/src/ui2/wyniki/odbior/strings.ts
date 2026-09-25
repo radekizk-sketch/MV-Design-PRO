@@ -7,6 +7,7 @@
  */
 
 import type { WielkoscPomiaru } from './api';
+import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 
 /** Poziom istotności werdyktu (do doboru koloru tagu/chipu — wyłącznie prezentacja). */
 export type IstotnoscWerdyktu = 'ok' | 'warn' | 'err' | 'neutral';
@@ -35,7 +36,8 @@ export const ODBIOR_STRINGS = {
   // Pole CSV
   csvEtykieta: 'Pomiary w formacie CSV',
   csvOpis:
-    'Nagłówek: element_ref;wielkosc;wartosc;jednostka;zacisk. Separator średnik lub przecinek; '
+    'Pierwszy wiersz to nagłówek pięciu kolumn podany w podpowiedzi pola: identyfikator elementu '
+    + 'z modelu sieci, wielkość, wartość, jednostka i zacisk. Separator średnik lub przecinek; '
     + 'przy średniku dopuszczalny polski przecinek dziesiętny. Wielkość: U (kV), P (MW), Q (Mvar). '
     + 'Zacisk (od — początkowy, do — końcowy gałęzi) wyłącznie dla P i Q; dla U pusty. '
     + 'Pomiar mocy gałęzi bez zacisku nie jest porównywany (brak miejsca pomiaru).',
@@ -43,7 +45,10 @@ export const ODBIOR_STRINGS = {
 
   // Edytor wierszy
   edytorTytul: 'Pomiary — edytor wierszy',
-  edytorElement: 'Element (element_ref)',
+  edytorElement: 'Element sieci',
+  edytorElementWybierz: '— wybierz element z modelu —',
+  edytorElementSpozaModelu: 'Element spoza modelu (oznaczenie z protokołu)',
+  edytorElementProtokol: 'Oznaczenie elementu w protokole pomiarów',
   edytorWielkosc: 'Wielkość',
   edytorWartosc: 'Wartość',
   edytorJednostka: 'Jednostka',
@@ -161,9 +166,9 @@ export const JEDNOSTKA_WIELKOSCI: Record<WielkoscPomiaru, string> = {
   Q: 'Mvar',
 };
 
-/** Polska nazwa wielkości (nieznany kod → dosłownie, jako dane). */
+/** Polska nazwa wielkości (kod spoza słownika → uczciwe zdanie, nie kod). */
 export function wielkoscPL(kod: WielkoscPomiaru): string {
-  return WIELKOSC_PL[kod] ?? kod;
+  return etykietaZeSlownika(WIELKOSC_PL, kod);
 }
 
 // ---------------------------------------------------------------------------

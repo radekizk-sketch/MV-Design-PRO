@@ -46,6 +46,7 @@ from typing import Any
 
 from application.analyses.hosting_capacity import build_hosting_capacity_view
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.pq_area import build_pq_area_view
 from application.analyses.pq_coverage import build_pq_coverage_view
 from application.analyses.sekcja_zgodnosci_ncrfg import wiersze_dowodu
@@ -142,12 +143,12 @@ def zbierz_braki_dokumentu(
 
     if run.analysis_type != "PF":
         braki.append(
-            "Przebieg bazowy: wskazany przebieg nie jest rozpływem mocy (PF); "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            "Przebieg bazowy: wskazany przebieg nie jest rozpływem mocy; "
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     elif run.status != "FINISHED":
         braki.append(
-            f"Przebieg bazowy: przebieg {run.id} nie jest zakończony (status={run.status})."
+            f"Przebieg bazowy: przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)})."
         )
 
     if converter is None:

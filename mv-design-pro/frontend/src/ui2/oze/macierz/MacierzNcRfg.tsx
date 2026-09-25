@@ -567,7 +567,8 @@ export function MacierzNcRfg({
                         <div className="mvd-oze-test-podstawa">
                           {MACIERZ_STRINGS.rodzajTwierdzenia}:{' '}
                           {nazwaRodzajuTwierdzenia(wiersz.test.rodzaj_twierdzenia)}
-                          {trybEkspercki ? ` · ${MACIERZ_STRINGS.zdolnosc}: ${wiersz.test.zdolnosc_id}` : ''}
+                          {/* Karta #145: identyfikator zdolności dowodowej jest metadaną —
+                              wyłącznie w „Informacjach audytowych" oceny komórki. */}
                         </div>
                       </td>
                       {wiersz.komorki.map((komorka) => (

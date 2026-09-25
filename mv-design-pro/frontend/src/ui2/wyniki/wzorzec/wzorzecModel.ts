@@ -18,7 +18,10 @@ import type { ElementType } from '../../../ui/types';
 export interface NaglowekAnalizy {
   /** Nazwa analizy po polsku (pierwszy plan). */
   analizaPL: string;
-  /** Identyfikator przebiegu — pokazywany WYŁĄCZNIE w trybie eksperckim. */
+  /**
+   * Identyfikator przebiegu — metadana produkcyjna: WYŁĄCZNIE w „Informacjach
+   * audytowych" (tryb ekspercki, zwinięte), nigdy w nagłówku (karta #145).
+   */
   runId?: string;
   /** Bieżąca rewizja modelu (do oceny świeżości wyników). */
   rewizjaModelu?: number;
@@ -42,6 +45,13 @@ export interface WierszZalozenia {
   jednostka?: string;
   /** Pochodzenie/uwaga — pokazywane w dymku (`title`). */
   uwaga?: string;
+  /**
+   * Założenie wyrażone ZDANIEM (np. „Ocena jest interpretacją normatywną…"), a nie parą
+   * wielkość–wartość. Zdanie czyta się jak tekst: wyrównane do lewej, zwykłą czcionką,
+   * na całą szerokość — nie jak liczba (karta #145: założenia LoM wyrównane do prawej
+   * czcionką maszynową czytały się jak zrzut kodu). `etykieta` jest wtedy pomijana.
+   */
+  zdanie?: boolean;
 }
 
 /**
@@ -118,6 +128,12 @@ export interface EkranAnalizyProps {
    */
   onPokazElement?: (elementRef: string) => void;
   trybZaawansowania: import('../../shell/modeModel').AdvancementMode;
+  /**
+   * Metadane produkcyjne TEGO wyniku (odciski danych wejściowych i modelu, wersje,
+   * identyfikatory) — trafiają do JEDYNEGO miejsca na metadane, „Informacji
+   * audytowych" pod nagłówkiem, obok identyfikatora przebiegu (karta #145).
+   */
+  informacjeAudytowe?: readonly import('./InformacjeAudytowe').WierszInformacjiAudytowych[];
   /**
    * Który klucz kolumny identyfikuje wiersz (klucz React, stabilny przy sortowaniu).
    * Domyślnie: klucz pierwszej kolumny.

@@ -214,14 +214,18 @@ def test_trzy_konsumenci_api_nie_niosa_kluczy_rankingu() -> None:
     for klucz in ("contingency_ranking", "elementy_bez_obciazalnosci"):
         assert klucz not in tresc_dowodu, f"proof: {klucz} wyciekł przez trace"
 
+    # Raport `AcademicReportV2` (karta #145) nie powtarza wyniku — niesie tylko tożsamość
+    # dowodu i audyt, więc ranking nie ma którędy wyciec (intencja W3-E zachowana:
+    # żaden klucz rankingu w metrykach raportu).
+    sekcje_raportu = raport.json()["sections"]
+    assert [sekcja["section_id"] for sekcja in sekcje_raportu] == ["dowod", "audyt"]
     metryki_raportu = [
-        metryka["label"] for sekcja in raport.json()["sections"] for metryka in sekcja["metrics"]
+        metryka["label"] for sekcja in sekcje_raportu for metryka in sekcja["metrics"]
     ]
-    for klucz in _KLUCZE_RANKINGU:
+    for klucz in (*_KLUCZE_RANKINGU, "ranking_n1"):
         assert not any(
             etykieta.startswith(klucz) for etykieta in metryki_raportu
-        ), f"report: {klucz} nie zostało zdjęte z sekcji metryk"
-    assert any(etykieta.startswith("ranking_n1") for etykieta in metryki_raportu)
+        ), f"report: {klucz} w sekcji metryk"
 
     # `trace` zostaje SUROWY (WHITE BOX solvera nietknięty) — nigdy nie niósł
     # klucza rankingu (jedyny krok śladu `_reliability` to `reliability_indices`

@@ -52,7 +52,9 @@ BRAK_CERTYFIKATU_PL = (
 def opis_dowodu_certyfikatu(dowod: DowodCertyfikatu) -> str:
     """Cytat rekordu wykazu PTPiREE (pola z rejestru, nie z tabliczki)."""
     czesci = [
-        f"rekord wykazu {dowod.rekord_id}",
+        # Karta #145: identyfikator rekordu rejestru to metadana — rekord nazywają
+        # producent, model i numer dokumentu (pola wykazu), nie klucz rejestru.
+        "rekord wykazu certyfikowanych urządzeń PTPiREE",
         f"producent: {dowod.producent}",
         f"model: {dowod.model}",
         f"numer dokumentu: {dowod.numer_dokumentu}",

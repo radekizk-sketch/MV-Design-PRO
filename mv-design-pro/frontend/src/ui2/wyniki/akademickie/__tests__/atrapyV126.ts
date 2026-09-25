@@ -52,8 +52,6 @@ export interface OpcjeAtrapy {
   readonly wynikZFixtury?: boolean;
   /** Liczba kroków śladu/dowodu — 25 sprawdza, że limit 8 powierzchni zastanej zniknął. */
   readonly krokowSladu?: number;
-  /** Liczba sekcji raportu — 7 sprawdza, że limit 3 zniknął. */
-  readonly sekcjiRaportu?: number;
   /** Treść `detail` odmowy 422 uruchomienia. */
   readonly bladBiegu?: string;
   /** Karta W2-C: pola addytywne odpowiedzi wyniku — źródła pominięte/proweniencja widma. */
@@ -82,7 +80,6 @@ function rodzajZAdresu(adres: string, znacznik: string): string {
 
 export function ustawFetchV126(opcje: OpcjeAtrapy = {}): Mock {
   const krokow = opcje.krokowSladu ?? 3;
-  const sekcji = opcje.sekcjiRaportu ?? 3;
   const katalog = opcje.katalog ?? KATALOG;
   const potwierdzone = new Set(opcje.potwierdzone ?? []);
   const mock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
@@ -173,8 +170,11 @@ export function ustawFetchV126(opcje: OpcjeAtrapy = {}): Mock {
       });
     }
     if (adres.includes('/report')) {
+      // Kontrakt `AcademicReportV2` (karta #145, `application/v126_artifacts.py`): raport
+      // niesie wyłącznie tożsamość dowodu i audyt deterministyczny — sekcja „Wynik
+      // obliczeń" z polami solvera skasowana.
       return odpowiedz({
-        contract: 'AcademicReportV1',
+        contract: 'AcademicReportV2',
         report_id: 'report:v126:test:abc',
         run_id: RUN_ID,
         case_id: CASE_ID,
@@ -182,11 +182,26 @@ export function ustawFetchV126(opcje: OpcjeAtrapy = {}): Mock {
         source_result_hash: 'hash-akad',
         source_proof_hash: 'hash-dowodu',
         export_policy: 'frozen_result_and_proof_only',
-        sections: Array.from({ length: sekcji }, (_, i) => ({
-          section_id: `sekcja_${i}`,
-          title: `Sekcja ${i}`,
-          metrics: [{ label: 'metryka', value: i }],
-        })),
+        sections: [
+          {
+            section_id: 'dowod',
+            title: 'Dowód obliczeń',
+            metrics: [
+              { label: 'proof_id', value: 'proof:v126:test:abc' },
+              { label: 'proof_hash', value: 'hash-dowodu' },
+              { label: 'trace_step_count', value: krokow },
+            ],
+          },
+          {
+            section_id: 'audyt',
+            title: 'Audyt deterministyczny',
+            metrics: [
+              { label: 'result_hash', value: 'hash-akad' },
+              { label: 'solver_version', value: 'v126-academic-whitebox-1.2' },
+              { label: 'input_hash', value: 'hash-wejscia' },
+            ],
+          },
+        ],
         report_hash: 'hash-raportu',
       });
     }

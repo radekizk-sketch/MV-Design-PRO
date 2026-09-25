@@ -13,14 +13,15 @@
  * werdyktu z backendu (`ocena`), pokazywany JEDYNĄ kartą werdyktu (`KartaWerdyktu`); etykiety
  * pochodzą z rekordu, interfejs dobiera tylko kolor po semantyce. Bez aktywnego przypadku →
  * uczciwy stan pusty (bez wołań API).
- * Identyfikatory (pole, hasze) wyłącznie w trybie eksperckim.
+ * Nazwy pól, szyn i modułów — z modelu przez JEDEN most identyfikator → nazwa
+ * (`useNazwaObiektu`); odciski danych wyłącznie w „Informacjach audytowych" (karta #145).
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import './lom.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { useActiveCase } from '../../../ui/study-cases/store';
-import { EkranAnalizy, SladWywodu } from '../../wyniki/wzorzec';
+import { EkranAnalizy, SladWywodu, useNazwaObiektu } from '../../wyniki/wzorzec';
 import { KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import type { Etykieta, RekordWerdyktu, WynikWymagania } from '../../wyniki/wzorzec/werdykt';
 import { pobierzOchronaLom, type PoleLom, type WidokOchronyLom } from '../api';
@@ -132,7 +133,13 @@ function StanPanel({
 // Szczegół pola — porównania (checks) + moduły wytwórcze
 // ---------------------------------------------------------------------------
 
-function SzczegolPola({ pole }: { pole: PoleLom | null }) {
+function SzczegolPola({
+  pole,
+  nazwaObiektu,
+}: {
+  pole: PoleLom | null;
+  nazwaObiektu: (ref: string) => string;
+}) {
   if (!pole) {
     return (
       <section
@@ -190,9 +197,7 @@ function SzczegolPola({ pole }: { pole: PoleLom | null }) {
       ) : (
         <ul className="mvd-lom-moduly">
           {pole.generating_module_refs.map((ref) => (
-            <li key={ref} className="mvd-num">
-              {ref}
-            </li>
+            <li key={ref}>{nazwaObiektu(ref)}</li>
           ))}
         </ul>
       )}
@@ -213,7 +218,7 @@ function WynikLom({
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
 }) {
-  const trybEkspercki = trybZaawansowania === 'expert';
+  const nazwaObiektu = useNazwaObiektu();
   const [wybrany, setWybrany] = useState<string | null>(null);
 
   const wierszeSelektora = useMemo(
@@ -240,9 +245,15 @@ function WynikLom({
         naglowek={{ analizaPL: LOM_STRINGS.tytul }}
         zalozenia={naZalozeniaLom(dane.zalozenia_pl)}
         kolumny={KOLUMNY_LOM}
-        wiersze={naWierszeLom(dane.fields)}
+        wiersze={naWierszeLom(dane.fields, nazwaObiektu)}
         onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
+        informacjeAudytowe={[
+          { etykieta: LOM_STRINGS.audytOdciskWejscia, wartosc: dane.input_hash },
+          ...(dane.context.enm_hash
+            ? [{ etykieta: LOM_STRINGS.audytOdciskModelu, wartosc: dane.context.enm_hash }]
+            : []),
+        ]}
         kluczWiersza={KLUCZ_WIERSZA_LOM}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
@@ -260,7 +271,7 @@ function WynikLom({
 
       <OcenaSieci ocena={dane.summary.ocena} />
 
-      <SzczegolPola pole={wybranePole} />
+      <SzczegolPola pole={wybranePole} nazwaObiektu={nazwaObiektu} />
 
       {dane.modules_without_field.length > 0 && (
         <section className="mvd-lom-bez-pola" data-testid="mvd-lom-bez-pola">
@@ -268,9 +279,7 @@ function WynikLom({
           <p className="mvd-lom-bez-pola-opis">{LOM_STRINGS.bezPolaOpis}</p>
           <ul className="mvd-lom-moduly">
             {dane.modules_without_field.map((ref) => (
-              <li key={ref} className="mvd-num">
-                {ref}
-              </li>
+              <li key={ref}>{nazwaObiektu(ref)}</li>
             ))}
           </ul>
         </section>
@@ -288,18 +297,6 @@ function WynikLom({
         </dl>
       </section>
 
-      {trybEkspercki && (
-        <dl className="mvd-lom-eksp" data-testid="mvd-lom-eksp">
-          <div className="mvd-lom-eksp-para">
-            <dt>{LOM_STRINGS.ekspHash}</dt>
-            <dd className="mvd-num">{dane.input_hash}</dd>
-          </div>
-          <div className="mvd-lom-eksp-para">
-            <dt>{LOM_STRINGS.ekspEnmHash}</dt>
-            <dd className="mvd-num">{dane.context.enm_hash}</dd>
-          </div>
-        </dl>
-      )}
     </div>
   );
 }

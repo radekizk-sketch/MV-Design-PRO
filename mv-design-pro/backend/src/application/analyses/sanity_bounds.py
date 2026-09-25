@@ -62,6 +62,7 @@ from analysis.sanity_bounds.short_circuit_bounds import (
     evaluate_short_circuit_current,
 )
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.power_flow_reconstruction import (
     graf_z_biegu,
     suma_mocy_czynnej_odbiorow_mw,
@@ -97,11 +98,11 @@ def build_sanity_bounds_view(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
         raise ValueError(
             "Ocena wiarygodności Ik'' wymaga przebiegu zwarciowego; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )
 
@@ -230,11 +231,11 @@ def build_power_flow_sanity_bounds_view(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "PF":
         raise ValueError(
             "Pasma zdrowego rozsądku rozpływu wymagają przebiegu rozpływu mocy; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
 

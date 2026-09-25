@@ -43,9 +43,12 @@
       "z0_source": "ENM_COMMITTED",
       "analysis_type": "short_circuit_1f",
       "reporting_status": "not_reportable",
-      "reporting_status_pl": "nieraportowalny",
       "proof_status": "partial",
-      "proof_status_pl": "czesciowy",
+      "reporting_status_pl": "nieraportowalny",
+      "proof_status_pl": "częściowy",
+      "reporting_limitations_pl": [
+        "Wynik obliczenia nie ma sensu fizycznego (wartość nieskończona albo współczynnik udaru κ poza zakresem normy IEC 60909) — liczby tego wyniku nie są raportowane."
+      ],
       "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
       "proof_binding": {
         "reporting_status": "reportable",
@@ -121,9 +124,10 @@
       "z0_source": "ENM_COMMITTED",
       "analysis_type": "short_circuit_1f",
       "reporting_status": "reportable",
-      "reporting_status_pl": "raportowalny",
       "proof_status": "complete",
-      "proof_status_pl": "pelny",
+      "reporting_status_pl": "raportowalny",
+      "proof_status_pl": "pełny",
+      "reporting_limitations_pl": [],
       "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
       "proof_binding": {
         "reporting_status": "reportable",
@@ -197,9 +201,10 @@
       "z0_source": "ENM_COMMITTED",
       "analysis_type": "short_circuit_1f",
       "reporting_status": "reportable",
-      "reporting_status_pl": "raportowalny",
       "proof_status": "complete",
-      "proof_status_pl": "pelny",
+      "reporting_status_pl": "raportowalny",
+      "proof_status_pl": "pełny",
+      "reporting_limitations_pl": [],
       "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
       "proof_binding": {
         "reporting_status": "reportable",
@@ -273,9 +278,12 @@
       "z0_source": "ENM_COMMITTED",
       "analysis_type": "short_circuit_1f",
       "reporting_status": "not_reportable",
-      "reporting_status_pl": "nieraportowalny",
       "proof_status": "partial",
-      "proof_status_pl": "czesciowy",
+      "reporting_status_pl": "nieraportowalny",
+      "proof_status_pl": "częściowy",
+      "reporting_limitations_pl": [
+        "Wynik obliczenia nie ma sensu fizycznego (wartość nieskończona albo współczynnik udaru κ poza zakresem normy IEC 60909) — liczby tego wyniku nie są raportowane."
+      ],
       "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
       "proof_binding": {
         "reporting_status": "reportable",
@@ -351,9 +359,12 @@
       "z0_source": "ENM_COMMITTED",
       "analysis_type": "short_circuit_1f",
       "reporting_status": "not_reportable",
-      "reporting_status_pl": "nieraportowalny",
       "proof_status": "partial",
-      "proof_status_pl": "czesciowy",
+      "reporting_status_pl": "nieraportowalny",
+      "proof_status_pl": "częściowy",
+      "reporting_limitations_pl": [
+        "Wynik obliczenia nie ma sensu fizycznego (wartość nieskończona albo współczynnik udaru κ poza zakresem normy IEC 60909) — liczby tego wyniku nie są raportowane."
+      ],
       "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
       "proof_binding": {
         "reporting_status": "reportable",

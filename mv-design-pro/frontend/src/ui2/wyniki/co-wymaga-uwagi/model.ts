@@ -50,7 +50,8 @@ import { usePowerFlowResultsStore } from '../../../ui/power-flow-results/store';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ElementType } from '../../../ui/types';
-import type { RodzajPrzekroczenia } from '../wzorzec';
+import type { NazwaObiektu, RodzajPrzekroczenia } from '../wzorzec';
+import { useNazwaObiektu } from '../wzorzec/useNazwaObiektu';
 import { fetchOcenaTechniczna, type PozycjaOceny, type OdpowiedzOceny } from '../ocena/api';
 import { rodzajPrzekroczeniaKryterium, typElementuKryterium } from '../ocena/model';
 import { subskrybuj } from '../../events';
@@ -71,7 +72,10 @@ export interface Przekroczenie {
   elementRef: string | null;
   /** Typ elementu (dla selekcji/property-grid); `null` jak wyżej. */
   elementTyp: ElementType | null;
-  /** Nazwa elementu do prezentacji (fallback = ref). */
+  /**
+   * Nazwa elementu do prezentacji — z mostu nazw modelu (karta #145), nigdy referencja;
+   * dla pozycji bez elementu: etykieta „cała sieć".
+   */
   elementNazwa: string;
   /** Co zostało przekroczone (PL, z werdyktu backendu — nie liczone tutaj). */
   opis: string;
@@ -94,7 +98,10 @@ export interface Przekroczenie {
  * bieg) = uczciwy brak pozycji (nie da się ocenić bez progu), nigdy domyślna
  * liczba.
  */
-export function przekroczeniaRozplywu(wynik: PowerFlowResultV1 | null): Przekroczenie[] {
+export function przekroczeniaRozplywu(
+  wynik: PowerFlowResultV1 | null,
+  nazwa: NazwaObiektu,
+): Przekroczenie[] {
   const kryteria = wynik?.kryteria_napiecia;
   if (!wynik || !kryteria) return [];
   return wynik.bus_results
@@ -104,7 +111,7 @@ export function przekroczeniaRozplywu(wynik: PowerFlowResultV1 | null): Przekroc
       analizaPL: T.analizaRozplyw,
       elementRef: r.bus_id,
       elementTyp: 'Bus' as ElementType,
-      elementNazwa: r.bus_id,
+      elementNazwa: nazwa(r.bus_id),
       opis: r.v_pu > kryteria.ostrzezenie_max_pu ? T.opisNapiecieWysokie : T.opisNapiecieNiskie,
       wartosc: `${fmtPU(r.v_pu)} ${T.jednPU}`,
       rodzaj: 'napiecie' as RodzajPrzekroczenia,
@@ -144,6 +151,7 @@ export function przekroczeniaZbieznosci(wynik: PowerFlowResultV1 | null): Przekr
 export function przekroczeniaWerdyktu(
   werdykt: OdpowiedzOceny | null,
   pomijajNapiecia: boolean,
+  nazwa: NazwaObiektu,
 ): Przekroczenie[] {
   // Odpowiedź niezgodna z kontraktem (brak tablicy `pozycje`) NIE MOŻE wywrócić
   // rejestru — precedens `runStore.loadRuns` („runs is not iterable"): błąd
@@ -152,10 +160,10 @@ export function przekroczeniaWerdyktu(
   return werdykt.pozycje
     .filter((p) => p.stan === 'NARUSZONE')
     .filter((p) => !(pomijajNapiecia && p.kryterium_id === 'napiecie.odchylenie'))
-    .map((pozycja) => naPrzekroczenieWerdyktu(pozycja));
+    .map((pozycja) => naPrzekroczenieWerdyktu(pozycja, nazwa));
 }
 
-function naPrzekroczenieWerdyktu(pozycja: PozycjaOceny): Przekroczenie {
+function naPrzekroczenieWerdyktu(pozycja: PozycjaOceny, nazwa: NazwaObiektu): Przekroczenie {
   const typ = typElementuKryterium(pozycja);
   const ref = typ ? pozycja.wiodacy_element_id : null;
   return {
@@ -163,7 +171,7 @@ function naPrzekroczenieWerdyktu(pozycja: PozycjaOceny): Przekroczenie {
     analizaPL: T.analizaWerdykt,
     elementRef: ref,
     elementTyp: typ,
-    elementNazwa: ref ?? T.elementCalaSiec,
+    elementNazwa: ref === null ? T.elementCalaSiec : nazwa(ref),
     opis: pozycja.wiodacy_opis_pl ?? pozycja.nazwa_pl,
     wartosc: T.naruszen(pozycja.liczba_naruszen),
     rodzaj: rodzajPrzekroczeniaKryterium(pozycja),
@@ -225,15 +233,16 @@ export function useRejestrPrzekroczen(): RejestrPrzekroczen {
   const wynikRozplywu = usePowerFlowResultsStore((s) => s.results);
   const przebiegi = useExecutionRunsStore((s) => s.runs);
   const werdykt = useWerdyktPrzypadku();
+  const nazwaObiektu = useNazwaObiektu();
 
   const przekroczenia = useMemo(() => {
-    const zRozplywu = przekroczeniaRozplywu(wynikRozplywu);
+    const zRozplywu = przekroczeniaRozplywu(wynikRozplywu, nazwaObiektu);
     return [
       ...zRozplywu,
       ...przekroczeniaZbieznosci(wynikRozplywu),
-      ...przekroczeniaWerdyktu(werdykt, zRozplywu.length > 0),
+      ...przekroczeniaWerdyktu(werdykt, zRozplywu.length > 0, nazwaObiektu),
     ];
-  }, [wynikRozplywu, werdykt]);
+  }, [wynikRozplywu, werdykt, nazwaObiektu]);
 
   // Prawda o istnieniu przebiegu: rejestr przebiegów (dowolny rodzaj analizy,
   // status DONE) albo załadowany wynik rozpływu — patrz defekt w nagłówku pliku.

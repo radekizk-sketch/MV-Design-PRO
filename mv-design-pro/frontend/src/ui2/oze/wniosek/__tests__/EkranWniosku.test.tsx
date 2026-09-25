@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useStationDerStore, type StationDerConnection } from '../../../../ui/network-build/station-der';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
 import { katalogFixture } from '../../macierz/__tests__/fixtures';
 import { atrapaSieci, odpowiedzJson, odpowiedzPliku, type WywolanieSieci } from '../../ncrfg/__tests__/atrapaSieci';
@@ -55,7 +56,29 @@ function trasy(odpowiedz: Odpowiedz) {
   ]);
 }
 
+/** Szyna testowa do wyboru z listy (karta #145: projektant wybiera szynę po nazwie). */
+const SZYNA_TESTOWA = 'szyna';
+
+/**
+ * Migawka modelu z szynami, które wniosek oferuje do wyboru — szyny obu fikstur żądań
+ * sceny i szyna testowa bramki kompletności.
+ */
+function zasiejSzyny(): void {
+  const refy = [SZYNA_TESTOWA, zadanieMagazynu().bus_ref, zadanieMacierzy().bus_ref];
+  useSnapshotStore.setState({
+    snapshot: {
+      buses: [...new Set(refy)].map((ref, i) => ({
+        ref_id: ref,
+        id: `szyna-${i}`,
+        name: `Szyna ${i + 1}`,
+        voltage_kv: 15,
+      })),
+    },
+  } as never);
+}
+
 function zasiej(ders: readonly StationDerConnection[], runs: ExecutionRun[], caseId: string | null = 'case-demo'): void {
+  zasiejSzyny();
   useStationDerStore.setState({ ders: Object.fromEntries(ders.map((d) => [d.id, d])) });
   useExecutionRunsStore.setState({ runs, activeRunId: null });
   useAppStateStore.setState({
@@ -70,7 +93,7 @@ function posty(wywolania: readonly WywolanieSieci[], sciezka: string): Wywolanie
 }
 
 async function zbuduj(uzytkownik: ReturnType<typeof userEvent.setup>, busRef: string): Promise<void> {
-  await uzytkownik.type(screen.getByTestId('mvd-wniosek-wezel'), busRef);
+  await uzytkownik.selectOptions(screen.getByTestId('mvd-wniosek-wezel'), busRef);
   const przycisk = screen.getByTestId('mvd-wniosek-generuj');
   await waitFor(() => expect(przycisk).toBeEnabled());
   await uzytkownik.click(przycisk);
@@ -85,6 +108,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   useStationDerStore.setState({ ders: {} });
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
+  useSnapshotStore.setState({ snapshot: null } as never);
   useNcRfgStore.getState().reset();
 });
 
@@ -110,11 +134,26 @@ describe('dostępność generacji — bramka kompletności', () => {
     render(<EkranWniosku trybZaawansowania="basic" />);
     const wybor = screen.getByTestId('mvd-wniosek-operator-wybor') as HTMLSelectElement;
     expect(wybor.value).toBe('');
-    await uzytkownik.type(screen.getByTestId('mvd-wniosek-wezel'), 'szyna');
+    await uzytkownik.selectOptions(screen.getByTestId('mvd-wniosek-wezel'), SZYNA_TESTOWA);
     expect(screen.getByTestId('mvd-wniosek-generuj')).toHaveAttribute('title', T.blokadaBrakOperatora);
     await waitFor(() => expect(wybor).toBeEnabled());
     await uzytkownik.selectOptions(wybor, 'enea');
     expect(screen.getByTestId('mvd-wniosek-generuj')).toBeEnabled();
+  });
+
+  it('szyna przyłączenia wybierana z listy po nazwie — referencja jest wartością, nie tekstem opcji', () => {
+    trasy('widok');
+    zasiej(deryMagazynu(), przebiegiMagazynu());
+    render(<EkranWniosku trybZaawansowania="expert" />);
+    const opcje = within(screen.getByTestId('mvd-wniosek-wezel')).getAllByRole('option');
+    const teksty = opcje.map((o) => o.textContent ?? '');
+    expect(teksty).toContain('Szyna 1');
+    expect(teksty).not.toContain(SZYNA_TESTOWA);
+    expect(teksty.join(' ')).not.toContain(zadanieMagazynu().bus_ref);
+    // Przebiegi nazwane rodzajem i czasem, nie identyfikatorem.
+    within(screen.getByTestId('mvd-wniosek-pf')).getAllByRole('option').forEach((o) => {
+      expect(o.textContent ?? '').not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}/);
+    });
   });
 
   it('pusta nazwa projektu → blokada; wpisanie → aktywny', async () => {
@@ -122,7 +161,7 @@ describe('dostępność generacji — bramka kompletności', () => {
     zasiej(deryMagazynu(), przebiegiMagazynu());
     const uzytkownik = userEvent.setup();
     render(<EkranWniosku trybZaawansowania="basic" />);
-    await uzytkownik.type(screen.getByTestId('mvd-wniosek-wezel'), 'szyna');
+    await uzytkownik.selectOptions(screen.getByTestId('mvd-wniosek-wezel'), SZYNA_TESTOWA);
     await uzytkownik.clear(screen.getByTestId('mvd-wniosek-projekt'));
     expect(screen.getByTestId('mvd-wniosek-generuj')).toHaveAttribute('title', T.blokadaBrakProjektu);
     await uzytkownik.type(screen.getByTestId('mvd-wniosek-projekt'), 'Projekt');

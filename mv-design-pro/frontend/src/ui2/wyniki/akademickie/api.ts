@@ -16,7 +16,7 @@
  *     prezentacji); to okno go NIE duplikuje, tylko kieruje do zakładki „SSCI".
  *  5. `GET  …/{analysis_type}/proof` → pakiet dowodowy `AcademicProofPackV1`
  *     (`application/v126_artifacts.py::build_v126_proof_artifact`).
- *  6. `GET  …/{analysis_type}/report` → raport `AcademicReportV1`
+ *  6. `GET  …/{analysis_type}/report` → raport `AcademicReportV2` (tożsamość raportu)
  *     (`::build_v126_report_artifact`) — liczba sekcji wynika Z DANYCH.
  *  7. `GET  /api/catalog/v126/{namespace}` → katalog danych odniesienia
  *     (`::get_v126_catalog`, 5 przestrzeni nazw). `analysis-types` jest JEDYNYM
@@ -185,20 +185,40 @@ export interface PakietDowodu {
   readonly proof_hash: string;
 }
 
+/**
+ * Klucze metryk raportu `AcademicReportV2` — STAŁA lista backendu
+ * (`application/v126_artifacts.py::build_v126_report_artifact`: sekcja „dowod" i „audyt").
+ * Ekran nadaje im polskie etykiety z mapy typowanej tą unią (`model.ts`).
+ */
+export type KluczMetrykiRaportu =
+  | 'proof_id'
+  | 'proof_hash'
+  | 'trace_step_count'
+  | 'result_hash'
+  | 'solver_version'
+  | 'input_hash';
+
+/** Polityka eksportu raportu (kod backendu; polska nazwa z mapy w `model.ts`). */
+export type PolitykaEksportuRaportu = 'frozen_result_and_proof_only';
+
 /** Metryka sekcji raportu. */
 export interface MetrykaRaportu {
-  readonly label: string;
-  readonly value: unknown;
+  readonly label: KluczMetrykiRaportu;
+  readonly value: string | number | null;
 }
 
 /** Sekcja raportu. */
 export interface SekcjaRaportu {
-  readonly section_id: string;
+  readonly section_id: 'dowod' | 'audyt';
   readonly title: string;
   readonly metrics: readonly MetrykaRaportu[];
 }
 
-/** Odpowiedź `GET …/report` (`AcademicReportV1`). */
+/**
+ * Odpowiedź `GET …/report` (`AcademicReportV2`) — tożsamość raportu: dowód (identyfikator,
+ * odcisk, liczba kroków śladu), audyt deterministyczny i polityka eksportu. Wynik
+ * obliczeń NIE jest częścią raportu (karta #145) — ma pełną prezentację na ekranie.
+ */
 export interface RaportAnalizy {
   readonly contract: string;
   readonly report_id: string;
@@ -207,7 +227,7 @@ export interface RaportAnalizy {
   readonly analysis_type: RodzajAnalizy;
   readonly source_result_hash: string;
   readonly source_proof_hash: string;
-  readonly export_policy: string;
+  readonly export_policy: PolitykaEksportuRaportu;
   readonly sections: readonly SekcjaRaportu[];
   readonly report_hash: string;
 }

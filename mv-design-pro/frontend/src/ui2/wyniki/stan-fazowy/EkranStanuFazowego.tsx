@@ -34,7 +34,7 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
-import { akcjaNaprawcza, SekcjaZalozen, usePoprawWModelu } from '../wzorzec';
+import { akcjaNaprawcza, SekcjaZalozen, useNazwaObiektu, usePoprawWModelu } from '../wzorzec';
 import {
   fetchWynikiRozplywuNiesymetrycznego,
   fetchWynikiStanuFazowego,
@@ -145,6 +145,7 @@ export function EkranStanuFazowego() {
   const proofRef = zrodlo === 'stan_fazowy' ? wiersz?.proof_ref : rn?.proof_ref;
 
   const poprawWModelu = usePoprawWModelu();
+  const nazwaObiektu = useNazwaObiektu();
 
   const otworzDowod = () => {
     // Deep-link do okna „Dowód obliczeń" z kontekstem KONKRETNEGO przebiegu
@@ -336,11 +337,11 @@ export function EkranStanuFazowego() {
             )}
           </section>
 
-          {(rn.reporting_limitations ?? []).length > 0 && (
+          {(rn.reporting_limitations_pl ?? []).length > 0 && (
             <section className="mvd-fazowy-sekcja" aria-label={T.ograniczeniaTytul}>
               <h4>{T.ograniczeniaTytul}</h4>
               <ul className="mvd-fazowy-zdarzenia" data-testid="mvd-fazowy-ograniczenia">
-                {(rn.reporting_limitations ?? []).map((o) => (
+                {(rn.reporting_limitations_pl ?? []).map((o) => (
                   <li key={o}>{o}</li>
                 ))}
               </ul>
@@ -349,7 +350,7 @@ export function EkranStanuFazowego() {
         </div>
       ) : wiersz ? (
         <div data-testid="mvd-fazowy-stan-fazowy" data-zrodlo="stan_fazowy">
-          <SekcjaZalozen zalozenia={naZalozeniaStanuFazowego(wiersz)} />
+          <SekcjaZalozen zalozenia={naZalozeniaStanuFazowego(wiersz, nazwaObiektu)} />
 
           <section className="mvd-fazowy-sekcja" aria-label={T.fazyTytul}>
             <h4>{T.fazyTytul}</h4>
@@ -416,7 +417,7 @@ export function EkranStanuFazowego() {
                 title={akcjaNaprawcza('asymetria-fazowa').opis}
                 onClick={() => {
                   const ref = wiersz.element_id || wiersz.target_id;
-                  poprawWModelu(ref, 'Bus', wiersz.target_name || ref, 'asymetria-fazowa');
+                  poprawWModelu(ref, 'Bus', nazwaObiektu(ref, wiersz.target_name), 'asymetria-fazowa');
                 }}
               >
                 {akcjaNaprawcza('asymetria-fazowa').etykieta}
@@ -441,11 +442,11 @@ export function EkranStanuFazowego() {
             )}
           </section>
 
-          {wiersz.reporting_limitations.length > 0 && (
+          {wiersz.reporting_limitations_pl.length > 0 && (
             <section className="mvd-fazowy-sekcja" aria-label={T.ograniczeniaTytul}>
               <h4>{T.ograniczeniaTytul}</h4>
               <ul className="mvd-fazowy-zdarzenia" data-testid="mvd-fazowy-ograniczenia">
-                {wiersz.reporting_limitations.map((o) => (
+                {wiersz.reporting_limitations_pl.map((o) => (
                   <li key={o}>{o}</li>
                 ))}
               </ul>

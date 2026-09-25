@@ -39,7 +39,7 @@ import { describe, expect, it } from 'vitest';
 
 import nazwyScen from '../../../../harness-fixtures/generated/nazwy_obiektow_scen_akademickich.json';
 import wyroczniaSegmentow from '../../../../harness-fixtures/generated/segmenty_referencji_modelu.json';
-import { etykietaZapasowaRefu, tlumaczSegment } from '../useNazwaObiektu';
+import { SEGMENT_MASZYNOWY, etykietaZapasowaRefu, tlumaczSegment } from '../useNazwaObiektu';
 
 const FIXTURA = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -47,8 +47,6 @@ const FIXTURA = resolve(
   'ui', 'sld', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json',
 );
 
-/** Segment maszynowy — ta sama reguła co w module (odcisk/UUID). */
-const ODCISK = /^[0-9a-f]{8,}$/i;
 
 /** Referencja zbudowana operacją: `<prefiks>/<ziarno 32 hex>/<ścieżka>`. */
 const REF_Z_ZIARNEM = /"([a-z][a-z0-9_]*\/[0-9a-f]{32}\/[A-Za-z0-9_/-]+)"/g;
@@ -63,7 +61,7 @@ function segmentyRealnychRefow(): readonly string[] {
   const segmenty = new Set<string>();
   for (const ref of refy) {
     for (const segment of ref.split('/')) {
-      if (segment === '' || ODCISK.test(segment) || /^\d+$/.test(segment)) continue;
+      if (segment === '' || SEGMENT_MASZYNOWY.test(segment) || /^\d+$/.test(segment)) continue;
       segmenty.add(segment);
     }
   }

@@ -210,7 +210,7 @@ def _run_item(run_status: str | None, readiness_codes: list[str] | None) -> dict
         message = "❌ Bieg analiz nieudany — wyniki niedostępne."
     else:
         status = _STATUS_WARN
-        message = f"⚠️ Bieg analiz w toku (status: {run_status})."
+        message = "⚠️ Bieg analiz w toku — wyniki jeszcze niedostępne."
     return {
         "check_id": "bieg_analiz",
         "kategoria": "bieg_analiz",

@@ -92,11 +92,11 @@ describe('zapytanieKlasyfikacjiWezla — moc graniczna węzła × napięcie węz
 });
 
 describe('kolumnyRankingu — kolumny wzorca', () => {
-  it('kolumna identyfikatora jest tylko-ekspercka, napięcia niesortowalne', () => {
+  it('identyfikator węzła nie jest kolumną (karta #145), napięcia niesortowalne', () => {
     const kolumny = kolumnyRankingu();
     const id = kolumny.find((k) => k.klucz === KLUCZ_WIERSZA_RANKINGU);
     const napiecia = kolumny.find((k) => k.klucz === 'napiecia');
-    expect(id?.tylkoEkspercki).toBe(true);
+    expect(id).toBeUndefined();
     expect(napiecia?.sortowalna).toBe(false);
   });
 });

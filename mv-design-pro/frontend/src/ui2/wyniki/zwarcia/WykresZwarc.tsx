@@ -13,6 +13,7 @@
 
 import { useState } from 'react';
 import type { ShortCircuitRow } from '../../../ui/results-inspector/types';
+import { useNazwaObiektu } from '../wzorzec';
 import { ZWARCIA_STRINGS } from './strings';
 import { WykresIkssChart } from './WykresIkssChart';
 import {
@@ -30,7 +31,8 @@ export interface WykresZwarcProps {
 export function WykresZwarc({ rows }: WykresZwarcProps) {
   const [wielkosc, setWielkosc] = useState<WielkoscWykresu>('ikss');
   const konfig = KONFIG_WYKRESU_ZWARC[wielkosc];
-  const slupki = naSlupkiWielkosci(rows, wielkosc);
+  const nazwaObiektu = useNazwaObiektu();
+  const slupki = naSlupkiWielkosci(rows, wielkosc, nazwaObiektu);
 
   return (
     <div data-testid="mvd-zwarcia-wykres-blok">

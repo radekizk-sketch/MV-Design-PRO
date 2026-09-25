@@ -14,7 +14,7 @@ export const RANKING_STRINGS = {
   tytul: 'Ranking punktów przyłączenia',
   opisWstep:
     'Jeden bieg zdolności przyłączeniowej dla wielu węzłów-kandydatów, uszeregowany '
-    + 'malejąco po maksymalnej mocy przyłączalnej. Wartości pochodzą z backendu.',
+    + 'malejąco po maksymalnej mocy przyłączalnej. Wartości pochodzą z serwera obliczeń.',
 
   // Parametry biegu
   paramKrok: 'Krok mocy',
@@ -22,7 +22,7 @@ export const RANKING_STRINGS = {
   paramMaxKrokow: 'Maksymalna liczba kroków',
   paramMaxKrokowOpis: 'Górny limit scenariuszy (zakres badanej mocy = krok × liczba kroków).',
   paramWezly: 'Węzły-kandydaci',
-  paramWezlyDomyslne: 'Bez wyboru: węzły z istniejącymi źródłami (domyślni kandydaci backendu).',
+  paramWezlyDomyslne: 'Bez wyboru: węzły z istniejącymi źródłami (domyślni kandydaci serwera obliczeń).',
   przyciskOblicz: 'Zbuduj ranking przyłączeń',
   przyciskPrzelicz: 'Przelicz ranking',
 
@@ -53,7 +53,7 @@ export const RANKING_STRINGS = {
   zalMaxKrokow: 'Maksymalna liczba kroków',
   zalLiczbaWezlow: 'Liczba węzłów w rankingu',
   zalKlasaUwaga:
-    'Typ modułu NC RfG: klasyfikacja art. 5 backendu (progi warstwy WOS) z mocy przyłączalnej ' +
+    'Typ modułu NC RfG: klasyfikacja art. 5 serwera obliczeń (progi warstwy WOS) z mocy przyłączalnej ' +
     'i napięcia węzła — jedno zapytanie na unikalną parę (moc, napięcie).',
   zalStratyUwaga:
     'Przyrost strat: różnica strat scenariusza granicznego i bazowego (arytmetyka prezentacji).',

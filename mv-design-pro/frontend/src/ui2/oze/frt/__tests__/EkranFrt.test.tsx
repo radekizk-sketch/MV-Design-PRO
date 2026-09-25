@@ -18,6 +18,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 
 import { useStationDerStore } from '../../../../ui/network-build/station-der';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import type { ExecutionAnalysisType, ExecutionRun, RunStatus } from '../../../../ui/study-cases/types';
 import { EkranFrt } from '../EkranFrt';
 import {
@@ -75,10 +76,15 @@ function dodajModul(deviceRef: string | null, id = 'der-1', name = 'Farma PV 1 M
 beforeEach(() => {
   useStationDerStore.getState().reset();
   useExecutionRunsStore.setState({ runs: [] });
+  // Migawka modelu z szyną przyłączenia — sekcja sekwencji dobiera szynę z listy po nazwie.
+  useSnapshotStore.setState({
+    snapshot: { buses: [{ ref_id: 'SZYNA-GPZ', id: 'b1', name: 'Szyna GPZ', voltage_kv: 15 }] },
+  } as never);
   pobierzKatalog.mockResolvedValue(katalogNcRfgFixture());
 });
 afterEach(() => {
   useExecutionRunsStore.setState({ runs: [] });
+  useSnapshotStore.setState({ snapshot: null } as never);
   vi.clearAllMocks();
 });
 
@@ -273,14 +279,17 @@ describe('EkranFrt — tryb ekspercki (identyfikatory)', () => {
     expect(screen.queryByTestId('mvd-frt-eksp')).not.toBeInTheDocument();
   });
 
-  it('tryb ekspercki odsłania der_ref i operator_id', async () => {
+  it('identyfikatory typu i operatora wyłącznie w „Informacjach audytowych" (karta #145)', async () => {
     pobierzTrajektorie.mockResolvedValue(widokLvrtFixture());
     await wczytajISkonfiguruj('expert');
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
     await screen.findByTestId('mvd-frt-wynik');
-    const eksp = screen.getByTestId('mvd-frt-eksp');
-    expect(eksp).toHaveTextContent(DER_REF);
-    expect(eksp).toHaveTextContent('pse');
+    // Pierwszy plan (zwinięte informacje audytowe) bez identyfikatora typu przekształtnika.
+    expect(screen.getByTestId('mvd-frt-wynik')).not.toHaveTextContent(DER_REF);
+    fireEvent.click(screen.getByTestId('mvd-frt-informacje-audytowe-przelacz'));
+    const lista = screen.getByTestId('mvd-frt-informacje-audytowe-lista');
+    expect(lista).toHaveTextContent(DER_REF);
+    expect(lista).toHaveTextContent('pse');
   });
 });
 
@@ -439,6 +448,11 @@ describe('EkranFrt — kontekst siły sieci sekwencji (run_id / bus_ref)', () =>
     pobierzSekwencja.mockResolvedValue(widokSekwencjiFixture());
     await wczytajISkonfiguruj();
     fireEvent.change(screen.getByTestId('mvd-frt-sekw-run'), { target: { value: 'sc-done' } });
+    // Karta #145: szyna wybierana z listy szyn modelu po nazwie (nie wpisywana referencja).
+    const opcja = within(screen.getByTestId('mvd-frt-sekw-bus')).getByRole('option', {
+      name: 'Szyna GPZ',
+    });
+    expect(opcja).toHaveValue('SZYNA-GPZ');
     fireEvent.change(screen.getByTestId('mvd-frt-sekw-bus'), { target: { value: 'SZYNA-GPZ' } });
     fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
     await screen.findByTestId('mvd-frt-sekw-wynik');

@@ -86,19 +86,17 @@ export const ROZPLYW_STRINGS = {
   regulacjaOzeTytul:
     'Wykres „Q wstrzyknięte w biegu vs prawo Q(U)/cosφ(P)" niedostępny',
   regulacjaOzeOpis:
-    'Zbadano ślad WHITE BOX realnych przebiegów solverów rozpływu (Newton-Raphson, ' +
-    'Gauss-Seidel, fast-decoupled): dla żadnego z nich wynik przekazywany dalej do ' +
-    'przebiegu (raport, ślad zapisany w przebiegu) nie niesie per generator trybu ' +
-    'regulacji (stały współczynnik mocy cosφ, cosφ(P), Q(U)), wstrzykniętej mocy ' +
-    'biernej, napięcia w punkcie pracy ani informacji o osiągnięciu ograniczenia Q — ' +
-    'nawet gdy przebieg solvera Newtona-Raphsona wewnętrznie te wartości liczy, ślad ' +
-    'zapisywany dla przebiegu ich nie zachowuje.',
+    'Wynik obliczenia rozpływu (metodą Newtona-Raphsona, Gaussa-Seidla albo rozprzężoną) ' +
+    'nie zapisuje dla poszczególnych źródeł trybu regulacji (stały cosφ, cosφ(P), Q(U)), ' +
+    'wstrzykniętej mocy biernej, napięcia w punkcie pracy ani informacji o osiągnięciu ' +
+    'ograniczenia Q — dlatego wykresu punktu pracy na tle prawa regulacji nie da się ' +
+    'narysować z tego przebiegu.',
   regulacjaOzeOpisUzupelnienie:
     'Krzywa prawa sterowania z nastaw źródła pozostaje dostępna w kreatorze źródła ' +
     'OZE jako podgląd parametrów (bez punktu pracy z przebiegu, bez fizyki sieci).',
   regulacjaOzeDecyzja:
-    'Decyzja właściciela OD-15 rozstrzygnie, czy solver dostanie pola addytywne śladu ' +
-    'niosące te wartości per generator.',
+    'Wykres będzie dostępny, gdy obliczenie rozpływu zacznie zapisywać te wielkości ' +
+    'dla każdego źródła.',
 } as const;
 
 /** Format liczby z przecinkiem dziesiętnym (deterministyczny). */

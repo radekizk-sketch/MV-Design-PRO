@@ -5,6 +5,8 @@
  * poza trybem eksperckim.
  */
 
+import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
+
 export const WRAZLIWOSC_STRINGS = {
   tytul: 'Wrażliwość wyników rozpływu',
   opisWstep:
@@ -17,7 +19,7 @@ export const WRAZLIWOSC_STRINGS = {
     + 'Uruchom obliczenie rozpływu, aby zobaczyć czynniki wpływu.',
   ladowanie: 'Wczytywanie analizy wrażliwości…',
   blad: 'Nie udało się pobrać analizy wrażliwości.',
-  bladOpis: 'Spróbuj ponownie; jeśli błąd wraca, sprawdź dziennik backendu.',
+  bladOpis: 'Spróbuj ponownie; jeśli błąd wraca, sprawdź dziennik serwera obliczeń.',
 
   sekcjaLf: 'Czynniki wpływu na profil napięć',
   sekcjaLfOpis:
@@ -59,7 +61,7 @@ export const WRAZLIWOSC_STRINGS = {
 /** Kody kryteriów wrażliwości ogólnej → język projektanta. Zbiór ZAMKNIĘTY
  * builderem `analysis/sensitivity/builder.py` (wyliczenie: `parameter_id=`
  * w kodzie źródłowym) — kompletność przypięta testem `strings.test.ts`;
- * nieznany kod pokazuje się surowo (uczciwość zamiast zgadywania). */
+ * kod spoza słownika daje uczciwe zdanie zamiast kodu (karta #145). */
 export const KRYTERIA_PL: Readonly<Record<string, string>> = {
   voltage_limit: 'Odchyłka napięcia węzła',
   load_q: 'Obciążenie mocą bierną',
@@ -76,14 +78,14 @@ export const DECYZJE_PL: Readonly<Record<string, string>> = {
   NOT_COMPUTED: 'nieobliczone',
 };
 
-/** Etykieta kryterium: mapa PL, a dla nieznanego kodu surowy kod (uczciwość). */
+/** Etykieta kryterium: mapa PL; kod spoza słownika → uczciwe zdanie, nie kod (karta #145). */
 export function etykietaKryterium(parameterId: string): string {
-  return KRYTERIA_PL[parameterId] ?? parameterId;
+  return etykietaZeSlownika(KRYTERIA_PL, parameterId);
 }
 
-/** Etykieta decyzji: mapa PL, nieznany kod surowo. */
+/** Etykieta decyzji: mapa PL; kod spoza słownika → uczciwe zdanie, nie kod. */
 export function etykietaDecyzji(decyzja: string): string {
-  return DECYZJE_PL[decyzja] ?? decyzja;
+  return etykietaZeSlownika(DECYZJE_PL, decyzja);
 }
 
 /** Format liczby w punktach procentowych (2 miejsca, znak jawny). */

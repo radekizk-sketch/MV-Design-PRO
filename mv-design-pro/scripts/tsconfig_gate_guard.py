@@ -386,7 +386,14 @@ POMIJANE_KATALOGI = {
 #: liczy backend) i dopisala trzy TS2550 w `KreatorMagistralaSn.test.tsx` (`.at(-1)` na
 #: `mock.calls`, `lib` ES2020) — naprawione U ZRODLA wspolnym pomocnikiem `src/test/arrayAt.ts`
 #: (ten sam wzorzec co w testach SLD i NC RfG); zero nowych bledow.
-BUDZET_BLEDOW_POZA_BRAMKA = 91
+#: Karta #145 na partii integracji 4 (2026-09-25, pomiar guardem na drzewie partii, listy bledow
+#: porownane linia po linii z partia 3): 91 -> 83. Zeszlo 8 bledow w testach przepisanych przez
+#: karte (`PanelCoSieZmienilo`, `macierzNcRfg`, `EkranEstymacji`, `EkranOdbioru`, 4x
+#: `ekranZbieznosci`). Karta dopisala do kontraktu `ScenariuszFrt` pole `nazwa_pl`, nie
+#: uzupelniajac fikstury `ui2/oze/frt/__tests__/fixtures.ts` — 3 nowe TS2741 przykryte na jej
+#: drzewie spadkiem netto (93 -> 88); naprawione U ZRODLA przy scaleniu (fikstura niesie
+#: `nazwa_pl` w brzmieniu `nazwa_scenariusza_pl` backendu). Zero nowych bledow.
+BUDZET_BLEDOW_POZA_BRAMKA = 83
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

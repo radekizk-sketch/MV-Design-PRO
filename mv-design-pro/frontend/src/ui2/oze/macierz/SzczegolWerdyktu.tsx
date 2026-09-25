@@ -8,9 +8,9 @@
  * klienta „co naprawić".
  */
 
-import { useState } from 'react';
-
+import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
 import { KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
+import { ZapisTechniczny } from '../../wyniki/wzorzec/ZapisTechniczny';
 import { usePoprawWModelu } from '../../wyniki/wzorzec/usePoprawWModelu';
 import { akcjaNaprawcza } from '../../wyniki/wzorzec/akcjeNaprawcze';
 import type { ClaimKind } from '../../wyniki/wzorzec/werdykt';
@@ -52,7 +52,6 @@ export function SzczegolWerdyktu({
   slad,
   trybEkspercki,
 }: SzczegolWerdyktuProps): JSX.Element {
-  const [sladWidoczny, setSladWidoczny] = useState(false);
   const pokazElement = usePoprawWModelu();
   const akcjaInspekcji = akcjaNaprawcza('inspekcja-elementu');
   return (
@@ -123,12 +122,12 @@ export function SzczegolWerdyktu({
                 <span>{MACIERZ_STRINGS.rodzajTwierdzenia}</span>
                 <span>{nazwaRodzajuTwierdzenia(definicja.rodzaj_twierdzenia)}</span>
               </div>
-              {trybEkspercki ? (
-                <div className="mvd-oze-metryka" data-testid="mvd-oze-szczegol-zdolnosc">
-                  <span>{MACIERZ_STRINGS.zdolnosc}</span>
-                  <span className="mvd-oze-num">{definicja.zdolnosc_id}</span>
-                </div>
-              ) : null}
+              {/* Karta #145: identyfikator zdolności dowodowej — metadana audytowa. */}
+              <InformacjeAudytowe
+                trybEkspercki={trybEkspercki}
+                testid="mvd-oze-szczegol-zdolnosc"
+                wiersze={[{ etykieta: MACIERZ_STRINGS.zdolnosc, wartosc: definicja.zdolnosc_id }]}
+              />
             </div>
           ) : null}
 
@@ -139,14 +138,20 @@ export function SzczegolWerdyktu({
                 {MACIERZ_STRINGS.brakMetryk}
               </p>
             ) : (
-              <div style={{ marginTop: 4 }}>
+              // Karta #145: wartości biegu niosą klucze silnika prób (rdzeń zamrożony,
+              // B-01) — wynik, limit i margines po polsku podaje karta oceny wyżej; surowe
+              // pary klucz → wartość wyłącznie w zapisie technicznym z jawnym podpisem.
+              <ZapisTechniczny
+                podpis={MACIERZ_STRINGS.metrykiZapisPodpis}
+                testid="mvd-oze-szczegol-metryki-zapis"
+              >
                 {Object.entries(komorka.wynik.metrics).map(([klucz, wartosc]) => (
                   <div key={klucz} className="mvd-oze-metryka">
                     <span className="mvd-oze-num">{klucz}</span>
                     <span className="mvd-oze-num">{opiszMetryke(wartosc)}</span>
                   </div>
                 ))}
-              </div>
+              </ZapisTechniczny>
             )}
           </div>
 
@@ -154,18 +159,11 @@ export function SzczegolWerdyktu({
             <div className="mvd-oze-panel-blok" data-testid="mvd-oze-szczegol-slad">
               <span className="mvd-oze-panel-etyk">{MACIERZ_STRINGS.slad}</span>
               <div style={{ marginTop: 4 }}>
-                <button
-                  type="button"
-                  className="mvd-oze-slad-btn"
-                  aria-expanded={sladWidoczny}
-                  onClick={() => setSladWidoczny((s) => !s)}
-                  data-testid="mvd-oze-slad-otworz"
-                >
-                  {sladWidoczny ? MACIERZ_STRINGS.ukryjSlad : MACIERZ_STRINGS.otworzSlad}
-                </button>
-                {sladWidoczny && (
+                {/* Karta #145: ślad silnika prób NC RfG (wzory ASCII, klucze danych, kody
+                    statusów) pochodzi z rdzenia zamrożonego — zapis techniczny z podpisem. */}
+                <ZapisTechniczny podpis={MACIERZ_STRINGS.sladZapisPodpis} testid="mvd-oze-slad">
                   <SladTestu kroki={slad.filter((krok) => krok.test_id === komorka.testId)} />
-                )}
+                </ZapisTechniczny>
               </div>
             </div>
           ) : null}

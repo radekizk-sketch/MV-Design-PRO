@@ -12,6 +12,15 @@
  */
 
 import type { RodzajAnalizy } from './api';
+import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
+
+/** Polska forma liczebnika „krok" (1 krok, 2–4 kroki, 5+ kroków; 12–14 kroków). */
+function odmianaKroku(n: number): string {
+  if (n === 1) return 'krok';
+  const jednosci = n % 10;
+  const dziesiatki = n % 100;
+  return jednosci >= 2 && jednosci <= 4 && (dziesiatki < 12 || dziesiatki > 14) ? 'kroki' : 'kroków';
+}
 
 /** Poziom istotności statusu (dobór koloru chipu — wyłącznie prezentacja). */
 export type IstotnoscStanu = 'ok' | 'warn' | 'err' | 'neutral';
@@ -243,6 +252,8 @@ export const AKADEMICKIE_STRINGS = {
   parametryMetodyTytul: 'Metody dostępne w przekaźniku',
   parametrySzynaWybierz: 'wybierz szynę modelu',
   parametrySzynaBrak: 'model nie zawiera szyn',
+  parametryPrzeksztaltnikDomyslny: 'pierwszy przekształtnik z kartą katalogową',
+  parametryPrzeksztaltnikBrak: 'model nie zawiera przekształtnika z kartą katalogową',
   // Karta V12.7 §0.4: podsumowanie formularza — liczby z ODPOWIEDZI GOTOWOŚCI
   // backendu (braki z kluczem parametru), nigdy policzone z wartości w polach.
   // Dane opcjonalne: WYŁĄCZNIE liczba dostępnych — backend nie zgłasza braku
@@ -262,7 +273,6 @@ export const AKADEMICKIE_STRINGS = {
   // Kontrakt danych analizy (karta V12.7 §0.4) — pełna tabela `od_uzytkownika`
   kontraktDanychPokaz: 'Pokaż kontrakt danych analizy',
   kontraktDanychUkryj: 'Ukryj kontrakt danych analizy',
-  kontraktKolKlucz: 'Klucz kontraktu',
   kontraktKolNazwa: 'Nazwa',
   kontraktKolJednostka: 'Jednostka',
   kontraktKolWymagane: 'Wymagane',
@@ -302,13 +312,9 @@ export const AKADEMICKIE_STRINGS = {
   wiarygodnoscSprawdzen: (zdane: number, lacznie: number): string =>
     `sprawdzeń zdanych: ${zdane} z ${lacznie}`,
 
-  // Zapis surowy (audyt)
-  surowyTytul: 'Surowy zapis odpowiedzi solvera',
-  surowyOpis:
-    'Pełna odpowiedź solvera w postaci technicznej — do audytu obliczeń i zgłoszeń '
-    + 'serwisowych. Nazwy pól są nazwami kontraktu obliczeniowego, nie etykietami ekranu.',
-  surowyPokaz: 'Pokaż zapis techniczny',
-  surowyUkryj: 'Ukryj zapis techniczny',
+  // Zapis techniczny odpowiedzi solvera — wiersze „Informacji audytowych" (karta #145):
+  // nazwy pól kontraktu obliczeniowego nie są tekstem pierwszego planu.
+  zapisTechnicznyPrefiks: 'zapis techniczny',
 
   // Ślad obliczeń (pełna jawność toku obliczeń)
   sladTytul: 'Pełna jawność obliczeń',
@@ -326,25 +332,24 @@ export const AKADEMICKIE_STRINGS = {
 
   // Dowód
   dowodTytul: 'Pakiet dowodowy',
-  dowodOpis: 'Kroki dowodu wygenerowane z tego samego śladu — z odciskiem pakietu.',
+  dowodOpis: 'Kroki dowodu wygenerowane z tego samego śladu obliczeń.',
   dowodPokaz: 'Pokaż kroki dowodu',
   dowodUkryj: 'Ukryj kroki dowodu',
   dowodId: 'Identyfikator dowodu',
   dowodOdcisk: 'Odcisk dowodu',
-  dowodKrokow: 'Kroków dowodu',
   dowodPusty: 'Pakiet dowodowy nie zawiera kroków',
 
-  // Raport
+  // Raport — tożsamość raportu (kontrakt `AcademicReportV2`, karta #145)
   raportTytul: 'Raport',
-  raportOpis: 'Wszystkie sekcje raportu kontraktu — bez skracania listy.',
+  raportZawartosc: (polityka: string, krokow: number | null): string =>
+    `Raport przenosi ${polityka}`
+    + (krokow === null ? '.' : `; dowód obliczeń liczy ${krokow} ${odmianaKroku(krokow)} śladu.`),
   raportId: 'Identyfikator raportu',
   raportOdcisk: 'Odcisk raportu',
-  raportPolityka: 'Polityka eksportu',
-  raportSekcji: (n: number): string => `sekcji raportu: ${n}`,
-  raportMetryk: (n: number): string => `metryk: ${n}`,
-  raportPusty: 'Raport nie zawiera sekcji',
-  raportPokaz: 'Pokaż sekcje raportu',
-  raportUkryj: 'Ukryj sekcje raportu',
+  raportKrokowSladu: 'Liczba kroków śladu dowodu',
+  raportOdciskWyniku: 'Odcisk wyniku',
+  raportPolitykaZamrozona:
+    'wyłącznie zamrożony wynik i pakiet dowodowy (bez przeliczania przy eksporcie)',
 
   // Dane odniesienia (katalog wartości odniesienia)
   odniesieniaTytul: 'Dane odniesienia',
@@ -353,6 +358,28 @@ export const AKADEMICKIE_STRINGS = {
   odniesieniaUkryj: 'Ukryj dane odniesienia',
   odniesieniaLadowanie: 'Wczytywanie danych odniesienia…',
   odniesieniaBlad: 'Nie udało się wczytać danych odniesienia',
+  odniesieniaBezPrezentacji: 'Ten katalog wartości odniesienia nie ma jeszcze opisu na ekranie.',
+  // Dane odniesienia po polsku (`odniesienia.ts`, karta #145) — nazwy wielkości i elementów.
+  odnThduPnEn50160: 'Współczynnik THDu dopuszczalny wg PN-EN 50160',
+  odnThduIeee519: 'Współczynnik THDu dopuszczalny wg IEEE 519',
+  odnTddIeee519: 'Współczynnik TDD domyślny wg IEEE 519',
+  odnHarmonicznaRzedu: (rzad: string): string => `Harmoniczna rzędu ${rzad} — poziom dopuszczalny`,
+  odnPoziomIzolacji: (um: string): string => `Napięcie najwyższe urządzenia Um = ${um} kV`,
+  odnPoziomIzolacjiWartosc: (bil: string, u50: string): string =>
+    `napięcie udarowe piorunowe (BIL) ${bil} kV; napięcie wytrzymywane 50 Hz ${u50} kV`,
+  odnElementLinia: 'Linia napowietrzna SN',
+  odnElementKabel: 'Kabel SN',
+  odnElementTransformator: 'Transformator SN/nN',
+  odnElementPole: 'Pole SN',
+  odnJednostkaNaKmRok: '1/(km·rok)',
+  odnJednostkaNaRok: '1/rok',
+  odnNiezawodnoscWartosc: (intensywnosc: string, mttr: string): string =>
+    `intensywność uszkodzeń λ = ${intensywnosc}; średni czas naprawy ${mttr}`,
+  odnTrybEtykieta: 'Tryb pracy przekształtnika',
+  odnTrybGfl: 'nadążny za siecią (GFL)',
+  odnTrybGfmStatyzm: 'formujący sieć ze statyzmem (GFM)',
+  odnTrybVsm: 'wirtualna maszyna synchroniczna (VSM)',
+  odnTrybWspierajacy: 'wspierający sieć',
 
   // Źródła harmoniczne / przekształtnika — karta W2-C (zero fabrykacji wejścia)
   zrodlaWidmaTytul: 'Widmo harmoniczne — źródła uwzględnione',
@@ -404,21 +431,20 @@ export const STANY_PRZEBIEGU: Readonly<Record<string, string>> = {
   CANCELLED: 'przerwany',
 };
 
-/** Polska nazwa stanu przebiegu; wartość spoza kontraktu zostaje bez zmian. */
+/** Polska nazwa stanu przebiegu; wartość spoza słownika → uczciwe zdanie, nie kod (karta #145). */
 export function etykietaStanuPrzebiegu(kod: string): string {
-  return STANY_PRZEBIEGU[kod] ?? kod;
+  return etykietaZeSlownika(STANY_PRZEBIEGU, kod);
 }
 
-/** Etykieta rodzaju: z lustra katalogu albo uczciwie surowy kod (bez fabrykacji nazwy). */
+/** Etykieta rodzaju z lustra katalogu; kod spoza lustra → uczciwe zdanie (bez fabrykacji nazwy). */
 export function etykietaRodzaju(kod: string): string {
-  const znany = (ETYKIETY_RODZAJOW as Record<string, string | undefined>)[kod];
-  return znany ?? kod;
+  return etykietaZeSlownika(ETYKIETY_RODZAJOW, kod);
 }
 
 /**
  * Proweniencja widma harmonicznego (`V126HarmonicSourceInput.spectrum_provenance`)
- * → polska etykieta. Karta W2-C. Wartość spoza kontraktu wraca bez zmian (uczciwy
- * kod produkcyjny zamiast fabrykowanej nazwy) — ten sam wzorzec co `etykietaRodzaju`.
+ * → polska etykieta. Karta W2-C. Wartość spoza kontraktu → uczciwe zdanie zamiast
+ * kodu i zamiast fabrykowanej nazwy (karta #145) — ten sam wzorzec co `etykietaRodzaju`.
  */
 export const PROWENIENCJE_WIDMA: Readonly<Record<string, string>> = {
   KATALOG: 'z karty katalogowej',
@@ -426,7 +452,7 @@ export const PROWENIENCJE_WIDMA: Readonly<Record<string, string>> = {
 };
 
 export function etykietaProweniencjiWidma(kod: string): string {
-  return PROWENIENCJE_WIDMA[kod] ?? kod;
+  return etykietaZeSlownika(PROWENIENCJE_WIDMA, kod);
 }
 
 /** Etykieta stanu gotowości analizy (chip sekcji D i stan danych karty). */

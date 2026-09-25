@@ -918,7 +918,9 @@ describe('KartaWerdyktu — pełny rekord kryterium (poziom K)', () => {
     expect(dane).toHaveTextContent('moc zwarciowa sieci S_k″: 120 MVA');
     expect(dane).toHaveTextContent('jakość danej: oszacowane');
     expect(dane).toHaveTextContent('założona do czasu otrzymania warunków przyłączenia');
-    expect(dowod).toHaveTextContent('odniesienie do dowodu: bieg-001');
+    // Karta #145: odniesienie do dowodu (bieg z identyfikatorem) jest metadaną —
+    // wyłącznie w „Informacjach audytowych" karty, nie w sekcji dowodu.
+    expect(dowod).not.toHaveTextContent('bieg-001');
 
     const kompletnosc = karta(`${id}-kompletnosc`);
     expect(kompletnosc).toHaveTextContent('niepełny');
@@ -1146,7 +1148,10 @@ describe('KartaWerdyktu — sekcje rozwijane (zakres ważności, ślad) — naty
     expect(karta(`${id}-slad-przelacz`)).toHaveFocus();
     await uzytkownik.keyboard(' ');
     const slad = karta(`${id}-slad`);
-    expect(slad).toHaveTextContent('metryka: wartość metryki z przebiegu');
+    // Karta #145: pierwszy plan śladu niesie opis kroku; identyfikator kroku
+    // (`metryka`) trafia do „Informacji audytowych".
+    expect(slad).toHaveTextContent('wartość metryki z przebiegu');
+    expect(slad).not.toHaveTextContent('metryka:');
     // Identyfikator biegu i wersja silnika to metadane produkcyjne — sekcja audytowa, nie ślad.
     expect(slad).not.toHaveTextContent('bieg-001');
     expect(slad).not.toHaveTextContent('1.0.0');

@@ -335,11 +335,18 @@ describe('formatowanie po polsku — zapis, nie wartość', () => {
 });
 
 describe('przedmiot oceny i pętla decyzji — semantyka domeny', () => {
-  it('nazwa przedmiotu: nazwa elementu, agregat sieci, w ostateczności identyfikator', () => {
-    expect(nazwaPrzedmiotu(element())).toBe('Magistrala L-07');
-    expect(nazwaPrzedmiotu(element({ element_nazwa: null, element_id: 'network' }))).toBe(T.elementAgregat);
-    expect(nazwaPrzedmiotu(element({ element_nazwa: '', element_id: null }))).toBe(T.elementAgregat);
-    expect(nazwaPrzedmiotu(element({ element_nazwa: null, element_id: 'L-07' }))).toBe('L-07');
+  // Karta #145: nazwa przedmiotu idzie przez most nazw wyników (nazwa z modelu, nazwa
+  // backendu, etykieta zapasowa) — identyfikator nigdy nie jest tekstem przedmiotu.
+  it('nazwa przedmiotu: most nazw wyników z nazwą backendu jako drugą, agregat sieci osobno', () => {
+    // Atrapa mostu: element „M-1" jest w migawce modelu (nazwa z modelu wygrywa),
+    // pozostałe nie — wtedy nazwa backendu, a bez niej etykieta zapasowa.
+    const most = (ref: string, nazwaZWyniku?: string | null) =>
+      ref === 'M-1' ? 'Magistrala z modelu' : nazwaZWyniku || 'element sieci';
+    expect(nazwaPrzedmiotu(element(), most)).toBe('Magistrala L-07');
+    expect(nazwaPrzedmiotu(element({ element_id: 'M-1' }), most)).toBe('Magistrala z modelu');
+    expect(nazwaPrzedmiotu(element({ element_nazwa: null, element_id: 'network' }), most)).toBe(T.elementAgregat);
+    expect(nazwaPrzedmiotu(element({ element_nazwa: '', element_id: null }), most)).toBe(T.elementAgregat);
+    expect(nazwaPrzedmiotu(element({ element_nazwa: null, element_id: 'X-9' }), most)).toBe('element sieci');
   });
 
   it('typ elementu interfejsu wynika z semantyki domeny; agregat nie ma celu na schemacie', () => {

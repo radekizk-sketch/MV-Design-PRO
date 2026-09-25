@@ -22,6 +22,7 @@
  * - Przebieg: `GET …/dynamic-stability/time-series` — przebieg ZADANY z `uwaga_pl`.
  */
 
+import type { Branch, EnergyNetworkModel } from '../../../types/enm';
 import type { WierszZalozenia } from '../wzorzec';
 import type { RekordOcenyNiewykonanej } from '../wzorzec/OcenaNiewykonana';
 import { STABILNOSC_STRINGS as T } from './strings';
@@ -54,6 +55,11 @@ export interface WierszStabilnosci {
   readonly reporting_status?: string | null;
   readonly reporting_status_pl?: string | null;
   readonly reporting_limitations?: readonly string[];
+  /**
+   * Ograniczenia raportowe jako polskie zdania (backend: `etykiety_raportowe_pl` —
+   * kod ograniczenia → opis). Pierwszy plan czyta WYŁĄCZNIE to pole, nigdy kodów.
+   */
+  readonly reporting_limitations_pl?: readonly string[];
 }
 
 export interface OdpowiedzStabilnosci {
@@ -61,12 +67,35 @@ export interface OdpowiedzStabilnosci {
   readonly rows: readonly WierszStabilnosci[];
 }
 
+/** Stan sieci po zakłóceniu — unia 1:1 z `application/automation/trace.py`. */
+export type StanSieciPoZakloceniu = 'ISLANDED' | 'RECONFIGURED' | 'UNCHANGED';
+
+/** Zakres wyłączeń — unia 1:1 z `application/automation/trace.py`. */
+export type ZakresWylaczen = 'NONE' | 'LOCAL' | 'WIDE';
+
 /** Efekt topologiczny ZADEKLAROWANY w opcjach biegu (PostFaultTopologyEffect.to_dict). */
 export interface EfektTopologii {
-  readonly network_state?: string;
-  readonly outage_scope?: string;
+  readonly network_state?: StanSieciPoZakloceniu;
+  readonly outage_scope?: ZakresWylaczen;
   readonly opened_element_ids?: readonly string[];
 }
+
+/**
+ * Polskie etykiety stanu sieci po zakłóceniu — mapa TYPOWANA unią kontraktu: nowy kod
+ * w backendzie nie skompiluje się tu bez etykiety, więc kod nie trafi na ekran.
+ */
+export const ETYKIETY_STANU_SIECI: Readonly<Record<StanSieciPoZakloceniu, string>> = {
+  ISLANDED: T.stanSieciWyspa,
+  RECONFIGURED: T.stanSieciPrzekonfigurowana,
+  UNCHANGED: T.stanSieciBezZmian,
+};
+
+/** Polskie etykiety zakresu wyłączeń (liczba elementów odłączonych od zasilania). */
+export const ETYKIETY_ZAKRESU_WYLACZEN: Readonly<Record<ZakresWylaczen, string>> = {
+  NONE: T.zakresBrak,
+  LOCAL: T.zakresLokalny,
+  WIDE: T.zakresRozlegly,
+};
 
 /** Ślad automatyki — `rows` zawsze puste (zabezpieczenia niesymulowane). */
 export interface OdpowiedzSladuAutomatyki {
@@ -117,7 +146,13 @@ export interface OdpowiedzPrzebieguStabilnosci {
  * odmowy przy braku). `typ` steruje WYŁĄCZNIE walidacją i parsowaniem w tym
  * pliku — backend jest jedynym źródłem prawdy o tym, co pole znaczy fizycznie.
  */
-export type TypPolaScenariusza = 'tekst' | 'liczba' | 'lista';
+/**
+ * `element` — jeden element modelu wybierany z listy po nazwie (element objęty
+ * zwarciem); `aparaty` — lista aparatów wyłączających zaznaczanych po nazwie;
+ * `liczba` — wartość wpisana. Referencje modelu są WARTOŚCIĄ opcji, nigdy tekstem,
+ * który projektant musiałby znać i wpisać.
+ */
+export type TypPolaScenariusza = 'element' | 'aparaty' | 'liczba';
 
 export interface PoleScenariusza {
   readonly klucz: string;
@@ -130,7 +165,7 @@ export interface PoleScenariusza {
 }
 
 export const POLA_SCENARIUSZA_STABILNOSCI: readonly PoleScenariusza[] = [
-  { klucz: 'faulted_element_id', etykieta: T.poleElement, typ: 'tekst' },
+  { klucz: 'faulted_element_id', etykieta: T.poleElement, typ: 'element' },
   {
     klucz: 'clearing_time_ms',
     etykieta: T.poleCzasWylaczenia,
@@ -138,7 +173,7 @@ export const POLA_SCENARIUSZA_STABILNOSCI: readonly PoleScenariusza[] = [
     typ: 'liczba',
     wymagaDodatniej: true,
   },
-  { klucz: 'cleared_by_element_ids', etykieta: T.poleElementyWylaczajace, typ: 'lista' },
+  { klucz: 'cleared_by_element_ids', etykieta: T.poleElementyWylaczajace, typ: 'aparaty' },
   { klucz: 'pre_fault_angle_deg', etykieta: T.poleKatPrzed, jednostka: T.jednDeg, typ: 'liczba' },
   {
     klucz: 'during_fault_angle_deg',
@@ -168,8 +203,102 @@ export const POLA_SCENARIUSZA_STABILNOSCI: readonly PoleScenariusza[] = [
   },
 ] as const;
 
-/** Wartości formularza — wszystkie pola jako tekst wpisany przez inżyniera (kontrolowane inputy). */
+/**
+ * Wartości formularza (kontrolowane pola): liczby jako tekst wpisany przez inżyniera,
+ * element jako referencja wybranej opcji, aparaty jako referencje rozdzielone przecinkiem.
+ */
 export type WartosciFormularzaScenariusza = Record<string, string>;
+
+/** Referencje zaznaczonych aparatów z wartości pola `aparaty`. */
+export function referencjeAparatow(wartosc: string | undefined): string[] {
+  return (wartosc ?? '')
+    .split(',')
+    .map((wpis) => wpis.trim())
+    .filter((wpis) => wpis !== '');
+}
+
+/** Przełącza aparat w wartości pola `aparaty` (kolejność = kolejność zaznaczania). */
+export function przelaczAparat(wartosc: string | undefined, ref: string): string {
+  const obecne = referencjeAparatow(wartosc);
+  return (obecne.includes(ref) ? obecne.filter((wpis) => wpis !== ref) : [...obecne, ref]).join(
+    ',',
+  );
+}
+
+/** Opcja doboru elementu scenariusza — nazwa i rodzaj z modelu, referencja jako wartość. */
+export interface OpcjaElementuScenariusza {
+  readonly ref: string;
+  readonly nazwa: string;
+  readonly rodzaj: string;
+}
+
+const RODZAJ_GALEZI: Readonly<Record<Branch['type'], string>> = {
+  line_overhead: T.rodzajLinia,
+  cable: T.rodzajKabel,
+  switch: T.rodzajLacznik,
+  breaker: T.rodzajWylacznik,
+  bus_coupler: T.rodzajSprzeglo,
+  disconnector: T.rodzajOdlacznik,
+  fuse: T.rodzajBezpiecznik,
+};
+
+const GALEZIE_PRZEWODZACE: ReadonlySet<Branch['type']> = new Set(['line_overhead', 'cable']);
+
+function nazwaLubRodzaj(nazwa: string | null | undefined, rodzaj: string): string {
+  const przycieta = (nazwa ?? '').trim();
+  return przycieta === '' ? `${rodzaj} ${T.bezNazwy}` : przycieta;
+}
+
+function poNazwie(a: OpcjaElementuScenariusza, b: OpcjaElementuScenariusza): number {
+  return a.nazwa.localeCompare(b.nazwa, 'pl') || a.ref.localeCompare(b.ref);
+}
+
+/**
+ * Elementy, na których projektant może zadać zwarcie: linie, kable, szyny i
+ * transformatory z migawki modelu (nazwa z modelu — ta sama co na schemacie).
+ * Deterministycznie: sortowanie po nazwie, remis po referencji.
+ */
+export function opcjeElementuZwarcia(
+  snapshot: EnergyNetworkModel | null,
+): OpcjaElementuScenariusza[] {
+  if (!snapshot) return [];
+  const galezie = (snapshot.branches ?? [])
+    .filter((galaz) => GALEZIE_PRZEWODZACE.has(galaz.type))
+    .map((galaz) => ({
+      ref: galaz.ref_id,
+      nazwa: nazwaLubRodzaj(galaz.name, RODZAJ_GALEZI[galaz.type]),
+      rodzaj: RODZAJ_GALEZI[galaz.type],
+    }));
+  const szyny = (snapshot.buses ?? []).map((szyna) => ({
+    ref: szyna.ref_id,
+    nazwa: nazwaLubRodzaj(szyna.name, T.rodzajSzyna),
+    rodzaj: T.rodzajSzyna,
+  }));
+  const transformatory = (snapshot.transformers ?? []).map((tr) => ({
+    ref: tr.ref_id,
+    nazwa: nazwaLubRodzaj(tr.name, T.rodzajTransformator),
+    rodzaj: T.rodzajTransformator,
+  }));
+  return [...galezie, ...szyny, ...transformatory].sort(poNazwie);
+}
+
+/**
+ * Aparaty, które mogą wyłączyć zwarcie: wyłączniki, łączniki, odłączniki, sprzęgła
+ * i bezpieczniki z migawki modelu (nazwa z modelu). Deterministycznie jak wyżej.
+ */
+export function opcjeAparatowWylaczajacych(
+  snapshot: EnergyNetworkModel | null,
+): OpcjaElementuScenariusza[] {
+  if (!snapshot) return [];
+  return (snapshot.branches ?? [])
+    .filter((galaz) => !GALEZIE_PRZEWODZACE.has(galaz.type))
+    .map((galaz) => ({
+      ref: galaz.ref_id,
+      nazwa: nazwaLubRodzaj(galaz.name, RODZAJ_GALEZI[galaz.type]),
+      rodzaj: RODZAJ_GALEZI[galaz.type],
+    }))
+    .sort(poNazwie);
+}
 
 /** Formularz startuje PUSTY — zero wartości podpowiadanych jako „typowe" (karta W2 pkt 1). */
 export function pusteWartosciScenariusza(): WartosciFormularzaScenariusza {
@@ -191,12 +320,8 @@ export function walidujFormularzScenariusza(
   const bledy: BledyFormularzaScenariusza = {};
   for (const pole of POLA_SCENARIUSZA_STABILNOSCI) {
     const surowa = (wartosci[pole.klucz] ?? '').trim();
-    if (pole.typ === 'lista') {
-      const wpisy = surowa
-        .split(',')
-        .map((wpis) => wpis.trim())
-        .filter((wpis) => wpis !== '');
-      if (wpisy.length === 0) bledy[pole.klucz] = T.bladListaPusta;
+    if (pole.typ === 'aparaty') {
+      if (referencjeAparatow(surowa).length === 0) bledy[pole.klucz] = T.bladListaPusta;
       continue;
     }
     if (surowa === '') {
@@ -226,11 +351,8 @@ export function zbudujOpcjeScenariusza(
   const opcje: Record<string, unknown> = {};
   for (const pole of POLA_SCENARIUSZA_STABILNOSCI) {
     const surowa = wartosci[pole.klucz]?.trim() ?? '';
-    if (pole.typ === 'lista') {
-      opcje[pole.klucz] = surowa
-        .split(',')
-        .map((wpis) => wpis.trim())
-        .filter((wpis) => wpis !== '');
+    if (pole.typ === 'aparaty') {
+      opcje[pole.klucz] = referencjeAparatow(surowa);
     } else if (pole.typ === 'liczba') {
       opcje[pole.klucz] = Number(surowa.replace(',', '.'));
     } else {
@@ -309,16 +431,26 @@ export function fmtPu(n: number): string {
 // Adaptery sekcji
 // ---------------------------------------------------------------------------
 
-/** ZAŁOŻENIA — scenariusz zakłócenia (część wyniku, W-602). */
-export function naZalozeniaStabilnosci(row: WierszStabilnosci): WierszZalozenia[] {
+/**
+ * ZAŁOŻENIA — scenariusz zakłócenia (część wyniku, W-602). Elementy nazwane mostem
+ * nazw wyników (`nazwa` = `useNazwaObiektu()`): projektant czyta nazwy z modelu, nie
+ * referencje (karta #145).
+ */
+export function naZalozeniaStabilnosci(
+  row: WierszStabilnosci,
+  nazwa: (ref: string) => string,
+): WierszZalozenia[] {
   return [
-    { etykieta: T.zalElement, wartosc: row.faulted_element_id ?? T.kreska },
-    { etykieta: T.zalZrodlo, wartosc: row.source_id ?? T.kreska },
+    {
+      etykieta: T.zalElement,
+      wartosc: row.faulted_element_id ? nazwa(row.faulted_element_id) : T.kreska,
+    },
+    { etykieta: T.zalZrodlo, wartosc: row.source_id ? nazwa(row.source_id) : T.kreska },
     {
       etykieta: T.zalWylaczaly,
       wartosc:
         row.cleared_by_element_ids && row.cleared_by_element_ids.length > 0
-          ? row.cleared_by_element_ids.join(', ')
+          ? row.cleared_by_element_ids.map((ref) => nazwa(ref)).join(', ')
           : T.kreska,
     },
   ];

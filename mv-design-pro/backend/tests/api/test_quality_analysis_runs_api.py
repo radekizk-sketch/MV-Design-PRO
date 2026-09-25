@@ -509,7 +509,10 @@ def test_connection_conditions_rejects_short_circuit_run(app_client) -> None:
     run_id = _sc_run_id()
     resp = app_client.get(CONNECTION_CONDITIONS, params={"run_id": str(run_id)})
     assert resp.status_code == 422
-    assert "rozpływu mocy" in resp.json()["detail"]
+    detail = resp.json()["detail"]
+    assert "rozpływu mocy" in detail
+    # Karta #145: rodzaj wskazanego przebiegu słowami, nie kodem.
+    assert "obliczenie zwarciowe" in detail and "short_circuit_sn" not in detail
 
 
 def test_connection_conditions_unknown_run_returns_404(app_client) -> None:

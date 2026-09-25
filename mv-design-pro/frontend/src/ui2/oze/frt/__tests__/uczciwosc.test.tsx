@@ -115,8 +115,9 @@ describe.each([
     expect(poleKarty(rekord, 'zdanie')).toHaveTextContent(rekord.wyjasnienie.zdanie_pl);
     const braki = within(poleKarty(rekord, 'czego-brakuje')).getAllByRole('listitem');
     expect(braki.map((b) => b.textContent)).toEqual(rekord.wyjasnienie.czego_brakuje);
-    // Powód (tautologia wobec profilu wejściowego) i brak (bieg kanoniczny) z backendu.
-    expect(poleKarty(rekord, 'czego-brakuje')).toHaveTextContent('tautologią');
+    // Powód (kryterium spełnione z definicji wobec profilu wejściowego — karta #145: słowa
+    // projektanta zamiast „tautologii") i brak (bieg kanoniczny) z backendu.
+    expect(poleKarty(rekord, 'czego-brakuje')).toHaveTextContent('spełnione z definicji');
 
     expect(screen.queryByTestId('mvd-frt-werdykt')).not.toBeInTheDocument();
     expect(wynik.querySelector('[class*="--ok"]')).toBeNull();

@@ -1,26 +1,40 @@
 /*
- * Most REFERENCJA → NAZWA obiektu na schemacie (V126-JEZYK).
+ * JEDEN most REFERENCJA → NAZWA obiektu dla WSZYSTKICH ekranów wyników i oceny
+ * (karta #145; wcześniej prywatny moduł okna analiz specjalistycznych, V126-JEZYK).
  *
  * Ocena właściciela 0/10 z 2026-08-07 wskazała wprost pole widoczne dla
  * projektanta z treścią `gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn`.
- * Most istniał w warstwie prezentacji od dawna, ale wyłącznie prywatnie —
- * `resolveElementName` w `ui/topology/snapshotStore` obsługiwał tylko dziennik
- * operacji. Tutaj go REUŻYWAMY (dyrektywa: reużycie zamiast duplikacji),
- * zamiast budować drugie źródło nazw.
+ * Zrzuty żywej aplikacji z 2026-09-24 pokazały tę samą klasę na innych ekranach:
+ * `stn/08e2…/sn_bus` w tabeli pól ochrony od pracy wyspowej, `63203cbc-…` (identyfikator
+ * węzła grafu) w tabelach rozpływu i zwarć, `line_b_c` w założeniach stabilności.
+ * Dlatego most żyje we wspólnej warstwie wyników (`wyniki/wzorzec`), a nie w jednym
+ * oknie — każdy ekran nazywa obiekty TYM SAMYM źródłem co schemat (migawka modelu,
+ * `selectElementName` w `ui/topology/snapshotStore`), bez drugiego resolvera.
  *
- * Uczciwość: gdy migawki modelu nie ma albo obiekt nie występuje w niej pod tą
- * referencją, funkcja zwraca OSTATNI, ludzki segment referencji — nie zmyśla
- * nazwy i nie ukrywa obiektu. Referencje bez segmentu ludzkiego (sam odcisk)
- * zwracają skrócony identyfikator z jawnym wielokropkiem.
+ * Rozpoznawane identyfikatory (jedno źródło — indeks w `snapshotStore`): `ref_id`
+ * modelu, `id` elementu migawki i identyfikator grafu obliczeniowego (`uuid5` z
+ * `ref_id`, lustro `backend/src/enm/mapping.py::ref_to_graph_id`).
+ *
+ * Uczciwość: gdy migawki modelu nie ma albo obiekt nie występuje w niej pod tym
+ * identyfikatorem (wynik starszy niż ostatnia edycja modelu), funkcja NIE zmyśla
+ * nazwy i NIE pokazuje kodu: tłumaczy segmenty referencji na polskie nazwy rodzajów
+ * („stacja · szyna SN"); identyfikator bez segmentu ludzkiego (sam odcisk albo UUID)
+ * daje „obiekt modelu bez nazwy".
  */
 
 import { useCallback } from 'react';
 
 import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 import { selectElementName, useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import type { EnergyNetworkModel } from '../../../types/enm';
 
-/** Segment wyglądający na identyfikator maszynowy (odcisk / UUID). */
-const ODCISK = /^[0-9a-f]{8,}$/i;
+/**
+ * Segment wyglądający na identyfikator maszynowy: odcisk szesnastkowy (ziarno
+ * referencji) albo UUID (identyfikator elementu migawki lub węzła grafu). Jedno
+ * źródło reguły — strażnik `__tests__/slownikSegmentow.test.ts` importuje ją stąd.
+ */
+export const SEGMENT_MASZYNOWY =
+  /^(?:[0-9a-f]{8,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 
 /**
  * Słownik segmentów referencji modelu → polska nazwa rodzaju obiektu.
@@ -232,7 +246,7 @@ export function etykietaZapasowaRefu(ref: string): string {
   const segmenty = ref.split('/').filter((segment) => segment !== '');
   const czlony: string[] = [];
   segmenty
-    .filter((segment) => !ODCISK.test(segment))
+    .filter((segment) => !SEGMENT_MASZYNOWY.test(segment))
     .forEach((segment) => {
       // Numer porządkowy należy do poprzedniego członu („sekcja 001”),
       // a nie stoi osobno — inaczej etykieta czyta się jak lista kluczy.
@@ -258,14 +272,55 @@ export function etykietaZapasowaRefu(ref: string): string {
 }
 
 /**
- * Zwraca funkcję nazywającą obiekt modelu po referencji. Nazwa pochodzi
- * z migawki ENM (to samo źródło co schemat), więc ekran wyników mówi o tych
- * samych obiektach, o których mówi rysunek.
+ * Czy tekst podany jako nazwa jest w istocie identyfikatorem: ten sam łańcuch co
+ * identyfikator obiektu albo referencja z segmentem maszynowym (ziarno, UUID).
+ * Taka „nazwa” (backend bez nazwy elementu podstawia identyfikator) nie trafia na
+ * ekran — zastępuje ją polska etykieta rodzaju.
  */
-export function useNazwaObiektu(): (ref: string) => string {
+function toIdentyfikator(nazwa: string, ref: string): boolean {
+  return nazwa === ref || nazwa.split('/').some((segment) => SEGMENT_MASZYNOWY.test(segment));
+}
+
+/**
+ * Nazwa obiektu po identyfikatorze — funkcja czysta (bez store'u), dla adapterów
+ * i testów. Kolejność źródeł:
+ * 1. nazwa z migawki modelu (to samo źródło co schemat),
+ * 2. nazwa podana przez wynik (`nazwaZWyniku`) — dla obiektów spoza migawki, np.
+ *    typu katalogowego przekształtnika w rekordzie oceny FRT; pomijana, gdy sama
+ *    jest identyfikatorem,
+ * 3. polska etykieta rodzaju z segmentów referencji.
+ */
+export function nazwaObiektuZMigawki(
+  snapshot: EnergyNetworkModel | null,
+  ref: string,
+  nazwaZWyniku?: string | null,
+): string {
+  const zModelu = selectElementName(snapshot, ref);
+  if (zModelu !== null && zModelu !== '') return zModelu;
+  // `typeof`: funkcja podana wprost do `Array.map` dostaje indeks jako drugi argument.
+  if (typeof nazwaZWyniku === 'string' && nazwaZWyniku !== '' && !toIdentyfikator(nazwaZWyniku, ref)) {
+    return nazwaZWyniku;
+  }
+  return etykietaZapasowaRefu(ref);
+}
+
+/**
+ * Zwraca funkcję nazywającą obiekt po identyfikatorze. Nazwa pochodzi z migawki
+ * ENM (to samo źródło co schemat), więc ekran wyników mówi o tych samych
+ * obiektach, o których mówi rysunek; drugi argument to nazwa niesiona przez wynik
+ * dla obiektów, których migawka nie zna.
+ */
+/**
+ * Funkcja mostu nazw wyników — kształt przekazywany do czystych adapterów tabel
+ * (adapter nie woła hooka; ekran przekazuje wynik `useNazwaObiektu()`).
+ */
+export type NazwaObiektu = (ref: string, nazwaZWyniku?: string | null) => string;
+
+export function useNazwaObiektu(): NazwaObiektu {
   const snapshot = useSnapshotStore((stan) => stan.snapshot);
   return useCallback(
-    (ref: string) => selectElementName(snapshot, ref) ?? etykietaZapasowaRefu(ref),
+    (ref: string, nazwaZWyniku?: string | null) =>
+      nazwaObiektuZMigawki(snapshot, ref, nazwaZWyniku),
     [snapshot],
   );
 }

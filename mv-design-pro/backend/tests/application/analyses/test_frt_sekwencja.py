@@ -157,7 +157,7 @@ def test_envelope_matches_operator_lvrt_profile() -> None:
 
 def test_zalozenia_pl_documents_between_dip_limitation() -> None:
     view = build_frt_sekwencja_view(_converter(), _PROFILE, [_ZAPAD_OK])
-    assert "MIĘDZY zapadami" in view["zalozenia_pl"]
+    assert "między zapadami" in view["zalozenia_pl"]
     # Zmiana kanonu (2026-09-23): dawne „każdy zapad oceniany niezależnie" → zapady liczone
     # od stanu ustalonego i NIEoceniane (trajektoria zadana profilem wejściowym).
     assert "od stanu ustalonego" in view["zalozenia_pl"]
@@ -213,7 +213,7 @@ def test_depth_out_of_lvrt_range_raises_valueerror() -> None:
 def test_grid_strength_context_null_without_row() -> None:
     view = build_frt_sekwencja_view(_converter(), _PROFILE, [_ZAPAD_OK])
     assert view["kontekst_sily_sieci"] is None
-    assert "pominięty" in view["kontekst_sily_sieci_powod_pl"]
+    assert "nie jest pokazywany" in view["kontekst_sily_sieci_powod_pl"]
 
 
 def test_grid_strength_context_passed_through() -> None:

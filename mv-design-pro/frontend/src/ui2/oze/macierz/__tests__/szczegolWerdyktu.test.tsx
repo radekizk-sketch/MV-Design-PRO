@@ -75,7 +75,9 @@ describe('SzczegolWerdyktu', () => {
         />,
       );
       expect(screen.queryByTestId('mvd-oze-szczegol-zdolnosc') !== null).toBe(widoczny);
-      expect(document.body.textContent?.includes(definicja.zdolnosc_id)).toBe(widoczny);
+      // Karta #145: identyfikator wyłącznie w „Informacjach audytowych" — zwinięte, więc
+      // pierwszy plan nie niesie go w żadnym trybie.
+      expect(document.body.textContent?.includes(definicja.zdolnosc_id)).toBe(false);
       // Definicja testu (podstawa, rodzaj twierdzenia) — w obu trybach.
       expect(screen.getByTestId('mvd-oze-szczegol-definicja')).toHaveTextContent(definicja.procedure_basis_pl);
     },
@@ -100,9 +102,11 @@ describe('SzczegolWerdyktu', () => {
     const k = komorka(indeks, pv.der_ref);
     const uzytkownik = userEvent.setup();
     render(<SzczegolWerdyktu komorka={k} definicja={null} nazwaModulu={pv.der_name} slad={BIEG.white_box_trace} trybEkspercki={false} />);
-    await uzytkownik.click(screen.getByTestId('mvd-oze-slad-otworz'));
-    expect(screen.getByTestId('mvd-oze-slad-otworz')).toHaveAttribute('aria-expanded', 'true');
+    await uzytkownik.click(screen.getByTestId('mvd-oze-slad-przelacz'));
+    expect(screen.getByTestId('mvd-oze-slad-przelacz')).toHaveAttribute('aria-expanded', 'true');
     const kroki = BIEG.white_box_trace.filter((krok) => krok.test_id === k.testId);
+    // Karta #145: ślad silnika prób to zapis techniczny z jawnym podpisem.
+    expect(screen.getByTestId('mvd-oze-slad')).toHaveTextContent('Zapis techniczny');
     if (kroki.length > 0) expect(screen.getByTestId('mvd-oze-slad-kroki').children).toHaveLength(kroki.length);
     else expect(screen.getByTestId('mvd-oze-slad-pusty')).toBeInTheDocument();
   });

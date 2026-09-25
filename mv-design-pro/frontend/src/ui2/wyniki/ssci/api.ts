@@ -48,11 +48,23 @@ export interface KontekstSsci {
 // ---------------------------------------------------------------------------
 
 /** Etykieta proweniencji (DATASHEET ≻ ESTIMATED ≻ SYSTEM_DEFAULT). */
+/**
+ * Pola karty falownika, od których zależy analiza SSCI
+ * (`analysis/ssci_stability/models.py`: `SSCI_MANDATORY_FIELDS` + `SSCI_OPTIONAL_FIELDS`).
+ */
+export type PoleKartyPrzeksztaltnikaSsci =
+  | 'current_loop_bandwidth_hz'
+  | 'pll_bandwidth_hz'
+  | 'filter_l_pu'
+  | 'voltage_loop_bandwidth_hz'
+  | 'control_delay_ms'
+  | 'filter_r_pu';
+
 export interface ProweniencjaSsci {
   readonly worst_quality: string;
   readonly worst_quality_label_pl: string;
   readonly is_estimated: boolean;
-  readonly consumed_fields: readonly string[];
+  readonly consumed_fields: readonly PoleKartyPrzeksztaltnikaSsci[];
   readonly tag_pl: string;
 }
 

@@ -1680,7 +1680,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # roboczego jest dana przyjeta w statusie danych dowodu albo nazwanym brakiem).
     # Integracja MAGISTRALA-OCENA na partii 3 (2026-09-25): 4090 -> 4103 (+13 nazw karty jak
     # wyzej, -0) — POMIAR guardem na drzewie integracji.
-    assert "Pol kontraktow wejsciowych: 4103." in wyjscie, wyjscie
+    # Karta #145 na partii 4 (2026-09-25): 4103 -> 4104 — POMIAR guardem na drzewie partii
+    # (PASMO-1KV i NAZWY-JEDNO-ZRODLO bez zmiany zbioru): +1 `wynik_pl` (wynik kroku po polsku
+    # w `application/analyses/v126_wzory.py`), -0. PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4104." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1832,7 +1835,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta NAZWY-JEDNO-ZRODLO na partii 4 (2026-09-25): 549 -> 550 (+1
         # `network_model/nazwy.py` — jedyny predykat nazwy `jest_nazwa`/`nazwa_nadana`, liść
         # stdlib-only); zbiór pól kontraktów bez zmian (4103). POMIAR guardem na drzewie partii.
-        "Przeskanowano 550 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta #145 na partii 4 (2026-09-25): 550 -> 551 (+1 `application/opis_przebiegu.py`
+        # — rodzaj i stan przebiegu po polsku w bramkach widoków analiz). POMIAR guardem.
+        "Przeskanowano 551 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2015,7 +2020,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # ocena_doboru_magistrali.py`).
         # Integracja MAGISTRALA-OCENA na partii 3: application 240 -> 241
         # (`ocena_doboru_magistrali.py`); dlug/wykluczenia BEZ ZMIANY.
-        "  application: pliki_skanowane=241, dlug=30 plikow/suma 91, "
+        # Karta #145 (2026-09-25): application 241 -> 242 (`opis_przebiegu.py`); dlug i
+        # wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie partii 4.
+        "  application: pliki_skanowane=242, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=63, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]

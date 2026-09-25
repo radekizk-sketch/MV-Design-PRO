@@ -35,7 +35,12 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useShellStore } from '../../shell/useShellStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { opisSwiezosci } from '../../freshness';
-import { InformacjeAudytowe, PrzyciskAkcjiStanu, useAkcjaPrzejdzDoPrzypadkow } from '../wzorzec';
+import {
+  InformacjeAudytowe,
+  PrzyciskAkcjiStanu,
+  formatZnacznikaCzasu,
+  useAkcjaPrzejdzDoPrzypadkow,
+} from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 import {
   OcenaNiewykonana,
@@ -64,13 +69,13 @@ import {
   type WarunekGotowosci,
 } from './api';
 import {
+  POLITYKI_EKSPORTU_RAPORTU,
   krokiDowoduDoWidoku,
   krokiSladuDoWidoku,
+  liczbaKrokowSladuRaportu,
   swiezoscWyniku,
-  licznikMetrykRaportu,
-  pogrupujWynik,
-  sekcjeRaportuDoWidoku,
   splaszczWynik,
+  wierszeAudytoweRaportu,
 } from './model';
 import {
   MAPA_WIARYGODNOSCI,
@@ -85,9 +90,10 @@ import {
   type TabelaObiektow,
 } from './prezentacja';
 import { rodzajPrezentowany, type RodzajPrezentowany } from './nieprezentowane';
+import { wierszeOdniesien, type WierszOdniesienia } from './odniesienia';
 import { maParametry, zbudujParametry, type StanPol, type WierszListy } from './parametry';
 import { FormularzParametrow } from './FormularzParametrow';
-import { useNazwaObiektu } from './useNazwaObiektu';
+import { useNazwaObiektu } from '../wzorzec/useNazwaObiektu';
 import {
   AKADEMICKIE_STRINGS as S,
   etykietaGotowosci,
@@ -208,7 +214,7 @@ function nazwyElementow(
   nazwaObiektu: (ref: string) => string,
   limit = 6,
 ): string {
-  const nazwy = refy.slice(0, limit).map(nazwaObiektu);
+  const nazwy = refy.slice(0, limit).map((ref) => nazwaObiektu(ref));
   const reszta = refy.length - nazwy.length;
   return reszta > 0 ? `${nazwy.join(', ')} (+${reszta})` : nazwy.join(', ');
 }
@@ -1332,39 +1338,16 @@ function PanelZrodelHarmonicznych({ wynik }: { wynik: OdpowiedzWyniku }) {
   );
 }
 
-/** Zapis techniczny odpowiedzi solvera — ZWINIĘTY materiał audytowy. */
-function PanelZapisuTechnicznego({ wynik }: { wynik: OdpowiedzWyniku }) {
-  const wiersze = useMemo(() => splaszczWynik(wynik.result.result), [wynik]);
-  const grupy = useMemo(() => pogrupujWynik(wiersze), [wiersze]);
-
-  return (
-    <Zwijana
-      tytul={S.surowyTytul}
-      opis={S.surowyOpis}
-      licznik={S.wynikLiczbaPol(wiersze.length)}
-      testid="mvd-akad-wynik"
-      pokaz={S.surowyPokaz}
-      ukryj={S.surowyUkryj}
-      pozycji={wiersze.length}
-      pustyKomunikat={S.wynikPusty}
-    >
-      <div data-mvd-zapis-techniczny="1">
-        {grupy.map((grupa) => (
-          <div className="mvd-akad-grupa" key={grupa.klucz} data-testid={`mvd-akad-grupa-${grupa.klucz}`}>
-            <h4 className="mvd-akad-grupa-tytul">{grupa.klucz}</h4>
-            <div className="mvd-akad-wiersze">
-              {grupa.wiersze.map((wiersz) => (
-                <div className="mvd-akad-wiersz" key={wiersz.sciezka}>
-                  <span className="mvd-akad-wiersz-etyk">{wiersz.sciezka}</span>
-                  <span className="mvd-akad-wiersz-wartosc mvd-num">{fmtWartosc(wiersz.wartosc)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </Zwijana>
-  );
+/**
+ * Zapis techniczny odpowiedzi solvera jako wiersze „Informacji audytowych" (karta #145):
+ * PEŁNA lista liści wyniku (ścieżka pola kontraktu → wartość), bez limitu — nazwy pól
+ * kontraktu obliczeniowego są materiałem audytu, nie tekstem pierwszego planu.
+ */
+function wierszeZapisuTechnicznego(wynik: OdpowiedzWyniku): { etykieta: string; wartosc: string }[] {
+  return splaszczWynik(wynik.result.result).map((wiersz) => ({
+    etykieta: `${S.zapisTechnicznyPrefiks}: ${wiersz.sciezka}`,
+    wartosc: fmtWartosc(wiersz.wartosc),
+  }));
 }
 
 function PanelSladu({ slad }: { slad: OdpowiedzSladu }) {
@@ -1425,20 +1408,8 @@ function PanelDowodu({ dowod }: { dowod: PakietDowodu }) {
       pozycji={kroki.length}
       pustyKomunikat={S.dowodPusty}
     >
-      <div className="mvd-akad-wiersze">
-        <div className="mvd-akad-wiersz">
-          <span className="mvd-akad-wiersz-etyk">{S.dowodId}</span>
-          <span className="mvd-akad-wiersz-wartosc mvd-num">{dowod.proof_id}</span>
-        </div>
-        <div className="mvd-akad-wiersz">
-          <span className="mvd-akad-wiersz-etyk">{S.dowodOdcisk}</span>
-          <span className="mvd-akad-wiersz-wartosc mvd-num">{dowod.proof_hash}</span>
-        </div>
-        <div className="mvd-akad-wiersz">
-          <span className="mvd-akad-wiersz-etyk">{S.dowodKrokow}</span>
-          <span className="mvd-akad-wiersz-wartosc mvd-num">{dowod.trace_step_count}</span>
-        </div>
-      </div>
+      {/* Karta #145: identyfikator i odcisk dowodu są metadanymi — niesie je raport
+          w „Informacjach audytowych"; tu zostają kroki dowodu. */}
       <div className="mvd-akad-tabela-otoczka">
         <table className="mvd-akad-tabela">
           <thead>
@@ -1471,47 +1442,34 @@ function PanelDowodu({ dowod }: { dowod: PakietDowodu }) {
   );
 }
 
-function PanelRaportu({ raport }: { raport: RaportAnalizy }) {
-  const sekcje = sekcjeRaportuDoWidoku(raport);
+/**
+ * Raport analizy (kontrakt `AcademicReportV2`, karta #145): raport nie powtarza wyniku —
+ * pierwszy plan mówi po polsku, co raport przenosi (polityka eksportu, liczba kroków
+ * śladu dowodu), a identyfikatory, odciski i wersja solvera leżą w „Informacjach
+ * audytowych" z polskimi etykietami stałych kluczy.
+ */
+function PanelRaportu({
+  raport,
+  trybEkspercki,
+}: {
+  raport: RaportAnalizy;
+  trybEkspercki: boolean;
+}) {
   return (
-    <Zwijana
-      tytul={S.raportTytul}
-      opis={S.raportOpis}
-      licznik={`${S.raportSekcji(sekcje.length)} · ${S.raportMetryk(licznikMetrykRaportu(raport))}`}
-      testid="mvd-akad-raport"
-      pokaz={S.raportPokaz}
-      ukryj={S.raportUkryj}
-      pozycji={sekcje.length}
-      pustyKomunikat={S.raportPusty}
-    >
-      <div className="mvd-akad-wiersze">
-        <div className="mvd-akad-wiersz">
-          <span className="mvd-akad-wiersz-etyk">{S.raportId}</span>
-          <span className="mvd-akad-wiersz-wartosc mvd-num">{raport.report_id}</span>
-        </div>
-        <div className="mvd-akad-wiersz">
-          <span className="mvd-akad-wiersz-etyk">{S.raportOdcisk}</span>
-          <span className="mvd-akad-wiersz-wartosc mvd-num">{raport.report_hash}</span>
-        </div>
-        <div className="mvd-akad-wiersz">
-          <span className="mvd-akad-wiersz-etyk">{S.raportPolityka}</span>
-          <span className="mvd-akad-wiersz-wartosc">{fmtPole(raport.export_policy)}</span>
-        </div>
-      </div>
-      {sekcje.map((sekcja) => (
-        <div className="mvd-akad-grupa" key={sekcja.section_id} data-testid={`mvd-akad-raport-sekcja-${sekcja.section_id}`}>
-          <h4 className="mvd-akad-grupa-tytul">{sekcja.title}</h4>
-          <div className="mvd-akad-wiersze">
-            {sekcja.metrics.map((metryka) => (
-              <div className="mvd-akad-wiersz" key={`${sekcja.section_id}:${metryka.label}`}>
-                <span className="mvd-akad-wiersz-etyk">{metryka.label}</span>
-                <span className="mvd-akad-wiersz-wartosc mvd-num">{fmtWartosc(metryka.value)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </Zwijana>
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-raport">
+      <h3 className="mvd-akad-sekcja-tytul">{S.raportTytul}</h3>
+      <p className="mvd-akad-opis" data-testid="mvd-akad-raport-opis">
+        {S.raportZawartosc(
+          POLITYKI_EKSPORTU_RAPORTU[raport.export_policy],
+          liczbaKrokowSladuRaportu(raport),
+        )}
+      </p>
+      <InformacjeAudytowe
+        wiersze={wierszeAudytoweRaportu(raport)}
+        trybEkspercki={trybEkspercki}
+        testid="mvd-akad-raport-informacje-audytowe"
+      />
+    </section>
   );
 }
 
@@ -1519,7 +1477,7 @@ type StanOdniesien =
   | { readonly rodzaj: 'idle' }
   | { readonly rodzaj: 'ladowanie' }
   | { readonly rodzaj: 'blad'; readonly komunikat: string }
-  | { readonly rodzaj: 'gotowe'; readonly pozycje: readonly { sciezka: string; wartosc: unknown }[] };
+  | { readonly rodzaj: 'gotowe'; readonly pozycje: readonly WierszOdniesienia[] | null };
 
 /** Dane odniesienia (katalog wartości odniesienia rodzaju) — wczytywane na żądanie. */
 function PanelOdniesien({ namespace }: { namespace: string }) {
@@ -1530,11 +1488,9 @@ function PanelOdniesien({ namespace }: { namespace: string }) {
     setStan({ rodzaj: 'ladowanie' });
     pobierzKatalog(namespace)
       .then((odpowiedz) => {
-        const pozycje = splaszczWynik(odpowiedz.items).map((wiersz) => ({
-          sciezka: wiersz.sciezka,
-          wartosc: wiersz.wartosc,
-        }));
-        setStan({ rodzaj: 'gotowe', pozycje });
+        // Karta #145: dane odniesienia po polsku (nazwa wielkości, wartość z jednostką),
+        // nie ścieżki kontraktu katalogu.
+        setStan({ rodzaj: 'gotowe', pozycje: wierszeOdniesien(namespace, odpowiedz.items) });
       })
       .catch((err: unknown) => {
         setStan({ rodzaj: 'blad', komunikat: err instanceof Error ? err.message : S.odniesieniaBlad });
@@ -1566,12 +1522,17 @@ function PanelOdniesien({ namespace }: { namespace: string }) {
           {stan.rodzaj === 'blad' && (
             <StanPanel komunikat={S.odniesieniaBlad} opis={stan.komunikat} wariant="blad" testid="mvd-akad-katalog-blad" />
           )}
-          {stan.rodzaj === 'gotowe' && (
-            <div className="mvd-akad-wiersze" data-mvd-zapis-techniczny="1">
-              {stan.pozycje.map((pozycja) => (
-                <div className="mvd-akad-wiersz" key={pozycja.sciezka}>
-                  <span className="mvd-akad-wiersz-etyk">{pozycja.sciezka}</span>
-                  <span className="mvd-akad-wiersz-wartosc mvd-num">{fmtWartosc(pozycja.wartosc)}</span>
+          {stan.rodzaj === 'gotowe' && stan.pozycje === null && (
+            <p className="mvd-akad-opis" data-testid="mvd-akad-katalog-bez-prezentacji">
+              {S.odniesieniaBezPrezentacji}
+            </p>
+          )}
+          {stan.rodzaj === 'gotowe' && stan.pozycje !== null && (
+            <div className="mvd-akad-wiersze" data-testid="mvd-akad-katalog-wiersze">
+              {stan.pozycje.map((pozycja, indeks) => (
+                <div className="mvd-akad-wiersz" key={`${indeks}-${pozycja.etykieta}`}>
+                  <span className="mvd-akad-wiersz-etyk">{pozycja.etykieta}</span>
+                  <span className="mvd-akad-wiersz-wartosc">{pozycja.wartosc}</span>
                 </div>
               ))}
             </div>
@@ -2017,12 +1978,15 @@ export function EkranAnalizAkademickich({
                   </div>
                   <div className="mvd-akad-wiersz">
                     <span className="mvd-akad-wiersz-etyk">{S.utworzono}</span>
-                    <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.wynik.created_at}</span>
+                    <span className="mvd-akad-wiersz-wartosc mvd-num">
+                      {formatZnacznikaCzasu(stan.dane.wynik.created_at)}
+                    </span>
                   </div>
                 </div>
                 {/* Karta V12.7 §0.3: odcisk/identyfikator przebiegu, wersja solvera,
                     odcisk danych wejściowych — poza pierwszym planem, „Informacje
-                    audytowe" (tryb ekspercki, zwinięte). */}
+                    audytowe" (tryb ekspercki, zwinięte). Karta #145: tu także pełny
+                    zapis techniczny odpowiedzi solvera (ścieżki pól kontraktu). */}
                 <InformacjeAudytowe
                   trybEkspercki={trybEkspercki}
                   testid="mvd-akad-informacje-audytowe"
@@ -2031,6 +1995,7 @@ export function EkranAnalizAkademickich({
                     { etykieta: S.runId, wartosc: stan.dane.przebieg.run_id },
                     { etykieta: S.wersjaSolwera, wartosc: String(stan.dane.wynik.result.solver_version ?? '') },
                     { etykieta: S.odciskWejscia, wartosc: String(stan.dane.wynik.result.input_hash ?? '') },
+                    ...wierszeZapisuTechnicznego(stan.dane.wynik),
                   ]}
                 />
               </section>
@@ -2065,8 +2030,7 @@ export function EkranAnalizAkademickich({
                   <>
                     <PanelSladu slad={stan.dane.slad} />
                     <PanelDowodu dowod={stan.dane.dowod} />
-                    <PanelRaportu raport={stan.dane.raport} />
-                    <PanelZapisuTechnicznego wynik={stan.dane.wynik} />
+                    <PanelRaportu raport={stan.dane.raport} trybEkspercki={trybEkspercki} />
                   </>
                 );
                 const sekcjaAudytowa = PREZENTACJA[wybrany as RodzajPrezentowany]?.sekcjaAudytowa;

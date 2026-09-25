@@ -10,6 +10,7 @@
 
 import type { RodzajKontroli, StatusWalidacji } from './api';
 import { OPIS_PASMA_NN, OPIS_PASMA_SN } from '../../model/pasmaNapieciowe';
+import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 
 /** Poziom istotności statusu (do doboru koloru tagu — wyłącznie prezentacja). */
 export type IstotnoscStatusu = 'ok' | 'warn' | 'err' | 'neutral';
@@ -129,6 +130,7 @@ export const JAKOSC_STRINGS = {
   dowodBlad: 'Nie udało się pobrać dowodu dla tej gałęzi.',
   kolStatusWalidacji: 'Status',
   kolIdentyfikatorObiektu: 'Identyfikator obiektu',
+  audytIdentyfikatorModulu: (nazwa: string) => `Identyfikator modułu ${nazwa}`,
 
   // Blokada OSD (tak/nie)
   blokadaTak: 'Tak',
@@ -393,9 +395,9 @@ export const RODZAJ_KONTROLI_PL: Record<RodzajKontroli, string> = {
   REACTIVE_BALANCE: 'Bilans mocy biernej',
 };
 
-/** Polska nazwa rodzaju kontroli (nieznany kod → dosłownie, jako dane). */
+/** Polska nazwa rodzaju kontroli (kod spoza słownika → uczciwe zdanie, nie kod). */
 export function rodzajKontroliPL(kod: RodzajKontroli): string {
-  return RODZAJ_KONTROLI_PL[kod] ?? kod;
+  return etykietaZeSlownika(RODZAJ_KONTROLI_PL, kod);
 }
 
 /**
@@ -409,9 +411,9 @@ export const STATUS_WALIDACJI_PL: Record<StatusWalidacji, string> = {
   NOT_COMPUTED: 'Nie obliczono',
 };
 
-/** Polska etykieta statusu walidacji (nieznany kod → dosłownie, jako dane). */
+/** Polska etykieta statusu walidacji (kod spoza słownika → uczciwe zdanie, nie kod). */
 export function statusWalidacjiPL(kod: StatusWalidacji): string {
-  return STATUS_WALIDACJI_PL[kod] ?? kod;
+  return etykietaZeSlownika(STATUS_WALIDACJI_PL, kod);
 }
 
 /** Istotność statusu walidacji energetycznej (dobór koloru tagu). */

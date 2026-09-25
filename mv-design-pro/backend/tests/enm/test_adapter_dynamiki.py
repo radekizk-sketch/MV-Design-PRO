@@ -1047,6 +1047,8 @@ class TestKomendaIUtrataCzesciowa:
         (zdarzenie,) = wynik.zdarzenia_wykonane
         assert zdarzenie.rodzaj == "utrata_czesciowa_zrodla"
         assert zdarzenie.delta_x_nieprzypisane_max == 0.0
+        # Założenie silnika po PL-ZNAKI jest zapisane ze znakami (`silnik.py`); intencja bez
+        # zmian — bieg z częściową utratą niesie jej założenie.
         assert any(zdanie.startswith("Częściowa utrata źródła") for zdanie in wynik.zalozenia)
 
     def test_czesciowa_utrata_zrodla_sieciowego_to_odmowa_rdzenia(

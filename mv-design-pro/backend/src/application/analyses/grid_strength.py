@@ -27,6 +27,7 @@ from analysis.grid_strength.models import (
     BusStrengthInput,
     GridStrengthContext,
 )
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
 from network_model.nazwy import nazwa_nadana
@@ -199,11 +200,11 @@ def build_grid_strength_view(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
         raise ValueError(
             "Siła sieci (SCR/WSCR) wymaga przebiegu zwarciowego; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )
 

@@ -437,6 +437,25 @@ def test_dowod_certyfikatu_z_rekordu_rejestru_nie_z_tabliczki() -> None:
     assert dowod.podstawa.status != "ZWERYFIKOWANE"
 
 
+def test_teksty_dowodu_certyfikatu_bez_identyfikatora_rekordu_i_sciezki_rejestru() -> None:
+    """Karta #145 — iloczyn cech {opis dowodu w sekcji dokumentu, uwagi podstawy} ×
+    {identyfikator rekordu rejestru, ścieżka pliku rejestru, nazwa schematu}: tekst dla
+    projektanta nazywa rekord polami wykazu (producent, model, numer dokumentu), nie
+    kluczem rejestru ani plikiem repozytorium. Identyfikator rekordu zostaje w danych."""
+    from application.analyses.sekcja_zgodnosci_ncrfg import opis_dowodu_certyfikatu
+
+    rekord = f.rekord_wykazu("A", warunek=True)
+    dowod = _weryfikuj(f.tabliczka(rekord))
+    assert isinstance(dowod, DowodCertyfikatu)
+    profil = load_nc_rfg_profile(f.OPERATOR)
+    teksty = [opis_dowodu_certyfikatu(dowod), dowod.podstawa.uwagi_pl or ""]
+    for tekst in teksty:
+        assert dowod.rekord_id not in tekst
+        assert profil.wipwc.rejestr.plik not in tekst
+        assert profil.wipwc.rejestr.schemat not in tekst
+    assert dowod.producent in teksty[0] and dowod.numer_dokumentu in teksty[0]
+
+
 def _rekord_o_wersji(wersja: str) -> dict:
     return f.rekord_wykazu("A,B", wersja=wersja)
 
@@ -450,7 +469,7 @@ def _rekord_o_wersji(wersja: str) -> dict:
             "powiazany_bez_referencji",
             {"ptpiree_status": "POWIAZANY"},
             None,
-            "bez referencji rekordu",
+            "bez wskazania rekordu wykazu",
         ),
         (
             "rekord_nieistniejacy",

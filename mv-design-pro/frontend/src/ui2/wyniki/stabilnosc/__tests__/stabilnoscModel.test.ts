@@ -75,11 +75,13 @@ describe('wybierzPrzebiegStabilnosci', () => {
 
 describe('adaptery założeń i echa scenariusza (dane wprost z backendu)', () => {
   it('założenia niosą scenariusz zakłócenia: element, źródło, elementy wyłączające', () => {
-    const zalozenia = naZalozeniaStabilnosci(WIERSZ);
+    // Karta #145: elementy nazwane mostem nazw (tu nazwa jawnie różna od referencji).
+    const nazwa = (ref: string) => `Element ${ref}`;
+    const zalozenia = naZalozeniaStabilnosci(WIERSZ, nazwa);
     expect(zalozenia.map((z) => String(z.wartosc))).toEqual([
-      'line/gpz/1',
-      'src/pv/1',
-      'cb-main, cb-tie',
+      'Element line/gpz/1',
+      'Element src/pv/1',
+      'Element cb-main, Element cb-tie',
     ]);
   });
 
@@ -96,7 +98,9 @@ describe('adaptery założeń i echa scenariusza (dane wprost z backendu)', () =
 
   it('wiersz bez pól → kreski w echu i założeniach (zero fabrykacji)', () => {
     expect(naEchoScenariusza({}).every((pozycja) => pozycja.wartosc === T.kreska)).toBe(true);
-    expect(naZalozeniaStabilnosci({}).every((z) => z.wartosc === T.kreska)).toBe(true);
+    expect(
+      naZalozeniaStabilnosci({}, (ref) => `Element ${ref}`).every((z) => z.wartosc === T.kreska),
+    ).toBe(true);
   });
 
   it('model nie ma adapterów werdyktu ani narracji zdarzeń automatyki', () => {

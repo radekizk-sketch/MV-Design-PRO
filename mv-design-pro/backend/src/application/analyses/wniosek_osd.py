@@ -47,6 +47,7 @@ from application.analyses.certyfikat_zgodnosci import KOMUNIKAT_BEZ_MODULOW, zbi
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.grid_strength import _installed_mva_by_bus
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.sekcja_zgodnosci_ncrfg import (
     TYTUL_SEKCJI_MODULU,
     dopisz_sekcje_docx,
@@ -183,30 +184,30 @@ def zbierz_braki_wniosku(
     # 1. Bilans mocy — przebieg rozpływu.
     if pf_run.analysis_type != "PF":
         braki.append(
-            "Bilans mocy: wskazany przebieg nie jest rozpływem mocy (PF); "
-            f"otrzymano rodzaj analizy: {pf_run.analysis_type}."
+            "Bilans mocy: wskazany przebieg nie jest rozpływem mocy; "
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(pf_run.analysis_type)}."
         )
     elif pf_run.status != "FINISHED":
         braki.append(
-            f"Bilans mocy: przebieg rozpływu {pf_run.id} nie jest zakończony "
-            f"(status={pf_run.status})."
+            "Bilans mocy: przebieg rozpływu nie jest zakończony "
+            f"(stan: {stan_przebiegu_pl(pf_run.status)})."
         )
 
     # 2. Zwarcia — przebieg zwarciowy + obecność węzła przyłączenia.
     if sc_run.analysis_type != "short_circuit_sn":
         braki.append(
-            "Zwarcia w punkcie przyłączenia: wskazany przebieg nie jest zwarciowy "
-            f"(short_circuit_sn); otrzymano rodzaj analizy: {sc_run.analysis_type}."
+            "Zwarcia w punkcie przyłączenia: wskazany przebieg nie jest zwarciowy; "
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(sc_run.analysis_type)}."
         )
     elif sc_run.status != "FINISHED":
         braki.append(
-            f"Zwarcia w punkcie przyłączenia: przebieg zwarciowy {sc_run.id} nie "
-            f"jest zakończony (status={sc_run.status})."
+            "Zwarcia w punkcie przyłączenia: przebieg zwarciowy nie jest zakończony "
+            f"(stan: {stan_przebiegu_pl(sc_run.status)})."
         )
     elif _sc_row_for_bus(sc_run, bus_ref) is None:
         braki.append(
-            f"Zwarcia w punkcie przyłączenia: węzeł „{bus_ref}” nie występuje "
-            "w wynikach zwarciowych wskazanego przebiegu."
+            "Zwarcia w punkcie przyłączenia: węzeł przyłączenia wskazany we wniosku nie "
+            "występuje w wynikach zwarciowych wskazanego przebiegu."
         )
 
     # 3. Zgodność NC RfG — model bez źródła objętego wymaganiami (rekordy W i źródła pominięte
@@ -332,11 +333,14 @@ def build_wniosek_osd_view(
     zalozenia_pl = [
         "Wniosek zestawia gotowe wyniki obliczeń — nie przelicza żadnej wielkości "
         "i nie zastępuje uzgodnień z operatorem systemu dystrybucyjnego.",
-        f"Bilans mocy pochodzi z przebiegu rozpływu mocy (run_id: {pf_run.id}).",
-        "Zwarcia w punkcie przyłączenia pochodzą z przebiegu zwarciowego "
-        f"(run_id: {sc_run.id}).",
+        # Karta #145: zdania dla projektanta bez identyfikatorów — przebiegi i odcisk
+        # nazywa stopka źródeł dokumentu (`zrodla`, DOCX/PDF) i widok audytowy ekranu.
+        "Bilans mocy pochodzi z zakończonego przebiegu rozpływu mocy wskazanego w stopce "
+        "źródeł dokumentu.",
+        "Zwarcia w punkcie przyłączenia pochodzą z zakończonego przebiegu zwarciowego "
+        "wskazanego w stopce źródeł dokumentu.",
         "Zgodność NC RfG wyznaczono z zatwierdzonego modelu przypadku tą samą oceną co "
-        f"certyfikat zgodności (odcisk wejścia: {bieg.input_hash}).",
+        "certyfikat zgodności (odcisk wejścia oceny w stopce źródeł dokumentu).",
         _ADNOTACJA_SCHEMAT,
         _ADNOTACJA_ZESTAWIENIA,
     ]
@@ -382,6 +386,17 @@ def build_wniosek_osd_view(
     }
 
 
+def _linie_zrodel(view: dict[str, Any]) -> list[str]:
+    """Stopka źródeł dokumentu: identyfikatory przebiegów i odcisk wejścia oceny NC RfG
+    (jedno źródło treści dla DOCX i PDF)."""
+    zrodla = view["zrodla"]
+    return [
+        f"Przebieg rozpływu mocy: {zrodla['pf_run_id']}",
+        f"Przebieg zwarciowy: {zrodla['sc_run_id']}",
+        f"Odcisk wejścia oceny zgodności NC RfG: {zrodla['nc_rfg_input_hash']}",
+    ]
+
+
 def _status_pl(status: str) -> str:
     """Etykieta polska statusu walidacji energetycznej."""
     return {
@@ -389,7 +404,7 @@ def _status_pl(status: str) -> str:
         "WARNING": "ostrzeżenie",
         "FAIL": "nie spełnia",
         "NOT_COMPUTED": "brak danych",
-    }.get(status, status)
+    }.get(status, "stan spoza słownika aplikacji")
 
 
 def _fmt(value: Any, unit: str = "") -> str:
@@ -491,8 +506,11 @@ def render_wniosek_osd_docx(view: dict[str, Any]) -> bytes:
     for pozycja in view["zalozenia_pl"]:
         doc.add_paragraph(pozycja, style="List Bullet")
 
-    # Stopka — odciski źródeł.
+    # Stopka — źródła obliczeń i odciski (karta #145: identyfikatory przebiegów tutaj,
+    # nie w zdaniach założeń).
     doc.add_paragraph()
+    for linia in _linie_zrodel(view):
+        doc.add_paragraph().add_run(linia).font.size = Pt(8)
     stopka = doc.add_paragraph()
     stopka.add_run(f"Odcisk SHA-256 wejścia wniosku: {view['input_hash']}").font.size = Pt(8)
     odciski = view["odciski_sekcji_sha256"]
@@ -629,8 +647,10 @@ def render_wniosek_pdf(view: dict[str, Any]) -> bytes:
     for pozycja in view["zalozenia_pl"]:
         para(f"• {pozycja}", indent=4 * mm)
 
-    # Stopka — odciski źródeł.
+    # Stopka — źródła obliczeń i odciski (układ 1:1 z DOCX).
     y -= line_height
+    for linia in _linie_zrodel(view):
+        para(linia, size=8)
     para(f"Odcisk SHA-256 wejścia wniosku: {view['input_hash']}", size=8)
     for nazwa, odcisk in view["odciski_sekcji_sha256"].items():
         para(f"Odcisk sekcji {nazwa}: {odcisk}", size=8)

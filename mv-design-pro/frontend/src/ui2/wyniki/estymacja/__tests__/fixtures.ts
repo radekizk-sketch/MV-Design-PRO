@@ -39,8 +39,8 @@ export function wymaganiaFixture(): WymaganiaEstymacji {
     ],
     measurement_types: TYPY_POMIAROW,
     note_pl:
-      'Pomiary muszą być w jednostkach względnych (pu) na tej samej bazie mocy '
-      + '(base_mva) co macierz Y-bus.',
+      'Pomiary muszą być w jednostkach względnych (pu) na tej samej bazie mocy co macierz '
+      + 'admitancyjna Y-bus.',
   };
 }
 

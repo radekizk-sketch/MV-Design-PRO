@@ -26,6 +26,7 @@ from analysis.energy_validation.models import (
     EnergyValidationConfig,
     EnergyValidationContext,
 )
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.power_flow_reconstruction import graf_z_biegu, wynik_rozplywu_z_biegu
 from enm.canonical_analysis import CanonicalRun
 from network_model.nazwy import nazwa_nadana
@@ -53,11 +54,11 @@ def build_energy_validation_view(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "PF":
         raise ValueError(
             "Walidacja energetyczna wymaga przebiegu rozpływu mocy; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
 

@@ -9,7 +9,7 @@
  * ręcznie pisanego mocka (gałęzie „Magistrala L-01"/„Odgałęzienie L-02", JEDNA
  * z nich z czasem „z nastawy zabezpieczenia") na REALNY bieg backendu
  * (`short_circuit_sn` na sieci złotej, `cieplna_scena_wynik.json`/
- * `cieplna_scena_dowod.json`) — sieć złota ma DWIE gałęzie („Kabel SN 1",
+ * `cieplna_scena_dowody.json`) — sieć złota ma DWIE gałęzie („Kabel SN 1",
  * „Linia SN 1"), ŻADEN switch nie ma skonfigurowanego zabezpieczenia
  * (`Sprzeglo Q1` bez przypisanego czynnego zabezpieczenia — realny, uczciwy
  * powód backendu), więc OBIE gałęzie biorą czas „z założenia przypadku" —
@@ -80,8 +80,8 @@ test.describe('F-K1 faza 5 — czas wyłączenia i dowód kryterium cieplnego', 
       });
 
       // Kadr 2 — pełny dowód obliczeniowy otwarty REALNYM klikiem w wiersz
-      // gałęzi „Linia SN 1" (gałąź na drodze zwarcia — `cieplna_scena_dowod`
-      // wybiera ją deterministycznie jako max prądu zwarciowego).
+      // gałęzi „Linia SN 1" (gałąź na drodze zwarcia o największym prądzie
+      // zwarciowym; `cieplna_scena_dowody` niesie dowód każdej gałęzi oceny).
       await page.getByText('Linia SN 1').first().click();
       await expect(page.getByTestId('mvd-jakosc-cieplna-dowod')).toBeVisible();
       await expect(

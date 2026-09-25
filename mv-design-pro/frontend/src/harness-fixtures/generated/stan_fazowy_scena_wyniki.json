@@ -30,9 +30,10 @@
       },
       "proof_ref": "proof:phase-state-sn:d4131bc160146505234972054d947c224ba6e7ab2e527dac1454ef61567bbea3",
       "proof_status": "complete",
-      "proof_status_pl": "pelny",
       "reporting_status": "reportable",
       "reporting_status_pl": "raportowalny",
+      "proof_status_pl": "pełny",
+      "reporting_limitations_pl": [],
       "dopuszczalnosc_raportowa": true,
       "reporting_limitations": []
     }
@@ -85,7 +86,7 @@
       "formula_set_version": "phase_state_sn_v1",
       "standard_basis_ref": "PHASE_STATE_SN_RADIAL_V1",
       "input_hash": "48042c9e83757a5e4c19ccddd187c136fe044a823b1265affe68dc48537d5981",
-      "result_hash": "e3c428efc5df940c10787ed6ed76fefb4443434274f9875938079c19219427e8",
+      "result_hash": "12c07dbcb2aa4b4a68e7bc486a253152f8e25cc96b7c95ee87b679d0edd4a770",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

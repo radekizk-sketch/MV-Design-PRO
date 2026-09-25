@@ -29,6 +29,7 @@ from typing import Any
 
 import numpy as np
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
@@ -74,10 +75,12 @@ MEASUREMENT_TYPES: tuple[dict[str, Any], ...] = (
     },
 )
 
+#: Zdanie dla projektanta (karta #145): bez nazw pól kontraktu i kodów typów pomiarów —
+#: baza mocy i węzeł „do" nazwane słowami, typy pomiaru przepływu opisane.
 _UNITS_NOTE_PL = (
-    "Pomiary muszą być w jednostkach względnych (pu) na tej samej bazie mocy "
-    "(base_mva) co macierz Y-bus. Pomiary przepływu (P_FLOW/Q_FLOW) wymagają węzła "
-    "'do' gałęzi (bus_j_ref)."
+    "Pomiary muszą być w jednostkach względnych (pu) na tej samej bazie mocy co macierz "
+    "admitancyjna Y-bus. Pomiary przepływu mocy czynnej i biernej w gałęzi wymagają "
+    "wskazania węzła końcowego tej gałęzi."
 )
 
 
@@ -86,11 +89,11 @@ def _require_power_flow_run(run: CanonicalRun) -> None:
     if run.analysis_type != "PF":
         raise ValueError(
             "Estymacja stanu WLS wymaga przebiegu rozpływu mocy (PF); "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "topologia sieci do budowy Y-bus nie jest dostępna."
         )
 

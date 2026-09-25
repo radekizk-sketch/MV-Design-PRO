@@ -18,7 +18,7 @@
   "solver_version": "newton-raphson",
   "steps": [
     {
-      "description_pl": "Dopasowanie szyn po element_ref (ENM ref_id)",
+      "description_pl": "Dopasowanie szyn obu biegów po elemencie modelu sieci",
       "inputs": {
         "buses_a_count": 5,
         "buses_b_count": 5
@@ -29,7 +29,7 @@
       "step": "MATCH_BUSES"
     },
     {
-      "description_pl": "Dopasowanie gałęzi po element_ref (ENM ref_id)",
+      "description_pl": "Dopasowanie gałęzi obu biegów po elemencie modelu sieci",
       "inputs": {
         "branches_a_count": 4,
         "branches_b_count": 4
@@ -40,7 +40,7 @@
       "step": "MATCH_BRANCHES"
     },
     {
-      "description_pl": "Generowanie rankingu problemów wg severity (5->1)",
+      "description_pl": "Ranking problemów według wagi (od 5 do 1)",
       "inputs": {
         "branch_diffs_count": 4,
         "bus_diffs_count": 5,

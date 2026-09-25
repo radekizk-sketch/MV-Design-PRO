@@ -327,8 +327,9 @@ def test_sc3f_contributions_returns_machine_breakdown(tmp_path):
     wywod = dane["wywod"]
     assert wywod[0]["tekst"].startswith("Model: IEC 60909")
     assert wywod[0]["latex"] is None
-    assert wywod[1]["tekst"].startswith("Punkt zwarcia: I''k")
-    assert wywod[2]["tekst"] == "— Agregat (SYNCHRONOUS) —"
+    assert wywod[1]["tekst"].startswith("Punkt zwarcia: całkowity prąd I″k")
+    # Karta #145: separator nazywa maszynę bez kodu typu (`SYNCHRONOUS`).
+    assert wywod[2]["tekst"] == "— Agregat —"
     latexy = " ".join(k["latex"] for k in wywod if k["latex"])
     # Wzor ogolny pradu czesciowego (superpozycja Z-bus) + podstawienie z c.
     assert r"I''_{k,m} = \frac{c\,|Z_{mk}|}{|Z_{kk}|\,|Z_m|}" in latexy
@@ -412,14 +413,14 @@ def test_sc3f_contributions_wywod_sekcje_pogrupowane_1do1(tmp_path):
         assert all(set(k) == {"tekst", "latex"} for k in sekcja["kroki"])
     # 1:1 z plaskim wywodem: naglowek + separator maszyny + kroki + suma/regula.
     splaszczone = list(sekcje[0]["kroki"])
-    splaszczone.append({"tekst": "— Agregat (SYNCHRONOUS) —", "latex": None})
+    splaszczone.append({"tekst": "— Agregat —", "latex": None})
     splaszczone.extend(sekcje[1]["kroki"])
     splaszczone.extend(sekcje[2]["kroki"])
     assert splaszczone == dane["wywod"]
     # Kompatybilnosc struktury plaskiej listy (jak przed F3).
     assert dane["wywod"][0]["tekst"].startswith("Model: IEC 60909")
-    assert dane["wywod"][1]["tekst"].startswith("Punkt zwarcia: I''k")
-    assert dane["wywod"][2]["tekst"] == "— Agregat (SYNCHRONOUS) —"
+    assert dane["wywod"][1]["tekst"].startswith("Punkt zwarcia: całkowity prąd I″k")
+    assert dane["wywod"][2]["tekst"] == "— Agregat —"
     assert dane["wywod"][-2]["tekst"].startswith("Suma wkładów maszyn")
     assert "Reguła małych silników" in dane["wywod"][-1]["tekst"]
 
@@ -437,17 +438,20 @@ def test_sc3f_contributions_regula_5_procent_pelna(tmp_path):
     ikss_ka = dane["white_box"]["ikss_total_a"] / 1000.0
     assert limit_ka == pytest.approx(0.05 * ikss_ka)
     # Tekst: wymaganie + wartosc graniczna + wartosc obliczona + werdykt + wplyw.
-    assert "wymaganie suma I''k,M <= 0.05 * I''k" in krok["tekst"]
-    assert f"wartość graniczna 0.05 * I''k = {limit_ka:.3f} kA" in krok["tekst"]
-    assert f"wartość obliczona suma I''k,M = {async_ka:.3f} kA" in krok["tekst"]
-    assert "SPEŁNIONA (silniki pomijalne w Ib)" in krok["tekst"]
+    # Karta #145: zdanie po polsku (znaki diakrytyczne, przecinek dziesiętny, bez kodów).
+    assert "wymaganie suma I″k,M ≤ 0,05·I″k" in krok["tekst"]
+    limit_pl = f"{limit_ka:.3f}".replace(".", ",")
+    async_pl = f"{async_ka:.3f}".replace(".", ",")
+    assert f"wartość graniczna 0,05·I″k = {limit_pl} kA" in krok["tekst"]
+    assert f"wartość obliczona suma I″k,M = {async_pl} kA" in krok["tekst"]
+    assert "reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib)" in krok["tekst"]
     # LaTeX podstawienia obowiazkowy (zasada KaTeX 2026-07-22).
     assert krok["latex"] is not None
     assert rf"\sum_m I''_{{k,M}} = {async_ka:.3f}\;\mathrm{{kA}}" in krok["latex"]
     assert (
         rf"0.05 \cdot {ikss_ka:.3f}\;\mathrm{{kA}} = {limit_ka:.3f}\;\mathrm{{kA}}" in krok["latex"]
     )
-    assert r"\text{SPEŁNIONA}" in krok["latex"]
+    assert r"\text{reguła spełniona}" in krok["latex"]
     # Ten sam krok w sekcji „Suma wkładów i reguły" (1:1).
     assert dane["wywod_sekcje"][-1]["kroki"][-1] == krok
 
@@ -462,11 +466,11 @@ def test_sc3f_contributions_walidacja_iec_deterministyczna(tmp_path):
         "Metoda obliczenia wkładów",
         "Maszyny asynchroniczne",
         "Reguła małych silników (5%)",
-        "Determinizm kontraktu (input_hash)",
+        "Powtarzalność obliczenia",
     ]
     assert all(p["status"] in {"PASS", "FAIL", "INFO"} for p in walidacja)
     assert walidacja[0]["wartosc_pl"] == "IEC 60909-0:2016"
-    assert walidacja[1]["wartosc_pl"].startswith("c = 1.10")
+    assert walidacja[1]["wartosc_pl"].startswith("c = 1,10")
     # Siec z sama maszyna synchroniczna: silniki asynchroniczne nieobecne (INFO),
     # regula 5% SPELNIONA (PASS) z liczbami z white_box.
     assert walidacja[3] == {
@@ -475,12 +479,17 @@ def test_sc3f_contributions_walidacja_iec_deterministyczna(tmp_path):
         "status": "INFO",
     }
     assert walidacja[4]["status"] == "PASS"
-    assert walidacja[4]["wartosc_pl"].startswith("SPEŁNIONA — silniki pomijalne w Ib")
+    assert walidacja[4]["wartosc_pl"].startswith(
+        "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib"
+    )
     assert "próg =" in walidacja[4]["wartosc_pl"]
     # Determinizm kontraktu: input_hash obecny (SHA-256) i stabilny miedzy biegami.
     assert walidacja[5]["status"] == "PASS"
     assert len(dane["input_hash"]) == 64
-    assert walidacja[5]["wartosc_pl"] == f"obecny: {dane['input_hash'][:12]}..."
+    # Karta #145: odcisk jest metadaną — pozycja mówi o powtarzalności, odcisk zostaje
+    # w polu odpowiedzi `input_hash` (Informacje audytowe ekranu).
+    assert dane["input_hash"] not in walidacja[5]["wartosc_pl"]
+    assert "ten sam wynik" in walidacja[5]["wartosc_pl"]
     dane2 = client.post("/api/proof/sc3f/contributions", json=payload).json()
     assert dane2["walidacja_iec"] == walidacja
     assert dane2["input_hash"] == dane["input_hash"]
@@ -505,10 +514,10 @@ def test_sc3f_contributions_bez_maszyn_sekcje_i_walidacja_uczciwe(tmp_path):
     assert tytuly == ["Dane wejściowe i model", "Suma wkładów i reguły"]
     regula = dane["wywod_sekcje"][-1]["kroki"][-1]
     assert regula["latex"] is None  # brak liczb w white_box -> bez podstawien
-    assert "SPEŁNIONA (silniki pomijalne w Ib)" in regula["tekst"]
+    assert "reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib)" in regula["tekst"]
     walidacja = dane["walidacja_iec"]
     assert walidacja[3]["wartosc_pl"] == "nieobecne w modelu"
-    assert walidacja[4]["wartosc_pl"] == "SPEŁNIONA — silniki pomijalne w Ib"
+    assert walidacja[4]["wartosc_pl"] == "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib"
 
 
 def _payload_sc3f_pack(data, snapshot: dict) -> dict:

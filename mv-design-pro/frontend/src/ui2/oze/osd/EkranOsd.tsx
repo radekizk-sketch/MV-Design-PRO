@@ -23,7 +23,11 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { notify } from '../../../ui/notifications/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import { TabelaWynikow } from '../../wyniki/wzorzec';
+import {
+  InformacjeAudytowe,
+  TabelaWynikow,
+  nazwaObiektuZMigawki,
+} from '../../wyniki/wzorzec';
 // Zasada wywodów KaTeX: wzory w opisach parametrów renderuje TekstZWzorami (MathInline).
 import { TekstZWzorami } from '../../kreatory/rama';
 import { SladAnalizy } from '../pulpit';
@@ -127,33 +131,29 @@ function WynikOsd({
       <dl className="mvd-osd-zalozenia" data-testid="mvd-osd-zalozenia">
         <div className="mvd-osd-zal-para">
           <dt>{OSD_STRINGS.zalZrodlo}</dt>
-          <dd>{dane.source.name ?? dane.source.ref_id}</dd>
+          <dd>{nazwaObiektuZMigawki(null, dane.source.ref_id, dane.source.name)}</dd>
         </div>
         <div className="mvd-osd-zal-para">
           <dt>{OSD_STRINGS.zalWezelZrodla}</dt>
-          <dd>{dane.source.bus_name ?? dane.source.bus_ref}</dd>
+          <dd>{nazwaObiektuZMigawki(null, dane.source.bus_ref, dane.source.bus_name)}</dd>
         </div>
         <div className="mvd-osd-zal-para">
           <dt>{OSD_STRINGS.zalPolecenie}</dt>
           <dd>{etykietaPoleceniaOsd(dane.parameters.command)}</dd>
         </div>
-        {trybEkspercki && (
-          <>
-            <div className="mvd-osd-zal-para">
-              <dt>{OSD_STRINGS.zalIdentyfikatorZrodla}</dt>
-              <dd className="mvd-num">{dane.source.ref_id}</dd>
-            </div>
-            <div className="mvd-osd-zal-para">
-              <dt>{OSD_STRINGS.zalPrzebieg}</dt>
-              <dd className="mvd-num">{dane.context.run_id}</dd>
-            </div>
-            <div className="mvd-osd-zal-para" data-testid="mvd-osd-eksp-hash">
-              <dt>{OSD_STRINGS.zalIdentyfikatorSkrot}</dt>
-              <dd className="mvd-num">{dane.input_hash}</dd>
-            </div>
-          </>
-        )}
       </dl>
+
+      {/* Karta #145: identyfikator źródła, przebieg i odcisk wejścia wyłącznie w
+          „Informacjach audytowych" (tryb ekspercki, zwinięte). */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-osd-informacje-audytowe"
+        wiersze={[
+          { etykieta: OSD_STRINGS.zalIdentyfikatorZrodla, wartosc: dane.source.ref_id },
+          { etykieta: OSD_STRINGS.zalPrzebieg, wartosc: dane.context.run_id },
+          { etykieta: OSD_STRINGS.zalIdentyfikatorSkrot, wartosc: dane.input_hash },
+        ]}
+      />
 
       <p className="mvd-osd-porownanie-tytul">{OSD_STRINGS.porownanieTytul}</p>
       <div className="mvd-osd-karty" data-testid="mvd-osd-karty">

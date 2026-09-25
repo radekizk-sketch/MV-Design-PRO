@@ -304,7 +304,8 @@ def test_kotwica_niezakonczona_odmawia() -> None:
 
 def test_kotwica_rodzaju_rozplyw_odmawia() -> None:
     kotwica = _kotwica(_siec_promieniowa(), analysis_type="PF")
-    with pytest.raises(BrakDanychNastawError, match="short_circuit_sn"):
+    # Karta #145: rodzaj wskazanego przebiegu słowami, nie kodem rodzaju analizy.
+    with pytest.raises(BrakDanychNastawError, match="wskazany przebieg: rozpływ mocy"):
         zbuduj_wejscie_nastaw(
             kotwica,
             line_id="ln1",

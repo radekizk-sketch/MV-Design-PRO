@@ -395,6 +395,14 @@ export interface PozycjaBloku {
   readonly tresc_pl: string;
 }
 
+/**
+ * Pozycje AUDYTOWE bloku dokumentu (lustro `werdykt/dokument.py::POZYCJE_AUDYTOWE`, karta
+ * #145): odniesienie do dowodu (bieg z odciskiem, rekord wykazu) oraz bieg i wersja silnika
+ * kroku śladu. Dokument formalny niesie je jako osobne pozycje; ekran pokazuje je wyłącznie
+ * w „Informacjach audytowych". Parytet z backendem przypina `__tests__/pozycjeAudytowe.test.ts`.
+ */
+export const POZYCJE_AUDYTOWE_BLOKU: readonly string[] = ['Odniesienie do dowodu', 'Bieg śladu'];
+
 /** Wymaganie w sekcji modułu: rekord W i blok dokumentu (te same zdania co DOCX/PDF). */
 export interface WymaganieSekcji {
   readonly rekord: WynikWymagania;

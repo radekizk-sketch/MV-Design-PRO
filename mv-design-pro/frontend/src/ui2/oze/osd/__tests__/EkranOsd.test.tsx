@@ -187,15 +187,20 @@ describe('EkranOsd — prezentacja wyniku (kryteria 2, 3, 4)', () => {
 
   it('tryb podstawowy ukrywa identyfikator wejścia (hash)', async () => {
     await uruchomBieg('basic');
-    expect(screen.queryByTestId('mvd-osd-eksp-hash')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-osd-informacje-audytowe')).not.toBeInTheDocument();
   });
 
-  it('tryb ekspercki odsłania hash oraz identyfikatory źródła i przebiegu', async () => {
+  it('tryb ekspercki: odcisk oraz identyfikatory źródła i przebiegu wyłącznie w „Informacjach audytowych"', async () => {
     await uruchomBieg('expert');
-    expect(screen.getByTestId('mvd-osd-eksp-hash')).toHaveTextContent('a1b2c3d4e5f6');
+    // Karta #145: pierwszy plan (zwinięte informacje audytowe) bez identyfikatorów.
     const wynik = screen.getByTestId('mvd-osd-wynik');
-    expect(wynik).toHaveTextContent('gen_sync');
-    expect(wynik).toHaveTextContent('run-osd-1');
+    expect(wynik).not.toHaveTextContent('gen_sync');
+    expect(wynik).not.toHaveTextContent('run-osd-1');
+    fireEvent.click(screen.getByTestId('mvd-osd-informacje-audytowe-przelacz'));
+    const lista = screen.getByTestId('mvd-osd-informacje-audytowe-lista');
+    expect(lista).toHaveTextContent('a1b2c3d4e5f6');
+    expect(lista).toHaveTextContent('gen_sync');
+    expect(lista).toHaveTextContent('run-osd-1');
   });
 });
 

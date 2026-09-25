@@ -5,7 +5,8 @@
  * Dane WPROST z wiersza kanonicznego (`ShortCircuitRow.branch_contributions` —
  * FROZEN solver z opcją addytywną + projekcja `_sc_rozplyw_galeziowy`).
  * Reużywa tabelę wspólnego wzorca (`TabelaWynikow`); rozróżnienie źródła PL
- * („sieć nadrzędna" vs identyfikator maszyny) w `zrodloRozplywuPL`.
+ * („sieć nadrzędna" vs nazwa maszyny z modelu) w `zrodloRozplywuPL`; gałęzie i węzły
+ * nazwane mostem nazw wyników (karta #145).
  *
  * Uczciwe stany (zero fabrykacji):
  * - `flows === null` → starszy wynik bez pola (kontrakt addytywny) — komunikat,
@@ -16,7 +17,7 @@
 
 import type { ShortCircuitBranchFlow } from '../../../ui/results-inspector/types';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { TabelaWynikow } from '../wzorzec';
+import { TabelaWynikow, useNazwaObiektu } from '../wzorzec';
 import { ZWARCIA_STRINGS } from './strings';
 import { KLUCZ_ROZPLYW, KOLUMNY_ROZPLYWU, naWierszeRozplywu } from './zwarciaModel';
 
@@ -35,6 +36,7 @@ export function RozplywZwarciowy({
   trybZaawansowania,
   onOtworzDowod,
 }: RozplywZwarciowyProps) {
+  const nazwaObiektu = useNazwaObiektu();
   return (
     <section
       className="mvd-zwarcia-rozplyw"
@@ -61,7 +63,7 @@ export function RozplywZwarciowy({
           <p className="mvd-zwarcia-wklad-szczegol-opis">{ZWARCIA_STRINGS.rozplywOpis}</p>
           <TabelaWynikow
             kolumny={KOLUMNY_ROZPLYWU}
-            wiersze={naWierszeRozplywu(flows)}
+            wiersze={naWierszeRozplywu(flows, nazwaObiektu)}
             onOtworzDowod={onOtworzDowod}
             trybZaawansowania={trybZaawansowania}
             kluczWiersza={KLUCZ_ROZPLYW}

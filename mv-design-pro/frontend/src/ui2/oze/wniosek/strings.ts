@@ -29,11 +29,12 @@ export const WNIOSEK_STRINGS = {
 
   // Formularz — punkt przyłączenia
   sekcjaPunkt: 'Punkt przyłączenia',
-  wezel: 'Węzeł przyłączenia',
+  wezel: 'Szyna przyłączenia',
   wezelOpis:
-    'Identyfikator węzła (szyny), dla którego wniosek zestawia wyniki zwarciowe. ' +
-    'Węzeł musi występować w wynikach wskazanego przebiegu zwarciowego.',
-  wezelPlaceholder: 'np. szyna GPZ',
+    'Szyna modelu, dla której wniosek zestawia wyniki zwarciowe — musi występować ' +
+    'w wynikach wskazanego obliczenia zwarciowego.',
+  wezelWybierz: '— wybierz szynę —',
+  wezelBrak: 'Model nie ma szyn',
 
   // Formularz — identyfikacja
   sekcjaIdentyfikacja: 'Identyfikacja wniosku',
@@ -70,7 +71,7 @@ export const WNIOSEK_STRINGS = {
     'Wskaż zakończony przebieg rozpływu mocy — bez niego wniosek nie zestawi bilansu mocy.',
   blokadaBrakZwarcia:
     'Wskaż zakończony przebieg zwarciowy — bez niego wniosek nie zestawi zwarć w punkcie.',
-  blokadaBrakWezla: 'Podaj węzeł przyłączenia — pole wymagane.',
+  blokadaBrakWezla: 'Wybierz szynę przyłączenia — pole wymagane.',
   blokadaBrakProjektu: 'Podaj nazwę projektu — pole wymagane.',
   blokadaAktywny: 'Zbuduj wniosek OSD z gotowych wyników',
 

@@ -26,26 +26,26 @@
       "limit_fail": 100.0,
       "margin_pct": 624.9160818210655,
       "status": "FAIL",
-      "why_pl": "Obciazenie 724.92 % przekracza limit 100.0 %.",
+      "why_pl": "Obciążenie 724,92 % przekracza limit 100,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) * 100%",
+          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
           "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: |I_od| = 0.1758 kA, |I_do| = 6.5919 kA (wynik PF), I_r,od = 0.0242 kA, I_r,do = 0.9093 kA (S_n i U_n strony transformatora); decyduje zacisk od",
+          "tekst": "Dane: |I_od| = 0,1758 kA, |I_do| = 6,5919 kA (wynik rozpływu), I_r,od = 0,0242 kA, I_r,do = 0,9093 kA (S_n i U_n strony transformatora); decyduje zacisk początkowy",
           "latex": null
         },
         {
-          "tekst": "Wynik: obciążenie = 724.92 %",
+          "tekst": "Wynik: obciążenie = 724,92 %",
           "latex": "\\varepsilon = \\max\\left(\\frac{0.1758}{0.0242}, \\frac{6.5919}{0.9093}\\right) \\cdot 100\\% = 724.92\\%"
         },
         {
-          "tekst": "Progi: ostrzeżenie 80.0 %, przekroczenie 100.0 %",
+          "tekst": "Progi: ostrzeżenie 80,0 %, przekroczenie 100,0 %",
           "latex": null
         },
         {
-          "tekst": "Werdykt: PRZEKROCZENIE",
+          "tekst": "Porównanie z progami: Obciążenie 724,92 % przekracza limit 100,0 %.",
           "latex": null
         }
       ]
@@ -60,26 +60,26 @@
       "limit_fail": 100.0,
       "margin_pct": 60.003792297035176,
       "status": "FAIL",
-      "why_pl": "Obciazenie 160.00 % przekracza limit 100.0 %.",
+      "why_pl": "Obciążenie 160,00 % przekracza limit 100,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) * 100%",
+          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
           "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: |I_od| = 0.3360 kA, |I_do| = 0.3360 kA (wynik PF), I_r,od = 0.2100 kA, I_r,do = 0.2100 kA (obciążalność gałęzi); decyduje zacisk do",
+          "tekst": "Dane: |I_od| = 0,3360 kA, |I_do| = 0,3360 kA (wynik rozpływu), I_r,od = 0,2100 kA, I_r,do = 0,2100 kA (obciążalność gałęzi); decyduje zacisk końcowy",
           "latex": null
         },
         {
-          "tekst": "Wynik: obciążenie = 160.00 %",
+          "tekst": "Wynik: obciążenie = 160,00 %",
           "latex": "\\varepsilon = \\max\\left(\\frac{0.3360}{0.2100}, \\frac{0.3360}{0.2100}\\right) \\cdot 100\\% = 160.00\\%"
         },
         {
-          "tekst": "Progi: ostrzeżenie 80.0 %, przekroczenie 100.0 %",
+          "tekst": "Progi: ostrzeżenie 80,0 %, przekroczenie 100,0 %",
           "latex": null
         },
         {
-          "tekst": "Werdykt: PRZEKROCZENIE",
+          "tekst": "Porównanie z progami: Obciążenie 160,00 % przekracza limit 100,0 %.",
           "latex": null
         }
       ]
@@ -94,26 +94,26 @@
       "limit_fail": 10.0,
       "margin_pct": 15.167003206141096,
       "status": "FAIL",
-      "why_pl": "Odchylenie napięciowe 25.17 % przekracza limit 10.0 %.",
+      "why_pl": "Odchylenie napięcia 25,17 % przekracza limit 10,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: odchylenie = |U - U_n| / U_n * 100%",
+          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
           "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: U = 0.2993 kV (wynik PF), U_n = 0.4000 kV",
+          "tekst": "Dane: U = 0,2993 kV (wynik rozpływu), U_n = 0,4000 kV",
           "latex": null
         },
         {
-          "tekst": "Wynik: odchylenie = 25.17 %",
+          "tekst": "Wynik: odchylenie = 25,17 %",
           "latex": "\\delta U = \\frac{|0.2993 - 0.4000|}{0.4000} \\cdot 100\\% = 25.17\\%"
         },
         {
-          "tekst": "Progi: ostrzeżenie 5.0 %, przekroczenie 10.0 %",
+          "tekst": "Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %",
           "latex": null
         },
         {
-          "tekst": "Werdykt: PRZEKROCZENIE",
+          "tekst": "Porównanie z progami: Odchylenie napięcia 25,17 % przekracza limit 10,0 %.",
           "latex": null
         }
       ]
@@ -128,26 +128,26 @@
       "limit_fail": 0.8,
       "margin_pct": null,
       "status": "WARNING",
-      "why_pl": "cos(phi) = 0.873 — bilans mocy biernej na granicy akceptowalności.",
+      "why_pl": "cosφ = 0,873 — bilans mocy biernej na granicy akceptowalności.",
       "white_box": [
         {
-          "tekst": "Wzór: tan(phi) = |Q_slack / P_slack|; cos(phi) = cos(arctan(tan(phi)))",
+          "tekst": "Wzór: tgφ = |Q_bil / P_bil|; cosφ = cos(arctg(tgφ))",
           "latex": "\\cos\\varphi = \\cos\\!\\left(\\arctan\\left|\\frac{Q_{\\text{slack}}}{P_{\\text{slack}}}\\right|\\right)"
         },
         {
-          "tekst": "Dane: Q_slack = 0.064088 p.u., P_slack = 0.114962 p.u. (wynik PF)",
+          "tekst": "Dane: Q_bil = 0,064088 j.w., P_bil = 0,114962 j.w. (wynik rozpływu, węzeł bilansujący)",
           "latex": null
         },
         {
-          "tekst": "Wynik: tan(phi) = 0.5575, cos(phi) = 0.873",
+          "tekst": "Wynik: tgφ = 0,5575, cosφ = 0,873",
           "latex": "\\tan\\varphi = 0.5575 \\Rightarrow \\cos\\varphi = 0.873"
         },
         {
-          "tekst": "Progi: ostrzeżenie cos(phi) < 0.9, przekroczenie cos(phi) < 0.8",
+          "tekst": "Progi: ostrzeżenie cosφ < 0,9, przekroczenie cosφ < 0,8",
           "latex": null
         },
         {
-          "tekst": "Werdykt: OSTRZEZENIE",
+          "tekst": "Porównanie z progami: cosφ = 0,873 — bilans mocy biernej na granicy akceptowalności.",
           "latex": null
         }
       ]
@@ -162,26 +162,26 @@
       "limit_fail": 10.0,
       "margin_pct": -2.012265114362653,
       "status": "WARNING",
-      "why_pl": "Odchylenie napięciowe 7.99 % zbliża się do limitu 10.0 %.",
+      "why_pl": "Odchylenie napięcia 7,99 % zbliża się do limitu 10,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: odchylenie = |U - U_n| / U_n * 100%",
+          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
           "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: U = 13.8018 kV (wynik PF), U_n = 15.0000 kV",
+          "tekst": "Dane: U = 13,8018 kV (wynik rozpływu), U_n = 15,0000 kV",
           "latex": null
         },
         {
-          "tekst": "Wynik: odchylenie = 7.99 %",
+          "tekst": "Wynik: odchylenie = 7,99 %",
           "latex": "\\delta U = \\frac{|13.8018 - 15.0000|}{15.0000} \\cdot 100\\% = 7.99\\%"
         },
         {
-          "tekst": "Progi: ostrzeżenie 5.0 %, przekroczenie 10.0 %",
+          "tekst": "Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %",
           "latex": null
         },
         {
-          "tekst": "Werdykt: OSTRZEZENIE",
+          "tekst": "Porównanie z progami: Odchylenie napięcia 7,99 % zbliża się do limitu 10,0 %.",
           "latex": null
         }
       ]
@@ -196,26 +196,26 @@
       "limit_fail": 10.0,
       "margin_pct": -3.944861458408009,
       "status": "WARNING",
-      "why_pl": "Straty sieciowe 6.06 % zbliża się do limitu 10.0 %.",
+      "why_pl": "Straty sieciowe 6,06 % zbliża się do limitu 10,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: straty = |P_strat / P_slack| * 100%",
+          "tekst": "Wzór: straty = |P_strat / P_bil| · 100 %",
           "latex": "\\Delta P\\% = \\left|\\frac{P_{\\text{strat}}}{P_{\\text{slack}}}\\right| \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: P_strat = 0.006961 p.u., P_slack = 0.114962 p.u. (wynik PF)",
+          "tekst": "Dane: P_strat = 0,006961 j.w., P_bil = 0,114962 j.w. (wynik rozpływu, węzeł bilansujący)",
           "latex": null
         },
         {
-          "tekst": "Wynik: straty = 6.06 %",
+          "tekst": "Wynik: straty = 6,06 %",
           "latex": "\\Delta P\\% = \\left|\\frac{0.006961}{0.114962}\\right| \\cdot 100\\% = 6.06\\%"
         },
         {
-          "tekst": "Progi: ostrzeżenie 5.0 %, przekroczenie 10.0 %",
+          "tekst": "Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %",
           "latex": null
         },
         {
-          "tekst": "Werdykt: OSTRZEZENIE",
+          "tekst": "Porównanie z progami: Straty sieciowe 6,06 % zbliża się do limitu 10,0 %.",
           "latex": null
         }
       ]
@@ -230,26 +230,26 @@
       "limit_fail": 10.0,
       "margin_pct": -6.854859797263906,
       "status": "PASS",
-      "why_pl": "Odchylenie napięciowe 3.15 % poniżej limitu 5.0 %.",
+      "why_pl": "Odchylenie napięcia 3,15 % poniżej limitu 5,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: odchylenie = |U - U_n| / U_n * 100%",
+          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
           "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: U = 14.5282 kV (wynik PF), U_n = 15.0000 kV",
+          "tekst": "Dane: U = 14,5282 kV (wynik rozpływu), U_n = 15,0000 kV",
           "latex": null
         },
         {
-          "tekst": "Wynik: odchylenie = 3.15 %",
+          "tekst": "Wynik: odchylenie = 3,15 %",
           "latex": "\\delta U = \\frac{|14.5282 - 15.0000|}{15.0000} \\cdot 100\\% = 3.15\\%"
         },
         {
-          "tekst": "Progi: ostrzeżenie 5.0 %, przekroczenie 10.0 %",
+          "tekst": "Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %",
           "latex": null
         },
         {
-          "tekst": "Werdykt: ZGODNY",
+          "tekst": "Porównanie z progami: Odchylenie napięcia 3,15 % poniżej limitu 5,0 %.",
           "latex": null
         }
       ]
@@ -264,26 +264,26 @@
       "limit_fail": 10.0,
       "margin_pct": -6.855642166196745,
       "status": "PASS",
-      "why_pl": "Odchylenie napięciowe 3.14 % poniżej limitu 5.0 %.",
+      "why_pl": "Odchylenie napięcia 3,14 % poniżej limitu 5,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: odchylenie = |U - U_n| / U_n * 100%",
+          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
           "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: U = 14.5283 kV (wynik PF), U_n = 15.0000 kV",
+          "tekst": "Dane: U = 14,5283 kV (wynik rozpływu), U_n = 15,0000 kV",
           "latex": null
         },
         {
-          "tekst": "Wynik: odchylenie = 3.14 %",
+          "tekst": "Wynik: odchylenie = 3,14 %",
           "latex": "\\delta U = \\frac{|14.5283 - 15.0000|}{15.0000} \\cdot 100\\% = 3.14\\%"
         },
         {
-          "tekst": "Progi: ostrzeżenie 5.0 %, przekroczenie 10.0 %",
+          "tekst": "Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %",
           "latex": null
         },
         {
-          "tekst": "Werdykt: ZGODNY",
+          "tekst": "Porównanie z progami: Odchylenie napięcia 3,14 % poniżej limitu 5,0 %.",
           "latex": null
         }
       ]
@@ -298,26 +298,26 @@
       "limit_fail": 10.0,
       "margin_pct": -10.0,
       "status": "PASS",
-      "why_pl": "Odchylenie napięciowe 0.00 % poniżej limitu 5.0 %.",
+      "why_pl": "Odchylenie napięcia 0,00 % poniżej limitu 5,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: odchylenie = |U - U_n| / U_n * 100%",
+          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
           "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: U = 110.0000 kV (wynik PF), U_n = 110.0000 kV",
+          "tekst": "Dane: U = 110,0000 kV (wynik rozpływu), U_n = 110,0000 kV",
           "latex": null
         },
         {
-          "tekst": "Wynik: odchylenie = 0.00 %",
+          "tekst": "Wynik: odchylenie = 0,00 %",
           "latex": "\\delta U = \\frac{|110.0000 - 110.0000|}{110.0000} \\cdot 100\\% = 0.00\\%"
         },
         {
-          "tekst": "Progi: ostrzeżenie 5.0 %, przekroczenie 10.0 %",
+          "tekst": "Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %",
           "latex": null
         },
         {
-          "tekst": "Werdykt: ZGODNY",
+          "tekst": "Porównanie z progami: Odchylenie napięcia 0,00 % poniżej limitu 5,0 %.",
           "latex": null
         }
       ]
@@ -332,26 +332,26 @@
       "limit_fail": 100.0,
       "margin_pct": -47.35248416709415,
       "status": "PASS",
-      "why_pl": "Obciazenie 52.65 % poniżej limitu 80.0 %.",
+      "why_pl": "Obciążenie 52,65 % poniżej limitu 80,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) * 100%",
+          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
           "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: |I_od| = 0.0691 kA, |I_do| = 0.5066 kA (wynik PF), I_r,od = 0.1312 kA, I_r,do = 0.9623 kA (S_n i U_n strony transformatora); decyduje zacisk od",
+          "tekst": "Dane: |I_od| = 0,0691 kA, |I_do| = 0,5066 kA (wynik rozpływu), I_r,od = 0,1312 kA, I_r,do = 0,9623 kA (S_n i U_n strony transformatora); decyduje zacisk początkowy",
           "latex": null
         },
         {
-          "tekst": "Wynik: obciążenie = 52.65 %",
+          "tekst": "Wynik: obciążenie = 52,65 %",
           "latex": "\\varepsilon = \\max\\left(\\frac{0.0691}{0.1312}, \\frac{0.5066}{0.9623}\\right) \\cdot 100\\% = 52.65\\%"
         },
         {
-          "tekst": "Progi: ostrzeżenie 80.0 %, przekroczenie 100.0 %",
+          "tekst": "Progi: ostrzeżenie 80,0 %, przekroczenie 100,0 %",
           "latex": null
         },
         {
-          "tekst": "Werdykt: ZGODNY",
+          "tekst": "Porównanie z progami: Obciążenie 52,65 % poniżej limitu 80,0 %.",
           "latex": null
         }
       ]
@@ -366,26 +366,26 @@
       "limit_fail": 100.0,
       "margin_pct": -99.7854927627473,
       "status": "PASS",
-      "why_pl": "Obciazenie 0.21 % poniżej limitu 80.0 %.",
+      "why_pl": "Obciążenie 0,21 % poniżej limitu 80,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) * 100%",
+          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
           "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: |I_od| = 0.0005 kA, |I_do| = 0.0006 kA (wynik PF), I_r,od = 0.2800 kA, I_r,do = 0.2800 kA (obciążalność gałęzi); decyduje zacisk do",
+          "tekst": "Dane: |I_od| = 0,0005 kA, |I_do| = 0,0006 kA (wynik rozpływu), I_r,od = 0,2800 kA, I_r,do = 0,2800 kA (obciążalność gałęzi); decyduje zacisk końcowy",
           "latex": null
         },
         {
-          "tekst": "Wynik: obciążenie = 0.21 %",
+          "tekst": "Wynik: obciążenie = 0,21 %",
           "latex": "\\varepsilon = \\max\\left(\\frac{0.0005}{0.2800}, \\frac{0.0006}{0.2800}\\right) \\cdot 100\\% = 0.21\\%"
         },
         {
-          "tekst": "Progi: ostrzeżenie 80.0 %, przekroczenie 100.0 %",
+          "tekst": "Progi: ostrzeżenie 80,0 %, przekroczenie 100,0 %",
           "latex": null
         },
         {
-          "tekst": "Werdykt: ZGODNY",
+          "tekst": "Porównanie z progami: Obciążenie 0,21 % poniżej limitu 80,0 %.",
           "latex": null
         }
       ]

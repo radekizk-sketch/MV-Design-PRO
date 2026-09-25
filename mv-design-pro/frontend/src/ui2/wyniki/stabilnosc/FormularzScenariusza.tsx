@@ -4,6 +4,8 @@
  *
  * Pola = DOKŁADNIE kontrakt opcji biegu (`model.ts::POLA_SCENARIUSZA_STABILNOSCI`,
  * lustro `enm/canonical_analysis.py::_POLA_SCENARIUSZA_STABILNOSCI_DYNAMICZNEJ`).
+ * Element objęty zwarciem i aparaty wyłączające wybiera się z listy elementów modelu
+ * po nazwie (karta #145) — projektant nie wpisuje referencji.
  * Wartości startują PUSTE — zero liczb podpowiadanych jako „typowe". Walidacja
  * zakresów ograniczona do tego, co backend faktycznie sprawdza (pole wymagane,
  * `clearing_time_ms`/`recovery_time_constant_s` > 0, lista niepusta) — zero
@@ -14,12 +16,17 @@
  * w przestrzeni Obliczenia, zero nowego kontraktu HTTP.
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
+import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useUruchomObliczenie } from '../../spaces/obliczenia/uruchomObliczenie';
 import {
   POLA_SCENARIUSZA_STABILNOSCI,
+  opcjeAparatowWylaczajacych,
+  opcjeElementuZwarcia,
+  przelaczAparat,
   pusteWartosciScenariusza,
+  referencjeAparatow,
   walidujFormularzScenariusza,
   zbudujOpcjeScenariusza,
   type WartosciFormularzaScenariusza,
@@ -30,6 +37,11 @@ export function FormularzScenariusza() {
   const [wartosci, setWartosci] = useState<WartosciFormularzaScenariusza>(
     pusteWartosciScenariusza(),
   );
+  // Elementy i aparaty z migawki modelu — projektant wybiera je po nazwie ze schematu;
+  // referencja modelu jest wyłącznie wartością opcji (karta #145).
+  const snapshot = useSnapshotStore((stan) => stan.snapshot);
+  const elementy = useMemo(() => opcjeElementuZwarcia(snapshot), [snapshot]);
+  const aparaty = useMemo(() => opcjeAparatowWylaczajacych(snapshot), [snapshot]);
   const [bledy, setBledy] = useState<Record<string, string>>({});
   const { uruchom, wToku } = useUruchomObliczenie();
 
@@ -60,20 +72,71 @@ export function FormularzScenariusza() {
           const blad = bledy[pole.klucz];
           return (
             <div className="mvd-stabilnosc-formularz-pole" key={pole.klucz}>
-              <label htmlFor={idPola}>
-                {pole.etykieta}
-                {pole.jednostka !== undefined && ` [${pole.jednostka}]`}
-              </label>
-              <input
-                id={idPola}
-                data-testid={idPola}
-                type="text"
-                inputMode={pole.typ === 'liczba' ? 'decimal' : 'text'}
-                value={wartosci[pole.klucz] ?? ''}
-                onChange={(event) => zmienPole(pole.klucz, event.target.value)}
-                aria-invalid={blad !== undefined}
-                aria-describedby={blad !== undefined ? `${idPola}-blad` : undefined}
-              />
+              {pole.typ === 'aparaty' ? (
+                <fieldset
+                  className="mvd-stabilnosc-formularz-aparaty"
+                  id={idPola}
+                  data-testid={idPola}
+                  aria-invalid={blad !== undefined}
+                  aria-describedby={blad !== undefined ? `${idPola}-blad` : undefined}
+                >
+                  <legend>{pole.etykieta}</legend>
+                  {aparaty.length === 0 ? (
+                    <span className="mvd-stabilnosc-nota">{T.poleBrakAparatow}</span>
+                  ) : (
+                    aparaty.map((aparat) => (
+                      <label key={aparat.ref} className="mvd-stabilnosc-formularz-aparat">
+                        <input
+                          type="checkbox"
+                          data-testid={`${idPola}-${aparat.ref}`}
+                          checked={referencjeAparatow(wartosci[pole.klucz]).includes(aparat.ref)}
+                          onChange={() =>
+                            zmienPole(pole.klucz, przelaczAparat(wartosci[pole.klucz], aparat.ref))
+                          }
+                        />
+                        {aparat.nazwa} ({aparat.rodzaj})
+                      </label>
+                    ))
+                  )}
+                </fieldset>
+              ) : (
+                <>
+                  <label htmlFor={idPola}>
+                    {pole.etykieta}
+                    {pole.jednostka !== undefined && ` [${pole.jednostka}]`}
+                  </label>
+                  {pole.typ === 'element' ? (
+                    <select
+                      id={idPola}
+                      data-testid={idPola}
+                      value={wartosci[pole.klucz] ?? ''}
+                      onChange={(event) => zmienPole(pole.klucz, event.target.value)}
+                      aria-invalid={blad !== undefined}
+                      aria-describedby={blad !== undefined ? `${idPola}-blad` : undefined}
+                    >
+                      <option value="">
+                        {elementy.length === 0 ? T.poleBrakElementow : T.poleElementWybierz}
+                      </option>
+                      {elementy.map((element) => (
+                        <option key={element.ref} value={element.ref}>
+                          {element.nazwa} ({element.rodzaj})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id={idPola}
+                      data-testid={idPola}
+                      type="text"
+                      inputMode="decimal"
+                      value={wartosci[pole.klucz] ?? ''}
+                      onChange={(event) => zmienPole(pole.klucz, event.target.value)}
+                      aria-invalid={blad !== undefined}
+                      aria-describedby={blad !== undefined ? `${idPola}-blad` : undefined}
+                    />
+                  )}
+                </>
+              )}
               {blad !== undefined && (
                 <span
                   className="mvd-stabilnosc-formularz-blad"

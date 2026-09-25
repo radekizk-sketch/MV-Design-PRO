@@ -59,8 +59,7 @@ export const ZBIEZNOSC_STRINGS = {
   // Regulacja zaczepów (OLTC) — ślad pętli regulacyjnej przebiegu.
   oltcTytul: 'Regulacja zaczepów w przebiegu (OLTC)',
   oltcOpis: 'Pozycje zaczepów wyznaczone przez pętlę automatycznej regulacji solvera '
-    + '(ślad pełnej jawności obliczeń przebiegu). Identyfikatory gałęzi transformatorów są '
-    + 'oznaczeniami technicznymi modelu.',
+    + '(ślad pełnej jawności obliczeń przebiegu).',
   oltcKolTransformator: 'Gałąź transformatora',
   oltcKolStrona: 'Strona regulowana',
   oltcKolSzynaKontrolowana: 'Szyna kontrolowana',

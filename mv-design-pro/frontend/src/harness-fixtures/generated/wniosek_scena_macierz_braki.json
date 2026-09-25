@@ -87,7 +87,7 @@
                 "wartosc": 1.0,
                 "jednostka": "1"
               },
-              "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "chwila_s": null,
               "metoda": "CERTYFIKAT"
             },
@@ -95,7 +95,7 @@
             "margines": {
               "wartosc": null,
               "definicja_latex": null,
-              "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "skala": null,
               "skala_rodzaj": null,
               "wzgledny": null,
@@ -116,7 +116,7 @@
               "semantyka": "pozytywna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 1 lit. a (tabela 2) „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 1 lit. a (tabela 2) „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
               "przyczyna_pl": null,
               "czego_brakuje": [],
               "zastrzezenia": [
@@ -133,7 +133,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -172,7 +172,7 @@
           "semantyka": "ostrzegawcza"
         },
         "wyjasnienie": {
-          "zdanie_pl": "Praca w zakresach częstotliwości przez wymagany czas (art. 13 ust. 1 lit. a (tabela 2) „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
+          "zdanie_pl": "Praca w zakresach częstotliwości przez wymagany czas (art. 13 ust. 1 lit. a (tabela 2) „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
           "przyczyna_pl": "dowód niepełny: Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1)).",
           "czego_brakuje": [
             "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
@@ -192,7 +192,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -302,7 +302,7 @@
                 "wartosc": 1.0,
                 "jednostka": "1"
               },
-              "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "chwila_s": null,
               "metoda": "CERTYFIKAT"
             },
@@ -310,7 +310,7 @@
             "margines": {
               "wartosc": null,
               "definicja_latex": null,
-              "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "skala": null,
               "skala_rodzaj": null,
               "wzgledny": null,
@@ -331,7 +331,7 @@
               "semantyka": "pozytywna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 1 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 1 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
               "przyczyna_pl": null,
               "czego_brakuje": [],
               "zastrzezenia": [
@@ -348,7 +348,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -427,12 +427,12 @@
               "semantyka": "neutralna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
-              "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21)))",
+              "zdanie_pl": "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21)))",
               "czego_brakuje": [
                 "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
                 "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
-                "nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s)",
+                "nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF)",
                 "wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))"
               ],
               "zastrzezenia": [
@@ -450,7 +450,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -491,12 +491,12 @@
           "semantyka": "neutralna"
         },
         "wyjasnienie": {
-          "zdanie_pl": "Odporność na szybkość zmian częstotliwości (RoCoF) (art. 13 ust. 1 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — ocena niewykonana. Kryteria nieocenione: Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))).",
-          "przyczyna_pl": "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21)))",
+          "zdanie_pl": "Odporność na szybkość zmian częstotliwości (RoCoF) (art. 13 ust. 1 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — ocena niewykonana. Kryteria nieocenione: Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))).",
+          "przyczyna_pl": "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21)))",
           "czego_brakuje": [
             "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
             "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
-            "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s)",
+            "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF)",
             "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))",
             "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
           ],
@@ -517,7 +517,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -635,7 +635,7 @@
                 "wartosc": 1.0,
                 "jednostka": "1"
               },
-              "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "chwila_s": null,
               "metoda": "CERTYFIKAT"
             },
@@ -643,7 +643,7 @@
             "margines": {
               "wartosc": null,
               "definicja_latex": null,
-              "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "skala": null,
               "skala_rodzaj": null,
               "wzgledny": null,
@@ -664,7 +664,7 @@
               "semantyka": "pozytywna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
               "przyczyna_pl": null,
               "czego_brakuje": [],
               "zastrzezenia": [
@@ -681,7 +681,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -720,7 +720,7 @@
           "semantyka": "ostrzegawcza"
         },
         "wyjasnienie": {
-          "zdanie_pl": "LFSM-O — ograniczanie mocy czynnej przy nadczęstotliwości (art. 13 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, deklaracja, pomiar, ocena operatora albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
+          "zdanie_pl": "LFSM-O — ograniczanie mocy czynnej przy nadczęstotliwości (art. 13 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, deklaracja, pomiar, ocena operatora albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
           "przyczyna_pl": "dowód niepełny: Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1)).",
           "czego_brakuje": [
             "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
@@ -740,7 +740,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -850,7 +850,7 @@
                 "wartosc": 1.0,
                 "jednostka": "1"
               },
-              "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "chwila_s": null,
               "metoda": "CERTYFIKAT"
             },
@@ -858,7 +858,7 @@
             "margines": {
               "wartosc": null,
               "definicja_latex": null,
-              "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "skala": null,
               "skala_rodzaj": null,
               "wzgledny": null,
@@ -879,7 +879,7 @@
               "semantyka": "pozytywna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
               "przyczyna_pl": null,
               "czego_brakuje": [],
               "zastrzezenia": [
@@ -896,7 +896,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -935,7 +935,7 @@
           "semantyka": "ostrzegawcza"
         },
         "wyjasnienie": {
-          "zdanie_pl": "Utrzymanie zadanej mocy czynnej niezależnie od zmian częstotliwości (art. 13 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
+          "zdanie_pl": "Utrzymanie zadanej mocy czynnej niezależnie od zmian częstotliwości (art. 13 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
           "przyczyna_pl": "dowód niepełny: Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1)).",
           "czego_brakuje": [
             "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
@@ -955,7 +955,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -1065,7 +1065,7 @@
                 "wartosc": 1.0,
                 "jednostka": "1"
               },
-              "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "chwila_s": null,
               "metoda": "CERTYFIKAT"
             },
@@ -1073,7 +1073,7 @@
             "margines": {
               "wartosc": null,
               "definicja_latex": null,
-              "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "skala": null,
               "skala_rodzaj": null,
               "wzgledny": null,
@@ -1094,7 +1094,7 @@
               "semantyka": "pozytywna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 4 i ust. 5 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 4 i ust. 5 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
               "przyczyna_pl": null,
               "czego_brakuje": [],
               "zastrzezenia": [
@@ -1111,7 +1111,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -1150,7 +1150,7 @@
           "semantyka": "ostrzegawcza"
         },
         "wyjasnienie": {
-          "zdanie_pl": "Dopuszczalne obniżenie mocy czynnej przy spadku częstotliwości (art. 13 ust. 4 i ust. 5 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
+          "zdanie_pl": "Dopuszczalne obniżenie mocy czynnej przy spadku częstotliwości (art. 13 ust. 4 i ust. 5 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
           "przyczyna_pl": "dowód niepełny: Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1)).",
           "czego_brakuje": [
             "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
@@ -1170,7 +1170,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -1280,7 +1280,7 @@
                 "wartosc": 1.0,
                 "jednostka": "1"
               },
-              "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "chwila_s": null,
               "metoda": "CERTYFIKAT"
             },
@@ -1288,7 +1288,7 @@
             "margines": {
               "wartosc": null,
               "definicja_latex": null,
-              "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "skala": null,
               "skala_rodzaj": null,
               "wzgledny": null,
@@ -1309,7 +1309,7 @@
               "semantyka": "pozytywna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 7 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 7 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
               "przyczyna_pl": null,
               "czego_brakuje": [],
               "zastrzezenia": [
@@ -1326,7 +1326,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -1365,7 +1365,7 @@
           "semantyka": "ostrzegawcza"
         },
         "wyjasnienie": {
-          "zdanie_pl": "Warunki automatycznego przyłączenia do sieci (art. 13 ust. 7 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
+          "zdanie_pl": "Warunki automatycznego przyłączenia do sieci (art. 13 ust. 7 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
           "przyczyna_pl": "dowód niepełny: Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1)).",
           "czego_brakuje": [
             "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
@@ -1385,7 +1385,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -1495,7 +1495,7 @@
                 "wartosc": 1.0,
                 "jednostka": "1"
               },
-              "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "chwila_s": null,
               "metoda": "CERTYFIKAT"
             },
@@ -1503,7 +1503,7 @@
             "margines": {
               "wartosc": null,
               "definicja_latex": null,
-              "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+              "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
               "skala": null,
               "skala_rodzaj": null,
               "wzgledny": null,
@@ -1524,7 +1524,7 @@
               "semantyka": "pozytywna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+              "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
               "przyczyna_pl": null,
               "czego_brakuje": [],
               "zastrzezenia": [
@@ -1541,7 +1541,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -1580,7 +1580,7 @@
           "semantyka": "ostrzegawcza"
         },
         "wyjasnienie": {
-          "zdanie_pl": "Zmniejszenie mocy czynnej na polecenie (port wejściowy) (art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, deklaracja, pomiar, ocena operatora albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
+          "zdanie_pl": "Zmniejszenie mocy czynnej na polecenie (port wejściowy) (art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, deklaracja, pomiar, ocena operatora albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
           "przyczyna_pl": "dowód niepełny: Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1)).",
           "czego_brakuje": [
             "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
@@ -1600,7 +1600,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+          "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -1746,7 +1746,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -1917,7 +1917,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -1993,7 +1993,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+          "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -2101,7 +2101,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+          "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -2273,7 +2273,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -2347,7 +2347,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+          "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -2513,7 +2513,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -2595,7 +2595,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+          "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -2761,7 +2761,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -2839,7 +2839,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+          "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -2995,7 +2995,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -3077,7 +3077,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+          "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -3115,37 +3115,37 @@
     {
       "der_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
       "der_name": "Instalacja PV 1,9 MW",
-      "zdanie_pl": "Praca w zakresach częstotliwości przez wymagany czas (art. 13 ust. 1 lit. a (tabela 2) „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2."
+      "zdanie_pl": "Praca w zakresach częstotliwości przez wymagany czas (art. 13 ust. 1 lit. a (tabela 2) „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2."
     },
     {
       "der_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
       "der_name": "Instalacja PV 1,9 MW",
-      "zdanie_pl": "Odporność na szybkość zmian częstotliwości (RoCoF) (art. 13 ust. 1 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — ocena niewykonana. Kryteria nieocenione: Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21)))."
+      "zdanie_pl": "Odporność na szybkość zmian częstotliwości (RoCoF) (art. 13 ust. 1 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — ocena niewykonana. Kryteria nieocenione: Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21)))."
     },
     {
       "der_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
       "der_name": "Instalacja PV 1,9 MW",
-      "zdanie_pl": "LFSM-O — ograniczanie mocy czynnej przy nadczęstotliwości (art. 13 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, deklaracja, pomiar, ocena operatora albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2."
+      "zdanie_pl": "LFSM-O — ograniczanie mocy czynnej przy nadczęstotliwości (art. 13 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, deklaracja, pomiar, ocena operatora albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2."
     },
     {
       "der_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
       "der_name": "Instalacja PV 1,9 MW",
-      "zdanie_pl": "Utrzymanie zadanej mocy czynnej niezależnie od zmian częstotliwości (art. 13 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2."
+      "zdanie_pl": "Utrzymanie zadanej mocy czynnej niezależnie od zmian częstotliwości (art. 13 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2."
     },
     {
       "der_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
       "der_name": "Instalacja PV 1,9 MW",
-      "zdanie_pl": "Dopuszczalne obniżenie mocy czynnej przy spadku częstotliwości (art. 13 ust. 4 i ust. 5 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2."
+      "zdanie_pl": "Dopuszczalne obniżenie mocy czynnej przy spadku częstotliwości (art. 13 ust. 4 i ust. 5 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2."
     },
     {
       "der_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
       "der_name": "Instalacja PV 1,9 MW",
-      "zdanie_pl": "Warunki automatycznego przyłączenia do sieci (art. 13 ust. 7 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2."
+      "zdanie_pl": "Warunki automatycznego przyłączenia do sieci (art. 13 ust. 7 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2."
     },
     {
       "der_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
       "der_name": "Instalacja PV 1,9 MW",
-      "zdanie_pl": "Zmniejszenie mocy czynnej na polecenie (port wejściowy) (art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, deklaracja, pomiar, ocena operatora albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2."
+      "zdanie_pl": "Zmniejszenie mocy czynnej na polecenie (port wejściowy) (art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, deklaracja, pomiar, ocena operatora albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2."
     },
     {
       "der_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",

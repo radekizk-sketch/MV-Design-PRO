@@ -116,9 +116,11 @@ describe('TabelaGalezi — konkretyzacja wzorca na realnym kształcie danych', (
 
   it('identyfikator przebiegu tylko w trybie eksperckim (§2.7)', () => {
     const { rerender } = render(<TabelaGalezi {...props({ trybZaawansowania: 'basic' })} />);
-    expect(screen.queryByTestId('mvd-wyn-run-id')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-wyn-informacje-audytowe')).not.toBeInTheDocument();
     rerender(<TabelaGalezi {...props({ trybZaawansowania: 'expert' })} />);
-    expect(screen.getByTestId('mvd-wyn-run-id')).toHaveTextContent('pf-run-1');
+    // Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych" (zwinięte).
+    fireEvent.click(screen.getByTestId('mvd-wyn-informacje-audytowe-przelacz'));
+    expect(screen.getByTestId('mvd-wyn-informacje-audytowe-lista')).toHaveTextContent('pf-run-1');
   });
 
   it('onEksport przekazany do stopki wzorca', () => {

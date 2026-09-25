@@ -259,8 +259,8 @@ describe('KreatorStudium — krok 4 (przegląd)', () => {
     expect(await screen.findByTestId('mvd-studium-szczegol')).toBeInTheDocument();
   });
 
-  it('identyfikator węzła odsłaniany wyłącznie w trybie eksperckim', async () => {
+  it('identyfikator węzła nie jest kolumną tabeli przeglądu w żadnym trybie (karta #145)', async () => {
     await przeprowadzIWejdzDoPrzegladu('expert');
-    expect(screen.getByTestId('mvd-wyn-th-identyfikator')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-wyn-th-identyfikator')).not.toBeInTheDocument();
   });
 });

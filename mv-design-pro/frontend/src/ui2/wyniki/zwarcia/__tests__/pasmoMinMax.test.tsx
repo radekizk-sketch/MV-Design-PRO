@@ -8,7 +8,7 @@
  * klik → nowy bieg → pasmo się domyka jest przedmiotem e2e (realny backend).
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 
 import type { PasmoZwarciaOdpowiedz, StronaPasmaOdpowiedz } from '../api';
 import { PasmoMinMax } from '../PasmoMinMax';
@@ -85,6 +85,22 @@ describe('PasmoMinMax — stany kontenera (runId / wczytywanie / błąd)', () =>
 });
 
 describe('PasmoMinMax — obie strony dostępne', () => {
+  it('tryb ekspercki: identyfikator biegu zapisanego i biegu kotwicy strony policzonej w „Informacjach audytowych"', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(odpowiedzFetch(pasmoFixture())));
+    render(<PasmoMinMax runId="run-max-1" trybZaawansowania="expert" onOtworzDowod={() => undefined} />);
+    await screen.findByTestId('mvd-zwarcia-pasmo-strony');
+    // Strona zapisana — jej własny identyfikator biegu.
+    fireEvent.click(screen.getByTestId('mvd-zwarcia-pasmo-max-informacje-audytowe-przelacz'));
+    const audytMax = screen.getByTestId('mvd-zwarcia-pasmo-max-informacje-audytowe-lista');
+    expect(audytMax).toHaveTextContent(ZWARCIA_STRINGS.pasmoIdentyfikatorBiegu);
+    expect(audytMax).toHaveTextContent('run-max-1');
+    // Strona policzona na żądanie NIE udaje własnego biegu — nazwany jest bieg kotwicy.
+    fireEvent.click(screen.getByTestId('mvd-zwarcia-pasmo-min-informacje-audytowe-przelacz'));
+    const audytMin = screen.getByTestId('mvd-zwarcia-pasmo-min-informacje-audytowe-lista');
+    expect(audytMin).toHaveTextContent(ZWARCIA_STRINGS.pasmoIdentyfikatorKotwicy);
+    expect(audytMin).toHaveTextContent('run-max-1');
+  });
+
   it('tabela pokazuje wartości MAX i MIN obok siebie dla tego samego punktu, z proweniencją obu stron', async () => {
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(odpowiedzFetch(pasmoFixture())));
     render(<PasmoMinMax runId="run-max-1" trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
@@ -94,13 +110,15 @@ describe('PasmoMinMax — obie strony dostępne', () => {
     expect(screen.getByText('12,345')).toBeInTheDocument();
     expect(screen.getByText('6,111')).toBeInTheDocument();
 
-    // Proweniencja: strona zapisana niesie identyfikator biegu; strona policzona
-    // na żądanie NIE udaje niezależnego run_id (dzieli id z kotwicą po stronie
-    // backendu — front NIGDY go nie pokazuje jako jej własny).
+    // Proweniencja słowami (karta #145): identyfikator biegu NIE stoi na pierwszym
+    // planie — trafia do „Informacji audytowych" trybu eksperckiego (test niżej).
     const blokMax = screen.getByTestId('mvd-zwarcia-pasmo-max');
-    expect(within(blokMax).getByText(ZWARCIA_STRINGS.pasmoProwenencjaZapisany('run-max-1'), { exact: false })).toBeInTheDocument();
+    expect(within(blokMax).getByText(ZWARCIA_STRINGS.pasmoProwenencjaZapisany, { exact: false })).toBeInTheDocument();
+    expect(blokMax).not.toHaveTextContent('run-max-1');
     const blokMin = screen.getByTestId('mvd-zwarcia-pasmo-min');
-    expect(within(blokMin).getByText(ZWARCIA_STRINGS.pasmoProwenencjaObliczony('run-max-1'), { exact: false })).toBeInTheDocument();
+    expect(within(blokMin).getByText(ZWARCIA_STRINGS.pasmoProwenencjaObliczony, { exact: false })).toBeInTheDocument();
+    expect(blokMin).not.toHaveTextContent('run-max-1');
+    expect(screen.queryByTestId('mvd-zwarcia-pasmo-max-informacje-audytowe')).toBeNull();
 
     // Brak akcji "Uruchom" gdy obie strony są dostępne.
     expect(screen.queryByTestId('mvd-zwarcia-pasmo-max-akcja')).not.toBeInTheDocument();

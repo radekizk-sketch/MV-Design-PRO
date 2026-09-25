@@ -75,6 +75,7 @@ POZYCJA_CZEGO_BRAKUJE = "Czego brakuje"
 POZYCJA_ZASTRZEZENIA = "Zastrzeżenia"
 POZYCJA_PODSTAWA = "Podstawa"
 POZYCJA_DOWOD = "Dowód"
+POZYCJA_ODNIESIENIE_DOWODU = "Odniesienie do dowodu"
 POZYCJA_KOMPLETNOSC = "Kompletność dowodu"
 POZYCJA_POWOD_NIEPELNOSCI = "Powód niepełności"
 POZYCJA_STATUS_MODELU = "Walidacja modelu urządzenia"
@@ -82,7 +83,15 @@ POZYCJA_STATUS_DANYCH = "Stan danych wejściowych"
 POZYCJA_DANA_PRZYJETA = "Dana przyjęta"
 POZYCJA_ZAKRES = "Zakres ważności"
 POZYCJA_SLAD = "Ślad"
+POZYCJA_BIEG_SLADU = "Bieg śladu"
 POZYCJA_KRYTERIUM_SKLADOWE = "Kryterium składowe"
+
+#: Pozycje AUDYTOWE bloku (karta #145): identyfikatory i odciski biegów, rekordów i wersji
+#: silnika. Dokument formalny (§10: „Dowód (metoda, odniesienie do biegu/certyfikatu)")
+#: niesie je jako osobne pozycje, a ekran pokazuje je wyłącznie w „Informacjach
+#: audytowych" — treść pozycji merytorycznych („Dowód", „Ślad") nie niesie identyfikatora.
+#: Lustro na froncie: `ui2/oze/ncrfg/typy.ts::POZYCJE_AUDYTOWE_BLOKU` (parytet testem).
+POZYCJE_AUDYTOWE: tuple[str, ...] = (POZYCJA_ODNIESIENIE_DOWODU, POZYCJA_BIEG_SLADU)
 
 _SYMBOL_RELACJI: dict[Relacja, str] = {"NIE_WIECEJ": "≤", "NIE_MNIEJ": "≥"}
 #: Postać limitu wg relacji kryterium W TEKŚCIE bloku — lustro karty werdyktu
@@ -250,7 +259,6 @@ def _dowod(dowod: StatusDowodu, przydatnosc: bool) -> str:
     domena = _domena(dowod)
     if domena is not None:
         czesci.append(domena)
-    czesci.append(f"odniesienie: {dowod.odniesienie if dowod.odniesienie is not None else 'brak'}")
     return "; ".join(czesci)
 
 
@@ -288,13 +296,18 @@ def _zakres(zakres: ZakresWaznosci) -> str:
     return "; ".join(czesci)
 
 
-def _slad(odnosnik: OdnosnikSladu) -> str:
-    tresc = f"{odnosnik.krok}: {odnosnik.opis_pl}"
+def _pozycje_sladu(odnosnik: OdnosnikSladu) -> list[PozycjaBloku]:
+    """Krok śladu (pozycja merytoryczna) i — gdy są — bieg i wersja silnika (pozycja
+    audytowa, osobno: identyfikator biegu nie stoi w treści kroku)."""
+    pozycje = [_pozycja(POZYCJA_SLAD, f"{odnosnik.krok}: {odnosnik.opis_pl}")]
+    audyt = []
     if odnosnik.run_id is not None:
-        tresc += f"; bieg {odnosnik.run_id}"
+        audyt.append(f"bieg {odnosnik.run_id}")
     if odnosnik.wersja_silnika is not None:
-        tresc += f"; wersja silnika {odnosnik.wersja_silnika}"
-    return tresc
+        audyt.append(f"wersja silnika {odnosnik.wersja_silnika}")
+    if audyt:
+        pozycje.append(_pozycja(POZYCJA_BIEG_SLADU, "; ".join(audyt)))
+    return pozycje
 
 
 def _pozycje_wspolne(
@@ -320,6 +333,10 @@ def _pozycje_dowodu(
 ) -> list[PozycjaBloku]:
     pozycje = [
         _pozycja(POZYCJA_DOWOD, _dowod(dowod, przydatnosc)),
+        _pozycja(
+            POZYCJA_ODNIESIENIE_DOWODU,
+            dowod.odniesienie if dowod.odniesienie is not None else "brak",
+        ),
         _pozycja(POZYCJA_KOMPLETNOSC, nazwa_kompletnosci(kompletnosc)),
     ]
     pozycje.extend(_pozycja(POZYCJA_POWOD_NIEPELNOSCI, powod) for powod in powody)
@@ -382,7 +399,8 @@ def blok_kryterium(rekord: OcenaKryterium) -> list[PozycjaBloku]:
         )
     )
     pozycje.append(_pozycja(POZYCJA_ZAKRES, _zakres(rekord.zakres_waznosci)))
-    pozycje.extend(_pozycja(POZYCJA_SLAD, _slad(odnosnik)) for odnosnik in rekord.slad)
+    for odnosnik in rekord.slad:
+        pozycje.extend(_pozycje_sladu(odnosnik))
     return pozycje
 
 
@@ -452,7 +470,8 @@ def blok_wymagania(rekord: WynikWymagania) -> list[PozycjaBloku]:
         )
     )
     pozycje.append(_pozycja(POZYCJA_ZAKRES, _zakres(rekord.zakres_waznosci)))
-    pozycje.extend(_pozycja(POZYCJA_SLAD, _slad(odnosnik)) for odnosnik in rekord.slad)
+    for odnosnik in rekord.slad:
+        pozycje.extend(_pozycje_sladu(odnosnik))
     for ocena in rekord.oceny_skladowe:
         pozycje.append(_pozycja(POZYCJA_KRYTERIUM_SKLADOWE, nazwa_skladowej(ocena)))
         pozycje.extend(blok_kryterium(ocena))

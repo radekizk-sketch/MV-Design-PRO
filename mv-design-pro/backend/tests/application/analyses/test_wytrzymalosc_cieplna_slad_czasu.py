@@ -237,8 +237,10 @@ def test_brak_pola_wyniku_zwarciowego_podnosi_wyjatek_nie_fabrykuje_zera() -> No
         del wiersz["ikss_a"]
 
     zmutowany = _z_wierszem_wyniku(run, _usun_ikss)
-    with pytest.raises(ValueError, match="ikss_a"):
+    # Karta #145: odmowa nazywa brakującą WIELKOŚĆ po polsku (nie klucz zapisu `ikss_a`).
+    with pytest.raises(ValueError, match="prąd zwarciowy początkowy I″k") as odmowa:
         build_wytrzymalosc_cieplna_view(zmutowany)
+    assert "ikss_a" not in str(odmowa.value)
 
 
 def test_brak_i_contrib_a_pomija_wklad_galeziowy_nie_fabrykuje_zera(caplog) -> None:

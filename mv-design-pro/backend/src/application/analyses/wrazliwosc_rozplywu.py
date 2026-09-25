@@ -47,6 +47,7 @@ from analysis.sensitivity.builder import SensitivityBuilder
 from analysis.voltage_profile.builder import VoltageProfileBuilder
 from analysis.voltage_profile.models import VoltageProfileContext, VoltageProfileView
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 
 # Jedno źródło odtwarzania wyniku FROZEN i grafu ze snapshotu przebiegu
 # (KLASA-NIE-INSTANCJA: druga kopia mapowania byłaby defektem oczekującym
@@ -73,11 +74,11 @@ def _wymagaj_biegu_rozplywu(run: CanonicalRun) -> None:
     if run.analysis_type != "PF":
         raise ValueError(
             "Analiza wrażliwości wymaga przebiegu rozpływu mocy; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
 

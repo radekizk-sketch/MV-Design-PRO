@@ -146,13 +146,13 @@ def _dane_klasyfikacji(modul: NcRfgPtpireeModuleInput) -> list[DanaPrzyjeta]:
     """Dane żądania klienta, z których wyznaczono klasę i stosowalność (te same co w testach)."""
     return [
         DanaPrzyjeta(
-            nazwa_pl="moc maksymalna modułu (p_max_kw)",
+            nazwa_pl="moc maksymalna modułu",
             wartosc=Wielkosc(wartosc=modul.p_max_kw, jednostka="kW"),
             powod_pl=_POWOD_DANEJ_KLIENTA,
             jakosc=None,
         ),
         DanaPrzyjeta(
-            nazwa_pl="napięcie przyłączenia modułu (voltage_kv)",
+            nazwa_pl="napięcie przyłączenia modułu",
             wartosc=Wielkosc(wartosc=modul.voltage_kv, jednostka="kV"),
             powod_pl=_POWOD_DANEJ_KLIENTA,
             jakosc=None,
@@ -257,7 +257,7 @@ class _OcenaModulu:
                     wartosc=float(dowod.pokrywa(self.klasyfikacja.modul)), jednostka="1"
                 ),
                 punkt_krytyczny_pl=(
-                    f"rekord wykazu: {dowod.producent} {dowod.model}, "
+                    f"rekord wykazu PTPiREE: {dowod.producent} {dowod.model}, "
                     f"dokument {dowod.numer_dokumentu}, zakres typów "
                     f"{', '.join(dowod.zakres_typow) or 'pusty'}, WiPWC {dowod.wersja_wipwc}"
                 ),
@@ -271,7 +271,7 @@ class _OcenaModulu:
                 rodzaj_twierdzenia=rodzaj_twierdzenia_wymagania(wymaganie),
                 status_modelu="NIE_DOTYCZY",
                 status_danych=_status_danych(dane),
-                odniesienie=f"dokument {dowod.numer_dokumentu} (rekord wykazu {dowod.rekord_id})",
+                odniesienie=f"dokument {dowod.numer_dokumentu} (wykaz certyfikowanych urządzeń PTPiREE)",
             ),
             zakres_waznosci=self._zakres(
                 "certyfikat urządzenia z wykazu PTPiREE — zakres typów modułów rekordu wykazu",
@@ -303,8 +303,8 @@ class _OcenaModulu:
         dane: list[DanaPrzyjeta] = []
         if nastawy is None or nastawy.u_min_pu is None or nastawy.u_min_czas_s is None:
             braki.append(
-                "nastawa zabezpieczenia podnapięciowego U< i jej czas zadziałania w modelu (pole "
-                "nastawy_zabezpieczen: u_min_pu, u_min_czas_s)"
+                "nastawa zabezpieczenia podnapięciowego U< i jej czas zadziałania w modelu "
+                "(karta źródła, nastawy zabezpieczeń modułu: próg U< i czas zadziałania)"
             )
         else:
             chwila = min(nastawy.u_min_czas_s, koniec)
@@ -327,11 +327,11 @@ class _OcenaModulu:
             )
             dane = [
                 *self._dana(
-                    "nastawa U< modułu (u_min_pu)",
+                    "nastawa U< modułu",
                     Wielkosc(wartosc=nastawy.u_min_pu, jednostka=_J_U),
                 ),
                 *self._dana(
-                    "czas nastawy U< modułu (u_min_czas_s)",
+                    "czas nastawy U< modułu",
                     Wielkosc(wartosc=nastawy.u_min_czas_s, jednostka="s"),
                 ),
             ]
@@ -393,8 +393,8 @@ class _OcenaModulu:
         braki: list[str] = []
         if nastawy is None or nastawy.rocof_hz_s is None:
             braki.append(
-                "nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: "
-                "rocof_hz_s)"
+                "nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy "
+                "zabezpieczeń modułu: próg RoCoF)"
             )
         else:
             wartosc = Wielkosc(wartosc=nastawy.rocof_hz_s, jednostka="Hz/s")
@@ -405,7 +405,7 @@ class _OcenaModulu:
                 punkt_krytyczny_pl=f"źródło nastaw: {nastawy.zrodlo_pl}",
                 metoda="DEKLARACJA",
             )
-            dane = self._dana("nastawa RoCoF modułu (rocof_hz_s)", wartosc)
+            dane = self._dana("nastawa RoCoF modułu", wartosc)
         braki.append(
             f"wytrzymałość RoCoF modułu ({wymaganie.zrodlo.jednostka_redakcyjna} "
             "rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej "
@@ -528,8 +528,8 @@ class _OcenaModulu:
             poziom = classify_dynamic_capability(_ZDOLNOSC_CERTYFIKATU).tier
             rodzaj = rodzaj_twierdzenia_wymagania(wymaganie)
             odniesienie = (
-                f"dokument {self.certyfikat.numer_dokumentu} (rekord wykazu "
-                f"{self.certyfikat.rekord_id})"
+                f"dokument {self.certyfikat.numer_dokumentu} (wykaz certyfikowanych urządzeń "
+                "PTPiREE)"
             )
         else:
             poziom = EvidenceTier.NOT_SIMULATED

@@ -113,7 +113,7 @@ import kompensacjaScenyWynik from './harness-fixtures/generated/kompensacja_scen
 import rozplywScenyWynik from './harness-fixtures/generated/rozplyw_scena_wynik.json';
 import walidacjaScenyWynik from './harness-fixtures/generated/walidacja_scena_wynik.json';
 import cieplnaScenyWynik from './harness-fixtures/generated/cieplna_scena_wynik.json';
-import cieplnaScenyDowod from './harness-fixtures/generated/cieplna_scena_dowod.json';
+import cieplnaScenyDowody from './harness-fixtures/generated/cieplna_scena_dowody.json';
 import arcflashScenyWynik from './harness-fixtures/generated/arcflash_scena_wynik.json';
 import przegladWiarygodnosciKatalogu from './harness-fixtures/generated/przeglad_wiarygodnosci_katalogu.json';
 // HARNESS-RESZTA-2 (2026-09-17): sceny "wyniki-skladowe" (E-29) i
@@ -167,6 +167,9 @@ import odbiorZgodnoscScenyZaciski from './harness-fixtures/generated/odbior_zgod
 // karcie przeksztaltnika i REALNYM profilu operatora NC RfG.
 import frtScenyTrajektorie from './harness-fixtures/generated/frt_scena_trajektorie.json';
 import frtScenySekwencja from './harness-fixtures/generated/frt_scena_sekwencja.json';
+// Karta #145: wpis rejestru biegu zwarciowego modelu sceny „frt" — TEN SAM bieg, z którego
+// backend policzył kontekst siły sieci sekwencji zapadów (szyna kontekstu jest w modelu sceny).
+import frtScenyPrzebiegZwarciowy from './harness-fixtures/generated/frt_scena_przebieg_zwarciowy.json';
 import lomScenyWynik from './harness-fixtures/generated/lom_scena_wynik.json';
 import odbiorScenyPradZnamionowy from './harness-fixtures/generated/odbior_scena_prad_znamionowy.json';
 // HARNESS-RESZTA-2: scena "akademickie" — REALNE biegi V12.6 na sieci zlotej
@@ -186,6 +189,12 @@ import sieckZlotaScenyMigawka from './harness-fixtures/generated/siec_zlota_scen
 import przebiegPfScenyZlotej from './harness-fixtures/generated/przebieg_pf_sceny_zlotej.json';
 import pulpitScenyMigawka from './harness-fixtures/generated/pulpit_scena_migawka.json';
 import pulpitScenyPrzebieg from './harness-fixtures/generated/pulpit_scena_przebieg.json';
+// Karta #145: migawki modeli, na których policzono wyniki scen „lom" i analiz OZE (most
+// nazw wyników nazywa obiekty z TEGO modelu), oraz odpowiedzi katalogu wartości
+// odniesienia V12.6 (`get_v126_catalog` — ta sama funkcja, którą woła końcówka).
+import lomScenyMigawka from './harness-fixtures/generated/lom_scena_migawka.json';
+import ozeAnalizScenyMigawka from './harness-fixtures/generated/oze_analiz_scena_migawka.json';
+import katalogiOdniesienV126 from './harness-fixtures/generated/katalogi_odniesien_v126.json';
 // HARNESS-RESZTA-2: scena „diagnoza" — REALNY raport silnika diagnostycznego
 // (blokada SC 1F z braku danych Z0) i REALNY bieg PF przerwany limitem iteracji.
 import diagnozaScenyDiagnostyka from './harness-fixtures/generated/diagnoza_scena_diagnostyka.json';
@@ -1052,6 +1061,12 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   // stan bez parametrów. Atrapa NIE liczy gotowości sama (częściowo wypełniony
   // formularz dostaje stan bazowy, nie „policzone na oko"): liczy ją wyłącznie backend.
   if (url.includes('/api/catalog/v126/analysis-catalog')) return jsonOK(katalogAnalizV126);
+  // Karta #145: katalogi wartości odniesienia kart analiz (panel „Dane odniesienia") —
+  // odpowiedzi końcówki policzone backendem; bez tej trasy panel pokazywał błąd atrapy.
+  const przestrzenOdniesien = /\/api\/catalog\/v126\/([a-z-]+)$/.exec(url.split('?')[0])?.[1];
+  if (przestrzenOdniesien !== undefined && przestrzenOdniesien in katalogiOdniesienV126) {
+    return jsonOK((katalogiOdniesienV126 as Record<string, unknown>)[przestrzenOdniesien]);
+  }
   if (url.includes('/v126/gotowosc')) {
     const kanonJson = (dane: unknown): string =>
       JSON.stringify(dane, (_klucz, wartosc: unknown) =>
@@ -1169,11 +1184,19 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     return originalFetch(input, init);
   }
   if (url.includes('/api/quality/conductor-thermal-withstand/proof')) {
-    // Karta HARNESS-RESZTA (kontynuacja): dowod cieplny GALEZI Z NAJWIEKSZYM
-    // pradem zwarciowym biegu kotwicy sceny "zwarcia" — REALNY bieg backendu
-    // (eksport_fixtur_harnessu.py::cieplna_scena_dowod, TA SAMA funkcja co
-    // koncowka `zbuduj_dowod_cieplny`), zero recznie wpisanych liczb fizycznych.
-    if (url.includes(`branch_id=${cieplnaScenyDowod.branch_id}`)) return jsonOK(cieplnaScenyDowod);
+    // Karta HARNESS-RESZTA (kontynuacja) + karta #145: dowód cieplny KAŻDEJ gałęzi
+    // oceny biegu kotwicy sceny "zwarcia" — REALNY bieg backendu
+    // (eksport_fixtur_harnessu.py::cieplna_scena_dowody, TA SAMA funkcja co
+    // końcówka `zbuduj_dowod_cieplny`), zero ręcznie wpisanych liczb fizycznych.
+    // Gałąź spoza oceny → 404 jak w końcówce, NIGDY odpowiedź oceny w miejscu dowodu
+    // (dawniej klik w inny wiersz niż jedna gałąź fikstury wywracał ekran).
+    const branchId = new URL(url, window.location.origin).searchParams.get('branch_id') ?? '';
+    const dowod = (cieplnaScenyDowody.dowody as Record<string, unknown>)[branchId];
+    if (dowod !== undefined) return jsonOK(dowod);
+    return new Response(JSON.stringify({ detail: 'Gałąź spoza oceny cieplnej przebiegu.' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
   if (url.includes('/api/quality/conductor-thermal-withstand')) {
     // Scena "cieplna": ocena per galaz — REALNY bieg backendu
@@ -1453,6 +1476,60 @@ useSnapshotStore.setState({
 
 const creator = new URLSearchParams(window.location.search).get('creator') ?? 'pole';
 
+/**
+ * Łączy kolekcje kilku migawek w jedną (listy sklejane, pola skalarne z pierwszej).
+ * Wyłącznie dla sceny „porownanie", która w JEDNYM oknie pokazuje porównanie biegów
+ * rozpływu sieci złotej i biegów zabezpieczeń modelu koordynacji — referencje obu
+ * modeli są rozłączne, więc most nazw nazywa obiekty obu trybów.
+ */
+function polaczMigawki(...migawki: readonly unknown[]): unknown {
+  const wynik: Record<string, unknown> = {};
+  migawki.forEach((migawka) => {
+    Object.entries(migawka as Record<string, unknown>).forEach(([klucz, wartosc]) => {
+      if (Array.isArray(wartosc)) {
+        wynik[klucz] = [...((wynik[klucz] as unknown[] | undefined) ?? []), ...wartosc];
+      } else if (!(klucz in wynik)) {
+        wynik[klucz] = wartosc;
+      }
+    });
+  });
+  return wynik;
+}
+
+/**
+ * Karta #145: migawka modelu, NA KTÓRYM policzono wyniki sceny. Most nazw wyników
+ * (`ui2/wyniki/wzorzec/useNazwaObiektu`) nazywa szyny, gałęzie i źródła z migawki —
+ * w produkcie wynik i model należą do jednego projektu, więc scena harnessu musi
+ * nieść TEN SAM model co bieg (wcześniej sceny wyników sieci złotej miały w
+ * magazynie model stacji demo i pokazywały etykiety zastępcze zamiast nazw).
+ * Rewizja bieżącego modelu (znaczniki świeżości) zostaje z zasiewu globalnego.
+ */
+const MIGAWKA_MODELU_SCENY: Readonly<Record<string, unknown>> = {
+  arcflash: sieckZlotaScenyMigawka,
+  uwaga: sieckZlotaScenyMigawka,
+  walidacja: sieckZlotaScenyMigawka,
+  rozplyw: sieckZlotaScenyMigawka,
+  zwarcia: sieckZlotaScenyMigawka,
+  'zwarcia-rozplyw': sieckZlotaScenyMigawka,
+  'odbior-zgodnosc': sieckZlotaScenyMigawka,
+  estymacja: sieckZlotaScenyMigawka,
+  'wyniki-stan-fazowy': sieckZlotaScenyMigawka,
+  'wyniki-stabilnosc': sieckZlotaScenyMigawka,
+  'wyniki-warsztat': sieckZlotaScenyMigawka,
+  'wyniki-skladowe': skladoweScenyMigawka,
+  oltc: zbieznoscScenyMigawka,
+  koordynacja: koordynacjaScenyMigawka,
+  'sila-sieci': ozeAnalizScenyMigawka,
+  migotanie: ozeAnalizScenyMigawka,
+  ssci: migawkaSieciZlotej(),
+  lom: lomScenyMigawka,
+  porownanie: polaczMigawki(sieckZlotaScenyMigawka, koordynacjaScenyMigawka),
+};
+const migawkaModeluSceny = MIGAWKA_MODELU_SCENY[creator];
+if (migawkaModeluSceny !== undefined) {
+  useSnapshotStore.setState({ snapshot: migawkaModeluSceny } as never);
+}
+
 
 if (creator === 'arcflash') {
   // Karta HARNESS-RESZTA (kontynuacja): identyfikator biegu z REALNEGO biegu
@@ -1725,14 +1802,12 @@ if (creator === 'arcflash') {
   // niesie model dynamiczny (`default_pv_gfl`) i profil LVRT operatora, bo oba
   // są zapisane w modelu operacją `set_der_catalog_bindings`.
   zasiejWytworcowZModelu(ozeScenyMigawka, 'proj-demo');
-  // HARNESS-RESZTA-2: kontekst siły sieci sceny „frt" bierze się z ZAKOŃCZONEGO
-  // biegu zwarciowego — tu REALNY bieg kotwicy analiz OZE backendu (ten sam,
-  // z którego policzono `sila_sieci_scena_wynik.json`), nie wymyślone 'run-sc-9'.
-  const runSc: ExecutionRun = {
-    id: silaSieciScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
-    started_at: '2026-07-22T09:15:00Z', finished_at: '2026-07-22T09:15:04Z',
-  } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [runSc] } as never);
+  // HARNESS-RESZTA-2 / karta #145: kontekst siły sieci sceny „frt" bierze się z
+  // ZAKOŃCZONEGO biegu zwarciowego TEGO SAMEGO modelu (pole wytwórcy) — wpis rejestru
+  // z fikstury (`frt_scena_przebieg_zwarciowy.json`), nie bieg innej sieci.
+  useExecutionRunsStore.setState({
+    runs: [frtScenyPrzebiegZwarciowy as unknown as ExecutionRun],
+  } as never);
 } else if (creator === 'macierz' || creator === 'pulpit-oze' || creator === 'wniosek-braki') {
   // Scena „macierz" (V-A): dwa moduły DER z modelu (kolejność `selectAllDers`
   // jest deterministyczna — sort po referencji) — gotowe do biegu NC RfG. Ten sam
@@ -1977,10 +2052,12 @@ if (creator === 'arcflash') {
   useSnapshotStore.setState({
     rewizjaBiezacegoModelu: 2,
     snapshot: {
-      ...stacjaDemoScenyMigawka,
+      // Karta #145: model sieci złotej — TEN SAM, na którym policzono ocenę cieplną
+      // (bieg kotwicy sceny „zwarcia"), żeby most nazw nazwał gałęzie wyniku.
+      ...sieckZlotaScenyMigawka,
       // K3-B3: scena „cieplna" jest CELOWO wariantem NIEAKTUALNYM znacznika
       // swiezosci — migawka rewizji 2 wobec wyniku rewizji 1.
-      header: { ...stacjaDemoScenyMigawka.header, revision: 2 },
+      header: { ...sieckZlotaScenyMigawka.header, revision: 2 },
     },
   } as never);
 } else {
@@ -2013,6 +2090,16 @@ if (creator === 'arcflash') {
     bus_voltage_kv: NAPIECIE_SZYNY_NN_STACJI_DEMO,
     station_label: NAZWA_STACJI_DEMO,
   });
+}
+
+// Karta #145: `setActiveProject` przy ZMIANIE projektu czyści magazyn migawki
+// (`useSnapshotStore.reset()`), a sceny „wyniki-zbieznosc", „koordynacja" i
+// „wyniki-stan-fazowy" ustawiają projekt PO zasiewie migawki modelu sceny — ekran
+// dostawał pustą migawkę i most nazw pokazywał referencje zamiast nazw z modelu
+// (w produkcie wynik i model należą do jednego, już aktywnego projektu). Migawka
+// modelu sceny wraca po łańcuchu zasiewów, gdy scena ją skasowała.
+if (migawkaModeluSceny !== undefined && useSnapshotStore.getState().snapshot === null) {
+  useSnapshotStore.setState({ snapshot: migawkaModeluSceny } as never);
 }
 
 /** Pasek przypadku ze znacznikiem świeżości (K4) — info z realnego hooka powłoki. */

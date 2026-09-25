@@ -39,6 +39,10 @@ import {
 } from './nastawyPrzypadku';
 import type { ProtectionConfig } from '../study-cases/api';
 import { notify } from '../notifications/store';
+import { useNazwaObiektu } from '../../ui2/wyniki/wzorzec/useNazwaObiektu';
+import { InformacjeAudytowe } from '../../ui2/wyniki/wzorzec/InformacjeAudytowe';
+import { useShellStore } from '../../ui2/shell/useShellStore';
+import { useSnapshotStore } from '../topology/snapshotStore';
 import { ProtectionSettingsEditor } from './ProtectionSettingsEditor';
 import {
   VerdictBadge,
@@ -91,36 +95,65 @@ interface PageState {
 
 interface ContextSelectorProps {
   projectId: string | null;
+  projectName: string | null;
   caseId: string | null;
+  caseName: string | null;
   snapshotId: string | null;
-  onProjectChange?: (id: string) => void;
-  onCaseChange?: (id: string | null) => void;
-  onSnapshotChange?: (id: string | null) => void;
 }
 
+/**
+ * Kontekst analizy (karta #145): na pierwszym planie NAZWY projektu i wariantu pracy
+ * oraz rewizja modelu — identyfikatory (projektu, wariantu, stanu modelu) wyłącznie
+ * w „Informacjach audytowych" trybu eksperckiego.
+ */
 function ContextSelector({
   projectId,
+  projectName,
   caseId,
+  caseName,
   snapshotId,
 }: ContextSelectorProps) {
   const labels = LABELS.context;
+  const rewizja = useSnapshotStore((stan) => stan.snapshot?.header?.revision ?? null);
+  const trybEkspercki = useShellStore((stan) => stan.advancementMode) === 'expert';
+  const stanModelu = snapshotId
+    ? rewizja !== null
+      ? labels.rewizjaModelu(rewizja)
+      : labels.stanModeluWczytany
+    : labels.selectSnapshot;
+  const audyt = [
+    ...(projectId ? [{ etykieta: labels.identyfikatorProjektu, wartosc: projectId }] : []),
+    ...(caseId ? [{ etykieta: labels.identyfikatorWariantu, wartosc: caseId }] : []),
+    ...(snapshotId ? [{ etykieta: labels.identyfikatorStanuModelu, wartosc: snapshotId }] : []),
+  ];
 
   return (
-    <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white px-4 py-2">
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-slate-500">{labels.project}:</span>
-        <span className="font-medium text-slate-900">{projectId || labels.noContext}</span>
+    <div className="rounded-lg border border-slate-200 bg-white px-4 py-2">
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-500">{labels.project}:</span>
+          <span className="font-medium text-slate-900">
+            {projectId ? projectName ?? labels.bezNazwy : labels.noContext}
+          </span>
+        </div>
+        <div className="h-4 w-px bg-slate-200" />
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-500">{labels.studyCase}:</span>
+          <span className="font-medium text-slate-900">
+            {caseId ? caseName ?? labels.bezNazwy : labels.selectCase}
+          </span>
+        </div>
+        <div className="h-4 w-px bg-slate-200" />
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-500">{labels.snapshot}:</span>
+          <span className="font-medium text-slate-900">{stanModelu}</span>
+        </div>
       </div>
-      <div className="h-4 w-px bg-slate-200" />
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-slate-500">{labels.studyCase}:</span>
-        <span className="font-medium text-slate-900">{caseId || labels.selectCase}</span>
-      </div>
-      <div className="h-4 w-px bg-slate-200" />
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-slate-500">{labels.snapshot}:</span>
-        <span className="font-medium text-slate-900">{snapshotId || labels.selectSnapshot}</span>
-      </div>
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="koordynacja-kontekst-informacje-audytowe"
+        wiersze={audyt}
+      />
     </div>
   );
 }
@@ -149,6 +182,9 @@ function DeviceListPanel({
   onShowTemplates,
 }: DeviceListPanelProps) {
   const labels = LABELS.devices;
+  // Karta #145: miejsce urządzenia nazwane mostem nazw wyników (nazwa z modelu), nie
+  // referencją elementu.
+  const nazwaObiektu = useNazwaObiektu();
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white">
@@ -219,7 +255,7 @@ function DeviceListPanel({
                         wiersz wyglądałby jak związany z elementem o pustej nazwie. */}
                     {device.location_element_id === ''
                       ? LABELS.validation.lokalizacjaNieWskazana
-                      : device.location_element_id}
+                      : nazwaObiektu(device.location_element_id)}
                   </p>
                 </button>
                 <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -454,6 +490,8 @@ export function ProtectionCoordinationPage() {
   const projectId = useAppStateStore((state) => state.activeProjectId);
   const caseId = useAppStateStore((state) => state.activeCaseId);
   const snapshotId = useAppStateStore((state) => state.activeSnapshotId);
+  const projectName = useAppStateStore((state) => state.activeProjectName);
+  const caseName = useAppStateStore((state) => state.activeCaseName);
 
   const [state, setState] = useState<PageState>({
     devices: [],
@@ -904,7 +942,9 @@ export function ProtectionCoordinationPage() {
         <div className="mb-6">
           <ContextSelector
             projectId={projectId}
+            projectName={projectName}
             caseId={caseId}
+            caseName={caseName}
             snapshotId={snapshotId}
           />
         </div>

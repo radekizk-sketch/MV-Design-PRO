@@ -77,6 +77,25 @@ export interface ModulZrodlaSily {
 }
 
 /** Wpis siły sieci per węzeł przyłączenia (szyna). */
+/** Kody braków danych węzła siły sieci (`analysis/grid_strength/builder.py`). */
+export type BrakDanychSily = 's_sc_mva' | 's_installed_mva';
+
+/** Kody braków danych adekwatności mocy biernej (`analysis/reactive_adequacy/builder.py`). */
+export type BrakDanychQ =
+  | 'power_flow_not_converged'
+  | 'bus_voltages'
+  | 'controllable_sources'
+  | 'q_actual_mvar'
+  | 'q_min_mvar'
+  | 'q_max_mvar'
+  | 'q_limits_inconsistent';
+
+/** Werdykty adekwatności mocy biernej (`analysis/reactive_adequacy/models.py`, `VERDICT_*`). */
+export type WerdyktAdekwatnosciQ =
+  | 'wystarczająca rezerwa Q'
+  | 'rezerwa Q wyczerpana'
+  | 'dane niekompletne';
+
 export interface WpisSilyWezla {
   readonly bus_ref: string;
   readonly nominal_kv: number | null;
@@ -86,7 +105,7 @@ export interface WpisSilyWezla {
   readonly verdict: string;
   readonly is_weak: boolean;
   readonly why_pl: string;
-  readonly missing_data: readonly string[];
+  readonly missing_data: readonly BrakDanychSily[];
   readonly white_box: readonly KrokSladuSily[];
   /** Moduły źródłowe IBG węzła (mapowanie moduł→węzeł, P47b). */
   readonly modules: readonly ModulZrodlaSily[];
@@ -147,7 +166,7 @@ export interface WpisZrodlaQ {
   readonly is_saturated: boolean;
   readonly at_limit_pl: string | null;
   readonly why_pl: string;
-  readonly missing_data: readonly string[];
+  readonly missing_data: readonly BrakDanychQ[];
   readonly white_box: readonly KrokSladuQ[];
 }
 
@@ -199,7 +218,7 @@ export interface WidokAdekwatnosciQ {
   readonly saturation_tol_mvar: number;
   readonly default_u_min_pu: number;
   readonly default_u_max_pu: number;
-  readonly verdict: string;
+  readonly verdict: WerdyktAdekwatnosciQ;
   readonly is_adequate: boolean;
   readonly why_pl: string;
   readonly sources: readonly WpisZrodlaQ[];
@@ -207,7 +226,7 @@ export interface WidokAdekwatnosciQ {
   readonly balance: BilansBierny;
   readonly summary: PodsumowanieQ;
   readonly provenance: ProweniencjaQ | null;
-  readonly missing_data: readonly string[];
+  readonly missing_data: readonly BrakDanychQ[];
 }
 
 // =============================================================================
@@ -662,7 +681,13 @@ export type RekordOcenyFrt = RekordOcenyNiewykonanej;
  * audytowej. `werdykt_pl` ma jedyną wartość „nie oceniono" (kontrakt `str`).
  */
 export interface ScenariuszFrt {
+  /** Klucz techniczny scenariusza — wyłącznie w informacjach audytowych. */
   readonly scenario_id: string;
+  /**
+   * Nazwa scenariusza dla projektanta składana w backendzie z parametrów próby
+   * („Zapad napięcia (LVRT) do 0,0500 p.u. przez 0,1500 s") — pierwszy plan tabeli.
+   */
+  readonly nazwa_pl: string;
   readonly status: StatusSolveraFrt;
   readonly stayed_connected: boolean;
   readonly margin_to_curve_s: number | null;

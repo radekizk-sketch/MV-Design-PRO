@@ -205,15 +205,23 @@ export function sladZabezpieczenFixture(
     steps: [
       {
         step: 'MATCH_EVALUATIONS',
-        description_pl: 'Dopasowanie ewaluacji po (element chroniony, punkt zwarcia)',
+        description_pl: 'Dopasowanie ocen zabezpieczeń obu biegów po parze (element chroniony, punkt zwarcia)',
         inputs: { evaluations_a_count: 2, evaluations_b_count: 2 },
         outputs: { matched_pairs: 2, total_rows: 2 },
       },
       {
         step: 'RANK_ISSUES',
-        description_pl: 'Generowanie rankingu problemów wg severity (5→1)',
+        description_pl: 'Ranking problemów według wagi (od 5 do 1)',
         inputs: { row_count: 2, delay_threshold_s: 0.1, margin_threshold_percent: 5.0 },
-        outputs: { total_issues: 2, critical: 1, major: 0, moderate: 1, minor: 0 },
+        // Klucze 1:1 z `_count_severities` backendu (dawne `critical`/`major` nie istniały).
+        outputs: {
+          total_issues: 2,
+          critical_issues: 1,
+          major_issues: 0,
+          moderate_issues: 1,
+          minor_issues: 0,
+          informational_issues: 0,
+        },
       },
     ],
     created_at: '2026-07-10T09:30:05Z',

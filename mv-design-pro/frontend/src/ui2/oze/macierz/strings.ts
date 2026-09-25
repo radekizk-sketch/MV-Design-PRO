@@ -51,6 +51,8 @@ export const MACIERZ_STRINGS = {
   filtr: 'Pokaż komórki',
   filtrWszystkie: 'wszystkie rekordy',
   rodzajTwierdzenia: 'Rodzaj twierdzenia',
+  metrykiZapisPodpis: 'wartości biegu w kluczach silnika prób NC RfG',
+  sladZapisPodpis: 'ślad silnika prób NC RfG (wzory, klucze danych i kody statusów)',
   zdolnosc: 'Zdolność dowodowa',
   pokazModul: 'Wybierz moduł',
 

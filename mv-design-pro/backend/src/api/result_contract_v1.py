@@ -8,6 +8,7 @@ import json
 from typing import Any
 from uuid import UUID
 
+from application.analyses.opis_przebiegu import stan_przebiegu_pl
 from application.result_mapping.canonical_run_to_resultset_v1 import (
     build_resultset_v1_from_canonical_run,
 )
@@ -35,12 +36,12 @@ def get_resultset_v1(run_id: str) -> dict[str, Any]:
     if run is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Run {run_id} not found",
+            detail="Nie znaleziono wskazanego przebiegu obliczeń.",
         )
     if run.status != "FINISHED":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Wyniki niedostępne - status przebiegu: {run.status}",
+            detail=f"Wyniki niedostępne — przebieg {stan_przebiegu_pl(run.status)}.",
         )
 
     result_v1 = build_resultset_v1_from_canonical_run(run)

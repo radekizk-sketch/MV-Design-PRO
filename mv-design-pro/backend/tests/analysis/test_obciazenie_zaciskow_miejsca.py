@@ -147,7 +147,9 @@ def test_walidacja_energetyczna(p: Przypadek) -> None:
         assert pozycja.status == EnergyValidationStatus.FAIL
     # Ślad White Box nazywa oba zaciski i zacisk decydujący.
     assert r"\max" in pozycja.white_box[0]["latex"]
-    assert f"decyduje zacisk {p.decyduje}" in pozycja.white_box[1]["tekst"]
+    # Karta #145: zacisk nazwany po polsku (początkowy/końcowy), nie kodem `od`/`do`.
+    zacisk_pl = {"od": "początkowy", "do": "końcowy"}[p.decyduje]
+    assert f"decyduje zacisk {zacisk_pl}" in pozycja.white_box[1]["tekst"]
 
 
 @pytest.mark.parametrize("p", PRZYPADKI, ids=IDS)

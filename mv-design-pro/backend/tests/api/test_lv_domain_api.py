@@ -328,7 +328,10 @@ class TestLvDomainProjectionV1Endpoint:
         )
 
         assert resp.status_code == 409
-        assert obcy_case_id in resp.json()["detail"]
+        # Karta #145: odmowa nazywa przyczynę słowami — bez identyfikatorów przebiegu i przypadku.
+        detail = resp.json()["detail"]
+        assert "innego przypadku obliczeniowego" in detail
+        assert obcy_case_id not in detail and str(run.id) not in detail
 
     def test_unfinished_run_is_rejected_with_409(self, app_client) -> None:
         case_id = _nowy_przypadek(app_client)
@@ -344,7 +347,10 @@ class TestLvDomainProjectionV1Endpoint:
         )
 
         assert resp.status_code == 409
-        assert str(run.id) in resp.json()["detail"]
+        # Karta #145: stan przebiegu po polsku, bez identyfikatora i kodu stanu.
+        detail = resp.json()["detail"]
+        assert "niedostępne" in detail and str(run.id) not in detail
+        assert run.status not in detail
 
     def test_finished_run_of_this_case_is_fresh_and_identity_matches(self, app_client) -> None:
         case_id = _nowy_przypadek(app_client)

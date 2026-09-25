@@ -99,6 +99,7 @@ import {
   fmtWspolczynnik,
   rodzajZwarciaPL,
   rxRatioZrodloPL,
+  scenariuszZwarciaPL,
   trybZrodlaSiecowegoPL,
   typMaszynyPL,
   uwagiZwarciaPL,
@@ -144,13 +145,8 @@ export const KOLUMNY_ZWARC: DefinicjaKolumny[] = [
   { klucz: 'xr', etykieta: ZWARCIA_STRINGS.kolXR, mono: true, tylkoEkspercki: true },
   { klucz: 'kappa', etykieta: ZWARCIA_STRINGS.kolKappa, mono: true, tylkoEkspercki: true },
   { klucz: 'uwagi', etykieta: ZWARCIA_STRINGS.kolUwagi, wyrownanie: 'lewo', sortowalna: false },
-  {
-    klucz: KLUCZ_PUNKT,
-    etykieta: ZWARCIA_STRINGS.kolIdentyfikator,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
+  // Karta #145: `target_id` jest KLUCZEM wiersza (`KLUCZ_PUNKT`, komórka bez kolumny) —
+  // identyfikator nie jest tekstem pierwszego planu, także w trybie eksperckim.
 ];
 
 // ---------------------------------------------------------------------------
@@ -175,13 +171,25 @@ function komorkaWielkosci(
 }
 
 /**
+ * Nazwa punktu zwarcia dla projektanta: most nazw wyników po `element_id` (ref ENM
+ * szyny), a gdy migawka go nie zna — nazwa podana przez wynik (`target_name`), nigdy
+ * identyfikator (karta #145).
+ */
+export function nazwaPunktuZwarcia(row: ShortCircuitRow, nazwa: (ref: string, zWyniku?: string | null) => string): string {
+  return nazwa(row.element_id ?? row.target_id, row.target_name);
+}
+
+/**
  * Adapter read-only: `ShortCircuitRow` → wiersz tabeli wzorca. `dowodRef` =
  * `element_id` (gdy jest) lub `target_id` (karta §2: ref dowodu = target/element).
  */
-export function mapujWierszZwarcia(row: ShortCircuitRow): WierszTabeli {
+export function mapujWierszZwarcia(
+  row: ShortCircuitRow,
+  nazwa: (ref: string, zWyniku?: string | null) => string,
+): WierszTabeli {
   const dowodRef = row.element_id ?? row.target_id;
   return {
-    punkt: { wartosc: row.target_name ?? ZWARCIA_STRINGS.kreska },
+    punkt: { wartosc: nazwaPunktuZwarcia(row, nazwa) },
     rodzaj: { wartosc: rodzajZwarciaPL(row.fault_type) },
     ikss: komorkaWielkosci(row.ikss_ka, fmtKA, dowodRef),
     ip: komorkaWielkosci(row.ip_ka, fmtKA, dowodRef),
@@ -199,8 +207,11 @@ export function mapujWierszZwarcia(row: ShortCircuitRow): WierszTabeli {
 }
 
 /** Mapuje wiersze zwarciowe na wiersze tabeli wzorca (kolejność źródłowa). */
-export function naWierszeZwarc(rows: ShortCircuitRow[]): WierszTabeli[] {
-  return rows.map(mapujWierszZwarcia);
+export function naWierszeZwarc(
+  rows: ShortCircuitRow[],
+  nazwa: (ref: string, zWyniku?: string | null) => string,
+): WierszTabeli[] {
+  return rows.map((row) => mapujWierszZwarcia(row, nazwa));
 }
 
 /** Wiersz „Współczynnik napięciowy c" — z KONFIGURACJI TEGO BIEGU (nie z
@@ -260,10 +271,12 @@ function wierszCzasuCieplnego(
  * jednym wierszu na każde założenie biegu nazwane kodem gotowości (np. scenariusz
  * MIN bez S″kQmin — Z_Q z danych MAX) — treść (`message_pl`) WPROST z backendu,
  * nigdy cicho. Brak/pusta lista = bieg bez założeń (wiersze bazowe bez zmian).
+ * Karta #145: źródło założenia nazywa most nazw wyników (`nazwa`), nie referencja.
  */
 export function naZalozeniaZwarc(
   konfiguracja: KonfiguracjaBieguZwarcia | undefined,
-  zalozeniaBiegu?: readonly ZalozenieBieguSlad[],
+  zalozeniaBiegu: readonly ZalozenieBieguSlad[] | undefined,
+  nazwa: (ref: string) => string,
 ): WierszZalozenia[] {
   const bazowe: WierszZalozenia[] = [
     { etykieta: ZWARCIA_STRINGS.zalMetoda, wartosc: konfiguracja?.metoda ?? ZWARCIA_STRINGS.zalMetodaWartosc },
@@ -271,9 +284,9 @@ export function naZalozeniaZwarc(
     wierszCzasuCieplnego(konfiguracja?.thermal_time_seconds),
   ];
   const zZaZrodel: WierszZalozenia[] = (zalozeniaBiegu ?? []).map((z) => ({
-    etykieta: ZWARCIA_STRINGS.zalozenieEtykieta(z.element_ref),
+    etykieta: ZWARCIA_STRINGS.zalozenieEtykieta(nazwa(z.element_ref)),
     wartosc: z.message_pl,
-    uwaga: ZWARCIA_STRINGS.zalozenieUwaga(z.code, z.scenariusz),
+    uwaga: ZWARCIA_STRINGS.zalozenieUwaga(scenariuszZwarciaPL(z.scenariusz)),
   }));
   return [...bazowe, ...zZaZrodel];
 }
@@ -367,18 +380,22 @@ export const KONFIG_WYKRESU_ZWARC: Record<WielkoscWykresu, KonfigWykresuZwarc> =
 export function naSlupkiWielkosci(
   rows: ShortCircuitRow[],
   wielkosc: WielkoscWykresu,
+  nazwa: (ref: string, zWyniku?: string | null) => string,
 ): SlupekIkss[] {
   const odczyt = KONFIG_WYKRESU_ZWARC[wielkosc].wartosc;
   return rows.flatMap((r) => {
     const wartosc = odczyt(r);
     if (wartosc === null || wartosc === undefined) return [];
-    return [{ punkt: r.target_name ?? r.target_id, ikss: wartosc }];
+    return [{ punkt: nazwaPunktuZwarcia(r, nazwa), ikss: wartosc }];
   });
 }
 
 /** Punkty wykresu Ik" (kontrakt 1:1 sprzed karty W-A F2 — deleguje do wielkości). */
-export function naSlupkiIkss(rows: ShortCircuitRow[]): SlupekIkss[] {
-  return naSlupkiWielkosci(rows, 'ikss');
+export function naSlupkiIkss(
+  rows: ShortCircuitRow[],
+  nazwa: (ref: string, zWyniku?: string | null) => string,
+): SlupekIkss[] {
+  return naSlupkiWielkosci(rows, 'ikss', nazwa);
 }
 
 // ---------------------------------------------------------------------------
@@ -438,13 +455,7 @@ export const KOLUMNY_WKLADOW: DefinicjaKolumny[] = [
   { klucz: 'zrodlo', etykieta: ZWARCIA_STRINGS.wkladyKolZrodlo, wyrownanie: 'lewo' },
   { klucz: 'prad', etykieta: ZWARCIA_STRINGS.wkladyKolPrad, jednostka: ZWARCIA_STRINGS.jednKA, mono: true },
   { klucz: 'udzial', etykieta: ZWARCIA_STRINGS.wkladyKolUdzial, jednostka: ZWARCIA_STRINGS.jednProcent, mono: true },
-  {
-    klucz: KLUCZ_WKLAD,
-    etykieta: ZWARCIA_STRINGS.wkladyKolIdentyfikator,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
+  // Karta #145: identyfikator źródła jest kluczem wiersza (`KLUCZ_WKLAD`), nie kolumną.
 ];
 
 /**
@@ -550,17 +561,10 @@ export const KOLUMNY_ROZPLYWU: DefinicjaKolumny[] = [
   {
     klucz: 'zrodlo',
     etykieta: ZWARCIA_STRINGS.rozplywKolZrodlo,
-    mono: true,
     wyrownanie: 'lewo',
     tylkoEkspercki: true,
   },
-  {
-    klucz: KLUCZ_ROZPLYW,
-    etykieta: ZWARCIA_STRINGS.rozplywKolIdentyfikator,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
+  // Karta #145: klucz wpisu (`branch_id::source_id`) jest kluczem wiersza, nie kolumną.
 ];
 
 /**
@@ -568,10 +572,15 @@ export const KOLUMNY_ROZPLYWU: DefinicjaKolumny[] = [
  * "to_from") obraca parę nazw węzłów gałęzi — czysta prezentacja danych,
  * zero interpretacji. Token nieznany → para bez strzałki (uczciwy brak).
  */
-export function kierunekPrzeplywuPL(flow: ShortCircuitBranchFlow): string {
-  if (flow.direction === 'from_to') return `${flow.from_node_name} → ${flow.to_node_name}`;
-  if (flow.direction === 'to_from') return `${flow.to_node_name} → ${flow.from_node_name}`;
-  return `${flow.from_node_name} – ${flow.to_node_name}`;
+export function kierunekPrzeplywuPL(
+  flow: ShortCircuitBranchFlow,
+  nazwa: (ref: string, zWyniku?: string | null) => string,
+): string {
+  const od = nazwa(flow.from_node_id, flow.from_node_name);
+  const doWezla = nazwa(flow.to_node_id, flow.to_node_name);
+  if (flow.direction === 'from_to') return `${od} → ${doWezla}`;
+  if (flow.direction === 'to_from') return `${doWezla} → ${od}`;
+  return `${od} – ${doWezla}`;
 }
 
 /**
@@ -579,14 +588,17 @@ export function kierunekPrzeplywuPL(flow: ShortCircuitBranchFlow): string {
  * source_id) na wiersze tabeli wzorca. `dowodRef` = branch_id (2× klik →
  * dowód gałęzi). Klucz wiersza = `branch_id::source_id` (unikalny wpis).
  */
-export function naWierszeRozplywu(flows: ShortCircuitBranchFlow[]): WierszTabeli[] {
+export function naWierszeRozplywu(
+  flows: ShortCircuitBranchFlow[],
+  nazwa: (ref: string, zWyniku?: string | null) => string,
+): WierszTabeli[] {
   return flows.map((flow) => ({
-    galaz: { wartosc: flow.branch_name },
-    kierunek: { wartosc: kierunekPrzeplywuPL(flow) },
+    galaz: { wartosc: nazwa(flow.branch_id, flow.branch_name) },
+    kierunek: { wartosc: kierunekPrzeplywuPL(flow, nazwa) },
     prad: komorkaWielkosci(flow.i_ka, fmtKA, flow.branch_id),
     // V12K-132 (pkt 7): rozróżnienie źródła wkładu PL — „sieć nadrzędna"
-    // (Thevenin, source_id="THEVENIN_GRID") vs identyfikator falownika/maszyny.
-    zrodlo: { wartosc: zrodloRozplywuPL(flow.source_id) },
+    // (Thevenin, source_id="THEVENIN_GRID") vs falownik/maszyna nazwana z modelu.
+    zrodlo: { wartosc: zrodloRozplywuPL(flow.source_id, nazwa) },
     [KLUCZ_ROZPLYW]: { wartosc: `${flow.branch_id}::${flow.source_id}` },
   }));
 }
@@ -620,13 +632,7 @@ export const KOLUMNY_ZRODEL_SIECIOWYCH: DefinicjaKolumny[] = [
   { klucz: 'rx', etykieta: ZWARCIA_STRINGS.zrodlaKolRx, wyrownanie: 'lewo' },
   { klucz: 'zq', etykieta: ZWARCIA_STRINGS.zrodlaKolZq, jednostka: ZWARCIA_STRINGS.jednOhm, mono: true },
   { klucz: 'wzor', etykieta: ZWARCIA_STRINGS.zrodlaKolWzor, wyrownanie: 'lewo', sortowalna: false },
-  {
-    klucz: KLUCZ_ZRODLA_SIECIOWE,
-    etykieta: ZWARCIA_STRINGS.kolIdentyfikator,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
+  // Karta #145: klucz wpisu (`ref_id::scenariusz`) jest kluczem wiersza, nie kolumną.
 ];
 
 /**
@@ -636,7 +642,10 @@ export const KOLUMNY_ZRODEL_SIECIOWYCH: DefinicjaKolumny[] = [
  * (impedancja fizyczna, bez c, bez wariantu MIN) — komórki wtedy „—" (uczciwy
  * brak, nie zero fabrykowane).
  */
-export function naWierszeZrodelSieciowych(slad: readonly ZrodloSiecioweSlad[]): WierszTabeli[] {
+export function naWierszeZrodelSieciowych(
+  slad: readonly ZrodloSiecioweSlad[],
+  nazwa: (ref: string) => string,
+): WierszTabeli[] {
   return slad.map((wpis) => {
     const mocPrad = wpis.sk3_mva !== undefined
       ? `${fmtMVA(wpis.sk3_mva)} ${ZWARCIA_STRINGS.jednMVA}`
@@ -647,8 +656,8 @@ export function naWierszeZrodelSieciowych(slad: readonly ZrodloSiecioweSlad[]): 
       ? `${fmtWspolczynnik(wpis.rx_ratio)} (${rxRatioZrodloPL(wpis.rx_ratio_zrodlo)})`
       : ZWARCIA_STRINGS.kreska;
     return {
-      zrodlo: { wartosc: wpis.ref_id },
-      scenariusz: { wartosc: wpis.scenariusz },
+      zrodlo: { wartosc: nazwa(wpis.ref_id) },
+      scenariusz: { wartosc: scenariuszZwarciaPL(wpis.scenariusz) },
       tryb: { wartosc: trybZrodlaSiecowegoPL(wpis.tryb) },
       mocPrad: { wartosc: mocPrad },
       c: { wartosc: wpis.c !== undefined ? fmtWspolczynnik(wpis.c) : ZWARCIA_STRINGS.kreska },

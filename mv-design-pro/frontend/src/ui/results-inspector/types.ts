@@ -253,6 +253,8 @@ export interface ShortCircuitRow {
   proof_ref?: string | null;
   dopuszczalnosc_raportowa?: boolean;
   reporting_limitations?: string[];
+  /** Ograniczenia raportowe po polsku (karta #145, `etykiety_raportowe_pl` backendu). */
+  reporting_limitations_pl?: string[];
 }
 
 /**
@@ -556,6 +558,121 @@ export const TRACE_VALUE_LABELS: Record<string, string> = {
   kappa: 'Współczynnik κ',
   m_factor: 'Współczynnik m',
   n_factor: 'Współczynnik n',
+  // Karta #145 — klucze śladów solverów IEC 60909 (zapis zamrożony, rdzeń FROZEN):
+  // podział prądu Thevenina na gałęzie (`branch_flow_trace`) i ślad składowych
+  // symetrycznych. Pierwszy plan kroku mówi po polsku; klucz nieznany trafia do
+  // „Informacji audytowych" kroku (`ui2/wyniki/dowod/KrokDowodu.tsx`).
+  fault_node_id: 'Węzeł zwarcia',
+  fault_index: 'Pozycja węzła zwarcia w macierzy Z-bus',
+  n_nodes: 'Liczba węzłów macierzy Z-bus',
+  ik_thevenin_a: 'Prąd zwarciowy źródła zastępczego (Thevenin) Ik″',
+  v_nodes_pu: 'Napięcia węzłowe przy iniekcji jednostkowej',
+  branch_id: 'Gałąź',
+  from_node_id: 'Węzeł początkowy gałęzi',
+  to_node_id: 'Węzeł końcowy gałęzi',
+  v_from_pu: 'Napięcie węzła początkowego',
+  v_to_pu: 'Napięcie węzła końcowego',
+  y_series_pu: 'Admitancja podłużna gałęzi',
+  fraction: 'Współczynnik podziału prądu gałęzi',
+  i_contrib_a: 'Prąd zwarciowy gałęzi od źródła zastępczego',
+  direction: 'Kierunek przepływu prądu zwarciowego',
+  fraction_sum: 'Suma współczynników gałęzi dopływających do węzła zwarcia',
+  sum_into_fault_a: 'Suma prądów gałęzi dopływających do węzła zwarcia',
+  s_rt_mva: 'Moc znamionowa transformatora SrT',
+  u_rt_hv_kv: 'Napięcie znamionowe strony górnej UrTHV',
+  u_rt_lv_kv: 'Napięcie znamionowe strony dolnej UrTLV',
+  x_t_pu: 'Reaktancja względna transformatora xT',
+  x_t_ohm_hv: 'Reaktancja transformatora po stronie górnej XT',
+  c_max: 'Współczynnik napięciowy cmax',
+  k_t: 'Współczynnik korekcyjny KT',
+  z_t_pu: 'Impedancja transformatora ZT',
+  z_tk_pu: 'Impedancja skorygowana transformatora ZTK',
+  z_tk_formula_latex: 'Impedancja skorygowana — podstawienie',
+  z1_ohm: 'Impedancja zgodna Z1',
+  z2_ohm: 'Impedancja przeciwna Z2',
+  z0_ohm: 'Impedancja zerowa Z0',
+  short_circuit_type: 'Rodzaj zwarcia',
+  z_equiv_ohm: 'Impedancja zastępcza w punkcie zwarcia Zk',
+  z_equiv_abs_ohm: 'Moduł impedancji zastępczej |Zk|',
+  un_v: 'Napięcie znamionowe sieci Un',
+  voltage_factor: 'Współczynnik napięciowy rodzaju zwarcia kU',
+  ikss_a: 'Prąd zwarciowy początkowy Ik″',
+  rx_ratio: 'Stosunek R/X',
+  ip_a: 'Prąd udarowy ip',
+  tb_s: 'Czas wyłączenia tb',
+  ta_s: 'Stała czasowa składowej nieokresowej ta',
+  exp_factor: 'Czynnik zaniku e^(−tb/ta)',
+  ib_a: 'Prąd zwarciowy do obliczeń cieplnych Ib',
+  ith_a: 'Prąd zastępczy cieplny Ith',
+};
+
+/**
+ * Jednostki wielkości śladu, których solver nie opakowuje w `TraceValue.unit`
+ * (skalar wprost) — jednostka wynika z kontraktu klucza (przyrostek `_a`, `_kv`…),
+ * nie ze zgadywania. Klucz bez wpisu = wielkość bezwymiarowa albo jednostka niesiona
+ * przez `TraceValue.unit`.
+ */
+export const TRACE_VALUE_UNITS: Record<string, string> = {
+  ik_thevenin_a: 'A',
+  i_contrib_a: 'A',
+  sum_into_fault_a: 'A',
+  v_nodes_pu: 'j.w.',
+  v_from_pu: 'j.w.',
+  v_to_pu: 'j.w.',
+  y_series_pu: 'j.w.',
+  s_rt_mva: 'MVA',
+  u_rt_hv_kv: 'kV',
+  u_rt_lv_kv: 'kV',
+  x_t_pu: 'j.w.',
+  x_t_ohm_hv: 'Ω',
+  z_t_pu: 'j.w.',
+  z_tk_pu: 'j.w.',
+  z1_ohm: 'Ω',
+  z2_ohm: 'Ω',
+  z0_ohm: 'Ω',
+  z_equiv_ohm: 'Ω',
+  z_equiv_abs_ohm: 'Ω',
+  r_ohm: 'Ω',
+  x_ohm: 'Ω',
+  un_v: 'V',
+  ikss_a: 'A',
+  ip_a: 'A',
+  ib_a: 'A',
+  ith_a: 'A',
+  tb_s: 's',
+  ta_s: 's',
+  sk_mva: 'MVA',
+};
+
+/**
+ * Klucze śladu, których wartością jest IDENTYFIKATOR elementu sieci (węzła, gałęzi).
+ * Krok dowodu pokazuje w ich miejscu NAZWĘ z modelu (most nazw wyników), a
+ * identyfikator zostaje w „Informacjach audytowych" kroku.
+ */
+export const TRACE_ELEMENT_KEYS: ReadonlySet<string> = new Set([
+  'fault_node_id',
+  'branch_id',
+  'from_node_id',
+  'to_node_id',
+]);
+
+/**
+ * Wartości wyliczeniowe śladu → polskie opisy (klucz śladu → kod → opis). Kod spoza
+ * mapy to kod nowy w solverze: krok pokazuje go w „Informacjach audytowych", nie na
+ * pierwszym planie.
+ */
+export const TRACE_VALUE_CODES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  direction: {
+    from_to: 'od węzła początkowego do węzła końcowego',
+    to_from: 'od węzła końcowego do węzła początkowego',
+  },
+  // Kody `network_model/solvers/short_circuit_core.py::ShortCircuitType`.
+  short_circuit_type: {
+    '3F': 'zwarcie trójfazowe',
+    '2F': 'zwarcie dwufazowe',
+    '2F+G': 'zwarcie dwufazowe z ziemią',
+    '1F': 'zwarcie jednofazowe (doziemne)',
+  },
 };
 
 /**

@@ -82,14 +82,15 @@ describe('SekcjaPasmRozplywu — sekcja Napięcia szyn', () => {
     expect(within(szczegol).getByText(PASMA_ROZPLYWU_FIXTURE.napiecia.items[1].why_pl)).toBeTruthy();
   });
 
-  it('identyfikator węzła ukryty w trybie podstawowym, widoczny w trybie eksperckim', async () => {
+  it('identyfikator węzła nie stoi na pierwszym planie w żadnym trybie (karta #145)', async () => {
     mockedPasma.mockResolvedValue(PASMA_ROZPLYWU_FIXTURE);
     const { rerender } = render(<SekcjaPasmRozplywu {...props()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-pasma-rozplywu')).toBeTruthy());
     expect(screen.queryByText('bus-A')).toBeNull();
 
     rerender(<SekcjaPasmRozplywu {...props({ trybZaawansowania: 'expert' })} />);
-    await waitFor(() => expect(screen.getAllByText('bus-A').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-pasma-rozplywu')).toBeTruthy());
+    expect(screen.queryAllByText('bus-A')).toHaveLength(0);
   });
 });
 

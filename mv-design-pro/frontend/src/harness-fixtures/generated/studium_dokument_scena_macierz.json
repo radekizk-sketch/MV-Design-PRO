@@ -51,18 +51,18 @@
               "wydanie": "1.2",
               "jednostka_redakcyjna": "s. 323, poz. 3254",
               "status": "WSKAZANE",
-              "uwagi_pl": "rejestr network_model/catalog/ptpiree_wykaz_snapshot.json (ptpiree_wykaz_snapshot/v1); warstwa WiPWC profilu: Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC), wydanie 1.3"
+              "uwagi_pl": "rejestr certyfikowanych urządzeń PTPiREE wskazany przez warstwę WiPWC profilu; warstwa WiPWC profilu: Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC), wydanie 1.3"
             }
           },
           "odrzucony": null,
           "wiersze": [
             {
               "etykieta_pl": "Dowód certyfikatu urządzenia",
-              "tresc_pl": "rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3; producent: HUAWEI Technologies CO., Ltd; model: PV SUN2000-215KTL-H3; numer dokumentu: TC-GCC-DNVGL-SE-0124-07526-1; data akceptacji: 31.12.2026; wersja WiPWC: 1.2; wersja WOS: nie podano w wykazie; zakres typów modułów: A, B, C, D; źródło: https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-06-Wykaz-urzadzen_1.2.pdf"
+              "tresc_pl": "rekord wykazu certyfikowanych urządzeń PTPiREE; producent: HUAWEI Technologies CO., Ltd; model: PV SUN2000-215KTL-H3; numer dokumentu: TC-GCC-DNVGL-SE-0124-07526-1; data akceptacji: 31.12.2026; wersja WiPWC: 1.2; wersja WOS: nie podano w wykazie; zakres typów modułów: A, B, C, D; źródło: https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-06-Wykaz-urzadzen_1.2.pdf"
             },
             {
               "etykieta_pl": "Podstawa dowodu certyfikatu",
-              "tresc_pl": "dokument: „Wykaz urządzeń PTPiREE, WiPWC 1.2 (publikacja 2026-05-06)”; wydanie: 1.2; jednostka redakcyjna: s. 323, poz. 3254; rodzaj: WiPWC; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium); uwagi: rejestr network_model/catalog/ptpiree_wykaz_snapshot.json (ptpiree_wykaz_snapshot/v1); warstwa WiPWC profilu: Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC), wydanie 1.3"
+              "tresc_pl": "dokument: „Wykaz urządzeń PTPiREE, WiPWC 1.2 (publikacja 2026-05-06)”; wydanie: 1.2; jednostka redakcyjna: s. 323, poz. 3254; rodzaj: WiPWC; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium); uwagi: rejestr certyfikowanych urządzeń PTPiREE wskazany przez warstwę WiPWC profilu; warstwa WiPWC profilu: Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC), wydanie 1.3"
             }
           ]
         }
@@ -261,7 +261,7 @@
   ],
   "odciski_sekcji_sha256": {
     "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn": "7686bbfb310d78303c109b59d7b404853020213f0ced858eb25633f515965a51",
-    "zalozenia": "6ac9384ee09ab824f53ca17306bcc32347c8470901c766bedbbdb7f90b457322",
+    "zalozenia": "f7542b390a0cd3de79f2fe7d1f3726db7e4aad5e907919a0e504dc3244c8deab",
     "podsumowanie": "19dd6c727e84267bfb274c2368018912c4fff1a2d5339153f455033b34a9254c"
   },
   "input_hash": "60f2b1d30a93eca50355eed76d93e1c8b11687f47bacc5886e4cecc69380cb54"

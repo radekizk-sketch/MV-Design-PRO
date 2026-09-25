@@ -72,6 +72,8 @@ export interface WierszStanuFazowego {
   readonly reporting_status_pl: string | null;
   readonly dopuszczalnosc_raportowa: boolean;
   readonly reporting_limitations: readonly string[];
+  /** Ograniczenia raportowe po polsku (karta #145) — na ekranie wyłącznie te zdania. */
+  readonly reporting_limitations_pl: readonly string[];
 }
 
 /** Pełna odpowiedź końcówki wyników stanu fazowego. */
@@ -205,6 +207,8 @@ export interface WynikiRozplywuNiesymetrycznego {
   readonly quality_status?: string | null;
   readonly dopuszczalnosc_raportowa?: boolean;
   readonly reporting_limitations?: readonly string[];
+  /** Ograniczenia raportowe po polsku (karta #145). */
+  readonly reporting_limitations_pl?: readonly string[];
 }
 
 /** Pobiera kanoniczne wyniki rozpływu niesymetrycznego dla wskazanego przebiegu. */

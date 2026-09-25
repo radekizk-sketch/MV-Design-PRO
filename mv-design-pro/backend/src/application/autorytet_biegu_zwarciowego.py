@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
 from network_model.core.wiazanie_wyniku_zwarciowego import (
     WiazanieWynikuZwarciowego,
@@ -163,7 +164,7 @@ def bieg_zwarciowy_miarodajny(run_id: str | None) -> Any:
     except (TypeError, ValueError) as exc:
         raise BiegNiemiarodajnyError(
             "BIEG_NIE_ISTNIEJE",
-            f"Identyfikator biegu '{run_id}' nie jest identyfikatorem biegu kanonicznego. "
+            "Wskazany identyfikator nie jest identyfikatorem zapisanego biegu obliczeń. "
             "Dowód powstaje z zapisanego biegu, więc bieg musi istnieć.",
         ) from exc
 
@@ -171,20 +172,21 @@ def bieg_zwarciowy_miarodajny(run_id: str | None) -> Any:
     if bieg is None:
         raise BiegNiemiarodajnyError(
             "BIEG_NIE_ISTNIEJE",
-            f"Bieg '{run_id}' nie istnieje. Dowód nie może powstać z biegu, którego nie ma "
-            "— przelicz zwarcie i podaj identyfikator wykonanego biegu.",
+            "Wskazany bieg obliczeń nie istnieje. Dowód nie może powstać z biegu, którego "
+            "nie ma — przelicz zwarcie i wskaż wykonany bieg.",
         )
     if bieg.analysis_type not in RODZAJE_BIEGU_ZWARCIOWEGO:
         raise BiegNiemiarodajnyError(
             "BIEG_INNEGO_RODZAJU",
-            f"Bieg '{run_id}' jest rodzaju '{bieg.analysis_type}' i nie niesie wielkości "
-            "zwarciowych. Wskaż bieg zwarciowy.",
+            f"Wskazany bieg to {rodzaj_przebiegu_pl(bieg.analysis_type)} i nie niesie "
+            "wielkości zwarciowych. Wskaż bieg zwarciowy.",
         )
     if bieg.status != "FINISHED":
         raise BiegNiemiarodajnyError(
             "BIEG_NIEZAKONCZONY",
-            f"Bieg '{run_id}' ma stan '{bieg.status}'. Wielkości niezakończonego biegu nie są "
-            "wynikiem — poczekaj na zakończenie albo przelicz ponownie.",
+            f"Wskazany bieg jest w stanie: {stan_przebiegu_pl(bieg.status)}. Wielkości "
+            "niezakończonego biegu nie są wynikiem — poczekaj na zakończenie albo przelicz "
+            "ponownie.",
         )
     return bieg
 
@@ -212,15 +214,11 @@ def wejscie_zwarciowe_z_biegu(*, run_id: str | None, punkt_zwarcia: str) -> Wejs
     artefakt = bieg.raw_result or {}
     wiersz = _wiersz_dla_punktu(artefakt, punkt_zwarcia)
     if wiersz is None:
-        dostepne = sorted(
-            str(w.get("fault_node_id"))
-            for w in (artefakt.get("results") or [])
-            if isinstance(w, Mapping)
-        )
+        liczba_punktow = sum(1 for w in (artefakt.get("results") or []) if isinstance(w, Mapping))
         raise BiegNiemiarodajnyError(
             "PUNKT_ZWARCIA_SPOZA_BIEGU",
-            f"Bieg '{run_id}' nie zawiera punktu zwarcia '{punkt_zwarcia}'. "
-            f"Policzone punkty: {', '.join(dostepne) if dostepne else 'brak'}.",
+            "Wskazany bieg nie zawiera wybranego punktu zwarcia (policzonych punktów w "
+            f"biegu: {liczba_punktow}) — przelicz zwarcie obejmujące ten punkt.",
         )
 
     wiazanie = WiazanieWynikuZwarciowego.z_biegu(

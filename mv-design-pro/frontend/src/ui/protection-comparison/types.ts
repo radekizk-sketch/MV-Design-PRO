@@ -207,9 +207,36 @@ export interface RunProvenance {
 export interface ProtectionComparisonTraceStep {
   step: string;
   description_pl: string;
-  inputs: Record<string, unknown>;
-  outputs: Record<string, unknown>;
+  inputs: Partial<Record<PoleSladuPorownaniaZabezpieczen, number>>;
+  outputs: Partial<Record<PoleSladuPorownaniaZabezpieczen, number>>;
 }
+
+/**
+ * Pola wejść/wyjść kroków śladu porównania zabezpieczeń — zbiór ZAMKNIĘTY kodem
+ * `backend/src/application/protection_comparison/service.py` (kroki MATCH_EVALUATIONS,
+ * COMPUTE_DELTAS, CLASSIFY_CHANGES, RANK_ISSUES oraz liczniki `_count_state_changes`
+ * i `_count_severities`). Karta #145: ekran nazywa pola po polsku z mapy typowanej
+ * tą unią (`ETYKIETY_POL_SLADU_ZABEZPIECZEN`); parytet z kodem backendu pilnuje test
+ * `ui2/wyniki/porownanie/__tests__/polaSladuZabezpieczen.test.ts`.
+ */
+export type PoleSladuPorownaniaZabezpieczen =
+  | 'evaluations_a_count'
+  | 'evaluations_b_count'
+  | 'matched_pairs'
+  | 'total_rows'
+  | 'row_count'
+  | 'no_change_count'
+  | 'trip_to_no_trip_count'
+  | 'no_trip_to_trip_count'
+  | 'invalid_change_count'
+  | 'delay_threshold_s'
+  | 'margin_threshold_percent'
+  | 'total_issues'
+  | 'critical_issues'
+  | 'major_issues'
+  | 'moderate_issues'
+  | 'minor_issues'
+  | 'informational_issues';
 
 /**
  * Full comparison trace.

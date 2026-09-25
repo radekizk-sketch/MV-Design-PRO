@@ -13,7 +13,11 @@ from werdykt import ClaimKind, EvidenceTier, PodstawaWymagania, Przedmiot, Zakre
 JsonDict = dict[str, Any]
 
 V126_PROOF_VERSION = "AcademicProofPackV1"
-V126_REPORT_VERSION = "AcademicReportV1"
+#: V2 (karta #145): raport przestał nieść sekcję „Wynik obliczeń" — obcięty zrzut wyniku
+#: (24 pierwsze pola, pierwszy element każdej listy, klucze zamiast nazw wielkości) udawał
+#: wynik, który ma pełną prezentację na ekranie. Raport niesie tożsamość: dowód (identyfikator,
+#: odcisk, liczba kroków śladu), audyt deterministyczny i politykę eksportu.
+V126_REPORT_VERSION = "AcademicReportV2"
 
 #: Trasa kanoniczna rankingu N-1/N-2 (pełny re-solve solvera rozpływu) — karta
 #: W3-E. `reliability_contingency` V12.6 liczy dotkliwość z `_branch_current_a`
@@ -36,32 +40,6 @@ def _result_payload(run_record: Mapping[str, Any]) -> Mapping[str, Any]:
     if not isinstance(result, Mapping):
         raise TypeError("V12.6 run record does not contain a mapping result.")
     return result
-
-
-def _metric_rows(value: Any, prefix: str = "", limit: int = 24) -> list[JsonDict]:
-    rows: list[JsonDict] = []
-    if len(rows) >= limit:
-        return rows
-    if not isinstance(value, Mapping):
-        rows.append({"label": prefix or "wynik", "value": value})
-        return rows
-    for key in sorted(value):
-        if len(rows) >= limit:
-            break
-        item = value[key]
-        label = f"{prefix}.{key}" if prefix else str(key)
-        if isinstance(item, list):
-            rows.append({"label": label, "value": f"{len(item)} pozycji"})
-            if item and isinstance(item[0], Mapping):
-                for child_key in sorted(item[0])[:6]:
-                    rows.append({"label": f"{label}[0].{child_key}", "value": item[0][child_key]})
-                    if len(rows) >= limit:
-                        break
-        elif isinstance(item, Mapping):
-            rows.extend(_metric_rows(item, label, limit - len(rows)))
-        else:
-            rows.append({"label": label, "value": item})
-    return rows[:limit]
 
 
 #: Klucze rankingu N-1/N-2 zdejmowane z wyniku `reliability_contingency`
@@ -92,12 +70,11 @@ def bez_rankingu_n1(result: Mapping[str, Any]) -> JsonDict:
     Funkcja jest CZYSTA (ten sam wynik solvera → ten sam wynik postprocessu —
     determinizm) i wywoływana RAZ, w `enm/canonical_analysis.py::_execute_v126`,
     zanim wynik trafi do `run_record["result"]` — stąd jeden punkt wywołania
-    zasila WSZYSTKICH trzech konsumentów payloadu: końcówkę `results` (czyta
-    `run_record["result"]` wprost), końcówkę `report` (`build_v126_report_artifact`
-    czyta `result_payload["result"]` — TEN SAM słownik) i końcówkę `proof`
-    (`build_v126_proof_artifact` czyta WYŁĄCZNIE `white_box_trace`, który nigdy
-    nie niósł klucza rankingu — trzeci konsument jest więc czysty z konstrukcji,
-    bez potrzeby osobnego wywołania). `trace` (`GET .../trace`) zostaje SUROWY —
+    zasila końcówkę `results` (czyta `run_record["result"]` wprost). Końcówka
+    `report` od kontraktu `AcademicReportV2` (karta #145) nie niesie już żadnego pola
+    wyniku, a końcówka `proof` (`build_v126_proof_artifact`) czyta WYŁĄCZNIE
+    `white_box_trace`, który nigdy nie niósł klucza rankingu — obie są czyste z
+    konstrukcji, bez potrzeby osobnego wywołania. `trace` (`GET .../trace`) zostaje SUROWY —
     WHITE BOX solvera jest audytowalny w całości; adnotacja `ranking_n1` jedzie
     tam DODATKOWO jako pole na poziomie odpowiedzi trasy (nie w krokach śladu).
     """
@@ -367,8 +344,14 @@ def build_v126_proof_artifact(run_record: Mapping[str, Any]) -> JsonDict:
 
 
 def build_v126_report_artifact(run_record: Mapping[str, Any], proof: Mapping[str, Any]) -> JsonDict:
+    """Artefakt raportu analizy V12.6 — TOŻSAMOŚĆ raportu, nie kopia wyniku.
+
+    Sekcje o stałych kluczach metryk (etykiety polskie nadaje ekran z typowanej mapy):
+    ``dowod`` (``proof_id``, ``proof_hash``, ``trace_step_count``) i ``audyt``
+    (``result_hash``, ``solver_version``, ``input_hash``). Wynik obliczeń ma pełną
+    prezentację na ekranie i w pakiecie dowodowym, więc raport go nie powtarza.
+    """
     result = _result_payload(run_record)
-    payload = result.get("result", {})
     analysis_type = str(run_record["analysis_type"])
     source_result_hash = str(result["deterministic_hash"])
     proof_hash = str(proof["proof_hash"])
@@ -382,11 +365,6 @@ def build_v126_report_artifact(run_record: Mapping[str, Any], proof: Mapping[str
         "source_proof_hash": proof_hash,
         "export_policy": "frozen_result_and_proof_only",
         "sections": [
-            {
-                "section_id": "wynik",
-                "title": "Wynik obliczeń",
-                "metrics": _metric_rows(payload),
-            },
             {
                 "section_id": "dowod",
                 "title": "Dowód obliczeń",

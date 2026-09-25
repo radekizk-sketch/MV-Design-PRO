@@ -84,15 +84,16 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
     // (przecinek PL), nie „[object Object]" i nie kreska.
     expect(trescSekcji).toContain('j2,53');
     expect(trescSekcji).not.toContain('[object Object]');
-    // Kierunek przepływu (string wprost z solvera) w wyniku kroku.
-    expect(trescSekcji).toContain('from_to');
+    // Kierunek przepływu po polsku (kod solvera `from_to` przetłumaczony — karta #145).
+    expect(trescSekcji).toContain('od węzła początkowego do węzła końcowego');
+    expect(trescSekcji).not.toContain('from_to');
     // Uwagi kroku widoczne (pole `notes`).
     expect(trescSekcji).toContain('KCL: suma modułów współczynników');
     // Podstawienie (LaTeX) kroku bilansu.
     expect(trescSekcji).toContain('5611.28');
   });
 
-  it('(W4a, tryb podstawowy) klucze spoza słownika etykiet pominięte — zero surowych identyfikatorów w pierwszym planie', () => {
+  it('(W4a, tryb podstawowy) pierwszy plan wyłącznie z polskimi etykietami — zero surowych kluczy', () => {
     render(
       <SladPodzialuPradu
         punktNazwa="Szyna GPZ 15 kV"
@@ -102,10 +103,13 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
       />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
-    // Krok nadal renderuje się (tytuł, wzór) — tylko wiersze wielkości o
-    // nieznanym kluczu są ukryte poza trybem eksperckim.
+    // Krok renderuje się w całości (tytuł, wzór, wielkości z polską etykietą); klucz
+    // bez etykiety NIE stoi na pierwszym planie w żadnym trybie (karta #145 — trafia do
+    // „Informacji audytowych" kroku).
     expect(within(sekcja).getAllByTestId('mvd-dowod-krok')).toHaveLength(4);
-    expect(within(sekcja).queryByTestId('mvd-dowod-wielkosc')).not.toBeInTheDocument();
+    within(sekcja).getAllByTestId('mvd-dowod-wielkosc').forEach((wiersz) => {
+      expect(wiersz.textContent ?? '').not.toMatch(/\b[a-z]{2,}(?:_[a-z0-9]+)+\b/);
+    });
   });
 
   it('(W4b) trace === null → stan uczciwy „niedostępny" (dokładny tekst karty), nie pusta lista', () => {

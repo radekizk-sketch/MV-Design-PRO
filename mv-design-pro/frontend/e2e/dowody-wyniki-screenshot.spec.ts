@@ -18,6 +18,8 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { nazwaElementu } from './nazwyModelu';
+import { wybierzElementOdbioru } from './odbiorPomiary';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -106,16 +108,12 @@ const MIGOTANIE_SCENA_WYNIK = JSON.parse(
 ) as {
   buses: {
     bus_ref: string;
-    bus_name: string;
-    modules: { gen_ref: string; gen_name: string }[];
+    modules: { gen_ref: string }[];
     white_box: { substitution_pl: string }[];
   }[];
 };
-// Karta #144: ekran jakości nazywa węzeł i moduł nazwą z backendu (`bus_name`, `gen_name`
-// tej samej fikstury biegu), identyfikator jest tylko kluczem wiersza — spec idzie ścieżką
-// projektanta po nazwie, nie po identyfikatorze maszynowym.
-const WEZEL_MIGOTANIA = MIGOTANIE_SCENA_WYNIK.buses[0].bus_name;
-const MODUL_MIGOTANIA = MIGOTANIE_SCENA_WYNIK.buses[0].modules[0].gen_name;
+const WEZEL_MIGOTANIA = MIGOTANIE_SCENA_WYNIK.buses[0].bus_ref;
+const MODUL_MIGOTANIA = MIGOTANIE_SCENA_WYNIK.buses[0].modules[0].gen_ref;
 
 /**
  * Liczby i podstawienia śladów, które ekran MA pokazać, pochodzą z tych samych fikstur
@@ -276,8 +274,9 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     for (let i = 0; i < POMIARY_ODBIORU.length; i += 1) {
       const p = POMIARY_ODBIORU[i];
       if (i > 0) await page.getByTestId('mvd-odbior-dodaj').click();
-      await page.getByTestId(`mvd-odbior-element-${i}`).fill(p.element);
+      // Najpierw wielkość: lista elementów modelu zależy od wielkości (szyny / gałęzie).
       await page.getByTestId(`mvd-odbior-wielkosc-${i}`).selectOption(p.wielkosc);
+      await wybierzElementOdbioru(page, i, p.element);
       await page.getByTestId(`mvd-odbior-wartosc-${i}`).fill(p.wartosc);
       if (p.zacisk) {
         // Etykiety zacisków z backendu, bez zaznaczenia domyślnego — klik natywny.
@@ -299,7 +298,10 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
       .getByTestId('mvd-wyn-tabela')
       .getByTestId('mvd-wyn-wiersz')
       .filter({ hasText: ODBIOR_WIERSZ_NARUSZENIA.werdykt })
-      .getByText(ODBIOR_WIERSZ_NARUSZENIA.element_ref, { exact: true })
+      // Karta #145: element nazwany z modelu sceny (nie referencją).
+      .getByText(nazwaElementu('siec_zlota_scena_migawka', ODBIOR_WIERSZ_NARUSZENIA.element_ref), {
+        exact: true,
+      })
       .click();
     await expect(page.getByTestId('mvd-odbior-szczegol')).toBeVisible();
     await page.getByTestId('mvd-odbior-slad-otworz').click();
@@ -332,7 +334,7 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
       liczbaDokladnaPl(ESTYMACJA_SCENA_WYNIK.bad_data.chi_square_threshold),
     );
     await expect(page.getByTestId('mvd-est-podejrzany')).toContainText(
-      ESTYMACJA_SCENA_WYNIK.bad_data.lnr_measurement!.bus_ref,
+      nazwaElementu('siec_zlota_scena_migawka', ESTYMACJA_SCENA_WYNIK.bad_data.lnr_measurement!.bus_ref),
     );
     await page.getByTestId('mvd-est-slad-otworz').click();
     await expect(page.getByTestId('mvd-est-slad')).toBeVisible();
@@ -376,9 +378,13 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     await expect(page.getByTestId('mvd-wyn-tabela')).toContainText(
       'w granicach planowania',
     );
-    await page.getByTestId('mvd-wyn-tabela').getByText(WEZEL_MIGOTANIA, { exact: true }).first().click();
+    await page
+      .getByTestId('mvd-wyn-tabela')
+      .getByText(nazwaElementu('oze_analiz_scena_migawka', WEZEL_MIGOTANIA))
+      .first()
+      .click();
     const szczegol = page.getByTestId('mvd-jakosc-migotanie-szczegol');
-    await expect(szczegol).toContainText(MODUL_MIGOTANIA);
+    await expect(szczegol).toContainText(nazwaElementu('oze_analiz_scena_migawka', MODUL_MIGOTANIA));
     await expect(szczegol).toContainText('Wliczony do sumowania');
     await page.getByTestId('mvd-jakosc-mig-slad-otworz').click();
     const slad = page.getByTestId('mvd-jakosc-mig-slad');
@@ -401,9 +407,13 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     // sceny na realny bieg backendu (`arcflash_scena_wynik.json`, pierwsza
     // szyna zlotej sieci, `element-id` ustabilizowany `_fiksuj_niedeterminizm_
     // sceny_zwarcia`).
+    // Karta #145: szyna nazwana z modelu sceny (identyfikator grafu → nazwa migawki).
     await page
       .getByTestId('mvd-wyn-tabela')
-      .getByText(ARCFLASH_WYNIK_SZYNY.bus_ref)
+      .getByText(nazwaElementu('siec_zlota_scena_migawka', '63203cbc-ac91-5100-a0ee-a275d24514ff'), {
+        exact: true,
+      })
+      .first()
       .click();
     await expect(page.getByTestId('mvd-jakosc-af-szczegol')).toBeVisible();
     await page.getByTestId('mvd-jakosc-af-slad-otworz').click();

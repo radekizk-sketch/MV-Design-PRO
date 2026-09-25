@@ -179,6 +179,9 @@ export function widokLvrtFixture(): WidokTrajektoriiFrt {
     scenariusze: [
       {
         scenario_id: 'lvrt_conv-pv-1mw-15kv',
+        // Nazwa w brzmieniu `nazwa_scenariusza_pl` backendu (`frt_trajektorie.py`,
+        // karta #145) dla parametrów tej fikstury: 0,05 p.u. przez 0,15 s.
+        nazwa_pl: 'Zapad napięcia (LVRT) do 0,0500 p.u. przez 0,1500 s',
         status: 'ok',
         stayed_connected: true,
         margin_to_curve_s: null,
@@ -213,6 +216,9 @@ export function widokModulOdlaczonyFixture(): WidokTrajektoriiFrt {
     scenariusze: [
       {
         scenario_id: 'lvrt_conv-pv-1mw-15kv',
+        // Nazwa w brzmieniu `nazwa_scenariusza_pl` backendu (`frt_trajektorie.py`,
+        // karta #145) dla parametrów tej fikstury: 0,05 p.u. przez 0,15 s.
+        nazwa_pl: 'Zapad napięcia (LVRT) do 0,0500 p.u. przez 0,1500 s',
         status: 'der_dropped',
         stayed_connected: false,
         margin_to_curve_s: null,
@@ -264,6 +270,9 @@ export function widokHvrtFixture(): WidokTrajektoriiFrt {
     scenariusze: [
       {
         scenario_id: 'hvrt_conv-pv-1mw-15kv',
+        // Nazwa w brzmieniu `nazwa_scenariusza_pl` backendu dla parametrów tej fikstury:
+        // 1,30 p.u. przez 0,1 s (plateau trajektorii 0,5–0,6 s).
+        nazwa_pl: 'Wzrost napięcia (HVRT) do 1,3000 p.u. przez 0,1000 s',
         status: 'ok',
         stayed_connected: true,
         margin_to_curve_s: null,

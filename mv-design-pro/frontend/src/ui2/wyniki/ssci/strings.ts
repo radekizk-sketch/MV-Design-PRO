@@ -6,6 +6,8 @@
  * losowości (Determinism Rule) — przecinek dziesiętny wg konwencji PL.
  */
 
+import type { PoleKartyPrzeksztaltnikaSsci } from './api';
+
 /** Poziom istotności statusu (dobór koloru chipu/tagu — wyłącznie prezentacja). */
 export type IstotnoscStanu = 'ok' | 'warn' | 'err' | 'neutral';
 
@@ -121,3 +123,16 @@ export function fmtHz(n: number): string {
 export function fmtOhm(n: number): string {
   return fmtLiczba(n, 4);
 }
+
+/**
+ * Pola karty falownika po polsku (karta #145 — nazwa pola kontraktu nigdy na ekranie).
+ * Parytet z krotkami pól backendu pilnuje `__tests__/polaKartySsci.test.ts`.
+ */
+export const POLA_KARTY_SSCI: Readonly<Record<PoleKartyPrzeksztaltnikaSsci, string>> = {
+  current_loop_bandwidth_hz: 'pasmo pętli prądowej [Hz]',
+  pll_bandwidth_hz: 'pasmo pętli synchronizacji fazowej PLL [Hz]',
+  filter_l_pu: 'indukcyjność filtra wyjściowego [pu]',
+  voltage_loop_bandwidth_hz: 'pasmo pętli napięciowej [Hz]',
+  control_delay_ms: 'opóźnienie sterowania [ms]',
+  filter_r_pu: 'rezystancja filtra wyjściowego [pu]',
+};

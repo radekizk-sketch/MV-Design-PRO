@@ -53,13 +53,20 @@ JsonDict = dict[str, Any]
 #: brak liczby w kroku nie dostaje podstawionej wartości zastępczej).
 Budowniczy = Callable[[Mapping[str, Any]], "str | None"]
 
+#: Budowniczy polskiego opisu wyniku kroku (karta #145): czyta `step["data"]` i
+#: `step["result"]` i zwraca zdanie po polsku albo `None`, gdy któraś wartość jest spoza
+#: słownika (wtedy zostaje `result_pl` solvera — zero fabrykacji nazwy).
+BudowniczyWyniku = Callable[[Mapping[str, Any], Mapping[str, Any]], "str | None"]
+
 
 @dataclass(frozen=True)
 class WzorKroku:
-    """Wpis rejestru: LaTeX wzoru (zawsze) + opcjonalny budowniczy podstawienia."""
+    """Wpis rejestru: LaTeX wzoru (zawsze) + opcjonalny budowniczy podstawienia
+    + opcjonalny budowniczy polskiego opisu wyniku (karta #145)."""
 
     formula_latex: str
     podstawienie: Budowniczy | None = None
+    wynik_pl: BudowniczyWyniku | None = None
 
 
 def _liczba(dane: Mapping[str, Any], klucz: str) -> float | None:
@@ -173,6 +180,67 @@ def _podstawienie_ner_cieplo(dane: Mapping[str, Any]) -> str | None:
 
 
 # ---------------------------------------------------------------------------
+# Detekcja zwarć doziemnych (`_earth_fault_detection`) — kody decyzji po polsku.
+#
+# Solver (FROZEN, B-01) zapisuje podstawienie i wynik kodami tabeli decyzyjnej
+# („petersen_tuned -> wattmetric", „Metoda zalecana: wattmetric"). Karta #145: ekran
+# nie pokazuje kodów — widok API składa polskie zdanie z DANYCH kroku. Słowniki
+# obejmują KAŻDY kod tabeli decyzyjnej i listy metod przekaźnika solvera (parytet
+# przypina `tests/application/analyses/test_v126_wzory.py`); kod spoza słownika →
+# `None` i zostaje zapis solvera (nie zgadujemy nazwy).
+# ---------------------------------------------------------------------------
+
+UZIEMIENIE_PUNKTU_NEUTRALNEGO_PL: dict[str, str] = {
+    "isolated": "izolowany",
+    "petersen_tuned": "skompensowany dławikiem dostrojonym",
+    "petersen_detuned": "skompensowany dławikiem rozstrojonym",
+    "resistor": "uziemiony przez rezystor",
+    "solid": "uziemiony bezpośrednio",
+}
+
+METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL: dict[str, str] = {
+    "wattmetric": "watometryczna",
+    "admittance": "admitancyjna",
+    "transient_directional": "kierunkowa stanów przejściowych",
+    "fifth_harmonic": "piątej harmonicznej",
+    "51N+67N": "nadprądowa ziemnozwarciowa 51N z kierunkową 67N",
+    "51N/50N": "nadprądowa ziemnozwarciowa zwłoczna 51N i bezzwłoczna 50N",
+}
+
+
+def _metody_pl(kody: Any) -> str | None:
+    if not isinstance(kody, list) or not all(isinstance(kod, str) for kod in kody):
+        return None
+    nazwy = [METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL.get(kod) for kod in kody]
+    if any(nazwa is None for nazwa in nazwy):
+        return None
+    return ", ".join(str(nazwa) for nazwa in nazwy)
+
+
+def _podstawienie_detekcji_doziemnej(dane: Mapping[str, Any]) -> str | None:
+    """`_earth_fault_detection`, linie 1748-1757: `data={"neutral_grounding":…,
+    "relay_methods":[…]}` — polskie nazwy zamiast kodów tabeli decyzyjnej."""
+    uziemienie = UZIEMIENIE_PUNKTU_NEUTRALNEGO_PL.get(str(dane.get("neutral_grounding")))
+    metody = _metody_pl(dane.get("relay_methods"))
+    if uziemienie is None or metody is None:
+        return None
+    return (
+        rf"\text{{punkt neutralny: {uziemienie};}}\ "
+        rf"\text{{metody dostępne w przekaźniku: {metody}}}"
+    )
+
+
+def _wynik_detekcji_doziemnej(dane: Mapping[str, Any], wynik: Mapping[str, Any]) -> str | None:
+    """`_earth_fault_detection`: `result={"recommended_method":…, "available":…}`."""
+    del dane
+    metoda = METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL.get(str(wynik.get("recommended_method")))
+    dostepna = wynik.get("available")
+    if metoda is None or not isinstance(dostepna, bool):
+        return None
+    return f"Metoda zalecana: {metoda}; dostępna w przekaźniku: {'tak' if dostepna else 'nie'}"
+
+
+# ---------------------------------------------------------------------------
 # Rejestr — KAŻDY `step.key` nadawany przez `trace.add(...)` w
 # `network_model/solvers/v126_academic.py` (24 unikatowe klucze, pomiar
 # `grep -c 'trace\.add('` == 25 wywołań, `benchmark_regression` dzieli wpis).
@@ -272,7 +340,9 @@ REJESTR_WZOROW_V126: dict[str, WzorKroku] = {
     # _earth_fault_detection, linia 1748-1757 (tabela decyzyjna — bez jednostek fizycznych).
     "earth_fault_method_selection": WzorKroku(
         r"\text{Metoda detekcji} = f(\text{sposób uziemienia punktu neutralnego},\ "
-        r"\text{wyposażenie przekaźnika})"
+        r"\text{wyposażenie przekaźnika})",
+        podstawienie=_podstawienie_detekcji_doziemnej,
+        wynik_pl=_wynik_detekcji_doziemnej,
     ),
     # _transient, linia 1823-1831 (IEC 62271-100 — napięcie powrotne).
     "trv_inrush_ferro": WzorKroku(
@@ -313,7 +383,10 @@ def wzor_kroku(klucz: str) -> WzorKroku | None:
     return REJESTR_WZOROW_V126.get(klucz)
 
 
-def wzbogac_kroki_latex(kroki: list[JsonDict]) -> list[JsonDict]:
+def wzbogac_kroki_latex(
+    kroki: list[JsonDict],
+    klucze_po_odnosniku: Mapping[str, str] | None = None,
+) -> list[JsonDict]:
     """Zwraca NOWĄ listę kroków śladu z dołożonym (kopia, nie mutacja)
     `formula_latex`/`substitution_latex` — WYŁĄCZNIE dla widoku API (trace,
     proof). Krok bez wpisu w rejestrze wraca BEZ ZMIAN (nie brakiem —
@@ -321,6 +394,13 @@ def wzbogac_kroki_latex(kroki: list[JsonDict]) -> list[JsonDict]:
     Nie mutuje `kroki` ani zagnieżdżonych słowników — `result["white_box_trace"]`
     solvera i zapisany pakiet dowodowy (`proof_hash`) zostają bajtowo
     identyczne, bo hash liczony jest PRZED wywołaniem tego adaptera.
+
+    `klucze_po_odnosniku` (karta #145): kroki PAKIETU DOWODOWEGO nie niosą `key`
+    (`application/v126_artifacts.py` przepisuje z kroku śladu `proof_ref`, nie
+    klucz), więc widok `/proof` podaje mapę `proof_ref` → `key` zbudowaną ze śladu
+    TEGO biegu. Bez niej krok dowodu nie dostawał wzoru LaTeX i ekran pokazywał
+    zapis ASCII solvera. Wpis rejestru z `wynik_pl` podmienia w KOPII kroku
+    `result_pl` na zdanie złożone z danych kroku (kody decyzji → nazwy polskie).
     """
     wynik: list[JsonDict] = []
     for krok in kroki:
@@ -328,14 +408,25 @@ def wzbogac_kroki_latex(kroki: list[JsonDict]) -> list[JsonDict]:
             wynik.append(krok)
             continue
         wzbogacony: JsonDict = dict(krok)
-        wzor = REJESTR_WZOROW_V126.get(str(krok.get("key", "")))
+        klucz = krok.get("key")
+        if klucz is None and klucze_po_odnosniku is not None:
+            klucz = klucze_po_odnosniku.get(str(krok.get("proof_ref", "")))
+        wzor = REJESTR_WZOROW_V126.get(str(klucz or ""))
         if wzor is not None:
             wzbogacony["formula_latex"] = wzor.formula_latex
-            if wzor.podstawienie is not None:
-                dane_kroku = krok.get("data")
-                if isinstance(dane_kroku, Mapping):
-                    podstawienie_latex = wzor.podstawienie(dane_kroku)
-                    if podstawienie_latex is not None:
-                        wzbogacony["substitution_latex"] = podstawienie_latex
+            dane_kroku = krok.get("data")
+            if wzor.podstawienie is not None and isinstance(dane_kroku, Mapping):
+                podstawienie_latex = wzor.podstawienie(dane_kroku)
+                if podstawienie_latex is not None:
+                    wzbogacony["substitution_latex"] = podstawienie_latex
+            wynik_kroku = krok.get("result")
+            if (
+                wzor.wynik_pl is not None
+                and isinstance(dane_kroku, Mapping)
+                and isinstance(wynik_kroku, Mapping)
+            ):
+                opis_wyniku = wzor.wynik_pl(dane_kroku, wynik_kroku)
+                if opis_wyniku is not None:
+                    wzbogacony["result_pl"] = opis_wyniku
         wynik.append(wzbogacony)
     return wynik

@@ -63,6 +63,7 @@ from typing import Any
 
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, bieg_wariantu, wykonaj_bieg_w_pamieci
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, Wstrzyk, apply_scenario
@@ -344,11 +345,11 @@ def build_pq_area_view(
     if run.analysis_type != "PF":
         raise ValueError(
             "Obszar pracy P–Q wymaga przebiegu rozpływu mocy; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
     if step_p_mw <= 0.0:

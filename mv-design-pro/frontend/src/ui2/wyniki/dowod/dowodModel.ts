@@ -36,7 +36,12 @@
  */
 
 import type { TraceStep, TraceValue } from '../../../ui/results-inspector/types';
-import { TRACE_VALUE_LABELS } from '../../../ui/results-inspector/types';
+import {
+  TRACE_ELEMENT_KEYS,
+  TRACE_VALUE_CODES,
+  TRACE_VALUE_LABELS,
+  TRACE_VALUE_UNITS,
+} from '../../../ui/results-inspector/types';
 import { rozpakujWartoscSladu } from '../../../ui/results-inspector/traceValue';
 
 /**
@@ -46,14 +51,21 @@ import { rozpakujWartoscSladu } from '../../../ui/results-inspector/traceValue';
  * a w trybach podstawowym/rozszerzonym POMINIE wiersz (zakaz zgadywania etykiet).
  */
 export interface WartoscDowodu {
-  /** Surowy klucz wielkości (np. `ikss_ka`) — pierwszy plan wyłącznie w trybie eksperckim. */
+  /** Surowy klucz wielkości (np. `ikss_ka`) — wyłącznie „Informacje audytowe" kroku. */
   klucz: string;
-  /** Polska etykieta wielkości lub `null`, gdy klucz nieznany. */
+  /** Polska etykieta wielkości lub `null`, gdy klucz (albo kod wartości) nieznany. */
   etykieta: string | null;
   /** Wartość sformatowana deterministycznie (przecinek dziesiętny PL). */
   wartosc: string;
-  /** Jednostka fizyczna (`TraceValue.unit`), gdy dotyczy. */
+  /** Jednostka fizyczna (`TraceValue.unit` albo kontrakt klucza), gdy dotyczy. */
   jednostka?: string;
+  /**
+   * Identyfikator elementu sieci, gdy wartością klucza jest węzeł/gałąź
+   * (`TRACE_ELEMENT_KEYS`) — widok pokazuje NAZWĘ z modelu (most nazw wyników).
+   */
+  odnosnik?: string;
+  /** Zapis LaTeX wartości (klucz `*_latex`) — widok renderuje go jako wzór, nie tekst. */
+  latex?: string;
 }
 
 /**
@@ -83,6 +95,41 @@ export interface KrokDowoduModel {
   uwagi: string | null;
   /** Identyfikator elementu modelu do selekcji („Pokaż na schemacie") lub `null`. */
   elementId: string | null;
+  /**
+   * Identyfikatory elementów z danych TEGO kroku, które tytuł solvera wpisuje
+   * wprost („Prąd zwarciowy Thevenina w gałęzi <identyfikator>") — widok składa
+   * tytuł z nazwą elementu w ich miejscu (zapis rdzenia jest zamrożony).
+   */
+  odnosnikiTytulu: string[];
+}
+
+/** Wykładnik potęgi dziesięciu zapisem górnym (liczba bez notacji `e`). */
+const CYFRY_GORNE: Readonly<Record<string, string>> = {
+  '-': '⁻',
+  '0': '⁰',
+  '1': '¹',
+  '2': '²',
+  '3': '³',
+  '4': '⁴',
+  '5': '⁵',
+  '6': '⁶',
+  '7': '⁷',
+  '8': '⁸',
+  '9': '⁹',
+};
+
+/**
+ * Zapis techniczny w tekście uwagi solvera: nazwa funkcji albo klucz kontraktu
+ * (`build_zbus`, `fault_node_id`) — człon małymi literami z podkreślnikiem. Uwaga
+ * kroku pochodzi z rdzenia solvera (zapis zamrożony, bramka B-01), więc widok nie
+ * może jej poprawić: uwaga z takim zapisem trafia do „Informacji audytowych" kroku
+ * z jawnym podpisem, a na pierwszym planie zostaje reszta kroku.
+ */
+const ZAPIS_TECHNICZNY = /\b[a-z]{2,}(?:_[a-z0-9]+)+\b/;
+
+/** Czy tekst niesie zapis techniczny (klucz kontraktu, nazwę funkcji). */
+export function maZapisTechniczny(tekst: string): boolean {
+  return ZAPIS_TECHNICZNY.test(tekst);
 }
 
 /**
@@ -90,7 +137,19 @@ export interface KrokDowoduModel {
  * precyzji — `String(n)` daje najkrótszą reprezentację round-trip).
  */
 function formatujLiczbe(n: number): string {
-  return String(n).replace('.', ',');
+  const tekst = String(n);
+  const e = tekst.indexOf('e');
+  if (e < 0) return tekst.replace('.', ',');
+  // Notacja wykładnicza JS („2.21e-13") nie jest zapisem inżynierskim — mantysa
+  // z przecinkiem i potęga dziesięciu zapisem górnym, bez zmiany precyzji.
+  const mantysa = tekst.slice(0, e).replace('.', ',');
+  const wykladnik = tekst
+    .slice(e + 1)
+    .replace(/^\+/, '')
+    .split('')
+    .map((znak) => CYFRY_GORNE[znak] ?? znak)
+    .join('');
+  return `${mantysa}·10${wykladnik}`;
 }
 
 /** Format skalara (`TraceValue.value` JUŻ odpakowanego) do łańcucha prezentacyjnego. */
@@ -153,18 +212,43 @@ function rozpakujWartosc(wartoscSurowa: unknown): WartoscOdpakowana {
   return { tekst: formatujWartosc(wartosc), jednostka: unit, etykietaZWartosci: label };
 }
 
-/** Mapuje `Record<string, wartość kroku>` na listę wielkości (kolejność źródłowa). */
+/**
+ * Mapuje `Record<string, wartość kroku>` na listę wielkości (kolejność źródłowa).
+ * Wartość wyliczeniowa (`TRACE_VALUE_CODES`) dostaje opis po polsku; kod spoza mapy
+ * czyni wielkość nieznaną (etykieta `null` → „Informacje audytowe" kroku) — ekran
+ * nie pokazuje kodu jako tekstu.
+ */
 function mapujWielkosci(rekord: Record<string, unknown> | undefined): WartoscDowodu[] {
   if (!rekord) return [];
   return Object.entries(rekord).map(([klucz, wartoscSurowa]) => {
     const { tekst, jednostka, etykietaZWartosci } = rozpakujWartosc(wartoscSurowa);
-    return {
+    const etykieta = TRACE_VALUE_LABELS[klucz] ?? etykietaZWartosci ?? null;
+    const wielkosc: WartoscDowodu = {
       klucz,
-      etykieta: TRACE_VALUE_LABELS[klucz] ?? etykietaZWartosci ?? null,
+      etykieta,
       wartosc: tekst,
-      jednostka,
+      jednostka: jednostka ?? TRACE_VALUE_UNITS[klucz],
     };
+    const kody = TRACE_VALUE_CODES[klucz];
+    if (kody !== undefined && typeof wartoscSurowa === 'string') {
+      const opis = kody[wartoscSurowa];
+      return opis === undefined ? { ...wielkosc, etykieta: null } : { ...wielkosc, wartosc: opis };
+    }
+    if (TRACE_ELEMENT_KEYS.has(klucz) && typeof wartoscSurowa === 'string') {
+      return { ...wielkosc, odnosnik: wartoscSurowa };
+    }
+    if (klucz.endsWith('_latex') && typeof wartoscSurowa === 'string') {
+      return { ...wielkosc, latex: wartoscSurowa };
+    }
+    return wielkosc;
   });
+}
+
+/** Identyfikatory elementów z danych kroku, które tytuł solvera wpisuje wprost. */
+function odnosnikiWTytule(tytul: string, dane: readonly WartoscDowodu[]): string[] {
+  return dane
+    .map((w) => w.odnosnik)
+    .filter((odnosnik): odnosnik is string => odnosnik !== undefined && tytul.includes(odnosnik));
 }
 
 /**
@@ -174,16 +258,19 @@ function mapujWielkosci(rekord: Record<string, unknown> | undefined): WartoscDow
 export function mapujKroki(kroki: TraceStep[]): KrokDowoduModel[] {
   return kroki.map((krok, i) => {
     const numer = krok.step ?? i + 1;
+    const tytul = krok.title ?? `Krok ${numer}`;
+    const dane = mapujWielkosci(krok.inputs);
     return {
       numer,
-      tytul: krok.title ?? `Krok ${numer}`,
+      tytul,
       wzorLatex: krok.formula_latex ?? null,
-      dane: mapujWielkosci(krok.inputs),
+      dane,
       podstawienie: krok.substitution_latex ?? null,
       podstawienieTekst: krok.substitution_latex == null ? (krok.substitution ?? null) : null,
       wynik: mapujWielkosci(krok.result),
       uwagi: krok.notes ?? null,
       elementId: krok.element_id ?? null,
+      odnosnikiTytulu: odnosnikiWTytule(tytul, dane),
     };
   });
 }

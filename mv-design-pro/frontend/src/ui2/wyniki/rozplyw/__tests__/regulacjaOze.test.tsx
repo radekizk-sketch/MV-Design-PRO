@@ -32,15 +32,18 @@ describe('RegulacjaOze — brak przebiegu (karta E8.1, wzorzec 1:1 z TabelaSzyn/
 });
 
 describe('RegulacjaOze — wynik obecny: stan zerowy zdolności (decyzja OD-15)', () => {
-  it('pokazuje tytuł, opis i odesłanie do OD-15 (badanie karty W3-H)', () => {
+  // Karta #145: zdanie dla projektanta mówi, KIEDY wykres będzie dostępny — bez odsyłacza
+  // do decyzji procesu (OD-15) i bez nazwy właściciela na ekranie.
+  it('pokazuje tytuł, opis i zdanie o warunku dostępności wykresu (bez odsyłacza procesu)', () => {
     ustawWynik();
     render(<RegulacjaOze />);
     const panel = screen.getByTestId('mvd-rozplyw-regulacja-oze-niedostepne');
     expect(within(panel).getByText(ROZPLYW_STRINGS.regulacjaOzeTytul)).toBeInTheDocument();
     expect(within(panel).getByText(ROZPLYW_STRINGS.regulacjaOzeOpis)).toBeInTheDocument();
     const od15 = screen.getByTestId('mvd-rozplyw-regulacja-oze-od15');
-    expect(od15).toHaveTextContent('OD-15');
-    expect(od15).toHaveTextContent('właściciela');
+    expect(od15).toHaveTextContent(ROZPLYW_STRINGS.regulacjaOzeDecyzja);
+    expect(od15).not.toHaveTextContent('OD-15');
+    expect(od15).not.toHaveTextContent('właściciela');
   });
 
   it('NIE renderuje tabeli/wykresu — wyłącznie tekst stanu zerowego', () => {

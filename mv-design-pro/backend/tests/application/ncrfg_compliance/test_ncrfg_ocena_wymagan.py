@@ -334,7 +334,9 @@ def test_koordynacja_nastawy_u_min_z_obwiednia_lvrt(
     assert k.kryterium.relacja == "OBWIEDNIA_GORNA"
     if oczekiwanie == "brak":
         assert k.status_maszynowy == "NIE_OCENIONO"
-        assert any("u_min_pu" in b for b in k.wyjasnienie.czego_brakuje)
+        # Karta #145: brak nazwany po polsku (próg U< i czas), bez kluczy pól modelu.
+        assert any("próg U<" in b for b in k.wyjasnienie.czego_brakuje)
+        assert not any("u_min_pu" in b for b in k.wyjasnienie.czego_brakuje)
         return
     assert k.status_maszynowy == "BRAK_PODSTAWY"
     assert k.margines is not None

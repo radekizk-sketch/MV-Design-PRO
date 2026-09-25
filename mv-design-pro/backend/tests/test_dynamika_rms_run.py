@@ -1085,6 +1085,8 @@ class TestSciezkaUzytkownika:
         }
         zalozenia = " ".join(ladunek["zalozenia"])
         assert "Przypisanie stanu i komenda regulacji" in zalozenia
+        # Założenie silnika po PL-ZNAKI jest zapisane ze znakami (`silnik.py`); intencja bez
+        # zmian — założenie częściowej utraty źródła dociera do ładunku API.
         assert "Częściowa utrata źródła" in zalozenia
 
     def test_stanowisko_badawcze_przez_cala_sciezke(self, client: TestClient) -> None:

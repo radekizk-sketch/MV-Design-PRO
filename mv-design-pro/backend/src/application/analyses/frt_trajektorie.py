@@ -90,8 +90,8 @@ SEKCJA_AUDYTOWA_FRT_PL = (
 POWOD_BRAKU_OCENY_FRT_PL = (
     "trajektoria obecnego solvera nie jest rozwiązaniem sieci — napięcie jest zadane profilem "
     "wejściowym scenariusza, a kryterium v > 0,05 p.u. liczone wobec tego samego profilu jest "
-    "tautologią (sonda audytu 2026-09-23: zapad do 0,06 p.u. trwający 3 s był uznawany za "
-    "dotrzymanie obwiedni)"
+    "spełnione z definicji (zapad do 0,06 p.u. trwający 3 s zostałby uznany za dotrzymanie "
+    "obwiedni)"
 )
 #: Konkretne braki powierzchni FRT (po brakach nazwanych przez regułę K) — co trzeba dostarczyć.
 BRAKI_OCENY_FRT: tuple[str, ...] = (
@@ -208,8 +208,27 @@ def _round(value: float) -> float:
     return round(float(value), _ROUND)
 
 
+def _liczba_pl(wartosc: float) -> str:
+    """Liczba w zdaniu dla projektanta — przecinek dziesiętny, 4 miejsca (echo wejścia)."""
+    return f"{wartosc:.4f}".replace(".", ",")
+
+
+def nazwa_scenariusza_pl(scenario: FrtScenario) -> str:
+    """Polska nazwa scenariusza próby z JEGO parametrów (karta #145).
+
+    Identyfikator scenariusza (`lvrt_<typ przekształtnika>`) jest kluczem technicznym —
+    projektant rozpoznaje scenariusz po rodzaju zakłócenia, głębokości/wartości napięcia
+    i czasie trwania, więc nazwa jest składana z tych trzech wielkości wejścia solvera.
+    """
+    rodzaj = "zapad napięcia (LVRT)" if scenario.test_kind == "lvrt" else "wzrost napięcia (HVRT)"
+    return (
+        f"{rodzaj[0].upper()}{rodzaj[1:]} do {_liczba_pl(scenario.voltage_dip_depth_pu)} p.u. "
+        f"przez {_liczba_pl(scenario.fault_duration_s)} s"
+    )
+
+
 def _krok(tekst: str, latex: str | None = None) -> dict[str, Any]:
-    """Krok wywodu WHITE BOX: tekst (ASCII-PL, deterministyczny) + opcjonalny LaTeX.
+    """Krok wywodu WHITE BOX: tekst dla projektanta (deterministyczny) + opcjonalny LaTeX.
 
     Kontrakt kanoniczny ``{tekst, latex}`` — wzorzec 1:1 z
     ``analysis.energy_validation.builder._krok`` (zasada wywodow KaTeX 2026-07-22).
@@ -223,21 +242,22 @@ def _wywod_scenariusza(scenario: FrtScenario | None) -> list[dict[str, Any]]:
     Czysty formatter (ZERO fizyki, ZERO werdyktu): liczby pochodzą z echa wejścia solvera
     (zapad/wzrost, czas trwania). Dawny wywód „wzór marginesu → podstawienie → SPEŁNIONE"
     skasowany — margines solvera to min(v − 0,05) liczony wobec profilu wejściowego, nie
-    wobec krzywej profilu operatora. Formaty stałe (determinizm), ASCII-PL.
+    wobec krzywej profilu operatora. Formaty stałe (determinizm), przecinek dziesiętny.
     """
     kroki: list[dict[str, Any]] = []
     if scenario is not None:
         kroki.append(
             _krok(
-                f"Scenariusz {scenario.scenario_id} ({scenario.test_kind.upper()}): "
-                f"napięcie zakłócenia {scenario.voltage_dip_depth_pu:.4f} p.u. "
-                f"przez {scenario.fault_duration_s:.4f} s (echo wejścia solvera prób FRT/HVRT)."
+                f"Scenariusz próby: {nazwa_scenariusza_pl(scenario)[0].lower()}"
+                f"{nazwa_scenariusza_pl(scenario)[1:]} — parametry wejściowe próby "
+                "przejścia przez zakłócenie."
             )
         )
     kroki.append(
         _krok(
             "Trajektoria: napięcie zadane profilem wejściowym scenariusza (nie rozwiązanie "
-            "sieci); prąd bierny i moc czynna z odpowiedzi inercyjnej uproszczonego modelu."
+            "sieci); prąd bierny i moc czynna z odpowiedzi inercyjnej uproszczonego modelu "
+            "przekształtnika."
         )
     )
     kroki.append(_krok(f"Ocena niewykonana: {POWOD_BRAKU_OCENY_FRT_PL}."))
@@ -324,9 +344,17 @@ def build_frt_trajectories_view(
             }
             for pt in sc.trajectory
         ]
+        scenariusz_wejscia = scenarios_by_id.get(sc.scenario_id)
         scenariusze.append(
             {
                 "scenario_id": sc.scenario_id,
+                # Karta #145: nazwa scenariusza dla projektanta — z parametrów scenariusza,
+                # nie z identyfikatora (addytywnie; `scenario_id` zostaje kluczem technicznym).
+                "nazwa_pl": (
+                    nazwa_scenariusza_pl(scenariusz_wejscia)
+                    if scenariusz_wejscia is not None
+                    else f"Scenariusz nr {numer_scenariusza} próby {kind.upper()}"
+                ),
                 # Pola solvera poniżej (status, utrzymanie, marginesy, odzysk) są
                 # materiałem AUDYTOWYM — tautologia wobec profilu wejściowego.
                 "status": sc.status,
@@ -346,19 +374,25 @@ def build_frt_trajectories_view(
                     profile=profile,
                     rodzaj=kind,
                     kryterium_id=f"frt_hvrt.{kind}.{converter.id}.{sc.scenario_id}",
+                    # Karta #145: scenariusz nazwany parametrami próby, nie kluczem
+                    # `lvrt_<typ przekształtnika>`.
                     opis_przedmiotu_pl=(
-                        # Scenariusz nazywa numer porządkowy w teście, nie identyfikator
-                        # scenariusza solvera (ten zostaje w `scenario_id`, karta #144).
-                        f"Moduł DER {converter.name} w scenariuszu nr {numer_scenariusza} testu "
-                        f"{kind.upper()} profilu operatora {profile.operator_name_pl}"
+                        f"Moduł DER {converter.name}: "
+                        + (
+                            f"{nazwa_scenariusza_pl(scenariusz_wejscia)[0].lower()}"
+                            f"{nazwa_scenariusza_pl(scenariusz_wejscia)[1:]}"
+                            if scenariusz_wejscia is not None
+                            else f"scenariusz nr {numer_scenariusza} próby {kind.upper()}"
+                        )
+                        + f" wobec profilu operatora {profile.operator_name_pl}"
                     ),
                 ),
                 "liczba_punktow_trajektorii": len(trajektoria),
                 # Ślad WHITE BOX — parametry wejścia solvera dla tego scenariusza.
-                "wejscie_solvera": _wejscie_solvera_echo(scenarios_by_id.get(sc.scenario_id)),
+                "wejscie_solvera": _wejscie_solvera_echo(scenariusz_wejscia),
                 # Wywód {tekst, latex} (zasada KaTeX 2026-07-22): echo wejścia, charakter
                 # trajektorii i powód braku oceny — bez marginesu i bez werdyktu.
-                "wywod": _wywod_scenariusza(scenarios_by_id.get(sc.scenario_id)),
+                "wywod": _wywod_scenariusza(scenariusz_wejscia),
                 "trajektoria": trajektoria,
             }
         )

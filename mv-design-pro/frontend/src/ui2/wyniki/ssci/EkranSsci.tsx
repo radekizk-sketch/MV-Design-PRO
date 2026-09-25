@@ -30,7 +30,7 @@ import {
 import { naMetryki, opisRezystancjiUjemnej } from './model';
 import { useAkcjaPrzejdzDoPrzypadkow } from '../wzorzec';
 import { OcenaNiewykonana, SekcjaAudytowa } from '../wzorzec/OcenaNiewykonana';
-import { SSCI_STRINGS as S, fmtGain, type IstotnoscStanu } from './strings';
+import { POLA_KARTY_SSCI, SSCI_STRINGS as S, fmtGain, type IstotnoscStanu } from './strings';
 
 // ---------------------------------------------------------------------------
 // Elementy wspólne (chip, tag, panel stanu)
@@ -43,7 +43,7 @@ function Tag({ tekst, istotnosc, testid }: { tekst: string; istotnosc: Istotnosc
     </span>
   );
 }
-import { PrzyciskAkcjiStanu } from '../wzorzec';
+import { InformacjeAudytowe, PrzyciskAkcjiStanu, useNazwaObiektu } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 
 function StanPanel({
@@ -79,17 +79,19 @@ function StanPanel({
 
 function PanelPrzeksztaltnika({ dane }: { dane: WidokStabilnosciSsci }) {
   const w = dane.verdict;
+  // Karta #145: przekształtnik i węzeł nazwane z modelu, nigdy referencją.
+  const nazwaObiektu = useNazwaObiektu();
   return (
     <section className="mvd-ssci-werdykt" data-testid="mvd-ssci-przeksztaltnik">
       <div className="mvd-ssci-werdykt-glowny">
         {w.converter_ref && (
           <span className="mvd-ssci-werdykt-meta">
-            {S.chipPrzekształtnik}: {w.converter_ref}
+            {S.chipPrzekształtnik}: {nazwaObiektu(w.converter_ref)}
           </span>
         )}
         {w.bus_ref && (
           <span className="mvd-ssci-werdykt-meta">
-            {S.chipWezel}: {w.bus_ref}
+            {S.chipWezel}: {nazwaObiektu(w.bus_ref)}
           </span>
         )}
       </div>
@@ -152,7 +154,7 @@ function PanelProweniencji({ dane }: { dane: WidokStabilnosciSsci }) {
       <p className="mvd-ssci-prov-tag-pl">{prov.tag_pl}</p>
       {prov.consumed_fields.length > 0 && (
         <p className="mvd-ssci-prov-pola">
-          {S.provPolaZrodlowe}: {prov.consumed_fields.join(', ')}
+          {S.provPolaZrodlowe}: {prov.consumed_fields.map((pole) => POLA_KARTY_SSCI[pole]).join('; ')}
         </p>
       )}
     </section>
@@ -254,18 +256,21 @@ function WynikSsci({
 
       {trybEkspercki && w.white_box.length > 0 && <SladSsci kroki={w.white_box} />}
 
+      {/* Karta #145: identyfikator analizy wyłącznie w „Informacjach audytowych"; próg
+          wzmocnienia (wielkość inżynierska) zostaje na pierwszym planie trybu eksperckiego. */}
       {trybEkspercki && (
         <dl className="mvd-ssci-eksp" data-testid="mvd-ssci-eksp">
-          <div className="mvd-ssci-eksp-para">
-            <dt>{S.ekspAnalizaId}</dt>
-            <dd className="mvd-num">{dane.analysis_id}</dd>
-          </div>
           <div className="mvd-ssci-eksp-para">
             <dt>{S.ekspProgGain}</dt>
             <dd className="mvd-num">{fmtGain(dane.gain_crossover_mag)}</dd>
           </div>
         </dl>
       )}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-ssci-informacje-audytowe"
+        wiersze={[{ etykieta: S.ekspAnalizaId, wartosc: dane.analysis_id }]}
+      />
     </div>
   );
 }
@@ -339,12 +344,14 @@ export function EkranSsci({ trybZaawansowania }: EkranSsciProps) {
       <header className="mvd-ssci-naglowek">
         <h2 className="mvd-ssci-tytul">{S.tytul}</h2>
         <p className="mvd-ssci-opis">{S.opisWstep}</p>
-        {trybEkspercki && runId && (
-          <span className="mvd-ssci-run mvd-num" aria-label={S.runId}>
-            {runId}
-          </span>
-        )}
       </header>
+
+      {/* Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych". */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-ssci-przebieg-informacje-audytowe"
+        wiersze={runId ? [{ etykieta: S.runId, wartosc: runId }] : []}
+      />
 
       <section className="mvd-ssci-akcja-sekcja">
         <p className="mvd-ssci-pole-opis">{S.uruchomOpis}</p>

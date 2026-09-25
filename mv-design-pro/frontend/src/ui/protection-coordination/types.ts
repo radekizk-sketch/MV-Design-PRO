@@ -353,6 +353,12 @@ export const LABELS = {
     noContext: 'Wybierz kontekst',
     selectCase: 'Wybierz wariant pracy',
     selectSnapshot: 'Wybierz stan modelu',
+    bezNazwy: 'bez nazwy',
+    stanModeluWczytany: 'wczytany',
+    rewizjaModelu: (rewizja: number) => `rewizja ${rewizja}`,
+    identyfikatorProjektu: 'Identyfikator projektu',
+    identyfikatorWariantu: 'Identyfikator wariantu pracy',
+    identyfikatorStanuModelu: 'Identyfikator stanu modelu',
   },
 
   checks: {
@@ -426,8 +432,10 @@ export const LABELS = {
     description: 'Opis',
     inputs: 'Wejścia',
     outputs: 'Wyjścia',
+    zapisTechnicznyPodpis: 'dane wejściowe i wyjściowe kroku w zapisie silnika koordynacji',
     noSteps: 'Brak kroków obliczeniowych',
     timestamp: 'Znacznik czasu',
+    identyfikatorObliczen: 'Identyfikator obliczeń',
     expandAll: 'Rozwiń wszystkie',
     collapseAll: 'Zwiń wszystkie',
   },
@@ -463,6 +471,8 @@ export const LABELS = {
    * dostawać etykietę wariantu przekaźnikowego.
    */
   brakCharakterystyki: 'brak charakterystyki',
+  /** Kod charakterystyki spoza słownika `curveTypes` — nazwany jawnie, bez kodu (karta #145). */
+  charakterystykaNierozpoznana: 'charakterystyka spoza słownika',
 
   curveTypes: {
     SI: 'Normalna odwrotna (SI)',

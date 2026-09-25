@@ -8,13 +8,15 @@
  * (adaptery konkretnych analiz wywołują ten wzorzec — np. `rozplyw/TabelaSzyn`).
  * Znacznik świeżości = współdzielony `FreshnessBadge` z `ui2/inspector` (JEDYNY —
  * SPEC_POWIAZANIA §6.2): renderowany, gdy nagłówek niesie obie rewizje.
- * Identyfikator przebiegu — wyłącznie w trybie eksperckim, jako wyrażenie `{...}`.
+ * Identyfikator przebiegu i metadane wyniku — wyłącznie w „Informacjach audytowych"
+ * (tryb ekspercki, zwinięte), nigdy w nagłówku (karta #145).
  */
 
 import './wzorzec.css';
 import '../../inspector/inspector.css';
 import { FreshnessBadge } from '../../inspector';
 import { PanelCoSieZmienilo } from '../../freshness';
+import { InformacjeAudytowe } from './InformacjeAudytowe';
 import { SekcjaZalozen } from './SekcjaZalozen';
 import { TabelaWynikow } from './TabelaWynikow';
 import { WZORZEC_STRINGS } from './strings';
@@ -31,6 +33,7 @@ export function EkranAnalizy({
   onPrzelicz,
   onPokazElement,
   trybZaawansowania,
+  informacjeAudytowe = [],
   kluczWiersza,
   onWybierzWiersz,
   wybranyWiersz,
@@ -62,15 +65,6 @@ export function EkranAnalizy({
             onPrzelicz={onPrzelicz}
           />
         )}
-        {trybEkspercki && runId && (
-          <span
-            className="mvd-wyn-run mvd-num"
-            aria-label={WZORZEC_STRINGS.identyfikatorPrzebiegu}
-            data-testid="mvd-wyn-run-id"
-          >
-            {runId}
-          </span>
-        )}
         {onEksport && (
           <div className="mvd-wyn-akcje">
             <button
@@ -84,6 +78,17 @@ export function EkranAnalizy({
           </div>
         )}
       </header>
+
+      {/* Karta #145: identyfikator przebiegu i pozostałe metadane produkcyjne wyłącznie
+          tutaj — zwinięte, w trybie eksperckim — nigdy w nagłówku ani w tabeli. */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-wyn-informacje-audytowe"
+        wiersze={[
+          ...(runId ? [{ etykieta: WZORZEC_STRINGS.identyfikatorPrzebiegu, wartosc: runId }] : []),
+          ...informacjeAudytowe,
+        ]}
+      />
 
       {pokazPrzyczyny && (
         <PanelCoSieZmienilo

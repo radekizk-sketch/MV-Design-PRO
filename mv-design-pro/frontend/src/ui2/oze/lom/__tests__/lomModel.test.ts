@@ -16,15 +16,19 @@ import {
 import { fmtNastawaLom, fmtOknoLom, istotnoscLom } from '../strings';
 import { poleWidoku, widokOchronyLomFixture } from './fixtures';
 
+/** Most nazw w testach (karta #145): prefiks odróżnia nazwę szyny od jej referencji. */
+const NAZWA = (ref: string): string => `nazwa ${ref}`;
+
 describe('mapujWierszLom / naWierszeLom', () => {
   // Intencja zachowana: wiersz niesie nazwę, szynę, liczbę modułów i status PL z backendu.
   // Zmiana kanonu (2026-09-23): status to etykieta rekordu pola, tag ostrzegawczy wynika z jej
   // semantyki (słownik „Ostrzeżenie/Informacja" modułu skasowany).
   it('mapuje pole na wiersz z nazwą, szyną, liczbą modułów i etykietą rekordu', () => {
     const pole = poleWidoku(widokOchronyLomFixture(), 'Pole BESS B');
-    const wiersz = mapujWierszLom(pole);
+    const wiersz = mapujWierszLom(pole, NAZWA);
     expect(wiersz.pole.wartosc).toBe('Pole BESS B');
-    expect(wiersz.szyna.wartosc).toBe('bus-oze-2');
+    // Karta #145: szyna nazwana mostem nazw; referencja pola jest kluczem, nie kolumną.
+    expect(wiersz.szyna.wartosc).toBe('nazwa bus-oze-2');
     expect(wiersz.moduly.wartosc).toBe(1);
     expect(wiersz.status.wartosc).toBe(pole.ocena.etykieta.etykieta_pl);
     expect(wiersz[KLUCZ_WIERSZA_LOM].wartosc).toBe('bay-bess-b');
@@ -35,31 +39,31 @@ describe('mapujWierszLom / naWierszeLom', () => {
     // Brak podstawy wymagania (ostrzegawcza) nie jest przekroczeniem — nazywa go etykieta.
     const bezLom = poleWidoku(widok, 'Pole PV A');
     expect(bezLom.ocena.etykieta.semantyka).toBe('ostrzegawcza');
-    expect(mapujWierszLom(bezLom).status.ostrzezenie).toBe(false);
+    expect(mapujWierszLom(bezLom, NAZWA).status.ostrzezenie).toBe(false);
     const fw = poleWidoku(widok, 'Pole FW C'); // rekord NIE_OCENIONO — neutralna
     expect(fw.ocena.etykieta.semantyka).toBe('neutralna');
-    expect(mapujWierszLom(fw).status.ostrzezenie).toBe(false);
+    expect(mapujWierszLom(fw, NAZWA).status.ostrzezenie).toBe(false);
     // Rekord naruszenia (semantyka negatywna) — ten sam adapter, etykieta z rekordu.
     const naruszenie = {
       ...fw,
       ocena: { ...fw.ocena, etykieta: { etykieta_pl: 'Wymaganie naruszone', semantyka: 'negatywna' as const } },
     };
-    expect(mapujWierszLom(naruszenie).status.ostrzezenie).toBe(true);
-    expect(mapujWierszLom(naruszenie).status.wartosc).toBe('Wymaganie naruszone');
+    expect(mapujWierszLom(naruszenie, NAZWA).status.ostrzezenie).toBe(true);
+    expect(mapujWierszLom(naruszenie, NAZWA).status.wartosc).toBe('Wymaganie naruszone');
   });
 
   it('mapuje wszystkie pola zachowując kolejność źródłową', () => {
     const widok = widokOchronyLomFixture();
-    const wiersze = naWierszeLom(widok.fields);
+    const wiersze = naWierszeLom(widok.fields, NAZWA);
     expect(wiersze.map((w) => w.pole.wartosc)).toEqual(widok.fields.map((p) => p.bay_name));
   });
 });
 
 describe('naZalozeniaLom', () => {
-  it('buduje wiersz założenia per pozycja listy backendu', () => {
+  it('buduje założenie-ZDANIE per pozycja listy backendu (bez numeru jako etykiety)', () => {
     const zal = naZalozeniaLom(['Założenie A', 'Założenie B']);
     expect(zal).toHaveLength(2);
-    expect(zal[0]).toEqual({ etykieta: '1', wartosc: 'Założenie A' });
+    expect(zal[0]).toEqual({ etykieta: '', wartosc: 'Założenie A', zdanie: true });
   });
 });
 

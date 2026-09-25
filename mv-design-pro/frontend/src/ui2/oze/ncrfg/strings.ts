@@ -30,7 +30,8 @@ export const NCRFG_STRINGS = {
 
   // Dowód certyfikatu urządzenia
   dowodCertyfikatu: 'Dowód certyfikatu urządzenia (wykaz PTPiREE)',
-  dowodRekord: 'rekord wykazu',
+  dowodRekord: 'rekord wykazu certyfikowanych urządzeń PTPiREE',
+  dowodIdentyfikatorRekordu: 'Identyfikator rekordu wykazu PTPiREE',
   dowodProducent: 'producent',
   dowodModel: 'model',
   dowodNumer: 'numer dokumentu',

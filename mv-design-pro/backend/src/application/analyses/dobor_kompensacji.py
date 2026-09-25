@@ -95,6 +95,7 @@ from application.analyses.konwencja_mocy import (
     moc_kanoniczna_punktu,
     q_netto_po_kompensacji,
 )
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import (
     CanonicalRun,
     _graph_id_from_ref,
@@ -423,11 +424,11 @@ def build_compensation_sizing_view(
     if run.analysis_type != "PF":
         raise ValueError(
             "Dobór kompensacji wymaga przebiegu rozpływu mocy; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
     if not (0.0 < cos_phi_min <= 1.0):

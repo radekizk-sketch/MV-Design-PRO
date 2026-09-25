@@ -13,7 +13,7 @@
 
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 import { PanelCoSieZmienilo } from '../PanelCoSieZmienilo';
 
@@ -46,7 +46,7 @@ const ODPOWIEDZ = {
   ],
 };
 
-let fetchMock: ReturnType<typeof vi.fn>;
+let fetchMock: Mock;
 
 function zamontujFetch(body: unknown, ok = true): void {
   fetchMock = vi.fn(async () => ({ ok, status: ok ? 200 : 503, json: async () => body }));
@@ -106,7 +106,10 @@ describe('PanelCoSieZmienilo — przyczyna unieważnienia, nie sama para rewizji
 
     // Element usunięty jest WIDOCZNY (to część przyczyny), ale bez przycisku —
     // przycisk prowadzący do nieistniejącego elementu byłby martwym klikiem.
-    expect(screen.getByText('lin/stara')).toBeTruthy();
+    // Karta #145: element nazwany mostem nazw (usunięty — brak w migawce, więc polska
+    // etykieta z członów referencji), nigdy surową referencją.
+    expect(screen.getByText('usunięto: lin · stara')).toBeTruthy();
+    expect(screen.queryByText(/lin\/stara/)).toBeNull();
     expect(screen.queryByTestId('mvd-zmiana-element-lin/stara')).toBeNull();
   });
 });

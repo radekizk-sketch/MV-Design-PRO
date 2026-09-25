@@ -9,15 +9,17 @@
  */
 
 import type { IssueSeverity, PowerFlowIssueCode } from '../../../ui/power-flow-comparison/types';
+import type { PoleSladuPorownaniaZabezpieczen } from '../../../ui/protection-comparison/types';
 import {
   ISSUE_CODE_LABELS as ZABEZPIECZENIA_KOD_PROBLEMU_PL,
   type IssueCode as ZabezpieczeniaIssueCode,
 } from '../../../ui/protection-comparison/types';
+import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 
 export const POROWNANIE_STRINGS = {
   // Nagłówek analizy
   analiza: 'Porównanie przebiegów',
-  podtytul: 'Porównanie A/B rozpływu mocy — różnice liczone przez backend (tylko do odczytu).',
+  podtytul: 'Porównanie A/B rozpływu mocy — różnice liczone przez serwer obliczeń (tylko do odczytu).',
   identyfikatorPorownania: 'Identyfikator porównania',
 
   // Wybór A/B
@@ -38,7 +40,7 @@ export const POROWNANIE_STRINGS = {
 
   // Stany porównania
   bezWyniku: 'Wybierz przebieg A i przebieg B, a następnie uruchom porównanie',
-  bezWynikuOpis: 'Porównanie wykonuje backend po jawnym kliknięciu „Porównaj przebiegi".',
+  bezWynikuOpis: 'Porównanie wykonuje serwer obliczeń po jawnym kliknięciu „Porównaj przebiegi".',
   wTrakcie: 'Trwa porównywanie przebiegów…',
   bladPorownania: 'Nie udało się wykonać porównania',
   walidacjaBrakAB: 'Wskaż oba przebiegi (A oraz B), aby wykonać porównanie.',
@@ -94,7 +96,6 @@ export const POROWNANIE_STRINGS = {
   kolRodzaj: 'Rodzaj problemu',
   kolElement: 'Element',
   kolOpis: 'Opis',
-  kolKodTechniczny: 'Kod techniczny',
 
   // Stany puste tabel
   brakSzyn: 'Brak różnic szyn w tym porównaniu.',
@@ -108,9 +109,8 @@ export const POROWNANIE_STRINGS = {
   szczegolWaga: 'Waga',
   szczegolRodzaj: 'Rodzaj',
 
-  // Proweniencja biegów A/B (B1/B5, karta CV-3.3-B) — dowód CO było porównywane,
-  // widoczny WYŁĄCZNIE w trybie eksperckim (identyfikatory i odciski techniczne).
-  proweniencjaTytul: 'Proweniencja porównywanych biegów',
+  // Proweniencja biegów A/B (B1/B5, karta CV-3.3-B) — dowód CO było porównywane;
+  // metadane produkcyjne, więc WYŁĄCZNIE w „Informacjach audytowych" (karta #145).
   proweniencjaA: 'Bieg A',
   proweniencjaB: 'Bieg B',
   proweniencjaRodzaj: 'Rodzaj analizy',
@@ -269,7 +269,7 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
 
   // Nagłówek analizy (tryb zwarciowy)
   podtytul:
-    'Porównanie A/B wyników zwarciowych — wielkości Ik", ip, Ith, Sk (oraz pełny bilans IEC 60909 w trybie eksperckim) pochodzą z backendu (tylko do odczytu).',
+    'Porównanie A/B wyników zwarciowych — wielkości Ik", ip, Ith, Sk (oraz pełny bilans IEC 60909 w trybie eksperckim) pochodzą z serwera obliczeń (tylko do odczytu).',
 
   // Wybór A/B
   wyborTytul: 'Wybór przebiegów zwarciowych do porównania',
@@ -426,7 +426,7 @@ export const ZABEZPIECZENIA_POROWNANIE_STRINGS = {
 
   // Nagłówek analizy (tryb zabezpieczeń)
   podtytul:
-    'Porównanie A/B ocen zabezpieczeń — zmiany stanu zadziałania, ranking problemów i ślad porównania pochodzą z backendu (tylko do odczytu).',
+    'Porównanie A/B ocen zabezpieczeń — zmiany stanu zadziałania, ranking problemów i ślad porównania pochodzą z serwera obliczeń (tylko do odczytu).',
 
   // Wybór A/B
   wyborTytul: 'Wybór przebiegów zabezpieczeń do porównania',
@@ -462,8 +462,6 @@ export const ZABEZPIECZENIA_POROWNANIE_STRINGS = {
   // Kolumny — zmiany stanu (ProtectionComparisonRow)
   kolElementChroniony: 'Element chroniony',
   kolPunktZwarcia: 'Punkt zwarcia',
-  kolUrzadzenieA: 'Urządzenie A',
-  kolUrzadzenieB: 'Urządzenie B',
   kolStanA: 'Stan A',
   kolStanB: 'Stan B',
   kolCzasA: 'Czas zadziałania A',
@@ -487,7 +485,7 @@ export const ZABEZPIECZENIA_POROWNANIE_STRINGS = {
   // Filtr „tylko zmiany" — czysta prezentacja na klasyfikacji backendu
   // (state_change != NO_CHANGE), zero arytmetyki w UI.
   filtrTylkoZmiany: 'Pokaż tylko zmiany',
-  filtrOpis: 'Ukrywa wiersze bez zmiany stanu zadziałania (backend: state_change = NO_CHANGE).',
+  filtrOpis: 'Ukrywa wiersze, w których stan zadziałania zabezpieczenia jest taki sam w obu przebiegach.',
   filtrPusto: 'Wszystkie wiersze mają ten sam stan zadziałania w obu przebiegach — brak zmian do pokazania.',
 
   // Szczegół problemu (rozszerzenie o punkt zwarcia względem rozpływu)
@@ -504,9 +502,10 @@ export const ZABEZPIECZENIA_POROWNANIE_STRINGS = {
   sladWejscia: 'Wejścia',
   sladWyjscia: 'Wyjścia',
   sladBrakPol: 'brak pól',
-  sladFingerprintA: 'Fingerprint biblioteki A',
-  sladFingerprintB: 'Fingerprint biblioteki B',
+  sladOdciskBibliotekiA: 'Odcisk biblioteki zabezpieczeń biegu A',
+  sladOdciskBibliotekiB: 'Odcisk biblioteki zabezpieczeń biegu B',
   sladUtworzono: 'Data utworzenia śladu',
+  sladKrok: 'Kod kroku śladu',
 
   // Jednostki
   jednS: 's',
@@ -518,21 +517,51 @@ export const ZABEZPIECZENIA_POROWNANIE_STRINGS = {
 } as const;
 
 /**
+ * Polskie nazwy pól śladu porównania zabezpieczeń (wejścia i wyjścia kroków) — mapa
+ * TYPOWANA zamkniętą unią pól kodu backendu: nowe pole nie skompiluje się bez nazwy,
+ * więc klucz techniczny nie trafi na ekran (karta #145).
+ */
+export const ETYKIETY_POL_SLADU_ZABEZPIECZEN: Readonly<
+  Record<PoleSladuPorownaniaZabezpieczen, string>
+> = {
+  evaluations_a_count: 'Liczba ocen zabezpieczeń w biegu A',
+  evaluations_b_count: 'Liczba ocen zabezpieczeń w biegu B',
+  matched_pairs: 'Pary dopasowane (element chroniony, punkt zwarcia)',
+  total_rows: 'Wiersze porównania',
+  row_count: 'Wiersze porównania',
+  no_change_count: 'Bez zmiany stanu zadziałania',
+  trip_to_no_trip_count: 'Utrata zadziałania',
+  no_trip_to_trip_count: 'Nowe zadziałanie',
+  invalid_change_count: 'Zmiana nieoceniona (stan nieprawidłowy)',
+  delay_threshold_s: 'Próg istotnej zmiany czasu zadziałania [s]',
+  margin_threshold_percent: 'Próg istotnej zmiany marginesu [%]',
+  total_issues: 'Problemy łącznie',
+  critical_issues: 'Problemy krytyczne',
+  major_issues: 'Problemy poważne',
+  moderate_issues: 'Problemy umiarkowane',
+  minor_issues: 'Problemy drobne',
+  informational_issues: 'Problemy informacyjne',
+};
+
+/**
  * Stan zadziałania zabezpieczenia po polsku (backend: `trip_state_a/b` w
  * `ProtectionComparisonRow` — `TRIPS`/`NO_TRIP`/`INVALID`/`MISSING`, patrz
- * `domain/protection_comparison.py`). Token spoza tego zbioru (nierozpoznany,
- * przyszła wartość backendu) → dosłownie, jako dana (zero ukrywania).
+ * `domain/protection_comparison.py`). Token spoza słownika → uczciwe zdanie
+ * (karta #145: kod nigdy surowo na ekranie).
  */
-const STAN_ZADZIALANIA_PL: Record<string, string> = {
+/** Stany zadziałania zabezpieczenia w wierszu porównania (`trip_state_a/b`). */
+export type StanZadzialania = 'TRIPS' | 'NO_TRIP' | 'INVALID' | 'MISSING';
+
+export const STAN_ZADZIALANIA_PL: Readonly<Record<StanZadzialania, string>> = {
   TRIPS: 'Zadziałanie',
   NO_TRIP: 'Brak zadziałania',
   INVALID: 'Nieprawidłowy',
   MISSING: 'Brak oceny',
 };
 
-/** Stan zadziałania po polsku (spoza słownika → dosłowna wartość backendu). */
+/** Stan zadziałania po polsku (spoza słownika → uczciwe zdanie, nie kod). */
 export function stanZadzialaniaPL(stan: string): string {
-  return STAN_ZADZIALANIA_PL[stan] ?? stan;
+  return etykietaZeSlownika(STAN_ZADZIALANIA_PL, stan);
 }
 
 /**

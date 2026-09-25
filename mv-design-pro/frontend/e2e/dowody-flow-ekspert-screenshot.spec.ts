@@ -10,7 +10,7 @@
  *  - e30-zbieznosc   — werdykt zbieżności (liczba iteracji) + bilans przebiegu
  *                      + tabela pętli OLTC + ślad iteracji OTWARTY,
  *  - e31-stan-fazowy — tabela napięć/prądów per faza + asymetrie z werdyktem
- *                      (PRZEKROCZENIE z flagi solvera),
+ *                      (przekroczenie z flagi solvera),
  *  - e32-stabilnosc  — rekord oceny NIE_OCENIONO (uczciwość natychmiastowa
  *                      2026-09-23: kąty wpisane przez użytkownika, dawny werdykt
  *                      STABILNY był porównaniem wpisanych liczb z progami) + echo
@@ -22,6 +22,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { nazwaElementu } from './nazwyModelu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -162,11 +163,12 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     await expect(bilans).toContainText(pl4(wynikZbieznosci.summary.total_losses_q_mvar));
     await expect(bilans).toContainText(pl4(wynikZbieznosci.summary.min_v_pu));
     await expect(bilans).toContainText(pl4(wynikZbieznosci.summary.max_v_pu));
-    // Petla OLTC: wiersz regulatora z biegu (identyfikator galezi ze sladu).
+    // Petla OLTC: wiersz regulatora z biegu — gałąź NAZWANA z modelu sceny (karta #145:
+    // identyfikator gałęzi ze śladu nie stoi na ekranie).
     const regulator = sladZbieznosci.oltc_control.regulators[0];
     expect(regulator, 'scena musi niesc co najmniej jeden regulator OLTC').toBeTruthy();
     await expect(page.getByTestId('mvd-zbieznosc-oltc-tabela')).toContainText(
-      String(regulator.branch_id).slice(0, 8),
+      nazwaElementu('zbieznosc_scena_migawka', String(regulator.branch_id)),
     );
     await page.getByTestId('mvd-zbieznosc-slad-przelacznik').click();
     const sladTabela = page.getByTestId('mvd-zbieznosc-slad-tabela');
@@ -187,7 +189,7 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     );
   } else if (creator === 'wyniki-stan-fazowy') {
     // Tabela faz A/B/C (napięcia/prądy) + asymetrie z werdyktem z flagi solvera
-    // (prądowa PRZEKROCZENIE); werdykty renderowane domyślnie.
+    // (prądowa: przekroczenie); werdykty renderowane domyślnie.
     const tabela = page.getByTestId('mvd-fazowy-tabela-faz');
     await expect(tabela).toBeVisible();
     // Liczby z REALNEGO biegu backendu (phase_state_sn, scena stan-fazowy, karta
@@ -208,7 +210,7 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     await expect(tabela).toContainText(pl(wierszFaz.ib_a, 1));
     const asymetrie = page.getByTestId('mvd-fazowy-asymetrie');
     await expect(asymetrie).toContainText(pl(wierszFaz.current_unbalance_percent, 2));
-    await expect(asymetrie).toContainText('PRZEKROCZENIE');
+    await expect(asymetrie).toContainText('przekroczenie');
   } else {
     // wyniki-stabilnosc (zmiana kanonu 2026-09-23): rekord oceny NIE_OCENIONO z
     // REALNEGO biegu backendu (scena stabilnosc) zamiast werdyktu STABILNY, echo

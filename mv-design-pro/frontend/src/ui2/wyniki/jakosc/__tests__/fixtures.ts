@@ -130,21 +130,24 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
       limit_fail: 10.0,
       margin_pct: -2.0,
       status: 'FAIL',
-      why_pl: 'Odchylenie napięcia 12% — powyżej progu przekroczenia 10%.',
+      why_pl: 'Odchylenie napięcia 12,00 % przekracza limit 10,0 %.',
       // Ślad WHITE BOX per pozycja (R2-A; struktura R3-D) — kształt 1:1 z buildera.
       white_box: [
         {
-          tekst: 'Wzor: odchylenie = |U - U_n| / U_n * 100%',
+          tekst: 'Wzór: odchylenie = |U − U_n| / U_n · 100 %',
           latex: '\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%',
         },
-        { tekst: 'Dane: U = 13.2000 kV (wynik PF), U_n = 15.0000 kV', latex: null },
+        { tekst: 'Dane: U = 13,2000 kV (wynik rozpływu), U_n = 15,0000 kV', latex: null },
         {
-          tekst: 'Wynik: odchylenie = 12.00 %',
+          tekst: 'Wynik: odchylenie = 12,00 %',
           latex:
             '\\delta U = \\frac{|13.2000 - 15.0000|}{15.0000} \\cdot 100\\% = 12.00\\%',
         },
-        { tekst: 'Progi: ostrzezenie 5.0 %, przekroczenie 10.0 %', latex: null },
-        { tekst: 'Werdykt: PRZEKROCZENIE', latex: null },
+        { tekst: 'Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %', latex: null },
+        {
+          tekst: 'Porównanie z progami: Odchylenie napięcia 12,00 % przekracza limit 10,0 %.',
+          latex: null,
+        },
       ],
     },
     {

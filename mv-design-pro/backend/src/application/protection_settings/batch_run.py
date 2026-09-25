@@ -72,6 +72,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.nazwy_biegu import nazwa_projektu_z_migawki
 from application.protection_settings.engine import (
     ProtectionSettingsEngine,
@@ -349,13 +350,13 @@ def zbuduj_wejscie_nastaw(
     """
     if kotwica.status != "FINISHED":
         raise BrakDanychNastawError(
-            f"Przebieg {kotwica.id} nie jest zakończony (status={kotwica.status}) — "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(kotwica.status)}) — "
             "bieg zbiorczy nastaw wymaga zakończonego zwarcia trójfazowego jako kotwicy."
         )
     if kotwica.analysis_type != "short_circuit_sn":
         raise BrakDanychNastawError(
-            "Bieg zbiorczy nastaw wymaga jako kotwicy przebiegu zwarcia trójfazowego "
-            f"(short_circuit_sn); otrzymano rodzaj: {kotwica.analysis_type}."
+            "Bieg zbiorczy nastaw wymaga jako kotwicy przebiegu zwarcia trójfazowego; "
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(kotwica.analysis_type)}."
         )
     kotwica_wynik = kotwica.raw_result or {}
     if kotwica_wynik.get("short_circuit_type") != "3F":

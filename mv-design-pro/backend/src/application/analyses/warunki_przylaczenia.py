@@ -48,7 +48,9 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun
+from werdykt import format_liczba
 
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
 READINESS_CONNECTION_LIMIT_MISSING = "connection.power_limit_missing"
@@ -120,10 +122,11 @@ class OcenaWarunkowPrzylaczenia:
     zalozenia: tuple[str, ...] = field(
         default_factory=lambda: (
             "Wielkości z węzła bilansującego biegu rozpływu (punkt przyłączenia do sieci OSD).",
-            "P > 0 = pobór z sieci, P < 0 = oddawanie do sieci.",
-            "Limit mocy przyłączeniowej dotyczy MODUŁU mocy czynnej (oba kierunki).",
+            "P > 0 oznacza pobór z sieci, P < 0 — oddawanie do sieci.",
+            "Limit mocy przyłączeniowej dotyczy modułu mocy czynnej (oba kierunki).",
             "cosφ liczone z mocy czynnej i biernej w punkcie, bez korekty kierunku.",
-            "Brak danej = NIESPRAWDZONE z kodem gotowości, nigdy wartość zastępcza.",
+            "Brak danej daje kryterium niesprawdzone z nazwanym brakiem, nigdy wartość "
+            "zastępczą.",
         )
     )
 
@@ -267,8 +270,9 @@ def ocen_warunki_przylaczenia(
         przekroczony = modul_p > limit_mw + _EPS
         opis = (
             f"Moc {'oddawana do sieci' if kierunek == KIERUNEK_ODDAWANIE else 'pobierana z sieci'}"
-            f" {modul_p:.3f} MW wobec limitu {limit_mw:.3f} MW"
-            f" ({'PRZEKROCZONY' if przekroczony else 'dotrzymany'})."
+            f" {format_liczba(round(modul_p, 3))} MW wobec limitu "
+            f"{format_liczba(round(limit_mw, 3))} MW"
+            f" (limit {'przekroczony' if przekroczony else 'dotrzymany'})."
         )
         pozycje.append(
             PozycjaOceny(
@@ -309,8 +313,9 @@ def ocen_warunki_przylaczenia(
                 wymagana=_round6(cos_phi_wymagany),
                 jednostka="-",
                 opis_pl=(
-                    f"cosφ w punkcie {cos_phi:.4f} wobec wymaganego {cos_phi_wymagany:.4f}"
-                    f" ({'NIEDOTRZYMANY' if naruszony else 'dotrzymany'})."
+                    f"cosφ w punkcie {format_liczba(round(cos_phi, 4))} wobec wymaganego "
+                    f"{format_liczba(round(cos_phi_wymagany, 4))}"
+                    f" (wymaganie {'niedotrzymane' if naruszony else 'dotrzymane'})."
                 ),
             )
         )
@@ -338,13 +343,12 @@ def build_warunki_przylaczenia_view(run: CanonicalRun) -> dict[str, Any]:
     """
     if run.analysis_type != "PF":
         raise ValueError(
-            "Ocena warunków przyłączenia wymaga przebiegu rozpływu mocy (PF); "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            "Ocena warunków przyłączenia wymaga przebiegu rozpływu mocy; "
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
-            "wynik rozpływu nie jest dostępny."
+            "Przebieg rozpływu mocy nie jest zakończony — wynik rozpływu nie jest " "dostępny."
         )
 
     snapshot = run.snapshot or {}

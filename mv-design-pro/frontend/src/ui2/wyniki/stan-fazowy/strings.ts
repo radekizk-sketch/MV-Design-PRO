@@ -64,7 +64,7 @@ export const STAN_FAZOWY_STRINGS = {
   asymetriaU: 'Odchylenie napięcia od średniej faz',
   asymetriaI: 'Odchylenie prądu od średniej faz',
   asymetriaStrat: 'Odchylenie strat od średniej faz',
-  werdyktPrzekroczenie: 'PRZEKROCZENIE',
+  werdyktPrzekroczenie: 'przekroczenie',
   werdyktWNormie: 'w normie',
   werdyktBrak: 'bez werdyktu',
 

@@ -184,8 +184,8 @@ describe('bieg „co-jeśli" — ciało żądania i komórki z rekordów', () =>
       bieg.test_catalog.find((d) => d.test_id === test.test_id)!.procedure_basis_pl,
     );
     if (test.trace_refs.length > 0) {
-      await uzytkownik.click(screen.getByTestId('mvd-oze-slad-otworz'));
-      expect(screen.getByTestId('mvd-oze-slad-otworz')).toHaveAttribute('aria-expanded', 'true');
+      await uzytkownik.click(screen.getByTestId('mvd-oze-slad-przelacz'));
+      expect(screen.getByTestId('mvd-oze-slad-przelacz')).toHaveAttribute('aria-expanded', 'true');
     }
   });
 
@@ -203,8 +203,8 @@ describe('bieg „co-jeśli" — ciało żądania i komórki z rekordów', () =>
       const test = bieg.modules[1].tests[0];
       const definicja = bieg.test_catalog.find((d) => d.test_id === test.test_id)!;
       const wiersz = screen.getAllByTestId('mvd-oze-wiersz')[0];
-      const napis = `${MACIERZ_STRINGS.zdolnosc}: ${definicja.zdolnosc_id}`;
-      expect(within(wiersz).queryByText(napis, { exact: false }) !== null).toBe(widoczny);
+      // Karta #145: identyfikator zdolności nie stoi w wierszu tabeli w żadnym trybie.
+      expect(wiersz.textContent?.includes(definicja.zdolnosc_id)).toBe(false);
       await uzytkownik.click(within(wiersz).getAllByTestId('mvd-oze-komorka-wynik')[1]);
       const szczegol = screen.getByTestId('mvd-oze-szczegol-wynik');
       expect(within(szczegol).queryByTestId('mvd-oze-szczegol-zdolnosc') !== null).toBe(widoczny);
@@ -392,7 +392,7 @@ describe('metadane biegu — tylko w informacjach audytowych trybu eksperckiego'
       const definicja = biegFixture().test_catalog.find((d) =>
         wiersz.textContent?.startsWith(`${d.test_id} · `),
       )!;
-      expect(wiersz.textContent?.includes(definicja.zdolnosc_id)).toBe(widoczny);
+      expect(wiersz.textContent?.includes(definicja.zdolnosc_id)).toBe(false);
       await uzytkownik.click(within(wiersz).getAllByTestId('mvd-oze-komorka-wynik')[0]);
       expect(screen.getByTestId('mvd-oze-szczegol-definicja')).toHaveTextContent(definicja.procedure_basis_pl);
       expect(screen.queryByTestId('mvd-oze-szczegol-zdolnosc') !== null).toBe(widoczny);
@@ -505,7 +505,7 @@ describe('stan oceny FRT z okna falownika (zapis w store)', () => {
     useNcRfgStore.getState().zapiszWynikFrt(pv.id, {
       testKind: 'lvrt',
       tekst: 'Ocena niewykonana',
-      istotnosc: 'warn',
+      istotnosc: 'ostrzegawcza',
       operatorId: 'enea',
     });
     render(<MacierzNcRfg trybZaawansowania="basic" />);

@@ -168,7 +168,7 @@ class PowerFlowComparisonService:
         trace_steps.append(
             PowerFlowComparisonTraceStep(
                 step="MATCH_BUSES",
-                description_pl="Dopasowanie szyn po element_ref (ENM ref_id)",
+                description_pl="Dopasowanie szyn obu biegów po elemencie modelu sieci",
                 inputs={
                     "buses_a_count": len(bus_values_a),
                     "buses_b_count": len(bus_values_b),
@@ -179,7 +179,7 @@ class PowerFlowComparisonService:
         bus_diffs = self._compute_bus_diffs(bus_values_a, bus_values_b)
         trace_steps[-1] = PowerFlowComparisonTraceStep(
             step="MATCH_BUSES",
-            description_pl="Dopasowanie szyn po element_ref (ENM ref_id)",
+            description_pl="Dopasowanie szyn obu biegów po elemencie modelu sieci",
             inputs={
                 "buses_a_count": len(bus_values_a),
                 "buses_b_count": len(bus_values_b),
@@ -191,7 +191,7 @@ class PowerFlowComparisonService:
         trace_steps.append(
             PowerFlowComparisonTraceStep(
                 step="MATCH_BRANCHES",
-                description_pl="Dopasowanie gałęzi po element_ref (ENM ref_id)",
+                description_pl="Dopasowanie gałęzi obu biegów po elemencie modelu sieci",
                 inputs={
                     "branches_a_count": len(branch_values_a),
                     "branches_b_count": len(branch_values_b),
@@ -202,7 +202,7 @@ class PowerFlowComparisonService:
         branch_diffs = self._compute_branch_diffs(branch_values_a, branch_values_b)
         trace_steps[-1] = PowerFlowComparisonTraceStep(
             step="MATCH_BRANCHES",
-            description_pl="Dopasowanie gałęzi po element_ref (ENM ref_id)",
+            description_pl="Dopasowanie gałęzi obu biegów po elemencie modelu sieci",
             inputs={
                 "branches_a_count": len(branch_values_a),
                 "branches_b_count": len(branch_values_b),
@@ -219,7 +219,7 @@ class PowerFlowComparisonService:
         trace_steps.append(
             PowerFlowComparisonTraceStep(
                 step="RANK_ISSUES",
-                description_pl="Generowanie rankingu problemów wg severity (5->1)",
+                description_pl="Ranking problemów według wagi (od 5 do 1)",
                 inputs={
                     "bus_diffs_count": len(bus_diffs),
                     "branch_diffs_count": len(branch_diffs),
@@ -239,7 +239,7 @@ class PowerFlowComparisonService:
         severity_counts = self._count_severities(ranking)
         trace_steps[-1] = PowerFlowComparisonTraceStep(
             step="RANK_ISSUES",
-            description_pl="Generowanie rankingu problemów wg severity (5->1)",
+            description_pl="Ranking problemów według wagi (od 5 do 1)",
             inputs={
                 "bus_diffs_count": len(bus_diffs),
                 "branch_diffs_count": len(branch_diffs),

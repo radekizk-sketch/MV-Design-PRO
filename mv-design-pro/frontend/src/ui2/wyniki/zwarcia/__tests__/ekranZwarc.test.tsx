@@ -241,13 +241,15 @@ describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () 
     expect(pierwszy.getByText('320,8')).toBeInTheDocument(); // największe Sk" na górze
   });
 
-  it('identyfikator punktu widoczny wyłącznie w trybie eksperckim', async () => {
+  it('identyfikatory punktu i przebiegu nie stoją na pierwszym planie w żadnym trybie (karta #145)', async () => {
     const { rerender } = await renderEkranZwarc(<EkranZwarc {...props({ trybZaawansowania: 'basic' })} />);
     expect(screen.queryByTestId('mvd-wyn-th-identyfikator')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('mvd-wyn-run-id')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-wyn-informacje-audytowe')).not.toBeInTheDocument();
     rerender(<EkranZwarc {...props({ trybZaawansowania: 'expert' })} />);
-    expect(screen.getByTestId('mvd-wyn-th-identyfikator')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-wyn-run-id')).toHaveTextContent('sc-run-1');
+    expect(screen.queryByTestId('mvd-wyn-th-identyfikator')).not.toBeInTheDocument();
+    // Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych" (zwinięte).
+    fireEvent.click(screen.getByTestId('mvd-wyn-informacje-audytowe-przelacz'));
+    expect(screen.getByTestId('mvd-wyn-informacje-audytowe-lista')).toHaveTextContent('sc-run-1');
   });
 
   it('wykres słupkowy Ik" obecny w slocie wykresu', async () => {

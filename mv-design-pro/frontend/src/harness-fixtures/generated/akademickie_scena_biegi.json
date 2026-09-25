@@ -41,6 +41,7 @@
               "z_base_ohm": 2.976744
             },
             "formula": "Z_conv(jw) = [Z_f + G_d*G_ci] / [1 - G_d*H_pll*(I0*G_ci - V0)/V0]",
+            "formula_latex": "Z_{\\mathrm{conv}}(j\\omega) = \\dfrac{Z_f + G_d G_{ci}}{1 - G_d H_{\\mathrm{pll}}\\left(\\dfrac{I_0 G_{ci} - V_0}{V_0}\\right)}",
             "ordinal": 1,
             "proof_ref": "proof:v126:ssci_impedance:ssci_zconv_model",
             "proof_status": "complete",
@@ -95,6 +96,7 @@
               "points": 61
             },
             "formula": "Z_grid(f) = diag(pinv(Y_bus(f) + Y_src(f))) @ bus(falownika)",
+            "formula_latex": "Z_{\\mathrm{grid}}(f) = \\left[\\left(Y_{\\mathrm{bus}}(f) + Y_{\\mathrm{src}}(f)\\right)^{+}\\right]_{\\mathrm{diag}}\\Big|_{\\text{szyna przekształtnika}}",
             "ordinal": 2,
             "proof_ref": "proof:v126:ssci_impedance:ssci_zgrid_sweep",
             "proof_status": "complete",
@@ -115,6 +117,7 @@
               "points": 61
             },
             "formula": "L(jw) = Z_grid(jw) / Z_conv(jw)",
+            "formula_latex": "L(j\\omega) = \\dfrac{Z_{\\mathrm{grid}}(j\\omega)}{Z_{\\mathrm{conv}}(j\\omega)}",
             "ordinal": 3,
             "proof_ref": "proof:v126:ssci_impedance:ssci_minor_loop_gain",
             "proof_status": "complete",
@@ -144,114 +147,12 @@
       "raport": {
         "analysis_type": "ssci_impedance",
         "case_id": "case-demo",
-        "contract": "AcademicReportV1",
+        "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "812091b4e10909f70c86e6262627392f3a21d607c6092f642f02464bd75126cf",
+        "report_hash": "7b7db37e415a59cc8220426d616a039e8a4d5a0dbca3cf57c88b8332b59256d0",
         "report_id": "report:v126:ssci_impedance:1f5e266f9d6ce43e",
         "run_id": "run-v126-scena-akademickie-ssci_impedance",
         "sections": [
-          {
-            "metrics": [
-              {
-                "label": "base_frequency_hz",
-                "value": 50.0
-              },
-              {
-                "label": "bus_ref",
-                "value": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus"
-              },
-              {
-                "label": "converter_ref",
-                "value": "pv/9d008ed355939bef762652554f56b2e4/converter"
-              },
-              {
-                "label": "frequencies_hz",
-                "value": "61 pozycji"
-              },
-              {
-                "label": "minor_loop_gain",
-                "value": "61 pozycji"
-              },
-              {
-                "label": "minor_loop_gain[0].f_hz",
-                "value": 1.0
-              },
-              {
-                "label": "minor_loop_gain[0].im",
-                "value": -0.960762
-              },
-              {
-                "label": "minor_loop_gain[0].mag",
-                "value": 1.136759
-              },
-              {
-                "label": "minor_loop_gain[0].phase_deg",
-                "value": -122.309
-              },
-              {
-                "label": "minor_loop_gain[0].re",
-                "value": -0.607584
-              },
-              {
-                "label": "ocena.dowod.domena_pl",
-                "value": null
-              },
-              {
-                "label": "ocena.dowod.metoda",
-                "value": "BRAK_METODY"
-              },
-              {
-                "label": "ocena.dowod.odniesienie",
-                "value": null
-              },
-              {
-                "label": "ocena.dowod.poziom",
-                "value": "UNVALIDATED_MODEL"
-              },
-              {
-                "label": "ocena.dowod.rodzaj_twierdzenia",
-                "value": "STATIC_CALCULATION"
-              },
-              {
-                "label": "ocena.dowod.status_danych.dane_przyjete",
-                "value": "0 pozycji"
-              },
-              {
-                "label": "ocena.dowod.status_danych.stan",
-                "value": "ZWALIDOWANE"
-              },
-              {
-                "label": "ocena.dowod.status_modelu",
-                "value": "UNVALIDATED_MODEL"
-              },
-              {
-                "label": "ocena.dowod.w_domenie_walidacji",
-                "value": null
-              },
-              {
-                "label": "ocena.etykieta.etykieta_pl",
-                "value": "Ocena niewykonana"
-              },
-              {
-                "label": "ocena.etykieta.semantyka",
-                "value": "neutralna"
-              },
-              {
-                "label": "ocena.kompletnosc_dowodu",
-                "value": "NIEPELNY"
-              },
-              {
-                "label": "ocena.kryterium.opis_pl",
-                "value": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista)"
-              },
-              {
-                "label": "ocena.kryterium.relacja",
-                "value": "LOGICZNE"
-              }
-            ],
-            "section_id": "wynik",
-            "title": "Wynik obliczeń"
-          },
           {
             "metrics": [
               {
@@ -2282,6 +2183,7 @@
               "reactive_capability_source": null
             },
             "formula": "\\text{brak danych wejściowych} \\Rightarrow \\text{wielkość niewyznaczana}",
+            "formula_latex": "\\text{brak danych wejściowych} \\Rightarrow \\text{wielkość niewyznaczana}",
             "ordinal": 1,
             "proof_ref": "proof:v126:voltage_stability:voltage_stability_indices",
             "proof_status": "complete",
@@ -2312,114 +2214,12 @@
       "raport": {
         "analysis_type": "voltage_stability",
         "case_id": "case-demo",
-        "contract": "AcademicReportV1",
+        "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "ab1bd7859c05e9d8a5070797f6420ef2096d04c18ed5f0edf401d18cf0eaf7c6",
+        "report_hash": "45aaad4fe19177990d4e0ee032859feff9f7181f189d3f856fc8c97a960d2d32",
         "report_id": "report:v126:voltage_stability:1ff1f161482e6971",
         "run_id": "run-v126-scena-akademickie-voltage_stability",
         "sections": [
-          {
-            "metrics": [
-              {
-                "label": "brak_danych",
-                "value": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku."
-              },
-              {
-                "label": "l_index_per_bus",
-                "value": "8 pozycji"
-              },
-              {
-                "label": "l_index_per_bus[0].alert",
-                "value": null
-              },
-              {
-                "label": "l_index_per_bus[0].brak_danych",
-                "value": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu."
-              },
-              {
-                "label": "l_index_per_bus[0].bus_ref",
-                "value": "bus_hv"
-              },
-              {
-                "label": "l_index_per_bus[0].l_index",
-                "value": null
-              },
-              {
-                "label": "modal_analysis.brak_danych",
-                "value": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu."
-              },
-              {
-                "label": "modal_analysis.critical_mode.eigenvalue",
-                "value": null
-              },
-              {
-                "label": "modal_analysis.critical_mode.participating_buses",
-                "value": "0 pozycji"
-              },
-              {
-                "label": "modal_analysis.smallest_eigenvalue",
-                "value": null
-              },
-              {
-                "label": "pv_curves",
-                "value": "8 pozycji"
-              },
-              {
-                "label": "pv_curves[0].brak_danych",
-                "value": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku."
-              },
-              {
-                "label": "pv_curves[0].bus_ref",
-                "value": "bus_hv"
-              },
-              {
-                "label": "pv_curves[0].lambda_max",
-                "value": null
-              },
-              {
-                "label": "pv_curves[0].margin_percent",
-                "value": null
-              },
-              {
-                "label": "pv_curves[0].u_at_max",
-                "value": null
-              },
-              {
-                "label": "qv_curves",
-                "value": "8 pozycji"
-              },
-              {
-                "label": "qv_curves[0].brak_danych",
-                "value": "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby przywrócić tę wielkość."
-              },
-              {
-                "label": "qv_curves[0].bus_ref",
-                "value": "bus_hv"
-              },
-              {
-                "label": "qv_curves[0].margin_mvar",
-                "value": null
-              },
-              {
-                "label": "qv_curves[0].q_available_mvar",
-                "value": null
-              },
-              {
-                "label": "qv_curves[0].q_min_mvar",
-                "value": null
-              },
-              {
-                "label": "sanity.checks_passed",
-                "value": 0
-              },
-              {
-                "label": "sanity.checks_total",
-                "value": 4
-              }
-            ],
-            "section_id": "wynik",
-            "title": "Wynik obliczeń"
-          },
           {
             "metrics": [
               {
@@ -2732,6 +2532,7 @@
               "customers_total": 195
             },
             "formula": "SAIDI = sum(lambda_e * MTTR_e * 60 * N_e) / N_t; SAIFI = sum(lambda_e * N_e)/N_t",
+            "formula_latex": "\\mathrm{SAIDI} = \\dfrac{\\sum_e \\lambda_e \\cdot \\mathrm{MTTR}_e \\cdot 60 \\cdot N_e}{N_t}\\text{,}\\quad \\mathrm{SAIFI} = \\dfrac{\\sum_e \\lambda_e \\cdot N_e}{N_t}",
             "ordinal": 1,
             "proof_ref": "proof:v126:reliability_contingency:reliability_indices",
             "proof_status": "complete",
@@ -2760,66 +2561,12 @@
       "raport": {
         "analysis_type": "reliability_contingency",
         "case_id": "case-demo",
-        "contract": "AcademicReportV1",
+        "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "287d587d01020ec2376078917ac309403e62fea50368bdc2af562a7d498ffc01",
+        "report_hash": "f435ec601b7b9cbd03b275baa654153376f44db1ce4fd365f93144d7a45bea27",
         "report_id": "report:v126:reliability_contingency:b27734df66f10ceb",
         "run_id": "run-v126-scena-akademickie-reliability_contingency",
         "sections": [
-          {
-            "metrics": [
-              {
-                "label": "indices.caidi_min_per_interruption",
-                "value": 362.5135
-              },
-              {
-                "label": "indices.maifi_per_year",
-                "value": 0.00911
-              },
-              {
-                "label": "indices.saidi_min_per_year",
-                "value": 27.5138
-              },
-              {
-                "label": "indices.saifi_per_year",
-                "value": 0.0759
-              },
-              {
-                "label": "ranking_n1.ekran",
-                "value": "Wyniki › Kontyngencje"
-              },
-              {
-                "label": "ranking_n1.powod_pl",
-                "value": "ranking liczony z prądu gałęzi bez rozpływu (V12.6); ranking kanoniczny = pełny re-solve"
-              },
-              {
-                "label": "ranking_n1.status",
-                "value": "NIEPREZENTOWANY"
-              },
-              {
-                "label": "ranking_n1.trasa",
-                "value": "/api/insights/n-1-contingency"
-              },
-              {
-                "label": "sanity.checks_passed",
-                "value": 4
-              },
-              {
-                "label": "sanity.checks_total",
-                "value": 4
-              },
-              {
-                "label": "sanity.status",
-                "value": "w paśmie wiarygodności"
-              },
-              {
-                "label": "sanity.violations",
-                "value": "0 pozycji"
-              }
-            ],
-            "section_id": "wynik",
-            "title": "Wynik obliczeń"
-          },
           {
             "metrics": [
               {
@@ -2963,6 +2710,7 @@
               "rho_ohm_m": 100.0
             },
             "formula": "Rg = rho * [1/Lc + 1/sqrt(20A)*(1 + 1/(1+h*sqrt(20/A)))]",
+            "formula_latex": "R_g = \\rho_1 \\left[\\dfrac{1}{L_c} + \\dfrac{1}{\\sqrt{20A}}\\left(1 + \\dfrac{1}{1+h\\sqrt{20/A}}\\right)\\right]",
             "ordinal": 1,
             "proof_ref": "proof:v126:earthing_safety:ieee80_sverak",
             "proof_status": "complete",
@@ -2972,6 +2720,7 @@
             },
             "result_pl": "Rezystancja uziomu: 1.40143 Ω; wzrost potencjału: 6.726865 kV",
             "substitution": "R_g = 100.0 Ω·m · (1/610.0 m + człon powierzchniowy siatki)",
+            "substitution_latex": "R_g = 100\\ \\Omega{\\cdot}\\mathrm{m} \\cdot \\left(\\dfrac{1}{610\\ \\mathrm{m}} + \\text{człon powierzchniowy siatki (}A=1200\\ \\mathrm{m}^2\\text{)}\\right)",
             "unit_check": "Rezystywność [Ω·m] razy odwrotność długości [1/m] daje rezystancję [Ω]; prąd [kA] razy rezystancja [Ω] daje napięcie [kV]."
           }
         ],
@@ -2991,106 +2740,12 @@
       "raport": {
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
-        "contract": "AcademicReportV1",
+        "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "86cd047b44c10b35ddcf6f7da101b7524726ed521750d3e5f3eedac7a02668e6",
+        "report_hash": "97638f0b07a480c6ab361fd53eda03869db418f7b5e2e9861bb55e5832bd99af",
         "report_id": "report:v126:earthing_safety:4651d15a7446d0cf",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
         "sections": [
-          {
-            "metrics": [
-              {
-                "label": "fault_clearing_time_s",
-                "value": 0.5
-              },
-              {
-                "label": "gpr_kv",
-                "value": 6.726865
-              },
-              {
-                "label": "gpz_ref",
-                "value": "bus_hv"
-              },
-              {
-                "label": "grid_geometry.buried_depth_m",
-                "value": 0.7
-              },
-              {
-                "label": "grid_geometry.length_m",
-                "value": 40.0
-              },
-              {
-                "label": "grid_geometry.mesh_spacing_m",
-                "value": 5.0
-              },
-              {
-                "label": "grid_geometry.width_m",
-                "value": 30.0
-              },
-              {
-                "label": "i_g_ka",
-                "value": 4.8
-              },
-              {
-                "label": "r_g_ohm",
-                "value": 1.40143
-              },
-              {
-                "label": "safety_status",
-                "value": "niezgodny"
-              },
-              {
-                "label": "sanity.checks_passed",
-                "value": 4
-              },
-              {
-                "label": "sanity.checks_total",
-                "value": 4
-              },
-              {
-                "label": "sanity.status",
-                "value": "w paśmie wiarygodności"
-              },
-              {
-                "label": "sanity.violations",
-                "value": "0 pozycji"
-              },
-              {
-                "label": "soil_model.h1",
-                "value": 2.0
-              },
-              {
-                "label": "soil_model.rho1",
-                "value": 100.0
-              },
-              {
-                "label": "soil_model.rho2",
-                "value": 300.0
-              },
-              {
-                "label": "split_factor",
-                "value": 0.6
-              },
-              {
-                "label": "u_step_allowable_v",
-                "value": 3019.629
-              },
-              {
-                "label": "u_step_calculated_v",
-                "value": 1919.056
-              },
-              {
-                "label": "u_touch_allowable_v",
-                "value": 921.431
-              },
-              {
-                "label": "u_touch_calculated_v",
-                "value": 2499.069
-              }
-            ],
-            "section_id": "wynik",
-            "title": "Wynik obliczeń"
-          },
           {
             "metrics": [
               {
@@ -3249,6 +2904,7 @@
               ]
             },
             "formula": "Metoda detekcji = f(sposób uziemienia punktu neutralnego, wyposażenie przekaźnika)",
+            "formula_latex": "\\text{Metoda detekcji} = f(\\text{sposób uziemienia punktu neutralnego},\\ \\text{wyposażenie przekaźnika})",
             "ordinal": 1,
             "proof_ref": "proof:v126:earth_fault_detection:earth_fault_method_selection",
             "proof_status": "complete",
@@ -3256,8 +2912,9 @@
               "available": true,
               "recommended_method": "wattmetric"
             },
-            "result_pl": "Metoda zalecana: wattmetric; dostępna w przekaźniku: tak",
+            "result_pl": "Metoda zalecana: watometryczna; dostępna w przekaźniku: tak",
             "substitution": "petersen_tuned -> wattmetric",
+            "substitution_latex": "\\text{punkt neutralny: skompensowany dławikiem dostrojonym;}\\ \\text{metody dostępne w przekaźniku: admitancyjna, watometryczna}",
             "unit_check": "Wybór metody jest decyzją logiczną — bez jednostek fizycznych."
           }
         ],
@@ -3277,62 +2934,12 @@
       "raport": {
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
-        "contract": "AcademicReportV1",
+        "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "037159360e0abcaf1e0114944d93a421a78af7f6ee3aee152e46c8024c3a30ed",
+        "report_hash": "428e2f395616dee5ba74c3e457fcfd10cab0ff39a189c0bdd2ed764e2799e24e",
         "report_id": "report:v126:earth_fault_detection:5d650527329a3346",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
         "sections": [
-          {
-            "metrics": [
-              {
-                "label": "alternative_method",
-                "value": "fifth_harmonic"
-              },
-              {
-                "label": "neutral_grounding",
-                "value": "petersen_tuned"
-              },
-              {
-                "label": "recommended_method",
-                "value": "wattmetric"
-              },
-              {
-                "label": "relay_support_status",
-                "value": "spelniony"
-              },
-              {
-                "label": "sanity.checks_passed",
-                "value": 2
-              },
-              {
-                "label": "sanity.checks_total",
-                "value": 2
-              },
-              {
-                "label": "sanity.status",
-                "value": "w paśmie wiarygodności"
-              },
-              {
-                "label": "sanity.violations",
-                "value": "0 pozycji"
-              },
-              {
-                "label": "settings.i5_multiplier",
-                "value": null
-              },
-              {
-                "label": "settings.p0_set_w",
-                "value": 1.0
-              },
-              {
-                "label": "settings.u0_start_percent",
-                "value": 5.0
-              }
-            ],
-            "section_id": "wynik",
-            "title": "Wynik obliczeń"
-          },
           {
             "metrics": [
               {
@@ -3396,9 +3003,10 @@
               "available": true,
               "recommended_method": "wattmetric"
             },
-            "result_pl": "Metoda zalecana: wattmetric; dostępna w przekaźniku: tak",
+            "result_pl": "Metoda zalecana: watometryczna; dostępna w przekaźniku: tak",
             "step": 1,
             "substitution": "petersen_tuned -> wattmetric",
+            "substitution_latex": "\\text{punkt neutralny: skompensowany dławikiem dostrojonym;}\\ \\text{metody dostępne w przekaźniku: admitancyjna, watometryczna}",
             "unit_check": "Wybór metody jest decyzją logiczną — bez jednostek fizycznych."
           }
         ],
@@ -3479,6 +3087,7 @@
               "u_r_kv": 17.5
             },
             "formula": "u_TRV(t)=Ur*(1-cos(wn*t))*exp(-t/tau)+Ur/sqrt(3)",
+            "formula_latex": "u_{\\mathrm{TRV}}(t) = U_r\\left(1-\\cos(\\omega_n t)\\right)e^{-t/\\tau} + \\dfrac{U_r}{\\sqrt{3}}",
             "ordinal": 1,
             "proof_ref": "proof:v126:transient_trv:trv_inrush_ferro",
             "proof_status": "complete",
@@ -3507,78 +3116,12 @@
       "raport": {
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
-        "contract": "AcademicReportV1",
+        "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "7bcbd1d54c08daa03608ebd283b404824eda32b2df8850f8a80d326006605173",
+        "report_hash": "8bee182941d8ef419ad0732c2098eb0212ea962ae37496aacdc25d3ae504097d",
         "report_id": "report:v126:transient_trv:18595c77271bad2b",
         "run_id": "run-v126-scena-akademickie-transient_trv",
         "sections": [
-          {
-            "metrics": [
-              {
-                "label": "ferroresonance.recommendation",
-                "value": "brak przesłanek do ferrorezonansu"
-              },
-              {
-                "label": "ferroresonance.risk",
-                "value": false
-              },
-              {
-                "label": "inrush.blocking_87t_recommended",
-                "value": false
-              },
-              {
-                "label": "inrush.peak_multiple_in",
-                "value": 8.0
-              },
-              {
-                "label": "inrush.second_harmonic_percent_of_peak",
-                "value": 7.875
-              },
-              {
-                "label": "sanity.checks_passed",
-                "value": 3
-              },
-              {
-                "label": "sanity.checks_total",
-                "value": 3
-              },
-              {
-                "label": "sanity.status",
-                "value": "w paśmie wiarygodności"
-              },
-              {
-                "label": "sanity.violations",
-                "value": "0 pozycji"
-              },
-              {
-                "label": "trv_curve",
-                "value": "50 pozycji"
-              },
-              {
-                "label": "trv_curve[0].envelope_kv",
-                "value": 0.79545
-              },
-              {
-                "label": "trv_curve[0].t_us",
-                "value": 2.0
-              },
-              {
-                "label": "trv_curve[0].u_trv_kv",
-                "value": 10.30003
-              },
-              {
-                "label": "trv_margin_percent",
-                "value": -1194.8609
-              },
-              {
-                "label": "trv_status",
-                "value": "niespelniony"
-              }
-            ],
-            "section_id": "wynik",
-            "title": "Wynik obliczeń"
-          },
           {
             "metrics": [
               {
@@ -3973,6 +3516,7 @@
               "motors": 1
             },
             "formula": "DeltaU = |I_start * Z_src| / U_phase * 100%; I_start = k_LR * I_n",
+            "formula_latex": "\\Delta U = \\dfrac{|I_{\\mathrm{start}} \\cdot Z_{\\mathrm{src}}|}{U_{\\mathrm{phase}}}\\cdot 100\\%\\text{,}\\quad I_{\\mathrm{start}} = k_{LR}\\cdot I_n",
             "ordinal": 1,
             "proof_ref": "proof:v126:motor_starting:motor_starting",
             "proof_status": "complete",
@@ -4000,62 +3544,12 @@
       "raport": {
         "analysis_type": "motor_starting",
         "case_id": "case-demo",
-        "contract": "AcademicReportV1",
+        "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "2228edab866027713d802edc7b037de8c088263754abd5b3d4ad15d9083f6def",
+        "report_hash": "61a68fb1f9a3ec91078f74c66d26dd8a06fd8e30f752189d660b8e47bb6fe7eb",
         "report_id": "report:v126:motor_starting:8cf74b9561d1aeae",
         "run_id": "run-v126-scena-akademickie-motor_starting",
         "sections": [
-          {
-            "metrics": [
-              {
-                "label": "motors",
-                "value": "1 pozycji"
-              },
-              {
-                "label": "motors[0].bus_ref",
-                "value": "bus_sn_b"
-              },
-              {
-                "label": "motors[0].i_start_a",
-                "value": 102.64
-              },
-              {
-                "label": "motors[0].motor_ref",
-                "value": "M-1"
-              },
-              {
-                "label": "motors[0].thermal_i2t_ratio",
-                "value": 12.0
-              },
-              {
-                "label": "motors[0].torque_margin_pu",
-                "value": 0.0455
-              },
-              {
-                "label": "motors[0].torque_start_pu",
-                "value": 0.6455
-              },
-              {
-                "label": "sanity.checks_passed",
-                "value": 4
-              },
-              {
-                "label": "sanity.checks_total",
-                "value": 4
-              },
-              {
-                "label": "sanity.status",
-                "value": "w paśmie wiarygodności"
-              },
-              {
-                "label": "sanity.violations",
-                "value": "0 pozycji"
-              }
-            ],
-            "section_id": "wynik",
-            "title": "Wynik obliczeń"
-          },
           {
             "metrics": [
               {
@@ -4194,6 +3688,7 @@
               "references_provided": false
             },
             "formula": "delta_percent = |calc - ref| / |ref| * 100%",
+            "formula_latex": "\\delta = \\dfrac{|\\mathrm{calc} - \\mathrm{ref}|}{|\\mathrm{ref}|}\\cdot 100\\%",
             "ordinal": 1,
             "proof_ref": "proof:v126:benchmark_validation:benchmark_regression",
             "proof_status": "complete",
@@ -4221,50 +3716,12 @@
       "raport": {
         "analysis_type": "benchmark_validation",
         "case_id": "case-demo",
-        "contract": "AcademicReportV1",
+        "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "e407f98c11ec41e52b81ebd31950b64ea9cf29958bec898c9b99a360577c528e",
+        "report_hash": "30b721c9a1f7a30ca817c5747a35010f12f494f515e107fa348f132e225b16fa",
         "report_id": "report:v126:benchmark_validation:ecd352bcb031c442",
         "run_id": "run-v126-scena-akademickie-benchmark_validation",
         "sections": [
-          {
-            "metrics": [
-              {
-                "label": "message_pl",
-                "value": "Walidacja benchmarkowa wymaga referencji (IEEE 9/14/39-bus, CIGRE MV) z wartościami policzonymi przez solver. Bez nich werdyktu PASS/FAIL nie wystawia się (zakaz cichego fałszu K-09)."
-              },
-              {
-                "label": "references_provided",
-                "value": false
-              },
-              {
-                "label": "sanity.checks_passed",
-                "value": 0
-              },
-              {
-                "label": "sanity.checks_total",
-                "value": 0
-              },
-              {
-                "label": "sanity.status",
-                "value": "dane niekompletne"
-              },
-              {
-                "label": "sanity.violations",
-                "value": "0 pozycji"
-              },
-              {
-                "label": "status",
-                "value": "dane niekompletne"
-              },
-              {
-                "label": "validation_report",
-                "value": "0 pozycji"
-              }
-            ],
-            "section_id": "wynik",
-            "title": "Wynik obliczeń"
-          },
           {
             "metrics": [
               {
@@ -4396,6 +3853,7 @@
               "parameters": 9
             },
             "formula": "sigma_Y^2 = sum((dY/dx_i * sigma_x_i)^2); U95 = 2*sigma_Y",
+            "formula_latex": "\\sigma_Y^2 = \\sum_i \\left(\\dfrac{\\partial Y}{\\partial x_i}\\cdot \\sigma_{x_i}\\right)^2\\text{,}\\quad U_{95} = 2\\sigma_Y",
             "ordinal": 1,
             "proof_ref": "proof:v126:uncertainty_sensitivity:uncertainty_propagation",
             "proof_status": "complete",
@@ -4423,58 +3881,12 @@
       "raport": {
         "analysis_type": "uncertainty_sensitivity",
         "case_id": "case-demo",
-        "contract": "AcademicReportV1",
+        "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "cc4d77c03bed833ded5bf0666f69c0c50f98bace235e9cb7a771e2487e6d89a3",
+        "report_hash": "614b67b96a441a52af814f337b101a6af1d7f8e084efd17cd69e0ab9702ccebc",
         "report_id": "report:v126:uncertainty_sensitivity:1500947651959ed4",
         "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
         "sections": [
-          {
-            "metrics": [
-              {
-                "label": "display_contract",
-                "value": "wartość nominalna ± niepewność rozszerzona k=2"
-              },
-              {
-                "label": "expanded_uncertainty_percent_k2",
-                "value": 5.70896
-              },
-              {
-                "label": "sanity.checks_passed",
-                "value": 3
-              },
-              {
-                "label": "sanity.checks_total",
-                "value": 3
-              },
-              {
-                "label": "sanity.status",
-                "value": "w paśmie wiarygodności"
-              },
-              {
-                "label": "sanity.violations",
-                "value": "0 pozycji"
-              },
-              {
-                "label": "sensitivity_ranking",
-                "value": "9 pozycji"
-              },
-              {
-                "label": "sensitivity_ranking[0].parameter",
-                "value": "bus_hv.s_sc_mva"
-              },
-              {
-                "label": "sensitivity_ranking[0].share_percent",
-                "value": 52.6939
-              },
-              {
-                "label": "sensitivity_ranking[0].sigma_contribution_percent",
-                "value": 2.5
-              }
-            ],
-            "section_id": "wynik",
-            "title": "Wynik obliczeń"
-          },
           {
             "metrics": [
               {
@@ -4657,6 +4069,7 @@
               "u_line_kv": 110.0
             },
             "formula": "C0 = (1/ω)·Σ(b0·len);  Ic = 3·ω·C0·U_f = √3·ω·C0·U_l",
+            "formula_latex": "C_0 = \\dfrac{1}{\\omega}\\sum b_0 \\cdot \\ell\\text{,}\\quad I_C = 3\\,\\omega\\, C_0\\, U_f = \\sqrt{3}\\,\\omega\\, C_0\\, U_l",
             "ordinal": 1,
             "proof_ref": "proof:v126:neutral_earthing_design:neutral_earthing_capacitive_current",
             "proof_status": "complete",
@@ -4666,6 +4079,7 @@
             },
             "result_pl": "Prąd pojemnościowy doziemienia sieci: 18.7477 A",
             "substitution": "C0=9.84e-05/314.1593; Ic=√3·314.1593·3.13217e-07·110000.0",
+            "substitution_latex": "C_0 = \\dfrac{0,000098\\ \\mathrm{S}}{314,1593\\ \\mathrm{rad/s}}\\text{,}\\quad I_C = \\sqrt{3}\\cdot 314,1593\\cdot C_0 \\cdot 110\\ \\mathrm{kV}",
             "unit_check": "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l."
           },
           {
@@ -4676,6 +4090,7 @@
               "ref": "W. Petersen, kompensacja rezonansowa (sieć skompensowana)"
             },
             "formula": "ωL = 1/(3ωC0)  ⇒  L = 1/(3·ω²·C0);  X_L = ωL;  I_L(rezonans)=Ic",
+            "formula_latex": "\\omega L = \\dfrac{1}{3\\omega C_0} \\;\\Rightarrow\\; L = \\dfrac{1}{3\\omega^2 C_0}\\text{,}\\quad X_L = \\omega L\\text{,}\\quad I_L^{\\,(\\mathrm{rezonans})} = I_C",
             "ordinal": 2,
             "proof_ref": "proof:v126:neutral_earthing_design:petersen_resonance_tuning",
             "proof_status": "complete",
@@ -4686,6 +4101,7 @@
             },
             "result_pl": "Dławik gaszący: 10.78285522 H, 3387.5339 Ω, prąd znamionowy 18.7477 A",
             "substitution": "L=1/(3·314.1593²·3.13217e-07); X_L=1/(3·314.1593·3.13217e-07)",
+            "substitution_latex": "L = \\dfrac{1}{3\\cdot 314,1593^2 \\cdot 0,000000313\\ \\mathrm{F}}\\text{,}\\quad X_L = \\dfrac{1}{3\\cdot 314,1593\\cdot 0,000000313\\ \\mathrm{F}}\\text{,}\\quad I_L^{(\\mathrm{rezonans})} = I_C = 18,7477\\ \\mathrm{A}",
             "unit_check": "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A]."
           },
           {
@@ -4695,6 +4111,7 @@
               "residual_damping_d": 0.0
             },
             "formula": "v=(I_L−I_C)/I_C;  I_res = I_C·√(d² + v²)",
+            "formula_latex": "v = \\dfrac{I_L - I_C}{I_C}\\text{,}\\quad I_{\\mathrm{res}} = I_C\\sqrt{d^2+v^2}",
             "ordinal": 3,
             "proof_ref": "proof:v126:neutral_earthing_design:petersen_residual_current",
             "proof_status": "complete",
@@ -4704,6 +4121,7 @@
             },
             "result_pl": "Prąd resztkowy: 0.0 A w rezonansie, 0.937386 A przy rozstrojeniu",
             "substitution": "I_res(rezonans)=Ic·0.0; I_res(±0.05)=Ic·√(0.0²+0.05²)",
+            "substitution_latex": "I_{\\mathrm{res}}(\\mathrm{rezonans}) = 18,7477\\ \\mathrm{A}\\cdot 0\\text{,}\\quad I_{\\mathrm{res}}(\\pm0,05) = 18,7477\\ \\mathrm{A}\\cdot \\sqrt{0^2 + 0,05^2}",
             "unit_check": "Mnożnik bezwymiarowy razy prąd [A] daje prąd [A]."
           }
         ],
@@ -4723,114 +4141,12 @@
       "raport": {
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
-        "contract": "AcademicReportV1",
+        "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "93e7ef01273174519e1c49c80fc7846865dc80ad2e02f1884f57716bc5caa484",
+        "report_hash": "cf241832de846f20c7fbc6da3d81f491d4f4d540d71811b8375cf44d585d4a65",
         "report_id": "report:v126:neutral_earthing_design:59a348096c99235c",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
         "sections": [
-          {
-            "metrics": [
-              {
-                "label": "branches_contributing",
-                "value": "1 pozycji"
-              },
-              {
-                "label": "branches_contributing[0].b0_siemens_per_km",
-                "value": 4.1e-05
-              },
-              {
-                "label": "branches_contributing[0].b0_total_siemens",
-                "value": 9.84e-05
-              },
-              {
-                "label": "branches_contributing[0].branch_ref",
-                "value": "cab_main_b"
-              },
-              {
-                "label": "branches_contributing[0].kind",
-                "value": "cable"
-              },
-              {
-                "label": "branches_contributing[0].length_km",
-                "value": 2.4
-              },
-              {
-                "label": "branches_missing_b0",
-                "value": "2 pozycji"
-              },
-              {
-                "label": "c0_farad",
-                "value": 3.13217e-07
-              },
-              {
-                "label": "capacitive_earth_fault_current_a",
-                "value": 18.7477
-              },
-              {
-                "label": "coil_current_rating_a",
-                "value": 18.7477
-              },
-              {
-                "label": "coil_inductance_h",
-                "value": 10.78285522
-              },
-              {
-                "label": "coil_reactance_ohm",
-                "value": 3387.5339
-              },
-              {
-                "label": "design_mode",
-                "value": "petersen_coil"
-              },
-              {
-                "label": "detuning_assumed",
-                "value": 0.05
-              },
-              {
-                "label": "network_line_voltage_kv",
-                "value": 110.0
-              },
-              {
-                "label": "neutral_earthing_type",
-                "value": "petersen_coil"
-              },
-              {
-                "label": "residual_current_at_detuning_a",
-                "value": 0.937386
-              },
-              {
-                "label": "residual_current_at_resonance_a",
-                "value": 0.0
-              },
-              {
-                "label": "residual_damping_assumed",
-                "value": 0.0
-              },
-              {
-                "label": "sanity.checks_passed",
-                "value": 4
-              },
-              {
-                "label": "sanity.checks_total",
-                "value": 4
-              },
-              {
-                "label": "sanity.status",
-                "value": "w paśmie wiarygodności"
-              },
-              {
-                "label": "sanity.violations",
-                "value": "0 pozycji"
-              },
-              {
-                "label": "tuning_status",
-                "value": "dostrojony"
-              }
-            ],
-            "section_id": "wynik",
-            "title": "Wynik obliczeń"
-          },
           {
             "metrics": [
               {

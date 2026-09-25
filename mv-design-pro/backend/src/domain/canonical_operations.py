@@ -15,7 +15,7 @@ REGULA: Ten modul jest JEDYNYM ZRODLEM PRAWDY dla:
 from __future__ import annotations
 
 import enum
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -2576,6 +2576,25 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_navigation={"panel": "analizy", "tab": "odbior"},
     ),
 }
+
+
+def opis_kodu_gotowosci_pl(kod: str) -> str:
+    """Komunikat PL kodu gotowości — tekst dla inżyniera w miejscu kodu (karta #145).
+
+    Zdania wyjaśnień składane z listy braków (ocena cieplna, arkusz obwodu nN, dowód
+    cieplny gałęzi) wklejały dotąd surowy kod (`conductor.thermal_data_missing`).
+    Kod spoza rejestru nie ma komunikatu — `KeyError` z nazwanym kodem (błąd kontraktu
+    dostawcy, łapany jego testami), nigdy kod wklejony w zdanie dla projektanta.
+    """
+    spec = READINESS_CODES.get(kod)
+    if spec is None:
+        raise KeyError(f"Kod gotowości „{kod}” nie ma komunikatu w rejestrze READINESS_CODES.")
+    return spec.message_pl
+
+
+def opisy_kodow_gotowosci_pl(kody: Sequence[str]) -> str:
+    """Zdanie z komunikatów PL listy kodów gotowości (kolejność źródłowa, średnik)."""
+    return "; ".join(opis_kodu_gotowosci_pl(kod) for kod in kody) + "."
 
 
 def get_blockers_for_analysis(analysis_type: str) -> tuple[str, ...]:

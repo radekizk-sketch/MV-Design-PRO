@@ -226,7 +226,9 @@ def _podstawa_dowodu(
     uwagi = "; ".join(
         u
         for u in (
-            f"rejestr {profile.wipwc.rejestr.plik} ({profile.wipwc.rejestr.schemat})",
+            # Karta #145: ścieżka pliku rejestru i nazwa schematu to metadane repozytorium,
+            # nie tekst dla projektanta — podstawa nazywa rejestr słowami.
+            "rejestr certyfikowanych urządzeń PTPiREE wskazany przez warstwę WiPWC profilu",
             f"warstwa WiPWC profilu: {dokument.tytul}, wydanie {dokument.wydanie}",
             dokument.uwagi_pl,
             None if jednostka is not None else "brak pozycji rekordu w wykazie",
@@ -270,7 +272,7 @@ def weryfikacja_certyfikatu(
                 rekord_ref=None,
                 powod_pl=(
                     "tabliczka urządzenia oznaczona jako powiązana z wykazem PTPiREE, ale bez "
-                    "referencji rekordu wykazu (ptpiree_certificate_ref) — brak dowodu"
+                    "wskazania rekordu wykazu certyfikatów — brak dowodu"
                 ),
             )
         return None

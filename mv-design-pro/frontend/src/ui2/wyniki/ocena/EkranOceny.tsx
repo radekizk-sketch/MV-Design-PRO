@@ -6,14 +6,16 @@
  *
  * Układ (prompt §4):
  *   1. PODSTAWA OCENY — projekt, przypadek obliczeniowy, wariant pracy, rewizja
- *      modelu, przebiegi (identyfikator, stan ZAKOŃCZONY, czas, aktualność),
+ *      modelu, przebiegi (stan ZAKOŃCZONY, czas, aktualność; identyfikatory przebiegów
+ *      i odcisk modelu wyłącznie w „Informacjach audytowych"),
  *      pakiet wyników;
  *   2. PODSUMOWANIE — OCENIONO n · SPEŁNIA WYMAGANIA n · NIE SPEŁNIA WYMAGAŃ n ·
  *      WYNIK NIEJEDNOZNACZNY n · BRAK PODSTAW DO OCENY n (liczniki per element z backendu);
  *   3. POZYCJE OCENY w grupach znaczeniowych (wyłącznie grupy z wynikami):
  *      PRZEDMIOT · WIELKOŚĆ · WARTOŚĆ OBLICZONA · WARTOŚĆ ODNIESIENIA · MARGINES ·
  *      PODSTAWA OCENY · WYNIK OCENY · WNIOSEK — z powiązaniami: schemat (SLD),
- *      identyfikator w modelu, dowód obliczeń (przebieg + element);
+ *      dowód obliczeń (przebieg + element), identyfikator w modelu wyłącznie w
+ *      „Informacjach audytowych" wiersza (karta #145: nazwa z modelu przez most nazw);
  *   4. kryteria bez podstawy do oceny (z powodem) i kryteria poza oceną automatyczną;
  *   5. stan blokujący BRAK WYNIKÓW DO OCENY, gdy nie ma zakończonego, aktualnego
  *      przebiegu — z przejściem do obliczeń.
@@ -51,6 +53,7 @@ import {
   PrzyciskAkcjiStanu,
   akcjaNaprawcza,
   useAkcjaPrzejdzDoPrzypadkow,
+  useNazwaObiektu,
   usePoprawWModelu,
 } from '../wzorzec';
 import { MathInline } from '../../../ui/proof';
@@ -99,7 +102,13 @@ function PodstawaOceny({ dane, trybEkspercki }: { dane: OdpowiedzOceny; trybEksp
       <InformacjeAudytowe
         trybEkspercki={trybEkspercki}
         testid="mvd-ocena-informacje-audytowe"
-        wiersze={[{ etykieta: T.podstawaOdcisk, wartosc: dane.model_hash }]}
+        wiersze={[
+          { etykieta: T.podstawaOdcisk, wartosc: dane.model_hash },
+          // Karta #145: identyfikatory przebiegów są metadaną produkcyjną — tylko tutaj.
+          ...przebiegi
+            .filter((zrodlo) => zrodlo.run_id !== null)
+            .map((zrodlo) => ({ etykieta: T.audytPrzebieg(zrodloPL(zrodlo.rodzaj)), wartosc: zrodlo.run_id as string })),
+        ]}
       />
       <ul className="mvd-ocena-przebiegi" aria-label={T.podstawaPrzebiegi}>
         {przebiegi.map((zrodlo) => (
@@ -117,12 +126,6 @@ function PodstawaOceny({ dane, trybEkspercki }: { dane: OdpowiedzOceny; trybEksp
             {zrodlo.run_id !== null && (
               <span className="mvd-ocena-przebieg-meta">
                 {T.przebiegCzas}: <span className="mvd-num">{czasWykonaniaPL(zrodlo.wykonano)}</span>
-                {trybEkspercki && (
-                  <>
-                    {' · '}
-                    {T.przebiegIdentyfikator}: <span className="mvd-num">{zrodlo.run_id}</span>
-                  </>
-                )}
               </span>
             )}
           </li>
@@ -185,7 +188,8 @@ function WierszElementu({
   const akcjaSchematu =
     element.wynik === 'NIE_SPELNIA' ? akcjaNaprawcza(rodzajPrzekroczenia) : akcjaNaprawcza('inspekcja-elementu');
   const typ = typElementu(element.element_rodzaj ?? pozycja.element_rodzaj);
-  const nazwa = nazwaPrzedmiotu(element);
+  const nazwaObiektu = useNazwaObiektu();
+  const nazwa = nazwaPrzedmiotu(element, nazwaObiektu);
   return (
     <tr
       className={`mvd-ocena-wiersz ${klasaWyniku(element.wynik)}`}
@@ -194,11 +198,6 @@ function WierszElementu({
     >
       <td className="mvd-ocena-przedmiot">
         <span className="mvd-ocena-przedmiot-nazwa">{nazwa}</span>
-        {trybEkspercki && element.element_id !== null && (
-          <span className="mvd-ocena-przedmiot-id mvd-num" title={T.identyfikatorModelu}>
-            {element.element_id}
-          </span>
-        )}
       </td>
       <td className="mvd-ocena-wielkosc">
         {pozycja.wielkosc_pl}
@@ -273,6 +272,17 @@ function WierszElementu({
             {T.dowodObliczen}
           </button>
         )}
+        {/* Karta #145: identyfikator w modelu — powiązanie dla eksperta, wyłącznie w
+            „Informacjach audytowych" wiersza (zwinięte), nigdy pod nazwą elementu. */}
+        <InformacjeAudytowe
+          trybEkspercki={trybEkspercki}
+          testid="mvd-ocena-element-informacje-audytowe"
+          wiersze={
+            element.element_id !== null && element.element_id !== 'network'
+              ? [{ etykieta: T.identyfikatorModelu, wartosc: element.element_id }]
+              : []
+          }
+        />
       </td>
     </tr>
   );

@@ -11,7 +11,7 @@ kompozycja jakosci pol Q-granic (jak SSCI), liczona przez warstwe application
 przez ``resolve_card_field_quality_map`` i podana w ``SourceReactiveInput``.
 
 Werdykty (PL):
-  - "wystarczajaca rezerwa Q": brak nasyconych zrodel i brak naruszen napiecia,
+  - "wystarczająca rezerwa Q": brak nasyconych zrodel i brak naruszen napiecia,
   - "rezerwa Q wyczerpana": >=1 zrodlo nasycone LUB >=1 wezel z naruszeniem,
   - "dane niekompletne": brak wyniku power-flow lub brak granic zrodla.
 

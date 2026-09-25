@@ -207,6 +207,34 @@ describe('EkranSkladowych — dane przebiegu 1F (fetch 1:1 z endpointami)', () =
     );
   });
 
+  it('karta #145: ograniczenia raportowe i status uzasadnienia po polsku — nigdy kod', async () => {
+    const zdanie =
+      'Wynik obliczenia nie ma sensu fizycznego (wartość nieskończona albo współczynnik '
+      + 'udaru κ poza zakresem normy IEC 60909) — liczby tego wyniku nie są raportowane.';
+    const wiersz = {
+      ...WYNIK.rows[0],
+      proof_status: 'partial',
+      proof_status_pl: undefined,
+      reporting_limitations: ['solver_result_non_physical'],
+      reporting_limitations_pl: [zdanie],
+    };
+    const bazowy = vi.mocked(fetch);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).endsWith('/results/short-circuit')
+          ? ({ ok: true, status: 200, json: async () => ({ ...WYNIK, rows: [wiersz] }) } as Response)
+          : bazowy(input),
+      ),
+    );
+    render(<EkranSkladowych />);
+    const ograniczenia = await screen.findByTestId('mvd-skladowe-raport-ograniczenia');
+    expect(ograniczenia).toHaveTextContent(zdanie);
+    expect(ograniczenia).not.toHaveTextContent('solver_result_non_physical');
+    // Brak etykiety PL statusu uzasadnienia → kreska, nie kod `partial`.
+    expect(screen.getByTestId('mvd-skladowe-raport')).not.toHaveTextContent('partial');
+  });
+
   it('akcja „Otwórz pełny dowód obliczeń" (natywny klik) otwiera zakładkę dowodu przebiegu', async () => {
     const user = userEvent.setup();
     render(<EkranSkladowych />);

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { WZORZEC_STRINGS } from '../../wzorzec/strings';
 import {
   KLUCZ_PUNKT,
   KLUCZ_ZRODLA_SIECIOWE,
@@ -42,9 +43,13 @@ import {
   zrodloSiecioweSladMinZDanymiFixture,
 } from './fixtures';
 
+/** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
+const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
+  nazwaZWyniku ?? `nazwa ${ref}`;
+
 describe('mapujWierszZwarcia — projekcja ShortCircuitRow → wiersz wzorca (fixture 1:1)', () => {
   it('mapuje komplet wielkości z formatem PL (przecinek) i dowodRef = element_id', () => {
-    const w = mapujWierszZwarcia(shortCircuitRowFixture());
+    const w = mapujWierszZwarcia(shortCircuitRowFixture(), NAZWA);
     expect(w.punkt).toEqual({ wartosc: 'Szyna GPZ 15 kV' });
     expect(w.rodzaj).toEqual({ wartosc: 'zwarcie trójfazowe' });
     expect(w.ikss).toEqual({ wartosc: '12,345', sortKey: 12.345, dowodRef: 'EL-GPZ' });
@@ -58,6 +63,7 @@ describe('mapujWierszZwarcia — projekcja ShortCircuitRow → wiersz wzorca (fi
   it('wartości null → „—" bez dowodu, z najmniejszym kluczem sortowania', () => {
     const w = mapujWierszZwarcia(
       shortCircuitRowFixture({ ikss_ka: null, ip_ka: null, ith_ka: null, sk_mva: null }),
+      NAZWA,
     );
     for (const klucz of ['ikss', 'ip', 'ith', 'sk'] as const) {
       expect(w[klucz]).toEqual({
@@ -68,28 +74,33 @@ describe('mapujWierszZwarcia — projekcja ShortCircuitRow → wiersz wzorca (fi
     }
   });
 
-  it('target_name null → „—"; brak element_id → dowodRef = target_id', () => {
+  // Karta #145: brak nazwy w wyniku → nazwa z mostu nazw (migawka modelu albo polska
+  // etykieta rodzaju), nigdy kreska ani identyfikator.
+  it('target_name null → nazwa z mostu nazw; brak element_id → dowodRef = target_id', () => {
     const w = mapujWierszZwarcia(
       shortCircuitRowFixture({ target_name: null, element_id: undefined, ikss_ka: 5 }),
+      NAZWA,
     );
-    expect(w.punkt).toEqual({ wartosc: ZWARCIA_STRINGS.kreska });
+    expect(w.punkt).toEqual({ wartosc: 'nazwa BUS-GPZ' });
     expect(w.ikss.dowodRef).toBe('BUS-GPZ');
   });
 
-  it('flags niepuste → tagi PL (znane tłumaczone, nieznane dosłownie)', () => {
-    const w = mapujWierszZwarcia(shortCircuitRowFixture({ flags: ['SLACK', 'NIEZNANA_FLAGA'] }));
-    expect(w.uwagi.wartosc).toBe('Węzeł bilansujący, NIEZNANA_FLAGA');
+  // Karta #145 (zmiana kanonu): flaga spoza słownika nie trafia na ekran jako kod —
+  // intencja „nie zgadujemy nazwy" zostaje, zamiast kodu stoi uczciwe zdanie.
+  it('flags niepuste → tagi PL (znane tłumaczone, nieznane jako uczciwe zdanie, nie kod)', () => {
+    const w = mapujWierszZwarcia(shortCircuitRowFixture({ flags: ['SLACK', 'NIEZNANA_FLAGA'] }), NAZWA);
+    expect(w.uwagi.wartosc).toBe(`Węzeł bilansujący, ${WZORZEC_STRINGS.wartoscSpozaSlownika}`);
   });
 
   it('jest deterministyczne: to samo wejście → identyczne wyjście', () => {
     const row = shortCircuitRowFixture();
-    expect(mapujWierszZwarcia(row)).toEqual(mapujWierszZwarcia(row));
+    expect(mapujWierszZwarcia(row, NAZWA)).toEqual(mapujWierszZwarcia(row, NAZWA));
   });
 });
 
 describe('naWierszeZwarc — zachowanie kolejności i kompletność', () => {
   it('wiersz per punkt zwarcia, kolejność źródłowa zachowana', () => {
-    const wiersze = naWierszeZwarc(shortCircuitResultsFixture().rows);
+    const wiersze = naWierszeZwarc(shortCircuitResultsFixture().rows, NAZWA);
     expect(wiersze.map((w) => w[KLUCZ_PUNKT].wartosc)).toEqual(['BUS-GPZ', 'BUS-ST1', 'BUS-ST2']);
   });
 });
@@ -134,6 +145,8 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z
         c_factor: { tryb: 'jawny', wartosc: 1.1 },
         thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' },
       }),
+      undefined,
+      NAZWA,
     );
     expect(zalozenia[0]).toEqual({
       etykieta: ZWARCIA_STRINGS.zalMetoda,
@@ -155,6 +168,8 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z
   it('c auto-per-węzeł (brak jawnego override) → uczciwy opis, NIE liczba zmyślona', () => {
     const zalozenia = naZalozeniaZwarc(
       konfiguracjaBieguFixture({ c_factor: { tryb: 'auto_per_wezel', wartosc: null } }),
+      undefined,
+      NAZWA,
     );
     expect(zalozenia[1]).toMatchObject({
       etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
@@ -168,6 +183,8 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z
       konfiguracjaBieguFixture({
         thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'domyslna_assemblera' },
       }),
+      undefined,
+      NAZWA,
     );
     expect(zalozenia[2]).toMatchObject({
       wartosc: fmtCzas(1.0),
@@ -176,7 +193,7 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z
   });
 
   it('konfiguracja biegu nieobecna (starszy zapis sprzed karty) → „—" z uwagą o pochodzeniu (NIE zgaduj)', () => {
-    const zalozenia = naZalozeniaZwarc(undefined);
+    const zalozenia = naZalozeniaZwarc(undefined, undefined, NAZWA);
     expect(zalozenia[1].wartosc).toBe(ZWARCIA_STRINGS.kreska);
     expect(zalozenia[1].uwaga).toBe(ZWARCIA_STRINGS.zalKonfiguracjaBieguNiedostepna);
     expect(zalozenia[2].wartosc).toBe(ZWARCIA_STRINGS.kreska);
@@ -189,27 +206,28 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z
   it('dokłada wiersz na każde założenie biegu (raw_result.zalozenia) — treść z backendu', () => {
     const zalozenieA = zalozenieBieguFixture({ element_ref: 's1' });
     const zalozenieB = zalozenieBieguFixture({ element_ref: 's2', code: 'source.sk_min_missing' });
-    const zalozenia = naZalozeniaZwarc(konfiguracjaBieguFixture(), [zalozenieA, zalozenieB]);
+    const zalozenia = naZalozeniaZwarc(konfiguracjaBieguFixture(), [zalozenieA, zalozenieB], NAZWA);
     expect(zalozenia).toHaveLength(5); // 3 bazowe + 2 ze źródeł
     expect(zalozenia[3]).toEqual({
-      etykieta: ZWARCIA_STRINGS.zalozenieEtykieta('s1'),
+      etykieta: ZWARCIA_STRINGS.zalozenieEtykieta('nazwa s1'),
       wartosc: zalozenieA.message_pl,
-      uwaga: ZWARCIA_STRINGS.zalozenieUwaga('source.sk_min_missing', 'MIN'),
+      // Karta #145: uwaga bez kodu założenia — scenariusz po polsku.
+      uwaga: ZWARCIA_STRINGS.zalozenieUwaga('minimalny'),
     });
-    expect(zalozenia[4].etykieta).toBe(ZWARCIA_STRINGS.zalozenieEtykieta('s2'));
+    expect(zalozenia[4].etykieta).toBe(ZWARCIA_STRINGS.zalozenieEtykieta('nazwa s2'));
   });
 
   it('bez założeń biegu (undefined/pusta lista) → tylko 3 wiersze bazowe (bez zmian)', () => {
-    expect(naZalozeniaZwarc(konfiguracjaBieguFixture(), undefined)).toHaveLength(3);
-    expect(naZalozeniaZwarc(konfiguracjaBieguFixture(), [])).toHaveLength(3);
+    expect(naZalozeniaZwarc(konfiguracjaBieguFixture(), undefined, NAZWA)).toHaveLength(3);
+    expect(naZalozeniaZwarc(konfiguracjaBieguFixture(), [], NAZWA)).toHaveLength(3);
   });
 });
 
 describe('naWierszeZrodelSieciowych — ślad Z_Q źródeł sieciowych (CV-4.3 K6/K7)', () => {
   it('tryb MOC_ZWARCIOWA (MAX): mapuje S″kQ, c, R/X + źródło, |Z_Q|, wzór', () => {
-    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladMaxFixture()]);
-    expect(w.zrodlo).toEqual({ wartosc: 's1' });
-    expect(w.scenariusz).toEqual({ wartosc: 'MAX' });
+    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladMaxFixture()], NAZWA);
+    expect(w.zrodlo).toEqual({ wartosc: 'nazwa s1' });
+    expect(w.scenariusz).toEqual({ wartosc: 'maksymalny' });
     expect(w.tryb).toEqual({ wartosc: trybZrodlaSiecowegoPL('MOC_ZWARCIOWA') });
     expect(w.mocPrad).toEqual({ wartosc: `${fmtMVA(250.0)} ${ZWARCIA_STRINGS.jednMVA}` });
     expect(w.c).toEqual({ wartosc: fmtWspolczynnik(1.1) });
@@ -220,21 +238,21 @@ describe('naWierszeZrodelSieciowych — ślad Z_Q źródeł sieciowych (CV-4.3 K
   });
 
   it('tryb MOC_ZWARCIOWA_MIN (MIN z danymi): scenariusz MIN, R/X źródło MODEL_MIN, brak zalozenia w tekście', () => {
-    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladMinZDanymiFixture()]);
-    expect(w.scenariusz).toEqual({ wartosc: 'MIN' });
+    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladMinZDanymiFixture()], NAZWA);
+    expect(w.scenariusz).toEqual({ wartosc: 'minimalny' });
     expect(w.tryb.wartosc).toBe(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA_MIN'));
     expect(w.tryb.wartosc).toContain('MIN');
     expect(w.rx.wartosc).toContain(rxRatioZrodloPL('MODEL_MIN'));
   });
 
   it('tryb *_MAX_JAKO_MIN (MIN bez danych): etykieta trybu nazywa brak danych własnych', () => {
-    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladMinBrakDanychFixture()]);
+    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladMinBrakDanychFixture()], NAZWA);
     expect(w.tryb.wartosc).toBe(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA_MAX_JAKO_MIN'));
     expect(w.tryb.wartosc).toMatch(/brak własnych danych MIN/);
   });
 
   it('tryb IMPEDANCJA_JAWNA: brak S″kQ/c/R-X/|Z_Q| → komórki „—" (uczciwy brak, nie 0)', () => {
-    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladImpedancjaJawnaFixture()]);
+    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladImpedancjaJawnaFixture()], NAZWA);
     expect(w.mocPrad).toEqual({ wartosc: ZWARCIA_STRINGS.kreska });
     expect(w.c).toEqual({ wartosc: ZWARCIA_STRINGS.kreska });
     expect(w.rx).toEqual({ wartosc: ZWARCIA_STRINGS.kreska });
@@ -244,7 +262,7 @@ describe('naWierszeZrodelSieciowych — ślad Z_Q źródeł sieciowych (CV-4.3 K
   it('tryb PRAD_ZWARCIOWY (I″kQ zamiast S″kQ): kolumna S″kQ/I″kQ pokazuje prąd w kA', () => {
     const [w] = naWierszeZrodelSieciowych([
       zrodloSiecioweSladMaxFixture({ tryb: 'PRAD_ZWARCIOWY', sk3_mva: undefined, ik3_ka: 9.6 }),
-    ]);
+    ], NAZWA);
     expect(w.mocPrad).toEqual({ wartosc: `${fmtKA(9.6)} ${ZWARCIA_STRINGS.jednKA}` });
   });
 
@@ -252,8 +270,8 @@ describe('naWierszeZrodelSieciowych — ślad Z_Q źródeł sieciowych (CV-4.3 K
     const wiersze = naWierszeZrodelSieciowych([
       zrodloSiecioweSladMaxFixture({ ref_id: 's2' }),
       zrodloSiecioweSladMaxFixture({ ref_id: 's1' }),
-    ]);
-    expect(wiersze.map((w) => w.zrodlo.wartosc)).toEqual(['s2', 's1']);
+    ], NAZWA);
+    expect(wiersze.map((w) => w.zrodlo.wartosc)).toEqual(['nazwa s2', 'nazwa s1']);
   });
 });
 
@@ -268,7 +286,7 @@ describe('KOLUMNY_ZRODEL_SIECIOWYCH — kolumny deklaratywne', () => {
 
 describe('naSlupkiIkss — punkty wykresu Ik" (zero losowości)', () => {
   it('pomija wiersze z pustym Ik", zachowuje kolejność źródłową', () => {
-    const slupki = naSlupkiIkss(shortCircuitResultsFixture().rows);
+    const slupki = naSlupkiIkss(shortCircuitResultsFixture().rows, NAZWA);
     expect(slupki).toEqual([
       { punkt: 'Szyna GPZ 15 kV', ikss: 12.345 },
       { punkt: 'Szyna ST1 15 kV', ikss: 8.4 },
@@ -279,11 +297,11 @@ describe('naSlupkiIkss — punkty wykresu Ik" (zero losowości)', () => {
 describe('naSlupkiWielkosci — przełącznik wielkości wykresu (karta W-A F2)', () => {
   it('wybiera pole wiersza wg wielkości i pomija wiersze bez wartości', () => {
     const rows = shortCircuitResultsFixture().rows;
-    expect(naSlupkiWielkosci(rows, 'sk')).toEqual([
+    expect(naSlupkiWielkosci(rows, 'sk', NAZWA)).toEqual([
       { punkt: 'Szyna GPZ 15 kV', ikss: 320.75 },
       { punkt: 'Szyna ST1 15 kV', ikss: 218.1 },
     ]);
-    expect(naSlupkiWielkosci(rows, 'ip')).toEqual([
+    expect(naSlupkiWielkosci(rows, 'ip', NAZWA)).toEqual([
       { punkt: 'Szyna GPZ 15 kV', ikss: 31.2 },
       { punkt: 'Szyna ST1 15 kV', ikss: 21.0 },
     ]);
@@ -291,7 +309,7 @@ describe('naSlupkiWielkosci — przełącznik wielkości wykresu (karta W-A F2)'
 
   it("wielkość 'ikss' daje wynik identyczny z naSlupkiIkss (kontrakt 1:1)", () => {
     const rows = shortCircuitResultsFixture().rows;
-    expect(naSlupkiWielkosci(rows, 'ikss')).toEqual(naSlupkiIkss(rows));
+    expect(naSlupkiWielkosci(rows, 'ikss', NAZWA)).toEqual(naSlupkiIkss(rows, NAZWA));
   });
 
   it('starszy wynik bez pola addytywnego (I²t) → pusta lista (uczciwy stan)', () => {
@@ -299,7 +317,7 @@ describe('naSlupkiWielkosci — przełącznik wielkości wykresu (karta W-A F2)'
       shortCircuitRowFixture({ i2t_ka2s: null }),
       shortCircuitRowFixture({ target_id: 'BUS-X', i2t_ka2s: undefined }),
     ];
-    expect(naSlupkiWielkosci(rows, 'i2t')).toEqual([]);
+    expect(naSlupkiWielkosci(rows, 'i2t', NAZWA)).toEqual([]);
   });
 });
 
@@ -385,11 +403,11 @@ describe('naPozycjeSzczegoluWkladu — szczegół maszynowy wkładu (karta W-A F
 });
 
 describe('typMaszynyPL — słownik typów maszyn', () => {
-  it('mapuje tokeny backendu; nieznany token pokazywany dosłownie (dane)', () => {
+  it('mapuje tokeny backendu; nieznany token → uczciwe zdanie, nie kod (karta #145)', () => {
     expect(typMaszynyPL('SYNCHRONOUS')).toBe('maszyna synchroniczna');
     expect(typMaszynyPL('ASYNCHRONOUS')).toBe('maszyna asynchroniczna');
     expect(typMaszynyPL('DFIG')).toBe('generator asynchroniczny dwustronnie zasilany (DFIG)');
-    expect(typMaszynyPL('NOWY_TYP')).toBe('NOWY_TYP');
+    expect(typMaszynyPL('NOWY_TYP')).toBe(WZORZEC_STRINGS.wartoscSpozaSlownika);
   });
 });
 
@@ -432,9 +450,9 @@ describe('KOLUMNY_ZWARC — deklaratywne kolumny (jednostki zawsze, Ik"/ip/Ith/S
     }
   });
 
-  it('kolumna identyfikatora punktu jest tylko-ekspercka', () => {
+  it('identyfikator punktu nie jest kolumną tabeli w żadnym trybie (karta #145)', () => {
     const id = KOLUMNY_ZWARC.find((k) => k.klucz === KLUCZ_PUNKT);
-    expect(id?.tylkoEkspercki).toBe(true);
+    expect(id).toBeUndefined();
   });
 });
 

@@ -183,6 +183,7 @@ function wynikiRnFixture(
     quality_status: 'ok',
     dopuszczalnosc_raportowa: true,
     reporting_limitations: [],
+    reporting_limitations_pl: [],
     ...over,
   };
 }
@@ -238,6 +239,7 @@ function wierszFixture(over: Partial<WierszStanuFazowego> = {}): WierszStanuFazo
     reporting_status_pl: 'raportowalny',
     dopuszczalnosc_raportowa: true,
     reporting_limitations: [],
+    reporting_limitations_pl: [],
     ...over,
   };
 }

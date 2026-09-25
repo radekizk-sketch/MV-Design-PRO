@@ -15,8 +15,8 @@
       "uwagi_pl": null
     },
     "solver_version": "ncrfg-ptpiree-whitebox-2.0",
-    "input_hash": "7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
-    "deterministic_hash": "9db5197db3d1bb12120aabc282d7b346ddbdea53be6767fdb598912b1af06b90",
+    "input_hash": "1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+    "deterministic_hash": "47dba6489a2554fe4ed6735655271903cfc2a1859d7854a174ad5c02ccf88e38",
     "modules": [
       {
         "der_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
@@ -168,7 +168,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -300,7 +300,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -432,7 +432,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -558,7 +558,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -684,7 +684,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -810,7 +810,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -936,7 +936,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1062,7 +1062,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1188,7 +1188,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1312,7 +1312,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1419,7 +1419,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1545,7 +1545,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1671,7 +1671,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1787,7 +1787,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1909,7 +1909,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -2042,7 +2042,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -2175,7 +2175,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -2289,7 +2289,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -2396,7 +2396,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -2522,7 +2522,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -2615,7 +2615,7 @@
             "wydanie": "1.2",
             "jednostka_redakcyjna": "s. 323, poz. 3254",
             "status": "WSKAZANE",
-            "uwagi_pl": "rejestr network_model/catalog/ptpiree_wykaz_snapshot.json (ptpiree_wykaz_snapshot/v1); warstwa WiPWC profilu: Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC), wydanie 1.3"
+            "uwagi_pl": "rejestr certyfikowanych urządzeń PTPiREE wskazany przez warstwę WiPWC profilu; warstwa WiPWC profilu: Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC), wydanie 1.3"
           }
         },
         "zrodlo_danych": "ZATWIERDZONY_MODEL",
@@ -2759,7 +2759,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -2931,7 +2931,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -3103,7 +3103,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -3266,7 +3266,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -3436,7 +3436,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -3602,7 +3602,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -3768,7 +3768,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -3907,7 +3907,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -4071,7 +4071,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -4212,7 +4212,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -4330,7 +4330,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -4463,7 +4463,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -4596,7 +4596,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -4724,7 +4724,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -4860,7 +4860,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -5006,7 +5006,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -5152,7 +5152,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -5273,7 +5273,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -5387,7 +5387,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -5520,7 +5520,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -5854,7 +5854,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "6d0a2bf4b85f31659a0d80f18c0c6d17449477dc3a72c07ef6267dbf6df6136a"
+          "odcisk_oceny": "1d0228db94430afc92fca50f9e122d7179b7bfda0447ceb099f1ac00680f3a9e"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T01:ocena_kryterium:2"
@@ -5898,7 +5898,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "7e96f9e07e53f1033fa463006a0d69c49a3252afbf8c7ff13d42f6a7e35336e8"
+          "odcisk_oceny": "1de0622df7606f90667fe667b271403c0a5f335956f66cedfb73babeb98e1342"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T02:ocena_kryterium:4"
@@ -5942,7 +5942,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "0c02e130cb0d485c112902ede0b62a7b0419956c85ff05888c5bba4bac04447b"
+          "odcisk_oceny": "eb7ab623afbd282b30453cf53e2c5a2cd8d5d2542af9b21a756765675518bab4"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T03:ocena_kryterium:6"
@@ -5986,7 +5986,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "e9f1f1bd5ee6e4c4e29a77f6fe8775e0cf338708203ffaa6b26eb630d5b1508d"
+          "odcisk_oceny": "d5ce6385d2693249f65c3dcfb1e67243643ce8e3135a291869770a2893fbbd10"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T04:ocena_kryterium:8"
@@ -6033,7 +6033,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "af4859ca86e6491bdcd887ea72f653bbab666792ee84e93c1ebb6b21f435270e"
+          "odcisk_oceny": "c735d8140e6c0bf81fa330e457aefb746c8827e498121c0e692cef1156854bb5"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T05:ocena_kryterium:10"
@@ -6077,7 +6077,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "e436f438d82da25d9830b5329234d7ba5a6dd5be32622e445dbd309cabf41ba9"
+          "odcisk_oceny": "7f12ff546ac5369e4560899e273d2f734925b19ef2982334d2c6b693c922b17e"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T06:ocena_kryterium:12"
@@ -6121,7 +6121,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "9207086832623e474ffb31f9183052dad0e65f4a40fa1f90d2b0c00d957c90c3"
+          "odcisk_oceny": "b14a22c0b211da5561ea24b146032f887d4059844be28fa11e3d78c09555413f"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T07:ocena_kryterium:14"
@@ -6165,7 +6165,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "9e8eec01d5f472f607bdb8d041f105d4e94d701b4f2a014ff02e3efe55a183f0"
+          "odcisk_oceny": "2289448dde17a11169674e775fa05a249c18ab60e8fd92c443f3f64b529de94f"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T08:ocena_kryterium:16"
@@ -6213,7 +6213,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "6b711dfed1b461a25cfa15c756f329d80197b3b5e3b33cb04587bbbb33af7708"
+          "odcisk_oceny": "1a9d7e4842fdc276e638952e187ce0b178c4f4ed8626734f8f45e1740fbe53ca"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T09:ocena_kryterium:18"
@@ -6258,7 +6258,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "52f1ab7a028c09eaaef3f53d0aede7afd4773496571a6aceeb6f9e06b4d06561"
+          "odcisk_oceny": "ccecd18005a2537bdddeb9de583377e9a3139bd7663de9bbb28a6736a0b8af73"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T10:ocena_kryterium:20"
@@ -6303,7 +6303,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "d9dec5cb874e8a48b955fd31df987d1d5c009ebed96b49a68d8744934e6f37bd"
+          "odcisk_oceny": "6d371fcfc2abcbb90ae95b82a20d0152fa3b1bfdd72ab84153dcf4d62c828185"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T11:ocena_kryterium:22"
@@ -6349,7 +6349,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "232fb7d4d88685efe021e7d05f541ac322c9bd6d7d325ae5d43f7d8b2d07ddba"
+          "odcisk_oceny": "19d6eee9a186f45c74e2127ebbb4c4ed49f423cde17e8e8127fbefe29394d319"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T12:ocena_kryterium:24"
@@ -6394,7 +6394,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "246f1a65069f1ce7b53bd485bd540f81776fb62cf6267321c9e1293ea1006cef"
+          "odcisk_oceny": "a1a543591b16838eff9514380fbe458c4dde2615ab4c412224795a1c8daa16ea"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T13:ocena_kryterium:26"
@@ -6477,7 +6477,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "6f1d9caf81f568091968f1b6c1ce78a3c0da1c561a66e7a13a648fb9ba19bbc8"
+          "odcisk_oceny": "d85d272db694a575592e4c709433d6d89c07774b8e0ea1bad860484882645d35"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T14:ocena_kryterium:29"
@@ -6556,7 +6556,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "3720271599f356650603aa9a8e201eb289aa5cbf82d2d08a7e973bc31541b85d"
+          "odcisk_oceny": "4a5189a2750ee969b9968bb53d7e2fd0ac5214909fc9812e06abc1e6b27e7bd6"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T15:ocena_kryterium:32"
@@ -6619,7 +6619,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "7efec9301cf429fdbc46d4b8c68bb0bb59a852d9492e2392d398fab5e974d0bd"
+          "odcisk_oceny": "cb259bd6e86d8be33fdc8fa0add6873e6d70859290b9671ab7c95ce1246a4d57"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T16:ocena_kryterium:35"
@@ -6680,7 +6680,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "f3861aee252f83e8507b8edb8d6dec2dbd3f74054d56184a46a31e2731f8bd3b"
+          "odcisk_oceny": "7e053f6c0947c2c3e77fc43bbca2a6a98ccb501cfa208c31e614a7ec3a9d1102"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T17:ocena_kryterium:38"
@@ -6721,7 +6721,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "45952adfc3b3846efd34c456a389aa3fa941e2a9e3d71f4643aeb451fad3c816"
+          "odcisk_oceny": "500d87313bd9c8b89041d11a36115dda2da134f8c823f59ada4634515e791ee8"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T18:ocena_kryterium:40"
@@ -6765,7 +6765,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "f6eeb5887ddf204eaec65539f83f793212baab8a11ef00d8648b55dd35c70a64"
+          "odcisk_oceny": "c467c28a36414ae7cad2ef59002b98fe4d6c78b39b4b81ec12d057d0bb306845"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T19:ocena_kryterium:42"
@@ -6806,7 +6806,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "61e7454243c1f5474f29eb4f6c7d5ad3953ea329a9a72f98b8ab0ec85cead792"
+          "odcisk_oceny": "8df9c5b407839ba6ae7af49e9afb23a27cf8a1d28aafa09d6ba27dbe8919f140"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T20:ocena_kryterium:44"
@@ -6876,7 +6876,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "db7a2e2eb77df019f81aa3f659278c14466e86c004026ffb17ae2ca4eb5f0914"
+          "odcisk_oceny": "d2e57f972946be5fd6436919fed5daabdd15dd2b0f8a37ffb84a2d20e1fb2efd"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T01:ocena_kryterium:47"
@@ -6944,7 +6944,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "d1695c378c6a0ea88c3f3ae6212ab247de4bf023143c0cd91e869ec1e3d21965"
+          "odcisk_oceny": "aaaf34285edf0444468e3b3b01c48d014751405952703928fc79d8c495850a9f"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T02:ocena_kryterium:50"
@@ -7012,7 +7012,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "2fd920cfdaa1de84b70f63d316a6f99e36373c9229fc4dd08edbc775300a2790"
+          "odcisk_oceny": "13c18903beea25d1b1bc98c6d7f5a2247c897bbc985fcabefb8d8ee79274a9ad"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T03:ocena_kryterium:53"
@@ -7073,7 +7073,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "c1a2e01166155e2467254ef5e3394ae3d64451ab4340a0168b5170203f2839b9"
+          "odcisk_oceny": "3f67c310fcddde1e1f30bcf2547e28603aa657a188ec3b18f65d55acb539cc3e"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T04:ocena_kryterium:56"
@@ -7141,7 +7141,7 @@
         "result": {
           "status_maszynowy": "BRAK_PODSTAWY",
           "kompletnosc_dowodu": "NIEPELNY",
-          "odcisk_oceny": "87523a418dc67d6f1a5fbbeec29fd4b75836e8214032e011bc0aef41bf8e6ed9"
+          "odcisk_oceny": "ed758e120b20859ff09df2ff2836ecb6608baeeaac48b85a42691c5af266ef76"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T05:ocena_kryterium:59"
@@ -7212,7 +7212,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "e295a0202a1069a4d198596b74105b34aa85f7a15e8f9a1bc41bc2fa8a36909c"
+          "odcisk_oceny": "44da3ba9c57274d6ac5d78777d2eb9560e459ea6c650f1dc2fa814790be634ac"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T06:ocena_kryterium:62"
@@ -7283,7 +7283,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "834dd98da56d8cdf85c2222bbd43ad00236d4c177df7202eee866d6ef890b797"
+          "odcisk_oceny": "c475694ecd3b5a767a6503713d27884c9a6913ddd89203fea5404c9418fac663"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T07:ocena_kryterium:65"
@@ -7327,7 +7327,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "4756c514c5f1f5bd70da5a99ed7023e2d37b4a3c88b445d62d100a5aa9a671dd"
+          "odcisk_oceny": "5f2ff93e0a54a192ec82ddf3a6713d7c19a6d663f7fec07560b351dbe719534e"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T08:ocena_kryterium:67"
@@ -7402,7 +7402,7 @@
         "result": {
           "status_maszynowy": "BRAK_PODSTAWY",
           "kompletnosc_dowodu": "NIEPELNY",
-          "odcisk_oceny": "693ad3ee075433ecac2917f5e0504bf3ceb3d2414eb07e2a981aed6e7f5e94ab"
+          "odcisk_oceny": "51fe5f09064f49aa32bce23259a8c1c9fd7a5ac43b7fc4fa31fd53f33a9284fd"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T09:ocena_kryterium:70"
@@ -7447,7 +7447,7 @@
         "result": {
           "status_maszynowy": "BRAK_PODSTAWY",
           "kompletnosc_dowodu": "NIEPELNY",
-          "odcisk_oceny": "31ec3e9bf9ba89318020c8475f96903991393a9520ecef496e96d2f4441c1d28"
+          "odcisk_oceny": "65d7473c2d22afc138b78d5846ad9824e84368992c1813fa0142f6125ec54498"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T10:ocena_kryterium:72"
@@ -7492,7 +7492,7 @@
         "result": {
           "status_maszynowy": "NIE_OCENIONO",
           "kompletnosc_dowodu": "NIEPELNY",
-          "odcisk_oceny": "31b13ec990972b7424c5cafc88de6afae47df340bcbb111ce0496c7fc30e32ba"
+          "odcisk_oceny": "461bab5e234baac257936bd1c32ca56a48f56fb2144afce1343282faff100418"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T11:ocena_kryterium:74"
@@ -7538,7 +7538,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "d7439773823858652b711c8bc3cbc584e16538ddfee952f9b498140fdeb2a2c4"
+          "odcisk_oceny": "850d2b895e6c9e4df866d4e0ac8761e6c8d03e526504052906a5322dc5577775"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T12:ocena_kryterium:76"
@@ -7583,7 +7583,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "e7e36004204d4560d49196d2c51ff60cef958010c030c36d8c72f9bfce2ca8c9"
+          "odcisk_oceny": "cb014f536bd3ea2e1c9326ac7110f9fef493e9e199240db9ee88a24d907fda08"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T13:ocena_kryterium:78"
@@ -7666,7 +7666,7 @@
         "result": {
           "status_maszynowy": "NIE_OCENIONO",
           "kompletnosc_dowodu": "NIEPELNY",
-          "odcisk_oceny": "fbad8ce56f9058d98f8cba9f8ae82c0e43047e1e4bcb5213e7ab3191785fcc84"
+          "odcisk_oceny": "010104cd6edf29a4628741d5cc0f90000c5af67a3c9625df0a73c5e53bb58bb7"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T14:ocena_kryterium:81"
@@ -7745,7 +7745,7 @@
         "result": {
           "status_maszynowy": "NIE_OCENIONO",
           "kompletnosc_dowodu": "NIEPELNY",
-          "odcisk_oceny": "872c70571e07c04d7a30dbe2d0aaecfeefc8ff483922dc1f26d1654ba0e8bcf8"
+          "odcisk_oceny": "1b67662ac67154ddc007c66a5b54ba1ee59f9968749da1aee0de901336b0f475"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T15:ocena_kryterium:84"
@@ -7808,7 +7808,7 @@
         "result": {
           "status_maszynowy": "NIE_OCENIONO",
           "kompletnosc_dowodu": "NIEPELNY",
-          "odcisk_oceny": "54de62afffc23b324633d6fcb511d4d175bc604e8b6e4fe29294f33ccdf19631"
+          "odcisk_oceny": "afced4b55d3dbeef93650809beb4b7f14b363062fe67015a02ab6946403b53ae"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T16:ocena_kryterium:87"
@@ -7869,7 +7869,7 @@
         "result": {
           "status_maszynowy": "NIE_OCENIONO",
           "kompletnosc_dowodu": "NIEPELNY",
-          "odcisk_oceny": "99034469afcc3679683e726b90dae0ce5c8eafb8a3114afb36f79ef6632c4e9f"
+          "odcisk_oceny": "2a6f33038e7c6d2c6f1619f806886612bd6c994d14d160c5800f7aadeddb829f"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T17:ocena_kryterium:90"
@@ -7910,7 +7910,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "82d3db986ffb31114af84aeb00e114701f061ad81cfc7c914690e8fc69774eac"
+          "odcisk_oceny": "53e00cf3c91cc99fffc1a52eef3427c0c500122222fb05fe0e27df3068c37a98"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T18:ocena_kryterium:92"
@@ -7954,7 +7954,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "7a9086ab43c21b6253bd318d0a10e8d3fbfefd36485e5ae27c5faf03e2b8c648"
+          "odcisk_oceny": "a911ebb7c42cce3534d839c26b03c4b6153a7034b876d2745c1b0dad79f448e6"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T19:ocena_kryterium:94"
@@ -7995,7 +7995,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "2ca82fcd2cf20522331623a9b5f75b44f6c6f70bf40594877122a65f5a5a3897"
+          "odcisk_oceny": "7862b65ff142cacd2709f946cbbfe7a796683de15e0ea33063da9f59797feabb"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T20:ocena_kryterium:96"
@@ -8080,7 +8080,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -8149,7 +8149,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -8218,7 +8218,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -8287,7 +8287,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -8356,7 +8356,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -8425,7 +8425,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -8494,7 +8494,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -8563,7 +8563,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -8632,7 +8632,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -8701,7 +8701,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -8770,7 +8770,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -8839,7 +8839,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -8908,7 +8908,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -8977,7 +8977,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -9046,7 +9046,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -9115,7 +9115,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -9241,7 +9241,7 @@
                     "wartosc": 1.0,
                     "jednostka": "1"
                   },
-                  "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "chwila_s": null,
                   "metoda": "CERTYFIKAT"
                 },
@@ -9249,7 +9249,7 @@
                 "margines": {
                   "wartosc": null,
                   "definicja_latex": null,
-                  "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "skala": null,
                   "skala_rodzaj": null,
                   "wzgledny": null,
@@ -9270,7 +9270,7 @@
                   "semantyka": "pozytywna"
                 },
                 "wyjasnienie": {
-                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 1 lit. a (tabela 2) „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 1 lit. a (tabela 2) „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
                   "przyczyna_pl": null,
                   "czego_brakuje": [],
                   "zastrzezenia": [
@@ -9287,7 +9287,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -9326,7 +9326,7 @@
               "semantyka": "ostrzegawcza"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Praca w zakresach częstotliwości przez wymagany czas (art. 13 ust. 1 lit. a (tabela 2) „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
+              "zdanie_pl": "Praca w zakresach częstotliwości przez wymagany czas (art. 13 ust. 1 lit. a (tabela 2) „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
               "przyczyna_pl": "dowód niepełny: Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1)).",
               "czego_brakuje": [
                 "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
@@ -9346,7 +9346,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -9452,7 +9452,7 @@
                     "wartosc": 1.0,
                     "jednostka": "1"
                   },
-                  "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "chwila_s": null,
                   "metoda": "CERTYFIKAT"
                 },
@@ -9460,7 +9460,7 @@
                 "margines": {
                   "wartosc": null,
                   "definicja_latex": null,
-                  "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "skala": null,
                   "skala_rodzaj": null,
                   "wzgledny": null,
@@ -9481,7 +9481,7 @@
                   "semantyka": "pozytywna"
                 },
                 "wyjasnienie": {
-                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 1 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 1 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
                   "przyczyna_pl": null,
                   "czego_brakuje": [],
                   "zastrzezenia": [
@@ -9498,7 +9498,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -9577,12 +9577,12 @@
                   "semantyka": "neutralna"
                 },
                 "wyjasnienie": {
-                  "zdanie_pl": "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
-                  "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21)))",
+                  "zdanie_pl": "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+                  "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21)))",
                   "czego_brakuje": [
                     "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
                     "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
-                    "nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s)",
+                    "nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF)",
                     "wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))"
                   ],
                   "zastrzezenia": [
@@ -9600,7 +9600,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                  "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -9641,12 +9641,12 @@
               "semantyka": "neutralna"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Odporność na szybkość zmian częstotliwości (RoCoF) (art. 13 ust. 1 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — ocena niewykonana. Kryteria nieocenione: Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))).",
-              "przyczyna_pl": "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21)))",
+              "zdanie_pl": "Odporność na szybkość zmian częstotliwości (RoCoF) (art. 13 ust. 1 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — ocena niewykonana. Kryteria nieocenione: Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))).",
+              "przyczyna_pl": "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21)))",
               "czego_brakuje": [
                 "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
                 "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
-                "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s)",
+                "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF)",
                 "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))",
                 "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
               ],
@@ -9667,7 +9667,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -9781,7 +9781,7 @@
                     "wartosc": 1.0,
                     "jednostka": "1"
                   },
-                  "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "chwila_s": null,
                   "metoda": "CERTYFIKAT"
                 },
@@ -9789,7 +9789,7 @@
                 "margines": {
                   "wartosc": null,
                   "definicja_latex": null,
-                  "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "skala": null,
                   "skala_rodzaj": null,
                   "wzgledny": null,
@@ -9810,7 +9810,7 @@
                   "semantyka": "pozytywna"
                 },
                 "wyjasnienie": {
-                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
                   "przyczyna_pl": null,
                   "czego_brakuje": [],
                   "zastrzezenia": [
@@ -9827,7 +9827,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -9866,7 +9866,7 @@
               "semantyka": "ostrzegawcza"
             },
             "wyjasnienie": {
-              "zdanie_pl": "LFSM-O — ograniczanie mocy czynnej przy nadczęstotliwości (art. 13 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, deklaracja, pomiar, ocena operatora albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
+              "zdanie_pl": "LFSM-O — ograniczanie mocy czynnej przy nadczęstotliwości (art. 13 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, deklaracja, pomiar, ocena operatora albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
               "przyczyna_pl": "dowód niepełny: Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1)).",
               "czego_brakuje": [
                 "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
@@ -9886,7 +9886,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -9992,7 +9992,7 @@
                     "wartosc": 1.0,
                     "jednostka": "1"
                   },
-                  "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "chwila_s": null,
                   "metoda": "CERTYFIKAT"
                 },
@@ -10000,7 +10000,7 @@
                 "margines": {
                   "wartosc": null,
                   "definicja_latex": null,
-                  "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "skala": null,
                   "skala_rodzaj": null,
                   "wzgledny": null,
@@ -10021,7 +10021,7 @@
                   "semantyka": "pozytywna"
                 },
                 "wyjasnienie": {
-                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
                   "przyczyna_pl": null,
                   "czego_brakuje": [],
                   "zastrzezenia": [
@@ -10038,7 +10038,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -10077,7 +10077,7 @@
               "semantyka": "ostrzegawcza"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Utrzymanie zadanej mocy czynnej niezależnie od zmian częstotliwości (art. 13 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
+              "zdanie_pl": "Utrzymanie zadanej mocy czynnej niezależnie od zmian częstotliwości (art. 13 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
               "przyczyna_pl": "dowód niepełny: Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1)).",
               "czego_brakuje": [
                 "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
@@ -10097,7 +10097,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -10203,7 +10203,7 @@
                     "wartosc": 1.0,
                     "jednostka": "1"
                   },
-                  "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "chwila_s": null,
                   "metoda": "CERTYFIKAT"
                 },
@@ -10211,7 +10211,7 @@
                 "margines": {
                   "wartosc": null,
                   "definicja_latex": null,
-                  "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "skala": null,
                   "skala_rodzaj": null,
                   "wzgledny": null,
@@ -10232,7 +10232,7 @@
                   "semantyka": "pozytywna"
                 },
                 "wyjasnienie": {
-                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 4 i ust. 5 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 4 i ust. 5 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
                   "przyczyna_pl": null,
                   "czego_brakuje": [],
                   "zastrzezenia": [
@@ -10249,7 +10249,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -10288,7 +10288,7 @@
               "semantyka": "ostrzegawcza"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Dopuszczalne obniżenie mocy czynnej przy spadku częstotliwości (art. 13 ust. 4 i ust. 5 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
+              "zdanie_pl": "Dopuszczalne obniżenie mocy czynnej przy spadku częstotliwości (art. 13 ust. 4 i ust. 5 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
               "przyczyna_pl": "dowód niepełny: Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1)).",
               "czego_brakuje": [
                 "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
@@ -10308,7 +10308,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -10391,7 +10391,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -10490,7 +10490,7 @@
                     "wartosc": 1.0,
                     "jednostka": "1"
                   },
-                  "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "chwila_s": null,
                   "metoda": "CERTYFIKAT"
                 },
@@ -10498,7 +10498,7 @@
                 "margines": {
                   "wartosc": null,
                   "definicja_latex": null,
-                  "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "skala": null,
                   "skala_rodzaj": null,
                   "wzgledny": null,
@@ -10519,7 +10519,7 @@
                   "semantyka": "pozytywna"
                 },
                 "wyjasnienie": {
-                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 7 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 13 ust. 7 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
                   "przyczyna_pl": null,
                   "czego_brakuje": [],
                   "zastrzezenia": [
@@ -10536,7 +10536,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -10575,7 +10575,7 @@
               "semantyka": "ostrzegawcza"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Warunki automatycznego przyłączenia do sieci (art. 13 ust. 7 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
+              "zdanie_pl": "Warunki automatycznego przyłączenia do sieci (art. 13 ust. 7 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
               "przyczyna_pl": "dowód niepełny: Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1)).",
               "czego_brakuje": [
                 "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
@@ -10595,7 +10595,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -10701,7 +10701,7 @@
                     "wartosc": 1.0,
                     "jednostka": "1"
                   },
-                  "punkt_krytyczny_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_krytyczny_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "chwila_s": null,
                   "metoda": "CERTYFIKAT"
                 },
@@ -10709,7 +10709,7 @@
                 "margines": {
                   "wartosc": null,
                   "definicja_latex": null,
-                  "punkt_pl": "rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
+                  "punkt_pl": "rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2",
                   "skala": null,
                   "skala_rodzaj": null,
                   "wzgledny": null,
@@ -10730,7 +10730,7 @@
                   "semantyka": "pozytywna"
                 },
                 "wyjasnienie": {
-                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
+                  "zdanie_pl": "Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — kryterium spełnione. Certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2 (stan wymagany wg art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”).",
                   "przyczyna_pl": null,
                   "czego_brakuje": [],
                   "zastrzezenia": [
@@ -10747,7 +10747,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+                  "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -10786,7 +10786,7 @@
               "semantyka": "ostrzegawcza"
             },
             "wyjasnienie": {
-              "zdanie_pl": "Zmniejszenie mocy czynnej na polecenie (port wejściowy) (art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, deklaracja, pomiar, ocena operatora albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
+              "zdanie_pl": "Zmniejszenie mocy czynnej na polecenie (port wejściowy) (art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, deklaracja, pomiar, ocena operatora albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Certyfikat urządzenia z wykazu PTPiREE obejmuje typ modułu (reguła pokrycia wymagania certyfikatem — warstwa WiPWC) (Instalacja PV 1,9 MW) — certyfikat urządzenia z wykazu PTPiREE: rekord wykazu PTPiREE: HUAWEI Technologies CO., Ltd PV SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1, zakres typów A, B, C, D, WiPWC 1.2.",
               "przyczyna_pl": "dowód niepełny: Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1)).",
               "czego_brakuje": [
                 "Reguła sposobu wykazania „certyfikat urządzenia”: podstawa „Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania energii do sieci elektroenergetycznych (WiPWC)”, wydanie 1.3 (WiPWC) ma stan źródła „nieustalone” — reguła bez wskazanej jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan źródła zweryfikowane albo wskazane: dokument, wydanie i jednostka redakcyjna reguły) (uwagi: pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC; do wskazania per wymaganie (plan AB §12.1))."
@@ -10806,7 +10806,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (rekord wykazu ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3)",
+              "odniesienie": "dokument TC-GCC-DNVGL-SE-0124-07526-1 (wykaz certyfikowanych urządzeń PTPiREE)",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -10948,7 +10948,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                  "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -11119,7 +11119,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                  "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -11195,7 +11195,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -11299,7 +11299,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -11375,7 +11375,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -11451,7 +11451,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -11619,7 +11619,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                  "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -11693,7 +11693,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -11855,7 +11855,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                  "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -11937,7 +11937,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -12099,7 +12099,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                  "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -12177,7 +12177,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -12329,7 +12329,7 @@
                     "stan": "ZWALIDOWANE",
                     "dane_przyjete": []
                   },
-                  "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+                  "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
                   "w_domenie_walidacji": null,
                   "domena_pl": null
                 },
@@ -12411,7 +12411,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 7d7196fbeb297791a7c4fb57e5b6a0920a753c939c5fcacbd3fb86d024b8f3e1",
+              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },

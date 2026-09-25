@@ -7,7 +7,7 @@
   "steps": [
     {
       "step": "MATCH_EVALUATIONS",
-      "description_pl": "Dopasowanie ewaluacji po (element chroniony, punkt zwarcia)",
+      "description_pl": "Dopasowanie ocen zabezpieczeń obu biegów po parze (element chroniony, punkt zwarcia)",
       "inputs": {
         "evaluations_a_count": 1,
         "evaluations_b_count": 1
@@ -45,7 +45,7 @@
     },
     {
       "step": "RANK_ISSUES",
-      "description_pl": "Generowanie rankingu problemów wg severity (5→1)",
+      "description_pl": "Ranking problemów według wagi (od 5 do 1)",
       "inputs": {
         "row_count": 1,
         "delay_threshold_s": 0.05,

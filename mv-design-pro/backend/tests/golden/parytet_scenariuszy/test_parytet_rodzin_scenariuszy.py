@@ -12,6 +12,20 @@ Trzy testy:
 3. dwa kolejne przebiegi harnessu dają identyczne hashe (determinizm — zero
    losowości, zero zależności od kolejności/zegara, zob. decyzja inżynierska
    w ``harness.py``).
+
+Świadome przeliczenia złotych hashy (dowód w commicie i tutaj):
+- Karta #145 (2026-09-25, czubek ``int/fala`` 8eb5743b): ``kontyngencje_n1/pierscien/pelny``
+  d6e681c8… → 2ef1a570…. Pełny widok N-1 z builderem walidacji energetycznej czubka
+  (odtwarza dawny hash 1:1) porównany liść po liściu z widokiem po karcie: 168 liści,
+  6 różnych, wszystkie tekstowe, zbiór kluczy identyczny —
+  ``kontyngencje[1].przeciazenia[0].powod_pl`` („Obciazenie 134.74 % przekracza limit
+  100.0 %." → „Obciążenie 134,74 % przekracza limit 100,0 %.") i 5 ×
+  ``kontyngencje[1].przeciazenia[0].slad_kryterium[0..4].tekst`` (wzór „* 100%" →
+  „· 100 %"; dane „(wynik PF) … decyduje zacisk od" → „(wynik rozpływu) … decyduje zacisk
+  początkowy"; wynik i progi z przecinkiem dziesiętnym; „Werdykt: PRZEKROCZENIE" →
+  „Porównanie z progami: Obciążenie 134,74 % przekracza limit 100,0 %."). Dotkliwość,
+  ranking, napięcia, przepływy, iteracje NR, liczniki i kolejność bez zmian; pozostałe
+  27 hashy bez zmian.
 """
 
 from __future__ import annotations

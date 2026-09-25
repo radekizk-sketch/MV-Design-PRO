@@ -5,7 +5,11 @@ import { ROZPLYW_STRINGS } from '../strings';
 import { naProfilNapiec } from '../adapters/rozplywAdapter';
 import { kryteriaNapieciaFixture, powerFlowResultFixture } from './fixtures';
 
-const punkty = naProfilNapiec(powerFlowResultFixture().bus_results);
+/** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
+const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
+  nazwaZWyniku ?? `nazwa ${ref}`;
+
+const punkty = naProfilNapiec(powerFlowResultFixture().bus_results, NAZWA);
 const kryteria = kryteriaNapieciaFixture();
 
 describe('ProfilNapiecChart — wykres Recharts (tokeny --mvd-*, deterministyczny)', () => {

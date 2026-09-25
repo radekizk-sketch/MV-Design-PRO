@@ -134,6 +134,20 @@ const ODNOSNIKI_KOLEJNOSC: readonly {
   { klucz: 'dynamic_model_ref', etykieta: 'Model dynamiczny' },
 ];
 
+/**
+ * Polska nazwa pola, po którym dopasowano rekord magazynu (karta #145: klucz pola
+ * `battery_catalog_ref`/`device_catalog_ref` nie trafia na ekran). Mapa typowana
+ * unią pola dopasowania — nowe pole nie skompiluje się bez nazwy.
+ */
+const ETYKIETA_POLA_DOPASOWANIA: Readonly<Record<'battery_catalog_ref' | 'device_catalog_ref', string>> = {
+  battery_catalog_ref: 'Bateria magazynu',
+  device_catalog_ref: 'Urządzenie wytwórcze',
+};
+
+export function etykietaOdnosnika(klucz: 'battery_catalog_ref' | 'device_catalog_ref'): string {
+  return ETYKIETA_POLA_DOPASOWANIA[klucz];
+}
+
 /** Sekcja 1: dane modułu read-only (rodzaj, moc, napięcie, strona, odnośniki). */
 export function daneModulu(opis: OpisModuluModelu, der: StationDerConnection): DaneModulu {
   const odnosniki: OdnosnikKatalogowy[] = [];

@@ -12,6 +12,7 @@ import type {
   WierszTabeli,
   WierszZalozenia,
 } from '../wzorzec';
+import { nazwaObiektuZMigawki } from '../wzorzec/useNazwaObiektu';
 import type { CzynnikLf, WezelWrazliwosci, WidokLf, WidokOgolny, WpisOgolny } from './api';
 import {
   WRAZLIWOSC_STRINGS as T,
@@ -28,7 +29,8 @@ export function nazwaWezla(
   busId: string,
   wezly: Readonly<Record<string, WezelWrazliwosci>>,
 ): string {
-  return wezly[busId]?.name ?? busId;
+  // Karta #145: brak nazwy → polska etykieta rodzaju z mostu nazw, nigdy identyfikator.
+  return nazwaObiektuZMigawki(null, busId, wezly[busId]?.name);
 }
 
 // ---------------------------------------------------------------------------
@@ -42,7 +44,6 @@ export const KOLUMNY_LF: DefinicjaKolumny[] = [
   { klucz: 'zmianaOdchylki', etykieta: T.kolZmianaOdchylki, mono: true },
   { klucz: 'zmianaMarginesu', etykieta: T.kolZmianaMarginesu, mono: true },
   { klucz: 'dlaczego', etykieta: T.kolDlaczego, mono: false, wyrownanie: 'lewo', sortowalna: false },
-  { klucz: 'wezelId', etykieta: T.kolIdentyfikatorWezla, mono: true, tylkoEkspercki: true },
 ];
 
 /** Klucz wiersza rankingu LF (stabilny przy sortowaniu). */
@@ -75,7 +76,6 @@ export function naWierszeLf(
         ? komorka(T.kreska)
         : komorka(fmtPp(czynnik.delta_margin_pct), { sortKey: czynnik.delta_margin_pct }),
     dlaczego: komorka(czynnik.why_pl),
-    wezelId: komorka(czynnik.bus_id),
   }));
 }
 
@@ -106,7 +106,6 @@ export const KOLUMNY_OGOLNE: DefinicjaKolumny[] = [
   { klucz: 'decyzja', etykieta: T.kolDecyzjaBazowa, mono: false, wyrownanie: 'lewo' },
   { klucz: 'minus', etykieta: T.kolMinus, mono: true },
   { klucz: 'plus', etykieta: T.kolPlus, mono: true },
-  { klucz: 'wezelId', etykieta: T.kolIdentyfikatorWezla, mono: true, tylkoEkspercki: true },
 ];
 
 export const KLUCZ_WIERSZA_OGOLNEGO = 'kluczWiersza';
@@ -136,7 +135,6 @@ export function naWierszeOgolne(
     }),
     minus: komorkaMarginesu(wpis.minus.margin, wpis.margin_unit),
     plus: komorkaMarginesu(wpis.plus.margin, wpis.margin_unit),
-    wezelId: komorka(wpis.target_id),
   }));
 }
 

@@ -32,13 +32,25 @@ import {
   wybierzPrzebiegRozplywu,
 } from '../zbieznoscModel';
 
+/** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
+const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
+  nazwaZWyniku ?? `nazwa ${ref}`;
+
 // Karta TODO-UI2 p.9: znacznik świeżości nagłówka (`useSwiezoscNaglowka`, V12K-264)
 // czyta `analysisCaseContext.rewizjaModelu` z kontraktu przebiegu — mockowany
 // modułowo (jak `freshness/__tests__/useSwiezoscNaglowka.test.tsx` i
 // `rozplyw/__tests__/tabelaSzyn.test.tsx`), żeby nie kolidować z routingiem
 // URL istniejącego `mockFetchPrzebiegu` (power-flow-results API, nie
 // analysis-runs API).
-const kontraktMock = vi.fn(() => ({ data: null, isLoading: false, error: null }) as const);
+/** Kształt odpowiedzi hooka kontraktu przebiegu używany przez nagłówek świeżości. */
+interface OdpowiedzKontraktu {
+  readonly data: { readonly analysisCaseContext: { readonly rewizjaModelu: number | null } } | null;
+  readonly isLoading: boolean;
+  readonly error: null;
+}
+const kontraktMock = vi.fn(
+  (_runId: string | null): OdpowiedzKontraktu => ({ data: null, isLoading: false, error: null }),
+);
 vi.mock('../../../../ui/workspace/analysisRunContract', () => ({
   useAnalysisRunContract: (runId: string | null) => kontraktMock(runId),
 }));
@@ -480,11 +492,12 @@ describe('EkranZbieznosci — rozpływ liczony per wyspa (CV-4.3 K3b)', () => {
       { szynaBilansujaca: 'BUS-GPZ', zrodloRef: 'src', liczbaSzynPq: 3, liczbaSzynPv: 0, iteracje: 3, zbiezna: true },
       { szynaBilansujaca: 'BUS-GPZ2', zrodloRef: 'src2', liczbaSzynPq: 1, liczbaSzynPv: 1, iteracje: 50, zbiezna: false },
     ]);
-    const zalozenia = naZalozeniaZbieznosci(wynikFixture(), sladDwochWysp());
+    const zalozenia = naZalozeniaZbieznosci(wynikFixture(), sladDwochWysp(), NAZWA);
     const szyna = zalozenia.find((z) => z.etykieta === T.zalSzynaBilansujaca)!;
-    expect(szyna.wartosc).toBe('BUS-GPZ, BUS-GPZ2');
+    // Karta #145: szyny bilansujące nazwane mostem nazw wyników.
+    expect(szyna.wartosc).toBe('nazwa BUS-GPZ, nazwa BUS-GPZ2');
     expect(szyna.uwaga).toBe(T.zalSzynyBilansujaceUwaga);
-    expect(naZalozeniaZbieznosci(wynikFixture(), sladFixture()).find((z) => z.etykieta === T.zalSzynaBilansujaca)!.wartosc).toBe('BUS-GPZ');
+    expect(naZalozeniaZbieznosci(wynikFixture(), sladFixture(), NAZWA).find((z) => z.etykieta === T.zalSzynaBilansujaca)!.wartosc).toBe('nazwa BUS-GPZ');
   });
 });
 

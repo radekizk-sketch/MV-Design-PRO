@@ -167,11 +167,12 @@ class EnergyValidationBuilder:
             loading_pct,
             config.loading_warn_pct,
             config.loading_fail_pct,
-            "Obciazenie",
+            "Obciążenie",
             "%",
         )
         assert wynik.prad_od_a is not None and wynik.prad_do_a is not None
         assert wynik.prad_znamionowy_od_a is not None and wynik.prad_znamionowy_do_a is not None
+        assert wynik.zacisk_decydujacy is not None
         i_od_ka = a_na_ka(abs(wynik.prad_od_a))
         i_do_ka = a_na_ka(abs(wynik.prad_do_a))
         ir_od_ka = a_na_ka(wynik.prad_znamionowy_od_a)
@@ -196,20 +197,21 @@ class EnergyValidationBuilder:
             status=status,
             why_pl=why,
             white_box=_white_box_progowe(
-                "obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) * 100%",
+                "obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
                 r"\varepsilon = \max\left(\frac{|I_{od}|}{I_{r,od}}, "
                 r"\frac{|I_{do}|}{I_{r,do}}\right) \cdot 100\%",
-                f"|I_od| = {i_od_ka:.4f} kA, |I_do| = {i_do_ka:.4f} kA (wynik PF), "
-                f"I_r,od = {ir_od_ka:.4f} kA, I_r,do = {ir_do_ka:.4f} kA "
-                f"({zrodlo_znamionowych}); decyduje zacisk {wynik.zacisk_decydujacy}",
+                f"|I_od| = {_pl(i_od_ka, 4)} kA, |I_do| = {_pl(i_do_ka, 4)} kA (wynik rozpływu), "
+                f"I_r,od = {_pl(ir_od_ka, 4)} kA, I_r,do = {_pl(ir_do_ka, 4)} kA "
+                f"({zrodlo_znamionowych}); decyduje zacisk "
+                f"{_ZACISK_PL[wynik.zacisk_decydujacy]}",
                 rf"\varepsilon = \max\left(\frac{{{i_od_ka:.4f}}}{{{ir_od_ka:.4f}}}, "
                 rf"\frac{{{i_do_ka:.4f}}}{{{ir_do_ka:.4f}}}\right) \cdot 100\% "
                 rf"= {loading_pct:.2f}\%",
-                f"obciążenie = {loading_pct:.2f} %",
+                f"obciążenie = {_pl(loading_pct, 2)} %",
                 config.loading_warn_pct,
                 config.loading_fail_pct,
                 "%",
-                status,
+                why,
             ),
         )
 
@@ -247,7 +249,7 @@ class EnergyValidationBuilder:
                 delta_pct,
                 config.voltage_warn_pct,
                 config.voltage_fail_pct,
-                "Odchylenie napięciowe",
+                "Odchylenie napięcia",
                 "%",
             )
             margin = delta_pct - config.voltage_fail_pct
@@ -265,15 +267,15 @@ class EnergyValidationBuilder:
                     status=status,
                     why_pl=why,
                     white_box=_white_box_progowe(
-                        "odchylenie = |U - U_n| / U_n * 100%",
+                        "odchylenie = |U − U_n| / U_n · 100 %",
                         r"\delta U = \frac{|U - U_n|}{U_n} \cdot 100\%",
-                        f"U = {u_kv:.4f} kV (wynik PF), U_n = {u_nom_kv:.4f} kV",
+                        f"U = {_pl(u_kv, 4)} kV (wynik rozpływu), U_n = {_pl(u_nom_kv, 4)} kV",
                         rf"\delta U = \frac{{|{u_kv:.4f} - {u_nom_kv:.4f}|}}{{{u_nom_kv:.4f}}} \cdot 100\% = {delta_pct:.2f}\%",
-                        f"odchylenie = {delta_pct:.2f} %",
+                        f"odchylenie = {_pl(delta_pct, 2)} %",
                         config.voltage_warn_pct,
                         config.voltage_fail_pct,
                         "%",
-                        status,
+                        why,
                     ),
                 )
             )
@@ -303,9 +305,9 @@ class EnergyValidationBuilder:
                     margin_pct=None,
                     status=EnergyValidationStatus.NOT_COMPUTED,
                     why_pl=(
-                        "Bilans strat nieoznaczony w wyniku PF (wartość NaN)."
+                        "Bilans strat nieoznaczony w wyniku rozpływu (wartość nieokreślona)."
                         if (straty_pu is None or moc_slack_pu is None)
-                        else "Brak mocy bilansowej slack (P_slack ~ 0)."
+                        else "Brak mocy bilansowej węzła bilansującego (P ≈ 0)."
                     ),
                 )
             ]
@@ -333,15 +335,16 @@ class EnergyValidationBuilder:
                 status=status,
                 why_pl=why,
                 white_box=_white_box_progowe(
-                    "straty = |P_strat / P_slack| * 100%",
+                    "straty = |P_strat / P_bil| · 100 %",
                     r"\Delta P\% = \left|\frac{P_{\text{strat}}}{P_{\text{slack}}}\right| \cdot 100\%",
-                    f"P_strat = {p_loss_pu:.6f} p.u., P_slack = {p_slack_pu:.6f} p.u. (wynik PF)",
+                    f"P_strat = {_pl(p_loss_pu, 6)} j.w., P_bil = {_pl(p_slack_pu, 6)} j.w. "
+                    "(wynik rozpływu, węzeł bilansujący)",
                     rf"\Delta P\% = \left|\frac{{{p_loss_pu:.6f}}}{{{p_slack_pu:.6f}}}\right| \cdot 100\% = {loss_pct:.2f}\%",
-                    f"straty = {loss_pct:.2f} %",
+                    f"straty = {_pl(loss_pct, 2)} %",
                     config.loss_warn_pct,
                     config.loss_fail_pct,
                     "%",
-                    status,
+                    why,
                 ),
             )
         ]
@@ -368,9 +371,10 @@ class EnergyValidationBuilder:
                     margin_pct=None,
                     status=EnergyValidationStatus.NOT_COMPUTED,
                     why_pl=(
-                        "Moc bilansowa slack nieoznaczona w wyniku PF (wartość NaN)."
+                        "Moc węzła bilansującego nieoznaczona w wyniku rozpływu (wartość "
+                        "nieokreślona)."
                         if moc_slack_pu is None
-                        else "Brak mocy bilansowej slack."
+                        else "Brak mocy bilansowej węzła bilansującego."
                     ),
                 )
             ]
@@ -380,13 +384,13 @@ class EnergyValidationBuilder:
 
         if cos_phi >= 0.9:
             status = EnergyValidationStatus.PASS
-            why = f"cos(phi) = {cos_phi:.3f} >= 0.9 — bilans mocy biernej prawidłowy."
+            why = f"cosφ = {_pl(cos_phi, 3)} ≥ 0,9 — bilans mocy biernej prawidłowy."
         elif cos_phi >= 0.8:
             status = EnergyValidationStatus.WARNING
-            why = f"cos(phi) = {cos_phi:.3f} — bilans mocy biernej " "na granicy akceptowalności."
+            why = f"cosφ = {_pl(cos_phi, 3)} — bilans mocy biernej na granicy akceptowalności."
         else:
             status = EnergyValidationStatus.FAIL
-            why = f"cos(phi) = {cos_phi:.3f} < 0.8 — " "nadmierny pobór mocy biernej z sieci."
+            why = f"cosφ = {_pl(cos_phi, 3)} < 0,8 — nadmierny pobór mocy biernej z sieci."
 
         return [
             EnergyValidationItem(
@@ -402,33 +406,35 @@ class EnergyValidationBuilder:
                 why_pl=why,
                 white_box=(
                     _krok(
-                        "Wzór: tan(phi) = |Q_slack / P_slack|; cos(phi) = cos(arctan(tan(phi)))",
+                        "Wzór: tgφ = |Q_bil / P_bil|; cosφ = cos(arctg(tgφ))",
                         r"\cos\varphi = \cos\!\left(\arctan\left|\frac{Q_{\text{slack}}}{P_{\text{slack}}}\right|\right)",
                     ),
                     _krok(
-                        f"Dane: Q_slack = {q_slack_pu:.6f} p.u., P_slack = {p_slack_pu:.6f} p.u. (wynik PF)"
+                        f"Dane: Q_bil = {_pl(q_slack_pu, 6)} j.w., P_bil = {_pl(p_slack_pu, 6)} j.w. "
+                        "(wynik rozpływu, węzeł bilansujący)"
                     ),
                     _krok(
-                        f"Wynik: tan(phi) = {tan_phi:.4f}, cos(phi) = {cos_phi:.3f}",
+                        f"Wynik: tgφ = {_pl(tan_phi, 4)}, cosφ = {_pl(cos_phi, 3)}",
                         rf"\tan\varphi = {tan_phi:.4f} \Rightarrow \cos\varphi = {cos_phi:.3f}",
                     ),
-                    _krok("Progi: ostrzeżenie cos(phi) < 0.9, przekroczenie cos(phi) < 0.8"),
-                    _krok(f"Werdykt: {_WERDYKT_PL[status]}"),
+                    _krok("Progi: ostrzeżenie cosφ < 0,9, przekroczenie cosφ < 0,8"),
+                    _krok(f"Porównanie z progami: {why}"),
                 ),
             )
         ]
 
 
-_WERDYKT_PL: dict[EnergyValidationStatus, str] = {
-    EnergyValidationStatus.PASS: "ZGODNY",
-    EnergyValidationStatus.WARNING: "OSTRZEZENIE",
-    EnergyValidationStatus.FAIL: "PRZEKROCZENIE",
-    EnergyValidationStatus.NOT_COMPUTED: "NIE OBLICZONO",
-}
+def _pl(wartosc: float, cyfry: int) -> str:
+    """Liczba o stałej liczbie cyfr po przecinku, zapis polski (przecinek dziesiętny)."""
+    return f"{wartosc:.{cyfry}f}".replace(".", ",")
+
+
+#: Zacisk decydujący o obciążeniu gałęzi (`obciazenie_galezi.zacisk_decydujacy`).
+_ZACISK_PL: dict[str, str] = {"od": "początkowy", "do": "końcowy"}
 
 
 def _krok(tekst: str, latex: str | None = None) -> dict:
-    """Krok sladu WHITE BOX: tekst (raporty/ASCII) + opcjonalny LaTeX (UI/KaTeX)."""
+    """Krok śladu WHITE BOX: tekst po polsku (raporty i ekran) + opcjonalny LaTeX (KaTeX)."""
     return {"tekst": tekst, "latex": latex}
 
 
@@ -441,18 +447,20 @@ def _white_box_progowe(
     warn: float,
     fail: float,
     unit: str,
-    status: EnergyValidationStatus,
+    porownanie: str,
 ) -> tuple[dict, ...]:
     """Wywod WHITE BOX pozycji progowej (R2-A / K3-G1; struktura R3-D):
     wzor (LaTeX) -> dane (pochodzenie) -> podstawienie z wynikiem (LaTeX) ->
-    progi -> werdykt. Ciagi deterministyczne (stale formaty); tekst ASCII-PL
-    jak why_pl, matematyka w LaTeX (kanon Proof Engine)."""
+    progi -> porównanie z progami (to samo zdanie co `why_pl`, z liczbami; bez etykiety
+    statusu — karta #145, kontrakt werdyktu wyjaśnialnego). Ciągi deterministyczne (stałe formaty); tekst po polsku z
+    przecinkiem dziesiętnym jak why_pl (karta #145), matematyka w LaTeX (kanon Proof
+    Engine)."""
     return (
         _krok(f"Wzór: {wzor}", wzor_latex),
         _krok(f"Dane: {dane}"),
         _krok(f"Wynik: {wynik}", podstawienie_latex),
-        _krok(f"Progi: ostrzeżenie {warn:.1f} {unit}, przekroczenie {fail:.1f} {unit}"),
-        _krok(f"Werdykt: {_WERDYKT_PL[status]}"),
+        _krok(f"Progi: ostrzeżenie {_pl(warn, 1)} {unit}, przekroczenie {_pl(fail, 1)} {unit}"),
+        _krok(f"Porównanie z progami: {porownanie}"),
     )
 
 
@@ -466,16 +474,16 @@ def _threshold_check(
     if value >= fail:
         return (
             EnergyValidationStatus.FAIL,
-            f"{label} {value:.2f} {unit} przekracza limit {fail:.1f} {unit}.",
+            f"{label} {_pl(value, 2)} {unit} przekracza limit {_pl(fail, 1)} {unit}.",
         )
     if value >= warn:
         return (
             EnergyValidationStatus.WARNING,
-            f"{label} {value:.2f} {unit} zbliża się do limitu {fail:.1f} {unit}.",
+            f"{label} {_pl(value, 2)} {unit} zbliża się do limitu {_pl(fail, 1)} {unit}.",
         )
     return (
         EnergyValidationStatus.PASS,
-        f"{label} {value:.2f} {unit} poniżej limitu {warn:.1f} {unit}.",
+        f"{label} {_pl(value, 2)} {unit} poniżej limitu {_pl(warn, 1)} {unit}.",
     )
 
 

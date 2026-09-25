@@ -38,12 +38,15 @@
  *
  * DOPEŁNIENIE E8.3 (tabela GAŁĘZI): wiersze z `branch_results: PowerFlowBranchResult[]`
  * (`types.ts:75-83` → branch_id, p_from_mw, q_from_mvar, p_to_mw, q_to_mvar,
- * losses_p_mw, losses_q_mvar). DECYZJA ws. kolumny głównej (karta §2 „ZBADAJ"):
- * kontrakt nie niesie nazwy PL gałęzi — WYŁĄCZNIE `branch_id` (surowy identyfikator
- * elementu sieci, analogicznie do numeru katalogowego). Kolumna główna pokazuje
- * `branch_id` bez zmian/tłumaczenia — identyfikatory elementów sieci są dopuszczone
- * jako oznaczenia techniczne (MODEL_INTERAKCJI §2.7, jak oznaczenia katalogowe),
- * nie są to swobodne literały UI wymagające tłumaczenia na PL.
+ * losses_p_mw, losses_q_mvar).
+ *
+ * NAZWY (karta #145, zastępuje dawną decyzję „kolumna główna = `branch_id`"): kontrakt
+ * FROZEN niesie wyłącznie identyfikator elementu w GRAFIE obliczeniowym (`bus_id`,
+ * `branch_id` = `uuid5(ref_id)`), a projektant widział go jako UUID w kolumnie „Szyna".
+ * Kolumny główne i założenia nazywają elementy JEDNYM mostem nazw wyników
+ * (`wzorzec/useNazwaObiektu`, który rozpoznaje identyfikator grafu); identyfikator
+ * zostaje KLUCZEM wiersza (`KLUCZ_ID_SZYNY`/`KLUCZ_ID_GALEZI` — komórka bez kolumny),
+ * więc preselekcja z SLD, zaznaczenie i dowód działają na tym samym identyfikatorze.
  */
 
 import type {
@@ -80,6 +83,9 @@ import {
 // ---------------------------------------------------------------------------
 
 export const KLUCZ_SZYNA = 'szyna';
+/** Klucz wiersza tabeli szyn: `bus_id` z wyniku (komórka bez kolumny — identyfikator
+ * nie jest tekstem pierwszego planu, służy preselekcji, zaznaczeniu i dowodowi). */
+export const KLUCZ_ID_SZYNY = 'idSzyny';
 
 export const KOLUMNY_SZYN: DefinicjaKolumny[] = [
   { klucz: KLUCZ_SZYNA, etykieta: ROZPLYW_STRINGS.kolSzyna, wyrownanie: 'lewo' },
@@ -107,9 +113,11 @@ export interface PunktProfilu {
 export function naWierszeSzyn(
   busResults: PowerFlowBusResult[],
   kryteria: KryteriaNapieciowe | undefined,
+  nazwa: (ref: string) => string,
 ): WierszTabeli[] {
   return busResults.map((r) => ({
-    [KLUCZ_SZYNA]: { wartosc: r.bus_id },
+    [KLUCZ_ID_SZYNY]: { wartosc: r.bus_id },
+    [KLUCZ_SZYNA]: { wartosc: nazwa(r.bus_id) },
     napiecie: {
       wartosc: fmtPU(r.v_pu),
       sortKey: r.v_pu,
@@ -127,12 +135,15 @@ export function naWierszeSzyn(
  * z `wynik.kryteria_napiecia` (odpowiedź backendu) — brak kryteriów w wyniku
  * (starszy zapisany bieg sprzed karty W3-J) daje uczciwy stan „kryterium
  * niedostępne", NIGDY domyślną liczbę. */
-export function naZalozeniaRozplywu(wynik: PowerFlowResultV1): WierszZalozenia[] {
+export function naZalozeniaRozplywu(
+  wynik: PowerFlowResultV1,
+  nazwa: (ref: string) => string,
+): WierszZalozenia[] {
   const kryteria = wynik.kryteria_napiecia;
   return [
     { etykieta: ROZPLYW_STRINGS.zalMocBazowa, wartosc: fmtBaza(wynik.base_mva), jednostka: ROZPLYW_STRINGS.jednMVA },
     { etykieta: ROZPLYW_STRINGS.zalTolerancja, wartosc: fmtTolerancja(wynik.tolerance_used) },
-    { etykieta: ROZPLYW_STRINGS.zalSzynaBilansujaca, wartosc: wynik.slack_bus_id },
+    { etykieta: ROZPLYW_STRINGS.zalSzynaBilansujaca, wartosc: nazwa(wynik.slack_bus_id) },
     { etykieta: ROZPLYW_STRINGS.zalLiczbaIteracji, wartosc: wynik.iterations_count },
     {
       etykieta: ROZPLYW_STRINGS.zalZbieznosc,
@@ -153,9 +164,12 @@ export function naZalozeniaRozplywu(wynik: PowerFlowResultV1): WierszZalozenia[]
   ];
 }
 
-/** Punkty profilu napięcia do wykresu (kolejność szyn ze źródła). */
-export function naProfilNapiec(busResults: PowerFlowBusResult[]): PunktProfilu[] {
-  return busResults.map((r) => ({ szyna: r.bus_id, napiecie: r.v_pu }));
+/** Punkty profilu napięcia do wykresu (kolejność szyn ze źródła, szyny nazwane mostem). */
+export function naProfilNapiec(
+  busResults: PowerFlowBusResult[],
+  nazwa: (ref: string) => string,
+): PunktProfilu[] {
+  return busResults.map((r) => ({ szyna: nazwa(r.bus_id), napiecie: r.v_pu }));
 }
 
 // ---------------------------------------------------------------------------
@@ -163,6 +177,8 @@ export function naProfilNapiec(busResults: PowerFlowBusResult[]): PunktProfilu[]
 // ---------------------------------------------------------------------------
 
 export const KLUCZ_GALAZ = 'galaz';
+/** Klucz wiersza tabeli gałęzi: `branch_id` z wyniku (komórka bez kolumny). */
+export const KLUCZ_ID_GALEZI = 'idGalezi';
 
 /** Klucz kolumny werdyktu obciążalności (R3-A / K1-G2). */
 export const KLUCZ_OBCIAZENIE = 'obciazenie';
@@ -260,10 +276,12 @@ export function komorkaObciazenia(poz: PozycjaObciazenia | undefined): WartoscKo
  * niedostępna) → kolumna „Obciążenie" z kreskami, tabela działa jak dotąd. */
 export function naWierszeGalezi(
   branchResults: PowerFlowBranchResult[],
+  nazwa: (ref: string) => string,
   obciazenia?: ReadonlyMap<string, PozycjaObciazenia> | null,
 ): WierszTabeli[] {
   return branchResults.map((r) => ({
-    [KLUCZ_GALAZ]: { wartosc: r.branch_id },
+    [KLUCZ_ID_GALEZI]: { wartosc: r.branch_id },
+    [KLUCZ_GALAZ]: { wartosc: nazwa(r.branch_id) },
     pPoczatek: { wartosc: fmtMoc(r.p_from_mw), sortKey: r.p_from_mw, dowodRef: r.branch_id },
     qPoczatek: { wartosc: fmtMoc(r.q_from_mvar), sortKey: r.q_from_mvar, dowodRef: r.branch_id },
     pKoniec: { wartosc: fmtMoc(r.p_to_mw), sortKey: r.p_to_mw, dowodRef: r.branch_id },

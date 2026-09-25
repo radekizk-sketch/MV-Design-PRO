@@ -9202,8 +9202,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 1 lit. a (tabela 2) (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -9215,7 +9215,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -9224,7 +9224,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -9292,8 +9292,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 1 lit. b (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -9305,7 +9305,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -9314,7 +9314,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -9382,8 +9382,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 2 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -9395,7 +9395,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -9404,7 +9404,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -9472,8 +9472,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -9485,7 +9485,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -9494,7 +9494,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -9562,8 +9562,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 4 i ust. 5 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -9575,7 +9575,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -9584,7 +9584,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -9652,8 +9652,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 6 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -9665,7 +9665,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -9674,7 +9674,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -9742,8 +9742,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 7 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -9755,7 +9755,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -9764,7 +9764,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -9832,8 +9832,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 2 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -9845,7 +9845,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -9854,7 +9854,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -9922,8 +9922,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -9935,7 +9935,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -9944,7 +9944,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -10012,8 +10012,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 4 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -10025,7 +10025,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -10034,7 +10034,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -10102,8 +10102,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 17 ust. 2 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -10115,7 +10115,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -10124,7 +10124,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -10192,8 +10192,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 17 ust. 3 (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (jednostka redakcyjna do potwierdzenia z tekstem rozporządzenia).",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -10205,7 +10205,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -10214,7 +10214,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -10282,8 +10282,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 20 ust. 2 lit. a (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -10295,7 +10295,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -10304,7 +10304,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -10372,8 +10372,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 20 ust. 2 lit. b (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -10385,7 +10385,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -10394,7 +10394,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -10462,8 +10462,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 20 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -10475,7 +10475,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -10484,7 +10484,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -10552,8 +10552,8 @@
             "zastrzezenia": [
               "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
               "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1500 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,4 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -10565,7 +10565,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1500.0,
                     "jednostka": "kW"
@@ -10574,7 +10574,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.4,
                     "jednostka": "kV"
@@ -10664,8 +10664,8 @@
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
             "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.",
-            "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+            "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
           ],
           "kryteria_naruszone": [],
           "kryterium_najblizej_granicy": null,
@@ -10679,15 +10679,15 @@
             "czego_brakuje": [
               "Metoda wykazania wymagania: certyfikat urządzenia albo raport z badania typu pokrywający wymaganie — narzędzie nie ma metody wykazania.",
               "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "certyfikat urządzenia z wykazu PTPiREE obejmujący typ B albo raport z badania typu"
             ],
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 1 lit. a (tabela 2) (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -10699,7 +10699,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1935.0,
                     "jednostka": "kW"
@@ -10708,7 +10708,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.8,
                     "jednostka": "kV"
@@ -10815,27 +10815,27 @@
               "status_maszynowy": "NIE_OCENIONO",
               "kompletnosc_dowodu": "NIEPELNY",
               "powody_niepelnosci": [
-                "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-                "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+                "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+                "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
               ],
               "etykieta": {
                 "etykieta_pl": "Ocena niewykonana",
                 "semantyka": "neutralna"
               },
               "wyjasnienie": {
-                "zdanie_pl": "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
-                "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21)))",
+                "zdanie_pl": "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+                "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF); wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21)))",
                 "czego_brakuje": [
                   "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
                   "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
-                  "nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s)",
+                  "nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF)",
                   "wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))"
                 ],
                 "zastrzezenia": [
                   "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 1 lit. b (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                   "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
-                  "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-                  "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+                  "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+                  "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
                   "Zakres ważności: porównanie nastawy zabezpieczenia modułu z wymaganą wytrzymałością RoCoF — nie wykazuje zachowania dynamicznego — wynik nie obejmuje: zachowanie dynamiczne."
                 ]
               },
@@ -10848,7 +10848,7 @@
                   "stan": "UNVALIDATED_INPUT",
                   "dane_przyjete": [
                     {
-                      "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                      "nazwa_pl": "moc maksymalna modułu",
                       "wartosc": {
                         "wartosc": 1935.0,
                         "jednostka": "kW"
@@ -10857,7 +10857,7 @@
                       "jakosc": null
                     },
                     {
-                      "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                      "nazwa_pl": "napięcie przyłączenia modułu",
                       "wartosc": {
                         "wartosc": 0.8,
                         "jednostka": "kV"
@@ -10900,10 +10900,10 @@
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
             "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.",
-            "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-            "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-            "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+            "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+            "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
           ],
           "kryteria_naruszone": [],
           "kryterium_najblizej_granicy": null,
@@ -10918,20 +10918,20 @@
               "Metoda wykazania wymagania: certyfikat urządzenia albo raport z badania typu pokrywający wymaganie — narzędzie nie ma metody wykazania.",
               "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
               "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
-              "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (pole nastawy_zabezpieczen: rocof_hz_s)",
+              "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): nastawa zabezpieczenia RoCoF (LoM) modułu w modelu (karta źródła, nastawy zabezpieczeń modułu: próg RoCoF)",
               "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): wytrzymałość RoCoF modułu (art. 13 ust. 1 lit. b rozporządzenia 2016/631) — wartość krajowa WOS albo IRiESD: profil nie niesie tej wartości (Bank Nastaw operatora Enea Operator: stan źródła „nieustalone” — nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium (OD-21))",
               "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-              "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+              "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Koordynacja nastawy zabezpieczenia RoCoF (LoM) modułu z wymaganą wytrzymałością RoCoF: nastawa nie niższa niż wytrzymałość (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "certyfikat urządzenia z wykazu PTPiREE obejmujący typ B albo raport z badania typu"
             ],
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 1 lit. b (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: porównanie nastawy zabezpieczenia modułu z wymaganą wytrzymałością RoCoF — nie wykazuje zachowania dynamicznego — wynik nie obejmuje: zachowanie dynamiczne.",
               "Zakres ważności: wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki — wynik nie obejmuje: zachowanie dynamiczne."
             ]
@@ -10945,7 +10945,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1935.0,
                     "jednostka": "kW"
@@ -10954,7 +10954,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.8,
                     "jednostka": "kV"
@@ -11241,6 +11241,8 @@
           "status_maszynowy": "BRAK_PODSTAWY",
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
+            "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: funkcja P(f) modułu (has_pf_droop) = 1 — wartość z żądania klienta — bez walidacji w modelu.",
@@ -11264,6 +11266,8 @@
             "przyczyna_pl": "LFSM-O - ograniczanie mocy przy nadczęstotliwości: statyzm P(f) modułu w tolerancji wymaganej (Instalacja PV 1,9 MW) — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”",
             "czego_brakuje": [
               "LFSM-O - ograniczanie mocy przy nadczęstotliwości: statyzm P(f) modułu w tolerancji wymaganej (Instalacja PV 1,9 MW): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: funkcja P(f) modułu (has_pf_droop) = 1 — wartość z żądania klienta — bez walidacji w modelu.",
@@ -11286,6 +11290,8 @@
               "Dana przyjęta bez walidacji: strefa martwa modułu (dead_band_hz) = 0,2 Hz — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: statyzm P(f) modułu (droop_percent) = 5 % — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: porównanie danych zadeklarowanych modułu z wymaganiem profilu — nie wykazuje zachowania dynamicznego; kryterium główne testu: statyzm w tolerancji; strefa martwa modułu i odpowiedź ΔP w punkcie częstotliwości testu zapisane w śladzie informacyjnie (procedura nie rozróżnia ich jako osobnych testów) — wynik nie obejmuje: zachowanie dynamiczne.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki — wynik nie obejmuje: zachowanie dynamiczne."
             ]
           },
@@ -11297,6 +11303,24 @@
             "status_danych": {
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
+                {
+                  "nazwa_pl": "moc maksymalna modułu",
+                  "wartosc": {
+                    "wartosc": 1935.0,
+                    "jednostka": "kW"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
+                {
+                  "nazwa_pl": "napięcie przyłączenia modułu",
+                  "wartosc": {
+                    "wartosc": 0.8,
+                    "jednostka": "kV"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
                 {
                   "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
                   "wartosc": {
@@ -11412,8 +11436,8 @@
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
             "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.",
-            "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+            "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
           ],
           "kryteria_naruszone": [],
           "kryterium_najblizej_granicy": null,
@@ -11427,15 +11451,15 @@
             "czego_brakuje": [
               "Metoda wykazania wymagania: certyfikat urządzenia albo raport z badania typu pokrywający wymaganie — narzędzie nie ma metody wykazania.",
               "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "certyfikat urządzenia z wykazu PTPiREE obejmujący typ B albo raport z badania typu"
             ],
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -11447,7 +11471,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1935.0,
                     "jednostka": "kW"
@@ -11456,7 +11480,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.8,
                     "jednostka": "kV"
@@ -11519,8 +11543,8 @@
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
             "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.",
-            "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+            "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
           ],
           "kryteria_naruszone": [],
           "kryterium_najblizej_granicy": null,
@@ -11534,15 +11558,15 @@
             "czego_brakuje": [
               "Metoda wykazania wymagania: certyfikat urządzenia albo raport z badania typu pokrywający wymaganie — narzędzie nie ma metody wykazania.",
               "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "certyfikat urządzenia z wykazu PTPiREE obejmujący typ B albo raport z badania typu"
             ],
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 4 i ust. 5 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -11554,7 +11578,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1935.0,
                     "jednostka": "kW"
@@ -11563,7 +11587,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.8,
                     "jednostka": "kV"
@@ -11638,8 +11662,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 6 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -11651,7 +11675,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1935.0,
                     "jednostka": "kW"
@@ -11660,7 +11684,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.8,
                     "jednostka": "kV"
@@ -11723,8 +11747,8 @@
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
             "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.",
-            "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+            "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
           ],
           "kryteria_naruszone": [],
           "kryterium_najblizej_granicy": null,
@@ -11738,15 +11762,15 @@
             "czego_brakuje": [
               "Metoda wykazania wymagania: certyfikat urządzenia albo raport z badania typu pokrywający wymaganie — narzędzie nie ma metody wykazania.",
               "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "certyfikat urządzenia z wykazu PTPiREE obejmujący typ B albo raport z badania typu"
             ],
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 7 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -11758,7 +11782,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1935.0,
                     "jednostka": "kW"
@@ -11767,7 +11791,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.8,
                     "jednostka": "kV"
@@ -12186,6 +12210,8 @@
           "status_maszynowy": "NIE_OCENIONO",
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
+            "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: regulacja mocy czynnej (active_power_control_enabled) = 1 — wartość z żądania klienta — bez walidacji w modelu.",
@@ -12214,6 +12240,8 @@
               "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
               "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
               "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Instalacja PV 1,9 MW): deklaracja funkcji: zdalne zmniejszenie generacji (reduction_generation_enabled) i tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: regulacja mocy czynnej (active_power_control_enabled) = 1 — wartość z żądania klienta — bez walidacji w modelu.",
@@ -12237,6 +12265,8 @@
               "Dana przyjęta bez walidacji: regulacja mocy czynnej (active_power_control_enabled) = 1 — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min) = 10 %/min — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: porównanie danych zadeklarowanych modułu z wymaganiem profilu — nie wykazuje zachowania dynamicznego — wynik nie obejmuje: zachowanie dynamiczne.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki — wynik nie obejmuje: zachowanie dynamiczne."
             ]
           },
@@ -12248,6 +12278,24 @@
             "status_danych": {
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
+                {
+                  "nazwa_pl": "moc maksymalna modułu",
+                  "wartosc": {
+                    "wartosc": 1935.0,
+                    "jednostka": "kW"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
+                {
+                  "nazwa_pl": "napięcie przyłączenia modułu",
+                  "wartosc": {
+                    "wartosc": 0.8,
+                    "jednostka": "kV"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
                 {
                   "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
                   "wartosc": {
@@ -12608,10 +12656,10 @@
               "status_maszynowy": "BRAK_PODSTAWY",
               "kompletnosc_dowodu": "NIEPELNY",
               "powody_niepelnosci": [
-                "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-                "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-                "Dana przyjęta bez walidacji: nastawa U< modułu (u_min_pu) = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
-                "Dana przyjęta bez walidacji: czas nastawy U< modułu (u_min_czas_s) = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
+                "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+                "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+                "Dana przyjęta bez walidacji: nastawa U< modułu = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
+                "Dana przyjęta bez walidacji: czas nastawy U< modułu = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
                 "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
               ],
               "etykieta": {
@@ -12628,10 +12676,10 @@
                   "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                   "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
                   "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
-                  "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-                  "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-                  "Dana przyjęta bez walidacji: nastawa U< modułu (u_min_pu) = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
-                  "Dana przyjęta bez walidacji: czas nastawy U< modułu (u_min_czas_s) = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
+                  "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+                  "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+                  "Dana przyjęta bez walidacji: nastawa U< modułu = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
+                  "Dana przyjęta bez walidacji: czas nastawy U< modułu = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
                   "Zakres ważności: porównanie nastaw zabezpieczeń modułu zapisanych w modelu z obwiednią profilu (zabezpieczenie o charakterystyce czasowo niezależnej) — nie wykazuje zachowania dynamicznego — wynik nie obejmuje: zachowanie dynamiczne."
                 ]
               },
@@ -12644,7 +12692,7 @@
                   "stan": "UNVALIDATED_INPUT",
                   "dane_przyjete": [
                     {
-                      "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                      "nazwa_pl": "moc maksymalna modułu",
                       "wartosc": {
                         "wartosc": 1935.0,
                         "jednostka": "kW"
@@ -12653,7 +12701,7 @@
                       "jakosc": null
                     },
                     {
-                      "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                      "nazwa_pl": "napięcie przyłączenia modułu",
                       "wartosc": {
                         "wartosc": 0.8,
                         "jednostka": "kV"
@@ -12662,7 +12710,7 @@
                       "jakosc": null
                     },
                     {
-                      "nazwa_pl": "nastawa U< modułu (u_min_pu)",
+                      "nazwa_pl": "nastawa U< modułu",
                       "wartosc": {
                         "wartosc": 0.8,
                         "jednostka": "p.u. (U_n)"
@@ -12671,7 +12719,7 @@
                       "jakosc": null
                     },
                     {
-                      "nazwa_pl": "czas nastawy U< modułu (u_min_czas_s)",
+                      "nazwa_pl": "czas nastawy U< modułu",
                       "wartosc": {
                         "wartosc": 1.5,
                         "jednostka": "s"
@@ -12714,18 +12762,20 @@
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
             "Dowód łączony nie jest dowodem właściwym — składniki bez metody przydatnej: Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW), metoda „deklaracja”.",
+            "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-            "Dana przyjęta bez walidacji: nastawa U< modułu (u_min_pu) = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
-            "Dana przyjęta bez walidacji: czas nastawy U< modułu (u_min_czas_s) = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: nastawa U< modułu = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: czas nastawy U< modułu = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
             "Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW): Metoda dowodu „deklaracja” nie jest właściwa dla twierdzenia o zachowaniu dynamicznym — właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
             "Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
             "Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-            "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-            "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-            "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: nastawa U< modułu (u_min_pu) = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
-            "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: czas nastawy U< modułu (u_min_czas_s) = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
+            "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+            "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: nastawa U< modułu = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
+            "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: czas nastawy U< modułu = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
             "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
           ],
           "kryteria_naruszone": [],
@@ -12744,18 +12794,20 @@
               "Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW): bieg dynamiki RMS modułu w scenariuszu zakłócenia — narzędzie nie wykonuje tego biegu dla testów procedury; porównanie deklaracji nie wykazuje zachowania dynamicznego",
               "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
               "Dowód łączony nie jest dowodem właściwym — składniki bez metody przydatnej: Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW), metoda „deklaracja”.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: nastawa U< modułu (u_min_pu) = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: czas nastawy U< modułu (u_min_czas_s) = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: nastawa U< modułu = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: czas nastawy U< modułu = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
               "Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW): Metoda dowodu „deklaracja” nie jest właściwa dla twierdzenia o zachowaniu dynamicznym — właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
               "Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-              "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
-              "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: nastawa U< modułu (u_min_pu) = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
-              "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: czas nastawy U< modułu (u_min_czas_s) = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
+              "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+              "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: nastawa U< modułu = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
+              "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Dana przyjęta bez walidacji: czas nastawy U< modułu = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
               "Koordynacja nastawy zabezpieczenia podnapięciowego U< modułu z obwiednią LVRT: punkt nastawy (czas, napięcie) nie powyżej obwiedni (Instalacja PV 1,9 MW): Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
             ],
             "zastrzezenia": [
@@ -12766,8 +12818,10 @@
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: porównanie danych zadeklarowanych modułu z wymaganiem profilu — nie wykazuje zachowania dynamicznego — wynik nie obejmuje: zachowanie dynamiczne.",
               "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
-              "Dana przyjęta bez walidacji: nastawa U< modułu (u_min_pu) = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: czas nastawy U< modułu (u_min_czas_s) = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: nastawa U< modułu = 0,8 p.u. (U_n) — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: czas nastawy U< modułu = 1,5 s — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: porównanie nastaw zabezpieczeń modułu zapisanych w modelu z obwiednią profilu (zabezpieczenie o charakterystyce czasowo niezależnej) — nie wykazuje zachowania dynamicznego — wynik nie obejmuje: zachowanie dynamiczne.",
               "Zakres ważności: wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki — wynik nie obejmuje: zachowanie dynamiczne."
             ]
@@ -12780,6 +12834,24 @@
             "status_danych": {
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
+                {
+                  "nazwa_pl": "moc maksymalna modułu",
+                  "wartosc": {
+                    "wartosc": 1935.0,
+                    "jednostka": "kW"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
+                {
+                  "nazwa_pl": "napięcie przyłączenia modułu",
+                  "wartosc": {
+                    "wartosc": 0.8,
+                    "jednostka": "kV"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
                 {
                   "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
                   "wartosc": {
@@ -12799,7 +12871,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "nastawa U< modułu (u_min_pu)",
+                  "nazwa_pl": "nastawa U< modułu",
                   "wartosc": {
                     "wartosc": 0.8,
                     "jednostka": "p.u. (U_n)"
@@ -12808,7 +12880,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "czas nastawy U< modułu (u_min_czas_s)",
+                  "nazwa_pl": "czas nastawy U< modułu",
                   "wartosc": {
                     "wartosc": 1.5,
                     "jednostka": "s"
@@ -12892,8 +12964,8 @@
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
             "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.",
-            "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+            "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
           ],
           "kryteria_naruszone": [],
           "kryterium_najblizej_granicy": null,
@@ -12907,15 +12979,15 @@
             "czego_brakuje": [
               "Metoda wykazania wymagania: certyfikat urządzenia albo raport z badania typu pokrywający wymaganie — narzędzie nie ma metody wykazania.",
               "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "certyfikat urządzenia z wykazu PTPiREE obejmujący typ B albo raport z badania typu"
             ],
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 4 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”, wydanie 2018 (wymogi ogólnego stosowania (WOS)).",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -12927,7 +12999,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1935.0,
                     "jednostka": "kW"
@@ -12936,7 +13008,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.8,
                     "jednostka": "kV"
@@ -13011,8 +13083,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 17 ust. 2 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Stosowalność wyznaczona wg podstawy o stanie źródła „wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)”: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 17 ust. 2 (rozporządzenie UE).",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -13024,7 +13096,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1935.0,
                     "jednostka": "kW"
@@ -13033,7 +13105,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.8,
                     "jednostka": "kV"
@@ -13108,8 +13180,8 @@
             "zastrzezenia": [
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 17 ust. 3 (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (jednostka redakcyjna do potwierdzenia z tekstem rozporządzenia).",
               "Stosowalność wyznaczona wg podstawy o stanie źródła „nieustalone”: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 17 ust. 3 (rozporządzenie UE).",
-              "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
-              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu."
             ]
           },
           "dowod": {
@@ -13121,7 +13193,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
+                  "nazwa_pl": "moc maksymalna modułu",
                   "wartosc": {
                     "wartosc": 1935.0,
                     "jednostka": "kW"
@@ -13130,7 +13202,7 @@
                   "jakosc": null
                 },
                 {
-                  "nazwa_pl": "napięcie przyłączenia modułu (voltage_kv)",
+                  "nazwa_pl": "napięcie przyłączenia modułu",
                   "wartosc": {
                     "wartosc": 0.8,
                     "jednostka": "kV"
@@ -13391,6 +13463,8 @@
           "status_maszynowy": "BRAK_PODSTAWY",
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
+            "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
@@ -13413,6 +13487,8 @@
             "przyczyna_pl": "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW) — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”",
             "czego_brakuje": [
               "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Instalacja PV 1,9 MW): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: dolna granica zakresu Q modułu (q_range_pct_pn_min) = −0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
@@ -13435,6 +13511,8 @@
               "Dana przyjęta bez walidacji: górna granica zakresu Q modułu (q_range_pct_pn_max) = 0,3307 p.u. (P_n modułu) — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: porównanie danych zadeklarowanych modułu z wymaganiem profilu — nie wykazuje zachowania dynamicznego; oceniono stronę zakresu mocy biernej o mniejszym zapasie pokrycia; zapas drugiej strony zapisany w śladzie — wynik nie obejmuje: zachowanie dynamiczne.",
               "Podstawa „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wykonanie przez operatora prawa do określenia wymagań, dla których rozporządzenie przyznaje mu to prawo, nie jest udokumentowane w repozytorium; potrzebny dokument: IRiESD albo warunki przyłączenia (plan AB §12.1); dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21); prawo operatora do określenia wymagania (art. 20 ust. 2 lit. a rozporządzenia 2016/631) — wykonanie nieustalone).",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki — wynik nie obejmuje: zachowanie dynamiczne."
             ]
           },
@@ -13446,6 +13524,24 @@
             "status_danych": {
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
+                {
+                  "nazwa_pl": "moc maksymalna modułu",
+                  "wartosc": {
+                    "wartosc": 1935.0,
+                    "jednostka": "kW"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
+                {
+                  "nazwa_pl": "napięcie przyłączenia modułu",
+                  "wartosc": {
+                    "wartosc": 0.8,
+                    "jednostka": "kV"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
                 {
                   "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
                   "wartosc": {
@@ -13708,6 +13804,8 @@
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
             "Dowód łączony nie jest dowodem właściwym — składniki bez metody przydatnej: Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW), metoda „deklaracja”.",
+            "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Podstawa „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
@@ -13732,6 +13830,8 @@
               "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „PTPiREE — Procedura testowania modułów wytwarzania energii”, wydanie 3.0 (procedura PTPiREE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartości przeniesione z kodu solvera testów (dawniej zaszyte); do potwierdzenia programami ramowymi testów procedury).",
               "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW): bieg dynamiki RMS modułu w scenariuszu zakłócenia — narzędzie nie wykonuje tego biegu dla testów procedury; porównanie deklaracji nie wykazuje zachowania dynamicznego",
               "Dowód łączony nie jest dowodem właściwym — składniki bez metody przydatnej: Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Instalacja PV 1,9 MW), metoda „deklaracja”.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Podstawa „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
@@ -13749,6 +13849,8 @@
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: porównanie danych zadeklarowanych modułu z wymaganiem profilu — nie wykazuje zachowania dynamicznego — wynik nie obejmuje: zachowanie dynamiczne.",
               "Podstawa „Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wykonanie przez operatora prawa do określenia wymagań, dla których rozporządzenie przyznaje mu to prawo, nie jest udokumentowane w repozytorium; potrzebny dokument: IRiESD albo warunki przyłączenia (plan AB §12.1); dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21); prawo operatora do określenia wymagania (art. 20 ust. 2 lit. b rozporządzenia 2016/631) — wykonanie nieustalone).",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki — wynik nie obejmuje: zachowanie dynamiczne."
             ]
           },
@@ -13760,6 +13862,24 @@
             "status_danych": {
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
+                {
+                  "nazwa_pl": "moc maksymalna modułu",
+                  "wartosc": {
+                    "wartosc": 1935.0,
+                    "jednostka": "kW"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
+                {
+                  "nazwa_pl": "napięcie przyłączenia modułu",
+                  "wartosc": {
+                    "wartosc": 0.8,
+                    "jednostka": "kV"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
                 {
                   "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
                   "wartosc": {
@@ -14004,6 +14124,8 @@
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
             "Dowód łączony nie jest dowodem właściwym — składniki bez metody przydatnej: Odbudowa mocy czynnej po zakłóceniu: czas odbudowy mocy czynnej po zakłóceniu (Instalacja PV 1,9 MW), metoda „deklaracja”.",
+            "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Odbudowa mocy czynnej po zakłóceniu: czas odbudowy mocy czynnej po zakłóceniu (Instalacja PV 1,9 MW): Metoda dowodu „deklaracja” nie jest właściwa dla twierdzenia o zachowaniu dynamicznym — właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
@@ -14027,6 +14149,8 @@
               "Odbudowa mocy czynnej po zakłóceniu: czas odbudowy mocy czynnej po zakłóceniu (Instalacja PV 1,9 MW): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
               "Odbudowa mocy czynnej po zakłóceniu: czas odbudowy mocy czynnej po zakłóceniu (Instalacja PV 1,9 MW): bieg dynamiki RMS modułu w scenariuszu zakłócenia — narzędzie nie wykonuje tego biegu dla testów procedury; porównanie deklaracji nie wykazuje zachowania dynamicznego",
               "Dowód łączony nie jest dowodem właściwym — składniki bez metody przydatnej: Odbudowa mocy czynnej po zakłóceniu: czas odbudowy mocy czynnej po zakłóceniu (Instalacja PV 1,9 MW), metoda „deklaracja”.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Odbudowa mocy czynnej po zakłóceniu: czas odbudowy mocy czynnej po zakłóceniu (Instalacja PV 1,9 MW): Metoda dowodu „deklaracja” nie jest właściwa dla twierdzenia o zachowaniu dynamicznym — właściwa metoda: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
@@ -14041,6 +14165,8 @@
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: porównanie danych zadeklarowanych modułu z wymaganiem profilu — nie wykazuje zachowania dynamicznego — wynik nie obejmuje: zachowanie dynamiczne.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki — wynik nie obejmuje: zachowanie dynamiczne."
             ]
           },
@@ -14052,6 +14178,24 @@
             "status_danych": {
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
+                {
+                  "nazwa_pl": "moc maksymalna modułu",
+                  "wartosc": {
+                    "wartosc": 1935.0,
+                    "jednostka": "kW"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
+                {
+                  "nazwa_pl": "napięcie przyłączenia modułu",
+                  "wartosc": {
+                    "wartosc": 0.8,
+                    "jednostka": "kV"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
                 {
                   "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
                   "wartosc": {
@@ -14286,6 +14430,8 @@
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
             "Dowód łączony nie jest dowodem właściwym — składniki bez metody przydatnej: Pozostanie modułu w pracy podczas wzrostu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW), metoda „deklaracja”.",
+            "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+            "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
             "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
             "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
@@ -14311,6 +14457,8 @@
               "Pozostanie modułu w pracy podczas wzrostu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
               "Pozostanie modułu w pracy podczas wzrostu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW): bieg dynamiki RMS modułu w scenariuszu zakłócenia — narzędzie nie wykonuje tego biegu dla testów procedury; porównanie deklaracji nie wykazuje zachowania dynamicznego",
               "Dowód łączony nie jest dowodem właściwym — składniki bez metody przydatnej: Pozostanie modułu w pracy podczas wzrostu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Instalacja PV 1,9 MW), metoda „deklaracja”.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
@@ -14327,6 +14475,8 @@
               "Dana przyjęta bez walidacji: moc maksymalna modułu (p_max_kw) = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
               "Dana przyjęta bez walidacji: napięcie przyłączenia modułu (voltage_kv) = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: porównanie danych zadeklarowanych modułu z wymaganiem profilu — nie wykazuje zachowania dynamicznego — wynik nie obejmuje: zachowanie dynamiczne.",
+              "Dana przyjęta bez walidacji: moc maksymalna modułu = 1935 kW — wartość z żądania klienta — bez walidacji w modelu.",
+              "Dana przyjęta bez walidacji: napięcie przyłączenia modułu = 0,8 kV — wartość z żądania klienta — bez walidacji w modelu.",
               "Zakres ważności: wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki — wynik nie obejmuje: zachowanie dynamiczne."
             ]
           },
@@ -14338,6 +14488,24 @@
             "status_danych": {
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
+                {
+                  "nazwa_pl": "moc maksymalna modułu",
+                  "wartosc": {
+                    "wartosc": 1935.0,
+                    "jednostka": "kW"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
+                {
+                  "nazwa_pl": "napięcie przyłączenia modułu",
+                  "wartosc": {
+                    "wartosc": 0.8,
+                    "jednostka": "kV"
+                  },
+                  "powod_pl": "wartość z żądania klienta — bez walidacji w modelu",
+                  "jakosc": null
+                },
                 {
                   "nazwa_pl": "moc maksymalna modułu (p_max_kw)",
                   "wartosc": {

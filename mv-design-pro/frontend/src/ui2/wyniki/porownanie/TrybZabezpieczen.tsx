@@ -8,8 +8,8 @@
  * porównania (White Box: które pola, progi — na żądanie, zwinięty domyślnie).
  *
  * Reużycie (D1/D2, zero duplikacji): TEN SAM mechanizm wyboru A/B co
- * `TrybRozplywu` (`EkranPorownania.tsx`), TEN SAM panel proweniencji
- * (`PanelProweniencji.tsx`), TA SAMA logika etykiety biegu/koperty
+ * `TrybRozplywu` (`EkranPorownania.tsx`), TE SAME „Informacje audytowe" z proweniencją
+ * (`naWierszeAudytuPorownania`), TA SAMA logika etykiety biegu/koperty
  * (`porownanieModel.ts`), TEN SAM deep-link dowodu (R3-C, `dowodPorownania.ts`).
  *
  * Granice (NOT-A-SOLVER / karta §4): fronton NICZEGO nie liczy — wiersze,
@@ -46,19 +46,21 @@ import './porownanie.css';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
 import {
+  InformacjeAudytowe,
   PrzyciskAkcjiStanu,
   SekcjaZalozen,
   TabelaWynikow,
   useAkcjaPrzejdzDoSchematu,
+  useNazwaObiektu,
 } from '../wzorzec';
 import { stronaDowodu } from './dowodPorownania';
-import { PanelProweniencji } from './PanelProweniencji';
 import {
   createProtectionComparison,
   fetchProtectionRuns,
   getProtectionComparisonTrace,
 } from '../../../ui/protection-comparison/api';
 import type {
+  PoleSladuPorownaniaZabezpieczen,
   ProtectionComparisonResult,
   ProtectionComparisonTrace,
   ProtectionRunItem,
@@ -70,12 +72,14 @@ import {
   KOLUMNY_STANOW_ZABEZPIECZEN,
   etykietaPrzebieguZabezpieczen,
   mapaWagWierszyZabezpieczen,
+  naWierszeAudytuPorownania,
   naWierszeRankinguZabezpieczen,
   naWierszeStanowZabezpieczen,
   naZalozeniaPorownaniaZabezpieczen,
   tylkoZmianyStanowZabezpieczen,
 } from './porownanieModel';
 import {
+  ETYKIETY_POL_SLADU_ZABEZPIECZEN,
   POROWNANIE_STRINGS,
   ZABEZPIECZENIA_POROWNANIE_STRINGS as ZB,
   rodzajProblemuZabezpieczenPL,
@@ -101,13 +105,16 @@ export interface TrybZabezpieczenProps {
   trybZaawansowania: AdvancementMode;
 }
 
-/** Wartość dowolnego pola śladu (`inputs`/`outputs`) → napis, bez arytmetyki. */
-function fmtWartoscSladu(wartosc: unknown): string {
-  if (wartosc === null || wartosc === undefined) return ZB.kreska;
-  if (typeof wartosc === 'boolean') return wartosc ? 'tak' : 'nie';
-  if (typeof wartosc === 'number') return String(wartosc).replace('.', ',');
-  if (typeof wartosc === 'string') return wartosc;
-  return JSON.stringify(wartosc);
+/** Wartość pola śladu (`inputs`/`outputs` — liczby) → napis, bez arytmetyki. */
+function fmtWartoscSladu(wartosc: number | undefined): string {
+  return typeof wartosc === 'number' ? String(wartosc).replace('.', ',') : ZB.kreska;
+}
+
+/** Pola kroku śladu w kolejności źródłowej, z kluczem zawężonym do zamkniętej unii. */
+function polaSladu(
+  pola: Partial<Record<PoleSladuPorownaniaZabezpieczen, number>>,
+): [PoleSladuPorownaniaZabezpieczen, number | undefined][] {
+  return Object.entries(pola) as [PoleSladuPorownaniaZabezpieczen, number | undefined][];
 }
 
 export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpieczenProps) {
@@ -212,14 +219,15 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
     () => (wynik ? mapaWagWierszyZabezpieczen(wynik.ranking) : new Map<string, number>()),
     [wynik],
   );
+  const nazwaObiektu = useNazwaObiektu();
   const wierszeStanow = useMemo(() => {
     if (!wynik) return [];
     const zrodlo = tylkoZmiany ? tylkoZmianyStanowZabezpieczen(wynik.rows) : wynik.rows;
-    return naWierszeStanowZabezpieczen(zrodlo, wagi);
-  }, [wynik, wagi, tylkoZmiany]);
+    return naWierszeStanowZabezpieczen(zrodlo, wagi, nazwaObiektu);
+  }, [wynik, wagi, tylkoZmiany, nazwaObiektu]);
   const wierszeRankingu = useMemo(
-    () => (wynik ? naWierszeRankinguZabezpieczen(wynik.ranking) : []),
-    [wynik],
+    () => (wynik ? naWierszeRankinguZabezpieczen(wynik.ranking, nazwaObiektu) : []),
+    [wynik, nazwaObiektu],
   );
 
   const problemSzczegol =
@@ -258,11 +266,6 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
         <div className="mvd-por-head-main">
           <p className="mvd-por-sub">{ZB.podtytul}</p>
         </div>
-        {trybEkspercki && wynik && (
-          <span className="mvd-por-id mvd-num" data-testid="mvd-porzab-id">
-            {wynik.comparison_id}
-          </span>
-        )}
       </header>
 
       <section
@@ -296,7 +299,6 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
                 testId="mvd-porzab-select-a"
                 przebiegi={przebiegi}
                 wybrany={runA}
-                trybEkspercki={trybEkspercki}
                 nazwyPrzypadkow={nazwyPrzypadkow}
                 onZmiana={setRunA}
               />
@@ -305,7 +307,6 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
                 testId="mvd-porzab-select-b"
                 przebiegi={przebiegi}
                 wybrany={runB}
-                trybEkspercki={trybEkspercki}
                 nazwyPrzypadkow={nazwyPrzypadkow}
                 onZmiana={setRunB}
               />
@@ -338,22 +339,17 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
         <div className="mvd-wyn" data-testid="mvd-porzab-wynik">
           <SekcjaZalozen zalozenia={naZalozeniaPorownaniaZabezpieczen(wynik.summary)} />
 
-          {/* Proweniencja obu biegów R1 — TEN SAM panel co rozpływ (D1). */}
-          {trybEkspercki && (
-            <section
-              className="mvd-por-proweniencja"
-              data-testid="mvd-por-proweniencja"
-              aria-label={POROWNANIE_STRINGS.proweniencjaTytul}
-            >
-              <h3 className="mvd-por-proweniencja-tytul">
-                {POROWNANIE_STRINGS.proweniencjaTytul}
-              </h3>
-              <div className="mvd-por-proweniencja-kolumny">
-                <PanelProweniencji etykieta={POROWNANIE_STRINGS.proweniencjaA} dane={wynik.provenance_a} />
-                <PanelProweniencji etykieta={POROWNANIE_STRINGS.proweniencjaB} dane={wynik.provenance_b} />
-              </div>
-            </section>
-          )}
+          {/* Proweniencja obu biegów R1 — TE SAME „Informacje audytowe" co rozpływ (D1);
+              karta #145: identyfikator porównania i odciski wyłącznie tutaj. */}
+          <InformacjeAudytowe
+            trybEkspercki={trybEkspercki}
+            testid="mvd-porzab-informacje-audytowe"
+            wiersze={naWierszeAudytuPorownania(
+              wynik.comparison_id,
+              wynik.provenance_a,
+              wynik.provenance_b,
+            )}
+          />
 
           <div className="mvd-por-zakladki" role="tablist" data-testid="mvd-porzab-zakladki">
             {ZAKLADKI.map((z) => (
@@ -427,11 +423,11 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
                     <dl className="mvd-por-szczegol-lista">
                       <div className="mvd-por-szczegol-poz">
                         <dt>{POROWNANIE_STRINGS.szczegolElement}</dt>
-                        <dd>{problemSzczegol.element_ref}</dd>
+                        <dd>{nazwaObiektu(problemSzczegol.element_ref)}</dd>
                       </div>
                       <div className="mvd-por-szczegol-poz">
                         <dt>{ZB.szczegolPunkt}</dt>
-                        <dd>{problemSzczegol.fault_target_id}</dd>
+                        <dd>{nazwaObiektu(problemSzczegol.fault_target_id)}</dd>
                       </div>
                       <div className="mvd-por-szczegol-poz">
                         <dt>{POROWNANIE_STRINGS.szczegolWaga}</dt>
@@ -475,22 +471,21 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
             {stanSladu === 'gotowe' && slad && (
               <div data-testid="mvd-porzab-slad">
                 <h3 className="mvd-por-szczegol-tytul">{ZB.sladTytul}</h3>
-                {trybEkspercki && (
-                  <dl className="mvd-por-szczegol-lista">
-                    <div className="mvd-por-szczegol-poz">
-                      <dt>{ZB.sladFingerprintA}</dt>
-                      <dd className="mvd-num">{slad.library_fingerprint_a ?? ZB.kreska}</dd>
-                    </div>
-                    <div className="mvd-por-szczegol-poz">
-                      <dt>{ZB.sladFingerprintB}</dt>
-                      <dd className="mvd-num">{slad.library_fingerprint_b ?? ZB.kreska}</dd>
-                    </div>
-                    <div className="mvd-por-szczegol-poz">
-                      <dt>{ZB.sladUtworzono}</dt>
-                      <dd className="mvd-num">{slad.created_at}</dd>
-                    </div>
-                  </dl>
-                )}
+                {/* Karta #145: odciski bibliotek, data i kody kroków śladu to metadane —
+                    wyłącznie w „Informacjach audytowych" śladu. */}
+                <InformacjeAudytowe
+                  trybEkspercki={trybEkspercki}
+                  testid="mvd-porzab-slad-informacje-audytowe"
+                  wiersze={[
+                    { etykieta: ZB.sladOdciskBibliotekiA, wartosc: slad.library_fingerprint_a ?? ZB.kreska },
+                    { etykieta: ZB.sladOdciskBibliotekiB, wartosc: slad.library_fingerprint_b ?? ZB.kreska },
+                    { etykieta: ZB.sladUtworzono, wartosc: slad.created_at },
+                    ...slad.steps.map((krok, i) => ({
+                      etykieta: `${ZB.sladKrok} (${i + 1})`,
+                      wartosc: krok.step,
+                    })),
+                  ]}
+                />
                 {slad.steps.map((krok, i) => (
                   <section
                     key={`${krok.step}-${i}`}
@@ -500,16 +495,15 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
                     <h4 className="mvd-por-szczegol-tytul">
                       {i + 1}. {krok.description_pl}
                     </h4>
-                    {trybEkspercki && <p className="mvd-por-schemat-opis mvd-num">{krok.step}</p>}
                     <div className="mvd-por-proweniencja-kolumny">
                       <dl className="mvd-por-szczegol-lista">
                         <div className="mvd-por-szczegol-poz">
                           <dt>{ZB.sladWejscia}</dt>
                           <dd>{Object.keys(krok.inputs).length === 0 ? ZB.sladBrakPol : null}</dd>
                         </div>
-                        {Object.entries(krok.inputs).map(([pole, wartosc]) => (
+                        {polaSladu(krok.inputs).map(([pole, wartosc]) => (
                           <div key={pole} className="mvd-por-szczegol-poz">
-                            <dt className="mvd-num">{pole}</dt>
+                            <dt>{ETYKIETY_POL_SLADU_ZABEZPIECZEN[pole]}</dt>
                             <dd className="mvd-num">{fmtWartoscSladu(wartosc)}</dd>
                           </div>
                         ))}
@@ -519,9 +513,9 @@ export function TrybZabezpieczen({ projektId, trybZaawansowania }: TrybZabezpiec
                           <dt>{ZB.sladWyjscia}</dt>
                           <dd>{Object.keys(krok.outputs).length === 0 ? ZB.sladBrakPol : null}</dd>
                         </div>
-                        {Object.entries(krok.outputs).map(([pole, wartosc]) => (
+                        {polaSladu(krok.outputs).map(([pole, wartosc]) => (
                           <div key={pole} className="mvd-por-szczegol-poz">
-                            <dt className="mvd-num">{pole}</dt>
+                            <dt>{ETYKIETY_POL_SLADU_ZABEZPIECZEN[pole]}</dt>
                             <dd className="mvd-num">{fmtWartoscSladu(wartosc)}</dd>
                           </div>
                         ))}
@@ -543,7 +537,6 @@ interface SelektorPrzebieguProps {
   testId: string;
   przebiegi: ProtectionRunItem[];
   wybrany: string;
-  trybEkspercki: boolean;
   nazwyPrzypadkow: Map<string, string>;
   onZmiana: (id: string) => void;
 }
@@ -553,7 +546,6 @@ function SelektorPrzebiegu({
   testId,
   przebiegi,
   wybrany,
-  trybEkspercki,
   nazwyPrzypadkow,
   onZmiana,
 }: SelektorPrzebieguProps) {
@@ -569,11 +561,7 @@ function SelektorPrzebiegu({
         <option value="">{ZB.wyborPusty}</option>
         {przebiegi.map((run) => (
           <option key={run.id} value={run.id}>
-            {etykietaPrzebieguZabezpieczen(
-              run,
-              trybEkspercki,
-              nazwyPrzypadkow.get(run.study_case_id) ?? null,
-            )}
+            {etykietaPrzebieguZabezpieczen(run, nazwyPrzypadkow.get(run.study_case_id) ?? null)}
           </option>
         ))}
       </select>

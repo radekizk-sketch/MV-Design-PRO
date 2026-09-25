@@ -1,6 +1,6 @@
 {
   "analysis_type": "LOAD_FLOW",
-  "deterministic_signature": "e1002fd5e4836ef0b8e07a4c05816ee8880a82890cd8e5fb4d9b2a3f54c9a86f",
+  "deterministic_signature": "9cb7d13725d7ceab985f109fd67dbcf02a24aa34601bf02cd705961f89452e3f",
   "element_results": [
     {
       "element_ref": "bus_hv",
@@ -550,99 +550,99 @@
       "wywod": [
         {
           "latex": null,
-          "tekst": "Badanie: przeglad pozycji zaczepow (sweep) — rozplyw liczony solverem FROZEN dla kazdej ustalonej pozycji zaczepu."
+          "tekst": "Badanie: przegląd pozycji zaczepów — rozpływ mocy liczony dla każdej ustalonej pozycji zaczepu."
         },
         {
           "latex": null,
-          "tekst": "Zakres pozycji: n = -9..9 (liczba punktow: 19); transformator TR 110/15, szyna regulowana: Szyna SN."
+          "tekst": "Zakres pozycji: n = -9…9 (liczba punktów: 19); transformator TR 110/15, szyna regulowana: Szyna SN."
         },
         {
           "latex": "t(n) = 1 + \\frac{(n - n_{0}) \\cdot \\Delta u}{100}",
-          "tekst": "Wzor: przekladnia zaczepu t(n) = 1 + (n - n0) * du / 100"
+          "tekst": "Wzór: przekładnia zaczepu t(n) = 1 + (n − n0) · Δu / 100"
         },
         {
           "latex": null,
-          "tekst": "Dane: krok zaczepu du = 1.2500 %, pozycja neutralna n0 = 0."
+          "tekst": "Dane: krok zaczepu Δu = 1,2500 %, pozycja neutralna n0 = 0."
         },
         {
           "latex": "t(-9) = 1 + \\frac{(-9 - 0) \\cdot 1.2500}{100} = 0.887500",
-          "tekst": "Pozycja n = -9: t = 0.887500, U szyny regulowanej = 16.909 kV, straty = 0.002656 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = -9: t = 0,887500, U szyny regulowanej = 16,909 kV, straty = 0,002656 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-8) = 1 + \\frac{(-8 - 0) \\cdot 1.2500}{100} = 0.900000",
-          "tekst": "Pozycja n = -8: t = 0.900000, U szyny regulowanej = 16.674 kV, straty = 0.002731 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = -8: t = 0,900000, U szyny regulowanej = 16,674 kV, straty = 0,002731 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-7) = 1 + \\frac{(-7 - 0) \\cdot 1.2500}{100} = 0.912500",
-          "tekst": "Pozycja n = -7: t = 0.912500, U szyny regulowanej = 16.446 kV, straty = 0.002807 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = -7: t = 0,912500, U szyny regulowanej = 16,446 kV, straty = 0,002807 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-6) = 1 + \\frac{(-6 - 0) \\cdot 1.2500}{100} = 0.925000",
-          "tekst": "Pozycja n = -6: t = 0.925000, U szyny regulowanej = 16.224 kV, straty = 0.002884 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = -6: t = 0,925000, U szyny regulowanej = 16,224 kV, straty = 0,002884 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-5) = 1 + \\frac{(-5 - 0) \\cdot 1.2500}{100} = 0.937500",
-          "tekst": "Pozycja n = -5: t = 0.937500, U szyny regulowanej = 16.007 kV, straty = 0.002962 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = -5: t = 0,937500, U szyny regulowanej = 16,007 kV, straty = 0,002962 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-4) = 1 + \\frac{(-4 - 0) \\cdot 1.2500}{100} = 0.950000",
-          "tekst": "Pozycja n = -4: t = 0.950000, U szyny regulowanej = 15.797 kV, straty = 0.003041 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = -4: t = 0,950000, U szyny regulowanej = 15,797 kV, straty = 0,003041 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-3) = 1 + \\frac{(-3 - 0) \\cdot 1.2500}{100} = 0.962500",
-          "tekst": "Pozycja n = -3: t = 0.962500, U szyny regulowanej = 15.592 kV, straty = 0.003121 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = -3: t = 0,962500, U szyny regulowanej = 15,592 kV, straty = 0,003121 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-2) = 1 + \\frac{(-2 - 0) \\cdot 1.2500}{100} = 0.975000",
-          "tekst": "Pozycja n = -2: t = 0.975000, U szyny regulowanej = 15.392 kV, straty = 0.003203 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = -2: t = 0,975000, U szyny regulowanej = 15,392 kV, straty = 0,003203 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-1) = 1 + \\frac{(-1 - 0) \\cdot 1.2500}{100} = 0.987500",
-          "tekst": "Pozycja n = -1: t = 0.987500, U szyny regulowanej = 15.197 kV, straty = 0.003285 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = -1: t = 0,987500, U szyny regulowanej = 15,197 kV, straty = 0,003285 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(0) = 1 + \\frac{(0 - 0) \\cdot 1.2500}{100} = 1.000000",
-          "tekst": "Pozycja n = 0: t = 1.000000, U szyny regulowanej = 15.008 kV, straty = 0.003368 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = 0: t = 1,000000, U szyny regulowanej = 15,008 kV, straty = 0,003368 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(1) = 1 + \\frac{(1 - 0) \\cdot 1.2500}{100} = 1.012500",
-          "tekst": "Pozycja n = 1: t = 1.012500, U szyny regulowanej = 14.822 kV, straty = 0.003452 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = 1: t = 1,012500, U szyny regulowanej = 14,822 kV, straty = 0,003452 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(2) = 1 + \\frac{(2 - 0) \\cdot 1.2500}{100} = 1.025000",
-          "tekst": "Pozycja n = 2: t = 1.025000, U szyny regulowanej = 14.642 kV, straty = 0.003537 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = 2: t = 1,025000, U szyny regulowanej = 14,642 kV, straty = 0,003537 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(3) = 1 + \\frac{(3 - 0) \\cdot 1.2500}{100} = 1.037500",
-          "tekst": "Pozycja n = 3: t = 1.037500, U szyny regulowanej = 14.465 kV, straty = 0.003624 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = 3: t = 1,037500, U szyny regulowanej = 14,465 kV, straty = 0,003624 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(4) = 1 + \\frac{(4 - 0) \\cdot 1.2500}{100} = 1.050000",
-          "tekst": "Pozycja n = 4: t = 1.050000, U szyny regulowanej = 14.293 kV, straty = 0.003711 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = 4: t = 1,050000, U szyny regulowanej = 14,293 kV, straty = 0,003711 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(5) = 1 + \\frac{(5 - 0) \\cdot 1.2500}{100} = 1.062500",
-          "tekst": "Pozycja n = 5: t = 1.062500, U szyny regulowanej = 14.125 kV, straty = 0.003799 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = 5: t = 1,062500, U szyny regulowanej = 14,125 kV, straty = 0,003799 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(6) = 1 + \\frac{(6 - 0) \\cdot 1.2500}{100} = 1.075000",
-          "tekst": "Pozycja n = 6: t = 1.075000, U szyny regulowanej = 13.961 kV, straty = 0.003888 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = 6: t = 1,075000, U szyny regulowanej = 13,961 kV, straty = 0,003888 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(7) = 1 + \\frac{(7 - 0) \\cdot 1.2500}{100} = 1.087500",
-          "tekst": "Pozycja n = 7: t = 1.087500, U szyny regulowanej = 13.801 kV, straty = 0.003979 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = 7: t = 1,087500, U szyny regulowanej = 13,801 kV, straty = 0,003979 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(8) = 1 + \\frac{(8 - 0) \\cdot 1.2500}{100} = 1.100000",
-          "tekst": "Pozycja n = 8: t = 1.100000, U szyny regulowanej = 13.644 kV, straty = 0.004070 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = 8: t = 1,100000, U szyny regulowanej = 13,644 kV, straty = 0,004070 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(9) = 1 + \\frac{(9 - 0) \\cdot 1.2500}{100} = 1.112500",
-          "tekst": "Pozycja n = 9: t = 1.112500, U szyny regulowanej = 13.491 kV, straty = 0.004163 MW, zbiezny = TAK."
+          "tekst": "Pozycja n = 9: t = 1,112500, U szyny regulowanej = 13,491 kV, straty = 0,004163 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": null,
-          "tekst": "Kryterium odczytu: napiecie szyny regulowanej i straty czynne pochodza z rozwiazania rozplywu (bez ocen w tej warstwie)."
+          "tekst": "Kryterium odczytu: napięcie szyny regulowanej i straty czynne pochodzą z rozwiązania rozpływu mocy (bez ocen w tym badaniu)."
         }
       ]
     },

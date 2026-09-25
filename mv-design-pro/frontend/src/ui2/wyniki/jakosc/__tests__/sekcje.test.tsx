@@ -93,11 +93,11 @@ describe('SekcjaWiarygodnosci — stany', () => {
     expect(screen.queryByText('bus-A')).toBeNull();
   });
 
-  it('identyfikator węzła widoczny w trybie eksperckim', async () => {
+  it('identyfikator węzła nie stoi na pierwszym planie także w trybie eksperckim (karta #145)', async () => {
     mockedWiarygodnosc.mockResolvedValue(WIARYGODNOSC_FIXTURE);
     render(<SekcjaWiarygodnosci {...propsWiarygodnosc({ trybZaawansowania: 'expert' })} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-wiarygodnosc')).toBeTruthy());
-    expect(screen.getAllByText('bus-A').length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('bus-A')).toHaveLength(0);
   });
 });
 
@@ -171,9 +171,11 @@ describe('SekcjaWalidacji — ślad WHITE BOX per pozycja (R2-A / K3-G1)', () =>
     expect(formuly).toHaveLength(2);
     expect(formuly[0].getAttribute('data-latex')).toContain('\\delta U');
     expect(formuly[1].getAttribute('data-latex')).toContain('= 12.00');
-    // Kroki bez formuly (dane/progi/werdykt) pozostaja tekstowe.
-    expect(within(slad).getByText(/U = 13.2000 kV \(wynik PF\)/)).toBeTruthy();
-    expect(within(slad).getByText('Werdykt: PRZEKROCZENIE')).toBeTruthy();
+    // Kroki bez formuły (dane/progi/porównanie z progami) pozostają tekstowe.
+    expect(within(slad).getByText(/U = 13,2000 kV \(wynik rozpływu\)/)).toBeTruthy();
+    expect(
+      within(slad).getByText('Porównanie z progami: Odchylenie napięcia 12,00 % przekracza limit 10,0 %.'),
+    ).toBeTruthy();
   });
 
   it('tryb podstawowy: ślad niedostępny; pozycja bez wywodu bez przycisku', async () => {

@@ -41,6 +41,7 @@ from application.analyses.fault_loop.service import (
     station_transformers,
 )
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
+from application.analyses.opis_przebiegu import stan_przebiegu_pl
 from application.analyses.swz.service import build_swz_view
 from application.analyses.voltage_profile_view import build_voltage_profile_view
 from application.result_freshness import evaluate_result_freshness
@@ -143,11 +144,11 @@ def _result_snapshot(
 
     if run.case_id != case_id:
         raise LvDomainProjectionRunMismatch(
-            f"Przebieg {run.id} należy do przypadku {run.case_id}, nie {case_id}."
+            "Wskazany przebieg należy do innego przypadku obliczeniowego niż oglądany."
         )
     if run.status != "FINISHED":
         raise LvDomainProjectionRunUnavailable(
-            f"Wyniki przebiegu {run.id} są niedostępne — status: {run.status}."
+            f"Wyniki przebiegu są niedostępne — przebieg {stan_przebiegu_pl(run.status)}."
         )
 
     result_set = build_resultset_v1_from_canonical_run(run)

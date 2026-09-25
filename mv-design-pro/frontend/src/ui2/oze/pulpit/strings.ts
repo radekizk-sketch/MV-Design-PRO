@@ -7,6 +7,7 @@
 
 import type { ConnectionSide } from '../../../ui/network-build/station-der';
 import { formatLiczba } from '../macierz/strings';
+import type { BrakDanychQ, BrakDanychSily, WerdyktAdekwatnosciQ } from '../api';
 
 export const PULPIT_STRINGS = {
   // Nagłówek
@@ -85,6 +86,7 @@ export const PULPIT_STRINGS = {
   magazynCosphi: 'Zakres cosφ',
   magazynTrybRegulacji: 'Tryb regulacji',
   magazynModel: 'Model konwertera',
+  identyfikatorAnalizy: 'Identyfikator analizy',
   magazynDopasowanoPo: 'Dopasowano po referencji',
   magazynBrakPojemnosci: 'Rekord katalogowy nie podaje pojemności energetycznej.',
   magazynBrakTrybu: 'Rekord katalogowy nie podaje trybu regulacji.',
@@ -176,9 +178,9 @@ export function klasaWerdyktuSily(verdict: string): string {
  * Klasa CSS werdyktu adekwatności Q. Bazuje na fladze `is_adequate` z backendu
  * i tekście werdyktu („wyczerpana" → błąd, niekompletne dane → neutralny).
  */
-export function klasaWerdyktuQ(isAdequate: boolean, verdict: string): string {
+export function klasaWerdyktuQ(isAdequate: boolean, verdict: WerdyktAdekwatnosciQ): string {
   if (isAdequate) return 'mvd-oze-werdykt-ok';
-  if (verdict.includes('wyczerpana')) return 'mvd-oze-werdykt-err';
+  if (verdict === 'rezerwa Q wyczerpana') return 'mvd-oze-werdykt-err';
   return 'mvd-oze-werdykt-neutralny';
 }
 
@@ -229,4 +231,31 @@ export function formatKv(kv: number | null): string {
 export const ETYKIETY_STRONY: Record<ConnectionSide, string> = {
   nN: 'strona nN',
   dedicated_transformer: 'transformator dedykowany',
+};
+
+/**
+ * Braki danych węzła siły sieci po polsku (karta #145 — kod braku nigdy na ekranie).
+ * Parytet z kodami backendu pilnuje `__tests__/brakiDanychPulpitu.test.ts`.
+ */
+export const BRAKI_DANYCH_SILY: Readonly<Record<BrakDanychSily, string>> = {
+  s_sc_mva: 'moc zwarciowa w węźle (z biegu zwarciowego)',
+  s_installed_mva: 'moc zainstalowana źródeł przyłączonych do węzła',
+};
+
+/** Braki danych adekwatności mocy biernej po polsku (karta #145). */
+export const BRAKI_DANYCH_Q: Readonly<Record<BrakDanychQ, string>> = {
+  power_flow_not_converged: 'zbieżny wynik rozpływu mocy',
+  bus_voltages: 'napięcia węzłów z rozpływu mocy',
+  controllable_sources: 'źródło z regulacją mocy biernej',
+  q_actual_mvar: 'aktualna moc bierna źródła (z rozpływu mocy)',
+  q_min_mvar: 'dolna granica mocy biernej regulatora (Q_min)',
+  q_max_mvar: 'górna granica mocy biernej regulatora (Q_max)',
+  q_limits_inconsistent: 'spójne granice regulatora (Q_min nie większa niż Q_max)',
+};
+
+/** Werdykt adekwatności mocy biernej po polsku — wartość maszynowa backendu nie trafia na ekran. */
+export const WERDYKTY_ADEKWATNOSCI_Q: Readonly<Record<WerdyktAdekwatnosciQ, string>> = {
+  'wystarczająca rezerwa Q': 'wystarczająca rezerwa mocy biernej',
+  'rezerwa Q wyczerpana': 'rezerwa mocy biernej wyczerpana',
+  'dane niekompletne': 'dane niekompletne',
 };

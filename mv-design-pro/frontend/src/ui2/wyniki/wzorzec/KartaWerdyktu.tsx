@@ -72,6 +72,8 @@ import {
   InformacjeAudytowe,
   type WierszInformacjiAudytowych,
 } from './InformacjeAudytowe';
+import { useNazwaObiektu } from './useNazwaObiektu';
+import { opisOdnosnikaSladu } from './opisKrokuSladu';
 import './wzorzec.css';
 import './kartaWerdyktu.css';
 
@@ -328,6 +330,7 @@ const TEKSTY = {
   wersjaSilnika: 'wersja silnika',
   identyfikatorKryterium: 'identyfikator kryterium',
   identyfikatorWymagania: 'identyfikator wymagania',
+  identyfikatorKroku: 'identyfikator kroku śladu',
   kodPoziomu: 'kod poziomu zdolności narzędzia',
   kodWalidacjiModelu: 'kod walidacji modelu urządzenia',
   kodStanuDanych: 'kod stanu danych wejściowych',
@@ -756,7 +759,8 @@ function TrescDowodu({ dowod, testId }: { readonly dowod: StatusDowodu; readonly
             : TEKSTY.pozaDomena}
         {dowod.domena_pl !== null && <> — {dowod.domena_pl}</>}
       </Para>
-      <Para nazwa={TEKSTY.odniesienie}>{dowod.odniesienie ?? TEKSTY.brak}</Para>
+      {/* Karta #145: odniesienie do dowodu (bieg z odciskiem, rekord wykazu, identyfikator
+          raportu) jest metadaną — wyłącznie w „Informacjach audytowych" karty. */}
     </>
   );
 }
@@ -854,9 +858,10 @@ function TrescSladu({ slad }: { readonly slad: readonly OdnosnikSladu[] }) {
   return (
     <ol className="mvd-werdykt-lista mvd-werdykt-slad">
       {slad.map((odnosnik, indeks) => (
-        <li key={`${indeks}-${odnosnik.krok}`}>
-          <span className="mvd-werdykt-para-nazwa">{odnosnik.krok}:</span> {odnosnik.opis_pl}
-        </li>
+        // Karta #145: identyfikator kroku (`lom:<ref>:81R`, `proof:…`) jest metadaną —
+        // pierwszy plan niesie opis kroku, identyfikator trafia do „Informacji audytowych".
+        // Opis kroku silnika prób NC RfG składany z danych odnośnika (klucz kroku → nazwa).
+        <li key={`${indeks}-${odnosnik.krok}`}>{opisOdnosnikaSladu(odnosnik)}</li>
       ))}
     </ol>
   );
@@ -884,7 +889,14 @@ function wierszeAudytoweRekordu(rekord: RekordWerdyktu): WierszInformacjiAudytow
     { etykieta: TEKSTY.kodWalidacjiModelu, wartosc: rekord.dowod.status_modelu },
     { etykieta: TEKSTY.kodStanuDanych, wartosc: rekord.dowod.status_danych.stan },
   );
+  if (rekord.dowod.odniesienie !== null) {
+    wiersze.push({ etykieta: TEKSTY.odniesienie, wartosc: rekord.dowod.odniesienie });
+  }
   rekord.slad.forEach((odnosnik, indeks) => {
+    wiersze.push({
+      etykieta: `${TEKSTY.identyfikatorKroku} (${indeks + 1})`,
+      wartosc: odnosnik.krok,
+    });
     if (odnosnik.run_id !== null) {
       wiersze.push({
         etykieta: `${TEKSTY.identyfikatorBiegu} (${indeks + 1}. ${odnosnik.krok})`,
@@ -1038,6 +1050,7 @@ function KartaWerdyktuRekordu({
   readonly zagniezdzona: boolean;
 }) {
   const idTytulu = useId();
+  const nazwaObiektu = useNazwaObiektu();
   const wymaganie = jestWynikiemWymagania(rekord);
   const identyfikator = wymaganie ? rekord.wymaganie_id : rekord.kryterium_id;
   const poziom: PoziomRekordu = wymaganie ? 'W' : 'K';
@@ -1061,7 +1074,13 @@ function KartaWerdyktuRekordu({
         </Tytul>
         {!wymaganie && (
           <p className="mvd-werdykt-meta">
-            {TEKSTY.przedmiot}: {rekord.przedmiot.nazwa_pl} — {rekord.przedmiot.opis_pl}
+            {/* Karta #145: nazwa elementu z modelu (JEDEN most identyfikator → nazwa);
+                rekord bez elementu (agregat) niesie własną nazwę przedmiotu. */}
+            {TEKSTY.przedmiot}:{' '}
+            {rekord.przedmiot.element_ref !== null
+              ? nazwaObiektu(rekord.przedmiot.element_ref, rekord.przedmiot.nazwa_pl)
+              : rekord.przedmiot.nazwa_pl}{' '}
+            — {rekord.przedmiot.opis_pl}
           </p>
         )}
       </header>

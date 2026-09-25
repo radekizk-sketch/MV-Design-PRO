@@ -219,7 +219,7 @@ async function odczytajBlad(response: Response): Promise<string> {
   } catch {
     // Treść błędu jest opcjonalna — komunikat poniżej wystarcza projektantowi.
   }
-  return 'Nastawy zabezpieczeń niedostępne — backend nie odpowiedział.';
+  return 'Nastawy zabezpieczeń niedostępne — serwer obliczeń nie odpowiedział.';
 }
 
 export async function fetchDostepnoscNastaw(

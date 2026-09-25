@@ -26,8 +26,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAppStateStore } from '../../../ui/app-state';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
+import { selectBusOptions, useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { etykietaPrzebieguWyniku } from '../../wyniki/wzorzec/strings';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
+import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 import {
   BrakiWnioskuError,
   pobierzPlikWniosku,
@@ -97,6 +100,10 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
   // Aktywny przypadek — zgodność NC RfG i dowód certyfikatu serwer wyprowadza z jego modelu.
   const aktywnyPrzypadek = useAppStateStore((s) => s.activeCaseId);
 
+  // Karta #145: szyna przyłączenia wybierana z listy szyn modelu po nazwie (ten sam
+  // dobór co kompensacja mocy biernej) — projektant nie wpisuje referencji.
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const opcjeSzyn = useMemo(() => selectBusOptions(snapshot), [snapshot]);
   const [pfRunId, setPfRunId] = useState<string | null>(null);
   const [scRunId, setScRunId] = useState<string | null>(null);
   const [busRef, setBusRef] = useState('');
@@ -230,7 +237,7 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
                 ) : (
                   rozplywy.map((r) => (
                     <option key={r.id} value={r.id}>
-                      {r.id}
+                      {etykietaPrzebieguWyniku(r)}
                     </option>
                   ))
                 )}
@@ -252,7 +259,7 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
                 ) : (
                   zwarcia.map((r) => (
                     <option key={r.id} value={r.id}>
-                      {r.id}
+                      {etykietaPrzebieguWyniku(r)}
                     </option>
                   ))
                 )}
@@ -265,16 +272,21 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
           <h4 className="mvd-wniosek-sekcja-tytul">{T.sekcjaPunkt}</h4>
           <label className="mvd-wniosek-pole mvd-wniosek-pole--szerokie">
             <span>{T.wezel}</span>
-            <input
-              type="text"
+            <select
               value={busRef}
-              placeholder={T.wezelPlaceholder}
               onChange={(e) => {
                 setBusRef(e.target.value);
                 unewaznij();
               }}
               data-testid="mvd-wniosek-wezel"
-            />
+            >
+              <option value="">{opcjeSzyn.length === 0 ? T.wezelBrak : T.wezelWybierz}</option>
+              {opcjeSzyn.map((szyna) => (
+                <option key={szyna.ref_id} value={szyna.ref_id}>
+                  {szyna.name}
+                </option>
+              ))}
+            </select>
           </label>
           <p className="mvd-wniosek-pole-opis">{T.wezelOpis}</p>
         </section>
@@ -425,6 +437,8 @@ function WynikWniosku({
   const zwarcia = widok.zwarcia_punkt_przylaczenia;
   const zgodnosc = widok.zgodnosc_nc_rfg;
   const identyfikacja = widok.identyfikacja;
+  // Karta #145: węzeł przyłączenia nazwany z modelu, nie referencją.
+  const nazwaObiektu = useNazwaObiektu();
 
   return (
     <section className="mvd-wniosek-wynik" data-testid="mvd-wniosek-wynik">
@@ -435,7 +449,7 @@ function WynikWniosku({
             {identyfikacja.projekt}
             {identyfikacja.przypadek ? ` · ${identyfikacja.przypadek}` : ''}
             {' · '}
-            {identyfikacja.wezel_przylaczenia}
+            {nazwaObiektu(identyfikacja.wezel_przylaczenia)}
           </p>
           {identyfikacja.wnioskodawca ? (
             <p className="mvd-wniosek-wynik-meta">{identyfikacja.wnioskodawca}</p>
@@ -579,6 +593,8 @@ function WynikWniosku({
         testid="mvd-wniosek-odciski"
         wiersze={[
           { etykieta: T.odciskWejscia, wartosc: widok.input_hash },
+          { etykieta: T.przebiegRozplywu, wartosc: widok.zrodla.pf_run_id },
+          { etykieta: T.przebiegZwarciowy, wartosc: widok.zrodla.sc_run_id },
           {
             etykieta: T.odciskWejsciaNcRfg,
             wartosc: zgodnosc.odcisk_wejscia_nc_rfg_sha256,

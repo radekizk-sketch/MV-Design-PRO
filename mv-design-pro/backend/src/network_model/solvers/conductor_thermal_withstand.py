@@ -248,11 +248,11 @@ class ConductorThermalResult:
     white_box_trace: tuple[dict[str, Any], ...] = ()
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
-            "Nagrzewanie zwarciowe adiabatyczne (bez odplywu ciepla do otoczenia).",
-            "Rownowazna energia cieplna I²·t = const (IEC 60949).",
-            "I_th to prad ekwiwalentny cieplnie z biegu zwarciowego, nie prad poczatkowy.",
-            "Czas t to rzeczywisty czas wylaczenia zabezpieczenia przy tym pradzie.",
-            "Wytrzymalosc przewodu odniesiona do 1 s wg danych katalogowych.",
+            "Nagrzewanie zwarciowe adiabatyczne (bez odpływu ciepła do otoczenia).",
+            "Równoważna energia cieplna I²·t = const (IEC 60949).",
+            "I_th to prąd zastępczy cieplny z obliczeń zwarciowych, nie prąd początkowy.",
+            "Czas t to rzeczywisty czas wyłączenia zabezpieczenia przy tym prądzie.",
+            "Wytrzymałość przewodu odniesiona do 1 s według danych katalogowych.",
         )
     )
 
@@ -694,24 +694,24 @@ STANDARD_REFS: tuple[dict[str, str], ...] = (
         "norma": "PN-HD 60364-4-43",
         "punkt": "§ 434.5.2",
         "tresc_pl": (
-            "Warunek adiabatyczny doboru przekroju ze wzgledu na zwarcie: " "S ≥ √(I²·t) / k."
+            "Warunek adiabatyczny doboru przekroju ze względu na zwarcie: S ≥ √(I²·t) / k."
         ),
     },
     {
         "norma": "IEC 60949",
         "punkt": "§ 3, § 4",
         "tresc_pl": (
-            "Obliczanie dopuszczalnych pradow zwarciowych kabli z uwzglednieniem "
-            "nagrzewania nieadiabatycznego; podstawa wartosci k dla par "
-            "material zyly / izolacja."
+            "Obliczanie dopuszczalnych prądów zwarciowych kabli z uwzględnieniem "
+            "nagrzewania nieadiabatycznego; podstawa wartości k dla par "
+            "materiał żyły / izolacja."
         ),
     },
     {
         "norma": "IEC 60909-0",
         "punkt": "§ 12",
         "tresc_pl": (
-            "Prad ekwiwalentny cieplnie I_th = I″k·√(m+n); to jego uzywa kryterium, "
-            "nie pradu poczatkowego."
+            "Prąd zastępczy cieplny I_th = I″k·√(m+n) — to on jest porównywany w kryterium, "
+            "nie prąd początkowy."
         ),
     },
 )
@@ -785,7 +785,7 @@ def _build_criteria(
 
     # Zapisy sa rownowazne, wiec rozjazd werdyktow oznaczalby blad rachunku.
     werdykty = {poz["status"] for poz in pozycje if poz["status"] != STATUS_UNAVAILABLE}
-    assert werdykty <= {status}, f"kryteria czastkowe rozjechaly sie z werdyktem: {werdykty}"
+    assert werdykty <= {status}, f"kryteria cząstkowe rozjechały się z werdyktem: {werdykty}"
     return tuple(pozycje)
 
 

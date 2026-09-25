@@ -23,7 +23,12 @@ import { useShellStore } from '../../../shell/useShellStore';
 import { EkranStabilnosci } from '../EkranStabilnosci';
 import type { RekordOcenyNiewykonanej } from '../../wzorzec/OcenaNiewykonana';
 import rekordyOceny from './rekordyOceny.json';
-import { POLA_SCENARIUSZA_STABILNOSCI } from '../model';
+import {
+  ETYKIETY_STANU_SIECI,
+  ETYKIETY_ZAKRESU_WYLACZEN,
+  POLA_SCENARIUSZA_STABILNOSCI,
+  type PoleScenariusza,
+} from '../model';
 import { STABILNOSC_STRINGS as T } from '../strings';
 
 const CASE_ID = '3f2504e0-4f89-11d3-9a0c-0305e82c3301';
@@ -41,6 +46,41 @@ const WARTOSCI_SCENARIUSZA: Record<string, string> = {
   post_fault_frequency_pu: '0.99',
   recovery_time_constant_s: '0,3',
 };
+
+/**
+ * Migawka modelu (karta #145): element zakłócenia i aparaty wyłączające wybiera się
+ * z listy elementów modelu PO NAZWIE — referencja jest wyłącznie wartością opcji.
+ */
+const MIGAWKA = {
+  buses: [],
+  branches: [
+    { ref_id: 'line/gpz/1', id: 'l1', name: 'Linia GPZ – Stacja 1', type: 'line_overhead' },
+    { ref_id: 'cb-a', id: 'w1', name: 'Wyłącznik pola A', type: 'breaker' },
+    { ref_id: 'cb-b', id: 'w2', name: 'Wyłącznik pola B', type: 'breaker' },
+    { ref_id: 'cb-main', id: 'w3', name: 'Wyłącznik główny', type: 'breaker' },
+  ],
+  generators: [{ ref_id: 'src/pv/1', id: 'g1', name: 'Farma PV 1' }],
+};
+
+/** Wypełnia pole formularza ścieżką natywną właściwą dla rodzaju pola. */
+async function wypelnijPole(
+  user: ReturnType<typeof userEvent.setup>,
+  pole: PoleScenariusza,
+  wartosc: string,
+): Promise<void> {
+  const element = screen.getByTestId(`mvd-stabilnosc-pole-${pole.klucz}`);
+  if (pole.typ === 'element') {
+    await user.selectOptions(element, wartosc);
+    return;
+  }
+  if (pole.typ === 'aparaty') {
+    for (const ref of wartosc.split(',').map((r) => r.trim()).filter((r) => r !== '')) {
+      await user.click(screen.getByTestId(`mvd-stabilnosc-pole-${pole.klucz}-${ref}`));
+    }
+    return;
+  }
+  await user.type(element, wartosc);
+}
 
 const RUN_DYN = {
   id: 'run-dyn',
@@ -81,6 +121,10 @@ const WYNIK = {
         'Kąty wirnika i wielkości pozwarciowe pochodzą z opcji biegu — wynik nie jest dowodem '
         + 'regulacyjnym.',
       ],
+      reporting_limitations_pl: [
+        'Kąty wirnika i wielkości pozwarciowe pochodzą z opcji biegu — wynik nie jest dowodem '
+        + 'regulacyjnym.',
+      ],
     },
   ],
 };
@@ -88,7 +132,9 @@ const WYNIK = {
 /** Ślad automatyki — `build_automation_trace_results`: bez zdarzeń, efekt zadeklarowany. */
 const SLAD = {
   run_id: 'run-dyn',
-  topology_effect: { network_state: 'ISLANDED_SECTION', outage_scope: 'SECTION' },
+  // Wartości kontraktu `application/automation/trace.py` (ISLANDED|RECONFIGURED|UNCHANGED,
+  // NONE|LOCAL|WIDE) — dawne 'ISLANDED_SECTION'/'SECTION' nie istniały w backendzie.
+  topology_effect: { network_state: 'ISLANDED', outage_scope: 'LOCAL' },
   rows: [],
   ocena: OCENA,
 };
@@ -172,7 +218,13 @@ describe('EkranStabilnosci — kontrakt ekranu prowadzącego (FLOW §0.3)', () =
     // Stan zerowy pokazuje FORMULARZ scenariusza, nie tylko akcję nawigacyjną.
     expect(screen.getByTestId('mvd-stabilnosc-formularz')).toBeInTheDocument();
     for (const pole of POLA_SCENARIUSZA_STABILNOSCI) {
-      expect(screen.getByTestId(`mvd-stabilnosc-pole-${pole.klucz}`)).toHaveValue('');
+      const element = screen.getByTestId(`mvd-stabilnosc-pole-${pole.klucz}`);
+      if (pole.typ === 'aparaty') {
+        // Lista aparatów startuje bez zaznaczenia (zero wartości podpowiadanych).
+        expect(element.querySelectorAll('input:checked')).toHaveLength(0);
+      } else {
+        expect(element).toHaveValue('');
+      }
     }
 
     await user.click(screen.getByTestId('mvd-stabilnosc-zero-akcja'));
@@ -183,7 +235,10 @@ describe('EkranStabilnosci — kontrakt ekranu prowadzącego (FLOW §0.3)', () =
 describe('EkranStabilnosci — formularz scenariusza (karta W2 pkt 1, zero fabrykacji)', () => {
   beforeEach(() => {
     useAppStateStore.setState({ activeCaseId: CASE_ID, activeProjectId: 'projekt-1' } as never);
-    useSnapshotStore.setState({ readiness: { ready: true, blockers: [], warnings: [] } } as never);
+    useSnapshotStore.setState({
+      readiness: { ready: true, blockers: [], warnings: [] },
+      snapshot: MIGAWKA,
+    } as never);
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }) as Response),
@@ -206,10 +261,7 @@ describe('EkranStabilnosci — formularz scenariusza (karta W2 pkt 1, zero fabry
 
       for (const pole of POLA_SCENARIUSZA_STABILNOSCI) {
         if (pole.klucz === pominietePole.klucz) continue;
-        await user.type(
-          screen.getByTestId(`mvd-stabilnosc-pole-${pole.klucz}`),
-          WARTOSCI_SCENARIUSZA[pole.klucz],
-        );
+        await wypelnijPole(user, pole, WARTOSCI_SCENARIUSZA[pole.klucz]);
       }
       await user.click(screen.getByTestId('mvd-stabilnosc-formularz-uruchom'));
 
@@ -247,10 +299,7 @@ describe('EkranStabilnosci — formularz scenariusza (karta W2 pkt 1, zero fabry
     render(<EkranStabilnosci />);
 
     for (const pole of POLA_SCENARIUSZA_STABILNOSCI) {
-      await user.type(
-        screen.getByTestId(`mvd-stabilnosc-pole-${pole.klucz}`),
-        WARTOSCI_SCENARIUSZA[pole.klucz],
-      );
+      await wypelnijPole(user, pole, WARTOSCI_SCENARIUSZA[pole.klucz]);
     }
     await user.click(screen.getByTestId('mvd-stabilnosc-formularz-uruchom'));
 
@@ -284,7 +333,7 @@ describe('EkranStabilnosci — formularz scenariusza (karta W2 pkt 1, zero fabry
         pole.klucz === 'clearing_time_ms' || pole.klucz === 'recovery_time_constant_s'
           ? '0'
           : WARTOSCI_SCENARIUSZA[pole.klucz];
-      await user.type(screen.getByTestId(`mvd-stabilnosc-pole-${pole.klucz}`), wartosc);
+      await wypelnijPole(user, pole, wartosc);
     }
     await user.click(screen.getByTestId('mvd-stabilnosc-formularz-uruchom'));
 
@@ -302,6 +351,10 @@ describe('EkranStabilnosci — dane przebiegu (fetch 1:1 z endpointami)', () => 
   beforeEach(() => {
     mockFetchStabilnosci();
     useExecutionRunsStore.setState({ runs: [RUN_DYN] });
+    useSnapshotStore.setState({ snapshot: MIGAWKA } as never);
+  });
+  afterEach(() => {
+    useSnapshotStore.setState({ snapshot: null } as never);
   });
 
   // Odwrócone: dawny werdykt STABLE → „STABILNY" z wskaźnikiem i marginesem.
@@ -311,9 +364,13 @@ describe('EkranStabilnosci — dane przebiegu (fetch 1:1 z endpointami)', () => 
       await screen.findByTestId(`mvd-werdykt-${OCENA.kryterium_id}-zdanie`),
     ).toHaveTextContent(OCENA.wyjasnienie.zdanie_pl);
     expect(screen.queryByTestId('mvd-stabilnosc-werdykt')).not.toBeInTheDocument();
-    // Założenia: element zakłócenia i elementy wyłączające scenariusza.
-    expect(screen.getByText('line/gpz/1')).toBeInTheDocument();
-    expect(screen.getByText('cb-main')).toBeInTheDocument();
+    // Założenia: element zakłócenia i elementy wyłączające scenariusza — NAZWAMI z modelu
+    // (karta #145), nigdy referencją.
+    const zalozenia = screen.getByTestId('mvd-wyn-zalozenia');
+    expect(zalozenia).toHaveTextContent('Linia GPZ – Stacja 1');
+    expect(zalozenia).toHaveTextContent('Wyłącznik główny');
+    expect(zalozenia).not.toHaveTextContent('line/gpz/1');
+    expect(zalozenia).not.toHaveTextContent('cb-main');
   });
 
   // Intencja zachowana: liczby scenariusza widoczne z jednostkami. Zmiana kanonu: echo
@@ -345,7 +402,10 @@ describe('EkranStabilnosci — dane przebiegu (fetch 1:1 z endpointami)', () => 
     expect(screen.getByTestId('mvd-stabilnosc-slad-brak')).toHaveTextContent(T.sladBrak);
     const topologia = screen.getByTestId('mvd-stabilnosc-topologia');
     expect(topologia).toHaveTextContent(T.sladTopologiaTytul);
-    expect(topologia).toHaveTextContent('ISLANDED_SECTION');
+    // Karta #145: stan sieci i zakres wyłączeń z typowanych map polskich etykiet — nie kod.
+    expect(topologia).toHaveTextContent(ETYKIETY_STANU_SIECI.ISLANDED);
+    expect(topologia).toHaveTextContent(ETYKIETY_ZAKRESU_WYLACZEN.LOCAL);
+    expect(topologia).not.toHaveTextContent('ISLANDED');
   });
 
   it('akcja „Otwórz pełny dowód obliczeń" otwiera zakładkę dowodu przebiegu', async () => {
@@ -380,6 +440,10 @@ describe('EkranStabilnosci — dane przebiegu (fetch 1:1 z endpointami)', () => 
           reporting_status_pl: 'nieraportowalny',
           dopuszczalnosc_raportowa: false,
           reporting_limitations: [
+            'Model niezwalidowany: kąty wirnika i wielkości pozwarciowe pochodzą z opcji biegu '
+              + '— wynik nie jest dowodem regulacyjnym.',
+          ],
+          reporting_limitations_pl: [
             'Model niezwalidowany: kąty wirnika i wielkości pozwarciowe pochodzą z opcji biegu '
               + '— wynik nie jest dowodem regulacyjnym.',
           ],

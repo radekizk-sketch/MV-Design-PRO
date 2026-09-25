@@ -131,11 +131,50 @@ describe('dowodModel — mapujKroki na REALNYM (nieopakowanym) kształcie kroku 
     const ik = model[0].dane.find((w) => w.klucz === 'ik_thevenin_a');
     expect(fault?.wartosc).toBe('C');
     expect(ik?.wartosc).toBe('5611,281490619905');
-    // Klucz spoza TRACE_VALUE_LABELS i bez opakowania (więc bez .label) → null
-    // (zero zgadywania etykiety) — ale WARTOŚĆ nadal poprawnie odczytana wyżej.
-    expect(fault?.etykieta).toBeNull();
-    expect(ik?.etykieta).toBeNull();
-    expect(fault?.jednostka).toBeUndefined();
+    // Karta #145: klucze śladu podziału prądu Thevenina mają polskie etykiety w
+    // słowniku śladu; węzeł zwarcia jest ODNOŚNIKIEM elementu (widok pokazuje nazwę
+    // z modelu), prąd niesie jednostkę z kontraktu klucza (`_a` → A).
+    expect(fault?.etykieta).toBe('Węzeł zwarcia');
+    expect(fault?.odnosnik).toBe('C');
+    expect(ik?.etykieta).toBe('Prąd zwarciowy źródła zastępczego (Thevenin) Ik″');
+    expect(ik?.jednostka).toBe('A');
+  });
+
+  it('liczba bardzo mała bez notacji wykładniczej JS — mantysa z przecinkiem i potęga dziesięciu', () => {
+    const [krok] = mapujKroki([
+      { step: 1, key: 'k', title: 'Krok', inputs: {}, result: { i_contrib_a: 2.2137004483243454e-13 } },
+    ] as never);
+    expect(krok.wynik[0].wartosc).toBe('2,2137004483243454·10⁻¹³');
+    expect(krok.wynik[0].wartosc).not.toContain('e');
+  });
+
+  it('kod wartości z mapy → opis po polsku; kod spoza mapy → wielkość nieznana (Informacje audytowe)', () => {
+    const [krok] = mapujKroki([
+      {
+        step: 1,
+        key: 'k',
+        title: 'Krok',
+        inputs: {},
+        result: { direction: 'from_to', short_circuit_type: 'NOWY_KOD' },
+      },
+    ] as never);
+    const kierunek = krok.wynik.find((w) => w.klucz === 'direction');
+    const rodzaj = krok.wynik.find((w) => w.klucz === 'short_circuit_type');
+    expect(kierunek?.wartosc).toBe('od węzła początkowego do węzła końcowego');
+    expect(rodzaj?.etykieta).toBeNull();
+  });
+
+  it('tytuł solvera z identyfikatorem gałęzi z danych kroku → odnośnik do złożenia tytułu z nazwą', () => {
+    const [krok] = mapujKroki([
+      {
+        step: 2,
+        key: 'thevenin_flow_b1',
+        title: 'Prąd zwarciowy Thevenina w gałęzi b1-uuid',
+        inputs: { branch_id: 'b1-uuid', from_node_id: 'n1', to_node_id: 'n2' },
+        result: {},
+      },
+    ] as never);
+    expect(krok.odnosnikiTytulu).toEqual(['b1-uuid']);
   });
 
   it('liczba zespolona {re, im} wprost (serialize_complex solvera) → „R znak jIm" (przecinek PL), NIE „[object Object]"', () => {

@@ -363,12 +363,12 @@
     {
       "etap": "E4",
       "kryterium_pl": "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
-      "powod_pl": "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla WSKAZANEGO aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
+      "powod_pl": "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla wskazanego aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
     },
     {
       "etap": "E3",
       "kryterium_pl": "Obciążalność przewodu z korektą warunków ułożenia na całym modelu",
-      "powod_pl": "Korekta warunków ułożenia działa w torze doboru kabla DER (zestawy warunków z udokumentowaną podstawą albo współczynniki projektanta) i jest zapisana przy kablu w modelu. Nie ma przebiegu, który sprawdza obciążalność WSZYSTKICH przewodów modelu wobec warunków ich trasy — magistrala SN dobierana jest inną ścieżką, a katalog nie dokumentuje warunków odniesienia przy typach."
+      "powod_pl": "Korekta warunków ułożenia działa w torze doboru kabla DER (zestawy warunków z udokumentowaną podstawą albo współczynniki projektanta) i jest zapisana przy kablu w modelu. Nie ma przebiegu, który sprawdza obciążalność wszystkich przewodów modelu wobec warunków ich trasy — magistrala SN dobierana jest inną ścieżką, a katalog nie dokumentuje warunków odniesienia przy typach."
     },
     {
       "etap": "E3",

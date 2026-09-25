@@ -18,11 +18,15 @@ import {
 import { ZWARCIA_STRINGS } from '../strings';
 import { shortCircuitRowFixture } from './fixtures';
 
+/** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
+const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
+  nazwaZWyniku ?? `nazwa ${ref}`;
+
 describe('sparujWierszePasma — parowanie wierszy MAX/MIN po target_id', () => {
   it('punkt wspólny obu stron: para niesie OBA wiersze', () => {
     const max = [shortCircuitRowFixture({ target_id: 'BUS-A', ikss_ka: 10 })];
     const min = [shortCircuitRowFixture({ target_id: 'BUS-A', ikss_ka: 6 })];
-    const pary = sparujWierszePasma(max, min);
+    const pary = sparujWierszePasma(max, min, NAZWA);
     expect(pary).toHaveLength(1);
     expect(pary[0].max?.ikss_ka).toBe(10);
     expect(pary[0].min?.ikss_ka).toBe(6);
@@ -30,7 +34,7 @@ describe('sparujWierszePasma — parowanie wierszy MAX/MIN po target_id', () => 
 
   it('punkt WYŁĄCZNIE w MAX: para z min=null (żaden punkt nie ginie)', () => {
     const max = [shortCircuitRowFixture({ target_id: 'BUS-TYLKO-MAX' })];
-    const pary = sparujWierszePasma(max, []);
+    const pary = sparujWierszePasma(max, [], NAZWA);
     expect(pary).toHaveLength(1);
     expect(pary[0].targetId).toBe('BUS-TYLKO-MAX');
     expect(pary[0].max).not.toBeNull();
@@ -39,7 +43,7 @@ describe('sparujWierszePasma — parowanie wierszy MAX/MIN po target_id', () => 
 
   it('punkt WYŁĄCZNIE w MIN: para z max=null', () => {
     const min = [shortCircuitRowFixture({ target_id: 'BUS-TYLKO-MIN' })];
-    const pary = sparujWierszePasma(undefined, min);
+    const pary = sparujWierszePasma(undefined, min, NAZWA);
     expect(pary).toHaveLength(1);
     expect(pary[0].max).toBeNull();
     expect(pary[0].min).not.toBeNull();
@@ -50,23 +54,23 @@ describe('sparujWierszePasma — parowanie wierszy MAX/MIN po target_id', () => 
       shortCircuitRowFixture({ target_id: 'BUS-Z' }),
       shortCircuitRowFixture({ target_id: 'BUS-A' }),
     ];
-    const pary = sparujWierszePasma(max, []);
+    const pary = sparujWierszePasma(max, [], NAZWA);
     expect(pary.map((p) => p.targetId)).toEqual(['BUS-A', 'BUS-Z']);
   });
 
   it('obie strony puste/nieobecne → pusta lista (uczciwy brak, nie wyjątek)', () => {
-    expect(sparujWierszePasma(undefined, undefined)).toEqual([]);
+    expect(sparujWierszePasma(undefined, undefined, NAZWA)).toEqual([]);
   });
 
   it('targetName i faultType: MAX ma pierwszeństwo, MIN jako zapasowe źródło', () => {
     const max = [shortCircuitRowFixture({ target_id: 'BUS-A', target_name: 'Szyna A (MAX)', fault_type: '3F' })];
     const min = [shortCircuitRowFixture({ target_id: 'BUS-A', target_name: 'Szyna A (MIN)', fault_type: '3F' })];
-    const [para] = sparujWierszePasma(max, min);
+    const [para] = sparujWierszePasma(max, min, NAZWA);
     expect(para.targetName).toBe('Szyna A (MAX)');
     // Punkt wyłącznie w MIN: targetName spada na MIN (jedyne źródło).
     const [paraTylkoMin] = sparujWierszePasma(
       [],
-      [shortCircuitRowFixture({ target_id: 'BUS-B', target_name: 'Szyna B (MIN)' })],
+      [shortCircuitRowFixture({ target_id: 'BUS-B', target_name: 'Szyna B (MIN)' })], NAZWA
     );
     expect(paraTylkoMin.targetName).toBe('Szyna B (MIN)');
   });
@@ -76,7 +80,7 @@ describe('naWierszePasma — komórki tabeli (wartość obecna / null → kreska
   it('para z obiema stronami: kolumny max/min niosą sformatowane wartości ORAZ sortKey liczbowy', () => {
     const pary = sparujWierszePasma(
       [shortCircuitRowFixture({ target_id: 'BUS-A', ikss_ka: 12.345, ip_ka: 31.2 })],
-      [shortCircuitRowFixture({ target_id: 'BUS-A', ikss_ka: 6.111, ip_ka: 15.6 })],
+      [shortCircuitRowFixture({ target_id: 'BUS-A', ikss_ka: 6.111, ip_ka: 15.6 })], NAZWA
     );
     const [wiersz] = naWierszePasma(pary);
     expect(wiersz.ikssMax).toEqual({ wartosc: '12,345', sortKey: 12.345 });
@@ -85,7 +89,7 @@ describe('naWierszePasma — komórki tabeli (wartość obecna / null → kreska
   });
 
   it('strona brakująca (null): każda komórka tej strony = kreska, sortKey -Infinity', () => {
-    const pary = sparujWierszePasma([shortCircuitRowFixture({ target_id: 'BUS-A' })], []);
+    const pary = sparujWierszePasma([shortCircuitRowFixture({ target_id: 'BUS-A' })], [], NAZWA);
     const [wiersz] = naWierszePasma(pary);
     expect(wiersz.ikssMin).toEqual({ wartosc: ZWARCIA_STRINGS.kreska, sortKey: Number.NEGATIVE_INFINITY });
     expect(wiersz.skMin).toEqual({ wartosc: ZWARCIA_STRINGS.kreska, sortKey: Number.NEGATIVE_INFINITY });
@@ -94,7 +98,7 @@ describe('naWierszePasma — komórki tabeli (wartość obecna / null → kreska
   it('wartość null wewnątrz obecnej strony (starszy wynik bez bilansu) → kreska', () => {
     const pary = sparujWierszePasma(
       [shortCircuitRowFixture({ target_id: 'BUS-A', kappa: null, rk_ohm: null })],
-      [shortCircuitRowFixture({ target_id: 'BUS-A' })],
+      [shortCircuitRowFixture({ target_id: 'BUS-A' })], NAZWA
     );
     const [wiersz] = naWierszePasma(pary);
     expect(wiersz.kappaMax).toEqual({ wartosc: ZWARCIA_STRINGS.kreska, sortKey: Number.NEGATIVE_INFINITY });
@@ -104,7 +108,7 @@ describe('naWierszePasma — komórki tabeli (wartość obecna / null → kreska
   it('rodzaj zwarcia mapowany na PL z którejkolwiek dostępnej strony', () => {
     const pary = sparujWierszePasma(
       [shortCircuitRowFixture({ target_id: 'BUS-A', fault_type: '2F' })],
-      [shortCircuitRowFixture({ target_id: 'BUS-A', fault_type: '2F' })],
+      [shortCircuitRowFixture({ target_id: 'BUS-A', fault_type: '2F' })], NAZWA
     );
     const [wiersz] = naWierszePasma(pary);
     expect(wiersz.rodzaj).toEqual({ wartosc: 'zwarcie dwufazowe' });

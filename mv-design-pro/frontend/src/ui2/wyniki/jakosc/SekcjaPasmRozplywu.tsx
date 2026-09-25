@@ -37,7 +37,8 @@ import {
   TagStatusu,
   useZasobJakosci,
 } from './EkranJakosci';
-import { useAkcjaUruchomObliczenie } from '../wzorzec';
+import { useAkcjaUruchomObliczenie, useNazwaObiektu } from '../wzorzec';
+import type { NazwaObiektu } from '../wzorzec';
 import { komorkaLiczba } from './jakoscModel';
 import {
   fetchPasmaRozplywu,
@@ -62,13 +63,7 @@ const KOLUMNY_NAPIEC: DefinicjaKolumny[] = [
   { klucz: 'odchylenie', etykieta: JAKOSC_STRINGS.kolOdchylenieProcent, jednostka: JAKOSC_STRINGS.jednProcent, mono: true },
   { klucz: 'pasmo', etykieta: JAKOSC_STRINGS.kolPasmoNapieciowe, mono: true },
   { klucz: 'status', etykieta: JAKOSC_STRINGS.kolStatusWiarygodnosci, wyrownanie: 'lewo' },
-  {
-    klucz: KLUCZ_NAPIECIA_WEZEL,
-    etykieta: JAKOSC_STRINGS.kolIdentyfikatorWezla,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
+  // Karta #145: identyfikator węzła jest kluczem wiersza (komórka poza listą kolumn).
 ];
 
 function fmtPasmoKv(lower: number | null, upper: number | null): string {
@@ -76,9 +71,9 @@ function fmtPasmoKv(lower: number | null, upper: number | null): string {
   return `${fmtKV(lower)}–${fmtKV(upper)}`;
 }
 
-function mapujWierszNapiecia(item: NapieciePasmoItem): WierszTabeli {
+function mapujWierszNapiecia(item: NapieciePasmoItem, nazwa: NazwaObiektu): WierszTabeli {
   return {
-    szyna: { wartosc: item.target_name ?? item.target_id },
+    szyna: { wartosc: nazwa(item.target_id, item.target_name) },
     un: komorkaLiczba(item.nominal_kv, fmtKV),
     u: komorkaLiczba(item.actual_kv, fmtKV, { ostrzezenie: !item.in_range }),
     odchylenie: komorkaLiczba(item.deviation_pct, fmtProcent),
@@ -125,18 +120,12 @@ const KOLUMNY_OBCIAZEN: DefinicjaKolumny[] = [
   { klucz: 'in', etykieta: JAKOSC_STRINGS.kolPradZnamionowy, jednostka: JAKOSC_STRINGS.jednA, mono: true },
   { klucz: 'obciazenie', etykieta: JAKOSC_STRINGS.kolObciazenieProcent, jednostka: JAKOSC_STRINGS.jednProcent, mono: true },
   { klucz: 'status', etykieta: JAKOSC_STRINGS.kolStatusWiarygodnosci, wyrownanie: 'lewo' },
-  {
-    klucz: KLUCZ_OBCIAZENIA_GALAZ,
-    etykieta: JAKOSC_STRINGS.kolIdentyfikatorObiektu,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
+  // Karta #145: identyfikator gałęzi jest kluczem wiersza (komórka poza listą kolumn).
 ];
 
-function mapujWierszObciazenia(item: ObciazeniePasmoItem): WierszTabeli {
+function mapujWierszObciazenia(item: ObciazeniePasmoItem, nazwa: NazwaObiektu): WierszTabeli {
   return {
-    galaz: { wartosc: item.target_name ?? item.target_id },
+    galaz: { wartosc: nazwa(item.target_id, item.target_name) },
     i: komorkaLiczba(item.current_ka, fmtKA),
     in: komorkaLiczba(item.rated_current_a, fmtWartosc, { ostrzezenie: !item.in_range }),
     obciazenie: komorkaLiczba(item.loading_pct, fmtProcent),
@@ -232,6 +221,7 @@ export function SekcjaPasmRozplywu({
   const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
   const [wybranaSzyna, setWybranaSzyna] = useState<string | null>(null);
   const [wybranaGalaz, setWybranaGalaz] = useState<string | null>(null);
+  const nazwaObiektu = useNazwaObiektu();
 
   const napieciaItems = dane?.napiecia.items ?? [];
   const obciazeniaItems = dane?.obciazenia.items ?? [];
@@ -292,7 +282,7 @@ export function SekcjaPasmRozplywu({
         naglowek={{ analizaPL: JAKOSC_STRINGS.pasmaSekcjaNapiec, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaNapiec(dane.napiecia)}
         kolumny={KOLUMNY_NAPIEC}
-        wiersze={napieciaItems.map(mapujWierszNapiecia)}
+        wiersze={napieciaItems.map((item) => mapujWierszNapiecia(item, nazwaObiektu))}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
@@ -302,11 +292,11 @@ export function SekcjaPasmRozplywu({
         // Karta UI2 p.6: pasmo napięcia liczone per węzeł (Bus).
         typElementuWiersza={() => 'Bus'}
         // Poprawka KLASA NIE INSTANCJA: `KLUCZ_NAPIECIA_WEZEL` niesie `target_id`
-        // (techniczny), kolumna „Szyna" pokazuje `target_name ?? target_id` —
+        // (techniczny), kolumna „Szyna" pokazuje nazwę z mostu nazw wyników —
         // ten sam `selektorNapiec`, którego już używa `SzczegolNapiecia` niżej.
         nazwaElementuWiersza={(klucz) => {
           const item = selektorNapiec.get(klucz);
-          return item ? item.target_name ?? item.target_id : undefined;
+          return item ? nazwaObiektu(item.target_id, item.target_name) : undefined;
         }}
       />
       <div className="mvd-jakosc-podsumowanie" data-testid="mvd-jakosc-pasma-napiecia-podsumowanie">
@@ -321,7 +311,7 @@ export function SekcjaPasmRozplywu({
         naglowek={{ analizaPL: JAKOSC_STRINGS.pasmaSekcjaObciazen, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={ZALOZENIA_OBCIAZEN}
         kolumny={KOLUMNY_OBCIAZEN}
-        wiersze={obciazeniaItems.map(mapujWierszObciazenia)}
+        wiersze={obciazeniaItems.map((item) => mapujWierszObciazenia(item, nazwaObiektu))}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
@@ -332,12 +322,12 @@ export function SekcjaPasmRozplywu({
         // pliku: „Obciążenia gałęzi — linia/kabel"), nigdy transformatorów.
         typElementuWiersza={() => 'LineBranch'}
         // Poprawka KLASA NIE INSTANCJA: `KLUCZ_OBCIAZENIA_GALAZ` niesie
-        // `target_id` (techniczny), kolumna „Gałąź" pokazuje `target_name ??
-        // target_id` — ten sam `selektorObciazen`, którego już używa
+        // `target_id` (techniczny), kolumna „Gałąź" pokazuje nazwę z mostu nazw
+        // wyników — ten sam `selektorObciazen`, którego już używa
         // `SzczegolObciazenia` niżej.
         nazwaElementuWiersza={(klucz) => {
           const item = selektorObciazen.get(klucz);
-          return item ? item.target_name ?? item.target_id : undefined;
+          return item ? nazwaObiektu(item.target_id, item.target_name) : undefined;
         }}
       />
       <div className="mvd-jakosc-podsumowanie" data-testid="mvd-jakosc-pasma-obciazenia-podsumowanie">

@@ -63,9 +63,23 @@ from werdykt import (
     WynikKryterium,
     WynikWymagania,
     ZakresWaznosci,
+    format_liczba,
     ocen_kryterium,
     zagreguj_wymaganie,
 )
+
+
+def _liczba_pl(wartosc: float, miejsca: int | None = None) -> str:
+    """Liczba w zdaniu dla projektanta: przecinek dziesiętny (karta #145).
+
+    Bez `miejsca` — kanoniczny zapis werdyktu (`werdykt.format_liczba`: ≤ 4 cyfry
+    znaczące, bez zer końcowych); z `miejsca` — stała liczba miejsc po przecinku
+    (wywód porównania pokazuje nastawę z dokładnością przekaźnika).
+    """
+    if miejsca is None:
+        return format_liczba(wartosc)
+    return f"{wartosc:.{miejsca}f}".replace(".", ",")
+
 
 # ---------------------------------------------------------------------------
 # Katalog funkcji LoM (function_type -> ANSI + etykieta PL)
@@ -101,17 +115,17 @@ FREQ_OVER_MIN_HZ: float = 51.5
 
 NORMATIVE_SOURCES: dict[str, dict[str, Any]] = {
     "rocof_81R": {
-        "window_pl": f"df/dt ≥ {ROCOF_MIN_DF_DT_HZ_S} Hz/s",
+        "window_pl": f"df/dt ≥ {_liczba_pl(ROCOF_MIN_DF_DT_HZ_S)} Hz/s",
         "lower_hz_s": ROCOF_MIN_DF_DT_HZ_S,
         "upper_hz_s": None,
         "source_pl": (
             "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b "
-            "(zdolność pracy przy zmianach częstotliwości — ROCOF withstand); "
-            "wartość krajowa PTPiREE 2 Hz/s"
+            "(zdolność pozostania w pracy przy szybkich zmianach częstotliwości — "
+            "odporność na RoCoF); wartość krajowa PTPiREE 2 Hz/s"
         ),
     },
     "underfrequency_81U": {
-        "window_pl": f"próg f ≤ {FREQ_UNDER_MAX_HZ} Hz",
+        "window_pl": f"próg f ≤ {_liczba_pl(FREQ_UNDER_MAX_HZ)} Hz",
         "upper_hz": FREQ_UNDER_MAX_HZ,
         "lower_hz": None,
         "source_pl": (
@@ -120,7 +134,7 @@ NORMATIVE_SOURCES: dict[str, dict[str, Any]] = {
         ),
     },
     "overfrequency_81O": {
-        "window_pl": f"próg f ≥ {FREQ_OVER_MIN_HZ} Hz",
+        "window_pl": f"próg f ≥ {_liczba_pl(FREQ_OVER_MIN_HZ)} Hz",
         "lower_hz": FREQ_OVER_MIN_HZ,
         "upper_hz": None,
         "source_pl": (
@@ -313,14 +327,14 @@ def _rocof_verdict(df_dt_hz_s: float | None) -> Verdict:
     if df_dt_hz_s < ROCOF_MIN_DF_DT_HZ_S:
         return Verdict(
             "WARN",
-            f"Nastawa df/dt ({df_dt_hz_s} Hz/s) poniżej dolnego okna "
-            f"({ROCOF_MIN_DF_DT_HZ_S} Hz/s) — ryzyko zbędnych wyłączeń "
-            "(fałszywe wykrycie wyspy).",
+            f"Nastawa df/dt ({_liczba_pl(df_dt_hz_s)} Hz/s) poniżej dolnej krawędzi okna "
+            f"({_liczba_pl(ROCOF_MIN_DF_DT_HZ_S)} Hz/s) — ryzyko zbędnych wyłączeń "
+            "(fałszywe wykrycie pracy wyspowej).",
         )
     return Verdict(
         "OK",
-        f"Nastawa df/dt ({df_dt_hz_s} Hz/s) w oknie normatywnym "
-        f"(≥ {ROCOF_MIN_DF_DT_HZ_S} Hz/s).",
+        f"Nastawa df/dt ({_liczba_pl(df_dt_hz_s)} Hz/s) w oknie normatywnym "
+        f"(≥ {_liczba_pl(ROCOF_MIN_DF_DT_HZ_S)} Hz/s).",
     )
 
 
@@ -331,13 +345,14 @@ def _underfrequency_verdict(threshold_hz: float | None) -> Verdict:
     if threshold_hz > FREQ_UNDER_MAX_HZ:
         return Verdict(
             "WARN",
-            f"Próg 81U ({threshold_hz} Hz) powyżej górnej krawędzi okna "
-            f"({FREQ_UNDER_MAX_HZ} Hz) — wchodzi w pasmo pozostawania w pracy, "
+            f"Próg 81U ({_liczba_pl(threshold_hz)} Hz) powyżej górnej krawędzi okna "
+            f"({_liczba_pl(FREQ_UNDER_MAX_HZ)} Hz) — wchodzi w pasmo pozostawania w pracy, "
             "ryzyko zbędnych wyłączeń.",
         )
     return Verdict(
         "OK",
-        f"Próg 81U ({threshold_hz} Hz) w oknie normatywnym (≤ {FREQ_UNDER_MAX_HZ} Hz).",
+        f"Próg 81U ({_liczba_pl(threshold_hz)} Hz) w oknie normatywnym "
+        f"(≤ {_liczba_pl(FREQ_UNDER_MAX_HZ)} Hz).",
     )
 
 
@@ -348,13 +363,14 @@ def _overfrequency_verdict(threshold_hz: float | None) -> Verdict:
     if threshold_hz < FREQ_OVER_MIN_HZ:
         return Verdict(
             "WARN",
-            f"Próg 81O ({threshold_hz} Hz) poniżej dolnej krawędzi okna "
-            f"({FREQ_OVER_MIN_HZ} Hz) — wchodzi w pasmo pozostawania w pracy, "
+            f"Próg 81O ({_liczba_pl(threshold_hz)} Hz) poniżej dolnej krawędzi okna "
+            f"({_liczba_pl(FREQ_OVER_MIN_HZ)} Hz) — wchodzi w pasmo pozostawania w pracy, "
             "ryzyko zbędnych wyłączeń.",
         )
     return Verdict(
         "OK",
-        f"Próg 81O ({threshold_hz} Hz) w oknie normatywnym (≥ {FREQ_OVER_MIN_HZ} Hz).",
+        f"Próg 81O ({_liczba_pl(threshold_hz)} Hz) w oknie normatywnym "
+        f"(≥ {_liczba_pl(FREQ_OVER_MIN_HZ)} Hz).",
     )
 
 
@@ -364,8 +380,8 @@ def _vector_shift_verdict(threshold_deg: float | None) -> Verdict:
         return Verdict("INFO", "Brak nastawy przesunięcia wektora — podaj wymaganie OSD.")
     return Verdict(
         "INFO",
-        f"Nastawa przesunięcia wektora ({threshold_deg}°) — brak okna normatywnego "
-        "w katalogu, podaj wymaganie OSD.",
+        f"Nastawa przesunięcia wektora ({_liczba_pl(threshold_deg)}°) — cytowane dokumenty "
+        "nie podają okna normatywnego tej funkcji; podaj wymaganie OSD.",
     )
 
 
@@ -387,20 +403,21 @@ def _spz_verdict(
     if not candidates:
         return Verdict(
             "INFO",
-            "Brak danych o przerwie SPZ jednostek nadrzędnych (SpzState nieosiągalny w ENM) "
-            "— porównanie niemożliwe.",
+            "Model sieci nie zawiera czasów przerwy beznapięciowej SPZ jednostek nadrzędnych "
+            "— koordynacji ochrony od pracy wyspowej z SPZ nie można ocenić.",
         )
     spz_interval = min(candidates)
     if lom_time_s < spz_interval:
         return Verdict(
             "OK",
-            f"Czas LoM ({lom_time_s} s) krótszy od przerwy SPZ ({spz_interval} s) "
-            "— wyłączenie przed ponownym załączeniem SPZ.",
+            f"Czas zadziałania LoM ({_liczba_pl(lom_time_s)} s) krótszy od przerwy SPZ "
+            f"({_liczba_pl(spz_interval)} s) — wyłączenie przed ponownym załączeniem SPZ.",
         )
     return Verdict(
         "ERROR",
-        f"Czas LoM ({lom_time_s} s) nie krótszy od przerwy SPZ ({spz_interval} s) "
-        "— ryzyko załączenia na wyspę (LoM wolniejszy niż przerwa SPZ).",
+        f"Czas zadziałania LoM ({_liczba_pl(lom_time_s)} s) nie krótszy od przerwy SPZ "
+        f"({_liczba_pl(spz_interval)} s) — ryzyko załączenia na pracującą wyspę "
+        "(LoM wolniejszy niż przerwa SPZ).",
     )
 
 
@@ -435,21 +452,21 @@ _WYWOD_OKNA: dict[str, tuple[str, str, str, float, str]] = {
         r"\tfrac{\text{Hz}}{\text{s}}",
         r"\ge",
         ROCOF_MIN_DF_DT_HZ_S,
-        "dolna krawędź okna (NC RfG Art. 13(1)(b), PTPiREE 2 Hz/s)",
+        "dolna krawędź okna (NC RfG art. 13 ust. 1 lit. b, PTPiREE 2 Hz/s)",
     ),
     "underfrequency_81U": (
         r"f_{81U}",
         r"\text{Hz}",
         r"\le",
         FREQ_UNDER_MAX_HZ,
-        "górna krawędź okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)",
+        "górna krawędź okna (NC RfG art. 13 ust. 1 lit. a, pasmo 47,5–51,5 Hz)",
     ),
     "overfrequency_81O": (
         r"f_{81O}",
         r"\text{Hz}",
         r"\ge",
         FREQ_OVER_MIN_HZ,
-        "dolna krawędź okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)",
+        "dolna krawędź okna (NC RfG art. 13 ust. 1 lit. a, pasmo 47,5–51,5 Hz)",
     ),
 }
 
@@ -469,20 +486,21 @@ def _wywod_okna(function_type: str, value: float | None, verdict: Verdict) -> li
     znak_podstawienia = znak if spelnione else _ZNAK_PRZECIWNY[znak]
     dolna_krawedz = znak == r"\ge"
     kierunek = "nastawa nie niższa niż" if dolna_krawedz else "nastawa nie wyższa niż"
-    znak_ascii = ">=" if dolna_krawedz else "<="
-    wynik_ascii = "SPELNIONE" if spelnione else "NIESPELNIONE"
+    znak_tekstu = "≥" if dolna_krawedz else "≤"
+    wynik_tekstu = "warunek spełniony" if spelnione else "warunek niespełniony"
     meta = LOM_FUNCTION_TYPES[function_type]
     return [
         _krok(
-            f"Wzór: warunek okna normatywnego funkcji {meta['ansi']} " f"({kierunek} krawędź okna)",
+            f"Wzór: warunek okna normatywnego funkcji {meta['ansi']} ({kierunek} krawędź okna)",
             rf"{symbol} {znak} {okno:.1f}\ {jednostka}",
         ),
         _krok(
-            f"Dane: nastawa = {value:.4f} (przekaźnik pola), "
-            f"krawędź okna = {okno:.1f} — {opis_okna}."
+            f"Dane: nastawa = {_liczba_pl(value, 4)} (przekaźnik pola), "
+            f"krawędź okna = {_liczba_pl(okno, 1)} — {opis_okna}."
         ),
         _krok(
-            f"Podstawienie: {value:.4f} {znak_ascii} {okno:.1f} {wynik_ascii}",
+            f"Podstawienie: {_liczba_pl(value, 4)} {znak_tekstu} {_liczba_pl(okno, 1)} — "
+            f"{wynik_tekstu}",
             rf"{value:.4f} {znak_podstawienia} {okno:.1f}\ {jednostka}",
         ),
         _krok(
@@ -506,20 +524,22 @@ def _wywod_spz(
         return []
     spz_interval = min(candidates)
     spelnione = verdict.severity == "OK"
-    znak_ascii = "<" if spelnione else ">="
+    znak_tekstu = "<" if spelnione else "≥"
     znak_latex = "<" if spelnione else r"\ge"
-    wynik_ascii = "SPELNIONE" if spelnione else "NIESPELNIONE"
+    wynik_tekstu = "warunek spełniony" if spelnione else "warunek niespełniony"
     return [
         _krok(
-            "Wzór: warunek koordynacji czasowej — LoM wyłącza przed ponownym " "załączeniem SPZ",
+            "Wzór: warunek koordynacji czasowej — ochrona od pracy wyspowej wyłącza przed "
+            "ponownym załączeniem SPZ",
             r"t_{LoM} < t_{SPZ}",
         ),
         _krok(
-            f"Dane: czas LoM = {lom_time_s:.4f} s (najkrótsza zwłoka funkcji LoM), "
-            f"przerwa SPZ = {spz_interval:.4f} s (najkrótszy dostępny czas SPZ)."
+            f"Dane: czas LoM = {_liczba_pl(lom_time_s, 4)} s (najkrótsza zwłoka funkcji LoM), "
+            f"przerwa SPZ = {_liczba_pl(spz_interval, 4)} s (najkrótszy dostępny czas SPZ)."
         ),
         _krok(
-            f"Podstawienie: {lom_time_s:.4f} {znak_ascii} {spz_interval:.4f} s {wynik_ascii}",
+            f"Podstawienie: {_liczba_pl(lom_time_s, 4)} {znak_tekstu} "
+            f"{_liczba_pl(spz_interval, 4)} s — {wynik_tekstu}",
             rf"{lom_time_s:.4f} {znak_latex} {spz_interval:.4f}\ \text{{s}}",
         ),
         _krok(
@@ -771,8 +791,8 @@ def _evaluate_field(
                     "spz_slow_time_s": spz_slow,
                 },
                 "source_pl": (
-                    "SpzState.fast_time_s / slow_time_s jednostek nadrzędnych "
-                    "(BayProtectionControlUnit)"
+                    "Nastawy czasu przerwy beznapięciowej SPZ (szybkiego i wolnego) "
+                    "zabezpieczeń jednostek nadrzędnych"
                 ),
                 # Addytywny wywod dyplomowy — pusta lista, gdy porownanie z SPZ
                 # nie zaszlo (uczciwy brak, ZERO fabrykacji).
@@ -1236,14 +1256,21 @@ def build_ochrona_lom_view(enm: EnergyNetworkModel) -> dict[str, Any]:
             "enm_hash": enm.header.hash_sha256,
         },
         "input_hash": _input_hash(enm, fields),
+        # Założenia dla projektanta — zdania inżynierskie (karta #145): bez nazw klas
+        # i pól modelu, bez notatek o implementacji.
         "zalozenia_pl": [
-            "Ocena LoM to interpretacja normatywna (porównania), nie symulacja fizyki wyspy.",
-            "Moduł wytwórczy = generator w ENM; pole przyłączeniowe = pole (bay) na szynie "
-            "modułu lub o roli OZE z przypisaniem zabezpieczeń.",
-            "Okna normatywne pochodzą wyłącznie z cytowanych źródeł (NC RfG / PTPiREE); "
-            "brak źródła → okno None + INFO, bez zmyślonych liczb.",
-            "Czasy przerwy SPZ pochodzą z SpzState jednostek nadrzędnych; gdy nieosiągalne "
-            "w ENM — uczciwy INFO.",
+            "Ocena ochrony od pracy wyspowej jest oceną normatywną nastaw zabezpieczeń "
+            "(porównaniem z oknami normatywnymi), a nie symulacją zjawisk zachodzących "
+            "w wyspie.",
+            "Ocenie podlegają pola przyłączeniowe modułów wytwórczych: pole na szynie, do "
+            "której przyłączony jest moduł wytwórczy, albo pole źródła OZE z przypisanym "
+            "zabezpieczeniem.",
+            "Okna normatywne pochodzą wyłącznie z cytowanych dokumentów (NC RfG, PTPiREE); "
+            "dla funkcji, której dokumenty nie opisują, ocena podaje tylko informację — "
+            "bez przyjmowania wartości granicznej.",
+            "Czasy przerwy beznapięciowej SPZ pochodzą z nastaw zabezpieczeń jednostek "
+            "nadrzędnych; gdy model sieci ich nie zawiera, koordynacja z SPZ nie jest "
+            "oceniana i ocena podaje ten brak.",
         ],
         "normative_sources": NORMATIVE_SOURCES,
         "fields": fields,

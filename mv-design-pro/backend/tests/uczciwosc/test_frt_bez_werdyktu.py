@@ -52,7 +52,9 @@ def _sprawdz_powod_tautologii(ocena: dict[str, Any]) -> None:
     assert rekord.podstawa.dokument.strip()
     braki = braki_tekstem(ocena)
     assert "nie jest rozwiązaniem sieci" in braki
-    assert "tautologi" in braki
+    # Karta #145: powód nazwany słowami projektanta (kryterium spełnione z definicji wobec
+    # profilu wejściowego), bez notatki o sondzie audytu.
+    assert "spełnione z definicji" in braki and "sonda audytu" not in braki
     assert "silnik" in braki and "wyroczni" in braki
     assert any(
         "trajektoria wyznaczona z rozwiązania sieci" in z for z in rekord.wyjasnienie.zastrzezenia

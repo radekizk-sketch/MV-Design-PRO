@@ -20,7 +20,7 @@
  */
 
 import type { ExecutionAnalysisType, ExecutionRun } from '../../../ui/study-cases/types';
-import type { WierszZalozenia } from '../wzorzec';
+import type { NazwaObiektu, WierszZalozenia } from '../wzorzec';
 import type {
   GalazNiesymetryczna,
   SzynaNiesymetryczna,
@@ -75,12 +75,19 @@ export function wybierzPrzebiegFazowy(
 // Założenia / kontekst wyniku
 // ---------------------------------------------------------------------------
 
-export function naZalozeniaStanuFazowego(wiersz: WierszStanuFazowego): WierszZalozenia[] {
+/**
+ * Założenia wyniku stanu fazowego. Cel analizy nazwany mostem nazw (karta #145): nazwa
+ * z modelu po referencji elementu, nigdy identyfikator ani referencja podana jako nazwa.
+ */
+export function naZalozeniaStanuFazowego(
+  wiersz: WierszStanuFazowego,
+  nazwa: NazwaObiektu,
+): WierszZalozenia[] {
   return [
     { etykieta: T.zrodloEtykieta, wartosc: T.zrodloStanFazowy },
     {
       etykieta: T.zalCel,
-      wartosc: wiersz.target_name || wiersz.target_id,
+      wartosc: nazwa(wiersz.element_id || wiersz.target_id, wiersz.target_name),
       uwaga: T.zalCelUwaga,
     },
     { etykieta: T.zalStatusUzasadnienia, wartosc: wiersz.proof_status_pl ?? T.kreska },

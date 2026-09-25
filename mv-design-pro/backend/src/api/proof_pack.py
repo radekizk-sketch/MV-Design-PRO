@@ -148,6 +148,16 @@ _NORMA_IEC_60909 = "IEC 60909-0:2016"
 _NORMA_IEC_60909_66 = "IEC 60909-0:2016 §6.6"
 
 
+def _ka_pl(prad_a: float) -> str:
+    """Prąd w kA w zdaniu dla projektanta — 3 miejsca, przecinek dziesiętny (karta #145)."""
+    return f"{a_na_ka(prad_a):.3f}".replace(".", ",")
+
+
+def _liczba_pl(wartosc: float, miejsca: int) -> str:
+    """Liczba w zdaniu dla projektanta — stała liczba miejsc, przecinek dziesiętny."""
+    return f"{wartosc:.{miejsca}f}".replace(".", ",")
+
+
 def _krok_reguly_malych_silnikow(result: Any) -> dict[str, Any]:
     """PELNY krok reguly malych silnikow (ZWARCIA-PRO F3 pkt 9, par. 6.6).
 
@@ -156,8 +166,12 @@ def _krok_reguly_malych_silnikow(result: Any) -> dict[str, Any]:
     Czysty formatter: liczby z white_box solvera (`ikss_async_machines_a`,
     `small_motor_limit_a`, `ikss_total_a`); jedyna operacja = skala A -> kA.
     """
-    werdykt = "SPEŁNIONA" if result.motors_negligible else "NIESPEŁNIONA"
-    wplyw = "silniki pomijalne w Ib" if result.motors_negligible else "silniki niepomijalne w Ib"
+    werdykt = "spełniona" if result.motors_negligible else "niespełniona"
+    wplyw = (
+        "silniki pomijalne w prądzie wyłączeniowym Ib"
+        if result.motors_negligible
+        else "silniki niepomijalne w prądzie wyłączeniowym Ib"
+    )
     ikss_total_a = result.white_box.get("ikss_total_a")
     async_a = result.white_box.get("ikss_async_machines_a")
     limit_a = result.white_box.get("small_motor_limit_a")
@@ -165,26 +179,25 @@ def _krok_reguly_malych_silnikow(result: Any) -> dict[str, Any]:
         # Wynik bez maszyn (white_box bez liczb) — uczciwy krok bez podstawien.
         return {
             "tekst": (
-                "Reguła małych silników (par. 6.6): pomijalne gdy suma I''k,M <= 0.05 * I''k — "
-                f"{werdykt} ({wplyw})"
+                "Reguła małych silników (p. 6.6): silniki są pomijalne, gdy suma I″k,M ≤ "
+                f"0,05·I″k — reguła {werdykt} ({wplyw})."
             ),
             "latex": None,
         }
-    rel_tekst = "<=" if result.motors_negligible else ">"
+    rel_tekst = "≤" if result.motors_negligible else ">"
     rel_latex = r"\le" if result.motors_negligible else ">"
     return {
         "tekst": (
-            "Reguła małych silników (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; "
-            f"wartość graniczna 0.05 * I''k = {a_na_ka(limit_a):.3f} kA; "
-            f"wartość obliczona suma I''k,M = {a_na_ka(async_a):.3f} kA "
-            f"({a_na_ka(async_a):.3f} {rel_tekst} {a_na_ka(limit_a):.3f}) -> "
-            f"{werdykt} ({wplyw})"
+            "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; "
+            f"wartość graniczna 0,05·I″k = {_ka_pl(limit_a)} kA; "
+            f"wartość obliczona suma I″k,M = {_ka_pl(async_a)} kA "
+            f"({_ka_pl(async_a)} {rel_tekst} {_ka_pl(limit_a)}) — reguła {werdykt} ({wplyw})."
         ),
         "latex": (
             rf"\sum_m I''_{{k,M}} = {a_na_ka(async_a):.3f}\;\mathrm{{kA}} \;{rel_latex}\; "
             rf"0.05 \cdot I''_k = 0.05 \cdot {a_na_ka(ikss_total_a):.3f}\;\mathrm{{kA}} "
             rf"= {a_na_ka(limit_a):.3f}\;\mathrm{{kA}} "
-            rf"\;\Rightarrow\; \text{{{werdykt}}}"
+            rf"\;\Rightarrow\; \text{{reguła {werdykt}}}"
         ),
     }
 
@@ -199,7 +212,10 @@ def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
     """
     naglowek: list[dict[str, Any]] = [
         {
-            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prądy częściowe maszyn + zanik (mu, q)",
+            "tekst": (
+                "Model: IEC 60909-0:2016 p. 6.6 — prądy częściowe maszyn wirujących i ich "
+                "zanik (współczynniki μ i q)."
+            ),
             "latex": None,
         },
     ]
@@ -208,9 +224,9 @@ def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
         naglowek.append(
             {
                 "tekst": (
-                    f"Punkt zwarcia: I''k (całkowity, z Z-bus) = "
-                    f"{a_na_ka(ikss_total_a):.3f} kA, c = {result.c_factor:.2f}, "
-                    f"t_min = {result.t_min_s:.2f} s"
+                    f"Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = "
+                    f"{_ka_pl(ikss_total_a)} kA, c = {_liczba_pl(result.c_factor, 2)}, "
+                    f"t_min = {_liczba_pl(result.t_min_s, 2)} s."
                 ),
                 "latex": None,
             }
@@ -234,8 +250,8 @@ def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
             "kroki": [
                 {
                     "tekst": (
-                        f"Suma wkładów maszyn: I''k,M = {a_na_ka(result.ikss_machines_a):.3f} kA, "
-                        f"I_b,M = {a_na_ka(result.ib_machines_a):.3f} kA"
+                        f"Suma wkładów maszyn: I″k,M = {_ka_pl(result.ikss_machines_a)} kA, "
+                        f"Ib,M = {_ka_pl(result.ib_machines_a)} kA."
                     ),
                     "latex": r"I''_{k,M} = \sum_m I''_{k,m}, \qquad I_{b,M} = \sum_m I_{b,m}",
                 },
@@ -256,7 +272,9 @@ def _wywod_wkladow(result: Any, sekcje: list[dict[str, Any]]) -> list[dict[str, 
     """
     kroki: list[dict[str, Any]] = list(sekcje[0]["kroki"])
     for c, sekcja in zip(result.contributions, sekcje[1:-1], strict=True):
-        kroki.append({"tekst": f"— {c.source_name} ({c.machine_type}) —", "latex": None})
+        # Karta #145: separator nazywa maszynę; kod typu maszyny nie jest tekstem dla
+        # projektanta (rodzaj maszyny niesie szczegół wkładu, nazwany po polsku na ekranie).
+        kroki.append({"tekst": f"— {c.source_name} —", "latex": None})
         kroki.extend(sekcja["kroki"])
     kroki.extend(sekcje[-1]["kroki"])
     return kroki
@@ -275,14 +293,15 @@ def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
     limit_a = wb.get("small_motor_limit_a")
     if result.motors_negligible:
         regula_status = "PASS"
-        regula_wartosc = "SPEŁNIONA — silniki pomijalne w Ib"
+        regula_wartosc = "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib"
     else:
         regula_status = "FAIL"
-        regula_wartosc = "NIESPEŁNIONA — silniki niepomijalne, wkłady uwzględnione w Ib"
-    if async_a is not None and limit_a is not None:
-        regula_wartosc += (
-            f" (suma I''k,M = {a_na_ka(async_a):.3f} kA, próg = {a_na_ka(limit_a):.3f} kA)"
+        regula_wartosc = (
+            "niespełniona — silniki niepomijalne, ich wkłady uwzględnione w prądzie "
+            "wyłączeniowym Ib"
         )
+    if async_a is not None and limit_a is not None:
+        regula_wartosc += f" (suma I″k,M = {_ka_pl(async_a)} kA, próg = {_ka_pl(limit_a)} kA)"
     return [
         {
             "pozycja_pl": "Norma bazowa metody",
@@ -291,7 +310,7 @@ def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
         },
         {
             "pozycja_pl": "Współczynnik napięciowy c",
-            "wartosc_pl": f"c = {result.c_factor:.2f} (z tego przebiegu)",
+            "wartosc_pl": f"c = {_liczba_pl(result.c_factor, 2)} (z tego przebiegu)",
             "status": "INFO",
         },
         {
@@ -312,9 +331,11 @@ def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
             "status": regula_status,
         },
         {
-            "pozycja_pl": "Determinizm kontraktu (input_hash)",
-            "wartosc_pl": f"obecny: {input_hash[:12]}...",
-            "status": "PASS",
+            # Karta #145: odcisk danych wejściowych jest metadaną — pozycja mówi, że
+            # obliczenie jest powtarzalne; sam odcisk zostaje w odpowiedzi (`input_hash`).
+            "pozycja_pl": "Powtarzalność obliczenia",
+            "wartosc_pl": "dane wejściowe mają odcisk — to samo wejście daje ten sam wynik",
+            "status": "PASS" if input_hash else "FAIL",
         },
     ]
 

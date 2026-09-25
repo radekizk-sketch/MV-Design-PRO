@@ -101,13 +101,16 @@ const FRT_SCENA_SEKWENCJA = JSON.parse(
 };
 const FRT_KONTEKST_SILY = FRT_SCENA_SEKWENCJA.kontekst_sily_sieci;
 const FRT_KROK_SCR = FRT_KONTEKST_SILY.white_box.find((krok) => krok.symbol === 'SCR')!;
-/** Bieg zwarciowy kontekstu siły sieci — ten sam, który zasiewa scena „frt". */
-const SILA_SIECI_SCENA_WYNIK = JSON.parse(
+/**
+ * Bieg zwarciowy kontekstu siły sieci — ten sam, który zasiewa scena „frt" (bieg modelu
+ * pola wytwórcy, z którego pochodzą moduły DER sceny — karta #145).
+ */
+const FRT_PRZEBIEG_ZWARCIOWY = JSON.parse(
   fs.readFileSync(
-    path.resolve(_dirname, '../src/harness-fixtures/generated/sila_sieci_scena_wynik.json'),
+    path.resolve(_dirname, '../src/harness-fixtures/generated/frt_scena_przebieg_zwarciowy.json'),
     'utf-8',
   ),
-) as { context: { run_id: string } };
+) as { id: string };
 /** Format ekranu FRT: liczba PL z trzema miejscami (`fmtPuFrt`). */
 const liczbaFrtPl = (wartosc: number): string =>
   wartosc.toLocaleString('pl-PL', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
@@ -173,7 +176,7 @@ test.describe('dowody-oze:screenshot', () => {
         .click();
       const szczegol = page.getByTestId('mvd-lom-szczegol');
       await expect(szczegol).toContainText('Szybkość zmian częstotliwości (df/dt)');
-      await expect(szczegol).toContainText('df/dt ≥ 2.0 Hz/s'); // okno normatywne
+      await expect(szczegol).toContainText('df/dt ≥ 2 Hz/s'); // okno normatywne (zapis PL)
       await expect(szczegol).toContainText('Rozporządzenie Komisji (UE) 2016/631'); // norma
 
       // OTWARTY wywód checka 81R: KaTeX wyrenderowany + wynik porównania w krokach (ocenę
@@ -182,7 +185,7 @@ test.describe('dowody-oze:screenshot', () => {
       const slad = page.getByTestId('mvd-lom-check-slad-0');
       await expect(slad.locator('[data-testid="math-rendered"]').first()).toBeVisible();
       await expect(slad).toContainText(
-        `Dane: nastawa = ${LOM_NASTAWA_81R.value!.toFixed(4)}`,
+        `Dane: nastawa = ${LOM_NASTAWA_81R.value!.toFixed(4).replace(".", ",")}`,
       );
       await expect(slad).toContainText('Wynik porównania:');
       await expect(slad).not.toContainText('Werdykt');
@@ -237,17 +240,17 @@ test.describe('dowody-oze:screenshot', () => {
       await page.getByTestId('mvd-frt-sekw-czas-1').fill('0.5');
       await page
         .getByTestId('mvd-frt-sekw-run')
-        .selectOption(SILA_SIECI_SCENA_WYNIK.context.run_id);
-      await page.getByTestId('mvd-frt-sekw-bus').fill(FRT_KONTEKST_SILY.bus_ref);
+        .selectOption(FRT_PRZEBIEG_ZWARCIOWY.id);
+      // Karta #145: szyna wybierana z listy szyn modelu po nazwie (nie wpisywana referencja).
+      await page.getByTestId('mvd-frt-sekw-bus').selectOption(FRT_KONTEKST_SILY.bus_ref);
       await page.getByTestId('mvd-frt-sekw-oblicz').click();
 
       const ocenaSekwencji = page.getByTestId('mvd-frt-sekw-ocena');
       await expect(ocenaSekwencji).toHaveAttribute('data-status', 'NIE_OCENIONO');
       await expect(ocenaSekwencji).toContainText(FRT_SCENA_SEKWENCJA.ocena.wyjasnienie.zdanie_pl);
       const kontekst = page.getByTestId('mvd-frt-sekw-kontekst');
-      // Werdykt siły sieci i SCR — WPROST z odpowiedzi backendu (na sieci sceny
-      // analiz OZE moduł PV 0,215 MVA przy Sk″ 37,97 MVA daje sieć MOCNĄ; dawna
-      // asercja cytowała „sieć słaba"/„2,250" z atrapy sprzed konwersji sceny).
+      // Werdykt siły sieci i SCR — WPROST z odpowiedzi backendu (bieg modelu sceny;
+      // dawna asercja cytowała „sieć słaba"/„2,250" z atrapy sprzed konwersji sceny).
       await expect(kontekst).toContainText(FRT_KONTEKST_SILY.verdict);
       await expect(kontekst).toContainText(liczbaFrtPl(FRT_KONTEKST_SILY.scr));
 
@@ -285,7 +288,7 @@ test.describe('dowody-oze:screenshot', () => {
       await page.getByTestId('mvd-oltc-sweep-slad-btn').click();
       const slad = page.getByTestId('mvd-oltc-sweep-slad');
       await expect(slad.locator('[data-testid="math-rendered"]').first()).toBeVisible();
-      await expect(slad).toContainText('Dane: krok zaczepu du = 1.2500 %, pozycja neutralna n0 = 0.');
+      await expect(slad).toContainText('Dane: krok zaczepu Δu = 1,2500 %, pozycja neutralna n0 = 0.');
       await expect(slad).toContainText('Kryterium odczytu');
 
       await page.waitForTimeout(300);

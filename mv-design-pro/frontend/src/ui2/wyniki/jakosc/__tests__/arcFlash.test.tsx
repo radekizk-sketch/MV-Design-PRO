@@ -115,7 +115,7 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
     });
     const tabela = screen.getByTestId('mvd-wyn-tabela');
     // Karta #144: wiersz nazywa szynę nazwą z modelu; identyfikator węzła nie jest
-    // pokazywany w trybie podstawowym (kolumna ekspercka).
+    // kolumną w żadnym trybie (karta #145 — informacje audytowe szczegółu).
     expect(tabela).toHaveTextContent('Szyna SN stacji S01');
     expect(tabela).not.toHaveTextContent('bus-1');
     expect(tabela).toHaveTextContent('8,42'); // energia cal/cm² z przecinkiem PL

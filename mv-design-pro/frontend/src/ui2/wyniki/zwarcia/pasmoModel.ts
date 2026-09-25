@@ -18,6 +18,7 @@
 import type { ExecutionAnalysisType } from '../../../ui/study-cases/types';
 import type { ShortCircuitRow } from '../../../ui/results-inspector/types';
 import type { DefinicjaKolumny, WartoscKomorki, WierszTabeli } from '../wzorzec';
+import { nazwaPunktuZwarcia } from './zwarciaModel';
 import {
   ZWARCIA_STRINGS,
   fmtKA,
@@ -65,6 +66,7 @@ export interface WierszPasma {
 export function sparujWierszePasma(
   maxRows: readonly ShortCircuitRow[] | undefined,
   minRows: readonly ShortCircuitRow[] | undefined,
+  nazwa: (ref: string, zWyniku?: string | null) => string,
 ): WierszPasma[] {
   const mapaMax = new Map((maxRows ?? []).map((wiersz) => [wiersz.target_id, wiersz] as const));
   const mapaMin = new Map((minRows ?? []).map((wiersz) => [wiersz.target_id, wiersz] as const));
@@ -74,7 +76,8 @@ export function sparujWierszePasma(
     const wierszMin = mapaMin.get(targetId) ?? null;
     return {
       targetId,
-      targetName: wierszMax?.target_name ?? wierszMin?.target_name ?? targetId,
+      // Karta #145: punkt nazwany mostem nazw wyników (model), nigdy identyfikatorem.
+      targetName: nazwaPunktuZwarcia((wierszMax ?? wierszMin)!, nazwa),
       faultType: wierszMax?.fault_type ?? wierszMin?.fault_type ?? null,
       max: wierszMax,
       min: wierszMin,
@@ -148,13 +151,7 @@ export const KOLUMNY_PASMO: DefinicjaKolumny[] = [
   { klucz: 'xrMin', etykieta: ZWARCIA_STRINGS.pasmoKolXRMin, mono: true, tylkoEkspercki: true },
   { klucz: 'kappaMax', etykieta: ZWARCIA_STRINGS.pasmoKolKappaMax, mono: true, tylkoEkspercki: true },
   { klucz: 'kappaMin', etykieta: ZWARCIA_STRINGS.pasmoKolKappaMin, mono: true, tylkoEkspercki: true },
-  {
-    klucz: KLUCZ_PASMO,
-    etykieta: ZWARCIA_STRINGS.kolIdentyfikator,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
+  // Karta #145: `target_id` jest kluczem wiersza (`KLUCZ_PASMO`), nie kolumną.
 ];
 
 /** Komórka wielkości pasma: `null` → kreska (bez dowodu — patrz nagłówek pliku). */

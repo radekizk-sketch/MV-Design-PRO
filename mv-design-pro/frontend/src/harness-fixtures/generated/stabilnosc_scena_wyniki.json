@@ -186,12 +186,15 @@
       "faulted_element_name": "Linia SN 1",
       "proof_ref": "proof:dynamic-stability:b05ad39400fc6ee75dc242e995bb2fa60111b859ceea08784ca6b6e88c2899c5",
       "proof_status": "incomplete",
-      "proof_status_pl": "czesciowy",
       "reporting_status": "not_reportable",
       "reporting_status_pl": "nieraportowalny",
+      "proof_status_pl": "częściowy",
+      "reporting_limitations_pl": [
+        "Kąty mocy, napięcie i częstotliwość po zwarciu oraz czas wyłączenia wpisuje użytkownik w opcjach biegu; bieg nie rozwiązuje sieci i nie całkuje równań ruchu układu, więc zwraca wyłącznie echo scenariusza bez oceny stabilności."
+      ],
       "dopuszczalnosc_raportowa": false,
       "reporting_limitations": [
-        "Kąty mocy, napięcie i częstotliwość po zwarciu oraz czas wyłączenia wpisuje użytkownik w opcjach biegu; bieg nie rozwiązuje sieci i nie całkuje równań ruchu układu, więc zwraca wyłącznie echo scenariusza bez oceny stabilności (uczciwość natychmiastowa 2026-09-23)."
+        "Kąty mocy, napięcie i częstotliwość po zwarciu oraz czas wyłączenia wpisuje użytkownik w opcjach biegu; bieg nie rozwiązuje sieci i nie całkuje równań ruchu układu, więc zwraca wyłącznie echo scenariusza bez oceny stabilności."
       ],
       "evidence": {
         "capability_id": "dynamic_stability.fault_clear",
@@ -200,7 +203,7 @@
         "claim_kind": "DYNAMIC_PERFORMANCE",
         "claim_kind_pl": "zachowanie dynamiczne",
         "regulatory_evidence_eligible": false,
-        "rationale_pl": "Kąty mocy, napięcie i częstotliwość po zwarciu oraz czas wyłączenia wpisuje użytkownik w opcjach biegu; bieg nie rozwiązuje sieci i nie całkuje równań ruchu układu, więc zwraca wyłącznie echo scenariusza bez oceny stabilności (uczciwość natychmiastowa 2026-09-23).",
+        "rationale_pl": "Kąty mocy, napięcie i częstotliwość po zwarciu oraz czas wyłączenia wpisuje użytkownik w opcjach biegu; bieg nie rozwiązuje sieci i nie całkuje równań ruchu układu, więc zwraca wyłącznie echo scenariusza bez oceny stabilności.",
         "audit_ref": "karta_s1_s4_dowod.md §0.5"
       }
     }
@@ -254,7 +257,7 @@
       "formula_set_version": "dynamic_stability_fault_clear_echo_v2",
       "standard_basis_ref": "DYNAMIC_STABILITY_FAULT_CLEAR_ECHO_V2",
       "input_hash": "ac5986b30b64c28c1c371fe2132b9dd4dae3ce7f174fa4a0bd556e648921ffe7",
-      "result_hash": "a9d819270d7dce7725bb3fb2546ee1c81a2588b05499710f150b29e6948b370d",
+      "result_hash": "c17446d3da263aad51000b44a7b6f2a60034ae5c2f4eb4badff71beceae84b0a",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

@@ -288,27 +288,6 @@
   color: var(--mvd-muted);
 }
 
-/* ---- tryb ekspercki ---- */
-.mvd-lom-eksp {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 24px;
-  margin: 0;
-  padding: 8px 16px;
-  border: 1px dashed var(--mvd-line);
-  border-radius: 8px;
-  color: var(--mvd-muted);
-  font-size: 12px;
-}
-.mvd-lom-eksp-para {
-  display: flex;
-  gap: 8px;
-}
-.mvd-lom-eksp-para dd {
-  margin: 0;
-  font-family: var(--mvd-font-mono);
-}
-
 .mvd-num {
   font-family: var(--mvd-font-mono);
   font-variant-numeric: tabular-nums;

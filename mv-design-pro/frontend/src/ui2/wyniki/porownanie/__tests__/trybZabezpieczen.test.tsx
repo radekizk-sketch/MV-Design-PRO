@@ -128,7 +128,7 @@ describe('TrybZabezpieczen — lista przebiegów i uczciwy stan zerowy (D2)', ()
     await przejdzDoZabezpieczen();
     const selA = await screen.findByTestId('mvd-porzab-select-a');
     expect(
-      within(selA).getByRole('option', { name: /Ocena zabezpieczeń · rew\. 1 · snap-zab · 2026-07-10 08:15/ }),
+      within(selA).getByRole('option', { name: /Ocena zabezpieczeń · rew\. 1 · 2026-07-10 08:15/ }),
     ).toBeInTheDocument();
   });
 
@@ -276,19 +276,19 @@ describe('TrybZabezpieczen — prezentacja wyniku na realnym kształcie Protecti
     expect(screen.getByTestId('mvd-porzab-ranking-puste')).toHaveTextContent(ZB.brakRankingu);
   });
 
-  it('identyfikator porównania i proweniencja WYŁĄCZNIE w trybie eksperckim (D1: ten sam panel)', async () => {
+  it('identyfikator porównania i proweniencja wyłącznie w „Informacjach audytowych" (D1, karta #145)', async () => {
     const { rerender } = render(<EkranPorownania {...props({ trybZaawansowania: 'basic' })} />);
     await przejdzDoZabezpieczen();
     await wykonajPorownanie();
-    expect(screen.queryByTestId('mvd-porzab-id')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('mvd-por-proweniencja')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-porzab-informacje-audytowe')).not.toBeInTheDocument();
 
     rerender(<EkranPorownania {...props({ trybZaawansowania: 'expert' })} />);
-    expect(screen.getByTestId('mvd-porzab-id')).toHaveTextContent('cmp-zab-001');
-    const panele = screen.getAllByTestId('mvd-por-proweniencja-panel');
-    expect(panele).toHaveLength(2);
-    expect(panele[0]).toHaveTextContent('snap-zab-a');
-    expect(panele[1]).toHaveTextContent('snap-zab-b');
+    expect(screen.getByTestId('mvd-porzab-wynik')).not.toHaveTextContent('cmp-zab-001');
+    fireEvent.click(screen.getByTestId('mvd-porzab-informacje-audytowe-przelacz'));
+    const lista = screen.getByTestId('mvd-porzab-informacje-audytowe-lista');
+    expect(lista).toHaveTextContent('cmp-zab-001');
+    expect(lista).toHaveTextContent('snap-zab-a');
+    expect(lista).toHaveTextContent('snap-zab-b');
   });
 });
 
@@ -326,8 +326,14 @@ describe('TrybZabezpieczen — ślad porównania (White Box, na żądanie)', () 
     expect(mockTrace).toHaveBeenCalledWith('cmp-zab-001');
     expect(mockTrace).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('mvd-porzab-slad')).toHaveTextContent(
-      'Dopasowanie ewaluacji po (element chroniony, punkt zwarcia)',
+      'Dopasowanie ocen zabezpieczeń obu biegów po parze (element chroniony, punkt zwarcia)',
     );
+    // Karta #145: pola śladu nazwane po polsku, bez kluczy i kodów kroków na pierwszym planie.
+    expect(screen.getByTestId('mvd-porzab-slad')).toHaveTextContent(
+      'Liczba ocen zabezpieczeń w biegu A',
+    );
+    expect(screen.getByTestId('mvd-porzab-slad')).not.toHaveTextContent('evaluations_a_count');
+    expect(screen.getByTestId('mvd-porzab-slad')).not.toHaveTextContent('MATCH_EVALUATIONS');
 
     // Zwinięcie i ponowne rozwinięcie NIE powtarza żądania (ten sam comparison_id).
     fireEvent.click(screen.getByTestId('mvd-porzab-slad-btn'));

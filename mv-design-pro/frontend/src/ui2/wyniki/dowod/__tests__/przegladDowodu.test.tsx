@@ -35,15 +35,17 @@ describe('PrzegladDowodu — nagłówek i kompozycja', () => {
     expect(screen.getByText('Dowód obliczeń zwarciowych')).toBeInTheDocument();
   });
 
-  it('input_hash widoczny wyłącznie w trybie eksperckim', () => {
+  it('input_hash wyłącznie w „Informacjach audytowych" trybu eksperckiego (karta #145)', () => {
     const { rerender } = render(
       <PrzegladDowodu {...props({ inputHash: 'abc123def', trybZaawansowania: 'basic' })} />,
     );
-    expect(screen.queryByTestId('mvd-dowod-input-hash')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-dowod-informacje-audytowe')).not.toBeInTheDocument();
     rerender(
       <PrzegladDowodu {...props({ inputHash: 'abc123def', trybZaawansowania: 'expert' })} />,
     );
-    expect(screen.getByTestId('mvd-dowod-input-hash')).toHaveTextContent('abc123def');
+    expect(screen.getByTestId('mvd-dowod-naglowek')).not.toHaveTextContent('abc123def');
+    fireEvent.click(screen.getByTestId('mvd-dowod-informacje-audytowe-przelacz'));
+    expect(screen.getByTestId('mvd-dowod-informacje-audytowe-lista')).toHaveTextContent('abc123def');
   });
 
   it('spis kroków + widok pierwszego kroku (kanon pięciu pól)', () => {

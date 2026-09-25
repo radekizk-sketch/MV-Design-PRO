@@ -11,15 +11,16 @@
  *
  * UCZCIWOŚĆ (2026-09-23): trajektoria jest zadana profilem wejściowym, a kryterium
  * utrzymania wobec tego samego profilu jest tautologią — okno nie wystawia werdyktu ani
- * koloru ok/err. Zero fizyki, zero ocen lokalnych. Identyfikatory (der_ref,
- * operator_id, scenario_id) wyłącznie w trybie eksperckim.
+ * koloru ok/err. Zero fizyki, zero ocen lokalnych. Identyfikatory (typ przekształtnika,
+ * operator, klucze scenariuszy) wyłącznie w „Informacjach audytowych" (tryb ekspercki,
+ * zwinięte) — pierwszy plan niesie nazwy (karta #145).
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import './frt.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { isModeAtLeast } from '../../shell/modeModel';
-import { SladWywodu, TabelaWynikow } from '../../wyniki/wzorzec';
+import { InformacjeAudytowe, SladWywodu, TabelaWynikow } from '../../wyniki/wzorzec';
 import { OcenaNiewykonana, SekcjaAudytowa } from '../../wyniki/wzorzec/OcenaNiewykonana';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
 import { notify } from '../../../ui/notifications/store';
@@ -34,6 +35,7 @@ import {
 import { WykresTrajektoriiChart } from './WykresTrajektoriiChart';
 import { SekcjaSekwencjiZapadow } from './SekcjaSekwencjiZapadow';
 import {
+  informacjeAudytoweFrt,
   kolumnyAudytuFrt,
   kolumnyTabeliFrt,
   opcjeModulowFrt,
@@ -91,7 +93,7 @@ function StanPanel({
 }
 
 // ---------------------------------------------------------------------------
-// Wynik: ocena + założenia + wykres + tabela + audyt + identyfikatory eksperckie
+// Wynik: ocena + założenia + wykres + tabela + audyt + informacje audytowe
 // ---------------------------------------------------------------------------
 
 function WynikTrajektorii({
@@ -110,6 +112,7 @@ function WynikTrajektorii({
   const wiersze = useMemo(() => wierszeTabeliFrt(dane), [dane]);
   const kolumnyAudytu = useMemo(() => kolumnyAudytuFrt(), []);
   const wierszeAudytu = useMemo(() => wierszeAudytuFrt(dane), [dane]);
+  const informacjeAudytowe = useMemo(() => informacjeAudytoweFrt(dane), [dane]);
 
   // Serie trajektorii — pierwszy scenariusz odpowiedzi (bieg per rodzaj testu).
   const pierwszy = dane.scenariusze[0];
@@ -199,18 +202,11 @@ function WynikTrajektorii({
         />
       ))}
 
-      {trybEkspercki && (
-        <dl className="mvd-frt-eksp" data-testid="mvd-frt-eksp">
-          <div className="mvd-frt-eksp-para">
-            <dt>{FRT_STRINGS.ekspModulId}</dt>
-            <dd className="mvd-num">{dane.modul_der.id}</dd>
-          </div>
-          <div className="mvd-frt-eksp-para">
-            <dt>{FRT_STRINGS.ekspOperatorId}</dt>
-            <dd className="mvd-num">{dane.operator.id}</dd>
-          </div>
-        </dl>
-      )}
+      <InformacjeAudytowe
+        wiersze={informacjeAudytowe}
+        trybEkspercki={trybEkspercki}
+        testid="mvd-frt-informacje-audytowe"
+      />
     </div>
   );
 }

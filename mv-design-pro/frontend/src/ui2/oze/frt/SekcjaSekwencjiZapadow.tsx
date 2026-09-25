@@ -14,17 +14,24 @@
  *
  * Zero fizyki, zero ocen lokalnych — pola solvera i kontekst pochodzą WYŁĄCZNIE
  * z backendu. Serializacja (kropka dziesiętna) należy do klienta;
- * edytor prezentuje z przecinkiem PL. Identyfikator wejścia (hash) — tryb ekspercki.
+ * edytor prezentuje z przecinkiem PL. Szynę przyłączenia projektant wybiera z listy
+ * szyn modelu po nazwie (`selectBusOptions`), a kontekst nazywa ją mostem nazw wyników;
+ * odcisk wejścia — wyłącznie w „Informacjach audytowych" (karta #145).
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { isModeAtLeast } from '../../shell/modeModel';
-import { TabelaWynikow } from '../../wyniki/wzorzec';
+import {
+  InformacjeAudytowe,
+  TabelaWynikow,
+  etykietaPrzebieguWyniku,
+  useNazwaObiektu,
+} from '../../wyniki/wzorzec';
 import { OcenaNiewykonana, SekcjaAudytowa } from '../../wyniki/wzorzec/OcenaNiewykonana';
 import { SladAnalizy } from '../pulpit';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
-import { ANALYSIS_TYPE_LABELS, type ExecutionRun } from '../../../ui/study-cases/types';
+import { selectBusOptions, useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
   pobierzSekwencjeFrt,
   type ParaZapaduFrt,
@@ -41,11 +48,6 @@ import { FRT_STRINGS, fmtPuFrt, fmtSFrt } from './strings';
 
 const ZAPAD_DOMYSLNY: ParaZapaduFrt = { glebokoscPu: 0.05, czasS: 0.15 };
 
-/** Etykieta PL zakończonego przebiegu zwarciowego dla selektora kontekstu. */
-function etykietaPrzebieguZwarciowego(run: ExecutionRun): string {
-  const analiza = ANALYSIS_TYPE_LABELS[run.analysis_type];
-  return run.finished_at ? `${analiza} · ${run.finished_at}` : analiza;
-}
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
@@ -96,6 +98,7 @@ function WynikSekwencji({
   onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
+  const nazwaObiektu = useNazwaObiektu();
   // Ślad WHITE BOX kontekstu siły sieci — NA ŻĄDANIE (domyślnie zwinięty).
   const [sladWidoczny, setSladWidoczny] = useState(false);
   const kolumny = useMemo(() => kolumnyTabeliSekwencji(), []);
@@ -141,7 +144,7 @@ function WynikSekwencji({
             <dl className="mvd-frt-sekw-kontekst-dane" data-testid="mvd-frt-sekw-kontekst-dane">
             <div className="mvd-frt-zal-para">
               <dt>{FRT_STRINGS.sekwKontekstWezel}</dt>
-              <dd>{kontekst.bus_ref}</dd>
+              <dd>{nazwaObiektu(kontekst.bus_ref)}</dd>
             </div>
             <div className="mvd-frt-zal-para">
               <dt>{FRT_STRINGS.sekwKontekstScr}</dt>
@@ -200,14 +203,13 @@ function WynikSekwencji({
         )}
       </section>
 
-      {trybEkspercki && (
-        <dl className="mvd-frt-eksp" data-testid="mvd-frt-sekw-eksp">
-          <div className="mvd-frt-eksp-para">
-            <dt>{FRT_STRINGS.sekwEkspHash}</dt>
-            <dd className="mvd-num">{dane.input_hash}</dd>
-          </div>
-        </dl>
-      )}
+      <InformacjeAudytowe
+        wiersze={
+          dane.input_hash ? [{ etykieta: FRT_STRINGS.sekwEkspHash, wartosc: dane.input_hash }] : []
+        }
+        trybEkspercki={trybEkspercki}
+        testid="mvd-frt-sekw-informacje-audytowe"
+      />
     </div>
   );
 }
@@ -246,6 +248,10 @@ export function SekcjaSekwencjiZapadow({
     () => przebiegi.filter((r) => r.status === 'DONE' && r.analysis_type.startsWith('SC_')),
     [przebiegi],
   );
+  // Szyny modelu po nazwie (ten sam dobór co kompensacja mocy biernej) — projektant
+  // nie wpisuje referencji, wybiera szynę, którą widzi na schemacie.
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const opcjeSzyn = useMemo(() => selectBusOptions(snapshot), [snapshot]);
 
   // Zmiana doboru/edytora unieważnia poprzedni wynik (stale-result guard).
   const unewaznij = () => {
@@ -304,7 +310,7 @@ export function SekcjaSekwencjiZapadow({
     if (derRef === null || operatorId === '' || zapady.length === 0) return;
     // Bez wyboru przebiegu/węzła — zachowanie dzisiejsze (kontekst pominięty).
     const runId = wybranyRun || undefined;
-    const wezel = busRef.trim() || undefined;
+    const wezel = busRef || undefined;
     setZapytanie({
       derRef,
       operatorId,
@@ -350,7 +356,7 @@ export function SekcjaSekwencjiZapadow({
                   <option value="">{FRT_STRINGS.sekwKontekstRunPusty}</option>
                   {przebiegiZwarciowe.map((run) => (
                     <option key={run.id} value={run.id}>
-                      {etykietaPrzebieguZwarciowego(run)}
+                      {etykietaPrzebieguWyniku(run)}
                     </option>
                   ))}
                 </select>
@@ -362,15 +368,26 @@ export function SekcjaSekwencjiZapadow({
               </div>
               <div className="mvd-frt-sekw-pole">
                 <label htmlFor="mvd-frt-sekw-bus">{FRT_STRINGS.sekwKontekstBusEtykieta}</label>
-                <input
+                <select
                   id="mvd-frt-sekw-bus"
-                  type="text"
                   value={busRef}
                   onChange={(e) => zmienBus(e.target.value)}
-                  placeholder={FRT_STRINGS.sekwKontekstBusPlaceholder}
                   data-testid="mvd-frt-sekw-bus"
-                />
-                <p className="mvd-frt-pole-opis">{FRT_STRINGS.sekwKontekstBusOpis}</p>
+                >
+                  <option value="">{FRT_STRINGS.sekwKontekstBusWybierz}</option>
+                  {opcjeSzyn.map((szyna) => (
+                    <option key={szyna.ref_id} value={szyna.ref_id}>
+                      {szyna.name}
+                    </option>
+                  ))}
+                </select>
+                {opcjeSzyn.length === 0 ? (
+                  <p className="mvd-frt-pole-opis" data-testid="mvd-frt-sekw-bus-brak">
+                    {FRT_STRINGS.sekwKontekstBusBrak}
+                  </p>
+                ) : (
+                  <p className="mvd-frt-pole-opis">{FRT_STRINGS.sekwKontekstBusOpis}</p>
+                )}
               </div>
             </div>
 

@@ -563,12 +563,6 @@ _KOD_TESTU_PROFILU = (
 
 #: Lista dozwolona: tożsamość → (liczba wystąpień, uzasadnienie merytoryczne). Zapadka w dół.
 DOZWOLONE: dict[str, tuple[int, str]] = {
-    "api/proof_pack.py:_walidacja_iec:tekst_klucz:wartosc_pl:input_hash": (
-        1,
-        "Pozycja walidacji „Determinizm kontraktu (input_hash)” pokazuje ODCISK wejścia jako "
-        "wartość dowodu audytowego — skrót SHA-256 jest tu samą daną, którą pozycja "
-        "potwierdza, a nie nazwą elementu sieci.",
-    ),
     'application/analyses/v126_gotowosc.py:_warunki_silnikow:zmienna:etykieta:.get("ref")': (
         1,
         "`motors[].ref` to „Oznaczenie silnika” wpisane przez projektanta w formularzu "

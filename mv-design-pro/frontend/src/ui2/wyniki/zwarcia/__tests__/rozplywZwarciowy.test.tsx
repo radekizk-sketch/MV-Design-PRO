@@ -22,6 +22,10 @@ import {
   wkladyFixture,
 } from './fixtures';
 
+/** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
+const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
+  nazwaZWyniku ?? `nazwa ${ref}`;
+
 const navigateToSldMock = vi.fn();
 
 // Atrapa CZĘŚCIOWA: podmieniamy tylko `navigateToSld` (jego wywołanie bada
@@ -65,15 +69,15 @@ afterEach(() => {
 describe('zwarciaModel — projekcje rozpływu (czyste)', () => {
   it('kierunekPrzeplywuPL obraca parę węzłów wg tokenu solvera', async () => {
     const [doGpz, zSt1] = rozplywFixture();
-    expect(kierunekPrzeplywuPL(doGpz)).toBe('Szyna OZE → Szyna GPZ 15 kV'); // to_from
-    expect(kierunekPrzeplywuPL(zSt1)).toBe('Szyna ST1 15 kV → Szyna GPZ 15 kV'); // from_to
-    expect(kierunekPrzeplywuPL({ ...doGpz, direction: 'nieznany' })).toBe(
+    expect(kierunekPrzeplywuPL(doGpz, NAZWA)).toBe('Szyna OZE → Szyna GPZ 15 kV'); // to_from
+    expect(kierunekPrzeplywuPL(zSt1, NAZWA)).toBe('Szyna ST1 15 kV → Szyna GPZ 15 kV'); // from_to
+    expect(kierunekPrzeplywuPL({ ...doGpz, direction: 'nieznany' }, NAZWA)).toBe(
       'Szyna GPZ 15 kV – Szyna OZE',
     );
   });
 
   it('naWierszeRozplywu: nazwa gałęzi, kierunek, prąd (format PL), klucz unikalny', async () => {
-    const wiersze = naWierszeRozplywu(rozplywFixture());
+    const wiersze = naWierszeRozplywu(rozplywFixture(), NAZWA);
     expect(wiersze[0].galaz.wartosc).toBe('Kabel OZE');
     expect(wiersze[0].prad.wartosc).toBe('0,245');
     expect(wiersze[0].prad.dowodRef).toBe('BR-KABEL-1');
@@ -115,10 +119,10 @@ describe('zwarciaModel — projekcje rozpływu (czyste)', () => {
         direction: 'to_from',
       },
     ];
-    const wiersze = naWierszeRozplywu(flows);
-    // Źródło zastępcze → etykieta PL „sieć nadrzędna"; falownik → identyfikator.
+    const wiersze = naWierszeRozplywu(flows, NAZWA);
+    // Źródło zastępcze → etykieta PL „sieć nadrzędna"; falownik → nazwa z mostu nazw (karta #145).
     expect(wiersze[0].zrodlo.wartosc).toBe('sieć nadrzędna');
-    expect(wiersze[1].zrodlo.wartosc).toBe('GEN-PV');
+    expect(wiersze[1].zrodlo.wartosc).toBe('nazwa GEN-PV');
     // Klucz wiersza (unikalny) nadal używa surowego source_id.
     expect(wiersze[0].identyfikator.wartosc).toBe('BR-TX-1::THEVENIN_GRID');
   });

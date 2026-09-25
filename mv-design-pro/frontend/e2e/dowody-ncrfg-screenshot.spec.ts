@@ -190,7 +190,7 @@ test.describe('dowody-ncrfg:screenshot', () => {
       await expect(szczegol).toContainText('1,8 s wobec wymaganych ≤ 1 s');
 
       // OTWARTY ślad testu (Wzór → Dane → Podstawienie → Wynik → jednostki).
-      await page.getByTestId('mvd-oze-slad-otworz').click();
+      await page.getByTestId('mvd-oze-slad-przelacz').click();
       const kroki = page.getByTestId('mvd-oze-slad-kroki');
       await expect(kroki).toContainText('t_odb ≤ t_odb,wym');
       await expect(kroki).toContainText('s − s = s.');
@@ -252,7 +252,7 @@ test.describe('dowody-ncrfg:screenshot', () => {
       // Przebiegi PF i SC wybrane z rejestru sceny (te same UUID co w żądaniu fixtury).
       await expect(page.getByTestId('mvd-wniosek-pf')).toHaveValue(WNIOSEK_ZADANIE.pf_run_id);
       await expect(page.getByTestId('mvd-wniosek-sc')).toHaveValue(WNIOSEK_ZADANIE.sc_run_id);
-      await page.getByTestId('mvd-wniosek-wezel').fill(WNIOSEK_ZADANIE.bus_ref);
+      await page.getByTestId('mvd-wniosek-wezel').selectOption(WNIOSEK_ZADANIE.bus_ref);
       const generuj = page.getByTestId('mvd-wniosek-generuj');
       await expect(generuj).toBeEnabled({ timeout: 15000 });
       await generuj.click();
@@ -273,7 +273,7 @@ test.describe('dowody-ncrfg:screenshot', () => {
     test(`wniosek-braki — „czego brakuje do wniosku" — ${theme}`, async ({ page }) => {
       const errs = zbierajBledy(page);
       await otworzScene(page, 'wniosek-braki', theme);
-      await page.getByTestId('mvd-wniosek-wezel').fill(WNIOSEK_BRAKI_ZADANIE.bus_ref);
+      await page.getByTestId('mvd-wniosek-wezel').selectOption(WNIOSEK_BRAKI_ZADANIE.bus_ref);
       const generuj = page.getByTestId('mvd-wniosek-generuj');
       await expect(generuj).toBeEnabled({ timeout: 15000 });
       await generuj.click();

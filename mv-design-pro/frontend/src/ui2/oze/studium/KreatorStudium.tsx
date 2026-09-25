@@ -17,7 +17,7 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
-import { TabelaWynikow } from '../../wyniki/wzorzec';
+import { InformacjeAudytowe, TabelaWynikow } from '../../wyniki/wzorzec';
 import {
   DokumentStudiumBrakiError,
   pobierzDokumentStudium,
@@ -195,11 +195,9 @@ function fazaPL(faza: FazaStudium): string {
 function PostepWariantu({
   wariant,
   nazwaWezla,
-  trybEkspercki,
 }: {
   wariant: WynikWariantuStudium;
   nazwaWezla: string;
-  trybEkspercki: boolean;
 }) {
   const fazy = {
     zdolnosc: wariant.zdolnosc,
@@ -210,9 +208,6 @@ function PostepWariantu({
     <li className="mvd-studium-postep-wariant" data-testid={`mvd-studium-postep-${wariant.busRef}`}>
       <div className="mvd-studium-postep-naglowek">
         <span className="mvd-studium-postep-nazwa">{nazwaWezla}</span>
-        {trybEkspercki && (
-          <span className="mvd-studium-postep-id mvd-num">{wariant.busRef}</span>
-        )}
       </div>
       <ul className="mvd-studium-postep-fazy">
         {FAZY_STUDIUM.map((faza) => {
@@ -267,9 +262,12 @@ function SzczegolWariantu({
     <section className="mvd-studium-szczegol" data-testid="mvd-studium-szczegol">
       <header className="mvd-studium-szczegol-naglowek">
         <h3 className="mvd-studium-szczegol-tytul">{STUDIUM_STRINGS.szczegolTytul}</h3>
-        {trybEkspercki && (
-          <span className="mvd-studium-szczegol-id mvd-num">{wariant.busRef}</span>
-        )}
+        {/* Karta #145: identyfikator węzła wariantu wyłącznie w „Informacjach audytowych". */}
+        <InformacjeAudytowe
+          trybEkspercki={trybEkspercki}
+          testid="mvd-studium-szczegol-audyt"
+          wiersze={[{ etykieta: STUDIUM_STRINGS.ekspIdentyfikatorWezla, wartosc: wariant.busRef }]}
+        />
         {/* K5-B (H-3 pkt 1): pętla studium → model — formularz źródła OZE
             z preselekcją węzła wariantu (bus_ref z biegu studium). */}
         <PrzylaczZrodloPrzycisk
@@ -739,7 +737,6 @@ export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStud
                       key={wariant.busRef}
                       wariant={wariant}
                       nazwaWezla={nazwaWezla(wariant.busRef)}
-                      trybEkspercki={trybEkspercki}
                     />
                   ))}
                 </ul>
@@ -835,6 +832,7 @@ export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStud
                   pdfLadowanie={pdfLadowanie}
                   onPobierzDocx={() => void pobierzDocx()}
                   onPobierzPdf={() => void pobierzPdf()}
+                  trybEkspercki={trybEkspercki}
                 />
               ) : null}
             </section>
@@ -938,8 +936,10 @@ function SekcjaPodgladuDokumentu({
   pdfLadowanie,
   onPobierzDocx,
   onPobierzPdf,
+  trybEkspercki,
 }: {
   dokument: WidokDokumentuStudium;
+  trybEkspercki: boolean;
   docxLadowanie: boolean;
   pdfLadowanie: boolean;
   onPobierzDocx: () => void;
@@ -980,14 +980,19 @@ function SekcjaPodgladuDokumentu({
           <dd>{dokument.zalozenia.operator.nazwa}</dd>
         </div>
         <div>
-          <dt>{STUDIUM_STRINGS.dokPrzebieg}</dt>
-          <dd className="mvd-num">{dokument.zalozenia.przebieg_bazowy.run_id}</dd>
-        </div>
-        <div>
           <dt>{STUDIUM_STRINGS.dokLiczbaWariantow}</dt>
           <dd className="mvd-num">{dokument.zalozenia.liczba_wariantow}</dd>
         </div>
       </dl>
+
+      {/* Karta #145: przebieg bazowy studium to metadana — „Informacje audytowe". */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-studium-dok-audyt"
+        wiersze={[
+          { etykieta: STUDIUM_STRINGS.dokPrzebieg, wartosc: dokument.zalozenia.przebieg_bazowy.run_id },
+        ]}
+      />
 
       <h5 className="mvd-studium-dok-podtytul">{STUDIUM_STRINGS.dokPodsumowanieTytul}</h5>
       <div className="mvd-studium-dok-tabela-wrap">

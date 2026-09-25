@@ -23,6 +23,7 @@
  */
 
 import type { ProblemModelu } from './diagnozaApi';
+import { useNazwaObiektu } from '../../../wyniki/wzorzec';
 import { useDaneDiagnozy } from './adapters/diagnozaAdapter';
 import {
   etykietaDostepnosci,
@@ -55,6 +56,8 @@ function Wiersz({ etykieta, wartosc }: { etykieta: string; wartosc: string }) {
 }
 
 function ProblemModeluWpis({ problem }: { problem: ProblemModelu }) {
+  // Karta #145: elementy, których dotyczy problem, nazwane z modelu — nie identyfikatorami.
+  const nazwaObiektu = useNazwaObiektu();
   return (
     <li className="mvd-diagnoza-problem" data-testid={`mvd-diagnoza-problem-${problem.code}`}>
       <span className={`mvd-diagnoza-waga mvd-diagnoza-waga--${problem.severity.toLowerCase()}`}>
@@ -65,7 +68,7 @@ function ProblemModeluWpis({ problem }: { problem: ProblemModelu }) {
       <p className="mvd-diagnoza-problem-tresc">{problem.message_pl}</p>
       {problem.affected_refs.length > 0 && (
         <p className="mvd-diagnoza-problem-refy">
-          {T.etykietaDotyczy}: {problem.affected_refs.join(', ')}
+          {T.etykietaDotyczy}: {problem.affected_refs.map((ref) => nazwaObiektu(ref)).join(', ')}
         </p>
       )}
       {problem.hints.length > 0 && (

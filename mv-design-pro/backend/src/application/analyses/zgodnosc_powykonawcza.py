@@ -44,6 +44,7 @@ import io
 import json
 from typing import Any
 
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.protection_settings.zacisk_zabezpieczenia import zaciski_galezi
 from domain.canonical_operations import READINESS_CODES
 from enm.canonical_analysis import (
@@ -497,11 +498,11 @@ def build_zgodnosc_powykonawcza_view(
     if run.analysis_type != "PF":
         raise ValueError(
             "Raport zgodności powykonawczej wymaga przebiegu rozpływu mocy; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
 

@@ -33,6 +33,7 @@ import type {
 } from '../../types/enm';
 import type { SemanticIssue } from '../../types/domainOps';
 import { publicBusName } from '../shared/enmVisibility';
+import { identyfikatorGrafu } from './identyfikatorGrafu';
 import { executeDomainOp } from './domainApi';
 import { notify } from '../notifications/store';
 import { getOperationSuccessMessage } from './operationSuccessMessages';
@@ -186,6 +187,12 @@ export interface SnapshotOperationHistoryEntry {
  * (`gpz/8600…/section/001/bus_sn`). Karta V126-JEZYK: ekran wyników nazywa
  * obiekty tak, jak nazywa je schemat; brak nazwy = uczciwy `null`, nigdy
  * nazwa zmyślona z referencji.
+ *
+ * Karta #145: element rozpoznawany jest po KAŻDYM z trzech identyfikatorów, pod
+ * którymi wyniki go nazywają — `ref_id` modelu, `id` elementu migawki i
+ * identyfikator GRAFU obliczeniowego (`uuid5(NAMESPACE_DNS, ref_id)`,
+ * `identyfikatorGrafu`), który niosą wyniki rozpływu, zwarć, walidacji i oceny.
+ * Jedno źródło nazw dla wszystkich ekranów wyników, bez drugiego resolvera.
  */
 export function selectElementName(
   snapshot: EnergyNetworkModel | null,
@@ -194,14 +201,17 @@ export function selectElementName(
   return resolveElementName(snapshot, elementRef);
 }
 
-function resolveElementName(
-  snapshot: EnergyNetworkModel | null,
-  elementRef: string | null,
-): string | null {
-  if (!snapshot || !elementRef) {
-    return null;
-  }
+/**
+ * Indeks identyfikator → nazwa per migawka (liczony raz na obiekt migawki — migawka
+ * jest niemutowalna, każda operacja domenowa przynosi nowy obiekt). Kolejność
+ * kandydatów i zasada „pierwszy pasujący wygrywa" jak w dawnym przeszukiwaniu
+ * liniowym, więc wynik dla `ref_id`/`id` jest identyczny z dotychczasowym.
+ */
+const indeksyNazw = new WeakMap<EnergyNetworkModel, ReadonlyMap<string, string | null>>();
 
+function indeksNazw(snapshot: EnergyNetworkModel): ReadonlyMap<string, string | null> {
+  const gotowy = indeksyNazw.get(snapshot);
+  if (gotowy) return gotowy;
   const candidates = [
     ...(snapshot.buses ?? []),
     ...(snapshot.branches ?? []),
@@ -217,9 +227,28 @@ function resolveElementName(
     ...(snapshot.measurements ?? []),
     ...(snapshot.protection_assignments ?? []),
   ];
+  const indeks = new Map<string, string | null>();
+  const dopisz = (klucz: string | null | undefined, nazwa: string | null): void => {
+    if (klucz && !indeks.has(klucz)) indeks.set(klucz, nazwa);
+  };
+  candidates.forEach((item) => {
+    const nazwa = item.name ?? null;
+    dopisz(item.ref_id, nazwa);
+    dopisz(item.id, nazwa);
+    if (item.ref_id) dopisz(identyfikatorGrafu(item.ref_id), nazwa);
+  });
+  indeksyNazw.set(snapshot, indeks);
+  return indeks;
+}
 
-  const match = candidates.find((item) => item.ref_id === elementRef || item.id === elementRef);
-  return match?.name ?? null;
+function resolveElementName(
+  snapshot: EnergyNetworkModel | null,
+  elementRef: string | null,
+): string | null {
+  if (!snapshot || !elementRef) {
+    return null;
+  }
+  return indeksNazw(snapshot).get(elementRef) ?? null;
 }
 
 function createHistoryEntry(

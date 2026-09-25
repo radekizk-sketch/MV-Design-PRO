@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import './ranking.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { EkranAnalizy } from '../../wyniki/wzorzec';
+import { EkranAnalizy, InformacjeAudytowe } from '../../wyniki/wzorzec';
 import type { WierszZalozenia } from '../../wyniki/wzorzec';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
@@ -113,12 +113,13 @@ function SzczegolWezla({
       <header className="mvd-rank-szczegol-naglowek">
         <h3 className="mvd-rank-szczegol-tytul">{RANKING_STRINGS.szczegolTytul}</h3>
         <span className="mvd-rank-szczegol-nazwa">{etykietaWezla(wezel)}</span>
-        {trybEkspercki && (
-          <span className="mvd-rank-szczegol-id" aria-label={RANKING_STRINGS.kolIdentyfikator}>
-            {wezel.bus_ref}
-          </span>
-        )}
       </header>
+      {/* Karta #145: identyfikator węzła wyłącznie w „Informacjach audytowych". */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-rank-szczegol-audyt"
+        wiersze={[{ etykieta: RANKING_STRINGS.kolIdentyfikator, wartosc: wezel.bus_ref }]}
+      />
 
       <dl className="mvd-rank-szczegol-lista">
         <dt>{RANKING_STRINGS.szczegolMoc}</dt>

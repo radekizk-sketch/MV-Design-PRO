@@ -248,13 +248,18 @@ describe('EkranKompensacji — tryb ekspercki i ślad', () => {
 
   it('tryb podstawowy ukrywa identyfikator wejścia (hash)', async () => {
     await uruchomBieg('basic');
-    expect(screen.queryByTestId('mvd-komp-eksp-hash')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-komp-informacje-audytowe')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-komp-wynik')).not.toHaveTextContent('a1b2c3d4e5f6');
   });
 
-  it('tryb ekspercki odsłania identyfikator wejścia i przebiegu', async () => {
+  it('tryb ekspercki: identyfikator wejścia i przebiegu wyłącznie w „Informacjach audytowych"', async () => {
     await uruchomBieg('expert');
-    expect(screen.getByTestId('mvd-komp-eksp-hash')).toHaveTextContent('a1b2c3d4e5f6');
-    expect(screen.getByTestId('mvd-komp-wynik')).toHaveTextContent('run-lf-1');
+    // Karta #145: zwinięte — pierwszy plan bez identyfikatorów.
+    expect(screen.getByTestId('mvd-komp-wynik')).not.toHaveTextContent('a1b2c3d4e5f6');
+    fireEvent.click(screen.getByTestId('mvd-komp-informacje-audytowe-przelacz'));
+    const lista = screen.getByTestId('mvd-komp-informacje-audytowe-lista');
+    expect(lista).toHaveTextContent('a1b2c3d4e5f6');
+    expect(lista).toHaveTextContent('run-lf-1');
   });
 
   it('formaty PL: cosφ z przecinkiem dziesiętnym (założenia + tabela)', async () => {

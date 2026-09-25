@@ -1074,9 +1074,14 @@ def test_cieplna_scena_ocena_ma_pozycje_z_realnym_pradem_i_dowod_na_niej() -> No
     assert len(items) >= 1
     najwiekszy = max(items, key=lambda p: (p["i_fault_a"], p["branch_id"]))
     assert najwiekszy["i_fault_a"] > 0.0, "co najmniej jedna galaz musi niesc realny prad zwarcia"
-    dowod = eksport.cieplna_scena_dowod()
-    assert dowod["branch_id"] == najwiekszy["branch_id"]
-    assert len(dowod["kroki"]) >= 1
+    dowody = eksport.cieplna_scena_dowody()["dowody"]
+    # Karta #145: dowód dla KAŻDEGO wiersza oceny (projektant klika dowolną gałąź) —
+    # ten sam kształt odpowiedzi co końcówka, nigdy odpowiedź oceny w miejscu dowodu.
+    assert sorted(dowody) == sorted(p["branch_id"] for p in items)
+    for branch_id, dowod in dowody.items():
+        assert dowod["branch_id"] == branch_id
+        assert isinstance(dowod["kroki"], list)
+    assert len(dowody[najwiekszy["branch_id"]]["kroki"]) >= 1
 
 
 def test_arcflash_scena_ma_energie_incydentu_realnie_policzona() -> None:

@@ -72,8 +72,9 @@ export const SKLADOWE_STRINGS = {
 
   // Sekcja uziemienia punktu neutralnego.
   uziemienieTytul: 'Sposób uziemienia punktu neutralnego',
-  uziemienieOpis: 'Konfiguracja uziemienia z ZAMROŻONEJ wersji układu tego przebiegu '
-    + '(pola `grounding` szyn i `hv_neutral`/`lv_neutral` transformatorów modelu).',
+  uziemienieOpis: 'Konfiguracja uziemienia z zamrożonej wersji układu tego przebiegu '
+    + '(sposób uziemienia szyn oraz punktów neutralnych górnego i dolnego napięcia '
+    + 'transformatorów modelu).',
   uziemieniePunktu: 'Uziemienie wybranego punktu (źródło na szynie)',
   uziemienieBrakPunktu: 'Model nie określa konfiguracji uziemienia dla szyny wybranego punktu.',
   uziemienieSiec: 'Punkty neutralne w sieci (źródła i transformatory)',

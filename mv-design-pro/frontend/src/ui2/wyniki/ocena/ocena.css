@@ -231,14 +231,12 @@
   border-left: 3px solid transparent;
 }
 .mvd-ocena-przedmiot-nazwa,
-.mvd-ocena-przedmiot-id,
 .mvd-ocena-uwaga {
   display: block;
 }
 .mvd-ocena-przedmiot-nazwa {
   font-weight: 600;
 }
-.mvd-ocena-przedmiot-id,
 .mvd-ocena-uwaga {
   color: var(--mvd-muted);
   font-size: 11px;

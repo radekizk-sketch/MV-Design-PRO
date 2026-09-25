@@ -18,7 +18,8 @@ import { useEffect, useMemo, useState } from 'react';
 import './odbior.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
-import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
+import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { EkranAnalizy, InformacjeAudytowe, useNazwaObiektu, usePoprawWModelu } from '../wzorzec';
 import { przebiegRozplywu } from '../jakosc';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
@@ -33,10 +34,12 @@ import {
 import {
   KLUCZ_WIERSZA_ZGODNOSCI,
   KOLUMNY_ZGODNOSCI,
+  OPCJA_ELEMENTU_SPOZA_MODELU,
   WIERSZ_EDYTORA_DOMYSLNY,
   kluczWierszaZgodnosci,
   naWierszeZgodnosci,
   naZalozeniaZgodnosci,
+  opcjeElementowPomiaru,
   wielkoscNaZacisku,
   zbudujZadanie,
   type TrybWejscia,
@@ -135,6 +138,7 @@ function SzczegolWiersza({
   trybZaawansowania: AdvancementMode;
 }) {
   const [sladWidoczny, setSladWidoczny] = useState(false);
+  const nazwaObiektu = useNazwaObiektu();
   if (!wiersz) {
     return (
       <section
@@ -158,7 +162,7 @@ function SzczegolWiersza({
     <section className="mvd-odbior-szczegol" data-testid="mvd-odbior-szczegol">
       <header className="mvd-odbior-szczegol-head">
         <h3 className="mvd-odbior-szczegol-tytul">
-          {wiersz.element_ref} · {wielkoscPL(wiersz.wielkosc)}
+          {nazwaObiektu(wiersz.element_ref)} · {wielkoscPL(wiersz.wielkosc)}
         </h3>
         <TagWerdyktu tekst={wiersz.werdykt} istotnosc={istotnoscWerdyktu(wiersz.werdykt)} />
       </header>
@@ -234,6 +238,7 @@ function WynikZgodnosci({
 }) {
   const [wybrany, setWybrany] = useState<string | null>(null);
   const poprawWModelu = usePoprawWModelu();
+  const nazwaObiektu = useNazwaObiektu();
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
   const wierszeSelektora = useMemo(
@@ -251,7 +256,7 @@ function WynikZgodnosci({
       ? ODBIOR_STRINGS.kreska
       : `${fmtProcent(p.najwieksza_odchylka_pct)} ${ODBIOR_STRINGS.jednProcent}`
         + (p.najwieksza_odchylka_element_ref
-          ? ` (${p.najwieksza_odchylka_element_ref}`
+          ? ` (${nazwaObiektu(p.najwieksza_odchylka_element_ref)}`
             + (p.najwieksza_odchylka_wielkosc ? ` · ${wielkoscPL(p.najwieksza_odchylka_wielkosc)}` : '')
             + ')'
           : '');
@@ -262,7 +267,7 @@ function WynikZgodnosci({
         naglowek={{ analizaPL: ODBIOR_STRINGS.tytul, runId, ...swiezosc }}
         zalozenia={naZalozeniaZgodnosci(dane)}
         kolumny={KOLUMNY_ZGODNOSCI}
-        wiersze={naWierszeZgodnosci(dane.wiersze)}
+        wiersze={naWierszeZgodnosci(dane.wiersze, nazwaObiektu)}
         // K3/C1: 2× klik na wartości z modelu → dowód przebiegu rozpływu
         // (ref = element_ref z kontraktu; odbiorca: zakładka „Dowód obliczeń").
         onOtworzDowod={onOtworzDowod}
@@ -275,7 +280,9 @@ function WynikZgodnosci({
           // Tylko napięcie (U) mapuje jednoznacznie na węzeł (Bus). Pomiar P/Q
           // nie niesie jednoznacznego typu elementu w kontrakcie → nie zgadujemy.
           // K1 / F-E6.3: pomiar U = przekroczenie rodzaju 'napiecie'.
-          if (w && w.wielkosc === 'U') poprawWModelu(w.element_ref, 'Bus', w.element_ref, 'napiecie');
+          if (w && w.wielkosc === 'U') {
+            poprawWModelu(w.element_ref, 'Bus', nazwaObiektu(w.element_ref), 'napiecie');
+          }
         }}
         wierszDecyzyjny={(klucz) => wierszeSelektora.get(klucz)?.wielkosc === 'U'}
       />
@@ -306,14 +313,11 @@ function WynikZgodnosci({
 
       <SzczegolWiersza wiersz={wybranyWiersz} trybZaawansowania={trybZaawansowania} />
 
-      {trybZaawansowania === 'expert' && (
-        <dl className="mvd-odbior-eksp" data-testid="mvd-odbior-eksp">
-          <div className="mvd-odbior-eksp-para">
-            <dt>{ODBIOR_STRINGS.ekspHash}</dt>
-            <dd className="mvd-num">{dane.input_hash}</dd>
-          </div>
-        </dl>
-      )}
+      <InformacjeAudytowe
+        trybEkspercki={trybZaawansowania === 'expert'}
+        testid="mvd-odbior-eksp"
+        wiersze={[{ etykieta: ODBIOR_STRINGS.ekspHash, wartosc: dane.input_hash }]}
+      />
     </div>
   );
 }
@@ -412,6 +416,8 @@ function Formularz({
   tolMoc,
   onTolMoc,
 }: FormularzProps) {
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const nazwaObiektu = useNazwaObiektu();
   return (
     <div className="mvd-odbior-formularz">
       <section className="mvd-odbior-sekcja">
@@ -460,20 +466,52 @@ function Formularz({
               <div key={i} className="mvd-odbior-wiersz" data-testid="mvd-odbior-wiersz">
                 <div className="mvd-odbior-pole">
                   <label htmlFor={`mvd-odbior-element-${i}`}>{ODBIOR_STRINGS.edytorElement}</label>
-                  <input
+                  <select
                     id={`mvd-odbior-element-${i}`}
-                    type="text"
-                    value={w.element_ref}
+                    value={w.spozaModelu ? OPCJA_ELEMENTU_SPOZA_MODELU : w.element_ref}
                     // Zmiana elementu kasuje wskazany zacisk — dotyczył poprzedniej gałęzi.
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const spozaModelu = e.target.value === OPCJA_ELEMENTU_SPOZA_MODELU;
+                      const element_ref = spozaModelu ? '' : e.target.value;
                       onWiersze((poprz) =>
                         poprz.map((x, j) =>
-                          j === i ? { ...x, element_ref: e.target.value, zacisk: null } : x,
+                          j === i ? { ...x, element_ref, spozaModelu, zacisk: null } : x,
                         ),
-                      )
-                    }
+                      );
+                    }}
                     data-testid={`mvd-odbior-element-${i}`}
-                  />
+                  >
+                    <option value="">{ODBIOR_STRINGS.edytorElementWybierz}</option>
+                    {opcjeElementowPomiaru(
+                      snapshot,
+                      w.wielkosc,
+                      nazwaObiektu,
+                      w.spozaModelu ? '' : w.element_ref,
+                    ).map((o) => (
+                      <option key={o.ref} value={o.ref}>
+                        {o.nazwa}
+                      </option>
+                    ))}
+                    <option value={OPCJA_ELEMENTU_SPOZA_MODELU}>
+                      {ODBIOR_STRINGS.edytorElementSpozaModelu}
+                    </option>
+                  </select>
+                  {w.spozaModelu && (
+                    <input
+                      type="text"
+                      aria-label={ODBIOR_STRINGS.edytorElementProtokol}
+                      placeholder={ODBIOR_STRINGS.edytorElementProtokol}
+                      value={w.element_ref}
+                      onChange={(e) =>
+                        onWiersze((poprz) =>
+                          poprz.map((x, j) =>
+                            j === i ? { ...x, element_ref: e.target.value, zacisk: null } : x,
+                          ),
+                        )
+                      }
+                      data-testid={`mvd-odbior-element-protokol-${i}`}
+                    />
+                  )}
                 </div>
                 <div className="mvd-odbior-pole">
                   <label htmlFor={`mvd-odbior-wielkosc-${i}`}>{ODBIOR_STRINGS.edytorWielkosc}</label>
@@ -710,12 +748,14 @@ export function EkranOdbioru({ trybZaawansowania, onOtworzDowod }: EkranOdbioruP
       <header className="mvd-odbior-naglowek">
         <h2 className="mvd-odbior-tytul">{ODBIOR_STRINGS.tytul}</h2>
         <p className="mvd-odbior-opis">{ODBIOR_STRINGS.opisWstep}</p>
-        {trybEkspercki && (
-          <span className="mvd-odbior-run mvd-num" aria-label={ODBIOR_STRINGS.przebiegRunId}>
-            {przebieg.id}
-          </span>
-        )}
       </header>
+
+      {/* Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych". */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-odbior-przebieg-informacje-audytowe"
+        wiersze={[{ etykieta: ODBIOR_STRINGS.przebiegRunId, wartosc: przebieg.id }]}
+      />
 
       <Formularz
         zaciski={zaciski}

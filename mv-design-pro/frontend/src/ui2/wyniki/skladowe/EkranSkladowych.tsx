@@ -316,13 +316,13 @@ export function EkranSkladowych() {
                   </div>
                   <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-raport-dowod">
                     <dt>{T.raportUzasadnienie}</dt>
-                    <dd>{wierszAktywny.proof_status_pl ?? wierszAktywny.proof_status ?? T.kreska}</dd>
+                    <dd>{wierszAktywny.proof_status_pl ?? T.kreska}</dd>
                   </div>
                   <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-raport-ograniczenia">
                     <dt>{T.raportOgraniczenia}</dt>
                     <dd>
-                      {(wierszAktywny.reporting_limitations ?? []).length > 0
-                        ? (wierszAktywny.reporting_limitations ?? []).join(', ')
+                      {(wierszAktywny.reporting_limitations_pl ?? []).length > 0
+                        ? (wierszAktywny.reporting_limitations_pl ?? []).join(' ')
                         : T.raportBrakOgraniczen}
                     </dd>
                   </div>

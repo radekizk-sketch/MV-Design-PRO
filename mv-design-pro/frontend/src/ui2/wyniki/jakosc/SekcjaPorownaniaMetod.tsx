@@ -37,6 +37,7 @@ import {
   TabelaWynikow,
   useAkcjaPrzejdzDoPrzypadkow,
   useAkcjaUruchomObliczenie,
+  useNazwaObiektu,
 } from '../wzorzec';
 import {
   KOLUMNY_DELTA_SZYN,
@@ -98,6 +99,7 @@ export function SekcjaPorownaniaMetod({ trybZaawansowania, onOtworzDowod }: Sekc
   const kluczKandydatow = kandydaci.map((r) => r.id).join(',');
 
   const [stan, setStan] = useState<StanOdkrycia>({ faza: 'ladowanie' });
+  const nazwaObiektu = useNazwaObiektu();
 
   useEffect(() => {
     let anulowane = false;
@@ -225,7 +227,7 @@ export function SekcjaPorownaniaMetod({ trybZaawansowania, onOtworzDowod }: Sekc
           </div>
           <TabelaWynikow
             kolumny={KOLUMNY_DELTA_SZYN}
-            wiersze={naWierszeDeltaSzyn(stan.porownanie.bus_diffs)}
+            wiersze={naWierszeDeltaSzyn(stan.porownanie.bus_diffs, nazwaObiektu)}
             onOtworzDowod={onOtworzDowod}
             trybZaawansowania={trybZaawansowania}
             kluczWiersza="szyna"

@@ -41,11 +41,6 @@
   flex: 1;
   min-width: 0;
 }
-.mvd-wyn-run {
-  color: var(--mvd-muted);
-  font-size: 11px;
-  white-space: nowrap;
-}
 .mvd-wyn-akcje {
   display: flex;
   gap: 8px;
@@ -129,6 +124,13 @@
 }
 .mvd-wyn-zalozenie-wartosc {
   white-space: nowrap;
+}
+/* Założenie-zdanie (karta #145): tekst czytany jak zdanie — do lewej, zwykła czcionka. */
+.mvd-wyn-zalozenie--zdanie {
+  display: block;
+  margin: 0;
+  color: var(--mvd-ink);
+  line-height: 1.5;
 }
 .mvd-wyn-zalozenia-brak {
   margin: 0;

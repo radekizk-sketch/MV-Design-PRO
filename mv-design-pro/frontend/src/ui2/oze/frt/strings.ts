@@ -3,10 +3,13 @@
  * (trajektorie FRT/HVRT, karta U4 P38 / strumień OZE). Wyłącznie polski język
  * techniczny (MODEL_INTERAKCJI §2.7); zero literałów UI w JSX. Formatery CZYSTE
  * (wejście→wyjście), bez `Date.now`/losowości (Determinism Rule) — przecinek
- * dziesiętny wg konwencji PL. Identyfikatory (der_ref, operator_id) tylko w trybie
- * eksperckim; nazwy PL na pierwszym planie. Nazwy sufiksowane `Frt`, bo barrel OZE
- * robi `export *` (kolizje nazw TS2308).
+ * dziesiętny wg konwencji PL. Identyfikatory (typ przekształtnika, operator, klucz
+ * scenariusza, odcisk wejścia) wyłącznie w „Informacjach audytowych"; nazwy PL na
+ * pierwszym planie. Nazwy sufiksowane `Frt`, bo barrel OZE robi `export *` (kolizje
+ * nazw TS2308).
  */
+
+import type { StatusSolveraFrt } from '../api';
 
 export const FRT_STRINGS = {
   // Nagłówek okna
@@ -114,7 +117,7 @@ export const FRT_STRINGS = {
     'Trajektorii FRT/HVRT nie da się policzyć — modułowi brakuje danych do zbudowania '
     + 'modelu dynamicznego. Uzupełnij dane wskazane niżej i uruchom bieg ponownie.',
 
-  // Tryb ekspercki
+  // Informacje audytowe (tryb ekspercki)
   ekspModulId: 'Identyfikator typu przekształtnika',
   ekspOperatorId: 'Identyfikator operatora',
   ekspScenariuszId: 'Identyfikator scenariusza',
@@ -152,7 +155,7 @@ export const FRT_STRINGS = {
   sekwKontekstScr: 'Wskaźnik zwarciowy SCR',
   sekwKontekstMocZwarciowa: 'Moc zwarciowa Sk″',
   sekwKontekstMocZainstalowana: 'Moc zainstalowana źródeł',
-  sekwKontekstWezel: 'Węzeł przyłączenia',
+  sekwKontekstWezel: 'Szyna przyłączenia',
   sekwKontekstWerdykt: 'Ocena siły sieci',
   sekwKontekstSladTytul: 'Ślad obliczeń (pełna jawność)',
   sekwKontekstSladPokaz: 'Pokaż ślad obliczeń',
@@ -163,30 +166,34 @@ export const FRT_STRINGS = {
   // Opcjonalny dobór kontekstu siły sieci (przebieg zwarciowy + węzeł)
   sekwKontekstDoborTytul: 'Kontekst siły sieci (opcjonalny)',
   sekwKontekstDoborOpis:
-    'Wskaż zakończony przebieg zwarciowy i węzeł przyłączenia, aby dołączyć do wyniku '
-    + 'kontekst siły sieci (SCR / moc zwarciowa Sk″). Bez wyboru sekwencja liczona jest jak dotąd.',
+    'Wskaż zakończone obliczenie zwarciowe i szynę przyłączenia modułu, aby dołączyć do '
+    + 'wyniku kontekst siły sieci (SCR / moc zwarciowa Sk″). Bez wyboru sekwencja jest '
+    + 'liczona bez tego kontekstu.',
   sekwKontekstRunEtykieta: 'Przebieg zwarciowy',
   sekwKontekstRunPusty: 'Bez kontekstu siły sieci',
   sekwKontekstRunBrak: 'Brak zakończonych przebiegów zwarciowych w tym projekcie.',
-  sekwKontekstBusEtykieta: 'Węzeł przyłączenia',
-  sekwKontekstBusOpis: 'Referencja szyny przyłączenia z wybranego przebiegu zwarciowego.',
-  sekwKontekstBusPlaceholder: 'np. SZYNA-GPZ',
+  sekwKontekstBusEtykieta: 'Szyna przyłączenia',
+  sekwKontekstBusOpis:
+    'Szyna modelu, do której przyłączony jest moduł — dla niej odczytywana jest moc '
+    + 'zwarciowa z wybranego obliczenia.',
+  sekwKontekstBusWybierz: '— wybierz szynę —',
+  sekwKontekstBusBrak: 'Model nie ma jeszcze szyn — kontekst siły sieci niedostępny.',
 } as const;
 
+/**
+ * Etykiety PL statusu solvera FRT/HVRT — mapa TYPOWANA unią kontraktu: nowy status
+ * w `StatusSolveraFrt` nie skompiluje się bez polskiej etykiety (kod nie wraca na ekran).
+ */
+const ETYKIETY_STATUSU_FRT: Readonly<Record<StatusSolveraFrt, string>> = {
+  ok: FRT_STRINGS.statusOk,
+  der_dropped: FRT_STRINGS.statusDerDropped,
+  blocked: FRT_STRINGS.statusBlocked,
+  input_invalid: FRT_STRINGS.statusInputInvalid,
+};
+
 /** Etykieta PL statusu solvera FRT/HVRT. */
-export function etykietaStatusuFrt(status: string): string {
-  switch (status) {
-    case 'ok':
-      return FRT_STRINGS.statusOk;
-    case 'der_dropped':
-      return FRT_STRINGS.statusDerDropped;
-    case 'blocked':
-      return FRT_STRINGS.statusBlocked;
-    case 'input_invalid':
-      return FRT_STRINGS.statusInputInvalid;
-    default:
-      return status;
-  }
+export function etykietaStatusuFrt(status: StatusSolveraFrt): string {
+  return ETYKIETY_STATUSU_FRT[status];
 }
 
 // ---------------------------------------------------------------------------

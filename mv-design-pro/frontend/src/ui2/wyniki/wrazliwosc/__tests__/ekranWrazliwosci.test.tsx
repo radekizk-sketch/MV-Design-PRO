@@ -194,11 +194,11 @@ describe('EkranWrazliwosci — wynik', () => {
     expect(screen.queryByText('wezel-a')).toBeNull();
   });
 
-  it('tryb ekspercki pokazuje identyfikator węzła', async () => {
+  it('identyfikator węzła nie jest kolumną tabeli w żadnym trybie (karta #145)', async () => {
     mockFetchTrasowany(ODPOWIEDZ);
     useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: null });
     render(<EkranWrazliwosci trybZaawansowania="expert" />);
     await waitFor(() => expect(screen.getByTestId('mvd-wrazliwosc-lf')).toBeTruthy());
-    expect(screen.getAllByText('wezel-a').length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('wezel-a')).toHaveLength(0);
   });
 });

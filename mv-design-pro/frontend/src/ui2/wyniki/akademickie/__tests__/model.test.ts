@@ -12,17 +12,21 @@
  * krótka tablica × długa tablica, mało pól × dużo pól.
  */
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { at } from '../../../../test/arrayAt';
 
 import {
+  ETYKIETY_METRYK_RAPORTU,
+  POLITYKI_EKSPORTU_RAPORTU,
   krokiDowoduDoWidoku,
   krokiSladuDoWidoku,
-  licznikMetrykRaportu,
-  pogrupujWynik,
-  sekcjeRaportuDoWidoku,
+  liczbaKrokowSladuRaportu,
   splaszczWynik,
+  wierszeAudytoweRaportu,
 } from '../model';
 import type { KrokDowodu, KrokSladu, RaportAnalizy } from '../api';
 
@@ -109,25 +113,6 @@ describe('splaszczWynik — pełne spłaszczenie (limit z danych, nie ze stałej
   });
 });
 
-describe('pogrupujWynik — układ widoku bez utraty wierszy', () => {
-  it('suma liczności grup równa się liczbie wierszy', () => {
-    const wiersze = splaszczWynik({
-      a: { x: 1, y: 2 },
-      b: [1, 2, 3],
-      c: 7,
-    });
-    const grupy = pogrupujWynik(wiersze);
-    const suma = grupy.reduce((n, g) => n + g.wiersze.length, 0);
-    expect(suma).toBe(wiersze.length);
-    expect(grupy.map((g) => g.klucz)).toEqual(['a', 'b', 'c']);
-  });
-
-  it('kolejność grup deterministyczna — wg pierwszego wystąpienia', () => {
-    const wiersze = splaszczWynik({ zeta: 1, alfa: { p: 2 }, beta: 3 });
-    expect(pogrupujWynik(wiersze).map((g) => g.klucz)).toEqual(['zeta', 'alfa', 'beta']);
-  });
-});
-
 describe('ślad / dowód / raport — bez limitu po stronie okna', () => {
   function krokSladu(n: number): KrokSladu {
     return {
@@ -168,9 +153,12 @@ describe('ślad / dowód / raport — bez limitu po stronie okna', () => {
     expect(krokiDowoduDoWidoku(kroki)).toHaveLength(17);
   });
 
-  it('raport z więcej niż 3 sekcjami przechodzi w całości (próg 3 zastanej)', () => {
+  // Zmiana kanonu (karta #145, `AcademicReportV2`): raport niesie tożsamość dowodu i audyt
+  // deterministyczny. Intencja „bez limitu po stronie okna" zostaje: KAŻDA metryka KAŻDEJ
+  // sekcji staje się wierszem „Informacji audytowych" (liczba wierszy = 2 + liczba metryk).
+  it('raport: każda metryka każdej sekcji trafia do informacji audytowych, bez ucinania', () => {
     const raport: RaportAnalizy = {
-      contract: 'AcademicReportV1',
+      contract: 'AcademicReportV2',
       report_id: 'report:v126:test:abc',
       run_id: 'run',
       case_id: 'case',
@@ -178,17 +166,53 @@ describe('ślad / dowód / raport — bez limitu po stronie okna', () => {
       source_result_hash: 'h1',
       source_proof_hash: 'h2',
       export_policy: 'frozen_result_and_proof_only',
-      sections: Array.from({ length: 7 }, (_, i) => ({
-        section_id: `sekcja_${i}`,
-        title: `Sekcja ${i}`,
-        metrics: [
-          { label: 'a', value: i },
-          { label: 'b', value: i * 2 },
-        ],
-      })),
+      sections: [
+        {
+          section_id: 'dowod',
+          title: 'Dowód obliczeń',
+          metrics: [
+            { label: 'proof_id', value: 'proof:x' },
+            { label: 'proof_hash', value: 'h2' },
+            { label: 'trace_step_count', value: 25 },
+          ],
+        },
+        {
+          section_id: 'audyt',
+          title: 'Audyt deterministyczny',
+          metrics: [
+            { label: 'result_hash', value: 'h1' },
+            { label: 'solver_version', value: 'v1' },
+            { label: 'input_hash', value: null },
+          ],
+        },
+      ],
       report_hash: 'h3',
     };
-    expect(sekcjeRaportuDoWidoku(raport)).toHaveLength(7);
-    expect(licznikMetrykRaportu(raport)).toBe(14);
+    const wiersze = wierszeAudytoweRaportu(raport);
+    expect(wiersze).toHaveLength(2 + 6);
+    wiersze.forEach((wiersz) => expect(wiersz.etykieta).not.toMatch(/\b[a-z]+_[a-z_]+\b/));
+    expect(liczbaKrokowSladuRaportu(raport)).toBe(25);
+    expect(liczbaKrokowSladuRaportu({ ...raport, sections: [] })).toBeNull();
+  });
+});
+
+/**
+ * Parytet słowników raportu z KODEM backendu (`application/v126_artifacts.py`): każdy
+ * stały klucz metryki raportu i polityka eksportu mają polską etykietę — i odwrotnie.
+ */
+describe('słowniki raportu V12.6 — parytet z budowniczym raportu backendu', () => {
+  const ZRODLO = readFileSync(
+    join(process.cwd(), '..', 'backend', 'src', 'application', 'v126_artifacts.py'),
+    'utf-8',
+  );
+
+  it('klucze metryk raportu = etykiety ETYKIETY_METRYK_RAPORTU', () => {
+    const klucze = new Set([...ZRODLO.matchAll(/\{"label": "([a-z_]+)"/g)].map((m) => m[1]));
+    expect([...klucze].sort()).toEqual(Object.keys(ETYKIETY_METRYK_RAPORTU).sort());
+  });
+
+  it('polityka eksportu raportu = POLITYKI_EKSPORTU_RAPORTU', () => {
+    const polityki = new Set([...ZRODLO.matchAll(/"export_policy": "([a-z_]+)"/g)].map((m) => m[1]));
+    expect([...polityki].sort()).toEqual(Object.keys(POLITYKI_EKSPORTU_RAPORTU).sort());
   });
 });

@@ -11,8 +11,10 @@
  * edytor prezentuje z przecinkiem PL.
  */
 
+import type { EnergyNetworkModel } from '../../../types/enm';
 import type {
   DefinicjaKolumny,
+  NazwaObiektu,
   WartoscKomorki,
   WierszTabeli,
   WierszZalozenia,
@@ -51,7 +53,16 @@ export interface WierszEdytora {
    * szyn z backendu), BEZ wartości domyślnej. Dotyczy wyłącznie P/Q.
    */
   readonly zacisk: ZaciskPomiaru | null;
+  /**
+   * Pomiar elementu, którego NIE MA w modelu (karta #145): projektant wpisuje oznaczenie
+   * z protokołu pomiarów zamiast wybierać element z listy modelu — raport nazwie go
+   * „brak odpowiednika w modelu". Brak pola = element wybrany z modelu.
+   */
+  readonly spozaModelu?: boolean;
 }
+
+/** Wartość opcji listy elementów „element spoza modelu" (nie koliduje z referencją). */
+export const OPCJA_ELEMENTU_SPOZA_MODELU = 'mvd:spoza-modelu';
 
 /** Domyślny (pusty) wiersz edytora. */
 export const WIERSZ_EDYTORA_DOMYSLNY: WierszEdytora = {
@@ -101,7 +112,7 @@ function serializujWiersze(
     const numer = i + 1;
     const element = w.element_ref.trim();
     if (element === '') {
-      bledy.push(`Wiersz ${numer}: brak identyfikatora elementu (element_ref).`);
+      bledy.push(`Wiersz ${numer}: wskaż element modelu, którego dotyczy pomiar.`);
       return;
     }
     const wartosc = parsujLiczbaPL(w.wartosc);
@@ -271,10 +282,11 @@ function komorkaLiczba(
  * rozpływu — ref = `element_ref` z kontraktu. Pomiar i tolerancje to WEJŚCIA
  * użytkownika (bez dowodu); odchyłki i werdykt wywodzi backend w `slad_pl`
  * renderowanym NA MIEJSCU w wierszu (tryb zaawansowany) — bez ref. */
-export function mapujWierszZgodnosci(w: WierszZgodnosci): WierszTabeli {
+export function mapujWierszZgodnosci(w: WierszZgodnosci, nazwa: NazwaObiektu): WierszTabeli {
   const poza = w.werdykt === 'poza tolerancją';
   return {
-    element: { wartosc: w.element_ref },
+    // Karta #145: element nazwany mostem nazw wyników; referencja zostaje w kluczu i dowodzie.
+    element: { wartosc: nazwa(w.element_ref) },
     wielkosc: { wartosc: wielkoscPL(w.wielkosc) },
     miejsce: { wartosc: w.miejsce_pomiaru_pl ?? ODBIOR_STRINGS.kreska },
     pomiar: komorkaLiczba(w.wartosc_pomiar, fmtWartosc, { jednostka: w.jednostka }),
@@ -294,8 +306,47 @@ export function mapujWierszZgodnosci(w: WierszZgodnosci): WierszTabeli {
 }
 
 /** Mapuje wiersze raportu na wiersze tabeli wzorca (kolejność źródłowa z backendu). */
-export function naWierszeZgodnosci(wiersze: readonly WierszZgodnosci[]): WierszTabeli[] {
-  return wiersze.map(mapujWierszZgodnosci);
+export function naWierszeZgodnosci(
+  wiersze: readonly WierszZgodnosci[],
+  nazwa: NazwaObiektu,
+): WierszTabeli[] {
+  return wiersze.map((w) => mapujWierszZgodnosci(w, nazwa));
+}
+
+/** Opcja doboru elementu pomiaru — nazwa z modelu, referencja wyłącznie jako wartość. */
+export interface OpcjaElementuPomiaru {
+  readonly ref: string;
+  readonly nazwa: string;
+}
+
+/**
+ * Elementy modelu, których może dotyczyć pomiar danej wielkości (karta #145: projektant
+ * wybiera element z listy po nazwie, zamiast wpisywać referencję). Napięcie mierzy się
+ * w węźle (szyny), moc — na zacisku gałęzi (linie, kable, łączniki i transformatory).
+ * Element już wybrany (`biezacy`), który nie pasuje do wielkości (np. po zmianie wielkości
+ * z P na U), zostaje na liście — wybór projektanta nie znika po cichu; niezgodność typu
+ * elementu i wielkości nazywa backend w raporcie.
+ * Deterministycznie: sortowanie po nazwie, remis po referencji.
+ */
+export function opcjeElementowPomiaru(
+  snapshot: EnergyNetworkModel | null,
+  wielkosc: WielkoscPomiaru,
+  nazwa: NazwaObiektu,
+  biezacy = '',
+): OpcjaElementuPomiaru[] {
+  const refy =
+    snapshot === null
+      ? []
+      : wielkosc === 'U'
+        ? (snapshot.buses ?? []).map((b) => b.ref_id)
+        : [
+            ...(snapshot.branches ?? []).map((b) => b.ref_id),
+            ...(snapshot.transformers ?? []).map((t) => t.ref_id),
+          ];
+  if (biezacy !== '' && !refy.includes(biezacy)) refy.push(biezacy);
+  return refy
+    .map((ref) => ({ ref, nazwa: nazwa(ref) }))
+    .sort((a, b) => a.nazwa.localeCompare(b.nazwa, 'pl') || a.ref.localeCompare(b.ref));
 }
 
 /** Buduje sekcję ZAŁOŻENIA z listy `zalozenia_pl` backendu (zawsze widoczna). */

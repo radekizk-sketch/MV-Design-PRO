@@ -18,6 +18,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { useAppStateStore } from '../../app-state/store';
 import { useNotificationStore } from '../../notifications/store';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
+import { useSnapshotStore } from '../../topology/snapshotStore';
 import { ProtectionCoordinationPage } from '../ProtectionCoordinationPage';
 import type { CoordinationResult } from '../types';
 import { LABELS } from '../types';
@@ -511,13 +512,18 @@ describe('ProtectionCoordinationPage — nastawy trwają w konfiguracji przypadk
       overrides: { 'coordination_device:dev-serwer': URZADZENIE_Z_SERWERA },
     });
 
+    // Migawka modelu powłoki — ten sam most nazw co schemat nazywa miejsce urządzenia.
+    useSnapshotStore.setState({ snapshot: MIGAWKA } as never);
     render(<ProtectionCoordinationPage />);
 
     expect(await screen.findByText('Zabezpieczenie z przypadku')).toBeInTheDocument();
     expect(getConfig).toHaveBeenCalledWith('case-1');
     // Lokalizacja z serwera, nie „lokalizacja niewskazana".
     const wierszLokalizacji = screen.getByTestId('device-location-dev-serwer');
-    expect(wierszLokalizacji.textContent).toContain('bus_2');
+    // Karta #145: miejsce nazwane nazwą elementu z modelu, nie referencją.
+    expect(wierszLokalizacji.textContent).toContain('Szyna 2');
+    expect(wierszLokalizacji.textContent).not.toContain('bus_2');
+    useSnapshotStore.setState({ snapshot: null } as never);
   });
 
   it('zapis w edytorze wykonuje PUT z nadpisaniami kluczowanymi per urządzenie', async () => {

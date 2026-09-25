@@ -186,9 +186,10 @@ describe('EkranRankingu — tryb ekspercki (identyfikatory)', () => {
     expect(screen.queryByTestId('mvd-wyn-run-id')).not.toBeInTheDocument();
   });
 
-  it('tryb ekspercki odsłania kolumnę identyfikatora i identyfikator przebiegu', async () => {
+  it('tryb ekspercki: identyfikator przebiegu w „Informacjach audytowych", bez kolumny identyfikatora', async () => {
     await zbudujRanking('expert');
-    expect(screen.getByTestId('mvd-wyn-th-identyfikator')).toBeInTheDocument();
+    // Karta #145: identyfikator węzła nie jest kolumną tabeli w żadnym trybie.
+    expect(screen.queryByTestId('mvd-wyn-th-identyfikator')).not.toBeInTheDocument();
     // Intencja BEZ ZMIAN: w trybie eksperckim widać identyfikator przebiegu.
     // Zmieniło się ŹRÓDŁO (V12K-265): dawniej `context.trace_id` z odpowiedzi
     // (fixture: 'run-lf-1'), dziś ten sam identyfikator, którym pytaliśmy o wynik
@@ -196,6 +197,8 @@ describe('EkranRankingu — tryb ekspercki (identyfikatory)', () => {
     // odpowiedzi kłamie — niesie `str(run.id)`, a nie skrót treści śladu — więc
     // ekran nie może na niej stać. Zgodność nagłówka z zapytaniem jest tu
     // mocniejszą asercją niż poprzednia.
-    expect(screen.getByTestId('mvd-wyn-run-id')).toHaveTextContent('lf-run');
+    // Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych" (zwinięte).
+    fireEvent.click(screen.getByTestId('mvd-wyn-informacje-audytowe-przelacz'));
+    expect(screen.getByTestId('mvd-wyn-informacje-audytowe-lista')).toHaveTextContent('lf-run');
   });
 });

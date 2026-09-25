@@ -420,7 +420,15 @@ def get_v126_proof(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, A
     # tym wzbogaceniem) zostaje bajtowo identyczny.
     steps = proof.get("steps")
     if isinstance(steps, list):
-        proof = {**proof, "steps": wzbogac_kroki_latex(steps)}
+        # Karta #145: krok dowodu nie niesie `key` — klucz rejestru wzorów
+        # odczytujemy ze śladu TEGO biegu po wspólnym `proof_ref`.
+        slad = run["result"].get("white_box_trace") or []
+        klucze = {
+            str(krok["proof_ref"]): str(krok["key"])
+            for krok in slad
+            if isinstance(krok, dict) and krok.get("proof_ref") and krok.get("key")
+        }
+        proof = {**proof, "steps": wzbogac_kroki_latex(steps, klucze)}
     # Karta W3-E: `wycofany` addytywnie obok pakietu dowodowego — pakiet sam w
     # sobie zostaje NIETKNIĘTY (FROZEN, kroki z `white_box_trace` solvera).
     wycofanie = _wycofanie_v126(analysis_type)
@@ -433,8 +441,8 @@ def get_v126_proof(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, A
 def get_v126_report(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any]:
     run = _require_run(run_id, analysis_type)
     report: dict[str, Any] = run["report"]
-    # Karta W3-E: `wycofany` addytywnie obok raportu — raport sam w sobie
-    # zostaje NIETKNIĘTY (FROZEN, sekcje z wyniku solvera).
+    # Karta W3-E: `wycofany` addytywnie obok raportu — artefakt raportu (kontrakt
+    # `AcademicReportV2`: tożsamość dowodu i audyt deterministyczny) zostaje nietknięty.
     wycofanie = _wycofanie_v126(analysis_type)
     if wycofanie is not None:
         report = {**report, "wycofany": wycofanie}

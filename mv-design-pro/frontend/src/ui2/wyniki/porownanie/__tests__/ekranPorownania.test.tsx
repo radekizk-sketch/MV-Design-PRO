@@ -87,7 +87,7 @@ describe('EkranPorownania — lista przebiegów i stany', () => {
   it('selektory renderują przebiegi po polsku (data + zbieżność)', async () => {
     render(<EkranPorownania {...props()} />);
     const selA = await screen.findByTestId('mvd-por-select-a');
-    expect(within(selA).getByRole('option', { name: /Rozpływ mocy · rew\. 1 · snap-a · 2026-07-10 08:15 · Zbieżny/ })).toBeInTheDocument();
+    expect(within(selA).getByRole('option', { name: /Rozpływ mocy · rew\. 1 · 2026-07-10 08:15 · Zbieżny/ })).toBeInTheDocument();
     expect(within(selA).getByRole('option', { name: /Niezbieżny/ })).toBeInTheDocument();
   });
 
@@ -104,18 +104,18 @@ describe('EkranPorownania — lista przebiegów i stany', () => {
     render(<EkranPorownania {...props()} />);
     const selA = await screen.findByTestId('mvd-por-select-a');
     expect(
-      within(selA).getByRole('option', { name: /Rozpływ mocy · rew\. 1 · snap-a · 2026-07-10 08:15 · Zbieżny/ }),
+      within(selA).getByRole('option', { name: /Rozpływ mocy · rew\. 1 · 2026-07-10 08:15 · Zbieżny/ }),
     ).toBeInTheDocument();
     expect(within(selA).queryByRole('option', { name: /Wariant letni/ })).not.toBeInTheDocument();
   });
 
-  it('etykieta przebiegu ujawnia identyfikatory tylko w trybie eksperckim', async () => {
+  it('etykieta przebiegu nie ujawnia identyfikatorów ani odcisku w żadnym trybie (karta #145)', async () => {
     const { rerender } = render(<EkranPorownania {...props({ trybZaawansowania: 'basic' })} />);
     let selA = await screen.findByTestId('mvd-por-select-a');
-    expect(within(selA).queryByRole('option', { name: /run-a/ })).not.toBeInTheDocument();
+    expect(within(selA).queryByRole('option', { name: /run-a|case-1|snap-a/ })).not.toBeInTheDocument();
     rerender(<EkranPorownania {...props({ trybZaawansowania: 'expert' })} />);
     selA = await screen.findByTestId('mvd-por-select-a');
-    expect(within(selA).getByRole('option', { name: /run-a/ })).toBeInTheDocument();
+    expect(within(selA).queryByRole('option', { name: /run-a|case-1|snap-a/ })).not.toBeInTheDocument();
   });
 });
 
@@ -243,31 +243,27 @@ describe('EkranPorownania — prezentacja wyniku backendu', () => {
     );
   });
 
-  it('identyfikator porównania widoczny wyłącznie w trybie eksperckim', async () => {
+  // Karta #145: identyfikator porównania i proweniencja obu biegów (rodzaj, status,
+  // rewizja, odciski) to metadane produkcyjne — WYŁĄCZNIE w „Informacjach audytowych"
+  // (tryb ekspercki, zwinięte), nigdy w nagłówku ani w panelu pierwszego planu.
+  it('identyfikator porównania i proweniencja A/B wyłącznie w „Informacjach audytowych"', async () => {
     const { rerender } = render(<EkranPorownania {...props({ trybZaawansowania: 'basic' })} />);
     await wykonajPorownanie();
-    expect(screen.queryByTestId('mvd-por-id')).not.toBeInTheDocument();
-    rerender(<EkranPorownania {...props({ trybZaawansowania: 'expert' })} />);
-    expect(screen.getByTestId('mvd-por-id')).toHaveTextContent('cmp-001');
-  });
-
-  // B1/B5 (karta CV-3.3-B): dowód CO było porównywane — proweniencja obu
-  // biegów R1 (rodzaj, status, rewizja, odciski), wyłącznie tryb ekspercki
-  // (te same surowe identyfikatory techniczne co `comparison_id` powyżej).
-  it('proweniencja biegów A/B widoczna wyłącznie w trybie eksperckim', async () => {
-    const { rerender } = render(<EkranPorownania {...props({ trybZaawansowania: 'basic' })} />);
-    await wykonajPorownanie();
-    expect(screen.queryByTestId('mvd-por-proweniencja')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-por-informacje-audytowe')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-por-wynik')).not.toHaveTextContent('cmp-001');
 
     rerender(<EkranPorownania {...props({ trybZaawansowania: 'expert' })} />);
-    const panele = screen.getAllByTestId('mvd-por-proweniencja-panel');
-    expect(panele).toHaveLength(2);
-    expect(panele[0]).toHaveTextContent(POROWNANIE_STRINGS.proweniencjaA);
-    expect(panele[0]).toHaveTextContent('snap-a');
-    expect(panele[0]).toHaveTextContent('rew. 1');
-    expect(panele[1]).toHaveTextContent(POROWNANIE_STRINGS.proweniencjaB);
-    expect(panele[1]).toHaveTextContent('snap-b');
-    expect(panele[1]).toHaveTextContent('rew. 2');
+    // Zwinięte domyślnie: pierwszy plan nadal bez identyfikatora i odcisków.
+    expect(screen.getByTestId('mvd-por-wynik')).not.toHaveTextContent('cmp-001');
+    expect(screen.getByTestId('mvd-por-wynik')).not.toHaveTextContent('snap-a');
+    fireEvent.click(screen.getByTestId('mvd-por-informacje-audytowe-przelacz'));
+    const lista = screen.getByTestId('mvd-por-informacje-audytowe-lista');
+    expect(lista).toHaveTextContent('cmp-001');
+    expect(lista).toHaveTextContent(`${POROWNANIE_STRINGS.proweniencjaA} — odcisk migawki modelu`);
+    expect(lista).toHaveTextContent('snap-a');
+    expect(lista).toHaveTextContent('rew. 1');
+    expect(lista).toHaveTextContent('snap-b');
+    expect(lista).toHaveTextContent('rew. 2');
   });
 });
 

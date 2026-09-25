@@ -61,6 +61,7 @@ KOLEJNOSC_K = [
     "Zastrzeżenia",
     "Podstawa",
     "Dowód",
+    "Odniesienie do dowodu",
     "Kompletność dowodu",
     "Powód niepełności",
     "Walidacja modelu urządzenia",
@@ -68,6 +69,7 @@ KOLEJNOSC_K = [
     "Dana przyjęta",
     "Zakres ważności",
     "Ślad",
+    "Bieg śladu",
 ]
 KOLEJNOSC_W = [
     "Wymaganie",
@@ -84,6 +86,7 @@ KOLEJNOSC_W = [
     "Zastrzeżenia",
     "Podstawa",
     "Dowód",
+    "Odniesienie do dowodu",
     "Kompletność dowodu",
     "Powód niepełności",
     "Walidacja modelu urządzenia",
@@ -91,6 +94,7 @@ KOLEJNOSC_W = [
     "Dana przyjęta",
     "Zakres ważności",
     "Ślad",
+    "Bieg śladu",
 ]
 #: Pozycje minimum §10, obecne w każdym bloku.
 MINIMUM_K = {
@@ -250,8 +254,44 @@ def test_pozycja_dowodu_ma_metode_poziom_i_odniesienie() -> None:
     (dowod,) = _wartosci(blok_kryterium(rekord), "Dowód")
     assert "metoda: symulacja" in dowod
     assert f"poziom: {rekord.dowod.poziom.label_pl}" in dowod
-    assert "odniesienie: bieg-001" in dowod
     assert "przydatność dowodowa: tak" in dowod
+    # Karta #145: odniesienie (identyfikator biegu) jest OSOBNĄ pozycją audytową dokumentu —
+    # treść pozycji „Dowód" nie niesie identyfikatora (ekran pokazuje pozycje audytowe
+    # wyłącznie w informacjach audytowych).
+    assert "bieg-001" not in dowod
+    assert _wartosci(blok_kryterium(rekord), "Odniesienie do dowodu") == ["bieg-001"]
+
+
+@pytest.mark.parametrize("odniesienie", [None, "bieg-001"])
+@pytest.mark.parametrize("run_id", [None, "run-7"])
+@pytest.mark.parametrize("wersja", [None, "1.2.0"])
+def test_identyfikatory_tylko_w_pozycjach_audytowych(
+    odniesienie: str | None, run_id: str | None, wersja: str | None
+) -> None:
+    """Iloczyn {odniesienie dowodu} × {bieg śladu} × {wersja silnika}: każdy identyfikator
+    stoi wyłącznie w pozycji z `POZYCJE_AUDYTOWE`, a pozycja „Bieg śladu" istnieje tylko,
+    gdy krok śladu ma bieg albo wersję."""
+    from werdykt.dokument import POZYCJE_AUDYTOWE
+    from werdykt.kontrakt import OdnosnikSladu
+
+    dowod = f.dowod_symulacji().model_copy(update={"odniesienie": odniesienie})
+    rekord = f.ocena(dowod_oceny=dowod, metoda_wyniku="SYMULACJA", u=0.5).model_copy(
+        update={
+            "slad": (
+                OdnosnikSladu(run_id=run_id, wersja_silnika=wersja, krok="K1", opis_pl="krok"),
+            )
+        }
+    )
+    blok = blok_kryterium(rekord)
+    identyfikatory = [x for x in (odniesienie, run_id, wersja) if x is not None]
+    for pozycja in blok:
+        if pozycja.etykieta_pl in POZYCJE_AUDYTOWE:
+            continue
+        for identyfikator in identyfikatory:
+            assert identyfikator not in pozycja.tresc_pl, pozycja
+    assert _wartosci(blok, "Odniesienie do dowodu") == [odniesienie or "brak"]
+    bieg = _wartosci(blok, "Bieg śladu")
+    assert bool(bieg) == (run_id is not None or wersja is not None)
 
 
 @pytest.mark.parametrize("w_domenie", [None, True, False])

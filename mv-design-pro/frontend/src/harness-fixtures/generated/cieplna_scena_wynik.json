@@ -19,17 +19,17 @@
     {
       "norma": "PN-HD 60364-4-43",
       "punkt": "§ 434.5.2",
-      "tresc_pl": "Warunek adiabatyczny doboru przekroju ze wzgledu na zwarcie: S ≥ √(I²·t) / k."
+      "tresc_pl": "Warunek adiabatyczny doboru przekroju ze względu na zwarcie: S ≥ √(I²·t) / k."
     },
     {
       "norma": "IEC 60949",
       "punkt": "§ 3, § 4",
-      "tresc_pl": "Obliczanie dopuszczalnych pradow zwarciowych kabli z uwzglednieniem nagrzewania nieadiabatycznego; podstawa wartosci k dla par material zyly / izolacja."
+      "tresc_pl": "Obliczanie dopuszczalnych prądów zwarciowych kabli z uwzględnieniem nagrzewania nieadiabatycznego; podstawa wartości k dla par materiał żyły / izolacja."
     },
     {
       "norma": "IEC 60909-0",
       "punkt": "§ 12",
-      "tresc_pl": "Prad ekwiwalentny cieplnie I_th = I″k·√(m+n); to jego uzywa kryterium, nie pradu poczatkowego."
+      "tresc_pl": "Prąd zastępczy cieplny I_th = I″k·√(m+n) — to on jest porównywany w kryterium, nie prąd początkowy."
     }
   ],
   "ocena": {
@@ -73,7 +73,7 @@
         "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
         "branch_name": "Linia SN 1",
         "status": "UNAVAILABLE",
-        "i_fault_a": 643.6033616984872,
+        "i_fault_a": 643.6033616984862,
         "i_permissible_a": null,
         "utilization": null,
         "s_min_mm2": null,
@@ -90,7 +90,7 @@
           "urzadzenie_ref": "f3f4e56c-097c-571c-a6f3-57c51f44ff8b",
           "urzadzenie_nazwa": "Sprzęgło Q1",
           "funkcja": null,
-          "prad_galezi_a": 643.6033616984872,
+          "prad_galezi_a": 643.6033616984862,
           "prad_rozruchowy_a": null,
           "krzywa": null,
           "tms": null,

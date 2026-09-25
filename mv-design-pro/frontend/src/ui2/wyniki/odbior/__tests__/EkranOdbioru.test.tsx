@@ -14,8 +14,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
 import { useSelectionStore } from '../../../../ui/selection/store';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import { EkranOdbioru } from '../EkranOdbioru';
+import { OPCJA_ELEMENTU_SPOZA_MODELU } from '../odbiorModel';
 import { widokZgodnosciFixture } from './fixtures';
 
 const post = vi.fn();
@@ -61,11 +63,36 @@ function wypelnijPomiarU() {
   fireEvent.change(screen.getByTestId('mvd-odbior-tol-napiecie'), { target: { value: '5' } });
 }
 
+/**
+ * Migawka modelu (karta #145): projektant wybiera element pomiaru z listy po NAZWIE,
+ * a raport nazywa elementy nazwami z modelu. `LINE-9` to gałąź modelu spoza gałęzi
+ * przebiegu (np. dodana po obliczeniu) — ścieżka „element spoza gałęzi przebiegu".
+ */
+function zasiejModel(): void {
+  useSnapshotStore.setState({
+    snapshot: {
+      buses: [
+        { ref_id: 'BUS-1', id: 'b1', name: 'Szyna Stacja 1', voltage_kv: 15 },
+        { ref_id: 'BUS-GPZ', id: 'b0', name: 'Szyna GPZ SN', voltage_kv: 15 },
+      ],
+      branches: [
+        { ref_id: 'LINE-2', id: 'l2', name: 'Linia GPZ – Stacja 1', type: 'line_overhead' },
+        { ref_id: 'LINE-9', id: 'l9', name: 'Linia rezerwowa', type: 'cable' },
+      ],
+      transformers: [{ ref_id: 'TRAFO-4', id: 't4', name: 'Transformator Stacja 1' }],
+    },
+  } as never);
+}
+
 beforeEach(() => {
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
   pobierzZaciski.mockResolvedValue(ZACISKI_BIEGU);
+  zasiejModel();
 });
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  useSnapshotStore.setState({ snapshot: null } as never);
+});
 
 describe('EkranOdbioru — stany wejściowe', () => {
   it('bez przebiegu rozpływu → uczciwa instrukcja, bez wołań API', () => {
@@ -122,7 +149,11 @@ describe('EkranOdbioru — serializacja i raport', () => {
     expect(tabela).toHaveTextContent('Zacisk początkowy — szyna GPZ SN');
     // Największa odchyłka z podsumowania (przecinek PL).
     expect(screen.getByTestId('mvd-odbior-najwieksza')).toHaveTextContent('12,50');
-    expect(screen.getByTestId('mvd-odbior-najwieksza')).toHaveTextContent('LINE-2');
+    // Karta #145: element nazwany z modelu, nigdy referencją.
+    expect(screen.getByTestId('mvd-odbior-najwieksza')).toHaveTextContent('Linia GPZ – Stacja 1');
+    expect(screen.getByTestId('mvd-odbior-najwieksza')).not.toHaveTextContent('LINE-2');
+    expect(tabela).toHaveTextContent('Szyna Stacja 1');
+    expect(tabela).not.toHaveTextContent('BUS-1');
   });
 
   it('pomiar P poza tolerancją NIE dostaje przycisku „Popraw" (typ elementu niejednoznaczny — F-E6.2)', async () => {
@@ -169,6 +200,7 @@ describe('EkranOdbioru — serializacja i raport', () => {
 
     // Drugi wiersz źródłowy = LINE-2 / P / poza tolerancją.
     fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[1]);
+    expect(screen.getByTestId('mvd-odbior-szczegol')).toHaveTextContent('Linia GPZ – Stacja 1');
     const tag = screen.getByTestId('mvd-odbior-tag');
     expect(tag).toHaveTextContent('poza tolerancją');
     expect(tag.className).toContain('mvd-odbior-tag--err');
@@ -185,8 +217,9 @@ describe('EkranOdbioru — serializacja i raport', () => {
     fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[0]); // BUS-1 / U
     fireEvent.click(screen.getByTestId('mvd-odbior-slad-otworz'));
     expect(screen.getByTestId('mvd-odbior-slad')).toHaveTextContent('Werdykt: w tolerancji');
-    // Hash wejścia widoczny w trybie eksperckim.
-    expect(screen.getByTestId('mvd-odbior-eksp')).toHaveTextContent('zgodnosc-hash-abc');
+    // Identyfikator wejścia wyłącznie w „Informacjach audytowych" trybu eksperckiego (#145).
+    fireEvent.click(screen.getByTestId('mvd-odbior-eksp-przelacz'));
+    expect(screen.getByTestId('mvd-odbior-eksp-lista')).toHaveTextContent('zgodnosc-hash-abc');
   });
 
   it('K3/C1 realna ścieżka: 2× klik na wartości z modelu → onOtworzDowod(element_ref)', async () => {
@@ -218,6 +251,76 @@ describe('EkranOdbioru — serializacja i raport', () => {
     );
   });
 });
+
+/**
+ * Karta #145 — dobór elementu pomiaru po nazwie z modelu. Iloczyn cech: wielkość {U, P}
+ * × pochodzenie opcji {szyny, gałęzie i transformatory} × element bieżący {pasuje do
+ * wielkości, nie pasuje po zmianie wielkości}.
+ */
+describe('EkranOdbioru — wybór elementu pomiaru z modelu', () => {
+  /** Opcje elementów modelu (bez pustej zachęty i bez „Element spoza modelu"). */
+  function opcje(): { value: string; text: string }[] {
+    return opcjeWiersza0().filter((o) => o.value !== OPCJA_ELEMENTU_SPOZA_MODELU);
+  }
+
+  it('U → same szyny, P → gałęzie i transformatory; opcje pokazują nazwy, nie referencje', () => {
+    ustawPrzebieg();
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    const u = opcje().filter((o) => o.value !== '');
+    expect(u.map((o) => o.value).sort()).toEqual(['BUS-1', 'BUS-GPZ']);
+    expect(u.map((o) => o.text)).toEqual(['Szyna GPZ SN', 'Szyna Stacja 1']);
+
+    fireEvent.change(screen.getByTestId('mvd-odbior-wielkosc-0'), { target: { value: 'P' } });
+    const p = opcje().filter((o) => o.value !== '');
+    expect(p.map((o) => o.value).sort()).toEqual(['LINE-2', 'LINE-9', 'TRAFO-4']);
+    p.forEach((o) => expect(o.text).not.toBe(o.value));
+  });
+
+  it('element wybrany dla P zostaje na liście po zmianie wielkości na U (bez cichej utraty)', () => {
+    ustawPrzebieg();
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    fireEvent.change(screen.getByTestId('mvd-odbior-wielkosc-0'), { target: { value: 'P' } });
+    fireEvent.change(screen.getByTestId('mvd-odbior-element-0'), { target: { value: 'LINE-2' } });
+    fireEvent.change(screen.getByTestId('mvd-odbior-wielkosc-0'), { target: { value: 'U' } });
+    const pole = screen.getByTestId('mvd-odbior-element-0') as HTMLSelectElement;
+    expect(pole.value).toBe('LINE-2');
+    expect(pole.selectedOptions[0].textContent).toBe('Linia GPZ – Stacja 1');
+  });
+
+  it('element spoza modelu: oznaczenie z protokołu trafia do żądania, bez podpowiedzi z listy', () => {
+    ustawPrzebieg();
+    post.mockReturnValue(new Promise(() => {}));
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    expect(screen.queryByTestId('mvd-odbior-element-protokol-0')).toBeNull();
+    fireEvent.change(screen.getByTestId('mvd-odbior-element-0'), {
+      target: { value: OPCJA_ELEMENTU_SPOZA_MODELU },
+    });
+    fireEvent.change(screen.getByTestId('mvd-odbior-element-protokol-0'), {
+      target: { value: 'POLE-REZERWOWE-12' },
+    });
+    // Wpisane oznaczenie nie staje się opcją listy elementów modelu.
+    expect(
+      opcjeWiersza0().some((o) => o.value === 'POLE-REZERWOWE-12'),
+    ).toBe(false);
+    fireEvent.change(screen.getByTestId('mvd-odbior-wartosc-0'), { target: { value: '15,3' } });
+    fireEvent.change(screen.getByTestId('mvd-odbior-tol-napiecie'), { target: { value: '5' } });
+    fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
+    expect(post).toHaveBeenCalledWith({
+      run_id: 'run-lf-1',
+      pomiary: [{ element_ref: 'POLE-REZERWOWE-12', wielkosc: 'U', wartosc: 15.3, jednostka: 'kV' }],
+      tolerancje: { napiecie_pct: 5 },
+    });
+
+    // Powrót do elementu z modelu chowa pole protokołu.
+    fireEvent.change(screen.getByTestId('mvd-odbior-element-0'), { target: { value: 'BUS-1' } });
+    expect(screen.queryByTestId('mvd-odbior-element-protokol-0')).toBeNull();
+  });
+});
+
+function opcjeWiersza0(): { value: string; text: string }[] {
+  const pole = screen.getByTestId('mvd-odbior-element-0') as HTMLSelectElement;
+  return [...pole.options].map((o) => ({ value: o.value, text: o.textContent ?? '' }));
+}
 
 describe('EkranOdbioru — edytor wierszy i tryb CSV', () => {
   it('dodaje i usuwa wiersze edytora', () => {
@@ -255,8 +358,9 @@ describe('EkranOdbioru — edytor wierszy i tryb CSV', () => {
  */
 describe('EkranOdbioru — zacisk pomiaru mocy gałęzi', () => {
   function wiersz0(element: string, wielkosc: 'U' | 'P' | 'Q', wartosc: string) {
-    fireEvent.change(screen.getByTestId('mvd-odbior-element-0'), { target: { value: element } });
+    // Najpierw wielkość: lista elementów zależy od wielkości (szyny dla U, gałęzie dla P/Q).
     fireEvent.change(screen.getByTestId('mvd-odbior-wielkosc-0'), { target: { value: wielkosc } });
+    fireEvent.change(screen.getByTestId('mvd-odbior-element-0'), { target: { value: element } });
     fireEvent.change(screen.getByTestId('mvd-odbior-wartosc-0'), { target: { value: wartosc } });
   }
 
@@ -326,14 +430,15 @@ describe('EkranOdbioru — zacisk pomiaru mocy gałęzi', () => {
     expect((screen.getByTestId('mvd-odbior-zacisk-0-od') as HTMLInputElement).checked).toBe(false);
 
     fireEvent.click(screen.getByTestId('mvd-odbior-zacisk-0-do'));
-    fireEvent.change(screen.getByTestId('mvd-odbior-element-0'), { target: { value: 'LINE-2 ' } });
+    fireEvent.change(screen.getByTestId('mvd-odbior-element-0'), { target: { value: 'LINE-9' } });
+    fireEvent.change(screen.getByTestId('mvd-odbior-element-0'), { target: { value: 'LINE-2' } });
     expect((screen.getByTestId('mvd-odbior-zacisk-0-do') as HTMLInputElement).checked).toBe(false);
   });
 
   it('element spoza gałęzi przebiegu: jawna informacja, bez przycisków wyboru', async () => {
     ustawPrzebieg();
     render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
-    wiersz0('BUS-1', 'P', '1');
+    wiersz0('LINE-9', 'P', '1');
     expect(await screen.findByTestId('mvd-odbior-zacisk-nie-galaz-0')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-odbior-zacisk-0-od')).toBeNull();
   });

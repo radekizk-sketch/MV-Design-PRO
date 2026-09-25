@@ -7,7 +7,7 @@
       "kryterium_id": "pwp.moc_przylaczeniowa",
       "etap": "E1/E5",
       "nazwa_pl": "Moc w punkcie przyłączenia",
-      "warunek_pl": "$|P| \\le P_{\\text{przyl}}$ (moc przyłączeniowa z warunków OSD)",
+      "warunek_pl": "$|P| \\le P_{\\text{przył}}$ (moc przyłączeniowa z warunków OSD)",
       "norma_pl": "Warunki przyłączenia OSD (dokument projektu)",
       "zrodlo": "PF",
       "element_rodzaj": "szyna",
@@ -147,7 +147,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięciowe 1.09 % poniżej limitu 5.0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 1,09 % poniżej limitu 5,0 %.",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 1,087 % mieści się w granicy 10 %; zapas 8,913 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -168,7 +168,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięciowe 0.48 % poniżej limitu 5.0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 0,48 % poniżej limitu 5,0 %.",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 0,479 % mieści się w granicy 10 %; zapas 9,521 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -189,7 +189,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięciowe 0.05 % poniżej limitu 5.0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 0,05 % poniżej limitu 5,0 %.",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 0,05 % mieści się w granicy 10 %; zapas 9,95 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -210,7 +210,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięciowe 0.05 % poniżej limitu 5.0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 0,05 % poniżej limitu 5,0 %.",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 0,05 % mieści się w granicy 10 %; zapas 9,95 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -231,7 +231,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięciowe 0.00 % poniżej limitu 5.0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 0,00 % poniżej limitu 5,0 %.",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 0 % mieści się w granicy 10 %; zapas 10 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -282,7 +282,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Obciazenie 15.05 % poniżej limitu 80.0 %.",
+          "uzasadnienie_pl": "Obciążenie 15,05 % poniżej limitu 80,0 %.",
           "wniosek_pl": "Obciążenie gałęzi względem obciążalności długotrwałej 15,051 % mieści się w granicy 100 %; zapas 84,949 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -303,7 +303,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Obciazenie 0.20 % poniżej limitu 80.0 %.",
+          "uzasadnienie_pl": "Obciążenie 0,20 % poniżej limitu 80,0 %.",
           "wniosek_pl": "Obciążenie gałęzi względem obciążalności długotrwałej 0,201 % mieści się w granicy 100 %; zapas 99,799 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -354,7 +354,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Obciazenie 25.37 % poniżej limitu 80.0 %.",
+          "uzasadnienie_pl": "Obciążenie 25,37 % poniżej limitu 80,0 %.",
           "wniosek_pl": "Obciążenie transformatora względem mocy znamionowej 25,373 % mieści się w granicy 100 %; zapas 74,627 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -375,7 +375,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Obciazenie 3.00 % poniżej limitu 80.0 %.",
+          "uzasadnienie_pl": "Obciążenie 3,00 % poniżej limitu 80,0 %.",
           "wniosek_pl": "Obciążenie transformatora względem mocy znamionowej 3,001 % mieści się w granicy 100 %; zapas 96,999 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -426,7 +426,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Straty sieciowe 0.45 % poniżej limitu 5.0 %.",
+          "uzasadnienie_pl": "Straty sieciowe 0,45 % poniżej limitu 5,0 %.",
           "wniosek_pl": "Straty mocy czynnej względem mocy przesyłanej 0,451 % mieści się w granicy 10 %; zapas 9,549 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -477,7 +477,7 @@
           "margines_jednostka": "%",
           "margines_wzor_latex": "\\delta = \\dfrac{\\text{wartość} - \\text{granica}}{\\text{granica}}\\cdot 100\\%",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "cos(phi) = 0.995 >= 0.9 — bilans mocy biernej prawidłowy.",
+          "uzasadnienie_pl": "cosφ = 0,995 ≥ 0,9 — bilans mocy biernej prawidłowy.",
           "wniosek_pl": "Współczynnik mocy w węźle bilansującym 0,995 osiąga wartość wymaganą 0,8; zapas 24,396 %.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
@@ -509,7 +509,7 @@
       "liczba_niejednoznacznych": 0,
       "liczba_ostrzezen": 0,
       "wiodacy_element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
-      "wiodacy_opis_pl": "Brak danych do oceny cieplnej: conductor.thermal_data_missing.",
+      "wiodacy_opis_pl": "Brak danych do oceny cieplnej: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
       "powod_kod": null,
       "powod_pl": null,
       "run_id": "run-sc-scena-ocena",
@@ -528,8 +528,8 @@
           "margines_jednostka": "",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Brak danych do oceny cieplnej: conductor.thermal_data_missing.",
-          "wniosek_pl": "Brak podstaw do oceny spełnienia wymagania: Brak danych do oceny cieplnej: conductor.thermal_data_missing.",
+          "uzasadnienie_pl": "Brak danych do oceny cieplnej: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
+          "wniosek_pl": "Brak podstaw do oceny spełnienia wymagania: Brak danych do oceny cieplnej: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
             "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85"
@@ -806,12 +806,12 @@
     {
       "kryterium_pl": "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
       "etap": "E4",
-      "powod_pl": "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla WSKAZANEGO aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
+      "powod_pl": "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla wskazanego aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
     },
     {
       "kryterium_pl": "Obciążalność przewodu z korektą warunków ułożenia na całym modelu",
       "etap": "E3",
-      "powod_pl": "Korekta warunków ułożenia działa w torze doboru kabla DER (zestawy warunków z udokumentowaną podstawą albo współczynniki projektanta) i jest zapisana przy kablu w modelu. Nie ma przebiegu, który sprawdza obciążalność WSZYSTKICH przewodów modelu wobec warunków ich trasy — magistrala SN dobierana jest inną ścieżką, a katalog nie dokumentuje warunków odniesienia przy typach."
+      "powod_pl": "Korekta warunków ułożenia działa w torze doboru kabla DER (zestawy warunków z udokumentowaną podstawą albo współczynniki projektanta) i jest zapisana przy kablu w modelu. Nie ma przebiegu, który sprawdza obciążalność wszystkich przewodów modelu wobec warunków ich trasy — magistrala SN dobierana jest inną ścieżką, a katalog nie dokumentuje warunków odniesienia przy typach."
     },
     {
       "kryterium_pl": "Ekonomiczna gęstość prądu przekroju",

@@ -15,7 +15,8 @@ export const OCENA_STRINGS = {
   podstawaWariant: 'Wariant pracy',
   podstawaWariantOpis: 'zatwierdzony model sieci przypadku',
   podstawaRewizja: 'Rewizja modelu',
-  podstawaOdcisk: 'odcisk',
+  podstawaOdcisk: 'Odcisk modelu',
+  audytPrzebieg: (zrodlo: string) => `Identyfikator przebiegu — ${zrodlo}`,
   podstawaPrzebiegi: 'Przebiegi obliczeń',
   podstawaPakiet: 'Pakiet wyników',
   podstawaPakietBrak: 'brak zakończonych przebiegów',
@@ -24,7 +25,6 @@ export const OCENA_STRINGS = {
   przebiegNieaktualny: 'NIEAKTUALNY — model zmieniony po biegu, wyniki nie są podstawą oceny',
   przebiegBrak: 'brak przebiegu',
   przebiegCzas: 'czas wykonania',
-  przebiegIdentyfikator: 'identyfikator',
   zrodloRozplyw: 'Rozpływ mocy',
   zrodloZwarcie: 'Zwarcia',
   zrodloModel: 'Model sieci',
@@ -68,7 +68,7 @@ export const OCENA_STRINGS = {
   elementAgregat: 'cała sieć (agregat)',
   liczbaElementow: (n: number): string =>
     n === 1 ? '1 element' : n >= 2 && n <= 4 ? `${n} elementy` : `${n} elementów`,
-  identyfikatorModelu: 'identyfikator w modelu',
+  identyfikatorModelu: 'Identyfikator w modelu',
   // Karta V12.7 §0.7 — werdykt ograniczony do zakresu z kontraktu (`zakres_oceny`),
   // NIGDY z domysłu UI. „uklad" = kryterium złożone: ocenia CAŁY tor/układ (kilka
   // powiązanych sprawdzeń naraz), nie pojedynczą wielkość fizyczną elementu.

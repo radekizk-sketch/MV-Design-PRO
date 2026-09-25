@@ -7,7 +7,7 @@
       "kryterium_id": "pwp.moc_przylaczeniowa",
       "etap": "E1/E5",
       "nazwa_pl": "Moc w punkcie przyłączenia",
-      "warunek_pl": "$|P| \\le P_{\\text{przyl}}$ (moc przyłączeniowa z warunków OSD)",
+      "warunek_pl": "$|P| \\le P_{\\text{przył}}$ (moc przyłączeniowa z warunków OSD)",
       "norma_pl": "Warunki przyłączenia OSD (dokument projektu)",
       "zrodlo": "PF",
       "element_rodzaj": "szyna",
@@ -128,7 +128,7 @@
       "liczba_niejednoznacznych": 0,
       "liczba_ostrzezen": 1,
       "wiodacy_element_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-      "wiodacy_opis_pl": "Odchylenie napięciowe 25.17 % przekracza limit 10.0 %.",
+      "wiodacy_opis_pl": "Odchylenie napięcia 25,17 % przekracza limit 10,0 %.",
       "powod_kod": null,
       "powod_pl": null,
       "run_id": "run-pf-scena-przekroczenia",
@@ -147,7 +147,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięciowe 25.17 % przekracza limit 10.0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 25,17 % przekracza limit 10,0 %.",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 25,167 % przekracza granicę 10 %; wymaganie nie jest spełnione dla tego elementu.",
           "dowod": {
             "run_id": "run-pf-scena-przekroczenia",
@@ -168,7 +168,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": "Margines jest niewielki — wartość leży w paśmie ostrzegawczym",
-          "uzasadnienie_pl": "Odchylenie napięciowe 7.99 % zbliża się do limitu 10.0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 7,99 % zbliża się do limitu 10,0 %.",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 7,988 % mieści się w granicy 10 %; zapas 2,012 pkt proc. Margines jest niewielki — wartość leży w paśmie ostrzegawczym.",
           "dowod": {
             "run_id": "run-pf-scena-przekroczenia",
@@ -189,7 +189,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięciowe 3.15 % poniżej limitu 5.0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 3,15 % poniżej limitu 5,0 %.",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 3,145 % mieści się w granicy 10 %; zapas 6,855 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-przekroczenia",
@@ -210,7 +210,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięciowe 3.14 % poniżej limitu 5.0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 3,14 % poniżej limitu 5,0 %.",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 3,144 % mieści się w granicy 10 %; zapas 6,856 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-przekroczenia",
@@ -231,7 +231,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Odchylenie napięciowe 0.00 % poniżej limitu 5.0 %.",
+          "uzasadnienie_pl": "Odchylenie napięcia 0,00 % poniżej limitu 5,0 %.",
           "wniosek_pl": "Odchylenie napięcia od znamionowego 0 % mieści się w granicy 10 %; zapas 10 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-przekroczenia",
@@ -263,7 +263,7 @@
       "liczba_niejednoznacznych": 0,
       "liczba_ostrzezen": 0,
       "wiodacy_element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
-      "wiodacy_opis_pl": "Obciazenie 160.00 % przekracza limit 100.0 %.",
+      "wiodacy_opis_pl": "Obciążenie 160,00 % przekracza limit 100,0 %.",
       "powod_kod": null,
       "powod_pl": null,
       "run_id": "run-pf-scena-przekroczenia",
@@ -282,7 +282,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Obciazenie 160.00 % przekracza limit 100.0 %.",
+          "uzasadnienie_pl": "Obciążenie 160,00 % przekracza limit 100,0 %.",
           "wniosek_pl": "Obciążenie gałęzi względem obciążalności długotrwałej 160,004 % przekracza granicę 100 %; wymaganie nie jest spełnione dla tego elementu.",
           "dowod": {
             "run_id": "run-pf-scena-przekroczenia",
@@ -303,7 +303,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Obciazenie 0.21 % poniżej limitu 80.0 %.",
+          "uzasadnienie_pl": "Obciążenie 0,21 % poniżej limitu 80,0 %.",
           "wniosek_pl": "Obciążenie gałęzi względem obciążalności długotrwałej 0,215 % mieści się w granicy 100 %; zapas 99,785 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-przekroczenia",
@@ -335,7 +335,7 @@
       "liczba_niejednoznacznych": 0,
       "liczba_ostrzezen": 0,
       "wiodacy_element_id": "158eec95-939b-5b35-97ad-9433334b5506",
-      "wiodacy_opis_pl": "Obciazenie 724.92 % przekracza limit 100.0 %.",
+      "wiodacy_opis_pl": "Obciążenie 724,92 % przekracza limit 100,0 %.",
       "powod_kod": null,
       "powod_pl": null,
       "run_id": "run-pf-scena-przekroczenia",
@@ -354,7 +354,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Obciazenie 724.92 % przekracza limit 100.0 %.",
+          "uzasadnienie_pl": "Obciążenie 724,92 % przekracza limit 100,0 %.",
           "wniosek_pl": "Obciążenie transformatora względem mocy znamionowej 724,916 % przekracza granicę 100 %; wymaganie nie jest spełnione dla tego elementu.",
           "dowod": {
             "run_id": "run-pf-scena-przekroczenia",
@@ -375,7 +375,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Obciazenie 52.65 % poniżej limitu 80.0 %.",
+          "uzasadnienie_pl": "Obciążenie 52,65 % poniżej limitu 80,0 %.",
           "wniosek_pl": "Obciążenie transformatora względem mocy znamionowej 52,648 % mieści się w granicy 100 %; zapas 47,352 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-przekroczenia",
@@ -407,7 +407,7 @@
       "liczba_niejednoznacznych": 0,
       "liczba_ostrzezen": 1,
       "wiodacy_element_id": "network",
-      "wiodacy_opis_pl": "Straty sieciowe 6.06 % zbliża się do limitu 10.0 %.",
+      "wiodacy_opis_pl": "Straty sieciowe 6,06 % zbliża się do limitu 10,0 %.",
       "powod_kod": null,
       "powod_pl": null,
       "run_id": "run-pf-scena-przekroczenia",
@@ -426,7 +426,7 @@
           "margines_jednostka": "pkt proc.",
           "margines_wzor_latex": "",
           "uwaga_pl": "Margines jest niewielki — wartość leży w paśmie ostrzegawczym",
-          "uzasadnienie_pl": "Straty sieciowe 6.06 % zbliża się do limitu 10.0 %.",
+          "uzasadnienie_pl": "Straty sieciowe 6,06 % zbliża się do limitu 10,0 %.",
           "wniosek_pl": "Straty mocy czynnej względem mocy przesyłanej 6,055 % mieści się w granicy 10 %; zapas 3,945 pkt proc. Margines jest niewielki — wartość leży w paśmie ostrzegawczym.",
           "dowod": {
             "run_id": "run-pf-scena-przekroczenia",
@@ -458,7 +458,7 @@
       "liczba_niejednoznacznych": 0,
       "liczba_ostrzezen": 1,
       "wiodacy_element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
-      "wiodacy_opis_pl": "cos(phi) = 0.873 — bilans mocy biernej na granicy akceptowalności.",
+      "wiodacy_opis_pl": "cosφ = 0,873 — bilans mocy biernej na granicy akceptowalności.",
       "powod_kod": null,
       "powod_pl": null,
       "run_id": "run-pf-scena-przekroczenia",
@@ -477,7 +477,7 @@
           "margines_jednostka": "%",
           "margines_wzor_latex": "\\delta = \\dfrac{\\text{wartość} - \\text{granica}}{\\text{granica}}\\cdot 100\\%",
           "uwaga_pl": "Margines jest niewielki — wartość leży w paśmie ostrzegawczym",
-          "uzasadnienie_pl": "cos(phi) = 0.873 — bilans mocy biernej na granicy akceptowalności.",
+          "uzasadnienie_pl": "cosφ = 0,873 — bilans mocy biernej na granicy akceptowalności.",
           "wniosek_pl": "Współczynnik mocy w węźle bilansującym 0,873 osiąga wartość wymaganą 0,8; zapas 9,181 %. Margines jest niewielki — wartość leży w paśmie ostrzegawczym.",
           "dowod": {
             "run_id": "run-pf-scena-przekroczenia",
@@ -509,7 +509,7 @@
       "liczba_niejednoznacznych": 0,
       "liczba_ostrzezen": 0,
       "wiodacy_element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
-      "wiodacy_opis_pl": "Brak danych do oceny cieplnej: conductor.thermal_data_missing.",
+      "wiodacy_opis_pl": "Brak danych do oceny cieplnej: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
       "powod_kod": null,
       "powod_pl": null,
       "run_id": "run-sc-scena-przekroczenia",
@@ -528,8 +528,8 @@
           "margines_jednostka": "",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Brak danych do oceny cieplnej: conductor.thermal_data_missing.",
-          "wniosek_pl": "Brak podstaw do oceny spełnienia wymagania: Brak danych do oceny cieplnej: conductor.thermal_data_missing.",
+          "uzasadnienie_pl": "Brak danych do oceny cieplnej: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
+          "wniosek_pl": "Brak podstaw do oceny spełnienia wymagania: Brak danych do oceny cieplnej: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
           "dowod": {
             "run_id": "run-sc-scena-przekroczenia",
             "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85"
@@ -806,12 +806,12 @@
     {
       "kryterium_pl": "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
       "etap": "E4",
-      "powod_pl": "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla WSKAZANEGO aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
+      "powod_pl": "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla wskazanego aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
     },
     {
       "kryterium_pl": "Obciążalność przewodu z korektą warunków ułożenia na całym modelu",
       "etap": "E3",
-      "powod_pl": "Korekta warunków ułożenia działa w torze doboru kabla DER (zestawy warunków z udokumentowaną podstawą albo współczynniki projektanta) i jest zapisana przy kablu w modelu. Nie ma przebiegu, który sprawdza obciążalność WSZYSTKICH przewodów modelu wobec warunków ich trasy — magistrala SN dobierana jest inną ścieżką, a katalog nie dokumentuje warunków odniesienia przy typach."
+      "powod_pl": "Korekta warunków ułożenia działa w torze doboru kabla DER (zestawy warunków z udokumentowaną podstawą albo współczynniki projektanta) i jest zapisana przy kablu w modelu. Nie ma przebiegu, który sprawdza obciążalność wszystkich przewodów modelu wobec warunków ich trasy — magistrala SN dobierana jest inną ścieżką, a katalog nie dokumentuje warunków odniesienia przy typach."
     },
     {
       "kryterium_pl": "Ekonomiczna gęstość prądu przekroju",

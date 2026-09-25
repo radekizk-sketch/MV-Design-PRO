@@ -488,8 +488,12 @@ nigdy zamiast niej.
 Raport, certyfikat i wniosek do OSD renderują TEN SAM rekord (jeden serializer rekordu do bloku
 dokumentu) i powstają wyłącznie z zatwierdzonego modelu przypadku (§3a). Minimum bloku: Wymaganie · Ocena · Kryterium · Wynik · Margines · Stan końcowy (gdy
 kryterium stanu końcowego istnieje) · Podstawa (dokument / wydanie / jednostka redakcyjna / stan
-źródła) · Dowód (metoda, odniesienie do biegu/certyfikatu) · Walidacja modelu urządzenia · Stan
-danych wejściowych · Zakres ważności. Treść każdej pozycji niesie NAZWY polskie wartości (poziom
+źródła) · Dowód (metoda) · Odniesienie do dowodu (bieg/certyfikat) · Walidacja modelu urządzenia ·
+Stan danych wejściowych · Zakres ważności. Identyfikatory i odciski (odniesienie do dowodu, bieg i
+wersja silnika kroku śladu) stoją w OSOBNYCH pozycjach audytowych (`werdykt.dokument.POZYCJE_AUDYTOWE`,
+karta #145): dokument formalny je niesie, ekran pokazuje je wyłącznie w informacjach audytowych, a
+treść pozycji merytorycznych („Dowód", „Ślad") nie niesie identyfikatora (test
+`tests/werdykt/test_werdykt_dokument.py::test_identyfikatory_tylko_w_pozycjach_audytowych`). Treść każdej pozycji niesie NAZWY polskie wartości (poziom
 dowodowy, rodzaj twierdzenia, jakość danej — `label_pl` wyliczeń `werdykt.proweniencja`; stan
 źródła, relacja, kompletność, status modelu, stan danych — mapy `werdykt.wyjasnienie`), a kody
 wyliczeń i identyfikatory (`kryterium_id`, `wymaganie_id`, `element_ref`) zostają w polach rekordu

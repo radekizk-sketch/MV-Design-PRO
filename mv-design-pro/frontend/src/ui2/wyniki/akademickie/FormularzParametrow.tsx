@@ -17,6 +17,7 @@
 import { useState, type ChangeEvent } from 'react';
 
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { nazwaObiektuZMigawki, useNazwaObiektu } from '../wzorzec/useNazwaObiektu';
 import type { GotowoscAnalizy, KartaKatalogu } from './api';
 import { AKADEMICKIE_STRINGS as S } from './strings';
 import {
@@ -92,9 +93,27 @@ const USUN_LISTY: Record<ListaZlozona, string> = {
 export function useSzynyModelu(): readonly { ref: string; nazwa: string }[] {
   const snapshot = useSnapshotStore((stan) => stan.snapshot);
   const szyny = (snapshot?.buses ?? []) as readonly { ref_id?: string; name?: string }[];
+  // Karta #145: szyna bez nazwy dostaje polską etykietę rodzaju z mostu nazw wyników
+  // (jeden resolver), nigdy referencję jako tekst opcji.
   return szyny
     .filter((szyna): szyna is { ref_id: string; name?: string } => typeof szyna.ref_id === 'string')
-    .map((szyna) => ({ ref: szyna.ref_id, nazwa: szyna.name && szyna.name !== '' ? szyna.name : szyna.ref_id }));
+    .map((szyna) => ({ ref: szyna.ref_id, nazwa: nazwaObiektuZMigawki(snapshot, szyna.ref_id) }));
+}
+
+/** Kod warunku gotowości niosącego listę przekształtników wejścia solvera. */
+const KOD_WARUNKU_PRZEKSZTALTNIKOW = 'przeksztaltnik.obecny';
+
+/**
+ * Przekształtniki do wyboru — DOKŁADNIE zbiór wejścia solvera podany przez gotowość
+ * analizy (`application/analyses/v126_gotowosc.py`, warunek `przeksztaltnik.obecny`,
+ * `elementy` = przekształtniki z kartą katalogową), nazwane mostem nazw wyników.
+ */
+function usePrzeksztaltnikiGotowosci(
+  gotowosc: GotowoscAnalizy | undefined,
+): readonly { ref: string; nazwa: string }[] {
+  const nazwaObiektu = useNazwaObiektu();
+  const warunek = gotowosc?.warunki.find((w) => w.kod === KOD_WARUNKU_PRZEKSZTALTNIKOW);
+  return (warunek?.elementy ?? []).map((ref) => ({ ref, nazwa: nazwaObiektu(ref) }));
 }
 
 /** Odznaka WYMAGANE/OPCJONALNE przy etykiecie pola (karta V12.7 §0.4). Brak
@@ -119,6 +138,7 @@ function PoleParametru({
   prefiks,
   wymagane,
   szyny,
+  przeksztaltniki,
   onZmiana,
 }: {
   definicja: DefinicjaPola;
@@ -126,6 +146,7 @@ function PoleParametru({
   prefiks: string;
   wymagane: boolean | null;
   szyny: readonly { ref: string; nazwa: string }[];
+  przeksztaltniki: readonly { ref: string; nazwa: string }[];
   onZmiana: (klucz: string, wartosc: string) => void;
 }) {
   const id = `${prefiks}-${definicja.klucz}`;
@@ -133,17 +154,26 @@ function PoleParametru({
     ? `${definicja.etykieta} [${definicja.jednostka}]`
     : definicja.etykieta;
 
-  if (definicja.rodzaj === 'wybor' || definicja.rodzaj === 'szyna') {
+  if (
+    definicja.rodzaj === 'wybor'
+    || definicja.rodzaj === 'szyna'
+    || definicja.rodzaj === 'przeksztaltnik'
+  ) {
+    const obiekty = definicja.rodzaj === 'szyna' ? szyny : przeksztaltniki;
     const opcje =
-      definicja.rodzaj === 'szyna'
-        ? szyny.map((szyna) => ({ wartosc: szyna.ref, etykieta: szyna.nazwa }))
-        : (definicja.opcje ?? []);
+      definicja.rodzaj === 'wybor'
+        ? (definicja.opcje ?? [])
+        : obiekty.map((obiekt) => ({ wartosc: obiekt.ref, etykieta: obiekt.nazwa }));
     const pusta =
       definicja.rodzaj === 'szyna'
         ? szyny.length === 0
           ? S.parametrySzynaBrak
           : S.parametrySzynaWybierz
-        : S.kreska;
+        : definicja.rodzaj === 'przeksztaltnik'
+          ? przeksztaltniki.length === 0
+            ? S.parametryPrzeksztaltnikBrak
+            : S.parametryPrzeksztaltnikDomyslny
+          : S.kreska;
     return (
       <label className="mvd-akad-pole" htmlFor={id}>
         <span className="mvd-akad-pole-etyk">
@@ -230,6 +260,7 @@ export function FormularzParametrow({
 }: FormularzParametrowProps) {
   const zestaw = zestawParametrow(rodzaj);
   const szyny = useSzynyModelu();
+  const przeksztaltniki = usePrzeksztaltnikiGotowosci(gotowosc);
   const definicjeListy = zestaw.lista !== null ? DEFINICJE_LISTY[zestaw.lista] : [];
   const tytulListy = zestaw.lista !== null ? TYTUL_LISTY[zestaw.lista] : '';
   const opisListy = zestaw.lista !== null ? OPIS_LISTY[zestaw.lista] : '';
@@ -270,6 +301,7 @@ export function FormularzParametrow({
               prefiks="mvd-akad-param"
               wymagane={czyWymaganePole(karta, 'pole', definicja.klucz)}
               szyny={szyny}
+              przeksztaltniki={przeksztaltniki}
               wartosc={pola[definicja.klucz] ?? ''}
               onZmiana={onPole}
             />
@@ -286,6 +318,7 @@ export function FormularzParametrow({
               prefiks="mvd-akad-uziom"
               wymagane={czyWymaganePole(karta, 'uziom', definicja.klucz)}
               szyny={szyny}
+              przeksztaltniki={przeksztaltniki}
               wartosc={uziom[definicja.klucz] ?? ''}
               onZmiana={onUziom}
             />
@@ -329,6 +362,7 @@ export function FormularzParametrow({
                     prefiks={`mvd-akad-lista-${indeks}`}
                     wymagane={zestaw.lista === null ? null : czyWymaganePole(karta, zestaw.lista, definicja.klucz)}
                     szyny={szyny}
+                    przeksztaltniki={przeksztaltniki}
                     wartosc={wiersz[definicja.klucz] ?? ''}
                     onZmiana={(klucz, wartosc) => onWiersz(indeks, klucz, wartosc)}
                   />
@@ -371,7 +405,6 @@ export function FormularzParametrow({
               <table className="mvd-akad-tabela" data-testid="mvd-akad-kontrakt-danych-tabela">
                 <thead>
                   <tr>
-                    <th>{S.kontraktKolKlucz}</th>
                     <th>{S.kontraktKolNazwa}</th>
                     <th>{S.kontraktKolJednostka}</th>
                     <th>{S.kontraktKolWymagane}</th>
@@ -380,8 +413,9 @@ export function FormularzParametrow({
                 </thead>
                 <tbody>
                   {karta.dane.od_uzytkownika.map((parametr) => (
+                    // Karta #145: klucz kontraktu (`earthing.rho1_ohm_m`) nie jest tekstem
+                    // dla projektanta — wiersz nazywa daną po polsku, z jednostką i opisem.
                     <tr key={parametr.klucz}>
-                      <td className="mvd-num">{parametr.klucz}</td>
                       <td>{parametr.nazwa_pl}</td>
                       <td className="mvd-num">{parametr.jednostka}</td>
                       <td>

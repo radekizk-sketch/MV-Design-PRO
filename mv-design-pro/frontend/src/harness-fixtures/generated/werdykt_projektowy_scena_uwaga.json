@@ -7,7 +7,7 @@
       "kryterium_id": "pwp.moc_przylaczeniowa",
       "etap": "E1/E5",
       "nazwa_pl": "Moc w punkcie przyłączenia",
-      "warunek_pl": "$|P| \\le P_{\\text{przyl}}$ (moc przyłączeniowa z warunków OSD)",
+      "warunek_pl": "$|P| \\le P_{\\text{przył}}$ (moc przyłączeniowa z warunków OSD)",
       "norma_pl": "Warunki przyłączenia OSD (dokument projektu)",
       "zrodlo": "PF",
       "element_rodzaj": "szyna",
@@ -377,12 +377,12 @@
     {
       "kryterium_pl": "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
       "etap": "E4",
-      "powod_pl": "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla WSKAZANEGO aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
+      "powod_pl": "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla wskazanego aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
     },
     {
       "kryterium_pl": "Obciążalność przewodu z korektą warunków ułożenia na całym modelu",
       "etap": "E3",
-      "powod_pl": "Korekta warunków ułożenia działa w torze doboru kabla DER (zestawy warunków z udokumentowaną podstawą albo współczynniki projektanta) i jest zapisana przy kablu w modelu. Nie ma przebiegu, który sprawdza obciążalność WSZYSTKICH przewodów modelu wobec warunków ich trasy — magistrala SN dobierana jest inną ścieżką, a katalog nie dokumentuje warunków odniesienia przy typach."
+      "powod_pl": "Korekta warunków ułożenia działa w torze doboru kabla DER (zestawy warunków z udokumentowaną podstawą albo współczynniki projektanta) i jest zapisana przy kablu w modelu. Nie ma przebiegu, który sprawdza obciążalność wszystkich przewodów modelu wobec warunków ich trasy — magistrala SN dobierana jest inną ścieżką, a katalog nie dokumentuje warunków odniesienia przy typach."
     },
     {
       "kryterium_pl": "Ekonomiczna gęstość prądu przekroju",

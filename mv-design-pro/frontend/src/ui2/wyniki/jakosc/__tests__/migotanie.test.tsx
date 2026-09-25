@@ -59,7 +59,7 @@ describe('SekcjaMigotania — stany', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-migotanie')).toBeTruthy());
     expect(mockedMigotanie).toHaveBeenCalledWith('sc-1');
     const tabela = screen.getByTestId('mvd-wyn-tabela');
-    // Karta #144: wiersz nazywa węzeł nazwą z modelu, identyfikator tylko w trybie eksperckim.
+    // Karta #144: wiersz nazywa węzeł nazwą z modelu; identyfikator nie jest kolumną (karta #145).
     expect(tabela).toHaveTextContent('Szyna OZE 1');
     expect(tabela).not.toHaveTextContent('bus-oze-1');
     expect(tabela).toHaveTextContent('przekroczenie poziomu planowania');

@@ -856,15 +856,19 @@ class TestWhiteBoxTrace:
         assert item.white_box[0]["tekst"].startswith("Wzór:")
         assert r"\frac{|I_{od}|}{I_{r,od}}" in item.white_box[0]["latex"]
         assert r"\frac{|I_{do}|}{I_{r,do}}" in item.white_box[0]["latex"]
-        assert "|I_od| = 0.4500 kA" in item.white_box[1]["tekst"]  # prąd zacisku od (PF)
-        assert "|I_do| = 0.4400 kA" in item.white_box[1]["tekst"]  # prąd zacisku do (PF)
-        assert "I_r,od = 0.5000 kA" in item.white_box[1]["tekst"]  # In z danych galezi
-        assert "decyduje zacisk od" in item.white_box[1]["tekst"]
+        # Karta #145: zdanie po polsku — przecinek dziesiętny, zacisk nazwany słowem.
+        assert "|I_od| = 0,4500 kA" in item.white_box[1]["tekst"]  # prąd zacisku od (PF)
+        assert "|I_do| = 0,4400 kA" in item.white_box[1]["tekst"]  # prąd zacisku do (PF)
+        assert "I_r,od = 0,5000 kA" in item.white_box[1]["tekst"]  # In z danych galezi
+        assert "decyduje zacisk początkowy" in item.white_box[1]["tekst"]
         assert item.white_box[1]["latex"] is None  # pochodzenie danych = tekst
-        assert "90.00 %" in item.white_box[2]["tekst"]
+        assert "90,00 %" in item.white_box[2]["tekst"]
         assert "= 90.00" in item.white_box[2]["latex"]  # podstawienie liczbowe
-        assert "ostrzeżenie 80.0 %" in item.white_box[3]["tekst"]
-        assert item.white_box[4]["tekst"] == "Werdykt: OSTRZEZENIE"
+        assert "ostrzeżenie 80,0 %" in item.white_box[3]["tekst"]
+        # Karta #145: ostatni krok to porównanie z progami (liczby), nie etykieta statusu —
+        # to samo zdanie co `why_pl`, bez mapy status → tekst poza słownikiem werdyktu.
+        assert item.white_box[4]["tekst"] == f"Porównanie z progami: {item.why_pl}"
+        assert "zbliża się do limitu" in item.white_box[4]["tekst"]
 
     def test_not_computed_item_has_empty_trace(self):
         graph = _build_simple_graph()
@@ -889,7 +893,7 @@ class TestWhiteBoxTrace:
             assert item_dict["white_box"] == list(item.white_box)
             if item.status != EnergyValidationStatus.NOT_COMPUTED:
                 assert len(item.white_box) == 5
-                assert item.white_box[-1]["tekst"].startswith("Werdykt:")
+                assert item.white_box[-1]["tekst"] == f"Porównanie z progami: {item.why_pl}"
                 assert item.white_box[0]["latex"]  # wzor zawsze w LaTeX
         json.dumps(data)  # serializowalnosc
 
@@ -966,8 +970,10 @@ class TestZnacznikBrakuRozwiazania:
         bilans = self._pozycje(view, EnergyCheckType.REACTIVE_BALANCE)[0]
         assert straty.status == EnergyValidationStatus.NOT_COMPUTED
         assert bilans.status == EnergyValidationStatus.NOT_COMPUTED
-        assert "NaN" in straty.why_pl
-        assert "NaN" in bilans.why_pl
+        # Karta #145: brak rozwiązania nazwany po polsku, bez zapisu `NaN` języka programowania.
+        assert "wartość nieokreślona" in straty.why_pl
+        assert "wartość nieokreślona" in bilans.why_pl
+        assert "NaN" not in straty.why_pl and "NaN" not in bilans.why_pl
 
     def test_widok_z_nan_serializuje_sie_do_poprawnego_json(self):
         graph = _build_simple_graph()

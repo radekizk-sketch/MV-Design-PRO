@@ -15,7 +15,7 @@
 
 import type { ZrodloSiecioweSlad } from '../../../ui/results-inspector/types';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { TabelaWynikow } from '../wzorzec';
+import { TabelaWynikow, useNazwaObiektu } from '../wzorzec';
 import { ZWARCIA_STRINGS } from './strings';
 import { KLUCZ_ZRODLA_SIECIOWE, KOLUMNY_ZRODEL_SIECIOWYCH, naWierszeZrodelSieciowych } from './zwarciaModel';
 
@@ -32,6 +32,7 @@ export function SladZrodelSieciowych({
   onOtworzDowod,
 }: SladZrodelSieciowychProps) {
   const wiersze = zrodlaSieciowe ?? [];
+  const nazwaObiektu = useNazwaObiektu();
 
   return (
     <section
@@ -50,7 +51,7 @@ export function SladZrodelSieciowych({
           <p className="mvd-zwarcia-wklad-szczegol-opis">{ZWARCIA_STRINGS.zrodlaOpis}</p>
           <TabelaWynikow
             kolumny={KOLUMNY_ZRODEL_SIECIOWYCH}
-            wiersze={naWierszeZrodelSieciowych(wiersze)}
+            wiersze={naWierszeZrodelSieciowych(wiersze, (ref) => nazwaObiektu(ref))}
             onOtworzDowod={onOtworzDowod}
             trybZaawansowania={trybZaawansowania}
             kluczWiersza={KLUCZ_ZRODLA_SIECIOWE}

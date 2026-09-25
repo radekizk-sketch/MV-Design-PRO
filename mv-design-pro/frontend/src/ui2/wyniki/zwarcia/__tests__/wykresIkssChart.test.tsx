@@ -5,7 +5,11 @@ import { ZWARCIA_STRINGS } from '../strings';
 import { naSlupkiIkss } from '../zwarciaModel';
 import { shortCircuitResultsFixture } from './fixtures';
 
-const slupki = naSlupkiIkss(shortCircuitResultsFixture().rows);
+/** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
+const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
+  nazwaZWyniku ?? `nazwa ${ref}`;
+
+const slupki = naSlupkiIkss(shortCircuitResultsFixture().rows, NAZWA);
 
 describe('WykresIkssChart — słupki Recharts (tokeny --mvd-*, deterministyczny)', () => {
   it('renderuje tytuł wykresu i kontener', () => {

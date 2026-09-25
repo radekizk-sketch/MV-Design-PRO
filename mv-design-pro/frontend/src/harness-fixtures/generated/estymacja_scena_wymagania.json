@@ -76,7 +76,7 @@
   "min_measurements": 9,
   "n_buses": 5,
   "n_states": 9,
-  "note_pl": "Pomiary muszą być w jednostkach względnych (pu) na tej samej bazie mocy (base_mva) co macierz Y-bus. Pomiary przepływu (P_FLOW/Q_FLOW) wymagają węzła 'do' gałęzi (bus_j_ref).",
+  "note_pl": "Pomiary muszą być w jednostkach względnych (pu) na tej samej bazie mocy co macierz admitancyjna Y-bus. Pomiary przepływu mocy czynnej i biernej w gałęzi wymagają wskazania węzła końcowego tej gałęzi.",
   "slack_bus_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
   "slack_index": 1
 }

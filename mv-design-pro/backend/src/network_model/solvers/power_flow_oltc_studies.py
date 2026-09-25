@@ -33,8 +33,22 @@ KOD_BRAK_PASMA_REGULATORA = "oltc.deadband_missing"
 KOD_BRAK_NAPIECIA_DOCELOWEGO = "oltc.target_voltage_missing"
 
 
+def _pl(wartosc: float, miejsca: int) -> str:
+    """Liczba w tekście wywodu z przecinkiem dziesiętnym (konwencja PL ekranu wyników);
+    zapis LaTeX zostaje z kropką (składnia wzoru)."""
+    return f"{wartosc:.{miejsca}f}".replace(".", ",")
+
+
+#: Funkcja celu optymalizacji po polsku (kod parametru badania nie trafia do tekstu).
+CELE_OPTYMALIZACJI_PL: dict[str, str] = {
+    "minimize_losses": "minimalizacja strat czynnych",
+    "maintain_voltage": "utrzymanie napięcia szyny regulowanej",
+    "minimize_switching": "minimalizacja przełączeń zaczepów",
+}
+
+
 def _krok(tekst: str, latex: str | None = None) -> dict[str, Any]:
-    """Krok wywodu WHITE BOX: tekst (ASCII-PL, deterministyczny) + opcjonalny LaTeX.
+    """Krok wywodu WHITE BOX: tekst (po polsku, deterministyczny) + opcjonalny LaTeX.
 
     Kontrakt kanoniczny ``{tekst, latex}`` (zasada wywodow KaTeX 2026-07-22);
     wzorzec 1:1 z ``analysis.energy_validation.builder._krok``.
@@ -212,12 +226,12 @@ def _wywod_sweep(
 
     Czysty formatter — WSZYSTKIE liczby pochodza z danych wejsciowych badania
     (du, n0, zakres pozycji) i z wartosci juz policzonych (tap_ratio, U, straty).
-    Formaty stale (determinizm), tekst ASCII-PL.
+    Formaty stałe (determinizm), tekst po polsku; transformator i szyna nazwane z modelu.
     """
     if points:
         zakres = (
-            f"Zakres pozycji: n = {points[0].position}..{points[-1].position} "
-            f"(liczba punktow: {len(points)}); transformator {nazwa_transformatora}, "
+            f"Zakres pozycji: n = {points[0].position}…{points[-1].position} "
+            f"(liczba punktów: {len(points)}); transformator {nazwa_transformatora}, "
             "szyna regulowana: "
             f"{nazwa_szyny_regulowanej if nazwa_szyny_regulowanej is not None else 'brak'}."
         )
@@ -225,31 +239,31 @@ def _wywod_sweep(
         zakres = f"Zakres pozycji: pusty; transformator {nazwa_transformatora}."
     kroki = [
         _krok(
-            "Badanie: przeglad pozycji zaczepow (sweep) — rozplyw liczony solverem "
-            "FROZEN dla kazdej ustalonej pozycji zaczepu."
+            "Badanie: przegląd pozycji zaczepów — rozpływ mocy liczony dla każdej "
+            "ustalonej pozycji zaczepu."
         ),
         _krok(zakres),
         _krok(
-            "Wzor: przekladnia zaczepu t(n) = 1 + (n - n0) * du / 100",
+            "Wzór: przekładnia zaczepu t(n) = 1 + (n − n0) · Δu / 100",
             r"t(n) = 1 + \frac{(n - n_{0}) \cdot \Delta u}{100}",
         ),
-        _krok(f"Dane: krok zaczepu du = {du:.4f} %, pozycja neutralna n0 = {n0}."),
+        _krok(f"Dane: krok zaczepu Δu = {_pl(du, 4)} %, pozycja neutralna n0 = {n0}."),
     ]
     for p in points:
-        u_txt = f"{p.controlled_bus_kv:.3f} kV" if p.controlled_bus_kv is not None else "brak"
+        u_txt = f"{_pl(p.controlled_bus_kv, 3)} kV" if p.controlled_bus_kv is not None else "brak"
         kroki.append(
             _krok(
-                f"Pozycja n = {p.position}: t = {p.tap_ratio:.6f}, "
-                f"U szyny regulowanej = {u_txt}, straty = {p.losses_mw:.6f} MW, "
-                f"zbiezny = {'TAK' if p.converged else 'NIE'}.",
+                f"Pozycja n = {p.position}: t = {_pl(p.tap_ratio, 6)}, "
+                f"U szyny regulowanej = {u_txt}, straty = {_pl(p.losses_mw, 6)} MW, "
+                f"rozpływ zbieżny: {'tak' if p.converged else 'nie'}.",
                 rf"t({p.position}) = 1 + \frac{{({p.position} - {n0}) \cdot {du:.4f}}}{{100}}"
                 rf" = {p.tap_ratio:.6f}",
             )
         )
     kroki.append(
         _krok(
-            "Kryterium odczytu: napiecie szyny regulowanej i straty czynne "
-            "pochodza z rozwiazania rozplywu (bez ocen w tej warstwie)."
+            "Kryterium odczytu: napięcie szyny regulowanej i straty czynne "
+            "pochodzą z rozwiązania rozpływu mocy (bez ocen w tym badaniu)."
         )
     )
     return kroki
@@ -480,16 +494,16 @@ def _wywod_profilu(
     """
     kroki = [
         _krok(
-            "Badanie: profil roczny OLTC — petla regulatora (solver FROZEN) "
-            "dla kazdego kroku profilu obciazenia; pozycje przenosza sie "
-            "miedzy krokami jak w rzeczywistym regulatorze."
+            "Badanie: profil roczny regulacji zaczepów pod obciążeniem — pętla "
+            "regulatora dla każdego kroku profilu obciążenia; pozycje przenoszą się "
+            "między krokami jak w rzeczywistym regulatorze."
         ),
         _krok(
-            "Wzor: skalowanie obciazen kroku profilu",
+            "Wzór: skalowanie obciążeń kroku profilu",
             r"P_{i} = s_{i} \cdot P_{0},\qquad Q_{i} = s_{i} \cdot Q_{0}",
         ),
         _krok(
-            "Wzor: warunek pasma nieczulosci regulatora",
+            "Wzór: warunek pasma nieczułości regulatora",
             r"\left|U - U_{zad}\right| \le \frac{\Delta U_{db}}{2}",
         ),
     ]
@@ -502,9 +516,9 @@ def _wywod_profilu(
             setpoint, deadband = nastawy.get(reg_id, (None, None))
             laczenia = "nieustalone" if step.switch_count is None else str(step.switch_count)
             tekst = (
-                f"Krok '{step.label}' (s = {step.load_scale:.2f}), "
-                f"transformator {nazwy_transformatorow[reg_id]}: "
-                f"pozycja koncowa n = {pos}, przelaczenia w kroku = {laczenia}."
+                f"Krok „{step.label}” (s = {_pl(step.load_scale, 2)}), transformator "
+                f"{nazwy_transformatorow[reg_id]}: "
+                f"pozycja końcowa n = {pos}, przełączenia w kroku = {laczenia}."
             )
             latex: str | None = None
             if v is not None and setpoint is not None and deadband is not None:
@@ -519,7 +533,7 @@ def _wywod_profilu(
                 # Odchylka jest ZMIERZONA, ale nie ma jej do czego porownac —
                 # pokazujemy sama odchylke, bez progu i bez werdyktu.
                 tekst += (
-                    " Polozenie wzgledem pasma: NIEUSTALONE (brak pasma nieczulosci"
+                    " Położenie względem pasma: nieustalone (brak pasma nieczułości"
                     " regulatora w modelu)."
                 )
                 latex = (
@@ -528,24 +542,24 @@ def _wywod_profilu(
                 )
             elif v is not None:
                 tekst += (
-                    " Polozenie wzgledem pasma: NIEUSTALONE (brak napiecia zadanego"
+                    " Położenie względem pasma: nieustalone (brak napięcia zadanego"
                     " regulatora w modelu)."
                 )
             kroki.append(_krok(tekst, latex))
     if total_switches is None:
         kroki.append(
             _krok(
-                "Suma przelaczen zaczepow: NIEDOSTEPNA — petla regulatora nie miala "
-                "kompletu nastaw, wiec liczby laczen nie ma z czego policzyc "
-                f"(kroki poza pasmem nieczulosci: {_licznik_lub_brak(outside)} z {len(steps)})."
+                "Suma przełączeń zaczepów: niedostępna — pętla regulatora nie miała "
+                "kompletu nastaw, więc liczby łączeń nie ma z czego policzyć "
+                f"(kroki poza pasmem nieczułości: {_licznik_lub_brak(outside)} z {len(steps)})."
             )
         )
         return kroki
     suma_czlony = " + ".join(str(s.switch_count) for s in steps) if steps else "0"
     kroki.append(
         _krok(
-            f"Suma przelaczen zaczepow: N = {total_switches} "
-            f"(kroki poza pasmem nieczulosci: {_licznik_lub_brak(outside)} z {len(steps)}).",
+            f"Suma przełączeń zaczepów: N = {total_switches} "
+            f"(kroki poza pasmem nieczułości: {_licznik_lub_brak(outside)} z {len(steps)}).",
             rf"N_{{prz}} = \sum_{{i}} n_{{i}} = {suma_czlony} = {total_switches}",
         )
     )
@@ -560,13 +574,13 @@ def _krok_brakow_profilu(kody: tuple[str, ...]) -> dict[str, Any]:
     """Krok wywodu nazywajacy BRAKUJACE dane modelu (zamiast werdyktu z domyslu)."""
     braki: list[str] = []
     if KOD_BRAK_NAPIECIA_DOCELOWEGO in kody:
-        braki.append("napiecia zadanego regulatora U_zad (model, przelacznik zaczepow)")
+        braki.append("napięcia zadanego regulatora U_zad (model, przełącznik zaczepów)")
     if KOD_BRAK_PASMA_REGULATORA in kody:
-        braki.append("pasma nieczulosci regulatora dU_db (model, przelacznik zaczepow)")
+        braki.append("pasma nieczułości regulatora ΔU_db (model, przełącznik zaczepów)")
     return _krok(
-        "Kryterium pasma: NIEUSTALONE dla co najmniej jednego regulatora — brakuje "
-        f"{' oraz '.join(braki)}. Brakujacej danej NIE zastepujemy zadna wartoscia "
-        "domyslna, wiec znacznik 'w pasmie' pozostaje nieustalony (kod gotowosci w wyniku)."
+        "Kryterium pasma: nieustalone dla co najmniej jednego regulatora — brakuje "
+        f"{' oraz '.join(braki)}. Brakującej danej nie zastępujemy żadną wartością "
+        "domyślną, więc położenie „w paśmie” pozostaje nieustalone."
     )
 
 
@@ -868,42 +882,42 @@ def _krok_kryterium(criterion: FeasibilityCriterion) -> dict[str, Any]:
     """
     if criterion.kind == "convergence":
         return _krok(
-            "Kryterium dopuszczalnosci pozycji: rozplyw mocy dla tej pozycji ma "
-            "rozwiazanie (zbieznosc solvera FROZEN); zrodlo: wynik rozplywu."
+            "Kryterium dopuszczalności pozycji: rozpływ mocy dla tej pozycji ma "
+            "rozwiązanie (zbieżność obliczenia); źródło: wynik rozpływu."
         )
     if criterion.kind == "voltage_deviation":
         if not criterion.available:
             return _krok(
-                "Kryterium dopuszczalnosci pozycji: NIEDOSTEPNE — badanie nie ma "
-                "napiecia docelowego U_cel, wiec odchylki nie ma od czego liczyc."
+                "Kryterium dopuszczalności pozycji: niedostępne — badanie nie ma "
+                "napięcia docelowego U_cel, więc odchyłki nie ma od czego liczyć."
             )
         cel = criterion.target_kv if criterion.target_kv is not None else float("nan")
         return _krok(
-            "Kryterium dopuszczalnosci pozycji: rozplyw zbiezny i ZMIERZONA odchylka "
-            f"od U_cel = {cel:.3f} kV (zrodlo: parametr badania); pozycje ocenia "
-            "sama odchylka J(n), bez dodatkowego pasma.",
+            "Kryterium dopuszczalności pozycji: rozpływ zbieżny i zmierzona odchyłka "
+            f"od U_cel = {_pl(cel, 3)} kV (źródło: parametr badania); pozycje ocenia "
+            "sama odchyłka J(n), bez dodatkowego pasma.",
             r"J(n) = \left|U(n) - U_{cel}\right|",
         )
     # voltage_deadband
     if not criterion.available:
         braki: list[str] = []
         if KOD_BRAK_NAPIECIA_DOCELOWEGO in criterion.readiness_codes:
-            braki.append("napiecia docelowego U_cel (parametr badania)")
+            braki.append("napięcia docelowego U_cel (parametr badania)")
         if KOD_BRAK_PASMA_REGULATORA in criterion.readiness_codes:
-            braki.append("pasma nieczulosci regulatora dU_db (model, przelacznik zaczepow)")
+            braki.append("pasma nieczułości regulatora ΔU_db (model, przełącznik zaczepów)")
         return _krok(
-            "Kryterium dopuszczalnosci pozycji: NIEDOSTEPNE — brakuje "
-            f"{' oraz '.join(braki)}. Pasma akceptacji NIE zastepujemy zadna wartoscia "
-            "domyslna, wiec badanie nie wskazuje pozycji (kod gotowosci w wyniku)."
+            "Kryterium dopuszczalności pozycji: niedostępne — brakuje "
+            f"{' oraz '.join(braki)}. Pasma akceptacji nie zastępujemy żadną wartością "
+            "domyślną, więc badanie nie wskazuje pozycji."
         )
     cel = criterion.target_kv if criterion.target_kv is not None else float("nan")
     pasmo = criterion.band_kv if criterion.band_kv is not None else float("nan")
     polowa = criterion.half_band_kv if criterion.half_band_kv is not None else float("nan")
     return _krok(
-        "Kryterium dopuszczalnosci pozycji: napiecie szyny regulowanej miesci sie w "
-        f"pasmie nieczulosci regulatora dU_db = {pasmo:.3f} kV (zrodlo: przelacznik "
-        f"zaczepow w modelu) wokol U_cel = {cel:.3f} kV (zrodlo: parametr badania), "
-        f"czyli |U(n) - U_cel| <= {polowa:.3f} kV. Konwencja polowy pasma jak w petli "
+        "Kryterium dopuszczalności pozycji: napięcie szyny regulowanej mieści się w "
+        f"paśmie nieczułości regulatora ΔU_db = {_pl(pasmo, 3)} kV (źródło: przełącznik "
+        f"zaczepów w modelu) wokół U_cel = {_pl(cel, 3)} kV (źródło: parametr badania), "
+        f"czyli |U(n) − U_cel| ≤ {_pl(polowa, 3)} kV. Konwencja połowy pasma jak w pętli "
         "regulatora.",
         rf"\left|U(n) - {cel:.3f}\right| \le \frac{{{pasmo:.3f}}}{{2}}"
         rf" = {polowa:.3f}\ \text{{kV}}",
@@ -926,15 +940,16 @@ def _wywod_optymalizacji(
     target_kv = criterion.target_kv
     kroki = [
         _krok(
-            "Badanie: optymalizacja pozycji zaczepu przez pelny przeglad pozycji "
-            f"(enumeracja dokladna, bez heurystyk); cel: {objective}."
+            "Badanie: optymalizacja pozycji zaczepu przez pełny przegląd pozycji "
+            "(enumeracja dokładna, bez heurystyk); cel: "
+            f"{CELE_OPTYMALIZACJI_PL.get(objective, 'cel spoza słownika badania')}."
         ),
     ]
     if objective == "maintain_voltage":
-        cel_txt = f"U_cel = {target_kv:.3f} kV" if target_kv is not None else "U_cel = brak"
+        cel_txt = f"U_cel = {_pl(target_kv, 3)} kV" if target_kv is not None else "U_cel = brak"
         kroki.append(
             _krok(
-                f"Wzor: funkcja celu utrzymania napiecia; {cel_txt}.",
+                f"Wzór: funkcja celu utrzymania napięcia; {cel_txt}.",
                 r"J(n) = \left|U(n) - U_{cel}\right|",
             )
         )
@@ -944,7 +959,7 @@ def _wywod_optymalizacji(
                 kroki.append(
                     _krok(
                         f"Podstawienie dla najlepszej pozycji n = {best.position}: "
-                        f"J = {best.objective_value:.6f} kV.",
+                        f"J = {_pl(best.objective_value, 6)} kV.",
                         rf"J({best.position}) = \left|{u_ctrl:.3f} - {target_kv:.3f}\right|"
                         rf" = {best.objective_value:.6f}\ \text{{kV}}",
                     )
@@ -952,7 +967,7 @@ def _wywod_optymalizacji(
     elif objective == "minimize_switching":
         kroki.append(
             _krok(
-                f"Wzor: funkcja celu minimalizacji przelaczen; pozycja poczatkowa n0 = {initial}.",
+                f"Wzór: funkcja celu minimalizacji przełączeń; pozycja początkowa n0 = {initial}.",
                 r"J(n) = \left|n - n_{0}\right|",
             )
         )
@@ -968,8 +983,8 @@ def _wywod_optymalizacji(
     else:  # minimize_losses (default)
         kroki.append(
             _krok(
-                "Wzor: funkcja celu minimalizacji strat czynnych; kara za przelaczenie "
-                f"k_prz = {switch_penalty_mw_per_step:.4f} MW/krok, n0 = {initial}.",
+                "Wzór: funkcja celu minimalizacji strat czynnych; kara za przełączenie "
+                f"k_prz = {_pl(switch_penalty_mw_per_step, 4)} MW/krok, n0 = {initial}.",
                 r"J(n) = P_{str}(n) + k_{prz} \cdot \left|n - n_{0}\right|",
             )
         )
@@ -977,7 +992,7 @@ def _wywod_optymalizacji(
             kroki.append(
                 _krok(
                     f"Podstawienie dla najlepszej pozycji n = {best.position}: "
-                    f"straty = {best.losses_mw:.6f} MW, J = {best.objective_value:.6f} MW.",
+                    f"straty = {_pl(best.losses_mw, 6)} MW, J = {_pl(best.objective_value, 6)} MW.",
                     rf"J({best.position}) = {best.losses_mw:.6f}"
                     rf" + {switch_penalty_mw_per_step:.4f} \cdot"
                     rf" \left|{best.position} - {initial}\right|"
@@ -988,29 +1003,26 @@ def _wywod_optymalizacji(
     if best is not None:
         kroki.append(
             _krok(
-                f"Wynik: najlepsza pozycja n* = {best.position}; liczba przelaczen "
-                f"|n* - n0| = |{best.position} - {initial}| = {abs(best.position - initial)}.",
+                f"Wynik: najlepsza pozycja n* = {best.position}; liczba przełączeń "
+                f"|n* − n0| = |{best.position} − {initial}| = {abs(best.position - initial)}.",
                 rf"n^{{*}} = \arg\min_{{n}} J(n) = {best.position}",
             )
         )
     elif not criterion.available:
         kroki.append(
             _krok(
-                "Wynik: NIEDOSTEPNY — bez kryterium dopuszczalnosci badanie nie "
-                "wskazuje pozycji ani liczby przelaczen (uczciwy brak, bez fabrykacji)."
+                "Wynik: niedostępny — bez kryterium dopuszczalności badanie nie "
+                "wskazuje pozycji ani liczby przełączeń."
             )
         )
     else:
         kroki.append(
-            _krok(
-                "Wynik: zadna pozycja nie spelnia kryterium dopuszczalnosci — nie "
-                "wybrano n* (uczciwy brak, bez fabrykacji)."
-            )
+            _krok("Wynik: żadna pozycja nie spełnia kryterium dopuszczalności — nie " "wybrano n*.")
         )
     kroki.append(
         _krok(
-            "Remis rozstrzygany deterministycznie: najnizsze J(n), potem pozycja "
-            "najblizsza poczatkowej, potem najnizsza pozycja."
+            "Remis rozstrzygany deterministycznie: najniższe J(n), potem pozycja "
+            "najbliższa początkowej, potem najniższa pozycja."
         )
     )
     return kroki

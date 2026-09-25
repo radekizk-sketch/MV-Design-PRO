@@ -13,8 +13,8 @@
  *      wzory KaTeX — dyrektywa właściciela 2026-07-29).
  *
  * Zero fizyki, zero ocen lokalnych — wielkości, werdykty i powody pochodzą WYŁĄCZNIE
- * z backendu. Identyfikatory (bus_ref, input_hash, trace_id) wyłącznie w trybie
- * eksperckim.
+ * z backendu. Identyfikatory (przebieg, odcisk wejścia) wyłącznie w „Informacjach
+ * audytowych" (tryb ekspercki, zwinięte — karta #145), nigdy w założeniach.
  *
  * R2-B: opcjonalna pre-selekcja węzła z deep-linku akcji naprawczej „bilans
  * mocy biernej" (`preselekcjaWezla`) — żądanie jednorazowe, ref walidowany
@@ -32,7 +32,7 @@ import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
-import { TabelaWynikow } from '../../wyniki/wzorzec';
+import { InformacjeAudytowe, TabelaWynikow, useNazwaObiektu } from '../../wyniki/wzorzec';
 // Zasada wywodów KaTeX: wzory w notach/komentarzach renderuje TekstZWzorami (MathInline).
 import { TekstZWzorami } from '../../kreatory/rama';
 import { SladAnalizy } from '../pulpit';
@@ -127,6 +127,7 @@ function WynikKompensacji({
   onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = trybZaawansowania === 'expert';
+  const nazwaObiektu = useNazwaObiektu();
   const [sladWidoczny, setSladWidoczny] = useState(false);
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
 
@@ -161,7 +162,7 @@ function WynikKompensacji({
       <dl className="mvd-komp-zalozenia" data-testid="mvd-komp-zalozenia">
         <div className="mvd-komp-zal-para">
           <dt>{T.zalWezel}</dt>
-          <dd>{dane.parameters.bus_name ?? dane.parameters.bus_ref}</dd>
+          <dd>{nazwaObiektu(dane.parameters.bus_ref, dane.parameters.bus_name)}</dd>
         </div>
         <div className="mvd-komp-zal-para">
           <dt>{T.zalNapiecie}</dt>
@@ -183,19 +184,16 @@ function WynikKompensacji({
           <dt>{T.zalLiczbaKandydatow}</dt>
           <dd className="mvd-num">{dane.whitebox.candidate_count}</dd>
         </div>
-        {trybEkspercki && (
-          <>
-            <div className="mvd-komp-zal-para">
-              <dt>{T.zalPrzebieg}</dt>
-              <dd className="mvd-num">{dane.context.run_id}</dd>
-            </div>
-            <div className="mvd-komp-zal-para" data-testid="mvd-komp-eksp-hash">
-              <dt>{T.zalIdentyfikatorSkrot}</dt>
-              <dd className="mvd-num">{dane.input_hash}</dd>
-            </div>
-          </>
-        )}
       </dl>
+
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-komp-informacje-audytowe"
+        wiersze={[
+          { etykieta: T.zalPrzebieg, wartosc: dane.context.run_id },
+          { etykieta: T.zalIdentyfikatorSkrot, wartosc: dane.input_hash },
+        ]}
+      />
 
       <section className="mvd-komp-baseline" data-testid="mvd-komp-baseline">
         <p className="mvd-komp-sekcja-tytul">{T.baselineTytul}</p>

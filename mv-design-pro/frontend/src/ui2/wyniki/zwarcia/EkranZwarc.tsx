@@ -15,7 +15,7 @@
 import { useMemo, useState } from 'react';
 import './zwarcia.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
+import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie, useNazwaObiektu } from '../wzorzec';
 import { useRozplywZwarciowy, useWkladyZwarciowe } from './api';
 import { useOtworzKonfiguracjeStacji, WeryfikacjaAparatury } from './aparatura';
 import { BilansIEC } from './BilansIEC';
@@ -31,6 +31,7 @@ import { useSwiezoscNaglowka } from '../../freshness';
 import {
   KLUCZ_PUNKT,
   KOLUMNY_ZWARC,
+  nazwaPunktuZwarcia,
   naWierszeZwarc,
   naZalozeniaZwarc,
   useWynikZwarciowy,
@@ -57,6 +58,7 @@ export function EkranZwarc({
   wklady,
 }: EkranZwarcProps) {
   const { wynik, runId } = useWynikZwarciowy();
+  const nazwaObiektu = useNazwaObiektu();
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ, wspolnej derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
   const rows = wynik?.rows ?? [];
@@ -102,7 +104,7 @@ export function EkranZwarc({
   }
 
   const wierszAktywny = rows.find((r) => r.target_id === aktywnyPunkt) ?? rows[0];
-  const nazwaAktywnego = wierszAktywny.target_name ?? wierszAktywny.target_id;
+  const nazwaAktywnego = nazwaPunktuZwarcia(wierszAktywny, nazwaObiektu);
   const wkladyAktywne =
     aktywnyPunkt && wklady ? wklady[aktywnyPunkt] ?? null : wkladyPobrane?.wklady ?? null;
   // Wywod {tekst, latex} z backendu (zasada KaTeX) — tylko od realnego dostawcy;
@@ -117,9 +119,9 @@ export function EkranZwarc({
     <div data-testid="mvd-zwarcia-ekran">
       <EkranAnalizy
         naglowek={{ analizaPL: ZWARCIA_STRINGS.analiza, runId: runId ?? undefined, ...swiezosc }}
-        zalozenia={naZalozeniaZwarc(wynik.konfiguracja_biegu, wynik.zalozenia)}
+        zalozenia={naZalozeniaZwarc(wynik.konfiguracja_biegu, wynik.zalozenia, (ref) => nazwaObiektu(ref))}
         kolumny={KOLUMNY_ZWARC}
-        wiersze={naWierszeZwarc(rows)}
+        wiersze={naWierszeZwarc(rows, nazwaObiektu)}
         wykres={<WykresZwarc rows={rows} />}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
@@ -132,11 +134,12 @@ export function EkranZwarc({
         // schemacie" tego ekranu (`pokazNaSchemacie.ts`: `type: 'Bus'`).
         typElementuWiersza={() => 'Bus'}
         // Poprawka KLASA NIE INSTANCJA: klucz wiersza (`KLUCZ_PUNKT`) niesie
-        // `target_id` (techniczny), a widoczna kolumna „Punkt" pokazuje
-        // `target_name` — inspektor musi dostać tę drugą wartość.
-        nazwaElementuWiersza={(punktId) =>
-          rows.find((r) => r.target_id === punktId)?.target_name ?? undefined
-        }
+        // `target_id` (techniczny), a widoczna kolumna „Punkt" pokazuje nazwę z
+        // mostu nazw wyników — inspektor dostaje tę samą nazwę (karta #145).
+        nazwaElementuWiersza={(punktId) => {
+          const wiersz = rows.find((r) => r.target_id === punktId);
+          return wiersz ? nazwaPunktuZwarcia(wiersz, nazwaObiektu) : undefined;
+        }}
       />
 
       <div className="mvd-zwarcia-akcje" data-testid="mvd-zwarcia-akcje">

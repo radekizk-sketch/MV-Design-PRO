@@ -16,6 +16,7 @@ import certyfikatBraki from '../../../../harness-fixtures/generated/certyfikat_s
 import certyfikatWidok from '../../../../harness-fixtures/generated/certyfikat_scena_magazyn.json';
 import biegFixtura from '../../../../harness-fixtures/generated/ncrfg_bieg_scena_macierz.json';
 import zgodnoscFixtura from '../../../../harness-fixtures/generated/ncrfg_zgodnosc_przekrojowa_scena_macierz.json';
+import { useShellStore } from '../../../shell/useShellStore';
 import {
   BrakiDokumentu,
   DowodCertyfikatuOpis,
@@ -23,6 +24,7 @@ import {
   NaglowekModuluNcRfg,
   SekcjaModuluDokumentu,
 } from '../komponenty';
+import { POZYCJE_AUDYTOWE_BLOKU } from '../typy';
 import type {
   BiegNcRfg,
   BrakiCertyfikatu,
@@ -69,6 +71,11 @@ describe('DowodCertyfikatuOpis — dowód × odrzucenie × brak × źródło dan
   ] as const)('%s', (_opis, d, odrzucony, zrodlo, stan) => {
     render(<DowodCertyfikatuOpis dowod={d} odrzucony={odrzucony} zrodloDanych={zrodlo} testid="d" />);
     expect(screen.getByTestId('d')).toHaveAttribute('data-stan', stan);
+    if (stan === 'dowod') {
+      // Karta #145: rekord nazwany polami wykazu; klucz rekordu rejestru poza pierwszym planem.
+      expect(screen.getByTestId('d')).toHaveTextContent(d!.producent);
+      expect(screen.getByTestId('d')).not.toHaveTextContent(d!.rekord_id);
+    }
     if (stan === 'odrzucony') expect(screen.getByTestId('d')).toHaveTextContent('rekord spoza wykazu');
     if (stan === 'brak') {
       expect(screen.getByTestId('d')).toHaveTextContent(
@@ -76,6 +83,16 @@ describe('DowodCertyfikatuOpis — dowód × odrzucenie × brak × źródło dan
       );
     }
   });
+});
+
+it('dowód certyfikatu: identyfikator rekordu wykazu wyłącznie w informacjach audytowych trybu eksperckiego', async () => {
+  const dowod = ZGODNOSC.bieg!.modules.find((m) => m.dowod_certyfikatu !== null)!.dowod_certyfikatu!;
+  const uzytkownik = userEvent.setup();
+  useShellStore.setState({ advancementMode: 'expert' });
+  render(<DowodCertyfikatuOpis dowod={dowod} zrodloDanych="ZATWIERDZONY_MODEL" testid="d" />);
+  await uzytkownik.click(screen.getByTestId('d-informacje-audytowe-przelacz'));
+  expect(screen.getByTestId('d-informacje-audytowe-lista')).toHaveTextContent(dowod.rekord_id);
+  useShellStore.setState({ advancementMode: 'basic' });
 });
 
 describe('ListaRekordowWymagan', () => {
@@ -125,7 +142,17 @@ describe('SekcjaModuluDokumentu (widok certyfikatu policzony backendem)', () => 
     await uzytkownik.click(screen.getByTestId(`s-wymagania-${pierwszy.rekord.wymaganie_id}-przelacz`));
     await uzytkownik.click(screen.getByTestId(`s-wymagania-${pierwszy.rekord.wymaganie_id}-zapis-przelacz`));
     const blok = screen.getByTestId(`s-wymagania-${pierwszy.rekord.wymaganie_id}-zapis`);
-    for (const pozycja of pierwszy.blok) expect(blok).toHaveTextContent(pozycja.etykieta_pl);
+    // Karta #145: intencja bez zmian — każda pozycja bloku backendu jest pokazana; pozycje
+    // audytowe (odniesienie do dowodu, bieg śladu) stoją w informacjach audytowych, nie w
+    // zapisie pierwszego planu (iloczyn trybów przypina `pozycjeAudytowe.test.tsx`).
+    for (const pozycja of pierwszy.blok) {
+      if (POZYCJE_AUDYTOWE_BLOKU.includes(pozycja.etykieta_pl)) {
+        expect(blok).not.toHaveTextContent(pozycja.etykieta_pl);
+      } else {
+        expect(blok).toHaveTextContent(pozycja.etykieta_pl);
+      }
+    }
+    expect(pierwszy.blok.some((p) => POZYCJE_AUDYTOWE_BLOKU.includes(p.etykieta_pl))).toBe(true);
   });
 });
 

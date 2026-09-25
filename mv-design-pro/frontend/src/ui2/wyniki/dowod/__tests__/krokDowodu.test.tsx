@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, within, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { KrokDowodu } from '../KrokDowodu';
 import { mapujKroki } from '../dowodModel';
 import { DOWOD_STRINGS } from '../strings';
@@ -82,11 +83,17 @@ describe('KrokDowodu — klucze nieznane a tryb zaawansowania', () => {
     expect(within(dane).queryByText('wspolczynnik_x')).not.toBeInTheDocument();
   });
 
-  it('tryb ekspercki: surowy klucz nieznany pokazany', () => {
+  // Karta #145: surowy klucz nie wraca na pierwszy plan nawet w trybie eksperckim —
+  // ekspert znajduje go w zwiniętych „Informacjach audytowych" kroku.
+  it('tryb ekspercki: klucz nieznany wyłącznie w informacjach audytowych kroku', async () => {
     render(<KrokDowodu krok={model()[1]} trybZaawansowania="expert" />);
     const dane = screen.getByTestId('mvd-dowod-dane');
-    expect(within(dane).getAllByTestId('mvd-dowod-wielkosc')).toHaveLength(4);
-    expect(within(dane).getByText('wspolczynnik_x')).toBeInTheDocument();
+    expect(within(dane).getAllByTestId('mvd-dowod-wielkosc')).toHaveLength(3);
+    expect(within(dane).queryByText('wspolczynnik_x')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('mvd-dowod-krok-informacje-audytowe-przelacz'));
+    expect(screen.getByTestId('mvd-dowod-krok-informacje-audytowe-lista').textContent).toContain(
+      'wspolczynnik_x',
+    );
   });
 });
 

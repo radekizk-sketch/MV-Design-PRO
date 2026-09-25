@@ -48,7 +48,14 @@ import type {
   RankingIssue as ProtectionRankingIssue,
 } from '../../../ui/protection-comparison/types';
 import { STATE_CHANGE_LABELS } from '../../../ui/protection-comparison/types';
-import type { DefinicjaKolumny, WartoscKomorki, WierszTabeli, WierszZalozenia } from '../wzorzec';
+import type {
+  DefinicjaKolumny,
+  NazwaObiektu,
+  WartoscKomorki,
+  WierszTabeli,
+  WierszInformacjiAudytowych,
+  WierszZalozenia,
+} from '../wzorzec';
 import { refDowoduPorownania } from './dowodPorownania';
 import {
   POROWNANIE_STRINGS,
@@ -144,18 +151,19 @@ export const KOLUMNY_GALEZI: DefinicjaKolumny[] = [
  */
 export const KLUCZ_PROBLEM = 'klucz';
 
+/**
+ * Klucz wiersza tabel różnic szyn i gałęzi: identyfikator elementu z wyniku (komórka
+ * bez kolumny). Kolumna główna pokazuje NAZWĘ elementu z mostu nazw wyników (karta
+ * #145), a identyfikator zostaje kluczem — dowód, zaznaczenie i „Popraw w modelu"
+ * działają na nim, nie na nazwie.
+ */
+export const KLUCZ_ID_ELEMENTU = 'idElementu';
+
 export const KOLUMNY_RANKINGU: DefinicjaKolumny[] = [
   { klucz: 'waga', etykieta: POROWNANIE_STRINGS.kolWaga, wyrownanie: 'lewo' },
   { klucz: 'rodzaj', etykieta: POROWNANIE_STRINGS.kolRodzaj, wyrownanie: 'lewo' },
   { klucz: 'element', etykieta: POROWNANIE_STRINGS.kolElement, wyrownanie: 'lewo' },
   { klucz: 'opis', etykieta: POROWNANIE_STRINGS.kolOpis, wyrownanie: 'lewo', sortowalna: false },
-  {
-    klucz: 'kodTechniczny',
-    etykieta: POROWNANIE_STRINGS.kolKodTechniczny,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -228,13 +236,15 @@ function komorkaProcentu(wartosc: number | null | undefined, ostrzezenie: boolea
 export function naWierszeSzynDiff(
   rows: PowerFlowBusDiffRow[],
   wagi: Map<string, number>,
+  nazwa: NazwaObiektu,
 ): WierszTabeli[] {
   return rows.map((row) => {
     const flaga = poza(wagi, row.bus_id);
     const refA = refDowoduPorownania('A', row.bus_id);
     const refB = refDowoduPorownania('B', row.bus_id);
     return {
-      szyna: { wartosc: row.bus_id },
+      [KLUCZ_ID_ELEMENTU]: { wartosc: row.bus_id },
+      szyna: { wartosc: nazwa(row.bus_id) },
       vA: komorka(row.v_pu_a, fmtNapiecie, refA),
       vB: komorka(row.v_pu_b, fmtNapiecie, refB),
       dV: komorkaDelty(row.delta_v_pu, fmtDeltaNapiecie, flaga),
@@ -254,13 +264,15 @@ export function naWierszeSzynDiff(
 export function naWierszeGalezi(
   rows: PowerFlowBranchDiffRow[],
   wagi: Map<string, number>,
+  nazwa: NazwaObiektu,
 ): WierszTabeli[] {
   return rows.map((row) => {
     const flaga = poza(wagi, row.branch_id);
     const refA = refDowoduPorownania('A', row.branch_id);
     const refB = refDowoduPorownania('B', row.branch_id);
     return {
-      galaz: { wartosc: row.branch_id },
+      [KLUCZ_ID_ELEMENTU]: { wartosc: row.branch_id },
+      galaz: { wartosc: nazwa(row.branch_id) },
       stratyA: komorka(row.losses_p_mw_a, fmtMoc, refA),
       stratyB: komorka(row.losses_p_mw_b, fmtMoc, refB),
       dStraty: komorkaDelty(row.delta_losses_p_mw, fmtDeltaMoc, flaga),
@@ -317,7 +329,10 @@ export function tylkoRozniceGalezi(rows: PowerFlowBranchDiffRow[]): PowerFlowBra
  * przy poważnym+); rodzaj i opis po polsku; surowy kod tylko w trybie eksperckim.
  * Klucz wiersza = indeks źródłowy (stabilny, deterministyczny przy sortowaniu).
  */
-export function naWierszeRankingu(ranking: PowerFlowRankingIssue[]): WierszTabeli[] {
+export function naWierszeRankingu(
+  ranking: PowerFlowRankingIssue[],
+  nazwa: NazwaObiektu,
+): WierszTabeli[] {
   return ranking.map((issue, i) => ({
     waga: {
       wartosc: wagaPL(issue.severity),
@@ -325,9 +340,8 @@ export function naWierszeRankingu(ranking: PowerFlowRankingIssue[]): WierszTabel
       ostrzezenie: issue.severity >= WAGA_PROG_TAG,
     },
     rodzaj: { wartosc: rodzajProblemuPL(issue.issue_code) },
-    element: { wartosc: issue.element_ref },
+    element: { wartosc: nazwa(issue.element_ref) },
     opis: { wartosc: issue.description_pl },
-    kodTechniczny: { wartosc: issue.issue_code },
     [KLUCZ_PROBLEM]: { wartosc: String(i) },
   }));
 }
@@ -420,8 +434,9 @@ function rewizjaZKoperty(envelope: Record<string, unknown> | null): string {
 }
 
 /**
- * `RunProvenance` → linie panelu eksperckiego (B1: dowód CO było porównywane —
- * rodzaj analizy, status, rewizja/scenariusz koperty, odciski migawki i wejścia).
+ * `RunProvenance` → linie proweniencji biegu (B1: dowód CO było porównywane —
+ * rodzaj analizy, status, rewizja/scenariusz koperty, odciski migawki i wejścia);
+ * trafiają WYŁĄCZNIE do „Informacji audytowych" (`naWierszeAudytuPorownania`).
  */
 export function naLinieProweniencji(p: RunProvenance): LiniaProweniencji[] {
   return [
@@ -433,8 +448,32 @@ export function naLinieProweniencji(p: RunProvenance): LiniaProweniencji[] {
   ];
 }
 
+/**
+ * Wiersze „Informacji audytowych" porównania (karta #145): identyfikator porównania i
+ * proweniencja obu biegów (`naLinieProweniencji`) — metadane produkcyjne, które
+ * wcześniej stały w nagłówku i w panelu proweniencji na pierwszym planie. Jedna
+ * funkcja dla wszystkich rodzajów porównania, które niosą `RunProvenance`
+ * (rozpływ, zabezpieczenia).
+ */
+export function naWierszeAudytuPorownania(
+  comparisonId: string,
+  proweniencjaA: RunProvenance,
+  proweniencjaB: RunProvenance,
+): WierszInformacjiAudytowych[] {
+  const zBiegu = (bieg: string, dane: RunProvenance): WierszInformacjiAudytowych[] =>
+    naLinieProweniencji(dane).map((linia) => ({
+      etykieta: `${bieg} — ${linia.etykieta.toLowerCase()}`,
+      wartosc: linia.wartosc,
+    }));
+  return [
+    { etykieta: POROWNANIE_STRINGS.identyfikatorPorownania, wartosc: comparisonId },
+    ...zBiegu(POROWNANIE_STRINGS.proweniencjaA, proweniencjaA),
+    ...zBiegu(POROWNANIE_STRINGS.proweniencjaB, proweniencjaB),
+  ];
+}
+
 // ---------------------------------------------------------------------------
-// Etykieta przebiegu do wyboru A/B (data + zbieżność; id tylko w eksperckim)
+// Etykieta przebiegu do wyboru A/B (rodzaj, rewizja, data, przypadek, zbieżność)
 // ---------------------------------------------------------------------------
 
 /**
@@ -456,38 +495,32 @@ function rewizjaLubScenariuszBiegu(
 
 /**
  * Buduje polską etykietę przebiegu rozpływu dla selektora A/B (karta E12.1,
- * rozszerzona B5/CV-3.3-B). Pierwszy plan: analiza (rozpływ) + rewizja modelu
- * albo scenariusz + krótki odcisk migawki (`snapshot_hash`) — dowód KTÓRY
- * stan modelu bieg opisuje, nie sam UUID — dalej data + (nazwa przypadku,
- * gdy znana) + zbieżność. `nazwaPrzypadku` pochodzi ze store'u przypadków po
- * `study_case_id`; jej brak (`null`/pominięta) daje etykietę bez niej — zero
- * zgadywania. Identyfikatory (id przebiegu, id przypadku) dopisywane
- * WYŁĄCZNIE w trybie eksperckim.
+ * rozszerzona B5/CV-3.3-B). Etykieta mówi językiem projektanta: analiza
+ * (rozpływ) + rewizja modelu albo scenariusz (KTÓRY stan modelu bieg opisuje),
+ * data, nazwa przypadku (gdy znana ze store'u przypadków po `study_case_id` —
+ * brak = etykieta bez niej, zero zgadywania) i zbieżność.
+ *
+ * Karta #145: odcisk migawki, identyfikator przypadku i identyfikator przebiegu
+ * są metadanymi produkcyjnymi — NIE trafiają do tekstu opcji w żadnym trybie
+ * (identyfikator przebiegu jest wyłącznie WARTOŚCIĄ opcji, a odciski obu biegów
+ * pokazują „Informacje audytowe" porównania).
  */
 export function etykietaPrzebiegu(
   run: PowerFlowRunItem,
-  trybEkspercki: boolean,
   nazwaPrzypadku?: string | null,
 ): string {
   const zbieznosc =
     run.converged === null
       ? POROWNANIE_STRINGS.kreska
       : zbieznoscPL(run.converged);
-  const rewizjaLubScenariusz = rewizjaLubScenariuszBiegu(run.model_revision, run.scenario_ref);
-  const skrotOdcisku = run.snapshot_hash
-    ? run.snapshot_hash.slice(0, 8)
-    : POROWNANIE_STRINGS.kreska;
   const czlony = [
     POROWNANIE_STRINGS.analizaRozplyw,
-    rewizjaLubScenariusz,
-    skrotOdcisku,
+    rewizjaLubScenariuszBiegu(run.model_revision, run.scenario_ref),
     fmtData(run.created_at),
   ];
   if (nazwaPrzypadku) czlony.push(nazwaPrzypadku);
   czlony.push(zbieznosc);
-  const podstawa = czlony.join(' · ');
-  if (!trybEkspercki) return podstawa;
-  return `${podstawa} · ${run.study_case_id} · ${run.id}`;
+  return czlony.join(' · ');
 }
 
 // ---------------------------------------------------------------------------
@@ -514,18 +547,6 @@ export function etykietaPrzebiegu(
 export const KOLUMNY_STANOW_ZABEZPIECZEN: DefinicjaKolumny[] = [
   { klucz: 'element', etykieta: ZB.kolElementChroniony, wyrownanie: 'lewo' },
   { klucz: 'punkt', etykieta: ZB.kolPunktZwarcia, wyrownanie: 'lewo' },
-  {
-    klucz: 'urzadzenieA',
-    etykieta: ZB.kolUrzadzenieA,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
-  {
-    klucz: 'urzadzenieB',
-    etykieta: ZB.kolUrzadzenieB,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
   { klucz: 'stanA', etykieta: ZB.kolStanA, wyrownanie: 'lewo' },
   { klucz: 'stanB', etykieta: ZB.kolStanB, wyrownanie: 'lewo' },
   { klucz: 'czasA', etykieta: ZB.kolCzasA, jednostka: ZB.jednS, mono: true },
@@ -549,13 +570,6 @@ export const KOLUMNY_RANKINGU_ZABEZPIECZEN: DefinicjaKolumny[] = [
   // zakotwiczony w PARZE element+punkt zwarcia, nie samym elemencie.
   { klucz: 'punkt', etykieta: ZB.kolPunktRankingu, wyrownanie: 'lewo' },
   { klucz: 'opis', etykieta: POROWNANIE_STRINGS.kolOpis, wyrownanie: 'lewo', sortowalna: false },
-  {
-    klucz: 'kodTechniczny',
-    etykieta: POROWNANIE_STRINGS.kolKodTechniczny,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
 ];
 
 /**
@@ -623,6 +637,7 @@ function komorkaDeltyZabezpieczen(
 export function naWierszeStanowZabezpieczen(
   rows: ProtectionComparisonRow[],
   wagi: Map<string, number>,
+  nazwa: NazwaObiektu,
 ): WierszTabeli[] {
   return rows.map((row, i) => {
     const flaga = pozaZabezpieczenia(wagi, row.protected_element_ref, row.fault_target_id);
@@ -631,10 +646,8 @@ export function naWierszeStanowZabezpieczen(
     const refB = refDowoduPorownania('B', parRef);
     return {
       [KLUCZ_PROBLEM]: { wartosc: String(i) },
-      element: { wartosc: row.protected_element_ref },
-      punkt: { wartosc: row.fault_target_id },
-      urzadzenieA: { wartosc: row.device_id_a, dowodRef: refA },
-      urzadzenieB: { wartosc: row.device_id_b, dowodRef: refB },
+      element: { wartosc: nazwa(row.protected_element_ref) },
+      punkt: { wartosc: nazwa(row.fault_target_id) },
       stanA: { wartosc: stanZadzialaniaPL(row.trip_state_a), dowodRef: refA },
       stanB: { wartosc: stanZadzialaniaPL(row.trip_state_b), dowodRef: refB },
       czasA: komorkaZabezpieczen(row.t_trip_s_a, fmtCzasZadzialania, refA),
@@ -669,7 +682,10 @@ export function tylkoZmianyStanowZabezpieczen(
  * punkt zwarcia dołożony względem rankingu rozpływu (klucz PARY, nie
  * samego elementu). Klucz wiersza = indeks źródłowy (deterministyczny).
  */
-export function naWierszeRankinguZabezpieczen(ranking: ProtectionRankingIssue[]): WierszTabeli[] {
+export function naWierszeRankinguZabezpieczen(
+  ranking: ProtectionRankingIssue[],
+  nazwa: NazwaObiektu,
+): WierszTabeli[] {
   return ranking.map((issue, i) => ({
     waga: {
       wartosc: wagaPL(issue.severity),
@@ -677,10 +693,9 @@ export function naWierszeRankinguZabezpieczen(ranking: ProtectionRankingIssue[])
       ostrzezenie: issue.severity >= WAGA_PROG_TAG,
     },
     rodzaj: { wartosc: rodzajProblemuZabezpieczenPL(issue.issue_code) },
-    element: { wartosc: issue.element_ref },
-    punkt: { wartosc: issue.fault_target_id },
+    element: { wartosc: nazwa(issue.element_ref) },
+    punkt: { wartosc: nazwa(issue.fault_target_id) },
     opis: { wartosc: issue.description_pl },
-    kodTechniczny: { wartosc: issue.issue_code },
     [KLUCZ_PROBLEM]: { wartosc: String(i) },
   }));
 }
@@ -710,30 +725,20 @@ export function naZalozeniaPorownaniaZabezpieczen(
 
 /**
  * Buduje polską etykietę przebiegu zabezpieczeń dla selektora A/B (karta
- * CV-3.3-B2, wzorzec `etykietaPrzebiegu` rozpływu — B5/CV-3.3-B). Pierwszy
- * plan: analiza (zabezpieczenia) + rewizja/scenariusz + krótki odcisk migawki
- * — dowód KTÓRY stan modelu bieg opisuje — dalej data + (nazwa przypadku, gdy
- * znana). BEZ segmentu zbieżności: `ProtectionRunItem` go nie niesie (ocena
- * zabezpieczeń nie ma pojęcia zbieżności solvera rozpływu/zwarcia) — uczciwe
- * pominięcie, nie fabrykacja pustego pola. Identyfikatory WYŁĄCZNIE eksperckie.
+ * CV-3.3-B2, wzorzec `etykietaPrzebiegu` rozpływu): analiza (zabezpieczenia) +
+ * rewizja/scenariusz + data + (nazwa przypadku, gdy znana). BEZ segmentu
+ * zbieżności: `ProtectionRunItem` go nie niesie — uczciwe pominięcie. Karta
+ * #145: bez odcisku migawki i identyfikatorów (metadane — „Informacje audytowe").
  */
 export function etykietaPrzebieguZabezpieczen(
   run: ProtectionRunItem,
-  trybEkspercki: boolean,
   nazwaPrzypadku?: string | null,
 ): string {
-  const rewizjaLubScenariusz = rewizjaLubScenariuszBiegu(run.model_revision, run.scenario_ref);
-  const skrotOdcisku = run.snapshot_hash
-    ? run.snapshot_hash.slice(0, 8)
-    : POROWNANIE_STRINGS.kreska;
   const czlony = [
     ZB.analizaZabezpieczenia,
-    rewizjaLubScenariusz,
-    skrotOdcisku,
+    rewizjaLubScenariuszBiegu(run.model_revision, run.scenario_ref),
     fmtData(run.created_at),
   ];
   if (nazwaPrzypadku) czlony.push(nazwaPrzypadku);
-  const podstawa = czlony.join(' · ');
-  if (!trybEkspercki) return podstawa;
-  return `${podstawa} · ${run.study_case_id} · ${run.id}`;
+  return czlony.join(' · ');
 }

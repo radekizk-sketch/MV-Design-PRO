@@ -116,7 +116,7 @@
             "function_ansi": "81U",
             "function_label_pl": "Podczęstotliwościowa (f<)",
             "kind": "okno_normatywne",
-            "message_pl": "Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz).",
+            "message_pl": "Próg 81U (47,5 Hz) w oknie normatywnym (≤ 47,5 Hz).",
             "ocena": {
               "dowod": {
                 "domena_pl": null,
@@ -259,7 +259,7 @@
             "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
             "unit": "Hz",
             "value": 47.5,
-            "window": "próg f ≤ 47.5 Hz",
+            "window": "próg f ≤ 47,5 Hz",
             "wywod": [
               {
                 "latex": "f_{81U} \\le 47.5\\ \\text{Hz}",
@@ -267,15 +267,15 @@
               },
               {
                 "latex": null,
-                "tekst": "Dane: nastawa = 47.5000 (przekaźnik pola), krawędź okna = 47.5 — górna krawędź okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)."
+                "tekst": "Dane: nastawa = 47,5000 (przekaźnik pola), krawędź okna = 47,5 — górna krawędź okna (NC RfG art. 13 ust. 1 lit. a, pasmo 47,5–51,5 Hz)."
               },
               {
                 "latex": "47.5000 \\le 47.5\\ \\text{Hz}",
-                "tekst": "Podstawienie: 47.5000 <= 47.5 SPELNIONE"
+                "tekst": "Podstawienie: 47,5000 ≤ 47,5 — warunek spełniony"
               },
               {
                 "latex": null,
-                "tekst": "Wynik porównania: w oknie — Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz)."
+                "tekst": "Wynik porównania: w oknie — Próg 81U (47,5 Hz) w oknie normatywnym (≤ 47,5 Hz)."
               }
             ]
           },
@@ -383,7 +383,7 @@
               }
             },
             "severity": "INFO",
-            "source_pl": "SpzState.fast_time_s / slow_time_s jednostek nadrzędnych (BayProtectionControlUnit)",
+            "source_pl": "Nastawy czasu przerwy beznapięciowej SPZ (szybkiego i wolnego) zabezpieczeń jednostek nadrzędnych",
             "unit": "s",
             "value": null,
             "window": {
@@ -743,19 +743,19 @@
         "lower_hz": 51.5,
         "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
         "upper_hz": null,
-        "window_pl": "próg f ≥ 51.5 Hz"
+        "window_pl": "próg f ≥ 51,5 Hz"
       },
       "rocof_81R": {
         "lower_hz_s": 2.0,
-        "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pracy przy zmianach częstotliwości — ROCOF withstand); wartość krajowa PTPiREE 2 Hz/s",
+        "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pozostania w pracy przy szybkich zmianach częstotliwości — odporność na RoCoF); wartość krajowa PTPiREE 2 Hz/s",
         "upper_hz_s": null,
-        "window_pl": "df/dt ≥ 2.0 Hz/s"
+        "window_pl": "df/dt ≥ 2 Hz/s"
       },
       "underfrequency_81U": {
         "lower_hz": null,
         "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
         "upper_hz": 47.5,
-        "window_pl": "próg f ≤ 47.5 Hz"
+        "window_pl": "próg f ≤ 47,5 Hz"
       },
       "vector_shift_78": {
         "source_pl": null,
@@ -1221,19 +1221,19 @@
           "bay_ref": "bay-bess-b",
           "function_ansi": "81R",
           "kind": "okno_normatywne",
-          "message_pl": "Nastawa df/dt (1.0 Hz/s) poniżej dolnego okna (2.0 Hz/s) — ryzyko zbędnych wyłączeń (fałszywe wykrycie wyspy).",
+          "message_pl": "Nastawa df/dt (1 Hz/s) poniżej dolnej krawędzi okna (2 Hz/s) — ryzyko zbędnych wyłączeń (fałszywe wykrycie pracy wyspowej).",
           "severity": "WARN",
-          "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pracy przy zmianach częstotliwości — ROCOF withstand); wartość krajowa PTPiREE 2 Hz/s",
+          "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pozostania w pracy przy szybkich zmianach częstotliwości — odporność na RoCoF); wartość krajowa PTPiREE 2 Hz/s",
           "value": 1.0,
-          "window": "df/dt ≥ 2.0 Hz/s"
+          "window": "df/dt ≥ 2 Hz/s"
         },
         {
           "bay_ref": "bay-bess-b",
           "function_ansi": null,
           "kind": "koordynacja_spz",
-          "message_pl": "Brak danych o przerwie SPZ jednostek nadrzędnych (SpzState nieosiągalny w ENM) — porównanie niemożliwe.",
+          "message_pl": "Model sieci nie zawiera czasów przerwy beznapięciowej SPZ jednostek nadrzędnych — koordynacji ochrony od pracy wyspowej z SPZ nie można ocenić.",
           "severity": "INFO",
-          "source_pl": "SpzState.fast_time_s / slow_time_s jednostek nadrzędnych (BayProtectionControlUnit)",
+          "source_pl": "Nastawy czasu przerwy beznapięciowej SPZ (szybkiego i wolnego) zabezpieczeń jednostek nadrzędnych",
           "value": 0.3,
           "window": {
             "spz_fast_time_s": null,
@@ -1244,11 +1244,11 @@
           "bay_ref": "bay-fw-c",
           "function_ansi": "81U",
           "kind": "okno_normatywne",
-          "message_pl": "Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz).",
+          "message_pl": "Próg 81U (47,5 Hz) w oknie normatywnym (≤ 47,5 Hz).",
           "severity": "OK",
           "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
           "value": 47.5,
-          "window": "próg f ≤ 47.5 Hz"
+          "window": "próg f ≤ 47,5 Hz"
         },
         {
           "bay_ref": "bay-fw-c",
@@ -1256,7 +1256,7 @@
           "kind": "koordynacja_spz",
           "message_pl": "Brak danych o czasie zadziałania LoM — porównanie z SPZ niemożliwe.",
           "severity": "INFO",
-          "source_pl": "SpzState.fast_time_s / slow_time_s jednostek nadrzędnych (BayProtectionControlUnit)",
+          "source_pl": "Nastawy czasu przerwy beznapięciowej SPZ (szybkiego i wolnego) zabezpieczeń jednostek nadrzędnych",
           "value": null,
           "window": {
             "spz_fast_time_s": null,
@@ -1276,10 +1276,10 @@
       ]
     },
     "zalozenia_pl": [
-      "Ocena LoM to interpretacja normatywna (porównania), nie symulacja fizyki wyspy.",
-      "Moduł wytwórczy = generator w ENM; pole przyłączeniowe = pole (bay) na szynie modułu lub o roli OZE z przypisaniem zabezpieczeń.",
-      "Okna normatywne pochodzą wyłącznie z cytowanych źródeł (NC RfG / PTPiREE); brak źródła → okno None + INFO, bez zmyślonych liczb.",
-      "Czasy przerwy SPZ pochodzą z SpzState jednostek nadrzędnych; gdy nieosiągalne w ENM — uczciwy INFO."
+      "Ocena ochrony od pracy wyspowej jest oceną normatywną nastaw zabezpieczeń (porównaniem z oknami normatywnymi), a nie symulacją zjawisk zachodzących w wyspie.",
+      "Ocenie podlegają pola przyłączeniowe modułów wytwórczych: pole na szynie, do której przyłączony jest moduł wytwórczy, albo pole źródła OZE z przypisanym zabezpieczeniem.",
+      "Okna normatywne pochodzą wyłącznie z cytowanych dokumentów (NC RfG, PTPiREE); dla funkcji, której dokumenty nie opisują, ocena podaje tylko informację — bez przyjmowania wartości granicznej.",
+      "Czasy przerwy beznapięciowej SPZ pochodzą z nastaw zabezpieczeń jednostek nadrzędnych; gdy model sieci ich nie zawiera, koordynacja z SPZ nie jest oceniana i ocena podaje ten brak."
     ]
   },
   "pusty": {
@@ -1296,19 +1296,19 @@
         "lower_hz": 51.5,
         "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
         "upper_hz": null,
-        "window_pl": "próg f ≥ 51.5 Hz"
+        "window_pl": "próg f ≥ 51,5 Hz"
       },
       "rocof_81R": {
         "lower_hz_s": 2.0,
-        "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pracy przy zmianach częstotliwości — ROCOF withstand); wartość krajowa PTPiREE 2 Hz/s",
+        "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pozostania w pracy przy szybkich zmianach częstotliwości — odporność na RoCoF); wartość krajowa PTPiREE 2 Hz/s",
         "upper_hz_s": null,
-        "window_pl": "df/dt ≥ 2.0 Hz/s"
+        "window_pl": "df/dt ≥ 2 Hz/s"
       },
       "underfrequency_81U": {
         "lower_hz": null,
         "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
         "upper_hz": 47.5,
-        "window_pl": "próg f ≤ 47.5 Hz"
+        "window_pl": "próg f ≤ 47,5 Hz"
       },
       "vector_shift_78": {
         "source_pl": null,
@@ -1395,10 +1395,10 @@
       "comparisons": []
     },
     "zalozenia_pl": [
-      "Ocena LoM to interpretacja normatywna (porównania), nie symulacja fizyki wyspy.",
-      "Moduł wytwórczy = generator w ENM; pole przyłączeniowe = pole (bay) na szynie modułu lub o roli OZE z przypisaniem zabezpieczeń.",
-      "Okna normatywne pochodzą wyłącznie z cytowanych źródeł (NC RfG / PTPiREE); brak źródła → okno None + INFO, bez zmyślonych liczb.",
-      "Czasy przerwy SPZ pochodzą z SpzState jednostek nadrzędnych; gdy nieosiągalne w ENM — uczciwy INFO."
+      "Ocena ochrony od pracy wyspowej jest oceną normatywną nastaw zabezpieczeń (porównaniem z oknami normatywnymi), a nie symulacją zjawisk zachodzących w wyspie.",
+      "Ocenie podlegają pola przyłączeniowe modułów wytwórczych: pole na szynie, do której przyłączony jest moduł wytwórczy, albo pole źródła OZE z przypisanym zabezpieczeniem.",
+      "Okna normatywne pochodzą wyłącznie z cytowanych dokumentów (NC RfG, PTPiREE); dla funkcji, której dokumenty nie opisują, ocena podaje tylko informację — bez przyjmowania wartości granicznej.",
+      "Czasy przerwy beznapięciowej SPZ pochodzą z nastaw zabezpieczeń jednostek nadrzędnych; gdy model sieci ich nie zawiera, koordynacja z SPZ nie jest oceniana i ocena podaje ten brak."
     ]
   },
   "trzy_pola": {
@@ -1417,7 +1417,7 @@
             "function_ansi": "81R",
             "function_label_pl": "Szybkość zmian częstotliwości (df/dt)",
             "kind": "okno_normatywne",
-            "message_pl": "Nastawa df/dt (1.0 Hz/s) poniżej dolnego okna (2.0 Hz/s) — ryzyko zbędnych wyłączeń (fałszywe wykrycie wyspy).",
+            "message_pl": "Nastawa df/dt (1 Hz/s) poniżej dolnej krawędzi okna (2 Hz/s) — ryzyko zbędnych wyłączeń (fałszywe wykrycie pracy wyspowej).",
             "ocena": {
               "dowod": {
                 "domena_pl": null,
@@ -1557,10 +1557,10 @@
               }
             },
             "severity": "WARN",
-            "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pracy przy zmianach częstotliwości — ROCOF withstand); wartość krajowa PTPiREE 2 Hz/s",
+            "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pozostania w pracy przy szybkich zmianach częstotliwości — odporność na RoCoF); wartość krajowa PTPiREE 2 Hz/s",
             "unit": "Hz/s",
             "value": 1.0,
-            "window": "df/dt ≥ 2.0 Hz/s",
+            "window": "df/dt ≥ 2 Hz/s",
             "wywod": [
               {
                 "latex": "\\left(\\tfrac{df}{dt}\\right)_{nast} \\ge 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}",
@@ -1568,15 +1568,15 @@
               },
               {
                 "latex": null,
-                "tekst": "Dane: nastawa = 1.0000 (przekaźnik pola), krawędź okna = 2.0 — dolna krawędź okna (NC RfG Art. 13(1)(b), PTPiREE 2 Hz/s)."
+                "tekst": "Dane: nastawa = 1,0000 (przekaźnik pola), krawędź okna = 2,0 — dolna krawędź okna (NC RfG art. 13 ust. 1 lit. b, PTPiREE 2 Hz/s)."
               },
               {
                 "latex": "1.0000 < 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}",
-                "tekst": "Podstawienie: 1.0000 >= 2.0 NIESPELNIONE"
+                "tekst": "Podstawienie: 1,0000 ≥ 2,0 — warunek niespełniony"
               },
               {
                 "latex": null,
-                "tekst": "Wynik porównania: poza oknem — Nastawa df/dt (1.0 Hz/s) poniżej dolnego okna (2.0 Hz/s) — ryzyko zbędnych wyłączeń (fałszywe wykrycie wyspy)."
+                "tekst": "Wynik porównania: poza oknem — Nastawa df/dt (1 Hz/s) poniżej dolnej krawędzi okna (2 Hz/s) — ryzyko zbędnych wyłączeń (fałszywe wykrycie pracy wyspowej)."
               }
             ]
           },
@@ -1584,7 +1584,7 @@
             "function_ansi": null,
             "function_label_pl": "Koordynacja czasowa z SPZ",
             "kind": "koordynacja_spz",
-            "message_pl": "Brak danych o przerwie SPZ jednostek nadrzędnych (SpzState nieosiągalny w ENM) — porównanie niemożliwe.",
+            "message_pl": "Model sieci nie zawiera czasów przerwy beznapięciowej SPZ jednostek nadrzędnych — koordynacji ochrony od pracy wyspowej z SPZ nie można ocenić.",
             "ocena": {
               "dowod": {
                 "domena_pl": null,
@@ -1683,7 +1683,7 @@
               }
             },
             "severity": "INFO",
-            "source_pl": "SpzState.fast_time_s / slow_time_s jednostek nadrzędnych (BayProtectionControlUnit)",
+            "source_pl": "Nastawy czasu przerwy beznapięciowej SPZ (szybkiego i wolnego) zabezpieczeń jednostek nadrzędnych",
             "unit": "s",
             "value": 0.3,
             "window": {
@@ -2041,7 +2041,7 @@
             "function_ansi": "81U",
             "function_label_pl": "Podczęstotliwościowa (f<)",
             "kind": "okno_normatywne",
-            "message_pl": "Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz).",
+            "message_pl": "Próg 81U (47,5 Hz) w oknie normatywnym (≤ 47,5 Hz).",
             "ocena": {
               "dowod": {
                 "domena_pl": null,
@@ -2184,7 +2184,7 @@
             "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
             "unit": "Hz",
             "value": 47.5,
-            "window": "próg f ≤ 47.5 Hz",
+            "window": "próg f ≤ 47,5 Hz",
             "wywod": [
               {
                 "latex": "f_{81U} \\le 47.5\\ \\text{Hz}",
@@ -2192,15 +2192,15 @@
               },
               {
                 "latex": null,
-                "tekst": "Dane: nastawa = 47.5000 (przekaźnik pola), krawędź okna = 47.5 — górna krawędź okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)."
+                "tekst": "Dane: nastawa = 47,5000 (przekaźnik pola), krawędź okna = 47,5 — górna krawędź okna (NC RfG art. 13 ust. 1 lit. a, pasmo 47,5–51,5 Hz)."
               },
               {
                 "latex": "47.5000 \\le 47.5\\ \\text{Hz}",
-                "tekst": "Podstawienie: 47.5000 <= 47.5 SPELNIONE"
+                "tekst": "Podstawienie: 47,5000 ≤ 47,5 — warunek spełniony"
               },
               {
                 "latex": null,
-                "tekst": "Wynik porównania: w oknie — Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz)."
+                "tekst": "Wynik porównania: w oknie — Próg 81U (47,5 Hz) w oknie normatywnym (≤ 47,5 Hz)."
               }
             ]
           },
@@ -2308,7 +2308,7 @@
               }
             },
             "severity": "INFO",
-            "source_pl": "SpzState.fast_time_s / slow_time_s jednostek nadrzędnych (BayProtectionControlUnit)",
+            "source_pl": "Nastawy czasu przerwy beznapięciowej SPZ (szybkiego i wolnego) zabezpieczeń jednostek nadrzędnych",
             "unit": "s",
             "value": null,
             "window": {
@@ -3011,19 +3011,19 @@
         "lower_hz": 51.5,
         "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
         "upper_hz": null,
-        "window_pl": "próg f ≥ 51.5 Hz"
+        "window_pl": "próg f ≥ 51,5 Hz"
       },
       "rocof_81R": {
         "lower_hz_s": 2.0,
-        "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pracy przy zmianach częstotliwości — ROCOF withstand); wartość krajowa PTPiREE 2 Hz/s",
+        "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pozostania w pracy przy szybkich zmianach częstotliwości — odporność na RoCoF); wartość krajowa PTPiREE 2 Hz/s",
         "upper_hz_s": null,
-        "window_pl": "df/dt ≥ 2.0 Hz/s"
+        "window_pl": "df/dt ≥ 2 Hz/s"
       },
       "underfrequency_81U": {
         "lower_hz": null,
         "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
         "upper_hz": 47.5,
-        "window_pl": "próg f ≤ 47.5 Hz"
+        "window_pl": "próg f ≤ 47,5 Hz"
       },
       "vector_shift_78": {
         "source_pl": null,
@@ -3874,19 +3874,19 @@
           "bay_ref": "bay-bess-b",
           "function_ansi": "81R",
           "kind": "okno_normatywne",
-          "message_pl": "Nastawa df/dt (1.0 Hz/s) poniżej dolnego okna (2.0 Hz/s) — ryzyko zbędnych wyłączeń (fałszywe wykrycie wyspy).",
+          "message_pl": "Nastawa df/dt (1 Hz/s) poniżej dolnej krawędzi okna (2 Hz/s) — ryzyko zbędnych wyłączeń (fałszywe wykrycie pracy wyspowej).",
           "severity": "WARN",
-          "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pracy przy zmianach częstotliwości — ROCOF withstand); wartość krajowa PTPiREE 2 Hz/s",
+          "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pozostania w pracy przy szybkich zmianach częstotliwości — odporność na RoCoF); wartość krajowa PTPiREE 2 Hz/s",
           "value": 1.0,
-          "window": "df/dt ≥ 2.0 Hz/s"
+          "window": "df/dt ≥ 2 Hz/s"
         },
         {
           "bay_ref": "bay-bess-b",
           "function_ansi": null,
           "kind": "koordynacja_spz",
-          "message_pl": "Brak danych o przerwie SPZ jednostek nadrzędnych (SpzState nieosiągalny w ENM) — porównanie niemożliwe.",
+          "message_pl": "Model sieci nie zawiera czasów przerwy beznapięciowej SPZ jednostek nadrzędnych — koordynacji ochrony od pracy wyspowej z SPZ nie można ocenić.",
           "severity": "INFO",
-          "source_pl": "SpzState.fast_time_s / slow_time_s jednostek nadrzędnych (BayProtectionControlUnit)",
+          "source_pl": "Nastawy czasu przerwy beznapięciowej SPZ (szybkiego i wolnego) zabezpieczeń jednostek nadrzędnych",
           "value": 0.3,
           "window": {
             "spz_fast_time_s": null,
@@ -3897,11 +3897,11 @@
           "bay_ref": "bay-fw-c",
           "function_ansi": "81U",
           "kind": "okno_normatywne",
-          "message_pl": "Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz).",
+          "message_pl": "Próg 81U (47,5 Hz) w oknie normatywnym (≤ 47,5 Hz).",
           "severity": "OK",
           "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
           "value": 47.5,
-          "window": "próg f ≤ 47.5 Hz"
+          "window": "próg f ≤ 47,5 Hz"
         },
         {
           "bay_ref": "bay-fw-c",
@@ -3909,7 +3909,7 @@
           "kind": "koordynacja_spz",
           "message_pl": "Brak danych o czasie zadziałania LoM — porównanie z SPZ niemożliwe.",
           "severity": "INFO",
-          "source_pl": "SpzState.fast_time_s / slow_time_s jednostek nadrzędnych (BayProtectionControlUnit)",
+          "source_pl": "Nastawy czasu przerwy beznapięciowej SPZ (szybkiego i wolnego) zabezpieczeń jednostek nadrzędnych",
           "value": null,
           "window": {
             "spz_fast_time_s": null,
@@ -3929,10 +3929,10 @@
       ]
     },
     "zalozenia_pl": [
-      "Ocena LoM to interpretacja normatywna (porównania), nie symulacja fizyki wyspy.",
-      "Moduł wytwórczy = generator w ENM; pole przyłączeniowe = pole (bay) na szynie modułu lub o roli OZE z przypisaniem zabezpieczeń.",
-      "Okna normatywne pochodzą wyłącznie z cytowanych źródeł (NC RfG / PTPiREE); brak źródła → okno None + INFO, bez zmyślonych liczb.",
-      "Czasy przerwy SPZ pochodzą z SpzState jednostek nadrzędnych; gdy nieosiągalne w ENM — uczciwy INFO."
+      "Ocena ochrony od pracy wyspowej jest oceną normatywną nastaw zabezpieczeń (porównaniem z oknami normatywnymi), a nie symulacją zjawisk zachodzących w wyspie.",
+      "Ocenie podlegają pola przyłączeniowe modułów wytwórczych: pole na szynie, do której przyłączony jest moduł wytwórczy, albo pole źródła OZE z przypisanym zabezpieczeniem.",
+      "Okna normatywne pochodzą wyłącznie z cytowanych dokumentów (NC RfG, PTPiREE); dla funkcji, której dokumenty nie opisują, ocena podaje tylko informację — bez przyjmowania wartości granicznej.",
+      "Czasy przerwy beznapięciowej SPZ pochodzą z nastaw zabezpieczeń jednostek nadrzędnych; gdy model sieci ich nie zawiera, koordynacja z SPZ nie jest oceniana i ocena podaje ten brak."
     ]
   }
 }

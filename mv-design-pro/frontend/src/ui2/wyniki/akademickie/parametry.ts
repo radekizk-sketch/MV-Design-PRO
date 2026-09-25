@@ -36,7 +36,13 @@ import type { RodzajAnalizy } from './api';
 // ---------------------------------------------------------------------------
 
 /** Rodzaj kontrolki pola parametru. */
-export type RodzajPola = 'liczba' | 'tekst' | 'wybor' | 'metody' | 'szyna';
+/**
+ * `szyna` — wybór szyny z migawki modelu; `przeksztaltnik` — wybór przekształtnika z listy,
+ * którą podaje gotowość analizy z backendu (przekształtniki z kartą katalogową, dokładnie
+ * zbiór wejścia solvera) — w obu przypadkach projektant wybiera NAZWĘ, referencja modelu
+ * jest wyłącznie wartością opcji (karta #145).
+ */
+export type RodzajPola = 'liczba' | 'tekst' | 'wybor' | 'metody' | 'szyna' | 'przeksztaltnik';
 
 /** Opcja pola wyboru (wartość kontraktu + etykieta PL). */
 export interface OpcjaPola {
@@ -206,13 +212,15 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
   power_quality_harmonics: { pola: [], uziom: false, lista: 'harmonic_spectra', metodyDetekcji: false },
 
   // `_ssci_impedance`: model.parameters["ssci_converter_ref"] — wskazanie przekształtnika.
+  // Bez wskazania solver bierze PIERWSZY przekształtnik wejścia (`_ssci_select_converter`:
+  // `model.converters[0]`, kolejność generatorów modelu) — opis mówi dokładnie to.
   ssci_impedance: {
     pola: [
       {
         klucz: 'ssci_converter_ref',
-        etykieta: 'Oznaczenie przekształtnika',
-        rodzaj: 'tekst',
-        opis: 'Puste = solver wybiera przekształtnik sam (największa moc znamionowa).',
+        etykieta: 'Badany przekształtnik',
+        rodzaj: 'przeksztaltnik',
+        opis: 'Puste = obliczenie bierze pierwszy przekształtnik z kartą katalogową w kolejności modelu.',
       },
     ],
     uziom: false,

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  KOLUMNY_RANKINGU_ZABEZPIECZEN,
+  KOLUMNY_STANOW_ZABEZPIECZEN,
   etykietaPrzebieguZabezpieczen,
   mapaWagWierszyZabezpieczen,
   naLinieProweniencji,
@@ -17,6 +19,10 @@ import {
   rankingZabezpieczenFixture,
   wierszZabezpieczenFixture,
 } from './zabezpieczeniaFixtures';
+
+/** Most nazw w testach (karta #145): prefiks odróżnia nazwę od identyfikatora. */
+const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
+  nazwaZWyniku ?? `nazwa ${ref}`;
 
 describe('porownanieModel — wariant zabezpieczeń (karta CV-3.3-B2)', () => {
   describe('mapaWagWierszyZabezpieczen — klucz PARY (element, punkt zwarcia)', () => {
@@ -73,9 +79,7 @@ describe('porownanieModel — wariant zabezpieczeń (karta CV-3.3-B2)', () => {
     it('wartość obecna dostaje dowodRef strony; wartość null → kreska bez dowodu', () => {
       const wagi = new Map<string, number>();
       const [wiersz] = naWierszeStanowZabezpieczen(
-        [wierszZabezpieczenFixture({ t_trip_s_b: null })],
-        wagi,
-      );
+        [wierszZabezpieczenFixture({ t_trip_s_b: null })], wagi, NAZWA);
       expect(wiersz.czasA.wartosc).toBe('0,350');
       expect(wiersz.czasA.dowodRef).toBe('A:BRK-F01::BUS-GPZ');
       expect(wiersz.czasB.wartosc).toBe('—');
@@ -87,6 +91,7 @@ describe('porownanieModel — wariant zabezpieczeń (karta CV-3.3-B2)', () => {
       const [wiersz] = naWierszeStanowZabezpieczen(
         [wierszZabezpieczenFixture()], // BRK-F01 / BUS-GPZ ma severity 5 w fixturze rankingu
         wagi,
+        NAZWA,
       );
       expect(wiersz.czasD.ostrzezenie).toBeUndefined(); // delta_t_s jest null -> kreska, bez ostrzezenia
       expect(wiersz.pradD.wartosc).toBe('-270,2');
@@ -96,28 +101,25 @@ describe('porownanieModel — wariant zabezpieczeń (karta CV-3.3-B2)', () => {
 
     it('stan zadziałania po polsku (TRIPS/NO_TRIP) oraz zmiana klasyfikacji z STATE_CHANGE_LABELS', () => {
       const [wiersz] = naWierszeStanowZabezpieczen(
-        [wierszZabezpieczenFixture()],
-        new Map(),
-      );
+        [wierszZabezpieczenFixture()], new Map(), NAZWA);
       expect(wiersz.stanA.wartosc).toBe('Zadziałanie');
       expect(wiersz.stanB.wartosc).toBe('Brak zadziałania');
       expect(wiersz.zmiana.wartosc).toBe('Utrata zadziałania');
     });
 
-    it('kolumny urządzenia (device_id_a/b) niosą dowodRef strony (identyfikator techniczny)', () => {
-      const [wiersz] = naWierszeStanowZabezpieczen(
-        [wierszZabezpieczenFixture()],
-        new Map(),
-      );
-      expect(wiersz.urzadzenieA.wartosc).toBe('REL-OC-001');
-      expect(wiersz.urzadzenieA.dowodRef).toBe('A:BRK-F01::BUS-GPZ');
+    it('element i punkt zwarcia nazwane mostem nazw; identyfikator urządzenia nie jest komórką (karta #145)', () => {
+      const [wiersz] = naWierszeStanowZabezpieczen([wierszZabezpieczenFixture()], new Map(), NAZWA);
+      expect(wiersz.element.wartosc).toBe('nazwa BRK-F01');
+      expect(wiersz.punkt.wartosc).toBe('nazwa BUS-GPZ');
+      expect(wiersz.urzadzenieA).toBeUndefined();
+      expect(wiersz.urzadzenieB).toBeUndefined();
+      expect(Object.values(wiersz).map((k) => k.wartosc)).not.toContain('REL-OC-001');
+      expect(KOLUMNY_STANOW_ZABEZPIECZEN.map((k) => k.klucz)).not.toContain('urzadzenieA');
     });
 
     it('margines A/B pokazuje się osobno, BEZ kolumny Δ (backend nie publikuje delty marginesu)', () => {
       const [wiersz] = naWierszeStanowZabezpieczen(
-        [wierszZabezpieczenFixture()],
-        new Map(),
-      );
+        [wierszZabezpieczenFixture()], new Map(), NAZWA);
       expect(wiersz.marginesA.wartosc).toBe('12,50');
       expect(wiersz.marginesB.wartosc).toBe('8,10');
       expect(wiersz.marginesD).toBeUndefined();
@@ -128,9 +130,7 @@ describe('porownanieModel — wariant zabezpieczeń (karta CV-3.3-B2)', () => {
         [
           wierszZabezpieczenFixture({ fault_target_id: 'BUS-A' }),
           wierszZabezpieczenFixture({ fault_target_id: 'BUS-B' }), // ten sam element, inny punkt
-        ],
-        new Map(),
-      );
+        ], new Map(), NAZWA);
       expect(wiersze[0].klucz.wartosc).toBe('0');
       expect(wiersze[1].klucz.wartosc).toBe('1');
     });
@@ -150,12 +150,14 @@ describe('porownanieModel — wariant zabezpieczeń (karta CV-3.3-B2)', () => {
 
   describe('naWierszeRankinguZabezpieczen — waga PL, rodzaj PL, punkt zwarcia (rozszerzenie vs rozpływ)', () => {
     it('mapuje wagę i rodzaj problemu na polskie etykiety, dokłada punkt zwarcia', () => {
-      const [wiersz] = naWierszeRankinguZabezpieczen(rankingZabezpieczenFixture());
+      const [wiersz] = naWierszeRankinguZabezpieczen(rankingZabezpieczenFixture(), NAZWA);
       expect(wiersz.waga.wartosc).toBe('Krytyczny');
       expect(wiersz.rodzaj.wartosc).toBe('Utrata zadziałania');
-      expect(wiersz.element.wartosc).toBe('BRK-F01');
-      expect(wiersz.punkt.wartosc).toBe('BUS-GPZ');
-      expect(wiersz.kodTechniczny.wartosc).toBe('TRIP_LOST');
+      expect(wiersz.element.wartosc).toBe('nazwa BRK-F01');
+      expect(wiersz.punkt.wartosc).toBe('nazwa BUS-GPZ');
+      // Karta #145: kod problemu nie jest komórką tabeli w żadnym trybie.
+      expect(wiersz.kodTechniczny).toBeUndefined();
+      expect(KOLUMNY_RANKINGU_ZABEZPIECZEN.map((k) => k.klucz)).not.toContain('kodTechniczny');
     });
   });
 
@@ -170,30 +172,25 @@ describe('porownanieModel — wariant zabezpieczeń (karta CV-3.3-B2)', () => {
   });
 
   describe('etykietaPrzebieguZabezpieczen — BEZ segmentu zbieżności (ProtectionRunItem go nie ma)', () => {
-    it('tryb podstawowy: analiza + rewizja + odcisk + data, bez identyfikatorów', () => {
-      const etykieta = etykietaPrzebieguZabezpieczen(przebiegZabezpieczenFixture(), false);
-      expect(etykieta).toBe('Ocena zabezpieczeń · rew. 1 · snap-zab · 2026-07-10 08:15');
+    it('analiza + rewizja + data; bez odcisku i identyfikatorów (karta #145)', () => {
+      const etykieta = etykietaPrzebieguZabezpieczen(przebiegZabezpieczenFixture());
+      expect(etykieta).toBe('Ocena zabezpieczeń · rew. 1 · 2026-07-10 08:15');
       expect(etykieta).not.toContain('run-zab-a');
-    });
-
-    it('tryb ekspercki dokłada study_case_id i id biegu', () => {
-      const etykieta = etykietaPrzebieguZabezpieczen(przebiegZabezpieczenFixture(), true);
-      expect(etykieta).toContain('case-1');
-      expect(etykieta).toContain('run-zab-a');
+      expect(etykieta).not.toContain('case-1');
+      expect(etykieta).not.toContain('snap-zab');
     });
 
     it('scenariusz koperty ma pierwszeństwo przed rewizją modelu', () => {
       const etykieta = etykietaPrzebieguZabezpieczen(
         przebiegZabezpieczenFixture({ scenario_ref: ['sc-1', 3] }),
-        false,
       );
       expect(etykieta).toContain('scenariusz sc-1 rew. 3');
     });
 
     it('nazwa przypadku ze store\'u dołącza się, gdy podana; brak -> etykieta bez niej', () => {
-      const zNazwa = etykietaPrzebieguZabezpieczen(przebiegZabezpieczenFixture(), false, 'Wariant letni');
+      const zNazwa = etykietaPrzebieguZabezpieczen(przebiegZabezpieczenFixture(), 'Wariant letni');
       expect(zNazwa).toContain('Wariant letni');
-      const bezNazwy = etykietaPrzebieguZabezpieczen(przebiegZabezpieczenFixture(), false, null);
+      const bezNazwy = etykietaPrzebieguZabezpieczen(przebiegZabezpieczenFixture(), null);
       expect(bezNazwy).not.toContain('Wariant letni');
     });
   });

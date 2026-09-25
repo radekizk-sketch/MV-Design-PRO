@@ -106,11 +106,13 @@ from application.analyses.warunki_przylaczenia import (
     build_warunki_przylaczenia_view,
 )
 from application.analyses.wytrzymalosc_cieplna_przewodow import build_wytrzymalosc_cieplna_view
+from domain.canonical_operations import opisy_kodow_gotowosci_pl
 from enm.canonical_analysis import CanonicalRun, list_runs_for_case
 from enm.hash import compute_enm_hash
 from enm.nazwy_elementow import opis_bez_nazwy
 from enm.store import get_enm
 from network_model.nazwy import nazwa_nadana
+from werdykt import format_liczba
 
 # --- Stany kryterium ---------------------------------------------------------
 
@@ -274,7 +276,7 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         kryterium_id=KRYTERIUM_PWP_MOC,
         etap="E1/E5",
         nazwa_pl="Moc w punkcie przyłączenia",
-        warunek_pl=r"$|P| \le P_{\text{przyl}}$ (moc przyłączeniowa z warunków OSD)",
+        warunek_pl=r"$|P| \le P_{\text{przył}}$ (moc przyłączeniowa z warunków OSD)",
         norma_pl="Warunki przyłączenia OSD (dokument projektu)",
         zrodlo=ZRODLO_PF,
         element_rodzaj=ELEMENT_SZYNA,
@@ -451,7 +453,7 @@ ZAKRES_POZA_AUTOMATEM: tuple[dict[str, str], ...] = (
         "kryterium_pl": "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
         "etap": "E4",
         "powod_pl": (
-            "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla WSKAZANEGO "
+            "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla wskazanego "
             "aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
         ),
     },
@@ -464,7 +466,7 @@ ZAKRES_POZA_AUTOMATEM: tuple[dict[str, str], ...] = (
         "powod_pl": (
             "Korekta warunków ułożenia działa w torze doboru kabla DER (zestawy warunków z "
             "udokumentowaną podstawą albo współczynniki projektanta) i jest zapisana przy "
-            "kablu w modelu. Nie ma przebiegu, który sprawdza obciążalność WSZYSTKICH "
+            "kablu w modelu. Nie ma przebiegu, który sprawdza obciążalność wszystkich "
             "przewodów modelu wobec warunków ich trasy — magistrala SN dobierana jest inną "
             "ścieżką, a katalog nie dokumentuje warunków odniesienia przy typach."
         ),
@@ -1302,12 +1304,12 @@ def _opis_galezi(wiersz: Mapping[str, Any] | None) -> str | None:
     if wymagany is not None and zastosowany is not None:
         return (
             f"Gałąź {nazwa_nadana(wiersz.get('branch_name')) or opis_bez_nazwy('branches')}: "
-            "wymagany przekrój "
-            f"{float(wymagany):.1f} mm2 wobec zastosowanego {float(zastosowany):.1f} mm2."
+            f"wymagany przekrój {format_liczba(float(wymagany))} mm² wobec zastosowanego "
+            f"{format_liczba(float(zastosowany))} mm²."
         )
     kody = [str(kod) for kod in (wiersz.get("missing_codes") or [])]
     if kody:
-        return f"Brak danych do oceny cieplnej: {', '.join(kody)}."
+        return f"Brak danych do oceny cieplnej: {opisy_kodow_gotowosci_pl(kody)}"
     return None
 
 

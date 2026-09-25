@@ -39,6 +39,7 @@ from analysis.voltage_profile.segment_decomposition import (
     VoltageProfileSegmentPathError,
     find_worst_nn_path,
 )
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 
 # Jedno źródło odtwarzania grafu/PowerFlowResult dla widoków tej rodziny
 # (energy-validation, voltage-profile, sanity-bounds — wszystkie czytają TEN SAM
@@ -59,11 +60,11 @@ def _wymagaj_biegu_rozplywu(run: CanonicalRun) -> None:
     if run.analysis_type != "PF":
         raise ValueError(
             "Profil napięć wymaga przebiegu rozpływu mocy; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
 

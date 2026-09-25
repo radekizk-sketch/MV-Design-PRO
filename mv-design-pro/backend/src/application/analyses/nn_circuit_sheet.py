@@ -132,6 +132,7 @@ from application.proof_engine.lv_circuit_verification_binding import (
     resolve_urzadzenie_ochronne,
 )
 from application.proof_engine.packs.lv_circuit_verification import UrzadzenieOchronneNn
+from domain.canonical_operations import opisy_kodow_gotowosci_pl
 from enm.canonical_analysis import (
     CanonicalRun,
     build_branch_results,
@@ -507,7 +508,10 @@ def _i2t_dla_kabla(
     if wynik.status == "UNAVAILABLE":
         return _nierozstrzygalne(
             wynik.decision_reason_pl
-            or ("Dane cieplne przewodu niekompletne: " + ", ".join(wynik.readiness_codes))
+            or (
+                "Dane cieplne przewodu niekompletne: "
+                + opisy_kodow_gotowosci_pl(wynik.readiness_codes)
+            )
         )
     return _wartosc(
         {

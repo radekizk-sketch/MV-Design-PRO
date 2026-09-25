@@ -546,3 +546,40 @@ def test_endpoint_pdf_braki_422(app_client) -> None:
 def test_endpoint_pdf_nieznany_przebieg_404(app_client) -> None:
     resp = _post(app_client, OSD_PDF, case_id=_przypadek(app_client), pf_run_id=str(uuid4()))
     assert resp.status_code == 404
+
+
+def test_zalozenia_bez_identyfikatorow_zrodla_w_stopce_docx_i_pdf() -> None:
+    """Karta #145 — iloczyn cech {JSON założeń, DOCX, PDF} × {identyfikator przebiegu
+    rozpływu, przebiegu zwarciowego, odcisk wejścia oceny NC RfG}: zdania założeń nie
+    niosą identyfikatorów, a dokument nie traci śladu źródeł — stopka źródeł niesie je
+    jawnie podpisane."""
+    view = _view()
+    identyfikatory = [
+        view["zrodla"]["pf_run_id"],
+        view["zrodla"]["sc_run_id"],
+        view["zrodla"]["nc_rfg_input_hash"],
+    ]
+    zalozenia = " ".join(view["zalozenia_pl"])
+    for identyfikator in identyfikatory:
+        assert identyfikator not in zalozenia
+    assert "run_id" not in zalozenia
+    for tekst in (
+        re.sub(r"\s+", " ", _docx_text(render_wniosek_osd_docx(view))),
+        re.sub(r"\s+", " ", _pdf_text(render_wniosek_pdf(view))),
+    ):
+        assert f"Przebieg rozpływu mocy: {view['zrodla']['pf_run_id']}" in tekst
+        assert f"Przebieg zwarciowy: {view['zrodla']['sc_run_id']}" in tekst
+        assert (
+            f"Odcisk wejścia oceny zgodności NC RfG: {view['zrodla']['nc_rfg_input_hash']}" in tekst
+        )
+
+
+def test_status_walidacji_po_polsku_dla_kazdego_kodu_i_bez_kodu_spoza_slownika() -> None:
+    """Karta #145: każdy stan walidacji energetycznej ma polską etykietę w dokumencie
+    wniosku, a stan spoza słownika daje zdanie, nigdy kod."""
+    from analysis.energy_validation.models import EnergyValidationStatus
+    from application.analyses.wniosek_osd import _status_pl
+
+    for stan in EnergyValidationStatus:
+        assert _status_pl(stan.value) != stan.value
+    assert _status_pl("NOWY_STAN") == "stan spoza słownika aplikacji"

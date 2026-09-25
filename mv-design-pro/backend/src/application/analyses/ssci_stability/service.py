@@ -99,8 +99,8 @@ def build_ssci_stability_view(
     """
     if run_record.get("analysis_type") != SSCI_ANALYSIS_TYPE:
         raise ValueError(
-            "Werdykt stabilności SSCI wymaga przebiegu rodzaju „ssci_impedance”; "
-            f"otrzymano: {run_record.get('analysis_type')}."
+            "Werdykt stabilności SSCI wymaga przebiegu oceny interakcji podsynchronicznej "
+            "przekształtnika z siecią; wskazany przebieg jest innego rodzaju."
         )
     solver_result = run_record.get("result")
     if not isinstance(solver_result, Mapping):

@@ -10,8 +10,6 @@ export { TrybZwarciowy } from './TrybZwarciowy';
 export type { TrybZwarciowyProps } from './TrybZwarciowy';
 export { TrybZabezpieczen } from './TrybZabezpieczen';
 export type { TrybZabezpieczenProps } from './TrybZabezpieczen';
-export { PanelProweniencji } from './PanelProweniencji';
-export type { PanelProweniencjiProps } from './PanelProweniencji';
 export {
   KOLUMNY_SZYN_DIFF,
   KOLUMNY_GALEZI,

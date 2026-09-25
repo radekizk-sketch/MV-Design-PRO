@@ -28,6 +28,7 @@ from analysis.reactive_adequacy.models import (
     SourceReactiveInput,
     worst_field_quality,
 )
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_bus_results
 from enm.nazwy_elementow import zbuduj_indeks_nazw
 from network_model.nazwy import nazwa_nadana
@@ -153,11 +154,11 @@ def build_reactive_adequacy_view(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "PF":
         raise ValueError(
             "Adekwatność mocy biernej wymaga przebiegu rozpływu mocy; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
 

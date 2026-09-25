@@ -190,7 +190,7 @@ from enm.canonical_analysis import (  # noqa: E402
 )
 from enm.domain_operations import execute_domain_operation  # noqa: E402
 from enm.hash import compute_enm_hash  # noqa: E402
-from enm.mapping import map_enm_to_network_graph  # noqa: E402
+from enm.mapping import map_enm_to_network_graph, ref_to_graph_id  # noqa: E402
 from enm.models import (  # noqa: E402
     ConnectionConditions,
     EnergyNetworkModel,
@@ -198,7 +198,7 @@ from enm.models import (  # noqa: E402
     Generator,
     TapChanger,
 )
-from enm.store import reset_enm_store, set_enm  # noqa: E402
+from enm.store import get_enm, reset_enm_store, set_enm  # noqa: E402
 from infrastructure.persistence.db import (  # noqa: E402
     create_engine_from_url,
     create_session_factory,
@@ -499,11 +499,32 @@ def _enm_sceny_pola_oze() -> EnergyNetworkModel:
     return model
 
 
+def _model_serwowany(enm: EnergyNetworkModel) -> EnergyNetworkModel:
+    """Model TAK, jak serwuje go magazyn ENM: `set_enm` + `get_enm` (automigracje przy
+    odczycie — m.in. promocja pól nN do realnych szyn i aparatów, `enm/store.py`).
+
+    Karta #145: bieg liczy się na odczycie magazynu, więc wynik nazywa elementy, których
+    zrzut modelu SPRZED zapisu nie zna (szyna „Pole PV nN” powstaje przy odczycie). Migawka
+    sceny zbudowana ze zrzutu sprzed zapisu nie nazywała więc szyn wyniku i ekran pokazywał
+    ich referencje. Identyfikatory `id` i zegar nagłówka przypięte jak w biegach scen."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        set_enm(CASE_ID_HARNESSU, enm)
+        serwowany = get_enm(CASE_ID_HARNESSU).model_copy(deep=True)
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+    _fiksuj_niedeterminizm_sceny_zwarcia(serwowany)
+    return serwowany
+
+
 def oze_scena_migawka() -> dict[str, Any]:
     """Migawka modelu scen „wiazania"/„frt" (`useSnapshotStore`) — front
     wyprowadza z niej moduły warsztatu wytwórców odwzorowaniem produkcyjnym
-    (`station-der/zModelu.ts::deryZModelu`)."""
-    return canonicalize_json(_enm_sceny_pola_oze().model_dump(mode="json"))
+    (`station-der/zModelu.ts::deryZModelu`). Model SERWOWANY przez magazyn
+    (`_model_serwowany`) — ten sam, na którym liczy się bieg zwarciowy sceny „frt"."""
+    return canonicalize_json(_model_serwowany(_enm_sceny_pola_oze()).model_dump(mode="json"))
 
 
 def _bieg_zwarciowy_sceny_pola_oze() -> tuple[Any, EnergyNetworkModel]:
@@ -1296,7 +1317,7 @@ def _bieg_sceny_zwarcia() -> tuple[Any, EnergyNetworkModel, str]:
             set_enm(CASE_ID_HARNESSU, enm)
             # `datetime` zamrożony TU (nie tylko `uuid4`) — karta HARNESS-RESZTA
             # (kontynuacja) dopisała konsumentów tego biegu (`cieplna_scena_wynik`/
-            # `cieplna_scena_dowod`/`arcflash_scena_wynik`), których widoki
+            # `cieplna_scena_dowody`/`arcflash_scena_wynik`), których widoki
             # osadzają `context.run_timestamp = run.created_at` (`grid_strength.py`/
             # `arc_flash_view.py` — TA SAMA klasa co `run.id`: `datetime.now(UTC)`
             # wywoływane przy KAŻDYM `create_run`, więc bez zamrożenia dwa
@@ -1877,6 +1898,17 @@ def sila_sieci_scena_wynik() -> dict[str, Any]:
     return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_OZE_ANALIZ})
 
 
+def oze_analiz_scena_migawka() -> dict[str, Any]:
+    """Migawka modelu sceny analiz OZE (`_enm_sceny_oze_analiz`, identyfikatory `id`
+    ustalone jak w biegu kotwicy) — zasiew `useSnapshotStore` scen „siła-sieci" i
+    „migotanie": ekran nazywa szyny i źródła wyniku mostem nazw wyników z TEGO modelu,
+    na którym liczono bieg (karta #145) — modelu SERWOWANEGO przez magazyn
+    (`_model_serwowany`), bo bieg czyta model po automigracjach odczytu."""
+    enm = EnergyNetworkModel.model_validate(_enm_sceny_oze_analiz())
+    _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+    return canonicalize_json(_model_serwowany(enm).model_dump(mode="json"))
+
+
 def migotanie_scena_wynik() -> dict[str, Any]:
     """Odpowiedź `GET /api/quality/flicker?run_id=` — `build_migotanie_view`,
     TA SAMA funkcja, którą woła końcówka
@@ -1992,19 +2024,28 @@ def cieplna_scena_wynik() -> dict[str, Any]:
     return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
 
 
-def cieplna_scena_dowod() -> dict[str, Any]:
-    """Odpowiedź `GET /api/quality/conductor-thermal-withstand/proof?run_id=
+def cieplna_scena_dowody() -> dict[str, Any]:
+    """Odpowiedzi `GET /api/quality/conductor-thermal-withstand/proof?run_id=
     &branch_id=` — `zbuduj_dowod_cieplny`, TA SAMA funkcja, którą woła
-    końcówka. `branch_id` = gałąź z NAJWIĘKSZYM prądem zwarciowym w ocenie
-    cieplnej sceny (deterministyczny wybór max, tiebreak po `branch_id` —
-    KLASA, nie instancja: żaden branch_id nie jest zaszyty ręcznie), żeby
-    dowód demonstrował KRYTERIUM na gałęzi FAKTYCZNIE na drodze zwarcia
-    (gałęzie poza drogą mają `i_fault_a=0.0` i dowód trywialny)."""
+    końcówka — dla KAŻDEJ gałęzi oceny cieplnej sceny (klucz: `branch_id`).
+
+    Karta #145: fikstura niosła dowód WYŁĄCZNIE gałęzi z największym prądem
+    zwarciowym, a atrapa harnessu dla każdej innej gałęzi zwracała odpowiedź
+    OCENY (inny kształt) — klik w wiersz „Kabel SN 1" wywracał ekran
+    (`dowod.kroki is not iterable`), czego żaden spec nie widział, bo każdy
+    klikał tę jedną gałąź. Projektant klika dowolny wiersz, więc scena ma
+    dowód dla każdego wiersza — realnie policzony, żaden ręcznie."""
     run, _enm, _target_id = _bieg_sceny_zwarcia()
     ocena = build_wytrzymalosc_cieplna_view(run, None)["ocena"]["items"]
-    najwiekszy = max(ocena, key=lambda pozycja: (pozycja["i_fault_a"], pozycja["branch_id"]))
-    widok = zbuduj_dowod_cieplny(run, najwiekszy["branch_id"], None)
-    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
+    return {
+        "dowody": {
+            pozycja["branch_id"]: _ustabilizuj_identyfikatory(
+                zbuduj_dowod_cieplny(run, pozycja["branch_id"], None),
+                {str(run.id): RUN_ID_SCENY_ZWARCIA},
+            )
+            for pozycja in sorted(ocena, key=lambda pozycja: pozycja["branch_id"])
+        }
+    }
 
 
 def arcflash_scena_wynik() -> dict[str, Any]:
@@ -3314,12 +3355,28 @@ def frt_scena_trajektorie() -> dict[str, Any]:
     )
 
 
+def _bieg_zwarciowy_sceny_frt() -> Any:
+    """Bieg `short_circuit_sn` modelu pola wytwórcy (`_bieg_zwarciowy_sceny_pola_oze`) —
+    TEGO SAMEGO modelu, z którego scena „frt" bierze moduły DER (`oze_scena_migawka`).
+    Karta #145: kontekst siły sieci sekwencji zapadów liczony był na biegu INNEJ sieci
+    (kotwica analiz OZE), więc szyna kontekstu nie istniała w modelu sceny i ekran nie
+    mógł jej nazwać — scena łączyła wynik jednego projektu z modelem drugiego."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        run, _enm = _bieg_zwarciowy_sceny_pola_oze()
+        return run
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
 def frt_scena_sekwencja() -> dict[str, Any]:
     """Odpowiedź `GET /api/oze-analysis/frt-sequence` (`build_frt_sekwencja_view`)
-    z kontekstem siły sieci — wiersz SCR z widoku D1 biegu kotwicy analiz OZE
-    (`_bieg_sceny_oze_analiz`, TEN SAM bieg, który karmi scenę „siła-sieci")."""
+    z kontekstem siły sieci — wiersz SCR z widoku D1 (`build_grid_strength_view`)
+    biegu zwarciowego modelu sceny (`_bieg_zwarciowy_sceny_frt`)."""
     konwerter, profil = _konwerter_i_profil_sceny_frt()
-    bieg = _bieg_sceny_oze_analiz()
+    bieg = _bieg_zwarciowy_sceny_frt()
     wiersze = build_grid_strength_view(bieg)["entries"]
     widok = build_frt_sekwencja_view(
         konwerter,
@@ -3328,7 +3385,18 @@ def frt_scena_sekwencja() -> dict[str, Any]:
         grid_strength_row=wiersze[0] if wiersze else None,
     )
     return _ustabilizuj_identyfikatory(
-        canonicalize_json(widok), {str(bieg.id): RUN_ID_SCENY_OZE_ANALIZ}
+        canonicalize_json(widok), {str(bieg.id): RUN_ID_SCENY_POLA_OZE}
+    )
+
+
+def frt_scena_przebieg_zwarciowy() -> dict[str, Any]:
+    """Wpis rejestru przebiegów (`CanonicalRun.to_execution_dict` — kształt `ExecutionRun`
+    czytany przez `useExecutionRunsStore`) biegu zwarciowego sceny „frt": TEN SAM bieg,
+    z którego policzono kontekst siły sieci `frt_scena_sekwencja` (wzorzec
+    `przebieg_pf_sceny_zlotej`) — scena nie wpisuje identyfikatora biegu ręcznie."""
+    run = _bieg_zwarciowy_sceny_frt()
+    return _ustabilizuj_identyfikatory(
+        run.to_execution_dict(), {str(run.id): RUN_ID_SCENY_POLA_OZE}
     )
 
 
@@ -3601,6 +3669,13 @@ def lom_scena_wynik() -> dict[str, Any]:
     return canonicalize_json(build_ochrona_lom_view(_enm_sceny_lom()))
 
 
+def lom_scena_migawka() -> dict[str, Any]:
+    """Migawka modelu sceny „lom" (`_enm_sceny_lom`) — zasiew `useSnapshotStore` sceny:
+    ekran ochrony od pracy wyspowej nazywa pola, szyny i moduły mostem nazw wyników
+    z modelu, na którym policzono widok (karta #145)."""
+    return canonicalize_json(_enm_sceny_lom().model_dump(mode="json"))
+
+
 # ---------------------------------------------------------------------------
 # Karta HARNESS-RESZTA-2 (2026-09-17) — scena „akademickie" (analizy
 # specjalistyczne V12.6). Wyniki solvera scena brała z fixtury testów
@@ -3763,6 +3838,49 @@ def nazwy_obiektow_scen_akademickich() -> dict[str, Any]:
     return {
         kolekcja: [{"ref_id": ref, "name": nazwa} for ref, nazwa in sorted(elementy.items())]
         for kolekcja, elementy in nazwy.items()
+    }
+
+
+def identyfikatory_grafu() -> dict[str, Any]:
+    """Pary `ref_id` → identyfikator elementu w GRAFIE obliczeniowym policzone
+    `enm.mapping.ref_to_graph_id` dla każdego obiektu sieci złotej, scen „akademickie",
+    „lom", „frt" i analiz OZE (referencje proste i z ziarnem, modele serwowane). Wyrocznia parytetu reguły lustrzanej
+    frontu (`ui/topology/identyfikatorGrafu.ts`): wyniki rozpływu, zwarć i ocen niosą
+    identyfikator grafu, a most nazw wyników rozpoznaje go tą samą regułą (karta #145)."""
+    refy: set[str] = set()
+    modele = (
+        build_golden_enm(),
+        _enm_sceny_akademickiej(),
+        _enm_sceny_lom(),
+        _model_serwowany(_enm_sceny_pola_oze()),
+        _model_serwowany(EnergyNetworkModel.model_validate(_enm_sceny_oze_analiz())),
+    )
+    for enm in modele:
+        dane = enm.model_dump(mode="json")
+        for wartosc in dane.values():
+            if not isinstance(wartosc, list):
+                continue
+            for element in wartosc:
+                if isinstance(element, dict) and isinstance(element.get("ref_id"), str):
+                    refy.add(element["ref_id"])
+    return {"pary": [{"ref_id": ref, "graph_id": ref_to_graph_id(ref)} for ref in sorted(refy)]}
+
+
+def katalogi_odniesien_v126() -> dict[str, Any]:
+    """Odpowiedzi `GET /api/catalog/v126/{namespace}` (`get_v126_catalog` — TA SAMA
+    funkcja, którą woła końcówka) dla KAŻDEJ przestrzeni wartości odniesienia
+    wskazanej przez kartę analizy (`katalog_odniesienia` z `katalog_do_dict` — jedno
+    źródło, nie przepisana lista). Karmi harness i test parytetu prezentacji danych
+    odniesienia po polsku (karta #145: pierwszy plan bez kluczy kontraktu)."""
+    przestrzenie = sorted(
+        {
+            str(karta["katalog_odniesienia"])
+            for karta in katalog_do_dict()
+            if karta.get("katalog_odniesienia")
+        }
+    )
+    return {
+        przestrzen: canonicalize_json(get_v126_catalog(przestrzen)) for przestrzen in przestrzenie
     }
 
 
@@ -4573,6 +4691,8 @@ FIXTURY: dict[str, Any] = {
     "katalog_analiz_v126": katalog_analiz_v126,
     "gotowosc_v126_scena_akademickie": gotowosc_v126_scena_akademickie,
     "nazwy_obiektow_scen_akademickich": nazwy_obiektow_scen_akademickich,
+    "identyfikatory_grafu": identyfikatory_grafu,
+    "katalogi_odniesien_v126": katalogi_odniesien_v126,
     "segmenty_referencji_modelu": segmenty_referencji_modelu,
     "gotowosc_v126_scena_akademickie_parametry": gotowosc_v126_scena_akademickie_parametry,
     "werdykt_projektowy_scena_ocena": werdykt_projektowy_scena_ocena,
@@ -4586,12 +4706,13 @@ FIXTURY: dict[str, Any] = {
     "stabilnosc_scena_wyniki": stabilnosc_scena_wyniki,
     "stabilnosc_scena_slad": stabilnosc_scena_slad,
     "sila_sieci_scena_wynik": sila_sieci_scena_wynik,
+    "oze_analiz_scena_migawka": oze_analiz_scena_migawka,
     "migotanie_scena_wynik": migotanie_scena_wynik,
     "kompensacja_scena_wynik": kompensacja_scena_wynik,
     "rozplyw_scena_wynik": rozplyw_scena_wynik,
     "walidacja_scena_wynik": walidacja_scena_wynik,
     "cieplna_scena_wynik": cieplna_scena_wynik,
-    "cieplna_scena_dowod": cieplna_scena_dowod,
+    "cieplna_scena_dowody": cieplna_scena_dowody,
     "arcflash_scena_wynik": arcflash_scena_wynik,
     "przeglad_wiarygodnosci_katalogu": przeglad_wiarygodnosci_katalogu_scena,
     "skladowe_scena_wynik": skladowe_scena_wynik,
@@ -4625,7 +4746,9 @@ FIXTURY: dict[str, Any] = {
     "odbior_zgodnosc_scena_zaciski": odbior_zgodnosc_scena_zaciski,
     "frt_scena_trajektorie": frt_scena_trajektorie,
     "frt_scena_sekwencja": frt_scena_sekwencja,
+    "frt_scena_przebieg_zwarciowy": frt_scena_przebieg_zwarciowy,
     "lom_scena_wynik": lom_scena_wynik,
+    "lom_scena_migawka": lom_scena_migawka,
     "odbior_scena_prad_znamionowy": odbior_scena_prad_znamionowy,
     "magistrala_ocena_scena_przekroczenie": magistrala_ocena_scena_przekroczenie,
     "magistrala_ocena_scena_ciag": magistrala_ocena_scena_ciag,

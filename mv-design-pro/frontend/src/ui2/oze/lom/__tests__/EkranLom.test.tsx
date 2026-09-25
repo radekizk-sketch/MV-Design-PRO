@@ -9,7 +9,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 
 import { EkranLom } from '../EkranLom';
 import { poleWidoku, widokLomPustyFixture, widokOchronyLomFixture } from './fixtures';
@@ -86,7 +86,7 @@ describe('EkranLom — prezentacja wyniku', () => {
     fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[0]);
     const szczegol = screen.getByTestId('mvd-lom-szczegol');
     expect(szczegol).toHaveTextContent('Szybkość zmian częstotliwości');
-    expect(szczegol).toHaveTextContent('df/dt ≥ 2.0 Hz/s');
+    expect(szczegol).toHaveTextContent('df/dt ≥ 2 Hz/s');
     expect(szczegol).toHaveTextContent('NC RfG');
     // Nastawa prezentowana z przecinkiem PL.
     expect(szczegol).toHaveTextContent('1,000 Hz/s');
@@ -158,25 +158,35 @@ describe('EkranLom — prezentacja wyniku', () => {
     await renderGotowe();
     const bezPola = screen.getByTestId('mvd-lom-bez-pola');
     expect(bezPola).toHaveTextContent('gen-pv-orphan');
-    expect(bezPola).toHaveTextContent('ocena ochrony LoM niemożliwa');
+    // Zdanie dla projektanta (karta #145): bez skrótu „LoM" i bez notatki o implementacji.
+    expect(bezPola).toHaveTextContent('ochrony od pracy wyspowej nie da się dla nich ocenić');
   });
 
   it('źródła normatywne renderowane (okno + brak okna dla przesunięcia wektora)', async () => {
     await renderGotowe();
     const zrodla = screen.getByTestId('mvd-lom-zrodla');
-    expect(zrodla).toHaveTextContent('df/dt ≥ 2.0 Hz/s');
+    expect(zrodla).toHaveTextContent('df/dt ≥ 2 Hz/s');
     expect(zrodla).toHaveTextContent('brak okna normatywnego w katalogu');
   });
 
-  it('tryb podstawowy ukrywa identyfikatory, ekspercki je odsłania', async () => {
+  it('odciski danych wyłącznie w „Informacjach audytowych" trybu eksperckiego (karta #145)', async () => {
     await renderGotowe('basic');
-    expect(screen.queryByTestId('mvd-lom-eksp')).not.toBeInTheDocument();
-    // Ponowny render w trybie eksperckim.
+    expect(screen.queryByTestId('mvd-wyn-informacje-audytowe')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-lom-wynik')).not.toHaveTextContent(
+      widokOchronyLomFixture().input_hash,
+    );
+    cleanup();
     aktywnyPrzypadek = { id: 'case-1' };
     pobierz.mockResolvedValue(widokOchronyLomFixture());
     render(<EkranLom trybZaawansowania="expert" onOtworzDowod={vi.fn()} />);
-    const eksp = await screen.findByTestId('mvd-lom-eksp');
-    expect(eksp).toHaveTextContent(widokOchronyLomFixture().input_hash);
+    const przelacz = await screen.findByTestId('mvd-wyn-informacje-audytowe-przelacz');
+    expect(screen.getByTestId('mvd-lom-wynik')).not.toHaveTextContent(
+      widokOchronyLomFixture().input_hash,
+    );
+    fireEvent.click(przelacz);
+    expect(screen.getByTestId('mvd-wyn-informacje-audytowe-lista')).toHaveTextContent(
+      widokOchronyLomFixture().input_hash,
+    );
   });
 
   it('brak pól i brak modułów bez pola → uczciwy stan „brak pól"', async () => {

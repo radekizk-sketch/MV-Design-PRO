@@ -10,6 +10,8 @@
  * planu niesie echo scenariusza i etykietę rekordu oceny z backendu; pola solvera
  * trafiają WYŁĄCZNIE do tabeli audytowej — bez tagów ostrzegawczych, bo kolor też
  * byłby oceną. Dawna agregacja „werdyktu całości" skasowana razem z werdyktem.
+ * Scenariusz nazywa `nazwa_pl` z backendu (parametry próby), a klucze techniczne
+ * (scenariusz, typ przekształtnika, operator) idą do „Informacji audytowych".
  *
  * GRANICE (NOT-A-SOLVER / zero fizyki): warstwa wyłącznie prezentuje. „Napięcie
  * skrajne" scenariusza to projekcja min/max napięcia trajektorii (rzut danych
@@ -30,6 +32,8 @@ import type {
   StationDerConnection,
 } from '../../../ui/network-build/station-der';
 import type { DefinicjaKolumny, WierszTabeli } from '../../wyniki/wzorzec/wzorzecModel';
+import type { WierszInformacjiAudytowych } from '../../wyniki/wzorzec/InformacjeAudytowe';
+import type { StatusSolveraFrt } from '../api';
 import {
   FRT_STRINGS,
   etykietaStatusuFrt,
@@ -172,7 +176,7 @@ export function kolumnyTabeliFrt(): DefinicjaKolumny[] {
 function wierszScenariuszaFrt(scenariusz: ScenariuszFrt, rodzaj: RodzajTestuFrt): WierszTabeli {
   const skrajne = napiecieSkrajneFrt(scenariusz, rodzaj);
   return {
-    scenariusz: { wartosc: scenariusz.scenario_id },
+    scenariusz: { wartosc: scenariusz.nazwa_pl },
     glebokosc: {
       wartosc: skrajne === null ? FRT_STRINGS.kreska : fmtPuFrt(skrajne),
       sortKey: skrajne ?? undefined,
@@ -219,7 +223,7 @@ export function kolumnyAudytuFrt(): DefinicjaKolumny[] {
 
 /** Pola solvera wspólne dla scenariusza trajektorii i zapadu sekwencji. */
 export interface PolaSolveraFrt {
-  readonly status: string;
+  readonly status: StatusSolveraFrt;
   readonly stayed_connected: boolean;
   readonly margin_to_curve_s: number | null;
   readonly margin_to_curve_pu: number | null;
@@ -254,7 +258,28 @@ export function komorkiAudytuFrt(pola: PolaSolveraFrt): WierszTabeli {
 /** Adapter: widok trajektorii → wiersze tabeli audytowej (kolejność źródłowa). */
 export function wierszeAudytuFrt(widok: WidokTrajektoriiFrt): WierszTabeli[] {
   return widok.scenariusze.map((sc) => ({
-    scenariusz: { wartosc: sc.scenario_id },
+    scenariusz: { wartosc: sc.nazwa_pl },
     ...komorkiAudytuFrt(sc),
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Informacje audytowe (karta #145) — identyfikatory techniczne biegu
+// ---------------------------------------------------------------------------
+
+/**
+ * Wiersze „Informacji audytowych" widoku trajektorii: identyfikator typu
+ * katalogowego przekształtnika, identyfikator operatora i klucze scenariuszy.
+ * Pierwszy plan niesie ich nazwy (moduł, operator, nazwa scenariusza z parametrów
+ * próby); identyfikatory są metadanymi i żyją wyłącznie tutaj.
+ */
+export function informacjeAudytoweFrt(widok: WidokTrajektoriiFrt): WierszInformacjiAudytowych[] {
+  return [
+    { etykieta: FRT_STRINGS.ekspModulId, wartosc: widok.modul_der.id },
+    { etykieta: FRT_STRINGS.ekspOperatorId, wartosc: widok.operator.id },
+    ...widok.scenariusze.map((sc, indeks) => ({
+      etykieta: `${FRT_STRINGS.ekspScenariuszId} (${indeks + 1})`,
+      wartosc: sc.scenario_id,
+    })),
+  ];
 }

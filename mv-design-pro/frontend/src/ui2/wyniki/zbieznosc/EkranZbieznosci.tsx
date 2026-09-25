@@ -31,7 +31,13 @@ import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../shell/useShellStore';
 import { FreshnessBadge } from '../../inspector';
 import { useSwiezoscNaglowka } from '../../freshness';
-import { akcjaNaprawcza, SekcjaZalozen, usePoprawWModelu, WZORZEC_STRINGS } from '../wzorzec';
+import {
+  akcjaNaprawcza,
+  SekcjaZalozen,
+  useNazwaObiektu,
+  usePoprawWModelu,
+  WZORZEC_STRINGS,
+} from '../wzorzec';
 import {
   naBilansPrzebiegu,
   naWierszeIteracji,
@@ -116,6 +122,7 @@ export function EkranZbieznosci() {
   const wierszeWysp = naWierszeWysp(sladAktualny);
   const wierszeModelu = naWierszeZaczepowModelu(snapshot);
   const poprawWModelu = usePoprawWModelu();
+  const nazwaObiektu = useNazwaObiektu();
   // Karta UI2 p.9: znacznik świeżości NAGŁÓWKA — ten sam hook współdzielony
   // co EkranZwarc/TabelaSzyn (V12K-264), ten ekran wcześniej nie miał go wcale
   // (BRAK ZDOLNOŚCI, nie regresja — brak jakiegokolwiek importu/wywołania).
@@ -173,7 +180,7 @@ export function EkranZbieznosci() {
         </div>
       ) : (
         <>
-          <SekcjaZalozen zalozenia={naZalozeniaZbieznosci(wynikAktualny, sladAktualny)} />
+          <SekcjaZalozen zalozenia={naZalozeniaZbieznosci(wynikAktualny, sladAktualny, nazwaObiektu)} />
 
           <section
             className="mvd-zbieznosc-werdykt"
@@ -237,8 +244,8 @@ export function EkranZbieznosci() {
                   <tbody>
                     {wierszeWysp.map((w) => (
                       <tr key={w.szynaBilansujaca} data-testid={`mvd-zbieznosc-wyspa-${w.szynaBilansujaca}`}>
-                        <td className="mvd-zbieznosc-id">{w.szynaBilansujaca}</td>
-                        <td className="mvd-zbieznosc-id">{w.zrodloRef}</td>
+                        <td>{nazwaObiektu(w.szynaBilansujaca)}</td>
+                        <td>{nazwaObiektu(w.zrodloRef)}</td>
                         <td className="mvd-num">{w.liczbaSzynPq}</td>
                         <td className="mvd-num">{w.liczbaSzynPv}</td>
                         <td className="mvd-num">{w.iteracje}</td>
@@ -283,9 +290,9 @@ export function EkranZbieznosci() {
                     <tbody>
                       {naWierszeOltcPrzebiegu(oltc).map((w) => (
                         <tr key={w.branchId}>
-                          <td className="mvd-zbieznosc-id">{w.branchId}</td>
+                          <td>{nazwaObiektu(w.branchId)}</td>
                           <td>{w.strona}</td>
-                          <td className="mvd-zbieznosc-id">{w.szynaKontrolowana}</td>
+                          <td>{nazwaObiektu(w.szynaKontrolowana)}</td>
                           <td className="mvd-num">{w.zadanaKv}</td>
                           <td className="mvd-num">{w.pozycjaPoczatkowa}</td>
                           <td className="mvd-num">{w.pozycjaKoncowa}</td>

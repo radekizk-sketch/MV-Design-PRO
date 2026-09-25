@@ -23,7 +23,11 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { notify } from '../../../ui/notifications/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
-import { TabelaWynikow } from '../../wyniki/wzorzec';
+import {
+  InformacjeAudytowe,
+  TabelaWynikow,
+  nazwaObiektuZMigawki,
+} from '../../wyniki/wzorzec';
 // Zasada wywodów KaTeX: wzory w opisach parametrów renderuje TekstZWzorami (MathInline).
 import { TekstZWzorami } from '../../kreatory/rama';
 import { SladAnalizy } from '../pulpit';
@@ -128,7 +132,7 @@ function WynikObszaru({
       <dl className="mvd-obszar-zalozenia" data-testid="mvd-obszar-zalozenia">
         <div className="mvd-obszar-zal-para">
           <dt>{OBSZAR_STRINGS.zalWezel}</dt>
-          <dd>{dane.bus_name ?? dane.bus_ref}</dd>
+          <dd>{nazwaObiektuZMigawki(null, dane.bus_ref, dane.bus_name)}</dd>
         </div>
         <div className="mvd-obszar-zal-para">
           <dt>{OBSZAR_STRINGS.zalGeneracja}</dt>
@@ -164,19 +168,17 @@ function WynikObszaru({
             {dane.total_runs} / {dane.parameters.max_total_runs}
           </dd>
         </div>
-        {trybEkspercki && (
-          <>
-            <div className="mvd-obszar-zal-para">
-              <dt>{OBSZAR_STRINGS.zalPrzebieg}</dt>
-              <dd className="mvd-num">{dane.context.run_id}</dd>
-            </div>
-            <div className="mvd-obszar-zal-para" data-testid="mvd-obszar-eksp-hash">
-              <dt>{OBSZAR_STRINGS.zalIdentyfikatorSkrot}</dt>
-              <dd className="mvd-num">{dane.input_hash}</dd>
-            </div>
-          </>
-        )}
       </dl>
+
+      {/* Karta #145: przebieg i odcisk wejścia wyłącznie w „Informacjach audytowych". */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-obszar-informacje-audytowe"
+        wiersze={[
+          { etykieta: OBSZAR_STRINGS.zalPrzebieg, wartosc: dane.context.run_id },
+          { etykieta: OBSZAR_STRINGS.zalIdentyfikatorSkrot, wartosc: dane.input_hash },
+        ]}
+      />
 
       <div className="mvd-obszar-wykres-blok">
         <WykresObszaruChart punkty={punkty} zNakladkaProducenta={zNakladka} />

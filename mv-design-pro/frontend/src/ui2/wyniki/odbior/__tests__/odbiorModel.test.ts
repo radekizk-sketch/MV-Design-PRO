@@ -23,7 +23,11 @@ import {
   zbudujZadanie,
   type WierszEdytora,
 } from '../odbiorModel';
+import type { NazwaObiektu } from '../../wzorzec';
 import { widokZgodnosciFixture } from './fixtures';
+
+/** Most nazw modelu (karta #145) — nazwa jawnie różna od referencji. */
+const NAZWA: NazwaObiektu = (ref) => `Element ${ref.toLowerCase()}`;
 
 function wiersz(over: Partial<WierszEdytora> = {}): WierszEdytora {
   return { element_ref: 'BUS-1', wielkosc: 'U', wartosc: '15,3', zacisk: null, ...over };
@@ -218,21 +222,21 @@ describe('zbudujZadanie — walidacja tolerancji', () => {
 describe('adaptery tabeli i formatery', () => {
   it('mapujWierszZgodnosci: null model → „—"; poza tolerancją → ostrzeżenie na odchyłce', () => {
     const dane = widokZgodnosciFixture();
-    const poza = mapujWierszZgodnosci(dane.wiersze[1]); // LINE-2 / P / poza tolerancją
+    const poza = mapujWierszZgodnosci(dane.wiersze[1], NAZWA); // LINE-2 / P / poza tolerancją
     expect(poza.odchylka.ostrzezenie).toBe(true);
-    expect(poza.element.wartosc).toBe('LINE-2');
+    expect(poza.element.wartosc).toBe('Element line-2');
     expect(poza[KLUCZ_WIERSZA_ZGODNOSCI].wartosc).toBe('LINE-2::P::od');
     // Miejsce pomiaru — etykieta z nazwą szyny wprost z backendu.
     expect(poza.miejsce.wartosc).toBe('Zacisk początkowy — szyna GPZ SN');
 
-    const brak = mapujWierszZgodnosci(dane.wiersze[2]); // NIEZNANY-3 — brak modelu
+    const brak = mapujWierszZgodnosci(dane.wiersze[2], NAZWA); // NIEZNANY-3 — brak modelu
     expect(brak.model.wartosc).toBe(ODBIOR_STRINGS.kreska);
     expect(brak.odchylka.wartosc).toBe(ODBIOR_STRINGS.kreska);
   });
 
   it('K3/C1: wartość Z MODELU niesie dowodRef = element_ref; pomiar/tolerancja (wejścia) i odchyłki (ślad na miejscu) bez ref', () => {
     const dane = widokZgodnosciFixture();
-    const w = mapujWierszZgodnosci(dane.wiersze[0]); // BUS-1 / U — model z przebiegu rozpływu
+    const w = mapujWierszZgodnosci(dane.wiersze[0], NAZWA); // BUS-1 / U — model z przebiegu rozpływu
     expect(w.model.dowodRef).toBe('BUS-1');
     expect(w.pomiar.dowodRef).toBeUndefined();
     expect(w.tolerancja.dowodRef).toBeUndefined();
@@ -240,30 +244,33 @@ describe('adaptery tabeli i formatery', () => {
     expect(w.odchylkaPct.dowodRef).toBeUndefined();
 
     // Brak wartości z modelu (null) → komórka „—" bez dowodu (nie ma liczby, nie ma wywodu).
-    const brak = mapujWierszZgodnosci(dane.wiersze[2]); // NIEZNANY-3
+    const brak = mapujWierszZgodnosci(dane.wiersze[2], NAZWA); // NIEZNANY-3
     expect(brak.model.dowodRef).toBeUndefined();
   });
 
   it('naWierszeZgodnosci zachowuje kolejność źródłową backendu', () => {
     const dane = widokZgodnosciFixture();
-    const wiersze = naWierszeZgodnosci(dane.wiersze);
+    const wiersze = naWierszeZgodnosci(dane.wiersze, NAZWA);
     expect(wiersze.map((w) => w.element.wartosc)).toEqual([
-      'BUS-1',
-      'LINE-2',
-      'NIEZNANY-3',
-      'TRAFO-4',
-      'TRAFO-4',
+      'Element bus-1',
+      'Element line-2',
+      'Element nieznany-3',
+      'Element trafo-4',
+      'Element trafo-4',
     ]);
   });
 
   it('klucz wiersza rozróżnia pomiary mocy tej samej gałęzi na obu zaciskach', () => {
     const dane = widokZgodnosciFixture();
     const bazowy = dane.wiersze[1];
-    const klucze = naWierszeZgodnosci([
-      bazowy,
-      { ...bazowy, zacisk: 'do', miejsce_pomiaru_pl: 'Zacisk końcowy — szyna Stacja 1' },
-      { ...bazowy, zacisk: null, miejsce_pomiaru_pl: null, werdykt: 'brak miejsca pomiaru' },
-    ]).map((w) => w[KLUCZ_WIERSZA_ZGODNOSCI].wartosc);
+    const klucze = naWierszeZgodnosci(
+      [
+        bazowy,
+        { ...bazowy, zacisk: 'do', miejsce_pomiaru_pl: 'Zacisk końcowy — szyna Stacja 1' },
+        { ...bazowy, zacisk: null, miejsce_pomiaru_pl: null, werdykt: 'brak miejsca pomiaru' },
+      ],
+      NAZWA,
+    ).map((w) => w[KLUCZ_WIERSZA_ZGODNOSCI].wartosc);
     expect(new Set(klucze).size).toBe(3);
   });
 

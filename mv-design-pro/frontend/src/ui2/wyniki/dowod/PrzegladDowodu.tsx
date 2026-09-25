@@ -18,7 +18,7 @@ import { KrokDowodu } from './KrokDowodu';
 import { SpisKrokow } from './SpisKrokow';
 import { DOWOD_STRINGS } from './strings';
 import { mapujKroki } from './dowodModel';
-import { PrzyciskAkcjiStanu } from '../wzorzec';
+import { InformacjeAudytowe, PrzyciskAkcjiStanu } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 
 /**
@@ -115,16 +115,14 @@ export function PrzegladDowodu({
     <div className="mvd-dowod" data-testid="mvd-dowod">
       <header className="mvd-dowod-head" data-testid="mvd-dowod-naglowek">
         <h2 className="mvd-dowod-title">{analizaPL}</h2>
-        {trybEkspercki && inputHash && (
-          <span
-            className="mvd-dowod-hash mvd-num"
-            aria-label={DOWOD_STRINGS.odciskWejscia}
-            data-testid="mvd-dowod-input-hash"
-          >
-            {inputHash}
-          </span>
-        )}
       </header>
+
+      {/* Karta #145: odcisk wejścia wyłącznie w „Informacjach audytowych". */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-dowod-informacje-audytowe"
+        wiersze={inputHash ? [{ etykieta: DOWOD_STRINGS.odciskWejscia, wartosc: inputHash }] : []}
+      />
 
       {wskazanyElement && (
         <div className="mvd-dowod-zakres" data-testid="mvd-dowod-zakres">

@@ -49,6 +49,7 @@ from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from network_model.catalog.types import ConverterType
 from network_model.solvers.frt_hvrt import FrtHvrtSolverAdapter
 from solver_input.provenance import classify_dynamic_capability
+from werdykt import format_liczba
 
 # Zaokrąglenie wartości wyjściowych — determinizm i czytelność (jak D6).
 _ROUND = 6
@@ -57,14 +58,14 @@ _ROUND = 6
 _MAX_ZAPADY = 10
 
 _ZALOZENIA_PL = (
-    "Stan modułu MIĘDZY zapadami (nagrzewanie, niepełny odzysk) nie jest modelowany: "
-    "każdy zapad liczony od stanu ustalonego. Trajektoria każdego zapadu jest zadana "
-    "profilem wejściowym, więc ani zapad, ani sekwencja nie są oceniane."
+    "Stan modułu między zapadami (nagrzewanie, niepełny odzysk mocy) nie jest modelowany: "
+    "każdy zapad jest liczony od stanu ustalonego. Trajektoria każdego zapadu jest zadana "
+    "profilem wejściowym, więc ani pojedynczy zapad, ani cała sekwencja nie są oceniane."
 )
 
 _KONTEKST_POWOD_BRAK = (
-    "Nie wskazano przebiegu zwarciowego (run_id) ani węzła przyłączenia (bus_ref); "
-    "kontekst siły sieci (SCR/WSCR) pominięty."
+    "Nie wskazano obliczenia zwarciowego ani szyny przyłączenia modułu — kontekst siły "
+    "sieci (SCR/WSCR) nie jest pokazywany."
 )
 
 
@@ -182,9 +183,9 @@ def build_frt_sekwencja_view(
                     kryterium_id=f"frt_hvrt.sekwencja.{converter.id}.{scenario.scenario_id}",
                     opis_przedmiotu_pl=(
                         f"Moduł DER {converter.name}, zapad {len(zapady_view) + 1} sekwencji "
-                        f"(głębokość {_round(scenario.voltage_dip_depth_pu)} p.u., czas "
-                        f"{_round(scenario.fault_duration_s)} s) wobec profilu operatora "
-                        f"{profile.operator_name_pl}"
+                        f"(głębokość {format_liczba(_round(scenario.voltage_dip_depth_pu))} p.u., "
+                        f"czas {format_liczba(_round(scenario.fault_duration_s))} s) wobec "
+                        f"profilu operatora {profile.operator_name_pl}"
                     ),
                 ),
                 # Ślad WHITE BOX — parametry wejścia solvera dla tego zapadu.

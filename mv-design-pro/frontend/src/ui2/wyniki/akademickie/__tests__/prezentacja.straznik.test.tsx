@@ -282,13 +282,18 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
     },
   );
 
+  // Zmiana kanonu (karta #145): pełny zapis odpowiedzi solvera żyje w „Informacjach
+  // audytowych" (tryb ekspercki, zwinięte). Intencja zachowana: pola kontraktu nie wchodzą
+  // na ekran same z siebie — dopiero natywny klik rozwija listę.
   it('zapis techniczny jest ZWINIĘTY — pola kontraktu nie wchodzą na ekran same z siebie', async () => {
     const grupa = Object.keys(ODPOWIEDZI.reliability_contingency)[0];
     expect(grupa, 'fixtura odpowiedzi bez grup — parser nośnika do poprawy').toBeTruthy();
     await uruchomRodzaj('reliability_contingency');
-    expect(screen.queryByTestId(`mvd-akad-grupa-${grupa}`)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('mvd-akad-wynik-przelacz'));
-    await waitFor(() => expect(screen.getByTestId(`mvd-akad-grupa-${grupa}`)).toBeInTheDocument());
+    expect(screen.queryByTestId('mvd-akad-informacje-audytowe-lista')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-akad-informacje-audytowe-przelacz'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-akad-informacje-audytowe-lista')).toHaveTextContent(grupa),
+    );
   });
 
   // Intencja zachowana: obiekty w tabeli nazwane jak na schemacie. Zmiana kanonu
@@ -305,12 +310,14 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
 
   it('sekcja bez treści NIE ma przycisku „Pokaż…” (zero martwych klików)', async () => {
     await uruchomRodzaj('reliability_contingency');
-    for (const sekcja of ['mvd-akad-slad', 'mvd-akad-dowod', 'mvd-akad-raport', 'mvd-akad-wynik']) {
+    for (const sekcja of ['mvd-akad-slad', 'mvd-akad-dowod']) {
       const pusty = screen.queryByTestId(`${sekcja}-pusty`);
       const przelacz = screen.queryByTestId(`${sekcja}-przelacz`);
       expect((pusty === null) !== (przelacz === null), `sekcja ${sekcja}: stan zerowy i przycisk nie mogą współistnieć ani znikać razem`).toBe(true);
     }
-    expect(screen.getByTestId('mvd-akad-wynik-przelacz')).toBeInTheDocument();
+    // Raport (karta #145) to zdanie + informacje audytowe — bez przełącznika „Pokaż…".
+    expect(screen.queryByTestId('mvd-akad-raport-przelacz')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-akad-informacje-audytowe-przelacz')).toBeInTheDocument();
   });
 
   it('świeżość NIE mówi „brak wyników” przy zakończonym przebiegu (para predykatów)', async () => {
@@ -327,15 +334,17 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
     expect(screen.getByTestId('mvd-akad-swiezosc')).toHaveTextContent('brak wyników');
   });
 
-  it('zapis techniczny NIE jest pierwszą sekcją ekranu i startuje zwinięty', async () => {
+  // Zmiana kanonu (karta #145): zapis techniczny to wiersze „Informacji audytowych"
+  // nagłówka przebiegu — sekcja zawsze zwinięta, więc intencja „nie pierwszy plan"
+  // przechodzi z pozycji w DOM na stan zwinięty: werdykt stoi na ekranie, zapis nie.
+  it('zapis techniczny nie stoi na pierwszym planie — informacje audytowe startują zwinięte', async () => {
     const ekran = await uruchomRodzaj('reliability_contingency');
-    const sekcje = Array.from(ekran.querySelectorAll('[data-testid^="mvd-akad-"]'))
-      .map((element) => element.getAttribute('data-testid'))
-      .filter((id): id is string => id !== null);
-    const pozycjaZapisu = sekcje.indexOf('mvd-akad-wynik');
-    const pozycjaWerdyktu = sekcje.indexOf('mvd-akad-werdykt');
-    expect(pozycjaWerdyktu).toBeGreaterThanOrEqual(0);
-    expect(pozycjaZapisu).toBeGreaterThan(pozycjaWerdyktu);
+    expect(screen.getByTestId('mvd-akad-werdykt')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-akad-informacje-audytowe-przelacz')).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.queryByTestId('mvd-akad-informacje-audytowe-lista')).not.toBeInTheDocument();
     expect(ekran.querySelector('[data-mvd-zapis-techniczny]')).toBeNull();
   });
 

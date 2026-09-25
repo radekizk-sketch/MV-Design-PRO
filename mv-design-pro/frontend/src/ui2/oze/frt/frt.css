@@ -198,29 +198,6 @@
   font-size: 12px;
 }
 
-/* Tryb ekspercki */
-.mvd-frt-eksp {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 24px;
-  margin: 0;
-  padding: 8px 16px;
-  border: 1px dashed var(--mvd-line);
-  border-radius: 8px;
-  color: var(--mvd-muted);
-  font-size: 12px;
-}
-
-.mvd-frt-eksp-para {
-  display: flex;
-  gap: 8px;
-}
-
-.mvd-frt-eksp-para dd {
-  margin: 0;
-  font-family: var(--mvd-font-mono);
-}
-
 .mvd-num {
   font-family: var(--mvd-font-mono);
   font-variant-numeric: tabular-nums;
@@ -285,7 +262,8 @@
   font-weight: 600;
 }
 
-.mvd-frt-sekw-pole input {
+.mvd-frt-sekw-pole input,
+.mvd-frt-sekw-pole select {
   padding: 6px 8px;
   border: 1px solid var(--mvd-line);
   border-radius: 6px;

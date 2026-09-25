@@ -13,6 +13,8 @@
 import { useId, useState, type ReactNode } from 'react';
 
 import { EtykietaWerdyktu, KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
+import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
+import { useShellStore } from '../../shell/useShellStore';
 import type { PodstawaWymagania, StanZrodla, WynikWymagania } from '../../wyniki/wzorzec/werdykt';
 import {
   NCRFG_STRINGS as T,
@@ -32,6 +34,7 @@ import type {
   ZdanieBrakuModulu,
   ZrodloDanych,
 } from './typy';
+import { POZYCJE_AUDYTOWE_BLOKU } from './typy';
 
 import './ncrfg.css';
 
@@ -124,11 +127,14 @@ export function DowodCertyfikatuOpis({
   readonly zrodloDanych: ZrodloDanych;
   readonly testid: string;
 }): JSX.Element {
+  const trybEkspercki = useShellStore((stan) => stan.advancementMode) === 'expert';
   if (dowod !== null) {
     return (
       <div className="mvd-ncrfg-dowod" data-testid={testid} data-stan="dowod">
         <div className="mvd-ncrfg-opis">
-          {`${T.dowodRekord} ${dowod.rekord_id}; ${T.dowodProducent}: ${dowod.producent}; ${T.dowodModel}: ${dowod.model}; `}
+          {/* Karta #145: rekord nazywają pola wykazu (producent, model, numer dokumentu);
+              klucz rekordu rejestru jest metadaną — „Informacje audytowe" niżej. */}
+          {`${T.dowodRekord} — ${T.dowodProducent}: ${dowod.producent}; ${T.dowodModel}: ${dowod.model}; `}
           <span data-testid={`${testid}-numer`}>{`${T.dowodNumer}: ${dowod.numer_dokumentu}`}</span>
           {`; ${T.dowodData}: ${dowod.data_akceptacji ?? T.dowodNiePodano}; `}
           <span data-testid={`${testid}-wipwc`}>{`${T.dowodWipwc} ${dowod.wersja_wipwc}`}</span>
@@ -142,6 +148,11 @@ export function DowodCertyfikatuOpis({
           {`${T.dowodPodstawa}: `}
           <OpisPodstawy podstawa={dowod.podstawa} />
         </div>
+        <InformacjeAudytowe
+          trybEkspercki={trybEkspercki}
+          testid={`${testid}-informacje-audytowe`}
+          wiersze={[{ etykieta: T.dowodIdentyfikatorRekordu, wartosc: dowod.rekord_id }]}
+        />
       </div>
     );
   }
@@ -217,7 +228,7 @@ export function NaglowekModuluNcRfg({
 // Lista rekordów wymagań (plakietka + karta)
 // =============================================================================
 
-function ZapisDokumentu({
+export function ZapisDokumentu({
   blok,
   testid,
 }: {
@@ -226,6 +237,11 @@ function ZapisDokumentu({
 }): JSX.Element {
   const [otwarty, setOtwarty] = useState(false);
   const idTresci = useId();
+  const trybEkspercki = useShellStore((stan) => stan.advancementMode) === 'expert';
+  // Karta #145: pozycje audytowe (odniesienie do dowodu, bieg śladu) niosą identyfikatory
+  // i odciski — poza pierwszym planem, w informacjach audytowych (tryb ekspercki).
+  const merytoryczne = blok.filter((p) => !POZYCJE_AUDYTOWE_BLOKU.includes(p.etykieta_pl));
+  const audytowe = blok.filter((p) => POZYCJE_AUDYTOWE_BLOKU.includes(p.etykieta_pl));
   return (
     <div className="mvd-ncrfg-zapis">
       <button
@@ -239,14 +255,21 @@ function ZapisDokumentu({
         {otwarty ? T.ukryjZapis : T.pokazZapis}
       </button>
       {otwarty ? (
-        <dl id={idTresci} className="mvd-ncrfg-blok" data-testid={testid}>
-          {blok.map((pozycja, indeks) => (
-            <div key={`${pozycja.etykieta_pl}-${indeks}`} className="mvd-ncrfg-blok-wiersz">
-              <dt>{pozycja.etykieta_pl}</dt>
-              <dd>{pozycja.tresc_pl}</dd>
-            </div>
-          ))}
-        </dl>
+        <div id={idTresci}>
+          <dl className="mvd-ncrfg-blok" data-testid={testid}>
+            {merytoryczne.map((pozycja, indeks) => (
+              <div key={`${pozycja.etykieta_pl}-${indeks}`} className="mvd-ncrfg-blok-wiersz">
+                <dt>{pozycja.etykieta_pl}</dt>
+                <dd>{pozycja.tresc_pl}</dd>
+              </div>
+            ))}
+          </dl>
+          <InformacjeAudytowe
+            wiersze={audytowe.map((p) => ({ etykieta: p.etykieta_pl, wartosc: p.tresc_pl }))}
+            trybEkspercki={trybEkspercki}
+            testid={`${testid}-informacje-audytowe`}
+          />
+        </div>
       ) : null}
     </div>
   );

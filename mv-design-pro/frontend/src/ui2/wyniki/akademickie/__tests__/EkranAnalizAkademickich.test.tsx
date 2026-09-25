@@ -360,11 +360,12 @@ describe('EkranAnalizAkademickich — matematyka wyłącznie KaTeX (karta V12.7 
 
 describe('EkranAnalizAkademickich — ścieżka natywna biegu', () => {
   it('klik „Uruchom analizę" → wynik, ślad, dowód i raport z czterech końcówek', async () => {
-    const mock = ustawFetchV126({ potwierdzone: ['reliability_contingency'], krokowSladu: 4, sekcjiRaportu: 3 });
+    const mock = ustawFetchV126({ potwierdzone: ['reliability_contingency'], krokowSladu: 4 });
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await otworzAnalize('reliability_contingency');
     await uruchom();
-    expect(screen.getByTestId('mvd-akad-wynik')).toBeInTheDocument();
+    // Karta #145: pełny zapis odpowiedzi solvera stoi w „Informacjach audytowych".
+    expect(screen.getByTestId('mvd-akad-informacje-audytowe')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-akad-slad')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-akad-dowod')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-akad-raport')).toBeInTheDocument();
@@ -463,13 +464,20 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
     expect(screen.getByTestId('mvd-akad-dowod-krok-17')).toBeInTheDocument();
   });
 
-  it('raport z więcej niż 3 sekcjami renderuje się w CAŁOŚCI (limit zastanej)', async () => {
-    ustawFetchV126({ potwierdzone: ['reliability_contingency'], sekcjiRaportu: 7 });
+  // Zmiana kanonu (karta #145, kontrakt `AcademicReportV2`): raport niesie tożsamość
+  // dowodu i audyt deterministyczny; intencja „bez limitu po stronie okna" zostaje —
+  // KAŻDA metryka obu sekcji trafia do „Informacji audytowych", nic nie jest ucinane.
+  it('raport: wszystkie metryki tożsamości dowodu i audytu w informacjach audytowych (bez limitu)', async () => {
+    ustawFetchV126({ potwierdzone: ['reliability_contingency'], krokowSladu: 7 });
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await otworzAnalize('reliability_contingency');
     await uruchom();
-    fireEvent.click(screen.getByTestId('mvd-akad-raport-przelacz'));
-    expect(screen.getByTestId('mvd-akad-raport-sekcja-sekcja_6')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-akad-raport-opis')).toHaveTextContent('7');
+    fireEvent.click(screen.getByTestId('mvd-akad-raport-informacje-audytowe-przelacz'));
+    const lista = screen.getByTestId('mvd-akad-raport-informacje-audytowe-lista');
+    for (const wartosc of ['report:v126:test:abc', 'hash-raportu', 'proof:v126:test:abc', 'hash-dowodu', 'hash-akad', 'v126-academic-whitebox-1.2', 'hash-wejscia']) {
+      expect(lista).toHaveTextContent(wartosc);
+    }
   });
 
   it('wynik z ponad 18 polami renderuje wszystkie (limit 18 zastanej) — w zwiniętym zapisie technicznym', async () => {
@@ -479,9 +487,11 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await otworzAnalize('reliability_contingency');
     await uruchom();
-    expect(screen.getByTestId('mvd-akad-wynik-licznik')).toHaveTextContent('30');
-    fireEvent.click(screen.getByTestId('mvd-akad-wynik-przelacz'));
-    expect(screen.getByTestId('mvd-akad-grupa-pole_29')).toBeInTheDocument();
+    // Karta #145: pełny zapis odpowiedzi solvera — każde pole — w „Informacjach audytowych".
+    fireEvent.click(screen.getByTestId('mvd-akad-informacje-audytowe-przelacz'));
+    const lista = screen.getByTestId('mvd-akad-informacje-audytowe-lista');
+    expect(lista).toHaveTextContent('pole_0');
+    expect(lista).toHaveTextContent('pole_29');
   });
 });
 
@@ -583,8 +593,11 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
     fireEvent.click(screen.getByTestId('mvd-akad-kontrakt-danych-przelacz'));
     const tabela = screen.getByTestId('mvd-akad-kontrakt-danych-tabela');
     expect(within(tabela).getAllByRole('row')).toHaveLength(k.dane.od_uzytkownika.length + 1);
+    // Karta #145: tabela nazywa każdy parametr po polsku (`nazwa_pl` karty), klucz kontraktu
+    // nie trafia na ekran.
     for (const parametr of k.dane.od_uzytkownika) {
-      expect(tabela).toHaveTextContent(parametr.klucz);
+      expect(tabela).toHaveTextContent(parametr.nazwa_pl);
+      expect(tabela).not.toHaveTextContent(parametr.klucz);
     }
   });
 });

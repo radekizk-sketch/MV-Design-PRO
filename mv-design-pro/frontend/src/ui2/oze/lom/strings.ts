@@ -40,7 +40,6 @@ export const LOM_STRINGS = {
   kolSzyna: 'Szyna',
   kolModuly: 'Moduły wytwórcze',
   kolStatus: 'Status ochrony',
-  kolIdentyfikator: 'Identyfikator pola',
 
   // Ocena całości (rekord wymagania sieci)
   ocenaSieciTytul: 'Ocena ochrony od pracy wyspowej sieci',
@@ -60,16 +59,16 @@ export const LOM_STRINGS = {
   bezPolaTytul: 'Moduły wytwórcze bez pola przyłączeniowego',
   bezPolaOpis:
     'Poniższe moduły nie mają pola przyłączeniowego z przypisaniem zabezpieczeń — '
-    + 'ocena ochrony LoM niemożliwa (uczciwy brak danych).',
+    + 'ochrony od pracy wyspowej nie da się dla nich ocenić, dopóki pole nie zostanie dodane.',
 
   // Założenia i źródła
   zalozeniaTytul: 'Założenia',
   zrodlaTytul: 'Źródła normatywne funkcji LoM',
   zrodlaBrakOkna: 'brak okna normatywnego w katalogu',
 
-  // Tryb ekspercki
-  ekspHash: 'Odcisk wejścia (SHA-256)',
-  ekspEnmHash: 'Odcisk dokumentu sieci (ENM)',
+  // Informacje audytowe (metadane produkcyjne — wyłącznie tam, karta #145)
+  audytOdciskWejscia: 'Odcisk danych wejściowych oceny',
+  audytOdciskModelu: 'Odcisk modelu sieci',
 
   // Jednostki / wartości puste
   jednS: 's',

@@ -191,14 +191,17 @@ describe('EkranObszaruPQ — tryb ekspercki (identyfikatory)', () => {
 
   it('tryb podstawowy ukrywa identyfikator wejścia (hash)', async () => {
     await uruchomBieg('basic');
-    expect(screen.queryByTestId('mvd-obszar-eksp-hash')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-obszar-informacje-audytowe')).not.toBeInTheDocument();
   });
 
-  it('tryb ekspercki odsłania identyfikator wejścia i przebiegu', async () => {
+  it('tryb ekspercki: identyfikator wejścia i przebiegu wyłącznie w „Informacjach audytowych"', async () => {
     await uruchomBieg('expert');
-    const hash = screen.getByTestId('mvd-obszar-eksp-hash');
-    expect(hash).toHaveTextContent('a1b2c3d4e5f6');
-    expect(screen.getByTestId('mvd-obszar-wynik')).toHaveTextContent('run-lf-1');
+    // Karta #145: zwinięte — pierwszy plan bez identyfikatorów.
+    expect(screen.getByTestId('mvd-obszar-wynik')).not.toHaveTextContent('a1b2c3d4e5f6');
+    fireEvent.click(screen.getByTestId('mvd-obszar-informacje-audytowe-przelacz'));
+    const lista = screen.getByTestId('mvd-obszar-informacje-audytowe-lista');
+    expect(lista).toHaveTextContent('a1b2c3d4e5f6');
+    expect(lista).toHaveTextContent('run-lf-1');
   });
 });
 

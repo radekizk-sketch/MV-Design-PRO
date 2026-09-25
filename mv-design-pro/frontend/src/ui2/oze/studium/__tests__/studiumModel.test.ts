@@ -307,19 +307,19 @@ const kontekst: KontekstWierszaStudium = {
 };
 
 describe('studiumModel — tabela przeglądu', () => {
-  it('kolumny obejmują moc, straty, klasę, pokrycie i pasmo Q; identyfikator ekspercki', () => {
+  it('kolumny obejmują moc, straty, klasę, pokrycie i pasmo Q; bez kolumny identyfikatora', () => {
     const kolumny = kolumnyStudium();
     const klucze = kolumny.map((k) => k.klucz);
     expect(klucze).toEqual([
       'wariant',
-      'identyfikator',
       'moc',
       'straty',
       'klasa',
       'pokrycie',
       'pasmoQ',
     ]);
-    expect(kolumny.find((k) => k.klucz === 'identyfikator')?.tylkoEkspercki).toBe(true);
+    // Karta #145: identyfikator węzła jest kluczem wiersza, nie kolumną pierwszego planu.
+    expect(kolumny.find((k) => k.klucz === 'identyfikator')).toBeUndefined();
   });
 
   it('wiersze w kolejności wyboru; wartości wyłącznie z odpowiedzi backendu', () => {

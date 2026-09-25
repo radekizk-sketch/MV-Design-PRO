@@ -28,8 +28,9 @@ import type {
   PowerFlowBusDiffRow,
   PowerFlowComparisonSummary,
 } from '../../../ui/power-flow-comparison/types';
-import type { DefinicjaKolumny, WierszTabeli, WierszZalozenia } from '../wzorzec';
+import type { DefinicjaKolumny, NazwaObiektu, WierszTabeli, WierszZalozenia } from '../wzorzec';
 import { METODY_SOLVERA_PL } from '../zbieznosc';
+import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 import { fmtData, fmtKat, fmtNapiecie } from '../porownanie';
 import { JAKOSC_STRINGS as T, fmtDeltaKat, fmtDeltaNapiecie } from './strings';
 
@@ -54,7 +55,7 @@ export function kandydaciRozplywuOdNajnowszego(
 }
 
 const etykietaMetody = (token: string | undefined): string =>
-  token ? (METODY_SOLVERA_PL[token] ?? token) : T.kreska;
+  token ? etykietaZeSlownika(METODY_SOLVERA_PL, token) : T.kreska;
 
 const etykietaZbieznosci = (zbiezny: boolean): string => (zbiezny ? T.zbiezny : T.niezbiezny);
 
@@ -104,9 +105,13 @@ export const KOLUMNY_DELTA_SZYN: DefinicjaKolumny[] = [
  * WŁASNY dowód na ekranie „Zbieżność" tego biegu, nieadresowalny stąd bez
  * osobnego kontraktu routingu — nazwane, nie ukryte.
  */
-export function naWierszeDeltaSzyn(bus_diffs: readonly PowerFlowBusDiffRow[]): WierszTabeli[] {
+export function naWierszeDeltaSzyn(
+  bus_diffs: readonly PowerFlowBusDiffRow[],
+  nazwa: NazwaObiektu,
+): WierszTabeli[] {
+  // Karta #145: `bus_id` rozpływu to identyfikator grafu — szynę nazywa most nazw.
   return bus_diffs.map((row) => ({
-    szyna: { wartosc: row.bus_id },
+    szyna: { wartosc: nazwa(row.bus_id) },
     vA: row.v_pu_a !== null ? { wartosc: fmtNapiecie(row.v_pu_a), sortKey: row.v_pu_a } : { wartosc: T.kreska },
     vB: row.v_pu_b !== null ? { wartosc: fmtNapiecie(row.v_pu_b), sortKey: row.v_pu_b } : { wartosc: T.kreska },
     dV:

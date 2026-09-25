@@ -1452,13 +1452,6 @@
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "frontend/src/ui/protection-coordination/TccChart.tsx:getSelectivityAssessmentTexts.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E9 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "E9"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "frontend/src/ui2/kryteria/strings.ts:KRYTERIA_STRINGS.werdyktPass",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D61 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
@@ -1589,34 +1582,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C48 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "C48"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.analyses.ochrona_lom:_wywod_okna:NIESPELNIONE",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C21 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C21 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.analyses.ochrona_lom:_wywod_okna:SPELNIONE",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C21 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C21 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.analyses.ochrona_lom:_wywod_spz:NIESPELNIONE",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C21 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C21"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.analyses.ochrona_lom:_wywod_spz:SPELNIONE",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C21 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C21"
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",

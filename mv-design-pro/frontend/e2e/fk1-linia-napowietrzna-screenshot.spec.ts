@@ -10,7 +10,7 @@
  * ręcznie pisanego mocka (trzecia, dedykowana gałąź „Odgałęzienie napowietrzne
  * L-03", z KOMPLETNYMI danymi cieplnymi demonstrującymi pełny dowód „przewód
  * goły") na REALNY bieg backendu (`cieplna_scena_wynik.json`/
- * `cieplna_scena_dowod.json`, sieć złota). Sieć złota MA linię napowietrzną
+ * `cieplna_scena_dowody.json`, sieć złota). Sieć złota MA linię napowietrzną
  * („Linia SN 1"), ale jej `BranchRating` (`tests/cgmes/golden_enm.py`) NIE
  * niesie `ith_ka` (pole opcjonalne, puste na TEJ gałęzi tej sieci — inne
  * fixtury w repo je ustawiają, więc to nie jest ograniczenie modelu/kontraktu)

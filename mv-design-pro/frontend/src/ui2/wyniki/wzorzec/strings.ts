@@ -6,6 +6,7 @@
  * wyrażenie `{...}` (poza skanem tekstu JSX).
  */
 
+import { ANALYSIS_TYPE_LABELS, type ExecutionRun } from '../../../ui/study-cases/types';
 import type { KierunekSortowania } from './wzorzecModel';
 
 export const WZORZEC_STRINGS = {
@@ -51,4 +52,37 @@ export const WZORZEC_STRINGS = {
 
   // Informacje audytowe (karta V12.7 §0.3) — metadane produkcyjne poza pierwszym planem
   informacjeAudytoweTytul: 'Informacje audytowe',
+  // Zapis techniczny (karta #145) — surowy ślad rdzenia zamrożonego, podpisany jawnie.
+  zapisTechnicznyTytul: (podpis: string) => `Zapis techniczny — ${podpis}`,
+  zapisTechnicznyOpis:
+    'Zapis w postaci, w jakiej wytwarza go silnik obliczeń (klucze danych i kody). Służy '
+    + 'do audytu obliczeń; ocenę i jej uzasadnienie po polsku podaje karta oceny powyżej.',
+  // Słowniki wartości wyliczeniowych (karta #145) — wartość spoza słownika nigdy surowo.
+  wartoscSpozaSlownika: 'wartość spoza słownika aplikacji',
 } as const;
+
+/**
+ * Znacznik czasu ISO dla projektanta: „2026-07-15T14:32:00Z" → „2026-07-15 14:32".
+ * Deterministyczny (bez `Date`/strefy — ta sama konwencja co czas przebiegu w
+ * przestrzeniach Projekt i Obliczenia): ekran wyników nie pokazuje surowego zapisu
+ * maszynowego z literą „T", sekundami i strefą. Wejście spoza wzorca ISO wraca bez
+ * zmian (bez zgadywania), `null`/pusty → „—".
+ */
+export function formatZnacznikaCzasu(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const dopasowanie = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(iso);
+  return dopasowanie ? `${dopasowanie[1]} ${dopasowanie[2]}` : iso;
+}
+
+/**
+ * Etykieta przebiegu w liście wyboru ekranu wyników (karta #145): rodzaj obliczenia po
+ * polsku i czas zakończenia — identyfikator przebiegu jest wyłącznie wartością opcji,
+ * nigdy jej tekstem (projektant rozpoznaje bieg po rodzaju i czasie, nie po UUID).
+ */
+export function etykietaPrzebieguWyniku(
+  run: Pick<ExecutionRun, 'analysis_type' | 'finished_at' | 'started_at'>,
+): string {
+  const czas = run.finished_at ?? run.started_at;
+  const rodzaj = ANALYSIS_TYPE_LABELS[run.analysis_type];
+  return czas ? `${rodzaj} · ${formatZnacznikaCzasu(czas)}` : rodzaj;
+}

@@ -13,13 +13,14 @@ import {
   EkranAnalizy,
   PrzyciskAkcjiStanu,
   useAkcjaUruchomObliczenie,
+  useNazwaObiektu,
   usePoprawWModelu,
 } from '../wzorzec';
 import { ProfilNapiecChart } from './ProfilNapiecChart';
 import { ROZPLYW_STRINGS } from './strings';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
-  KLUCZ_SZYNA,
+  KLUCZ_ID_SZYNY,
   KOLUMNY_SZYN,
   naProfilNapiec,
   naWierszeSzyn,
@@ -49,6 +50,7 @@ export function TabelaSzyn({
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ, wspolnej derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
   const poprawWModelu = usePoprawWModelu();
+  const nazwaObiektu = useNazwaObiektu();
   // K6 / H-5: uczciwy stan zerowy Z AKCJĄ — brak wyniku rozpływu prowadzi
   // WPROST do uruchomienia przebiegu rozpływu (ten sam tor co „Oblicz").
   const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
@@ -69,26 +71,27 @@ export function TabelaSzyn({
     <div data-testid="mvd-rozplyw-szyny">
       <EkranAnalizy
         naglowek={{ analizaPL: ROZPLYW_STRINGS.analiza, runId: runId ?? undefined, ...swiezosc }}
-        zalozenia={naZalozeniaRozplywu(wynik)}
+        zalozenia={naZalozeniaRozplywu(wynik, nazwaObiektu)}
         kolumny={KOLUMNY_SZYN}
-        wiersze={naWierszeSzyn(wynik.bus_results, wynik.kryteria_napiecia)}
+        wiersze={naWierszeSzyn(wynik.bus_results, wynik.kryteria_napiecia, nazwaObiektu)}
         wykres={
           <ProfilNapiecChart
-            punkty={naProfilNapiec(wynik.bus_results)}
+            punkty={naProfilNapiec(wynik.bus_results, nazwaObiektu)}
             kryteria={wynik.kryteria_napiecia}
           />
         }
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
-        kluczWiersza={KLUCZ_SZYNA}
+        kluczWiersza={KLUCZ_ID_SZYNY}
         wybranyWiersz={wybranyWiersz}
         onWybierzWiersz={onWybierzWiersz}
         // Karta UI2 p.6: wiersz tabeli szyn = ZAWSZE element sieci typu
-        // Bus (kolumna główna jest bus_id) — synchronizacja z SLD/inspektorem.
+        // Bus (klucz wiersza jest bus_id) — synchronizacja z SLD/inspektorem.
         typElementuWiersza={() => 'Bus'}
+        nazwaElementuWiersza={(ref) => nazwaObiektu(ref)}
         // K1 / F-E6.3: werdykt tej tabeli = napięcie poza zakresem → rodzaj 'napiecie'.
-        onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', ref, 'napiecie')}
+        onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', nazwaObiektu(ref), 'napiecie')}
       />
     </div>
   );

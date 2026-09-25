@@ -103,8 +103,10 @@ describe('Karta N-D5-FUSE — wykres TCC', () => {
     expect(screen.getByText('Bezpiecznik SN')).toBeInTheDocument();
     expect(screen.getByText(`(${LABELS.brakCharakterystyki})`)).toBeInTheDocument();
 
-    // Przekaźnik zachowuje swoją etykietę normy.
-    expect(screen.getByText('(IEC_SI)')).toBeInTheDocument();
+    // Przekaźnik zachowuje swoją charakterystykę — po polsku, z normą (karta #145: bez
+    // kodu krzywej `IEC_SI`).
+    expect(screen.getByText(`(${LABELS.curveTypes.SI}, IEC)`)).toBeInTheDocument();
+    expect(screen.queryByText('(IEC_SI)')).not.toBeInTheDocument();
 
     // Etykieta fabrykatu NIE pojawia się nigdzie.
     expect(screen.queryByText(/FUSE_/)).not.toBeInTheDocument();

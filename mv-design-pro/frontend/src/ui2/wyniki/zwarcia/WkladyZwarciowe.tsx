@@ -23,6 +23,7 @@ import {
   SladSekcyjny,
   SladWywodu,
   TabelaWynikow,
+  useNazwaObiektu,
   type KrokWywodu,
   type PozycjaWalidacji,
   type SekcjaWywodu,
@@ -118,11 +119,15 @@ export function WkladyZwarciowe({
   const przelaczWklad = (klucz: string) =>
     setWybranyWklad((poprzedni) => (poprzedni === klucz ? null : klucz));
 
+  // Karta #145: źródło wkładu nazwane mostem nazw wyników (model), z nazwą z
+  // odpowiedzi backendu jako zapasem — identyfikator źródła nie jest tekstem.
+  const nazwaObiektu = useNazwaObiektu();
+  const wkladyNazwane = wklady?.map((w) => ({ ...w, zrodlo: nazwaObiektu(w.id, w.zrodlo) })) ?? null;
   // Udział [%] liczony na PEŁNYM zbiorze (przed filtrem) — filtr nie zmienia udziałów.
-  const wierszeWszystkie = wklady ? naWierszeWkladow(wklady) : [];
+  const wierszeWszystkie = wkladyNazwane ? naWierszeWkladow(wkladyNazwane) : [];
   const wiersze = filtrujWierszeWkladow(wierszeWszystkie, filtr);
   const filtrBezTrafien = wierszeWszystkie.length > 0 && wiersze.length === 0;
-  const wybrany = wklady?.find((w) => w.id === wybranyWklad) ?? null;
+  const wybrany = wkladyNazwane?.find((w) => w.id === wybranyWklad) ?? null;
 
   return (
     <section className="mvd-zwarcia-wklady" data-testid="mvd-zwarcia-wklady" aria-label={ZWARCIA_STRINGS.wkladyTytul}>

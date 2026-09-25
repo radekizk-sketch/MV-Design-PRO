@@ -22,7 +22,14 @@
 import type { AdvancementMode } from '../../shell/modeModel';
 import { FreshnessBadge } from '../../inspector';
 import { useUruchomObliczenie } from '../../spaces/obliczenia/uruchomObliczenie';
-import { AKCJE_STANU_ZEROWEGO_STRINGS, PrzyciskAkcjiStanu, TabelaWynikow, type AkcjaStanuZerowego } from '../wzorzec';
+import {
+  AKCJE_STANU_ZEROWEGO_STRINGS,
+  InformacjeAudytowe,
+  PrzyciskAkcjiStanu,
+  TabelaWynikow,
+  useNazwaObiektu,
+  type AkcjaStanuZerowego,
+} from '../wzorzec';
 import { type PasmoZwarciaOdpowiedz, type StronaPasmaOdpowiedz, usePasmoZwarcia } from './api';
 import {
   KLUCZ_PASMO,
@@ -89,11 +96,31 @@ function BlokStronyPasma({
       <h4 className="mvd-zwarcia-pasmo-strona-tytul">{etykietaScenariusza}</h4>
       <p className="mvd-zwarcia-pasmo-prowenencja">
         {strona.zrodlo === 'biegu_zapisanego'
-          ? ZWARCIA_STRINGS.pasmoProwenencjaZapisany(strona.run_id ?? strona.bieg_bazowy_id)
-          : ZWARCIA_STRINGS.pasmoProwenencjaObliczony(strona.bieg_bazowy_id)}
+          ? ZWARCIA_STRINGS.pasmoProwenencjaZapisany
+          : ZWARCIA_STRINGS.pasmoProwenencjaObliczony}
         {' · '}
         {ZWARCIA_STRINGS.pasmoRewizja(rewizja)}
       </p>
+      {/* Karta #145: identyfikatory biegów wyłącznie w „Informacjach audytowych". */}
+      <InformacjeAudytowe
+        trybEkspercki={trybZaawansowania === 'expert'}
+        testid={`mvd-zwarcia-pasmo-${scenariusz.toLowerCase()}-informacje-audytowe`}
+        wiersze={
+          strona.zrodlo === 'biegu_zapisanego'
+            ? [
+                {
+                  etykieta: ZWARCIA_STRINGS.pasmoIdentyfikatorBiegu,
+                  wartosc: strona.run_id ?? strona.bieg_bazowy_id,
+                },
+              ]
+            : [
+                {
+                  etykieta: ZWARCIA_STRINGS.pasmoIdentyfikatorKotwicy,
+                  wartosc: strona.bieg_bazowy_id,
+                },
+              ]
+        }
+      />
       <SladZrodelSieciowych
         zrodlaSieciowe={strona.wynik.zrodla_sieciowe}
         trybZaawansowania={trybZaawansowania}
@@ -113,6 +140,7 @@ function TrescGotowa({
   onOtworzDowod: (ref: string) => void;
 }) {
   const { uruchom, wToku } = useUruchomObliczenie();
+  const nazwaObiektu = useNazwaObiektu();
   const brakujacy = dane.brakujacy_scenariusz;
   const akcjaUruchomBrakujacy: AkcjaStanuZerowego | undefined = brakujacy
     ? {
@@ -128,7 +156,7 @@ function TrescGotowa({
       }
     : undefined;
 
-  const pary = sparujWierszePasma(dane.max?.wynik.rows, dane.min?.wynik.rows);
+  const pary = sparujWierszePasma(dane.max?.wynik.rows, dane.min?.wynik.rows, nazwaObiektu);
   const swiezosc = swiezoscParyPasma(
     dane.max?.analysis_case_context.rewizja_modelu,
     dane.min?.analysis_case_context.rewizja_modelu,

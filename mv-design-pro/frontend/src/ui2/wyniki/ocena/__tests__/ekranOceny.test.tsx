@@ -15,7 +15,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { useAppStateStore } from '../../../../ui/app-state';
@@ -138,16 +138,19 @@ describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi siec
       FIXTURA_OCENA.model_hash.slice(0, 12),
     );
     expect(within(podstawa).getByTestId('mvd-ocena-pakiet')).toHaveTextContent(`${T.pakietRozplyw}, ${T.pakietZwarcia}`);
-    // Odcisk modelu: zwinięty domyślnie, ujawniony klikiem natywnym.
+    // Odcisk modelu i identyfikatory przebiegów: zwinięte domyślnie, ujawnione klikiem
+    // w „Informacjach audytowych" — nigdy w wierszu przebiegu (karta #145).
     expect(within(podstawa).queryByText(FIXTURA_OCENA.model_hash)).not.toBeInTheDocument();
-    fireEvent.click(within(podstawa).getByTestId('mvd-ocena-informacje-audytowe-przelacz'));
+    await userEvent.click(within(podstawa).getByTestId('mvd-ocena-informacje-audytowe-przelacz'));
     expect(within(podstawa).getByText(FIXTURA_OCENA.model_hash)).toBeInTheDocument();
+    const audyt = within(podstawa).getByTestId('mvd-ocena-informacje-audytowe-lista');
     for (const rodzaj of ['PF', 'short_circuit_sn'] as const) {
       const przebieg = within(podstawa).getByTestId(`mvd-ocena-przebieg-${rodzaj}`);
       expect(przebieg).toHaveTextContent(T.przebiegZakonczony);
       expect(przebieg).toHaveTextContent(T.przebiegAktualny);
       const zrodloFixtury = FIXTURA_OCENA.zrodla.find((z) => z.rodzaj === rodzaj)!;
-      expect(przebieg).toHaveTextContent(zrodloFixtury.run_id!);
+      expect(przebieg).not.toHaveTextContent(zrodloFixtury.run_id!);
+      expect(audyt).toHaveTextContent(zrodloFixtury.run_id!);
     }
     // Model nie jest przebiegiem — nie ma wiersza w liście przebiegów.
     expect(within(podstawa).queryByTestId('mvd-ocena-przebieg-model')).toBeNull();
@@ -499,17 +502,28 @@ describe('EkranOceny — powiązania (schemat, identyfikator w modelu, dowód ob
     expect(screen.queryAllByTestId('mvd-ocena-dowod')).toHaveLength(0);
   });
 
-  it('tryb ekspercki pokazuje identyfikatory przebiegów i elementów; tryb podstawowy — nie', async () => {
+  // Karta #145 (iloczyn cech: tryb ekspercki × identyfikator przebiegu / elementu):
+  // identyfikatory są metadaną produkcyjną — w trybie eksperckim WYŁĄCZNIE w zwiniętych
+  // „Informacjach audytowych" (po rozwinięciu), w trybie podstawowym nigdzie.
+  it('identyfikatory przebiegów i elementów wyłącznie w informacjach audytowych trybu eksperckiego', async () => {
     fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_OCENA));
     const runId = FIXTURA_OCENA.zrodla.find((z) => z.rodzaj === 'PF')!.run_id!;
+    const elementId = FIXTURA_OCENA.pozycje
+      .flatMap((p) => p.elementy)
+      .map((e) => e.element_id)
+      .find((id): id is string => id !== null && id !== 'network')!;
     const { unmount } = render(<EkranOceny trybZaawansowania="expert" />);
     await screen.findByTestId('mvd-ocena-podsumowanie');
-    expect(tekstEkranu()).toContain(runId);
-    expect(document.querySelectorAll('.mvd-ocena-przedmiot-id').length).toBeGreaterThan(0);
+    expect(tekstEkranu()).not.toContain(runId);
+    expect(tekstEkranu()).not.toContain(elementId);
+    await userEvent.click(screen.getByTestId('mvd-ocena-informacje-audytowe-przelacz'));
+    expect(screen.getByTestId('mvd-ocena-informacje-audytowe-lista').textContent).toContain(runId);
+    await userEvent.click(screen.getAllByTestId('mvd-ocena-element-informacje-audytowe-przelacz')[0]);
+    expect(screen.getAllByTestId('mvd-ocena-element-informacje-audytowe-lista')[0].textContent).not.toBe('');
     unmount();
     render(<EkranOceny trybZaawansowania="basic" />);
     await screen.findByTestId('mvd-ocena-podsumowanie');
     expect(tekstEkranu()).not.toContain(runId);
-    expect(document.querySelectorAll('.mvd-ocena-przedmiot-id')).toHaveLength(0);
+    expect(screen.queryAllByTestId('mvd-ocena-element-informacje-audytowe')).toHaveLength(0);
   });
 });

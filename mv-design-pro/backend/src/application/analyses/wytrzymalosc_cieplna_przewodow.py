@@ -67,6 +67,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.prad_zwarciowy_galezi import (
     prad_zwarciowy_galezi as _branch_fault_current_a,
 )
@@ -77,6 +78,7 @@ from application.analyses.protection.czas_wylaczenia_galezi import (
     slad_czasu,
 )
 from application.twin_key import klucz_twin_dla_przypadku
+from domain.canonical_operations import opisy_kodow_gotowosci_pl
 from enm.canonical_analysis import CanonicalRun, pobierz_rozplyw_biegu
 from enm.hash import compute_enm_hash
 from enm.klucz_twin import PrzypadekBezProjektuError
@@ -474,7 +476,24 @@ def _aktualnosc_wobec_modelu(
     }
 
 
-def _wymagane_pole_sc(payload: dict[str, Any], klucz: str, run: CanonicalRun) -> float:
+#: Wielkości wiersza wyniku zwarciowego wymagane do oceny cieplnej — nazwy dla komunikatu
+#: o uszkodzonym zapisie (karta #145: komunikat nie niesie klucza zapisu).
+_WIELKOSCI_WIERSZA_PL: dict[str, str] = {
+    "c_factor": "współczynnik napięciowy c",
+    "un_v": "napięcie znamionowe sieci Un",
+    "ikss_a": "prąd zwarciowy początkowy I″k",
+    "ip_a": "prąd zwarciowy udarowy ip",
+    "ith_a": "prąd zastępczy cieplny I_th",
+    "sk_mva": "moc zwarciowa S″k",
+    "rx_ratio": "stosunek R/X",
+    "kappa": "współczynnik udaru κ",
+    "tk_s": "czas trwania zwarcia Tk",
+    "ib_a": "prąd wyłączeniowy symetryczny Ib",
+    "tb_s": "czas wyłączania tb",
+}
+
+
+def _wymagane_pole_sc(payload: dict[str, Any], klucz: str) -> float:
     """Wymagane pole liczbowe zapisanego wiersza wyniku zwarciowego.
 
     FAB-E (E1): zamrozony kontrakt ``ShortCircuitResult`` nie ma tu odpowiednika
@@ -487,9 +506,9 @@ def _wymagane_pole_sc(payload: dict[str, Any], klucz: str, run: CanonicalRun) ->
     wartosc = payload.get(klucz)
     if wartosc is None:
         raise ValueError(
-            f"Przebieg {run.id}: wiersz wyniku zwarciowego nie ma wymaganego pola "
-            f"{klucz!r} — zapis biegu jest uszkodzony, ocena wytrzymałości cieplnej "
-            "nie może się na nim oprzeć."
+            "Zapis wyniku zwarciowego tego przebiegu nie ma jednej z wymaganych wielkości "
+            f"({_WIELKOSCI_WIERSZA_PL.get(klucz, 'wielkość spoza słownika aplikacji')}) — "
+            "zapis jest uszkodzony, ocena wytrzymałości cieplnej nie może się na nim oprzeć."
         )
     return float(wartosc)
 
@@ -510,11 +529,11 @@ def _odtworz_wynik_zwarciowy(
     if run.analysis_type != "short_circuit_sn":
         raise ValueError(
             "Ocena wytrzymałości cieplnej przewodów wymaga przebiegu zwarciowego; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )
 
@@ -522,7 +541,7 @@ def _odtworz_wynik_zwarciowy(
     wiersze = (run.raw_result or {}).get("results") or []
     if not wiersze:
         raise ValueError(
-            f"Przebieg {run.id} nie zawiera wiersza wyniku zwarciowego, "
+            "Przebieg nie zawiera wiersza wyniku zwarciowego, "
             "więc nie ma na czym oprzeć oceny cieplnej."
         )
     payload = wiersze[0]
@@ -530,18 +549,18 @@ def _odtworz_wynik_zwarciowy(
     sc_result = ShortCircuitResult(
         short_circuit_type=ShortCircuitType(str(payload.get("short_circuit_type"))),
         fault_node_id=str(payload.get("fault_node_id", "")),
-        c_factor=_wymagane_pole_sc(payload, "c_factor", run),
-        un_v=_wymagane_pole_sc(payload, "un_v", run),
+        c_factor=_wymagane_pole_sc(payload, "c_factor"),
+        un_v=_wymagane_pole_sc(payload, "un_v"),
         zkk_ohm=complex(0.0, 0.0),
-        ikss_a=_wymagane_pole_sc(payload, "ikss_a", run),
-        ip_a=_wymagane_pole_sc(payload, "ip_a", run),
-        ith_a=_wymagane_pole_sc(payload, "ith_a", run),
-        sk_mva=_wymagane_pole_sc(payload, "sk_mva", run),
-        rx_ratio=_wymagane_pole_sc(payload, "rx_ratio", run),
-        kappa=_wymagane_pole_sc(payload, "kappa", run),
-        tk_s=_wymagane_pole_sc(payload, "tk_s", run),
-        ib_a=_wymagane_pole_sc(payload, "ib_a", run),
-        tb_s=_wymagane_pole_sc(payload, "tb_s", run),
+        ikss_a=_wymagane_pole_sc(payload, "ikss_a"),
+        ip_a=_wymagane_pole_sc(payload, "ip_a"),
+        ith_a=_wymagane_pole_sc(payload, "ith_a"),
+        sk_mva=_wymagane_pole_sc(payload, "sk_mva"),
+        rx_ratio=_wymagane_pole_sc(payload, "rx_ratio"),
+        kappa=_wymagane_pole_sc(payload, "kappa"),
+        tk_s=_wymagane_pole_sc(payload, "tk_s"),
+        ib_a=_wymagane_pole_sc(payload, "ib_a"),
+        tb_s=_wymagane_pole_sc(payload, "tb_s"),
         # PERF-SC-50: wkłady liczone na żądanie z wejścia biegu (fabryka UoW jak przy
         # biegu — opcje audytu 2 czytane tą samą bazą).
         branch_contributions=_odtworz_wklady_galeziowe(
@@ -638,7 +657,7 @@ def zbuduj_dowod_cieplny(
     _sc_result, widok, slad = _ocena_dla_przebiegu(run, uow_factory)
     pozycja = next((item for item in widok.items if item.branch_id == branch_id), None)
     if pozycja is None:
-        raise ValueError(f"Gałąź {branch_id} nie występuje w ocenie cieplnej przebiegu {run.id}.")
+        raise ValueError("Wskazana gałąź nie występuje w ocenie cieplnej tego przebiegu.")
 
     kroki: list[dict[str, Any]] = []
     wpis_czasu = slad.get(branch_id)
@@ -664,7 +683,7 @@ def zbuduj_dowod_cieplny(
                 "result": {},
                 "notes": pozycja.uzasadnienie_pl
                 or (
-                    "Brak danych do rachunku: " + ", ".join(pozycja.missing_codes) + "."
+                    "Brak danych do rachunku: " + opisy_kodow_gotowosci_pl(pozycja.missing_codes)
                     if pozycja.missing_codes
                     else "Brak podstawy do rachunku cieplnego dla tej gałęzi."
                 ),

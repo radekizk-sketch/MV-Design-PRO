@@ -14,6 +14,10 @@
  *  - ŚLAD AUTOMATYKI na żądanie: bez zdarzeń, efekt topologii ZADEKLAROWANY,
  *  - odesłanie do pełnego dowodu (`setWynikiTab('dowod', runId)`), raportowalność.
  *
+ * Język inżyniera (karta #145): elementy nazwane mostem nazw wyników (`useNazwaObiektu`),
+ * stan sieci i zakres wyłączeń z typowanych map polskich etykiet, statusy i ograniczenia
+ * raportowe z pól `*_pl` backendu — ekran nie pokazuje referencji ani kodów.
+ *
  * ZERO fizyki, ZERO progów w UI. Stylowanie wyłącznie tokenami --mvd-*.
  */
 
@@ -27,11 +31,13 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
-import { SekcjaZalozen } from '../wzorzec';
+import { SekcjaZalozen, useNazwaObiektu } from '../wzorzec';
 import { OcenaNiewykonana } from '../wzorzec/OcenaNiewykonana';
 import { usePrzebiegStabilnosci, useWynikStabilnosci } from './api';
 import { FormularzScenariusza } from './FormularzScenariusza';
 import {
+  ETYKIETY_STANU_SIECI,
+  ETYKIETY_ZAKRESU_WYLACZEN,
   naEchoScenariusza,
   naSeriePrzebiegu,
   naZalozeniaStabilnosci,
@@ -86,6 +92,7 @@ export function EkranStabilnosci() {
   const przebiegi = useExecutionRunsStore((s) => s.runs);
   const [sladWidoczny, setSladWidoczny] = useState(false);
   const [przebiegWidoczny, setPrzebiegWidoczny] = useState(false);
+  const nazwaObiektu = useNazwaObiektu();
 
   const przebieg = useMemo(
     () => wybierzPrzebiegStabilnosci(przebiegi, activeRunId),
@@ -158,7 +165,7 @@ export function EkranStabilnosci() {
             <OcenaNiewykonana ocena={wiersz.ocena} testid="mvd-stabilnosc-ocena" />
           )}
 
-          <SekcjaZalozen zalozenia={naZalozeniaStabilnosci(wiersz)} />
+          <SekcjaZalozen zalozenia={naZalozeniaStabilnosci(wiersz, nazwaObiektu)} />
 
           <section className="mvd-stabilnosc-sekcja" data-testid="mvd-stabilnosc-echo">
             <h4>{T.echoTytul}</h4>
@@ -253,17 +260,27 @@ export function EkranStabilnosci() {
                       <dl className="mvd-stabilnosc-siatka">
                         <div className="mvd-stabilnosc-wartosc">
                           <dt>{T.sladStanSieci}</dt>
-                          <dd>{dane.efektTopologii.network_state ?? T.kreska}</dd>
+                          <dd>
+                            {dane.efektTopologii.network_state
+                              ? ETYKIETY_STANU_SIECI[dane.efektTopologii.network_state]
+                              : T.kreska}
+                          </dd>
                         </div>
                         <div className="mvd-stabilnosc-wartosc">
                           <dt>{T.sladZakresWylaczen}</dt>
-                          <dd>{dane.efektTopologii.outage_scope ?? T.kreska}</dd>
+                          <dd>
+                            {dane.efektTopologii.outage_scope
+                              ? ETYKIETY_ZAKRESU_WYLACZEN[dane.efektTopologii.outage_scope]
+                              : T.kreska}
+                          </dd>
                         </div>
                         <div className="mvd-stabilnosc-wartosc">
                           <dt>{T.sladOtwarte}</dt>
-                          <dd className="mvd-num">
+                          <dd>
                             {(dane.efektTopologii.opened_element_ids ?? []).length > 0
-                              ? (dane.efektTopologii.opened_element_ids ?? []).join(', ')
+                              ? (dane.efektTopologii.opened_element_ids ?? [])
+                                  .map((ref) => nazwaObiektu(ref))
+                                  .join(', ')
                               : T.kreska}
                           </dd>
                         </div>
@@ -288,11 +305,11 @@ export function EkranStabilnosci() {
             <dl className="mvd-stabilnosc-siatka">
               <div className="mvd-stabilnosc-wartosc" data-testid="mvd-stabilnosc-raport-status">
                 <dt>{T.raportStatus}</dt>
-                <dd>{wiersz.reporting_status_pl ?? wiersz.reporting_status ?? T.kreska}</dd>
+                <dd>{wiersz.reporting_status_pl ?? T.kreska}</dd>
               </div>
               <div className="mvd-stabilnosc-wartosc" data-testid="mvd-stabilnosc-raport-dowod">
                 <dt>{T.raportUzasadnienie}</dt>
-                <dd>{wiersz.proof_status_pl ?? wiersz.proof_status ?? T.kreska}</dd>
+                <dd>{wiersz.proof_status_pl ?? T.kreska}</dd>
               </div>
               <div
                 className="mvd-stabilnosc-wartosc"
@@ -300,8 +317,8 @@ export function EkranStabilnosci() {
               >
                 <dt>{T.raportOgraniczenia}</dt>
                 <dd>
-                  {(wiersz.reporting_limitations ?? []).length > 0
-                    ? (wiersz.reporting_limitations ?? []).join(', ')
+                  {(wiersz.reporting_limitations_pl ?? []).length > 0
+                    ? (wiersz.reporting_limitations_pl ?? []).join(' ')
                     : T.raportBrakOgraniczen}
                 </dd>
               </div>

@@ -187,6 +187,70 @@ def _compute_input_hash(
 _KAPPA_MIN = 1.02
 _KAPPA_MAX = 2.0
 OGRANICZENIE_WYNIK_NIEFIZYCZNY = "solver_result_non_physical"
+#: Kody ograniczeń raportowych rozpływu (symetrycznego i niesymetrycznego).
+OGRANICZENIE_WEZLY_POZA_WYSPA = "unsolved_nodes_outside_slack_island"
+OGRANICZENIE_BRAK_ZBIEZNOSCI = "solver_non_convergence"
+
+#: Etykiety PL statusu raportowalności i statusu uzasadnienia wyniku oraz opisy PL kodów
+#: ograniczeń raportowych (karta #145) — JEDNO źródło dla odpowiedzi wszystkich torów.
+#: Etykieta jest wyprowadzana z KODU statusu przy ODCZYCIE wyniku (`etykiety_raportowe_pl`),
+#: a nie przepisywana z artefaktu biegu: artefakty rozpływu i zwarć niosą dawne etykiety
+#: bez polskich znaków („pelny", „czesciowy"), a szkielet tych artefaktów (napisy statusów
+#: włącznie) przypinają złote hashe parytetu assemblera
+#: (`tests/golden/parytet_assemblera/zlote_hashe.json`) — artefakt zostaje nietknięty,
+#: projektant dostaje etykietę z tej mapy.
+ETYKIETY_RAPORTOWALNOSCI_PL: dict[str, str] = {
+    "reportable": "raportowalny",
+    "not_reportable": "nieraportowalny",
+}
+ETYKIETY_UZASADNIENIA_PL: dict[str, str] = {
+    "complete": "pełny",
+    "partial": "częściowy",
+    "incomplete": "częściowy",
+}
+OPISY_OGRANICZEN_RAPORTOWYCH_PL: dict[str, str] = {
+    OGRANICZENIE_WYNIK_NIEFIZYCZNY: (
+        "Wynik obliczenia nie ma sensu fizycznego (wartość nieskończona albo współczynnik "
+        "udaru κ poza zakresem normy IEC 60909) — liczby tego wyniku nie są raportowane."
+    ),
+    OGRANICZENIE_WEZLY_POZA_WYSPA: (
+        "Część szyn leży w wyspie bez węzła bilansującego — napięć tych szyn nie policzono."
+    ),
+    OGRANICZENIE_BRAK_ZBIEZNOSCI: (
+        "Obliczenie rozpływu nie osiągnęło zbieżności — wynik nie nadaje się do raportu."
+    ),
+}
+
+
+def _kod_ograniczenia(tekst: str) -> bool:
+    """Czy wpis listy ograniczeń jest KODEM (małe litery, cyfry, podkreślnik)."""
+    return bool(tekst) and all(znak.islower() or znak.isdigit() or znak == "_" for znak in tekst)
+
+
+def etykiety_raportowe_pl(zrodlo: Mapping[str, Any]) -> dict[str, Any]:
+    """Polskie etykiety raportowalności wyniku wyprowadzone z KODÓW (karta #145).
+
+    ``zrodlo`` to wiersz albo artefakt biegu z polami ``reporting_status``,
+    ``proof_status`` i ``reporting_limitations``. Zwraca ``reporting_status_pl``,
+    ``proof_status_pl`` (``None`` przy braku kodu — ekran pokazuje uczciwą kreskę, nie kod)
+    i addytywne ``reporting_limitations_pl``: kod ograniczenia → zdanie z
+    ``OPISY_OGRANICZEN_RAPORTOWYCH_PL``, wpis będący już zdaniem (uzasadnienie poziomu
+    dowodowego zdolności — stabilność dynamiczna) bez zmian. Kod bez opisu podnosi
+    ``KeyError`` — kompletność mapy przypina ``tests/enm/test_etykiety_raportowe_pl.py``.
+    """
+    raportowalnosc = zrodlo.get("reporting_status")
+    uzasadnienie = zrodlo.get("proof_status")
+    ograniczenia = [str(wpis) for wpis in (zrodlo.get("reporting_limitations") or [])]
+    return {
+        "reporting_status_pl": (
+            ETYKIETY_RAPORTOWALNOSCI_PL[str(raportowalnosc)] if raportowalnosc else None
+        ),
+        "proof_status_pl": ETYKIETY_UZASADNIENIA_PL[str(uzasadnienie)] if uzasadnienie else None,
+        "reporting_limitations_pl": [
+            OPISY_OGRANICZEN_RAPORTOWYCH_PL[wpis] if _kod_ograniczenia(wpis) else wpis
+            for wpis in ograniczenia
+        ],
+    }
 
 
 #: Powód nieraportowalności wiersza zwarcia ustalony z TOPOLOGII (nie z liczb):
@@ -1492,9 +1556,9 @@ def _execute_phase_state_sn(run: CanonicalRun) -> None:
         "target_bus_ref": target_bus_ref,
         "proof_ref": proof_ref,
         "proof_status": "complete",
-        "proof_status_pl": "pelny",
+        "proof_status_pl": ETYKIETY_UZASADNIENIA_PL["complete"],
         "reporting_status": "reportable",
-        "reporting_status_pl": "raportowalny",
+        "reporting_status_pl": ETYKIETY_RAPORTOWALNOSCI_PL["reportable"],
         "proof_payload": proof_payload,
         "result": solver_result.to_dict(),
         "dopuszczalnosc_raportowa": True,
@@ -1706,11 +1770,9 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
         "topology_effect": topology_payload,
         "proof_ref": proof_ref,
         "proof_status": proof_status,
-        "proof_status_pl": "pelny" if proof_status == "complete" else "czesciowy",
+        "proof_status_pl": ETYKIETY_UZASADNIENIA_PL[proof_status],
         "reporting_status": reporting_status,
-        "reporting_status_pl": (
-            "raportowalny" if reporting_status == "reportable" else "nieraportowalny"
-        ),
+        "reporting_status_pl": ETYKIETY_RAPORTOWALNOSCI_PL[reporting_status],
         "dopuszczalnosc_raportowa": ewidencja.regulatory_evidence_eligible,
         "reporting_limitations": reporting_limitations,
         "evidence": ewidencja.to_dict(),
@@ -2794,9 +2856,9 @@ def _execute_power_flow(
             []
             if (solution.converged and not solution.not_solved_nodes)
             else (
-                ["unsolved_nodes_outside_slack_island"]
+                [OGRANICZENIE_WEZLY_POZA_WYSPA]
                 if solution.converged
-                else ["solver_non_convergence"]
+                else [OGRANICZENIE_BRAK_ZBIEZNOSCI]
             )
         ),
         "result_v1": result_v1.to_dict(),
@@ -2958,11 +3020,9 @@ def _execute_power_flow_unbalanced(run: CanonicalRun) -> None:
         "solver_version": wynik.solver_version,
         "proof_ref": proof_ref,
         "proof_status": proof_status,
-        "proof_status_pl": "pelny" if proof_status == "complete" else "czesciowy",
+        "proof_status_pl": ETYKIETY_UZASADNIENIA_PL[proof_status],
         "reporting_status": reporting_status,
-        "reporting_status_pl": (
-            "raportowalny" if reporting_status == "reportable" else "nieraportowalny"
-        ),
+        "reporting_status_pl": ETYKIETY_RAPORTOWALNOSCI_PL[reporting_status],
         "quality_status": (
             "accepted" if kompletny else ("partial" if wynik.converged else "failed")
         ),
@@ -2972,9 +3032,9 @@ def _execute_power_flow_unbalanced(run: CanonicalRun) -> None:
             []
             if kompletny
             else (
-                ["unsolved_nodes_outside_slack_island"]
+                [OGRANICZENIE_WEZLY_POZA_WYSPA]
                 if wynik.converged
-                else ["solver_non_convergence"]
+                else [OGRANICZENIE_BRAK_ZBIEZNOSCI]
             )
         ),
         "result_v1": wynik.to_dict(),
@@ -3729,12 +3789,18 @@ def build_short_circuit_results(
                 or (run.raw_result or {}).get("analysis_type"),
                 "reporting_status": item.get("reporting_status")
                 or (run.raw_result or {}).get("reporting_status"),
-                "reporting_status_pl": item.get("reporting_status_pl")
-                or (run.raw_result or {}).get("reporting_status_pl"),
                 "proof_status": item.get("proof_status")
                 or (run.raw_result or {}).get("proof_status"),
-                "proof_status_pl": item.get("proof_status_pl")
-                or (run.raw_result or {}).get("proof_status_pl"),
+                # Karta #145: etykiety PL z KODÓW (jedno źródło), nie z artefaktu biegu.
+                **etykiety_raportowe_pl(
+                    {
+                        "reporting_status": item.get("reporting_status")
+                        or (run.raw_result or {}).get("reporting_status"),
+                        "proof_status": item.get("proof_status")
+                        or (run.raw_result or {}).get("proof_status"),
+                        "reporting_limitations": item.get("reporting_limitations", []),
+                    }
+                ),
                 "proof_ref": item.get("proof_ref"),
                 "proof_binding": item.get("proof_binding"),
                 "dopuszczalnosc_raportowa": item.get("dopuszczalnosc_raportowa", True),
@@ -4057,9 +4123,8 @@ def build_power_flow_unbalanced_results(run: CanonicalRun) -> dict[str, Any]:
         "zalozenia": result_v1.get("zalozenia", []),
         "proof_ref": raw_result.get("proof_ref"),
         "proof_status": raw_result.get("proof_status"),
-        "proof_status_pl": raw_result.get("proof_status_pl"),
         "reporting_status": raw_result.get("reporting_status"),
-        "reporting_status_pl": raw_result.get("reporting_status_pl"),
+        **etykiety_raportowe_pl(raw_result),
         "quality_status": raw_result.get("quality_status"),
         "dopuszczalnosc_raportowa": raw_result.get("dopuszczalnosc_raportowa", False),
         "reporting_limitations": raw_result.get("reporting_limitations", []),
@@ -4098,9 +4163,8 @@ def build_phase_state_results(run: CanonicalRun) -> dict[str, Any]:
             "flags": (result.get("flags") or {}),
             "proof_ref": raw_result.get("proof_ref"),
             "proof_status": raw_result.get("proof_status"),
-            "proof_status_pl": raw_result.get("proof_status_pl"),
             "reporting_status": raw_result.get("reporting_status"),
-            "reporting_status_pl": raw_result.get("reporting_status_pl"),
+            **etykiety_raportowe_pl(raw_result),
             "dopuszczalnosc_raportowa": raw_result.get("dopuszczalnosc_raportowa", True),
             "reporting_limitations": raw_result.get("reporting_limitations", []),
         }
@@ -4142,9 +4206,8 @@ def build_dynamic_stability_results(run: CanonicalRun) -> dict[str, Any]:
                 ),
                 "proof_ref": (run.raw_result or {}).get("proof_ref"),
                 "proof_status": (run.raw_result or {}).get("proof_status"),
-                "proof_status_pl": (run.raw_result or {}).get("proof_status_pl"),
                 "reporting_status": (run.raw_result or {}).get("reporting_status"),
-                "reporting_status_pl": (run.raw_result or {}).get("reporting_status_pl"),
+                **etykiety_raportowe_pl(run.raw_result or {}),
                 "dopuszczalnosc_raportowa": (run.raw_result or {}).get(
                     "dopuszczalnosc_raportowa", True
                 ),

@@ -1,7 +1,31 @@
 {
   "bays": [],
   "branch_points": [],
-  "branches": [],
+  "branches": [
+    {
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "id": "060a0c1e-f10e-5467-a7ef-e9077792bb6f",
+      "materialized_params": null,
+      "meta": {
+        "nn_field_migrowana_rola": "OZE",
+        "nn_field_migrowany_z": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
+        "nn_promocja_bez_wiazania_katalogowej": true
+      },
+      "name": "Pole PV SN",
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_device",
+      "source_mode": "MIGRACJA",
+      "status": "closed",
+      "tags": [],
+      "to_bus_ref": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_bus",
+      "type": "breaker",
+      "x_ohm": null
+    }
+  ],
   "buses": [
     {
       "frequency_hz": null,
@@ -39,6 +63,21 @@
       ],
       "voltage_kv": 110.0,
       "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "9d098394-8417-51fd-b98e-1108104eb6d6",
+      "meta": {
+        "nn_field_migrowany_z": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
+        "visual_role": "NN_FEEDER_BUS"
+      },
+      "name": "Pole PV SN",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_bus",
+      "tags": [],
+      "voltage_kv": 15.0,
+      "zone": null
     }
   ],
   "connection_nodes": [],
@@ -57,7 +96,7 @@
   "generators": [
     {
       "blocking_transformer_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/wn_sn",
-      "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "bus_ref": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_bus",
       "catalog_namespace": "ZRODLO_NN_PV",
       "catalog_ref": "conv-pv-1mw-15kv",
       "connection_variant": "block_transformer",
@@ -140,9 +179,9 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "",
+    "hash_sha256": "0284856d5df9132df63495d0b30a740a6af957c13e8ebdc3ffaf5554536b1f66",
     "name": "Przyłączenie farmy PV 8 MW",
-    "revision": 1,
+    "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
   },
   "junctions": [],
@@ -284,6 +323,7 @@
             ]
           }
         ],
+        "nn_fields_promoted": true,
         "short_circuit_input_side": "SN",
         "short_circuit_mode": "SHORT_CIRCUIT_POWER",
         "wn_sn_transformer_count": 1

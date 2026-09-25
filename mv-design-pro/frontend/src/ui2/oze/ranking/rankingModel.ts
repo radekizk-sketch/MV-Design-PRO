@@ -96,12 +96,6 @@ export const KLUCZ_WIERSZA_RANKINGU = 'identyfikator';
 export function kolumnyRankingu(): DefinicjaKolumny[] {
   return [
     { klucz: 'wezel', etykieta: RANKING_STRINGS.kolWezel },
-    {
-      klucz: KLUCZ_WIERSZA_RANKINGU,
-      etykieta: RANKING_STRINGS.kolIdentyfikator,
-      mono: true,
-      tylkoEkspercki: true,
-    },
     { klucz: 'moc', etykieta: RANKING_STRINGS.kolMoc, jednostka: RANKING_STRINGS.jednMW, mono: true },
     { klucz: 'kryterium', etykieta: RANKING_STRINGS.kolKryterium },
     {

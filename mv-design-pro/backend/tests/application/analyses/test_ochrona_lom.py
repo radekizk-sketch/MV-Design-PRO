@@ -149,7 +149,7 @@ def test_rocof_below_window_is_warn_false_island() -> None:
     view = build_ochrona_lom_view(enm)
     rocof = [c for c in _checks(view) if c["function_ansi"] == "81R"][0]
     assert rocof["severity"] == "WARN"
-    assert "fałszywe wykrycie wyspy" in rocof["message_pl"]
+    assert "fałszywe wykrycie pracy wyspowej" in rocof["message_pl"]
 
 
 def test_underfrequency_above_window_is_warn() -> None:
@@ -211,7 +211,7 @@ def test_vector_shift_has_no_window_and_is_info() -> None:
 def test_spz_verdict_lom_slower_than_spz_is_error() -> None:
     v = _spz_verdict(0.5, 0.3, None)
     assert v.severity == "ERROR"
-    assert "ryzyko załączenia na wyspę" in v.message_pl
+    assert "ryzyko załączenia na pracującą wyspę" in v.message_pl
 
 
 def test_spz_verdict_lom_faster_than_spz_is_ok() -> None:
@@ -373,7 +373,8 @@ def test_rocof_wywod_has_formula_substitution_and_verdict() -> None:
     # Wzor ogolny (LaTeX) z krawedzia okna.
     assert kroki[0]["latex"] is not None and r"\ge 2.0" in kroki[0]["latex"]
     # Krok danych tekstowy (latex=None).
-    assert kroki[1]["latex"] is None and "2.5000" in kroki[1]["tekst"]
+    # Karta #145: liczba w zdaniu dla projektanta z przecinkiem dziesiętnym.
+    assert kroki[1]["latex"] is None and "2,5000" in kroki[1]["tekst"]
     # Podstawienie liczbowe (LaTeX) z realnej nastawy.
     assert kroki[2]["latex"] is not None
     assert "2.5000" in kroki[2]["latex"] and r"\ge 2.0" in kroki[2]["latex"]
@@ -393,7 +394,7 @@ def test_rocof_below_window_wywod_uses_opposite_sign() -> None:
     rocof = [c for c in _checks(view) if c["function_ansi"] == "81R"][0]
     kroki = rocof["wywod"]
     assert "1.0000 < 2.0" in kroki[2]["latex"]
-    assert "NIESPELNIONE" in kroki[2]["tekst"]
+    assert "warunek niespełniony" in kroki[2]["tekst"]
     assert kroki[3]["tekst"].startswith("Wynik porównania: poza oknem")
 
 

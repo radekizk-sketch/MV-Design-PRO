@@ -55,7 +55,6 @@ export const KOLUMNY_RANKINGU: DefinicjaKolumny[] = [
   { klucz: 'przeciazenia', etykieta: T.kolPrzeciazenia, mono: true },
   { klucz: 'napiecia', etykieta: T.kolNapiecia, mono: true },
   { klucz: 'pominiete', etykieta: T.kolPominiete, mono: true },
-  { klucz: 'elementRef', etykieta: T.kolIdentyfikator, mono: true, tylkoEkspercki: true },
 ];
 
 /**

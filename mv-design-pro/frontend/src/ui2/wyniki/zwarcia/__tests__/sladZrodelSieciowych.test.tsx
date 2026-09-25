@@ -52,8 +52,10 @@ describe('EkranZwarc — sekcja „Źródła sieciowe (Z_Q)" (CV-4.3 K6/K7)', ()
     expect(within(sekcja).getByText(ZWARCIA_STRINGS.zrodlaTytul)).toBeInTheDocument();
     const tabela = within(within(sekcja).getByTestId('mvd-wyn-tabela'));
     expect(tabela.getAllByText('s1')).toHaveLength(2); // MAX + MIN, sam ref_id
-    expect(tabela.getByText('MAX')).toBeInTheDocument();
-    expect(tabela.getByText('MIN')).toBeInTheDocument();
+    // Karta #145: scenariusz po polsku, nie kod `MAX`/`MIN`.
+    expect(tabela.getByText('maksymalny')).toBeInTheDocument();
+    expect(tabela.getByText('minimalny')).toBeInTheDocument();
+    expect(tabela.queryByText('MAX')).not.toBeInTheDocument();
     expect(tabela.getByText(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA'))).toBeInTheDocument();
     expect(tabela.getByText(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA_MIN'))).toBeInTheDocument();
   });

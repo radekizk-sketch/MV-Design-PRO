@@ -117,3 +117,104 @@ def test_wzbogac_kroki_latex_nie_mutuje_oryginalu_i_dokladakada_formule() -> Non
 def test_kazdy_wpis_rejestru_ma_niepusty_formula_latex() -> None:
     for klucz, wzor in REJESTR_WZOROW_V126.items():
         assert wzor.formula_latex.strip() != "", klucz
+
+
+# ---------------------------------------------------------------------------
+# Karta #145 — kroki PAKIETU DOWODOWEGO i polskie opisy kodów decyzji.
+#
+# Iloczyn cech: pochodzenie kroku {ślad z `key`, dowód bez `key` + mapa `proof_ref`,
+# dowód bez `key` bez mapy} × wpis rejestru {z podstawieniem/opisem wyniku, bez} ×
+# kod decyzji {w słowniku, spoza słownika}.
+# ---------------------------------------------------------------------------
+
+
+def _krok_dowodu(krok_sladu: dict[str, Any]) -> dict[str, Any]:
+    """Krok pakietu dowodowego tak, jak buduje go `application/v126_artifacts.py`:
+    bez `key`, z `proof_ref` przepisanym ze śladu."""
+    return {
+        "ordinal": 1,
+        "proof_ref": krok_sladu["proof_ref"],
+        "formula": krok_sladu["formula"],
+        "data": krok_sladu["data"],
+        "substitution": krok_sladu["substitution"],
+        "result": krok_sladu["result"],
+        "result_pl": krok_sladu.get("result_pl"),
+    }
+
+
+def test_krok_dowodu_bez_klucza_dostaje_wzor_po_proof_ref_ze_sladu() -> None:
+    slad = _uruchom("reliability_contingency")
+    dowod = [_krok_dowodu(krok) for krok in slad]
+    klucze = {krok["proof_ref"]: krok["key"] for krok in slad}
+
+    bez_mapy = wzbogac_kroki_latex(dowod)
+    assert all("formula_latex" not in krok for krok in bez_mapy), "bez mapy klucza nie zgadujemy"
+
+    z_mapa = wzbogac_kroki_latex(dowod, klucze)
+    for krok_sladu, krok_dowodu in zip(slad, z_mapa, strict=True):
+        assert krok_dowodu["formula_latex"] == REJESTR_WZOROW_V126[krok_sladu["key"]].formula_latex
+    assert "formula_latex" not in dowod[0], "oryginalny krok dowodu zmutowany"
+
+
+def test_detekcja_doziemna_podstawienie_i_wynik_po_polsku_bez_kodow() -> None:
+    slad = _uruchom("earth_fault_detection")
+    wzbogacone = wzbogac_kroki_latex(slad)
+    krok = next(k for k in wzbogacone if k["key"] == "earth_fault_method_selection")
+    oryginal = next(k for k in slad if k["key"] == "earth_fault_method_selection")
+    kody = {oryginal["data"]["neutral_grounding"], oryginal["result"]["recommended_method"]}
+    for pole in ("substitution_latex", "result_pl"):
+        assert pole in krok, pole
+        for kod in kody:
+            assert kod not in krok[pole], f"{pole}: kod {kod} na ekranie"
+    assert krok["result_pl"].startswith("Metoda zalecana: ")
+    # Podstawienie jest LaTeX-em tekstowym: polecenie `\text{…}` (nie znak tabulacji
+    # z niezabezpieczonego `\t` w literale), a znaki sterujące nie trafiają do KaTeX.
+    assert krok["substitution_latex"].startswith(r"\text{punkt neutralny: ")
+    assert not any(ord(znak) < 32 for znak in krok["substitution_latex"])
+    assert oryginal["result_pl"] != krok["result_pl"], "opis wyniku nie został złożony"
+
+
+def test_detekcja_doziemna_kod_spoza_slownika_zostawia_zapis_solvera() -> None:
+    krok = {
+        "key": "earth_fault_method_selection",
+        "data": {"neutral_grounding": "nowy_sposob", "relay_methods": ["wattmetric"]},
+        "result": {"recommended_method": "nowa_metoda", "available": True},
+        "result_pl": "zapis solvera",
+    }
+    (wzbogacony,) = wzbogac_kroki_latex([krok])
+    assert "substitution_latex" not in wzbogacony
+    assert wzbogacony["result_pl"] == "zapis solvera"
+
+
+def test_slowniki_detekcji_doziemnej_obejmuja_kazdy_kod_tabeli_solvera() -> None:
+    """Parytet z KODEM solvera (FROZEN): każdy sposób uziemienia z tabeli decyzyjnej,
+    każda metoda zalecana/alternatywna i każda domyślna metoda przekaźnika ma polską
+    nazwę — inaczej krok wracałby do zapisu kodami."""
+    import ast
+    import inspect
+    import textwrap
+
+    from application.analyses.v126_wzory import (
+        METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL,
+        UZIEMIENIE_PUNKTU_NEUTRALNEGO_PL,
+    )
+
+    zrodlo = inspect.getsource(V126AcademicSolver._earth_fault_detection)
+    drzewo = ast.parse(textwrap.dedent(zrodlo))
+    tabela: dict[str, tuple[str | None, ...]] = {}
+    metody_domyslne: list[str] = []
+    for wezel in ast.walk(drzewo):
+        if (
+            isinstance(wezel, ast.Assign)
+            and isinstance(wezel.targets[0], ast.Name)
+            and wezel.targets[0].id == "table"
+        ):
+            tabela = ast.literal_eval(wezel.value)
+        if isinstance(wezel, ast.List) and all(
+            isinstance(e, ast.Constant) and isinstance(e.value, str) for e in wezel.elts
+        ):
+            metody_domyslne.extend(e.value for e in wezel.elts)  # type: ignore[union-attr]
+    assert tabela, "nie znaleziono tabeli decyzyjnej solvera"
+    assert set(tabela) == set(UZIEMIENIE_PUNKTU_NEUTRALNEGO_PL)
+    metody = {m for para in tabela.values() for m in para if m is not None} | set(metody_domyslne)
+    assert metody == set(METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL)
