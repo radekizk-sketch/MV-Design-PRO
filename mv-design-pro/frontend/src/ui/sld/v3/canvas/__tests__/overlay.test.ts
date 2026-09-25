@@ -590,7 +590,7 @@ describe('overlay.ts — faultFlowOverlayTracesToInput (wyrocznia, karta S-B)', 
 // (`multiHopFaultFlowSegmentRefs`) — WYŁĄCZNIE dla strzałek zwarciowych.
 // Fixtura `openTrunkChain.enm.json` (§16-v3, ta sama co
 // `buildScene.openTerminal.test.ts`): GPZ→S0 przęsło 2-członowe (F2 +
-// segment_L, złączone mufą `bus/2eb90.../downstream`) — REALNY łańcuch
+// „F3 (1)", złączone mufą — końcem F2) — REALNY łańcuch
 // wielokawałkowy, zero fabrykacji. Mutacje niżej (branching/reversed) są
 // głębokimi klonami TEJ SAMEJ realnej fixtury ze strukturalnie poprawną,
 // minimalną zmianą (ten sam wzorzec obiektu gałęzi/szyny co istniejące
@@ -601,10 +601,15 @@ describe('overlay.ts — faultFlowOverlayTracesToInput (wyrocznia, karta S-B)', 
 describe('overlay.ts — multiHopFaultFlowSegmentRefs (GAP V12K-121, karta SLD-W)', () => {
   const chainFixturePath = resolve(here, '..', '..', 'scene', '__tests__', 'fixtures', 'openTrunkChain.enm.json');
   const chainEnm = (JSON.parse(readFileSync(chainFixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
-  const F2 = 'seg/2eb903289ceccfe33d015b843cc0a839/segment';
-  const SEGMENT_L = 'seg/fffe06fde7d5aca09fa6e904e942ad63/segment_L';
-  const SEGMENT_R = 'seg/fffe06fde7d5aca09fa6e904e942ad63/segment_R';
-  const SPLICE_BUS = 'bus/2eb903289ceccfe33d015b843cc0a839/downstream';
+  // Refy odczytane z fikstury PO NAZWACH odcinków (karta SLD-SUBSTRAT): fikstura powstaje
+  // generatorem z operacji domenowych, a jej identyfikatory są ziarnami treści operacji —
+  // literały sprzed regeneracji wskazywały sieć, której produkt już nie wytwarzał.
+  // F2 = pierwszy odcinek magistrali; „F3 (1)"/„F3 (2)" = połówki F3 rozcięte stacją.
+  const refOdcinka = (nazwa: string): string => chainEnm.branches.find((b) => b.name === nazwa)!.ref_id;
+  const F2 = refOdcinka('F2');
+  const SEGMENT_L = refOdcinka('F3 (1)');
+  const SEGMENT_R = refOdcinka('F3 (2)');
+  const SPLICE_BUS = chainEnm.branches.find((b) => b.ref_id === F2)!.to_bus_ref as string;
   const LODS = [0, 1, 2] as const;
 
   it('kontrola wejscia: przeslo GPZ→S0 tej fixtury jest WIELOKAWALKOWE (zaden kawalek nie ma OBU terminali rozwiazanych do stacji)', () => {
@@ -708,11 +713,14 @@ describe('overlay.ts — łańcuch 4-członowy na realnej fixturze substrate (GA
   // dwa środkowe człony ('segment'/'segment') mają OBIE strony bez właściciela
   // (mufa-mufa) — prawdziwy dowód, że bramka generalizuje się poza 2 kawałki,
   // nie tylko na parę granica-mufa.
+  // Identyfikatory przepięte przy regeneracji fikstury (karta SLD-SUBSTRAT): ziarno odcinka SN
+  // obejmuje od CV-4.3 K1 (11aebfaa) typ katalogowy i nazwę odcinka — te same cztery człony
+  // (pozycje 1:1 w zrzucie ENM), nowe ziarna; topologia grupy bez zmian.
   const GROUP = [
-    'seg/3ccf71246d63661d1ff5562f39064f98/segment_R',
-    'seg/8a7bb2f6ec9bf783133b1817611a5bf2/segment',
-    'seg/5fb7f3221c666db9aa8925d6f3e7c4ca/segment',
-    'seg/2ef31c8e5a13ad9a42afd95f4ec41763/segment_L_L',
+    'seg/9db5ab51469071fc8ca666aab904e037/segment_R',
+    'seg/4d129884adae1cca27fdd6b2f7467827/segment',
+    'seg/b863a867ba40434595813133bdb7d411/segment',
+    'seg/0f0826bee0ffe942518a75bdbfb34900/segment_L_L',
   ] as const;
 
   it('kontrola wejscia: WSZYSTKIE 4 czlony grupy sa mufa-mufa (zaden nie ma OBU terminali stacyjnych), a mimo to KAZDY ma udowodniona orientacje (S9-2)', () => {

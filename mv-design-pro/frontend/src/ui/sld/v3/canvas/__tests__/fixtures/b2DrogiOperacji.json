@@ -1,63 +1,63 @@
 {
   "add_grid_source_sn": {
-    "wskazanie": "gpz/860003b4514aa388b39561d5005ce584/substation",
     "typ": "substation",
-    "zoom_to": true,
     "utworzone": [
-      "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
-      "gpz/860003b4514aa388b39561d5005ce584/transformer/001/bus_110",
-      "gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn",
-      "gpz/860003b4514aa388b39561d5005ce584/source/main",
-      "gpz/860003b4514aa388b39561d5005ce584/substation",
-      "gpz/860003b4514aa388b39561d5005ce584/corridor_01"
-    ]
-  },
-  "continue_trunk_segment_sn": {
-    "wskazanie": "bus/f302cb3a0057c6512af6cb0993f7085a/downstream",
-    "typ": "bus",
-    "zoom_to": true,
-    "utworzone": [
-      "bus/f302cb3a0057c6512af6cb0993f7085a/downstream",
-      "seg/f302cb3a0057c6512af6cb0993f7085a/segment"
-    ]
-  },
-  "insert_station_on_segment_sn": {
-    "wskazanie": "stn/50d2609868ccc79bc766e9d4d9007efb/station",
-    "typ": "substation",
-    "zoom_to": true,
-    "utworzone": [
-      "stn/50d2609868ccc79bc766e9d4d9007efb/sn_bus",
-      "seg/fb461a74eb9353b70dd12ceeb7335793/segment_L",
-      "seg/fb461a74eb9353b70dd12ceeb7335793/segment_R",
-      "stn/50d2609868ccc79bc766e9d4d9007efb/sn_field_terminal/000",
-      "stn/50d2609868ccc79bc766e9d4d9007efb/sn_field_breaker/000",
-      "stn/50d2609868ccc79bc766e9d4d9007efb/sn_field_terminal/001",
-      "stn/50d2609868ccc79bc766e9d4d9007efb/sn_field_breaker/001",
-      "stn/50d2609868ccc79bc766e9d4d9007efb/sn_field_terminal/002",
-      "stn/50d2609868ccc79bc766e9d4d9007efb/sn_field_breaker/002",
-      "stn/50d2609868ccc79bc766e9d4d9007efb/station",
-      "stn/50d2609868ccc79bc766e9d4d9007efb/nn_bus",
-      "stn/50d2609868ccc79bc766e9d4d9007efb/transformer"
-    ]
-  },
-  "start_branch_segment_sn": {
-    "wskazanie": "seg/35f3584221f0014d0e66640407171f4e/branch_segment",
-    "typ": "branch",
-    "zoom_to": true,
-    "utworzone": [
-      "bus/35f3584221f0014d0e66640407171f4e/branch_end",
-      "seg/35f3584221f0014d0e66640407171f4e/branch_segment",
-      "corridor/c7b478b07f93a40b8df8c47868a8c66c/branch"
-    ]
+      "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+      "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
+      "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
+      "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/source/main",
+      "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+      "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01"
+    ],
+    "wskazanie": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+    "zoom_to": true
   },
   "add_sn_bay": {
-    "wskazanie": "sn/7c35655854726f3e975a91f5188d8177/bay",
     "typ": "bay",
-    "zoom_to": true,
     "utworzone": [
-      "sn/7c35655854726f3e975a91f5188d8177/bay",
-      "sn/7c35655854726f3e975a91f5188d8177/bay_terminal",
-      "sn/7c35655854726f3e975a91f5188d8177/bay_device"
-    ]
+      "sn/01ccde1127e4318bb480af62f0758777/bay",
+      "sn/01ccde1127e4318bb480af62f0758777/bay_terminal",
+      "sn/01ccde1127e4318bb480af62f0758777/bay_device"
+    ],
+    "wskazanie": "sn/01ccde1127e4318bb480af62f0758777/bay",
+    "zoom_to": true
+  },
+  "continue_trunk_segment_sn": {
+    "typ": "bus",
+    "utworzone": [
+      "bus/62de912696c2e53c65d4ed4c0636b47f/downstream",
+      "seg/62de912696c2e53c65d4ed4c0636b47f/segment"
+    ],
+    "wskazanie": "bus/62de912696c2e53c65d4ed4c0636b47f/downstream",
+    "zoom_to": true
+  },
+  "insert_station_on_segment_sn": {
+    "typ": "substation",
+    "utworzone": [
+      "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_bus",
+      "seg/628c3045f7504084cacf6921ccb4d391/segment_L",
+      "seg/628c3045f7504084cacf6921ccb4d391/segment_R",
+      "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_terminal/000",
+      "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_breaker/000",
+      "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_terminal/001",
+      "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_breaker/001",
+      "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_terminal/002",
+      "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_breaker/002",
+      "stn/c566217cd62b515686c7a6a4ab6ec4a9/station",
+      "stn/c566217cd62b515686c7a6a4ab6ec4a9/nn_bus",
+      "stn/c566217cd62b515686c7a6a4ab6ec4a9/transformer"
+    ],
+    "wskazanie": "stn/c566217cd62b515686c7a6a4ab6ec4a9/station",
+    "zoom_to": true
+  },
+  "start_branch_segment_sn": {
+    "typ": "branch",
+    "utworzone": [
+      "bus/41ebde7023ea801ada1dad07d4387e3d/branch_end",
+      "seg/41ebde7023ea801ada1dad07d4387e3d/branch_segment",
+      "corridor/1cd08273e506d633144bb4ae6e1c9dde/branch"
+    ],
+    "wskazanie": "seg/41ebde7023ea801ada1dad07d4387e3d/branch_segment",
+    "zoom_to": true
   }
 }

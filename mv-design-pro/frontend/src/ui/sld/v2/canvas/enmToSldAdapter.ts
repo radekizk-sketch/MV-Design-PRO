@@ -43,7 +43,7 @@ import type {
 } from '../../../../types/enm';
 import type { UkladSieciNn } from '../../../../types/uziemienie';
 import { buildOltcAnnotation } from './oltcGlyph';
-import { pickStationBus } from '../../shared/stationBusResolution';
+import { pickStationBus, stationLoadBusRefs } from '../../shared/stationBusResolution';
 import { szynaNalezyDoStacji, wlasnyZaciskPola, zaciskiPolStacji } from '../../../shared/zaciskPola';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
@@ -3888,7 +3888,10 @@ function buildStationMiniBlockDetails(
   // wyżej — pytanie brzmi „które szyny należą do stacji/strony nN", nie „która
   // jest szyną główną" — dlatego liczony osobno, świadomie.
   const nnBusRefs = new Set<string>();
-  for (const busRef of station.bus_refs ?? []) {
+  // SLD-SUBSTRAT: szyny stacji ŁĄCZNIE z szynami odpływów nN promowanych z jej pól
+  // (`stationLoadBusRefs` — jedno źródło przynależności szyny do stacji dla agregatu
+  // odbioru, mocy odbioru i szuflady szczegółów).
+  for (const busRef of stationLoadBusRefs(station, snapshot.branches ?? [])) {
     const bus = busByRef.get(busRef);
     if (!bus) continue;
     stationBusRefs.add(bus.ref_id);

@@ -231,6 +231,7 @@ import {
 import {
   buildResultRefBridge,
   resultPointsHiddenByModel,
+  resultPointsInStationNnBoard,
   type ResultPointCoverage,
 } from './resultRefBridge';
 import { normalizeResultLabelAnalysis } from './resultLabelTemplates';
@@ -1214,7 +1215,8 @@ function SldV3ResultCoverageLine(props: {
       </div>
     );
   }
-  const niewidoczne = coverage.hiddenByModel + coverage.withoutTemplate + coverage.withoutAnchor;
+  const niewidoczne =
+    coverage.hiddenByModel + coverage.withoutTemplate + coverage.inStationNnBoard + coverage.withoutAnchor;
   return (
     <div className="flex flex-col gap-0.5 border-t border-scada-border pt-1" data-testid="sld-v3-result-coverage">
       <span data-testid="sld-v3-result-coverage-liczby">
@@ -1224,6 +1226,7 @@ function SldV3ResultCoverageLine(props: {
         <span className="text-scada-muted" data-testid="sld-v3-result-coverage-braki">
           {`Bez etykiety: ${coverage.hiddenByModel} nierysowanych w modelu · `
             + `${coverage.withoutTemplate} bez wielkości dla tej analizy · `
+            + `${coverage.inStationNnBoard} w rozdzielnicach nN stacji (poza schematem SN) · `
             + `${coverage.withoutAnchor} bez elementu na schemacie`}
         </span>
       )}
@@ -1625,7 +1628,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     [resultLabelsByOwnerRef, resultFilter],
   );
   // S9-2 (W-1): UCZCIWY RACHUNEK POKRYCIA — ile punktów wyniku backendu ma
-  // etykietę, a ile nie i DLACZEGO (cztery rozłączne kategorie, suma = liczba
+  // etykietę, a ile nie i DLACZEGO (pięć rozłącznych kategorii, suma = liczba
   // punktów). Liczony z etykiet NIEFILTROWANYCH: filtr to wybór operatora, a
   // rachunek odpowiada na pytanie „czy schemat pokazuje wynik biegu".
   const resultCoverage = useMemo<ResultPointCoverage>(
@@ -1634,6 +1637,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         labelsPayload,
         resultLabelsByOwnerRef,
         resultPointsHiddenByModel(snapshot),
+        resultPointsInStationNnBoard(snapshot),
       ),
     [labelsPayload, resultLabelsByOwnerRef, snapshot],
   );

@@ -172,7 +172,7 @@
     },
     {
       "b0_siemens_per_km": null,
-      "b_siemens_per_km": 0.00012252211349000195,
+      "b_siemens_per_km": 0.00012252211349,
       "cable_joints": [],
       "catalog_namespace": "KABEL_SN",
       "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -776,7 +776,7 @@
         "cos_phi": 0.92,
         "cos_phi_mode": "IND",
         "p_kw": 30.0,
-        "q_kvar": 12.77994648408614,
+        "q_kvar": 12.7799464841,
         "q_source": "KATALOG_COS_PHI"
       },
       "meta": {
@@ -793,7 +793,7 @@
         "cos_phi_mode": "IND",
         "feeder_ref": "stn/44936bf0357b61ace2fcd8cd13ccbaac/nn_feeder/000",
         "load_kind": "SKUPIONY",
-        "q_kvar": 12.77994648408614,
+        "q_kvar": 12.7799464841,
         "q_source": "KATALOG_COS_PHI"
       },
       "model": "pq",
@@ -802,7 +802,7 @@
       "p_mw": 0.03,
       "parameter_source": "CATALOG",
       "phases": null,
-      "q_mvar": 0.012779946484086141,
+      "q_mvar": 0.0127799464841,
       "quantity": null,
       "ref_id": "load/01a9df0b33b7fd76496e2d8e7251dd43/nn",
       "source_mode": "KATALOG",

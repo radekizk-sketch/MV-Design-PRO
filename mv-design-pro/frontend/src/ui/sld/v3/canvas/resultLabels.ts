@@ -297,7 +297,7 @@ export function buildResultLabelsFromScene(
 
 /**
  * S9-2 — UCZCIWY RACHUNEK POKRYCIA warstwy wynikowej: każdy punkt wyniku
- * backendu trafia do DOKŁADNIE JEDNEJ z czterech kategorii, a ich suma równa
+ * backendu trafia do DOKŁADNIE JEDNEJ z pięciu kategorii, a ich suma równa
  * się liczbie punktów (inwariant testowany). Kolejność rozstrzygania (pierwsza
  * pasująca wygrywa — stąd rozłączność):
  *   1. `hiddenByModel` — model JAWNIE nie rysuje tego węzła
@@ -305,20 +305,26 @@ export function buildResultLabelsFromScene(
  *   2. `withoutTemplate` — rodzina analizy nie ma szablonu treści dla klasy
  *      tego elementu (np. gałąź w wyniku zwarciowym);
  *   3. `labelled` — punkt ma etykietę (jest w mapie wpisów, po `resultRef`);
- *   4. `withoutAnchor` — reszta: punkt rysowalny i z szablonem, ale bez elementu
+ *   4. `inStationNnBoard` — szyna odpływu nN stacji (element rozdzielnicy nN,
+ *      nie schematu SN; predykat `resultPointsInStationNnBoard`). Po `labelled`,
+ *      żeby szyna, która kiedyś dostanie kotwicę na schemacie, liczyła się jako
+ *      opisana, a nie jako „poza schematem";
+ *   5. `withoutAnchor` — reszta: punkt rysowalny i z szablonem, ale bez elementu
  *      sceny (odmowa mostu przy niejednoznaczności albo element spoza sieci).
- * Kategoria 4 to jedyny REALNY brak pokrycia — jej refy są wypisane.
+ * Kategoria 5 to jedyny REALNY brak pokrycia — jej refy są wypisane.
  */
 export function summarizeResultPointCoverage(
   payload: RawOverlayPayload | null,
   entries: Readonly<Record<string, ResultLabelEntry>> | undefined,
   hiddenByModel: ReadonlySet<string>,
+  inStationNnBoard: ReadonlySet<string>,
 ): ResultPointCoverage {
   const empty: ResultPointCoverage = {
     total: 0,
     labelled: 0,
     hiddenByModel: 0,
     withoutTemplate: 0,
+    inStationNnBoard: 0,
     withoutAnchor: 0,
     withoutAnchorRefs: [],
   };
@@ -329,6 +335,7 @@ export function summarizeResultPointCoverage(
   let labelled = 0;
   let hidden = 0;
   let withoutTemplate = 0;
+  let nnBoard = 0;
   const withoutAnchorRefs: string[] = [];
   for (const ref of Object.keys(payload.elements).sort()) {
     if (hiddenByModel.has(ref)) {
@@ -343,6 +350,10 @@ export function summarizeResultPointCoverage(
       labelled += 1;
       continue;
     }
+    if (inStationNnBoard.has(ref)) {
+      nnBoard += 1;
+      continue;
+    }
     withoutAnchorRefs.push(ref);
   }
   return {
@@ -350,6 +361,7 @@ export function summarizeResultPointCoverage(
     labelled,
     hiddenByModel: hidden,
     withoutTemplate,
+    inStationNnBoard: nnBoard,
     withoutAnchor: withoutAnchorRefs.length,
     withoutAnchorRefs,
   };

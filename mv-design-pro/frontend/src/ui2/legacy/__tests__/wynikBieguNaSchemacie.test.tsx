@@ -144,7 +144,12 @@ describe('S9-2 — łańcuch od klika: bieg → schemat → wyniki na rysunku', 
     await waitFor(() =>
       expect(useRawResultOverlayStore.getState().payload?.run_id).toBe(RUN_ID),
     );
-    expect(Object.keys(useRawResultOverlayStore.getState().payload?.elements ?? {})).toHaveLength(3);
+    // 9 punktów biegu zwarciowego fikstury (3 szyny schematu SN + 6 szyn odpływów nN
+    // stacji — promocja pól nN do modelu; fikstura regenerowana z API).
+    expect(Object.keys(useRawResultOverlayStore.getState().payload?.elements ?? {}).sort()).toEqual(
+      Object.keys(zwarcie.elements).sort(),
+    );
+    expect(Object.keys(zwarcie.elements)).toHaveLength(9);
 
     // 4. OSTATNI KLIK ŁAŃCUCHA: rysunek pokazuje wartości biegu.
     await waitFor(() => {

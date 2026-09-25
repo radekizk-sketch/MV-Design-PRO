@@ -22,7 +22,6 @@ from __future__ import annotations
 import json
 import pathlib
 import sys
-import uuid
 
 _THIS = pathlib.Path(__file__).resolve()
 _FRONTEND = _THIS.parent.parent
@@ -32,7 +31,7 @@ sys.path.insert(0, str(_BACKEND / "src"))
 sys.path.insert(0, str(_BACKEND))
 
 from enm.assembler import _build_snapshot_graph_element_context  # noqa: E402
-from enm.mapping import map_enm_to_network_graph  # noqa: E402
+from enm.mapping import map_enm_to_network_graph, ref_to_graph_id  # noqa: E402
 from enm.models import EnergyNetworkModel  # noqa: E402
 from network_model.solvers.short_circuit_iec60909 import (  # noqa: E402
     ShortCircuitIEC60909Solver,
@@ -67,7 +66,7 @@ def _run_short_circuit(enm_dict: dict) -> dict:
         ref = str(bus.get("ref_id") or "")
         if not ref:
             continue
-        ref_by_node[str(uuid.uuid5(uuid.NAMESPACE_DNS, ref))] = bus
+        ref_by_node[ref_to_graph_id(ref)] = bus
 
     bus_sc: dict[str, dict] = {}
     ik_values: list[float] = []
@@ -107,29 +106,22 @@ def _run_short_circuit(enm_dict: dict) -> dict:
     }
 
 
-def _stabilize_technical_ids(dumped: dict) -> None:
-    """Wyprowadz techniczne `id` z `ref_id` — fixtura ma byc DETERMINISTYCZNA.
+def render_fikstur() -> dict[str, str]:
+    """Nazwa pliku -> PEŁNA treść fixtury (jeden tor dla zapisu i testu świeżości
+    ``backend/tests/application/test_fikstury_enm_generowane.py``)."""
+    from enm.hash import hash_migawki_enm  # noqa: PLC0415
 
-    Operacje domenowe nadaja rekordom losowy `uuid4()` jako klucz techniczny. To
-    poprawne w bazie (klucz nie niesie znaczenia), ale w PLIKU WERSJONOWANYM
-    znaczy, ze kazda regeneracja przy IDENTYCZNYM wejsciu daje inny plik — tu
-    227 zmienionych linii przy zerowej zmianie fizyki (wyniki SC bit-identyczne).
-    Nadpisujemy `id` deterministycznym UUID5 z `ref_id` (ta sama funkcja, ktorej
-    uzywa `enm.mapping._ref_to_uuid`), wiec plik zalezy wylacznie od modelu.
-    """
-    for key in sorted(dumped):
-        records = dumped.get(key)
-        if not isinstance(records, list):
-            continue
-        for record in records:
-            if isinstance(record, dict) and record.get("ref_id") and "id" in record:
-                record["id"] = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(record["ref_id"])))
+    from tests.golden.zapis_fikstur import (  # noqa: PLC0415
+        json_fikstury,
+        przypnij_identyfikatory_zrzutu,
+        zaokraglij_liczby,
+    )
 
-
-def main() -> int:
     result = build_demo_oze_sc_network()
-    enm_dict = result["enm"]
-    builder_hash = result["snapshot_hash"]
+    # Reguła zapisu liczb PRZED odciskiem i biegiem SC: fixtura jest modelem, a odcisk
+    # i wyniki zwarciowe są policzone z dokładnie tych wartości, które leżą w pliku.
+    enm_dict = zaokraglij_liczby(result["enm"])
+    builder_hash = hash_migawki_enm(enm_dict)
 
     model = EnergyNetworkModel.model_validate(enm_dict)
     dumped = model.model_dump(mode="json")
@@ -137,14 +129,11 @@ def main() -> int:
     header["created_at"] = _FIXED_TS
     header["updated_at"] = _FIXED_TS
     header["hash_sha256"] = builder_hash
-    _stabilize_technical_ids(dumped)
+    przypnij_identyfikatory_zrzutu(dumped)
 
     sc = _run_short_circuit(enm_dict)
     if not sc["converged"]:
-        print("BLAD: bieg SC nie zbiegl na zadnej szynie", file=sys.stderr)
-        return 1
-
-    _OUT_DIR.mkdir(parents=True, exist_ok=True)
+        raise RuntimeError("bieg SC nie zbiegl na zadnej szynie")
 
     enm_fixture = {
         "_meta": {
@@ -180,22 +169,23 @@ def main() -> int:
         "ikss_max_ka": sc["ikss_max_ka"],
         "bus_short_circuit": sc["bus_short_circuit"],
     }
+    return {
+        "demoOzeSc.enm.json": json_fikstury(enm_fixture),
+        "demoOzeSc.sc.json": json_fikstury(sc_fixture),
+    }
 
-    enm_path = _OUT_DIR / "demoOzeSc.enm.json"
-    sc_path = _OUT_DIR / "demoOzeSc.sc.json"
-    enm_path.write_text(
-        json.dumps(enm_fixture, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    sc_path.write_text(
-        json.dumps(sc_fixture, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    print(f"WROTE {enm_path}")
-    print(f"WROTE {sc_path}")
+
+def main() -> int:
+    tresci = render_fikstur()
+    _OUT_DIR.mkdir(parents=True, exist_ok=True)
+    for nazwa, tresc in tresci.items():
+        (_OUT_DIR / nazwa).write_text(tresc, encoding="utf-8")
+        print(f"WROTE {_OUT_DIR / nazwa}")
+    enm = json.loads(tresci["demoOzeSc.enm.json"])["_meta"]
+    sc = json.loads(tresci["demoOzeSc.sc.json"])
     print(
-        f"stacje={result['station_count']} konfiguracje={result['config_count']} "
-        f"DER={result['der_count']} szyny_SC={sc['bus_count']} "
+        f"stacje={enm['station_count']} konfiguracje={enm['config_count']} "
+        f"DER={enm['der_count']} szyny_SC={sc['bus_count']} "
         f"Ik''=[{sc['ikss_min_ka']}..{sc['ikss_max_ka']}] kA"
     )
     return 0

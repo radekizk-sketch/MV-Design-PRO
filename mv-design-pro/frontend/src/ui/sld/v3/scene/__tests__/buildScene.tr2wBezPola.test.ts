@@ -238,9 +238,17 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   // KAŻDEJ stacji z transformatorem, nie dryf; kotwica topologiczna kolumny
   // TR bez pola nadal nietknięta (testy T2/T4–T8 tego pliku). Odciski
   // policzone ponownie po tej zmianie.
+  // AKTUALIZACJA ŚWIADOMA (SLD-SUBSTRAT, 2026-09-25): fikstura wygenerowana z realnego API
+  // (backend `tests/reference_networks/fikstury_enm_sld.py`). Zmiana odcisku = WYŁĄCZNIE
+  // (a) identyfikatory — ziarno GPZ obejmuje nazwę źródła, a ta od jednej reguły nazw
+  // (f8276892/8d17613c) brzmi „Źródło GPZ 15 kV" zamiast „15.0 kV", więc wszystkie ref-y
+  // w podpisie są nowe; (b) teksty etykiet GPZ („GPZ 15 kV · 110/15 kV", „Źródło GPZ 15 kV"
+  // w miejsce wariantów „15.0 kV"). DOWÓD: sonda geometrii (symbole: rodzaj + x + y,
+  // trasy: punkty) daje TE SAME skróty dla starej i nowej fikstury na L1 i L2 — rysunek
+  // stacji z polem TR nie przesunął się ani o jednostkę; różnią się tylko napisy GPZ.
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '5c9e6742bf947ad4a380f1e66676c5b4',
-    2: '0329cd6b049921b041c18e72f22965c9',
+    1: '701cd8675169e8ea5889f62da50b7502',
+    2: '47945575ff7bc3b586507f9a149ae008',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {

@@ -1,1 +1,802 @@
-{"run_id": "ead35c67-aff1-4fe1-9d11-2dd0d331c4f5", "analysis_type": "LOAD_FLOW", "elements": {"bus/579ff99a3d0449ee89eb53b41d3f1bca/downstream": {"ref_id": "bus/579ff99a3d0449ee89eb53b41d3f1bca/downstream", "kind": "bus", "badges": [], "metrics": {"ANGLE_DEG": {"code": "ANGLE_DEG", "value": -0.00012255880479447836, "unit": "\u00b0", "format_hint": "fixed2", "source": "solver"}, "U_kV": {"code": "U_kV", "value": 14.999543464475336, "unit": "kV", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "bus/6c5b18bc2f5e6f912c3927fe6458bb3b/downstream": {"ref_id": "bus/6c5b18bc2f5e6f912c3927fe6458bb3b/downstream", "kind": "bus", "badges": [], "metrics": {"ANGLE_DEG": {"code": "ANGLE_DEG", "value": -0.00017790445773075732, "unit": "\u00b0", "format_hint": "fixed2", "source": "solver"}, "U_kV": {"code": "U_kV", "value": 14.99931262738672, "unit": "kV", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "gpz/a6b30c58f8be3a034fd29c5254ae4326/section/001/bus_sn": {"ref_id": "gpz/a6b30c58f8be3a034fd29c5254ae4326/section/001/bus_sn", "kind": "bus", "badges": [], "metrics": {"ANGLE_DEG": {"code": "ANGLE_DEG", "value": 0.0, "unit": "\u00b0", "format_hint": "fixed2", "source": "solver"}, "U_kV": {"code": "U_kV", "value": 15.0, "unit": "kV", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "gpz/a6b30c58f8be3a034fd29c5254ae4326/source/main": {"ref_id": "gpz/a6b30c58f8be3a034fd29c5254ae4326/source/main", "kind": "generator", "badges": [], "metrics": {"COS_PHI": {"code": "COS_PHI", "value": 0.95571107080949, "unit": "", "format_hint": "fixed2", "source": "solver"}, "P_MW": {"code": "P_MW", "value": 0.2005026090946216, "unit": "MW", "format_hint": "fixed4", "source": "solver"}, "Q_Mvar": {"code": "Q_Mvar", "value": 0.06174379917897044, "unit": "Mvar", "format_hint": "fixed4", "source": "solver"}, "S_MVA": {"code": "S_MVA", "value": 0.20979416815251004, "unit": "MVA", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "gpz/a6b30c58f8be3a034fd29c5254ae4326/transformer/001/bus_110": {"ref_id": "gpz/a6b30c58f8be3a034fd29c5254ae4326/transformer/001/bus_110", "kind": "bus", "badges": [], "metrics": {"ANGLE_DEG": {"code": "ANGLE_DEG", "value": -29.999999999999996, "unit": "\u00b0", "format_hint": "fixed2", "source": "solver"}, "U_kV": {"code": "U_kV", "value": 109.99999999999999, "unit": "kV", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "gpz/a6b30c58f8be3a034fd29c5254ae4326/transformer/001/wn_sn": {"ref_id": "gpz/a6b30c58f8be3a034fd29c5254ae4326/transformer/001/wn_sn", "kind": "branch", "badges": [], "metrics": {"DELTA_U_KV": {"code": "DELTA_U_KV", "value": 94.99999999999999, "unit": "kV", "format_hint": "fixed2", "source": "solver"}, "DELTA_U_PCT": {"code": "DELTA_U_PCT", "value": -1.1102230246251565e-14, "unit": "%", "format_hint": "fixed2", "source": "solver"}, "I_A": {"code": "I_A", "value": 0.0, "unit": "A", "format_hint": "fixed1", "source": "solver"}, "LOSSES_P_MW": {"code": "LOSSES_P_MW", "value": 1.3877787807814457e-15, "unit": "MW", "format_hint": "fixed4", "source": "solver"}, "LOSSES_Q_Mvar": {"code": "LOSSES_Q_Mvar", "value": 4.440892098500626e-14, "unit": "Mvar", "format_hint": "fixed4", "source": "solver"}, "P_MW": {"code": "P_MW", "value": 0.0, "unit": "MW", "format_hint": "fixed4", "source": "solver"}, "Q_Mvar": {"code": "Q_Mvar", "value": 0.0, "unit": "Mvar", "format_hint": "fixed4", "source": "solver"}, "S_MVA": {"code": "S_MVA", "value": 0.0, "unit": "MVA", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "seg/579ff99a3d0449ee89eb53b41d3f1bca/segment": {"ref_id": "seg/579ff99a3d0449ee89eb53b41d3f1bca/segment", "kind": "branch", "badges": [], "metrics": {"COS_PHI": {"code": "COS_PHI", "value": 0.9557110708103607, "unit": "", "format_hint": "fixed2", "source": "solver"}, "DELTA_U_KV": {"code": "DELTA_U_KV", "value": 0.00045653552466440317, "unit": "kV", "format_hint": "fixed2", "source": "solver"}, "DELTA_U_PCT": {"code": "DELTA_U_PCT", "value": 0.0030435701644293545, "unit": "%", "format_hint": "fixed2", "source": "solver"}, "I_A": {"code": "I_A", "value": 8.074981297222136, "unit": "A", "format_hint": "fixed1", "source": "solver"}, "LOADING_PCT": {"code": "LOADING_PCT", "value": 3.510861433574842, "unit": "%", "format_hint": "fixed1", "source": "solver"}, "LOSSES_P_MW": {"code": "LOSSES_P_MW", "value": 5.9668307132165754e-06, "unit": "MW", "format_hint": "fixed4", "source": "solver"}, "LOSSES_Q_Mvar": {"code": "LOSSES_Q_Mvar", "value": -0.0033056379503950475, "unit": "Mvar", "format_hint": "fixed4", "source": "solver"}, "P_MW": {"code": "P_MW", "value": 0.20050260909657008, "unit": "MW", "format_hint": "fixed4", "source": "solver"}, "Q_Mvar": {"code": "Q_Mvar", "value": 0.061743799178921095, "unit": "Mvar", "format_hint": "fixed4", "source": "solver"}, "S_MVA": {"code": "S_MVA", "value": 0.20979416815435772, "unit": "MVA", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "seg/6c5b18bc2f5e6f912c3927fe6458bb3b/segment_L": {"ref_id": "seg/6c5b18bc2f5e6f912c3927fe6458bb3b/segment_L", "kind": "branch", "badges": [], "metrics": {"COS_PHI": {"code": "COS_PHI", "value": 0.951190098955813, "unit": "", "format_hint": "fixed2", "source": "solver"}, "DELTA_U_KV": {"code": "DELTA_U_KV", "value": 0.0002311734193529702, "unit": "kV", "format_hint": "fixed2", "source": "solver"}, "DELTA_U_PCT": {"code": "DELTA_U_PCT", "value": 0.0015411561290257225, "unit": "%", "format_hint": "fixed2", "source": "solver"}, "I_A": {"code": "I_A", "value": 8.113366908650306, "unit": "A", "format_hint": "fixed1", "source": "solver"}, "LOADING_PCT": {"code": "LOADING_PCT", "value": 3.5275508298479594, "unit": "%", "format_hint": "fixed1", "source": "solver"}, "LOSSES_P_MW": {"code": "LOSSES_P_MW", "value": 3.03015805325213e-06, "unit": "MW", "format_hint": "fixed4", "source": "solver"}, "LOSSES_Q_Mvar": {"code": "LOSSES_Q_Mvar", "value": -0.0016665073542879022, "unit": "Mvar", "format_hint": "fixed4", "source": "solver"}, "P_MW": {"code": "P_MW", "value": 0.20049664306323778, "unit": "MW", "format_hint": "fixed4", "source": "solver"}, "Q_Mvar": {"code": "Q_Mvar", "value": 0.06504943667227117, "unit": "Mvar", "format_hint": "fixed4", "source": "solver"}, "S_MVA": {"code": "S_MVA", "value": 0.21078504000760392, "unit": "MVA", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "seg/6c5b18bc2f5e6f912c3927fe6458bb3b/segment_R": {"ref_id": "seg/6c5b18bc2f5e6f912c3927fe6458bb3b/segment_R", "kind": "branch", "badges": [], "metrics": {"COS_PHI": {"code": "COS_PHI", "value": 2.7558374807374505e-08, "unit": "", "format_hint": "fixed2", "source": "solver"}, "DELTA_U_KV": {"code": "DELTA_U_KV", "value": -3.363307374826263e-07, "unit": "kV", "format_hint": "fixed2", "source": "solver"}, "DELTA_U_PCT": {"code": "DELTA_U_PCT", "value": -2.242204921731883e-06, "unit": "%", "format_hint": "fixed2", "source": "solver"}, "I_A": {"code": "I_A", "value": 0.06419195152748974, "unit": "A", "format_hint": "fixed1", "source": "solver"}, "LOADING_PCT": {"code": "LOADING_PCT", "value": 0.027909544142386847, "unit": "%", "format_hint": "fixed1", "source": "solver"}, "LOSSES_P_MW": {"code": "LOSSES_P_MW", "value": 4.7304050177280036e-11, "unit": "MW", "format_hint": "fixed4", "source": "solver"}, "LOSSES_Q_Mvar": {"code": "LOSSES_Q_Mvar", "value": -0.0016676793609964214, "unit": "Mvar", "format_hint": "fixed4", "source": "solver"}, "P_MW": {"code": "P_MW", "value": 4.5958532866899494e-11, "unit": "MW", "format_hint": "fixed4", "source": "solver"}, "Q_Mvar": {"code": "Q_Mvar", "value": -0.0016676793601994688, "unit": "Mvar", "format_hint": "fixed4", "source": "solver"}, "S_MVA": {"code": "S_MVA", "value": 0.0016676793601994695, "unit": "MVA", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "stn/6db7ec2086af7dc462ff4bbb91f42b90/nn_bus": {"ref_id": "stn/6db7ec2086af7dc462ff4bbb91f42b90/nn_bus", "kind": "bus", "badges": [], "metrics": {"ANGLE_DEG": {"code": "ANGLE_DEG", "value": 29.361344970444073, "unit": "\u00b0", "format_hint": "fixed2", "source": "solver"}, "U_kV": {"code": "U_kV", "value": 0.39751066503433163, "unit": "kV", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_bus": {"ref_id": "stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_bus", "kind": "bus", "badges": [], "metrics": {"ANGLE_DEG": {"code": "ANGLE_DEG", "value": -0.0001746540458555528, "unit": "\u00b0", "format_hint": "fixed2", "source": "solver"}, "U_kV": {"code": "U_kV", "value": 14.999312291055983, "unit": "kV", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_field_terminal/000": {"ref_id": "stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_field_terminal/000", "kind": "bus", "badges": [], "metrics": {"ANGLE_DEG": {"code": "ANGLE_DEG", "value": -0.0001746540458555528, "unit": "\u00b0", "format_hint": "fixed2", "source": "solver"}, "U_kV": {"code": "U_kV", "value": 14.999312291055983, "unit": "kV", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_field_terminal/001": {"ref_id": "stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_field_terminal/001", "kind": "bus", "badges": [], "metrics": {"ANGLE_DEG": {"code": "ANGLE_DEG", "value": -0.0001746540458555528, "unit": "\u00b0", "format_hint": "fixed2", "source": "solver"}, "U_kV": {"code": "U_kV", "value": 14.999312291055983, "unit": "kV", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_field_terminal/002": {"ref_id": "stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_field_terminal/002", "kind": "bus", "badges": [], "metrics": {"ANGLE_DEG": {"code": "ANGLE_DEG", "value": -0.00017465404585555278, "unit": "\u00b0", "format_hint": "fixed2", "source": "solver"}, "U_kV": {"code": "U_kV", "value": 14.999312291055983, "unit": "kV", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_field_terminal/003": {"ref_id": "stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_field_terminal/003", "kind": "bus", "badges": [], "metrics": {"ANGLE_DEG": {"code": "ANGLE_DEG", "value": -0.0001746540458555528, "unit": "\u00b0", "format_hint": "fixed2", "source": "solver"}, "U_kV": {"code": "U_kV", "value": 14.999312291055983, "unit": "kV", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}, "stn/6db7ec2086af7dc462ff4bbb91f42b90/transformer": {"ref_id": "stn/6db7ec2086af7dc462ff4bbb91f42b90/transformer", "kind": "branch", "badges": [], "metrics": {"COS_PHI": {"code": "COS_PHI", "value": 0.9464616952562143, "unit": "", "format_hint": "fixed2", "source": "solver"}, "DELTA_U_KV": {"code": "DELTA_U_KV", "value": 14.60180162602165, "unit": "kV", "format_hint": "fixed2", "source": "solver"}, "DELTA_U_PCT": {"code": "DELTA_U_PCT", "value": 0.6177490151236475, "unit": "%", "format_hint": "fixed2", "source": "solver"}, "I_A": {"code": "I_A", "value": 8.153898314372663, "unit": "A", "format_hint": "fixed1", "source": "solver"}, "LOSSES_P_MW": {"code": "LOSSES_P_MW", "value": 0.0004936589785773382, "unit": "MW", "format_hint": "fixed4", "source": "solver"}, "LOSSES_Q_Mvar": {"code": "LOSSES_Q_Mvar", "value": 0.0026470464938786464, "unit": "Mvar", "format_hint": "fixed4", "source": "solver"}, "P_MW": {"code": "P_MW", "value": 0.20049350491116838, "unit": "MW", "format_hint": "fixed4", "source": "solver"}, "Q_Mvar": {"code": "Q_Mvar", "value": 0.06838368569652276, "unit": "Mvar", "format_hint": "fixed4", "source": "solver"}, "S_MVA": {"code": "S_MVA", "value": 0.21183477991351068, "unit": "MVA", "format_hint": "fixed2", "source": "solver"}}, "severity": "INFO"}}}
+{
+  "analysis_type": "LOAD_FLOW",
+  "elements": {
+    "bus/0aede0deeed18986f8463a0147379b6d/downstream": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": -0.000143463261983
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 14.9994283222
+        }
+      },
+      "ref_id": "bus/0aede0deeed18986f8463a0147379b6d/downstream",
+      "severity": "INFO"
+    },
+    "bus/3cbe5bbbede700ad26175fad0e1613d1/downstream": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": -0.000209349528046
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 14.9991394342
+        }
+      },
+      "ref_id": "bus/3cbe5bbbede700ad26175fad0e1613d1/downstream",
+      "severity": "INFO"
+    },
+    "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": 0.0
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 15.0
+        }
+      },
+      "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+      "severity": "INFO"
+    },
+    "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/source/main": {
+      "badges": [],
+      "kind": "generator",
+      "metrics": {
+        "COS_PHI": {
+          "code": "COS_PHI",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "",
+          "value": 0.953902502426
+        },
+        "P_MW": {
+          "code": "P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": 0.250628673371
+        },
+        "Q_Mvar": {
+          "code": "Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": 0.078852757775
+        },
+        "S_MVA": {
+          "code": "S_MVA",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "MVA",
+          "value": 0.262740345825
+        }
+      },
+      "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/source/main",
+      "severity": "INFO"
+    },
+    "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": -30.0
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 110.0
+        }
+      },
+      "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
+      "severity": "INFO"
+    },
+    "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn": {
+      "badges": [],
+      "kind": "branch",
+      "metrics": {
+        "DELTA_U_KV": {
+          "code": "DELTA_U_KV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 95.0
+        },
+        "DELTA_U_PCT": {
+          "code": "DELTA_U_PCT",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "%",
+          "value": -1.11022302463e-14
+        },
+        "I_A": {
+          "code": "I_A",
+          "format_hint": "fixed1",
+          "source": "solver",
+          "unit": "A",
+          "value": 0.0
+        },
+        "LOADING_PCT": {
+          "code": "LOADING_PCT",
+          "format_hint": "fixed1",
+          "source": "solver",
+          "unit": "%",
+          "value": 1.77722398948e-13
+        },
+        "LOSSES_P_MW": {
+          "code": "LOSSES_P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": 1.38777878078e-15
+        },
+        "LOSSES_Q_Mvar": {
+          "code": "LOSSES_Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": 4.4408920985e-14
+        },
+        "P_MW": {
+          "code": "P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": 0.0
+        },
+        "Q_Mvar": {
+          "code": "Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": 0.0
+        },
+        "S_MVA": {
+          "code": "S_MVA",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "MVA",
+          "value": 0.0
+        }
+      },
+      "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
+      "severity": "INFO"
+    },
+    "nn/645e3e417d01b7a4f513227bd8c26415/feeder_bus": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": 29.3589019315
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 0.397504229323
+        }
+      },
+      "ref_id": "nn/645e3e417d01b7a4f513227bd8c26415/feeder_bus",
+      "severity": "INFO"
+    },
+    "nn/a24891ce027efbafd92397f238e3552c/feeder_bus": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": 29.3589019315
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 0.397504229323
+        }
+      },
+      "ref_id": "nn/a24891ce027efbafd92397f238e3552c/feeder_bus",
+      "severity": "INFO"
+    },
+    "nn/a57c926adca5ddbbdf87403b58190e49/feeder_bus": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": 29.3589019315
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 0.397504229323
+        }
+      },
+      "ref_id": "nn/a57c926adca5ddbbdf87403b58190e49/feeder_bus",
+      "severity": "INFO"
+    },
+    "nn/c3254201c6da3d0d58c69441b6c3acf7/feeder_bus": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": 29.3589019315
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 0.397504229323
+        }
+      },
+      "ref_id": "nn/c3254201c6da3d0d58c69441b6c3acf7/feeder_bus",
+      "severity": "INFO"
+    },
+    "nn/ea174ad4d75fc1b2597990b7f003de57/feeder_bus": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": 29.3589019315
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 0.397504229323
+        }
+      },
+      "ref_id": "nn/ea174ad4d75fc1b2597990b7f003de57/feeder_bus",
+      "severity": "INFO"
+    },
+    "nn/f83d394f3b2e4248156b30fd3c5ee52e/feeder_bus": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": 29.3601190047
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 0.397520942232
+        }
+      },
+      "ref_id": "nn/f83d394f3b2e4248156b30fd3c5ee52e/feeder_bus",
+      "severity": "INFO"
+    },
+    "seg/0aede0deeed18986f8463a0147379b6d/segment": {
+      "badges": [],
+      "kind": "branch",
+      "metrics": {
+        "COS_PHI": {
+          "code": "COS_PHI",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "",
+          "value": 0.953902502425
+        },
+        "DELTA_U_KV": {
+          "code": "DELTA_U_KV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 0.000571677832932
+        },
+        "DELTA_U_PCT": {
+          "code": "DELTA_U_PCT",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "%",
+          "value": 0.00381118555288
+        },
+        "I_A": {
+          "code": "I_A",
+          "format_hint": "fixed1",
+          "source": "solver",
+          "unit": "A",
+          "value": 10.112880626
+        },
+        "LOADING_PCT": {
+          "code": "LOADING_PCT",
+          "format_hint": "fixed1",
+          "source": "solver",
+          "unit": "%",
+          "value": 4.41383469581
+        },
+        "LOSSES_P_MW": {
+          "code": "LOSSES_P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": 9.35035076155e-06
+        },
+        "LOSSES_Q_Mvar": {
+          "code": "LOSSES_Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": -0.0033042751981
+        },
+        "P_MW": {
+          "code": "P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": 0.250628673372
+        },
+        "Q_Mvar": {
+          "code": "Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": 0.0788527577755
+        },
+        "S_MVA": {
+          "code": "S_MVA",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "MVA",
+          "value": 0.262740345827
+        }
+      },
+      "ref_id": "seg/0aede0deeed18986f8463a0147379b6d/segment",
+      "severity": "INFO"
+    },
+    "seg/3cbe5bbbede700ad26175fad0e1613d1/segment_L": {
+      "badges": [],
+      "kind": "branch",
+      "metrics": {
+        "COS_PHI": {
+          "code": "COS_PHI",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "",
+          "value": 0.950244399261
+        },
+        "DELTA_U_KV": {
+          "code": "DELTA_U_KV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 0.000289224316587
+        },
+        "DELTA_U_PCT": {
+          "code": "DELTA_U_PCT",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "%",
+          "value": 0.00192816211058
+        },
+        "I_A": {
+          "code": "I_A",
+          "format_hint": "fixed1",
+          "source": "solver",
+          "unit": "A",
+          "value": 10.1518198374
+        },
+        "LOADING_PCT": {
+          "code": "LOADING_PCT",
+          "format_hint": "fixed1",
+          "source": "solver",
+          "unit": "%",
+          "value": 4.42260817184
+        },
+        "LOSSES_P_MW": {
+          "code": "LOSSES_P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": 4.7418071365e-06
+        },
+        "LOSSES_Q_Mvar": {
+          "code": "LOSSES_Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": -0.0016657987549
+        },
+        "P_MW": {
+          "code": "P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": 0.25061932427
+        },
+        "Q_Mvar": {
+          "code": "Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": 0.082157032253
+        },
+        "S_MVA": {
+          "code": "S_MVA",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "MVA",
+          "value": 0.263741964135
+        }
+      },
+      "ref_id": "seg/3cbe5bbbede700ad26175fad0e1613d1/segment_L",
+      "severity": "INFO"
+    },
+    "seg/3cbe5bbbede700ad26175fad0e1613d1/segment_R": {
+      "badges": [],
+      "kind": "branch",
+      "metrics": {
+        "COS_PHI": {
+          "code": "COS_PHI",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "",
+          "value": 2.72542290898e-08
+        },
+        "DELTA_U_KV": {
+          "code": "DELTA_U_KV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": -3.36326854367e-07
+        },
+        "DELTA_U_PCT": {
+          "code": "DELTA_U_PCT",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "%",
+          "value": -2.24217903133e-06
+        },
+        "I_A": {
+          "code": "I_A",
+          "format_hint": "fixed1",
+          "source": "solver",
+          "unit": "A",
+          "value": 0.0641912103308
+        },
+        "LOADING_PCT": {
+          "code": "LOADING_PCT",
+          "format_hint": "fixed1",
+          "source": "solver",
+          "unit": "%",
+          "value": 0.027909221883
+        },
+        "LOSSES_P_MW": {
+          "code": "LOSSES_P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": 4.73029578015e-11
+        },
+        "LOSSES_Q_Mvar": {
+          "code": "LOSSES_Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": -0.00166764084869
+        },
+        "P_MW": {
+          "code": "P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": 4.5450265716e-11
+        },
+        "Q_Mvar": {
+          "code": "Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": -0.00166764084819
+        },
+        "S_MVA": {
+          "code": "S_MVA",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "MVA",
+          "value": 0.00166764084819
+        }
+      },
+      "ref_id": "seg/3cbe5bbbede700ad26175fad0e1613d1/segment_R",
+      "severity": "INFO"
+    },
+    "stn/b18b63376532b6c69f111ebced4fb650/nn_bus": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": 29.3601190047
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 0.397520942232
+        }
+      },
+      "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/nn_bus",
+      "severity": "INFO"
+    },
+    "stn/b18b63376532b6c69f111ebced4fb650/sn_bus": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": -0.00020609911617
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 14.9991390979
+        }
+      },
+      "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/sn_bus",
+      "severity": "INFO"
+    },
+    "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/000": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": -0.00020609911617
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 14.9991390979
+        }
+      },
+      "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/000",
+      "severity": "INFO"
+    },
+    "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/001": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": -0.00020609911617
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 14.9991390979
+        }
+      },
+      "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/001",
+      "severity": "INFO"
+    },
+    "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/002": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": -0.00020609911617
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 14.9991390979
+        }
+      },
+      "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/002",
+      "severity": "INFO"
+    },
+    "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/003": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": -0.00020609911617
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 14.9991390979
+        }
+      },
+      "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/003",
+      "severity": "INFO"
+    },
+    "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/004": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": -0.00020609911617
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 14.9991390979
+        }
+      },
+      "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/004",
+      "severity": "INFO"
+    },
+    "stn/b18b63376532b6c69f111ebced4fb650/transformer": {
+      "badges": [],
+      "kind": "branch",
+      "metrics": {
+        "COS_PHI": {
+          "code": "COS_PHI",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "",
+          "value": 0.946448109801
+        },
+        "DELTA_U_KV": {
+          "code": "DELTA_U_KV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 14.6016181556
+        },
+        "DELTA_U_PCT": {
+          "code": "DELTA_U_PCT",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "%",
+          "value": 0.614025094265
+        },
+        "I_A": {
+          "code": "I_A",
+          "format_hint": "fixed1",
+          "source": "solver",
+          "unit": "A",
+          "value": 10.1925378207
+        },
+        "LOADING_PCT": {
+          "code": "LOADING_PCT",
+          "format_hint": "fixed1",
+          "source": "solver",
+          "unit": "%",
+          "value": 21.1847920363
+        },
+        "LOSSES_P_MW": {
+          "code": "LOSSES_P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": 0.000605873808391
+        },
+        "LOSSES_Q_Mvar": {
+          "code": "LOSSES_Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": 0.00331098797389
+        },
+        "P_MW": {
+          "code": "P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": 0.250614445281
+        },
+        "Q_Mvar": {
+          "code": "Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": 0.0854905496116
+        },
+        "S_MVA": {
+          "code": "S_MVA",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "MVA",
+          "value": 0.264794702093
+        }
+      },
+      "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/transformer",
+      "severity": "INFO"
+    }
+  },
+  "proof_status": "complete",
+  "quality_status": "accepted",
+  "run_finished_at": "2026-09-25T00:00:00Z",
+  "run_id": "bieg-load_flow"
+}

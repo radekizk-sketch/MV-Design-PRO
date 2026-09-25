@@ -17,7 +17,6 @@ Uruchomienie (z katalogu ``backend/``):
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +55,8 @@ from enm.models import (
 )
 from network_model.catalog.repository import get_default_mv_catalog
 from werdykt import OcenaKryterium
+
+from tests.golden.zapis_fikstur import json_fikstury
 
 _FRONTEND_SRC = Path(__file__).resolve().parents[3] / "frontend" / "src"
 
@@ -361,8 +362,9 @@ FIXTURY: dict[Path, Any] = {
 
 
 def tresc(plik: Path) -> str:
-    """Kanoniczny zapis JSON fixtury (klucze posortowane, UTF-8, wcięcie 2, nowa linia)."""
-    return json.dumps(FIXTURY[plik](), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    """Kanoniczny zapis JSON fixtury (reguła ``tests/golden/zapis_fikstur``: liczby, klucze
+    posortowane, UTF-8, wcięcie 2, nowa linia)."""
+    return json_fikstury(FIXTURY[plik]())
 
 
 def main() -> None:

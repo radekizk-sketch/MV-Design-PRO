@@ -50,7 +50,16 @@ const BASE_FIXTURE_PATH = resolve(
   '../../../scene/__tests__/fixtures/openBranch.enm.json',
 );
 
-const STATION_ID = 'stn/ed91b18ec60d43a0fb4cb92e778fa53e';
+function loadBaseFixtureRaw(): EnergyNetworkModel {
+  return (JSON.parse(readFileSync(BASE_FIXTURE_PATH, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
+}
+
+// Identyfikatory bazowej fixtury ODCZYTANE z niej (karta SLD-SUBSTRAT): `openBranch.enm.json`
+// powstaje generatorem z operacji domenowych, a jego identyfikatory są ziarnami treści
+// operacji — literały sprzed regeneracji wskazywały sieć, której produkt już nie wytwarzał.
+// Stacja jest adresowana NAZWĄ („Stacja B"), źródło — jedynym źródłem sieci.
+const BAZA = loadBaseFixtureRaw();
+const STATION_ID = BAZA.substations.find((s) => s.name === 'Stacja B')!.ref_id.replace(/\/station$/, '');
 const TRANSFORMER_REF = `${STATION_ID}/transformer`;
 
 /** Referencje publiczne (używane przez `pathInvariants.test.ts` i
@@ -78,15 +87,14 @@ export const STACJA_B_REFS = {
   cableQf01Ref: `${STATION_ID}/nn_qf01_cable`,
   cableQf02Ref: `${STATION_ID}/nn_qf02_cable`,
   cableQf03Ref: `${STATION_ID}/nn_qf03_cable`,
-  gpzSourceRef: 'gpz/860003b4514aa388b39561d5005ce584/source/main',
+  gpzSourceRef: BAZA.sources[0].ref_id,
 } as const;
 
 function loadBaseFixture(): EnergyNetworkModel {
-  const raw = JSON.parse(readFileSync(BASE_FIXTURE_PATH, 'utf8')) as { readonly enm: EnergyNetworkModel };
   // Klon głęboki — WYŁĄCZNIE ten builder mutuje kopię, plik źródłowy
   // `openBranch.enm.json` (współdzielony z `scene/__tests__`) pozostaje
   // NIETKNIĘTY (tylko odczyt, zero zmian w cudzych fixture'ach).
-  return JSON.parse(JSON.stringify(raw.enm)) as EnergyNetworkModel;
+  return JSON.parse(JSON.stringify(loadBaseFixtureRaw())) as EnergyNetworkModel;
 }
 
 function withId(ref: string, rest: Record<string, unknown>): Record<string, unknown> {

@@ -77,6 +77,7 @@ import type { SelectedElement } from '../../types';
 import { formatStationSwitchgearDescriptionPl } from '../../shared/stationTypeLabels';
 import { publicTechnicalLabel, segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { selectStationDistributionTransformers } from '../../network-build/stationTransformerSelection';
+import { stationLoadBusRefs } from './stationBusResolution';
 import { getMetric, formatMetric, type RawOverlayPayload } from '../../sld-overlay/rawResultOverlayStore';
 import type { SldDataPayload } from '../v2/canvas/enmToSldAdapter';
 import { projectBayPrimaryDevices, readStationFieldSpecs } from '../v2/canvas/enmToSldAdapter';
@@ -255,8 +256,14 @@ export function buildStationDetailDrawerData(
   const lvBus = lvBusRef && snapshot
     ? (snapshot.buses ?? []).find((b) => b.ref_id === lvBusRef || b.id === lvBusRef)
     : null;
+  // SLD-SUBSTRAT: odbiory szyny nN stacji ORAZ odbiory na szynach jej odpływów nN
+  // promowanych do modelu (`stationLoadBusRefs` — ten sam predykat co agregat odbioru
+  // na rysunku; bez niego szuflada modelu z API pokazywała zero odbiorów).
+  const szynyOdbiorowNn = lvBusRef && snapshot
+    ? stationLoadBusRefs({ bus_refs: [lvBusRef], meta: substation?.meta }, snapshot.branches ?? [])
+    : new Set<string>();
   const loadsOnLv = lvBusRef && snapshot
-    ? (snapshot.loads ?? []).filter((l) => l.bus_ref === lvBusRef)
+    ? (snapshot.loads ?? []).filter((l) => szynyOdbiorowNn.has(l.bus_ref))
     : [];
   const nnSpec: SldDetailDrawerData['nnSpec'] = {
     busVoltageKv: lvBus?.voltage_kv ?? tr?.ulv_kv ?? null,
