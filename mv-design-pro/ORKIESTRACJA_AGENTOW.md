@@ -152,6 +152,18 @@ Fable 5.1 wchodzi wyłącznie po eskalacji decyzją właściciela):
     drzew) z wysiłkiem dobranym do zadania, a po odblokowaniu WZNAWIA tych samych wykonawców
     (`SendMessage` — kontekst i cache zostają) od miejsca przerwania, z opisem stanu z logów. Zakaz
     tworzenia nowych wykonawców do dokończenia cudzej, na wpół naniesionej pracy, gdy da się wznowić.
+16. **Wykonawca weryfikuje celowo, integrator w pełni (2026-09-25).** Wykonawca uruchamia testy
+    celowane warstw dotkniętych (testy modułów zmienionych i testy, które te moduły importują —
+    zbiór wyznaczony grepem i podany w meldunku), `scripts/guardy_z_ci.py`, samotesty zmienionych
+    strażników, type-check, lint, vitest modułów dotkniętych, speki e2e ekranów dotkniętych oraz
+    generatory fikstur, które karta może zmienić. Pełną regresję backendu, pełny vitest i pełne e2e
+    uruchamia integrator raz na partię, na drzewie scalonym, jeden bieg naraz. Powód (pomiar
+    2026-09-25): cztery równoległe pełne regresje na maszynie z 4 CPU zajęły wszystkie rdzenie,
+    każda trwała kilka razy dłużej niż sama, wykonawcy wyglądali na zawieszonych przez wiele godzin,
+    a osierocone serwery e2e trzymały porty; pełna regresja w drzewie karty i tak nie jest dowodem
+    odbioru, bo nie widzi zmian innych kart partii. Każdy bieg z prywatnym `--basetemp` w katalogu
+    karty; katalogów tymczasowych innych biegów się nie kasuje; procesy zabija się po PID, nigdy
+    wzorcem `pkill -f` (dopasowuje własną powłokę).
 
 ---
 
