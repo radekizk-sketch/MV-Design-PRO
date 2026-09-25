@@ -171,9 +171,7 @@ def test_walidator_e029_falownik_na_szynie_powyzej_pasma_nn(napiecie: float, odm
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("napiecie", "c_max", "c_min"), [(1.0, 1.05, 0.95), (1.001, 1.10, 1.00), (0.0, 1.05, 0.95)]
-)
+@pytest.mark.parametrize(("napiecie", "c_max", "c_min"), [(1.0, 1.05, 0.95), (1.001, 1.10, 1.00)])
 def test_wspolczynnik_c_iec60909_z_granicy_pasma(
     napiecie: float, c_max: float, c_min: float
 ) -> None:
@@ -185,6 +183,30 @@ def test_wspolczynnik_c_iec60909_z_granicy_pasma(
 def test_rezystancja_fikcyjna_maszyn_z_granicy_pasma(napiecie: float, nn: bool) -> None:
     assert _synchronous_r_over_x(napiecie, 10.0) == (0.15 if nn else 0.07)
     assert _asynchronous_r_over_x(napiecie, 0.5) == (0.42 if nn else 0.15)
+
+
+_NAPIECIA_NIEFIZYCZNE = [0.0, -0.4, float("nan"), float("inf"), float("-inf")]
+
+
+@pytest.mark.parametrize("napiecie", _NAPIECIA_NIEFIZYCZNE)
+@pytest.mark.parametrize(
+    "dobor",
+    [
+        pytest.param(lambda u: c_for_node(u, "MAX"), id="c_max"),
+        pytest.param(lambda u: c_for_node(u, "MIN"), id="c_min"),
+        pytest.param(lambda u: _synchronous_r_over_x(u, 10.0), id="rx_synchroniczna"),
+        pytest.param(lambda u: _asynchronous_r_over_x(u, 0.5), id="rx_asynchroniczna"),
+    ],
+)
+def test_napiecie_spoza_pasm_odmowa_zamiast_wiersza_nn(dobor, napiecie: float) -> None:
+    """Napięcie niefizyczne × każdy dobór tabelaryczny IEC 60909-0 zależny od pasma.
+
+    Przed 2026-09-25 napięcie zerowe, ujemne albo nieskończone dawało po cichu wiersz
+    niskiego napięcia (c = 1,05/0,95, R/X maszyn 0,15/0,42) — domysł, który z błędnej danej
+    robił wiarygodnie wyglądający wynik. Tabele normy nie mają wiersza dla takiego napięcia.
+    """
+    with pytest.raises(ValueError, match="IEC 60909-0"):
+        dobor(napiecie)
 
 
 @pytest.mark.parametrize(("napiecie", "nn"), [(1.0, True), (1.001, False)])

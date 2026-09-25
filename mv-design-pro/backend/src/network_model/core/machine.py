@@ -25,7 +25,24 @@ from network_model.pochodne import (
     kv_na_v,
     prad_znamionowy_a,
 )
-from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
+
+
+def _pasmo_maszyny(ur_kv: float) -> str:
+    """Pasmo napięcia znamionowego maszyny albo nazwana odmowa (bez domysłu wiersza nN).
+
+    Tabele R/X IEC 60909-0 (§6.3 maszyny synchroniczne, §6.7 asynchroniczne) rozróżniają
+    maszyny do 1 kV i powyżej; napięcie niefizyczne nie należy do żadnego wiersza, a ciche
+    przyjęcie wiersza nN (zachowanie sprzed 2026-09-25) robiło z błędnej danej wiarygodnie
+    wyglądające R/X.
+    """
+    pasmo = pasmo_napieciowe(ur_kv)
+    if pasmo is None:
+        raise ValueError(
+            f"Napięcie znamionowe maszyny {ur_kv!r} kV nie leży w żadnym paśmie napięć — "
+            "stosunku R/X (IEC 60909-0, §6.3/§6.7) nie da się dobrać."
+        )
+    return pasmo
 
 
 def _synchronous_r_over_x(ur_kv: float, sr_mva: float) -> float:
@@ -33,10 +50,14 @@ def _synchronous_r_over_x(ur_kv: float, sr_mva: float) -> float:
 
     R_Gf is a FICTITIOUS resistance used only to obtain ip via κ; it is larger than
     the real R_G so that κ (hence ip) is not overestimated for near-generator faults.
+
+    Raises:
+        ValueError: U_rG is not a physical rated voltage (non-finite, zero or negative) —
+            the norm has no row for it; the low-voltage row would be a guess.
     """
-    if powyzej_pasma_nn(ur_kv):
-        return 0.05 if sr_mva >= 100.0 else 0.07
-    return 0.15  # LV generators (U_rG ≤ 1 kV)
+    if _pasmo_maszyny(ur_kv) == "nN":
+        return 0.15  # LV generators (U_rG ≤ 1 kV)
+    return 0.05 if sr_mva >= 100.0 else 0.07
 
 
 @dataclass
@@ -114,10 +135,14 @@ class SynchronousMachineSource:
 
 
 def _asynchronous_r_over_x(ur_kv: float, p_per_pole_mw: float) -> float:
-    """R_M/X_M for asynchronous motors (IEC 60909-0:2016 §6.7 / Table)."""
-    if powyzej_pasma_nn(ur_kv):
-        return 0.10 if p_per_pole_mw >= 1.0 else 0.15  # MV motors
-    return 0.42  # LV motors / motor groups
+    """R_M/X_M for asynchronous motors (IEC 60909-0:2016 §6.7 / Table).
+
+    Raises:
+        ValueError: U_rM is not a physical rated voltage (non-finite, zero or negative).
+    """
+    if _pasmo_maszyny(ur_kv) == "nN":
+        return 0.42  # LV motors / motor groups
+    return 0.10 if p_per_pole_mw >= 1.0 else 0.15  # MV motors
 
 
 @dataclass

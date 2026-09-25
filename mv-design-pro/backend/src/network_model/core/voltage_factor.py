@@ -10,8 +10,10 @@ c is selected PER FAULT-NODE VOLTAGE BAND, never per study/globally:
 The band boundary itself is NOT encoded here: IEC 60909-0 Table 1 defines "low
 voltage" by reference to IEC 60038 Table 1 (100 V to 1 000 V inclusive), i.e. the
 same nN band as the rest of the product, so the selection uses the single band
-source ``network_model.pochodne.pasma_napieciowe.powyzej_pasma_nn`` (a node whose
-voltage is unknown or non-positive keeps the low-voltage row, as before).
+source ``network_model.pochodne.pasma_napieciowe.pasmo_napieciowe``. A node whose nominal
+voltage lies in no band (missing, non-finite, zero or negative) is REFUSED with a named
+error: Table 1 has no row for it, and silently taking the low-voltage row (the behaviour
+before 2026-09-25) was a guess that turned invalid input into a plausible-looking c.
 
 This module is the ONE place that encodes the c values of the table. ``TransformerBranch.
 get_voltage_factor_c_max``/``get_voltage_factor_c_min`` (network_model/core/
@@ -26,7 +28,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 Scenario = Literal["MAX", "MIN"]
 
@@ -48,10 +50,17 @@ def c_for_node(voltage_kv: float, scenario: Scenario) -> float:
         c per Table 1: 1.05/0.95 for voltage_kv <= 1.0 kV, else 1.10/1.00.
 
     Raises:
-        ValueError: scenario is neither "MAX" nor "MIN".
+        ValueError: scenario is neither "MAX" nor "MIN", or voltage_kv is not a physical
+            nominal voltage (non-finite, zero or negative) — no row of Table 1 applies.
     """
+    if scenario not in ("MAX", "MIN"):
+        raise ValueError(f"Nieznany scenariusz współczynnika c: {scenario!r} (oczekiwano MAX/MIN)")
+    pasmo = pasmo_napieciowe(voltage_kv)
+    if pasmo is None:
+        raise ValueError(
+            f"Napięcie znamionowe {voltage_kv!r} kV nie leży w żadnym paśmie napięć — "
+            "współczynnika napięciowego c (IEC 60909-0, tabela 1) nie da się dobrać."
+        )
     if scenario == "MAX":
-        return MV_HV_C_MAX if powyzej_pasma_nn(voltage_kv) else LV_C_MAX
-    if scenario == "MIN":
-        return MV_HV_C_MIN if powyzej_pasma_nn(voltage_kv) else LV_C_MIN
-    raise ValueError(f"Nieznany scenariusz współczynnika c: {scenario!r} (oczekiwano MAX/MIN)")
+        return LV_C_MAX if pasmo == "nN" else MV_HV_C_MAX
+    return LV_C_MIN if pasmo == "nN" else MV_HV_C_MIN
