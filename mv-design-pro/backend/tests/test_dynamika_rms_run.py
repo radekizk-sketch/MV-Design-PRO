@@ -1085,7 +1085,7 @@ class TestSciezkaUzytkownika:
         }
         zalozenia = " ".join(ladunek["zalozenia"])
         assert "Przypisanie stanu i komenda regulacji" in zalozenia
-        assert "Czesciowa utrata zrodla" in zalozenia
+        assert "Częściowa utrata źródła" in zalozenia
 
     def test_stanowisko_badawcze_przez_cala_sciezke(self, client: TestClient) -> None:
         """Zrodlo testowe idealne zastepuje zrodlo sieciowe: tryb `stanowisko` w wyniku,

@@ -555,7 +555,7 @@ class TestStanowiskoBadawcze:
                     },
                     {"rodzaj": "skok_czestotliwosci", "t_s": 0.3, "odchylka_hz": 0.2},
                 ),
-                "wewnatrz",
+                "wewnątrz",
             ),
         ],
         ids=["dwa_skoki_U", "rampy_U_nakladaja", "skok_f_w_rampie"],
@@ -587,7 +587,7 @@ class TestStanowiskoBadawcze:
                 },
             )
 
-    @pytest.mark.parametrize("ref, fragment", [("g1", "generators"), ("brak", "zadnej kolekcji")])
+    @pytest.mark.parametrize("ref, fragment", [("g1", "generators"), ("brak", "żadnej kolekcji")])
     def test_stanowisko_wskazuje_wylacznie_zrodlo_sieciowe(self, ref, fragment):
         scen = ScenariuszDynamiczny(
             horyzont_s=1.0,

@@ -167,13 +167,13 @@ def test_zrodlo_idealne_narzuca_napiecie_i_czestotliwosc_wezla(nazwa: str) -> No
         ((SkokCzestotliwosci(0.3, 0.1), SkokCzestotliwosci(0.3, 0.2)), "dwa skoki czestotliwosci"),
         ((RampaNapiecia(0.2, 0.1, 0.5), RampaNapiecia(0.6, 0.1, 0.2)), "rampy amplitudy"),
         ((RampaCzestotliwosci(0.2, 0.1, 0.5), RampaCzestotliwosci(0.3, 0.1, 0.1)), "rampy czest"),
-        ((RampaNapiecia(0.2, 0.1, 0.5), SkokNapiecia(0.4, 0.9)), "wewnatrz rampy"),
-        ((RampaCzestotliwosci(0.2, 0.1, 0.5), SkokCzestotliwosci(0.3, 0.1)), "wewnatrz rampy"),
+        ((RampaNapiecia(0.2, 0.1, 0.5), SkokNapiecia(0.4, 0.9)), "wewnątrz rampy"),
+        ((RampaCzestotliwosci(0.2, 0.1, 0.5), SkokCzestotliwosci(0.3, 0.1)), "wewnątrz rampy"),
         ((RampaNapiecia(0.2, 0.1, 0.0),), "czas trwania"),
         ((RampaNapiecia(0.2, 0.1, -1.0),), "czas trwania"),
         ((SkokNapiecia(0.2, -0.1),), "amplitude"),
         ((SkokFazy(-0.1, 10.0),), "przed t = 0"),
-        ((SkokFazy(0.1, math.nan),), "liczba skonczona"),
+        ((SkokFazy(0.1, math.nan),), "liczbą skończoną"),
     ],
 )
 def test_profil_niespojny_to_odmowa_w_rdzeniu(profil: tuple, fragment: str) -> None:

@@ -1047,7 +1047,7 @@ class TestKomendaIUtrataCzesciowa:
         (zdarzenie,) = wynik.zdarzenia_wykonane
         assert zdarzenie.rodzaj == "utrata_czesciowa_zrodla"
         assert zdarzenie.delta_x_nieprzypisane_max == 0.0
-        assert any(zdanie.startswith("Czesciowa utrata zrodla") for zdanie in wynik.zalozenia)
+        assert any(zdanie.startswith("Częściowa utrata źródła") for zdanie in wynik.zalozenia)
 
     def test_czesciowa_utrata_zrodla_sieciowego_to_odmowa_rdzenia(
         self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
