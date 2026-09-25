@@ -1951,6 +1951,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     // tę pozycję w menu (zrodlo/szyna/stacja).
     const branchStartAvailable = resolveBranchStartAvailability(
       snapshot,
+      logicalViews,
       contextSubject.menuKind,
       contextSubject.modelRef,
     );
@@ -2004,7 +2005,12 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       apparatusKind,
       // S9-10 (predykaty parami): akcje szuflady czytają TĘ SAMĄ prawdę o
       // punkcie startu odgałęzienia co menu kanwy i kreator.
-      branchStartAvailable: resolveBranchStartAvailability(snapshot, menuKind, detailDrawerData.elementId),
+      branchStartAvailable: resolveBranchStartAvailability(
+        snapshot,
+        logicalViews,
+        menuKind,
+        detailDrawerData.elementId,
+      ),
       // S95-START: szuflada czyta TĘ SAMĄ prawdę o punkcie startu ciągu co menu kanwy.
       trunkStartAvailable: resolveTrunkStartAvailability(
         snapshot,

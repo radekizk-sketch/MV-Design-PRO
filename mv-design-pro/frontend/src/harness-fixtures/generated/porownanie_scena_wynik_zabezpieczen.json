@@ -51,16 +51,16 @@
     "run_id": "run-zab-scena-a",
     "analysis_type": "protection_sn",
     "status": "FINISHED",
-    "snapshot_hash": "085cdc45ea65f96bffa401345419f782917e5d8bef582dd13623cfdbc7b75620",
-    "input_hash": "4d8b79f2289e291485a5c5c4f564b03fe64d32a141ddfad121dba49d6bedc211",
+    "snapshot_hash": "9c9dfbd162d9846948e657ddd160a8c15ee7fef7c6e11758d375c57012fb384a",
+    "input_hash": "355bec6e95fd96b97fa928941e6b2faeba4c39731867c4ce0713970684c6e0a9",
     "finished_at": "2026-09-16T09:00:00+00:00",
     "envelope": {
       "catalog_fingerprint": "cea426cf988f650cf00a87e531d693e93a693f4fa529acf1f74e5e77b8b46977",
       "model_revision": 2,
-      "options_hash": "4d8b79f2289e291485a5c5c4f564b03fe64d32a141ddfad121dba49d6bedc211",
+      "options_hash": "355bec6e95fd96b97fa928941e6b2faeba4c39731867c4ce0713970684c6e0a9",
       "project_id": "proj-zab",
-      "semantic_fingerprint": "1aecfc20000bd1870b127bc2e658aaffc89f88a2c615e4784c36596544fbb194",
-      "snapshot_hash": "085cdc45ea65f96bffa401345419f782917e5d8bef582dd13623cfdbc7b75620",
+      "semantic_fingerprint": "75250276189c8bc1d9105cb5c410f69397901e46e89799e0a93cd6e87ac351f0",
+      "snapshot_hash": "9c9dfbd162d9846948e657ddd160a8c15ee7fef7c6e11758d375c57012fb384a",
       "wersja": 1
     }
   },
@@ -68,16 +68,16 @@
     "run_id": "run-zab-scena-b",
     "analysis_type": "protection_sn",
     "status": "FINISHED",
-    "snapshot_hash": "d3ef4cc1764cef7dc22452cfc08816ac04d273cfbe3d1aee03607b866c599ffe",
-    "input_hash": "5e96d99d62533a0edc6bc6fa54aa401572d69ba704274768e350ace6ce8a248d",
+    "snapshot_hash": "f58c836e26612f18e1e6cc6528e424f7bad143ee925b21c882e1150e6002c650",
+    "input_hash": "d47581b21e7dbd25497ab744ea87af72663c73e31c9d618caa452df2b5bf542b",
     "finished_at": "2026-09-16T09:00:00+00:00",
     "envelope": {
       "catalog_fingerprint": "cea426cf988f650cf00a87e531d693e93a693f4fa529acf1f74e5e77b8b46977",
       "model_revision": 2,
-      "options_hash": "5e96d99d62533a0edc6bc6fa54aa401572d69ba704274768e350ace6ce8a248d",
+      "options_hash": "d47581b21e7dbd25497ab744ea87af72663c73e31c9d618caa452df2b5bf542b",
       "project_id": "proj-zab",
-      "semantic_fingerprint": "8b6d04b07aa22e5da453e484806fbbbfea7336d73373dd7756d6abd4609f7829",
-      "snapshot_hash": "d3ef4cc1764cef7dc22452cfc08816ac04d273cfbe3d1aee03607b866c599ffe",
+      "semantic_fingerprint": "6af19696b4a7f07e8f29cfa5e0c8f98d98c42d214b63f7c1e9969328f017d881",
+      "snapshot_hash": "f58c836e26612f18e1e6cc6528e424f7bad143ee925b21c882e1150e6002c650",
       "wersja": 1
     }
   },

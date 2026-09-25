@@ -27,10 +27,10 @@
  *    (`SchematContextPanel`: pole GPZ albo otwarty zacisk z widoków logicznych), więc nie
  *    ma w nim stanu „pozycja bez startu".
  *
- * Modele pochodzą z REALNEGO backendu (fikstury `b2Droga-*` i `s95GpzSwiezy` z
- * `sld/v3/canvas/__tests__/fixtures`); stany pól są na nich wyprowadzane jawnie
- * (dodanie odcinka terenowego z zacisku pola = zajęcie pola; usunięcie specyfikacji pól
- * liniowych = stacja bez pól, jak stacja odgałęźna z jednym polem wejściowym).
+ * Karta POLE-ZAJĘTE: modele i ich widoki logiczne pochodzą z generatora backendu
+ * (`backend/scripts/eksport_fixtur_harnessu.py`, fikstury `punkt_startu_*` zbudowane
+ * operacjami domenowymi przez `tests/reference_networks/sceny_zajetosci_pol.py`). Zajętość
+ * pól front czyta z `logical_views.line_fields` — test nie wyprowadza jej sam.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -40,7 +40,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { EnergyNetworkModel } from '../../../../types/enm';
+import type { EnergyNetworkModel, LogicalViewsV1 } from '../../../../types/enm';
 import { useAppStateStore } from '../../../app-state';
 import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
 import { useNotificationStore } from '../../../notifications/store';
@@ -98,105 +98,39 @@ vi.mock('../../../../ui2/kreatory/magistrala/ocenaDoboruApi', () => ({
 }));
 
 const here = dirname(fileURLToPath(import.meta.url));
-const FIXTURES = resolve(here, '..', '..', 'v3', 'canvas', '__tests__', 'fixtures');
-
-function wczytaj(plik: string): EnergyNetworkModel {
-  const surowe = JSON.parse(readFileSync(resolve(FIXTURES, plik), 'utf8')) as
-    | EnergyNetworkModel
-    | { enm: EnergyNetworkModel };
-  return ('enm' in surowe ? surowe.enm : surowe) as EnergyNetworkModel;
-}
-
-function kopia<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
+const GENERATED = resolve(here, '..', '..', '..', '..', 'harness-fixtures', 'generated');
 
 // ---------------------------------------------------------------------------
-// Modele: realny backend + jawnie wyprowadzone stany pól liniowych
+// Sceny z generatora backendu (karta POLE-ZAJĘTE): migawka + widoki logiczne
 // ---------------------------------------------------------------------------
+
+/**
+ * Każda scena powstała operacjami domenowymi (`tests/reference_networks/
+ * sceny_zajetosci_pol.py`, ten sam budowniczy co testy backendu) i niesie `logical_views`
+ * z `line_fields` — zajętość pól liczy WYŁĄCZNIE backend (`enm/zajetosc_pol.py`), front ją
+ * czyta. Stany pól: wolne kilka, wolne jedno (pozostałe zajęte operacją), zajęte wszystkie,
+ * brak pól liniowych.
+ */
+interface Scena {
+  readonly pola_liniowe_elementu: string[];
+  readonly snapshot: EnergyNetworkModel;
+  readonly logical_views: LogicalViewsV1;
+}
 
 type StanPol = 'wolne_jedno' | 'wolne_kilka' | 'zajete_wszystkie' | 'brak_pol';
 const STANY: readonly StanPol[] = ['wolne_jedno', 'wolne_kilka', 'zajete_wszystkie', 'brak_pol'];
 
-/** Stacja wstawiona na odcinku przez `insert_station_on_segment_sn` (realny backend):
- *  pola IN 000, OUT 001, FEEDER 002 — dwa pola, z których może wyjść ciąg. */
-const STACJA_BAZA = wczytaj('b2Droga-insert_station_on_segment_sn.enm.json');
-const STACJA_REF = (STACJA_BAZA.substations ?? []).find(
-  (s) => String(s.station_type).toLowerCase() !== 'gpz',
-)!.ref_id;
-
-type Spec = { field_ref: string; bay_role?: string; meta?: { terminal_bus_ref?: string } };
-function specyStacji(enm: EnergyNetworkModel): Spec[] {
-  const stacja = (enm.substations ?? []).find((s) => s.ref_id === STACJA_REF)!;
-  return (stacja.meta as { field_specs: Spec[] }).field_specs;
+function scena(rodzaj: 'stacja_na_odcinku' | 'gpz_z_zaciskami', stan: StanPol): Scena {
+  return JSON.parse(
+    readFileSync(resolve(GENERATED, `punkt_startu_${rodzaj}_${stan}.json`), 'utf8'),
+  ) as Scena;
 }
 
-/** Zajęcie pola = odcinek terenowy wyprowadzony z zacisku pola (dokładnie to, co zostawia
- *  `continue_trunk_segment_sn` z tego pola). */
-function zajmijPole(enm: EnergyNetworkModel, spec: Spec, n: number): void {
-  const zacisk = spec.meta!.terminal_bus_ref!;
-  (enm.branches as unknown as Array<Record<string, unknown>>).push({
-    id: `seg/test-zajete-${n}/segment`,
-    ref_id: `seg/test-zajete-${n}/segment`,
-    name: `Odcinek zajmujący ${n}`,
-    type: 'cable',
-    from_bus_ref: zacisk,
-    to_bus_ref: `bus/test-zajete-${n}/downstream`,
-    tags: [],
-    meta: {},
-  });
+function stacjaSnNn(snapshot: EnergyNetworkModel) {
+  return (snapshot.substations ?? []).find((st) => String(st.station_type).toLowerCase() !== 'gpz')!;
 }
-
-function stacjaWStanie(stan: StanPol): EnergyNetworkModel {
-  const enm = kopia(STACJA_BAZA);
-  const specy = specyStacji(enm);
-  const liniowe = specy.filter((s) => ['OUT', 'FEEDER'].includes(String(s.bay_role).toUpperCase()));
-  expect(liniowe.length, 'stacja z backendu ma dwa pola liniowe (OUT i FEEDER)').toBe(2);
-  if (stan === 'wolne_jedno') zajmijPole(enm, liniowe.find((s) => s.bay_role === 'FEEDER')!, 1);
-  if (stan === 'zajete_wszystkie') liniowe.forEach((s, i) => zajmijPole(enm, s, i + 1));
-  if (stan === 'brak_pol') {
-    const stacja = (enm.substations ?? []).find((s) => s.ref_id === STACJA_REF)!;
-    (stacja.meta as { field_specs: Spec[] }).field_specs = specy.filter(
-      (s) => String(s.bay_role).toUpperCase() === 'IN',
-    );
-  }
-  return enm;
-}
-
-/** GPZ po samym `add_grid_source_sn` (realny backend): jedno pole liniowe GPZ. */
-const GPZ_BAZA = wczytaj('s95GpzSwiezy.enm.json');
-const GPZ_ZRODLO = (GPZ_BAZA.sources ?? [])[0]!.ref_id;
-const GPZ_STACJA = (GPZ_BAZA.substations ?? [])[0]!.ref_id;
-const GPZ_SZYNA = (GPZ_BAZA.buses ?? []).find((b) => b.voltage_kv > 1 && b.voltage_kv < 110)!.ref_id;
-
-function gpzWStanie(stan: StanPol): EnergyNetworkModel {
-  const enm = kopia(GPZ_BAZA);
-  const stacja = (enm.substations ?? [])[0]!;
-  const specy = (stacja.meta as { field_specs: Array<Record<string, unknown>> }).field_specs;
-  expect(specy.length, 'świeży GPZ z backendu ma jedno pole liniowe').toBe(1);
-  if (stan === 'wolne_kilka') {
-    specy.push({
-      ...kopia(specy[0]),
-      field_ref: `${String(specy[0].field_ref).replace(/\/001$/, '')}/002`,
-      meta: { gpz_line_field_index: 1 },
-    });
-  }
-  if (stan === 'wolne_jedno' || stan === 'wolne_kilka') return enm;
-  if (stan === 'brak_pol') {
-    (stacja.meta as { field_specs: unknown[] }).field_specs = [];
-    return enm;
-  }
-  specy.forEach((spec, i) => {
-    (enm.branches as unknown as Array<Record<string, unknown>>).push({
-      id: `seg/test-gpz-${i}/segment`,
-      ref_id: `seg/test-gpz-${i}/segment`,
-      type: 'cable',
-      from_bus_ref: GPZ_SZYNA,
-      to_bus_ref: `bus/test-gpz-${i}/downstream`,
-      meta: { origin_bay_ref: spec.field_ref },
-    });
-  });
-  return enm;
+function gpz(snapshot: EnergyNetworkModel) {
+  return (snapshot.substations ?? []).find((st) => String(st.station_type).toLowerCase() === 'gpz')!;
 }
 
 interface Przypadek {
@@ -205,6 +139,7 @@ interface Przypadek {
   readonly actionId: string;
   readonly elementId: string;
   readonly enm: EnergyNetworkModel;
+  readonly widoki: LogicalViewsV1 | null;
   readonly oczekiwanaDostepnosc: boolean;
 }
 
@@ -215,53 +150,80 @@ const OCZEKIWANA: Record<StanPol, boolean> = {
   brak_pol: false,
 };
 
-const ODCINEK_KONCOWY = 'seg/f302cb3a0057c6512af6cb0993f7085a/segment';
-const POLE_GPZ = 'gpz/860003b4514aa388b39561d5005ce584/bay/001/001';
+const BAZA = scena('stacja_na_odcinku', 'wolne_kilka');
+const STACJA_REF = stacjaSnNn(BAZA.snapshot).ref_id;
+const POLE_GPZ = (BAZA.logical_views.line_fields ?? []).find((w) => w.station_ref.startsWith('gpz/'))!.field_ref;
+const ODCINEK_KONCOWY = (() => {
+  const korytarz = (BAZA.snapshot.corridors ?? []).find((c) => (c.ordered_segment_refs ?? []).length > 0)!;
+  return korytarz.ordered_segment_refs[korytarz.ordered_segment_refs.length - 1];
+})();
 
 const PRZYPADKI: readonly Przypadek[] = [
-  ...STANY.flatMap((stan): Przypadek[] => [
-    {
-      nazwa: `stacja SN/nN × ${stan}`,
-      kind: 'station',
-      actionId: 'continue-trunk',
-      elementId: STACJA_REF,
-      enm: stacjaWStanie(stan),
-      oczekiwanaDostepnosc: OCZEKIWANA[stan],
-    },
-    {
-      nazwa: `symbol GPZ × ${stan}`,
-      kind: 'gpz',
-      actionId: 'continue-trunk',
-      elementId: GPZ_ZRODLO,
-      enm: gpzWStanie(stan),
-      oczekiwanaDostepnosc: OCZEKIWANA[stan],
-    },
-    {
-      // Widok przeglądowy (LOD 0) rysuje całą rozdzielnię GPZ symbolem stacji —
-      // menu ma wtedy kategorię `station`, a punkt startu to wolne pole liniowe GPZ.
-      nazwa: `GPZ rysowany jako stacja × ${stan}`,
-      kind: 'station',
-      actionId: 'continue-trunk',
-      elementId: GPZ_STACJA,
-      enm: gpzWStanie(stan),
-      oczekiwanaDostepnosc: OCZEKIWANA[stan],
-    },
-    {
-      nazwa: `szyna sekcji GPZ × ${stan}`,
-      kind: 'section',
-      actionId: 'continue-trunk',
-      elementId: GPZ_SZYNA,
-      enm: gpzWStanie(stan),
-      oczekiwanaDostepnosc: OCZEKIWANA[stan],
-    },
-  ]),
+  ...STANY.flatMap((stan): Przypadek[] => {
+    const stacja = scena('stacja_na_odcinku', stan);
+    const siecGpz = scena('gpz_z_zaciskami', stan);
+    const szynaSekcji = (siecGpz.snapshot.buses ?? []).find(
+      (bus) => bus.voltage_kv > 1 && bus.voltage_kv < 110 && bus.ref_id.includes('/section/'),
+    )!.ref_id;
+    return [
+      {
+        nazwa: `stacja SN/nN × ${stan}`,
+        kind: 'station',
+        actionId: 'continue-trunk',
+        elementId: stacjaSnNn(stacja.snapshot).ref_id,
+        enm: stacja.snapshot,
+        widoki: stacja.logical_views,
+        oczekiwanaDostepnosc: OCZEKIWANA[stan],
+      },
+      {
+        nazwa: `symbol GPZ × ${stan}`,
+        kind: 'gpz',
+        actionId: 'continue-trunk',
+        elementId: (siecGpz.snapshot.sources ?? [])[0]!.ref_id,
+        enm: siecGpz.snapshot,
+        widoki: siecGpz.logical_views,
+        oczekiwanaDostepnosc: OCZEKIWANA[stan],
+      },
+      {
+        // Widok przeglądowy (LOD 0) rysuje całą rozdzielnię GPZ symbolem stacji —
+        // menu ma wtedy kategorię `station`, a punkt startu to wolne pole liniowe GPZ.
+        nazwa: `GPZ rysowany jako stacja × ${stan}`,
+        kind: 'station',
+        actionId: 'continue-trunk',
+        elementId: gpz(siecGpz.snapshot).ref_id,
+        enm: siecGpz.snapshot,
+        widoki: siecGpz.logical_views,
+        oczekiwanaDostepnosc: OCZEKIWANA[stan],
+      },
+      {
+        nazwa: `szyna sekcji GPZ × ${stan}`,
+        kind: 'section',
+        actionId: 'continue-trunk',
+        elementId: szynaSekcji,
+        enm: siecGpz.snapshot,
+        widoki: siecGpz.logical_views,
+        oczekiwanaDostepnosc: OCZEKIWANA[stan],
+      },
+    ];
+  }),
+  // Model odczytu nieobecny (odpowiedź bez `line_fields`): zajętość NIEZNANA, nigdy „wolne".
+  {
+    nazwa: 'stacja SN/nN × brak modelu odczytu',
+    kind: 'station',
+    actionId: 'continue-trunk',
+    elementId: STACJA_REF,
+    enm: BAZA.snapshot,
+    widoki: null,
+    oczekiwanaDostepnosc: false,
+  },
   // Koniec ciągu: punktem startu jest wolny koniec korytarza (stan pól stacji nie gra roli).
   {
     nazwa: 'odcinek kablowy (koniec ciągu)',
     kind: 'cable_segment_sn',
     actionId: 'continue-trunk-from-endpoint',
     elementId: ODCINEK_KONCOWY,
-    enm: STACJA_BAZA,
+    enm: BAZA.snapshot,
+    widoki: BAZA.logical_views,
     oczekiwanaDostepnosc: true,
   },
   // Pole SN: punktem startu jest samo pole (kreator bierze je jako `field_ref`).
@@ -270,7 +232,8 @@ const PRZYPADKI: readonly Przypadek[] = [
     kind: 'bay',
     actionId: 'append-station-on-endpoint',
     elementId: POLE_GPZ,
-    enm: STACJA_BAZA,
+    enm: BAZA.snapshot,
+    widoki: BAZA.logical_views,
     oczekiwanaDostepnosc: true,
   },
   {
@@ -278,7 +241,8 @@ const PRZYPADKI: readonly Przypadek[] = [
     kind: 'apparatus',
     actionId: 'extend-trunk',
     elementId: `${POLE_GPZ}#cable_head`,
-    enm: STACJA_BAZA,
+    enm: BAZA.snapshot,
+    widoki: BAZA.logical_views,
     oczekiwanaDostepnosc: true,
   },
   {
@@ -286,7 +250,8 @@ const PRZYPADKI: readonly Przypadek[] = [
     kind: 'apparatus',
     actionId: 'extend-trunk',
     elementId: `${POLE_GPZ}#breaker`,
-    enm: STACJA_BAZA,
+    enm: BAZA.snapshot,
+    widoki: BAZA.logical_views,
     oczekiwanaDostepnosc: false,
   },
 ];
@@ -342,16 +307,16 @@ describe('S95-START — jedno rozstrzygnięcie punktu startu ciągu (iloczyn rod
       der_fw: [],
       der: [],
     });
-    expect(resolveTrunkStartAvailability(STACJA_BAZA, null, 'zksn', 'zk/test')).toEqual({});
+    expect(resolveTrunkStartAvailability(BAZA.snapshot, BAZA.logical_views, 'zksn', 'zk/test')).toEqual({});
   });
 
   it.each(PRZYPADKI)(
     '$nazwa: menu ⇔ kontekst operacji (jedno rozstrzygnięcie)',
-    ({ kind, actionId, elementId, enm, oczekiwanaDostepnosc }) => {
-      const dostepnosc = resolveTrunkStartAvailability(enm, null, kind, elementId);
+    ({ kind, actionId, elementId, enm, widoki, oczekiwanaDostepnosc }) => {
+      const dostepnosc = resolveTrunkStartAvailability(enm, widoki, kind, elementId);
       expect(dostepnosc?.[actionId]).toBe(oczekiwanaDostepnosc);
 
-      const operacja = buildSldOperationContext(actionId, kind, elementId, enm, null);
+      const operacja = buildSldOperationContext(actionId, kind, elementId, enm, widoki);
       expect(operacja !== null).toBe(oczekiwanaDostepnosc);
       if (operacja) {
         expect(operacja.op).toBe('continue_trunk_segment_sn');
@@ -373,19 +338,26 @@ describe('S95-START — jedno rozstrzygnięcie punktu startu ciągu (iloczyn rod
   );
 
   it('stacja: pole wybrane deterministycznie — wolne kilka ⇒ pierwsze wolne w porządku pól, wolne jedno ⇒ to jedno', () => {
-    const kilka = buildSldOperationContext('continue-trunk', 'station', STACJA_REF, stacjaWStanie('wolne_kilka'), null);
-    const jedno = buildSldOperationContext('continue-trunk', 'station', STACJA_REF, stacjaWStanie('wolne_jedno'), null);
-    expect(kilka?.context.field_ref).toBe(`${STACJA_REF.replace(/\/station$/, '')}/sn_field/001`);
-    expect(jedno?.context.field_ref).toBe(`${STACJA_REF.replace(/\/station$/, '')}/sn_field/001`);
+    const sKilka = scena('stacja_na_odcinku', 'wolne_kilka');
+    const sJedno = scena('stacja_na_odcinku', 'wolne_jedno');
+    const kilka = buildSldOperationContext('continue-trunk', 'station', STACJA_REF, sKilka.snapshot, sKilka.logical_views);
+    const jedno = buildSldOperationContext('continue-trunk', 'station', STACJA_REF, sJedno.snapshot, sJedno.logical_views);
+    // Wolne kilka: pierwsze wolne pole w porządku pól; wolne jedno: to jedno, które zostało.
+    expect(kilka?.context.field_ref).toBe(
+      [...sKilka.pola_liniowe_elementu].sort((a, b) => a.localeCompare(b))[0],
+    );
+    expect(jedno?.context.field_ref).toBe(
+      sJedno.pola_liniowe_elementu[sJedno.pola_liniowe_elementu.length - 1],
+    );
     // Drugi bieg na tym samym wejściu = ten sam kontekst (determinizm).
-    expect(buildSldOperationContext('continue-trunk', 'station', STACJA_REF, stacjaWStanie('wolne_kilka'), null))
+    expect(buildSldOperationContext('continue-trunk', 'station', STACJA_REF, sKilka.snapshot, sKilka.logical_views))
       .toEqual(kilka);
   });
 
   it.each(PRZYPADKI)(
     '$nazwa: klik w pozycję → kreator gotowy do zapisu albo uczciwy powód bez kreatora',
     async (p) => {
-      useSnapshotStore.setState({ snapshot: p.enm, logicalViews: null });
+      useSnapshotStore.setState({ snapshot: p.enm, logicalViews: p.widoki });
       const user = userEvent.setup();
       render(<Wykonawca p={p} />);
       await user.click(screen.getByRole('button', { name: 'wykonaj pozycję menu' }));
@@ -441,11 +413,11 @@ describe('S95-START — konfigurator stacji czyta TEN SAM predykat startu', () =
   };
 
   it.each(STANY)('stan pól %s: przycisk konfiguratora ⇔ pozycja menu kanwy', (stan) => {
-    const enm = stacjaWStanie(stan);
-    useSnapshotStore.setState({ snapshot: enm, logicalViews: null });
+    const { snapshot: enm, logical_views: widoki } = scena('stacja_na_odcinku', stan);
+    useSnapshotStore.setState({ snapshot: enm, logicalViews: widoki });
     renderWithQueryClient(<StationConfiguratorSurface surface={powierzchnia} />);
     const przycisk = screen.getByTestId('station-continue-trunk') as HTMLButtonElement;
-    const menu = resolveTrunkStartAvailability(enm, null, 'station', STACJA_REF);
+    const menu = resolveTrunkStartAvailability(enm, widoki, 'station', STACJA_REF);
     expect(przycisk.disabled).toBe(!OCZEKIWANA[stan]);
     expect(menu?.['continue-trunk']).toBe(!przycisk.disabled);
   });
@@ -453,7 +425,8 @@ describe('S95-START — konfigurator stacji czyta TEN SAM predykat startu', () =
 
 describe('S95-START — natywny prawy klik w etykietę stacji na kanwie', () => {
   it.each(STANY)('stan pól %s: pozycja „Kontynuuj ciąg główny" aktywna ⇔ wolne pole liniowe', async (stan) => {
-    useSnapshotStore.setState({ snapshot: stacjaWStanie(stan), logicalViews: null });
+    const { snapshot, logical_views: widoki } = scena('stacja_na_odcinku', stan);
+    useSnapshotStore.setState({ snapshot, logicalViews: widoki });
     const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
     const etykieta = container.querySelector(
       `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}^="${CSS.escape(STACJA_REF)}#name-row"]`,
@@ -473,25 +446,30 @@ describe('S95-START — natywny prawy klik w etykietę stacji na kanwie', () => 
 describe('S95-START — karta techniczna inspektora czyta TO SAMO rozstrzygnięcie startu', () => {
   const KARTY: ReadonlyArray<{
     nazwa: string;
-    enm: (stan: StanPol) => EnergyNetworkModel;
+    rodzaj: 'stacja_na_odcinku' | 'gpz_z_zaciskami';
     ref: string;
     etykieta: string;
   }> = [
-    { nazwa: 'stacja SN/nN', enm: stacjaWStanie, ref: STACJA_REF, etykieta: 'Kontynuuj ciąg SN ze stacji' },
-    { nazwa: 'GPZ', enm: gpzWStanie, ref: GPZ_STACJA, etykieta: 'Wyprowadź magistralę SN' },
+    { nazwa: 'stacja SN/nN', rodzaj: 'stacja_na_odcinku', ref: STACJA_REF, etykieta: 'Kontynuuj ciąg SN ze stacji' },
+    {
+      nazwa: 'GPZ',
+      rodzaj: 'gpz_z_zaciskami',
+      ref: gpz(scena('gpz_z_zaciskami', 'wolne_kilka').snapshot).ref_id,
+      etykieta: 'Wyprowadź magistralę SN',
+    },
   ];
 
   it.each(KARTY.flatMap((karta) => STANY.map((stan) => ({ ...karta, stan }))))(
     '$nazwa × $stan: przycisk karty ⇔ pozycja menu kanwy ⇔ kreator',
-    async ({ enm: model, ref, etykieta, stan }) => {
-      const enm = model(stan);
-      useSnapshotStore.setState({ snapshot: enm, logicalViews: null });
+    async ({ rodzaj, ref, etykieta, stan }) => {
+      const { snapshot: enm, logical_views: widoki } = scena(rodzaj, stan);
+      useSnapshotStore.setState({ snapshot: enm, logicalViews: widoki });
       useSelectionStore.getState().selectElement({ id: ref, type: 'Station', name: 'Stacja' });
       renderWithQueryClient(<InspectorEngineeringView />);
       const host = await screen.findByTestId('tech-card-host');
       const przycisk = within(host).getByRole('button', { name: etykieta }) as HTMLButtonElement;
       expect(przycisk.disabled).toBe(!OCZEKIWANA[stan]);
-      expect(resolveTrunkStartAvailability(enm, null, 'station', ref)?.['continue-trunk']).toBe(!przycisk.disabled);
+      expect(resolveTrunkStartAvailability(enm, widoki, 'station', ref)?.['continue-trunk']).toBe(!przycisk.disabled);
       if (przycisk.disabled) {
         expect(przycisk.getAttribute('title')).toBe(powodBrakuStartuCiagu('station'));
         return;

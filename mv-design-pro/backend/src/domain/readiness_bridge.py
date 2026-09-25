@@ -45,6 +45,9 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "E009": "catalog.binding_missing",
     # „Stacja przelotowa: pola IN/OUT" == brak wymaganego pola SN stacji.
     "E021": "station.required_field_missing",
+    # „Z jednego pola liniowego wychodzi więcej niż jeden odcinek" == ten sam warunek
+    # (jedno źródło prawdy zajętości pól `enm/zajetosc_pol.py`, karta POLE-ZAJĘTE).
+    "E022": "station.line_field_multiple_segments",
     # „Transformator na szynie SN bez pola roli TR" == brak konfiguracji pola
     # transformatorowego (KOMPLETNOSC-POLA-TR — ten sam warunek, jedno zrodlo
     # predykatu `enm/pole_transformatorowe.py`).
@@ -317,6 +320,7 @@ KODY_KANONU_ZAREZERWOWANE: dict[str, str] = {
     "ring.nop_required": "Emiter przez odwzorowanie kodu walidatora I005 (nie literał w kodzie).",
     "station.nn_outgoing_min_1": "Brak emitera: liczba odpływów nN nie jest sprawdzana.",
     "station.required_field_missing": "Emiter przez odwzorowanie kodu walidatora E021.",
+    "station.line_field_multiple_segments": "Emiter przez odwzorowanie kodu walidatora E022.",
     "station.type_invalid": "Brak emitera: typ stacji walidowany kontraktem operacji, nie kodem gotowości.",
     "study_case.missing_base_snapshot": "Brak emitera: warunek pilnowany wyjątkiem warstwy przypadku.",
     "transformer.connection_missing": "Brak emitera: połączenie transformatora walidowane kontraktem operacji.",

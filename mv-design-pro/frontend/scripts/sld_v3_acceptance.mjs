@@ -329,6 +329,14 @@ const fixturePath = resolve(
   'sldSubstrate52s.enm.json',
 );
 const enm = JSON.parse(readFileSync(fixturePath, 'utf8')).enm;
+// Karta POLE-ZAJĘTE: zajętość pól liniowych sieci referencyjnej z modelu odczytu backendu
+// (`logical_views.line_fields`) — generator `backend/scripts/eksport_fixtur_harnessu.py`.
+const widokiLogiczneEnm = JSON.parse(
+  readFileSync(
+    resolve(here, '..', 'src', 'harness-fixtures', 'generated', 'widoki_logiczne_sld_substrate_52s.json'),
+    'utf8',
+  ),
+);
 
 /** Karta WN-WYNIK: most refów i napięcia szyn liczone RAZ na całą sonde —
  *  ta sama para, którą produkcja karmi warstwę wynikową
@@ -2692,7 +2700,7 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
       // S95-START: wejście jest REALNE tylko z punktem startu ciągu (predykaty parami).
       return w.stan === 'temat'
         && w.temat.menuKind === 'station'
-        && resolveTrunkStartAvailability(enm, null, 'station', w.temat.modelRef)?.['continue-trunk'] === true;
+        && resolveTrunkStartAvailability(enm, widokiLogiczneEnm, 'station', w.temat.modelRef)?.['continue-trunk'] === true;
     }).length;
     const odcinkiZWejsciem = obszary.filter((a) => {
       if (a.klasa !== 'tor' && a.klasa !== 'lacznik-wiersza') return false;

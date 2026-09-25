@@ -52,7 +52,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **143** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **144** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -136,6 +136,7 @@ Wszystkie **143** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `apparatus.sn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `earthing.electrode_data_missing` | STATIONS | 3 | WARNING | Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe | panel: `inspector`, tab: `uziemienie`, focus: `earth_electrode` |
 | `nn.main_breaker_missing` | STATIONS | 3 | BLOCKER | Szyna nN wymaga wyłącznika głównego | panel: `inspector`, tab: `nn` |
+| `station.line_field_multiple_segments` | STATIONS | 3 | BLOCKER | Z jednego pola liniowego SN wychodzi więcej niż jeden odcinek | panel: `inspector`, tab: `pola` |
 | `station.required_field_missing` | STATIONS | 3 | BLOCKER | Stacja nie ma wymaganego pola SN | panel: `inspector`, tab: `pola` |
 | `transformer.bay_missing` | STATIONS | 3 | WARNING | Transformator jest połączony elektrycznie z szyną SN, lecz nie posiada kompletnej konfiguracji pola transformatorowego po stronie SN | panel: `inspector`, tab: `pola` |
 | `station.nn_outgoing_min_1` | STATIONS | 4 | WARNING | Stacja powinna mieć co najmniej 1 odpływ nN | panel: `inspector`, tab: `nn`, modal: `add_nn_outgoing` |
@@ -204,21 +205,21 @@ Wszystkie **143** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 92 |
+| BLOCKER | 93 |
 | WARNING | 50 |
 | INFO | 1 |
-| **Razem** | **143** |
+| **Razem** | **144** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 16 |
 | TOPOLOGY | 6 |
 | CATALOGS | 48 |
-| STATIONS | 13 |
+| STATIONS | 14 |
 | GENERATORS | 25 |
 | PROTECTION | 14 |
 | ANALYSIS | 21 |
-| **Razem** | **143** |
+| **Razem** | **144** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

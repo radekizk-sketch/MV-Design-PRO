@@ -1,0 +1,650 @@
+{
+  "logical_views": {
+    "branches": [],
+    "line_fields": [],
+    "secondary_connectors": [],
+    "terminals": [],
+    "trunks": [
+      {
+        "corridor_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/corridor_01",
+        "corridor_type": "radial",
+        "embedded_objects": [],
+        "no_point_ref": null,
+        "segments": [],
+        "terminals": []
+      }
+    ]
+  },
+  "pola_liniowe_elementu": [],
+  "snapshot": {
+    "bays": [],
+    "branch_points": [],
+    "branches": [
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
+        "id": "07e18f70-d718-501a-b331-aef2671cddd0",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "apparatus_kind": "BREAKER",
+          "bay_role": "OUT",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "catalog_item_version": "2024.1",
+          "field_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+          "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/terminal"
+        },
+        "name": "Aparat Pole liniowe GPZ 1",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/apparatus",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "gpz_field_device"
+        ],
+        "to_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/terminal",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
+        "id": "58d66974-da75-57d0-b238-79a1537fe9f7",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "apparatus_kind": "BREAKER",
+          "bay_role": "OUT",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "catalog_item_version": "2024.1",
+          "field_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+          "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/terminal"
+        },
+        "name": "Aparat Pole liniowe GPZ 1",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/apparatus",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "gpz_field_device"
+        ],
+        "to_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/terminal",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
+        "id": "7d95f85f-866c-5c95-a8c9-9b98b5e51b39",
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sprzęgło sekcji GPZ 1-2",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/coupler/001",
+        "source_mode": null,
+        "status": "closed",
+        "tags": [],
+        "to_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
+        "type": "bus_coupler",
+        "x_ohm": null
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
+        "id": "f7a85325-2172-5aa8-94e3-717149edb7b7",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "apparatus_kind": "BREAKER",
+          "bay_role": "OUT",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "catalog_item_version": "2024.1",
+          "field_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+          "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/terminal"
+        },
+        "name": "Aparat Pole liniowe GPZ 2",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/apparatus",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "gpz_field_device"
+        ],
+        "to_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/terminal",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
+        "id": "faf6b41e-660d-53b0-85b4-68a6a8dd99c8",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "apparatus_kind": "BREAKER",
+          "bay_role": "OUT",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "catalog_item_version": "2024.1",
+          "field_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+          "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/terminal"
+        },
+        "name": "Aparat Pole liniowe GPZ 2",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/apparatus",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "gpz_field_device"
+        ],
+        "to_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/terminal",
+        "type": "breaker",
+        "x_ohm": 0.0
+      }
+    ],
+    "buses": [
+      {
+        "frequency_hz": null,
+        "id": "c0650785-126c-5a20-942f-8d095969d16a",
+        "meta": {
+          "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001",
+          "gpz_section_order": 0,
+          "gpz_substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation"
+        },
+        "name": "Szyna GPZ S1 15 kV",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": "GPZ"
+      },
+      {
+        "frequency_hz": null,
+        "id": "b4abe14a-5f88-57bd-a2b5-aaa2a94b1c93",
+        "meta": {
+          "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002",
+          "gpz_section_order": 1,
+          "gpz_substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation"
+        },
+        "name": "Szyna GPZ S2 15 kV",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": "GPZ"
+      },
+      {
+        "frequency_hz": null,
+        "id": "4673d5e6-6e78-5e19-8def-22af320c5887",
+        "meta": {
+          "gpz_substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+          "gpz_transformer_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/wn_sn",
+          "render_on_sld": true,
+          "show_in_project_tree": false,
+          "visual_role": "GPZ_HV_BUS"
+        },
+        "name": "Szyna 110 kV TR1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/bus_110",
+        "tags": [
+          "gpz_hv_bus",
+          "helper_bus"
+        ],
+        "voltage_kv": 110.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "8f399ba6-3ba1-5e5b-a702-b62ef44f870c",
+        "meta": {
+          "gpz_substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+          "gpz_transformer_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/wn_sn",
+          "render_on_sld": true,
+          "show_in_project_tree": false,
+          "visual_role": "GPZ_HV_BUS"
+        },
+        "name": "Szyna 110 kV TR2",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/bus_110",
+        "tags": [
+          "gpz_hv_bus",
+          "helper_bus"
+        ],
+        "voltage_kv": 110.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "c900a196-43ca-58ee-aae8-a04912fc2003",
+        "meta": {
+          "field_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
+          "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001",
+          "port_kind": "trunk_out",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk odpływowy Pole liniowe GPZ 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/terminal",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "1d9f5d8d-d886-52c8-95c6-0696effcd9e2",
+        "meta": {
+          "field_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002",
+          "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001",
+          "port_kind": "trunk_out",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk odpływowy Pole liniowe GPZ 2",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/terminal",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "78eea7b6-a829-5a7b-9d14-142e7b4c39fb",
+        "meta": {
+          "field_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001",
+          "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002",
+          "port_kind": "trunk_out",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk odpływowy Pole liniowe GPZ 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/terminal",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "cbc2517c-9e97-5b78-ab35-5d714c73b14d",
+        "meta": {
+          "field_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002",
+          "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002",
+          "port_kind": "trunk_out",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk odpływowy Pole liniowe GPZ 2",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/terminal",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      }
+    ],
+    "connection_nodes": [],
+    "corridors": [
+      {
+        "corridor_type": "radial",
+        "id": "c12e9b37-3f12-57c2-bafa-fa8a8d1a3146",
+        "meta": {},
+        "name": "Magistrala 01",
+        "no_point_ref": null,
+        "ordered_segment_refs": [],
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/corridor_01",
+        "tags": []
+      }
+    ],
+    "generators": [],
+    "header": {
+      "connection_conditions": null,
+      "created_at": "2026-09-16T08:00:00Z",
+      "defaults": {
+        "frequency_hz": 50.0,
+        "sn_nominal_kv": null,
+        "unit_system": "SI"
+      },
+      "description": null,
+      "enm_version": "1.0",
+      "hash_sha256": "",
+      "name": "POLE-ZAJĘTE",
+      "revision": 1,
+      "updated_at": "2026-09-16T08:00:00Z"
+    },
+    "junctions": [],
+    "katalog_projektu": null,
+    "line_runs": [
+      {
+        "branch_origin_station_ref": null,
+        "id": "gpz/1aa346af2c964aa1c99b85b875500bb4/corridor_01",
+        "name": "Magistrala 01",
+        "nop_station_ref": null,
+        "parent_run_ref": null,
+        "run_kind": "main_trunk",
+        "segments": [],
+        "starting_bay_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
+        "starting_port_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/terminal",
+        "stations": []
+      }
+    ],
+    "loads": [],
+    "measurements": [],
+    "protection_assignments": [],
+    "shunt_capacitors": [],
+    "sources": [
+      {
+        "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
+        "c_max": null,
+        "c_min": null,
+        "catalog_namespace": "ZRODLO_SN",
+        "catalog_ref": "src-gpz-15kv-250mva-rx010",
+        "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001",
+        "id": "6400461d-390d-52a1-bd5b-6526fbd78fbe",
+        "ik3_ka": 9.62,
+        "ik3_min_ka": null,
+        "materialized_params": {
+          "catalog_item_id": "src-gpz-15kv-250mva-rx010",
+          "catalog_item_version": "legacy",
+          "ik3_ka": 9.62,
+          "rx_ratio": 0.1,
+          "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+          "short_circuit_model": "short_circuit_power",
+          "sk3_mva": 250.0,
+          "voltage_rating_kv": 15.0
+        },
+        "meta": {
+          "catalog_item_version": "legacy",
+          "catalog_role": "GPZ_110_SN",
+          "solution_ref": null,
+          "source_id": null
+        },
+        "model": "short_circuit_power",
+        "name": "Źródło GPZ 15 kV",
+        "neutral_grounding": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm": null,
+        "r_ohm": null,
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/source/main",
+        "rx_ratio": 0.1,
+        "rx_ratio_min": null,
+        "sk3_hv_mva": null,
+        "sk3_min_mva": null,
+        "sk3_mva": 250.0,
+        "sn_voltage_kv": null,
+        "source_mode": "KATALOG",
+        "source_side": "SN",
+        "substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+        "tags": [],
+        "u_set_pu": null,
+        "voltage_hv_kv": null,
+        "x0_ohm": null,
+        "x_ohm": null,
+        "z0_z1_ratio": null
+      }
+    ],
+    "substations": [
+      {
+        "bus_refs": [
+          "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
+          "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
+          "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/bus_110",
+          "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/bus_110"
+        ],
+        "construction_type": null,
+        "designation": null,
+        "entry_point_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
+        "external_ports": [],
+        "gpz_hv_sections": [],
+        "gpz_sections": [
+          {
+            "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
+            "incoming_source_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/source/main",
+            "left_coupler_ref": null,
+            "line_field_name": "Pole liniowe GPZ 1",
+            "name": "Sekcja 1",
+            "order": 0,
+            "right_coupler_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/coupler/001",
+            "section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001"
+          },
+          {
+            "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
+            "incoming_source_ref": null,
+            "left_coupler_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/coupler/001",
+            "line_field_name": "Pole liniowe GPZ 1",
+            "name": "Sekcja 2",
+            "order": 1,
+            "right_coupler_ref": null,
+            "section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002"
+          }
+        ],
+        "id": "fe5be262-8b68-57e1-879e-60e8d4294318",
+        "meta": {
+          "field_specs": [],
+          "gpz_hv_bus_refs": [
+            "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/bus_110",
+            "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/bus_110"
+          ],
+          "gpz_section_count": 2,
+          "short_circuit_input_side": "SN",
+          "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+          "wn_sn_transformer_count": 2
+        },
+        "name": "GPZ 15 kV",
+        "nn_sections": [],
+        "nn_voltage_levels": [],
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+        "station_type": "gpz",
+        "tags": [],
+        "transformer_refs": [
+          "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/wn_sn",
+          "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/wn_sn"
+        ]
+      }
+    ],
+    "transformers": [
+      {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
+        "hv_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/bus_110",
+        "hv_neutral": null,
+        "i0_percent": 0.35,
+        "id": "1efc6b1d-5817-51cf-8862-59a581426bfa",
+        "lv_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
+        "lv_earthing_system": null,
+        "lv_neutral": null,
+        "materialized_params": {
+          "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+          "catalog_item_version": "legacy",
+          "i0_percent": 0.35,
+          "p0_kw": 25.0,
+          "pk_kw": 120.0,
+          "rated_power_mva": 25.0,
+          "uk_percent": 11.0,
+          "vector_group": "Yd11",
+          "voltage_hv_kv": 110.0,
+          "voltage_lv_kv": 15.0
+        },
+        "meta": {
+          "catalog_item_version": "legacy",
+          "catalog_role": "TRANSFORMATOR_WN_SN",
+          "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001",
+          "gpz_section_order": 0,
+          "gpz_substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+          "visual_role": "GPZ_WN_SN_TRANSFORMER"
+        },
+        "n_parallel": null,
+        "name": "TR1 110/15 kV",
+        "overrides": [],
+        "p0_kw": 25.0,
+        "parameter_source": "CATALOG",
+        "pk_kw": 120.0,
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/wn_sn",
+        "sn_mva": 25.0,
+        "source_mode": "KATALOG",
+        "tags": [
+          "gpz_wn_sn_transformer"
+        ],
+        "tap_changer": null,
+        "tap_max": null,
+        "tap_min": null,
+        "tap_position": null,
+        "tap_step_percent": null,
+        "uhv_kv": 110.0,
+        "uk_percent": 11.0,
+        "ulv_kv": 15.0,
+        "vector_group": "Yd11"
+      },
+      {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
+        "hv_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/bus_110",
+        "hv_neutral": null,
+        "i0_percent": 0.35,
+        "id": "6b3c6a1f-bfc0-533a-b7a0-9c7e32898d77",
+        "lv_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
+        "lv_earthing_system": null,
+        "lv_neutral": null,
+        "materialized_params": {
+          "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+          "catalog_item_version": "legacy",
+          "i0_percent": 0.35,
+          "p0_kw": 25.0,
+          "pk_kw": 120.0,
+          "rated_power_mva": 25.0,
+          "uk_percent": 11.0,
+          "vector_group": "Yd11",
+          "voltage_hv_kv": 110.0,
+          "voltage_lv_kv": 15.0
+        },
+        "meta": {
+          "catalog_item_version": "legacy",
+          "catalog_role": "TRANSFORMATOR_WN_SN",
+          "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002",
+          "gpz_section_order": 1,
+          "gpz_substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
+          "visual_role": "GPZ_WN_SN_TRANSFORMER"
+        },
+        "n_parallel": null,
+        "name": "TR2 110/15 kV",
+        "overrides": [],
+        "p0_kw": 25.0,
+        "parameter_source": "CATALOG",
+        "pk_kw": 120.0,
+        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/wn_sn",
+        "sn_mva": 25.0,
+        "source_mode": "KATALOG",
+        "tags": [
+          "gpz_wn_sn_transformer"
+        ],
+        "tap_changer": null,
+        "tap_max": null,
+        "tap_min": null,
+        "tap_position": null,
+        "tap_step_percent": null,
+        "uhv_kv": 110.0,
+        "uk_percent": 11.0,
+        "ulv_kv": 15.0,
+        "vector_group": "Yd11"
+      }
+    ]
+  }
+}

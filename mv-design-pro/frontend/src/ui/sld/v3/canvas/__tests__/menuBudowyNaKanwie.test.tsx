@@ -26,7 +26,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import type { EnergyNetworkModel } from '../../../../../types/enm';
+import type { EnergyNetworkModel, LogicalViewsV1 } from '../../../../../types/enm';
 import {
   buildSldOperationContext,
   resolveBranchStartAvailability,
@@ -58,6 +58,26 @@ const fixturePath = resolve(
 );
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
+/**
+ * Karta POLE-ZAJĘTE: zajętość pól liniowych front czyta WYŁĄCZNIE z modelu odczytu backendu
+ * (`logical_views.line_fields`). Widoki logiczne fikstur ENM liczy generator backendu
+ * (`scripts/eksport_fixtur_harnessu.py`, ta sama funkcja co odpowiedź operacji).
+ */
+const generated = resolve(here, '..', '..', '..', '..', '..', 'harness-fixtures', 'generated');
+function wczytajWidoki(nazwa: string): LogicalViewsV1 {
+  return JSON.parse(readFileSync(resolve(generated, `${nazwa}.json`), 'utf8')) as LogicalViewsV1;
+}
+interface ScenaPunktuStartu {
+  readonly pola_liniowe_elementu: string[];
+  readonly snapshot: EnergyNetworkModel;
+  readonly logical_views: LogicalViewsV1;
+}
+function wczytajScene(nazwa: string): ScenaPunktuStartu {
+  return JSON.parse(readFileSync(resolve(generated, `${nazwa}.json`), 'utf8')) as ScenaPunktuStartu;
+}
+const widokiEnm = wczytajWidoki('widoki_logiczne_sld_substrate_52s');
+const widokiGpzSwiezy = wczytajWidoki('widoki_logiczne_s95_gpz_swiezy');
+
 const W = 1322;
 const H = 696;
 
@@ -66,7 +86,7 @@ beforeEach(() => {
   useSelectionStore.getState().clearSelection();
   useRawResultOverlayStore.getState().clear();
   useNetworkBuildStore.setState({ activeSurface: null, surfaceStack: [] });
-  useSnapshotStore.setState({ snapshot: enm });
+  useSnapshotStore.setState({ snapshot: enm, logicalViews: widokiEnm });
 });
 
 afterEach(() => {
@@ -414,7 +434,7 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
     // (kreator nie miałby punktu startu; przed S9-10 otwierał się martwy).
     expect(within(menu!).queryByTestId('sld-menu-start-branch')).toBeTruthy();
     expect(pozycjaAktywna(menu!, 'start-branch')).toBe(
-      resolveBranchStartAvailability(enm, 'station', stacja.ownerRef ?? null),
+      resolveBranchStartAvailability(enm, widokiEnm, 'station', stacja.ownerRef ?? null),
     );
     await userEvent.click(within(menu!).getByTestId('sld-menu-continue-trunk'));
     expect(openOperationForm.mock.calls[0][0]).toBe('continue_trunk_segment_sn');
@@ -439,7 +459,7 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
       const wynik = resolveCanvasMenuSubject(wejscieTematu(kanwa, a), indexModelu);
       return wynik.stan === 'temat'
         && wynik.temat.menuKind === 'station'
-        && resolveTrunkStartAvailability(enm, null, 'station', wynik.temat.modelRef)?.['continue-trunk'] === true;
+        && resolveTrunkStartAvailability(enm, widokiEnm, 'station', wynik.temat.modelRef)?.['continue-trunk'] === true;
     });
     const gpzJakoStacja = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef?.startsWith('gpz/'));
     if (gpzJakoStacja) {
@@ -467,7 +487,7 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
       // zablokowana — martwy kreator to nie jest „wejście budowy").
       expect(within(menu!).queryByTestId('sld-menu-start-branch')).toBeTruthy();
       expect(pozycjaAktywna(menu!, 'start-branch')).toBe(
-        resolveBranchStartAvailability(enm, 'station', stacja.ownerRef ?? null),
+        resolveBranchStartAvailability(enm, widokiEnm, 'station', stacja.ownerRef ?? null),
       );
       await zamknijMenu();
     }
@@ -567,9 +587,9 @@ describe('S9-5 D — pierwsze ogniwo budowy na świeżo wstawionym GPZ', () => {
     expect(szynaSn, 'fixtura ma szynę SN').toBeTruthy();
 
     const elementId = kind === 'gpz' ? zrodloRef! : szynaSn!.ref_id;
-    const operacja = buildSldOperationContext('continue-trunk', kind, elementId, gpzSwiezy, null);
+    const operacja = buildSldOperationContext('continue-trunk', kind, elementId, gpzSwiezy, widokiGpzSwiezy);
     expect(operacja?.op).toBe('continue_trunk_segment_sn');
-    expect(resolveGpzTrunkStartFieldRef(gpzSwiezy, (gpzSwiezy.substations ?? [])[0].ref_id)).toBeTruthy();
+    expect(resolveGpzTrunkStartFieldRef(gpzSwiezy, (gpzSwiezy.substations ?? [])[0].ref_id, widokiGpzSwiezy)).toBeTruthy();
 
     // Punkt startu = `field_ref` istniejącego pola liniowego (rola OUT/FEEDER).
     const fieldRef = String(operacja!.context.field_ref ?? '');
@@ -590,47 +610,30 @@ describe('S9-5 D — pierwsze ogniwo budowy na świeżo wstawionym GPZ', () => {
     // pozycję) i warunek WYJŚCIA (operacja dostaje punkt startu) pochodzą z
     // JEDNEGO źródła — `resolveTrunkStartAvailability` → `buildSldOperationContext`
     // (karta S95-START). Tu sprawdzamy, że oba mówią to samo na tym samym modelu.
-    const dostepnosc = resolveTrunkStartAvailability(gpzSwiezy, null, kind, elementId);
+    const dostepnosc = resolveTrunkStartAvailability(gpzSwiezy, widokiGpzSwiezy, kind, elementId);
     expect(dostepnosc?.['continue-trunk']).toBe(true);
     const pozycja = getMenuActions(kind, { trunkStartAvailable: dostepnosc })
       .find((akcja) => akcja.id === 'continue-trunk');
     expect(pozycja?.disabled ?? false).toBe(false);
   });
 
-  it('pole liniowe ZAJĘTE przez istniejący ciąg nie jest punktem startu (zajętość liczona PER POLE)', () => {
-    const stationRef = (gpzSwiezy.substations ?? [])[0].ref_id;
-    const wolne = resolveGpzTrunkStartFieldRef(gpzSwiezy, stationRef);
-    expect(wolne).toBeTruthy();
-
-    // Ten sam model + odcinek terenowy wyprowadzony z TEGO pola.
-    const zZajetymPolem = {
-      ...gpzSwiezy,
-      branches: [
-        ...(gpzSwiezy.branches ?? []),
-        {
-          ref_id: 'seg/test/segment',
-          id: 'seg/test/segment',
-          type: 'cable',
-          meta: { origin_bay_ref: wolne },
-        },
-      ],
-    } as unknown as EnergyNetworkModel;
-    expect(resolveGpzTrunkStartFieldRef(zZajetymPolem, stationRef)).toBeNull();
-
-    // ...a odcinek wyprowadzony z INNEGO pola nie blokuje tego (per POLE, nie per szyna).
-    const zInnymPolem = {
-      ...gpzSwiezy,
-      branches: [
-        ...(gpzSwiezy.branches ?? []),
-        {
-          ref_id: 'seg/test/inne',
-          id: 'seg/test/inne',
-          type: 'cable',
-          meta: { origin_bay_ref: `${wolne}-inne` },
-        },
-      ],
-    } as unknown as EnergyNetworkModel;
-    expect(resolveGpzTrunkStartFieldRef(zInnymPolem, stationRef)).toBe(wolne);
+  it('pole liniowe ZAJĘTE nie jest punktem startu — zajętość PER POLE z modelu odczytu backendu', () => {
+    // Karta POLE-ZAJĘTE: sceny z generatora backendu (operacje domenowe), zajętość liczy
+    // `enm/zajetosc_pol.py` — front czyta `line_fields` i wybiera pierwsze WOLNE pole.
+    const wolneJedno = wczytajScene('punkt_startu_gpz_z_zaciskami_wolne_jedno');
+    const zajete = wczytajScene('punkt_startu_gpz_z_zaciskami_zajete_wszystkie');
+    const gpzRef = (snap: EnergyNetworkModel) =>
+      (snap.substations ?? []).find((st) => String(st.station_type) === 'gpz')!.ref_id;
+    const ostatniePole = wolneJedno.pola_liniowe_elementu[wolneJedno.pola_liniowe_elementu.length - 1];
+    // Zajęte pola tej samej szyny sekcyjnej nie blokują wolnego (per POLE, nie per szyna).
+    expect(
+      resolveGpzTrunkStartFieldRef(wolneJedno.snapshot, gpzRef(wolneJedno.snapshot), wolneJedno.logical_views),
+    ).toBe(ostatniePole);
+    expect(
+      resolveGpzTrunkStartFieldRef(zajete.snapshot, gpzRef(zajete.snapshot), zajete.logical_views),
+    ).toBeNull();
+    // Brak modelu odczytu = zajętość NIEZNANA, nigdy „wolne".
+    expect(resolveGpzTrunkStartFieldRef(wolneJedno.snapshot, gpzRef(wolneJedno.snapshot), null)).toBeNull();
   });
 });
 
@@ -656,44 +659,42 @@ describe('S9-10 — „Rozpocznij odgałęzienie": predykat menu SPAROWANY z res
   it('parowanie na DANYCH: stacje sieci referencyjnej i świeży GPZ nie mają punktu startu → dostępność false', () => {
     for (const stacja of (enm.substations ?? []).filter((s) => String(s.station_type).toLowerCase() !== 'gpz')) {
       expect(
-        resolveBranchStartAvailability(enm, 'station', stacja.ref_id),
+        resolveBranchStartAvailability(enm, widokiEnm, 'station', stacja.ref_id),
         `stacja ${stacja.ref_id}`,
       ).toBe(false);
     }
     const zrodloRef = (gpzSwiezy.sources ?? [])[0]?.ref_id;
     const szynaSn = (gpzSwiezy.buses ?? []).find((b) => b.voltage_kv > 1 && b.voltage_kv < 110);
-    expect(resolveBranchStartAvailability(gpzSwiezy, 'gpz', zrodloRef ?? null)).toBe(false);
-    expect(resolveBranchStartAvailability(gpzSwiezy, 'section', szynaSn?.ref_id ?? null)).toBe(false);
+    expect(resolveBranchStartAvailability(gpzSwiezy, widokiGpzSwiezy, 'gpz', zrodloRef ?? null)).toBe(false);
+    expect(resolveBranchStartAvailability(gpzSwiezy, widokiGpzSwiezy, 'section', szynaSn?.ref_id ?? null)).toBe(false);
   });
 
-  /** Stacja referencyjna + WSTRZYKNIĘTE wolne pole odgałęźne (rola FEEDER,
-   *  wolny zacisk) — dokładnie warunki, których wymaga resolver kreatora. */
-  function zWolnymPolemOdgaleznym(): { enm: EnergyNetworkModel; stationRef: string; fieldRef: string } {
-    const kopia = JSON.parse(JSON.stringify(enm)) as EnergyNetworkModel;
-    const stacja = (kopia.substations ?? []).find(
-      (s) => String(s.station_type).toLowerCase() !== 'gpz' && Array.isArray((s.meta as { field_specs?: unknown[] } | undefined)?.field_specs),
+  /** Stacja wstawiona na odcinek operacjami domenowymi z wolnym polem odgałęźnym (rola
+   *  FEEDER, własny zacisk) — scena z generatora backendu. Karta POLE-ZAJĘTE: zajętość pola
+   *  front czyta z `line_fields` tej samej odpowiedzi, więc wstrzykiwanie pola do migawki bez
+   *  modelu odczytu nie jest już realnym stanem. */
+  function zWolnymPolemOdgaleznym(): {
+    enm: EnergyNetworkModel;
+    widoki: LogicalViewsV1;
+    stationRef: string;
+    fieldRef: string;
+  } {
+    const scena = wczytajScene('punkt_startu_stacja_na_odcinku_wolne_kilka');
+    const stacja = (scena.snapshot.substations ?? []).find(
+      (st) => String(st.station_type).toLowerCase() !== 'gpz',
     )!;
-    const fieldRef = `${stacja.ref_id}/sn_field/odgalezne-test`;
-    const snBusRef = (stacja.bus_refs ?? []).find((busRef) => {
-      const bus = (kopia.buses ?? []).find((b) => b.ref_id === busRef);
-      return bus != null && bus.voltage_kv > 1;
-    })!;
-    ((stacja.meta as { field_specs: unknown[] }).field_specs).push({
-      field_ref: fieldRef,
-      bay_role: 'FEEDER',
-      bus_ref: snBusRef,
-      field_terminal_bus_ref: `${stacja.ref_id}/bus/odgalezne-test-zacisk`,
-      name: 'Pole odgałęźne SN (test S9-10)',
-    });
-    return { enm: kopia, stationRef: stacja.ref_id, fieldRef };
+    const fieldRef = (scena.logical_views.line_fields ?? []).find(
+      (wiersz) => wiersz.station_ref === stacja.ref_id && wiersz.bay_role === 'FEEDER',
+    )!.field_ref;
+    return { enm: scena.snapshot, widoki: scena.logical_views, stationRef: stacja.ref_id, fieldRef };
   }
 
   it('parowanie POZYTYWNE: wolne pole FEEDER ⇒ dostępność true ORAZ kreator dostaje from_ref TEGO pola', () => {
-    const { enm: zPolem, stationRef, fieldRef } = zWolnymPolemOdgaleznym();
-    expect(resolveBranchStartAvailability(zPolem, 'station', stationRef)).toBe(true);
+    const { enm: zPolem, widoki, stationRef, fieldRef } = zWolnymPolemOdgaleznym();
+    expect(resolveBranchStartAvailability(zPolem, widoki, 'station', stationRef)).toBe(true);
     // Predykaty PARAMI na JEDNYM modelu: to samo rozstrzygnięcie zasila
     // formularz — `from_ref` operacji wskazuje wstrzyknięte pole.
-    const operacja = buildSldOperationContext('start-branch', 'station', stationRef, zPolem, null);
+    const operacja = buildSldOperationContext('start-branch', 'station', stationRef, zPolem, widoki);
     expect(operacja?.op).toBe('start_branch_segment_sn');
     expect(String(operacja?.context.from_ref ?? '')).toBe(`${fieldRef}.BRANCH`); // ui-terminology-ignore
   });
@@ -714,8 +715,8 @@ describe('S9-10 — „Rozpocznij odgałęzienie": predykat menu SPAROWANY z res
   });
 
   it('NATYWNY prawy klik w etykietę stacji Z wolnym polem FEEDER: pozycja AKTYWNA', async () => {
-    const { enm: zPolem, stationRef } = zWolnymPolemOdgaleznym();
-    useSnapshotStore.setState({ snapshot: zPolem });
+    const { enm: zPolem, widoki, stationRef } = zWolnymPolemOdgaleznym();
+    useSnapshotStore.setState({ snapshot: zPolem, logicalViews: widoki });
     const { container } = render(<SldCanvasV3Workspace width={W} height={H} lodOverride={2} />);
     const etykieta = container.querySelector(
       `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}^="${CSS.escape(stationRef)}#name-row"]`,

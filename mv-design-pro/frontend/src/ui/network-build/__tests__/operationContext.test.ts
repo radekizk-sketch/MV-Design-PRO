@@ -157,6 +157,26 @@ const logicalViews = {
   ],
 } as any;
 
+/**
+ * Karta POLE-ZAJĘTE: zajętość pól liniowych front czyta z modelu odczytu backendu
+ * (`logical_views.line_fields`, `enm/zajetosc_pol.py`). Test podaje wiersze tak, jak zwraca
+ * je backend dla opisanej migawki; bez wiersza zajętość jest NIEZNANA (nigdy „wolne").
+ */
+function zPolami(
+  widoki: Record<string, unknown>,
+  wiersze: ReadonlyArray<{ field_ref: string; station_ref: string; bay_role: string; occupied: boolean }>,
+): any {
+  return {
+    ...widoki,
+    line_fields: wiersze.map((w) => ({
+      attachment_bus_ref: null,
+      segment_refs: w.occupied ? ['seg-zajmujacy'] : [],
+      corridor_refs: [],
+      ...w,
+    })),
+  };
+}
+
 describe('buildOperationContext', () => {
   it('kanoniczny resolver elementu scala station, bus nn i feeder bez lokalnych fallbackow w adapterze', () => {
     const generatorContext = resolveElementNetworkContext(snapshot, 'pv-1', 'PVInverter');
@@ -195,7 +215,11 @@ describe('buildOperationContext', () => {
     expect(context.existing_segment_count).toBe(2);
   });
 
-  it('kontynuuje ciąg ze stacji przez dostępny terminal pola SN tej stacji', () => {
+  it('pole zapisane wyłącznie w `bays` (bez specyfikacji pola stacji) nie jest punktem startu ciągu', () => {
+    // Karta POLE-ZAJĘTE: backend rozpoznaje pole wyłącznie ze specyfikacji `meta.field_specs`
+    // (`_field_spec_for_ref`) — ciąg z pola znanego tylko z kolekcji `bays` odmówiłby zapisu
+    // (`trunk.source_field_not_line_bay`), a model odczytu nie niesie jego zajętości. Dawniej
+    // front oferował taki start (obietnica bez pokrycia).
     const context = buildOperationContext({
       canonicalOp: 'continue_trunk_segment_sn',
       elementId: 'st-1',
@@ -205,67 +229,9 @@ describe('buildOperationContext', () => {
     });
 
     expect(context.station_ref).toBe('st-1');
-    expect(context.trunk_id).toBe('trunk-1');
-    expect(context.trunkId).toBe('trunk-1');
-    expect(context.from_terminal_id).toBe('bay-out-1');
-    expect(context.terminal_id).toBe('bay-out-1');
-    expect(context.terminalId).toBe('bay-out-1');
-    expect(context.terminal_port_id).toBe('station_out');
-    expect(context.port_id).toBe('station_out');
-    expect(context.from_bus_ref).toBe('bus-st-field-out');
+    expect(context.from_terminal_id).toBeUndefined();
+    expect(context.field_ref).toBeUndefined();
     expect(context.terminal_name).toBe('ST-1 - port wyjściowy SN');
-    expect(context.terminal_voltage_label).toBe('15 kV');
-    expect(context.is_first_trunk_segment).toBe(false);
-    expect(context.existing_segment_count).toBe(2);
-  });
-
-  it('kontynuuje ciąg ze stacji przez techniczny koniec korytarza, gdy terminal logiczny nie istnieje', () => {
-    const stationCorridorSnapshot = {
-      ...snapshot,
-      buses: [
-        ...snapshot.buses,
-        { id: 'bus-st-open', ref_id: 'bus-st-open', name: 'Koniec za ST-1', voltage_kv: 15 },
-      ],
-      branches: [
-        ...snapshot.branches,
-        {
-          ref_id: 'seg-st-out',
-          name: 'Odcinek za ST-1',
-          type: 'cable',
-          from_bus_ref: 'bus-sn-1',
-          to_bus_ref: 'bus-st-open',
-        },
-      ],
-      corridors: [
-        {
-          id: 'corr-st',
-          ref_id: 'corr-st',
-          ordered_segment_refs: ['seg-st-out'],
-        },
-      ],
-    } as any;
-
-    const context = buildOperationContext({
-      canonicalOp: 'continue_trunk_segment_sn',
-      elementId: 'st-1',
-      elementType: 'Station',
-      snapshot: stationCorridorSnapshot,
-      logicalViews: { terminals: [] } as any,
-    });
-
-    expect(context.station_ref).toBe('st-1');
-    expect(context.trunk_id).toBe('corr-st');
-    expect(context.trunkId).toBe('corr-st');
-    expect(context.from_terminal_id).toBe('bay-out-1');
-    expect(context.terminal_id).toBe('bay-out-1');
-    expect(context.terminalId).toBe('bay-out-1');
-    expect(context.terminal_port_id).toBe('station_out');
-    expect(context.port_id).toBe('station_out');
-    expect(context.from_bus_ref).toBe('bus-st-field-out');
-    expect(context.terminal_name).toBe('ST-1 - port wyjściowy SN');
-    expect(context.terminal_voltage_label).toBe('15 kV');
-    expect(context.is_first_trunk_segment).toBe(false);
-    expect(context.existing_segment_count).toBe(1);
   });
 
   it('nie kontynuuje ciagu ze stacji przez szyne, gdy pole wyjsciowe jest zajete', () => {
@@ -465,7 +431,10 @@ describe('buildOperationContext', () => {
       elementId: 'st-field-1',
       elementType: 'Station',
       snapshot: stationFieldSnapshot,
-      logicalViews,
+      logicalViews: zPolami(logicalViews, [
+        { field_ref: 'field-in-1', station_ref: 'st-field-1', bay_role: 'IN', occupied: false },
+        { field_ref: 'field-branch-1', station_ref: 'st-field-1', bay_role: 'FEEDER', occupied: false },
+      ]),
     });
 
     expect(context.station_ref).toBe('st-field-1');
@@ -580,20 +549,36 @@ describe('buildOperationContext', () => {
       ],
     } as any;
 
+    // Model odczytu backendu: pole ODG zajęte (odcinek na jego zacisku, reguła R2).
+    const widokiZajete = zPolami(logicalViews, [
+      { field_ref: 'field-branch-used', station_ref: 'st-branch-used', bay_role: 'FEEDER', occupied: true },
+    ]);
     const stationContext = buildOperationContext({
       canonicalOp: 'start_branch_segment_sn',
       elementId: 'st-branch-used',
       elementType: 'Station',
       snapshot: occupiedBranchFieldSnapshot,
-      logicalViews,
+      logicalViews: widokiZajete,
     });
     const fieldContext = buildOperationContext({
       canonicalOp: 'start_branch_segment_sn',
       elementId: 'field-branch-used',
       elementType: 'BaySN',
       snapshot: occupiedBranchFieldSnapshot,
-      logicalViews,
+      logicalViews: widokiZajete,
     });
+    // Ten sam model z wierszem „wolne” — start odgałęzienia z tego pola jest dostępny
+    // (odmowa wyżej wynika z zajętości w modelu odczytu, nie z braku pola).
+    const fieldContextWolne = buildOperationContext({
+      canonicalOp: 'start_branch_segment_sn',
+      elementId: 'field-branch-used',
+      elementType: 'BaySN',
+      snapshot: occupiedBranchFieldSnapshot,
+      logicalViews: zPolami(logicalViews, [
+        { field_ref: 'field-branch-used', station_ref: 'st-branch-used', bay_role: 'FEEDER', occupied: false },
+      ]),
+    });
+    expect(fieldContextWolne.from_ref).toBe('field-branch-used.BRANCH');
 
     expect(stationContext.from_ref).toBeUndefined();
     expect(stationContext.from_bus_ref).toBeUndefined();
@@ -655,16 +640,19 @@ describe('buildOperationContext', () => {
       elementId: 'st-field-out',
       elementType: 'Station',
       snapshot: stationFieldSnapshot,
-      logicalViews: {
-        terminals: [
-          {
-            element_id: 'field-out-real-terminal',
-            port_id: 'field-out-real-terminal:OUT',
-            trunk_id: 'trunk-field-out',
-            status: 'OTWARTY',
-          },
-        ],
-      } as any,
+      logicalViews: zPolami(
+        {
+          terminals: [
+            {
+              element_id: 'field-out-real-terminal',
+              port_id: 'field-out-real-terminal:OUT',
+              trunk_id: 'trunk-field-out',
+              status: 'OTWARTY',
+            },
+          ],
+        },
+        [{ field_ref: 'field-out-real-terminal', station_ref: 'st-field-out', bay_role: 'OUT', occupied: false }],
+      ),
     });
 
     expect(context.station_ref).toBe('st-field-out');
@@ -674,7 +662,9 @@ describe('buildOperationContext', () => {
     expect(context.trunk_id).toBe('trunk-field-out');
   });
 
-  it('kontynuuje ciag z kanonicznego zacisku pola w pakiecie sn_field_template', () => {
+  it('pole z pakietu sn_field_template zapisane wyłącznie w `bays` nie jest punktem startu ciągu', () => {
+    // Karta POLE-ZAJĘTE: jak wyżej — backend nie zna pola spoza `meta.field_specs`, więc front
+    // nie może obiecać startu z niego (dawniej obiecywał: kreator, którego zapis backend odrzuca).
     const stationFieldSnapshot = {
       ...snapshot,
       substations: [
@@ -748,10 +738,8 @@ describe('buildOperationContext', () => {
     });
 
     expect(context.station_ref).toBe('st-template-out');
-    expect(context.from_terminal_id).toBe('field-template-out');
-    expect(context.from_bus_ref).toBe('bus-template-field-terminal');
-    expect(context.field_ref).toBe('field-template-out');
-    expect(context.trunk_id).toBe('trunk-template-out');
+    expect(context.from_terminal_id).toBeUndefined();
+    expect(context.field_ref).toBeUndefined();
   });
 
   it('nie tworzy odgałęzienia z pola transformatorowego', () => {

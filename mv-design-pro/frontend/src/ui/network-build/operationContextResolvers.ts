@@ -1,6 +1,7 @@
 import type { ElementType } from '../types';
 import type { BranchPointSN, EnergyNetworkModel, LogicalViewsV1, TerminalRef } from '../../types/enm';
 import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
+import { poleLinioweWolne } from './zajetoscPol';
 
 export interface BranchSourceDisplayContext {
   fromRef: string;
@@ -319,10 +320,6 @@ function isBranchStartBayRole(role: unknown): boolean {
   return String(role ?? '').toUpperCase() === 'FEEDER';
 }
 
-function isTerrainSegmentType(type: unknown): boolean {
-  return type === 'cable' || type === 'line_overhead';
-}
-
 function fieldSpecsForStation(station: EnergyNetworkModel['substations'][number] | null): Array<Record<string, unknown>> {
   const meta = station?.meta;
   if (!meta || typeof meta !== 'object') return [];
@@ -391,6 +388,7 @@ function findStationFieldSpec(
 
 function findBranchCapableStationField(
   snapshot: EnergyNetworkModel | null,
+  logicalViews: LogicalViewsV1 | null,
   stationRef: string | null,
   preferredBusRef?: string | null,
 ): { station: EnergyNetworkModel['substations'][number]; spec: Record<string, unknown> } | null {
@@ -403,7 +401,8 @@ function findBranchCapableStationField(
       && isBranchStartBayRole(spec.bay_role)
       && fieldTerminalBusRef(spec)
       && (!preferredBusRef || spec.bus_ref === preferredBusRef || fieldTerminalBusRef(spec) === preferredBusRef)
-      && terrainSegmentCountOnBus(snapshot, fieldTerminalBusRef(spec)) === 0
+      // Karta POLE-ZAJĘTE: zajętość z modelu odczytu backendu, nie z własnego licznika.
+      && poleLinioweWolne(logicalViews, fieldRef(spec))
     ))
     .sort((left, right) => {
       return lineFieldRoleRank(left.bay_role) - lineFieldRoleRank(right.bay_role)
@@ -419,14 +418,6 @@ function lineFieldRoleRank(role: unknown): number {
   if (normalized === 'FEEDER') return 0;
   if (normalized === 'OUT') return 1;
   return 9;
-}
-
-function terrainSegmentCountOnBus(snapshot: EnergyNetworkModel | null, busRef: string | null): number {
-  if (!snapshot || !busRef) return 0;
-  return (snapshot.branches ?? []).filter((branch) => (
-    isTerrainSegmentType(branch.type)
-    && (branch.from_bus_ref === busRef || branch.to_bus_ref === busRef)
-  )).length;
 }
 
 function formatElementContextLabel(
@@ -678,6 +669,7 @@ export function resolveElementNetworkContext(
 
 export function resolveBranchSourceRef(
   snapshot: EnergyNetworkModel | null,
+  logicalViews: LogicalViewsV1 | null,
   elementId: string | null,
   stationRef: string | null,
   busRef: string | null,
@@ -724,13 +716,13 @@ export function resolveBranchSourceRef(
     selectedStationField
     && isBranchStartBayRole(selectedStationField.spec.bay_role)
     && fieldTerminalBusRef(selectedStationField.spec)
-    && terrainSegmentCountOnBus(snapshot, fieldTerminalBusRef(selectedStationField.spec)) === 0
+    && poleLinioweWolne(logicalViews, fieldRef(selectedStationField.spec))
   ) {
     return `${fieldRef(selectedStationField.spec)}.BRANCH`; // ui-terminology-ignore
   }
 
   if (effectiveStationRef) {
-    const stationField = findBranchCapableStationField(snapshot, effectiveStationRef, busRef);
+    const stationField = findBranchCapableStationField(snapshot, logicalViews, effectiveStationRef, busRef);
     if (stationField) {
       return `${fieldRef(stationField.spec)}.BRANCH`; // ui-terminology-ignore
     }
@@ -859,11 +851,18 @@ export function resolveBranchSourceContext(
 
 export function resolveBranchStartOperationContext(
   snapshot: EnergyNetworkModel | null,
+  logicalViews: LogicalViewsV1 | null,
   elementId: string,
   elementType: ElementType,
 ): BranchStartOperationContext {
   const networkContext = resolveElementNetworkContext(snapshot, elementId, elementType);
-  const fromRef = resolveBranchSourceRef(snapshot, elementId, networkContext.stationRef, networkContext.busRef) ?? '';
+  const fromRef = resolveBranchSourceRef(
+    snapshot,
+    logicalViews,
+    elementId,
+    networkContext.stationRef,
+    networkContext.busRef,
+  ) ?? '';
   const display = resolveBranchSourceContext(snapshot, fromRef);
 
   return {
@@ -1142,7 +1141,8 @@ function findStationLineFieldEndpoint(
       candidate.fieldRef.length > 0
       && candidate.terminalBusRef
       && isLineContinuationBayRole(candidate.bayRole)
-      && terrainSegmentCountOnBus(snapshot, candidate.terminalBusRef) === 0
+      // Karta POLE-ZAJĘTE: wolne = potwierdzone przez model odczytu backendu.
+      && poleLinioweWolne(logicalViews, candidate.fieldRef)
     ))
     .sort((left, right) => left.fieldRef.localeCompare(right.fieldRef))[0];
 

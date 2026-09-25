@@ -40,6 +40,7 @@ from .models import (
     OverheadLine,
     SwitchBranch,
 )
+from .nazwy_elementow import nazwa_pola_ze_specyfikacji
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
 from .severity import (
     SEVERITY_BLOCKER,
@@ -64,6 +65,7 @@ from .slownik_komunikatow import (
 from .topology import derive
 from .uklad_sieci_nn import transformatory_bez_ukladu_nn
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
+from .zajetosc_pol import zajetosc_pol
 from .zrodlo_zwarcie import PASMO_U_SET_PU, dane_zwarciowe_zrodla, u_set_pu_w_pasmie
 
 _STRICT_PORT_BINDING_ENV = "ENM_STRICT_PORT_BINDING"
@@ -131,6 +133,8 @@ class ENMValidator:
         self._check_voltage_band_consistency(enm, issues)
         self._check_frequency_consistency(enm, issues)
         self._check_through_station_continuity(enm, issues)
+        # Karta POLE-ZAJĘTE: pole liniowe z więcej niż jednym odcinkiem (stan zastany)
+        self._check_line_field_single_segment(enm, issues)
         # KOMPLETNOSC-POLA-TR: transformator na szynie SN bez pola roli TR
         self._check_transformer_sn_bay(enm, issues)
         # P0.1 nN (karta P0.1, C §5): topologia obwodow nN — E060-E064/W060/W062
@@ -1855,6 +1859,83 @@ class ENMValidator:
                         ),
                     )
                 )
+
+    def _check_line_field_single_segment(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """E022: z jednego pola liniowego SN wychodzi więcej niż jeden odcinek.
+
+        Kanon (dyrektywa właściciela 2026-07-17): jedno pole liniowe = jeden odcinek. Operacje
+        domenowe odmawiają drugiego kabla (`field.line_field_occupied`), ale model wczytany z
+        archiwum albo zbudowany przed kartą POLE-ZAJĘTE może ten stan nieść. Zajętość liczy
+        JEDNO źródło prawdy (`enm.zajetosc_pol`, przyłączenie fizyczne: reguły R1 i R2).
+        """
+        widok = {
+            "substations": [
+                {"ref_id": s.ref_id, "name": s.name, "meta": s.meta} for s in enm.substations
+            ],
+            "branches": [
+                {
+                    "ref_id": b.ref_id,
+                    "type": getattr(b, "type", None),
+                    "from_bus_ref": getattr(b, "from_bus_ref", None),
+                    "to_bus_ref": getattr(b, "to_bus_ref", None),
+                    "meta": b.meta,
+                }
+                for b in enm.branches
+            ],
+            "corridors": [
+                {"ref_id": c.ref_id, "ordered_segment_refs": list(c.ordered_segment_refs)}
+                for c in enm.corridors
+            ],
+        }
+        stacje = {s.ref_id: s for s in enm.substations}
+        nazwy_pol: dict[object, object] = {b.ref_id: b.name for b in enm.bays}
+        for zajetosc in zajetosc_pol(widok).values():
+            if not zajetosc.przeciazone:
+                continue
+            stacja = stacje.get(zajetosc.station_ref)
+            spec = next(
+                (
+                    f
+                    for f in ((stacja.meta if stacja else {}) or {}).get("field_specs") or []
+                    if isinstance(f, dict) and f.get("field_ref") == zajetosc.field_ref
+                ),
+                {},
+            )
+            odcinki = ", ".join(
+                opis_elementu(enm, ref, "odcinek") for ref in zajetosc.odcinki_fizyczne
+            )
+            issues.append(
+                ValidationIssue(
+                    code="E022",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"{nazwa_pola_ze_specyfikacji(spec, nazwy_pol)} w "
+                        f"{opis_obiektu(stacja, 'stacji')}: z jednego pola liniowego wychodzi "
+                        f"{len(zajetosc.odcinki_fizyczne)} odcinków ({odcinki}). Z jednego "
+                        "pola liniowego wolno wyprowadzić tylko jeden kabel."
+                    ),
+                    element_refs=[
+                        zajetosc.station_ref,
+                        zajetosc.field_ref,
+                        *zajetosc.odcinki_fizyczne,
+                    ],
+                    wizard_step_hint="K3",
+                    suggested_fix=(
+                        "Dodaj w rozdzielnicy nowe pole liniowe i przenieś na nie nadmiarowy "
+                        "odcinek albo usuń zdublowany odcinek."
+                    ),
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT",
+                        element_ref=zajetosc.station_ref,
+                        payload_hint={
+                            "action": "move_segment_to_free_line_field",
+                            "field_ref": zajetosc.field_ref,
+                        },
+                    ),
+                )
+            )
 
     # ------------------------------------------------------------------
     # P0.1 nN: topologia obwodow nN (E060-E064, W060, W062)
