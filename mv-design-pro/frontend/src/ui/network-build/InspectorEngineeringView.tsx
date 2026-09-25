@@ -64,6 +64,12 @@ import type {
 } from '../../types/enm';
 import type { NetworkBuildOperationName } from './networkBuildStore';
 import { buildOperationContext } from './operationContext';
+import { buildSldOperationContext } from '../sld/shared/sldActionExecutor';
+import {
+  POWOD_BRAKU_STARTU_ODGALEZIENIA_PL,
+  powodBrakuStartuCiagu,
+  type SldElementKindForMenu,
+} from '../sld/v2/command/SldCommandService';
 import { findOperationalBus } from '../shared/enmVisibility';
 import { TypePicker } from '../catalog/TypePicker';
 import { buildCatalogBinding } from '../catalog/catalogBinding';
@@ -860,6 +866,29 @@ function semanticTypeKey(selectedElement: SelectedElement): string {
 
 function semanticTypeLabel(selectedElement: SelectedElement): string {
   return formatElementTypeLabel(semanticTypeKey(selectedElement));
+}
+
+/**
+ * KARTA S95-START: pozycja kontynuacji ciągu karty technicznej → ta sama para
+ * (rodzaj menu, pozycja), którą rozstrzyga menu kanwy. Stacja (także GPZ, którego
+ * karta jest kartą stacji) → „Kontynuuj ciąg główny" stacji; odcinek → koniec ciągu.
+ */
+function kontynuacjaCiaguKartyTechnicznej(
+  kind: string,
+  elementId: string,
+  snapshot: EnergyNetworkModel | null,
+): { readonly kind: SldElementKindForMenu; readonly actionId: string } | null {
+  if (kind === 'station' || kind === 'gpz') return { kind: 'station', actionId: 'continue-trunk' };
+  if (kind === 'line_segment') {
+    const galaz = (snapshot?.branches ?? []).find(
+      (branch) => branch.ref_id === elementId || branch.id === elementId,
+    );
+    return {
+      kind: galaz?.type === 'line_overhead' ? 'overhead_line_sn' : 'cable_segment_sn',
+      actionId: 'continue-trunk-from-endpoint',
+    };
+  }
+  return null;
 }
 
 function semanticActionContext(
@@ -2657,6 +2686,60 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       const commandMatch = /^open_operation:(.+)$/.exec(action.id);
       if (!commandMatch) return action;
       const opName = commandMatch[1] as NetworkBuildOperationName;
+      // KARTA S95-START (predykaty PARAMI, czwarta droga wejścia): „Kontynuuj ciąg SN"
+      // karty technicznej czyta TO SAMO rozstrzygnięcie punktu startu co menu kanwy,
+      // szuflada i konfigurator stacji (`buildSldOperationContext`). Dotąd przycisk był
+      // zawsze aktywny, a dla stacji bez wolnego pola i GPZ z zajętym polem otwierał
+      // kreator magistrali z trwale zablokowanym zapisem.
+      const kontynuacja = opName === 'continue_trunk_segment_sn' && selectedElement
+        ? kontynuacjaCiaguKartyTechnicznej(techCardSubject.kind, selectedElement.id, snapshot)
+        : null;
+      if (kontynuacja && selectedElement) {
+        const operacja = buildSldOperationContext(
+          kontynuacja.actionId,
+          kontynuacja.kind,
+          selectedElement.id,
+          snapshot,
+          logicalViews,
+        );
+        if (!operacja) {
+          return {
+            ...action,
+            disabled: true,
+            disabledReasonPl: powodBrakuStartuCiagu(kontynuacja.kind),
+          };
+        }
+        return {
+          ...action,
+          onClick: () => {
+            openOperationForm(opName, {
+              ...operacja.context,
+              ...semanticActionContext(selectedElement, {}),
+              source: 'karta_techniczna',
+            });
+          },
+        };
+      }
+      // S95-START × S9-10 (ta sama klasa w tym samym miejscu): „Rozpocznij
+      // odgałęzienie SN" karty technicznej sparowane z resolverem kreatora
+      // odgałęzienia — bez punktu startu (`from_ref`) pozycja jest zablokowana.
+      if (opName === 'start_branch_segment_sn' && selectedElement) {
+        const kontekstOdgalezienia = buildOperationContext({
+          canonicalOp: opName,
+          elementId: selectedElement.id,
+          elementType: selectedElement.type,
+          snapshot,
+          logicalViews,
+        });
+        const fromRef = kontekstOdgalezienia.from_ref;
+        if (typeof fromRef !== 'string' || fromRef.trim().length === 0) {
+          return {
+            ...action,
+            disabled: true,
+            disabledReasonPl: POWOD_BRAKU_STARTU_ODGALEZIENIA_PL,
+          };
+        }
+      }
       return {
         ...action,
         onClick: () => {

@@ -208,6 +208,60 @@ export function maStartCiagu(kontekst: KontekstMagistrali): boolean {
   return Boolean(kontekst.from_terminal_id?.trim() || kontekst.field_ref?.trim());
 }
 
+/** Rodzaje elementu, których `element_ref` JEST polem SN — punkt startu ciągu wprost z pola. */
+const RODZAJE_ELEMENTU_POLA_SN: ReadonlySet<string> = new Set([
+  'BaySN',
+  'FieldSN',
+  'LineBaySN',
+  'SNBay',
+  'Bay',
+]);
+
+function tekstKontekstu(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+/**
+ * KARTA S95-START — JEDNO odczytanie punktu startu ciągu z kontekstu operacji
+ * `continue_trunk_segment_sn`. Czytają je: kreator magistrali (czy zapis jest możliwy),
+ * pozycje menu kanwy i szuflady (czy pozycja jest aktywna), konfigurator stacji (czy
+ * przycisk „Kontynuuj ciąg SN ze stacji" jest aktywny). Wcześniej każde z tych miejsc
+ * miało własną listę kluczy — i menu stacji nie pytało w ogóle, więc pozycja była
+ * aktywna, a kreator otwierał się z „Brak miejsca startu ciągu".
+ *
+ * Zacisk startowy: pierwszy niepusty spośród `terminalId`/`terminal_id`/`from_terminal_id`.
+ * Pole startowe: `field_ref`, a gdy go brak — `element_ref` elementu będącego polem SN.
+ */
+export function kontekstMagistraliZOperacji(
+  context: Readonly<Record<string, unknown>> | null | undefined,
+): KontekstMagistrali {
+  const trunkId = tekstKontekstu(context?.trunkId) || tekstKontekstu(context?.trunk_id);
+  const terminalId =
+    tekstKontekstu(context?.terminalId)
+    || tekstKontekstu(context?.terminal_id)
+    || tekstKontekstu(context?.from_terminal_id);
+  const elementRef = tekstKontekstu(context?.element_ref);
+  const elementType =
+    tekstKontekstu(context?.element_type) || tekstKontekstu(context?.elementType);
+  const fieldRef =
+    tekstKontekstu(context?.field_ref)
+    || (elementRef && RODZAJE_ELEMENTU_POLA_SN.has(elementType) ? elementRef : '');
+  const terminalVoltageLabel = tekstKontekstu(context?.terminal_voltage_label);
+  return {
+    trunk_id: trunkId || undefined,
+    from_terminal_id: terminalId || undefined,
+    field_ref: fieldRef || undefined,
+    terminal_voltage_label: terminalVoltageLabel || undefined,
+  };
+}
+
+/** Czy kontekst operacji niesie punkt startu ciągu — ten sam warunek, który bramkuje zapis kreatora. */
+export function maStartOperacjiCiagu(
+  context: Readonly<Record<string, unknown>> | null | undefined,
+): boolean {
+  return maStartCiagu(kontekstMagistraliZOperacji(context));
+}
+
 export function zbudujPayload(
   data: MagistralaFormData,
   kontekst: KontekstMagistrali,

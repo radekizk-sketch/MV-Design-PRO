@@ -177,7 +177,13 @@ import {
 import {
   SLD_MENU_REGISTRY,
   getMenuActions,
+  powodBrakuStartuCiagu,
 } from '../src/ui/sld/v2/command/SldCommandService.ts';
+// Karta S95-START: punkt startu ciągu z TEGO SAMEGO rozstrzygnięcia co menu i kreator.
+import {
+  isTrunkContinuationAction,
+  resolveTrunkStartAvailability,
+} from '../src/ui/sld/shared/sldActionExecutor.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -2595,10 +2601,11 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
 
   // (a) Każde ogniwo ma pozycję w rejestrze menu i jest AKTYWNE, gdy warunek
   //     jego wykonania jest spełniony — pozycja permanentnie zablokowana nie
-  //     jest wejściem. Kontekst `trunkStartFieldAvailable: true` odwzorowuje
-  //     rozdzielnię z WOLNYM polem liniowym (stan świeżo wstawionego GPZ).
+  //     jest wejściem. Kontekst `trunkStartAvailable: { [pozycja]: true }`
+  //     odwzorowuje obiekt z punktem startu ciągu (karta S95-START: jedno
+  //     rozstrzygnięcie `resolveTrunkStartAvailability` dla KAŻDEGO rodzaju).
   for (const ogniwo of OGNIWA) {
-    const akcje = getMenuActions(ogniwo.menuKind, { trunkStartFieldAvailable: true });
+    const akcje = getMenuActions(ogniwo.menuKind, { trunkStartAvailable: { [ogniwo.action]: true } });
     const pozycja = akcje.find((a) => a.id === ogniwo.action);
     check(
       `menu_chain_probe (S9-5, kryterium odbioru) ogniwo „${ogniwo.krok}": menu ${ogniwo.menuKind} ma AKTYWNĄ pozycję ${ogniwo.action}`,
@@ -2607,17 +2614,26 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
     );
   }
 
-  // (a2) UCZCIWA ODMOWA: rozdzielnia BEZ wolnego pola liniowego blokuje
-  //      wyprowadzenie ciągu z POWODEM — kreator magistrali odmówiłby zapisu
+  // (a2) UCZCIWA ODMOWA: obiekt BEZ punktu startu ciągu blokuje KAŻDĄ pozycję
+  //      kontynuacji ciągu z POWODEM — kreator magistrali odmówiłby zapisu
   //      (`maStartCiagu`), więc otwarcie go byłoby martwym klikiem w oknie.
-  for (const menuKind of ['gpz', 'section']) {
-    const pozycja = getMenuActions(menuKind, { trunkStartFieldAvailable: false })
-      .find((a) => a.id === 'continue-trunk');
-    check(
-      `menu_chain_probe (S9-5, zero fabrykacji) menu ${menuKind} BEZ wolnego pola liniowego: „continue-trunk" zablokowany z powodem`,
-      pozycja != null && pozycja.disabled === true && (pozycja.disabledReasonPl ?? '').includes('wolnego pola liniowego'),
-      pozycja == null ? 'BRAK pozycji' : `disabled=${pozycja.disabled} powod=${pozycja.disabledReasonPl ?? '—'}`,
-    );
+  //      Karta S95-START: iloczyn po WSZYSTKICH rodzajach, które mają w menu
+  //      pozycję kontynuacji (dawniej tylko GPZ i sekcja — stacja uciekała).
+  for (const [menuKind, akcjeRejestru] of Object.entries(SLD_MENU_REGISTRY)) {
+    for (const akcja of akcjeRejestru.filter((a) => isTrunkContinuationAction(a.id))) {
+      // Aparat: głowica kablowa (jedyny aparat, z którego ciąg w ogóle wychodzi) —
+      // inaczej wcześniejsza bramka rodzaju aparatu zasłoniłaby bramkę startu.
+      const pozycja = getMenuActions(menuKind, {
+        apparatusKind: 'cable_head',
+        trunkStartAvailable: { [akcja.id]: false },
+      })
+        .find((a) => a.id === akcja.id);
+      check(
+        `menu_chain_probe (S95-START, zero fabrykacji) menu ${menuKind} BEZ punktu startu: „${akcja.id}" zablokowany z powodem`,
+        pozycja != null && pozycja.disabled === true && pozycja.disabledReasonPl === powodBrakuStartuCiagu(menuKind),
+        pozycja == null ? 'BRAK pozycji' : `disabled=${pozycja.disabled} powod=${pozycja.disabledReasonPl ?? '—'}`,
+      );
+    }
   }
 
   /** Kanoniczny `Bus.ref_id` szyn GPZ — TEN SAM kanał, którym karmi rozstrzyganie
@@ -2673,7 +2689,10 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
     const stacjeZWejsciem = obszary.filter((a) => {
       if (a.klasa !== 'stacja') return false;
       const w = resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind, busRef: busRefy.get(a.testId) }, indexModelu);
-      return w.stan === 'temat' && w.temat.menuKind === 'station';
+      // S95-START: wejście jest REALNE tylko z punktem startu ciągu (predykaty parami).
+      return w.stan === 'temat'
+        && w.temat.menuKind === 'station'
+        && resolveTrunkStartAvailability(enm, null, 'station', w.temat.modelRef)?.['continue-trunk'] === true;
     }).length;
     const odcinkiZWejsciem = obszary.filter((a) => {
       if (a.klasa !== 'tor' && a.klasa !== 'lacznik-wiersza') return false;

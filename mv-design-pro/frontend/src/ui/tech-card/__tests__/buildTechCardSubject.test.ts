@@ -194,6 +194,40 @@ describe('buildTechCardSubject', () => {
     expect(fields.find((field) => field.key === 'transformatory')?.value).toBe(1);
   });
 
+  /**
+   * Karta S95-START (znalezisko uboczne): stacja zbudowana operacją domenową niesie pola
+   * WYŁĄCZNIE jako `meta.field_specs` (`bays` puste) — karta techniczna liczyła tylko
+   * `bays` i pokazywała zero pól każdej roli. Iloczyn źródeł: {specyfikacje, pola bays}.
+   */
+  it.each([
+    ['specyfikacje pól stacji (meta.field_specs)', 'specy'],
+    ['pola bays (bez specyfikacji)', 'bays'],
+  ])('liczność pól wg roli z %s', (_nazwa, zrodlo) => {
+    const role = ['IN', 'OUT', 'FEEDER', 'TR'];
+    const station = {
+      id: 'stn/2',
+      ref_id: 'stn/2',
+      name: 'Stacja na odcinku',
+      station_type: 'mv_lv',
+      bus_refs: ['bus/sn2'],
+      transformer_refs: [],
+      meta: zrodlo === 'specy'
+        ? { field_specs: role.map((rola, i) => ({ field_ref: `stn/2/sn_field/00${i}`, bay_role: rola, bus_ref: 'bus/sn2' })) }
+        : {},
+    } as unknown as Substation;
+    const snapshot = snapshotWith({
+      substations: [station],
+      bays: zrodlo === 'bays'
+        ? role.map((rola, i) => ({ id: `bay/${i}`, ref_id: `bay/${i}`, bay_role: rola, substation_ref: 'stn/2', bus_ref: 'bus/sn2', equipment_refs: [] }) as never)
+        : [],
+    });
+    const fields = buildTechCardSubject(snapshot, selected(station.ref_id, 'Station'))!.sections.flatMap((s) => s.fields);
+    expect(fields.find((field) => field.key === 'pole_we')?.value).toBe(1);
+    expect(fields.find((field) => field.key === 'pole_wy')?.value).toBe(1);
+    expect(fields.find((field) => field.key === 'pole_odg')?.value).toBe(1);
+    expect(fields.find((field) => field.key === 'pole_tr')?.value).toBe(1);
+  });
+
   it('rozpoznaje GPZ jako kind=gpz', () => {
     const gpz: Substation = {
       id: 'gpz/main',

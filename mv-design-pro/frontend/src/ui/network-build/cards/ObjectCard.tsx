@@ -36,6 +36,8 @@ export interface CardAction {
   onClick: () => void;
   variant?: 'primary' | 'secondary' | 'danger';
   disabled?: boolean;
+  /** Uczciwy powód blokady (po polsku, bez identyfikatorów) — podpowiedź przycisku. */
+  disabledReasonPl?: string;
 }
 
 export interface ObjectCardProps {
@@ -145,6 +147,7 @@ export function ObjectCard({
                 type="button"
                 onClick={action.onClick}
                 disabled={action.disabled}
+                title={action.disabled ? action.disabledReasonPl : undefined}
                 className={clsx(
                   'px-2.5 py-1 text-[10px] font-medium rounded transition-colors',
                   action.disabled && 'opacity-50 cursor-not-allowed',

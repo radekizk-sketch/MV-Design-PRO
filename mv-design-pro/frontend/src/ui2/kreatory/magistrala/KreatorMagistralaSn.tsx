@@ -59,7 +59,9 @@ import {
   fmtV,
   isPositive,
   kontekstKontynuacji,
+  kontekstMagistraliZOperacji,
   maStartCiagu,
+  maStartOperacjiCiagu,
   nextStepDozwolony,
   parametryZKatalogu,
   podsumujOdcinek,
@@ -83,10 +85,6 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'parametry', tytul: T.krokParametry },
   { id: 'zapis', tytul: T.krokZapis },
 ];
-
-function canUseElementRefAsFieldRef(elementType: string): boolean {
-  return ['BaySN', 'FieldSN', 'LineBaySN', 'SNBay', 'Bay'].includes(elementType);
-}
 
 function canResolveElementAsTrunkStart(
   elementType: string,
@@ -123,12 +121,9 @@ export function KreatorMagistralaSn() {
   const context = useMemo<Record<string, unknown> | null>(() => {
     const rawElementRef = trimmed(rawContext?.element_ref);
     const rawElementType = trimmed(rawContext?.element_type ?? rawContext?.elementType);
-    const hasExplicitStart = Boolean(
-      trimmed(rawContext?.terminalId)
-      || trimmed(rawContext?.terminal_id)
-      || trimmed(rawContext?.from_terminal_id)
-      || trimmed(rawContext?.field_ref),
-    );
+    // KARTA S95-START: „czy jest start" pyta JEDEN predykat (`maStartOperacjiCiagu`) —
+    // ten sam, który bramkuje pozycje menu kanwy, szuflady i konfiguratora stacji.
+    const hasExplicitStart = maStartOperacjiCiagu(rawContext);
     if (hasExplicitStart) return rawContext;
 
     const fallbackElementRef = selectedElement?.id ?? rawElementRef;
@@ -143,34 +138,19 @@ export function KreatorMagistralaSn() {
       snapshot,
       logicalViews,
     });
-    const hasResolvedStart = Boolean(
-      trimmed(selectionContext.terminalId)
-      || trimmed(selectionContext.terminal_id)
-      || trimmed(selectionContext.from_terminal_id),
-    );
+    const hasResolvedStart = maStartOperacjiCiagu(selectionContext);
     return hasResolvedStart ? { ...(rawContext ?? {}), ...selectionContext } : rawContext;
   }, [logicalViews, rawContext, selectedElement, snapshot]);
 
-  const trunkId = trimmed(context?.trunkId ?? context?.trunk_id);
-  const terminalId = trimmed(
-    context?.terminalId ?? context?.terminal_id ?? context?.from_terminal_id,
-  );
-  const terminalVoltageLabel = trimmed(context?.terminal_voltage_label);
-  const elementRef = trimmed(context?.element_ref);
   const elementType = trimmed(context?.element_type ?? context?.elementType);
-  const fieldRef =
-    trimmed(context?.field_ref)
-    || (elementRef && canUseElementRefAsFieldRef(elementType) ? elementRef : '');
-
   const kontekstBazowy: KontekstMagistrali = useMemo(
-    () => ({
-      trunk_id: trunkId || undefined,
-      from_terminal_id: terminalId || undefined,
-      field_ref: fieldRef || undefined,
-      terminal_voltage_label: terminalVoltageLabel || undefined,
-    }),
-    [fieldRef, terminalId, terminalVoltageLabel, trunkId],
+    () => kontekstMagistraliZOperacji(context),
+    [context],
   );
+  const trunkId = kontekstBazowy.trunk_id ?? '';
+  const terminalId = kontekstBazowy.from_terminal_id ?? '';
+  const fieldRef = kontekstBazowy.field_ref ?? '';
+  const terminalVoltageLabel = kontekstBazowy.terminal_voltage_label ?? '';
 
   // Builder realnej sieci (M2): po dodaniu odcinka trzymamy koniec ciągu jako start
   // kolejnego (bez zamykania okna) + rosnącą listę odcinków magistrali.
