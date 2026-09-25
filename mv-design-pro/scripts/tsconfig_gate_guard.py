@@ -393,7 +393,11 @@ POMIJANE_KATALOGI = {
 #: uzupelniajac fikstury `ui2/oze/frt/__tests__/fixtures.ts` — 3 nowe TS2741 przykryte na jej
 #: drzewie spadkiem netto (93 -> 88); naprawione U ZRODLA przy scaleniu (fikstura niesie
 #: `nazwa_pl` w brzmieniu `nazwa_scenariusza_pl` backendu). Zero nowych bledow.
-BUDZET_BLEDOW_POZA_BRAMKA = 83
+#: Karta AB-P1 na partii integracji 4 (2026-09-25, pomiar `zmierz_dlug()` na drzewie karty
+#: i na `4199d528`, listy bledow porownane linia po linii): 83 -> 81. Zeszly 2 bledy TS2339
+#: (martwa galaz `debtCode` w `ui/canon/__tests__/coverage-matrix.test.ts` — typ
+#: `CoverageStatus` dopuszcza tylko pelne pokrycie; zastapiona asercja statusu); zero nowych.
+BUDZET_BLEDOW_POZA_BRAMKA = 81
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

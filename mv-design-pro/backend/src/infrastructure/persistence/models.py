@@ -457,7 +457,8 @@ class CanonicalRunTimeSeriesORM(Base):
     puste — `zbuduj_resultset_dynamiczny_v2(..., z_probkami=False)`); probki kazdego
     kanalu leza tutaj, jeden wiersz na (run_id, klucz_kanalu). API rozdziela
     endpoint metadanych (bez probek) od endpointu `.../time-series` (na zadanie,
-    z filtrem `kanaly=`) — patrz `api/analysis_runs_dynamika.py`.
+    z filtrem `kanaly=`) — patrz `api/analysis_runs.py::get_dynamika_results`
+    i `get_dynamika_time_series`.
     """
 
     __tablename__ = "canonical_run_time_series"

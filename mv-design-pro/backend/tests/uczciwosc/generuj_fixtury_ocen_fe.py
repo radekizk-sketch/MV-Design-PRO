@@ -1,6 +1,6 @@
 """Generator fixtur rekordów „ocena niewykonana" dla testów ekranów frontu.
 
-Ekrany FRT, stabilności, SSCI, LoM i analiz specjalistycznych pokazują rekord kontraktu
+Ekrany FRT, dynamiki czasowej, SSCI, LoM i analiz specjalistycznych pokazują rekord kontraktu
 werdyktu (``werdykt.OcenaKryterium`` o statusie ``NIE_OCENIONO``) przez kartę werdyktu.
 Testy frontu nie mogą składać takiego rekordu ręcznie — pola wyprowadzane regułą (status,
 etykieta, zdanie, braki, zastrzeżenia, kompletność) muszą być DOKŁADNIE tym, co zwraca
@@ -41,12 +41,8 @@ from application.analyses.werdykt_projektowy import (
     _pozycje_walidacji_energetycznej,
     _werdykt_calosciowy,
 )
+from application.dynamika.opis_wyniku import oceny_biegu_dynamiki
 from application.ocena_niewykonana import rekord_json
-from application.stability.dynamic_stability import (
-    FaultClearScenario,
-    FaultClearSourceState,
-    ocena_stabilnosci_niewykonana,
-)
 from application.v126_artifacts import ocena_jakosci_energii_niewykonana
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile
 from enm.models import (
@@ -94,24 +90,30 @@ def _frt() -> dict[str, Any]:
     return wynik
 
 
-def _stabilnosc() -> dict[str, Any]:
-    """Scenariusz fixtur ekranu stabilności (`EkranStabilnosci.test.tsx`, `uczciwosc.test.tsx`)."""
-    scenariusz = FaultClearScenario(
-        scenario_id="dyn-1",
-        faulted_element_id="line/gpz/1",
-        clearing_time_ms=120.0,
-        cleared_by_element_ids=("cb-main",),
-        source_state=FaultClearSourceState(
-            source_id="src/pv/1",
-            pre_fault_angle_deg=10.0,
-            during_fault_angle_deg=75.0,
-            post_fault_angle_deg=28.0,
-            post_fault_voltage_pu=0.97,
-            post_fault_frequency_pu=0.99,
-        ),
-    )
-    nazwy = {"src/pv/1": "Farma PV Zachód", "line/gpz/1": "Linia GPZ — Stacja Łąkowa"}
-    return {"scenariusz_dyn_1": ocena_stabilnosci_niewykonana(scenariusz, nazwy=nazwy)}
+def _dynamika() -> dict[str, Any]:
+    """Rekordy biegu fixtur ekranu dynamiki (`ui2/wyniki/dynamika/__tests__`) — ta sama
+    funkcja, którą składa odpowiedź `GET /api/analysis-runs/{id}/results/dynamika`."""
+    migawka = {
+        "generators": [
+            {
+                "ref_id": "gen-pv-1",
+                "name": "Farma PV Zachód",
+                "gen_type": "pv_inverter",
+                "dynamika": {
+                    "rodzina": "przeksztaltnik_gfl",
+                    "proweniencja": {
+                        "zrodlo": "profil_typowy_normy",
+                        "odniesienie": "EN 50549-2:2019",
+                    },
+                },
+            }
+        ]
+    }
+    return {
+        "bieg_1": oceny_biegu_dynamiki(
+            "bieg-1", "Sieć testowa dynamiki", migawka, tryb_scenariusza="siec"
+        )
+    }
 
 
 #: Nazwy elementów modelu przedmiotu oceny SSCI (w ścieżce API indeks z migawki biegu).
@@ -340,12 +342,7 @@ def _akademickie() -> dict[str, Any]:
 #: Plik fixtury frontu → funkcja budująca jego treść.
 FIXTURY: dict[Path, Any] = {
     _FRONTEND_SRC / "ui2" / "oze" / "frt" / "__tests__" / "rekordyOceny.json": _frt,
-    _FRONTEND_SRC
-    / "ui2"
-    / "wyniki"
-    / "stabilnosc"
-    / "__tests__"
-    / "rekordyOceny.json": _stabilnosc,
+    _FRONTEND_SRC / "ui2" / "wyniki" / "dynamika" / "__tests__" / "rekordyOceny.json": _dynamika,
     _FRONTEND_SRC / "ui2" / "wyniki" / "ssci" / "__tests__" / "rekordyOceny.json": _ssci,
     _FRONTEND_SRC / "ui2" / "oze" / "lom" / "__tests__" / "widokiOchronyLom.json": _widoki_lom,
     _FRONTEND_SRC

@@ -562,7 +562,7 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
     ['Koordynacja zabezpieczeń', 'E-28'],
     ['Rozpływ mocy NR/GS/FD', 'E-30'],
     ['Stan fazowy SN', 'E-31'],
-    ['Stabilność dynamiczna', 'E-32'],
+    ['Dynamika czasowa RMS', 'E-32'],
   ] as const)(
     'launcher "%s" otwiera %s z kanonicznym title/class/tab',
     async (label, screenCode) => {

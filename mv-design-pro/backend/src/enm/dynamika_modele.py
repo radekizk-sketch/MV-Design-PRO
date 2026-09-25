@@ -65,6 +65,16 @@ ZrodloProweniencjiDynamiki = Literal[
     "deklaracja_uzytkownika",
 ]
 
+#: Źródło parametrów dynamicznych słowami projektanta — jedyna nazwa wartości
+#: `ZrodloProweniencjiDynamiki` w tekstach backendu (założenia biegu); komplet przypina
+#: `tests/enm/test_dynamika_modele.py`.
+NAZWY_ZRODEL_PROWENIENCJI_PL: dict[str, str] = {
+    "karta_producenta": "karta producenta",
+    "certyfikat_jednostki": "certyfikat jednostki",
+    "profil_typowy_normy": "profil typowy normy",
+    "deklaracja_uzytkownika": "deklaracja projektanta",
+}
+
 
 class ProweniencjaParametrow(BaseModel):
     """Pochodzenie bloku parametrow dynamicznych (SS0 p. 2) — WYMAGANA.

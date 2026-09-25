@@ -34,6 +34,8 @@ vi.mock('../../../wyniki/porownanie/zwarciaPorownanieApi', () => ({
 }));
 
 import { fetchShortCircuitResults } from '../../../../ui/results-inspector/api';
+import gotowoscDynamikiBrak from '../../../../harness-fixtures/generated/dynamika_scena_gotowosc_brak.json';
+import opisDynamiki from '../../../../harness-fixtures/generated/dynamika_scena_opis.json';
 import { pobierzPorownanieZwarciowe } from '../../../wyniki/porownanie/zwarciaPorownanieApi';
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildStore';
@@ -424,7 +426,7 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
   // realna ścieżka wejścia do tych ekranów prowadzi przez obszar → zakładkę
   // (intencja z testów `ekranStanuFazowego`/`ekranZbieznosci` „karta huba → dostawca"
   // przeniesiona tutaj: dostawcą E-30/E-31 jest zakładka obszaru rozpływu, E-32/E-29 —
-  // obszaru zwarć/stabilności).
+  // obszaru zwarć/dynamiki).
   it('zakładkowi dostawcy dawnych kart huba E-29…E-32 (K3-A3): cztery zakładki renderują ekrany ui2', () => {
     render(<WynikiWarsztat {...props()} />);
     otworzZakladke('zbieznosc');
@@ -435,9 +437,38 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
     otworzZakladke('skladowe');
     expect(screen.getByTestId('mvd-skladowe')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-wyniki-obszar-zwarcia')).toHaveAttribute('aria-selected', 'true');
-    otworzZakladke('stabilnosc');
-    expect(screen.getByTestId('mvd-stabilnosc')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-wyniki-obszar-stabilnosc')).toHaveAttribute('aria-selected', 'true');
+    otworzZakladke('dynamika');
+    expect(screen.getByTestId('mvd-dynamika')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-wyniki-obszar-dynamika')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  // Karta AB-P1: akcja naprawcza `der.dynamika_missing` prowadzi deep-linkiem do zakładki
+  // dynamiki z kontekstem WYTWÓRCY — ekran wyróżnia jego wiersz modelu dynamicznego.
+  it('deep-link „dynamika" z wytwórcą: zakładka otwarta, wiersz wytwórcy wyróżniony', async () => {
+    useAppStateStore.setState({ activeCaseId: 'case-dyn' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string | URL | Request) => {
+        const adres = String(url);
+        const odp = (body: unknown) =>
+          ({ ok: true, status: 200, statusText: 'OK', json: async () => body }) as Response;
+        if (adres.endsWith('/gotowosc')) return odp(gotowoscDynamikiBrak);
+        if (adres.endsWith('/opis-scenariusza')) return odp(opisDynamiki);
+        if (adres.endsWith('/scenariusze')) return odp({ scenariusze: [], count: 0 });
+        if (adres.endsWith('/runs')) return odp({ runs: [], count: 0 });
+        throw new Error(`nieoczekiwane wywołanie: ${adres}`);
+      }),
+    );
+    const pv = (gotowoscDynamikiBrak as { zrodla: { ref_id: string }[] }).zrodla[0].ref_id;
+    render(<WynikiWarsztat {...props()} />);
+    act(() => {
+      useShellStore.getState().setWynikiTab('dynamika', pv);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-wyniki-zakladka-dynamika')).toHaveAttribute('aria-selected', 'true'),
+    );
+    expect(await screen.findByTestId(`mvd-dynamika-zrodlo-${pv}`)).toHaveAttribute('data-wskazany', 'tak');
+    expect(useShellStore.getState().wynikiTabElement).toBeNull();
   });
 
   it('klik przełącza zakładki między obszarami (rozpływ → zwarcia → widoki klasyczne)', () => {

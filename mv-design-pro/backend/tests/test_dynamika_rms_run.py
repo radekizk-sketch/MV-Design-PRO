@@ -140,7 +140,7 @@ class TestOdmowaBiegu:
     def test_utworzenie_biegu_dynamika_rms_przez_http(self, client: TestClient) -> None:
         """Rejestracja rodzaju biegu: mozna go UTWORZYC (status PENDING) —
         odmowa nastepuje dopiero przy WYKONANIU, nie przy tworzeniu (ten sam
-        wzorzec co `dynamic_stability`)."""
+        wzorzec co pozostale rodzaje biegu kanonicznego)."""
         case_id = _nowy_przypadek(client)
         _seed_minimal_enm(client, case_id)
         created = client.post(
@@ -836,10 +836,14 @@ class TestSciezkaUzytkownika:
         (stopien,) = ladunek["stopien_dowodowy"]
         assert stopien["capability_id"] == "dynamika_rms.przebieg_czasowy"
         assert stopien["regulatory_evidence_eligible"] is False
-        # Proweniencja parametrów KAŻDEGO wytwórcy jest w założeniach wyniku.
+        # Proweniencja parametrów KAŻDEGO wytwórcy jest w założeniach wyniku — intencja bez
+        # zmian; karta AB-P1 (klasa #144/#145): wytwórca NAZWĄ z modelu, źródło parametrów
+        # słowami, nigdy `ref_id` ani kod wartości.
         zalozenia = " ".join(ladunek["zalozenia"])
-        assert "gen-synchroniczny" in zalozenia and "karta_producenta" in zalozenia
-        assert "gen-pv" in zalozenia and "profil_typowy_normy" in zalozenia
+        assert "„Maszyna synchroniczna 10 MVA”: karta producenta" in zalozenia
+        assert "„Instalacja PV 2 MVA”: profil typowy normy" in zalozenia
+        for kod in ("gen-synchroniczny", "gen-pv", "karta_producenta", "profil_typowy_normy"):
+            assert kod not in zalozenia, kod
 
         szeregi = client.get(
             f"/api/analysis-runs/{bieg['run_id']}/results/dynamika/time-series",
@@ -896,7 +900,13 @@ class TestSciezkaUzytkownika:
         # (`run_id`, `pf_run_id`), kontekst przypadku budowany przez warstwę API
         # z identyfikatorów i znaczników czasu (`analysis_case_context`) oraz
         # pomiar zegara (`czas_obliczen_s`). Każde inne pole MUSI być identyczne.
-        POZA_POROWNANIEM = {"run_id", "pf_run_id", "analysis_case_context"}
+        POZA_POROWNANIEM = {"run_id", "pf_run_id", "analysis_case_context", "oceny"}
+        # Karta AB-P1: rekordy „nie oceniono" niosą tożsamość BIEGU w identyfikatorze
+        # kryterium i odniesieniu dowodu (`dynamika_rms.zgodnosc_frt.<run_id>`, „bieg
+        # <run_id>") — poza nią MUSZĄ być identyczne (ta sama treść, braki i dane przyjęte).
+        oceny_a = json.dumps(a["oceny"], sort_keys=True).replace(pierwszy["run_id"], "<bieg>")
+        oceny_b = json.dumps(b["oceny"], sort_keys=True).replace(drugi["run_id"], "<bieg>")
+        assert oceny_a == oceny_b
         for ladunek in (a, b):
             for klucz in POZA_POROWNANIEM:
                 ladunek.pop(klucz, None)

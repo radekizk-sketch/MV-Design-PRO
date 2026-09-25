@@ -332,14 +332,12 @@ class TestCalculationReadinessService:
         assert sc.status in ("partial", "blocked")
         assert any("u_k" in m for m in sc.missing_fields_pl)
 
-    def test_stability_blocked_without_explicit_der_profile(self) -> None:
-        """Karta W6-1 SS0 p.3 (kasacja "ZAWSZE zwraca profil"): DER BEZ jawnie
-        wskazanego `dynamic_profile_id` NIE rozwiązuje się już do domyślnej
-        wartości katalogu — `blocked` `der.dynamic_profile_missing` (przepisane
-        z zachowaniem intencji testu: DER bez jawnego wyboru jest brakiem
-        danej, nie cichym 'ready' ani 'n_a' — ZAOSTRZONE względem dawnego
-        WARNING 'partial', bo kasacja WARNING-owego stanu domyślnego jest
-        dokładnie tym, co karta nakazuje)."""
+    def test_dynamika_blocked_without_der_dynamic_model_with_named_fix(self) -> None:
+        """Karta AB-P1 (przepisane z testu skasowanej bramki „stabilność"; intencja
+        zachowana: DER bez jawnie wskazanego modelu dynamicznego jest BRAKIEM danej,
+        nie cichym 'ready'). Bramka biegu czasowego `dynamika_rms` blokuje wytwórcę
+        bez bloku dynamiki i nazywa akcję naprawczą kanonu `der.dynamika_missing`
+        (wiązanie z katalogowym modelem dynamicznym)."""
         enm = _minimal_enm_with_pf_data()
         enm.generators.append(
             Generator(
@@ -351,16 +349,12 @@ class TestCalculationReadinessService:
             ),
         )
         svc = CalculationReadinessService()
-        stab = svc.evaluate_single(enm, "stability")
-        assert stab.status == "blocked"
-        assert "der.dynamic_profile_missing" in " ".join(stab.missing_fields_pl)
-        assert "pv_1" in stab.blocking_object_refs
-
-    def test_stability_n_a_without_der(self) -> None:
-        enm = _minimal_enm_with_pf_data()
-        svc = CalculationReadinessService()
-        stab = svc.evaluate_single(enm, "stability")
-        assert stab.status == "n_a"
+        dyn = svc.evaluate_single(enm, "dynamika_rms", punkt_pracy_rozplywu=True)
+        assert dyn.status == "blocked"
+        braki = " ".join(dyn.missing_fields_pl)
+        assert "dynamika.zrodlo_bez_bloku_dynamiki" in braki
+        assert "der.dynamika_missing" in braki
+        assert "pv_1" in dyn.blocking_object_refs
 
     def test_frt_hvrt_blocked_without_explicit_der_profile(self) -> None:
         """Karta W6-1 SS0 p.3: FRT/HVRT bez jawnie wskazanego `dynamic_profile_id`
@@ -383,7 +377,7 @@ class TestCalculationReadinessService:
         assert "der.dynamic_profile_missing" in " ".join(frt.missing_fields_pl)
         assert "bess_1" in frt.blocking_object_refs
 
-    def test_stability_ready_with_der_explicit_profile_blocked_without(self) -> None:
+    def test_frt_resolver_explicit_profile_resolves_missing_does_not(self) -> None:
         """Kontrast (predykaty parami — ta sama funkcja, dwie ścieżki, karta
         W6-1 SS0 p.3): DER z JAWNIE wskazanym `dynamic_profile_id` rozwiązuje
         się; DER BEZ niego jest `source="brak"` (kasacja "default_per_kind" —
@@ -433,15 +427,15 @@ class TestCalculationReadinessService:
                 materialized_params={"dynamic_model_ref": "default_pv_gfm"},
             ),
         )
-        svc = CalculationReadinessService()
-        stab = svc.evaluate_single(enm, "stability")
-        assert stab.status == "ready"
-        # Źródło i profil nazwane nazwami (model, rejestr profili), identyfikatory
-        # `pv_1`/`default_pv_gfm` zostają w polach rekordów (karta #144).
-        zalecenie = stab.recommended_action_pl or ""
-        assert "PV-01 — profil „Typowy PV grid-forming (IEEE 1547, inercja wirtualna)”" in zalecenie
-        assert "default_pv_gfm" not in zalecenie
-        assert "pv_1" not in zalecenie
+        # Karta AB-P1: bramka „stabilność" (drugi konsument resolvera) skasowana — resolver
+        # pytany wprost, tą samą funkcją, którą czyta bramka FRT/HVRT.
+        from application.calculation_readiness.service import (
+            _resolve_der_dynamic_for_generator,
+        )
+
+        wynik = _resolve_der_dynamic_for_generator(enm.generators[-1])
+        assert wynik is not None and wynik.profile_id == "default_pv_gfm"
+        assert wynik.source == "catalog_entry_dynamic_profile_id"
 
     def test_resolve_der_dynamic_returns_none_for_unknown_gen_type(self) -> None:
         """Karta FAB-D2 (D8): rodzaj DER spoza mapowania => `None`, NIGDY
@@ -460,36 +454,32 @@ class TestCalculationReadinessService:
         nieznany = SimpleNamespace(gen_type="future_der_kind", dynamic_profile_id=None)
         assert _resolve_der_dynamic_for_generator(nieznany) is None
 
-    def test_stability_n_a_with_only_load(self) -> None:
-        """Kontrola: bez ŻADNEGO źródła dynamicznego (nawet po P0-10) stabilność
-        nadal poprawnie `n_a` — fix nie psuje starej ścieżki."""
-        svc = CalculationReadinessService()
-        stab = svc.evaluate_single(_minimal_enm_with_pf_data(), "stability")
-        assert stab.status == "n_a"
-
-    def test_stability_blocked_for_synchronous_without_dynamika_p0_10(self) -> None:
-        """P0-10 (karta W6-1): maszyna synchroniczna JEST źródłem dynamicznym dla
-        stabilności — NIE `n_a` jak przed naprawą (dawny filtr `_DER_GEN_TYPES`
-        pomijał 'synchronous' w ogóle). Bez `Generator.dynamika` jest `blocked`
-        `der.dynamika_missing`, nie ciche 'n_a'."""
+    def test_dynamika_blocked_for_synchronous_without_dynamika_p0_10(self) -> None:
+        """P0-10 (karta W6-1), przepisane w karcie AB-P1 na bramkę biegu czasowego:
+        maszyna synchroniczna JEST źródłem dynamicznym — bez `Generator.dynamika` jest
+        `blocked` z kodem `der.dynamika_missing` i POWODEM (katalog nie ma profili
+        maszyny synchronicznej — model wymaga danych producenta), nie ciche 'n_a'."""
         enm = _minimal_enm_with_pf_data()
         enm.generators.append(
             Generator(
                 ref_id="sm_1",
                 name="SM-01",
-                bus_ref="bus_sn",
+                bus_ref="bus_lv",
                 gen_type="synchronous",
                 p_mw=5.0,
             ),
         )
         svc = CalculationReadinessService()
-        stab = svc.evaluate_single(enm, "stability")
-        assert stab.status == "blocked"
-        assert "der.dynamika_missing" in " ".join(stab.missing_fields_pl)
-        assert "sm_1" in stab.blocking_object_refs
+        dyn = svc.evaluate_single(enm, "dynamika_rms", punkt_pracy_rozplywu=True)
+        assert dyn.status == "blocked"
+        braki = " ".join(dyn.missing_fields_pl)
+        assert "der.dynamika_missing" in braki
+        assert "Katalog nie ma profili dynamicznych" in braki
+        assert "sm_1" in dyn.blocking_object_refs
 
-    def test_stability_ready_for_synchronous_with_dynamika_p0_10(self) -> None:
-        """P0-10: maszyna synchroniczna Z blokiem dynamiki -> stabilność `ready`."""
+    def test_dynamika_ready_for_synchronous_with_dynamika_p0_10(self) -> None:
+        """P0-10: maszyna synchroniczna Z własnym blokiem dynamiki (karta producenta,
+        bez wiązania katalogowego) -> bieg czasowy `ready` przy punkcie pracy."""
         from enm.dynamika_modele import MaszynaSynchroniczna, ProweniencjaParametrow
 
         blok = MaszynaSynchroniczna(
@@ -517,20 +507,21 @@ class TestCalculationReadinessService:
             Generator(
                 ref_id="sm_1",
                 name="SM-01",
-                bus_ref="bus_sn",
+                bus_ref="bus_lv",
                 gen_type="synchronous",
                 p_mw=5.0,
+                q_mvar=1.0,
                 dynamika=blok,
             ),
         )
         svc = CalculationReadinessService()
-        stab = svc.evaluate_single(enm, "stability")
-        assert stab.status == "ready"
-        assert "maszyna" in (stab.recommended_action_pl or "").lower()
+        dyn = svc.evaluate_single(enm, "dynamika_rms", punkt_pracy_rozplywu=True)
+        assert dyn.status == "ready", dyn.missing_fields_pl
+        assert not dyn.missing_fields_pl
 
     def test_frt_hvrt_n_a_for_synchronous_only(self) -> None:
         """FRT/HVRT NIE dotyczy maszyn synchronicznych (falownikowe zjawisko) —
-        n_a nawet z blokiem dynamiki obecnym (kontrast z 'stability' powyżej,
+        n_a nawet z blokiem dynamiki obecnym (kontrast z biegiem czasowym powyżej,
         ten sam generator inny wynik — dwie różne fizyczne zdolności)."""
         from enm.dynamika_modele import MaszynaSynchroniczna, ProweniencjaParametrow
 
@@ -586,16 +577,16 @@ class TestCalculationReadinessService:
         assert ncrfg.status == "ready"
         assert "operatorów" in (ncrfg.recommended_action_pl or "")
 
-    def test_evaluate_returns_11_items(self) -> None:
-        """Karta W6-1 SS0 p.7: 11. typ `dynamika_rms` (kontrakty/gotowość biegu
-        czasowego) dołączony do rejestru — 10 → 11 pozycji, addytywnie."""
+    def test_evaluate_returns_10_items(self) -> None:
+        """Karta W6-1 SS0 p.7: typ `dynamika_rms` dołączony (10 → 11); karta AB-P1: typ
+        „stabilność" (bramka skasowanego solvera stabilności RMS) usunięty (11 → 10)."""
         svc = CalculationReadinessService()
         report = svc.evaluate(_minimal_enm_with_pf_data())
-        assert len(report.items) == 11
+        assert len(report.items) == 10
         types = [i.calculation_type for i in report.items]
         assert "power_flow" in types
         assert "short_circuit" in types
-        assert "stability" in types
+        assert "stability" not in types
         assert "frt_hvrt" in types
         assert "ncrfg_compliance" in types
         assert "report_osd" in types

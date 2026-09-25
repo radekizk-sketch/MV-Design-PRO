@@ -27,6 +27,9 @@ function buildCreateRunBody(request: CreateRunRequest): CreateRunRequest {
   if (request.solver_input !== undefined) {
     body.solver_input = request.solver_input;
   }
+  if (request.scenario_id !== undefined) {
+    body.scenario_id = request.scenario_id;
+  }
   if (request.readiness !== undefined) {
     body.readiness = request.readiness;
   }

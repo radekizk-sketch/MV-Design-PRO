@@ -14,13 +14,7 @@ from api.analysis_run_exports import (
     normalize_report_options,
 )
 from api.v125_contracts import build_export_artifact
-from application.stability.dynamic_stability import (
-    FaultClearScenario,
-    FaultClearSourceState,
-    echo_scenariusza_stabilnosci,
-)
 from enm.canonical_analysis import CanonicalRun
-from enm.nazwy_elementow import zbuduj_indeks_nazw
 
 
 def _build_pf_run() -> CanonicalRun:
@@ -389,70 +383,6 @@ def _build_phase_state_run() -> CanonicalRun:
     )
 
 
-def _build_dynamic_stability_run() -> CanonicalRun:
-    """Bieg `dynamic_stability` w kształcie z `_execute_dynamic_stability` po uczciwości
-    natychmiastowej (2026-09-23): echo scenariusza z rekordem oceny NIE_OCENIONO, ślad
-    automatyki bez zdarzeń, stopień dowodowy UNVALIDATED_MODEL (niepełny, nieraportowalny)."""
-    snapshot = {
-        "sources": [{"ref_id": "src-main", "name": "Sieć zasilająca GPZ"}],
-        "branches": [{"ref_id": "line-1", "name": "Linia L1", "type": "cable"}],
-    }
-    echo = echo_scenariusza_stabilnosci(
-        FaultClearScenario(
-            scenario_id="dyn-1",
-            faulted_element_id="line-1",
-            clearing_time_ms=120.0,
-            cleared_by_element_ids=("cb-1",),
-            source_state=FaultClearSourceState(
-                source_id="src-main",
-                pre_fault_angle_deg=10.0,
-                during_fault_angle_deg=75.0,
-                post_fault_angle_deg=28.0,
-                post_fault_voltage_pu=0.97,
-                post_fault_frequency_pu=0.99,
-            ),
-        ),
-        nazwy=zbuduj_indeks_nazw(snapshot),
-    )
-    return CanonicalRun(
-        id=uuid4(),
-        case_id="case-dyn",
-        project_id="project-1",
-        analysis_type="dynamic_stability",
-        status="FINISHED",
-        created_at=datetime.now(UTC),
-        snapshot_hash="snapshot-dyn",
-        input_hash="hash-dyn",
-        snapshot=snapshot,
-        validation={},
-        readiness={},
-        result_status="VALID",
-        raw_result={
-            "analysis_type": "dynamic_stability",
-            "proof_ref": "proof:dynamic-stability:dyn-1",
-            "proof_status": "incomplete",
-            "reporting_status": "not_reportable",
-            "result": echo.to_dict(),
-            "ocena": echo.ocena,
-            "automation_trace": {
-                "topology_effect": {"network_state": "RECONFIGURED"},
-                "events": [],
-            },
-            "topology_effect": {"network_state": "RECONFIGURED"},
-        },
-        white_box_trace=[
-            {
-                "step": 1,
-                "title": "Echo scenariusza wpisanego przez użytkownika. "
-                + echo.ocena["wyjasnienie"]["zdanie_pl"],
-                "proof_ref": "proof:dynamic-stability:dyn-1",
-                "proof_status": "incomplete",
-                "reporting_status": "not_reportable",
-            }
-        ],
-    )
-
-
 def test_export_payload_supports_asymmetric_short_circuit_proof_status() -> None:
     payload = build_analysis_run_export_payload(_build_sc_run())
 
@@ -555,21 +485,6 @@ def test_report_payload_supports_phase_state_focus_table() -> None:
     assert payload["trace"]["white_box_trace"][0]["proof_ref"].startswith("proof:phase-state-sn:")
 
 
-def test_export_payload_supports_dynamic_stability_bundle() -> None:
-    """Intencja zachowana: pakiet eksportu biegu stabilności niesie wiersz wyniku, ślad
-    automatyki i metadane dowodowe. Zmiana kanonu (uczciwość natychmiastowa 2026-09-23):
-    wiersz to echo z rekordem NIE_OCENIONO (dawniej STABLE), ślad bez narracji zdarzeń
-    (dawniej DYNAMIC_STABILITY_EVALUATED), dowód niepełny (UNVALIDATED_MODEL)."""
-    payload = build_analysis_run_export_payload(_build_dynamic_stability_run())
-
-    assert payload["report_type"] == "dynamic_stability"
-    wiersz = payload["dynamic_stability"]["rows"][0]
-    assert wiersz["status"] == "NIE_OCENIONO"
-    assert wiersz["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
-    assert payload["automation_trace"]["rows"] == []
-    assert payload["metadata"]["proof_status"] == "incomplete"
-
-
 def test_report_payload_marks_readiness_blockers_as_partial_with_missing_prerequisites() -> None:
     run = _build_pf_run()
     run.readiness = {"blockers": [{"code": "catalog.binding.missing"}]}
@@ -597,3 +512,86 @@ def test_export_artifact_includes_run_lineage_for_reproducible_exports() -> None
         "input_hash": run.input_hash,
         "result_hash": artifact["result_hash"],
     }
+
+
+def _build_dynamika_run() -> CanonicalRun:
+    """Bieg `dynamika_rms` z ładunkiem REALNEGO biegu sceny harnessu (fixtura policzona
+    skryptem `eksport_fixtur_harnessu.py` tą samą ścieżką co końcówka wyniku) — bez bloków
+    dokładanych przez końcówkę (opis, oceny, kontekst), które eksport składa sam."""
+    import json as _json
+    from pathlib import Path as _Path
+
+    fixtura = (
+        _Path(__file__).resolve().parents[3]
+        / "frontend"
+        / "src"
+        / "harness-fixtures"
+        / "generated"
+        / "dynamika_scena_wyniki.json"
+    )
+    ladunek = _json.loads(fixtura.read_text(encoding="utf-8"))
+    for klucz in ("opis_wyniku", "oceny", "analysis_case_context", "run_id"):
+        ladunek.pop(klucz)
+    from tests.golden.enm_builders.dynamika_projektanta import build_dynamika_projektanta_enm
+
+    return CanonicalRun(
+        id=uuid4(),
+        case_id="case-dyn",
+        project_id="project-1",
+        analysis_type="dynamika_rms",
+        status="FINISHED",
+        created_at=datetime.now(UTC),
+        snapshot_hash="snapshot-dyn",
+        input_hash="hash-dyn",
+        snapshot=build_dynamika_projektanta_enm(z_modelem_pv=True),
+        validation={},
+        readiness={},
+        result_status="VALID",
+        raw_result=ladunek,
+        white_box_trace=[],
+    )
+
+
+def test_eksport_biegu_dynamiki_niesie_zdarzenia_metryki_i_oceny_niewykonane() -> None:
+    """Karta AB-P1: raport biegu czasowego (JSON, PDF, DOCX) niesie zdarzenia wykonane
+    i metryki z NAZWAMI elementów migawki biegu oraz oceny niewykonane — tor echa kątów
+    (dawny eksport „stabilność dynamiczna") skasowany."""
+    import io as _io
+
+    from docx import Document as _Document
+
+    run = _build_dynamika_run()
+    payload = build_analysis_run_export_payload(run)
+    assert [o["status_maszynowy"] for o in payload["dynamika"]["oceny"]] == ["NIE_OCENIONO"] * 2
+    assert "dynamic_stability" not in payload
+
+    raport = build_analysis_run_report_payload(run, report_options={"sections": ["results"]})
+    tabele = [t["table_id"] for t in raport["results"]["index"]["tables"]]
+    assert [t for t in tabele if t.startswith("dynamika_")] == [
+        "dynamika_zdarzenia",
+        "dynamika_przekroczenia",
+        "dynamika_metryki",
+    ]
+
+    docx = export_run_report_docx_response(
+        run, filename_stem="raport", report_options={"sections": ["results"]}
+    )
+    tekst = "\n".join(p.text for p in _Document(_io.BytesIO(docx.body)).paragraphs)
+    assert "Raport dynamiki czasowej RMS" in tekst or "Zdarzenia wykonane" in tekst
+    # Nazwy z migawki biegu, rodzaje zdarzeń po polsku, skutki topologiczne — bez identyfikatorów.
+    assert "Odcinek 2" in tekst and "Zwarcie w gałęzi (miejsce x·L)" in tekst
+    assert "szyny beznapięciowe: Zacisk końcowy Odcinek 2" in tekst
+    assert "odbiory odcięte: Odbiór" in tekst
+    assert "zwarcie_galezi" not in tekst and "seg/" not in tekst and "bus/" not in tekst
+    assert "Najniższe napięcie szyny w przebiegu" in tekst
+    assert "przyczyna: zadane w harmonogramie scenariusza" in tekst
+    # Przekroczenie progu detektora scenariusza: nazwa detektora, wielkość po polsku, szyna
+    # po nazwie, próg z jednostką i kierunek po polsku (bez klucza kanału).
+    assert "detektor „Zapad napięcia szyny PV” | Moduł napięcia | " in tekst
+    assert "próg 0.8 pu | spadek poniżej progu" in tekst
+    assert "u_pu@" not in tekst and "nn_bus" not in tekst
+
+    pdf = export_run_report_pdf_response(
+        run, filename_stem="raport", report_options={"sections": ["results"]}
+    )
+    assert pdf.body.startswith(b"%PDF")

@@ -65,8 +65,8 @@ export const PRZEBIEGI_STRINGS = {
   grupaOgolne: 'Kontekst ogólny',
   grupaRozplyw: 'Założenia rozpływu i zbieżności',
   grupaZwarcie: 'Założenia zwarciowo-sieciowe',
-  // Fala W3: grupa dla cienkich paneli stanu fazowego SN i stabilności
-  // dynamicznej (most: PhaseStateSurface, DynamicStabilitySurface).
+  // Fala W3: grupa kontekstu przypadku (stan fazowy SN, dynamika czasowa RMS) —
+  // pola kontraktu `analysis_case_context`.
   grupaStanyWarianty: 'Stany i warianty',
   etykietaTypAnalizy: 'Typ analizy',
   etykietaWaznoscWyniku: 'Ważność wyniku',
@@ -84,7 +84,7 @@ export const PRZEBIEGI_STRINGS = {
   etykietaTemperatura: 'Temperatura',
   etykietaZalozeniaObciazen: 'Założenia obciążeń',
   etykietaZalozeniaZrodel: 'Założenia źródeł',
-  // Fala W3: wiersze paneli stanu fazowego SN i stabilności dynamicznej.
+  // Fala W3: wiersze kontekstu przypadku (stan fazowy SN, dynamika czasowa RMS).
   etykietaIdentyfikatorPrzypadku: 'Identyfikator przypadku',
   etykietaBramaJakosci: 'Brama jakości',
   etykietaKompletnoscPrzejsciowa: 'Kompletność zgodności przejściowej',

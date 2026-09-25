@@ -294,8 +294,11 @@ SCENY: list[tuple[str, str, str]] = [
      "Historia iteracji i kryterium zatrzymania — dowód, że wynik jest zbieżny, nie ucięty."),
     ("wyniki-stan-fazowy", "Stan fazowy sieci SN",
      "Asymetria napięć i prądów fazowych; podstawa oceny warunków pracy odbiorów."),
-    ("wyniki-stabilnosc", "Stabilność RMS",
-     "Przebiegi po zakłóceniu: czy oś czasu i wielkości mają jednostki i punkt odniesienia."),
+    ("wyniki-dynamika", "Dynamika czasowa RMS",
+     "Przebiegi po zakłóceniu na wspólnej osi czasu, oś zdarzeń ze skutkami, wielkości "
+     "z jednostkami; bieg w trybie sieci bez werdyktu (ocena niewykonana nazwana)."),
+    ("wyniki-dynamika-brak", "Dynamika czasowa RMS — brak modelu źródła",
+     "Odmowa przed biegiem z nazwą wytwórcy i akcją: wiązanie z profilem katalogowym."),
     ("przekaznik", "Karta przekaźnika i nastaw",
      "Funkcje, nastawy i ich uzasadnienie — nastawa bez uzasadnienia nie jest projektem."),
     ("koordynacja", "Koordynacja zabezpieczeń i krzywe TCC",

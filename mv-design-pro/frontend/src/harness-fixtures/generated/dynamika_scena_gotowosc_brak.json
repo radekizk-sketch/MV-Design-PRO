@@ -1,0 +1,67 @@
+{
+  "gotowosc": {
+    "calculation_type": "dynamika_rms",
+    "label_pl": "Dynamika czasowa (DAE)",
+    "status": "blocked",
+    "missing_fields_pl": [
+      "Bieg dynamiki czasowej wymaga bloku parametrów dynamicznych dla KAŻDEGO wytwórcy w modelu (karta producenta, certyfikat jednostki albo profil typowy normy). Brak bloku: „Blok PV”. (kod 'dynamika.zrodlo_bez_bloku_dynamiki')",
+      "wytwórca „Blok PV”: brak wiązania z katalogowym modelem dynamicznym (kod 'der.dynamika_missing')"
+    ],
+    "blocking_object_refs": [
+      "pv/521ff6586b0c5e49952a5a5e10edc605/converter"
+    ],
+    "recommended_action_pl": "Uzupełnij dane wejściowe biegu czasowego: model dynamiczny każdego wytwórcy (wiązanie z katalogowym profilem dynamicznym albo blok z karty producenta), rodzinę parametrów z modelem elektrycznym, odbiory o stałej mocy i osobną szynę dla źródła sieciowego."
+  },
+  "braki_modelu": [
+    {
+      "kod": "dynamika.zrodlo_bez_bloku_dynamiki",
+      "komunikat_pl": "Bieg dynamiki czasowej wymaga bloku parametrów dynamicznych dla KAŻDEGO wytwórcy w modelu (karta producenta, certyfikat jednostki albo profil typowy normy). Brak bloku: „Blok PV”.",
+      "elementy": [
+        {
+          "ref_id": "pv/521ff6586b0c5e49952a5a5e10edc605/converter",
+          "nazwa": "Blok PV"
+        }
+      ]
+    }
+  ],
+  "kopie_nieaktualne": [],
+  "zrodla": [
+    {
+      "ref_id": "pv/521ff6586b0c5e49952a5a5e10edc605/converter",
+      "nazwa": "Blok PV",
+      "gen_type": "pv_inverter",
+      "wiazanie": null,
+      "stan": "brak",
+      "rodzina": null,
+      "zrodlo_proweniencji": null,
+      "odniesienie_proweniencji": null,
+      "odmowa_kod": null,
+      "odmowa_komunikat": null,
+      "profil_typu": null,
+      "profile_zgodne": [
+        {
+          "profile_id": "default_pv_gfl",
+          "nazwa": "Typowy PV grid-following (IEEE 1547 / NC RfG kat. B)",
+          "rodzina_docelowa": "przeksztaltnikowa_gfl",
+          "model_w_rdzeniu": true
+        },
+        {
+          "profile_id": "default_pv_gfm",
+          "nazwa": "Typowy PV grid-forming (IEEE 1547, inercja wirtualna)",
+          "rodzina_docelowa": "przeksztaltnikowa_gfm",
+          "model_w_rdzeniu": true
+        }
+      ],
+      "akcja_naprawcza": {
+        "kod": "der.dynamika_missing",
+        "komunikat_pl": "Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego",
+        "nawigacja": {
+          "panel": "analizy",
+          "tab": "dynamika",
+          "focus": "dynamic_model_ref"
+        }
+      }
+    }
+  ],
+  "biegi_rozplywu": []
+}

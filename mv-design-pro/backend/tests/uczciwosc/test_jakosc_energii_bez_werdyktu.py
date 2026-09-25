@@ -200,9 +200,7 @@ def test_gotowosc_nie_twierdzi_ze_e40_czyta_moc_zwarciowa(
     assert ("Szyny z mocą zwarciową źródła" in nazwy) is wymienia_moc_zwarciowa, nazwy
 
 
-@pytest.mark.parametrize(
-    "zdolnosc", ["POWER_QUALITY_HARMONICS", "SSCI_IMPEDANCE", "DYNAMIC_STABILITY"]
-)
+@pytest.mark.parametrize("zdolnosc", ["POWER_QUALITY_HARMONICS", "SSCI_IMPEDANCE", "DYNAMIKA_RMS"])
 def test_rejestr_zdolnosci_nazywa_stan_niezwalidowany(zdolnosc: str) -> None:
     wpis = SOLVER_CAPABILITY_REGISTRY[zdolnosc]  # type: ignore[index]
     assert wpis.implementation_status == "UNVALIDATED"

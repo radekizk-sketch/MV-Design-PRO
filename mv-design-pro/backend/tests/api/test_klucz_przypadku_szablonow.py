@@ -316,6 +316,11 @@ INWENTARZ_KLUCZA_PRZYPADKU: dict[str, str] = {
     # samą drogą co `GET /api/cases/{case_id}/enm` — `case_id: str` obok
     # `klucz: KluczTwin` z tego samego segmentu adresu, bez `UUID(...)`/`str(...)`.
     "karty_widmowe.py": KLUCZ_SUROWY,
+    # Karta AB-P1: gotowość i scenariusze nazwane biegu dynamiki
+    # (`/api/dynamika/study-cases/{case_id}/...`) czytają model i magazyn scenariuszy tą
+    # samą drogą co `GET /api/cases/{case_id}/enm` — `case_id: str` obok `klucz: KluczTwin`
+    # z tego samego segmentu adresu, bez `UUID(...)`/`str(...)` pomiędzy.
+    "dynamika.py": KLUCZ_SUROWY,
     # W1 (2026-09-09): agregacja odbiorów per stacja dla audytu 2 czyta ENM projektu
     # (dawniej migawkę legacy `uow.snapshots`, której nikt nie zapisywał) — adres
     # projektem przez tłumacza, zero własnej konwersji klucza przypadku.

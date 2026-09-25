@@ -59,8 +59,10 @@ const PRZEBIEGI_OSI: Partial<
   sc_2fg: ['SC_2F_G'],
   vdrop: ['LOAD_FLOW'],
   q_u: ['LOAD_FLOW'],
-  frt: ['DYNAMIC_STABILITY'],
-  hvrt: ['DYNAMIC_STABILITY'],
+  // Karta AB-P1: FRT/HVRT na sieci to kanoniczny bieg dynamiki czasowej RMS (tryb sieci,
+  // bez werdyktu); dawny tor echa kątów wpisanych ręcznie skasowany.
+  frt: ['DYNAMIKA_RMS'],
+  hvrt: ['DYNAMIKA_RMS'],
   // nc_rfg: BEZ wpisu (kasacja source_compliance, karta W3-D, 2026-09-09) —
   // zgodnosc NC RfG nie ma WLASNEGO ExecutionRun: liczy sie na zywo z modelu
   // (`GET /api/ncrfg-tests/cases/{case_id}/compliance`) albo z macierzy per DER

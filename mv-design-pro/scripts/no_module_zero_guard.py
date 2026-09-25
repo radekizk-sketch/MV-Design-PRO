@@ -12,7 +12,7 @@ wystąpić (patrz `_ALLOWLIST` — prefiksy ścieżek, nie linie: to wystarczaj�
 granulacja dla literału stanu, którego jedyna dozwolona rola to FROZEN
 kontrakt solvera albo jawny punkt tłumaczenia na granicy aplikacyjnej):
 
-1. **Kontrakty solverów FROZEN** (B-01, NIE DOTKNIĘTE tą kartą):
+1. **Kontrakty solverów FROZEN** (B-01, lista `scripts/rdzenie_b01.py`, NIE DOTKNIĘTE):
    `network_model/solvers/stability_rms/**`, `network_model/solvers/frt_hvrt/**`.
 2. **Drugi silnik NC RfG SKASOWANY (karta S-3, 2026-09-16)**:
    `application/ncrfg_compliance/checker.py` (werdykt `no_module` w
@@ -132,12 +132,11 @@ def scan() -> tuple[list[str], list[str]]:
                 violations.append(f"  frontend/src/{rel}:{line_num}: {line.strip()[:120]}")
 
     stale: list[str] = []
-    # Wpisy-prefiksy katalogów (stability_rms/, frt_hvrt/) nie muszą mieć
-    # dokładnego dopasowania pliku-po-pliku — sprawdzamy tylko wpisy PLIKÓW
-    # (nie kończące się na "/"), które muszą realnie zawierać literał.
+    # KAŻDY wpis — plik albo prefiks katalogu — musi mieć realne trafienie. Karta AB-P1:
+    # wpisy-prefiksy były wyłączone z tej kontroli, więc prefiks katalogu skasowanego
+    # solvera zostałby na liście jako martwe zezwolenie, które po cichu wpuściłoby
+    # literał `no_module` do katalogu wskrzeszonego pod tą nazwą.
     for entry in _ALLOWLIST_BACKEND:
-        if entry.endswith("/"):
-            continue
         if entry not in backend_hits:
             stale.append(f"  backend/src/{entry}")
     for entry in _ALLOWLIST_FRONTEND:

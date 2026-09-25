@@ -58,7 +58,9 @@ def test_advanced_solver_capability_registry_is_complete_and_real() -> None:
         # produktu `PF_UNBALANCED` — nowa zdolność w rejestrze.
         "LOAD_FLOW_UNBALANCED_BFS",
         "PHASE_STATE_SN",
-        "DYNAMIC_STABILITY",
+        # Karta AB-P1: tor echa kątów (DYNAMIC_STABILITY) skasowany — zdolność dynamiki
+        # czasowej ma jeden tor: bieg kanoniczny `dynamika_rms`.
+        "DYNAMIKA_RMS",
         "POWER_QUALITY_HARMONICS",
         "SSCI_IMPEDANCE",
         "VOLTAGE_STABILITY",

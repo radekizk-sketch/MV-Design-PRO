@@ -57,7 +57,8 @@
  *     miał żadnego konsumenta solvera. Zastąpiony przez `GET
  *     /api/catalog/der-dynamic-profiles` (`derRemoteCatalogs.ts::
  *     useDerDynamicProfiles`), jedyne źródło — `network_model.catalog.
- *     der_dynamic`, konsumowane przez solvery `stability_rms`/`frt_hvrt`, z
+ *     der_dynamic`, materializowane do modelu dynamicznego wytwórcy (bieg
+ *     `dynamika_rms`) i czytane przez tor FRT/HVRT, z
  *     PRAWDZIWYMI parametrami White Box (Tp/Tq/droop/FRT/inercja).
  *   * `STATION_TEMPLATE_CATALOG` — zero konsumentów produkcyjnych (zmierzone
  *     grepem); backend ma `station_templates.py` jako dostawcę dla kreatora

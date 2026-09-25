@@ -1,0 +1,53 @@
+{
+  "gotowosc": {
+    "calculation_type": "dynamika_rms",
+    "label_pl": "Dynamika czasowa (DAE)",
+    "status": "partial",
+    "missing_fields_pl": [
+      "Q generatora 'Blok PV' (kod 'generator.q_missing')"
+    ],
+    "blocking_object_refs": [
+      "pv/521ff6586b0c5e49952a5a5e10edc605/converter"
+    ],
+    "recommended_action_pl": "Punkt pracy (rozpływ mocy) musi być gotowy przed biegiem dynamiki czasowej — Uzupełnij dane elektryczne źródeł, odbiorów i odcinków."
+  },
+  "braki_modelu": [],
+  "kopie_nieaktualne": [],
+  "zrodla": [
+    {
+      "ref_id": "pv/521ff6586b0c5e49952a5a5e10edc605/converter",
+      "nazwa": "Blok PV",
+      "gen_type": "pv_inverter",
+      "wiazanie": "default_pv_gfl",
+      "stan": "z_katalogu",
+      "rodzina": "przeksztaltnikowa_gfl",
+      "zrodlo_proweniencji": "profil_typowy_normy",
+      "odniesienie_proweniencji": "IEEE 1547-2018 §5-8; Rozporządzenie (UE) 2016/631 (NC RfG) art. 13-21",
+      "odmowa_kod": null,
+      "odmowa_komunikat": null,
+      "profil_typu": null,
+      "profile_zgodne": [
+        {
+          "profile_id": "default_pv_gfl",
+          "nazwa": "Typowy PV grid-following (IEEE 1547 / NC RfG kat. B)",
+          "rodzina_docelowa": "przeksztaltnikowa_gfl",
+          "model_w_rdzeniu": true
+        },
+        {
+          "profile_id": "default_pv_gfm",
+          "nazwa": "Typowy PV grid-forming (IEEE 1547, inercja wirtualna)",
+          "rodzina_docelowa": "przeksztaltnikowa_gfm",
+          "model_w_rdzeniu": true
+        }
+      ],
+      "akcja_naprawcza": null
+    }
+  ],
+  "biegi_rozplywu": [
+    {
+      "run_id": "run-pf-scena-dynamika",
+      "created_at": "2026-09-16T09:00:00+00:00",
+      "finished_at": "2026-09-16T09:00:00+00:00"
+    }
+  ]
+}

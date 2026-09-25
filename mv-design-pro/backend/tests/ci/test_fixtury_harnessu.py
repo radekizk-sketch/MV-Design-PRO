@@ -42,6 +42,13 @@ from enm.deklaracje_modulu import POLA_DEKLARACJI, DeklaracjeModulu
 from enm.migrations.nn_field_specs_promocja import migruj as promuj_nn_field_specs
 from enm.models import EnergyNetworkModel
 
+from tests.golden.enm_builders.dynamika_projektanta import (
+    NAZWA_KONCA_MAGISTRALI,
+    NAZWA_ODCINKA_ZWARCIA,
+    build_dynamika_projektanta_enm,
+    refy_sieci,
+)
+
 _SKRYPT = Path(__file__).resolve().parents[2] / "scripts" / "eksport_fixtur_harnessu.py"
 _spec = importlib.util.spec_from_file_location("eksport_fixtur_harnessu", _SKRYPT)
 assert _spec is not None and _spec.loader is not None
@@ -141,6 +148,12 @@ POLA_SKROTOW_NIEPRZENOSNYCH: frozenset[str] = frozenset(
         "source_proof_hash",
         "source_result_hash",
         "value",
+        # Karta AB-P1: odcisk punktu pracy biegu dynamiki to skrót nad NAPIĘCIAMI
+        # i MOCAMI rozwiązania rozpływu (wynik solvera, nie wejście) — ta sama klasa
+        # co `result_hash`. Pozostałe odciski tożsamości biegu (`odcisk_migawki`,
+        # `odcisk_nastaw_solvera`, `odcisk_harmonogramu`, `odcisk_implementacji`) są
+        # skrótami nad WEJŚCIEM i zostają w porównaniu dokładnym.
+        "odcisk_punktu_pracy",
     }
 )
 
@@ -423,6 +436,7 @@ def test_listy_pol_wylaczonych_sa_zamkniete() -> None:
         "source_proof_hash",
         "source_result_hash",
         "value",
+        "odcisk_punktu_pracy",
     }
     assert POLA_TEKSTU_Z_LICZBAMI == {
         "description_pl",
@@ -559,13 +573,15 @@ def test_fixtury_niosa_skroty_nieprzenosne() -> None:
     # POMIAR 2026-09-18 na komplecie fixtur repo (69 plików). 2026-09-24 (Pakiet D2, luka
     # §5.2): skróty sekcji wniosku i studium liczone nad sekcją skwantyzowaną
     # (`kontrakt_liczb.kwantyzuj_kontrakt`) — sonda szumu BLAS na 90 fixturach nie rusza
-    # żadnego z nich, więc nie ma ich na tej liście (porównanie dokładne).
+    # żadnego z nich, więc nie ma ich na tej liście (porównanie dokładne). 2026-09-24
+    # (karta AB-P1): `odcisk_punktu_pracy` wyniku dynamiki sceny `dynamika_scena_*`.
     assert obecne == {
         "analysis_id",
         "deterministic_hash",
         "deterministic_signature",
         "estimate_id",
         "export_ref",
+        "odcisk_punktu_pracy",
         "proof_hash",
         "proof_id",
         "proof_ref",
@@ -942,9 +958,9 @@ def test_zwarcia_pasmo_strona_min_ma_ikss_mniejsze_niz_max_per_szyna() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Karta HARNESS-RESZTA (2026-09-16) — sceny „wyniki-stan-fazowy"/
-# „wyniki-stabilnosc" (E-31/E-32), realny bieg backendu (phase_state_sn /
-# dynamic_stability na sieci złotej).
+# Karta HARNESS-RESZTA (2026-09-16) — scena „wyniki-stan-fazowy" (E-31), realny
+# bieg backendu (phase_state_sn na sieci złotej); karta AB-P1 — scena
+# „wyniki-dynamika" (bieg kanoniczny `dynamika_rms`, zastąpiła „wyniki-stabilnosc").
 # ---------------------------------------------------------------------------
 
 
@@ -1093,36 +1109,57 @@ def test_arcflash_scena_ma_energie_incydentu_realnie_policzona() -> None:
     assert wynik["voltage_kv"] == 15.0
 
 
-def test_stabilnosc_wyniki_i_slad_dziela_ten_sam_run_id_i_scenariusz() -> None:
-    wyniki = eksport.stabilnosc_scena_wyniki()
-    slad = eksport.stabilnosc_scena_slad()
-    assert wyniki["run_id"] == eksport.RUN_ID_SCENY_STABILNOSC == slad["run_id"]
-    _run_idy_nie_sa_uuid(wyniki)
-    _run_idy_nie_sa_uuid(slad)
-    wiersz = wyniki["rows"][0]
-    assert wiersz["source_id"] == "gen_sync"
-    assert wiersz["faulted_element_id"] == "line_b_c"
-    assert wiersz["cleared_by_element_ids"] == ["fuse_c"]
-    # Intencja zachowana: wynik i slad sceny dziela ten sam bieg i scenariusz, a atrapa nie
-    # zawyza poziomu dowodu. Zmiana kanonu (uczciwosc natychmiastowa 2026-09-23): tor nie
-    # rozwiazuje sieci, wiec wiersz to echo scenariusza z rekordem oceny NIE_OCENIONO (dawniej
-    # werdykt STABLE z katow wpisanych recznie), a slad automatyki nie opowiada zdarzen
-    # zabezpieczen (dawniej piec zdarzen z czasu wpisanego recznie) — niesie rekord oceny.
-    assert wiersz["status"] == "NIE_OCENIONO"
-    assert wiersz["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
-    assert wiersz["ocena"]["kryterium_id"] == (
-        f"dynamic_stability.fault_clear.{wiersz['scenario_id']}"
-    )
-    # Karta S-1 (W6-0): zdolnosc dynamic_stability.fault_clear jest
-    # UNVALIDATED_MODEL — atrapa NIE MOZE pokazywac "pelny/raportowalny"
-    # (defekt starej, recznie wpisanej atrapy, naprawiony tu u zrodla).
-    assert wiersz["proof_status"] == "incomplete"
-    assert wiersz["reporting_status"] == "not_reportable"
-    assert wiersz["dopuszczalnosc_raportowa"] is False
-    assert wiersz["evidence"]["tier"] == "UNVALIDATED_MODEL"
-    assert slad["rows"] == []
-    assert slad["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
-    assert slad["ocena"]["kryterium_id"] == wiersz["ocena"]["kryterium_id"]
+def test_dynamika_scena_wynik_niesie_przebieg_kanoniczny_bez_werdyktu() -> None:
+    """Scena „wyniki-dynamika" to REALNY bieg `dynamika_rms`: stabilny `run_id`, zdarzenia
+    wykonane scenariusza nazwanego (zwarcie w odcinku x·L usunięte izolacją), nazwy elementów
+    i zacisków z migawki biegu, dwa rekordy `NIE_OCENIONO` i stopień dowodowy z rejestru."""
+    wynik = eksport.dynamika_scena_wyniki()
+    assert wynik["run_id"] == eksport.RUN_ID_SCENY_DYNAMIKA
+    assert wynik["pf_run_id"] == eksport.RUN_ID_SCENY_DYNAMIKA_PF
+    _run_idy_nie_sa_uuid(wynik)
+    refy = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False))
+    odcinek = refy.odcinek_zwarcia
+    assert [(z["rodzaj"], z["ref"]) for z in wynik["zdarzenia_wykonane"]] == [
+        ("zwarcie_galezi", odcinek),
+        ("zdjecie_zwarcia_galezi", odcinek),
+        ("wylaczenie_galezi", odcinek),
+    ]
+    # Skutek topologiczny izolacji w scenie: koniec magistrali z odbiorem odcięty.
+    assert wynik["zdarzenia_wykonane"][1]["obszary_odciete"] == [refy.koniec_magistrali]
+    assert [o["status_maszynowy"] for o in wynik["oceny"]] == ["NIE_OCENIONO"] * 2
+    assert wynik["stopien_dowodowy"][0]["tier"] == "UNVALIDATED_MODEL"
+    assert wynik["wlasnosci_biegu"]["czas_obliczen_s"] == 0.0, "zegar obliczeń zamrożony"
+    kabel = wynik["opis_wyniku"]["elementy"][odcinek]
+    assert kabel["nazwa"] == NAZWA_ODCINKA_ZWARCIA
+    assert kabel["zacisk_do"]["szyna_nazwa"] == NAZWA_KONCA_MAGISTRALI
+
+    przebiegi = eksport.dynamika_scena_przebiegi()
+    assert przebiegi["run_id"] == eksport.RUN_ID_SCENY_DYNAMIKA
+    pary = [
+        (t, s)
+        for t, s in zip(przebiegi["os_czasu_s"], przebiegi["strona_probki"], strict=True)
+        if s != "C"
+    ]
+    assert pary == [(0.05, "L"), (0.05, "P"), (0.15, "L"), (0.15, "P")]
+    assert set(przebiegi["probki"]) == {k["klucz"] for k in wynik["kanaly"]}
+
+
+def test_dynamika_scena_gotowosc_przed_i_po_wiazaniu_katalogowym() -> None:
+    przed = eksport.dynamika_scena_gotowosc_brak()
+    pv_ref = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False)).pv
+    pv_przed = next(z for z in przed["zrodla"] if z["ref_id"] == pv_ref)
+    assert pv_przed["stan"] == "brak"
+    assert pv_przed["akcja_naprawcza"]["kod"] == "der.dynamika_missing"
+    po = eksport.dynamika_scena_gotowosc()
+    pv_po = next(z for z in po["zrodla"] if z["ref_id"] == pv_ref)
+    assert (pv_po["stan"], pv_po["wiazanie"]) == ("z_katalogu", "default_pv_gfl")
+    assert [b["run_id"] for b in po["biegi_rozplywu"]] == [eksport.RUN_ID_SCENY_DYNAMIKA_PF]
+    scenariusze = eksport.dynamika_scena_scenariusze()
+    assert [s["scenario_id"] for s in scenariusze["scenariusze"]] == [
+        eksport.SCENARIO_ID_SCENY_DYNAMIKA
+    ]
+    opis = eksport.dynamika_scena_opis()
+    assert {r["rodzaj"] for r in opis["rodzaje_zdarzen"]} >= {"zwarcie", "wylaczenie_galezi"}
 
 
 def test_falowniki_rozplyw_gpz_feeder_niesie_tor_gpz_i_tor_falownika_na_realnej_topologii() -> None:

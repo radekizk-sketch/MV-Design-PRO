@@ -67,11 +67,11 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
       'backend/src/domain/analysis_run.py',
     ],
     tests: [
-      'poetry run pytest tests/test_advanced_solver_capability_registry.py tests/test_frt_lvrt_hvrt_compliance.py tests/test_dynamic_stability_reference.py tests/test_load_flow_canonical_solver_modes.py -q',
+      'poetry run pytest tests/test_advanced_solver_capability_registry.py tests/test_frt_lvrt_hvrt_compliance.py tests/uczciwosc/test_dynamika_rms_bez_werdyktu.py tests/test_load_flow_canonical_solver_modes.py -q',
       'poetry run pytest tests/test_power_flow_gauss_seidel.py tests/test_power_flow_fast_decoupled.py tests/test_short_circuit_iec60909.py -q',
     ],
     confirmation:
-      'Rejestr zdolnosci nie zawiera stanu niedostepnosci; kazda zdolnosc jest implemented, proof_supported i reportable.',
+      'Rejestr zdolnosci nie zawiera stanu niedostepnosci; zdolnosc niezwalidowana (np. dynamika czasowa RMS) jest nieraportowalna — test rejestru przypina te pare.',
   },
   {
     code: 'PHASE-0-DONE-E39-AUDIT-SCREEN',
@@ -216,7 +216,3 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
       'benchmarków skasowany w całości — patrz meldunek karty K2 dla pełnego inwentarza.',
   },
 ];
-
-export function hasRegisteredDebt(code: string): boolean {
-  return TECHNICAL_DEBT_REGISTRY.some((item) => item.code === code);
-}

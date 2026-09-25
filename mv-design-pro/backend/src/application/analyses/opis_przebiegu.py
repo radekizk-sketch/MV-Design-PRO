@@ -19,7 +19,6 @@ RODZAJE_PRZEBIEGU_PL: dict[str, str] = {
     "protection_sn": "analiza zabezpieczeń",
     "phase_state_sn": "stan fazowy sieci SN",
     "rozplyw_niesymetryczny": "rozpływ niesymetryczny",
-    "dynamic_stability": "stabilność dynamiczna",
     "dynamika_rms": "dynamika RMS",
 }
 

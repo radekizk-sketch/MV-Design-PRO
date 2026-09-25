@@ -11,10 +11,9 @@ Integracja:
 - `PVInverterType.dynamic_model_id` / `BESSInverterType.dynamic_model_id` /
   `WindTurbineCatalogEntry.dynamic_model_id` — opcjonalna referencja
   do profilu w tym katalogu.
-- `network_model.solvers.stability_rms` — konsumuje
-  `profile.to_stability_parameters()`.
-- `network_model.solvers.frt_hvrt` — konsumuje
-  `profile.to_frt_parameters()`.
+- `enm.dynamika_z_katalogu` — JEDYNA materializacja profilu do kopii
+  `Generator.dynamika` (`profile.to_parametry_dynamiczne(s_n_mva=...)`), wołana przez
+  operację domenową wiązania `set_der_catalog_bindings` (karta AB-P1).
 """
 
 from network_model.catalog.der_dynamic.defaults import (
