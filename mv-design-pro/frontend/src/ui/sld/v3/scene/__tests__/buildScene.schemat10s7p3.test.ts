@@ -43,6 +43,7 @@ import {
 import { computeStationTaps } from '../../layout/segments';
 import { GRID } from '../../core/grid';
 import type { StationMeasureInput } from '../../layout/measure';
+import { czasProcesoraMs } from '../../../../../test/czasProcesora';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bigFixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -272,10 +273,12 @@ describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE 
   it('§10 (wydajność): czas budowy sceny per fixtura w budżecie (raport)', () => {
     const rows: string[] = [];
     for (const fx of FIXTURES) {
-      const t0 = performance.now();
-      for (const lod of [0, 1, 2] as const) buildSceneV3(fx.enm, lod);
-      const dt = performance.now() - t0;
-      rows.push(`${fx.klasa} ${fx.nazwa} (subs=${fx.enm.substations.length}): ${dt.toFixed(1)} ms / 3 LOD`);
+      // Czas PROCESORA (`src/test/czasProcesora.ts`), nie zegara — bramka złożoności kodu,
+      // nie miernik obciążenia maszyny.
+      const dt = czasProcesoraMs(() => {
+        for (const lod of [0, 1, 2] as const) buildSceneV3(fx.enm, lod);
+      });
+      rows.push(`${fx.klasa} ${fx.nazwa} (subs=${fx.enm.substations.length}): ${dt.toFixed(1)} ms procesora / 3 LOD`);
       // Budżet hojny — bramka na niekontrolowaną złożoność, nie mikrooptymalizacja.
       expect(dt, `${fx.nazwa} przekroczył budżet czasu`).toBeLessThan(15000);
     }
