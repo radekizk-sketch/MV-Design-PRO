@@ -3,19 +3,21 @@
 Po co: pętla zwarcia, SWZ, dobór aparatów nN, dowód obwodu nN i arkusz obwodów nN liczyły
 się dla transformatora 110/15 kV („OK, U0 = 8660 V” — wynik fabrykowany), a operacje strony
 dolnej (`add_nn_outgoing_field`, `add_nn_load`, …) zapisywały pola z katalogiem aparatów nN
-na szynie 6 kV. Jeden predykat pasma: `enm.pole_transformatorowe.w_pasmie_nn` (napięcie
-dodatnie poniżej 1 kV, granica wyłączna jak `pasmo_napieciowe`).
+na szynie 6 kV. Jeden predykat pasma: `network_model.pochodne.pasma_napieciowe.w_pasmie_nn`
+(nN ⇔ 0 < U ≤ 1 kV — karta PASMO-1KV: IEC 60038 tab. 1 i rozporządzenie, zał. 1 cz. I;
+szyna 1,0 kV JEST w paśmie nN, 1,001 kV już nie).
 
 Iloczyn cech (KLASA, NIE INSTANCJA):
 - analizy: ścieżka {pętla u źródła, pętla w punkcie, pętle odpływów stacji, pętle odpływów
   transformatora, SWZ, dobór aparatów nN, pętla dowodu obwodu nN, arkusz obwodów nN, wiersz
   arkusza dla aparatu, sekcja nN raportu, graf domeny nN} × strona dolna {0,4 kV, 0,69 kV,
-  1 kV — granica pasma, 6 kV, 15 kV, brak napięcia (0 kV)} × transformator {SN/·, WN/·};
+  0,999 kV, 1 kV i 1,001 kV — granica pasma z obu stron, 6 kV, 15 kV, brak napięcia (0 kV)}
+  × transformator {SN/·, WN/·};
   odmowa = status „nie dotyczy”, nazwany kod, powód z nazwą transformatora i napięciem,
   solver pętli NIE wołany (brak wyniku liczbowego) — w jednym teście;
 - operacje: operacja strony dolnej {odpływ, pole źródłowe, odbiór, źródło PV po stronie nN,
-  agregat, UPS, sprzęgło sekcji, warunki ułożenia kabla} × napięcie szyny {0,4, 0,69, 1, 6,
-  15 kV, brak} — odmowa z kodem `nn.bus_not_nn_band` i migawka przed == po w jednym teście;
+  agregat, UPS, sprzęgło sekcji, warunki ułożenia kabla} × napięcie szyny {0,4, 0,69, 0,999,
+  1, 1,001, 6, 15 kV, brak} — odmowa z kodem `nn.bus_not_nn_band` i migawka przed == po w jednym teście;
 - stacje SN/nN (wstawienie, dołączenie) × napięcie strony dolnej — odmowa i brak skutku;
 - trasy API: `tests/api/test_bramka_pasma_nn_api.py`;
 - pre-kontrola gotowości (eligibility) z tym samym predykatem;
@@ -54,14 +56,24 @@ from application.proof_engine.lv_circuit_verification_binding import (
 from enm.domain_operations import execute_domain_operation
 from enm.domain_operations_v2 import KOD_SZYNA_POZA_PASMEM_NN
 from enm.models import EnergyNetworkModel
-from enm.pole_transformatorowe import w_pasmie_nn
+from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 
 from tests.application.analyses.fault_loop.test_etykiety_skladowych_petli import _enm
 
 _TABLICA = Path(__file__).resolve().parents[4] / "schemas" / "pasmo_nn_parytet_v1.json"
 
 #: Strona dolna: (napięcie [kV], w paśmie nN?). 0 kV = brak napięcia strony dolnej.
-_STRONY_DOLNE = [(0.4, True), (0.69, True), (1.0, False), (6.0, False), (15.0, False), (0.0, False)]
+#: Karta PASMO-1KV: 1,0 kV to OSTATNIA wartość pasma nN (granica włączna), 1,001 kV — SN.
+_STRONY_DOLNE = [
+    (0.4, True),
+    (0.69, True),
+    (0.999, True),
+    (1.0, True),
+    (1.001, False),
+    (6.0, False),
+    (15.0, False),
+    (0.0, False),
+]
 #: Strona górna transformatora: SN albo WN.
 _STRONY_GORNE = [15.0, 110.0]
 
@@ -284,7 +296,15 @@ def _payloady(technologia_klucz: str) -> dict[str, tuple[str, dict[str, Any]]]:
 
 
 _OPERACJE = sorted(_payloady("conv-pv-nn-0p5mw-0p4kv"))
-_NAPIECIA_SZYNY = [(0.4, True), (0.69, True), (1.0, False), (6.0, False), (15.0, False)]
+_NAPIECIA_SZYNY = [
+    (0.4, True),
+    (0.69, True),
+    (0.999, True),
+    (1.0, True),
+    (1.001, False),
+    (6.0, False),
+    (15.0, False),
+]
 
 
 @pytest.mark.parametrize("operacja", _OPERACJE)

@@ -41,7 +41,6 @@ from typing import Any
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel, Substation, Transformer
 from enm.nazwy_elementow import nazwa_elementu
-from enm.pole_transformatorowe import pasmo_napieciowe, w_pasmie_nn
 from enm.slownik_komunikatow import opis_obiektu
 from enm.zero_sequence_transformer import (
     ZeroSeqConnection,
@@ -50,6 +49,7 @@ from enm.zero_sequence_transformer import (
 from network_model.core.graph import NetworkGraph
 from network_model.core.ybus import S_BASE_MVA
 from network_model.pochodne import kv_na_v, napiecie_fazowe_v
+from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, pasmo_napieciowe, w_pasmie_nn
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
     LoopImpedanceComponent,
@@ -475,7 +475,7 @@ def odmowa_pasma_nn(context: dict[str, Any], trafo: Transformer) -> dict[str, An
 
     Analizy nN (pętla zwarcia TN wg IEC 60364-4-41, SWZ, dobór aparatów nN, dowód
     obwodu nN, arkusz obwodów nN) liczone dla transformatora 110/15 kV dawały „OK,
-    U0 = 8660 V” — wynik fabrykowany. Predykat pasma: `pole_transformatorowe.w_pasmie_nn`
+    U0 = 8660 V” — wynik fabrykowany. Predykat pasma: `pasma_napieciowe.w_pasmie_nn`
     (ten sam co w bramkach operacji strony dolnej). Zwraca gotową odpowiedź widoku albo
     ``None`` (strona dolna w paśmie nN — licz dalej).
     """
@@ -483,7 +483,8 @@ def odmowa_pasma_nn(context: dict[str, Any], trafo: Transformer) -> dict[str, An
     if w_pasmie_nn(napiecie):
         return None
     opis = opis_obiektu(trafo, "Transformator")
-    if napiecie <= 0:
+    pasmo = pasmo_napieciowe(napiecie)
+    if pasmo is None:
         powod = (
             f"{opis} nie ma dodatniego napięcia strony dolnej — "
             "przynależności do pasma nN nie da się potwierdzić, więc analiza nN nie jest "
@@ -492,9 +493,9 @@ def odmowa_pasma_nn(context: dict[str, Any], trafo: Transformer) -> dict[str, An
     else:
         powod = (
             f"{opis} ma stronę dolną {napiecie:g} kV "
-            f"(pasmo {pasmo_napieciowe(napiecie)}) — analiza nN (pętla zwarcia TN, "
-            "samoczynne wyłączenie zasilania, dobór aparatów nN) dotyczy wyłącznie sieci "
-            "poniżej 1 kV i nie jest liczona. Wskaż stację z transformatorem SN/nN albo "
+            f"(pasmo {pasmo}) — analiza nN (pętla zwarcia TN, "
+            "samoczynne wyłączenie zasilania, dobór aparatów nN) dotyczy wyłącznie sieci nN "
+            f"({OPIS_PASMA_NN}) i nie jest liczona. Wskaż stację z transformatorem SN/nN albo "
             "sprawdź napięcie strony dolnej w pozycji katalogowej transformatora."
         )
     return {
@@ -530,14 +531,13 @@ def etykieta_transformatora_petli(trafo: Transformer) -> str:
 def etykieta_sieci_zasilajacej_petli(trafo: Transformer) -> str:
     """Etykieta składowej sieci zasilającej (Thevenin w węźle GN, sprowadzony na stronę DN).
 
-    Pasma obu stron z jednego źródła (`pole_transformatorowe.pasmo_napieciowe`) zastosowanego
+    Pasma obu stron z jednego źródła (`pasma_napieciowe.pasmo_napieciowe`) zastosowanego
     do napięć znamionowych transformatora — nie ze stałej „SN”/„nN” domyślnej etykiety
     `refer_upstream_impedance_to_lv_ohm`.
     """
-    return (
-        f"Sieć {pasmo_napieciowe(trafo.uhv_kv)} (upstream Thevenin, "
-        f"sprowadzone do {pasmo_napieciowe(trafo.ulv_kv)})"
-    )
+    strona_gorna = pasmo_napieciowe(trafo.uhv_kv) or "zasilająca"
+    strona_dolna = pasmo_napieciowe(trafo.ulv_kv) or "strony dolnej"
+    return f"Sieć {strona_gorna} (upstream Thevenin, sprowadzone do {strona_dolna})"
 
 
 def oblicz_petle_na_trasie(

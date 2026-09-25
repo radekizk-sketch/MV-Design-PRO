@@ -8,7 +8,7 @@
  * patrz nagłówek `buildScene.ts` dla pełnego kontekstu sceny.
  *
  * Dwie wyrocznie (spec §21, mapa D3 → paragraf → wyrocznia):
- *   - `gpzHvColumnGaps` (D3-1, §21.1): gdy ENM niesie TR WN/SN (`uhv_kv>60`
+ *   - `gpzHvColumnGaps` (D3-1, §21.1): gdy ENM niesie TR WN/SN (strona górna w paśmie WN, `wPasmieWn`
  *     w transformatorze GPZ), scena MUSI mieć symbol `transformer2W`
  *     (`ownerRef` = ref TR) połączony torem szyna WN → TR → szyna SN.
  *   - `gpzDominanceGaps` (D3-2/D3-2bis, §21.2): strefa GPZ (bbox WSZYSTKICH
@@ -24,6 +24,7 @@ import { SYMBOL_DEFS } from '../symbols/defs';
 import type { V3Rect } from '../core/grid';
 import type { SceneV3 } from './buildScene';
 import type { Bus, EnergyNetworkModel, Source, Substation, Transformer } from '../../../../types/enm';
+import { wPasmieWn } from '../../../../ui2/model/pasmaNapieciowe';
 
 /* =============================================================================
    gpzHvColumnGaps (D3-1, spec §21.1)
@@ -44,7 +45,7 @@ type GpzHvColumnSnapshot = Pick<EnergyNetworkModel, 'substations' | 'transformer
 
 /** Lustro reguły adaptera (`enmToCanonicalGpzAdapter.ts` `deriveHvSystemSource`):
  *  źródło GPZ = pierwszy `Source` z `bus_ref` na którejś szynie GPZ; strona =
- *  napięcie TEJ szyny (WN ⇔ `voltage_kv > 60`). `null` gdy snapshot nie niesie
+ *  napięcie TEJ szyny (pasmo WN, `wPasmieWn`). `null` gdy snapshot nie niesie
  *  `sources`/`buses` albo źródła nie da się dopasować (wyrocznia wraca wtedy
  *  do reguły WN — zachowanie sprzed recenzji NO-GO 2026-07-17). */
 function gpzSourceOnHvBus(gpz: Substation, sources: readonly Source[] | undefined, buses: readonly Bus[] | undefined): boolean | null {
@@ -54,7 +55,7 @@ function gpzSourceOnHvBus(gpz: Substation, sources: readonly Source[] | undefine
   if (!source) return null;
   const sourceBus = buses.find((b) => b.ref_id === source.bus_ref);
   if (!sourceBus) return null;
-  return sourceBus.voltage_kv > 60;
+  return wPasmieWn(sourceBus.voltage_kv);
 }
 
 /**
@@ -84,10 +85,10 @@ function gpzBlockCollapsed(scene: SceneV3, gpzRef?: string): boolean {
 
 /** TR WN/SN wg tej samej regułY co adapter (`enmToCanonicalGpzAdapter.ts`
  *  `deriveHvSystemSource`): `Substation.transformer_refs` → transformator z
- *  `uhv_kv > 60` — WYODRĘBNIONE tu, bo wyrocznia NIE może importować adaptera
+ *  stroną górną w paśmie WN (`wPasmieWn`) — WYODRĘBNIONE tu, bo wyrocznia NIE może importować adaptera
  *  (warstwa `v2/canvas` → `v3/scene` byłaby odwrotną zależnością architektury). */
 function hvTransformersOfGpz(gpz: Substation, transformers: readonly Transformer[]): readonly Transformer[] {
-  return transformers.filter((t) => gpz.transformer_refs?.includes(t.ref_id) && t.uhv_kv > 60);
+  return transformers.filter((t) => gpz.transformer_refs?.includes(t.ref_id) && wPasmieWn(t.uhv_kv));
 }
 
 /**

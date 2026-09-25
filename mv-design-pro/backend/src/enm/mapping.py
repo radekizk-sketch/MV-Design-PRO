@@ -54,6 +54,7 @@ from network_model.pochodne import (
     prad_znamionowy_a,
     simens_na_mikrosimens,
 )
+from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
 from network_model.solvers.power_flow_zip import (
     ZipCoeffs,
     aggregate_zip,
@@ -298,7 +299,7 @@ def impedancja_zasilania_systemowego(
         "sk3_mva": sk,
         **({"ik3_ka": ik} if ik is not None else {}),
         "c": c,
-        "pasmo_c": "nN" if u_nq_kv <= 1.0 else "SN/WN",
+        "pasmo_c": "SN/WN" if powyzej_pasma_nn(u_nq_kv) else "nN",
         "rx_ratio": rx,
         "rx_ratio_zrodlo": rx_zrodlo,
         "z_q_abs_ohm": z_abs,

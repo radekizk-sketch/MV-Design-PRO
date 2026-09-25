@@ -30,6 +30,7 @@ import {
 } from '../canon/sldCanonKit';
 import type { OzeScBus, OzeSourceContribution, SldOzeArchetypeCompanion } from '../companions/ozeTypes';
 import type { BayPlacement, StationLayout } from './stationLayout';
+import { powyzejPasmaNn } from '../../../../../ui2/model/pasmaNapieciowe';
 
 const kv = (v: number): string => (Number.isInteger(v) ? String(v) : fmt(v, 2));
 
@@ -173,7 +174,7 @@ export function StationAutoRenderer({
       {/* ── busbars (one per voltage tier) ── */}
       {layout.buses.map((bus) => (
         <g key={bus.id} data-testid={`auto-bus-${bus.id}`}>
-          <line x1={bus.x1} y1={bus.y} x2={bus.x2} y2={bus.y} stroke={bus.unKv >= 1 ? SN_BUS : NN_BUS} strokeWidth={5} strokeLinecap="round" />
+          <line x1={bus.x1} y1={bus.y} x2={bus.x2} y2={bus.y} stroke={powyzejPasmaNn(bus.unKv) ? SN_BUS : NN_BUS} strokeWidth={5} strokeLinecap="round" />
           {lbl(bus.x1 - 12, bus.y + 4, `${kv(bus.unKv)} kV`, TXT2, 11, 700, 'end')}
         </g>
       ))}
@@ -201,7 +202,7 @@ export function StationAutoRenderer({
         .map((bay) => {
           const bus = layout.buses.find((b) => b.id === bay.busId)!;
           const prot = bayProtection(bay);
-          return <Bay key={bay.id} bay={bay} busColor={bus.unKv >= 1 ? SN_BUS : NN_BUS}
+          return <Bay key={bay.id} bay={bay} busColor={powyzejPasmaNn(bus.unKv) ? SN_BUS : NN_BUS}
             lv={trafoBusIds.has(bay.busId)} codes={prot.codes} iface={prot.iface} />;
         })}
 
@@ -210,7 +211,7 @@ export function StationAutoRenderer({
         const b: OzeScBus | undefined = sc[bus.id];
         const v = vf[bus.id];
         if (!b || !v) return null;
-        const isSn = bus.unKv >= 1;
+        const isSn = powyzejPasmaNn(bus.unKv);
         const localSrc = layout.bays.filter((bay) => bay.busId === bus.id && bay.role === 'source');
         const hasLocalIbg = localSrc.some((s) => s.sourceKind === 'IBG' || s.sourceKind === undefined);
         const hasLocalMachine = localSrc.some((s) => s.sourceKind === 'SYNCHRONOUS' || s.sourceKind === 'ASYNCHRONOUS');

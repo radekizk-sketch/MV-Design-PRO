@@ -6,6 +6,7 @@ from typing import Any
 
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, Cable, EnergyNetworkModel, OverheadLine
 from network_model.pochodne import kva_na_mva, prad_roboczy_a
+from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
 from pydantic import BaseModel, Field
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 
@@ -312,8 +313,8 @@ def _wejscia_izolacji(
         if dedup_key in seen:
             return
         params = catalog.get(catalog_ref) if catalog_ref else None
-        if params is None and bus.voltage_kv < 1.0:
-            # Ogranicznik nN bez karty katalogowej — poza zakresem koordynacji
+        if params is None and not powyzej_pasma_nn(bus.voltage_kv):
+            # Ogranicznik nN (albo szyna bez napięcia) bez karty katalogowej — poza zakresem koordynacji
             # izolacji SN (IEC 60071 SN). Pomiń, aby nie fabrykować U_m SN.
             return
         seen.add(dedup_key)

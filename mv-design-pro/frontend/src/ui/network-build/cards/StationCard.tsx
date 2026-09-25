@@ -17,6 +17,7 @@ import { GpzSectionsEditor } from './GpzSectionsEditor';
 import { stationSnapshotBays, stationSnFieldCount } from '../stationSnFields';
 import { selectStationDistributionTransformers } from '../stationTransformerSelection';
 import { fieldRoleLabelPl } from '../../sld/v2/station-rozdzielnia/contract';
+import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 // =============================================================================
 // Helpers
@@ -82,12 +83,12 @@ export function StationCard({ elementId }: { elementId: string }) {
   );
 
   const nnBuses = useMemo(
-    () => stationBuses.filter((b) => b.voltage_kv < 1),
+    () => stationBuses.filter((b) => wPasmieNn(b.voltage_kv)),
     [stationBuses],
   );
 
   const snBuses = useMemo(
-    () => stationBuses.filter((b) => b.voltage_kv >= 1),
+    () => stationBuses.filter((b) => powyzejPasmaNn(b.voltage_kv)),
     [stationBuses],
   );
 

@@ -42,6 +42,7 @@ from typing import Literal
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
 from network_model.core.uziemienie import TypPunktuNeutralnego
 from network_model.pochodne import mva_na_kva
+from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
 
 #: Wersja katalogow audytu 2 = DATA PRZEGLADU PROWENIENCJI (ISO-8601).
 #:
@@ -974,8 +975,8 @@ class BlockTransformerItem:
 
     @property
     def is_mv_to_mv(self) -> bool:
-        """Transformator SN/SN — strona dolna powyzej 1 kV (a nie deklaracja)."""
-        return self.lv_kv > 1.0
+        """Transformator SN/SN — strona dolna powyzej pasma nN (a nie deklaracja)."""
+        return powyzej_pasma_nn(self.lv_kv)
 
     @property
     def galvanic_isolation(self) -> bool:

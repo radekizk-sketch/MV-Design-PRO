@@ -299,7 +299,7 @@ export interface CanonicalGpzHvSystemSource {
    *  symbol źródła i tabliczka przy szynie SN (mieszanie wariantów pełnego
    *  i uproszczonego w jednym rysunku ZAKAZANE — recenzja pkt 3). */
   readonly sourceOnHvBus: boolean;
-  /** Napięcie SZYNY WN GPZ (`Bus.voltage_kv` szyny `voltage_kv > 60`) —
+  /** Napięcie SZYNY WN GPZ (`Bus.voltage_kv` szyny w paśmie WN, `wPasmieWn`) —
    *  osobne od `voltageKv` (szyna ŹRÓDŁA), bo etykieta „Szyna WN · V kV"
    *  musi czytać napięcie SZYNY WN także gdy źródło to ekwiwalent SN
    *  (regres wykryty renderem: „Szyna WN · 15 kV" po zmianie semantyki
@@ -343,7 +343,7 @@ export interface GpzCanonicalRendererProps {
    *  GPZ) nieobecny (uczciwy brak, adapter NIE zgaduje). */
   readonly hvSystemSource?: CanonicalGpzHvSystemSource | null;
   /** ADAPTER-BUSREF (dług W4/R2/V12K-163): KANONICZNY ref Bus ENM szyny WN
-   *  (jedna szyna GPZ z `voltage_kv > 60` w `Substation.bus_refs`). Metadana do
+   *  (jedna szyna GPZ w paśmie WN — `wPasmieWn` — w `Substation.bus_refs`). Metadana do
    *  powiązania rysowanej szyny WN (`${id}#hv-bus`) z wynikami/energizacją —
    *  identyfikator sceny NIETKNIĘTY. `null`/brak gdy snapshot nie ma szyny WN. */
   readonly hvBusRef?: string | null;

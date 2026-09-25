@@ -11,6 +11,7 @@
 
 import { getTapChanger, selectTapChangersForTransformer } from '../../station-der/catalogs';
 import type { TapChangerItem } from '../../station-der/audit2-api';
+import { powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 
 export interface StationTransformerCatalogOption {
   readonly id: string;
@@ -90,7 +91,7 @@ function selectTapChangersForTransformerByVoltage(
   const transformerType: 'transformer_110_15' | 'transformer_110_20' | 'transformer_15_04' | 'block_transformer' = (() => {
     if (hvKv >= 100 && hvKv < 130 && Math.abs(lvKv - 15) < 1) return 'transformer_110_15';
     if (hvKv >= 100 && hvKv < 130 && Math.abs(lvKv - 20) < 1) return 'transformer_110_20';
-    if (hvKv > 1 && lvKv < 1) return 'transformer_15_04';
+    if (powyzejPasmaNn(hvKv) && wPasmieNn(lvKv)) return 'transformer_15_04';
     return 'block_transformer';
   })();
   return selectTapChangersForTransformer(tapChangers, transformerType);

@@ -55,6 +55,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TypeAlias
 
+from network_model.pochodne.pasma_napieciowe import szyna_poza_pasmem_sn
+
 from .slownik_komunikatow import opis_nazwy
 
 #: Element migawki ENM: słownik surowej migawki biegu ALBO obiekt modelu
@@ -63,62 +65,6 @@ from .slownik_komunikatow import opis_nazwy
 #: wyłączyłby kontrolę typów w warstwie domenowej — czego pilnuje niezmiennik
 #: `tests/test_professional_invariants.py::test_no_any_in_domain_types`.
 ElementEnm: TypeAlias = object
-
-# ---------------------------------------------------------------------------
-# Pasma napięciowe domeny — JEDNO miejsce definicji
-# ---------------------------------------------------------------------------
-# Do tej karty progi żyły jako prywatne stałe `enm/validator.py`. Predykat
-# potrzebuje DOKŁADNIE tych samych granic (inaczej „szyna SN" znaczyłaby co
-# innego w ostrzeżeniu niż w reszcie walidacji), więc definicja przenosi się
-# tutaj, a walidator staje się jej konsumentem.
-PASMO_NN_MAX_KV = 1.0
-"""Górna granica pasma nN (wyłącznie): `voltage_kv < 1.0` ⇒ nN."""
-
-PASMO_SN_MAX_KV = 60.0
-"""Górna granica pasma SN (włącznie): `1.0 <= voltage_kv <= 60.0` ⇒ SN."""
-
-
-def pasmo_napieciowe(voltage_kv: float) -> str:
-    """Pasmo napięciowe szyny: ``'nN'``, ``'SN'`` albo ``'WN'``."""
-    if voltage_kv < PASMO_NN_MAX_KV:
-        return "nN"
-    if voltage_kv <= PASMO_SN_MAX_KV:
-        return "SN"
-    return "WN"
-
-
-def w_pasmie_nn(voltage_kv: float | None) -> bool:
-    """Czy napięcie NA PEWNO leży w paśmie nN — jedyny predykat bramek strony nN.
-
-    Wspólny dla wejść analiz nN (pętla zwarcia, SWZ, dobór aparatów, dowód obwodu,
-    arkusz obwodów, graf domeny nN) i operacji strony dolnej (pola, odbiory, kable,
-    aparaty, źródła nN, stacje SN/nN), żeby bramka wejścia i wyjścia miała jedno
-    źródło prawdy (reguła KLASA §3). Brak napięcia albo wartość niedodatnia ⇒ ``False``:
-    przynależności do pasma nN nie da się potwierdzić, więc bramka odmawia — odwrotnie
-    niż `szyna_poza_pasmem_sn`, gdzie brak danej nie dyskwalifikuje ostrzeżenia.
-    """
-    if voltage_kv is None:
-        return False
-    napiecie = float(voltage_kv)
-    return napiecie > 0.0 and pasmo_napieciowe(napiecie) == "nN"
-
-
-def szyna_poza_pasmem_sn(voltage_kv: float | None) -> bool:
-    """Czy szyna NA PEWNO leży poza pasmem SN.
-
-    Brak danej napięcia ⇒ ``False`` (nie dyskwalifikuje). Tolerancja jest
-    ŚWIADOMA i lustrzana z rysunkiem: scena SLD bywa budowana z danych, w
-    których napięcie szyny nie dotarło (`busVoltageKv = null` — uczciwy brak,
-    `compose/station.ts` degraduje wtedy etykietę). Gdyby brak napięcia
-    dyskwalifikował, marker znikałby z rysunku dokładnie tam, gdzie danych jest
-    NAJMNIEJ — czyli tam, gdzie ostrzeżenie jest najbardziej potrzebne. Regułę
-    „nieznane nie dyskwalifikuje" stosują OBIE strony (parytet, tablica
-    `pole_transformatorowe_parytet_v1.json`).
-    """
-    if voltage_kv is None:
-        return False
-    return pasmo_napieciowe(float(voltage_kv)) != "SN"
-
 
 # ---------------------------------------------------------------------------
 # Odczyt pól niezależny od nośnika (dict migawki albo model pydantic)

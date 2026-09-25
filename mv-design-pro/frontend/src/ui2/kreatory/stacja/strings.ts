@@ -1,4 +1,5 @@
 import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
+import { OPIS_PASMA_NN } from '../../model/pasmaNapieciowe';
 
 /** Teksty PL kreatora „Dodaj stację SN/nN" (Audyt D, faza D2). Język inżynierski. */
 
@@ -312,7 +313,7 @@ export const STACJA_STRINGS = {
       poleWartosc: 'ZRODLO_NN_PV (falownik) + odpływy odbiorcze',
       wyborBrak: 'Wybierz falownik PV z katalogu w kroku „Transformator i strona nN".',
       katalogBrak:
-        'Brak w katalogu falowników PV zdatnych na źródło nN stacji (napięcie strony nN ≤ 1 kV). '
+        `Brak w katalogu falowników PV zdatnych na źródło nN stacji (napięcie strony nN: ${OPIS_PASMA_NN}). `
         + 'Uzupełnij katalog falowników PV.',
     },
     BESS_INVERTER: {
@@ -321,7 +322,7 @@ export const STACJA_STRINGS = {
       poleWartosc: 'ZRODLO_NN_BESS (falownik) + odpływy odbiorcze',
       wyborBrak: 'Wybierz falownik magazynu BESS z katalogu w kroku „Transformator i strona nN".',
       katalogBrak:
-        'Brak w katalogu falowników magazynu BESS zdatnych na źródło nN stacji (napięcie strony nN ≤ 1 kV). '
+        `Brak w katalogu falowników magazynu BESS zdatnych na źródło nN stacji (napięcie strony nN: ${OPIS_PASMA_NN}). `
         + 'Uzupełnij katalog falowników BESS.',
     },
     FW_INVERTER: {
@@ -330,7 +331,7 @@ export const STACJA_STRINGS = {
       poleWartosc: 'ZRODLO_NN_FW (falownik) + odpływy odbiorcze',
       wyborBrak: 'Wybierz falownik elektrowni wiatrowej z katalogu w kroku „Transformator i strona nN".',
       katalogBrak:
-        'Brak w katalogu falowników elektrowni wiatrowej zdatnych na źródło nN stacji (napięcie strony nN ≤ 1 kV). '
+        `Brak w katalogu falowników elektrowni wiatrowej zdatnych na źródło nN stacji (napięcie strony nN: ${OPIS_PASMA_NN}). `
         + 'Uzupełnij katalog falowników.',
     },
   },

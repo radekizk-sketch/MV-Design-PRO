@@ -51,6 +51,7 @@ import {
   SURFACE_REGISTRY,
   validateSurfaceStack,
 } from '../workspace/types';
+import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
 
 export type BuildPhase =
   | 'NO_SOURCE'
@@ -1004,7 +1005,7 @@ export function selectStationSummaries(
       );
       const hasTransformer = s.transformer_refs.length > 0;
       const nnBuses = (snapshot.buses ?? []).filter(
-        (bus) => isOperationalBus(bus) && bus.voltage_kv < 1 && s.bus_refs.includes(bus.ref_id),
+        (bus) => isOperationalBus(bus) && wPasmieNn(bus.voltage_kv) && s.bus_refs.includes(bus.ref_id),
       );
 
       const identity = stationPublicIdentity(snapshot, s);
@@ -1215,7 +1216,7 @@ export function selectConfiguredGridSourceSnFields(
   const stationRefs = new Set([stationRef, station?.ref_id, station?.id].filter(Boolean) as string[]);
   const mediumVoltageBusRefs = new Set(
     (snapshot.buses ?? [])
-      .filter((bus) => typeof bus.voltage_kv === 'number' && bus.voltage_kv >= 1)
+      .filter((bus) => typeof bus.voltage_kv === 'number' && powyzejPasmaNn(bus.voltage_kv))
       .map((bus) => bus.ref_id),
   );
 
@@ -1282,7 +1283,7 @@ export function selectGridSourceSnFieldCandidates(
 
   const mediumVoltageBusRefs = new Set(
     snapshot.buses
-      .filter((bus) => typeof bus.voltage_kv === 'number' && bus.voltage_kv >= 1)
+      .filter((bus) => typeof bus.voltage_kv === 'number' && powyzejPasmaNn(bus.voltage_kv))
       .map((bus) => bus.ref_id),
   );
 

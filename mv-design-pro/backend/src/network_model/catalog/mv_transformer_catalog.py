@@ -44,6 +44,7 @@ TYPOSZEREG PRZEMYSLOWY:
 from typing import Any
 
 from network_model.pochodne import kva_na_mva, mva_na_kva
+from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
 
 # =============================================================================
 # TRANSFORMATORY WN/SN (110/15 kV) — Yd11
@@ -948,7 +949,9 @@ def _build_inverter_transformer_types(
     sn_voltage_kv: float, lv_voltage_kv: float
 ) -> list[dict[str, Any]]:
     power_ratings = (
-        _INVERTER_TR_POWER_MVA_LOW_LV if lv_voltage_kv <= 1.0 else _INVERTER_TR_POWER_MVA_MEDIUM_LV
+        _INVERTER_TR_POWER_MVA_MEDIUM_LV
+        if powyzej_pasma_nn(lv_voltage_kv)
+        else _INVERTER_TR_POWER_MVA_LOW_LV
     )
     records: list[dict[str, Any]] = []
     sn_token = _catalog_token(sn_voltage_kv)

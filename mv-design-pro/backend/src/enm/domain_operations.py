@@ -51,6 +51,12 @@ from network_model.pochodne import (
     mva_na_kva,
     susceptancja_z_pojemnosci_s_per_km,
 )
+from network_model.pochodne.pasma_napieciowe import (
+    OPIS_PASMA_NN,
+    pasmo_napieciowe,
+    powyzej_pasma_nn,
+    w_pasmie_nn,
+)
 
 from .deklaracje_modulu import POLA_NC_RFG_GENERATORA, pola_nc_rfg_generatora
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
@@ -68,7 +74,6 @@ from .pole_katalogowe import (
     aparaty_pola_z_referencji,
     rozwiaz_aparaty_pola,
 )
-from .pole_transformatorowe import pasmo_napieciowe, w_pasmie_nn
 from .rola_pola_sn import ROLA_POLA_SN_Z_ALIASU, kanoniczna_rola_pola_sn, nazwa_roli_pola_sn
 from .slownik_komunikatow import (
     NAZWY_FUNKCJI_POMIARU_PL,
@@ -1808,7 +1813,7 @@ def _sn_bus_refs_for_substation(enm: dict[str, Any], substation: dict[str, Any])
         if bus is None:
             continue
         voltage = bus.get("voltage_kv")
-        if isinstance(voltage, int | float) and float(voltage) >= 1.0:
+        if isinstance(voltage, int | float) and powyzej_pasma_nn(float(voltage)):
             sn_bus_refs.append(bus_ref)
     if sn_bus_refs:
         return sn_bus_refs
@@ -3000,15 +3005,21 @@ def _odmowa_strony_nn_stacji(nn_voltage_kv: float, kod: str) -> dict[str, Any] |
     odpływy nN (`nn_field_specs`, rola ODPLYW_NN), źródło nN stacji — którą operacje
     strony dolnej (`domain_operations_v2`, kod `nn.bus_not_nn_band`) i analizy nN
     (`fault_loop.service.odmowa_pasma_nn`) przyjmują wyłącznie w paśmie nN. Predykat z
-    tego samego źródła (`pole_transformatorowe.w_pasmie_nn`), inaczej stacja tworzyłaby
+    tego samego źródła (`pasma_napieciowe.w_pasmie_nn`), inaczej stacja tworzyłaby
     pola, których żadna operacja strony dolnej nie przyjmie (reguła KLASA §3).
     """
     if w_pasmie_nn(nn_voltage_kv):
         return None
+    pasmo = pasmo_napieciowe(nn_voltage_kv)
+    polozenie = (
+        f"leży w paśmie {pasmo}"
+        if pasmo is not None
+        else "nie jest dodatnią wartością napięcia znamionowego"
+    )
     return _error_response(
-        f"Napięcie strony dolnej stacji {float(nn_voltage_kv):g} kV leży w paśmie "
-        f"{pasmo_napieciowe(float(nn_voltage_kv))}, a stacja SN/nN wymaga strony dolnej "
-        "w paśmie nN (poniżej 1 kV). Podaj napięcie strony nN z tabliczki transformatora "
+        f"Napięcie strony dolnej stacji {float(nn_voltage_kv):g} kV {polozenie}, a stacja "
+        f"SN/nN wymaga strony dolnej w paśmie nN ({OPIS_PASMA_NN}). "
+        "Podaj napięcie strony nN z tabliczki transformatora "
         "(np. 0,4 kV).",
         kod,
     )
@@ -3017,7 +3028,7 @@ def _odmowa_strony_nn_stacji(nn_voltage_kv: float, kod: str) -> dict[str, Any] |
 def _rodzaj_transformatora(napiecie_gn_kv: float | None, napiecie_dn_kv: float | None) -> str:
     """Rodzaj transformatora do nazwy: pasma napięciowe obu stron (``SN/nN``, ``WN/SN``…).
 
-    Pasma z jednego źródła (`pole_transformatorowe.pasmo_napieciowe`), nie z nazwy
+    Pasma z jednego źródła (`pasma_napieciowe.pasmo_napieciowe`), nie z nazwy
     operacji: `add_transformer_sn_nn` buduje też transformatory przesyłowe bliźniaków
     IEEE 14/39-bus (345 kV), którym nazwa „SN/nN" przypisywała fałszywą klasę. Brak
     napięcia którejkolwiek strony → pusty rodzaj (nazwa bez klasy), nigdy domysł.
@@ -5705,7 +5716,7 @@ def _build_nn_field_specs(
     """Zbuduj specyfikacje pól nN (wyłącznik główny + odpływy) z ``nn_block``.
 
     Klasa napięciowa w nazwach pól pochodzi z napięcia szyny strony dolnej
-    (`pole_transformatorowe.pasmo_napieciowe`), nie ze stałej „nN": stacja wstawiana
+    (`pasma_napieciowe.pasmo_napieciowe`), nie ze stałej „nN": stacja wstawiana
     z transformatorem 15/6 kV ma szynę strony dolnej w paśmie SN.
 
     Wspólny builder dla ``insert_station_on_segment_sn`` i

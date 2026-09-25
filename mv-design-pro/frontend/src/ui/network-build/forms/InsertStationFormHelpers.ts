@@ -19,6 +19,7 @@ import type { SwitchgearFamily } from '../../catalog/SwitchgearFamilyPicker';
 import type { ConverterType, TransformerType } from '../../catalog/types';
 import type { Substation } from '../../../types/enm';
 import { FIELD_ROLE_LABEL_PL } from '../../sld/v2/station-rozdzielnia/contract';
+import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 export type SnFieldRole = 'LINIA_IN' | 'LINIA_OUT' | 'LINIA_ODG' | 'TRANSFORMATOROWE' | 'SPRZEGLO';
 
@@ -124,15 +125,8 @@ export function isUsableSwitchgearFamily(family: SwitchgearFamily): boolean {
 }
 
 // Pure helpers - transformers
-const MAX_STATION_NN_SOURCE_VOLTAGE_KV = 1.0;
-
 export function isStationNnSourceConverter(type: ConverterType): boolean {
-  return (
-    typeof type.un_kv === 'number'
-    && Number.isFinite(type.un_kv)
-    && type.un_kv > 0
-    && type.un_kv <= MAX_STATION_NN_SOURCE_VOLTAGE_KV
-  );
+  return typeof type.un_kv === 'number' && wPasmieNn(type.un_kv);
 }
 
 export function hasEnoughTransformerPower(

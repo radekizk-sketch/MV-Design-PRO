@@ -2,6 +2,7 @@ import type { Branch, EnergyNetworkModel, Generator } from '../../types/enm';
 import type { ElementType, SelectedElement } from '../types';
 import { findOperationalBus, isOperationalBus, isTerrainSnSegment } from './enmVisibility';
 import { segmentPublicIdentity, stationPublicIdentity } from './publicTechnicalLabels';
+import { wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
 
 function matchByRef<T extends { ref_id: string; id: string; name: string }>(
   items: T[] | undefined,
@@ -34,7 +35,7 @@ function isLowVoltageBusRef(snapshot: EnergyNetworkModel | null, busRef: string 
   }
 
   const bus = findOperationalBus(snapshot, busRef);
-  return Boolean(bus && typeof bus.voltage_kv === 'number' && bus.voltage_kv > 0 && bus.voltage_kv < 1);
+  return Boolean(bus && typeof bus.voltage_kv === 'number' && wPasmieNn(bus.voltage_kv));
 }
 
 function stationScopedElementLabel(path: string, fallbackType: ElementType): string {

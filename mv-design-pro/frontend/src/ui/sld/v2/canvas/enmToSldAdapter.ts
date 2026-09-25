@@ -43,7 +43,7 @@ import type {
 } from '../../../../types/enm';
 import type { UkladSieciNn } from '../../../../types/uziemienie';
 import { buildOltcAnnotation } from './oltcGlyph';
-import { pickStationBus, STATION_LV_VOLTAGE_LIMIT_KV } from '../../shared/stationBusResolution';
+import { pickStationBus } from '../../shared/stationBusResolution';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import {
@@ -98,6 +98,7 @@ import {
   selectStationTransformerUnits,
   type StationTransformerUnit,
 } from '../../../network-build/stationTransformerSelection';
+import { powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 
 // =============================================================================
 // Telemetry mapping (Phase 0B-1: BayRuntimeState → GpzBayDescriptor)
@@ -434,7 +435,7 @@ function isMediumVoltageNetworkBranch(snapshot: EnergyNetworkModel, branch: Bran
   const voltages = [readBusVoltageKv(snapshot, branch.from_bus_ref), readBusVoltageKv(snapshot, branch.to_bus_ref)]
     .filter((value): value is number => value !== null);
   if (voltages.length === 0) return true;
-  return voltages.some((value) => value >= 1);
+  return voltages.some((value) => powyzejPasmaNn(value));
 }
 
 function readBusVoltageKv(snapshot: EnergyNetworkModel, busRef: string | null | undefined): number | null {
@@ -3885,7 +3886,7 @@ function buildStationMiniBlockDetails(
     if (!bus) continue;
     stationBusRefs.add(bus.ref_id);
     const v = bus.voltage_kv;
-    if (typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= STATION_LV_VOLTAGE_LIMIT_KV) {
+    if (typeof v === 'number' && wPasmieNn(v)) {
       nnBusRefs.add(bus.ref_id);
     }
   }
@@ -4982,7 +4983,7 @@ function inferLineRunsFromMvBusGraph(
       `${baseRef}/sn_bus_out`,
     ]).filter((busRef) => {
       const voltageKv = busVoltageByRef.get(busRef);
-      return voltageKv === undefined || voltageKv >= 1;
+      return voltageKv === undefined || powyzejPasmaNn(voltageKv);
     });
     busRefsByStationRef.set(substation.ref_id, busRefs);
     for (const busRef of busRefs) {

@@ -63,6 +63,7 @@ import {
 } from '../../../ui2/oze/ncrfg/daneModulu';
 import { SekcjaDanychModulu } from '../../../ui2/oze/ncrfg/SekcjaDanychModulu';
 import { getTooltip } from '../../shared/engineerTooltips';
+import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 export interface AddDerWizardProps {
   readonly isOpen: boolean;
@@ -296,7 +297,7 @@ interface SnConnectionPointCandidate {
  * jest wyborem: stacja ma DOKŁADNIE jedną szynę nN za swoim transformatorem
  * SN/nN). Mirror backendu (`api/generators.py::_resolve_nn_bus_ref`): pierwsza
  * szyna LV transformatora stacji, w braku transformatora — pierwsza szyna
- * stacji o napięciu < 1 kV.
+ * stacji w paśmie nN (`wPasmieNn`, lustro `w_pasmie_nn`).
  */
 function resolveStationNnBus(
   snapshot: EnergyNetworkModel | null,
@@ -323,7 +324,7 @@ function resolveStationNnBus(
   }
   for (const busRef of station.bus_refs ?? []) {
     const bus = busByRef.get(busRef);
-    if (bus && bus.voltage_kv < 1) {
+    if (bus && wPasmieNn(bus.voltage_kv)) {
       return { busRef: bus.ref_id, name: bus.name, voltageKv: bus.voltage_kv };
     }
   }
@@ -351,7 +352,7 @@ function selectSnConnectionPointCandidates(
   if (station) {
     for (const busRef of station.bus_refs ?? []) {
       const bus = (snapshot.buses ?? []).find((b) => b.ref_id === busRef);
-      if (bus && bus.voltage_kv >= 1) {
+      if (bus && powyzejPasmaNn(bus.voltage_kv)) {
         candidates.push({
           busRef: bus.ref_id,
           kind: 'station_bus',

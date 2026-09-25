@@ -23,6 +23,7 @@ import {
   typElementuWalidacji,
 } from '../jakoscModel';
 import type { WynikArcFlash } from '../api';
+import { OPIS_PASMA_NN, OPIS_PASMA_SN } from '../../../model/pasmaNapieciowe';
 import { MIGOTANIE_FIXTURE, WALIDACJA_FIXTURE, WIARYGODNOSC_FIXTURE, przebiegTestowy } from './fixtures';
 
 describe('wybór przebiegu z rejestru', () => {
@@ -107,7 +108,12 @@ describe('adapter wiarygodności', () => {
   it('założenia: metoda + pasma napięciowe', () => {
     const zal = naZalozeniaWiarygodnosci();
     expect(zal).toHaveLength(2);
-    expect(zal[1].wartosc).toContain('nN');
+    // Karta PASMO-1KV: pełne nazwy poziomów (skrót „NN" rozporządzenia koliduje z „nN")
+    // i granice z jednego lustra pasm — nN do 1 kV włącznie, SN poniżej 110 kV.
+    expect(zal[1].wartosc).toContain('niskie');
+    expect(zal[1].uwaga).toContain(OPIS_PASMA_NN);
+    expect(zal[1].uwaga).toContain(OPIS_PASMA_SN);
+    expect(zal[1].uwaga).not.toContain('60');
   });
 
   // K3/C1: Ik" pochodzi wprost z przebiegu zwarciowego → dowodRef (element_id ?? target_id);

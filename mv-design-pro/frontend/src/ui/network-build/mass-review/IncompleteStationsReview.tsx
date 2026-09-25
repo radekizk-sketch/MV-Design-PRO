@@ -11,6 +11,7 @@ import { useCallback, useMemo } from 'react';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
 import { useSelectionStore } from '../../selection';
+import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 // =============================================================================
 // Helpers
@@ -46,7 +47,7 @@ export function IncompleteStationsReview() {
         (b) => b.substation_ref === station.id,
       ).length;
       const nnCount = (snapshot.buses ?? []).filter(
-        (b) => station.bus_refs?.includes(b.ref_id) && b.voltage_kv < 1,
+        (b) => station.bus_refs?.includes(b.ref_id) && wPasmieNn(b.voltage_kv),
       ).length;
       const blockerCount = (readiness?.blockers ?? []).filter(
         (b) => b.element_ref === station.id,

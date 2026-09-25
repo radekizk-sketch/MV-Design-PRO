@@ -1,7 +1,7 @@
 /**
  * Parytet predykatu „napięcie w paśmie nN” — kreator stacji SN/nN ↔ bramki backendu.
  *
- * Backend (`enm/pole_transformatorowe.py::w_pasmie_nn`) odmawia stacji SN/nN ze stroną dolną
+ * Backend (`network_model/pochodne/pasma_napieciowe.py::w_pasmie_nn`) odmawia stacji SN/nN ze stroną dolną
  * spoza pasma nN (`station.*.nn_voltage_not_nn_band`), operacji strony dolnej
  * (`nn.bus_not_nn_band`) i analiz nN. Kreator waliduje to samo pole TYM SAMYM warunkiem, żeby
  * formularz nie wysyłał operacji, którą backend odrzuci (kontrolka bez pokrycia = phantom).
@@ -14,7 +14,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { DANE_DOMYSLNE, walidujFormularz, wPasmieNn, type StacjaFormData } from '../stacjaModel';
+import { DANE_DOMYSLNE, walidujFormularz, type StacjaFormData } from '../stacjaModel';
+import { wPasmieNn } from '../../../model/pasmaNapieciowe';
 
 interface Wiersz {
   readonly napiecie_kv: number | null;

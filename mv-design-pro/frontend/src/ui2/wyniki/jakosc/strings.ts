@@ -9,6 +9,7 @@
  */
 
 import type { RodzajKontroli, StatusWalidacji } from './api';
+import { OPIS_PASMA_NN, OPIS_PASMA_SN } from '../../model/pasmaNapieciowe';
 
 /** Poziom istotności statusu (do doboru koloru tagu — wyłącznie prezentacja). */
 export type IstotnoscStatusu = 'ok' | 'warn' | 'err' | 'neutral';
@@ -155,9 +156,11 @@ export const JAKOSC_STRINGS = {
   zalMetodaWiarygodnosc: 'Metoda oceny',
   zalMetodaWiarygodnoscWartosc: 'Twarde granice fizyczne Ik" per poziom napięcia',
   zalPasma: 'Pasma napięciowe',
-  zalPasmaWartosc: 'nN / SN / WN / NN',
+  zalPasmaWartosc: 'niskie / średnie / wysokie / najwyższe napięcie',
   zalPasmaUwaga:
-    'Granice wiarygodności Ik" zależą od poziomu napięcia węzła (nN ≤ 1 kV, SN 1–60 kV, WN 60–150 kV, NN > 150 kV).',
+    'Granice wiarygodności Ik" zależą od poziomu napięcia węzła: niskie napięcie (nN, '
+    + `${OPIS_PASMA_NN}), średnie napięcie (SN, ${OPIS_PASMA_SN}), wysokie napięcie `
+    + '(WN, od 110 kV do poniżej 220 kV), najwyższe napięcie (od 220 kV).',
 
   // Założenia — walidacja (progi z konfiguracji)
   zalProgObciazeniaOstrz: 'Próg ostrzeżenia obciążenia',

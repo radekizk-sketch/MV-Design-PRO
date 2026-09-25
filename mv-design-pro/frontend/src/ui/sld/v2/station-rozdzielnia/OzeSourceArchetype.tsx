@@ -38,6 +38,7 @@ import type {
   OzeScBus,
 } from './companions/ozeTypes';
 import type { StationDetailLevel } from './geometry';
+import { wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 
 export interface OzeSourceArchetypeProps {
   readonly companion: SldOzeArchetypeCompanion;
@@ -52,10 +53,9 @@ export interface OzeSourceArchetypeProps {
 // The canonical branch refs the OZE substrates use for the grid incomer.
 const INCOMER_REFS = ['sr/branch/in'];
 
+/** Szyna nN (pasmo nN z jednego lustra granic) — błękit nN; pozostałe — zieleń energized. */
 function busColorForVoltage(kv: number): string {
-  if (kv >= 12) return COLOR_FIELD_TRUNK_ENERGIZED;
-  if (kv >= 0.2) return '#7DD3FC';
-  return COLOR_FIELD_TRUNK_ENERGIZED;
+  return wPasmieNn(kv) ? '#7DD3FC' : COLOR_FIELD_TRUNK_ENERGIZED;
 }
 
 /** PV inverter symbol (IEC: ~ over =, in a circle) — orthogonal, state by colour. */
@@ -329,7 +329,7 @@ function BusResults(props: { vf: OzeVfBus; sc: OzeScBus; x: number; y: number })
     <g data-testid={`oze-bus-results-${vf.bus_ref}`} pointerEvents="none">
       <circle cx={x - 6} cy={y - 3} r={2.2} fill={within ? '#5BE08A' : '#FFB020'} />
       <text x={x} y={y} fill="#CFE9FF" fontFamily={FONT_MONO} fontSize={7.4} fontWeight={800}>
-        {`${vf.bus_ref}: U=${vf.u_kv.toFixed(vf.un_kv < 1 ? 3 : 2)} kV (${vf.u_pu.toFixed(3)} pu)`}
+        {`${vf.bus_ref}: U=${vf.u_kv.toFixed(wPasmieNn(vf.un_kv) ? 3 : 2)} kV (${vf.u_pu.toFixed(3)} pu)`}
       </text>
       <text x={x} y={y + 9} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6.8}>
         {`Ik"max=${sc.max.ikss_ka.toFixed(2)} / min=${sc.min.ikss_ka.toFixed(2)} kA`}
@@ -515,7 +515,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
       <line x1={busX2} y1={busY - 5} x2={busX2} y2={busY + 5} stroke={busColor} strokeWidth={2} />
       {detail !== 'far' && (
         <text x={busX2 + 4} y={busY + 3} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>
-          {`${busKv >= 1 ? busKv.toFixed(0) + ' kV' : (busKv * 1000).toFixed(0) + ' V'}`}
+          {`${wPasmieNn(busKv) ? (busKv * 1000).toFixed(0) + ' V' : busKv.toFixed(0) + ' kV'}`}
         </text>
       )}
 

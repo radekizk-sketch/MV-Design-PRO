@@ -8,7 +8,7 @@
  *    + JEDNA para krzywych LVRT/HVRT na operatora; backend nie różnicuje
  *    krzywej wg modułu, więc front też przestaje to udawać).
  *  - `LV_VOLTAGE_LEVEL_CATALOG` → wyprowadzone z `GET /api/catalog/converter-types`
- *    (`un_kv` < 1 kV) — jedyna prawda o tym, na jakim napięciu istnieją
+ *    (`un_kv` w paśmie nN, `wPasmieNn`) — jedyna prawda o tym, na jakim napięciu istnieją
  *    urządzenia; zero nowej końcówki.
  *  - `BESS_BATTERY_CATALOG` → `GET /api/catalog/bess-battery-types`.
  *  - klasyfikacja modułu NC RfG (dawne `deriveModuleTypesForPowerKw`,
@@ -41,6 +41,7 @@ import type {
   PunktObwiedniFrtProfilu,
 } from '../../../ui2/oze/ncrfg/typy';
 import { fetchDerConverterTypes } from '../../catalog/api';
+import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
@@ -167,7 +168,7 @@ export async function fetchLvVoltageLevelsKv(): Promise<readonly number[]> {
   const converters = await fetchDerConverterTypes();
   const poziomy = new Set<number>();
   for (const converter of Array.isArray(converters) ? converters : []) {
-    if (typeof converter.un_kv === 'number' && converter.un_kv > 0 && converter.un_kv < 1) {
+    if (typeof converter.un_kv === 'number' && wPasmieNn(converter.un_kv)) {
       poziomy.add(converter.un_kv);
     }
   }

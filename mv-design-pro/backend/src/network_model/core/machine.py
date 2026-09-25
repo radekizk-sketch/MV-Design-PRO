@@ -25,6 +25,7 @@ from network_model.pochodne import (
     kv_na_v,
     prad_znamionowy_a,
 )
+from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
 
 
 def _synchronous_r_over_x(ur_kv: float, sr_mva: float) -> float:
@@ -33,7 +34,7 @@ def _synchronous_r_over_x(ur_kv: float, sr_mva: float) -> float:
     R_Gf is a FICTITIOUS resistance used only to obtain ip via κ; it is larger than
     the real R_G so that κ (hence ip) is not overestimated for near-generator faults.
     """
-    if ur_kv > 1.0:
+    if powyzej_pasma_nn(ur_kv):
         return 0.05 if sr_mva >= 100.0 else 0.07
     return 0.15  # LV generators (U_rG ≤ 1 kV)
 
@@ -114,7 +115,7 @@ class SynchronousMachineSource:
 
 def _asynchronous_r_over_x(ur_kv: float, p_per_pole_mw: float) -> float:
     """R_M/X_M for asynchronous motors (IEC 60909-0:2016 §6.7 / Table)."""
-    if ur_kv > 1.0:
+    if powyzej_pasma_nn(ur_kv):
         return 0.10 if p_per_pole_mw >= 1.0 else 0.15  # MV motors
     return 0.42  # LV motors / motor groups
 

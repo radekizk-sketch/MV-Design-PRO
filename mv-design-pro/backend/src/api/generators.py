@@ -41,13 +41,13 @@ from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.nastawy_modulu import NastawyZabezpieczenModulu
 from enm.nazwy_elementow import nazwa_elementu
-from enm.pole_transformatorowe import w_pasmie_nn
 from enm.store import blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
 from network_model.pochodne import kv_na_v, kva_na_mva, mw_na_kw, v_na_kv
+from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from network_model.solvers.equipment_checks.ct_burden_saturation import CtDeviceBurden
 from pydantic import BaseModel, Field, field_validator
 from werdykt import opis_podstawy

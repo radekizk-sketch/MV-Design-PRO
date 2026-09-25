@@ -40,6 +40,7 @@ import {
 } from '../../../field/fieldLabels';
 import type { BayControlMode } from '../../../../types/enm';
 import { fieldRoleLabelPl, fieldRoleShortTagPl } from '../station-rozdzielnia/contract';
+import { OPIS_PASMA_NN, powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 
 export type SldDetailKind =
   | 'station'
@@ -428,7 +429,7 @@ function useDerConverterCatalog(
         if (!Array.isArray(records)) {
           throw new Error('Backend nie zwrócił listy przekształtników z katalogu.');
         }
-        const filtered = records.filter((item) => (isNn ? item.un_kv < 1 : item.un_kv >= 1));
+        const filtered = records.filter((item) => (isNn ? wPasmieNn(item.un_kv) : powyzejPasmaNn(item.un_kv)));
         const options = filtered.map((item) => ({
           value: item.id,
           label: converterOptionLabel(item),
@@ -546,13 +547,13 @@ const sldDerConfigSchema = z.object({
   ncRfgModule: z.enum(['A', 'B', 'C', 'D']).nullable(),
 }).superRefine((value, ctx) => {
   // Karta FAB-K (§0 R3): JEDYNY wariant to nN — punkt przyłączenia musi więc
-  // leżeć poniżej 1 kV (szyna nN stacji). Przyłączenie SN przez transformator
-  // dedykowany zbiera pełny kreator DER (`AddDerWizard`), nie ten formularz.
-  if (value.pointVoltageKv >= 1) {
+  // leżeć w paśmie nN (szyna nN stacji, lustro `w_pasmie_nn`). Przyłączenie SN przez
+  // transformator dedykowany zbiera pełny kreator DER (`AddDerWizard`), nie ten formularz.
+  if (!wPasmieNn(value.pointVoltageKv)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['connectionVariant'],
-      message: 'Wariant nN wymaga punktu przyłączenia poniżej 1 kV.',
+      message: `Wariant nN wymaga punktu przyłączenia w paśmie nN (${OPIS_PASMA_NN}).`,
     });
   }
 });
@@ -606,7 +607,7 @@ function tabsForKind(data: SldDetailDrawerData | null): readonly { id: string; l
  * ten sam `dataQuality: 'sld_fallback'`, co `transformerSpec` w tym module.
  */
 function pointVoltageForVariant(nnBusVoltageKv: number | null | undefined): number {
-  return nnBusVoltageKv != null && nnBusVoltageKv > 0 && nnBusVoltageKv < 1 ? nnBusVoltageKv : 0.4;
+  return nnBusVoltageKv != null && wPasmieNn(nnBusVoltageKv) ? nnBusVoltageKv : 0.4;
 }
 
 function defaultDerPowerMw(kind: SldDerKind): number {

@@ -51,7 +51,7 @@ import {
   type SldElementKindForMenu,
 } from '../v2/command/SldCommandService';
 import { useShellStore } from '../../../ui2/shell/useShellStore';
-import { STATION_LV_VOLTAGE_LIMIT_KV } from './stationBusResolution';
+import { powyzejPasmaNn } from '../../../ui2/model/pasmaNapieciowe';
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
@@ -276,7 +276,7 @@ function resolveCanonicalSectionBusRef(
   // Zmierzone na sieci referencyjnej: GPZ ma `bus_refs = [SN 15 kV, WN 110 kV]` —
   // odwrócona kolejność wysyłałaby do operacji SN ref szyny 110 kV. Kryterium
   // jest teraz to samo, co w `canvasMenuSubject.szynaSnStacji`: DOKŁADNIE JEDNA
-  // szyna powyżej granicy nN (`STATION_LV_VOLTAGE_LIMIT_KV`, jedna reguła stron
+  // szyna powyżej pasma nN (`powyzejPasmaNn`, jedna reguła stron
   // stacji z karty S9-2). Więcej niż jedna ⇒ ref zostaje NIETKNIĘTY (uczciwy
   // brak zamiany), nigdy wybór pierwszej z listy.
   let snBusRef: string | null = null;
@@ -284,7 +284,7 @@ function resolveCanonicalSectionBusRef(
     const bus = (snapshot?.buses ?? []).find(
       (candidate) => candidate.ref_id === busRef || candidate.id === busRef,
     );
-    if (bus == null || !(bus.voltage_kv > STATION_LV_VOLTAGE_LIMIT_KV)) continue;
+    if (bus == null || !powyzejPasmaNn(bus.voltage_kv)) continue;
     if (snBusRef !== null && snBusRef !== busRef) return elementId;
     snBusRef = busRef;
   }

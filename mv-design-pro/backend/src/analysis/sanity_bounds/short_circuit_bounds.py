@@ -6,11 +6,15 @@ fizyki. Łapie absurdy (np. Ik'' = 116 kA na SN 15 kV) ZANIM trafią na SLD i do
 pakietu OSD — wynik poza zakresem dostaje status „poza zakresem wiarygodności" i
 blokadę wejścia do pakietu (§6.2).
 
-Granice oparte o typowe wytrzymałości zwarciowe aparatury i poziomy sieci:
-- nN (≤ 1 kV): rozdzielnice nN do ~150 kA przy transformatorze;
-- SN (1–60 kV): aparatura 16/20/25/31,5/40 kA → górna granica wiarygodności 50 kA;
-- WN (60–150 kV): aparatura do 63 kA;
-- NN/EHV (> 150 kV): do 80 kA.
+Poziom napięcia węzła z JEDNEGO źródła pasm (`network_model/pochodne/pasma_napieciowe.py`,
+`poziom_napiecia` — IEC 60038 tab. 1 i rozporządzenie w sprawie szczegółowych warunków
+funkcjonowania systemu elektroenergetycznego, zał. 1 cz. I pkt 2.2/3.2); granice wiarygodności
+oparte o typowe wytrzymałości zwarciowe aparatury danego poziomu:
+- niskie napięcie (nN, do 1 kV włącznie): rozdzielnice nN do ~150 kA przy transformatorze;
+- średnie napięcie (SN, powyżej 1 kV i poniżej 110 kV): aparatura 16/20/25/31,5/40 kA →
+  górna granica wiarygodności 50 kA;
+- wysokie napięcie (WN, od 110 kV do poniżej 220 kV): aparatura do 63 kA;
+- najwyższe napięcie (NN, od 220 kV): do 80 kA.
 Dolna granica > 0 — Ik'' ≤ 0 jest niefizyczny.
 """
 
@@ -18,13 +22,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# (opis_poziomu_pl, dolna_kV_włącznie, górna_kV_wyłącznie, min_ikss_kA, max_ikss_kA)
-_VOLTAGE_BANDS: tuple[tuple[str, float, float, float, float], ...] = (
-    ("nN", 0.0, 1.0, 0.05, 150.0),
-    ("SN", 1.0, 60.0, 0.1, 50.0),
-    ("WN", 60.0, 150.0, 0.5, 63.0),
-    ("NN", 150.0, 1000.0, 1.0, 80.0),
-)
+from network_model.pochodne.pasma_napieciowe import Poziom, poziom_napiecia
+
+#: Granice wiarygodności Ik'' [kA] (dolna, górna) per poziom napięcia węzła.
+_GRANICE_IKSS_KA: dict[Poziom, tuple[float, float]] = {
+    "nN": (0.05, 150.0),
+    "SN": (0.1, 50.0),
+    "WN": (0.5, 63.0),
+    "NN": (1.0, 80.0),
+}
 
 #: Liczba leży w paśmie fizycznie możliwym dla poziomu napięcia. Etykieta „zweryfikowany"
 #: (do 2026-09-23) twierdziła weryfikację — wyrocznię albo pomiar — której ta kontrola NIE
@@ -62,26 +68,17 @@ class ShortCircuitSanityVerdict:
         }
 
 
-def _band_for(voltage_kv: float) -> tuple[str, float, float, float, float] | None:
-    for band in _VOLTAGE_BANDS:
-        _, lo_kv, hi_kv, _, _ = band
-        if lo_kv <= voltage_kv < hi_kv:
-            return band
-    return None
-
-
 def evaluate_short_circuit_current(
     voltage_kv: float | None,
     ikss_ka: float | None,
 ) -> ShortCircuitSanityVerdict:
-    """Ocena wiarygodności Ik'' wobec granic dla poziomu napięcia."""
-    if (
-        voltage_kv is None
-        or ikss_ka is None
-        or voltage_kv <= 0.0
-        or not _is_finite(voltage_kv)
-        or not _is_finite(ikss_ka)
-    ):
+    """Ocena wiarygodności Ik'' wobec granic dla poziomu napięcia.
+
+    Napięcie brakujące, niedodatnie albo nieskończone nie ma poziomu (`poziom_napiecia`
+    zwraca ``None``) — ocena jest wtedy uczciwie niekompletna, tak samo jak przy braku Ik''.
+    """
+    name = poziom_napiecia(voltage_kv)
+    if name is None or ikss_ka is None or not _is_finite(ikss_ka):
         return ShortCircuitSanityVerdict(
             voltage_kv=voltage_kv,
             ikss_ka=ikss_ka,
@@ -93,20 +90,7 @@ def evaluate_short_circuit_current(
             why_pl="Brak poprawnego napięcia lub Ik'' do oceny wiarygodności.",
             blocks_osd_package=False,
         )
-    band = _band_for(voltage_kv)
-    if band is None:
-        return ShortCircuitSanityVerdict(
-            voltage_kv=voltage_kv,
-            ikss_ka=ikss_ka,
-            voltage_band=None,
-            lower_ka=None,
-            upper_ka=None,
-            in_range=False,
-            status=INCOMPLETE,
-            why_pl=f"Poziom napięcia {voltage_kv:g} kV poza zdefiniowanymi pasmami sanity.",
-            blocks_osd_package=False,
-        )
-    name, _lo_kv, _hi_kv, min_ka, max_ka = band
+    min_ka, max_ka = _GRANICE_IKSS_KA[name]
     in_range = min_ka <= ikss_ka <= max_ka
     if in_range:
         # Liczby w tekście z ustaloną precyzją (3 miejsca kA, `g` dla granic i napięcia):

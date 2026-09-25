@@ -1826,7 +1826,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # ocena_doboru_magistrali.py`). Zapadka dlugu i wykluczenia BEZ ZMIANY.
         # Integracja MAGISTRALA-OCENA na partii 3: 547 -> 548 (+1
         # `application/analyses/ocena_doboru_magistrali.py`). POMIAR guardem.
-        "Przeskanowano 548 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta PASMO-1KV na partii 4 (2026-09-25): 548 -> 549 (+1
+        # `network_model/pochodne/pasma_napieciowe.py` — jedno źródło granic pasm napięć;
+        # zbiór pól kontraktów bez zmian, 4103). POMIAR guardem na drzewie integracji.
+        "Przeskanowano 549 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1924,7 +1927,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # wymagania i testu); dlug 14/77 i wykluczenia 3/6 BEZ ZMIANY.
         # Karta AB-1b.1b (2026-09-24): network_model 175 -> 178 (+3: `dozory.py`,
         # `urzadzenia/czesciowe.py`, `urzadzenia/zrodlo_testowe.py`); dlug i wykluczenia BEZ ZMIAN.
-        "  network_model: pliki_skanowane=178, dlug=12 plikow/suma 71, "
+        # Karta PASMO-1KV (2026-09-25): network_model 178 -> 179 (+1
+        # `pochodne/pasma_napieciowe.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  network_model: pliki_skanowane=179, dlug=12 plikow/suma 71, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;

@@ -59,6 +59,7 @@ import type {
 import { buildOperationContext } from '../../network-build/operationContext';
 import { BAY_ROLE_TO_PORT_KIND, type PortKind } from '../../sld/v2/core/ports';
 import { canonicalFieldRole } from '../../sld/v2/station-rozdzielnia/contract';
+import { powyzejPasmaNn } from '../../../ui2/model/pasmaNapieciowe';
 
 interface StationConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
@@ -793,7 +794,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const stationSnVoltageKv = useMemo(() => {
     const busRefs = new Set(station?.bus_refs ?? []);
     const bus = (snapshot?.buses ?? []).find(
-      (candidate) => busRefs.has(candidate.ref_id) && candidate.voltage_kv > 1,
+      (candidate) => busRefs.has(candidate.ref_id) && powyzejPasmaNn(candidate.voltage_kv),
     );
     return bus?.voltage_kv ?? stationTransformers[0]?.uhvKv ?? 15;
   }, [snapshot?.buses, station?.bus_refs, stationTransformers]);

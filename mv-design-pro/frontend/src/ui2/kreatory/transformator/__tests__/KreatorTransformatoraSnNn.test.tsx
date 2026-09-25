@@ -103,8 +103,11 @@ vi.mock('../../../../ui/network-build/forms/transformerRatedCurrentsApi', () => 
 }));
 
 async function pickType() {
+  // Czekamy na OPCJĘ typu, nie na samo pole: pole renderuje się, zanim katalog się wczyta,
+  // a pod obciążeniem maszyny wybór przed wczytaniem kończył się „Value … not found in options".
   await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-transformator-katalog')).toBeInTheDocument();
+    const pole = screen.getByTestId('mvd-kreator-transformator-katalog') as HTMLSelectElement;
+    expect(Array.from(pole.options).map((o) => o.value)).toContain('energen-tonr-1000-15-04');
   });
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-katalog'), 'energen-tonr-1000-15-04');
 }

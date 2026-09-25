@@ -87,6 +87,7 @@ import {
 } from './zrodloModel';
 import { ZRODLO_STRINGS as T } from './strings';
 import { WykresSztywnosci } from './WykresSztywnosci';
+import { wPasmieWn } from '../../model/pasmaNapieciowe';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'identyfikacja', tytul: T.krokIdentyfikacja },
@@ -292,7 +293,7 @@ export function KreatorZrodloZasilania() {
   const filtrowaneTransformatory = useMemo(
     () => transformatory.filter((t) =>
       (!napiecieSn || Math.abs(t.voltage_lv_kv - napiecieSn) <= 6)
-      && t.voltage_hv_kv >= 60),
+      && wPasmieWn(t.voltage_hv_kv)),
     [transformatory, napiecieSn],
   );
   const opcjeTransformatorow = useMemo(

@@ -39,12 +39,12 @@ from enm.models import (
     OverheadLine,
     SwitchBranch,
 )
-from enm.pole_transformatorowe import pasmo_napieciowe, w_pasmie_nn
 from enm.slownik_komunikatow import opis_obiektu
 from enm.uklad_sieci_nn import transformatory_bez_ukladu_nn
 from enm.validator import ReadinessResult
 from enm.zrodlo_zwarcie import dane_zwarciowe_zrodla
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
+from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, w_pasmie_nn
 from solver_input.uklad_sieci_nn import uklad_tn
 
 # Karta G-22: FAULT_LOOP_NN/SWZ_NN reużywają `_transformer_loop_impedance`
@@ -891,7 +891,7 @@ class EligibilityService:
                         message_pl=(
                             f"{opis_obiektu(trafo, 'Transformator')} "
                             f"({opis_obiektu(station, 'stacja')}) ma stronę dolną "
-                            f"{trafo.ulv_kv:g} kV — poza pasmem nN (poniżej 1 kV). Pętla zwarcia "
+                            f"{trafo.ulv_kv:g} kV — poza pasmem nN ({OPIS_PASMA_NN}). Pętla zwarcia "
                             "nN i SWZ dotyczą wyłącznie sieci nN."
                         ),
                         element_ref=trafo.ref_id,
@@ -942,15 +942,15 @@ class EligibilityService:
     ) -> None:
         """Warunek P0.6: pętla zwarcia/SWZ liczy się na TRASIE kablowej nN —
         `fault_loop_builder.sum_phase_and_return_route` czyta katalog i żyłę
-        powrotną z odcinków `Cable` w paśmie nN (reuse granicy pasma z
-        `enm.pole_transformatorowe.pasmo_napieciowe` — JEDNO miejsce
-        definicji progu ≤1 kV, zamiast drugiej kopii tej samej stałej).
+        powrotną z odcinków `Cable` w paśmie nN (predykat `w_pasmie_nn` z jednego
+        źródła granic pasm `network_model.pochodne.pasma_napieciowe`, zamiast drugiej
+        kopii tej samej stałej).
         """
         bus_by_ref = {b.ref_id: b for b in enm.buses}
 
         def _is_nn_bus(bus_ref: str) -> bool:
             bus = bus_by_ref.get(bus_ref)
-            return bus is not None and pasmo_napieciowe(bus.voltage_kv) == "nN"
+            return bus is not None and w_pasmie_nn(bus.voltage_kv)
 
         nn_cables = [
             b
@@ -964,7 +964,7 @@ class EligibilityService:
                     code="ELIG_FLNN_MISSING_NN_ROUTE",
                     severity=IssueSeverity.BLOCKER,
                     message_pl=(
-                        "Brak odcinków kablowych nN (<1 kV) w modelu sieci. "
+                        f"Brak odcinków kablowych nN ({OPIS_PASMA_NN}) w modelu sieci. "
                         "Pętla zwarcia i SWZ liczą się na trasie kablowej "
                         "obwodu nN — dodaj co najmniej jeden odcinek."
                     ),

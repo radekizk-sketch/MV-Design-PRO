@@ -175,7 +175,7 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     ),
     "E062": (
         "Kanon nie ma kodu dla mieszania poziomów napięcia WEWNĄTRZ pasma nN — E020 "
-        "(patrz wyżej) grupuje całe pasmo nN (<1 kV) jako JEDNO pasmo i nie wykrywa "
+        "(patrz wyżej) grupuje całe pasmo nN (do 1 kV włącznie) jako JEDNO pasmo i nie wykrywa "
         "tego warunku."
     ),
     "E064": (

@@ -36,6 +36,7 @@ from application.analyses.v126_katalog import karta_analizy, nazwa_parametru_pl
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 from solver_input.v126_contracts import (
     V126AcademicInput,
@@ -272,7 +273,7 @@ def _uziemienie_z_modelu(enm: EnergyNetworkModel) -> tuple[str, str] | None:
             ("SN", tr.lv_neutral, tr.ulv_kv),
             ("SN", tr.hv_neutral, tr.uhv_kv),
         ):
-            if konfiguracja is not None and 1.0 < float(napiecie) <= 60.0:
+            if konfiguracja is not None and pasmo_napieciowe(napiecie) == "SN":
                 return (
                     konfiguracja.type,
                     f"punkt neutralny transformatora „{tr.name}” po stronie {strona} "

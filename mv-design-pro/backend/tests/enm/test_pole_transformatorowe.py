@@ -17,13 +17,9 @@ from application.dokumentacja_wykonawcza import ocen_gotowosc_dokumentacji_wykon
 from domain.canonical_operations import READINESS_CODES, ReadinessLevel
 from domain.readiness_bridge import ODWZOROWANIE_WALIDATOR_NA_KANON, opis_kanoniczny
 from enm.models import EnergyNetworkModel
-from enm.pole_transformatorowe import (
-    PASMO_NN_MAX_KV,
-    PASMO_SN_MAX_KV,
-    pasmo_napieciowe,
-    transformatory_bez_pola_sn,
-)
+from enm.pole_transformatorowe import transformatory_bez_pola_sn
 from enm.validator import ENMValidator
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 TABLICA_PARYTETU = (
     Path(__file__).resolve().parents[2] / "schemas" / "pole_transformatorowe_parytet_v1.json"
@@ -217,13 +213,23 @@ def test_w041_ma_kanoniczna_tresc_ostrzezenia() -> None:
 
 
 def test_pasma_napieciowe_maja_jedno_zrodlo() -> None:
-    """Walidator i predykat pytają o TO SAMO pasmo (regula KLASA §3)."""
-    from enm import validator as modul_walidatora
+    """Walidator i predykat pola TR pytają o TO SAMO pasmo (regula KLASA §3).
 
-    assert modul_walidatora._VOLTAGE_BAND_NN_MAX == PASMO_NN_MAX_KV
-    assert modul_walidatora._VOLTAGE_BAND_SN_MAX == PASMO_SN_MAX_KV
-    assert modul_walidatora._voltage_band is pasmo_napieciowe
+    Karta PASMO-1KV: ani walidator, ani moduł pola transformatorowego nie trzymają już
+    własnych kopii granic — oba importują `network_model.pochodne.pasma_napieciowe`.
+    """
+    from enm import pole_transformatorowe as modul_pola
+    from enm import validator as modul_walidatora
+    from network_model.pochodne import pasma_napieciowe as zrodlo
+
+    assert modul_walidatora.pasmo_napieciowe is zrodlo.pasmo_napieciowe
+    assert modul_walidatora.w_pasmie_nn is zrodlo.w_pasmie_nn
+    assert modul_pola.szyna_poza_pasmem_sn is zrodlo.szyna_poza_pasmem_sn
+    for nazwa in ("PASMO_NN_MAX_KV", "PASMO_SN_MAX_KV", "_VOLTAGE_BAND_NN_MAX", "_voltage_band"):
+        assert not hasattr(modul_walidatora, nazwa), nazwa
+        assert not hasattr(modul_pola, nazwa), nazwa
     assert pasmo_napieciowe(0.4) == "nN"
+    assert pasmo_napieciowe(1.0) == "nN"
     assert pasmo_napieciowe(15.0) == "SN"
     assert pasmo_napieciowe(110.0) == "WN"
 

@@ -9,7 +9,7 @@ formatował napięcie bez `:g` („Szyna GPZ S1 15.0 kV”), inaczej niż każda
 Ta sama klasa w polach strony dolnej: wyłącznik główny i odpływy budowane przez obie operacje
 stacyjne, pola dopisywane operacją `add_nn_outgoing_field` (odpływ, pole źródłowe), odbiór
 `add_nn_load` i pole falownika `add_converter_source` nosiły stałe „nN”. Po bramce pasma
-(`pole_transformatorowe.w_pasmie_nn`) stacja SN/nN i operacje strony dolnej odmawiają szyny
+(`pasma_napieciowe.w_pasmie_nn`) stacja SN/nN i operacje strony dolnej odmawiają szyny
 spoza pasma nN (`test_bramka_pasma_nn.py`), więc nazwa z klasą szyny pozostaje prawdziwa z
 konstrukcji; klasę SN niosą nazwy toru DER-SN i pola falownika na szynie SN.
 
@@ -31,7 +31,7 @@ import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.domain_operations_v2 import _nazwa_z_klasa_szyny
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
-from enm.pole_transformatorowe import pasmo_napieciowe
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 from tests.enm.test_der_sn_topology_domain_ops import _der_sn_payload, _sn_station_enm
 from tests.enm.test_station_field_apparatus_explicit import (

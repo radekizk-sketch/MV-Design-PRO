@@ -24,6 +24,7 @@ import type {
 } from '../../../types/domainOps';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { wPasmieWn } from '../../../ui2/model/pasmaNapieciowe';
 
 interface EditorState {
   readonly mode: 'idle' | 'add' | 'edit';
@@ -54,9 +55,10 @@ interface Props {
 }
 
 /**
- * Filtruje szyny stacji per side voltage threshold:
- *  - LV (SN): voltage_kv < 60 (zwykle 6/10/15/20/30 kV).
- *  - HV: voltage_kv >= 60 (zwykle 110 kV).
+ * Filtruje szyny stacji per strona GPZ (jedno lustro pasm `ui2/model/pasmaNapieciowe`):
+ *  - HV: szyna w paśmie WN (od 110 kV, zwykle 110 kV).
+ *  - LV (SN): każda pozostała szyna stacji (zwykle 6/10/15/20/30 kV) — dopełnienie
+ *    tego samego predykatu, więc żadna szyna nie wypada z obu stron naraz.
  */
 function filterStationBuses(
   buses: { ref_id: string; name: string; voltage_kv: number }[] | undefined,
@@ -66,7 +68,7 @@ function filterStationBuses(
   if (!buses) return [];
   return buses
     .filter((b) => busRefs.includes(b.ref_id))
-    .filter((b) => (side === 'hv' ? b.voltage_kv >= 60 : b.voltage_kv < 60));
+    .filter((b) => (side === 'hv' ? wPasmieWn(b.voltage_kv) : !wPasmieWn(b.voltage_kv)));
 }
 
 export function GpzSectionsEditor({ station }: Props) {

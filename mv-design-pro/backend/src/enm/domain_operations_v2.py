@@ -53,6 +53,7 @@ from network_model.pochodne import (
     mvar_na_kvar,
     mw_na_kw,
 )
+from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, pasmo_napieciowe, w_pasmie_nn
 from network_model.solvers import cable_ampacity_derating as cable_derating
 from network_model.solvers.protection_iec60255 import compute_idmt_generic
 
@@ -112,7 +113,6 @@ from .pole_katalogowe import (
     rozwiaz_aparaty_pola,
     rozwiaz_plan_pola,
 )
-from .pole_transformatorowe import pasmo_napieciowe, w_pasmie_nn
 from .rola_pola_sn import (
     kanoniczna_rola_pola_sn,
     nazwa_pola_zrodlowego_sn,
@@ -455,7 +455,7 @@ def _odmowa_szyny_poza_pasmem_nn(
 ) -> dict[str, Any] | None:
     """Odmowa, gdy operacja strony dolnej wskazuje szynę spoza pasma nN.
 
-    Predykat pasma: `pole_transformatorowe.w_pasmie_nn` — ten sam co bramki analiz nN
+    Predykat pasma: `pasma_napieciowe.w_pasmie_nn` — ten sam co bramki analiz nN
     (`fault_loop.service.odmowa_pasma_nn`) i pozostałe bramki `nn.*` tego modułu. Pola,
     odbiory, aparaty i źródła nN na szynie 6 kV/15 kV były dotąd zapisywane po cichu
     (z katalogiem aparatów nN i rolą ODPLYW_NN na szynie SN).
@@ -463,14 +463,15 @@ def _odmowa_szyny_poza_pasmem_nn(
     napiecie = _bus_voltage_kv(enm, bus_ref)
     if w_pasmie_nn(napiecie):
         return None
+    pasmo = pasmo_napieciowe(napiecie)
     opis = (
         "nie ma dodatniego napięcia znamionowego"
-        if napiecie is None
-        else f"ma napięcie {napiecie:g} kV (pasmo {pasmo_napieciowe(napiecie)})"
+        if napiecie is None or pasmo is None
+        else f"ma napięcie {napiecie:g} kV (pasmo {pasmo})"
     )
     return _error_response(
         f"{operacja_pl}: {opis_elementu(enm, bus_ref, 'szyna')} {opis} — operacja dotyczy "
-        "wyłącznie strony nN (napięcie znamionowe poniżej 1 kV). Wskaż szynę nN stacji SN/nN.",
+        f"wyłącznie strony nN ({OPIS_PASMA_NN}). Wskaż szynę nN stacji SN/nN.",
         KOD_SZYNA_POZA_PASMEM_NN,
     )
 
@@ -479,12 +480,12 @@ def _nazwa_z_klasa_szyny(enm: dict[str, Any], bus_ref: object, *czlony: str) -> 
     """Domyślna nazwa elementu na szynie z klasą napięciową wyprowadzoną z modelu.
 
     Człon ``"{klasa}"`` w ``czlony`` jest zastępowany pasmem napięcia szyny
-    (`pole_transformatorowe.pasmo_napieciowe`) — operacje nN piszą też na szynę strony
+    (`pasma_napieciowe.pasmo_napieciowe`) — operacje nN piszą też na szynę strony
     dolnej stacji, której napięcie model podaje wprost (stacja 15/6 kV ma ją w paśmie
     SN). Szyna bez napięcia → człon pominięty, nigdy domysł „nN".
     """
     napiecie = _bus_voltage_kv(enm, bus_ref) if isinstance(bus_ref, str) else None
-    klasa = pasmo_napieciowe(napiecie) if napiecie is not None else ""
+    klasa = pasmo_napieciowe(napiecie) or ""
     return " ".join(c for c in (klasa if c == "{klasa}" else c for c in czlony) if c)
 
 
@@ -3011,7 +3012,7 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 # P0.1 nN — topologia obwodow nN (karta P0.1, C §4.1)
 #
 # Siec nN = ISTNIEJACE generyczne elementy ENM (Bus/Cable/SwitchBranch/
-# FuseBranch/Load) w pasmie nN (< 1 kV, `w_pasmie_nn`). ZERO nowych klas Lv* (C §0 pkt 1).
+# FuseBranch/Load) w pasmie nN (do 1 kV wlacznie, `w_pasmie_nn`). ZERO nowych klas Lv* (C §0 pkt 1).
 # Konwencja kierunku KAZDEJ galezi tworzonej w tej sekcji: from_bus_ref =
 # UPSTREAM (strona zrodla), to_bus_ref = DOWNSTREAM (strona odbioru) — ta sama
 # konwencja co continue_trunk_segment_sn / aparat pola SN / migracja pol nN.
@@ -3265,7 +3266,7 @@ def add_nn_distribution_board(enm: dict[str, Any], payload: dict[str, Any]) -> d
         )
     if not w_pasmie_nn(voltage_kv):
         return _error_response(
-            "Rozdzielnica nN może mieć napięcie znamionowe wyłącznie w paśmie nN (poniżej 1 kV).",
+            f"Rozdzielnica nN może mieć napięcie znamionowe wyłącznie w paśmie nN ({OPIS_PASMA_NN}).",
             "nn.board_voltage_not_nn",
         )
 
@@ -3389,7 +3390,8 @@ def add_nn_switch_device(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         )
     if not (w_pasmie_nn(from_voltage) and w_pasmie_nn(to_voltage)):
         return _error_response(
-            "Aparat nN musi łączyć dwie szyny w paśmie nN (poniżej 1 kV).", "nn.switch_not_nn_band"
+            f"Aparat nN musi łączyć dwie szyny w paśmie nN ({OPIS_PASMA_NN}).",
+            "nn.switch_not_nn_band",
         )
     if not _same_nominal_voltage(from_voltage, to_voltage):
         return _error_response(

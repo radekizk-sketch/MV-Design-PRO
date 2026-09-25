@@ -12,13 +12,14 @@ odniesienie N/PE do sieci nN, którą zasila.
 
 from __future__ import annotations
 
+from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
+
 from .models import EnergyNetworkModel, Substation, Transformer
-from .pole_transformatorowe import pasmo_napieciowe
 
 
 def transformator_nn(trafo: Transformer) -> bool:
-    """Transformator o stronie dolnej w paśmie nN (< 1 kV)."""
-    return pasmo_napieciowe(trafo.ulv_kv) == "nN"
+    """Transformator o stronie dolnej w paśmie nN (jedno źródło granicy: `w_pasmie_nn`)."""
+    return w_pasmie_nn(trafo.ulv_kv)
 
 
 def stacje_z_odbiorami_nn(enm: EnergyNetworkModel) -> list[Substation]:
@@ -27,7 +28,7 @@ def stacje_z_odbiorami_nn(enm: EnergyNetworkModel) -> list[Substation]:
 
     def _nn(bus_ref: str) -> bool:
         bus = bus_by_ref.get(bus_ref)
-        return bus is not None and bus.voltage_kv > 0 and pasmo_napieciowe(bus.voltage_kv) == "nN"
+        return bus is not None and w_pasmie_nn(bus.voltage_kv)
 
     szyny_odbiorow = {ld.bus_ref for ld in enm.loads if _nn(ld.bus_ref)}
     szyny_odbiorow |= {g.bus_ref for g in enm.generators if _nn(g.bus_ref)}

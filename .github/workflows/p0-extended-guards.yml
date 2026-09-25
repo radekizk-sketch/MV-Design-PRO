@@ -180,6 +180,13 @@ jobs:
       - name: Formuly fizyczne poza solverami — zapadka poza network_model/pochodne (CV-4.3 K4)
         run: $GUARD_PY scripts/backend_no_physics_guard.py
 
+      # Karta PASMO-1KV (2026-09-25): granice pasm nN/SN/WN (nN do 1 kV wlacznie, SN ponizej
+      # 110 kV) maja jedno zrodlo `network_model/pochodne/pasma_napieciowe.py` i jedno lustro
+      # `frontend/src/ui2/model/pasmaNapieciowe.ts`; allowlista pusta, samotest w
+      # `scripts/test_pasmo_napieciowe_guard.py`.
+      - name: Predykat pasma napieciowego — jedno zrodlo i jedno lustro (PASMO-1KV)
+        run: $GUARD_PY scripts/pasmo_napieciowe_guard.py
+
       - name: Legacy public path
         run: $GUARD_PY scripts/legacy_public_path_guard.py
 

@@ -47,6 +47,7 @@ import {
   ApparatusTransformerSymbol,
 } from './GpzApparatusSymbols';
 import { DerSourceSymbol } from './DerRenderer';
+import { pasmoNapieciowe, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 
 // =============================================================================
 // Constants
@@ -833,9 +834,9 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 fontSize={8}
                 fontWeight={700}
               >
-                {props.busVoltageKv >= 1
-                  ? `${props.busVoltageKv.toFixed(1).replace('.', ',')} kV`
-                  : `${Math.round(props.busVoltageKv * 1000)} V`}
+                {wPasmieNn(props.busVoltageKv)
+                  ? `${Math.round(props.busVoltageKv * 1000)} V`
+                  : `${props.busVoltageKv.toFixed(1).replace('.', ',')} kV`}
               </text>
             )}
             {hasDer && derSummary && (
@@ -2512,17 +2513,17 @@ export function miniBlockViewBox(
  * K30-40: kolor szyny SN per voltage class w bay-column architecture.
  * Analogous do K30-37 busColorForVoltage (StationOnRunRenderer) i K30-41
  * cableColorForVoltage (CableRunRenderer). Wspólna konwencja OSD:
- * - ≥100 kV (WN) → #E74C3C czerwień
- * - 12-30 kV (SN) → COLOR_BUS_LV (zieleń energized — fallback default)
- * - 5-10 kV (SN niskie) → #0A8D43
- * - 0.2-1 kV (nN) → #7DD3FC
- * - brak / inne → COLOR_BUS_LV (back-compat)
+ * Pasmo z jednego lustra granic (`ui2/model/pasmaNapieciowe`):
+ * - pasmo WN (od 110 kV) → #E74C3C czerwień
+ * - pasmo SN od 12 kV (15/20/30 kV) → COLOR_BUS_LV (zieleń energized — fallback default)
+ * - pasmo SN poniżej 12 kV (3/6/10 kV, SN niskie) → #0A8D43
+ * - pasmo nN (do 1 kV włącznie) → #7DD3FC
+ * - brak / niefizyczne → COLOR_BUS_LV (back-compat)
  */
 function miniBlockBusColorForVoltage(kv: number | null): string {
-  if (kv == null || !Number.isFinite(kv) || kv <= 0) return COLOR_BUS_LV;
-  if (kv >= 100) return '#E74C3C';
-  if (kv >= 12) return COLOR_BUS_LV;
-  if (kv >= 5) return '#0A8D43';
-  if (kv >= 0.2) return '#7DD3FC';
+  const pasmo = pasmoNapieciowe(kv);
+  if (pasmo === 'WN') return '#E74C3C';
+  if (pasmo === 'SN') return (kv as number) >= 12 ? COLOR_BUS_LV : '#0A8D43';
+  if (pasmo === 'nN') return '#7DD3FC';
   return COLOR_BUS_LV;
 }

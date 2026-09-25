@@ -20,6 +20,11 @@ from network_model.core.uziemienie import (
     ETYKIETA_PL_UZIEMIENIA_EKRANU,
 )
 from network_model.pochodne import prad_z_mocy_pozornej_ka
+from network_model.pochodne.pasma_napieciowe import (
+    pasmo_napieciowe,
+    powyzej_pasma_nn,
+    w_pasmie_nn,
+)
 from pydantic import BaseModel
 
 from .fix_actions import FixAction
@@ -35,14 +40,7 @@ from .models import (
     OverheadLine,
     SwitchBranch,
 )
-from .pole_transformatorowe import (
-    PASMO_NN_MAX_KV,
-    PASMO_SN_MAX_KV,
-    komunikat_braku_pola,
-    pasmo_napieciowe,
-    transformatory_bez_pola_sn,
-    w_pasmie_nn,
-)
+from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
 from .severity import (
     SEVERITY_BLOCKER,
     SEVERITY_IMPORTANT,
@@ -67,22 +65,6 @@ from .topology import derive
 from .uklad_sieci_nn import transformatory_bez_ukladu_nn
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
 from .zrodlo_zwarcie import PASMO_U_SET_PU, dane_zwarciowe_zrodla, u_set_pu_w_pasmie
-
-# V12S-007: voltage band thresholds (kV).
-# Pasma napieciowe domeny:
-#   nN : voltage_kv < 1.0
-#   SN : 1.0 <= voltage_kv <= 60.0
-#   WN : voltage_kv > 60.0
-#
-# KOMPLETNOSC-POLA-TR: progi i funkcja pasma PRZENIESIONE do
-# `enm/pole_transformatorowe.py` — predykat pola transformatorowego pyta o to
-# samo pasmo („strona gorna na szynie SN"), a dwie kopie granicy 60 kV byłyby
-# dwoma zrodlami prawdy czekajacymi na rozjazd (regula KLASA §3). Walidator jest
-# tu KONSUMENTEM definicji, nie jej wlascicielem.
-_VOLTAGE_BAND_NN_MAX = PASMO_NN_MAX_KV
-_VOLTAGE_BAND_SN_MAX = PASMO_SN_MAX_KV
-_voltage_band = pasmo_napieciowe
-
 
 _STRICT_PORT_BINDING_ENV = "ENM_STRICT_PORT_BINDING"
 
@@ -464,7 +446,7 @@ class ENMValidator:
             if not bus_ref:
                 continue
             bus_voltage = bus_voltage_map.get(bus_ref)
-            if bus_voltage is not None and _voltage_band(bus_voltage) != "nN":
+            if powyzej_pasma_nn(bus_voltage):
                 issues.append(
                     ValidationIssue(
                         code="E029",
@@ -1743,8 +1725,8 @@ class ENMValidator:
                 continue  # missing-ref errors are reported by other checks
             if from_bus.voltage_kv <= 0 or to_bus.voltage_kv <= 0:
                 continue  # zero-voltage errors reported by E004
-            band_from = _voltage_band(from_bus.voltage_kv)
-            band_to = _voltage_band(to_bus.voltage_kv)
+            band_from = pasmo_napieciowe(from_bus.voltage_kv)
+            band_to = pasmo_napieciowe(to_bus.voltage_kv)
             if band_from == band_to:
                 continue
             issues.append(
@@ -1814,7 +1796,7 @@ class ENMValidator:
                 bus = bus_by_ref.get(bay.bus_ref)
                 if bus is None or bus.voltage_kv <= 0:
                     continue
-                band = _voltage_band(bus.voltage_kv)
+                band = pasmo_napieciowe(bus.voltage_kv)
                 if band != "SN":
                     offending_bays.append(bay.ref_id)
                     continue
@@ -1932,7 +1914,7 @@ class ENMValidator:
             po_stronie_sn = (
                 source.source_side != "HV_110"
                 and bus is not None
-                and _voltage_band(bus.voltage_kv) == "SN"
+                and pasmo_napieciowe(bus.voltage_kv) == "SN"
             )
             if not po_stronie_sn:
                 continue
@@ -2111,7 +2093,7 @@ class ENMValidator:
                (LV-INV-12, C §4.2 — dane historyczne, ktorych katalog nie widzial).
         E062 - dwie szyny nN o ROZNYCH napieciach znamionowych polaczone galezia
                NIE-transformatorowa. Zaostrzenie E020 WEWNATRZ pasma nN: E020
-               grupuje CALE pasmo „nN" (<1 kV) jako JEDNO pasmo (0,4 kV i 0,69 kV
+               grupuje CALE pasmo „nN" (do 1 kV wlacznie) jako JEDNO pasmo (0,4 kV i 0,69 kV
                nalezą do tego samego pasma), wiec nie wykrywa mieszania
                poziomow WEWNATRZ pasma (LV-INV-11).
         E063 - transformator SN/nN stacji zasilajacej odbiory/generatory nN bez
@@ -2266,10 +2248,7 @@ class ENMValidator:
                 continue
             if from_bus.voltage_kv <= 0 or to_bus.voltage_kv <= 0:
                 continue
-            if (
-                _voltage_band(from_bus.voltage_kv) != "nN"
-                or _voltage_band(to_bus.voltage_kv) != "nN"
-            ):
+            if not (w_pasmie_nn(from_bus.voltage_kv) and w_pasmie_nn(to_bus.voltage_kv)):
                 continue
             if abs(from_bus.voltage_kv - to_bus.voltage_kv) <= 1e-9:
                 continue
