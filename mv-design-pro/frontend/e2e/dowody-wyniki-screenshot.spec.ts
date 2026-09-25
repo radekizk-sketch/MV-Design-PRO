@@ -106,12 +106,16 @@ const MIGOTANIE_SCENA_WYNIK = JSON.parse(
 ) as {
   buses: {
     bus_ref: string;
-    modules: { gen_ref: string }[];
+    bus_name: string;
+    modules: { gen_ref: string; gen_name: string }[];
     white_box: { substitution_pl: string }[];
   }[];
 };
-const WEZEL_MIGOTANIA = MIGOTANIE_SCENA_WYNIK.buses[0].bus_ref;
-const MODUL_MIGOTANIA = MIGOTANIE_SCENA_WYNIK.buses[0].modules[0].gen_ref;
+// Karta #144: ekran jakości nazywa węzeł i moduł nazwą z backendu (`bus_name`, `gen_name`
+// tej samej fikstury biegu), identyfikator jest tylko kluczem wiersza — spec idzie ścieżką
+// projektanta po nazwie, nie po identyfikatorze maszynowym.
+const WEZEL_MIGOTANIA = MIGOTANIE_SCENA_WYNIK.buses[0].bus_name;
+const MODUL_MIGOTANIA = MIGOTANIE_SCENA_WYNIK.buses[0].modules[0].gen_name;
 
 /**
  * Liczby i podstawienia śladów, które ekran MA pokazać, pochodzą z tych samych fikstur
@@ -372,7 +376,7 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     await expect(page.getByTestId('mvd-wyn-tabela')).toContainText(
       'w granicach planowania',
     );
-    await page.getByTestId('mvd-wyn-tabela').getByText(WEZEL_MIGOTANIA).click();
+    await page.getByTestId('mvd-wyn-tabela').getByText(WEZEL_MIGOTANIA, { exact: true }).first().click();
     const szczegol = page.getByTestId('mvd-jakosc-migotanie-szczegol');
     await expect(szczegol).toContainText(MODUL_MIGOTANIA);
     await expect(szczegol).toContainText('Wliczony do sumowania');
