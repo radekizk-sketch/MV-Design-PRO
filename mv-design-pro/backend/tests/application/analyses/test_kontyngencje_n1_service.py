@@ -839,7 +839,13 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # kluczy, różnią się WYŁĄCZNIE teksty `kryteria_pominiete[*].powod_pl`
     # („Brak danych napieciowych." → „Brak danych napięciowych.": 24 pozycje gn01,
     # 10 gn03). Identyfikatory, dotkliwości, ranking, liczby i kolejność bez zmian.
-    "gn01_promieniowa": "b627c5f24cc248cda2055602b7b883131aa20222e6638734b8c9d465f10256aa",
+    # 2026-09-25 (karta #142 na czubku z PL-ZNAKI, #141 i E2): b627c5f2… → db8480a0… (gn01).
+    # Pełny widok przed i po liść po liściu: różnią się WYŁĄCZNIE `snapshot_hash` i
+    # `input_hash`; w migawce modelu gn01 jedyną różnicą jest `catalog_message` trzech
+    # aparatów pól SN („…pozycji katalogu APARAT_SN: sw-cb-abb-vd4-17kv-630a." → „…pozycji
+    # katalogu — typ „ABB VD4 17.5 kV 630 A"."), czyli komunikat karty #142 zapisany w
+    # modelu. Wynik kontyngencji identyczny; gn03 bez zmiany (jej pola nie niosą tego komunikatu).
+    "gn01_promieniowa": "db8480a0f6ee933b36689615706bba20809d85e3dd5e74019e1f6d65c7379a11",
     "gn03_pierscien": "0b3792fb96de36bf14a76b032a7839a7b8957392f25c2c78a199d7b6b300ee61",
 }
 

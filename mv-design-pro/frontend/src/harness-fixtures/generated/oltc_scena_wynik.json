@@ -1,6 +1,6 @@
 {
   "analysis_type": "LOAD_FLOW",
-  "deterministic_signature": "972fe316d9813a86c99568be7a1b89542add6d9eb8b30eb3356bda8778cb1c0b",
+  "deterministic_signature": "1030a81839d4621e1b5cab24a0a0bc35a9070474a93e6dbc300f017d9ffbd981",
   "element_results": [
     {
       "element_ref": "bus_hv",
@@ -682,9 +682,9 @@
             "bay_role": "TR"
           }
         },
-        "message_pl": "Transformator 'tr_sn_nn' jest połączony elektrycznie z szyną SN, lecz nie posiada kompletnej konfiguracji pola transformatorowego po stronie SN.",
+        "message_pl": "Transformator „TR 15/0.4” jest połączony elektrycznie z szyną SN, lecz nie posiada kompletnej konfiguracji pola transformatorowego po stronie SN.",
         "severity": "IMPORTANT",
-        "suggested_fix": "Dodaj do rozdzielni SN tej stacji pole transformatorowe (rola TR) i przypisz do niego transformator.",
+        "suggested_fix": "Dodaj do rozdzielni SN tej stacji pole transformatorowe i przypisz do niego transformator.",
         "wizard_step_hint": "K5"
       },
       {
@@ -693,7 +693,7 @@
           "sub_b"
         ],
         "fix_action": null,
-        "message_pl": "Stacja 'sub_b' nie ma przypisanych pól rozdzielczych.",
+        "message_pl": "Stacja „Stacja B” nie ma przypisanych pól rozdzielczych.",
         "severity": "INFO",
         "suggested_fix": null,
         "wizard_step_hint": "K3"
@@ -704,7 +704,7 @@
           "sub_gpz"
         ],
         "fix_action": null,
-        "message_pl": "Stacja 'sub_gpz' nie ma przypisanych pól rozdzielczych.",
+        "message_pl": "Stacja „GPZ” nie ma przypisanych pól rozdzielczych.",
         "severity": "INFO",
         "suggested_fix": null,
         "wizard_step_hint": "K3"

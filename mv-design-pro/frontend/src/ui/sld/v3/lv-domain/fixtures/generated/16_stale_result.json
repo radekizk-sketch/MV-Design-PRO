@@ -966,7 +966,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "9196a5154411caaeed3545da99b77409b2af56e7b0c5c919b2f60f96324d3fe9",
+  "projection_hash": "b9aa8d613ce4fcc83bb8931aa2825a9465e63a08f70df3174ff9d2f3b3b583e4",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {
@@ -1619,73 +1619,73 @@
         {
           "code": "W001",
           "element_ref": null,
-          "message": "Gałąź 'FU-21_kabel' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+          "message": "Gałąź „Kabel FU-21” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
           "severity": "IMPORTANT"
         },
         {
           "code": "W001",
           "element_ref": null,
-          "message": "Gałąź 'QF-01_kabel' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+          "message": "Gałąź „Kabel QF-01” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
           "severity": "IMPORTANT"
         },
         {
           "code": "W001",
           "element_ref": null,
-          "message": "Gałąź 'QF-02_kabel' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+          "message": "Gałąź „Kabel QF-02” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
           "severity": "IMPORTANT"
         },
         {
           "code": "W001",
           "element_ref": null,
-          "message": "Gałąź 'QF-03_kabel' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+          "message": "Gałąź „Kabel QF-03” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
           "severity": "IMPORTANT"
         },
         {
           "code": "W002",
           "element_ref": null,
-          "message": "Źródło 'src' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+          "message": "Źródło zasilania „GPZ” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
           "severity": "IMPORTANT"
         },
         {
           "code": "W010",
           "element_ref": null,
-          "message": "Generator przekształtnikowy 'QF-03_zrodlo' nie ma referencji katalogowej (catalog_ref). Model pozostaje ogólnie użyteczny, ale obliczenia zwarciowe dla tego generatora są zablokowane w gotowości obliczeniowej (kod 'inverter.k_sc_missing') do czasu przypisania katalogu.",
+          "message": "Generator przekształtnikowy „PV1” nie ma przypisanej pozycji katalogowej. Model pozostaje ogólnie użyteczny, ale obliczenia zwarciowe dla tego generatora są zablokowane w gotowości obliczeniowej do czasu przypisania typu z katalogu.",
           "severity": "IMPORTANT"
         },
         {
           "code": "W060",
           "element_ref": null,
-          "message": "Kabel nN 'FU-21_kabel' nie ma zadeklarowanych warunków ułożenia — obciążalność liczona wg założenia katalogowego.",
+          "message": "Kabel nN „Kabel FU-21” nie ma zadeklarowanych warunków ułożenia — obciążalność liczona wg założenia katalogowego.",
           "severity": "IMPORTANT"
         },
         {
           "code": "W060",
           "element_ref": null,
-          "message": "Kabel nN 'QF-01_kabel' nie ma zadeklarowanych warunków ułożenia — obciążalność liczona wg założenia katalogowego.",
+          "message": "Kabel nN „Kabel QF-01” nie ma zadeklarowanych warunków ułożenia — obciążalność liczona wg założenia katalogowego.",
           "severity": "IMPORTANT"
         },
         {
           "code": "W060",
           "element_ref": null,
-          "message": "Kabel nN 'QF-02_kabel' nie ma zadeklarowanych warunków ułożenia — obciążalność liczona wg założenia katalogowego.",
+          "message": "Kabel nN „Kabel QF-02” nie ma zadeklarowanych warunków ułożenia — obciążalność liczona wg założenia katalogowego.",
           "severity": "IMPORTANT"
         },
         {
           "code": "W060",
           "element_ref": null,
-          "message": "Kabel nN 'QF-03_kabel' nie ma zadeklarowanych warunków ułożenia — obciążalność liczona wg założenia katalogowego.",
+          "message": "Kabel nN „Kabel QF-03” nie ma zadeklarowanych warunków ułożenia — obciążalność liczona wg założenia katalogowego.",
           "severity": "IMPORTANT"
         },
         {
           "code": "I003",
           "element_ref": null,
-          "message": "Stacja 'RGN-2' nie ma przypisanych pól rozdzielczych.",
+          "message": "Stacja „RGN-2” nie ma przypisanych pól rozdzielczych.",
           "severity": "INFO"
         },
         {
           "code": "I003",
           "element_ref": null,
-          "message": "Stacja 'stC' nie ma przypisanych pól rozdzielczych.",
+          "message": "Stacja „Stacja C” nie ma przypisanych pól rozdzielczych.",
           "severity": "INFO"
         }
       ]
