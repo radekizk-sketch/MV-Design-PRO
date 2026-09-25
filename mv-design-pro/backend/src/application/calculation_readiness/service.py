@@ -1,19 +1,22 @@
 """CalculationReadinessService — pełen serwis gotowości obliczeń (PR-12).
 
-Brief 2 §16 + karta W6-1 SS0 p.7. Ocenia gotowość dla 9 typów obliczeń + 2
+Brief 2 §16 + karta W6-1 SS0 p.7. Ocenia gotowość dla 7 typów obliczeń + 2
 raportów + 1 typu kontraktowego (dynamika_rms):
 1. Rozpływ mocy
 2. Spadki/wzrosty napięcia
 3. Zwarcia
 4. Asymetria
 5. Obciążalność
-6. Stabilność
-7. FRT/LVRT/HVRT
-8. Zgodność przyłączeniowa NC RfG
-9. Raport OSD
-10. Raport techniczny
-11. Dynamika czasowa (DAE) — dane modelu + punkt pracy z rozpływu; scenariusz
+6. FRT/LVRT/HVRT
+7. Zgodność przyłączeniowa NC RfG
+8. Raport OSD
+9. Raport techniczny
+10. Dynamika czasowa (DAE) — dane modelu + punkt pracy z rozpływu; scenariusz
     czasowy i nastawy numeryczne są daną per bieg (sprawdza je adapter biegu).
+
+Karta AB-P1: typ „Stabilność" (bramka skasowanego solvera stabilności RMS, meldująca
+„solver dostępny" dla modułu bez konsumenta) usunięty — dynamikę czasową ocenia
+wyłącznie bramka biegu kanonicznego `dynamika_rms`.
 
 Każdy item zwraca: status + brakujące pola + obiekty blokujące + zalecaną akcję.
 """
@@ -22,6 +25,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from application.dynamika.opis_wyniku import komunikat_z_nazwami
 from domain.canonical_operations import READINESS_CODES
 from enm.adapter_dynamiki import KOD_PUNKT_PRACY_BRAK, braki_modelu_dynamiki
 from enm.assembler import (
@@ -30,6 +34,12 @@ from enm.assembler import (
     KOD_NIESYMETRIA_FAZY_ODBIORU,
     KOD_NIESYMETRIA_NIERADIALNA,
     diagnoza_niesymetrii,
+)
+from enm.dynamika_z_katalogu import (
+    KOD_KOPIA_NIEAKTUALNA,
+    StanDynamikiGeneratora,
+    braki_kopii_dynamiki,
+    stan_dynamiki_generatorow,
 )
 from enm.load_zip_model import (
     KOD_ZIP_AGREGAT_NIEREPREZENTOWALNY,
@@ -53,7 +63,6 @@ CalculationType = Literal[
     "short_circuit",
     "asymmetry",
     "loadability",
-    "stability",
     "frt_hvrt",
     "ncrfg_compliance",
     "report_osd",
@@ -78,7 +87,6 @@ CALCULATION_LABEL_PL: dict[CalculationType, str] = {
     "short_circuit": "Zwarcia",
     "asymmetry": "Asymetria",
     "loadability": "Obciążalność",
-    "stability": "Stabilność",
     "frt_hvrt": "FRT / LVRT / HVRT",
     "ncrfg_compliance": "Zgodność przyłączeniowa",
     "report_osd": "Raport OSD",
@@ -559,8 +567,8 @@ def _rozstrzygnij_profile_der(
 ) -> tuple[dict[str, Any], list[str]]:
     """Rozwiąż profile dynamiczne DLA WSZYSTKICH DER — jeden przebieg, jedna reguła.
 
-    Karta FAB-D2 (D8) + W6-1, użyte przez `_check_stability` i `_check_frt_hvrt`
-    (KLASA, NIE INSTANCJA: ta sama reguła w obu miejscach, nie dwie kopie).
+    Karta FAB-D2 (D8) + W6-1, użyte przez `_check_frt_hvrt` (bramka skasowanego solvera
+    stabilności RMS, drugi dawny konsument, zniknęła w karcie AB-P1).
 
     Zwraca (rozwiazane, brakujace_refs):
         rozwiazane      — ref -> DerDynamicResolution, dla DER z profilem
@@ -582,89 +590,6 @@ def _rozstrzygnij_profile_der(
             continue
         rozwiazane[ref] = result
     return rozwiazane, brakujace_refs
-
-
-def _synchroniczny_ma_dynamike(gen: Any) -> bool:
-    """Czy generator synchroniczny ma kompletny blok `dynamika` (P0-10, W6-1).
-
-    Rozstrzyga WYŁĄCZNIE `Generator.dynamika` (kontrakt kanoniczny
-    `enm.dynamika_modele.MaszynaSynchroniczna`) — maszyny synchroniczne NIE
-    przechodzą przez resolver DER (nie są przekształtnikowe)."""
-    dynamika = getattr(gen, "dynamika", None)
-    return dynamika is not None and getattr(dynamika, "rodzina", None) == "synchroniczna"
-
-
-def _check_stability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
-    """Stabilność RMS — PR-15-impl + DER dynamic resolver + maszyny synchroniczne.
-
-    P0-10 (karta W6-1): maszyny synchroniczne SĄ źródłem dynamicznym dla
-    stabilności (przypadek klasyczny transient stability) — dawny filtr
-    `_DER_GEN_TYPES` je pomijał, więc projekt WYŁĄCZNIE z generatorem
-    synchronicznym dostawał fałszywe `n_a` ("stabilność nie dotyczy"), choć
-    to najbardziej typowy powód liczenia stabilności w ogóle.
-    """
-    der_generators = [g for g in enm.generators if g.gen_type in _DER_GEN_TYPES]
-    sync_generators = [g for g in enm.generators if g.gen_type == "synchronous"]
-    if not der_generators and not sync_generators:
-        return ReadinessTypeReport(
-            calculation_type="stability",
-            label_pl=CALCULATION_LABEL_PL["stability"],
-            status="n_a",
-            recommended_action_pl=(
-                "Brak źródeł dynamicznych (maszyna synchroniczna/PV/BESS/FW). "
-                "Stabilność RMS nie dotyczy projektu."
-            ),
-        )
-    resolved, brakujace_der = _rozstrzygnij_profile_der(der_generators)
-    brakujace_sync = [
-        getattr(g, "ref_id", getattr(g, "id", "?"))
-        for g in sync_generators
-        if not _synchroniczny_ma_dynamike(g)
-    ]
-    brakujace = brakujace_der + brakujace_sync
-    nazwy = zbuduj_indeks_nazw(enm)
-    if brakujace:
-        opisy = [
-            f"profil dynamiczny DER '{nazwa_po_identyfikatorze(ref, indeks=nazwy)}' "
-            "(kod 'der.dynamic_profile_missing')"
-            for ref in brakujace_der
-        ] + [
-            "blok dynamiki maszyny synchronicznej "
-            f"'{nazwa_po_identyfikatorze(ref, indeks=nazwy)}' (kod 'der.dynamika_missing')"
-            for ref in brakujace_sync
-        ]
-        return ReadinessTypeReport(
-            calculation_type="stability",
-            label_pl=CALCULATION_LABEL_PL["stability"],
-            status="blocked",
-            missing_fields_pl=opisy,
-            blocking_object_refs=brakujace,
-            recommended_action_pl=(
-                "Uzupełnij model dynamiczny źródeł: DER (PV/BESS/turbina wiatrowa) "
-                "wymaga jawnie wskazanego profilu (kod 'der.dynamic_profile_missing'); "
-                "maszyna synchroniczna wymaga bloku dynamiki z katalogu maszyn "
-                "synchronicznych (kod 'der.dynamika_missing')."
-            ),
-        )
-    zrodla_opis = [
-        f"{nazwa_po_identyfikatorze(ref, indeks=nazwy)} — profil „{res.profile.profile_name_pl}”"
-        for ref, res in sorted(resolved.items())[:3]
-    ]
-    if sync_generators:
-        zrodla_opis.append(f"{len(sync_generators)} maszyna(y) synchroniczna(e) z blokiem dynamiki")
-    return ReadinessTypeReport(
-        calculation_type="stability",
-        label_pl=CALCULATION_LABEL_PL["stability"],
-        status="ready",
-        recommended_action_pl=(
-            f"Solver stabilności RMS dostępny (PR-15-impl). "
-            f"{len(der_generators) + len(sync_generators)} źródeł dynamicznych z modelami "
-            "rozwiązanymi: "
-            + ", ".join(zrodla_opis)
-            + ("..." if len(resolved) > 3 else "")
-            + ". Można uruchomić obliczenia."
-        ),
-    )
 
 
 def _check_frt_hvrt(enm: EnergyNetworkModel) -> ReadinessTypeReport:
@@ -709,6 +634,19 @@ def _check_frt_hvrt(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     )
 
 
+def _powod_braku_modelu(stan: StanDynamikiGeneratora) -> str:
+    """Powód braku bloku dynamiki wytwórcy — odmowa materializacji wiązania, brak profili
+    rodzaju w katalogu albo brak wiązania (akcja naprawcza: wiązanie z katalogiem)."""
+    if stan.odmowa_komunikat:
+        return stan.odmowa_komunikat
+    if not stan.profile_zgodne:
+        return (
+            "Katalog nie ma profili dynamicznych dla rodzaju tego wytwórcy — model "
+            "dynamiczny wymaga danych producenta (karta maszyny albo certyfikat jednostki)"
+        )
+    return "brak wiązania z katalogowym modelem dynamicznym"
+
+
 def _check_dynamika_rms(
     enm: EnergyNetworkModel, *, punkt_pracy_rozplywu: bool | None = None
 ) -> ReadinessTypeReport:
@@ -741,17 +679,48 @@ def _check_dynamika_rms(
             ),
         )
     braki = braki_modelu_dynamiki(enm)
-    if braki:
+    migawka = enm.model_dump(mode="json")
+    nieaktualne = braki_kopii_dynamiki(migawka)
+    if braki or nieaktualne:
+        # Karta AB-P1: wytwórca bez bloku dostaje POWÓD i akcję naprawczą kanonu
+        # `der.dynamika_missing` (wiązanie z katalogowym modelem dynamicznym) — z TEJ SAMEJ
+        # funkcji stanu, którą czyta końcówka gotowości dynamiki w interfejsie.
+        # Wytwórca jest nazwany NAZWĄ z modelu (nie identyfikatorem), jak w ekranie dynamiki.
+        stany = stan_dynamiki_generatorow(migawka)
+        nazwy = {stan.ref_id: stan.nazwa for stan in stany}
+        nazwy_modelu = zbuduj_indeks_nazw(migawka)
+        powody = [
+            f"wytwórca „{stan.nazwa}”: {_powod_braku_modelu(stan)} (kod 'der.dynamika_missing')"
+            for stan in stany
+            if stan.stan in ("brak", "odmowa")
+        ]
         return ReadinessTypeReport(
             calculation_type="dynamika_rms",
             label_pl=CALCULATION_LABEL_PL["dynamika_rms"],
             status="blocked",
-            missing_fields_pl=[f"{brak.komunikat_pl} (kod '{brak.kod}')" for brak in braki],
-            blocking_object_refs=[element for brak in braki for element in brak.elementy],
+            missing_fields_pl=[
+                *(
+                    f"{komunikat_z_nazwami(brak.komunikat_pl, brak.elementy, nazwy_modelu)} "
+                    f"(kod '{brak.kod}')"
+                    for brak in braki
+                ),
+                *powody,
+                *(
+                    f"wytwórca „{nazwy[ref]}”: kopia modelu dynamicznego nieaktualna "
+                    "wobec wiązania "
+                    f"(kod '{KOD_KOPIA_NIEAKTUALNA}')"
+                    for ref in nieaktualne
+                ),
+            ],
+            blocking_object_refs=[
+                *(element for brak in braki for element in brak.elementy),
+                *(ref for ref in nieaktualne if all(ref not in b.elementy for b in braki)),
+            ],
             recommended_action_pl=(
-                "Uzupełnij dane wejściowe biegu czasowego: blok parametrów dynamicznych "
-                "(Generator.dynamika) dla każdego wytwórcy, rodzinę parametrów z modelem "
-                "elektrycznym, odbiory o stałej mocy i osobną szynę dla źródła sieciowego."
+                "Uzupełnij dane wejściowe biegu czasowego: model dynamiczny każdego wytwórcy "
+                "(wiązanie z katalogowym profilem dynamicznym albo blok z karty producenta), "
+                "rodzinę parametrów z modelem elektrycznym, odbiory o stałej mocy i osobną "
+                "szynę dla źródła sieciowego."
             ),
         )
     pf = _check_power_flow(enm)
@@ -898,7 +867,7 @@ class CalculationReadinessService:
     def evaluate(
         self, enm: EnergyNetworkModel, *, punkt_pracy_rozplywu: bool | None = None
     ) -> ReadinessReport:
-        """Ocena gotowości dla wszystkich 11 typów.
+        """Ocena gotowości dla wszystkich 10 typów.
 
         `punkt_pracy_rozplywu` (karta W6-3B) — czy dla TEJ migawki istnieje
         zakończony bieg rozpływu. Warunek PER BIEG, którego model nie niesie,
@@ -912,7 +881,6 @@ class CalculationReadinessService:
                 _check_short_circuit(enm),
                 _check_asymmetry(enm),
                 _check_loadability(enm),
-                _check_stability(enm),
                 _check_frt_hvrt(enm),
                 _check_ncrfg_compliance(enm),
                 _check_report_osd(enm),
@@ -937,7 +905,6 @@ class CalculationReadinessService:
             "short_circuit": _check_short_circuit,
             "asymmetry": _check_asymmetry,
             "loadability": _check_loadability,
-            "stability": _check_stability,
             "frt_hvrt": _check_frt_hvrt,
             "ncrfg_compliance": _check_ncrfg_compliance,
             "report_osd": _check_report_osd,

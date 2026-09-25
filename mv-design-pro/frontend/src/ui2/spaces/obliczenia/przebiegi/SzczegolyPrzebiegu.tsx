@@ -91,8 +91,8 @@ function GrupaKontraktu({
 /*
  * Sekcja „Kontrakt analizy" — odwzorowanie treści cienkich paneli mostu
  * (`AnalysisContractPanel`: SymmetricalComponents/ThermalDynamic/Convergence,
- * `ui/workspace/WorkspaceSurfaceRouter.tsx:2396-2575`; fala W3: PhaseState
- * `:1924` i DynamicStability `:1950` → grupa „Stany i warianty") w powłoce ui2. Reużywa
+ * `ui/workspace/WorkspaceSurfaceRouter.tsx`; fala W3: kontekst przypadku biegów stanu
+ * fazowego SN i dynamiki czasowej RMS → grupa „Stany i warianty") w powłoce ui2. Reużywa
  * BEZ ZMIAN hook read-only `useAnalysisRunContract` i formatery kontraktu
  * (`ui/workspace/analysisRunContract.ts`) — zero importu komponentów mostu, zero
  * fizyki. Wartości brakujące → „Do konfiguracji" (semantyka `formatContractValue`
@@ -221,10 +221,8 @@ function SekcjaKontraktAnalizy({
               },
             ]}
           />
-          {/* Fala W3: parytet cienkich paneli mostu PhaseStateSurface
-              (`WorkspaceSurfaceRouter.tsx:1924`) i DynamicStabilitySurface
-              (:1950). Wiersze specyficzne dla stanu fazowego SN i stabilności
-              dynamicznej — pozostałe pola tych paneli (rodzaj przypadku, wersja
+          {/* Fala W3: wiersze kontekstu przypadku biegów stanu fazowego SN
+              i dynamiki czasowej RMS — pozostałe pola (rodzaj przypadku, wersja
               układu, stan łączników, założenia źródeł, zakres stosowalności) już
               pokryte grupami ogólną/zwarciową. */}
           <GrupaKontraktu

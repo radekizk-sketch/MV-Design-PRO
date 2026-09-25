@@ -1630,8 +1630,9 @@ def check_uniewazniacz_resurrection() -> list[str]:
 # `_bez_komentarzy_ts` dla TS).
 #
 # POZA ta bramka (NIEskasowane w karcie — z powodem w meldunku Pakietu L): A14
-# `stability_rms` i C47 `application/stability/voltage_trajectory.py` (kasacja
-# AB-1c, O-5/O-25; C47 dodatkowo w wykluczeniu Pakietu 0), B2 reguly
+# `stability_rms` (rdzen B-01, `scripts/rdzenie_b01.py`) i C47
+# `application/stability/voltage_trajectory.py` (C47 skasowany w karcie AB-P1 — bramka
+# `check_abp1_dynamika_resurrection`), B2 reguly
 # `analysis/normative/evaluator.py` (zywy konsument `application/analyses/
 # pokrycie_analiz.py`), B18 `violations` w `PowerFlowResult` (FROZEN, B-01),
 # E50/E51 `ui/network-build/station-der/**` (wykluczenie Pakietu D1), E74
@@ -2443,6 +2444,174 @@ def check_pakiet_l_resurrection() -> list[str]:
     return violations
 
 
+# Karta AB-P1 (2026-09-24) — bramka wskrzeszenia drugiego toru „dynamiki" (T1).
+# Bieg kanoniczny `dynamika_rms` (rdzen `network_model/solvers/dynamika`) jest JEDYNYM
+# torem dynamiki czasowej w toku pracy projektanta. Skasowane razem z testami, fikturami
+# i ekranem (pomiar konsumentow przed kasacja w meldunku karty):
+#   T1 — tor echa katow wpisanych recznie (`DYNAMIC_STABILITY`): wykonawca, cala
+#        `application/stability/**` (w tym DRUGA obwiednia FRT i generator trajektorii
+#        `voltage_trajectory.py`), slad automatyki `application/automation/**`,
+#        koncowki `.../results/dynamic-stability[/time-series]` i
+#        `.../results/automation-trace`, wpis proweniencji `dynamic_stability.fault_clear`,
+#        kod gotowosci `analysis.dynamic_stability_scenario_incomplete`, metadane
+#        frontendu i ekran `ui2/wyniki/stabilnosc` (zastapiony `ui2/wyniki/dynamika`);
+#   rzuty profilu katalogowego na slowniki solverow poza rdzeniem
+#        (`to_stability_parameters`, `stability_model_kind`, `to_frt_parameters` — zero
+#        wolajacych produkcyjnych).
+# POZA bramka: T4 — solver `network_model/solvers/stability_rms/**` jest rdzeniem B-01 na
+# liscie `scripts/rdzenie_b01.py`; karta go NIE kasuje (zmiana listy B-01 wymaga decyzji
+# wlasciciela nazwanej w karcie zdejmujacej wpis — zgoda O-5(b)/O-54 czeka na ten krok).
+# Pilnowane sa FAKTY: sciezki zrodel, DEFINICJE symboli (AST, dokstring/komentarz nie
+# jest naruszeniem), nazwa `DYNAMIC_STABILITY` jako identyfikator i napisy tras/kodow
+# w kodzie backendu (literaly napisowe poza dokstringami) oraz frontendu (bez komentarzy).
+ABP1_SCIEZKI_BACKEND: tuple[str, ...] = (
+    "application/stability",
+    "application/automation",
+)
+ABP1_SCIEZKI_FRONTEND: tuple[str, ...] = (
+    "ui2/wyniki/stabilnosc",
+    "harness-fixtures/generated/stabilnosc_scena_wyniki.json",
+    "harness-fixtures/generated/stabilnosc_scena_slad.json",
+)
+#: Symbole T1, drugiej obwiedni i martwych rzutow profilu — definicja nie wraca NIGDZIE
+#: w `backend/src`.
+ABP1_DEFINICJE_BACKEND: frozenset[str] = frozenset(
+    {
+        "FaultClearScenario",
+        "FaultClearSourceState",
+        "EchoScenariuszaStabilnosci",
+        "echo_scenariusza_stabilnosci",
+        "ocena_stabilnosci_niewykonana",
+        "OdmowaBieguStabilnosciDynamicznej",
+        "PostFaultTopologyEffect",
+        "build_post_fault_topology_effect",
+        "VoltageTrajectoryPoint",
+        "TrajectoryGenerationParams",
+        "generate_voltage_trajectory",
+        "FrtEnvelopePoint",
+        "NC_RFG_LVRT_ENVELOPE",
+        "interpolate_envelope",
+        "check_trajectory_against_envelope",
+        "run_dynamic_stability_now",
+        "_execute_dynamic_stability",
+        "build_dynamic_stability_results",
+        "build_dynamic_stability_results_response",
+        "build_dynamic_stability_time_series",
+        "build_dynamic_stability_time_series_response",
+        "build_automation_trace_results",
+        "build_automation_trace_results_response",
+        "get_dynamic_stability_results",
+        "get_dynamic_stability_time_series",
+        "get_automation_trace_results",
+        "KOD_SCENARIUSZ_STABILNOSCI_NIEPELNY",
+        "to_stability_parameters",
+        "to_frt_parameters",
+        "stability_model_kind",
+        "_synchroniczny_ma_dynamike",
+    }
+)
+#: Definicje o nazwie ogolnej — zakazane tylko we wskazanym pliku.
+ABP1_DEFINICJE_PLIKOWE: dict[str, frozenset[str]] = {
+    "application/calculation_readiness/service.py": frozenset({"_check_stability"}),
+}
+#: Identyfikator skasowanego rodzaju biegu (czlon enum, atrybut, nazwa).
+ABP1_IDENTYFIKATORY: frozenset[str] = frozenset({"DYNAMIC_STABILITY"})
+#: Napisy tras, kodow i proweniencji T1 — w literalach backendu i w kodzie TS.
+ABP1_NAPISY: tuple[str, ...] = (
+    "DYNAMIC_STABILITY",
+    "dynamic_stability",
+    "dynamic-stability",
+    "automation-trace",
+    "automation_trace",
+)
+#: Napisy wylacznie frontendowe (import skasowanych fikstur sceny).
+ABP1_NAPISY_FRONTEND: tuple[str, ...] = ("stabilnosc_scena_",)
+
+
+def _napisy_kodu_py(tree: ast.Module) -> list[tuple[str, int]]:
+    """Literaly napisowe modulu Pythona POZA dokstringami (modul, klasa, funkcja)."""
+    dokstringi: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+            if (
+                node.body
+                and isinstance(node.body[0], ast.Expr)
+                and isinstance(node.body[0].value, ast.Constant)
+                and isinstance(node.body[0].value.value, str)
+            ):
+                dokstringi.add(id(node.body[0].value))
+    wynik: list[tuple[str, int]] = []
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and id(node) not in dokstringi
+        ):
+            wynik.append((node.value, node.lineno))
+    return wynik
+
+
+def check_abp1_dynamika_resurrection() -> list[str]:
+    """Karta AB-P1 (2026-09-24): tor T1 i druga obwiednia FRT nie wracaja — patrz
+    komentarz nad `ABP1_SCIEZKI_BACKEND`."""
+    violations: list[str] = []
+    znak = "karta AB-P1 — jedynym torem dynamiki jest bieg kanoniczny dynamika_rms"
+    for sciezka in ABP1_SCIEZKI_BACKEND:
+        if zrodlo_istnieje(BACKEND_SRC_DIR / sciezka):
+            violations.append(
+                f"[resurrected-module] backend/src/{sciezka}: usuniete ({znak}) — nie odtwarzaj"
+            )
+    for sciezka in ABP1_SCIEZKI_FRONTEND:
+        if zrodlo_istnieje(FRONTEND_SRC_DIR / sciezka, ("*.ts", "*.tsx", "*.json", "*.css")):
+            violations.append(
+                f"[resurrected-module] frontend/src/{sciezka}: usuniete ({znak}) — nie odtwarzaj"
+            )
+
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            rel_src = py_file.relative_to(BACKEND_SRC_DIR).as_posix()
+            rel_path = (
+                py_file.relative_to(ROOT).as_posix()
+                if py_file.is_relative_to(ROOT)
+                else str(py_file)
+            )
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            plikowe = ABP1_DEFINICJE_PLIKOWE.get(rel_src, frozenset())
+            for nazwa, lineno in _definicje_py(tree):
+                if nazwa in ABP1_DEFINICJE_BACKEND or nazwa in plikowe:
+                    violations.append(
+                        f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak})"
+                    )
+            for node in ast.walk(tree):
+                nazwa_id = (
+                    node.id
+                    if isinstance(node, ast.Name)
+                    else node.attr if isinstance(node, ast.Attribute) else None
+                )
+                if nazwa_id in ABP1_IDENTYFIKATORY:
+                    violations.append(
+                        f"[resurrected-name] {rel_path}:{node.lineno}: {nazwa_id} ({znak})"
+                    )
+            for napis, lineno in _napisy_kodu_py(tree):
+                for zakazany in ABP1_NAPISY:
+                    if zakazany in napis:
+                        violations.append(
+                            f"[resurrected-string] {rel_path}:{lineno}: {zakazany!r} ({znak})"
+                        )
+
+    if FRONTEND_SRC_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                tekst = _bez_komentarzy_ts(read_text(ts_file))
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                for zakazany in ABP1_NAPISY + ABP1_NAPISY_FRONTEND:
+                    if zakazany in tekst:
+                        violations.append(
+                            f"[resurrected-pattern] {rel_path}: {zakazany!r} ({znak})"
+                        )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -2464,6 +2633,7 @@ def main() -> int:
         + check_s3_ncrfg_second_engine_resurrection()
         + check_uniewazniacz_resurrection()
         + check_pakiet_l_resurrection()
+        + check_abp1_dynamika_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

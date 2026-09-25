@@ -9,10 +9,6 @@
       "code": "analysis.blocked_by_readiness"
     },
     {
-      "area": "ANALYSIS",
-      "code": "analysis.dynamic_stability_scenario_incomplete"
-    },
-    {
       "area": "STATIONS",
       "code": "apparatus.nn_catalog_missing"
     },
@@ -577,5 +573,5 @@
       "code": "vt.winding_category_missing"
     }
   ],
-  "count": 144
+  "count": 143
 }

@@ -26,8 +26,8 @@
  *
  * Karta FAB-L dopisuje:
  *  - `DER_DYNAMIC_MODEL_CATALOG` → `GET /api/catalog/der-dynamic-profiles`
- *    (`network_model.catalog.der_dynamic`, jedyne źródło konsumowane przez
- *    solvery `stability_rms`/`frt_hvrt`; dawny katalog frontu niósł pola
+ *    (`network_model.catalog.der_dynamic`, jedyne źródło: materializacja modelu
+ *    dynamicznego wytwórcy dla biegu `dynamika_rms` i tor FRT/HVRT; dawny katalog frontu niósł pola
  *    ZMYŚLONE — `k_factor_iq_over_du`, `voltage_drop_detection_time_ms` — bez
  *    odpowiednika w realnym profilu).
  */
@@ -234,6 +234,19 @@ export interface DerInverterDynamicProfileItem {
   readonly p_recovery_rate_pu_per_s: number;
   readonly p_recovery_delay_ms: number;
   readonly virtual_inertia_h_s: number | null;
+  // Karta AB-P1: parametry regulacji — wymagane w trybie sterowania, `null` poza nim
+  // (walidator profilu `_pola_trybu_sterowania`). Grid-following: PLL, regulator prądu, k FRT.
+  readonly pll_kp: number | null;
+  readonly pll_ki: number | null;
+  readonly current_kp: number | null;
+  readonly current_ki: number | null;
+  readonly frt_k_factor: number | null;
+  // Grid-forming: sposób tworzenia napięcia, tłumienie i impedancja wirtualna, ograniczenie prądu.
+  readonly gfm_control: 'droop' | 'vsm' | null;
+  readonly virtual_damping_pu: number | null;
+  readonly virtual_resistance_pu: number | null;
+  readonly virtual_reactance_pu: number | null;
+  readonly current_limit_strategy: string | null;
 }
 
 /** Profil turbiny wiatrowej — pola 1:1 z `WindTurbineDynamicProfile.model_dump()`. */
@@ -245,6 +258,8 @@ export interface DerWindDynamicProfileItem {
   readonly proweniencja: DerDynamicProfileProweniencja;
   readonly h_total_s: number;
   readonly drive_train_stiffness_pu: number;
+  /** Karta AB-P1: tłumienie układu napędowego (model dwumasowy), wymagane. */
+  readonly drive_train_damping_pu: number;
   readonly tp_s: number;
   readonly tq_s: number;
   readonly pitch_rate_deg_per_s: number;
@@ -257,6 +272,18 @@ export interface DerWindDynamicProfileItem {
   readonly slip_steady_pu: number;
   readonly v_min_continuous_pu: number;
   readonly v_max_continuous_pu: number;
+  // Karta AB-P1: pola przekształtnika turbin typu 3/4 — wymagane dla nich, `null` dla 1/2.
+  readonly converter_i_max_pu: number | null;
+  readonly iq_priority_during_fault: boolean | null;
+  readonly p_f_droop_pu: number | null;
+  readonly p_f_dead_band_hz: number | null;
+  readonly q_u_droop_pu: number | null;
+  readonly q_u_dead_band_pu: number | null;
+  readonly pll_kp: number | null;
+  readonly pll_ki: number | null;
+  readonly current_kp: number | null;
+  readonly current_ki: number | null;
+  readonly frt_k_factor: number | null;
 }
 
 export type DerDynamicProfileItem = DerInverterDynamicProfileItem | DerWindDynamicProfileItem;

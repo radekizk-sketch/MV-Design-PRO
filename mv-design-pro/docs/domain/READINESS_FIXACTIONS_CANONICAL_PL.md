@@ -52,7 +52,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **144** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **143** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -148,8 +148,8 @@ Wszystkie **144** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `converter.power_check_input_invalid` | GENERATORS | 2 | BLOCKER | Jawne wejście kontroli mocy źródła poza zakresem: cosφ i współczynnik jednoczesności z przedziału (0; 1], przeciążalność transformatora dodatnia | panel: `inspector`, tab: `parametry` |
 | `converter.setpoint_above_rating` | GENERATORS | 2 | BLOCKER | Moc zadana źródła przekształtnikowego przekracza moc znamionową instalacji (moc czynna jednostki z karty · liczba jednostek) | panel: `inspector`, tab: `parametry`, focus: `p_mw` |
 | `converter.transformer_capacity_exceeded` | GENERATORS | 2 | BLOCKER | Moc wymagana źródła przekształtnikowego — max(S_n jednostki · liczba jednostek; P/cosφ) · współczynnik jednoczesności — przekracza moc transformatora zasilającego · przeciążalność | panel: `inspector`, tab: `katalog` |
-| `der.dynamic_profile_missing` | GENERATORS | 2 | BLOCKER | Rodzaj źródła DER nie ma mapowania na profil dynamiczny, albo profil nie został wskazany jawnie — stabilność RMS i FRT/LVRT/HVRT nie mogą zbudować modelu tego generatora | panel: `inspector`, tab: `parametry`, focus: `gen_type` |
-| `der.dynamika_missing` | GENERATORS | 2 | BLOCKER | Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego | panel: `inspector`, tab: `parametry`, focus: `dynamika` |
+| `der.dynamic_profile_missing` | GENERATORS | 2 | BLOCKER | Rodzaj źródła DER nie ma mapowania na profil dynamiczny, albo profil nie został wskazany jawnie — FRT/LVRT/HVRT nie może zbudować modelu tego generatora | panel: `inspector`, tab: `parametry`, focus: `gen_type` |
+| `der.dynamika_missing` | GENERATORS | 2 | BLOCKER | Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego | panel: `analizy`, tab: `dynamika`, focus: `dynamic_model_ref` |
 | `der.inverter_certificate_unlinked` | GENERATORS | 2 | WARNING | Przetwornica źródła DER nie ma powiązanego certyfikatu PTPiREE — wniosek do OSD może zostać odrzucony. Ostateczna akceptacja przyłączeniowa pozostaje po stronie właściwego OSD | panel: `inspector`, tab: `katalog` |
 | `generator.converter_card_missing` | GENERATORS | 2 | BLOCKER | Przekształtnik (PV/BESS/wiatrowy) nie ma karty katalogowej albo karta nie niesie mocy znamionowej — analizy V12.6 (jakość energii, SSCI) nie mogą go uwzględnić | panel: `inspector`, tab: `katalog` |
 | `generator.q_missing` | GENERATORS | 2 | BLOCKER | Moc bierna generatora (Q) nie jest znana ani wyprowadzalna z karty katalogowej — rozpływ mocy nie może przyjąć jej za zero | panel: `inspector`, tab: `parametry`, focus: `q_mvar` |
@@ -181,7 +181,6 @@ Wszystkie **144** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `analysis.blocked_by_readiness` | ANALYSIS | 1 | BLOCKER | Analiza zablokowana przez niezaspokojone wymagania gotowości | panel: `readiness` |
 | `power_flow.unbalanced_requires_radial` | ANALYSIS | 1 | BLOCKER | Rozpływ niesymetryczny wymaga sieci promieniowej w scenariuszu — wyspa zasilona ma oczko (pierścień zamknięty albo gałęzie równoległe); otwórz punkt podziału albo łącznik | panel: `sld` |
 | `study_case.missing_base_snapshot` | ANALYSIS | 1 | BLOCKER | Przypadek obliczeniowy nie ma bazowego zrzutu stanu | panel: `case_manager` |
-| `analysis.dynamic_stability_scenario_incomplete` | ANALYSIS | 2 | BLOCKER | Ocena progowa stabilności dynamicznej wymaga jawnego scenariusza wyłączenia zwarcia (element zwarty, czas wyłączenia, elementy wyłączające, kąty mocy przed/w czasie/po zwarciu, napięcie i częstotliwość po zwarciu, stała czasowa odbudowy) — podaj komplet pól w opcjach biegu, solver nie ma dla nich wartości domyślnych | panel: `analizy`, tab: `stabilnosc` |
 | `fault.location_on_branch_requires_assembler` | ANALYSIS | 2 | BLOCKER | Zwarcie w punkcie na gałęzi wymaga rozdzielenia modelu w miejscu zwarcia (adapter obliczeniowy) — nieobsługiwane; wybierz lokalizację na węźle | panel: `analizy`, tab: `zwarciowa` |
 | `load.zip_agregat_niereprezentowalny` | ANALYSIS | 2 | BLOCKER | Odbiorów ZIP tej szyny nie da się odwzorować w rozpływie dokładnie (różne charakterystyki na jednej szynie albo szyna regulacji napięcia) — rozdziel odbiory na osobne szyny albo ujednolić ich charakterystyki | panel: `inspector`, tab: `parametry` |
 | `oltc.deadband_missing` | ANALYSIS | 2 | WARNING | Przełącznik zaczepów nie ma pasma nieczułości regulatora — bez niego nie wiadomo, jaka odchyłka napięcia jest jeszcze dopuszczalna | panel: `inspector`, tab: `regulacja`, focus: `deadband_kv` |
@@ -205,10 +204,10 @@ Wszystkie **144** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 93 |
+| BLOCKER | 92 |
 | WARNING | 50 |
 | INFO | 1 |
-| **Razem** | **144** |
+| **Razem** | **143** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
@@ -218,8 +217,8 @@ Wszystkie **144** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | STATIONS | 13 |
 | GENERATORS | 25 |
 | PROTECTION | 14 |
-| ANALYSIS | 22 |
-| **Razem** | **144** |
+| ANALYSIS | 21 |
+| **Razem** | **143** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

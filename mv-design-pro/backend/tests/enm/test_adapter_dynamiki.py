@@ -1640,7 +1640,20 @@ class TestBrakiModelu:
             )
         ).uruchom()
         assert wynik.os_czasu_s[-1] == 0.02
-        assert any("resztą bilansu" in zdanie for zdanie in zalozenia_wejscia(snapshot))
+        zalozenia = zalozenia_wejscia(snapshot)
+        assert any("resztą bilansu" in zdanie for zdanie in zalozenia)
+        # Karta AB-P1 (klasa #144/#145): założenia czyta projektant — źródło, szyna
+        # i wytwórca nazwami z modelu, źródło parametrów słowami, nigdy `ref_id` ani kod.
+        refy = {
+            el["ref_id"]
+            for kolekcja in ("sources", "buses", "generators")
+            for el in snapshot.get(kolekcja) or []
+        }
+        for zdanie in zalozenia:
+            for ref in refy:
+                assert f" {ref} " not in f" {zdanie} " and f"„{ref}”" not in zdanie, zdanie
+            for kod in ("profil_typowy_normy", "karta_producenta", "certyfikat_jednostki"):
+                assert kod not in zdanie, zdanie
 
     def test_dwa_zrodla_sieciowe_na_jednej_szynie(self, snapshot_g16: dict[str, Any]) -> None:
         """Reszty bilansu nie da sie podzielic miedzy dwa warunki brzegowe — odmowa MODELOWA."""

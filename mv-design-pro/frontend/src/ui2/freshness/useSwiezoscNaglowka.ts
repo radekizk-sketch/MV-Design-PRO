@@ -4,7 +4,7 @@
  * DLACZEGO HOOK, A NIE POWTÓRZENIE W KAŻDYM EKRANIE. Ekranów analizy budujących
  * `NaglowekAnalizy` jest kilkanaście (`EkranZwarc`, `TabelaSzyn`, `TabelaGalezi`,
  * `EkranJakosci` ×6, `EkranOdbioru`, `EkranEstymacji`, `EkranSkladowych`,
- * `EkranStabilnosci`, `EkranRankingu`…). Wklejenie do każdego z nich tej samej
+ * `EkranRankingu`…). Wklejenie do każdego z nich tej samej
  * logiki „skąd wziąć rewizję" oznaczałoby kilkanaście kopii reguły, które
  * rozjadą się przy pierwszej zmianie kontraktu — dokładnie ten mechanizm dał
  * defekt V12K-256 (trzy kopie jednej reguły normowej z różnymi progami).

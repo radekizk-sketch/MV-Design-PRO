@@ -3041,7 +3041,7 @@
    "CreateRunRequest": {
     "properties": {
      "analysis_type": {
-      "description": "Typ analizy: SC_3F, SC_1F, SC_2F, SC_2F_G, LOAD_FLOW, PF_UNBALANCED, PHASE_STATE_SN, DYNAMIC_STABILITY",
+      "description": "Typ analizy: SC_3F, SC_1F, SC_2F, SC_2F_G, LOAD_FLOW, PF_UNBALANCED, PHASE_STATE_SN, DYNAMIKA_RMS",
       "title": "Analysis Type",
       "type": "string"
      },
@@ -3070,6 +3070,18 @@
       ],
       "description": "Legacy - ignorowane",
       "title": "Readiness"
+     },
+     "scenario_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Scenariusz nazwany projektu (magazyn scenariuszy) — migawka biegu i jego projekcja na opcje (np. harmonogram dynamiki) pochodzą ze scenariusza",
+      "title": "Scenario Id"
      },
      "solver_input": {
       "additionalProperties": true,
@@ -16540,6 +16552,41 @@
     "title": "ZakresWaznosci",
     "type": "object"
    },
+   "ZapisScenariuszaDynamiki": {
+    "description": "Scenariusz nazwany z harmonogramem zdarzeń — nowy (`scenario_id` pominięte) albo\nnowa rewizja istniejącego (`scenario_id` podane).",
+    "properties": {
+     "dynamika": {
+      "additionalProperties": true,
+      "description": "Harmonogram: ScenariuszDynamiczny",
+      "title": "Dynamika",
+      "type": "object"
+     },
+     "name": {
+      "description": "Nazwa scenariusza",
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "scenario_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Identyfikator istniejącego scenariusza",
+      "title": "Scenario Id"
+     }
+    },
+    "required": [
+     "name",
+     "dynamika"
+    ],
+    "title": "ZapisScenariuszaDynamiki",
+    "type": "object"
+   },
    "ZgodnoscZadanie": {
     "description": "Żądanie raportu zgodności powykonawczej.",
     "properties": {
@@ -18185,48 +18232,6 @@
     "summary": "Get Analysis Run Results"
    }
   },
-  "/api/analysis-runs/{run_id}/results/automation-trace": {
-   "get": {
-    "operationId": "get_automation_trace_results_api_analysis_runs__run_id__results_automation_trace_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "run_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Run Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Automation Trace Results Api Analysis Runs  Run Id  Results Automation Trace Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Automation Trace Results"
-   }
-  },
   "/api/analysis-runs/{run_id}/results/branches": {
    "get": {
     "operationId": "get_branch_results_api_analysis_runs__run_id__results_branches_get",
@@ -18309,90 +18314,6 @@
      }
     },
     "summary": "Get Bus Results"
-   }
-  },
-  "/api/analysis-runs/{run_id}/results/dynamic-stability": {
-   "get": {
-    "operationId": "get_dynamic_stability_results_api_analysis_runs__run_id__results_dynamic_stability_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "run_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Run Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Dynamic Stability Results Api Analysis Runs  Run Id  Results Dynamic Stability Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Dynamic Stability Results"
-   }
-  },
-  "/api/analysis-runs/{run_id}/results/dynamic-stability/time-series": {
-   "get": {
-    "operationId": "get_dynamic_stability_time_series_api_analysis_runs__run_id__results_dynamic_stability_time_series_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "run_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Run Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Dynamic Stability Time Series Api Analysis Runs  Run Id  Results Dynamic Stability Time Series Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Dynamic Stability Time Series"
    }
   },
   "/api/analysis-runs/{run_id}/results/dynamika": {
@@ -21739,7 +21660,7 @@
   },
   "/api/catalog/der-dynamic-profiles": {
    "get": {
-    "description": "Profile dynamiczne DER (PV/BESS/FW) — karta FAB-L.\n\nJedyne źródło prawdy o modelach dynamicznych konsumowanych przez solvery\n`network_model.solvers.stability_rms` i `network_model.solvers.frt_hvrt`\n(`network_model.catalog.der_dynamic`, resolver `resolve_der_dynamic_profile`).\nFront pokazuje parametry WHITE BOX wprost (Tp/Tq/droop/FRT/inercja) —\nzero drugiej kopii pod zmyślonymi nazwami pól.\n\n`der_kind` jest dopisywane w tej serializacji (\"FW\" dla turbin) — model\nkatalogowy turbiny niesie tylko `iec_type`, ale front potrzebuje jednego\npola rodzaju DER dla obu kształtów profilu.",
+    "description": "Profile dynamiczne DER (PV/BESS/FW) — karta FAB-L.\n\nJedyne źródło prawdy o katalogowych modelach dynamicznych\n(`network_model.catalog.der_dynamic`): wiązanie `dynamic_model_ref` wytwórcy\nmaterializuje profil do kopii `Generator.dynamika` czytanej przez bieg\n`dynamika_rms` (`enm.dynamika_z_katalogu`, karta AB-P1).\nFront pokazuje parametry WHITE BOX wprost (Tp/Tq/droop/FRT/inercja) —\nzero drugiej kopii pod zmyślonymi nazwami pól.\n\n`der_kind` jest dopisywane w tej serializacji (\"FW\" dla turbin) — model\nkatalogowy turbiny niesie tylko `iec_type`, ale front potrzebuje jednego\npola rodzaju DER dla obu kształtów profilu.",
     "operationId": "list_der_dynamic_profiles_api_catalog_der_dynamic_profiles_get",
     "responses": {
      "200": {
@@ -23456,6 +23377,173 @@
     "summary": "Get Document Content",
     "tags": [
      "document-store"
+    ]
+   }
+  },
+  "/api/dynamika/opis-scenariusza": {
+   "get": {
+    "description": "Opis rodzajów zdarzeń i nastaw solvera dla edytora scenariusza (z kontraktów).",
+    "operationId": "get_opis_scenariusza_api_dynamika_opis_scenariusza_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Opis Scenariusza Api Dynamika Opis Scenariusza Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Opis Scenariusza",
+    "tags": [
+     "dynamika"
+    ]
+   }
+  },
+  "/api/dynamika/study-cases/{case_id}/gotowosc": {
+   "get": {
+    "description": "Gotowość biegu `dynamika_rms` dla modelu przypadku (patrz docstring modułu).",
+    "operationId": "get_gotowosc_dynamiki_api_dynamika_study_cases__case_id__gotowosc_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Gotowosc Dynamiki Api Dynamika Study Cases  Case Id  Gotowosc Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Gotowosc Dynamiki",
+    "tags": [
+     "dynamika"
+    ]
+   }
+  },
+  "/api/dynamika/study-cases/{case_id}/scenariusze": {
+   "get": {
+    "description": "Scenariusze nazwane projektu niosące harmonogram zdarzeń w trybie SIECI (kolejność\nmagazynu) — scenariusz stanowiska badawczego nie należy do tego ekranu (`tryb_sieci`).",
+    "operationId": "get_scenariusze_dynamiki_api_dynamika_study_cases__case_id__scenariusze_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Scenariusze Dynamiki Api Dynamika Study Cases  Case Id  Scenariusze Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Scenariusze Dynamiki",
+    "tags": [
+     "dynamika"
+    ]
+   },
+   "post": {
+    "description": "Zapisz scenariusz nazwany z harmonogramem (walidacja kontraktu i ról referencji).\n\n422 — harmonogram niezgodny z kontraktem `ScenariuszDynamiczny`, w trybie stanowiska\nbadawczego (ekran pracuje w trybie sieci — `tryb_sieci`) albo wskazujący element, którego\nmodel nie ma (lub ma w innej roli); 404 — `scenario_id` nieistniejące.",
+    "operationId": "post_scenariusz_dynamiki_api_dynamika_study_cases__case_id__scenariusze_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ZapisScenariuszaDynamiki"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Post Scenariusz Dynamiki Api Dynamika Study Cases  Case Id  Scenariusze Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Post Scenariusz Dynamiki",
+    "tags": [
+     "dynamika"
     ]
    }
   },

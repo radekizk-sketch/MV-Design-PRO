@@ -168,7 +168,7 @@ describe('S9-2 — stan zerowy (uczciwy brak)', () => {
   });
 
   it('analiza NIEZNANEJ rodziny ⇒ zero etykiet (zero fabrykacji podpisów)', () => {
-    const obcy: RawOverlayPayload = { ...zwarcie, analysis_type: 'DYNAMIC_STABILITY' };
+    const obcy: RawOverlayPayload = { ...zwarcie, analysis_type: 'DYNAMIKA_RMS' };
     expect(buildResultLabelsForSnapshot(enm, obcy)).toEqual({});
   });
 });

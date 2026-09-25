@@ -96,8 +96,9 @@ class CapabilityEvidence:
 
 
 #: Odniesienie audytowe dla rejestru ponizej — karta naprawcza S-1 (dowod
-#: repo: solver NC RfG T14/T15 jest tautologia, `_execute_dynamic_stability`
-#: wpisywal `reportable`/`complete` na sztywno; patrz `SYNTEZA_DOMKNIECIA_
+#: repo: solver NC RfG T14/T15 jest tautologia, dawny wykonawca toru „stabilnosc po
+#: wylaczeniu zwarcia" (skasowany karta AB-P1) wpisywal `reportable`/`complete` na
+#: sztywno; patrz `SYNTEZA_DOMKNIECIA_
 #: PRODUKTU_2026-09.md` A-2/A-6).
 _AUDIT_CARD = "karta_s1_s4_dowod.md"
 
@@ -279,17 +280,6 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
                 "zapisanego modelu."
             ),
             audit_ref="karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4)",
-        ),
-        CapabilityEvidence(
-            capability_id="dynamic_stability.fault_clear",
-            tier=EvidenceTier.UNVALIDATED_MODEL,
-            rationale_pl=(
-                "Kąty mocy, napięcie i częstotliwość po zwarciu oraz czas wyłączenia "
-                "wpisuje użytkownik w opcjach biegu; bieg nie rozwiązuje sieci i nie "
-                "całkuje równań ruchu układu, więc zwraca wyłącznie echo scenariusza "
-                "bez oceny stabilności."
-            ),
-            audit_ref=f"{_AUDIT_CARD} §0.5",
         ),
         CapabilityEvidence(
             capability_id="dynamika_rms.przebieg_czasowy",

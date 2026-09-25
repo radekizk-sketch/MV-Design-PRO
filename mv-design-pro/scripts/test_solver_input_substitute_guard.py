@@ -1686,7 +1686,25 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Karta AB-1b.3a na partii 4 (2026-09-25): 4104 -> 4108 — POMIAR guardem na drzewie partii:
     # +4 (`charakterystyka` — pole `OdbiorDynamiki`; `rozbieznosc_p_mw`, `rozbieznosc_q_mvar`,
     # `szyna` — kontrakt `NiereprezentowalnyAgregatZip`), -0. PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4108." in wyjscie, wyjscie
+    # Karta AB-P1 na partii 4 (2026-09-25): 4108 -> 4097 — POMIAR `contract_fields()` na
+    # `4199d528` i na drzewie karty, roznica zbiorow na posortowanych nazwach: -27 (pola
+    # kontraktow toru T1 skasowanych razem z nim — `application/stability/dynamic_stability.py`,
+    # `voltage_trajectory.py`, `application/automation/trace.py`: `cleared_by_element_ids`,
+    # `clearing_time_ms`, `disconnected_source_ids`, `during_fault_angle_deg`,
+    # `during_fault_frequency_pu`, `during_fault_voltage_pu`, `effect_signature`,
+    # `faulted_element_id`, `frequency_pu`, `isolated_element_ids`, `network_state`,
+    # `opened_element_ids`, `outage_scope`, `post_fault_angle_deg`, `post_fault_frequency_pu`,
+    # `post_fault_voltage_pu`, `pre_fault_angle_deg`, `pre_fault_duration_s`,
+    # `pre_fault_frequency_pu`, `pre_fault_voltage_pu`, `recovery_duration_s`,
+    # `recovery_time_constant_s`, `sample_dt_s`, `scenario_type`, `source_state`,
+    # `voltage_pu_max`, `voltage_pu_min`), +16 (pola regulacji profili katalogowych
+    # `der_dynamic/models.py`: `converter_i_max_pu`, `current_ki`, `current_kp`,
+    # `current_limit_strategy`, `drive_train_damping_pu`, `frt_k_factor`, `gfm_control`,
+    # `virtual_damping_pu`, `virtual_reactance_pu`, `virtual_resistance_pu`; pola stanu
+    # `enm/dynamika_z_katalogu.py::StanDynamikiGeneratora`: `odmowa_kod`, `odmowa_komunikat`,
+    # `odniesienie_proweniencji`, `profil_typu`, `profile_zgodne`, `zrodlo_proweniencji`).
+    # PASS bramki niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4097." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1842,7 +1860,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # — rodzaj i stan przebiegu po polsku w bramkach widoków analiz). POMIAR guardem.
         # Karta AB-1b.3a na partii 4 (2026-09-25): 551 -> 552 (+1 `solvers/dynamika/odbiory.py`
         # — jeden model odbioru rdzenia). POMIAR guardem na drzewie partii.
-        "Przeskanowano 552 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta AB-P1 na partii 4: 552 -> 555 (+1 `enm/dynamika_z_katalogu.py`, +4
+        # `application/dynamika/**`, -3 skasowane `application/stability/{dynamic_stability,
+        # voltage_trajectory}.py` i `application/automation/trace.py`, +1 `api/dynamika.py`).
+        # POMIAR guardem na drzewie karty.
+        "Przeskanowano 555 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1891,7 +1913,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # (`params.f0_hz` — brak f0 = czestotliwosc studium, nie literal 50 Hz), -2
     # `enm/topology_ops.py` (`data.p_mw` 2 -> 1, `data.q_mvar` zdjety — create_device odbioru
     # wymaga P i Q zamiast podstawiac 0). Liczba plikow bez zmian (inne wpisy zostaja).
-    assert "Zapadka dlugu (fizyczne): 54 plikow, suma 244." in wyjscie, wyjscie
+    # Karta AB-P1 na partii 4: 54/244 -> 53/243 — wpis `network_model/catalog/der_dynamic/
+    # models.py` ("A:or:self.virtual_inertia_h_s": 1, `or 0.0` w rzucie profilu na slownik
+    # `to_stability_parameters` bez wolajacego produkcyjnego) zdjety RAZEM z rzutem. Pomiar.
+    assert "Zapadka dlugu (fizyczne): 53 plikow, suma 243." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 13 plikow, suma 31." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -1949,7 +1974,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta NAZWY-JEDNO-ZRODLO (2026-09-25): network_model 179 -> 180 (+1 `nazwy.py`).
         # Karta AB-1b.3a (2026-09-25): network_model 180 -> 181 (+1 `solvers/dynamika/
         # odbiory.py`), dlug 12/71 -> 12/70 (`params.f0_hz` w `power_flow_zip.py`). POMIAR.
-        "  network_model: pliki_skanowane=181, dlug=12 plikow/suma 70, "
+        # Karta AB-P1 na partii 4: network_model dlug 12/70 -> 11/69 (wpis
+        # `catalog/der_dynamic/models.py` zdjety z martwym rzutem `to_stability_parameters`;
+        # solver `stability_rms/**` zostaje — rdzen B-01). Pliki 181 bez zmiany. Pomiar.
+        "  network_model: pliki_skanowane=181, dlug=11 plikow/suma 69, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -1986,7 +2014,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # karta #141, `enm/slownik_komunikatow.py` karta #142 — scalone przed baza bez pinu).
         # Karta AB-1b.3a (2026-09-25): enm dlug 7/71 -> 7/69 (`topology_ops.py`: `data.p_mw`
         # 2 -> 1, `data.q_mvar` zdjety). POMIAR guardem na drzewie partii.
-        "  enm: pliki_skanowane=55, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
+        # Karta AB-P1 na partii 4: enm 55 -> 56 (+1 `enm/dynamika_z_katalogu.py`); zero wpisow.
+        "  enm: pliki_skanowane=56, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2035,9 +2064,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (`ocena_doboru_magistrali.py`); dlug/wykluczenia BEZ ZMIANY.
         # Karta #145 (2026-09-25): application 241 -> 242 (`opis_przebiegu.py`); dlug i
         # wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie partii 4.
-        "  application: pliki_skanowane=242, dlug=30 plikow/suma 91, "
+        # Karta AB-P1 na partii 4: application 242 -> 243 (+4 `application/dynamika/**`,
+        # -3 skasowane pliki toru T1); api 63 -> 64 (+1 `api/dynamika.py`). Dlug i wykluczenia
+        # BEZ ZMIANY — pomiar guardem na drzewie karty.
+        "  application: pliki_skanowane=243, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=63, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
+        "  api: pliki_skanowane=64, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

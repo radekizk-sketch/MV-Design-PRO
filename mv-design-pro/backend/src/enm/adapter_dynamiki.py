@@ -66,7 +66,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-from enm.dynamika_modele import ParametryDynamiczne
+from enm.dynamika_modele import NAZWY_ZRODEL_PROWENIENCJI_PL, ParametryDynamiczne
 from enm.mapping import ref_to_graph_id
 from enm.models import (
     Cable,
@@ -79,6 +79,7 @@ from enm.models import (
     Source,
     SwitchBranch,
 )
+from enm.nazwy_elementow import nazwa_elementu, nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 
 # Kontrakt DANYCH (`enm/scenariusze.py`) i kontrakt RDZENIA
 # (`solvers/dynamika/kontrakty.py`) mają dla dwóch zdarzeń te same nazwy klas —
@@ -1543,6 +1544,9 @@ def zalozenia_wejscia(snapshot: dict[str, Any]) -> tuple[str, ...]:
     normy jest wynikiem modelu zbudowanego z deklaracji, nie z pomiaru jednostki.
     """
     enm = EnergyNetworkModel.model_validate(snapshot)
+    # Elementy nazwane z jednego źródła nazw (karta #144): założenia czyta projektant na
+    # ekranie wyniku i w raporcie — identyfikatory zostają w polach maszynowych wyniku.
+    nazwy = zbuduj_indeks_nazw(snapshot)
     zalozenia = [
         "Punkt pracy pochodzi z biegu rozpływu na tej samej migawce efektywnej "
         "(zero płaskiego startu).",
@@ -1556,7 +1560,9 @@ def zalozenia_wejscia(snapshot: dict[str, Any]) -> tuple[str, ...]:
         if szyna not in szyny_wytworcow:
             continue
         zalozenia.append(
-            f"Źródło sieciowe {', '.join(zrodla)} na szynie {szyna} dzieli ją z wytwórcami: "
+            f"Źródło sieciowe "
+            f"{', '.join(f'„{nazwa_po_identyfikatorze(z, indeks=nazwy)}”' for z in zrodla)} "
+            f"na szynie „{nazwa_po_identyfikatorze(szyna, indeks=nazwy)}” dzieli ją z wytwórcami: "
             "wytwórcy startują z mocą z modelu (tą samą, którą rozpływ przyjął jako ich "
             "wstrzyk), a źródło sieciowe z resztą bilansu szyny z rozpływu."
         )
@@ -1565,8 +1571,8 @@ def zalozenia_wejscia(snapshot: dict[str, Any]) -> tuple[str, ...]:
             continue
         proweniencja = gen.dynamika.proweniencja
         zalozenia.append(
-            f"Parametry dynamiczne wytwórcy {gen.ref_id}: {proweniencja.zrodlo} "
-            f"({proweniencja.odniesienie})."
+            f"Parametry dynamiczne wytwórcy „{nazwa_elementu(gen, 'generators')}”: "
+            f"{NAZWY_ZRODEL_PROWENIENCJI_PL[proweniencja.zrodlo]} ({proweniencja.odniesienie})."
         )
     return tuple(zalozenia)
 

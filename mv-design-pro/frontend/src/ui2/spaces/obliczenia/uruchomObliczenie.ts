@@ -127,8 +127,8 @@ export async function waitForExecutionRunTerminalState(
 
 /**
  * Uruchamia obliczenie WSKAZANEGO rodzaju dla aktywnego zakresu obliczeń.
- * `solverInput` (opcjonalny) — jawne opcje biegu (np. scenariusz stabilności
- * dynamicznej); przekazywany 1:1 do `POST /api/execution/study-cases/{id}/runs`
+ * `solverInput` (opcjonalny) — jawne opcje biegu (np. metoda rozpływu);
+ * przekazywany 1:1 do `POST /api/execution/study-cases/{id}/runs`
  * jako `solver_input` (pole `options` po stronie backendu, `enm/canonical_analysis.py`).
  * Brak = pusty obiekt, tak jak dotychczas (kontrakt `CreateRunRequest.solver_input`
  * ma domyślną wartość `{}` po stronie backendu).

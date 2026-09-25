@@ -470,9 +470,10 @@ def przeglad_wiarygodnosci_rodziny(rodzina: str) -> RodzinaPrzegladuOdpowiedz:
 def list_der_dynamic_profiles() -> list[dict[str, Any]]:
     """Profile dynamiczne DER (PV/BESS/FW) — karta FAB-L.
 
-    Jedyne źródło prawdy o modelach dynamicznych konsumowanych przez solvery
-    `network_model.solvers.stability_rms` i `network_model.solvers.frt_hvrt`
-    (`network_model.catalog.der_dynamic`, resolver `resolve_der_dynamic_profile`).
+    Jedyne źródło prawdy o katalogowych modelach dynamicznych
+    (`network_model.catalog.der_dynamic`): wiązanie `dynamic_model_ref` wytwórcy
+    materializuje profil do kopii `Generator.dynamika` czytanej przez bieg
+    `dynamika_rms` (`enm.dynamika_z_katalogu`, karta AB-P1).
     Front pokazuje parametry WHITE BOX wprost (Tp/Tq/droop/FRT/inercja) —
     zero drugiej kopii pod zmyślonymi nazwami pól.
 

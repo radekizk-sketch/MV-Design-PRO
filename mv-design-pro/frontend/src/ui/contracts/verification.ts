@@ -86,7 +86,7 @@ export type RequiredModuleResult =
   | 'E-27.protection_base'
   | 'E-29.short_circuit'
   | 'E-30.load_flow'
-  | 'E-32.dynamic_stability'
+  | 'E-32.dynamika_rms'
   | 'E-35.any_completed_module'
   | 'E-28'
   | 'E-33';
@@ -344,16 +344,18 @@ export const ANALYSIS_MODULE_MATRIX: Record<
   },
   'E-32': {
     screenCode: 'E-32',
-    inputContract: 'E32DynamicStabilityInput',
-    moduleDataContract: 'E32DynamicStabilityData',
+    inputContract: 'E32DynamikaRmsInput',
+    moduleDataContract: 'E32DynamikaRmsData',
     requiredEntities: ['dynamic_model', 'switching_sequence', 'fault_scope', 'der_sources'],
-    requiredResultFamilies: ['dynamic_stability'],
-    requiresModuleResults: ['E-26.frt_compliance', 'E-30.load_flow'],
+    requiredResultFamilies: ['dynamika_rms'],
+    // Karta AB-P1: bieg startuje z punktu pracy zakończonego rozpływu tej samej migawki;
+    // ocena FRT nie jest warunkiem (bieg w trybie sieci nie wydaje werdyktu).
+    requiresModuleResults: ['E-30.load_flow'],
     invalidIfMissing: ['analysis.missing_source_model', 'analysis.missing_fault_path'],
     partialReasons: ['analysis.missing_source_model', 'analysis.missing_fault_path'],
     failedReasons: ['analysis.missing_prerequisite'],
     notApplicableReasons: [],
-    exportPolicyKey: 'analysis_dynamic_stability_export',
+    exportPolicyKey: 'analysis_dynamika_rms_export',
     minimumCaseInputReadinessRequired: 'degraded',
     supportedCaseInputReadiness: ['degraded', 'ready'],
     blocksReportProfiles: ['full', 'audit', 'osd'],

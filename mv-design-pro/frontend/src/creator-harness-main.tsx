@@ -94,15 +94,24 @@ import zwarciaWynikiScenyZwarcia from './harness-fixtures/generated/zwarcia_wyni
 import zwarciaWkladyScenyZwarcia from './harness-fixtures/generated/zwarcia_wklady_scena_zwarcia.json';
 import zwarciaRozplywScenyZwarcia from './harness-fixtures/generated/zwarcia_rozplyw_scena_zwarcia.json';
 import zwarciaPasmoScenyZwarcia from './harness-fixtures/generated/zwarcia_pasmo_scena_zwarcia.json';
-// HARNESS-RESZTA (2026-09-16): sceny "wyniki-stan-fazowy"/"wyniki-stabilnosc"
-// (E-31/E-32) karmione WYLACZNIE wynikami REALNEGO biegu backendu
-// (phase_state_sn / dynamic_stability na sieci zlotej,
-// `eksport_fixtur_harnessu.py` — DOKLADNIE tymi funkcjami, ktore woluja
-// koncowki `/results/phase-state`, `/results/dynamic-stability`,
-// `/results/automation-trace`) — zero recznie wpisanych liczb fizycznych.
+// HARNESS-RESZTA (2026-09-16): scena "wyniki-stan-fazowy" (E-31) karmiona
+// WYLACZNIE wynikiem REALNEGO biegu backendu (phase_state_sn na sieci zlotej,
+// `eksport_fixtur_harnessu.py` — ta sama funkcja, ktora woła koncowka
+// `/results/phase-state`) — zero recznie wpisanych liczb fizycznych.
 import stanFazowyScenyWyniki from './harness-fixtures/generated/stan_fazowy_scena_wyniki.json';
-import stabilnoscScenyWyniki from './harness-fixtures/generated/stabilnosc_scena_wyniki.json';
-import stabilnoscScenySlad from './harness-fixtures/generated/stabilnosc_scena_slad.json';
+// Karta AB-P1: sceny "wyniki-dynamika" / "wyniki-dynamika-brak" (E-32) — REALNY tok
+// backendu na sieci zbudowanej operacjami domenowymi z katalogu (GPZ → magistrala → stacja
+// SN/nN z PV → odbiór): wiązanie modelu PV z katalogu → rozpływ → scenariusz nazwany
+// (zwarcie w „Odcinek 2" x·L usunięte izolacją) → bieg `dynamika_rms`;
+// odpowiedzi końcówek `/api/dynamika/*` i `/results/dynamika[/time-series]` liczone
+// TYMI SAMYMI funkcjami, które wołają końcówki.
+import dynamikaScenyOpis from './harness-fixtures/generated/dynamika_scena_opis.json';
+import dynamikaScenyMigawka from './harness-fixtures/generated/dynamika_scena_migawka.json';
+import dynamikaScenyGotowosc from './harness-fixtures/generated/dynamika_scena_gotowosc.json';
+import dynamikaScenyGotowoscBrak from './harness-fixtures/generated/dynamika_scena_gotowosc_brak.json';
+import dynamikaScenyScenariusze from './harness-fixtures/generated/dynamika_scena_scenariusze.json';
+import dynamikaScenyWyniki from './harness-fixtures/generated/dynamika_scena_wyniki.json';
+import dynamikaScenyPrzebiegi from './harness-fixtures/generated/dynamika_scena_przebiegi.json';
 // HARNESS-RESZTA (kontynuacja, 2026-09-16): sceny "sila-sieci"/"migotanie"
 // (short_circuit_sn z catalog_ref na gen_pv), "kompensacja(-wynik)"/
 // "rozplyw"/"walidacja"/"uwaga" (PF), "cieplna"/"arcflash" (reuzywaja bieg
@@ -249,7 +258,7 @@ import { EkranKoordynacji } from './ui2/wyniki/koordynacja';
 import { EkranSkladowych } from './ui2/wyniki/skladowe';
 import { EkranZbieznosci } from './ui2/wyniki/zbieznosc';
 import { EkranStanuFazowego } from './ui2/wyniki/stan-fazowy';
-import { EkranStabilnosci } from './ui2/wyniki/stabilnosc';
+import { EkranDynamiki } from './ui2/wyniki/dynamika';
 import { useShellStore } from './ui2/shell/useShellStore';
 import {
   deryZModelu,
@@ -331,9 +340,9 @@ document.body.style.background = theme === 'light_technical' ? '#f5f7fa' : '#071
 // iteracje Newtona-Raphsona i pętla OLTC wyglądały jak wynik solvera, ale
 // żaden solver ich nie policzył.
 //
-// E-31 „Stan fazowy SN" i E-32 „Stabilność dynamiczna": fixtury realnego biegu
-// (`stanFazowyScenyWyniki`/`stabilnoscScenyWyniki`/`stabilnoscScenySlad`,
-// HARNESS-RESZTA, 2026-09-16).
+// E-31 „Stan fazowy SN": fixtura realnego biegu (`stanFazowyScenyWyniki`,
+// HARNESS-RESZTA, 2026-09-16); E-32 „Dynamika czasowa RMS": fixtury `dynamikaSceny*`
+// (karta AB-P1).
 
 /**
  * Scena E-28 „Koordynacja zabezpieczeń" (V12K-262). Najbardziej graficzny ekran
@@ -589,6 +598,9 @@ const RUN_KONTRAKT_SCENY: Record<string, string> = {
   'wyniki-skladowe': skladoweScenyWynik.run_id,
   arcflash: arcflashScenyWynik.context.run_id,
   migotanie: migotanieScenyWynik.context.run_id,
+  // Karta AB-P1: ekran dynamiki (E-32) pokazuje znacznik świeżości wyniku z tej samej
+  // derywacji co pozostałe ekrany wyników — kontrakt przebiegu REALNEGO biegu sceny.
+  'wyniki-dynamika': dynamikaScenyWyniki.run_id,
 };
 
 // --- Model stacji demo scen kreatorow (HARNESS-RESZTA-2) -------------------
@@ -666,6 +678,33 @@ const originalFetch = window.fetch.bind(window);
  * odczyt wprost z `window.location.search` w miejscu użycia jest bezpieczniejszy
  * niż poleganie na kolejności deklaracji stałej modułowej.
  */
+/**
+ * Rejestr biegów sceny dynamiki (karta AB-P1): rozpływ punktu pracy i — w wariancie
+ * z wynikiem — zakończony bieg `DYNAMIKA_RMS`; identyfikatory z fixtur realnego biegu.
+ */
+function biegiSceny(scena: string): ExecutionRun[] {
+  const rozplyw = {
+    id: dynamikaScenyWyniki.pf_run_id,
+    study_case_id: 'case-demo',
+    analysis_type: 'LOAD_FLOW',
+    status: 'DONE',
+    created_at: '2026-09-24T10:00:00Z',
+    finished_at: '2026-09-24T10:00:01Z',
+  } as unknown as ExecutionRun;
+  if (scena !== 'wyniki-dynamika') return [rozplyw];
+  return [
+    rozplyw,
+    {
+      id: dynamikaScenyWyniki.run_id,
+      study_case_id: 'case-demo',
+      analysis_type: 'DYNAMIKA_RMS',
+      status: 'DONE',
+      created_at: '2026-09-24T10:01:00Z',
+      finished_at: '2026-09-24T10:01:06Z',
+    } as unknown as ExecutionRun,
+  ];
+}
+
 function creatorZUrl(): string {
   return new URLSearchParams(window.location.search).get('creator') ?? 'pole';
 }
@@ -849,9 +888,28 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       // tego, czego model NIE niesie. Wcześniej cała lista była wpisana ręcznie.
       return jsonOK(wiazaniaScenyFunkcjeZabezpieczen);
     }
-  } else if (creator === 'wyniki-stabilnosc') {
-    if (url.endsWith('/results/dynamic-stability')) return jsonOK(stabilnoscScenyWyniki);
-    if (url.endsWith('/results/automation-trace')) return jsonOK(stabilnoscScenySlad);
+  } else if (creator === 'wyniki-dynamika' || creator === 'wyniki-dynamika-brak') {
+    if (url.endsWith('/api/dynamika/opis-scenariusza')) return jsonOK(dynamikaScenyOpis);
+    if (url.includes('/api/dynamika/study-cases/') && url.endsWith('/gotowosc')) {
+      return jsonOK(creator === 'wyniki-dynamika' ? dynamikaScenyGotowosc : dynamikaScenyGotowoscBrak);
+    }
+    if (url.includes('/api/dynamika/study-cases/') && url.endsWith('/scenariusze')) {
+      return jsonOK(creator === 'wyniki-dynamika' ? dynamikaScenyScenariusze : { scenariusze: [], count: 0 });
+    }
+    if (url.includes('/api/execution/study-cases/') && url.endsWith('/runs')) {
+      return jsonOK({ runs: biegiSceny(creator), count: biegiSceny(creator).length });
+    }
+    if (url.includes('/results/dynamika/time-series')) {
+      // Filtr `kanaly=` jak w końcówce: odpowiedź niesie wyłącznie żądane szeregi.
+      const zapytanie = new URL(url, 'http://harness').searchParams.get('kanaly') ?? '';
+      const klucze = zapytanie.split(',').filter(Boolean);
+      const probki = dynamikaScenyPrzebiegi.probki as Record<string, unknown>;
+      return jsonOK({
+        ...dynamikaScenyPrzebiegi,
+        probki: Object.fromEntries(klucze.filter((k) => k in probki).map((k) => [k, probki[k]])),
+      });
+    }
+    if (url.endsWith('/results/dynamika')) return jsonOK(dynamikaScenyWyniki);
   }
 
   // Kontrakt przebiegu dla znacznika świeżości nagłówka (V12K-264, rozszerzenie
@@ -1514,7 +1572,6 @@ const MIGAWKA_MODELU_SCENY: Readonly<Record<string, unknown>> = {
   'odbior-zgodnosc': sieckZlotaScenyMigawka,
   estymacja: sieckZlotaScenyMigawka,
   'wyniki-stan-fazowy': sieckZlotaScenyMigawka,
-  'wyniki-stabilnosc': sieckZlotaScenyMigawka,
   'wyniki-warsztat': sieckZlotaScenyMigawka,
   'wyniki-skladowe': skladoweScenyMigawka,
   oltc: zbieznoscScenyMigawka,
@@ -1942,21 +1999,12 @@ if (creator === 'arcflash') {
       } as unknown as ExecutionRun,
     ],
   } as never);
-} else if (creator === 'wyniki-stabilnosc') {
-  // Scena E-32 (karta Z-1): zakończony przebieg stabilności (DYNAMIC_STABILITY)
-  // — identyfikator z fixtury REALNEGO biegu backendu (HARNESS-RESZTA).
+} else if (creator === 'wyniki-dynamika' || creator === 'wyniki-dynamika-brak') {
+  // Scena E-32 (karta AB-P1): model sceny (migawka po wiązaniu PV) i — w wariancie
+  // z wynikiem — zakończony bieg `DYNAMIKA_RMS` z fixtury REALNEGO biegu backendu.
   useShellStore.setState({ advancementMode: 'expert' });
-  useExecutionRunsStore.setState({
-    runs: [
-      {
-        id: stabilnoscScenyWyniki.run_id,
-        analysis_type: 'DYNAMIC_STABILITY',
-        status: 'DONE',
-        finished_at: '2026-07-21T10:00:00Z',
-        started_at: '2026-07-21T09:59:00Z',
-      } as unknown as ExecutionRun,
-    ],
-  } as never);
+  useSnapshotStore.setState({ snapshot: dynamikaScenyMigawka } as never);
+  useExecutionRunsStore.setState({ runs: biegiSceny(creator) } as never);
 } else if (creator === 'zrodlo-dyspozycyjne') {
   // Karta Z-2 (fala P-4/P-5): kreator agregatu/UPS nN — kontekst szyny nN
   // stacji demo (op=add_genset_nn wybiera wariant „agregat"; snapshot globalny
@@ -2201,7 +2249,8 @@ function Harness() {
   else if (creator === 'wyniki-skladowe') node = <EkranSkladowych />;
   else if (creator === 'wyniki-zbieznosc') node = <EkranZbieznosci />;
   else if (creator === 'wyniki-stan-fazowy') node = <EkranStanuFazowego />;
-  else if (creator === 'wyniki-stabilnosc') node = <EkranStabilnosci />;
+  else if (creator === 'wyniki-dynamika' || creator === 'wyniki-dynamika-brak')
+    node = <EkranDynamiki trybZaawansowania="expert" />;
   else if (creator === 'kompensacja-wynik')
     // V-B: bez preselekcji — spec wybiera wezel i klika „Oblicz" natywnie.
     node = <EkranKompensacji trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
@@ -2301,7 +2350,7 @@ function Harness() {
         // informacyjne + werdykt) — szerszy kadr eliminuje przycięcie z prawej.
         width: [
           'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie', 'cieplna',
-          'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-stabilnosc', 'akademickie',
+          'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-dynamika', 'wyniki-dynamika-brak', 'akademickie',
           'ocena', 'ocena-przekroczenia',
         ].includes(creator)
           ? 1400

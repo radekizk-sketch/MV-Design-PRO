@@ -21,6 +21,7 @@ from api.v125_contracts import (
     resolve_proof_pack_ref,
 )
 from application.analysis_run import build_trace_summary
+from application.dynamika.opis_wyniku import oceny_biegu_dynamiki, opis_wyniku_dynamiki
 from application.result_freshness import (
     FreshnessVerdict,
     StanBiezacyModelu,
@@ -32,11 +33,8 @@ from application.solvers.power_flow_binding import (
 )
 from enm.canonical_analysis import (
     CanonicalRun,
-    build_automation_trace_results,
     build_branch_results,
     build_bus_results,
-    build_dynamic_stability_results,
-    build_dynamic_stability_time_series,
     build_dynamika_results,
     build_dynamika_time_series,
     build_extended_trace,
@@ -48,6 +46,7 @@ from enm.canonical_analysis import (
     dobierz_pasmo_min_max_zwarcia,
     galezie_modelu_biegu,
 )
+from enm.canonical_analysis import get_run as get_canonical_run
 from network_model.nazwy import nazwa_nadana
 from network_model.pochodne import a_na_ka
 
@@ -139,16 +138,6 @@ def build_run_summary_json(run: CanonicalRun) -> dict[str, Any]:
             "voltage_unbalance_percent": row.get("voltage_unbalance_percent"),
             "current_unbalance_percent": row.get("current_unbalance_percent"),
         }
-    if run.analysis_type == "dynamic_stability":
-        # Tor z kątów wpisanych przez użytkownika nie wydaje werdyktu (uczciwość
-        # natychmiastowa 2026-09-23) — podsumowanie niesie status oceny, bez indeksu
-        # stabilności i czynnika ograniczającego (były składowymi werdyktu progowego).
-        rows = build_dynamic_stability_results(run).get("rows", [])
-        row = rows[0] if rows else {}
-        return {
-            "row_count": len(rows),
-            "status": row.get("status"),
-        }
     return {"row_count": 0}
 
 
@@ -158,7 +147,6 @@ def build_result_items(run: CanonicalRun) -> dict[str, Any]:
         "PF": "power_flow",
         "short_circuit_sn": "short_circuit_sn",
         "phase_state_sn": "phase_state_sn",
-        "dynamic_stability": "dynamic_stability",
     }.get(run.analysis_type, run.analysis_type)
     payload_summary = build_run_summary_json(run)
     return {
@@ -215,8 +203,6 @@ def build_sld_overlay(
     branch_rows = {row["branch_id"]: row for row in build_branch_results(run).get("rows", [])}
     sc_rows = {row["target_id"]: row for row in build_short_circuit_results(run).get("rows", [])}
     phase_rows = {row["target_id"]: row for row in build_phase_state_results(run).get("rows", [])}
-    stability_rows = build_dynamic_stability_results(run).get("rows", [])
-    stability_row = stability_rows[0] if stability_rows else {}
 
     node_symbols = list(sld_payload.get("nodes", []))
     if not node_symbols:
@@ -247,11 +233,6 @@ def build_sld_overlay(
                 "ic_a": phase_data.get("ic_a"),
                 "phase_voltage_unbalance_percent": phase_data.get("voltage_unbalance_percent"),
                 "phase_current_unbalance_percent": phase_data.get("current_unbalance_percent"),
-                "dynamic_stability_status": (
-                    stability_row.get("status")
-                    if node_id == str(stability_row.get("source_id") or "")
-                    else None
-                ),
             }
         )
 
@@ -489,21 +470,39 @@ def build_power_flow_unbalanced_results_response(run: CanonicalRun) -> dict[str,
     return payload
 
 
-def build_dynamic_stability_results_response(run: CanonicalRun) -> dict[str, Any]:
-    payload = build_dynamic_stability_results(run)
-    payload["analysis_case_context"] = build_analysis_case_context(run)
-    return payload
-
-
-def build_dynamic_stability_time_series_response(run: CanonicalRun) -> dict[str, Any]:
-    payload = build_dynamic_stability_time_series(run)
-    payload["analysis_case_context"] = build_analysis_case_context(run)
-    return payload
+def _baza_mocy_punktu_pracy(pf_run_id: object) -> float | None:
+    """Baza mocy [MVA] biegu rozpływu, z którego bieg dynamiki wziął punkt pracy — ta sama,
+    w której adapter przeliczył moce na jednostki względne (`enm.adapter_dynamiki.
+    punkt_pracy_z_biegu_rozplywu`). `None`, gdy bieg rozpływu nie jest już dostępny."""
+    try:
+        bieg = get_canonical_run(UUID(str(pf_run_id)))
+    except ValueError:
+        return None
+    wynik = ((bieg.raw_result or {}).get("result_v1") or {}) if bieg is not None else {}
+    baza = wynik.get("base_mva")
+    return float(baza) if isinstance(baza, int | float) else None
 
 
 def build_dynamika_results_response(run: CanonicalRun) -> dict[str, Any]:
-    """Metadane `ResultSetDynamicV2` (karta W6-1) — `KeyError` się propaguje (API: 404)."""
+    """Metadane `ResultSetDynamicV2` (karta W6-1) — `KeyError` się propaguje (API: 404).
+
+    Karta AB-P1: obok ZAMROŻONEGO kontraktu dwa bloki addytywne odpowiedzi — `opis_wyniku`
+    (nazwy elementów i zacisków kanałów z migawki biegu, opisy wielkości i metryk, baza mocy
+    punktu pracy) i `oceny` (rekordy `NIE_OCENIONO` kontraktu werdyktu wyjaśnialnego: bieg
+    w trybie sieci nie wydaje werdyktu) — `application.dynamika.opis_wyniku`.
+    """
     payload = build_dynamika_results(run)
+    snapshot = run.snapshot or {}
+    naglowek = snapshot.get("header") if isinstance(snapshot, dict) else None
+    payload["opis_wyniku"] = opis_wyniku_dynamiki(
+        payload, snapshot, baza_mocy_mva=_baza_mocy_punktu_pracy(payload.get("pf_run_id"))
+    )
+    payload["oceny"] = oceny_biegu_dynamiki(
+        str(run.id),
+        naglowek.get("name") if isinstance(naglowek, dict) else None,
+        snapshot if isinstance(snapshot, dict) else {},
+        tryb_scenariusza=payload["tryb_scenariusza"],
+    )
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
 
@@ -513,12 +512,6 @@ def build_dynamika_time_series_response(
 ) -> dict[str, Any]:
     """Próbki szeregów czasowych `dynamika_rms` (karta W6-1) — `KeyError` się propaguje (API: 404)."""
     payload = build_dynamika_time_series(run, klucze_kanalow)
-    payload["analysis_case_context"] = build_analysis_case_context(run)
-    return payload
-
-
-def build_automation_trace_results_response(run: CanonicalRun) -> dict[str, Any]:
-    payload = build_automation_trace_results(run)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
 

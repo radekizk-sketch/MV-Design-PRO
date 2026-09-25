@@ -128,13 +128,19 @@ class TestBrakNumerycznychDomyslek:
         with pytest.raises(ValidationError):
             WindTurbineDynamicProfile(**pelne)
 
-    def test_zadne_pole_liczbowe_nie_ma_default_poza_virtual_inertia(self) -> None:
-        """`virtual_inertia_h_s` jest JEDYNYM legalnie opcjonalnym polem liczbowym
-        (None dla GFL — brak inercji wirtualnej jest FAKTEM fizycznym, nie
-        brakiem danej)."""
+    def test_zadne_pole_liczbowe_nie_ma_default_poza_polami_trybu(self) -> None:
+        """Pola opcjonalne w SCHEMACIE to WYŁĄCZNIE pola trybu sterowania (karta AB-P1):
+        ich obecność wymusza walidator trybu (GFL / GFM / turbina z przekształtnikiem),
+        więc „opcjonalne" znaczy „spoza trybu", nigdy „cicho domyślne"."""
+        from network_model.catalog.der_dynamic.models import (
+            POLA_PRZEKSZTALTNIKA_TURBINY,
+            POLA_REGULACJI_GFL,
+            POLA_REGULACJI_GFM,
+        )
+
+        pola_trybu_falownika = {*POLA_REGULACJI_GFL, *POLA_REGULACJI_GFM}
         for nazwa, pole in InverterDynamicProfile.model_fields.items():
             if nazwa in (
-                "virtual_inertia_h_s",
                 "profile_id",
                 "profile_name_pl",
                 "der_kind",
@@ -143,11 +149,40 @@ class TestBrakNumerycznychDomyslek:
                 "iq_priority_during_fault",
             ):
                 continue
+            if nazwa in pola_trybu_falownika:
+                assert pole.default is None, f"InverterDynamicProfile.{nazwa} ma default liczbowy"
+                continue
             assert pole.is_required(), f"InverterDynamicProfile.{nazwa} ma default"
         for nazwa, pole in WindTurbineDynamicProfile.model_fields.items():
             if nazwa in ("profile_id", "profile_name_pl", "iec_type", "proweniencja"):
                 continue
+            if nazwa in POLA_PRZEKSZTALTNIKA_TURBINY:
+                assert pole.default is None, f"WindTurbineDynamicProfile.{nazwa} ma default"
+                continue
             assert pole.is_required(), f"WindTurbineDynamicProfile.{nazwa} ma default"
+
+    @pytest.mark.parametrize(
+        ("profil", "pole", "wartosc"),
+        [
+            # Iloczyn: {GFL, GFM, turbina z przekształtnikiem, turbina bez} × {brak pola
+            # trybu, pole spoza trybu} — każda komórka musi odmówić budowy profilu.
+            (DEFAULT_PV_GFL, "pll_kp", None),
+            (DEFAULT_PV_GFL, "gfm_control", "vsm"),
+            (DEFAULT_BESS_GFL, "frt_k_factor", None),
+            (DEFAULT_PV_GFM, "virtual_damping_pu", None),
+            (DEFAULT_PV_GFM, "pll_ki", 500.0),
+            (DEFAULT_BESS_GFM, "virtual_inertia_h_s", None),
+            (DEFAULT_WIND_TYPE_3, "converter_i_max_pu", None),
+            (DEFAULT_WIND_TYPE_4, "current_ki", None),
+            (DEFAULT_WIND_TYPE_1, "pll_kp", 50.0),
+            (DEFAULT_WIND_TYPE_2, "iq_priority_during_fault", True),
+        ],
+    )
+    def test_pola_trybu_brak_albo_nadmiar_odmawia(self, profil, pole, wartosc) -> None:
+        dane = profil.model_dump(mode="python")
+        dane[pole] = wartosc
+        with pytest.raises(ValidationError, match="pól"):
+            type(profil)(**dane)
 
 
 class TestResolverBrakBezJawnegoWyboru:
@@ -206,83 +241,54 @@ class TestResolverBrakBezJawnegoWyboru:
         assert r.profile is None
 
 
-class TestSolverParametersIntegration:
-    """Profil produkuje parametry zgodne z kontraktem solverów LEGACY (do OD-20)."""
-
-    def test_pv_to_stability_parameters_keys(self) -> None:
-        params = DEFAULT_PV_GFL.to_stability_parameters()
-        assert "Tp" in params
-        assert "Tq" in params
-        assert "Q_droop" in params
-        assert "V_ref" in params
-        assert all(isinstance(v, float) for v in params.values())
-
-    def test_pv_to_frt_parameters_keys(self) -> None:
-        params = DEFAULT_PV_GFL.to_frt_parameters()
-        assert "iq_max_during_fault_pu" in params
-        assert "frt_response_time_s" in params
-        assert "p_recovery_rate_pu_per_s" in params
-        assert params["frt_response_time_s"] == DEFAULT_PV_GFL.frt_response_time_ms / 1000.0
-
-    def test_wind_type_3_to_stability_parameters(self) -> None:
-        params = DEFAULT_WIND_TYPE_3.to_stability_parameters()
-        assert "Tp" in params
-        assert "Tq" in params
-        assert "H" in params
-        assert params["H"] == DEFAULT_WIND_TYPE_3.h_total_s
-
-    def test_wind_type_1_uses_legacy_state(self) -> None:
-        params = DEFAULT_WIND_TYPE_1.to_stability_parameters()
-        assert "Tw" in params
-        assert "omega_ref_pu" in params
-
-    def test_stability_model_kind_mapping(self) -> None:
-        assert DEFAULT_PV_GFL.stability_model_kind == "pv_inverter_grid_following"
-        assert DEFAULT_PV_GFM.stability_model_kind == "pv_inverter_grid_forming"
-        assert DEFAULT_BESS_GFL.stability_model_kind == "bess_pcs_grid_following"
-        assert DEFAULT_BESS_GFM.stability_model_kind == "bess_pcs_grid_forming"
-        assert DEFAULT_WIND_TYPE_3.stability_model_kind == "wind_type_3"
-
-
 class TestMapowanieNaParametryDynamiczneKanoniczne:
     """`to_parametry_dynamiczne` — mapowanie 1:1 na kontrakt W6-1 (SS0 p.3)."""
 
     def test_inverter_gfl_mapuje_sie_na_przeksztaltnik_gfl(self) -> None:
-        blok = DEFAULT_PV_GFL.to_parametry_dynamiczne(
-            priorytet_ogranicznika="bierna",
-            s_n_mva=1.0,
-            pll_kp=50.0,
-            pll_ki=500.0,
-            reg_pradu_kp=1.0,
-            reg_pradu_ki=100.0,
-            k_frt=2.0,
-        )
+        blok = DEFAULT_PV_GFL.to_parametry_dynamiczne(s_n_mva=1.0)
         assert blok.rodzina == "przeksztaltnikowa_gfl"
         assert blok.proweniencja == DEFAULT_PV_GFL.proweniencja
         assert blok.i_max_pu == DEFAULT_PV_GFL.i_max_pu
+        assert blok.pll_kp == DEFAULT_PV_GFL.pll_kp
+        assert blok.k_frt == DEFAULT_PV_GFL.frt_k_factor
+        assert blok.s_n_mva == 1.0
 
-    def test_wind_type1_mapuje_sie_bez_przeksztaltnika(self) -> None:
-        blok = DEFAULT_WIND_TYPE_1.to_parametry_dynamiczne()
-        assert blok.rodzina == "wiatr_typ_1"
+    @pytest.mark.parametrize("profil", [DEFAULT_PV_GFM, DEFAULT_BESS_GFM])
+    def test_inverter_gfm_mapuje_sie_na_przeksztaltnik_gfm(self, profil) -> None:
+        """Karta AB-P1: profil tworzący sieć mapował się na przekształtnik NADĄŻNY (GFL) —
+        inna rodzina urządzenia bez śladu. Teraz GFM -> `PrzeksztaltnikGFM` 1:1."""
+        blok = profil.to_parametry_dynamiczne(s_n_mva=2.0)
+        assert blok.rodzina == "przeksztaltnikowa_gfm"
+        assert blok.h_wirtualne_s == profil.virtual_inertia_h_s
+        assert blok.mp_pu == profil.p_f_droop_pu
+        assert blok.mq_pu == profil.q_u_droop_pu
+        assert blok.tryb == profil.gfm_control
+
+    @pytest.mark.parametrize(("priorytet_iq", "skladowa"), [(True, "bierna"), (False, "czynna")])
+    def test_priorytet_ogranicznika_z_deklaracji_profilu(self, priorytet_iq, skladowa) -> None:
+        dane = DEFAULT_PV_GFL.model_dump(mode="python")
+        dane["iq_priority_during_fault"] = priorytet_iq
+        blok = InverterDynamicProfile(**dane).to_parametry_dynamiczne(s_n_mva=1.0)
+        assert blok.priorytet_ogranicznika == skladowa
+
+    @pytest.mark.parametrize("profil", [DEFAULT_WIND_TYPE_1, DEFAULT_WIND_TYPE_2])
+    def test_wind_type_1_2_mapuje_sie_bez_przeksztaltnika(self, profil) -> None:
+        blok = profil.to_parametry_dynamiczne(s_n_mva=3.0)
+        assert blok.rodzina == f"wiatr_typ_{profil.iec_type[-1]}"
         assert blok.przeksztaltnik is None
+        assert blok.tlumienie_walu_pu == profil.drive_train_damping_pu
 
-    def test_wind_type3_wymaga_argumentow_przeksztaltnika(self) -> None:
-        with pytest.raises(ValueError, match="brak argumentów przekształtnika"):
-            DEFAULT_WIND_TYPE_3.to_parametry_dynamiczne()
-
-    def test_wind_type3_z_argumentami_mapuje_sie_z_przeksztaltnikiem(self) -> None:
-        blok = DEFAULT_WIND_TYPE_3.to_parametry_dynamiczne(
-            i_max_pu=1.2,
-            priorytet_ogranicznika="czynna",
-            s_n_mva=2.0,
-            pll_kp=40.0,
-            pll_ki=400.0,
-            reg_pradu_kp=1.0,
-            reg_pradu_ki=80.0,
-            k_frt=1.5,
-        )
+    @pytest.mark.parametrize("profil", [DEFAULT_WIND_TYPE_3, DEFAULT_WIND_TYPE_4])
+    def test_wind_type_3_4_mapuje_sie_z_przeksztaltnikiem_z_profilu(self, profil) -> None:
+        """Karta AB-P1: statyzmy i regulacja przekształtnika z PROFILU, nie ze stałych
+        zaszytych w mapowaniu ani z argumentów wołającego."""
+        blok = profil.to_parametry_dynamiczne(s_n_mva=3.0)
         assert blok.przeksztaltnik is not None
-        assert blok.przeksztaltnik.priorytet_ogranicznika == "czynna"
+        assert blok.przeksztaltnik.s_n_mva == 3.0
+        assert blok.przeksztaltnik.i_max_pu == profil.converter_i_max_pu
+        assert blok.przeksztaltnik.droop_p_f_pu == profil.p_f_droop_pu
+        assert blok.przeksztaltnik.pll_ki == profil.pll_ki
+        assert blok.przeksztaltnik.priorytet_ogranicznika == "bierna"
 
 
 class TestPokrycieKatalogu:

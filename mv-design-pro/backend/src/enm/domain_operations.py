@@ -60,6 +60,7 @@ from network_model.pochodne.pasma_napieciowe import (
 )
 
 from .deklaracje_modulu import POLA_NC_RFG_GENERATORA, pola_nc_rfg_generatora
+from .dynamika_z_katalogu import synchronizuj_dynamike_z_wiazan
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
 from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna
 from .katalog_projektu import BladKataloguProjektu, katalog_biezacy, kontekst_katalogu
@@ -3430,8 +3431,15 @@ def _response(
     audit: list[dict] | None = None,
     events: list[dict] | None = None,
 ) -> dict[str, Any]:
-    """Zbuduj standardową odpowiedź operacji domenowej."""
+    """Zbuduj standardową odpowiedź operacji domenowej.
+
+    Karta AB-P1: każda odpowiedź przelicza kopie `Generator.dynamika` wytwórców
+    z wiązaniem katalogowym (`enm.dynamika_z_katalogu.synchronizuj_dynamike_z_wiazan`) —
+    JEDNO miejsce dla całej klasy operacji zmieniających tabliczkę, liczbę jednostek albo
+    typ wytwórcy, zamiast listy operacji, z której nowa operacja by wypadła.
+    """
     enm = _complete_catalog_branch_point_defaults(enm)
+    enm = synchronizuj_dynamike_z_wiazan(enm)
     readiness, fix_actions = _build_readiness(enm)
     logical_views = _compute_logical_views(enm)
     materialized_params = _compute_materialized_params(enm)

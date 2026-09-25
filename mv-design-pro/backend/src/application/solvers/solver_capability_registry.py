@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Literal
 
-from application.stability.dynamic_stability import WERSJA_KONTRAKTU_ECHA
+from network_model.solvers.dynamika import WERSJA_SOLVERA as WERSJA_SOLVERA_DYNAMIKI
 from network_model.solvers.phase_state_sn import PHASE_STATE_SN_SOLVER_VERSION
 from network_model.solvers.power_flow_trace import POWER_FLOW_SOLVER_VERSION
 from network_model.solvers.power_flow_unbalanced import UNBALANCED_PF_SOLVER_VERSION
@@ -19,7 +19,7 @@ AnalysisCapability = Literal[
     "LOAD_FLOW_FD_PERFORMANCE",
     "LOAD_FLOW_UNBALANCED_BFS",
     "PHASE_STATE_SN",
-    "DYNAMIC_STABILITY",
+    "DYNAMIKA_RMS",
     "POWER_QUALITY_HARMONICS",
     "SSCI_IMPEDANCE",
     "VOLTAGE_STABILITY",
@@ -218,21 +218,30 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
     # `GET /api/ncrfg-tests/cases/{case_id}/compliance` — poza tym rejestrem
     # (dyspozycja `analysis_type`-owa `canonical_analysis.py`), wiec nowej pozycji
     # capability nie dopisano.
-    "DYNAMIC_STABILITY": SolverCapability(
-        capability="DYNAMIC_STABILITY",
-        analysis_type="dynamic_stability",
+    # Karta AB-P1: tor „stabilność po wyłączeniu zwarcia" (echo kątów wpisanych przez
+    # użytkownika) SKASOWANY — zdolność dynamiki czasowej ma odtąd jeden tor: bieg
+    # kanoniczny `dynamika_rms` (rdzeń DAE, adapter ENM, kontrakt `resultset_dynamic_v2`).
+    "DYNAMIKA_RMS": SolverCapability(
+        capability="DYNAMIKA_RMS",
+        analysis_type="dynamika_rms",
         availability="available",
         implementation_status="UNVALIDATED",
-        solver_version=WERSJA_KONTRAKTU_ECHA,
-        required_inputs=("source_state", "fault_clear_scenario", "clearing_time_ms"),
-        output_contract="DynamicStabilityEchoV2",
+        solver_version=WERSJA_SOLVERA_DYNAMIKI,
+        required_inputs=(
+            "snapshot",
+            "generator_dynamika",
+            "pf_run_id",
+            "scenariusz_dynamiczny",
+            "nastawy_solvera",
+        ),
+        output_contract="ResultSetDynamicV2",
         proof_support=True,
         reportable=False,
-        reference_test="uczciwosc/test_stabilnosc_katow_bez_werdyktu.py::test_wiersz_wyniku_nie_niesie_werdyktu_stabilnosci",
+        reference_test="uczciwosc/test_dynamika_rms_bez_werdyktu.py::test_bieg_niesie_oceny_niewykonane_z_powodem",
         applicability=(
-            "Echo scenariusza wyłączenia zwarcia wpisanego przez użytkownika (kąty, napięcie i "
-            "częstotliwość po zwarciu, czas wyłączenia) — bez werdyktu stabilności: tor nie "
-            "rozwiązuje sieci; ocena niewykonana do czasu biegu dynamiki RMS z wyrocznią."
+            "Przebiegi czasowe RMS sieci (tryb sieci) na punkcie pracy z rozpływu, ze "
+            "scenariuszem zdarzeń — model niezwalidowany wyrocznią dla przekształtników, "
+            "ocena zgodności FRT i stabilności kątowej niewykonana."
         ),
     ),
     "POWER_QUALITY_HARMONICS": SolverCapability(

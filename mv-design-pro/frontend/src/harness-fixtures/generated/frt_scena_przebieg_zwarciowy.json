@@ -2,12 +2,12 @@
   "id": "run-sc-scena-pole-oze",
   "study_case_id": "efc2921a-b3b9-593d-a0bd-5dde5d952921",
   "analysis_type": "SC_3F",
-  "solver_input_hash": "fe69b1835a7aa6f2f58d74e14899c126997b737da411f0c673f2922e20a6b25b",
+  "solver_input_hash": "464dbc7cea88fb5b6a0e74f1eb9fb7ef8e16707d45df10254342c40d45c0e2fd",
   "status": "DONE",
   "started_at": "2026-09-16T09:00:00+00:00",
   "finished_at": "2026-09-16T09:00:00+00:00",
   "error_message": null,
   "model_revision": 2,
   "created_at": "2026-09-16T09:00:00+00:00",
-  "snapshot_hash": "0284856d5df9132df63495d0b30a740a6af957c13e8ebdc3ffaf5554536b1f66"
+  "snapshot_hash": "28a0ac511561eb105d9bef81f6c17c53e8b88e969d3dec8b7e4aae7f0adeffae"
 }

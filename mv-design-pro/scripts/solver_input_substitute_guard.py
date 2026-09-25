@@ -365,7 +365,10 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # importowac wlasne modele. Pomiar per korzen: KAZDY kosztuje +0 trafien
     # (lacznie +149 pol, 1658 -> 1807, zero nowych trafien i zero kolizji nazw),
     # wiec decyzja brzmi „do mapy", a nie „poza mapa" — szerszy zasieg bez halasu.
-    "application/automation/trace.py",
+    # "application/automation/trace.py", "application/stability/dynamic_stability.py" i
+    # "application/stability/voltage_trajectory.py" USUNIETE (karta AB-P1, 2026-09-24)
+    # razem z torem echa katow wpisanych recznie — dynamike czasowa liczy wylacznie bieg
+    # kanoniczny `dynamika_rms`; wpisy zdjete (nie zastapione).
     # "application/compliance/source_compliance.py" USUNIETY (karta W3-D,
     # 2026-09-09) razem z modulem — trzecia sciezka oceny FRT/Q(U)/cosfi(P),
     # skasowana na rzecz kanonu (`power_flow_inverter.py` + `ncrfg_ptpiree/
@@ -388,8 +391,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # branch_id/reason/graph/notes juz byly w mapie przez inne korzenie), ZERO
     # nowych trafien (RC=0 niezmieniony po dolozeniu obu plikow).
     "application/solvers/lv_temperature_correction.py",
-    "application/stability/dynamic_stability.py",
-    "application/stability/voltage_trajectory.py",
     "domain/canonical_operations.py",
     # Karta W5-D (2026-09-16): kontrakt wyniku rozplywu niesymetrycznego (dataclass
     # `ResultSetPowerFlowUnbalancedV1` i wiersze per faza) czytany przez
@@ -1065,8 +1066,8 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # danych WEJSCIOWYCH plynacych DO fizyki, nie formatowania juz policzonego
     # WYNIKU do JSON. `item` pochodzi z `result_v1.get("branch_results")` —
     # WYNIK wczesniejszego uruchomienia rozplywu, tu tylko przeliczany na S_mva
-    # do wyswietlenia. `row` pochodzi z `automation_trace.get("events")` —
-    # log zdarzen JUZ zapisanych przez automatyzacje, sortowany do raportu.
+    # do wyswietlenia. (Dawny wpis `row` — sortowanie sladu automatyki toru T1 — zdjety
+    # razem z torem: karta AB-1a Pakiet 0, slad automatyki skasowany w karcie AB-P1.)
     # `defaults.get("frequency_hz", 50.0)` POWTARZA domyslna wartosc z
     # SYGNATURY kontraktu (`ENMDefaults.frequency_hz: float = 50.0` w
     # enm/models.py) przy odczycie surowego (niewalidowanego) JSON tego
@@ -1568,19 +1569,17 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # to TRZECIA niezalezna kopia tego samego wzorca Rule #10, juz
     # zaakceptowanego jako merytorycznie uzasadniony w `power_flow_zip.py`/
     # `power_flow_inverter.py` (neutralny element wielomianu ZIP, gdy katalog
-    # nie zglasza zaleznosci). `der_dynamic/models.py.virtual_inertia_h_s` to
-    # bezwladnosc wirtualna DER (sekundy) wchodzaca WPROST do parametrow
-    # silnika FRT/HVRT — DLUG NAZWANY (0 s bezwladnosci to silne, blednie
-    # optymistyczne zalozenie o stabilnosci). `network_model/core/branch.py`
+    # nie zglasza zaleznosci). Wpis `der_dynamic/models.py.virtual_inertia_h_s`
+    # (`or 0.0` — 0 s bezwladnosci podstawiane za brak w rzucie profilu na slownik
+    # `to_stability_parameters`, bez wolajacego produkcyjnego) ZDJETY w karcie AB-P1:
+    # rzut skasowany jako martwy, a profil GFM wymaga inercji wirtualnej walidatorem
+    # trybu. `network_model/core/branch.py`
     # to WLASNY deserializator (`from_dict`) modelu domenowego `TapChanger`/
     # `TransformerBranch` — pozycje zaczepu/procenty/dane znamionowe sa TA SAMA
     # KLASA, co juz zaakceptowane siostrzane wpisy w `enm/mapping.py`/
     # `enm/domain_operations.py` (kardynalnosc pozycji zaczepu, dane
     # znamionowe transformatora), tylko czytane w INNYM miejscu tego samego
     # modelu — trzecia droga do tej samej klasy (KLASA NIE INSTANCJA).
-    "network_model/catalog/der_dynamic/models.py": {
-        "A:or:self.virtual_inertia_h_s": 1,
-    },
     "network_model/catalog/mv_cable_line_catalog.py": {
         "F:dictget:<dict>.cross_section_mm2": 4,
     },

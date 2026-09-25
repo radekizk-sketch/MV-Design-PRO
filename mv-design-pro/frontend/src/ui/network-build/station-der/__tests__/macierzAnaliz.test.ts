@@ -151,7 +151,7 @@ describe('macierz analiz — trzy różne sytuacje, trzy różne odpowiedzi', ()
     const [scWiersz] = zlozMacierzAnaliz([os('sc_3f', 'ready')], []);
     expect(scWiersz.typPrzebiegu).toBe('SC_3F');
     const [frtWiersz] = zlozMacierzAnaliz([os('frt', 'ready')], []);
-    expect(frtWiersz.typPrzebiegu).toBe('DYNAMIC_STABILITY');
+    expect(frtWiersz.typPrzebiegu).toBe('DYNAMIKA_RMS');
     const [protectionWiersz] = zlozMacierzAnaliz([os('protection', 'ready')], []);
     expect(protectionWiersz.typPrzebiegu).toBeNull();
     // nc_rfg: kasacja source_compliance (karta W3-D) — zgodnosc NC RfG nie ma
@@ -169,7 +169,7 @@ describe('macierz analiz — trzy różne sytuacje, trzy różne odpowiedzi', ()
       [],
       [przebieg({ analysis_type: 'SC_3F' })],
       [przebieg({ analysis_type: 'LOAD_FLOW', status: 'FAILED', finished_at: null })],
-      [przebieg({ analysis_type: 'DYNAMIC_STABILITY', status: 'RUNNING', finished_at: null })],
+      [przebieg({ analysis_type: 'DYNAMIKA_RMS', status: 'RUNNING', finished_at: null })],
     ]) {
       const [wiersz] = zlozMacierzAnaliz([os('nc_rfg', 'ready')], przebiegi);
       expect(wiersz.stanWyniku).toBe('nie_dotyczy');

@@ -352,8 +352,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // Kod `der.dynamic_profile_default` SKASOWANY razem ze zrodlem, ktore go
   // emitowalo (domyslne profile dynamiczne DER; karta kontraktow czasu) —
   // mapa celow idzie za kanonicznym rejestrem `READINESS_CODES`, nie za
-  // historia. `der.dynamika_missing` to nowy bloker bloku dynamiki maszyny
-  // synchronicznej (obszar GENERATORS, jak siostrzane kody DER).
+  // historia. `der.dynamika_missing` to bloker modelu dynamicznego KAŻDEGO wytwórcy
+  // (akcja: wiązanie z profilem katalogowym, karta AB-P1; obszar GENERATORS).
   'der.dynamic_profile_missing': 'rozplyw',
   'der.dynamika_missing': 'rozplyw',
   'generator.converter_card_missing': 'rozplyw',
@@ -375,7 +375,6 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'protection.nominal_current_missing': 'zabezpieczenia',
   'vt.secondary_circuit_missing': 'zabezpieczenia',
   // ANALYSIS (wspolne)
-  'analysis.dynamic_stability_scenario_incomplete': 'wspolne',
   'fault.location_on_branch_requires_assembler': 'wspolne',
   'oltc.deadband_missing': 'wspolne',
   'oltc.target_voltage_missing': 'wspolne',

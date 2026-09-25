@@ -16,6 +16,7 @@ from api.comparison import router as comparison_router
 from api.der_sn_documents import router as der_sn_documents_router
 from api.diagnostics import router as diagnostics_router
 from api.document_store import router as document_store_router
+from api.dynamika import router as dynamika_router
 from api.enm import production_router as enm_router
 from api.equipment_checks import router as equipment_checks_router
 from api.equipment_proof_pack import router as equipment_proof_pack_router
@@ -140,6 +141,7 @@ app.include_router(catalog_router)
 app.include_router(comparison_router)
 app.include_router(der_sn_documents_router)
 app.include_router(diagnostics_router)
+app.include_router(dynamika_router)
 app.include_router(document_store_router)
 app.include_router(equipment_checks_router)
 app.include_router(zwarcia_porownania_router)

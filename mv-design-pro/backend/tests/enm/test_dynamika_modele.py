@@ -566,3 +566,15 @@ class TestGeneratorDynamika:
         assert hash_migawki_enm(bez_dynamiki.model_dump(mode="json")) != hash_migawki_enm(
             z_dynamika.model_dump(mode="json")
         )
+
+
+def test_nazwy_zrodel_proweniencji_komplet_wartosci_kontraktu() -> None:
+    """Karta AB-P1: każda wartość `ZrodloProweniencjiDynamiki` ma nazwę dla projektanta
+    (założenia biegu nie niosą kodu wartości) — i nic poza nimi."""
+    from typing import get_args
+
+    from enm.dynamika_modele import NAZWY_ZRODEL_PROWENIENCJI_PL, ZrodloProweniencjiDynamiki
+
+    assert set(NAZWY_ZRODEL_PROWENIENCJI_PL) == set(get_args(ZrodloProweniencjiDynamiki))
+    for nazwa in NAZWY_ZRODEL_PROWENIENCJI_PL.values():
+        assert "_" not in nazwa

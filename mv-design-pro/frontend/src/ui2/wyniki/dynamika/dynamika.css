@@ -1,0 +1,329 @@
+/*
+ * Ekran „Dynamika czasowa RMS" (E-32, karta AB-P1) — wyłącznie tokeny powłoki
+ * (--mvd-*), oba motywy z automatu. Promienie: 10px sekcja / 6px kontrolka.
+ * Siatka odstępów: 4 / 8 / 12 / 16.
+ */
+
+.mvd-dynamika {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+  font-family: var(--mvd-font-sans);
+}
+
+.mvd-dynamika-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--mvd-accent);
+}
+
+.mvd-dynamika-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-dynamika-head h3 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.mvd-dynamika-cel,
+.mvd-dynamika-opis {
+  margin: 0;
+  max-width: 88ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--mvd-muted);
+}
+
+.mvd-dynamika-sekcja,
+.mvd-dynamika-stan {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.mvd-dynamika-sekcja h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.mvd-dynamika-sekcja h5 {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.mvd-dynamika-braki {
+  border-left: 3px solid var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12.5px;
+}
+
+.mvd-dynamika-braki ul,
+.mvd-dynamika-warunki {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+}
+
+.mvd-dynamika-blad {
+  border-left: 3px solid var(--mvd-err);
+  background: var(--mvd-err-bg);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12.5px;
+}
+
+.mvd-dynamika-powod {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-dynamika-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.mvd-dynamika-tabela th,
+.mvd-dynamika-tabela td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+
+.mvd-dynamika-tabela th {
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+
+.mvd-dynamika-wiersz-wskazany {
+  background: var(--mvd-sel);
+}
+
+.mvd-dynamika-stan[data-stan],
+.mvd-dynamika-stan-biegu {
+  font-size: 12.5px;
+}
+
+.mvd-dynamika-wiazanie,
+.mvd-dynamika-wiersz-akcji {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.mvd-dynamika-wiersz-pol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.mvd-dynamika-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+  font-size: 12.5px;
+}
+
+.mvd-dynamika-pole-etykieta {
+  color: var(--mvd-muted);
+}
+
+.mvd-dynamika-zakres {
+  font: 11px/1.3 var(--mvd-font-mono);
+  color: var(--mvd-muted);
+}
+
+.mvd-dynamika-blad-pola {
+  font-size: 11.5px;
+  color: var(--mvd-err);
+}
+
+.mvd-dynamika-pole[data-blad='tak'] input,
+.mvd-dynamika-pole[data-blad='tak'] select {
+  border-color: var(--mvd-err);
+}
+
+.mvd-dynamika input,
+.mvd-dynamika select {
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.mvd-dynamika-obiekt {
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.mvd-dynamika-zdarzenia {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.mvd-dynamika-zdarzenia > li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--mvd-line);
+}
+
+.mvd-dynamika-zdarzenie-naglowek {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.mvd-dynamika-akcja {
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.mvd-dynamika-akcja:disabled,
+.mvd-dynamika-akcja-drugorzedna:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mvd-dynamika-akcja-drugorzedna {
+  background: transparent;
+  color: var(--mvd-ink);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mvd-dynamika-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--mvd-accent);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
+.mvd-dynamika-poziom {
+  margin: 0;
+  font-size: 12.5px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--mvd-warn-bg);
+  border-left: 3px solid var(--mvd-warn);
+}
+
+.mvd-dynamika-wynik {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mvd-dynamika-zaznaczony {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.mvd-dynamika-uklad-przebiegow {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.mvd-dynamika-kanaly {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 640px;
+  overflow: auto;
+  font-size: 12px;
+}
+
+.mvd-dynamika-kanaly-naglowek {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mvd-dynamika-kanaly-grupa-tytul {
+  margin-top: 6px;
+  font: 600 10.5px/1.4 var(--mvd-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mvd-muted);
+}
+
+.mvd-dynamika-element > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.mvd-dynamika-element[data-zaznaczony='tak'] > summary {
+  background: var(--mvd-sel);
+  border-radius: 4px;
+}
+
+.mvd-dynamika-rodzaj,
+.mvd-dynamika-jednostka {
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+
+.mvd-dynamika-kanal {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 1px 0 1px 12px;
+}
+
+.mvd-dynamika-wykresy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.mvd-dynamika-dymek {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 11.5px;
+  box-shadow: var(--mvd-shadow);
+}

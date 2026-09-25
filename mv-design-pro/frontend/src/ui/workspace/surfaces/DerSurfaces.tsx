@@ -1374,8 +1374,7 @@ function DerSurfaceShell({
   //     przez ISTNIEJACY tor `uruchomObliczenie` (ten sam, ktory uzywa przycisk
   //     „Uruchom obliczenie" w przestrzeni Obliczenia).
   //  - `otworz_wynik`     -> zakladka wynikow „dowod" najnowszego zakonczonego
-  //     przebiegu tej osi (ten sam wzorzec co „Otworz pelny dowod obliczen"
-  //     w `EkranStabilnosci.tsx`).
+  //     przebiegu tej osi (wzorzec „Otworz pelny dowod obliczen").
   const obslugaDzialaniaMacierzy = useCallback(
     (wiersz: WierszMacierzy) => {
       if (!der) return;
