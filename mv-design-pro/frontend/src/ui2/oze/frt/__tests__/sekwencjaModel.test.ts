@@ -1,17 +1,21 @@
 /*
- * Testy jednostkowe modelu sekcji „Sekwencja zapadów" (P43): serializacja edytora
- * do parametru API (KROPKA dziesiętna), odznaka werdyktu sekwencji (kolor z tekstu
- * backendu) oraz adaptery tabeli zapadów. Czyste funkcje — bez API, bez losowości.
+ * Testy jednostkowe modelu sekcji „Sekwencja zapadów": serializacja edytora do
+ * parametru API (KROPKA dziesiętna) oraz adaptery tabeli zapadów (pierwszy plan:
+ * echo + etykieta oceny; audyt: pola solvera bez tagów). Czyste funkcje.
+ *
+ * Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): odznaka „werdyktu sekwencji"
+ * skasowana — brak eksportu pilnuje `uczciwosc.test.tsx`.
  */
 
 import { describe, it, expect } from 'vitest';
 
 import { serializujSekwencjeFrt } from '../../api';
-import { werdyktSekwencji, wierszeTabeliSekwencji } from '../sekwencjaModel';
 import {
-  widokSekwencjiNiezaliczonaFixture,
-  widokSekwencjiZaliczonaFixture,
-} from './fixtures';
+  kolumnyAudytuSekwencji,
+  wierszeAudytuSekwencji,
+  wierszeTabeliSekwencji,
+} from '../sekwencjaModel';
+import { widokSekwencjiZKontekstemFixture } from './fixtures';
 
 describe('serializujSekwencjeFrt — kontrakt parametru sekwencja', () => {
   it('serializuje pary głębokość:czas z KROPKĄ dziesiętną, rozdzielone przecinkiem', () => {
@@ -28,27 +32,30 @@ describe('serializujSekwencjeFrt — kontrakt parametru sekwencja', () => {
   });
 });
 
-describe('werdyktSekwencji — odznaka z tekstu backendu', () => {
-  it('„sekwencja w obwiedni" → istotność ok, tekst dosłownie', () => {
-    const w = werdyktSekwencji(widokSekwencjiZaliczonaFixture());
-    expect(w.istotnosc).toBe('ok');
-    expect(w.tekst).toBe('sekwencja w obwiedni');
-  });
-
-  it('werdykt niezaliczony → istotność err, tekst dosłownie z backendu', () => {
-    const w = werdyktSekwencji(widokSekwencjiNiezaliczonaFixture());
-    expect(w.istotnosc).toBe('err');
-    expect(w.tekst).toBe('sekwencja niezaliczona — zapad 2');
+describe('wierszeTabeliSekwencji — adapter tabeli zapadów (pierwszy plan)', () => {
+  it('mapuje każdy zapad na wiersz z echem wejścia i etykietą z rekordu oceny', () => {
+    const wiersze = wierszeTabeliSekwencji(widokSekwencjiZKontekstemFixture());
+    expect(wiersze).toHaveLength(2);
+    expect(wiersze[0].ocena.wartosc).toBe('Ocena niewykonana');
+    expect(wiersze[1].glebokosc.wartosc).toBe('0,020');
+    expect(wiersze[1].czas.wartosc).toBe('0,500');
+    expect(Object.keys(wiersze[1])).not.toContain('utrzymanie');
   });
 });
 
-describe('wierszeTabeliSekwencji — adapter tabeli zapadów', () => {
-  it('mapuje każdy zapad na wiersz z werdyktem i tagiem utrzymania pracy', () => {
-    const wiersze = wierszeTabeliSekwencji(widokSekwencjiNiezaliczonaFixture());
-    expect(wiersze).toHaveLength(2);
-    expect(wiersze[0].werdykt.wartosc).toBe('w obwiedni');
-    // Drugi zapad: moduł wypadł → tag ostrzegawczy utrzymania pracy.
-    expect(wiersze[1].utrzymanie.ostrzezenie).toBe(true);
-    expect(wiersze[1].glebokosc.wartosc).toBe('0,020');
+describe('wierszeAudytuSekwencji — pola solvera w sekcji audytowej', () => {
+  it('numer zapadu zamiast identyfikatora scenariusza; meldunek odłączenia bez tagu', () => {
+    expect(kolumnyAudytuSekwencji().map((k) => k.klucz)).toEqual([
+      'zapad',
+      'status',
+      'utrzymanie',
+      'margines_s',
+      'margines_pu',
+      'odzysk',
+    ]);
+    const wiersze = wierszeAudytuSekwencji(widokSekwencjiZKontekstemFixture());
+    expect(wiersze[1].zapad.wartosc).toBe('2');
+    expect(wiersze[1].utrzymanie.wartosc).toBe('Nie');
+    expect(wiersze[1].utrzymanie.ostrzezenie).toBeUndefined();
   });
 });

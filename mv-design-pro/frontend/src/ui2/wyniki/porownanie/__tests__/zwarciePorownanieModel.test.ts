@@ -30,22 +30,25 @@ describe('zwarciePorownanieModel — selekcja przebiegów (runStore, SC_*/DONE)'
   });
 });
 
+/** Most nazw w testach (karta #145): nazwa z wyniku, gdy migawka nie zna punktu. */
+const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
+  nazwaZWyniku ?? `nazwa ${ref}`;
+
+const wierszePunktow = (
+  punkty: Parameters<typeof naWierszePunktowZwarciowych>[0],
+): ReturnType<typeof naWierszePunktowZwarciowych> => naWierszePunktowZwarciowych(punkty, NAZWA);
+
 describe('zwarciePorownanieModel — etykieta przebiegu (PL)', () => {
   it('rodzaj zwarcia + data + nazwa przypadku (gdy znana)', () => {
-    const etyk = etykietaPrzebieguZwarciowego(przebiegFixture(), false, 'Wariant letni');
+    const etyk = etykietaPrzebieguZwarciowego(przebiegFixture(), 'Wariant letni');
     expect(etyk).toBe('Zwarcie trójfazowe (3F) · 2026-07-10 08:15 · Wariant letni');
   });
 
-  it('brak nazwy przypadku → etykieta bez niej (zero zgadywania)', () => {
-    const etyk = etykietaPrzebieguZwarciowego(przebiegFixture(), false, null);
+  it('brak nazwy przypadku → etykieta bez niej; identyfikatory nigdy w tekście opcji (karta #145)', () => {
+    const etyk = etykietaPrzebieguZwarciowego(przebiegFixture(), null);
     expect(etyk).toBe('Zwarcie trójfazowe (3F) · 2026-07-10 08:15');
     expect(etyk).not.toContain('case-1');
-  });
-
-  it('tryb ekspercki dopisuje identyfikatory przypadku i przebiegu', () => {
-    const etyk = etykietaPrzebieguZwarciowego(przebiegFixture(), true, null);
-    expect(etyk).toContain('case-1');
-    expect(etyk).toContain('sc-run-a');
+    expect(etyk).not.toContain('sc-run-a');
   });
 });
 
@@ -56,7 +59,7 @@ describe('zwarciePorownanieModel — tabela punktów (delty Z BACKENDU)', () => 
   // czerwone (wzorzec przypięcia kontraktu z L-13, karta KD-2).
 
   it('wspólny punkt: A, B i Δ z procentem (format PL — przecinek)', () => {
-    const wiersze = naWierszePunktowZwarciowych([
+    const wiersze = wierszePunktow([
       punktPorownania({
         target_id: 'B1',
         target_name: 'Szyna 1',
@@ -84,7 +87,7 @@ describe('zwarciePorownanieModel — tabela punktów (delty Z BACKENDU)', () => 
   it('KONTRAKT: Δ pochodzi z pola backendu, nie z odejmowania w UI', () => {
     // Wartości A i B dałyby Δ = +2,000 (+20,0%). Backend zwraca liczby
     // CELOWO inne — readout musi pokazać JE, nie własny rachunek.
-    const w = naWierszePunktowZwarciowych([
+    const w = wierszePunktow([
       punktPorownania({
         target_id: 'B1',
         target_name: 'Szyna 1',
@@ -99,7 +102,7 @@ describe('zwarciePorownanieModel — tabela punktów (delty Z BACKENDU)', () => 
   });
 
   it('punkt tylko w przebiegu A → sufiks „(tylko A)" i puste Δ', () => {
-    const wiersze = naWierszePunktowZwarciowych([
+    const wiersze = wierszePunktow([
       punktPorownania({
         target_id: 'ONLYA',
         target_name: 'Szyna A',
@@ -115,7 +118,7 @@ describe('zwarciePorownanieModel — tabela punktów (delty Z BACKENDU)', () => 
   });
 
   it('punkt tylko w przebiegu B → sufiks „(tylko B)"', () => {
-    const wiersze = naWierszePunktowZwarciowych([
+    const wiersze = wierszePunktow([
       punktPorownania({
         target_id: 'ONLYB',
         target_name: 'Szyna B',
@@ -129,7 +132,7 @@ describe('zwarciePorownanieModel — tabela punktów (delty Z BACKENDU)', () => 
   });
 
   it('pole nieobecne w odpowiedzi (brak wielkości) → komórka „—" bez delty', () => {
-    const wiersze = naWierszePunktowZwarciowych([
+    const wiersze = wierszePunktow([
       punktPorownania({ target_id: 'B1', ip_ka_b: 30 }),
     ]);
     expect(wiersze[0].ipA.wartosc).toBe(SZ.kreska);
@@ -138,14 +141,14 @@ describe('zwarciePorownanieModel — tabela punktów (delty Z BACKENDU)', () => 
 
   it('brak odniesienia (A = 0) → Δ bez procentu (pole procentowe pominięte)', () => {
     // Backend nie zwraca `delta_ikss_percent`, bo różnica względna nie istnieje.
-    const wiersze = naWierszePunktowZwarciowych([
+    const wiersze = wierszePunktow([
       punktPorownania({ target_id: 'B1', ikss_ka_a: 0, ikss_ka_b: 5, delta_ikss_ka: 5 }),
     ]);
     expect(wiersze[0].ikssD.wartosc).toBe('+5,000');
   });
 
   it('R3-C: komórki A/B niosą dowodRef strony (A:punkt / B:punkt), Δ bez dowodu', () => {
-    const w = naWierszePunktowZwarciowych([
+    const w = wierszePunktow([
       punktPorownania({
         target_id: 'B1',
         ikss_ka_a: 10,
@@ -166,7 +169,7 @@ describe('zwarciePorownanieModel — tabela punktów (delty Z BACKENDU)', () => 
   });
 
   it('R3-C: kreska (brak wartości / punkt bez odpowiednika) nie niesie dowodRef', () => {
-    const wiersze = naWierszePunktowZwarciowych([
+    const wiersze = wierszePunktow([
       punktPorownania({ target_id: 'B1', ikss_ka_a: 10, ikss_ka_b: 10, delta_ikss_ka: 0 }),
       punktPorownania({
         target_id: 'ONLYB',
@@ -183,7 +186,7 @@ describe('zwarciePorownanieModel — tabela punktów (delty Z BACKENDU)', () => 
   });
 
   it('kolejność wierszy pochodzi z odpowiedzi (backend sortuje deterministycznie)', () => {
-    const wiersze = naWierszePunktowZwarciowych([
+    const wiersze = wierszePunktow([
       punktPorownania({ target_id: 'A', target_name: 'A' }),
       punktPorownania({ target_id: 'M', target_name: 'M' }),
       punktPorownania({ target_id: 'Z', target_name: 'Z' }),
@@ -216,7 +219,7 @@ describe('zwarciePorownanieModel — tabela punktów (delty Z BACKENDU)', () => 
 
 describe('zwarciePorownanieModel — pełny bilans IEC 60909 (tryb ekspercki)', () => {
   it('oba przebiegi z bilansem → trójki A · B · Δ (format PL, jednostki wg kolumn)', () => {
-    const w = naWierszePunktowZwarciowych([
+    const w = wierszePunktow([
       punktPorownania({
         target_id: 'B1',
         rk_ohm_a: 0.3,
@@ -256,7 +259,7 @@ describe('zwarciePorownanieModel — pełny bilans IEC 60909 (tryb ekspercki)', 
   });
 
   it('starszy wynik bez pól bilansu → uczciwe kreski bez Δ (kontrakt addytywny)', () => {
-    const w = naWierszePunktowZwarciowych([
+    const w = wierszePunktow([
       punktPorownania({ target_id: 'B1', rk_ohm_b: 0.6 }),
     ])[0];
     expect(w.rkA.wartosc).toBe(SZ.kreska);

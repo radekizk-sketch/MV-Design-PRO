@@ -7,6 +7,9 @@ Verifies that the guard correctly:
 - Ignores codenames in comments
 - Ignores P0 (technical parameter)
 - Respects // no-codenames-ignore directive
+- Detects K30-style codenames (K<cyfry>, wielka litera) — FAB-F, 2026-09-05
+- Ignores male k<cyfry> (fizyka/metrologia) i cytowania kart K1..K13 w opisach
+  testow (frontend WYLACZNIE — backend nie ma tego wykluczenia)
 """
 
 import tempfile
@@ -18,8 +21,11 @@ import pytest
 from no_codenames_guard import (
     ALLOWED_TECHNICAL_TOKENS,
     CODENAME_PATTERN,
+    GATE_CITATION_TOKENS,
+    KARTA_PATTERN,
     find_codenames_in_strings,
     is_comment_line,
+    is_test_path,
     scan_backend_file,
     scan_file,
 )
@@ -55,6 +61,41 @@ class TestCodenamePattern:
     def test_allows_percentile_metrics(self):
         """Should treat percentile metrics as technical tokens, not codenames."""
         assert "p95" in ALLOWED_TECHNICAL_TOKENS
+
+
+class TestCodenamePatternK:
+    """Rozszerzenie `K<cyfry>` (karta FAB-F, 2026-09-05) — patrz docstring
+    modulu no_codenames_guard.py, sekcja "ROZSZERZENIE NA K<cyfry>"."""
+
+    def test_detects_k30(self):
+        """K30 to fabrykacja usunieta z SldTitleBlock.tsx v2 — musi byc zlapana."""
+        assert CODENAME_PATTERN.search("K30")
+
+    def test_detects_k30_with_suffix(self):
+        assert CODENAME_PATTERN.search("K30-38")
+
+    def test_ignores_lowercase_k(self):
+        """Male `k<cyfry>` NIE jest kryptonimem w tym repo (fizyka/metrologia:
+        I_k1/I_k2/I_k3, wspolczynniki IEC 60364-5-52, k=2 w niepewnosci
+        pomiaru) — w odroznieniu od `[pP]`, ktore lapie OBIE wielkosci liter,
+        `K` lapie WYLACZNIE wielka litere."""
+        assert CODENAME_PATTERN.search("k30") is None
+        assert CODENAME_PATTERN.search("k1") is None
+        assert CODENAME_PATTERN.search("I_k1") is None
+
+    def test_k0_nie_ma_wykluczenia(self):
+        """K0 NIE jest wykluczone (w przeciwienstwie do P0) — brak zmierzonego
+        odpowiednika technicznego w tym repo. Regresja: wczesniejsza wersja
+        wzorca dzielila lookahead "nie 0" miedzy [pP] i K, wiec K0 byl
+        wykluczony PRZY OKAZJI — zlapane przez ten test (KLASA §4:
+        deklaracja bez testu = falszywa pewnosc)."""
+        assert CODENAME_PATTERN.search("K0") is not None
+
+    def test_granica_slowa_z_podkresleniem_dziala_dla_k(self):
+        """Ta sama poprawka `\\b` -> znaki alfanumeryczne (2026-08-07, karta
+        PACK-ROZPLYW) musi dzialac symetrycznie dla K."""
+        assert CODENAME_PATTERN.search("K30_STEP_001")
+        assert CODENAME_PATTERN.search("krok_K30_opis")
 
 
 class TestFindCodenamesInStrings:
@@ -97,6 +138,47 @@ class TestFindCodenamesInStrings:
         line = "const stats = `mean=10ms median=9ms p95=14ms`;"
         matches = find_codenames_in_strings(line)
         assert matches == []
+
+
+class TestFindCodenamesInStringsK:
+    """Rozszerzenie K (FAB-F, 2026-09-05): detekcja + wykluczenie
+    GATE_CITATION_TOKENS (K1..K13), WYLACZNIE gdy `exempt_gate_citations=True`
+    (frontend). Domyslne wywolanie (backend) NIE ma tego wykluczenia."""
+
+    def test_finds_k30_bez_wykluczenia_bramek(self):
+        line = "describe('K30-38 revision', () => {"
+        assert "K30" in find_codenames_in_strings(line)
+        # to samo z parametrem wlaczonym — K30 NIE jest w GATE_CITATION_TOKENS
+        assert "K30" in find_codenames_in_strings(line, exempt_gate_citations=True)
+
+    def test_gate_citation_zlapane_bez_flagi(self):
+        """Domyslnie (backend) K1..K13 NIE sa wykluczone — surowy identyfikator
+        kroku w komunikacie `_pl` jest bledem niezaleznie od zakresu tokenu."""
+        line = 'message_pl="Uzupelnij dane (K3) przed dalszym krokiem"'
+        assert "K3" in find_codenames_in_strings(line)
+
+    def test_gate_citation_wykluczone_z_flaga(self):
+        """Z flaga wlaczona (frontend) K1..K13 w opisie testu SA wykluczone —
+        to udokumentowane cytowanie karty/bramki (np. K11-B), nie kryptonim."""
+        line = "describe('K11-B — nawigator kanwy', () => {"
+        assert find_codenames_in_strings(line, exempt_gate_citations=True) == []
+        # bez flagi (jak backend) to samo trafienie WCIAZ jest lapane
+        assert "K11" in find_codenames_in_strings(line)
+
+    def test_gate_citation_zakres_zamkniety_k14_nie_jest_wykluczone(self):
+        """Zbior GATE_CITATION_TOKENS jest ZAMKNIETY (K1..K13) — K14 i wyzej
+        (poza zmierzonym zakresem) nadal jest lapane nawet z flaga wlaczona."""
+        assert "K14" not in GATE_CITATION_TOKENS
+        line = "describe('K14 nieznana karta', () => {"
+        assert "K14" in find_codenames_in_strings(line, exempt_gate_citations=True)
+
+    def test_lowercase_k_nigdy_nie_jest_kryptonimem(self):
+        """Male k1/k2/k3 (notacja IEC 60909 dla prądu zwarciowego) nie są
+        łapane niezależnie od flagi — wzorzec sam w sobie jest case-sensitive
+        dla litery K (patrz TestCodenamePatternK)."""
+        line = "const symbol = `I_k1 oraz I_k2`;"
+        assert find_codenames_in_strings(line) == []
+        assert find_codenames_in_strings(line, exempt_gate_citations=True) == []
 
 
 class TestIsCommentLine:
@@ -186,6 +268,56 @@ const losses = "Straty jałowe P0";
 
         assert len(violations) == 0
 
+    def test_detects_k30_violation_in_string(self):
+        """K30 (sesja/faza programu, np. dawne `SldTitleBlock.DEFAULTS.revision`)
+        musi byc lapane przez pelny skan pliku frontendu."""
+        content = """
+const revision = "K30-38";
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".ts", delete=False) as f:
+            f.write(content)
+            f.flush()
+            path = Path(f.name)
+
+        violations = scan_file(path)
+        path.unlink()
+
+        assert len(violations) == 1
+        assert violations[0].match == "K30"
+
+    def test_ignores_gate_citation_in_test_description(self):
+        """Cytowanie karty/bramki (K11-B) w opisie testu jest wykluczone —
+        `scan_file` przekazuje `exempt_gate_citations=True` (patrz
+        `find_codenames_in_strings`)."""
+        content = """
+describe('K11-B — nawigator kanwy', () => {
+});
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".test.tsx", delete=False) as f:
+            f.write(content)
+            f.flush()
+            path = Path(f.name)
+
+        violations = scan_file(path)
+        path.unlink()
+
+        assert violations == []
+
+    def test_ignores_lowercase_k_physics_notation(self):
+        """I_k1/I_k2 (prad zwarciowy IEC 60909) nigdy nie sa naruszeniem."""
+        content = """
+const symbol = `I_k1 dla zwarcia 1-fazowego`;
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".ts", delete=False) as f:
+            f.write(content)
+            f.flush()
+            path = Path(f.name)
+
+        violations = scan_file(path)
+        path.unlink()
+
+        assert violations == []
+
 
 class TestSkanBackendu:
     """Skan backendowych pól tekstu użytkownika (`*_pl`) — zamknięcie KLASY.
@@ -213,6 +345,26 @@ class TestSkanBackendu:
         naruszenia = self._skan('    message_pl="P12 MVP: brak podstawy."\n')
         assert len(naruszenia) == 1
         assert naruszenia[0].match == "P12"
+
+    def test_kodename_k_w_komunikacie_uzytkownika_jest_naruszeniem(self):
+        """Regresja FAB-F: `message_pl="Uzupelnij nazwe projektu (K1) ..."`
+        w `network_wizard/step_controller.py` — surowy identyfikator kroku
+        kreatora przeciekajacy do tekstu PL czytanego przez projektanta."""
+        naruszenia = self._skan(
+            '    message_pl="Uzupelnij nazwe projektu (K1) przed dalszym krokiem"\n'
+        )
+        assert len(naruszenia) == 1
+        assert naruszenia[0].match == "K1"
+
+    def test_gate_citation_k_w_backendzie_nie_jest_wykluczona(self):
+        """Wykluczenie GATE_CITATION_TOKENS dziala WYLACZNIE dla skanu
+        frontendu (`scan_file`, `exempt_gate_citations=True`) — backend
+        (pole `_pl`) MUSI nadal lapac K1..K13, bo tam token jest zawsze
+        prozą czytaną przez projektanta, nigdy cytatem karty."""
+        for token in ("K1", "K5", "K11", "K13"):
+            naruszenia = self._skan(f'    message_pl="Krok ({token}) niekompletny"\n')
+            assert len(naruszenia) == 1, f"token {token} powinien byc zlapany w backendzie"
+            assert naruszenia[0].match == token
 
     def test_kodename_w_tytule_dowodu_jest_naruszeniem(self):
         naruszenia = self._skan('    title_pl="Dowód: rozpływ mocy (P32)"\n')
@@ -277,6 +429,25 @@ class TestKodenameObokPodkreslenia:
         assert self._trafienia("SCHNEIDER_P3M30") == []
         assert self._trafienia("SCHNEIDER_P3F30") == []
 
+    def test_kodename_k_z_podkresleniem_jest_lapany(self):
+        """Ta sama poprawka granicy słowa (2026-08-07) obowiazuje symetrycznie
+        dla `K` (FAB-F, 2026-09-05) — K30 poza GATE_CITATION_TOKENS, wiec
+        lapane niezaleznie od tego, czy wywolanie ma wlaczone wykluczenie."""
+        assert self._trafienia("K30_STEP_001")
+        assert self._trafienia("Rewizja K30_wynik")
+        assert self._trafienia("krok_K30_opis")
+
+    def test_kodename_k_goly_nadal_lapany(self):
+        assert self._trafienia("K30")
+        assert self._trafienia("K30 rozplyw")
+
+    def test_male_k_nadal_przepuszczane_obok_podkreslenia(self):
+        """`I_k1`, `sc_k1_max` — male k tuz przy podkresleniu tez nie jest
+        kryptonimem (wzorzec jest case-sensitive dla K, nie tylko dla
+        wyjatku "0")."""
+        assert self._trafienia("I_k1") == []
+        assert self._trafienia("sc_k1_max") == []
+
 
 class TestExcludedRelativeFilesFreshness:
     """Zapadka swiezosci EXCLUDED_RELATIVE_FILES (karta ZAPADKI-ALLOWLIST-RESZTA,
@@ -287,13 +458,24 @@ class TestExcludedRelativeFilesFreshness:
     def test_zielony_na_repo(self) -> None:
         assert guard_module.check_excluded_relative_files_freshness(guard_module.REPO_ROOT) == []
 
-    def test_wpis_ma_realne_trafienie_bez_wykluczenia(self) -> None:
-        """Potwierdzenie POMIARU: jedyny dzisiejszy wpis (trade name z 'P3' w
-        nazwie modelu falownika) faktycznie produkuje raw hit."""
-        for rel_path in guard_module.EXCLUDED_RELATIVE_FILES:
+    def test_kazdy_wpis_ma_realne_trafienie_bez_wykluczenia(self) -> None:
+        """KLASA, nie instancja: KAZDY wpis EXCLUDED_RELATIVE_FILES musi wskazywac
+        istniejacy plik, ktory bez wykluczenia produkuje >=1 trafienie scan_file()
+        (pomiar niezalezny od zapadki `check_excluded_relative_files_freshness`).
+
+        Pusty zbior przechodzi Z JAWNYM POWODEM: guard nie wyklucza zadnego pliku,
+        wiec nie istnieje wpis, ktory moglby byc sierota — to stan docelowy, nie
+        luka. Kazdy dopisany wpis wpada w te sama petle bez zmiany testu.
+        """
+        sieroty: list[str] = []
+        for rel_path in sorted(guard_module.EXCLUDED_RELATIVE_FILES):
             full_path = guard_module.REPO_ROOT / rel_path
-            assert full_path.is_file(), f"brak pliku {rel_path!r}"
-            assert scan_file(full_path), f"EXCLUDED_RELATIVE_FILES[{rel_path!r}] to sierota"
+            if not full_path.is_file():
+                sieroty.append(f"{rel_path!r}: brak pliku")
+            elif not scan_file(full_path):
+                sieroty.append(f"{rel_path!r}: plik nie produkuje zadnego trafienia")
+
+        assert sieroty == [], "EXCLUDED_RELATIVE_FILES ma sieroty:\n" + "\n".join(sieroty)
 
     def test_lapie_brakujacy_plik(self, monkeypatch) -> None:
         monkeypatch.setattr(
@@ -318,7 +500,9 @@ class TestExcludedRelativeFilesFreshness:
         plik = katalog / "czysty.ts"
         plik.write_text("export const MODEL = 'BEZ_KODENAME';\n", encoding="utf-8")
         monkeypatch.setattr(
-            guard_module, "EXCLUDED_RELATIVE_FILES", {"frontend/src/ui/katalog/czysty.ts"}
+            guard_module,
+            "EXCLUDED_RELATIVE_FILES",
+            {"frontend/src/ui/katalog/czysty.ts"},
         )
 
         naruszenia = guard_module.check_excluded_relative_files_freshness(tmp_path)
@@ -334,7 +518,9 @@ class TestExcludedRelativeFilesFreshness:
         plik = katalog / "z_kodename.ts"
         plik.write_text("export const MODEL = 'HD-P3-model';\n", encoding="utf-8")
         monkeypatch.setattr(
-            guard_module, "EXCLUDED_RELATIVE_FILES", {"frontend/src/ui/katalog/z_kodename.ts"}
+            guard_module,
+            "EXCLUDED_RELATIVE_FILES",
+            {"frontend/src/ui/katalog/z_kodename.ts"},
         )
 
         assert guard_module.check_excluded_relative_files_freshness(tmp_path) == []
@@ -351,3 +537,78 @@ class TestExcludedRelativeFilesFreshness:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestKartaPattern:
+    """Kryptonimy kart roboczych w tekście użytkownika (odbiór S-2, 2026-09-16).
+
+    Zmierzony przypadek: komunikat założenia k_sc w `enm/mapping.py` cytował
+    „(karta S-2 AUTORYTET, dawniej FAB-H)" i trafiał do listy założeń biegu
+    zwarciowego czytanej przez projektanta; wzorzec `[pP]\\d+`/`K\\d+` tego nie
+    obejmował. Iloczyn cech: {karta, karty, kartę, Karta} × {S-2, FAB-H, W3-J,
+    CV-3.3-B2} łapane; {karta katalogowa, karta producenta, Karta techniczna,
+    kartę katalogową} NIE łapane; wykrycie działa w polu `_pl` backendu i w
+    literale frontendu, a nie działa w komentarzu.
+    """
+
+    @pytest.mark.parametrize(
+        "tekst",
+        [
+            "ZAREJESTROWANE ZAŁOŻENIE (karta S-2 AUTORYTET): brak k_sc",
+            "patrz karty FAB-H",
+            "Karta W3-J wprowadza próg",
+            "zgodnie z kartą CV-3.3-B2",
+            "kartę HARNESS-RESZTA",
+            "w karcie S-2 opisano",
+        ],
+    )
+    def test_lapie_kryptonim_karty(self, tekst):
+        assert KARTA_PATTERN.search(tekst), tekst
+
+    @pytest.mark.parametrize(
+        "tekst",
+        [
+            "karta katalogowa przekształtnika nie niesie k_sc",
+            "Wpisz k_sc z karty producenta",
+            "Karta techniczna elementu",
+            "kartę katalogową uzupełnij",
+            "karta SN",
+            "Otwórz kartę ZK",
+            "Otwórz kartę PV",
+            "Otwórz kartę BESS",
+            "karty NADAL widoczne",
+        ],
+    )
+    def test_nie_lapie_tresci_inzynierskiej(self, tekst):
+        # Skrót inżynierski bez cyfry/myślnika po słowie „karta" (SN, ZK, PV, BESS,
+        # wyróżnienie NADAL) to treść, nie cytat karty — filtr KARTA_IDENT_MARKER.
+        assert find_codenames_in_strings(f'x = "{tekst}"') == [], tekst
+
+    def test_opis_testu_i_spec_poza_zakresem_wzorca_karty(self):
+        assert is_test_path(Path("frontend/src/ui/__tests__/a.test.tsx"))
+        assert is_test_path(Path("frontend/e2e/scena.spec.ts"))
+        assert not is_test_path(Path("frontend/src/ui2/wyniki/zwarcia/strings.ts"))
+        assert find_codenames_in_strings("it('karta W3-J: próg')", karta_scan=False) == []
+
+    def test_backend_pole_pl_z_kryptonimem_karty_jest_naruszeniem(self):
+        with tempfile.TemporaryDirectory() as katalog:
+            plik = Path(katalog) / "modul.py"
+            plik.write_text(
+                'message_pl = "ZAREJESTROWANE ZAŁOŻENIE (karta S-2 AUTORYTET): brak k_sc"\n',
+                encoding="utf-8",
+            )
+            naruszenia = scan_backend_file(plik)
+        assert [n.match for n in naruszenia] == ["karta S-2"]
+
+    def test_backend_komentarz_z_kryptonimem_karty_nie_jest_naruszeniem(self):
+        with tempfile.TemporaryDirectory() as katalog:
+            plik = Path(katalog) / "modul.py"
+            plik.write_text(
+                '# karta S-2 AUTORYTET: komentarz inżyniera\nmessage_pl = "brak k_sc"\n',
+                encoding="utf-8",
+            )
+            assert scan_backend_file(plik) == []
+
+    def test_frontend_literal_z_kryptonimem_karty_jest_naruszeniem(self):
+        assert find_codenames_in_strings("const t = 'patrz karty FAB-H';") == ["karty FAB-H"]
+        assert find_codenames_in_strings("const t = 'karta katalogowa';") == []

@@ -109,6 +109,8 @@ def _realny_enm() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": _GPZ_SOURCE_REF,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     enm = op(

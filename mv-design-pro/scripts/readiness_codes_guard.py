@@ -6,8 +6,7 @@ Ensures that all required readiness codes are defined and that each code has:
 - Polish message (message_pl)
 - Valid priority (1-5)
 - Valid level (BLOCKER / WARNING / INFO)
-- Fix action ID (for BLOCKERs)
-- Fix navigation (panel/tab/focus)
+- Fix navigation (panel/tab/focus) — the ONLY remediation path (see below)
 
 Also ensures no duplicate codes and deterministic priority ordering.
 
@@ -20,14 +19,19 @@ sprawdzal regexem wylacznie obecnosc kluczy i dlugosc message_pl):
 * poziom z katalogu       -> `waliduj_rejestr`: instancja ReadinessLevel
                              (dataclass NIE waliduje pol, wiec literal tekstowy
                              przeszedlby bez tej kontroli),
-* akcja naprawcza BLOCKER -> `waliduj_rejestr`: kazdy BLOCKER ma SCIEZKE
-                             naprawcza: fix_action_id LUB fix_navigation.
-                             Metakod (np. analysis.blocked_by_readiness, ktorego
-                             naprawa JEST usuniecie blokad zrodlowych) niesie
-                             sama nawigacje — to poprawne; BLOCKER bez zadnej
-                             sciezki zostawia projektanta z golym kodem,
-* nawigacja panel/tab/...  -> `waliduj_rejestr`: fix_navigation, gdy obecna,
-                             ma klucz "panel" i wylacznie niepuste wartosci,
+* nawigacja OBOWIAZKOWA   -> `waliduj_rejestr`: KAZDY kod (nie tylko BLOCKER) ma
+                             niepusty `fix_navigation` z kluczem "panel", ktorego
+                             wartosc nalezy do ZAMKNIETEGO zbioru `ZNANE_PANELE`
+                             (spisanego z rejestru na dzien kasacji fantomowego
+                             identyfikatora akcji naprawczej bez zadnego
+                             wykonawcy w systemie — karta FIX-ACTION-KASACJA,
+                             `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-338 —
+                             usunietego z `ReadinessCodeSpec`). `fix_navigation`
+                             jest jedyna REALNA sciezka naprawcza, wiec ten
+                             guard wymaga jej od kazdego kodu, nie tylko od
+                             BLOCKEROW,
+* nawigacja panel/tab/...  -> `waliduj_rejestr`: fix_navigation ma wylacznie
+                             niepuste wartosci pod kazdym kluczem,
 * brak duplikatow         -> `duplikaty_kluczy_zrodla` (AST literalu slownika:
                              zduplikowany klucz w zrodle NADPISUJE cicho
                              wczesniejszy wpis, wiec sprawdzenie samych kluczy
@@ -106,6 +110,26 @@ REQUIRED_CODES = {
 
 MIN_CODES = 24
 MIN_MESSAGE_LEN = 5
+
+# Zamkniety zbior wartosci `fix_navigation["panel"]` wystepujacych w rejestrze na dzien
+# kasacji fantomowego identyfikatora akcji naprawczej (karta FIX-ACTION-KASACJA,
+# `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-338; spisany ze WSZYSTKICH 108 kodow tamtego
+# dnia). Nowy panel to ZMIANA KONTRAKTU nawigacji naprawczej, nie literowka guarda —
+# dopisz go tutaj SWIADOMIE, gdy rejestr faktycznie dostanie kod z nowym panelem.
+ZNANE_PANELE = frozenset(
+    {
+        "analizy",
+        "case_manager",
+        "catalog_mapper",
+        "gotowosc",
+        "inspector",
+        "katalog",
+        "projekt",
+        "readiness",
+        "sld",
+        "wizard",
+    }
+)
 
 
 def modul_rejestru() -> ModuleType:
@@ -186,22 +210,25 @@ def waliduj_rejestr(codes: dict[str, object]) -> list[str]:
         if not isinstance(poziom, ReadinessLevel):
             naruszenia.append(f"'{klucz}': level is not a ReadinessLevel: {poziom!r}")
 
+        # `fix_navigation` jest OBOWIAZKOWA dla KAZDEGO kodu (nie tylko BLOCKER) — jest
+        # jedyna REALNA sciezka naprawcza w rejestrze (karta FIX-ACTION-KASACJA usunela
+        # fantomowy identyfikator akcji naprawczej, ktory nie mial zadnego wykonawcy).
         nawigacja = getattr(spec, "fix_navigation", None)
-        if nawigacja is not None:
-            if not isinstance(nawigacja, dict) or not nawigacja:
-                naruszenia.append(f"'{klucz}': fix_navigation must be a non-empty dict")
-            elif "panel" not in nawigacja:
-                naruszenia.append(f"'{klucz}': fix_navigation lacks the 'panel' key")
-            elif any(not isinstance(w, str) or not w.strip() for w in nawigacja.values()):
-                naruszenia.append(f"'{klucz}': fix_navigation carries an empty value")
-
-        if isinstance(poziom, ReadinessLevel) and poziom is ReadinessLevel.BLOCKER:
-            akcja = getattr(spec, "fix_action_id", None)
-            if not akcja and nawigacja is None:
-                naruszenia.append(
-                    f"'{klucz}': BLOCKER without any remediation path "
-                    "(neither fix_action_id nor fix_navigation)"
-                )
+        if not isinstance(nawigacja, dict) or not nawigacja:
+            naruszenia.append(
+                f"'{klucz}': fix_navigation is mandatory (non-empty dict) for every code — "
+                "it is the ONLY remediation path in this registry"
+            )
+        elif "panel" not in nawigacja:
+            naruszenia.append(f"'{klucz}': fix_navigation lacks the 'panel' key")
+        elif any(not isinstance(w, str) or not w.strip() for w in nawigacja.values()):
+            naruszenia.append(f"'{klucz}': fix_navigation carries an empty value")
+        elif nawigacja["panel"] not in ZNANE_PANELE:
+            naruszenia.append(
+                f"'{klucz}': fix_navigation.panel '{nawigacja['panel']}' is outside the "
+                f"closed panel set {sorted(ZNANE_PANELE)} — add it deliberately if this is "
+                "a genuine new navigation target"
+            )
     return naruszenia
 
 

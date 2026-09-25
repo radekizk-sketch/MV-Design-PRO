@@ -15,16 +15,19 @@
  *  (c) zamknięcie panelu przywraca kanwę (legenda znika z DOM).
  *
  * Sieć testowa: TA SAMA sekwencja domain-ops co `critical-run-flow.spec.ts`
- * (źródło SN → magistrala → stacja SN/nN z transformatorem, BEZ kroku
- * dodania odbioru/Load) + pole SN roli `'TR'` (karta BUGI-PRODUKTU-E2E,
- * patrz komentarz przy `sn_fields` niżej — bez niego transformator NIE jest
- * NIGDZIE narysowany, mimo że poprawnie istnieje w modelu). Sieć bez kroku
- * odbioru NIE ma agregatu 0,4 kV: odbiór „potrzeb własnych" stacji powstaje
- * wyłącznie z jawnego bloku `station_auxiliary` operacji stacyjnej
- * (`_materialize_station_auxiliary_load`). Wcześniejsza pozytywna asercja
- * `loadArrow` opierała się na fantomowym odbiorze 30 kW, który odczyt modelu
- * materializował z pól nN — tę fabrykację usunięto, więc bramka (b) sprawdza
- * parę: brak odbioru ⇒ brak wpisu, jawne potrzeby własne ⇒ wpis.
+ * (źródło SN → magistrala → stacja SN/nN z transformatorem) + pole SN roli
+ * `'TR'` (karta BUGI-PRODUKTU-E2E, patrz komentarz przy `sn_fields` niżej —
+ * bez niego transformator NIE jest NIGDZIE narysowany, mimo że poprawnie
+ * istnieje w modelu). Odbiór „potrzeb własnych" stacji powstaje WYŁĄCZNIE z
+ * jawnego bloku `station_auxiliary` operacji stacyjnej
+ * (`_materialize_station_auxiliary_load`) — dokładnie to, co realny „Kreator
+ * stacji" (`ui2/kreatory/stacja/stacjaModel.ts::blokPotrzebWlasnych`) wysyła
+ * TYLKO gdy projektant jawnie wpisze moc (`DEFAULT_FORM_DATA.
+ * station_auxiliary_kw = ''` — puste pole = brak odbioru, G-STK-3). Bramka (b)
+ * sprawdza więc PARĘ (scalone z gałęzi main): brak bloku ⇒ brak wpisu
+ * `loadArrow`, jawne potrzeby własne (b2) ⇒ wpis. Wcześniejsze wersje tej
+ * karty zakładały raz odbiór bezwarunkowy, raz jego brak — para asercji
+ * przypina oba kierunki naraz, więc żadne z tych założeń nie wróci po cichu.
  *
  * Uruchomienie (WYŁĄCZNIE tak — patrz CLAUDE.md/karta):
  *   cd mv-design-pro/frontend && node ./scripts/playwright-run.mjs \
@@ -132,9 +135,11 @@ async function createProjectAndCase(
  * Sieć BEZ DER: źródło SN → magistrala (1 odcinek) → stacja SN/nN z
  * transformatorem. Żaden krok NIE dodaje generatora/PV/BESS — symbole DER
  * (np. `derPv`) nie mają prawa pojawić się na scenie ani w legendzie.
- * `loadArrow` ("Odbiór (zagregowany)") NA ODWRÓT: JEST obecny — backend
- * materializuje "potrzeby własne" stacji (mały odbiór nN) bezwarunkowo przy
- * każdym tworzeniu transformatora, żaden krok nie musi dodawać `Load` jawnie.
+ * `loadArrow` ("Odbiór (zagregowany)") zależy od parametru `potrzebyWlasne`:
+ * bez niego sieć nie ma ŻADNEGO odbioru (backend nie tworzy potrzeb własnych
+ * bez jawnego bloku `station_auxiliary`), z nim — `insert_station_on_segment_sn`
+ * niesie blok P>0 tą samą drogą, którą wysyła „Kreator stacji"
+ * (`stacjaModel.ts::blokPotrzebWlasnych`, G-STK-3).
  *
  * POLE 'TR' JEST WYMAGANE (karta BUGI-PRODUKTU-E2E, diagnoza root-cause).
  * Backend (`domain_operations.py::insert_station_on_segment_sn`) ZAWSZE łączy
@@ -169,6 +174,8 @@ async function buildStationNetworkWithoutDer(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   const op = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {

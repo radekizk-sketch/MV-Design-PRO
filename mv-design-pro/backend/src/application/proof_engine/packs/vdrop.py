@@ -82,6 +82,8 @@ class VDROPPackSegment:
     """Pojedynczy odcinek (linia/kabel) dla pakietu VDROP."""
 
     segment_id: str
+    #: Nazwa odcinka z modelu — tytuły kroków dowodu (karta #144).
+    nazwa_odcinka: str
     from_bus_id: str
     to_bus_id: str
     r_ohm_per_km: float
@@ -101,6 +103,8 @@ class VDROPPackTransformerBoundary:
     """
 
     segment_id: str
+    #: Nazwa transformatora z modelu — tytuł kroku dowodu (karta #144).
+    nazwa_odcinka: str
     from_bus_id: str
     to_bus_id: str
     u_primary_kv: float
@@ -127,6 +131,9 @@ class VDROPPackInput:
     solver_version: str
     segments: list[VDROPPackSegment | VDROPPackTransformerBoundary]
     u_source_kv: float
+    #: Nazwy szyn źródłowej i docelowej z modelu — nagłówek dowodu (karta #144).
+    source_bus_name: str
+    target_bus_name: str
 
     @classmethod
     def z_lancucha_biegu(
@@ -165,6 +172,7 @@ class VDROPPackInput:
                 segments.append(
                     VDROPPackTransformerBoundary(
                         segment_id=krok.segment_id,
+                        nazwa_odcinka=krok.nazwa,
                         from_bus_id=krok.from_bus,
                         to_bus_id=krok.to_bus,
                         u_primary_kv=krok.u_from_kv,
@@ -182,6 +190,7 @@ class VDROPPackInput:
             segments.append(
                 VDROPPackSegment(
                     segment_id=fizyka.id_galezi,
+                    nazwa_odcinka=fizyka.nazwa,
                     from_bus_id=fizyka.od_szyny,
                     to_bus_id=fizyka.do_szyny,
                     r_ohm_per_km=fizyka.r_ohm_per_km,
@@ -201,6 +210,8 @@ class VDROPPackInput:
             solver_version=solver_version,
             segments=segments,
             u_source_kv=lancuch.u_source_kv,
+            source_bus_name=lancuch.source_nazwa,
+            target_bus_name=lancuch.target_nazwa,
         )
 
     def to_generator_input(self) -> VDROPInput:
@@ -216,6 +227,7 @@ class VDROPPackInput:
                 (
                     VDROPTransformerBoundaryInput(
                         segment_id=s.segment_id,
+                        nazwa_odcinka=s.nazwa_odcinka,
                         from_bus_id=s.from_bus_id,
                         to_bus_id=s.to_bus_id,
                         u_primary_kv=s.u_primary_kv,
@@ -224,6 +236,7 @@ class VDROPPackInput:
                     if isinstance(s, VDROPPackTransformerBoundary)
                     else VDROPSegmentInput(
                         segment_id=s.segment_id,
+                        nazwa_odcinka=s.nazwa_odcinka,
                         from_bus_id=s.from_bus_id,
                         to_bus_id=s.to_bus_id,
                         r_ohm_per_km=s.r_ohm_per_km,
@@ -237,6 +250,8 @@ class VDROPPackInput:
                 for s in self.segments
             ],
             u_source_kv=self.u_source_kv,
+            source_bus_name=self.source_bus_name,
+            target_bus_name=self.target_bus_name,
         )
 
 

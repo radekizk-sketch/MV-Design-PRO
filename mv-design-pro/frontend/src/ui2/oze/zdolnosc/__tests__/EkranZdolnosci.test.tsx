@@ -152,17 +152,20 @@ describe('EkranZdolnosci — tryb ekspercki (identyfikatory)', () => {
     render(<EkranZdolnosci trybZaawansowania="basic" />);
     fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
     await screen.findByTestId('mvd-zdol-wynik');
-    expect(screen.queryByTestId('mvd-zdol-eksp')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-zdol-informacje-audytowe')).not.toBeInTheDocument();
   });
 
-  it('tryb ekspercki odsłania identyfikator wejścia i przebiegu', async () => {
+  it('tryb ekspercki: identyfikator wejścia i przebiegu wyłącznie w „Informacjach audytowych"', async () => {
     pobierz.mockResolvedValue(widokZdolnosciFixture());
     render(<EkranZdolnosci trybZaawansowania="expert" />);
     fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
     await screen.findByTestId('mvd-zdol-wynik');
-    const eksp = screen.getByTestId('mvd-zdol-eksp');
-    expect(eksp).toHaveTextContent('a1b2c3d4e5f6');
-    expect(eksp).toHaveTextContent('run-lf-1');
+    // Karta #145: zwinięte — pierwszy plan bez identyfikatorów.
+    expect(screen.getByTestId('mvd-zdol-wynik')).not.toHaveTextContent('a1b2c3d4e5f6');
+    fireEvent.click(screen.getByTestId('mvd-zdol-informacje-audytowe-przelacz'));
+    const lista = screen.getByTestId('mvd-zdol-informacje-audytowe-lista');
+    expect(lista).toHaveTextContent('a1b2c3d4e5f6');
+    expect(lista).toHaveTextContent('run-lf-1');
   });
 });
 

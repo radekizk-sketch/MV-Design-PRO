@@ -1,25 +1,29 @@
 /*
  * Karta wybranego modułu (pulpit OZE, karta P47 §2). Sekcje: (1) dane modułu
- * read-only, (2) zgodność NC RfG, (3) praca magazynu (tylko BESS z danymi),
- * (4) zdolność punktu + jakość energii (jawny stan „analiza niewpięta"),
- * (5) dokumenty (callback nawigacji z propsów). Zero fizyki, zero ocen własnych.
+ * read-only, (2) zgodność NC RfG (wynik modułu i rekordy wymagań z oceny zatwierdzonego
+ * modelu — kontrakt V2),
+ * (3) praca magazynu (tylko BESS z danymi), (4) zdolność punktu + adekwatność mocy
+ * biernej, (5) dokumenty (callback nawigacji z propsów). Zero fizyki, zero ocen własnych.
  */
 
-import type { NcRfgRunResult } from '../../../ui/ncrfg-tests/api';
 import type { StationDerConnection } from '../../../ui/network-build/station-der';
 import { formatMoc, formatNapiecie } from '../macierz/strings';
-import type { OpisModulu } from '../macierz';
+import type { OpisModuluModelu } from '../macierz';
+import { InformacjeAudytowe } from '../../wyniki/wzorzec';
 import { SekcjaAdekwatnosciQ } from './SekcjaAdekwatnosciQ';
 import { SekcjaMagazynu } from './SekcjaMagazynu';
 import { SekcjaSilySieci } from './SekcjaSilySieci';
 import { SekcjaZgodnosci } from './SekcjaZgodnosci';
-import { daneModulu, zgodnoscModulu } from './pulpitModel';
+import { daneModulu, type PozycjaModulu } from './pulpitModel';
 import { ETYKIETY_STRONY, PULPIT_STRINGS } from './strings';
 
 export interface KartaModuluProps {
-  readonly opis: OpisModulu;
+  readonly opis: OpisModuluModelu;
   readonly der: StationDerConnection;
-  readonly wynik: NcRfgRunResult | null;
+  /** Pozycja modułu (wynik modułu i rekordy wymagań z oceny zatwierdzonego modelu). */
+  readonly pozycja: PozycjaModulu;
+  /** Czy ocena modelu jest wczytana (stan zerowy sekcji zgodności). */
+  readonly ocenaWczytana: boolean;
   /** Tryb ekspercki odsłania identyfikatory katalogowe. */
   readonly trybEkspercki: boolean;
   /** Nawigacja do dokumentacji modułu (implementacja poza tą kartą). */
@@ -31,13 +35,13 @@ export interface KartaModuluProps {
 export function KartaModulu({
   opis,
   der,
-  wynik,
+  pozycja,
+  ocenaWczytana,
   trybEkspercki,
   onNawiguj,
   wyroznionyModul = null,
 }: KartaModuluProps): JSX.Element {
   const dane = daneModulu(opis, der);
-  const zgodnosc = zgodnoscModulu(opis, wynik);
 
   return (
     <div className="mvd-oze-pulpit-karta" data-testid="mvd-oze-pulpit-karta">
@@ -70,15 +74,6 @@ export function KartaModulu({
             <p style={{ margin: '4px 0 0' }} className="mvd-oze-panel-etyk">
               {PULPIT_STRINGS.daneBrakOdnosnikow}
             </p>
-          ) : trybEkspercki ? (
-            <ul className="mvd-oze-lista">
-              {dane.odnosniki.map((o) => (
-                <li key={o.wartosc} className="mvd-oze-metryka">
-                  <span>{o.etykieta}</span>
-                  <span className="mvd-oze-num">{o.wartosc}</span>
-                </li>
-              ))}
-            </ul>
           ) : (
             <ul className="mvd-oze-lista">
               {dane.odnosniki.map((o) => (
@@ -86,11 +81,18 @@ export function KartaModulu({
               ))}
             </ul>
           )}
+          {/* Karta #145: identyfikatory pozycji katalogowych wyłącznie w „Informacjach
+              audytowych" (tryb ekspercki, zwinięte) — pierwszy plan nazywa rodzaj odnośnika. */}
+          <InformacjeAudytowe
+            trybEkspercki={trybEkspercki}
+            testid="mvd-oze-pulpit-odnosniki-audyt"
+            wiersze={dane.odnosniki.map((o) => ({ etykieta: o.etykieta, wartosc: o.wartosc }))}
+          />
         </div>
       </section>
 
       {/* Sekcja 2 — zgodność NC RfG. */}
-      <SekcjaZgodnosci zgodnosc={zgodnosc} />
+      <SekcjaZgodnosci pozycja={pozycja} ocenaWczytana={ocenaWczytana} />
 
       {/* Sekcja 3 — praca magazynu (BESS z katalogu konwerterów). */}
       <SekcjaMagazynu der={der} trybEkspercki={trybEkspercki} />

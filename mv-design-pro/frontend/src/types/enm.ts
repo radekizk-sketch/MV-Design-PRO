@@ -5,12 +5,27 @@
  * Discriminated union on Branch.type.
  */
 
+import type {
+  RolaUziemnika,
+  TypPunktuNeutralnego,
+  UkladSieciNn,
+  UziemienieEkranuKabla,
+} from './uziemienie';
+import type {
+  DanaPrzyjeta,
+  FieldQuality,
+  PodstawaWymagania,
+  Wielkosc,
+} from '../ui2/wyniki/wzorzec/werdykt';
+
 // ---------------------------------------------------------------------------
 // Supporting types
 // ---------------------------------------------------------------------------
 
+/** Sposób pracy punktu neutralnego — JEDYNY typ (W5-A): nośniki `Transformer.hv_neutral`/
+ *  `lv_neutral` i `Source.neutral_grounding`. `Bus.grounding` skasowane (migracja backendu). */
 export interface GroundingConfig {
-  type: 'isolated' | 'petersen_coil' | 'directly_grounded' | 'resistor_grounded';
+  type: TypPunktuNeutralnego;
   r_ohm?: number | null;
   x_ohm?: number | null;
 }
@@ -40,9 +55,36 @@ export interface MeasurementRating {
   burden_va?: number | null;
 }
 
+/** Karta W3-B (mapa 4 #3): pojedyncze obciążenie obwodu wtórnego CT/VT —
+ *  kształt 1:1 z `api/equipment_checks.py::ObciazenieAparatu` i
+ *  `enm/models.py::ObciazenieAparatu`. */
+export interface ObciazenieAparatuObwoduWtornego {
+  nazwa: string;
+  moc_va: number;
+}
+
+/** Karta W3-B (mapa 4 #3): obwód wtórny przekładnika CT/VT — koniec liczenia
+ *  „na kartce" w ekranie bilansu. Dana PROJEKTOWA (kreator stacji / ekran
+ *  bilansu), BEZ wartości domyślnych; `null`/brak pole = obwód niezapisany
+ *  (kryterium nasycenia/spadku napięcia kończy się kodem gotowości, nie
+ *  wartością zastępczą). */
+export interface ObwodWtorny {
+  dlugosc_przewodu_m?: number | null;
+  przekroj_przewodu_mm2?: number | null;
+  obciazenia_aparatow: ObciazenieAparatuObwoduWtornego[];
+  moc_stykow_va?: number | null;
+}
+
 export interface ProtectionSetting {
+  /**
+   * FAB-F (2026-09-05): lustro pomijało 4 literały D10 (funkcje ochrony od
+   * pracy wyspowej / Loss of Mains — dodane addytywnie w backendzie, patrz
+   * `enm/models.py::ProtectionSetting.function_type`), niewidoczne dla
+   * guarda parytetu, bo sprawdzał obecność POLA, nie zbiór wartości unii.
+   */
   function_type: 'overcurrent_50' | 'overcurrent_51' | 'earth_fault_50N'
-    | 'earth_fault_51N' | 'directional_67' | 'directional_67N';
+    | 'earth_fault_51N' | 'directional_67' | 'directional_67N'
+    | 'rocof_81R' | 'vector_shift_78' | 'underfrequency_81U' | 'overfrequency_81O';
   threshold_a?: number | null;
   time_delay_s?: number | null;
   curve_type?: 'DT' | 'IEC_SI' | 'IEC_VI' | 'IEC_EI' | 'IEC_LI' | null;
@@ -63,6 +105,17 @@ export interface ProtectionSetting {
 // ---------------------------------------------------------------------------
 
 export type ParameterSource = 'CATALOG' | 'OVERRIDE';
+/**
+ * FAB-F (2026-09-05): `parameter_source` NIE ma jednej unii w backendzie —
+ * `BranchBase`, `Source` i `ShuntCapacitor` (enm/models.py) dopuszczają
+ * dodatkowo `MANUAL_EQUIVALENT` ("zastępczy ręczny" — wartość wpisana
+ * ręcznie jako odpowiednik danej katalogowej, bez `catalog_ref`); pozostałe
+ * encje (`Transformer`, `Load`, `Generator`, `Measurement`,
+ * `ProtectionAssignment`) mają WYŁĄCZNIE `CATALOG`/`OVERRIDE` — parytet
+ * literałów unii jest per-pole, nie globalny (patrz
+ * `scripts/enm_contract_parity_guard.py`, sekcja literałów).
+ */
+export type ParameterSourceWithManualEquivalent = ParameterSource | 'MANUAL_EQUIVALENT';
 export type CatalogSourceMode = 'KATALOG' | 'MIGRACJA' | 'EKSPERCKI_RECZNY';
 
 export interface ParameterOverride {
@@ -112,15 +165,6 @@ export interface ENMHeader {
   defaults: ENMDefaults;
   /** Blok addytywny (backend `set_connection_conditions`); brak = nie podano. */
   connection_conditions?: ConnectionConditions | null;
-  /**
-   * V12K-230: hashe TOZSAMOSCI modelu i przypadku. Bez nich front nie ma typowanego
-   * dostepu do danych, ktore rozstrzygaja, czy wynik jest AKTUALNY wobec modelu.
-   */
-  input_hash?: string | null;
-  semantic_hash?: string | null;
-  case_hash?: string | null;
-  variant_hash?: string | null;
-  switching_snapshot_hash?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -132,7 +176,6 @@ export interface Bus extends ENMElement {
   frequency_hz?: number | null;
   phase_system: '3ph';
   zone?: string | null;
-  grounding?: GroundingConfig | null;
   nominal_limits?: BusLimits | null;
 }
 
@@ -146,7 +189,7 @@ export interface BranchBase extends ENMElement {
   status: 'closed' | 'open';
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
-  parameter_source?: ParameterSource | null;
+  parameter_source?: ParameterSourceWithManualEquivalent | null;
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
@@ -190,6 +233,8 @@ export interface OverheadLine extends BranchBase {
 
 export interface Cable extends BranchBase {
   type: 'cable';
+  /** W5-A: układ uziemienia ekranu (deklaracja projektanta); brak = układ odniesienia katalogu. */
+  screen_bonding?: UziemienieEkranuKabla | null;
   length_km: number;
   r_ohm_per_km: number;
   x_ohm_per_km: number;
@@ -203,7 +248,7 @@ export interface Cable extends BranchBase {
   return_conductor_cross_section_mm2?: number | null;
   return_conductor_material?: string | null;
   return_conductor_r_ohm_per_km_20c?: number | null;
-  /** Reaktancja jednostkowa przewodu powrotnego (Ω/km) — lustro `Cable.return_conductor_x_ohm_per_km`. */
+  /** Reaktancja zyly powrotnej PE/PEN (karta P0.6 nN); brak = brak danej, nie zero. */
   return_conductor_x_ohm_per_km?: number | null;
   return_conductor_jth_1s_a_per_mm2?: number | null;
   return_conductor_ith_1s_a?: number | null;
@@ -321,6 +366,8 @@ export interface Transformer extends ENMElement {
   vector_group?: string | null;
   hv_neutral?: GroundingConfig | null;
   lv_neutral?: GroundingConfig | null;
+  /** W5-A: układ sieci nN zasilanej z tego transformatora (jedyny nośnik; brak = odmowa E063). */
+  lv_earthing_system?: UkladSieciNn | null;
   tap_position?: number | null;
   tap_min?: number | null;
   tap_max?: number | null;
@@ -355,11 +402,19 @@ export interface Source extends ENMElement {
   source_side?: 'SN' | 'HV_110' | null;
   substation_ref?: string | null;
   gpz_section_id?: string | null;
+  /** W5-A: opis punktu neutralnego sieci SN zasilanej z równoważnika (fizyka czyta r0/x0 | z0/z1). */
+  neutral_grounding?: GroundingConfig | null;
   sk3_mva?: number | null;
   ik3_ka?: number | null;
   r_ohm?: number | null;
   x_ohm?: number | null;
   rx_ratio?: number | null;
+  /** Dane scenariusza MIN (IEC 60909-0 eq. 6 z c_min) — CV-4.3 K7; brak = bieg MIN z danych MAX z jawnym założeniem. */
+  sk3_min_mva?: number | null;
+  ik3_min_ka?: number | null;
+  rx_ratio_min?: number | null;
+  /** Napięcie zadane szyny bilansującej [p.u. Un szyny]; brak = 1,0 (znamionowe). */
+  u_set_pu?: number | null;
   r0_ohm?: number | null;
   x0_ohm?: number | null;
   z0_z1_ratio?: number | null;
@@ -367,7 +422,7 @@ export interface Source extends ENMElement {
   c_min?: number | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
-  parameter_source?: ParameterSource | null;
+  parameter_source?: ParameterSourceWithManualEquivalent | null;
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
@@ -377,11 +432,20 @@ export interface Source extends ENMElement {
 // Load
 // ---------------------------------------------------------------------------
 
+/**
+ * Fazy przyłączenia odbioru (W5-D, `enm/models.py::PhaseSet`): `ABC` = trójfazowy
+ * symetryczny, `A`/`B`/`C` = jednofazowy faza–N, `AB`/`BC`/`CA` = międzyfazowy.
+ * Brak pola (`null`/`undefined`) = trójfazowy symetryczny — dokładnie jak przed
+ * W5-D (pole addytywne poza hashem ENM, gdy puste).
+ */
+export type PhaseSet = 'ABC' | 'A' | 'B' | 'C' | 'AB' | 'BC' | 'CA';
+
 export interface Load extends ENMElement {
   bus_ref: string;
   p_mw: number;
   q_mvar: number;
   model: 'pq' | 'zip';
+  phases?: PhaseSet | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
   quantity?: number | null;
@@ -390,6 +454,192 @@ export interface Load extends ENMElement {
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
 }
+
+// ---------------------------------------------------------------------------
+// Parametry dynamiczne zrodel (karta W6-1) — lustro 1:1 `enm/dynamika_modele.py`.
+// Kontrakt wejsciowy DAE (Generator.dynamika); rdzen solvera ISTNIEJE od karty
+// W6-2 (`network_model/solvers/dynamika/**`), ale nie jest jeszcze wpiety w tor
+// biegu — to zakres karty W6-3. Zero fizyki tutaj. Unia dyskryminowana po
+// `rodzina`.
+// ---------------------------------------------------------------------------
+
+export type ZrodloProweniencjiDynamiki =
+  | 'karta_producenta'
+  | 'certyfikat_jednostki'
+  | 'profil_typowy_normy'
+  | 'deklaracja_uzytkownika';
+
+/** Pochodzenie bloku parametrow dynamicznych (SS0 p.2) — WYMAGANA na kazdym bloku rodziny. */
+export interface ProweniencjaParametrow {
+  zrodlo: ZrodloProweniencjiDynamiki;
+  odniesienie: string;
+  data?: string | null;
+}
+
+/** AVR (SEXS / IEEE ST1A / IEEE AC1A) — IEEE 421.5. */
+export interface RegulatorNapiecia {
+  typ: 'SEXS' | 'IEEE_ST1A' | 'IEEE_AC1A';
+  ka: number;
+  ta_s: number;
+  tb_s: number;
+  tc_s: number;
+  efd_min_pu: number;
+  efd_max_pu: number;
+}
+
+/** Turbina/regulator obrotow (TGOV1 / HYGOV). */
+export interface RegulatorObrotow {
+  typ: 'TGOV1' | 'HYGOV';
+  r_pu: number;
+  t1_s: number;
+  t2_s: number;
+  t3_s: number;
+  p_max_pu: number;
+  p_min_pu: number;
+}
+
+/** PSS1A — stabilizator systemowy tlumienia oscylacji. */
+export interface StabilizatorSystemowy {
+  typ: 'PSS1A';
+  ks: number;
+  tw_s: number;
+  t1_s: number;
+  t2_s: number;
+  t3_s: number;
+  t4_s: number;
+  limit_min_pu: number;
+  limit_max_pu: number;
+}
+
+/** Model maszyny synchronicznej 6. rzedu (Xd/X'd/X''d, Xq/X'q/X''q) — SS0 p.1.4. */
+export interface MaszynaSynchroniczna {
+  rodzina: 'synchroniczna';
+  proweniencja: ProweniencjaParametrow;
+  s_n_mva: number;
+  h_s: number;
+  d_pu: number;
+  xd_pu: number;
+  xq_pu: number;
+  xd_prim_pu: number;
+  xq_prim_pu: number;
+  xd_bis_pu: number;
+  xq_bis_pu: number;
+  td0_prim_s: number;
+  tq0_prim_s: number;
+  td0_bis_s: number;
+  tq0_bis_s: number;
+  xl_pu: number;
+  nasycenie_s10: number;
+  nasycenie_s12: number;
+  ra_pu: number;
+  wzbudzenie?: RegulatorNapiecia | null;
+  turbina?: RegulatorObrotow | null;
+  stabilizator?: StabilizatorSystemowy | null;
+}
+
+/** Priorytet skladowej ogranicznika pradu — WYMAGANY, bez domyslki (A-9). */
+export type PriorytetOgranicznika = 'bierna' | 'czynna';
+
+/** Przeksztaltnik grid-following: PLL, regulator pradu, ogranicznik FRT. */
+export interface PrzeksztaltnikGFL {
+  rodzina: 'przeksztaltnikowa_gfl';
+  proweniencja: ProweniencjaParametrow;
+  s_n_mva: number;
+  i_max_pu: number;
+  priorytet_ogranicznika: PriorytetOgranicznika;
+  pll_kp: number;
+  pll_ki: number;
+  reg_pradu_kp: number;
+  reg_pradu_ki: number;
+  k_frt: number;
+  prog_frt_pu: number;
+  tp_s: number;
+  tiq_s: number;
+  p_odbudowa_pu_na_s: number;
+  p_odbudowa_opoznienie_s: number;
+  droop_p_f_pu: number;
+  martwa_strefa_f_hz: number;
+  droop_q_u_pu: number;
+  martwa_strefa_u_pu: number;
+  u_min_ciagle_pu: number;
+  u_max_ciagle_pu: number;
+}
+
+/** Strategia ograniczenia GFM — WYMAGANA, bez domyslki. */
+export type StrategiaOgraniczeniaGfm = 'impedancja_wirtualna' | 'nasycenie_zadania';
+
+/** Przeksztaltnik grid-forming: droop/VSM, impedancja wirtualna. */
+export interface PrzeksztaltnikGFM {
+  rodzina: 'przeksztaltnikowa_gfm';
+  proweniencja: ProweniencjaParametrow;
+  s_n_mva: number;
+  tryb: 'droop' | 'vsm';
+  mp_pu: number;
+  mq_pu: number;
+  h_wirtualne_s: number;
+  d_wirtualne_pu: number;
+  r_wirtualne_pu: number;
+  x_wirtualne_pu: number;
+  i_max_pu: number;
+  strategia_ograniczenia: StrategiaOgraniczeniaGfm;
+  tp_s: number;
+  tiq_s: number;
+}
+
+/** Regulacja czestotliwosciowa magazynu (droop + rezerwa mocy). */
+export interface RegulacjaCzestotliwosciMagazynu {
+  droop_pu: number;
+  martwa_strefa_hz: number;
+  p_rezerwa_pu: number;
+}
+
+/** Magazyn energii (BESS) = energia + przeksztaltnik (SS0 p.1) — jedna baza mocy s_n_mva. */
+export interface Magazyn {
+  rodzina: 'magazyn';
+  proweniencja: ProweniencjaParametrow;
+  e_n_kwh: number;
+  p_ladowania_max_kw: number;
+  p_rozladowania_max_kw: number;
+  sprawnosc_ladowania: number;
+  sprawnosc_rozladowania: number;
+  soc_min: number;
+  soc_max: number;
+  soc_poczatkowy: number;
+  regulacja_f?: RegulacjaCzestotliwosciMagazynu | null;
+  przeksztaltnik: PrzeksztaltnikGFL | PrzeksztaltnikGFM;
+}
+
+/** Ochrona crowbar wirnika DFIG (typ 3). */
+export interface Crowbar {
+  prog_pradu_pu: number;
+  czas_zwloki_s: number;
+  czas_trwania_s: number;
+}
+
+export type TypIecTurbiny = 'wiatr_typ_1' | 'wiatr_typ_2' | 'wiatr_typ_3' | 'wiatr_typ_4';
+
+/** Turbina wiatrowa IEC 61400-27-1 (typ 1: SCIG, typ 2: WRIG, typ 3: DFIG, typ 4: pelny przeksztaltnik). */
+export interface TurbinaWiatrowa {
+  rodzina: TypIecTurbiny;
+  proweniencja: ProweniencjaParametrow;
+  h_calkowite_s: number;
+  sztywnosc_walu_pu: number;
+  tlumienie_walu_pu: number;
+  poslizg_ustalony_pu: number;
+  crowbar?: Crowbar | null;
+  pitch_tempo_deg_s: number;
+  pitch_min_deg: number;
+  pitch_max_deg: number;
+  przeksztaltnik?: PrzeksztaltnikGFL | null;
+}
+
+/** Unia dyskryminowana po `rodzina` — jeden blok parametrow dynamicznych zrodla. */
+export type ParametryDynamiczne =
+  | MaszynaSynchroniczna
+  | PrzeksztaltnikGFL
+  | PrzeksztaltnikGFM
+  | Magazyn
+  | TurbinaWiatrowa;
 
 // ---------------------------------------------------------------------------
 // Generator
@@ -439,6 +689,302 @@ export interface Generator extends ENMElement {
    * Ustawiany przez backend przy bind profilem operatora. null = brak profilu.
    */
   nc_rfg_module?: 'A' | 'B' | 'C' | 'D' | null;
+
+  /**
+   * Parametry dynamiczne zrodla dla biegow czasowych RMS/DAE (karty W6-1..W6-3).
+   * Kontrakt wejsciowy KAZDEGO wytworcy: bez tego bloku bieg `dynamika_rms`
+   * odmawia nazwanym kodem `dynamika.zrodlo_bez_bloku_dynamiki`. Bieg startuje
+   * z punktu pracy wskazanego rozplywu (`solver_input.pf_run_id`) i oddaje
+   * `resultset_dynamic_v2`.
+   */
+  dynamika?: ParametryDynamiczne | null;
+
+  /**
+   * Modele widmowe źródła (karta AB-H0 §0.7.6): ZMATERIALIZOWANA kopia modeli z kart
+   * widmowych wskazanych kluczem `karty_widmowe_ref` operacji `set_der_catalog_bindings`,
+   * z proweniencją każdej karty. `null` = brak modelu widmowego urządzenia (sekcja
+   * `harmonic` UNKNOWN z nazwanym brakiem) — nigdy widmo typowe.
+   */
+  modele_widmowe?: ModeleWidmoweElementu | null;
+
+  /**
+   * Moduł istniejący w rozumieniu art. 4 ust. 1 rozporządzenia 2016/631 (`enm/models.py`,
+   * plan AB O-31): `true` — wymagania rozporządzenia nie mają zastosowania bez modernizacji,
+   * `false` — moduł nowy, `null` — status nieustalony. Typ ścisły: wyłącznie wartość logiczna.
+   */
+  modul_istniejacy?: boolean | null;
+
+  /**
+   * Data zawarcia umowy przyłączeniowej `RRRR-MM-DD` — resolver wersji warstw profilu NC RfG
+   * (procedura PTPiREE, WiPWC, IRiESD). `null` — data nieustalona. Liczba nie jest datą.
+   */
+  data_umowy_przylaczeniowej?: string | null;
+
+  /** Nastawy zabezpieczeń modułu ze źródłem (`enm/nastawy_modulu.py`, plan AB O-32). */
+  nastawy_zabezpieczen?: NastawyZabezpieczenModulu | null;
+
+  /**
+   * Deklaracje modułu dla testów zgodności NC RfG / PTPiREE (`enm/deklaracje_modulu.py`,
+   * plan AB O-50): nazwy 1:1 z wejściem solvera. `null` — brak deklaracji (ocena niewykonana
+   * z nazwanym brakiem, nigdy wartość typowa).
+   */
+  deklaracje_modulu?: DeklaracjeModulu | null;
+}
+
+/**
+ * `enm/nastawy_modulu.py::NastawyZabezpieczenModulu` — nastawy zabezpieczeń modułu (U<, U>,
+ * f<, f>, RoCoF, skok wektora) ze źródłem. Kontrakt ścisły: wartości wyłącznie liczbowe;
+ * `zrodlo_pl` obowiązkowe, gdy podano choć jedną wartość; `u_min_pu < u_max_pu`,
+ * `f_min_hz < f_max_hz`, gdy obie wartości pary są podane.
+ */
+export interface NastawyZabezpieczenModulu {
+  /** U< — próg [p.u. U_n], ≥ 0. */
+  u_min_pu?: number | null;
+  /** U< — czas [s], ≥ 0. */
+  u_min_czas_s?: number | null;
+  /** U> — próg [p.u. U_n], > 0. */
+  u_max_pu?: number | null;
+  /** U> — czas [s], ≥ 0. */
+  u_max_czas_s?: number | null;
+  /** f< — próg [Hz], > 0. */
+  f_min_hz?: number | null;
+  /** f< — czas [s], ≥ 0. */
+  f_min_czas_s?: number | null;
+  /** f> — próg [Hz], > 0. */
+  f_max_hz?: number | null;
+  /** f> — czas [s], ≥ 0. */
+  f_max_czas_s?: number | null;
+  /** RoCoF — próg [Hz/s], > 0. */
+  rocof_hz_s?: number | null;
+  /** RoCoF — czas [s], ≥ 0. */
+  rocof_czas_s?: number | null;
+  /** Skok wektora — próg [°], w przedziale (0, 180]. */
+  przesuniecie_fazy_deg?: number | null;
+  /** Skąd pochodzą nastawy (nastawnik zabezpieczenia, karta nastaw, dokument projektu). */
+  zrodlo_pl?: string | null;
+}
+
+/**
+ * `enm/deklaracje_modulu.py::DeklaracjeModulu` — deklaracje modułu (T05, T10–T13, T16–T20) ze
+ * źródłem; nazwy 1:1 z `NcRfgPtpireeModuleInput`. Kontrakt ścisły: flagi wyłącznie
+ * `true`/`false`/`null` (`null` — nie zadeklarowano, `false` — zadeklarowano brak funkcji),
+ * liczby wyłącznie liczbowe; `zrodlo_pl` obowiązkowe, gdy podano choć jedną wartość.
+ */
+export interface DeklaracjeModulu {
+  /** Moc minimalna [kW], ≥ 0 (T10/T11). */
+  p_min_kw?: number | null;
+  has_scada_communication?: boolean | null;
+  has_disturbance_recorder?: boolean | null;
+  active_power_control_enabled?: boolean | null;
+  stop_generation_enabled?: boolean | null;
+  reduction_generation_enabled?: boolean | null;
+  /** Wymaganie zdolności dodatkowej w programie badań operatora (T18); brak = nie wymagano. */
+  island_operation_required?: boolean | null;
+  island_operation_capable?: boolean | null;
+  black_start_required?: boolean | null;
+  black_start_capable?: boolean | null;
+  power_oscillation_damping_required?: boolean | null;
+  power_oscillation_damping_enabled?: boolean | null;
+  /** Szybkość zmiany mocy [% P_max/min], > 0. */
+  ramp_rate_pct_per_min?: number | null;
+  /** Wzmocnienie prądu biernego [p.u./p.u.], ≥ 0 (T17). */
+  reactive_current_gain?: number | null;
+  /** Czas odbudowy mocy czynnej po zwarciu [s], ≥ 0 (T16). */
+  p_recovery_time_s?: number | null;
+  /** Współczynnik THD napięcia [%], ≥ 0 (T20). */
+  harmonic_thdu_percent?: number | null;
+  /** Czas zaprzestania generacji na polecenie [s], > 0 (T12). */
+  cease_generation_time_s?: number | null;
+  /** Skąd pochodzą deklaracje (karta katalogowa, deklaracja wytwórcy, dokument projektu). */
+  zrodlo_pl?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Karty widmowe i modele źródeł widmowych — lustro liścia `backend/src/dziedziny/`
+// (karta AB-H0 §0.4–§0.7). Kształt JSON rekordów (`model_dump(mode="json")`);
+// krotki backendu są listami.
+// ---------------------------------------------------------------------------
+
+/** Przedział z JAWNYM domknięciem obu końców (`null` granica = nieograniczony z tej strony). */
+export interface PrzedzialDziedziny {
+  dolna: number | null;
+  gorna: number | null;
+  domkniecie_dolne: boolean | null;
+  domkniecie_gorne: boolean | null;
+}
+
+export type RodzajModeluWidmowego =
+  | 'CURRENT_SPECTRUM'
+  | 'VOLTAGE_SPECTRUM'
+  | 'NORTON_EQUIVALENT'
+  | 'THEVENIN_EQUIVALENT'
+  | 'MEASURED_SPECTRUM'
+  | 'FREQUENCY_DEPENDENT_EQUIVALENT';
+
+export type DziedzinaWidmowa = 'HARMONIC_FREQUENCY_DOMAIN' | 'SUPRAHARMONIC_FREQUENCY_DOMAIN';
+
+export type DziedzinaFizyki =
+  | 'POWER_FLOW'
+  | 'SHORT_CIRCUIT'
+  | 'RMS_DYNAMICS'
+  | 'SEQUENCE_DOMAIN'
+  | 'HARMONIC_FREQUENCY_DOMAIN'
+  | 'SUPRAHARMONIC_FREQUENCY_DOMAIN';
+
+/** Składowa widma: częstotliwość w Hz, amplituda z jednostką, faza albo powód jej braku. */
+export interface SkladowaWidma {
+  f_hz: number;
+  amplituda: Wielkosc;
+  faza_deg: number | null;
+  faza_nieznana_powod_pl?: string | null;
+}
+
+export interface PunktAdmitancji {
+  f_hz: number;
+  g_s: number;
+  b_s: number;
+}
+
+export interface PunktImpedancji {
+  f_hz: number;
+  r_ohm: number;
+  x_ohm: number;
+}
+
+export interface ParametrModeluWidmowego {
+  nazwa: string;
+  wartosc: Wielkosc;
+  jakosc: FieldQuality;
+}
+
+export interface ModelParametrycznyWidma {
+  rodzina: 'Z_conv_literaturowy';
+  parametry: ParametrModeluWidmowego[];
+}
+
+export interface OdniesienieAmplitudy {
+  rodzaj: 'I_N_URZADZENIA' | 'I_1_W_PUNKCIE_PRACY' | 'U_1' | 'U_N';
+  wartosc?: Wielkosc | null;
+  pola_karty?: string[];
+}
+
+export interface OdniesienieFazy {
+  wielkosc: 'U_1_ZACISKOW' | 'I_1_URZADZENIA';
+  konwencja: 'THETA_H_MINUS_H_THETA_1';
+}
+
+export interface PunktPracyWidma {
+  baza_mocy: 'S_N_URZADZENIA' | 'P_N_URZADZENIA';
+  p: PrzedzialDziedziny;
+  q?: PrzedzialDziedziny | null;
+  u?: PrzedzialDziedziny | null;
+  soc?: PrzedzialDziedziny | null;
+  tryb?: 'LADOWANIE' | 'ROZLADOWANIE' | 'POSTOJ' | null;
+  stacjonarny?: boolean;
+}
+
+export interface OknoPomiaru {
+  rodzaj_pl: string;
+  dlugosc_s: number;
+  liczba_okresow?: number | null;
+}
+
+export interface AgregacjaPomiaru {
+  czas_s: number;
+  statystyka_pl: string;
+}
+
+export interface KalibracjaPomiaru {
+  dokument: string;
+  data: string;
+}
+
+/** Parametry pomiaru widma (komplet: metoda, rozdzielczość, okno, agregacja, podstawa). */
+export interface ParametryPomiaru {
+  metoda?: string | null;
+  czestotliwosc_probkowania_hz?: number | null;
+  okno?: OknoPomiaru | null;
+  rozdzielczosc_hz?: number | null;
+  rbw_hz?: number | null;
+  agregacja?: AgregacjaPomiaru | null;
+  czas_pomiaru_s?: number | null;
+  poziom_szumu?: Wielkosc | null;
+  kalibracja?: KalibracjaPomiaru | null;
+  warunki_sieci_probierczej?: DanaPrzyjeta[];
+  podstawa?: PodstawaWymagania | null;
+}
+
+/** Model źródła widmowego (`dziedziny.widmo.ModelZrodlaWidmowego`). */
+export interface ModelZrodlaWidmowego {
+  ident: string;
+  rodzaj: RodzajModeluWidmowego;
+  dziedzina: DziedzinaWidmowa;
+  f1_hz: number;
+  zakres_czestotliwosci: { f_min_hz: number; f_max_hz: number };
+  skladowe?: SkladowaWidma[];
+  admitancja?: PunktAdmitancji[] | null;
+  impedancja?: PunktImpedancji[] | null;
+  model_parametryczny?: ModelParametrycznyWidma | null;
+  punkt_pracy: PunktPracyWidma;
+  odniesienie_amplitudy?: OdniesienieAmplitudy | null;
+  odniesienie_fazy?: OdniesienieFazy | null;
+  pomiar?: ParametryPomiaru | null;
+  pasmo_ref?: string | null;
+  podstawa: PodstawaWymagania;
+  wersja: string;
+  czestotliwosc_przelaczania_hz?: number | null;
+}
+
+/** Rekord dowodu modelu (raport badań, pomiar, certyfikat) z pokrytymi dziedzinami. */
+export interface DowodModelu {
+  rodzaj:
+    | 'DEKLARACJA_KARTY'
+    | 'RAPORT_BADAN'
+    | 'POMIAR'
+    | 'CERTYFIKAT_ZGODNOSCI'
+    | 'CERTYFIKAT_MODELU';
+  pokrywa: DziedzinaFizyki[];
+  podstawa: PodstawaWymagania;
+  odniesienie_pl: string;
+}
+
+/** Karta widmowa urządzenia (`dziedziny.karta_widmowa.KartaWidmowa`) — osobny rekord. */
+export interface KartaWidmowa {
+  id: string;
+  urzadzenie_ref: string;
+  producent: string;
+  model_urzadzenia: string;
+  modele: ModelZrodlaWidmowego[];
+  dowody?: DowodModelu[];
+  podstawa: PodstawaWymagania;
+  wersja: string;
+  verification_status:
+    | 'ZWERYFIKOWANY'
+    | 'NIEWERYFIKOWANY'
+    | 'CZESCIOWO_ZWERYFIKOWANY'
+    | 'REFERENCYJNY';
+  source_reference: string;
+  catalog_status:
+    | 'PRODUKCYJNY_V1'
+    | 'REFERENCYJNY_V1'
+    | 'ANALITYCZNY_V1'
+    | 'TESTOWY'
+    | 'PROJEKTOWY_V1';
+  contract_version: string;
+}
+
+/** Proweniencja karty zmaterializowanej w elemencie (id, wersja, przestrzeń, odcisk). */
+export interface OdniesienieKarty {
+  karta_id: string;
+  wersja: string;
+  przestrzen: 'STATYCZNA' | 'PROJEKT';
+  odcisk_karty: string;
+}
+
+/** Nośnik modeli widmowych w elemencie (`Generator.modele_widmowe`). */
+export interface ModeleWidmoweElementu {
+  modele: ModelZrodlaWidmowego[];
+  zrodla: OdniesienieKarty[];
 }
 
 /**
@@ -598,11 +1144,17 @@ export type BayControlMode =
 export interface BaySwitchState {
   actual_state: BayDeviceState;
   commanded_state?: 'zamknij' | 'otworz' | null;
-  control_mode: BayControlMode;
+  /**
+   * Stan ruchowy aparatu (karta #135): tryb sterowania, uzbrojenie napędu i komunikacja są
+   * TELEMETRIĄ — wartość wyłącznie ze źródła runtime; `null` = brak telemetrii (nigdy
+   * wartość domyślna po stronie klienta).
+   */
+  control_mode?: BayControlMode | null;
   armed_for_close?: boolean | null;
   armed_for_open?: boolean | null;
-  communication_ok: boolean;
-  interlock_blocked: boolean;
+  communication_ok?: boolean | null;
+  /** Blokada zamknięcia z reguły modelu (uziemnik ↔ tor główny); `null` = reguła nie rozstrzyga. */
+  interlock_blocked?: boolean | null;
   cause_code?: string | null;
   last_state_change_at?: string | null;
   last_command_at?: string | null;
@@ -662,7 +1214,7 @@ export interface BayPrimaryDevice {
    *  konstrukcja / punkt neutralny / gałąź ogranicznika. Lustro
    *  `backend/src/enm/models.py::BayPrimaryDevice.earthing_role`. `null`/brak
    *  = dana niedostarczona (generyczny uziemnik, zero domysłu). */
-  earthing_role?: 'field_earth' | 'cable_screen' | 'structure' | 'neutral_point' | 'surge_ground' | null;
+  earthing_role?: RolaUziemnika | null;
 }
 
 export interface BayMeasurements {
@@ -941,7 +1493,8 @@ export interface BayPowerFlowSourceContribution {
 }
 
 export interface BayEarthFaultPath {
-  neutral_grounding_mode: 'izolowany' | 'cewka_petersena' | 'rezystor' | 'bezposrednio_uziemiony' | 'nieznany';
+  /** W5-A: literały `GroundingConfig.type`; `null` = punkt neutralny nieokreślony w modelu. */
+  neutral_grounding_mode: TypPunktuNeutralnego | null;
   zero_sequence_current_source: 'suma_ct' | 'przekladnik_ferrantiego' | 'zewnetrzne' | 'brak';
   zero_sequence_voltage_source: 'otwarty_trojkat_vt' | 'uzwojenie_resztkowe_vt' | 'obliczone' | 'brak';
   closure_path_elements: string[];
@@ -1074,6 +1627,15 @@ export interface Measurement extends ENMElement {
    *  WYŁĄCZNIE dla measurement_type==='VT'. Oś odrębna od `vt_arrangement`
    *  (open_delta/star = oś 3U0). `null`/brak = dana niedostarczona. */
   vt_mounting?: 'bus' | 'cable' | null;
+  /** Karta W3-B (mapa 4 #3): obwód wtórny CT/VT — WSPÓLNY dla obu typów
+   *  (oba mają zaciski wtórne i przewody do aparatów). `null`/brak = obwód
+   *  niezapisany (uczciwy brak, zero fabrykacji). */
+  obwod_wtorny?: ObwodWtorny | null;
+  /** Karta W3-B: które uzwojenie VT opisuje `obwod_wtorny` (limit ΔU zależy
+   *  od kategorii uzwojenia — pomiarowe 0,5 % vs zabezpieczeniowe 1,0 %,
+   *  `api/equipment_checks.py::VtBurdenRequest.uzwojenie`). WYŁĄCZNIE dla
+   *  measurement_type==='VT'. */
+  vt_uzwojenie?: 'POMIAROWE' | 'ZABEZPIECZENIOWE' | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1159,12 +1721,27 @@ export interface ConnectionNode {
   parent_ref: string;
 }
 
-/** Bateria kondensatorow rownoleglych (kompensacja mocy biernej). */
+/**
+ * Bateria kondensatorow rownoleglych (kompensacja mocy biernej).
+ *
+ * FAB-F (2026-09-05): lustro pomijalo 6 pol katalogowych, ktore
+ * `ShuntCapacitor` (enm/models.py) ma jako WLASNE (nie dziedziczone z
+ * `BranchBase` — ten element rozszerza wylacznie `ENMElement`). Guard
+ * parytetu (`enm_contract_parity_guard.py`) tego nie lapal: liczyl pola
+ * `BranchBase` jako "widoczne" dla KAZDEJ sprawdzanej encji, niezaleznie od
+ * tego, czy faktycznie po niej dziedziczy — poprawione tą samą kartą.
+ */
 export interface ShuntCapacitor extends ENMElement {
   bus_ref: string;
   rated_mvar: number;
   rated_kv: number;
   status?: 'closed' | 'open';
+  catalog_ref?: string | null;
+  catalog_namespace?: string | null;
+  parameter_source?: ParameterSourceWithManualEquivalent | null;
+  source_mode?: CatalogSourceMode | null;
+  materialized_params?: Record<string, unknown> | null;
+  overrides?: ParameterOverride[] | null;
 }
 
 /** Kompensacja spadku napiecia w linii (regulacja OLTC wg punktu zdalnego). */
@@ -1200,6 +1777,29 @@ export interface EnergyNetworkModel {
   logical_views?: LogicalViewsV1;
   /** Phase 0B-4: ciągi liniowe — explicit order stacji (zamiast wnioskowania z grafu). */
   line_runs?: LineRunV1[];
+  /**
+   * W1 (mapa domknięcia 2026-09): typy katalogowe niesione przez model — dane
+   * inżyniera z arkusza XLSX jako pozycje katalogu z proweniencją
+   * (`backend/src/enm/katalog_projektu.py`). Brak sekcji = model wyłącznie na
+   * katalogu statycznym.
+   */
+  katalog_projektu?: KatalogProjektu | null;
+}
+
+/** W1: pozycja katalogu projektu — kształt rekordu `CatalogRepository.from_records`. */
+export interface RekordTypuProjektu {
+  id: string;
+  name: string;
+  params: Record<string, unknown>;
+}
+
+/** W1: sekcja `katalog_projektu` modelu (listy posortowane po `id`, id unikalne). */
+export interface KatalogProjektu {
+  line_types: RekordTypuProjektu[];
+  cable_types: RekordTypuProjektu[];
+  transformer_types: RekordTypuProjektu[];
+  /** Karta AB-H0 §0.7.3: karty widmowe projektu (dane inżyniera, `NIEWERYFIKOWANY`). */
+  karty_widmowe?: KartaWidmowa[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1337,7 +1937,7 @@ export interface V2SwitchingStateSnapshot {
 
 export interface V2ZeroSequenceConfig {
   element_ref: string;
-  element_kind: 'branch' | 'source' | 'transformer' | 'bus';
+  element_kind: 'branch' | 'source' | 'transformer';
   r0: number | null;
   x0: number | null;
   b0: number | null;
@@ -1563,7 +2163,6 @@ export type ReadinessEntry = {
   canonical_priority?: number;
   canonical_area?: string;
   canonical_message_pl?: string;
-  canonical_fix_action_id?: string | null;
   canonical_fix_navigation?: Record<string, string> | null;
 };
 

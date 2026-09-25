@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL } from '../../../../ui/sld/v2/station-rozdzielnia/contract';
 
 import {
   APARAT_OPCJE,
@@ -47,9 +48,15 @@ describe('polaSnModel — nazewnictwo (kod backendu vs polska etykieta)', () => 
     }
   });
   it('rolaLabel/aparatLabel mapują totalnie na polskie nazwy (bez wycieku kodu)', () => {
-    expect(rolaLabel('OUT')).toBe('Pole liniowe odpływowe');
-    expect(rolaLabel('IN')).toBe('Pole liniowe dopływowe');
-    expect(rolaLabel('TR')).toBe('Pole transformatorowe');
+    // Karta #141: nazwa roli z kanonu słownictwa ról pól — ta sama co na schemacie i w nazwie
+    // pola nadanej przez backend (nie „odpływowe”/„dopływowe”).
+    expect(rolaLabel('OUT')).toBe(FIELD_ROLE_LABEL_PL.LINIA_OUT);
+    expect(rolaLabel('IN')).toBe(FIELD_ROLE_LABEL_PL.LINIA_IN);
+    expect(rolaLabel('FEEDER')).toBe(FIELD_ROLE_LABEL_PL.LINIA_ODG);
+    expect(rolaLabel('TR')).toBe(FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE);
+    expect(rolaLabel('COUPLER')).toBe(FIELD_ROLE_LABEL_PL.SPRZEGLO);
+    expect(rolaLabel('MEASUREMENT')).toBe(FIELD_ROLE_LABEL_PL.POMIAROWE);
+    expect(rolaLabel('OZE')).toBe(FIELD_SOURCE_LABEL_PL);
     expect(aparatLabel('BREAKER')).toBe('Wyłącznik mocy');
     // Mapowanie totalne — dla każdej wartości kontraktu istnieje polska etykieta.
     for (const { value } of ROLE_OPCJE) expect(rolaLabel(value)).not.toBe('');

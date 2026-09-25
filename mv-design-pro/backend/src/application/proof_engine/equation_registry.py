@@ -1660,129 +1660,6 @@ EQ_LE_004 = EquationDefinition(
 
 
 # =============================================================================
-# P18: Protection Overcurrent & Selectivity — Kanoniczne równania (BINDING)
-# =============================================================================
-
-EQ_PR_001 = EquationDefinition(
-    equation_id="EQ_PR_001",
-    name_pl="Warunek wyłączalności",
-    standard_ref="IEC 60947-2 / IEC 60909 (P18)",
-    latex=r"\text{OK}_{breaking} = (I_k'' \le I_{cu})",
-    symbols=(
-        SymbolDefinition(
-            symbol=r"\text{OK}_{breaking}",
-            unit="—",
-            description_pl="Status warunku wyłączalności",
-            mapping_key="breaking_ok",
-        ),
-        SymbolDefinition(
-            symbol="I_k''",
-            unit="kA",
-            description_pl="Prąd zwarciowy początkowy",
-            mapping_key="ikss_ka",
-        ),
-        SymbolDefinition(
-            symbol="I_{cu}",
-            unit="kA",
-            description_pl="Zdolność wyłączalna",
-            mapping_key="icu_ka",
-        ),
-    ),
-    unit_derivation="kA ≤ kA → —",
-)
-
-EQ_PR_002 = EquationDefinition(
-    equation_id="EQ_PR_002",
-    name_pl="Warunek dynamiczny",
-    standard_ref="IEC 60947-2 / IEC 60909 (P18)",
-    latex=r"\text{OK}_{dynamic} = (i_p \le I_{dyn})",
-    symbols=(
-        SymbolDefinition(
-            symbol=r"\text{OK}_{dynamic}",
-            unit="—",
-            description_pl="Status warunku dynamicznego",
-            mapping_key="dynamic_ok",
-        ),
-        SymbolDefinition(
-            symbol="i_p",
-            unit="kA",
-            description_pl="Prąd udarowy",
-            mapping_key="ip_ka",
-        ),
-        SymbolDefinition(
-            symbol="I_{dyn}",
-            unit="kA",
-            description_pl="Wytrzymałość dynamiczna",
-            mapping_key="idyn_ka",
-        ),
-    ),
-    unit_derivation="kA ≤ kA → —",
-)
-
-EQ_PR_003 = EquationDefinition(
-    equation_id="EQ_PR_003",
-    name_pl="Warunek cieplny",
-    standard_ref="IEC 60947-2 / IEC 60909 (P18)",
-    latex=r"\text{OK}_{thermal} = \left(\int i^{2} dt \le I_{th}\right)",
-    symbols=(
-        SymbolDefinition(
-            symbol=r"\text{OK}_{thermal}",
-            unit="—",
-            description_pl="Status warunku cieplnego",
-            mapping_key="thermal_ok",
-        ),
-        SymbolDefinition(
-            symbol=r"\int i^{2} dt",
-            unit="kA²s",
-            description_pl="Energia zwarcia",
-            mapping_key="i2t_ka2s",
-        ),
-        SymbolDefinition(
-            symbol="I_{th}",
-            unit="kA²s",
-            description_pl="Wytrzymałość cieplna (I²t)",
-            mapping_key="ith_limit_ka2s",
-        ),
-    ),
-    unit_derivation="kA²s ≤ kA²s → —",
-)
-
-EQ_PR_004 = EquationDefinition(
-    equation_id="EQ_PR_004",
-    name_pl="Selektywność (granice charakterystyk)",
-    standard_ref="IEC 60255 / praktyka inżynierska (P18)",
-    latex=(r"\text{OK}_{selectivity} = (t_{down,max} + \Delta t \le t_{up,min})"),
-    symbols=(
-        SymbolDefinition(
-            symbol=r"\text{OK}_{selectivity}",
-            unit="—",
-            description_pl="Status selektywności",
-            mapping_key="selectivity_ok",
-        ),
-        SymbolDefinition(
-            symbol="t_{down,max}",
-            unit="s",
-            description_pl="Maksymalny czas zabezpieczenia dolnego",
-            mapping_key="selectivity_downstream_max_s",
-        ),
-        SymbolDefinition(
-            symbol="t_{up,min}",
-            unit="s",
-            description_pl="Minimalny czas zabezpieczenia górnego",
-            mapping_key="selectivity_upstream_min_s",
-        ),
-        SymbolDefinition(
-            symbol="\\Delta t",
-            unit="s",
-            description_pl="Margines selektywności",
-            mapping_key="selectivity_margin_setting_s",
-        ),
-    ),
-    unit_derivation="s + s ≤ s → —",
-)
-
-
-# =============================================================================
 # P19: Earthing / Ground Fault (SN) — Kanoniczne równania (BINDING)
 # =============================================================================
 
@@ -2801,6 +2678,16 @@ EQ_SC1_012 = EquationDefinition(
 # =============================================================================
 
 
+def _opis_audytu_c(zachowany: bool, rownanie_c: str) -> str:
+    """Zdanie o niezmienniku audytu: współczynnik c występuje DOKŁADNIE RAZ, w `rownanie_c`."""
+    if zachowany:
+        return f"współczynnik c występuje dokładnie raz ({rownanie_c}) — brak podwójnego liczenia."
+    return (
+        f"współczynnik c NIE występuje dokładnie raz w {rownanie_c} — podwójne liczenie albo "
+        "brak c w równaniu prądu zwarciowego."
+    )
+
+
 class AntiDoubleCountingAudit:
     """
     Anti-Double-Counting Audit dla współczynnika napięciowego c.
@@ -2915,10 +2802,10 @@ class AntiDoubleCountingAudit:
             lines.append(f"  {eq_id}: c {status}")
 
         lines.append("")
-        sc3f_pass = cls.verify()
-        sc1_pass = cls.verify_sc1()
-        lines.append(f"Status SC3F: {'PASS' if sc3f_pass else 'FAIL'}")
-        lines.append(f"Status SC1: {'PASS' if sc1_pass else 'FAIL'}")
+        # Wynik audytu jako ZDANIE o sprawdzanym niezmienniku, nie plakietka PASS/FAIL
+        # (karta AB-1a Pakiet E2, strażnik werdyktu reguła 6b).
+        lines.append("Audyt SC3F: " + _opis_audytu_c(cls.verify(), cls.C_FACTOR_EQUATION))
+        lines.append("Audyt SC1: " + _opis_audytu_c(cls.verify_sc1(), cls.SC1_C_FACTOR_EQUATION))
 
         return "\n".join(lines)
 
@@ -3044,13 +2931,6 @@ LOSS_EQUATIONS: dict[str, EquationDefinition] = {
     "EQ_LOSS_005": EQ_LOSS_005,
 }
 
-# P18: Protection Overcurrent & Selectivity equations registry
-PR_EQUATIONS: dict[str, EquationDefinition] = {
-    "EQ_PR_001": EQ_PR_001,
-    "EQ_PR_002": EQ_PR_002,
-    "EQ_PR_003": EQ_PR_003,
-    "EQ_PR_004": EQ_PR_004,
-}
 
 # P19: Earthing / Ground Fault equations registry
 EARTH_EQUATIONS: dict[str, EquationDefinition] = {
@@ -3173,13 +3053,6 @@ LOSS_STEP_ORDER: list[str] = [
     "EQ_LOSS_005",  # Procent strat P
 ]
 
-# Step order for P18 (BINDING)
-PR_STEP_ORDER: list[str] = [
-    "EQ_PR_001",  # Warunek wyłączalności
-    "EQ_PR_002",  # Warunek dynamiczny
-    "EQ_PR_003",  # Warunek cieplny
-    "EQ_PR_004",  # Selektywność
-]
 
 # Step order for P19 (BINDING)
 EARTH_STEP_ORDER: list[str] = [
@@ -3238,6 +3111,18 @@ SC2FZ_STEP_ORDER: list[str] = [
 ]
 
 # Frozen IDs for stability tests (BINDING)
+#
+# Karta AB-1a Pakiet L (2026-09-23): zbior P18 (dowod zabezpieczen nadpradowych i
+# selektywnosci) USUNIETY razem z dowodem — pozycja LEGACY_USUNAC C41 inwentarza
+# `docs/audit/INWENTARZ_WERDYKTOW_LAKONICZNYCH_2026-09-23.md` (0 wolajacych
+# `generate_protection_proof` w `backend/src`). Zeszly: klucz `pr_equations`
+# (EQ_PR_001..004) oraz klucze mapowania wylacznie P18 (`breaking_ok`, `dynamic_ok`,
+# `thermal_ok`, `selectivity_ok`, `icu_ka`, `ith_limit_ka2s`,
+# `selectivity_downstream_max_s`, `selectivity_upstream_min_s`,
+# `selectivity_margin_setting_s`). Identyfikatory i klucze pozostalych pakietow
+# (SC3F, VDROP, LF, SC1, LC, LE, EARTH, PF, LOSS) NIETKNIETE; `i2t_ka2s` i `idyn_ka`
+# zostaja zamrozone (czyta je zywe SC3F). Wskrzeszenie P18 pilnuje
+# `scripts/legacy_public_path_guard.py::PAKIET_L_WPISY`.
 FROZEN_IDS: dict[str, list[str]] = {
     "sc3f_equations": list(SC3F_EQUATIONS.keys()),
     "vdrop_equations": list(VDROP_EQUATIONS.keys()),
@@ -3245,7 +3130,6 @@ FROZEN_IDS: dict[str, list[str]] = {
     "sc1_equations": list(SC1_EQUATIONS.keys()),
     "lc_equations": list(LC_EQUATIONS.keys()),
     "le_equations": list(LE_EQUATIONS.keys()),
-    "pr_equations": list(PR_EQUATIONS.keys()),
     "earth_equations": list(EARTH_EQUATIONS.keys()),
     "pf_equations": list(PF_EQUATIONS.keys()),
     "loss_equations": list(LOSS_EQUATIONS.keys()),
@@ -3313,18 +3197,13 @@ FROZEN_IDS: dict[str, list[str]] = {
         "delta_t_h",
         "e_i_kwh",
         "e_loss_kwh",
-        # P18
-        "breaking_ok",
-        "dynamic_ok",
-        "thermal_ok",
-        "selectivity_ok",
-        "icu_ka",
-        "idyn_ka",
+        # P18 — dowod zabezpieczen nadpradowych skasowany w karcie AB-1a Pakiet L
+        # (LEGACY_USUNAC C41: 0 wolajacych w `backend/src`); klucze wylacznie tego
+        # dowodu (`breaking_ok`, `dynamic_ok`, `thermal_ok`, `selectivity_ok`,
+        # `icu_ka`, `ith_limit_ka2s`, `selectivity_*_s`) zeszly razem z nim.
+        # `i2t_ka2s` ZOSTAJE zamrozony — czyta go zywe EQ_SC3F_015 (`idyn_ka` jest
+        # zamrozony w sekcji SC3F).
         "i2t_ka2s",
-        "ith_limit_ka2s",
-        "selectivity_downstream_max_s",
-        "selectivity_upstream_min_s",
-        "selectivity_margin_setting_s",
         # P19
         "u0_v",
         "z_e_ohm",
@@ -3363,7 +3242,6 @@ registry.merge(LF_EQUATIONS)
 registry.merge(LC_EQUATIONS)
 registry.merge(LVCV_EQUATIONS)
 registry.merge(LE_EQUATIONS)
-registry.merge(PR_EQUATIONS)
 registry.merge(EARTH_EQUATIONS)
 registry.merge(QU_EQUATIONS)
 registry.merge(SC1_EQUATIONS)
@@ -3389,7 +3267,6 @@ class EquationRegistry:
     LC_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
     LVCV_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
     LE_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
-    PR_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
     EARTH_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
     QU_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
     SC1_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
@@ -3399,7 +3276,6 @@ class EquationRegistry:
     LC_STEP_ORDER: ClassVar[list[str]]
     LVCV_STEP_ORDER: ClassVar[list[str]]
     LE_STEP_ORDER: ClassVar[list[str]]
-    PR_STEP_ORDER: ClassVar[list[str]]
     EARTH_STEP_ORDER: ClassVar[list[str]]
     QU_STEP_ORDER: ClassVar[list[str]]
     SC1FZ_STEP_ORDER: ClassVar[list[str]]
@@ -3471,16 +3347,6 @@ class EquationRegistry:
     def get_le_step_order(cls) -> list[str]:
         """Zwraca kolejność kroków dla dowodu P17."""
         return LE_STEP_ORDER.copy()
-
-    @classmethod
-    def get_pr_equations(cls) -> dict[str, EquationDefinition]:
-        """Zwraca wszystkie równania P18 (Protection Overcurrent)."""
-        return PR_EQUATIONS.copy()
-
-    @classmethod
-    def get_pr_step_order(cls) -> list[str]:
-        """Zwraca kolejność kroków dla dowodu P18."""
-        return PR_STEP_ORDER.copy()
 
     @classmethod
     def get_earth_equations(cls) -> dict[str, EquationDefinition]:
@@ -3582,9 +3448,6 @@ class EquationRegistry:
             if eq_id not in LE_EQUATIONS:
                 raise ValueError(f"Frozen equation ID {eq_id} usunięty z P17!")
 
-        for eq_id in FROZEN_IDS["pr_equations"]:
-            if eq_id not in PR_EQUATIONS:
-                raise ValueError(f"Frozen equation ID {eq_id} usunięty z P18!")
         for eq_id in FROZEN_IDS["earth_equations"]:
             if eq_id not in EARTH_EQUATIONS:
                 raise ValueError(f"Frozen equation ID {eq_id} usunięty z P19!")
@@ -3613,7 +3476,6 @@ EquationRegistry.LF_EQUATIONS = LF_EQUATIONS
 EquationRegistry.LC_EQUATIONS = LC_EQUATIONS
 EquationRegistry.LVCV_EQUATIONS = LVCV_EQUATIONS
 EquationRegistry.LE_EQUATIONS = LE_EQUATIONS
-EquationRegistry.PR_EQUATIONS = PR_EQUATIONS
 EquationRegistry.EARTH_EQUATIONS = EARTH_EQUATIONS
 EquationRegistry.QU_EQUATIONS = QU_EQUATIONS
 EquationRegistry.SC1_EQUATIONS = SC1_EQUATIONS
@@ -3623,7 +3485,6 @@ EquationRegistry.LF_STEP_ORDER = LF_STEP_ORDER
 EquationRegistry.LC_STEP_ORDER = LC_STEP_ORDER
 EquationRegistry.LVCV_STEP_ORDER = LVCV_STEP_ORDER
 EquationRegistry.LE_STEP_ORDER = LE_STEP_ORDER
-EquationRegistry.PR_STEP_ORDER = PR_STEP_ORDER
 EquationRegistry.EARTH_STEP_ORDER = EARTH_STEP_ORDER
 EquationRegistry.QU_STEP_ORDER = QU_STEP_ORDER
 EquationRegistry.SC1FZ_STEP_ORDER = SC1FZ_STEP_ORDER

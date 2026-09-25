@@ -5,8 +5,12 @@
  * ISTNIEJĄCE akcje store'u przez adapter (`useTworzeniePrzypadku`): `createCase`
  * (nowy) lub `cloneCase` (dziedziczenie). Zero fizyki, zero mutacji modelu.
  *
- * TODO-KARTA: klonowanie (`api.cloneStudyCase`) przyjmuje wyłącznie nową nazwę —
- * „Ustaw jako aktywny" oraz opis dotyczą tylko ścieżki „nowy pusty" (patrz adapter).
+ * Klonowanie (`api.cloneStudyCase`) przyjmuje WYŁĄCZNIE nową nazwę — kanon
+ * (KARTA-UI2 §1 p. 10): „formularz pokazuje dokładnie to, co backend przyjmuje
+ * (nic więcej)". Klon kopiuje konfigurację źródła 1:1 i zawsze startuje z
+ * wynikiem NONE, więc „Ustaw jako aktywny" i opis (pola bez odpowiednika w
+ * kontrakcie klonowania) należą WYŁĄCZNIE do ścieżki „nowy pusty" — poniżej
+ * ukryte w trybie „dziedzicz" (`tryb === 'dziedzicz' ? ... : <opis + aktywny>`).
  */
 
 import { useState } from 'react';

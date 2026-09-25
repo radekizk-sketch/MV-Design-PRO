@@ -207,24 +207,37 @@ test.describe('Tor mocy — SupplyPathHighlighter w UI', () => {
 });
 
 test.describe('Manufacturer flow widoczność (smoke)', () => {
+  // Bramka środowiska (wzorzec catalog-enforcement.spec.ts:225) — ten pakiet
+  // odpytuje REALNY katalog backendu (nie route'y zamockowane page.route), więc
+  // jest pomijany WYŁĄCZNIE gdy nie działa real-backend (`npm run test:e2e:real`),
+  // nigdy bezwarunkowo.
+  test.skip(process.env.PLAYWRIGHT_REAL_BACKEND !== '1', 'Ten pakiet wymaga realnego backendu.');
+
   /**
-   * Test smoke że route /api/catalog/manufacturers zwraca 4 producentów ze
-   * statusem `requires_catalog` (po stronie backend). Wymaga real-backend
-   * `npm run test:e2e:real` — pomijany w mock mode.
+   * Źródło prawdy: `backend/src/network_model/catalog/switchgear/registry.py`
+   * (`MANUFACTURER_REGISTRY` / `_STARTING_MANUFACTURERS`) — 5 producentów
+   * startowych: ZPUE Włoszczowa, Elektrometal, ABB, Siemens, Schneider Electric
+   * (Schneider dołączony w programie Reference Engine V1, patrz docstring
+   * `SCHNEIDER_ELECTRIC` w tym samym pliku — tytuł tego testu mówił „4
+   * producentów" z czasu PRZED tym dołączeniem). Karta FE-HIGIENA
+   * (2026-09-05) zweryfikowała empirycznie na żywym backendzie: GET zwraca
+   * DOKŁADNIE 5 pozycji, wszystkie `status='requires_catalog'`,
+   * `source_refs=[]`.
    */
-  test.skip('GET /api/catalog/manufacturers zwraca 4 producentów (wymaga real-backend)', async ({
+  test('GET /api/catalog/manufacturers zwraca 5 producentów', async ({
     page,
   }) => {
     const response = await page.request.get('/api/catalog/manufacturers');
     expect(response.ok()).toBe(true);
     const body = await response.json();
     expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toBe(4);
+    expect(body.length).toBe(5);
     const refs = body.map((m: { manufacturer_ref: string }) => m.manufacturer_ref);
     expect(refs).toContain('ZPUE_WLOSZCZOWA');
     expect(refs).toContain('ELEKTROMETAL');
     expect(refs).toContain('ABB');
     expect(refs).toContain('SIEMENS');
+    expect(refs).toContain('SCHNEIDER_ELECTRIC');
     // Wszyscy startują z status='requires_catalog'.
     for (const m of body) {
       expect(m.status).toBe('requires_catalog');
@@ -232,15 +245,30 @@ test.describe('Manufacturer flow widoczność (smoke)', () => {
     }
   });
 
-  test.skip('GET /api/catalog/complete-bay-templates zwraca 10 fallbacków (wymaga real-backend)', async ({
+  /**
+   * Źródło prawdy: `backend/src/network_model/catalog/switchgear/canonical_fallback.py`
+   * (`list_switchgear_solution_templates_for_manufacturer`, wpięte pod ten
+   * endpoint przez `backend/src/api/catalog.py::list_complete_bay_templates_endpoint`)
+   * + `families.py` (`list_offered_switchgear_families`,
+   * `POTWIERDZONE_STATUSY_RODZINY = {"verified", "repo_verified"}`). Bez
+   * `manufacturer_ref` endpoint zwraca komplety pól WSZYSTKICH oferowanych
+   * rodzin — NIE 10-elementowy `canonical_fallback` z tytułu sprzed tej
+   * zmiany: ta gałąź żyje w OSOBNEJ funkcji
+   * `list_canonical_fallback_for_manufacturer`, której ten endpoint w ogóle
+   * nie wywołuje. Karta FE-HIGIENA (2026-09-05) zweryfikowała empirycznie na
+   * żywym backendzie: 85 pozycji z 17 rodzin (5 producentów), KAŻDA
+   * `source_status='repo_verified'` — zero `canonical_fallback`, bo dziś
+   * każdy z 5 producentów ma co najmniej jedną oferowaną rodzinę.
+   */
+  test('GET /api/catalog/complete-bay-templates zwraca 85 kompletów pól z rodzin repo_verified', async ({
     page,
   }) => {
     const response = await page.request.get('/api/catalog/complete-bay-templates');
     expect(response.ok()).toBe(true);
     const body = await response.json();
-    expect(body.length).toBe(10);
+    expect(body.length).toBe(85);
     for (const t of body) {
-      expect(t.source_status).toBe('canonical_fallback');
+      expect(t.source_status).toBe('repo_verified');
     }
   });
 });

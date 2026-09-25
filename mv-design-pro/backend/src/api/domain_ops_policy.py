@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from enm.slownik_komunikatow import opis_operacji, pole
+from enm.zrodlo_zwarcie import tryb_danych
 from network_model.catalog.materialization import (
     materialize_catalog_binding,
     validate_catalog_binding,
@@ -181,11 +183,13 @@ def _manual_grid_source_equivalent_complete(payload: dict[str, Any]) -> bool:
             and float(x_ohm) > 0
         )
 
+    # CV-4.3 K7: ten sam predykat trybu danych co mapper/walidator (moc zwarciowa ALBO
+    # prąd zwarciowy, IEC 60909-0 eq. 6 zapisana prądem); R/X wymagane jak dotąd.
     sk3_mva = manual.get("sk3_mva", payload.get("sk3_mva"))
+    ik3_ka = manual.get("ik3_ka", payload.get("ik3_ka"))
     rx_ratio = manual.get("rx_ratio", payload.get("rx_ratio"))
     return (
-        isinstance(sk3_mva, int | float)
-        and float(sk3_mva) > 0
+        tryb_danych(sk3_mva=sk3_mva, ik3_ka=ik3_ka) is not None
         and isinstance(rx_ratio, int | float)
         and float(rx_ratio) > 0
     )
@@ -719,14 +723,35 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
         "APARAT_SN",
         True,
     ),
+    PozycjaBramyApi(
+        "add_converter_source",
+        "battery_catalog_ref",
+        "",
+        False,
+        "karta FAB-K (R2): pole OPCJONALNE (pakiet BESS może zostać dobrany później), "
+        "istnienie i zastosowanie (WYŁĄCZNIE BESS) waliduje domena "
+        "(`_materializuj_bateria_bess`) z WŁASNYMI kodami 422 "
+        "(`converter.battery_catalog_ref_unknown`/`_not_applicable`) — obiema drogami "
+        "HTTPException 422 przez `api/generators.py`, nie `HTTP 200` z kodem w treści "
+        "(test `TestBateriaBess::test_battery_catalog_ref_nieznany_jest_422` pilnuje "
+        "TEGO kodu). Bramkowanie tu dublowałoby kontrolę i ZASTĄPIŁOBY bogatszy kod "
+        "domeny ogólnym `catalog.item_not_found` przed jej uruchomieniem.",
+    ),
     # --- Kompensacja, ograniczniki, wiązania DER (V2) -----------------------
     PozycjaBramyApi("add_shunt_compensator_sn", "catalog_binding", "KOMPENSATOR_SN", True),
     PozycjaBramyApi("add_surge_arrester_sn", "catalog_binding", "OGRANICZNIK_SN", True),
+    # --- CV-4.3 K1: odbiór/generator wprost na szynie -----------------------
+    PozycjaBramyApi("add_load_sn", "catalog_binding", "OBCIAZENIE", True),
+    PozycjaBramyApi("add_generator_sn", "catalog_binding", "GENERATOR_SN", True),
     PozycjaBramyApi(
         "set_der_catalog_bindings", "protection_catalog_ref", PRZESTRZEN_WIAZANIA_DER, True
     ),
     PozycjaBramyApi("set_der_catalog_bindings", "ct_catalog_ref", PRZESTRZEN_WIAZANIA_DER, True),
     PozycjaBramyApi("set_der_catalog_bindings", "vt_catalog_ref", PRZESTRZEN_WIAZANIA_DER, True),
+    # Karta AB-H0 §0.7: karty widmowe — lista id kart (istnienie w katalogu MODELU,
+    # ten sam predykat co operacja) i typ przekształtnika wskazany przez kartę projektu.
+    PozycjaBramyApi("set_der_catalog_bindings", "karty_widmowe_ref", PRZESTRZEN_WIAZANIA_DER, True),
+    PozycjaBramyApi("dodaj_karte_widmowa_projektu", "karta.urzadzenie_ref", "CONVERTER", True),
     # --- Pozycje, dla których katalogu NIE MA ------------------------------
     PozycjaBramyApi(
         "add_genset_nn",
@@ -778,6 +803,7 @@ API_CATALOG_REF_PAYLOAD_KEYS: frozenset[str] = frozenset(
     {
         "catalog_ref",
         "apparatus_catalog_ref",
+        "battery_catalog_ref",
         "cable_catalog_ref",
         "ct_catalog_ref",
         "device_catalog_ref",
@@ -852,8 +878,8 @@ def _blad_pozycji_api(
         if get_tap_changer(referencja) is not None:
             return None
         komunikat = (
-            f"Pozycja katalogowa '{referencja}' nie istnieje w katalogu przełączników "
-            "zaczepów. Wskaż pozycję istniejącą w katalogu."
+            "Wskazana pozycja nie istnieje w katalogu przełączników zaczepów. Wskaż "
+            "pozycję istniejącą w katalogu."
         )
         return CatalogPolicyError(
             code="catalog.item_not_found",
@@ -867,18 +893,21 @@ def _blad_pozycji_api(
     if validate_catalog_binding(binding_data):
         # Nieznana kategoria katalogu podana w payloadzie — ten sam kontrakt co
         # dla wiązania głównego (brama nie zgaduje kategorii za klienta).
-        komunikat = f"Nieznana kategoria katalogu: {przestrzen}"
+        komunikat = (
+            "Wskazana grupa katalogu nie istnieje — brama nie dobiera grupy katalogu "
+            "za projektanta."
+        )
         return CatalogPolicyError(
             code="catalog.unknown_namespace",
             message_pl=f"{opis_pl}: {komunikat}",
             errors=[{"code": "catalog.unknown_namespace", "message_pl": komunikat}],
         )
 
-    from network_model.catalog.repository import get_default_mv_catalog
+    # Katalog MODELU (statyczny + pozycje projektu): końcówka `domain-ops` woła bramę w
+    # `kontekst_katalogu(model)`; poza nim `katalog_biezacy()` = katalog statyczny.
+    from enm.katalog_projektu import katalog_biezacy
 
-    wynik = materialize_catalog_binding(
-        CatalogBinding.from_dict(binding_data), get_default_mv_catalog()
-    )
+    wynik = materialize_catalog_binding(CatalogBinding.from_dict(binding_data), katalog_biezacy())
     if wynik.success:
         return None
     kod = wynik.error_code or "catalog.materialization_failed"
@@ -1000,6 +1029,38 @@ def _referencje_dodatkowe(
             payload.get("catalog_binding"),
         )
 
+    # CV-4.3 K1: `add_load_sn` (odbiór wprost na szynie, katalog OPCJONALNY —
+    # jak `add_nn_load`) i `add_generator_sn` (generator synchroniczny wprost
+    # na SN, katalog OBOWIĄZKOWY) — TA SAMA para (catalog_ref top-level /
+    # catalog_binding) co bateria kondensatorów/ogranicznik powyżej.
+    if operation == "add_load_sn":
+        _dodaj(
+            "Odbiór",
+            "OBCIAZENIE",
+            _ref_z_wiazania(payload.get("catalog_binding"))
+            or payload.get("catalog_item_id")
+            or payload.get("catalog_ref"),
+            payload.get("catalog_binding"),
+        )
+
+    if operation == "add_generator_sn":
+        _dodaj(
+            "Generator synchroniczny",
+            "GENERATOR_SN",
+            _ref_z_wiazania(payload.get("catalog_binding"))
+            or payload.get("catalog_item_id")
+            or payload.get("catalog_ref"),
+            payload.get("catalog_binding"),
+        )
+
+    # Karta AB-H0 §0.7.3: karta widmowa projektu wskazuje typ przekształtnika
+    # (`urzadzenie_ref`) — ten sam typ, który operacja sprawdza w katalogu MODELU
+    # (`enm.katalog_projektu_karty.dodaj_karte_do_sekcji`).
+    if operation == "dodaj_karte_widmowa_projektu":
+        karta = payload.get("karta")
+        if isinstance(karta, dict):
+            _dodaj("Typ urządzenia karty widmowej", "CONVERTER", karta.get("urzadzenie_ref"))
+
     return znalezione
 
 
@@ -1012,20 +1073,41 @@ def _blad_wiazan_der(operation: str, payload: dict[str, Any]) -> CatalogPolicyEr
     odrzucałaby 39 z 51 urządzeń widocznych dla projektanta. Dlatego pyta TĄ SAMĄ
     funkcją, co warstwa domenowa — dwa niezależne predykaty „dziś zgodne" są
     defektem oczekującym na dane brzegowe.
+
+    Karta FAB-L: `DER_PROFILE_KEYS` dołączone do wejścia (obok `DER_BINDING_KEYS`)
+    — `_nieznane_referencje_katalogowe` sama rozstrzyga, które z tych kluczy mają
+    dostawcę do sprawdzenia (dziś: `bess_operation_mode_refs`; pozostałe profile —
+    `nc_rfg_profile_ref`/`lvrt_curve_ref`/`hvrt_curve_ref`/`pf_curve_ref` — nie mają
+    tu odpowiednika i przechodzą bez zmian, jak dotąd). Jedno źródło predykatu dla
+    obu warstw (API i domenowej) zamiast dwóch zbiorów kluczy utrzymywanych osobno.
     """
     if operation != "set_der_catalog_bindings":
         return None
 
-    from enm.domain_operations_v2 import DER_BINDING_KEYS, _nieznane_referencje_katalogowe
+    from enm.domain_operations_v2 import (
+        DER_BINDING_KEYS,
+        DER_PROFILE_KEYS,
+        KLUCZ_KART_WIDMOWYCH,
+        _nieznane_referencje_katalogowe,
+        opis_nieznanych_wiazan,
+    )
 
-    wiazania = {klucz: payload[klucz] for klucz in DER_BINDING_KEYS if klucz in payload}
+    # Karta AB-H0 §0.7.6: `karty_widmowe_ref` — ten sam predykat istnienia karty co
+    # operacja domenowa, w katalogu MODELU (statyczny + karty projektu): końcówka
+    # `domain-ops` woła bramę w kontekście katalogu modelu (`kontekst_katalogu`).
+    wiazania = {
+        klucz: payload[klucz]
+        for klucz in (*DER_BINDING_KEYS, *DER_PROFILE_KEYS, KLUCZ_KART_WIDMOWYCH)
+        if klucz in payload
+    }
     nieznane = _nieznane_referencje_katalogowe(wiazania)
     if not nieznane:
         return None
+    # Dane maszynowe `pole=wartość` zostają w predykacie; do projektanta idzie nazwa
+    # pola formularza — TEN SAM opis co w operacji domenowej (karta #142).
     komunikat = (
-        "Referencje katalogowe nie istnieją w katalogu: "
-        + ", ".join(nieznane)
-        + ". Wskaż pozycję istniejącą w katalogu."
+        f"Wskazane pozycje nie istnieją w katalogu: {opis_nieznanych_wiazan(nieznane)} — "
+        "wybierz je ponownie z katalogu."
     )
     return CatalogPolicyError(
         code="catalog.item_not_found",
@@ -1187,9 +1269,11 @@ def _validate_station_field_apparatus_bindings(
     pola = sn_fields if isinstance(sn_fields, list) else []
 
     sprawdzone: set[str] = set()
-    for index, pole in enumerate(pola, start=1):
+    for index, pole_sn in enumerate(pola, start=1):
         ref = (
-            _tekst_referencji(pole.get("apparatus_catalog_ref")) if isinstance(pole, dict) else None
+            _tekst_referencji(pole_sn.get("apparatus_catalog_ref"))
+            if isinstance(pole_sn, dict)
+            else None
         )
         ref = ref or wspolny_ref
         if ref is None or ref in sprawdzone:
@@ -1345,8 +1429,8 @@ def validate_and_materialize_catalog_binding(
                     {
                         "code": "catalog.ref_required",
                         "message_pl": (
-                            "Ręczny odpowiednik GPZ musi być kompletny albo należy podać "
-                            "'catalog_binding'."
+                            "Ręczny odpowiednik GPZ musi być kompletny albo należy wskazać "
+                            f"pozycję katalogu w polu {pole('catalog_ref', operation)}."
                         ),
                     }
                 ],
@@ -1387,7 +1471,8 @@ def validate_and_materialize_catalog_binding(
                     {
                         "code": "catalog.ref_required",
                         "message_pl": (
-                            f"Operacja '{operation}' wymaga 'catalog_binding' w payload."
+                            f"Operacja {opis_operacji(operation)} wymaga pozycji katalogu — "
+                            f"wybierz ją w polu {pole('catalog_ref', operation)}."
                         ),
                     }
                 ],
@@ -1414,9 +1499,8 @@ def validate_and_materialize_catalog_binding(
                     {
                         "code": "catalog.item_not_found",
                         "message_pl": (
-                            f"Pozycja katalogowa '{catalog_ref}' nie istnieje w katalogu "
-                            "ZKSN i słupów odgałęźnych SN. Wskaż pozycję istniejącą "
-                            "w katalogu."
+                            "Wskazana pozycja nie istnieje w katalogu ZKSN i słupów "
+                            "odgałęźnych SN. Wskaż pozycję istniejącą w katalogu."
                         ),
                     }
                 ],
@@ -1451,16 +1535,20 @@ def validate_and_materialize_catalog_binding(
                 errors=[
                     {
                         "code": "catalog.ref_required",
-                        "message_pl": "Nie można odczytać danych 'catalog_binding'.",
+                        "message_pl": (
+                            "Nie można odczytać wskazania pozycji katalogu — wybierz pozycję "
+                            "ponownie."
+                        ),
                     }
                 ],
             ),
             {},
         )
 
-    from network_model.catalog.repository import get_default_mv_catalog
+    # Katalog MODELU (statyczny + pozycje projektu) — jak w `_blad_referencji_dodatkowej`.
+    from enm.katalog_projektu import katalog_biezacy
 
-    catalog = get_default_mv_catalog()
+    catalog = katalog_biezacy()
     mat_result = materialize_catalog_binding(binding, catalog)
     if not mat_result.success:
         return (

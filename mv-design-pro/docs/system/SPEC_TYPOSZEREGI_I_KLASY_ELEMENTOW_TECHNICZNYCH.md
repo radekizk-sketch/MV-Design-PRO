@@ -27,7 +27,7 @@ Klasy techniczne zdefiniowane w modelu:
 - `LineType`, `CableType`, `TransformerType`, `SwitchEquipmentType`,
 - `MVApparatusType`, `LVApparatusType`, `LVCableType`, `LoadType`,
 - `CTType`, `VTType`,
-- `ConverterType`, `InverterType`, `PVInverterType`, `BESSInverterType`,
+- `ConverterType`, `PVInverterType`, `BESSInverterType`,
 - `ProtectionDeviceType`.
 
 Stan katalogu domyslnego:

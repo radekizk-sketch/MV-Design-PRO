@@ -1,23 +1,28 @@
 /*
- * Mapowanie 10 kategorii backendu → 5 ról sieciowych A–E (taksonomia
+ * Mapowanie 15 kategorii backendu → 5 ról sieciowych A–E (taksonomia
  * `SZABLONY_STACJI_2026-07.md` §1, poziom 1 „rola w sieci"). Funkcje czyste,
  * bez React — budują drzewko przeglądarki (poziom 1 rola → poziom 2 kategoria)
  * z REALNYCH danych `/api/station-templates/categories` (etykiety `label_pl`
- * i liczniki `template_count` z backendu — `backend/src/api/station_templates.py:210-226`,
- * `_CATEGORY_LABELS`/`_CATEGORY_DESCRIPTIONS` tamże), zero zgadywania etykiet.
+ * i liczniki `template_count` z backendu — `backend/src/api/station_templates.py`,
+ * `_CATEGORY_ICONS`/`_CATEGORY_DESCRIPTIONS` tamże), zero zgadywania etykiet.
  *
  * Rozstrzygnięcie mapowania (SZABLONY_STACJI §1, tabela ról):
- *   B — typowa_sn_nn, slupowa, zksn_wnetrzowa (istnieją, „Dystrybucja SN/nn")
- *   C — przemyslowa (istnieje częściowo — „Odbiorcze")
- *   D — prosument_pv, farma_pv, bess, hybrydowa, wiatrowa (istnieją — „Źródła i magazyny")
- *   E — sekcyjna (istnieje częściowo — „Specjalne")
- * Role A („Zasilanie sieci") i pozostała część C/E są wg dokumentu „DO DODANIA"
- * (delta backendowa, poza zakresem tej karty — §4 dokumentu) — obecnie żadna z
- * 10 kategorii nie ląduje w roli A. `rolaDlaKategorii` ma jawny fallback do B
- * dla kategorii spoza mapy (nowe kategorie dodane w backendzie zanim ta mapa
- * zostanie zaktualizowana) — TODO-KARTA: przy dodaniu kategorii ról A/C/E
- * (dokument §4) rozszerzyć `KATEGORIA_ROLA` o nowe wpisy zamiast polegać na
- * fallbacku.
+ *   A — gpz_110_sn, rozdzielnia_sieciowa („Zasilanie sieci" — V12T-016, zamknięte)
+ *   B — typowa_sn_nn, slupowa, zksn_wnetrzowa („Dystrybucja SN/nn")
+ *   C — przemyslowa, stacja_abonencka („Odbiorcze" — stacja_abonencka: V12T-016)
+ *   D — prosument_pv, farma_pv, bess, hybrydowa, wiatrowa („Źródła i magazyny")
+ *   E — sekcyjna, kompensacja, rezerwa_zasilania („Specjalne" — kompensacja/
+ *       rezerwa_zasilania: V12T-016)
+ *
+ * V12T-016 (rejestr długu `docs/v12xx/REJESTR_DLUGU.md`, ZAMKNIĘTY tą kartą):
+ * rola A miała licznik ZERO — zmierzone wprost z enumeracji `TemplateCategory`
+ * (`backend/src/application/station_templates/schema.py`): 10 wartości, zero
+ * do A. Karta dodała 5 kategorii (GPZ_110_SN/ROZDZIELNIA_SIECIOWA — rola A;
+ * STACJA_ABONENCKA — rola C; KOMPENSACJA/REZERWA_ZASILANIA — rola E), 16
+ * nowych szablonów (73 łącznie), pełen łańcuch backend → apply → ENM
+ * walidujący się bez blokad. `rolaDlaKategorii` zachowuje jawny fallback do B
+ * dla kategorii spoza mapy, żeby żaden PRZYSZŁY szablon nie zniknął z
+ * przeglądarki, gdy backend doda kategorię przed aktualizacją tej mapy.
  */
 
 import type { CategoryEntry } from './szablonyClient';
@@ -39,16 +44,21 @@ export const ROLA_LABEL: Readonly<Record<RolaId, string>> = {
 
 /** Mapowanie id kategorii backendu (`TemplateCategory.value`) → rola A–E. */
 const KATEGORIA_ROLA: Readonly<Record<string, RolaId>> = {
+  gpz_110_sn: 'A',
+  rozdzielnia_sieciowa: 'A',
   typowa_sn_nn: 'B',
   slupowa: 'B',
   zksn_wnetrzowa: 'B',
   przemyslowa: 'C',
+  stacja_abonencka: 'C',
   prosument_pv: 'D',
   farma_pv: 'D',
   bess: 'D',
   hybrydowa: 'D',
   wiatrowa: 'D',
   sekcyjna: 'E',
+  kompensacja: 'E',
+  rezerwa_zasilania: 'E',
 };
 
 /**

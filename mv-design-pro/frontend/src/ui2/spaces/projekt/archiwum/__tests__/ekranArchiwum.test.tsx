@@ -16,6 +16,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../../../ui/app-state';
+import { useShellStore } from '../../../../shell/useShellStore';
 import { EkranArchiwum } from '../EkranArchiwum';
 import { ARCHIWUM_STRINGS as T } from '../strings';
 
@@ -26,9 +27,7 @@ function plikArchiwum(nazwa = 'projekt.mvdp.zip'): File {
 
 /** Shim pobierania pliku (jsdom nie implementuje `URL.createObjectURL`). */
 function przechwycPobranie(): { nazwa: () => string } {
-  // @ts-expect-error shim jsdom
   if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-  // @ts-expect-error shim jsdom
   if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
   vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
@@ -143,18 +142,10 @@ describe('EkranArchiwum — odtworzenie projektu z paczki', () => {
         exported_at: '2026-07-30T08:15:00Z',
         archive_hash: 'abcdef0123456789ff',
         summary: {
-          nodes_count: 12,
-          branches_count: 11,
-          sources_count: 1,
-          loads_count: 6,
-          snapshots_count: 2,
-          sld_diagrams_count: 1,
           study_cases_count: 3,
           operating_cases_count: 1,
-          analysis_runs_count: 4,
-          study_runs_count: 0,
-          results_count: 4,
-          proofs_count: 2,
+          canonical_runs_count: 4,
+          enm_models_count: 2,
         },
       }),
     }));
@@ -176,13 +167,50 @@ describe('EkranArchiwum — odtworzenie projektu z paczki', () => {
         etykieta,
         '',
       );
-    expect(wartosc(T.podgladWezly)).toBe('12');
-    expect(wartosc(T.podgladOdbiory)).toBe('6');
     // Warianty = przypadki obliczeniowe + warianty pracy (3 + 1).
     expect(wartosc(T.podgladWarianty)).toBe('4');
-    // Przebiegi = przebiegi analiz + przebiegi studium (4 + 0).
+    // Przebiegi = biegi kanoniczne archiwum 3.0.0 (jedyny rejestr biegów).
     expect(wartosc(T.podgladPrzebiegi)).toBe('4');
-    expect(wartosc(T.podgladDowody)).toBe('2');
+    expect(wartosc(T.podgladModele)).toBe('2');
+    // Wersja zapisu i odcisk paczki — metadane produkcyjne, poza pierwszym planem.
+    expect(podglad).not.toHaveTextContent('abcdef0123456789');
+    expect(podglad).not.toHaveTextContent(T.podgladWersja);
+    expect(screen.queryByTestId('mvd-arch-podglad-audyt')).toBeNull();
+  });
+
+  it('tryb ekspercki → wersja zapisu i pełny odcisk paczki w informacjach audytowych', async () => {
+    const poprzedni = useShellStore.getState().advancementMode;
+    useShellStore.setState({ advancementMode: 'expert' });
+    try {
+      const user = userEvent.setup();
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => ({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            valid: true,
+            schema_version: '3.0.0',
+            project_name: 'Sieć Zachód',
+            exported_at: '2026-07-30T08:15:00Z',
+            archive_hash: 'abcdef0123456789ff',
+            summary: null,
+          }),
+        })),
+      );
+      render(<EkranArchiwum onZamknij={vi.fn()} />);
+      await user.upload(screen.getByTestId('mvd-arch-plik'), plikArchiwum());
+      await user.click(screen.getByTestId('mvd-arch-podglad-akcja'));
+      await user.click(await screen.findByTestId('mvd-arch-podglad-audyt-przelacz'));
+      const lista = screen.getByTestId('mvd-arch-podglad-audyt-lista');
+      expect(lista).toHaveTextContent(`${T.podgladWersja}3.0.0`);
+      expect(lista).toHaveTextContent(`${T.podgladOdcisk}abcdef0123456789ff`);
+    } finally {
+      // Odmontowanie PRZED przywróceniem trybu — inaczej zmiana store
+      // re-renderuje zamontowany ekran poza act().
+      cleanup();
+      useShellStore.setState({ advancementMode: poprzedni });
+    }
   });
 
   it('import paczki → końcówka importu z polami formularza i raport wyniku', async () => {
@@ -211,10 +239,36 @@ describe('EkranArchiwum — odtworzenie projektu z paczki', () => {
     const raport = await screen.findByTestId('mvd-arch-raport');
     expect(raport.getAttribute('data-wariant')).toBe('ok');
     expect(within(raport).getByText(T.raportSukces)).toBeTruthy();
-    expect(within(raport).getByText('1.2')).toBeTruthy();
+    // Wersja zapisu źródłowego to metadana (V12.7 §0.3) — nie na pierwszym planie.
+    expect(within(raport).queryByText('1.2')).toBeNull();
+    expect(screen.queryByTestId('mvd-arch-audyt')).toBeNull();
     expect(
       within(screen.getByTestId('mvd-arch-ostrzezenia')).getByText(WYNIK_SUKCES.warnings[0]),
     ).toBeTruthy();
+  });
+
+  it('tryb ekspercki → wersja zapisu źródłowego w informacjach audytowych raportu', async () => {
+    const poprzedni = useShellStore.getState().advancementMode;
+    useShellStore.setState({ advancementMode: 'expert' });
+    try {
+      const user = userEvent.setup();
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => ({ ok: true, status: 200, json: async () => WYNIK_SUKCES })),
+      );
+      render(<EkranArchiwum onZamknij={vi.fn()} />);
+      await user.upload(screen.getByTestId('mvd-arch-plik'), plikArchiwum());
+      await user.click(screen.getByTestId('mvd-arch-import'));
+      await user.click(await screen.findByTestId('mvd-arch-audyt-przelacz'));
+      expect(screen.getByTestId('mvd-arch-audyt-lista')).toHaveTextContent(
+        `${T.raportMigracja}1.2`,
+      );
+    } finally {
+      // Odmontowanie PRZED przywróceniem trybu — inaczej zmiana store
+      // re-renderuje zamontowany ekran poza act().
+      cleanup();
+      useShellStore.setState({ advancementMode: poprzedni });
+    }
   });
 
   it('po udanym imporcie akcja otwiera odtworzony projekt razem z jego wariantem obliczeniowym', async () => {

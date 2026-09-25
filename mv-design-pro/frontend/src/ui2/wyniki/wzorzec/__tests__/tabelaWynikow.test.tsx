@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import {
   TabelaWynikow,
@@ -10,6 +10,7 @@ import {
 import { WZORZEC_STRINGS } from '../strings';
 import type { DefinicjaKolumny, WierszTabeli } from '../wzorzecModel';
 import { kolumnyFixture, wierszeFixture } from './fixtures';
+import { useSelectionStore } from '../../../../ui/selection';
 
 function props(over: Partial<Parameters<typeof TabelaWynikow>[0]> = {}) {
   return {
@@ -356,6 +357,68 @@ describe('TabelaWynikow — wirtualizacja okienkowa (>500 wierszy)', () => {
     expect(within(screen.getByTestId('mvd-wyn-th-wartosc')).getByText('Wartość')).toBeInTheDocument();
     expect(within(screen.getByTestId('mvd-wyn-th-wartosc')).getByText('[kV]')).toBeInTheDocument();
   });
+
+  // Karta UI2 p.5 (DoD): 10 000 wierszy — jawny, wysoki wolumen wskazany w karcie
+  // (nie tylko 1000, żeby wykluczyć próg zaszyty specyficznie dla mniejszej fikstury).
+  it('10 000 wierszy: DOM niesie WYŁĄCZNIE okno widoczne + zapas, nigdy całe 10 000', () => {
+    render(<TabelaWynikow {...propsDuze(10_000)} />);
+    const wiersze = screen.getAllByTestId('mvd-wyn-wiersz');
+    expect(wiersze).toHaveLength(LICZBA_WIDOCZNYCH + ZAPAS_WIERSZY);
+    expect(wiersze.length).toBeLessThan(100);
+    // Przekładka dolna domyka sumę do PEŁNEJ wysokości 10 000 wierszy.
+    const dol = screen.getByTestId('mvd-wyn-spacer-dol').querySelector('td');
+    const renderowane = LICZBA_WIDOCZNYCH + ZAPAS_WIERSZY;
+    expect(dol).toHaveStyle({ height: `${(10_000 - renderowane) * WYSOKOSC_WIERSZA_PX}px` });
+  });
+
+  it('10 000 wierszy: przewinięcie na sam koniec pokazuje OSTATNI wiersz (koniec listy osiągalny mimo okienkowania)', () => {
+    render(<TabelaWynikow {...propsDuze(10_000)} />);
+    przewin(9_999 * WYSOKOSC_WIERSZA_PX);
+    const wiersze = screen.getAllByTestId('mvd-wyn-wiersz');
+    expect(wiersze[wiersze.length - 1]).toHaveTextContent('Szyna 9999');
+    expect(screen.queryByTestId('mvd-wyn-spacer-dol')).not.toBeInTheDocument();
+  });
+
+  it('nawigacja klawiaturą (Enter) na wierszu W OKNIE wirtualizacji wybiera wiersz i zapisuje zaznaczenie w store (ścieżka natywna, oba mechanizmy razem)', () => {
+    useSelectionStore.getState().clearSelection();
+    const onWybierz = vi.fn();
+    render(
+      <TabelaWynikow
+        {...propsDuze(1000, { onWybierzWiersz: onWybierz, typElementuWiersza: () => 'Bus' })}
+      />,
+    );
+    // Wiersz w oknie widoczności (scrollTop=0 → „Szyna 3" jest wyrenderowany).
+    const wiersz = screen.getByText('Szyna 3').closest('tr')!;
+    wiersz.focus();
+    fireEvent.keyDown(wiersz, { key: 'Enter', target: wiersz });
+
+    expect(onWybierz).toHaveBeenCalledWith('Szyna 3');
+    expect(useSelectionStore.getState().selectedElement).toEqual({
+      id: 'Szyna 3',
+      type: 'Bus',
+      name: 'Szyna 3',
+    });
+  });
+
+  it('po przewinięciu: nawigacja klawiaturą na NOWO wyrenderowanym wierszu (poza pierwotnym oknem) działa identycznie', () => {
+    useSelectionStore.getState().clearSelection();
+    const onWybierz = vi.fn();
+    render(
+      <TabelaWynikow
+        {...propsDuze(1000, { onWybierzWiersz: onWybierz, typElementuWiersza: () => 'Bus' })}
+      />,
+    );
+    przewin(100 * WYSOKOSC_WIERSZA_PX);
+    const wiersz = screen.getByText('Szyna 100').closest('tr')!;
+    wiersz.focus();
+    fireEvent.keyDown(wiersz, { key: 'Enter', target: wiersz });
+
+    expect(onWybierz).toHaveBeenCalledWith('Szyna 100');
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'Szyna 100',
+      type: 'Bus',
+    });
+  });
 });
 
 describe('TabelaWynikow — tryb decyzji (F-K4)', () => {
@@ -381,5 +444,76 @@ describe('TabelaWynikow — tryb decyzji (F-K4)', () => {
   it('domyślny tryb (1:1 sprzed F-K4): wiersz bez ostrzeżenia NIE dostaje akcji', () => {
     render(<TabelaWynikow {...props({ wiersze: bezOstrzezenia, onPoprawWModelu: vi.fn() })} />);
     expect(screen.queryByTestId('mvd-wyn-popraw')).toBeNull();
+  });
+});
+
+describe('TabelaWynikow — typElementuWiersza: synchronizacja z JEDNYM store zaznaczenia (karta TODO-UI2 p.6)', () => {
+  beforeEach(() => {
+    useSelectionStore.getState().clearSelection();
+  });
+
+  it('klik natywny na wierszu z rozpoznanym typem → element trafia do store zaznaczenia (SLD ↔ inspektor ↔ drzewo)', () => {
+    const onWybierz = vi.fn();
+    render(
+      <TabelaWynikow
+        {...props({ onWybierzWiersz: onWybierz, typElementuWiersza: () => 'Bus' })}
+      />,
+    );
+    fireEvent.click(screen.getByText('Szyna A'));
+
+    // Lokalne podświetlenie NIE znika — oba mechanizmy współistnieją.
+    expect(onWybierz).toHaveBeenCalledWith('Szyna A');
+    // JEDNO źródło prawdy zaznaczenia (zero drugiego store'u zaznaczenia).
+    expect(useSelectionStore.getState().selectedElement).toEqual({
+      id: 'Szyna A',
+      type: 'Bus',
+      name: 'Szyna A',
+    });
+  });
+
+  it('Enter na wierszu (klawiatura) → ta sama synchronizacja co klik myszą', () => {
+    render(
+      <TabelaWynikow
+        {...props({ onWybierzWiersz: vi.fn(), typElementuWiersza: () => 'Bus' })}
+      />,
+    );
+    const wiersz = screen.getByText('Szyna C').closest('tr')!;
+    fireEvent.keyDown(wiersz, { key: 'Enter', target: wiersz });
+
+    expect(useSelectionStore.getState().selectedElement?.id).toBe('Szyna C');
+  });
+
+  it('typElementuWiersza zwraca undefined (element niejednoznaczny) → store NIE dostaje nic (zero zgadywania typu)', () => {
+    const onWybierz = vi.fn();
+    render(
+      <TabelaWynikow
+        {...props({ onWybierzWiersz: onWybierz, typElementuWiersza: () => undefined })}
+      />,
+    );
+    fireEvent.click(screen.getByText('Szyna A'));
+
+    // Lokalne podświetlenie działa jak zawsze — wyłącznie synchronizacja SLD jest pominięta.
+    expect(onWybierz).toHaveBeenCalledWith('Szyna A');
+    expect(useSelectionStore.getState().selectedElement).toBeNull();
+  });
+
+  it('brak propsa typElementuWiersza → zachowanie 1:1 (żadnej zmiany store zaznaczenia)', () => {
+    render(<TabelaWynikow {...props({ onWybierzWiersz: vi.fn() })} />);
+    fireEvent.click(screen.getByText('Szyna A'));
+
+    expect(useSelectionStore.getState().selectedElement).toBeNull();
+  });
+
+  it('per-wiersz różny typ (tabela mieszana branch/transformer) → store dostaje TYP TEGO wiersza, nie stały dla całej tabeli', () => {
+    // Klasa, nie instancja: `typElementuWiersza` jest FUNKCJĄ klucza wiersza —
+    // test dowodzi, że dwa różne wiersze tej samej tabeli mogą dać dwa różne typy.
+    const typ = (klucz: string) => (klucz === 'Szyna A' ? ('Bus' as const) : ('LineBranch' as const));
+    render(<TabelaWynikow {...props({ onWybierzWiersz: vi.fn(), typElementuWiersza: typ })} />);
+
+    fireEvent.click(screen.getByText('Szyna A'));
+    expect(useSelectionStore.getState().selectedElement?.type).toBe('Bus');
+
+    fireEvent.click(screen.getByText('Szyna C'));
+    expect(useSelectionStore.getState().selectedElement?.type).toBe('LineBranch');
   });
 });

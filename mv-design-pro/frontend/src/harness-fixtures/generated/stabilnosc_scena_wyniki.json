@@ -1,0 +1,282 @@
+{
+  "run_id": "run-dyn-scena-stabilnosc",
+  "rows": [
+    {
+      "scenario_id": "dyn-scena-stabilnosc",
+      "scenario_type": "FAULT_CLEAR",
+      "source_id": "gen_sync",
+      "faulted_element_id": "line_b_c",
+      "cleared_by_element_ids": [
+        "fuse_c"
+      ],
+      "status": "NIE_OCENIONO",
+      "contract_version": "dynamic_stability_fault_clear_echo_v2",
+      "clearing_time_ms": 120.0,
+      "pre_fault_angle_deg": 10.0,
+      "during_fault_angle_deg": 65.0,
+      "post_fault_angle_deg": 28.0,
+      "post_fault_voltage_pu": 0.97,
+      "post_fault_frequency_pu": 0.99,
+      "ocena": {
+        "kryterium_id": "dynamic_stability.fault_clear.dyn-scena-stabilnosc",
+        "przedmiot": {
+          "element_ref": "gen_sync",
+          "nazwa_pl": "Źródło Generator synchroniczny",
+          "opis_pl": "Źródło w scenariuszu wyłączenia zwarcia na elemencie Linia SN 1"
+        },
+        "kryterium": {
+          "opis_pl": "Stabilność kątowa źródła po wyłączeniu zwarcia",
+          "warunek_latex": "",
+          "relacja": "LOGICZNE",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "podstawa": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Progi oceny stabilności podane w opcjach biegu",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "progi bez dokumentu źródłowego — przyjmowane w opcjach biegu"
+        },
+        "stosowalnosc": {
+          "typ_modulu": null,
+          "technologia": null,
+          "modul_istniejacy": null,
+          "dotyczy": true,
+          "powod_pl": "scenariusz wyłączenia zwarcia wskazuje oceniane źródło",
+          "podstawa": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wynik": null,
+        "limit": null,
+        "margines": null,
+        "niepewnosc": {
+          "wartosc": null,
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "brak wielkości rozstrzygającej — bieg nie rozwiązuje sieci, więc niepewność wyniku nie dotyczy"
+        },
+        "status_maszynowy": "NIE_OCENIONO",
+        "kompletnosc_dowodu": "NIEPELNY",
+        "powody_niepelnosci": [
+          "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
+          "Dana przyjęta bez walidacji: czas wyłączenia zwarcia = 120 ms, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+          "Dana przyjęta bez walidacji: kąt mocy przed zwarciem = 10 °, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+          "Dana przyjęta bez walidacji: kąt mocy w czasie zwarcia = 65 °, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+          "Dana przyjęta bez walidacji: kąt mocy po zwarciu = 28 °, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+          "Dana przyjęta bez walidacji: napięcie po zwarciu = 0,97 p.u. (U_n), jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+          "Dana przyjęta bez walidacji: częstotliwość po zwarciu = 0,99 p.u. (f_n), jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+          "Podstawa „Progi oceny stabilności podane w opcjach biegu” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+        ],
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "wyjasnienie": {
+          "zdanie_pl": "Stabilność kątowa źródła po wyłączeniu zwarcia (Źródło Generator synchroniczny) — ocena niewykonana: brak metody dowodu, która wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.",
+          "przyczyna_pl": "brak metody dowodu, która wykazuje zachowania dynamicznego",
+          "czego_brakuje": [
+            "Metoda dowodu właściwa dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+            "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+            "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Progi oceny stabilności podane w opcjach biegu” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: progi bez dokumentu źródłowego — przyjmowane w opcjach biegu).",
+            "Bieg dynamiki RMS na silniku kanonicznym z modelem źródeł, sieci i obciążeń, zweryfikowany wyrocznią — kąty mocy, napięcie i częstotliwość po zwarciu oraz czas wyłączenia w tym biegu pochodzą z wartości wpisanych przez użytkownika, nie z rozwiązania sieci.",
+            "Przebieg kątów mocy, napięcia i częstotliwości wyznaczony z rozwiązania sieci, a nie wpisany ręcznie.",
+            "Zadziałanie zabezpieczeń wyznaczone z ich nastaw i przebiegu prądów zwarciowych (zabezpieczenia nie są w tym biegu symulowane).",
+            "Obliczenie dynamiki czasowej z punktem pracy z rozpływu (bieg kanoniczny albo program zewnętrzny) — do tego czasu ten bieg pokazuje wyłącznie scenariusz wpisany przez użytkownika."
+          ],
+          "zastrzezenia": [
+            "Podstawa „Progi oceny stabilności podane w opcjach biegu” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (progi bez dokumentu źródłowego — przyjmowane w opcjach biegu).",
+            "Dana przyjęta bez walidacji: czas wyłączenia zwarcia = 120 ms, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+            "Dana przyjęta bez walidacji: kąt mocy przed zwarciem = 10 °, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+            "Dana przyjęta bez walidacji: kąt mocy w czasie zwarcia = 65 °, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+            "Dana przyjęta bez walidacji: kąt mocy po zwarciu = 28 °, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+            "Dana przyjęta bez walidacji: napięcie po zwarciu = 0,97 p.u. (U_n), jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+            "Dana przyjęta bez walidacji: częstotliwość po zwarciu = 0,99 p.u. (f_n), jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+            "Zakres ważności: Echo scenariusza wyłączenia zwarcia wpisanego przez użytkownika — wynik nie obejmuje: przebieg kątów mocy wyznaczony z rozwiązania sieci; zadziałanie zabezpieczeń wyznaczone z nastaw."
+          ]
+        },
+        "dowod": {
+          "metoda": "BRAK_METODY",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+          "status_modelu": "NIE_DOTYCZY",
+          "status_danych": {
+            "stan": "UNVALIDATED_INPUT",
+            "dane_przyjete": [
+              {
+                "nazwa_pl": "czas wyłączenia zwarcia",
+                "wartosc": {
+                  "wartosc": 120.0,
+                  "jednostka": "ms"
+                },
+                "powod_pl": "wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci",
+                "jakosc": "ESTIMATED"
+              },
+              {
+                "nazwa_pl": "kąt mocy przed zwarciem",
+                "wartosc": {
+                  "wartosc": 10.0,
+                  "jednostka": "°"
+                },
+                "powod_pl": "wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci",
+                "jakosc": "ESTIMATED"
+              },
+              {
+                "nazwa_pl": "kąt mocy w czasie zwarcia",
+                "wartosc": {
+                  "wartosc": 65.0,
+                  "jednostka": "°"
+                },
+                "powod_pl": "wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci",
+                "jakosc": "ESTIMATED"
+              },
+              {
+                "nazwa_pl": "kąt mocy po zwarciu",
+                "wartosc": {
+                  "wartosc": 28.0,
+                  "jednostka": "°"
+                },
+                "powod_pl": "wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci",
+                "jakosc": "ESTIMATED"
+              },
+              {
+                "nazwa_pl": "napięcie po zwarciu",
+                "wartosc": {
+                  "wartosc": 0.97,
+                  "jednostka": "p.u. (U_n)"
+                },
+                "powod_pl": "wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci",
+                "jakosc": "ESTIMATED"
+              },
+              {
+                "nazwa_pl": "częstotliwość po zwarciu",
+                "wartosc": {
+                  "wartosc": 0.99,
+                  "jednostka": "p.u. (f_n)"
+                },
+                "powod_pl": "wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci",
+                "jakosc": "ESTIMATED"
+              }
+            ]
+          },
+          "odniesienie": null,
+          "w_domenie_walidacji": null,
+          "domena_pl": null
+        },
+        "zakres_waznosci": {
+          "rodzaj_analizy": null,
+          "opis_pl": "Echo scenariusza wyłączenia zwarcia wpisanego przez użytkownika",
+          "technologia": null,
+          "model_urzadzenia": null,
+          "symetria_zaklocenia": null,
+          "parametry_sieci": [],
+          "regulator": null,
+          "ograniczniki": [],
+          "wykluczenia": [
+            "przebieg kątów mocy wyznaczony z rozwiązania sieci",
+            "zadziałanie zabezpieczeń wyznaczone z nastaw"
+          ]
+        },
+        "slad": []
+      },
+      "source_kind": "generator",
+      "faulted_element_kind": "galaz_liniowa",
+      "source_name": "Generator synchroniczny",
+      "faulted_element_name": "Linia SN 1",
+      "proof_ref": "proof:dynamic-stability:b05ad39400fc6ee75dc242e995bb2fa60111b859ceea08784ca6b6e88c2899c5",
+      "proof_status": "incomplete",
+      "reporting_status": "not_reportable",
+      "reporting_status_pl": "nieraportowalny",
+      "proof_status_pl": "częściowy",
+      "reporting_limitations_pl": [
+        "Kąty mocy, napięcie i częstotliwość po zwarciu oraz czas wyłączenia wpisuje użytkownik w opcjach biegu; bieg nie rozwiązuje sieci i nie całkuje równań ruchu układu, więc zwraca wyłącznie echo scenariusza bez oceny stabilności."
+      ],
+      "dopuszczalnosc_raportowa": false,
+      "reporting_limitations": [
+        "Kąty mocy, napięcie i częstotliwość po zwarciu oraz czas wyłączenia wpisuje użytkownik w opcjach biegu; bieg nie rozwiązuje sieci i nie całkuje równań ruchu układu, więc zwraca wyłącznie echo scenariusza bez oceny stabilności."
+      ],
+      "evidence": {
+        "capability_id": "dynamic_stability.fault_clear",
+        "tier": "UNVALIDATED_MODEL",
+        "tier_pl": "model niezwalidowany",
+        "claim_kind": "DYNAMIC_PERFORMANCE",
+        "claim_kind_pl": "zachowanie dynamiczne",
+        "regulatory_evidence_eligible": false,
+        "rationale_pl": "Kąty mocy, napięcie i częstotliwość po zwarciu oraz czas wyłączenia wpisuje użytkownik w opcjach biegu; bieg nie rozwiązuje sieci i nie całkuje równań ruchu układu, więc zwraca wyłącznie echo scenariusza bez oceny stabilności.",
+        "audit_ref": "karta_s1_s4_dowod.md §0.5"
+      }
+    }
+  ],
+  "analysis_case_context": {
+    "case_ref": "case-demo",
+    "case_kind": "PRACA_PO_ZAKLOCENIU",
+    "rodzaj_przypadku": "PRACA_PO_ZAKLOCENIU",
+    "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+    "rewizja_modelu": 1,
+    "variant_ref": null,
+    "run_ref": "run-dyn-scena-stabilnosc",
+    "proof_pack_ref": "proof-pack:run-dyn-scena-stabilnosc",
+    "quality_gate": "G4",
+    "applicability_scope": [
+      "DYNAMIC_STABILITY",
+      "AUTOMATION",
+      "REPORT"
+    ],
+    "completeness": "complete",
+    "completeness_legacy": "pelny",
+    "missing_prerequisites": [],
+    "assumptions": {
+      "source_assumptions_ref": "dynamic_fault_source_state",
+      "load_assumptions_ref": "sc_load_snapshot",
+      "switching_state_ref": null,
+      "grounding_assumptions_ref": "network_grounding_snapshot",
+      "temperature_assumptions_ref": "temperature_short_circuit",
+      "transformer_tap_assumptions_ref": "tap_frozen",
+      "ibg_assumptions_ref": "ibg_model_snapshot"
+    },
+    "lineage": {
+      "project_ref": null,
+      "run_ref": "run-dyn-scena-stabilnosc",
+      "analysis_type": "dynamic_stability",
+      "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0"
+    },
+    "reproducibility": {
+      "case_ref": "case-demo",
+      "analysis_case_ref": "case-demo",
+      "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "enm_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "enm_snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "enm_projection_version": "v12xx.m1.1",
+      "variant_ref": null,
+      "operating_variant_ref": null,
+      "switching_snapshot_ref": null,
+      "solver_family": "dynamic_stability_fault_clear",
+      "solver_version": null,
+      "method_version": "canonical_run_v1",
+      "formula_set_version": "dynamic_stability_fault_clear_echo_v2",
+      "standard_basis_ref": "DYNAMIC_STABILITY_FAULT_CLEAR_ECHO_V2",
+      "input_hash": "ac5986b30b64c28c1c371fe2132b9dd4dae3ce7f174fa4a0bd556e648921ffe7",
+      "result_hash": "c17446d3da263aad51000b44a7b6f2a60034ae5c2f4eb4badff71beceae84b0a",
+      "domain_model_version": "1.0",
+      "bay_contract_version": "V12.5",
+      "results_contract_version": "V12.5",
+      "proof_renderer_version": "white_box_trace_v1",
+      "catalog_snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "catalog_materialization_ref": "catalog-materialization:6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
+      "catalog_materialization_hash": "6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
+      "catalog_materialization_status": "not_materialized",
+      "catalog_materialization_contract_version": "catalog_materialization_v1",
+      "catalog_schema_version": null,
+      "catalog_fingerprint": "cea426cf988f650cf00a87e531d693e93a693f4fa529acf1f74e5e77b8b46977",
+      "model_revision": 1,
+      "tolerance_policy_ref": "solver_tolerance/default",
+      "rounding_policy_ref": "rounding/default",
+      "quality_gate_policy_version": "v12_5_quality_gate",
+      "report_contract_version": "analysis_report_v2",
+      "export_generator_version": "v12_5_export_artifact/1.0",
+      "result_rules_version": "result_rules_v12_5",
+      "ruleset_version": "result_rules_v12_5"
+    }
+  }
+}

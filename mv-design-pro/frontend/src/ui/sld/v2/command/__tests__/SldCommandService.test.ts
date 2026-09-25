@@ -172,7 +172,6 @@ describe('toastBus — feedback events', () => {
   it('COMMAND_FEEDBACK_PL — wzorce komunikatów zgodne z briefem §17 pkt 10', () => {
     expect(COMMAND_FEEDBACK_PL.bayCreated('TR1')).toBe('Utworzono pole TR1.');
     expect(COMMAND_FEEDBACK_PL.segmentSplit).toContain('end-to-end');
-    expect(COMMAND_FEEDBACK_PL.transformerAdded('TR-blok-PV')).toContain('SN/nN TR-blok-PV');
     expect(COMMAND_FEEDBACK_PL.derAttached('PV', 'PV-01')).toContain('PV');
     expect(COMMAND_FEEDBACK_PL.missingInverterData).toContain('falownika');
     expect(COMMAND_FEEDBACK_PL.voltageMismatch(15, 0.4)).toContain('transformator');

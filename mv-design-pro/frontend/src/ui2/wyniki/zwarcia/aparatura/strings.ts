@@ -9,7 +9,7 @@ export const APARATURA_STRINGS = {
   akcja: 'Sprawdź aparaturę w punkcie zwarcia',
   akcjaPonow: 'Sprawdź ponownie',
   pracuje: 'Sprawdzanie wytrzymałości…',
-  norma: 'IEC 60909 · werdykt z backendu',
+  norma: 'IEC 60909 · ocena z obliczenia wytrzymałości',
 
   wejsciaEyebrow: 'DANE WEJŚCIOWE',
   wejscieIp: 'Prąd udarowy ip (kryterium I_dyn)',
@@ -32,7 +32,7 @@ export const APARATURA_STRINGS = {
   brakAparaturyAkcja: 'Otwórz konfigurację stacji',
   brakPrzypadku: 'Bez aktywnego przypadku obliczeniowego nie ma z czego wczytać pól stacji.',
   blad: 'Nie udało się sprawdzić wytrzymałości aparatury.',
-  bladUwaga: 'Werdykt pochodzi z backendu — bez odpowiedzi nie ma podstawy do oceny.',
+  bladUwaga: 'Ocenę wystawia obliczenie wytrzymałości — bez jego odpowiedzi nie ma podstawy do oceny.',
   // Rozbicie czasu wyłączenia (KD-6 poz. 3) — WHITE BOX: suma i oba człony.
   czasSuma: 'Czas wyłączenia t_wył',
   czasCzlonNastawczy: 'Człon nastawczy zabezpieczenia',

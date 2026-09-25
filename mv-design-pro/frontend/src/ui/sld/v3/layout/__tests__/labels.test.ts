@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { GRID, rectsOverlap, type V3Rect } from '../../core/grid';
+import { GRID, type V3Rect } from '../../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../../core/text';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
@@ -20,6 +20,7 @@ import { BUS_AXIS_BAND_HEIGHT, computeBands, type StationBandHeights } from '../
 import { computeColumns, type ComputeColumnsInput } from '../columns';
 import { colorSegmentLabelRows, computeSegmentLabelSlotX, segmentSpanEndsX } from '../segments';
 import {
+  LABEL_ROLE_BY_OWNER_KIND,
   labelGrowthReservationGaps,
   labelRectsWiderThanInk,
   leaderInvariantHolds,
@@ -421,17 +422,17 @@ describe('V3 labels — segment pionowy / lateral (spec §4)', () => {
 describe('V3 labels — pasmo nazw stacji (spec §4: kolejność pionowa stała)', () => {
   it('4 wiersze (nazwa/kod/kVA/typ) w kolejności, ułożone WEWNĄTRZ nameSlot, bez nachodzenia', () => {
     const station = makeStation('s1', 10, 3);
-    const { bandsResult, columnsResult } = buildPipeline([station], [null]);
+    const { columnsResult } = buildPipeline([station], [null]);
     const nameSlot = columnsResult.columns[0].nameSlot;
 
     const owner: StationNameBandOwnerInput = {
       ownerRef: 's1',
       nameSlot,
       rows: [
-        { text: station.name, labelClass: 't1' },
-        { text: station.stationCode!, labelClass: 't1' },
-        { text: '630 kVA', labelClass: 't2' },
-        { text: station.stationTypeLabel!, labelClass: 't4' },
+        { text: station.name, labelClass: 't1', role: 'tozsamosc' },
+        { text: station.stationCode!, labelClass: 't1', role: 'tozsamosc' },
+        { text: '630 kVA', labelClass: 't2', role: 'dane' },
+        { text: station.stationTypeLabel!, labelClass: 't4', role: 'dane' },
       ],
     };
 
@@ -522,10 +523,10 @@ describe('V3 labels — podpisy kierunku pola w B2 (spec §9/§4)', () => {
         ownerRef: station.id,
         nameSlot: column.nameSlot,
         rows: [
-          { text: station.name, labelClass: 't1' },
-          { text: station.stationCode!, labelClass: 't1' },
-          { text: '630 kVA', labelClass: 't2' },
-          { text: station.stationTypeLabel!, labelClass: 't4' },
+          { text: station.name, labelClass: 't1', role: 'tozsamosc' },
+          { text: station.stationCode!, labelClass: 't1', role: 'tozsamosc' },
+          { text: '630 kVA', labelClass: 't2', role: 'dane' },
+          { text: station.stationTypeLabel!, labelClass: 't4', role: 'dane' },
         ],
       });
 
@@ -585,8 +586,8 @@ describe('V3 labels — determinizm (pryncypium determinizmu)', () => {
           ownerRef: station.id,
           nameSlot: column.nameSlot,
           rows: [
-            { text: station.name, labelClass: 't1' },
-            { text: '630 kVA', labelClass: 't2' },
+            { text: station.name, labelClass: 't1', role: 'tozsamosc' },
+            { text: '630 kVA', labelClass: 't2', role: 'dane' },
           ],
         },
       ],
@@ -615,7 +616,15 @@ describe('V3 labels — determinizm (pryncypium determinizmu)', () => {
 
 describe('V3 labels — overlapProbe: kontrprzykład (musi wykrywać, nie tylko happy path)', () => {
   function label(ownerRef: string, rect: V3Rect, slotIndex: 1 | 2 = 1): OwnedLabel {
-    return { ownerRef, ownerKind: 'apparatus', labelClass: 't3', text: ownerRef, slotIndex, rect };
+    return {
+      ownerRef,
+      ownerKind: 'apparatus',
+      labelClass: 't3',
+      labelRole: LABEL_ROLE_BY_OWNER_KIND.apparatus,
+      text: ownerRef,
+      slotIndex,
+      rect,
+    };
   }
 
   it('happy path: rozłączne prostokąty ⇒ overlapCount = 0', () => {
@@ -643,6 +652,7 @@ describe('V3 labels — overlapProbe: kontrprzykład (musi wykrywać, nie tylko 
       ownerRef: 'broken',
       ownerKind: 'segment-span',
       labelClass: 't2',
+      labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-span'],
       text: 'x',
       slotIndex: 2, // zapasowy
       rect: { x: 0, y: 0, width: 10, height: 10 },

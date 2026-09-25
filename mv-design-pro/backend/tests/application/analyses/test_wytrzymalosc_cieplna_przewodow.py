@@ -7,6 +7,8 @@ kazdego testu), NIE z uruchomienia testowanego kodu.
 
 from __future__ import annotations
 
+import inspect
+
 import pytest
 from application.analyses.protection.czas_wylaczenia_galezi import (
     ZRODLO_ZALOZENIE_PRZYPADKU,
@@ -114,7 +116,6 @@ def _catalog_with_cable_type(
         transformer_types={},
         switch_equipment_types={},
         converter_types={},
-        inverter_types={},
     )
 
 
@@ -856,3 +857,70 @@ def test_galaz_nn_i2t_powyzej_k2s2_daje_fail() -> None:
 
     assert pozycja.status == "FAIL"
     assert pozycja.i2t_a2s > pozycja.i2t_dopuszczalne_a2s
+
+
+#: Słowa w transliteracji bez znaków diakrytycznych, które wcześniej stały w podstawie
+#: normowej i założeniach rdzenia cieplnego (karta #145 — tekst trafia na ekran wyników).
+_TRANSLITERACJE = (
+    "pradow",
+    "prad",
+    "pradu",
+    "pradzie",
+    "wartosci",
+    "uwzglednieniem",
+    "zyly",
+    "wzgledu",
+    "material",
+    "odplywu",
+    "ciepla",
+    "rownowazna",
+    "poczatkowy",
+    "wylaczenia",
+    "wytrzymalosc",
+    "uzywa",
+    "wg",
+)
+
+
+def _slowa(tekst: str) -> set[str]:
+    return {slowo.strip(".,;:()—").lower() for slowo in tekst.split()}
+
+
+def test_podstawa_normowa_i_zalozenia_rdzenia_po_polsku_ze_znakami() -> None:
+    """Karta #145: tekst podstawy normowej i założeń powstaje w rdzeniu cieplnym (plik
+    niezamrożony) i idzie na ekran wyników bez tłumaczenia w warstwie aplikacji — dlatego
+    polszczyznę ze znakami przypina test u ŹRÓDŁA. Iloczyn cech: {podstawa normowa, założenia
+    wyniku rozstrzygniętego, założenia wyniku niedostępnego} × {brak transliteracji, obecność
+    znaków diakrytycznych}."""
+    from network_model.solvers.conductor_thermal_withstand import (
+        STANDARD_REFS,
+        ConductorThermalResult,
+    )
+
+    domyslne_zalozenia = next(
+        pole.default_factory()
+        for pole in ConductorThermalResult.__dataclass_fields__.values()
+        if pole.name == "assumptions"
+    )
+    zrodla = {
+        "podstawa normowa": " ".join(p["tresc_pl"] for p in STANDARD_REFS),
+        "założenia": " ".join(domyslne_zalozenia),
+    }
+    for nazwa, tekst in zrodla.items():
+        assert not (_slowa(tekst) & set(_TRANSLITERACJE)), (
+            nazwa,
+            _slowa(tekst) & set(_TRANSLITERACJE),
+        )
+        assert any(znak in tekst for znak in "ąćęłńóśźż"), nazwa
+
+
+def test_widok_podaje_podstawe_normowa_rdzenia_bez_przekladu_w_aplikacji() -> None:
+    """Jedno źródło prawdy: widok kryterium cieplnego podaje pozycje rdzenia 1:1 (norma,
+    punkt, treść) — warstwa aplikacji nie trzyma równoległej mapy treści, która mogłaby się
+    rozjechać z rdzeniem."""
+    import application.analyses.wytrzymalosc_cieplna_przewodow as modul
+
+    assert not hasattr(modul, "TRESC_NORM_PL")
+    assert not hasattr(modul, "normy_dla_projektanta")
+    zrodlo = inspect.getsource(modul.build_wytrzymalosc_cieplna_view)
+    assert '"normy": [dict(pozycja) for pozycja in STANDARD_REFS]' in zrodlo

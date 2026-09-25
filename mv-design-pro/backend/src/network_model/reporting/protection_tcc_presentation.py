@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from network_model.nazwy import nazwa_nadana
+
 #: Kod podstawy oznaczajacy krzywa policzona ze wzoru przekaznikowego.
 KOD_KRZYWA_PRZEKAZNIKOWA = "KRZYWA_PRZEKAZNIKOWA"
 
@@ -34,6 +36,38 @@ _ETYKIETA_OGOLNA_PL = "Brak charakterystyki"
 
 #: Znacznik komorki liczbowej, ktora NIE DOTYCZY tej pozycji (np. TMS bezpiecznika).
 NIE_DOTYCZY = "—"
+
+
+#: Urządzenie wyniku bez nazwy — opis braku, nigdy identyfikator (karta #144).
+URZADZENIE_BEZ_NAZWY = "Urządzenie bez nazwy"
+#: Sprawdzenie wskazuje urządzenie, którego lista urządzeń wyniku nie zawiera.
+URZADZENIE_SPOZA_WYNIKU = "Urządzenie spoza wyniku"
+
+
+def nazwy_urzadzen(result: dict[str, Any]) -> dict[str, str]:
+    """Nazwa każdego urządzenia wyniku koordynacji po jego identyfikatorze.
+
+    Tabele sprawdzeń raportu (czułość, selektywność, przeciążalność) nazywały urządzenie
+    FRAGMENTEM identyfikatora (`device_id[:8] + "..."`) — projektant nie mógł go odnaleźć
+    w modelu. Nazwa pochodzi z listy urządzeń tego samego wyniku (`result["devices"]`).
+    """
+    nazwy: dict[str, str] = {}
+    for urzadzenie in result.get("devices", []) or []:
+        if not isinstance(urzadzenie, dict) or urzadzenie.get("id") is None:
+            continue
+        nazwy[str(urzadzenie["id"])] = nazwa_wpisu_urzadzenia(urzadzenie)
+    return nazwy
+
+
+def nazwa_wpisu_urzadzenia(wpis: dict[str, Any], klucz: str = "name") -> str:
+    """Nazwa urządzenia z wpisu wyniku (urządzenie: `name`, krzywa TCC: `device_name`) albo
+    opis braku — ta sama reguła dla wiersza urządzenia, wiersza krzywej i tabel sprawdzeń."""
+    return nazwa_nadana(wpis.get(klucz)) or URZADZENIE_BEZ_NAZWY
+
+
+def nazwa_urzadzenia(nazwy: dict[str, str], device_id: object) -> str:
+    """Nazwa urządzenia sprawdzenia albo jawny brak — nigdy identyfikator."""
+    return nazwy.get(str(device_id), URZADZENIE_SPOZA_WYNIKU)
 
 
 def ma_podstawe_przekaznikowa(curve: dict[str, Any]) -> bool:

@@ -1,0 +1,402 @@
+{
+  "context": {
+    "project_name": "CGMES Golden Net",
+    "case_name": null,
+    "case_id": "case-demo",
+    "run_timestamp": "2026-09-16T09:00:00+00:00",
+    "snapshot_hash": "aea3a675289c7fcac1ee587d2e4b37a48ffeb7dd16ceccc3ecf9ab5f07433727",
+    "run_id": "run-lf-scena-rozplyw"
+  },
+  "config": {
+    "loading_warn_pct": 80.0,
+    "loading_fail_pct": 100.0,
+    "voltage_warn_pct": 5.0,
+    "voltage_fail_pct": 10.0,
+    "loss_warn_pct": 5.0,
+    "loss_fail_pct": 10.0
+  },
+  "items": [
+    {
+      "check_type": "TRANSFORMER_LOADING",
+      "target_id": "158eec95-939b-5b35-97ad-9433334b5506",
+      "target_name": "TR 15/0.4",
+      "observed_value": 724.9160818210655,
+      "unit": "%",
+      "limit_warn": 80.0,
+      "limit_fail": 100.0,
+      "margin_pct": 624.9160818210655,
+      "status": "FAIL",
+      "why_pl": "Obciążenie 724,92 % przekracza limit 100,0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
+          "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: |I_od| = 0,1758 kA, |I_do| = 6,5919 kA (wynik rozpływu), I_r,od = 0,0242 kA, I_r,do = 0,9093 kA (S_n i U_n strony transformatora); decyduje zacisk początkowy",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: obciążenie = 724,92 %",
+          "latex": "\\varepsilon = \\max\\left(\\frac{0.1758}{0.0242}, \\frac{6.5919}{0.9093}\\right) \\cdot 100\\% = 724.92\\%"
+        },
+        {
+          "tekst": "Progi: ostrzeżenie 80,0 %, przekroczenie 100,0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Porównanie z progami: Obciążenie 724,92 % przekracza limit 100,0 %.",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "BRANCH_LOADING",
+      "target_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+      "target_name": "Linia SN 1",
+      "observed_value": 160.00379229703518,
+      "unit": "%",
+      "limit_warn": 80.0,
+      "limit_fail": 100.0,
+      "margin_pct": 60.003792297035176,
+      "status": "FAIL",
+      "why_pl": "Obciążenie 160,00 % przekracza limit 100,0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
+          "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: |I_od| = 0,3360 kA, |I_do| = 0,3360 kA (wynik rozpływu), I_r,od = 0,2100 kA, I_r,do = 0,2100 kA (obciążalność gałęzi); decyduje zacisk końcowy",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: obciążenie = 160,00 %",
+          "latex": "\\varepsilon = \\max\\left(\\frac{0.3360}{0.2100}, \\frac{0.3360}{0.2100}\\right) \\cdot 100\\% = 160.00\\%"
+        },
+        {
+          "tekst": "Progi: ostrzeżenie 80,0 %, przekroczenie 100,0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Porównanie z progami: Obciążenie 160,00 % przekracza limit 100,0 %.",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "VOLTAGE_DEVIATION",
+      "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "target_name": "Szyna nN",
+      "observed_value": 25.167003206141096,
+      "unit": "%",
+      "limit_warn": 5.0,
+      "limit_fail": 10.0,
+      "margin_pct": 15.167003206141096,
+      "status": "FAIL",
+      "why_pl": "Odchylenie napięcia 25,17 % przekracza limit 10,0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
+          "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: U = 0,2993 kV (wynik rozpływu), U_n = 0,4000 kV",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: odchylenie = 25,17 %",
+          "latex": "\\delta U = \\frac{|0.2993 - 0.4000|}{0.4000} \\cdot 100\\% = 25.17\\%"
+        },
+        {
+          "tekst": "Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Porównanie z progami: Odchylenie napięcia 25,17 % przekracza limit 10,0 %.",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "REACTIVE_BALANCE",
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "target_name": "Węzeł bilansujący",
+      "observed_value": 0.873445737521318,
+      "unit": "cos(phi)",
+      "limit_warn": 0.9,
+      "limit_fail": 0.8,
+      "margin_pct": null,
+      "status": "WARNING",
+      "why_pl": "cosφ = 0,873 — bilans mocy biernej na granicy akceptowalności.",
+      "white_box": [
+        {
+          "tekst": "Wzór: tgφ = |Q_bil / P_bil|; cosφ = cos(arctg(tgφ))",
+          "latex": "\\cos\\varphi = \\cos\\!\\left(\\arctan\\left|\\frac{Q_{\\text{slack}}}{P_{\\text{slack}}}\\right|\\right)"
+        },
+        {
+          "tekst": "Dane: Q_bil = 0,064088 j.w., P_bil = 0,114962 j.w. (wynik rozpływu, węzeł bilansujący)",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: tgφ = 0,5575, cosφ = 0,873",
+          "latex": "\\tan\\varphi = 0.5575 \\Rightarrow \\cos\\varphi = 0.873"
+        },
+        {
+          "tekst": "Progi: ostrzeżenie cosφ < 0,9, przekroczenie cosφ < 0,8",
+          "latex": null
+        },
+        {
+          "tekst": "Porównanie z progami: cosφ = 0,873 — bilans mocy biernej na granicy akceptowalności.",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "VOLTAGE_DEVIATION",
+      "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "target_name": "Stacja C SN",
+      "observed_value": 7.987734885637347,
+      "unit": "%",
+      "limit_warn": 5.0,
+      "limit_fail": 10.0,
+      "margin_pct": -2.012265114362653,
+      "status": "WARNING",
+      "why_pl": "Odchylenie napięcia 7,99 % zbliża się do limitu 10,0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
+          "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: U = 13,8018 kV (wynik rozpływu), U_n = 15,0000 kV",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: odchylenie = 7,99 %",
+          "latex": "\\delta U = \\frac{|13.8018 - 15.0000|}{15.0000} \\cdot 100\\% = 7.99\\%"
+        },
+        {
+          "tekst": "Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Porównanie z progami: Odchylenie napięcia 7,99 % zbliża się do limitu 10,0 %.",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "LOSS_BUDGET",
+      "target_id": "network",
+      "target_name": "Sieć",
+      "observed_value": 6.055138541591991,
+      "unit": "%",
+      "limit_warn": 5.0,
+      "limit_fail": 10.0,
+      "margin_pct": -3.944861458408009,
+      "status": "WARNING",
+      "why_pl": "Straty sieciowe 6,06 % zbliża się do limitu 10,0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzór: straty = |P_strat / P_bil| · 100 %",
+          "latex": "\\Delta P\\% = \\left|\\frac{P_{\\text{strat}}}{P_{\\text{slack}}}\\right| \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: P_strat = 0,006961 j.w., P_bil = 0,114962 j.w. (wynik rozpływu, węzeł bilansujący)",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: straty = 6,06 %",
+          "latex": "\\Delta P\\% = \\left|\\frac{0.006961}{0.114962}\\right| \\cdot 100\\% = 6.06\\%"
+        },
+        {
+          "tekst": "Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Porównanie z progami: Straty sieciowe 6,06 % zbliża się do limitu 10,0 %.",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "VOLTAGE_DEVIATION",
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "target_name": "Stacja B SN",
+      "observed_value": 3.145140202736094,
+      "unit": "%",
+      "limit_warn": 5.0,
+      "limit_fail": 10.0,
+      "margin_pct": -6.854859797263906,
+      "status": "PASS",
+      "why_pl": "Odchylenie napięcia 3,15 % poniżej limitu 5,0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
+          "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: U = 14,5282 kV (wynik rozpływu), U_n = 15,0000 kV",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: odchylenie = 3,15 %",
+          "latex": "\\delta U = \\frac{|14.5282 - 15.0000|}{15.0000} \\cdot 100\\% = 3.15\\%"
+        },
+        {
+          "tekst": "Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Porównanie z progami: Odchylenie napięcia 3,15 % poniżej limitu 5,0 %.",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "VOLTAGE_DEVIATION",
+      "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "target_name": "Szyna SN",
+      "observed_value": 3.144357833803255,
+      "unit": "%",
+      "limit_warn": 5.0,
+      "limit_fail": 10.0,
+      "margin_pct": -6.855642166196745,
+      "status": "PASS",
+      "why_pl": "Odchylenie napięcia 3,14 % poniżej limitu 5,0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
+          "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: U = 14,5283 kV (wynik rozpływu), U_n = 15,0000 kV",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: odchylenie = 3,14 %",
+          "latex": "\\delta U = \\frac{|14.5283 - 15.0000|}{15.0000} \\cdot 100\\% = 3.14\\%"
+        },
+        {
+          "tekst": "Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Porównanie z progami: Odchylenie napięcia 3,14 % poniżej limitu 5,0 %.",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "VOLTAGE_DEVIATION",
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "target_name": "GPZ 110 kV",
+      "observed_value": 0.0,
+      "unit": "%",
+      "limit_warn": 5.0,
+      "limit_fail": 10.0,
+      "margin_pct": -10.0,
+      "status": "PASS",
+      "why_pl": "Odchylenie napięcia 0,00 % poniżej limitu 5,0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
+          "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: U = 110,0000 kV (wynik rozpływu), U_n = 110,0000 kV",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: odchylenie = 0,00 %",
+          "latex": "\\delta U = \\frac{|110.0000 - 110.0000|}{110.0000} \\cdot 100\\% = 0.00\\%"
+        },
+        {
+          "tekst": "Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Porównanie z progami: Odchylenie napięcia 0,00 % poniżej limitu 5,0 %.",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "TRANSFORMER_LOADING",
+      "target_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+      "target_name": "TR 110/15",
+      "observed_value": 52.64751583290585,
+      "unit": "%",
+      "limit_warn": 80.0,
+      "limit_fail": 100.0,
+      "margin_pct": -47.35248416709415,
+      "status": "PASS",
+      "why_pl": "Obciążenie 52,65 % poniżej limitu 80,0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
+          "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: |I_od| = 0,0691 kA, |I_do| = 0,5066 kA (wynik rozpływu), I_r,od = 0,1312 kA, I_r,do = 0,9623 kA (S_n i U_n strony transformatora); decyduje zacisk początkowy",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: obciążenie = 52,65 %",
+          "latex": "\\varepsilon = \\max\\left(\\frac{0.0691}{0.1312}, \\frac{0.5066}{0.9623}\\right) \\cdot 100\\% = 52.65\\%"
+        },
+        {
+          "tekst": "Progi: ostrzeżenie 80,0 %, przekroczenie 100,0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Porównanie z progami: Obciążenie 52,65 % poniżej limitu 80,0 %.",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "BRANCH_LOADING",
+      "target_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
+      "target_name": "Kabel SN 1",
+      "observed_value": 0.21450723725271068,
+      "unit": "%",
+      "limit_warn": 80.0,
+      "limit_fail": 100.0,
+      "margin_pct": -99.7854927627473,
+      "status": "PASS",
+      "why_pl": "Obciążenie 0,21 % poniżej limitu 80,0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
+          "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: |I_od| = 0,0005 kA, |I_do| = 0,0006 kA (wynik rozpływu), I_r,od = 0,2800 kA, I_r,do = 0,2800 kA (obciążalność gałęzi); decyduje zacisk końcowy",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: obciążenie = 0,21 %",
+          "latex": "\\varepsilon = \\max\\left(\\frac{0.0005}{0.2800}, \\frac{0.0006}{0.2800}\\right) \\cdot 100\\% = 0.21\\%"
+        },
+        {
+          "tekst": "Progi: ostrzeżenie 80,0 %, przekroczenie 100,0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Porównanie z progami: Obciążenie 0,21 % poniżej limitu 80,0 %.",
+          "latex": null
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "pass_count": 5,
+    "warning_count": 3,
+    "fail_count": 3,
+    "not_computed_count": 0,
+    "worst_item_target_id": "158eec95-939b-5b35-97ad-9433334b5506",
+    "worst_item_margin_pct": 624.9160818210655
+  }
+}

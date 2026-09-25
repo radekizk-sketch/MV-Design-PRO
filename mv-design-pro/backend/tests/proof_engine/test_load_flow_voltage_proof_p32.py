@@ -27,6 +27,7 @@ def p32_input() -> LoadFlowVoltageInput:
                 bus_id="BUS_01",
                 u_ll_kv=9.8,
                 u_nom_kv=10.0,
+                nazwa="Szyna SN testowa",
             )
         ],
         elements=[
@@ -41,6 +42,7 @@ def p32_input() -> LoadFlowVoltageInput:
                 q_mvar=0.5,
                 u_nom_kv=10.0,
                 u_ll_kv=10.0,
+                nazwa="Linia SN testowa",
             )
         ],
     )
@@ -83,6 +85,7 @@ def test_p32_not_computed_propagation() -> None:
                 bus_id="BUS_01",
                 u_ll_kv=None,
                 u_nom_kv=None,
+                nazwa="Szyna SN testowa",
             )
         ],
         elements=[
@@ -97,6 +100,7 @@ def test_p32_not_computed_propagation() -> None:
                 q_mvar=0.5,
                 u_nom_kv=None,
                 u_ll_kv=None,
+                nazwa="Linia SN testowa",
             )
         ],
     )

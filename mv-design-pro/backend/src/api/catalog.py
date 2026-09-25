@@ -11,9 +11,9 @@ All assign/clear endpoints return 204 No Content.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
-from typing import Any
-from uuid import UUID
+from typing import Any, Literal
 
 from api.dependencies import get_uow_factory
 from application.analyses.protection.catalog.catalog_store import (
@@ -23,13 +23,23 @@ from application.analyses.protection.catalog.catalog_store import (
     load_device_capability,
 )
 from application.catalog_governance import CatalogGovernanceService
-from application.network_wizard import NetworkWizardService
-from application.network_wizard.service import NotFound
+from enm.grupa_polaczen import GRUPY_POLACZEN_IEC60076, GrupaPolaczenIEC60076
+from enm.models import UKLADY_SIECI_NN, UkladSieciNn
+from enm.nazwy_elementow import nazwa_pozycji_katalogu
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
+from network_model.catalog.der_dynamic.models import WindTurbineDynamicProfile
 from network_model.catalog.governance import ImportMode
 from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
 from network_model.catalog.mv_ptpiree_catalog import get_ptpiree_catalog_manifest
+from network_model.catalog.niezmienniki_katalogu import (
+    KODY_WIARYGODNOSCI,
+    REGULY_KATALOGU,
+    RODZINY_BEZ_REGUL,
+    przeglad_rodziny,
+    przeglad_wiarygodnosci,
+)
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.switchgear import (
     SWITCHGEAR_FAMILY_REGISTRY,
@@ -42,9 +52,59 @@ from network_model.catalog.switchgear import (
     list_manufacturers as list_switchgear_manufacturers,
 )
 from network_model.catalog.types import normalize_ptpiree_key
+from network_model.core.uziemienie import (
+    ROLE_UZIEMNIKA,
+    TYPY_PUNKTU_NEUTRALNEGO,
+    UZIEMIENIA_EKRANU_KABLA,
+    RolaUziemnika,
+    TypPunktuNeutralnego,
+    UziemienieEkranuKabla,
+)
+from network_model.pochodne import mva_na_kva
 from pydantic import BaseModel
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/catalog", tags=["Type Catalog"])
+
+
+class SlownikGrupPolaczen(BaseModel):
+    """Slownik grup polaczen transformatora (IEC 60076-1) — jedno zrodlo dla walidatora
+    (E-W5-02), OpenAPI i listy wyboru frontu (W5-A, decyzja F-4/G6)."""
+
+    grupy: list[GrupaPolaczenIEC60076]
+
+
+@router.get("/grupy-polaczen", response_model=SlownikGrupPolaczen)
+def slownik_grup_polaczen() -> SlownikGrupPolaczen:
+    """Zamkniety slownik grup polaczen transformatora dwuuzwojeniowego (notacja zegarowa)."""
+    return SlownikGrupPolaczen(grupy=list(GRUPY_POLACZEN_IEC60076))
+
+
+class SlownikiUziemienia(BaseModel):
+    """Slowniki uziemienia jednej reprezentacji (W5-A): typ punktu neutralnego
+    (`GroundingConfig.type`), uklad sieci nN (`Transformer.lv_earthing_system`), uklad
+    uziemienia ekranu kabla (`Cable.screen_bonding`), rola uziemnika pola
+    (`BayPrimaryDevice.earthing_role`). Modele ENM nie wchodza do OpenAPI (koncowki
+    zwracaja slowniki), wiec TA odpowiedz jest miejscem, w ktorym kontrakt literalow
+    staje sie widoczny w schemacie — front przypina do niego swoje literaly testem
+    (`frontend/src/types/__tests__/uziemienie.openapi.test.ts`)."""
+
+    typy_punktu_neutralnego: list[TypPunktuNeutralnego]
+    uklady_sieci_nn: list[UkladSieciNn]
+    uziemienia_ekranu_kabla: list[UziemienieEkranuKabla]
+    role_uziemnika: list[RolaUziemnika]
+
+
+@router.get("/slowniki-uziemienia", response_model=SlownikiUziemienia)
+def slowniki_uziemienia() -> SlownikiUziemienia:
+    """Zamkniete slowniki uziemienia — jedno zrodlo dla modelu, walidatora, OpenAPI i frontu."""
+    return SlownikiUziemienia(
+        typy_punktu_neutralnego=list(TYPY_PUNKTU_NEUTRALNEGO),
+        uklady_sieci_nn=list(UKLADY_SIECI_NN),
+        uziemienia_ekranu_kabla=list(UZIEMIENIA_EKRANU_KABLA),
+        role_uziemnika=list(ROLE_UZIEMNIKA),
+    )
 
 
 def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
@@ -55,19 +115,45 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
         notes.append(str(source_ref))
     if meta.get("unverified"):
         notes.append(
-            "Rekord analityczny: dane urzadzenia nie sa jeszcze zweryfikowane produkcyjnie."
+            "Rekord analityczny: dane urządzenia nie są jeszcze zweryfikowane produkcyjnie."
         )
     if meta.get("unverified_ranges"):
-        notes.append("Zakresy nastaw pochodza z katalogu analitycznego i wymagaja weryfikacji.")
-    verification_status = "NIEWERYFIKOWANY" if meta.get("unverified") else "CZESCIOWO_ZWERYFIKOWANY"
+        notes.append("Zakresy nastaw pochodzą z katalogu analitycznego i wymagają weryfikacji.")
+
+    # Karta FAB-A/D-33: `vendor is None` = profil REFERENCYJNY bez marki
+    # (byl falszywie przypisany ABB). Etykieta MUSI jednoznacznie mowic, ze to
+    # nie jest produkt producenta — konkatenacja f"{vendor} {model}" pokazalaby
+    # tu literalny tekst "None", wiec galaz jest odrebna, nie fallbackiem.
+    is_referencyjny = device.vendor is None
+    if is_referencyjny:
+        name_pl = f"Profil referencyjny (nie produkt producenta) - {device.model}"
+        verification_status = "REFERENCYJNY"
+        catalog_status = "REFERENCYJNY_V1"
+        series_value: str | None = None
+        verification_note = str(
+            meta.get("verification_note")
+            or "Profil referencyjny wbudowany MV-DESIGN-PRO; nie dane producenta."
+        )
+    else:
+        name_pl = f"{device.vendor} {device.model}"
+        verification_status = (
+            "NIEWERYFIKOWANY" if meta.get("unverified") else "CZESCIOWO_ZWERYFIKOWANY"
+        )
+        catalog_status = "ANALITYCZNY_V1"
+        series_value = str(meta.get("series") or device.model)
+        verification_note = (
+            "Zakres ochrony pochodzi z katalogu analitycznego; rekord nie jest promowany do katalogu produkcyjnego."
+            if meta.get("unverified") or meta.get("unverified_ranges")
+            else "Rekord analityczny zachowany poza torem produkcyjnym."
+        )
 
     return {
         "id": device.device_id,
-        "name_pl": f"{device.vendor} {device.model}",
+        "name_pl": name_pl,
         "params": {
             "vendor": device.vendor,
             "model": device.model,
-            "series": str(meta.get("series") or device.model),
+            "series": series_value,
             "revision": "v0",
             "rated_current_a": float(meta["rated"]) if meta.get("rated") is not None else None,
             "notes_pl": " ".join(notes) if notes else None,
@@ -76,19 +162,17 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
             "unverified_ranges": bool(meta.get("unverified_ranges", False)),
             "source_reference": str(source_ref or "devices_v0.json / katalog analityczny ochrony"),
             "verification_status": verification_status,
-            "catalog_status": "ANALITYCZNY_V1",
+            "catalog_status": catalog_status,
             "contract_version": "2.0",
-            "verification_note": (
-                "Zakres ochrony pochodzi z katalogu analitycznego; rekord nie jest promowany do katalogu produkcyjnego."
-                if meta.get("unverified") or meta.get("unverified_ranges")
-                else "Rekord analityczny zachowany poza torem produkcyjnym."
-            ),
+            "verification_note": verification_note,
             "functions_supported": list(device.functions_supported),
             "curves_supported": list(device.curves_supported),
             "i_pickup_51_a_min": device.i_pickup_51_a_min,
             "i_pickup_51_a_max": device.i_pickup_51_a_max,
             "tms_51_min": device.tms_51_min,
             "tms_51_max": device.tms_51_max,
+            "t_51_s_min": device.t_51_s_min,
+            "t_51_s_max": device.t_51_s_max,
             "i_inst_50_a_min": device.i_inst_50_a_min,
             "i_inst_50_a_max": device.i_inst_50_a_max,
             "i_pickup_51n_a_min": device.i_pickup_51n_a_min,
@@ -101,28 +185,8 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
     }
 
 
-def _build_service(uow_factory: Any) -> NetworkWizardService:
-    return NetworkWizardService(uow_factory)
-
-
 def _build_governance_service(uow_factory: Any) -> CatalogGovernanceService:
     return CatalogGovernanceService(uow_factory)
-
-
-class AssignTypePayload(BaseModel):
-    """Payload for assigning type_ref to element"""
-
-    type_id: str  # UUID as string
-
-
-class ImportTypeLibraryPayload(BaseModel):
-    """Payload for importing type library"""
-
-    manifest: dict[str, Any]
-    line_types: list[dict[str, Any]]
-    cable_types: list[dict[str, Any]]
-    transformer_types: list[dict[str, Any]]
-    switch_types: list[dict[str, Any]]
 
 
 class ImportProtectionLibraryPayload(BaseModel):
@@ -132,87 +196,6 @@ class ImportProtectionLibraryPayload(BaseModel):
     device_types: list[dict[str, Any]]
     curves: list[dict[str, Any]]
     templates: list[dict[str, Any]]
-
-
-# ============================================================================
-# Type Library Governance (P13b)
-# ============================================================================
-
-
-@router.get("/export")
-def export_type_library(
-    library_name_pl: str = "Biblioteka typów",
-    vendor: str = "MV-DESIGN-PRO",
-    series: str = "Standard",
-    revision: str = "1.0",
-    description_pl: str = "",
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
-    """
-    Export type library with deterministic fingerprint (P13b).
-
-    Returns canonical JSON export with manifest and all types.
-    Deterministic ordering ensures identical fingerprint for same content.
-
-    Query Parameters:
-        library_name_pl: Polish name of the library
-        vendor: Vendor/manufacturer name
-        series: Product series/line
-        revision: Revision string
-        description_pl: Optional Polish description
-    """
-    service = _build_governance_service(uow_factory)
-    return service.export_type_library(
-        library_name_pl=library_name_pl,
-        vendor=vendor,
-        series=series,
-        revision=revision,
-        description_pl=description_pl,
-    )
-
-
-@router.post("/import")
-def import_type_library(
-    payload: ImportTypeLibraryPayload,
-    mode: str = "merge",
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
-    """
-    Import type library with conflict detection (P13b).
-
-    Modes:
-    - merge (default): Add new types, skip existing (no overwrites)
-    - replace: Replace entire library (blocked if types are in use)
-
-    Conflict rules:
-    - Existing type_id with different parameters → 409 Conflict
-    - REPLACE mode with types in use → 409 Conflict
-
-    Returns ImportReport with added/skipped/conflicts lists.
-    """
-    # Validate mode
-    try:
-        import_mode = ImportMode(mode.lower())
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Nieprawidłowy tryb: {mode}. Musi być 'merge' lub 'replace'.",
-        ) from exc
-
-    service = _build_governance_service(uow_factory)
-
-    try:
-        report = service.import_type_library(
-            data=payload.model_dump(),
-            mode=import_mode,
-        )
-        return report
-    except ValueError as exc:
-        # Conflicts detected
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
 
 
 # ============================================================================
@@ -316,10 +299,15 @@ def list_bess_inverter_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_bess_inverter_types()]
 
 
-@router.get("/inverter-types")
-def list_inverter_types() -> list[dict[str, Any]]:
-    """List all generic inverter/converter catalog entries from the canonical MV catalog."""
-    return [item.to_dict() for item in get_default_mv_catalog().list_inverter_types()]
+@router.get("/bess-battery-types")
+def list_bess_battery_types() -> list[dict[str, Any]]:
+    """List all BESS battery PACK types (karta FAB-J) — sprzęt oddzielny od PCS.
+
+    Katalog pojemności [kWh] / napięcia DC / C-rate / chemii pakietu baterii;
+    typ przekształtnika magazynu (moc, Q, cosφ) niesie `/bess-inverter-types`
+    powyżej.
+    """
+    return [item.to_dict() for item in get_default_mv_catalog().list_bess_battery_types()]
 
 
 @router.get("/converter-types")
@@ -346,6 +334,160 @@ def list_wind_inverter_types() -> list[dict[str, Any]]:
 def list_source_system_types() -> list[dict[str, Any]]:
     """List all MV system source types for GPZ / zasilanie systemowe."""
     return [item.to_dict() for item in get_default_mv_catalog().list_source_system_types()]
+
+
+class OdstepstwoWiarygodnosciOdpowiedz(BaseModel):
+    """Jedna pozycja katalogu do przegladu — sygnal, nie odmowa."""
+
+    kod: str
+    regula: str
+    pozycja_id: str
+    opis_wartosci: str
+
+
+class PokrycieRegulyOdpowiedz(BaseModel):
+    """Ile pozycji rodziny regula policzyla, a ilu nie dotyczy (z powodem)."""
+
+    kod: str
+    policzone: int
+    pominiete: int
+    powod_pominiecia: str
+
+
+class RegulaWiarygodnosciOdpowiedz(BaseModel):
+    """Opis reguly wiarygodnosci — zeby front nie mial wlasnej kopii uzasadnien."""
+
+    kod: str
+    nazwa: str
+    podstawa: str
+    uzasadnienie: str
+
+
+class RodzinaPrzegladuOdpowiedz(BaseModel):
+    """Wynik przegladu wiarygodnosci JEDNEJ rodziny katalogu."""
+
+    rodzina: str
+    etykieta_pl: str
+    liczba_pozycji: int
+    sprawdzone_reguly: list[str]
+    pokrycie: list[PokrycieRegulyOdpowiedz]
+    liczba_odstepstw: int
+    wedlug_kodu: dict[str, int]
+    odstepstwa: list[OdstepstwoWiarygodnosciOdpowiedz]
+
+
+class RodzinaBezRegulOdpowiedz(BaseModel):
+    """Rodzina katalogu POZA przegladem, z powodem merytorycznym."""
+
+    rodzina: str
+    powod: str
+
+
+class PrzegladWiarygodnosciOdpowiedz(BaseModel):
+    """Przeglad wiarygodnosci CALEGO katalogu — pozycje do przegladu, zero odmowy."""
+
+    liczba_odstepstw: int
+    wedlug_kodu: dict[str, int]
+    rodziny: list[RodzinaPrzegladuOdpowiedz]
+    rodziny_bez_regul: list[RodzinaBezRegulOdpowiedz]
+    reguly: list[RegulaWiarygodnosciOdpowiedz]
+
+
+def _pozycje_rodziny_przegladu() -> dict[str, list[Any]]:
+    """Pozycje KAZDEJ rodziny objetej przegladem — jedno miejsce wiazania z katalogiem.
+
+    Brak rodziny w tym slowniku konczy sie bledem rejestru w
+    `przeglad_wiarygodnosci` (a nie cichym raportem bez tej rodziny) — to jest ten
+    sam predykat wejscia/wyjscia z jednego zrodla, ktorego wymaga regula KLASA
+    NIE INSTANCJA.
+    """
+    katalog = get_default_mv_catalog()
+    return {
+        "aparaty-nn": list(katalog.list_lv_apparatus_types()),
+        "aparaty-sn": list(katalog.list_mv_apparatus_types()),
+        "transformatory": list(katalog.list_transformer_types()),
+        "linie-sn": list(katalog.list_line_types()),
+        "kable-sn": list(katalog.list_cable_types()),
+        "kable-nn": list(katalog.list_lv_cable_types()),
+        "zrodla-systemowe": list(katalog.list_source_system_types()),
+    }
+
+
+def _rodzina_odpowiedz(wynik: Any) -> RodzinaPrzegladuOdpowiedz:
+    return RodzinaPrzegladuOdpowiedz(**wynik.to_dict())
+
+
+@router.get("/przeglad-wiarygodnosci", response_model=PrzegladWiarygodnosciOdpowiedz)
+def przeglad_wiarygodnosci_katalogu() -> PrzegladWiarygodnosciOdpowiedz:
+    """Pozycje katalogu DO PRZEGLADU wg regul klasy WIARYGODNOSC.
+
+    Regula wiarygodnosci nigdy nie odmawia rekordu i niczego nie zmienia — jej
+    zlamanie jest sygnalem dla czlowieka z karta producenta w reku. Rodziny, w
+    ktorych zadna regula nie ma sensu, sa wymienione OSOBNO z powodem, zeby
+    rodzina pominieta nie byla nierozroznialna od przeoczonej.
+    """
+    wyniki = przeglad_wiarygodnosci(_pozycje_rodziny_przegladu())
+    laczne: dict[str, int] = {}
+    for wynik in wyniki:
+        for kod, liczba in wynik.wedlug_kodu().items():
+            laczne[kod] = laczne.get(kod, 0) + liczba
+    return PrzegladWiarygodnosciOdpowiedz(
+        liczba_odstepstw=sum(len(w.odstepstwa) for w in wyniki),
+        wedlug_kodu=dict(sorted(laczne.items())),
+        rodziny=[_rodzina_odpowiedz(w) for w in wyniki],
+        rodziny_bez_regul=[
+            RodzinaBezRegulOdpowiedz(rodzina=rodzina, powod=powod)
+            for rodzina, powod in sorted(RODZINY_BEZ_REGUL.items())
+        ],
+        reguly=[
+            RegulaWiarygodnosciOdpowiedz(
+                kod=kod,
+                nazwa=REGULY_KATALOGU[kod].nazwa,
+                podstawa=REGULY_KATALOGU[kod].podstawa,
+                uzasadnienie=REGULY_KATALOGU[kod].uzasadnienie,
+            )
+            for kod in sorted(KODY_WIARYGODNOSCI)
+        ],
+    )
+
+
+@router.get("/przeglad-wiarygodnosci/{rodzina}", response_model=RodzinaPrzegladuOdpowiedz)
+def przeglad_wiarygodnosci_rodziny(rodzina: str) -> RodzinaPrzegladuOdpowiedz:
+    """Przeglad wiarygodnosci jednej rodziny katalogu (404 dla rodziny spoza przegladu)."""
+    pozycje = _pozycje_rodziny_przegladu()
+    if rodzina not in pozycje:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                f"Rodzina '{rodzina}' nie jest objęta przeglądem wiarygodności. "
+                f"Dostępne: {', '.join(sorted(pozycje))}."
+            ),
+        )
+    return _rodzina_odpowiedz(przeglad_rodziny(rodzina, pozycje[rodzina]))
+
+
+@router.get("/der-dynamic-profiles")
+def list_der_dynamic_profiles() -> list[dict[str, Any]]:
+    """Profile dynamiczne DER (PV/BESS/FW) — karta FAB-L.
+
+    Jedyne źródło prawdy o modelach dynamicznych konsumowanych przez solvery
+    `network_model.solvers.stability_rms` i `network_model.solvers.frt_hvrt`
+    (`network_model.catalog.der_dynamic`, resolver `resolve_der_dynamic_profile`).
+    Front pokazuje parametry WHITE BOX wprost (Tp/Tq/droop/FRT/inercja) —
+    zero drugiej kopii pod zmyślonymi nazwami pól.
+
+    `der_kind` jest dopisywane w tej serializacji ("FW" dla turbin) — model
+    katalogowy turbiny niesie tylko `iec_type`, ale front potrzebuje jednego
+    pola rodzaju DER dla obu kształtów profilu.
+    """
+    wyniki: list[dict[str, Any]] = []
+    for profile_id in list_all_profile_ids():
+        profil = get_profile(profile_id)
+        dane = profil.model_dump(mode="json")
+        if isinstance(profil, WindTurbineDynamicProfile):
+            dane["der_kind"] = "FW"
+        wyniki.append(dane)
+    return wyniki
 
 
 @router.get("/ptpiree/manifest")
@@ -379,12 +521,12 @@ def list_ptpiree_generator_certificates(
     if limit is not None and limit < 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Parametr limit musi byc >= 1.",
+            detail="Parametr limit musi być >= 1.",
         )
     if offset < 0:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Parametr offset musi byc >= 0.",
+            detail="Parametr offset musi być >= 0.",
         )
     records = [
         item.to_dict() for item in get_default_mv_catalog().list_ptpiree_generator_certificates()
@@ -599,8 +741,8 @@ def list_protection_device_types(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """List protection devices from active library or analytical device catalog."""
-    service = _build_service(uow_factory)
-    records = service.list_protection_device_types()
+    with uow_factory() as uow:
+        records = uow.protection_catalog.list_protection_device_types()
     if records:
         return records
     return [
@@ -614,8 +756,8 @@ def list_protection_curves(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """List all protection curves from catalog (P14a - READ-ONLY)"""
-    service = _build_service(uow_factory)
-    records = service.list_protection_curves()
+    with uow_factory() as uow:
+        records = uow.protection_catalog.list_protection_curves()
     if records:
         return records
     return [item.to_dict() for item in get_default_mv_catalog().list_protection_curves()]
@@ -626,8 +768,8 @@ def list_protection_setting_templates(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """List all protection setting templates from catalog (P14a - READ-ONLY)"""
-    service = _build_service(uow_factory)
-    records = service.list_protection_setting_templates()
+    with uow_factory() as uow:
+        records = uow.protection_catalog.list_protection_setting_templates()
     if records:
         return records
     return [item.to_dict() for item in get_default_mv_catalog().list_protection_setting_templates()]
@@ -639,8 +781,8 @@ def get_protection_device_type(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Get protection device from active library or analytical device catalog."""
-    service = _build_service(uow_factory)
-    result = service.get_protection_device_type(device_type_id)
+    with uow_factory() as uow:
+        result = uow.protection_catalog.get_protection_device_type(device_type_id)
     if result is not None:
         return result
 
@@ -660,8 +802,8 @@ def get_protection_curve(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Get single protection curve by ID (P14a - READ-ONLY)"""
-    service = _build_service(uow_factory)
-    result = service.get_protection_curve(curve_id)
+    with uow_factory() as uow:
+        result = uow.protection_catalog.get_protection_curve(curve_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -676,8 +818,8 @@ def get_protection_setting_template(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Get single protection setting template by ID (P14a - READ-ONLY)"""
-    service = _build_service(uow_factory)
-    result = service.get_protection_setting_template(template_id)
+    with uow_factory() as uow:
+        result = uow.protection_catalog.get_protection_setting_template(template_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -767,172 +909,6 @@ def import_protection_library(
         ) from exc
 
 
-# ============================================================================
-# Assign type_ref (POST endpoints)
-# ============================================================================
-
-
-@router.post("/projects/{project_id}/branches/{branch_id}/type-ref", status_code=204)
-def assign_type_to_branch(
-    project_id: str,
-    branch_id: str,
-    payload: AssignTypePayload,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> Response:
-    """Assign type_ref to branch (LineBranch)"""
-    try:
-        pid = UUID(project_id)
-        bid = UUID(branch_id)
-        tid = UUID(payload.type_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowy format UUID",
-        ) from exc
-
-    service = _build_service(uow_factory)
-    try:
-        service.assign_type_ref_to_branch(pid, bid, tid)
-    except NotFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return Response(status_code=204)
-
-
-@router.post("/projects/{project_id}/transformers/{transformer_id}/type-ref", status_code=204)
-def assign_type_to_transformer(
-    project_id: str,
-    transformer_id: str,
-    payload: AssignTypePayload,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> Response:
-    """Assign type_ref to transformer (TransformerBranch)"""
-    try:
-        pid = UUID(project_id)
-        tid = UUID(transformer_id)
-        type_id = UUID(payload.type_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowy format UUID",
-        ) from exc
-
-    service = _build_service(uow_factory)
-    try:
-        service.assign_type_ref_to_transformer(pid, tid, type_id)
-    except NotFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return Response(status_code=204)
-
-
-@router.post("/projects/{project_id}/switches/{switch_id}/equipment-type", status_code=204)
-def assign_equipment_type_to_switch(
-    project_id: str,
-    switch_id: str,
-    payload: AssignTypePayload,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> Response:
-    """Assign equipment_type to switch"""
-    try:
-        pid = UUID(project_id)
-        sid = UUID(switch_id)
-        tid = UUID(payload.type_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowy format UUID",
-        ) from exc
-
-    service = _build_service(uow_factory)
-    try:
-        service.assign_equipment_type_to_switch(pid, sid, tid)
-    except NotFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return Response(status_code=204)
-
-
-# ============================================================================
-# Clear type_ref (DELETE endpoints)
-# ============================================================================
-
-
-@router.delete("/projects/{project_id}/branches/{branch_id}/type-ref", status_code=204)
-def clear_type_from_branch(
-    project_id: str,
-    branch_id: str,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> Response:
-    """Clear type_ref from branch (set to null)"""
-    try:
-        pid = UUID(project_id)
-        bid = UUID(branch_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowy format UUID",
-        ) from exc
-
-    service = _build_service(uow_factory)
-    try:
-        service.clear_type_ref_from_branch(pid, bid)
-    except NotFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return Response(status_code=204)
-
-
-@router.delete("/projects/{project_id}/transformers/{transformer_id}/type-ref", status_code=204)
-def clear_type_from_transformer(
-    project_id: str,
-    transformer_id: str,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> Response:
-    """Clear type_ref from transformer (set to null)"""
-    try:
-        pid = UUID(project_id)
-        tid = UUID(transformer_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowy format UUID",
-        ) from exc
-
-    service = _build_service(uow_factory)
-    try:
-        service.clear_type_ref_from_transformer(pid, tid)
-    except NotFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return Response(status_code=204)
-
-
-@router.delete("/projects/{project_id}/switches/{switch_id}/equipment-type", status_code=204)
-def clear_equipment_type_from_switch(
-    project_id: str,
-    switch_id: str,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> Response:
-    """Clear equipment_type from switch"""
-    try:
-        pid = UUID(project_id)
-        sid = UUID(switch_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowy format UUID",
-        ) from exc
-
-    service = _build_service(uow_factory)
-    try:
-        service.clear_equipment_type_from_switch(pid, sid)
-    except NotFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return Response(status_code=204)
-
-
 # =============================================================================
 # K30-23: Auto-populate endpoint — suggest catalog types per element context
 # =============================================================================
@@ -955,13 +931,34 @@ class AutoPopulateRequest(BaseModel):
     """K30-23: prefer Polish PTPiRE-certified entries by default."""
 
 
+#: Dopasowanie sugestii auto-populate — kategoryczne, nie liczba bez definicji
+#: (karta FAB-D2, D9). "PELNE" = producent z żądania znaleziony w rekordzie
+#: katalogowym; "CZĘŚCIOWE" = rekord przeszedł filtry (napięcie/moc/prąd), ale
+#: bez dopasowania producenta. Certyfikat PTPiREE jest osobną, jawną flagą —
+#: nie jest już zmieszany w jedną liczbę z dopasowaniem producenta.
+Dopasowanie = Literal["PELNE", "CZESCIOWE"]
+
+#: Ranga sortowania — PELNE przed CZĘŚCIOWE; jedno źródło prawdy dla klucza
+#: sortującego, żeby porządek na liście i porządek w teście nie mogły się rozjechać.
+_RANGA_DOPASOWANIA: dict[Dopasowanie, int] = {"PELNE": 0, "CZESCIOWE": 1}
+
+
 class AutoPopulateSuggestion(BaseModel):
     catalog_ref: str
     label_pl: str
     manufacturer: str | None = None
-    confidence: float  # 0.0..1.0 — how well it matches request context
+    dopasowanie: Dopasowanie
+    certyfikat_ptpiree: bool = False
     badge_pl: str | None = None  # 'PTPiRE certyfikat' jeśli applicable
     rationale_pl: str  # Why this suggestion ranked
+
+    def klucz_sortowania(self) -> tuple[int, bool, str]:
+        """Deterministyczny klucz sortowania (dopasowanie, certyfikat, catalog_ref)."""
+        return (
+            _RANGA_DOPASOWANIA[self.dopasowanie],
+            not self.certyfikat_ptpiree,
+            self.catalog_ref,
+        )
 
 
 class AutoPopulateResponse(BaseModel):
@@ -979,7 +976,9 @@ def auto_populate_catalog_suggestions(
 
     Element types supported: transformer, cable, switch, branch_point, der.
     Logic: filter by voltage compatibility + power/current range + manufacturer
-    cascade. PTPiRE-certified prefer (boost +0.2 confidence).
+    cascade. Dopasowanie kategoryczne (PELNE/CZĘŚCIOWE) + osobna flaga
+    certyfikatu PTPiREE — sortowanie deterministyczne
+    (dopasowanie, certyfikat, catalog_ref); karta FAB-D2 (D9).
     """
     normalized = element_type.lower().strip()
 
@@ -1005,10 +1004,27 @@ def auto_populate_catalog_suggestions(
     )
 
 
-def _confidence_with_ptpire(base: float, is_ptpire: bool, prefer: bool) -> float:
-    if not prefer:
-        return base
-    return min(1.0, base + 0.2) if is_ptpire else base
+def _liczba_z_katalogu(entry: dict[str, Any], pole: str) -> float | None:
+    """Liczbowe pole pozycji katalogu do filtrow auto-populate — albo `None`.
+
+    FAB-E (klasa „brak danej pokazany jako 0"): `params.get(pole, 0.0)` traktowal
+    pozycje katalogu BEZ pola jak pozycje o wartosci 0 — transformator „0 MVA"
+    przechodzil filtr napiecia i trafial do propozycji z tabliczka „Sn=0 kVA",
+    a kabel „0 mm²" odpadal albo przechodzil zaleznie od filtru, zawsze z
+    fabrykowana liczba w uzasadnieniu. Pozycja bez wymaganego pola jest
+    POMIJANA z nazwanym powodem w logu (defekt DANYCH katalogu, nie wybor
+    projektanta) — nigdy nie jest porownywana jako zero.
+    """
+    params = entry.get("params", {})
+    wartosc = params.get(pole)
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+        logger.warning(
+            "auto-populate: pozycja katalogu %s bez liczbowego pola %s — pominięta",
+            entry.get("id"),
+            pole,
+        )
+        return None
+    return float(wartosc)
 
 
 def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateResponse:
@@ -1019,9 +1035,11 @@ def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateRespons
 
     for entry in all_types:
         params = entry.get("params", {})
-        rated_mva = params.get("rated_power_mva", 0.0)
-        v_hv = params.get("voltage_hv_kv", 0.0)
-        v_lv = params.get("voltage_lv_kv", 0.0)
+        rated_mva = _liczba_z_katalogu(entry, "rated_power_mva")
+        v_hv = _liczba_z_katalogu(entry, "voltage_hv_kv")
+        v_lv = _liczba_z_katalogu(entry, "voltage_lv_kv")
+        if rated_mva is None or v_hv is None or v_lv is None:
+            continue
         manufacturer = params.get("manufacturer", "")
         is_ptpire = bool(params.get("ptpire_certified", False))
 
@@ -1038,28 +1056,31 @@ def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateRespons
             if rated_mva < req.expected_power_mva * 0.5 or rated_mva > req.expected_power_mva * 2.0:
                 continue
 
-        # Manufacturer cascade
-        confidence = 0.6
+        # Manufacturer cascade — dopasowanie PELNE tylko gdy producent z żądania
+        # znaleziony w rekordzie; w przeciwnym razie CZĘŚCIOWE (przeszedł filtry
+        # napięcia/mocy, ale bez trafienia producenta).
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.9
-        confidence = _confidence_with_ptpire(confidence, is_ptpire, req.prefer_ptpire_certified)
+            dopasowanie = "PELNE"
 
         rationale = (
-            f"Sn={rated_mva*1000:.0f} kVA, U_HV={v_hv} kV, " f"U_LV={v_lv} kV ({manufacturer})"
+            f"Sn={mva_na_kva(rated_mva):.0f} kVA, U_HV={v_hv} kV, "
+            f"U_LV={v_lv} kV ({manufacturer})"
         )
 
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=entry["id"],
-                label_pl=entry.get("name", entry["id"]),
+                label_pl=nazwa_pozycji_katalogu(entry),
                 manufacturer=manufacturer or None,
-                confidence=confidence,
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_ptpire,
                 badge_pl="PTPiRE" if is_ptpire else None,
                 rationale_pl=rationale,
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="transformer",
         suggestions=suggestions[:20],
@@ -1075,9 +1096,11 @@ def _auto_populate_cables(req: AutoPopulateRequest) -> AutoPopulateResponse:
 
     for entry in all_types:
         params = entry.get("params", {})
-        v_kv = params.get("voltage_rating_kv", 0.0)
-        cross = params.get("cross_section_mm2", 0.0)
-        rated_i = params.get("rated_current_a", 0.0)
+        v_kv = _liczba_z_katalogu(entry, "voltage_rating_kv")
+        cross = _liczba_z_katalogu(entry, "cross_section_mm2")
+        rated_i = _liczba_z_katalogu(entry, "rated_current_a")
+        if v_kv is None or cross is None or rated_i is None:
+            continue
         manufacturer = params.get("manufacturer", "")
         is_ptpire = bool(params.get("ptpire_certified", False))
 
@@ -1091,23 +1114,23 @@ def _auto_populate_cables(req: AutoPopulateRequest) -> AutoPopulateResponse:
             if rated_i < req.expected_current_a * 0.9:
                 continue
 
-        confidence = 0.5
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.85
-        confidence = _confidence_with_ptpire(confidence, is_ptpire, req.prefer_ptpire_certified)
+            dopasowanie = "PELNE"
 
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=entry["id"],
-                label_pl=entry.get("name", entry["id"]),
+                label_pl=nazwa_pozycji_katalogu(entry),
                 manufacturer=manufacturer or None,
-                confidence=confidence,
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_ptpire,
                 badge_pl="PTPiRE PN-HD 620" if is_ptpire else None,
                 rationale_pl=f"{int(cross)} mm² {v_kv} kV, In={int(rated_i)} A ({manufacturer})",
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="cable",
         suggestions=suggestions[:20],
@@ -1130,8 +1153,10 @@ def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoP
         params = entry.get("params", {})
         if target_kind and params.get("equipment_kind") != target_kind:
             continue
-        v_kv = params.get("un_kv", 0.0)
-        rated_i = params.get("in_a", 0.0)
+        v_kv = _liczba_z_katalogu(entry, "un_kv")
+        rated_i = _liczba_z_katalogu(entry, "in_a")
+        if v_kv is None or rated_i is None:
+            continue
         manufacturer = params.get("manufacturer", "")
         is_ptpire = bool(params.get("ptpire_certified", False))
 
@@ -1142,23 +1167,23 @@ def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoP
             if rated_i < req.expected_current_a * 0.9:
                 continue
 
-        confidence = 0.55
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.88
-        confidence = _confidence_with_ptpire(confidence, is_ptpire, req.prefer_ptpire_certified)
+            dopasowanie = "PELNE"
 
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=entry["id"],
-                label_pl=entry.get("name", entry["id"]),
+                label_pl=nazwa_pozycji_katalogu(entry),
                 manufacturer=manufacturer or None,
-                confidence=confidence,
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_ptpire,
                 badge_pl="PTPiRE" if is_ptpire else None,
                 rationale_pl=(f"{int(v_kv)} kV / {int(rated_i)} A ({manufacturer})"),
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="switch",
         suggestions=suggestions[:20],
@@ -1174,28 +1199,44 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
     for d in devices:
         manufacturer = d.vendor
         rated = d.meta.get("rated") if isinstance(d.meta, dict) else None
-        confidence = 0.5
-        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.85
+        dopasowanie: Dopasowanie = "CZESCIOWE"
+        if (
+            req.prefer_manufacturer
+            and manufacturer
+            and req.prefer_manufacturer.lower() in manufacturer.lower()
+        ):
+            dopasowanie = "PELNE"
         # PTPiRE = Polish vendors (Elektrometal, ZPAS, Elester, Energotest, ZIAD)
         is_polish = manufacturer in {"ELEKTROMETAL", "ZPAS", "ELESTER", "ENERGOTEST", "ZIAD"}
-        confidence = _confidence_with_ptpire(confidence, is_polish, req.prefer_ptpire_certified)
         # Current match
         if req.expected_current_a is not None and isinstance(rated, int | float):
             if rated < req.expected_current_a * 0.8:
                 continue
+        # Karta FAB-A/D-33: `manufacturer` None = profil REFERENCYJNY bez marki.
+        # Etykieta MUSI jednoznacznie mowic, ze to nie jest produkt producenta —
+        # konkatenacja f"{manufacturer} {model}" pokazalaby tu literalny "None".
+        label_pl = (
+            f"{manufacturer} {d.model}"
+            if manufacturer
+            else f"Profil referencyjny (nie produkt producenta) - {d.model}"
+        )
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=d.device_id,
-                label_pl=f"{d.vendor} {d.model}",
+                label_pl=label_pl,
                 manufacturer=manufacturer,
-                confidence=confidence,
-                badge_pl="Polski producent" if is_polish else None,
-                rationale_pl=f"{d.vendor} {d.model} — funkcje: {', '.join(d.functions_supported[:6])}",
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_polish,
+                badge_pl=(
+                    "Polski producent"
+                    if is_polish
+                    else ("Profil referencyjny" if not manufacturer else None)
+                ),
+                rationale_pl=f"{label_pl} — funkcje: {', '.join(d.functions_supported[:6])}",
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="protection",
         suggestions=suggestions[:20],
@@ -1214,18 +1255,19 @@ def _auto_populate_surge_arresters(req: AutoPopulateRequest) -> AutoPopulateResp
             if abs(v_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.3:
                 continue
 
-        confidence = 0.6
-        if item.bil_protected_kv >= 125.0:
-            confidence += 0.05
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.9
+            dopasowanie = "PELNE"
 
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=item.id,
                 label_pl=item.name,
                 manufacturer=manufacturer or None,
-                confidence=min(1.0, confidence),
+                dopasowanie=dopasowanie,
+                # Katalog ograniczników nie niesie statusu certyfikatu PTPiREE
+                # (namespace OGRANICZNIK_SN — brak pola w rekordzie źródłowym).
+                certyfikat_ptpiree=False,
                 badge_pl=f"IEC 60099-4, klasa {item.energy_class}",
                 rationale_pl=(
                     f"Um={item.u_m_kv:g} kV, MCOV={item.mcov_kv:g} kV, "
@@ -1235,7 +1277,7 @@ def _auto_populate_surge_arresters(req: AutoPopulateRequest) -> AutoPopulateResp
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="surge_arrester",
         suggestions=suggestions[:20],
@@ -1247,6 +1289,17 @@ def _auto_populate_inverters(
     req: AutoPopulateRequest,
     normalized_element_type: str,
 ) -> AutoPopulateResponse:
+    """Podpowiedzi przeksztaltnikow z JEDYNEGO rejestru przeksztaltnikow.
+
+    ZMIANA ZRODLA (karta KATALOG-NIEZMIENNIKI §5, pomiar 2026-09-17). Funkcja
+    czytala `list_inverter_types()` — rejestr WYPROWADZANY z `converter_types`
+    przez `_derive_inverter_records`, ktory gubil 18 pol kontraktu, w tym `k_sc`,
+    `sc_model`, `dynamic_profile_id`, `grid_code` i `e_kwh` (pomiar: 176 rekordow
+    w obu rejestrach, 18 pol obecnych wylacznie w `converter_types`). Cien
+    lossy ego kontraktu nie ma prawa byc zrodlem podpowiedzi doboru: jedyny rejestr
+    przeksztaltnikow to `converter_types`, a rodzaj (`PV`/`BESS`/`WIND`) jest
+    polem typu, nie osobna klasa.
+    """
     catalog = get_default_mv_catalog()
     suggestions: list[AutoPopulateSuggestion] = []
     target_kind = None
@@ -1255,8 +1308,8 @@ def _auto_populate_inverters(
     elif normalized_element_type == "bess":
         target_kind = "BESS"
 
-    for item in catalog.list_inverter_types():
-        kind = str(item.kind).upper()
+    for item in catalog.list_converter_types():
+        kind = item.kind.value.upper()
         if target_kind is not None and kind != target_kind:
             continue
         if req.voltage_kv is not None:
@@ -1271,10 +1324,9 @@ def _auto_populate_inverters(
 
         manufacturer = item.manufacturer or ""
         is_ptpiree = item.ptpiree_status == "POWIAZANY"
-        confidence = 0.55
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.85
-        confidence = _confidence_with_ptpire(confidence, is_ptpiree, req.prefer_ptpire_certified)
+            dopasowanie = "PELNE"
         badge = None
         if is_ptpiree:
             badge = f"PTPiREE {item.ptpiree_wipwc_version or ''}".strip()
@@ -1284,7 +1336,8 @@ def _auto_populate_inverters(
                 catalog_ref=item.id,
                 label_pl=item.name,
                 manufacturer=manufacturer or None,
-                confidence=confidence,
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_ptpiree,
                 badge_pl=badge,
                 rationale_pl=(
                     f"{kind}, Un={item.un_kv:g} kV, Sn={item.sn_mva:g} MVA, "
@@ -1293,7 +1346,7 @@ def _auto_populate_inverters(
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="inverter",
         suggestions=suggestions[:20],
@@ -1301,23 +1354,13 @@ def _auto_populate_inverters(
     )
 
 
-_PRODUCTION_DISABLED_ROUTE_KEYS = {
-    ("/api/catalog/projects/{project_id}/branches/{branch_id}/type-ref", "POST"),
-    ("/api/catalog/projects/{project_id}/transformers/{transformer_id}/type-ref", "POST"),
-    ("/api/catalog/projects/{project_id}/switches/{switch_id}/equipment-type", "POST"),
-    ("/api/catalog/projects/{project_id}/branches/{branch_id}/type-ref", "DELETE"),
-    ("/api/catalog/projects/{project_id}/transformers/{transformer_id}/type-ref", "DELETE"),
-    ("/api/catalog/projects/{project_id}/switches/{switch_id}/equipment-type", "DELETE"),
-}
-
-
 def _build_production_router() -> APIRouter:
+    """Router produkcyjny = pelny router. W1: zbior tras wylaczonych z produkcji
+    (przypisania typow z tabel `network_*`) znikl razem z tymi trasami; wzorzec
+    `production_router = _build_production_router()` zostaje dla guardow tras.
+    """
     production = APIRouter()
     for route in router.routes:
-        path = getattr(route, "path", "")
-        methods = set(getattr(route, "methods", set()))
-        if any((path, method) in _PRODUCTION_DISABLED_ROUTE_KEYS for method in methods):
-            continue
         production.routes.append(route)
     return production
 

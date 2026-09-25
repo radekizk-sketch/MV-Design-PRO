@@ -160,8 +160,9 @@ class TestProfilBezDanychRegulatora:
         assert "> 0.000" not in caly
         assert r"\le 0.000" not in caly
         # Zamiast progu — nazwana brakujaca dana i uczciwy stan znacznika.
-        assert "NIEUSTALONE" in caly
-        assert "pasma nieczulosci regulatora" in caly
+        # Karta #145: tekst wywodu po polsku (małe litery, znaki diakrytyczne).
+        assert "nieustalone" in caly
+        assert "pasma nieczułości regulatora" in caly
         assert r"\Delta U_{db} = \text{brak}" in caly
 
     def test_bez_pasma_liczba_laczen_niedostepna(self):
@@ -171,7 +172,7 @@ class TestProfilBezDanychRegulatora:
         assert wynik.total_switch_count is None
         assert [s.switch_count for s in wynik.steps] == [None, None, None]
         teksty = " | ".join(k["tekst"] for k in wynik.to_dict()["wywod"])
-        assert "Suma przelaczen zaczepow: NIEDOSTEPNA" in teksty
+        assert "Suma przełączeń zaczepów: niedostępna" in teksty
 
     def test_z_pasmem_liczba_laczen_bez_zmian(self):
         # BRAMKA (b), druga polowa: obecnosc pasma = wynik jak dotad. Liczby
@@ -511,8 +512,9 @@ class TestKryteriumWWyniku:
             target_kv=14.0,
         ).to_dict()["wywod"]
         teksty = [k["tekst"] for k in kroki]
-        assert any("Kryterium dopuszczalnosci pozycji" in t for t in teksty)
-        assert any("0.200 kV" in t and "14.000 kV" in t for t in teksty)
+        assert any("Kryterium dopuszczalności pozycji" in t for t in teksty)
+        # Liczby w tekście z przecinkiem dziesiętnym (karta #145).
+        assert any("0,200 kV" in t and "14,000 kV" in t for t in teksty)
         latexy = [k["latex"] for k in kroki if k["latex"]]
         assert any(r"\frac{0.200}{2} = 0.100" in latex for latex in latexy)
 
@@ -526,9 +528,9 @@ class TestKryteriumWWyniku:
             target_kv=None,
         ).to_dict()["wywod"]
         teksty = " | ".join(k["tekst"] for k in kroki)
-        assert "NIEDOSTEPNE" in teksty
-        assert "napiecia docelowego" in teksty
-        assert "pasma nieczulosci regulatora" in teksty
+        assert "niedostępne" in teksty
+        assert "napięcia docelowego" in teksty
+        assert "pasma nieczułości regulatora" in teksty
         assert "najlepsza pozycja" not in teksty
 
     def test_no_hardcoded_acceptance_band_in_source(self):
@@ -608,3 +610,79 @@ class TestWywod:
             ).to_dict()["wywod"]
 
         assert _run() == _run()
+
+
+class TestNazwyWWywodzie:
+    """Karta #144: wywód badań OLTC nazywa transformator i szynę regulowaną nazwami z modelu
+    (graf z mapowania ENM), a bez nazwy opisem rodzaju — nigdy identyfikatorem gałęzi/węzła.
+    Iloczyn: {przegląd pozycji, profil roczny} × {nazwy z modelu, nazwy puste}."""
+
+    @staticmethod
+    def _wejscie(nazwa_trafo: str, nazwa_szyny: str):
+        pf_input = _build_input(_oltc())
+        graf = pf_input.typed_graph()
+        trafo = graf.branches[_trafo_id(pf_input)]
+        trafo.name = nazwa_trafo
+        graf.nodes[trafo.to_node_id].name = nazwa_szyny
+        assert pf_input.typed_graph() is graf, "wywód czyta ten sam graf co test"
+        return pf_input, trafo.id
+
+    @pytest.mark.parametrize(
+        ("nazwa_trafo", "nazwa_szyny", "oczekiwany_trafo", "oczekiwana_szyna"),
+        [
+            ("Transformator GPZ T1", "Szyny SN GPZ", "Transformator GPZ T1", "Szyny SN GPZ"),
+            ("", " ", "Transformator bez nazwy", "Szyna bez nazwy"),
+        ],
+        ids=["z-nazwami", "bez-nazw"],
+    )
+    def test_przeglad_i_profil_nazywaja_elementy(
+        self, nazwa_trafo, nazwa_szyny, oczekiwany_trafo, oczekiwana_szyna
+    ):
+        pf_input, trafo_id = self._wejscie(nazwa_trafo, nazwa_szyny)
+        przeglad = sweep_tap_positions(pf_input, _solve_once, branch_id=trafo_id, positions=[0])
+        teksty = " | ".join(k["tekst"] for k in przeglad.to_dict()["wywod"])
+        assert f"transformator {oczekiwany_trafo}, szyna regulowana: {oczekiwana_szyna}." in teksty
+        pf_input, trafo_id = self._wejscie(nazwa_trafo, nazwa_szyny)
+        profil = run_annual_oltc_profile(
+            pf_input, _solve_once, [ProfilePoint(label="szczyt", load_scale=1.0)]
+        )
+        teksty_profilu = " | ".join(k["tekst"] for k in profil.to_dict()["wywod"])
+        assert f"transformator {oczekiwany_trafo}:" in teksty_profilu
+        for identyfikator in (trafo_id, "LV"):
+            assert f"transformator {identyfikator}" not in teksty + teksty_profilu
+            assert f"regulowana: {identyfikator}" not in teksty
+
+
+class TestWywodJezykInzyniera:
+    """Karta #145 — tekst wywodu badań zaczepów dla projektanta: iloczyn cech
+    {przegląd, profil, optymalizacja} × {nazwa transformatora z modelu, identyfikator
+    gałęzi, notatka procesu (FROZEN/sweep), kod celu badania}."""
+
+    def _teksty(self, wynik: object) -> str:
+        return " | ".join(k["tekst"] for k in wynik.to_dict()["wywod"])  # type: ignore[attr-defined]
+
+    def test_przeglad_profil_optymalizacja_bez_identyfikatorow_i_notatek(self):
+        pf_input = _build_input(_oltc())
+        branch_id = _trafo_id(pf_input)
+        trafo = pf_input.typed_graph().branches[branch_id]
+        # Sieć testowa nazywa transformator jego identyfikatorem („TR1") — nazwa z modelu
+        # jawnie różna od identyfikatora, żeby test odróżnił nazwę od referencji.
+        trafo.name = "Transformator GPZ 110/15 kV"
+        assert pf_input.typed_graph().branches[branch_id].name == trafo.name
+        teksty = [
+            self._teksty(sweep_tap_positions(pf_input, _solve_once, branch_id=branch_id)),
+            self._teksty(
+                run_annual_oltc_profile(pf_input, _solve_once, TestProfilBezDanychRegulatora.PROFIL)
+            ),
+            self._teksty(
+                optimize_tap_positions(
+                    pf_input, _solve_once, branch_id=branch_id, objective="minimize_losses"
+                )
+            ),
+        ]
+        for tekst in teksty:
+            assert branch_id not in tekst
+            assert "FROZEN" not in tekst and "sweep" not in tekst
+            assert "minimize_losses" not in tekst
+        assert trafo.name in teksty[0]
+        assert "minimalizacja strat czynnych" in teksty[2]

@@ -80,7 +80,8 @@ describe('validateGpzSections — sekcja', () => {
       ...validConfig,
       sections: [makeSection('s1', 'A', ['OUT', 'OUT', 'OUT'])],
     });
-    expect(r.perSectionIssues.s1?.some((i) => i.includes('dopływowego'))).toBe(true);
+    // Słownictwo ról z kanonu (karta #141): „pole liniowe wejściowe”, nie „dopływowe”.
+    expect(r.perSectionIssues.s1?.some((i) => i.includes('pola liniowego wejściowego'))).toBe(true);
   });
 
   it('napięcie sekcji != napięcie GPZ → issue', () => {

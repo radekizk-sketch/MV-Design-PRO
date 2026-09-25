@@ -10,6 +10,7 @@ import type {
   ExecutionRun,
 } from '../../../../ui/study-cases/types';
 import type { MigotanieResponse, WalidacjaResponse, WiarygodnoscResponse,
+  PasmaRozplywuResponse,
   WarunkiPrzylaczeniaResponse,
   WytrzymaloscCieplnaResponse,
 } from '../api';
@@ -35,7 +36,7 @@ export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
       lower_ka: 0.1,
       upper_ka: 50.0,
       in_range: true,
-      status: 'zweryfikowany',
+      status: 'w paśmie wiarygodności',
       why_pl: "Ik'' = 12.5 kA mieści się w zakresie [0.1; 50.0] kA dla SN (15.0 kV).",
       blocks_osd_package: false,
     },
@@ -129,21 +130,24 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
       limit_fail: 10.0,
       margin_pct: -2.0,
       status: 'FAIL',
-      why_pl: 'Odchylenie napięcia 12% — powyżej progu przekroczenia 10%.',
+      why_pl: 'Odchylenie napięcia 12,00 % przekracza limit 10,0 %.',
       // Ślad WHITE BOX per pozycja (R2-A; struktura R3-D) — kształt 1:1 z buildera.
       white_box: [
         {
-          tekst: 'Wzor: odchylenie = |U - U_n| / U_n * 100%',
+          tekst: 'Wzór: odchylenie = |U − U_n| / U_n · 100 %',
           latex: '\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%',
         },
-        { tekst: 'Dane: U = 13.2000 kV (wynik PF), U_n = 15.0000 kV', latex: null },
+        { tekst: 'Dane: U = 13,2000 kV (wynik rozpływu), U_n = 15,0000 kV', latex: null },
         {
-          tekst: 'Wynik: odchylenie = 12.00 %',
+          tekst: 'Wynik: odchylenie = 12,00 %',
           latex:
             '\\delta U = \\frac{|13.2000 - 15.0000|}{15.0000} \\cdot 100\\% = 12.00\\%',
         },
-        { tekst: 'Progi: ostrzezenie 5.0 %, przekroczenie 10.0 %', latex: null },
-        { tekst: 'Werdykt: PRZEKROCZENIE', latex: null },
+        { tekst: 'Progi: ostrzeżenie 5,0 %, przekroczenie 10,0 %', latex: null },
+        {
+          tekst: 'Porównanie z progami: Odchylenie napięcia 12,00 % przekracza limit 10,0 %.',
+          latex: null,
+        },
       ],
     },
     {
@@ -200,11 +204,13 @@ export const MIGOTANIE_FIXTURE: MigotanieResponse = {
   buses: [
     {
       bus_ref: 'bus-oze-1',
+      bus_name: 'Szyna OZE 1',
       nominal_kv: 15.0,
       sk_mva: 325.0,
       modules: [
         {
           gen_ref: 'gen-pv-1',
+          gen_name: 'Falownik PV 1',
           sn_mva: 1.0,
           flicker_c: 0.05,
           pst_i: 0.4,
@@ -221,6 +227,7 @@ export const MIGOTANIE_FIXTURE: MigotanieResponse = {
         },
         {
           gen_ref: 'gen-pv-2',
+          gen_name: 'Falownik PV 2',
           sn_mva: 0.5,
           flicker_c: null,
           pst_i: null,
@@ -251,11 +258,13 @@ export const MIGOTANIE_FIXTURE: MigotanieResponse = {
     },
     {
       bus_ref: 'bus-oze-2',
+      bus_name: 'Szyna OZE 2',
       nominal_kv: 15.0,
       sk_mva: 45.0,
       modules: [
         {
           gen_ref: 'gen-fw-1',
+          gen_name: 'Turbina FW 1',
           sn_mva: 8.0,
           flicker_c: 0.06,
           pst_i: 1.2,
@@ -283,6 +292,151 @@ export const MIGOTANIE_FIXTURE: MigotanieResponse = {
     not_assessed_count: 0,
   },
   input_hash: 'mig-hash-xyz',
+};
+
+/**
+ * Pasma zdrowego rozsądku rozpływu (karta W3-G2) — kształt 1:1 z
+ * `analysis/sanity_bounds/power_flow_bounds.py` + `application/analyses/
+ * sanity_bounds.py::build_power_flow_sanity_bounds_view`. Iloczyn cech w
+ * jednej fixturze: napięcie w paśmie (bus-A) / poza pasmem (bus-B); In
+ * katalogu obecne (line-1) / brak (cable-2); straty w progu.
+ */
+export const PASMA_ROZPLYWU_FIXTURE: PasmaRozplywuResponse = {
+  analysis_id: '55555555-5555-5555-5555-555555555555',
+  context: {
+    project_name: 'Sieć testowa',
+    case_name: null,
+    case_id: '22222222-2222-2222-2222-222222222222',
+    run_timestamp: '2026-07-16T10:15:00+00:00',
+    snapshot_hash: 'snap-jkl',
+    run_id: '55555555-5555-5555-5555-555555555555',
+  },
+  converged: true,
+  napiecia: {
+    items: [
+      {
+        target_id: 'bus-A',
+        target_name: 'Szyna A',
+        nominal_kv: 15.0,
+        actual_kv: 15.2,
+        lower_kv: 13.5,
+        upper_kv: 16.5,
+        deviation_pct: 1.3333,
+        in_range: true,
+        status: 'w paśmie wiarygodności',
+        why_pl: 'U = 15.2 kV mieści się w paśmie [13.500; 16.500] kV (Un = 15.0 kV ± 10 %).',
+      },
+      {
+        target_id: 'bus-B',
+        target_name: 'Szyna B',
+        nominal_kv: 15.0,
+        actual_kv: 20.0,
+        lower_kv: 13.5,
+        upper_kv: 16.5,
+        deviation_pct: 33.3333,
+        in_range: false,
+        status: 'poza zakresem wiarygodności',
+        why_pl:
+          'U = 20.0 kV jest poza pasmem [13.500; 16.500] kV (Un = 15.0 kV ± 10 %, odchylenie '
+          + '33.33 %) — wynik fizycznie wątpliwy (błąd modelu/jednostek?).',
+      },
+    ],
+    norm_ref:
+      'PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) '
+      + '— zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %.',
+    band_pct: 10.0,
+    summary: { credible_count: 1, out_of_range_count: 1, incomplete_count: 0 },
+  },
+  obciazenia: {
+    items: [
+      {
+        target_id: 'line-1',
+        target_name: 'Linia 1',
+        current_ka: 0.1,
+        rated_current_a: 400.0,
+        loading_pct: 25.0,
+        in_range: true,
+        status: 'w paśmie wiarygodności',
+        why_pl: 'I = 0.1000 kA nie przekracza In = 0.4000 kA (obciążenie 25.0 %).',
+      },
+      {
+        target_id: 'cable-2',
+        target_name: 'Kabel 2',
+        current_ka: 0.05,
+        rated_current_a: null,
+        loading_pct: null,
+        in_range: false,
+        status: 'dane niekompletne',
+        why_pl: 'Brak danych katalogowych o prądzie znamionowym (In) gałęzi.',
+      },
+    ],
+    summary: { credible_count: 1, out_of_range_count: 0, incomplete_count: 1 },
+  },
+  straty: {
+    losses_active_mw: 0.05,
+    load_active_total_mw: 5.0,
+    losses_pct_of_load: 1.0,
+    threshold_pct: 10.0,
+    threshold_why_pl:
+      'Typowe straty czynne sieci SN wynoszą ok. 2-6 % mocy dostarczonej do odbiorów (dane '
+      + 'eksploatacyjne OSD). 10 % to górna granica WIARYGODNOŚCI wyniku solvera (nie granica '
+      + 'projektowa) — powyżej niej wynik prawdopodobnie sygnalizuje błąd modelu (zawyżona '
+      + 'impedancja gałęzi, błędna topologia), a nie rzeczywistą fizykę sieci.',
+    in_range: true,
+    status: 'w paśmie wiarygodności',
+    why_pl:
+      'Straty czynne 0.0500 MW = 1.00 % sumy mocy czynnej odbiorów (5.0000 MW) — poniżej progu '
+      + 'wiarygodności 10.0 %.',
+  },
+};
+
+/** Bieg NIEZBIEŻNY: wszystkie pozycje „dane niekompletne" z nazwanym powodem
+ * (nigdy fabrykowany werdykt) — Un/In (dane modelu/katalogu) zostają widoczne. */
+export const PASMA_ROZPLYWU_NIEZBIEZNY_FIXTURE: PasmaRozplywuResponse = {
+  ...PASMA_ROZPLYWU_FIXTURE,
+  converged: false,
+  napiecia: {
+    items: PASMA_ROZPLYWU_FIXTURE.napiecia.items.map((it) => ({
+      ...it,
+      actual_kv: null,
+      lower_kv: null,
+      upper_kv: null,
+      deviation_pct: null,
+      in_range: false,
+      status: 'dane niekompletne',
+      why_pl:
+        'Bieg rozpływu nie osiągnął zbieżności — napięcia, prądy gałęzi i straty z tego '
+        + 'przebiegu nie są fizycznie wiarygodne (brak zbieżnego rozwiązania Newtona-Raphsona).',
+    })),
+    norm_ref: PASMA_ROZPLYWU_FIXTURE.napiecia.norm_ref,
+    band_pct: PASMA_ROZPLYWU_FIXTURE.napiecia.band_pct,
+    summary: { credible_count: 0, out_of_range_count: 0, incomplete_count: 2 },
+  },
+  obciazenia: {
+    items: PASMA_ROZPLYWU_FIXTURE.obciazenia.items.map((it) => ({
+      ...it,
+      current_ka: null,
+      loading_pct: null,
+      in_range: false,
+      status: 'dane niekompletne',
+      why_pl:
+        'Bieg rozpływu nie osiągnął zbieżności — napięcia, prądy gałęzi i straty z tego '
+        + 'przebiegu nie są fizycznie wiarygodne (brak zbieżnego rozwiązania Newtona-Raphsona).',
+    })),
+    summary: { credible_count: 0, out_of_range_count: 0, incomplete_count: 2 },
+  },
+  straty: {
+    losses_active_mw: null,
+    load_active_total_mw: null,
+    losses_pct_of_load: null,
+    threshold_pct: 10.0,
+    threshold_why_pl: PASMA_ROZPLYWU_FIXTURE.straty.threshold_why_pl,
+    in_range: false,
+    status: 'dane niekompletne',
+    why_pl:
+      'Bieg rozpływu nie osiągnął zbieżności — napięcia, prądy gałęzi i straty z tego '
+      + 'przebiegu nie są fizycznie wiarygodne (brak zbieżnego rozwiązania Newtona-Raphsona).',
+  },
 };
 
 /** Buduje przebieg wykonawczy (rejestr) o zadanym rodzaju/statusie. */
@@ -357,6 +511,27 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
   fault_node_id: 'BUS-02',
   tk_s: 0.25,
   czasy_wylaczenia: { z_nastawy: 1, z_zalozenia: 0, razem: 1 },
+  // Podstawa normowa z punktem — 1:1 z `STANDARD_REFS` solvera
+  // (`network_model/solvers/conductor_thermal_withstand.py`).
+  normy: [
+    {
+      norma: 'PN-HD 60364-4-43',
+      punkt: '§ 434.5.2',
+      tresc_pl: 'Warunek adiabatyczny doboru przekroju ze względu na zwarcie: S ≥ √(I²·t) / k.',
+    },
+    {
+      norma: 'IEC 60949',
+      punkt: '§ 3, § 4',
+      tresc_pl:
+        'Obliczanie dopuszczalnych prądów zwarciowych kabli z uwzględnieniem nagrzewania nieadiabatycznego; podstawa wartości k dla par materiał żyły / izolacja.',
+    },
+  ],
+  aktualnosc: {
+    aktualny: true,
+    powod_pl: 'Wynik policzony dla bieżącej wersji modelu.',
+    model_hash: 'model-hash-1',
+    snapshot_hash: 'model-hash-1',
+  },
   ocena: {
     items: [
       {
@@ -383,6 +558,35 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
           krzywa: 'IEC_SI',
           tms: 0.2,
         },
+        // Treść fizyczna kryterium (ten sam rachunek co w komentarzu fixtury):
+        // I²·t = 15 000² × 0,25 s = 56,25·10⁶ A²·s; k²·S² = (94 × 120)² = 127,24·10⁶ A²·s.
+        i2t_a2s: 56250000,
+        i2t_dopuszczalne_a2s: 127238400,
+        margines_procent: 55.8,
+        kryteria: [
+          {
+            kod: 'i2t',
+            nazwa_pl: 'Energia cieplna zwarcia',
+            warunek_pl: 'I²·t ≤ k²·S²',
+            wartosc: 56250000,
+            granica: 127238400,
+            jednostka: 'A²·s',
+            status: 'PASS',
+          },
+          {
+            kod: 'przekroj_minimalny',
+            nazwa_pl: 'Przekrój minimalny żyły',
+            warunek_pl: 'S ≥ S_min',
+            wartosc: 120,
+            granica: 79.8,
+            jednostka: 'mm²',
+            status: 'PASS',
+          },
+        ],
+        powod_decyzji_pl: 'I²·t = 56,25·10⁶ A²·s ≤ k²·S² = 127,24·10⁶ A²·s — zapas 55,8 %.',
+        zalecenia: [],
+        wrazliwosc: [],
+        uzasadnienie_k: null,
       },
     ],
     summary: { pass_count: 1, fail_count: 0, unavailable_count: 0 },

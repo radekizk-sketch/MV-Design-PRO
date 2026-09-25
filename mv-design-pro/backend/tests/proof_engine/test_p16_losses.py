@@ -35,6 +35,7 @@ def _build_simple_losses_input() -> P16LossesInput:
                 q_to_mvar=-9.5,
                 p_loss_mw=1.0,
                 q_loss_mvar=0.5,
+                nazwa="Kabel SN GPZ – stacja Łąkowa",
             ),
             P16BranchLossInput(
                 branch_id="LINE_02",
@@ -44,6 +45,7 @@ def _build_simple_losses_input() -> P16LossesInput:
                 q_to_mvar=-4.7,
                 p_loss_mw=0.5,
                 q_loss_mvar=0.3,
+                nazwa="Kabel SN stacja Łąkowa – stacja Polna",
             ),
         ],
         p_losses_total_mw=1.5,
@@ -65,6 +67,7 @@ def _build_multi_branch_input() -> P16LossesInput:
                 q_to_mvar=-1.95,
                 p_loss_mw=0.1,
                 q_loss_mvar=0.05,
+                nazwa=f"Kabel SN odcinek {i + 1}",
             )
         )
 
@@ -239,9 +242,19 @@ def test_p16_steps_include_branch_losses() -> None:
 
     # Should have steps for each branch (2 branches * 2 steps each)
     # Plus 3 summary steps (total P, total Q, percent)
-    # 2 * 2 + 3 = 7 steps
-    branch_steps = [s for s in proof.steps if "LINE_" in s.title_pl]
-    assert len(branch_steps) >= 4  # At least 2 branches * 2 steps
+    # 2 * 2 + 3 = 7 steps. Karta #144: krok gałęzi nazywa gałąź NAZWĄ z modelu, a symbol
+    # straty niesie numer gałęzi w wejściu — identyfikator nie trafia ani do tytułu, ani
+    # do symbolu (dawniej test szukał „LINE_" w tytule, przypinając defekt).
+    branch_steps = [s for s in proof.steps if "Kabel SN" in s.title_pl]
+    assert len(branch_steps) == 4
+    for krok in proof.steps:
+        assert "LINE_" not in krok.title_pl
+        assert "LINE_" not in krok.substitution_latex
+        assert all("LINE_" not in wartosc.symbol for wartosc in krok.input_values)
+        assert "LINE_" not in krok.result.symbol
+    tytuly = [krok.title_pl for krok in branch_steps]
+    assert any("GPZ – stacja Łąkowa" in tytul for tytul in tytuly)
+    assert any("stacja Łąkowa – stacja Polna" in tytul for tytul in tytuly)
 
 
 def test_p16_eq_symbols() -> None:

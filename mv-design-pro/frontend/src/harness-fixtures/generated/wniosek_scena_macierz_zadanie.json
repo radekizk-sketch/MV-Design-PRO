@@ -1,0 +1,10 @@
+{
+  "nazwa_projektu": "Przyłączenie farmy PV 8 MW",
+  "nazwa_przypadku": "Stan normalny",
+  "wnioskodawca": null,
+  "adres_przylaczenia": null,
+  "pf_run_id": "bea90c9a-33e0-543b-b4e3-9514eca3921a",
+  "sc_run_id": "009c7838-7031-5d60-b828-58a66256da21",
+  "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+  "operator_id": "enea"
+}

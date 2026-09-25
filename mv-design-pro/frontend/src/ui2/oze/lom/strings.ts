@@ -1,13 +1,15 @@
 /*
  * Teksty i deterministyczne formatery okna „Praca wyspowa" (ochrona LoM, P46 /
  * strumień OZE). Wyłącznie polski język techniczny (MODEL_INTERAKCJI §2.7); zero
- * literałów UI w JSX. Statusy (`OK/INFO/WARN/ERROR`) i kody funkcji ANSI to KLUCZE
- * słowników / dane z backendu — na pierwszym planie etykiety PL. Formatery CZYSTE
+ * literałów UI w JSX. Etykiety statusów (porównania, pola, podsumowania) przychodzą
+ * z rekordu werdyktu backendu (`ocena.etykieta`: `etykieta_pl` + `semantyka`) — tu nie ma
+ * mapy „kod statusu → tekst"; interfejs dobiera wyłącznie kolor po semantyce. Formatery CZYSTE
  * (wejście→wyjście), bez `Date.now`/losowości (Determinism Rule) — przecinek PL.
  * Nazwy sufiksowane `Lom`, bo barrel OZE robi `export *` (kolizje nazw TS2308).
  */
 
-import type { IstotnoscLom, OknoNormatywneLom } from '../api';
+import type { OknoNormatywneLom } from '../api';
+import type { Etykieta } from '../../wyniki/wzorzec/werdykt';
 
 /** Poziom istotności do doboru koloru tagu/statusu (wyłącznie prezentacja). */
 export type IstotnoscTaguLom = 'ok' | 'warn' | 'err' | 'neutral';
@@ -38,19 +40,11 @@ export const LOM_STRINGS = {
   kolSzyna: 'Szyna',
   kolModuly: 'Moduły wytwórcze',
   kolStatus: 'Status ochrony',
-  kolIdentyfikator: 'Identyfikator pola',
 
-  // Statusy pola (klucze OK/INFO/WARN/ERROR)
-  statusOk: 'Poprawna',
-  statusInfo: 'Informacja',
-  statusWarn: 'Ostrzeżenie',
-  statusError: 'Błąd',
-
-  // Podsumowanie (chipy)
-  podsumOk: 'Poprawne',
-  podsumInfo: 'Informacje',
-  podsumWarn: 'Ostrzeżenia',
-  podsumError: 'Błędy',
+  // Ocena całości (rekord wymagania sieci)
+  ocenaSieciTytul: 'Ocena ochrony od pracy wyspowej sieci',
+  ocenaSieciPokaz: 'Pokaż wyjaśnienie oceny sieci',
+  ocenaSieciUkryj: 'Ukryj wyjaśnienie oceny sieci',
 
   // Szczegół pola (rozwinięcie → porównania)
   szczegolBrakWyboru: 'Wybierz pole w tabeli, aby zobaczyć porównania nastaw z oknami normatywnymi.',
@@ -65,16 +59,16 @@ export const LOM_STRINGS = {
   bezPolaTytul: 'Moduły wytwórcze bez pola przyłączeniowego',
   bezPolaOpis:
     'Poniższe moduły nie mają pola przyłączeniowego z przypisaniem zabezpieczeń — '
-    + 'ocena ochrony LoM niemożliwa (uczciwy brak danych).',
+    + 'ochrony od pracy wyspowej nie da się dla nich ocenić, dopóki pole nie zostanie dodane.',
 
   // Założenia i źródła
   zalozeniaTytul: 'Założenia',
   zrodlaTytul: 'Źródła normatywne funkcji LoM',
   zrodlaBrakOkna: 'brak okna normatywnego w katalogu',
 
-  // Tryb ekspercki
-  ekspHash: 'Odcisk wejścia (SHA-256)',
-  ekspEnmHash: 'Odcisk dokumentu sieci (ENM)',
+  // Informacje audytowe (metadane produkcyjne — wyłącznie tam, karta #145)
+  audytOdciskWejscia: 'Odcisk danych wejściowych oceny',
+  audytOdciskModelu: 'Odcisk modelu sieci',
 
   // Jednostki / wartości puste
   jednS: 's',
@@ -83,29 +77,19 @@ export const LOM_STRINGS = {
   kreska: '—',
 } as const;
 
-/** Słownik polskich etykiet statusu pola/podsumowania LoM. */
-export const STATUS_LOM_PL: Record<IstotnoscLom, string> = {
-  OK: LOM_STRINGS.statusOk,
-  INFO: LOM_STRINGS.statusInfo,
-  WARN: LOM_STRINGS.statusWarn,
-  ERROR: LOM_STRINGS.statusError,
-};
-
-/** Polska etykieta statusu LoM (nieznany kod → dosłownie, jako dane). */
-export function statusLomPL(kod: IstotnoscLom): string {
-  return STATUS_LOM_PL[kod] ?? kod;
-}
-
-/** Istotność tagu statusu LoM (dobór koloru). */
-export function istotnoscLom(kod: IstotnoscLom): IstotnoscTaguLom {
-  switch (kod) {
-    case 'OK':
+/**
+ * Istotność tagu (dobór koloru) WYŁĄCZNIE z semantyki etykiety backendu
+ * (kontrakt werdyktu wyjaśnialnego §9: interfejs mapuje tylko semantykę na kolor).
+ */
+export function istotnoscLom(etykieta: Etykieta): IstotnoscTaguLom {
+  switch (etykieta.semantyka) {
+    case 'pozytywna':
       return 'ok';
-    case 'WARN':
+    case 'ostrzegawcza':
       return 'warn';
-    case 'ERROR':
+    case 'negatywna':
       return 'err';
-    default:
+    case 'neutralna':
       return 'neutral';
   }
 }

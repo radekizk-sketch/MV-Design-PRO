@@ -49,10 +49,10 @@ def _przemyslowa(
                 default=bays, min_value=2, max_value=10, label_pl="Liczba pól SN"
             ),
             sn_bay_roles=(
-                BayRoleSpec(role="IN", label_pl="Pole IN (przyłącze OSD)"),
-                BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe (taryfa B21)"),
-                BayRoleSpec(role="TR", label_pl="Pole TR"),
-                BayRoleSpec(role="OUT", label_pl="Pole rezerwowe OUT"),
+                BayRoleSpec(role="IN", okreslenie_pl="(przyłącze OSD)"),
+                BayRoleSpec(role="MEASUREMENT", okreslenie_pl="(taryfa B21)"),
+                BayRoleSpec(role="TR"),
+                BayRoleSpec(role="OUT", okreslenie_pl="rezerwowe"),
             ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,

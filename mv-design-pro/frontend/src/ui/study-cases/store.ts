@@ -70,7 +70,6 @@ interface StudyCasesState {
   loadActiveCase: (projectId: string) => Promise<void>;
   compareCases: (caseAId: string, caseBId: string) => Promise<StudyCaseComparison>;
   clearComparison: () => void;
-  invalidateAllCases: () => Promise<void>;
   selectCase: (caseId: string | null) => void;
   clearError: () => void;
 }
@@ -261,24 +260,6 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
    */
   clearComparison: () => {
     set({ comparisonResult: null, comparisonCaseIds: null });
-  },
-
-  /**
-   * Invalidate all cases in the project (mark as OUTDATED).
-   * Called when NetworkModel changes.
-   */
-  invalidateAllCases: async () => {
-    const { projectId } = get();
-    if (!projectId) return;
-
-    try {
-      await api.invalidateAllCases(projectId);
-      await get().loadCases(projectId);
-      await get().loadActiveCase(projectId);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd oznaczania zakresów obliczeń';
-      set({ error: message });
-    }
   },
 
   /**

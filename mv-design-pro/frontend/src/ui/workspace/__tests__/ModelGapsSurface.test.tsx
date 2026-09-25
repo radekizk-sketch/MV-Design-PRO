@@ -100,7 +100,7 @@ describe('ModelGapsSurface (E-04) — przegląd techniczny układu', () => {
   it('renderuje uwagi techniczne jako zagregowaną listę bez surowych referencji', () => {
     useSnapshotStore.setState({
       snapshot: {
-        branches: [{ ref_id: 'seg/x', name: 'Odcinek /segment' }],
+        branches: [{ ref_id: 'seg/x', name: 'Odcinek bez nazwy' }],
       } as never,
       readiness: {
         ready: false,
@@ -126,7 +126,9 @@ describe('ModelGapsSurface (E-04) — przegląd techniczny układu', () => {
     render(<WorkspaceSurfaceRouter region="main" />);
     expect(screen.getByTestId('gap-warning-0')).toBeInTheDocument();
     expect(screen.getAllByText('Uwagi projektowe').length).toBeGreaterThan(0);
-    expect(screen.getByText(/odcinek SN nie ma składowej zerowej/)).toBeInTheDocument();
+    // Nazwa z modelu (tu opis braku nadany przez backend, karta #144), nigdy referencja.
+    expect(screen.getByText(/Odcinek bez nazwy nie ma składowej zerowej/)).toBeInTheDocument();
+    expect(screen.queryByText(/seg\/x/)).not.toBeInTheDocument();
     expect(screen.getByText('2 wystąpień')).toBeInTheDocument();
     expect(screen.queryByText(/\/segment/)).not.toBeInTheDocument();
   });

@@ -29,8 +29,10 @@ from application.analyses.konwencja_mocy import (
     moc_kanoniczna_punktu,
     q_netto_po_kompensacji,
 )
-from enm.canonical_analysis import (
+from enm.assembler import (
     _graph_id_from_ref,
+)
+from enm.canonical_analysis import (
     create_run,
     execute_run,
     reset_canonical_runs,
@@ -154,7 +156,7 @@ _NODE_SLACK = _graph_id_from_ref("bus_slack")
 
 def _result_v1(net: EnergyNetworkModel) -> dict[str, Any]:
     set_enm("c", net)
-    result = execute_run(create_run(case_id="c", analysis_type="PF").id)
+    result = execute_run(create_run(case_id="c", klucz_twin="c", analysis_type="PF").id)
     rv: dict[str, Any] = (result.raw_result or {}).get("result_v1") or {}
     assert rv.get("converged") is True
     return rv
@@ -349,3 +351,65 @@ def test_7_bilans_ukladu_z_generacja() -> None:
     niebilans = k_load["q_mvar"] + k_slack["q_mvar"]
     assert abs(niebilans) == pytest.approx(strata_q, abs=1e-6)
     assert abs(niebilans) <= strata_q + 0.02  # w granicach strat (tolerancja jawna)
+
+
+# ---------------------------------------------------------------------------
+# 8. FAB-E (E1): brak pola mocy w rekordzie branch_results podnosi wyjątek,
+#    NIE fabrykuje zera (rekord result_v1 uszkodzony/niekompletny to fakt do
+#    zgłoszenia, a nie milcząco zaniżony wkład gałęzi do mocy punktu).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "klucz_do_usuniecia",
+    ["p_to_mw", "q_to_mvar"],
+)
+def test_8_brak_pola_mocy_na_koncu_to_podnosi_wyjatek(klucz_do_usuniecia: str) -> None:
+    """Punkt = koniec ``to`` gałęzi. Brak ``p_to_mw``/``q_to_mvar`` w rekordzie
+    branch_results (np. wynik solvera niekompletny) → ``ValueError`` nazywający
+    pole i ``branch_id`` — nie cichy wkład zerowy do mocy kanonicznej punktu."""
+    br: dict[str, Any] = {
+        "branch_id": _LINE,
+        "p_to_mw": -1.0,
+        "q_to_mvar": -0.5,
+        "p_from_mw": 1.0,
+        "q_from_mvar": 0.509650,
+    }
+    del br[klucz_do_usuniecia]
+    with pytest.raises(ValueError, match=klucz_do_usuniecia):
+        moc_kanoniczna_punktu(branch_results=[br], endpoints=_ENDPOINTS, point_node=_NODE_LOAD)
+
+
+@pytest.mark.parametrize(
+    "klucz_do_usuniecia",
+    ["p_from_mw", "q_from_mvar"],
+)
+def test_8_brak_pola_mocy_na_koncu_from_podnosi_wyjatek(klucz_do_usuniecia: str) -> None:
+    """Punkt = koniec ``from`` gałęzi — ten sam kontrakt jak dla końca ``to``
+    (iloczyn cech: oba końce × brakujące P/Q), tak samo podnosi wyjątek."""
+    br: dict[str, Any] = {
+        "branch_id": _LINE,
+        "p_to_mw": -1.0,
+        "q_to_mvar": -0.5,
+        "p_from_mw": 1.0,
+        "q_from_mvar": 0.509650,
+    }
+    del br[klucz_do_usuniecia]
+    with pytest.raises(ValueError, match=klucz_do_usuniecia):
+        moc_kanoniczna_punktu(branch_results=[br], endpoints=_ENDPOINTS, point_node=_NODE_SLACK)
+
+
+def test_8_kompletny_rekord_regresja_liczy_normalnie() -> None:
+    """Regresja: rekord z kompletem pól liczy się identycznie jak przed FAB-E —
+    brak wyjątku, wynik liczbowy zgodny ze znaną prawdą K3 (test 1 powyżej)."""
+    br: dict[str, Any] = {
+        "branch_id": _LINE,
+        "p_to_mw": -1.0,
+        "q_to_mvar": -0.5,
+        "p_from_mw": 1.0,
+        "q_from_mvar": 0.509650,
+    }
+    kanon = moc_kanoniczna_punktu(branch_results=[br], endpoints=_ENDPOINTS, point_node=_NODE_LOAD)
+    assert kanon["p_mw"] == pytest.approx(1.0, abs=1e-9)
+    assert kanon["q_mvar"] == pytest.approx(0.5, abs=1e-9)
+    assert kanon["incydentne"] == 1

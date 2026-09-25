@@ -49,6 +49,46 @@ tylko „nie było czego liczyć". Dokładnie tego rozróżnienia pilnuje teraz 
 Klucze DOPISANE (kontrakt addytywny, FROZEN nietknięty): `brak_danych` na
 poziomie wyniku, w każdym wierszu `pv_curves`/`qv_curves`/`l_index_per_bus`
 oraz w `modal_analysis` — powód po polsku mówiący, jakich danych brakuje.
+
+2026-09-05, karta FAB-D2 (D2), rodzaj `opf_loss_lcc`. `V126TransformerInput.p0_kw`
+niesie teraz `None` zamiast cichego 0.0 (`solver_input/v126_contracts.py` przestał
+podstawiać `transformer.p0_kw or 0.0`), a model wejściowy tej fixtury dostał
+JAWNĄ stratę jałową (18,0 kW — nameplate 16 MVA), zamiast dalej polegać na
+cichym zerze. `transformer_losses_kw` = `p0_kw + pk_kw·0,45²`.
+
+  wielkość                 PRZED       PO
+  ------------------------ ----------- -----------
+  transformer_losses_kw    18,225      36,225
+  total_losses_kw          23,39789    41,39789
+  annual_losses_kwh        93591,556   165591,556
+  annual_co2_kg            67385,92    119225,92
+  lcc_loss_opex_pv_pln     935175,54   1654606,25
+
+Straty jałowe transformatora BYŁY pomijane w LCC strat — 16 MVA GPZ bez
+uwzględnienia strat jałowych zaniżało roczne zużycie energii i koszt cyklu
+życia strat o realną wielkość (18 kW × 8760 h ≈ 158 MWh/rok pominięte).
+
+Skutek uboczny UJAWNIONY, nie ukryty: rodzaj `hosting_capacity` (Monte Carlo)
+też przesunął `hosting_capacity_mw` 7,6 → 7,8 MW dla szyny stacji — ziarno
+losowania (`_hosting_capacity_bus_seed`) pochodzi z SKRÓTU CAŁEGO ładunku
+wejściowego (odtwarzalność wymaga, by ten sam ładunek dawał ten sam wynik), więc
+KAŻDA zmiana ładunku — nawet pola, którego ta analiza fizycznie nie czyta —
+przesuwa ziarno i wynik losowania w paśmie niepewności Monte Carlo. To nie jest
+zmiana merytoryczna zdolności przyłączeniowej, tylko przesunięcie próbki losowej.
+
+2026-09-23, uczciwość natychmiastowa (audyty harmonicznych i dynamiki). Fixtura przestaje być
+odciskiem SUROWEGO solvera, a staje się odciskiem ODPOWIEDZI API (granica
+`application/v126_artifacts.py::wynik_v126_dla_powierzchni`). Wartości liczbowe solvera bez
+zmian (solver FROZEN nietknięty); zmienia się kształt i etykiety:
+
+  rodzaj / pole                                  PRZED                    PO
+  ---------------------------------------------- ------------------------ ------------------------
+  każdy rodzaj: sanity.status (w paśmie)         „zweryfikowany"          „w paśmie wiarygodności"
+  power_quality_harmonics: nodes, sanity         na wierzchu ładunku      w `wynik_audytowy`
+  power_quality_harmonics: compatibility_status  „zgodny"/„niezgodny"     „NIE_OCENIONO"
+  power_quality_harmonics: violated_limits       lista „limitów"          usunięte (werdykty)
+  power_quality_harmonics / ssci_impedance       —                        `ocena` (NIE_OCENIONO)
+  reliability_contingency: contingency_ranking   obecny                   zdjęty + `ranking_n1`
 """
 
 from __future__ import annotations
@@ -65,6 +105,7 @@ from typing import Any
 if str(Path(__file__).resolve().parents[2] / "src") not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
+from application.v126_artifacts import wynik_v126_dla_powierzchni  # noqa: E402
 from network_model.solvers.v126_academic import V126AcademicSolver  # noqa: E402
 from solver_input.v126_contracts import (  # noqa: E402
     V126AcademicInput,
@@ -137,6 +178,7 @@ def model_wejsciowy() -> V126AcademicInput:
                 ulv_kv=15.0,
                 uk_percent=10.5,
                 pk_kw=90.0,
+                p0_kw=18.0,
             )
         ],
         harmonic_sources=[
@@ -145,6 +187,9 @@ def model_wejsciowy() -> V126AcademicInput:
                 source_ref="pv/3c8e2a94",
                 base_current_a=80.0,
                 spectrum_percent={5: 3.0, 7: 2.0, 11: 1.0},
+                # Karta AB-H0: proweniencja widma jest polem WYMAGANYM (bez domyślki
+                # „KATALOG”) — wejście solvera zbudowane ręcznie w teście to widmo RĘCZNE.
+                spectrum_provenance="RECZNE",
             )
         ],
         parameters={
@@ -186,11 +231,21 @@ def model_wejsciowy() -> V126AcademicInput:
 
 
 def zbuduj_odpowiedzi() -> dict[str, Any]:
-    """Uruchamia solver dla KAŻDEGO rodzaju kontraktu i zwraca ładunki wyników."""
+    """Uruchamia solver dla KAŻDEGO rodzaju kontraktu i zwraca ładunki wyników TAK, jak
+    widzi je ekran: przez granicę `wynik_v126_dla_powierzchni` (ta sama funkcja, którą woła
+    `enm/canonical_analysis.py::_execute_v126` przed zapisem wyniku biegu). Fixtura strażnika
+    prezentacji jest odciskiem ODPOWIEDZI API — surowy ładunek solvera pokazywałby strażnikowi
+    pola, których ekran nigdy nie dostaje (ranking N-1, liczby jakości energii poza sekcją
+    audytową, etykietę „zweryfikowany"), i odwrotnie."""
     solver = V126AcademicSolver()
     model = model_wejsciowy()
+    # Indeks nazw modelu — w ścieżce API buduje go `enm.nazwy_elementow.zbuduj_indeks_nazw`
+    # z migawki biegu; tu źródłem nazw są szyny modelu wejściowego (karta #144).
+    nazwy = {szyna.ref: szyna.name for szyna in model.buses}
     return {
-        analysis_type.value: solver.run(analysis_type, model)["result"]
+        analysis_type.value: wynik_v126_dla_powierzchni(
+            analysis_type.value, solver.run(analysis_type, model), nazwy=nazwy
+        )["result"]
         for analysis_type in V126AnalysisType
     }
 

@@ -67,9 +67,10 @@ vi.mock('../../../../ui/selection', () => ({
   ) => selector({ selectElement: selectElementMock, centerSldOnElement: centerSldOnElementMock }),
 }));
 
-vi.mock('../../../../ui/catalog/api', () => ({
-  getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchTransformerTypes: () =>
+// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
+// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const { fetchTransformerTypesMock } = vi.hoisted(() => ({
+  fetchTransformerTypesMock: vi.fn(() =>
     Promise.resolve([
       {
         id: 'energen-tonr-1000-15-04',
@@ -87,6 +88,13 @@ vi.mock('../../../../ui/catalog/api', () => ({
         tap_step_percent: 2.5,
       },
     ]),
+  ),
+}));
+
+vi.mock('../../../../ui/catalog/api', () => ({
+  getCatalogErrorMessage: () => 'błąd katalogu',
+  fetchTransformerTypes: () => fetchTransformerTypesMock(),
+  fetchGrupyPolaczen: () => Promise.resolve(['Dyn5', 'Dyn11', 'Yzn5']),
 }));
 
 vi.mock('../../../../ui/network-build/forms/transformerRatedCurrentsApi', () => ({
@@ -95,8 +103,11 @@ vi.mock('../../../../ui/network-build/forms/transformerRatedCurrentsApi', () => 
 }));
 
 async function pickType() {
+  // Czekamy na OPCJĘ typu, nie na samo pole: pole renderuje się, zanim katalog się wczyta,
+  // a pod obciążeniem maszyny wybór przed wczytaniem kończył się „Value … not found in options".
   await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-transformator-katalog')).toBeInTheDocument();
+    const pole = screen.getByTestId('mvd-kreator-transformator-katalog') as HTMLSelectElement;
+    expect(Array.from(pole.options).map((o) => o.value)).toContain('energen-tonr-1000-15-04');
   });
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-katalog'), 'energen-tonr-1000-15-04');
 }
@@ -117,9 +128,33 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     navigateToSldMock.mockReset();
     selectElementMock.mockReset();
     centerSldOnElementMock.mockReset();
+    fetchTransformerTypesMock.mockClear();
   });
 
   afterEach(() => cleanup());
+
+  it('grupa połączeń: pokazuje wartość z katalogu i wysyła tylko jawny wybór ze słownika', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null, selection_hint: null });
+    render(<KreatorTransformatoraSnNn />);
+    const pole = screen.getByTestId('mvd-kreator-transformator-grupa') as HTMLSelectElement;
+    expect(pole).toBeDisabled(); // bez typu z katalogu nie ma czego nadpisywać
+    await pickType();
+    await waitFor(() => expect(pole).not.toBeDisabled());
+    await waitFor(() => {
+      expect(Array.from(pole.options).map((o) => o.value)).toEqual(['', 'Dyn5', 'Dyn11', 'Yzn5']);
+    });
+    expect(pole.options[0].textContent).toContain('Dyn5'); // grupa z rekordu katalogu
+
+    await userEvent.selectOptions(pole, 'Yzn5');
+    await userEvent.click(screen.getByTestId('mvd-kreator-transformator-zapisz'));
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'add_transformer_sn_nn',
+        expect.objectContaining({ vector_group: 'Yzn5' }),
+      );
+    });
+  });
 
   it('tworzy transformator z kontekstem stacji (bez regulacji) i wiąże ze schematem', async () => {
     executeDomainOperationMock.mockResolvedValue({
@@ -145,6 +180,8 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     });
     const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
     expect(payload).not.toHaveProperty('transformer_regulation_type');
+    // W5-A: bez jawnego wyboru grupa zostaje z katalogu — payload jej nie niesie.
+    expect(payload).not.toHaveProperty('vector_group');
     expect(closeFormMock).toHaveBeenCalled();
     // Wielokierunkowe wiązanie (V12K-073): nowy transformator zaznaczony,
     // SLD wycentrowany, przejście na schemat.
@@ -209,6 +246,7 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     await screen.findByRole('option', { name: /TONR 1000/ });
     expect(screen.getByTestId('mvd-kreator-transformator-brak')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-transformator-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-transformator')).toHaveAttribute('data-status', 'zablokowany');
     // przywróć snapshot dla kolejnych testów
     snapshotState.snapshot = {
       buses: [
@@ -223,6 +261,21 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     render(<KreatorTransformatoraSnNn />);
     await pickType();
     expect(screen.getByTestId('mvd-kreator-transformator-zapisz')).toBeDisabled();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) —
+   * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
+   * `zapisZablokowany` nie sprawdzał, czy katalog transformatorów już doszedł.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × kontekst stacji dostępny → zapis zablokowany z komunikatem', async () => {
+    fetchTransformerTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorTransformatoraSnNn />);
+
+    expect(screen.getByTestId('mvd-kreator-transformator-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-transformator')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

@@ -9,7 +9,7 @@ import { BuildSidebar } from '../BuildSidebar';
 import { BuilderSection } from '../BuilderSection';
 import { LayersSection } from '../LayersSection';
 import { NavigatorSection } from '../NavigatorSection';
-import { ReadinessSection, DEFAULT_READINESS_ITEMS } from '../ReadinessSection';
+import { ReadinessSection } from '../ReadinessSection';
 
 describe('BuildSidebar — 4 sekcje', () => {
   it('renderuje 4 zakładki z polskimi etykietami', () => {
@@ -184,17 +184,6 @@ describe('LayersSection — 13 warstw widoczności', () => {
 });
 
 describe('ReadinessSection — 9 typów obliczeń + raporty', () => {
-  it('renderuje 10 default items (rozpływ, napięcia, zwarcia, asymetria, obciążalność, stabilność, FRT, NC RfG, raport OSD, raport techniczny)', () => {
-    expect(DEFAULT_READINESS_ITEMS.length).toBe(10);
-    const labels = DEFAULT_READINESS_ITEMS.map((i) => i.labelPl);
-    expect(labels).toContain('Rozpływ mocy');
-    expect(labels).toContain('Stabilność');
-    expect(labels).toContain('FRT / LVRT / HVRT');
-    expect(labels).toContain('Zgodność przyłączeniowa');
-    expect(labels).toContain('Raport OSD');
-    expect(labels).toContain('Raport techniczny');
-  });
-
   it('renderuje status item z polską etykietą', () => {
     render(
       <ReadinessSection

@@ -18,9 +18,10 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import * as crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { adresHarnessu } from './adresHarnessu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const HARNESS_URL = 'http://127.0.0.1:5173/sld-symbol-pack-harness.html';
+const HARNESS_URL = adresHarnessu('sld-symbol-pack-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/cad');
 
 const SYMBOLE_CAD = [

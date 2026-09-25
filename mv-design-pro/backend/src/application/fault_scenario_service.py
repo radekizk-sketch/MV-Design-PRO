@@ -1,9 +1,29 @@
 """
-Fault Scenario Service — PR-19 + PR-24
+Fault Scenario Service — PR-19 + PR-24 + C6-PERSIST
 
 Application service for managing fault scenarios.
 Handles CRUD, validation, content hash computation,
 eligibility checking, and SLD overlay generation.
+
+TRWAŁOŚĆ (karta C6-PERSIST, 2026-09-05). Scenariusze zwarciowe są teraz
+scenariuszami roboczymi NAZWANYMI (`enm.scenariusze.OperatingScenario` z
+`kind=FAULT_STUDY`, `fault_spec=<FaultScenario>`) w magazynie scenariuszy per
+projekt (`enm/scenariusze.py`: `zapisz_scenariusz`, `wczytaj_scenariusz`,
+`lista_scenariuszy`, `usun_scenariusz`) — restart procesu backendu NIE gubi
+scenariuszy (poprzednio: słownik w pamięci `_scenarios`/`_case_scenarios`/
+`_scenario_runs`, wymazywany przy każdym restarcie). Serwis jest odtąd
+BEZSTANOWY wobec danych: nie trzyma żadnego scenariusza w atrybucie instancji,
+tylko dostaje `klucz` (klucz magazynu Canonical Project Twin) jako argument
+KAŻDEJ metody, dokładnie tak samo, jak `enm.canonical_analysis.create_run`
+dostaje `klucz_twin`. Tłumaczenie `case_id -> klucz` dzieje się WYŁĄCZNIE na
+granicy API (`api/klucz_twin_dep.klucz_twin_z_sciezki`) — ten moduł nigdy nie
+widzi surowego `case_id`.
+
+„Ma powiązane biegi" (blokada usunięcia) jest odtąd WYPROWADZANA z rejestru
+biegów kanonicznych (koperta biegu niesie `scenario_ref`), nie zapisywana w
+osobnym rejestrze — `register_run` (jedyne miejsce zapisu tamtego rejestru)
+został usunięty razem z rejestrem: druga prawda o tym samym fakcie (bieg
+istnieje) była defektem oczekującym na rozjazd, nie funkcją.
 
 INVARIANTS:
 - ZERO auto-completion of missing data
@@ -12,7 +32,7 @@ INVARIANTS:
 - All scenarios sorted deterministically
 - Polish error messages
 - Copy-on-write updates (PR-24)
-- Dependency check before delete (PR-24)
+- Dependency check before delete (PR-24), wyprowadzona z koperty biegu (C6-PERSIST)
 """
 
 from __future__ import annotations
@@ -21,6 +41,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
+from domain.canonical_operations import READINESS_CODES
 from domain.eligibility_models import (
     AnalysisEligibilityIssue,
     AnalysisEligibilityResult,
@@ -41,6 +62,16 @@ from domain.fault_scenario import (
     validate_fault_scenario,
 )
 from enm.fix_actions import FixAction
+from enm.scenariusze import (
+    OperatingScenario,
+    RodzajScenariusza,
+    ScenariuszNieistniejeError,
+    lista_scenariuszy,
+    opcje_biegu_ze_scenariusza,
+    usun_scenariusz,
+    wczytaj_scenariusz,
+    zapisz_scenariusz,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +123,26 @@ _FAULT_TYPE_TO_ANALYSIS_TYPE: dict[FaultType, AnalysisType] = {
     FaultType.SC_1F: AnalysisType.SC_1F,
 }
 
+#: Typy lokalizacji na gałęzi — adapter obliczeniowy nie ma dziś sposobu
+#: rozdzielenia modelu w punkcie pośrednim (jeden kod gotowości dla obu, karta
+#: C6-PERSIST — to ta sama klasa ograniczenia bindingu, nie dwa warunki).
+_LOKALIZACJE_NA_GALEZI: frozenset[str] = frozenset({"BRANCH", "BRANCH_POINT"})
+
+
+def _operating_scenario_z_fault(scenario: FaultScenario) -> OperatingScenario:
+    """Opakuj `FaultScenario` w scenariusz roboczy `kind=FAULT_STUDY` — JEDEN
+    byt (§0 karty C6-PERSIST), bez nadpisań modelu. JEDNO miejsce tego
+    opakowania — używane zarówno przez zapis w magazynie (`FaultScenarioService.
+    _wpis`), jak i przez `solver_input_for_scenario` (funkcja modułowa, bez
+    dostępu do metody instancji)."""
+    return OperatingScenario(
+        scenario_id=str(scenario.scenario_id),
+        name=scenario.name,
+        kind=RodzajScenariusza.FAULT_STUDY,
+        fault_spec=scenario,
+    )
+
+
 # ---------------------------------------------------------------------------
 # SLD overlay labels (Polish)
 # ---------------------------------------------------------------------------
@@ -117,28 +168,30 @@ class FaultScenarioService:
     """
     Application service for fault scenario management.
 
+    BEZSTANOWY (karta C6-PERSIST): żadna metoda nie czyta ani nie zapisuje
+    atrybutu instancji z treścią scenariusza — treść żyje wyłącznie w magazynie
+    scenariuszy (`enm/scenariusze.py`), adresowanym `klucz` (klucz magazynu
+    Canonical Project Twin) przekazanym jawnie do każdej metody.
+
     Responsibilities:
     - Create validated fault scenarios
-    - Update scenarios (copy-on-write)
+    - Update scenarios (copy-on-write, nowa rewizja w magazynie)
     - List scenarios for a study case (sorted deterministically)
-    - Delete scenarios (with dependency check)
+    - Delete scenarios (dependency check wyprowadzony z koperty biegu)
     - Validate scenario invariants
     - Compute content hash
     - Check scenario eligibility
     - Generate SLD overlay for a scenario
     """
 
-    def __init__(self) -> None:
-        # In-memory store (no DB persistence yet)
-        self._scenarios: dict[UUID, FaultScenario] = {}
-        # Index: study_case_id -> list of scenario_ids
-        self._case_scenarios: dict[UUID, list[UUID]] = {}
-        # Associated run IDs per scenario (scenario_id -> list of run_ids)
-        self._scenario_runs: dict[UUID, list[UUID]] = {}
+    def _wpis(self, scenario: FaultScenario) -> OperatingScenario:
+        """Opakuj `FaultScenario` w scenariusz roboczy do zapisu w magazynie."""
+        return _operating_scenario_z_fault(scenario)
 
     def create_scenario(
         self,
         *,
+        klucz: str,
         study_case_id: UUID,
         name: str,
         fault_type: str,
@@ -153,6 +206,8 @@ class FaultScenarioService:
         Create a new fault scenario with validation and content hash.
 
         Args:
+            klucz: Klucz magazynu scenariuszy (Canonical Project Twin), przetłumaczony
+                z `study_case_id` przez wołającego (`api/klucz_twin_dep.py`).
             study_case_id: Parent study case UUID.
             name: User-facing Polish name (required).
             fault_type: "SC_3F", "SC_2F", or "SC_1F".
@@ -188,19 +243,13 @@ class FaultScenarioService:
             z0_bus_data=z0_bus_data,
         )
 
-        # Check for duplicate content_hash
-        for existing in self._scenarios.values():
-            if (
-                existing.study_case_id == study_case_id
-                and existing.content_hash == scenario.content_hash
-            ):
+        # Check for duplicate content_hash — scope: TEN SAM przypadek (parytet
+        # z zachowaniem sprzed C6-PERSIST, kiedy indeks w pamięci był per case_id).
+        for existing in self.list_scenarios(klucz, study_case_id):
+            if existing.content_hash == scenario.content_hash:
                 raise FaultScenarioDuplicateError(scenario.content_hash)
 
-        # Store
-        self._scenarios[scenario.scenario_id] = scenario
-        if study_case_id not in self._case_scenarios:
-            self._case_scenarios[study_case_id] = []
-        self._case_scenarios[study_case_id].append(scenario.scenario_id)
+        zapisz_scenariusz(klucz, self._wpis(scenario))
 
         logger.info(
             "Created fault scenario %s: name=%s, type=%s, location=%s, hash=%s",
@@ -213,26 +262,52 @@ class FaultScenarioService:
 
         return scenario
 
-    def get_scenario(self, scenario_id: UUID) -> FaultScenario:
-        """Get a fault scenario by ID."""
-        scenario = self._scenarios.get(scenario_id)
-        if scenario is None:
-            raise FaultScenarioNotFoundError(str(scenario_id))
-        return scenario
+    def get_scenario_ze_wpisem(self, klucz: str, scenario_id: UUID) -> OperatingScenario:
+        """Scenariusz roboczy KOMPLETNY (z rewizją magazynu), do budowy biegu.
 
-    def list_scenarios(self, study_case_id: UUID) -> list[FaultScenario]:
+        `get_scenario` (niżej) zwraca tylko `FaultScenario` — wystarczające dla
+        kontraktu CRUD/API. Budowa biegu (`enm.canonical_analysis.create_run
+        (scenariusz=...)`) potrzebuje CAŁEGO wpisu, bo koperta biegu niesie
+        `OperatingScenario.revision` z magazynu, nie tylko treść zwarcia
+        (karta C6-PERSIST — `api/fault_scenarios.py::create_run_from_scenario`,
+        `application/batch_execution_service.py::execute_batch`).
+        """
+        try:
+            wpis = wczytaj_scenariusz(klucz, str(scenario_id))
+        except ScenariuszNieistniejeError as exc:
+            raise FaultScenarioNotFoundError(str(scenario_id)) from exc
+        if wpis.kind != RodzajScenariusza.FAULT_STUDY or wpis.fault_spec is None:
+            # Magazyn scenariuszy jest wspólny dla wszystkich rodzajów (N-1,
+            # MAX_LOAD, ...) — identyfikator istnieje, ale NIE jest scenariuszem
+            # zwarciowym: z perspektywy tego serwisu to uczciwy brak, nie awaria.
+            raise FaultScenarioNotFoundError(str(scenario_id))
+        return wpis
+
+    def get_scenario(self, klucz: str, scenario_id: UUID) -> FaultScenario:
+        """Get a fault scenario by ID (najnowsza, nieusunięta rewizja magazynu)."""
+        wpis = self.get_scenario_ze_wpisem(klucz, scenario_id)
+        assert wpis.fault_spec is not None  # gwarantowane przez get_scenario_ze_wpisem
+        return wpis.fault_spec
+
+    def list_scenarios(self, klucz: str, study_case_id: UUID) -> list[FaultScenario]:
         """
         List all fault scenarios for a study case.
 
         Sorted deterministically by (fault_type, element_ref).
         """
-        scenario_ids = self._case_scenarios.get(study_case_id, [])
-        scenarios = [self._scenarios[sid] for sid in scenario_ids if sid in self._scenarios]
+        scenarios = [
+            wpis.fault_spec
+            for wpis in lista_scenariuszy(klucz)
+            if wpis.kind == RodzajScenariusza.FAULT_STUDY
+            and wpis.fault_spec is not None
+            and wpis.fault_spec.study_case_id == study_case_id
+        ]
         scenarios.sort(key=lambda s: (s.fault_type.value, s.location.element_ref))
         return scenarios
 
     def update_scenario(
         self,
+        klucz: str,
         scenario_id: UUID,
         *,
         name: str | None = None,
@@ -247,10 +322,13 @@ class FaultScenarioService:
         """
         Update a fault scenario using copy-on-write.
 
-        Creates a new immutable FaultScenario with updated fields,
-        recomputes content_hash, and replaces the stored scenario.
+        Creates a new immutable FaultScenario with updated fields, recomputes
+        content_hash, and zapisuje NOWĄ REWIZJĘ w magazynie scenariuszy (numer
+        rewizji nadaje magazyn — `enm.scenariusze.zapisz_scenariusz`; zapis treści
+        identycznej z ostatnią rewizją nie tworzy nowej rewizji).
 
         Args:
+            klucz: Klucz magazynu scenariuszy.
             scenario_id: ID of the scenario to update.
             name: New name (optional).
             fault_type: New fault type (optional).
@@ -268,7 +346,7 @@ class FaultScenarioService:
             FaultScenarioNotFoundError: If scenario does not exist.
             FaultScenarioValidationError: If updated invariants are violated.
         """
-        existing = self.get_scenario(scenario_id)
+        existing = self.get_scenario(klucz, scenario_id)
 
         # Build update kwargs for with_updates()
         update_kwargs: dict[str, Any] = {}
@@ -317,8 +395,7 @@ class FaultScenarioService:
             content_hash=content_hash,
         )
 
-        # Replace in store
-        self._scenarios[scenario_id] = updated
+        zapisz_scenariusz(klucz, self._wpis(updated))
 
         logger.info(
             "Updated fault scenario %s: name=%s, hash=%s",
@@ -329,7 +406,7 @@ class FaultScenarioService:
 
         return updated
 
-    def delete_scenario(self, scenario_id: UUID) -> None:
+    def delete_scenario(self, klucz: str, scenario_id: UUID) -> None:
         """
         Delete a fault scenario.
 
@@ -337,50 +414,38 @@ class FaultScenarioService:
             FaultScenarioNotFoundError: If scenario does not exist.
             FaultScenarioHasRunsError: If scenario has associated runs.
         """
-        scenario = self._scenarios.get(scenario_id)
-        if scenario is None:
-            raise FaultScenarioNotFoundError(str(scenario_id))
+        existing = self.get_scenario(klucz, scenario_id)
 
-        # Check for associated runs
-        if self.has_associated_runs(scenario_id):
+        if self.has_associated_runs(existing.study_case_id, scenario_id):
             raise FaultScenarioHasRunsError(str(scenario_id))
 
-        # Remove from index
-        case_ids = self._case_scenarios.get(scenario.study_case_id, [])
-        if scenario_id in case_ids:
-            case_ids.remove(scenario_id)
-
-        # Remove from store
-        del self._scenarios[scenario_id]
-
-        # Clean up run associations
-        self._scenario_runs.pop(scenario_id, None)
+        usun_scenariusz(klucz, str(scenario_id))
 
         logger.info("Deleted fault scenario %s", scenario_id)
 
-    def has_associated_runs(self, scenario_id: UUID) -> bool:
+    def has_associated_runs(self, study_case_id: UUID, scenario_id: UUID) -> bool:
         """
         Check if a scenario has associated execution runs.
+
+        WYPROWADZONE z rejestru biegów kanonicznych (karta C6-PERSIST), nie
+        zapisywane osobno: prawda jest JEDNA — istnieje `CanonicalRun` przypadku,
+        którego koperta niesie referencję do tego scenariusza (dowolnej rewizji).
+        `register_run` (dawny zapis „drugiej prawdy" w pamięci) został usunięty.
 
         Returns:
             True if the scenario has at least one associated run.
         """
-        runs = self._scenario_runs.get(scenario_id, [])
-        return len(runs) > 0
+        from enm.canonical_analysis import list_runs_for_case  # noqa: PLC0415
 
-    def register_run(self, scenario_id: UUID, run_id: UUID) -> None:
-        """
-        Register an execution run as associated with a scenario.
+        cel = str(scenario_id)
+        for run in list_runs_for_case(str(study_case_id)):
+            koperta = run.koperta
+            if koperta is not None and koperta.scenario_ref is not None:
+                if koperta.scenario_ref[0] == cel:
+                    return True
+        return False
 
-        Args:
-            scenario_id: ID of the scenario.
-            run_id: ID of the run.
-        """
-        if scenario_id not in self._scenario_runs:
-            self._scenario_runs[scenario_id] = []
-        self._scenario_runs[scenario_id].append(run_id)
-
-    def validate_scenario(self, scenario_id: UUID) -> None:
+    def validate_scenario(self, klucz: str, scenario_id: UUID) -> None:
         """
         Re-validate an existing scenario's invariants.
 
@@ -388,20 +453,22 @@ class FaultScenarioService:
             FaultScenarioNotFoundError: If scenario does not exist.
             FaultScenarioValidationError: If invariants are violated.
         """
-        scenario = self.get_scenario(scenario_id)
+        scenario = self.get_scenario(klucz, scenario_id)
         validate_fault_scenario(scenario)
 
-    def compute_hash(self, scenario_id: UUID) -> str:
+    def compute_hash(self, klucz: str, scenario_id: UUID) -> str:
         """
         Recompute content hash for a scenario (for verification).
 
         Returns:
             SHA-256 content hash.
         """
-        scenario = self.get_scenario(scenario_id)
+        scenario = self.get_scenario(klucz, scenario_id)
         return compute_scenario_content_hash(scenario)
 
-    def check_scenario_eligibility(self, scenario_id: UUID) -> AnalysisEligibilityResult:
+    def check_scenario_eligibility(
+        self, klucz: str, scenario_id: UUID
+    ) -> AnalysisEligibilityResult:
         """
         Check eligibility of a fault scenario for execution.
 
@@ -409,9 +476,12 @@ class FaultScenarioService:
         - If fault_node_ref is empty -> BLOCKER with NAVIGATE_TO_ELEMENT
         - If SC_1F and no z0_bus_data -> BLOCKER with OPEN_MODAL "Uzupelnij Z0"
         - If SC_2F and no z2 data -> INELIGIBLE with OPEN_MODAL "Uzupelnij Z2"
+        - Lokalizacja na gałęzi (BRANCH/BRANCH_POINT) -> BLOCKER (kod gotowości
+          kanonu, karta C6-PERSIST — adapter obliczeniowy liczy wyłącznie węzeł)
         - All messages in Polish
 
         Args:
+            klucz: Klucz magazynu scenariuszy.
             scenario_id: ID of the scenario to check.
 
         Returns:
@@ -420,7 +490,7 @@ class FaultScenarioService:
         Raises:
             FaultScenarioNotFoundError: If scenario does not exist.
         """
-        scenario = self.get_scenario(scenario_id)
+        scenario = self.get_scenario(klucz, scenario_id)
         analysis_type = _FAULT_TYPE_TO_ANALYSIS_TYPE[scenario.fault_type]
 
         blockers: list[AnalysisEligibilityIssue] = []
@@ -493,16 +563,19 @@ class FaultScenarioService:
                 )
             )
 
-        # v2 Rule 5: BRANCH_POINT location — binding unsupported (PR-25)
-        if scenario.location.location_type == "BRANCH_POINT":
+        # v2 Rule 5 (karta C6-PERSIST): lokalizacja NA GAŁĘZI (BRANCH/BRANCH_POINT)
+        # — binding unsupported. JEDEN kod kanonu dla obu typów lokalizacji
+        # gałęziowej (rejestr `domain/canonical_operations.py::READINESS_CODES`) —
+        # to samo ograniczenie bindingu czyta TEN SAM komunikat, którym odmawia
+        # `enm.canonical_analysis._execute_short_circuit`, gdyby ktoś ominął tę
+        # bramkę (jedno źródło prawdy, nie dwa niezależne teksty).
+        if scenario.location.location_type in _LOKALIZACJE_NA_GALEZI:
+            spec = READINESS_CODES["fault.location_on_branch_requires_assembler"]
             blockers.append(
                 AnalysisEligibilityIssue(
-                    code="ELIG_BINDING_UNSUPPORTED_BRANCH_POINT",
+                    code=spec.code,
                     severity=IssueSeverity.BLOCKER,
-                    message_pl=(
-                        "Zwarcie w punkcie na gałęzi (BRANCH_POINT) nie jest jeszcze obsługiwane "
-                        "przez adapter obliczeniowy — wybierz lokalizację na węźle"
-                    ),
+                    message_pl=spec.message_pl,
                     element_ref=scenario.location.element_ref,
                     element_type=scenario.location.location_type,
                     fix_action=FixAction(
@@ -518,7 +591,7 @@ class FaultScenarioService:
             warnings=warnings,
         )
 
-    def get_scenario_sld_overlay(self, scenario_id: UUID) -> dict[str, Any]:
+    def get_scenario_sld_overlay(self, klucz: str, scenario_id: UUID) -> dict[str, Any]:
         """
         Generate SLD overlay payload for a fault scenario.
 
@@ -526,6 +599,7 @@ class FaultScenarioService:
         SLD overlay protocol.
 
         Args:
+            klucz: Klucz magazynu scenariuszy.
             scenario_id: ID of the scenario.
 
         Returns:
@@ -534,7 +608,7 @@ class FaultScenarioService:
         Raises:
             FaultScenarioNotFoundError: If scenario does not exist.
         """
-        scenario = self.get_scenario(scenario_id)
+        scenario = self.get_scenario(klucz, scenario_id)
 
         fault_label = FAULT_TYPE_LABELS_PL.get(scenario.fault_type, scenario.fault_type.value)
         mode_label = FAULT_MODE_LABELS_PL.get(scenario.fault_mode, scenario.fault_mode.value)
@@ -586,25 +660,12 @@ class FaultScenarioService:
 def solver_input_for_scenario(scenario: FaultScenario) -> dict[str, Any]:
     """Zbuduj wejście solvera biegu kanonicznego ze scenariusza zwarciowego.
 
-    JEDNO źródło prawdy dla OBU ścieżek uruchomienia (pojedynczy bieg
-    `POST /api/execution/fault-scenarios/{id}/runs` oraz seria
-    `POST /api/execution/study-cases/{id}/batches` — reguła KLASA, NIE
-    INSTANCJA: dwie niezależne konstrukcje tego samego wejścia były
-    defektem oczekującym na rozjazd).
-
-    NAPRAWA U ŹRÓDŁA (karta BATCH-ROUTER): konfiguracja scenariusza
-    (`c_factor`, `thermal_time_seconds`) była dotąd przekazywana WYŁĄCZNIE
-    zagnieżdżona pod kluczem ``config``, a wykonawca kanoniczny
-    (`enm.canonical_analysis._execute_short_circuit`) czyta te wartości
-    Z WIERZCHU opcji — konfiguracja scenariusza była cicho ignorowana
-    i bieg liczył się na domyślnych 1.10/1.0 s. Wartości idą teraz także
-    na wierzch opcji; klucz ``config`` zostaje jako pochodzenie (WHITE BOX).
+    Cienki alias `enm.scenariusze.opcje_biegu_ze_scenariusza` (karta C6-PERSIST
+    — JEDNA prawda projekcji scenariusza na opcje biegu, dzielona z magazynem
+    scenariuszy; `FaultScenario` jest tu opakowywany w `OperatingScenario`
+    tylko po to, żeby dwa niezależne wywołujące tego pliku (pojedynczy bieg
+    `POST /api/execution/fault-scenarios/{id}/runs` oraz seria `POST /api/
+    execution/study-cases/{id}/batches` — reguła KLASA, NIE INSTANCJA) nie
+    musiały same znać kształtu `OperatingScenario`.
     """
-    return {
-        "scenario_id": str(scenario.scenario_id),
-        "fault_type": scenario.fault_type.value,
-        "location": scenario.location.to_dict(),
-        "config": scenario.config.to_dict(),
-        "c_factor": scenario.config.c_factor,
-        "thermal_time_seconds": scenario.config.thermal_time_seconds,
-    }
+    return opcje_biegu_ze_scenariusza(_operating_scenario_z_fault(scenario))

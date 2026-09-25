@@ -79,7 +79,13 @@ def _model_z_gpz() -> dict[str, Any]:
     return _wykonaj(
         _pusty_enm(),
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": REF_ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
 
 
@@ -106,7 +112,13 @@ def _model_ze_stacja_i_ct() -> dict[str, Any]:
 
 
 def _payload_gpz(_: dict[str, Any]) -> dict[str, Any]:
-    return {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO}
+    return {
+        "voltage_kv": 15.0,
+        "sk3_mva": 250.0,
+        "catalog_ref": REF_ZRODLO,
+        "hv_voltage_kv": 110.0,
+        "transformer_sn_mva": 25.0,
+    }
 
 
 def _payload_odcinka(_: dict[str, Any]) -> dict[str, Any]:
@@ -389,7 +401,7 @@ class TestIzolacjaOperacjiDomenowej:
         pole = _pole_sn_ref(snapshot)
 
         wynik = execute_domain_operation(
-            snapshot, "add_relay", {"field_ref": pole, "catalog_ref": "ACME_REX100_v1"}
+            snapshot, "add_relay", {"field_ref": pole, "catalog_ref": "REF-OC-100"}
         )
 
         assert wynik.get("error")
@@ -592,7 +604,16 @@ SUKCES: list[tuple[str, Callable[[dict], Any]]] = [
     (
         "create_device/load",
         lambda e: topology_ops.create_device(
-            e, {"device_type": "load", "ref_id": "load_2", "bus_ref": "bus_nn", "p_mw": 0.02}
+            # Moc bierna podana jawnie: brak Q to od karty modeli odbiorow odmowa (O-49 —
+            # dawne 0 bylo fabrykacja), a ten wiersz sprawdza kontrakt kopii, nie odmowe.
+            e,
+            {
+                "device_type": "load",
+                "ref_id": "load_2",
+                "bus_ref": "bus_nn",
+                "p_mw": 0.02,
+                "q_mvar": 0.005,
+            },
         ),
     ),
     (
@@ -685,7 +706,14 @@ BLOKADA: list[tuple[str, Callable[[dict], Any]]] = [
     (
         "create_device/load",
         lambda e: topology_ops.create_device(
-            e, {"device_type": "load", "ref_id": "load_x", "bus_ref": "nie-ma", "p_mw": 0.02}
+            e,
+            {
+                "device_type": "load",
+                "ref_id": "load_x",
+                "bus_ref": "nie-ma",
+                "p_mw": 0.02,
+                "q_mvar": 0.005,
+            },
         ),
     ),
     (

@@ -10,6 +10,7 @@ from application.symphony.models import Issue, RetryEntry, RunAttempt, RuntimeSt
 from application.symphony.prompt import render_prompt
 from application.symphony.protocols import AgentRunner, IssueTrackerClient
 from application.symphony.workspace import WorkspaceManager
+from network_model.pochodne import s_na_ms
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +144,7 @@ class SymphonyOrchestrator:
             self._config.retry_base_delay_seconds * (2 ** (current_attempt - 1)),
             self._config.retry_max_delay_seconds,
         )
-        due_at_ms = int(time.monotonic() * 1000) + (delay_s * 1000)
+        due_at_ms = int(s_na_ms(time.monotonic())) + s_na_ms(delay_s)
         self.state.pending_retries[issue.id] = RetryEntry(
             issue_id=issue.id,
             identifier=issue.identifier,
@@ -153,7 +154,7 @@ class SymphonyOrchestrator:
         )
 
     def _release_due_retries(self) -> None:
-        now_ms = int(time.monotonic() * 1000)
+        now_ms = int(s_na_ms(time.monotonic()))
         due_issue_ids = [
             issue_id
             for issue_id, entry in self.state.pending_retries.items()

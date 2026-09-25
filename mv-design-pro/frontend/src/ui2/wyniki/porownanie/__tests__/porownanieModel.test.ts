@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
 
 import {
+  KLUCZ_ID_ELEMENTU,
   KLUCZ_PROBLEM,
   KOLUMNY_GALEZI,
   KOLUMNY_SZYN_DIFF,
   etykietaPrzebiegu,
   mapaWagElementow,
+  naLinieProweniencji,
   naWierszeGalezi,
   naWierszeRankingu,
   naWierszeSzynDiff,
@@ -17,10 +19,18 @@ import { POROWNANIE_STRINGS } from '../strings';
 import {
   branchDiffFixture,
   busDiffFixture,
+  provenanceFixture,
   rankingFixture,
   runFixture,
   summaryFixture,
 } from './fixtures';
+
+/**
+ * Most nazw wyników w testach modelu (karta #145): nazwa z migawki symulowana prefiksem,
+ * żeby asercja rozróżniała NAZWĘ (kolumna) od IDENTYFIKATORA (klucz wiersza, dowód).
+ */
+const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
+  nazwaZWyniku ?? `nazwa ${ref}`;
 
 describe('mapaWagElementow — maksymalna waga per element', () => {
   it('bierze najwyższą wagę problemu dla elementu', () => {
@@ -43,9 +53,11 @@ describe('mapaWagElementow — maksymalna waga per element', () => {
 describe('naWierszeSzynDiff — A · B · Δ z sortKey i tagiem wg wagi', () => {
   it('mapuje napięcia i kąty A/B/Δ z przecinkiem PL', () => {
     const wagi = mapaWagElementow(rankingFixture());
-    const wiersze = naWierszeSzynDiff([busDiffFixture()], wagi);
+    const wiersze = naWierszeSzynDiff([busDiffFixture()], wagi, NAZWA);
     const w = wiersze[0];
-    expect(w.szyna.wartosc).toBe('SZYNA-GPZ');
+    expect(w.szyna.wartosc).toBe('nazwa SZYNA-GPZ');
+    // Identyfikator jest KLUCZEM wiersza (dowód, zaznaczenie), nie tekstem kolumny.
+    expect(w[KLUCZ_ID_ELEMENTU].wartosc).toBe('SZYNA-GPZ');
     expect(w.vA.wartosc).toBe('1,0200');
     expect(w.vB.wartosc).toBe('0,9650');
     expect(w.dV.wartosc).toBe('-0,0550');
@@ -56,7 +68,7 @@ describe('naWierszeSzynDiff — A · B · Δ z sortKey i tagiem wg wagi', () => 
   it('delta dodatnia otrzymuje znak „+"', () => {
     const wiersze = naWierszeSzynDiff(
       [busDiffFixture({ delta_v_pu: 0.01, delta_angle_deg: 0.5 })],
-      new Map(),
+      new Map(), NAZWA
     );
     expect(wiersze[0].dV.wartosc).toBe('+0,0100');
     expect(wiersze[0].dKat.wartosc).toBe('+0,50');
@@ -64,24 +76,24 @@ describe('naWierszeSzynDiff — A · B · Δ z sortKey i tagiem wg wagi', () => 
 
   it('element z wagą poważną+ (5) → tag ostrzeżenia na deltach', () => {
     const wagi = mapaWagElementow(rankingFixture());
-    const wiersze = naWierszeSzynDiff([busDiffFixture()], wagi);
+    const wiersze = naWierszeSzynDiff([busDiffFixture()], wagi, NAZWA);
     expect(wiersze[0].dV.ostrzezenie).toBe(true);
     expect(wiersze[0].dKat.ostrzezenie).toBe(true);
   });
 
   it('element bez problemów → brak tagu', () => {
-    const wiersze = naWierszeSzynDiff([busDiffFixture({ bus_id: 'CICHA' })], new Map());
+    const wiersze = naWierszeSzynDiff([busDiffFixture({ bus_id: 'CICHA' })], new Map(), NAZWA);
     expect(wiersze[0].dV.ostrzezenie).toBe(false);
   });
 
   it('wartości źródłowe A i B niosą sortKey liczbowy', () => {
-    const wiersze = naWierszeSzynDiff([busDiffFixture()], new Map());
+    const wiersze = naWierszeSzynDiff([busDiffFixture()], new Map(), NAZWA);
     expect(wiersze[0].vA.sortKey).toBe(1.02);
     expect(wiersze[0].vB.sortKey).toBe(0.965);
   });
 
   it('R3-C: komórki A/B niosą dowodRef strony, Δ bez dowodu (brak wywodu różnicy)', () => {
-    const w = naWierszeSzynDiff([busDiffFixture()], new Map())[0];
+    const w = naWierszeSzynDiff([busDiffFixture()], new Map(), NAZWA)[0];
     expect(w.vA.dowodRef).toBe('A:SZYNA-GPZ');
     expect(w.vB.dowodRef).toBe('B:SZYNA-GPZ');
     expect(w.katA.dowodRef).toBe('A:SZYNA-GPZ');
@@ -95,8 +107,9 @@ describe('naWierszeSzynDiff — A · B · Δ z sortKey i tagiem wg wagi', () => 
 describe('naWierszeGalezi — straty i moc A · B · Δ', () => {
   it('mapuje straty czynne i moc początkową A/B/Δ [MW] z 3 miejscami', () => {
     const wagi = mapaWagElementow(rankingFixture());
-    const w = naWierszeGalezi([branchDiffFixture()], wagi)[0];
-    expect(w.galaz.wartosc).toBe('LINIA-GPZ-ST1');
+    const w = naWierszeGalezi([branchDiffFixture()], wagi, NAZWA)[0];
+    expect(w.galaz.wartosc).toBe('nazwa LINIA-GPZ-ST1');
+    expect(w[KLUCZ_ID_ELEMENTU].wartosc).toBe('LINIA-GPZ-ST1');
     expect(w.stratyA.wartosc).toBe('0,200');
     expect(w.stratyB.wartosc).toBe('0,300');
     expect(w.dStraty.wartosc).toBe('+0,100');
@@ -106,12 +119,12 @@ describe('naWierszeGalezi — straty i moc A · B · Δ', () => {
 
   it('waga umiarkowana (3) nie przekracza progu tagu (poważny=4)', () => {
     const wagi = mapaWagElementow(rankingFixture());
-    const w = naWierszeGalezi([branchDiffFixture()], wagi)[0];
+    const w = naWierszeGalezi([branchDiffFixture()], wagi, NAZWA)[0];
     expect(w.dStraty.ostrzezenie).toBe(false);
   });
 
   it('R3-C: komórki A/B gałęzi niosą dowodRef strony, Δ bez dowodu', () => {
-    const w = naWierszeGalezi([branchDiffFixture()], new Map())[0];
+    const w = naWierszeGalezi([branchDiffFixture()], new Map(), NAZWA)[0];
     expect(w.stratyA.dowodRef).toBe('A:LINIA-GPZ-ST1');
     expect(w.stratyB.dowodRef).toBe('B:LINIA-GPZ-ST1');
     expect(w.mocA.dowodRef).toBe('A:LINIA-GPZ-ST1');
@@ -121,21 +134,23 @@ describe('naWierszeGalezi — straty i moc A · B · Δ', () => {
   });
 });
 
-describe('naWierszeRankingu — waga PL, rodzaj PL, kod techniczny', () => {
-  it('mapuje wagę i rodzaj na PL; klucz = indeks; surowy kod w polu eksperckim', () => {
-    const wiersze = naWierszeRankingu(rankingFixture());
+describe('naWierszeRankingu — waga PL, rodzaj PL, element nazwany mostem nazw', () => {
+  it('mapuje wagę i rodzaj na PL; klucz = indeks; bez kodu technicznego w żadnej komórce', () => {
+    const wiersze = naWierszeRankingu(rankingFixture(), NAZWA);
     expect(wiersze[0].waga.wartosc).toBe('Krytyczny');
     expect(wiersze[0].waga.sortKey).toBe(5);
     expect(wiersze[0].waga.ostrzezenie).toBe(true);
     expect(wiersze[0].rodzaj.wartosc).toBe('Duża zmiana napięcia');
-    expect(wiersze[0].element.wartosc).toBe('SZYNA-GPZ');
-    expect(wiersze[0].kodTechniczny.wartosc).toBe('VOLTAGE_DELTA_HIGH');
+    expect(wiersze[0].element.wartosc).toBe('nazwa SZYNA-GPZ');
+    // Karta #145: kod problemu (`VOLTAGE_DELTA_HIGH`) nie jest komórką tabeli w żadnym trybie.
+    expect(wiersze[0].kodTechniczny).toBeUndefined();
+    expect(Object.values(wiersze[0]).map((k) => k.wartosc)).not.toContain('VOLTAGE_DELTA_HIGH');
     expect(wiersze[0][KLUCZ_PROBLEM].wartosc).toBe('0');
     expect(wiersze[1][KLUCZ_PROBLEM].wartosc).toBe('1');
   });
 
   it('waga 3 → „Umiarkowany" bez tagu', () => {
-    const wiersze = naWierszeRankingu(rankingFixture());
+    const wiersze = naWierszeRankingu(rankingFixture(), NAZWA);
     expect(wiersze[1].waga.wartosc).toBe('Umiarkowany');
     expect(wiersze[1].waga.ostrzezenie).toBe(false);
   });
@@ -171,40 +186,99 @@ describe('naZalozeniaPorownania — podsumowanie A · B · Δ', () => {
   });
 });
 
-describe('etykietaPrzebiegu — data + zbieżność; id tylko w trybie eksperckim', () => {
-  it('tryb podstawowy: analiza, data deterministyczna, zbieżność bez identyfikatorów', () => {
-    const label = etykietaPrzebiegu(runFixture(), false);
-    expect(label).toBe('Rozpływ mocy · 2026-07-10 08:15 · Zbieżny');
+describe('etykietaPrzebiegu — rodzaj, rewizja, data, przypadek, zbieżność; bez metadanych', () => {
+  it('etykieta: analiza, rewizja, data deterministyczna, zbieżność — bez identyfikatorów i odcisku', () => {
+    const label = etykietaPrzebiegu(runFixture());
+    expect(label).toBe('Rozpływ mocy · rew. 1 · 2026-07-10 08:15 · Zbieżny');
+    // Karta #145: identyfikatory i odcisk migawki to metadane — nie ma ich w tekście opcji.
     expect(label).not.toContain('run-a');
     expect(label).not.toContain('case-1');
-  });
-
-  it('tryb ekspercki: dopisany przypadek i identyfikator przebiegu', () => {
-    const label = etykietaPrzebiegu(runFixture(), true);
-    expect(label).toContain('case-1');
-    expect(label).toContain('run-a');
+    expect(label).not.toContain('snap-a');
   });
 
   it('brak informacji o zbieżności → kreska', () => {
-    const label = etykietaPrzebiegu(runFixture({ converged: null }), false);
+    const label = etykietaPrzebiegu(runFixture({ converged: null }));
     expect(label).toContain(POROWNANIE_STRINGS.kreska);
   });
 
   it('nazwa przypadku dopisana obok znacznika czasu (przed zbieżnością)', () => {
-    const label = etykietaPrzebiegu(runFixture(), false, 'Wariant letni');
-    expect(label).toBe('Rozpływ mocy · 2026-07-10 08:15 · Wariant letni · Zbieżny');
+    const label = etykietaPrzebiegu(runFixture(), 'Wariant letni');
+    expect(label).toBe('Rozpływ mocy · rew. 1 · 2026-07-10 08:15 · Wariant letni · Zbieżny');
   });
 
-  it('brak nazwy przypadku (null) → dzisiejsza etykieta, zero zgadywania', () => {
-    const label = etykietaPrzebiegu(runFixture(), false, null);
-    expect(label).toBe('Rozpływ mocy · 2026-07-10 08:15 · Zbieżny');
+  it('brak nazwy przypadku (null) → etykieta bez niej, zero zgadywania', () => {
+    const label = etykietaPrzebiegu(runFixture(), null);
+    expect(label).toBe('Rozpływ mocy · rew. 1 · 2026-07-10 08:15 · Zbieżny');
   });
 
-  it('tryb ekspercki zachowuje identyfikatory obok nazwy przypadku', () => {
-    const label = etykietaPrzebiegu(runFixture(), true, 'Wariant letni');
-    expect(label).toContain('Wariant letni');
-    expect(label).toContain('case-1');
-    expect(label).toContain('run-a');
+  // B5 (karta CV-3.3-B): KTÓRY stan modelu bieg opisuje — rewizja albo scenariusz
+  // (pierwszeństwo scenariusza).
+  it('scenariusz roboczy ma pierwszeństwo przed samą rewizją modelu', () => {
+    const label = etykietaPrzebiegu(runFixture({ scenario_ref: ['S-LETNI', 3], model_revision: 7 }));
+    expect(label).toContain('scenariusz S-LETNI rew. 3');
+    expect(label).not.toContain('rew. 7');
+  });
+
+  it('brak rewizji i scenariusza (null) → kreska, zero zgadywania', () => {
+    const label = etykietaPrzebiegu(runFixture({ model_revision: null, scenario_ref: null }));
+    expect(label).toBe(`Rozpływ mocy · ${POROWNANIE_STRINGS.kreska} · 2026-07-10 08:15 · Zbieżny`);
+  });
+
+  it('pole rewizji spoza kontraktu (undefined) NIE renderuje się jako "rew. undefined"', () => {
+    // Obrona w głąb: fixture spoza kontraktu (np. stary zapis bez tego pola)
+    // musi dać uczciwą kreskę, nie String(undefined) wyciekający do UI.
+    const uszkodzonyRun = { ...runFixture(), model_revision: undefined } as unknown as Parameters<
+      typeof etykietaPrzebiegu
+    >[0];
+    const label = etykietaPrzebiegu(uszkodzonyRun);
+    expect(label).not.toContain('undefined');
+    expect(label).toContain(POROWNANIE_STRINGS.kreska);
+  });
+});
+
+describe('naLinieProweniencji — panel ekspercki proweniencji biegu (B1/B5, CV-3.3-B)', () => {
+  it('koperta wypełniona: rewizja i oba odciski skrócone do 12 znaków', () => {
+    const linie = naLinieProweniencji(provenanceFixture());
+    const rewizja = linie.find((l) => l.etykieta === POROWNANIE_STRINGS.proweniencjaRewizja);
+    const odciskModelu = linie.find(
+      (l) => l.etykieta === POROWNANIE_STRINGS.proweniencjaOdciskModelu,
+    );
+    expect(rewizja?.wartosc).toBe('rew. 1');
+    expect(odciskModelu?.wartosc).toBe('snap-a');
+  });
+
+  it('koperta ze scenariuszem roboczym: rewizja pokazuje scenariusz, nie model_revision', () => {
+    const linie = naLinieProweniencji(
+      provenanceFixture({
+        envelope: {
+          wersja: 2,
+          project_id: 'proj-1',
+          model_revision: 5,
+          snapshot_hash: 'snap-a',
+          catalog_fingerprint: 'cat-a',
+          options_hash: 'opt-a',
+          semantic_fingerprint: 'sem-a',
+          scenario_ref: { scenario_id: 'S-ZIMA', revision: 2 },
+          scenario_hash: 'scen-hash',
+        },
+      }),
+    );
+    const rewizja = linie.find((l) => l.etykieta === POROWNANIE_STRINGS.proweniencjaRewizja);
+    expect(rewizja?.wartosc).toBe('scenariusz S-ZIMA rew. 2');
+  });
+
+  it('brak koperty (bieg sprzed CV-2) → uczciwy komunikat, nie kreska udająca zero', () => {
+    const linie = naLinieProweniencji(provenanceFixture({ envelope: null }));
+    const rewizja = linie.find((l) => l.etykieta === POROWNANIE_STRINGS.proweniencjaRewizja);
+    expect(rewizja?.wartosc).toBe(POROWNANIE_STRINGS.kopertaBrak);
+  });
+
+  it('rodzaj analizy i status pochodzą wprost z proweniencji, bez tłumaczenia', () => {
+    const linie = naLinieProweniencji(provenanceFixture({ analysis_type: 'protection_sn', status: 'FINISHED' }));
+    const rodzaj = linie.find((l) => l.etykieta === POROWNANIE_STRINGS.proweniencjaRodzaj);
+    const status = linie.find((l) => l.etykieta === POROWNANIE_STRINGS.proweniencjaStatus);
+    expect(rodzaj?.wartosc).toBe('protection_sn');
+    expect(status?.wartosc).toBe('FINISHED');
   });
 });
 
@@ -239,7 +313,7 @@ describe('kolumny — kontrakt deklaratywny', () => {
 
 describe('L-12 — kolumny mocy biernej z payloadu backendu', () => {
   it('szyna: Q A/B i ΔQ pochodzą z pól q_injected_mvar_* i delta_q_mvar', () => {
-    const wiersz = naWierszeSzynDiff([busDiffFixture()], new Map())[0];
+    const wiersz = naWierszeSzynDiff([busDiffFixture()], new Map(), NAZWA)[0];
     expect(wiersz.qA.wartosc).toBe('2,000');
     expect(wiersz.qB.wartosc).toBe('2,300');
     expect(wiersz.dQ.wartosc).toBe('+0,300');
@@ -247,14 +321,14 @@ describe('L-12 — kolumny mocy biernej z payloadu backendu', () => {
   });
 
   it('gałąź: Q A/B i ΔQ pochodzą z pól q_from_mvar_* i delta_q_from_mvar', () => {
-    const wiersz = naWierszeGalezi([branchDiffFixture()], new Map())[0];
+    const wiersz = naWierszeGalezi([branchDiffFixture()], new Map(), NAZWA)[0];
     expect(wiersz.qA.wartosc).toBe('1,100');
     expect(wiersz.qB.wartosc).toBe('1,300');
     expect(wiersz.dQ.wartosc).toBe('+0,200');
   });
 
   it('kolumna Δ mocy biernej nie otwiera dowodu (różnica bez wywodu WHITE BOX)', () => {
-    const wiersz = naWierszeSzynDiff([busDiffFixture()], new Map())[0];
+    const wiersz = naWierszeSzynDiff([busDiffFixture()], new Map(), NAZWA)[0];
     expect(wiersz.qA.dowodRef).toBeDefined();
     expect(wiersz.dQ.dowodRef).toBeUndefined();
   });
@@ -314,17 +388,17 @@ describe('L-13 — Δ% pochodzi z backendu, prezentacja nic nie liczy', () => {
     // Test przypina kontrakt: liczy backend, prezentacja tylko formatuje.
     const w = naWierszeSzynDiff(
       [busDiffFixture({ v_pu_a: 1.02, v_pu_b: 0.965, delta_v_percent: 12.5 })],
-      new Map(),
+      new Map(), NAZWA
     )[0];
     expect(w.dVproc.wartosc).toBe('+12,50');
     expect(w.dVproc.sortKey).toBe(12.5);
   });
 
   it('Δ% szyn i gałęzi formatowane z przecinkiem PL i znakiem', () => {
-    const szyna = naWierszeSzynDiff([busDiffFixture()], new Map())[0];
+    const szyna = naWierszeSzynDiff([busDiffFixture()], new Map(), NAZWA)[0];
     expect(szyna.dVproc.wartosc).toBe('-5,39');
     expect(szyna.dKatProc.wartosc).toBe('-64,00');
-    const galaz = naWierszeGalezi([branchDiffFixture()], new Map())[0];
+    const galaz = naWierszeGalezi([branchDiffFixture()], new Map(), NAZWA)[0];
     expect(galaz.dStratyProc.wartosc).toBe('+50,00');
     expect(galaz.dMocProc.wartosc).toBe('+8,54');
   });
@@ -332,7 +406,7 @@ describe('L-13 — Δ% pochodzi z backendu, prezentacja nic nie liczy', () => {
   it('brak pola procentu (odniesienie A = 0 albo starsze porównanie) → kreska bez sortKey', () => {
     const szyna = naWierszeSzynDiff(
       [busDiffFixture({ delta_v_percent: null, delta_angle_percent: undefined })],
-      new Map(),
+      new Map(), NAZWA
     )[0];
     expect(szyna.dVproc.wartosc).toBe(POROWNANIE_STRINGS.kreska);
     expect(szyna.dVproc.sortKey).toBeUndefined();
@@ -340,7 +414,7 @@ describe('L-13 — Δ% pochodzi z backendu, prezentacja nic nie liczy', () => {
 
     const galaz = naWierszeGalezi(
       [branchDiffFixture({ delta_losses_p_percent: null, delta_p_from_percent: null })],
-      new Map(),
+      new Map(), NAZWA
     )[0];
     expect(galaz.dStratyProc.wartosc).toBe(POROWNANIE_STRINGS.kreska);
     expect(galaz.dMocProc.wartosc).toBe(POROWNANIE_STRINGS.kreska);
@@ -348,7 +422,7 @@ describe('L-13 — Δ% pochodzi z backendu, prezentacja nic nie liczy', () => {
 
   it('tag „poza zakresem" wg wagi z backendu obejmuje także komórki Δ%', () => {
     const wagi = mapaWagElementow(rankingFixture());
-    const szyna = naWierszeSzynDiff([busDiffFixture()], wagi)[0];
+    const szyna = naWierszeSzynDiff([busDiffFixture()], wagi, NAZWA)[0];
     expect(szyna.dVproc.ostrzezenie).toBe(true);
   });
 

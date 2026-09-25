@@ -171,16 +171,14 @@ class TestGroundingImpedanceNoFabrication:
         """Cewka Petersena bez podanej reaktancji X_N MUSI zgłosić błąd danych,
         NIE cicho przyjąć X_N=0 (co dałoby uziemienie bezpośrednie)."""
         trafo = _mk_transformer("YNyn0", hv_neutral=GroundingConfig(type="petersen_coil"))
-        with pytest.raises(ValueError, match="petersen_coil.*reaktancji|reaktancji.*petersen_coil"):
+        with pytest.raises(ValueError, match="Petersena wymaga dodatniej reaktancji"):
             build_transformer_zero_seq_model(trafo)
 
     def test_resistor_grounded_missing_r_ohm_raises_not_defaults_to_zero(self):
         """Rezystor NER bez podanej rezystancji R_N MUSI zgłosić błąd danych,
         NIE cicho przyjąć R_N=0 (co dałoby uziemienie bezpośrednie)."""
         trafo = _mk_transformer("YNyn0", hv_neutral=GroundingConfig(type="resistor_grounded"))
-        with pytest.raises(
-            ValueError, match="resistor_grounded.*rezystancji|rezystancji.*resistor_grounded"
-        ):
+        with pytest.raises(ValueError, match="rezystor wymaga dodatniej rezystancji"):
             build_transformer_zero_seq_model(trafo)
 
     def test_petersen_coil_with_x_ohm_dominates_z0_not_zero(self):

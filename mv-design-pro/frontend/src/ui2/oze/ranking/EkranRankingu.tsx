@@ -4,8 +4,9 @@
  * (`GET /api/oze-analysis/hosting-capacity`, pola D3a) i prezentuje SORTOWALNĄ tabelę
  * na WSPÓLNYM WZORCU EKRANU ANALIZY (`ui2/wyniki/wzorzec`): węzeł, maks. moc
  * przyłączalna (domyślny ranking malejąco), kryterium wiążące PL, przyrost strat przy
- * mocy granicznej [kW], skrajne napięcia przy granicy [p.u.] oraz klasę NC RfG
- * (mapowanie słownikowe z progów katalogu wybranego operatora). Wybór wiersza →
+ * mocy granicznej [kW], skrajne napięcia przy granicy [p.u.] oraz typ modułu NC RfG
+ * (klasyfikacja backendu `GET /api/ncrfg-tests/modul` — jedno zapytanie na unikalną parę
+ * moc graniczna × napięcie węzła; bez klasyfikacji po stronie klienta). Wybór wiersza →
  * szczegół węzła ze śladem scenariuszy (reużycie utili z okna „Zdolność przyłączeniowa").
  *
  * Zero fizyki, zero ocen lokalnych — wszystkie wartości pochodzą z backendu.
@@ -16,14 +17,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import './ranking.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { EkranAnalizy } from '../../wyniki/wzorzec';
+import { EkranAnalizy, InformacjeAudytowe } from '../../wyniki/wzorzec';
 import type { WierszZalozenia } from '../../wyniki/wzorzec';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import {
-  pobierzKatalogKlasNcRfg,
   pobierzZdolnoscPrzylaczeniowa,
-  type OdpowiedzKatalogNcRfg,
   type WezelZdolnosci,
   type WidokZdolnosci,
   type ZapytanieZdolnosci,
@@ -38,14 +37,16 @@ import {
 } from '../zdolnosc/zdolnoscModel';
 import { fmtMW } from '../zdolnosc/strings';
 import { PrzylaczZrodloPrzycisk } from '../PrzylaczZrodloPrzycisk';
+import { OpisKlasyfikacji } from '../ncrfg/komponenty';
+import { useKlasyfikacjeModulow } from '../ncrfg/klasyfikacja';
 import {
   KLUCZ_WIERSZA_RANKINGU,
-  klasaNcRfg,
-  klasyOperatora,
   kolumnyRankingu,
   napieciaPrzyGranicy,
   przyrostStratKw,
   wierszeRankingu,
+  zapytanieKlasyfikacjiWezla,
+  type OdczytKlasyfikacji,
 } from './rankingModel';
 import { RANKING_STRINGS, fmtMocMW, fmtNapieciaPara, fmtStratyKw } from './strings';
 import { useSwiezoscNaglowka } from '../../freshness';
@@ -95,29 +96,30 @@ function StanPanel({
 function SzczegolWezla({
   wezel,
   napiecieKv,
-  klasyKatalogu,
+  klasyfikacja,
   trybEkspercki,
 }: {
   wezel: WezelZdolnosci;
   napiecieKv: number | null;
-  klasyKatalogu: ReturnType<typeof klasyOperatora>;
+  klasyfikacja: OdczytKlasyfikacji;
   trybEkspercki: boolean;
 }) {
   const przyrost = przyrostStratKw(wezel);
   const napiecia = napieciaPrzyGranicy(wezel);
-  const klasa = klasaNcRfg(wezel.max_hosting_capacity_mw, napiecieKv, klasyKatalogu);
+  const stanKlasy = klasyfikacja(zapytanieKlasyfikacjiWezla(wezel, napiecieKv));
 
   return (
     <section className="mvd-rank-szczegol" data-testid="mvd-rank-szczegol">
       <header className="mvd-rank-szczegol-naglowek">
         <h3 className="mvd-rank-szczegol-tytul">{RANKING_STRINGS.szczegolTytul}</h3>
         <span className="mvd-rank-szczegol-nazwa">{etykietaWezla(wezel)}</span>
-        {trybEkspercki && (
-          <span className="mvd-rank-szczegol-id" aria-label={RANKING_STRINGS.kolIdentyfikator}>
-            {wezel.bus_ref}
-          </span>
-        )}
       </header>
+      {/* Karta #145: identyfikator węzła wyłącznie w „Informacjach audytowych". */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-rank-szczegol-audyt"
+        wiersze={[{ etykieta: RANKING_STRINGS.kolIdentyfikator, wartosc: wezel.bus_ref }]}
+      />
 
       <dl className="mvd-rank-szczegol-lista">
         <dt>{RANKING_STRINGS.szczegolMoc}</dt>
@@ -139,7 +141,17 @@ function SzczegolWezla({
             : `${fmtNapieciaPara(napiecia.min, napiecia.max)} ${RANKING_STRINGS.jednPU}`}
         </dd>
         <dt>{RANKING_STRINGS.szczegolKlasa}</dt>
-        <dd>{klasa !== null ? `${klasa.id} — ${klasa.description_pl}` : RANKING_STRINGS.kreska}</dd>
+        <dd data-testid="mvd-rank-szczegol-klasa" data-stan={stanKlasy.stan}>
+          {stanKlasy.stan === 'gotowe' ? (
+            <OpisKlasyfikacji klasyfikacja={stanKlasy.klasyfikacja} />
+          ) : stanKlasy.stan === 'brak_danych' ? (
+            stanKlasy.powod_pl
+          ) : stanKlasy.stan === 'blad' ? (
+            `${RANKING_STRINGS.klasaBlad}: ${stanKlasy.komunikat}`
+          ) : (
+            RANKING_STRINGS.klasaLadowanie
+          )}
+        </dd>
       </dl>
 
       {/* K5-B (H-3 pkt 1): pętla ranking → model — formularz źródła OZE
@@ -188,9 +200,7 @@ function WynikRankingu({
   runId,
   krokMw,
   liczbaKrokow,
-  operatorNazwaPL,
   napiecieWezla,
-  klasyKatalogu,
   trybZaawansowania,
 }: {
   dane: WidokZdolnosci;
@@ -199,34 +209,35 @@ function WynikRankingu({
    *
    * Naglowek bral go z `dane.context.trace_id`. Pole jest ZLE NAZWANE po stronie
    * backendu: `hosting_capacity.py` wpisuje tam `str(run.id)`, a prawdziwe
-   * `trace_id` w tym systemie to skrot tresci artefaktu
-   * (`trace_emitters/deterministic_ids.py`), nie identyfikator biegu. Wartosc jest
-   * wiec dzis poprawna, ale nazwa klamie — nowy kod nie moze na niej stac.
+   * `trace_id` w tym systemie to skrot SHA-256 tresci artefaktu, nie
+   * identyfikator biegu. Wartosc jest wiec dzis poprawna, ale nazwa klamie —
+   * nowy kod nie moze na niej stac.
    * Rodzic zna `runId` z rejestru przebiegow i podaje go tu wprost.
    */
   runId: string | null;
   krokMw: number;
   liczbaKrokow: number;
-  operatorNazwaPL: string;
   napiecieWezla: (busRef: string) => number | null;
-  klasyKatalogu: ReturnType<typeof klasyOperatora>;
   trybZaawansowania: AdvancementMode;
 }) {
   const [wybranyBusRef, setWybranyBusRef] = useState<string | null>(null);
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
 
-  const kolumny = useMemo(() => kolumnyRankingu(), []);
-  const wiersze = useMemo(
-    () => wierszeRankingu(dane.nodes, napiecieWezla, klasyKatalogu),
-    [dane.nodes, napiecieWezla, klasyKatalogu],
+  // Typ modułu NC RfG: jedno zapytanie `/modul` na unikalną parę (moc graniczna, napięcie).
+  const zapytaniaKlasyfikacji = useMemo(
+    () => dane.nodes.map((w) => zapytanieKlasyfikacjiWezla(w, napiecieWezla(w.bus_ref))),
+    [dane.nodes, napiecieWezla],
   );
+  const klasyfikacja = useKlasyfikacjeModulow(zapytaniaKlasyfikacji);
+
+  const kolumny = useMemo(() => kolumnyRankingu(), []);
+  const wiersze = wierszeRankingu(dane.nodes, napiecieWezla, klasyfikacja);
 
   const zalozenia: WierszZalozenia[] = useMemo(
     () => [
       { etykieta: RANKING_STRINGS.zalKrok, wartosc: fmtMocMW(krokMw), jednostka: RANKING_STRINGS.jednMW },
       { etykieta: RANKING_STRINGS.zalMaxKrokow, wartosc: liczbaKrokow },
-      { etykieta: RANKING_STRINGS.zalOperator, wartosc: operatorNazwaPL },
       { etykieta: RANKING_STRINGS.zalLiczbaWezlow, wartosc: dane.nodes.length },
       {
         etykieta: RANKING_STRINGS.kolKlasa,
@@ -239,7 +250,7 @@ function WynikRankingu({
         uwaga: RANKING_STRINGS.zalStratyUwaga,
       },
     ],
-    [krokMw, liczbaKrokow, operatorNazwaPL, dane.nodes.length],
+    [krokMw, liczbaKrokow, dane.nodes.length],
   );
 
   if (dane.nodes.length === 0) {
@@ -265,9 +276,9 @@ function WynikRankingu({
         zalozenia={zalozenia}
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => {
-          /* ranking nie niesie odwołań do dowodów WHITE BOX — brak akcji */
-        }}
+        // Ranking przyłączeń nie niesie dowodów WHITE BOX per element (wiersz to
+        // węzeł rankingu, nie wynik pojedynczego elementu), więc ekran NIE podaje
+        // dostawcy dowodu — wzorzec nie pokazuje wtedy afordancji „pokaż dowód".
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_WIERSZA_RANKINGU}
         onWybierzWiersz={setWybranyBusRef}
@@ -278,7 +289,7 @@ function WynikRankingu({
         <SzczegolWezla
           wezel={wybranyWezel}
           napiecieKv={napiecieWezla(wybranyWezel.bus_ref)}
-          klasyKatalogu={klasyKatalogu}
+          klasyfikacja={klasyfikacja}
           trybEkspercki={trybEkspercki}
         />
       ) : (
@@ -312,32 +323,12 @@ export function EkranRankingu({ trybZaawansowania }: EkranRankinguProps) {
     return (busRef: string): number | null => mapa.get(busRef) ?? null;
   }, [opcjeWezlow]);
 
-  const [katalog, setKatalog] = useState<OdpowiedzKatalogNcRfg | null>(null);
-  const [operatorId, setOperatorId] = useState<string>('');
-
   const [krokMw, setKrokMw] = useState(DOMYSLNY_KROK_MW);
   const [liczbaKrokow, setLiczbaKrokow] = useState(DOMYSLNA_LICZBA_KROKOW);
   const [wybraneWezly, setWybraneWezly] = useState<readonly string[]>([]);
 
   const [zapytanie, setZapytanie] = useState<ZapytanieZdolnosci | null>(null);
   const [stan, setStan] = useState<StanZasobu>({ rodzaj: 'idle' });
-
-  // Katalog klas NC RfG (progi operatorów) — jednorazowo; domyślny operator = pierwszy.
-  useEffect(() => {
-    let anulowane = false;
-    pobierzKatalogKlasNcRfg()
-      .then((dane) => {
-        if (anulowane) return;
-        setKatalog(dane);
-        setOperatorId((biezacy) => biezacy || (dane.operators[0]?.operator_id ?? ''));
-      })
-      .catch(() => {
-        /* Brak katalogu → kolumna klasy pokaże „—"; ranking pozostaje sprawny. */
-      });
-    return () => {
-      anulowane = true;
-    };
-  }, []);
 
   // Zmiana przebiegu unieważnia poprzedni wynik (stale-result guard).
   useEffect(() => {
@@ -381,15 +372,6 @@ export function EkranRankingu({ trybZaawansowania }: EkranRankinguProps) {
       maxSteps: liczbaKrokow,
     });
   };
-
-  const klasyKatalogu = useMemo(
-    () => klasyOperatora(katalog, operatorId),
-    [katalog, operatorId],
-  );
-  const operatorNazwaPL = useMemo(() => {
-    const profil = katalog?.operators.find((o) => o.operator_id === operatorId);
-    return profil?.operator_name_pl ?? operatorId;
-  }, [katalog, operatorId]);
 
   return (
     <div className="mvd-rank" data-testid="mvd-rank-ekran">
@@ -439,23 +421,6 @@ export function EkranRankingu({ trybZaawansowania }: EkranRankinguProps) {
                 />
               </div>
               <p className="mvd-rank-param-opis">{RANKING_STRINGS.paramMaxKrokowOpis}</p>
-            </div>
-
-            <div className="mvd-rank-param">
-              <label htmlFor="mvd-rank-operator">{RANKING_STRINGS.paramOperator}</label>
-              <select
-                id="mvd-rank-operator"
-                value={operatorId}
-                onChange={(e) => setOperatorId(e.target.value)}
-                data-testid="mvd-rank-operator"
-              >
-                {(katalog?.operators ?? []).map((o) => (
-                  <option key={o.operator_id} value={o.operator_id}>
-                    {o.operator_name_pl}
-                  </option>
-                ))}
-              </select>
-              <p className="mvd-rank-param-opis">{RANKING_STRINGS.paramOperatorOpis}</p>
             </div>
 
             <fieldset className="mvd-rank-wezly" data-testid="mvd-rank-wezly">
@@ -514,9 +479,7 @@ export function EkranRankingu({ trybZaawansowania }: EkranRankinguProps) {
               runId={runId}
               krokMw={krokMw}
               liczbaKrokow={liczbaKrokow}
-              operatorNazwaPL={operatorNazwaPL}
               napiecieWezla={napiecieWezla}
-              klasyKatalogu={klasyKatalogu}
               trybZaawansowania={trybZaawansowania}
             />
           )}

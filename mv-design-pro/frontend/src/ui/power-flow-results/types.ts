@@ -99,6 +99,39 @@ export interface PowerFlowSummary {
 }
 
 // =============================================================================
+// Kryteria napieciowe (karta W3-J) — jedno zrodlo prawdy
+// =============================================================================
+
+/**
+ * Komplet kryteriow napieciowych SN (karta W3-J, backend:
+ * `analysis/normative/kryteria_napiecia.py::KryteriaNapieciowe`). ADDYTYWNE,
+ * opcjonalne pole na `PowerFlowResultV1` (kontrakt FROZEN — pole addytywne,
+ * nie zmienia ksztaltu dla starszych konsumentow) i na odpowiedzi
+ * `GET /api/quality/voltage-profile`. Progi sa KONFIGURACJA (stale
+ * normatywne/projektowe), nie wynikiem fizycznym biegu — backend buduje je
+ * ŚWIEŻO przy kazdym odczycie, wiec pole jest praktycznie zawsze obecne;
+ * mimo to konsumenci FE MUSZA traktowac jego brak jako uczciwy stan
+ * "kryterium niedostepne" (nigdy domyslna liczbe), bo starsze zapisane
+ * eksporty/fixtury moga go nie niesc.
+ */
+export interface KryteriaNapieciowe {
+  /** Prog ostrzezenia [%] — kryterium PROJEKTOWE (NIE zapis normy wprost). */
+  ostrzezenie_pct: number;
+  /** Prog przekroczenia [%] — PN-EN 50160 wprost. */
+  przekroczenie_pct: number;
+  ostrzezenie_min_pu: number;
+  ostrzezenie_max_pu: number;
+  przekroczenie_min_pu: number;
+  przekroczenie_max_pu: number;
+  /** Podstawa kryterium ostrzezenia — cytat do wyswietlenia w UI. */
+  podstawa_ostrzezenie_pl: string;
+  /** Podstawa kryterium przekroczenia (PN-EN 50160) — cytat do wyswietlenia w UI. */
+  podstawa_przekroczenie_pl: string;
+  /** Pasmo wiarygodnosci wyniku solvera [%] (sanity-bounds, inne pytanie niz przekroczenie_pct). */
+  pasmo_wiarygodnosci_pct: number;
+}
+
+// =============================================================================
 // Full Result (PowerFlowResultV1)
 // =============================================================================
 
@@ -115,6 +148,8 @@ export interface PowerFlowResultV1 {
   bus_results: PowerFlowBusResult[];
   branch_results: PowerFlowBranchResult[];
   summary: PowerFlowSummary;
+  /** Karta W3-J — addytywne, patrz `KryteriaNapieciowe`. */
+  kryteria_napiecia?: KryteriaNapieciowe;
 }
 
 // =============================================================================
@@ -132,6 +167,28 @@ export interface PowerFlowIterationTrace {
   jacobian_size?: { rows: number; cols: number };
   pv_to_pq_switches?: string[];
   cause_if_failed?: string | null;
+  /**
+   * Szyna bilansująca wyspy, z której pochodzi ta iteracja — obecna WYŁĄCZNIE w
+   * przebiegach z kilkoma wyspami zasilonymi (`enm/rozplyw_wysp.py`, addytywnie).
+   */
+  slack_bus_id?: string;
+}
+
+/**
+ * Wyspa zasilona przebiegu rozpływu liczonego PER WYSPA (backend 1:1:
+ * `enm/canonical_analysis.py::_execute_power_flow` → `power_flow_trace.wyspy`;
+ * obecne WYŁĄCZNIE gdy sieć ma ≥ 2 wyspy z własnym źródłem sieciowym).
+ */
+export interface PowerFlowTraceWyspa {
+  slack_bus_id: string;
+  zrodlo_ref: string;
+  pq_bus_ids: string[];
+  pv_bus_ids: string[];
+  ybus_trace?: Record<string, unknown>;
+  init_state: Record<string, { v_pu: number; theta_rad: number }>;
+  iterations: PowerFlowIterationTrace[];
+  converged: boolean;
+  final_iterations_count: number;
 }
 
 /**
@@ -199,6 +256,12 @@ export interface PowerFlowTrace {
    * regulators (`enm/canonical_analysis.py:1565-1566`, additive/optional).
    */
   oltc_control?: OltcControlTrace;
+  /**
+   * Rozpływ liczony PER WYSPA (CV-4.3 K3b) — jedna pozycja na wyspę zasiloną, tylko
+   * gdy wysp jest ≥ 2 (sieć z kilkoma źródłami sieciowymi w osobnych wyspach);
+   * `slack_bus_id` wyniku to szyna PIERWSZEJ wyspy, bilans mocy = suma wysp.
+   */
+  wyspy?: PowerFlowTraceWyspa[];
 }
 
 // =============================================================================
@@ -374,21 +437,3 @@ export interface PowerFlowInterpretation {
   summary: InterpretationSummary;
   trace: InterpretationTrace;
 }
-
-/**
- * Severity labels (Polish).
- */
-export const SEVERITY_LABELS: Record<FindingSeverity, string> = {
-  INFO: 'Informacja',
-  WARN: 'Ostrzeżenie',
-  HIGH: 'Istotny problem',
-};
-
-/**
- * Severity colors for UI.
- */
-export const SEVERITY_COLORS: Record<FindingSeverity, string> = {
-  INFO: 'text-slate-600 bg-slate-100',
-  WARN: 'text-amber-700 bg-amber-100',
-  HIGH: 'text-rose-700 bg-rose-100',
-};

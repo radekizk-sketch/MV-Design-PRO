@@ -1,0 +1,37 @@
+{
+  "runs": [
+    {
+      "analysis_type": "PF",
+      "converged": true,
+      "created_at": "2026-09-10T08:00:00+00:00",
+      "finished_at": "2026-09-10T08:00:00+00:00",
+      "id": "run-lf-scena-porownanie-b",
+      "input_hash": "7bd091ef9e47b994709d33f9d1a45dfcbf72f099d3485a4a1aa0d4ffe37016a7",
+      "iterations": 4,
+      "model_revision": 2,
+      "project_id": "projekt-scena-porownanie",
+      "result_status": "VALID",
+      "scenario_ref": null,
+      "snapshot_hash": "c5594e9965433b0635cb16fd5100028b336f7caa1c44a13cbf1edce596273aac",
+      "status": "FINISHED",
+      "study_case_id": "case-demo"
+    },
+    {
+      "analysis_type": "PF",
+      "converged": true,
+      "created_at": "2026-09-10T08:00:00+00:00",
+      "finished_at": "2026-09-10T08:00:00+00:00",
+      "id": "run-lf-scena-porownanie-a",
+      "input_hash": "8b9b5c176c362aa39e2fd24ef163bb24891a310ba59594ef6345e17f8ab91776",
+      "iterations": 3,
+      "model_revision": 1,
+      "project_id": "projekt-scena-porownanie",
+      "result_status": "VALID",
+      "scenario_ref": null,
+      "snapshot_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "status": "FINISHED",
+      "study_case_id": "case-demo"
+    }
+  ],
+  "total": 2
+}

@@ -21,6 +21,7 @@
 import { useState } from 'react';
 
 import type { Bay, Gpz, Hierarchy, Section } from './HierarchyTree';
+import { fieldRoleLabelPl, fieldRoleShortTagPl } from '../station-rozdzielnia/contract';
 
 export interface NetworkHierarchyTreeProps {
   /** Wynik buildHierarchy(enm). */
@@ -218,7 +219,10 @@ function BayNode({
       >
         <span className="font-mono-eng text-[10px]">•</span>
         <span>Pole {bay.designation}</span>
-        <span className="ml-auto font-mono-eng text-[9px]">{bay.bayRole}</span>
+        {/* Rola pola: znacznik dyspozytorski z kanonu, pełna nazwa w podpowiedzi — nie kod roli. */}
+        <span className="ml-auto font-mono-eng text-[9px]" title={fieldRoleLabelPl(bay.bayRole)}>
+          {fieldRoleShortTagPl(bay.bayRole) ?? ''}
+        </span>
       </button>
     </li>
   );

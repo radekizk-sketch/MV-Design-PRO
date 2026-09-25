@@ -38,7 +38,7 @@ import {
   wybierzPrzebiegRozplywu,
 } from './zdolnoscModel';
 import { ZDOLNOSC_STRINGS, fmtMW } from './strings';
-import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
+import { InformacjeAudytowe, PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 const DOMYSLNY_KROK_MW = 0.5;
@@ -87,11 +87,9 @@ function StanPanel({
 
 function WierszWezla({
   wezel,
-  trybEkspercki,
   liczbaKolumn,
 }: {
   wezel: WezelZdolnosci;
-  trybEkspercki: boolean;
   liczbaKolumn: number;
 }) {
   const [sladWidoczny, setSladWidoczny] = useState(false);
@@ -112,14 +110,6 @@ function WierszWezla({
             {sladWidoczny ? ZDOLNOSC_STRINGS.sladUkryj : ZDOLNOSC_STRINGS.sladPokaz}
           </button>
           <span className="mvd-zdol-wezel-nazwa">{etykietaWezla(wezel)}</span>
-          {trybEkspercki && (
-            <span
-              className="mvd-zdol-wezel-id mvd-num"
-              aria-label={ZDOLNOSC_STRINGS.kolIdentyfikatorWezla}
-            >
-              {wezel.bus_ref}
-            </span>
-          )}
         </td>
         <td className="mvd-num" data-testid={`mvd-zdol-generacja-${wezel.bus_ref}`}>
           {fmtMW(wezel.existing_generation_mw)} {ZDOLNOSC_STRINGS.jednMW}
@@ -220,7 +210,6 @@ function WynikZdolnosci({
             <WierszWezla
               key={wezel.bus_ref}
               wezel={wezel}
-              trybEkspercki={trybEkspercki}
               liczbaKolumn={liczbaKolumn}
             />
           ))}
@@ -231,18 +220,15 @@ function WynikZdolnosci({
         <WykresZdolnosciChart slupki={slupki} />
       </div>
 
-      {trybEkspercki && (
-        <dl className="mvd-zdol-eksp" data-testid="mvd-zdol-eksp">
-          <div className="mvd-zdol-eksp-para">
-            <dt>{ZDOLNOSC_STRINGS.ekspPrzebieg}</dt>
-            <dd className="mvd-num">{dane.context.run_id}</dd>
-          </div>
-          <div className="mvd-zdol-eksp-para">
-            <dt>{ZDOLNOSC_STRINGS.ekspIdentyfikatorSkrot}</dt>
-            <dd className="mvd-num">{dane.input_hash}</dd>
-          </div>
-        </dl>
-      )}
+      {/* Karta #145: przebieg i odcisk wejścia wyłącznie w „Informacjach audytowych". */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-zdol-informacje-audytowe"
+        wiersze={[
+          { etykieta: ZDOLNOSC_STRINGS.ekspPrzebieg, wartosc: dane.context.run_id },
+          { etykieta: ZDOLNOSC_STRINGS.ekspIdentyfikatorSkrot, wartosc: dane.input_hash },
+        ]}
+      />
     </div>
   );
 }

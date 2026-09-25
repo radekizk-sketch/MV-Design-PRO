@@ -20,11 +20,16 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+from network_model.nazwy import jest_nazwa
+
 # Import shared determinism module
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from network_model.reporting.protection_tcc_presentation import (
     etykieta_tms,
     etykieta_typu_krzywej_pl,
+    nazwa_urzadzenia,
+    nazwa_wpisu_urzadzenia,
+    nazwy_urzadzen,
     powod_braku_pl,
 )
 
@@ -128,7 +133,7 @@ def export_protection_coordination_to_docx(
     # Metadata
     if metadata:
         meta_para = doc.add_paragraph()
-        if metadata.get("project_name"):
+        if jest_nazwa(metadata.get("project_name")):
             meta_para.add_run(f"Projekt: {metadata['project_name']}  |  ")
         if metadata.get("created_at"):
             meta_para.add_run(f"Data: {metadata['created_at'][:19]}")
@@ -177,9 +182,13 @@ def export_protection_coordination_to_docx(
     doc.add_heading("Tabela urządzeń i nastaw", level=1)
 
     devices = result.get("devices", [])
+    # Tabele sprawdzeń nazywają urządzenie nazwą z listy urządzeń wyniku (karta #144).
+    nazwy = nazwy_urzadzen(result)
     if devices:
         # Sort by device name for deterministic order
-        sorted_devices = sorted(devices, key=lambda d: d.get("name", d.get("id", "")))
+        sorted_devices = sorted(
+            devices, key=lambda d: (nazwa_wpisu_urzadzenia(d), str(d.get("id", "")))
+        )
 
         dev_table = doc.add_table(rows=1, cols=5)
         dev_table.style = "Table Grid"
@@ -198,7 +207,7 @@ def export_protection_coordination_to_docx(
             stage_51 = settings.get("stage_51", {})
             curve_settings = stage_51.get("curve_settings", {})
 
-            row[0].text = dev.get("name", "—")[:20]
+            row[0].text = nazwa_wpisu_urzadzenia(dev)[:20]
             row[1].text = dev.get("device_type", "—")[:15]
             row[2].text = _format_value(stage_51.get("pickup_current_a"))
             row[3].text = _format_value(curve_settings.get("time_multiplier"))
@@ -231,7 +240,7 @@ def export_protection_coordination_to_docx(
         # Data
         for check in sorted_sens_checks:
             row = sens_table.add_row().cells
-            row[0].text = check.get("device_id", "—")[:12]
+            row[0].text = nazwa_urzadzenia(nazwy, check.get("device_id"))
             row[1].text = _format_value(check.get("i_fault_min_a"))
             row[2].text = _format_value(check.get("i_pickup_a"))
             row[3].text = _format_value(check.get("margin_percent"))
@@ -273,8 +282,8 @@ def export_protection_coordination_to_docx(
         # Data
         for check in sorted_sel_checks:
             row = sel_table.add_row().cells
-            row[0].text = check.get("downstream_device_id", "—")[:12]
-            row[1].text = check.get("upstream_device_id", "—")[:12]
+            row[0].text = nazwa_urzadzenia(nazwy, check.get("downstream_device_id"))
+            row[1].text = nazwa_urzadzenia(nazwy, check.get("upstream_device_id"))
             row[2].text = _format_value(check.get("t_downstream_s"))
             row[3].text = _format_value(check.get("t_upstream_s"))
             row[4].text = _format_value(check.get("margin_s"))
@@ -313,7 +322,7 @@ def export_protection_coordination_to_docx(
         # Data
         for check in sorted_ovl_checks:
             row = ovl_table.add_row().cells
-            row[0].text = check.get("device_id", "—")[:12]
+            row[0].text = nazwa_urzadzenia(nazwy, check.get("device_id"))
             row[1].text = _format_value(check.get("i_operating_a"))
             row[2].text = _format_value(check.get("i_pickup_a"))
             row[3].text = _format_value(check.get("margin_percent"))
@@ -353,7 +362,7 @@ def export_protection_coordination_to_docx(
         # Data
         for curve in sorted_tcc_curves:
             row = tcc_table.add_row().cells
-            row[0].text = curve.get("device_name", "—")[:20]
+            row[0].text = nazwa_wpisu_urzadzenia(curve, "device_name")[:20]
             row[1].text = etykieta_typu_krzywej_pl(curve)
             row[2].text = _format_value(curve.get("pickup_current_a"))
             row[3].text = etykieta_tms(curve, _format_value(curve.get("time_multiplier")))
@@ -362,7 +371,9 @@ def export_protection_coordination_to_docx(
             # samego modulu prezentacji (karta N-D5-FUSE).
             powod = powod_braku_pl(curve)
             if powod:
-                _powody_bez_podstawy.append(f"{curve.get('device_name', '—')}: {powod}")
+                _powody_bez_podstawy.append(
+                    f"{nazwa_wpisu_urzadzenia(curve, 'device_name')}: {powod}"
+                )
 
         for powod in _powody_bez_podstawy:
             doc.add_paragraph(powod, style="No Spacing")

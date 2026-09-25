@@ -1,4 +1,4 @@
-"""Import sieci z arkusza XLSX — odczyt arkusza i zapis do modelu projektu."""
+"""Import sieci z arkusza XLSX — odczyt arkusza, kompilacja grafu do ENM i zapis modelu projektu."""
 
 from .importer import (
     BladArkusza,
@@ -9,6 +9,7 @@ from .importer import (
 )
 from .service import (
     PodsumowanieArkusza,
+    StatusImportu,
     WynikImportu,
     WynikPodgladu,
     XlsxImportService,
@@ -18,6 +19,7 @@ __all__ = [
     "BladArkusza",
     "PodsumowanieArkusza",
     "SiecZArkusza",
+    "StatusImportu",
     "WynikImportu",
     "WynikPodgladu",
     "XlsxImportResult",

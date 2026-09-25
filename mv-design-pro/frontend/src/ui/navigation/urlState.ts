@@ -92,7 +92,6 @@ const VALID_ELEMENT_TYPES: ElementType[] = [
   'Genset',
   'UPS',
   'EnergyMeter',
-  'PowerQualityMeter',
   'SurgeArresterNN',
   'Earthing',
   'MeasurementNN',

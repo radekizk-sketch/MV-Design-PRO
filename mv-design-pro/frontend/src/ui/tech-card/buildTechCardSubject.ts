@@ -29,12 +29,22 @@ import { formatStationSwitchgearLayoutLabelPl } from '../shared/stationTypeLabel
 import { resolveBranchPointBranchPortOccupancy } from '../network-build/operationContextResolvers';
 import { selectStationDistributionTransformerRefs } from '../network-build/stationTransformerSelection';
 import type {
+  BayCanonicalRole,
   BranchPointSN,
   EnergyNetworkModel,
   Generator,
   Branch,
   Substation,
 } from '../../types/enm';
+import {
+  FIELD_ROLE_LABEL_PL,
+  FIELD_ROLE_SHORT_TAG,
+  FIELD_SOURCE_LABEL_PL,
+  canonicalFieldRole,
+  fieldLabelPluralPl,
+  isSourceFieldRole,
+  type StationFieldRole,
+} from '../sld/v2/station-rozdzielnia/contract';
 import type { SelectedElement } from '../types';
 import type { TechCardKind, TechCardSubject } from './types';
 
@@ -256,14 +266,21 @@ function buildStationSubject(
   const bays = (snapshot.bays ?? []).filter(
     (bay) => bay.substation_ref === station.ref_id || bay.substation_ref === station.id,
   );
+  // Liczność pól wg ROLI kanonicznej (kanon słownictwa ról pól, karta #141): rola modelu
+  // przechodzi na rolę kanonu, więc pole odgałęźne (FEEDER) nie miesza się z wyjściowym (OUT).
+  const liczbaPol = (rola: BayCanonicalRole): number =>
+    bays.filter((bay) => canonicalFieldRole(bay.bay_role) === rola).length;
   const grouped = {
-    in: bays.filter((bay) => bay.bay_role === 'IN').length,
-    out: bays.filter((bay) => bay.bay_role === 'OUT' || bay.bay_role === 'FEEDER').length,
-    tr: bays.filter((bay) => bay.bay_role === 'TR').length,
-    coupler: bays.filter((bay) => bay.bay_role === 'COUPLER').length,
-    measurement: bays.filter((bay) => bay.bay_role === 'MEASUREMENT').length,
-    oze: bays.filter((bay) => bay.bay_role === 'OZE').length,
+    in: liczbaPol('LINIA_IN'),
+    out: liczbaPol('LINIA_OUT'),
+    feeder: liczbaPol('LINIA_ODG'),
+    tr: liczbaPol('TRANSFORMATOROWE'),
+    coupler: liczbaPol('SPRZEGLO'),
+    measurement: liczbaPol('POMIAROWE'),
+    oze: bays.filter((bay) => isSourceFieldRole(bay.bay_role)).length,
   };
+  const etykietaPol = (rola: StationFieldRole): string =>
+    `${fieldLabelPluralPl(FIELD_ROLE_LABEL_PL[rola])} (${FIELD_ROLE_SHORT_TAG[rola]})`;
 
   const transformerCount = selectStationDistributionTransformerRefs(snapshot, station).length;
 
@@ -285,12 +302,13 @@ function buildStationSubject(
       id: 'pola',
       label: 'Pola rozdzielni SN',
       fields: [
-        { key: 'pole_we', label: 'Pola dopływowe (WE)', value: grouped.in },
-        { key: 'pole_wy', label: 'Pola odpływowe (WY)', value: grouped.out },
-        { key: 'pole_tr', label: 'Pola transformatorowe (TR)', value: grouped.tr },
-        { key: 'pole_sekcja', label: 'Pola sprzęgłowe / sekcyjne', value: grouped.coupler },
-        { key: 'pole_pomiar', label: 'Pola pomiarowe', value: grouped.measurement },
-        { key: 'pole_oze', label: 'Pola przyłączeniowe OZE', value: grouped.oze },
+        { key: 'pole_we', label: etykietaPol('LINIA_IN'), value: grouped.in },
+        { key: 'pole_wy', label: etykietaPol('LINIA_OUT'), value: grouped.out },
+        { key: 'pole_odg', label: etykietaPol('LINIA_ODG'), value: grouped.feeder },
+        { key: 'pole_tr', label: etykietaPol('TRANSFORMATOROWE'), value: grouped.tr },
+        { key: 'pole_sekcja', label: etykietaPol('SPRZEGLO'), value: grouped.coupler },
+        { key: 'pole_pomiar', label: etykietaPol('POMIAROWE'), value: grouped.measurement },
+        { key: 'pole_oze', label: fieldLabelPluralPl(FIELD_SOURCE_LABEL_PL), value: grouped.oze },
       ],
     },
   ];
@@ -470,6 +488,49 @@ function buildBranchPointSubject(
   };
 }
 
+/** Etykiety PL trybu regulacji mocy biernej (`generator.meta.control_mode`) — duplikat
+ *  świadomy wobec `ui/sld/shared/detailDrawerData.ts::CONTROL_MODE_LABEL_PL` (ten sam
+ *  wzorzec co `derKindPublicName`/tamta mapa: moduł prezentacji nie importuje z innego
+ *  poddrzewa `ui/` dla 5-wierszowej tabeli etykiet; wartości 1:1 z kontraktem backendu
+ *  `meta.control_mode`, `ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts::REGULACJA_OPCJE`). */
+const DER_CONTROL_MODE_LABEL_PL: Readonly<Record<string, string>> = {
+  STALY_COS_PHI: 'Stały współczynnik mocy cosφ',
+  Q_OD_U: 'Regulacja Q(U)',
+  P_OD_U: 'Regulacja P(U)',
+  REGULACJA_NAPIECIA: 'Regulacja napięcia (U = const)',
+  WYLACZONE: 'Bez regulacji',
+};
+
+/** Karta CV-4.1b (A3-04): pola regulacji Q wynikające z `control_mode` — generyczne dla
+ *  WSZYSTKICH trybów (nie tylko REGULACJA_NAPIECIA), żeby karta techniczna nie miała tej
+ *  samej luki dla STALY_COS_PHI/Q_OD_U co przed tą kartą (zero fizyki tu — same odczyty
+ *  z modelu, wartość nastawy pokazywana wprost, bez przeliczeń). */
+function regulacjaQFields(generator: Generator): CardField[] {
+  const meta = (generator.meta ?? {}) as Record<string, unknown>;
+  const controlMode = typeof meta.control_mode === 'string' ? meta.control_mode : null;
+  if (!controlMode) return [];
+  const label = DER_CONTROL_MODE_LABEL_PL[controlMode] ?? controlMode;
+  const fields: CardField[] = [{ key: 'tryb_regulacji_q', label: 'Tryb regulacji Q', value: label }];
+  if (controlMode === 'STALY_COS_PHI' && typeof meta.cos_phi === 'number') {
+    fields.push({ key: 'cos_phi_nastawa', label: 'Nastawa cosφ', value: meta.cos_phi });
+  }
+  if (
+    (controlMode === 'Q_OD_U' || controlMode === 'P_OD_U') &&
+    typeof meta.qu_slope_pu_per_pu === 'number'
+  ) {
+    fields.push({
+      key: 'nachylenie_regulacji',
+      label: 'Nachylenie regulacji',
+      value: meta.qu_slope_pu_per_pu,
+      unit: 'pu/pu',
+    });
+  }
+  if (controlMode === 'REGULACJA_NAPIECIA' && typeof meta.u_set_pu === 'number') {
+    fields.push({ key: 'u_set_pu', label: 'Nastawa napięcia U', value: meta.u_set_pu, unit: 'pu' });
+  }
+  return fields;
+}
+
 function buildDerSubject(
   generator: Generator,
   options: BuildTechCardOptions,
@@ -500,6 +561,7 @@ function buildDerSubject(
           label: 'Moduł NC RfG',
           value: generator.nc_rfg_module ?? null,
         },
+        ...regulacjaQFields(generator),
       ],
     },
     {

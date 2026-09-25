@@ -22,7 +22,7 @@ export const ZDOLNOSC_STRINGS = {
   paramMaxKrokow: 'Maksymalna liczba kroków',
   paramMaxKrokowOpis: 'Górny limit scenariuszy (zakres badanej mocy = krok × liczba kroków).',
   paramWezly: 'Węzły-kandydaci',
-  paramWezlyDomyslne: 'Bez wyboru: węzły z istniejącymi źródłami (domyślni kandydaci backendu).',
+  paramWezlyDomyslne: 'Bez wyboru: węzły z istniejącymi źródłami (domyślni kandydaci serwera obliczeń).',
   przyciskOblicz: 'Oblicz zdolność przyłączeniową',
   przyciskPrzelicz: 'Przelicz',
 

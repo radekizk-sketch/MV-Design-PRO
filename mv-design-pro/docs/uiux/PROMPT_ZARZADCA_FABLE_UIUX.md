@@ -50,7 +50,7 @@ UCZCIWOŚĆ: żaden element „done" bez pełnej weryfikacji; wolisz STOP z rapo
 </kontekst>
 
 <wykonawcy>
-Deleguj przez narzędzie Agent do wykonawców z `docs/prompts/agenci/` (`run_in_background` dla prac
+Deleguj przez narzędzie Agent do wykonawców z `.claude/agents/` (`run_in_background` dla prac
 równoległych; izolacja `worktree`, gdy wykonawcy mogą kolidować plikami). Drzewo agentów
 z `CLAUDE.md`: planujesz na `high`, delegujesz na `medium`, podnosisz effort, gdy trzeba.
 

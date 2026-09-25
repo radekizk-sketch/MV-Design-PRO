@@ -20,6 +20,7 @@
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import type {
   DefinicjaKolumny,
+  NazwaObiektu,
   WartoscKomorki,
   WierszTabeli,
   WierszZalozenia,
@@ -284,19 +285,13 @@ export const KOLUMNY_WEZLY: DefinicjaKolumny[] = [
     mono: true,
   },
   { klucz: 'rola', etykieta: ESTYMACJA_STRINGS.kolRola, wyrownanie: 'lewo', sortowalna: false },
-  {
-    klucz: KLUCZ_WIERSZA_WEZLY,
-    etykieta: ESTYMACJA_STRINGS.kolIndeksWezla,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
 ];
 
 /** Adapter: estymowany stan węzła → wiersz tabeli wzorca (wartości z backendu). */
-export function mapujWierszWezla(wezel: WezelStanu): WierszTabeli {
+export function mapujWierszWezla(wezel: WezelStanu, nazwa: NazwaObiektu): WierszTabeli {
   return {
-    wezel: { wartosc: wezel.name ?? wezel.bus_ref },
+    // Karta #145: nazwa z mostu nazw wyników; identyfikator zostaje kluczem wiersza.
+    wezel: { wartosc: nazwa(wezel.bus_ref, wezel.name) },
     napiecie: komorkaLiczba(wezel.voltage_kv, fmtKV),
     modul: komorkaLiczba(wezel.v_magnitude_pu, fmtPu),
     kat: komorkaLiczba(wezel.v_angle_deg, fmtStopnie),
@@ -308,8 +303,11 @@ export function mapujWierszWezla(wezel: WezelStanu): WierszTabeli {
 }
 
 /** Mapuje estymowane stany węzłów na wiersze tabeli wzorca (kolejność źródłowa). */
-export function naWierszeWezlow(buses: readonly WezelStanu[]): WierszTabeli[] {
-  return buses.map(mapujWierszWezla);
+export function naWierszeWezlow(
+  buses: readonly WezelStanu[],
+  nazwa: NazwaObiektu,
+): WierszTabeli[] {
+  return buses.map((wezel) => mapujWierszWezla(wezel, nazwa));
 }
 
 // ---------------------------------------------------------------------------
@@ -353,11 +351,12 @@ export const KOLUMNY_POMIARY: DefinicjaKolumny[] = [
 export function mapujWierszPomiaru(
   pomiar: RezyduumPomiaru,
   typy: readonly MetaTypuPomiaru[],
+  nazwa: NazwaObiektu,
 ): WierszTabeli {
   return {
     typ: { wartosc: typPomiaruPL(pomiar.meas_type, typy) },
-    wezel: { wartosc: pomiar.bus_ref },
-    wezelJ: { wartosc: pomiar.bus_j_ref ?? ESTYMACJA_STRINGS.kreska },
+    wezel: { wartosc: nazwa(pomiar.bus_ref) },
+    wezelJ: { wartosc: pomiar.bus_j_ref ? nazwa(pomiar.bus_j_ref) : ESTYMACJA_STRINGS.kreska },
     wartosc: komorkaLiczba(pomiar.value, fmtRezyduum),
     sigma: komorkaLiczba(pomiar.sigma, fmtRezyduum),
     rezyduum: komorkaLiczba(pomiar.residual, fmtRezyduum, { ostrzezenie: pomiar.suspect }),
@@ -377,8 +376,9 @@ export function mapujWierszPomiaru(
 export function naWierszePomiarow(
   pomiary: readonly RezyduumPomiaru[],
   typy: readonly MetaTypuPomiaru[],
+  nazwa: NazwaObiektu,
 ): WierszTabeli[] {
-  return pomiary.map((p) => mapujWierszPomiaru(p, typy));
+  return pomiary.map((p) => mapujWierszPomiaru(p, typy, nazwa));
 }
 
 // ---------------------------------------------------------------------------
@@ -386,7 +386,10 @@ export function naWierszePomiarow(
 // ---------------------------------------------------------------------------
 
 /** Buduje sekcję ZAŁOŻENIA z widoku estymacji (wartości wyłącznie z backendu). */
-export function naZalozeniaEstymacji(dane: WidokEstymacji): WierszZalozenia[] {
+export function naZalozeniaEstymacji(
+  dane: WidokEstymacji,
+  nazwa: NazwaObiektu,
+): WierszZalozenia[] {
   return [
     { etykieta: ESTYMACJA_STRINGS.zalMetoda, wartosc: ESTYMACJA_STRINGS.zalMetodaWartosc },
     {
@@ -394,7 +397,7 @@ export function naZalozeniaEstymacji(dane: WidokEstymacji): WierszZalozenia[] {
       wartosc: fmtRezyduum(dane.base_mva),
       jednostka: ESTYMACJA_STRINGS.jednMva,
     },
-    { etykieta: ESTYMACJA_STRINGS.zalSlack, wartosc: dane.slack_bus_ref },
+    { etykieta: ESTYMACJA_STRINGS.zalSlack, wartosc: nazwa(dane.slack_bus_ref) },
     { etykieta: ESTYMACJA_STRINGS.zalAlfa, wartosc: fmtRezyduum(dane.bad_data.alpha) },
     { etykieta: ESTYMACJA_STRINGS.zalProgLnr, wartosc: fmtRezyduum(dane.bad_data.lnr_threshold) },
   ];

@@ -20,6 +20,7 @@ from application.station_templates.schema import (
     TemplateParamInt,
     TemplateSchema,
 )
+from network_model.pochodne import kw_na_mw
 
 
 def _prosument(
@@ -45,7 +46,7 @@ def _prosument(
             sn_bays_count=TemplateParamInt(
                 default=1, min_value=1, max_value=2, label_pl="Liczba pól SN"
             ),
-            sn_bay_roles=(BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),),
+            sn_bay_roles=(BayRoleSpec(role="IN"),),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,
             nn_feeders_count=TemplateParamInt(
@@ -53,7 +54,9 @@ def _prosument(
             ),
             nn_feeder_cb_options=NN_CB_OPTIONS,
             der_options=(
-                replace(DER_PV_NN, default_p_mw_each=pv_p_kw_each / 1000.0, default_count=pv_count),
+                replace(
+                    DER_PV_NN, default_p_mw_each=kw_na_mw(pv_p_kw_each), default_count=pv_count
+                ),
             ),
             der_total_count=TemplateParamInt(
                 default=pv_count, min_value=1, max_value=10, label_pl="Liczba falowników PV"

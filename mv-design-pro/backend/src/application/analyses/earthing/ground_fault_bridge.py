@@ -99,8 +99,8 @@ def build_earthing_ground_fault_input(
                     area=ReadinessAreaV1.STATIONS,
                     priority=ReadinessPriority.BLOCKER,
                     message_pl=(
-                        "Napięcia dotykowe/krokowe wymagają zwarcia doziemnego "
-                        "1F (SINGLE_PHASE_GROUND) — dostarczono inny typ."
+                        "Napięcia dotykowe/krokowe wymagają zwarcia jednofazowego "
+                        "doziemnego (1F) — dostarczono inny typ zwarcia."
                     ),
                     element_id=element_id,
                     fix_hint_pl="Uruchom analizę zwarcia jednofazowego doziemnego.",

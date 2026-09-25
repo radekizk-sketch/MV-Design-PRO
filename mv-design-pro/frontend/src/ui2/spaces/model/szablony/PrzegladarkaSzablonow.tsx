@@ -10,7 +10,9 @@
  *   1× klik na kaflu = podgląd (panel szczegółów) · 2× klik / `Enter` =
  *   „Zastosuj i edytuj" (callback `onZastosuj` — realny endpoint apply
  *   pozostaje w karcie integracyjnej, poza tą kartą) · prawy klik = menu
- *   (Porównaj / Pokaż wymagania danych).
+ *   (Porównaj / Pokaż wymagania danych — panel `WymaganiaDanychSzablonu`,
+ *   dostawca lokalny: czyta z tego samego cache pełnych szablonów, zero
+ *   nowego zapytania sieciowego).
  *
  * Stany (karta §3): ładowanie / błąd (z akcją „Spróbuj ponownie") / pusty /
  * gotowy — na dwóch poziomach: biblioteka (drzewko ról, `/categories`) i
@@ -44,6 +46,7 @@ import {
 import { KafelSzablonu } from './KafelSzablonu';
 import { SzczegolySzablonu } from './SzczegolySzablonu';
 import { PorownanieSzablonow } from './PorownanieSzablonow';
+import { WymaganiaDanychSzablonu } from './WymaganiaDanychSzablonu';
 import {
   pobierzKategorieSzablonow,
   pobierzSzablon,
@@ -73,11 +76,9 @@ function komunikatBledu(e: unknown): string {
 export interface PrzegladarkaSzablonowProps {
   /** 2× klik / `Enter` na kaflu / przycisk „Zastosuj i edytuj" (karta §3). */
   onZastosuj: (idSzablonu: string) => void;
-  /** Pozycja menu „Pokaż wymagania danych" — poza kartą, gdy brak: wyszarzona. */
-  onPokazWymaganiaDanych?: (idSzablonu: string) => void;
 }
 
-export function PrzegladarkaSzablonow({ onZastosuj, onPokazWymaganiaDanych }: PrzegladarkaSzablonowProps) {
+export function PrzegladarkaSzablonow({ onZastosuj }: PrzegladarkaSzablonowProps) {
   const [fazaDrzewka, setFazaDrzewka] = useState<FazaDrzewka>('ladowanie');
   const [drzewko, setDrzewko] = useState<WezelRoli[]>([]);
   const [bladDrzewka, setBladDrzewka] = useState<string | null>(null);
@@ -92,6 +93,7 @@ export function PrzegladarkaSzablonow({ onZastosuj, onPokazWymaganiaDanych }: Pr
   const [zaznaczonyId, setZaznaczonyId] = useState<string | null>(null);
   const [doPorownania, setDoPorownania] = useState<string[]>([]);
   const [menu, setMenu] = useState<StanMenu | null>(null);
+  const [wymaganiaId, setWymaganiaId] = useState<string | null>(null);
 
   const cachePelnych = useRef(new Map<string, StationTemplateFull>());
   const drzewkoRef = useRef<WezelRoli[]>([]);
@@ -186,7 +188,7 @@ export function PrzegladarkaSzablonow({ onZastosuj, onPokazWymaganiaDanych }: Pr
   }
 
   function pokazWymagania(idSzablonu: string) {
-    onPokazWymaganiaDanych?.(idSzablonu);
+    setWymaganiaId(idSzablonu);
     setMenu(null);
   }
 
@@ -228,6 +230,7 @@ export function PrzegladarkaSzablonow({ onZastosuj, onPokazWymaganiaDanych }: Pr
 
   const widoczneKafle = filtrujSzablony(szablonyGrupy, filtry);
   const zaznaczonyPelny = zaznaczonyId ? cachePelnych.current.get(zaznaczonyId) ?? null : null;
+  const wymaganiaPelny = wymaganiaId ? cachePelnych.current.get(wymaganiaId) ?? null : null;
   const parPorownania: [StationTemplateFull, StationTemplateFull] | null =
     doPorownania.length === 2
       ? [cachePelnych.current.get(doPorownania[0])!, cachePelnych.current.get(doPorownania[1])!]
@@ -325,7 +328,7 @@ export function PrzegladarkaSzablonow({ onZastosuj, onPokazWymaganiaDanych }: Pr
 
           {wybor != null && fazaGrupy === 'gotowy' && (
             <>
-              <FiltrySzablonow filtry={filtry} onZmiana={setFiltry} />
+              <FiltrySzablonow szablony={szablonyGrupy} filtry={filtry} onZmiana={setFiltry} />
               {szablonyGrupy.length === 0 ? (
                 <p data-testid="mvd-szablony-stan-pusty">{SZABLONY_STRINGS.pustaGrupa}</p>
               ) : widoczneKafle.length === 0 ? (
@@ -386,13 +389,15 @@ export function PrzegladarkaSzablonow({ onZastosuj, onPokazWymaganiaDanych }: Pr
             role="menuitem"
             className="mvd-szablony-menu-pozycja"
             data-testid="mvd-szablony-menu-wymagania"
-            disabled={!onPokazWymaganiaDanych}
-            title={!onPokazWymaganiaDanych ? SZABLONY_STRINGS.menuWymaganiaDanychNiedostepne : undefined}
             onClick={() => pokazWymagania(menu.idSzablonu)}
           >
             {SZABLONY_STRINGS.menuWymaganiaDanych}
           </button>
         </div>
+      )}
+
+      {wymaganiaPelny && (
+        <WymaganiaDanychSzablonu szablon={wymaganiaPelny} onZamknij={() => setWymaganiaId(null)} />
       )}
     </div>
   );

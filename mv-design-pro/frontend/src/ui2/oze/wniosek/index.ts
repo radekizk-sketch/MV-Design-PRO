@@ -21,8 +21,6 @@ export type {
 } from './model';
 export {
   WNIOSEK_STRINGS,
-  STATUS_WALIDACJI_WNIOSEK_PL,
-  statusWalidacjiWniosekPL,
   fmtLiczbaWniosku,
   fmtZJednostkaWniosku,
   nazwaPlikuWniosku,

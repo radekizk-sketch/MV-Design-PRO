@@ -130,10 +130,10 @@ NAMESPACE_TO_TYPE_CLASS: dict[str, str] = {
     "KOMPENSATOR_SN": "ShuntCapacitorType",
     "ZRODLO_NN_PV": "PVInverterType",
     "ZRODLO_NN_BESS": "BESSInverterType",
+    "BATERIA_BESS": "BESSBatteryType",
     "ZABEZPIECZENIE": "ProtectionDeviceType",
     "NASTAWY_ZABEZPIECZEN": "ProtectionSettingTemplate",
     "CONVERTER": "ConverterType",
-    "INVERTER": "InverterType",
 }
 
 
@@ -158,10 +158,10 @@ def main() -> int:
     # 3. Check every namespace has a contract
     for ns in sorted(namespaces):
         if ns not in contract_ns:
-            # CONVERTER and INVERTER may not have contracts if they use
-            # the same types as other namespaces — check if they are aliases
-            if ns in ("CONVERTER", "INVERTER"):
-                continue  # Legacy namespaces, may share contracts
+            # CONVERTER nie ma wlasnego kontraktu materializacji: zrodla
+            # przeksztaltnikowe materializuja sie przez ZRODLO_NN_PV/ZRODLO_NN_BESS.
+            if ns == "CONVERTER":
+                continue
             violations.append(
                 f"Namespace '{ns}' has NO MaterializationContract in MATERIALIZATION_CONTRACTS"
             )

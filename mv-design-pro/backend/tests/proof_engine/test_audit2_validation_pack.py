@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+import pytest
 from application.proof_engine.packs.audit2_validation import (
     generate_bess_modes_proof,
     generate_device_withstand_proof,
@@ -21,6 +22,7 @@ from application.proof_engine.packs.audit2_validation import (
 def test_bess_modes_proof_passes_with_compatible_pcs():
     proof = generate_bess_modes_proof(
         der_id="der_bess_001",
+        der_nazwa="Magazyn energii 001",
         pcs_four_quadrant=True,
         pcs_grid_forming=True,
         nc_rfg_module="C",
@@ -35,6 +37,7 @@ def test_bess_modes_proof_passes_with_compatible_pcs():
 def test_bess_modes_proof_fails_when_pcs_lacks_4q():
     proof = generate_bess_modes_proof(
         der_id="der_bess_002",
+        der_nazwa="Magazyn energii 002",
         pcs_four_quadrant=False,
         pcs_grid_forming=False,
         nc_rfg_module="C",
@@ -61,6 +64,7 @@ def test_dowod_nie_zarzuca_juz_braku_trybu_wymaganego_przez_norme():
     """
     proof = generate_bess_modes_proof(
         der_id="der_bess_003",
+        der_nazwa="Magazyn energii 003",
         pcs_four_quadrant=True,
         pcs_grid_forming=False,
         nc_rfg_module="C",
@@ -77,6 +81,7 @@ def test_dowod_nie_zarzuca_juz_braku_trybu_wymaganego_przez_norme():
 def test_tap_changer_plan_proof_passes_for_oltc_110sn():
     proof = generate_tap_changer_plan_proof(
         transformer_id="tr_001",
+        transformer_nazwa="Transformator T1",
         transformer_type="transformer_110_15",
         tap_changer_ref="tc_oltc_110sn_19_125",
         requires_avr=True,
@@ -89,6 +94,7 @@ def test_tap_changer_plan_proof_passes_for_oltc_110sn():
 def test_tap_changer_plan_fails_when_avr_required_but_detc():
     proof = generate_tap_changer_plan_proof(
         transformer_id="tr_002",
+        transformer_nazwa="Transformator T2",
         transformer_type="transformer_15_04",
         tap_changer_ref="tc_detc_snnn_5_25",  # DETC nie ma AVR
         requires_avr=True,
@@ -102,6 +108,7 @@ def test_tap_changer_plan_fails_when_avr_required_but_detc():
 def test_tap_changer_plan_fails_for_wrong_transformer_type():
     proof = generate_tap_changer_plan_proof(
         transformer_id="tr_003",
+        transformer_nazwa="Transformator T3",
         transformer_type="transformer_15_04",
         tap_changer_ref="tc_oltc_110sn_19_125",  # 110/SN nie pasuje
         requires_avr=False,
@@ -275,3 +282,46 @@ def test_brak_wspolczynnika_daje_dowod_NIEZALICZONY_a_nie_domyslne_19() -> None:
     assert dowod.details["vt_voltage_factor"] is None
     # Wzor bez danych nie jest dowodem — nie udajemy rachunku.
     assert dowod.formulas_latex == []
+
+
+@pytest.mark.parametrize(
+    ("four_quadrant", "grid_forming", "zgodny"),
+    [(True, True, True), (False, False, False)],
+    ids=["zgodny", "niezgodny"],
+)
+def test_teksty_dowodu_trybow_bess_nazywaja_zrodlo_nazwa_nigdy_identyfikatorem(
+    four_quadrant: bool, grid_forming: bool, zgodny: bool
+) -> None:
+    """Karta #144: podsumowanie i pozycje kontroli nazywają źródło nazwą z modelu;
+    identyfikator zostaje wyłącznie w `details` (iloczyn: wynik zgodny / niezgodny)."""
+    proof = generate_bess_modes_proof(
+        der_id="der/9f3c21aa/bess",
+        der_nazwa="Magazyn energii Łąkowa",
+        pcs_four_quadrant=four_quadrant,
+        pcs_grid_forming=grid_forming,
+        nc_rfg_module="C",
+        selected_mode_refs=["mode_fcr_n", "mode_voltage_support"],
+        proof_id=UUID(int=11),
+        generated_at_iso="2026-04-01T00:00:00Z",
+    )
+    assert proof.pass_status is zgodny
+    teksty = [proof.summary_pl, *proof.details["issues"]]
+    assert "Magazyn energii Łąkowa" in proof.summary_pl
+    assert all("der/9f3c21aa/bess" not in tekst for tekst in teksty)
+    assert proof.details["der_id"] == "der/9f3c21aa/bess"
+
+
+@pytest.mark.parametrize("requires_avr", [False, True], ids=["bez_avr", "z_avr"])
+def test_teksty_dowodu_zaczepow_nazywaja_transformator_nazwa(requires_avr: bool) -> None:
+    proof = generate_tap_changer_plan_proof(
+        transformer_id="transformer/5b0f7d1e",
+        transformer_nazwa="Transformator T1 stacji Łąkowa",
+        transformer_type="transformer_15_04",
+        tap_changer_ref="tc_detc_snnn_5_25",
+        requires_avr=requires_avr,
+        proof_id=UUID(int=12),
+        generated_at_iso="2026-04-01T00:00:00Z",
+    )
+    teksty = [proof.summary_pl, *proof.details["issues"]]
+    assert "Transformator T1 stacji Łąkowa" in proof.summary_pl
+    assert all("transformer/5b0f7d1e" not in tekst for tekst in teksty)

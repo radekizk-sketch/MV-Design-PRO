@@ -8,6 +8,7 @@
  * 100% POLISH UI
  */
 
+import type { KryteriaNapieciowe } from '../power-flow-results/types';
 import type { ElementType, ValidationMessage } from '../types';
 
 /**
@@ -82,6 +83,9 @@ export interface BusResultData {
   u_pu: number | null;
   angle_deg: number | null;
   flags: string[];
+  /** Karta W3-J — kryteria napięciowe biegu (addytywne); brak = kryterium
+   * niedostępne w zakładce „Limity" (uczciwy stan, nie domyślna liczba). */
+  kryteria_napiecia?: KryteriaNapieciowe | null;
 }
 
 /**
@@ -92,11 +96,21 @@ export interface BranchResultData {
   name: string;
   from_bus: string;
   to_bus: string;
+  /** Prąd zacisku początkowego (`od`) [A]. */
   i_a: number | null;
+  /**
+   * Prąd zacisku końcowego (`do`) [A] — pole ADDYTYWNE kontraktu wiersza gałęzi
+   * (decyzja O-51, klasa P9): gałąź z susceptancją albo z przekładnią ma na końcach
+   * inne prądy. Opcjonalne tylko dla odpowiedzi sprzed pola; `null` = brak danej.
+   */
+  i_do_a?: number | null;
   p_mw: number | null;
   q_mvar: number | null;
   s_mva: number | null;
+  /** Obciążenie z większego ilorazu prąd zacisku / prąd znamionowy zacisku [%]. */
   loading_pct: number | null;
+  /** Powód braku obciążenia (addytywne; `null`, gdy obciążenie policzono). */
+  loading_powod_braku_pl?: string | null;
   flags: string[];
 }
 

@@ -4,7 +4,8 @@ import os
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
 from infrastructure.persistence.db import (
@@ -13,9 +14,13 @@ from infrastructure.persistence.db import (
     init_db,
     session_scope,
 )
-from infrastructure.persistence.models import CanonicalRunBranchFlowORM, CanonicalRunORM
+from infrastructure.persistence.models import (
+    CanonicalRunBranchFlowORM,
+    CanonicalRunORM,
+    CanonicalRunTimeSeriesORM,
+)
 from infrastructure.persistence.time_utils import ensure_utc
-from sqlalchemy import Engine, delete, select
+from sqlalchemy import CursorResult, Engine, delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 if TYPE_CHECKING:
@@ -23,6 +28,18 @@ if TYPE_CHECKING:
 
 #: Klucz surowych wkładów gałęziowych FROZEN solvera w wierszu wyniku zwarciowego.
 KLUCZ_ROZPLYWU = "branch_contributions"
+#: Klucz śladu WHITE BOX podziału prądu zwarciowego w gałęziach (TH-1) — ten sam
+#: iloczyn źródło×gałąź co wkłady, tylko opisany krok po kroku (zmierzone na
+#: sieci S: ślad jest ~5× większy od wkładów, które objaśnia).
+KLUCZ_SLADU_ROZPLYWU = "branch_flow_trace"
+#: KLASA „ładunek per gałąź jednego punktu zwarcia" — JEDNO źródło prawdy dla
+#: wszystkich mechanizmów, które ten ładunek wycinają z wiersza (zapis rozdzielony,
+#: świeże wiersze odpowiedzi POST) i oddają na żądanie (rozpływ punktu). Przegląd
+#: 2026-08-01 (KLASA, NIE INSTANCJA): V12K-284 i K14 obsłużyły wyłącznie
+#: `branch_contributions`, a `branch_flow_trace` — ten sam mechanizm, ten sam
+#: wzrost O(punkty×gałęzie) — został w wierszu; odpowiedź POST świeżego biegu na
+#: sieci 50 stacji urosła do 105 MB przy bramce 60 MB (E2E full, 2026-09-05).
+KLUCZE_ROZPLYWU: tuple[str, ...] = (KLUCZ_ROZPLYWU, KLUCZ_SLADU_ROZPLYWU)
 #: Znacznik: rozpływ dla tego punktu zwarcia ISTNIEJE i leży w osobnej tabeli.
 #: Odróżnia zapis rozdzielony od starszego wyniku policzonego BEZ wkładów.
 KLUCZ_DOSTEPNOSCI_ROZPLYWU = "branch_contributions_available"
@@ -30,8 +47,12 @@ KLUCZ_DOSTEPNOSCI_ROZPLYWU = "branch_contributions_available"
 
 def _rozdziel_rozplyw(
     raw_result: dict[str, Any] | None,
-) -> tuple[dict[str, Any] | None, dict[str, list[Any]]]:
+) -> tuple[dict[str, Any] | None, dict[str, dict[str, Any]]]:
     """Artefakt biegu → (artefakt BEZ rozpływu, rozpływ per punkt zwarcia).
+
+    Rozpływ punktu = CAŁA klasa `KLUCZE_ROZPLYWU`: wkłady (`branch_contributions`)
+    i ich ślad WHITE BOX (`branch_flow_trace`) wędrują razem — słownik
+    ``{"contributions": [...], "trace": [...] | None}`` per punkt.
 
     Rozpływ gałęziowy to iloczyn źródło×gałąź liczony dla KAŻDEGO punktu zwarcia
     (zmierzone na sieci 50 stacji: 104 punkty × 11 506 wpisów), a konsument
@@ -50,7 +71,7 @@ def _rozdziel_rozplyw(
     if not isinstance(results, list):
         return raw_result, {}
 
-    rozplyw: dict[str, list[Any]] = {}
+    rozplyw: dict[str, dict[str, Any]] = {}
     wiersze: list[Any] = []
     wyciete = False
     for item in results:
@@ -61,10 +82,13 @@ def _rozdziel_rozplyw(
         if not fault_node_id:
             wiersze.append(item)
             continue
-        rozplyw[fault_node_id] = item[KLUCZ_ROZPLYWU]
+        rozplyw[fault_node_id] = {
+            "contributions": item[KLUCZ_ROZPLYWU],
+            "trace": item.get(KLUCZ_SLADU_ROZPLYWU),
+        }
         wiersze.append(
             {
-                **{key: value for key, value in item.items() if key != KLUCZ_ROZPLYWU},
+                **{key: value for key, value in item.items() if key not in KLUCZE_ROZPLYWU},
                 KLUCZ_DOSTEPNOSCI_ROZPLYWU: True,
             }
         )
@@ -107,6 +131,7 @@ _KOLUMNY_LEKKIE = (
     CanonicalRunORM.readiness_json,
     CanonicalRunORM.options_json,
     CanonicalRunORM.error_message,
+    CanonicalRunORM.envelope_json,
 )
 
 _DEFAULT_DATABASE_URL = "sqlite+pysqlite:///./mv_design_pro.db"
@@ -171,6 +196,13 @@ def get_canonical_run_session_factory() -> sessionmaker[Session]:
         return _cached_session_factory
 
 
+# Stany, z ktorych biegu NIE wolno przejac do wykonania: RUNNING = ktos juz liczy,
+# FINISHED/FAILED = policzone. Wspoldzielone przez `claim_for_execution` i
+# `enm.canonical_analysis.execute_run`, zeby warunek wejscia i wyjscia mial jedno
+# zrodlo prawdy.
+_STANY_NIEPRZEJMOWALNE: tuple[str, ...] = ("RUNNING", "FINISHED", "FAILED")
+
+
 @contextmanager
 def canonical_run_repository_scope() -> Iterator[CanonicalRunRepository]:
     session_factory = get_canonical_run_session_factory()
@@ -213,9 +245,10 @@ class CanonicalRunRepository:
         row.raw_result_json = lekki_artefakt
         row.white_box_trace_json = run.white_box_trace
         row.power_flow_trace_json = run.power_flow_trace
+        row.envelope_json = run.envelope
         self._zapisz_rozplyw(run, rozplyw)
 
-    def _zapisz_rozplyw(self, run: CanonicalRun, rozplyw: dict[str, list[Any]]) -> None:
+    def _zapisz_rozplyw(self, run: CanonicalRun, rozplyw: dict[str, dict[str, Any]]) -> None:
         """Zapisz rozpływ biegu W TEJ SAMEJ transakcji co bieg (bez stanów pośrednich).
 
         Tabela odzwierciedla to, co mówi ZAPISYWANY artefakt:
@@ -232,14 +265,44 @@ class CanonicalRunRepository:
         self._session.execute(
             delete(CanonicalRunBranchFlowORM).where(CanonicalRunBranchFlowORM.run_id == run.id)
         )
-        for fault_node_id, wpisy in sorted(rozplyw.items()):
+        for fault_node_id, punkt in sorted(rozplyw.items()):
             self._session.add(
                 CanonicalRunBranchFlowORM(
                     run_id=run.id,
                     fault_node_id=fault_node_id,
-                    contributions_json=wpisy,
+                    contributions_json=punkt["contributions"],
+                    branch_flow_trace_json=punkt["trace"],
                 )
             )
+
+    def zapisz_rozplyw_punktu(
+        self,
+        run_id: UUID,
+        fault_node_id: str,
+        contributions: list[dict[str, Any]],
+        trace: list[dict[str, Any]] | None,
+    ) -> None:
+        """Utrwal rozpływ JEDNEGO punktu policzony na żądanie (PERF-SC-50, krok 3).
+
+        Idempotentnie: wpis istniejący zostaje (treść jest deterministyczna — ten sam
+        `solve_graph` z tej samej migawki i opcji daje bajtowo ten sam rozpływ, więc
+        dwa równoległe żądania tego samego punktu nie mają czego uzgadniać).
+        """
+        # Bieg nieutrwalony (np. bieg w pamięci harnessu/testu) nie ma wiersza nadrzędnego —
+        # nie ma do czego przypiąć rozpływu (klucz obcy); obliczenie wraca do wołającego,
+        # utrwalenie następuje przy najbliższym żądaniu na biegu zapisanym.
+        if self._session.get(CanonicalRunORM, run_id) is None:
+            return
+        if self._session.get(CanonicalRunBranchFlowORM, (run_id, fault_node_id)) is not None:
+            return
+        self._session.add(
+            CanonicalRunBranchFlowORM(
+                run_id=run_id,
+                fault_node_id=fault_node_id,
+                contributions_json=contributions,
+                branch_flow_trace_json=trace,
+            )
+        )
 
     def get_branch_flows(self, run_id: UUID, fault_node_id: str) -> list[Any] | None:
         """Rozpływ JEDNEGO punktu zwarcia z osobnej tabeli (brak wpisu → None).
@@ -252,6 +315,191 @@ class CanonicalRunRepository:
             CanonicalRunBranchFlowORM.fault_node_id == fault_node_id,
         )
         return self._session.execute(stmt).scalar_one_or_none()
+
+    def get_branch_flow_trace(self, run_id: UUID, fault_node_id: str) -> list[Any] | None:
+        """Ślad WHITE BOX podziału prądu JEDNEGO punktu zwarcia z osobnej tabeli.
+
+        Ta sama klasa ładunku co wkłady (`KLUCZE_ROZPLYWU`), ten sam magazyn i ta
+        sama jedna prawda dostępu (`enm.canonical_analysis.pobierz_slad_rozplywu_biegu`).
+        Brak wpisu albo wpis zapisany przed dodaniem kolumny → None (uczciwy brak).
+        """
+        stmt = select(CanonicalRunBranchFlowORM.branch_flow_trace_json).where(
+            CanonicalRunBranchFlowORM.run_id == run_id,
+            CanonicalRunBranchFlowORM.fault_node_id == fault_node_id,
+        )
+        return self._session.execute(stmt).scalar_one_or_none()
+
+    def zapisz_szeregi_dynamiczne(
+        self,
+        run_id: UUID,
+        os_czasu_s: list[float],
+        strona_probki: list[str],
+        probki: dict[str, list[float | None]],
+    ) -> None:
+        """Utrwal szeregi czasowe biegu `dynamika_rms` — osobno od artefaktu
+        biegu (karta W6-1 SS0 p.6, wzorzec `_zapisz_rozplyw`/`CanonicalRunBranchFlowORM`).
+
+        Pelna wymiana (usun wszystkie kanaly biegu, wstaw ponownie) — solver
+        czasowy (W6-2) liczy bieg raz i zapisuje raz, wiec nie ma czesciowej
+        aktualizacji do uzgadniania. Bieg nieutrwalony (brak wiersza nadrzednego,
+        np. bieg w pamieci testu/harnessu) — bez klucza obcego do przypiecia,
+        wywolanie jest cichym no-op (ten sam wzorzec co `zapisz_rozplyw_punktu`).
+
+        `strona_probki` (`C`/`L`/`P`) ma dlugosc osi czasu; `None` w probce
+        przechodzi nietkniete (wartosc niedostepna, nie liczba).
+        """
+        if len(strona_probki) != len(os_czasu_s):
+            raise ValueError(
+                f"strona_probki ({len(strona_probki)}) i os_czasu_s ({len(os_czasu_s)}) "
+                "muszą mieć tę samą długość"
+            )
+        if self._session.get(CanonicalRunORM, run_id) is None:
+            return
+        self._session.execute(
+            delete(CanonicalRunTimeSeriesORM).where(CanonicalRunTimeSeriesORM.run_id == run_id)
+        )
+        for klucz_kanalu in sorted(probki):
+            self._session.add(
+                CanonicalRunTimeSeriesORM(
+                    run_id=run_id,
+                    klucz_kanalu=klucz_kanalu,
+                    os_czasu_s_json=list(os_czasu_s),
+                    strona_probki_json=list(strona_probki),
+                    probki_json=list(probki[klucz_kanalu]),
+                )
+            )
+
+    def get_szeregi_dynamiczne(
+        self,
+        run_id: UUID,
+        klucze_kanalow: list[str] | None = None,
+    ) -> tuple[list[float], list[str] | None, dict[str, list[float | None]]] | None:
+        """Szeregi czasowe biegu `dynamika_rms` z osobnej tabeli.
+
+        Zwraca (os czasu, strona kazdej probki, probki kanalow). Strona `None`
+        oznacza wiersz zapisany przed kontraktem `resultset_dynamic_v2` — warstwa
+        wyzej odmawia odczytu nazwanym bledem (bez domyslnej strony).
+
+        Zwraca `None`, gdy bieg NIE MA zadnego zapisanego kanalu (bieg nigdy nie
+        policzony jako `dynamika_rms`, albo policzony bez zapisu szeregow) — to
+        ROZNY stan od "kanal zadany w `klucze_kanalow` nie istnieje wsrod
+        zapisanych" (ten drugi po prostu nie trafia do zwroconego slownika;
+        warstwa API tlumaczy oba stany na nazwany 404, patrz
+        `api/analysis_runs_dynamika.py`).
+        """
+        stmt = select(
+            CanonicalRunTimeSeriesORM.klucz_kanalu,
+            CanonicalRunTimeSeriesORM.os_czasu_s_json,
+            CanonicalRunTimeSeriesORM.strona_probki_json,
+            CanonicalRunTimeSeriesORM.probki_json,
+        ).where(CanonicalRunTimeSeriesORM.run_id == run_id)
+        if klucze_kanalow:
+            stmt = stmt.where(CanonicalRunTimeSeriesORM.klucz_kanalu.in_(klucze_kanalow))
+        wiersze = self._session.execute(stmt).all()
+        if not wiersze:
+            # Odroznij "bieg bez zadnego zapisanego kanalu" od "filtr nic nie trafil"
+            # — pelne zapytanie BEZ filtra rozstrzyga, czy bieg w ogole ma szeregi.
+            if klucze_kanalow:
+                istnieje = self._session.execute(
+                    select(CanonicalRunTimeSeriesORM.klucz_kanalu).where(
+                        CanonicalRunTimeSeriesORM.run_id == run_id
+                    )
+                ).first()
+                if istnieje is None:
+                    return None
+                return [], [], {}
+            return None
+        os_czasu_s = list(wiersze[0][1])
+        strona = wiersze[0][2]
+        strona_probki = None if strona is None else list(strona)
+        probki = {klucz: list(wartosci) for klucz, _, _, wartosci in wiersze}
+        return os_czasu_s, strona_probki, probki
+
+    def claim_for_execution(self, run_id: UUID, *, started_at: datetime) -> bool:
+        """Atomowo przejmij bieg do wykonania: cokolwiek-poza-terminalnym -> RUNNING.
+
+        JEDEN wolajacy wygrywa. Warunek przejscia i sam zapis sa w TYM SAMYM
+        zdaniu UPDATE, wiec miedzy sprawdzeniem a zapisem nie ma okna (odczyt
+        statusu osobnym SELECT-em, a potem zapis, dawal klasyczne TOCTOU: dwa
+        rownolegle `POST /execute` na tym samym `run_id` przechodzily oba i
+        liczyly solver dwa razy, nadpisujac sobie wynik).
+
+        Predykat przejscia jest JEDEN i mieszka TYLKO tutaj: `execute_run` nie ma
+        wlasnego sprawdzenia statusu, wiec nie da sie rozjechac dwoch warunkow
+        (regula KLASA, NIE INSTANCJA pkt 3). Niezmiennik, na ktorym to stoi:
+        stany, ktore `execute_run` ZAPISUJE (RUNNING na czas liczenia,
+        FINISHED/FAILED na koniec), musza sie zawierac w
+        `_STANY_NIEPRZEJMOWALNE` -- inaczej bieg zakonczony dalby sie przejac
+        i policzyc drugi raz. Niezmiennik jest PRZYPIETY testem
+        `tests/enm/test_przejecie_biegu_atomowe.py::test_stany_konczace_sa_nieprzejmowalne`,
+        ktory czyta stany ze ZRODLA `execute_run`, bo deklaracja bez testu to
+        falszywa pewnosc (regula KLASA pkt 4).
+
+        Zwraca ``True``, gdy TEN wolajacy przejal bieg; ``False``, gdy bieg jest
+        juz wykonywany albo zakonczony przez kogos innego.
+        """
+        stmt = (
+            update(CanonicalRunORM)
+            .where(
+                CanonicalRunORM.id == run_id,
+                CanonicalRunORM.status.not_in(_STANY_NIEPRZEJMOWALNE),
+            )
+            .values(status="RUNNING", started_at=started_at, error_message=None)
+        )
+        # `Session.execute` jest typowane na `Result`; `rowcount` niesie dopiero
+        # `CursorResult` zwracany dla zdan DML. Rzutowanie zaweza typ do tego,
+        # co SQLAlchemy faktycznie oddaje dla UPDATE. Import jest RUNTIME, nie
+        # `TYPE_CHECKING`: `cast()` wylicza pierwszy argument przy wywolaniu, a
+        # forma tekstowa ukrywala uzycie nazwy przed analiza martwego kodu
+        # (`scripts/vulture_guard.py` zglosil ten import jako nieuzywany, gdy
+        # zniknelo jedyne jawne uzycie tej nazwy w repo - kasacja
+        # `analysis_run_repository.mark_results_outdated`, 2026-09-17).
+        wynik = cast(CursorResult[Any], self._session.execute(stmt))
+        return wynik.rowcount == 1
+
+    def fail_orphaned_running(self, *, reason: str, finished_at: datetime) -> int:
+        """TRANSITIONAL SINGLE-EXECUTOR RECOVERY: zamknij biegi osierocone w RUNNING.
+
+        NAZWA JEST CZESCIA KONTRAKTU. To rozwiazanie PRZEJSCIOWE, nie architektura
+        docelowa: globalny `UPDATE ... WHERE status='RUNNING'` bez filtra po
+        wlascicielu. Przy DT-12 (pula procesow albo kolejka) ma zostac ZASTAPIONE
+        dzierzawa -- `worker_id`, `lease_until`, `heartbeat_at` (albo rownowaznym
+        kontraktem lease/heartbeat) -- a nie rozszerzone o kolejny warunek.
+        Zwraca liczbe zamknietych.
+
+        DLACZEGO TO ISTNIEJE. Odkad przejecie biegu jest atomowe
+        (`claim_for_execution`), RUNNING blokuje ponowne uruchomienie -- i slusznie,
+        bo inaczej ten sam bieg liczylby sie dwa razy. Ale bieg przerwany w polowie
+        (restart procesu, ubicie kontenera, wyjatek poza `try`) zostawalby w RUNNING
+        NA ZAWSZE, bez zadnej sciezki wyjscia: projektant widzialby wieczne
+        "trwa obliczenie", a kazde `execute` odbijaloby sie od blokady.
+        Przed atomowym przejeciem taki bieg dawal sie uruchomic ponownie -- ale
+        PRZYPADKIEM, tym samym defektem, ktory pozwalal na podwojne wykonanie.
+        Przypadkowe odzyskiwanie zastapione jawnym.
+
+        DLACZEGO TO JEST POPRAWNE DZIS. Wykonanie biegu zyje W PROCESIE API
+        (`execute_run` to zwykle `def` odkladane przez FastAPI do puli watkow;
+        `ExecutionBackend` z DT-12 nie jest wdrozony, a `api/celery_app.py` nie ma
+        importerow). Skoro proces wlasnie wstal, ZADEN bieg nie moze byc w toku:
+        kazdy wiersz RUNNING jest osierocony z definicji.
+
+        GRANICE ZALOZENIA (pinowane testem
+        `tests/enm/test_przejecie_biegu_atomowe.py::test_zamiatanie_stoi_na_zalozeniu_jednego_procesu_api`,
+        bo deklaracja bez testu to falszywa pewnosc). Zalozenie lamie KAZDY z trzech
+        ksztaltow wieloprocesowosci, nie tylko pierwszy:
+          (a) wiele workerow w kontenerze (`uvicorn --workers`, `gunicorn`),
+          (b) wiele KONTENEROW/replik przy tej samej bazie (compose `replicas`/`scale`),
+          (c) wykonanie w puli procesow albo kolejce (DT-12).
+        W kazdym z nich start jednego procesu wywalilby biegi trwajace w drugim.
+        Ta metoda musi wtedy zniknac razem z zalozeniem.
+        """
+        stmt = (
+            update(CanonicalRunORM)
+            .where(CanonicalRunORM.status == "RUNNING")
+            .values(status="FAILED", error_message=reason, finished_at=finished_at)
+        )
+        wynik = cast(CursorResult[Any], self._session.execute(stmt))
+        return wynik.rowcount
 
     def exists(self, run_id: UUID) -> bool:
         stmt = select(CanonicalRunORM.id).where(CanonicalRunORM.id == run_id)
@@ -303,10 +551,12 @@ class CanonicalRunRepository:
         }
 
     def clear_all(self) -> None:
-        # Rozpływ najpierw: w Postgresie klucz obcy z ON DELETE CASCADE zrobiłby to
-        # sam, ale SQLite (tor deweloperski/e2e) nie egzekwuje kluczy obcych bez
-        # PRAGMA — bez tego zostawałyby wiersze osierocone.
+        # Rozpływ i szeregi czasowe najpierw: w Postgresie klucz obcy z ON DELETE
+        # CASCADE zrobiłby to sam, ale SQLite (tor deweloperski/e2e) nie
+        # egzekwuje kluczy obcych bez PRAGMA — bez tego zostawałyby wiersze
+        # osierocone (karta W6-1: ta sama klasa problemu co branch flow).
         self._session.execute(delete(CanonicalRunBranchFlowORM))
+        self._session.execute(delete(CanonicalRunTimeSeriesORM))
         self._session.execute(delete(CanonicalRunORM))
 
     def _to_domain(self, row: CanonicalRunORM) -> CanonicalRun:
@@ -332,6 +582,7 @@ class CanonicalRunRepository:
             raw_result=row.raw_result_json,
             white_box_trace=list(row.white_box_trace_json or []),
             power_flow_trace=row.power_flow_trace_json,
+            envelope=row.envelope_json,
         )
 
     def _to_domain_lekki(self, row: Any) -> CanonicalRun:
@@ -354,6 +605,7 @@ class CanonicalRunRepository:
             finished_at=ensure_utc(row.finished_at),
             error_message=row.error_message,
             result_status=row.result_status,
+            envelope=row.envelope_json,
         )
 
     def _to_orm(self, run: CanonicalRun, lekki_artefakt: dict[str, Any] | None) -> CanonicalRunORM:
@@ -377,4 +629,5 @@ class CanonicalRunRepository:
             raw_result_json=lekki_artefakt,
             white_box_trace_json=run.white_box_trace,
             power_flow_trace_json=run.power_flow_trace,
+            envelope_json=run.envelope,
         )

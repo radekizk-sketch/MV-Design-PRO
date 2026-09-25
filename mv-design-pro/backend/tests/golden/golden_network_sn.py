@@ -263,7 +263,7 @@ def build_golden_network() -> NetworkGraph:
     g.add_switch(
         _mk_sw(
             "sw-coupler",
-            "Sprzeglo sekcyjne",
+            "Sprzęgło sekcyjne",
             "bus-sn-s1",
             "bus-sn-s2",
             st=SwitchType.BREAKER,
@@ -341,7 +341,7 @@ def _build_magistrala_a(g: NetworkGraph) -> None:
     prev = "bus-a2"
 
     # A3: AFL-6 70 → Stacja 02 (kontenerowa, 400 kVA)
-    g.add_node(_mk_pq("bus-a3", "Stacja 02 wejscie"))
+    g.add_node(_mk_pq("bus-a3", "Stacja 02 wejście"))
     g.add_branch(
         _mk_line("line-a3", "Odcinek A3", prev, "bus-a3", AFL70_R, AFL70_X, AFL70_B, 3.2, AFL70_I)
     )
@@ -367,7 +367,7 @@ def _build_magistrala_a(g: NetworkGraph) -> None:
     prev = "bus-a5"
 
     # A6: AFL-6 50 → Stacja 04 (slupowa, 100 kVA)
-    g.add_node(_mk_pq("bus-a6", "Stacja 04 wejscie"))
+    g.add_node(_mk_pq("bus-a6", "Stacja 04 wejście"))
     g.add_branch(
         _mk_line("line-a6", "Odcinek A6", prev, "bus-a6", AFL50_R, AFL50_X, AFL50_B, 1.5, AFL50_I)
     )
@@ -383,7 +383,7 @@ def _build_magistrala_a(g: NetworkGraph) -> None:
     prev = "bus-a7"
 
     # A8: AFL-6 35 → Stacja 06 (slupowa, 160 kVA)
-    g.add_node(_mk_pq("bus-a8", "Stacja 06 wejscie"))
+    g.add_node(_mk_pq("bus-a8", "Stacja 06 wejście"))
     g.add_branch(
         _mk_line("line-a8", "Odcinek A8", prev, "bus-a8", AFL35_R, AFL35_X, AFL35_B, 2.8, AFL35_I)
     )
@@ -391,7 +391,7 @@ def _build_magistrala_a(g: NetworkGraph) -> None:
     prev = "bus-a8"
 
     # A9: AFL-6 35 → Stacja 07 (slupowa, 63 kVA)
-    g.add_node(_mk_pq("bus-a9", "Stacja 07 wejscie"))
+    g.add_node(_mk_pq("bus-a9", "Stacja 07 wejście"))
     g.add_branch(
         _mk_line("line-a9", "Odcinek A9", prev, "bus-a9", AFL35_R, AFL35_X, AFL35_B, 1.2, AFL35_I)
     )
@@ -399,7 +399,7 @@ def _build_magistrala_a(g: NetworkGraph) -> None:
     prev = "bus-a9"
 
     # A10: AFL-6 35 → Stacja 08 (kontenerowa, 400 kVA) — koncowa
-    g.add_node(_mk_pq("bus-a10", "Stacja 08 wejscie"))
+    g.add_node(_mk_pq("bus-a10", "Stacja 08 wejście"))
     g.add_branch(
         _mk_line(
             "line-a10", "Odcinek A10", prev, "bus-a10", AFL35_R, AFL35_X, AFL35_B, 4.0, AFL35_I
@@ -409,7 +409,7 @@ def _build_magistrala_a(g: NetworkGraph) -> None:
 
     # Sub-branch od rozgalezienia A5
     # A11: AFL-6 50 → Stacja 09 (wnetrzowa, 250 kVA)
-    g.add_node(_mk_pq("bus-a11", "Stacja 09 wejscie"))
+    g.add_node(_mk_pq("bus-a11", "Stacja 09 wejście"))
     g.add_branch(
         _mk_line(
             "line-a11",
@@ -426,7 +426,7 @@ def _build_magistrala_a(g: NetworkGraph) -> None:
     _add_station(g, "st09", "Stacja 09", "bus-a11", StationType.TRANSFORMER, 0.250, "Dyn11")
 
     # A12: AFL-6 35 → Stacja 10 (slupowa, 100 kVA) — koncowa sub
-    g.add_node(_mk_pq("bus-a12", "Stacja 10 wejscie"))
+    g.add_node(_mk_pq("bus-a12", "Stacja 10 wejście"))
     g.add_branch(
         _mk_line(
             "line-a12",
@@ -449,7 +449,7 @@ def _build_magistrala_b(g: NetworkGraph) -> None:
     prev = "bus-bay-b"
 
     # B1: kabel XRUHAKXS 240 — wyprowadzenie kablowe z GPZ
-    g.add_node(_mk_pq("bus-b1", "B1 RS-1 wejscie"))
+    g.add_node(_mk_pq("bus-b1", "B1 RS-1 wejście"))
     g.add_branch(
         _mk_line(
             "line-b1", "Odcinek B1 kabel", prev, "bus-b1", XR240_R, XR240_X, XR240_B, 1.2, XR240_I
@@ -483,7 +483,7 @@ def _build_magistrala_b(g: NetworkGraph) -> None:
         )
     )
     # OHL od mufy
-    g.add_node(_mk_pq("bus-b3", "Stacja 11 wejscie"))
+    g.add_node(_mk_pq("bus-b3", "Stacja 11 wejście"))
     g.add_branch(
         _mk_line(
             "line-b3",
@@ -509,7 +509,7 @@ def _build_magistrala_b(g: NetworkGraph) -> None:
     prev = "bus-b4"
 
     # B5: AFL-6 50 → Stacja 13 (250 kVA)
-    g.add_node(_mk_pq("bus-b5", "Stacja 13 wejscie"))
+    g.add_node(_mk_pq("bus-b5", "Stacja 13 wejście"))
     g.add_branch(
         _mk_line("line-b5", "Odcinek B5", prev, "bus-b5", AFL50_R, AFL50_X, AFL50_B, 4.0, AFL50_I)
     )
@@ -525,7 +525,7 @@ def _build_magistrala_b(g: NetworkGraph) -> None:
     prev = "bus-b6"
 
     # B7: AFL-6 50 → Stacja 14 (400 kVA)
-    g.add_node(_mk_pq("bus-b7", "Stacja 14 wejscie"))
+    g.add_node(_mk_pq("bus-b7", "Stacja 14 wejście"))
     g.add_branch(
         _mk_line("line-b7", "Odcinek B7", prev, "bus-b7", AFL50_R, AFL50_X, AFL50_B, 3.0, AFL50_I)
     )
@@ -533,7 +533,7 @@ def _build_magistrala_b(g: NetworkGraph) -> None:
     prev = "bus-b7"
 
     # B8: AFL-6 35 → Stacja 15 (100 kVA) — punkt NO
-    g.add_node(_mk_pq("bus-b8", "Stacja 15 wejscie / punkt NO"))
+    g.add_node(_mk_pq("bus-b8", "Stacja 15 wejście / punkt NO"))
     g.add_branch(
         _mk_line("line-b8", "Odcinek B8", prev, "bus-b8", AFL35_R, AFL35_X, AFL35_B, 2.0, AFL35_I)
     )
@@ -557,7 +557,7 @@ def _build_magistrala_b(g: NetworkGraph) -> None:
     g.add_switch(
         _mk_sw(
             "sw-no-ring",
-            "Lacznik NO ring B",
+            "Łącznik NO ring B",
             "bus-b9",
             "bus-bay-e",
             st=SwitchType.LOAD_SWITCH,
@@ -568,7 +568,7 @@ def _build_magistrala_b(g: NetworkGraph) -> None:
 
     # Sub-branch od B4
     # B10: AFL-6 50 → Stacja 16 (160 kVA)
-    g.add_node(_mk_pq("bus-b10", "Stacja 16 wejscie"))
+    g.add_node(_mk_pq("bus-b10", "Stacja 16 wejście"))
     g.add_branch(
         _mk_line(
             "line-b10",
@@ -600,7 +600,7 @@ def _build_magistrala_c(g: NetworkGraph) -> None:
     prev = "bus-c1"
 
     # C2: kabel XRUHAKXS 120 → Stacja 17 (630 kVA, przemyslowa)
-    g.add_node(_mk_pq("bus-c2", "Stacja 17 wejscie"))
+    g.add_node(_mk_pq("bus-c2", "Stacja 17 wejście"))
     g.add_branch(
         _mk_line(
             "line-c2", "Odcinek C2 kabel", prev, "bus-c2", XR120_R, XR120_X, XR120_B, 1.5, XR120_I
@@ -610,7 +610,7 @@ def _build_magistrala_c(g: NetworkGraph) -> None:
     prev = "bus-c2"
 
     # C3: kabel XRUHAKXS 120 → Stacja 18 (400 kVA)
-    g.add_node(_mk_pq("bus-c3", "Stacja 18 wejscie"))
+    g.add_node(_mk_pq("bus-c3", "Stacja 18 wejście"))
     g.add_branch(
         _mk_line(
             "line-c3", "Odcinek C3 kabel", prev, "bus-c3", XR120_R, XR120_X, XR120_B, 1.0, XR120_I
@@ -690,7 +690,7 @@ def _build_magistrala_c(g: NetworkGraph) -> None:
     prev = "bus-c4"
 
     # C7: kabel XRUHAKXS 120 → Stacja 19 (250 kVA)
-    g.add_node(_mk_pq("bus-c7", "Stacja 19 wejscie"))
+    g.add_node(_mk_pq("bus-c7", "Stacja 19 wejście"))
     g.add_branch(
         _mk_line(
             "line-c7", "Odcinek C7 kabel", prev, "bus-c7", XR120_R, XR120_X, XR120_B, 1.8, XR120_I
@@ -719,7 +719,7 @@ def _build_magistrala_c(g: NetworkGraph) -> None:
     prev = "bus-c8"
 
     # C9: kabel XRUHAKXS 120 → Stacja 20 (160 kVA) — koncowa
-    g.add_node(_mk_pq("bus-c9", "Stacja 20 wejscie"))
+    g.add_node(_mk_pq("bus-c9", "Stacja 20 wejście"))
     g.add_branch(
         _mk_line(
             "line-c9", "Odcinek C9 kabel", prev, "bus-c9", XR120_R, XR120_X, XR120_B, 1.2, XR120_I

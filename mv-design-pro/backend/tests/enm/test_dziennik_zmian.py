@@ -65,7 +65,7 @@ class TestPrzyczynaZapisana:
         assert "bez zarejestrowanej operacji" in wpis.opis_pl
 
     def test_operacja_spoza_kanonu_jest_nazwana_wprost(self):
-        assert "nie wystepuje w kanonie" in opis_operacji("operacja_ktorej_nie_ma")
+        assert "nie występuje w kanonie" in opis_operacji("operacja_ktorej_nie_ma")
 
 
 class TestZakresOdRewizji:

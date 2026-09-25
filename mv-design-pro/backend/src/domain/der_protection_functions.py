@@ -37,11 +37,17 @@ Nastawy licza solwery i moduly koordynacji.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Literal, TypeAlias
 
-TrybUziemienia = Literal[
-    "izolowany", "cewka_petersena", "rezystor", "bezposrednio_uziemiony", "nieznany"
-]
+from network_model.core.uziemienie import (
+    UZIEMIENIA_MALOPRADOWE,
+    TypPunktuNeutralnego,
+    etykieta_punktu_neutralnego_pl,
+)
+
+#: Sposob uziemienia punktu neutralnego — TEN SAM slownik co `GroundingConfig.type`
+#: (W5-A: koniec polskich literalow w kontrakcie); `None` = nieznany w modelu.
+TrybUziemienia: TypeAlias = TypPunktuNeutralnego | None
 ZrodloPraduZerowego = Literal["suma_ct", "przekladnik_ferrantiego", "zewnetrzne", "brak"]
 ZrodloNapieciaZerowego = Literal[
     "otwarty_trojkat_vt", "uzwojenie_resztkowe_vt", "obliczone", "brak"
@@ -51,10 +57,10 @@ RodzajDer = Literal["PV", "BESS", "FW"]
 #: Prog mocy transformatora dedykowanego dla zabezpieczenia roznicowego (IEC 60255-13).
 PROG_87T_KW = 1600.0
 
-#: Sieci o MALYM pradzie doziemnym — kryterium nadpradowe bez kierunkowosci bywa w nich
-#: nieskuteczne, bo prad zwarcia doziemnego jest pojemnosciowy i porownywalny z pradami
-#: zdrowych odplywow.
-UZIEMIENIA_MALOPRADOWE: frozenset[str] = frozenset({"izolowany", "cewka_petersena"})
+#: Sieci o MALYM pradzie doziemnym (`UZIEMIENIA_MALOPRADOWE` z rdzenia uziemienia):
+#: kryterium nadpradowe bez kierunkowosci bywa w nich nieskuteczne, bo prad zwarcia
+#: doziemnego jest pojemnosciowy i porownywalny z pradami zdrowych odplywow.
+__all_uziemienia_maloparadowe__ = UZIEMIENIA_MALOPRADOWE
 
 #: Strony przylaczenia, przy ktorych wymagane sa funkcje anty-wyspowe
 #: (IEEE 1547 / NC RfG Art. 14) — ta sama granica, ktora stosuje regula gotowosci.
@@ -70,9 +76,18 @@ class FaktyPolaWytworcy:
     der_id: str
     der_kind: RodzajDer
     connection_side: str
+    #: NAZWA wytwórcy z modelu — etykieta chronionego obiektu pokazywana
+    #: inżynierowi. Bez niej opis funkcji sklejał się z REFERENCJĄ modelu
+    #: („pole wytwórcy pv/cf52e8ef.../converter"), czyli identyfikator maszynowy
+    #: wychodził na pierwszy plan ekranu doboru zabezpieczeń (zmierzone na
+    #: modelu zbudowanym operacjami domenowymi). Pole WYMAGANE (karta #144):
+    #: wytwórca bez nazwy w modelu dostaje od wołającego polski opis rodzaju
+    #: (`enm.nazwy_elementow.nazwa_elementu` — „Generator bez nazwy"), nigdy
+    #: identyfikator — `der_id` zostaje wyłącznie tożsamością rekordu.
+    der_nazwa: str
     nominal_power_kw: float | None = None
     block_transformer_catalog_ref: str | None = None
-    neutral_grounding_mode: TrybUziemienia = "nieznany"
+    neutral_grounding_mode: TrybUziemienia = None
     zero_sequence_current_source: ZrodloPraduZerowego = "brak"
     zero_sequence_voltage_source: ZrodloNapieciaZerowego = "brak"
 
@@ -129,7 +144,7 @@ def dobierz_funkcje(fakty: FaktyPolaWytworcy) -> WynikDoboru:
 
     wymagane: list[FunkcjaWymagana] = []
     otwarte: list[KwestiaOtwarta] = []
-    obiekt = f"pole wytwórcy {fakty.der_id}"
+    obiekt = f"pole wytwórcy {fakty.der_nazwa}"
 
     # --- Zwarcia miedzyfazowe: podstawa kazdego pola, niezalezna od uziemienia --------
     wymagane.append(
@@ -281,7 +296,7 @@ def dobierz_funkcje(fakty: FaktyPolaWytworcy) -> WynikDoboru:
                     ),
                 )
             )
-    elif fakty.neutral_grounding_mode == "nieznany":
+    elif fakty.neutral_grounding_mode is None:
         otwarte.append(
             KwestiaOtwarta(
                 kod="protection.neutral_grounding_unknown",
@@ -427,14 +442,16 @@ def ocen_urzadzenie(
     )
 
 
-def _uziemienie_pl(tryb: str) -> str:
+def _uziemienie_pl(tryb: str | None) -> str:
+    """Przymiotnik sieci („sieć izolowana"); `None` = punkt neutralny nieokreślony."""
+    if tryb is None:
+        return "o nieokreślonym punkcie neutralnym"
     return {
-        "izolowany": "izolowana",
-        "cewka_petersena": "kompensowana (cewka Petersena)",
-        "rezystor": "uziemiona przez rezystor",
-        "bezposrednio_uziemiony": "bezpośrednio uziemiona",
-        "nieznany": "o nieokreślonym punkcie neutralnym",
-    }.get(tryb, tryb)
+        "isolated": "izolowana",
+        "petersen_coil": "kompensowana (cewka Petersena)",
+        "resistor_grounded": "uziemiona przez rezystor",
+        "directly_grounded": "bezpośrednio uziemiona",
+    }.get(tryb, etykieta_punktu_neutralnego_pl(tryb))
 
 
 def _zrodlo_napiecia_pl(zrodlo: str) -> str:

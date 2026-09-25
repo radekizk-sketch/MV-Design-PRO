@@ -1,0 +1,196 @@
+{
+  "jakosc_energii": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "BRAK_METODY",
+      "odniesienie": null,
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Ocena niewykonana",
+      "semantyka": "neutralna"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryterium": {
+      "opis_pl": "Kompatybilność harmoniczna napięć i prądów w węzłach sieci (współczynnik odkształcenia harmonicznego napięcia THD i prądu TDD)",
+      "relacja": "LOGICZNE",
+      "warunek_latex": "",
+      "warunek_wstepny_pl": null,
+      "warunek_wstepny_podstawa": null
+    },
+    "kryterium_id": "power_quality_harmonics.kompatybilnosc",
+    "limit": null,
+    "margines": null,
+    "niepewnosc": {
+      "metoda_pl": null,
+      "nie_dotyczy": true,
+      "powod_pl": "brak wielkości rozstrzygającej — liczby solvera są materiałem audytowym, więc niepewność wyniku nie dotyczy",
+      "wartosc": null
+    },
+    "podstawa": {
+      "dokument": "PN-EN 50160",
+      "jednostka_redakcyjna": null,
+      "rodzaj": "NORMA",
+      "status": "NIEUSTALONE",
+      "uwagi_pl": "wydanie i jednostka redakcyjna limitu współczynnika odkształcenia napięcia THD nieustalone w rejestrze wymagań jakości energii",
+      "wydanie": null
+    },
+    "powody_niepelnosci": [
+      "Brak metody dowodu — właściwa metoda dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji) albo pomiar.",
+      "Podstawa „PN-EN 50160” (norma) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+    ],
+    "przedmiot": {
+      "element_ref": null,
+      "nazwa_pl": "Szyny sieci modelu",
+      "opis_pl": "Odkształcenie napięcia i prądu w węzłach sieci modelu"
+    },
+    "slad": [],
+    "status_maszynowy": "NIE_OCENIONO",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "sieć modelu ze źródłami odkształcającymi (przekształtniki)",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+        "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+        "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50160” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wydanie i jednostka redakcyjna limitu współczynnika odkształcenia napięcia THD nieustalone w rejestrze wymagań jakości energii).",
+        "Solver harmoniczny na wspólnej macierzy admitancyjnej z przekładnią transformatora, impedancją źródła zasilania, kondensatorami i odbiorami — obecny solver liczy sieć bez przekładni i zastępuje sieć nadrzędną admitancją 1e6 S na pierwszej szynie modelu; jego liczby są dostępne wyłącznie w sekcji audytowej.",
+        "Niezależna wyrocznia potwierdzająca wynik (obliczenie ręczne sieci dwu- i trzyszynowej, rezonans równoległy, program zewnętrzny).",
+        "Rejestr wymagań jakości energii z dokumentem, wydaniem, poziomem napięcia i punktem oceny.",
+        "Do czasu solvera z wyrocznią: pomiar jakości energii albo obliczenie zewnętrzne w punkcie oceny — decyzji projektowych o harmonicznych nie opiera się na liczbach tego solvera."
+      ],
+      "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
+      "zastrzezenia": [
+        "Podstawa „PN-EN 50160” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie i jednostka redakcyjna limitu współczynnika odkształcenia napięcia THD nieustalone w rejestrze wymagań jakości energii).",
+        "Zakres ważności: Solver harmoniczny V12.6 (niezwalidowany) — wynik nie obejmuje: przekładnia transformatora między poziomami napięcia; impedancja sieci nadrzędnej z mocy zwarciowej źródła; kondensatory, odbiory i admitancja przekształtnika; rzędy harmoniczne spoza 18 zaszytych rzędów."
+      ],
+      "zdanie_pl": "Kompatybilność harmoniczna napięć i prądów w węzłach sieci (współczynnik odkształcenia harmonicznego napięcia THD i prądu TDD) (Szyny sieci modelu) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+    },
+    "wynik": null,
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Solver harmoniczny V12.6 (niezwalidowany)",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "HARMONIC_FREQUENCY_DOMAIN",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "przekładnia transformatora między poziomami napięcia",
+        "impedancja sieci nadrzędnej z mocy zwarciowej źródła",
+        "kondensatory, odbiory i admitancja przekształtnika",
+        "rzędy harmoniczne spoza 18 zaszytych rzędów"
+      ]
+    }
+  },
+  "ssci_impedance": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "BRAK_METODY",
+      "odniesienie": null,
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "UNVALIDATED_MODEL",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Ocena niewykonana",
+      "semantyka": "neutralna"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryterium": {
+      "opis_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista)",
+      "relacja": "LOGICZNE",
+      "warunek_latex": "",
+      "warunek_wstepny_pl": null,
+      "warunek_wstepny_podstawa": null
+    },
+    "kryterium_id": "ssci.nyquist.INV1",
+    "limit": null,
+    "margines": null,
+    "niepewnosc": {
+      "metoda_pl": null,
+      "nie_dotyczy": true,
+      "powod_pl": "brak wielkości rozstrzygającej — metryki L(f) są materiałem audytowym, więc niepewność wyniku nie dotyczy",
+      "wartosc": null
+    },
+    "podstawa": {
+      "dokument": "Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)",
+      "jednostka_redakcyjna": null,
+      "rodzaj": "NIEUSTALONA",
+      "status": "NIEUSTALONE",
+      "uwagi_pl": "kryterium z literatury — brak wymagania normatywnego operatora dla SSCI",
+      "wydanie": null
+    },
+    "powody_niepelnosci": [
+      "Brak metody dowodu — właściwa metoda dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji) albo pomiar.",
+      "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji nie stanowi pełnego dowodu zgodności (wymagany: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany).",
+      "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+    ],
+    "przedmiot": {
+      "element_ref": "INV1",
+      "nazwa_pl": "Przekształtnik Falownik PV 1",
+      "opis_pl": "Interakcja podsynchroniczna przekształtnika z siecią"
+    },
+    "slad": [],
+    "status_maszynowy": "NIE_OCENIONO",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "przekształtnik przyłączony do sieci modelu (źródło przekształtnikowe)",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+        "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+        "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
+        "Impedancja sieci Z_grid(f) liczona na wspólnej macierzy admitancyjnej z przekładnią transformatora i impedancją źródła zasilania — impedancja sieci Z_grid(f) obecnego solvera jest liczona na macierzy admitancyjnej bez przekładni transformatora — dla przekształtnika na szynie 0,4 kV wychodzi około 1400 razy za duża — więc wzmocnienie pętli L = Z_grid/Z_conv i każdy wniosek z kryterium Nyquista są niewiarygodne; wynik nie ma też niezależnej wyroczni.",
+        "Niezależna wyrocznia kryterium impedancyjnego (obliczenie ręczne albo program zewnętrzny) dla węzła przyłączenia przekształtnika.",
+        "Do czasu poprawnego Z_grid(f): badanie zewnętrzne interakcji przekształtnik–sieć albo dane producenta; wskaźnik strefy ujemnej rezystancji przekształtnika zależy wyłącznie od jego modelu i pozostaje informacją."
+      ],
+      "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
+      "zastrzezenia": [
+        "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
+        "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
+        "Zakres ważności: Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
+      ],
+      "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Falownik PV 1) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+    },
+    "wynik": null,
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": null,
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "impedancja sieci z przekładnią transformatora"
+      ]
+    }
+  }
+}

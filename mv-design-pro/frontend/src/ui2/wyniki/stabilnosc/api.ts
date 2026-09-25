@@ -1,8 +1,9 @@
 /*
  * Dostawca danych ekranu „Stabilność dynamiczna" (E-32, karta P-3).
- * Realne endpointy backendu (api/analysis_runs.py:398-409) — zero nowych ścieżek:
- *  - `GET /api/analysis-runs/{id}/results/dynamic-stability` → wiersz werdyktu,
- *  - `GET /api/analysis-runs/{id}/results/automation-trace` → zdarzenia + efekt topologii.
+ * Realne endpointy backendu (api/analysis_runs.py) — zero nowych ścieżek:
+ *  - `GET /api/analysis-runs/{id}/results/dynamic-stability` → echo scenariusza + ocena,
+ *  - `GET /api/analysis-runs/{id}/results/automation-trace` → efekt topologii
+ *    ZADEKLAROWANY w opcjach biegu (zdarzeń brak — zabezpieczenia niesymulowane).
  * Pobieranie do stanu lokalnego (cache per runId na życie ekranu); ślad automatyki
  * jest opcjonalny — jego brak sekcja komunikuje wprost (zero fabrykacji).
  */
@@ -14,7 +15,6 @@ import type {
   OdpowiedzSladuAutomatyki,
   OdpowiedzStabilnosci,
   WierszStabilnosci,
-  ZdarzenieAutomatyki,
   EfektTopologii,
 } from './model';
 
@@ -44,22 +44,23 @@ export async function fetchPrzebiegStabilnosci(
 
 export interface DaneStabilnosci {
   readonly stan: 'laduje' | 'blad' | 'gotowe';
-  /** Wiersz werdyktu; null przy stanie 'gotowe' = przebieg bez wyniku (uczciwy brak). */
+  /** Wiersz echa scenariusza; null przy stanie 'gotowe' = przebieg bez wyniku (uczciwy brak). */
   readonly wiersz: WierszStabilnosci | null;
-  /** Zdarzenia śladu automatyki; null = ślad niedostępny (błąd pobierania). */
-  readonly zdarzenia: readonly ZdarzenieAutomatyki[] | null;
+  /** Ślad automatyki pobrany (false = błąd pobierania — sekcja mówi to wprost). */
+  readonly sladDostepny: boolean;
+  /** Efekt topologii zadeklarowany w opcjach biegu; null = brak w odpowiedzi. */
   readonly efektTopologii: EfektTopologii | null;
 }
 
 const LADOWANIE: DaneStabilnosci = {
   stan: 'laduje',
   wiersz: null,
-  zdarzenia: null,
+  sladDostepny: false,
   efektTopologii: null,
 };
 
 /**
- * Hook dostawcy: pobiera werdykt + ślad automatyki przy zmianie runId
+ * Hook dostawcy: pobiera echo scenariusza + ślad automatyki przy zmianie runId
  * (cache per runId). `runId = null` → null (ekran pokazuje stan zerowy).
  */
 export function useWynikStabilnosci(runId: string | null): DaneStabilnosci | null {
@@ -79,11 +80,11 @@ export function useWynikStabilnosci(runId: string | null): DaneStabilnosci | nul
           ? {
               stan: 'gotowe',
               wiersz: wynik.value.rows[0] ?? null,
-              zdarzenia: slad.status === 'fulfilled' ? slad.value.rows : null,
+              sladDostepny: slad.status === 'fulfilled',
               efektTopologii:
                 slad.status === 'fulfilled' ? slad.value.topology_effect ?? null : null,
             }
-          : { stan: 'blad', wiersz: null, zdarzenia: null, efektTopologii: null };
+          : { stan: 'blad', wiersz: null, sladDostepny: false, efektTopologii: null };
       setCache((c) => ({ ...c, [runId]: dane }));
     })();
     return () => {

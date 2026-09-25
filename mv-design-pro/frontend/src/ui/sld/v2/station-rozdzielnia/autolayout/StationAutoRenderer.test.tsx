@@ -28,24 +28,27 @@ describe('E2 auto-layout render — matches the preset (same model + readouts)',
     for (const k of ['G4-PVTR', 'G8-BIOGAZ', 'G9-GPO']) expect(autoText(k).txt).not.toContain('PCC');
   });
 
-  it('idyn read PER-BUS from the companion (ip ≤ idyn ✓), not 0', () => {
+  // Karta MAGISTRALA-OCENA: odczyt węzła pokazuje ip i Idyn jako DWIE liczby — porównanie
+  // ip ≤ Idyn (dawny znak ✓/✗ liczony w warstwie prezentacji) nie jest już wydawane w UI.
+  it('idyn read PER-BUS from the companion (shown beside ip, no UI verdict), not 0', () => {
     const { txt, companion } = autoText('G8-BIOGAZ');
     const idyn = companion.short_circuit.buses['SN_PCC'].idyn_ka; // per-bus, not a source scalar
     expect(idyn).toBeGreaterThan(0);
-    expect(txt).toContain(`idyn ${fmt(idyn, 0)} ✓`);
+    expect(txt).toContain(`idyn ${fmt(idyn, 0)} kA`);
+    expect(txt).not.toMatch(/idyn [\d.,]+ (kA )?[✓✗]/);
     expect(txt).not.toContain('idyn 0');
     expect(companion.short_circuit.buses['SN_PCC'].max.ip_ka).toBeLessThanOrEqual(idyn);
   });
 
-  it('EVERY bus (SN + each nN) carries its OWN idyn verdict — multi-nN G9 has NO failed/blank ip', () => {
+  it('EVERY bus (SN + each nN) carries its OWN idyn beside ip — multi-nN G9 has NO blank ip', () => {
     for (const key of ['G4-PVTR', 'G8-BIOGAZ', 'G9-GPO']) {
       const { txt, companion } = autoText(key);
       expect(txt).not.toContain('✗'); // every per-bus Idyn ≥ ip (real nameplates, no fabrication)
       for (const b of Object.values(companion.short_circuit.buses)) {
         expect(b.idyn_ka).toBeGreaterThan(0);
         expect(b.max.ip_ka).toBeLessThanOrEqual(b.idyn_ka);
-        // ip is shown WITH a dynamic verdict (no bare "ip … kA" without "· idyn …").
-        expect(txt).toContain(`${fmt(b.max.ip_ka, 1)} kA · idyn ${fmt(b.idyn_ka, 0)} ✓`);
+        // ip is shown WITH its per-bus Idyn (no bare "ip … kA" without "· idyn …").
+        expect(txt).toContain(`${fmt(b.max.ip_ka, 1)} kA · idyn ${fmt(b.idyn_ka, 0)} kA`);
       }
     }
   });

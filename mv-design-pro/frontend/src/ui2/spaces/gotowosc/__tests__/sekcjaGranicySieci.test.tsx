@@ -18,7 +18,7 @@ function znaleziona(over: Partial<GranicaResponse> = {}): GranicaResponse {
     case_id: 'C1',
     model_hash: 'deadbeef',
     znaleziono: true,
-    wezel_przylaczenia: { ref_id: 'bus_hv', name: 'GPZ 110kV', voltage_kv: 110.0 },
+    wezel_przylaczenia: { ref_id: 'bus_hv', name: 'GPZ 110 kV', voltage_kv: 110.0 },
     node_id: 'uuid-1',
     metoda: 'external_grid',
     metoda_pl: 'źródło zasilania z sieci zewnętrznej',
@@ -72,7 +72,9 @@ describe('SekcjaGranicySieci — wynik', () => {
   it('znaleziona granica: szyna z napięciem, metoda PL i ufność w procentach', async () => {
     const spy = mockFetchOk(znaleziona());
     render(<SekcjaGranicySieci />);
-    expect(await screen.findByTestId('mvd-granica-wezel')).toHaveTextContent('GPZ 110kV');
+    expect(await screen.findByTestId('mvd-granica-wezel')).toHaveTextContent(
+      znaleziona().wezel_przylaczenia!.name,
+    );
     expect(screen.getByTestId('mvd-granica-wezel')).toHaveTextContent('110 kV');
     expect(screen.getByTestId('mvd-granica-metoda')).toHaveTextContent(
       'źródło zasilania z sieci zewnętrznej',

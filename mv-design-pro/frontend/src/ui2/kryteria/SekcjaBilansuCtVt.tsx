@@ -37,6 +37,8 @@ export interface ObwodWtorny {
   readonly dlugosc_m: number | null;
   readonly przekroj_mm2: number | null;
   readonly moc_aparatow_va: number | null;
+  /** Moc tracona na stykach i zaciskach obwodu [VA] — podana TYLKO jawnie. */
+  readonly moc_stykow_va: number | null;
 }
 
 export interface SekcjaBilansuCtVtProps {
@@ -109,6 +111,7 @@ export function SekcjaBilansuCtVt({
         obwodCt.moc_aparatow_va === null
           ? []
           : [{ nazwa: T.ctMocAparatow, moc_va: obwodCt.moc_aparatow_va }],
+      moc_stykow_va: obwodCt.moc_stykow_va,
     })
       .then((wynik) => {
         if (!aktywne) return;
@@ -123,7 +126,14 @@ export function SekcjaBilansuCtVt({
     return () => {
       aktywne = false;
     };
-  }, [ctRef, obwodCt.dlugosc_m, obwodCt.przekroj_mm2, obwodCt.moc_aparatow_va, klientCt]);
+  }, [
+    ctRef,
+    obwodCt.dlugosc_m,
+    obwodCt.przekroj_mm2,
+    obwodCt.moc_aparatow_va,
+    obwodCt.moc_stykow_va,
+    klientCt,
+  ]);
 
   useEffect(() => {
     if (!vtRef) {
@@ -140,6 +150,7 @@ export function SekcjaBilansuCtVt({
         obwodVt.moc_aparatow_va === null
           ? []
           : [{ nazwa: T.vtMocAparatow, moc_va: obwodVt.moc_aparatow_va }],
+      moc_stykow_va: obwodVt.moc_stykow_va,
     })
       .then((wynik) => {
         if (!aktywne) return;
@@ -160,6 +171,7 @@ export function SekcjaBilansuCtVt({
     obwodVt.dlugosc_m,
     obwodVt.przekroj_mm2,
     obwodVt.moc_aparatow_va,
+    obwodVt.moc_stykow_va,
     klientVt,
   ]);
 

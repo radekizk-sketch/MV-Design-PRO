@@ -1,19 +1,28 @@
 /*
  * Karta przypadku obliczeniowego (W-501) — konfiguracja + sekcja „Założenia"
- * (JAWNE założenia: współczynnik napięciowy c, temperatura, stan łączeń;
- * „założenia są częścią wyniku" — AUDYT_RADY_SPECJALISTOW W-501). W pełni sterowana
- * propsami (pełny rekord `StudyCase` z konfiguracją). Parametry i etykiety z
- * ISTNIEJĄCYCH typów (`CONFIG_FIELD_LABELS`, `types.ts:194`); pola nieobecne w typie
- * (temperatura, stan łączeń) → wiersze „wkrótce" (bez zgadywania — karta §2).
+ * (JAWNE założenia: współczynnik napięciowy c; „założenia są częścią wyniku" —
+ * AUDYT_RADY_SPECJALISTOW W-501). W pełni sterowana propsami (pełny rekord
+ * `StudyCase` z konfiguracją). Parametry i etykiety z ISTNIEJĄCYCH typów
+ * (`CONFIG_FIELD_LABELS`, `types.ts:194`).
+ *
+ * KARTA-UI2 §1 p. 10 (zamknięcie): „Temperatura przewodów" i „Stan łączeń" NIE są
+ * i NIE BĘDĄ polami `StudyCaseConfig` — temperatura nie istnieje w ogóle w modelu
+ * przypadku, a stan łączeniowy jest częścią `OperatingScenario` (CV-3.1), osobnego
+ * bytu od konfiguracji przypadku. Wiersze „wkrótce" dla tych dwóch założeń są
+ * SKASOWANE (dyrektywa właściciela „zero fabrykacji": kontrolka bez dostawcy w
+ * kontrakcie = fantom), nie relabelowane — sekcja „Założenia" pokazuje WYŁĄCZNIE
+ * współczynnik c (jedyne jawne założenie, które `StudyCaseConfig` faktycznie niesie).
  *
  * Status wyników renderowany jako tag PL (aktualne/nieaktualne/brak) — spójnie z
- * E15.2. `FreshnessBadge` (ui2/inspector) NIE pasuje: wymaga porównania rewizji
- * (dana vs model), a przypadek niesie kategorię `result_status`, nie numer rewizji
- * z chwili liczenia (ta sama uwaga co `projekt/pulpitAdapter.ts` TODO-KARTA #2).
+ * E15.2, RAZEM z przyczyną i listą zmian, które unieważniły wynik (CV-2-W:
+ * odpowiedź z przypadkiem niesie `result_status_reason_pl`, parę rewizji i
+ * `zmiany_od_biegu`, więc karta nie musi już mówić „nieaktualne" bez powodu ani
+ * dopytywać osobnym zapytaniem).
  */
 
 import type { StudyCase, StudyCaseConfig } from '../../../ui/study-cases/types';
 import { CONFIG_FIELD_LABELS } from '../../../ui/study-cases/types';
+import { ListaZmianOdBiegu } from '../../freshness';
 import {
   PRZYPADKI_STRINGS as T,
   STATUS_WYNIKOW_LABEL,
@@ -106,6 +115,7 @@ export function KartaPrzypadku({ przypadek, ladowanie, blad }: KartaPrzypadkuPro
         <span
           className={`mvd-tag ${WARIANT_STATUSU[przypadek.result_status]}`}
           data-testid="mvd-karta-status"
+          title={przypadek.result_status_reason_pl}
         >
           {STATUS_WYNIKOW_LABEL[przypadek.result_status]}
         </span>
@@ -113,6 +123,8 @@ export function KartaPrzypadku({ przypadek, ladowanie, blad }: KartaPrzypadkuPro
           <p className="mvd-karta-opis">{przypadek.description}</p>
         )}
       </header>
+
+      <ListaZmianOdBiegu status={przypadek} />
 
       <section className="mvd-karta-sekcja mvd-karta-zalozenia" aria-label={T.sekcjaZalozenia}>
         <h4 className="mvd-karta-sekcja-tytul">{T.sekcjaZalozenia}</h4>
@@ -134,16 +146,6 @@ export function KartaPrzypadku({ przypadek, ladowanie, blad }: KartaPrzypadkuPro
               <td>{T.zalozenieCMin}</td>
               <td className="mvd-num">{formatWartoscKonfiguracji('c_factor_min', config.c_factor_min)}</td>
               <td className="mvd-karta-pochodzenie">{T.pochodzenieKonfiguracja}</td>
-            </tr>
-            <tr data-testid="mvd-karta-zalozenie-temperatura">
-              <td>{T.zalozenieTemperatura}</td>
-              <td className="mvd-num mvd-wkrotce-wartosc">{T.brakWartosci}</td>
-              <td className="mvd-karta-pochodzenie mvd-wkrotce">{T.pochodzenieWkrotce}</td>
-            </tr>
-            <tr data-testid="mvd-karta-zalozenie-laczenia">
-              <td>{T.zalozenieStanLaczen}</td>
-              <td className="mvd-num mvd-wkrotce-wartosc">{T.brakWartosci}</td>
-              <td className="mvd-karta-pochodzenie mvd-wkrotce">{T.pochodzenieWkrotce}</td>
             </tr>
           </tbody>
         </table>

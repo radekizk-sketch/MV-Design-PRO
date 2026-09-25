@@ -5,8 +5,6 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from analysis.normative.models import NormativeStatus
-
 
 class ITCurveRole(StrEnum):
     PRIMARY = "PRIMARY"
@@ -87,7 +85,6 @@ class ProtectionCurvesITView:
     backup_device_id: str | None
     series: tuple[ITCurveSeries, ...]
     markers: tuple[ITMarker, ...]
-    normative_status: NormativeStatus
     margins_pct: dict[str, float]
     why_pl: str
     missing_data: tuple[str, ...]

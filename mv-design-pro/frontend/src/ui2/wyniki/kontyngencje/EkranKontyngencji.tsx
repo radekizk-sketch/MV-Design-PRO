@@ -48,6 +48,7 @@ import {
   naZalozeniaMacierzy,
   przebiegRozplywu,
   refyDoBiegu,
+  typElementuKontyngencji,
 } from './model';
 import {
   KONTYNGENCJE_STRINGS as T,
@@ -336,9 +337,14 @@ function PanelSzczegolow({
 
 export interface EkranKontyngencjiProps {
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (wzorzec siostrzanych
+   * ekranów, np. `EkranJakosci`). Wiersze rankingu N-1 dziś nie niosą `dowodRef` —
+   * prop jest realnym dostawcą (nie zaślepką), gotowym na dowolną przyszłą kolumnę
+   * z odwołaniem dowodowym bez kolejnej karty wpięcia. */
+  onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranKontyngencji({ trybZaawansowania }: EkranKontyngencjiProps) {
+export function EkranKontyngencji({ trybZaawansowania, onOtworzDowod }: EkranKontyngencjiProps) {
   const activeRunId = useAppStateStore((s) => s.activeRunId);
   const runs = useExecutionRunsStore((s) => s.runs);
   const przebieg = useMemo(() => przebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
@@ -632,11 +638,23 @@ export function EkranKontyngencji({ trybZaawansowania }: EkranKontyngencjiProps)
                 )}
                 kolumny={KOLUMNY_RANKINGU}
                 wiersze={naWierszeRankingu(daneMacierzy.ranking)}
-                onOtworzDowod={() => {}}
+                onOtworzDowod={onOtworzDowod}
                 trybZaawansowania={trybZaawansowania}
                 kluczWiersza={KLUCZ_WIERSZA_RANKINGU}
                 onWybierzWiersz={setWybranaKontyngencja}
                 wybranyWiersz={wybranaKontyngencja}
+                // Karta UI2 p.6: typ elementu z REALNEGO `element_kind`
+                // pozycji rankingu (domena ZAMKNIĘTA — `typElementuKontyngencji`).
+                typElementuWiersza={(ref) => {
+                  const pozycja = daneMacierzy.ranking.find((p) => p.element_ref === ref);
+                  return pozycja ? typElementuKontyngencji(pozycja.element_kind) : undefined;
+                }}
+                // Poprawka KLASA NIE INSTANCJA: klucz wiersza to `element_ref`
+                // (techniczny), NIE nazwa — inspektor musi dostać `element_name`.
+                nazwaElementuWiersza={(ref) => {
+                  const pozycja = daneMacierzy.ranking.find((p) => p.element_ref === ref);
+                  return pozycja?.element_name ?? undefined;
+                }}
               />
             )}
           </section>

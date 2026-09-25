@@ -251,7 +251,7 @@ export const ANALYSIS_MODULE_MATRIX: Record<
     inputContract: 'E26FrtLvrtHvrtInput',
     moduleDataContract: 'E26FrtLvrtHvrtComplianceData',
     requiredEntities: ['der_sources', 'pcc_measurements', 'frt_profile', 'q_limits'],
-    requiredResultFamilies: ['source_frt_lvrt_hvrt', 'source_compliance'],
+    requiredResultFamilies: ['source_frt_lvrt_hvrt'],
     requiresModuleResults: ['E-30.load_flow'],
     invalidIfMissing: ['analysis.missing_source_model', 'analysis.missing_curve_family'],
     partialReasons: ['analysis.missing_curve_family'],

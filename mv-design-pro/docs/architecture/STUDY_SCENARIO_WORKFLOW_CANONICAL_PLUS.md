@@ -1,5 +1,8 @@
 # P23 — Study / Scenario Workflow (CANONICAL+)
 
+> **ZASTĄPIONY I USUNIĘTY (2026-09-05, CV-3.2):** model Study/Scenario/Run tej warstwy (P23, `application/study_scenario/**`) był konsolidowany w `CANONICAL_TWIN_ARCHITECTURE.md` (część B, pozycja C4 inwentarza). Kod (`application/study_scenario/**`, `analysis/scenario_comparison/**`) usunięty procedurą kasacji razem z P24+ (`analysis/reporting/pdf/**`, jedyny produkcyjny konsument `ScenarioComparisonEntry`/`View` — 0 wołających poza sobą, 0 tras HTTP, ten sam byt co C4). Dokument zachowany jako materiał HISTORYCZNY (wymagany przez `docs_archive_guard.py::MIGRATION_MAP` jako istniejący następca dawnego dokumentu etapowego o tej samej nazwie bazowej); NIE jest źródłem kanonicznym, nie opisuje niczego istniejącego w kodzie.
+
+
 ## Cel i zakres (P23)
 
 Celem P23 jest wprowadzenie **kanonicznego workflow Study → Scenario → Run** jako

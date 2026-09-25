@@ -111,7 +111,7 @@ ZPUE_WLOSZCZOWA__ROTOBLOK = SwitchgearFamily(
         "17,5/24 kV — dwa różne parametry, przepisane do dwóch pól. Prąd "
         "znamionowy 630/1250 A, krótkotrwały 16 kA/1s, szczytowy 40 kA. "
         "Certyfikat IEL. Typowe pola: liniowe (RL1, RL4), transformatorowe "
-        "(RT1, RWT, RWT3, RWTp14), sprzęgłowe (RS1L, RS4), pomiarowe (RP1), "
+        "(RT1, RWT, RWT3, RWTp14), sprzęgła (RS1L, RS4), pomiarowe (RP1), "
         "odgromnikowe (RO1), potrzeb własnych (RTpwł4, RTpwł 25kVA). "
         "Status repo_verified — dane z publicznej strony produktu, NIE "
         "official_catalog (wymaga oficjalnego PDF od producenta)."
@@ -324,7 +324,7 @@ ABB__SAFERING = SwitchgearFamily(
     notes_pl=(
         "SafeRing — Ring Main Unit (RMU) ABB, izolacja SF6, sealed-for-life. "
         "Napięcia 12-24 kV, prąd znamionowy 630 A, krótkotrwały do 21 kA/1s "
-        "(modul C: 16 kA przy 24 kV). 18 konfiguracji modułowych. Standard "
+        "(moduł C: 16 kA przy 24 kV). 18 konfiguracji modułowych. Standard "
         "IEC 62271-200. Status repo_verified."
     ),
 )
@@ -471,7 +471,7 @@ SIEMENS__8DJH = SwitchgearFamily(
         "(variant 24 kV), making current do 50 kA. Standard IEC 62271-200. "
         "Katalog HA 40.2 (2017) wymienia pola K (kablowe), K(E) (kablowe z "
         "uziemnikiem zwarciowym), R (liniowe pierścieniowe), T "
-        "(transformatorowe), L (wyłącznikowe) oraz sprzęgłowe S i H, a także "
+        "(transformatorowe), L (wyłącznikowe) oraz pola sprzęgła S i H, a także "
         "zestawienie bloków fabrycznych z szerokościami — bloki są "
         "przepisane do rejestru konfiguracji fabrycznych. Odmiana 8DJH "
         "Compact (bloki bez rozszerzenia szyn) jest osobnym wyrobem i NIE "

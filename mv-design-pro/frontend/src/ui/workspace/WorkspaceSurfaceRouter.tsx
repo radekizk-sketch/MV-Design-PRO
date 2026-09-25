@@ -15,6 +15,7 @@ import {
 import type {
   BranchResultRow,
   BusResultRow,
+  ResultTableMeta,
   ShortCircuitRow,
 } from '../results-inspector/types';
 import { CatalogBrowser } from '../network-build/CatalogBrowser';
@@ -24,7 +25,7 @@ import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { OPERATION_FORM_REGISTRY } from './operationFormRegistry';
 import { useSelectionStore } from '../selection';
 import { useSnapshotStore } from '../topology/snapshotStore';
-import { navigateToNetworkBuild, navigateToReport } from '../navigation/routes';
+import { navigateToNetworkBuild, navigateToProof, navigateToReport } from '../navigation/routes';
 import {
   useStationDerStore,
   selectAllDers,
@@ -37,7 +38,7 @@ import {
   type BramkaModelu,
   useGenerateAudit2ProofPack,
   useGenerateAudit2Report,
-  useRunAudit2PowerFlow,
+  useRunExtendedPowerFlow,
   useStationAudit2ConfigList,
   validateHostingCapacityExport,
 } from '../network-build/station-der';
@@ -69,9 +70,8 @@ import {
   NopSurface,
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
-import { ReferenceNetworkSurface } from './surfaces/ReferenceNetworkSurface';
 import { EkranAnalizAkademickich, type RodzajPrezentowany } from '../../ui2/wyniki/akademickie';
-import { NcRfgTestsTab } from './surfaces/NcRfgTestsTab';
+import { MacierzNcRfg } from '../../ui2/oze/macierz';
 import {
   AnalysisSurfaceComparisonWizard,
   AuditTrailSurface,
@@ -580,16 +580,32 @@ function buildBusResultAnalysisRows(rows: readonly BusResultRow[]): AnalysisTabl
   }));
 }
 
-function buildBranchResultAnalysisRows(rows: readonly BranchResultRow[]): AnalysisTableRow[] {
+/** Etykieta kolumny z indeksu wyników backendu (`build_results_index`) — ekran nie
+ * nadaje własnych nazw wielkościom wyniku; brak kolumny w indeksie = klucz pola. */
+function etykietaKolumnyIndeksu(tabela: ResultTableMeta | undefined, klucz: string): string {
+  return tabela?.columns.find((kolumna) => kolumna.key === klucz)?.label_pl ?? klucz;
+}
+
+function buildBranchResultAnalysisRows(
+  rows: readonly BranchResultRow[],
+  tabela: ResultTableMeta | undefined,
+): AnalysisTableRow[] {
+  // Decyzja O-51 (klasa P9): prąd OBU zacisków gałęzi — gałąź z susceptancją albo z
+  // przekładnią ma na końcach inne prądy; etykiety zacisków z indeksu wyników.
+  const etykietaOd = etykietaKolumnyIndeksu(tabela, 'i_a');
+  const etykietaDo = etykietaKolumnyIndeksu(tabela, 'i_do_a');
   return rows.map((row, index) => ({
     key: `branch-result:${row.branch_id}:${index}`,
     type: 'Gałąź',
     name: row.name || formatResultObjectLabel(row.element_id ?? row.branch_id) || row.branch_id,
     voltage: `${formatResultObjectLabel(row.from_bus)} → ${formatResultObjectLabel(row.to_bus)}`,
     input: 'Rozpływ mocy; dane z wyniku serwerowego',
-    resultA: `${formatNullableResult('I', row.i_a, 'A', 1)}; ${formatNullableResult('obc.', row.loading_pct, '%', 1)}`,
+    resultA: `${formatNullableResult(etykietaOd, row.i_a, 'A', 1)}; ${formatNullableResult(etykietaDo, row.i_do_a, 'A', 1)}; ${formatNullableResult('obc.', row.loading_pct, '%', 1)}`,
     resultB: `${formatNullableResult('P', row.p_mw, 'MW', 3)}; ${formatNullableResult('Q', row.q_mvar, 'MVAr', 3)}; ${formatNullableResult('S', row.s_mva, 'MVA', 3)}`,
-    status: formatFlags(row.flags),
+    status:
+      row.loading_pct === null && row.loading_powod_braku_pl
+        ? `${formatFlags(row.flags)}; obciążenie: ${row.loading_powod_braku_pl}`
+        : formatFlags(row.flags),
   }));
 }
 
@@ -693,7 +709,10 @@ function useServerAnalysisRows(runId: string | null): ServerAnalysisRowsState {
         if (hasResultTable('branches', tables)) {
           batches.push(
             fetchBranchResults(selectedRunId).then((payload) =>
-              buildBranchResultAnalysisRows(Array.isArray(payload.rows) ? payload.rows : []),
+              buildBranchResultAnalysisRows(
+                Array.isArray(payload.rows) ? payload.rows : [],
+                tables.find((tabela) => tabela.table_id === 'branches'),
+              ),
             ),
           );
         }
@@ -913,6 +932,9 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const setWynikiTab = useShellStore((state) => state.setWynikiTab);
   const setActiveSpace = useShellStore((state) => state.setActiveSpace);
+  // Karta AB-1a Pakiet D2 §7: zakładka „ncrfg-tests" renderuje JEDYNY ekran zdolności —
+  // macierz NC RfG ui2 (kontrakt V2); dawna zakładka V1 skasowana.
+  const trybZaawansowania = useShellStore((state) => state.advancementMode);
   // P-1: zdolności E-33 (wkłady źródeł) i E-34 (weryfikacja cieplna/dynamiczna)
   // mają realnego dostawcę w warsztacie Wyników — zakładka zwarć (sekcja
   // „Wkłady do zwarcia" + panel „Bilans IEC 60909"). Deep-link zakładki
@@ -1054,7 +1076,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         ) : activeAnalysisTab === 'comparison_wizard' ? (
           <AnalysisSurfaceComparisonWizard />
         ) : activeAnalysisTab === 'ncrfg-tests' ? (
-          <NcRfgTestsTab />
+          <MacierzNcRfg trybZaawansowania={trybZaawansowania} />
         ) : activeAnalysisTab === 'trace' ? (
           <div className="space-y-4">
             <ElementCalculationProofPanel
@@ -1270,7 +1292,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       label: 'Etap 2 GPZ i źródło',
       status: snapshotCounts.sources > 0 && snapshotCounts.bays > 0 ? 'gotowe' : 'brak_danych',
       dataSummary: `${snapshotCounts.sources} źródeł, ${snapshotCounts.bays} pól SN, ${snapshotCounts.transformers} transformatorów`,
-      missingFields: snapshotCounts.sources > 0 && snapshotCounts.bays > 0 ? [] : ['źródło GPZ', 'pola odpływowe', 'dane zwarciowe'],
+      missingFields: snapshotCounts.sources > 0 && snapshotCounts.bays > 0 ? [] : ['źródło GPZ', 'pola liniowe GPZ', 'dane zwarciowe'],
       sourceRef: 'ENM / katalog GPZ',
       fixAction: { label: 'Otwórz GPZ', onClick: openConfigurationOverview },
     },
@@ -1289,7 +1311,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       stage: 'stations',
       label: 'Etap 4 Stacje',
       status: snapshotCounts.substations > 0 && snapshotCounts.transformers > 0 ? 'gotowe' : 'brak_danych',
-      dataSummary: `${snapshotCounts.substations} stacji, ${snapshotCounts.transformers} transformatorów SN/nN`,
+      dataSummary: `${snapshotCounts.substations} stacji, ${snapshotCounts.transformers} transformatorów`,
       missingFields: snapshotCounts.substations > 0 && snapshotCounts.transformers > 0 ? [] : ['typ stacji', 'transformator z katalogu', 'strona nN'],
       sourceRef: 'ENM / katalog stacji',
       fixAction: { label: 'Konfiguruj stacje', onClick: openConfigurationOverview },
@@ -1706,9 +1728,14 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             disabled={!audit2ProofPack.data || audit2Report.isPending}
             onClick={() => {
               if (!audit2ProofPack.data) return;
+              const stationId = audit2ProofPack.data.station_id;
               audit2Report.mutate({
                 project_name: activeProjectName ?? 'project',
-                station_id: audit2ProofPack.data.station_id,
+                station_id: stationId,
+                // Raport nazywa stację nazwą z modelu, nigdy identyfikatorem.
+                station_name:
+                  snapshot?.substations?.find((stacja) => stacja.ref_id === stationId)?.name
+                  || 'Stacja bez nazwy',
                 proof_pack: audit2ProofPack.data,
                 operator_pl: 'PSE',
                 generated_at_iso: '1970-01-01T00:00:00Z',
@@ -1855,12 +1882,16 @@ function ComplianceSurface() {
   // kanoniczny E-26 „Charakterystyki FRT/LVRT/HVRT" ZOSTAJE, dostawcą UI jest
   // teraz `EkranFrt` (ui2, superset — dobór modułu+operatora, realny bieg
   // trajektorii z backendu, werdykt), zamiast dawnego statycznego widoku
-  // krzywych z zaślepką `no_module`. Tryb zaawansowania ze wspólnego store'a
-  // powłoki (Zustand globalny; identycznie jak zakładka `frt` warsztatu wyników).
+  // krzywych bez modelu dynamicznego (nieukończona zaślepka). Tryb
+  // zaawansowania ze wspólnego store'a powłoki (Zustand globalny; identycznie
+  // jak zakładka `frt` warsztatu wyników).
   const trybZaawansowania = useShellStore((state) => state.advancementMode);
   return (
     <div data-testid="compliance-surface" className="space-y-4">
-      <EkranFrt trybZaawansowania={trybZaawansowania} />
+      <EkranFrt
+        trybZaawansowania={trybZaawansowania}
+        onOtworzDowod={(ref) => navigateToProof({ selectionId: ref })}
+      />
     </div>
   );
 }
@@ -2335,9 +2366,11 @@ function CatalogHelperSurface({ surface }: { surface: WorkspaceSurfaceDescriptor
 
 function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const executionRuns = useExecutionRunsStore((state) => state.runs);
   const projectId = useAppStateStore((state) => state.activeProjectId);
-  // Phase 39: auto-pull snapshot_id z aktywnego snapshot store (real graph).
+  // Wskaźnik "wersja układu wczytana" — niezależny od bramkowania biegu (poniżej),
+  // informuje wyłącznie o stanie lokalnego store'u schematu.
   const snapshotId = useSnapshotStore((state) => state.snapshot?.header?.hash_sha256 ?? null);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const selectedElement = useSelectionStore((state) => state.selectedElement);
@@ -2347,8 +2380,8 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   // Phase 10: integracja audit2 ProofPack.
   const generateProofPack = useGenerateAudit2ProofPack();
   const stationConfigList = useStationAudit2ConfigList(projectId);
-  // Integracja rozszerzonego rozpływu mocy.
-  const runPowerFlow = useRunAudit2PowerFlow();
+  // Integracja rozszerzonego rozpływu mocy — bieg kanoniczny na przypadku aktywnym.
+  const runPowerFlow = useRunExtendedPowerFlow();
   const proofCandidateRefs = useMemo(
     () => selectedElement ? [selectedElement.id, selectedElement.name ?? ''] : [],
     [selectedElement],
@@ -2531,21 +2564,17 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         <button
           type="button"
           data-testid="audit2-power-flow-run"
-          disabled={!projectId || !activeRunId || runPowerFlow.isPending || (stationConfigList.data ?? []).length === 0}
+          disabled={!activeCaseId || runPowerFlow.isPending || (stationConfigList.data ?? []).length === 0}
           onClick={() => {
-            if (!projectId || !activeRunId) return;
+            if (!projectId || !activeCaseId) return;
             const configs = stationConfigList.data ?? [];
             const stationId = configs[0]?.station_id ?? '';
             if (!stationId) return;
             runPowerFlow.mutate({
-              case_id: activeRunId,
-              project_id: projectId,
-              station_id: stationId,
-              base_mva: 100.0,
-              slack_node_id: 'slack',
-              // Phase 39: auto-inject snapshot_id z aktywnego snapshot store
-              // — backend laduje real NetworkGraph zamiast empty stub.
-              snapshot_id: snapshotId ?? undefined,
+              caseId: activeCaseId,
+              audit2ProjectId: projectId,
+              audit2StationId: stationId,
+              baseMva: 100.0,
             });
           }}
           className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -2555,22 +2584,23 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         {runPowerFlow.data && (
           <div data-testid="audit2-power-flow-result" className="mt-3 space-y-2 rounded border border-blue-300 bg-blue-50 p-3 text-xs text-blue-900">
             <div className="font-semibold">
-              Wynik dla wybranej stacji
+              Wynik rozszerzonego rozpływu mocy
             </div>
             <div>
-              Obliczenie serwerowe: {runPowerFlow.data.solver_attempted ? 'uruchomione' : 'nieuruchomione'}
-              {runPowerFlow.data.solver_error && (
-                <span className="ml-2 text-rose-700">(błąd: {runPowerFlow.data.solver_error.slice(0, 80)})</span>
+              Obliczenie serwerowe: {runPowerFlow.data.status === 'DONE' ? 'uruchomione' : 'nieuruchomione'}
+              {runPowerFlow.data.errorMessage && (
+                <span className="ml-2 text-rose-700">(błąd: {runPowerFlow.data.errorMessage.slice(0, 80)})</span>
               )}
             </div>
             <div>
-              Model obliczeniowy: {runPowerFlow.data.graph_node_count} węzłów,{' '}
-              {runPowerFlow.data.graph_branch_count} gałęzi,{' '}
-              {runPowerFlow.data.graph_inverter_source_count} źródeł.
+              Model obliczeniowy: {runPowerFlow.data.busCount} węzłów,{' '}
+              {runPowerFlow.data.branchCount} gałęzi,{' '}
+              {runPowerFlow.data.sourceCount} źródeł.
             </div>
             <div className="text-[11px]">
-              Zastosowane moduły walidacji:{' '}
-              {runPowerFlow.data.audit2_extensions_keys.map(publicAuditExtensionLabel).join(', ')}
+              Konfiguracja stacji: {runPowerFlow.data.audit2Applied
+                ? 'zastosowana (zaczepy, statyzm P(f), impedancja bloku)'
+                : 'brak zapisanej konfiguracji dla wybranej stacji'}
             </div>
             <details>
               <summary className="cursor-pointer">Ślad zastosowanych danych katalogowych</summary>
@@ -2878,8 +2908,13 @@ const RODZAJ_EKRANU_V126: Partial<Record<string, RodzajPrezentowany>> = {
   'E-44': 'insulation_coordination',
   'E-45': 'transient_trv',
   'E-46': 'motor_starting',
-  'E-47': 'hosting_capacity',
-  'E-48': 'opf_loss_lcc',
+  // 'E-47' (hosting capacity OZE) i 'E-48' (OPF i optymalizacja strat) ZDJĘTE
+  // z mapy — oba rodzaje wycofane kartą W3-E (2026-09-09): duplikują kanon
+  // liczony gdzie indziej, backend odmawia URUCHOMIENIA nowego biegu (410).
+  // Wpis zostawiony wskazywałby rodzaj nieobecny na liście wyboru okna, więc
+  // ekran po cichu pokazałby PIERWSZĄ pozycję katalogu, czyli inną analizę
+  // niż obiecuje wejście — to samo rozstrzygnięcie, co dla E-41/E-49. Typ
+  // mapy (`RodzajPrezentowany`) i tak nie pozwoliłby tu na rodzaj wycofany.
   'E-50': 'uncertainty_sensitivity',
 };
 
@@ -2988,9 +3023,8 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-09':
       // Etap 17 dostawy: Historia i audyt operacji.
       return <AuditTrailSurface surface={surface} />;
-    case 'E-39':
-      // Sprint 2 dostawy: Walidacja sieci referencyjnych (Reference Network Validation).
-      return <ReferenceNetworkSurface surface={surface} />;
+    // E-39 (Walidacja sieci referencyjnych / ReferenceNetworkSurface) skasowane
+    // karta K2 (2026-09-09) — patrz screenCanonRegistry.ts.
     case 'E-40':
     case 'E-41':
     case 'E-42':

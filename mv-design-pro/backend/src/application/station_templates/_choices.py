@@ -48,6 +48,70 @@ TR_BLOCK_PV_OPTIONS = (
     CatalogChoice("tr-sn-nn-15-04-2500kva-dyn11", "Block TR PV 2.5 MVA 0.4/15 kV", "TRAFO_SN_NN"),
 )
 
+TR_OPTIONS_MEDIUM_20KV = (  # 400-1250 kVA, sieć 20 kV — stacja abonencka wariant 20 kV
+    CatalogChoice("tr-sn-nn-20-04-400kva-dyn11", "TR 400 kVA SN/nN 20/0.4 kV", "TRAFO_SN_NN"),
+    CatalogChoice(
+        "tr-sn-nn-20-04-630kva-dyn11",
+        "TR 630 kVA SN/nN 20/0.4 kV",
+        "TRAFO_SN_NN",
+        default=True,
+    ),
+    CatalogChoice("tr-sn-nn-20-04-1000kva-dyn11", "TR 1000 kVA SN/nN 20/0.4 kV", "TRAFO_SN_NN"),
+    CatalogChoice("tr-sn-nn-20-04-1250kva-dyn11", "TR 1250 kVA SN/nN 20/0.4 kV", "TRAFO_SN_NN"),
+)
+
+# WN/SN transformer options (110/15 kV i 110/20 kV) — GPZ (rola A, V12T-016).
+# Referencje z `mv_transformer_catalog.py::TRANSFORMER_WN_SN_110_15/_20`
+# (PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42).
+TR_OPTIONS_WN_SN_110_15 = (
+    CatalogChoice("tr-wn-sn-110-15-10mva-yd11", "TR 110/15 kV 10 MVA Yd11", "TRAFO_SN_NN"),
+    CatalogChoice("tr-wn-sn-110-15-16mva-yd11", "TR 110/15 kV 16 MVA Yd11", "TRAFO_SN_NN"),
+    CatalogChoice(
+        "tr-wn-sn-110-15-25mva-yd11", "TR 110/15 kV 25 MVA Yd11", "TRAFO_SN_NN", default=True
+    ),
+    CatalogChoice("tr-wn-sn-110-15-40mva-yd11", "TR 110/15 kV 40 MVA Yd11", "TRAFO_SN_NN"),
+    CatalogChoice("tr-wn-sn-110-15-63mva-yd11", "TR 110/15 kV 63 MVA Yd11", "TRAFO_SN_NN"),
+)
+
+TR_OPTIONS_WN_SN_110_20 = (
+    CatalogChoice("tr-wn-sn-110-20-10mva-yd11", "TR 110/20 kV 10 MVA Yd11", "TRAFO_SN_NN"),
+    CatalogChoice(
+        "tr-wn-sn-110-20-16mva-yd11", "TR 110/20 kV 16 MVA Yd11", "TRAFO_SN_NN", default=True
+    ),
+    CatalogChoice("tr-wn-sn-110-20-25mva-yd11", "TR 110/20 kV 25 MVA Yd11", "TRAFO_SN_NN"),
+    CatalogChoice("tr-wn-sn-110-20-40mva-yd11", "TR 110/20 kV 40 MVA Yd11", "TRAFO_SN_NN"),
+    CatalogChoice("tr-wn-sn-110-20-63mva-yd11", "TR 110/20 kV 63 MVA Yd11", "TRAFO_SN_NN"),
+)
+
+# Warunki zasilania GPZ (ZRODLO_SN) — równoważnik systemowy widziany z szyny SN
+# GPZ (`mv_source_catalog.py::SOURCE_SYSTEM_TYPES`, "Warunki przyłączenia /
+# standard OSD"). Transformator(y) WN/SN materializują się OBOK (tabliczka +
+# SLD) — impedancja układu jest już ujęta w Sk3 równoważnika, więc kolejność
+# NIE dubluje reaktancji (kontrakt `add_grid_source_sn`).
+GPZ_SOURCE_OPTIONS_15 = (
+    CatalogChoice("src-gpz-15kv-200mva-rx010", "Zasilanie GPZ 15 kV Sk3 200 MVA", "ZRODLO_SN"),
+    CatalogChoice(
+        "src-gpz-15kv-250mva-rx010",
+        "Zasilanie GPZ 15 kV Sk3 250 MVA",
+        "ZRODLO_SN",
+        default=True,
+    ),
+    CatalogChoice("src-gpz-15kv-350mva-rx010", "Zasilanie GPZ 15 kV Sk3 350 MVA", "ZRODLO_SN"),
+    CatalogChoice("src-gpz-15kv-500mva-rx010", "Zasilanie GPZ 15 kV Sk3 500 MVA", "ZRODLO_SN"),
+)
+
+GPZ_SOURCE_OPTIONS_20 = (
+    CatalogChoice("src-gpz-20kv-200mva-rx010", "Zasilanie GPZ 20 kV Sk3 200 MVA", "ZRODLO_SN"),
+    CatalogChoice(
+        "src-gpz-20kv-250mva-rx010",
+        "Zasilanie GPZ 20 kV Sk3 250 MVA",
+        "ZRODLO_SN",
+        default=True,
+    ),
+    CatalogChoice("src-gpz-20kv-350mva-rx012", "Zasilanie GPZ 20 kV Sk3 350 MVA", "ZRODLO_SN"),
+    CatalogChoice("src-gpz-20kv-500mva-rx010", "Zasilanie GPZ 20 kV Sk3 500 MVA", "ZRODLO_SN"),
+)
+
 TR_BLOCK_BESS_OPTIONS = (
     CatalogChoice("tr-sn-nn-15-04-1250kva-dyn11", "Block TR BESS 1.25 MVA", "TRAFO_SN_NN"),
     CatalogChoice("tr-sn-nn-15-04-2500kva-dyn11", "Block TR BESS 2.5 MVA", "TRAFO_SN_NN"),
@@ -260,6 +324,62 @@ CT_OPTIONS = (
 VT_OPTIONS = (
     CatalogChoice("vt_15kv_100v_3p_abb", "VT 15 kV / 100 V, 3-fazowy (ABB)", "VT", default=True),
     CatalogChoice("vt_15kv_100v_05_abb", "VT 15 kV / 100 V, kl. 0,5 (ABB)", "VT"),
+)
+
+# Przekładniki KLASY POMIAROWEJ (rozliczeniowej) — stacja abonencka (rola C,
+# V12T-016). Klasa dokładności "0.5" (nie "5P…", które jest klasą OCHRONNĄ) —
+# rekordy z `mv_auxiliary_catalog.py::get_all_ct_types/get_all_vt_types`.
+CT_METERING_OPTIONS = (
+    CatalogChoice("ct_50_1_0_5_5va_arteche", "CT 50/1 A kl. 0,5 (rozliczeniowy)", "CT"),
+    CatalogChoice(
+        "ct_100_1_0_5_5va_abb",
+        "CT 100/1 A kl. 0,5 (rozliczeniowy)",
+        "CT",
+        default=True,
+    ),
+    CatalogChoice("ct_150_1_0_5_10va_abb", "CT 150/1 A kl. 0,5 (rozliczeniowy)", "CT"),
+)
+
+VT_METERING_OPTIONS = (
+    CatalogChoice(
+        "vt_15kv_100v_05_abb",
+        "VT 15 kV / 100 V kl. 0,5 (rozliczeniowy)",
+        "VT",
+        default=True,
+    ),
+)
+
+VT_METERING_OPTIONS_20 = (
+    CatalogChoice(
+        "vt_20kv_100v_05_arteche",
+        "VT 20 kV / 100 V kl. 0,5 (rozliczeniowy)",
+        "VT",
+        default=True,
+    ),
+)
+
+# Bateria kondensatorów SN (KOMPENSATOR_SN) — kompensacja mocy biernej
+# (rola E, V12T-016). Rekordy z `mv_shunt_capacitor_catalog.py` (referencyjne,
+# B = Q_rated / U_rated² materializowane przez katalog).
+KOMPENSATOR_OPTIONS_15 = (
+    CatalogChoice("KOMP_SN_0V6_15KV", "Bateria kondensatorów SN 0,6 Mvar 15 kV", "KOMPENSATOR_SN"),
+    CatalogChoice(
+        "KOMP_SN_1V2_15KV",
+        "Bateria kondensatorów SN 1,2 Mvar 15 kV",
+        "KOMPENSATOR_SN",
+        default=True,
+    ),
+    CatalogChoice("KOMP_SN_2V4_15KV", "Bateria kondensatorów SN 2,4 Mvar 15 kV", "KOMPENSATOR_SN"),
+)
+
+KOMPENSATOR_OPTIONS_20 = (
+    CatalogChoice(
+        "KOMP_SN_1V8_20KV",
+        "Bateria kondensatorów SN 1,8 Mvar 20 kV",
+        "KOMPENSATOR_SN",
+        default=True,
+    ),
+    CatalogChoice("KOMP_SN_3V6_20KV", "Bateria kondensatorów SN 3,6 Mvar 20 kV", "KOMPENSATOR_SN"),
 )
 
 

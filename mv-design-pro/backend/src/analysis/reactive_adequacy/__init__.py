@@ -7,7 +7,7 @@ adekwatnosc rezerwy biernej do podtrzymania napiecia:
   - per zrodlo: wykorzystanie/rezerwa Q (w gore i w dol) + znacznik NASYCENIA,
   - bilans bierny systemu (Q generowana vs Q pobierana),
   - wezly z naruszeniem pasma napieciowego (|V| poza [U_min; U_max]),
-  - werdykt PL: "wystarczajaca rezerwa Q" / "rezerwa Q wyczerpana" /
+  - werdykt PL: "wystarczająca rezerwa Q" / "rezerwa Q wyczerpana" /
     "dane niekompletne", z wywodem White Box i deterministycznym SHA-256.
 
 Modul NIE liczy fizyki, NIE importuje solvera (granica warstw, arch_guard:

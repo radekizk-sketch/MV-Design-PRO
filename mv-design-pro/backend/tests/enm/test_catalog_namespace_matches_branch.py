@@ -34,7 +34,13 @@ def _siec_ze_stacja() -> dict:
     snapshot = _op(
         enm,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     snapshot = _op(
         snapshot,
@@ -96,7 +102,9 @@ def test_kabel_nie_da_sie_przypiac_do_wylacznika_pola() -> None:
     )
 
     assert wynik.get("error_code") == "catalog.namespace_mismatch", wynik
-    assert "KABEL_SN" in str(wynik.get("error"))
+    # Karta #142: kategoria katalogu nazwą grupy, nie kodem przestrzeni katalogu.
+    assert "„Typy kabli SN”" in str(wynik.get("error"))
+    assert "KABEL_SN" not in str(wynik.get("error"))
 
 
 def test_wiazanie_aparatu_przezywa_odrzucona_probe() -> None:

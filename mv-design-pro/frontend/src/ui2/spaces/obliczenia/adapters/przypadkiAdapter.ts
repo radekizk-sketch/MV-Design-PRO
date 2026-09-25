@@ -29,18 +29,27 @@
  *   `api.ts:51`). Klonowanie (dziedziczenie „jak…, ale…"): `useStudyCasesStore.cloneCase`
  *   (`store.ts:204` → `api.cloneStudyCase` `api.ts:107`).
  *
- * TODO-KARTA (ograniczenia — brak źródła w typach read-only, karta §2 „NIE zgaduj"):
- * 1. „Temperatura przewodów" oraz „Stan łączeń" NIE są polami `StudyCaseConfig`
- *    (`types.ts:46-71`; temperatura nieobecna, stany łączeń utrwalane osobną operacją
- *    domenową `set_case_switch_state`, niewystawianą przez store study-cases) →
- *    w sekcji „Założenia" renderowane jako „wkrótce", bez fabrykowania wartości.
- * 2. `CaseKind` (`ui/app-state/store.ts:56`) nie jest niesiony przez `StudyCase`;
- *    przy aktywacji ustawiamy `'ShortCircuitCase'` — tak jak istniejący orkiestrator
- *    powłoki (`ui2/legacy/useLegacyOrchestrator.ts:688-692`). Docelowe źródło rodzaju
- *    przypadku → osobna karta.
- * 3. Klonowanie (`api.cloneStudyCase`) przyjmuje wyłącznie `new_name` — nie ustawia
- *    aktywności ani opisu; „Ustaw jako aktywny" dotyczy tylko ścieżki „nowy pusty"
- *    (`createCase.set_active`).
+ * STAN FAKTYCZNY (KARTA-UI2 §1 p. 10, zamknięcie poprzednich ograniczeń):
+ * 1. „Temperatura przewodów" oraz „Stan łączeń" NIE są i NIE BĘDĄ polami
+ *    `StudyCaseConfig` (`types.ts:46-71`; temperatura nie istnieje w modelu
+ *    przypadku, stan łączeniowy jest częścią `OperatingScenario` (CV-3.1,
+ *    `enm/scenariusze.py`) — inny byt) → `KartaPrzypadku.tsx` NIE renderuje tych
+ *    dwóch wierszy w sekcji „Założenia" (dyrektywa właściciela „zero fabrykacji":
+ *    kontrolka bez dostawcy w kontrakcie jest fantomem, nie stanem „wkrótce").
+ * 2. GRANICA PRODUKTU (`docs/v12xx/REJESTR_DLUGU.md` — do wpisania przy okazji
+ *    następnej karty modelu domenowego przypadku): `CaseKind` (`ui/app-state/
+ *    store.ts:56`) nie jest niesiony przez `StudyCase`; przy aktywacji ustawiamy
+ *    `'ShortCircuitCase'` — TEN SAM domyślny wybór co istniejący orkiestrator
+ *    powłoki (`ui2/legacy/useLegacyOrchestrator.ts:688-692`, jedno źródło
+ *    prawdy dla obu wywołujących). Dodanie realnego pola `case_kind` do modelu
+ *    `StudyCase` backendu wymaga migracji schematu i wszystkich konsumentów
+ *    (decyzja produktowa o zakresie rodzajów przypadku) — poza plikami tej karty.
+ * 3. Klonowanie (`api.cloneStudyCase`) przyjmuje WYŁĄCZNIE `new_name` — kanon
+ *    (KARTA-UI2 §1 p. 10: „formularz pokazuje dokładnie to, co backend przyjmuje")
+ *    potwierdza, że to jest ZAMIERZONY kształt kontraktu, nie luka: klon kopiuje
+ *    konfigurację 1:1, wynik zawsze NONE, więc „aktywność"/„opis" nie mają się
+ *    do czego odnieść przy dziedziczeniu — te dwa pola dotyczą wyłącznie ścieżki
+ *    „nowy pusty" (`createCase.set_active`), co `NowyPrzypadek.tsx` już wymusza.
  */
 
 import { useCallback, useEffect, useState } from 'react';

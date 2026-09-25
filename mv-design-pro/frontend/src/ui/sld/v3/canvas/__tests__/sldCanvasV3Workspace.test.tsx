@@ -34,6 +34,7 @@ import type {
   ShortCircuitBranchFlowV1,
   ShortCircuitFlowOverlayInput,
 } from '../../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
+import falownikiRozplywScenyGpzFeederWynik from '../../../../../harness-fixtures/generated/falowniki_rozplyw_scena_gpz_feeder_wynik.json';
 
 afterEach(() => {
   cleanup();
@@ -407,5 +408,68 @@ describe('SldCanvasV3Workspace — karta S-B: strzałki rozpływu prądu zwarcio
       JSON.stringify(buildFaultFlowOverlayForSnapshot(enm, input)),
     );
     expect(buildFaultFlowOverlayForSnapshot(enm, null)).toEqual({});
+  });
+
+  // ---------------------------------------------------------------------------
+  // Karta HARNESS-RESZTA (kontynuacja, ścieżka b) — DOWÓD WIĄZANIA na realnej
+  // fixturze backendu, nie na syntetycznym wejściu jak testy wyżej. Wejście =
+  // `falowniki_rozplyw_scena_gpz_feeder_wynik.json`
+  // (`scripts/eksport_fixtur_harnessu.py::falowniki_rozplyw_scena_gpz_feeder_
+  // wynik`, realny bieg `short_circuit_sn` na kopii gpzFeeder z dołożonym
+  // falownikiem Stacji S02), scena = ORYGINALNA `gpzFeeder.enm.json`
+  // (NIETKNIĘTA — ten sam plik, który renderuje `screenshot-harness-main.tsx`
+  // `?fixture=gpzFeeder&overlay=faultflow`). PRZED naprawą `_sc_rozplyw_
+  // galeziowy` (`enm/canonical_analysis.py`, napotkany błąd, naprawiony w tej
+  // samej karcie) ten dokładny test zwracał WYNIK PUSTY — `branch_id` niósł
+  // klucz wewnętrzny grafu solvera, nie `ref_id` domenowy, więc ŻADEN wpis
+  // fixtury nie wiązał się z `ownerRef` sceny (zmierzone bezpośrednio: sonda
+  // przed naprawą → `Object.keys(wynik).length === 0`).
+  // ---------------------------------------------------------------------------
+  it('KARTA Z-3 ŚCIEŻKA (b): fixtura realnego biegu backendu na gpzFeeder WIĄŻE SIĘ z realną sceną — DWIE strzałki, poprawnie zorientowane', () => {
+    const realInput = falownikiRozplywScenyGpzFeederWynik as unknown as ShortCircuitFlowOverlayInput;
+    const gpzEnm = (
+      JSON.parse(
+        readFileSync(resolve(here, '../../scene/__tests__/fixtures/gpzFeeder.enm.json'), 'utf8'),
+      ) as { readonly enm: EnergyNetworkModel }
+    ).enm;
+
+    // WEJŚCIE: dokładnie dwa wpisy (tor GPZ→S01 sieci nadrzędnej, tor S02→GPZ
+    // falownika) — oba refy gałęzi rzeczywiście istnieją w topologii sceny
+    // (zero fabrykacji: `Branch.ref_id` gpzFeeder, nie wymyślony identyfikator).
+    expect(realInput.flows).toHaveLength(2);
+    const refyGaleziSceny = new Set(
+      gpzEnm.branches?.map((b: { readonly ref_id: string }) => b.ref_id) ?? [],
+    );
+    for (const flow of realInput.flows) {
+      expect(refyGaleziSceny.has(flow.branch_id)).toBe(true);
+    }
+
+    const wynik = buildFaultFlowOverlayForSnapshot(gpzEnm, realInput);
+    const orientationGpzFeeder = orientedSegmentRefs(gpzEnm);
+
+    // WYJŚCIE: DWIE strzałki (nie zero — dowód wiązania), jedna per gałąź.
+    expect(Object.keys(wynik)).toHaveLength(2);
+    for (const flow of realInput.flows) {
+      const wpis = wynik[flow.branch_id];
+      expect(wpis).toBeDefined();
+      expect(wpis!.iKa).toBeCloseTo(flow.i_ka!, 9);
+      // `forward` = zgodność kierunku solvera (`from_to`/`to_from`) Z
+      // orientacją odcinka na rysunku (kontrakt `buildFaultFlowOverlayFromScene`).
+      const orientowanyDoPrzodu = orientationGpzFeeder.get(flow.branch_id);
+      expect(orientowanyDoPrzodu).toBeDefined();
+      expect(wpis!.forward).toBe((flow.direction === 'from_to') === orientowanyDoPrzodu);
+    }
+
+    // Tor sieci nadrzędnej (THEVENIN_GRID, segment_L→S01) dominuje względem
+    // toru falownika (S02→GPZ) — falownik 0,4 MW nie przebija sieci 250 MVA.
+    const torGpz = realInput.flows.find((f) => f.source_id === 'THEVENIN_GRID')!;
+    const torFalownika = realInput.flows.find((f) => f.source_id !== 'THEVENIN_GRID')!;
+    expect(wynik[torGpz.branch_id]!.iKa).toBeGreaterThan(wynik[torFalownika.branch_id]!.iKa);
+    expect(wynik[torGpz.branch_id]!.payloadMaxKa).toBe(wynik[torGpz.branch_id]!.iKa);
+
+    // Determinizm na WEJŚCIU REALNYM (nie tylko syntetycznym, test wyżej).
+    expect(JSON.stringify(buildFaultFlowOverlayForSnapshot(gpzEnm, realInput))).toBe(
+      JSON.stringify(wynik),
+    );
   });
 });

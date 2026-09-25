@@ -60,18 +60,19 @@ import {
   type SzablonUzytkownika,
 } from './szablonyUzytkownika';
 import {
-  FIELD_ROLE_LABELS,
   contextString,
   deriveSnVoltageKv,
   resolveSegmentIdFromContext,
   templateOptionLabel,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
+import { fieldRoleLabelPl } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 import {
   useActiveOperationContext,
   useNetworkBuildStore,
 } from '../../../ui/network-build/networkBuildStore';
 import { scheduleNextOperationForm } from '../../../ui/network-build/trunkContinuation';
 import { selectBusOptions, useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { PUNKTY_NEUTRALNE_IMPEDANCYJNE } from '../../../types/uziemienie';
 import {
   KreatorGotowosc,
   KreatorInfo,
@@ -345,8 +346,7 @@ export function KreatorStacjiSnNn() {
 
   const isZrodlo = czyZrodloNn(dane.nn_configuration);
   // Rezystancja uziemienia istotna tylko dla wariantów impedancyjnych (G-STK-1).
-  const punktImpedancyjny =
-    dane.neutral_point === 'resistor_grounded' || dane.neutral_point === 'petersen_coil';
+  const punktImpedancyjny = PUNKTY_NEUTRALNE_IMPEDANCYJNE.has(dane.neutral_point);
   const isCustomNn = dane.nn_configuration === 'CUSTOM_NN';
   const zrodloTeksty =
     dane.nn_configuration === 'PV_INVERTER'
@@ -1984,7 +1984,7 @@ export function KreatorStacjiSnNn() {
             dane.pola.map((pole, index) => (
               <KreatorSekcja
                 key={pole.id}
-                tytul={`${index + 1}. ${FIELD_ROLE_LABELS[pole.field_role] ?? pole.field_role}`}
+                tytul={`${index + 1}. ${fieldRoleLabelPl(pole.field_role)}`}
                 testid={`mvd-kreator-stacja-pole-wiersz-${index + 1}`}
               >
                 <KreatorSiatka kolumny={3}>
@@ -1995,7 +1995,7 @@ export function KreatorStacjiSnNn() {
                   {torKonfiguracji === 'BLOK_RMU' ? (
                     <RzadWartosci
                       etykieta={T.polaRola}
-                      wartosc={FIELD_ROLE_LABELS[pole.field_role] ?? pole.field_role}
+                      wartosc={fieldRoleLabelPl(pole.field_role)}
                       testid={`mvd-kreator-stacja-pole-rola-${index + 1}`}
                     />
                   ) : (
@@ -2005,7 +2005,7 @@ export function KreatorStacjiSnNn() {
                       onZmiana={(v) => zmienPole(pole.id, { field_role: v as SnFieldRole })}
                       opcje={ROLE_POL.map((rola) => ({
                         id: rola,
-                        etykieta: FIELD_ROLE_LABELS[rola] ?? rola,
+                        etykieta: fieldRoleLabelPl(rola),
                       }))}
                       testid={`mvd-kreator-stacja-pole-rola-${index + 1}`}
                     />
@@ -2148,7 +2148,7 @@ export function KreatorStacjiSnNn() {
               return (
                 <KreatorSekcja
                   key={pole.id}
-                  tytul={`${index + 1}. ${FIELD_ROLE_LABELS[pole.field_role] ?? pole.field_role}`}
+                  tytul={`${index + 1}. ${fieldRoleLabelPl(pole.field_role)}`}
                   testid={`mvd-kreator-stacja-pomiar-pole-${index + 1}`}
                 >
                   <KreatorSiatka kolumny={2}>
@@ -2228,35 +2228,48 @@ export function KreatorStacjiSnNn() {
                   {/* KD-3: obwody wtórne CT/VT — dane wejściowe kryteriów bilansu.
                       Wartości liczbowe wracają z końcówek solvera (zero fizyki tutaj). */}
                   {wpis?.ct_catalog_ref ? (
-                    <KreatorSiatka kolumny={3}>
-                      <PoleLiczbowe
-                        etykieta={KRYTERIA_STRINGS.ctDlugosc}
-                        jednostka="m"
-                        wartosc={wpis.ct_dlugosc_m}
-                        onZmiana={(v) => zmienWyposazenie(pole.id, { ct_dlugosc_m: v })}
-                        krok={0.5}
-                        min={0}
-                        testid={`mvd-kreator-stacja-ct-dlugosc-${index + 1}`}
-                      />
-                      <PoleLiczbowe
-                        etykieta={KRYTERIA_STRINGS.ctPrzekroj}
-                        jednostka="mm²"
-                        wartosc={wpis.ct_przekroj_mm2}
-                        onZmiana={(v) => zmienWyposazenie(pole.id, { ct_przekroj_mm2: v })}
-                        krok={0.5}
-                        min={0}
-                        testid={`mvd-kreator-stacja-ct-przekroj-${index + 1}`}
-                      />
-                      <PoleLiczbowe
-                        etykieta={KRYTERIA_STRINGS.ctMocAparatow}
-                        jednostka="VA"
-                        wartosc={wpis.ct_moc_aparatow_va}
-                        onZmiana={(v) => zmienWyposazenie(pole.id, { ct_moc_aparatow_va: v })}
-                        krok={0.5}
-                        min={0}
-                        testid={`mvd-kreator-stacja-ct-moc-${index + 1}`}
-                      />
-                    </KreatorSiatka>
+                    <>
+                      <KreatorSiatka kolumny={3}>
+                        <PoleLiczbowe
+                          etykieta={KRYTERIA_STRINGS.ctDlugosc}
+                          jednostka="m"
+                          wartosc={wpis.ct_dlugosc_m}
+                          onZmiana={(v) => zmienWyposazenie(pole.id, { ct_dlugosc_m: v })}
+                          krok={0.5}
+                          min={0}
+                          testid={`mvd-kreator-stacja-ct-dlugosc-${index + 1}`}
+                        />
+                        <PoleLiczbowe
+                          etykieta={KRYTERIA_STRINGS.ctPrzekroj}
+                          jednostka="mm²"
+                          wartosc={wpis.ct_przekroj_mm2}
+                          onZmiana={(v) => zmienWyposazenie(pole.id, { ct_przekroj_mm2: v })}
+                          krok={0.5}
+                          min={0}
+                          testid={`mvd-kreator-stacja-ct-przekroj-${index + 1}`}
+                        />
+                        <PoleLiczbowe
+                          etykieta={KRYTERIA_STRINGS.ctMocAparatow}
+                          jednostka="VA"
+                          wartosc={wpis.ct_moc_aparatow_va}
+                          onZmiana={(v) => zmienWyposazenie(pole.id, { ct_moc_aparatow_va: v })}
+                          krok={0.5}
+                          min={0}
+                          testid={`mvd-kreator-stacja-ct-moc-${index + 1}`}
+                        />
+                      </KreatorSiatka>
+                      <KreatorSiatka kolumny={1}>
+                        <PoleLiczbowe
+                          etykieta={KRYTERIA_STRINGS.ctMocStykow}
+                          jednostka="VA"
+                          wartosc={wpis.ct_moc_stykow_va}
+                          onZmiana={(v) => zmienWyposazenie(pole.id, { ct_moc_stykow_va: v })}
+                          krok={0.1}
+                          min={0}
+                          testid={`mvd-kreator-stacja-ct-moc-stykow-${index + 1}`}
+                        />
+                      </KreatorSiatka>
+                    </>
                   ) : null}
                   {wpis?.vt_catalog_ref ? (
                     <>
@@ -2289,6 +2302,17 @@ export function KreatorStacjiSnNn() {
                           testid={`mvd-kreator-stacja-vt-moc-${index + 1}`}
                         />
                       </KreatorSiatka>
+                      <KreatorSiatka kolumny={1}>
+                        <PoleLiczbowe
+                          etykieta={KRYTERIA_STRINGS.vtMocStykow}
+                          jednostka="VA"
+                          wartosc={wpis.vt_moc_stykow_va}
+                          onZmiana={(v) => zmienWyposazenie(pole.id, { vt_moc_stykow_va: v })}
+                          krok={0.1}
+                          min={0}
+                          testid={`mvd-kreator-stacja-vt-moc-stykow-${index + 1}`}
+                        />
+                      </KreatorSiatka>
                       <PoleWyboru
                         etykieta={KRYTERIA_STRINGS.vtUzwojenie}
                         wartosc={wpis.vt_uzwojenie}
@@ -2312,11 +2336,13 @@ export function KreatorStacjiSnNn() {
                       dlugosc_m: wpis?.ct_dlugosc_m ?? null,
                       przekroj_mm2: wpis?.ct_przekroj_mm2 ?? null,
                       moc_aparatow_va: wpis?.ct_moc_aparatow_va ?? null,
+                      moc_stykow_va: wpis?.ct_moc_stykow_va ?? null,
                     }}
                     obwodVt={{
                       dlugosc_m: wpis?.vt_dlugosc_m ?? null,
                       przekroj_mm2: wpis?.vt_przekroj_mm2 ?? null,
                       moc_aparatow_va: wpis?.vt_moc_aparatow_va ?? null,
+                      moc_stykow_va: wpis?.vt_moc_stykow_va ?? null,
                     }}
                     uzwojenieVt={wpis?.vt_uzwojenie ?? 'POMIAROWE'}
                     testidSufiks={String(index + 1)}
@@ -2422,9 +2448,9 @@ export function KreatorStacjiSnNn() {
           <KreatorInfo>{T.uziemienieOpis}</KreatorInfo>
           <PoleWyboru
             etykieta={T.uziemienieUklad}
-            wartosc={dane.nn_earthing_system}
+            wartosc={dane.uklad_sieci_nn}
             opcje={T.uziemienieUkladOpcje}
-            onZmiana={(v) => zmien('nn_earthing_system', v as StacjaFormData['nn_earthing_system'])}
+            onZmiana={(v) => zmien('uklad_sieci_nn', v as StacjaFormData['uklad_sieci_nn'])}
             pomoc={T.uziemienieUkladPomoc}
             testid="mvd-kreator-stacja-uklad-nn"
           />
@@ -2438,11 +2464,13 @@ export function KreatorStacjiSnNn() {
           />
           {punktImpedancyjny ? (
             <PoleTekstowe
-              etykieta={T.uziemienieRezystancja}
-              wartosc={dane.neutral_r_ohm}
-              onZmiana={(v) => zmien('neutral_r_ohm', v)}
+              etykieta={dane.neutral_point === 'petersen_coil' ? T.uziemienieReaktancja : T.uziemienieRezystancja}
+              wartosc={dane.neutral_impedance_ohm}
+              onZmiana={(v) => zmien('neutral_impedance_ohm', v)}
               placeholder={T.uziemienieRezystancjaPlaceholder}
               pomoc={T.uziemienieRezystancjaPomoc}
+              wymagane
+              blad={bladDlaPola('neutral_impedance_ohm')}
               testid="mvd-kreator-stacja-rezystancja-uziemienia"
             />
           ) : null}

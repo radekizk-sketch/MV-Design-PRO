@@ -113,9 +113,9 @@ export function adekwatnoscQFixture(): WidokAdekwatnosciQ {
     saturation_tol_mvar: 0.001,
     default_u_min_pu: 0.95,
     default_u_max_pu: 1.05,
-    verdict: 'wystarczajaca rezerwa Q',
+    verdict: 'wystarczająca rezerwa Q',
     is_adequate: true,
-    why_pl: 'Rezerwa mocy biernej wystarczajaca do podtrzymania napiecia.',
+    why_pl: 'Rezerwa mocy biernej wystarczająca do podtrzymania napięcia.',
     sources: [
       {
         ref: 'src-1',

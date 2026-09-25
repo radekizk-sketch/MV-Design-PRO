@@ -22,7 +22,7 @@ Zostaja pola, ktore identyfikuja WEJSCIE analizy:
 - ``snapshot_id`` — wersja modelu, na ktorym liczono (rozne modele MUSZA dac
   rozne odciski, inaczej odcisk zlewalby ze soba dwie rozne sieci),
 - ``trace_id`` — identyfikator artefaktu dowodowego, z ktorego analiza powstala
-  (tresciowy skrot, patrz ``application/trace_emitters/deterministic_ids.py``).
+  (skrot SHA-256 tresci artefaktu, nie identyfikator biegu).
 
 Wypadaja pola PROWENIENCJI, ktore nie sa wejsciem obliczenia:
 - ``run_timestamp`` — zegar scienny,

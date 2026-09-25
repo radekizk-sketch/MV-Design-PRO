@@ -130,11 +130,21 @@ export interface BranchResultRow {
   name: string;
   from_bus: string;
   to_bus: string;
+  /** Prąd zacisku początkowego (`od`) [A]. */
   i_a: number | null;
+  /**
+   * Prąd zacisku końcowego (`do`) [A] — pole ADDYTYWNE kontraktu wiersza gałęzi
+   * (decyzja O-51, klasa P9): gałąź z susceptancją albo z przekładnią ma na końcach
+   * inne prądy. Opcjonalne tylko dla odpowiedzi sprzed pola; `null` = brak danej.
+   */
+  i_do_a?: number | null;
   s_mva: number | null;
   p_mw: number | null;
   q_mvar: number | null;
+  /** Obciążenie z większego ilorazu prąd zacisku / prąd znamionowy zacisku [%]. */
   loading_pct: number | null;
+  /** Powód braku obciążenia (addytywne; `null`, gdy obciążenie policzono). */
+  loading_powod_braku_pl?: string | null;
   flags: string[];
 }
 
@@ -243,6 +253,113 @@ export interface ShortCircuitRow {
   proof_ref?: string | null;
   dopuszczalnosc_raportowa?: boolean;
   reporting_limitations?: string[];
+  /** Ograniczenia raportowe po polsku (karta #145, `etykiety_raportowe_pl` backendu). */
+  reporting_limitations_pl?: string[];
+}
+
+/**
+ * Impedancja zespolona (Ω) w postaci re/im — kształt WPROST z solvera (backend
+ * `ComplexOhmResponse`-owy dict, ślad WHITE BOX `enm/mapping.py::impedancja_zasilania_systemowego`).
+ */
+export interface ZQOhm {
+  re: number;
+  im: number;
+}
+
+/**
+ * CV-4.3 K7: jeden wpis śladu WHITE BOX wyprowadzenia Z_Q źródła sieciowego
+ * (IEC 60909-0:2016 §6.2.1 eq. 6) — `raw_result.zrodla_sieciowe[]`
+ * (`enm/mapping.py::build_grid_source_trace` → `impedancja_zasilania_systemowego`,
+ * karta `backend/tests/enm/test_k7_sk_min.py`). Kolejność pól = kolejność ref_id
+ * (deterministyczna, sort backendu).
+ *
+ * Tryb `IMPEDANCJA_JAWNA` niesie WYŁĄCZNIE `ref_id`/`tryb`/`scenariusz`/`u_nq_kv`/
+ * `z_q_ohm`/`formula` (impedancja fizyczna, bez c, bez wariantu MIN) — reszta pól
+ * jest wtedy nieobecna (`undefined`), nie `null` (backend nie wysyła klucza wcale).
+ */
+export interface ZrodloSiecioweSlad {
+  ref_id: string;
+  /**
+   * Token trybu danych + scenariusza: „MOC_ZWARCIOWA" | „MOC_ZWARCIOWA_MIN" |
+   * „PRAD_ZWARCIOWY" | „PRAD_ZWARCIOWY_MIN" | „IMPEDANCJA_JAWNA" | jeden z nich
+   * + sufiks „_MAX_JAKO_MIN" (scenariusz MIN bez własnych danych — Z_Q z MAX).
+   */
+  tryb: string;
+  scenariusz: 'MAX' | 'MIN';
+  u_nq_kv: number;
+  sk3_mva?: number;
+  ik3_ka?: number;
+  /** Współczynnik napięciowy c (IEC 60909-0 Tab. 1) — nieobecny dla impedancji jawnej. */
+  c?: number;
+  pasmo_c?: 'nN' | 'SN/WN';
+  rx_ratio?: number;
+  rx_ratio_zrodlo?: 'MODEL_MIN' | 'MODEL_MAX' | 'MODEL' | 'IEC_60909_DOMYSLNY_0_1';
+  z_q_abs_ohm?: number;
+  z_q_ohm: ZQOhm;
+  formula: string;
+  /** Kod gotowości (np. „source.sk_min_missing") — obecny WYŁĄCZNIE gdy scenariusz
+   *  MIN liczył się z danych MAX (brak S″kQmin/I″kQmin); nigdy cicho. */
+  zalozenie?: string;
+  zalozenie_opis?: string;
+}
+
+/**
+ * CV-4.3 K7: jedno założenie biegu nazwane kodem gotowości — `raw_result.zalozenia[]`
+ * (`enm/assembler.py::WejscieZwarcia.zalozenia`, wyprowadzone z wpisów
+ * `zrodla_sieciowe` niosących `zalozenie`). Pusta/nieobecna lista = bieg bez założeń
+ * (`"zalozenia" not in raw_result"` po stronie backendu — pole wtedy nie istnieje).
+ */
+export interface ZalozenieBieguSlad {
+  code: string;
+  element_ref: string;
+  message_pl: string;
+  scenariusz: 'MAX' | 'MIN';
+}
+
+/**
+ * Współczynnik napięciowy c ZAPISANY na biegu (karta UI2 p.7,
+ * `api/canonical_run_views.py::_c_factor_biegu_zwarcia`) — jawny override
+ * (`tryb: 'jawny'`, `wartosc` liczbą) albo dobór automatyczny per węzeł z jego
+ * pasma napięciowego (`tryb: 'auto_per_wezel'`, `wartosc: null` — nie ma
+ * jednej liczby, więc pole NIE jest fabrykowane).
+ */
+export interface CFactorBiegu {
+  tryb: 'jawny' | 'auto_per_wezel';
+  wartosc: number | null;
+}
+
+/**
+ * Czas cieplny [s] ZAPISANY na biegu — z opcji biegu (`pochodzenie:
+ * 'opcje_biegu'`) albo wartość, którą assembler faktycznie zastosował, gdy
+ * opcje jej nie niosły (`pochodzenie: 'domyslna_assemblera'` — 1,0 s nie jest
+ * ukrywana jako gdyby pochodziła z opcji biegu).
+ */
+export interface ThermalTimeBiegu {
+  wartosc: number;
+  pochodzenie: 'opcje_biegu' | 'domyslna_assemblera';
+}
+
+/**
+ * Konfiguracja ZAPISANA na biegu zwarciowym (karta UI2 p.7) — ZAWSZE
+ * konfiguracja TEGO biegu (`run.options`), NIGDY aktywnego przypadku
+ * obliczeniowego (który może się różnić od przypadku biegu po fakcie).
+ * `metoda` jest stałą normatywną rodziny solvera (jedyna metoda SC w repo).
+ */
+export interface KonfiguracjaBieguZwarcia {
+  c_factor: CFactorBiegu;
+  thermal_time_seconds: ThermalTimeBiegu;
+  metoda: string;
+  /**
+   * Wariant zwarciowy ZAPISANY na wyniku biegu: `MAX` (selektywność,
+   * wytrzymałość) albo `MIN` (czułość). `null`/brak = bieg nie zapisał
+   * scenariusza — uczciwy brak, NIGDY domyślne „MAX".
+   *
+   * HARNESS-RESZTA-2 (2026-09-17): bez tego pola klient zgadywał wariant ze
+   * współczynnika `c` wiersza, co na sieci SN jest zawsze fałszywe — IEC 60909-0
+   * Tabela 1 daje c_min = 1,00 powyżej 1 kV (0,95 tylko dla nN), więc bieg
+   * MINIMALNY na szynie 15 kV nie różni się progiem `c >= 1` od maksymalnego.
+   */
+  scenariusz?: 'MAX' | 'MIN' | null;
 }
 
 /**
@@ -251,7 +368,22 @@ export interface ShortCircuitRow {
 export interface ShortCircuitResults {
   run_id: string;
   rows: ShortCircuitRow[];
+  /** Karta UI2 p.7 — addytywne, obecne na wszystkich biegach od tej karty. */
+  konfiguracja_biegu?: KonfiguracjaBieguZwarcia;
   analysis_case_context?: AnalysisCaseContext | null;
+  /**
+   * CV-4.3 K6/K7: ślad WHITE BOX wyprowadzenia Z_Q źródeł sieciowych biegu —
+   * addytywne, obecne WYŁĄCZNIE gdy bieg ma źródło sieciowe (`raw_result.zrodla_sieciowe`,
+   * `enm/canonical_analysis.py::_execute_short_circuit`). Starszy wynik / bieg bez
+   * źródła sieciowego → pole nieobecne (uczciwy brak, nie pusta tablica).
+   */
+  zrodla_sieciowe?: ZrodloSiecioweSlad[];
+  /**
+   * CV-4.3 K7: założenia biegu nazwane kodem gotowości (scenariusz MIN bez S″kQmin
+   * → Z_Q z danych MAX) — addytywne, obecne WYŁĄCZNIE gdy bieg je ma. Nigdy cicho:
+   * projektant MUSI widzieć, że bieg MIN liczył z danych MAX.
+   */
+  zalozenia?: ZalozenieBieguSlad[];
 }
 
 // =============================================================================
@@ -281,8 +413,13 @@ export interface TraceStep {
   formula_latex?: string;
   /** Input values with units */
   inputs?: Record<string, TraceValue>;
-  /** Substitution string (formula with values) */
+  /** Substitution string (formula with values) — human/audit copy, NOT
+   *  guaranteed to be valid LaTeX (some solvers write Polish prose here). */
   substitution?: string;
+  /** LaTeX substitution (formula with values plugged in) — render this via
+   *  MathBlock, never bare `substitution` (card V12.7 §0.1). Absent when the
+   *  solver/registry has no clean LaTeX substitution for this step. */
+  substitution_latex?: string;
   /** Result values with units */
   result?: Record<string, TraceValue>;
   /** Additional notes or references */
@@ -324,11 +461,22 @@ export interface TraceStep {
 
 /**
  * Trace value with unit and optional label.
+ *
+ * Wariant zespolony (`re`/`im`): niektore kroki WHITE BOX (impedancja
+ * zastepcza Z = R + jX, `ElementCalculationProofPanel` `firstComplexValue`/
+ * `complexParts`) niosa liczbe zespolona zamiast skalara — solver realnie
+ * to emituje, komponent to juz konsumuje (duck-typing na `unknown`); pola
+ * dodane addytywnie (oba opcjonalne), zeby nie zlamac istniejacych
+ * konsumentow skalara `value`.
  */
 export interface TraceValue {
-  value: number | string | boolean | null;
+  value?: number | string | boolean | null;
   unit?: string;
   label?: string;
+  /** Skladowa rzeczywista Z = R + jX — obecna razem z `im`, `value` wtedy nieistotne. */
+  re?: number;
+  /** Skladowa urojona Z = R + jX. */
+  im?: number;
 }
 
 export interface TraceRelatedElement {
@@ -392,7 +540,8 @@ export const TRACE_VALUE_LABELS: Record<string, string> = {
   ikss_ka: 'Prąd zwarciowy początkowy Ik"',
   ip_ka: 'Prąd udarowy ip',
   ith_ka: 'Prąd cieplny Ith',
-  i_a: 'Prąd',
+  i_a: 'Prąd zacisku początkowego',
+  i_do_a: 'Prąd zacisku końcowego',
   // Voltages
   un_kv: 'Napięcie znamionowe',
   u_kv: 'Napięcie',
@@ -409,6 +558,121 @@ export const TRACE_VALUE_LABELS: Record<string, string> = {
   kappa: 'Współczynnik κ',
   m_factor: 'Współczynnik m',
   n_factor: 'Współczynnik n',
+  // Karta #145 — klucze śladów solverów IEC 60909 (zapis zamrożony, rdzeń FROZEN):
+  // podział prądu Thevenina na gałęzie (`branch_flow_trace`) i ślad składowych
+  // symetrycznych. Pierwszy plan kroku mówi po polsku; klucz nieznany trafia do
+  // „Informacji audytowych" kroku (`ui2/wyniki/dowod/KrokDowodu.tsx`).
+  fault_node_id: 'Węzeł zwarcia',
+  fault_index: 'Pozycja węzła zwarcia w macierzy Z-bus',
+  n_nodes: 'Liczba węzłów macierzy Z-bus',
+  ik_thevenin_a: 'Prąd zwarciowy źródła zastępczego (Thevenin) Ik″',
+  v_nodes_pu: 'Napięcia węzłowe przy iniekcji jednostkowej',
+  branch_id: 'Gałąź',
+  from_node_id: 'Węzeł początkowy gałęzi',
+  to_node_id: 'Węzeł końcowy gałęzi',
+  v_from_pu: 'Napięcie węzła początkowego',
+  v_to_pu: 'Napięcie węzła końcowego',
+  y_series_pu: 'Admitancja podłużna gałęzi',
+  fraction: 'Współczynnik podziału prądu gałęzi',
+  i_contrib_a: 'Prąd zwarciowy gałęzi od źródła zastępczego',
+  direction: 'Kierunek przepływu prądu zwarciowego',
+  fraction_sum: 'Suma współczynników gałęzi dopływających do węzła zwarcia',
+  sum_into_fault_a: 'Suma prądów gałęzi dopływających do węzła zwarcia',
+  s_rt_mva: 'Moc znamionowa transformatora SrT',
+  u_rt_hv_kv: 'Napięcie znamionowe strony górnej UrTHV',
+  u_rt_lv_kv: 'Napięcie znamionowe strony dolnej UrTLV',
+  x_t_pu: 'Reaktancja względna transformatora xT',
+  x_t_ohm_hv: 'Reaktancja transformatora po stronie górnej XT',
+  c_max: 'Współczynnik napięciowy cmax',
+  k_t: 'Współczynnik korekcyjny KT',
+  z_t_pu: 'Impedancja transformatora ZT',
+  z_tk_pu: 'Impedancja skorygowana transformatora ZTK',
+  z_tk_formula_latex: 'Impedancja skorygowana — podstawienie',
+  z1_ohm: 'Impedancja zgodna Z1',
+  z2_ohm: 'Impedancja przeciwna Z2',
+  z0_ohm: 'Impedancja zerowa Z0',
+  short_circuit_type: 'Rodzaj zwarcia',
+  z_equiv_ohm: 'Impedancja zastępcza w punkcie zwarcia Zk',
+  z_equiv_abs_ohm: 'Moduł impedancji zastępczej |Zk|',
+  un_v: 'Napięcie znamionowe sieci Un',
+  voltage_factor: 'Współczynnik napięciowy rodzaju zwarcia kU',
+  ikss_a: 'Prąd zwarciowy początkowy Ik″',
+  rx_ratio: 'Stosunek R/X',
+  ip_a: 'Prąd udarowy ip',
+  tb_s: 'Czas wyłączenia tb',
+  ta_s: 'Stała czasowa składowej nieokresowej ta',
+  exp_factor: 'Czynnik zaniku e^(−tb/ta)',
+  ib_a: 'Prąd zwarciowy do obliczeń cieplnych Ib',
+  ith_a: 'Prąd zastępczy cieplny Ith',
+};
+
+/**
+ * Jednostki wielkości śladu, których solver nie opakowuje w `TraceValue.unit`
+ * (skalar wprost) — jednostka wynika z kontraktu klucza (przyrostek `_a`, `_kv`…),
+ * nie ze zgadywania. Klucz bez wpisu = wielkość bezwymiarowa albo jednostka niesiona
+ * przez `TraceValue.unit`.
+ */
+export const TRACE_VALUE_UNITS: Record<string, string> = {
+  ik_thevenin_a: 'A',
+  i_contrib_a: 'A',
+  sum_into_fault_a: 'A',
+  v_nodes_pu: 'j.w.',
+  v_from_pu: 'j.w.',
+  v_to_pu: 'j.w.',
+  y_series_pu: 'j.w.',
+  s_rt_mva: 'MVA',
+  u_rt_hv_kv: 'kV',
+  u_rt_lv_kv: 'kV',
+  x_t_pu: 'j.w.',
+  x_t_ohm_hv: 'Ω',
+  z_t_pu: 'j.w.',
+  z_tk_pu: 'j.w.',
+  z1_ohm: 'Ω',
+  z2_ohm: 'Ω',
+  z0_ohm: 'Ω',
+  z_equiv_ohm: 'Ω',
+  z_equiv_abs_ohm: 'Ω',
+  r_ohm: 'Ω',
+  x_ohm: 'Ω',
+  un_v: 'V',
+  ikss_a: 'A',
+  ip_a: 'A',
+  ib_a: 'A',
+  ith_a: 'A',
+  tb_s: 's',
+  ta_s: 's',
+  sk_mva: 'MVA',
+};
+
+/**
+ * Klucze śladu, których wartością jest IDENTYFIKATOR elementu sieci (węzła, gałęzi).
+ * Krok dowodu pokazuje w ich miejscu NAZWĘ z modelu (most nazw wyników), a
+ * identyfikator zostaje w „Informacjach audytowych" kroku.
+ */
+export const TRACE_ELEMENT_KEYS: ReadonlySet<string> = new Set([
+  'fault_node_id',
+  'branch_id',
+  'from_node_id',
+  'to_node_id',
+]);
+
+/**
+ * Wartości wyliczeniowe śladu → polskie opisy (klucz śladu → kod → opis). Kod spoza
+ * mapy to kod nowy w solverze: krok pokazuje go w „Informacjach audytowych", nie na
+ * pierwszym planie.
+ */
+export const TRACE_VALUE_CODES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  direction: {
+    from_to: 'od węzła początkowego do węzła końcowego',
+    to_from: 'od węzła końcowego do węzła początkowego',
+  },
+  // Kody `network_model/solvers/short_circuit_core.py::ShortCircuitType`.
+  short_circuit_type: {
+    '3F': 'zwarcie trójfazowe',
+    '2F': 'zwarcie dwufazowe',
+    '2F+G': 'zwarcie dwufazowe z ziemią',
+    '1F': 'zwarcie jednofazowe (doziemne)',
+  },
 };
 
 /**
@@ -430,67 +694,6 @@ export interface ExtendedTrace {
     manual_override_count?: number;
   };
   analysis_case_context?: AnalysisCaseContext | null;
-}
-
-// =============================================================================
-// SLD Overlay
-// =============================================================================
-
-/**
- * SLD bus overlay data.
- */
-export interface SldOverlayBus {
-  symbol_id: string;
-  bus_id: string;
-  /** Alias used by overlay_builder and SLD components */
-  node_id: string;
-  u_pu?: number;
-  u_kv?: number;
-  angle_deg?: number;
-  ikss_ka?: number;
-  sk_mva?: number;
-  /** Energy validation voltage status: PASS | WARNING | FAIL | NOT_COMPUTED */
-  voltage_status?: string;
-  /** Worst energy validation status for this node */
-  ev_status?: string;
-}
-
-/** @deprecated Use SldOverlayBus instead. */
-export type SldOverlayNode = SldOverlayBus;
-
-/**
- * SLD branch overlay data.
- */
-export interface SldOverlayBranch {
-  symbol_id: string;
-  branch_id: string;
-  p_mw?: number;
-  q_mvar?: number;
-  i_a?: number;
-  loading_pct?: number;
-  /** Worst energy validation status for this branch */
-  ev_status?: string;
-}
-
-/**
- * Complete SLD result overlay.
- */
-export interface SldResultOverlay {
-  diagram_id: string;
-  run_id: string;
-  /** Swiezosc wyniku wzgledem modelu: NONE | FRESH | OUTDATED (liczy backend). */
-  result_status: string;
-  /** Kod przyczyny statusu z backendu (np. `model-zmieniony`). */
-  result_status_reason?: string;
-  /** Zdanie po polsku wyjasniajace przyczyne statusu — prosto z backendu. */
-  result_status_reason_pl?: string;
-  /** Node overlay data (primary field used by overlay_builder and SLD components) */
-  nodes: SldOverlayBus[];
-  /** @deprecated Use nodes instead */
-  buses?: SldOverlayBus[];
-  branches: SldOverlayBranch[];
-  /** Overall energy validation status: PASS | WARNING | FAIL */
-  overall_ev_status?: string;
 }
 
 export interface ResultsRunSnapshot {

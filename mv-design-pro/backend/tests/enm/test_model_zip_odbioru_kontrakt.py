@@ -21,8 +21,11 @@ Testy pilnują CAŁEJ KLASY, nie jednego przykładu:
 from __future__ import annotations
 
 import pytest
-from enm.canonical_analysis import (
+from enm.assembler import (
     _graph_id_from_ref,
+    czestotliwosc_studium_hz,
+)
+from enm.canonical_analysis import (
     create_run,
     execute_run,
     reset_canonical_runs,
@@ -120,8 +123,8 @@ def test_domyslne_kontraktu_sa_domyslnymi_solvera() -> None:
     Sprawdzamy to nie przez powtórzenie liczb, lecz przez zachowanie SOLVERA:
     tabliczka z domyślnymi daje ten sam obiekt co tabliczka pusta (brak modelu).
     """
-    assert zip_coeffs_from_materialized_params(dict(DOMYSLNE_ZIP_ODBIORU)) is None
-    assert zip_coeffs_from_materialized_params({}) is None
+    assert zip_coeffs_from_materialized_params(dict(DOMYSLNE_ZIP_ODBIORU), 50.0) is None
+    assert zip_coeffs_from_materialized_params({}, 50.0) is None
 
 
 # ---------------------------------------------------------------------------
@@ -333,7 +336,9 @@ def test_sama_wrazliwosc_czestotliwosciowa_tez_dochodzi_do_solvera() -> None:
     assert odbior["materialized_params"]["k_pf"] == 2.0
     assert odbior["materialized_params"]["c_p"] == 1.0
 
-    wspolczynniki = zip_coeffs_from_materialized_params(odbior["materialized_params"])
+    wspolczynniki = zip_coeffs_from_materialized_params(
+        odbior["materialized_params"], czestotliwosc_studium_hz(wynik["snapshot"])
+    )
     assert wspolczynniki is not None
     assert wspolczynniki.has_frequency_dependence()
 
@@ -443,7 +448,9 @@ def _payload_z_odbiorem(nazwa: str, model_zip: dict | None) -> dict:
 def _rozplyw(case_id: str, payload: dict):
     set_enm(case_id, EnergyNetworkModel.model_validate(payload))
     run = execute_run(
-        create_run(case_id=case_id, analysis_type="PF", options={"base_mva": BASE_MVA}).id
+        create_run(
+            case_id=case_id, klucz_twin=case_id, analysis_type="PF", options={"base_mva": BASE_MVA}
+        ).id
     )
     assert run.status == "FINISHED", run.error_message
     return run
@@ -452,3 +459,157 @@ def _rozplyw(case_id: str, payload: dict):
 def _szyna(run, ref_id: str) -> dict:
     szyny = {b["bus_id"]: b for b in run.raw_result["result_v1"]["bus_results"]}
     return szyny[_graph_id_from_ref(ref_id)]
+
+
+# ---------------------------------------------------------------------------
+# Pole `Load.model` WYPROWADZANE ze współczynników — jeden predykat (O-49 pkt 2)
+# ---------------------------------------------------------------------------
+#
+# Iloczyn cech: droga zapisu {create_device, update_element_parameters, add_nn_load,
+# kreator sieci K6} x tabliczka {ZIP nietrywialny, brak} x deklaracja `model` w payloadzie
+# {brak, zgodna, sprzeczna}. Przed kartą `create_device` brał `model` z payloadu niezależnie
+# od tabliczki, a `update_element_parameters` zmieniał oba pola niezależnie — odbiór
+# `model="pq"` ze współczynnikami ZIP był liczony przez rozpływ jako ZIP, a przez dynamikę
+# jako stała moc (sonda S1 karty modeli odbiorów).
+
+
+def _enm_z_szyna() -> dict:
+    return {"buses": [{"ref_id": "b1", "name": "B1", "voltage_kv": 15.0}], "loads": []}
+
+
+@pytest.mark.parametrize("tabliczka", [dict(ZIP_STALA_IMPEDANCJA), None])
+@pytest.mark.parametrize("deklaracja", [None, "zgodna", "sprzeczna"])
+def test_create_device_wyprowadza_model_ze_wspolczynnikow(
+    tabliczka: dict | None, deklaracja: str | None
+) -> None:
+    oczekiwany = "zip" if tabliczka else "pq"
+    dane: dict = {
+        "device_type": "load",
+        "ref_id": "load-1",
+        "bus_ref": "b1",
+        "p_mw": 1.0,
+        "q_mvar": 0.3,
+        "materialized_params": tabliczka,
+    }
+    if deklaracja == "zgodna":
+        dane["model"] = oczekiwany
+    elif deklaracja == "sprzeczna":
+        dane["model"] = "pq" if oczekiwany == "zip" else "zip"
+    enm = _enm_z_szyna()
+    wynik = create_device(enm, dane)
+    if deklaracja == "sprzeczna":
+        assert not wynik.success
+        assert [i.code for i in wynik.issues] == ["OP_LOAD_MODEL_SPRZECZNY"]
+        assert not enm["loads"]
+    else:
+        assert wynik.success, wynik.issues
+        assert wynik.enm["loads"][0]["model"] == oczekiwany
+
+
+@pytest.mark.parametrize("brak", ["p_mw", "q_mvar"])
+def test_create_device_nie_fabrykuje_zerowej_mocy_odbioru(brak: str) -> None:
+    """Dawniej `p_mw`/`q_mvar` nieobecne = 0 (fabrykacja odbioru zerowej mocy)."""
+    dane = {"device_type": "load", "ref_id": "load-1", "bus_ref": "b1", "p_mw": 1.0, "q_mvar": 0.3}
+    del dane[brak]
+    enm = _enm_z_szyna()
+    wynik = create_device(enm, dane)
+    assert not wynik.success
+    assert [i.code for i in wynik.issues] == ["OP_LOAD_POWER_MISSING"]
+    assert brak in wynik.issues[0].message_pl
+    assert not enm["loads"]
+
+
+def test_update_element_parameters_przelicza_model_i_odrzuca_sprzecznosc() -> None:
+    snapshot, feeder_ref = _enm_z_odplywem()
+    utworzony = _dodaj_odbior(snapshot, feeder_ref)
+    load_ref = utworzony["snapshot"]["loads"][0]["ref_id"]
+    assert utworzony["snapshot"]["loads"][0]["model"] == "pq"
+
+    na_zip = execute_domain_operation(
+        utworzony["snapshot"],
+        "update_element_parameters",
+        {"element_ref": load_ref, "parameters": {"materialized_params": ZIP_STALA_IMPEDANCJA}},
+    )
+    assert not na_zip.get("error"), na_zip
+    assert na_zip["snapshot"]["loads"][0]["model"] == "zip"
+
+    z_powrotem = execute_domain_operation(
+        na_zip["snapshot"],
+        "update_element_parameters",
+        {"element_ref": load_ref, "parameters": {"materialized_params": None}},
+    )
+    assert z_powrotem["snapshot"]["loads"][0]["model"] == "pq"
+
+    sprzeczny = execute_domain_operation(
+        na_zip["snapshot"],
+        "update_element_parameters",
+        {"element_ref": load_ref, "parameters": {"model": "pq"}},
+    )
+    assert sprzeczny["error_code"] == "load.model_sprzeczny"
+    assert sprzeczny.get("snapshot") is None
+
+    # Stan S1 zastany w migawce (model "pq" + tabliczka ZIP) jest prostowany przy KAŻDEJ
+    # korekcie — pole przelicza się ze stanu końcowego tabliczki.
+    s1 = dict(na_zip["snapshot"])
+    s1["loads"] = [{**na_zip["snapshot"]["loads"][0], "model": "pq"}]
+    korekta = execute_domain_operation(
+        s1,
+        "update_element_parameters",
+        {"element_ref": load_ref, "parameters": {"name": "Odbiór po korekcie"}},
+    )
+    assert korekta["snapshot"]["loads"][0]["model"] == "zip"
+
+
+@pytest.mark.parametrize("tabliczka", [dict(ZIP_STALA_IMPEDANCJA), None])
+def test_kreator_odbioru_wyprowadza_model_tym_samym_predykatem(tabliczka: dict | None) -> None:
+    snapshot, feeder_ref = _enm_z_odplywem()
+    wynik = _dodaj_odbior(snapshot, feeder_ref, **(tabliczka or {}))
+    assert wynik["snapshot"]["loads"][0]["model"] == ("zip" if tabliczka else "pq")
+
+
+def test_kreator_sieci_k6_wyprowadza_model_i_waliduje_tabliczke() -> None:
+    """Krok K6 kreatora sieci — piąta droga zapisu odbioru (dawniej bez żadnej kontroli)."""
+    from application.network_wizard.step_controller import apply_step
+
+    enm = {
+        "header": {"name": "k6"},
+        "buses": [{"ref_id": "b1", "name": "B1", "voltage_kv": 15.0}],
+        "sources": [{"ref_id": "s1", "name": "S1", "bus_ref": "b1"}],
+        "loads": [],
+    }
+    odbior = {
+        "ref_id": "o1",
+        "name": "O1",
+        "bus_ref": "b1",
+        "p_mw": 1.0,
+        "q_mvar": 0.2,
+        "materialized_params": dict(ZIP_STALA_IMPEDANCJA),
+    }
+    wynik = apply_step(enm, "K6", {"add_loads": [odbior]})
+    (zapisany,) = (o for o in wynik.enm["loads"] if o["ref_id"] == "o1")
+    assert zapisany["model"] == "zip"
+
+    niepoprawny = {**odbior, "ref_id": "o2", "materialized_params": {"a_p": 0.5, "c_p": 0.2}}
+    odrzucony = apply_step(enm, "K6", {"add_loads": [niepoprawny]})
+    assert not odrzucony.success
+    assert "K6_LOAD_ZIP_INVALID" in {i.code for i in odrzucony.postcondition_issues}
+    assert odrzucony.enm is enm
+
+
+def test_projekcja_v2_czyta_ten_sam_predykat_co_rozplyw() -> None:
+    """Odbiór `model="pq"` ze współczynnikami ZIP jest w projekcji v2 odbiorem ZIP —
+    dawniej projekcja czytała pole `model` i gubiła go (a rozpływ go liczył)."""
+    from enm.v2_projection import project_enm_v1_to_v2
+
+    from tests.golden.enm_builders.dynamika_rms import build_dynamika_rms_enm
+
+    snapshot = EnergyNetworkModel.model_validate(build_dynamika_rms_enm()).model_dump(mode="json")
+    snapshot["loads"][0]["model"] = "pq"
+    snapshot["loads"][0]["materialized_params"] = dict(ZIP_STALA_IMPEDANCJA)
+    projekcja = project_enm_v1_to_v2(EnergyNetworkModel.model_validate(snapshot))
+    ref = snapshot["loads"][0]["ref_id"]
+    profile = [p for p in projekcja.load_profiles if p["load_ref"] == ref]
+    assert profile and profile[0]["model"] == "zip"
+    assert any(
+        w.code == "V12-MIG-LOAD-001" and w.element_ref == ref for w in projekcja.migration_warnings
+    )

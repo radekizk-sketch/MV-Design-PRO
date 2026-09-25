@@ -1,0 +1,3 @@
+# version: W6-1 SS0 p.8 — kasacja osieroconego Load.meta["load_profile_ref"].
+# Postaci UŻYCIA (pole/klucz/atrybut), nie każde słowo w komentarzu/prozie.
+\bload_profile_ref\b

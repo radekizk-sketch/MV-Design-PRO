@@ -137,6 +137,7 @@ class BudowniczyStacji:
                 uk_percent=uk,
                 pk_kw=round(sn_mva * 10.3, 2),
                 vector_group=group,
+                lv_earthing_system=self.earthing,
                 catalog_ref=f"tr-15-04-{int(round(sn_mva * 1000))}kva-{group.lower()}",
             )
         )
@@ -373,6 +374,7 @@ class BudowniczyStacji:
                 uk_percent=4.0,
                 pk_kw=4.5,
                 vector_group="Dyn5",
+                lv_earthing_system=self.earthing,
                 catalog_ref="tr-15-04-400kva-dyn5",
             )
         )
@@ -383,7 +385,6 @@ class BudowniczyStacji:
                 station_type="mv_lv",
                 bus_refs=[bus_ref],
                 transformer_refs=[tr_ref],
-                meta={"nn_earthing_system": self.earthing},
             )
         )
         return ref
@@ -443,7 +444,6 @@ class BudowniczyStacji:
             bus_refs=list(self.root_bus_refs),
             transformer_refs=list(self.root_tr_refs),
             nn_sections=list(self.nn_sections),
-            meta={"nn_earthing_system": self.earthing},
         )
         return EnergyNetworkModel(
             header=ENMHeader(

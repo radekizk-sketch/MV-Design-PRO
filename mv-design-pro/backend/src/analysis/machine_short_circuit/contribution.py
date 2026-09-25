@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from network_model.pochodne import a_na_ka
 from network_model.solvers.machine_sc_iec60909 import (
     MachinePartialContribution,
     MachineShortCircuitResult,
@@ -45,10 +46,10 @@ def _why_pl(c: MachinePartialContribution) -> str:
     else:
         place = "z dala od generatora (I″k/I_r ≤ 2): brak zaniku składowej AC, μ=1"
     if c.is_synchronous_machine:
-        return f"{label} {place}; prąd wyłączeniowy i_b=μ·I″k={c.ib_a / 1000.0:.3f} kA."
+        return f"{label} {place}; prąd wyłączeniowy i_b=μ·I″k={a_na_ka(c.ib_a):.3f} kA."
     return (
         f"{label} {place}; dodatkowy zanik silnikowy q={c.q:.3f}, "
-        f"prąd wyłączeniowy i_b=μ·q·I″k={c.ib_a / 1000.0:.3f} kA."
+        f"prąd wyłączeniowy i_b=μ·q·I″k={a_na_ka(c.ib_a):.3f} kA."
     )
 
 
@@ -137,11 +138,11 @@ def interpret_machine_contributions(
             source_name=c.source_name,
             machine_type=c.machine_type,
             node_id=c.node_id,
-            ikss_partial_ka=c.ikss_partial_a / 1000.0,
-            ib_partial_ka=c.ib_a / 1000.0,
+            ikss_partial_ka=a_na_ka(c.ikss_partial_a),
+            ib_partial_ka=a_na_ka(c.ib_a),
             mu=c.mu,
             q=c.q,
-            ir_ka=c.ir_a / 1000.0,
+            ir_ka=a_na_ka(c.ir_a),
             near_generator=c.mu < 1.0,
             is_synchronous_machine=c.is_synchronous_machine,
             why_pl=_why_pl(c),
@@ -150,8 +151,8 @@ def interpret_machine_contributions(
     )
     count = len(findings)
     near = sum(1 for f in findings if f.near_generator)
-    ikss_machines_ka = machine_result.ikss_machines_a / 1000.0
-    ib_machines_ka = machine_result.ib_machines_a / 1000.0
+    ikss_machines_ka = a_na_ka(machine_result.ikss_machines_a)
+    ib_machines_ka = a_na_ka(machine_result.ib_machines_a)
     if count == 0:
         summary = (
             "Brak maszyn wirujących przy tym zwarciu — udział maszynowy zerowy (§6.6 nieaktywny)."

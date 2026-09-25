@@ -1,0 +1,927 @@
+{
+  "dokument": {
+    "numer_dokumentu": "1SDC200023D0205",
+    "pobrano": "2026-09-11",
+    "producent": "ABB",
+    "sha256": "4502f57f72a92209798e1792b415709d4ba8f40993c1bfb054d824f689582612",
+    "tytul": "SACE Emax 2 — Low voltage air circuit-breakers, Technical catalogue, Edition 2017.01",
+    "url": "https://library.e.abb.com/public/b7b28d531cc1451ba23320635a247c21/1SDC200023D0205_Emax2_dicembre_2016_EN.pdf",
+    "wersja_importera": "1.0"
+  },
+  "kontrola_krzyzowa_str_2_3": [
+    "E2.2B: Icu@440V=42 kA, Icw(1s)=42 kA",
+    "E2.2N: Icu@440V=66 kA, Icw(1s)=66 kA",
+    "E2.2S: Icu@440V=85 kA, Icw(1s)=66 kA",
+    "E2.2H: Icu@440V=100 kA, Icw(1s)=85 kA",
+    "E4.2N: Icu@440V=66 kA, Icw(1s)=66 kA",
+    "E4.2S: Icu@440V=85 kA, Icw(1s)=66 kA",
+    "E4.2H: Icu@440V=100 kA, Icw(1s)=85 kA",
+    "E4.2V: Icu@440V=150 kA, Icw(1s)=100 kA",
+    "E6.2H: Icu@440V=100 kA, Icw(1s)=100 kA",
+    "E6.2V: Icu@440V=150 kA, Icw(1s)=100 kA",
+    "E6.2X: Icu@440V=150 kA, Icw(1s)=120 kA"
+  ],
+  "liczba_wierszy_zrodlowych": 120,
+  "typy": [
+    {
+      "icu_440v_ka": 42,
+      "icw_1s_ka": 42,
+      "iu_a": 630,
+      "kody_zamowieniowe": [
+        "1SDA070701R1",
+        "1SDA072051R1"
+      ],
+      "rama": "E1.2B",
+      "strony_pdf": [
+        247,
+        262
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 42,
+      "icw_1s_ka": 42,
+      "iu_a": 800,
+      "kody_zamowieniowe": [
+        "1SDA070741R1",
+        "1SDA072091R1"
+      ],
+      "rama": "E1.2B",
+      "strony_pdf": [
+        247,
+        262
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 42,
+      "icw_1s_ka": 42,
+      "iu_a": 1000,
+      "kody_zamowieniowe": [
+        "1SDA070781R1",
+        "1SDA072131R1"
+      ],
+      "rama": "E1.2B",
+      "strony_pdf": [
+        247,
+        262
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 42,
+      "icw_1s_ka": 42,
+      "iu_a": 1250,
+      "kody_zamowieniowe": [
+        "1SDA070821R1",
+        "1SDA072171R1"
+      ],
+      "rama": "E1.2B",
+      "strony_pdf": [
+        247,
+        262
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 42,
+      "icw_1s_ka": 42,
+      "iu_a": 1600,
+      "kody_zamowieniowe": [
+        "1SDA070861R1",
+        "1SDA072211R1"
+      ],
+      "rama": "E1.2B",
+      "strony_pdf": [
+        247,
+        262
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 50,
+      "icw_1s_ka": 42,
+      "iu_a": 630,
+      "kody_zamowieniowe": [
+        "1SDA070711R1",
+        "1SDA072061R1"
+      ],
+      "rama": "E1.2C",
+      "strony_pdf": [
+        248,
+        263
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 50,
+      "icw_1s_ka": 42,
+      "iu_a": 800,
+      "kody_zamowieniowe": [
+        "1SDA070751R1",
+        "1SDA072101R1"
+      ],
+      "rama": "E1.2C",
+      "strony_pdf": [
+        248,
+        263
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 50,
+      "icw_1s_ka": 42,
+      "iu_a": 1000,
+      "kody_zamowieniowe": [
+        "1SDA070791R1",
+        "1SDA072141R1"
+      ],
+      "rama": "E1.2C",
+      "strony_pdf": [
+        248,
+        263
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 50,
+      "icw_1s_ka": 42,
+      "iu_a": 1250,
+      "kody_zamowieniowe": [
+        "1SDA070831R1",
+        "1SDA072181R1"
+      ],
+      "rama": "E1.2C",
+      "strony_pdf": [
+        248,
+        263
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 50,
+      "icw_1s_ka": 42,
+      "iu_a": 1600,
+      "kody_zamowieniowe": [
+        "1SDA070871R1",
+        "1SDA072221R1"
+      ],
+      "rama": "E1.2C",
+      "strony_pdf": [
+        248,
+        263
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 130,
+      "icw_1s_ka": 15,
+      "iu_a": 630,
+      "kody_zamowieniowe": [
+        "1SDA070731R1",
+        "1SDA072081R1"
+      ],
+      "rama": "E1.2L",
+      "strony_pdf": [
+        250,
+        265
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 130,
+      "icw_1s_ka": 15,
+      "iu_a": 800,
+      "kody_zamowieniowe": [
+        "1SDA070771R1",
+        "1SDA072121R1"
+      ],
+      "rama": "E1.2L",
+      "strony_pdf": [
+        250,
+        265
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 130,
+      "icw_1s_ka": 15,
+      "iu_a": 1000,
+      "kody_zamowieniowe": [
+        "1SDA070811R1",
+        "1SDA072161R1"
+      ],
+      "rama": "E1.2L",
+      "strony_pdf": [
+        250,
+        265
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 130,
+      "icw_1s_ka": 15,
+      "iu_a": 1250,
+      "kody_zamowieniowe": [
+        "1SDA070851R1",
+        "1SDA072201R1"
+      ],
+      "rama": "E1.2L",
+      "strony_pdf": [
+        250,
+        265
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 50,
+      "iu_a": 250,
+      "kody_zamowieniowe": [
+        "1SDA070691R1",
+        "1SDA072041R1"
+      ],
+      "rama": "E1.2N",
+      "strony_pdf": [
+        249,
+        264
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 50,
+      "iu_a": 630,
+      "kody_zamowieniowe": [
+        "1SDA070721R1",
+        "1SDA072071R1"
+      ],
+      "rama": "E1.2N",
+      "strony_pdf": [
+        249,
+        264
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 50,
+      "iu_a": 800,
+      "kody_zamowieniowe": [
+        "1SDA070761R1",
+        "1SDA072111R1"
+      ],
+      "rama": "E1.2N",
+      "strony_pdf": [
+        249,
+        264
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 50,
+      "iu_a": 1000,
+      "kody_zamowieniowe": [
+        "1SDA070801R1",
+        "1SDA072151R1"
+      ],
+      "rama": "E1.2N",
+      "strony_pdf": [
+        249,
+        264
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 50,
+      "iu_a": 1250,
+      "kody_zamowieniowe": [
+        "1SDA070841R1",
+        "1SDA072191R1"
+      ],
+      "rama": "E1.2N",
+      "strony_pdf": [
+        249,
+        264
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 50,
+      "iu_a": 1600,
+      "kody_zamowieniowe": [
+        "1SDA070881R1",
+        "1SDA072231R1"
+      ],
+      "rama": "E1.2N",
+      "strony_pdf": [
+        249,
+        264
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 42,
+      "icw_1s_ka": 42,
+      "iu_a": 1600,
+      "kody_zamowieniowe": [
+        "1SDA070981R1",
+        "1SDA072331R1"
+      ],
+      "rama": "E2.2B",
+      "strony_pdf": [
+        251,
+        265
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 42,
+      "icw_1s_ka": 42,
+      "iu_a": 2000,
+      "kody_zamowieniowe": [
+        "1SDA071021R1",
+        "1SDA072371R1"
+      ],
+      "rama": "E2.2B",
+      "strony_pdf": [
+        251,
+        265
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 100,
+      "icw_1s_ka": 85,
+      "iu_a": 800,
+      "kody_zamowieniowe": [
+        "1SDA070911R1",
+        "1SDA072261R1"
+      ],
+      "rama": "E2.2H",
+      "strony_pdf": [
+        255,
+        269
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 100,
+      "icw_1s_ka": 85,
+      "iu_a": 1000,
+      "kody_zamowieniowe": [
+        "1SDA070941R1",
+        "1SDA072291R1"
+      ],
+      "rama": "E2.2H",
+      "strony_pdf": [
+        255,
+        269
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 100,
+      "icw_1s_ka": 85,
+      "iu_a": 1250,
+      "kody_zamowieniowe": [
+        "1SDA070971R1",
+        "1SDA072321R1"
+      ],
+      "rama": "E2.2H",
+      "strony_pdf": [
+        255,
+        269
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 100,
+      "icw_1s_ka": 85,
+      "iu_a": 1600,
+      "kody_zamowieniowe": [
+        "1SDA071011R1",
+        "1SDA072361R1"
+      ],
+      "rama": "E2.2H",
+      "strony_pdf": [
+        255,
+        269
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 100,
+      "icw_1s_ka": 85,
+      "iu_a": 2000,
+      "kody_zamowieniowe": [
+        "1SDA071051R1",
+        "1SDA072401R1"
+      ],
+      "rama": "E2.2H",
+      "strony_pdf": [
+        255,
+        269
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 100,
+      "icw_1s_ka": 85,
+      "iu_a": 2500,
+      "kody_zamowieniowe": [
+        "1SDA071081R1",
+        "1SDA072431R1"
+      ],
+      "rama": "E2.2H",
+      "strony_pdf": [
+        255,
+        269
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 66,
+      "iu_a": 800,
+      "kody_zamowieniowe": [
+        "1SDA070891R1",
+        "1SDA072241R1"
+      ],
+      "rama": "E2.2N",
+      "strony_pdf": [
+        252,
+        266
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 66,
+      "iu_a": 1000,
+      "kody_zamowieniowe": [
+        "1SDA070921R1",
+        "1SDA072271R1"
+      ],
+      "rama": "E2.2N",
+      "strony_pdf": [
+        252,
+        266
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 66,
+      "iu_a": 1250,
+      "kody_zamowieniowe": [
+        "1SDA070951R1",
+        "1SDA072301R1"
+      ],
+      "rama": "E2.2N",
+      "strony_pdf": [
+        252,
+        266
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 66,
+      "iu_a": 1600,
+      "kody_zamowieniowe": [
+        "1SDA070991R1",
+        "1SDA072341R1"
+      ],
+      "rama": "E2.2N",
+      "strony_pdf": [
+        252,
+        266
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 66,
+      "iu_a": 2000,
+      "kody_zamowieniowe": [
+        "1SDA071031R1",
+        "1SDA072381R1"
+      ],
+      "rama": "E2.2N",
+      "strony_pdf": [
+        252,
+        266
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 66,
+      "iu_a": 2500,
+      "kody_zamowieniowe": [
+        "1SDA071061R1",
+        "1SDA072411R1"
+      ],
+      "rama": "E2.2N",
+      "strony_pdf": [
+        252,
+        266
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 85,
+      "icw_1s_ka": 66,
+      "iu_a": 250,
+      "kody_zamowieniowe": [
+        "1SDA073628R1",
+        "1SDA073648R1"
+      ],
+      "rama": "E2.2S",
+      "strony_pdf": [
+        253,
+        267
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 85,
+      "icw_1s_ka": 66,
+      "iu_a": 800,
+      "kody_zamowieniowe": [
+        "1SDA070901R1",
+        "1SDA072251R1"
+      ],
+      "rama": "E2.2S",
+      "strony_pdf": [
+        253,
+        267
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 85,
+      "icw_1s_ka": 66,
+      "iu_a": 1000,
+      "kody_zamowieniowe": [
+        "1SDA070931R1",
+        "1SDA072281R1"
+      ],
+      "rama": "E2.2S",
+      "strony_pdf": [
+        253,
+        267
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 85,
+      "icw_1s_ka": 66,
+      "iu_a": 1250,
+      "kody_zamowieniowe": [
+        "1SDA070961R1",
+        "1SDA072311R1"
+      ],
+      "rama": "E2.2S",
+      "strony_pdf": [
+        253,
+        267
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 85,
+      "icw_1s_ka": 66,
+      "iu_a": 1600,
+      "kody_zamowieniowe": [
+        "1SDA071001R1",
+        "1SDA072351R1"
+      ],
+      "rama": "E2.2S",
+      "strony_pdf": [
+        254,
+        268
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 85,
+      "icw_1s_ka": 66,
+      "iu_a": 2000,
+      "kody_zamowieniowe": [
+        "1SDA071041R1",
+        "1SDA072391R1"
+      ],
+      "rama": "E2.2S",
+      "strony_pdf": [
+        254,
+        268
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 85,
+      "icw_1s_ka": 66,
+      "iu_a": 2500,
+      "kody_zamowieniowe": [
+        "1SDA071071R1",
+        "1SDA072421R1"
+      ],
+      "rama": "E2.2S",
+      "strony_pdf": [
+        254,
+        268
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 100,
+      "icw_1s_ka": 85,
+      "iu_a": 3200,
+      "kody_zamowieniowe": [
+        "1SDA071161R1",
+        "1SDA072511R1"
+      ],
+      "rama": "E4.2H",
+      "strony_pdf": [
+        257,
+        270
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 100,
+      "icw_1s_ka": 85,
+      "iu_a": 4000,
+      "kody_zamowieniowe": [
+        "1SDA071211R1",
+        "1SDA072561R1"
+      ],
+      "rama": "E4.2H",
+      "strony_pdf": [
+        257,
+        270
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 66,
+      "iu_a": 3200,
+      "kody_zamowieniowe": [
+        "1SDA071141R1",
+        "1SDA072491R1"
+      ],
+      "rama": "E4.2N",
+      "strony_pdf": [
+        256,
+        270
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 66,
+      "icw_1s_ka": 66,
+      "iu_a": 4000,
+      "kody_zamowieniowe": [
+        "1SDA071191R1",
+        "1SDA072541R1"
+      ],
+      "rama": "E4.2N",
+      "strony_pdf": [
+        256,
+        270
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 85,
+      "icw_1s_ka": 66,
+      "iu_a": 3200,
+      "kody_zamowieniowe": [
+        "1SDA071151R1",
+        "1SDA072501R1"
+      ],
+      "rama": "E4.2S",
+      "strony_pdf": [
+        256,
+        270
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 85,
+      "icw_1s_ka": 66,
+      "iu_a": 4000,
+      "kody_zamowieniowe": [
+        "1SDA071201R1",
+        "1SDA072551R1"
+      ],
+      "rama": "E4.2S",
+      "strony_pdf": [
+        256,
+        270
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 150,
+      "icw_1s_ka": 100,
+      "iu_a": 2000,
+      "kody_zamowieniowe": [
+        "1SDA071101R1",
+        "1SDA072451R1"
+      ],
+      "rama": "E4.2V",
+      "strony_pdf": [
+        257,
+        271
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 150,
+      "icw_1s_ka": 100,
+      "iu_a": 2500,
+      "kody_zamowieniowe": [
+        "1SDA071121R1",
+        "1SDA072471R1"
+      ],
+      "rama": "E4.2V",
+      "strony_pdf": [
+        257,
+        271
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 150,
+      "icw_1s_ka": 100,
+      "iu_a": 3200,
+      "kody_zamowieniowe": [
+        "1SDA071171R1",
+        "1SDA072521R1"
+      ],
+      "rama": "E4.2V",
+      "strony_pdf": [
+        257,
+        271
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 150,
+      "icw_1s_ka": 100,
+      "iu_a": 4000,
+      "kody_zamowieniowe": [
+        "1SDA071221R1",
+        "1SDA072571R1"
+      ],
+      "rama": "E4.2V",
+      "strony_pdf": [
+        257,
+        271
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 100,
+      "icw_1s_ka": 100,
+      "iu_a": 4000,
+      "kody_zamowieniowe": [
+        "1SDA071231R1",
+        "1SDA072581R1"
+      ],
+      "rama": "E6.2H",
+      "strony_pdf": [
+        258,
+        272
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 100,
+      "icw_1s_ka": 100,
+      "iu_a": 5000,
+      "kody_zamowieniowe": [
+        "1SDA071261R1",
+        "1SDA072611R1"
+      ],
+      "rama": "E6.2H",
+      "strony_pdf": [
+        258,
+        272
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 100,
+      "icw_1s_ka": 100,
+      "iu_a": 6300,
+      "kody_zamowieniowe": [
+        "1SDA071291R1",
+        "1SDA072641R1"
+      ],
+      "rama": "E6.2H",
+      "strony_pdf": [
+        258,
+        272
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 150,
+      "icw_1s_ka": 100,
+      "iu_a": 4000,
+      "kody_zamowieniowe": [
+        "1SDA071241R1",
+        "1SDA072591R1"
+      ],
+      "rama": "E6.2V",
+      "strony_pdf": [
+        258,
+        272
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 150,
+      "icw_1s_ka": 100,
+      "iu_a": 5000,
+      "kody_zamowieniowe": [
+        "1SDA071271R1",
+        "1SDA072621R1"
+      ],
+      "rama": "E6.2V",
+      "strony_pdf": [
+        258,
+        272
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 150,
+      "icw_1s_ka": 100,
+      "iu_a": 6300,
+      "kody_zamowieniowe": [
+        "1SDA071301R1",
+        "1SDA072651R1"
+      ],
+      "rama": "E6.2V",
+      "strony_pdf": [
+        258,
+        272
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 150,
+      "icw_1s_ka": 120,
+      "iu_a": 4000,
+      "kody_zamowieniowe": [
+        "1SDA071251R1",
+        "1SDA072601R1"
+      ],
+      "rama": "E6.2X",
+      "strony_pdf": [
+        259,
+        273
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 150,
+      "icw_1s_ka": 120,
+      "iu_a": 5000,
+      "kody_zamowieniowe": [
+        "1SDA071281R1",
+        "1SDA072631R1"
+      ],
+      "rama": "E6.2X",
+      "strony_pdf": [
+        259,
+        273
+      ],
+      "wystapien": 2
+    },
+    {
+      "icu_440v_ka": 150,
+      "icw_1s_ka": 120,
+      "iu_a": 6300,
+      "kody_zamowieniowe": [
+        "1SDA071311R1",
+        "1SDA072661R1"
+      ],
+      "rama": "E6.2X",
+      "strony_pdf": [
+        259,
+        273
+      ],
+      "wystapien": 2
+    }
+  ]
+}

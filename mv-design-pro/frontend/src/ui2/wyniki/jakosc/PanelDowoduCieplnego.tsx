@@ -15,6 +15,7 @@
 
 import type { AdvancementMode } from '../../shell/modeModel';
 import { PrzegladDowodu } from '../dowod';
+import { useNazwaObiektu } from '../wzorzec';
 import type {
   DowodCieplnyResponse,
   NormaCieplna,
@@ -58,6 +59,7 @@ export function PanelDowoduCieplnego({
   ladowanie,
   onPokazNaSchemacie,
 }: PanelDowoduCieplnegoProps) {
+  const nazwaObiektu = useNazwaObiektu();
   const czas = pozycja.czas_wylaczenia;
   const k = pozycja.uzasadnienie_k;
 
@@ -65,7 +67,7 @@ export function PanelDowoduCieplnego({
     <section className="mvd-cieplny-dowod" data-testid="mvd-jakosc-cieplna-dowod">
       <header className="mvd-cieplny-dowod-head">
         <h3 className="mvd-cieplny-dowod-tytul">
-          {JAKOSC_STRINGS.dowodTytul} — {pozycja.branch_name || pozycja.branch_id}
+          {JAKOSC_STRINGS.dowodTytul} — {nazwaObiektu(pozycja.branch_id, pozycja.branch_name)}
         </h3>
         <Werdykt status={pozycja.status} />
         <button

@@ -1,6 +1,6 @@
 /**
  * P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8 pkt 5) — nakładka SWZ (`overlay.ts`
- * `buildSwzOverlayFromResponses`/`swzPresentationTone`): budowniczy CZYSTY z
+ * `buildSwzOverlayFromResponses`): budowniczy CZYSTY z
  * odpowiedzi endpointu SWZ per obwód (`GET /{case_id}/enm/swz`, karta
  * P0.6/G-22). ZERO fizyki w UI — testy sprawdzają WYŁĄCZNIE przepisanie
  * gotowego werdyktu backendu, zero przeliczeń.
@@ -9,7 +9,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildSwzOverlayFromResponses,
-  swzPresentationTone,
   type SwzApiResponse,
 } from '../overlay';
 
@@ -99,17 +98,5 @@ describe('P0.8 nN — buildSwzOverlayFromResponses (przepisanie werdyktu 3-stano
 
   it('pusta lista odpowiedzi ⇒ pusta nakładka (zero fabrykacji)', () => {
     expect(buildSwzOverlayFromResponses([])).toEqual({});
-  });
-});
-
-describe('P0.8 nN — swzPresentationTone (klasyfikacja 3-stanowa, fail-closed)', () => {
-  it('"spełnia" → ok', () => {
-    expect(swzPresentationTone('spełnia')).toBe('ok');
-  });
-  it('"nie spełnia" → fail', () => {
-    expect(swzPresentationTone('nie spełnia')).toBe('fail');
-  });
-  it('"nierozstrzygalne" → unknown (fail-closed, NIGDY "ok" bez dowodu)', () => {
-    expect(swzPresentationTone('nierozstrzygalne')).toBe('unknown');
   });
 });

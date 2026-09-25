@@ -26,6 +26,8 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
 
+from enm.nazwy_elementow import opis_bez_nazwy
+from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.reporting.czcionki import ustaw_czcionki_stylow, zarejestruj_czcionki
 
 # Publiczny próg granicy łuku (definicja fizyczna IEEE 1584): E = 1,2 cal/cm².
@@ -38,6 +40,9 @@ class ArcFlashReportContext:
 
     project_name: str
     station_id: str
+    #: Nazwa stacji (albo zakresu raportu) pokazywana w dokumencie — identyfikator
+    #: `station_id` zostaje wyłącznie w strukturze JSON (karta #144).
+    station_name: str
     arc_flash_view_dict: dict[str, Any]
     operator_pl: str = ""
     generated_at_iso: str = "1970-01-01T00:00:00Z"
@@ -47,6 +52,12 @@ def _results(ctx: ArcFlashReportContext) -> list[dict[str, Any]]:
     """Wyniki per szyna, deterministycznie posortowane po ``bus_ref``."""
     results = ctx.arc_flash_view_dict.get("results", []) or []
     return sorted(results, key=lambda r: str(r.get("bus_ref", "")))
+
+
+def _nazwa_szyny(wynik: dict[str, Any]) -> str:
+    """Nazwa szyny wiersza (`bus_name` widoku: nazwa z modelu albo opis rodzaju) — nigdy
+    `bus_ref`, który jest identyfikatorem węzła grafu wyniku zwarciowego (karta #144)."""
+    return nazwa_nadana(wynik.get("bus_name")) or opis_bez_nazwy("buses")
 
 
 def _fmt(value: Any, digits: int = 2) -> str:
@@ -59,14 +70,17 @@ def _fmt(value: Any, digits: int = 2) -> str:
 def _summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     """Podsumowanie: najgorszy przypadek + rozkład kategorii ŚOI + braki danych."""
     energies = [
-        (r.get("bus_ref"), float(e))
+        (r, float(e))
         for r in results
         if isinstance((e := r.get("incident_energy_cal_cm2")), int | float)
     ]
     worst_bus_ref: str | None = None
+    worst_bus_name: str | None = None
     worst_energy: float | None = None
     if energies:
-        worst_bus_ref, worst_energy = max(energies, key=lambda t: t[1])
+        worst, worst_energy = max(energies, key=lambda t: t[1])
+        worst_bus_ref = worst.get("bus_ref")
+        worst_bus_name = _nazwa_szyny(worst)
 
     ppe_distribution: dict[str, int] = {}
     for r in results:
@@ -78,6 +92,7 @@ def _summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "bus_count": len(results),
         "worst_bus_ref": worst_bus_ref,
+        "worst_bus_name": worst_bus_name,
         "worst_incident_energy_cal_cm2": worst_energy,
         "ppe_distribution": dict(sorted(ppe_distribution.items())),
         "buses_with_missing_data": with_missing,
@@ -93,6 +108,7 @@ def render_arc_flash_report_json(ctx: ArcFlashReportContext) -> dict[str, Any]:
         "format_version": "1.0",
         "project_name": ctx.project_name,
         "station_id": ctx.station_id,
+        "station_name": ctx.station_name,
         "operator_pl": ctx.operator_pl,
         "generated_at": ctx.generated_at_iso,
         "analysis_id": view.get("analysis_id"),
@@ -109,7 +125,7 @@ def _text_rows(results: list[dict[str, Any]]) -> list[str]:
     for r in results:
         lines.append(
             f"  [{r.get('status_label_pl', r.get('status', ''))}] "
-            f"{r.get('bus_ref', '')} — "
+            f"{_nazwa_szyny(r)} — "
             f"E={_fmt(r.get('incident_energy_cal_cm2'))} cal/cm², "
             f"AFB={_fmt(r.get('arc_flash_boundary_mm'), 0)} mm, "
             f"ŚOI={r.get('ppe_category') or '—'}, "
@@ -125,7 +141,7 @@ def render_arc_flash_report_text(ctx: ArcFlashReportContext) -> str:
     if not results:
         return (
             "Raport zagrożenia łukiem elektrycznym — brak szyn do uwzględnienia.\n"
-            f"Stacja: {ctx.station_id}\n"
+            f"Stacja: {ctx.station_name}\n"
             f"Projekt: {ctx.project_name}\n"
         )
 
@@ -134,7 +150,7 @@ def render_arc_flash_report_text(ctx: ArcFlashReportContext) -> str:
     lines.append("RAPORT ZAGROŻENIA ŁUKIEM ELEKTRYCZNYM (IEEE 1584)")
     lines.append("=" * 52)
     lines.append(f"Projekt: {ctx.project_name}")
-    lines.append(f"Stacja: {ctx.station_id}")
+    lines.append(f"Stacja: {ctx.station_name}")
     if ctx.operator_pl:
         lines.append(f"Operator: {ctx.operator_pl}")
     lines.append(f"Wygenerowano: {ctx.generated_at_iso}")
@@ -142,7 +158,7 @@ def render_arc_flash_report_text(ctx: ArcFlashReportContext) -> str:
     lines.append(
         f"PODSUMOWANIE: {summary['bus_count']} szyn, "
         f"najwyższa energia incydentu {_fmt(summary['worst_incident_energy_cal_cm2'])} cal/cm²"
-        + (f" (szyna {summary['worst_bus_ref']})" if summary["worst_bus_ref"] else "")
+        + (f" (szyna {summary['worst_bus_name']})" if jest_nazwa(summary["worst_bus_name"]) else "")
         + f", szyny z brakami danych: {summary['buses_with_missing_data']}."
     )
     lines.append(f"Granica łuku (próg AFB): {_AFB_THRESHOLD_CAL_CM2} cal/cm².")
@@ -181,7 +197,7 @@ def render_arc_flash_report_pdf(ctx: ArcFlashReportContext) -> bytes:
         bottomMargin=2 * cm,
         leftMargin=2 * cm,
         rightMargin=2 * cm,
-        title=f"Raport arc flash — {ctx.station_id}",
+        title=f"Raport arc flash — {ctx.station_name}",
         author="MV-DESIGN-PRO",
         invariant=1,
         pageCompression=0,
@@ -195,7 +211,7 @@ def render_arc_flash_report_pdf(ctx: ArcFlashReportContext) -> bytes:
     elements.append(Paragraph("IEEE 1584-2018", styles["Normal"]))
     elements.append(Spacer(1, 0.4 * cm))
     elements.append(Paragraph(f"Projekt: {ctx.project_name}", styles["Normal"]))
-    elements.append(Paragraph(f"Stacja: {ctx.station_id}", styles["Normal"]))
+    elements.append(Paragraph(f"Stacja: {ctx.station_name}", styles["Normal"]))
     if ctx.operator_pl:
         elements.append(Paragraph(f"Operator: {ctx.operator_pl}", styles["Normal"]))
     elements.append(Paragraph(f"Wygenerowano: {ctx.generated_at_iso}", styles["Normal"]))
@@ -208,7 +224,7 @@ def render_arc_flash_report_pdf(ctx: ArcFlashReportContext) -> bytes:
             "Najwyższa energia incydentu [cal/cm²]",
             _fmt(summary["worst_incident_energy_cal_cm2"]),
         ],
-        ["Szyna krytyczna", str(summary["worst_bus_ref"] or "—")],
+        ["Szyna krytyczna", nazwa_nadana(summary["worst_bus_name"]) or "—"],
         ["Szyny z brakami danych", str(summary["buses_with_missing_data"])],
         ["Próg granicy łuku [cal/cm²]", _fmt(_AFB_THRESHOLD_CAL_CM2)],
     ]
@@ -236,7 +252,7 @@ def render_arc_flash_report_pdf(ctx: ArcFlashReportContext) -> bytes:
         for r in results:
             rows.append(
                 [
-                    str(r.get("bus_ref", ""))[:28],
+                    _nazwa_szyny(r)[:28],
                     _fmt(r.get("voltage_kv"), 2),
                     _fmt(r.get("incident_energy_cal_cm2")),
                     _fmt(r.get("arc_flash_boundary_mm"), 0),
@@ -289,7 +305,7 @@ def render_arc_flash_report_docx(ctx: ArcFlashReportContext) -> bytes:
     doc.add_paragraph("IEEE 1584-2018")
 
     doc.add_paragraph(f"Projekt: {ctx.project_name}")
-    doc.add_paragraph(f"Stacja: {ctx.station_id}")
+    doc.add_paragraph(f"Stacja: {ctx.station_name}")
     if ctx.operator_pl:
         doc.add_paragraph(f"Operator: {ctx.operator_pl}")
     doc.add_paragraph(f"Wygenerowano: {ctx.generated_at_iso}")
@@ -303,7 +319,7 @@ def render_arc_flash_report_docx(ctx: ArcFlashReportContext) -> bytes:
             "Najwyższa energia incydentu [cal/cm²]",
             _fmt(summary["worst_incident_energy_cal_cm2"]),
         ),
-        ("Szyna krytyczna", str(summary["worst_bus_ref"] or "—")),
+        ("Szyna krytyczna", nazwa_nadana(summary["worst_bus_name"]) or "—"),
         ("Szyny z brakami danych", str(summary["buses_with_missing_data"])),
         ("Próg granicy łuku [cal/cm²]", _fmt(_AFB_THRESHOLD_CAL_CM2)),
     ]
@@ -322,7 +338,7 @@ def render_arc_flash_report_docx(ctx: ArcFlashReportContext) -> bytes:
             tbl.rows[0].cells[c].text = head
         for i, r in enumerate(results, start=1):
             cells = tbl.rows[i].cells
-            cells[0].text = str(r.get("bus_ref", ""))
+            cells[0].text = _nazwa_szyny(r)
             cells[1].text = _fmt(r.get("voltage_kv"), 2)
             cells[2].text = _fmt(r.get("incident_energy_cal_cm2"))
             cells[3].text = _fmt(r.get("arc_flash_boundary_mm"), 0)
@@ -356,7 +372,7 @@ def render_arc_flash_report_latex(ctx: ArcFlashReportContext) -> str:
     lines.append(r"\usepackage[polish]{babel}")
     lines.append(r"\usepackage{amsmath,amssymb,longtable}")
     lines.append(r"\title{Raport zagrożenia łukiem elektrycznym (IEEE 1584)}")
-    lines.append(rf"\author{{Stacja {esc(ctx.station_id)}}}")
+    lines.append(rf"\author{{Stacja {esc(ctx.station_name)}}}")
     lines.append(rf"\date{{{esc(ctx.generated_at_iso)}}}")
     lines.append(r"\begin{document}")
     lines.append(r"\maketitle")
@@ -366,7 +382,11 @@ def render_arc_flash_report_latex(ctx: ArcFlashReportContext) -> str:
     lines.append(
         rf"\textbf{{Liczba szyn:}} {summary['bus_count']}, "
         rf"najwyższa energia incydentu {_fmt(summary['worst_incident_energy_cal_cm2'])} cal/cm\textsuperscript{{2}}"
-        + (rf" (szyna {esc(summary['worst_bus_ref'])})" if summary["worst_bus_ref"] else "")
+        + (
+            rf" (szyna {esc(summary['worst_bus_name'])})"
+            if jest_nazwa(summary["worst_bus_name"])
+            else ""
+        )
         + rf", szyny z brakami danych: {summary['buses_with_missing_data']}.\par"
     )
     if results:
@@ -378,7 +398,7 @@ def render_arc_flash_report_latex(ctx: ArcFlashReportContext) -> str:
         )
         for r in results:
             lines.append(
-                rf"{esc(r.get('bus_ref', ''))} & {_fmt(r.get('voltage_kv'), 2)} & "
+                rf"{esc(_nazwa_szyny(r))} & {_fmt(r.get('voltage_kv'), 2)} & "
                 rf"{_fmt(r.get('incident_energy_cal_cm2'))} & "
                 rf"{_fmt(r.get('arc_flash_boundary_mm'), 0)} & "
                 rf"{esc(r.get('ppe_category') or '—')} & "

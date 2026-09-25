@@ -2,14 +2,16 @@
  * Model kreatora „Wyprowadź magistralę SN" (V12K-047, G-MAG).
  *
  * Krok flow po GPZ: prowadzi ciąg SN (odcinek kabla/linii) z pola odpływowego.
- * ZERO fizyki w UI — ΔU i prąd liczy backend (R1: cable-voltage-drop-preview);
- * parametry R/X/Iznam pochodzą z katalogu. Zapis = realna operacja domenowa
+ * ZERO fizyki w UI — spadek napięcia odcinka i ciągu, ocenę obciążalności i limit
+ * spadku daje backend (`trunk-sizing-assessment`, karta MAGISTRALA-OCENA) jako rekordy
+ * werdyktu; parametry R/X/Iz do odczytu pochodzą z katalogu. Zapis = realna operacja domenowa
  * `continue_trunk_segment_sn` (kontrakt zachowany 1:1 z retirowanego ContinueTrunkForm),
  * po zapisie flow łańcuchuje realną KOLEJNĄ operację (następny krok).
  */
 
+import type { UziemienieEkranuKabla } from '../../../types/uziemienie';
 import { normalizeCatalogBinding, normalizeSegmentNamespace } from '../../../ui/network-build/forms/catalogPayload';
-import type { CableVoltageDropRequest } from '../../../ui/network-build/forms/cableVoltageDropApi';
+import type { OcenaDoboruMagistraliRequest, OdcinekOcenyRequest } from './ocenaDoboruApi';
 import type { TrunkBranchKind } from '../../../ui/network-build/semanticValidator';
 import type { TrunkNextStep } from '../../../ui/network-build/trunkContinuation';
 import type { CableType, LineType } from '../../../ui/catalog/types';
@@ -19,9 +21,11 @@ export type RodzajOdcinka = 'KABEL' | 'LINIA';
 export interface MagistralaFormData {
   rodzaj: RodzajOdcinka;
   catalog_ref: string | null;
+  /** W5-A: układ uziemienia ekranu kabla (pusty = nie zadeklarowano; tylko dla KABEL). */
+  screen_bonding: UziemienieEkranuKabla | '';
   dlugosc_m: number | null;
   nazwa: string;
-  /** Prąd obciążenia do podglądu ΔU [A] (domyślnie prąd znamionowy wybranego typu). */
+  /** Prąd roboczy odcinka I_B [A]; pusty = niepodany (ocenę obciążalności backend nazwie brakiem). */
   prad_a: number | null;
   cos_phi: number;
   /** Napięcie międzyfazowe ciągu [kV] — z kontekstu GPZ, domyślnie 15. */
@@ -38,6 +42,7 @@ export interface BladPola {
 export const DANE_DOMYSLNE: MagistralaFormData = {
   rodzaj: 'KABEL',
   catalog_ref: null,
+  screen_bonding: '',
   dlugosc_m: 500,
   nazwa: '',
   prad_a: null,
@@ -46,7 +51,13 @@ export const DANE_DOMYSLNE: MagistralaFormData = {
   next_step: 'station',
 };
 
-function isPositive(v: number | null): v is number {
+/**
+ * Eksportowana (S9-5, `karta_e2e_s95.md`): reużyta wprost przez komponent
+ * kreatora do sygnału gotowości zapisu — jedno źródło prawdy dla walidacji
+ * przy zapisie (`walidujFormularz`) i dla bramki `disabled`/`data-status`,
+ * zamiast duplikować ten sam warunek dwoma niezależnymi wyrażeniami.
+ */
+export function isPositive(v: number | null): v is number {
   return typeof v === 'number' && Number.isFinite(v) && v > 0;
 }
 
@@ -154,21 +165,33 @@ export function parametryZKatalogu(
   };
 }
 
-/** Buduje żądanie podglądu ΔU (R1) lub null, gdy brak kompletu danych. */
-export function zbudujZapytaniePodgladu(
-  data: MagistralaFormData,
-  params: ParametryOdcinka | null,
-): CableVoltageDropRequest | null {
-  if (!params || !isPositive(data.dlugosc_m) || data.cos_phi <= 0) return null;
-  const current = isPositive(data.prad_a) ? data.prad_a : params.rated_current_a;
-  if (!isPositive(current) || !isPositive(data.napiecie_kv)) return null;
+/** Odcinek formularza w żądaniu oceny — wartości wprost z pól, bez uzupełniania braków. */
+export function odcinekOceny(data: MagistralaFormData): OdcinekOcenyRequest {
   return {
-    current_a: current,
-    length_km: data.dlugosc_m / 1000,
-    r_ohm_per_km: params.r_ohm_per_km,
-    x_ohm_per_km: params.x_ohm_per_km,
+    rodzaj: data.rodzaj,
+    catalog_ref: data.catalog_ref?.trim() ? data.catalog_ref.trim() : null,
+    dlugosc_m: isPositive(data.dlugosc_m) ? data.dlugosc_m : null,
+    prad_roboczy_a: isPositive(data.prad_a) ? data.prad_a : null,
     cos_phi: data.cos_phi,
-    line_voltage_v: data.napiecie_kv * 1000,
+    nazwa: data.nazwa.trim() ? data.nazwa.trim() : null,
+  };
+}
+
+/**
+ * Żądanie oceny doboru (karta MAGISTRALA-OCENA): odcinek bieżący + odcinki zapisane w tej
+ * sesji. `null`, gdy formularz łamie dziedzinę żądania (cosφ poza (0, 1], napięcie
+ * niedodatnie) — wtedy walidacja formularza nazywa błąd pola, a ocena nie jest wołana.
+ * Brak typu, długości czy prądu NIE blokuje żądania: backend nazywa te braki w rekordach.
+ */
+export function zbudujZapytanieOceny(
+  data: MagistralaFormData,
+  zbudowane: readonly OdcinekBudowy[],
+): OcenaDoboruMagistraliRequest | null {
+  if (!isPositive(data.napiecie_kv) || data.cos_phi <= 0 || data.cos_phi > 1) return null;
+  return {
+    napiecie_kv: data.napiecie_kv,
+    odcinek: odcinekOceny(data),
+    odcinki_zbudowane: zbudowane.map((o) => o.zadanie),
   };
 }
 
@@ -197,6 +220,8 @@ export function zbudujPayload(
       dlugosc_m: data.dlugosc_m,
       catalog_binding: normalizeCatalogBinding(data.catalog_ref, namespace),
       ...(data.nazwa.trim() ? { name: data.nazwa.trim() } : {}),
+      // W5-A: deklaracja ekranu tylko dla kabla i tylko gdy wybrana (zero fantomów).
+      ...(segmentKind === 'KABEL' && data.screen_bonding ? { screen_bonding: data.screen_bonding } : {}),
     },
   };
   if (kontekst.trunk_id?.trim()) payload.trunk_id = kontekst.trunk_id.trim();
@@ -207,14 +232,18 @@ export function zbudujPayload(
 
 // --------------------------------------------------- Builder realnej sieci (M2, V12K-071)
 
-/** Odcinek dodany do magistrali w bieżącej sesji budowy (podsumowanie do listy). */
+/**
+ * Odcinek dodany do magistrali w bieżącej sesji budowy. `zadanie` to dane odcinka w postaci
+ * żądania oceny — backend liczy z nich spadek skumulowany ciągu i łączną długość (karta
+ * MAGISTRALA-OCENA: interfejs nie sumuje spadków ani długości).
+ */
 export interface OdcinekBudowy {
   rodzaj: RodzajOdcinka;
   typLabel: string;
   cross_section_mm2: number | null;
+  /** Długość do wiersza listy [m] (etykieta; sumę liczy backend). */
   dlugosc_m: number;
-  /** Spadek napięcia odcinka [%] z podglądu backendu w chwili dodania (null = brak podglądu). */
-  delta_u_pct: number | null;
+  zadanie: OdcinekOcenyRequest;
 }
 
 /** Podsumuj właśnie dodany odcinek na podstawie formularza i parametrów katalogowych. */
@@ -222,105 +251,13 @@ export function podsumujOdcinek(
   data: MagistralaFormData,
   params: ParametryOdcinka | null,
   typLabel: string,
-  deltaUPct: number | null = null,
 ): OdcinekBudowy {
   return {
     rodzaj: data.rodzaj,
     typLabel,
     cross_section_mm2: params?.cross_section_mm2 ?? null,
     dlugosc_m: isPositive(data.dlugosc_m) ? data.dlugosc_m : 0,
-    delta_u_pct: typeof deltaUPct === 'number' && Number.isFinite(deltaUPct) ? deltaUPct : null,
-  };
-}
-
-/** Łączna długość magistrali [m] z listy odcinków. */
-export function lacznaDlugosc(odcinki: readonly OdcinekBudowy[]): number {
-  return odcinki.reduce((sum, o) => sum + o.dlugosc_m, 0);
-}
-
-/**
- * Skumulowany spadek napięcia magistrali (radialny ciąg) wraz z KOMPLETNOŚCIĄ.
- *
- * DLACZEGO Z KOMPLETNOŚCIĄ (defekt, który to wymusił — V12K-227). Funkcja zwracała
- * samą liczbę i sumowała `delta_u_pct ?? 0`, a `delta_u_pct` jest jawnie
- * `number | null` (null, gdy backend nie policzył spadku tego odcinka). Odcinek bez
- * wyniku wnosił więc ZERO, przez co suma była ZANIŻONA — a kreator porównuje ją z
- * limitem 5% i ostrzega tylko po jego przekroczeniu. Niepełne dane wyciszały
- * ostrzeżenie: projektant dostawał milczący PASS na kryterium, którego nikt nie
- * sprawdził. Suma nieznanych składników nie jest sumą — dlatego brak jest teraz
- * LICZONY i wystawiony, a nie zamieniany w zero.
- */
-export interface SkumulowanySpadek {
-  /** Suma spadków odcinków, dla których backend podał wynik [%]. */
-  readonly sumaZnanychPct: number;
-  /** Liczba odcinków z policzonym spadkiem. */
-  readonly odcinkiZeSpadkiem: number;
-  /** Liczba odcinków BEZ policzonego spadku — składniki pominięte w sumie. */
-  readonly odcinkiBezSpadku: number;
-  /** Czy każdy odcinek ma wynik. Tylko wtedy suma jest spadkiem magistrali. */
-  readonly kompletny: boolean;
-}
-
-export function lacznySpadekPct(odcinki: readonly OdcinekBudowy[]): SkumulowanySpadek {
-  let sumaZnanychPct = 0;
-  let odcinkiZeSpadkiem = 0;
-  let odcinkiBezSpadku = 0;
-  for (const odcinek of odcinki) {
-    if (typeof odcinek.delta_u_pct === 'number') {
-      sumaZnanychPct += odcinek.delta_u_pct;
-      odcinkiZeSpadkiem += 1;
-    } else {
-      odcinkiBezSpadku += 1;
-    }
-  }
-  return {
-    sumaZnanychPct,
-    odcinkiZeSpadkiem,
-    odcinkiBezSpadku,
-    kompletny: odcinkiBezSpadku === 0,
-  };
-}
-
-// --------------------------------------------------- Asystent doboru przekroju (M3, V12K-072)
-
-/** Typowy dopuszczalny spadek napięcia na magistrali SN [%] (dobra praktyka OSD). */
-export const LIMIT_SPADKU_PCT = 5;
-
-export type StanOceny = 'ok' | 'ostrzezenie' | 'brak';
-
-export interface OcenaDoboru {
-  /** Obciążalność: prąd roboczy ≤ obciążalność Iz. */
-  obciazalnosc: StanOceny;
-  /** Spadek napięcia ≤ limit. */
-  spadek: StanOceny;
-  obciazenieA: number | null;
-  izA: number | null;
-  spadekPct: number | null;
-  limitPct: number;
-}
-
-/**
- * Interpretacja doboru przekroju z wartości policzonych przez backend (ΔU) i katalogu (Iz).
- * ZERO fizyki: nie liczy prądu ani ΔU — porównuje wartości backendu/katalogu z kryteriami.
- */
-export function ocenaDoboru(
-  params: ParametryOdcinka | null,
-  deltaUPct: number | null,
-  pradRoboczy: number | null,
-  limitPct: number = LIMIT_SPADKU_PCT,
-): OcenaDoboru {
-  const izA = params?.rated_current_a ?? null;
-  const obciazalnosc: StanOceny =
-    izA == null || pradRoboczy == null ? 'brak' : pradRoboczy > izA ? 'ostrzezenie' : 'ok';
-  const spadek: StanOceny =
-    deltaUPct == null ? 'brak' : deltaUPct > limitPct ? 'ostrzezenie' : 'ok';
-  return {
-    obciazalnosc,
-    spadek,
-    obciazenieA: pradRoboczy,
-    izA,
-    spadekPct: deltaUPct,
-    limitPct,
+    zadanie: odcinekOceny(data),
   };
 }
 

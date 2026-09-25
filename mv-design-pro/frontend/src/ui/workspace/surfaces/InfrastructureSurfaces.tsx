@@ -215,7 +215,7 @@ export function ZksnSurface({ surface }: SurfaceProps): JSX.Element {
       element_type: 'ZKSN',
       source_type_label: 'ZKSN',
       source_name: branchPoint.name ?? 'ZK SN',
-      source_port_label: 'pole wyjściowe ciągu głównego',
+      source_port_label: 'pole liniowe wyjściowe ciągu głównego',
       segment_kind: 'KABEL_SN',
       length_m: 500,
       segment: mainRouteSegment ? routeSegmentOperationContext(mainRouteSegment, 'cable') : undefined,
@@ -522,7 +522,6 @@ export function NopSurface({ surface }: SurfaceProps): JSX.Element {
         <p className="rounded border border-scada-border bg-scada-surface p-3 text-[11px] text-scada-muted">
           NOP modeluje rozcięcie elektryczne pierścienia SN. Operacja domenowa
           set_normal_open_point (panel ENM) ustawia / zmienia stan łącznika.
-          Pełna integracja z układem pracy sieci (E-05) — Etap 6 roadmapy.
         </p>
       </div>
     </div>

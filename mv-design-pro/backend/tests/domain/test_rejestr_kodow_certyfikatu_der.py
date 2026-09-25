@@ -153,9 +153,24 @@ def test_kazdy_kod_ma_cel_dokladny_na_froncie(kod: str) -> None:
 
 
 def test_mapa_celow_frontu_nie_ma_sierot_w_przestrzeni_der() -> None:
-    """Front nie deklaruje obsługi kodów, których tor gotowości nie zgłasza."""
-    sieroty = sorted(set(_mapa_celow_frontu()) - _kody_der(_MODUL_GOTOWOSCI))
-    assert sieroty == [], f"mapa celow opisuje kody `der.` bez emitera gotowosci: {sieroty}"
+    """Front nie deklaruje obsługi kodów, których żaden kanał gotowości nie zna.
+
+    POPRAWKA (karta TODO-UI2 p.13): „sierota" pierwotnie znaczyło „kod spoza
+    `_kody_der(_MODUL_GOTOWOSCI)`" — czyli spoza JEDNEGO pliku (`enm/domain_
+    operations.py`, kanał certyfikatu PTPiREE). To za wąsko: `grupowanieCelow.ts`
+    mapuje CAŁY kanoniczny rejestr gotowości (`READINESS_CODES`, parytet z
+    `GET /api/readiness/registry` pilnowany osobnym testem FE), nie tylko kody
+    tego jednego pliku — np. `der.dynamic_profile_missing`/`der.dynamika_missing`
+    (obszar GENERATORS, blokują LOAD_FLOW wg `get_blockers_for_analysis`)
+    są emitowane przez `application/calculation_readiness/service.py` +
+    `application/analyses/frt_trajektorie.py`, osobny moduł od kanału certyfikatu.
+    Realny „sierota" to kod, którego NIE MA w kanonicznym rejestrze wcale —
+    dokładnie to, co ten test teraz sprawdza (zamiast przynależności do jednego
+    pliku emisji).
+    """
+    kody_w_rejestrze = {kod for kod in READINESS_CODES if _WZOR_KODU.match(kod)}
+    sieroty = sorted(set(_mapa_celow_frontu()) - kody_w_rejestrze)
+    assert sieroty == [], f"mapa celow opisuje kody `der.` bez wpisu w READINESS_CODES: {sieroty}"
 
 
 def test_kody_der_kreatora_naleza_do_kanalu_bledu_operacji() -> None:

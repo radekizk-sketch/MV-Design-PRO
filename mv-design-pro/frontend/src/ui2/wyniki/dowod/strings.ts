@@ -1,8 +1,8 @@
 /*
  * Teksty okna „Dowód obliczeń" (karta E9.1 / W-608) — wyłącznie polski język
  * techniczny (MODEL_INTERAKCJI §2.7). Zero literałów UI w JSX; identyfikatory
- * (element_id, input_hash, surowe klucze wielkości) renderowane wyłącznie w trybie
- * eksperckim jako wyrażenia `{...}` z danych. Etykiety pięciu pól kanonu pochodzą
+ * (element_id, input_hash, surowe klucze wielkości) wyłącznie w „Informacjach
+ * audytowych" (tryb ekspercki, sekcja zwinięta) — nigdy na pierwszym planie. Etykiety pięciu pól kanonu pochodzą
  * z `TRACE_FIELD_LABELS` (ui/results-inspector/types.ts:289) — nie duplikujemy ich
  * tutaj. Read-only, zero fizyki (NOT-A-SOLVER).
  */
@@ -58,6 +58,14 @@ export const DOWOD_STRINGS = {
 
   // Nagłówek — odcisk danych wejściowych (tryb ekspercki)
   odciskWejscia: 'Odcisk danych wejściowych',
+
+  // Informacje audytowe kroku (karta #145): zapis techniczny solvera — klucze śladu
+  // bez polskiej etykiety, identyfikatory elementów i uwagi z nazwami funkcji. Rdzeń
+  // solvera jest zamrożony (B-01), więc zapis zostaje dostępny, ale poza pierwszym planem.
+  audytKlucz: (klucz: string) => `Klucz śladu ${klucz}`,
+  audytIdentyfikator: (etykieta: string) => `${etykieta} — identyfikator w grafie obliczeniowym`,
+  audytUwagaSolvera: 'Uwaga solvera (zapis techniczny)',
+  audytTytulSolvera: 'Tytuł kroku w zapisie solvera',
 
   // Wartość pusta
   kreska: '—',

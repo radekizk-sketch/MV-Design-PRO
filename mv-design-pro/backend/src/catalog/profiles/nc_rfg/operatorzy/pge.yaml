@@ -1,0 +1,59 @@
+# Warstwa operatora (OSD) — tożsamość operatora, dokument ruchowy i nadpisania.
+#
+# Dokument operatora (instrukcja ruchu) nie jest przechowywany w repozytorium, więc jego
+# wydanie jest nieustalone (OD-21). Nadpisanie jest dopuszczalne wyłącznie wtedy, gdy
+# wartość operatora różni się od warstwy niższej — pozostałe parametry profil efektywny
+# bierze z WOS albo z wartości zastanych, z ich własnym stanem źródła. Grupa nadpisania może
+# nieść proweniencję (`jednostka_redakcyjna`, `status`, `uwagi_pl`) obok wartości.
+#
+# `bank_nastaw` (plan AB §2.2 O-17): nastawy zabezpieczeń modułów wymagane przez operatora —
+# słownik zamknięty pozycji (`u_min_pu`, `u_min_czas_s`, `u_max_pu`, `u_max_czas_s`, `f_min_hz`,
+# `f_min_czas_s`, `f_max_hz`, `f_max_czas_s`, `rocof_hz_s`, `rocof_czas_s`,
+# `przesuniecie_fazy_deg`); pozycja = `id`, `nazwa_pl`, `wartosc`, `jednostka`,
+# `jednostka_redakcyjna` dokumentu operatora. Wartość bez wskazanej podstawy jest odrzucana —
+# brak danych jest stanem (NIEUSTALONE), nigdy zerem ani wartością „typową".
+#
+# `wykonanie_prawa` (plan AB §2.3 O-31): czy operator skorzystał z prawa określenia wymagań,
+# dla których rozporządzenie mu je przyznaje (`prawo_operatora` w `nc_rfg.yaml`); wpis
+# `<id wymagania>: {skorzystal: true|false, jednostka_redakcyjna: "..."}`. Pusty słownik =
+# nieustalone dla każdego takiego wymagania.
+warstwa: OSD
+operator_id: pge
+operator_name_pl: "PGE Dystrybucja"
+rodzaj_operatora: OSD
+voltage_level_pl: "SN/nN (dystrybucyjny — centralna i wschodnia Polska)"
+last_revision: "2024-Q4"
+dokument:
+  tytul: "Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) PGE Dystrybucja"
+  wydanie: null
+  status: NIEUSTALONE
+  # Data obowiązywania nieustalona (dokument nie jest w repozytorium) — zero dat z pamięci.
+  obowiazuje_od: null
+  # Trafia do każdej podstawy warstwy OSD (nadpisania, wykonanie prawa, Bank Nastaw).
+  uwagi_pl: >-
+    dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone
+    (OD-21)
+nadpisania:
+  # Krzywa HVRT profilu OSD z rewizji pliku 2024-Q4 (bez punktu 0,50 s obecnego w profilu
+  # PSE); pochodzenie nieustalone — zachowana 1:1, żeby rozłożenie na warstwy nie zmieniło
+  # żadnej liczby.
+  hvrt:
+    typy: [B]
+    punkty:
+      - { time_s: 0.00, voltage_pu: 1.30 }
+      - { time_s: 0.10, voltage_pu: 1.25 }
+      - { time_s: 1.00, voltage_pu: 1.15 }
+      - { time_s: 60.00, voltage_pu: 1.10 }
+bank_nastaw:
+  status: NIEUSTALONE
+  uwagi_pl: >-
+    nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium
+    (OD-21)
+  pozycje: []
+wykonanie_prawa:
+  status: NIEUSTALONE
+  uwagi_pl: >-
+    wykonanie przez operatora prawa do określenia wymagań, dla których rozporządzenie
+    przyznaje mu to prawo, nie jest udokumentowane w repozytorium; potrzebny dokument: IRiESD
+    albo warunki przyłączenia (plan AB §12.1)
+  wymagania: {}

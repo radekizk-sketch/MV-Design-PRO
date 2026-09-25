@@ -46,11 +46,18 @@ vi.mock('../../../../ui/selection', () => ({
     selector({ selectElement: selectElementMock, centerSldOnElement: centerMock }),
 }));
 
-vi.mock('../../../../ui/catalog/api', () => ({
-  fetchBranchPointTypes: () =>
+// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
+// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const { fetchBranchPointTypesMock } = vi.hoisted(() => ({
+  fetchBranchPointTypesMock: vi.fn((_kind: string) =>
     Promise.resolve([
       { id: 'bp-1', name: 'Słup odczepowy', kind: 'BRANCH_POLE', medium: 'LINE_OVERHEAD', branch_ports_count: 1, switch_device_kind: 'ROZLACZNIK', switch_rated_current_a: 400 },
     ]),
+  ),
+}));
+
+vi.mock('../../../../ui/catalog/api', () => ({
+  fetchBranchPointTypes: (kind: string) => fetchBranchPointTypesMock(kind),
 }));
 
 async function pick() {
@@ -70,6 +77,7 @@ describe('KreatorSlupaOdgaleznego — realna ścieżka', () => {
     navigateToSldMock.mockReset();
     selectElementMock.mockReset();
     centerMock.mockReset();
+    fetchBranchPointTypesMock.mockClear();
   });
 
   afterEach(() => cleanup());
@@ -130,6 +138,21 @@ describe('KreatorSlupaOdgaleznego — realna ścieżka', () => {
     render(<KreatorSlupaOdgaleznego />);
     await pick();
     expect(screen.getByTestId('mvd-kreator-slup-zapisz')).toBeDisabled();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) —
+   * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
+   * `zapisMozliwy` nie sprawdzał, czy katalog słupów już doszedł.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × odcinek poprawny → zapis zablokowany z komunikatem', async () => {
+    fetchBranchPointTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorSlupaOdgaleznego />);
+
+    expect(screen.getByTestId('mvd-kreator-slup-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-slup')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,13 @@
 /*
- * EkranPorownania — konkretyzacja wspólnego wzorca ekranu analizy dla porównania
- * A/B rozpływu mocy (karta E12.1 / W-609). Wybór dwóch zakończonych przebiegów
- * rozpływu, JAWNE uruchomienie porównania w backendzie („Porównaj przebiegi"),
+ * EkranPorownania — JEDEN ekran „Porównanie przebiegów" z przełącznikiem RODZAJU
+ * porównania (karta E12.1/E12.2 W-609, rozszerzony o zabezpieczenia w CV-3.3-B2
+ * §0 D1): rozpływ mocy (`TrybRozplywu`, ten plik), zwarcia (`TrybZwarciowy.tsx`)
+ * i zabezpieczenia (`TrybZabezpieczen.tsx`). Zero drugiego ekranu — jeden rodzaj
+ * naraz, ten sam mechanizm wyboru A/B i te same „Informacje audytowe" z
+ * proweniencją obu biegów (`naWierszeAudytuPorownania`) w każdym z nich.
+ *
+ * `TrybRozplywu` (poniżej): wybór dwóch zakończonych przebiegów rozpływu,
+ * JAWNE uruchomienie porównania w backendzie („Porównaj przebiegi"),
  * prezentacja: podsumowanie jako ZAŁOŻENIA wzorca (A · B · Δ), zakładki
  * Szyny/Gałęzie/Ranking (tabele wzorca `TabelaWynikow`), szczegół problemu.
  *
@@ -24,10 +30,12 @@ import './porownanie.css';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
 import {
+  InformacjeAudytowe,
   PrzyciskAkcjiStanu,
   SekcjaZalozen,
   TabelaWynikow,
   useAkcjaUruchomObliczenie,
+  useNazwaObiektu,
   usePoprawWModelu,
 } from '../wzorzec';
 import { stronaDowodu } from './dowodPorownania';
@@ -40,9 +48,17 @@ import type {
   PowerFlowComparisonResult,
   PowerFlowRunItem,
 } from '../../../ui/power-flow-comparison/types';
-import { POROWNANIE_STRINGS, ZWARCIA_POROWNANIE_STRINGS, rodzajProblemuPL, wagaPL } from './strings';
+import {
+  POROWNANIE_STRINGS,
+  ZABEZPIECZENIA_POROWNANIE_STRINGS,
+  ZWARCIA_POROWNANIE_STRINGS,
+  rodzajProblemuPL,
+  wagaPL,
+} from './strings';
+import { TrybZabezpieczen } from './TrybZabezpieczen';
 import { TrybZwarciowy } from './TrybZwarciowy';
 import {
+  KLUCZ_ID_ELEMENTU,
   KLUCZ_PROBLEM,
   KOLUMNY_GALEZI,
   KOLUMNY_RANKINGU,
@@ -51,6 +67,7 @@ import {
   mapaWagElementow,
   naWierszeGalezi,
   naWierszeRankingu,
+  naWierszeAudytuPorownania,
   naWierszeSzynDiff,
   naZalozeniaPorownania,
   tylkoRozniceGalezi,
@@ -80,13 +97,14 @@ export interface EkranPorownaniaProps {
   trybZaawansowania: AdvancementMode;
 }
 
-/** Tryb porównania: rozpływ mocy (E12.1) lub zwarcia (E12.2). */
-type TrybPorownania = 'rozplyw' | 'zwarcia';
+/** Tryb porównania: rozpływ mocy (E12.1), zwarcia (E12.2) lub zabezpieczenia (CV-3.3-B2). */
+type TrybPorownania = 'rozplyw' | 'zwarcia' | 'zabezpieczenia';
 
 /**
- * Okno „Porównanie przebiegów" — przełącznik trybu „Rozpływ / Zwarcia" nad
- * właściwym ekranem (karta E12.2 §2.2). Domyślnie tryb rozpływu (dzisiejsze
- * zachowanie, bez regresji). Każdy tryb ma własny stan i własne źródło danych.
+ * Okno „Porównanie przebiegów" — przełącznik RODZAJU porównania nad właściwym
+ * ekranem (karta E12.2 §2.2, rozszerzony o zabezpieczenia w CV-3.3-B2 §0 D1).
+ * Domyślnie tryb rozpływu (dzisiejsze zachowanie, bez regresji). Każdy tryb ma
+ * własny stan i własne źródło danych; JEDEN ekran, zero drugiej strony.
  */
 export function EkranPorownania({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
   const [tryb, setTryb] = useState<TrybPorownania>('rozplyw');
@@ -119,11 +137,23 @@ export function EkranPorownania({ projektId, trybZaawansowania }: EkranPorownani
         >
           {ZWARCIA_POROWNANIE_STRINGS.trybZwarcia}
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tryb === 'zabezpieczenia'}
+          className={tryb === 'zabezpieczenia' ? 'mvd-por-tab mvd-on' : 'mvd-por-tab'}
+          onClick={() => setTryb('zabezpieczenia')}
+          data-testid="mvd-por-tryb-zabezpieczenia"
+        >
+          {ZABEZPIECZENIA_POROWNANIE_STRINGS.trybZabezpieczenia}
+        </button>
       </div>
-      {tryb === 'rozplyw' ? (
+      {tryb === 'rozplyw' && (
         <TrybRozplywu projektId={projektId} trybZaawansowania={trybZaawansowania} />
-      ) : (
-        <TrybZwarciowy trybZaawansowania={trybZaawansowania} />
+      )}
+      {tryb === 'zwarcia' && <TrybZwarciowy trybZaawansowania={trybZaawansowania} />}
+      {tryb === 'zabezpieczenia' && (
+        <TrybZabezpieczen projektId={projektId} trybZaawansowania={trybZaawansowania} />
       )}
     </div>
   );
@@ -224,19 +254,20 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
     [wynik],
   );
   const poprawWModelu = usePoprawWModelu();
+  const nazwaObiektu = useNazwaObiektu();
   const wierszeSzyn = useMemo(() => {
     if (!wynik) return [];
     const zrodlo = tylkoRoznice ? tylkoRozniceSzyn(wynik.bus_diffs) : wynik.bus_diffs;
-    return naWierszeSzynDiff(zrodlo, wagi);
-  }, [wynik, wagi, tylkoRoznice]);
+    return naWierszeSzynDiff(zrodlo, wagi, nazwaObiektu);
+  }, [wynik, wagi, tylkoRoznice, nazwaObiektu]);
   const wierszeGalezi = useMemo(() => {
     if (!wynik) return [];
     const zrodlo = tylkoRoznice ? tylkoRozniceGalezi(wynik.branch_diffs) : wynik.branch_diffs;
-    return naWierszeGalezi(zrodlo, wagi);
-  }, [wynik, wagi, tylkoRoznice]);
+    return naWierszeGalezi(zrodlo, wagi, nazwaObiektu);
+  }, [wynik, wagi, tylkoRoznice, nazwaObiektu]);
   const wierszeRankingu = useMemo(
-    () => (wynik ? naWierszeRankingu(wynik.ranking) : []),
-    [wynik],
+    () => (wynik ? naWierszeRankingu(wynik.ranking, nazwaObiektu) : []),
+    [wynik, nazwaObiektu],
   );
 
   const problemSzczegol =
@@ -251,11 +282,6 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
           <h2 className="mvd-por-title">{POROWNANIE_STRINGS.analiza}</h2>
           <p className="mvd-por-sub">{POROWNANIE_STRINGS.podtytul}</p>
         </div>
-        {trybEkspercki && wynik && (
-          <span className="mvd-por-id mvd-num" data-testid="mvd-por-id">
-            {wynik.comparison_id}
-          </span>
-        )}
       </header>
 
       <section className="mvd-por-wybor" data-testid="mvd-por-wybor" aria-label={POROWNANIE_STRINGS.wyborTytul}>
@@ -285,7 +311,6 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
                 testId="mvd-por-select-a"
                 przebiegi={przebiegi}
                 wybrany={runA}
-                trybEkspercki={trybEkspercki}
                 nazwyPrzypadkow={nazwyPrzypadkow}
                 onZmiana={setRunA}
               />
@@ -294,7 +319,6 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
                 testId="mvd-por-select-b"
                 przebiegi={przebiegi}
                 wybrany={runB}
-                trybEkspercki={trybEkspercki}
                 nazwyPrzypadkow={nazwyPrzypadkow}
                 onZmiana={setRunB}
               />
@@ -326,6 +350,19 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
       {wynik && stan !== 'wtrakcie' && (
         <div className="mvd-wyn" data-testid="mvd-por-wynik">
           <SekcjaZalozen zalozenia={naZalozeniaPorownania(wynik.summary)} />
+
+          {/* B1/B5 (karta CV-3.3-B): dowód CO było porównywane — identyfikator porównania
+              i proweniencja obu biegów (rodzaj, status, rewizja/scenariusz koperty, odciski).
+              Karta #145: metadane produkcyjne wyłącznie w „Informacjach audytowych". */}
+          <InformacjeAudytowe
+            trybEkspercki={trybEkspercki}
+            testid="mvd-por-informacje-audytowe"
+            wiersze={naWierszeAudytuPorownania(
+              wynik.comparison_id,
+              wynik.provenance_a,
+              wynik.provenance_b,
+            )}
+          />
 
           <div className="mvd-por-zakladki" role="tablist" data-testid="mvd-por-zakladki">
             {ZAKLADKI.map((z) => (
@@ -370,7 +407,10 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
                 wiersze={wierszeSzyn}
                 onOtworzDowod={otworzDowodPrzebiegu}
                 trybZaawansowania={trybZaawansowania}
-                onPoprawWModelu={(klucz) => poprawWModelu(klucz, 'Bus', klucz, 'inspekcja-elementu')}
+                kluczWiersza={KLUCZ_ID_ELEMENTU}
+                onPoprawWModelu={(klucz) =>
+                  poprawWModelu(klucz, 'Bus', nazwaObiektu(klucz), 'inspekcja-elementu')
+                }
                 rodzajWiersza={() => 'inspekcja-elementu'}
               />
             ))}
@@ -386,8 +426,9 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
                 wiersze={wierszeGalezi}
                 onOtworzDowod={otworzDowodPrzebiegu}
                 trybZaawansowania={trybZaawansowania}
+                kluczWiersza={KLUCZ_ID_ELEMENTU}
                 onPoprawWModelu={(klucz) =>
-                  poprawWModelu(klucz, 'LineBranch', klucz, 'inspekcja-elementu')
+                  poprawWModelu(klucz, 'LineBranch', nazwaObiektu(klucz), 'inspekcja-elementu')
                 }
                 rodzajWiersza={() => 'inspekcja-elementu'}
               />
@@ -421,7 +462,7 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
                     <dl className="mvd-por-szczegol-lista">
                       <div className="mvd-por-szczegol-poz">
                         <dt>{POROWNANIE_STRINGS.szczegolElement}</dt>
-                        <dd>{problemSzczegol.element_ref}</dd>
+                        <dd>{nazwaObiektu(problemSzczegol.element_ref)}</dd>
                       </div>
                       <div className="mvd-por-szczegol-poz">
                         <dt>{POROWNANIE_STRINGS.szczegolWaga}</dt>
@@ -451,7 +492,6 @@ interface SelektorPrzebieguProps {
   testId: string;
   przebiegi: PowerFlowRunItem[];
   wybrany: string;
-  trybEkspercki: boolean;
   nazwyPrzypadkow: Map<string, string>;
   onZmiana: (id: string) => void;
 }
@@ -461,7 +501,6 @@ function SelektorPrzebiegu({
   testId,
   przebiegi,
   wybrany,
-  trybEkspercki,
   nazwyPrzypadkow,
   onZmiana,
 }: SelektorPrzebieguProps) {
@@ -477,7 +516,7 @@ function SelektorPrzebiegu({
         <option value="">{POROWNANIE_STRINGS.wyborPusty}</option>
         {przebiegi.map((run) => (
           <option key={run.id} value={run.id}>
-            {etykietaPrzebiegu(run, trybEkspercki, nazwyPrzypadkow.get(run.study_case_id) ?? null)}
+            {etykietaPrzebiegu(run, nazwyPrzypadkow.get(run.study_case_id) ?? null)}
           </option>
         ))}
       </select>

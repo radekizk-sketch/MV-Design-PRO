@@ -42,10 +42,10 @@ import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 /*
  * KD-1 (dług V12K-286): TEN moduł jest jedyną prawdą gotowości dla WSZYSTKICH
  * czytelników — nie tylko przestrzeni „Gotowość" i chromu powłoki (K6), lecz
- * także pasków i inspektorów budowy sieci (`ui/network-build`), paska
- * operacyjnego warsztatu (`ui/workspace`), panelu braków danych
- * (`ui/engineering-readiness/DataGapPanel`) i drzewa topologii
- * (`ui2/nav/adapters/topologyTreeAdapter`). Dawne drugie źródło
+ * także pasków i inspektorów budowy sieci (`ui/network-build`) i drzewa
+ * topologii (`ui2/nav/adapters/topologyTreeAdapter`) — pasek operacyjny
+ * warsztatu i panel braków danych skasowano w karcie AB-1a Pakiet L
+ * (LEGACY_USUNAC E40/E25: bez konsumenta produkcyjnego). Dawne drugie źródło
  * `ui/engineering-readiness/readinessLiveStore` USUNIĘTO: nikt nigdy nie wołał
  * jego `refresh`, więc każdy czytelnik dostawał pustą listę problemów i
  * `ready: true` z definicji (liczniki blokad w drzewie topologii były zawsze
@@ -300,10 +300,10 @@ export interface GotowoscModelu {
  * gotowość NIEUSTALONA (`czyGotowoscUstalona === false`) daje `OK` i zerowe
  * `liczbyWgWagi`, więc czytelnicy spoza przestrzeni „Gotowość" pokazują wtedy
  * stan pozytywny zamiast „nie wiadomo". Rozróżnienie wymaga nowej wartości
- * `StatusGotowosci`, a ta jest wyczerpująco mapowana w CZTERECH plikach
- * produkcyjnych innych torów (`ui/workspace/WorkspaceOperationalBar.tsx`,
- * `ui/engineering-readiness/DataGapPanel.tsx`, `ui/network-build/networkBuildStore.ts`,
- * `ui2/nav/adapters/topologyTreeAdapter.ts`) — zmiana bez ich edycji jest
+ * `StatusGotowosci`, a ta jest wyczerpująco mapowana w plikach produkcyjnych
+ * innych torów (`ui/network-build/networkBuildStore.ts`,
+ * `ui2/nav/adapters/topologyTreeAdapter.ts`; dwa dalsze —
+ * `WorkspaceOperationalBar.tsx`, `DataGapPanel.tsx` — skasowane w AB-1a Pakiet L) — zmiana bez ich edycji jest
  * niewykonalna, a edycja narusza rozłączność torów. Uczciwy sygnał jest już
  * dostępny w `podsumujGotowosc().ustalona`; wpięcie go u tych czytelników należy
  * do karty obejmującej ich pliki.

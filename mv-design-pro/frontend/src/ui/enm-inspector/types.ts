@@ -63,35 +63,6 @@ export interface PreflightReport {
 // ENM Diff API response types
 // ---------------------------------------------------------------------------
 
-export interface FieldChange {
-  field_name: string;
-  old_value: unknown;
-  new_value: unknown;
-}
-
-export interface EntityChange {
-  entity_type: string;
-  entity_id: string;
-  entity_name: string;
-  change_type: 'ADDED' | 'REMOVED' | 'MODIFIED';
-  field_changes: FieldChange[];
-}
-
-export interface EnmDiffReport {
-  from_snapshot_id: string;
-  to_snapshot_id: string;
-  from_fingerprint: string;
-  to_fingerprint: string;
-  is_identical: boolean;
-  changes: EntityChange[];
-  summary: {
-    added: number;
-    removed: number;
-    modified: number;
-    total: number;
-  };
-}
-
 // ---------------------------------------------------------------------------
 // ENM Tree types
 // ---------------------------------------------------------------------------

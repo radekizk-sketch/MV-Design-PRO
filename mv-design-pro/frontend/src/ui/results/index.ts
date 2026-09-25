@@ -17,8 +17,6 @@ export {
   type RunHistoryEntry,
 } from './resultsStore';
 
-export { ResultStatusBar, type CalculationAnalysisType } from './ResultStatusBar';
-
 export {
   useSafeModeTransition,
   useModelMutation,

@@ -14,14 +14,15 @@
  * BINDING: 100% PL etykiety.
  */
 
+import { etykietaPunktuNeutralnegoPL } from '../../types/uziemienie';
 import { useCallback, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import { BayWindowSchematic } from '../field/BayWindowSchematic';
 import {
   availabilityLabel,
-  canonicalRoleLabel,
   commandExecutionStateLabel,
   communicationStatusLabel,
+  BRAK_TELEMETRII,
   deviceKindLabel,
   integrityStatusLabel,
   resultStateLabel,
@@ -29,6 +30,7 @@ import {
   switchStateLabel,
 } from '../field/fieldLabels';
 import { useFieldReadModel, type FieldReadModelItem } from '../field/useFieldReadModel';
+import { fieldRoleLabelOrNullPl, fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useSelectionStore } from '../selection';
 import { sanitizeDisplayValue } from '../shell/displayHelpers';
@@ -66,14 +68,17 @@ import { findOperationalBus } from '../shared/enmVisibility';
 import { TypePicker } from '../catalog/TypePicker';
 import { buildCatalogBinding } from '../catalog/catalogBinding';
 import type { CatalogNamespace, TypeCategory } from '../catalog/types';
+import { useAudit2CatalogSnapshot } from './station-der/audit2-hooks';
+import type { PfCurveItem } from './station-der/audit2-api';
 import {
-  DER_DYNAMIC_MODEL_CATALOG,
-  HVRT_CURVE_CATALOG,
-  LVRT_CURVE_CATALOG,
-  NC_RFG_PROFILE_CATALOG,
-  PF_CURVE_CATALOG,
-  PV_INVERTER_CATALOG,
-} from './station-der/catalogs';
+  formatDerDynamicProfileLabelPl,
+  getDerDynamicProfile,
+  getNcRfgOperator,
+  useDerDynamicProfiles,
+  useNcRfgOperatorCatalog,
+  type DerDynamicProfileItem,
+  type NcRfgOperatorItem,
+} from './station-der/derRemoteCatalogs';
 import type { WorkspaceSurfaceCode } from '../workspace/types';
 import { TechCard, buildTechCardSubject } from '../tech-card';
 import { ElementCalculationProofPanel } from '../proof';
@@ -171,7 +176,7 @@ function buildBaySections(
           { key: 'bay_id', label: 'Identyfikator pola', value: item.bay_id },
           { key: 'bay_ref', label: 'Oznaczenie pola', value: item.bay_ref },
           { key: 'name', label: 'Nazwa', value: item.bay_name },
-          { key: 'role', label: 'Rola kanoniczna', value: canonicalRoleLabel(baseModel.bay_role) },
+          { key: 'role', label: 'Rola kanoniczna', value: fieldRoleLabelPl(baseModel.bay_role) },
           {
             key: 'integrity',
             label: 'Integralność modelu',
@@ -182,61 +187,79 @@ function buildBaySections(
       {
         id: 'runtime',
         label: 'Stan ruchowy pola',
+        // Karta #135: stan ruchowy pola WYŁĄCZNIE ze źródła runtime (`runtime_state` modelu
+        // odczytu = rekord źródła albo `null`). Bez źródła każdy wiersz: „brak telemetrii".
         fields: [
           {
             key: 'comm',
             label: 'Łączność urządzenia wtórnego',
-            value: communicationStatusLabel(runtimeState?.secondary_communication_status),
+            value: runtimeState
+              ? communicationStatusLabel(runtimeState.secondary_communication_status)
+              : BRAK_TELEMETRII,
           },
           {
             key: 'last_good_update',
             label: 'Ostatnia poprawna aktualizacja',
-            value: runtimeState?.last_good_update_at ?? null,
+            value: runtimeState ? runtimeState.last_good_update_at ?? null : BRAK_TELEMETRII,
           },
           {
             key: 'control_availability',
             label: 'Dostępność sterowania',
-            value: availabilityLabel(runtimeState?.control_availability),
+            value: runtimeState
+              ? availabilityLabel(runtimeState.control_availability)
+              : BRAK_TELEMETRII,
           },
           {
             key: 'measurement_availability',
             label: 'Dostępność pomiarów',
-            value: availabilityLabel(runtimeState?.measurement_availability),
+            value: runtimeState
+              ? availabilityLabel(runtimeState.measurement_availability)
+              : BRAK_TELEMETRII,
           },
           {
             key: 'command_state',
             label: 'Stan ostatniego polecenia',
-            value: commandExecutionStateLabel(runtimeState?.pending_command?.state),
+            value: runtimeState
+              ? commandExecutionStateLabel(runtimeState.pending_command?.state)
+              : BRAK_TELEMETRII,
           },
           {
             key: 'safe_to_work',
             label: 'Bezpieczne do pracy',
-            value: runtimeState?.energization_and_safety.safe_to_work ?? null,
+            value: runtimeState ? runtimeState.energization_and_safety.safe_to_work : BRAK_TELEMETRII,
           },
           {
             key: 'unsafe_reason',
             label: 'Przyczyna braku bezpieczeństwa',
-            value: runtimeState?.energization_and_safety.unsafe_reason_pl ?? null,
+            value: runtimeState
+              ? runtimeState.energization_and_safety.unsafe_reason_pl ?? null
+              : BRAK_TELEMETRII,
           },
           {
             key: 'energized_bus',
             label: 'Zasilanie od strony szyn',
-            value: runtimeState?.energization_and_safety.energized_from_bus_side ?? null,
+            value: runtimeState
+              ? runtimeState.energization_and_safety.energized_from_bus_side
+              : BRAK_TELEMETRII,
           },
           {
             key: 'energized_feeder',
             label: 'Zasilanie od strony odpływu',
-            value: runtimeState?.energization_and_safety.energized_from_feeder_side ?? null,
+            value: runtimeState
+              ? runtimeState.energization_and_safety.energized_from_feeder_side
+              : BRAK_TELEMETRII,
           },
           {
             key: 'grounded',
             label: 'Pole uziemione',
-            value: runtimeState?.energization_and_safety.grounded ?? null,
+            value: runtimeState ? runtimeState.energization_and_safety.grounded : BRAK_TELEMETRII,
           },
           {
             key: 'visible_gap',
             label: 'Widoczna przerwa',
-            value: runtimeState?.energization_and_safety.visible_isolation_gap ?? null,
+            value: runtimeState
+              ? runtimeState.energization_and_safety.visible_isolation_gap
+              : BRAK_TELEMETRII,
           },
         ],
       },
@@ -340,7 +363,9 @@ function buildBaySections(
           {
             key: 'earth_fault',
             label: 'Tor ziemnozwarciowy',
-            value: projectResults?.earth_fault_path?.neutral_grounding_mode ?? null,
+            value: projectResults?.earth_fault_path
+              ? etykietaPunktuNeutralnegoPL(projectResults.earth_fault_path.neutral_grounding_mode)
+              : null,
           },
           {
             key: 'whole_path',
@@ -705,8 +730,11 @@ function generatorProfileRef(generator: Generator | null | undefined, key: strin
 function pvCatalogLabel(generator: Generator | null | undefined): string | null {
   const catalogRef = generator?.catalog_ref ?? null;
   if (!catalogRef) return null;
-  return PV_INVERTER_CATALOG.find((entry) => entry.id === catalogRef)?.label_pl
-    ?? valueAsString(generatorMaterializedParams(generator).catalog_label)
+  // Karta FAB-J: katalog falowników PV (PV_INVERTER_CATALOG) usunięty z frontu
+  // (karta FAB-I) — jedyne źródło etykiety/producenta/napięcia/mocy to dane
+  // zmaterializowane przez backend przy tworzeniu generatora, nie drugi lokalny
+  // mirror katalogu.
+  return valueAsString(generatorMaterializedParams(generator).catalog_label)
     ?? valueAsString(generatorMeta(generator).catalog_label)
     ?? 'Falownik PV z katalogu projektu';
 }
@@ -714,24 +742,17 @@ function pvCatalogLabel(generator: Generator | null | undefined): string | null 
 function pvCatalogManufacturer(generator: Generator | null | undefined): string | null {
   const catalogRef = generator?.catalog_ref ?? null;
   if (!catalogRef) return null;
-  return PV_INVERTER_CATALOG.find((entry) => entry.id === catalogRef)?.manufacturer
-    ?? valueAsString(generatorMaterializedParams(generator).manufacturer)
+  return valueAsString(generatorMaterializedParams(generator).manufacturer)
     ?? valueAsString(generatorMeta(generator).manufacturer);
 }
 
 function pvCatalogVoltage(generator: Generator | null | undefined): number | null {
-  const catalogRef = generator?.catalog_ref ?? null;
-  const catalog = catalogRef ? PV_INVERTER_CATALOG.find((entry) => entry.id === catalogRef) : null;
-  return catalog?.nominal_voltage_kv
-    ?? valueAsNumber(generatorMaterializedParams(generator).nominal_voltage_kv)
+  return valueAsNumber(generatorMaterializedParams(generator).nominal_voltage_kv)
     ?? valueAsNumber(generatorMeta(generator).nominal_voltage_kv);
 }
 
 function pvCatalogPower(generator: Generator | null | undefined): number | null {
-  const catalogRef = generator?.catalog_ref ?? null;
-  const catalog = catalogRef ? PV_INVERTER_CATALOG.find((entry) => entry.id === catalogRef) : null;
-  return catalog?.nominal_power_kw
-    ?? valueAsNumber(generatorMaterializedParams(generator).nominal_power_kw)
+  return valueAsNumber(generatorMaterializedParams(generator).nominal_power_kw)
     ?? valueAsNumber(generatorMeta(generator).nominal_power_kw)
     ?? (typeof generator?.p_mw === 'number' ? generator.p_mw * 1000 : null);
 }
@@ -753,16 +774,19 @@ function catalogLabelById<T extends { id: string; label_pl: string }>(
   return catalog.find((entry) => entry.id === id)?.label_pl ?? null;
 }
 
-function dynamicModelLabel(generator: Generator | null | undefined): string | null {
+function dynamicModelLabel(
+  generator: Generator | null | undefined,
+  dynamicProfiles: readonly DerDynamicProfileItem[],
+): string | null {
+  // Karta FAB-L: profil dynamiczny WYŁĄCZNIE z `GET /api/catalog/der-dynamic-profiles`
+  // (resolver `network_model/catalog/der_dynamic`, realny dostawca RMS/FRT-HVRT).
+  // Auto-dobór „po urządzeniu" (dawne `applicable_device_ids`) usunięty — backend
+  // nie wyraża takiej operacji, więc wybór jest jawny (`dynamic_model_ref`) albo
+  // brak (do konfiguracji), nigdy cichy domyślny.
   const explicit = generatorProfileRef(generator, 'dynamic_model_ref');
-  if (explicit) {
-    return DER_DYNAMIC_MODEL_CATALOG.find((entry) => entry.id === explicit)?.label_pl ?? explicit;
-  }
-  const catalogRef = generator?.catalog_ref ?? null;
-  if (!catalogRef) return null;
-  return DER_DYNAMIC_MODEL_CATALOG.find((entry) =>
-    entry.applicable_device_ids.includes(catalogRef),
-  )?.label_pl ?? null;
+  if (!explicit) return null;
+  const profile = getDerDynamicProfile(dynamicProfiles, explicit);
+  return profile ? formatDerDynamicProfileLabelPl(profile) : explicit;
 }
 
 function readinessText(ready: boolean, pendingText = 'do konfiguracji'): string {
@@ -936,22 +960,12 @@ function parseApparatusSelectionId(id: string): { bayRef: string; apparatusKind:
   return { bayRef: id.slice(0, marker), apparatusKind: id.slice(marker + 1) };
 }
 
-const INTERNAL_STATION_BAY_ROLE_LABELS_PL: Readonly<Record<string, string>> = {
-  in: 'Pole wejściowe SN',
-  out: 'Pole wyjściowe SN',
-  feeder: 'Pole odgałęźne SN',
-  tr: 'Pole transformatorowe SN',
-  coupler: 'Pole sprzęgłowe SN',
-  measurement: 'Pole pomiarowe SN',
-  oze: 'Pole przyłączeniowe OZE',
-};
-
 const INTERNAL_STATION_DEVICE_LABELS_PL: Readonly<Record<string, string>> = {
   'switch-disconnector': 'Rozłącznik',
   fuse: 'Bezpiecznik',
   'earthing-switch': 'Uziemnik',
   'cable-head': 'Głowica kablowa',
-  'transformer-device': 'Transformator SN/nN',
+  'transformer-device': 'Transformator',
   breaker: 'Wyłącznik',
   disconnector: 'Odłącznik',
   vt: 'Przekładnik napięciowy',
@@ -994,7 +1008,9 @@ function buildInternalStationElementSections(
     : '';
   const [bayKey, deviceKey] = bayPath.split('/');
   const roleKey = bayKey?.split('-')[0] ?? '';
-  const bayLabel = INTERNAL_STATION_BAY_ROLE_LABELS_PL[roleKey] ?? 'Układ stacyjny';
+  // Rola pola z identyfikatora wewnętrznego (`in`/`tr`/`coupler`/`oze`…) — etykieta z kanonu
+  // słownictwa ról pól (karta #141), nie z drugiej listy.
+  const bayLabel = fieldRoleLabelOrNullPl(roleKey) ?? 'Układ stacyjny';
   const deviceLabel = deviceKey
     ? INTERNAL_STATION_DEVICE_LABELS_PL[deviceKey] ?? selectedElement.name
     : selectedElement.name;
@@ -1362,7 +1378,7 @@ function buildSemanticConverterSections(
         id: 'station_link',
         label: 'Powiązanie ze stacją',
         fields: [
-          { key: 'station_transformer', label: 'Transformator SN/nN', value: transformerLabel(transformer) },
+          { key: 'station_transformer', label: 'Transformator stacji', value: transformerLabel(transformer) },
           {
             key: 'converter_catalog',
             label: 'Katalog falownika',
@@ -1486,6 +1502,9 @@ function buildAdvancedConverterSections(
   selectedElement: SelectedElement,
   snapshot: EnergyNetworkModel,
   readinessIssues: ReadinessIssue[],
+  ncRfgOperators: readonly NcRfgOperatorItem[] = [],
+  pfCurves: readonly PfCurveItem[] = [],
+  dynamicProfiles: readonly DerDynamicProfileItem[] = [],
 ): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
   const generator = findGeneratorForSelectedConverter(selectedElement, snapshot);
   const role = converterRoleForGenerator(selectedElement, generator);
@@ -1502,10 +1521,8 @@ function buildAdvancedConverterSections(
   const lvrtRef = generatorProfileRef(generator, 'lvrt_curve_ref');
   const hvrtRef = generatorProfileRef(generator, 'hvrt_curve_ref');
   const pfCurveRef = generatorProfileRef(generator, 'pf_curve_ref');
-  const ncRfgProfile = ncRfgRef
-    ? NC_RFG_PROFILE_CATALOG.find((entry) => entry.id === ncRfgRef) ?? null
-    : null;
-  const dynamicModel = dynamicModelLabel(generator);
+  const ncRfgProfile = ncRfgRef ? getNcRfgOperator(ncRfgOperators, ncRfgRef) : null;
+  const dynamicModel = dynamicModelLabel(generator, dynamicProfiles);
   const catalogPowerKw = pvCatalogPower(generator);
   const catalogVoltageKv = pvCatalogVoltage(generator);
   const faultContributionPu = pvCatalogFaultContribution(generator);
@@ -1598,7 +1615,7 @@ function buildAdvancedConverterSections(
         label: 'Punkt przyłączenia i tor mocy',
         fields: [
           { key: 'connection_point', label: 'PCC', value: hasPcc ? 'szyna nN stacji' : 'do konfiguracji' },
-          { key: 'station_transformer', label: 'Transformator SN/nN', value: transformerLabel(transformer) },
+          { key: 'station_transformer', label: 'Transformator stacji', value: transformerLabel(transformer) },
           {
             key: 'power_path',
             label: 'Tor od strony SN do falownika',
@@ -1616,28 +1633,33 @@ function buildAdvancedConverterSections(
           {
             key: 'nc_rfg',
             label: 'Profil zgodności przyłączeniowej',
-            value: ncRfgProfile?.label_pl ?? 'do konfiguracji',
+            value: ncRfgProfile?.operator_name_pl ?? 'do konfiguracji',
             source: ncRfgProfile ? 'catalog' : undefined,
           },
           {
+            // Karta FAB-J: pola `q_u_deadzone_percent`/`q_u_min_pu`/`q_u_max_pu` nie
+            // miały pokrycia w żadnym backendowym profilu operatora (usunięte razem
+            // z `NC_RFG_PROFILE_CATALOG`) — jedyne realne dane to zakres mocy biernej
+            // wg % Pn i minimalny cos φ z `NcRfgOperatorItem.reactive_power`.
             key: 'qu',
             label: 'Regulacja Q(U)',
             value: ncRfgProfile
-              ? `martwa strefa ${ncRfgProfile.q_u_deadzone_percent}% Un, Q ${ncRfgProfile.q_u_min_pu}...${ncRfgProfile.q_u_max_pu} pu`
+              ? `Q ${ncRfgProfile.reactive_power.q_range_pct_pn_min * 100}...`
+                + `${ncRfgProfile.reactive_power.q_range_pct_pn_max * 100}% Pn`
               : 'do konfiguracji',
             source: ncRfgProfile ? 'catalog' : undefined,
           },
           {
             key: 'pf',
             label: 'Regulacja P(f)',
-            value: catalogLabelById(PF_CURVE_CATALOG, pfCurveRef)
+            value: catalogLabelById(pfCurves, pfCurveRef)
               ?? (ncRfgProfile ? 'profil operatora' : 'do konfiguracji'),
             source: pfCurveRef || ncRfgProfile ? 'catalog' : undefined,
           },
           {
             key: 'cos_phi',
             label: 'Minimalny cos φ',
-            value: ncRfgProfile?.cos_phi_min_lagging ?? null,
+            value: ncRfgProfile?.reactive_power.cos_phi_min ?? null,
             source: ncRfgProfile ? 'catalog' : undefined,
           },
         ],
@@ -1647,15 +1669,19 @@ function buildAdvancedConverterSections(
         label: 'FRT / LVRT / HVRT',
         fields: [
           {
+            // Karta FAB-J: backend niesie JEDNĄ krzywą LVRT/HVRT na operatora (nie
+            // katalog wariantów) — `lvrtRef`/`hvrtRef` to ten sam `operator_id` co
+            // profil NC RfG (patrz `wizard-validation.ts`), więc wyświetlamy liczbę
+            // punktów t-U/Un profilu operatora, nie etykietę z usuniętego katalogu.
             key: 'lvrt',
             label: 'Krzywa LVRT',
-            value: catalogLabelById(LVRT_CURVE_CATALOG, lvrtRef) ?? 'do konfiguracji',
+            value: ncRfgProfile ? `${ncRfgProfile.ride_through.lvrt.length} punktów t-U/Un` : 'do konfiguracji',
             source: lvrtRef ? 'catalog' : undefined,
           },
           {
             key: 'hvrt',
             label: 'Krzywa HVRT',
-            value: catalogLabelById(HVRT_CURVE_CATALOG, hvrtRef) ?? 'do konfiguracji',
+            value: ncRfgProfile ? `${ncRfgProfile.ride_through.hvrt.length} punktów t-U/Un` : 'do konfiguracji',
             source: hvrtRef ? 'catalog' : undefined,
           },
           {
@@ -1795,6 +1821,14 @@ function buildSemanticGpzSections(
         { key: 'rx_ratio', label: 'Stosunek R/X', value: source.rx_ratio ?? null },
         { key: 'r_ohm', label: 'Rezystancja R', value: source.r_ohm ?? null, unit: 'ohm' },
         { key: 'x_ohm', label: 'Reaktancja X', value: source.x_ohm ?? null, unit: 'ohm' },
+        // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — brak = scenariusz
+        // MIN biegu liczony z danych MAX z jawnym założeniem source.sk_min_missing.
+        { key: 'sk3_min_mva', label: 'Moc zwarciowa Sk3 (MIN)', value: source.sk3_min_mva ?? null, unit: 'MVA' },
+        { key: 'ik3_min_ka', label: 'Prąd zwarciowy Ik3 (MIN)', value: source.ik3_min_ka ?? null, unit: 'kA' },
+        { key: 'rx_ratio_min', label: 'Stosunek R/X (MIN)', value: source.rx_ratio_min ?? null },
+        // CV-4.3 K7c: napięcie zadane szyny bilansującej — brak = znamionowe
+        // (1,0 p.u.), zero fabrykacji.
+        { key: 'u_set_pu', label: 'Napięcie zadane szyny bilansującej', value: source.u_set_pu ?? null, unit: 'pu' },
       ],
     });
     sections.push({
@@ -1831,6 +1865,9 @@ function buildSemanticSectionsForElement(
   snapshot: EnergyNetworkModel,
   readinessIssues: ReadinessIssue[],
   fieldItems: readonly FieldReadModelItem[],
+  ncRfgOperators: readonly NcRfgOperatorItem[] = [],
+  pfCurves: readonly PfCurveItem[] = [],
+  dynamicProfiles: readonly DerDynamicProfileItem[] = [],
 ): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
   if (isSemanticMvSegment(selectedElement)) {
     return buildSemanticSegmentSections(
@@ -1842,7 +1879,9 @@ function buildSemanticSectionsForElement(
   }
 
   if (isSemanticConverterSource(selectedElement)) {
-    return buildAdvancedConverterSections(selectedElement, snapshot, readinessIssues);
+    return buildAdvancedConverterSections(
+      selectedElement, snapshot, readinessIssues, ncRfgOperators, pfCurves, dynamicProfiles,
+    );
   }
 
   if (isSemanticGpzSource(selectedElement)) {
@@ -1945,6 +1984,9 @@ function buildSectionsForElement(
   fieldItems: readonly FieldReadModelItem[],
   logicalViews?: LogicalViewsV1 | null,
   selectedElement?: SelectedElement | null,
+  ncRfgOperators: readonly NcRfgOperatorItem[] = [],
+  pfCurves: readonly PfCurveItem[] = [],
+  dynamicProfiles: readonly DerDynamicProfileItem[] = [],
 ): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
   if (!snapshot) return { sections: [], elementType: '', elementName: '', actions: [] };
 
@@ -1965,7 +2007,9 @@ function buildSectionsForElement(
     if (isConverterSourceSelection(selectedElement)) {
       const converter = findGeneratorForSelectedConverter(selectedElement, snapshot);
       if (converter || selectedElement.type === 'PVInverter' || selectedElement.type === 'BESSInverter') {
-        return buildAdvancedConverterSections(selectedElement, snapshot, readinessIssues);
+        return buildAdvancedConverterSections(
+          selectedElement, snapshot, readinessIssues, ncRfgOperators, pfCurves, dynamicProfiles,
+        );
       }
     }
   }
@@ -1976,6 +2020,9 @@ function buildSectionsForElement(
       snapshot,
       readinessIssues,
       fieldItems,
+      ncRfgOperators,
+      pfCurves,
+      dynamicProfiles,
     );
   }
 
@@ -2222,6 +2269,14 @@ function buildSectionsForElement(
         { key: 'rx_ratio', label: 'Stosunek R/X', value: source.rx_ratio ?? null },
         { key: 'r_ohm', label: 'Rezystancja R', value: source.r_ohm ?? null, unit: 'Ω' },
         { key: 'x_ohm', label: 'Reaktancja X', value: source.x_ohm ?? null, unit: 'Ω' },
+        // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — brak = scenariusz
+        // MIN biegu liczony z danych MAX z jawnym założeniem source.sk_min_missing.
+        { key: 'sk3_min_mva', label: 'Moc zwarciowa Sk3 (MIN)', value: source.sk3_min_mva ?? null, unit: 'MVA' },
+        { key: 'ik3_min_ka', label: 'Prąd zwarciowy Ik3 (MIN)', value: source.ik3_min_ka ?? null, unit: 'kA' },
+        { key: 'rx_ratio_min', label: 'Stosunek R/X (MIN)', value: source.rx_ratio_min ?? null },
+        // CV-4.3 K7c: napięcie zadane szyny bilansującej — brak = znamionowe
+        // (1,0 p.u.), zero fabrykacji.
+        { key: 'u_set_pu', label: 'Napięcie zadane szyny bilansującej', value: source.u_set_pu ?? null, unit: 'pu' },
       ],
     });
     sections.push({
@@ -2435,6 +2490,15 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
     isLoading: isFieldLoading,
     error: fieldReadModelError,
   } = useFieldReadModel();
+  // Karta FAB-J: profil NC RfG (operator + ride-through LVRT/HVRT) i krzywe P(f)
+  // WYŁĄCZNIE z backendu — zero drugiej kopii katalogu w tym module (patrz
+  // `pvCatalogLabel`/`buildAdvancedConverterSections` niżej).
+  const ncRfgOperators = useNcRfgOperatorCatalog().data ?? [];
+  const pfCurves = useAudit2CatalogSnapshot().data?.pf_curves ?? [];
+  // Karta FAB-L: profil dynamiczny DER WYŁĄCZNIE z `GET /api/catalog/der-dynamic-profiles`
+  // (patrz `dynamicModelLabel`/`buildAdvancedConverterSections` niżej) — zero
+  // katalogu statycznego w tym module.
+  const dynamicProfiles = useDerDynamicProfiles().data ?? [];
 
   const elementId = selectedElements.length > 0 ? selectedElements[0].id : null;
   const selectedBaySnapshot = useMemo(
@@ -2502,6 +2566,9 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
         fieldReadModelData.fields,
         logicalViews,
         selectedElement,
+        ncRfgOperators,
+        pfCurves,
+        dynamicProfiles,
       );
     },
     [
@@ -2511,6 +2578,9 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       isSelectedBay,
       isFieldLoading,
       logicalViews,
+      ncRfgOperators,
+      pfCurves,
+      dynamicProfiles,
       readinessIssues,
       selectedBayField,
       selectedBayName,

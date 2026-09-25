@@ -6,69 +6,83 @@
 export const STABILNOSC_STRINGS = {
   eyebrow: 'DYNAMIKA',
   tytul: 'Stabilność dynamiczna',
-  cel: 'Oceń, czy źródło zachowuje stabilność po zwarciu i jego wyłączeniu — na podstawie '
-    + 'scenariusza zakłócenia, kryteriów wersjonowanych i werdyktu backendu '
-    + '(analiza stabilności typu „wyłączenie zwarcia").',
+  cel: 'Scenariusz wyłączenia zwarcia wpisany przez użytkownika — bieg bez oceny stabilności: '
+    + 'ekran pokazuje echo scenariusza, efekt topologii zadeklarowany w opcjach biegu '
+    + 'i powód, dla którego stabilność nie jest oceniana.',
 
-  // Stan zerowy.
-  zeroTytul: 'Brak zakończonego przebiegu stabilności dynamicznej',
-  zeroOpis: 'Ekran interpretuje wynik analizy stabilności dynamicznej (scenariusz '
-    + '„wyłączenie zwarcia"). Uruchom tę analizę z przestrzeni obliczeń, aby zobaczyć '
-    + 'werdykt, marginesy i ślad automatyki.',
+  // Stan zerowy — bez scenariusza ekran pokazuje FORMULARZ (karta W2 pkt 1).
+  zeroTytul: 'Bieg wymaga jawnego scenariusza wyłączenia zwarcia',
+  zeroOpis: 'Backend nie ma wartości domyślnych dla scenariusza wyłączenia zwarcia — '
+    + 'podaj poniżej komplet pól. Brak dowolnego pola kończy bieg odmową. Bieg zwraca echo '
+    + 'wpisanego scenariusza z oceną niewykonaną (kąty i wielkości po zwarciu nie pochodzą '
+    + 'z rozwiązania sieci).',
   zeroAkcja: 'Przejdź do obliczeń',
 
+  // Formularz scenariusza — pola = DOKŁADNIE kontrakt opcji biegu
+  // (`enm/canonical_analysis.py::_POLA_SCENARIUSZA_STABILNOSCI_DYNAMICZNEJ`), bez
+  // wartości podpowiadanych jako „typowe" (pola startują puste).
+  formularzTytul: 'Scenariusz wyłączenia zwarcia',
+  formularzOpis: 'Wszystkie pola są wymagane — solver nie ma dla nich wartości domyślnych.',
+  poleElement: 'Element objęty zwarciem',
+  poleCzasWylaczenia: 'Czas wyłączenia zwarcia',
+  poleElementyWylaczajace: 'Aparaty wyłączające zwarcie',
+  poleKatPrzed: 'Kąt mocy przed zwarciem',
+  poleKatWCzasie: 'Kąt mocy w czasie zwarcia',
+  poleKatPo: 'Kąt mocy po zwarciu',
+  poleNapiecie: 'Napięcie po zwarciu',
+  poleCzestotliwosc: 'Częstotliwość po zwarciu',
+  poleStalaCzasowa: 'Stała czasowa odbudowy napięcia/częstotliwości (τ)',
+  formularzUruchom: 'Uruchom bieg scenariusza',
+  formularzWToku: 'Bieg w toku…',
+  bladWymagane: 'pole wymagane',
+  bladDodatnie: 'wartość musi być dodatnia',
+  bladListaPusta: 'zaznacz co najmniej jeden aparat',
+  poleElementWybierz: '— wybierz element z modelu —',
+  poleBrakElementow: 'Model nie ma linii, kabli, szyn ani transformatorów.',
+  poleBrakAparatow: 'Model nie ma aparatów łączeniowych ani bezpieczników.',
+  bezNazwy: 'bez nazwy',
+  rodzajLinia: 'linia napowietrzna',
+  rodzajKabel: 'kabel',
+  rodzajSzyna: 'szyna',
+  rodzajTransformator: 'transformator',
+  rodzajLacznik: 'łącznik',
+  rodzajWylacznik: 'wyłącznik',
+  rodzajSprzeglo: 'sprzęgło szyn',
+  rodzajOdlacznik: 'odłącznik',
+  rodzajBezpiecznik: 'bezpiecznik',
+
   // Stany dostawcy danych.
-  ladowanieTytul: 'Ładowanie wyniku stabilności',
-  ladowanieOpis: 'Widok pobiera werdykt stabilności i ślad automatyki przebiegu.',
-  bladTytul: 'Nie udało się pobrać wyniku stabilności',
+  ladowanieTytul: 'Ładowanie wyniku biegu',
+  ladowanieOpis: 'Widok pobiera echo scenariusza, ocenę i ślad automatyki przebiegu.',
+  bladTytul: 'Nie udało się pobrać wyniku biegu',
   bladOpis: 'Backend nie zwrócił wiersza wyniku dla wskazanego przebiegu. '
     + 'Spróbuj ponownie z przestrzeni obliczeń.',
-  brakWierszaTytul: 'Przebieg bez wyniku stabilności',
-  brakWierszaOpis: 'Wskazany przebieg nie zawiera wiersza wyniku stabilności (uczciwy brak).',
+  brakWierszaTytul: 'Przebieg bez wyniku',
+  brakWierszaOpis: 'Wskazany przebieg nie zawiera wiersza wyniku (uczciwy brak).',
 
   // Założenia — scenariusz zakłócenia.
   zalTytul: 'Scenariusz zakłócenia',
   zalElement: 'Element objęty zwarciem',
-  zalZrodlo: 'Oceniane źródło',
-  zalCzasWylaczenia: 'Czas wyłączenia zwarcia',
+  zalZrodlo: 'Źródło w scenariuszu',
   zalWylaczaly: 'Elementy wyłączające',
-  zalMaksCzas: 'Dopuszczalny czas wyłączenia (kryterium)',
-  zalKryteria: 'Wersja kryteriów',
 
-  // Werdykt.
-  werdyktTytul: 'Werdykt stabilności',
-  werdyktOpis: 'Werdykt, wskaźnik i czynnik ograniczający pochodzą wprost z backendu '
-    + '(zero interpretacji w interfejsie).',
-  werdyktStatus: 'Werdykt',
-  werdyktStabilny: 'STABILNY',
-  werdyktNiestabilny: 'NIESTABILNY',
-  werdyktWskaznik: 'Wskaźnik stabilności',
-  werdyktMargines: 'Margines czasu wyłączenia',
-  werdyktCzynnik: 'Czynnik ograniczający',
-  werdyktNaruszone: 'Naruszone kryteria',
-  werdyktBrakNaruszen: 'brak naruszeń',
-
-  // Tabela wielkości po zakłóceniu.
-  wielkosciTytul: 'Wielkości po zakłóceniu',
-  wielkosciOpis: 'Wartości scenariusza i wyniku z backendu; status per wiersz = kryterium '
-    + 'sprawdzone przez backend (pole `checks`).',
+  // Echo scenariusza — liczby wpisane przez użytkownika (bez porównań z progami).
+  echoTytul: 'Wartości scenariusza wpisane przez użytkownika',
+  echoOpis: 'Backend zwraca te liczby bez zmian — nie pochodzą z rozwiązania sieci i nie są '
+    + 'porównywane z żadnym progiem.',
   kolWielkosc: 'Wielkość',
   kolWartosc: 'Wartość',
-  kolStatus: 'Status kryterium',
-  wielkoscCzas: 'Czas wyłączenia zwarcia',
-  wielkoscKat: 'Wychylenie kąta wirnika',
-  wielkoscNapiecie: 'Napięcie po zakłóceniu',
-  wielkoscCzestotliwosc: 'Częstotliwość po zakłóceniu',
-  statusSpelnione: 'spełnione',
-  statusNaruszone: 'naruszone',
-  // Uczciwa granica kontraktu (GAP): wynik nie niesie szeregu czasowego.
-  brakSzereguCzasowego: 'Kontrakt wyniku nie niesie szeregu czasowego przebiegu (kąt/napięcie '
-    + 'w funkcji czasu) — prezentowane są wartości skrajne i końcowe policzone przez backend.',
+  echoCzas: 'Czas wyłączenia zwarcia',
+  echoKatPrzed: 'Kąt mocy przed zwarciem',
+  echoKatWCzasie: 'Kąt mocy w czasie zwarcia',
+  echoKatPo: 'Kąt mocy po zwarciu',
+  echoNapiecie: 'Napięcie po zwarciu',
+  echoCzestotliwosc: 'Częstotliwość po zwarciu',
 
   // Przebieg czasowy (szereg U(t)/f(t)) — na żądanie.
   przebiegTytul: 'Przebieg czasowy',
-  przebiegOpis: 'Napięcie i częstotliwość w funkcji czasu (przebieg policzony przez backend '
-    + 'dla scenariusza wyłączenia zwarcia). Ładowany na żądanie — zgodnie z zasadą śladu.',
+  przebiegOpis: 'Napięcie i częstotliwość w funkcji czasu dla wpisanego scenariusza. '
+    + 'Ładowany na żądanie — zgodnie z zasadą śladu.',
   przebiegPokaz: 'Pokaż przebieg',
   przebiegUkryj: 'Ukryj przebieg',
   przebiegLadowanie: 'Ładowanie przebiegu czasowego…',
@@ -82,32 +96,40 @@ export const STABILNOSC_STRINGS = {
   przebiegSeriaCzestotliwosc: 'Częstotliwość f(t)',
   jednS: 's',
 
-  // Ślad automatyki (na żądanie).
+  // Ślad automatyki (na żądanie) — bez narracji zdarzeń.
   sladTytul: 'Ślad automatyki zabezpieczeniowej',
   sladPokaz: 'Pokaż ślad automatyki',
   sladUkryj: 'Ukryj ślad automatyki',
-  sladOpis: 'Sekwencja zdarzeń automatyki (backend, read-only) — od zwarcia do stanu po wyłączeniu.',
-  sladKolLp: 'Lp.',
-  sladKolZdarzenie: 'Zdarzenie',
-  sladKolElement: 'Element',
-  sladKolOpis: 'Opis',
-  sladBrak: 'Przebieg nie zawiera zdarzeń śladu automatyki.',
+  sladOpis: 'Tor nie symuluje zabezpieczeń — ślad nie opowiada sekwencji zdarzeń; pokazuje '
+    + 'wyłącznie efekt topologii zadeklarowany w opcjach biegu.',
+  sladBrak: 'Ślad automatyki nie zawiera zdarzeń: zabezpieczenia nie zostały zasymulowane '
+    + 'w tym biegu (tor nie rozwiązuje sieci).',
+  sladBladPobrania: 'Nie udało się pobrać śladu automatyki dla tego biegu.',
+  sladTopologiaTytul: 'Efekt topologii zadeklarowany w opcjach biegu',
   sladStanSieci: 'Stan sieci po zakłóceniu',
   sladZakresWylaczen: 'Zakres wyłączeń',
+  sladOtwarte: 'Elementy otwarte',
+  // Stan sieci i zakres wyłączeń (kody `application/automation/trace.py`).
+  stanSieciWyspa: 'praca wyspowa — część sieci odłączona od źródeł zasilania',
+  stanSieciPrzekonfigurowana: 'układ zmieniony — elementy wyłączone lub odizolowane',
+  stanSieciBezZmian: 'układ bez zmian',
+  zakresBrak: 'bez elementów odłączonych od zasilania',
+  zakresLokalny: 'lokalny — odłączony jeden lub dwa elementy',
+  zakresRozlegly: 'rozległy — odłączone więcej niż dwa elementy',
   sladDowod: 'Otwórz pełny dowód obliczeń',
   sladDowodOpis: 'Pełny ślad przebiegu (wszystkie kroki) w zakładce „Dowód obliczeń".',
 
   // Raportowalność.
   raportTytul: 'Raportowalność',
-  raportStatus: 'Werdykt raportowalności',
+  raportStatus: 'Status raportowalności',
   raportUzasadnienie: 'Status uzasadnienia',
   raportOgraniczenia: 'Ograniczenia raportowe',
   raportBrakOgraniczen: 'brak ograniczeń',
 
   // Następny krok / powrót.
   nastepnyEyebrow: 'NASTĘPNY KROK',
-  nastepnyOpis: 'Werdykt niestabilny → sprawdź nastawy zabezpieczeń (koordynacja) i czas '
-    + 'wyłączenia pola; pełny wywód kroków znajdziesz w zakładce „Dowód obliczeń".',
+  nastepnyOpis: 'Stabilność oceń obliczeniem dynamiki czasowej z punktem pracy z rozpływu; '
+    + 'echo scenariusza i ślad biegu znajdziesz w zakładce „Dowód obliczeń".',
   powrotHub: '← Wróć do analiz technicznych',
   powrotOpis: 'Wróć do przeglądu analiz technicznych',
 
@@ -117,38 +139,3 @@ export const STABILNOSC_STRINGS = {
   jednPu: 'p.u.',
   kreska: '—',
 } as const;
-
-/**
- * Słownik PL kryteriów/czynników analizy stabilności. Klucze = tokeny backendu
- * (`checks`/`limiting_factor`, application/stability/dynamic_stability.py:155-183).
- * Token nierozpoznany pokazywany dosłownie (dane, nie literał UI).
- */
-const KRYTERIUM_PL: Record<string, string> = {
-  clearing_time: 'czas wyłączenia zwarcia',
-  angle_swing: 'wychylenie kąta wirnika',
-  voltage_recovery: 'odbudowa napięcia',
-  frequency_recovery: 'odbudowa częstotliwości',
-};
-
-/** Mapuje token kryterium na polską nazwę (read-only, bez fizyki). */
-export function kryteriumPL(token: string): string {
-  return KRYTERIUM_PL[token] ?? token;
-}
-
-/**
- * Słownik PL typów zdarzeń śladu automatyki. Klucze = `event_type` backendu
- * (application/automation/trace.py — build_automation_trace).
- * Token nierozpoznany pokazywany dosłownie.
- */
-const ZDARZENIE_PL: Record<string, string> = {
-  AUTOMATION_STARTED: 'start sekwencji automatyki',
-  FAULT_APPLIED: 'wystąpienie zwarcia',
-  FAULT_CLEARED: 'wyłączenie zwarcia',
-  POST_FAULT_TOPOLOGY_EFFECT: 'zmiana topologii po wyłączeniu',
-  DYNAMIC_STABILITY_EVALUATED: 'ocena stabilności',
-};
-
-/** Mapuje token zdarzenia automatyki na polską nazwę (read-only). */
-export function zdarzeniePL(token: string): string {
-  return ZDARZENIE_PL[token] ?? token;
-}

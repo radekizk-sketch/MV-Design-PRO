@@ -26,6 +26,11 @@ export const PIERSCIEN_STRINGS = {
   ],
   dlugosc: 'Długość odcinka',
   dlugoscPomoc: 'Długość odcinka domykającego pętlę [m] — wpływa na impedancję pierścienia.',
+  ekranUziemienie: 'Uziemienie ekranu kabla',
+  ekranUziemieniePomoc:
+    'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
+    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
+    + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
 
   nopTytul: 'Punkt normalnie otwarty (NOP)',
   nopPomoc:
@@ -58,6 +63,10 @@ export const PIERSCIEN_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem pierścienia.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby domknąć pierścień.',
+  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
+  // katalog kabli/linii pierścienia ładuje się asynchronicznie; „Domknij"
+  // bez niego byłoby cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
+  katalogLadowanieStopka: 'Ładowanie katalogu typów odcinków SN — domknięcie będzie dostępne po wczytaniu.',
   pierscienDomkniety: 'Pierścień domknięty — wskaż teraz punkt normalnie otwarty.',
 
   // Panel teorii (V12K-066: standard „must-have")

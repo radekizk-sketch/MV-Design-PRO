@@ -135,12 +135,16 @@ describe('wymagaWezlaJ — z metadanych backendu', () => {
   });
 });
 
+/** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
+const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
+  nazwaZWyniku ?? `nazwa ${ref}`;
+
 describe('adaptery wyniku — wartości wyłącznie z backendu', () => {
   it('estymowany stan węzła → wiersz z |V|/kątem', () => {
     const dane = widokEstymacjiFixture();
-    const wiersze = naWierszeWezlow(dane.buses);
+    const wiersze = naWierszeWezlow(dane.buses, NAZWA);
     expect(wiersze).toHaveLength(3);
-    const wezel2 = mapujWierszWezla(dane.buses[1]);
+    const wezel2 = mapujWierszWezla(dane.buses[1], NAZWA);
     expect(wezel2.wezel.wartosc).toBe('Szyna SN');
     expect(wezel2.modul.wartosc).toBe('0,9912');
     expect(wezel2.kat.wartosc).toBe('-1,50');
@@ -148,18 +152,20 @@ describe('adaptery wyniku — wartości wyłącznie z backendu', () => {
 
   it('rezyduum podejrzanego pomiaru → ostrzeżenie + flaga', () => {
     const dane = widokEstymacjiFixture();
-    const podejrzany = mapujWierszPomiaru(dane.measurements[0], TYPY_POMIAROW);
+    const podejrzany = mapujWierszPomiaru(dane.measurements[0], TYPY_POMIAROW, NAZWA);
+    // Węzeł pomiaru nazwany mostem nazw, nie referencją.
+    expect(podejrzany.wezel.wartosc).toBe(`nazwa ${dane.measurements[0].bus_ref}`);
     expect(podejrzany.flaga.wartosc).toBe('podejrzany');
     expect(podejrzany.rezyduumZnorm.ostrzezenie).toBe(true);
-    const czysty = mapujWierszPomiaru(dane.measurements[1], TYPY_POMIAROW);
+    const czysty = mapujWierszPomiaru(dane.measurements[1], TYPY_POMIAROW, NAZWA);
     expect(czysty.flaga.wartosc).toBe('—');
     expect(czysty.rezyduumZnorm.ostrzezenie).toBe(false);
   });
 
-  it('założenia niosą bazę mocy i slack z backendu', () => {
+  it('założenia niosą bazę mocy i slack z backendu (slack nazwany mostem nazw)', () => {
     const dane = widokEstymacjiFixture();
-    const zal = naZalozeniaEstymacji(dane);
-    const slack = zal.find((z) => z.wartosc === 'BUS-1');
+    const zal = naZalozeniaEstymacji(dane, NAZWA);
+    const slack = zal.find((z) => z.wartosc === 'nazwa BUS-1');
     expect(slack).toBeDefined();
   });
 });

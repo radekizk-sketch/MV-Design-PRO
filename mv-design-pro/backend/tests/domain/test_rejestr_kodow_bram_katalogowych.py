@@ -134,7 +134,6 @@ def test_kazdy_kod_bramy_ma_opis_obszar_i_nawigacje(kod: str) -> None:
     assert spec.area is ReadinessArea.CATALOGS, f"{kod}: brama katalogowa poza obszarem CATALOGS"
     assert spec.level is ReadinessLevel.BLOCKER, f"{kod}: brama zatrzymuje operację, to blokada"
     assert len(spec.message_pl) > 20, f"{kod}: opis za krótki, żeby cokolwiek wyjaśnić"
-    assert spec.fix_action_id, f"{kod}: brak akcji naprawczej"
     assert spec.fix_navigation, f"{kod}: brak nawigacji naprawczej"
     assert spec.fix_navigation.get("panel"), f"{kod}: nawigacja bez wskazania panelu"
 

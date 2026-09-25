@@ -1,15 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { FIELD_ROLE_LABEL_PL } from '../../../sld/v2/station-rozdzielnia/contract';
 import {
   stationRef,
   stationPublicName,
   sourceStatusRank,
   isCompleteSourceStatus,
   compareBayTemplateOptions,
-  bayKindLabel,
   templateOptionLabel,
   orderManufacturers,
   isUsableManufacturer,
-  isUsableSwitchgearFamily,
   isStationNnSourceConverter,
   hasEnoughTransformerPower,
   voltageMatches,
@@ -17,7 +16,7 @@ import {
   formatKv,
   formatMva,
   SWITCHGEAR_MANUFACTURER_ORDER,
-  FIELD_ROLE_LABELS,
+  SN_FIELD_ROLES,
 } from '../InsertStationFormHelpers';
 
 describe('stationRef', () => {
@@ -76,19 +75,6 @@ describe('compareBayTemplateOptions', () => {
   });
 });
 
-describe('bayKindLabel', () => {
-  it('liniowe_doplywowe', () => {
-    expect(bayKindLabel('liniowe_doplywowe')).toBe('Pole liniowe wejściowe');
-  });
-  it('transformatorowe', () => {
-    expect(bayKindLabel('transformatorowe')).toBe('Pole transformatorowe');
-  });
-  it('sprzeglowe_poprzeczne i sprzeglowe_podluzne → "Pole sprzęgłowe"', () => {
-    expect(bayKindLabel('sprzeglowe_poprzeczne')).toBe('Pole sprzęgłowe');
-    expect(bayKindLabel('sprzeglowe_podluzne')).toBe('Pole sprzęgłowe');
-  });
-});
-
 describe('templateOptionLabel', () => {
   it('uwzględnia rolę jeśli podana', () => {
     const tmpl = {
@@ -98,6 +84,18 @@ describe('templateOptionLabel', () => {
     } as never;
     expect(templateOptionLabel(tmpl, 'LINIA_IN')).toContain('Pole liniowe wejściowe');
     expect(templateOptionLabel(tmpl, 'LINIA_IN')).toContain('pakiet katalogowy');
+  });
+
+  it('bez roli — nazwa rodzaju pola katalogu z kanonu ról (sprzęgło z określeniem rodzaju)', () => {
+    // Karta #141: dawna lokalna mapa rodzajów pisała „Pole sprzęgłowe” i „Pole przyłączeniowe
+    // PV”, a rodzaje spoza listy dostawały „Pole SN” — teraz jedna nazwa z kanonu.
+    const opcja = (bay_kind: string) =>
+      templateOptionLabel({ template_ref: 't', bay_kind, source_status: 'official_catalog' } as never);
+    expect(opcja('sprzeglowe_poprzeczne')).toBe('Pole sprzęgła poprzecznego · pakiet katalogowy');
+    expect(opcja('sprzeglowe_podluzne')).toBe('Pole sprzęgła podłużnego · pakiet katalogowy');
+    expect(opcja('pv')).toBe('Pole źródłowe PV · pakiet katalogowy');
+    expect(opcja('pomiarowe')).toBe('Pole pomiarowe · pakiet katalogowy');
+    expect(opcja('potrzeb_wlasnych')).toBe('Pole potrzeb własnych · pakiet katalogowy');
   });
 });
 
@@ -196,9 +194,15 @@ describe('constants', () => {
     expect(SWITCHGEAR_MANUFACTURER_ORDER).toHaveLength(4);
     expect(SWITCHGEAR_MANUFACTURER_ORDER[0]).toBe('ZPUE_WLOSZCZOWA');
   });
-  it('FIELD_ROLE_LABELS pokrywa 5 ról', () => {
-    expect(Object.keys(FIELD_ROLE_LABELS)).toHaveLength(5);
-    expect(FIELD_ROLE_LABELS.LINIA_IN).toBe('Pole liniowe wejściowe');
+  it('każda rola pola SN kreatora ma nazwę z kanonu kontraktu rozdzielnicy, nigdy kod roli', () => {
+    // Karta #140: kopia mapy nie znała pola pomiarowego (kreator pokazywał kod roli). Karta #141:
+    // kopia zniknęła — kreator czyta wprost kanon `FIELD_ROLE_LABEL_PL`.
+    const tmpl = { template_ref: 't', bay_kind: 'kablowe', source_status: 'official_catalog' } as never;
+    for (const role of SN_FIELD_ROLES) {
+      const label = templateOptionLabel(tmpl, role);
+      expect(label).toBe(`${FIELD_ROLE_LABEL_PL[role]} · pakiet katalogowy`);
+      expect(label).not.toContain(role);
+    }
   });
 });
 

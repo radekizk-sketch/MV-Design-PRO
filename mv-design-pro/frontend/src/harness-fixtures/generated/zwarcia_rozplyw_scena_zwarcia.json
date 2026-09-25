@@ -1,0 +1,287 @@
+{
+  "run_id": "run-sc-scena-zwarcia",
+  "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+  "branch_contributions": [
+    {
+      "branch_id": "line_b_c",
+      "branch_name": "Linia SN 1",
+      "source_id": "THEVENIN_GRID",
+      "from_node_id": "bus_sn_b",
+      "from_node_name": "Stacja B SN",
+      "to_node_id": "bus_sn_c",
+      "to_node_name": "Stacja C SN",
+      "i_ka": 0.6436033616984862,
+      "direction": "to_from"
+    },
+    {
+      "branch_id": "line_b_c",
+      "branch_name": "Linia SN 1",
+      "source_id": "gen_pv",
+      "from_node_id": "bus_sn_b",
+      "from_node_name": "Stacja B SN",
+      "to_node_id": "bus_sn_c",
+      "to_node_name": "Stacja C SN",
+      "i_ka": 1.9668632369481116e-18,
+      "direction": "brak"
+    },
+    {
+      "branch_id": "tr_hv_sn",
+      "branch_name": "TR 110/15",
+      "source_id": "THEVENIN_GRID",
+      "from_node_id": "bus_hv",
+      "from_node_name": "GPZ 110 kV",
+      "to_node_id": "bus_sn_main",
+      "to_node_name": "Szyna SN",
+      "i_ka": 8.311609676631322,
+      "direction": "from_to"
+    },
+    {
+      "branch_id": "tr_hv_sn",
+      "branch_name": "TR 110/15",
+      "source_id": "gen_pv",
+      "from_node_id": "bus_hv",
+      "from_node_name": "GPZ 110 kV",
+      "to_node_id": "bus_sn_main",
+      "to_node_name": "Szyna SN",
+      "i_ka": 1.8282807406207646e-18,
+      "direction": "brak"
+    },
+    {
+      "branch_id": "tr_sn_nn",
+      "branch_name": "TR 15/0.4",
+      "source_id": "THEVENIN_GRID",
+      "from_node_id": "bus_sn_b",
+      "from_node_name": "Stacja B SN",
+      "to_node_id": "bus_nn",
+      "to_node_name": "Szyna nN",
+      "i_ka": 2.2137004483243453e-16,
+      "direction": "brak"
+    },
+    {
+      "branch_id": "tr_sn_nn",
+      "branch_name": "TR 15/0.4",
+      "source_id": "gen_pv",
+      "from_node_id": "bus_sn_b",
+      "from_node_name": "Stacja B SN",
+      "to_node_id": "bus_nn",
+      "to_node_name": "Szyna nN",
+      "i_ka": 0.01693560789622902,
+      "direction": "to_from"
+    }
+  ],
+  "branch_flow_trace": [
+    {
+      "key": "thevenin_flow_setup",
+      "title": "Podział prądu Thevenina — iniekcja jednostkowa w węźle zwarcia",
+      "formula_latex": "\\underline{V} = \\underline{Z}_{bus} \\cdot \\underline{i}_{inj},\\quad \\underline{i}_{inj,k} = -1",
+      "inputs": {
+        "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+        "fault_index": 0,
+        "ik_thevenin_a": 8953.06173406898,
+        "n_nodes": 4
+      },
+      "substitution": "i_inj[0] = -1 (pu); V = Z_bus @ i_inj",
+      "substitution_latex": "\\underline{i}_{inj,0} = -1",
+      "result": {
+        "v_nodes_pu": [
+          {
+            "re": -0.024062056006904677,
+            "im": -0.4722873386761213
+          },
+          {
+            "re": -0.004067518675826008,
+            "im": -0.03833789139221796
+          },
+          {
+            "re": -0.024062056006904635,
+            "im": -0.47228733867612116
+          },
+          {
+            "re": 0.0035298602175609884,
+            "im": -0.4363539280660025
+          }
+        ]
+      },
+      "notes": "Napięcia węzłowe ze zwarcia z macierzy Z-bus sieci zgodnej (build_zbus, ta sama macierz co tor superpozycji falownikowej)."
+    },
+    {
+      "key": "thevenin_flow_9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+      "title": "Prąd zwarciowy Thevenina w gałęzi 9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+      "formula_latex": "I_{ga\\l} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
+      "inputs": {
+        "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+        "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+        "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+        "v_from_pu": {
+          "re": -0.024062056006904677,
+          "im": -0.4722873386761213
+        },
+        "v_to_pu": {
+          "re": 0.0035298602175609884,
+          "im": -0.4363539280660025
+        },
+        "y_series_pu": {
+          "re": 1.0614653988488996,
+          "im": -1.1794059987209997
+        },
+        "ik_thevenin_a": 8953.06173406898
+      },
+      "substitution": "|(-0.0240621-j0.472287 - 0.00352986-j0.436354) * 1.06147-j1.17941| * 8953.06",
+      "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(0.00352986 - j 0.436354\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 8953.06",
+      "result": {
+        "fraction": 0.07188639828645321,
+        "i_contrib_a": 643.6033616984862,
+        "direction": "to_from"
+      },
+      "notes": null
+    },
+    {
+      "key": "thevenin_flow_7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+      "title": "Prąd zwarciowy Thevenina w gałęzi 7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+      "formula_latex": "I_{ga\\l} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
+      "inputs": {
+        "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+        "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+        "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+        "v_from_pu": {
+          "re": -0.004067518675826008,
+          "im": -0.03833789139221796
+        },
+        "v_to_pu": {
+          "re": -0.024062056006904677,
+          "im": -0.4722873386761213
+        },
+        "y_series_pu": {
+          "re": 0.0854818482409529,
+          "im": -2.135335884656586
+        },
+        "ik_thevenin_a": 8953.06173406898
+      },
+      "substitution": "|(-0.00406752-j0.0383379 - -0.0240621-j0.472287) * 0.0854818-j2.13534| * 8953.06",
+      "substitution_latex": "\\left| \\left(\\left(-0.00406752 - j 0.0383379\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 8953.06",
+      "result": {
+        "fraction": 0.9283538887041571,
+        "i_contrib_a": 8311.609676631322,
+        "direction": "from_to"
+      },
+      "notes": null
+    },
+    {
+      "key": "thevenin_flow_158eec95-939b-5b35-97ad-9433334b5506",
+      "title": "Prąd zwarciowy Thevenina w gałęzi 158eec95-939b-5b35-97ad-9433334b5506",
+      "formula_latex": "I_{ga\\l} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
+      "inputs": {
+        "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
+        "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+        "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+        "v_from_pu": {
+          "re": -0.024062056006904677,
+          "im": -0.4722873386761213
+        },
+        "v_to_pu": {
+          "re": -0.024062056006904635,
+          "im": -0.47228733867612116
+        },
+        "y_series_pu": {
+          "re": 0.0330249074426853,
+          "im": -0.1402023729937656
+        },
+        "ik_thevenin_a": 8953.06173406898
+      },
+      "substitution": "|(-0.0240621-j0.472287 - -0.0240621-j0.472287) * 0.0330249-j0.140202| * 8953.06",
+      "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0330249 - j 0.140202\\right)\\right| \\cdot 8953.06",
+      "result": {
+        "fraction": 2.4725624753603307e-17,
+        "i_contrib_a": 2.2137004483243454e-13,
+        "direction": "to_from"
+      },
+      "notes": null
+    },
+    {
+      "key": "thevenin_flow_balance",
+      "title": "Suma kontrolna bilansu prądu w węźle zwarcia (KCL)",
+      "formula_latex": "\\sum_{ga\\l \\to k} I_{ga\\l} = I_k''^{(Th)}",
+      "inputs": {
+        "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+        "ik_thevenin_a": 8953.06173406898
+      },
+      "substitution": "Σ = 8311.61 ≈ 8953.06",
+      "substitution_latex": "\\sum = 8311.61 \\approx 8953.06",
+      "result": {
+        "sum_into_fault_a": 8311.609676631322,
+        "fraction_sum": 0.9283538887041571
+      },
+      "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+    }
+  ],
+  "analysis_case_context": {
+    "case_ref": "case-demo",
+    "case_kind": "ZWARCIOWY_MAKS",
+    "rodzaj_przypadku": "ZWARCIOWY_MAKS",
+    "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+    "rewizja_modelu": 1,
+    "variant_ref": null,
+    "run_ref": "run-sc-scena-zwarcia",
+    "proof_pack_ref": "proof-pack:run-sc-scena-zwarcia",
+    "quality_gate": "G4",
+    "applicability_scope": [
+      "SC",
+      "REPORT"
+    ],
+    "completeness": "complete",
+    "completeness_legacy": "pelny",
+    "missing_prerequisites": [],
+    "assumptions": {
+      "source_assumptions_ref": "sc_source_max",
+      "load_assumptions_ref": "sc_load_snapshot",
+      "switching_state_ref": null,
+      "grounding_assumptions_ref": "network_grounding_snapshot",
+      "temperature_assumptions_ref": "temperature_short_circuit",
+      "transformer_tap_assumptions_ref": "tap_frozen",
+      "ibg_assumptions_ref": "ibg_model_snapshot"
+    },
+    "lineage": {
+      "project_ref": null,
+      "run_ref": "run-sc-scena-zwarcia",
+      "analysis_type": "short_circuit_sn",
+      "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0"
+    },
+    "reproducibility": {
+      "case_ref": "case-demo",
+      "analysis_case_ref": "case-demo",
+      "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "enm_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "enm_snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "enm_projection_version": "v12xx.m1.1",
+      "variant_ref": null,
+      "operating_variant_ref": null,
+      "switching_snapshot_ref": null,
+      "solver_family": "iec60909_short_circuit",
+      "solver_version": null,
+      "method_version": "canonical_run_v1",
+      "formula_set_version": "iec60909_v1",
+      "standard_basis_ref": "IEC_60909",
+      "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
+      "result_hash": "773ff05e06f7fb98f23a73538604954a146ed12eec95e76caa509f6261be19d3",
+      "domain_model_version": "1.0",
+      "bay_contract_version": "V12.5",
+      "results_contract_version": "V12.5",
+      "proof_renderer_version": "white_box_trace_v1",
+      "catalog_snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "catalog_materialization_ref": "catalog-materialization:6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
+      "catalog_materialization_hash": "6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
+      "catalog_materialization_status": "not_materialized",
+      "catalog_materialization_contract_version": "catalog_materialization_v1",
+      "catalog_schema_version": null,
+      "catalog_fingerprint": "cea426cf988f650cf00a87e531d693e93a693f4fa529acf1f74e5e77b8b46977",
+      "model_revision": 1,
+      "tolerance_policy_ref": "solver_tolerance/default",
+      "rounding_policy_ref": "rounding/default",
+      "quality_gate_policy_version": "v12_5_quality_gate",
+      "report_contract_version": "analysis_report_v2",
+      "export_generator_version": "v12_5_export_artifact/1.0",
+      "result_rules_version": "result_rules_v12_5",
+      "ruleset_version": "result_rules_v12_5"
+    }
+  }
+}

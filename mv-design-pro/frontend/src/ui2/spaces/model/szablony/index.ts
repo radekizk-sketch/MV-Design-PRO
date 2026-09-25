@@ -9,6 +9,10 @@ export { PrzegladarkaSzablonow, type PrzegladarkaSzablonowProps } from './Przegl
 export { KafelSzablonu, type KafelSzablonuProps } from './KafelSzablonu';
 export { SzczegolySzablonu, type SzczegolySzablonuProps } from './SzczegolySzablonu';
 export {
+  WymaganiaDanychSzablonu,
+  type WymaganiaDanychSzablonuProps,
+} from './WymaganiaDanychSzablonu';
+export {
   PorownanieSzablonow,
   zbudujWierszePorownania,
   type PorownanieSzablonowProps,

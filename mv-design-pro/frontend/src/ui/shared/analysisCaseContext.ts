@@ -60,25 +60,3 @@ export const ANALYSIS_COMPLETENESS_LABELS: Record<AnalysisCompletenessStatus, st
   not_applicable: 'Nie dotyczy',
 };
 
-export const ANALYSIS_COMPLETENESS_BADGE_CLASS: Record<AnalysisCompletenessStatus, string> = {
-  complete: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  partial: 'border-amber-200 bg-amber-50 text-amber-700',
-  failed: 'border-rose-200 bg-rose-50 text-rose-700',
-  not_applicable: 'border-slate-200 bg-slate-100 text-slate-700',
-};
-
-export const QUALITY_GATE_LABELS: Record<string, string> = {
-  G0: 'Gate G0',
-  G1: 'Gate G1',
-  G2: 'Gate G2',
-  G3: 'Gate G3',
-  G4: 'Gate G4',
-};
-
-export const QUALITY_GATE_BADGE_CLASS: Record<string, string> = {
-  G0: 'border-rose-200 bg-rose-50 text-rose-700',
-  G1: 'border-amber-200 bg-amber-50 text-amber-700',
-  G2: 'border-amber-200 bg-amber-50 text-amber-700',
-  G3: 'border-sky-200 bg-sky-50 text-sky-700',
-  G4: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-};

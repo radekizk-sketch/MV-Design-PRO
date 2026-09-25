@@ -1,0 +1,31 @@
+{
+  "runs": [
+    {
+      "id": "run-zab-scena-b",
+      "project_id": "proj-zab",
+      "study_case_id": "case-zab-b",
+      "analysis_type": "protection_sn",
+      "status": "FINISHED",
+      "created_at": "2026-09-16T09:00:00+00:00",
+      "finished_at": "2026-09-16T09:00:00+00:00",
+      "input_hash": "5e96d99d62533a0edc6bc6fa54aa401572d69ba704274768e350ace6ce8a248d",
+      "snapshot_hash": "d3ef4cc1764cef7dc22452cfc08816ac04d273cfbe3d1aee03607b866c599ffe",
+      "model_revision": 2,
+      "scenario_ref": null
+    },
+    {
+      "id": "run-zab-scena-a",
+      "project_id": "proj-zab",
+      "study_case_id": "case-zab-a",
+      "analysis_type": "protection_sn",
+      "status": "FINISHED",
+      "created_at": "2026-09-16T09:00:00+00:00",
+      "finished_at": "2026-09-16T09:00:00+00:00",
+      "input_hash": "4d8b79f2289e291485a5c5c4f564b03fe64d32a141ddfad121dba49d6bedc211",
+      "snapshot_hash": "085cdc45ea65f96bffa401345419f782917e5d8bef582dd13623cfdbc7b75620",
+      "model_revision": 2,
+      "scenario_ref": null
+    }
+  ],
+  "total": 2
+}

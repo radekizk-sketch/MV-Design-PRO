@@ -1,0 +1,497 @@
+{
+  "solver_version": "load-flow-newton-raphson-v1",
+  "solver_method": "newton-raphson",
+  "proof_ref": "proof:power-flow:7a0300ba27d72e36aa838859dafa57ec61fbec61c6230f0561cd7fb63fd080be",
+  "proof_status": "complete",
+  "reporting_status": "reportable",
+  "input_hash": "3f98e8b326505dae04c97dd6cc8051bf613000473b99f9733337afc2396583f9",
+  "snapshot_id": "eab2c9e78bc24c383c108288382abfb4625ac3cef22ac5b74b66b5ba5b4fc5b7",
+  "case_id": "case-demo",
+  "run_id": "run-lf-scena-zbieznosc",
+  "init_state": {
+    "63203cbc-ac91-5100-a0ee-a275d24514ff": {
+      "v_pu": 1.0,
+      "theta_rad": 0.5235987755982988
+    },
+    "80c21edb-e0ec-5378-acd6-e90f5ec0bc57": {
+      "v_pu": 1.0,
+      "theta_rad": 0.0
+    },
+    "d70aff7b-d056-5804-acce-c9bc5707612b": {
+      "v_pu": 1.0,
+      "theta_rad": 1.0471975511965974
+    },
+    "d93618a6-23da-5d59-ae10-a7242961b790": {
+      "v_pu": 1.0,
+      "theta_rad": 0.5235987755982988
+    },
+    "e22c09ea-bf55-54b7-8c57-88efc2eb8989": {
+      "v_pu": 1.0,
+      "theta_rad": 0.5235987755982988
+    }
+  },
+  "init_method": "flat_start",
+  "tolerance": 1e-08,
+  "max_iterations": 30,
+  "base_mva": 100.0,
+  "slack_bus_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+  "pq_bus_ids": [
+    "63203cbc-ac91-5100-a0ee-a275d24514ff",
+    "d70aff7b-d056-5804-acce-c9bc5707612b",
+    "d93618a6-23da-5d59-ae10-a7242961b790",
+    "e22c09ea-bf55-54b7-8c57-88efc2eb8989"
+  ],
+  "pv_bus_ids": [],
+  "ybus_trace": {
+    "source": "network_model.solvers.power_flow_newton_internal.build_ybus_pu",
+    "n": 5,
+    "node_index_map": {
+      "63203cbc-ac91-5100-a0ee-a275d24514ff": 0,
+      "80c21edb-e0ec-5378-acd6-e90f5ec0bc57": 1,
+      "d70aff7b-d056-5804-acce-c9bc5707612b": 2,
+      "d93618a6-23da-5d59-ae10-a7242961b790": 3,
+      "e22c09ea-bf55-54b7-8c57-88efc2eb8989": 4
+    },
+    "note": "",
+    "applied_phase_shifts": [
+      {
+        "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+        "vector_group": "YNd11",
+        "clock_number": 11,
+        "phase_shift_deg": 29.999999999999996,
+        "phase_shift_rad": 0.5235987755982988,
+        "tap_abs": 0.975,
+        "tap_complex_real": 0.8443747686898277,
+        "tap_complex_imag": -0.48749999999999993
+      },
+      {
+        "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
+        "vector_group": "Dyn11",
+        "clock_number": 11,
+        "phase_shift_deg": 29.999999999999996,
+        "phase_shift_rad": 0.5235987755982988,
+        "tap_abs": 1.0,
+        "tap_complex_real": 0.8660254037844387,
+        "tap_complex_imag": -0.49999999999999994
+      }
+    ]
+  },
+  "iterations": [
+    {
+      "k": 1,
+      "norm_mismatch": 0.05421919079168506,
+      "max_mismatch_pu": 0.05352185126632367,
+      "cause_if_failed": null
+    },
+    {
+      "k": 2,
+      "norm_mismatch": 0.0016231147936781238,
+      "max_mismatch_pu": 0.0015843984039765528,
+      "cause_if_failed": null
+    },
+    {
+      "k": 3,
+      "norm_mismatch": 1.350457163506022e-06,
+      "max_mismatch_pu": 1.2609951435834447e-06,
+      "cause_if_failed": null
+    },
+    {
+      "k": 4,
+      "norm_mismatch": 2.7896262452039595e-12,
+      "max_mismatch_pu": 2.082668872789261e-12,
+      "cause_if_failed": null
+    }
+  ],
+  "converged": true,
+  "final_iterations_count": 4,
+  "catalog_context": [
+    {
+      "element_id": "cab_main_b",
+      "element_type": "ODCINEK_SN",
+      "name": "Kabel SN 1",
+      "catalog_binding": {
+        "catalog_namespace": "KABEL_SN",
+        "catalog_item_id": "cable-yakxs-3x120",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "KABEL_SN",
+        "catalog_item_id": "cable-yakxs-3x120",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "KABEL_SN:cable-yakxs-3x120",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    {
+      "element_id": "line_b_c",
+      "element_type": "ODCINEK_SN",
+      "name": "Linia SN 1",
+      "catalog_binding": {
+        "catalog_namespace": "LINIA_SN",
+        "catalog_item_id": "line-afl-70",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "LINIA_SN",
+        "catalog_item_id": "line-afl-70",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "LINIA_SN:line-afl-70",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    {
+      "element_id": "tr_hv_sn",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "name": "TR 110/15",
+      "catalog_binding": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-110-15-25mva-ynd11",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-110-15-25mva-ynd11",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-110-15-25mva-ynd11",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    {
+      "element_id": "tr_sn_nn",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "name": "TR 15/0.4",
+      "catalog_binding": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-15-04-630kva-dyn11",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-15-04-630kva-dyn11",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-15-04-630kva-dyn11",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    {
+      "element_id": "gen_pv",
+      "element_type": "ZRODLO",
+      "name": "Farma PV",
+      "catalog_binding": {
+        "catalog_namespace": null,
+        "catalog_item_id": "conv-pv-nn-0p5mw",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": null,
+        "catalog_item_id": "conv-pv-nn-0p5mw",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "conv-pv-nn-0p5mw",
+      "materialized_params": null,
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    {
+      "element_id": "gen_sync",
+      "element_type": "ZRODLO",
+      "name": "Generator synchroniczny",
+      "catalog_binding": {
+        "catalog_namespace": null,
+        "catalog_item_id": "gen-sync-2mva",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": null,
+        "catalog_item_id": "gen-sync-2mva",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "gen-sync-2mva",
+      "materialized_params": null,
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    {
+      "element_id": "src_gpz",
+      "element_type": "ZRODLO_SN",
+      "name": "System 110 kV",
+      "catalog_binding": {
+        "catalog_namespace": "ZRODLO_SN",
+        "catalog_item_id": "src-gpz-110kv-2500mva",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "ZRODLO_SN",
+        "catalog_item_id": "src-gpz-110kv-2500mva",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "ZRODLO_SN:src-gpz-110kv-2500mva",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    }
+  ],
+  "oltc_control": {
+    "regulators": [
+      {
+        "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+        "regulated_winding": "HV",
+        "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+        "setpoint_kv": 15.4,
+        "deadband_kv": 0.1,
+        "initial_position": 0,
+        "min_position": -9,
+        "max_position": 9
+      }
+    ],
+    "iterations": [
+      {
+        "iteration": 0,
+        "decisions": [
+          {
+            "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+            "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+            "position_before": 0,
+            "u_controlled_kv": 15.007544940787783,
+            "u_regulation_kv": 15.007544940787783,
+            "setpoint_kv": 15.4,
+            "deadband_kv": 0.1,
+            "position_after": -1,
+            "reason": "step_down"
+          }
+        ]
+      },
+      {
+        "iteration": 1,
+        "decisions": [
+          {
+            "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+            "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+            "position_before": -1,
+            "u_controlled_kv": 15.197391901075576,
+            "u_regulation_kv": 15.197391901075576,
+            "setpoint_kv": 15.4,
+            "deadband_kv": 0.1,
+            "position_after": -2,
+            "reason": "step_down"
+          }
+        ]
+      },
+      {
+        "iteration": 2,
+        "decisions": [
+          {
+            "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+            "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+            "position_before": -2,
+            "u_controlled_kv": 15.39210775298142,
+            "u_regulation_kv": 15.39210775298142,
+            "setpoint_kv": 15.4,
+            "deadband_kv": 0.1,
+            "position_after": -2,
+            "reason": "within_deadband"
+          }
+        ]
+      }
+    ],
+    "converged": true,
+    "iterations_count": 3,
+    "switch_counts": {
+      "7bf296a0-8f1c-5c72-9760-6987d84d6a4a": 2
+    },
+    "total_switch_count": 2,
+    "final_positions": {
+      "7bf296a0-8f1c-5c72-9760-6987d84d6a4a": -2
+    },
+    "initial_positions": {
+      "7bf296a0-8f1c-5c72-9760-6987d84d6a4a": 0
+    }
+  },
+  "catalog_context_by_element": {
+    "cab_main_b": {
+      "element_id": "cab_main_b",
+      "element_type": "ODCINEK_SN",
+      "name": "Kabel SN 1",
+      "catalog_binding": {
+        "catalog_namespace": "KABEL_SN",
+        "catalog_item_id": "cable-yakxs-3x120",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "KABEL_SN",
+        "catalog_item_id": "cable-yakxs-3x120",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "KABEL_SN:cable-yakxs-3x120",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    "line_b_c": {
+      "element_id": "line_b_c",
+      "element_type": "ODCINEK_SN",
+      "name": "Linia SN 1",
+      "catalog_binding": {
+        "catalog_namespace": "LINIA_SN",
+        "catalog_item_id": "line-afl-70",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "LINIA_SN",
+        "catalog_item_id": "line-afl-70",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "LINIA_SN:line-afl-70",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    "tr_hv_sn": {
+      "element_id": "tr_hv_sn",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "name": "TR 110/15",
+      "catalog_binding": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-110-15-25mva-ynd11",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-110-15-25mva-ynd11",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-110-15-25mva-ynd11",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    "tr_sn_nn": {
+      "element_id": "tr_sn_nn",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "name": "TR 15/0.4",
+      "catalog_binding": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-15-04-630kva-dyn11",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-15-04-630kva-dyn11",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-15-04-630kva-dyn11",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    "gen_pv": {
+      "element_id": "gen_pv",
+      "element_type": "ZRODLO",
+      "name": "Farma PV",
+      "catalog_binding": {
+        "catalog_namespace": null,
+        "catalog_item_id": "conv-pv-nn-0p5mw",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": null,
+        "catalog_item_id": "conv-pv-nn-0p5mw",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "conv-pv-nn-0p5mw",
+      "materialized_params": null,
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    "gen_sync": {
+      "element_id": "gen_sync",
+      "element_type": "ZRODLO",
+      "name": "Generator synchroniczny",
+      "catalog_binding": {
+        "catalog_namespace": null,
+        "catalog_item_id": "gen-sync-2mva",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": null,
+        "catalog_item_id": "gen-sync-2mva",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "gen-sync-2mva",
+      "materialized_params": null,
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    "src_gpz": {
+      "element_id": "src_gpz",
+      "element_type": "ZRODLO_SN",
+      "name": "System 110 kV",
+      "catalog_binding": {
+        "catalog_namespace": "ZRODLO_SN",
+        "catalog_item_id": "src-gpz-110kv-2500mva",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "ZRODLO_SN",
+        "catalog_item_id": "src-gpz-110kv-2500mva",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "ZRODLO_SN:src-gpz-110kv-2500mva",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    }
+  },
+  "catalog_context_summary": {
+    "element_count": 7,
+    "by_type": {
+      "ODCINEK_SN": 2,
+      "TRANSFORMATOR_SN_NN": 2,
+      "ZRODLO": 2,
+      "ZRODLO_SN": 1
+    },
+    "by_parameter_origin": {
+      "CATALOG": 5
+    },
+    "manual_override_element_count": 0,
+    "manual_override_count": 0
+  }
+}

@@ -1,29 +1,716 @@
 from __future__ import annotations
 
 import ast
+import re
 import sys
 from pathlib import Path
 
-import api_lifecycle_guard
+# Sasiednie strazniki sa importowane po nazwie modulu: przy uruchomieniu skryptu
+# katalog `scripts/` jest na sys.path automatycznie, ale konsument kontraktu
+# (`tests/ci/test_kontrakt_routerow_miedzy_straznikami.py`) laduje ten plik przez
+# `spec_from_file_location` - bez tego wpisu import sasiada konczy sie
+# ModuleNotFoundError (ta sama konwencja: route_prefix_guard, router_mount_guard).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import api_lifecycle_guard  # noqa: E402
+import canonical_ops_guard  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 API_DIR = ROOT / "backend" / "src" / "api"
+BACKEND_SRC_DIR = ROOT / "backend" / "src"
+FRONTEND_SRC_DIR = ROOT / "frontend" / "src"
 
 FORBIDDEN_IMPORTS = {
     "application.analysis_dispatch",
     "application.analysis_run.service",
     "domain.analysis_run",
+    # Karta CV-3.3-A (2026-09-05): E3 (drugi tor wykonania biegow, zero
+    # konsumenta produkcyjnego), E2-widmo (unified_runs + jego dyspozytor) i
+    # martwe podmoduly R2 skasowane. Zadna aktywna trasa /api nie moze ich
+    # wskrzesic.
+    "application.execution_engine",
+    "application.execution_engine.service",
+    "application.execution_engine.errors",
+    "application.execution_engine.load_flow_run_input",
+    "api.unified_runs",
+    "application.unified_run_dispatch",
+    "application.analysis_run.export_service",
+    "application.analysis_run.results_inspector",
+    "application.analysis_run.orchestrator",
+    "application.analysis_run.catalog_context",
+    "application.analysis_run.dtos",
+    # Karta CV-3.3-A2 (2026-09-05): klaster osierocony kasacja E3/E2-widmo
+    # (jedyny wolajacy w src/) domkniety osobno. sc_binding_meta.py i
+    # short_circuit_to_resultset_v1.py / protection_to_resultset_v1.py
+    # ZOSTAJA — zamrozone przez resultset_v1_schema_guard.py, decyzja
+    # wlasciciela (B-01), NIE kasowane.
+    "application.result_mapping.load_flow_to_resultset_v1",
+    "application.result_mapping.protection_to_overlay_v1",
+    "domain.analysis_kind",
+    # Karta CV-3.3-C (2026-09-05): E4 (serie biegow) przeszlo z trzech
+    # slownikow w pamieci (`domain/batch_job.py`) na trwaly rejestr
+    # `run_batches` (`domain/run_batch.py`). Zadna aktywna trasa /api nie moze
+    # wskrzesic dawnego modulu.
+    "domain.batch_job",
 }
 FORBIDDEN_NAMES = {
     "AnalysisRun",
     "OperatingCase",
     "get_operating_case",
     "operating_case_id",
+    # Karta CV-3.3-A (2026-09-05).
+    "ExecutionEngineService",
+    "AnalysisRunExportService",
+    "ResultsInspectorService",
+    "AnalysisOrchestrator",
+    "AnalysisDispatchService",
+    # Karta CV-3.3-A2 (2026-09-05).
+    "LoadFlowResultSetV1",
+    "map_power_flow_to_resultset_v1",
+    "map_protection_to_overlay_v1",
+    "AnalysisKind",
+    # Karta CV-3.3-C (2026-09-05) — patrz FORBIDDEN_IMPORTS.
+    "BatchJob",
+    "BatchJobStatus",
+    "new_batch_job",
+    # Karta CV-4.2 (2026-09-05): P12 (`run_audit2_power_flow`/`Audit2PowerFlowRequest`/
+    # `Audit2PowerFlowResponse`, fabrykacja wejscia — `pq=[]`, `slack_node_id or
+    # "slack-stub"`, zawsze pusty graf) usuniete z `api/solver_input.py` — zadna
+    # aktywna trasa /api nie moze ich wskrzesic. Konsument FE przepiety na bieg
+    # kanoniczny (`ui/study-cases/api.ts::createRun` + opcje `audit2_project_id`/
+    # `audit2_station_id` czytane przez `enm.assembler.zloz_wejscie_rozplywu`).
+    "run_audit2_power_flow",
+    "Audit2PowerFlowRequest",
+    "Audit2PowerFlowResponse",
+}
+
+# CV-3.2 (kasacja C2/C3, karta CV-3.2) — bramka wskrzeszenia. C2
+# (`domain/study_case_engine.py`) i 9 operacji domenowych C3 zostały usunięte
+# procedurą jako martwy kod (0 konsumentów produkcyjnych; semantyka żyje
+# WYŁĄCZNIE w `enm/scenariusze.py::OperatingScenario`, CV-3.1). Poniższe
+# sprawdza, że NIE wracają.
+STUDY_CASE_ENGINE_MODULE = BACKEND_SRC_DIR / "domain" / "study_case_engine.py"
+#: Klasy C2 — sprawdzane jako DEFINICJE (ast.ClassDef) gdziekolwiek w `src`,
+#: nie jako dowolne wystąpienie identyfikatora (np. w komentarzu/dokstringu).
+FORBIDDEN_ENGINE_CLASS_NAMES = {"StudyCaseEngine", "SolverProtocol"}
+
+#: Rejestry, w których 9 operacji C3 istniało jako klucz (nie: dowolne miejsce
+#: kodu — `create_study_case`/`compare_study_cases` żyją legalnie w
+#: `api/study_cases.py`/`domain/study_case.py`, `run_short_circuit`/
+#: `run_power_flow` w `api/enm.py` (E2); guard NIE ma prawa się tam zapalić).
+CANONICAL_OPS_REGISTRY = ROOT / "backend" / "src" / "domain" / "canonical_operations.py"
+V2_HANDLERS_MODULE = ROOT / "backend" / "src" / "enm" / "domain_operations_v2.py"
+FRONTEND_DOMAIN_OPS = ROOT / "frontend" / "src" / "types" / "domainOps.ts"
+FORBIDDEN_DOMAIN_OP_NAMES = {
+    "create_study_case",
+    "set_case_switch_state",
+    "set_case_normal_state",
+    "set_case_source_mode",
+    "set_case_time_profile",
+    "run_short_circuit",
+    "run_power_flow",
+    "run_time_series_power_flow",
+    "compare_study_cases",
+}
+
+# CV-3.2 (kasacja C4 + P24+, drugi commit karty) — bramka wskrzeszenia. C4
+# (`application/study_scenario/**`, `analysis/scenario_comparison/**`) usunięty
+# po decyzji architektonicznej: P24+ (`analysis/reporting/pdf/**`), jedyny
+# produkcyjny konsument `ScenarioComparisonEntry`/`View`, sam miał 0 wołających
+# w `backend/src` poza własnym re-eksportem i 0 tras HTTP — ten sam byt co C4
+# ("raport bez trasy"), więc skasowany razem z nim.
+STUDY_SCENARIO_DIR = BACKEND_SRC_DIR / "application" / "study_scenario"
+SCENARIO_COMPARISON_DIR = BACKEND_SRC_DIR / "analysis" / "scenario_comparison"
+REPORTING_PDF_DIR = BACKEND_SRC_DIR / "analysis" / "reporting" / "pdf"
+#: Katalog -> etykieta bytu w komunikacie naruszenia.
+FORBIDDEN_C4_DIRECTORIES = {
+    STUDY_SCENARIO_DIR: "application/study_scenario (C4)",
+    SCENARIO_COMPARISON_DIR: "analysis/scenario_comparison (C4)",
+    REPORTING_PDF_DIR: "analysis/reporting/pdf (P24+)",
+}
+#: Klasy/funkcje C4+P24+ — sprawdzane jako DEFINICJE (ast.ClassDef/FunctionDef)
+#: gdziekolwiek w `src`, nie jako dowolne wystąpienie identyfikatora.
+FORBIDDEN_C4_CLASS_NAMES = {"ScenarioComparisonBuilder"}
+FORBIDDEN_C4_FUNCTION_NAMES = {"export_p24_plus_report_pdf"}
+
+# Karta CV-4.2 (2026-09-05) — bramka wskrzeszenia. Kasacja procedurą 7 kroków:
+# P2/S4 kreator (`NetworkWizardService.build_power_flow_input`/
+# `build_short_circuit_input` + wyłączni pomocnicy — 0 wywołań produkcyjnych,
+# DTO `ShortCircuitInput` z `network_wizard/dtos.py`), P5 (`application/
+# power_flow_input_builder.py`, cały plik — konsument P2 skasowany razem z nim),
+# P13 (`domain/load_flow_input.py` + `domain/load_flow_validation.py`, tylko
+# testy — 0 konsumentów produkcyjnych). Sprawdza WYŁĄCZNIE DEFINICJE
+# (ast.ClassDef/FunctionDef) gdziekolwiek w `backend/src`, nie dowolne
+# wystąpienie identyfikatora — `network_wizard/dtos.py::InverterSetpoint`/
+# `ConverterSetpoint` i edycyjne operacje kreatora ZOSTAŁY wtedy poza mandatem
+# karty (skasowane później w W1, 2026-09-09 — bramka W1 niżej).
+FORBIDDEN_CV42_FILES = {
+    BACKEND_SRC_DIR
+    / "application"
+    / "power_flow_input_builder.py": (
+        "application/power_flow_input_builder.py (P5) usunięty procedurą w CV-4.2"
+    ),
+    BACKEND_SRC_DIR
+    / "domain"
+    / "load_flow_input.py": ("domain/load_flow_input.py (P13) usunięty procedurą w CV-4.2"),
+    BACKEND_SRC_DIR
+    / "domain"
+    / "load_flow_validation.py": (
+        "domain/load_flow_validation.py (P13) usunięty procedurą w CV-4.2"
+    ),
+}
+FORBIDDEN_CV42_CLASS_NAMES = {"ShortCircuitInput", "LoadFlowRunInput"}
+FORBIDDEN_CV42_FUNCTION_NAMES = {
+    "build_power_flow_input",
+    "build_short_circuit_input",
+    "merge_bus_components",
+    "validate_load_flow_input",
+}
+
+# Karta CV-4.2b (2026-09-05) — bramka wskrzeszenia WLASNEGO silnika/sesji z
+# `DATABASE_URL` w torze biegow. `enm/assembler.py::_uow_factory_biezacy` budowal
+# druga, niezalezna baze w tym samym procesie (inna niz `app.state.uow_factory`),
+# a `_maybe_load_audit2_extensions` czytal nia konfiguracje audytu 2 — zapisana
+# przez API bywala dla biegu niewidoczna. Po karcie: stan bazy czyta wykonawca
+# fabryka `UnitOfWork` WOLAJACEGO (`canonical_analysis.rozszerzenia_audit2_dla_opcji`
+# + repozytorium `UnitOfWork.audit2_station_configs`), assembler dostaje dane.
+# Sprawdzane jako DEFINICJE (ast.FunctionDef) gdziekolwiek w `backend/src`.
+FORBIDDEN_CV42B_FUNCTION_NAMES = {
+    "_uow_factory_biezacy",
+    "_maybe_load_audit2_extensions",
+}
+
+# Karta CV-4.3-A4 (K5, 2026-09-06) — bramka wskrzeszenia. (1) E2 sieroty
+# `POST /api/cases/{id}/runs/{short-circuit,power-flow}` (`api/enm.py`)
+# skasowane procedura siedmiu krokow (0 konsumentow produkcyjnych — jedyny byl
+# e2e nazywajacy je wprost "legacy" we wlasnym kodzie); kanon:
+# `POST /api/execution/study-cases/{id}/runs` -> `.../execute`. Sprawdzane
+# jako DEFINICJE (ast.FunctionDef/AsyncFunctionDef) W TYM JEDNYM pliku — nazwy
+# `run_short_circuit_now`/`run_power_flow_now` (inne funkcje, INNY plik,
+# `enm/canonical_analysis.py`) MAJA innych wolajacych bezposrednich i ZOSTAJA,
+# guard nie ma prawa sie na nie zapalic. (2) R4 `_runs` w pamieci procesu
+# (`api/v126_academic.py`) skasowany na rzecz rejestru `CanonicalRun` (R1) —
+# bieg V12.6 musi przezyc restart procesu i wielu workerow, czego slownik w
+# pamieci nigdy nie gwarantowal. Sprawdzane jako PRZYPISANIE NAJWYZSZEGO
+# POZIOMU (nie dowolna zmienna lokalna) W TYM JEDNYM pliku.
+CV43_A4_ENM_MODULE = API_DIR / "enm.py"
+FORBIDDEN_CV43_A4_ROUTE_FUNCTION_NAMES = {"run_short_circuit", "run_power_flow"}
+CV43_A4_V126_MODULE = API_DIR / "v126_academic.py"
+FORBIDDEN_CV43_A4_V126_INMEMORY_NAMES = {"_runs"}
+
+
+# Karta W1 (2026-09-09) — bramka wskrzeszenia LEGACY PERSYSTENCJI SIECI. Jedyna
+# prawda sieci to ENM w magazynie projektu (`enm/store.py`). Rownolegly model ORM
+# (`network_snapshots`/`network_nodes`/`network_branches`/`network_sources`/
+# `network_loads`/`switching_states`), biblioteka typow w bazie (`line_types`,
+# `cable_types`, `transformer_types`, `switch_equipment_types`, `inverter_types`,
+# `switch_equipment_assignments`), diagramy SLD w bazie (`sld_diagrams`,
+# `sld_node_symbols`, `sld_branch_symbols`, `sld_annotations`) i syntezator
+# projektowy (`design_specs`, `design_proposals`, `design_evidence`) — 19 tabel,
+# w bazie deweloperskiej 0 wierszy w KAZDEJ (pomiar 2026-09-09) — skasowane
+# procedura: `infrastructure/persistence/migracja_legacy_db.py` zrzuca kazda
+# tabele do JSON, kompiluje pozostalosci do ENM (`application/migracja_legacy.py`)
+# i dopiero potem DROP TABLE. Razem z tabelami zeszly ich jedyni konsumenci oraz
+# eksportery wynikow tej samej klasy „0 importerow w src, tylko wlasne testy"
+# (lista `W1_LEGACY_RELATIVE_PATHS`). Sprawdzane: (1) zaden z plikow/katalogow
+# nie istnieje, (2) zadna klasa z `FORBIDDEN_W1_CLASS_NAMES` nie wraca jako
+# DEFINICJA (ast.ClassDef) gdziekolwiek w `backend/src`, (3) zadna nazwa tabeli z
+# `FORBIDDEN_W1_TABLE_NAMES` nie wraca jako `__tablename__` (przypisanie w ciele
+# klasy) gdziekolwiek w `backend/src`, (4) liczba `__tablename__` w `models.py`
+# jest PRZYPIETA (`W1_TABLENAME_PIN`, pomiar po W1) — nowa tabela wymaga swiadomej
+# zmiany pinu razem z uzasadnieniem w commicie, nie cichego dopisania.
+W1_LEGACY_RELATIVE_PATHS: dict[str, str] = {
+    "application/network_wizard/service.py": "kreator sieci legacy (NetworkWizardService)",
+    "application/network_wizard/dtos.py": "DTO kreatora sieci legacy",
+    "application/network_wizard/errors.py": "wyjątki kreatora sieci legacy",
+    "application/network_wizard/exporters": "eksportery kreatora sieci legacy",
+    "application/network_wizard/importers": "importery XLSX/JSON kreatora sieci legacy",
+    "application/sld": "projekcja/geometria/cross-reference SLD z migawki legacy",
+    "application/designer": "silnik projektanta na migawce legacy",
+    "application/wizard_runtime": "runtime kreatora na migawce legacy",
+    "application/analyses/design_synth": "syntezator projektowy (design_specs/proposals/evidence)",
+    "network_model/sld_projection.py": "projekcja SLD z migawki legacy",
+    "domain/sld.py": "model diagramu SLD w bazie",
+    "api/sld.py": "router diagramów SLD w bazie",
+    "diagnostics/diff.py": "porównanie rewizji z tabel network_*",
+    "enm/migrations/v_ports_001.py": "automigracja portów bez konsumenta",
+    "domain/protection_report_model.py": "model raportu zabezpieczeń bez konsumenta",
+    "domain/protection_coordination_v1.py": "koordynacja zabezpieczeń v1 bez konsumenta",
+    "network_model/reporting/short_circuit_report_docx.py": "raport DOCX zwarć z migawki legacy",
+    "network_model/reporting/short_circuit_report_pdf.py": "raport PDF zwarć z migawki legacy",
+    "network_model/reporting/power_flow_report_docx.py": "raport DOCX rozpływu z migawki legacy",
+    "network_model/reporting/power_flow_report_pdf.py": "raport PDF rozpływu z migawki legacy",
+    "network_model/reporting/analysis_run_report_docx.py": "raport DOCX biegu bez konsumenta (żywy raport: api/analysis_run_exports.py)",
+    "network_model/reporting/analysis_run_report_pdf.py": "raport PDF biegu bez konsumenta (żywy raport: api/analysis_run_exports.py)",
+    "network_model/reporting/export_docx.py": "generator raportów DOCX SC/PF bez konsumenta",
+    "network_model/reporting/export_pdf.py": "generator raportów PDF SC/PF bez konsumenta",
+    "network_model/reporting/export_jsonl.py": "eksport JSONL migawki/śladu bez konsumenta",
+    "network_model/reporting/export_manifest.py": "manifest eksportu bez konsumenta (żywy: domain/export_manifest.py)",
+    "network_model/reporting/power_flow_export.py": "eksport JSON/JSONL rozpływu bez konsumenta",
+    "network_model/reporting/short_circuit_export.py": "eksport JSON/JSONL zwarć bez konsumenta",
+    "infrastructure/persistence/repositories/network_repository.py": "repozytorium tabel network_*",
+    "infrastructure/persistence/repositories/network_wizard_repository.py": "repozytorium kreatora legacy",
+    "infrastructure/persistence/repositories/snapshot_repository.py": "repozytorium migawek legacy",
+    "infrastructure/persistence/repositories/sld_repository.py": "repozytorium diagramów SLD w bazie",
+    "infrastructure/persistence/repositories/design_spec_repository.py": "repozytorium design_specs",
+    "infrastructure/persistence/repositories/design_proposal_repository.py": "repozytorium design_proposals",
+    "infrastructure/persistence/repositories/design_evidence_repository.py": "repozytorium design_evidence",
+}
+FORBIDDEN_W1_CLASS_NAMES = {
+    "CableTypeORM",
+    "DesignEvidenceORM",
+    "DesignProposalORM",
+    "DesignSpecORM",
+    "InverterTypeORM",
+    "LineTypeORM",
+    "NetworkBranchORM",
+    "NetworkLoadORM",
+    "NetworkNodeORM",
+    "NetworkSnapshotORM",
+    "NetworkSourceORM",
+    "SldAnnotationORM",
+    "SldBranchSymbolORM",
+    "SldDiagramORM",
+    "SldNodeSymbolORM",
+    "SwitchEquipmentAssignmentORM",
+    "SwitchEquipmentTypeORM",
+    "SwitchingStateORM",
+    "TransformerTypeORM",
+    "NetworkWizardService",
+    "NetworkRepository",
+    "NetworkWizardRepository",
+    "SnapshotRepository",
+    "SldRepository",
+    "DesignSpecRepository",
+    "DesignProposalRepository",
+    "DesignEvidenceRepository",
+}
+FORBIDDEN_W1_TABLE_NAMES = {
+    "cable_types",
+    "design_evidence",
+    "design_proposals",
+    "design_specs",
+    "inverter_types",
+    "line_types",
+    "network_branches",
+    "network_loads",
+    "network_nodes",
+    "network_snapshots",
+    "network_sources",
+    "network_switching_states",
+    "sld_annotations",
+    "sld_branch_symbols",
+    "sld_diagrams",
+    "sld_node_symbols",
+    "switch_equipment_assignments",
+    "switch_equipment_types",
+    "transformer_types",
+}
+# Karta W6-1 (2026-09-16): 15 -> 16, tabela `canonical_run_time_series`
+# (`CanonicalRunTimeSeriesORM`) — probki szeregow czasowych biegu
+# `dynamika_rms`, ten sam wzorzec co `canonical_run_branch_flows` (PERF-SC-50:
+# szeregi NIGDY inline w wierszu `canonical_runs`). Nowa tabela swiadoma, nie
+# resurekcja zadnej z `FORBIDDEN_W1_TABLE_NAMES` powyzej.
+W1_TABLENAME_PIN = 16
+W1_MODELS_RELATIVE_PATH = "infrastructure/persistence/models.py"
+
+# Karta KASACJA-DATA-MANAGER (2026-09-09) — bramka wskrzeszenia FRONTENDOWA (jedyna
+# w tym pliku poza AST-em backendu: `frontend/src` to TypeScript, ktorego `ast`
+# Pythona nie parsuje, wiec sprawdzenie jest tekstowe na definicjach, nie AST).
+# `frontend/src/ui/data-manager/**` (DataManager.tsx, BatchEditPreviewDialog.tsx,
+# store.ts) skasowany jako martwy kod — pomiar w chwili kasacji: 0 konsumentow
+# produkcyjnych (eksportowany WYLACZNIE przez wlasny `index.ts`, zero `<DataManager`
+# w App.tsx/powloce/nawigacji), a niesiona rownolegla definicja kolumn elementow
+# (klucze-fantomy `bus_id`/`sk_mva` wobec modelu ENM) byla ta sama klasa dlugu, ktora
+# K7/K7c-FE naprawily w property-grid. Sprawdzane: (1) katalog nie zawiera ZADNEGO
+# `.ts`/`.tsx`, (2) nazwy `DataManager`/`DataManagerRow` nie wracaja jako DEFINICJA
+# (nie dowolne wystapienie — komentarz/dokstring nazywajacy kasacje, jak w naglowku
+# `ui/__tests__/project-tree.test.ts`, NIE jest definicja) GDZIEKOLWIEK w
+# `frontend/src`, nie tylko pod starym katalogiem.
+DATA_MANAGER_DIR = FRONTEND_SRC_DIR / "ui" / "data-manager"
+FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS = (".ts", ".tsx")
+#: Blok `/* ... */` i linia `// ...` — komentarz cytujacy nazwe (np. ten wlasnie
+#: naglowek) nie jest definicja. Ta sama technika co `nawigacja_jeden_kanon_guard.py`.
+_TS_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
+_TS_LINE_COMMENT = re.compile(r"//[^\n]*")
+_TS_DATA_MANAGER_COMPONENT_DEF = re.compile(
+    r"^[ \t]*export\s+(?:default\s+)?(?:function|const|class)\s+DataManager\b",
+    re.MULTILINE,
+)
+_TS_DATA_MANAGER_ROW_DEF = re.compile(
+    r"^[ \t]*export\s+(?:interface|type)\s+DataManagerRow\b",
+    re.MULTILINE,
+)
+
+# Karta W3-D (2026-09-09) — bramka wskrzeszenia TRZECIEJ sciezki oceny
+# FRT/Q(U)/cosfi(P) (`application/compliance/source_compliance.py`, rodzaj
+# analizy "source_compliance"). Skasowana obok fizyki regulacji
+# (`network_model/solvers/power_flow_inverter.py`, FROZEN, nietkniety w tej
+# karcie) i kanonicznego testu zgodnosci typu NC RfG (`network_model/solvers/
+# ncrfg_ptpiree/engine.py`, FROZEN, 5 profili operatorow, nietkniety) —
+# porownywala punkty krzywych operatora i zrodla BEZ modelu dynamicznego
+# urzadzenia i z NIESPOJNYM kryterium porownania w tym samym pliku
+# ("source_duration_ms >= required_duration_ms" dla FRT, rownosc DOKLADNA
+# "source_value == required_value" dla Q(U)/cosfi(P)). 0 ekranow ui2 w chwili
+# kasacji (pomiar karty W3-D) — jedyny slad byl wpisem w generycznej macierzy
+# DER (`ui/network-build/station-der/macierzAnaliz.ts`, przycisk bez realnego
+# biegu). Kanon zgodnosci NC RfG dostal odtad przekrojowego konsumenta FE:
+# sekcja "Zgodnosc przekrojowa przypadku" w `ui2/oze/macierz`, czytajaca
+# `GET /api/ncrfg-tests/cases/{case_id}/compliance` (trasa kanonu, bez zmian).
+#
+# Sprawdzane: (1) katalog ponizej nie istnieje, (2) zadna nazwa z
+# FORBIDDEN_W3D_DEF_NAMES nie wraca jako DEFINICJA (ast.FunctionDef/
+# ast.AsyncFunctionDef/ast.ClassDef) gdziekolwiek w `backend/src`, (3) czlon
+# SOURCE_COMPLIANCE nie wraca do zadnej klasy `ExecutionAnalysisType`
+# (domain/execution.py) gdziekolwiek w `backend/src`.
+W3D_SOURCE_COMPLIANCE_RELATIVE_PATHS: dict[str, str] = {
+    "application/compliance": (
+        "trzecia, uboższa sciezka oceny FRT/Q(U)/cosfi(P) (bez modelu "
+        "dynamicznego, z niespojnym kryterium porownania) — usunieta w W3-D"
+    ),
+}
+FORBIDDEN_W3D_DEF_NAMES = {
+    "evaluate_source_compliance",
+    "SourceComplianceResult",
+    "_execute_source_compliance",
+    "run_source_compliance_now",
+    "build_source_compliance_results",
+    "build_source_compliance_results_response",
+    "_pick_compliance_source_ref",
+    "_source_compliance_proof_ref",
+    "get_source_compliance_results",
+}
+W3D_EXECUTION_TYPE_CLASS_NAME = "ExecutionAnalysisType"
+FORBIDDEN_W3D_ENUM_MEMBERS = {"SOURCE_COMPLIANCE"}
+# Karta W3-A (2026-09) — bramka wskrzeszenia CZESCI DRUGIEGO SILNIKA fizyki
+# IDMT (zakres zwezony B-01 STOP-em, patrz nizej). Rodzina A (KLASA NIE
+# INSTANCJA, inwentarz W3 §1) miala 5 implementacji formuly IEC 60255 IDMT
+# (t = TMS*A/(M^B-1)); JEDYNA kanoniczna to `network_model/solvers/
+# protection_iec60255.py::compute_idmt_generic`. Trzy zywe duplikaty
+# przekierowano na jadro (adapter, zero wlasnej petli):
+# `application/protection_analysis/engine.py::compute_iec_inverse_time`,
+# `enm/domain_operations_v2.py::_compute_tcc_point`,
+# `application/analyses/protection/overcurrent/calculator.py::_iec_ni_time`
+# (ten ostatni ZOSTAJE do W3-C, ktora kasuje caly plik razem z V12K-189 — patrz
+# ZASTANE w `backend_no_physics_guard.py`).
+#
+# Drugi silnik (`domain/protection_engine_v1.py` + `application/
+# protection_current_resolver.py` + `application/result_mapping/
+# protection_to_resultset_v1.py` + `domain/protection_current_source.py` —
+# bridge SC<->Protection Engine v1) mial ZERO konsumentow produkcyjnych w
+# chwili pomiaru, ALE B-01 STOP na DWA z czterech plikow, odkryty dopiero
+# `guardy_z_ci.py` (verification_phantom_paths_guard): `domain/
+# protection_engine_v1.py` jest w WATCHED_PATHS `scripts/
+# solver_boundary_guard.py` (kasacja = zmiana chronionego pliku solvera, wymaga
+# jawnej sankcji wlasciciela w SANCTIONED_CHANGES), a `application/
+# result_mapping/protection_to_resultset_v1.py` jest w PROTECTED_FILES
+# `scripts/resultset_v1_schema_guard.py` (docstring TEGO guarda: „Kasacja
+# pliku chronionego... to edycja zamrozonego rdzenia (B-01)... wymaga zgody
+# wlasciciela, nie tylko pomiaru zero importera"). OBA PRZYWROCONE do stanu
+# `a16f8d2b` razem z `test_protection_engine_v1.py` (40 testow, zero importu
+# z dwoch ponizej skasowanych plikow) — zaden guard fizyki solvera nie byl
+# tu naruszony wczesniej.
+#
+# SKASOWANE (bez zadnej ochrony B-01, zweryfikowane grepem PRZED i PO):
+# `application/protection_current_resolver.py` (resolver pradu SC->Protection
+# Engine v1, bridge PR-27) i `domain/protection_current_source.py` (typy
+# domenowe tego bridge'a) — razem z ich testami
+# (`test_protection_current_resolver.py` 25 + `test_protection_determinism_
+# guards.py` 10 — oba importowaly WYLACZNIE z tych dwoch plikow i/lub z
+# przywroconego `protection_engine_v1.py`, wiec nie dalo sie ich przywrocic
+# bez zerwania importu do skasowanej reszty). `api/execution_runs.py:119` i
+# `solver_input/eligibility.py:263` mialy TYLKO komentarz o `protection_
+# engine_v1` — poprawiony na fakt (silnik ZOSTAJE, B-01, nie skasowany).
+# Rownolegle skasowana martwa `_compute_tcc_curve` (0 wywolan) i zaslepka
+# `calculate_tcc_curve` (`tcc.legacy_write_disabled`, operacja domenowa BEZ
+# fizyki, NIE czesc drugiego silnika) razem z rejestracja w
+# `V2_CANONICAL_OPS`/`ALL_V2_HANDLERS` (`enm/domain_operations_v2.py`) i w
+# rejestrze kanonicznym `domain/canonical_operations.py`.
+#
+# Sprawdzane: (1) zaden z 2 plikow SKASOWANYCH nie istnieje, (2) zadna nazwa z
+# `FORBIDDEN_W3A_CLASS_NAMES` nie wraca jako DEFINICJA (ast.ClassDef)
+# gdziekolwiek w `backend/src`, (3) zadna nazwa z `FORBIDDEN_W3A_FUNCTION_NAMES`
+# nie wraca jako DEFINICJA (ast.FunctionDef/AsyncFunctionDef) gdziekolwiek w
+# `backend/src`. Klasy/funkcje `domain/protection_engine_v1.py` i
+# `application/result_mapping/protection_to_resultset_v1.py` (PRZYWROCONE,
+# istnieja legalnie) CELOWO NIE sa na tych listach — zakazanie ich nazw
+# zlapaloby falsz-pozytyw na plikach, ktore prawnie istnieja.
+W3A_LEGACY_RELATIVE_PATHS: dict[str, str] = {
+    "application/protection_current_resolver.py": "resolver prądu SC->Protection Engine v1 (bridge PR-27)",
+    "domain/protection_current_source.py": "typy domenowe bridge'a SC<->Protection Engine v1 (PR-27)",
+}
+FORBIDDEN_W3A_CLASS_NAMES = {
+    # application/protection_current_resolver.py
+    "ProtectionCurrentResolver",
+    # domain/protection_current_source.py
+    "CurrentSourceType",
+    "TargetRefMapping",
+    "SCCurrentSelection",
+    "ProtectionCurrentSource",
+    "CurrentSourceError",
+    "AmbiguousMappingError",
+    "MissingMappingError",
+    "InvalidQuantityError",
+    "SCRunNotFoundError",
+    "DuplicateMappingError",
+}
+FORBIDDEN_W3A_FUNCTION_NAMES = {
+    # enm/domain_operations_v2.py — zaslepka bez fizyki (tcc.legacy_write_disabled)
+    "calculate_tcc_curve",
+}
+
+# Karta W3-C1 (2026-09-09) — bramka wskrzeszenia KASACJI V12K-189. Metodyka nastaw
+# nadprądowych I>/I>> miała TRZY implementacje (rejestr klasy „Metodyka nastaw x3",
+# karta W3 §0.2): Hoppel/IRiESD (`application/protection_settings/`, KANON — zostaje
+# bez zmian), V12K-189 (`application/analyses/protection/overcurrent/**`,
+# `api/protection_overcurrent_settings.py`) i FIX-12D (`line_overcurrent_setting/**`,
+# karta W3-C2, poza zakresem tej bramki). V12K-189 miała ZERO producentów runów
+# `protection.overcurrent.v0` w chwili kasacji (jedyne miejsca `register_run` już
+# usunięte z „drugą prawdą" — `fault_scenario_service.py`) i ZERO konsumentów
+# frontendu (`SekcjaNastaw.tsx` zawsze dostawał 404, zmierzone grepem po
+# `frontend/src`) — skasowana CAŁA, razem z jedynym torem doboru aparatu, który z
+# niej czytał (`catalog/pipeline.py::run_device_mapping_v0`, `protection.device_
+# mapping.v0`). Kasacja odsłoniła DRUGI poziom martwego kodu: ekosystem koperty
+# biegu (`AnalysisRunEnvelope`, `run_registry.get_run_envelope_adapter`) miał
+# WYŁĄCZNIE te dwa adaptery plus iec60909/energy_validation — a TE dwa miały
+# jedynego wołającego w `run_registry.py` samym, który miał jedynego wołającego w
+# JEDNYM teście (zero konsumentów produkcyjnych, zmierzone grepem) — więc cały
+# ekosystem (`run_envelope.py`, `run_registry.py`, cztery `envelope_adapter.py`,
+# `run_index.py::index_run`) zszedł razem, tą samą regułą „0 wołań = kasacja".
+# `AnalysisRunIndexEntry` (dataclass, konsument: `infrastructure/persistence
+# /repositories/analysis_run_index_repository.py`) ZOSTAŁ wtedy jako „realny,
+# NIEZWIĄZANY konsument" — ale samo repozytorium nie miało wołającego (atrybut
+# jednostki pracy nieużywany), więc oba zeszły kartą AB-1a Pakiet E2 tą samą regułą
+# „0 wołań = kasacja"; tabela `analysis_runs_index` zostaje (czyta ją ORM-em eksport
+# archiwum projektu). Dobór aparatu jest odtąd CZYSTĄ funkcją (`catalog/pipeline.py::
+# dopasuj_do_aparatu`) na wymaganiu z Hoppela (`catalog/mapper.py::
+# wymaganie_z_nastaw`), bez koperty/indeksu/persystencji.
+W3C1_OVERCURRENT_RELATIVE_PATHS: dict[str, str] = {
+    "application/analyses/protection/overcurrent": "metodyka nastaw V12K-189 (kalkulator, pipeline, prezentacja)",
+    "api/protection_overcurrent_settings.py": "trasa prezentacyjna V12K-189 (GET /api/protection/overcurrent-settings)",
+    "application/analyses/run_registry.py": "rejestr adapterów koperty biegu (0 wołających poza tym samym torem)",
+    "application/analyses/run_envelope.py": "koperta biegu AnalysisRunEnvelope (0 konsumentów po kasacji V12K-189)",
+    "application/analyses/iec60909/envelope_adapter.py": "adapter koperty iec60909 (jedyny wołający: run_registry.py)",
+    "application/analyses/energy_validation/envelope_adapter.py": "adapter koperty energy_validation (jedyny wołający: run_registry.py)",
+    "application/analyses/protection/catalog/envelope_adapter.py": "adapter koperty doboru aparatu (protection.device_mapping.v0)",
+}
+FORBIDDEN_W3C1_NAMES: frozenset[str] = frozenset(
+    {
+        "compute_overcurrent_settings",
+        "OvercurrentSettingsV0",
+        "OvercurrentConfigV0",
+        "run_overcurrent_v0",
+        "run_overcurrent_skeleton",
+        "run_device_mapping_v0",
+        "get_run_envelope_adapter",
+        "RUN_ENVELOPE_ADAPTERS",
+        "AnalysisRunEnvelope",
+        "fingerprint_envelope",
+    }
+)
+
+# Karta W3-C2 (2026-09-09) — trzecia metodyka nastaw nadpradowych I>> (FIX-12D,
+# "from lecture materials", bez cytatu normy) skasowana. Kanon metodyki to
+# WYLACZNIE Hoppel/IRiESD (`application/protection_settings/engine.py`) —
+# rozszerzony w tej samej karcie o `generacja_lokalna`/`okno_nastaw` (funkcje
+# przeniesione z analizatora, wejscia JAWNE). Jedyny konsument analizatora
+# (wzorzec referencyjny RP-LINE-I2-THERMAL-SPZ,
+# `application/reference_patterns/pattern_line_i_doubleprime_thermal_spz.py`)
+# przebudowany na silnik Hoppla. Tabele progow blokady SPZ "from lecture
+# materials" (`spz_lookup.py`) bez cytatu normy — kanon SPZ to analiza cieplna
+# pelnego cyklu w `ProtectionSettingsEngine._analyze_spz` (juz istniejaca,
+# bez zmian w tej karcie).
+W3C2_LEGACY_RELATIVE_PATHS: dict[str, str] = {
+    "application/analyses/protection/line_overcurrent_setting": (
+        "trzecia metodyka nastaw I>> FIX-12D (analyzer/models/spz_lookup) - "
+        "kanon: application/protection_settings/engine.py (Hoppel/IRiESD)"
+    ),
+}
+
+# Karta W3-G1 (2026-09-10) — metoda rozplywu NR/GS/FD jako jawna opcja biegu:
+# jedyny, kanoniczny selektor jest odtad w `ui2/spaces/obliczenia/
+# UruchomObliczenie.tsx` (wysyla `solver_input.solver_method` do `POST
+# /api/execution/study-cases/{id}/runs`). Dwa sieroty tej samej klasy
+# („droga uruchomienia biegu rozplywu" — inwentarz karty, 0 importerow
+# produkcyjnych w chwili kasacji, wylacznie wlasny plik testu) skasowane
+# razem: `CaseConfigPage.tsx` (mapa aneks D2 — jedyny selektor metody PRZED
+# karta, nigdy niezaimportowany do `App.tsx`; trasa `#case-config`
+# przekierowuje do przestrzeni `obliczenia` BEZ renderu tego komponentu —
+# `ui2/legacy/mostObszarow.ts::REJESTR_TRAS[ROUTES.CASE_CONFIG.hash]`,
+# `wygaszona: true` — most zostaje NIETKNIETY, to przekierowanie starego
+# adresu, nie wskrzeszenie) i `PowerFlowRunDialog.tsx` (znaleziony w TYM
+# SAMYM inwentarzu klasy — drugi, rownolegly dialog wyboru NR/GS/FD z
+# `onRun` bez zadnego wolajacego, 0 importerow).
+W3G1_RUN_TRIGGER_ORPHAN_RELATIVE_PATHS: dict[str, str] = {
+    "ui/study-cases/CaseConfigPage.tsx": (
+        "sierocy selektor metody rozplywu + konfiguracji przypadku (0 importerow, "
+        "handleSave = komentarz bez zapisu) - kanon: "
+        "ui2/spaces/obliczenia/UruchomObliczenie.tsx"
+    ),
+    "ui/power-flow-results/PowerFlowRunDialog.tsx": (
+        "drugi, rownolegly dialog wyboru algorytmu NR/GS/FD (0 importerow) - "
+        "kanon: ui2/spaces/obliczenia/UruchomObliczenie.tsx"
+    ),
+    "ui/power-flow-results/__tests__/PowerFlowRunDialog.test.tsx": (
+        "testy sieroty PowerFlowRunDialog (bez komponentu do testowania)"
+    ),
+}
+
+# Karta S-3 (2026-09-16, W6-0 „NC-RFG-JEDEN-TOR") — bramka wskrzeszenia DRUGIEGO
+# SILNIKA zgodnosci NC RfG i MARTWEJ WYSPY KLIENCKIEJ. Zgodnosc NC RfG miala
+# TRZY implementacje (synteza 2026-09 §0 p. 3): (1) solver kanoniczny
+# `network_model/solvers/ncrfg_ptpiree` (T01–T20, FROZEN, B-01 — ZOSTAJE, jedyny),
+# (2) `application/ncrfg_compliance/checker.py` — statyczny silnik 18 testow z
+# WLASNA numeracja T1–T18, werdyktem `no_module` i raportem
+# `NcRfgComplianceReport` (`overall_pass`/`passed_count`/`no_module_count`), zywy
+# przez `GET /api/ncrfg-tests/cases/{id}/compliance` → sekcja „Zgodnosc
+# przekrojowa" w `ui2/oze/macierz`; (3) `frontend/src/ui/network-build/station-der/
+# {NcRfgComplianceBadge.tsx, DerValidationBanner.tsx, derPowerValidation.ts}` —
+# wlasna checklista `compliant/audit_required/non_compliant` i progi 80 %/100 %
+# mocy DER vs transformator liczone W PRZEGLADARCE (fizyka w FE), 0 importerow
+# poza 3 wlasnymi testami (pomiar 2026-09-16). Sprawdzenie mocy DER vs
+# transformator ISTNIEJE w backendzie: od O-53 (AB-H0, 2026-09-24) jedna regula
+# `domain/generator_validation.py::sprawdz_moc_generatora` (kod
+# `converter.transformer_capacity_exceeded`; dawne `enm/der_sn_validation.py::
+# validate_transformer_power` z kodem `converter.der_sn.moc_transformatora_
+# niewystarczajaca` skasowane), wolana w kazdym torze zapisu zrodla
+# (`enm/domain_operations_v2.py`: tor atomowy, stacyjny, DER-SN, przypisanie typu,
+# aktualizacja, usuniecie) i na committed modelu
+# (`application/analyses/raport_zgodnosci.py`, pozycja `moc_transformatora`).
+#
+# Po S-3 trasa `/compliance` buduje `NcRfgPtpireeModuleInput` z committed ENM
+# (`application/ncrfg_compliance/model_bridge.py`) i uruchamia solver (1) —
+# odpowiedz = kontrakt biegu macierzy (`application/ncrfg_compliance/bieg.py`)
+# opakowany per przypadek. Sekcja przekrojowa czyta ten sam kontrakt co macierz.
+#
+# Sprawdzane: (1) `checker.py` nie istnieje, (2) zadna nazwa z
+# `FORBIDDEN_S3_CLASS_NAMES` nie wraca jako DEFINICJA (ast.ClassDef) gdziekolwiek w
+# `backend/src`, (3) zaden plik wyspy z `S3_FRONTEND_ISLAND_RELATIVE_PATHS` nie
+# istnieje, (4) zadna nazwa z `_TS_S3_FORBIDDEN_DEFS` nie wraca jako eksportowana
+# DEFINICJA (function/const/class/interface/type) gdziekolwiek w `frontend/src`
+# (komentarz cytujacy nazwe — jak ten naglowek — nie jest definicja).
+# `model_bridge.py` i `frt_input.py` ZOSTAJA (most model → solver, wejscia FRT dla
+# trajektorii/sekwencji) — celowo POZA tym sprawdzeniem.
+S3_CHECKER_RELATIVE_PATH = "application/ncrfg_compliance/checker.py"
+FORBIDDEN_S3_CLASS_NAMES = {
+    "NcRfgComplianceChecker",
+    "NcRfgComplianceReport",
+    "ComplianceTestResult",
+    "DerDataForCompliance",
+}
+S3_FRONTEND_ISLAND_RELATIVE_PATHS: dict[str, str] = {
+    "ui/network-build/station-der/NcRfgComplianceBadge.tsx": (
+        "wlasna checklista zgodnosci NC RfG w przegladarce "
+        "(compliant/audit_required/non_compliant) — kanon: solver ncrfg_ptpiree"
+    ),
+    "ui/network-build/station-der/DerValidationBanner.tsx": (
+        "baner skladajacy checkliste NC RfG i progi mocy DER vs TR liczone w FE"
+    ),
+    "ui/network-build/station-der/derPowerValidation.ts": (
+        "progi 80 %/100 % mocy DER vs transformator w FE — kanon: "
+        "domain/generator_validation.py::sprawdz_moc_generatora (O-53)"
+    ),
+    "ui/network-build/station-der/__tests__/NcRfgComplianceBadge.test.tsx": (
+        "testy wyspy NcRfgComplianceBadge (bez komponentu do testowania)"
+    ),
+    "ui/network-build/station-der/__tests__/DerValidationBanner.test.tsx": (
+        "testy wyspy DerValidationBanner (bez komponentu do testowania)"
+    ),
+    "ui/network-build/station-der/__tests__/derPowerValidation.test.ts": (
+        "testy wyspy derPowerValidation (bez modulu do testowania)"
+    ),
+}
+_TS_S3_FORBIDDEN_DEFS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
+    (
+        nazwa,
+        re.compile(
+            r"^[ \t]*export\s+(?:default\s+)?(?:function|const|class|interface|type)\s+"
+            + nazwa
+            + r"\b",
+            re.MULTILINE,
+        ),
+    )
+    for nazwa in (
+        "NcRfgComplianceBadge",
+        "evaluateNcRfgCompliance",
+        "DerValidationBanner",
+        "validateDerPowerVsTransformer",
+        "NcRfgComplianceVerdict",
+        "NcRfgComplianceReport",
+        "NcRfgComplianceTestResult",
+    )
+)
+
+
+# Karta KASACJA-UNIEWAZNIACZA (2026-09-17) — bramka wskrzeszenia OSTATNIEGO
+# PISARZA statusu wynikow. Do CV-2-W status wynikow byl POLEM przestawianym przez
+# siedmiu "uniewazniaczy"; CV-2-W zamienila go na FUNKCJE (biegi kanoniczne x
+# rewizja modelu x odcisk katalogu, `application/result_freshness.py`) i skasowala
+# szesciu pisarzy. Siodmy — `application/analysis_run/result_invalidator.py`
+# (`ResultInvalidator.invalidate_project_results` -> `AnalysisRunRepository.
+# mark_results_outdated`) — ZOSTAL wtedy swiadomie, z jawnym warunkiem w swoim
+# wlasnym naglowku: "jedynym konsumentem jest legacy tor kreatora
+# (`application/network_wizard/service.py`) ... kasowany razem z tym torem w CV-4".
+# Tor zszedl w W1 (2026-09-09, `W1_LEGACY_RELATIVE_PATHS` wyzej), modul nie —
+# pomiar 2026-09-17: 0 wolajacych w `backend/src` (3 wzmianki, wszystkie w
+# komentarzach), 1 wolajacy w `backend/tests` (test, ktory sprawdzal, ze ten kod
+# NIE ma skutku). Kod zywy wylacznie dla wlasnego testu = dlug, wiec zeszly razem:
+# modul, `mark_results_outdated` (jedyny wolajacy) oraz trzy metody odczytu tego
+# samego repozytorium bez ani jednego wolajacego w `src` i `tests` (`get`,
+# `list_by_project`, `get_by_deterministic_key`).
+#
+# CO ZOSTAJE I DLACZEGO (zeby ta bramka nie znaczyla wiecej, niz znaczy): tabela
+# `analysis_runs`, `AnalysisRunORM` oraz `AnalysisRunRepository.create`/
+# `update_status` ZOSTAJA — tabele liczy produkcyjny `ProjectRepository.
+# has_dependencies`, a wiersze zastane musza dac sie zapisac w tescie
+# dowodzacym, ze kanoniczne routery ich NIE pokazuja
+# (`tests/test_production_canonical_only_api.py`). Nazwy `create`/`update_status`
+# CELOWO nie sa nizej: sa generyczne i zapalalyby sie na polowie repozytoriow.
+#
+# Sprawdzane: (1) modul nie istnieje, (2) zadna nazwa z
+# `FORBIDDEN_UNIEWAZNIACZ_CLASS_NAMES` nie wraca jako DEFINICJA (ast.ClassDef)
+# gdziekolwiek w `backend/src`, (3) zadna nazwa z
+# `FORBIDDEN_UNIEWAZNIACZ_FUNCTION_NAMES` nie wraca jako DEFINICJA
+# (ast.FunctionDef/ast.AsyncFunctionDef) gdziekolwiek w `backend/src` — nie
+# dowolne wystapienie identyfikatora, wiec komentarz/dokstring nazywajacy kasacje
+# (jak naglowki `unit_of_work.py` i `analysis_run_repository.py`) NIE jest
+# naruszeniem.
+UNIEWAZNIACZ_RELATIVE_PATHS: dict[str, str] = {
+    "application/analysis_run/result_invalidator.py": (
+        "uniewazniacz wynikow projektu (kaskada na `analysis_runs.result_status`) — "
+        "status wynikow jest WYPROWADZANY, nie zapisywany: "
+        "application/result_freshness.py"
+    ),
+}
+FORBIDDEN_UNIEWAZNIACZ_CLASS_NAMES = {"ResultInvalidator"}
+FORBIDDEN_UNIEWAZNIACZ_FUNCTION_NAMES = {
+    "invalidate_project_results",
+    "mark_results_outdated",
 }
 
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
+
+
+def zrodlo_istnieje(path: Path, wzorce: tuple[str, ...] = ("*.py",)) -> bool:
+    """Czy pod sciezka istnieje ZRODLO: plik albo katalog z choc jednym plikiem
+    zrodlowym (`wzorce`, domyslnie `*.py`; dla frontendu `*.ts`/`*.tsx`) na
+    dowolnej glebokosci.
+
+    Goly `path.exists()` falszywie zapala bramke wskrzeszenia na osieroconym,
+    niegitowanym `__pycache__/` (bytecode z sesji SPRZED kasacji zostaje na
+    dysku, bo git usuwa tylko sledzone pliki) — guard ma wykryc wskrzeszone
+    zrodlo, nie zapomniany artefakt kompilacji. KLASA, NIE INSTANCJA (odbior K2,
+    2026-09-09): wyjatek byl obsluzony tylko w bramce C4 (`glob("*.py")`, plytko),
+    a bramki CV-4.2, W1 i K2 uzywaly golego `exists()` — jedna funkcja dla
+    wszystkich czterech, rekurencyjnie (wskrzeszony podpakiet tez jest zrodlem).
+    """
+    if path.is_file():
+        return True
+    if path.is_dir():
+        return any(any(path.rglob(wzorzec)) for wzorzec in wzorce)
+    return False
 
 
 def active_api_module_paths() -> list[Path]:
@@ -61,8 +748,1723 @@ def check_legacy_public_paths() -> list[str]:
     return violations
 
 
+def check_study_case_engine_resurrection() -> list[str]:
+    """C2 (CV-3.2): `study_case_engine.py`/`StudyCaseEngine`/`SolverProtocol`
+    nie mogą wrócić — 0 konsumentów w `src` w chwili kasacji, semantyka
+    `OperatingMode.N_1/MAINTENANCE` żyje w `RodzajScenariusza` (CV-3.1)."""
+    violations: list[str] = []
+    if zrodlo_istnieje(STUDY_CASE_ENGINE_MODULE):
+        rel_path = STUDY_CASE_ENGINE_MODULE.relative_to(ROOT).as_posix()
+        violations.append(
+            f"[resurrected-module] {rel_path}: domain/study_case_engine.py (C2) "
+            "usunięty procedurą w CV-3.2 — nie odtwarzaj tego pliku"
+        )
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = py_file.relative_to(ROOT).as_posix()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_ENGINE_CLASS_NAMES:
+                violations.append(
+                    f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                    "(C2, usunięty CV-3.2) nie może wrócić"
+                )
+    return violations
+
+
+def check_domain_op_registry_resurrection() -> list[str]:
+    """C3 (CV-3.2): 9 nazw operacji domenowych nie mogą wrócić do REJESTRU
+    (`CANONICAL_OPERATIONS`, `ALL_V2_HANDLERS`, `domainOps.ts`) — sprawdza
+    WYŁĄCZNIE obecność jako klucz/wpis rejestru, nigdy dowolne wystąpienie
+    identyfikatora w kodzie, żeby nie zapalać się na kolizjach nazw z żywymi
+    warstwami C1 (`api/study_cases.py`, `domain/study_case.py`) i E2
+    (`api/enm.py`)."""
+    violations: list[str] = []
+    if CANONICAL_OPS_REGISTRY.exists():
+        registered = canonical_ops_guard.extract_canonical_names(CANONICAL_OPS_REGISTRY)
+        rel_path = CANONICAL_OPS_REGISTRY.relative_to(ROOT).as_posix()
+        for name in sorted(FORBIDDEN_DOMAIN_OP_NAMES & registered):
+            violations.append(
+                f"[resurrected-registry-entry] {rel_path}: '{name}' (C3, usunięty "
+                "CV-3.2) wrócił jako OperationSpec w CANONICAL_OPERATIONS"
+            )
+    if V2_HANDLERS_MODULE.exists():
+        handlers = canonical_ops_guard.extract_handler_keys(V2_HANDLERS_MODULE, {"ALL_V2_HANDLERS"})
+        rel_path = V2_HANDLERS_MODULE.relative_to(ROOT).as_posix()
+        for name in sorted(FORBIDDEN_DOMAIN_OP_NAMES & handlers):
+            violations.append(
+                f"[resurrected-handler-entry] {rel_path}: '{name}' (C3, usunięty "
+                "CV-3.2) wrócił jako klucz ALL_V2_HANDLERS"
+            )
+    if FRONTEND_DOMAIN_OPS.exists():
+        text = read_text(FRONTEND_DOMAIN_OPS)
+        rel_path = FRONTEND_DOMAIN_OPS.relative_to(ROOT).as_posix()
+        for name in sorted(FORBIDDEN_DOMAIN_OP_NAMES):
+            if f"'{name}'" in text or f'"{name}"' in text:
+                violations.append(
+                    f"[resurrected-frontend-whitelist] {rel_path}: '{name}' (C3, "
+                    "usunięty CV-3.2) wrócił do CANONICAL_OPERATION_NAMES"
+                )
+    return violations
+
+
+def check_c4_and_p24_plus_resurrection() -> list[str]:
+    """C4 + P24+ (CV-3.2, drugi commit karty): `application/study_scenario/**`,
+    `analysis/scenario_comparison/**`, `analysis/reporting/pdf/**` nie mogą
+    wrócić. Decyzja architektoniczna: P24+ (jedyny konsument
+    `ScenarioComparisonEntry`/`View`) miał 0 wołających w `backend/src` poza
+    własnym re-eksportem i 0 tras HTTP — ten sam byt co C4 ("raport bez
+    trasy"), skasowany razem z nim."""
+    violations: list[str] = []
+    for directory, label in FORBIDDEN_C4_DIRECTORIES.items():
+        # Wskrzeszone ZRODLO, nie osierocony `__pycache__/` — patrz `zrodlo_istnieje`.
+        if zrodlo_istnieje(directory):
+            rel_path = directory.relative_to(ROOT).as_posix()
+            violations.append(
+                f"[resurrected-module] {rel_path}: {label} usunięty procedurą "
+                "w CV-3.2 — nie odtwarzaj tego pakietu"
+            )
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = py_file.relative_to(ROOT).as_posix()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_C4_CLASS_NAMES:
+                violations.append(
+                    f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                    "(C4, usunięty CV-3.2) nie może wrócić"
+                )
+            if isinstance(node, ast.FunctionDef) and node.name in FORBIDDEN_C4_FUNCTION_NAMES:
+                violations.append(
+                    f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
+                    "(P24+, usunięty CV-3.2) nie może wrócić"
+                )
+    return violations
+
+
+def check_cv42_resurrection() -> list[str]:
+    """CV-4.2 (2026-09-05): kreator P2/S4, P5, P13 nie mogą wrócić — żaden miał
+    konsumenta produkcyjnego w chwili kasacji (pomiar w meldunku karty), a fizyka
+    „szyny złożonej" i wejścia rozpływu/zwarcia żyje wyłącznie w torze kanonicznym
+    (`enm/assembler.py::zloz_wejscie_rozplywu`/`zloz_wejscie_zwarcia`)."""
+    violations: list[str] = []
+    for path, label in FORBIDDEN_CV42_FILES.items():
+        if zrodlo_istnieje(path):
+            rel_path = path.relative_to(ROOT).as_posix()
+            violations.append(f"[resurrected-module] {rel_path}: {label}")
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = py_file.relative_to(ROOT).as_posix()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_CV42_CLASS_NAMES:
+                violations.append(
+                    f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                    "(usunięty procedurą w CV-4.2) nie może wrócić"
+                )
+            if isinstance(node, ast.FunctionDef) and node.name in FORBIDDEN_CV42_FUNCTION_NAMES:
+                violations.append(
+                    f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
+                    "(usunięty procedurą w CV-4.2) nie może wrócić"
+                )
+            if isinstance(node, ast.FunctionDef) and node.name in FORBIDDEN_CV42B_FUNCTION_NAMES:
+                violations.append(
+                    f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
+                    "(własny silnik/sesja z DATABASE_URL w torze biegów, usunięty w CV-4.2b) "
+                    "nie może wrócić"
+                )
+    return violations
+
+
+def check_cv43_a4_resurrection() -> list[str]:
+    """CV-4.3-A4/K5 (2026-09-06): dwie sieroty E2 (`api/enm.py` POST runs/{short-
+    circuit,power-flow}) usunięte procedurą siedmiu kroków (0 konsumentów
+    produkcyjnych), V12.6 (`api/v126_academic.py`) przeszło z własnego słownika
+    `_runs` w pamięci procesu (R4) na rejestr R1 (`CanonicalRun` przez
+    `enm.canonical_analysis.create_run`/`execute_run`) — bieg V12.6 musi
+    przeżyć restart procesu i wielu workerów, czego słownik w pamięci nigdy nie
+    gwarantował. Guard pilnuje, żeby żaden z trzech bytów nie wrócił."""
+    violations: list[str] = []
+    if CV43_A4_ENM_MODULE.exists():
+        tree = ast.parse(read_text(CV43_A4_ENM_MODULE), filename=str(CV43_A4_ENM_MODULE))
+        rel_path = CV43_A4_ENM_MODULE.relative_to(ROOT).as_posix()
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                and node.name in FORBIDDEN_CV43_A4_ROUTE_FUNCTION_NAMES
+            ):
+                violations.append(
+                    f"[resurrected-route] {rel_path}:{node.lineno}: def {node.name} "
+                    "(E2, usunięty procedurą siedmiu kroków w CV-4.3-A4/K5.1 — 0 "
+                    "konsumentów produkcyjnych, tor kanoniczny /api/execution/...) "
+                    "nie może wrócić"
+                )
+    if CV43_A4_V126_MODULE.exists():
+        tree = ast.parse(read_text(CV43_A4_V126_MODULE), filename=str(CV43_A4_V126_MODULE))
+        rel_path = CV43_A4_V126_MODULE.relative_to(ROOT).as_posix()
+        # Przypisanie NAJWYŻSZEGO POZIOMU (`tree.body`, nie `ast.walk`) — zmienna
+        # lokalna o tej samej nazwie wewnątrz funkcji pomocniczej nie jest tym
+        # bytem, którego kasacja pilnuje (rejestr w pamięci procesu, nie zmienna
+        # robocza).
+        for node in tree.body:
+            targets: list[ast.expr] = []
+            if isinstance(node, ast.Assign):
+                targets = node.targets
+            elif isinstance(node, ast.AnnAssign):
+                targets = [node.target]
+            for target in targets:
+                if (
+                    isinstance(target, ast.Name)
+                    and target.id in FORBIDDEN_CV43_A4_V126_INMEMORY_NAMES
+                ):
+                    violations.append(
+                        f"[resurrected-inmemory-registry] {rel_path}:{node.lineno}: "
+                        f"'{target.id}' (słownik biegów V12.6 w pamięci procesu, "
+                        "usunięty w CV-4.3-A4/K5.2 na rzecz CanonicalRun/R1) nie może "
+                        "wrócić"
+                    )
+    return violations
+
+
+def _tablename_w_klasie(node: ast.ClassDef) -> str | None:
+    """Wartosc `__tablename__ = "..."` przypisana wprost w ciele klasy (None, gdy brak)."""
+    for stmt in node.body:
+        targets: list[ast.expr] = []
+        if isinstance(stmt, ast.Assign):
+            targets = stmt.targets
+        elif isinstance(stmt, ast.AnnAssign):
+            targets = [stmt.target]
+        else:
+            continue
+        for target in targets:
+            if isinstance(target, ast.Name) and target.id == "__tablename__":
+                value = stmt.value
+                if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                    return value.value
+    return None
+
+
+def check_w1_legacy_persistence_resurrection() -> list[str]:
+    """W1 (2026-09-09): legacy persystencja sieci (19 tabel, ich ORM, repozytoria,
+    kreator, projekcja SLD, syntezator projektowy, raporty z migawki) nie moze
+    wrocic — jedyna prawda sieci to ENM w magazynie projektu. Pin liczby tabel w
+    `models.py` zamienia ciche dopisanie tabeli w swiadoma decyzje."""
+    violations: list[str] = []
+    for rel, label in W1_LEGACY_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W1)")
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    models_path = BACKEND_SRC_DIR / W1_MODELS_RELATIVE_PATH
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        tablenames = 0
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            if node.name in FORBIDDEN_W1_CLASS_NAMES:
+                violations.append(
+                    f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                    "(legacy persystencja sieci, usunieta w W1) nie moze wrocic"
+                )
+            tablename = _tablename_w_klasie(node)
+            if tablename is None:
+                continue
+            tablenames += 1
+            if tablename in FORBIDDEN_W1_TABLE_NAMES:
+                violations.append(
+                    f"[resurrected-table] {rel_path}:{node.lineno}: __tablename__ = "
+                    f"'{tablename}' (tabela legacy usunieta w W1) nie moze wrocic"
+                )
+        if py_file == models_path and tablenames != W1_TABLENAME_PIN:
+            violations.append(
+                f"[tablename-pin] {rel_path}: {tablenames} tabel ORM, pin W1_TABLENAME_PIN = "
+                f"{W1_TABLENAME_PIN} — nowa/usunieta tabela wymaga swiadomej zmiany pinu "
+                "z uzasadnieniem w commicie"
+            )
+    return violations
+
+
+def _bez_komentarzy_ts(tekst: str) -> str:
+    """Tresc pliku TS/TSX bez komentarzy — cytat nazwy w komentarzu to nie definicja."""
+    return _TS_LINE_COMMENT.sub("", _TS_BLOCK_COMMENT.sub("", tekst))
+
+
+def check_data_manager_resurrection() -> list[str]:
+    """Karta KASACJA-DATA-MANAGER (2026-09-09): `ui/data-manager/**` (komponent
+    `DataManager`, typ `DataManagerRow`) nie moze wrocic — 0 konsumentow
+    produkcyjnych w chwili kasacji (pomiar w meldunku karty). Katalog byl jedynym
+    nosicielem rownoleglej, martwej kopii definicji kolumn elementow z kluczami-
+    fantomami (`bus_id`/`sk_mva`) wobec modelu ENM."""
+    violations: list[str] = []
+    if DATA_MANAGER_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(DATA_MANAGER_DIR.rglob(f"*{suffix}")):
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                violations.append(
+                    f"[resurrected-module] {rel_path}: frontend/src/ui/data-manager "
+                    "usunięty procedurą w karcie KASACJA-DATA-MANAGER (2026-09-09) — "
+                    "nie odtwarzaj tego katalogu"
+                )
+    if not FRONTEND_SRC_DIR.exists():
+        return violations
+    for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+        for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+            tekst = _bez_komentarzy_ts(read_text(ts_file))
+            rel_path = ts_file.relative_to(ROOT).as_posix()
+            if _TS_DATA_MANAGER_COMPONENT_DEF.search(tekst):
+                violations.append(
+                    f"[resurrected-component] {rel_path}: export DataManager "
+                    "(komponent, usunięty w karcie KASACJA-DATA-MANAGER) nie może wrócić"
+                )
+            if _TS_DATA_MANAGER_ROW_DEF.search(tekst):
+                violations.append(
+                    f"[resurrected-type] {rel_path}: export DataManagerRow "
+                    "(typ, usunięty w karcie KASACJA-DATA-MANAGER) nie może wrócić"
+                )
+    return violations
+
+
+#: Karta K2 (2026-09-09) — bramka wskrzeszenia: `application/reference_networks/**`
+#: (dawny dialekt benchmarków — builders/, computation.py, library.py,
+#: frozen_solver_input.py, pandapower_bridge.py, report_export.py,
+#: similarity_matcher.py, benchmark_wiring.py — DRUGA ścieżka budowy wejścia
+#: solwerów, równoległa do kanonicznej ENM → enm/assembler.py → solver) +
+#: `api/reference_networks.py` (9 tras `/api/v1/reference-networks/*`) +
+#: frontend `ui/reference-networks/**` + `ReferenceNetworkSurface` (ekran
+#: zastany, rejestr kanonu) skasowane w całości. Zastępstwo (walidacja solverów
+#: vs publikowane benchmarki jako zdolność WERYFIKACYJNA, nie tok pracy
+#: inżyniera): `backend/tests/golden/enm_builders/**` + `tests/golden/registry.py`.
+K2_REFERENCE_NETWORKS_BACKEND_DIR = "application/reference_networks"
+K2_REFERENCE_NETWORKS_API_MODULE = "api/reference_networks.py"
+FORBIDDEN_K2_MODULE_PREFIXES = (
+    "application.reference_networks",
+    "api.reference_networks",
+)
+FORBIDDEN_K2_CLASS_NAMES = {"ReferenceNetwork"}
+K2_REFERENCE_NETWORKS_FRONTEND_DIR = FRONTEND_SRC_DIR / "ui" / "reference-networks"
+_TS_REFERENCE_NETWORK_SURFACE_DEF = re.compile(
+    r"^[ \t]*export\s+(?:default\s+)?(?:function|const|class)\s+ReferenceNetworkSurface\b",
+    re.MULTILINE,
+)
+
+
+def check_k2_reference_networks_resurrection() -> list[str]:
+    """Karta K2 (2026-09-09): druga ścieżka budowy wejścia solwerów
+    (`application/reference_networks/**`) i jej API (`api/reference_networks.py`)
+    i ekran zastany (`ui/reference-networks/**` + `ReferenceNetworkSurface`)
+    nie mogą wrócić — 0 konsumentów produktowych poza sobą nawzajem (jedyny
+    produkcyjny konsument pakietu było samo API + ten ekran; benchmarki jako
+    ENM żyją w `tests/golden/enm_builders/**`, wyrocznia (a) w
+    `tests/golden/parytet_benchmarkow/test_wyrocznia_a_expected_json.py`)."""
+    violations: list[str] = []
+    backend_dir = BACKEND_SRC_DIR / K2_REFERENCE_NETWORKS_BACKEND_DIR
+    if zrodlo_istnieje(backend_dir):
+        violations.append(
+            f"[resurrected-module] backend/src/{K2_REFERENCE_NETWORKS_BACKEND_DIR}: "
+            "dawny dialekt benchmarków (usunięty kartą K2, 2026-09-09) — nie odtwarzaj"
+        )
+    api_module = BACKEND_SRC_DIR / K2_REFERENCE_NETWORKS_API_MODULE
+    if zrodlo_istnieje(api_module):
+        violations.append(
+            f"[resurrected-module] backend/src/{K2_REFERENCE_NETWORKS_API_MODULE}: "
+            "9 tras /api/v1/reference-networks/* (usunięte kartą K2) — nie odtwarzaj"
+        )
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            rel_path = py_file.relative_to(ROOT).as_posix()
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.ImportFrom)
+                    and node.module is not None
+                    and any(
+                        node.module == prefix or node.module.startswith(prefix + ".")
+                        for prefix in FORBIDDEN_K2_MODULE_PREFIXES
+                    )
+                ):
+                    violations.append(
+                        f"[legacy-public-import] {rel_path}:{node.lineno}: {node.module} "
+                        "(dawny dialekt benchmarków, usunięty kartą K2)"
+                    )
+                if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_K2_CLASS_NAMES:
+                    violations.append(
+                        f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                        "(dialekt benchmarków, usunięty kartą K2) nie może wrócić"
+                    )
+    if zrodlo_istnieje(K2_REFERENCE_NETWORKS_FRONTEND_DIR, ("*.ts", "*.tsx")):
+        violations.append(
+            "[resurrected-module] frontend/src/ui/reference-networks: ekran zastany "
+            "(usunięty kartą K2, 2026-09-09) — nie odtwarzaj tego katalogu"
+        )
+    if FRONTEND_SRC_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                tekst = _bez_komentarzy_ts(read_text(ts_file))
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                if _TS_REFERENCE_NETWORK_SURFACE_DEF.search(tekst):
+                    violations.append(
+                        f"[resurrected-component] {rel_path}: export ReferenceNetworkSurface "
+                        "(usunięty kartą K2) nie może wrócić"
+                    )
+    return violations
+
+
+def check_w3d_source_compliance_resurrection() -> list[str]:
+    """W3-D (2026-09-09): trzecia, uboższa sciezka oceny FRT/Q(U)/cosfi(P)
+    (`application/compliance/source_compliance.py`, rodzaj analizy
+    "source_compliance") nie moze wrocic — kanon fizyki to
+    `network_model/solvers/power_flow_inverter.py`, kanon testu zgodnosci
+    typu to `network_model/solvers/ncrfg_ptpiree/engine.py`. Trzecia sciezka
+    nie miala modelu dynamicznego i miala niespojne kryterium porownania
+    (nierownosc dla FRT, rownosc dokladna dla Q(U)/cosfi(P))."""
+    violations: list[str] = []
+    for rel, label in W3D_SOURCE_COMPLIANCE_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label}")
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                if node.name in FORBIDDEN_W3D_DEF_NAMES:
+                    violations.append(
+                        f"[resurrected-def] {rel_path}:{node.lineno}: {node.name} "
+                        "(trzecia sciezka source_compliance, usunieta w W3-D) nie moze wrocic"
+                    )
+            if isinstance(node, ast.ClassDef) and node.name == W3D_EXECUTION_TYPE_CLASS_NAME:
+                for stmt in node.body:
+                    if not isinstance(stmt, ast.Assign):
+                        continue
+                    for target in stmt.targets:
+                        if isinstance(target, ast.Name) and target.id in FORBIDDEN_W3D_ENUM_MEMBERS:
+                            violations.append(
+                                f"[resurrected-enum] {rel_path}:{stmt.lineno}: "
+                                f"{W3D_EXECUTION_TYPE_CLASS_NAME}.{target.id} "
+                                "(usuniety w W3-D) nie moze wrocic"
+                            )
+    return violations
+
+
+def check_w3a_second_engine_resurrection() -> list[str]:
+    """W3-A (2026-09): bridge SC<->Protection Engine v1 (resolver pradu +
+    typy domenowe) nie moze wrocic — jedyna fizyka IDMT jest w
+    `network_model/solvers/protection_iec60255.py` (`compute_idmt_generic`),
+    jedyny zywy tor `protection_sn` jest w `application/protection_analysis/
+    engine.py` (adapter na jadro). `domain/protection_engine_v1.py` i
+    `application/result_mapping/protection_to_resultset_v1.py` ZOSTAJA (B-01
+    STOP — chronione przez `solver_boundary_guard.py`/
+    `resultset_v1_schema_guard.py`, patrz komentarz przy
+    `W3A_LEGACY_RELATIVE_PATHS`) — celowo POZA zakresem tego sprawdzenia."""
+    violations: list[str] = []
+    for rel, label in W3A_LEGACY_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W3-A)")
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_W3A_CLASS_NAMES:
+                violations.append(
+                    f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                    "(drugi silnik IDMT, usuniety w W3-A) nie moze wrocic"
+                )
+            if (
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                and node.name in FORBIDDEN_W3A_FUNCTION_NAMES
+            ):
+                violations.append(
+                    f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
+                    "(drugi silnik IDMT / zaslepka bez fizyki, usuniety w W3-A) nie moze wrocic"
+                )
+    return violations
+
+
+def check_w3c1_overcurrent_resurrection() -> list[str]:
+    """W3-C1 (2026-09-09): kasacja V12K-189 (metodyka nastaw nadprądowych, patrz
+    komentarz przy `W3C1_OVERCURRENT_RELATIVE_PATHS`) — jedyna metodyka jest
+    Hoppel/IRiESD (`application/protection_settings/`, NIE dotknięta, bez wpisu
+    tutaj). Sprawdzane: (1) żaden z plików/katalogów W3-C1 nie istnieje,
+    (2) żadna nazwa z `FORBIDDEN_W3C1_NAMES` nie wraca jako DEFINICJA (klasa,
+    funkcja, przypisanie modułowe) gdziekolwiek w `backend/src`."""
+    violations: list[str] = []
+    for rel, label in W3C1_OVERCURRENT_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usunięty w W3-C1)")
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        for node in ast.walk(tree):
+            nazwa: str | None = None
+            rodzaj = "definicja"
+            if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+                nazwa = node.name
+                rodzaj = "klasa/funkcja"
+            elif isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id in FORBIDDEN_W3C1_NAMES:
+                        violations.append(
+                            f"[resurrected-name] {rel_path}:{node.lineno}: "
+                            f"{target.id} (V12K-189, usunięty w W3-C1) nie może wrócić"
+                        )
+                continue
+            if nazwa is not None and nazwa in FORBIDDEN_W3C1_NAMES:
+                violations.append(
+                    f"[resurrected-name] {rel_path}:{node.lineno}: {rodzaj} {nazwa} "
+                    "(V12K-189, usunięty w W3-C1) nie może wrócić"
+                )
+    return violations
+
+
+def check_w3c2_line_overcurrent_setting_resurrection() -> list[str]:
+    """W3-C2 (2026-09-09): trzecia metodyka nastaw I>> (FIX-12D) nie może
+    wrócić — jedyna metodyka to Hoppel/IRiESD (`application/protection_settings/
+    engine.py`), rozszerzony o generację lokalną i okno nastaw w tej samej
+    karcie. Wzorzec referencyjny RP-LINE-I2-THERMAL-SPZ liczy nim, nie
+    analizatorem FIX-12D."""
+    violations: list[str] = []
+    for rel, label in W3C2_LEGACY_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W3-C2)")
+    return violations
+
+
+# Karta TRACE-V2 (2026-09-10) — bramka wskrzeszenia klastra "slad v2"
+# (`domain/trace_v2/**`, `application/trace_emitters/**`, `application/
+# trace_export/**`, `frontend/src/ui/proof/trace-v2/**`). Klaster mial ZERO
+# konsumentow produkcyjnych (pomiar architekta 2026-09-10, grep calego repo):
+# jedynymi importerami byly wlasne testy klastra, guard CI
+# `trace_determinism_guard.py` (pilnowal determinizmu modulu, ktorego nikt nie
+# wolal) i piny `solver_input_substitute_guard.py`. Jedyny zywy slad WHITE BOX
+# produktu to `white_box_trace` wyniku solvera + `application/proof_engine/**`
+# (18 pakietow) + eksport `api/analysis_run_exports.py::
+# build_analysis_run_trace_export_payload` (INNA rzecz, poza zakresem tego
+# sprawdzenia — zostaje). Decyzja architekta: USUNIETY, nie wpiety (wpiecie
+# dawaloby DRUGA prawde sladu obok inline — misja: "one truth", "no eternal
+# legacy"); koryguje rekomendacje D-12 "wpiac" z `docs/twin/
+# OWNER_REVIEW_PACKAGE.md`.
+#
+# Razem z klastrem skasowany `scripts/trace_ui_leak_guard.py` (KLASA NIE
+# INSTANCJA, znalezisko przy kasacji, poza pierwotnym inwentarzem karty:
+# jedynym celem tego guarda byla izolacja typow trace-v2 do 3 dozwolonych
+# sciezek frontendu — po kasacji calego klastra te typy nie istnieja NIGDZIE,
+# wiec guard staje sie trwale pustym sprawdzeniem, czyli sam w sobie dlugiem.
+# Sprawdzenie (5) ponizej PRZEJMUJE zakres nazw typow tamtego guarda, ale BEZ
+# wyjatku sciezek — po kasacji zadna sciezka nie ma prawa ich uzywac).
+#
+# Sprawdzane: (1) zaden z trzech katalogow zrodlowych backendu nie istnieje,
+# (2) katalog FE `ui/proof/trace-v2` nie istnieje (zaden `.ts`/`.tsx`), (3)
+# zadna nazwa z FORBIDDEN_TRACE_V2_CLASS_NAMES nie wraca jako DEFINICJA
+# (ast.ClassDef) gdziekolwiek w `backend/src`, (4) zaden import z prefiksu
+# FORBIDDEN_TRACE_V2_MODULE_PREFIXES nie wraca gdziekolwiek w `backend/src`,
+# (5) zadna nazwa z FORBIDDEN_TRACE_V2_TS_TYPE_NAMES nie wraca jako DEFINICJA
+# (`export type|interface`) gdziekolwiek w `frontend/src`.
+TRACE_V2_BACKEND_RELATIVE_DIRS: dict[str, str] = {
+    "domain/trace_v2": (
+        "domena TraceArtifactV2/EquationRegistryV2/TraceDiffEngine (klaster "
+        '"slad v2", 0 konsumentow) — skasowana karta TRACE-V2'
+    ),
+    "application/trace_emitters": (
+        "emitery sladu v2 (SC/load-flow/protection) — skasowane karta TRACE-V2"
+    ),
+    "application/trace_export": "generator LaTeX sladu v2 — skasowany karta TRACE-V2",
+}
+TRACE_V2_FRONTEND_DIR = FRONTEND_SRC_DIR / "ui" / "proof" / "trace-v2"
+#: PELNY inwentarz klas skasowanego klastra (17 definicji `class` w 12 plikach
+#: `.py` drzewa sprzed kasacji, `git show 583c686a^`, odbior fali 3 W3 2026-09-10;
+#: recenzja karty wykryla, ze pierwotny zbior 8 nazw pokrywal polowe klastra —
+#: KLASA, NIE INSTANCJA). Pin: `test_trace_v2_forbidden_class_names_cover_whole_
+#: deleted_cluster` w `scripts/test_legacy_public_path_guard.py`.
+FORBIDDEN_TRACE_V2_CLASS_NAMES = {
+    # domain/trace_v2/artifact.py
+    "AnalysisTypeV2",
+    "TraceValue",
+    "TraceEquationStep",
+    "TraceArtifactV2",
+    # domain/trace_v2/diff_engine.py
+    "TraceDiffEntry",
+    "TraceStepDiff",
+    "TraceDiffSummary",
+    "TraceDiffResult",
+    "TraceDiffEngine",
+    # domain/trace_v2/equation_registry_v2.py
+    "EquationVariable",
+    "EquationEntryV2",
+    "EquationRegistryV2",
+    # domain/trace_v2/math_spec_version.py
+    "MathSpecVersion",
+    # application/trace_emitters/{load_flow,sc,protection}_emitter.py
+    "TraceEmitterLoadFlow",
+    "TraceEmitterSC",
+    "TraceEmitterProtection",
+    # application/trace_export/latex_generator.py
+    "LaTeXGenerator",
+}
+FORBIDDEN_TRACE_V2_MODULE_PREFIXES = (
+    "domain.trace_v2",
+    "application.trace_emitters",
+    "application.trace_export",
+)
+#: Zakres nazw dziedziczony po skasowanym `trace_ui_leak_guard.py` (TRACE_V2_PATTERNS)
+#: — 6 typow TS klastra "slad v2", bez wyjatku sciezek (patrz komentarz wyzej).
+FORBIDDEN_TRACE_V2_TS_TYPE_NAMES = {
+    "AnalysisTypeV2",
+    "TraceArtifactV2",
+    "TraceEquationStepV2",
+    "TraceDiffResultV2",
+    "TraceValueV2",
+    "TraceStepDiffV2",
+}
+_TS_TRACE_V2_TYPE_DEF = re.compile(
+    r"^[ \t]*export\s+(?:interface|type)\s+("
+    + "|".join(sorted(FORBIDDEN_TRACE_V2_TS_TYPE_NAMES))
+    + r")\b",
+    re.MULTILINE,
+)
+
+
+def check_trace_v2_resurrection() -> list[str]:
+    """Karta TRACE-V2 (2026-09-10): klaster "slad v2" (`domain/trace_v2/**`,
+    `application/trace_emitters/**`, `application/trace_export/**`,
+    `frontend/src/ui/proof/trace-v2/**`) nie moze wrocic — 0 konsumentow
+    produkcyjnych w chwili kasacji (pomiar architekta, grep calego repo).
+    Kanoniczny slad WHITE BOX zostaje: `white_box_trace` wyniku solvera +
+    `application/proof_engine/**` + `api/analysis_run_exports.py::
+    build_analysis_run_trace_export_payload` (inny kontrakt, poza zakresem
+    tego sprawdzenia). Zobacz komentarz przy `TRACE_V2_BACKEND_RELATIVE_DIRS`
+    dla pelnego uzasadnienia (w tym kasacji `trace_ui_leak_guard.py`, ktorego
+    zakres nazw typow przejmuje sprawdzenie (5))."""
+    violations: list[str] = []
+    for rel, label in TRACE_V2_BACKEND_RELATIVE_DIRS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label}")
+    if zrodlo_istnieje(TRACE_V2_FRONTEND_DIR, ("*.ts", "*.tsx")):
+        violations.append(
+            'frontend/src/ui/proof/trace-v2: klaster "slad v2" (skasowany karta '
+            "TRACE-V2, 2026-09-10) — nie odtwarzaj tego katalogu"
+        )
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            rel_path = py_file.relative_to(ROOT).as_posix()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_TRACE_V2_CLASS_NAMES:
+                    violations.append(
+                        f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                        '(klaster "slad v2", skasowany karta TRACE-V2) nie moze wrocic'
+                    )
+                if (
+                    isinstance(node, ast.ImportFrom)
+                    and node.module is not None
+                    and any(
+                        node.module == prefix or node.module.startswith(prefix + ".")
+                        for prefix in FORBIDDEN_TRACE_V2_MODULE_PREFIXES
+                    )
+                ):
+                    violations.append(
+                        f"[legacy-public-import] {rel_path}:{node.lineno}: {node.module} "
+                        '(klaster "slad v2", skasowany karta TRACE-V2)'
+                    )
+    if FRONTEND_SRC_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                tekst = _bez_komentarzy_ts(read_text(ts_file))
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                for dopasowanie in _TS_TRACE_V2_TYPE_DEF.finditer(tekst):
+                    violations.append(
+                        f"[resurrected-type] {rel_path}: export {dopasowanie.group(1)} "
+                        '(klaster "slad v2", skasowany karta TRACE-V2) nie moze wrocic'
+                    )
+    return violations
+
+
+def check_w3g1_run_trigger_orphan_resurrection() -> list[str]:
+    """W3-G1 (2026-09-10): jedyny selektor metody rozplywu (NR/GS/FD) jest
+    `ui2/spaces/obliczenia/UruchomObliczenie.tsx` — dwa martwe, rownolegle
+    ekrany/dialogi TEJ SAMEJ zdolnosci (klasa K-D: istnieje, ale sierota) nie
+    moga wrocic (patrz `W3G1_RUN_TRIGGER_ORPHAN_RELATIVE_PATHS`). Trasa
+    `#case-config` (`ui/navigation/routes.ts::ROUTES.CASE_CONFIG`) i wpis
+    przekierowania w `ui2/legacy/mostObszarow.ts` ZOSTAJA (przekierowanie
+    starego adresu do przestrzeni `obliczenia`, nie render skasowanego
+    komponentu) — bramka pilnuje WYLACZNIE plikow komponentow/testow."""
+    violations: list[str] = []
+    for rel, label in W3G1_RUN_TRIGGER_ORPHAN_RELATIVE_PATHS.items():
+        path = FRONTEND_SRC_DIR / rel
+        if zrodlo_istnieje(path, ("*.ts", "*.tsx")):
+            violations.append(
+                f"[resurrected-module] frontend/src/{rel}: {label} (usuniety w W3-G1)"
+            )
+    return violations
+
+
+# Karta W3-J (2026-09-16) — jedno zrodlo prawdy kryteriow napieciowych
+# (`analysis/normative/kryteria_napiecia.py`). Dwa niezalezne, zaszyte
+# duplikaty skasowane w calosci:
+#   (1) backend `analysis/power_flow/violations.py` + `violations_report.py`
+#       (`VoltageViolationsDetector` z domyslnymi `default_umin_pu=0.95` /
+#       `default_umax_pu=1.05` zaszytymi NIEZALEZNIE od kanonu; 0 konsumentow
+#       produkcyjnych poza wlasnym `__init__.py` — pomiar w meldunku karty),
+#   (2) frontend `ui/voltage-profile/**` (analizator/heatmap/wykres z wlasnymi
+#       progami 0,95/1,05/0,90/1,10; 0 miejsc renderu poza modulem — jedyne
+#       trafienia byly id zakladki checklisty w `ReadinessSection.tsx`, ktora
+#       NIE renderuje tego modulu, i test `no-zero-spam.test.ts`).
+W3J_BACKEND_MODULE_RELATIVE_PATHS = {
+    "analysis/power_flow/violations.py": (
+        "detektor naruszen napieciowych z progami 0,95/1,05 zaszytymi "
+        "niezaleznie od analysis.normative.kryteria_napiecia"
+    ),
+    "analysis/power_flow/violations_report.py": (
+        "eksport PDF detektora naruszen napieciowych (jw.)"
+    ),
+}
+FORBIDDEN_W3J_CLASS_NAMES = {
+    "VoltageViolationsDetector",
+    "VoltageViolationsResult",
+    "VoltageViolation",
+}
+FORBIDDEN_W3J_FUNCTION_NAMES = {
+    "export_violations_report_to_bytes",
+    "export_violations_report_to_pdf",
+    "add_violations_section_to_pdf",
+}
+W3J_VOLTAGE_PROFILE_FRONTEND_DIR = FRONTEND_SRC_DIR / "ui" / "voltage-profile"
+_TS_VOLTAGE_PROFILE_CHART_DEF = re.compile(
+    r"^[ \t]*export\s+(?:default\s+)?(?:function|const|class)\s+VoltageProfileChart\b",
+    re.MULTILINE,
+)
+_TS_VOLTAGE_HEATMAP_LEGEND_DEF = re.compile(
+    r"^[ \t]*export\s+(?:default\s+)?(?:function|const|class)\s+VoltageHeatmapLegend\b",
+    re.MULTILINE,
+)
+
+
+def check_w3j_voltage_criteria_resurrection() -> list[str]:
+    """Karta W3-J (2026-09-16): dwa niezalezne duplikaty kryteriow napieciowych
+    (progi 0,95/1,05/0,90/1,10 zaszyte poza jednym zrodlem prawdy) nie moga
+    wrocic. Sprawdzane: (1) `analysis/power_flow/violations.py` +
+    `violations_report.py` nie istnieja, (2) zadna z `FORBIDDEN_W3J_CLASS_NAMES`/
+    `FORBIDDEN_W3J_FUNCTION_NAMES` nie wraca jako DEFINICJA gdziekolwiek w
+    `backend/src`, (3) `frontend/src/ui/voltage-profile/**` nie istnieje,
+    (4) `VoltageProfileChart`/`VoltageHeatmapLegend` nie wracaja pod INNA
+    sciezka frontendu. `analysis/power_flow/{result,solver,types,analysis}.py`
+    (pozostala czesc pakietu PF v2 — `PowerFlowSolver`, `PowerFlowResult`,
+    limity `BusVoltageLimitSpec` skonfigurowane PRZEZ wolajacego) ZOSTAJA —
+    celowo POZA zakresem tego sprawdzenia, bo karta kasuje wylacznie
+    detektor/eksport z zaszytymi DOMYSLNYMI progami, nie caly pakiet."""
+    violations: list[str] = []
+    for rel, label in W3J_BACKEND_MODULE_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W3-J)")
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            rel_path = py_file.relative_to(ROOT).as_posix()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_W3J_CLASS_NAMES:
+                    violations.append(
+                        f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                        "(detektor naruszen napieciowych, usuniety w W3-J) nie moze wrocic"
+                    )
+                if (
+                    isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                    and node.name in FORBIDDEN_W3J_FUNCTION_NAMES
+                ):
+                    violations.append(
+                        f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
+                        "(eksport PDF detektora naruszen, usuniety w W3-J) nie moze wrocic"
+                    )
+    if zrodlo_istnieje(W3J_VOLTAGE_PROFILE_FRONTEND_DIR, ("*.ts", "*.tsx")):
+        violations.append(
+            "[resurrected-module] frontend/src/ui/voltage-profile: analizator/heatmap/wykres "
+            "profilu napiec z wlasnymi progami 0,95/1,05/0,90/1,10 (usuniety kartą W3-J, "
+            "2026-09-16) — nie odtwarzaj tego katalogu"
+        )
+    if FRONTEND_SRC_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                tekst = _bez_komentarzy_ts(read_text(ts_file))
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                if _TS_VOLTAGE_PROFILE_CHART_DEF.search(tekst):
+                    violations.append(
+                        f"[resurrected-component] {rel_path}: export VoltageProfileChart "
+                        "(usuniety kartą W3-J) nie może wrócić"
+                    )
+                if _TS_VOLTAGE_HEATMAP_LEGEND_DEF.search(tekst):
+                    violations.append(
+                        f"[resurrected-component] {rel_path}: export VoltageHeatmapLegend "
+                        "(usuniety kartą W3-J) nie może wrócić"
+                    )
+    return violations
+
+
+def check_s3_ncrfg_second_engine_resurrection() -> list[str]:
+    """S-3 (2026-09-16): drugi silnik zgodnosci NC RfG (`checker.py`, T1–T18,
+    `no_module`) i martwa wyspa kliencka `station-der/{NcRfgComplianceBadge,
+    DerValidationBanner,derPowerValidation}` nie moga wrocic — jedyna
+    implementacja zgodnosci NC RfG to solver `network_model/solvers/ncrfg_ptpiree`
+    (T01–T20), a jedyny most z modelu to `application/ncrfg_compliance/
+    model_bridge.py` (ZOSTAJE, celowo poza tym sprawdzeniem)."""
+    violations: list[str] = []
+    checker = BACKEND_SRC_DIR / S3_CHECKER_RELATIVE_PATH
+    if zrodlo_istnieje(checker):
+        violations.append(
+            f"[resurrected-module] backend/src/{S3_CHECKER_RELATIVE_PATH}: drugi silnik "
+            "zgodnosci NC RfG (T1–T18, no_module) usuniety w S-3"
+        )
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            rel_path = py_file.relative_to(ROOT).as_posix()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_S3_CLASS_NAMES:
+                    violations.append(
+                        f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                        "(drugi silnik zgodnosci NC RfG, usuniety w S-3) nie moze wrocic"
+                    )
+    for rel, label in S3_FRONTEND_ISLAND_RELATIVE_PATHS.items():
+        path = FRONTEND_SRC_DIR / rel
+        if zrodlo_istnieje(path, ("*.ts", "*.tsx")):
+            violations.append(f"[resurrected-module] frontend/src/{rel}: {label} (usuniety w S-3)")
+    if FRONTEND_SRC_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                tekst = _bez_komentarzy_ts(read_text(ts_file))
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                for nazwa, wzorzec in _TS_S3_FORBIDDEN_DEFS:
+                    if wzorzec.search(tekst):
+                        violations.append(
+                            f"[resurrected-definition] {rel_path}: export {nazwa} "
+                            "(wyspa kliencka / lustro drugiego silnika NC RfG, usuniete "
+                            "w S-3) nie moze wrocic"
+                        )
+    return violations
+
+
+def check_uniewazniacz_resurrection() -> list[str]:
+    """KASACJA-UNIEWAZNIACZA (2026-09-17): ostatni pisarz statusu wynikow nie
+    moze wrocic (patrz komentarz przy `UNIEWAZNIACZ_RELATIVE_PATHS`). Status
+    wynikow przypadku jest FUNKCJA biegow i koperty rewizji — kazdy nowy
+    "uniewazniacz" przywracalby stan, ktory ktos musi pamietac przestawic."""
+    violations: list[str] = []
+    for rel, label in UNIEWAZNIACZ_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(
+                f"[resurrected-module] backend/src/{rel}: {label} "
+                "(usuniety w karcie KASACJA-UNIEWAZNIACZA)"
+            )
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_UNIEWAZNIACZ_CLASS_NAMES:
+                violations.append(
+                    f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                    "(uniewazniacz wynikow, usuniety w karcie KASACJA-UNIEWAZNIACZA) "
+                    "nie moze wrocic"
+                )
+            if (
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                and node.name in FORBIDDEN_UNIEWAZNIACZ_FUNCTION_NAMES
+            ):
+                violations.append(
+                    f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
+                    "(uniewazniacz wynikow, usuniety w karcie KASACJA-UNIEWAZNIACZA) "
+                    "nie moze wrocic"
+                )
+    return violations
+
+
+# Karta AB-1a Pakiet L (2026-09-23) — bramka wskrzeszenia pozycji LEGACY_USUNAC z
+# inwentarza `docs/audit/INWENTARZ_WERDYKTOW_LAKONICZNYCH_2026-09-23.md` (fala WW-0
+# planu `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §8): powierzchnie werdyktu BEZ
+# konsumenta produkcyjnego (pomiar: grep importerow w `backend/src`; frontend —
+# osiagalnosc SYMBOLOWA od `src/main.tsx` i wejsc `*-harness-main.tsx`, barrel to
+# przelot, nie osiagalnosc), ktore mimo to niosly lakoniczne albo falszywe werdykty
+# („PASS" bez kryterium, „Skoordynowane", „Obliczenia zgodne z norma", progi
+# 80/100 % liczone w UI). Skasowane RAZEM z testami i eksportami barreli.
+#
+# Jedna tabela tozsamosci (`PAKIET_L_WPISY`), trzy rodzaje wpisu:
+#   * `sciezka`   — plik/katalog nie moze istniec (ZRODLO, nie osierocony `__pycache__`),
+#   * `definicja` — symbol nie wraca jako DEFINICJA: backend AST (klasa, funkcja,
+#     przypisanie modulowe, pole klasy zapisane `Klasa.pole`), frontend eksportowana
+#     deklaracja TS (`export function|const|class|interface|type|enum`);
+#     `zasieg="globalnie"` = gdziekolwiek w `backend/src`/`frontend/src`,
+#     `zasieg="plik"` = tylko we wskazanym pliku (nazwa ogolna albo kolidujaca z
+#     ZYWA definicja w innym miejscu: `FaultMarker` analizatora koordynacji,
+#     `CoordinationResult` ekranu koordynacji, `SEVERITY_COLORS` inspektora ENM,
+#     `ProtectionComparisonRow` domeny porownan),
+#   * `wzorzec`   — napis (bez komentarzy) nie wraca do WSKAZANEGO, ZYWEGO pliku
+#     frontendu — dla pozycji skasowanych wewnatrz zywego modulu (martwy prop,
+#     martwa zakladka, martwa sciezka danych, zaszyty napis zgodnosci).
+# Komentarz/dokstring nazywajacy kasacje NIE jest naruszeniem (AST dla Pythona,
+# `_bez_komentarzy_ts` dla TS).
+#
+# POZA ta bramka (NIEskasowane w karcie — z powodem w meldunku Pakietu L): A14
+# `stability_rms` i C47 `application/stability/voltage_trajectory.py` (kasacja
+# AB-1c, O-5/O-25; C47 dodatkowo w wykluczeniu Pakietu 0), B2 reguly
+# `analysis/normative/evaluator.py` (zywy konsument `application/analyses/
+# pokrycie_analiz.py`), B18 `violations` w `PowerFlowResult` (FROZEN, B-01),
+# E50/E51 `ui/network-build/station-der/**` (wykluczenie Pakietu D1), E74
+# `ui/sld/v2/station-rozdzielnia/**` + `canon/sldCanonKit.tsx` (konsument: wejscie
+# harnessu galerii), czesc E73 `GpzOperatorHeader.tsx` (importowany przez
+# `GpzCanonicalRenderer.tsx`, ktorego typy czyta zywy `ui/sld/v3/scene/buildScene.ts`).
+#
+# POZYCJE POZA INWENTARZEM, wykryte przy kasacji (wiersz `X1`, `X2`):
+#   X1 — przegladarka sladu `ui/proof/TraceViewer.tsx` z calym zbiorem zaleznosci
+#        (`TraceToc`, `TraceStepView`, `traceUrlState`, `traceExportApi`, `compare/**`,
+#        `export/**`, `search/**`): jedyny importer `TraceMetadataPanel.tsx` (E24),
+#        sama symbolowo nieosiagalna od `main.tsx` i wszystkich wejsc harnessu;
+#   X2 — sieroty `domain/protection_device.py` (`IECCurveVariant`,
+#        `DEVICE_TYPE_LABELS_PL`, `CURVE_VARIANT_LABELS_PL`, `new_protection_device`):
+#        0 uzyc w `backend/src`, `backend/tests`, `scripts`, `frontend`.
+# Bramka pilnuje FAKTOW, nie planow.
+
+
+class WpisPakietuL:
+    """Jedna skasowana tozsamosc Pakietu L (patrz komentarz nad `PAKIET_L_WPISY`)."""
+
+    __slots__ = ("warstwa", "rodzaj", "sciezka", "symbol", "zasieg", "wiersz")
+
+    def __init__(
+        self,
+        warstwa: str,
+        rodzaj: str,
+        sciezka: str,
+        symbol: str | None,
+        zasieg: str,
+        wiersz: str,
+    ) -> None:
+        self.warstwa = warstwa
+        self.rodzaj = rodzaj
+        self.sciezka = sciezka
+        self.symbol = symbol
+        self.zasieg = zasieg
+        self.wiersz = wiersz
+
+    def __repr__(self) -> str:
+        return (
+            f"WpisPakietuL({self.warstwa}:{self.rodzaj}:{self.sciezka}"
+            f":{self.symbol}:{self.zasieg}:{self.wiersz})"
+        )
+
+
+def _be_sciezka(sciezka: str, wiersz: str) -> WpisPakietuL:
+    return WpisPakietuL("backend", "sciezka", sciezka, None, "plik", wiersz)
+
+
+def _be_def(
+    sciezka: str, symbole: str, wiersz: str, zasieg: str = "globalnie"
+) -> list[WpisPakietuL]:
+    return [
+        WpisPakietuL("backend", "definicja", sciezka, s, zasieg, wiersz) for s in symbole.split()
+    ]
+
+
+def _fe_sciezka(sciezka: str, wiersz: str) -> WpisPakietuL:
+    return WpisPakietuL("frontend", "sciezka", sciezka, None, "plik", wiersz)
+
+
+def _fe_def(
+    sciezka: str, symbole: str, wiersz: str, zasieg: str = "globalnie"
+) -> list[WpisPakietuL]:
+    return [
+        WpisPakietuL("frontend", "definicja", sciezka, s, zasieg, wiersz) for s in symbole.split()
+    ]
+
+
+def _fe_wzorzec(sciezka: str, napisy: tuple[str, ...], wiersz: str) -> list[WpisPakietuL]:
+    return [WpisPakietuL("frontend", "wzorzec", sciezka, n, "plik", wiersz) for n in napisy]
+
+
+_PE = "application/proof_engine"
+
+PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
+    # --- Obszar A: network_model / protection ------------------------------
+    *_be_def(
+        "protection/curves/curve_calculator.py",
+        "check_coordination analyze_curve_set calculate_grading_margin "
+        "COORDINATION_STATUS_LABELS_PL",
+        "A1",
+    ),
+    *_be_def(
+        "protection/curves/curve_calculator.py",
+        "CoordinationStatus CoordinationResult FaultMarker",
+        "A1",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "network_model/solvers/protection_iec60255.py",
+        "SelectivityVerdict SelectivityPairResult check_selectivity_pair "
+        "run_protection_coordination compute_i2t_thermal_energy I2tThermalResult",
+        "A2",
+    ),
+    *_be_def(
+        "network_model/solvers/protection_iec60255.py",
+        "RelaySettings DEFAULT_REQUIRED_MARGIN_S MARGINAL_THRESHOLD_S "
+        "PROTECTION_IEC60255_SOLVER_VERSION",
+        "A2",
+        zasieg="plik",
+    ),
+    _be_sciezka("network_model/proof", "A35"),
+    *_be_def(
+        "network_model/proof/power_flow_proof_builder.py",
+        "PowerFlowProofBuilder build_power_flow_proof",
+        "A35",
+    ),
+    *_be_def(
+        "network_model/proof/power_flow_proof_document.py",
+        "PowerFlowProofDocument POWER_FLOW_PROOF_VERSION",
+        "A35",
+    ),
+    *_be_def(
+        "network_model/proof/power_flow_equations.py",
+        "POWER_FLOW_EQUATION_REGISTRY POWER_FLOW_PROOF_STEP_ORDER",
+        "A35",
+    ),
+    *_be_def("network_model/proof/power_flow_proof_export.py", "export_proof_to_pdf_simple", "A35"),
+    _be_sciezka("network_model/catalog/drift_detection.py", "A39"),
+    *_be_def(
+        "network_model/catalog/drift_detection.py",
+        "DriftSeverity CatalogDriftEntry DriftReport detect_drift extract_bindings_from_snapshot",
+        "A39",
+    ),
+    # --- Obszar B: analysis / solver_input ---------------------------------
+    _be_sciezka("analysis/protection_insight/builder.py", "B7"),
+    *_be_def("analysis/protection_insight/builder.py", "ProtectionInsightBuilder", "B7"),
+    _be_sciezka("analysis/protection_curves_it/builder.py", "B8"),
+    _be_sciezka("analysis/protection_curves_it/renderer_svg.py", "B8"),
+    _be_sciezka("analysis/protection_curves_it/renderer_pdf.py", "B8"),
+    *_be_def("analysis/protection_curves_it/builder.py", "ProtectionCurvesITBuilder", "B8"),
+    *_be_def("analysis/protection_curves_it/renderer_svg.py", "render_protection_curves_svg", "B8"),
+    *_be_def("analysis/protection_curves_it/renderer_pdf.py", "render_protection_curves_pdf", "B8"),
+    *_be_def(
+        "analysis/protection_curves_it/models.py",
+        "ProtectionCurvesITView.normative_status",
+        "B8",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "analysis/arc_flash/models.py", "osd_arc_flash_gate OSD_ARC_FLASH_BLOCKER_CODE", "B14"
+    ),
+    *_be_def(
+        "solver_input/provenance.py",
+        "osd_card_gate CardFieldAcceptance OSD_CARD_FIELD_BLOCKER_CODE",
+        "B24",
+    ),
+    # --- Obszar C: application / domain ------------------------------------
+    *_be_def(
+        "domain/protection_device.py",
+        "ProtectionCoordinationResult InstantaneousSelectivityCheck "
+        "InstantaneousSensitivityCheck InstantaneousThermalCheck SPZFromInstantaneousCheck",
+        "C38 (i A2)",
+    ),
+    *_be_def(
+        f"{_PE}/proof_generator.py",
+        "generate_protection_proof _build_protection_steps _create_pr_step_breaking "
+        "_create_pr_step_dynamic _create_pr_step_thermal _create_pr_step_selectivity "
+        "_protection_substitution _compare_selectivity",
+        "C41",
+    ),
+    *_be_def(
+        f"{_PE}/proof_generator.py",
+        "_resolve_fault_i2t _resolve_device_i2t _compare_limit",
+        "C41",
+        zasieg="plik",
+    ),
+    *_be_def(
+        f"{_PE}/equation_registry.py",
+        "EQ_PR_001 EQ_PR_002 EQ_PR_003 EQ_PR_004 PR_EQUATIONS PR_STEP_ORDER "
+        "get_pr_equations get_pr_step_order",
+        "C41",
+    ),
+    *_be_def(
+        f"{_PE}/equation_registry.py",
+        "EquationRegistry.PR_EQUATIONS EquationRegistry.PR_STEP_ORDER",
+        "C41",
+        zasieg="plik",
+    ),
+    *_be_def(f"{_PE}/types.py", "ProtectionProofInput ProtectionSelectivityInput", "C41"),
+    *_be_def(f"{_PE}/proof_inspector/types.py", "ProtectionComparisonView", "C41"),
+    *_be_def(
+        f"{_PE}/proof_inspector/types.py",
+        "ProtectionComparisonRow SummaryView.protection_comparisons",
+        "C41",
+        zasieg="plik",
+    ),
+    *_be_def(f"{_PE}/proof_inspector/inspector.py", "_build_protection_comparisons", "C41"),
+    _be_sciezka(f"{_PE}/packs/qu_regulation.py", "C46"),
+    *_be_def(
+        f"{_PE}/packs/qu_regulation.py",
+        "QURegulationProofPack QURegulationProofInput QURegulationProofResult "
+        "QUCharacteristicPoint",
+        "C46",
+    ),
+    _be_sciezka("application/reference_patterns/reporting.py", "C51"),
+    *_be_def(
+        "application/reference_patterns/reporting.py",
+        "export_reference_pattern_to_docx export_reference_pattern_to_pdf",
+        "C51",
+    ),
+    _be_sciezka("domain/result_set.py", "C55"),
+    *_be_def(
+        "domain/result_set.py", "OverlayElement OverlayLegendEntry build_overlay_payload", "C55"
+    ),
+    # --- Obszar D: frontend/src/ui2 ----------------------------------------
+    *_fe_wzorzec("ui2/wyniki/koordynacja/SekcjaNastaw.tsx", ("spelniony",), "D50"),
+    *_fe_def("ui2/wyniki/wrazliwosc/strings.ts", "istotnoscDecyzji IstotnoscWrazliwosci", "D58"),
+    # --- Obszar E: frontend/src/ui -----------------------------------------
+    _fe_sciezka("ui/shared/normativeLabels.ts", "E2"),
+    *_fe_def(
+        "ui/shared/normativeLabels.ts",
+        "NormativeLabels NORMATIVE_TERMS NETWORK_VERDICT_LABELS VOLTAGE_VERDICT_LABELS "
+        "BRANCH_LOADING_VERDICT_LABELS SHORT_CIRCUIT_VERDICT_LABELS SELECTIVITY_LABELS",
+        "E2",
+    ),
+    _fe_sciezka("ui/power-flow-results/PowerFlowResultsInspectorPage.tsx", "E14"),
+    *_fe_def(
+        "ui/power-flow-results/PowerFlowResultsInspectorPage.tsx",
+        "PowerFlowResultsInspectorPage getVoltageVerdict",
+        "E14",
+    ),
+    *_fe_def(
+        "ui/power-flow-results/types.ts", "SEVERITY_LABELS SEVERITY_COLORS", "E14", zasieg="plik"
+    ),
+    *_fe_def(
+        "ui/shared/analysisCaseContext.ts",
+        "ANALYSIS_COMPLETENESS_BADGE_CLASS QUALITY_GATE_LABELS QUALITY_GATE_BADGE_CLASS",
+        "E14",
+    ),
+    _fe_sciezka("ui/power-flow-results/PowerFlowSldOverlay.tsx", "E15"),
+    *_fe_def("ui/power-flow-results/PowerFlowSldOverlay.tsx", "PowerFlowSldOverlay", "E15"),
+    _fe_sciezka("ui/results-inspector/shortCircuitVerdict.ts", "E16"),
+    *_fe_def(
+        "ui/results-inspector/shortCircuitVerdict.ts",
+        "calculateShortCircuitVerdict ShortCircuitVerdictResult",
+        "E16",
+    ),
+    _fe_sciezka("ui/results/ResultStatusBar.tsx", "E18"),
+    *_fe_def("ui/results/ResultStatusBar.tsx", "ResultStatusBar", "E18"),
+    _fe_sciezka("ui/sld-overlay/cableLoadingOverlay.ts", "E21"),
+    *_fe_def(
+        "ui/sld-overlay/cableLoadingOverlay.ts",
+        "classifyCableLoading CableLoadingVerdict buildCableLoadingOverlay summarizeCableLoading",
+        "E21",
+    ),
+    *_fe_def(
+        "ui/sld-overlay/overlayTypes.ts",
+        "VISUAL_STATE_STYLE ProtectionCoverageOverlayBadges",
+        "E22",
+    ),
+    *_fe_wzorzec("ui/sld-overlay/overlayTypes.ts", ("coordination_verdict",), "E22"),
+    _fe_sciezka("ui/sld-overlay/OverlayLegend.tsx", "E23"),
+    _fe_sciezka("ui/sld-overlay/OverlayEngine.ts", "E23"),
+    _fe_sciezka("ui/sld-overlay/LoadFlowOverlayAdapter.ts", "E23"),
+    _fe_sciezka("ui/sld-overlay/ZeroSequenceOverlayAdapter.ts", "E23"),
+    _fe_sciezka("ui/sld-overlay/OltcOverlayAdapter.ts", "E23"),
+    _fe_sciezka("ui/sld-overlay/useOverlayRuntime.ts", "E23"),
+    *_fe_def("ui/sld-overlay/OverlayLegend.tsx", "OverlayLegend", "E23"),
+    *_fe_def(
+        "ui/sld-overlay/OverlayEngine.ts",
+        "resolveElementStyle applyOverlayToSymbols getElementOverlayStyle",
+        "E23",
+    ),
+    *_fe_def("ui/sld-overlay/LoadFlowOverlayAdapter.ts", "buildLoadFlowOverlay", "E23"),
+    *_fe_def("ui/sld-overlay/ZeroSequenceOverlayAdapter.ts", "adaptZeroSequenceToOverlay", "E23"),
+    *_fe_def("ui/sld-overlay/OltcOverlayAdapter.ts", "adaptOltcControlToOverlay", "E23"),
+    *_fe_def("ui/sld-overlay/useOverlayRuntime.ts", "useOverlayRuntime", "E23"),
+    # E24: zaszyty napis zgodnosci usuniety, a nastepnie caly panel razem z
+    # nieosiagalna przegladarka sladu (X1) — plik nie wraca w zadnej postaci.
+    _fe_sciezka("ui/proof/TraceMetadataPanel.tsx", "E24"),
+    *_fe_def(
+        "ui/proof/TraceMetadataPanel.tsx", "TraceMetadataPanel TraceMetadataPanelEmpty", "E24"
+    ),
+    _fe_sciezka("ui/engineering-readiness/DataGapPanel.tsx", "E25"),
+    _fe_sciezka("ui/engineering-readiness/EngineeringReadinessPanel.tsx", "E25"),
+    _fe_sciezka("ui/engineering-readiness/ReadinessLivePanel.tsx", "E25"),
+    *_fe_def(
+        "ui/engineering-readiness/DataGapPanel.tsx", "DataGapPanel classifyDataGapGroup", "E25"
+    ),
+    *_fe_def(
+        "ui/engineering-readiness/EngineeringReadinessPanel.tsx", "EngineeringReadinessPanel", "E25"
+    ),
+    *_fe_def(
+        "ui/engineering-readiness/ReadinessLivePanel.tsx",
+        "ReadinessLivePanel classifyIssueGroup",
+        "E25",
+    ),
+    _fe_sciezka("ui/analysis-eligibility/AnalysisEligibilityPanel.tsx", "E27"),
+    *_fe_def(
+        "ui/analysis-eligibility/AnalysisEligibilityPanel.tsx", "AnalysisEligibilityPanel", "E27"
+    ),
+    _fe_sciezka("ui/issue-panel", "E29"),
+    *_fe_def("ui/issue-panel/IssuePanel.tsx", "IssuePanel", "E29"),
+    *_fe_def("ui/issue-panel/IssuePanelContainer.tsx", "IssuePanelContainer", "E29"),
+    _fe_sciezka("ui/schema-completeness/SchemaCompletenessPanel.tsx", "E30"),
+    _fe_sciezka("ui/schema-completeness/index.ts", "E30"),
+    *_fe_def(
+        "ui/schema-completeness/SchemaCompletenessPanel.tsx", "SchemaCompletenessPanel", "E30"
+    ),
+    _fe_sciezka("ui/workspace/WorkspaceOperationalBar.tsx", "E40"),
+    *_fe_def("ui/workspace/WorkspaceOperationalBar.tsx", "WorkspaceOperationalBar", "E40"),
+    *_fe_wzorzec(
+        "ui/network-build/station-configurator/cards/StationConfigProtectionCard.tsx",
+        ("selectivityStatus", "SELECTIVITY_LABEL"),
+        "E44",
+    ),
+    _fe_sciezka("ui/network-build/cards/BayCard.tsx", "E47"),
+    *_fe_def("ui/network-build/cards/BayCard.tsx", "BayCard", "E47"),
+    _fe_sciezka("ui/network-build/forms/voltageDropValidator.ts", "E52"),
+    *_fe_def("ui/network-build/forms/voltageDropValidator.ts", "calculateVoltageDrop", "E52"),
+    _fe_sciezka("ui/network-build/der-configurator-v2", "E53"),
+    *_fe_def(
+        "ui/network-build/der-configurator-v2/DerConfiguratorSidebar.tsx",
+        "DerConfiguratorSidebar",
+        "E53",
+    ),
+    *_fe_def(
+        "ui/network-build/der-configurator-v2/derConfiguratorContract.ts",
+        "DER_READINESS_AXES DER_READINESS_CATEGORIES DER_CONFIGURATOR_SECTIONS",
+        "E53",
+    ),
+    *_fe_wzorzec(
+        "ui/network-build/build-sidebar/ReadinessSection.tsx", ("DEFAULT_READINESS_ITEMS",), "E53"
+    ),
+    _fe_sciezka("ui/comparison/comparisonDeltaVisualization.ts", "E59"),
+    *_fe_def(
+        "ui/comparison/comparisonDeltaVisualization.ts",
+        "buildDeltaVisualization summarizeDeltaVisualization",
+        "E59",
+    ),
+    _fe_sciezka("ui/inspector/InspectorPanel.tsx", "E64"),
+    _fe_sciezka("ui/inspector/ReadOnlyPropertyGrid.tsx", "E64"),
+    _fe_sciezka("ui/inspector/ValueProvenancePopover.tsx", "E64"),
+    *_fe_def("ui/inspector/InspectorPanel.tsx", "InspectorPanelConnected", "E64"),
+    *_fe_def("ui/inspector/ReadOnlyPropertyGrid.tsx", "ReadOnlyPropertyGrid", "E64"),
+    *_fe_def("ui/inspector/ValueProvenancePopover.tsx", "ValueProvenanceIcon", "E64"),
+    _fe_sciezka("ui/reference-patterns", "E66"),
+    *_fe_def("ui/reference-patterns/ReferencePatternsPage.tsx", "ReferencePatternsPage", "E66"),
+    *_fe_def("ui/reference-patterns/store.ts", "useReferencePatternsStore", "E66"),
+    _fe_sciezka("ui/study-cases/ProtectionCaseConfigPanel.tsx", "E67"),
+    *_fe_def("ui/study-cases/ProtectionCaseConfigPanel.tsx", "ProtectionCaseConfigPanel", "E67"),
+    *_fe_def("ui/protection-curves/types.ts", "COORDINATION_STATUS_COLORS", "E68"),
+    *_fe_def(
+        "ui/protection-curves/types.ts",
+        "CoordinationStatus CoordinationResult",
+        "E68",
+        zasieg="plik",
+    ),
+    *_fe_wzorzec(
+        "ui/protection-curves/types.ts", ("NOT_COORDINATED", "coordinationResults"), "E68"
+    ),
+    *_fe_wzorzec(
+        "ui/sld/v2/canvas/SldDetailDrawer.tsx",
+        ("drawer-cable-spadek", "Klasa zgodności", "maxVoltageDropPct", "maxLoadingPct"),
+        "E70",
+    ),
+    *_fe_wzorzec(
+        "ui/sld/shared/detailDrawerData.ts",
+        ("maxVoltageDropPct", "maxLoadingPct", "computeLfDerivedMetrics"),
+        "E70",
+    ),
+    _fe_sciezka("ui/sld/v2/canvas/lfDerivedMetrics.ts", "E70"),
+    *_fe_def("ui/sld/v2/canvas/lfDerivedMetrics.ts", "computeLfDerivedMetrics", "E70"),
+    _fe_sciezka("ui/sld/v2/proof/DerComplianceBadge.tsx", "E73"),
+    _fe_sciezka("ui/sld/v2/proof/ProofPackFreshnessBadge.tsx", "E73"),
+    _fe_sciezka("ui/sld/v2/renderer/EquipmentProofBadge.tsx", "E73"),
+    _fe_sciezka("ui/sld/v2/renderer/equipmentProofValidator.ts", "E73"),
+    _fe_sciezka("ui/sld/v2/canvas/SldPowerBalancePanel.tsx", "E73"),
+    *_fe_def("ui/sld/v2/proof/DerComplianceBadge.tsx", "DerComplianceBadge", "E73"),
+    *_fe_def("ui/sld/v2/proof/ProofPackFreshnessBadge.tsx", "ProofPackFreshnessBadge", "E73"),
+    *_fe_def(
+        "ui/sld/v2/renderer/EquipmentProofBadge.tsx",
+        "EquipmentProofBadge computeEquipmentProofStatus",
+        "E73",
+    ),
+    *_fe_def(
+        "ui/sld/v2/renderer/equipmentProofValidator.ts",
+        "validateEquipmentProof describeProofVerdict",
+        "E73",
+    ),
+    *_fe_def("ui/sld/v2/canvas/SldPowerBalancePanel.tsx", "SldPowerBalancePanel", "E73"),
+    *_fe_wzorzec(
+        "ui/sld/v3/canvas/SldCanvasV3.tsx",
+        ("swzByOwnerRef", "sld-v3-swz-badge", "computeSwzBadgePlacements"),
+        "E78",
+    ),
+    *_fe_wzorzec("ui/sld/v3/canvas/overlay.ts", ("swzByOwnerRef",), "E78"),
+    # Kaskada E78: jedyny produkcyjny wolajacy tonu SWZ byl skasowany glif kanwy
+    # (zywa plakietka nN `LvDomainView.SwzBadge` klasyfikuje status sama).
+    *_fe_def("ui/sld/v3/canvas/overlay.ts", "swzPresentationTone SwzPresentationTone", "E78"),
+    # --- Poza inwentarzem, wykryte przy kasacji ------------------------------
+    _fe_sciezka("ui/proof/TraceViewer.tsx", "X1"),
+    _fe_sciezka("ui/proof/TraceToc.tsx", "X1"),
+    _fe_sciezka("ui/proof/TraceStepView.tsx", "X1"),
+    _fe_sciezka("ui/proof/traceUrlState.ts", "X1"),
+    _fe_sciezka("ui/proof/traceExportApi.ts", "X1"),
+    _fe_sciezka("ui/proof/compare", "X1"),
+    _fe_sciezka("ui/proof/export", "X1"),
+    _fe_sciezka("ui/proof/search", "X1"),
+    *_fe_def("ui/proof/TraceViewer.tsx", "TraceViewer TraceViewerContainer", "X1"),
+    *_fe_def("ui/proof/TraceToc.tsx", "TraceToc", "X1"),
+    *_fe_def("ui/proof/TraceStepView.tsx", "TraceStepView TraceStepViewEmpty", "X1"),
+    *_fe_def("ui/proof/traceUrlState.ts", "readTraceStateFromUrl generateTraceDeepLink", "X1"),
+    *_fe_def("ui/proof/compare/TraceCompareView.tsx", "TraceCompareView TraceComparePage", "X1"),
+    *_fe_def("ui/proof/compare/TraceDiffList.tsx", "TraceDiffList", "X1"),
+    *_fe_def("ui/proof/compare/diffTrace.ts", "diffTraces", "X1"),
+    *_fe_def("ui/proof/export/exportTracePdf.ts", "exportTracePdf generateTracePdfHtml", "X1"),
+    *_fe_def("ui/proof/export/exportTraceJsonl.ts", "generateTraceJsonl downloadTraceJsonl", "X1"),
+    *_fe_def("ui/proof/search/TraceSearchBar.tsx", "TraceSearchBar", "X1"),
+    *_be_def(
+        "domain/protection_device.py",
+        "IECCurveVariant DEVICE_TYPE_LABELS_PL CURVE_VARIANT_LABELS_PL new_protection_device",
+        "X2",
+        zasieg="plik",
+    ),
+    # --- Karta AB-1a Pakiet B+C (2026-09-23): kontrakt V2 NC RfG/PTPiREE ---------
+    # Kasacja drugiego toru dowodu certyfikatu i agregatów V1 (meldunek integracji B+C,
+    # pozycja (f)2). Pola V1 kontraktów zapisane `Klasa.pole` (zasięg: plik kontraktu).
+    _be_sciezka("solver_input/dowod_ncrfg.py", "BC"),
+    _be_sciezka("application/analyses/dowod_certyfikatu.py", "BC"),
+    _be_sciezka("compliance", "BC"),
+    *[
+        _be_sciezka(f"catalog/profiles/nc_rfg/{op}.yaml", "BC")
+        for op in ("enea", "energa", "pge", "pse", "tauron")
+    ],
+    *_be_def(
+        "solver_input/dowod_ncrfg.py",
+        "ocena_dowodowa_biegu ocena_dowodowa_testu OcenaDowodowaBiegu OcenaDowodowaModulu "
+        "testy_bez_klasyfikacji",
+        "BC",
+    ),
+    *_be_def(
+        "application/analyses/dowod_certyfikatu.py",
+        "NcRfgCertificateEvidence dowody_certyfikatu dowody_certyfikatu_typu "
+        "dowody_certyfikatu_z_enm sekcje_dowodow",
+        "BC",
+    ),
+    *_be_def("compliance/nc_rfg_modul.py", "modul_nc_rfg NcRfgModul", "BC"),
+    *_be_def(
+        "application/ncrfg_compliance/model_bridge.py", "certificate_status_z_tabliczki", "BC"
+    ),
+    *_be_def("network_model/solvers/ncrfg_ptpiree/contracts.py", "PtpireeCertificateStatus", "BC"),
+    *_be_def(
+        "catalog/profiles/nc_rfg/loader.py",
+        "NcRfgProfileLoader NcRfgComplianceTest SUPPORTED_OPERATORS",
+        "BC",
+    ),
+    *_be_def(
+        "catalog/profiles/nc_rfg/loader.py",
+        "classify_module NcRfgProfile.compliance_tests NcRfgModuleType.voltage_kv_max",
+        "BC",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "application/analyses/certyfikat_zgodnosci.py",
+        "_STATUS_MODULU_PL _WERDYKT_PL CertyfikatZgodnosciRequest.run_request",
+        "BC",
+        zasieg="plik",
+    ),
+    *_be_def("api/oze_analysis_runs.py", "WniosekOsdRequest.run_request", "BC", zasieg="plik"),
+    *_be_def(
+        "network_model/solvers/ncrfg_ptpiree/contracts.py",
+        "NcRfgPtpireeModuleResult.overall_status NcRfgPtpireeModuleResult.pass_count "
+        "NcRfgPtpireeModuleResult.fail_count NcRfgPtpireeModuleResult.no_data_count "
+        "NcRfgPtpireeModuleResult.not_required_count NcRfgPtpireeModuleResult.required_count "
+        "NcRfgPtpireeModuleResult.certificate_status NcRfgPtpireeModuleInput.certificate_status "
+        "NcRfgPtpireeRunRequest.deterministic_seed NcRfgPtpireeRunRequest.procedure_version "
+        "NcRfgPtpireeTestResult.fix_actions",
+        "BC",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "application/ncrfg_compliance/bieg.py",
+        "NcRfgPtpireeRunResponse.reporting_status NcRfgPtpireeRunResponse.proof_status "
+        "NcRfgPtpireeRunResponse.evidence_limitations NcRfgPtpireeRunResponse.evidence_note_pl "
+        "NcRfgPtpireeRunResponse.evidence_per_module NcRfgPtpireeRunResponse.evidence_by_test "
+        "NcRfgPtpireeRunResponse.certificate_evidence",
+        "BC",
+        zasieg="plik",
+    ),
+    # --- Karta AB-1a Pakiet D2 (2026-09-23): jeden klient V2 NC RfG we froncie ---------
+    # Kasacja klienta V1 (`ui/ncrfg-tests/**`), drugiego ekranu tej samej zdolności
+    # (`NcRfgTestsTab`), klienckiego statusu certyfikatu, agregatów i map status→tekst/kolor
+    # poza `KartaWerdyktu.tsx` oraz klienckich progów klasyfikacji modułu.
+    _fe_sciezka("ui/ncrfg-tests", "D2"),
+    _fe_sciezka("ui/workspace/surfaces/NcRfgTestsTab.tsx", "D2"),
+    _fe_sciezka("ui/network-build/station-der/certyfikatPtpiree.ts", "D2"),
+    *_fe_def(
+        "ui/ncrfg-tests/api.ts",
+        "runNcRfgPtpireeTests fetchNcRfgTestCatalog fetchNcRfgCaseCompliance "
+        "NcRfgCertificateStatus NcRfgCertificateEvidence NcRfgVerdict NcRfgRunRequest "
+        "NcRfgRunResult NcRfgModuleResult NcRfgModuleInput NcRfgTestResult NcRfgTestDefinition "
+        "NcRfgTestCatalogResponse NcRfgCaseComplianceResponse NcRfgOperatorProfile "
+        "NcRfgDerPominiety OcenaDowodowaModuluNcRfg OcenaDowodowaTestuNcRfg",
+        "D2",
+    ),
+    *_fe_def("ui/workspace/surfaces/NcRfgTestsTab.tsx", "NcRfgTestsTab", "D2"),
+    *_fe_def("ui/network-build/station-der/certyfikatPtpiree.ts", "statusCertyfikatuPtpiree", "D2"),
+    *_fe_def(
+        "ui/network-build/station-der/derRemoteCatalogs.ts",
+        "fetchNcRfgModuleClassification NcRfgModuleLetter",
+        "D2",
+    ),
+    *_fe_def(
+        "ui2/oze/macierz/macierzModel.ts",
+        "PodsumowanieModulu PodsumowanieProjektu agregujPodsumowania podsumowanieModulu "
+        "podsumowanieModuluZWyniku podsumowanieProjektu podsumowaniaZBiegu testyNiespelnione "
+        "rozwiazCertyfikat",
+        "D2",
+    ),
+    *_fe_def(
+        "ui2/oze/macierz/macierzModel.ts",
+        "KluczNumeryczny KluczZdolnosci NumeryczneModulu StanKomorki",
+        "D2",
+        zasieg="plik",
+    ),
+    *_fe_def(
+        "ui2/oze/macierz/strings.ts",
+        "ETYKIETY_WERDYKTU KLASA_WERDYKTU ETYKIETY_STATUSU_MODULU",
+        "D2",
+    ),
+    *_fe_def(
+        "ui2/oze/macierz/zgodnoscPrzekrojowaModel.ts",
+        "podsumowanieZgodnosciPrzekrojowej stopienDowodowyModulu brakiZgodnosciPrzekrojowej "
+        "wierszeZgodnosciPrzekrojowej",
+        "D2",
+    ),
+    *_fe_def("ui2/oze/macierz/zgodnoscPrzekrojowaModel.ts", "BrakiModulu", "D2", zasieg="plik"),
+    *_fe_def("ui2/oze/pulpit/strings.ts", "ETYKIETY_STATUSU_PULPITU KLASA_STATUSU_PULPITU", "D2"),
+    *_fe_def("ui2/oze/pulpit/pulpitModel.ts", "StatusPulpitu zgodnoscModulu ZgodnoscModulu", "D2"),
+    *_fe_def(
+        "ui2/oze/wniosek/strings.ts", "STATUS_WALIDACJI_WNIOSEK_PL statusWalidacjiWniosekPL", "D2"
+    ),
+    *_fe_def("ui2/oze/krzywe/krzyweModel.ts", "istotnoscWerdyktuPQ", "D2"),
+    *_fe_def("ui2/oze/studium/studiumModel.ts", "werdyktPokryciaPL", "D2"),
+    *_fe_def("ui2/oze/ranking/rankingModel.ts", "klasaNcRfg klasyOperatora", "D2"),
+    *_fe_def(
+        "ui2/oze/api.ts",
+        "WerdyktPQ WerdyktZbiorczyCertyfikatu DowodCertyfikatuPtpiree KlasaModuluNcRfg "
+        "ModulCertyfikatu TestCertyfikatu OdpowiedzKatalogNcRfg pobierzKatalogKlasNcRfg "
+        "pobierzCertyfikatDocx pobierzWniosekDocx CertyfikatBrakiError WniosekBrakiError",
+        "D2",
+    ),
+    *_fe_wzorzec("ui/sld/v2/canvas/enmToSldAdapter.ts", ("deriveNcRfgModule",), "D2"),
+    *_fe_wzorzec("ui/sld/v2/canvas/SldDetailDrawer.tsx", ("ncRfgModule: 'A'",), "D2"),
+    *_fe_wzorzec(
+        "ui2/oze/ncrfg/typy.ts",
+        (
+            "overall_status",
+            "pass_count",
+            "fail_count",
+            "no_data_count",
+            "required_count",
+            "certificate_status",
+            "certificate_evidence",
+            "reporting_status",
+            "proof_status",
+            "evidence_by_test",
+            "evidence_per_module",
+            "fix_actions",
+            "run_request",
+            "NcRfgPtpireeTestResultV1",
+        ),
+        "D2",
+    ),
+    # --- AB-1b.1a (2026-09-23): kontrakt wyniku dynamiki v1 zastapiony przez v2 (probki L/P) --
+    _be_sciezka("application/contracts/resultset_dynamic_v1.py", "1B1A"),
+    *_be_def(
+        "application/contracts/resultset_dynamic_v1.py",
+        "ResultSetDynamicV1 KanalDynamicznyV1 ZdarzenieWykonaneV1 WlasnosciBieguV1 "
+        "TozsamoscBieguDynamicznegoV1 MetrykaDynamicznaV1 StopienDowodowyV1 "
+        "zbuduj_resultset_dynamiczny_v1",
+        "1B1A",
+    ),
+    # --- AB-H0 / O-53 (2026-09-24): druga regula mocy transformatora toru DER-SN --------------
+    *_be_def("enm/der_sn_validation.py", "validate_transformer_power", "H0"),
+    # --- karta #135 (2026-09-24): fabrykacja stanu ruchowego pola i model-cien pola w kliencie ---
+    *_be_def(
+        "application/field_read_model.py",
+        "_build_switch_state_from_branch _build_energization_state",
+        "135",
+        zasieg="plik",
+    ),
+    *_fe_wzorzec(
+        "ui/field/useFieldReadModel.ts",
+        ("buildSnapshotFieldReadModel", "fieldReadModelRichness"),
+        "135",
+    ),
+    # --- AB-1a Pakiet 0 (2026-09-24): werdykty fabrykowane (FRT, tor T1, SSCI, LoM, werdykt
+    # projektowy, stabilność) skasowane — ocena niewykonana z nazwanym powodem zamiast nich ---
+    *_be_def(
+        "application/automation/trace.py",
+        "AutomationTraceEvent AutomationTrace build_automation_trace",
+        "P0",
+    ),
+    *_be_def(
+        "application/stability/dynamic_stability.py",
+        "DynamicStabilityThresholds DynamicStabilityResult evaluate_fault_clear_dynamic_stability "
+        "KRYTERIA_PROWENIENCJA_PL",
+        "P0",
+    ),
+    *_be_def(
+        "application/stability/dynamic_stability.py",
+        "_KRYTERIA_ETYKIETY_PL _normalize_margin _normalize_floor",
+        "P0",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "analysis/ssci_stability/models.py",
+        "VERDICT_STABLE VERDICT_RISK VERDICT_UNSTABLE DEFAULT_PM_RISK_DEG DEFAULT_PM_UNSTABLE_DEG",
+        "P0",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "application/analyses/frt_trajektorie.py",
+        "_verdict_pl _WERDYKT_W_OBWIEDNI _WERDYKT_POZA_OBWIEDNIA _WERDYKT_MODUL_WYPADL",
+        "P0",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "application/analyses/frt_sekwencja.py",
+        "_werdykt_sekwencji_pl _WERDYKT_SEKWENCJA_W_OBWIEDNI",
+        "P0",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "application/analyses/ochrona_lom.py",
+        "_field_status _overall_status _SEVERITY_RANK",
+        "P0",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "application/analyses/werdykt_projektowy.py",
+        "_stan_z_licznikow _WYNIK_Z_STATUSU",
+        "P0",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "enm/canonical_analysis.py",
+        "_progi_oceny_stabilnosci_z_opcji",
+        "P0",
+        zasieg="plik",
+    ),
+    *_fe_def(
+        "ui2/oze/frt/frtModel.ts",
+        "werdyktCalosciFrt WerdyktCalosciFrt IstotnoscFrt RANGA_WERDYKTU WERDYKT_CALOSCI",
+        "P0",
+    ),
+    *_fe_def(
+        "ui2/oze/frt/sekwencjaModel.ts",
+        "werdyktSekwencji WerdyktSekwencji IstotnoscSekwencji SEKW_W_OBWIEDNI",
+        "P0",
+    ),
+    *_fe_def("ui2/oze/lom/strings.ts", "STATUS_LOM_PL statusLomPL", "P0"),
+    *_fe_def("ui2/wyniki/ssci/EkranSsci.tsx", "ChipWerdyktu", "P0"),
+    *_fe_def("ui2/wyniki/ssci/api.ts", "WerdyktKod", "P0"),
+    *_fe_def(
+        "ui2/wyniki/ssci/model.ts",
+        "istotnoscWerdyktu etykietaWerdyktu",
+        "P0",
+        zasieg="plik",
+    ),
+    *_fe_def(
+        "ui2/wyniki/stabilnosc/model.ts",
+        "werdyktStabilnosciPL naruszoneKryteriaPL naKryteriaOcenyProgowej KryteriumOcenyProgowej "
+        "elementWerdyktuStabilnosci",
+        "P0",
+    ),
+    *_fe_def("ui2/wyniki/stabilnosc/strings.ts", "KRYTERIUM_PL kryteriumPL", "P0"),
+)
+
+_PY_DEF_TYPES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+
+
+def _definicje_py(tree: ast.Module) -> list[tuple[str, int]]:
+    """Nazwy DEFINIOWANE w module: klasy/funkcje (dowolnie gleboko), przypisania
+    modulowe oraz pola klas zapisane jako `Klasa.pole` (przypisanie w ciele klasy)."""
+    wynik: list[tuple[str, int]] = []
+
+    def _cele(stmt: ast.stmt) -> list[str]:
+        if isinstance(stmt, ast.Assign):
+            return [t.id for t in stmt.targets if isinstance(t, ast.Name)]
+        if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+            return [stmt.target.id]
+        return []
+
+    for stmt in tree.body:
+        for nazwa in _cele(stmt):
+            wynik.append((nazwa, stmt.lineno))
+    for node in ast.walk(tree):
+        if isinstance(node, _PY_DEF_TYPES):
+            wynik.append((node.name, node.lineno))
+        if isinstance(node, ast.ClassDef):
+            for stmt in node.body:
+                for pole in _cele(stmt):
+                    wynik.append((f"{node.name}.{pole}", stmt.lineno))
+    return wynik
+
+
+def _ts_definicja(nazwa: str) -> re.Pattern[str]:
+    return re.compile(
+        r"^[ \t]*export\s+(?:default\s+)?(?:async\s+)?(?:function|const|class|interface|type|enum)"
+        r"\s+" + re.escape(nazwa) + r"\b",
+        re.MULTILINE,
+    )
+
+
+#: Wpisy spoza inwentarza LEGACY_USUNAC (etykieta wiersza → karta kasacji).
+KARTY_WPISOW_SPOZA_INWENTARZA: dict[str, str] = {
+    "BC": "AB-1a Pakiet B+C",
+    "D2": "AB-1a Pakiet D2",
+    "1B1A": "AB-1b.1a",
+    "H0": "AB-H0 (O-53)",
+    "135": "karta #135",
+    "P0": "AB-1a Pakiet 0",
+}
+
+
+def _karta_wpisu(wpis: WpisPakietuL) -> str:
+    return KARTY_WPISOW_SPOZA_INWENTARZA.get(wpis.wiersz, "AB-1a Pakiet L")
+
+
+def check_pakiet_l_resurrection() -> list[str]:
+    """Karta AB-1a Pakiet L (2026-09-23): skasowane pozycje LEGACY_USUNAC nie moga
+    wrocic — patrz komentarz nad `PAKIET_L_WPISY` (trzy rodzaje wpisu, zasieg
+    definicji, lista pozycji swiadomie pominietych)."""
+    violations: list[str] = []
+    korzenie = {"backend": BACKEND_SRC_DIR, "frontend": FRONTEND_SRC_DIR}
+
+    for wpis in PAKIET_L_WPISY:
+        if wpis.rodzaj != "sciezka":
+            continue
+        wzorce = ("*.ts", "*.tsx") if wpis.warstwa == "frontend" else ("*.py",)
+        if zrodlo_istnieje(korzenie[wpis.warstwa] / wpis.sciezka, wzorce):
+            violations.append(
+                f"[resurrected-module] {wpis.warstwa}/src/{wpis.sciezka}: pozycja "
+                f"LEGACY_USUNAC {wpis.wiersz} (usunieta w karcie {_karta_wpisu(wpis)}, "
+                "2026-09-23) — nie odtwarzaj"
+            )
+
+    def_be = [w for w in PAKIET_L_WPISY if w.warstwa == "backend" and w.rodzaj == "definicja"]
+    if BACKEND_SRC_DIR.exists():
+        globalne = {w.symbol: w for w in def_be if w.zasieg == "globalnie"}
+        plikowe: dict[str, dict[str | None, WpisPakietuL]] = {}
+        for w in def_be:
+            if w.zasieg == "plik":
+                plikowe.setdefault(w.sciezka, {})[w.symbol] = w
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            rel_src = py_file.relative_to(BACKEND_SRC_DIR).as_posix()
+            rel_path = (
+                py_file.relative_to(ROOT).as_posix()
+                if py_file.is_relative_to(ROOT)
+                else str(py_file)
+            )
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            lokalne = plikowe.get(rel_src, {})
+            for nazwa, lineno in _definicje_py(tree):
+                trafiony = globalne.get(nazwa) or lokalne.get(nazwa)
+                if trafiony is not None:
+                    violations.append(
+                        f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} (pozycja "
+                        f"LEGACY_USUNAC {trafiony.wiersz}, usunieta w karcie "
+                        f"{_karta_wpisu(trafiony)}) "
+                        "nie moze wrocic"
+                    )
+
+    fe_wpisy = [w for w in PAKIET_L_WPISY if w.warstwa == "frontend" and w.rodzaj != "sciezka"]
+    if FRONTEND_SRC_DIR.exists():
+        globalne_fe = [
+            (w, _ts_definicja(w.symbol))
+            for w in fe_wpisy
+            if w.rodzaj == "definicja" and w.zasieg == "globalnie" and w.symbol is not None
+        ]
+        plikowe_fe: dict[str, list[WpisPakietuL]] = {}
+        for w in fe_wpisy:
+            if w.rodzaj == "wzorzec" or w.zasieg == "plik":
+                plikowe_fe.setdefault(w.sciezka, []).append(w)
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                tekst = _bez_komentarzy_ts(read_text(ts_file))
+                rel_src = ts_file.relative_to(FRONTEND_SRC_DIR).as_posix()
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                for wpis, wzorzec in globalne_fe:
+                    if wzorzec.search(tekst):
+                        violations.append(
+                            f"[resurrected-definition] {rel_path}: export {wpis.symbol} "
+                            f"(pozycja LEGACY_USUNAC {wpis.wiersz}, usunieta w karcie "
+                            f"{_karta_wpisu(wpis)}) nie moze wrocic"
+                        )
+                for wpis in plikowe_fe.get(rel_src, []):
+                    if wpis.symbol is None:
+                        continue
+                    if wpis.rodzaj == "wzorzec":
+                        trafienie = wpis.symbol in tekst
+                        znacznik = "[resurrected-pattern]"
+                    else:
+                        trafienie = _ts_definicja(wpis.symbol).search(tekst) is not None
+                        znacznik = "[resurrected-definition]"
+                    if trafienie:
+                        violations.append(
+                            f"{znacznik} {rel_path}: {wpis.symbol!r} (pozycja LEGACY_USUNAC "
+                            f"{wpis.wiersz}, usunieta z tego pliku w karcie "
+                            f"{_karta_wpisu(wpis)}) "
+                            "nie moze wrocic"
+                        )
+    return violations
+
+
 def main() -> int:
-    violations = check_legacy_public_paths()
+    violations = (
+        check_legacy_public_paths()
+        + check_study_case_engine_resurrection()
+        + check_domain_op_registry_resurrection()
+        + check_c4_and_p24_plus_resurrection()
+        + check_cv42_resurrection()
+        + check_cv43_a4_resurrection()
+        + check_w1_legacy_persistence_resurrection()
+        + check_data_manager_resurrection()
+        + check_k2_reference_networks_resurrection()
+        + check_w3d_source_compliance_resurrection()
+        + check_w3a_second_engine_resurrection()
+        + check_w3c1_overcurrent_resurrection()
+        + check_w3c2_line_overcurrent_setting_resurrection()
+        + check_trace_v2_resurrection()
+        + check_w3g1_run_trigger_orphan_resurrection()
+        + check_w3j_voltage_criteria_resurrection()
+        + check_s3_ncrfg_second_engine_resurrection()
+        + check_uniewazniacz_resurrection()
+        + check_pakiet_l_resurrection()
+    )
     if violations:
         print("legacy-public-path-guard: FAILED")
         for violation in violations:

@@ -43,7 +43,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
@@ -60,14 +59,13 @@ from application.analyses.fault_loop.route import (
 # NIE zależą od ocenianego aparatu, więc liczą się RAZ, tą samą fizyką co
 # SWZ (zero drugiej ścieżki obliczeniowej pętli zwarcia).
 from application.analyses.fault_loop.service import (
-    _DEFAULT_SYSTEM,
-    _NON_TN_SYSTEMS,
-    _SYSTEM_MAP,
     _find_station,
-    _system_for_station,
     _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
+    oblicz_petle_na_trasie,
+    odmowa_analizy_nn,
     resolve_transformer_for_bus,
+    uklad_nn_transformatora,
 )
 from application.analyses.swz.werdykt import (
     AparatZabezpieczajacy,
@@ -81,12 +79,10 @@ from network_model.catalog.lv_mccb_settings_iec60947_2 import (
 )
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import LVApparatusType
+from network_model.pochodne import kv_na_v, napiecie_fazowe_v
 from network_model.solvers.fault_loop_builder import (
-    FaultLoopBuildRequest,
-    build_fault_loop_input,
     sum_phase_and_return_route,
 )
-from network_model.solvers.fault_loop_iec60364 import compute_fault_loop
 from network_model.solvers.protection_lv_curves import (
     FUSE_GG_IF_MULTIPLIER,
     MCCB_I2_MULTIPLIER,
@@ -95,6 +91,7 @@ from network_model.solvers.protection_lv_curves import (
     compute_mcb_thermal_point,
     compute_mccb_point,
 )
+from solver_input.uklad_sieci_nn import typ_sieci_solvera
 
 # =============================================================================
 # STAN KRYTERIUM (trzeci stan obowiązkowy)
@@ -673,69 +670,66 @@ def zbierz_kandydatow_z_katalogu(
 
 def _ik1_min_i_u0(
     enm: EnergyNetworkModel, station_ref: str, bus_ref: str
-) -> tuple[float | None, float | None, list[str], str | None]:
+) -> tuple[float | None, float | None, list[str], str | None, str | None]:
     """Ik1_min [A] i U0 [V] dla obwodu (scenariusz MIN, ta sama fizyka co SWZ).
 
-    Zwraca ``(ik1_min_a, u0_v, missing_data, reason_pl)`` — pierwsze dwa
-    ``None`` przy braku danych, `missing_data`/`reason_pl` nazywają powód.
+    Zwraca ``(ik1_min_a, u0_v, missing_data, reason_pl, kod_odmowy)`` — pierwsze dwa
+    ``None`` przy braku danych, `missing_data`/`reason_pl` nazywają powód, a
+    ``kod_odmowy`` jest ustawiony dla odmowy nazwanej (strona dolna spoza pasma nN).
     """
     station = _find_station(enm, station_ref)
     if station is None:
-        return None, None, ["station"], None
-
-    system = _system_for_station(station)
-    if system in _NON_TN_SYSTEMS:
-        return (
-            None,
-            None,
-            [],
-            f"Układ {system}: SWZ metodą pętli TN (IEC 60364-4-41) nie dotyczy.",
-        )
+        return None, None, ["station"], None, None
 
     # Transformator ZASILAJĄCY punkt (właściciel szyny po zamkniętych gałęziach),
     # nie „pierwszy transformator stacji" — klasa B-02 (stacja 2×TR, sekcja 2).
     trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
-        return None, None, transformer_missing, None
+        return None, None, transformer_missing, None, None
+
+    # W5-A: układ sieci nN z transformatora zasilającego; brak/TT/IT = odmowa nazwana.
+    system = uklad_nn_transformatora(trafo)
+    odmowa = odmowa_analizy_nn({}, trafo)
+    if odmowa is not None:
+        return (
+            None,
+            None,
+            list(odmowa.get("missing_data", [])),
+            odmowa.get("reason_pl"),
+            odmowa.get("kod_odmowy"),
+        )
+    assert system is not None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
-        return None, None, missing, None
+        return None, None, missing, None, None
 
     upstream, upstream_missing = _upstream_thevenin_lv_component(enm, trafo)
     if upstream is None:
-        return None, None, upstream_missing, None
+        return None, None, upstream_missing, None, None
 
     try:
         path = path_to_bus(enm, trafo.lv_bus_ref, bus_ref)
         segments = route_segments_min_scenario(path)
     except RouteExtractionError as exc:
-        return None, None, ["route"], str(exc)
+        return None, None, ["route"], str(exc), None
 
     phase_component, return_component = sum_phase_and_return_route(segments)
-    net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    net_type, protection = typ_sieci_solvera(system)
+    u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
-    request = FaultLoopBuildRequest(
+    loop_result = oblicz_petle_na_trasie(
+        trafo=trafo,
         fault_node_id=bus_ref,
-        u_nom_v=u_phase_v,
-        network_type=net_type,
-        protection_arrangement=protection,
-        phase_conductor_r_ohm=phase_component.r_ohm,
-        phase_conductor_x_ohm=phase_component.x_ohm,
-        return_conductor_r_ohm=return_component.r_ohm,
-        return_conductor_x_ohm=return_component.x_ohm,
-        transformer_r_ohm=z_tr.r_ohm,
-        transformer_x_ohm=z_tr.x_ohm,
-        transformer_label=f"Transformator SN/nN {trafo.name}",
-        upstream_r_ohm=upstream.r_ohm,
-        upstream_x_ohm=upstream.x_ohm,
-        upstream_label=upstream.label,
-        phase_label=phase_component.label,
-        return_label=return_component.label,
+        u_phase_v=u_phase_v,
+        net_type=net_type,
+        protection=protection,
+        z_tr=z_tr,
+        upstream=upstream,
+        phase_component=phase_component,
+        return_component=return_component,
     )
-    loop_result = compute_fault_loop(build_fault_loop_input(request))
-    return loop_result.ik_min_a, u_phase_v, [], None
+    return loop_result.ik_min_a, u_phase_v, [], None, None
 
 
 def wybierz_aparat_dla_obwodu_nn(
@@ -763,7 +757,16 @@ def wybierz_aparat_dla_obwodu_nn(
     Ik1_min/U0 SĄ resolwowane tutaj (ta sama fizyka co SWZ, patrz
     `_ik1_min_i_u0`) — to JEDYNA wielkość niezależna od wyboru kandydata.
     """
-    ik1_min_a, u0_v, missing, reason_pl = _ik1_min_i_u0(enm, station_ref, bus_ref)
+    ik1_min_a, u0_v, missing, reason_pl, kod_odmowy = _ik1_min_i_u0(enm, station_ref, bus_ref)
+    if kod_odmowy is not None:
+        return {
+            "status": "nie dotyczy",
+            "kod_odmowy": kod_odmowy,
+            "station_ref": station_ref,
+            "bus_ref": bus_ref,
+            "missing_data": missing,
+            "reason_pl": reason_pl,
+        }
     if ik1_min_a is None or u0_v is None:
         return {
             "status": "brak danych",

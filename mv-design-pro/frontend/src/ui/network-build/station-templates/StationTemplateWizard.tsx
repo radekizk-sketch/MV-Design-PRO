@@ -123,7 +123,13 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
     setLoading(true);
     fetchStationTemplateCategories()
       .then((res) => {
-        if (!cancelled) setCategories(res.categories);
+        if (!cancelled) {
+          // Kreator wcina stacje w ISTNIEJACY odcinek — kategorie korzenia
+          // modelu (stacja zasilajaca) nie naleza do tego toru. Regula pochodzi
+          // z kontraktu backendu (`wchodzi_w_segment`), nie z listy kategorii
+          // powtorzonej we froncie.
+          setCategories(res.categories.filter((kat) => kat.wchodzi_w_segment));
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err.message);

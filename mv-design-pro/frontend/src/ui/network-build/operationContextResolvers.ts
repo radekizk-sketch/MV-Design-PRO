@@ -1,5 +1,6 @@
 import type { ElementType } from '../types';
 import type { BranchPointSN, EnergyNetworkModel, LogicalViewsV1, TerminalRef } from '../../types/enm';
+import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
 
 export interface BranchSourceDisplayContext {
   fromRef: string;
@@ -283,11 +284,11 @@ function findBusRefsForStation(station: EnergyNetworkModel['substations'][number
 }
 
 function isSnBusVoltage(voltageKv: unknown): voltageKv is number {
-  return typeof voltageKv === 'number' && Number.isFinite(voltageKv) && voltageKv >= 1;
+  return typeof voltageKv === 'number' && powyzejPasmaNn(voltageKv);
 }
 
 function isLvBusVoltage(voltageKv: unknown): voltageKv is number {
-  return typeof voltageKv === 'number' && Number.isFinite(voltageKv) && voltageKv > 0 && voltageKv < 1;
+  return typeof voltageKv === 'number' && wPasmieNn(voltageKv);
 }
 
 function sortBusesByVoltageAscending(
@@ -650,13 +651,13 @@ export function resolveElementNetworkContext(
       return elementId;
     }
     const bus = findBus(snapshot, busRef);
-    if (bus && bus.voltage_kv > 0 && bus.voltage_kv < 1) {
+    if (bus && wPasmieNn(bus.voltage_kv)) {
       return bus.ref_id;
     }
     const station = findStation(snapshot, stationRef);
     return findBusRefsForStation(station)
       .map((ref) => findBus(snapshot, ref))
-      .find((candidate) => candidate != null && candidate.voltage_kv > 0 && candidate.voltage_kv < 1)
+      .find((candidate) => candidate != null && wPasmieNn(candidate.voltage_kv))
       ?.ref_id ?? null;
   })();
   const feederRef = (() => {

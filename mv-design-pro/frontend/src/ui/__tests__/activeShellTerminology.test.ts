@@ -6,7 +6,6 @@ import { join } from 'path';
 // powierzchnie legacy; stara rama (AppShellV12/TopBar/NavigationRail)
 // została skasowana.
 const ACTIVE_SHELL_FILES = [
-  ['workspace', 'WorkspaceOperationalBar.tsx'],
   ['workspace', 'WorkspaceSurfaceRouter.tsx'],
   ['workspace', 'types.ts'],
   ['navigation', 'routes.ts'],

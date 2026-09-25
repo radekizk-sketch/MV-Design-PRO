@@ -351,7 +351,9 @@ def test_blok_bez_numeru_jednostki_konczy_sie_twardym_bledem(operacja: str) -> N
 
     odpowiedz = _uruchom(operacja, [wpis])
     assert odpowiedz.get("error_code") == KOD_BLEDU_POLA_KATALOGOWEGO, odpowiedz
-    assert "numeru jednostki" in str(odpowiedz.get("error"))
+    # Karta #142: brak jednostki nazywa pole formularza („Jednostki bloku”), nie klucz.
+    assert "wymaga wskazania jednostki" in str(odpowiedz.get("error"))
+    assert POLE_JEDNOSTKI_BLOKU not in str(odpowiedz.get("error"))
     assert odpowiedz.get("snapshot") is None
 
 

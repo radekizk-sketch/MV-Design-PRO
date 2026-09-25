@@ -22,6 +22,11 @@ export const ODGALEZIENIE_STRINGS = {
     { id: 'line_overhead', etykieta: 'Linia napowietrzna SN' },
   ],
   rodzajPomoc: 'Kabel dla toru kablowego (ZKSN, stacje kablowe); linia napowietrzna dla słupów.',
+  ekranUziemienie: 'Uziemienie ekranu kabla',
+  ekranUziemieniePomoc:
+    'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
+    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
+    + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
   dlugosc: 'Długość odgałęzienia',
   dlugoscPomoc: 'Długość pierwszego odcinka [km] — wpływa na spadek napięcia i straty.',
 
@@ -62,6 +67,10 @@ export const ODGALEZIENIE_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed rozpoczęciem odgałęzienia.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby rozpocząć odgałęzienie.',
+  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
+  // katalog kabli/linii ładuje się asynchronicznie; zapis bez niego byłby
+  // cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
+  katalogLadowanieStopka: 'Ładowanie katalogu typów odcinków SN — zapis będzie dostępny po wczytaniu.',
 
   // Panel teorii (V12K-066)
   teoriaTytul: 'Teoria: podział prądu i dobór przekroju odgałęzienia',

@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { LoadCatalogType } from '../../../../ui/catalog/types';
 import {
+  connectionTypeZFaz,
   czyZipDomyslny,
   DANE_DOMYSLNE,
+  FAZY_PRZYLACZENIA,
   fmtA,
   fmtKw,
   maOdplyw,
@@ -212,6 +214,34 @@ describe('odbiorModel — payload', () => {
     for (const pole of POLA_ZIP) {
       expect(payload).not.toHaveProperty(pole);
     }
+  });
+});
+
+describe('odbiorModel — fazy przyłączenia (W5-D)', () => {
+  it('formularz startuje BEZ wskazania faz (zerowa wartość domyślna)', () => {
+    expect(DANE_DOMYSLNE.phases).toBeNull();
+  });
+
+  it('brak wskazania: payload bez klucza `phases`, connection_type trójfazowy (payload jak przed W5-D)', () => {
+    const payload = zbudujPayload(dane(), { feeder_ref: 'f1' });
+    expect(payload).not.toHaveProperty('phases');
+    expect(payload.connection_type).toBe('TROJFAZOWY');
+  });
+
+  it('iloczyn cech: każda wartość kanonu faz × connection_type wyprowadzony z faz (jedna prawda)', () => {
+    // Zbiór wartości 1:1 z `enm/models.py::FAZY_PRZYLACZENIA`.
+    expect(FAZY_PRZYLACZENIA).toEqual(['ABC', 'A', 'B', 'C', 'AB', 'BC', 'CA']);
+    for (const fazy of FAZY_PRZYLACZENIA) {
+      const payload = zbudujPayload(dane({ phases: fazy }), { feeder_ref: 'f1' });
+      expect(payload.phases).toBe(fazy);
+      expect(payload.connection_type).toBe(fazy === 'ABC' ? 'TROJFAZOWY' : 'JEDNOFAZOWY');
+      expect(connectionTypeZFaz(fazy)).toBe(payload.connection_type);
+    }
+    expect(connectionTypeZFaz(null)).toBe('TROJFAZOWY');
+  });
+
+  it('wskazanie faz nie zmienia walidacji (odbiór jednofazowy jest pełnoprawny)', () => {
+    expect(walidujFormularz(dane({ manual_mode: true, phases: 'B' })).length).toBe(0);
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mapujKroki, formatujWartosc } from '../dowodModel';
-import { traceStepsFixture } from './fixtures';
+import { traceStepsFixture, traceStepsSurowyKsztaltFixture } from './fixtures';
 
 describe('dowodModel — mapujKroki (czysty adapter TraceStep[])', () => {
   it('numer kroku z pola `step`, a przy jego braku z pozycji (1-based)', () => {
@@ -28,6 +28,19 @@ describe('dowodModel — mapujKroki (czysty adapter TraceStep[])', () => {
     expect(model[0].uwagi).toBe('Zgodnie z metodą IEC 60909.');
     expect(model[1].podstawienie).toBeNull();
     expect(model[1].uwagi).toBeNull();
+  });
+
+  it('krok z substitution_latex → podstawienie z LaTeX, podstawienieTekst null (karta V12.7 §0.1)', () => {
+    const model = mapujKroki(traceStepsFixture());
+    expect(model[0].podstawienie).toBe('$$Z_k = \\sqrt{0{,}5^2 + 1{,}2^2}$$');
+    expect(model[0].podstawienieTekst).toBeNull();
+  });
+
+  it('krok TYLKO z substitution (proza V12.6, bez substitution_latex) → podstawienie null, podstawienieTekst niesie tekst — proza NIGDY nie renderuje się przez MathBlock', () => {
+    const model = mapujKroki(traceStepsFixture());
+    const krokProzy = model[3];
+    expect(krokProzy.podstawienie).toBeNull();
+    expect(krokProzy.podstawienieTekst).toContain('Macierz admitancyjna');
   });
 
   it('element_id przeniesiony (do „Pokaż na schemacie"); brak → null', () => {
@@ -88,5 +101,100 @@ describe('dowodModel — formatujWartosc (deterministyczne, przecinek PL)', () =
   });
   it('łańcuch przekazany bez zmian', () => {
     expect(formatujWartosc('IEC 60909')).toBe('IEC 60909');
+  });
+});
+
+/**
+ * KLASA NIE INSTANCJA (karta WB-ROZPLYW): `mapujKroki`/`mapujWielkosci` MUSZĄ
+ * poprawnie odczytywać REALNY kształt kroku WHITE BOX solvera — skalar/liczbę
+ * zespoloną `{re,im}` WPROST (`WhiteBoxTracer.add`), nie tylko opakowany
+ * `TraceValue` z `traceStepsFixture`. Przed naprawą KAŻDA wartość realnego
+ * śladu (SC/PF `white_box_trace`, `branch_flow_trace`) renderowała się jako
+ * „—" — `mapujWielkosci` czytała `.value`/`.unit` z surowego skalara/obiektu
+ * zespolonego (bez `.value`), zawsze `undefined`. Iloczyn cech pokryty:
+ * skalar (number/string) × liczba zespolona {re,im} × klucz nieznany.
+ */
+/**
+ * Fixture przez round-trip JSON — TA SAMA droga, którą realne dane przechodzą
+ * w produkcji (`fetch(...).json()` w `dowod/api` konsumentów śladu, kształt
+ * nieopakowany). Zero rzutowań typów (`as unknown as` zakazane kartą) —
+ * `JSON.parse` zwraca `any`, jak realny `Response.json()`.
+ */
+function realnyKsztalt() {
+  return JSON.parse(JSON.stringify(traceStepsSurowyKsztaltFixture()));
+}
+
+describe('dowodModel — mapujKroki na REALNYM (nieopakowanym) kształcie kroku solvera', () => {
+  it('skalar wprost (number/string) sformatowany — NIE kreska, mimo braku opakowania {value,unit}', () => {
+    const model = mapujKroki(realnyKsztalt());
+    const fault = model[0].dane.find((w) => w.klucz === 'fault_node_id');
+    const ik = model[0].dane.find((w) => w.klucz === 'ik_thevenin_a');
+    expect(fault?.wartosc).toBe('C');
+    expect(ik?.wartosc).toBe('5611,281490619905');
+    // Karta #145: klucze śladu podziału prądu Thevenina mają polskie etykiety w
+    // słowniku śladu; węzeł zwarcia jest ODNOŚNIKIEM elementu (widok pokazuje nazwę
+    // z modelu), prąd niesie jednostkę z kontraktu klucza (`_a` → A).
+    expect(fault?.etykieta).toBe('Węzeł zwarcia');
+    expect(fault?.odnosnik).toBe('C');
+    expect(ik?.etykieta).toBe('Prąd zwarciowy źródła zastępczego (Thevenin) Ik″');
+    expect(ik?.jednostka).toBe('A');
+  });
+
+  it('liczba bardzo mała bez notacji wykładniczej JS — mantysa z przecinkiem i potęga dziesięciu', () => {
+    const [krok] = mapujKroki([
+      { step: 1, key: 'k', title: 'Krok', inputs: {}, result: { i_contrib_a: 2.2137004483243454e-13 } },
+    ] as never);
+    expect(krok.wynik[0].wartosc).toBe('2,2137004483243454·10⁻¹³');
+    expect(krok.wynik[0].wartosc).not.toContain('e');
+  });
+
+  it('kod wartości z mapy → opis po polsku; kod spoza mapy → wielkość nieznana (Informacje audytowe)', () => {
+    const [krok] = mapujKroki([
+      {
+        step: 1,
+        key: 'k',
+        title: 'Krok',
+        inputs: {},
+        result: { direction: 'from_to', short_circuit_type: 'NOWY_KOD' },
+      },
+    ] as never);
+    const kierunek = krok.wynik.find((w) => w.klucz === 'direction');
+    const rodzaj = krok.wynik.find((w) => w.klucz === 'short_circuit_type');
+    expect(kierunek?.wartosc).toBe('od węzła początkowego do węzła końcowego');
+    expect(rodzaj?.etykieta).toBeNull();
+  });
+
+  it('tytuł solvera z identyfikatorem gałęzi z danych kroku → odnośnik do złożenia tytułu z nazwą', () => {
+    const [krok] = mapujKroki([
+      {
+        step: 2,
+        key: 'thevenin_flow_b1',
+        title: 'Prąd zwarciowy Thevenina w gałęzi b1-uuid',
+        inputs: { branch_id: 'b1-uuid', from_node_id: 'n1', to_node_id: 'n2' },
+        result: {},
+      },
+    ] as never);
+    expect(krok.odnosnikiTytulu).toEqual(['b1-uuid']);
+  });
+
+  it('liczba zespolona {re, im} wprost (serialize_complex solvera) → „R znak jIm" (przecinek PL), NIE „[object Object]"', () => {
+    const model = mapujKroki(realnyKsztalt());
+    const z1 = model[0].wynik.find((w) => w.klucz === 'z1_ohm');
+    expect(z1?.wartosc).toBe('0,0821 + j0,7734');
+    expect(z1?.wartosc).not.toContain('[object Object]');
+  });
+
+  it('krok bez formula_latex/notes (raw fixture ma notes: null) → pola pominięte jak przy TraceValue opakowanym', () => {
+    const model = mapujKroki(realnyKsztalt());
+    expect(model[0].uwagi).toBeNull();
+  });
+
+  it('opakowany TraceValue nadal działa identycznie jak przed naprawą (zgodność wsteczna, zero regresji)', () => {
+    // Powtórka istniejących asercji z fixture opakowanej — dowód, że naprawa
+    // duck-typingu NIE zmienia zachowania dla starszego/testowego kształtu.
+    const model = mapujKroki(traceStepsFixture());
+    const ikss = model[1].wynik.find((w) => w.klucz === 'ikss_ka');
+    expect(ikss?.wartosc).toBe('12,345');
+    expect(ikss?.jednostka).toBe('kA');
   });
 });

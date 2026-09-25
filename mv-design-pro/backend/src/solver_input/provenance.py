@@ -12,8 +12,21 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from enum import Enum, StrEnum
+from enum import Enum
 from typing import Any
+
+# Osie ``FieldQuality`` / ``EvidenceTier`` / ``ClaimKind`` i zdanie ``BRAK_DOWODU_PL`` mają JEDNĄ
+# definicję w liściu ``werdykt.proweniencja`` (pakiet werdyktu wyjaśnialnego nie może zależeć od
+# ``solver_input``, bo import tego pakietu ładuje budowniczego wejścia solverów wraz z ``domain``
+# i ``network_model``). Re-eksport zachowuje tożsamość klas dla wszystkich dotychczasowych
+# konsumentów ``solver_input.provenance``.
+from werdykt.proweniencja import (  # noqa: F401
+    BRAK_DOWODU_PL,
+    POZIOMY_DOPUSZCZALNE_DLA_TWIERDZENIA,
+    ClaimKind,
+    EvidenceTier,
+    FieldQuality,
+)
 
 
 class SourceKind(Enum):
@@ -29,42 +42,320 @@ class SourceKind(Enum):
     DEFAULT_FORBIDDEN = "DEFAULT_FORBIDDEN"
 
 
-class FieldQuality(StrEnum):
-    """Data-quality provenance axis for a single card field.
+@dataclass(frozen=True)
+class CapabilityEvidence:
+    """Klasyfikacja dowodowa jednej zdolnosci obliczeniowej.
 
-    Orthogonal to :class:`SourceKind` (which records *where* a value came from in
-    the pipeline). ``FieldQuality`` records *how trustworthy* the value is:
-
-    - ``DATASHEET`` (karta_techniczna): value taken from a manufacturer datasheet
-      / type-test report — fully trustworthy for the OSD package.
-    - ``ESTIMATED`` (oszacowane): value is an engineering estimate without a real
-      source (e.g. a controller bandwidth assumed from technology defaults). It
-      MUST be tagged ``ESTIMATED`` — never ``DATASHEET`` — until a real source is
-      attached.
-    - ``SYSTEM_DEFAULT`` (domyslne_techniczne): value is a system/technical
-      default carried by the schema (the field is present but no real value has
-      been provided).
-
-    Paramount rule: "no gaps" means the schema is COMPLETE (every field present),
-    NOT that every field is filled with a fabricated value. A value with no real
-    source is ``ESTIMATED`` (or ``SYSTEM_DEFAULT``), never ``DATASHEET``.
+    Attributes:
+        capability_id: Stabilny, kropkowany identyfikator zdolnosci
+            (np. ``"ncrfg_ptpiree.ride_through"``). Nazywa OBLICZENIE, nie pole.
+        tier: Stopien dowodowy wynikow tej zdolnosci.
+        rationale_pl: Techniczne uzasadnienie stopnia dla projektanta — polskie zdania
+            z polskimi znakami, bez ścieżek kodu i odsyłaczy do kart (te niesie
+            ``audit_ref``); pokazywane na ekranie jako ograniczenie raportowe.
+        audit_ref: Odniesienie do dowodu stojacego za klasyfikacja.
+        claim_kind: Rodzaj twierdzenia, ktore ta zdolnosc wspiera. Domyslnie
+            ``DYNAMIC_PERFORMANCE`` (surowsze odczytanie).
     """
 
-    DATASHEET = "DATASHEET"
-    ESTIMATED = "ESTIMATED"
-    SYSTEM_DEFAULT = "SYSTEM_DEFAULT"
+    capability_id: str
+    tier: EvidenceTier
+    rationale_pl: str
+    audit_ref: str
+    claim_kind: ClaimKind = ClaimKind.DYNAMIC_PERFORMANCE
 
     @property
-    def label_pl(self) -> str:
-        """Polish UI label (no codenames)."""
-        return _FIELD_QUALITY_LABEL_PL[self]
+    def regulatory_evidence_eligible(self) -> bool:
+        """Czy wynik TEJ zdolnosci wolno przedstawic jako dowod TEGO twierdzenia?
+
+        Fail-closed dla KAZDEGO z trzech rodzajow twierdzenia (``ClaimKind``) — tabela
+        ``werdykt.proweniencja.POZIOMY_DOPUSZCZALNE_DLA_TWIERDZENIA``:
+
+        - twierdzenie o zachowaniu dynamicznym wymaga ``VALIDATED_SIMULATION`` albo
+          certyfikatu badania typu (``TYPE_TEST_CERTIFICATE``);
+        - twierdzenie z obliczenia statycznego wymaga ``VALIDATED_SIMULATION``
+          (zwalidowany solver statyczny);
+        - twierdzenie o konfiguracji zadeklarowanej dodatkowo dopuszcza
+          ``DECLARATION`` (deklaracja JEST wlasciwa podstawa faktu
+          zadeklarowanego) — ale nigdy nie dopuszcza ``UNVALIDATED_MODEL`` ani
+          ``NOT_SIMULATED``, co oznaczaloby zle zarejestrowana zdolnosc.
+        """
+        return self.tier in POZIOMY_DOPUSZCZALNE_DLA_TWIERDZENIA[self.claim_kind]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "capability_id": self.capability_id,
+            "tier": self.tier.value,
+            "tier_pl": self.tier.label_pl,
+            "claim_kind": self.claim_kind.value,
+            "claim_kind_pl": self.claim_kind.label_pl,
+            "regulatory_evidence_eligible": self.regulatory_evidence_eligible,
+            "rationale_pl": self.rationale_pl,
+            "audit_ref": self.audit_ref,
+        }
 
 
-_FIELD_QUALITY_LABEL_PL: dict[FieldQuality, str] = {
-    FieldQuality.DATASHEET: "karta_techniczna",
-    FieldQuality.ESTIMATED: "oszacowane",
-    FieldQuality.SYSTEM_DEFAULT: "domyslne_techniczne",
+#: Odniesienie audytowe dla rejestru ponizej — karta naprawcza S-1 (dowod
+#: repo: solver NC RfG T14/T15 jest tautologia, `_execute_dynamic_stability`
+#: wpisywal `reportable`/`complete` na sztywno; patrz `SYNTEZA_DOMKNIECIA_
+#: PRODUKTU_2026-09.md` A-2/A-6).
+_AUDIT_CARD = "karta_s1_s4_dowod.md"
+
+# Klasyfikacja dowodowa zdolnosci dynamicznych/normatywnych.
+#
+# ZADNA zdolnosc OBLICZENIOWA w rejestrze nie jest VALIDATED_SIMULATION: na dzien
+# tej karty zadna zdolnosc dynamiczna w repozytorium nie ma ustalonej
+# poprawnosci fizycznej, wiec zaden wynik obliczenia nie jest dopuszczalny jako
+# dowod regulacyjny. Jedyny wpis dopuszczalny to `ncrfg_ptpiree.certyfikat_urzadzenia`
+# (TYPE_TEST_CERTIFICATE): narzedzie niczego tam nie liczy — dowodem jest badanie
+# typu poswiadczone rekordem wykazu PTPiREE (odbior Pakietu C, plan AB O-50).
+# Wpis obliczeniowy wolno podniesc do VALIDATED_SIMULATION WYLACZNIE razem z
+# dowodem walidacji tej zdolnosci (siec referencyjna / wyrocznia zewnetrzna /
+# rozwiazanie analityczne) — poza zakresem tej karty (OD-20).
+#
+# Rejestr NIE jest wyczerpujacy dla przyszlych zdolnosci: nieznany
+# capability_id rozwiazuje sie do UNVALIDATED_MODEL (fail-closed) w
+# `classify_dynamic_capability` — nowy albo przemianowany silnik dynamiczny
+# jest niedopuszczalny, dopoki nie zostanie swiadomie sklasyfikowany.
+_DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
+    entry.capability_id: entry
+    for entry in (
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.frequency_response",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Testy odpowiedzi częstotliwościowej (LFSM-O, LFSM-U, FSM, odbudowa "
+                "częstotliwości — T01–T04) porównują nastawy zadeklarowane modułu (statyzm, "
+                "strefa martwa, tempo zmiany mocy) z wartościami wymaganymi i tolerancjami "
+                "profilu regulacyjnego; to fakt konfiguracyjny, dla którego deklaracja jest "
+                "właściwą podstawą. Odpowiedź ΔP w punkcie częstotliwości testu jest "
+                "podstawieniem informacyjnym w śladzie, nie przebiegiem f(t)/P(t)."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T01-T04); karta AB-1a Pakiet C pkt 5",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.ride_through",
+            tier=EvidenceTier.NOT_SIMULATED,
+            rationale_pl=(
+                "Pozostanie w pracy przy zapadzie i wzroście napięcia (T14/T15) jest "
+                "twierdzeniem o zachowaniu dynamicznym; pakiet testów nie wykonuje biegu "
+                "dynamiki modułu — bez biegu dynamiki porównanie deklaracji nie wykazuje "
+                "zachowania dynamicznego (ocena niewykonana do czasu biegu dynamiki RMS modułu). "
+                "Obwiednia profilu jest warunkiem wstępnym kryterium, nie jego wynikiem."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T14/T15); karta AB-1a Pakiet C pkt 5",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.p_recovery",
+            tier=EvidenceTier.NOT_SIMULATED,
+            rationale_pl=(
+                "Odbudowa mocy czynnej po zakłóceniu (T16) jest twierdzeniem o zachowaniu "
+                "dynamicznym; bez biegu dynamiki porównanie deklaracji nie wykazuje "
+                "zachowania dynamicznego — czas zadeklarowany jest pokazywany wyłącznie "
+                "informacyjnie, przebiegu P(t) narzędzie nie liczy."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T16); karta AB-1a Pakiet C pkt 5",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.reactive_current_frt",
+            tier=EvidenceTier.NOT_SIMULATED,
+            rationale_pl=(
+                "Szybki prąd bierny podczas zwarcia (T17) jest twierdzeniem o zachowaniu "
+                "dynamicznym; bez biegu dynamiki porównanie deklaracji nie wykazuje "
+                "zachowania dynamicznego — wzmocnienie zadeklarowane jest pokazywane "
+                "wyłącznie informacyjnie, przebiegu Iq(t) narzędzie nie liczy."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T17); karta AB-1a Pakiet C pkt 5",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.extended_dynamic_capability",
+            tier=EvidenceTier.NOT_SIMULATED,
+            rationale_pl=(
+                "Praca wyspowa, rozruch autonomiczny i tłumienie oscylacji (T18) są "
+                "twierdzeniami o zachowaniu dynamicznym; bez biegu dynamiki porównanie "
+                "deklaracji nie wykazuje zachowania dynamicznego — deklaracje zdolności są "
+                "pokazywane wyłącznie informacyjnie."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T18); karta AB-1a Pakiet C pkt 5",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.declared_configuration",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Regulacja P (T05), deklaracje Pmax/Pmin (T10/T11), zaprzestanie i "
+                "zmniejszenie generacji (T12/T13) oraz komunikacja i rejestrator zakłóceń "
+                "(T19) są faktami konfiguracyjnymi porównanymi z wymaganiem profilu — "
+                "deklaracja jest tu właściwą podstawą dowodową."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T05, T10-T13, T19); karta AB-1a Pakiet C pkt 5",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.reactive_voltage_mode",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Tryby regulacji U/Q/cos φ i zakres mocy biernej (T06–T09) pochodzą z "
+                "deklaracji modułu porównanej z profilem operatora — fakty konfiguracyjne."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T06-T09); karta AB-1a Pakiet C pkt 5",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.power_quality_declared",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Współczynnik THDu źródła (test T20) pochodzi z rekordu katalogowego źródła "
+                "i jest porównywany z limitem profilu — fakt katalogowy, nie wynik symulacji "
+                "widma."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T20); karta AB-1a Pakiet C pkt 5",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.koordynacja_nastaw",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Kryteria koordynacji statycznej: nastawa U< i jej czas wobec obwiedni LVRT "
+                "profilu oraz nastawa RoCoF/LoM wobec wytrzymałości RoCoF — porównanie nastaw "
+                "zabezpieczeń zapisanych w modelu z wartościami profilu; fakt konfiguracyjny, "
+                "bez symulacji."
+            ),
+            audit_ref="karta AB-1a Pakiet C pkt 7 (O-32)",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.certyfikat_urzadzenia",
+            tier=EvidenceTier.TYPE_TEST_CERTIFICATE,
+            rationale_pl=(
+                "Wykazanie wymagania certyfikatem urządzenia z wykazu PTPiREE: dowodem jest "
+                "badanie typu wykonane u producenta albo w jednostce certyfikującej, "
+                "poświadczone rekordem wykazu dopasowanym do tabliczki znamionowej "
+                "urządzenia — narzędzie niczego nie liczy i nie symuluje. Poziom dopuszcza "
+                "certyfikat jako dowód zachowania dynamicznego i konfiguracji zadeklarowanej; "
+                "kompletność dowodu (reguła pokrycia wymagania certyfikatem z warstwy WiPWC "
+                "profilu i warunek ważności rekordu wykazu) rozstrzyga rekord wymagania, "
+                "nie poziom."
+            ),
+            audit_ref=(
+                "karta AB-1a Pakiet C pkt 3 i 8 (O-17, O-27); odbiór Pakietu C " "(plan AB O-50)"
+            ),
+        ),
+        CapabilityEvidence(
+            capability_id="pq_coverage.pokrycie_zakresu_q",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Pokrycie wymaganego zakresu mocy biernej profilu operatora: krzywa zdolności "
+                "P-Q producenta z karty katalogowej typu przekształtnika porównana z "
+                "prostokątnym wymaganiem profilu w punktach krzywej — fakt katalogowy "
+                "porównany z wymaganiem, bez symulacji."
+            ),
+            audit_ref="odbiór Pakietu C §0 pkt 4 (plan AB O-50)",
+        ),
+        CapabilityEvidence(
+            capability_id="magistrala_sn.obciazalnosc_dlugotrwala",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Obciążalność długotrwała odcinka magistrali SN: prąd roboczy podany przez "
+                "projektanta porównany z obciążalnością z karty katalogowej typu kabla albo "
+                "przewodu w warunkach odniesienia producenta — fakt katalogowy porównany "
+                "z deklaracją, bez obliczenia cieplnego (application/analyses/"
+                "ocena_doboru_magistrali.py)."
+            ),
+            audit_ref="karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4)",
+        ),
+        CapabilityEvidence(
+            capability_id="magistrala_sn.spadek_napiecia",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Spadek napięcia odcinka i ciągu magistrali SN liczony przybliżeniem składowej "
+                "podłużnej ΔU = √3·I·(R·cosφ + X·sinφ) z sumą po odcinkach "
+                "(network_model/solvers/cable_voltage_drop.py) — obliczenie jest wykonywane, "
+                "ale jego zgodności z rozpływem mocy na sieci referencyjnej nie wykazano, więc "
+                "wynik nie jest dowodem regulacyjnym; rzeczywisty profil napięcia daje rozpływ "
+                "zapisanego modelu."
+            ),
+            audit_ref="karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4)",
+        ),
+        CapabilityEvidence(
+            capability_id="dynamic_stability.fault_clear",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            rationale_pl=(
+                "Kąty mocy, napięcie i częstotliwość po zwarciu oraz czas wyłączenia "
+                "wpisuje użytkownik w opcjach biegu; bieg nie rozwiązuje sieci i nie "
+                "całkuje równań ruchu układu, więc zwraca wyłącznie echo scenariusza "
+                "bez oceny stabilności."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.5",
+        ),
+        CapabilityEvidence(
+            capability_id="dynamika_rms.przebieg_czasowy",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            rationale_pl=(
+                "Bieg RMS całkuje równania ruchu układu na widoku sieci z rozpływu, więc "
+                "wynik jest policzony — ale poprawność modelu nie jest wykazana: rdzeń "
+                "obliczeń ma wyrocznie analityczne dla układu maszyna – szyna sztywna, nie ma "
+                "walidacji przebiegów dla pełnej biblioteki urządzeń na sieci rzeczywistej. "
+                "Mechanizmy zdarzeń (obszar beznapięciowy i ponowne zasilenie, warunek "
+                "izolacji przy usunięciu zwarcia, zwarcie w linii w punkcie x·L, elementy "
+                "nieaktywne w chwili t = 0, próbki tuż przed i tuż po zdarzeniu, fazory prądów "
+                "obu zacisków gałęzi, przypisanie stanu i komenda regulacji z ciągłością stanów "
+                "nieprzypisanych, częściowa utrata źródła jako agregat jednostek, źródło "
+                "testowe napięcia, częstotliwości i fazy stanowiska, lokalizacja zdarzeń "
+                "warunkowych i detektorów przekroczeń) mają niezależne wyrocznie, w tym "
+                "zgodność z obliczeniem zwarciowym IEC 60909, postacie zamknięte profilu i "
+                "kroku całkowania oraz równanie wahań maszyny przyłączonej do szyny sztywnej "
+                "po skokach mocy — to dowód poprawności zdarzeń, nie walidacja przebiegów "
+                "urządzeń: odpowiedź rodzin urządzeń (przekształtnik, magazyn, turbina, "
+                "maszyna z regulatorami) na komendę regulacji i utratę części jednostek nie ma "
+                "wyroczni rodzin, więc poziom dowodowy się nie zmienia. Parametry z profilu typowego "
+                "normy są deklaracją projektanta, więc awans do poziomu „symulacja "
+                "zwalidowana” wymaga dowodu walidacji tej zdolności, nie samego faktu, że bieg "
+                "się wykonał."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.5 (W6-3B: adapter biegu czasowego)",
+        ),
+        CapabilityEvidence(
+            capability_id="frt_hvrt.trajectory",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            rationale_pl=(
+                "Trajektoria napięcia jest funkcją zadaną parametrami scenariusza próby, "
+                "a nie rozwiązaniem sieci sprzężonym z resztą modułu wytwórczego."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.9",
+        ),
+    )
 }
+
+
+def classify_dynamic_capability(capability_id: str) -> CapabilityEvidence:
+    """Zwroc klasyfikacje dowodowa zdolnosci dynamicznej (fail-closed).
+
+    Niezarejestrowany identyfikator jest klasyfikowany ``UNVALIDATED_MODEL`` —
+    nowy albo przemianowany silnik dynamiczny jest niedopuszczalny jako dowod
+    regulacyjny, dopoki nie zostanie swiadomie sklasyfikowany, wiec pominiecie
+    rejestracji nie moze cicho wyprodukowac dopuszczalnego dowodu.
+    """
+    known = _DYNAMIC_CAPABILITY_EVIDENCE.get(capability_id)
+    if known is not None:
+        return known
+    return CapabilityEvidence(
+        capability_id=capability_id,
+        tier=EvidenceTier.UNVALIDATED_MODEL,
+        rationale_pl=(
+            "Zdolność obliczeniowa nie jest sklasyfikowana w rejestrze dowodowym; "
+            "do czasu klasyfikacji jej wynik nie jest dowodem regulacyjnym."
+        ),
+        audit_ref=f"{_AUDIT_CARD} §0.1 (fail-closed)",
+    )
+
+
+def registered_dynamic_capabilities() -> tuple[str, ...]:
+    """Identyfikatory zdolnosci w rejestrze dowodowym, posortowane deterministycznie."""
+    return tuple(sorted(_DYNAMIC_CAPABILITY_EVIDENCE))
 
 
 @dataclass(frozen=True)
@@ -302,7 +593,7 @@ def card_field_quality_map(converter: Any) -> dict[str, CardFieldStatus]:
         result[name] = CardFieldStatus(
             field_name=name,
             quality=FieldQuality.ESTIMATED if present else FieldQuality.SYSTEM_DEFAULT,
-            note="oszacowanie pasma/filtra regulatora; wymaga zrodla z karty technicznej",
+            note="oszacowanie pasma/filtra regulatora; wymaga źródła z karty technicznej",
         )
 
     return result
@@ -331,111 +622,3 @@ def resolve_card_field_quality_map(converter: Any) -> dict[str, CardFieldStatus]
             elif isinstance(status, dict):
                 resolved[name] = CardFieldStatus.from_dict(status)
     return resolved
-
-
-# ---------------------------------------------------------------------------
-# OSD acceptance gate — blocks the OSD package (NOT the analysis) on any card
-# field that is ESTIMATED / SYSTEM_DEFAULT and not consciously accepted.
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class CardFieldAcceptance:
-    """Engineer-acceptance carrier for inverter-card fields toward the OSD package.
-
-    A field whose data quality is ``ESTIMATED`` / ``SYSTEM_DEFAULT`` does NOT block
-    the analysis (the full physical model runs on the typical value), but it MUST
-    be consciously accepted by an engineer before the card may enter the OSD /
-    connection-application ("wniosek przylaczeniowy") package. This carrier is that
-    conscious acceptance: a frozen, serializable set of accepted field names plus
-    the accepting engineer's identity for the audit trail.
-
-    Attributes:
-        accepted_fields: card field names the engineer has explicitly accepted as
-            estimated/default for the OSD package.
-        accepted_by: optional engineer identity (for the audit trail).
-        note: optional technical note (no soft language).
-    """
-
-    accepted_fields: frozenset[str] = field(default_factory=frozenset)
-    accepted_by: str | None = None
-    note: str | None = None
-
-    @classmethod
-    def of(cls, fields: set[str] | frozenset[str] | None, **kwargs: Any) -> CardFieldAcceptance:
-        """Build from a plain set (``None`` => nothing accepted)."""
-        return cls(accepted_fields=frozenset(fields or ()), **kwargs)
-
-    def to_dict(self) -> dict[str, Any]:
-        result: dict[str, Any] = {"accepted_fields": sorted(self.accepted_fields)}
-        if self.accepted_by is not None:
-            result["accepted_by"] = self.accepted_by
-        if self.note is not None:
-            result["note"] = self.note
-        return result
-
-
-# Readiness code (single source of truth) for an unaccepted estimated/default
-# card field that blocks the OSD package. Mirrors READINESS_CODES key in
-# domain.canonical_operations (no parallel readiness system).
-OSD_CARD_FIELD_BLOCKER_CODE = "oze.card_field_not_accepted"
-
-
-def osd_card_gate(
-    converter: Any,
-    accepted_fields: set[str] | frozenset[str] | CardFieldAcceptance | None,
-) -> tuple[bool, list[Any]]:
-    """OSD acceptance gate for one inverter card. Blocks ONLY the OSD package.
-
-    For each card field whose effective :class:`FieldQuality` is ``ESTIMATED`` or
-    ``SYSTEM_DEFAULT`` and that is NOT in ``accepted_fields``, emit a
-    :class:`~enm.domain_ops_models.ReadinessBlocker` (the existing readiness model —
-    no second truth) with a Polish message::
-
-        pole '<f>' = <quality> wymaga akceptacji inzyniera przed pakietem OSD
-
-    ``DATASHEET`` fields never block. The analysis path is independent of this gate:
-    the solver still runs on the typical (estimated) value — the gate guards the
-    OSD / connection-application export only, exactly per the paramount rule
-    (full physical model, explicit status, no deferral, conscious acceptance to
-    leave the estimate in the formal package).
-
-    Args:
-        converter: a ConverterType-like card (typed ``Any`` to avoid a catalog
-            import at module load).
-        accepted_fields: the consciously-accepted field names — a plain set, a
-            :class:`CardFieldAcceptance` carrier, or ``None`` (nothing accepted).
-
-    Returns:
-        ``(ready, blockers)`` — ``ready`` is True iff ``blockers`` is empty.
-        Blockers are deterministically ordered by field name.
-    """
-    from enm.domain_ops_models import ReadinessBlocker  # lazy: avoid import cycle
-
-    if isinstance(accepted_fields, CardFieldAcceptance):
-        accepted = set(accepted_fields.accepted_fields)
-    else:
-        accepted = set(accepted_fields or ())
-
-    quality_map = resolve_card_field_quality_map(converter)
-    element_ref = getattr(converter, "id", None)
-
-    blockers: list[Any] = []
-    for field_name in sorted(quality_map):
-        status = quality_map[field_name]
-        if status.quality is FieldQuality.DATASHEET:
-            continue  # datasheet-grade values never block the OSD package
-        if field_name in accepted:
-            continue  # consciously accepted by an engineer
-        blockers.append(
-            ReadinessBlocker(
-                code=OSD_CARD_FIELD_BLOCKER_CODE,
-                message_pl=(
-                    f"pole '{field_name}' = {status.quality.value} "
-                    "wymaga akceptacji inzyniera przed pakietem OSD"
-                ),
-                element_ref=element_ref,
-            )
-        )
-
-    return (not blockers, blockers)

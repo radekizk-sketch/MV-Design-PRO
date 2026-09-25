@@ -187,7 +187,7 @@ export function SettingsPanel({ isOpen, onClose, onChange }: SettingsPanelProps)
                 data-testid="settings-language"
               >
                 <option value="PL">Polski (PL)</option>
-                <option value="EN">English (EN) - w przygotowaniu</option>
+                <option value="EN">English (EN) - tłumaczenie niepełne</option>
               </select>
               {settings.language === 'EN' && (
                 <p className="mt-1 text-[10px] text-amber-700">

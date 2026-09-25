@@ -5,6 +5,7 @@ import json
 from datetime import UTC, datetime
 from typing import Any, Literal
 
+from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
 from enm.canonical_analysis import CanonicalRun
 
 CanonicalCompletenessStatus = Literal["complete", "partial", "failed", "not_applicable"]
@@ -13,13 +14,15 @@ ExportArtifactKind = Literal["pdf", "docx", "csv", "xlsx", "json", "whitebox_pac
 DEFAULT_RESULTS_CONTRACT_VERSION = "V12.5"
 DEFAULT_BAY_CONTRACT_VERSION = "V12.5"
 DEFAULT_PROOF_RENDERER_VERSION = "white_box_trace_v1"
-DEFAULT_CATALOG_SCHEMA_VERSION = "catalog_v1"
+# CV-2 (H2): `DEFAULT_CATALOG_SCHEMA_VERSION = "catalog_v1"` USUNIETE — tozsamosc
+# katalogu to odcisk biblioteki typow z koperty rewizji biegu
+# (`catalog_fingerprint`); stala bez zrodla udawala dana.
 DEFAULT_TOLERANCE_POLICY_REF = "solver_tolerance/default"
 DEFAULT_ROUNDING_POLICY_REF = "rounding/default"
 DEFAULT_QUALITY_GATE_POLICY_VERSION = "v12_5_quality_gate"
 DEFAULT_EXPORT_GENERATOR_VERSION = "v12_5_export_artifact/1.0"
-DEFAULT_OPERATING_VARIANT_REF = "variant.uklad_normalny"
-DEFAULT_SWITCHING_SNAPSHOT_REF = "switching.uklad_normalny.base"
+# CV-2 (H3): domyslne etykiety wariantu/migawki lacznikowej USUNIETE — patrz
+# `domain/analysis_run.py`; brak wyboru = `None`, nie „uklad normalny".
 DEFAULT_CATALOG_MATERIALIZATION_CONTRACT_VERSION = "catalog_materialization_v1"
 DEFAULT_ENM_PROJECTION_VERSION = "v12xx.m1.1"
 DEFAULT_REPORT_CONTRACT_VERSION = "analysis_report_v2"
@@ -159,7 +162,14 @@ def _result_hash_for_run(run: CanonicalRun) -> str | None:
     if key not in _RESULT_HASH_CACHE:
         if len(_RESULT_HASH_CACHE) >= _CONTEXT_CACHE_MAX:
             _RESULT_HASH_CACHE.pop(next(iter(_RESULT_HASH_CACHE)))
-        _RESULT_HASH_CACHE[key] = _stable_hash(run.raw_result)
+        # Skrót wyniku liczony na liczbach skwantyzowanych do CYFRY_ZNACZACE (polityka
+        # §35, ta sama kwantyzacja co hash kanoniczny ENM): surowe `float` solvera
+        # różnią się na ostatnim bicie między maszynami (CI 2026-09-16, run 5030 vs 5031:
+        # ten sam commit, dwa runnery, dwa różne `result_hash` tej samej sieci), więc
+        # skrót z surowych liczb NIE identyfikował wyniku, tylko maszynę. Tryb nieścisły:
+        # wartości niefinitowe w artefakcie zostają jak są (skrót ma być liczalny dla
+        # każdego zapisanego biegu, także historycznego).
+        _RESULT_HASH_CACHE[key] = _stable_hash(kwantyzuj_kontrakt(run.raw_result, scisle=False))
     return _RESULT_HASH_CACHE[key]
 
 
@@ -309,39 +319,41 @@ def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
     catalog_materialization_entries, catalog_materialization_hash = _materialization_for_run(run)
     solver_family = {
         "PF": "power_flow_newton",
+        "rozplyw_niesymetryczny": "power_flow_unbalanced_bfs",
         "short_circuit_sn": "iec60909_short_circuit",
         "phase_state_sn": "phase_state_sn_radial",
         "dynamic_stability": "dynamic_stability_fault_clear",
-        "source_compliance": "source_compliance_profile_match",
+        # Karta W6-3B: `dynamika_rms` konczy sie WYNIKIEM — rdzen DAE (W6-2,
+        # `network_model/solvers/dynamika/`) jest wpiety adapterem
+        # (`enm/adapter_dynamiki.py`), a punkt pracy pochodzi ze wskazanego
+        # biegu rozplywu tej samej migawki (`options.pf_run_id`).
+        "dynamika_rms": "dynamika_rms_dae",
     }.get(run.analysis_type, run.analysis_type)
-    solver_version = (
-        ((run.power_flow_trace or {}).get("solver_version"))
-        or run.options.get("solver_version")
-        or "1.0.0"
+    # CV-2 (H2): wersja solvera WYLACZNIE ze sladu solvera albo z opcji biegu;
+    # brak = `None` (dotad stala "1.0.0" udawala odczyt).
+    solver_version = ((run.power_flow_trace or {}).get("solver_version")) or run.options.get(
+        "solver_version"
     )
+    koperta = run.koperta
     formula_set_version = {
         "PF": "pf_result_v1",
+        "rozplyw_niesymetryczny": "power_flow_unbalanced_v1",
         "short_circuit_sn": "iec60909_v1",
         "phase_state_sn": "phase_state_sn_v1",
-        "dynamic_stability": "dynamic_stability_fault_clear_v1",
-        "source_compliance": "source_compliance_v1",
+        "dynamic_stability": "dynamic_stability_fault_clear_echo_v2",
+        "dynamika_rms": "resultset_dynamic_v2",
     }.get(run.analysis_type, "canonical_run_v1")
     standard_basis_ref = {
         "PF": "NR_POWER_FLOW",
+        "rozplyw_niesymetryczny": "PF_UNBALANCED_BFS_V1",
         "short_circuit_sn": "IEC_60909",
         "phase_state_sn": "PHASE_STATE_SN_RADIAL_V1",
-        "dynamic_stability": "DYNAMIC_STABILITY_FAULT_CLEAR_V1",
-        "source_compliance": "SOURCE_COMPLIANCE_PROFILE_V1",
+        "dynamic_stability": "DYNAMIC_STABILITY_FAULT_CLEAR_ECHO_V2",
+        "dynamika_rms": "DYNAMIKA_RMS_DAE_V1",
     }.get(run.analysis_type, "CANONICAL_ANALYSIS")
-    variant_ref = _option_or_header(
-        run,
-        "variant_ref",
-        default=DEFAULT_OPERATING_VARIANT_REF,
-    )
-    switching_snapshot_ref = (
-        _option_or_header(run, "switching_snapshot_ref")
-        or _option_or_header(run, "switching_state_ref")
-        or DEFAULT_SWITCHING_SNAPSHOT_REF
+    variant_ref = _option_or_header(run, "variant_ref")
+    switching_snapshot_ref = _option_or_header(run, "switching_snapshot_ref") or _option_or_header(
+        run, "switching_state_ref"
     )
     return {
         "case_ref": run.case_id,
@@ -388,8 +400,9 @@ def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
             "catalog_materialization_contract_version"
         )
         or DEFAULT_CATALOG_MATERIALIZATION_CONTRACT_VERSION,
-        "catalog_schema_version": run.options.get("catalog_schema_version")
-        or DEFAULT_CATALOG_SCHEMA_VERSION,
+        "catalog_schema_version": run.options.get("catalog_schema_version"),
+        "catalog_fingerprint": koperta.catalog_fingerprint if koperta is not None else None,
+        "model_revision": koperta.model_revision if koperta is not None else None,
         "tolerance_policy_ref": run.options.get("tolerance_policy_ref")
         or DEFAULT_TOLERANCE_POLICY_REF,
         "rounding_policy_ref": run.options.get("rounding_policy_ref")

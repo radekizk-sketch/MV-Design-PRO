@@ -1,7 +1,8 @@
 """Widok pętli zwarcia nN z modelu (G-STK-4, karta P0.6 — G-05).
 
 Domyka łańcuch uziemienia G-STK-1 „do ostatniego klika": konfiguracja układu
-sieci nN (``substation.meta.nn_earthing_system``) + impedancja transformatora
+sieci nN (``Transformer.lv_earthing_system``, W5-A — brak = odmowa nazwana,
+nigdy domyślny TN-C-S) + impedancja transformatora
 (z uk%/Sn/Ulv/Pk, składowa zgodna z grupą połączeń — zob. niżej) + REALNA
 trasa kablowa (P0.6) + upstream Thevenin sieci SN (P0.6) → impedancja pętli
 zwarcia w DOWOLNYM punkcie nN i prąd zwarcia jednofazowego Ik. Ochrona
@@ -34,18 +35,21 @@ transformatora, którego szyna nN jest ich korzeniem.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from typing import Any
 
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel, Substation, Transformer
+from enm.nazwy_elementow import nazwa_elementu
+from enm.slownik_komunikatow import opis_obiektu
 from enm.zero_sequence_transformer import (
     ZeroSeqConnection,
     build_transformer_zero_seq_model,
 )
 from network_model.core.graph import NetworkGraph
 from network_model.core.ybus import S_BASE_MVA
+from network_model.pochodne import kv_na_v, napiecie_fazowe_v
+from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, pasmo_napieciowe, w_pasmie_nn
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
     LoopImpedanceComponent,
@@ -62,6 +66,7 @@ from network_model.solvers.fault_loop_iec60364 import (
     compute_fault_loop,
 )
 from network_model.solvers.short_circuit_core import build_zbus
+from solver_input.uklad_sieci_nn import typ_sieci_solvera, uklad_tn
 
 from .route import (
     LvBusPath,
@@ -73,15 +78,9 @@ from .route import (
     route_segments,
 )
 
-# Układ sieci nN → (typ solvera, sposób ochrony). TT/IT: metoda pętli TN nie
-# dotyczy (inna fizyka zwarcia doziemnego) — raportujemy uczciwie, nie liczymy.
-_SYSTEM_MAP: dict[str, tuple[NetworkType, ProtectionArrangement]] = {
-    "TN-S": (NetworkType.TN_S, ProtectionArrangement.PE),
-    "TN-C-S": (NetworkType.TN_C_S, ProtectionArrangement.PEN),
-    "TN-C": (NetworkType.TN_C, ProtectionArrangement.PEN),
-}
-_DEFAULT_SYSTEM = "TN-C-S"
-_NON_TN_SYSTEMS = {"TT", "IT"}
+#: Klucz `missing_data` przy braku układu sieci nN na transformatorze (W5-A §1 p. 2:
+#: brak = odmowa nazwana, NIGDY domyślka — skasowana domyślka ``"TN-C-S"``).
+BRAK_UKLADU_NN = "lv_earthing_system"
 
 # Połączenia sekwencji zerowej dające LOKALNĄ drogę uziemienia po stronie nN
 # (punkt gwiazdowy uzwojenia nN jest bezpośrednio/dostępnie uziemiony) — jedyne
@@ -251,7 +250,6 @@ class UpstreamHvThevenin:
 
     hv_bus_ref: str
     z_hv_ohm: complex
-    source_label: str
 
 
 def restrict_graph_to_island_of(graph: NetworkGraph, node_id: str) -> bool:
@@ -348,7 +346,6 @@ def compute_upstream_hv_thevenin(
         UpstreamHvThevenin(
             hv_bus_ref=hv_node_id,
             z_hv_ohm=z_kk_hv_ohm,
-            source_label="Sieć SN (upstream Thevenin)",
         ),
         [],
     )
@@ -428,26 +425,139 @@ def _upstream_thevenin_lv_component(
         z_hv_ohm=hv_equiv.z_hv_ohm,
         uhv_kv=trafo.uhv_kv,
         ulv_kv=trafo.ulv_kv,
+        label=etykieta_sieci_zasilajacej_petli(trafo),
     )
     return component, []
 
 
-def _system_for_station(station: Substation) -> str:
-    return str((station.meta or {}).get("nn_earthing_system") or _DEFAULT_SYSTEM)
+def uklad_nn_transformatora(trafo: Transformer) -> str | None:
+    """Układ sieci nN z transformatora ZASILAJĄCEGO (jedyny nośnik, W5-A) — brak = ``None``."""
+    return trafo.lv_earthing_system
 
 
-def _build_fault_loop_at_route(
+def odmowa_ukladu_nn(context: dict[str, Any], uklad: str | None) -> dict[str, Any] | None:
+    """Odmowa NAZWANA, gdy pętli TN nie da się liczyć: brak układu albo układ TT/IT.
+
+    Zwraca gotową odpowiedź widoku albo ``None`` (układ TN — licz dalej). Jedno
+    miejsce dla widoków pętli zwarcia, SWZ, doboru aparatów nN i wiązania dowodu.
+    """
+    if uklad is None:
+        return {
+            **context,
+            "status": "brak danych",
+            "missing_data": [BRAK_UKLADU_NN],
+            "reason_pl": (
+                "Transformator zasilający nie deklaruje układu uziemienia sieci nN "
+                "(TN-S/TN-C-S/TN-C/TT/IT) — pętla zwarcia TN nie jest liczona; brak danej "
+                "nie jest zastępowany żadnym układem domyślnym."
+            ),
+        }
+    if not uklad_tn(uklad):
+        return {
+            **context,
+            "status": "nie dotyczy",
+            "reason_pl": (
+                f"Układ {uklad}: ochrona przeciwporażeniowa nie opiera się na samoczynnym "
+                "wyłączeniu z pętli zwarcia TN (IEC 60364-4-41). Pętla TN nie jest liczona."
+            ),
+            "missing_data": [],
+        }
+    return None
+
+
+#: Nazwana odmowa analiz nN: strona dolna transformatora zasilającego spoza pasma nN
+#: (albo bez napięcia). Wartość addytywna — istniejące kody bez zmian.
+KOD_ODMOWY_PASMA_NN = "nn.transformer_lv_not_nn_band"
+
+
+def odmowa_pasma_nn(context: dict[str, Any], trafo: Transformer) -> dict[str, Any] | None:
+    """Odmowa NAZWANA, gdy strona dolna transformatora zasilającego nie leży w paśmie nN.
+
+    Analizy nN (pętla zwarcia TN wg IEC 60364-4-41, SWZ, dobór aparatów nN, dowód
+    obwodu nN, arkusz obwodów nN) liczone dla transformatora 110/15 kV dawały „OK,
+    U0 = 8660 V” — wynik fabrykowany. Predykat pasma: `pasma_napieciowe.w_pasmie_nn`
+    (ten sam co w bramkach operacji strony dolnej). Zwraca gotową odpowiedź widoku albo
+    ``None`` (strona dolna w paśmie nN — licz dalej).
+    """
+    napiecie = trafo.ulv_kv
+    if w_pasmie_nn(napiecie):
+        return None
+    opis = opis_obiektu(trafo, "Transformator")
+    pasmo = pasmo_napieciowe(napiecie)
+    if pasmo is None:
+        powod = (
+            f"{opis} nie ma dodatniego napięcia strony dolnej — "
+            "przynależności do pasma nN nie da się potwierdzić, więc analiza nN nie jest "
+            "liczona. Uzupełnij napięcie strony dolnej z pozycji katalogowej transformatora."
+        )
+    else:
+        powod = (
+            f"{opis} ma stronę dolną {napiecie:g} kV "
+            f"(pasmo {pasmo}) — analiza nN (pętla zwarcia TN, "
+            "samoczynne wyłączenie zasilania, dobór aparatów nN) dotyczy wyłącznie sieci nN "
+            f"({OPIS_PASMA_NN}) i nie jest liczona. Wskaż stację z transformatorem SN/nN albo "
+            "sprawdź napięcie strony dolnej w pozycji katalogowej transformatora."
+        )
+    return {
+        **context,
+        "status": "nie dotyczy",
+        "kod_odmowy": KOD_ODMOWY_PASMA_NN,
+        "reason_pl": powod,
+        "missing_data": [],
+    }
+
+
+def odmowa_analizy_nn(context: dict[str, Any], trafo: Transformer) -> dict[str, Any] | None:
+    """Jedno wejście odmów analiz nN: najpierw pasmo strony dolnej, potem układ sieci."""
+    return odmowa_pasma_nn(context, trafo) or odmowa_ukladu_nn(
+        context, uklad_nn_transformatora(trafo)
+    )
+
+
+def etykieta_transformatora_petli(trafo: Transformer) -> str:
+    """Etykieta składowej transformatora w pętli zwarcia: nazwa urządzenia z modelu.
+
+    Rolę składowej (transformator) niesie pole wejścia solvera
+    (`FaultLoopInput.transformer_impedance`) i stała kolejność składowych wyniku, więc
+    etykieta jej nie powtarza: sklejanie „Transformator SN/nN {nazwa}” dawało
+    „Transformator SN/nN Transformator SN/nN” dla nazwy domyślnej stacji i przypisywało
+    klasę SN/nN transformatorowi, którego napięcia jej nie potwierdzały. Pusta nazwa →
+    opis rodzaju z jednej reguły nazw elementów (`enm.nazwy_elementow`, karta #144), nigdy
+    identyfikator.
+    """
+    return nazwa_elementu(trafo, "transformers")
+
+
+def etykieta_sieci_zasilajacej_petli(trafo: Transformer) -> str:
+    """Etykieta składowej sieci zasilającej (Thevenin w węźle GN, sprowadzony na stronę DN).
+
+    Pasma obu stron z jednego źródła (`pasma_napieciowe.pasmo_napieciowe`) zastosowanego
+    do napięć znamionowych transformatora — nie ze stałej „SN”/„nN” domyślnej etykiety
+    `refer_upstream_impedance_to_lv_ohm`.
+    """
+    strona_gorna = pasmo_napieciowe(trafo.uhv_kv) or "zasilająca"
+    strona_dolna = pasmo_napieciowe(trafo.ulv_kv) or "strony dolnej"
+    return f"Sieć {strona_gorna} (upstream Thevenin, sprowadzone do {strona_dolna})"
+
+
+def oblicz_petle_na_trasie(
     *,
+    trafo: Transformer,
     fault_node_id: str,
     u_phase_v: float,
     net_type: NetworkType,
     protection: ProtectionArrangement,
     z_tr: TransformerLoopImpedance,
-    upstream: LoopImpedanceComponent | None,
+    upstream: LoopImpedanceComponent,
     phase_component: LoopImpedanceComponent,
     return_component: LoopImpedanceComponent,
-    transformer_label: str,
 ) -> FaultLoopResult:
+    """Pętla zwarcia na trasie punkt → transformator: JEDNO złożenie wejścia solvera.
+
+    Dzielone przez widoki pętli zwarcia, SWZ, dobór aparatów nN i dowód weryfikacji obwodu
+    nN — dotąd każdy z czterech modułów składał `FaultLoopBuildRequest` osobno, z własną
+    kopią etykiety transformatora.
+    """
     request = FaultLoopBuildRequest(
         fault_node_id=fault_node_id,
         u_nom_v=u_phase_v,
@@ -459,10 +569,10 @@ def _build_fault_loop_at_route(
         return_conductor_x_ohm=return_component.x_ohm,
         transformer_r_ohm=z_tr.r_ohm,
         transformer_x_ohm=z_tr.x_ohm,
-        transformer_label=transformer_label,
-        upstream_r_ohm=upstream.r_ohm if upstream is not None else None,
-        upstream_x_ohm=upstream.x_ohm if upstream is not None else None,
-        upstream_label=upstream.label if upstream is not None else "Sieć SN (upstream Thevenin)",
+        transformer_label=etykieta_transformatora_petli(trafo),
+        upstream_r_ohm=upstream.r_ohm,
+        upstream_x_ohm=upstream.x_ohm,
+        upstream_label=upstream.label,
         phase_label=phase_component.label,
         return_label=return_component.label,
     )
@@ -487,27 +597,22 @@ def build_station_fault_loop_view(
     if station is None:
         return {"status": "brak danych", "missing_data": ["station"], "station_ref": station_ref}
 
-    system = _system_for_station(station)
     context: dict[str, Any] = {
         "station_ref": station_ref,
         "station_name": station.name,
-        "network_system": system,
+        "network_system": None,
     }
-
-    if system in _NON_TN_SYSTEMS:
-        return {
-            **context,
-            "status": "nie dotyczy",
-            "reason_pl": (
-                f"Układ {system}: ochrona przeciwporażeniowa nie opiera się na samoczynnym "
-                "wyłączeniu z pętli zwarcia TN (IEC 60364-4-41). Pętla TN nie jest liczona."
-            ),
-            "missing_data": [],
-        }
 
     trafo, transformer_missing = resolve_station_transformer(enm, station, transformer_ref)
     if trafo is None:
         return {**context, "status": "brak danych", "missing_data": transformer_missing}
+
+    system = uklad_nn_transformatora(trafo)
+    context["network_system"] = system
+    odmowa = odmowa_analizy_nn(context, trafo)
+    if odmowa is not None:
+        return odmowa
+    assert system is not None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
@@ -517,11 +622,12 @@ def build_station_fault_loop_view(
     if upstream is None:
         return {**context, "status": "brak danych", "missing_data": upstream_missing}
 
-    net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    net_type, protection = typ_sieci_solvera(system)
+    u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
     zero_component = LoopImpedanceComponent(label="—", r_ohm=0.0, x_ohm=0.0)
 
-    result = _build_fault_loop_at_route(
+    result = oblicz_petle_na_trasie(
+        trafo=trafo,
         fault_node_id=trafo.lv_bus_ref,
         u_phase_v=u_phase_v,
         net_type=net_type,
@@ -530,7 +636,6 @@ def build_station_fault_loop_view(
         upstream=upstream,
         phase_component=zero_component,
         return_component=zero_component,
-        transformer_label=f"Transformator SN/nN {trafo.name}",
     )
 
     return {
@@ -576,24 +681,12 @@ def build_fault_loop_view_at_point(
             "bus_ref": bus_ref,
         }
 
-    system = _system_for_station(station)
     context: dict[str, Any] = {
         "station_ref": station_ref,
         "station_name": station.name,
-        "network_system": system,
+        "network_system": None,
         "bus_ref": bus_ref,
     }
-
-    if system in _NON_TN_SYSTEMS:
-        return {
-            **context,
-            "status": "nie dotyczy",
-            "reason_pl": (
-                f"Układ {system}: ochrona przeciwporażeniowa nie opiera się na samoczynnym "
-                "wyłączeniu z pętli zwarcia TN (IEC 60364-4-41). Pętla TN nie jest liczona."
-            ),
-            "missing_data": [],
-        }
 
     trafo, transformer_missing = (
         resolve_transformer_for_bus(enm, station, bus_ref)
@@ -602,6 +695,13 @@ def build_fault_loop_view_at_point(
     )
     if trafo is None:
         return {**context, "status": "brak danych", "missing_data": transformer_missing}
+
+    system = uklad_nn_transformatora(trafo)
+    context["network_system"] = system
+    odmowa = odmowa_analizy_nn(context, trafo)
+    if odmowa is not None:
+        return odmowa
+    assert system is not None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
@@ -623,10 +723,11 @@ def build_fault_loop_view_at_point(
         }
 
     phase_component, return_component = sum_phase_and_return_route(segments)
-    net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    net_type, protection = typ_sieci_solvera(system)
+    u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
-    result = _build_fault_loop_at_route(
+    result = oblicz_petle_na_trasie(
+        trafo=trafo,
         fault_node_id=bus_ref,
         u_phase_v=u_phase_v,
         net_type=net_type,
@@ -635,7 +736,6 @@ def build_fault_loop_view_at_point(
         upstream=upstream,
         phase_component=phase_component,
         return_component=return_component,
-        transformer_label=f"Transformator SN/nN {trafo.name}",
     )
 
     return {
@@ -700,24 +800,11 @@ def build_feeder_fault_loop_view_for_transformer(
             "feeders": [],
         }
 
-    system = _system_for_station(station)
     context: dict[str, Any] = {
         "station_ref": station_ref,
         "station_name": station.name,
-        "network_system": system,
+        "network_system": None,
     }
-
-    if system in _NON_TN_SYSTEMS:
-        return {
-            **context,
-            "status": "nie dotyczy",
-            "reason_pl": (
-                f"Układ {system}: ochrona przeciwporażeniowa nie opiera się na samoczynnym "
-                "wyłączeniu z pętli zwarcia TN (IEC 60364-4-41). Pętla TN nie jest liczona."
-            ),
-            "missing_data": [],
-            "feeders": [],
-        }
 
     trafo, transformer_missing = resolve_station_transformer(enm, station, transformer_ref)
     if trafo is None:
@@ -727,6 +814,13 @@ def build_feeder_fault_loop_view_for_transformer(
             "missing_data": transformer_missing,
             "feeders": [],
         }
+
+    system = uklad_nn_transformatora(trafo)
+    context["network_system"] = system
+    odmowa = odmowa_analizy_nn(context, trafo)
+    if odmowa is not None:
+        return {**odmowa, "feeders": []}
+    assert system is not None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
@@ -741,8 +835,8 @@ def build_feeder_fault_loop_view_for_transformer(
             "feeders": [],
         }
 
-    net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    net_type, protection = typ_sieci_solvera(system)
+    u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
     assignment = assign_station_lv_buses(enm, station_transformers(enm, station))
     paths = assignment.paths_by_transformer.get(trafo.ref_id, {})
@@ -782,7 +876,8 @@ def build_feeder_fault_loop_view_for_transformer(
                 )
                 continue
             phase_component, return_component = sum_phase_and_return_route(segments)
-            result = _build_fault_loop_at_route(
+            result = oblicz_petle_na_trasie(
+                trafo=trafo,
                 fault_node_id=bus_ref,
                 u_phase_v=u_phase_v,
                 net_type=net_type,
@@ -791,7 +886,6 @@ def build_feeder_fault_loop_view_for_transformer(
                 upstream=upstream,
                 phase_component=phase_component,
                 return_component=return_component,
-                transformer_label=f"Transformator SN/nN {trafo.name}",
             )
             points.append(
                 LvPointResult(
@@ -872,24 +966,11 @@ def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> d
             "feeders": [],
         }
 
-    system = _system_for_station(station)
     context: dict[str, Any] = {
         "station_ref": station_ref,
         "station_name": station.name,
-        "network_system": system,
+        "network_system": None,
     }
-
-    if system in _NON_TN_SYSTEMS:
-        return {
-            **context,
-            "status": "nie dotyczy",
-            "reason_pl": (
-                f"Układ {system}: ochrona przeciwporażeniowa nie opiera się na samoczynnym "
-                "wyłączeniu z pętli zwarcia TN (IEC 60364-4-41). Pętla TN nie jest liczona."
-            ),
-            "missing_data": [],
-            "feeders": [],
-        }
 
     transformers = station_transformers(enm, station)
     if not transformers:
@@ -899,13 +980,23 @@ def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> d
         build_feeder_fault_loop_view_for_transformer(enm, station_ref, trafo.ref_id)
         for trafo in transformers
     ]
+    # Układ sieci nN jest własnością TRANSFORMATORA (W5-A): widok stacji niesie
+    # układ pierwszego transformatora; „nie dotyczy" (TT/IT) — gdy WSZYSTKIE
+    # transformatory stacji tak deklarują.
+    context["network_system"] = per_transformer[0].get("network_system")
+    if all(view.get("status") == "nie dotyczy" for view in per_transformer):
+        return {**per_transformer[0], **context, "feeders": []}
     computable = [view for view in per_transformer if view.get("status") == "OK"]
     missing_data = sorted(
         {
             f"{trafo.ref_id}:{item}"
             for trafo, view in zip(transformers, per_transformer, strict=True)
             if view.get("status") != "OK"
-            for item in view.get("missing_data", [])
+            # Odmowa nazwana transformatora (strona dolna spoza pasma nN) nie ma braków
+            # danych — jej kod trafia do braków stacji, żeby nie znikała po cichu.
+            for item in (
+                view.get("missing_data") or ([view["kod_odmowy"]] if view.get("kod_odmowy") else [])
+            )
         }
     )
 

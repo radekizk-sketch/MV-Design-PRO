@@ -134,7 +134,7 @@ bieg solvera. Tylko ten ogon idzie do puli wątków.
 | `api/enm.py:668` | `run_short_circuit` | `request.json()` | solver SC + DB (91,3 ms) | **P1** |
 | `api/project_archive.py:132` | `import_project` | `file.read()` | rozpakowanie ZIP + zapisy DB | P2 |
 | `api/project_archive.py:184` | `preview_archive` | `file.read()` | rozpakowanie ZIP | P2 |
-| `api/incremental_archive.py:279` | `import_incremental` | `file.read()` | deserializacja delty + zapisy DB | P2 |
+| `api/incremental_archive.py` | `import_incremental` | 2× `file.read()` | rozpakowanie bazy i paczki zmian + zapisy DB (2026-09-24: końcówka `POST /projects/import/incremental`, bez stanu w procesie) | P2 |
 | `api/archive_diff.py:164` | `compare_archive_files` | 2× `file.read()` | 2× rozpakowanie ZIP + porównanie | P2 |
 | `api/xlsx_import.py:15` | `import_xlsx` | `file.read()` | parsowanie XLSX + zapisy DB | P2 |
 
@@ -179,7 +179,7 @@ pętlę zdarzeń staje się naprawdę równoległy. Przegląd stanu globalnego:
 | `enm/store.py` | `_enm_store`, `_blokady_przypadkow` | **BEZPIECZNE** — `threading.RLock` na przypadek, cały cykl odczyt→zapis w sekcji krytycznej (naprawa D4, 2026-08-01) |
 | `infrastructure/persistence/repositories/canonical_run_repository.py:111-136` | `_cached_engine`, `_cached_session_factory`, `_cached_database_url` | **DEFEKT — leniwy cache bez blokady** (naprawiany w tej karcie, §7) |
 | `api/sld_overrides.py`, `api/switchgear_config.py` | `_overrides_store`, `_config_store` | bezpieczne — końcówki zostają na pętli zdarzeń (§5) |
-| `api/incremental_archive.py` | `_last_fingerprints`, `_last_full_archive`, `_export_history` | **DEFEKT — cykl odczyt→przeliczenie→zapis bez blokady** (naprawiony, §7 pkt 2) |
+| `api/incremental_archive.py` | ~~`_last_fingerprints`, `_last_full_archive`, `_export_history`~~ | **USUNIĘTE 2026-09-24** (karta ARCHIWUM PROJEKTU): baza paczki zmian to przesłany plik archiwum, więc stanu współdzielonego — i blokad z §7 pkt 2 — już nie ma |
 | silnik SQLite dla pliku bazy | `QueuePool` + `check_same_thread=False` | **BEZPIECZNE** — pula jest wielowątkowa |
 | silnik SQLite w pamięci (`mode=memory&cache=shared`, tor testowy) | `SingletonThreadPool` + `check_same_thread=True` | **PUŁAPKA, NIE DEFEKT** — strażnik wątku jest tu zabezpieczeniem; jego zdjęcie wywraca proces (§7 pkt 3) |
 
@@ -209,7 +209,10 @@ osobno udowodnić, że katalog jest faktycznie niezmienny w czasie życia proces
    powstawała więc względem punktu odniesienia, którego w stanie nie ma, czyli
    MILCZAŁA o realnie zmienionych sekcjach. Offload importu dokłada drugiego
    mutującego. Naprawa: `threading.RLock` na projekt wokół całego cyklu w obu
-   końcówkach.
+   końcówkach. **Stan późniejszy (2026-09-24, karta ARCHIWUM PROJEKTU):** stan w
+   pamięci procesu i blokady skasowane — baza paczki zmian jest przesłanym plikiem
+   archiwum, a import zapisuje nowy projekt drogą importu pełnego; wyścig nie ma
+   już na czym powstać (dwa równoległe eksporty nie dzielą żadnego stanu).
 
 3. **`infrastructure/persistence/db.create_engine_from_url()` — PRÓBA WYCOFANA,
    i to jest wynik wart zapisania.** Pierwotnie „naprawiono" tu szum w logach
@@ -325,13 +328,21 @@ wyznacza `grep` po nazwach, nie katalog, w którym leży zmiana.
 1. `test_biegi_rownolegle_sa_deterministyczne` — K=10 zadań mieszanych:
    (a) wszystkie 200, (b) odcisk **fizyki** identyczny z biegiem szeregowym,
    (c) próg przepustowości 3,0× (§8.1).
-2. `test_lekkie_zadanie_przechodzi_w_trakcie_biegow[rozpływ|zwarcie]` — miara
-   §3: p95 sondy < połowa czasu partii, **osobno dla każdej końcówki biegu**.
-3. `test_odczyt_nie_czeka_na_bieg_analizy[rozpływ|zwarcie]` — najostrzejsza
-   postać: lekki odczyt kończy się PRZED równoległym biegiem.
+2. `test_lekkie_zadanie_obsluzone_gdy_biegi_stoja_w_oknie_solvera[rozpływ|zwarcie][K=1|K=10]`
+   — miara §3 BEZ ZEGARA (karta CI-WSPOLBIEZNOSC, 2026-09-16): K biegów parkuje
+   na spotkaniu w jedynym dyspozytorze fizyki (`_wykonaj_analize_biegu`), lekki
+   odczyt `GET /api/health` musi zostać obsłużony, ZANIM biegi zostaną zwolnione;
+   po zwolnieniu biegi liczą naprawdę. **Osobno dla każdego rodzaju biegu** i dla
+   K=1 (najostrzejsza postać) oraz K=10 (pojemność puli). Zastąpił dwa testy
+   czasowe (`test_lekkie_zadanie_przechodzi_w_trakcie_biegow` — licznik sond w
+   locie, `test_odczyt_nie_czeka_na_bieg_analizy` — porządek zakończeń z
+   częstości), których miary okazały się zależne od maszyny (CI run 34451122681:
+   5 sond na partię wobec 6–14 lokalnie; historia trzech pokoleń w docstringu
+   modułu).
 
-**Progi są względne**, nie milisekundowe — ten sam kod na wolniejszym runnerze
-CI daje ten sam wynik.
+**Próg przepustowości jest względny** (iloraz dwóch partii w tym samym procesie,
+z podłogą +2 s), a **werdykt responsywności nie ma progu czasowego w ogóle** —
+ten sam kod na wolniejszym runnerze CI daje ten sam wynik.
 
 **Dlaczego per końcówka (reguła KLASA, NIE INSTANCJA).** Pomiar zbiorczy
 przechodzi także wtedy, gdy offload cofnięto na JEDNEJ końcówce, bo druga wciąż

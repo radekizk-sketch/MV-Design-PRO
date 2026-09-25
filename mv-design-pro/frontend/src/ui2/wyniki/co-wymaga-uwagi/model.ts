@@ -15,9 +15,10 @@
  * ŹRÓDŁA PRZEKROCZEŃ (wszystkie werdykty POCHODZĄ Z BACKENDU — zero fizyki,
  * zero progów wymyślonych w UI):
  * 1. Rozpływ mocy, napięcia szyn: `usePowerFlowResultsStore.results` → szyny poza
- *    normatywnym przedziałem (`napiecePozaZakresem`, ten sam werdykt co adapter
- *    `rozplyw/adapters/rozplywAdapter.ts`; stała normatywna EN 50160 jawna w
- *    `rozplyw/strings.ts`). Element = Bus.
+ *    kryterium ostrzeżenia (`napiecePozaZakresem`, ten sam werdykt co adapter
+ *    `rozplyw/adapters/rozplywAdapter.ts`; próg WYŁĄCZNIE z `results.kryteria_napiecia`
+ *    odpowiedzi biegu — karta W3-J, `analysis.normative.kryteria_napiecia`; brak
+ *    kryteriów w wyniku = brak pozycji, nie domyślny próg). Element = Bus.
  * 2. Rozpływ mocy, zbieżność: `results.converged === false` (pole kontraktu
  *    `PowerFlowResultV1`) → pozycja bez elementu modelu, z adresem = zakładka
  *    „Zbieżność" (istniejące okno diagnostyki `ui2/wyniki/zbieznosc`).
@@ -27,7 +28,7 @@
  *    transformatorów, wytrzymałość cieplna przewodu, wiarygodność prądu
  *    zwarciowego, bilans mocy biernej, budżet strat, moc i cos φ w punkcie
  *    przyłączenia. Liczby, stany i elementy wiodące są policzone przez backend —
- *    UI wyłącznie je przepisuje (reużycie mapowań `werdykt/werdyktModel.ts`).
+ *    UI wyłącznie je przepisuje (reużycie mapowań `ocena/model.ts`).
  *
  * DEDUPLIKACJA (deterministyczna): kryterium napięciowe werdyktu jest pomijane,
  * gdy synchroniczny kolektor rozpływu (1) wniósł już pozycje per szyna — ta sama
@@ -49,11 +50,12 @@ import { usePowerFlowResultsStore } from '../../../ui/power-flow-results/store';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ElementType } from '../../../ui/types';
-import type { RodzajPrzekroczenia } from '../wzorzec';
-import { fetchWerdyktProjektowy, type PozycjaWerdyktu, type WerdyktResponse } from '../werdykt/api';
-import { rodzajPrzekroczeniaKryterium, typElementuKryterium } from '../werdykt/werdyktModel';
+import type { NazwaObiektu, RodzajPrzekroczenia } from '../wzorzec';
+import { useNazwaObiektu } from '../wzorzec/useNazwaObiektu';
+import { fetchOcenaTechniczna, type PozycjaOceny, type OdpowiedzOceny } from '../ocena/api';
+import { rodzajPrzekroczeniaKryterium, typElementuKryterium } from '../ocena/model';
 import { subskrybuj } from '../../events';
-import { fmtPU, napiecePozaZakresem, NAPIECIE_MAX_PU } from '../rozplyw/strings';
+import { fmtPU, napiecePozaZakresem } from '../rozplyw/strings';
 import { CO_WYMAGA_UWAGI_STRINGS as T } from './strings';
 
 /** Znormalizowana pozycja przekroczenia (jedna linia rejestru). */
@@ -70,7 +72,10 @@ export interface Przekroczenie {
   elementRef: string | null;
   /** Typ elementu (dla selekcji/property-grid); `null` jak wyżej. */
   elementTyp: ElementType | null;
-  /** Nazwa elementu do prezentacji (fallback = ref). */
+  /**
+   * Nazwa elementu do prezentacji — z mostu nazw modelu (karta #145), nigdy referencja;
+   * dla pozycji bez elementu: etykieta „cała sieć".
+   */
   elementNazwa: string;
   /** Co zostało przekroczone (PL, z werdyktu backendu — nie liczone tutaj). */
   opis: string;
@@ -88,19 +93,26 @@ export interface Przekroczenie {
 /**
  * Kolektor przekroczeń rozpływu: szyny z napięciem poza przedziałem. Czysty
  * (bez React) — ten sam werdykt `napiecePozaZakresem`, którego używa adapter
- * tabeli szyn (spójność werdyktu ekran↔rejestr).
+ * tabeli szyn (spójność werdyktu ekran↔rejestr). Karta W3-J: próg WYŁĄCZNIE
+ * z `wynik.kryteria_napiecia`; brak kryteriów w wyniku (starszy zapisany
+ * bieg) = uczciwy brak pozycji (nie da się ocenić bez progu), nigdy domyślna
+ * liczba.
  */
-export function przekroczeniaRozplywu(wynik: PowerFlowResultV1 | null): Przekroczenie[] {
-  if (!wynik) return [];
+export function przekroczeniaRozplywu(
+  wynik: PowerFlowResultV1 | null,
+  nazwa: NazwaObiektu,
+): Przekroczenie[] {
+  const kryteria = wynik?.kryteria_napiecia;
+  if (!wynik || !kryteria) return [];
   return wynik.bus_results
-    .filter((r) => napiecePozaZakresem(r.v_pu))
+    .filter((r) => napiecePozaZakresem(r.v_pu, kryteria))
     .map((r) => ({
       klucz: `rozplyw::napiecie::${r.bus_id}`,
       analizaPL: T.analizaRozplyw,
       elementRef: r.bus_id,
       elementTyp: 'Bus' as ElementType,
-      elementNazwa: r.bus_id,
-      opis: r.v_pu > NAPIECIE_MAX_PU ? T.opisNapiecieWysokie : T.opisNapiecieNiskie,
+      elementNazwa: nazwa(r.bus_id),
+      opis: r.v_pu > kryteria.ostrzezenie_max_pu ? T.opisNapiecieWysokie : T.opisNapiecieNiskie,
       wartosc: `${fmtPU(r.v_pu)} ${T.jednPU}`,
       rodzaj: 'napiecie' as RodzajPrzekroczenia,
     }));
@@ -137,8 +149,9 @@ export function przekroczeniaZbieznosci(wynik: PowerFlowResultV1 | null): Przekr
  * `pomijajNapiecia` — deduplikacja z kolektorem rozpływu (patrz nagłówek pliku).
  */
 export function przekroczeniaWerdyktu(
-  werdykt: WerdyktResponse | null,
+  werdykt: OdpowiedzOceny | null,
   pomijajNapiecia: boolean,
+  nazwa: NazwaObiektu,
 ): Przekroczenie[] {
   // Odpowiedź niezgodna z kontraktem (brak tablicy `pozycje`) NIE MOŻE wywrócić
   // rejestru — precedens `runStore.loadRuns` („runs is not iterable"): błąd
@@ -147,10 +160,10 @@ export function przekroczeniaWerdyktu(
   return werdykt.pozycje
     .filter((p) => p.stan === 'NARUSZONE')
     .filter((p) => !(pomijajNapiecia && p.kryterium_id === 'napiecie.odchylenie'))
-    .map((pozycja) => naPrzekroczenieWerdyktu(pozycja));
+    .map((pozycja) => naPrzekroczenieWerdyktu(pozycja, nazwa));
 }
 
-function naPrzekroczenieWerdyktu(pozycja: PozycjaWerdyktu): Przekroczenie {
+function naPrzekroczenieWerdyktu(pozycja: PozycjaOceny, nazwa: NazwaObiektu): Przekroczenie {
   const typ = typElementuKryterium(pozycja);
   const ref = typ ? pozycja.wiodacy_element_id : null;
   return {
@@ -158,7 +171,7 @@ function naPrzekroczenieWerdyktu(pozycja: PozycjaWerdyktu): Przekroczenie {
     analizaPL: T.analizaWerdykt,
     elementRef: ref,
     elementTyp: typ,
-    elementNazwa: ref ?? T.elementCalaSiec,
+    elementNazwa: ref === null ? T.elementCalaSiec : nazwa(ref),
     opis: pozycja.wiodacy_opis_pl ?? pozycja.nazwa_pl,
     wartosc: T.naruszen(pozycja.liczba_naruszen),
     rodzaj: rodzajPrzekroczeniaKryterium(pozycja),
@@ -171,6 +184,14 @@ export interface RejestrPrzekroczen {
   /** Czy istnieje jakikolwiek zakończony przebieg (rozróżnia „brak przebiegu"
    * od „sieć w normie" — uczciwe stany zerowe, FLOW §0). */
   maPrzebieg: boolean;
+  /**
+   * Wynik rozpływu istnieje, ale nie niesie `kryteria_napiecia` (starszy
+   * zapisany bieg sprzed W3-J albo zasiew bez kryteriów): napięć NIE DA SIĘ
+   * ocenić. To osobny stan ekranu „brak podstaw do oceny", nigdy „sieć w normie"
+   * (pusta lista przekroczeń bez progu nie jest dowodem poprawności — zasada
+   * normowa B-02: brak wiarygodnej podstawy = BRAK PODSTAW DO OCENY).
+   */
+  brakKryteriowNapiec: boolean;
 }
 
 /**
@@ -179,9 +200,9 @@ export interface RejestrPrzekroczen {
  * pokazywał stanu sprzed przeliczenia. Błąd/brak przypadku = brak pozycji
  * werdyktu (rejestr degraduje się do źródeł synchronicznych, bez zgadywania).
  */
-function useWerdyktPrzypadku(): WerdyktResponse | null {
+function useWerdyktPrzypadku(): OdpowiedzOceny | null {
   const caseId = useAppStateStore((s) => s.activeCaseId);
-  const [werdykt, setWerdykt] = useState<WerdyktResponse | null>(null);
+  const [werdykt, setWerdykt] = useState<OdpowiedzOceny | null>(null);
   const [odswiezenie, setOdswiezenie] = useState(0);
 
   useEffect(() => subskrybuj('wyniki-gotowe', () => setOdswiezenie((n) => n + 1)), []);
@@ -192,7 +213,7 @@ function useWerdyktPrzypadku(): WerdyktResponse | null {
       return;
     }
     let anulowane = false;
-    fetchWerdyktProjektowy(caseId)
+    fetchOcenaTechniczna(caseId)
       .then((odpowiedz) => {
         if (!anulowane) setWerdykt(odpowiedz);
       })
@@ -212,20 +233,33 @@ export function useRejestrPrzekroczen(): RejestrPrzekroczen {
   const wynikRozplywu = usePowerFlowResultsStore((s) => s.results);
   const przebiegi = useExecutionRunsStore((s) => s.runs);
   const werdykt = useWerdyktPrzypadku();
+  const nazwaObiektu = useNazwaObiektu();
 
   const przekroczenia = useMemo(() => {
-    const zRozplywu = przekroczeniaRozplywu(wynikRozplywu);
+    const zRozplywu = przekroczeniaRozplywu(wynikRozplywu, nazwaObiektu);
     return [
       ...zRozplywu,
       ...przekroczeniaZbieznosci(wynikRozplywu),
-      ...przekroczeniaWerdyktu(werdykt, zRozplywu.length > 0),
+      ...przekroczeniaWerdyktu(werdykt, zRozplywu.length > 0, nazwaObiektu),
     ];
-  }, [wynikRozplywu, werdykt]);
+  }, [wynikRozplywu, werdykt, nazwaObiektu]);
 
   // Prawda o istnieniu przebiegu: rejestr przebiegów (dowolny rodzaj analizy,
   // status DONE) albo załadowany wynik rozpływu — patrz defekt w nagłówku pliku.
   const maPrzebieg =
     wynikRozplywu !== null || przebiegi.some((przebieg) => przebieg.status === 'DONE');
 
-  return { przekroczenia, maPrzebieg };
+  const brakKryteriowNapiec = brakKryteriowRozplywu(wynikRozplywu);
+
+  return { przekroczenia, maPrzebieg, brakKryteriowNapiec };
+}
+
+/**
+ * Czy wynik rozpływu istnieje bez kryteriów napięciowych — para predykatów z
+ * `przekroczeniaRozplywu` (ten sam warunek `!kryteria` decyduje tam o pustej
+ * liście, tu o stanie „brak podstaw"): jedno źródło prawdy, bez drugiej,
+ * niezależnej definicji „brak kryteriów".
+ */
+export function brakKryteriowRozplywu(wynik: PowerFlowResultV1 | null): boolean {
+  return wynik !== null && !wynik.kryteria_napiecia;
 }

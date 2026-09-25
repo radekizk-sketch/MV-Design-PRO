@@ -28,7 +28,10 @@ from analysis.reactive_adequacy.models import (
     SourceReactiveInput,
     worst_field_quality,
 )
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_bus_results
+from enm.nazwy_elementow import zbuduj_indeks_nazw
+from network_model.nazwy import nazwa_nadana
 
 # Pola Q-granic karty przekształtnika (proweniencja werdyktu).
 _Q_LIMIT_CARD_FIELDS = ("qmin_mvar", "qmax_mvar")
@@ -132,7 +135,7 @@ def _load_inputs(snapshot: dict[str, Any]) -> list[LoadReactiveInput]:
 def _context(run: CanonicalRun) -> ReactiveAdequacyContext:
     header = (run.snapshot or {}).get("header") or {}
     return ReactiveAdequacyContext(
-        project_name=str(header.get("name")) if header.get("name") else None,
+        project_name=nazwa_nadana(header.get("name")),
         case_name=None,
         case_id=str(run.case_id) if run.case_id else None,
         run_timestamp=run.created_at,
@@ -151,11 +154,11 @@ def build_reactive_adequacy_view(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "PF":
         raise ValueError(
             "Adekwatność mocy biernej wymaga przebiegu rozpływu mocy; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
 
@@ -168,6 +171,7 @@ def build_reactive_adequacy_view(run: CanonicalRun) -> dict[str, Any]:
         sources=_source_inputs(snapshot),
         loads=_load_inputs(snapshot),
         context=_context(run),
+        nazwy=zbuduj_indeks_nazw(snapshot),
         power_flow_converged=converged,
     )
     return view.to_dict()

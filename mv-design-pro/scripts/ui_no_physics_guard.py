@@ -34,6 +34,39 @@ Wzorce ponizej sa rozszerzone o te wlasnie rodziny wielkosci; kod, ktory je
 uruchamial, zostal przeniesiony do backendu albo usuniety (patrz
 `docs/uiux/DLUG_FIZYKA_W_UI_2026-07.md` §7).
 
+MAGISTRALA-OCENA (2026-09-25) — DLACZEGO STRAZNIK NIE ZLAPAL OCENY W KREATORZE.
+Kreator magistrali SN wystawial werdykt doboru przekroju w UI
+(`magistralaModel.ts`: `pradRoboczy > izA`, `deltaUPct > limitPct` z zaszytym
+`LIMIT_SPADKU_PCT = 5`, `sumaZnanychPct += odcinek.delta_u_pct`), a guard byl
+zielony z TRZECH niezaleznych powodow: (1) wzorce widzialy wylacznie MNOZENIE
+i DZIELENIE (`[*/]`) — porownanie (`>`, `<`, `>=`, `<=`) i sumowanie (`+`, `+=`)
+wielkosci fizycznej nie byly w ogole wzorcem; (2) rodzina spadku napiecia
+znala tylko dokladny token `deltaU` (`\bdeltaU\b`), wiec `deltaUPct`
+i `delta_u_pct` przechodzily; (3) obciazalnosc wystepowala jako
+`rated_current_a` / `izA`, a rodzina doboru znala tylko `ampacity`. Klasa
+defektu to nie „ta funkcja", tylko WERDYKT ALBO SUMA wielkosci fizycznej
+liczona w warstwie prezentacji — dlatego doszla osobna rodzina wzorcow
+OCENA_PATTERNS: porownanie i sumowanie KAZDEJ rodziny fizycznej guarda
+(impedancja, zwarcie/wytrzymalosc, IDMT, dobor, THD) oraz nowej rodziny
+spadku napiecia i obciazalnosci pradowej, plus deklaracja stalej progu
+(`LIMIT_*_PCT = 5`). Wzorce oceny dzialaja na linii z WYCIETYMI literalami
+napisow (`'...'`, `"..."`, `` `...` ``) — w napisach nie ma obliczen, a
+lacznik w `data-testid` albo nawias ostry JSX nie moga udawac operatora.
+Porownanie z literalem `0` (dodatniosc danej wejsciowej) nie jest ocena.
+Pomiar po karcie: ui/** 8 surowych trafien (w tym 1 nowe: granica stron stacji
+`STATION_LV_VOLTAGE_LIMIT_KV`, klasa b), ui2/** 2 (w tym 1 nowe: wartosc
+domyslna polecenia OSD `DOMYSLNY_LIMIT_P_PCT`, klasa b); jedyne trafienie
+klasy a poza kreatorem (`sldCanonKit.tsx`: `ipOk = ip <= idyn`, znak ✓/✗
+w odczycie wezla SLD) zostalo usuniete u zrodla w tej samej karcie.
+Karta PASMO-1KV (2026-09-25) usunela stala `STATION_LV_VOLTAGE_LIMIT_KV` (granice
+stron stacji czyta jedno lustro pasm `ui2/model/pasmaNapieciowe`), wiec trafienie
+klasy b w ui/** i jego wpis listy dozwolonej zniknely.
+Czego te wzorce NIE widza (nazwane): porownania na odchyleniu napiecia
+`deviation_percent` w rendererach SLD (`Math.abs(v.deviation_percent) <= 5`,
+wiersz F8 planu AB §8) — pilnuje ich zapadka `werdykt_wyjasnialny_guard`
+(sprawdzenie 3b, MIGRACJA F8, fala WW-1), nie ten guard; porownania wewnatrz
+wstawek `${...}` szablonow (wycinane razem z napisem).
+
 WHAT IS DETECTED — strong, unambiguous network-physics computation signals:
   - Math.sqrt(3) / √3 used in an arithmetic expression (3-phase line math).
   - Math.sqrt(2) used in an arithmetic expression (peak / RMS conversion,
@@ -104,11 +137,14 @@ SCAN_DIRS = [
 ]
 
 # Explicit allowlist for frontend/src/ui/** (H-1, measured 2026-07-22).
-# Keyed by (repo-relative path, 1-based line number) — NOT whole-file, so a new
-# violation appearing on a different line of an allowlisted file is still
-# caught. Every entry carries its classification (b = false positive,
+# Keyed by (repo-relative path, TRESC trafionej linii po strip()) — NOT
+# whole-file, so a new violation appearing on a different line of an
+# allowlisted file is still caught. Klucz po tresci, nie po numerze linii
+# (odbior 2026-09-16, ta sama klasa co `ui_progi_napiecia_guard`): klucz
+# (plik, nr linii) osieracal wpisy przy kazdym przesunieciu linii bez zmiany
+# tresci; zmiana TRESCI linii nadal osieroca wpis (wlasciwy sygnal). Every entry carries its classification (b = false positive,
 # c = justified catalog-constant exception) and a one-line reason.
-ALLOWLIST: dict[tuple[str, int], str] = {
+ALLOWLIST: dict[tuple[str, str], str] = {
     # PONOWNY POMIAR 2026-07-28 (V12K-267). Bylo 18 wpisow / 22 surowych trafien,
     # jest 5 wpisow / 5 trafien. Trzynascie wpisow wskazywalo na
     # station-der/protection-catalogs.ts (katalog przekladnikow napieciowych VT).
@@ -128,60 +164,72 @@ ALLOWLIST: dict[tuple[str, int], str] = {
     # docs/v12xx/REJESTR_KONFLIKTOW.md) skasowala cala biblioteke kontraktow
     # (zero konsumentow zmierzone na obu galeziach). Pomiar bazowy 16 -> 13.
     # sldCanonKit.tsx — string template building a display label.
-    (
-        "frontend/src/ui/sld/v2/station-rozdzielnia/canon/sldCanonKit.tsx",
-        55,
-    ): "b: string template building a display label ('VT . ${primary}/root3'), computes nothing",
     # ozeTypes.ts — trailing comment documenting a field's meaning.
-    (
-        "frontend/src/ui/sld/v2/station-rozdzielnia/companions/ozeTypes.ts",
-        49,
-    ): "b: trailing line comment documenting a field's meaning, not code",
     # =========================================================================
     # K7-B (2026-07-31) — trafienia NOWYCH wzorcow (rodzina zwarciowa / IDMT /
     # dobor / THD). Pomiar PO przeniesieniu i usunieciu fizyki: ui/** 18 surowych
     # trafien / 14 unikalnych linii, ui2/** 1; 0 klasy (a). Kazdy wpis nazywa
     # swoja klase i powod.
     # =========================================================================
+    # KD-1 (2026-07-31): numer wiersza zdryfował po wcześniejszych edycjach
+    # pliku — guard był CZERWONY na gałęzi bazowej. Wpis dotyczy TEGO SAMEGO
+    # napisu (opis analizy w katalogu ekranów), tylko pod aktualnym wierszem.
+    # CV-4.2 (2026-09-05): kolejny dryf o 1 wiersz (dodanie `activeCaseId`
+    # z `useAppStateStore` WCZEŚNIEJ w pliku, przy przepięciu P12 na bieg
+    # kanoniczny) — TEN SAM napis, wiersz 2633 → 2632.
+    # K2 (2026-09-09): kolejny dryf o 1 wiersz (usunięcie case 'E-39'/importu
+    # ReferenceNetworkSurface WCZEŚNIEJ w pliku) — TEN SAM napis, wiersz 2632 → 2631.
+    # Karta S-1/S-4 (W6-0): kolejny dryf o 1 wiersz (rozwinięcie komentarza
+    # `ComplianceSurface` WCZEŚNIEJ w pliku, usunięcie literału `no_module`
+    # z prozy — no_module_zero_guard) — TEN SAM napis, wiersz 2631 → 2632.
+    # Karta WB-ROZPLYW: numer wiersza zdryfował po dopisaniu kontraktu
+    # `branch_flow_trace`/hooka `useRozplywZwarciowy` WCZEŚNIEJ w pliku
+    # (ślad WHITE BOX podziału prądu zwarciowego, TH-1). Wpis dotyczy TEGO
+    # SAMEGO napisu (skalowanie A→kA), tylko pod aktualnym wierszem.
+    # W3-G3 (2026-09-10): kolejny dryf o 1 wiersz (dodanie `ShortCircuitResults`
+    # do importu typów WCZEŚNIEJ w pliku, dla hooka `usePasmoZwarcia` — karta
+    # pasma MIN/MAX zwarcia) — TEN SAM napis, wiersz 81 → 82.
+    (
+        "frontend/src/ui/sld/v2/station-rozdzielnia/canon/sldCanonKit.tsx",
+        "return `VT · ${primary}/√3`;",
+    ): "b: string template building a display label ('VT . ${primary}/root3'), computes nothing",
+    (
+        "frontend/src/ui/sld/v2/station-rozdzielnia/companions/ozeTypes.ts",
+        "readonly usn_v: number; // secondary nominal voltage [V] (line value; phase = usn/√3)",
+    ): "b: trailing line comment documenting a field's meaning, not code",
     (
         "frontend/src/ui/canon/technicalDebtRegistry.ts",
-        71,
+        "'poetry run pytest tests/test_power_flow_gauss_seidel.py tests/test_power_flow_fast_decoupled.py tests/test_short_circuit_iec60909.py -q',",
     ): "b: string z komendą powłoki ('pytest tests/test_short_circuit_iec60909.py') — ukośnik jest separatorem ścieżki",
     (
         "frontend/src/ui/protection-curves/itCurveAdapter.ts",
-        80,
+        "current_multiple: pickup > 0 ? p.i_a / pickup : 0,",
     ): "b: normalizacja osi X wykresu TCC (krotność I/Ip) na punktach krzywej otrzymanych z backendu — skalowanie osi, wprost dozwolone w kontrakcie tego strażnika",
     (
         "frontend/src/ui/sld/v2/canvas/SldShortCircuitOverlay.tsx",
-        256,
+        ": '(brak ip/Ith)'}",
     ): "b: literał tekstowy stanu pustego ('(brak ip/Ith)') — nazywa brak danej, niczego nie liczy",
     (
-        "frontend/src/ui/sld/v2/renderer/EquipmentProofBadge.tsx",
-        30,
-    ): "b: etykieta legendy odznaki ('>80% Ith/Idyn') — napis w słowniku kolorów",
-    (
-        "frontend/src/ui/sld/v2/renderer/EquipmentProofBadge.tsx",
-        97,
-    ): "b: wykorzystanie = iloraz DWÓCH wielkości policzonych przez backend (Ith obliczone / Ith znamionowe z pakietu dowodowego aparatu) — procent, nie wzór; brak stałej normowej i brak trzeciej wielkości",
-    (
-        "frontend/src/ui/sld/v2/renderer/EquipmentProofBadge.tsx",
-        100,
-    ): "b: jw. dla kryterium dynamicznego (Idyn obliczone / Idyn znamionowe)",
-    (
         "frontend/src/ui/sld/v2/station-rozdzielnia/StationRozdzielniaSN.tsx",
-        1225,
+        "derivation DATA is preserved in the companions (model.shortCircuit /",
     ): "b: kontynuacja wielolinijkowego komentarza JSX ({/* ... */}) — poza zasięgiem reguł pomijania, które widzą pojedynczą linię",
     (
-        # KD-1 (2026-07-31): numer wiersza zdryfował po wcześniejszych edycjach
-        # pliku — guard był CZERWONY na gałęzi bazowej. Wpis dotyczy TEGO SAMEGO
-        # napisu (opis analizy w katalogu ekranów), tylko pod aktualnym wierszem.
         "frontend/src/ui/workspace/WorkspaceSurfaceRouter.tsx",
-        2633,
+        "descriptionPl: 'IEC 60909, Ik″/ip/Ith z śladem Y-bus + Z-thevenin.',",
     ): "b: opis analizy w katalogu ekranów ('IEC 60909, Ik″/ip/Ith z śladem Y-bus') — napis",
     (
         "frontend/src/ui2/wyniki/zwarcia/api.ts",
-        77,
+        "pradKA: c.ikss_partial_a / 1000,",
     ): "b: przeliczenie jednostki A→kA wartości otrzymanej z backendu (ikss_partial_a / 1000) — wprost dozwolone skalowanie jednostek",
+    # MAGISTRALA-OCENA (2026-09-25): trafienia wzorca deklaracji stalej progu, ktore NIE
+    # sa kryterium oceny wyniku sieci. Wpis granicy stron stacji
+    # (`stationBusResolution.ts`, `STATION_LV_VOLTAGE_LIMIT_KV = 0.5`) zdjety po karcie
+    # PASMO-1KV: stala usunieta, granice stron stacji czyta lustro pasm
+    # `ui2/model/pasmaNapieciowe` (sprawdzenie swiezosci listy dozwolonej).
+    (
+        "frontend/src/ui2/oze/osd/EkranOsd.tsx",
+        "const DOMYSLNY_LIMIT_P_PCT = 60;",
+    ): "b: wartosc domyslna pola formularza polecenia OSD (nastawa ograniczenia mocy czynnej wysylana do backendu), nie prog oceny wyniku",
 }
 
 # Impedance-family electrical quantities (matched inside identifiers too, e.g.
@@ -279,6 +327,63 @@ PHYSICS_PATTERNS = [
     re.compile(r"[*/+]\s*\bthd\w*\b"),
 ]
 
+# MAGISTRALA-OCENA (2026-09-25): rodzina spadku napiecia i obciazalnosci pradowej —
+# identyfikatory, ktorymi kreator magistrali wystawial werdykt w UI (`deltaUPct`,
+# `delta_u_pct`, `sumaZnanychPct` przez `skumulowanySpadek`, `rated_current_a`, `izA`).
+_VERDICT_QUANTITY_FAMILY = (
+    r"\w*(?:delta_?u|spadek|spadku|rated_?current|ampacity|obciazalnosc|iznam)\w*" r"|iz(?:_?a)?"
+)
+# Porownanie i suma dotycza KAZDEJ rodziny fizycznej guarda, nie tylko nowej.
+_OCENA_FAMILY = "|".join(
+    (
+        _VERDICT_QUANTITY_FAMILY,
+        _IMPEDANCE_FAMILY,
+        _FAULT_FAMILY,
+        _SIZING_FAMILY,
+        r"thd\w*",
+    )
+)
+_ACCESS_PATH = r"(?:[A-Za-z_$][\w$]*\??\.)*"
+# Literal `0` (a nie `0.5`) — porownanie z zerem to dodatniosc danej, nie ocena.
+_NOT_ZERO_AFTER = r"(?!0(?![.\d]))"
+_COMPARE = r"(?:>=|<=|>|<)"
+_PLUS = r"(?:\+=|(?<!\+)\+(?![+=]))"
+
+# Wzorce OCENY (werdykt albo suma wielkosci fizycznej w UI). Dzialaja na linii
+# z wycietymi literalami napisow (`_bez_napisow`). Porownanie wymaga odstepow wokol
+# operatora (styl prettier) — to odroznia je od typow generycznych (`Promise<X>`)
+# i znacznikow JSX (`<StanSpadku />`).
+OCENA_PATTERNS = [
+    # wielkosc fizyczna PRZED porownaniem (`deltaUPct > limitPct`, `izA >= prad`)
+    re.compile(
+        rf"\b(?:{_OCENA_FAMILY})\b\s*\)*\s+{_COMPARE}\s+{_NOT_ZERO_AFTER}",
+        re.IGNORECASE,
+    ),
+    # wielkosc fizyczna PO porownaniu (`prad > params.rated_current_a`, `ip <= idyn`)
+    re.compile(
+        rf"(?<!\b0)\s+{_COMPARE}\s+\(*\s*{_ACCESS_PATH}\b(?:{_OCENA_FAMILY})\b",
+        re.IGNORECASE,
+    ),
+    # suma: wielkosc fizyczna jako skladnik (`suma += o.delta_u_pct`, `s + o.deltaUPct`)
+    re.compile(rf"{_PLUS}\s*{_ACCESS_PATH}\b(?:{_OCENA_FAMILY})\b", re.IGNORECASE),
+    # (`licznik += 1` nie jest suma wielkosci — calkowity krok licznika pominiety)
+    re.compile(rf"\b(?:{_OCENA_FAMILY})\b\s*\)*\s*{_PLUS}(?!\s*\d+(?![.\w]))", re.IGNORECASE),
+    # deklaracja stalej progu z jednostka fizyczna (`const LIMIT_SPADKU_PCT = 5`)
+    re.compile(
+        r"\b(?:const|let|var)\s+[A-Z0-9_]*(?:LIMIT|PROG)[A-Z0-9_]*"
+        r"_(?:PCT|PROC|PROCENT|A|KA|V|KV|MVA|MW|KW|OHM|PU)\s*(?::[^=]*)?=\s*-?\d"
+    ),
+]
+
+# Literaly napisow wycinane przed wzorcami oceny (napis nie liczy; lacznik w testid
+# ani nawias w tekscie nie sa operatorem).
+_STRING_LITERAL = re.compile(r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"|`(?:[^`\\]|\\.)*`")
+
+
+def _bez_napisow(line: str) -> str:
+    return _STRING_LITERAL.sub("''", line)
+
+
 # Lines to skip (comments, imports, type declarations, JSDoc, description fields).
 SKIP_LINE_PATTERNS = [
     re.compile(r"^\s*//"),  # Single-line comment
@@ -335,11 +440,11 @@ def _relative_path_str(path: Path) -> str | None:
         return None
 
 
-def _is_allowlisted(path: Path, line_no: int) -> bool:
+def _is_allowlisted(path: Path, line_content: str) -> bool:
     rel = _relative_path_str(path)
     if rel is None:
         return False
-    return (rel, line_no) in ALLOWLIST
+    return (rel, line_content.strip()) in ALLOWLIST
 
 
 def scan_file(path: Path) -> list[tuple[int, str, str]]:
@@ -355,6 +460,10 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
             continue
         for pattern in PHYSICS_PATTERNS:
             if pattern.search(line):
+                violations.append((line_no, line.strip(), pattern.pattern))
+        bez_napisow = _bez_napisow(line)
+        for pattern in OCENA_PATTERNS:
+            if pattern.search(bez_napisow):
                 violations.append((line_no, line.strip(), pattern.pattern))
 
     return violations
@@ -400,7 +509,7 @@ def scan_tree(scan_dirs: list[Path]) -> list[tuple[Path, int, str, str]]:
     return [
         (path, line_no, line_content, pattern)
         for path, line_no, line_content, pattern in scan_tree_raw(scan_dirs)
-        if not _is_allowlisted(path, line_no)
+        if not _is_allowlisted(path, line_content)
     ]
 
 
@@ -426,19 +535,19 @@ def check_allowlist_freshness(
     parami, KLASA-NIE-INSTANCJA S3 — nie ma drugiej, rownoleglej definicji
     "trafienie odpowiada wpisowi").
     """
-    covered: set[tuple[str, int]] = set()
-    for path, line_no, _content, _pattern in raw_hits:
-        if _is_allowlisted(path, line_no):
+    covered: set[tuple[str, str]] = set()
+    for path, _line_no, content, _pattern in raw_hits:
+        if _is_allowlisted(path, content):
             rel = _relative_path_str(path)
             if rel is not None:
-                covered.add((rel, line_no))
+                covered.add((rel, content.strip()))
 
     violations: list[str] = []
-    for (rel_path, line_no), reason in sorted(ALLOWLIST.items()):
-        if (rel_path, line_no) in covered:
+    for (rel_path, tresc), reason in sorted(ALLOWLIST.items()):
+        if (rel_path, tresc) in covered:
             continue
         violations.append(
-            f"[ui-no-physics-wpis-osierocony] ALLOWLIST[({rel_path!r}, {line_no})] "
+            f"[ui-no-physics-wpis-osierocony] ALLOWLIST[({rel_path!r}, {tresc!r})] "
             "nie odpowiada juz zadnemu trafieniu wzorca fizyki w dzisiejszym drzewie "
             f"— usun ten wpis (uzasadnienie bylo: {reason})"
         )
@@ -457,7 +566,7 @@ def main() -> int:
     all_violations = [
         (path, line_no, line_content, pattern)
         for path, line_no, line_content, pattern in raw_hits
-        if not _is_allowlisted(path, line_no)
+        if not _is_allowlisted(path, line_content)
     ]
     freshness_violations = check_allowlist_freshness(raw_hits)
 

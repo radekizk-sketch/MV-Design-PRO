@@ -7,6 +7,9 @@
  * Query: `?creator=pole|oze|transformator|kompensator|magistrala|odbior|zrodlo|arcflash&theme=light|dark`.
  * Sceny dowodowe OZE (karta V-A): `?creator=lom|frt|oltc|macierz` — ekrany z pełnym
  * wywodem akademickim (WHITE BOX/KaTeX) na realnych komponentach.
+ * Sceny dokumentów NC RfG (karta AB-1a Pakiet D2): `certyfikat` (widok certyfikatu),
+ * `wniosek` / `wniosek-braki` (wniosek do OSD: widok / „czego brakuje") i `pulpit-oze`
+ * (pulpit instalacji OZE); scena `macierz` daje certyfikat 422 z brakami.
  * Sceny rundy dowodowej V-B (pełne wywody na żywych ekranach wyników):
  * `kompensacja-wynik|sila-sieci|odbior-zgodnosc|estymacja|ssci|migotanie`
  * (scena „odbior-zgodnosc" = ekran „Zgodność powykonawcza"; nazwa `odbior`
@@ -15,6 +18,14 @@
  */
 
 import { createRoot } from 'react-dom/client';
+// Ten sam dostawca React Query co `main.tsx` (jeden klient z `./query-client`):
+// komponenty montowane w harnessie czytają katalogi backendu przez `useQuery`
+// (od karty FAB-J m.in. kreator OZE i snapshot audytu 2) — bez dostawcy strona
+// harnessu padała przy montażu i korzeń z `data-status` nigdy nie powstawał
+// (5 czerwonych specyfikacji `creator-screenshot` w CI). Klasa: KAŻDE wejście
+// `*-harness-main.tsx`, nie tylko kreatora.
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './query-client';
 import './ui2/theme/tokens.css';
 // Warstwa `ui/**` (powierzchnie E-2x) stoi na Tailwindzie z `index.css`; bez tego
 // arkusza scena renderuje sie BEZ STYLOW i zrzut nie pokazuje tego, co widzi projektant.
@@ -57,11 +68,177 @@ import { EkranAnalizAkademickich } from './ui2/wyniki/akademickie';
 // (defekt ze zrzutu 3/3 wlasciciela: pasek wyjezdzal poza kadr) przy realnych
 // szerokosciach 1280/1440/1920 px - jsdom ukladu nie prowadzi.
 import { WynikiWarsztat } from './ui2/spaces/wyniki/WynikiWarsztat';
-// V126-JEZYK: scena "akademickie" karmiona REALNYMI odpowiedziami solvera
-// (ta sama fixtura, na ktorej stoi straznik prezentacji) - zrzut pokazuje
-// dokladnie to, co zobaczy projektant, a nie wyidealizowana atrape.
-import odpowiedziV126 from './ui2/wyniki/akademickie/__tests__/odpowiedziSolvera.json';
-import { SekcjaSilySieci } from './ui2/oze/pulpit';
+// E2E-FULL-FIX-3 (2026-09-10): atrapy końcówek czytających STAN przypadku (committed
+// ENM, rejestr przebiegów) liczy BACKEND — `scripts/eksport_fixtur_harnessu.py` tymi
+// samymi funkcjami, co trasy; JSON w repo pilnuje `tests/ci/test_fixtury_harnessu.py`.
+import zgodnoscPrzekrojowaScenyMacierz from './harness-fixtures/generated/ncrfg_zgodnosc_przekrojowa_scena_macierz.json';
+import werdyktProjektowyScenyUwaga from './harness-fixtures/generated/werdykt_projektowy_scena_uwaga.json';
+// B-02 / W3-E (2026-09-10): katalog kart „Analizy specjalistyczne", gotowość analiz
+// (bez parametrów i z parametrami sceny) oraz werdykty scen ekranu „Ocena techniczna
+// wyników" — policzone BACKENDEM tym samym skryptem (realne biegi PF/SC złotej sieci,
+// identyfikatory biegów stabilizowane). Migawka z nazwami sieci złotej — jedno
+// miejsce z atrapą testów jednostkowych.
+import katalogAnalizV126 from './harness-fixtures/generated/katalog_analiz_v126.json';
+import gotowoscV126ScenyAkademickie from './harness-fixtures/generated/gotowosc_v126_scena_akademickie.json';
+import gotowoscV126ScenyAkademickieParametry from './harness-fixtures/generated/gotowosc_v126_scena_akademickie_parametry.json';
+import werdyktProjektowyScenyOcena from './harness-fixtures/generated/werdykt_projektowy_scena_ocena.json';
+import werdyktProjektowyScenyOcenaPrzekroczenia from './harness-fixtures/generated/werdykt_projektowy_scena_ocena_przekroczenia.json';
+// HARNESS-ZWARCIA-Z-BACKENDU (2026-09-16): sceny „zwarcia"/„zwarcia-rozplyw"
+// karmione WYŁĄCZNIE wynikami REALNEGO biegu backendu (short_circuit_sn na
+// sieci złotej `build_golden_enm`, `eksport_fixtur_harnessu.py` — DOKŁADNIE
+// tymi funkcjami, które wołają końcówki `/results/short-circuit`,
+// `/results/short-circuit/rozplyw`, `/results/short-circuit/pasmo` i
+// `/api/proof/sc3f/contributions`) — zero ręcznie wpisanych liczb fizycznych,
+// zastępuje dawne `run-sc-2`/`run-sc-th1-demo`.
+import zwarciaWynikiScenyZwarcia from './harness-fixtures/generated/zwarcia_wyniki_scena_zwarcia.json';
+import zwarciaWkladyScenyZwarcia from './harness-fixtures/generated/zwarcia_wklady_scena_zwarcia.json';
+import zwarciaRozplywScenyZwarcia from './harness-fixtures/generated/zwarcia_rozplyw_scena_zwarcia.json';
+import zwarciaPasmoScenyZwarcia from './harness-fixtures/generated/zwarcia_pasmo_scena_zwarcia.json';
+// HARNESS-RESZTA (2026-09-16): sceny "wyniki-stan-fazowy"/"wyniki-stabilnosc"
+// (E-31/E-32) karmione WYLACZNIE wynikami REALNEGO biegu backendu
+// (phase_state_sn / dynamic_stability na sieci zlotej,
+// `eksport_fixtur_harnessu.py` — DOKLADNIE tymi funkcjami, ktore woluja
+// koncowki `/results/phase-state`, `/results/dynamic-stability`,
+// `/results/automation-trace`) — zero recznie wpisanych liczb fizycznych.
+import stanFazowyScenyWyniki from './harness-fixtures/generated/stan_fazowy_scena_wyniki.json';
+import stabilnoscScenyWyniki from './harness-fixtures/generated/stabilnosc_scena_wyniki.json';
+import stabilnoscScenySlad from './harness-fixtures/generated/stabilnosc_scena_slad.json';
+// HARNESS-RESZTA (kontynuacja, 2026-09-16): sceny "sila-sieci"/"migotanie"
+// (short_circuit_sn z catalog_ref na gen_pv), "kompensacja(-wynik)"/
+// "rozplyw"/"walidacja"/"uwaga" (PF), "cieplna"/"arcflash" (reuzywaja bieg
+// kotwicy sceny "zwarcia") — WYLACZNIE realny bieg backendu.
+import silaSieciScenyWynik from './harness-fixtures/generated/sila_sieci_scena_wynik.json';
+import migotanieScenyWynik from './harness-fixtures/generated/migotanie_scena_wynik.json';
+import kompensacjaScenyWynik from './harness-fixtures/generated/kompensacja_scena_wynik.json';
+import rozplywScenyWynik from './harness-fixtures/generated/rozplyw_scena_wynik.json';
+import walidacjaScenyWynik from './harness-fixtures/generated/walidacja_scena_wynik.json';
+import cieplnaScenyWynik from './harness-fixtures/generated/cieplna_scena_wynik.json';
+import cieplnaScenyDowody from './harness-fixtures/generated/cieplna_scena_dowody.json';
+import arcflashScenyWynik from './harness-fixtures/generated/arcflash_scena_wynik.json';
+import przegladWiarygodnosciKatalogu from './harness-fixtures/generated/przeglad_wiarygodnosci_katalogu.json';
+// HARNESS-RESZTA-2 (2026-09-17): sceny "wyniki-skladowe" (E-29) i
+// "wyniki-zbieznosc" (E-30) karmione WYLACZNIE wynikami REALNEGO biegu
+// backendu (`eksport_fixtur_harnessu.py` — DOKLADNIE tymi funkcjami, ktore
+// woluja koncowki `/results/short-circuit`, `/results/trace`, `/snapshot`
+// oraz `/power-flow-runs/{id}`, `.../results`, `.../trace`): bieg
+// `short_circuit_sn` z `fault_type: 1F` na sieci zlotej (skladowe Z1/Z2/Z0 ze
+// sladu solvera FROZEN) i bieg `PF` tej samej sieci z regulatorem OLTC na
+// transformatorze `tr_hv_sn` (iteracje Newtona-Raphsona + decyzje regulatora).
+import skladoweScenyWynik from './harness-fixtures/generated/skladowe_scena_wynik.json';
+import skladoweScenySlad from './harness-fixtures/generated/skladowe_scena_slad.json';
+import skladoweScenyMigawka from './harness-fixtures/generated/skladowe_scena_migawka.json';
+import zbieznoscScenyNaglowek from './harness-fixtures/generated/zbieznosc_scena_naglowek.json';
+import zbieznoscScenyWynik from './harness-fixtures/generated/zbieznosc_scena_wynik.json';
+import zbieznoscScenySlad from './harness-fixtures/generated/zbieznosc_scena_slad.json';
+import zbieznoscScenyMigawka from './harness-fixtures/generated/zbieznosc_scena_migawka.json';
+// HARNESS-RESZTA-2 (2026-09-17): scena "koordynacja" (E-28) — magistrala SN z
+// dwiema stacjami zbudowana TYMI SAMYMI operacjami domenowymi, ktorymi buduje ja
+// projektant; dwa biegi `short_circuit_sn` (MAX/MIN), bieg `PF`, dostepnosc
+// pakietu nastaw, nastawy metoda Hoppela, dopasowanie aparatu i wynik REALNEGO
+// analizatora koordynacji (`OvercurrentCoordinationAnalyzer` przez koncowke).
+import koordynacjaScenyMigawka from './harness-fixtures/generated/koordynacja_scena_migawka.json';
+import koordynacjaScenyZwarciaMax from './harness-fixtures/generated/koordynacja_scena_zwarcia_max.json';
+import koordynacjaScenyZwarciaMin from './harness-fixtures/generated/koordynacja_scena_zwarcia_min.json';
+import koordynacjaScenyGalezie from './harness-fixtures/generated/koordynacja_scena_galezie.json';
+import koordynacjaScenyPakietDostepnoscMax from './harness-fixtures/generated/koordynacja_scena_pakiet_dostepnosc_max.json';
+import koordynacjaScenyPakietDostepnoscMin from './harness-fixtures/generated/koordynacja_scena_pakiet_dostepnosc_min.json';
+import koordynacjaScenyNastawy from './harness-fixtures/generated/koordynacja_scena_nastawy.json';
+import koordynacjaScenyNastawyDopasowanie from './harness-fixtures/generated/koordynacja_scena_nastawy_dopasowanie.json';
+import koordynacjaScenyWynik from './harness-fixtures/generated/koordynacja_scena_wynik.json';
+import koordynacjaScenyMiejsca from './harness-fixtures/generated/koordynacja_scena_miejsca.json';
+// HARNESS-RESZTA-2: scena "porownanie" (A/B rozplywu) — dwa REALNE biegi PF
+// jednego projektu (siec zlota i ta sama siec z obciazeniem x1,6) + wynik i slad
+// `PowerFlowComparisonService`; scena "oltc" — REALNY bieg PF z opcja badania
+// `oltc_study: "sweep"` na sieci z regulatorem zaczepow.
+import porownanieScenyBiegiPf from './harness-fixtures/generated/porownanie_scena_biegi_pf.json';
+import porownanieScenyWynikPf from './harness-fixtures/generated/porownanie_scena_wynik_pf.json';
+import porownanieScenySladPf from './harness-fixtures/generated/porownanie_scena_slad_pf.json';
+import oltcScenyPrzebieg from './harness-fixtures/generated/oltc_scena_przebieg.json';
+import oltcScenyWynik from './harness-fixtures/generated/oltc_scena_wynik.json';
+// HARNESS-RESZTA-2: sceny "estymacja" (WLS) i "odbior-zgodnosc" — REALNY bieg PF
+// sieci zlotej; telemetria i protokol odbioru sa DANA WEJSCIOWA sceny (wartosc
+// modelu + nazwana odchylka), a rezydua, chi-kwadrat, odchylki i werdykty liczy
+// backend TYMI SAMYMI funkcjami, ktore wolaja koncowki.
+import estymacjaScenyWymagania from './harness-fixtures/generated/estymacja_scena_wymagania.json';
+import estymacjaScenyWynik from './harness-fixtures/generated/estymacja_scena_wynik.json';
+import odbiorZgodnoscScenyWynik from './harness-fixtures/generated/odbior_zgodnosc_scena_wynik.json';
+import odbiorZgodnoscScenyZaciski from './harness-fixtures/generated/odbior_zgodnosc_scena_zaciski.json';
+// HARNESS-RESZTA-2: sceny "frt" i "lom" — REALNE widoki backendu na REALNEJ
+// karcie przeksztaltnika i REALNYM profilu operatora NC RfG.
+import frtScenyTrajektorie from './harness-fixtures/generated/frt_scena_trajektorie.json';
+import frtScenySekwencja from './harness-fixtures/generated/frt_scena_sekwencja.json';
+// Karta #145: wpis rejestru biegu zwarciowego modelu sceny „frt" — TEN SAM bieg, z którego
+// backend policzył kontekst siły sieci sekwencji zapadów (szyna kontekstu jest w modelu sceny).
+import frtScenyPrzebiegZwarciowy from './harness-fixtures/generated/frt_scena_przebieg_zwarciowy.json';
+import lomScenyWynik from './harness-fixtures/generated/lom_scena_wynik.json';
+import odbiorScenyPradZnamionowy from './harness-fixtures/generated/odbior_scena_prad_znamionowy.json';
+// HARNESS-RESZTA-2: scena "akademickie" — REALNE biegi V12.6 na sieci zlotej
+// (koperta, wynik, slad WHITE BOX, pakiet dowodowy, raport) plus przestrzen nazw
+// katalogu rodzajow analiz; wczesniej slad/dowod/raport skladala recznie funkcja
+// `sladDemoV126` w tym pliku.
+import akademickieScenyBiegi from './harness-fixtures/generated/akademickie_scena_biegi.json';
+// HARNESS-RESZTA-2: JEDEN model stacji demo dla scen kreatorow, zbudowany TYMI
+// SAMYMI operacjami domenowymi, ktorymi buduje go projektant (GPZ 15 kV ->
+// odcinek kablowy -> stacja SN/nN z transformatorem i odplywem nN). Wczesniej
+// harness niosl ten model CZTERY RAZY, przepisany recznie.
+import stacjaDemoScenyMigawka from './harness-fixtures/generated/stacja_demo_scena_migawka.json';
+// HARNESS-RESZTA-2: migawki sieci zlotej dla scen, ktore interpretuja wyniki
+// liczone na TEJ sieci (kompensacja) oraz dla pulpitu projektu (z warunkami
+// przylaczenia w naglowku jako dana wejsciowa).
+import sieckZlotaScenyMigawka from './harness-fixtures/generated/siec_zlota_scena_migawka.json';
+import przebiegPfScenyZlotej from './harness-fixtures/generated/przebieg_pf_sceny_zlotej.json';
+import pulpitScenyMigawka from './harness-fixtures/generated/pulpit_scena_migawka.json';
+import pulpitScenyPrzebieg from './harness-fixtures/generated/pulpit_scena_przebieg.json';
+// Karta #145: migawki modeli, na których policzono wyniki scen „lom" i analiz OZE (most
+// nazw wyników nazywa obiekty z TEGO modelu), oraz odpowiedzi katalogu wartości
+// odniesienia V12.6 (`get_v126_catalog` — ta sama funkcja, którą woła końcówka).
+import lomScenyMigawka from './harness-fixtures/generated/lom_scena_migawka.json';
+import ozeAnalizScenyMigawka from './harness-fixtures/generated/oze_analiz_scena_migawka.json';
+import katalogiOdniesienV126 from './harness-fixtures/generated/katalogi_odniesien_v126.json';
+// HARNESS-RESZTA-2: scena „diagnoza" — REALNY raport silnika diagnostycznego
+// (blokada SC 1F z braku danych Z0) i REALNY bieg PF przerwany limitem iteracji.
+import diagnozaScenyDiagnostyka from './harness-fixtures/generated/diagnoza_scena_diagnostyka.json';
+import diagnozaScenyPreflight from './harness-fixtures/generated/diagnoza_scena_preflight.json';
+import diagnozaScenyPrzebieg from './harness-fixtures/generated/diagnoza_scena_przebieg.json';
+import diagnozaScenyBieg from './harness-fixtures/generated/diagnoza_scena_bieg.json';
+// HARNESS-RESZTA-2: modele scen OZE budowane operacjami domenowymi backendu
+// (`add_converter_source` + `set_der_catalog_bindings`) — moduły warsztatu
+// wytwórców front wyprowadza z nich odwzorowaniem produkcyjnym `deryZModelu`.
+import ozeScenyMigawka from './harness-fixtures/generated/oze_scena_migawka.json';
+import macierzScenyMigawka from './harness-fixtures/generated/macierz_scena_migawka.json';
+// Karta AB-1a Pakiet D2: sceny NC RfG na kontrakcie V2 — certyfikat zgodności (422 z brakami
+// w scenie `macierz`, widok dokumentu w scenie `certyfikat`), wniosek do OSD (`wniosek`,
+// `wniosek-braki`) i zgodność przypadku modelu magazynu — policzone BACKENDEM tymi samymi
+// funkcjami co trasy (`eksport_fixtur_harnessu.py`), razem z ciałami żądań, które ekrany MAJĄ
+// wysłać (para predykatów: inne żądanie → odmowa 409, nie wynik policzony dla innych danych).
+import magazynScenyMigawka from './harness-fixtures/generated/magazyn_scena_migawka.json';
+import zgodnoscPrzekrojowaScenyMagazyn from './harness-fixtures/generated/ncrfg_zgodnosc_przekrojowa_scena_magazyn.json';
+// Luka §5.3 pakietu D2: formularz wstępny biegu „co-jeśli" macierzy = wejścia modułów złożone
+// z committed ENM mostem modelu (`GET …/cases/{id}/wejscia`), policzone backendem.
+import wejsciaScenyMacierz from './harness-fixtures/generated/ncrfg_wejscia_scena_macierz.json';
+import wejsciaScenyMagazyn from './harness-fixtures/generated/ncrfg_wejscia_scena_magazyn.json';
+import type { WejsciaPrzypadkuNcRfg } from './ui2/oze/ncrfg/typy';
+import certyfikatScenyZadanie from './harness-fixtures/generated/certyfikat_scena_zadanie.json';
+import certyfikatScenyMacierzBraki from './harness-fixtures/generated/certyfikat_scena_macierz_braki.json';
+import certyfikatScenyMagazyn from './harness-fixtures/generated/certyfikat_scena_magazyn.json';
+import wniosekScenyMagazyn from './harness-fixtures/generated/wniosek_scena_magazyn.json';
+import wniosekScenyMagazynZadanie from './harness-fixtures/generated/wniosek_scena_magazyn_zadanie.json';
+import wniosekScenyMagazynPrzebiegi from './harness-fixtures/generated/wniosek_scena_magazyn_przebiegi.json';
+import wniosekScenyMacierzZadanie from './harness-fixtures/generated/wniosek_scena_macierz_zadanie.json';
+import wniosekScenyMacierzBraki from './harness-fixtures/generated/wniosek_scena_macierz_braki.json';
+import wniosekScenyMacierzPrzebiegi from './harness-fixtures/generated/wniosek_scena_macierz_przebiegi.json';
+import wiazaniaScenyPrzekladniki from './harness-fixtures/generated/wiazania_scena_przekladniki.json';
+import wiazaniaScenyFunkcjeZabezpieczen from './harness-fixtures/generated/wiazania_scena_funkcje_zabezpieczen.json';
+// HARNESS-RESZTA-2: scena „porownanie" w trybie ZABEZPIECZENIA — lista biegów,
+// wynik porównania A/B i ślad White Box z REALNYCH biegów `protection_sn`
+// (dwa warianty tej samej sieci: magistrala 0,9 km wobec 1,5 km).
+import porownanieScenyBiegiZabezpieczen from './harness-fixtures/generated/porownanie_scena_biegi_zabezpieczen.json';
+import porownanieScenyWynikZabezpieczen from './harness-fixtures/generated/porownanie_scena_wynik_zabezpieczen.json';
+import porownanieScenySladZabezpieczen from './harness-fixtures/generated/porownanie_scena_slad_zabezpieczen.json';
+import { REWIZJA_SIECI_ZLOTEJ, migawkaSieciZlotej } from './harness-fixtures/migawkaSieciZlotej';
+import { EkranOceny } from './ui2/wyniki/ocena';
+import { PulpitOze, SekcjaSilySieci } from './ui2/oze/pulpit';
+import { EkranWniosku } from './ui2/oze/wniosek';
 import { EkranRozplywu } from './ui2/wyniki/rozplyw';
 import { EkranZwarc } from './ui2/wyniki/zwarcia';
 import { EkranPorownania } from './ui2/wyniki/porownanie';
@@ -75,22 +252,18 @@ import { EkranStanuFazowego } from './ui2/wyniki/stan-fazowy';
 import { EkranStabilnosci } from './ui2/wyniki/stabilnosc';
 import { useShellStore } from './ui2/shell/useShellStore';
 import {
-  EMPTY_DER_CATALOGS,
-  EMPTY_DER_PROFILES,
-  EMPTY_DER_READINESS,
+  deryZModelu,
+  selectAllDers,
   useStationDerStore,
-  type StationDerConnection,
 } from './ui/network-build/station-der';
+import type { EnergyNetworkModel } from './types/enm';
 import { PvSourceSurface } from './ui/workspace/surfaces/DerSurfaces';
 import { HubDokumentacji } from './ui2/spaces/dokumentacja';
 import { PulpitProjektu } from './ui2/spaces/projekt';
 import { PanelDiagnozy } from './ui2/spaces/obliczenia/diagnoza';
-import {
-  diagnostykaZBrakamiFixture,
-  diagnozaNiezbieznaFixture,
-  preflightZablokowanyFixture,
-} from './ui2/spaces/obliczenia/diagnoza/__tests__/fixtures';
+import { PrzegladarkaSzablonow } from './ui2/spaces/model/szablony';
 import { EkranCoWymagaUwagi } from './ui2/wyniki/co-wymaga-uwagi';
+import { PozycjeDoPrzegladu } from './ui/catalog/PozycjeDoPrzegladu';
 import { CaseBar } from './ui2/shell/CaseBar';
 import { useShellCaseInfo } from './ui2/shell/shellStatus';
 import { useAppStateStore } from './ui/app-state';
@@ -100,883 +273,466 @@ import { useExecutionRunsStore } from './ui/study-cases/runStore';
 import { useStudyCasesStore } from './ui/study-cases/store';
 import { usePowerFlowResultsStore } from './ui/power-flow-results/store';
 import type { ExecutionRun } from './ui/study-cases/types';
+import { FIELD_ROLE_LABEL_PL } from './ui/sld/v2/station-rozdzielnia/contract';
 
 // --- Motyw ---------------------------------------------------------------
+/**
+ * Scena „pulpit": JEDEN kontrakt przebiegu zakresu K1 — czyta go i atrapa listy
+ * przebiegow (`listRuns` wolane przez `useWszystkiePrzebiegiProjektu`), i zasiew
+ * `useExecutionRunsStore`. Dwa niezalezne literaly tego samego biegu (stan sprzed
+ * tej stalej) to dwa zrodla prawdy: rozjazd identyfikatora rozspaja kafel
+ * „Ostatni przebieg" z rejestrem, a zapadka literalow harnessu liczy go dwa razy.
+ */
+const PULPIT_PRZEBIEG_K1 = {
+  // HARNESS-RESZTA-2: wpis rejestru REALNEGO biegu PF policzonego na modelu tej
+  // sceny (`pulpit_scena_przebieg.json` — `CanonicalRun.to_execution_dict`).
+  // Zakres przypadku to etykieta SCENY (lista przypadków K1/K2 niżej), więc
+  // `study_case_id` zostaje podmieniony — cała reszta (identyfikator, odcisk
+  // wejścia solvera, rewizja modelu, odcisk migawki, czasy) pochodzi z biegu.
+  ...pulpitScenyPrzebieg,
+  study_case_id: 'K1',
+} as const;
+
 const theme = new URLSearchParams(window.location.search).get('theme') === 'light'
   ? 'light_technical'
   : 'dark_scada';
 document.documentElement.setAttribute('data-theme', theme);
 document.body.style.background = theme === 'light_technical' ? '#f5f7fa' : '#07111c';
 
-// --- Podmiana fetch: dane katalogowe (bez backendu) ----------------------
-const CATALOG_FIXTURES: Record<string, unknown> = {
-  // KOMPLETNOSC-POLA-TR: `device_kind` w REALNYM kształcie kanonicznego katalogu
-  // (`catalog/repository.py` `kind_map` → WYLACZNIK/ROZLACZNIK/…). Wcześniej scena
-  // serwowała warianty angielskie (BREAKER/LOAD_SWITCH), których żywy backend nie
-  // zwraca — zrzut pokazywałby wtedy inne dane niż aplikacja, a zawężenie pickera
-  // rolą pola (readout `/bay-apparatus-kinds`) nie miałoby czego dopasować.
-  '/api/catalog/mv-apparatus-types': [
-    // REALNE pozycje katalogu APARAT_SN (`mv_switch_catalog.py`) — identyfikatory,
-    // nazwy i znamiona 1:1 z kartami producentów. Wcześniej scena serwowała
-    // wymyślone `ap-1`…`ap-4`: zrzut wyglądał poprawnie, ale walidator backendu
-    // odrzucał każdą taką konfigurację (pozycja spoza katalogu), więc werdykt na
-    // zrzucie dowodowym nie znaczył nic. Atrapa ma odwzorowywać katalog, nie go
-    // udawać.
-    { id: 'sw-cb-abb-vd4-17kv-630a', name: 'ABB VD4 17.5 kV 630 A', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
-    { id: 'sw-ls-schneider-rm6-17kv-400a', name: 'Schneider RM6 17.5 kV 400 A', device_kind: 'ROZLACZNIK', u_n_kv: 17.5, i_n_a: 400, breaking_capacity_ka: 20 },
-    { id: 'sw-fuse-eti-vv-17kv-63a', name: 'ETI VV 17.5 kV 63 A', device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY', u_n_kv: 17.5, i_n_a: 63 },
-    { id: 'sw-ds-abb-ojs-17kv-630a', name: 'ABB OJS 17.5 kV 630 A', device_kind: 'ODLACZNIK', u_n_kv: 17.5, i_n_a: 630 },
-    // MINI-RMU-CAD: REKLOZER — rodzaj dopuszczony przez backend dla pól liniowych
-    // (`BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE`: IN/OUT/FEEDER), którego scena NIE
-    // serwowała: zawężenie roli je przepuszczało, ale lista była pusta z tego
-    // rodzaju, więc zrzut nie mógł pokazać pola liniowego z reklozerem. Pozycja
-    // odwzorowuje realny wpis katalogu (`mv_switch_catalog.py` SWITCH_RECLOSERS).
-    { id: 'sw-rec-abb-rec615-17kv-630a', name: 'ABB REC615 17,5 kV 630 A', device_kind: 'REKLOZER', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 12.5 },
-  ],
-  // Zawężenie rodzaju aparatu per rola pola — lustro `BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE`.
-  '/api/catalog/bay-apparatus-kinds': {
-    IN: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
-    OUT: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
-    FEEDER: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
-    TR: ['ROZLACZNIK_BEZPIECZNIKOWY', 'WYLACZNIK'],
-    COUPLER: ['WYLACZNIK', 'ROZLACZNIK'],
-    MEASUREMENT: ['ODLACZNIK'],
-    OZE: ['WYLACZNIK', 'ROZLACZNIK'],
-  },
-  '/api/catalog/bay-protection-codes': {
-    IN: ['51', '50', '51N'],
-    OUT: ['51', '50', '51N', '67N'],
-    FEEDER: ['51', '50', '51N', '67N'],
-    TR: ['87T', '51', '50', '49', '63', '26'],
-    COUPLER: ['51', '50'],
-    MEASUREMENT: [],
-  },
-  '/api/catalog/manufacturers': [
-    { manufacturer_ref: 'ZPUE_WLOSZCZOWA', name: 'ZPUE Włoszczowa', country: 'PL', status: 'verified', source_refs: ['katalog'], notes_pl: null },
-    // ABB — producent z kanonu katalogu (`switchgear/manufacturer.py`), status
-    // `requires_catalog`. W ŻYWEJ aplikacji jest wybieralny, bo ma kompletne
-    // szablony pól (13 rekordów), a nie dzięki statusowi producenta; atrapa niżej
-    // niesie dwa z nich, żeby scena zachowywała się jak aplikacja.
-    { manufacturer_ref: 'ABB', name: 'ABB Ltd.', country: 'CH', status: 'requires_catalog', source_refs: [], notes_pl: null },
-  ],
-  '/api/catalog/mv-protection-device-types': [
-    { id: 'rel-mv-1', name: 'Zabezpieczenie nadprądowe SN', vendor: 'ABB' },
-  ],
-  '/api/catalog/transformer-types': [
-    { id: 'tr-sn-nn-15-04-630kva-dyn11', name: 'Transformator 630 kVA 15/0,4 kV Dyn11', rated_power_mva: 0.63, voltage_hv_kv: 15, voltage_lv_kv: 0.4, uk_percent: 4.5, pk_kw: 6.5, vector_group: 'Dyn11' },
-    { id: 'tr-sn-nn-15-04-400kva-dyn11', name: 'Transformator 400 kVA 15/0,4 kV Dyn11', rated_power_mva: 0.4, voltage_hv_kv: 15, voltage_lv_kv: 0.4, uk_percent: 4.0, pk_kw: 4.6, vector_group: 'Dyn11' },
-  ],
-  '/api/catalog/switchgear-families': [
-    // DWA REKORDY CELOWO NIEKOMPLETNE (V12K-259, rozszerzone karta K-J). Rekord
-    // ponizej niesie TYLKO napiecia sieci — brakuje mu drugiego pola napieciowego;
-    // kolejny nie niesie ZADNEGO. To sa przypadki GRANICZNE, ktore wywracaly caly
-    // kreator bialym ekranem (`.length` na `undefined`). Po rozdzieleniu pola na
-    // dwa scena musi cwiczyc OBIE polowy normalizacji osobno — inaczej usuniecie
-    // domkniecia jednego pola przechodziloby na zielono.
-    { switchgear_family_ref: 'zpue_rotoblok', family_name: 'Rotoblok SVS', manufacturer_ref: 'ZPUE', network_voltages_kv: [15, 20] },
-    { switchgear_family_ref: 'abb_unigear', family_name: 'UniGear ZS1', manufacturer_ref: 'ABB' },
-    // KONFIGURATOR-POL-RMU (S3): rodziny producenta w KSZTAŁCIE REALNEJ ODPOWIEDZI
-    // `GET /api/catalog/switchgear-families` — refy kanonu (`ZPUE_WLOSZCZOWA__*`),
-    // klasy znamionowe z kart producenta i WYLICZANY `tor_konfiguracji`. Atrapa
-    // musi nieść to pole, bo krok pól rozgałęzia się właśnie na nim; poprzedni
-    // rekord opisywał Rotoblok jako RMU w izolacji SF₆ (karta ZPUE mówi:
-    // rozdzielnica wnętrzowa, izolacja powietrzna), więc scena ćwiczyła tor,
-    // którego ta rodzina nie ma.
-    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__ROTOBLOK', family_name: 'Rotoblok', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [15, 20], um_classes_kv: [17.5, 24], rated_current_options: [630], short_time_current_options: [16], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/rotoblok'], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
-    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR', family_name: 'TPM Air', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [], um_classes_kv: [24], rated_current_options: [630], short_time_current_options: [20], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'], insulation_type: 'air', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: null, notes_pl: null },
-    // Rodzina RMU BEZ transkrybowanych bloków — UCZCIWY STAN ZEROWY oferty.
-    //
-    // BYŁA TU RODZINA ZPUE TPM z pustym subzasobem konfiguracji. To przestało być
-    // prawdą: katalog niesie dla TPM 18 bloków fabrycznych (karta S3), a jej karta
-    // deklaruje napięcie sieci 20 kV, więc na szynie 15 kV tej sceny rodzina jest
-    // widoczna, ale NIEWYBIERALNA — scena „stanu zerowego" opierała się na rodzinie,
-    // której nie da się wskazać, i na nieistniejącym braku danych.
-    // ABB SafePlus to rodzina, dla której katalog REALNIE nie ma ani jednego bloku
-    // (0 konfiguracji), a jej klasy Um 12/17,5/24 kV obejmują szynę 15 kV.
-    { switchgear_family_ref: 'ABB__SAFEPLUS', family_name: 'SafePlus', manufacturer_ref: 'ABB', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], rated_current_options: [630, 1250], short_time_current_options: [20, 25], status: 'repo_verified', source_refs: ['https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus'], insulation_type: 'sf6', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: 'SafePlus', notes_pl: null },
-    // Rodzina bez potwierdzonej karty — WIDOCZNA, ale niewybieralna. Producentem
-    // UniSec jest ABB (kanon `families.py`), nie ZPUE: atrapa przypisywała wyrób
-    // jednego producenta drugiemu, czyli podawała na ekranie nieprawdziwą ofertę.
-    { switchgear_family_ref: 'ABB__UNISEC', family_name: 'UniSec', manufacturer_ref: 'ABB', network_voltages_kv: [], um_classes_kv: [24], rated_current_options: [], short_time_current_options: [], status: 'requires_catalog', source_refs: [], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
-  ],
-  // Subzasób konfiguracji fabrycznych: bloki ZPUE TPM Air w nomenklaturze
-  // PRODUCENTA (L — rozłącznik liniowy 630 A, T — rozłącznik z bezpiecznikami
-  // 250 A, W — wyłącznik 630 A). Szerokości nie ma na stronie produktowej, więc
-  // `total_width_mm` zostaje `null` — atrapa nie zmyśla milimetra.
-  '/api/catalog/switchgear-families/ZPUE_WLOSZCZOWA__TPM_AIR/factory-configurations': [
-    {
-      configuration_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR__LLT',
-      switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR',
-      code: 'LLT',
-      name_pl: 'Blok kabel-kabel-transformator',
-      units: [
-        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
-        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
-        { unit_code: 'T', unit_name_pl: 'Jednostka transformatorowa (rozłącznik z bezpiecznikami 250 A)', bay_kind: 'transformatorowe', apparatus_kinds: ['switch_disconnector', 'fuse_set'], width_mm: null },
-      ],
-      unit_sequence: 'L-L-T',
-      total_width_mm: null,
-      source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'],
-      notes_pl: null,
-    },
-    {
-      configuration_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR__LL',
-      switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR',
-      code: 'LL',
-      name_pl: 'Blok kabel-kabel',
-      units: [
-        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
-        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
-      ],
-      unit_sequence: 'L-L',
-      total_width_mm: null,
-      source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'],
-      notes_pl: null,
-    },
-  ],
-  // Rodzina RMU, dla której katalog NIE MA ANI JEDNEGO bloku — pusta lista jest tu
-  // odwzorowaniem stanu katalogu (`GET .../ABB__SAFEPLUS/factory-configurations`
-  // zwraca 0 pozycji), a nie wygodą sceny.
-  '/api/catalog/switchgear-families/ABB__SAFEPLUS/factory-configurations': [],
-  '/api/catalog/lv-apparatus-types': [
-    { id: 'lv-1', name: 'Wyłącznik nN 630A', u_n_kv: 0.4, i_n_a: 630 },
-  ],
-  '/api/catalog/pv-inverter-types': [
-    { id: 'pv-1', name: 'Falownik PV 900 kVA', manufacturer: 'SMA', un_kv: 0.4, s_n_kva: 1000, p_max_kw: 900, cos_phi_min: 0.9, cos_phi_max: 1.0, ptpiree_status: 'POWIAZANY', ptpiree_certificate_ref: 'WOŚ/2024/PV-900', ptpiree_document_number: 'DOC-PV-900', ptpiree_wos_version: '2.1', ptpiree_source_url: 'https://ptpiree.pl' },
-  ],
-  '/api/catalog/bess-inverter-types': [
-    { id: 'bess-1', name: 'Magazyn 1 MW / 2 MWh', manufacturer: 'Tesla', un_kv: 0.4, s_n_kva: 1100, p_charge_kw: 1000, p_discharge_kw: 1000, e_kwh: 2000, ptpiree_status: 'POWIAZANY', ptpiree_certificate_ref: 'WOŚ/2024/BESS-1M' },
-  ],
-  '/api/catalog/wind-inverter-types': [
-    { id: 'fw-1', name: 'Turbina wiatrowa 2 MW', manufacturer: 'Vestas', kind: 'WIND', un_kv: 0.69, sn_mva: 2.2, pmax_mw: 2.0, qmin_mvar: -0.7, qmax_mvar: 0.7 },
-  ],
-  '/api/catalog/cable-types': [
-    { id: 'kab-120', name: 'XRUHAKXS 1×120', r_ohm_per_km: 0.253, x_ohm_per_km: 0.118, c_nf_per_km: 230, rated_current_a: 255, voltage_rating_kv: 15, cross_section_mm2: 120, conductor_material: 'AL', insulation_type: 'XLPE', standard: 'HD 620 S1', max_temperature_c: 90, number_of_cores: 1, return_conductor_ith_1s_a: 12000 },
-    { id: 'kab-240', name: 'XRUHAKXS 1×240', r_ohm_per_km: 0.125, x_ohm_per_km: 0.105, c_nf_per_km: 300, rated_current_a: 400, voltage_rating_kv: 15, cross_section_mm2: 240, conductor_material: 'AL', insulation_type: 'XLPE', standard: 'HD 620 S1', max_temperature_c: 90, number_of_cores: 1, return_conductor_ith_1s_a: 16000 },
-  ],
-  '/api/catalog/line-types': [
-    { id: 'lin-70', name: 'AFL-6 70', r_ohm_per_km: 0.443, x_ohm_per_km: 0.36, b_us_per_km: 2.7, rated_current_a: 290, voltage_rating_kv: 15, cross_section_mm2: 70, conductor_material: 'AFL', standard: 'PN-EN 50182', max_temperature_c: 80 },
-    { id: 'lin-120', name: 'AFL-6 120', r_ohm_per_km: 0.258, x_ohm_per_km: 0.35, b_us_per_km: 2.8, rated_current_a: 410, voltage_rating_kv: 15, cross_section_mm2: 120, conductor_material: 'AFL', standard: 'PN-EN 50182', max_temperature_c: 80 },
-  ],
-  // Fala P-4/P-5 (karta Z-2) — katalogi dla 9 nowych kreatorów ui2.
-  '/api/catalog/source-system-types': [
-    { id: 'sys-agr-1', name: 'Agregat prądotwórczy 200 kVA', manufacturer: 'SDMO', voltage_rating_kv: 0.4, sk3_mva: 1.2, ik3_ka: 1.73 },
-  ],
-  '/api/catalog/branch-point-types': [
-    { id: 'bp-slup-1', name: 'Słup rozgałęźny SN z rozłącznikiem', kind: 'BRANCH_POLE', medium: 'LINE_OVERHEAD', switch_device_kind: 'ROZLACZNIK', switch_rated_current_a: 400, branch_ports_count: 2 },
-    { id: 'bp-zksn-1', name: 'ZKSN 2-polowe', kind: 'ZKSN', medium: 'CABLE', switch_device_kind: 'ROZLACZNIK', switch_rated_current_a: 630, branch_ports_count: 2 },
-  ],
-  '/api/catalog/protection/device-types': [
-    { id: 'rel-1', name_pl: 'Zabezpieczenie nadprądowe uniwersalne', vendor: 'SEL', model: '751A', rated_current_a: 5 },
-    { id: 'ABB_REB670', name_pl: 'ABB Relion REB670', params: { vendor: 'ABB', model: 'Relion REB670' } },
-  ],
-  '/api/catalog/ct-types': [
-    { id: 'ct-1', name: 'CT 300/5', ratio_primary_a: 300, ratio_secondary_a: 5, accuracy_class: '5P20', burden_va: 15 },
-    // REALNE wpisy katalogu backendu (V12K-242) — scena „wiazania" pokazuje nazwy,
-    // ktore projektant zobaczy w zywej aplikacji, a nie etykiete zmyslona na potrzeby zrzutu.
-    { id: 'ct_200_5_5p10_10va_abb', name: 'CT 200/5 A kl. 5P10 10 VA', manufacturer: 'ABB', ratio_primary_a: 200, ratio_secondary_a: 5, accuracy_class: '5P10', burden_va: 10, application: 'protection', accuracy_limit_factor: 10 },
-    { id: 'ct_150_1_0_5_10va_abb', name: 'CT 150/1 A kl. 0.5 10 VA', manufacturer: 'ABB', ratio_primary_a: 150, ratio_secondary_a: 1, accuracy_class: '0.5', burden_va: 10, application: 'metering', accuracy_limit_factor: null },
-  ],
-  '/api/catalog/vt-types': [
-    { id: 'vt-1', name: 'VT 15/0,1 kV', ratio_primary_v: 15000, ratio_secondary_v: 100, accuracy_class: '0.5' },
-    { id: 'vt_10kv_100v_05_abb', name: 'VT 10/0,1 kV kl. 0.5', manufacturer: 'ABB', ratio_primary_v: 10000, ratio_secondary_v: 100, accuracy_class: '0.5' },
-  ],
-};
+// --- Podmiana fetch: dane katalogowe -------------------------------------
+// Karta FAB-L (§0 L6, 2026-09-05): USUNIĘTE — `CATALOG_FIXTURES` mockowało 18
+// tras katalogowych bezstanowych/deterministycznych (mv-apparatus-types,
+// bay-apparatus-kinds, bay-protection-codes, manufacturers,
+// mv-protection-device-types, transformer-types, switchgear-families +
+// factory-configurations, lv-apparatus-types, pv/bess/wind-inverter-types,
+// cable-types, line-types, source-system-types, branch-point-types,
+// protection/device-types, ct-types, vt-types) — częściowo REALNYMI danymi
+// (1:1 z backendem), częściowo identyfikatorami ZMYŚLONYMI (`pv-1`, `bess-1`,
+// `fw-1`, `rel-1`, `ct-1`, `vt-1`, `lv-1`, `kab-120`…), które walidator
+// backendu odrzucał, gdy scena próbowała je faktycznie zapisać. Druga kopia
+// katalogu, który backend i tak serwuje deterministycznie — ten sam defekt
+// klasy, który E2E-FULL-FIX (2026-09-05) zamknął dla `/api/ncrfg-tests/catalog`
+// (patrz komentarz przy `originalFetch` niżej). Trasy idą dziś do REALNEGO
+// backendu przez proxy Vite (`vite.config.ts`) — brak wpisu w tej funkcji
+// oznacza właśnie to (fallthrough do `originalFetch` na końcu pliku).
+// Dane scen, które odwoływały się do zmyślonych identyfikatorów, przepisane na
+// identyfikatory realne (patrz historia zmian tej karty) — parytet pilnowany
+// testem `backend/tests/e2e/test_creator_harness_katalogi_parytet.py`.
 
-// --- Fixture'y scen dowodowych E-29..E-32 (karta Z-1) ----------------------
-// Wartości przepisane 1:1 z kontraktów backendu (te same kształty, co w testach
-// jednostkowych modułów). ZERO fizyki w harnessie — liczby pochodzą z solvera/
-// śladu/snapshotu; harness jedynie serwuje odpowiedzi zamiast żywego backendu.
-
-// E-29 „Składowe symetryczne i sieć zerowa" (ui2/wyniki/skladowe):
-//  short-circuit (bilans F1 + werdykt), trace (krok „Zk" ze składowymi Z1/Z2/Z0),
-//  snapshot (uziemienie punktu neutralnego).
-const SKLADOWE_WYNIK = {
-  run_id: 'run-1f',
-  rows: [
-    {
-      target_id: 'node-1',
-      element_id: 'bus/gpz/sn',
-      target_name: 'Szyna GPZ',
-      // Liczby SPÓJNE ze składowymi śladu (Z1=Z2=0,1+j0,4; Z0=0,3+j0,9):
-      // ΣZ = 0,5+j1,7 → |Zk|=1,7720 Ω; Ik1″=√3·c·Un/|ΣZ|=√3·1,1·15000/1,7720=16,128 kA;
-      // X/R=1,7/0,5=3,400; κ=1,02+0,98·e^(−3·0,5/1,7)=1,4255; ip=κ·√2·Ik″=32,51 kA.
-      ikss_ka: 16.128,
-      ip_ka: 32.51,
-      ith_ka: 16.2,
-      sk_mva: 419.0,
-      fault_type: '1F',
-      flags: [],
-      rk_ohm: 0.5,
-      xk_ohm: 1.7,
-      zk_ohm: 1.772,
-      xr_ratio: 3.4,
-      kappa: 1.4255,
-      c_factor: 1.1,
-      tk_s: 1.0,
-      reporting_status: 'reportable',
-      reporting_status_pl: 'raportowalny',
-      proof_status_pl: 'pelny',
-      reporting_limitations: [],
-    },
-  ],
-};
-
-const SKLADOWE_SLAD = {
-  run_id: 'run-1f',
-  snapshot_id: 'snap-1',
-  input_hash: 'hash-1',
-  catalog_context: [],
-  white_box_trace: [
-    {
-      key: 'Zk',
-      step: 1,
-      target_id: 'node-1',
-      title: 'Impedancja zastępcza w punkcie zwarcia',
-      formula_latex: 'Z_k = Z_1 + Z_2 + Z_0',
-      // Pełne podstawienie dyplomowe (wzór → liczby → wynik z jednostką),
-      // spójne z wierszem bilansu (|Zk|=1,7720 Ω).
-      substitution:
-        'Z_k = (0{,}1 + j\\,0{,}4) + (0{,}1 + j\\,0{,}4) + (0{,}3 + j\\,0{,}9) = 0{,}5 + j\\,1{,}7\\ \\Omega,\\quad |Z_k| = 1{,}7720\\ \\Omega',
-      inputs: {
-        z1_ohm: { re: 0.1, im: 0.4 },
-        z2_ohm: { re: 0.1, im: 0.4 },
-        z0_ohm: { re: 0.3, im: 0.9 },
-      },
-    },
-  ],
-};
-
-const SKLADOWE_SNAPSHOT = {
-  run_id: 'run-1f',
-  snapshot_id: 'snap-1',
-  snapshot: {
-    buses: [
-      {
-        id: 'b1',
-        ref_id: 'bus/gpz/sn',
-        name: 'Szyna GPZ',
-        tags: [],
-        meta: {},
-        voltage_kv: 15,
-        phase_system: '3ph',
-        grounding: { type: 'petersen_coil', x_ohm: 120 },
-      },
-    ],
-    transformers: [],
-  },
-};
-
-// E-30 „Zbieżność rozpływu i zaczepy" (ui2/wyniki/zbieznosc): header + wynik
-// rozpływu (summary) + ślad (iteracje + pętla OLTC).
-const ZBIEZNOSC_HEADER = {
-  id: 'run-lf-1',
-  project_id: 'proj-demo',
-  study_case_id: 'case-1',
-  status: 'FINISHED',
-  result_status: 'VALID',
-  created_at: '2026-07-20T09:59:00Z',
-  finished_at: '2026-07-20T10:00:00Z',
-  input_hash: 'hash-1',
-  converged: true,
-  iterations: 4,
-};
-
-const ZBIEZNOSC_WYNIK = {
-  result_version: '1.0',
-  converged: true,
-  iterations_count: 4,
-  tolerance_used: 1e-6,
-  base_mva: 100,
-  slack_bus_id: 'BUS-GPZ',
-  bus_results: [],
-  branch_results: [],
-  summary: {
-    total_losses_p_mw: 0.1234,
-    total_losses_q_mvar: 0.0456,
-    min_v_pu: 0.978,
-    max_v_pu: 1.012,
-    slack_p_mw: 5.4321,
-    slack_q_mvar: 1.2345,
-  },
-};
-
-const ZBIEZNOSC_SLAD = {
-  solver_version: 'load-flow-newton-raphson-v1',
-  solver_method: 'newton-raphson',
-  input_hash: 'hash-1',
-  snapshot_id: 'snap-1',
-  case_id: 'case-1',
-  run_id: 'run-lf-1',
-  init_state: {},
-  init_method: 'flat_start',
-  tolerance: 1e-6,
-  max_iterations: 50,
-  base_mva: 100,
-  slack_bus_id: 'BUS-GPZ',
-  pq_bus_ids: [],
-  pv_bus_ids: [],
-  // 4 iteracje SPÓJNE z werdyktem („zbieżny w 4 iteracjach") i tolerancją 1e-6
-  // (ostatnia norma poniżej tolerancji).
-  iterations: [
-    { k: 1, norm_mismatch: 0.5, max_mismatch_pu: 0.2 },
-    { k: 2, norm_mismatch: 0.012, max_mismatch_pu: 0.005 },
-    { k: 3, norm_mismatch: 0.00035, max_mismatch_pu: 0.00011 },
-    { k: 4, norm_mismatch: 8.7e-7, max_mismatch_pu: 2.9e-7 },
-  ],
-  converged: true,
-  final_iterations_count: 4,
-  oltc_control: {
-    regulators: [
-      {
-        branch_id: 'uuid-tr-1',
-        regulated_winding: 'HV',
-        controlled_bus_id: 'BUS-SN',
-        setpoint_kv: 15.2,
-        deadband_kv: 0.2,
-        initial_position: 0,
-        min_position: -9,
-        max_position: 9,
-      },
-    ],
-    converged: true,
-    iterations_count: 2,
-    switch_counts: { 'uuid-tr-1': 2 },
-    total_switch_count: 2,
-    final_positions: { 'uuid-tr-1': -2 },
-    initial_positions: { 'uuid-tr-1': 0 },
-  },
-};
-
-const ZBIEZNOSC_SNAPSHOT = {
-  header: { revision: 7, hash_sha256: 'abcdef1234567890' },
-  buses: [],
-  branches: [],
-  transformers: [
-    {
-      ref_id: 'TR-1',
-      name: 'TR 110/15',
-      hv_bus_ref: 'B1',
-      lv_bus_ref: 'B2',
-      sn_mva: 16,
-      uhv_kv: 110,
-      ulv_kv: 15,
-      uk_percent: 10,
-      pk_kw: 80,
-      tap_changer: {
-        regulation_type: 'OLTC',
-        regulated_winding: 'HV',
-        neutral_position: 0,
-        current_position: -1,
-        min_position: -9,
-        max_position: 9,
-        step_percent: 1.25,
-        control_mode: 'AUTOMATIC',
-        voltage_setpoint_kv: 15.2,
-        deadband_kv: 0.2,
-      },
-    },
-  ],
-  sources: [],
-  loads: [],
-  generators: [],
-  substations: [],
-  bays: [],
-  junctions: [],
-  corridors: [],
-  measurements: [],
-  protection_assignments: [],
-};
-
-// E-31 „Stan fazowy SN" (ui2/wyniki/stan-fazowy): wiersz kanoniczny (napięcia/
-// prądy/straty per faza, asymetrie + flagi solvera).
-const STAN_FAZOWY_WYNIK = {
-  run_id: 'run-ps-1',
-  rows: [
-    {
-      target_id: 'bus-1',
-      element_id: 'BUS-SN-01',
-      target_name: 'BUS-SN-01',
-      ua_kv: 8.66,
-      ub_kv: 8.61,
-      uc_kv: 8.6,
-      ia_a: 101.5,
-      ib_a: 99.8,
-      ic_a: 100.2,
-      phase_losses_kw: { A: 1.031, B: 0.996, C: 1.004 },
-      voltage_unbalance_percent: 0.42,
-      current_unbalance_percent: 12.7,
-      losses_unbalance_percent: 2.1,
-      flags: {
-        has_fault: false,
-        has_open_phase: false,
-        faulted_phases: [],
-        open_phases: [],
-        voltage_unbalance_alert: false,
-        current_unbalance_alert: true,
-        losses_unbalance_alert: false,
-      },
-      proof_ref: 'proof-ps-1',
-      proof_status: 'complete',
-      proof_status_pl: 'pełny',
-      reporting_status: 'reportable',
-      reporting_status_pl: 'raportowalny',
-      dopuszczalnosc_raportowa: true,
-      reporting_limitations: [],
-    },
-  ],
-};
-
-// E-32 „Stabilność dynamiczna" (ui2/wyniki/stabilnosc): werdykt STABLE ze
-// statusami kryteriów (checks) + ślad automatyki (zdarzenia + efekt topologii).
-const STABILNOSC_WYNIK = {
-  run_id: 'run-dyn',
-  rows: [
-    {
-      scenario_id: 'dyn-1',
-      source_id: 'src/pv/1',
-      faulted_element_id: 'line/gpz/1',
-      cleared_by_element_ids: ['cb-main'],
-      stable: true,
-      status: 'STABLE',
-      criteria_version: 'dynamic_stability_fault_clear_v1',
-      stability_index: 0.812,
-      clearing_time_ms: 120,
-      max_clearing_time_ms: 150,
-      clearing_margin_ms: 30,
-      angle_swing_deg: 65,
-      post_fault_voltage_pu: 0.97,
-      post_fault_frequency_pu: 0.99,
-      limiting_factor: 'angle_swing',
-      violated_checks: [],
-      checks: {
-        clearing_time: true,
-        angle_swing: true,
-        voltage_recovery: true,
-        frequency_recovery: true,
-      },
-      reporting_status_pl: 'raportowalny',
-      proof_status_pl: 'pelny',
-      reporting_limitations: [],
-    },
-  ],
-};
-
-const STABILNOSC_SLAD = {
-  run_id: 'run-dyn',
-  topology_effect: { network_state: 'ISLANDED_SECTION', outage_scope: 'SECTION' },
-  rows: [
-    { event_seq: 2, event_type: 'FAULT_APPLIED', element_id: 'line/gpz/1', detail: 'Fault applied' },
-    { event_seq: 1, event_type: 'AUTOMATION_STARTED', element_id: null, detail: 'Start' },
-  ],
-};
+// --- Fixture'y scen dowodowych E-29..E-32 -------------------------------
+// HARNESS-RESZTA-2 (2026-09-17): sceny E-29 „Składowe symetryczne i sieć zerowa"
+// oraz E-30 „Zbieżność rozpływu i zaczepy" karmione WYŁĄCZNIE odpowiedziami
+// REALNEGO biegu backendu (`skladoweScenyWynik`/`skladoweScenySlad`/
+// `skladoweScenyMigawka` — bieg `short_circuit_sn` z `fault_type: 1F` na sieci
+// złotej; `zbieznoscScenyNaglowek`/`zbieznoscScenyWynik`/`zbieznoscScenySlad`/
+// `zbieznoscScenyMigawka` — bieg `PF` tej samej sieci z regulatorem OLTC na
+// transformatorze `tr_hv_sn`), zaimportowanymi u góry pliku. Poprzednio oba
+// komplety były blokami JSON pisanymi RĘCZNIE: bilans 1F, składowe Z1/Z2/Z0,
+// iteracje Newtona-Raphsona i pętla OLTC wyglądały jak wynik solvera, ale
+// żaden solver ich nie policzył.
+//
+// E-31 „Stan fazowy SN" i E-32 „Stabilność dynamiczna": fixtury realnego biegu
+// (`stanFazowyScenyWyniki`/`stabilnoscScenyWyniki`/`stabilnoscScenySlad`,
+// HARNESS-RESZTA, 2026-09-16).
 
 /**
- * Scena E-28 „Koordynacja zabezpieczeń" (V12K-262). Do tej pory ekran TCC nie miał
- * ANI JEDNEJ sceny — najbardziej graficzny ekran systemu (krzywe czasowo-prądowe
- * log-log, marginesy CTI, werdykty par) nie był widziany przez żadną bramkę.
+ * Scena E-28 „Koordynacja zabezpieczeń" (V12K-262). Najbardziej graficzny ekran
+ * systemu (krzywe czasowo-prądowe log-log, marginesy CTI, werdykty par).
  *
  * Łańcuch odtworzony w całości, bo ekran go WYMAGA i nie da się go obejść:
- * zakończony bieg zwarciowy → wiersze wyniku dla szyn `bus_1`/`bus_2` → prądy
- * koordynacji (zero losowania, F-K4) → analiza → wynik z krzywymi. Kadr powstaje
- * po NATYWNYCH klikach (szablon urządzenia → uruchom analizę), a nie po wymuszeniu
- * stanu store — inaczej zrzut dowodziłby działania atrapy, nie ekranu.
- */
-/**
- * Wiersze biegow zwarciowych sceny E-28.
+ * zakończony bieg zwarciowy → wiersze wyniku → prądy koordynacji (zero
+ * losowania, F-K4) → analiza → wynik z krzywymi. Kadr powstaje po NATYWNYCH
+ * klikach (szablon urządzenia → wskazanie lokalizacji → uruchom analizę), a nie
+ * po wymuszeniu stanu store — inaczej zrzut dowodziłby działania atrapy.
  *
- * `element_id` to `ref_id` elementu ENM — DOKLADNIE ta przestrzen nazw, po ktorej
- * `pradyZBiegow` dopasowuje prady do urzadzenia (`canonical_analysis`:
- * `_build_snapshot_graph_element_context` ustawia `element_id = ref_id`).
- *
- * `c_factor` jest OBOWIAZKOWY: `podzielWierszeNaPrzypadki` klasyfikuje przypadek
- * maksymalny/minimalny wylacznie po nim (IEC 60909: c_max = 1,10, c_min = 0,95),
- * a koordynacja wymaga OBU. Wiersz bez `c_factor` nie trafia do zadnego zbioru —
- * scena bez tego pola pokazywala uczciwy, ale pusty stan „brak pradow".
+ * HARNESS-RESZTA-2 (2026-09-17): wszystkie liczby sceny pochodzą z REALNYCH
+ * biegów backendu (`harness-fixtures/generated/koordynacja_scena_*.json`) —
+ * patrz importy u góry pliku i podmieniony `fetch` niżej.
  */
-const KOORD_WIERSZE_SC_MAX = [
-  {
-    target_id: 'gpz/sekcja_a/bus_sn', element_id: 'gpz/sekcja_a/bus_sn',
-    target_name: 'GPZ Wschod — szyna SN sekcja A',
-    ikss_ka: 8.4, ip_ka: 21.0, ith_ka: 8.4, sk_mva: 218.2,
-    fault_type: '3F', c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, flags: [],
-  },
-  {
-    target_id: 'stacja_s02/bus_sn', element_id: 'stacja_s02/bus_sn',
-    target_name: 'Stacja S02 — szyna SN',
-    ikss_ka: 3.1, ip_ka: 7.6, ith_ka: 3.1, sk_mva: 80.5,
-    fault_type: '3F', c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, flags: [],
-  },
-];
 
-const KOORD_WIERSZE_SC_MIN = [
-  {
-    target_id: 'gpz/sekcja_a/bus_sn', element_id: 'gpz/sekcja_a/bus_sn',
-    target_name: 'GPZ Wschod — szyna SN sekcja A',
-    ikss_ka: 6.9, ip_ka: 17.2, ith_ka: 6.9, sk_mva: 179.3,
-    fault_type: '3F', c_factor: 0.95, un_kv: 15.0, tk_s: 1.0, flags: [],
-  },
-  {
-    target_id: 'stacja_s02/bus_sn', element_id: 'stacja_s02/bus_sn',
-    target_name: 'Stacja S02 — szyna SN',
-    ikss_ka: 2.4, ip_ka: 5.9, ith_ka: 2.4, sk_mva: 62.4,
-    fault_type: '3F', c_factor: 0.95, un_kv: 15.0, tk_s: 1.0, flags: [],
-  },
-];
-
-const KOORD_WYNIKI_GALEZI = {
-  run_id: 'run-lf-koord',
-  rows: [
-    {
-      branch_id: 'gpz/sekcja_a/bus_sn', element_id: 'gpz/sekcja_a/bus_sn',
-      name: 'Pole liniowe GPZ → S02',
-      from_bus: 'gpz/sekcja_a/bus_sn', to_bus: 'stacja_s02/bus_sn',
-      i_a: 154.0, s_mva: 4.0, p_mw: 3.9, q_mvar: 0.8, loading_pct: 38.5, flags: [],
-    },
-    {
-      branch_id: 'stacja_s02/bus_sn', element_id: 'stacja_s02/bus_sn',
-      name: 'Pole liniowe S02 → odbiory',
-      from_bus: 'stacja_s02/bus_sn', to_bus: 'stacja_s03/bus_sn',
-      i_a: 96.0, s_mva: 2.5, p_mw: 2.4, q_mvar: 0.5, loading_pct: 24.0, flags: [],
-    },
-  ],
-};
+/** Wynik analizy koordynacji zwrócony w tym biegu sceny (spójny między `/run`,
+ *  `/tcc` i pełnym wynikiem — ekran woła trzy końcówki po kolei). */
+type WynikKoordynacjiSceny = typeof koordynacjaScenyWynik;
+let wynikKoordynacjiSceny: WynikKoordynacjiSceny | null = null;
 
 /**
- * Migawka modelu przypadku — zrodlo LISTY WYBORU lokalizacji (V12K-262).
- * Tylko pola, ktore czyta `lokalizacjeKoordynacji`; `ref_id` zgodne z wierszami
- * wynikow, bo to jedna przestrzen nazw.
+ * Tożsamości zabezpieczeń są WYMYŚLANE PRZEZ EKRAN (`crypto.randomUUID()` w
+ * `ProtectionCoordinationPage.handleApplyTemplate`), więc fixtura policzona
+ * backendem nie może ich znać. Mapujemy je po `location_element_id` — tożsamość
+ * domenowa, jedyna wspólna dla obu stron. Fizyka (werdykty, marginesy, krzywe,
+ * ślad) zostaje BEZ ZMIAN z realnego biegu.
  */
-const KOORD_MIGAWKA_MODELU = {
-  header: { schema_version: '1.0', project_id: 'proj-demo' },
-  buses: [
-    {
-      id: 'b1', ref_id: 'gpz/sekcja_a/bus_sn', name: 'GPZ Wschod — szyna SN sekcja A',
-      voltage_kv: 15.0, phase_system: '3ph', tags: [], meta: {},
-    },
-    {
-      id: 'b2', ref_id: 'stacja_s02/bus_sn', name: 'Stacja S02 — szyna SN',
-      voltage_kv: 15.0, phase_system: '3ph', tags: [], meta: {},
-    },
-  ],
-  branches: [
-    {
-      id: 'l1', ref_id: 'lin/gpz_s02', name: 'Magistrala GPZ → S02',
-      from_bus_ref: 'gpz/sekcja_a/bus_sn', to_bus_ref: 'stacja_s02/bus_sn',
-      status: 'closed', type: 'line_overhead', tags: [], meta: {},
-    },
-  ],
-  transformers: [],
-  sources: [], loads: [], generators: [], substations: [], bays: [], junctions: [],
-  corridors: [], measurements: [], protection_assignments: [],
-};
-
-const KOORD_KRZYWA_NADRZEDNA = [
-  { current_a: 480, current_multiple: 1.0, time_s: 100 },
-  { current_a: 960, current_multiple: 2.0, time_s: 3.4 },
-  { current_a: 1920, current_multiple: 4.0, time_s: 1.05 },
-  { current_a: 3840, current_multiple: 8.0, time_s: 0.52 },
-  { current_a: 8400, current_multiple: 17.5, time_s: 0.33 },
-];
-
-const KOORD_KRZYWA_PODRZEDNA = [
-  { current_a: 240, current_multiple: 1.0, time_s: 100 },
-  { current_a: 480, current_multiple: 2.0, time_s: 1.9 },
-  { current_a: 960, current_multiple: 4.0, time_s: 0.58 },
-  { current_a: 1920, current_multiple: 8.0, time_s: 0.29 },
-  { current_a: 3100, current_multiple: 12.9, time_s: 0.22 },
-];
-
-const KOORD_WYNIK = {
-  run_id: 'run-koord-1',
-  project_id: 'proj-demo',
-  sensitivity_checks: [
-    {
-      device_id: 'dev-nadrzedne', analysis_current_a: 2900, pickup_current_a: 480,
-      sensitivity_ratio: 6.04, required_ratio: 1.5, verdict: 'PASS',
-      verdict_pl: 'Czułość zapewniona', notes_pl: 'Ik″ min 2,90 kA / I_pickup 480 A',
-    },
-    {
-      device_id: 'dev-podrzedne', analysis_current_a: 1200, pickup_current_a: 240,
-      sensitivity_ratio: 5.0, required_ratio: 1.5, verdict: 'PASS',
-      verdict_pl: 'Czułość zapewniona', notes_pl: 'Ik″ min 1,20 kA / I_pickup 240 A',
-    },
-  ],
-  selectivity_checks: [
-    {
-      upstream_device_id: 'dev-nadrzedne', downstream_device_id: 'dev-podrzedne',
-      analysis_current_a: 3100, t_upstream_s: 0.33, t_downstream_s: 0.22,
-      margin_s: 0.11, required_margin_s: 0.3, verdict: 'FAIL',
-      verdict_pl: 'Brak selektywności',
-      notes_pl: 'Margines CTI 0,11 s poniżej wymaganych 0,30 s przy Ik″ 3,10 kA',
-    },
-  ],
-  overload_checks: [
-    {
-      device_id: 'dev-nadrzedne', operating_current_a: 154, pickup_current_a: 480,
-      margin_ratio: 3.12, verdict: 'PASS', verdict_pl: 'Brak zadziałania',
-      notes_pl: 'I_robocze 154 A / I_pickup 480 A',
-    },
-    {
-      device_id: 'dev-podrzedne', operating_current_a: 154, pickup_current_a: 240,
-      margin_ratio: 1.56, verdict: 'PASS', verdict_pl: 'Brak zadziałania',
-      notes_pl: 'I_robocze 154 A / I_pickup 240 A',
-    },
-  ],
-  tcc_curves: [
-    {
-      device_id: 'dev-nadrzedne', device_name: 'Zabezpieczenie nadrzędne GPZ (50/51)',
-      curve_type: 'IEC_SI', pickup_current_a: 480, time_multiplier: 0.3,
-      color: '#2563eb', points: KOORD_KRZYWA_NADRZEDNA,
-    },
-    {
-      device_id: 'dev-podrzedne', device_name: 'Zabezpieczenie pola S02 (50/51)',
-      curve_type: 'IEC_SI', pickup_current_a: 240, time_multiplier: 0.18,
-      color: '#dc2626', points: KOORD_KRZYWA_PODRZEDNA,
-    },
-  ],
-  fault_markers: [
-    {
-      id: 'fm-3f', label_pl: 'Ik″ 3-fazowe (Stacja S02)', current_a: 3100,
-      fault_type: '3F', location: 'stacja_s02/bus_sn',
-    },
-    {
-      id: 'fm-1f', label_pl: 'Ik″ 1-fazowe (Stacja S02)', current_a: 1200,
-      fault_type: '1F', location: 'stacja_s02/bus_sn',
-    },
-  ],
-  overall_verdict: 'FAIL',
-  overall_verdict_pl: 'Brak selektywności w jednej parze',
-  created_at: '2026-07-28T08:10:00Z',
-  // `trace_steps` NIE JEST opcjonalne w kontrakcie (`CoordinationResult`) —
-  // backend zawsze je emituje (`protection_coordination.py`: `result.get(..., [])`).
-  // Scena bez tego pola wywracala CALY ekran bialym ekranem; od V12K-262 klient
-  // API nazywa taki rozjazd, a atrapa trzyma pelny ksztalt.
-  trace_steps: [
-    {
-      step: 'wejscia',
-      description_pl: 'Prądy zwarciowe z biegów c = 1,10 i c = 0,95; prąd roboczy z rozpływu.',
-      inputs: { ik_max_a: 8400, ik_min_a: 6900, i_rob_a: 154.0 },
-      outputs: { pary_do_sprawdzenia: 1 },
-    },
-    {
-      step: 'selektywnosc',
-      description_pl: 'Różnica czasów zadziałania pary przy prądzie zwarciowym odbioru.',
-      inputs: { t_nadrzedne_s: 0.33, t_podrzedne_s: 0.22 },
-      outputs: { delta_t_s: 0.11, wymagane_s: 0.3 },
-    },
-  ],
-  summary: {
-    total_devices: 2,
-    total_checks: 5,
-    sensitivity: { pass: 2, marginal: 0, fail: 0, error: 0 },
-    selectivity: { pass: 0, marginal: 0, fail: 1, error: 0 },
-    overload: { pass: 2, marginal: 0, fail: 0, error: 0 },
-    overall_verdict: 'FAIL',
-    overall_verdict_pl: 'Brak selektywności w jednej parze',
-  },
-};
-
-const DOBOR_FUNKCJI_WIAZANIA = {
-  generator_ref: 'der-pv-1',
-  bay_ref: 'bay-pv-1',
-  fakty: {
-    connection_side: 'SN',
-    neutral_grounding_mode: 'cewka_petersena',
-    zero_sequence_current_source: 'przekladnik_ferrantiego',
-    zero_sequence_voltage_source: 'brak',
-  },
-  dobor: {
-    wymagane: [
-      {
-        kod: '50',
-        nazwa_pl: 'Nadprądowe bezzwłoczne (I>>)',
-        podstawa_pl: 'Szybkie wyłączenie zwarć międzyfazowych w polu wytwórcy (IEC 60255-151).',
-        chroniony_obiekt_pl: 'pole wytwórcy DER-1',
-        zrodlo_pomiaru_pl: 'przekładniki prądowe fazowe pola',
-      },
-      {
-        kod: '51',
-        nazwa_pl: 'Nadprądowe zwłoczne (I>)',
-        podstawa_pl: 'Rezerwa dla zwarć o mniejszym prądzie i przeciążeń toru.',
-        chroniony_obiekt_pl: 'pole wytwórcy DER-1',
-        zrodlo_pomiaru_pl: 'przekładniki prądowe fazowe pola',
-      },
-      {
-        kod: '50G',
-        nazwa_pl: 'Ziemnozwarciowe z przekładnika ziemnozwarciowego',
-        podstawa_pl:
-          'Prąd zerowy mierzony przekładnikiem obejmującym wszystkie żyły (rodzina G, '
-          + 'nie N — wynika z zadeklarowanego toru pomiaru).',
-        chroniony_obiekt_pl: 'pole wytwórcy DER-1',
-        zrodlo_pomiaru_pl: 'przekładnik ziemnozwarciowy (Ferrantiego)',
-      },
-      {
-        kod: '27',
-        nazwa_pl: 'Podnapięciowe',
-        podstawa_pl: 'Wykrycie pracy wyspowej i zapadu napięcia (NC RfG Art. 14).',
-        chroniony_obiekt_pl: 'wytwórca DER-1',
-        zrodlo_pomiaru_pl: 'przekładnik napięciowy pola',
-      },
-      {
-        kod: '81U',
-        nazwa_pl: 'Podczęstotliwościowe',
-        podstawa_pl: 'Zabezpieczenie anty-wyspowe częstotliwościowe (NC RfG Art. 13).',
-        chroniony_obiekt_pl: 'wytwórca DER-1',
-        zrodlo_pomiaru_pl: 'przekładnik napięciowy pola',
-      },
-    ],
-    kwestie_otwarte: [
-      {
-        kod: 'protection.zero_sequence_voltage_missing',
-        opis_pl: 'Model nie opisuje toru napięcia zerowego (otwarty trójkąt albo uzwojenie resztkowe).',
-        skutek_pl:
-          'Bez niego kryterium KIERUNKOWE ziemnozwarciowe (67N) nie jest wyprowadzane — '
-          + 'w sieci kompensowanej to ono rozstrzyga kierunek zwarcia.',
-      },
-      {
-        kod: 'protection.osd_requirements_not_modelled',
-        opis_pl: 'Model nie niesie wymagań zabezpieczeniowych operatora sieci.',
-        skutek_pl: 'Zweryfikuj listę z warunkami przyłączenia przed projektem nastaw.',
-      },
-    ],
-  },
-  urzadzenie: {
-    protection_catalog_ref: 'ABB_REB670',
-    nazwa: 'ABB Relion REB670',
-    brakujace_funkcje: ['50G', '81U'],
-    ostrzezenia_przeznaczenia: [
-      'ABB Relion REB670 deklaruje funkcję 87B (różnicowe szyn zbiorczych), która należy '
-      + 'do innej strefy zabezpieczeniowej niż pole wytwórcy — sprawdź, czy to właściwy '
-      + 'wybór dla tego pola.',
-    ],
-    pokrywa_wymagania: false,
-  },
-};
-
-const DOBOR_PRZEKLADNIKOW_WIAZANIA = {
-  generator_ref: 'der-pv-1',
-  bay_ref: 'bay-pv-1',
-  wejscia: {
-    napiecie_sieci_v: 15000.0,
-    prad_roboczy_a: 308.0,
-    ik_ka: null,
-    ip_ka: null,
-    run_ref_zwarciowy: null,
-    tryb_uziemienia: 'cewka_petersena',
-    zrodlo_napiecia_zerowego: 'brak',
-    zrodlo_wejsc_urzadzenia: 'szereg_preferowany_IEC_60255_1',
-  },
-  przekladnik_pradowy: {
-    catalog_ref: 'ct_200_5_5p10_10va_abb',
-    nazwa: 'CT 200/5 A kl. 5P10 10 VA',
-    wynik: {
-      kryteria: [
-        {
-          kod: 'ct.przekladnia',
-          nazwa_pl: 'Przekładnia wobec prądu roboczego toru',
-          podstawa_pl: 'Prąd pierwotny przekładnika musi pokryć prąd roboczy toru.',
-          werdykt: 'niespelnione',
-          wymagane: '308.0 A',
-          dostepne: '200.0 A',
-          komentarz_pl:
-            'Prąd roboczy przekracza prąd pierwotny — przekładnik pracowałby w '
-            + 'przeciążeniu, a pomiar byłby zafałszowany.',
-        },
-        {
-          kod: 'ct.rodzaj_rdzenia',
-          nazwa_pl: 'Rodzaj rdzenia',
-          podstawa_pl:
-            'Funkcje zabezpieczeniowe wymagają rdzenia zabezpieczeniowego (IEC 61869-2).',
-          werdykt: 'spelnione',
-          wymagane: 'rdzeń zabezpieczeniowy (klasa z literą P)',
-          dostepne: '5P10',
-          komentarz_pl: null,
-        },
-        {
-          kod: 'ct.wytrzymalosc_cieplna',
-          nazwa_pl: 'Wytrzymałość cieplna zwarciowa',
-          podstawa_pl: 'Ith ≥ Ik″·√tk — równoważność cieplna prądu zwarcia (IEC 61869-2).',
-          werdykt: 'brak_danych',
-          wymagane: null,
-          dostepne: '20.0 kA / 1 s',
-          komentarz_pl:
-            'Brakuje prądu zwarciowego, czasu jego trwania albo prądu cieplnego przekładnika.',
-        },
-      ],
-      dobor_potwierdzony: false,
-      liczba_niespelnionych: 1,
-      liczba_bez_danych: 1,
-    },
-  },
-  przekladnik_napieciowy: { catalog_ref: null, nazwa: null, wynik: null },
-};
-
-/**
- * K3-B2: scena → identyfikator przebiegu, którego kontrakt (GET
- * /api/analysis-runs/<id>) zasila znacznik świeżości nagłówka. Wartości
- * odpowiadają 1:1 runId z zasiewu store'ów danej sceny (niżej w pliku);
- * scena „cieplna" celowo dostaje wynik na rev. 1 przy migawce rev. 2
- * (wariant NIEAKTUALNY, K3-B3).
- */
-const RUN_KONTRAKT_SCENY: Record<string, string> = {
-  cieplna: 'run-sc-7',
-  'zwarcia-rozplyw': 'run-sc-th1-demo',
-  zwarcia: 'run-sc-2',
-  rozplyw: 'run-lf-1',
-  walidacja: 'run-lf-1',
-  estymacja: 'run-lf-6',
-  'odbior-zgodnosc': 'run-lf-5',
-  arcflash: 'run-sc-1',
-  migotanie: 'run-sc-5',
-};
-
-const originalFetch = window.fetch.bind(window);
-/**
- * Slad WHITE BOX sceny "akademickie" (V126-JEZYK) - ksztalt 1:1 z krokiem
- * `TraceBuilder.add` po naprawie u zrodla: kolumna "Wynik" niesie POLSKA
- * postac liczby z jednostka (`result_pl`), nie zrzut slownika.
- */
-function sladDemoV126(rodzaj: string): Record<string, unknown>[] {
-  const kroki: Record<string, Record<string, unknown>[]> = {
-    earthing_safety: [
-      {
-        step: 1,
-        key: 'ieee80_sverak',
-        formula: 'Rg = rho * [1/Lc + 1/sqrt(20A)*(1 + 1/(1+h*sqrt(20/A)))]',
-        data: { area_m2: 2400, lc_m: 1180, rho_ohm_m: 100 },
-        substitution: 'R_g = 100 \u03a9\u00b7m \u00b7 (1/1180 m + cz\u0142on powierzchniowy siatki)',
-        result: { r_g_ohm: 0.371939, gpr_kv: 1.784 },
-        result_pl: 'Rezystancja uziomu: 0,371939 \u03a9; wzrost potencja\u0142u: 1,784 kV',
-        unit_check:
-          'Rezystywno\u015b\u0107 [\u03a9\u00b7m] razy odwrotno\u015b\u0107 d\u0142ugo\u015bci [1/m] daje rezystancj\u0119 [\u03a9]; '
-          + 'pr\u0105d [kA] razy rezystancja [\u03a9] daje napi\u0119cie [kV].',
-        proof_ref: 'proof:v126:earthing_safety:ieee80_sverak',
-        proof_status: 'complete',
-        reporting_status: 'reportable',
-      },
-    ],
-    voltage_stability: [
-      {
-        step: 1,
-        key: 'voltage_stability_indices',
-        formula: 'L_j ~= P_load / S_sc * 4; PM = (lambda_max - 1) * 100%',
-        data: { buses: 2 },
-        substitution:
-          'Dla ka\u017cdego w\u0119z\u0142a wyznaczono margines obci\u0105\u017calno\u015bci z krzywej P\u2013U, zapas mocy '
-          + 'biernej z krzywej Q\u2013U oraz wska\u017anik blisko\u015bci za\u0142amania napi\u0119cia L.',
-        result: { smallest_eigenvalue: 0.998667 },
-        result_pl: 'Najmniejsza warto\u015b\u0107 w\u0142asna macierzy wra\u017cliwo\u015bci: 0,998667',
-        unit_check: 'Wska\u017anik L jest bezwymiarowy; margines obci\u0105\u017calno\u015bci w %.',
-        proof_ref: 'proof:v126:voltage_stability:voltage_stability_indices',
-        proof_status: 'complete',
-        reporting_status: 'reportable',
-      },
-    ],
-  };
-  return kroki[rodzaj] ?? kroki.voltage_stability;
+function podmienTozsamosciZabezpieczen(
+  wynik: WynikKoordynacjiSceny,
+  mapa: ReadonlyMap<string, string>,
+): WynikKoordynacjiSceny {
+  let tekst = JSON.stringify(wynik);
+  for (const [zFixtury, zZadania] of mapa) tekst = tekst.split(zFixtury).join(zZadania);
+  return JSON.parse(tekst) as WynikKoordynacjiSceny;
 }
 
+/**
+ * Odcisk nastaw zabezpieczenia — WYŁĄCZNIE wielkości, które wchodzą do fizyki
+ * koordynacji (prądy rozruchowe, czas członu bezzwłocznego, rodzina i wariant
+ * krzywej, mnożnik czasowy). Porównanie całych obiektów `settings` jest
+ * niemożliwe: żądanie niesie postać SZABLONU ekranu, a fixtura postać
+ * KANONICZNĄ backendu (dopisane `stage_50_high`/`stage_51n` = null,
+ * `reset_time_s`, `definite_time_s`, liczby jako float). Odcisk porównuje
+ * dokładnie to, od czego zależy wynik — nie kształt serializacji.
+ */
+function odciskNastaw(settings: unknown): string {
+  const stopien = (dane: unknown): string => {
+    if (dane === null || typeof dane !== 'object') return 'brak';
+    const s = dane as {
+      enabled?: boolean;
+      pickup_current_a?: number;
+      time_s?: number | null;
+      curve_settings?: { standard?: string; variant?: string; time_multiplier?: number } | null;
+    };
+    const krzywa = s.curve_settings
+      ? `${s.curve_settings.standard}/${s.curve_settings.variant}/${s.curve_settings.time_multiplier}`
+      : 'bez-krzywej';
+    return `${s.enabled === true}|${Number(s.pickup_current_a)}|${s.time_s ?? 'null'}|${krzywa}`;
+  };
+  const s = (settings ?? {}) as Record<string, unknown>;
+  return ['stage_51', 'stage_50', 'stage_50_high', 'stage_51n', 'stage_50n']
+    .map((klucz) => `${klucz}=${stopien(s[klucz] ?? null)}`)
+    .join(';');
+}
+
+/** Prądy zwarciowe [A] lokalizacji wprost z fixtur obu biegów (ta sama droga
+ *  kA → A, co `pradyZBiegow.ts`), do porównania z prądami żądania. */
+function pradAZFixtury(
+  fixtura: { rows: readonly { element_id?: string | null; ikss_ka?: number | null }[] },
+  lokalizacja: string,
+): number | null {
+  for (const wiersz of fixtura.rows) {
+    if (wiersz.element_id === lokalizacja && typeof wiersz.ikss_ka === 'number') {
+      return wiersz.ikss_ka * 1000;
+    }
+  }
+  return null;
+}
+
+type RozstrzygniecieMiejsca = {
+  readonly zacisk: 'od' | 'do' | null;
+  readonly zaciski: Record<'od' | 'do', { readonly szyna_ref: string }> | null;
+  readonly odmowa_zacisku: { readonly powod_pl: string } | null;
+};
+
+const ROZSTRZYGNIECIA_MIEJSC = koordynacjaScenyMiejsca.rozstrzygniecia as unknown as Record<
+  string,
+  RozstrzygniecieMiejsca
+>;
+
+/** Odpowiedź `GET …/enm/zacisk-lokalizacji` z fixtury backendu; spoza fixtury — 404 nazwane. */
+function odpowiedzMiejscaSceny(url: string): Response {
+  const parametry = new URL(url, 'http://harness.local').searchParams;
+  const klucz = `${parametry.get('lokalizacja') ?? ''}|${parametry.get('zacisk') ?? ''}`;
+  const rekord = ROZSTRZYGNIECIA_MIEJSC[klucz];
+  if (rekord === undefined) {
+    return new Response(
+      JSON.stringify({ detail: `atrapa miejsca: brak rozstrzygnięcia ${klucz} — uruchom scripts/eksport_fixtur_harnessu.py` }),
+      { status: 404, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  return new Response(JSON.stringify(rekord), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
+ * Szyna prądu zwarciowego lokalizacji urządzenia z żądania — TA SAMA reguła co backend
+ * (`szyny_zwarcia_lokalizacji`): gałąź/łącznik → szyna zacisku rozstrzygniętego przez
+ * resolver, szyna → ona sama; odmowa resolvera → powód.
+ */
+function szynaZwarciaZadania(
+  lokalizacja: string,
+  zacisk: string | null | undefined,
+): { readonly szyna: string } | { readonly powod: string } {
+  const rekord = ROZSTRZYGNIECIA_MIEJSC[`${lokalizacja}|${zacisk ?? ''}`];
+  if (rekord === undefined) return { powod: `lokalizacja ${lokalizacja} spoza migawki sceny` };
+  if (rekord.odmowa_zacisku) return { powod: rekord.odmowa_zacisku.powod_pl };
+  if (rekord.zacisk && rekord.zaciski) return { szyna: rekord.zaciski[rekord.zacisk].szyna_ref };
+  return { szyna: lokalizacja };
+}
+
+/**
+ * Wynik koordynacji dla ŻĄDANIA ekranu — albo nazwana odmowa 409.
+ *
+ * PARA PREDYKATÓW (KLASA, NIE INSTANCJA — wzorzec sceny `macierz`): fixtura
+ * opisuje DOKŁADNIE jedno żądanie (dwa zabezpieczenia z szablonu 50/51 na
+ * odcinkach magistrali przy zacisku początkowym, prądy zwarciowe szyn zacisków z
+ * biegów MAX i MIN, prądy robocze zacisków z biegu rozpływu). Gdy ekran wyśle
+ * co innego, atrapa ODMAWIA zamiast podać wynik policzony dla innych danych.
+ * Tolerancja porównania prądów 1e-9 względna — DOKŁADNIE ta sama, którą stosuje
+ * backend (`TOLERANCJA_WZGLEDNA_PRADU`, `application/autorytet_biegu_
+ * zwarciowego.py`); to margines podwójnego przeliczenia jednostek (A → kA → A),
+ * nie tolerancja inżynierska.
+ *
+ * MIEJSCE URZĄDZENIA (decyzja O-51 pkt 7). Lokalizacja-gałąź niesie zacisk; prąd
+ * zwarciowy lokalizacji to prąd SZYNY zacisku (ta sama reguła co backend,
+ * `szynaZwarciaZadania`), prąd roboczy — prąd TEGO zacisku z wiersza gałęzi
+ * rozpływu (`i_a` dla `od`, `i_do_a` dla `do`). Backend prądów roboczych nie
+ * potwierdza wobec biegu (nazwany brak w docstringu `run_coordination_analysis`),
+ * ale atrapa MUSI je sprawdzić: wynik fixtury policzono dla tych liczb.
+ */
+function wynikKoordynacjiDlaZadania(cialo: BodyInit | null | undefined): WynikKoordynacjiSceny | Response {
+  const odmowa = (powod: string): Response =>
+    new Response(JSON.stringify({ detail: `atrapa koordynacji: ${powod} — uruchom scripts/eksport_fixtur_harnessu.py` }), {
+      status: 409,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+  const zadanie = JSON.parse(String(cialo ?? '{}')) as {
+    devices?: { id?: string; location_element_id?: string; zacisk?: string | null; settings?: unknown }[];
+    fault_currents?: { location_id?: string; ik_max_3f_a?: number; ik_min_3f_a?: number }[];
+    sc_run_id?: string;
+    sc_run_id_min?: string;
+  };
+  // Karta S-2: backend potwierdza prądy wobec DWÓCH wskazanych biegów — żądanie bez nich
+  // (albo z innymi) backend odrzuca, więc atrapa też.
+  if (zadanie.sc_run_id !== koordynacjaScenyZwarciaMax.run_id) {
+    return odmowa(`żądanie wskazuje bieg maksymalny ${String(zadanie.sc_run_id)}, fixtura ${koordynacjaScenyZwarciaMax.run_id}`);
+  }
+  if (zadanie.sc_run_id_min !== koordynacjaScenyZwarciaMin.run_id) {
+    return odmowa(`żądanie wskazuje bieg minimalny ${String(zadanie.sc_run_id_min)}, fixtura ${koordynacjaScenyZwarciaMin.run_id}`);
+  }
+  const zZadania = zadanie.devices ?? [];
+  const zFixtury = koordynacjaScenyWynik.devices;
+  if (zZadania.length !== zFixtury.length) {
+    return odmowa(`fixtura opisuje ${zFixtury.length} zabezpieczeń, żądanie niesie ${zZadania.length}`);
+  }
+
+  const mapa = new Map<string, string>();
+  for (const urzadzenieFixtury of zFixtury) {
+    const dopasowane = zZadania.find(
+      (u) => u.location_element_id === urzadzenieFixtury.location_element_id,
+    );
+    if (dopasowane?.id === undefined) {
+      return odmowa(`żądanie nie ma zabezpieczenia w lokalizacji ${urzadzenieFixtury.location_element_id}`);
+    }
+    if (odciskNastaw(dopasowane.settings) !== odciskNastaw(urzadzenieFixtury.settings)) {
+      return odmowa(
+        `nastawy zabezpieczenia w lokalizacji ${urzadzenieFixtury.location_element_id} różnią się od nastaw fixtury `
+        + `(żądanie: ${odciskNastaw(dopasowane.settings)}; fixtura: ${odciskNastaw(urzadzenieFixtury.settings)})`,
+      );
+    }
+    mapa.set(urzadzenieFixtury.id, dopasowane.id);
+  }
+
+  for (const pozycja of zadanie.fault_currents ?? []) {
+    const lokalizacja = pozycja.location_id ?? '';
+    const urzadzenie = zZadania.find((u) => u.location_element_id === lokalizacja);
+    const punkt = szynaZwarciaZadania(lokalizacja, urzadzenie?.zacisk);
+    if ('powod' in punkt) return odmowa(`${lokalizacja}: brak szyny zwarcia lokalizacji — ${punkt.powod}`);
+    for (const [klucz, fixtura] of [
+      ['ik_max_3f_a', koordynacjaScenyZwarciaMax],
+      ['ik_min_3f_a', koordynacjaScenyZwarciaMin],
+    ] as const) {
+      const podany = pozycja[klucz];
+      const zBiegu = pradAZFixtury(fixtura, punkt.szyna);
+      if (typeof podany !== 'number') continue;
+      if (zBiegu === null) return odmowa(`bieg nie ma prądu zwarciowego dla lokalizacji ${lokalizacja}`);
+      if (Math.abs(podany - zBiegu) > 1e-9 * Math.max(Math.abs(zBiegu), 1)) {
+        return odmowa(`${lokalizacja}.${klucz}: żądanie ${podany} A, bieg ${zBiegu} A`);
+      }
+    }
+  }
+
+  const zadanieRobocze = JSON.parse(String(cialo ?? '{}')) as {
+    operating_currents?: { location_id?: string; i_operating_a?: number }[];
+  };
+  const robocze = zadanieRobocze.operating_currents ?? [];
+  if (robocze.length !== zZadania.length) {
+    return odmowa(`żądanie niesie ${robocze.length} prądów roboczych dla ${zZadania.length} zabezpieczeń`);
+  }
+  for (const pozycja of robocze) {
+    const lokalizacja = pozycja.location_id ?? '';
+    const urzadzenie = zZadania.find((u) => u.location_element_id === lokalizacja);
+    const wiersz = koordynacjaScenyGalezie.rows.find((w) => w.element_id === lokalizacja);
+    const zBiegu = urzadzenie?.zacisk === 'do' ? wiersz?.i_do_a : wiersz?.i_a;
+    if (typeof zBiegu !== 'number' || pozycja.i_operating_a !== zBiegu) {
+      return odmowa(`${lokalizacja}: prąd roboczy żądania ${String(pozycja.i_operating_a)} A, bieg rozpływu ${String(zBiegu)} A`);
+    }
+  }
+
+  return podmienTozsamosciZabezpieczen(koordynacjaScenyWynik, mapa);
+}
+
+const RUN_KONTRAKT_SCENY: Record<string, string> = {
+  // K3-B3: scena „cieplna" jest CELOWO wariantem NIEAKTUALNYM znacznika
+  // świeżości — wariant bierze się z ROZJAZDU REWIZJI (migawka rev. 2 vs
+  // `rewizja_modelu: 1` w kontrakcie biegu niżej), nie z tożsamości biegu.
+  // HARNESS-RESZTA-2: dawna ręczna etykieta 'run-sc-7' ustąpiła identyfikatorowi
+  // REALNEGO biegu zwarciowego, z którego policzono treść sekcji cieplnej
+  // (`cieplna_scena_wynik.json` — ta sama kotwica co sceny „zwarcia"/„arcflash").
+  // Wariant „nieaktualne" zostaje nietknięty: rewizje rozjeżdżają się dalej.
+  cieplna: cieplnaScenyWynik.run_id,
+  // HARNESS-ZWARCIA-Z-BACKENDU / HARNESS-RESZTA: sceny czytają TEN SAM bieg
+  // kotwicy realnego backendu (`*.run_id`/`*.context.run_id`), nie ręczne id.
+  'zwarcia-rozplyw': zwarciaWynikiScenyZwarcia.run_id,
+  zwarcia: zwarciaWynikiScenyZwarcia.run_id,
+  rozplyw: rozplywScenyWynik.run_id,
+  walidacja: walidacjaScenyWynik.context.run_id,
+  estymacja: estymacjaScenyWynik.analysis_id,
+  'odbior-zgodnosc': odbiorZgodnoscScenyWynik.analysis_id,
+  // Ekran zbieznosci dostal znacznik swiezosci naglowka (karta wynikow), wiec
+  // od tej chwili WOLA kontrakt przebiegu. Bez wpisu zapytanie szlo do realnego
+  // backendu i wracalo 404 — bramka „zero bledow konsoli" specow zrzutowych
+  // slusznie to lapala. Wartosc czytana z TEGO SAMEGO bytu, ktory scena zasiewa
+  // (naglowek REALNEGO biegu backendu — HARNESS-RESZTA-2), zeby nie powstal
+  // drugi identyfikator tego samego biegu.
+  'wyniki-zbieznosc': zbieznoscScenyNaglowek.id,
+  // Scena E-29 czyta wyniki biegu 1F REALNEGO backendu (HARNESS-RESZTA-2).
+  'wyniki-skladowe': skladoweScenyWynik.run_id,
+  arcflash: arcflashScenyWynik.context.run_id,
+  migotanie: migotanieScenyWynik.context.run_id,
+};
+
+// --- Model stacji demo scen kreatorow (HARNESS-RESZTA-2) -------------------
+/**
+ * Referencje elementow stacji demo czytane Z MIGAWKI, nie wpisane: kreatory
+ * dostaja dokladnie te referencje, ktore niesie model zbudowany operacjami
+ * domenowymi. Brak elementu w migawce = blad budowy fixtury, wiec funkcja
+ * odmawia glosno zamiast po cichu podstawiac pusty tekst.
+ */
+function refZMigawkiStacji(sufiks: string, kolekcja: 'buses' | 'substations'): string {
+  const element = (stacjaDemoScenyMigawka[kolekcja] as { ref_id: string }[]).find((pozycja) =>
+    pozycja.ref_id.endsWith(sufiks),
+  );
+  if (element === undefined) {
+    throw new Error(`Migawka stacji demo nie ma elementu ${kolekcja}${sufiks}`);
+  }
+  return element.ref_id;
+}
+
+const SZYNA_SN_STACJI_DEMO = refZMigawkiStacji('/sn_bus', 'buses');
+const SZYNA_NN_STACJI_DEMO = refZMigawkiStacji('/nn_bus', 'buses');
+const STACJA_DEMO = refZMigawkiStacji('/station', 'substations');
+const NAZWA_SZYNY_SN_STACJI_DEMO = (stacjaDemoScenyMigawka.buses as { ref_id: string; name: string }[])
+  .find((szyna) => szyna.ref_id === SZYNA_SN_STACJI_DEMO)!.name;
+const NAPIECIE_SZYNY_NN_STACJI_DEMO = (
+  stacjaDemoScenyMigawka.buses as { ref_id: string; voltage_kv: number }[]
+).find((szyna) => szyna.ref_id === SZYNA_NN_STACJI_DEMO)!.voltage_kv;
+const NAPIECIE_SZYNY_SN_STACJI_DEMO = (
+  stacjaDemoScenyMigawka.buses as { ref_id: string; voltage_kv: number }[]
+).find((szyna) => szyna.ref_id === SZYNA_SN_STACJI_DEMO)!.voltage_kv;
+const NAZWA_STACJI_DEMO = (stacjaDemoScenyMigawka.substations as { ref_id: string; name: string }[])
+  .find((stacja) => stacja.ref_id === STACJA_DEMO)!.name;
+
+/**
+ * WEJŚCIA kreatora GPZ sceny „stacja" — czytane z TEGO SAMEGO modelu, który
+ * fixtura zbudowała tymi samymi operacjami domenowymi (`add_grid_source_sn`).
+ * Scena buduje w realnym backendzie sieć równoważną migawce stacji demo, więc
+ * dane wejściowe formularza mają JEDNO źródło: model. Przepisane ręcznie
+ * (stan sprzed HARNESS-RESZTA-2) były drugą kopią tych samych liczb — rozjazd
+ * z fixturą nie miał czego zapalić.
+ */
+const ZRODLO_STACJI_DEMO = (
+  stacjaDemoScenyMigawka.sources as { sk3_mva: number; rx_ratio: number }[]
+)[0];
+const TRAFO_WN_SN_STACJI_DEMO = (
+  stacjaDemoScenyMigawka.transformers as { sn_mva: number; ulv_kv: number }[]
+).find((trafo) => trafo.ulv_kv === NAPIECIE_SZYNY_SN_STACJI_DEMO)!;
+const SK3_ZRODLA_STACJI_DEMO = ZRODLO_STACJI_DEMO.sk3_mva;
+const RX_ZRODLA_STACJI_DEMO = ZRODLO_STACJI_DEMO.rx_ratio;
+const MOC_TRAFO_WN_SN_STACJI_DEMO = TRAFO_WN_SN_STACJI_DEMO.sn_mva;
+const NAPIECIE_WN_STACJI_DEMO = (
+  stacjaDemoScenyMigawka.buses as { voltage_kv: number }[]
+).reduce((maks, szyna) => Math.max(maks, szyna.voltage_kv), 0);
+
+/**
+ * Moduły warsztatu wytwórców Z MODELU — odwzorowanie PRODUKCYJNE
+ * (`station-der/zModelu.ts::deryZModelu`, to samo, które w aplikacji wpina
+ * `useSynchronizacjaDerZModelu`). Scena podaje migawkę fixtury i identyfikator
+ * projektu; referencje, napięcia przyłączenia, wiązania katalogowe i liczba
+ * jednostek pochodzą z modelu, nie z rekordu przepisanego w harnessie.
+ */
+function zasiejWytworcowZModelu(migawka: unknown, projectId: string): void {
+  useSnapshotStore.setState({ snapshot: migawka } as never);
+  useStationDerStore
+    .getState()
+    .synchronizujZModelu(deryZModelu(migawka as EnergyNetworkModel, projectId));
+}
+
+const originalFetch = window.fetch.bind(window);
+
+/**
+ * Identyfikator sceny z adresu URL, niezależny od stałej modułowej `creator`
+ * (zadeklarowanej niżej w pliku) — funkcja jest odpytywana wewnątrz zamknięcia
+ * `window.fetch` PODCZAS wywołań fetch (po pełnym załadowaniu modułu), więc
+ * odczyt wprost z `window.location.search` w miejscu użycia jest bezpieczniejszy
+ * niż poleganie na kolejności deklaracji stałej modułowej.
+ */
+function creatorZUrl(): string {
+  return new URLSearchParams(window.location.search).get('creator') ?? 'pole';
+}
+
+/** JSON z kluczami posortowanymi rekurencyjnie — porównanie ciała żądania niezależne od kolejności pól. */
+function jsonKanoniczny(wartosc: unknown): string {
+  const uporzadkuj = (v: unknown): unknown =>
+    Array.isArray(v)
+      ? v.map(uporzadkuj)
+      : v !== null && typeof v === 'object'
+        ? Object.fromEntries(
+            Object.keys(v as Record<string, unknown>)
+              .sort()
+              .map((k) => [k, uporzadkuj((v as Record<string, unknown>)[k])]),
+          )
+        : v;
+  return JSON.stringify(uporzadkuj(wartosc));
+}
+
+/**
+ * Odpowiedź dokumentu NC RfG sceny (certyfikat / wniosek) — PARA PREDYKATÓW (KLASA, NIE
+ * INSTANCJA): fixtura opisuje DOKŁADNIE jedno żądanie (ciało policzone backendem obok
+ * odpowiedzi) dla przypadku zasiewu. Inne ciało albo inny przypadek → odmowa 409 z nazwanym
+ * rozjazdem (łapie ją bramka „Nie udało się" specu), nigdy odpowiedź policzona dla innych danych.
+ * 422 niesie `detail` w kształcie `CertyfikatBrakiError.detail()` / `WniosekOsdBrakiError.detail()`.
+ */
+function odpowiedzDokumentuSceny(
+  url: string,
+  init: RequestInit | undefined,
+  oczekiwane: { readonly zadanie: unknown; readonly status: 200 | 422; readonly tresc: unknown },
+): Response {
+  const adres = new URL(url, window.location.origin);
+  const cialo = JSON.parse(String(init?.body ?? 'null')) as unknown;
+  const powody: string[] = [];
+  if (adres.searchParams.get('case_id') !== 'case-demo') {
+    powody.push(`przypadek ${adres.searchParams.get('case_id') ?? '(brak)'} zamiast case-demo`);
+  }
+  if (jsonKanoniczny(cialo) !== jsonKanoniczny(oczekiwane.zadanie)) {
+    powody.push(`ciało żądania ${JSON.stringify(cialo)} różne od fixtury ${JSON.stringify(oczekiwane.zadanie)}`);
+  }
+  if (powody.length > 0) {
+    return new Response(
+      JSON.stringify({
+        detail: `atrapa dokumentu NC RfG: ${powody.join('; ')} — uruchom scripts/eksport_fixtur_harnessu.py`,
+      }),
+      { status: 409, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  const tresc = oczekiwane.status === 422 ? { detail: oczekiwane.tresc } : oczekiwane.tresc;
+  return new Response(JSON.stringify(tresc), {
+    status: oczekiwane.status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
+ * Konfiguracja zabezpieczeń przypadku zasiewu (`GET`/`PUT /api/study-cases/{id}/
+ * protection-config`, P14c) — stan atrapy trzymany jak w backendzie (zapis widoczny
+ * w kolejnym odczycie), kształt 1:1 z `domain/study_case.py::ProtectionConfig.to_dict`.
+ */
+let konfiguracjaZabezpieczenPrzypadku: Record<string, unknown> = {
+  template_ref: null,
+  template_fingerprint: null,
+  library_manifest_ref: null,
+  overrides: {},
+  bound_at: null,
+};
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
@@ -987,105 +743,115 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const jsonOK = (body: unknown): Response =>
     new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
+  // Scena „przeglad-wiarygodnosci" (karta KATALOG-NIEZMIENNIKI): odpowiedz
+  // WYLICZONA przez backend na zywym katalogu (eksport_fixtur_harnessu.py),
+  // nie recznie wpisane liczby — parytet pilnuje tests/ci/test_fixtury_harnessu.py.
+  if (creator === 'przeglad-wiarygodnosci' && url.includes('/api/catalog/przeglad-wiarygodnosci')) {
+    return jsonOK(przegladWiarygodnosciKatalogu);
+  }
+
   if (creator === 'wyniki-skladowe') {
-    if (url.endsWith('/results/short-circuit')) return jsonOK(SKLADOWE_WYNIK);
-    if (url.endsWith('/results/trace')) return jsonOK(SKLADOWE_SLAD);
-    if (url.endsWith('/snapshot')) return jsonOK(SKLADOWE_SNAPSHOT);
+    if (url.endsWith('/results/short-circuit')) return jsonOK(skladoweScenyWynik);
+    if (url.endsWith('/results/trace')) return jsonOK(skladoweScenySlad);
+    if (url.endsWith('/snapshot')) return jsonOK(skladoweScenyMigawka);
   } else if (creator === 'wyniki-zbieznosc') {
-    if (url.includes('/power-flow-runs/') && url.endsWith('/results')) return jsonOK(ZBIEZNOSC_WYNIK);
-    if (url.includes('/power-flow-runs/') && url.endsWith('/trace')) return jsonOK(ZBIEZNOSC_SLAD);
-    if (url.includes('/power-flow-runs/')) return jsonOK(ZBIEZNOSC_HEADER);
+    if (url.includes('/power-flow-runs/') && url.endsWith('/results')) return jsonOK(zbieznoscScenyWynik);
+    if (url.includes('/power-flow-runs/') && url.endsWith('/trace')) return jsonOK(zbieznoscScenySlad);
+    if (url.includes('/power-flow-runs/')) return jsonOK(zbieznoscScenyNaglowek);
   } else if (creator === 'wyniki-stan-fazowy') {
-    if (url.includes('/results/phase-state')) return jsonOK(STAN_FAZOWY_WYNIK);
+    if (url.includes('/results/phase-state')) return jsonOK(stanFazowyScenyWyniki);
   } else if (creator === 'koordynacja') {
-    // Dwa OSOBNE biegi zwarciowe (kanoniczny bieg liczy jeden scenariusz `c`):
-    // maksymalny dla selektywnosci, minimalny dla czulosci.
+    // HARNESS-RESZTA-2 (2026-09-17): CALA scena E-28 karmiona REALNYM biegiem
+    // backendu (`eksport_fixtur_harnessu.py`, sekcja „scena koordynacja"):
+    // magistrala SN z dwiema stacjami zbudowana TYMI SAMYMI operacjami
+    // domenowymi, ktorymi buduje ja projektant, dwa biegi `short_circuit_sn`
+    // (wariant MAX i MIN), bieg `PF`, dostepnosc pakietu nastaw, nastawy
+    // Hoppela, dopasowanie aparatu i wynik analizatora koordynacji.
+    // Poprzednio KAZDA z tych liczb byla wpisana recznie na siec, ktora nie
+    // istnieje (refy `gpz/sekcja_a/bus_sn`, `stacja_s02/bus_sn`).
     if (url.includes('/results/short-circuit')) {
-      const min = url.includes('run-sc-koord-min');
-      return jsonOK({
-        run_id: min ? 'run-sc-koord-min' : 'run-sc-koord-max',
-        rows: min ? KOORD_WIERSZE_SC_MIN : KOORD_WIERSZE_SC_MAX,
-      });
+      const min = url.includes(koordynacjaScenyZwarciaMin.run_id);
+      return jsonOK(min ? koordynacjaScenyZwarciaMin : koordynacjaScenyZwarciaMax);
     }
-    if (url.includes('/results/branches')) return jsonOK(KOORD_WYNIKI_GALEZI);
-    if (url.includes('/enm')) return jsonOK(KOORD_MIGAWKA_MODELU);
-    if (url.includes('/protection/overcurrent-settings')) {
-      // Kontrakt `api/protection_overcurrent_settings.py` → `NastawyResponse`.
-      // Dwie nastawy WYZNACZONE i jedna NIEWYZNACZALNA — bo tak wyglada realny
-      // przypadek: brak danej nie znika z tabeli, tylko niesie powod i miejsce naprawy.
-      return jsonOK({
-        case_id: 'case-demo',
-        run_id: 'run-sc-koord-max',
-        analysis_type: 'protection_overcurrent',
-        status: 'DONE',
-        prezentacja: {
-          kompletne: false,
-          kody_gotowosci: ['BRAK_ROZPLYWU_DLA_PRADU_ROBOCZEGO'],
-          podsumowanie_pl:
-            'Wyznaczono 2 z 3 nastaw. Brak prądu rozruchowego stopnia zwłocznego — '
-            + 'wymaga prądu roboczego toru z rozpływu.',
-          brakujace: ['i_pickup_51'],
-          pozycje: [
-            // `stan` MUSI byc z kontraktu backendu (`settings_presentation.py`:
-            // DOSTEPNA / NIEDOSTEPNA). Wczesniej scena podawala 'wyznaczona' /
-            // 'niewyznaczalna' i wiersz bez wartosci renderowal sie jako
-            // „Wyznaczona" — atrapa produkowala dokladnie ten falsz, ktory ekran
-            // ma wykluczac (V12K-262).
-            {
-              klucz: 'i_inst_50', etykieta: 'Prąd zadziałania stopnia bezzwłocznego (50)',
-              jednostka: 'A', wartosc: 2480, stan: 'DOSTEPNA',
-              komunikat_pl: null, powod_pl: null, fix_action_id: null, fix_navigation: null,
-            },
-            {
-              klucz: 'tms_51', etykieta: 'Mnożnik czasowy stopnia zwłocznego (51)',
-              jednostka: '-', wartosc: 0.3, stan: 'DOSTEPNA',
-              komunikat_pl: null, powod_pl: null, fix_action_id: null, fix_navigation: null,
-            },
-            {
-              klucz: 'i_pickup_51', etykieta: 'Prąd rozruchowy stopnia zwłocznego (51)',
-              jednostka: 'A', wartosc: null, stan: 'NIEDOSTEPNA',
-              komunikat_pl: 'Niedostepna — uzupelnij dane wejsciowe',
-              powod_pl: 'Brak prądu roboczego toru — uzupełnij rozpływ mocy dla tego wariantu.',
-              // `panel` — tego klucza czyta `przestrzenDlaPanelu`; `space` bylo
-              // wymyslona nazwa i akcja naprawcza w ogole by sie nie pojawila.
-              fix_action_id: 'uruchom_rozplyw', fix_navigation: { panel: 'analizy' },
-            },
-          ],
-        },
-      });
+    if (url.includes('/results/branches')) return jsonOK(koordynacjaScenyGalezie);
+    // Decyzja O-51 pkt 7: miejsce prądu urządzenia rozstrzyga backend
+    // (`opis_miejsca_urzadzenia`) — odpowiedzi policzone dla KAŻDEJ lokalizacji listy
+    // wyboru i każdego wskazania (`koordynacja_scena_miejsca.json`).
+    if (url.includes('/enm/zacisk-lokalizacji')) return odpowiedzMiejscaSceny(url);
+    if (url.includes('/enm')) return jsonOK(koordynacjaScenyMigawka);
+    // Sekcja nastaw probuje kandydatow SC_3F DONE od NAJNOWSZEGO —
+    // bieg MINIMALNY jest w zasiewie sceny celowo NOWSZY niz maksymalny, tak jak
+    // w realnej sieci moga wspolistniec oba warianty; backend (nie UI) osadza
+    // c_max, wiec scena pokazuje dokladnie te odmowe (tresc `powod_pl` z
+    // REALNEJ odpowiedzi `dostepnosc_pakietu_nastaw`) i przejscie do kolejnego
+    // kandydata.
+    if (url.includes(`/analysis-runs/${koordynacjaScenyZwarciaMin.run_id}/pakiet-dowodowy-nastaw/dostepnosc`)) {
+      return jsonOK(koordynacjaScenyPakietDostepnoscMin);
+    }
+    if (url.includes(`/analysis-runs/${koordynacjaScenyZwarciaMax.run_id}/pakiet-dowodowy-nastaw/dostepnosc`)) {
+      return jsonOK(koordynacjaScenyPakietDostepnoscMax);
+    }
+    if (url.includes(`/analysis-runs/${koordynacjaScenyZwarciaMax.run_id}/nastawy/dopasowanie`)) {
+      return jsonOK(koordynacjaScenyNastawyDopasowanie);
+    }
+    if (url.includes(`/analysis-runs/${koordynacjaScenyZwarciaMax.run_id}/nastawy`)) {
+      return jsonOK(koordynacjaScenyNastawy);
     }
     if (url.includes('/api/protection-coordination/') && url.endsWith('/run')) {
-      return jsonOK({ run_id: 'run-koord-1', ...KOORD_WYNIK.summary });
-    }
-    if (url.includes('/api/protection-coordination/') && url.endsWith('/tcc')) {
-      return jsonOK({ curves: KOORD_WYNIK.tcc_curves, fault_markers: KOORD_WYNIK.fault_markers });
-    }
-    if (url.includes('/api/protection-coordination/')) {
-      // Wynik pelny: pary, marginesy i krzywe z NAZWAMI urzadzen dodanych klikiem.
-      return jsonOK(KOORD_WYNIK);
-    }
-  } else if (creator === 'odbior') {
-    // Podglad pradu odbioru liczy SOLVER (I = S/(√3·U)). Bez tej atrapy scena pokazywala
-    // baner awarii uslugi zamiast wyniku — a zrzut do oceny wygladalby jak zepsuty ekran
-    // (V12K-260). Wartosci odpowiadaja danym sceny: 50 kW, cosφ 0,93, 0,4 kV.
-    if (url.includes('/cable-rated-current-preview')) {
+      const wynik = wynikKoordynacjiDlaZadania(init?.body);
+      if (wynik instanceof Response) return wynik;
+      wynikKoordynacjiSceny = wynik;
       return jsonOK({
-        rated_current_a: 77.6,
-        apparent_power_kva: 53.8,
-        formula_ref: 'I = S / (√3·U)',
-        assumptions: [
-          'Uklad 3-fazowy symetryczny; wspolczynnik linii √3.',
-          'S = P / cosφ = 50,0 kW / 0,93 = 53,8 kVA.',
-          'U = 0,4 kV (napiecie szyny nN odplywu).',
-        ],
+        run_id: wynik.run_id,
+        project_id: wynik.project_id,
+        overall_verdict: wynik.overall_verdict,
+        overall_verdict_pl: wynik.summary.overall_verdict_pl,
+        total_devices: wynik.summary.total_devices,
+        total_checks: wynik.summary.total_checks,
+        sensitivity_pass: wynik.summary.sensitivity.pass,
+        sensitivity_fail: wynik.summary.sensitivity.fail,
+        selectivity_pass: wynik.summary.selectivity.pass,
+        selectivity_fail: wynik.summary.selectivity.fail,
+        overload_pass: wynik.summary.overload.pass,
+        overload_fail: wynik.summary.overload.fail,
       });
     }
+    if (url.includes('/api/protection-coordination/') && url.endsWith('/tcc')) {
+      const wynik = wynikKoordynacjiSceny ?? koordynacjaScenyWynik;
+      return jsonOK({ curves: wynik.tcc_curves, fault_markers: wynik.fault_markers });
+    }
+    if (url.includes('/api/protection-coordination/')) {
+      return jsonOK(wynikKoordynacjiSceny ?? koordynacjaScenyWynik);
+    }
+  } else if (creator === 'odbior') {
+    // Podglad pradu odbioru liczy SOLVER (I = S/(√3·U)). Bez tej atrapy scena
+    // pokazywala baner awarii uslugi zamiast wyniku — a zrzut do oceny wygladalby
+    // jak zepsuty ekran (V12K-260). HARNESS-RESZTA-2: odpowiedz policzona przez
+    // `compute_cable_rated_current` (TEN SAM solver, ktory wola koncowka) na
+    // danych formularza sceny (50 kW, cosφ 0,93, 0,4 kV) — wczesniej prad i moc
+    // pozorna byly WPISANE recznie razem z tekstem podstawienia.
+    if (url.includes('/cable-rated-current-preview')) return jsonOK(odbiorScenyPradZnamionowy);
   } else if (creator === 'wiazania') {
-    if (url.includes('/instrument-transformers')) return jsonOK(DOBOR_PRZEKLADNIKOW_WIAZANIA);
-    if (url.includes('/protection-functions')) return jsonOK(DOBOR_FUNKCJI_WIAZANIA);
+    if (url.includes('/instrument-transformers')) {
+      // HARNESS-RESZTA-2: dobór przekładników pola wytwórcy — REALNA odpowiedź
+      // backendu (`eksport_fixtur_harnessu.py::wiazania_scena_przekladniki`, TA
+      // SAMA funkcja `get_der_instrument_transformers`, którą woła końcówka) na
+      // modelu tej sceny i na REALNYM biegu zwarciowym (Ik″/ip z solvera
+      // IEC 60909). Wcześniej cały rachunek — z prądem roboczym toru i napięciem
+      // sieci — był wpisany ręcznie.
+      return jsonOK(wiazaniaScenyPrzekladniki);
+    }
+    if (url.includes('/protection-functions')) {
+      // HARNESS-RESZTA-2: wymagane funkcje zabezpieczeniowe pola wytwórcy —
+      // REALNA odpowiedź końcówki (`get_der_protection_functions`) na modelu
+      // tej sceny: wymagania wynikają z FAKTÓW modelu (strona przyłączenia,
+      // sposób uziemienia sieci, tory pomiarowe), a nazwane kwestie otwarte z
+      // tego, czego model NIE niesie. Wcześniej cała lista była wpisana ręcznie.
+      return jsonOK(wiazaniaScenyFunkcjeZabezpieczen);
+    }
   } else if (creator === 'wyniki-stabilnosc') {
-    if (url.endsWith('/results/dynamic-stability')) return jsonOK(STABILNOSC_WYNIK);
-    if (url.endsWith('/results/automation-trace')) return jsonOK(STABILNOSC_SLAD);
+    if (url.endsWith('/results/dynamic-stability')) return jsonOK(stabilnoscScenyWyniki);
+    if (url.endsWith('/results/automation-trace')) return jsonOK(stabilnoscScenySlad);
   }
 
   // Kontrakt przebiegu dla znacznika świeżości nagłówka (V12K-264, rozszerzenie
@@ -1156,969 +922,249 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     });
   }
 
-  // Dopasowanie NAJDŁUŻSZYM pasującym kluczem, nie pierwszym z brzegu.
-  // Trasa i jej SUBZASÓB dzielą prefiks (`/switchgear-families` vs
-  // `/switchgear-families/{ref}/factory-configurations`), więc kolejność wpisów
-  // decydowałaby o tym, którą odpowiedź dostaje ekran — subzasób byłby
-  // przesłonięty listą rodzin i scena pokazywałaby bloki, których nie ma.
-  const dopasowane = Object.entries(CATALOG_FIXTURES)
-    .filter(([key]) => url.includes(key))
-    .sort(([a], [b]) => b.length - a.length);
-  if (dopasowane.length > 0) {
-    const [, body] = dopasowane[0];
-    return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
-  }
   if (url.includes('/api/quality/energy-validation')) {
-    // Scena „walidacja" (R2-D): odpowiedz 1:1 z kontraktem backendu, w tym
-    // slad WHITE BOX per pozycja (R2-A) — ksztalt jak builder energy_validation.
-    return new Response(
-      JSON.stringify({
-        context: null,
-        config: { loading_warn_pct: 80, loading_fail_pct: 100, voltage_warn_pct: 5, voltage_fail_pct: 10, loss_warn_pct: 5, loss_fail_pct: 10 },
-        items: [
-          {
-            check_type: 'VOLTAGE_DEVIATION', target_id: 'SZ-ST7', target_name: 'Szyna ST-7',
-            observed_value: 12.0, unit: '%', limit_warn: 5.0, limit_fail: 10.0, margin_pct: 2.0,
-            status: 'FAIL', why_pl: 'Odchylenie napieciowe 12.00 % przekracza limit 10.0 %.',
-            white_box: [
-              {
-                tekst: 'Wzor: odchylenie = |U - U_n| / U_n * 100%',
-                latex: '\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%',
-              },
-              { tekst: 'Dane: U = 13.2000 kV (wynik PF), U_n = 15.0000 kV', latex: null },
-              {
-                tekst: 'Wynik: odchylenie = 12.00 %',
-                latex: '\\delta U = \\frac{|13.2000 - 15.0000|}{15.0000} \\cdot 100\\% = 12.00\\%',
-              },
-              { tekst: 'Progi: ostrzezenie 5.0 %, przekroczenie 10.0 %', latex: null },
-              { tekst: 'Werdykt: PRZEKROCZENIE', latex: null },
-            ],
-          },
-          {
-            // Scena "rozplyw" (R3-A): werdykt FAIL transformatora w kolumnie obciazalnosci.
-            check_type: 'TRANSFORMER_LOADING', target_id: 'TR-1', target_name: 'Transformator TR-1',
-            observed_value: 104.0, unit: '%', limit_warn: 80.0, limit_fail: 100.0, margin_pct: -4.0,
-            status: 'FAIL', why_pl: 'Obciazenie transformatora 104.00 % przekracza limit 100.0 %.',
-            white_box: [
-              {
-                tekst: 'Wzor: obciazenie = max(|S_gora|, |S_dol|) / S_n * 100%',
-                latex: '\\varepsilon = \\frac{\\max(|S_{\\text{gora}}|, |S_{\\text{dol}}|)}{S_n} \\cdot 100\\%',
-              },
-              { tekst: 'Dane: |S_gora| = 1.6640 MVA, |S_dol| = 1.6380 MVA (wynik PF), S_n = 1.6000 MVA', latex: null },
-              {
-                tekst: 'Wynik: obciazenie = 104.00 %',
-                latex: '\\varepsilon = \\frac{1.6640}{1.6000} \\cdot 100\\% = 104.00\\%',
-              },
-              { tekst: 'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %', latex: null },
-              { tekst: 'Werdykt: PRZEKROCZENIE', latex: null },
-            ],
-          },
-          {
-            check_type: 'BRANCH_LOADING', target_id: 'L-14', target_name: 'Odcinek L-14',
-            observed_value: 90.0, unit: '%', limit_warn: 80.0, limit_fail: 100.0, margin_pct: -10.0,
-            status: 'WARNING', why_pl: 'Obciazenie 90.00 % powyzej progu ostrzegawczego 80.0 %.',
-            white_box: [
-              {
-                tekst: 'Wzor: obciazenie = |I| / I_n * 100%',
-                latex: '\\varepsilon = \\frac{|I|}{I_n} \\cdot 100\\%',
-              },
-              { tekst: 'Dane: |I| = 0.2295 kA (wynik PF), I_n = 0.2550 kA (dane galezi)', latex: null },
-              {
-                tekst: 'Wynik: obciazenie = 90.00 %',
-                latex: '\\varepsilon = \\frac{0.2295}{0.2550} \\cdot 100\\% = 90.00\\%',
-              },
-              { tekst: 'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %', latex: null },
-              { tekst: 'Werdykt: OSTRZEZENIE', latex: null },
-            ],
-          },
-        ],
-        summary: { pass_count: 5, warning_count: 1, fail_count: 2, not_computed_count: 0, worst_item_target_id: 'SZ-ST7', worst_item_margin_pct: 2.0 },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Karta HARNESS-RESZTA (kontynuacja): scena "walidacja" (uzywana tez
+    // przez "rozplyw" — kolumna obciazalnosci) — REALNY bieg backendu
+    // (eksport_fixtur_harnessu.py::walidacja_scena_wynik, TA SAMA funkcja co
+    // koncowka `build_energy_validation_view`) na PF biegu sieci zlotej z
+    // obciazeniem x8 (ten sam bieg co scena "rozplyw") — zero recznie
+    // wpisanych liczb fizycznych.
+    return jsonOK(walidacjaScenyWynik);
   }
   if (url.includes('/api/proof/sc3f/contributions')) {
-    // Scena "zwarcia" (R3-B): rozbicie maszynowe — ksztalt 1:1 z
-    // `MachineShortCircuitResult.to_dict()` (pola konsumowane przez `naWklady`).
-    return new Response(
-      JSON.stringify({
-        contributions: [
-          { source_id: 'src-gpz', source_name: 'System (GPZ 110/15)', ikss_partial_a: 9620 },
-          {
-            source_id: 'gen-pv-1', source_name: 'Falownik PV 4 MW', ikss_partial_a: 1730,
-            machine_type: 'ASYNCHRONOUS', ir_a: 333, ratio_ik_ir: 5.2, mu: 0.756, q: 0.65, ib_a: 850,
-            wywod: [
-              {
-                tekst: 'Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.756',
-                latex: "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 5.20} = 0.756",
-              },
-              {
-                tekst: 'Prad wylaczeniowy symetryczny: Ib = 0.850 kA',
-                latex: "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.756 \\cdot 0.650 \\cdot 1.730\\;\\mathrm{kA} = 0.850\\;\\mathrm{kA}",
-              },
-            ],
-          },
-          { source_id: 'gen-bess-1', source_name: 'Magazyn BESS 2 MW', ikss_partial_a: 1130 },
-        ],
-        // Wywod DYPLOMOWY {tekst, latex} — ksztalt 1:1 z `_wywod_wkladow`
-        // (api/proof_pack.py) + `wywod_maszyny` solvera (kazdy krok: wzor
-        // ogolny -> podstawienie liczbowe -> wynik; zasada KaTeX 2026-07-22).
-        wywod: [
-          { tekst: 'Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)', latex: null },
-          { tekst: "Punkt zwarcia: I''k (calkowity, z Z-bus) = 12.480 kA, c = 1.10, t_min = 0.10 s", latex: null },
-          { tekst: '— Falownik PV 4 MW (ASYNCHRONOUS) —', latex: null },
-          {
-            tekst: "Impedancja zastepcza maszyny: Z''m = 0.1150 + j1.1420 ohm",
-            latex: "Z''_m = 0.1150 + j\\,1.1420\\;\\Omega,\\qquad |Z''_m| = 1.1478\\;\\Omega",
-          },
-          {
-            tekst: 'Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z\'\'))',
-            latex:
-              "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0086}{0.0402 \\cdot 0.5102} \\cdot 3849\\;\\mathrm{A} = 1.730\\;\\mathrm{kA}",
-          },
-          {
-            tekst: "Krotnosc pradu znamionowego: I''k/Ir = 5.20",
-            latex: "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{1.730}{0.333} = 5.20",
-          },
-          {
-            tekst: 'Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.756',
-            latex: "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 5.20} = 0.756",
-          },
-          {
-            tekst: 'Wspolczynnik q silnika asynchronicznego (m = 1.950 MW/pare biegunow, par. 6.6.3): q = 0.650',
-            latex: 'q = 0.57 + 0.12\\,\\ln m = 0.57 + 0.12\\,\\ln(1.950) = 0.650',
-          },
-          {
-            tekst: 'Prad wylaczeniowy symetryczny: Ib = 0.850 kA',
-            latex:
-              "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.756 \\cdot 0.650 \\cdot 1.730\\;\\mathrm{kA} = 0.850\\;\\mathrm{kA}",
-          },
-          {
-            tekst: "Suma wkladow maszyn: I''k,M = 2.860 kA, I_b,M = 2.107 kA",
-            latex: "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}",
-          },
-          {
-            tekst: "Regula malych silnikow (par. 6.6): pomijalne gdy suma I''k,M <= 0.05 * I''k — NIESPELNIONA",
-            latex: null,
-          },
-        ],
-        // ZWARCIA-PRO F3: wywod sekcyjny (akordeon z norma) + checklista walidacji IEC.
-        wywod_sekcje: [
-          {
-            tytul: 'Dane wejsciowe i model',
-            norma: 'IEC 60909-0:2016',
-            kroki: [
-              { tekst: 'Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)', latex: null },
-              { tekst: "Punkt zwarcia: I''k (calkowity, z Z-bus) = 12.480 kA, c = 1.10, t_min = 0.10 s", latex: null },
-            ],
-          },
-          {
-            tytul: 'Wklad: Falownik PV 4 MW',
-            norma: 'IEC 60909-0:2016 §6.6',
-            kroki: [
-              {
-                tekst: 'Prad czesciowy maszyny (superpozycja Z-bus)',
-                latex: "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0086}{0.0402 \\cdot 0.5102} \\cdot 3849\\;\\mathrm{A} = 1.730\\;\\mathrm{kA}",
-              },
-              {
-                tekst: 'Wspolczynnik zaniku mu (krzywa t_min = 0.10 s): mu = 0.756',
-                latex: "\\mu = 0.62 + 0.72\\,e^{-0.32 \\cdot 5.20} = 0.756",
-              },
-              {
-                tekst: 'Prad wylaczeniowy symetryczny: Ib = 0.850 kA',
-                latex: "I_b = 0.756 \\cdot 0.650 \\cdot 1.730\\;\\mathrm{kA} = 0.850\\;\\mathrm{kA}",
-              },
-            ],
-          },
-          {
-            tytul: 'Suma wkladow i reguly',
-            norma: 'IEC 60909-0:2016 §6.6',
-            kroki: [
-              {
-                tekst: "Suma wkladow maszyn: I''k,M = 2.860 kA, I_b,M = 2.107 kA",
-                latex: "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}",
-              },
-              {
-                tekst: "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; prog 0.624 kA; obliczone 2.860 kA -> NIESPELNIONA (silniki niepomijalne w Ib)",
-                latex: "\\sum_m I''_{k,M} = 2.860\\;\\mathrm{kA} \\; > \\; 0.05 \\cdot 12.480\\;\\mathrm{kA} = 0.624\\;\\mathrm{kA} \\Rightarrow \\text{NIESPELNIONA}",
-              },
-            ],
-          },
-        ],
-        walidacja_iec: [
-          { pozycja_pl: 'Norma bazowa metody', wartosc_pl: 'IEC 60909-0:2016', status: 'INFO' },
-          { pozycja_pl: 'Wspolczynnik napieciowy c', wartosc_pl: 'c = 1.10 (z tego przebiegu)', status: 'INFO' },
-          { pozycja_pl: 'Metoda obliczenia wkladow', wartosc_pl: 'superpozycja Z-bus (prady czesciowe maszyn)', status: 'INFO' },
-          { pozycja_pl: 'Maszyny asynchroniczne', wartosc_pl: 'uwzglednione: 1 szt.', status: 'PASS' },
-          { pozycja_pl: 'Regula malych silnikow (5%)', wartosc_pl: 'NIESPELNIONA — silniki niepomijalne w Ib (2.860 > 0.624 kA)', status: 'FAIL' },
-          { pozycja_pl: 'Determinizm kontraktu (input_hash)', wartosc_pl: 'obecny: a1b2c3d4e5f6...', status: 'PASS' },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Sceny "zwarcia"/"zwarcia-rozplyw" (HARNESS-ZWARCIA-Z-BACKENDU,
+    // 2026-09-16): mapa target_id -> odpowiedz REALNEGO backendu
+    // (`eksport_fixtur_harnessu.py::zwarcia_wklady_scena_zwarcia`, TA SAMA
+    // funkcja co koncowka `sc3f_contributions`) — zero recznie wpisanych
+    // liczb fizycznych. `fault_node_id` z ciala zadania POST, jak w realnym
+    // kliencie (`zwarcia/api.ts::fetchWkladyZwarciowe`).
+    const cialoWkladow = JSON.parse(String(init?.body ?? '{}')) as { fault_node_id?: string };
+    const wklady = (zwarciaWkladyScenyZwarcia as Record<string, unknown>)[cialoWkladow.fault_node_id ?? ''];
+    if (wklady) return jsonOK(wklady);
+  }
+  if (url.includes('/results/short-circuit/rozplyw')) {
+    // HARNESS-ZWARCIA-Z-BACKENDU: rozplyw galeziowy JEDNEGO punktu — ten,
+    // ktory `EkranZwarc` wybiera domyslnie (pierwszy wiersz wynikow) — realny
+    // bieg backendu (`zwarcia_rozplyw_scena_zwarcia`), tor sieci nadrzednej
+    // (THEVENIN_GRID) ORAZ tor falownika (gen_pv) RAZEM w `branch_contributions`,
+    // jak dotychczasowa scena Z-3 — bez zadnej recznej liczby.
+    const targetId = new URL(url, location.origin).searchParams.get('target_id');
+    if (targetId === zwarciaRozplywScenyZwarcia.target_id) return jsonOK(zwarciaRozplywScenyZwarcia);
+  }
+  if (url.includes('/results/short-circuit/pasmo')) {
+    // Pasmo MIN/MAX zwarcia (karta W3-G3, aneks D7) — TEN SAM bieg kotwicy;
+    // strona MIN `obliczony_na_zadanie` (bez wlasnego run_id) — realny ksztalt
+    // `dobierz_pasmo_min_max_zwarcia` (`eksport_fixtur_harnessu.py::
+    // zwarcia_pasmo_scena_zwarcia`).
+    return jsonOK(zwarciaPasmoScenyZwarcia);
   }
   if (url.includes('/power-flow-runs')) {
-    // Scena "porownanie": lista zakonczonych przebiegow rozplywu projektu.
-    return new Response(
-      JSON.stringify({
-        runs: [
-          { id: 'run-a', project_id: 'proj-demo', study_case_id: 'K1', status: 'FINISHED', result_status: 'FRESH', created_at: '2026-07-21T10:00:00Z', finished_at: '2026-07-21T10:00:04Z', input_hash: 'hash-a', converged: true, iterations: 5 },
-          { id: 'run-b', project_id: 'proj-demo', study_case_id: 'K2', status: 'FINISHED', result_status: 'FRESH', created_at: '2026-07-21T11:00:00Z', finished_at: '2026-07-21T11:00:05Z', input_hash: 'hash-b', converged: true, iterations: 6 },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // HARNESS-RESZTA-2: lista zakonczonych przebiegow rozplywu projektu sceny
+    // "porownanie" — REALNE biegi backendu (`eksport_fixtur_harnessu.py::
+    // porownanie_scena_biegi_pf`, ksztalt 1:1 z koncowka
+    // `api/power_flow_runs.py::list_power_flow_runs`): wariant A = siec zlota,
+    // wariant B = ta sama siec z obciazeniem x1,6.
+    return jsonOK(porownanieScenyBiegiPf);
+  }
+  if (url.includes('/api/power-flow-comparisons') && url.endsWith('/trace')) {
+    // Slad WHITE BOX porownania (dopasowanie szyn/galezi, progi rankingu) —
+    // `PowerFlowComparisonService.get_comparison_trace`, TA SAMA usluga, ktora
+    // wola koncowka.
+    return jsonOK(porownanieScenySladPf);
   }
   if (url.includes('/api/power-flow-comparisons')) {
-    // Scena "porownanie" (R3-C): wynik porownania A/B — ksztalt 1:1 z
-    // `PowerFlowComparisonResult` (delty i ranking WYLACZNIE z backendu).
-    return new Response(
-      JSON.stringify({
-        comparison_id: 'cmp-demo-1', run_a_id: 'run-a', run_b_id: 'run-b', project_id: 'proj-demo',
-        bus_diffs: [
-          { bus_id: 'SZ-GPZ', v_pu_a: 1.0, v_pu_b: 1.0, angle_deg_a: 0, angle_deg_b: 0, p_injected_mw_a: 6.4, p_injected_mw_b: 5.1, q_injected_mvar_a: 1.9, q_injected_mvar_b: 1.4, delta_v_pu: 0, delta_angle_deg: 0, delta_p_mw: -1.3, delta_q_mvar: -0.5 },
-          { bus_id: 'SZ-ST7', v_pu_a: 0.941, v_pu_b: 0.972, angle_deg_a: -2.9, angle_deg_b: -2.1, p_injected_mw_a: -1.2, p_injected_mw_b: -1.2, q_injected_mvar_a: -0.4, q_injected_mvar_b: -0.1, delta_v_pu: 0.031, delta_angle_deg: 0.8, delta_p_mw: 0, delta_q_mvar: 0.3 },
-          { bus_id: 'SZ-PV2', v_pu_a: 1.062, v_pu_b: 1.038, angle_deg_a: 1.4, angle_deg_b: 1.1, p_injected_mw_a: 3.9, p_injected_mw_b: 2.6, q_injected_mvar_a: 0.2, q_injected_mvar_b: 0.4, delta_v_pu: -0.024, delta_angle_deg: -0.3, delta_p_mw: -1.3, delta_q_mvar: 0.2 },
-          // KD-1 (L-14): szyna BEZ ROZNIC miedzy A i B — filtr „tylko roznice" ma ja ukryc.
-          { bus_id: 'SZ-ST3', v_pu_a: 0.995, v_pu_b: 0.995, angle_deg_a: -1.2, angle_deg_b: -1.2, p_injected_mw_a: -0.8, p_injected_mw_b: -0.8, q_injected_mvar_a: -0.3, q_injected_mvar_b: -0.3, delta_v_pu: 0, delta_angle_deg: 0, delta_p_mw: 0, delta_q_mvar: 0 },
-        ],
-        branch_diffs: [
-          { branch_id: 'L-14', p_from_mw_a: 2.31, p_from_mw_b: 1.62, q_from_mvar_a: 0.72, q_from_mvar_b: 0.48, p_to_mw_a: -2.28, p_to_mw_b: -1.6, q_to_mvar_a: -0.7, q_to_mvar_b: -0.47, losses_p_mw_a: 0.031, losses_p_mw_b: 0.015, losses_q_mvar_a: 0.018, losses_q_mvar_b: 0.009, delta_p_from_mw: -0.69, delta_q_from_mvar: -0.24, delta_p_to_mw: 0.68, delta_q_to_mvar: 0.23, delta_losses_p_mw: -0.016, delta_losses_q_mvar: -0.009 },
-          { branch_id: 'TR-1', p_from_mw_a: 1.66, p_from_mw_b: 1.31, q_from_mvar_a: 0.5, q_from_mvar_b: 0.38, p_to_mw_a: -1.64, p_to_mw_b: -1.3, q_to_mvar_a: -0.48, q_to_mvar_b: -0.37, losses_p_mw_a: 0.021, losses_p_mw_b: 0.013, losses_q_mvar_a: 0.02, losses_q_mvar_b: 0.012, delta_p_from_mw: -0.35, delta_q_from_mvar: -0.12, delta_p_to_mw: 0.34, delta_q_to_mvar: 0.11, delta_losses_p_mw: -0.008, delta_losses_q_mvar: -0.008 },
-        ],
-        ranking: [
-          { issue_code: 'VOLTAGE_DELTA_HIGH', severity: 4, element_ref: 'SZ-ST7', description_pl: 'Napiecie na szynie ST-7 rosnie o 0.031 pu po zalaczeniu kompensacji.', evidence_ref: 1 },
-          { issue_code: 'LOSSES_DECREASED', severity: 2, element_ref: 'L-14', description_pl: 'Straty czynne odcinka L-14 spadaja o 16 kW.', evidence_ref: 2 },
-        ],
-        summary: { total_buses: 4, total_branches: 2, converged_a: true, converged_b: true, total_losses_p_mw_a: 0.052, total_losses_p_mw_b: 0.028, delta_total_losses_p_mw: -0.024, max_delta_v_pu: 0.031, max_delta_angle_deg: 0.8, total_issues: 2, critical_issues: 0, major_issues: 1, moderate_issues: 0, minor_issues: 1 },
-        input_hash: 'hash-cmp-demo', created_at: '2026-07-22T09:00:00Z',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Wynik porownania A/B — REALNE delty, ranking i proweniencja OBU biegow
+    // (`PowerFlowComparisonService.compare`). Szyna bilansowa GPZ wychodzi z
+    // ZEROWA roznica napiecia (u = 1,0 pu w obu wariantach) — to na niej
+    // spec sprawdza filtr "tylko roznice".
+    return jsonOK(porownanieScenyWynikPf);
+  }
+  if (url.includes('/api/protection-comparisons') && url.endsWith('/trace')) {
+    // Scena "porownanie" (CV-3.3-B2), tryb "Zabezpieczenia": slad porownania
+    // (White Box, na zadanie) — HARNESS-RESZTA-2: REALNY slad serwisu
+    // (`ProtectionComparisonService.get_comparison_trace`, TA SAMA droga co
+    // koncowka) dla pary biegow tej sceny; kroki, progi i liczby z backendu.
+    return jsonOK(porownanieScenySladZabezpieczen);
+  }
+  if (url.includes('/protection-runs') && !url.includes('/execute')) {
+    // Scena "porownanie" (CV-3.3-B2): lista zakonczonych przebiegow zabezpieczen
+    // projektu — HARNESS-RESZTA-2: REALNA odpowiedz koncowki
+    // (`api/protection_runs.py::list_protection_runs`) dla projektu sceny.
+    return jsonOK(porownanieScenyBiegiZabezpieczen);
+  }
+  if (url.includes('/api/protection-comparisons')) {
+    // Scena "porownanie" (CV-3.3-B2), tryb "Zabezpieczenia": wynik porownania
+    // A/B — HARNESS-RESZTA-2: REALNY wynik `ProtectionComparisonService.compare`
+    // na DWoCH biegach `protection_sn` tej samej sieci w dwoch wariantach
+    // modelu (magistrala 0,9 km wobec 1,5 km). Delty pradu i czasu sa skutkiem
+    // FIZYKI (dluzszy odcinek = wieksza impedancja petli zwarciowej), a nie
+    // innych liczb w atrapie; proweniencja obu biegow (`provenance_a/b`)
+    // pochodzi z kopert rewizji tych biegow.
+    return jsonOK(porownanieScenyWynikZabezpieczen);
   }
   if (url.includes('/api/oze-analysis/grid-strength')) {
-    // Scena "sila-sieci" (V-B): sila sieci SCR/WSCR — ksztalt 1:1 z
-    // `analysis/grid_strength/serializer.py::view_to_dict`; kroki WHITE BOX
-    // DOKLADNIE jak builder (SCR -> werdykt; WSCR z licznikiem/mianownikiem),
-    // liczby spojne: 189.9/8.0=23.7375; 45.0/20.0=2.25; WSCR=2419.2/784=3.0857.
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'gs-demo-1',
-        context: {
-          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
-          run_timestamp: '2026-07-22T08:30:00Z', snapshot_id: 'snap-demo', trace_id: 'run-sc-4',
-        },
-        weak_threshold: 3.0,
-        very_weak_threshold: 2.0,
-        entries: [
-          {
-            bus_ref: 'SZ-PV2', nominal_kv: 15.0, s_sc_mva: 189.9, s_installed_mva: 8.0,
-            scr: 23.7375, verdict: 'mocna', is_weak: false,
-            why_pl: 'SCR = 23.7375 ≥ 3.0 — sieć mocna w węźle; klasyczne założenia pracy źródła falownikowego pozostają ważne.',
-            missing_data: [],
-            white_box: [
-              {
-                symbol: 'SCR',
-                formula_latex: "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
-                substitution_pl: 'SCR = 189.9 MVA / 8.0 MVA',
-                result_pl: 'SCR = 23.7375 (–)',
-              },
-              {
-                symbol: 'werdykt',
-                formula_latex: '\\mathrm{SCR} \\; \\geq \\; 3.0',
-                substitution_pl: 'próg słaby = 3.0; próg bardzo słaby = 2.0',
-                result_pl: 'sieć mocna',
-              },
-            ],
-            modules: [{ ref: 'gen-pv-1', name: 'Farma PV 8 MW', sn_mva: 8.0 }],
-          },
-          {
-            bus_ref: 'SZ-FW1', nominal_kv: 15.0, s_sc_mva: 45.0, s_installed_mva: 20.0,
-            scr: 2.25, verdict: 'słaba', is_weak: true,
-            why_pl: 'SCR = 2.25 (przedział [2.0; 3.0)) — sieć słaba w węźle. Wymagana ostrożność: weryfikacja stabilności impedancyjnej i interakcji regulatorów.',
-            missing_data: [],
-            white_box: [
-              {
-                symbol: 'SCR',
-                formula_latex: "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
-                substitution_pl: 'SCR = 45.0 MVA / 20.0 MVA',
-                result_pl: 'SCR = 2.25 (–)',
-              },
-              {
-                symbol: 'werdykt',
-                formula_latex: '\\mathrm{SCR} \\; \\lt \\; 3.0',
-                substitution_pl: 'próg słaby = 3.0; próg bardzo słaby = 2.0',
-                result_pl: 'sieć słaba',
-              },
-            ],
-            modules: [{ ref: 'gen-fw-1', name: 'Park wiatrowy 20 MVA', sn_mva: 20.0 }],
-          },
-          {
-            bus_ref: 'SZ-BS1', nominal_kv: null, s_sc_mva: null, s_installed_mva: 2.2,
-            scr: null, verdict: 'brak danych', is_weak: false,
-            why_pl: 'Brak mocy zwarciowej — SCR nieobliczony.',
-            missing_data: ['s_sc_mva'], white_box: [],
-            modules: [{ ref: 'gen-bess-1', name: 'Magazyn BESS 2 MW', sn_mva: 2.2 }],
-          },
-        ],
-        summary: {
-          total_buses: 3, weak_bus_count: 1, not_computed_count: 1,
-          wscr: 3.0857, wscr_verdict: 'mocna',
-          wscr_why_pl: 'WSCR = 3.0857 dla 2 źródeł — sieć mocna. WSCR ujmuje wzajemne oddziaływanie źródeł falownikowych w pobliżu (metodyka ERCOT).',
-          wscr_white_box: [
-            {
-              symbol: 'WSCR',
-              formula_latex: "\\mathrm{WSCR} = \\dfrac{\\sum_i S_{sc,i}'' \\cdot S_{n,i}}{\\left(\\sum_i S_{n,i}\\right)^2}",
-              substitution_pl: 'licznik Σ(S_sc·S_n) = 2419.2 MVA²; (Σ S_n)² = 784.0 MVA²',
-              result_pl: 'WSCR = 3.0857 (–), n = 2',
-            },
-          ],
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Karta HARNESS-RESZTA (kontynuacja): scena "sila-sieci" — REALNY bieg
+    // backendu (eksport_fixtur_harnessu.py::sila_sieci_scena_wynik, TA SAMA
+    // funkcja co koncowka `build_grid_strength_view`) na biegu kotwicy scen
+    // "sila-sieci"/"migotanie" (siec sceny analiz OZE: stacja 15/0,8 kV z falownikiem
+    // PV z karty, `_enm_sceny_oze_analiz`) — zero recznie wpisanych liczb fizycznych.
+    return jsonOK(silaSieciScenyWynik);
   }
   if (url.includes('/api/oze-analysis/compensation-sizing')) {
-    // Scena "kompensacja-wynik" (V-B): dobor kompensacji PO obliczeniu — ksztalt
-    // 1:1 z `application/analyses/dobor_kompensacji.py::build_compensation_sizing_view`.
-    // Liczby spojne (P=1.2 MW, Q_load=0.84 Mvar, V=0.98 pu -> V²=0.96):
-    // baseline cosφ = 1.2/√(1.44+0.7056) = 0.82; kandydat 0.6 Mvar: Q_cap_eff =
-    // 0.6·0.96 = 0.58 -> Q_netto = 0.26 -> cosφ punktu = 0.98 ≥ 0.95 (DOBOR).
-    return new Response(
-      JSON.stringify({
-        analysis: 'compensation_sizing',
-        context: { trace_id: 'run-lf-3', snapshot_id: 'snap-demo', case_name: 'Stan normalny' },
-        parameters: {
-          bus_ref: 'SZ-ST7', bus_name: 'Szyna ST-7', bus_voltage_kv: 15,
-          cos_phi_min: 0.95, uwzglednij_noc: false,
-        },
-        input_hash: 'komp-hash-a1b2c3',
-        baseline: {
-          cosfi_przekroju_dzien: 0.82, cosfi_przekroju_noc: null,
-          cosfi_punktu_dzien: 0.82, cosfi_punktu_noc: null,
-        },
-        candidates: [
-          {
-            catalog_ref: 'cap-0v3', name: 'Bateria SN 0,3 Mvar / 15 kV', rated_mvar: 0.3, rated_kv: 15,
-            cosfi_przekroju_dzien: 0.73, cosfi_przekroju_noc: null,
-            cosfi_punktu_dzien: 0.91, cosfi_punktu_noc: null,
-            p_point_day_mw: 1.2, q_przekroju_dzien_mvar: 1.13,
-            q_cap_eff_dzien_mvar: 0.29, q_netto_punktu_dzien_mvar: 0.55,
-            p_point_night_mw: null, q_przekroju_noc_mvar: null,
-            q_cap_eff_noc_mvar: null, q_netto_punktu_noc_mvar: null,
-            spelnia_dzien: false, spelnia_noc: null, spelnia: false,
-          },
-          {
-            catalog_ref: 'cap-0v6', name: 'Bateria SN 0,6 Mvar / 15 kV', rated_mvar: 0.6, rated_kv: 15,
-            // cosφ przekroju NISKIE (0.65 < 0.95), a kandydat SPELNIA — dobor
-            // sterowany cosφ PUNKTU (0.98 ≥ 0.95); wymog wlasciciela V12K-040 B.
-            cosfi_przekroju_dzien: 0.65, cosfi_przekroju_noc: null,
-            cosfi_punktu_dzien: 0.98, cosfi_punktu_noc: null,
-            p_point_day_mw: 1.2, q_przekroju_dzien_mvar: 1.42,
-            q_cap_eff_dzien_mvar: 0.58, q_netto_punktu_dzien_mvar: 0.26,
-            p_point_night_mw: null, q_przekroju_noc_mvar: null,
-            q_cap_eff_noc_mvar: null, q_netto_punktu_noc_mvar: null,
-            spelnia_dzien: true, spelnia_noc: null, spelnia: true,
-          },
-          {
-            catalog_ref: 'cap-0v9', name: 'Bateria SN 0,9 Mvar / 15 kV', rated_mvar: 0.9, rated_kv: 15,
-            cosfi_przekroju_dzien: 0.58, cosfi_przekroju_noc: null,
-            cosfi_punktu_dzien: 1.0, cosfi_punktu_noc: null,
-            p_point_day_mw: 1.2, q_przekroju_dzien_mvar: 1.7,
-            q_cap_eff_dzien_mvar: 0.86, q_netto_punktu_dzien_mvar: -0.02,
-            p_point_night_mw: null, q_przekroju_noc_mvar: null,
-            q_cap_eff_noc_mvar: null, q_netto_punktu_noc_mvar: null,
-            spelnia_dzien: true, spelnia_noc: null, spelnia: true,
-          },
-        ],
-        dobor: {
-          catalog_ref: 'cap-0v6', name: 'Bateria SN 0,6 Mvar / 15 kV', rated_mvar: 0.6, rated_kv: 15,
-          cosfi_punktu_dzien: 0.98, cosfi_punktu_noc: null,
-          cosfi_przekroju_dzien: 0.65, cosfi_przekroju_noc: null,
-        },
-        powod_braku: null,
-        // K10: ślad 1:1 z `application/analyses/dobor_kompensacji.py` — semantyka
-        // po polsku, wzory wyłącznie LaTeX `$...$` (zero kodów produkcji).
-        whitebox: {
-          pq_source:
-            'wypadkowy przepływ gałęzi zasilających punkt z wyniku rozpływu '
-            + '(koniec przy punkcie, suma po gałęziach incydentnych) przełożony '
-            + 'na znak kanoniczny przez adapter konwencji mocy biernej',
-          cosfi_przekroju:
-            'cosφ przepływu w przekroju sieciowym: '
-            + '$\\cos\\varphi_{\\text{przekroju}} = \\dfrac{|P|}{\\sqrt{P^{2} + '
-            + 'Q_{\\text{przekroju}}^{2}}}$; opisuje przekrój sieci, '
-            + 'NIE stopień skompensowania odbioru',
-          cosfi_punktu:
-            'cosφ punktu kompensowanego: '
-            + '$\\cos\\varphi_{\\text{punktu}} = \\dfrac{|P|}{\\sqrt{P^{2} + '
-            + 'Q_{\\text{netto}}^{2}}}$, $Q_{\\text{netto}} = Q_{\\text{odb}} - '
-            + 'Q_{\\text{bat}}$, $Q_{\\text{bat}} = \\sum Q_{\\text{zn}} \\cdot V^{2}$ '
-            + '(moc znamionowa baterii z katalogu, nie fizyka pola); PODSTAWA DOBORU',
-          konwencja_kanoniczna:
-            '$P>0$ — pobór mocy czynnej, $Q>0$ — pobór mocy biernej (indukcyjny), '
-            + '$Q<0$ — moc pojemnościowa',
-          decyzja:
-            'wynik rozpływu pozostaje nienaruszony (tylko odczyt); znak mocy '
-            + 'biernej interpretuje adapter konwencji — dobór nie modyfikuje '
-            + 'solvera ani wyniku',
-          candidate_count: 3,
-          night_scenario: null,
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Karta HARNESS-RESZTA (kontynuacja): sceny "kompensacja"/"kompensacja-
+    // wynik" — REALNY bieg backendu (eksport_fixtur_harnessu.py::
+    // kompensacja_scena_wynik, TA SAMA funkcja co koncowka
+    // `build_compensation_sizing_view`) na PF biegu sieci zlotej, wezel
+    // bus_sn_b — zero recznie wpisanych liczb fizycznych.
+    return jsonOK(kompensacjaScenyWynik);
   }
   if (url.includes('/api/quality/flicker')) {
-    // Scena "migotanie" (V-B): ocena Pst/Plt/d — ksztalt 1:1 z
-    // `application/analyses/migotanie.py::build_migotanie_view` (kroki `_step`
-    // z `formula_latex` KaTeX). Liczby spojne miedzy krokami:
-    //   SZ-PV2 (Sk″=189.9): 19.5·4/189.9=0.4107; 13·5/189.9=0.3423;
-    //     Pst=(0.4107³+0.3423³)^(1/3)=0.4782; d=1·9.5/189.9·100=5.0026 %.
-    //   SZ-FW1 (Sk″=45): 6.8·8/45=1.2089 > 0.9 -> przekroczenie.
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'mig-demo-1',
-        context: {
-          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
-          run_timestamp: '2026-07-22T08:40:00Z', snapshot_id: 'snap-demo', trace_id: 'run-sc-5',
-        },
-        config: {
-          flicker_summation_exponent_m: 3,
-          planning_level_pst: 0.9,
-          planning_level_plt: 0.7,
-          rvc_kmax: 1.0,
-        },
-        buses: [
-          {
-            bus_ref: 'SZ-PV2', nominal_kv: 15.0, sk_mva: 189.9,
-            modules: [
-              {
-                gen_ref: 'gen-pv-1', sn_mva: 4.0, flicker_c: 19.5, pst_i: 0.4107,
-                included: true, info_pl: null,
-                white_box: [
-                  {
-                    symbol: 'P_{st,i}',
-                    formula_latex: "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
-                    substitution_pl: 'P_st_i = 19.5 · 4 / 189.9 MVA',
-                    result_pl: 'P_st_i = 0.4107',
-                  },
-                ],
-              },
-              {
-                gen_ref: 'gen-pv-2', sn_mva: 0.5, flicker_c: null, pst_i: null,
-                included: false,
-                info_pl: 'brak współczynnika emisji migotania w katalogu — moduł pominięty w sumowaniu',
-                white_box: [],
-              },
-              {
-                gen_ref: 'gen-fw-3', sn_mva: 5.0, flicker_c: 13.0, pst_i: 0.3423,
-                included: true, info_pl: null,
-                white_box: [
-                  {
-                    symbol: 'P_{st,i}',
-                    formula_latex: "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
-                    substitution_pl: 'P_st_i = 13 · 5 / 189.9 MVA',
-                    result_pl: 'P_st_i = 0.3423',
-                  },
-                ],
-              },
-            ],
-            pst: 0.4782, plt: 0.4782, d_percent: 5.0026,
-            pst_limit: 0.9, plt_limit: 0.7,
-            verdict_pl: 'w granicach planowania',
-            zalozenia_pl: [
-              "Emisja pojedynczego źródła: Pst_i = c · Sn / Sk'' (c — współczynnik emisji "
-              + 'migotania z certyfikatu urządzenia; metodyka IEC 61400-21-1).',
-              'Sumowanie emisji wielu źródeł w węźle: Pst = (Σ Pst_i^m)^(1/m), wykładnik '
-              + 'm = 3 (sumowanie sześcienne wg IEC/TR 61000-3-7:2008, §5.2).',
-              'Plt = Pst — założenie konserwatywne dla ciągłej, ustalonej emisji źródeł OZE '
-              + '(równe wartości Pst w oknie 2 h dają Plt = Pst z definicji Plt).',
-              'Poziomy planowania dla SN: Pst = 0.9, Plt = 0.7 — wartości orientacyjne wg '
-              + 'IEC/TR 61000-3-7:2008, Tablica 1. Wiążące wymaganie ustala OSD.',
-              'Szybka zmiana napięcia d = kmax · Sn / Sk\'\' · 100, kmax = 1 (założenie '
-              + 'konserwatywne — załączenie pełnej mocy zainstalowanej w węźle; '
-              + 'IEC/TR 61000-3-7:2008, §5.5).',
-            ],
-            white_box: [
-              {
-                symbol: 'P_{st}',
-                formula_latex: 'P_{st} = \\left( \\sum_i P_{st,i}^{\\,m} \\right)^{1/m}, \\quad m = 3',
-                substitution_pl: 'P_st = (0.4107^3 + 0.3423^3)^(1/3)',
-                result_pl: 'P_st = 0.4782',
-              },
-              {
-                symbol: 'P_{lt}',
-                formula_latex: 'P_{lt} = P_{st}',
-                substitution_pl: 'P_lt = P_st = 0.4782 (emisja ciągła, założenie konserwatywne)',
-                result_pl: 'P_lt = 0.4782',
-              },
-              {
-                symbol: 'd',
-                formula_latex: "d = k_{max} \\cdot \\dfrac{S_{n}}{S_{k}''} \\cdot 100\\%",
-                substitution_pl: 'd = 1 · 9.5 / 189.9 · 100 %',
-                result_pl: 'd = 5.0026 %',
-              },
-            ],
-          },
-          {
-            bus_ref: 'SZ-FW1', nominal_kv: 15.0, sk_mva: 45.0,
-            modules: [
-              {
-                gen_ref: 'gen-fw-1', sn_mva: 8.0, flicker_c: 6.8, pst_i: 1.2089,
-                included: true, info_pl: null,
-                white_box: [
-                  {
-                    symbol: 'P_{st,i}',
-                    formula_latex: "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
-                    substitution_pl: 'P_st_i = 6.8 · 8 / 45 MVA',
-                    result_pl: 'P_st_i = 1.2089',
-                  },
-                ],
-              },
-            ],
-            pst: 1.2089, plt: 1.2089, d_percent: 17.7778,
-            pst_limit: 0.9, plt_limit: 0.7,
-            verdict_pl: 'przekroczenie poziomu planowania',
-            zalozenia_pl: [
-              'Sumowanie emisji wielu źródeł w węźle: Pst = (Σ Pst_i^m)^(1/m), wykładnik '
-              + 'm = 3 (sumowanie sześcienne wg IEC/TR 61000-3-7:2008, §5.2).',
-              'Poziomy planowania dla SN: Pst = 0.9, Plt = 0.7 — wartości orientacyjne wg '
-              + 'IEC/TR 61000-3-7:2008, Tablica 1. Wiążące wymaganie ustala OSD.',
-            ],
-            white_box: [
-              {
-                symbol: 'P_{st}',
-                formula_latex: 'P_{st} = \\left( \\sum_i P_{st,i}^{\\,m} \\right)^{1/m}, \\quad m = 3',
-                substitution_pl: 'P_st = (1.2089^3)^(1/3)',
-                result_pl: 'P_st = 1.2089',
-              },
-              {
-                symbol: 'P_{lt}',
-                formula_latex: 'P_{lt} = P_{st}',
-                substitution_pl: 'P_lt = P_st = 1.2089 (emisja ciągła, założenie konserwatywne)',
-                result_pl: 'P_lt = 1.2089',
-              },
-              {
-                symbol: 'd',
-                formula_latex: "d = k_{max} \\cdot \\dfrac{S_{n}}{S_{k}''} \\cdot 100\\%",
-                substitution_pl: 'd = 1 · 8 / 45 · 100 %',
-                result_pl: 'd = 17.7778 %',
-              },
-            ],
-          },
-        ],
-        summary: { total_buses: 2, assessed_count: 2, exceeded_count: 1, not_assessed_count: 0 },
-        input_hash: 'mig-hash-demo',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Karta HARNESS-RESZTA (kontynuacja): scena "migotanie" — REALNY bieg
+    // backendu (eksport_fixtur_harnessu.py::migotanie_scena_wynik, TA SAMA
+    // funkcja co koncowka `build_migotanie_view`) na biegu kotwicy scen
+    // "sila-sieci"/"migotanie" (siec sceny analiz OZE: stacja 15/0,8 kV z falownikiem
+    // PV z karty, `_enm_sceny_oze_analiz`) — zero recznie wpisanych liczb fizycznych.
+    return jsonOK(migotanieScenyWynik);
+  }
+  if (url.includes(`/api/analysis-runs/${odbiorZgodnoscScenyZaciski.run_id}/zaciski-galezi`)) {
+    // Decyzja O-51: etykiety zacisków gałęzi biegu sceny (miejsce pomiaru mocy) —
+    // `zaciski_galezi_migawki`, TA SAMA funkcja co końcówka.
+    return jsonOK(odbiorZgodnoscScenyZaciski);
   }
   if (url.includes('/api/quality/as-built-compliance')) {
-    // Scena "odbior-zgodnosc" (V-B): raport zgodnosci powykonawczej — ksztalt
-    // 1:1 z `application/analyses/zgodnosc_powykonawcza.py::build_zgodnosc_
-    // powykonawcza_view`; slad_pl per wiersz (model -> pomiar -> odchylka ->
-    // tolerancja -> werdykt); echo pomiarow wpisanych w edytorze speca.
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'run-lf-5',
-        input_hash: 'zgodnosc-hash-demo',
-        tolerancje: { napiecie_pct: 5, moc_pct: 10 },
-        zrodlo_tolerancji: { napiecie_pct: 'jawna (żądanie)', moc_pct: 'jawna (żądanie)' },
-        zalozenia_pl: [
-          'Porównanie 1:1 pomiar–model (wynik rozpływu FROZEN); bez estymacji stanu '
-          + '(solver WLS istnieje, ale nie jest używany) i bez korekt modelu.',
-          'Napięcie U przeliczane na kV z u_pu przez napięcie znamionowe węzła (U = u_pu · U_n).',
-          'Moce P/Q odczytywane z gałęzi w kierunku „from" (p_from_mw / q_from_mvar).',
-          'Konwencja znaku Q nierozstrzygnięta (V12K-040): Q porównywane po wartości '
-          + 'bezwzględnej |Q|; znak odchyłki nie jest interpretowany.',
-          'Tolerancje wyłącznie jawne (z żądania); brak udokumentowanego źródła '
-          + 'normatywnego dla wartości domyślnych, więc domyślnych nie przyjęto.',
-        ],
-        podsumowanie: {
-          liczba_punktow: 4, w_tolerancji: 1, poza_tolerancja: 1,
-          brak_odpowiednika: 1, brak_wyniku: 1,
-          najwieksza_odchylka_pct: 12.5,
-          najwieksza_odchylka_element_ref: 'LINE-2',
-          najwieksza_odchylka_wielkosc: 'P',
-        },
-        wiersze: [
-          {
-            element_ref: 'BUS-1', wielkosc: 'U', jednostka: 'kV',
-            wartosc_pomiar: 15.3, wartosc_model: 15.15,
-            odchylka_bezwzgledna: 0.15, odchylka_pct: 0.99, tolerancja_pct: 5,
-            werdykt: 'w tolerancji',
-            slad_pl: [
-              'Model U = u_pu × U_n = 1.010000 × 15.000000 = 15.150000 kV',
-              'Pomiar U = 15.300000 kV',
-              'Odchyłka = pomiar − model = 0.150000 kV (0.990099%)',
-              'Tolerancja = ±5.000000%',
-              'Werdykt: w tolerancji',
-            ],
-          },
-          {
-            element_ref: 'LINE-2', wielkosc: 'P', jednostka: 'MW',
-            wartosc_pomiar: 4.5, wartosc_model: 4.0,
-            odchylka_bezwzgledna: 0.5, odchylka_pct: 12.5, tolerancja_pct: 10,
-            werdykt: 'poza tolerancją',
-            slad_pl: [
-              'Model P_from = 4.000000 MW',
-              'Pomiar P = 4.500000 MW',
-              'Odchyłka = pomiar − model = 0.500000 MW (12.500000%)',
-              'Tolerancja = ±10.000000%',
-              'Werdykt: poza tolerancją',
-            ],
-          },
-          {
-            element_ref: 'NIEZNANY-3', wielkosc: 'U', jednostka: 'kV',
-            wartosc_pomiar: 10.0, wartosc_model: null,
-            odchylka_bezwzgledna: null, odchylka_pct: null, tolerancja_pct: null,
-            werdykt: 'brak odpowiednika w modelu',
-            slad_pl: ['Element „NIEZNANY-3" nie występuje jako węzeł w wyniku rozpływu.'],
-          },
-          {
-            element_ref: 'TRAFO-4', wielkosc: 'Q', jednostka: 'Mvar',
-            wartosc_pomiar: 1.2, wartosc_model: null,
-            odchylka_bezwzgledna: null, odchylka_pct: null, tolerancja_pct: null,
-            werdykt: 'brak wyniku dla elementu',
-            slad_pl: ['Brak wyniku Q (kierunek „from") dla gałęzi „TRAFO-4".'],
-          },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // HARNESS-RESZTA-2: scena "odbior-zgodnosc" — REALNY bieg backendu
+    // (`eksport_fixtur_harnessu.py::odbior_zgodnosc_scena_wynik`, TA SAMA
+    // funkcja `build_zgodnosc_powykonawcza_view`, ktora wola koncowka) na biegu
+    // PF sieci zlotej. Pomiary sceny sa DANA WEJSCIOWA protokolu odbioru
+    // (wartosc modelu + nazwana odchylka); wszystkie odchylki, tolerancje i
+    // werdykty liczy backend.
+    return jsonOK(odbiorZgodnoscScenyWynik);
   }
   if (url.includes('/api/quality/state-estimation/requirements')) {
-    // Scena "estymacja" (V-B): wymagane wejscia WLS — ksztalt 1:1 z
-    // `application/analyses/state_estimation/service.py` (requirements).
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'run-lf-6',
-        context: {
-          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
-          run_timestamp: '2026-07-22T08:50:00Z', snapshot_id: 'snap-demo', trace_id: 'run-lf-6',
-        },
-        base_mva: 100.0,
-        slack_bus_ref: 'BUS-1',
-        slack_index: 0,
-        n_buses: 3,
-        n_states: 5,
-        min_measurements: 5,
-        buses: [
-          { bus_ref: 'BUS-1', index: 0, name: 'Szyna GPZ', voltage_kv: 110.0, is_slack: true },
-          { bus_ref: 'BUS-2', index: 1, name: 'Szyna SN', voltage_kv: 15.0, is_slack: false },
-          { bus_ref: 'BUS-3', index: 2, name: null, voltage_kv: 15.0, is_slack: false },
-        ],
-        measurement_types: [
-          { code: 'V_MAGNITUDE', label_pl: 'Moduł napięcia węzła |V| [pu]', requires_bus_j: false },
-          { code: 'P_INJECTION', label_pl: 'Iniekcja mocy czynnej w węźle P [pu]', requires_bus_j: false },
-          { code: 'Q_INJECTION', label_pl: 'Iniekcja mocy biernej w węźle Q [pu]', requires_bus_j: false },
-          { code: 'P_FLOW', label_pl: 'Przepływ mocy czynnej w gałęzi P_ij [pu]', requires_bus_j: true },
-          { code: 'Q_FLOW', label_pl: 'Przepływ mocy biernej w gałęzi Q_ij [pu]', requires_bus_j: true },
-        ],
-        note_pl:
-          'Pomiary muszą być w jednostkach względnych (pu) na tej samej bazie mocy '
-          + '(base_mva) co macierz Y-bus.',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena "estymacja": wymagane wejscia WLS — REALNY bieg backendu
+    // (`build_state_estimation_requirements`, TA SAMA funkcja co koncowka).
+    return jsonOK(estymacjaScenyWymagania);
   }
   if (url.includes('/api/quality/state-estimation')) {
-    // Scena "estymacja" (V-B): wynik WLS — ksztalt 1:1 z `_serialize_result`.
-    // Liczby spojne: 6 pomiarow (echo edytora speca), n=5 stanow, dof=1;
-    // chi² = 27.8 > prog 6.635 (alfa 0.01, dof 1); LNR 5.2 > 3.0 na pomiarze
-    // |V| BUS-1 (pomiar 1.05 vs estymata 1.029 -> rezyduum 0.021 = 5.25·sigma).
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'run-lf-6',
-        context: {
-          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
-          run_timestamp: '2026-07-22T08:50:00Z', snapshot_id: 'snap-demo', trace_id: 'run-lf-6',
-        },
-        status: 'OK',
-        status_pl: 'zbieżny',
-        missing_data: [{ code: 'wezly_bez_pomiaru', bus_refs: ['BUS-3'] }],
-        solver_version: 'state_estimation_wls@1.0.0',
-        validation_status: 'SYNTETYCZNY (walidacja płaskim stanem, nie SCADA/PMU)',
-        estimate_id: 'estymata-hash-demo',
-        base_mva: 100.0,
-        slack_bus_ref: 'BUS-1',
-        slack_index: 0,
-        converged: true,
-        iterations: 3,
-        n_states: 5,
-        m_measurements: 6,
-        degrees_of_freedom: 1,
-        objective_j: 27.8,
-        note: null,
-        buses: [
-          { bus_ref: 'BUS-1', index: 0, name: 'Szyna GPZ', voltage_kv: 110.0, is_slack: true, v_magnitude_pu: 1.029, v_angle_rad: 0.0, v_angle_deg: 0.0 },
-          { bus_ref: 'BUS-2', index: 1, name: 'Szyna SN', voltage_kv: 15.0, is_slack: false, v_magnitude_pu: 0.9912, v_angle_rad: -0.0262, v_angle_deg: -1.5 },
-          { bus_ref: 'BUS-3', index: 2, name: null, voltage_kv: 15.0, is_slack: false, v_magnitude_pu: 1.0103, v_angle_rad: 0.014, v_angle_deg: 0.8 },
-        ],
-        measurements: [
-          { meas_type: 'V_MAGNITUDE', bus_ref: 'BUS-1', bus_j_ref: null, value: 1.05, sigma: 0.004, label: null, index: 0, normalized_residual: 5.2, residual: 0.021, suspect: true },
-          { meas_type: 'V_MAGNITUDE', bus_ref: 'BUS-2', bus_j_ref: null, value: 0.99, sigma: 0.004, label: null, index: 1, normalized_residual: 0.3, residual: -0.0012, suspect: false },
-          { meas_type: 'P_INJECTION', bus_ref: 'BUS-2', bus_j_ref: null, value: -0.35, sigma: 0.008, label: null, index: 2, normalized_residual: 0.4, residual: 0.002, suspect: false },
-          { meas_type: 'Q_INJECTION', bus_ref: 'BUS-2', bus_j_ref: null, value: -0.12, sigma: 0.008, label: null, index: 3, normalized_residual: 0.2, residual: 0.001, suspect: false },
-          { meas_type: 'P_FLOW', bus_ref: 'BUS-1', bus_j_ref: 'BUS-2', value: 0.36, sigma: 0.008, label: null, index: 4, normalized_residual: 0.5, residual: 0.003, suspect: false },
-          { meas_type: 'Q_FLOW', bus_ref: 'BUS-1', bus_j_ref: 'BUS-2', value: 0.13, sigma: 0.008, label: null, index: 5, normalized_residual: 0.3, residual: -0.002, suspect: false },
-        ],
-        bad_data: {
-          chi_square_value: 27.8,
-          chi_square_threshold: 6.635,
-          degrees_of_freedom: 1,
-          alpha: 0.01,
-          chi_square_flag: true,
-          largest_normalized_residual: 5.2,
-          lnr_measurement_index: 0,
-          lnr_threshold: 3.0,
-          lnr_flag: true,
-          normalized_residuals: [5.2, 0.3, 0.4, 0.2, 0.5, 0.3],
-          lnr_measurement: { index: 0, meas_type: 'V_MAGNITUDE', bus_ref: 'BUS-1', bus_j_ref: null, label: null },
-        },
-        white_box: [
-          { iteration: 0, objective_j: 41.2, max_abs_residual: 0.062, step_norm: 0.031, h_jacobian: [[1, 0]], gain_matrix_g: [[2, 0]], residual_r: [0.062, 0.002], delta_x: [0.028, 0.001], state_x: [1.0, 0.0] },
-          { iteration: 1, objective_j: 27.9, max_abs_residual: 0.021, step_norm: 0.0009, h_jacobian: [[1, 0]], gain_matrix_g: [[2, 0]], residual_r: [0.021, 0.002], delta_x: [0.0009, 0.0], state_x: [1.029, -0.026] },
-          { iteration: 2, objective_j: 27.8, max_abs_residual: 0.021, step_norm: 0.00001, h_jacobian: [[1, 0]], gain_matrix_g: [[2, 0]], residual_r: [0.021, 0.002], delta_x: [0.0, 0.0], state_x: [1.029, -0.0262] },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena "estymacja": wynik WLS — REALNY solver na telemetrii sceny
+    // (`build_state_estimation_view`). Jeden pomiar napiecia niesie JAWNIE
+    // nazwany blad gruby (uszkodzony przetwornik), zeby ekran pokazal sekcje
+    // detekcji zlych danych: test chi-kwadrat i najwieksze rezyduum
+    // znormalizowane — liczby z solvera, nie z atrapy.
+    return jsonOK(estymacjaScenyWynik);
+  }
+  // ---- B-02 / W3-E: katalog kart „Analizy specjalistyczne" i gotowość analiz —
+  // odpowiedzi policzone BACKENDEM (`scripts/eksport_fixtur_harnessu.py`:
+  // `katalog_do_dict`, `odpowiedz_gotowosci` na złotej sieci). Gotowość Z parametrami
+  // wraca WYŁĄCZNIE, gdy zapytanie niesie DOKŁADNIE parametry sceny dla rodzaju
+  // (formularz wypełniony wartościami z fixtury `parametry`) — w każdym innym razie
+  // stan bez parametrów. Atrapa NIE liczy gotowości sama (częściowo wypełniony
+  // formularz dostaje stan bazowy, nie „policzone na oko"): liczy ją wyłącznie backend.
+  if (url.includes('/api/catalog/v126/analysis-catalog')) return jsonOK(katalogAnalizV126);
+  // Karta #145: katalogi wartości odniesienia kart analiz (panel „Dane odniesienia") —
+  // odpowiedzi końcówki policzone backendem; bez tej trasy panel pokazywał błąd atrapy.
+  const przestrzenOdniesien = /\/api\/catalog\/v126\/([a-z-]+)$/.exec(url.split('?')[0])?.[1];
+  if (przestrzenOdniesien !== undefined && przestrzenOdniesien in katalogiOdniesienV126) {
+    return jsonOK((katalogiOdniesienV126 as Record<string, unknown>)[przestrzenOdniesien]);
+  }
+  if (url.includes('/v126/gotowosc')) {
+    const kanonJson = (dane: unknown): string =>
+      JSON.stringify(dane, (_klucz, wartosc: unknown) =>
+        wartosc !== null && typeof wartosc === 'object' && !Array.isArray(wartosc)
+          ? Object.fromEntries(
+              Object.entries(wartosc as Record<string, unknown>).sort(([a], [b]) =>
+                a < b ? -1 : a > b ? 1 : 0,
+              ),
+            )
+          : wartosc,
+      );
+    const zapytanie = new URL(url, location.origin).searchParams;
+    const rodzaj = zapytanie.get('analysis_type');
+    const parametry = zapytanie.get('parametry');
+    if (rodzaj === null) return jsonOK(gotowoscV126ScenyAkademickie);
+    const zParametrami = gotowoscV126ScenyAkademickieParametry as unknown as {
+      parametry: Record<string, unknown>;
+      analizy: { kod: string }[];
+    };
+    const oczekiwane = zParametrami.parametry[rodzaj];
+    const zgodne =
+      parametry !== null && oczekiwane !== undefined && kanonJson(JSON.parse(parametry)) === kanonJson(oczekiwane);
+    const zrodlo = zgodne
+      ? zParametrami.analizy
+      : (gotowoscV126ScenyAkademickie as unknown as { analizy: { kod: string }[] }).analizy;
+    const analiza = zrodlo.find((pozycja) => pozycja.kod === rodzaj);
+    if (analiza === undefined) {
+      return new Response(JSON.stringify({ detail: `Nieznany rodzaj analizy: ${rodzaj}` }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return jsonOK({ ...gotowoscV126ScenyAkademickie, analizy: [analiza] });
   }
   // ---- Scena "akademickie" (V126-JEZYK): pakiet analiz specjalistycznych V12.6.
   // Wszystkie rodzaje karmione REALNYMI odpowiedziami solvera z fixtury CI.
   if (url.includes('/api/catalog/v126/analysis-types')) {
-    return new Response(
-      JSON.stringify({ namespace: 'analysis-types', items: Object.keys(odpowiedziV126) }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // HARNESS-RESZTA-2: przestrzen nazw katalogu rodzajow analiz z REALNEGO
+    // backendu (`get_v126_catalog("analysis-types")`).
+    return jsonOK(akademickieScenyBiegi.typy);
   }
-  if (url.includes('/v126/') && !url.includes('ssci_impedance')) {
-    const rodzaj = Object.keys(odpowiedziV126).find((kod) => url.includes(kod)) ?? 'voltage_stability';
-    const kroki = sladDemoV126(rodzaj);
-    if (url.includes('/trace')) {
+  if (url.includes('/v126/') && !url.includes('/ssci_impedance/stability')) {
+    // Uczciwosc natychmiastowa (2026-09-23): trasa obejmuje TAKZE `ssci_impedance`
+    // (koperta, wynik, slad, dowod, raport) — dawny warunek wykluczal caly rodzaj,
+    // wiec okno analiz specjalistycznych po uruchomieniu SSCI dostawalo 422 na
+    // wyniku V12.6 (obslugiwana byla tylko koperta i widok stabilnosci okna SSCI).
+    // Widok stabilnosci (`/ssci_impedance/stability`) ma osobna trase nizej.
+    // Scena "akademickie": koperta biegu, wynik, slad WHITE BOX, pakiet
+    // dowodowy i raport z REALNYCH biegow V12.6 na sieci zlotej
+    // (`eksport_fixtur_harnessu.py::akademickie_scena_biegi` — DOKLADNIE te
+    // funkcje, ktore woluja koncowki). Wczesniej slad, dowod i raport skladala
+    // funkcja `sladDemoV126` W TYM PLIKU: kroki, podstawienia i wyniki posrednie
+    // pisane recznie, z wymyslonym `run-akad-1` jako tozsamoscia biegu.
+    const biegi = akademickieScenyBiegi.biegi as Record<string, {
+      koperta: unknown; wynik: unknown; slad: unknown; dowod: unknown; raport: unknown;
+    }>;
+    const rodzaj = Object.keys(biegi).find((kod) => url.includes(kod));
+    if (rodzaj === undefined) {
+      // Rodzaj bez biegu sceny — odmowa NAZWANA, nie wynik policzony "na oko".
+      // Dwie klasy: (a) siec sceny nie spelnia warunkow gotowosci (brak danych
+      // izolacji) albo rodzaj wycofany — ekran i tak nie pusci uruchomienia;
+      // (b) jakosc energii: gotowosc POTWIERDZONA, ale scena SWIADOMIE nie niesie
+      // biegu — liczby solvera harmonicznego niezwalidowanego nie sa przypinane
+      // w fixturach (uczciwosc natychmiastowa 2026-09-23; para predykatow
+      // gotowosc/bieg przypieta w `tests/ci/test_fixtury_harnessu.py`).
       return new Response(
         JSON.stringify({
-          run_id: 'run-akad-1', analysis_type: rodzaj,
-          trace_version: 'AcademicWhiteBoxTraceV1', deterministic_hash: 'akad-hash-demo',
-          steps: kroki,
+          detail:
+            'Scena harnessu nie niesie biegu tego rodzaju analizy — rodzaj bez gotowości '
+            + 'na sieci sceny albo wynik solvera niezwalidowanego, którego fixtury nie przypinają '
+            + '(bieg z oceną niewykonaną wykonuje aplikacja z backendem).',
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
+        { status: 422, headers: { 'Content-Type': 'application/json' } },
       );
     }
-    if (url.includes('/proof')) {
-      return new Response(
-        JSON.stringify({
-          contract: 'AcademicProofPackV1', proof_id: 'proof:v126:demo', run_id: 'run-akad-1',
-          case_id: 'case-demo', analysis_type: rodzaj, source_result_hash: 'akad-hash-demo',
-          trace_step_count: kroki.length,
-          steps: kroki.map((krok, i) => ({ ...krok, ordinal: i + 1 })),
-          proof_hash: 'akad-dowod-demo',
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-    if (url.includes('/report')) {
-      return new Response(
-        JSON.stringify({
-          contract: 'AcademicReportV1', report_id: 'report:v126:demo', run_id: 'run-akad-1',
-          case_id: 'case-demo', analysis_type: rodzaj, source_result_hash: 'akad-hash-demo',
-          source_proof_hash: 'akad-dowod-demo', export_policy: 'frozen_result_and_proof_only',
-          sections: [], report_hash: 'akad-raport-demo',
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-    if (url.includes('/results/v126/')) {
-      return new Response(
-        JSON.stringify({
-          run_id: 'run-akad-1', case_id: 'case-demo', analysis_type: rodzaj, status: 'FINISHED',
-          created_at: '2026-08-07T10:00:00+00:00',
-          result: {
-            contract: 'AcademicAnalysisResultV1', analysis_type: rodzaj,
-            solver_version: 'v126-academic-whitebox-1.1', input_hash: 'akad-wejscie-demo',
-            result: (odpowiedziV126 as Record<string, unknown>)[rodzaj],
-            white_box_trace: kroki, deterministic_hash: 'akad-hash-demo',
-          },
-          proof_ref: 'proof:v126:demo', report_ref: 'report:v126:demo',
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-    return new Response(
-      JSON.stringify({
-        run_id: 'run-akad-1', case_id: 'case-demo', analysis_type: rodzaj, status: 'FINISHED',
-        result_url: '', trace_url: '', proof_url: '', report_url: '',
-        deterministic_hash: 'akad-hash-demo',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
-  }
-  if (url.includes('/runs/v126/ssci_impedance')) {
-    // Scena "ssci" (V-B): utworzenie przebiegu SSCI (koperta V126RunResponse).
-    return new Response(
-      JSON.stringify({ run_id: 'run-ssci-1', status: 'DONE', deterministic_hash: 'ssci-hash-demo' }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    const bieg = biegi[rodzaj];
+    if (url.includes('/trace')) return jsonOK(bieg.slad);
+    if (url.includes('/proof')) return jsonOK(bieg.dowod);
+    if (url.includes('/report')) return jsonOK(bieg.raport);
+    if (url.includes('/results/v126/')) return jsonOK(bieg.wynik);
+    return jsonOK(bieg.koperta);
   }
   if (url.includes('/results/v126/ssci_impedance/stability')) {
-    // Scena "ssci" (V-B): werdykt stabilnosci SSCI — ksztalt 1:1 z
-    // `analysis/ssci_stability/serializer.py::view_to_dict` (kryterium
-    // impedancyjne Nyquista; white_box: max|L| i margines fazy).
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'ssci-analysis-demo-01',
-        context: {
-          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
-          run_timestamp: '2026-07-22T09:00:00Z', snapshot_id: 'snap-demo', trace_id: 'run-ssci-1',
-        },
-        gain_crossover_mag: 1.0,
-        pm_risk_deg: 30.0,
-        pm_unstable_deg: 0.0,
-        verdict: {
-          converter_ref: 'INV1',
-          bus_ref: 'SZ-PV2',
-          verdict: 'niestabilny',
-          is_risk: true,
-          why_pl: 'Przebieg L(jω) okrąża punkt −1 w paśmie przecięcia modułów — niestabilność SSCI.',
-          max_minor_loop_gain: 1.42,
-          has_magnitude_crossover: true,
-          gain_crossover: { f_hz: 34.5, phase_l_deg: -178.0, phase_margin_deg: 2.0 },
-          worst_phase_margin_deg: -3.5,
-          worst_phase_margin_f_hz: 34.5,
-          offending_frequency_hz: 34.5,
-          nearest_to_minus_one: { f_hz: 34.5, mag: 1.42, phase_deg: -178.0, distance_to_minus_one: 0.42 },
-          encirclement_count: 1,
-          negative_resistance_present: true,
-          negative_resistance_f_hz: 28.0,
-          provenance: {
-            worst_quality: 'ESTIMATED',
-            worst_quality_label_pl: 'oszacowane',
-            is_estimated: true,
-            consumed_fields: ['current_loop_bandwidth_hz', 'pll_bandwidth_hz', 'filter_l_pu'],
-            tag_pl: 'Werdykt oparty na oszacowanych polach karty falownika.',
-          },
-          missing_data: [],
-          white_box: [
-            {
-              symbol: 'max|L|',
-              formula_latex: '\\max_f |L(j\\omega)|',
-              substitution_pl: 'maksimum modułu wzmocnienia pętli po częstotliwościach',
-              result_pl: '1,42',
-              unit_check_pl: '[-] (bezwymiarowe)',
-            },
-            {
-              symbol: 'Δφ',
-              formula_latex: '180^\\circ - |\\angle L|',
-              substitution_pl: '180° − |∠L| w paśmie |L| ≥ 1: 180° − 183,5°',
-              result_pl: '-3,50°',
-              unit_check_pl: '[°]',
-            },
-          ],
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena "ssci": widok stabilnosci SSCI (kryterium impedancyjne Nyquista) —
+    // ocena niewykonana z metrykami audytowymi (uczciwosc natychmiastowa
+    // 2026-09-23) — HARNESS-RESZTA-2: REALNY widok backendu
+    // (`get_v126_ssci_stability`, TA SAMA funkcja co koncowka) na REALNYM biegu
+    // `ssci_impedance` sieci zlotej z karta przeksztaltnika przypieta operacja
+    // domenowa. Wczesniej caly widok wraz z wywodem White Box byl wpisany recznie.
+    return jsonOK(akademickieScenyBiegi.biegi.ssci_impedance.stabilnosc);
   }
-  if (url.includes('/api/catalog/complete-bay-templates')) {
-    // KOMPLETNOSC-POLA-TR: kompletne szablony pól producenta — bez nich krok
-    // „Pola rozdzielnicy SN" nie ma czego pokazać (pusta lista = ekran, którego
-    // projektant nigdy nie zobaczy). Kształt 1:1 z `CompleteMvBayTemplateSummary`.
-    // KONFIGURATOR-POL-RMU (S3): szablon niesie KOMPOZYCJĘ APARATÓW
-    // (`device_instances` ze `status_wyposazenia`), bo karta pola i mini-SLD
-    // rysują pole właśnie z niej. Szablon bez składu pokazywałby pole puste,
-    // czyli scenę, której projektant w żywej aplikacji nie zobaczy.
-    const aparat = (
-      ref: string,
-      kind: string,
-      label: string,
-      pozycja: number,
-      strona: string,
-      status: 'FABRYCZNY' | 'OPCJA' = 'FABRYCZNY',
-    ) => ({
-      device_template_ref: ref,
-      apparatus_kind: kind,
-      label,
-      position_in_bay: pozycja,
-      electrical_side: strona,
-      status_wyposazenia: status,
-    });
-    // PRODUCENT JEST PARAMETREM, nie stałą: lista producentów kroku pól wynika
-    // z dostępności KOMPLETNYCH szablonów (`producenciUzywalni`), więc szablon
-    // przypisany na sztywno jednemu producentowi przesądzał, kogo w ogóle widać
-    // na ekranie — i zamykał scenę na jedną firmę, choć katalog niesie pięć.
-    const szablon = (
-      ref: string,
-      kind: string,
-      nazwa: string,
-      rodzina: string,
-      instancje: ReturnType<typeof aparat>[],
-      producent = 'ZPUE_WLOSZCZOWA',
-      zrodla: string[] = ['https://zpue.pl'],
-    ) => ({
-      template_ref: ref,
-      bay_kind: kind,
-      bay_role: kind === 'transformatorowe' ? 'TR' : 'OUT',
-      manufacturer_ref: producent,
-      switchgear_family_ref: rodzina,
-      source_status: 'repo_verified',
-      source_refs: zrodla,
-      name_pl: nazwa,
-      template_name_pl: nazwa,
-      device_instances: instancje,
-    });
-    const polePolaczeniowe = (prefiks: string) => [
-      aparat(`${prefiks}__DS`, 'switch_disconnector', 'Q1', 1, 'busbar_side'),
-      aparat(`${prefiks}__ES`, 'earthing_switch', 'Q9 (E)', 2, 'earthing_branch'),
-      aparat(`${prefiks}__CH`, 'cable_head', 'GK', 3, 'line_side'),
-    ];
-    const poleTransformatorowe = (prefiks: string) => [
-      aparat(`${prefiks}__DS`, 'switch_disconnector', 'Q1', 1, 'busbar_side'),
-      aparat(`${prefiks}__FUSE`, 'fuse_set', 'F1', 2, 'transformer_side'),
-      aparat(`${prefiks}__ES`, 'earthing_switch', 'Q9 (E)', 3, 'earthing_branch'),
-    ];
-    return new Response(
-      JSON.stringify([
-        szablon('ZPUE__ROTOBLOK__LINE_IN', 'liniowe_doplywowe', 'Pole liniowe dopływowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', [
-          aparat('ZPUE__ROTOBLOK__LINE_IN__DS', 'disconnector_busbar', 'Q1', 1, 'busbar_side'),
-          aparat('ZPUE__ROTOBLOK__LINE_IN__CB', 'circuit_breaker', 'Q0', 2, 'line_side'),
-          aparat('ZPUE__ROTOBLOK__LINE_IN__CT', 'current_transformer', 'T1', 3, 'line_side'),
-          aparat('ZPUE__ROTOBLOK__LINE_IN__ES', 'earthing_switch', 'Q9 (E)', 4, 'earthing_branch'),
-          aparat('ZPUE__ROTOBLOK__LINE_IN__CH', 'cable_head', 'GK', 5, 'line_side'),
-        ]),
-        szablon('ZPUE__ROTOBLOK__LINE_OUT', 'liniowe_odplywowe', 'Pole liniowe odpływowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', polePolaczeniowe('ZPUE__ROTOBLOK__LINE_OUT')),
-        szablon('ZPUE__ROTOBLOK__TRANSFORMER', 'transformatorowe', 'Pole transformatorowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', poleTransformatorowe('ZPUE__ROTOBLOK__TRANSFORMER')),
-        szablon('ZPUE__ROTOBLOK__COUPLER', 'sprzeglowe_poprzeczne', 'Pole sprzęgłowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', [
-          aparat('ZPUE__ROTOBLOK__COUPLER__CB', 'circuit_breaker', 'Q0', 1, 'busbar_side'),
-        ]),
-        // Pakiet rodziny RMU — jednostki bloku dobierają z niego swoje karty.
-        szablon('ZPUE__TPM_AIR__LINE_OUT', 'liniowe_odplywowe', 'Jednostka liniowa L', 'ZPUE_WLOSZCZOWA__TPM_AIR', polePolaczeniowe('ZPUE__TPM_AIR__LINE_OUT')),
-        szablon('ZPUE__TPM_AIR__TRANSFORMER', 'transformatorowe', 'Jednostka transformatorowa T', 'ZPUE_WLOSZCZOWA__TPM_AIR', poleTransformatorowe('ZPUE__TPM_AIR__TRANSFORMER')),
-        // ABB SafePlus — dwa z trzynastu kompletnych szablonów ABB w katalogu,
-        // przepisane ze składu rekordu (`ABB__SAFEPLUS__{LINE_OUT,TRANSFORMER}`).
-        // W żywej aplikacji to WŁAŚNIE one czynią ABB producentem wybieralnym
-        // (status producenta to `requires_catalog`), więc bez nich scena RMU nie
-        // dawałaby dojść do rodziny bez bloków fabrycznych.
-        szablon('ABB__SAFEPLUS__LINE_OUT', 'liniowe_odplywowe', 'Pole liniowe odpływowe', 'ABB__SAFEPLUS', [
-          aparat('ABB__SAFEPLUS__LINE_OUT__DS_BUS__00', 'disconnector_busbar', 'Q1', 1, 'busbar_side'),
-          aparat('ABB__SAFEPLUS__LINE_OUT__CB__01', 'circuit_breaker', 'Q0', 2, 'line_side'),
-          aparat('ABB__SAFEPLUS__LINE_OUT__DS_LINE__03', 'disconnector_line', 'Q2', 4, 'line_side'),
-          aparat('ABB__SAFEPLUS__LINE_OUT__ES__04', 'earthing_switch', 'Q9', 5, 'earthing_branch'),
-          aparat('ABB__SAFEPLUS__LINE_OUT__CABLE_HEAD__05', 'cable_head', 'GK', 6, 'line_side'),
-        ], 'ABB', ['https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus']),
-        szablon('ABB__SAFEPLUS__TRANSFORMER', 'transformatorowe', 'Pole transformatorowe', 'ABB__SAFEPLUS', [
-          aparat('ABB__SAFEPLUS__TRANSFORMER__DS_BUS__00', 'disconnector_busbar', 'Q1', 1, 'busbar_side'),
-          aparat('ABB__SAFEPLUS__TRANSFORMER__CB__01', 'circuit_breaker', 'Q0', 2, 'line_side'),
-          aparat('ABB__SAFEPLUS__TRANSFORMER__DS_LINE__03', 'disconnector_line', 'Q2', 4, 'line_side'),
-          aparat('ABB__SAFEPLUS__TRANSFORMER__ES__04', 'earthing_switch', 'Q9', 5, 'earthing_branch'),
-          aparat('ABB__SAFEPLUS__TRANSFORMER__TRANSFORMER_DEVICE__05', 'transformer', 'TR', 6, 'transformer_side'),
-        ], 'ABB', ['https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus']),
-      ]),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
-  }
-  if (url.includes('/api/station-templates')) {
+  // Karta FAB-L (§0 L6): USUNIĘTA kompozycja `/api/catalog/complete-bay-templates`
+  // budowana w harnessie (refy szablonów niezgodne z konwencją backendu —
+  // `ZPUE__ROTOBLOK__*` zamiast realnego `ZPUE_WLOSZCZOWA__ROTOBLOK__*`).
+  // Backend jest stateless/deterministyczny (`list_complete_bay_templates_endpoint`,
+  // zero zależności DB) i zwraca bogatszy, realny skład (44 szablony dla ZPUE
+  // Włoszczowa, 13 dla ABB — zweryfikowane pomiarem) — trasa idzie do niego.
+  if (url.includes('/api/station-templates') && creatorZUrl() !== 'szablony') {
     // Biblioteka szablonów stacji — krok 0 kreatora. Pusta lista = uczciwy stan
     // „brak szablonów", ekran działa dalej (ścieżka „od zera").
     return new Response(JSON.stringify({ templates: [], total: 0 }), {
@@ -2126,1349 +1172,230 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       headers: { 'Content-Type': 'application/json' },
     });
   }
+  if (url.includes('/api/station-templates') && creatorZUrl() === 'szablony') {
+    // Scena „szablony" (V12T-016, karta SZABLONY-ROLA-A): przeglądarka
+    // biblioteki szablonów (`ui2/spaces/model/szablony`) — w odróżnieniu od
+    // kreatora stacji (mock pustej listy wyżej) ta scena istnieje WPROST po
+    // to, żeby pokazać rzeczywistą, pełną bibliotekę (73 szablony, 15
+    // kategorii, rola A „Zasilanie sieci" już niepusta) — atrapa
+    // przeczyłaby własnemu celowi sceny. Przechodzi do PRAWDZIWEGO
+    // backendu (ten sam wzorzec co scena „stacja" — `zasiejSceneStacji`
+    // niżej — realny projekt/przypadek zamiast ręcznie sklejonej liczby).
+    return originalFetch(input, init);
+  }
   if (url.includes('/api/quality/conductor-thermal-withstand/proof')) {
-    // Karta F-K1 faza 7: dowod LINII NAPOWIETRZNEJ. Krok 1 pokazuje rodzaj przewodu
-    // i zdanie o tym, CO wyznacza temperature graniczna — brak izolacji przewodu
-    // golego nie jest tu raportowany jako brak danej. Kroki WYLICZONE solverem
-    // `conductor_thermal_withstand.py` (AFL 6 70 mm², I = 5200 A, t = 1,0 s).
-    if (url.includes('linia-napowietrzna-3')) {
-      return new Response(JSON.stringify({
-          "run_id": "run-sc-7",
-          "branch_id": "linia-napowietrzna-3",
-          "branch_name": "Odgałęzienie napowietrzne L-03 (AFL 6 70 mm²)",
-          "status": "PASS",
-          "kroki": [
-            {
-              "step": 1,
-              "key": "conductor_thermal_k_factor",
-              "title": "Współczynnik materiałowy k żyły",
-              "formula_latex": "$$k = J_{th(1s)} \\quad \\left[\\frac{\\mathrm{A}\\sqrt{\\mathrm{s}}}{\\mathrm{mm^2}}\\right]$$",
-              "inputs": {
-                "rodzaj_przewodu": {
-                  "value": "przewód goły (linia napowietrzna)",
-                  "label": "Rodzaj przewodu"
-                },
-                "material_zyly": {
-                  "value": "AL_ST",
-                  "label": "Materiał żyły"
-                },
-                "izolacja": {
-                  "value": "brak — przewód goły",
-                  "label": "Izolacja"
-                },
-                "temp_poczatkowa_c": {
-                  "value": 70.0,
-                  "unit": "°C",
-                  "label": "Temperatura początkowa (robocza)"
-                },
-                "temp_koncowa_c": {
-                  "value": 200.0,
-                  "unit": "°C",
-                  "label": "Temperatura końcowa (zwarciowa)"
-                }
-              },
-              "substitution": "$$k = 88\\ \\frac{\\mathrm{A}\\sqrt{\\mathrm{s}}}{\\mathrm{mm^2}}$$",
-              "result": {
-                "k_a_s05_per_mm2": {
-                  "value": 88.0,
-                  "unit": "A·√s/mm²",
-                  "label": "Współczynnik k (= Jth dla 1 s)"
-                }
-              },
-              "notes": "k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej (prąd na 1 mm² przekroju wytrzymywany przez 1 s). Źródło: PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3. Temperaturę graniczną przy zwarciu wyznacza utrata wytrzymałości mechanicznej żyły i dopuszczalna temperatura osprzętu (przewód goły nie ma izolacji). Rodzaj przewodu, materiał żyły i para temperatur pozwalają zweryfikować tę wartość."
-            },
-            {
-              "step": 2,
-              "key": "conductor_thermal_admissible",
-              "title": "Prąd dopuszczalny przewodu przy czasie trwania zwarcia",
-              "formula_latex": "$$I_{dop}(t) = I_{th(1s)} \\cdot \\sqrt{\\frac{1\\,\\mathrm{s}}{t}}$$",
-              "inputs": {
-                "ith_1s_a": {
-                  "value": 6160.0,
-                  "unit": "A",
-                  "label": "Wytrzymałość cieplna żyły dla 1 s"
-                },
-                "tk_s": {
-                  "value": 1.0,
-                  "unit": "s",
-                  "label": "Czas trwania zwarcia"
-                }
-              },
-              "substitution": "$$I_{dop} = \\frac{6160}{\\sqrt{1}} = 6160\\ \\mathrm{A}$$",
-              "result": {
-                "i_dop_a": {
-                  "value": 6160.0,
-                  "unit": "A",
-                  "label": "Prąd dopuszczalny przy czasie t"
-                }
-              },
-              "notes": "Nagrzewanie zwarciowe przyjmuje się za adiabatyczne, więc obowiązuje równoważna energia cieplna I²·t = const (IEC 60949)."
-            },
-            {
-              "step": 3,
-              "key": "conductor_thermal_criterion",
-              "title": "Sprawdzenie kryterium cieplnego (zapis prądowy)",
-              "formula_latex": "$$I_{th} \\le I_{dop}(t)$$",
-              "inputs": {
-                "ith_a": {
-                  "value": 5200.0,
-                  "unit": "A",
-                  "label": "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"
-                },
-                "i_dop_a": {
-                  "value": 6160.0,
-                  "unit": "A",
-                  "label": "Prąd dopuszczalny przy czasie t"
-                }
-              },
-              "substitution": "$$5200\\ \\mathrm{A} \\le 6160\\ \\mathrm{A} \\quad\\Rightarrow\\quad 84{,}416\\ \\%$$",
-              "result": {
-                "utilization": {
-                  "value": 0.844156,
-                  "unit": "-",
-                  "label": "Wykorzystanie wytrzymałości cieplnej"
-                },
-                "margin_a": {
-                  "value": 960.0,
-                  "unit": "A",
-                  "label": "Zapas do prądu dopuszczalnego"
-                }
-              },
-              "notes": "Kryterium spełnione — przekrój wytrzyma zwarcie przez ten czas."
-            },
-            {
-              "step": 4,
-              "key": "conductor_thermal_energy",
-              "title": "Bilans energii cieplnej zwarcia",
-              "formula_latex": "$$I^2 t \\le k^2 S^2$$",
-              "inputs": {
-                "ith_a": {
-                  "value": 5200.0,
-                  "unit": "A",
-                  "label": "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"
-                },
-                "tk_s": {
-                  "value": 1.0,
-                  "unit": "s",
-                  "label": "Czas trwania zwarcia"
-                },
-                "ith_1s_a": {
-                  "value": 6160.0,
-                  "unit": "A",
-                  "label": "Wytrzymałość cieplna żyły dla 1 s"
-                }
-              },
-              "substitution": "$$5200^2 \\cdot 1 = 2{,}704 \\cdot 10^{7}\\ \\mathrm{A^2s} \\le 3{,}7946 \\cdot 10^{7}\\ \\mathrm{A^2s}$$",
-              "result": {
-                "i2t_a2s": {
-                  "value": 27040000.0,
-                  "unit": "A²·s",
-                  "label": "Energia cieplna zwarcia I²t"
-                },
-                "i2t_dop_a2s": {
-                  "value": 37945600.0,
-                  "unit": "A²·s",
-                  "label": "Dopuszczalna energia cieplna żyły k²S²"
-                }
-              },
-              "notes": "Zapis energetyczny i prądowy to ta sama nierówność — muszą dać ten sam werdykt; rozjazd oznaczałby błąd rachunku."
-            },
-            {
-              "step": 5,
-              "key": "conductor_thermal_min_section",
-              "title": "Minimalny przekrój żyły z warunku cieplnego",
-              "formula_latex": "$$S_{min} = \\frac{I_{th} \\cdot \\sqrt{t}}{J_{th(1s)}}$$",
-              "inputs": {
-                "ith_a": {
-                  "value": 5200.0,
-                  "unit": "A",
-                  "label": "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"
-                },
-                "tk_s": {
-                  "value": 1.0,
-                  "unit": "s",
-                  "label": "Czas trwania zwarcia"
-                },
-                "jth_1s_a_per_mm2": {
-                  "value": 88.0,
-                  "unit": "A/mm²",
-                  "label": "Gęstość prądu cieplnego dla 1 s"
-                },
-                "cross_section_mm2": {
-                  "value": 70.0,
-                  "unit": "mm²",
-                  "label": "Przekrój zastosowany"
-                }
-              },
-              "substitution": "$$S_{min} = \\frac{5200 \\cdot \\sqrt{1}}{88} = 59{,}091\\ \\mathrm{mm^2} \\quad ; \\quad S = 70\\ \\mathrm{mm^2} \\ge S_{min}$$",
-              "result": {
-                "s_min_mm2": {
-                  "value": 59.090909,
-                  "unit": "mm²",
-                  "label": "Minimalny wymagany przekrój"
-                }
-              },
-              "notes": "Zapis równoważny kryterium prądowemu — mówi wprost, jaki przekrój usunie naruszenie."
-            }
-          ]
-        }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    // Scena "cieplna" (karta F-K1 faza 5): dowod kryterium dla galezi Z NASTAWA.
-    // Kroki 1:1 z solverem `conductor_thermal_withstand.py::_build_white_box_trace`
-    // i `wytrzymalosc_cieplna_przewodow.py::_krok_czasu`; liczby WYLICZONE tym
-    // solverem (nie wpisane recznie): I=15000 A, Is=600 A, TMS=0,2, krzywa SI ->
-    // t = 0,421085 s; I_dop = 13800/sqrt(0,421085) = 21266,4 A; 15000/21266,4 =
-    // 0,705338; S_min = 15000*sqrt(0,421085)/115 = 84,64 mm2.
-    return new Response(
-      JSON.stringify({
-        run_id: 'run-sc-7',
-        branch_id: 'kabel-magistrala-1',
-        branch_name: 'Magistrala L-01 (120 mm²)',
-        status: 'PASS',
-        kroki: [
-          {
-            step: 1,
-            key: 'conductor_thermal_time_source',
-            title: 'Czas trwania zwarcia z nastawy zabezpieczenia',
-            formula_latex: '$$t_k = \\mathrm{TMS} \\cdot \\frac{A}{(I/I_s)^{B} - 1}$$',
-            inputs: {
-              i_galezi_a: { value: 15000, unit: 'A', label: 'Prąd zwarciowy gałęzi' },
-              i_rozruchowy_a: { value: 600, unit: 'A', label: 'Próg rozruchowy zabezpieczenia' },
-              tms: { value: 0.2, unit: '-', label: 'Mnożnik czasowy nastawy' },
-            },
-            substitution:
-              '$$t_k = 0{,}2 \\cdot \\frac{0{,}14}{\\left(\\frac{15000}{600}\\right)^{0{,}02} - 1} = 0{,}421085\\ \\mathrm{s}$$',
-            result: { tk_s: { value: 0.421085, unit: 's', label: 'Czas trwania zwarcia' } },
-            notes:
-              'Czas z charakterystyki IEC_SI zabezpieczenia pola L-01 przy prądzie gałęzi 15000.0 A.',
-          },
-          {
-            step: 2,
-            key: 'conductor_thermal_admissible',
-            title: 'Prąd dopuszczalny przewodu przy czasie trwania zwarcia',
-            formula_latex: '$$I_{dop}(t) = I_{th(1s)} \\cdot \\sqrt{\\frac{1\\,\\mathrm{s}}{t}}$$',
-            inputs: {
-              ith_1s_a: { value: 13800, unit: 'A', label: 'Wytrzymałość cieplna żyły dla 1 s' },
-              tk_s: { value: 0.421085, unit: 's', label: 'Czas trwania zwarcia' },
-            },
-            substitution: '$$I_{dop} = \\frac{13800}{\\sqrt{0{,}421}} = 21266{,}4\\ \\mathrm{A}$$',
-            result: { i_dop_a: { value: 21266.410898, unit: 'A', label: 'Prąd dopuszczalny przy czasie t' } },
-            notes:
-              'Nagrzewanie zwarciowe przyjmuje się za adiabatyczne, więc obowiązuje równoważna energia cieplna I²·t = const (IEC 60949).',
-          },
-          {
-            step: 3,
-            key: 'conductor_thermal_criterion',
-            title: 'Sprawdzenie kryterium cieplnego',
-            formula_latex: '$$I_{th} \\le I_{dop}(t)$$',
-            inputs: {
-              ith_a: { value: 15000, unit: 'A', label: 'Prąd zwarciowy ekwiwalentny cieplnie gałęzi' },
-              i_dop_a: { value: 21266.410898, unit: 'A', label: 'Prąd dopuszczalny przy czasie t' },
-            },
-            substitution:
-              '$$15000\\ \\mathrm{A} \\le 21266{,}4\\ \\mathrm{A} \\quad\\Rightarrow\\quad 70{,}534\\ \\%$$',
-            result: {
-              utilization: { value: 0.705338, unit: '-', label: 'Wykorzystanie wytrzymałości cieplnej' },
-              margin_a: { value: 6266.410898, unit: 'A', label: 'Zapas do prądu dopuszczalnego' },
-            },
-            notes: 'Kryterium spełnione — przekrój wytrzyma zwarcie przez ten czas.',
-          },
-          {
-            step: 4,
-            key: 'conductor_thermal_min_section',
-            title: 'Minimalny przekrój żyły z warunku cieplnego',
-            formula_latex: '$$S_{min} = \\frac{I_{th} \\cdot \\sqrt{t}}{J_{th(1s)}}$$',
-            inputs: {
-              ith_a: { value: 15000, unit: 'A', label: 'Prąd zwarciowy ekwiwalentny cieplnie gałęzi' },
-              tk_s: { value: 0.421085, unit: 's', label: 'Czas trwania zwarcia' },
-              jth_1s_a_per_mm2: { value: 115, unit: 'A/mm²', label: 'Gęstość prądu cieplnego dla 1 s' },
-              cross_section_mm2: { value: 120, unit: 'mm²', label: 'Przekrój zastosowany' },
-            },
-            substitution:
-              '$$S_{min} = \\frac{15000 \\cdot \\sqrt{0{,}421}}{115} = 84{,}641\\ \\mathrm{mm^2} \\quad ; \\quad S = 120\\ \\mathrm{mm^2} \\ge S_{min}$$',
-            result: { s_min_mm2: { value: 84.640516, unit: 'mm²', label: 'Minimalny wymagany przekrój' } },
-            notes: 'Zapis równoważny kryterium prądowemu — mówi wprost, jaki przekrój usunie naruszenie.',
-          },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Karta HARNESS-RESZTA (kontynuacja) + karta #145: dowód cieplny KAŻDEJ gałęzi
+    // oceny biegu kotwicy sceny "zwarcia" — REALNY bieg backendu
+    // (eksport_fixtur_harnessu.py::cieplna_scena_dowody, TA SAMA funkcja co
+    // końcówka `zbuduj_dowod_cieplny`), zero ręcznie wpisanych liczb fizycznych.
+    // Gałąź spoza oceny → 404 jak w końcówce, NIGDY odpowiedź oceny w miejscu dowodu
+    // (dawniej klik w inny wiersz niż jedna gałąź fikstury wywracał ekran).
+    const branchId = new URL(url, window.location.origin).searchParams.get('branch_id') ?? '';
+    const dowod = (cieplnaScenyDowody.dowody as Record<string, unknown>)[branchId];
+    if (dowod !== undefined) return jsonOK(dowod);
+    return new Response(JSON.stringify({ detail: 'Gałąź spoza oceny cieplnej przebiegu.' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
   if (url.includes('/api/quality/conductor-thermal-withstand')) {
-    // Scena "cieplna": ocena per galaz — ksztalt 1:1 z
-    // `wytrzymalosc_cieplna_przewodow.py::build_wytrzymalosc_cieplna_view`.
-    // Galaz 1 ma czas Z NASTAWY (0,421085 s), galaz 2 — z ZALOZENIA przypadku
-    // (1,0 s), bo jej aparat nie ma czynnego zabezpieczenia. Liczby wyliczone
-    // solverem: L-01 PASS (15000 <= 21266,4; S_min 84,64 mm2 < 120 mm2);
-    // L-02 FAIL (9200 > 8050 = 8050/sqrt(1); S_min 80 mm2 > 70 mm2).
-    return new Response(
-      JSON.stringify({
-        run_id: 'run-sc-7',
-        case_id: 'case-demo',
-        analysis_type: 'short_circuit_sn',
-        fault_node_id: 'SZ-ST7',
-        tk_s: 1.0,
-        czasy_wylaczenia: { z_nastawy: 1, z_zalozenia: 2, razem: 3 },
-        aktualnosc: {
-          aktualny: true,
-          powod_pl: 'Wynik policzony dla biezacej wersji modelu.',
-          model_hash: 'h-demo',
-          snapshot_hash: 'h-demo',
-        },
-        normy: [
-          {
-            norma: 'PN-HD 60364-4-43',
-            punkt: '§ 434.5.2',
-            tresc_pl:
-              'Warunek adiabatyczny doboru przekroju ze wzgledu na zwarcie: S ≥ √(I²·t) / k.',
-          },
-          {
-            norma: 'IEC 60949',
-            punkt: '§ 3, § 4',
-            tresc_pl:
-              'Obliczanie dopuszczalnych pradow zwarciowych kabli; podstawa wartosci k dla par material zyly / izolacja.',
-          },
-          {
-            norma: 'IEC 60909-0',
-            punkt: '§ 12',
-            tresc_pl: 'Prad ekwiwalentny cieplnie I_th = I″k·√(m+n) — to jego uzywa kryterium.',
-          },
-        ],
-        ocena: {
-          items: [
-            {
-              branch_id: 'kabel-magistrala-1',
-              branch_name: 'Magistrala L-01 (120 mm²)',
-              status: 'PASS',
-              i_fault_a: 15000,
-              i_permissible_a: 21266.410898,
-              utilization: 0.705338,
-              s_min_mm2: 84.640516,
-              applied_cross_section_mm2: 120,
-              missing_codes: [],
-              uzasadnienie_pl: null,
-              i2t_a2s: 94744125,
-              i2t_dopuszczalne_a2s: 190440000,
-              margines_procent: 29.4662,
-              kryteria: [
-                {
-                  kod: 'prad_dopuszczalny',
-                  nazwa_pl: 'Prąd zwarciowy wobec dopuszczalnego dla czasu t',
-                  warunek_pl: 'I_th ≤ I_dop(t) = I_th(1s)/√t',
-                  wartosc: 15000,
-                  granica: 21266.410898,
-                  jednostka: 'A',
-                  status: 'PASS',
-                },
-                {
-                  kod: 'energia_cieplna',
-                  nazwa_pl: 'Energia zwarcia wobec wytrzymałości żyły',
-                  warunek_pl: 'I²·t ≤ k²·S²',
-                  wartosc: 94744125,
-                  granica: 190440000,
-                  jednostka: 'A²·s',
-                  status: 'PASS',
-                },
-                {
-                  kod: 'przekroj_minimalny',
-                  nazwa_pl: 'Przekrój zastosowany wobec minimalnego z warunku cieplnego',
-                  warunek_pl: 'S ≥ S_min = √(I²·t)/k',
-                  wartosc: 120,
-                  granica: 84.640516,
-                  jednostka: 'mm²',
-                  status: 'PASS',
-                },
-              ],
-              powod_decyzji_pl: 'Wykorzystanie wytrzymałości cieplnej 70,5 % (zapas 29,5 %).',
-              zalecenia: [],
-              wrazliwosc: [
-                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 0.5, wartosc: 0.2105, jednostka: 's', wykorzystanie: 0.498749 },
-                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 1.0, wartosc: 0.4211, jednostka: 's', wykorzystanie: 0.705338 },
-                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 2.0, wartosc: 0.8422, jednostka: 's', wykorzystanie: 0.997496 },
-                { parametr: 'prad_zwarciowy', nazwa_pl: 'Prąd zwarciowy', mnoznik: 1.5, wartosc: 22500, jednostka: 'A', wykorzystanie: 1.058007 },
-                { parametr: 'przekroj', nazwa_pl: 'Przekrój żyły', mnoznik: 0.5, wartosc: 60, jednostka: 'mm²', wykorzystanie: 1.410677 },
-              ],
-              uzasadnienie_k: {
-                k_a_s05_per_mm2: 115,
-                tozsamosc_pl:
-                  'k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej (prąd na 1 mm² przekroju wytrzymywany przez 1 s).',
-                material_zyly: 'CU',
-                izolacja: 'XLPE',
-                temp_poczatkowa_c: 90,
-                temp_koncowa_c: 250,
-                zrodlo_pl: 'IEC 60502-2 / IEC 60949',
-                braki_pl: [],
-                kompletne: true,
-              },
-              czas_wylaczenia: {
-                tk_s: 0.421085,
-                zrodlo: 'nastawa_zabezpieczenia',
-                powod_pl:
-                  'Czas z charakterystyki IEC_SI zabezpieczenia pola L-01 przy prądzie gałęzi 15000.0 A.',
-                urzadzenie_ref: 'CB-L01',
-                urzadzenie_nazwa: 'Wyłącznik pola L-01',
-                funkcja: 'overcurrent_51',
-                prad_galezi_a: 15000,
-                prad_rozruchowy_a: 600,
-                krzywa: 'IEC_SI',
-                tms: 0.2,
-              },
-            },
-            {
-              branch_id: 'kabel-odgalezienie-2',
-              branch_name: 'Odgałęzienie L-02 (70 mm²)',
-              status: 'FAIL',
-              i_fault_a: 9200,
-              i_permissible_a: 8050,
-              utilization: 1.142857,
-              s_min_mm2: 80,
-              applied_cross_section_mm2: 70,
-              missing_codes: [],
-              uzasadnienie_pl: null,
-              i2t_a2s: 84640000,
-              i2t_dopuszczalne_a2s: 64802500,
-              margines_procent: -14.2857,
-              kryteria: [
-                {
-                  kod: 'prad_dopuszczalny',
-                  nazwa_pl: 'Prąd zwarciowy wobec dopuszczalnego dla czasu t',
-                  warunek_pl: 'I_th ≤ I_dop(t) = I_th(1s)/√t',
-                  wartosc: 9200,
-                  granica: 8050,
-                  jednostka: 'A',
-                  status: 'FAIL',
-                },
-                {
-                  kod: 'energia_cieplna',
-                  nazwa_pl: 'Energia zwarcia wobec wytrzymałości żyły',
-                  warunek_pl: 'I²·t ≤ k²·S²',
-                  wartosc: 84640000,
-                  granica: 64802500,
-                  jednostka: 'A²·s',
-                  status: 'FAIL',
-                },
-                {
-                  kod: 'przekroj_minimalny',
-                  nazwa_pl: 'Przekrój zastosowany wobec minimalnego z warunku cieplnego',
-                  warunek_pl: 'S ≥ S_min = √(I²·t)/k',
-                  wartosc: 70,
-                  granica: 80,
-                  jednostka: 'mm²',
-                  status: 'FAIL',
-                },
-              ],
-              powod_decyzji_pl:
-                'Przekrój 70 mm² jest mniejszy od wymaganego 80,0 mm² z warunku cieplnego.',
-              zalecenia: [
-                {
-                  kod: 'zwieksz_przekroj',
-                  dzialanie_pl: 'Zwiększ przekrój żyły',
-                  wzor: 'S ≥ I·√t / k',
-                  wartosc_docelowa: 80,
-                  jednostka: 'mm²',
-                  wartosc_obecna: 70,
-                  skutek_pl:
-                    'Przekrój 80,0 mm² sprowadza wykorzystanie wytrzymałości do 100 %; typoszereg powyżej daje zapas.',
-                },
-                {
-                  kod: 'skroc_czas',
-                  dzialanie_pl: 'Skróć czas wyłączenia zwarcia (nastawa zabezpieczenia)',
-                  wzor: 't ≤ (k·S / I)²',
-                  wartosc_docelowa: 0.7656,
-                  jednostka: 's',
-                  wartosc_obecna: 1.0,
-                  skutek_pl:
-                    'Czas 0,766 s zamiast 1,000 s wystarczy, żeby obecny przekrój spełnił kryterium bez wymiany kabla.',
-                },
-                {
-                  kod: 'ogranicz_prad',
-                  dzialanie_pl: 'Ogranicz prąd zwarciowy w tym miejscu sieci',
-                  wzor: 'I ≤ k·S / √t',
-                  wartosc_docelowa: 8050,
-                  jednostka: 'A',
-                  wartosc_obecna: 9200,
-                  skutek_pl:
-                    'Prąd do 8050 A (np. dławik zwarciowy, podział sieci, inny punkt pracy) mieści się w wytrzymałości obecnego przekroju.',
-                },
-              ],
-              wrazliwosc: [
-                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 0.5, wartosc: 0.5, jednostka: 's', wykorzystanie: 0.808122 },
-                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 1.0, wartosc: 1.0, jednostka: 's', wykorzystanie: 1.142857 },
-                { parametr: 'prad_zwarciowy', nazwa_pl: 'Prąd zwarciowy', mnoznik: 0.75, wartosc: 6900, jednostka: 'A', wykorzystanie: 0.857143 },
-                { parametr: 'przekroj', nazwa_pl: 'Przekrój żyły', mnoznik: 1.5, wartosc: 105, jednostka: 'mm²', wykorzystanie: 0.761905 },
-              ],
-              uzasadnienie_k: {
-                k_a_s05_per_mm2: 115,
-                tozsamosc_pl:
-                  'k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej (prąd na 1 mm² przekroju wytrzymywany przez 1 s).',
-                material_zyly: 'AL',
-                izolacja: 'XLPE',
-                temp_poczatkowa_c: 90,
-                temp_koncowa_c: 250,
-                zrodlo_pl: 'IEC 60502-2 / IEC 60949',
-                braki_pl: [],
-                kompletne: true,
-              },
-              czas_wylaczenia: {
-                tk_s: 1.0,
-                zrodlo: 'zalozenie_przypadku',
-                powod_pl:
-                  'Aparat Rozłącznik odgałęzienia nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s.',
-                urzadzenie_ref: null,
-                urzadzenie_nazwa: null,
-                funkcja: null,
-                prad_galezi_a: 9200,
-                prad_rozruchowy_a: null,
-                krzywa: null,
-                tms: null,
-              },
-            },
-            // Karta F-K1 faza 7: LINIA NAPOWIETRZNA (przewod goly) w tym samym widoku.
-            // Liczby WYLICZONE solverem `conductor_thermal_withstand.py` z danych
-            // katalogowych AFL 6 70/11 mm² (Jth = 88 A·√s/mm², S = 70 mm²,
-            // theta_b = 70 °C -> theta_k = 200 °C), NIE wpisane recznie:
-            //   Ith(1 s) = 88 · 70 = 6160 A; t = 1,0 s (zalozenie przypadku) ->
-            //   I_dop = 6160 A; I = 5200 A -> wykorzystanie 0,844156;
-            //   S_min = 5200·√1 / 88 = 59,0909 mm² < 70 mm² => PASS.
-            {
-              "branch_id": "linia-napowietrzna-3",
-              "branch_name": "Odgałęzienie napowietrzne L-03 (AFL 6 70 mm²)",
-              "status": "PASS",
-              "i_fault_a": 5200.0,
-              "i_permissible_a": 6160.0,
-              "utilization": 0.8441558441558441,
-              "s_min_mm2": 59.09090909090909,
-              "applied_cross_section_mm2": 70.0,
-              "missing_codes": [],
-              "uzasadnienie_pl": null,
-              "i2t_a2s": 27040000.0,
-              "i2t_dopuszczalne_a2s": 37945600.0,
-              "margines_procent": 15.58441558441559,
-              "kryteria": [
-                {
-                  "kod": "prad_dopuszczalny",
-                  "nazwa_pl": "Prąd zwarciowy wobec dopuszczalnego dla czasu t",
-                  "warunek_pl": "I_th ≤ I_dop(t) = I_th(1s)/√t",
-                  "wartosc": 5200.0,
-                  "granica": 6160.0,
-                  "jednostka": "A",
-                  "status": "PASS"
-                },
-                {
-                  "kod": "energia_cieplna",
-                  "nazwa_pl": "Energia zwarcia wobec wytrzymałości żyły",
-                  "warunek_pl": "I²·t ≤ k²·S²",
-                  "wartosc": 27040000.0,
-                  "granica": 37945600.0,
-                  "jednostka": "A²·s",
-                  "status": "PASS"
-                },
-                {
-                  "kod": "przekroj_minimalny",
-                  "nazwa_pl": "Przekrój zastosowany wobec minimalnego z warunku cieplnego",
-                  "warunek_pl": "S ≥ S_min = √(I²·t)/k",
-                  "wartosc": 70.0,
-                  "granica": 59.090909,
-                  "jednostka": "mm²",
-                  "status": "PASS"
-                }
-              ],
-              "powod_decyzji_pl": "Wykorzystanie wytrzymałości cieplnej 84,4 % (zapas 15,6 %).",
-              "zalecenia": [],
-              "wrazliwosc": [
-                {
-                  "parametr": "czas_wylaczenia",
-                  "nazwa_pl": "Czas wyłączenia",
-                  "mnoznik": 0.5,
-                  "wartosc": 0.5,
-                  "jednostka": "s",
-                  "wykorzystanie": 0.596908
-                },
-                {
-                  "parametr": "czas_wylaczenia",
-                  "nazwa_pl": "Czas wyłączenia",
-                  "mnoznik": 0.75,
-                  "wartosc": 0.75,
-                  "jednostka": "s",
-                  "wykorzystanie": 0.73106
-                },
-                {
-                  "parametr": "czas_wylaczenia",
-                  "nazwa_pl": "Czas wyłączenia",
-                  "mnoznik": 1.0,
-                  "wartosc": 1.0,
-                  "jednostka": "s",
-                  "wykorzystanie": 0.844156
-                },
-                {
-                  "parametr": "czas_wylaczenia",
-                  "nazwa_pl": "Czas wyłączenia",
-                  "mnoznik": 1.5,
-                  "wartosc": 1.5,
-                  "jednostka": "s",
-                  "wykorzystanie": 1.033876
-                },
-                {
-                  "parametr": "czas_wylaczenia",
-                  "nazwa_pl": "Czas wyłączenia",
-                  "mnoznik": 2.0,
-                  "wartosc": 2.0,
-                  "jednostka": "s",
-                  "wykorzystanie": 1.193817
-                },
-                {
-                  "parametr": "prad_zwarciowy",
-                  "nazwa_pl": "Prąd zwarciowy",
-                  "mnoznik": 0.5,
-                  "wartosc": 2600.0,
-                  "jednostka": "A",
-                  "wykorzystanie": 0.422078
-                },
-                {
-                  "parametr": "prad_zwarciowy",
-                  "nazwa_pl": "Prąd zwarciowy",
-                  "mnoznik": 0.75,
-                  "wartosc": 3900.0,
-                  "jednostka": "A",
-                  "wykorzystanie": 0.633117
-                },
-                {
-                  "parametr": "prad_zwarciowy",
-                  "nazwa_pl": "Prąd zwarciowy",
-                  "mnoznik": 1.0,
-                  "wartosc": 5200.0,
-                  "jednostka": "A",
-                  "wykorzystanie": 0.844156
-                },
-                {
-                  "parametr": "prad_zwarciowy",
-                  "nazwa_pl": "Prąd zwarciowy",
-                  "mnoznik": 1.25,
-                  "wartosc": 6500.0,
-                  "jednostka": "A",
-                  "wykorzystanie": 1.055195
-                },
-                {
-                  "parametr": "prad_zwarciowy",
-                  "nazwa_pl": "Prąd zwarciowy",
-                  "mnoznik": 1.5,
-                  "wartosc": 7800.0,
-                  "jednostka": "A",
-                  "wykorzystanie": 1.266234
-                },
-                {
-                  "parametr": "przekroj",
-                  "nazwa_pl": "Przekrój żyły",
-                  "mnoznik": 0.5,
-                  "wartosc": 35.0,
-                  "jednostka": "mm²",
-                  "wykorzystanie": 1.688312
-                },
-                {
-                  "parametr": "przekroj",
-                  "nazwa_pl": "Przekrój żyły",
-                  "mnoznik": 0.75,
-                  "wartosc": 52.5,
-                  "jednostka": "mm²",
-                  "wykorzystanie": 1.125541
-                },
-                {
-                  "parametr": "przekroj",
-                  "nazwa_pl": "Przekrój żyły",
-                  "mnoznik": 1.0,
-                  "wartosc": 70.0,
-                  "jednostka": "mm²",
-                  "wykorzystanie": 0.844156
-                },
-                {
-                  "parametr": "przekroj",
-                  "nazwa_pl": "Przekrój żyły",
-                  "mnoznik": 1.5,
-                  "wartosc": 105.0,
-                  "jednostka": "mm²",
-                  "wykorzystanie": 0.562771
-                },
-                {
-                  "parametr": "przekroj",
-                  "nazwa_pl": "Przekrój żyły",
-                  "mnoznik": 2.0,
-                  "wartosc": 140.0,
-                  "jednostka": "mm²",
-                  "wykorzystanie": 0.422078
-                }
-              ],
-              "uzasadnienie_k": {
-                "k_a_s05_per_mm2": 88.0,
-                "tozsamosc_pl": "k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej (prąd na 1 mm² przekroju wytrzymywany przez 1 s).",
-                "rodzaj_przewodu": "PRZEWOD_GOLY",
-                "rodzaj_przewodu_pl": "przewód goły (linia napowietrzna)",
-                "material_zyly": "AL_ST",
-                "izolacja": "brak — przewód goły",
-                "granica_temperatury_pl": "Temperaturę graniczną przy zwarciu wyznacza utrata wytrzymałości mechanicznej żyły i dopuszczalna temperatura osprzętu (przewód goły nie ma izolacji).",
-                "temp_poczatkowa_c": 70.0,
-                "temp_koncowa_c": 200.0,
-                "zrodlo_pl": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
-                "braki_pl": [],
-                "kompletne": true
-              },
-              "czas_wylaczenia": {
-                "tk_s": 1.0,
-                "zrodlo": "zalozenie_przypadku",
-                "powod_pl": "Gałąź bez rozwiązanej nastawy zabezpieczenia — czas z przypadku obliczeniowego.",
-                "urzadzenie_ref": null,
-                "urzadzenie_nazwa": null,
-                "funkcja": null,
-                "prad_galezi_a": 5200.0,
-                "prad_rozruchowy_a": null,
-                "krzywa": null,
-                "tms": null
-              }
-            },
-          ],
-          summary: { pass_count: 2, fail_count: 1, unavailable_count: 0 },
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena "cieplna": ocena per galaz — REALNY bieg backendu
+    // (eksport_fixtur_harnessu.py::cieplna_scena_wynik, TA SAMA funkcja co
+    // koncowka `build_wytrzymalosc_cieplna_view`) na biegu kotwicy sceny
+    // "zwarcia" (siec zlota) — zero recznie wpisanych liczb fizycznych.
+    return jsonOK(cieplnaScenyWynik);
   }
   if (url.includes('/api/quality/arc-flash')) {
-    // Scena "arcflash" (wzbogacona w rundzie dowodowej V-B): kroki WHITE BOX
-    // 1:1 z builderem `analysis/arc_flash/builder.py::_ieee_1584_result`
-    // (KrokArcFlash: symbol/formula_latex/substitution_pl/result_pl/
-    // unit_check_pl/table_ref). Liczby spojne z wynikami wierszy:
-    //   SN-1: I_bf=12.5 kA -> I_arc=11.8 kA; E=35.2 J/cm² = 8.413 cal/cm²
-    //         (35.2/4.184); AFB=1320 mm; SOI kat. 3 (8 < E ≤ 25 cal/cm²).
-    //   SN-2: I_bf=8.1 kA -> I_arc=7.7 kA; E=17.4 J/cm² = 4.1587 cal/cm²;
-    //         AFB=890 mm; SOI kat. 2 (4 < E ≤ 8 cal/cm²).
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'af-demo',
-        context: null,
-        status: 'COMPUTED_IEEE_1584_OPEN_SOURCE',
-        status_label_pl: 'obliczony (IEEE 1584 open-source)',
-        results: [
-          {
-            bus_ref: 'Szyna SN-1', status: 'COMPUTED_IEEE_1584_OPEN_SOURCE', status_label_pl: 'obliczony (IEEE 1584 open-source)',
-            method: 'IEEE_1584_2018', electrode_config: 'VCB', i_bf_ka: 12.5, voltage_kv: 15.0, arc_time_s: 0.2,
-            conductor_gap_mm: 152, working_distance_mm: 455, i_arc_ka: 11.8, incident_energy_cal_cm2: 8.413,
-            incident_energy_joule_cm2: 35.2, arc_flash_boundary_mm: 1320, ppe_category: '3', ppe_table_provenance: 'norma_NFPA_70E',
-            provenance: 'ARC_FLASH_OPEN_SOURCE_PROVENANCE', provenance_caveat_pl: 'Wynik na współczynnikach open-source — wymaga weryfikacji z licencjonowaną normą IEEE 1584.',
-            why_pl: 'Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 11.8 kA (I_arc_min ≈ 10.34 kA), energia incydentu E ≈ 8.41 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1320.0 mm, kategoria ŚOI = 3.',
-            missing_data: [],
-            white_box: [
-              {
-                symbol: 'I_arc',
-                formula_latex: "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-                substitution_pl: 'I_bf=12.5 kA, G=152.0 mm, U=15.0 kV [VCB]; kotwy: V14300=11.75 kA, V2700=10.9 kA, V600=8.7 kA; VarCf=0.247',
-                result_pl: 'I_arc = 11.8 kA, I_arc_min = 10.3427 kA (IEEE 1584-2018, współczynniki open-source)',
-                unit_check_pl: 'I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].',
-                table_ref: 'I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584',
-              },
-              {
-                symbol: 'CF',
-                formula_latex: 'CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})',
-                substitution_pl: 'konfiguracja VCB (w obudowie Typical)',
-                result_pl: 'CF = 1.0841',
-                unit_check_pl: 'CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.',
-                table_ref: 'CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584',
-              },
-              {
-                symbol: 'E',
-                formula_latex: "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
-                substitution_pl: 'I_bf=12.5 kA, G=152.0 mm, t=200.0 ms, D=455.0 mm, CF=1.0841; kotwy: V14300=35.05 J/cm², V2700=32.6 J/cm², V600=27.6 J/cm²',
-                result_pl: 'E = 35.2 J/cm² = 8.413 cal/cm² (IEEE 1584-2018, współczynniki open-source)',
-                unit_check_pl: 'E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.',
-                table_ref: 'E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584',
-              },
-              {
-                symbol: 'AFB',
-                formula_latex: "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
-                substitution_pl: 'E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm',
-                result_pl: 'AFB = 1320.0 mm (IEEE 1584-2018, współczynniki open-source)',
-                unit_check_pl: 'D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².',
-                table_ref: 'E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny',
-              },
-              {
-                symbol: 'ŚOI',
-                formula_latex: '\\text{kategoria} = f_{NFPA\\,70E}(E)',
-                substitution_pl: 'E = 8.413 cal/cm²; tablica progów NFPA 70E: wypełniona',
-                result_pl: 'kategoria ŚOI = 3',
-                unit_check_pl: 'E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).',
-                table_ref: 'progi ŚOI = norma_NFPA_70E',
-              },
-            ],
-          },
-          {
-            bus_ref: 'Szyna SN-2', status: 'COMPUTED_IEEE_1584_OPEN_SOURCE', status_label_pl: 'obliczony (IEEE 1584 open-source)',
-            method: 'IEEE_1584_2018', electrode_config: 'VCB', i_bf_ka: 8.1, voltage_kv: 15.0, arc_time_s: 0.2,
-            conductor_gap_mm: 152, working_distance_mm: 455, i_arc_ka: 7.7, incident_energy_cal_cm2: 4.1587,
-            incident_energy_joule_cm2: 17.4, arc_flash_boundary_mm: 890, ppe_category: '2', ppe_table_provenance: 'norma_NFPA_70E',
-            provenance: 'ARC_FLASH_OPEN_SOURCE_PROVENANCE', provenance_caveat_pl: null,
-            why_pl: 'Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 7.7 kA (I_arc_min ≈ 6.75 kA), energia incydentu E ≈ 4.16 cal/cm² na odległości roboczej, granica łuku AFB ≈ 890.0 mm, kategoria ŚOI = 2.',
-            missing_data: [],
-            white_box: [
-              {
-                symbol: 'I_arc',
-                formula_latex: "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-                substitution_pl: 'I_bf=8.1 kA, G=152.0 mm, U=15.0 kV [VCB]; kotwy: V14300=7.66 kA, V2700=7.05 kA, V600=5.9 kA; VarCf=0.247',
-                result_pl: 'I_arc = 7.7 kA, I_arc_min = 6.7491 kA (IEEE 1584-2018, współczynniki open-source)',
-                unit_check_pl: 'I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].',
-                table_ref: 'I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584',
-              },
-              {
-                symbol: 'CF',
-                formula_latex: 'CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})',
-                substitution_pl: 'konfiguracja VCB (w obudowie Typical)',
-                result_pl: 'CF = 1.0841',
-                unit_check_pl: 'CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.',
-                table_ref: 'CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584',
-              },
-              {
-                symbol: 'E',
-                formula_latex: "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
-                substitution_pl: 'I_bf=8.1 kA, G=152.0 mm, t=200.0 ms, D=455.0 mm, CF=1.0841; kotwy: V14300=17.32 J/cm², V2700=16.1 J/cm², V600=13.8 J/cm²',
-                result_pl: 'E = 17.4 J/cm² = 4.1587 cal/cm² (IEEE 1584-2018, współczynniki open-source)',
-                unit_check_pl: 'E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.',
-                table_ref: 'E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584',
-              },
-              {
-                symbol: 'AFB',
-                formula_latex: "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
-                substitution_pl: 'E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm',
-                result_pl: 'AFB = 890.0 mm (IEEE 1584-2018, współczynniki open-source)',
-                unit_check_pl: 'D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².',
-                table_ref: 'E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny',
-              },
-              {
-                symbol: 'ŚOI',
-                formula_latex: '\\text{kategoria} = f_{NFPA\\,70E}(E)',
-                substitution_pl: 'E = 4.1587 cal/cm²; tablica progów NFPA 70E: wypełniona',
-                result_pl: 'kategoria ŚOI = 2',
-                unit_check_pl: 'E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).',
-                table_ref: 'progi ŚOI = norma_NFPA_70E',
-              },
-            ],
-          },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
-  }
-  if (url.includes('/api/ncrfg-tests/catalog')) {
-    // Sceny "frt"/"macierz": katalog wymogow NC RfG — ksztalt 1:1 z
-    // `api/ncrfg_ptpiree_tests.py::get_ncrfg_test_catalog` (operators z progami
-    // klas `NcRfgModuleType` + testy z `TEST_CATALOG` silnika ncrfg_ptpiree).
-    const modulTypy = [
-      { id: 'A', threshold_kw_min: 0.8, threshold_kw_max: 200, voltage_kv_max: 110, description_pl: 'Modul typu A (0,8 kW - 200 kW)' },
-      { id: 'B', threshold_kw_min: 200, threshold_kw_max: 10000, voltage_kv_max: 110, description_pl: 'Modul typu B (200 kW - 10 MW)' },
-      { id: 'C', threshold_kw_min: 10000, threshold_kw_max: 75000, voltage_kv_max: 110, description_pl: 'Modul typu C (10 MW - 75 MW)' },
-      { id: 'D', threshold_kw_min: 75000, threshold_kw_max: null, voltage_kv_max: null, description_pl: 'Modul typu D (>= 75 MW lub >= 110 kV)' },
-    ];
-    return new Response(
-      JSON.stringify({
-        procedure_version: 'PTPiREE Procedura testowania v3.0',
-        source_ref: 'https://ptpiree.pl/kodeksy-sieci/procedura-testowania/',
-        operators: [
-          { operator_id: 'enea', operator_name_pl: 'Enea Operator', last_revision: '2024-01', module_types: modulTypy },
-          { operator_id: 'pse', operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne', last_revision: '2024-03', module_types: modulTypy },
-        ],
-        tests: [
-          { test_id: 'T05', ability_pl: 'Możliwość regulacji mocy czynnej', procedure_basis_pl: 'Program ramowy testów PPM oraz sprawdzenia dodatkowe dla regulacji P.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T09', ability_pl: 'Zdolność do generacji mocy biernej', procedure_basis_pl: 'Zakres testów zgodności PPM typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T10', ability_pl: 'Potwierdzenie mocy maksymalnej PMAX', procedure_basis_pl: 'Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T14', ability_pl: 'LVRT - pozostanie w pracy przy zapadzie napięcia', procedure_basis_pl: 'Test FRT dla modułów B/C/D oraz profili operatora.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T16', ability_pl: 'Odbudowa mocy czynnej po zakłóceniu', procedure_basis_pl: 'Wymaganie profilu operatora dla modułów B/C/D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Karta HARNESS-RESZTA (kontynuacja): scena "arcflash" — REALNY bieg
+    // backendu (eksport_fixtur_harnessu.py::arcflash_scena_wynik, TA SAMA
+    // funkcja co koncowka `build_arc_flash_view`, IEEE 1584-2018) na biegu
+    // kotwicy sceny "zwarcia" (siec zlota) — zero recznie wpisanych liczb.
+    return jsonOK(arcflashScenyWynik);
   }
   if (url.includes('/api/ncrfg-tests/run')) {
-    // Scena "macierz": wynik biegu zgodnosci — ksztalt 1:1 z
-    // `NcRfgPtpireeSolver.run` (engine.py): moduly (kolejnosc = selectAllDers,
-    // sort po id: bess-1, pv-1), werdykty z `_ok_fail`/`_missing`, slad
-    // `TraceBuilder.add` (Wzor -> Dane -> Podstawienie -> Wynik -> jednostki).
-    // Liczby spojne miedzy krokami: T16 BESS 1.800 s > 1.000 s -> fail.
-    // Podsumowania testow 1:1 z formatami silnika: `_active_power_control`,
-    // `_reactive_voltage_test`, `_pmax_pmin_test`, `_p_recovery_test` — liczby
-    // wyliczone z mocy modulu (Pn 500/800 kW, ramp 10 %/min, zakres Q ±33% Pn).
-    const testyBazowe = (pMaxKw: number) => [
-      { test_id: 'T05', ability_pl: 'Możliwość regulacji mocy czynnej', required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass', summary_pl: 'Regulacja P do 50% PMAX: czas ustalenia 5.0 min.', metrics: { settling_time_min: 5.0 }, trace_refs: [], fix_actions: [] },
-      { test_id: 'T09', ability_pl: 'Zdolność do generacji mocy biernej', required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass', summary_pl: `Zakres Q: ${(-0.33 * pMaxKw).toFixed(1)} do ${(0.33 * pMaxKw).toFixed(1)} kvar.`, metrics: { q_min_kvar: -0.33 * pMaxKw, q_max_kvar: 0.33 * pMaxKw }, trace_refs: [], fix_actions: [] },
-      { test_id: 'T10', ability_pl: 'Potwierdzenie mocy maksymalnej PMAX', required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass', summary_pl: `PMAX potwierdzone z danych katalogowych/deklaracji: ${pMaxKw.toFixed(1)} kW.`, metrics: { pmax_kw: pMaxKw }, trace_refs: [], fix_actions: [] },
-    ];
-    return new Response(
-      JSON.stringify({
-        contract: 'NcRfgPtpireeTestResultV1',
-        procedure_version: 'PTPiREE Procedura testowania v3.0',
-        solver_version: 'ncrfg-ptpiree-1.0.0',
-        input_hash: 'ncrfg-in-4f2a9c1d',
-        deterministic_hash: 'ncrfg-det-7b3e5a90',
-        modules: [
-          {
-            der_ref: 'bess-1', der_name: 'Magazyn energii 0,8 MW', operator_id: 'enea',
-            operator_name_pl: 'Enea Operator', module_type: 'B', module_family: 'PPM',
-            p_max_kw: 800, voltage_kv: 0.4,
-            required_count: 5, pass_count: 3, fail_count: 1, no_data_count: 1,
-            not_required_count: 0, overall_status: 'niezgodny',
-            tests: [
-              ...testyBazowe(800),
-              {
-                test_id: 'T14', ability_pl: 'LVRT - pozostanie w pracy przy zapadzie napięcia',
-                required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'no_data',
-                summary_pl: 'Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.',
-                metrics: {}, trace_refs: [],
-                fix_actions: ['Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.'],
-              },
-              {
-                test_id: 'T16', ability_pl: 'Odbudowa mocy czynnej po zakłóceniu', required: true,
-                required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'fail',
-                summary_pl: 'Odbudowa P po zakłóceniu: 1.800s.',
-                metrics: { p_recovery_time_s: 1.8 },
-                trace_refs: ['proof:ncrfg-ptpiree:T16:active_power_recovery:2'],
-                fix_actions: ['Uzupełnij nastawy odbudowy P po FRT lub model dynamiczny.'],
-              },
-            ],
-          },
-          {
-            der_ref: 'pv-1', der_name: 'Instalacja PV 0,5 MW', operator_id: 'enea',
-            operator_name_pl: 'Enea Operator', module_type: 'B', module_family: 'PPM',
-            p_max_kw: 500, voltage_kv: 0.4,
-            required_count: 5, pass_count: 5, fail_count: 0, no_data_count: 0,
-            not_required_count: 0, overall_status: 'zgodny',
-            tests: [
-              ...testyBazowe(500),
-              { test_id: 'T14', ability_pl: 'LVRT - pozostanie w pracy przy zapadzie napięcia', required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass', summary_pl: 'LVRT: margines 0.0 p.u. w punkcie 0.15s.', metrics: { margin_pu: 0.0, critical_time_s: 0.15 }, trace_refs: [], fix_actions: [] },
-              {
-                test_id: 'T16', ability_pl: 'Odbudowa mocy czynnej po zakłóceniu', required: true,
-                required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass',
-                summary_pl: 'Odbudowa P po zakłóceniu: 0.310s.',
-                metrics: { p_recovery_time_s: 0.31 },
-                trace_refs: ['proof:ncrfg-ptpiree:T16:active_power_recovery:1'], fix_actions: [],
-              },
-            ],
-          },
-        ],
-        // Dowod certyfikatu PTPiREE 1:1 z `NcRfgPtpireeRunResponse` (api):
-        // pv-1 z tabliczka urzadzenia, bess-1 bez (uczciwy stan zerowy, pola null).
-        certificate_evidence: [
-          { der_ref: 'bess-1', document_number: null, acceptance_date: null, wos_version: null, wipwc_version: null, ppm_scope: null, source_url: null },
-          { der_ref: 'pv-1', document_number: 'PTPiREE/WiPWC/3254/2025', acceptance_date: '2025-10-14', wos_version: 'WOS 2021', wipwc_version: '1.2', ppm_scope: 'moduł typu B', source_url: null },
-        ],
-        test_catalog: [
-          { test_id: 'T05', ability_pl: 'Możliwość regulacji mocy czynnej', procedure_basis_pl: 'Program ramowy testów PPM oraz sprawdzenia dodatkowe dla regulacji P.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T09', ability_pl: 'Zdolność do generacji mocy biernej', procedure_basis_pl: 'Zakres testów zgodności PPM typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T10', ability_pl: 'Potwierdzenie mocy maksymalnej PMAX', procedure_basis_pl: 'Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T14', ability_pl: 'LVRT - pozostanie w pracy przy zapadzie napięcia', procedure_basis_pl: 'Test FRT dla modułów B/C/D oraz profili operatora.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T16', ability_pl: 'Odbudowa mocy czynnej po zakłóceniu', procedure_basis_pl: 'Wymaganie profilu operatora dla modułów B/C/D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-        ],
-        // Slad WHITE BOX 1:1 z `TraceBuilder.add` (`_p_recovery_test`):
-        // formula ASCII, dane, podstawienie, wynik, weryfikacja jednostek.
-        white_box_trace: [
-          {
-            step: 1, test_id: 'T16', key: 'active_power_recovery',
-            formula: 't_recovery,module <= t_recovery,profile',
-            data: { module_s: 0.31, profile_s: 1.0 },
-            substitution: '0.310 <= 1.000',
-            result: { ok: true, margin_s: 0.69 },
-            unit_check: 's - s = s.',
-            proof_ref: 'proof:ncrfg-ptpiree:T16:active_power_recovery:1',
-          },
-          {
-            step: 2, test_id: 'T16', key: 'active_power_recovery',
-            formula: 't_recovery,module <= t_recovery,profile',
-            data: { module_s: 1.8, profile_s: 1.0 },
-            substitution: '1.800 <= 1.000',
-            result: { ok: false, margin_s: -0.8 },
-            unit_check: 's - s = s.',
-            proof_ref: 'proof:ncrfg-ptpiree:T16:active_power_recovery:2',
-          },
-        ],
-        report_pl: 'Raport zgodności NC RfG (PTPiREE Procedura testowania v3.0): 1 moduł zgodny, 1 moduł niezgodny.',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena „macierz" (E2E-FULL-FIX-3, 2026-09-10): bieg NC RfG/PTPiREE idzie do
+    // REALNEGO solvera (bezstanowy i deterministyczny jak katalog wyżej). Dawna
+    // ręczna atrapa niosła klasę modułu dla danych, których scena nie wysyłała —
+    // trzeci dryf tej samej klasy co katalog. Kontrakt V2 (karta AB-1a Pakiet D2):
+    // ciało biegu „co-jeśli" to WYŁĄCZNIE moduły (źródło danych `ZADANIE_KLIENTA`,
+    // dowód certyfikatu `null` — wyprowadza go tylko serwer z zatwierdzonego modelu),
+    // bez parametru przypadku; to samo ciało dla formularza wstępnego sceny opisuje
+    // fixtura `ncrfg_bieg_scena_macierz_zadanie.json` (test pary frontu).
+    return originalFetch(input, init);
+  }
+  if (url.includes('/api/ncrfg-tests/cases/') && url.includes('/wejscia')) {
+    // Formularz wstępny biegu „co-jeśli" macierzy czyta committed ENM, którego harness nie ma —
+    // odpowiedź liczy `scripts/eksport_fixtur_harnessu.py` TĄ SAMĄ funkcją
+    // (`wejscia_ncrfg_przypadku`: most model → wejście solvera z pochodzeniem pól), co trasa
+    // `get_ncrfg_module_inputs_from_model`. Para predykatów (jak zgodność przypadku niżej):
+    // moduły wejść (objęte i pominięte) MUSZĄ opisywać moduły zasiane w scenie, a operator
+    // zapytania — operatora fixtury; rozjazd to odmowa 409, nie formularz innego modelu.
+    const wejsciaSceny = (
+      ['certyfikat', 'wniosek'].includes(creatorZUrl()) ? wejsciaScenyMagazyn : wejsciaScenyMacierz
+    ) as unknown as WejsciaPrzypadkuNcRfg;
+    const zasiane = selectAllDers(useStationDerStore.getState())
+      .map((der) => der.id)
+      .sort();
+    const zAtrapy = [
+      ...wejsciaSceny.modules.map((modul) => modul.der_ref),
+      ...wejsciaSceny.pominiete.map((der) => der.der_ref),
+    ].sort();
+    const operatorZapytania = new URL(url, window.location.origin).searchParams.get('operator_id');
+    if (zasiane.join(';') !== zAtrapy.join(';') || operatorZapytania !== wejsciaSceny.operator_id) {
+      return new Response(
+        JSON.stringify({
+          detail:
+            `atrapa wejść modułów opisuje moduły [${zAtrapy.join(', ')}] operatora `
+            + `${wejsciaSceny.operator_id}, scena zasiewa [${zasiane.join(', ')}] i pyta o `
+            + `operatora ${operatorZapytania ?? '(brak)'} — uruchom scripts/eksport_fixtur_harnessu.py`,
+        }),
+        { status: 409, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    return jsonOK(wejsciaSceny);
+  }
+  if (url.includes('/api/ncrfg-tests/cases/') && url.includes('/compliance')) {
+    // Zgodność przekrojowa przypadku (karta S-3, dawniej W3-D) czyta committed ENM,
+    // którego harness nie ma — odpowiedź liczy `scripts/eksport_fixtur_harnessu.py`
+    // TĄ SAMĄ funkcją (`zgodnosc_ncrfg_przypadku`: most model → wejście solvera +
+    // solver kanoniczny + koperta dowodowa S-1), co trasa
+    // `run_ncrfg_compliance_from_model`. Para predykatów (KLASA, NIE INSTANCJA):
+    // moduły biegu MUSZĄ opisywać moduły zasiane w tej scenie — rozjazd
+    // ref/mocy/napięcia to odmowa 409 (łapie ją bramka „Nie udało się" specu),
+    // nie cicha atrapa z poprzedniego zasiewu.
+    // Karta AB-1a Pakiet D2: sceny magazynu (`certyfikat`, `wniosek`) czytają zgodność
+    // modelu magazynu; operator zapytania (profil NC RfG modułów modelu) jest częścią pary.
+    const zgodnoscSceny = ['certyfikat', 'wniosek'].includes(creatorZUrl())
+      ? zgodnoscPrzekrojowaScenyMagazyn
+      : zgodnoscPrzekrojowaScenyMacierz;
+    const zasiane = selectAllDers(useStationDerStore.getState())
+      .map((der) => `${der.id}|${der.nominal_power_kw}|${der.connection_voltage_kv}`)
+      .sort();
+    const zAtrapy = (zgodnoscSceny.bieg?.modules ?? [])
+      .map((modul) => `${modul.der_ref}|${modul.p_max_kw}|${modul.voltage_kv}`)
+      .sort();
+    const operatorZapytania = new URL(url, window.location.origin).searchParams.get('operator_id');
+    if (zasiane.join(';') !== zAtrapy.join(';') || operatorZapytania !== zgodnoscSceny.operator_id) {
+      return new Response(
+        JSON.stringify({
+          detail:
+            `atrapa zgodności przekrojowej opisuje moduły [${zAtrapy.join(', ')}] operatora `
+            + `${zgodnoscSceny.operator_id}, scena zasiewa [${zasiane.join(', ')}] i pyta o `
+            + `operatora ${operatorZapytania ?? '(brak)'} — uruchom scripts/eksport_fixtur_harnessu.py`,
+        }),
+        { status: 409, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    return jsonOK(zgodnoscSceny);
+  }
+  if (new URL(url, window.location.origin).pathname === '/api/oze-analysis/compliance-certificate') {
+    // Certyfikat zgodności NC RfG (karta AB-1a Pakiet D2 §5): powstaje WYŁĄCZNIE z
+    // zatwierdzonego modelu przypadku, którego harness nie ma — odpowiedź liczy
+    // `eksport_fixtur_harnessu.py` ścieżką trasy (`build_certyfikat_view` albo
+    // `CertyfikatBrakiError.detail()`). Scena `macierz` (PV bez wykazanej zgodności) →
+    // 422 „czego brakuje"; scena `certyfikat` (magazyn — wymagania NIE_DOTYCZY) → widok.
+    // Pliki DOCX/PDF (ścieżki `.docx`/`.pdf`) idą do realnego backendu — atrapa nie
+    // udaje binarnego dokumentu.
+    const scena = creatorZUrl();
+    if (scena === 'macierz') {
+      return odpowiedzDokumentuSceny(url, init, {
+        zadanie: certyfikatScenyZadanie, status: 422, tresc: certyfikatScenyMacierzBraki,
+      });
+    }
+    if (scena === 'certyfikat') {
+      return odpowiedzDokumentuSceny(url, init, {
+        zadanie: certyfikatScenyZadanie, status: 200, tresc: certyfikatScenyMagazyn,
+      });
+    }
+  }
+  if (new URL(url, window.location.origin).pathname === '/api/oze-analysis/osd-application') {
+    // Wniosek do OSD (karta AB-1a Pakiet D2 §5): model przypadku + biegi PF i SC — te same
+    // zasiane w rejestrze przebiegów sceny (identyfikatory UUID z fixtury przebiegów).
+    const scena = creatorZUrl();
+    if (scena === 'wniosek') {
+      return odpowiedzDokumentuSceny(url, init, {
+        zadanie: wniosekScenyMagazynZadanie, status: 200, tresc: wniosekScenyMagazyn,
+      });
+    }
+    if (scena === 'wniosek-braki') {
+      return odpowiedzDokumentuSceny(url, init, {
+        zadanie: wniosekScenyMacierzZadanie, status: 422, tresc: wniosekScenyMacierzBraki,
+      });
+    }
   }
   if (url.includes('/api/oze-analysis/lom-protection')) {
-    // Scena "lom": ocena ochrony od pracy wyspowej — ksztalt 1:1 z
-    // `application/analyses/ochrona_lom.py::build_ochrona_lom_view`; wywody
-    // per porownanie 1:1 z `_wywod_okna` (kroki {tekst, latex}, zasada KaTeX).
-    const zrodloRocof =
-      'Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b '
-      + '(zdolność pracy przy zmianach częstotliwości — ROCOF withstand); wartość krajowa PTPiREE 2 Hz/s';
-    const zrodloFreq =
-      'Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a '
-      + '(pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)';
-    const zrodloSpz = 'SpzState.fast_time_s / slow_time_s jednostek nadrzędnych (BayProtectionControlUnit)';
-    const komunikat81R =
-      'Nastawa df/dt (1.0 Hz/s) poniżej dolnego okna (2.0 Hz/s) — ryzyko zbędnych '
-      + 'wyłączeń (fałszywe wykrycie wyspy).';
-    const komunikat81U = 'Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz).';
-    const komunikatSpz =
-      'Brak danych o przerwie SPZ jednostek nadrzędnych (SpzState nieosiągalny w ENM) '
-      + '— porównanie niemożliwe.';
-    return new Response(
-      JSON.stringify({
-        analysis: 'ochrona_lom',
-        context: { enm_name: 'Przyłączenie farmy PV 8 MW', enm_hash: 'enm-3c1d9f7b52a80e46' },
-        input_hash: 'lom-9a4b7c2e6d1f0835',
-        zalozenia_pl: [
-          'Ocena LoM to interpretacja normatywna (porównania), nie symulacja fizyki wyspy.',
-          'Moduł wytwórczy = generator w ENM; pole przyłączeniowe = pole (bay) na szynie '
-          + 'modułu lub o roli OZE z przypisaniem zabezpieczeń.',
-          'Okna normatywne pochodzą wyłącznie z cytowanych źródeł (NC RfG / PTPiREE); '
-          + 'brak źródła → okno None + INFO, bez zmyślonych liczb.',
-          'Czasy przerwy SPZ pochodzą z SpzState jednostek nadrzędnych; gdy nieosiągalne '
-          + 'w ENM — uczciwy INFO.',
-        ],
-        normative_sources: {
-          rocof_81R: { window_pl: 'df/dt ≥ 2.0 Hz/s', source_pl: zrodloRocof },
-          vector_shift_78: { window_pl: null, source_pl: null },
-          underfrequency_81U: { window_pl: 'próg f ≤ 47.5 Hz', source_pl: zrodloFreq },
-          overfrequency_81O: { window_pl: 'próg f ≥ 51.5 Hz', source_pl: zrodloFreq },
-        },
-        fields: [
-          {
-            bay_ref: 'bay-pv-a', bay_name: 'Pole PV A', substation_ref: 'gpz-1',
-            bus_ref: 'bus-oze-1', generating_module_refs: ['gen-pv-1'], status: 'ERROR',
-            checks: [
-              {
-                kind: 'obecnosc', function_ansi: null, function_label_pl: null, severity: 'ERROR',
-                message_pl:
-                  'Pole modułu wytwórczego bez jakiejkolwiek funkcji ochrony od pracy '
-                  + 'wyspowej (LoM: 81R / 78 / 81U / 81O).',
-                value: null, unit: null, window: null, source_pl: null, wywod: [],
-              },
-            ],
-          },
-          {
-            bay_ref: 'bay-bess-b', bay_name: 'Pole BESS B', substation_ref: 'gpz-1',
-            bus_ref: 'bus-oze-2', generating_module_refs: ['gen-bess-1'], status: 'WARN',
-            checks: [
-              {
-                kind: 'okno_normatywne', function_ansi: '81R',
-                function_label_pl: 'Szybkość zmian częstotliwości (df/dt)', severity: 'WARN',
-                message_pl: komunikat81R,
-                value: 1.0, unit: 'Hz/s', window: 'df/dt ≥ 2.0 Hz/s', source_pl: zrodloRocof,
-                // Wywod 1:1 z `_wywod_okna('rocof_81R', 1.0, WARN)`.
-                wywod: [
-                  {
-                    tekst: 'Wzor: warunek okna normatywnego funkcji 81R (nastawa nie nizsza niz krawedz okna)',
-                    latex: '\\left(\\tfrac{df}{dt}\\right)_{nast} \\ge 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}',
-                  },
-                  {
-                    tekst: 'Dane: nastawa = 1.0000 (przekaznik pola), krawedz okna = 2.0 — dolna krawedz okna (NC RfG Art. 13(1)(b), PTPiREE 2 Hz/s).',
-                    latex: null,
-                  },
-                  {
-                    tekst: 'Podstawienie: 1.0000 >= 2.0 NIESPELNIONE',
-                    latex: '1.0000 < 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}',
-                  },
-                  { tekst: `Werdykt: WARN — ${komunikat81R}`, latex: null },
-                ],
-              },
-              {
-                kind: 'koordynacja_spz', function_ansi: null,
-                function_label_pl: 'Koordynacja czasowa z SPZ', severity: 'INFO',
-                message_pl: komunikatSpz,
-                value: 0.3, unit: 's',
-                window: { spz_fast_time_s: null, spz_slow_time_s: null }, source_pl: zrodloSpz,
-                wywod: [],
-              },
-            ],
-          },
-          {
-            bay_ref: 'bay-fw-c', bay_name: 'Pole FW C', substation_ref: 'gpz-2',
-            bus_ref: 'bus-oze-3', generating_module_refs: ['gen-fw-1', 'gen-fw-2'], status: 'INFO',
-            checks: [
-              {
-                kind: 'okno_normatywne', function_ansi: '81U',
-                function_label_pl: 'Podczęstotliwościowa (f<)', severity: 'OK',
-                message_pl: komunikat81U,
-                value: 47.5, unit: 'Hz', window: 'próg f ≤ 47.5 Hz', source_pl: zrodloFreq,
-                // Wywod 1:1 z `_wywod_okna('underfrequency_81U', 47.5, OK)`.
-                wywod: [
-                  {
-                    tekst: 'Wzor: warunek okna normatywnego funkcji 81U (nastawa nie wyzsza niz krawedz okna)',
-                    latex: 'f_{81U} \\le 47.5\\ \\text{Hz}',
-                  },
-                  {
-                    tekst: 'Dane: nastawa = 47.5000 (przekaznik pola), krawedz okna = 47.5 — gorna krawedz okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz).',
-                    latex: null,
-                  },
-                  {
-                    tekst: 'Podstawienie: 47.5000 <= 47.5 SPELNIONE',
-                    latex: '47.5000 \\le 47.5\\ \\text{Hz}',
-                  },
-                  { tekst: `Werdykt: OK — ${komunikat81U}`, latex: null },
-                ],
-              },
-              {
-                kind: 'koordynacja_spz', function_ansi: null,
-                function_label_pl: 'Koordynacja czasowa z SPZ', severity: 'INFO',
-                message_pl: komunikatSpz,
-                value: null, unit: 's',
-                window: { spz_fast_time_s: null, spz_slow_time_s: null }, source_pl: zrodloSpz,
-                wywod: [],
-              },
-            ],
-          },
-        ],
-        modules_without_field: ['gen-pv-4'],
-        summary: {
-          fields_total: 3,
-          generating_modules_total: 5,
-          by_status: { OK: 0, INFO: 1, WARN: 1, ERROR: 1 },
-          overall_status: 'ERROR',
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // HARNESS-RESZTA-2: scena "lom" — REALNY widok backendu
+    // (`eksport_fixtur_harnessu.py::lom_scena_wynik`, TA SAMA funkcja
+    // `build_ochrona_lom_view`, ktora wola koncowka) na sieci zlotej: okna
+    // normatywne z CYTOWANYCH zrodel, pola przylaczeniowe modulow i uczciwe
+    // INFO przy brakach danych. Wczesniej caly widok — z wywodami per
+    // porownanie — byl wpisany recznie.
+    return jsonOK(lomScenyWynik);
   }
   if (url.includes('/api/oze-analysis/frt-trajectories')) {
-    // Scena "frt" (T-C): trajektorie LVRT z wywodem marginesu — ksztalt 1:1 z
-    // `application/analyses/frt_trajektorie.py::build_frt_trajectories_view`
-    // (wywod z `_wywod_scenariusza`: wzor -> dane -> podstawienie -> werdykt).
-    const trajektoria = [
-      { czas_s: 0.0, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 1.0 },
-      { czas_s: 0.3, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 1.0 },
-      { czas_s: 0.5, napiecie_pu: 0.05, iq_bierny_pu: 0.153, p_czynna_pu: 0.95 },
-      { czas_s: 0.6, napiecie_pu: 0.05, iq_bierny_pu: 0.982, p_czynna_pu: 0.104 },
-      { czas_s: 0.65, napiecie_pu: 0.05, iq_bierny_pu: 1.0, p_czynna_pu: 0.05 },
-      { czas_s: 0.7, napiecie_pu: 0.525, iq_bierny_pu: 0.612, p_czynna_pu: 0.352 },
-      { czas_s: 0.75, napiecie_pu: 1.0, iq_bierny_pu: 0.048, p_czynna_pu: 0.601 },
-      { czas_s: 1.0, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 0.907 },
-      { czas_s: 1.5, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 0.982 },
-      { czas_s: 2.0, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 1.0 },
-    ];
-    return new Response(
-      JSON.stringify({
-        modul_der: { id: 'conv-pv-1mw-15kv', nazwa: 'Farma PV 1 MW / 15 kV', kind: 'PV', pmax_mw: 1.0, un_kv: 15.0 },
-        operator: { id: 'pse', nazwa: 'PSE — Polskie Sieci Elektroenergetyczne' },
-        test_kind: 'lvrt',
-        status_solvera: 'ok',
-        obwiednia_profilu: {
-          rodzaj: 'lvrt',
-          opis: 'Krzywa LVRT operatora: dozwolony przebieg napięcia (czas→napięcie) wg profilu NC RfG.',
-          punkty: [
-            { czas_s: 0.0, napiecie_pu: 0.05 },
-            { czas_s: 0.15, napiecie_pu: 0.05 },
-            { czas_s: 0.7, napiecie_pu: 0.5 },
-            { czas_s: 1.5, napiecie_pu: 0.85 },
-            { czas_s: 3.0, napiecie_pu: 0.9 },
-          ],
-        },
-        scenariusze: [
-          {
-            scenario_id: 'lvrt_conv-pv-1mw-15kv',
-            status: 'ok',
-            stayed_connected: true,
-            margin_to_curve_s: null,
-            margin_to_curve_pu: 0.0,
-            p_recovery_time_s: 0.31,
-            werdykt_pl: 'w obwiedni',
-            liczba_punktow_trajektorii: 10,
-            // Wywod 1:1 z `_wywod_scenariusza` (liczby spojne: m_U = 0.000000,
-            // 10 punktow trajektorii, t_odz = 0.310000 s).
-            wywod: [
-              {
-                tekst:
-                  'Scenariusz lvrt_conv-pv-1mw-15kv (LVRT): napiecie zaklocenia 0.0500 p.u. '
-                  + 'przez 0.1500 s (wejscie solvera FROZEN frt_hvrt).',
-                latex: null,
-              },
-              {
-                tekst:
-                  'Wzor: margines napieciowy trajektorii wzgledem krzywej minimalnej '
-                  + '(minimum roznicy napiecia trajektorii i krzywej od poczatku zaklocenia)',
-                latex: 'm_{U} = \\min_{t \\ge t_{z}}\\bigl(u(t) - u_{kr}(t)\\bigr)',
-              },
-              {
-                tekst:
-                  'Dane: margines z solvera m_U = 0.000000 p.u. '
-                  + '(FrtScenarioResult.margin_to_curve_pu), liczba punktow trajektorii: 10.',
-                latex: null,
-              },
-              {
-                tekst: 'Podstawienie: warunek utrzymania w obwiedni m_U >= 0: 0.000000 >= 0 SPELNIONE',
-                latex: 'm_{U} = 0.000000\\ \\text{p.u.} \\ge 0',
-              },
-              {
-                tekst: 'Dane: czas odzysku mocy czynnej po zakloceniu t_odz = 0.310000 s (pole wyniku solvera).',
-                latex: null,
-              },
-              { tekst: 'Werdykt: w obwiedni.', latex: null },
-            ],
-            trajektoria,
-          },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // HARNESS-RESZTA-2: scena "frt" — REALNY widok backendu
+    // (`build_frt_trajectories_view` na REALNEJ karcie przeksztaltnika
+    // `conv-pv-1mw-15kv` i REALNYM profilu operatora `pse`): obwiednia profilu,
+    // trajektorie scenariuszy i wywod marginesu. Zero recznych punktow.
+    return jsonOK(frtScenyTrajektorie);
   }
   if (url.includes('/api/oze-analysis/frt-sequence')) {
-    // Scena "frt" (T-B): sekwencja zapadow z kontekstem sily sieci — ksztalt 1:1
-    // z `application/analyses/frt_sekwencja.py::build_frt_sekwencja_view`;
-    // `kontekst_sily_sieci` = wiersz SCR z widoku sily sieci (D1) ze sladem
-    // WHITE BOX (`KrokSladuSily`). Liczby spojne: SCR = 45,0 / 20,0 = 2,25.
-    const wejscie = (glebokosc: number, czas: number) => ({
-      test_kind: 'lvrt',
-      voltage_dip_depth_pu: glebokosc,
-      fault_duration_s: czas,
-      target_der_ref: 'conv-pv-1mw-15kv',
-    });
-    return new Response(
-      JSON.stringify({
-        modul_der: { id: 'conv-pv-1mw-15kv', nazwa: 'Farma PV 1 MW / 15 kV', kind: 'PV', pmax_mw: 1.0, un_kv: 15.0 },
-        operator: { id: 'pse', nazwa: 'PSE — Polskie Sieci Elektroenergetyczne' },
-        status_solvera: 'der_dropped',
-        obwiednia_profilu: {
-          rodzaj: 'lvrt',
-          opis: 'Krzywa LVRT operatora: dozwolony przebieg napięcia (czas→napięcie) wg profilu NC RfG.',
-          punkty: [
-            { czas_s: 0.0, napiecie_pu: 0.05 },
-            { czas_s: 0.15, napiecie_pu: 0.05 },
-            { czas_s: 0.7, napiecie_pu: 0.5 },
-            { czas_s: 1.5, napiecie_pu: 0.85 },
-            { czas_s: 3.0, napiecie_pu: 0.9 },
-          ],
-        },
-        liczba_zapadow: 2,
-        zapady: [
-          {
-            scenario_id: 'seq_0_conv-pv-1mw-15kv', glebokosc_pu: 0.05, czas_s: 0.15,
-            status: 'ok', stayed_connected: true, margin_to_curve_pu: 0.0,
-            margin_to_curve_s: null, p_recovery_time_s: 0.31, werdykt_pl: 'w obwiedni',
-            wejscie_solvera: wejscie(0.05, 0.15),
-          },
-          {
-            scenario_id: 'seq_1_conv-pv-1mw-15kv', glebokosc_pu: 0.02, czas_s: 0.5,
-            status: 'der_dropped', stayed_connected: false, margin_to_curve_pu: -0.03,
-            margin_to_curve_s: null, p_recovery_time_s: null, werdykt_pl: 'moduł wypadł',
-            wejscie_solvera: wejscie(0.02, 0.5),
-          },
-        ],
-        werdykt_sekwencji_pl: 'sekwencja niezaliczona — zapad 2',
-        zalozenia_pl:
-          'Stan modułu MIĘDZY zapadami (nagrzewanie, niepełny odzysk) nie jest modelowany: '
-          + 'każdy zapad liczony od stanu ustalonego i oceniany niezależnie. Werdykt sekwencji '
-          + 'to koniunkcja werdyktów poszczególnych zapadów — kompozycja wyników solvera, '
-          + 'nie nowa fizyka.',
-        kontekst_sily_sieci: {
-          bus_ref: 'bus-oze-1',
-          nominal_kv: 15.0,
-          s_sc_mva: 45.0,
-          s_installed_mva: 20.0,
-          scr: 2.25,
-          verdict: 'sieć słaba',
-          is_weak: true,
-          why_pl: 'SCR = 2,25 poniżej progu sieci słabej (3,0).',
-          missing_data: [],
-          white_box: [
-            {
-              symbol: 'SCR',
-              formula_latex: 'SCR = S_sc / S_n',
-              substitution_pl: 'SCR = 45,0 / 20,0',
-              result_pl: 'SCR = 2,25',
-            },
-          ],
-          modules: [
-            { ref: 'gen-fw-karnice', name: 'Farma wiatrowa Karnice', sn_mva: 18.9 },
-            { ref: 'der-pv-1', name: 'Farma PV 1 MW', sn_mva: 1.1 },
-          ],
-        },
-        kontekst_sily_sieci_powod_pl: null,
-        input_hash: 'frt-seq-2b8d4e6f9a1c0357',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Sekwencja zapadow z kontekstem sily sieci — `build_frt_sekwencja_view`
+    // z wierszem SCR widoku D1 biegu kotwicy analiz OZE (TEN SAM bieg, ktory
+    // karmi scene "sila-sieci"). Program badania (glebokosc:czas) jest DANA
+    // WEJSCIOWA testu odbiorowego; werdykty liczy backend.
+    return jsonOK(frtScenySekwencja);
   }
-  if (url.includes('/api/execution/study-cases/') && url.endsWith('/runs')) {
-    // Scena "oltc": utworzenie przebiegu LF z opcja badania OLTC (kontrakt H1).
+  if (
+    url.includes('/api/execution/study-cases/') &&
+    url.endsWith('/runs') &&
+    (init?.method ?? 'GET').toUpperCase() === 'POST'
+  ) {
+    // Scena "oltc": utworzenie przebiegu LF z opcja badania OLTC (kontrakt H1)
+    // — HARNESS-RESZTA-2: kontrakt przebiegu z REALNEGO biegu backendu
+    // (`to_execution_dict`), ze statusem PENDING sprzed wykonania.
+    return jsonOK({ ...oltcScenyPrzebieg, status: 'PENDING', started_at: null, finished_at: null });
+  }
+  if (
+    url.includes('/api/execution/study-cases/') &&
+    url.endsWith('/runs') &&
+    (init?.method ?? 'GET').toUpperCase() === 'GET'
+  ) {
+    // Lista przebiegow per przypadek (`listRuns`, `useWszystkiePrzebiegiProjektu`) —
+    // wywolywana przez `PulpitProjektu` (scena "pulpit") dla KAZDEGO przypadku
+    // projektu. Scena "pulpit" zasiewa `useExecutionRunsStore` TYM SAMYM
+    // kontraktem (`PULPIT_PRZEBIEG_K1`) dla K1 (parytet wizualny z kafla
+    // "Ostatni przebieg" sprzed tej trasy) — inne
+    // przypadki dostaja uczciwa pusta liste (zero fabrykacji danych, ktorych
+    // scena nie zasiala).
+    const przypadekId = url.split('/api/execution/study-cases/')[1]?.split('/runs')[0] ?? '';
+    if (przypadekId === 'K1') {
+      return new Response(
+        JSON.stringify({
+          runs: [PULPIT_PRZEBIEG_K1],
+          count: 1,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
     return new Response(
-      JSON.stringify({
-        id: 'run-oltc-1', study_case_id: 'case-demo', analysis_type: 'LOAD_FLOW',
-        solver_input_hash: 'oltc-in-5d7f2a91', status: 'PENDING',
-        started_at: null, finished_at: null, error_message: null,
-      }),
+      JSON.stringify({ runs: [], count: 0 }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
   if (url.includes('/api/execution/runs/') && url.endsWith('/execute')) {
-    return new Response(
-      JSON.stringify({
-        id: 'run-oltc-1', study_case_id: 'case-demo', analysis_type: 'LOAD_FLOW',
-        solver_input_hash: 'oltc-in-5d7f2a91', status: 'DONE',
-        started_at: '2026-07-22T10:00:00Z', finished_at: '2026-07-22T10:00:03Z',
-        error_message: null,
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // HARNESS-RESZTA-2: kontrakt przebiegu po wykonaniu — REALNY bieg backendu.
+    return jsonOK(oltcScenyPrzebieg);
   }
   if (url.includes('/api/execution/runs/') && url.endsWith('/results')) {
-    // Scena "oltc": wynik badania sweep — ksztalt 1:1 z
-    // `power_flow_oltc_studies.py::TapSweepResult.to_dict()` w
-    // `global_results.oltc_sweep`; wywod 1:1 z `_wywod_sweep` (liczby spojne
-    // miedzy tabela punktow a krokami: t(n) = 1 + (n - 0) * 1.2500 / 100).
-    const punkty = [
-      { position: -2, tap_ratio: 0.975, controlled_bus_kv: 15.303, losses_mw: 0.2131, min_bus_kv: 14.883, max_bus_kv: 15.303 },
-      { position: -1, tap_ratio: 0.9875, controlled_bus_kv: 15.109, losses_mw: 0.2094, min_bus_kv: 14.689, max_bus_kv: 15.109 },
-      { position: 0, tap_ratio: 1.0, controlled_bus_kv: 14.92, losses_mw: 0.2067, min_bus_kv: 14.5, max_bus_kv: 14.92 },
-      { position: 1, tap_ratio: 1.0125, controlled_bus_kv: 14.736, losses_mw: 0.2052, min_bus_kv: 14.316, max_bus_kv: 14.736 },
-      { position: 2, tap_ratio: 1.025, controlled_bus_kv: 14.556, losses_mw: 0.2049, min_bus_kv: 14.136, max_bus_kv: 14.556 },
-    ];
-    return new Response(
-      JSON.stringify({
-        run_id: 'run-oltc-1', analysis_type: 'LOAD_FLOW',
-        validation_snapshot: {}, readiness_snapshot: {}, element_results: [],
-        global_results: {
-          oltc_sweep: {
-            branch_id: 'TR-1',
-            controlled_bus_id: 'SZ-SN',
-            points: punkty.map((p) => ({ ...p, converged: true })),
-            wywod: [
-              {
-                tekst:
-                  'Badanie: przeglad pozycji zaczepow (sweep) — rozplyw liczony solverem '
-                  + 'FROZEN dla kazdej ustalonej pozycji zaczepu.',
-                latex: null,
-              },
-              {
-                tekst:
-                  'Zakres pozycji: n = -2..2 (liczba punktow: 5); transformator TR-1, '
-                  + 'szyna regulowana: SZ-SN.',
-                latex: null,
-              },
-              {
-                tekst: 'Wzor: przekladnia zaczepu t(n) = 1 + (n - n0) * du / 100',
-                latex: 't(n) = 1 + \\frac{(n - n_{0}) \\cdot \\Delta u}{100}',
-              },
-              { tekst: 'Dane: krok zaczepu du = 1.2500 %, pozycja neutralna n0 = 0.', latex: null },
-              ...punkty.map((p) => ({
-                tekst:
-                  `Pozycja n = ${p.position}: t = ${p.tap_ratio.toFixed(6)}, `
-                  + `U szyny regulowanej = ${p.controlled_bus_kv.toFixed(3)} kV, `
-                  + `straty = ${p.losses_mw.toFixed(6)} MW, zbiezny = TAK.`,
-                latex:
-                  `t(${p.position}) = 1 + \\frac{(${p.position} - 0) \\cdot 1.2500}{100}`
-                  + ` = ${p.tap_ratio.toFixed(6)}`,
-              })),
-              {
-                tekst:
-                  'Kryterium odczytu: napiecie szyny regulowanej i straty czynne '
-                  + 'pochodza z rozwiazania rozplywu (bez ocen w tej warstwie).',
-                latex: null,
-              },
-            ],
-          },
-        },
-        deterministic_signature: 'oltc-sweep-sig-8c3e1f5a',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena "oltc": wynik badania PRZEMIATANIA ZACZEPOW — HARNESS-RESZTA-2:
+    // REALNY bieg backendu (`eksport_fixtur_harnessu.py::oltc_scena_wynik`,
+    // TA SAMA funkcja `build_execution_result_set`, ktora wola koncowka) z
+    // opcja `oltc_study: "sweep"` na sieci sceny E-30 (jedynej z regulatorem
+    // OLTC). `global_results.oltc_sweep` niesie punkty policzone solverem
+    // FROZEN (`network_model/solvers/power_flow_oltc_studies.py`) wraz z
+    // wywodem — zero recznie wpisanych liczb.
+    return jsonOK(oltcScenyWynik);
   }
   if (url.includes('/enm/field-view')) {
     // Sceny "przekaznik"/"pomiar" (karta Z-2): pusty widok pola z backendu —
@@ -3490,11 +1417,48 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
+  if (url.includes('/api/quality/design-verdict')) {
+    // Werdykt projektowy (`build_werdykt_projektowy_view`) czyta rejestr przebiegów
+    // backendu, którego zasiew harnessu nie zna — odpowiedź policzona przez
+    // `scripts/eksport_fixtur_harnessu.py` tym samym agregatem, bez biegów:
+    // wszystkie kryteria „niesprawdzone", a rejestr „Co wymaga uwagi" bierze
+    // przekroczenia ze store'u rozpływu (`co-wymaga-uwagi/model.ts`). Bez atrapy
+    // zapytanie leciało do realnego backendu i wracało 404 przy każdym renderze.
+    // B-02 / W3-E: sceny ekranu „Ocena techniczna wyników" dostają werdykt z REALNYCH
+    // biegów PF + zwarć złotej sieci (scena przekroczeń: obciążenie ×8 — realne
+    // NIE SPEŁNIA napięć/gałęzi/transformatora), policzony tym samym agregatem.
+    if (creator === 'ocena') return jsonOK(werdyktProjektowyScenyOcena);
+    if (creator === 'ocena-przekroczenia') return jsonOK(werdyktProjektowyScenyOcenaPrzekroczenia);
+    return jsonOK(werdyktProjektowyScenyUwaga);
+  }
+  if (url.includes('/api/study-cases/') && url.endsWith('/protection-config')) {
+    // Konfiguracja zabezpieczeń przypadku (P14c) — scena „koordynacja" zapisuje
+    // urządzenia NATYWNYM klikiem (`zapiszUrzadzeniaKoordynacji` → PUT). Bez atrapy
+    // realny backend odpowiadał 400 dla `case-demo`, a zrzut do oceny niósł
+    // notyfikację „Błąd zapisu" po każdym zapisie. PUT zachowuje się jak
+    // `StudyCaseService.update_protection_config`: zapisana konfiguracja wraca
+    // w odpowiedzi i w kolejnym GET, `bound_at` tylko przy związaniu szablonu.
+    if ((init?.method ?? 'GET').toUpperCase() === 'PUT') {
+      const zadanie = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+      konfiguracjaZabezpieczenPrzypadku = {
+        template_ref: zadanie.template_ref ?? null,
+        template_fingerprint: zadanie.template_fingerprint ?? null,
+        library_manifest_ref: zadanie.library_manifest_ref ?? null,
+        overrides: zadanie.overrides ?? {},
+        bound_at: zadanie.template_ref ? '2026-07-28T08:10:00+00:00' : null,
+      };
+    }
+    return jsonOK(konfiguracjaZabezpieczenPrzypadku);
+  }
   return originalFetch(input as RequestInfo, init);
 }) as typeof window.fetch;
 
 // --- Zaszczepienie stanu store ------------------------------------------
 useAppStateStore.setState({ activeCaseId: 'case-demo' } as never);
+// Rejestr przebiegów należy do aktywnego zakresu (jak po hydratacji K2) — bez
+// tej pary warsztat wyników uczciwie pokazuje stan „wczytywanie rejestru", a nie
+// sceny. Sceny z własnym zakresem zasiewają oba pola razem (pulpit, diagnoza).
+useExecutionRunsStore.setState({ activeStudyCaseId: 'case-demo' } as never);
 useSnapshotStore.setState({
   // S9-11 / W-5: znaczniki świeżości czytają JEDNO źródło rewizji bieżącego
   // modelu (`rewizjaBiezacegoModelu`), nie rewizję wyświetlanej migawki — sceny
@@ -3506,55 +1470,77 @@ useSnapshotStore.setState({
     // się w ŻADNEJ scenie mimo kontraktu przebiegu z `rewizja_modelu`. Sceny z
     // własnym zasiewem migawki (dokumentacja rev. 7, pulpit rev. 9, zbieżność —
     // ZBIEZNOSC_SNAPSHOT, cieplna rev. 2 = wariant NIEAKTUALNY) nadpisują ją niżej.
-    header: { name: 'Projekt demonstracyjny', revision: 1 },
-    substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
-    transformers: [],
-    buses: [
-      { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
-      { ref_id: 'bus-nn-demo', name: 'Szyna nN', voltage_kv: 0.4 },
-    ],
-    sources: [],
-    loads: [],
-    bays: [],
+    ...stacjaDemoScenyMigawka,
   },
 } as never);
 
 const creator = new URLSearchParams(window.location.search).get('creator') ?? 'pole';
 
 /**
- * Rekord przyłączenia DER do zasiewu `useStationDerStore` (sceny dowodowe OZE:
- * frt/macierz). Pełny kształt `StationDerConnection` — wartości domyślne to
- * kompletne przyłączenie nN 0,4 kV w stacji demo (nadpisywane per scena).
+ * Łączy kolekcje kilku migawek w jedną (listy sklejane, pola skalarne z pierwszej).
+ * Wyłącznie dla sceny „porownanie", która w JEDNYM oknie pokazuje porównanie biegów
+ * rozpływu sieci złotej i biegów zabezpieczeń modelu koordynacji — referencje obu
+ * modeli są rozłączne, więc most nazw nazywa obiekty obu trybów.
  */
-function derDemo(
-  over: Partial<StationDerConnection> & Pick<StationDerConnection, 'id' | 'der_kind' | 'name'>,
-): StationDerConnection {
-  return {
-    project_id: 'proj-demo',
-    station_id: 'st-demo',
-    connection_side: 'nN',
-    bus_przylaczenia_ref: 'st-demo__szyna-nn__0.4',
-    bay_ref: null,
-    transformer_ref: null,
-    lv_busbar_ref: 'szyna-nn',
-    connection_node_ref: null,
-    internal_cable_ref: null,
-    voltage_level_ref: 'lv_0_4kV',
-    catalogs: EMPTY_DER_CATALOGS,
-    profiles: EMPTY_DER_PROFILES,
-    nominal_power_kw: null,
-    unit_count: null,
-    completeness: 'complete',
-    readiness: EMPTY_DER_READINESS,
-    created_at: '2026-07-01T00:00:00Z',
-    updated_at: '2026-07-01T00:00:00Z',
-    ...over,
-  };
+function polaczMigawki(...migawki: readonly unknown[]): unknown {
+  const wynik: Record<string, unknown> = {};
+  migawki.forEach((migawka) => {
+    Object.entries(migawka as Record<string, unknown>).forEach(([klucz, wartosc]) => {
+      if (Array.isArray(wartosc)) {
+        wynik[klucz] = [...((wynik[klucz] as unknown[] | undefined) ?? []), ...wartosc];
+      } else if (!(klucz in wynik)) {
+        wynik[klucz] = wartosc;
+      }
+    });
+  });
+  return wynik;
 }
 
+/**
+ * Karta #145: migawka modelu, NA KTÓRYM policzono wyniki sceny. Most nazw wyników
+ * (`ui2/wyniki/wzorzec/useNazwaObiektu`) nazywa szyny, gałęzie i źródła z migawki —
+ * w produkcie wynik i model należą do jednego projektu, więc scena harnessu musi
+ * nieść TEN SAM model co bieg (wcześniej sceny wyników sieci złotej miały w
+ * magazynie model stacji demo i pokazywały etykiety zastępcze zamiast nazw).
+ * Rewizja bieżącego modelu (znaczniki świeżości) zostaje z zasiewu globalnego.
+ */
+const MIGAWKA_MODELU_SCENY: Readonly<Record<string, unknown>> = {
+  arcflash: sieckZlotaScenyMigawka,
+  uwaga: sieckZlotaScenyMigawka,
+  walidacja: sieckZlotaScenyMigawka,
+  rozplyw: sieckZlotaScenyMigawka,
+  zwarcia: sieckZlotaScenyMigawka,
+  'zwarcia-rozplyw': sieckZlotaScenyMigawka,
+  'odbior-zgodnosc': sieckZlotaScenyMigawka,
+  estymacja: sieckZlotaScenyMigawka,
+  'wyniki-stan-fazowy': sieckZlotaScenyMigawka,
+  'wyniki-stabilnosc': sieckZlotaScenyMigawka,
+  'wyniki-warsztat': sieckZlotaScenyMigawka,
+  'wyniki-skladowe': skladoweScenyMigawka,
+  oltc: zbieznoscScenyMigawka,
+  koordynacja: koordynacjaScenyMigawka,
+  'sila-sieci': ozeAnalizScenyMigawka,
+  migotanie: ozeAnalizScenyMigawka,
+  ssci: migawkaSieciZlotej(),
+  lom: lomScenyMigawka,
+  porownanie: polaczMigawki(sieckZlotaScenyMigawka, koordynacjaScenyMigawka),
+};
+const migawkaModeluSceny = MIGAWKA_MODELU_SCENY[creator];
+if (migawkaModeluSceny !== undefined) {
+  useSnapshotStore.setState({ snapshot: migawkaModeluSceny } as never);
+}
+
+
 if (creator === 'arcflash') {
-  const run: ExecutionRun = { id: 'run-sc-1', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [run], activeRunId: 'run-sc-1' } as never);
+  // Karta HARNESS-RESZTA (kontynuacja): identyfikator biegu z REALNEGO biegu
+  // backendu (eksport_fixtur_harnessu.py::arcflash_scena_wynik, reuzywa
+  // kotwice sceny "zwarcia") — zero recznego run_id.
+  const run: ExecutionRun = {
+    id: arcflashScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
+  } as unknown as ExecutionRun;
+  useExecutionRunsStore.setState({
+    runs: [run], activeRunId: arcflashScenyWynik.context.run_id,
+  } as never);
 } else if (creator === 'dokumentacja') {
   // Hub „Dokumentacja" (F-E8.1): pełny kontekst toru pracy — projekt, wariant,
   // wersja układu (rewizja + hash) i ZAKOŃCZONY przebieg → karty odblokowane
@@ -3563,32 +1549,29 @@ if (creator === 'arcflash') {
     activeProjectName: 'Przyłączenie farmy PV 8 MW',
     activeCaseName: 'Wariant zimowy',
   } as never);
-  const szyna = (v: number, i: number) => ({ ref_id: `bus-${v}-${i}`, name: `Szyna ${v} kV`, voltage_kv: v });
+  // HARNESS-RESZTA-2: model i przebieg hubu „Dokumentacja" to MIGAWKA
+  // ZATWIERDZONA i WPIS REJESTRU jednego REALNEGO biegu PF sieci złotej
+  // (`siec_zlota_scena_migawka.json` + `przebieg_pf_sceny_zlotej.json`).
+  // Wcześniej panel „Analizowany model" liczył elementy modelu ZMYŚLONEGO
+  // (osiem gałęzi `l1…l8` bez końców), a tabliczka wersji układu pokazywała
+  // rewizję i odcisk wpisane z palca — teraz jedno i drugie pochodzi z biegu.
   useSnapshotStore.setState({
-    rewizjaBiezacegoModelu: 7,
-    snapshot: {
-      header: { name: 'Projekt demonstracyjny', revision: 7, hash_sha256: 'a1b2c3d4e5f60718' },
-      substations: [{ ref_id: 'st-demo', name: 'GPZ-01', bus_refs: ['bus-110-0', 'bus-15-0'] }],
-      // Realistyczna mała sieć SN — panel „Analizowany model" pokazuje realne liczby.
-      buses: [szyna(110, 0), szyna(15, 0), szyna(15, 1), szyna(15, 2), szyna(0.4, 0), szyna(0.4, 1)],
-      branches: [{ ref_id: 'l1' }, { ref_id: 'l2' }, { ref_id: 'l3' }, { ref_id: 'l4' }, { ref_id: 'l5' }, { ref_id: 'l6' }, { ref_id: 'l7' }, { ref_id: 'l8' }],
-      transformers: [{ ref_id: 't1' }, { ref_id: 't2' }],
-      sources: [{ ref_id: 's1' }],
-      generators: [{ ref_id: 'g1' }, { ref_id: 'g2' }],
-      loads: [{ ref_id: 'o1' }, { ref_id: 'o2' }, { ref_id: 'o3' }, { ref_id: 'o4' }, { ref_id: 'o5' }],
-      bays: [],
-    },
+    rewizjaBiezacegoModelu: sieckZlotaScenyMigawka.header.revision,
+    snapshot: sieckZlotaScenyMigawka,
   } as never);
-  const run: ExecutionRun = {
-    id: 'run-lf-1', analysis_type: 'LOAD_FLOW', status: 'DONE',
-    started_at: '2026-07-21T10:30:00Z', finished_at: '2026-07-21T10:30:00Z',
-  } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [run], activeRunId: 'run-lf-1' } as never);
+  const run = przebiegPfScenyZlotej as unknown as ExecutionRun;
+  useExecutionRunsStore.setState({
+    runs: [run], activeRunId: przebiegPfScenyZlotej.id,
+  } as never);
 } else if (creator === 'diagnoza') {
   // Diagnoza przebiegu (D7): najbardziej informacyjny stan do oceny wizualnej —
-  // preflight z blokadami + problemy modelu + bieg NIEZBIEZNY (limit iteracji).
-  // Harness jest frontend-only, wiec trzy trasy diagnostyki dostaja atrape fetch
-  // na FIKSTURACH z testow kontraktu (te same ksztalty, ktore pilnuje adapter).
+  // preflight z blokadą analizy + problemy modelu + bieg NIEZBIEŻNY (limit
+  // iteracji). HARNESS-RESZTA-2: trzy trasy diagnostyki karmione REALNYMI
+  // artefaktami backendu (`eksport_fixtur_harnessu.py`: `DiagnosticEngine.run`
+  // na sieci złotej — blokada SC 1F z powodu dwóch gałęzi bez danych Z0;
+  // `zbuduj_diagnoze_przebiegu` na biegu PF sieci ×8 z `max_iterations: 1`,
+  // przerwanym realnie kodem `PRZ-NIEZBIEZNY-LIMIT`). Wcześniej scena czytała
+  // fikstury testów FRONTU (kształt pilnowany kontraktem, liczby pisane ręcznie).
   const odpowiedzJson = (dane: unknown): Response =>
     new Response(JSON.stringify(dane), {
       status: 200,
@@ -3602,49 +1585,32 @@ if (creator === 'arcflash') {
         : wejscie instanceof URL
           ? wejscie.toString()
           : wejscie.url;
-    if (url.includes('/diagnostics/preflight')) return odpowiedzJson(preflightZablokowanyFixture());
+    if (url.includes('/diagnostics/preflight')) return odpowiedzJson(diagnozaScenyPreflight);
     if (url.includes('/api/execution/runs/') && url.includes('/diagnostics'))
-      return odpowiedzJson(diagnozaNiezbieznaFixture());
+      return odpowiedzJson(diagnozaScenyPrzebieg);
     if (url.includes('/api/cases/') && url.includes('/diagnostics'))
-      return odpowiedzJson(diagnostykaZBrakamiFixture());
+      return odpowiedzJson(diagnozaScenyDiagnostyka);
     return oryginalneFetch(wejscie, init);
   };
-  const biegDiagnozy: ExecutionRun = {
-    id: 'run-diagnoza-1',
-    analysis_type: 'LOAD_FLOW',
-    status: 'DONE',
-    started_at: '2026-08-14T09:00:00Z',
-    finished_at: '2026-08-14T09:00:04Z',
-  } as unknown as ExecutionRun;
+  const biegDiagnozy = diagnozaScenyBieg as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
     runs: [biegDiagnozy],
-    activeRunId: 'run-diagnoza-1',
-    activeStudyCaseId: 'case-oceny-diagnozy',
+    activeRunId: diagnozaScenyBieg.id,
+    activeStudyCaseId: diagnozaScenyBieg.study_case_id,
   } as never);
 } else if (creator === 'pulpit') {
   // Pulpit projektu (E1 — K2/V12K-103): kafel „Warunki przyłączenia" z warunkami
-  // OSD z nagłówka + werdykt bilansu (generacja 6,2 MW > limit 5,0 MW).
+  // OSD z nagłówka modelu + werdykt bilansu mocy znamionowej (generacja modelu
+  // ponad limitem OSD zapisanym operacją `set_connection_conditions`).
   useSnapshotStore.setState({
     rewizjaBiezacegoModelu: 9,
     snapshot: {
-      header: {
-        name: 'Przyłączenie farmy PV 8 MW', revision: 9, hash_sha256: 'f00dfacecafe0123',
-        connection_conditions: { moc_przylaczeniowa_mw: 5.0, wymagany_cos_phi: 0.95, tryb_pracy: 'praca równoległa z siecią' },
-      },
-      substations: [{ ref_id: 'st-1', name: 'GPZ-01', bus_refs: ['b110', 'b15'] }],
-      buses: [
-        { ref_id: 'b110', name: 'Szyna 110 kV', voltage_kv: 110 },
-        { ref_id: 'b15', name: 'Szyna 15 kV', voltage_kv: 15 },
-      ],
-      branches: [{ ref_id: 'l1' }, { ref_id: 'l2' }, { ref_id: 'l3' }],
-      transformers: [{ ref_id: 't1' }],
-      sources: [{ ref_id: 's1', name: 'GPZ 110/15', bus_ref: 'b15', sk3_mva: 250, ik3_ka: 9.62 }],
-      generators: [
-        { ref_id: 'g1', bus_ref: 'b15', p_mw: 4.0 },
-        { ref_id: 'g2', bus_ref: 'b15', p_mw: 2.2 },
-      ],
-      loads: [{ ref_id: 'o1', bus_ref: 'b15', p_mw: 1.4 }],
-      bays: [], junctions: [], corridors: [], measurements: [], protection_assignments: [],
+      // HARNESS-RESZTA-2: model sieci zlotej z WARUNKAMI PRZYLACZENIA w naglowku
+      // (dana wejsciowa projektu, moc przylaczeniowa PONIZEJ realnej sumy mocy
+      // generatorow modelu) — kafel „Warunki przylaczenia" liczy werdykt
+      // przekroczenia z modelu, a nie z liczb wpisanych w harnessie.
+      ...pulpitScenyMigawka,
+      header: { ...pulpitScenyMigawka.header, revision: 9 },
     },
     readiness: { ready: true, blockers: [], warnings: [] },
   } as never);
@@ -3655,26 +1621,17 @@ if (creator === 'arcflash') {
     ],
     activeCase: { id: 'K1', name: 'Stan normalny', result_status: 'FRESH', results_valid: true } as never,
   } as never);
-  const run: ExecutionRun = {
-    id: 'run-lf-2', analysis_type: 'LOAD_FLOW', status: 'DONE',
-    started_at: '2026-07-21T18:05:00Z', finished_at: '2026-07-21T18:05:04Z',
-  } as unknown as ExecutionRun;
+  const run = PULPIT_PRZEBIEG_K1 as unknown as ExecutionRun;
   useExecutionRunsStore.setState({ runs: [run], activeStudyCaseId: 'K1' } as never);
 } else if (creator === 'uwaga') {
   // Rejestr „Co wymaga uwagi" (A1/V12K-098 + kontekstowe akcje K1/V12K-101):
-  // dwa realne przekroczenia napięcia z wyniku rozpływu.
+  // Karta HARNESS-RESZTA (kontynuacja) — REALNY bieg backendu
+  // (eksport_fixtur_harnessu.py::rozplyw_scena_wynik, PF na sieci zlotej z
+  // obciazeniem x8, realne przekroczenia napiec), zero recznie wpisanych
+  // liczb fizycznych. TEN SAM bieg co scena "rozplyw" obok.
   usePowerFlowResultsStore.setState({
-    results: {
-      result_version: '1.0', converged: true, iterations_count: 5, tolerance_used: 1e-6,
-      base_mva: 100, slack_bus_id: 'SZ-GPZ',
-      bus_results: [
-        { bus_id: 'SZ-GPZ', v_pu: 1.0, angle_deg: 0, p_injected_mw: 6.4, q_injected_mvar: 1.9 },
-        { bus_id: 'SZ-ST7', v_pu: 0.941, angle_deg: -2.9, p_injected_mw: -1.2, q_injected_mvar: -0.4 },
-        { bus_id: 'SZ-PV2', v_pu: 1.062, angle_deg: 1.4, p_injected_mw: 3.9, q_injected_mvar: 0.2 },
-      ],
-      branch_results: [], summary: { total_losses_p_mw: 0.11, total_losses_q_mvar: 0.08, min_v_pu: 0.941, max_v_pu: 1.062, slack_p_mw: 6.4, slack_q_mvar: 1.9 },
-    },
-    runHeader: { id: 'run-lf-2' },
+    results: rozplywScenyWynik,
+    runHeader: { id: rozplywScenyWynik.run_id },
   } as never);
 } else if (creator === 'walidacja') {
   // Walidacja energetyczna ze sladem WHITE BOX per pozycja (R2-A/V12K-105);
@@ -3685,150 +1642,109 @@ if (creator === 'arcflash') {
   // Ekran wymaga zakonczonego przebiegu rozplywu (uczciwa blokada) — zasiew.
   // Scena "kompensacja-wynik" (V-B) reuzywa ten sam zasiew: spec wybiera wezel
   // i klika „Oblicz" natywnie (bez preselekcji), wynik z podmienionego fetch.
+  // Karta HARNESS-RESZTA (kontynuacja): identyfikator biegu i wezly
+  // (bus_sn_b/bus_sn_main/bus_nn) z REALNEGO biegu backendu
+  // (eksport_fixtur_harnessu.py::kompensacja_scena_wynik, PF sieci zlotej)
+  // — zero recznie wpisanych identyfikatorow/liczb.
   const runKomp: ExecutionRun = {
-    id: 'run-lf-3', analysis_type: 'LOAD_FLOW', status: 'DONE',
+    id: kompensacjaScenyWynik.context.run_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
     started_at: '2026-07-22T08:00:00Z', finished_at: '2026-07-22T08:00:04Z',
   } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [runKomp], activeRunId: 'run-lf-3' } as never);
-  useSnapshotStore.setState({
-    snapshot: {
-      header: { name: 'Projekt demonstracyjny' },
-      substations: [], transformers: [], sources: [], loads: [], bays: [],
-      buses: [
-        { ref_id: 'SZ-GPZ', name: 'Szyna GPZ 15 kV', voltage_kv: 15 },
-        { ref_id: 'SZ-ST7', name: 'Szyna ST-7', voltage_kv: 15 },
-        { ref_id: 'SZ-PV2', name: 'Szyna PV-2', voltage_kv: 15 },
-      ],
-    },
+  useExecutionRunsStore.setState({
+    runs: [runKomp], activeRunId: kompensacjaScenyWynik.context.run_id,
   } as never);
+  // HARNESS-RESZTA-2: migawka sieci zlotej — TEJ SAMEJ, na ktorej policzono
+  // wynik doboru kompensacji; nazwy i napiecia szyn z modelu, nie z listy
+  // przepisanej w harnessie.
+  useSnapshotStore.setState({ snapshot: sieckZlotaScenyMigawka } as never);
 } else if (creator === 'rozplyw') {
   // Rozplyw z kolumna obciazalnosci (R3-A/V12K-110): wynik PF read-only +
   // werdykty z podmienionego endpointu walidacji (target_id = branch_id).
+  // Karta HARNESS-RESZTA (kontynuacja) — REALNY bieg backendu (eksport_
+  // fixtur_harnessu.py::rozplyw_scena_wynik, PF na sieci zlotej z
+  // obciazeniem x8), zero recznie wpisanych liczb fizycznych.
   usePowerFlowResultsStore.setState({
-    results: {
-      result_version: '1.0', converged: true, iterations_count: 5, tolerance_used: 1e-6,
-      base_mva: 100, slack_bus_id: 'SZ-GPZ',
-      bus_results: [
-        { bus_id: 'SZ-GPZ', v_pu: 1.0, angle_deg: 0, p_injected_mw: 6.4, q_injected_mvar: 1.9 },
-        { bus_id: 'SZ-ST7', v_pu: 0.941, angle_deg: -2.9, p_injected_mw: -1.2, q_injected_mvar: -0.4 },
-        { bus_id: 'SZ-PV2', v_pu: 1.062, angle_deg: 1.4, p_injected_mw: 3.9, q_injected_mvar: 0.2 },
-      ],
-      branch_results: [
-        { branch_id: 'L-14', from_bus_id: 'SZ-GPZ', to_bus_id: 'SZ-ST7', p_from_mw: 2.31, q_from_mvar: 0.72, p_to_mw: -2.28, q_to_mvar: -0.7, losses_p_mw: 0.031, losses_q_mvar: 0.018 },
-        { branch_id: 'TR-1', from_bus_id: 'SZ-ST7', to_bus_id: 'SZ-NN1', p_from_mw: 1.66, q_from_mvar: 0.5, p_to_mw: -1.64, q_to_mvar: -0.48, losses_p_mw: 0.021, losses_q_mvar: 0.02 },
-        { branch_id: 'L-2', from_bus_id: 'SZ-GPZ', to_bus_id: 'SZ-PV2', p_from_mw: -3.88, q_from_mvar: -0.19, p_to_mw: 3.9, q_to_mvar: 0.2, losses_p_mw: 0.019, losses_q_mvar: 0.011 },
-      ],
-      summary: { total_losses_p_mw: 0.071, total_losses_q_mvar: 0.049, min_v_pu: 0.941, max_v_pu: 1.062, slack_p_mw: 6.4, slack_q_mvar: 1.9 },
-    },
-    runHeader: { id: 'run-lf-1' },
+    results: rozplywScenyWynik,
+    runHeader: { id: rozplywScenyWynik.run_id },
   } as never);
 } else if (creator === 'zwarcia') {
   // Wyniki zwarciowe z wkladami zrodel (R3-B/V12K-109): tabela punktow ze
-  // store'u read-only, wklady z podmienionego endpointu SC3F contributions.
+  // store'u read-only, wklady/rozplyw/pasmo z podmienionych koncowek.
+  // HARNESS-ZWARCIA-Z-BACKENDU (2026-09-16): fixtura REALNEGO biegu backendu
+  // (`eksport_fixtur_harnessu.py::zwarcia_wyniki_scena_zwarcia`, sc na sieci
+  // zlotej `build_golden_enm` — tor sieci nadrzednej + tor falownika `gen_pv`),
+  // zero recznie wpisanych liczb fizycznych.
   useResultsInspectorStore.setState({
-    shortCircuitResults: {
-      run_id: 'run-sc-2',
-      rows: [
-        // Pelny bilans IEC 60909 (ZWARCIA-PRO F1) — pola 1:1 z build_short_circuit_results.
-        { target_id: 'SZ-GPZ', element_id: 'SZ-GPZ', target_name: 'Szyna GPZ 15 kV', ikss_ka: 12.48, ip_ka: 31.2, ith_ka: 12.9, sk_mva: 324.2, fault_type: '3F', flags: [], rk_ohm: 0.0821, xk_ohm: 0.7734, zk_ohm: 0.7777, rx_ratio: 0.1062, xr_ratio: 9.4162, kappa: 1.7284, c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, tb_s: 0.1, ib_ka: 12.31, ik_ka: 12.48, ik_thevenin_ka: 12.1, ik_inverters_ka: 0.38, i2t_ka2s: 166.41 },
-        { target_id: 'SZ-ST7', element_id: 'SZ-ST7', target_name: 'Szyna ST-7', ikss_ka: 6.05, ip_ka: 13.9, ith_ka: 6.2, sk_mva: 157.2, fault_type: '3F', flags: [], rk_ohm: 0.3105, xk_ohm: 1.5721, zk_ohm: 1.6025, rx_ratio: 0.1975, xr_ratio: 5.0633, kappa: 1.5602, c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, tb_s: 0.1, ib_ka: 6.01, ik_ka: 6.05, ik_thevenin_ka: 5.9, ik_inverters_ka: 0.15, i2t_ka2s: 38.44 },
-        { target_id: 'SZ-PV2', element_id: 'SZ-PV2', target_name: 'Szyna PV-2', ikss_ka: 7.31, ip_ka: 17.4, ith_ka: 7.5, sk_mva: 189.9, fault_type: '3F', flags: [], rk_ohm: 0.221, xk_ohm: 1.3067, zk_ohm: 1.3253, rx_ratio: 0.1691, xr_ratio: 5.9136, kappa: 1.6014, c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, tb_s: 0.1, ib_ka: 7.24, ik_ka: 7.31, ik_thevenin_ka: 7.05, ik_inverters_ka: 0.26, i2t_ka2s: 56.25 },
-      ],
-    },
-    selectedRunId: 'run-sc-2',
+    shortCircuitResults: zwarciaWynikiScenyZwarcia,
+    selectedRunId: zwarciaWynikiScenyZwarcia.run_id,
   } as never);
 } else if (creator === 'zwarcia-rozplyw') {
   // Karta Z-3 (dowody wizualne pkt 7 karty właściciela): sekcja „Rozpływ
-  // prądu zwarciowego" (RozplywZwarciowy) — tor Thevenina (sieć nadrzędna)
-  // + tor maszyny (falownik) RAZEM w `branch_contributions`, liczby [kA]
-  // przepisane 1:1 z realnego wyniku IEC 60909 solvera na fixturze testu
-  // TH-1 (`build_slack_radial_graph` + falownik `INV-B`, fault_node_id="C",
-  // `backend/tests/test_short_circuit_iec60909.py::
-  // test_thevenin_addition_preserves_inverter_entries_byte_for_byte`).
-  // Spójność liczb: suma wpisów Thevenina WCHODZĄCYCH do węzła zwarcia
-  // (jedyny wpis — gałąź L1) = ik_thevenin_ka (5,552132022553349 ≈
-  // 5,552132022553348 — różnica 1e-15, KCL do precyzji maszynowej solvera,
-  // jak w asercji backendu `pytest.approx(rel=1e-9, abs=1e-6)`).
+  // prądu zwarciowego" (RozplywZwarciowy) — TEN SAM bieg realny co scena
+  // „zwarcia" (HARNESS-ZWARCIA-Z-BACKENDU); punkt domyślny (pierwszy wiersz
+  // wg sortu kanonicznego, bez preselekcji) niesie tor sieci nadrzędnej
+  // (THEVENIN_GRID) ORAZ tor falownika (gen_pv) RAZEM w `branch_contributions`
+  // (podmieniony endpoint rozpływu), jak dotychczasowa scena Z-3.
   useResultsInspectorStore.setState({
-    shortCircuitResults: {
-      run_id: 'run-sc-th1-demo',
-      rows: [
-        {
-          target_id: 'BUS-OZE', element_id: 'EL-OZE', target_name: 'Szyna OZE 20 kV',
-          ikss_ka: 5.648132022553348, ip_ka: 11.440063189333824, ith_ka: 5.648132022553348,
-          sk_mva: 195.65703261838325, fault_type: '3F', flags: [],
-          rk_ohm: 0.5768040000000003, xk_ohm: 1.9981557370919767, zk_ohm: 2.079742581207968,
-          rx_ratio: 0.28866819001778815, xr_ratio: 3.4641849520668644, kappa: 1.4322162134453085,
-          c_factor: 1.0, un_kv: 20.0, tk_s: 1.0, tb_s: 0.1, ib_ka: 5.64813202955557,
-          ik_thevenin_ka: 5.552132022553348, ik_inverters_ka: 0.096, i2t_ka2s: 31.901395344192572,
-          branch_contributions: [
-            {
-              branch_id: 'BR-L1', branch_name: 'Linia OZE', source_id: 'THEVENIN_GRID',
-              from_node_id: 'BUS-GPZ', from_node_name: 'Szyna GPZ 20 kV',
-              to_node_id: 'BUS-OZE', to_node_name: 'Szyna OZE 20 kV',
-              i_ka: 5.552132022553349, direction: 'from_to',
-            },
-            {
-              branch_id: 'BR-L1', branch_name: 'Linia OZE', source_id: 'INV-B',
-              from_node_id: 'BUS-GPZ', from_node_name: 'Szyna GPZ 20 kV',
-              to_node_id: 'BUS-OZE', to_node_name: 'Szyna OZE 20 kV',
-              i_ka: 0.024, direction: 'to_from',
-            },
-          ],
-        },
-      ],
-    },
-    selectedRunId: 'run-sc-th1-demo',
+    shortCircuitResults: zwarciaWynikiScenyZwarcia,
+    selectedRunId: zwarciaWynikiScenyZwarcia.run_id,
   } as never);
 } else if (creator === 'sila-sieci') {
   // Runda dowodowa V-B: sekcja sily sieci (SCR/WSCR) pulpitu OZE — wymaga
   // zakonczonego przebiegu zwarciowego; wywod white_box z grid-strength.
+  // Karta HARNESS-RESZTA (kontynuacja): identyfikator biegu z REALNEGO biegu
+  // backendu (eksport_fixtur_harnessu.py::sila_sieci_scena_wynik) — zero
+  // recznego run_id.
   const runSc: ExecutionRun = {
-    id: 'run-sc-4', analysis_type: 'SC_3F', status: 'DONE',
+    id: silaSieciScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
   } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [runSc], activeRunId: 'run-sc-4' } as never);
+  useExecutionRunsStore.setState({
+    runs: [runSc], activeRunId: silaSieciScenyWynik.context.run_id,
+  } as never);
 } else if (creator === 'odbior-zgodnosc') {
   // Runda dowodowa V-B: „Zgodnosc powykonawcza" — wymaga zakonczonego
   // przebiegu rozplywu (slad_pl per wiersz z podmienionego fetch).
-  const runLf5: ExecutionRun = {
-    id: 'run-lf-5', analysis_type: 'LOAD_FLOW', status: 'DONE',
+  const runOdbioru: ExecutionRun = {
+    // HARNESS-RESZTA-2: identyfikator z fixtury REALNEGO biegu backendu.
+    id: odbiorZgodnoscScenyWynik.analysis_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
   } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [runLf5], activeRunId: 'run-lf-5' } as never);
+  useExecutionRunsStore.setState({
+    runs: [runOdbioru], activeRunId: odbiorZgodnoscScenyWynik.analysis_id,
+  } as never);
 } else if (creator === 'estymacja') {
   // Runda dowodowa V-B: „Estymacja stanu (WLS)" — wymaga zakonczonego
   // przebiegu rozplywu (zrodlo Y-bus); wymagania + wynik z podmienionego fetch.
-  const runLf6: ExecutionRun = {
-    id: 'run-lf-6', analysis_type: 'LOAD_FLOW', status: 'DONE',
+  const runEstymacji: ExecutionRun = {
+    // HARNESS-RESZTA-2: identyfikator z fixtury REALNEGO biegu backendu.
+    id: estymacjaScenyWynik.analysis_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
   } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [runLf6], activeRunId: 'run-lf-6' } as never);
+  useExecutionRunsStore.setState({
+    runs: [runEstymacji], activeRunId: estymacjaScenyWynik.analysis_id,
+  } as never);
 } else if (creator === 'akademickie') {
-  // V126-JEZYK: migawka modelu z NAZWAMI obiektow pod referencjami produkcyjnymi
-  // (te same, ktore niesie fixtura odpowiedzi solvera) — scena pokazuje most
-  // referencja→nazwa w dzialaniu, a nie etykiete zapasowa.
+  // B-02 / W3-E: migawka z NAZWAMI obiektów sieci złotej (te same referencje, które
+  // niosą fixtury gotowości liczone backendem — `bus_sn_b` → „Stacja B SN") oraz
+  // obiektów pod referencjami produkcyjnymi fixtury odpowiedzi solvera — most
+  // referencja → nazwa działa dla obu źródeł, nie etykieta zapasowa. Bez `rodzaj` w
+  // adresie scena startuje w KATALOGU KART (widok domyślny okna).
   useSnapshotStore.setState({
-    rewizjaBiezacegoModelu: 4,
-    snapshot: {
-      header: { name: 'Przylaczenie farmy PV 8 MW', revision: 4 },
-      buses: [
-        {
-          id: 'gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn',
-          ref_id: 'gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn',
-          name: 'GPZ Zachod — szyny SN, sekcja I',
-        },
-        {
-          id: 'station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn',
-          ref_id: 'station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn',
-          name: 'Stacja SN/nN Ogrodowa',
-        },
-      ],
-      branches: [
-        {
-          id: 'corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001',
-          ref_id: 'corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001',
-          name: 'Kabel SN GPZ — Ogrodowa',
-        },
-      ],
-    },
+    rewizjaBiezacegoModelu: REWIZJA_SIECI_ZLOTEJ,
+    snapshot: migawkaSieciZlotej(),
+  } as never);
+} else if (creator === 'ocena' || creator === 'ocena-przekroczenia') {
+  // B-02 / W3-E: ekran „Ocena techniczna wyników" — nazwy projektu/przypadku do
+  // nagłówka PODSTAWA OCENY, migawka złotej sieci (nazwy obiektów pod referencjami
+  // fixtury werdyktu), rewizja migawki = rewizja biegów fixtury (znacznik AKTUALNE).
+  // Werdykt z podmienionego fetch — policzony backendem na realnych biegach.
+  useAppStateStore.setState({
+    activeProjectId: 'proj-demo',
+    activeProjectName: 'CGMES Golden Net',
+    activeCaseId: 'case-demo',
+    activeCaseName: creator === 'ocena' ? 'Stan normalny' : 'Obciążenie ×8',
+  } as never);
+  useSnapshotStore.setState({
+    rewizjaBiezacegoModelu: REWIZJA_SIECI_ZLOTEJ,
+    snapshot: migawkaSieciZlotej(),
   } as never);
 } else if (creator === 'ssci' || creator === 'migotanie') {
   // Runda dowodowa V-B: ssci — aktywny przypadek 'case-demo' zasiany globalnie;
@@ -3873,96 +1789,67 @@ if (creator === 'arcflash') {
     activeCaseId: 'case-demo',
     activeCaseName: 'Wariant zimowy',
   } as never);
-  useStationDerStore.setState({
-    ders: {
-      'der-pv-1': derDemo({
-        id: 'der-pv-1',
-        der_kind: 'PV',
-        name: 'Farma PV 1 MW',
-        connection_side: 'SN',
-        bus_przylaczenia_ref: 'st-demo__szyna-sn__15',
-        lv_busbar_ref: null,
-        voltage_level_ref: null,
-        nominal_power_kw: 1000,
-        catalogs: {
-          ...EMPTY_DER_CATALOGS,
-          device_catalog_ref: 'pv-1',
-          protection_catalog_ref: 'ABB_REB670',
-          ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
-        },
-        profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'pse' },
-      }),
-    },
-  } as never);
+  // HARNESS-RESZTA-2: wytwórca Z MODELU sceny (`oze_scena_migawka.json` — GPZ
+  // 110/15 kV + farma PV 1 MW w polu SN z wiązaniami zapisanymi operacją
+  // `set_der_catalog_bindings`). Trzy stany, których dowodzi ta scena, są w
+  // modelu: zabezpieczenie i przekładnik prądowy przypisane, przekładnik
+  // napięciowy BEZ wiązania (polecenie wyboru).
+  zasiejWytworcowZModelu(ozeScenyMigawka, 'proj-demo');
 } else if (creator === 'frt') {
   // Scena „frt" (V-A): moduł DER z typem przekształtnika (selectAllDers) +
   // zakończony przebieg zwarciowy do doboru kontekstu siły sieci (T-B).
-  useStationDerStore.setState({
-    ders: {
-      'der-pv-1': derDemo({
-        id: 'der-pv-1',
-        der_kind: 'PV',
-        name: 'Farma PV 1 MW',
-        connection_side: 'SN',
-        bus_przylaczenia_ref: 'st-demo__szyna-sn__15',
-        lv_busbar_ref: null,
-        voltage_level_ref: null,
-        nominal_power_kw: 1000,
-        catalogs: {
-          ...EMPTY_DER_CATALOGS,
-          device_catalog_ref: 'conv-pv-1mw-15kv',
-          dynamic_model_ref: 'dyn-grid-following-pv',
-        },
-        profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'pse', lvrt_curve_ref: 'lvrt-pse' },
-      }),
-    },
+  // HARNESS-RESZTA-2: TEN SAM model pola wytwórcy co scena „wiazania" — moduł
+  // niesie model dynamiczny (`default_pv_gfl`) i profil LVRT operatora, bo oba
+  // są zapisane w modelu operacją `set_der_catalog_bindings`.
+  zasiejWytworcowZModelu(ozeScenyMigawka, 'proj-demo');
+  // HARNESS-RESZTA-2 / karta #145: kontekst siły sieci sceny „frt" bierze się z
+  // ZAKOŃCZONEGO biegu zwarciowego TEGO SAMEGO modelu (pole wytwórcy) — wpis rejestru
+  // z fikstury (`frt_scena_przebieg_zwarciowy.json`), nie bieg innej sieci.
+  useExecutionRunsStore.setState({
+    runs: [frtScenyPrzebiegZwarciowy as unknown as ExecutionRun],
   } as never);
-  const runSc: ExecutionRun = {
-    id: 'run-sc-9', analysis_type: 'SC_3F', status: 'DONE',
-    started_at: '2026-07-22T09:15:00Z', finished_at: '2026-07-22T09:15:04Z',
-  } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [runSc] } as never);
-} else if (creator === 'macierz') {
-  // Scena „macierz" (V-A): dwa moduły DER (kolejność selectAllDers: bess-1,
-  // pv-1) z mocą katalogową i poziomem napięcia — gotowe do biegu NC RfG.
+} else if (creator === 'macierz' || creator === 'pulpit-oze' || creator === 'wniosek-braki') {
+  // Scena „macierz" (V-A): dwa moduły DER z modelu (kolejność `selectAllDers`
+  // jest deterministyczna — sort po referencji) — gotowe do biegu NC RfG. Ten sam
+  // model zasila pulpit instalacji OZE (`pulpit-oze`) i wniosek z brakami
+  // (`wniosek-braki`, karta AB-1a Pakiet D2). Identyfikacja z ciała żądania fixtury
+  // certyfikatu (jedno źródło z backendem, nie literał przepisany obok).
   useAppStateStore.setState({
-    activeProjectName: 'Przyłączenie farmy PV 8 MW',
-    activeCaseName: 'Stan normalny',
+    activeProjectName: certyfikatScenyZadanie.nazwa_projektu,
+    activeCaseName: certyfikatScenyZadanie.nazwa_przypadku,
   } as never);
-  useStationDerStore.setState({
-    ders: {
-      'bess-1': derDemo({
-        id: 'bess-1',
-        der_kind: 'BESS',
-        name: 'Magazyn energii 0,8 MW',
-        nominal_power_kw: 800,
-        catalogs: {
-          ...EMPTY_DER_CATALOGS,
-          device_catalog_ref: 'bess-pcs-800',
-          battery_catalog_ref: 'bess-bat-1600',
-        },
-        profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'enea' },
-      }),
-      'pv-1': derDemo({
-        id: 'pv-1',
-        der_kind: 'PV',
-        name: 'Instalacja PV 0,5 MW',
-        nominal_power_kw: 500,
-        catalogs: {
-          ...EMPTY_DER_CATALOGS,
-          device_catalog_ref: 'pv-falownik-500-ptpiree',
-          ptpiree_certificate_ref: 'WOŚ/2024/PV-500',
-          dynamic_model_ref: 'dyn-grid-following-pv',
-        },
-        profiles: {
-          ...EMPTY_DER_PROFILES,
-          nc_rfg_profile_ref: 'enea',
-          lvrt_curve_ref: 'lvrt-enea',
-          regulation_profile_ref: 'qu-enea',
-        },
-      }),
-    },
+  // HARNESS-RESZTA-2: moduły Z MODELU sceny (`macierz_scena_migawka.json` —
+  // TEN SAM model, z którego policzono raport zgodności przekrojowej). Moduły
+  // klasy B wg progów OD-5 (1 MW / 50 MW) przyłączone po stronie SN
+  // transformatorem blokowym: BESS 3 × ABB PCS100 500 kW, PV 9 × Huawei
+  // SUN2000-215KTL 215 kW (moce = liczba jednostek × moc katalogowa).
+  // Wcześniej scena niosła DRUGI opis tych samych modułów, pilnowany tylko
+  // porównaniem 409 przy trasie zgodności.
+  zasiejWytworcowZModelu(macierzScenyMigawka, 'proj-demo');
+  if (creator === 'wniosek-braki') {
+    // Wniosek do OSD bez wykazanej zgodności NC RfG (karta AB-1a Pakiet D2): TEN SAM model
+    // co macierz + biegi PF i SC tego modelu z rejestru (UUID z fixtury przebiegów).
+    useExecutionRunsStore.setState({
+      runs: wniosekScenyMacierzPrzebiegi as unknown as ExecutionRun[],
+      activeRunId: null,
+    } as never);
+  }
+} else if (creator === 'certyfikat' || creator === 'wniosek') {
+  // Karta AB-1a Pakiet D2: model magazynu energii (moduł BESS sceny `macierz`, ta sama
+  // operacja domenowa) — magazyn nie jest modułem wytwarzania energii w rozumieniu NC RfG
+  // (O-28), więc każde wymaganie profilu ma `NIE_DOTYCZY`, a certyfikat i wniosek POWSTAJĄ.
+  // Identyfikacja z ciała żądania fixtury (jedno źródło z backendem).
+  useAppStateStore.setState({
+    activeProjectName: certyfikatScenyZadanie.nazwa_projektu,
+    activeCaseName: certyfikatScenyZadanie.nazwa_przypadku,
   } as never);
+  zasiejWytworcowZModelu(magazynScenyMigawka, 'proj-demo');
+  if (creator === 'wniosek') {
+    useExecutionRunsStore.setState({
+      runs: wniosekScenyMagazynPrzebiegi as unknown as ExecutionRun[],
+      activeRunId: null,
+    } as never);
+  }
 } else if (creator === 'oltc') {
   // Scena „oltc" (V-A): aktywny przypadek `case-demo` z zasiewu globalnego
   // (useAppStateStore) — bieg badania przez podmienione końcówki execution.
@@ -3973,7 +1860,8 @@ if (creator === 'arcflash') {
   useExecutionRunsStore.setState({
     runs: [
       {
-        id: 'run-1f',
+        // HARNESS-RESZTA-2: identyfikator z fixtury REALNEGO biegu 1F backendu.
+        id: skladoweScenyWynik.run_id,
         analysis_type: 'SC_1F',
         status: 'DONE',
         finished_at: '2026-07-21T10:00:00Z',
@@ -3983,17 +1871,18 @@ if (creator === 'arcflash') {
   } as never);
 } else if (creator === 'wyniki-zbieznosc') {
   // Scena E-30 (karta Z-1): zakończony rozpływ (LOAD_FLOW) + snapshot z
-  // transformatorem OLTC (założenia zaczepów modelu).
+  // transformatorem OLTC (założenia zaczepów modelu) — HARNESS-RESZTA-2:
+  // migawka i przebieg pochodzą z TEGO SAMEGO realnego biegu backendu.
   useShellStore.setState({ advancementMode: 'expert' });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
   useSnapshotStore.setState({
-    snapshot: ZBIEZNOSC_SNAPSHOT,
-    rewizjaBiezacegoModelu: ZBIEZNOSC_SNAPSHOT.header.revision,
+    snapshot: zbieznoscScenyMigawka,
+    rewizjaBiezacegoModelu: zbieznoscScenyMigawka.header.revision,
   } as never);
   useExecutionRunsStore.setState({
     runs: [
       {
-        id: 'run-lf-1',
+        id: zbieznoscScenyNaglowek.id,
         analysis_type: 'LOAD_FLOW',
         status: 'DONE',
         finished_at: '2026-07-20T10:00:00Z',
@@ -4012,23 +1901,24 @@ if (creator === 'arcflash') {
   useExecutionRunsStore.setState({
     runs: [
       {
-        id: 'run-sc-koord-max',
+        // HARNESS-RESZTA-2: identyfikatory z fixtur REALNYCH biegow backendu.
+        id: koordynacjaScenyZwarciaMax.run_id,
         analysis_type: 'SC_3F',
         status: 'DONE',
         finished_at: '2026-07-28T08:00:00Z',
         started_at: '2026-07-28T07:59:00Z',
       } as unknown as ExecutionRun,
       {
-        // Bieg MINIMALNY (c = 0,95) — bez niego czulosc jest niesprawdzalna, a
+        // Bieg MINIMALNY (c_min) — bez niego czulosc jest niesprawdzalna, a
         // `zbudujPradyKoordynacji` w ogole nie tworzy pozycji pradowej.
-        id: 'run-sc-koord-min',
+        id: koordynacjaScenyZwarciaMin.run_id,
         analysis_type: 'SC_3F',
         status: 'DONE',
         finished_at: '2026-07-28T08:02:00Z',
         started_at: '2026-07-28T08:01:00Z',
       } as unknown as ExecutionRun,
       {
-        id: 'run-lf-koord',
+        id: koordynacjaScenyGalezie.run_id,
         analysis_type: 'LOAD_FLOW',
         status: 'DONE',
         finished_at: '2026-07-28T08:05:00Z',
@@ -4037,13 +1927,14 @@ if (creator === 'arcflash') {
     ],
   } as never);
 } else if (creator === 'wyniki-stan-fazowy') {
-  // Scena E-31 (karta Z-1): zakończony przebieg stanu fazowego (PHASE_STATE_SN).
+  // Scena E-31 (karta Z-1): zakończony przebieg stanu fazowego (PHASE_STATE_SN)
+  // — identyfikator z fixtury REALNEGO biegu backendu (HARNESS-RESZTA).
   useShellStore.setState({ advancementMode: 'expert' });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
   useExecutionRunsStore.setState({
     runs: [
       {
-        id: 'run-ps-1',
+        id: stanFazowyScenyWyniki.run_id,
         analysis_type: 'PHASE_STATE_SN',
         status: 'DONE',
         finished_at: '2026-07-20T11:00:00Z',
@@ -4052,12 +1943,13 @@ if (creator === 'arcflash') {
     ],
   } as never);
 } else if (creator === 'wyniki-stabilnosc') {
-  // Scena E-32 (karta Z-1): zakończony przebieg stabilności (DYNAMIC_STABILITY).
+  // Scena E-32 (karta Z-1): zakończony przebieg stabilności (DYNAMIC_STABILITY)
+  // — identyfikator z fixtury REALNEGO biegu backendu (HARNESS-RESZTA).
   useShellStore.setState({ advancementMode: 'expert' });
   useExecutionRunsStore.setState({
     runs: [
       {
-        id: 'run-dyn',
+        id: stabilnoscScenyWyniki.run_id,
         analysis_type: 'DYNAMIC_STABILITY',
         status: 'DONE',
         finished_at: '2026-07-21T10:00:00Z',
@@ -4070,17 +1962,17 @@ if (creator === 'arcflash') {
   // stacji demo (op=add_genset_nn wybiera wariant „agregat"; snapshot globalny
   // z zasiewu wyżej ma już szynę nN stacji demo).
   useNetworkBuildStore.getState().openOperationForm('add_genset_nn' as never, {
-    station_ref: 'st-demo',
-    bus_nn_ref: 'bus-nn-demo',
+    station_ref: STACJA_DEMO,
+    bus_nn_ref: SZYNA_NN_STACJI_DEMO,
     bus_name: 'Szyna nN',
-    voltage_kv: 0.4,
-    station_label: 'Rozdzielnia GPZ-01',
+    voltage_kv: NAPIECIE_SZYNY_NN_STACJI_DEMO,
+    station_label: NAZWA_STACJI_DEMO,
   });
 } else if (creator === 'odgalezienie') {
   // Karta Z-2: kreator odgałęzienia SN startuje nowy ciąg od jawnego zacisku
   // źródła (szyna SN stacji demo) — kontekst z jawnymi etykietami źródła.
   useNetworkBuildStore.getState().openOperationForm('start_branch_segment_sn' as never, {
-    from_ref: 'bus-sn-demo',
+    from_ref: SZYNA_SN_STACJI_DEMO,
     source_type_label: 'Szyna SN',
     source_name: 'Szyna GPZ SN',
   });
@@ -4092,15 +1984,13 @@ if (creator === 'arcflash') {
   const segmentName = creator === 'slup-odgalezny' ? 'Linia napowietrzna L-7' : 'Kabel SN K-3';
   useSnapshotStore.setState({
     snapshot: {
-      header: { name: 'Projekt demonstracyjny' },
-      substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
-      buses: [
-        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
-        { ref_id: 'bus-nn-demo', name: 'Szyna nN', voltage_kv: 0.4 },
+      ...stacjaDemoScenyMigawka,
+      // Odcinek, na ktorym scena wstawia slup/ZK SN — DOKLADANY do modelu
+      // stacji demo (kreator startuje od jawnego zacisku tego odcinka).
+      branches: [
+        ...stacjaDemoScenyMigawka.branches,
+        { id: segmentId, ref_id: segmentId, name: segmentName, type: segmentType, tags: [], meta: {} },
       ],
-      transformers: [], sources: [], loads: [], generators: [], bays: [],
-      branches: [{ id: segmentId, ref_id: segmentId, name: segmentName, type: segmentType, tags: [], meta: {} }],
-      junctions: [], corridors: [], measurements: [], protection_assignments: [],
     },
   } as never);
   useNetworkBuildStore.getState().openOperationForm(
@@ -4114,19 +2004,16 @@ if (creator === 'arcflash') {
   // useFieldReadModel.ts): pole odpływowe SN stacji demo z pełnym kontraktem Bay.
   useSnapshotStore.setState({
     snapshot: {
-      header: { name: 'Projekt demonstracyjny' },
-      substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
-      buses: [
-        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
-        { ref_id: 'bus-nn-demo', name: 'Szyna nN', voltage_kv: 0.4 },
-      ],
-      transformers: [], sources: [], loads: [], generators: [],
+      ...stacjaDemoScenyMigawka,
+      // Pole odplywowe SN stacji demo — kontrakt `Bay` czytany przez
+      // `useFieldReadModel` w trybie syntezy z migawki; referencje stacji i
+      // szyny pochodza z modelu, nie z literalu.
       bays: [{
-        id: 'bay-odplyw-1', ref_id: 'bay-odplyw-1', name: 'Pole odpływowe L-1',
-        tags: [], meta: {}, bay_role: 'OUT', substation_ref: 'st-demo', bus_ref: 'bus-sn-demo',
+        id: 'bay-odplyw-1', ref_id: 'bay-odplyw-1', name: `${FIELD_ROLE_LABEL_PL.LINIA_OUT} L-1`,
+        tags: [], meta: {}, bay_role: 'OUT', substation_ref: STACJA_DEMO,
+        bus_ref: SZYNA_SN_STACJI_DEMO,
         gpz_section_id: null, equipment_refs: [], protection_ref: null,
       }],
-      branches: [], junctions: [], corridors: [], measurements: [], protection_assignments: [],
     },
   } as never);
   useNetworkBuildStore.getState().openOperationForm(
@@ -4136,8 +2023,8 @@ if (creator === 'arcflash') {
 } else if (creator === 'pole-nn') {
   // Karta Z-2: pole odpływowe nN — jedyny publiczny write-path pola nN.
   useNetworkBuildStore.getState().openOperationForm('add_nn_outgoing_field' as never, {
-    station_ref: 'st-demo',
-    bus_nn_ref: 'bus-nn-demo',
+    station_ref: STACJA_DEMO,
+    bus_nn_ref: SZYNA_NN_STACJI_DEMO,
   });
 } else if (creator === 'przypisanie-katalogu') {
   // Karta Z-2: przypisanie typu katalogowego do istniejącego elementu (transformator demo).
@@ -4147,37 +2034,8 @@ if (creator === 'arcflash') {
     catalog_item_id: 'trafo-630-15-04',
   });
 } else if (creator === 'stacja') {
-  // KOMPLETNOSC-POLA-TR: kreator stacji SN/nN wstawianej w odcinek magistrali.
-  // Kontekst operacji = ten sam, który daje kanwa (świadomy podział odcinka).
-  useSnapshotStore.setState({
-    rewizjaBiezacegoModelu: 1,
-    snapshot: {
-      header: { name: 'Projekt demonstracyjny', revision: 1 },
-      substations: [{ ref_id: 'st-demo', name: 'GPZ-01', bus_refs: ['bus-sn-demo'] }],
-      transformers: [],
-      buses: [
-        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
-        { ref_id: 'bus-sn-koniec', name: 'Koniec ciągu', voltage_kv: 15 },
-      ],
-      branches: [
-        {
-          ref_id: 'seg-demo',
-          name: 'Odcinek magistrali',
-          type: 'cable',
-          from_bus_ref: 'bus-sn-demo',
-          to_bus_ref: 'bus-sn-koniec',
-          length_km: 1.2,
-        },
-      ],
-      sources: [],
-      loads: [],
-      bays: [],
-    },
-  } as never);
-  useNetworkBuildStore.getState().openOperationForm('insert_station_on_segment_sn' as never, {
-    segment_id: 'seg-demo',
-    position_on_segment: 0.5,
-  });
+  // Scena „stacja" zasiewa REALNY przypadek w backendzie biegu — patrz
+  // `zasiejSceneStacji` niżej (zasiew asynchroniczny przed montażem).
 } else if (creator === 'edycja-parametrow') {
   // Karta Z-2: ekspercki override parametru istniejącego elementu (transformator demo).
   useNetworkBuildStore.getState().openOperationForm('update_element_parameters' as never, {
@@ -4194,16 +2052,12 @@ if (creator === 'arcflash') {
   useSnapshotStore.setState({
     rewizjaBiezacegoModelu: 2,
     snapshot: {
-      header: { name: 'Projekt demonstracyjny', revision: 2 },
-      substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
-      transformers: [],
-      buses: [
-        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
-        { ref_id: 'bus-nn-demo', name: 'Szyna nN', voltage_kv: 0.4 },
-      ],
-      sources: [],
-      loads: [],
-      bays: [],
+      // Karta #145: model sieci złotej — TEN SAM, na którym policzono ocenę cieplną
+      // (bieg kotwicy sceny „zwarcia"), żeby most nazw nazwał gałęzie wyniku.
+      ...sieckZlotaScenyMigawka,
+      // K3-B3: scena „cieplna" jest CELOWO wariantem NIEAKTUALNYM znacznika
+      // swiezosci — migawka rewizji 2 wobec wyniku rewizji 1.
+      header: { ...sieckZlotaScenyMigawka.header, revision: 2 },
     },
   } as never);
 } else {
@@ -4223,19 +2077,29 @@ if (creator === 'arcflash') {
       ? 'add_grid_source_sn'
       : 'add_sn_bay';
   useNetworkBuildStore.getState().openOperationForm(op as never, {
-    station_ref: 'st-demo',
-    bus_ref: 'bus-sn-demo',
-    bus_nn_ref: 'bus-nn-demo',
-    bus_name: 'Szyna SN',
-    voltage_kv: 15,
+    station_ref: STACJA_DEMO,
+    bus_ref: SZYNA_SN_STACJI_DEMO,
+    bus_nn_ref: SZYNA_NN_STACJI_DEMO,
+    bus_name: NAZWA_SZYNY_SN_STACJI_DEMO,
+    voltage_kv: NAPIECIE_SZYNY_SN_STACJI_DEMO,
     length_m: 2500,
     from_terminal_id: 'term-demo',
     terminalId: 'term-demo',
-    terminal_voltage_label: '15 kV',
+    terminal_voltage_label: `${NAPIECIE_SZYNY_SN_STACJI_DEMO} kV`,
     feeder_ref: 'feeder-demo',
-    bus_voltage_kv: 0.4,
-    station_label: 'Rozdzielnia GPZ-01',
+    bus_voltage_kv: NAPIECIE_SZYNY_NN_STACJI_DEMO,
+    station_label: NAZWA_STACJI_DEMO,
   });
+}
+
+// Karta #145: `setActiveProject` przy ZMIANIE projektu czyści magazyn migawki
+// (`useSnapshotStore.reset()`), a sceny „wyniki-zbieznosc", „koordynacja" i
+// „wyniki-stan-fazowy" ustawiają projekt PO zasiewie migawki modelu sceny — ekran
+// dostawał pustą migawkę i most nazw pokazywał referencje zamiast nazw z modelu
+// (w produkcie wynik i model należą do jednego, już aktywnego projektu). Migawka
+// modelu sceny wraca po łańcuchu zasiewów, gdy scena ją skasowała.
+if (migawkaModeluSceny !== undefined && useSnapshotStore.getState().snapshot === null) {
+  useSnapshotStore.setState({ snapshot: migawkaModeluSceny } as never);
 }
 
 /** Pasek przypadku ze znacznikiem świeżości (K4) — info z realnego hooka powłoki. */
@@ -4262,11 +2126,14 @@ function Harness() {
   else if (creator === 'diagnoza')
     node = <PanelDiagnozy onPrzejdzDoUruchomienia={() => undefined} />;
   else if (creator === 'uwaga') node = <EkranCoWymagaUwagi />;
+  else if (creator === 'przeglad-wiarygodnosci') node = <PozycjeDoPrzegladu />;
   else if (creator === 'swiezosc') node = <SwiezoscScena />;
   else if (creator === 'walidacja')
     node = (
       <SekcjaWalidacji
-        przebieg={{ id: 'run-lf-1', analysis_type: 'LOAD_FLOW', status: 'DONE' } as unknown as ExecutionRun}
+        przebieg={{
+          id: walidacjaScenyWynik.context.run_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
+        } as unknown as ExecutionRun}
         trybZaawansowania="expert"
         onOtworzDowod={() => undefined}
       />
@@ -4274,36 +2141,28 @@ function Harness() {
   else if (creator === 'rozplyw')
     node = <EkranRozplywu trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia')
-    node = (
-      <EkranZwarc
-        trybZaawansowania="expert"
-        onOtworzDowod={() => undefined}
-        wspolczynnikC={1.1}
-        czasCieplnyS={1.0}
-      />
-    );
+    node = <EkranZwarc trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia-rozplyw')
     // Karta Z-3: tryb ekspercki — kolumna „źródło" widoczna (rozróżnienie
     // „sieć nadrzędna" vs identyfikator falownika w sekcji RozplywZwarciowy).
-    node = (
-      <EkranZwarc
-        trybZaawansowania="expert"
-        onOtworzDowod={() => undefined}
-        wspolczynnikC={1.0}
-        czasCieplnyS={1.0}
-      />
-    );
+    node = <EkranZwarc trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'porownanie')
     node = <EkranPorownania projektId="proj-demo" trybZaawansowania="expert" />;
   else if (creator === 'kompensacja')
+    // R2-B: preselekcja wezla z deep-linku — bus_sn_b, jedyny wezel zasiewu
+    // (linie ok. 2320 nizej) dajacy realny dobor kandydata katalogowego
+    // (HARNESS-RESZTA-kontynuacja: dawny literal 'SZ-ST7' nie istnial juz w
+    // zasiewie po konwersji sceny na realny bieg backendu).
     node = (
       <EkranKompensacji
         trybZaawansowania="expert"
-        preselekcjaWezla="SZ-ST7"
+        preselekcjaWezla="bus_sn_b"
         onPreselekcjaSkonsumowana={() => undefined}
+        onOtworzDowod={() => undefined}
       />
     );
-  else if (creator === 'lom') node = <EkranLom trybZaawansowania="expert" />;
+  else if (creator === 'lom')
+    node = <EkranLom trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'wiazania')
     node = (
       <PvSourceSurface
@@ -4312,7 +2171,9 @@ function Harness() {
             surfaceId: 'harness-wiazania',
             screenCode: 'E-21',
             titlePl: 'Źródło PV',
-            entityRef: 'der-pv-1',
+            // Wytwórca Z MODELU sceny — ten sam, którego opisują fixtury
+            // doboru przekładników i funkcji zabezpieczeniowych.
+            entityRef: wiazaniaScenyPrzekladniki.generator_ref,
             entityType: null,
             routeState: { payload: {} },
             breadcrumbs: [],
@@ -4327,9 +2188,15 @@ function Harness() {
         }
       />
     );
-  else if (creator === 'frt') node = <EkranFrt trybZaawansowania="expert" />;
+  else if (creator === 'frt')
+    node = <EkranFrt trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'oltc') node = <EkranBadanOltc />;
-  else if (creator === 'macierz') node = <MacierzNcRfg trybZaawansowania="expert" />;
+  else if (creator === 'macierz' || creator === 'certyfikat')
+    node = <MacierzNcRfg trybZaawansowania="expert" />;
+  else if (creator === 'wniosek' || creator === 'wniosek-braki')
+    node = <EkranWniosku trybZaawansowania="expert" />;
+  else if (creator === 'pulpit-oze')
+    node = <PulpitOze trybZaawansowania="expert" onNawiguj={() => undefined} />;
   else if (creator === 'koordynacja') node = <EkranKoordynacji />;
   else if (creator === 'wyniki-skladowe') node = <EkranSkladowych />;
   else if (creator === 'wyniki-zbieznosc') node = <EkranZbieznosci />;
@@ -4337,7 +2204,7 @@ function Harness() {
   else if (creator === 'wyniki-stabilnosc') node = <EkranStabilnosci />;
   else if (creator === 'kompensacja-wynik')
     // V-B: bez preselekcji — spec wybiera wezel i klika „Oblicz" natywnie.
-    node = <EkranKompensacji trybZaawansowania="expert" />;
+    node = <EkranKompensacji trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'sila-sieci') node = <SekcjaSilySieci trybEkspercki />;
   else if (creator === 'odbior-zgodnosc')
     node = <EkranOdbioru trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
@@ -4352,19 +2219,23 @@ function Harness() {
         onOtworzDokumentacje={() => undefined}
       />
     );
-  else if (creator === 'akademickie')
+  else if (creator === 'akademickie') {
+    // Bez `rodzaj` w adresie: katalog kart (widok domyślny); z nim — widok analizy.
+    const rodzajZAdresu = new URLSearchParams(location.search).get('rodzaj');
     node = (
       <EkranAnalizAkademickich
         trybZaawansowania="expert"
-        rodzajPoczatkowy={
-          (new URLSearchParams(location.search).get('rodzaj') ?? 'earthing_safety') as never
-        }
+        rodzajPoczatkowy={(rodzajZAdresu ?? undefined) as never}
       />
     );
+  } else if (creator === 'ocena' || creator === 'ocena-przekroczenia')
+    node = <EkranOceny trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'migotanie')
     node = (
       <SekcjaMigotania
-        przebieg={{ id: 'run-sc-5', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun}
+        przebieg={{
+          id: migotanieScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
+        } as unknown as ExecutionRun}
         trybZaawansowania="expert"
         onOtworzDowod={() => undefined}
       />
@@ -4376,9 +2247,15 @@ function Harness() {
   else if (creator === 'odbior') node = <KreatorOdbioruNn />;
   else if (creator === 'zrodlo') node = <KreatorZrodloZasilania />;
   else if (creator === 'cieplna')
+    // HARNESS-RESZTA-2: identyfikator biegu z fixtury REALNEGO biegu backendu
+    // (`cieplna_scena_wynik.json`) — JEDNA tożsamość dla kontraktu przebiegu
+    // (RUN_KONTRAKT_SCENY.cieplna) i dla sekcji; wariant „nieaktualne" nadal
+    // z rozjazdu rewizji modelu, nie z wymyślonego identyfikatora.
     node = (
       <SekcjaWytrzymaloscCieplna
-        przebieg={{ id: 'run-sc-7', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun}
+        przebieg={{
+          id: cieplnaScenyWynik.run_id, analysis_type: 'SC_3F', status: 'DONE',
+        } as unknown as ExecutionRun}
         trybZaawansowania="expert"
         onOtworzDowod={() => undefined}
       />
@@ -4386,7 +2263,9 @@ function Harness() {
   else if (creator === 'arcflash') {
     node = (
       <SekcjaArcFlash
-        przebieg={{ id: 'run-sc-1', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun}
+        przebieg={{
+          id: arcflashScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
+        } as unknown as ExecutionRun}
         trybZaawansowania="expert"
         onOtworzDowod={() => undefined}
       />
@@ -4403,6 +2282,12 @@ function Harness() {
   else if (creator === 'przypisanie-katalogu') node = <KreatorPrzypisaniaKatalogu />;
   else if (creator === 'edycja-parametrow') node = <KreatorEdycjiParametrow />;
   else if (creator === 'stacja') node = <KreatorStacjiSnNn />;
+  else if (creator === 'szablony')
+    // Scena „szablony" (V12T-016, karta SZABLONY-ROLA-A): przeglądarka
+    // biblioteki szablonów stacji z widoczną rolą A „Zasilanie sieci"
+    // (GPZ 110/SN, rozdzielnia sieciowa RS/RSM) — dotąd licznik zero.
+    // Dane REALNE z backendu (patrz wyjątek fetch-mocka wyżej), nie atrapa.
+    node = <PrzegladarkaSzablonow onZastosuj={() => undefined} />;
   else node = <KreatorPolaSn />;
 
   return (
@@ -4417,6 +2302,7 @@ function Harness() {
         width: [
           'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie', 'cieplna',
           'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-stabilnosc', 'akademickie',
+          'ocena', 'ocena-przekroczenia',
         ].includes(creator)
           ? 1400
           : 1180,
@@ -4436,4 +2322,100 @@ function Harness() {
   );
 }
 
-createRoot(document.getElementById('root')!).render(<Harness />);
+/**
+ * Scena „stacja" (E2E-FULL-FIX-3, 2026-09-10): kreator stacji SN/nN woła TĘ SAMĄ
+ * operację domenową co zapis z flagą `dry_run` (`pobierzPodgladStacji`) przy każdej
+ * zmianie formularza, a werdykt walidatora backendu trafia do nagłówka kroku pól
+ * (`statusKonfiguracji`). Zasiew `case-demo` nie istnieje w backendzie, więc realny
+ * backend odpowiadał 404 „Przypadek case-demo nie należy do żadnego projektu", a
+ * zrzuty do oceny (`mini-rmu-podglad`, `kreator-stacji-pole-tr`) niosły werdykt
+ * INVALID z tym komunikatem. Atrapa werdyktu byłaby fabrykacją (walidator nie ma
+ * prawa żyć w UI), dlatego scena buduje REALNY przypadek tą samą drogą co projektant
+ * i testy krytyczne (`critical-run-flow.spec.ts`): projekt → przypadek → GPZ →
+ * odcinek magistrali (1,2 km kabla) → kontekst „wstaw stację w odcinek" wskazujący
+ * realny odcinek z migawki backendu.
+ */
+async function zasiejSceneStacji(): Promise<void> {
+  const naglowki = { 'Content-Type': 'application/json' };
+  const projektOdp = await originalFetch('/api/projects', {
+    method: 'POST',
+    headers: naglowki,
+    body: JSON.stringify({
+      name: 'Harness — kreator stacji SN/nN',
+      description: 'Scena harnessu: stacja wstawiana w odcinek magistrali',
+      mode: 'TO-BE',
+      voltage_level_kv: NAPIECIE_SZYNY_SN_STACJI_DEMO,
+      frequency_hz: 50,
+    }),
+  });
+  if (!projektOdp.ok) throw new Error(`POST /api/projects → ${projektOdp.status}`);
+  const projekt = (await projektOdp.json()) as { id: string };
+  const przypadekOdp = await originalFetch('/api/study-cases', {
+    method: 'POST',
+    headers: naglowki,
+    body: JSON.stringify({
+      project_id: projekt.id,
+      name: 'Stan normalny',
+      description: '',
+      config: {},
+      set_active: true,
+    }),
+  });
+  if (!przypadekOdp.ok) throw new Error(`POST /api/study-cases → ${przypadekOdp.status}`);
+  const przypadek = (await przypadekOdp.json()) as { id: string };
+
+  const wiazanie = (przestrzen: string, pozycja: string) => ({
+    catalog_namespace: przestrzen,
+    catalog_item_id: pozycja,
+    catalog_item_version: '2024.1',
+  });
+  const wykonaj = useSnapshotStore.getState().executeDomainOperation;
+  const gpz = await wykonaj(przypadek.id, 'add_grid_source_sn', {
+    voltage_kv: NAPIECIE_SZYNY_SN_STACJI_DEMO,
+    sk3_mva: SK3_ZRODLA_STACJI_DEMO,
+    rx_ratio: RX_ZRODLA_STACJI_DEMO,
+    catalog_binding: wiazanie('ZRODLO_SN', 'src-gpz-15kv-250mva-rx010'),
+    hv_voltage_kv: NAPIECIE_WN_STACJI_DEMO,
+    transformer_sn_mva: MOC_TRAFO_WN_SN_STACJI_DEMO,
+  });
+  if (!gpz || gpz.error) throw new Error(`add_grid_source_sn: ${gpz?.error ?? 'brak odpowiedzi'}`);
+  const odcinek = await wykonaj(przypadek.id, 'continue_trunk_segment_sn', {
+    segment: {
+      rodzaj: 'KABEL',
+      dlugosc_m: 1200,
+      name: 'Odcinek magistrali',
+      catalog_binding: wiazanie('KABEL_SN', 'cable-tfk-yakxs-3x120'),
+    },
+  });
+  if (!odcinek || odcinek.error) {
+    throw new Error(`continue_trunk_segment_sn: ${odcinek?.error ?? 'brak odpowiedzi'}`);
+  }
+  const odcinki = odcinek.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
+  const segmentRef = odcinki[odcinki.length - 1];
+  if (!segmentRef) throw new Error('backend nie zwrócił odcinka magistrali w migawce');
+
+  useAppStateStore.getState().setActiveProject(projekt.id, 'Harness — kreator stacji SN/nN');
+  useAppStateStore.getState().setActiveCase(przypadek.id, 'Stan normalny', null, 'NONE');
+  // Kontekst operacji = ten sam, który daje kanwa (świadomy podział odcinka).
+  useNetworkBuildStore.getState().openOperationForm('insert_station_on_segment_sn' as never, {
+    segment_id: segmentRef,
+    position_on_segment: 0.5,
+  });
+}
+
+const zasiewSceny: Promise<void> = creator === 'stacja' ? zasiejSceneStacji() : Promise.resolve();
+zasiewSceny.then(
+  () => {
+    createRoot(document.getElementById('root')!).render(
+      <QueryClientProvider client={queryClient}>
+        <Harness />
+      </QueryClientProvider>,
+    );
+  },
+  (blad: unknown) => {
+    // Bez korzenia `creator-harness-root` spec zatrzymuje się na bramce gotowości
+    // z NAZWANĄ przyczyną zamiast zrzucać scenę bez zasiewu.
+    document.getElementById('root')!.textContent =
+      `Zasiew sceny „${creator}" nie powiódł się: ${blad instanceof Error ? blad.message : String(blad)}`;
+  },
+);

@@ -23,6 +23,7 @@ NOT SUPPORTED (P15b+):
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -34,11 +35,14 @@ from domain.protection_analysis import (
     TripState,
     compute_result_summary,
 )
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU
 from network_model.catalog.types import (
     ProtectionCurve,
     ProtectionDeviceType,
     ProtectionSettingTemplate,
 )
+from network_model.nazwy import nazwa_nadana
+from network_model.solvers.protection_iec60255 import compute_idmt_generic
 
 if TYPE_CHECKING:
     # Rejestr krzywych producenta jest importowany LENIWIE w cialach funkcji
@@ -167,6 +171,14 @@ class ProtectionEvaluationInput:
     faults: tuple[FaultPoint, ...]
     snapshot_id: str | None = None
     overrides: dict[str, Any] = field(default_factory=dict)
+    #: Nazwy miejsc (element chroniony, punkt zwarcia) po identyfikatorze węzła grafu —
+    #: opisy kroków śladu nazywają miejsca nazwami z modelu, nigdy identyfikatorami
+    #: (karta #144). Dane prezentacji, nie wejście obliczenia: poza `to_dict`.
+    nazwy_lokalizacji: Mapping[str, str] = field(kw_only=True)
+
+    def nazwa_lokalizacji(self, identyfikator: str) -> str:
+        """Nazwa miejsca z modelu; identyfikator spoza indeksu to jawny brak."""
+        return self.nazwy_lokalizacji.get(identyfikator) or ELEMENT_SPOZA_MODELU
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -201,6 +213,17 @@ def compute_iec_inverse_time(
 
     Formula: t = TMS * A / ((I/Ipickup)^B - 1)
 
+    W3-A (rodzina KLASA-NIE-INSTANCJA A, karta W3-A): petla obliczeniowa
+    (M^B, guard, TMS-skalowanie) deleguje do generycznego silnika IDMT
+    `network_model.solvers.protection_iec60255.compute_idmt_generic` —
+    JEDYNA implementacja tego wzoru w repozytorium (wzorzec P0.7,
+    `f4a822bb`, skopiowany 1:1 z `protection.curves.iec_curves`).
+    ``denom_guard=1e-10`` ujednolica epsilon tor kanonicznego `protection_sn`
+    z pozostalymi konsumentami tej samej fizyki (przed konsolidacja kazdy z
+    czterech konsumentow mial WLASNY, niespojny epsilon kolo M=1 — patrz
+    raport inwentarza W3 rodzina A; po konsolidacji dziela JEDEN epsilon
+    zamiast czterech roznych progow "brak wyzwolenia").
+
     Args:
         i_fault_a: Fault current [A]
         i_pickup_a: Pickup current [A]
@@ -216,14 +239,16 @@ def compute_iec_inverse_time(
     if i_fault_a <= i_pickup_a:
         return None  # No trip - current below pickup
 
-    ratio = i_fault_a / i_pickup_a
-    denominator = (ratio**b) - 1.0
-
-    if denominator <= 0:
-        return None
-
-    trip_time = tms * a / denominator
-    return round(trip_time, 6)  # 6 decimal places for determinism
+    generic = compute_idmt_generic(
+        i_fault_a=i_fault_a,
+        is_pickup_a=i_pickup_a,
+        time_multiplier=tms,
+        a=a,
+        b=b,
+        denom_guard=1e-10,
+    )
+    assert generic.trip_time_s is not None  # will_trip gwarantowane (M>1 powyzej)
+    return round(generic.trip_time_s, 6)  # 6 decimal places for determinism
 
 
 def compute_definite_time(
@@ -327,7 +352,7 @@ class ProtectionEvaluationEngine:
 
         for device in evaluation_input.devices:
             for fault in evaluation_input.faults:
-                evaluation, step = self._evaluate_single(device, fault)
+                evaluation, step = self._evaluate_single(device, fault, evaluation_input)
                 evaluations.append(evaluation)
                 trace_steps.append(step)
 
@@ -372,6 +397,7 @@ class ProtectionEvaluationEngine:
         self,
         device: ProtectionDevice,
         fault: FaultPoint,
+        evaluation_input: ProtectionEvaluationInput,
     ) -> tuple[ProtectionEvaluation, ProtectionTraceStep]:
         """
         Evaluate a single device against a single fault point.
@@ -389,13 +415,15 @@ class ProtectionEvaluationEngine:
                 device=device,
                 fault=fault,
                 notes_pl="Brak definicji krzywej (curve_kind is None)",
+                evaluation_input=evaluation_input,
             )
 
         if curve_kind not in self.SUPPORTED_CURVE_KINDS:
             return self._make_invalid_evaluation(
                 device=device,
                 fault=fault,
-                notes_pl=f"Nieobsługiwany typ krzywej: {curve_kind} (NOT_SUPPORTED_YET)",
+                notes_pl=f"Nieobsługiwany typ krzywej: {curve_kind}",
+                evaluation_input=evaluation_input,
             )
 
         # Compute trip time based on curve type
@@ -459,7 +487,11 @@ class ProtectionEvaluationEngine:
 
         trace_step = ProtectionTraceStep(
             step="device_evaluation",
-            description_pl=f"Ocena urządzenia {device.device_id} dla zwarcia w {fault.fault_id}",
+            description_pl=(
+                "Ocena urządzenia zabezpieczeniowego — element chroniony: "
+                f"{evaluation_input.nazwa_lokalizacji(device.protected_element_ref)}, "
+                f"miejsce zwarcia: {evaluation_input.nazwa_lokalizacji(fault.fault_id)}"
+            ),
             inputs=trace_inputs,
             outputs={
                 "trip_state": trip_state.value,
@@ -516,6 +548,7 @@ class ProtectionEvaluationEngine:
         device: ProtectionDevice,
         fault: FaultPoint,
         notes_pl: str,
+        evaluation_input: ProtectionEvaluationInput,
     ) -> tuple[ProtectionEvaluation, ProtectionTraceStep]:
         """
         Create an INVALID evaluation with appropriate trace step.
@@ -537,7 +570,10 @@ class ProtectionEvaluationEngine:
 
         trace_step = ProtectionTraceStep(
             step="device_evaluation_invalid",
-            description_pl=f"Błąd oceny urządzenia {device.device_id}",
+            description_pl=(
+                "Błąd oceny urządzenia zabezpieczeniowego — element chroniony: "
+                f"{evaluation_input.nazwa_lokalizacji(device.protected_element_ref)}"
+            ),
             inputs={
                 "device_id": device.device_id,
                 "fault_id": fault.fault_id,
@@ -639,8 +675,8 @@ def _resolve_effective_settings(
     effective = {}
 
     for setting_field in template.setting_fields or []:
-        field_name = setting_field.get("name", "")
-        if not field_name:
+        field_name = nazwa_nadana(setting_field.get("name"))
+        if field_name is None:
             continue
 
         # Check override first

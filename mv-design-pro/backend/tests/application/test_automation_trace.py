@@ -1,32 +1,18 @@
+"""Efekt topologiczny po zwarciu — deklaracja z opcji biegu, bez narracji zdarzeń.
+
+Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): dawny budowniczy śladu automatyki
+(`build_automation_trace`) opowiadał sekwencję AUTOMATION_STARTED → FAULT_APPLIED →
+FAULT_CLEARED → POST_FAULT_TOPOLOGY_EFFECT → DYNAMIC_STABILITY_EVALUATED z czasu
+wyłączenia WPISANEGO przez użytkownika — żadne zabezpieczenie nie było symulowane, a
+ostatnie zdarzenie niosło werdykt STABLE z kątów wpisanych ręcznie. Budowniczy skasowany;
+test sekwencji ODWRÓCONY (moduł nie ma już narracji). Intencja zachowana: efekt
+topologiczny zadeklarowany w opcjach biegu jest kanoniczny i deterministyczny.
+"""
+
 from __future__ import annotations
 
-from application.automation.trace import (
-    build_automation_trace,
-    build_post_fault_topology_effect,
-)
-from application.stability.dynamic_stability import (
-    FaultClearScenario,
-    FaultClearSourceState,
-    evaluate_fault_clear_dynamic_stability,
-)
-
-
-def _evaluation():
-    scenario = FaultClearScenario(
-        scenario_id="trace-001",
-        faulted_element_id="line-11",
-        clearing_time_ms=110.0,
-        cleared_by_element_ids=("cb-2", "cb-1"),
-        source_state=FaultClearSourceState(
-            source_id="src-1",
-            pre_fault_angle_deg=8.0,
-            during_fault_angle_deg=55.0,
-            post_fault_angle_deg=16.0,
-            post_fault_voltage_pu=0.99,
-            post_fault_frequency_pu=0.995,
-        ),
-    )
-    return evaluate_fault_clear_dynamic_stability(scenario)
+import application.automation.trace as modul_sladu
+from application.automation.trace import build_post_fault_topology_effect
 
 
 def test_post_fault_topology_effect_is_canonical_and_deterministic() -> None:
@@ -55,41 +41,8 @@ def test_post_fault_topology_effect_is_canonical_and_deterministic() -> None:
     assert effect_a.outage_scope == "WIDE"
 
 
-def test_build_automation_trace_emits_expected_sequence() -> None:
-    evaluation = _evaluation()
-    topology_effect = build_post_fault_topology_effect(
-        source_id=evaluation.source_id,
-        faulted_element_id=evaluation.faulted_element_id,
-        cleared_by_element_ids=evaluation.cleared_by_element_ids,
-        isolated_element_ids=("load-9",),
-    )
-
-    trace = build_automation_trace(evaluation, topology_effect)
-
-    assert [event.event_seq for event in trace.events] == [1, 2, 3, 4, 5]
-    assert [event.event_type for event in trace.events] == [
-        "AUTOMATION_STARTED",
-        "FAULT_APPLIED",
-        "FAULT_CLEARED",
-        "POST_FAULT_TOPOLOGY_EFFECT",
-        "DYNAMIC_STABILITY_EVALUATED",
-    ]
-    assert trace.events[2].payload["cleared_by_element_ids"] == ["cb-1", "cb-2"]
-    assert trace.events[3].payload["effect_signature"] == topology_effect.effect_signature
-    assert trace.events[4].payload["status"] == "STABLE"
-    assert trace.events[4].payload["source_id"] == "src-1"
-
-
-def test_build_automation_trace_is_deterministic() -> None:
-    evaluation = _evaluation()
-    topology_effect = build_post_fault_topology_effect(
-        source_id=evaluation.source_id,
-        faulted_element_id=evaluation.faulted_element_id,
-        cleared_by_element_ids=evaluation.cleared_by_element_ids,
-        isolated_element_ids=("load-9",),
-    )
-
-    first = build_automation_trace(evaluation, topology_effect).to_dict()
-    second = build_automation_trace(evaluation, topology_effect).to_dict()
-
-    assert first == second
+def test_trace_module_has_no_protection_event_narrative() -> None:
+    """Brak budowniczego narracji zdarzeń zabezpieczeń i oceny stabilności."""
+    assert not hasattr(modul_sladu, "build_automation_trace")
+    assert not hasattr(modul_sladu, "AutomationTrace")
+    assert not hasattr(modul_sladu, "AutomationEvent")

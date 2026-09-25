@@ -4,17 +4,15 @@ from typing import Any, Literal
 from uuid import NAMESPACE_URL, uuid5
 
 from enm.canonical_analysis import list_runs_for_case
+from enm.interlock_rules import blokady_zamkniecia, runtime_state_record
 from enm.models import (
     Bay,
     BayBaseModel,
     BayCanonicalModel,
     BayControlSurface,
     BayEarthFaultPath,
-    BayEnergizationSafetyState,
     BayInterlockSet,
     BayMeasurementChain,
-    BayMeasurements,
-    BayMeasurementSet,
     BayOperatingState,
     BayPowerFlowSourceContribution,
     BayPrimaryDevice,
@@ -31,7 +29,6 @@ from enm.models import (
     Branch,
     EnergyNetworkModel,
     Generator,
-    GroundingConfig,
     InterlockEntry,
     Measurement,
     ProtectionAssignment,
@@ -42,14 +39,16 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from enm.nazwy_elementow import nazwa_pola_ze_specyfikacji
+from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
+from network_model.core.uziemienie import TypPunktuNeutralnego
+from network_model.nazwy import nazwa_nadana
 
+#: Rola pola w modelu (`Bay.bay_role`) → rola kanoniczna read-modelu (`field_role`). Wyprowadzona
+#: z kanonu `enm.rola_pola_sn.ROLA_POLA_SN_Z_ALIASU` — tej samej tablicy, z której backend nazywa
+#: pola (karta #141): rola w read-modelu i nazwa pola nie mogą się rozjechać.
 CANONICAL_BAY_ROLE_MAP: dict[str, str] = {
-    "IN": "LINIA_IN",
-    "OUT": "LINIA_OUT",
-    "TR": "TRANSFORMATOROWE",
-    "COUPLER": "SPRZEGLO",
-    "FEEDER": "LINIA_ODG",
-    "MEASUREMENT": "POMIAROWE",
+    alias: rola for alias, rola in ROLA_POLA_SN_Z_ALIASU.items() if alias != rola
 }
 
 BRANCH_KIND_MAP: dict[str, tuple[str, str, bool]] = {
@@ -142,13 +141,17 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
 
     for bay in bays:
         canonical_role = _resolve_canonical_bay_role(bay, generators_by_bus)
-        primary_devices = _build_primary_devices(
+        primary_devices = _zloz_stan_ruchowy(
             bay=bay,
-            canonical_role=canonical_role,
+            devices=_build_primary_devices(
+                bay=bay,
+                canonical_role=canonical_role,
+                branches=branches,
+                measurements_by_bay=measurements_by_bay,
+                transformers_by_bus=transformers_by_bus,
+                generators_by_bus=generators_by_bus,
+            ),
             branches=branches,
-            measurements_by_bay=measurements_by_bay,
-            transformers_by_bus=transformers_by_bus,
-            generators_by_bus=generators_by_bus,
         )
         measurement_chain = _build_measurement_chain(bay, measurements_by_bay)
         source_endpoint = _build_source_endpoint(bay, generators_by_bus)
@@ -165,19 +168,8 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             protection_config=protection_config,
         )
         control_surface = _build_control_surface(primary_devices)
-        runtime_state = _build_runtime_state(
-            enm=enm,
-            bay=bay,
-            primary_devices=primary_devices,
-            measurement_chain=measurement_chain,
-            protection_config=protection_config,
-            sources_by_bus=sources_by_bus,
-            generators_by_bus=generators_by_bus,
-        )
-        interlocks = _build_interlocks(
-            control_surface=control_surface,
-            runtime_state=runtime_state,
-        )
+        runtime_state = _build_runtime_state(bay=bay, primary_devices=primary_devices)
+        interlocks = _build_interlocks(primary_devices)
         integrity_status = _resolve_integrity_status(
             canonical_role=canonical_role,
             primary_devices=primary_devices,
@@ -284,6 +276,7 @@ def collect_bays(enm: EnergyNetworkModel) -> list[Bay]:
     kreatora stacji.
     """
     bays_by_ref = {bay.ref_id: bay for bay in enm.bays}
+    nazwy_elementow_pol: dict[object, object] = {bay.ref_id: bay.name for bay in enm.bays}
 
     for substation in enm.substations:
         for spec in _iter_field_specs(substation):
@@ -320,7 +313,9 @@ def collect_bays(enm: EnergyNetworkModel) -> list[Bay]:
             bays_by_ref[field_ref] = Bay(
                 id=uuid5(NAMESPACE_URL, field_ref),
                 ref_id=field_ref,
-                name=spec.get("name") or field_ref,
+                # Nazwa specyfikacji, elementu pola `bay_ref` albo roli — jedna reguła
+                # operacji i odczytów, nigdy identyfikator pola (karta #144).
+                name=nazwa_pola_ze_specyfikacji(spec, nazwy_elementow_pol),
                 tags=list(spec.get("tags") or []),
                 meta=spec_meta,
                 bay_role=bay_role,
@@ -360,7 +355,7 @@ def _iter_field_specs(substation: Any) -> list[dict[str, Any]]:
         synthesized.append(
             {
                 "field_ref": field_ref,
-                "name": section.line_field_name or f"Pole GPZ {section.order + 1}",
+                "name": nazwa_nadana(section.line_field_name) or f"Pole GPZ {section.order + 1}",
                 "bay_role": "FEEDER",
                 "bus_ref": section.bus_ref,
                 "gpz_section_id": section.section_id,
@@ -556,8 +551,6 @@ def _branch_to_primary_device(branch: Branch) -> BayPrimaryDevice | None:
     if mapped is None:
         return None
     kind, placement, controllable = mapped
-    switch_state = _build_switch_state_from_branch(branch) if controllable else None
-    operating_state = _build_operating_state_from_switch_state(switch_state)
     return BayPrimaryDevice(
         device_ref=branch.ref_id,
         linked_ref=branch.ref_id,
@@ -567,8 +560,6 @@ def _branch_to_primary_device(branch: Branch) -> BayPrimaryDevice | None:
         placement=placement,
         is_controllable=controllable,
         render_variant="kanoniczny",
-        switch_state=switch_state,
-        operating_state=operating_state,
     )
 
 
@@ -587,28 +578,113 @@ def _measurement_to_primary_device(measurement: Measurement) -> BayPrimaryDevice
     )
 
 
-def _build_switch_state_from_branch(branch: Branch) -> BaySwitchState | None:
+#: Stany polecenia, w których polecenie jest „w toku" (``commanded_state`` aparatu).
+_POLECENIE_W_TOKU = frozenset({"oczekuje", "przyjete"})
+
+
+def _stan_lacznika_w_modelu(
+    device: BayPrimaryDevice, branches: dict[str, Branch]
+) -> Literal["zamkniety", "otwarty"] | None:
+    """Stan łącznika zapisany w MODELU (gałąź łączeniowa aparatu) — dana projektowa."""
+    branch = branches.get(device.linked_ref or device.device_ref)
     if not isinstance(branch, SwitchBranch):
         return None
-    actual_state = "zamkniety" if branch.status == "closed" else "otwarty"
-    return BaySwitchState(
-        actual_state=actual_state,
-        commanded_state=None,
-        control_mode="zdalne",
-        armed_for_close=True,
-        armed_for_open=True,
-        communication_ok=True,
-        interlock_blocked=False,
-        cause_code=None,
-    )
+    return "zamkniety" if branch.status == "closed" else "otwarty"
 
 
-def _build_operating_state_from_switch_state(
-    switch_state: BaySwitchState | None,
-) -> BayOperatingState | None:
-    if switch_state is None:
+def _polecenie_w_toku(bay: Bay, device_ref: str) -> Literal["zamknij", "otworz"] | None:
+    """Polecenie sterowania w toku dla aparatu — wyłącznie z `runtime_state.pending_command`."""
+    runtime = bay.runtime_state
+    polecenie = runtime.pending_command if runtime is not None else None
+    if (
+        polecenie is None
+        or polecenie.target_device_ref != device_ref
+        or polecenie.state not in _POLECENIE_W_TOKU
+    ):
         return None
-    current_position = (
+    if polecenie.command == "zamknij":
+        return "zamknij"
+    if polecenie.command == "otworz":
+        return "otworz"
+    return None
+
+
+def _zloz_stan_ruchowy(
+    *,
+    bay: Bay,
+    devices: list[BayPrimaryDevice],
+    branches: dict[str, Branch],
+) -> list[BayPrimaryDevice]:
+    """JEDYNE miejsce składania stanu ruchowego aparatów pola (karta #135).
+
+    Narzędzie projektowe nie ma telemetrii: tryb sterowania, uzbrojenie napędu,
+    komunikacja i przyczyna pochodzą WYŁĄCZNIE ze źródła runtime zapisanego w modelu
+    (`interlock_rules.runtime_state_record`), polecenie w toku z `pending_command`;
+    bez źródła te pola są `None` („brak telemetrii"). `actual_state` bez źródła = stan
+    łącznika w modelu (dana projektowa). `interlock_blocked` liczy reguła modelu
+    (`interlock_rules.blokady_zamkniecia`), nie telemetria. Aparat bez rekordu źródła
+    i bez stanu w modelu nie dostaje stanu (zero domysłu).
+    """
+    stany: dict[str, BaySwitchState] = {}
+    polozenie_normalne: dict[str, Literal["zamkniety", "otwarty"]] = {}
+    for device in devices:
+        rekord = runtime_state_record(bay, device.device_ref)
+        stan_modelu = _stan_lacznika_w_modelu(device, branches) if device.is_controllable else None
+        if stan_modelu is not None:
+            polozenie_normalne[device.device_ref] = stan_modelu
+        if rekord is None and stan_modelu is None:
+            continue
+        polecenie = _polecenie_w_toku(bay, device.device_ref)
+        if rekord is not None:
+            stany[device.device_ref] = rekord.model_copy(
+                update={"commanded_state": rekord.commanded_state or polecenie}
+            )
+        elif stan_modelu is not None:
+            stany[device.device_ref] = BaySwitchState(
+                actual_state=stan_modelu, commanded_state=polecenie
+            )
+    blokady = blokady_zamkniecia(
+        [
+            (
+                device.device_ref,
+                device.kind,
+                stany[device.device_ref].actual_state if device.device_ref in stany else None,
+            )
+            for device in devices
+        ]
+    )
+    zlozone: list[BayPrimaryDevice] = []
+    for device in devices:
+        stan = stany.get(device.device_ref)
+        if stan is None:
+            zlozone.append(device.model_copy(update={"switch_state": None}))
+            continue
+        # Aparat spoza reguły (nie uziemnik i nie łącznik toru głównego) — reguła nic mu
+        # nie blokuje (False); None zostaje wyłącznie dla nierozstrzygniętej reguły.
+        stan = stan.model_copy(update={"interlock_blocked": blokady.get(device.device_ref, False)})
+        normalne = polozenie_normalne.get(device.device_ref)
+        zlozone.append(
+            device.model_copy(
+                update={
+                    "switch_state": stan,
+                    "operating_state": (
+                        _build_operating_state(normalne, stan)
+                        if normalne is not None
+                        else device.operating_state
+                    ),
+                }
+            )
+        )
+    return zlozone
+
+
+def _build_operating_state(
+    normal_position: Literal["zamkniety", "otwarty"],
+    switch_state: BaySwitchState,
+) -> BayOperatingState:
+    """Położenie normalne = stan łącznika w modelu; bieżące = stan aparatu (źródło albo model);
+    alarm niezgodności = znane bieżące różne od normalnego (porównanie, nie telemetria)."""
+    current_position: Literal["zamkniety", "otwarty", "nieznany"] = (
         "zamkniety"
         if switch_state.actual_state in {"zamkniety", "zamkniety_naped_rozbrojony"}
         else (
@@ -617,11 +693,10 @@ def _build_operating_state_from_switch_state(
             else "nieznany"
         )
     )
-    normal_position = "zamkniety" if current_position == "zamkniety" else "otwarty"
     return BayOperatingState(
         normal_position=normal_position,
         current_position=current_position,
-        discrepancy_alarm=False,
+        discrepancy_alarm=current_position not in {"nieznany", normal_position},
     )
 
 
@@ -679,6 +754,13 @@ def _build_measurement_chain(
         zero_sequence_current_source = "suma_ct"
     else:
         zero_sequence_current_source = "brak"
+    # Karta FAB-D1 (D9): brak realnej integracji telemetrii w tym budowniczym —
+    # funkcja opisuje TOPOLOGIĘ łańcucha pomiarowego (które CT/VT są podłączone),
+    # nie ODCZYT z encji `Measurement`. `BayMeasurements(frequency_hz=50.0)`
+    # twierdziło "pomiar 50 Hz", którego nikt nie wykonał (POMIAR sfabrykowany).
+    # Zestaw pomiarowy zostaje PUSTY (kontrakt `BayMeasurementChain.
+    # measurement_sets` domyślnie `[]`) — UI pokazuje brak danych, zamiast
+    # fabrykowanej wartości.
     return BayMeasurementChain(
         chain_ref=f"measurement-chain:{bay.ref_id}",
         ct_refs=ct_refs,
@@ -688,14 +770,6 @@ def _build_measurement_chain(
         zero_sequence_current_source=zero_sequence_current_source,
         zero_sequence_voltage_source="otwarty_trojkat_vt" if uses_3u0 else "brak",
         topology=topology,
-        measurement_sets=[
-            BayMeasurementSet(
-                side="pole",
-                values=BayMeasurements(
-                    frequency_hz=50.0,
-                ),
-            )
-        ],
     )
 
 
@@ -883,105 +957,51 @@ def _build_control_surface(primary_devices: list[BayPrimaryDevice]) -> BayContro
 
 
 def _build_runtime_state(
-    *,
-    enm: EnergyNetworkModel,
-    bay: Bay,
-    primary_devices: list[BayPrimaryDevice],
-    measurement_chain: BayMeasurementChain | None,
-    protection_config: BayProtectionControlUnit | None,
-    sources_by_bus: dict[str, list[Source]],
-    generators_by_bus: dict[str, list[Generator]],
-) -> BayRuntimeState:
-    has_secondary = protection_config is not None or measurement_chain is not None
-    primary_device_states = {
+    *, bay: Bay, primary_devices: list[BayPrimaryDevice]
+) -> BayRuntimeState | None:
+    """Stan runtime pola WYŁĄCZNIE ze źródła zapisanego w modelu (`Bay.runtime_state`).
+
+    Bez źródła — `None` (brak telemetrii): model projektowy nie zna łączności urządzeń
+    wtórnych, dostępności sterowania ani pomiarów, chwili ostatniej aktualizacji ani stanu
+    beznapięciowego pola. Ze źródłem — rekord źródła z rekordami aparatów złożonymi przez
+    `_zloz_stan_ruchowy` (blokada z reguł, polecenie w toku).
+    """
+    if bay.runtime_state is None:
+        return None
+    zlozone = {
         device.device_ref: device.switch_state
         for device in primary_devices
         if device.switch_state is not None
     }
-    communication_status = "degraded" if has_secondary else "offline"
-    measurement_availability = "czesciowe" if measurement_chain is not None else "niedostepne"
-    control_availability = (
-        "czesciowo_dostepne"
-        if any(device.is_controllable for device in primary_devices) and has_secondary
-        else "niedostepne"
-    )
-    energization = _build_energization_state(
-        bay=bay,
-        primary_devices=primary_devices,
-        sources_by_bus=sources_by_bus,
-        generators_by_bus=generators_by_bus,
-    )
-    return BayRuntimeState(
-        secondary_communication_status=communication_status,
-        last_good_update_at=enm.header.updated_at if has_secondary else None,
-        control_availability=control_availability,
-        measurement_availability=measurement_availability,
-        primary_device_states=primary_device_states,
-        active_alarms=[],
-        pending_command=None,
-        energization_and_safety=energization,
+    return bay.runtime_state.model_copy(
+        update={
+            "primary_device_states": {**bay.runtime_state.primary_device_states, **zlozone},
+        }
     )
 
 
-def _build_energization_state(
-    *,
-    bay: Bay,
-    primary_devices: list[BayPrimaryDevice],
-    sources_by_bus: dict[str, list[Source]],
-    generators_by_bus: dict[str, list[Generator]],
-) -> BayEnergizationSafetyState:
-    energized_from_bus_side = bool(sources_by_bus.get(bay.bus_ref))
-    energized_from_feeder_side = bool(generators_by_bus.get(bay.bus_ref))
-    grounded = any(
-        device.kind == "ES"
-        and device.switch_state is not None
-        and device.switch_state.actual_state == "zamkniety"
+def _build_interlocks(primary_devices: list[BayPrimaryDevice]) -> BayInterlockSet:
+    """Blokady pola wyłącznie z reguł modelu (`interlock_rules.blokady_zamkniecia`)."""
+    zablokowane = sorted(
+        device.device_ref
         for device in primary_devices
+        if device.switch_state is not None and device.switch_state.interlock_blocked is True
     )
-    visible_isolation_gap = any(
-        device.kind in {"DS", "LOAD_SWITCH"}
-        and device.switch_state is not None
-        and device.switch_state.actual_state == "otwarty"
-        for device in primary_devices
-    )
-    safe_to_work = (
-        not energized_from_bus_side
-        and not energized_from_feeder_side
-        and (grounded or visible_isolation_gap)
-    )
-    unsafe_reason = None
-    if not safe_to_work:
-        unsafe_reason = "Brak potwierdzonego stanu beznapięciowego lub uziemienia pola."
-    return BayEnergizationSafetyState(
-        energized_from_bus_side=energized_from_bus_side,
-        energized_from_feeder_side=energized_from_feeder_side,
-        grounded=grounded,
-        visible_isolation_gap=visible_isolation_gap,
-        safe_to_work=safe_to_work,
-        unsafe_reason_pl=unsafe_reason,
-    )
-
-
-def _build_interlocks(
-    *,
-    control_surface: BayControlSurface,
-    runtime_state: BayRuntimeState | None,
-) -> BayInterlockSet:
-    entries: list[InterlockEntry] = []
-    if (
-        runtime_state is not None
-        and runtime_state.secondary_communication_status == "offline"
-        and control_surface.controllable_device_refs
-    ):
-        entries.append(
+    if not zablokowane:
+        return BayInterlockSet(entries=[])
+    return BayInterlockSet(
+        entries=[
             InterlockEntry(
-                code="BRAK_LACZNOSCI_WTORNEJ",
+                code="BLOKADA_UZIEMNIK_TOR_GLOWNY",
                 active=True,
-                reason="Sterowanie zablokowane z powodu braku łączności urządzenia wtórnego.",
-                blocking_device_refs=list(control_surface.controllable_device_refs),
+                reason=(
+                    "Zamknięcie zablokowane regułą blokady uziemnik ↔ łącznik toru głównego "
+                    "pola: aparat przeciwny jest zamknięty."
+                ),
+                blocking_device_refs=zablokowane,
             )
-        )
-    return BayInterlockSet(entries=entries)
+        ]
+    )
 
 
 def _resolve_integrity_status(
@@ -1146,10 +1166,10 @@ def _resolve_project_result_state(
     latest_pf_run_id: str | None,
 ) -> tuple[str, str | None]:
     if latest_sc_run_id and latest_pf_run_id:
-        return "pelny", "Dostepne sa wyniki zwarciowe i rozplywowe pola."
+        return "pelny", "Dostępne są wyniki zwarciowe i rozpływowe pola."
     if latest_sc_run_id or latest_pf_run_id:
-        return "czesciowy", "Dostepny jest czesciowy zestaw wynikow pola."
-    return "bledny", "Brak poprawnych wynikow projektowych pola."
+        return "czesciowy", "Dostępny jest częściowy zestaw wyników pola."
+    return "bledny", "Brak poprawnych wyników projektowych pola."
 
 
 def _build_short_circuit_contributions(
@@ -1317,26 +1337,24 @@ def _resolve_neutral_grounding_mode(
     *,
     sources: list[Source],
     transformers: list[Transformer],
-) -> str:
+) -> TypPunktuNeutralnego | None:
+    """Sposob pracy punktu neutralnego przy szynie pola — ten sam slownik co
+    `GroundingConfig.type` (W5-A: koniec polskich literalow w kontrakcie).
+    Nosniki: punkt neutralny transformatora przy szynie, potem opis punktu
+    neutralnego zrodla (GPZ) na tej szynie."""
     for transformer in transformers:
         if transformer.hv_neutral is not None:
-            return _map_grounding_type(transformer.hv_neutral)
+            return transformer.hv_neutral.type
         if transformer.lv_neutral is not None:
-            return _map_grounding_type(transformer.lv_neutral)
-    # V12K-246: brak danych o punkcie neutralnym to „nieznany", NIE „bezposrednio
-    # uziemiony". Poprzedni domysl zamienial BRAK DANEJ w najmniej ostrozny werdykt:
-    # w sieci bezposrednio uziemionej prad zwarcia doziemnego jest duzy i mierzalny
-    # kryterium nadpradowym, wiec dobor zabezpieczen NIE zglaszal potrzeby kryterium
-    # kierunkowego — a polskie sieci SN sa w wiekszosci kompensowane albo uziemione
-    # przez rezystor. Obecnosc zrodla na szynie nie mowi NIC o sposobie uziemienia.
-    return "nieznany"
-
-
-def _map_grounding_type(grounding: GroundingConfig) -> str:
-    mapping = {
-        "isolated": "izolowany",
-        "petersen_coil": "cewka_petersena",
-        "resistor_grounded": "rezystor",
-        "directly_grounded": "bezposrednio_uziemiony",
-    }
-    return mapping.get(grounding.type, "nieznany")
+            return transformer.lv_neutral.type
+    for source in sources:
+        if source.neutral_grounding is not None:
+            return source.neutral_grounding.type
+    # V12K-246: brak danych o punkcie neutralnym to `None` (nieznany), NIE
+    # „bezposrednio uziemiony". Poprzedni domysl zamienial BRAK DANEJ w najmniej
+    # ostrozny werdykt: w sieci bezposrednio uziemionej prad zwarcia doziemnego jest
+    # duzy i mierzalny kryterium nadpradowym, wiec dobor zabezpieczen NIE zglaszal
+    # potrzeby kryterium kierunkowego — a polskie sieci SN sa w wiekszosci
+    # kompensowane albo uziemione przez rezystor. Obecnosc zrodla na szynie BEZ
+    # opisu punktu neutralnego nie mowi NIC o sposobie uziemienia.
+    return None

@@ -20,7 +20,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from enm.assembler import czestotliwosc_studium_hz
 from enm.kopia_graniczna import kopia_graniczna_enm
+from enm.load_zip_model import model_odbioru, zip_odbioru_z_parametrow_materializacji
+from network_model.nazwy import jest_nazwa, nazwa_nadana
 
 from .schema import (
     IssueSeverity,
@@ -36,6 +39,23 @@ from .validator import validate_wizard_state
 STEP_ORDER: list[str] = ["K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9", "K10"]
 
 _STEP_INDEX: dict[str, int] = {s: i for i, s in enumerate(STEP_ORDER)}
+
+#: Etykieta PL kroku — WYŁĄCZNIE do komunikatów czytanych przez projektanta
+#: (`message_pl`). Identyfikator kroku (K1-K10) zostaje w `wizard_step_hint`
+#: (pole maszynowe, patrz `WizardIssue.wizard_step_hint`); komunikat tekstowy
+#: MUSI nazwać krok po polsku, nie kryptonimem (BINDING powyżej w tym module).
+_STEP_LABELS_PL: dict[str, str] = {
+    "K1": "Nazwa projektu",
+    "K2": "Punkt zasilania",
+    "K3": "Szyny",
+    "K4": "Gałęzie",
+    "K5": "Transformatory",
+    "K6": "Odbiory i generatory",
+    "K7": "Przegląd",
+    "K8": "Walidacja",
+    "K9": "Podgląd schematu",
+    "K10": "Zakończenie",
+}
 
 
 def _step_index(step_id: str) -> int:
@@ -89,13 +109,12 @@ def _preconditions_k2(enm: dict[str, Any]) -> list[WizardIssue]:
     """K2 requires K1 to have project name."""
     issues: list[WizardIssue] = []
     header = enm.get("header", {})
-    name = header.get("name", "")
-    if not name or not name.strip():
+    if not jest_nazwa(header.get("name")):
         issues.append(
             WizardIssue(
                 code="PRE_K2_NAME_MISSING",
                 severity=IssueSeverity.BLOCKER,
-                message_pl="Uzupełnij nazwę projektu (K1) przed konfiguracją zasilania",
+                message_pl="Uzupełnij nazwę projektu przed konfiguracją zasilania",
                 wizard_step_hint="K1",
             )
         )
@@ -112,7 +131,7 @@ def _preconditions_k3(enm: dict[str, Any]) -> list[WizardIssue]:
             WizardIssue(
                 code="PRE_K3_NO_SOURCE_BUS",
                 severity=IssueSeverity.BLOCKER,
-                message_pl="Zdefiniuj punkt zasilania (K2) przed dodaniem szyn",
+                message_pl="Zdefiniuj punkt zasilania przed dodaniem szyn",
                 wizard_step_hint="K2",
             )
         )
@@ -127,7 +146,7 @@ def _preconditions_k4(enm: dict[str, Any]) -> list[WizardIssue]:
             WizardIssue(
                 code="PRE_K4_NO_BUSES",
                 severity=IssueSeverity.BLOCKER,
-                message_pl="Dodaj szyny (K3) przed definiowaniem gałęzi",
+                message_pl="Dodaj szyny przed definiowaniem gałęzi",
                 wizard_step_hint="K3",
             )
         )
@@ -158,7 +177,7 @@ def _preconditions_k6(enm: dict[str, Any]) -> list[WizardIssue]:
             WizardIssue(
                 code="PRE_K6_NO_BUSES",
                 severity=IssueSeverity.BLOCKER,
-                message_pl="Dodaj szyny (K3) przed definiowaniem odbiorów",
+                message_pl="Dodaj szyny przed definiowaniem odbiorów",
                 wizard_step_hint="K3",
             )
         )
@@ -192,7 +211,10 @@ def _preconditions_k10(enm: dict[str, Any]) -> list[WizardIssue]:
             WizardIssue(
                 code="PRE_K10_HAS_BLOCKERS",
                 severity=IssueSeverity.BLOCKER,
-                message_pl=f"Napraw blokery w krokach: {', '.join(s.step_id for s in blocker_steps)}",
+                message_pl=(
+                    "Napraw blokery w krokach: "
+                    f"{', '.join(_STEP_LABELS_PL.get(s.step_id, s.step_id) for s in blocker_steps)}"
+                ),
                 wizard_step_hint="K8",
             )
         )
@@ -244,7 +266,7 @@ def _apply_k2(enm: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
     bi = next((i for i, b in enumerate(buses) if b.get("ref_id") == bus_ref), None)
     bus_data = {
         "ref_id": bus_ref,
-        "name": data.get("bus_name", "Szyna główna SN"),
+        "name": nazwa_nadana(data.get("bus_name")) or "Szyna główna SN",
         "voltage_kv": data.get("voltage_kv", 15),
         "tags": ["source"],
         "meta": {},
@@ -260,7 +282,7 @@ def _apply_k2(enm: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
     si = next((i for i, s in enumerate(sources) if s.get("ref_id") == src_ref), None)
     src_data = {
         "ref_id": src_ref,
-        "name": data.get("source_name", "Sieć zasilająca"),
+        "name": nazwa_nadana(data.get("source_name")) or "Sieć zasilająca",
         "bus_ref": bus_ref,
         "model": data.get("model", "short_circuit_power"),
         "sk3_mva": data.get("sk3_mva", 250),
@@ -268,6 +290,13 @@ def _apply_k2(enm: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
         "tags": [],
         "meta": {},
     }
+    # CV-4.3 K7: ik3_ka i dane scenariusza MIN (sk3_min_mva/ik3_min_ka/rx_ratio_min) — BEZ
+    # domyślnych wartości (zero fabrykacji): klucz trafia do źródła TYLKO, gdy krok kreatora
+    # go podał. `sk3_mva`/`rx_ratio` powyżej mają dług przed K7 (domyślne 250/0.1, zapadka
+    # guarda podstawień) — kasacja toru kreatora osobną kartą CV-4.4, nie tutaj.
+    for pole in ("ik3_ka", "sk3_min_mva", "ik3_min_ka", "rx_ratio_min"):
+        if pole in data:
+            src_data[pole] = data[pole]
     if si is not None:
         sources[si] = {**sources[si], **src_data}
     else:
@@ -345,6 +374,24 @@ def _apply_k6(enm: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
         )
         if idx is not None:
             loads[idx] = {**loads[idx], **upd}
+    # `Load.model` jest polem WYPROWADZANYM ze współczynników ZIP (jeden predykat modelu
+    # odbioru, O-49 pkt 2): kreator zapisuje surowe rekordy odbiorów, więc pole przelicza
+    # się dla każdego odbioru z tego kroku (jak odcisk — z danych, nie z deklaracji).
+    # Tabliczka niepoprawna zostaje bez przeliczenia i blokuje krok w walidatorze K6
+    # (`K6_LOAD_ZIP_INVALID` — wycofanie kroku).
+    zmienione = {
+        wpis.get("ref_id") for wpis in (*data.get("add_loads", []), *data.get("update_loads", []))
+    }
+    for pozycja, odbior in enumerate(loads):
+        if odbior.get("ref_id") not in zmienione:
+            continue
+        if zip_odbioru_z_parametrow_materializacji(odbior.get("materialized_params")) is None:
+            loads[pozycja] = {
+                **odbior,
+                "model": model_odbioru(
+                    odbior.get("materialized_params"), czestotliwosc_studium_hz(enm)
+                ),
+            }
     remove_load_refs = set(data.get("remove_load_refs", []))
     if remove_load_refs:
         loads = [

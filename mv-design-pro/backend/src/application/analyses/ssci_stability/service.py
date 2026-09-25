@@ -1,11 +1,11 @@
-"""Widok werdyktu stabilności SSCI dla gotowego przebiegu V12.6 (``ssci_impedance``).
+"""Widok stabilności SSCI dla gotowego przebiegu V12.6 (``ssci_impedance``).
 
 Warstwa APPLICATION (mapowanie + serializacja, ZERO fizyki). Odczytuje GOTOWY
 przebieg solvera D-03 SSCI (analiza akademicka V12.6 ``ssci_impedance`` —
-tablice ``z_grid(f)``/``z_conv(f)``/``L(f)``) i deleguje werdykt stabilności
-impedancyjnej (kryterium Nyquista, Sun 2011 / Wen 2016) do buildera warstwy
-analizy (``analysis.ssci_stability.SsciStabilityBuilder``). Domyka lukę wykrytą
-w inwentarzu funkcji: analiza SSCI istniała bez punktu wejścia (API/UI).
+tablice ``z_grid(f)``/``z_conv(f)``/``L(f)``) i deleguje budowę widoku (metryki
+kryterium Nyquista, Sun 2011 / Wen 2016, jako materiał audytowy + ocena niewykonana
+z wyjaśnieniem — Z_grid(f) liczone bez przekładni transformatora) do buildera warstwy
+analizy (``analysis.ssci_stability.SsciStabilityBuilder``).
 
 Wejście: rekord uruchomienia V12.6 (``dict`` z ``api.v126_academic._runs``) —
 ``result["result"]`` niesie zserializowany payload solvera SSCI, ``input`` niesie
@@ -13,8 +13,8 @@ kartę(y) przekształtnika do propagacji proweniencji. Werdykt jest deterministy
 dla ustalonego przebiegu identyczne wywołanie daje identyczny identyfikator.
 
 Uczciwy stan zerowy (ZERO fabrykacji): gdy solver zwrócił „dane niekompletne"
-(brak przekształtnika/DER lub brak pól karty falownika), builder wydaje werdykt
-„brak danych" z jawnym ``missing_data`` — analiza NIE zmyśla tablic ani werdyktu.
+(brak przekształtnika/DER lub brak pól karty falownika), builder wydaje ocenę
+niewykonaną z jawnym ``missing_data`` — analiza NIE zmyśla tablic ani werdyktu.
 """
 
 from __future__ import annotations
@@ -57,9 +57,9 @@ def _converter_for_provenance(run_record: Mapping[str, Any], converter_ref: Any)
     """Odtwórz kartę przekształtnika z zapisanego wejścia przebiegu (proweniencja).
 
     Karta niesie realne pola pasm regulatora / filtra, od których zależy Z_conv,
-    więc werdykt nosi najgorszą jakość tych pól (DATASHEET ≻ ESTIMATED ≻
+    więc widok nosi najgorszą jakość tych pól (DATASHEET ≻ ESTIMATED ≻
     SYSTEM_DEFAULT). Zwraca ``None``, gdy przebieg nie ma dopasowanej karty (np.
-    brak przekształtnika) — wtedy werdykt nie nosi etykiety proweniencji.
+    brak przekształtnika) — wtedy widok nie nosi etykiety proweniencji.
     """
     if converter_ref is None:
         return None
@@ -80,13 +80,18 @@ def _converter_for_provenance(run_record: Mapping[str, Any], converter_ref: Any)
     return V126ConverterInput.model_validate(dict(match))
 
 
-def build_ssci_stability_view(run_record: Mapping[str, Any]) -> dict[str, Any]:
-    """Zbuduj widok werdyktu stabilności SSCI z gotowego przebiegu V12.6.
+def build_ssci_stability_view(
+    run_record: Mapping[str, Any], *, nazwy: Mapping[str, str]
+) -> dict[str, Any]:
+    """Zbuduj widok stabilności SSCI (ocena niewykonana + metryki) z gotowego przebiegu V12.6.
 
     Args:
         run_record: rekord uruchomienia V12.6 (``api.v126_academic._runs``) rodzaju
             ``ssci_impedance`` (klucze: ``result``, ``input``, ``case_id``,
             ``run_id``, ``created_at``).
+        nazwy: indeks ``ref_id -> nazwa`` migawki modelu biegu
+            (``enm.nazwy_elementow.zbuduj_indeks_nazw``) — przedmiot oceny nazywa
+            przekształtnik i szynę nazwami z modelu, nie identyfikatorami.
 
     Raises:
         ValueError: gdy przebieg nie jest rodzaju ``ssci_impedance`` albo nie
@@ -94,8 +99,8 @@ def build_ssci_stability_view(run_record: Mapping[str, Any]) -> dict[str, Any]:
     """
     if run_record.get("analysis_type") != SSCI_ANALYSIS_TYPE:
         raise ValueError(
-            "Werdykt stabilności SSCI wymaga przebiegu rodzaju „ssci_impedance”; "
-            f"otrzymano: {run_record.get('analysis_type')}."
+            "Werdykt stabilności SSCI wymaga przebiegu oceny interakcji podsynchronicznej "
+            "przekształtnika z siecią; wskazany przebieg jest innego rodzaju."
         )
     solver_result = run_record.get("result")
     if not isinstance(solver_result, Mapping):
@@ -109,5 +114,6 @@ def build_ssci_stability_view(run_record: Mapping[str, Any]) -> dict[str, Any]:
         dict(payload),
         converter=converter,
         context=_context(run_record, solver_result),
+        nazwy=nazwy,
     )
     return view.to_dict()

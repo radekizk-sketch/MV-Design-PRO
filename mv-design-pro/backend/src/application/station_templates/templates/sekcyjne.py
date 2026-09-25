@@ -43,9 +43,9 @@ def _sekcyjna(
                 default=bays, min_value=2, max_value=8, label_pl="Liczba pól SN"
             ),
             sn_bay_roles=(
-                BayRoleSpec(role="IN", label_pl="Pole IN sekcja A"),
-                BayRoleSpec(role="OUT", label_pl="Pole OUT sekcja B"),
-                BayRoleSpec(role="COUPLER", label_pl="Pole sprzęgła (bus coupler)"),
+                BayRoleSpec(role="IN", okreslenie_pl="(sekcja A)"),
+                BayRoleSpec(role="OUT", okreslenie_pl="(sekcja B)"),
+                BayRoleSpec(role="COUPLER"),
             ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,

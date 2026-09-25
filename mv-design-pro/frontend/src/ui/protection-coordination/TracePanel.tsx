@@ -9,6 +9,9 @@
  * - Expandable/collapsible trace steps
  */
 
+import { ZapisTechniczny } from '../../ui2/wyniki/wzorzec/ZapisTechniczny';
+import { InformacjeAudytowe } from '../../ui2/wyniki/wzorzec/InformacjeAudytowe';
+import { useShellStore } from '../../ui2/shell/useShellStore';
 import { useState, useCallback } from 'react';
 import type { TraceStep } from './types';
 import { LABELS } from './types';
@@ -79,6 +82,7 @@ function TraceStepItem({ step, index, isExpanded, onToggle }: TraceStepItemProps
         onClick={onToggle}
         className="flex w-full items-start justify-between p-3 text-left"
         disabled={!hasDetails}
+        aria-expanded={hasDetails ? isExpanded : undefined}
       >
         <div className="flex-1">
           <div className="flex items-center gap-2">
@@ -112,8 +116,12 @@ function TraceStepItem({ step, index, isExpanded, onToggle }: TraceStepItemProps
       {/* Details (collapsed by default) */}
       {isExpanded && hasDetails && (
         <div className="border-t border-slate-200 px-3 pb-3">
-          <JsonViewer data={step.inputs} label={labels.inputs} />
-          <JsonViewer data={step.outputs} label={labels.outputs} />
+          {/* Karta #145: dane kroku to zapis silnika koordynacji (klucze solvera i JSON) —
+              widok audytowy z jawnym podpisem, nie pierwszy plan. */}
+          <ZapisTechniczny podpis={labels.zapisTechnicznyPodpis} testid={`trace-step-${index}-zapis`}>
+            <JsonViewer data={step.inputs} label={labels.inputs} />
+            <JsonViewer data={step.outputs} label={labels.outputs} />
+          </ZapisTechniczny>
         </div>
       )}
     </div>
@@ -131,6 +139,7 @@ export function TracePanel({
   maxHeight = 600,
 }: TracePanelProps) {
   const labels = LABELS.trace;
+  const trybEkspercki = useShellStore((stan) => stan.advancementMode) === 'expert';
 
   // Track expanded steps
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
@@ -190,16 +199,19 @@ export function TracePanel({
         <div>
           <h3 className="font-semibold text-slate-900">{labels.title}</h3>
           <p className="text-sm text-slate-500">{labels.subtitle}</p>
-          {(runId || createdAt) && (
+          {createdAt && (
             <div className="mt-1 flex gap-3 text-xs text-slate-400">
-              {runId && <span>Obliczenia: {runId.slice(0, 8)}...</span>}
-              {createdAt && (
-                <span>
-                  {labels.timestamp}: {new Date(createdAt).toLocaleString('pl-PL')}
-                </span>
-              )}
+              <span>
+                {labels.timestamp}: {new Date(createdAt).toLocaleString('pl-PL')}
+              </span>
             </div>
           )}
+          {/* Karta #145: identyfikator obliczeń wyłącznie w „Informacjach audytowych". */}
+          <InformacjeAudytowe
+            trybEkspercki={trybEkspercki}
+            testid="trace-panel-informacje-audytowe"
+            wiersze={runId ? [{ etykieta: labels.identyfikatorObliczen, wartosc: runId }] : []}
+          />
         </div>
         <div className="flex gap-2">
           <button

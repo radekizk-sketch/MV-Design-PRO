@@ -1,7 +1,6 @@
 /*
- * Ekran „Analizy techniczne" — wyłącznie tokeny powłoki (--mvd-*), oba motywy
- * z automatu. Jedna skala promieni: 10px sekcja / 8px karta / 999px chip.
- * Siatka odstępów: 4 / 8 / 12 / 16.
+ * Zakładka „Widoki klasyczne" warsztatu Wyników (dawny hub „Analizy techniczne",
+ * karta B-02) — wyłącznie tokeny powłoki (--mvd-*), oba motywy z automatu.
  */
 
 .mvd-analizy {
@@ -54,114 +53,7 @@
   color: var(--mvd-muted);
 }
 
-/* --- Tor pracy (łańcuch 4 kroków) --------------------------------------- */
-
-.mvd-analizy-tor {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 8px;
-}
-
-.mvd-analizy-krok {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  background: var(--mvd-panel-2);
-  border: 1px solid var(--mvd-line);
-  border-radius: 8px;
-  padding: 10px 12px;
-}
-
-.mvd-analizy-krok-glowa {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.mvd-analizy-krok-nr {
-  font: 600 10.5px/1 var(--mvd-font-mono);
-  letter-spacing: 0.08em;
-  color: var(--mvd-muted);
-}
-
-.mvd-analizy-krok-nazwa {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--mvd-ink);
-}
-
-.mvd-analizy-krok-wartosc {
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--mvd-ink);
-  overflow-wrap: anywhere;
-}
-
-.mvd-analizy-krok-wartosc[data-brak='true'] {
-  color: var(--mvd-muted);
-  font-style: italic;
-}
-
-.mvd-analizy-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border-radius: 999px;
-  padding: 2px 9px;
-  font: 600 10.5px/1.6 var(--mvd-font-mono);
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-.mvd-analizy-chip--ok {
-  background: var(--mvd-ok-bg);
-  color: var(--mvd-ok);
-}
-
-.mvd-analizy-chip--brak {
-  background: var(--mvd-warn-bg);
-  color: var(--mvd-warn);
-}
-
-.mvd-analizy-akcja {
-  align-self: flex-start;
-  margin-top: 2px;
-  background: none;
-  border: 1px solid var(--mvd-accent);
-  border-radius: 6px;
-  padding: 3px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--mvd-accent);
-  cursor: pointer;
-}
-
-.mvd-analizy-akcja:hover {
-  background: var(--mvd-sel);
-}
-
-.mvd-analizy-akcja:focus-visible {
-  outline: 2px solid var(--mvd-focus);
-  outline-offset: 1px;
-}
-
 /* --- Karty analiz --------------------------------------------------------- */
-
-.mvd-analizy-grupa {
-  margin: 0 0 4px;
-}
-
-.mvd-analizy-grupa > h4 {
-  margin: 12px 0 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--mvd-ink);
-}
-
-.mvd-analizy-grupa:first-of-type > h4 {
-  margin-top: 8px;
-}
 
 .mvd-analizy-karty {
   display: grid;
@@ -240,33 +132,6 @@
 .mvd-analizy-otworz:focus-visible {
   outline: 2px solid var(--mvd-focus);
   outline-offset: 2px;
-}
-
-/* --- Widoki klasyczne ------------------------------------------------------ */
-
-.mvd-analizy-klasyczne {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.mvd-analizy-klasyczne button {
-  background: var(--mvd-chip);
-  border: 1px solid var(--mvd-line);
-  border-radius: 6px;
-  padding: 5px 12px;
-  font-size: 12px;
-  color: var(--mvd-ink);
-  cursor: pointer;
-}
-
-.mvd-analizy-klasyczne button:hover {
-  background: var(--mvd-sel);
-}
-
-.mvd-analizy-klasyczne button:focus-visible {
-  outline: 2px solid var(--mvd-focus);
-  outline-offset: 1px;
 }
 
 /* --- Pasek powrotu (widok dziecka mostu) ---------------------------------- */

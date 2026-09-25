@@ -69,6 +69,11 @@ def zbuduj_projekcje_scenariusza(scenariusz: ScenariuszNn) -> dict[str, Any]:
         run = execute_run(
             create_run(
                 case_id=case_id,
+                # CV-1-W: magazyn ENM kluczowany kluczem projektu — ten skrypt
+                # nie ma bazy danych (fixtury liczone w izolacji), więc klucz
+                # magazynu jest TYM SAMYM surowym identyfikatorem, pod którym
+                # `set_enm` powyżej faktycznie zapisał model.
+                klucz_twin=case_id,
                 analysis_type=scenariusz.przebieg,
                 options=dict(scenariusz.opcje_przebiegu),
             ).id

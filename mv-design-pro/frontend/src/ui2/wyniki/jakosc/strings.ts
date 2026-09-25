@@ -9,6 +9,8 @@
  */
 
 import type { RodzajKontroli, StatusWalidacji } from './api';
+import { OPIS_PASMA_NN, OPIS_PASMA_SN } from '../../model/pasmaNapieciowe';
+import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 
 /** Poziom istotności statusu (do doboru koloru tagu — wyłącznie prezentacja). */
 export type IstotnoscStatusu = 'ok' | 'warn' | 'err' | 'neutral';
@@ -128,6 +130,7 @@ export const JAKOSC_STRINGS = {
   dowodBlad: 'Nie udało się pobrać dowodu dla tej gałęzi.',
   kolStatusWalidacji: 'Status',
   kolIdentyfikatorObiektu: 'Identyfikator obiektu',
+  audytIdentyfikatorModulu: (nazwa: string) => `Identyfikator modułu ${nazwa}`,
 
   // Blokada OSD (tak/nie)
   blokadaTak: 'Tak',
@@ -155,9 +158,11 @@ export const JAKOSC_STRINGS = {
   zalMetodaWiarygodnosc: 'Metoda oceny',
   zalMetodaWiarygodnoscWartosc: 'Twarde granice fizyczne Ik" per poziom napięcia',
   zalPasma: 'Pasma napięciowe',
-  zalPasmaWartosc: 'nN / SN / WN / NN',
+  zalPasmaWartosc: 'niskie / średnie / wysokie / najwyższe napięcie',
   zalPasmaUwaga:
-    'Granice wiarygodności Ik" zależą od poziomu napięcia węzła (nN ≤ 1 kV, SN 1–60 kV, WN 60–150 kV, NN > 150 kV).',
+    'Granice wiarygodności Ik" zależą od poziomu napięcia węzła: niskie napięcie (nN, '
+    + `${OPIS_PASMA_NN}), średnie napięcie (SN, ${OPIS_PASMA_SN}), wysokie napięcie `
+    + '(WN, od 110 kV do poniżej 220 kV), najwyższe napięcie (od 220 kV).',
 
   // Założenia — walidacja (progi z konfiguracji)
   zalProgObciazeniaOstrz: 'Próg ostrzeżenia obciążenia',
@@ -256,6 +261,77 @@ export const JAKOSC_STRINGS = {
   jednCal: 'cal/cm²',
   jednMm: 'mm',
   jednS: 's',
+  jednPu: 'pu',
+  jednStopnie: '°',
+
+  // W3-G1 — Sekcja „Walidacja krzyżowa metod rozpływu" (NR↔FD, aneks D2)
+  sekcjaMetody: 'Walidacja krzyżowa metod rozpływu',
+  metodyBrakRozplywu: 'Brak zakończonego przebiegu rozpływu mocy',
+  metodyBrakRozplywuOpis:
+    'Uruchom obliczenie rozpływu (metoda Newtona–Raphsona) w przestrzeni „Obliczenia", aby otworzyć walidację krzyżową metod.',
+  metodyBrakFd: 'Brak przebiegu metodą szybką rozprzężoną (FD)',
+  metodyBrakFdOpis:
+    'Bieg referencyjny (NR) jest gotowy. Uruchom ten sam przypadek metodą FD, aby porównać wyniki obu metod per szyna.',
+  metodyBrakNr: 'Brak przebiegu metodą Newtona–Raphsona (NR)',
+  metodyBrakNrOpis:
+    'Bieg metodą FD jest gotowy, ale referencją walidacji krzyżowej jest zawsze NR. Uruchom przypadek metodą NR.',
+  metodyBlad: 'Nie udało się porównać biegów NR i FD',
+  metodyBladOpis: 'Spróbuj ponownie lub sprawdź, czy oba przebiegi mają zapisany wynik.',
+  metodyLadowanie: 'Wyszukiwanie biegów NR/FD i porównywanie wyników…',
+  // Założenia
+  metodyZalMetodaA: 'Metoda A (referencyjna)',
+  metodyZalMetodaB: 'Metoda B (walidacja)',
+  metodyZalZbieznoscA: 'Zbieżność — metoda A',
+  metodyZalZbieznoscB: 'Zbieżność — metoda B',
+  metodyZalIteracjeA: 'Liczba iteracji — metoda A',
+  metodyZalIteracjeB: 'Liczba iteracji — metoda B',
+  zbiezny: 'zbieżny',
+  niezbiezny: 'niezbieżny',
+  // Tabela szyn
+  metodyKolSzyna: 'Szyna',
+  metodyKolNapiecieA: '|U| A',
+  metodyKolNapiecieB: '|U| B',
+  metodyKolDeltaNapiecie: 'Δ|U|',
+  metodyKolKatA: 'Kąt A',
+  metodyKolKatB: 'Kąt B',
+  metodyKolDeltaKat: 'Δ kąt',
+  // Podsumowanie
+  metodySzynRazem: 'Szyn porównanych',
+  metodyMaxDeltaNapiecie: 'Maks. Δ|U|',
+  metodyMaxDeltaKat: 'Maks. Δ kąt',
+
+  // --- Sekcja „Pasma zdrowego rozsądku rozpływu" (karta W3-G2) ---
+  sekcjaPasmaRozplywu: 'Pasma zdrowego rozsądku rozpływu',
+  pasmaNiezbiezny:
+    'Bieg rozpływu nie osiągnął zbieżności — napięcia, obciążenia i straty poniżej '
+    + 'są niewiarygodne (każda pozycja ma status „dane niekompletne" z nazwanym '
+    + 'powodem, nie fabrykowany werdykt).',
+  pasmaSekcjaNapiec: 'Napięcia szyn',
+  pasmaSekcjaObciazen: 'Obciążenia gałęzi',
+  pasmaSekcjaStrat: 'Straty sieciowe',
+  kolSzynaPasma: 'Szyna',
+  kolNapiecieZnamionowe: 'Un',
+  kolNapiecieRzeczywiste: 'U',
+  kolOdchylenieProcent: 'Odchylenie',
+  kolPasmoNapieciowe: 'Pasmo wiarygodności',
+  kolGalazPasma: 'Gałąź',
+  kolPradGalezi: 'Prąd I',
+  kolPradZnamionowy: 'In (katalog)',
+  kolObciazenieProcent: 'Obciążenie',
+  pasmaStratyCzynne: 'Straty czynne',
+  pasmaSumaOdbiorow: 'Suma mocy czynnej odbiorów',
+  pasmaStratyProcentOdbiorow: 'Straty / suma odbiorów',
+  pasmaProgWiarygodnosci: 'Próg wiarygodności',
+  pasmaUzasadnienieProgu: 'Uzasadnienie progu',
+  pasmaNormaNapiecia: 'Norma napięciowa',
+  pasmaSzerokoscPasma: 'Szerokość pasma',
+  pasmaRodzajGalezi: 'Rodzaj gałęzi objęty oceną',
+  pasmaRodzajGaleziWartosc: 'linia / kabel',
+  pasmaRodzajGaleziUwaga:
+    'Transformatory mają odrębną ocenę obciążenia (moc znamionowa Sn, nie prąd In) '
+    + 'w sekcji „Walidacja energetyczna" — inna wielkość znamionowa, inne pasmo.',
+  jednA: 'A',
+  jednMw: 'MW',
 
   // Wartość pusta
   kreska: '—',
@@ -319,9 +395,9 @@ export const RODZAJ_KONTROLI_PL: Record<RodzajKontroli, string> = {
   REACTIVE_BALANCE: 'Bilans mocy biernej',
 };
 
-/** Polska nazwa rodzaju kontroli (nieznany kod → dosłownie, jako dane). */
+/** Polska nazwa rodzaju kontroli (kod spoza słownika → uczciwe zdanie, nie kod). */
 export function rodzajKontroliPL(kod: RodzajKontroli): string {
-  return RODZAJ_KONTROLI_PL[kod] ?? kod;
+  return etykietaZeSlownika(RODZAJ_KONTROLI_PL, kod);
 }
 
 /**
@@ -335,9 +411,9 @@ export const STATUS_WALIDACJI_PL: Record<StatusWalidacji, string> = {
   NOT_COMPUTED: 'Nie obliczono',
 };
 
-/** Polska etykieta statusu walidacji (nieznany kod → dosłownie, jako dane). */
+/** Polska etykieta statusu walidacji (kod spoza słownika → uczciwe zdanie, nie kod). */
 export function statusWalidacjiPL(kod: StatusWalidacji): string {
-  return STATUS_WALIDACJI_PL[kod] ?? kod;
+  return etykietaZeSlownika(STATUS_WALIDACJI_PL, kod);
 }
 
 /** Istotność statusu walidacji energetycznej (dobór koloru tagu). */
@@ -355,19 +431,21 @@ export function istotnoscWalidacji(kod: StatusWalidacji): IstotnoscStatusu {
 }
 
 /**
- * Gotowe statusy wiarygodności zwarciowej — tekst polski JEST wprost z backendu
- * (`analysis/sanity_bounds/short_circuit_bounds.py:29-31`). Tu tylko utrwalone,
- * aby wyznaczyć istotność tagu bez powielania literałów.
+ * Gotowe statusy pasma wiarygodności — tekst polski JEST wprost z backendu
+ * (`analysis/sanity_bounds/short_circuit_bounds.py`: `CREDIBLE`, `OUT_OF_RANGE`,
+ * `INCOMPLETE`). Tu tylko utrwalone, aby wyznaczyć istotność tagu bez powielania
+ * literałów. „W paśmie wiarygodności" (dawniej „zweryfikowany") mówi wyłącznie, że
+ * liczba leży w paśmie fizycznie możliwym — nie jest weryfikacją wyrocznią.
  */
 export const STATUS_WIARYGODNOSCI = {
-  zweryfikowany: 'zweryfikowany',
+  wPasmie: 'w paśmie wiarygodności',
   pozaZakresem: 'poza zakresem wiarygodności',
   niekompletne: 'dane niekompletne',
 } as const;
 
 /** Istotność statusu wiarygodności (dobór koloru tagu) — na bazie tekstu z backendu. */
 export function istotnoscWiarygodnosci(status: string): IstotnoscStatusu {
-  if (status === STATUS_WIARYGODNOSCI.zweryfikowany) return 'ok';
+  if (status === STATUS_WIARYGODNOSCI.wPasmie) return 'ok';
   if (status === STATUS_WIARYGODNOSCI.pozaZakresem) return 'err';
   return 'neutral';
 }
@@ -399,4 +477,26 @@ export function fmtProcent(n: number): string {
 /** Wartość obserwowana (jednostka dowolna) — 2 miejsca po przecinku. */
 export function fmtWartosc(n: number): string {
   return fmtLiczba(n, 2);
+}
+
+/**
+ * Delta ze znakiem (W3-G1, wzorzec `ui2/wyniki/porownanie/strings.ts::fmtDelta`
+ * — lokalna kopia zamiast importu z modułu osobnej przestrzeni: `jakosc` i
+ * `porownanie` mają NIEZALEŻNE, samodzielne słowniki tekstu, jak każda para
+ * ekranów wyników w tym drzewie). `fmtLiczba`/`toFixed` już niesie znak „-";
+ * dopisujemy WYŁĄCZNIE „+" dla wartości dodatnich.
+ */
+function fmtDelta(n: number, miejsca: number): string {
+  const podstawa = fmtLiczba(n, miejsca);
+  return n > 0 ? `+${podstawa}` : podstawa;
+}
+
+/** Delta napięcia [pu] — 4 miejsca po przecinku, ze znakiem. */
+export function fmtDeltaNapiecie(n: number): string {
+  return fmtDelta(n, 4);
+}
+
+/** Delta kąta [°] — 2 miejsca po przecinku, ze znakiem. */
+export function fmtDeltaKat(n: number): string {
+  return fmtDelta(n, 2);
 }

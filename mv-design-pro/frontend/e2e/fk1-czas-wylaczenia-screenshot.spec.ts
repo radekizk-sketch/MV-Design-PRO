@@ -1,21 +1,39 @@
 /**
  * Karta F-K1 faza 5 (V12K-209) — zrzuty ekranu do oceny właściciela (dyrektywa #8).
  *
- * Scena „cieplna": sekcja „Wytrzymałość zwarciowa przewodów" z NOWYMI kolumnami
+ * Scena „cieplna": sekcja „Wytrzymałość zwarciowa przewodów" z kolumnami
  * „Czas wyłączenia" i „Źródło czasu" oraz dowodem kryterium otwartym NATYWNYM
  * klikiem w wiersz (bez wymuszania stanu komponentu — ścieżka projektanta).
  *
- * Kadr 1: tabela oceny (widać, że jedna gałąź ma czas z nastawy, druga z założenia).
- * Kadr 2: ten sam ekran z otwartym dowodem (krok 1 nazywa źródło czasu).
+ * HARNESS-RESZTA-kontynuacja (2026-09-16): scena „cieplna" przełączona z
+ * ręcznie pisanego mocka (gałęzie „Magistrala L-01"/„Odgałęzienie L-02", JEDNA
+ * z nich z czasem „z nastawy zabezpieczenia") na REALNY bieg backendu
+ * (`short_circuit_sn` na sieci złotej, `cieplna_scena_wynik.json`/
+ * `cieplna_scena_dowody.json`) — sieć złota ma DWIE gałęzie („Kabel SN 1",
+ * „Linia SN 1"), ŻADEN switch nie ma skonfigurowanego zabezpieczenia
+ * (`Sprzeglo Q1` bez przypisanego czynnego zabezpieczenia — realny, uczciwy
+ * powód backendu), więc OBIE gałęzie biorą czas „z założenia przypadku" —
+ * demonstracja „nastawa vs założenie" (kontrast dwóch źródeł czasu) nie jest
+ * już dostępna NA TEJ SIECI. Mechanizm źródła czasu sam w sobie pozostaje
+ * pokryty bezpośrednio testem `backend/tests/application/analyses/
+ * test_wytrzymalosc_cieplna_slad_czasu.py` (zielony, niezależny od tej sceny).
+ *
+ * Kadr 1: tabela oceny (obie gałęzie, źródło czasu „z założenia przypadku").
+ * Kadr 2: ten sam ekran z otwartym dowodem gałęzi „Linia SN 1" (krok 1 nazywa
+ *         źródło czasu; krok 2 — uczciwy stan „rachunku nie przeprowadzono",
+ *         bo ta gałąź złotej sieci nie ma pełnych danych katalogowych do
+ *         obliczenia wytrzymałości cieplnej — osobny, zmierzony i nazwany
+ *         dług, patrz meldunek karty).
  * Oba motywy. Wyjście: docs/audit/visual/dowody/fk1_czas_<kadr>_<motyw>.png
  */
 import { test, expect, type Page } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { adresHarnessu } from './adresHarnessu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const HARNESS_URL = 'http://127.0.0.1:5173/creator-harness.html';
+const HARNESS_URL = adresHarnessu('creator-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/dowody');
 const THEMES = ['light', 'dark'] as const;
 
@@ -50,36 +68,37 @@ test.describe('F-K1 faza 5 — czas wyłączenia i dowód kryterium cieplnego', 
       fs.mkdirSync(OUTPUT_DIR, { recursive: true });
       await otworzScene(page, theme);
 
-      // Kadr 1 — tabela oceny z kolumnami czasu i jego źródła.
-      await expect(page.getByText('Nastawa zabezpieczenia')).toBeVisible();
-      // „Założenie przypadku" występuje w DWÓCH wierszach (fixture sceny:
-      // czasy_wylaczenia.z_zalozenia = 2 — gałąź L-02 i linia napowietrzna
-      // L-03 obie biorą czas z założenia przypadku). Intencja: kolumna
-      // „Źródło czasu" nazywa założenie przypadku — wystarczy pierwszy wiersz.
+      // Kadr 1 — tabela oceny z kolumnami czasu i jego źródła. Realna sieć
+      // złota: DWIE gałęzie, OBIE „z założenia przypadku" (żaden switch nie
+      // ma skonfigurowanego zabezpieczenia — patrz nagłówek pliku).
+      await expect(page.getByText('Kabel SN 1').first()).toBeVisible();
+      await expect(page.getByText('Linia SN 1').first()).toBeVisible();
       await expect(page.getByText('Założenie przypadku').first()).toBeVisible();
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `fk1_czas_ocena_${theme}.png`),
         fullPage: true,
       });
 
-      // Kadr 2 — pełny dowód obliczeniowy otwarty REALNYM klikiem w wiersz gałęzi.
-      await page.getByText('Magistrala L-01 (120 mm²)').first().click();
+      // Kadr 2 — pełny dowód obliczeniowy otwarty REALNYM klikiem w wiersz
+      // gałęzi „Linia SN 1" (gałąź na drodze zwarcia o największym prądzie
+      // zwarciowym; `cieplna_scena_dowody` niesie dowód każdej gałęzi oceny).
+      await page.getByText('Linia SN 1').first().click();
       await expect(page.getByTestId('mvd-jakosc-cieplna-dowod')).toBeVisible();
       await expect(
-        page.getByText('Czas trwania zwarcia z nastawy zabezpieczenia').first(),
+        page.getByText('Czas trwania zwarcia z założenia przypadku').first(),
       ).toBeVisible();
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `fk1_czas_dowod_${theme}.png`),
         fullPage: true,
       });
 
-      // Kadr 3 — Calculation Evidence dla gałęzi NARUSZONEJ: tylko ona dostaje
-      // działania naprawcze (dla spełnionej byłyby szumem, nie informacją).
-      await page.getByText('Odgałęzienie L-02 (70 mm²)').first().click();
-      await expect(page.getByTestId('mvd-jakosc-cieplna-kryteria')).toBeVisible();
-      await expect(page.getByTestId('mvd-jakosc-cieplna-zalecenia')).toBeVisible();
-      await expect(page.getByTestId('mvd-jakosc-cieplna-material')).toBeVisible();
-      await page.getByTestId('mvd-jakosc-cieplna-normy').scrollIntoViewIfNeeded();
+      // Kadr 3 — uczciwy stan zerowy (K6/H-5): sieć złota nie niesie pełnych
+      // danych katalogowych wytrzymałości cieplnej dla tej gałęzi (dług
+      // nazwany w meldunku karty) — dowód pokazuje TO wprost, nie fabrykuje
+      // kryteriów/zaleceń, których backend nie policzył.
+      await expect(
+        page.getByText('Rachunku cieplnego nie przeprowadzono').first(),
+      ).toBeVisible();
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `fk1_dowod_pelny_${theme}.png`),
         fullPage: true,

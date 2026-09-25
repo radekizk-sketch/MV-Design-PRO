@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from enm.models import EnergyNetworkModel
+from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, Cable, EnergyNetworkModel, OverheadLine
+from network_model.pochodne import kva_na_mva, prad_roboczy_a
+from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
 from pydantic import BaseModel, Field
+from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 
 
 class V126AnalysisType(StrEnum):
@@ -77,7 +81,23 @@ class V126TransformerInput(BaseModel):
     ulv_kv: float = Field(gt=0)
     uk_percent: float = Field(gt=0)
     pk_kw: float = Field(default=0.0, ge=0)
-    p0_kw: float = Field(default=0.0, ge=0)
+    # `None` = strata jałowa NIEZNANA (karta FAB-D2, D2) — ENM `Transformer.p0_kw`
+    # jest `float | None` (brak w katalogu jest legalny, IEC 60909 tego pola nie
+    # wymaga). Podstawienie 0.0 za brak fałszowałoby wynik solvera FROZEN
+    # (`_opf_loss_lcc` w `network_model/solvers/v126_academic.py` sumuje
+    # `p0_kw + pk_kw*0.45**2` wprost) — zero strat jałowych to WYNIK, nie
+    # nieznana dana. Do karty W3-E (2026-09-09) konsument (endpoint API
+    # `run_v126_analysis`) odmawiał URUCHOMIENIA analizy OPF_LOSS_LCC 422-ką
+    # `transformer.loss_data_missing`, gdy p0_kw był `None`; karta W3-E
+    # wycofała CAŁY rodzaj `opf_loss_lcc` z powierzchni (410, duplikuje kanon
+    # `equipment_checks/transformer_losses.py`, który p0_kw czyta z KARTY
+    # katalogowej rzeczywistej, nie zaszytego β = 0,45) — bramka warunkowa
+    # p0_kw stała się więc zbędna i została zdjęta razem z rodzajem. Pole
+    # `p0_kw` zostaje `float | None`: legalny brak wg IEC 60909 to fakt modelu
+    # niezależny od tego, który rodzaj V12.6 go dziś czyta, a solver
+    # (`_opf_loss_lcc`, nadal FROZEN — B-01) zostaje zdolnością odtwarzalną z
+    # historycznych biegów i osiągalną wprost w testach solvera.
+    p0_kw: float | None = Field(default=None, ge=0)
     vector_group: str | None = None
 
 
@@ -86,6 +106,14 @@ class V126HarmonicSourceInput(BaseModel):
     source_ref: str
     base_current_a: float = Field(gt=0)
     spectrum_percent: dict[int, float] = Field(default_factory=dict)
+    # Karta W2-C: skad widmo TEGO zrodla pochodzi. Jedyny dostawca to jawne wejscie
+    # projektanta (`V126RunRequest.parameters.harmonic_spectra`, wzorzec OD-15(a)) —
+    # "RECZNE". Dawny dostawca "KATALOG" (`ConverterType.harmonic_spectrum_percent`)
+    # zniknal razem z polem (karta AB-H0 §0.5: 0 ze 176 pozycji nioslo widmo; widmo
+    # urzadzenia niesie odtad karta widmowa, `Generator.modele_widmowe`). Pole BEZ
+    # wartosci domyslnej: budowniczy wejscia zawsze nazywa proweniencje, nigdy jej nie
+    # przyjmuje. Pole ADDYTYWNE (solver FROZEN go nie czyta — B-01); sluzy WHITE BOX/UI.
+    spectrum_provenance: str
 
 
 class V126ConverterInput(BaseModel):
@@ -214,26 +242,55 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
       ``mv_surge_arrester_catalog`` po ``catalog_ref`` — gdy brak karty,
       pola pozostają ``None`` (solver wykonuje dobór wstępny, udokumentowany);
     - U_m z karty katalogowej albo z poziomu napięcia szyny (typoszereg IEC);
-    - ``network_neutral`` z uziemienia punktu neutralnego (szyna lub
-      transformator) — gdy brak danych, kontraktowa wartość domyślna.
+    - ``network_neutral`` ZAWSZE z modelu (uziemienie punktu neutralnego
+      źródła GPZ (W5-A) albo transformatora, ``_resolve_network_neutral``) — karta W5-D p. 12
+      (OD-24): ogranicznik na szynie, której uziemienia model nie zna, NIE
+      dostaje wiersza z podstawioną wartością ``"isolated"`` (do W5-D most
+      fabrykował tu ``neutral or "isolated"``); taka szyna trafia do
+      ``ograniczniki_bez_uziemienia_sieci`` i blokuje gotowość koordynacji
+      izolacji warunkiem nazwanym (``application/analyses/v126_gotowosc.py``).
 
     Deduplikacja per (szyna, ``catalog_ref``) — ograniczniki fazowe w jednym
     miejscu dają jedno wejście koordynacji. Kolejność deterministyczna
     (kolejność pól w modelu).
     """
+    return _wejscia_izolacji(enm)[0]
+
+
+def ograniczniki_bez_uziemienia_sieci(enm: EnergyNetworkModel) -> tuple[str, ...]:
+    """``ref_id`` szyn z ogranicznikiem przepięć, dla których model nie niesie uziemienia
+    punktu neutralnego (ani szyna, ani transformator) — wejście koordynacji izolacji
+    NIE jest dla nich budowane (W5-D p. 12: zero podstawionego ``"isolated"``)."""
+    return _wejscia_izolacji(enm)[1]
+
+
+def _wejscia_izolacji(
+    enm: EnergyNetworkModel,
+) -> tuple[list[V126InsulationInput], tuple[str, ...]]:
     from network_model.catalog.mv_surge_arrester_catalog import get_all_surge_arrester_types
 
     catalog: dict[str, dict[str, Any]] = {
         str(record["id"]): record["params"] for record in get_all_surge_arrester_types()
     }
     bus_by_ref = {bus.ref_id: bus for bus in enm.buses}
+    bez_uziemienia: list[str] = []
+
+    def _stacja_szyny(bus_ref: str) -> str | None:
+        return next((s.ref_id for s in enm.substations if bus_ref in s.bus_refs), None)
 
     def _resolve_network_neutral(bus_ref: str) -> str | None:
-        bus = bus_by_ref.get(bus_ref)
-        if bus is not None and bus.grounding is not None:
-            mapped = _grounding_type_to_network_neutral(bus.grounding.type)
-            if mapped is not None:
-                return mapped
+        # W5-A: opis punktu neutralnego sieci SN niesie ZRODLO (GPZ) — na tej szynie
+        # albo w tej samej stacji (zrodlo po stronie 110 kV nie stoi na szynie SN).
+        stacja = _stacja_szyny(bus_ref)
+        for source in enm.sources:
+            if source.neutral_grounding is None:
+                continue
+            if source.bus_ref == bus_ref or (
+                stacja is not None and source.substation_ref == stacja
+            ):
+                mapped = _grounding_type_to_network_neutral(source.neutral_grounding.type)
+                if mapped is not None:
+                    return mapped
         for transformer in enm.transformers:
             if transformer.lv_bus_ref == bus_ref and transformer.lv_neutral is not None:
                 mapped = _grounding_type_to_network_neutral(transformer.lv_neutral.type)
@@ -256,18 +313,23 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
         if dedup_key in seen:
             return
         params = catalog.get(catalog_ref) if catalog_ref else None
-        if params is None and bus.voltage_kv < 1.0:
-            # Ogranicznik nN bez karty katalogowej — poza zakresem koordynacji
+        if params is None and not powyzej_pasma_nn(bus.voltage_kv):
+            # Ogranicznik nN (albo szyna bez napięcia) bez karty katalogowej — poza zakresem koordynacji
             # izolacji SN (IEC 60071 SN). Pomiń, aby nie fabrykować U_m SN.
             return
         seen.add(dedup_key)
         neutral = _resolve_network_neutral(bus_ref)
+        if neutral is None:
+            # W5-D p. 12: brak uziemienia w modelu = brak wiersza, nie „isolated".
+            if bus_ref not in bez_uziemienia:
+                bez_uziemienia.append(bus_ref)
+            return
         if params is not None:
             rows.append(
                 V126InsulationInput(
                     location_bus_ref=bus_ref,
                     u_m_kv=float(params["u_m_kv"]),
-                    network_neutral=neutral or "isolated",
+                    network_neutral=neutral,
                     arrester_mcov_kv=float(params["mcov_kv"]),
                     arrester_residual_10ka_kv=float(params["u_residual_at_10ka_kv"]),
                     predicted_tov_kv=float(params["tov_10s_kv"]),
@@ -279,7 +341,7 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
                 V126InsulationInput(
                     location_bus_ref=bus_ref,
                     u_m_kv=_nearest_standard_um_kv(bus.voltage_kv),
-                    network_neutral=neutral or "isolated",
+                    network_neutral=neutral,
                 )
             )
 
@@ -308,7 +370,7 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
                     ref = item.get("catalog_ref")
                     _emit(spec_bus_ref, ref if isinstance(ref, str) else None)
 
-    return rows
+    return rows, tuple(bez_uziemienia)
 
 
 #: Aparat łączeniowy jest elementem SKUPIONYM: jego impedancja styku to omy, a nie
@@ -392,6 +454,304 @@ def _impedancja_skupiona_aparatu_ohm(branch: Any) -> tuple[float, float]:
     return (r_ohm if r_ohm is not None else 0.0, x_ohm if x_ohm is not None else 0.0)
 
 
+#: Rodzaje generatora, dla których V12.6 buduje wejście przekształtnika/źródła
+#: harmonicznego = kanoniczny zbiór `enm.models.GEN_TYPES_PRZEKSZTALTNIKOWE` (karta
+#: AB-H0 Pakiet D: dawna lokalna kopia pomijała `wind_inverter` — turbina z pełnym
+#: przekształtnikiem znikała z analiz V12.6 bez kodu). `build_v126_input_from_enm`,
+#: `pominiete_zrodla_v126` i `generatory_przeksztaltnikowe_v126` czytają TEN obiekt
+#: (reguła KLASA §3; parytet: `tests/enm/test_gen_types_przeksztaltnikowe.py`).
+
+
+def generatory_przeksztaltnikowe_v126(enm: EnergyNetworkModel) -> list[str]:
+    """Referencje generatorów PV/BESS/wiatrowych (kandydatów przekształtnika/
+    źródła harmonicznego V12.6) modelu — używane przez `api/v126_academic.py`
+    do listy generatorów w komunikacie 422, kiedy ŻADEN z nich nie ma danych
+    (ten sam zbiór `GEN_TYPES_PRZEKSZTALTNIKOWE`, co budowa wejścia)."""
+    return [g.ref_id for g in enm.generators if g.gen_type in GEN_TYPES_PRZEKSZTALTNIKOWE]
+
+
+@dataclass(frozen=True)
+class WidmaJawne:
+    """Jawne widma harmoniczne projektanta po walidacji.
+
+    ``widma`` = widma przyjęte W CAŁOŚCI {generator_ref: {rząd: %}};
+    ``odrzucone`` = {generator_ref: powód} — widmo z choćby jednym błędnym wpisem jest
+    odrzucane W CAŁOŚCI z nazwanym powodem (zero częściowego czyszczenia: widmo bez
+    jednej harmonicznej to INNE widmo niż podane, a różnica nie byłaby nigdzie widoczna).
+    """
+
+    widma: dict[str, dict[int, float]]
+    odrzucone: dict[str, str]
+
+
+def _blad_wpisu_widma(rzad: object, procent: object) -> str | None:
+    """Powód odrzucenia jednego wpisu `{rząd: %}` albo `None` (wpis poprawny)."""
+    if isinstance(procent, bool):
+        return f"rząd {rzad!r}: wartość logiczna {procent!r} zamiast procentu"
+    try:
+        rzad_i = int(str(rzad))
+        procent_f = float(procent)  # type: ignore[arg-type]  # dowolny wpis JSON
+    except (TypeError, ValueError):
+        return f"wpis {rzad!r}: {procent!r} nie jest parą liczb (rząd, procent)"
+    if rzad_i < 2 or rzad_i > 50:
+        return f"rząd {rzad_i} poza zakresem 2…50"
+    if not 0.0 <= procent_f <= 100.0:
+        return f"rząd {rzad_i}: {procent_f} % poza zakresem 0…100 %"
+    return None
+
+
+def _widma_jawne_z_parametrow(parameters: dict[str, Any] | None) -> WidmaJawne:
+    """Jawne widma harmoniczne z wejścia projektanta (`V126RunRequest.parameters.
+    harmonic_spectra: {generator_ref: {rząd: %}}`, wzorzec OD-15(a) „nastawy jako
+    wejście jawne") — proweniencja RECZNE (jedyne źródło widma wejścia V12.6).
+    Widmo z choćby jednym wpisem źle ukształtowanym (rząd/wartość nienumeryczne, rząd
+    poza 2..50, procent poza 0..100) jest ODRZUCANE W CAŁOŚCI z powodem wymieniającym
+    każdy błędny wpis — generator wraca do stanu „brak widma" (kod
+    `generator.harmonic_spectrum_missing` z tym powodem), nigdy nie dostaje widma
+    połowicznie wyczyszczonego bez ostrzeżenia."""
+    widma: dict[str, dict[int, float]] = {}
+    odrzucone: dict[str, str] = {}
+    if not isinstance(parameters, dict):
+        return WidmaJawne(widma, odrzucone)
+    surowe = parameters.get("harmonic_spectra")
+    if not isinstance(surowe, dict):
+        return WidmaJawne(widma, odrzucone)
+    for generator_ref, widmo in surowe.items():
+        if not isinstance(generator_ref, str):
+            continue
+        if not isinstance(widmo, dict) or not widmo:
+            odrzucone[generator_ref] = "widmo ręczne puste albo nie jest mapą {rząd: %}"
+            continue
+        bledy = [
+            blad
+            for rzad, procent in widmo.items()
+            if (blad := _blad_wpisu_widma(rzad, procent)) is not None
+        ]
+        rzedy = [int(str(rzad)) for rzad in widmo] if not bledy else []
+        bledy += [f"rząd {r} podany wielokrotnie" for r in sorted(set(rzedy)) if rzedy.count(r) > 1]
+        if bledy:
+            odrzucone[generator_ref] = "; ".join(bledy)
+            continue
+        widma[generator_ref] = {int(str(rzad)): float(procent) for rzad, procent in widmo.items()}
+    return WidmaJawne(widma, odrzucone)
+
+
+@dataclass(frozen=True)
+class OcenaKartyPrzeksztaltnika:
+    """Ocena karty katalogowej JEDNEGO generatora przekształtnikowego (PV/BESS/
+    wiatrowego) dla wejścia V12.6 — JEDNO źródło prawdy dla decyzji WŁĄCZ/POMIŃ,
+    używane RÓWNOCZEŚNIE przez `build_v126_input_from_enm` (buduje wejście
+    solvera) i `pominiete_zrodla_v126`/`api/v126_academic.py` (tłumaczą
+    pominięcia w odpowiedzi 422/`pominiete_zrodla`) — reguła KLASA §3
+    (predykaty parami z JEDNEGO źródła prawdy), żeby obie strony nigdy się nie
+    rozjechały (to dokładnie ta klasa błędu, którą przegląd 2026-08-01 znalazł
+    cztery razy)."""
+
+    generator_ref: str
+    card: dict[str, Any]
+    rated_mva: float | None
+    mode: str
+    control_mode: str | None
+    droop_p_f_percent: float | None
+    droop_q_u_percent: float | None
+    converter_kod: str | None
+    converter_powod: str | None
+    spectrum: dict[int, float] | None
+    spectrum_provenance: str | None
+    spectrum_kod: str | None
+    spectrum_powod: str | None
+
+
+def _oceb_karte_przeksztaltnika(
+    generator: Any, jawne_widma: WidmaJawne
+) -> OcenaKartyPrzeksztaltnika:
+    """Ocena karty katalogowej jednego generatora PV/BESS/wiatrowego — zero
+    fabrykacji: każda wielkość pochodzi z `generator.materialized_params`
+    (karta katalogowa `ConverterType` materializowana przez `MaterializationContract`)
+    albo z jawnego wejścia projektanta; brak w obu miejscach zostaje `None` +
+    kod gotowości nazwany po polsku, nigdy zaszytą liczbą wspólną dla wszystkich
+    przekształtników."""
+    card = generator.materialized_params or {}
+    ref = generator.ref_id
+    if not card:
+        return OcenaKartyPrzeksztaltnika(
+            generator_ref=ref,
+            card={},
+            rated_mva=None,
+            mode="GFL",
+            control_mode=None,
+            droop_p_f_percent=None,
+            droop_q_u_percent=None,
+            converter_kod="generator.converter_card_missing",
+            converter_powod=(
+                "Generator nie ma żadnego powiązania z katalogiem przekształtników "
+                "— brak danych karty (napięcie, moc znamionowa, tryb regulacji)."
+            ),
+            spectrum=None,
+            spectrum_provenance=None,
+            spectrum_kod="generator.harmonic_spectrum_missing",
+            spectrum_powod="Generator nie ma karty katalogowej — widmo harmoniczne nieznane.",
+        )
+
+    # Moc znamionowa: WYŁĄCZNIE z karty (`sn_mva` — pole materializowane z
+    # `ConverterType.sn_mva`, kontrakt CONVERTER; `s_n_kva` jako zapasowy klucz
+    # dla generatorów materializowanych z innego namespace'u katalogowego —
+    # ZRODLO_NN_PV/ZRODLO_NN_BESS, gdzie karta niesie moc w kVA, nie w MVA).
+    # Brak w OBU miejscach => `None`, NIGDY `max(P, 0,1 MVA)` — sufit z powietrza
+    # udawał tabliczkę znamionową przekształtnika.
+    rated_mva = _liczba_lub_none(card.get("sn_mva"))
+    if rated_mva is None or rated_mva <= 0:
+        s_n_kva = _liczba_lub_none(card.get("s_n_kva"))
+        rated_mva = kva_na_mva(s_n_kva) if s_n_kva is not None and s_n_kva > 0 else None
+
+    # Tryb: grid-forming z KARTY (pole istniejące `control_mode`, wartość
+    # "GRID_FORMING" — mv_converter_catalog.py:726,1047,1066), nigdy z rodzaju
+    # źródła. Brak deklaracji GFM w karcie => grid-following: to WŁASNOŚĆ karty
+    # (przekształtnik bez zadeklarowanej zdolności tworzenia napięcia pracuje
+    # jako podążający za siecią), nie domysł z `gen_type`.
+    control_mode = card.get("control_mode")
+    control_mode = control_mode if isinstance(control_mode, str) else None
+    mode = "GFL" if control_mode != "GRID_FORMING" else "GFM_droop"
+
+    # Droop: WYŁĄCZNIE z karty, WYŁĄCZNIE dla trybu grid-forming (statyzm P/f i
+    # Q/U jest własnością regulatora GFM — dla GFL kontrakt niesie `None`, jak
+    # przed tą kartą; naprawiona jest tylko ZASZYTA WARTOŚĆ 4,0/3,0 wspólna dla
+    # każdego przekształtnika GFM, nie sama reguła bramkowania trybem).
+    droop_p_f = _liczba_lub_none(card.get("droop_p_f_percent")) if mode != "GFL" else None
+    droop_q_u = _liczba_lub_none(card.get("droop_q_u_percent")) if mode != "GFL" else None
+
+    converter_kod: str | None = None
+    converter_powod: str | None = None
+    if rated_mva is None:
+        converter_kod = "generator.converter_card_missing"
+        converter_powod = (
+            "Karta katalogowa przekształtnika nie niesie mocy znamionowej (Sn) — "
+            "przekształtnik pominięty w wejściu V12.6."
+        )
+
+    # Widmo WYŁĄCZNIE z jawnego wejścia projektanta. Karta katalogowa przekształtnika
+    # nie niesie widma (pole `harmonic_spectrum_percent` skasowane — karta AB-H0 §0.5),
+    # więc odczyt klucza z `materialized_params` czytałby wyłącznie wartość wstrzykniętą
+    # mimo katalogu — tor skasowany u źródła, nie osłonięty.
+    widmo_reczne = jawne_widma.widma.get(ref)
+    if widmo_reczne:
+        spectrum: dict[int, float] | None = widmo_reczne
+        spectrum_provenance: str | None = "RECZNE"
+        spectrum_kod: str | None = None
+        spectrum_powod: str | None = None
+    elif ref in jawne_widma.odrzucone:
+        spectrum = None
+        spectrum_provenance = None
+        spectrum_kod = "generator.harmonic_spectrum_missing"
+        spectrum_powod = (
+            "Widmo ręczne przekształtnika odrzucone w całości — "
+            f"{jawne_widma.odrzucone[ref]}. Popraw widmo w oknie analizy."
+        )
+    else:
+        spectrum = None
+        spectrum_provenance = None
+        spectrum_kod = "generator.harmonic_spectrum_missing"
+        spectrum_powod = (
+            "Brak widma prądu harmonicznych przekształtnika w wejściu analizy — podaj "
+            "widmo ręcznie w oknie analizy (karta katalogowa typu nie niesie widma)."
+        )
+
+    return OcenaKartyPrzeksztaltnika(
+        generator_ref=ref,
+        card=card,
+        rated_mva=rated_mva,
+        mode=mode,
+        control_mode=control_mode,
+        droop_p_f_percent=droop_p_f,
+        droop_q_u_percent=droop_q_u,
+        converter_kod=converter_kod,
+        converter_powod=converter_powod,
+        spectrum=spectrum,
+        spectrum_provenance=spectrum_provenance,
+        spectrum_kod=spectrum_kod,
+        spectrum_powod=spectrum_powod,
+    )
+
+
+@dataclass(frozen=True)
+class OdbiorcyZParametrow:
+    """Liczba odbiorców zasilanych z szyn, odczytana z wejścia projektanta.
+
+    ``liczby`` = poprawne wpisy {ref szyny: liczba odbiorców ≥ 0};
+    ``bledne`` = wpisy odrzucone (wartość nie jest liczbą całkowitą ≥ 0), nazwane
+    kluczem — gotowość (`v126_gotowosc._warunki_niezawodnosci`) odmawia biegu, gdy
+    lista nie jest pusta, więc żaden odrzucony wpis nie znika po cichu.
+    """
+
+    liczby: dict[str, int]
+    bledne: tuple[str, ...]
+
+
+def odbiorcy_z_parametrow(parameters: dict[str, Any] | None) -> OdbiorcyZParametrow:
+    """Parametr `customer_counts` (`{ref szyny: liczba odbiorców}`) — karta B-02.
+
+    Model ENM NIE niesie liczby odbiorców zasilanych z szyny (żaden element modelu
+    nie ma takiego pola), a wskaźniki SAIDI/SAIFI/CAIDI analizy niezawodności są
+    tą liczbą ważone. Do tej karty most wpisywał 0 odbiorców na każdej szynie,
+    więc solver liczył wskaźniki „bez odbiorców" — zera z braku danych, nie z
+    pomiaru. Liczba odbiorców wchodzi WYŁĄCZNIE jawnym wejściem projektanta;
+    ta funkcja jest JEDYNYM miejscem odczytu (most buduje `customer_count`
+    szyn, gotowość ocenia ten sam odczyt — predykaty parami)."""
+    if not isinstance(parameters, dict):
+        return OdbiorcyZParametrow({}, ())
+    surowe = parameters.get("customer_counts")
+    if not isinstance(surowe, dict):
+        return OdbiorcyZParametrow({}, ())
+    liczby: dict[str, int] = {}
+    bledne: list[str] = []
+    for ref, liczba in surowe.items():
+        klucz = str(ref)
+        if isinstance(liczba, bool) or not isinstance(liczba, int | float):
+            bledne.append(klucz)
+            continue
+        if float(liczba) < 0 or float(liczba) != int(liczba):
+            bledne.append(klucz)
+            continue
+        liczby[klucz] = int(liczba)
+    return OdbiorcyZParametrow(liczby, tuple(bledne))
+
+
+def pominiete_zrodla_v126(
+    enm: EnergyNetworkModel, *, parameters: dict[str, Any] | None = None
+) -> list[dict[str, str]]:
+    """Generatory PV/BESS/wiatrowe pominięte (całkowicie albo tylko co do widma
+    harmonicznych) w wejściu V12.6 — TA SAMA ocena karty co
+    `build_v126_input_from_enm` (`_oceb_karte_przeksztaltnika`, JEDNO źródło
+    prawdy, reguła KLASA §3), więc odpowiedź API nigdy nie rozjedzie się z tym,
+    co faktycznie trafiło do modelu solvera. Używane przez `api/v126_academic.py`
+    do bramki 422 (żadne źródło nie ma danych) i pola `pominiete_zrodla`
+    (część ma dane). Zwraca listę `{ref, kod, powod}` — pusta, gdy wszystkie
+    kandydujące generatory mają kompletne dane."""
+    jawne_widma = _widma_jawne_z_parametrow(parameters)
+    wynik: list[dict[str, str]] = []
+    for generator in enm.generators:
+        if generator.gen_type not in GEN_TYPES_PRZEKSZTALTNIKOWE:
+            continue
+        ocena = _oceb_karte_przeksztaltnika(generator, jawne_widma)
+        if ocena.converter_kod is not None:
+            wynik.append(
+                {
+                    "ref": ocena.generator_ref,
+                    "kod": ocena.converter_kod,
+                    "powod": ocena.converter_powod or "",
+                }
+            )
+        elif ocena.spectrum_kod is not None:
+            wynik.append(
+                {
+                    "ref": ocena.generator_ref,
+                    "kod": ocena.spectrum_kod,
+                    "powod": ocena.spectrum_powod or "",
+                }
+            )
+    return wynik
+
+
 def build_v126_input_from_enm(
     enm: EnergyNetworkModel,
     *,
@@ -409,22 +769,51 @@ def build_v126_input_from_enm(
     # harmonicznych, czyli do THD, TDD i oceny zgodnosci.
     napiecie_szyny_kv = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
 
+    jawne_widma = _widma_jawne_z_parametrow(parameters)
+    # Karta B-02: liczba odbiorców szyny z jawnego parametru projektanta
+    # (`customer_counts`), bo model jej nie niesie; brak wpisu = 0 (gotowość
+    # niezawodności odmawia biegu przy sumie zerowej, więc 0 nie jest domysłem).
+    odbiorcy_szyn = odbiorcy_z_parametrow(parameters).liczby
     gen_by_bus: dict[str, tuple[float, float]] = {}
     converters: list[V126ConverterInput] = []
     harmonic_sources: list[V126HarmonicSourceInput] = []
     for generator in enm.generators:
-        q_mvar = generator.q_mvar or 0.0
+        # Karta FAB-H (H2, KLASA NIE INSTANCJA): Q rozstrzygane przez JEDNO wspólne
+        # źródło prawdy (moc_bierna_wytworcy), tak samo jak enm/mapping.py i
+        # enm/canonical_analysis.py oraz bramka gotowości
+        # (calculation_readiness/service.py::_generator_q_mvar_jawne). BRAK => 0,0
+        # jako strukturalne wypełnienie agregatu szyny (`gen_by_bus` jest float
+        # nie-Optional); analizy V12.6, które faktycznie CZYTAJĄ tę Q
+        # (RELIABILITY_CONTINGENCY, OPF_LOSS_LCC — via `_branch_current_a`) są
+        # zablokowane PRZED uruchomieniem solvera przez `api/v126_academic.py`
+        # (kod gotowości `generator.q_missing`), gdy Q jest naprawdę nieznane.
+        wynik_q = moc_bierna_wytworcy(generator, generator.materialized_params)
         p, q = gen_by_bus.get(generator.bus_ref, (0.0, 0.0))
-        gen_by_bus[generator.bus_ref] = (p + generator.p_mw, q + q_mvar)
-        if generator.gen_type in {"pv_inverter", "bess", "fw_pmsg", "fw_dfig", "fw_scig"}:
-            rated = max(abs(generator.p_mw), 0.1)
-            mode = "GFL" if generator.gen_type != "bess" else "GFM_droop"
+        # Q nieznane = wklad POMINIETY w agregacie szyny (nie 0,0); analizy czytajace
+        # Q sa zablokowane przed solverem (`generator.q_missing`), pozostale Q nie czytaja.
+        gen_by_bus[generator.bus_ref] = (
+            p + generator.p_mw,
+            q + wynik_q.q_mvar if wynik_q.q_mvar is not None else q,
+        )
+        if generator.gen_type in GEN_TYPES_PRZEKSZTALTNIKOWE:
+            # Karta W2-C (zero fabrykacji wejścia V12.6): moc znamionowa, tryb
+            # (GFL/GFM) i statyzmy droop pochodzą WYŁĄCZNIE z karty katalogowej
+            # przekształtnika, widmo harmoniczne — WYŁĄCZNIE z jawnego wejścia
+            # projektanta (`_oceb_karte_przeksztaltnika`
+            # — JEDNO źródło prawdy dzielone z `pominiete_zrodla_v126`, reguła
+            # KLASA §3). Brak karty w ogóle ALBO brak mocy znamionowej w karcie
+            # => przekształtnik POMINIĘTY z wejścia V12.6 w całości (kod
+            # `generator.converter_card_missing`, bramkowane przed solverem w
+            # `api/v126_academic.py`) — nie `max(P, 0,1 MVA)`.
+            ocena = _oceb_karte_przeksztaltnika(generator, jawne_widma)
+            if ocena.converter_kod is not None:
+                continue
+            card = ocena.card
+
             # SSCI / Z_conv(f) card fields flow from the converter's ConverterType
             # catalog card (materialized into the generator's solver params). No
             # fabrication: a field absent from the card stays None and the SSCI
             # solver surfaces it as missing-data.
-            card = generator.materialized_params or {}
-
             def _card_float(key: str, _card: dict[str, Any] = card) -> float | None:
                 value = _card.get(key)
                 return float(value) if value is not None else None
@@ -434,10 +823,10 @@ def build_v126_input_from_enm(
                 V126ConverterInput(
                     ref=generator.ref_id,
                     bus_ref=generator.bus_ref,
-                    mode=mode,
-                    rated_mva=rated,
-                    droop_p_f_percent=4.0 if mode != "GFL" else None,
-                    droop_q_u_percent=3.0 if mode != "GFL" else None,
+                    mode=ocena.mode,
+                    rated_mva=ocena.rated_mva,
+                    droop_p_f_percent=ocena.droop_p_f_percent,
+                    droop_q_u_percent=ocena.droop_q_u_percent,
                     rated_kv=rated_kv,
                     current_loop_bandwidth_hz=_card_float("current_loop_bandwidth_hz"),
                     voltage_loop_bandwidth_hz=_card_float("voltage_loop_bandwidth_hz"),
@@ -446,21 +835,34 @@ def build_v126_input_from_enm(
                     filter_l_pu=_card_float("filter_l_pu"),
                     filter_r_pu=_card_float("filter_r_pu"),
                     p_mw=generator.p_mw,
-                    q_mvar=generator.q_mvar,
+                    # Q przeksztaltnika z TEGO SAMEGO zrodla prawdy co agregat szyny
+                    # (jawne Q albo Q-set-point karty); None = nieznane (brama SSCI w API).
+                    q_mvar=wynik_q.q_mvar,
                 )
             )
             # Prad bazowy z napiecia SZYNY PRZYLACZENIA (dana modelu), nie z
             # zaszytych 15 kV. Gdy szyna generatora nie istnieje w modelu, zrodla
             # harmonicznego NIE MA — brak wezla to brak miejsca wstrzykniecia,
-            # a nie powod do przyjecia napiecia z powietrza.
+            # a nie powod do przyjecia napiecia z powietrza. Widmo (`ocena.spectrum`)
+            # jest `None`, gdy projektant nie podal go recznie (karta katalogowa widma
+            # nie niesie) — zrodlo NIE WCHODZI do wejscia (kod
+            # `generator.harmonic_spectrum_missing`), zamiast dostac zaszyte widmo
+            # wspolne dla kazdego przeksztaltnika (fabrykacja usunieta ta karta).
             un_kv = napiecie_szyny_kv.get(generator.bus_ref)
-            if un_kv is not None and un_kv > 0:
+            if (
+                ocena.spectrum is not None
+                and ocena.spectrum_provenance is not None
+                and ocena.rated_mva is not None  # zawsze prawda po `converter_kod is None`
+                and un_kv is not None
+                and un_kv > 0
+            ):
                 harmonic_sources.append(
                     V126HarmonicSourceInput(
                         bus_ref=generator.bus_ref,
                         source_ref=generator.ref_id,
-                        base_current_a=1000.0 * rated / (1.7320508075688772 * un_kv),
-                        spectrum_percent={5: 3.0, 7: 2.0, 11: 1.2, 13: 1.0},
+                        base_current_a=prad_roboczy_a(ocena.rated_mva, un_kv),
+                        spectrum_percent=ocena.spectrum,
+                        spectrum_provenance=ocena.spectrum_provenance,
                     )
                 )
 
@@ -473,6 +875,7 @@ def build_v126_input_from_enm(
             load_mvar=load_by_bus.get(bus.ref_id, (0.0, 0.0))[1],
             generation_mw=gen_by_bus.get(bus.ref_id, (0.0, 0.0))[0],
             generation_mvar=gen_by_bus.get(bus.ref_id, (0.0, 0.0))[1],
+            customer_count=odbiorcy_szyn.get(bus.ref_id, 0),
             fault_level_mva=next(
                 (source.sk3_mva for source in enm.sources if source.bus_ref == bus.ref_id), None
             ),
@@ -486,7 +889,7 @@ def build_v126_input_from_enm(
             is_open = True
         else:
             is_open = False
-        if branch.type in {"line_overhead", "cable"}:
+        if isinstance(branch, OverheadLine | Cable):
             # `length_km`, `r_ohm_per_km`, `x_ohm_per_km` sa polami WYMAGANYMI
             # modeli `OverheadLine`/`Cable`, wiec czytamy je wprost. Do tej karty
             # staly tu `getattr(..., 1.0 / 0.18 / 0.12)`; te wartosci zapasowe byly
@@ -545,7 +948,10 @@ def build_v126_input_from_enm(
             ulv_kv=transformer.ulv_kv,
             uk_percent=transformer.uk_percent,
             pk_kw=transformer.pk_kw,
-            p0_kw=transformer.p0_kw or 0.0,
+            # Karta FAB-D2 (D2): brak strat jałowych w ENM zostaje `None`, nie 0.0
+            # (zero strat jest wynikiem, nie nieznaną daną) — patrz komentarz przy
+            # definicji pola `V126TransformerInput.p0_kw` powyżej.
+            p0_kw=transformer.p0_kw,
             vector_group=transformer.vector_group,
         )
         for transformer in enm.transformers

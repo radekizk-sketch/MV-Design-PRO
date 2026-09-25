@@ -1,12 +1,13 @@
 /*
  * Teksty pulpitu instalacji OZE (karta P47) — polski język techniczny
  * pierwszoplanowy (MODEL_INTERAKCJI §2.7). Identyfikatory katalogowe pokazywane
- * WYŁĄCZNIE w trybie eksperckim. Werdykty/klasy pochodzą z odpowiedzi backendu.
+ * WYŁĄCZNIE w trybie eksperckim. Etykiety rekordów zgodności NC RfG niesie rekord
+ * backendu (`etykieta.etykieta_pl`) — ten plik nie ma mapy status → tekst dla NC RfG.
  */
 
 import type { ConnectionSide } from '../../../ui/network-build/station-der';
 import { formatLiczba } from '../macierz/strings';
-import type { StatusPulpitu } from './pulpitModel';
+import type { BrakDanychQ, BrakDanychSily, WerdyktAdekwatnosciQ } from '../api';
 
 export const PULPIT_STRINGS = {
   // Nagłówek
@@ -17,16 +18,26 @@ export const PULPIT_STRINGS = {
   operator: 'Operator sieci',
   wersjaProcedury: 'Wersja procedury',
   odcisk: 'Odcisk deterministyczny',
-  przeprowadz: 'Przeprowadź testy zgodności',
-  wTrakcie: 'Trwają testy zgodności…',
-  bladBiegu: 'Nie udało się przeprowadzić testów zgodności',
+  zrodloOceny:
+    'Ocena zgodności NC RfG zatwierdzonego modelu przypadku — dane modułów i dowód certyfikatu ' +
+    'urządzeń wyprowadza serwer z modelu (ta sama ocena co certyfikat zgodności). Analizę ' +
+    '„co-jeśli" z danymi deklarowanymi prowadzi macierz wymogów.',
+  odswiez: 'Odśwież ocenę zgodności modelu',
+  wTrakcie: 'Trwa ocena zgodności modelu…',
+  brakPrzypadku: 'Brak aktywnego przypadku — ocena zgodności czyta zatwierdzony model przypadku.',
+  bladOceny: 'Nie udało się pobrać oceny zgodności modelu',
   bladKatalogu: 'Nie udało się pobrać katalogu wymogów procedury',
 
   // Lista modułów
   listaTytul: 'Moduły projektu',
-  listaKlasa: 'Klasa',
-  listaBezBiegu: 'testy nieprzeprowadzone',
-  listaZablokowany: 'brak danych wejściowych',
+  listaKlasa: 'Typ modułu',
+  listaPonizejProgu: 'poniżej progu istotności',
+  listaBezOceny: 'ocena modelu niewczytana',
+  listaPozaOcena: 'moduł poza oceną modelu',
+  listaDowod: 'certyfikat',
+  listaOdrzucony: 'tabliczka certyfikatu odrzucona',
+  listaBrakDowodu: 'brak dowodu certyfikatu w modelu',
+  listaWymagania: 'rekordy wymagań',
 
   // Stan pusty
   brakModulow: 'Brak modułów wytwórczych',
@@ -47,17 +58,14 @@ export const PULPIT_STRINGS = {
 
   // Sekcja 2 — zgodność NC RfG
   sekcjaZgodnosc: 'Zgodność NC RfG',
-  zgodnoscKlasa: 'Klasa modułu',
-  zgodnoscKlasaBrak: 'oznaczona po biegu',
-  zgodnoscStatus: 'Status zgodności',
-  zgodnoscSpelnione: 'Spełnione wymagane',
-  zgodnoscBezBiegu:
-    'Nie przeprowadzono jeszcze testów zgodności. Użyj przycisku „Przeprowadź testy zgodności", ' +
-    'aby ocenić moduł względem wymogów operatora.',
-  zgodnoscKomplet: 'Wszystkie wymagane zdolności są spełnione.',
-  zgodnoscNiespelnione: 'Wymogi niespełnione',
-  zgodnoscAkcje: 'Akcje naprawcze',
-  zgodnoscBrakAkcji: 'Backend nie wskazał akcji naprawczej dla tego wymogu.',
+  zgodnoscBezOceny:
+    'Ocena zgodności modelu nie jest wczytana — wymaga aktywnego przypadku i operatora sieci ' +
+    '(z modelu albo jawnego wyboru).',
+  zgodnoscPozaOcena:
+    'Moduł nie jest objęty oceną zatwierdzonego modelu — model przypadku go nie zawiera; ' +
+    'zatwierdź zmiany modelu i odśwież ocenę.',
+  zgodnoscPominiety: 'Serwer pominął moduł w ocenie modelu',
+  zgodnoscWymagania: 'Wymagania profilu operatora (rekordy oceny)',
 
   // Sekcja 3 — praca magazynu (BESS z katalogu konwerterów)
   sekcjaMagazyn: 'Praca magazynu',
@@ -78,6 +86,7 @@ export const PULPIT_STRINGS = {
   magazynCosphi: 'Zakres cosφ',
   magazynTrybRegulacji: 'Tryb regulacji',
   magazynModel: 'Model konwertera',
+  identyfikatorAnalizy: 'Identyfikator analizy',
   magazynDopasowanoPo: 'Dopasowano po referencji',
   magazynBrakPojemnosci: 'Rekord katalogowy nie podaje pojemności energetycznej.',
   magazynBrakTrybu: 'Rekord katalogowy nie podaje trybu regulacji.',
@@ -148,22 +157,6 @@ export const PULPIT_STRINGS = {
   dokumentyPrzejdz: 'Przejdź do dokumentacji',
 } as const;
 
-/** Etykiety statusu modułu na liście/karcie (bez interpretacji własnej). */
-export const ETYKIETY_STATUSU_PULPITU: Record<StatusPulpitu, string> = {
-  nieprzeprowadzone: 'testy nieprzeprowadzone',
-  zgodny: 'zgodny',
-  niezgodny: 'niezgodny',
-  brak_danych: 'brak danych',
-};
-
-/** Klasa CSS statusu modułu (kolory wyłącznie przez tokeny --mvd-*). */
-export const KLASA_STATUSU_PULPITU: Record<StatusPulpitu, string> = {
-  nieprzeprowadzone: 'mvd-oze-werdykt-neutralny',
-  zgodny: 'mvd-oze-werdykt-ok',
-  niezgodny: 'mvd-oze-werdykt-err',
-  brak_danych: 'mvd-oze-werdykt-warn',
-};
-
 /**
  * Klasa CSS werdyktu siły sieci (wartości backendu: mocna/słaba/bardzo słaba/
  * brak danych). Kolory wyłącznie przez tokeny --mvd-*. Fallback: neutralny.
@@ -185,9 +178,9 @@ export function klasaWerdyktuSily(verdict: string): string {
  * Klasa CSS werdyktu adekwatności Q. Bazuje na fladze `is_adequate` z backendu
  * i tekście werdyktu („wyczerpana" → błąd, niekompletne dane → neutralny).
  */
-export function klasaWerdyktuQ(isAdequate: boolean, verdict: string): string {
+export function klasaWerdyktuQ(isAdequate: boolean, verdict: WerdyktAdekwatnosciQ): string {
   if (isAdequate) return 'mvd-oze-werdykt-ok';
-  if (verdict.includes('wyczerpana')) return 'mvd-oze-werdykt-err';
+  if (verdict === 'rezerwa Q wyczerpana') return 'mvd-oze-werdykt-err';
   return 'mvd-oze-werdykt-neutralny';
 }
 
@@ -234,12 +227,35 @@ export function formatKv(kv: number | null): string {
   return `${formatLiczba(kv, 2)} kV`;
 }
 
-/** Etykiety strony przyłączenia (Polish labels — bez surowych identyfikatorów). */
+/** Etykiety poziomu przyłączenia (Polish labels — bez surowych identyfikatorów). */
 export const ETYKIETY_STRONY: Record<ConnectionSide, string> = {
-  SN: 'strona SN',
   nN: 'strona nN',
   dedicated_transformer: 'transformator dedykowany',
-  at_zksn: 'złącze kablowe SN',
-  at_branch_pole: 'słup odgałęźny',
-  at_cable_joint: 'mufa kablowa',
+};
+
+/**
+ * Braki danych węzła siły sieci po polsku (karta #145 — kod braku nigdy na ekranie).
+ * Parytet z kodami backendu pilnuje `__tests__/brakiDanychPulpitu.test.ts`.
+ */
+export const BRAKI_DANYCH_SILY: Readonly<Record<BrakDanychSily, string>> = {
+  s_sc_mva: 'moc zwarciowa w węźle (z biegu zwarciowego)',
+  s_installed_mva: 'moc zainstalowana źródeł przyłączonych do węzła',
+};
+
+/** Braki danych adekwatności mocy biernej po polsku (karta #145). */
+export const BRAKI_DANYCH_Q: Readonly<Record<BrakDanychQ, string>> = {
+  power_flow_not_converged: 'zbieżny wynik rozpływu mocy',
+  bus_voltages: 'napięcia węzłów z rozpływu mocy',
+  controllable_sources: 'źródło z regulacją mocy biernej',
+  q_actual_mvar: 'aktualna moc bierna źródła (z rozpływu mocy)',
+  q_min_mvar: 'dolna granica mocy biernej regulatora (Q_min)',
+  q_max_mvar: 'górna granica mocy biernej regulatora (Q_max)',
+  q_limits_inconsistent: 'spójne granice regulatora (Q_min nie większa niż Q_max)',
+};
+
+/** Werdykt adekwatności mocy biernej po polsku — wartość maszynowa backendu nie trafia na ekran. */
+export const WERDYKTY_ADEKWATNOSCI_Q: Readonly<Record<WerdyktAdekwatnosciQ, string>> = {
+  'wystarczająca rezerwa Q': 'wystarczająca rezerwa mocy biernej',
+  'rezerwa Q wyczerpana': 'rezerwa mocy biernej wyczerpana',
+  'dane niekompletne': 'dane niekompletne',
 };

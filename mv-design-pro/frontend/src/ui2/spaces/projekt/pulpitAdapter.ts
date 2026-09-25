@@ -22,7 +22,7 @@
  *   `ExecutionRun.started_at/analysis_type/status` — `types.ts:234-243`; etykiety
  *   `ANALYSIS_TYPE_LABELS`/`RUN_STATUS_LABELS` — `types.ts:270-289`.
  *
- * TODO-KARTA (ograniczenia danych — brak źródła w store'ach, karta §2/§4):
+ * STAN FAKTYCZNY (KARTA-UI2 §1 p. 10, zamknięcie poprzednich ograniczeń §2/§4):
  * 1. Kafel „Postęp wg celu" (audyt W-101) NIE MIAŁ źródła w store'ach read-only
  *    (brak modelu celu projektu) i był renderowany jako kafel-zaślepka
  *    „wkrótce". Karta PULPIT-NBA §0.4 USUNĘŁA tę zaślepkę wraz z komponentem
@@ -36,15 +36,18 @@
  *    GAP backendu (zarejestrowany, nie fabrykowany): „moc przyłączeniowa" (limit
  *    OSD) oraz cosφ/tryb pracy przyłącza nie mają pola w modelu → nie pokazywane;
  *    dynamiczna zdolność przyłączeniowa żyje w analizie E5/E7 (hosting_capacity).
- * 2. Rewizja WYNIKÓW (liczbowa) dla stanu „nieaktualne" nie jest wystawiana przez
- *    store'y (jest wyłącznie `result_status` FRESH/OUTDATED/NONE, bez numeru
- *    rewizji modelu w chwili liczenia) → `FreshnessBadge` w `KafelSpojnosci`
- *    obsługuje uczciwie stan „aktualne" (rewizja danej = rewizja modelu); stan
- *    „nieaktualne" pokazuje etykietę statusu bez fabrykowanego numeru rew. a→b.
- * 3. „Ostatni przebieg" per przypadek: `runStore.runs` trzyma przebiegi WYŁĄCZNIE
- *    dla `activeStudyCaseId` (runStore.ts:87-97), nie pełną historię wszystkich
- *    przypadków. Kolumna „Ostatni przebieg" jest więc uzupełniana tylko dla
- *    aktywnego przypadku (realny czas z przebiegu); pozostałe wiersze pokazują „—".
+ * 2. Rewizja WYNIKÓW (liczbowa) dla stanu „nieaktualne" JEST wystawiana przez
+ *    `StatusWynikowPrzypadku.rewizja_biegu` (`ui/study-cases/types.ts:101` —
+ *    „Rewizja modelu, na której policzono wynik"; dodane kartą CV-2-W PO tym,
+ *    jak ten akapit został napisany) — `mapujSpojnosc` czyta ją niżej dla OBU
+ *    stanów aktualności, `FreshnessBadge` w `KafelSpojnosci` renderuje realną
+ *    parę rewizji „nieaktualne" zamiast samej etykiety statusu.
+ * 3. „Ostatni przebieg" per przypadek: PEŁNA historia (wszystkie przypadki, nie
+ *    tylko aktywny) ma teraz źródło — `useWszystkiePrzebiegiProjektu`
+ *    (`ui2/adapters/wszystkiePrzebiegiProjektu.ts`, pętla po per-przypadkowym
+ *    `GET .../study-cases/{id}/runs`). Kolumna „Ostatni przebieg" jest
+ *    uzupełniana dla KAŻDEGO wiersza z historią; „—" pozostaje WYŁĄCZNIE dla
+ *    przypadków bez ani jednego przebiegu (uczciwy stan zerowy, nie luka danych).
  */
 
 import { useMemo } from 'react';
@@ -60,6 +63,7 @@ import type { RunStatus } from '../../../ui/study-cases/types';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useActiveCase, useSortedCases } from '../../../ui/study-cases/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
+import { useWszystkiePrzebiegiProjektu } from '../../adapters/wszystkiePrzebiegiProjektu';
 
 // ---------------------------------------------------------------------------
 // Stan przestrzeni
@@ -102,6 +106,13 @@ export interface SpojnoscKafel {
   rewizjaModelu: number;
   odcisk: string;
   aktualnosc: AktualnoscWynikow;
+  /**
+   * Rewizja modelu, na której policzono AKTUALNE wyniki aktywnego przypadku
+   * (`StatusWynikowPrzypadku.rewizja_biegu`). `null` = brak wyniku (stan
+   * „brak") — dla stanu „nieaktualne" niesie rewizję OSTATNIEGO policzonego
+   * biegu (przed zmianą modelu), nie zgaduje bieżącej.
+   */
+  rewizjaWynikow: number | null;
 }
 
 /** Źródło sieciowe (punkt przyłączenia) — warunki od strony OSD. */
@@ -110,6 +121,19 @@ export interface ZrodloSieciowe {
   napiecieKv: number | null;
   sk3Mva: number | null;
   ik3Ka: number | null;
+  /**
+   * Dane scenariusza MIN (CV-4.3 K7) — warunki przyłączenia OSD, minimalna
+   * moc/prąd zwarciowy. `null` = OSD ich nie podał (zero fabrykacji); scenariusz
+   * MIN biegu liczy się wtedy z danych maksymalnych (jawne założenie backendu).
+   */
+  sk3MinMva: number | null;
+  ik3MinKa: number | null;
+  /**
+   * Napięcie zadane szyny bilansującej (CV-4.3 K7c) — p.u. napięcia znamionowego;
+   * `null` = OSD go nie podał (zero fabrykacji) — źródło pracuje na napięciu
+   * znamionowym (1,0 p.u., założenie backendu, `enm/assembler.py`).
+   */
+  uSetPu: number | null;
 }
 
 /**
@@ -199,6 +223,9 @@ export function mapujPrzylaczenie(snapshot: EnergyNetworkModel): PrzylaczenieKaf
     napiecieKv: napiecieSzyny.get(s.bus_ref) ?? null,
     sk3Mva: s.sk3_mva ?? null,
     ik3Ka: s.ik3_ka ?? null,
+    sk3MinMva: s.sk3_min_mva ?? null,
+    ik3MinKa: s.ik3_min_ka ?? null,
+    uSetPu: s.u_set_pu ?? null,
   }));
 
   const generacjaMw = snapshot.generators.reduce((acc, g) => acc + g.p_mw, 0);
@@ -267,13 +294,15 @@ export function mapujSpojnosc(
     rewizjaModelu: snapshot.header.revision,
     odcisk: snapshot.header.hash_sha256,
     aktualnosc: aktualnoscZPrzypadku(activeCase),
+    rewizjaWynikow: activeCase?.rewizja_biegu ?? null,
   };
 }
 
 /**
  * Wiersze listy przypadków. `ostatniPrzebiegWgId` mapuje id przypadku → ISO
- * czasu ostatniego przebiegu (dostępne wyłącznie dla aktywnego przypadku —
- * TODO-KARTA #3); brak wpisu → `null` („—" w kolumnie).
+ * czasu ostatniego przebiegu — dla WSZYSTKICH przypadków projektu (patrz
+ * `ostatniPrzebiegWgPrzypadku` niżej i `useWszystkiePrzebiegiProjektu`, nie
+ * tylko dla aktywnego); brak wpisu → `null` („—" w kolumnie).
  */
 export function mapujPrzypadki(
   cases: StudyCaseListItem[],
@@ -331,19 +360,31 @@ export function useSpojnoscKafel(): SpojnoscKafel | null {
   );
 }
 
+/**
+ * Ostatni przebieg KAŻDEGO przypadku — deterministyczne grupowanie identyczne
+ * z `mapujOstatniPrzebieg` (malejąco po `started_at`, remis po `id`), ale per
+ * `study_case_id` zamiast dla całej listy naraz.
+ */
+function ostatniPrzebiegWgPrzypadku(runs: ExecutionRun[]): ReadonlyMap<string, string> {
+  const wgPrzypadku = new Map<string, ExecutionRun[]>();
+  for (const run of runs) {
+    const lista = wgPrzypadku.get(run.study_case_id) ?? [];
+    lista.push(run);
+    wgPrzypadku.set(run.study_case_id, lista);
+  }
+  const mapa = new Map<string, string>();
+  for (const [caseId, caseRuns] of wgPrzypadku) {
+    const najswiezszy = mapujOstatniPrzebieg(caseRuns);
+    if (najswiezszy?.czasISO) mapa.set(caseId, najswiezszy.czasISO);
+  }
+  return mapa;
+}
+
 export function usePrzypadkiWiersze(): PrzypadekWiersz[] {
   const cases = useSortedCases();
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeStudyCaseId = useExecutionRunsStore((s) => s.activeStudyCaseId);
-  const ostatniPrzebiegWgId = useMemo(() => {
-    // TODO-KARTA #3: pełna historia per przypadek niedostępna — mapa niesie
-    // wyłącznie ostatni przebieg aktywnego przypadku.
-    const najswiezszy = activeStudyCaseId ? mapujOstatniPrzebieg(runs) : null;
-    const mapa = new Map<string, string>();
-    if (activeStudyCaseId && najswiezszy?.czasISO) {
-      mapa.set(activeStudyCaseId, najswiezszy.czasISO);
-    }
-    return mapa;
-  }, [runs, activeStudyCaseId]);
+  // KARTA-UI2 §1 p. 10 (zamknięcie): pełna historia WSZYSTKICH przypadków,
+  // nie tylko aktywnego (patrz nagłówek pliku pkt 3).
+  const { runs } = useWszystkiePrzebiegiProjektu();
+  const ostatniPrzebiegWgId = useMemo(() => ostatniPrzebiegWgPrzypadku(runs), [runs]);
   return useMemo(() => mapujPrzypadki(cases, ostatniPrzebiegWgId), [cases, ostatniPrzebiegWgId]);
 }

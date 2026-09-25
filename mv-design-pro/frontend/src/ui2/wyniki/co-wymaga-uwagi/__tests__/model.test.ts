@@ -5,33 +5,38 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { przekroczeniaRozplywu, przekroczeniaWerdyktu, przekroczeniaZbieznosci } from '../model';
-import type { PozycjaWerdyktu, WerdyktResponse } from '../../werdykt/api';
+import { brakKryteriowRozplywu,
+  przekroczeniaRozplywu, przekroczeniaWerdyktu, przekroczeniaZbieznosci } from '../model';
+import type { OdpowiedzOceny, PozycjaOceny } from '../../ocena/api';
 import { CO_WYMAGA_UWAGI_STRINGS as T } from '../strings';
+import type { NazwaObiektu } from '../../wzorzec';
+
+/** Most nazw modelu (karta #145) — nazwa jawnie różna od referencji. */
+const NAZWA: NazwaObiektu = (ref) => `Element ${ref.toLowerCase()}`;
 import { busResultFixture, powerFlowResultFixture } from '../../rozplyw/__tests__/fixtures';
 
 describe('przekroczeniaRozplywu — konsolidacja przekroczeń napięć szyn', () => {
   it('null (brak wyniku) → pusta lista', () => {
-    expect(przekroczeniaRozplywu(null)).toEqual([]);
+    expect(przekroczeniaRozplywu(null, NAZWA)).toEqual([]);
   });
 
   it('wszystkie szyny w przedziale → brak przekroczeń', () => {
     const wynik = powerFlowResultFixture({
       bus_results: [busResultFixture({ v_pu: 1.0 }), busResultFixture({ bus_id: 'SZ-2', v_pu: 0.97 })],
     });
-    expect(przekroczeniaRozplywu(wynik)).toEqual([]);
+    expect(przekroczeniaRozplywu(wynik, NAZWA)).toEqual([]);
   });
 
   it('szyna poniżej 0,95 p.u. → przekroczenie „napięcie niskie", element Bus', () => {
     const wynik = powerFlowResultFixture({
       bus_results: [busResultFixture({ bus_id: 'SZ-ST2', v_pu: 0.941 })],
     });
-    const [p] = przekroczeniaRozplywu(wynik);
+    const [p] = przekroczeniaRozplywu(wynik, NAZWA);
     expect(p).toMatchObject({
       analizaPL: T.analizaRozplyw,
       elementRef: 'SZ-ST2',
       elementTyp: 'Bus',
-      elementNazwa: 'SZ-ST2',
+      elementNazwa: 'Element sz-st2',
       opis: T.opisNapiecieNiskie,
       rodzaj: 'napiecie',
     });
@@ -43,7 +48,7 @@ describe('przekroczeniaRozplywu — konsolidacja przekroczeń napięć szyn', ()
     const wynik = powerFlowResultFixture({
       bus_results: [busResultFixture({ bus_id: 'SZ-GEN', v_pu: 1.062 })],
     });
-    const [p] = przekroczeniaRozplywu(wynik);
+    const [p] = przekroczeniaRozplywu(wynik, NAZWA);
     expect(p.opis).toBe(T.opisNapiecieWysokie);
   });
 
@@ -55,12 +60,31 @@ describe('przekroczeniaRozplywu — konsolidacja przekroczeń napięć szyn', ()
         busResultFixture({ bus_id: 'C', v_pu: 1.06 }),
       ],
     });
-    expect(przekroczeniaRozplywu(wynik).map((p) => p.elementRef)).toEqual(['B', 'C']);
+    expect(przekroczeniaRozplywu(wynik, NAZWA).map((p) => p.elementRef)).toEqual(['B', 'C']);
   });
 
   it('jest deterministyczne: to samo wejście → identyczne wyjście', () => {
     const wynik = powerFlowResultFixture();
-    expect(przekroczeniaRozplywu(wynik)).toEqual(przekroczeniaRozplywu(wynik));
+    expect(przekroczeniaRozplywu(wynik, NAZWA)).toEqual(przekroczeniaRozplywu(wynik, NAZWA));
+  });
+
+  it('brakKryteriowRozplywu: para predykatów z przekroczeniaRozplywu (brak kryteriów = brak podstaw, nie norma)', () => {
+    const bez = powerFlowResultFixture({
+      kryteria_napiecia: undefined,
+      bus_results: [busResultFixture({ bus_id: 'SZ-ST2', v_pu: 0.5 })],
+    });
+    expect(brakKryteriowRozplywu(bez)).toBe(true);
+    expect(przekroczeniaRozplywu(bez, NAZWA)).toEqual([]);
+    expect(brakKryteriowRozplywu(powerFlowResultFixture())).toBe(false);
+    expect(brakKryteriowRozplywu(null)).toBe(false);
+  });
+
+  it('karta W3-J: bez kryteriów w wyniku (starszy zapisany bieg) → pusta lista, nie domyślny próg', () => {
+    const wynik = powerFlowResultFixture({
+      kryteria_napiecia: undefined,
+      bus_results: [busResultFixture({ bus_id: 'SZ-ST2', v_pu: 0.5 })],
+    });
+    expect(przekroczeniaRozplywu(wynik, NAZWA)).toEqual([]);
   });
 });
 
@@ -93,48 +117,68 @@ describe('przekroczeniaZbieznosci — brak zbieżności to przekroczenie (lit. d
   });
 });
 
-function pozycjaWerdyktu(over: Partial<PozycjaWerdyktu> = {}): PozycjaWerdyktu {
+function pozycjaWerdyktu(over: Partial<PozycjaOceny> = {}): PozycjaOceny {
   return {
     kryterium_id: 'galaz.obciazenie_dlugotrwale',
     etap: 'E5',
     nazwa_pl: 'Obciążenie długotrwałe gałęzi',
     warunek_pl: 'I ≤ Idd',
     norma_pl: 'PN-EN 50160',
+    // V12.7: symbol i warunek jako LaTeX + zakres oceny (wymagane pola PozycjaOceny).
+    symbol_latex: 'I',
+    warunek_latex: 'I \\le I_{dd}',
+    zakres_oceny: 'kryterium',
     zrodlo: 'PF',
     element_rodzaj: 'galaz_liniowa',
     stan: 'NARUSZONE',
     liczba_ocenionych: 12,
     liczba_naruszen: 2,
     liczba_niesprawdzonych: 0,
+    liczba_niejednoznacznych: 0,
     liczba_ostrzezen: 1,
     wiodacy_element_id: 'L-07',
     wiodacy_opis_pl: 'Gałąź L-07 obciążona w 118%',
     powod_kod: null,
     powod_pl: null,
     run_id: 'run-1',
+    grupa: 'obciazalnosc',
+    wielkosc_pl: 'Obciążenie długotrwałe',
+    symbol: 'I',
+    jednostka: '%',
+    warunek: 'nie_wiecej_niz',
+    elementy: [],
     ...over,
   };
 }
 
-function werdyktFixture(pozycje: PozycjaWerdyktu[]): WerdyktResponse {
+function werdyktFixture(pozycje: PozycjaOceny[]): OdpowiedzOceny {
   return {
     werdykt: 'NARUSZONE',
     case_id: 'case-1',
     model_hash: 'hash',
     pozycje,
     zrodla: [],
-    podsumowanie: { spelnione: 0, naruszone: pozycje.length, niesprawdzone: 0, nie_dotyczy: 0, razem: pozycje.length },
+    podsumowanie: {
+      spelnione: 0,
+      naruszone: pozycje.length,
+      niejednoznaczne: 0,
+      niesprawdzone: 0,
+      nie_dotyczy: 0,
+      razem: pozycje.length,
+    },
     zakres_poza_automatem: [],
+    ocena: { oceniono: 0, spelnia: 0, nie_spelnia: 0, niejednoznaczny: 0, brak_podstaw: 0 },
+    grupy: [{ kod: 'obciazalnosc', nazwa_pl: 'Obciążalność' }],
   };
 }
 
 describe('przekroczeniaWerdyktu — kryteria projektowe backendu (lit. a-c)', () => {
   it('brak werdyktu → brak pozycji', () => {
-    expect(przekroczeniaWerdyktu(null, false)).toEqual([]);
+    expect(przekroczeniaWerdyktu(null, false, NAZWA)).toEqual([]);
   });
 
   it('odpowiedź niezgodna z kontraktem (brak tablicy pozycji) → brak pozycji, bez awarii', () => {
-    expect(przekroczeniaWerdyktu({} as WerdyktResponse, false)).toEqual([]);
+    expect(przekroczeniaWerdyktu({} as OdpowiedzOceny, false, NAZWA)).toEqual([]);
   });
 
   it('bierze WYŁĄCZNIE kryteria NARUSZONE (spełnione/niesprawdzone pomijane)', () => {
@@ -143,13 +187,14 @@ describe('przekroczeniaWerdyktu — kryteria projektowe backendu (lit. a-c)', ()
       pozycjaWerdyktu({ kryterium_id: 'b', stan: 'SPELNIONE' }),
       pozycjaWerdyktu({ kryterium_id: 'c', stan: 'NIESPRAWDZONE' }),
     ]);
-    expect(przekroczeniaWerdyktu(werdykt, false).map((p) => p.klucz)).toEqual(['werdykt::a']);
+    expect(przekroczeniaWerdyktu(werdykt, false, NAZWA).map((p) => p.klucz)).toEqual(['werdykt::a']);
   });
 
   it('mapuje element wiodący na typ UI i rodzaj akcji naprawczej', () => {
-    const [p] = przekroczeniaWerdyktu(werdyktFixture([pozycjaWerdyktu()]), false);
+    const [p] = przekroczeniaWerdyktu(werdyktFixture([pozycjaWerdyktu()]), false, NAZWA);
     expect(p).toMatchObject({
       elementRef: 'L-07',
+      elementNazwa: 'Element l-07',
       elementTyp: 'LineBranch',
       rodzaj: 'obciazalnosc-galezi',
       opis: 'Gałąź L-07 obciążona w 118%',
@@ -167,6 +212,7 @@ describe('przekroczeniaWerdyktu — kryteria projektowe backendu (lit. a-c)', ()
         }),
       ]),
       false,
+      NAZWA,
     );
     expect(p.elementRef).toBeNull();
     expect(p.elementTyp).toBeNull();
@@ -177,9 +223,9 @@ describe('przekroczeniaWerdyktu — kryteria projektowe backendu (lit. a-c)', ()
       pozycjaWerdyktu({ kryterium_id: 'napiecie.odchylenie', element_rodzaj: 'szyna', wiodacy_element_id: 'SZ-1' }),
       pozycjaWerdyktu({ kryterium_id: 'galaz.obciazenie_dlugotrwale' }),
     ]);
-    expect(przekroczeniaWerdyktu(werdykt, true).map((p) => p.klucz)).toEqual([
+    expect(przekroczeniaWerdyktu(werdykt, true, NAZWA).map((p) => p.klucz)).toEqual([
       'werdykt::galaz.obciazenie_dlugotrwale',
     ]);
-    expect(przekroczeniaWerdyktu(werdykt, false)).toHaveLength(2);
+    expect(przekroczeniaWerdyktu(werdykt, false, NAZWA)).toHaveLength(2);
   });
 });

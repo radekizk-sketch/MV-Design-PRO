@@ -11,6 +11,7 @@
  */
 import type { ConductingEdge, TerminalGraph } from './terminalGraph';
 import { nonTransformerComponents } from './terminalGraph';
+import { powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 
 export type InvariantCode =
   | 'EDGE_VOLTAGE_MISMATCH'
@@ -35,16 +36,13 @@ export interface GraphValidationResult {
   readonly violations: readonly InvariantViolation[];
 }
 
-/** Granica domeny nN/SN dla inwariantów 7-9 (IEC 60038: nN ≤ 1 kV). Próg
- *  UŻYWANY WYŁĄCZNIE do scoping tych trzech inwariantów (rozstrzygnięcie, czy
- *  sprawdzać klasyfikację aparatu nN) — węzły/domeny grafu (inwarianty 1/6)
- *  NIE używają tego progu, bo działają na DOWOLNEJ liczbie dyskretnych
- *  poziomów napięć, nie tylko na podziale SN/nN. */
-const LV_DOMAIN_MAX_KV = 1.0;
-
-function isLvKv(voltageKv: number): boolean {
-  return voltageKv <= LV_DOMAIN_MAX_KV;
-}
+/* Granica domeny nN/SN dla inwariantów 7-9 — jedno lustro granic pasm
+ * (`ui2/model/pasmaNapieciowe`: nN ⇔ 0 < U ≤ 1 kV, SN/WN powyżej). Predykat
+ * UŻYWANY WYŁĄCZNIE do scoping tych trzech inwariantów (rozstrzygnięcie, czy
+ * sprawdzać klasyfikację aparatu nN) — węzły/domeny grafu (inwarianty 1/6)
+ * NIE używają go, bo działają na DOWOLNEJ liczbie dyskretnych poziomów napięć,
+ * nie tylko na podziale SN/nN. Para `wPasmieNn` / `powyzejPasmaNn` pochodzi z
+ * jednego źródła, więc szyna niefizyczna (U ≤ 0) nie trafia do żadnej strony. */
 
 function busVoltageKv(graph: TerminalGraph, busRef: string): number | null {
   return graph.nodes.get(busRef)?.voltageKv ?? null;
@@ -248,8 +246,8 @@ function crossVoltageConductorViolations(graph: TerminalGraph): InvariantViolati
 
 // ---------------------------------------------------------------------------
 // Inwariant 7 — no unresolved active apparatus.
-// Wewnątrz domeny nN (obie szyny gałęzi ≤ 1 kV — próg celowo ograniczony do
-// nN, patrz `LV_DOMAIN_MAX_KV`: klasyfikacja niżej mirroruje
+// Wewnątrz domeny nN (obie szyny gałęzi w paśmie nN — predykat celowo ograniczony
+// do nN, patrz `wPasmieNn`: klasyfikacja niżej mirroruje
 // `ui/sld/v2/canvas/enmToSldAdapter.ts::resolveNnFeederApparatus`, schemat
 // namespace/materialized_params WŁAŚCIWY WYŁĄCZNIE aparaturze nN — na
 // aparaturze SN dałby fałszywe alarmy, bo SN używa INNEGO schematu katalogu
@@ -288,7 +286,7 @@ function unresolvedActiveApparatusViolations(graph: TerminalGraph): InvariantVio
   for (const edge of graph.edges) {
     const fromKv = busVoltageKv(graph, edge.fromBusRef);
     const toKv = busVoltageKv(graph, edge.toBusRef);
-    if (fromKv === null || toKv === null || !isLvKv(fromKv) || !isLvKv(toKv)) continue; // poza domeną nN.
+    if (!wPasmieNn(fromKv) || !wPasmieNn(toKv)) continue; // poza domeną nN.
     if (edge.status !== 'closed') continue; // nieaktywny tor — plan: „nigdy element W AKTYWNYM torze".
     if (resolveNnApparatusKind(edge) === 'UNRESOLVED') {
       violations.push({
@@ -329,14 +327,14 @@ function lvFeederOnMvBusViolations(graph: TerminalGraph): InvariantViolation[] {
     if (!isNnClassApparatus(edge)) continue;
     const fromKv = busVoltageKv(graph, edge.fromBusRef);
     const toKv = busVoltageKv(graph, edge.toBusRef);
-    if (fromKv !== null && !isLvKv(fromKv)) {
+    if (powyzejPasmaNn(fromKv)) {
       violations.push({
         code: 'LV_FEEDER_ON_MV_BUS',
         messagePl: `Aparat klasy nN „${edge.name}" (${edge.ref}) dotyka szyny SN „${edge.fromBusRef}" (${fromKv} kV).`,
         elementRefs: [edge.ref, edge.fromBusRef],
       });
     }
-    if (toKv !== null && !isLvKv(toKv)) {
+    if (powyzejPasmaNn(toKv)) {
       violations.push({
         code: 'LV_FEEDER_ON_MV_BUS',
         messagePl: `Aparat klasy nN „${edge.name}" (${edge.ref}) dotyka szyny SN „${edge.toBusRef}" (${toKv} kV).`,
@@ -353,14 +351,14 @@ function mvFieldOnLvBusViolations(graph: TerminalGraph): InvariantViolation[] {
     if (!isMvClassApparatus(edge)) continue;
     const fromKv = busVoltageKv(graph, edge.fromBusRef);
     const toKv = busVoltageKv(graph, edge.toBusRef);
-    if (fromKv !== null && isLvKv(fromKv)) {
+    if (wPasmieNn(fromKv)) {
       violations.push({
         code: 'MV_FIELD_ON_LV_BUS',
         messagePl: `Aparat klasy SN „${edge.name}" (${edge.ref}) dotyka szyny nN „${edge.fromBusRef}" (${fromKv} kV).`,
         elementRefs: [edge.ref, edge.fromBusRef],
       });
     }
-    if (toKv !== null && isLvKv(toKv)) {
+    if (wPasmieNn(toKv)) {
       violations.push({
         code: 'MV_FIELD_ON_LV_BUS',
         messagePl: `Aparat klasy SN „${edge.name}" (${edge.ref}) dotyka szyny nN „${edge.toBusRef}" (${toKv} kV).`,

@@ -1,18 +1,59 @@
 """Tests for the ENM protection read-model endpoint."""
 
+from uuid import uuid4
+
 import pytest
 from api.enm import router as enm_router
+from domain.models import Project
+from domain.study_case import StudyCase
 from enm.canonical_analysis import reset_canonical_runs
-from enm.models import EnergyNetworkModel
-from enm.store import get_enm, reset_enm_store, set_enm
+from enm.store import get_enm, reset_enm_store
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
 
 
-def _seed_enm(case_id: str, payload: dict) -> None:
-    set_enm(case_id, EnergyNetworkModel.model_validate(payload))
+def _seed_enm(client: TestClient, case_id: str, payload: dict) -> None:
+    """Zasiej ENM przez REALNA koncowke `PUT /enm` (jedyna droga zapisu z API).
+
+    CV-1-W: magazyn jest kluczowany kluczem projektu, nie surowym `case_id` —
+    pisanie wprost przez `enm.store.set_enm(case_id, ...)` ladowalo dane pod
+    klucz, ktorego zaden odczyt API juz nie widzi. `PUT /api/cases/{case_id}/enm`
+    przechodzi przez to samo tlumaczenie `KluczTwin`, co kazdy odczyt.
+    """
+    resp = client.put(f"/api/cases/{case_id}/enm", json=payload)
+    assert resp.status_code == 200, resp.text
+
+
+def _nowy_przypadek(client: TestClient) -> str:
+    """Utworz REALNY projekt + przypadek wprost przez UoW; zwroc `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2). Ta aplikacja testowa montuje WYLACZNIE `enm_router` (bez
+    tras projektow/przypadkow), wiec pary nie da sie utworzyc przez HTTP —
+    tworzymy ja tak samo jak `tests/invariants/test_wlasnosc_modelu_projektu.py
+    ::_projekt_z_przypadkami`, wprost przez `uow_factory` zawieszony na
+    `client.app.state`.
+    """
+    uow_factory = client.app.state.uow_factory
+    project_id = uuid4()
+    case_id = uuid4()
+    with uow_factory() as uow:
+        uow.projects.add(Project(id=project_id, name="Test protection-view API"), commit=False)
+        uow.cases.add_study_case(
+            StudyCase(id=case_id, project_id=project_id, name="Przypadek testu"),
+            commit=False,
+        )
+        uow.commit()
+    return str(case_id)
+
+
+def _klucz(client: TestClient, case_id: str) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tlumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
 
 
 @pytest.fixture(autouse=True)
@@ -25,10 +66,12 @@ def reset_state():
 
 
 @pytest.fixture
-def client():
-    app = FastAPI()
-    app.include_router(enm_router)
-    return TestClient(app)
+def client(uow_factory):
+    """Lightweight app with only ENM router, wired to a real uow_factory (CV-1)."""
+    test_app = FastAPI()
+    test_app.include_router(enm_router)
+    test_app.state.uow_factory = uow_factory
+    return TestClient(test_app)
 
 
 def _enm_with_protection() -> dict:
@@ -196,11 +239,12 @@ def _enm_with_protection() -> dict:
 
 
 def test_get_protection_view_empty(client):
-    response = client.get("/api/cases/protection-empty/enm/protection-view")
+    case_id = _nowy_przypadek(client)
+    response = client.get(f"/api/cases/{case_id}/enm/protection-view")
     assert response.status_code == 200
     data = response.json()
 
-    assert data["case_id"] == "protection-empty"
+    assert data["case_id"] == case_id
     assert data["view_status"] == {
         "data_source": "ENM_PROTECTION_READ_MODEL",
         "result_state": "NONE",
@@ -226,14 +270,15 @@ def test_get_protection_view_empty(client):
 
 
 def test_get_protection_view_with_assignments_and_diagnostics(client):
-    _seed_enm("protection-ready", _enm_with_protection())
+    case_id = _nowy_przypadek(client)
+    _seed_enm(client, case_id, _enm_with_protection())
 
-    response = client.get("/api/cases/protection-ready/enm/protection-view")
+    response = client.get(f"/api/cases/{case_id}/enm/protection-view")
     assert response.status_code == 200
     data = response.json()
-    stored_enm = get_enm("protection-ready")
+    stored_enm = get_enm(_klucz(client, case_id))
 
-    assert data["case_id"] == "protection-ready"
+    assert data["case_id"] == case_id
     assert data["enm_revision"] == stored_enm.header.revision
     assert data["view_status"] == {
         "data_source": "ENM_PROTECTION_READ_MODEL",
@@ -273,9 +318,10 @@ def test_protection_view_serializes_it_curve_from_iec60255_solver(client):
     - Funkcja odwrotna (IEC_SI, 51 I>) bez TMS w modelu ENM → brak krzywej,
       brak danych ``time_multiplier`` (zero fabrykacji mnożnika czasowego).
     """
-    _seed_enm("protection-it", _enm_with_protection())
+    case_id = _nowy_przypadek(client)
+    _seed_enm(client, case_id, _enm_with_protection())
 
-    response = client.get("/api/cases/protection-it/enm/protection-view")
+    response = client.get(f"/api/cases/{case_id}/enm/protection-view")
     assert response.status_code == 200
     data = response.json()
 
@@ -313,9 +359,10 @@ def test_protection_view_instant_without_delay_is_not_missing_data(client):
     device = next(d for d in payload["protection_assignments"] if d["ref_id"] == "prot_oc_1")
     inst_setting = next(s for s in device["settings"] if s["function_type"] == "overcurrent_50")
     del inst_setting["time_delay_s"]  # bezzwłoczna bez skonfigurowanej zwłoki
-    _seed_enm("protection-it-instant", payload)
+    case_id = _nowy_przypadek(client)
+    _seed_enm(client, case_id, payload)
 
-    response = client.get("/api/cases/protection-it-instant/enm/protection-view")
+    response = client.get(f"/api/cases/{case_id}/enm/protection-view")
     assert response.status_code == 200
     data = response.json()
 
@@ -345,9 +392,10 @@ def test_protection_view_inverse_it_curve_with_tms_from_solver(client):
     device = next(d for d in payload["protection_assignments"] if d["ref_id"] == "prot_oc_1")
     inverse_setting = next(s for s in device["settings"] if s["curve_type"] == "IEC_SI")
     inverse_setting["time_multiplier"] = 0.2  # TMS
-    _seed_enm("protection-it-tms", payload)
+    case_id = _nowy_przypadek(client)
+    _seed_enm(client, case_id, payload)
 
-    response = client.get("/api/cases/protection-it-tms/enm/protection-view")
+    response = client.get(f"/api/cases/{case_id}/enm/protection-view")
     assert response.status_code == 200
     data = response.json()
 

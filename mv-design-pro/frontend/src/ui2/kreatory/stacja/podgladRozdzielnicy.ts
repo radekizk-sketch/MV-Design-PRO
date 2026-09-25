@@ -50,11 +50,11 @@ import {
 } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
 import {
-  FIELD_ROLE_LABELS,
   SOURCE_STATUS_LABEL_PL,
   type SnFieldRole,
   type StationSnFieldTemplate,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
+import { fieldRoleLabelPl } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 import type { MVApparatusCatalogType, TransformerType } from '../../../ui/catalog/types';
 import {
   FONT_APARATU,
@@ -424,7 +424,7 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
       maTransformator: pole.field_role === 'TRANSFORMATOROWE',
     });
     const wierszeRoli = zawinTekst(
-      FIELD_ROLE_LABELS[pole.field_role] ?? pole.field_role,
+      fieldRoleLabelPl(pole.field_role),
       FONT_ROLI,
       MAKS_TEKST,
     );

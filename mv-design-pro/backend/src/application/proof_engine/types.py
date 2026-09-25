@@ -109,26 +109,6 @@ SEMANTIC_ALIASES: dict[str, SemanticAlias] = {
         target_key="sk_mva",
         notes="S_k'' wg IEC 60909",
     ),
-    "breaking_ok": SemanticAlias(
-        alias_pl="wyłączalność",
-        target_key="breaking_ok",
-        notes="Warunek I_k'' ≤ I_cu",
-    ),
-    "dynamic_ok": SemanticAlias(
-        alias_pl="warunek dynamiczny",
-        target_key="dynamic_ok",
-        notes="Warunek i_p ≤ I_dyn",
-    ),
-    "thermal_ok": SemanticAlias(
-        alias_pl="warunek cieplny",
-        target_key="thermal_ok",
-        notes="Warunek ∫i²dt ≤ I_th",
-    ),
-    "selectivity_ok": SemanticAlias(
-        alias_pl="selektywność",
-        target_key="selectivity_ok",
-        notes="Porównanie granic charakterystyk",
-    ),
 }
 
 
@@ -747,78 +727,3 @@ class EarthingGroundFaultInput:
     i_u_a: float | None = None
     i_p_a: float | None = None
     r_u_ohm: float | None = None
-
-
-# =============================================================================
-# Protection Overcurrent & Selectivity Input Types — P18
-# =============================================================================
-
-
-@dataclass
-class ProtectionSelectivityInput:
-    """
-    Dane wejściowe dla selektywności (analitycznej).
-
-    Attributes:
-        current_ka: Prąd odniesienia do porównań charakterystyk [kA]
-        downstream_device_id: Identyfikator zabezpieczenia dolnego stopnia
-        upstream_device_id: Identyfikator zabezpieczenia górnego stopnia
-        downstream_max_s: Maksymalny czas wyłączenia zabezpieczenia dolnego [s]
-        upstream_min_s: Minimalny czas wyłączenia zabezpieczenia górnego [s]
-        margin_s: Margines czasowy selektywności [s]
-    """
-
-    current_ka: float | None
-    downstream_device_id: str | None
-    upstream_device_id: str | None
-    downstream_max_s: float | None
-    upstream_min_s: float | None
-    margin_s: float = 0.0
-
-
-@dataclass
-class ProtectionProofInput:
-    """
-    Dane wejściowe dla dowodu P18: zabezpieczenia nadprądowe i selektywność.
-
-    Attributes:
-        project_name: Nazwa projektu
-        case_name: Nazwa przypadku obliczeniowego
-        run_timestamp: Czas uruchomienia
-        target_id: Identyfikator urządzenia/zabezpieczenia
-        device_id: Identyfikator zabezpieczenia (opcjonalnie)
-
-        # P11: wyniki zwarciowe
-        ikss_ka: Prąd początkowy I_k'' [kA]
-        ip_ka: Prąd udarowy i_p [kA]
-        ith_ka: Prąd cieplny równoważny I_th [kA]
-        tk_s: Czas trwania zwarcia t_k [s]
-        i2t_ka2s: Energia zwarcia ∫i²dt [kA²s] (opcjonalnie)
-
-        # Dane katalogowe zabezpieczenia
-        icu_ka: Zdolność wyłączalna I_cu [kA]
-        idyn_ka: Wytrzymałość dynamiczna I_dyn [kA]
-        ith_device_ka: Wytrzymałość cieplna I_th [kA] (opcjonalnie)
-        t_th_s: Czas odniesienia dla I_th [s] (opcjonalnie)
-        ith_limit_ka2s: Wytrzymałość cieplna w postaci I²t [kA²s] (opcjonalnie)
-
-        # Selektywność (opcjonalnie)
-        selectivity: Dane selektywności (graniczne)
-    """
-
-    project_name: str
-    case_name: str
-    run_timestamp: datetime
-    target_id: str
-    device_id: str | None = None
-    ikss_ka: float | None = None
-    ip_ka: float | None = None
-    ith_ka: float | None = None
-    tk_s: float | None = None
-    i2t_ka2s: float | None = None
-    icu_ka: float | None = None
-    idyn_ka: float | None = None
-    ith_device_ka: float | None = None
-    t_th_s: float | None = None
-    ith_limit_ka2s: float | None = None
-    selectivity: ProtectionSelectivityInput | None = None

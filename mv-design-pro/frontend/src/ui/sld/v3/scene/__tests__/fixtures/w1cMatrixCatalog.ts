@@ -81,12 +81,8 @@ interface FieldConfigurationsCatalog {
 }
 
 function switchState(state: W1cState): BaySwitchState {
-  return {
-    actual_state: state,
-    control_mode: 'zdalne',
-    communication_ok: true,
-    interlock_blocked: false,
-  };
+  // Karta #135: wyłącznie stan łącznika (wariant macierzy); telemetria bez źródła nie istnieje.
+  return { actual_state: state };
 }
 
 /** Jeden PRZYPADEK macierzy = konfiguracja katalogu × wariant stanu. */

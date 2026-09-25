@@ -1,0 +1,396 @@
+{
+  "bays": [],
+  "branch_points": [],
+  "branches": [
+    {
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "id": "060a0c1e-f10e-5467-a7ef-e9077792bb6f",
+      "materialized_params": null,
+      "meta": {
+        "nn_field_migrowana_rola": "OZE",
+        "nn_field_migrowany_z": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
+        "nn_promocja_bez_wiazania_katalogowej": true
+      },
+      "name": "Pole PV SN",
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_device",
+      "source_mode": "MIGRACJA",
+      "status": "closed",
+      "tags": [],
+      "to_bus_ref": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_bus",
+      "type": "breaker",
+      "x_ohm": null
+    }
+  ],
+  "buses": [
+    {
+      "frequency_hz": null,
+      "id": "66c6d9c6-5cba-5d86-a74e-923d47db68c6",
+      "meta": {
+        "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
+        "gpz_section_order": 0,
+        "gpz_substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation"
+      },
+      "name": "Szyna GPZ S1 15 kV",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "tags": [],
+      "voltage_kv": 15.0,
+      "zone": "GPZ"
+    },
+    {
+      "frequency_hz": null,
+      "id": "1092ce59-dd9a-5d92-adcd-88607c3143f5",
+      "meta": {
+        "gpz_substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+        "gpz_transformer_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/wn_sn",
+        "render_on_sld": true,
+        "show_in_project_tree": false,
+        "visual_role": "GPZ_HV_BUS"
+      },
+      "name": "Szyna 110 kV TR1",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110",
+      "tags": [
+        "gpz_hv_bus",
+        "helper_bus"
+      ],
+      "voltage_kv": 110.0,
+      "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "9d098394-8417-51fd-b98e-1108104eb6d6",
+      "meta": {
+        "nn_field_migrowany_z": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
+        "visual_role": "NN_FEEDER_BUS"
+      },
+      "name": "Pole PV SN",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_bus",
+      "tags": [],
+      "voltage_kv": 15.0,
+      "zone": null
+    }
+  ],
+  "connection_nodes": [],
+  "corridors": [
+    {
+      "corridor_type": "radial",
+      "id": "48e7285a-4c31-5b01-9d87-dd323c2a08f9",
+      "meta": {},
+      "name": "Magistrala 01",
+      "no_point_ref": null,
+      "ordered_segment_refs": [],
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/corridor_01",
+      "tags": []
+    }
+  ],
+  "generators": [
+    {
+      "blocking_transformer_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/wn_sn",
+      "bus_ref": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_bus",
+      "catalog_namespace": "ZRODLO_NN_PV",
+      "catalog_ref": "conv-pv-1mw-15kv",
+      "connection_variant": "block_transformer",
+      "data_umowy_przylaczeniowej": null,
+      "deklaracje_modulu": null,
+      "dynamika": null,
+      "gen_type": "pv_inverter",
+      "id": "b33b12e0-5430-5659-a20b-bb1a4222d1ca",
+      "limits": null,
+      "materialized_params": {
+        "catalog_item_id": "conv-pv-1mw-15kv",
+        "catalog_item_version": "2024.1",
+        "control_mode": "STALY_COS_PHI",
+        "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
+        "dynamic_model_ref": "default_pv_gfl",
+        "k_sc": null,
+        "max_power_kw": 1000.0,
+        "pmax_mw": 1.0,
+        "profiles": {
+          "lvrt_curve_ref": "pse",
+          "nc_rfg_profile_ref": "pse"
+        },
+        "protection_catalog_ref": "ABB_REB670",
+        "ptpiree_note": "Brak dopasowania w wykazie PTPiREE (snapshot: 6887 rekordów, WiPWC 1.2/1.3, publikacja 2026-05-08).",
+        "ptpiree_status": "NIEPOWIAZANY",
+        "rated_power_ac_kw": 1100.0,
+        "sn_mva": 1.1,
+        "un_kv": 15.0
+      },
+      "meta": {
+        "control_mode": "STALY_COS_PHI",
+        "cos_phi": null,
+        "field_ref": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
+        "frequency_droop_percent": null,
+        "has_hvrt_curve": null,
+        "has_lvrt_curve": null,
+        "kontrola_mocy_zrodla": {
+          "cos_phi": null,
+          "przeciazalnosc_transformatora_pu": null,
+          "przyjete_pl": [
+            "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
+            "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
+            "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+          ],
+          "wspolczynnik_jednoczesnosci": null
+        },
+        "lfsm_deadband_hz": null,
+        "q_max_mvar": null,
+        "q_min_mvar": null,
+        "qu_deadband_high_pu": null,
+        "qu_deadband_low_pu": null,
+        "qu_slope_pu_per_pu": null,
+        "quantity": 1,
+        "source_sequence_index": 0,
+        "u_set_pu": null
+      },
+      "modele_widmowe": null,
+      "modul_istniejacy": null,
+      "n_parallel": 1,
+      "name": "Farma PV 1 MW",
+      "nastawy_zabezpieczen": null,
+      "overrides": [],
+      "p_mw": 1.0,
+      "parameter_source": null,
+      "q_mvar": null,
+      "quantity": 1,
+      "ref_id": "pv/cf52e8ef1365b7493495105069afcf67/converter",
+      "source_mode": "KATALOG",
+      "station_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+      "tags": []
+    }
+  ],
+  "header": {
+    "connection_conditions": null,
+    "created_at": "2026-09-16T08:00:00Z",
+    "defaults": {
+      "frequency_hz": 50.0,
+      "sn_nominal_kv": null,
+      "unit_system": "SI"
+    },
+    "description": null,
+    "enm_version": "1.0",
+    "hash_sha256": "0284856d5df9132df63495d0b30a740a6af957c13e8ebdc3ffaf5554536b1f66",
+    "name": "Przyłączenie farmy PV 8 MW",
+    "revision": 2,
+    "updated_at": "2026-09-16T08:00:00Z"
+  },
+  "junctions": [],
+  "katalog_projektu": null,
+  "line_runs": [
+    {
+      "branch_origin_station_ref": null,
+      "id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/corridor_01",
+      "name": "Magistrala 01",
+      "nop_station_ref": null,
+      "parent_run_ref": null,
+      "run_kind": "main_trunk",
+      "segments": [],
+      "starting_bay_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
+      "starting_port_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
+      "stations": []
+    }
+  ],
+  "loads": [],
+  "measurements": [],
+  "protection_assignments": [],
+  "shunt_capacitors": [],
+  "sources": [
+    {
+      "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "c_max": null,
+      "c_min": null,
+      "catalog_namespace": "ZRODLO_SN",
+      "catalog_ref": "src-gpz-15kv-250mva-rx010",
+      "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
+      "id": "f3767143-9c5c-598d-9460-2cb312400f75",
+      "ik3_ka": 9.62,
+      "ik3_min_ka": null,
+      "materialized_params": {
+        "catalog_item_id": "src-gpz-15kv-250mva-rx010",
+        "catalog_item_version": "legacy",
+        "ik3_ka": 9.62,
+        "rx_ratio": 0.1,
+        "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+        "short_circuit_model": "short_circuit_power",
+        "sk3_mva": 250.0,
+        "voltage_rating_kv": 15.0
+      },
+      "meta": {
+        "catalog_item_version": "legacy",
+        "catalog_role": "GPZ_110_SN",
+        "solution_ref": null,
+        "source_id": "GPZ 110/15"
+      },
+      "model": "short_circuit_power",
+      "name": "GPZ 110/15",
+      "neutral_grounding": null,
+      "overrides": [],
+      "parameter_source": "CATALOG",
+      "r0_ohm": null,
+      "r_ohm": null,
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/source/main",
+      "rx_ratio": 0.1,
+      "rx_ratio_min": null,
+      "sk3_hv_mva": null,
+      "sk3_min_mva": null,
+      "sk3_mva": 250.0,
+      "sn_voltage_kv": null,
+      "source_mode": "KATALOG",
+      "source_side": "SN",
+      "substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+      "tags": [],
+      "u_set_pu": null,
+      "voltage_hv_kv": null,
+      "x0_ohm": null,
+      "x_ohm": null,
+      "z0_z1_ratio": null
+    }
+  ],
+  "substations": [
+    {
+      "bus_refs": [
+        "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+        "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110"
+      ],
+      "construction_type": null,
+      "designation": null,
+      "entry_point_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "external_ports": [],
+      "gpz_hv_sections": [],
+      "gpz_sections": [
+        {
+          "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+          "incoming_source_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/source/main",
+          "left_coupler_ref": null,
+          "line_field_name": "Pole liniowe GPZ",
+          "name": "Sekcja 1",
+          "order": 0,
+          "right_coupler_ref": null,
+          "section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001"
+        }
+      ],
+      "id": "4365ab68-27ea-535f-881d-39d635c13e7e",
+      "meta": {
+        "field_specs": [
+          {
+            "bay_role": "FEEDER",
+            "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+            "equipment_refs": [],
+            "field_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
+            "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
+            "meta": {
+              "field_status": "READY_FOR_TRUNK",
+              "gpz_line_field_index": 0,
+              "gpz_line_fields_count": 1,
+              "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
+              "gpz_section_order": 0,
+              "source_field_kind": "FEEDER"
+            },
+            "name": "Pole liniowe GPZ",
+            "protection_ref": null,
+            "tags": [
+              "gpz_line_field"
+            ]
+          }
+        ],
+        "gpz_hv_bus_refs": [
+          "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110"
+        ],
+        "gpz_section_count": 1,
+        "nn_field_specs": [
+          {
+            "bay_role": "OZE",
+            "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+            "equipment_refs": [],
+            "field_ref": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
+            "meta": {
+              "source_field_kind": "PV"
+            },
+            "name": "Pole PV SN",
+            "protection_ref": null,
+            "tags": [
+              "nn_source_field"
+            ]
+          }
+        ],
+        "nn_fields_promoted": true,
+        "short_circuit_input_side": "SN",
+        "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+        "wn_sn_transformer_count": 1
+      },
+      "name": "GPZ 110/15",
+      "nn_sections": [],
+      "nn_voltage_levels": [],
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+      "station_type": "gpz",
+      "tags": [],
+      "transformer_refs": [
+        "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/wn_sn"
+      ]
+    }
+  ],
+  "transformers": [
+    {
+      "catalog_namespace": "TRAFO_SN_NN",
+      "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
+      "hv_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110",
+      "hv_neutral": null,
+      "i0_percent": 0.35,
+      "id": "ea4515dd-c9ea-55f8-a92a-0b7d02da7b94",
+      "lv_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "lv_earthing_system": null,
+      "lv_neutral": null,
+      "materialized_params": {
+        "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+        "catalog_item_version": "legacy",
+        "i0_percent": 0.35,
+        "p0_kw": 25.0,
+        "pk_kw": 120.0,
+        "rated_power_mva": 25.0,
+        "uk_percent": 11.0,
+        "vector_group": "Yd11",
+        "voltage_hv_kv": 110.0,
+        "voltage_lv_kv": 15.0
+      },
+      "meta": {
+        "catalog_item_version": "legacy",
+        "catalog_role": "TRANSFORMATOR_WN_SN",
+        "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
+        "gpz_section_order": 0,
+        "gpz_substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+        "visual_role": "GPZ_WN_SN_TRANSFORMER"
+      },
+      "n_parallel": null,
+      "name": "TR1 110/15 kV",
+      "overrides": [],
+      "p0_kw": 25.0,
+      "parameter_source": "CATALOG",
+      "pk_kw": 120.0,
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/wn_sn",
+      "sn_mva": 25.0,
+      "source_mode": "KATALOG",
+      "tags": [
+        "gpz_wn_sn_transformer"
+      ],
+      "tap_changer": null,
+      "tap_max": null,
+      "tap_min": null,
+      "tap_position": null,
+      "tap_step_percent": null,
+      "uhv_kv": 110.0,
+      "uk_percent": 11.0,
+      "ulv_kv": 15.0,
+      "vector_group": "Yd11"
+    }
+  ]
+}

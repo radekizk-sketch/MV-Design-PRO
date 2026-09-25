@@ -168,7 +168,7 @@ export const ESTYMACJA_STRINGS = {
 
   // Założenia
   zalMetoda: 'Metoda',
-  zalMetodaWartosc: 'Ważone najmniejsze kwadraty (WLS), IEC/PowerFactory',
+  zalMetodaWartosc: 'Ważone najmniejsze kwadraty (WLS)',
   zalBazaMocy: 'Baza mocy',
   zalSlack: 'Węzeł bilansujący (slack)',
   zalAlfa: 'Poziom istotności α',

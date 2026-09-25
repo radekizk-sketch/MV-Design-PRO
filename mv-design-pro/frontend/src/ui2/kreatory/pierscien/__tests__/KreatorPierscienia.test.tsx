@@ -42,13 +42,19 @@ vi.mock('../../../../ui/navigation/routes', () => ({
   navigateToSld: () => navigateToSldMock(),
 }));
 
+// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
+// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const { fetchCableTypesMock, fetchLineTypesMock } = vi.hoisted(() => ({
+  fetchCableTypesMock: vi.fn(() =>
+    Promise.resolve([{ id: 'cab-1', name: 'Kabel 3x120', cross_section_mm2: 120, rated_current_a: 280 }]),
+  ),
+  fetchLineTypesMock: vi.fn(() => Promise.resolve([{ id: 'ln-1', name: 'AFL 70', rated_current_a: 320 }])),
+}));
+
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchCableTypes: () =>
-    Promise.resolve([
-      { id: 'cab-1', name: 'Kabel 3x120', cross_section_mm2: 120, rated_current_a: 280 },
-    ]),
-  fetchLineTypes: () => Promise.resolve([{ id: 'ln-1', name: 'AFL 70', rated_current_a: 320 }]),
+  fetchCableTypes: () => fetchCableTypesMock(),
+  fetchLineTypes: () => fetchLineTypesMock(),
 }));
 
 async function pickCable() {
@@ -72,6 +78,8 @@ describe('KreatorPierscienia — realna ścieżka', () => {
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
+    fetchCableTypesMock.mockClear();
+    fetchLineTypesMock.mockClear();
   });
 
   afterEach(() => cleanup());
@@ -126,6 +134,22 @@ describe('KreatorPierscienia — realna ścieżka', () => {
     render(<KreatorPierscienia />);
     await pickCable();
     expect(screen.getByTestId('mvd-kreator-pierscien-domknij')).toBeDisabled();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) —
+   * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
+   * „Domknij" (wymaga `catalog_ref`) nie sprawdzał, czy katalog już doszedł.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × zaciski dostępne → domknięcie zablokowane z komunikatem', async () => {
+    fetchCableTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    fetchLineTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorPierscienia />);
+
+    expect(screen.getByTestId('mvd-kreator-pierscien-domknij')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-pierscien')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

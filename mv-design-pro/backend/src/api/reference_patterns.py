@@ -359,21 +359,21 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
 
     # Artifacts section
     c.setFont("DejaVuSans-Bold", 12)
-    c.drawString(left_margin, y, "Wartosci posrednie")
+    c.drawString(left_margin, y, "Wartości pośrednie")
     y -= 6 * mm
 
     c.setFont("DejaVuSans", 9)
     artifacts = data.get("artifacts", {})
     artifact_items = [
         ("Czas zwarcia sumaryczny (tk)", artifacts.get("tk_total_s"), "s"),
-        ("Prad znamionowy cieplny (Ithn)", artifacts.get("ithn_a"), "A"),
-        ("Prad dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A"),
+        ("Prąd znamionowy cieplny (Ithn)", artifacts.get("ithn_a"), "A"),
+        ("Prąd dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A"),
         ("I_min okna nastaw (pierwotna)", artifacts.get("window_i_min_primary_a"), "A"),
         ("I_max okna nastaw (pierwotna)", artifacts.get("window_i_max_primary_a"), "A"),
-        ("Zalecana nastawa (wtorna)", artifacts.get("recommended_setting_secondary_a"), "A"),
-        ("Okno nastaw prawidlowe", "Tak" if artifacts.get("window_valid") else "Nie", ""),
-        ("Kryterium limitujace I_min", artifacts.get("limiting_criterion_min"), ""),
-        ("Kryterium limitujace I_max", artifacts.get("limiting_criterion_max"), ""),
+        ("Zalecana nastawa I>>", artifacts.get("recommended_setting_primary_a"), "A"),
+        ("Okno nastaw prawidłowe", "Tak" if artifacts.get("window_valid") else "Nie", ""),
+        ("Kryterium limitujące I_min", artifacts.get("limiting_criterion_min"), ""),
+        ("Kryterium limitujące I_max", artifacts.get("limiting_criterion_max"), ""),
     ]
 
     for label, value, unit in artifact_items:
@@ -394,7 +394,7 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
     trace = data.get("trace", [])
     if trace:
         c.setFont("DejaVuSans-Bold", 12)
-        c.drawString(left_margin, y, f"Slad obliczen ({len(trace)} krokow)")
+        c.drawString(left_margin, y, f"Ślad obliczeń ({len(trace)} kroków)")
         y -= 6 * mm
 
         c.setFont("DejaVuSans", 8)
@@ -409,7 +409,7 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
                 y = top_margin
 
         if len(trace) > 20:
-            c.drawString(left_margin, y, f"... oraz {len(trace) - 20} dodatkowych krokow")
+            c.drawString(left_margin, y, f"... oraz {len(trace) - 20} dodatkowych kroków")
             y -= line_height
 
     # Footer
@@ -522,12 +522,12 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
     doc.add_paragraph()
 
     # Artifacts section
-    doc.add_heading("Wartosci posrednie", level=1)
+    doc.add_heading("Wartości pośrednie", level=1)
 
     artifacts = data.get("artifacts", {})
 
     # Time and thermal
-    doc.add_heading("Czas zwarcia i wytrzymalosc cieplna", level=2)
+    doc.add_heading("Czas zwarcia i wytrzymałość cieplna", level=2)
     thermal_table = doc.add_table(rows=1, cols=2)
     thermal_table.style = "Table Grid"
     hdr = thermal_table.rows[0].cells
@@ -550,9 +550,9 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
     add_artifact_row(
         thermal_table, "Czas zwarcia sumaryczny (tk)", artifacts.get("tk_total_s"), "s"
     )
-    add_artifact_row(thermal_table, "Prad znamionowy cieplny (Ithn)", artifacts.get("ithn_a"), "A")
+    add_artifact_row(thermal_table, "Prąd znamionowy cieplny (Ithn)", artifacts.get("ithn_a"), "A")
     add_artifact_row(
-        thermal_table, "Prad dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A"
+        thermal_table, "Prąd dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A"
     )
 
     doc.add_paragraph()
@@ -571,7 +571,7 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
 
     add_artifact_row(
         window_table,
-        "I_min (selektywnosc, pierwotna)",
+        "I_min (selektywność, pierwotna)",
         artifacts.get("window_i_min_primary_a"),
         "A",
     )
@@ -580,18 +580,18 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
     )
     add_artifact_row(
         window_table,
-        "Zalecana nastawa (wtorna)",
-        artifacts.get("recommended_setting_secondary_a"),
+        "Zalecana nastawa I>>",
+        artifacts.get("recommended_setting_primary_a"),
         "A",
     )
     add_artifact_row(
-        window_table, "Okno nastaw prawidlowe", "Tak" if artifacts.get("window_valid") else "Nie"
+        window_table, "Okno nastaw prawidłowe", "Tak" if artifacts.get("window_valid") else "Nie"
     )
     add_artifact_row(
-        window_table, "Kryterium limitujace I_min", artifacts.get("limiting_criterion_min")
+        window_table, "Kryterium limitujące I_min", artifacts.get("limiting_criterion_min")
     )
     add_artifact_row(
-        window_table, "Kryterium limitujace I_max", artifacts.get("limiting_criterion_max")
+        window_table, "Kryterium limitujące I_max", artifacts.get("limiting_criterion_max")
     )
 
     doc.add_paragraph()
@@ -599,7 +599,7 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
     # Trace section
     trace = data.get("trace", [])
     if trace:
-        doc.add_heading(f"Slad obliczen ({len(trace)} krokow)", level=1)
+        doc.add_heading(f"Ślad obliczeń ({len(trace)} kroków)", level=1)
 
         for step in trace[:30]:  # Limit to first 30 steps
             step_para = doc.add_paragraph()
@@ -608,7 +608,7 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
             step_para.add_run(step["description_pl"])
 
         if len(trace) > 30:
-            doc.add_paragraph(f"... oraz {len(trace) - 30} dodatkowych krokow")
+            doc.add_paragraph(f"... oraz {len(trace) - 30} dodatkowych kroków")
 
     doc.add_paragraph()
 

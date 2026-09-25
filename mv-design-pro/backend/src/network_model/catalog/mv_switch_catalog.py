@@ -215,7 +215,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015 / KOREKTA: TK 521_VD4_40kA_E str.16/21 — VD4 24kV max Isc=25kA (31.5kA niedostepne przy 24kV, bylo zawyzone)",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / KOREKTA: TK 521_VD4_40kA_E str.16/21 — VD4 24kV max Isc=25kA (31.5kA niedostępne przy 24kV, było zawyżone)",
             "contract_version": "2.0",
         },
     },
@@ -235,7 +235,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "Siemens 3AH5 katalog HG 11.05 (2017) str. 13 — KOREKTA z widma 630 A: linia 12 kV nie ma 630 A; zachowano Isc=25 kA, najmniejszy realny Ir dla 25 kA to 800 A (dyrektywa wlasciciela 2026-08-13: korekta na realny wariant)",
+            "source_reference": "Siemens 3AH5 katalog HG 11.05 (2017) str. 13 — KOREKTA z widma 630 A: linia 12 kV nie ma 630 A; zachowano Isc=25 kA, najmniejszy realny Ir dla 25 kA to 800 A (dyrektywa właściciela 2026-08-13: korekta na realny wariant)",
             "contract_version": "2.0",
         },
     },
@@ -273,7 +273,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 20.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "Siemens 3AH5 katalog HG 11.05 (2017) str. 14 — KOREKTA z widma 630 A: linia 24 kV nie ma 630 A, a 20 kA idzie dopiero od Ir=1250 A (800 A wystepuje wylacznie z 16 kA); zachowano Isc=20 kA (dyrektywa wlasciciela 2026-08-13: korekta na realny wariant)",
+            "source_reference": "Siemens 3AH5 katalog HG 11.05 (2017) str. 14 — KOREKTA z widma 630 A: linia 24 kV nie ma 630 A, a 20 kA idzie dopiero od Ir=1250 A (800 A występuje wyłącznie z 16 kA); zachowano Isc=20 kA (dyrektywa właściciela 2026-08-13: korekta na realny wariant)",
             "contract_version": "2.0",
         },
     },
@@ -293,7 +293,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "Eaton W-VACi katalog ETN008001EN / KOREKTA: Eaton W-VACi Product Guide str.10 — 20kA niedostepne przy 12kV (opcje 25/26,3/31,5/40/50kA); przyjeto 25kA (wariant B, min. dla 630A)",
+            "source_reference": "Eaton W-VACi katalog ETN008001EN / KOREKTA: Eaton W-VACi Product Guide str.10 — 20kA niedostępne przy 12kV (opcje 25/26,3/31,5/40/50kA); przyjęto 25kA (wariant B, min. dla 630A)",
             "contract_version": "2.0",
         },
     },
@@ -322,7 +322,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=12kV; rozlacznik bez Isc — brak zdolnosci wylaczania z definicji urzadzenia)",
+            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=12kV; rozłącznik bez Isc — brak zdolności wyłączania z definicji urządzenia)",
             "contract_version": "2.0",
         },
     },
@@ -341,7 +341,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=12kV; rozlacznik bez Isc)",
+            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=12kV; rozłącznik bez Isc)",
             "contract_version": "2.0",
         },
     },
@@ -361,7 +361,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=24kV; rozlacznik bez Isc)",
+            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=24kV; rozłącznik bez Isc)",
             "contract_version": "2.0",
         },
     },
@@ -380,7 +380,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=24kV; rozlacznik bez Isc)",
+            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=24kV; rozłącznik bez Isc)",
             "contract_version": "2.0",
         },
     },
@@ -512,7 +512,7 @@ SWITCH_DISCONNECTORS: list[dict[str, Any]] = [
     },
     {
         "id": "sw-ds-generic-slupowy-17kv-400a",
-        "name": "Odlacznik slupowy 17.5 kV 400 A",
+        "name": "Odłącznik słupowy 17.5 kV 400 A",
         "params": {
             "equipment_kind": "DISCONNECTOR",
             "manufacturer": "Elpo",
@@ -525,7 +525,7 @@ SWITCH_DISCONNECTORS: list[dict[str, Any]] = [
             "i_cu_ka": None,
             "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
             "catalog_status": "REFERENCYJNY_V1",
-            "source_reference": "PN-EN 62271-102:2018 / parametry typowe odlacznikow slupowych",
+            "source_reference": "PN-EN 62271-102:2018 / parametry typowe odłączników słupowych",
             "contract_version": "2.0",
         },
     },
@@ -677,7 +677,7 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": (
                 f"ETI VVC3 12kV/16A, nr kodowy 004230008, e=292 mm (wymiar standardowy "
-                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolnosc wylaczania 63 kA; "
+                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolność wyłączania 63 kA; "
                 f"{_ETI_VV_KATALOG_URL}"
             ),
             "contract_version": "2.0",
@@ -700,7 +700,7 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": (
                 f"ETI VVC3 12kV/40A, nr kodowy 004230013, e=292 mm (wymiar standardowy "
-                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolnosc wylaczania 63 kA; "
+                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolność wyłączania 63 kA; "
                 f"{_ETI_VV_KATALOG_URL}"
             ),
             "contract_version": "2.0",
@@ -723,7 +723,7 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": (
                 f"ETI VVC3 12kV/63A, nr kodowy 004230015, e=292 mm (wymiar standardowy "
-                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolnosc wylaczania 63 kA; "
+                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolność wyłączania 63 kA; "
                 f"{_ETI_VV_KATALOG_URL}"
             ),
             "contract_version": "2.0",
@@ -746,7 +746,7 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": (
                 f"ETI VVC3 12kV/100A, nr kodowy 004230017, e=292 mm (wymiar standardowy "
-                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolnosc wylaczania 63 kA; "
+                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolność wyłączania 63 kA; "
                 f"{_ETI_VV_KATALOG_URL}"
             ),
             "contract_version": "2.0",
@@ -770,9 +770,9 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             # 200 A NIE wystepuje w wymiarze standardowym e=292 mm (tabela 6/12 kV
             # konczy sie na 160 A) — producent oferuje ten prad tylko w e=442/537 mm.
             "source_reference": (
-                f"ETI VVC3 12kV/200A 442, nr kodowy 004230520, e=442 mm (prad 200 A nie "
-                f"wystepuje w wymiarze standardowym e=292 mm); tabela 6/12 kV, "
-                f"zdolnosc wylaczania 63 kA; {_ETI_VV_KATALOG_URL}"
+                f"ETI VVC3 12kV/200A 442, nr kodowy 004230520, e=442 mm (prąd 200 A nie "
+                f"występuje w wymiarze standardowym e=292 mm); tabela 6/12 kV, "
+                f"zdolność wyłączania 63 kA; {_ETI_VV_KATALOG_URL}"
             ),
             "contract_version": "2.0",
         },
@@ -794,7 +794,7 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": (
                 f"ETI VVC3 17,5kV/63A, nr kodowy 004240015, e=367 mm (wymiar standardowy "
-                f"wg PN-IEC 60282-1); tabela 10/17,5 kV, zdolnosc wylaczania 63 kA; "
+                f"wg PN-IEC 60282-1); tabela 10/17,5 kV, zdolność wyłączania 63 kA; "
                 f"{_ETI_VV_KATALOG_URL}"
             ),
             "contract_version": "2.0",
@@ -817,7 +817,7 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": (
                 f"ETI VVC3 17,5kV/100A, nr kodowy 004240017, e=367 mm (wymiar standardowy "
-                f"wg PN-IEC 60282-1); tabela 10/17,5 kV, zdolnosc wylaczania 63 kA; "
+                f"wg PN-IEC 60282-1); tabela 10/17,5 kV, zdolność wyłączania 63 kA; "
                 f"{_ETI_VV_KATALOG_URL}"
             ),
             "contract_version": "2.0",
@@ -1051,7 +1051,7 @@ SWITCH_POLISH_PTPIRE: list[dict[str, Any]] = [
     # ZPUE NAL — laczniki SF6
     _polish_switch(
         "sw-ls-zpue-nal-12kv-630a",
-        "ZPUE NAL 12 kV 630 A (lacznik SF6)",
+        "ZPUE NAL 12 kV 630 A (łącznik SF6)",
         "ZPUE Włoszczowa",
         "LOAD_SWITCH",
         un_kv=12.0,
@@ -1062,7 +1062,7 @@ SWITCH_POLISH_PTPIRE: list[dict[str, Any]] = [
     ),
     _polish_switch(
         "sw-ls-zpue-nal-24kv-630a",
-        "ZPUE NAL 24 kV 630 A (lacznik SF6)",
+        "ZPUE NAL 24 kV 630 A (łącznik SF6)",
         "ZPUE Włoszczowa",
         "LOAD_SWITCH",
         un_kv=24.0,
@@ -1119,24 +1119,24 @@ SWITCH_POLISH_PTPIRE: list[dict[str, Any]] = [
     # Elektrometal odlaczniki
     _polish_switch(
         "sw-ds-elektrometal-12kv-630a",
-        "Elektrometal odlacznik 12 kV 630 A",
+        "Elektrometal odłącznik 12 kV 630 A",
         "Elektrometal",
         "DISCONNECTOR",
         un_kv=12.0,
         in_a=630.0,
         ik_ka=16.0,
         medium="AIR",
-        source="Elektrometal odlaczniki SN katalog 2024",
+        source="Elektrometal odłączniki SN katalog 2024",
     ),
     _polish_switch(
         "sw-ds-elektrometal-24kv-1250a",
-        "Elektrometal odlacznik 24 kV 1250 A",
+        "Elektrometal odłącznik 24 kV 1250 A",
         "Elektrometal",
         "DISCONNECTOR",
         un_kv=24.0,
         in_a=1250.0,
         ik_ka=20.0,
         medium="AIR",
-        source="Elektrometal odlaczniki SN katalog 2024",
+        source="Elektrometal odłączniki SN katalog 2024",
     ),
 ]

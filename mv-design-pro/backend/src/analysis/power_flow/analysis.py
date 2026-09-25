@@ -3,8 +3,16 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
+from analysis.obciazenie_galezi import (
+    PradyZnamionoweZaciskow,
+    obciazenie_z_pradow_zaciskow,
+    prad_zacisku_do_a,
+    prad_zacisku_od_a,
+    prady_znamionowe_zaciskow,
+)
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.pochodne import a_na_ka, ka_na_a
 from network_model.solvers.power_flow_newton_internal import options_to_trace
 
 from .result import PowerFlowResult
@@ -104,17 +112,20 @@ def assemble_power_flow_result(
         },
     }
 
-    violations = _build_violations(
+    violations, uwagi_naruszen = _build_violations(
         node_u_mag_pu=node_u_mag,
         bus_limits=pf_input.bus_limits,
         branch_s_from_mva=branch_s_from_mva,
         branch_s_to_mva=branch_s_to_mva,
         branch_current_ka=branch_current_ka,
+        node_voltage_kv=node_voltage_kv,
         branch_limits=pf_input.branch_limits,
         graph=graph,
     )
 
     white_box_trace["violations_summary"] = _summarize_violations(violations)
+    if uwagi_naruszen:
+        white_box_trace["violations_notes"] = uwagi_naruszen
     missing_nodes = sorted(missing_voltage_base_nodes)
     if missing_nodes:
         white_box_trace["units"] = {
@@ -174,10 +185,22 @@ def _build_violations(
     branch_s_from_mva: dict[str, complex],
     branch_s_to_mva: dict[str, complex],
     branch_current_ka: dict[str, float],
+    node_voltage_kv: dict[str, float],
     branch_limits: list[Any],
     graph: NetworkGraph,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    """Naruszenia napięć szyn, mocy pozornej i prądów gałęzi wobec limitów.
+
+    Kontrola prądowa (decyzja O-51, klasa P9): prąd KAŻDEGO zacisku wobec prądu
+    znamionowego tego zacisku przez jedną funkcję obciążenia
+    (`analysis/obciazenie_galezi.py`) — linia i kabel: jawny `i_max_ka` albo In z modelu
+    na obu zaciskach; transformator: I_r zacisku z S_n i U_n strony. Naruszenie niesie
+    prąd i limit zacisku DECYDUJĄCEGO. Jawny limit prądowy transformatora bez wskazania
+    strony jest niejednoznaczny (strony mają różne prądy) — nie jest oceniany, a powód
+    trafia do uwag (`violations_notes` w śladzie), nie do cichego pominięcia.
+    """
     violations: list[dict[str, Any]] = []
+    uwagi: list[dict[str, str]] = []
 
     for limit in bus_limits:
         if limit.node_id not in node_u_mag_pu:
@@ -213,18 +236,27 @@ def _build_violations(
             continue
         if branch_id not in branch_s_from_mva and branch_id not in branch_s_to_mva:
             continue
-        s_limit = None
-        i_limit = None
+        spec = branch_limit_map.get(branch_id)
+        s_limit = spec.s_max_mva if spec is not None else None
+        znamionowe: PradyZnamionoweZaciskow | str | None = None
 
-        if branch_id in branch_limit_map:
-            spec = branch_limit_map[branch_id]
-            s_limit = spec.s_max_mva
-            i_limit = spec.i_max_ka
-        else:
-            if isinstance(branch, TransformerBranch) and branch.rated_power_mva > 0:
-                s_limit = branch.rated_power_mva
-            if isinstance(branch, LineBranch) and branch.rated_current_a > 0:
-                i_limit = branch.rated_current_a / 1000.0
+        if spec is not None:
+            if spec.i_max_ka is not None:
+                if isinstance(branch, TransformerBranch):
+                    uwagi.append(
+                        {
+                            "id": branch_id,
+                            "powod_pl": (
+                                "Jawny limit prądowy transformatora bez wskazania strony "
+                                "(GN/DN mają różne prądy) — kontrola prądowa nieoceniona."
+                            ),
+                        }
+                    )
+                else:
+                    limit_a = ka_na_a(spec.i_max_ka)
+                    znamionowe = PradyZnamionoweZaciskow(od_a=limit_a, do_a=limit_a)
+        elif isinstance(branch, LineBranch | TransformerBranch):
+            znamionowe = prady_znamionowe_zaciskow(branch)
 
         if s_limit is not None:
             s_from = abs(branch_s_from_mva.get(branch_id, 0.0 + 0.0j))
@@ -242,22 +274,33 @@ def _build_violations(
                     }
                 )
 
-        if i_limit is not None and branch_id in branch_current_ka:
-            i_value = branch_current_ka[branch_id]
-            if i_value > i_limit:
+        if isinstance(znamionowe, PradyZnamionoweZaciskow):
+            obciazenie = obciazenie_z_pradow_zaciskow(
+                znamionowe,
+                prad_od_a=prad_zacisku_od_a(branch_current_ka.get(branch_id)),
+                prad_do_a=prad_zacisku_do_a(
+                    branch_s_to_mva.get(branch_id),
+                    node_voltage_kv.get(branch.to_node_id),
+                ),
+            )
+            if obciazenie.obciazenie_pct is not None and obciazenie.obciazenie_pct > 100.0:
+                prad_a = obciazenie.prad_decydujacy_a
+                limit_zacisku_a = obciazenie.prad_znamionowy_decydujacy_a
+                assert prad_a is not None and limit_zacisku_a is not None
                 violations.append(
                     {
                         "type": "branch_current",
                         "id": branch_id,
-                        "value": float(i_value),
-                        "limit": float(i_limit),
-                        "severity": float(i_value / i_limit),
+                        "value": float(a_na_ka(abs(prad_a))),
+                        "limit": float(a_na_ka(limit_zacisku_a)),
+                        "severity": float(obciazenie.obciazenie_pct / 100.0),
                         "direction": "over",
+                        "zacisk": str(obciazenie.zacisk_decydujacy),
                     }
                 )
 
     violations.sort(key=lambda item: (-item["severity"], item["type"], item["id"]))
-    return violations
+    return violations, sorted(uwagi, key=lambda uwaga: uwaga["id"])
 
 
 def _summarize_violations(violations: list[dict[str, Any]]) -> dict[str, Any]:

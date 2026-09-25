@@ -22,6 +22,7 @@ import { svgMarkupToDrawing, parsePathData, geometryPrimitiveCount, type ExportD
 import { buildCimInput, buildIec61850Input, cimObjectCount, iec61850ObjectCount } from '../exportModelData';
 import { generateIec61850Scd } from '../../../v2/export/exportIec61850';
 import { generateCimRdfXml } from '../../../v2/export/exportCim';
+import { FIELD_ROLE_LABEL_PL } from '../../../v2/station-rozdzielnia/contract';
 
 // ---------------------------------------------------------------------------
 // Pomocnicze: markup arkusza „w miniaturze" — te same konstrukcje, które
@@ -479,7 +480,10 @@ describe('S9-6 · SCD (IEC 61850) z realnego modelu', () => {
 
     const sn = stacja.voltageLevels[0];
     expect(sn.bays.map((b) => b.name)).toEqual(['Pole 10', 'Pole transformatorowe']);
-    expect(sn.bays[0].desc).toBe('Pole liniowe');
+    // Opis roli z kanonu słownictwa ról pól (karta #141): rola modelu FEEDER to pole odgałęźne —
+    // to samo słowo, którym backend nazywa takie pole, i to samo na schemacie.
+    expect(sn.bays[0].desc).toBe(FIELD_ROLE_LABEL_PL.LINIA_ODG);
+    expect(sn.bays[1].desc).toBe(FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE);
     expect(sn.bays[0].equipment.map((e) => e.type)).toEqual(['CBR', 'DIS']);
     // Pole transformatorowe dostaje transformator stacji (inaczej wyszłoby puste).
     expect(sn.bays[1].equipment.map((e) => e.type)).toEqual(['PTR']);

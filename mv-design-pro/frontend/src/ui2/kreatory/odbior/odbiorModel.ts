@@ -9,14 +9,37 @@
  * pozorną liczy backend (R1: cable-rated-current); moc bierną Q wyprowadza
  * operacja domenowa z cosφ (P·tan(arccos cosφ)), gdy Q nie podano jawnie.
  * Zapis = operacja domenowa `add_nn_load`.
+ *
+ * FAZY PRZYŁĄCZENIA (W5-D): JEDNO źródło prawdy o fazach odbioru to pole
+ * `Load.phases` modelu (`enm/models.py::PhaseSet`), czytane przez rozpływ
+ * niesymetryczny (`rozplyw_niesymetryczny`, solver BFS per faza). Formularz
+ * startuje BEZ wskazania (`null`) — odbiór bez wskazanej fazy jest liczony jako
+ * trójfazowy symetryczny (dokładnie jak przed W5-D; klucz nie trafia do
+ * migawki, hash ENM bez zmian). Dawny osobny wybór „sposób przyłączenia"
+ * (`connection_type`, meta odbioru bez żadnego konsumenta) jest WYPROWADZANY
+ * z faz (`connectionTypeZFaz`) — dwie niezależne kontrolki tej samej cechy
+ * fizycznej byłyby dwiema prawdami (reguła „predykaty parami").
  */
 
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import type { CableRatedCurrentRequest } from '../../../ui/network-build/forms/cableVoltageDropApi';
 import type { LoadCatalogType } from '../../../ui/catalog/types';
+import type { PhaseSet } from '../../../types/enm';
+import type { NNConnectionType } from '../../../types/domainOps';
 
 export type LoadKind = 'SKUPIONY' | 'ROZPROSZONY';
-export type ConnectionType = 'TROJFAZOWY' | 'JEDNOFAZOWY';
+
+/** Wartości pola `phases` w kolejności kanonu (`enm/models.py::FAZY_PRZYLACZENIA`). */
+export const FAZY_PRZYLACZENIA: readonly PhaseSet[] = ['ABC', 'A', 'B', 'C', 'AB', 'BC', 'CA'];
+
+/**
+ * `connection_type` operacji `add_nn_load` wyprowadzony z faz: brak wskazania
+ * albo `ABC` = trójfazowy; faza–N (A/B/C) i międzyfazowy (AB/BC/CA) = odbiór
+ * jednofazowy (jedna faza obciążenia, między przewodami L–N albo L–L).
+ */
+export function connectionTypeZFaz(phases: PhaseSet | null): NNConnectionType {
+  return phases === null || phases === 'ABC' ? 'TROJFAZOWY' : 'JEDNOFAZOWY';
+}
 
 /**
  * Współczynniki modelu obciążenia ZIP — dokładnie te, które kontrakt pól
@@ -59,7 +82,8 @@ export interface OdbiorFormData {
   /** Jawny override mocy biernej [kvar]; gdy null — backend wyprowadzi z cosφ. */
   reactive_power_kvar: number | null;
   load_kind: LoadKind;
-  connection_type: ConnectionType;
+  /** Fazy przyłączenia (`Load.phases`); `null` = nie wskazano (trójfazowy symetryczny). */
+  phases: PhaseSet | null;
   /** Model obciążenia (ZIP) — czytany przez rozpływ mocy, ustawiany przez projektanta. */
   zip: ModelZip;
 }
@@ -77,7 +101,7 @@ export const DANE_DOMYSLNE: OdbiorFormData = {
   cos_phi: 0.93,
   reactive_power_kvar: null,
   load_kind: 'SKUPIONY',
-  connection_type: 'TROJFAZOWY',
+  phases: null,
   zip: { ...ZIP_DOMYSLNY },
 };
 
@@ -214,7 +238,10 @@ export function zbudujPayload(
     active_power_kw: data.active_power_kw,
     cos_phi: data.cos_phi,
     load_kind: data.load_kind,
-    connection_type: data.connection_type,
+    connection_type: connectionTypeZFaz(data.phases),
+    // Fazy jadą w payloadzie TYLKO gdy wskazane: odbiór bez wskazania wysyła
+    // dokładnie ten payload co przed W5-D (migawka bez klucza `phases`).
+    ...(data.phases !== null ? { phases: data.phases } : {}),
     ...(data.nazwa.trim() ? { load_name: data.nazwa.trim() } : {}),
     ...(isPositive(data.reactive_power_kvar) ? { reactive_power_kvar: data.reactive_power_kvar } : {}),
     ...(!data.manual_mode && data.catalog_ref?.trim()

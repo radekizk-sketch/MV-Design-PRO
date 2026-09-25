@@ -86,7 +86,8 @@ class RejectedCandidate:
 @dataclass(frozen=True)
 class BlockTransformerSelectionInput:
     """Wejście doboru TR blokowego. ΣS podane wprost (moc pozorna z ΣP·/cosφ liczy
-    warstwa API przez D1 `converter_apparent_power_mva` — jedno źródło stałych/wzoru)."""
+    warstwa API członem nastawy kontroli mocy O-53 `domain.generator_validation.
+    moc_pozorna_z_nastawy_mva` — jedno źródło wzoru)."""
 
     sum_apparent_power_mva: float
     primary_voltage_kv: float
@@ -145,9 +146,20 @@ def propose_block_transformer(
     if data.primary_voltage_kv <= 0.0 or data.secondary_voltage_kv <= 0.0:
         raise ValueError("Napięcia strony SN/nN muszą być dodatnie.")
 
-    simultaneity = data.simultaneity_factor if data.simultaneity_factor > 0 else 1.0
-    loadability = data.loadability_pu if data.loadability_pu > 0 else 1.0
-    reserve = data.reserve_pu if data.reserve_pu >= 0 else 0.0
+    # Decyzja O-53: współczynnik spoza dziedziny to BŁĄD WEJŚCIA, nie liczba do podmiany
+    # (dawne `k if k > 0 else 1.0` podstawiało „brak redukcji" za daną niedodatnią, a
+    # ujemną rezerwę zerowało). Dziedzina inżynierska (k_j ∈ (0; 1], k_obc > 0) jest
+    # sprawdzana wyżej jedną funkcją `domain.generator_validation` (API podglądu, tor
+    # operacji); tutaj — warunki matematyczne progu, bez których wynik byłby bez sensu.
+    if data.simultaneity_factor <= 0.0:
+        raise ValueError("Współczynnik jednoczesności k_j musi być dodatni.")
+    if data.loadability_pu <= 0.0:
+        raise ValueError("Przeciążalność transformatora k_obc musi być dodatnia.")
+    if data.reserve_pu < 0.0:
+        raise ValueError("Rezerwa mocy transformatora nie może być ujemna.")
+    simultaneity = data.simultaneity_factor
+    loadability = data.loadability_pu
+    reserve = data.reserve_pu
 
     effective_load_mva = data.sum_apparent_power_mva * simultaneity
     required_mva = effective_load_mva * (1.0 + reserve)
@@ -384,7 +396,11 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
     # w nazwie przypadku pracy toru.
     validate_flow_flags(data.flow_direction, data.reactive_character)
 
-    reserve = data.reserve_pu if data.reserve_pu >= 0 else 0.0
+    # Decyzja O-53 (ta sama klasa w obrębie pliku): ujemna rezerwa to błąd wejścia,
+    # nie zero podstawione po cichu.
+    if data.reserve_pu < 0.0:
+        raise ValueError("Rezerwa obciążalności kabla nie może być ujemna.")
+    reserve = data.reserve_pu
     required_ampacity = data.transformer_current_a * (1.0 + reserve)
     # F-K7: brak wspolczynnikow == warunki katalogowe (iloczyn 1,0), wiec wynik jest
     # bit-identyczny z dotychczasowym; rozni sie tylko tym, ze zalozenie jest jawne.
@@ -626,8 +642,11 @@ def propose_mv_field_apparatus(
         raise ValueError("Prąd znamionowy TR blokowego musi być dodatni.")
     if data.system_voltage_kv <= 0.0:
         raise ValueError("Napięcie sieci musi być dodatnie.")
+    # Decyzja O-53 (ta sama klasa w obrębie pliku): ujemna rezerwa to błąd wejścia.
+    if data.reserve_pu < 0.0:
+        raise ValueError("Rezerwa prądu aparatu pola nie może być ujemna.")
 
-    reserve = data.reserve_pu if data.reserve_pu >= 0 else 0.0
+    reserve = data.reserve_pu
     required_current = data.transformer_current_a * (1.0 + reserve)
     allowed = frozenset(data.allowed_kinds)
 

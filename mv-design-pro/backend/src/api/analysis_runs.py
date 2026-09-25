@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from api.analysis_run_exports import (
@@ -21,19 +21,22 @@ from api.canonical_run_views import (
     build_bus_results_response,
     build_dynamic_stability_results_response,
     build_dynamic_stability_time_series_response,
+    build_dynamika_results_response,
+    build_dynamika_time_series_response,
     build_extended_trace_response,
     build_phase_state_results_response,
+    build_power_flow_unbalanced_results_response,
     build_result_items,
     build_results_index_response,
     build_run_trace_payload,
+    build_short_circuit_band_response,
     build_short_circuit_results_response,
     build_short_circuit_rozplyw_response,
-    build_sld_overlay,
-    build_source_compliance_results_response,
 )
 from api.dependencies import get_uow_factory
 from api.document_store import store_generated_document_from_response
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
+from application.nazwy_biegu import nazwa_przypadku_z_bazy
 from application.proof_engine.pakiet_biegu import (
     PakietBieguError,
     dostepnosc_pakietu,
@@ -42,8 +45,11 @@ from application.proof_engine.pakiet_biegu import (
 from application.proof_engine.pakiet_nastaw import (
     PakietNastawError,
     dostepnosc_pakietu_nastaw,
+    zbuduj_odpowiedz_dopasowania,
+    zbuduj_odpowiedz_nastaw_json,
     zbuduj_pakiet_nastaw,
 )
+from application.protection_settings.zacisk_zabezpieczenia import zaciski_galezi_migawki
 from enm.canonical_analysis import (
     CanonicalRun,
 )
@@ -58,6 +64,7 @@ from enm.models import EnergyNetworkModel
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.nazwy import nazwa_nadana
 from pydantic import ValidationError
 
 router = APIRouter()
@@ -142,51 +149,6 @@ def get_analysis_run_results(run_id: UUID) -> dict[str, Any]:
     return canonicalize_json(build_result_items(canonical_run))
 
 
-@router.get("/analysis-runs/{run_id}/overlay")
-def get_analysis_run_overlay(
-    run_id: UUID,
-    diagram_id: UUID = Query(...),
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
-    canonical_run = _require_canonical_run(run_id)
-    with uow_factory() as uow:
-        diagram = uow.sld.get(diagram_id)
-    if diagram is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="SLD diagram not found",
-        )
-    diagram_project_id = (
-        str(diagram.get("project_id")) if diagram.get("project_id") is not None else None
-    )
-    if canonical_run.project_id is not None and diagram_project_id not in {
-        None,
-        str(canonical_run.project_id),
-    }:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Run does not belong to this project",
-        )
-    overlay = build_sld_overlay(
-        canonical_run,
-        diagram_id=diagram_id,
-        sld_payload=diagram.get("payload", {}),
-    )
-    # Status swiezosci WCHODZI do odpowiedzi (K-S). Wczesniej byl tu budowany i
-    # WYRZUCANY, wiec klient (`ui/results-inspector/api.ts`) dopisywal sobie
-    # `result_status: 'VALID'` z palca — baner „Wyniki nieaktualne" w
-    # `SldOverlay.tsx` nie mogl zapalic sie nigdy.
-    return canonicalize_json(
-        {
-            "bus_overlays": overlay.get("nodes", []),
-            "branch_overlays": overlay.get("branches", []),
-            "result_status": overlay["result_status"],
-            "result_status_reason": overlay["result_status_reason"],
-            "result_status_reason_pl": overlay["result_status_reason_pl"],
-        }
-    )
-
-
 @router.get("/analysis-runs/{run_id}/trace")
 def get_analysis_run_trace(run_id: UUID) -> dict[str, Any]:
     trace_payload = build_run_trace_payload(_require_canonical_run(run_id))
@@ -263,7 +225,7 @@ def _proof_latex_response(run: CanonicalRun) -> Response:
     if proof_currents:
         lines.extend(
             [
-                r"\section*{Prady charakterystyczne SC3F}",
+                r"\section*{Prądy charakterystyczne SC3F}",
                 r"\begin{longtable}{llll}",
                 r"Obiekt & \verb|I_dyn| [kA] & \verb|I_th| [kA] & Norma \\",
                 r"\hline",
@@ -275,9 +237,7 @@ def _proof_latex_response(run: CanonicalRun) -> Response:
             lines.append(
                 " & ".join(
                     [
-                        _latex_escape(
-                            row.get("target_name") or row.get("target_id") or "brak danych"
-                        ),
+                        _latex_escape(nazwa_nadana(row.get("target_name")) or "brak danych"),
                         _latex_escape(
                             f"{i_dyn:.4g}" if isinstance(i_dyn, int | float) else "brak danych"
                         ),
@@ -565,15 +525,24 @@ def get_pakiet_dowodowy_dostepnosc(run_id: UUID) -> dict[str, Any]:
 
 
 @router.get("/analysis-runs/{run_id}/pakiet-dowodowy")
-def get_pakiet_dowodowy(run_id: UUID, punkt: str | None = Query(default=None)) -> Response:
+def get_pakiet_dowodowy(
+    run_id: UUID,
+    punkt: str | None = Query(default=None),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> Response:
     """Pakiet dowodowy przebiegu (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).
 
     Cała fizyka po stronie serwera — klient podaje wyłącznie przebieg i punkt
     zwarcia. ``punkt`` pominięty ⇒ pierwszy punkt biegu (deterministycznie).
+    Nagłówek dowodu nazywa przypadek nazwą z bazy, nie identyfikatorem (karta #144).
     """
     run = _require_canonical_run(run_id)
     try:
-        filename, content = zbuduj_pakiet_biegu(run, punkt=punkt)
+        filename, content = zbuduj_pakiet_biegu(
+            run,
+            punkt=punkt,
+            nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
+        )
     except PakietBieguError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
@@ -585,14 +554,36 @@ def get_pakiet_dowodowy(run_id: UUID, punkt: str | None = Query(default=None)) -
     )
 
 
+@router.get("/analysis-runs/{run_id}/zaciski-galezi")
+def get_zaciski_galezi(run_id: UUID) -> dict[str, Any]:
+    """Etykiety zacisków (`od` / `do`, z nazwami szyn) każdej gałęzi z impedancją
+    migawki biegu — do formularzy, w których inżynier wskazuje zacisk (miejsce pomiaru
+    mocy gałęzi w zgodności powykonawczej, decyzja O-51). Read-only."""
+    run = _require_canonical_run(run_id)
+    return canonicalize_json(
+        {"run_id": str(run.id), "zaciski": zaciski_galezi_migawki(run.snapshot)}
+    )
+
+
+def _odmowa_nastaw(exc: PakietNastawError) -> HTTPException:
+    """422 bramy nastaw: powód po polsku i kod z kanonu kodów gotowości (gdy odmowa go
+    niesie — zacisk zabezpieczenia, decyzja O-51; inaczej `kod` = null)."""
+    return HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail={"kod": exc.kod, "powod_pl": str(exc)},
+    )
+
+
 @router.get("/analysis-runs/{run_id}/pakiet-dowodowy-nastaw/dostepnosc")
 def get_pakiet_dowodowy_nastaw_dostepnosc(run_id: UUID) -> dict[str, Any]:
     """Czy TEN przebieg (zwarcie trójfazowe c_max) może być kotwicą pakietu nastaw.
 
     Zwraca listę linii/kabli z kompletem danych katalogowych (przekrój, materiał,
-    prąd znamionowy) — kandydatów na chroniony odcinek — a dla każdej z nich listę
-    szyn kandydujących na „kolejną strefę" (warunek selektywności). Wybór odcinka i
-    szyny należy do inżyniera; kod niczego nie zgaduje.
+    prąd znamionowy) — kandydatów na chroniony odcinek — a dla każdej z nich zacisk
+    zabezpieczenia z modelu, zaciski dozwolone z etykietami szyn, rekord odmowy bez
+    wskazania i listy szyn kandydujących na „kolejną strefę" (warunek selektywności)
+    osobno dla każdego zacisku (decyzja O-51). Wybór odcinka, zacisku (gdy model
+    milczy) i szyny należy do inżyniera; kod niczego nie zgaduje.
     """
     return canonicalize_json(dostepnosc_pakietu_nastaw(_require_canonical_run(run_id)))
 
@@ -602,17 +593,27 @@ def get_pakiet_dowodowy_nastaw(
     run_id: UUID,
     linia: str = Query(...),
     nastepna_szyna: str = Query(...),
+    zacisk_zabezpieczenia: Literal["od", "do"] | None = Query(
+        default=None,
+        description=(
+            "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). "
+            "Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; "
+            "zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy."
+        ),
+    ),
     c_min: float = Query(default=1.0),
     delta_t_s: float = Query(default=0.3),
     k_b: float = Query(default=1.2),
     k_bth: float = Query(default=1.1),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Pakiet dowodowy nastaw I>/I>> (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).
 
     Serwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy
     ``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg
     zwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i
-    trzy wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min.
+    wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min i — gdy model
+    milczy — zacisk, przy którym stoi zabezpieczenie (decyzja O-51).
     """
     run = _require_canonical_run(run_id)
     try:
@@ -621,19 +622,115 @@ def get_pakiet_dowodowy_nastaw(
             line_id=linia,
             next_bus_id=nastepna_szyna,
             c_min=c_min,
+            zacisk_zabezpieczenia=zacisk_zabezpieczenia,
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
+            uow_factory=uow_factory,
+            nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
         )
     except PakietNastawError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        ) from exc
+        raise _odmowa_nastaw(exc) from exc
     return Response(
         content=content,
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/analysis-runs/{run_id}/nastawy")
+def get_nastawy(
+    run_id: UUID,
+    linia: str = Query(...),
+    nastepna_szyna: str = Query(...),
+    zacisk_zabezpieczenia: Literal["od", "do"] | None = Query(
+        default=None,
+        description=(
+            "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). "
+            "Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; "
+            "zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy."
+        ),
+    ),
+    c_min: float = Query(default=1.0),
+    delta_t_s: float = Query(default=0.3),
+    k_b: float = Query(default=1.2),
+    k_bth: float = Query(default=1.1),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
+    """Nastawy I>/I>> (JSON): metoda Hoppela, TA SAMA fizyka co pakiet dowodowy
+    ZIP (karta W3-C1) — bez pobierania pliku. Ekran koordynacji czyta tę trasę,
+    a przycisk „Pobierz pakiet dowodowy" woła ZIP z tym samym zapytaniem.
+
+    Serwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy
+    ``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg
+    zwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i
+    wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min i — gdy model
+    milczy — zacisk, przy którym stoi zabezpieczenie (decyzja O-51).
+    """
+    run = _require_canonical_run(run_id)
+    try:
+        odpowiedz = zbuduj_odpowiedz_nastaw_json(
+            run,
+            line_id=linia,
+            next_bus_id=nastepna_szyna,
+            c_min=c_min,
+            zacisk_zabezpieczenia=zacisk_zabezpieczenia,
+            delta_t_s=delta_t_s,
+            k_b=k_b,
+            k_bth=k_bth,
+            uow_factory=uow_factory,
+            nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
+        )
+    except PakietNastawError as exc:
+        raise _odmowa_nastaw(exc) from exc
+    return canonicalize_json(odpowiedz)
+
+
+@router.get("/analysis-runs/{run_id}/nastawy/dopasowanie")
+def get_nastawy_dopasowanie(
+    run_id: UUID,
+    device_id: str = Query(...),
+    linia: str = Query(...),
+    nastepna_szyna: str = Query(...),
+    zacisk_zabezpieczenia: Literal["od", "do"] | None = Query(
+        default=None,
+        description=(
+            "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). "
+            "Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; "
+            "zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy."
+        ),
+    ),
+    c_min: float = Query(default=1.0),
+    delta_t_s: float = Query(default=0.3),
+    k_b: float = Query(default=1.2),
+    k_bth: float = Query(default=1.1),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
+    """Dopasowanie nastaw Hoppela do aparatu (karta W3-C1, decyzja §0.4).
+
+    Ta sama fizyka co ``.../nastawy`` (jeden bieg zbiorczy, jedno wywołanie
+    silnika), zmapowana na wymaganie wobec przekaźnika (`ProtectionRequirementV0`)
+    i sprawdzona wobec wybranego aparatu z katalogu analitycznego
+    (`GET /api/catalog/protection/device-types` — lista aparatów do wyboru).
+    """
+    run = _require_canonical_run(run_id)
+    try:
+        odpowiedz = zbuduj_odpowiedz_dopasowania(
+            run,
+            device_id=device_id,
+            line_id=linia,
+            next_bus_id=nastepna_szyna,
+            c_min=c_min,
+            zacisk_zabezpieczenia=zacisk_zabezpieczenia,
+            delta_t_s=delta_t_s,
+            k_b=k_b,
+            k_bth=k_bth,
+            uow_factory=uow_factory,
+            nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
+        )
+    except PakietNastawError as exc:
+        raise _odmowa_nastaw(exc) from exc
+    return canonicalize_json(odpowiedz)
 
 
 @router.get("/analysis-runs/{run_id}/results/index")
@@ -657,14 +754,22 @@ def get_short_circuit_results(run_id: UUID) -> dict[str, Any]:
 
 
 @router.get("/analysis-runs/{run_id}/results/short-circuit/rozplyw")
-def get_short_circuit_rozplyw(run_id: UUID, target_id: str = Query(...)) -> dict[str, Any]:
+def get_short_circuit_rozplyw(
+    run_id: UUID,
+    target_id: str = Query(...),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
     # V12K-281 (K13): rozpływ gałęziowy JEDNEGO punktu zwarcia na żądanie —
     # wiersze zbiorcze `/results/short-circuit` nie niosą już rozpływu
     # (iloczyn źródło×gałąź per wiersz dawał odpowiedź/raport 730 MB).
     # `target_id` jako parametr zapytania: refy węzłów ENM zawierają ukośniki.
     run = _require_canonical_run(run_id)
     try:
-        return canonicalize_json(build_short_circuit_rozplyw_response(run, target_id))
+        # PERF-SC-50: wkłady na żądanie z wejścia biegu — fabryka UoW jak przy biegu
+        # (opcje audytu 2 czytane tą samą bazą, którą zapisano konfigurację).
+        return canonicalize_json(
+            build_short_circuit_rozplyw_response(run, target_id, uow_factory=uow_factory)
+        )
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -672,9 +777,35 @@ def get_short_circuit_rozplyw(run_id: UUID, target_id: str = Query(...)) -> dict
         ) from exc
 
 
+@router.get("/analysis-runs/{run_id}/results/short-circuit/pasmo")
+def get_short_circuit_band(
+    run_id: UUID,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
+    # Karta W3-G3 (aneks D7, mapa domkniecia 3 #12): oba scenariusze c_max/c_min
+    # JEDNEGO przypadku obok siebie, z proweniencja kazdej strony. `run_id` jest
+    # kotwica (dowolny zakonczony bieg zwarciowy — nie musi byc MAX); orkiestracja
+    # pary (bieg zapisany innego biegu przypadku -> wariant w pamieci -> nazwana
+    # odmowa) w `dobierz_pasmo_min_max_zwarcia`, zero fizyki w tym module.
+    run = _require_canonical_run(run_id)
+    try:
+        return canonicalize_json(build_short_circuit_band_response(run, uow_factory=uow_factory))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
 @router.get("/analysis-runs/{run_id}/results/phase-state")
 def get_phase_state_results(run_id: UUID) -> dict[str, Any]:
     return canonicalize_json(build_phase_state_results_response(_require_canonical_run(run_id)))
+
+
+@router.get("/analysis-runs/{run_id}/results/rozplyw-niesymetryczny")
+def get_power_flow_unbalanced_results(run_id: UUID) -> dict[str, Any]:
+    """Wynik rozpływu niesymetrycznego (W5-D): napięcia i prądy per faza, VUF (IEC
+    61000-4-30) z solvera, straty, założenia biegu nazwane kodami kanonu."""
+    return canonicalize_json(
+        build_power_flow_unbalanced_results_response(_require_canonical_run(run_id))
+    )
 
 
 @router.get("/analysis-runs/{run_id}/results/dynamic-stability")
@@ -691,17 +822,38 @@ def get_dynamic_stability_time_series(run_id: UUID) -> dict[str, Any]:
     )
 
 
+@router.get("/analysis-runs/{run_id}/results/dynamika")
+def get_dynamika_results(run_id: UUID) -> dict[str, Any]:
+    """Metadane wyniku `dynamika_rms` (karta W6-1) — BEZ próbek szeregów
+    czasowych (`.../results/dynamika/time-series` poniżej, na żądanie)."""
+    run = _require_canonical_run(run_id)
+    try:
+        return canonicalize_json(build_dynamika_results_response(run))
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.get("/analysis-runs/{run_id}/results/dynamika/time-series")
+def get_dynamika_time_series(
+    run_id: UUID,
+    kanaly: str | None = Query(default=None, description="Lista kluczy kanałów, po przecinku."),
+) -> dict[str, Any]:
+    """Próbki szeregów czasowych biegu `dynamika_rms` na żądanie (SS0 p.6).
+
+    Brak biegu tego typu, brak zapisanych szeregów, albo żaden z żądanych
+    `kanaly` nie istnieje → 404 nazwany (zero cichej pustej odpowiedzi)."""
+    run = _require_canonical_run(run_id)
+    klucze = [k.strip() for k in kanaly.split(",") if k.strip()] if kanaly else None
+    try:
+        return canonicalize_json(build_dynamika_time_series_response(run, klucze))
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
 @router.get("/analysis-runs/{run_id}/results/automation-trace")
 def get_automation_trace_results(run_id: UUID) -> dict[str, Any]:
     return canonicalize_json(
         build_automation_trace_results_response(_require_canonical_run(run_id))
-    )
-
-
-@router.get("/analysis-runs/{run_id}/results/source-compliance")
-def get_source_compliance_results(run_id: UUID) -> dict[str, Any]:
-    return canonicalize_json(
-        build_source_compliance_results_response(_require_canonical_run(run_id))
     )
 
 

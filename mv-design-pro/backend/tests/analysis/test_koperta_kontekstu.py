@@ -26,7 +26,6 @@ from analysis.normative.models import NormativeContext
 from analysis.protection_curves_it.models import ProtectionCurvesITContext
 from analysis.protection_insight.models import ProtectionInsightContext
 from analysis.recommendations.models import RecommendationContext
-from analysis.reporting.pdf.p24_plus_report import ReportContext
 from analysis.sensitivity.models import SensitivityContext
 from analysis.voltage_profile.models import VoltageProfileContext
 
@@ -40,7 +39,10 @@ POLA_KOPERTY = {
     "run_id",
 }
 
-#: Wszystkie ogniwa łańcucha + kontekst raportu PDF. Nowe ogniwo dopisuje się tutaj.
+#: Wszystkie ŻYWE ogniwa łańcucha. Nowe ogniwo dopisuje się tutaj.
+#: `ReportContext` (P24+, `analysis/reporting/pdf/p24_plus_report.py`) usunięty
+#: z listy CV-3.2 razem z kasacją C4 — pakiet P24+ usunięty w całości (0
+#: wołających w `backend/src`, 0 tras HTTP; patrz commit kasacji C4).
 OGNIWA_LANCUCHA = (
     VoltageProfileContext,
     NormativeContext,
@@ -50,7 +52,6 @@ OGNIWA_LANCUCHA = (
     SensitivityContext,
     LFSensitivityContext,
     RecommendationContext,
-    ReportContext,
 )
 
 

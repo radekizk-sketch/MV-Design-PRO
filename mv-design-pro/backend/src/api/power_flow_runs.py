@@ -23,7 +23,9 @@ from api.canonical_run_views import (
     get_power_flow_trace as get_canonical_power_flow_trace,
 )
 from api.dependencies import get_uow_factory
+from api.klucz_twin_dep import klucz_twin_z_uow
 from application.analysis_run.read_model import canonicalize_json
+from domain.execution import StanBiegu
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as create_canonical_run
 from enm.canonical_analysis import execute_run as execute_canonical_run
@@ -32,6 +34,7 @@ from enm.canonical_analysis import list_runs_for_project as list_canonical_runs_
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.reporting.czcionki import zarejestruj_czcionki
+from network_model.reporting.missing_value import format_wynik
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["power-flow"])
@@ -47,30 +50,6 @@ class PowerFlowRunCreateRequest(BaseModel):
         default=None,
         description="Opcje solvera (tolerance, max_iter, trace_level, etc.)",
     )
-
-
-class PowerFlowRunResponse(BaseModel):
-    id: str
-    deterministic_id: str
-    project_id: str
-    study_case_id: str
-    analysis_type: str
-    status: str
-    result_status: str
-    created_at: str
-    started_at: str | None
-    finished_at: str | None
-    input_hash: str
-    converged: bool | None = None
-    iterations: int | None = None
-
-
-class PowerFlowExecuteResponse(BaseModel):
-    id: str
-    status: str
-    converged: bool | None = None
-    iterations: int | None = None
-    error_message: str | None = None
 
 
 def _require_canonical_run(run_id: UUID) -> CanonicalRun:
@@ -194,20 +173,20 @@ def _build_power_flow_xlsx(bundle: dict[str, Any]) -> bytes:
                 ["Pole", "Wartosc"],
                 ["Run ID", metadata.get("run_id")],
                 ["StudyCase ID", metadata.get("study_case_id")],
-                ["Status zbieznosci", "Zbiezny" if result.get("converged") else "Niezbiezny"],
+                ["Status zbieżności", "Zbiezny" if result.get("converged") else "Niezbiezny"],
                 ["Liczba iteracji", result.get("iterations_count")],
-                ["Wezel bilansujacy", result.get("slack_bus_id")],
+                ["Węzeł bilansujący", result.get("slack_bus_id")],
                 ["Straty P [MW]", summary.get("total_losses_p_mw")],
                 ["Straty Q [Mvar]", summary.get("total_losses_q_mvar")],
-                ["Min napiecie [pu]", summary.get("min_v_pu")],
-                ["Max napiecie [pu]", summary.get("max_v_pu")],
+                ["Min napięcie [pu]", summary.get("min_v_pu")],
+                ["Max napięcie [pu]", summary.get("max_v_pu")],
                 ["Snapshot hash", metadata.get("snapshot_hash")],
                 ["Input hash", metadata.get("input_hash")],
             ],
         ),
         (
             "Szyny",
-            [["Bus ID", "V [pu]", "Kat [deg]", "P inj [MW]", "Q inj [Mvar]"]]
+            [["Bus ID", "V [pu]", "Kąt [deg]", "P inj [MW]", "Q inj [Mvar]"]]
             + [
                 [
                     row.get("bus_id"),
@@ -339,7 +318,7 @@ def _build_power_flow_xlsx(bundle: dict[str, Any]) -> bytes:
 @router.get("/projects/{project_id}/power-flow-runs")
 def list_power_flow_runs(
     project_id: UUID,
-    status: str | None = Query(
+    status: StanBiegu | None = Query(
         default=None,
         description="Filtruj po statusie (CREATED, RUNNING, FINISHED, FAILED)",
     ),
@@ -349,11 +328,19 @@ def list_power_flow_runs(
             "id": str(run.id),
             "project_id": run.project_id,
             "study_case_id": run.case_id,
+            "analysis_type": run.analysis_type,
             "status": run.status,
             "result_status": run.result_status,
             "created_at": run.created_at.isoformat(),
             "finished_at": run.finished_at.isoformat() if run.finished_at else None,
             "input_hash": run.input_hash,
+            # B5 (karta CV-3.3-B): etykieta wyboru biegu w porownaniu A/B —
+            # rodzaj + rewizja/scenariusz + krotki snapshot_hash — czyta te
+            # same trzy pola co koperta rewizji (`enm/envelope.py`), zamiast
+            # samego UUID biegu bez dowodu KTORY stan modelu opisuje.
+            "snapshot_hash": run.snapshot_hash,
+            "model_revision": (run.envelope or {}).get("model_revision"),
+            "scenario_ref": (run.envelope or {}).get("scenario_ref"),
             "converged": ((run.raw_result or {}).get("result_v1") or {}).get("converged"),
             "iterations": ((run.raw_result or {}).get("result_v1") or {}).get("iterations_count"),
         }
@@ -378,8 +365,10 @@ def create_power_flow_run(
             request.study_case_id,
             uow_factory,
         )
+        klucz = klucz_twin_z_uow(case_id, uow_factory)
         run = create_canonical_run(
             case_id=case_id,
+            klucz_twin=klucz,
             project_id=str(project_id),
             analysis_type="PF",
             options=options,
@@ -406,9 +395,14 @@ def create_power_flow_run(
 
 
 @router.post("/power-flow-runs/{run_id}/execute")
-def execute_power_flow_run(run_id: UUID) -> dict[str, Any]:
+def execute_power_flow_run(
+    run_id: UUID,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
     _require_canonical_run(run_id)
-    run = execute_canonical_run(run_id)
+    # CV-4.2b: fabryka `UnitOfWork` żądania idzie do wykonawcy — rozpływ z
+    # konfiguracją audytu 2 stacji czyta ją tą samą bazą, którą ją zapisano.
+    run = execute_canonical_run(run_id, uow_factory=uow_factory)
     result_v1 = (run.raw_result or {}).get("result_v1") or {}
     return canonicalize_json(
         {
@@ -507,7 +501,7 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
     style.font.name = "Calibri"
     style.font.size = Pt(11)
 
-    heading = doc.add_heading("Raport rozplywu mocy", level=0)
+    heading = doc.add_heading("Raport rozpływu mocy", level=0)
     heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     status_parts = [
@@ -536,20 +530,20 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
         row[0].text = label
         row[1].text = str(value) if value is not None else "—"
 
-    add_row("Status zbieznosci", "Zbiezny" if result.get("converged") else "Niezbiezny")
+    add_row("Status zbieżności", "Zbiezny" if result.get("converged") else "Niezbiezny")
     add_row("Liczba iteracji", result.get("iterations_count"))
-    add_row("Wezel bilansujacy", result.get("slack_bus_id"))
-    add_row("Calkowite straty P [MW]", f"{summary.get('total_losses_p_mw', 0):.4g}")
-    add_row("Calkowite straty Q [Mvar]", f"{summary.get('total_losses_q_mvar', 0):.4g}")
-    add_row("Min. napiecie [pu]", f"{summary.get('min_v_pu', 0):.4g}")
-    add_row("Max. napiecie [pu]", f"{summary.get('max_v_pu', 0):.4g}")
+    add_row("Węzeł bilansujący", result.get("slack_bus_id"))
+    add_row("Całkowite straty P [MW]", format_wynik(summary.get("total_losses_p_mw"), ".4g"))
+    add_row("Całkowite straty Q [Mvar]", format_wynik(summary.get("total_losses_q_mvar"), ".4g"))
+    add_row("Min. napięcie [pu]", format_wynik(summary.get("min_v_pu"), ".4g"))
+    add_row("Max. napięcie [pu]", format_wynik(summary.get("max_v_pu"), ".4g"))
     add_row("Elementy z katalogiem", metadata.get("catalog_context_count"))
 
     doc.add_paragraph()
     doc.add_heading("Kontekst katalogowy", level=1)
     if catalog_context_lines:
         doc.add_paragraph(
-            "Format: element_id | typ | katalog | pochodzenie parametrow | materialized_params"
+            "Format: element_id | typ | katalog | pochodzenie parametrów | materialized_params"
         )
         for line in catalog_context_lines:
             doc.add_paragraph(line)
@@ -563,12 +557,12 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
             title = step.get("title") or step.get("key") or "Krok"
             doc.add_paragraph(f"{title}: {json.dumps(step, ensure_ascii=False, sort_keys=True)}")
         if len(white_box_trace) > 12:
-            doc.add_paragraph(f"... oraz {len(white_box_trace) - 12} kolejnych krokow")
+            doc.add_paragraph(f"... oraz {len(white_box_trace) - 12} kolejnych kroków")
     else:
-        doc.add_paragraph("Brak jawnego sladu White Box.")
+        doc.add_paragraph("Brak jawnego śladu White Box.")
 
     doc.add_paragraph()
-    doc.add_heading("Wyniki wezlowe (szyny)", level=1)
+    doc.add_heading("Wyniki węzłowe (szyny)", level=1)
     bus_results = result.get("bus_results", [])
     if bus_results:
         bus_table = doc.add_table(rows=1, cols=5)
@@ -576,7 +570,7 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
         header = bus_table.rows[0].cells
         header[0].text = "ID szyny"
         header[1].text = "V [pu]"
-        header[2].text = "Kat [deg]"
+        header[2].text = "Kąt [deg]"
         header[3].text = "P_inj [MW]"
         header[4].text = "Q_inj [Mvar]"
         for cell in header:
@@ -586,14 +580,14 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
         for bus in bus_results[:30]:
             row = bus_table.add_row().cells
             row[0].text = str(bus.get("bus_id", "—"))[:16]
-            row[1].text = f"{bus.get('v_pu', 0):.4g}"
-            row[2].text = f"{bus.get('angle_deg', 0):.2f}"
-            row[3].text = f"{bus.get('p_injected_mw', 0):.3g}"
-            row[4].text = f"{bus.get('q_injected_mvar', 0):.3g}"
+            row[1].text = format_wynik(bus.get("v_pu"), ".4g")
+            row[2].text = format_wynik(bus.get("angle_deg"), ".2f")
+            row[3].text = format_wynik(bus.get("p_injected_mw"), ".3g")
+            row[4].text = format_wynik(bus.get("q_injected_mvar"), ".3g")
         if len(bus_results) > 30:
-            doc.add_paragraph(f"... oraz {len(bus_results) - 30} dodatkowych wezlow")
+            doc.add_paragraph(f"... oraz {len(bus_results) - 30} dodatkowych węzłów")
     else:
-        doc.add_paragraph("Brak wynikow wezlowych.")
+        doc.add_paragraph("Brak wyników węzłowych.")
 
     buffer = io.BytesIO()
     doc.save(buffer)
@@ -650,7 +644,7 @@ def export_power_flow_run_pdf(run_id: UUID) -> Response:
     line_height = 5 * mm
 
     canvas_obj.setFont("DejaVuSans-Bold", 16)
-    title = "Raport rozplywu mocy"
+    title = "Raport rozpływu mocy"
     canvas_obj.drawString(
         (page_width - canvas_obj.stringWidth(title, "DejaVuSans-Bold", 16)) / 2,
         y,
@@ -674,11 +668,11 @@ def export_power_flow_run_pdf(run_id: UUID) -> Response:
     canvas_obj.setFont("DejaVuSans", 10)
     summary = result.get("summary", {})
     summary_lines = [
-        f"Wezel bilansujacy: {result.get('slack_bus_id', '—')}",
-        f"Calkowite straty P: {summary.get('total_losses_p_mw', 0):.4g} MW",
-        f"Calkowite straty Q: {summary.get('total_losses_q_mvar', 0):.4g} Mvar",
-        f"Min. napiecie: {summary.get('min_v_pu', 0):.4g} pu",
-        f"Max. napiecie: {summary.get('max_v_pu', 0):.4g} pu",
+        f"Węzeł bilansujący: {result.get('slack_bus_id', '—')}",
+        f"Całkowite straty P: {format_wynik(summary.get('total_losses_p_mw'), '.4g')} MW",
+        f"Całkowite straty Q: {format_wynik(summary.get('total_losses_q_mvar'), '.4g')} Mvar",
+        f"Min. napięcie: {format_wynik(summary.get('min_v_pu'), '.4g')} pu",
+        f"Max. napięcie: {format_wynik(summary.get('max_v_pu'), '.4g')} pu",
         f"Elementy z katalogiem: {metadata.get('catalog_context_count', 0)}",
     ]
     for line in summary_lines:
@@ -730,24 +724,24 @@ def export_power_flow_run_pdf(run_id: UUID) -> Response:
             canvas_obj.drawString(
                 left_margin,
                 y,
-                f"... oraz {len(white_box_trace) - 10} kolejnych krokow",
+                f"... oraz {len(white_box_trace) - 10} kolejnych kroków",
             )
             y -= line_height
     else:
-        canvas_obj.drawString(left_margin, y, "Brak jawnego sladu White Box.")
+        canvas_obj.drawString(left_margin, y, "Brak jawnego śladu White Box.")
         y -= line_height
 
     y -= 5 * mm
     canvas_obj.setFont("DejaVuSans-Bold", 12)
-    canvas_obj.drawString(left_margin, y, "Wyniki wezlowe (top 20)")
+    canvas_obj.drawString(left_margin, y, "Wyniki węzłowe (top 20)")
     y -= 5 * mm
 
     canvas_obj.setFont("DejaVuSans", 9)
     for bus in result.get("bus_results", [])[:20]:
         text = (
             f"{str(bus.get('bus_id', '—'))[:12]}: "
-            f"V={bus.get('v_pu', 0):.4g} pu, "
-            f"kat={bus.get('angle_deg', 0):.2f} deg"
+            f"V={format_wynik(bus.get('v_pu'), '.4g')} pu, "
+            f"kąt={format_wynik(bus.get('angle_deg'), '.2f')} deg"
         )
         canvas_obj.drawString(left_margin, y, text)
         y -= line_height

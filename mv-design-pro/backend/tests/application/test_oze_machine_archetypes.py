@@ -3,7 +3,7 @@ G8 wind — asynchronous). The FULL machine SC model (IEC 60909 §6.3/§6.7/§6.
 source contribution instead of the IBG bounded current (gate J). Mirrors the frontend
 gate tests but pins the backend substrate builders directly."""
 
-from application.reference_networks.station_archetype_substrate import (
+from tests.reference_networks.station_archetype_substrate import (
     build_g5_wind_t4,
     build_g7_wind_async,
     build_g8_biogaz,

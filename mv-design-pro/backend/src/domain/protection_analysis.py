@@ -17,8 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Literal
-from uuid import UUID, uuid4
+from typing import Any
 
 # =============================================================================
 # ENUMS AND TYPES
@@ -31,18 +30,6 @@ class TripState(StrEnum):
     TRIPS = "TRIPS"  # Device will trip for given fault current
     NO_TRIP = "NO_TRIP"  # Device will NOT trip (current below pickup)
     INVALID = "INVALID"  # Evaluation could not complete (missing data, unsupported curve)
-
-
-class ProtectionRunStatus(StrEnum):
-    """Status of a protection analysis run."""
-
-    CREATED = "CREATED"
-    RUNNING = "RUNNING"
-    FINISHED = "FINISHED"
-    FAILED = "FAILED"
-
-
-ProtectionRunStatusLiteral = Literal["CREATED", "RUNNING", "FINISHED", "FAILED"]
 
 
 # =============================================================================
@@ -325,155 +312,6 @@ class ProtectionTrace:
                 else datetime.now(UTC)
             ),
         )
-
-
-# =============================================================================
-# RUN ENTITY
-# =============================================================================
-
-
-@dataclass(frozen=True)
-class ProtectionAnalysisRun:
-    """
-    Protection analysis run entity.
-
-    Tracks the lifecycle of a protection analysis from creation to completion.
-    Analogous to AnalysisRun but specific to protection analysis.
-
-    Attributes:
-        id: Unique run identifier (UUID)
-        project_id: Parent project ID
-        sc_run_id: Source short-circuit run ID (must exist and be FINISHED)
-        protection_case_id: Protection case ID (StudyCase with ProtectionConfig)
-        status: Run lifecycle status
-        input_hash: SHA-256 hash of canonical input for deduplication
-        input_snapshot: Canonical input data
-        result_summary: Summary of results (after FINISHED)
-        trace_json: Full trace data (after FINISHED)
-        error_message: Error details (after FAILED)
-        created_at: Creation timestamp
-        started_at: Execution start timestamp
-        finished_at: Completion timestamp
-        network_snapshot_hash: KOTWICA swiezosci — odcisk modelu przypadku
-            zabezpieczen w chwili utworzenia biegu (K-S). `None` dla biegow
-            zapisanych zanim odcisk zaczal byc utrwalany oraz dla przypadku bez
-            materializowanego modelu; taki bieg NIE MOZE meldowac sie jako
-            aktualny (patrz `application/result_freshness.py`).
-        sc_network_snapshot_hash: KOTWICA swiezysci wejscia — odcisk modelu, na
-            ktorym policzono bieg zwarciowy bedacy zrodlem wynikow. `None`, gdy
-            bieg zwarciowy nie niesie odcisku (kanal inny niz kanoniczny).
-
-    Pola kotwic sa ADDYTYWNE: nie wchodza do `input_hash` (tozsamosc wejscia
-    pinuje juz `sc_run_id` + konfiguracja przypadku), wiec odciski istniejacych
-    biegow pozostaja bajtowo takie same.
-    """
-
-    id: UUID
-    project_id: UUID
-    sc_run_id: str
-    protection_case_id: UUID
-    status: ProtectionRunStatus
-    input_hash: str = ""
-    input_snapshot: dict[str, Any] = field(default_factory=dict)
-    result_summary: dict[str, Any] = field(default_factory=dict)
-    trace_json: dict[str, Any] | None = None
-    error_message: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    started_at: datetime | None = None
-    finished_at: datetime | None = None
-    network_snapshot_hash: str | None = None
-    sc_network_snapshot_hash: str | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict."""
-        return {
-            "id": str(self.id),
-            "project_id": str(self.project_id),
-            "sc_run_id": self.sc_run_id,
-            "protection_case_id": str(self.protection_case_id),
-            "status": self.status.value,
-            "input_hash": self.input_hash,
-            "input_snapshot": self.input_snapshot,
-            "result_summary": self.result_summary,
-            "trace_json": self.trace_json,
-            "error_message": self.error_message,
-            "created_at": self.created_at.isoformat(),
-            "started_at": self.started_at.isoformat() if self.started_at else None,
-            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
-            "network_snapshot_hash": self.network_snapshot_hash,
-            "sc_network_snapshot_hash": self.sc_network_snapshot_hash,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ProtectionAnalysisRun:
-        """Deserialize from dict.
-
-        Brak kluczy kotwic (bieg zapisany przed K-S) daje `None` — uczciwy brak
-        wiedzy o modelu, NIE domniemana aktualnosc.
-        """
-        return cls(
-            id=UUID(data["id"]),
-            project_id=UUID(data["project_id"]),
-            sc_run_id=str(data["sc_run_id"]),
-            protection_case_id=UUID(data["protection_case_id"]),
-            status=ProtectionRunStatus(data["status"]),
-            input_hash=data.get("input_hash", ""),
-            input_snapshot=data.get("input_snapshot", {}),
-            result_summary=data.get("result_summary", {}),
-            trace_json=data.get("trace_json"),
-            error_message=data.get("error_message"),
-            created_at=(
-                datetime.fromisoformat(data["created_at"])
-                if "created_at" in data
-                else datetime.now(UTC)
-            ),
-            started_at=(
-                datetime.fromisoformat(data["started_at"]) if data.get("started_at") else None
-            ),
-            finished_at=(
-                datetime.fromisoformat(data["finished_at"]) if data.get("finished_at") else None
-            ),
-            network_snapshot_hash=data.get("network_snapshot_hash"),
-            sc_network_snapshot_hash=data.get("sc_network_snapshot_hash"),
-        )
-
-
-def new_protection_analysis_run(
-    *,
-    project_id: UUID,
-    sc_run_id: str,
-    protection_case_id: UUID,
-    input_snapshot: dict[str, Any],
-    input_hash: str,
-    network_snapshot_hash: str | None = None,
-    sc_network_snapshot_hash: str | None = None,
-) -> ProtectionAnalysisRun:
-    """
-    Factory function to create a new ProtectionAnalysisRun.
-
-    Args:
-        project_id: ID of the project
-        sc_run_id: ID of the source short-circuit run
-        protection_case_id: ID of the protection case (StudyCase)
-        input_snapshot: Canonical input data for determinism
-        input_hash: SHA-256 hash of input for deduplication
-        network_snapshot_hash: Odcisk modelu przypadku w chwili utworzenia biegu
-        sc_network_snapshot_hash: Odcisk modelu biegu zwarciowego (zrodla wynikow)
-
-    Returns:
-        New ProtectionAnalysisRun in CREATED status
-    """
-    return ProtectionAnalysisRun(
-        id=uuid4(),
-        project_id=project_id,
-        sc_run_id=sc_run_id,
-        protection_case_id=protection_case_id,
-        status=ProtectionRunStatus.CREATED,
-        input_hash=input_hash,
-        input_snapshot=input_snapshot,
-        network_snapshot_hash=network_snapshot_hash,
-        sc_network_snapshot_hash=sc_network_snapshot_hash,
-    )
 
 
 # =============================================================================

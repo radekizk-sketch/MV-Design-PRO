@@ -7,6 +7,7 @@
  */
 
 import type { ExecutionRun } from '../../../ui/study-cases/types';
+import { nazwaObiektuZMigawki } from '../../wyniki/wzorzec/useNazwaObiektu';
 import { rodzajKontroliPL } from '../../wyniki/jakosc/strings';
 import type { RodzajKontroli } from '../../wyniki/jakosc/api';
 import type { KryteriumWiazaceZdolnosci, ScenariuszZdolnosci, WezelZdolnosci } from '../api';
@@ -37,7 +38,8 @@ export function wybierzPrzebiegRozplywu(
 
 /** Pierwszoplanowa etykieta węzła: nazwa z odpowiedzi, w ostateczności ref. */
 export function etykietaWezla(wezel: WezelZdolnosci): string {
-  return wezel.bus_name ?? wezel.bus_ref;
+  // Karta #145: brak nazwy → polska etykieta rodzaju z mostu nazw, nigdy identyfikator.
+  return nazwaObiektuZMigawki(null, wezel.bus_ref, wezel.bus_name);
 }
 
 // ---------------------------------------------------------------------------
@@ -64,10 +66,14 @@ export function rodzajKryteriumPL(binding: KryteriumWiazaceZdolnosci): string {
   }
 }
 
-/** Element wiążący (nazwa na pierwszym planie, ref jako rezerwa); brak → null. */
+/**
+ * Element wiążący — nazwa z mostu nazw wyników (brak nazwy → polska etykieta rodzaju,
+ * nigdy identyfikator, karta #145); brak elementu → null.
+ */
 export function elementKryterium(binding: KryteriumWiazaceZdolnosci): string | null {
   if (binding.kind !== 'voltage' && binding.kind !== 'loading') return null;
-  return binding.element_name ?? binding.element_id ?? null;
+  if (!binding.element_id) return binding.element_name ?? null;
+  return nazwaObiektuZMigawki(null, binding.element_id, binding.element_name);
 }
 
 /** Wartość obserwowana kryterium z jednostką z backendu; brak danych → null. */

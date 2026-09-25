@@ -667,3 +667,77 @@ def test_wspolczynniki_wlasne_dzialaja_w_doborze() -> None:
     assert wynik.proposal.effective_ampacity_a == pytest.approx(140.8, abs=1e-9)
     assert wynik.derating_set == "wlasne"
     assert "rezystywność 2,0" in wynik.derating_assumption_pl
+
+
+# ---------------------------------------------------------------------------
+# Decyzja O-53 (2026-09-24): współczynnik albo rezerwa spoza dziedziny to BŁĄD WEJŚCIA.
+# Dawniej `k if k > 0 else 1.0` podstawiało „brak redukcji" za daną niedodatnią, a
+# ujemną rezerwę zerowało po cichu (dług nazwany w `solver_input_substitute_guard`).
+# Iloczyn cech: {TR: k_j, k_obc, rezerwa} × {kabel: rezerwa} × {pole: rezerwa} ×
+# {wartość graniczna poprawna / poza dziedziną}.
+# ---------------------------------------------------------------------------
+
+
+def _wejscie_tr(**nadpisania: float) -> BlockTransformerSelectionInput:
+    parametry: dict = {
+        "sum_apparent_power_mva": 0.63,
+        "primary_voltage_kv": 15.0,
+        "secondary_voltage_kv": 0.4,
+        "candidates": _tr_candidates(),
+    }
+    parametry.update(nadpisania)
+    return BlockTransformerSelectionInput(**parametry)
+
+
+@pytest.mark.parametrize(
+    ("pole", "wartosc", "fragment"),
+    [
+        ("simultaneity_factor", 0.0, "jednoczesności"),
+        ("simultaneity_factor", -0.5, "jednoczesności"),
+        ("loadability_pu", 0.0, "Przeciążalność"),
+        ("loadability_pu", -1.0, "Przeciążalność"),
+        ("reserve_pu", -0.1, "Rezerwa mocy"),
+    ],
+)
+def test_tr_wejscie_poza_dziedzina_jest_odrzucane_nie_podmieniane(
+    pole: str, wartosc: float, fragment: str
+) -> None:
+    with pytest.raises(ValueError, match=fragment):
+        propose_block_transformer(_wejscie_tr(**{pole: wartosc}))
+
+
+def test_tr_wartosci_graniczne_poprawne_licza_sie_wprost() -> None:
+    # k_j = 1,0 i rezerwa 0 — elementy neutralne; k_obc małe, ale dodatnie, wchodzi WPROST
+    # do progu (dawniej każda wartość ≤ 0 stawała się 1,0 bez śladu).
+    wynik = propose_block_transformer(
+        _wejscie_tr(simultaneity_factor=1.0, reserve_pu=0.0, loadability_pu=0.5)
+    )
+    assert wynik.required_apparent_power_mva == pytest.approx(0.63)
+    assert wynik.proposal is not None
+    assert wynik.proposal.sn_mva * 0.5 >= 0.63
+
+
+def test_kabel_ujemna_rezerwa_jest_odrzucana() -> None:
+    with pytest.raises(ValueError, match="Rezerwa obciążalności kabla"):
+        propose_mv_cable(
+            CableSelectionInput(
+                transformer_current_a=140.0,
+                length_km=1.0,
+                line_voltage_v=15000.0,
+                cos_phi=0.95,
+                candidates=_cable_candidates(),
+                reserve_pu=-0.1,
+            )
+        )
+
+
+def test_pole_ujemna_rezerwa_jest_odrzucana() -> None:
+    with pytest.raises(ValueError, match="Rezerwa prądu aparatu pola"):
+        propose_mv_field_apparatus(
+            FieldApparatusSelectionInput(
+                transformer_current_a=100.0,
+                system_voltage_kv=12.0,
+                candidates=_field_candidates(),
+                reserve_pu=-0.1,
+            )
+        )

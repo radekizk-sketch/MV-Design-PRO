@@ -97,7 +97,7 @@ class TestW009SpojnoscCzestotliwosci:
     def test_sprzeczna_czestotliwosc_nie_blokuje_analiz(self) -> None:
         """Waga IMPORTANT, nie BLOCKER — rozpływ i zwarcia liczą się poprawnie.
 
-        Solwery biorą częstotliwość studium (`_study_frequency_hz`), więc
+        Solwery biorą częstotliwość studium (`czestotliwosc_studium_hz`), więc
         blokowanie ich z powodu deklaracji na szynie byłoby nieuczciwe.
         Asercja idzie po STAŁYCH kanonu wag, nie po literale — porównanie z
         napisem spoza słownika przeszłoby dla dowolnej wagi (test bez zębów).

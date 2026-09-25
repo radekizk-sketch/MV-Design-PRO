@@ -39,6 +39,10 @@ import {
 } from './nastawyPrzypadku';
 import type { ProtectionConfig } from '../study-cases/api';
 import { notify } from '../notifications/store';
+import { useNazwaObiektu } from '../../ui2/wyniki/wzorzec/useNazwaObiektu';
+import { InformacjeAudytowe } from '../../ui2/wyniki/wzorzec/InformacjeAudytowe';
+import { useShellStore } from '../../ui2/shell/useShellStore';
+import { useSnapshotStore } from '../topology/snapshotStore';
 import { ProtectionSettingsEditor } from './ProtectionSettingsEditor';
 import {
   VerdictBadge,
@@ -57,8 +61,13 @@ import {
   fetchCurrentCaseSnapshot,
   fetchShortCircuitResults,
 } from '../results-inspector/api';
-import { podzielWierszeNaPrzypadki, zbudujPradyKoordynacji } from './pradyZBiegow';
+import {
+  podzielWierszeNaPrzypadki,
+  zbudujPradyKoordynacji,
+  type BiegZwarciowyDoPodzialu,
+} from './pradyZBiegow';
 import type { BrakDanejPradowej } from './pradyZBiegow';
+import { fetchMiejsceUrzadzenia, type MiejsceUrzadzenia } from './miejsceUrzadzenia';
 import { lokalizacjeKoordynacji } from './lokalizacjeZModelu';
 import type { LokalizacjaModelu } from './lokalizacjeZModelu';
 
@@ -86,36 +95,65 @@ interface PageState {
 
 interface ContextSelectorProps {
   projectId: string | null;
+  projectName: string | null;
   caseId: string | null;
+  caseName: string | null;
   snapshotId: string | null;
-  onProjectChange?: (id: string) => void;
-  onCaseChange?: (id: string | null) => void;
-  onSnapshotChange?: (id: string | null) => void;
 }
 
+/**
+ * Kontekst analizy (karta #145): na pierwszym planie NAZWY projektu i wariantu pracy
+ * oraz rewizja modelu — identyfikatory (projektu, wariantu, stanu modelu) wyłącznie
+ * w „Informacjach audytowych" trybu eksperckiego.
+ */
 function ContextSelector({
   projectId,
+  projectName,
   caseId,
+  caseName,
   snapshotId,
 }: ContextSelectorProps) {
   const labels = LABELS.context;
+  const rewizja = useSnapshotStore((stan) => stan.snapshot?.header?.revision ?? null);
+  const trybEkspercki = useShellStore((stan) => stan.advancementMode) === 'expert';
+  const stanModelu = snapshotId
+    ? rewizja !== null
+      ? labels.rewizjaModelu(rewizja)
+      : labels.stanModeluWczytany
+    : labels.selectSnapshot;
+  const audyt = [
+    ...(projectId ? [{ etykieta: labels.identyfikatorProjektu, wartosc: projectId }] : []),
+    ...(caseId ? [{ etykieta: labels.identyfikatorWariantu, wartosc: caseId }] : []),
+    ...(snapshotId ? [{ etykieta: labels.identyfikatorStanuModelu, wartosc: snapshotId }] : []),
+  ];
 
   return (
-    <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white px-4 py-2">
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-slate-500">{labels.project}:</span>
-        <span className="font-medium text-slate-900">{projectId || labels.noContext}</span>
+    <div className="rounded-lg border border-slate-200 bg-white px-4 py-2">
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-500">{labels.project}:</span>
+          <span className="font-medium text-slate-900">
+            {projectId ? projectName ?? labels.bezNazwy : labels.noContext}
+          </span>
+        </div>
+        <div className="h-4 w-px bg-slate-200" />
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-500">{labels.studyCase}:</span>
+          <span className="font-medium text-slate-900">
+            {caseId ? caseName ?? labels.bezNazwy : labels.selectCase}
+          </span>
+        </div>
+        <div className="h-4 w-px bg-slate-200" />
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-500">{labels.snapshot}:</span>
+          <span className="font-medium text-slate-900">{stanModelu}</span>
+        </div>
       </div>
-      <div className="h-4 w-px bg-slate-200" />
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-slate-500">{labels.studyCase}:</span>
-        <span className="font-medium text-slate-900">{caseId || labels.selectCase}</span>
-      </div>
-      <div className="h-4 w-px bg-slate-200" />
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-slate-500">{labels.snapshot}:</span>
-        <span className="font-medium text-slate-900">{snapshotId || labels.selectSnapshot}</span>
-      </div>
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="koordynacja-kontekst-informacje-audytowe"
+        wiersze={audyt}
+      />
     </div>
   );
 }
@@ -144,6 +182,9 @@ function DeviceListPanel({
   onShowTemplates,
 }: DeviceListPanelProps) {
   const labels = LABELS.devices;
+  // Karta #145: miejsce urządzenia nazwane mostem nazw wyników (nazwa z modelu), nie
+  // referencją elementu.
+  const nazwaObiektu = useNazwaObiektu();
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white">
@@ -214,7 +255,7 @@ function DeviceListPanel({
                         wiersz wyglądałby jak związany z elementem o pustej nazwie. */}
                     {device.location_element_id === ''
                       ? LABELS.validation.lokalizacjaNieWskazana
-                      : device.location_element_id}
+                      : nazwaObiektu(device.location_element_id)}
                   </p>
                 </button>
                 <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -443,13 +484,14 @@ function TabNavigation({ activeTab, onTabChange, result }: TabNavigationProps) {
 // Main Page Component
 // =============================================================================
 
-type ShortCircuitRowLite = Awaited<ReturnType<typeof fetchShortCircuitResults>>['rows'][number];
 type BranchRowLite = Awaited<ReturnType<typeof fetchBranchResults>>['rows'][number];
 
 export function ProtectionCoordinationPage() {
   const projectId = useAppStateStore((state) => state.activeProjectId);
   const caseId = useAppStateStore((state) => state.activeCaseId);
   const snapshotId = useAppStateStore((state) => state.activeSnapshotId);
+  const projectName = useAppStateStore((state) => state.activeProjectName);
+  const caseName = useAppStateStore((state) => state.activeCaseName);
 
   const [state, setState] = useState<PageState>({
     devices: [],
@@ -464,6 +506,12 @@ export function ProtectionCoordinationPage() {
   });
   // F-K4 faza 3b: braki danych prądowych z biegów (uczciwy stan zamiast atrapy).
   const [brakiPradowe, setBrakiPradowe] = useState<readonly BrakDanejPradowej[]>([]);
+  // Biegi, z których zbudowano prądy — ich identyfikatory idą w żądaniu analizy.
+  const [biegiKoordynacji, setBiegiKoordynacji] = useState<{
+    readonly sc_run_id: string | null;
+    readonly sc_run_id_min: string | null;
+    readonly pf_run_id: string | null;
+  }>({ sc_run_id: null, sc_run_id_min: null, pf_run_id: null });
   // K5-B (H-2): wykonawca nastaw E-28 — urządzenia i nastawy żyją w konfiguracji
   // PRZYPADKU (`ProtectionConfig.overrides`, klucz per urządzenie), nie w useState.
   // `ostatniaKonfiguracja` trzyma pełny ProtectionConfig z ostatniego GET/PUT —
@@ -580,29 +628,34 @@ export function ProtectionCoordinationPage() {
 
   // F-K4 faza 3b: prądy wejściowe koordynacji pochodzą WYŁĄCZNIE z zakończonych
   // biegów obliczeniowych. Klasyfikacja przypadku (maksymalny / minimalny) idzie po
-  // REALNYM współczynniku `c` z wiersza wyniku (IEC 60909: c_max ≈ 1,10,
-  // c_min ≈ 0,95) — kanoniczny bieg liczy jeden scenariusz, więc pełna koordynacja
-  // wymaga dwóch biegów. Braki są raportowane jawnie, nigdy uzupełniane liczbą.
+  // SCENARIUSZU zapisanym na biegu (`konfiguracja_biegu.scenariusz`, patrz
+  // `podzielWierszeNaPrzypadki`) — kanoniczny bieg liczy jeden scenariusz, więc pełna
+  // koordynacja wymaga dwóch biegów. Braki są raportowane jawnie, nigdy uzupełniane liczbą.
   const przebiegi = useExecutionRunsStore((s) => s.runs);
-  const urzadzeniaKlucz = state.devices.map((d) => d.location_element_id).join('|');
+  // Klucz zależności: lokalizacja I zacisk urządzenia (decyzja O-51 pkt 7) — zmiana
+  // zacisku zmienia prąd roboczy (inny wiersz/kolumna tabeli gałęzi).
+  const urzadzeniaKlucz = state.devices
+    .map((d) => `${d.location_element_id}:${d.zacisk ?? ''}`)
+    .join('|');
   useEffect(() => {
     if (state.devices.length === 0) {
       setBrakiPradowe([]);
       return;
     }
     const zakonczone = przebiegi.filter((r) => r.status === 'DONE');
-    const biegiZwarciowe = zakonczone.filter((r) =>
-      ['SC_3F', 'SC_1F', 'SC_2F', 'SC_2F_G'].includes(r.analysis_type),
-    );
+    // Od NAJNOWSZEGO — `podzielWierszeNaPrzypadki` bierze jeden (najnowszy) bieg na
+    // scenariusz, a jego identyfikator idzie w żądaniu analizy (`sc_run_id[_min]`).
+    const biegiZwarciowe = zakonczone
+      .filter((r) => ['SC_3F', 'SC_1F', 'SC_2F', 'SC_2F_G'].includes(r.analysis_type))
+      .sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''));
     const biegRozplywu = zakonczone.find((r) => r.analysis_type === 'LOAD_FLOW') ?? null;
     let anulowane = false;
 
     void (async () => {
-      const wierszeZwarciowe: ShortCircuitRowLite[] = [];
+      const wynikiZwarciowe: BiegZwarciowyDoPodzialu[] = [];
       for (const bieg of biegiZwarciowe) {
         try {
-          const wynik = await fetchShortCircuitResults(bieg.id);
-          wierszeZwarciowe.push(...wynik.rows);
+          wynikiZwarciowe.push(await fetchShortCircuitResults(bieg.id));
         } catch {
           // Brak wyniku biegu = brak danych; nie zastępujemy go niczym.
         }
@@ -615,8 +668,28 @@ export function ProtectionCoordinationPage() {
           wierszeGalezi = [];
         }
       }
+      // Decyzja O-51 (pkt 7): miejsce prądu każdego urządzenia rozstrzyga backend (ten
+      // sam resolver co pakiet nastaw) — gałąź i zacisk albo odmowa nazwana.
+      const miejsca = new Map<string, MiejsceUrzadzenia>();
+      if (caseId) {
+        for (const urzadzenie of state.devices) {
+          if (urzadzenie.location_element_id.trim() === '') continue;
+          try {
+            miejsca.set(
+              urzadzenie.id,
+              await fetchMiejsceUrzadzenia(
+                caseId,
+                urzadzenie.location_element_id,
+                urzadzenie.zacisk ?? null,
+              ),
+            );
+          } catch {
+            // Brak rozstrzygnięcia = brak prądu roboczego (jawny), nie wartość zastępcza.
+          }
+        }
+      }
       if (anulowane) return;
-      const { max, min } = podzielWierszeNaPrzypadki(wierszeZwarciowe);
+      const { max, min, runIdMax, runIdMin } = podzielWierszeNaPrzypadki(wynikiZwarciowe);
       const prady = zbudujPradyKoordynacji({
         // V12K-262: urządzenie bez wskazanego elementu pomijamy TUTAJ, żeby nie
         // raportować mu „braku prądu zwarciowego" — prawdziwym brakiem jest
@@ -625,6 +698,7 @@ export function ProtectionCoordinationPage() {
         wierszeMax: max,
         wierszeMin: min,
         wierszeGalezi,
+        miejsca,
       });
       setState((prev) => ({
         ...prev,
@@ -632,6 +706,11 @@ export function ProtectionCoordinationPage() {
         operatingCurrents: [...prady.operatingCurrents],
       }));
       setBrakiPradowe(prady.braki);
+      setBiegiKoordynacji({
+        sc_run_id: runIdMax,
+        sc_run_id_min: runIdMin,
+        pf_run_id: biegRozplywu?.id ?? null,
+      });
     })();
 
     return () => {
@@ -639,7 +718,7 @@ export function ProtectionCoordinationPage() {
     };
     // Zależność po identyfikatorach lokalizacji (`urzadzeniaKlucz`): zmiana nastaw
     // urządzenia nie wymaga ponownego pobierania wyników biegów.
-  }, [urzadzeniaKlucz, przebiegi]);
+  }, [urzadzeniaKlucz, przebiegi, caseId]);
 
   // Add new device
   const handleAddDevice = useCallback(() => {
@@ -791,11 +870,18 @@ export function ProtectionCoordinationPage() {
     setState((prev) => ({ ...prev, status: 'RUNNING', error: null }));
 
     try {
+      // Karta S-2 AUTORYTET: backend potwierdza prądy żądania wobec DWÓCH zapisanych
+      // biegów — bez ich identyfikatorów każde żądanie kończyło się odmową 422 (ekran
+      // nigdy ich nie wysyłał; atrapa harnessu przechwytywała `/run`, więc defekt był
+      // niewidoczny). Identyfikatory = biegi, z których ekran zbudował prądy.
       const summary = await runCoordinationAnalysis(projectId, {
         devices: state.devices,
         fault_currents: state.faultCurrents,
         operating_currents: state.operatingCurrents,
         config: DEFAULT_CONFIG,
+        sc_run_id: biegiKoordynacji.sc_run_id ?? undefined,
+        sc_run_id_min: biegiKoordynacji.sc_run_id_min ?? undefined,
+        pf_run_id: biegiKoordynacji.pf_run_id ?? undefined,
       });
 
       const result = await getCoordinationResult(summary.run_id);
@@ -815,7 +901,7 @@ export function ProtectionCoordinationPage() {
         error: err instanceof Error ? err.message : LABELS.status.error,
       }));
     }
-  }, [projectId, state.devices, state.faultCurrents, state.operatingCurrents]);
+  }, [projectId, state.devices, state.faultCurrents, state.operatingCurrents, biegiKoordynacji]);
   uruchomAnalize.current = () => void handleRunAnalysis();
 
   // Get editing device
@@ -856,7 +942,9 @@ export function ProtectionCoordinationPage() {
         <div className="mb-6">
           <ContextSelector
             projectId={projectId}
+            projectName={projectName}
             caseId={caseId}
+            caseName={caseName}
             snapshotId={snapshotId}
           />
         </div>
@@ -894,7 +982,7 @@ export function ProtectionCoordinationPage() {
                       {brak.czegoBrakuje === 'prad_zwarciowy_min'
                         ? LABELS.validation.brakPraduMinimalnego
                         : brak.czegoBrakuje === 'prad_roboczy'
-                          ? LABELS.validation.brakPraduRoboczego
+                          ? (brak.powod ?? LABELS.validation.brakPraduRoboczego)
                           : LABELS.validation.brakPradowZwarciowych}
                     </li>
                   ))}
@@ -940,6 +1028,7 @@ export function ProtectionCoordinationPage() {
                 }
                 lokalizacje={lokalizacje}
                 bladLokalizacji={bladLokalizacji}
+                caseId={caseId}
               />
             ) : state.result ? (
               <div className="space-y-4">

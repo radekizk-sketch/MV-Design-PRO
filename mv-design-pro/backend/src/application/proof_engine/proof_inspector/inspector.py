@@ -18,8 +18,6 @@ from application.proof_engine.proof_inspector.types import (
     CounterfactualView,
     HeaderView,
     InspectorView,
-    ProtectionComparisonRow,
-    ProtectionComparisonView,
     StepView,
     SummaryView,
     UnitCheckView,
@@ -355,10 +353,6 @@ class ProofInspector:
             alias_pl = alias.alias_pl if alias else None
             key_results[key] = self._build_value_view(val, alias_pl=alias_pl)
 
-        protection_view = None
-        if self._document.proof_type == ProofType.PROTECTION_OVERCURRENT:
-            protection_view = self._build_protection_comparisons()
-
         return SummaryView(
             key_results=key_results,
             unit_check_passed=s.unit_check_passed,
@@ -366,88 +360,7 @@ class ProofInspector:
             warnings=s.warnings,
             overall_status=s.overall_status,
             failed_checks=s.failed_checks,
-            protection_comparisons=protection_view,
         )
-
-    def _build_protection_comparisons(self) -> ProtectionComparisonView | None:
-        summary = self._document.summary
-        kr = summary.key_results
-
-        def _status_value(key: str) -> str:
-            val = kr.get(key)
-            if val is None:
-                return "NOT_EVALUATED"
-            if isinstance(val.value, str):
-                return val.value
-            return str(val.value)
-
-        def _why(status: str) -> str:
-            if status == "OK":
-                return "Warunek spełniony: margines dodatni."
-            if status == "NOT_OK":
-                return "Warunek niespełniony: margines ujemny."
-            return "Brak danych do oceny."
-
-        def _value_or_placeholder(key: str, symbol: str, unit: str) -> ValueView:
-            if key in kr:
-                return self._build_value_view(kr[key])
-            return ValueView(
-                symbol=symbol,
-                value=f"— {unit}".strip(),
-                raw_value="—",
-                unit=unit,
-                mapping_key=key,
-                alias_pl=None,
-            )
-
-        rows: list[ProtectionComparisonRow] = []
-
-        rows.append(
-            ProtectionComparisonRow(
-                name="Wyłączalność",
-                left=_value_or_placeholder("ikss_ka", "I_k''", "kA"),
-                right=_value_or_placeholder("icu_ka", "I_{cu}", "kA"),
-                margin=kr.get("breaking_margin_ka")
-                and self._build_value_view(kr["breaking_margin_ka"]),
-                status=_status_value("breaking_ok"),
-                why_pl=_why(_status_value("breaking_ok")),
-            )
-        )
-        rows.append(
-            ProtectionComparisonRow(
-                name="Dynamiczny",
-                left=_value_or_placeholder("ip_ka", "i_p", "kA"),
-                right=_value_or_placeholder("idyn_ka", "I_{dyn}", "kA"),
-                margin=kr.get("dynamic_margin_ka")
-                and self._build_value_view(kr["dynamic_margin_ka"]),
-                status=_status_value("dynamic_ok"),
-                why_pl=_why(_status_value("dynamic_ok")),
-            )
-        )
-        rows.append(
-            ProtectionComparisonRow(
-                name="Cieplny",
-                left=_value_or_placeholder("i2t_ka2s", "\\int i^{2} dt", "kA²s"),
-                right=_value_or_placeholder("ith_limit_ka2s", "I_{th}", "kA²s"),
-                margin=kr.get("thermal_margin_ka2s")
-                and self._build_value_view(kr["thermal_margin_ka2s"]),
-                status=_status_value("thermal_ok"),
-                why_pl=_why(_status_value("thermal_ok")),
-            )
-        )
-        rows.append(
-            ProtectionComparisonRow(
-                name="Selektywność",
-                left=_value_or_placeholder("selectivity_downstream_max_s", "t_{down,max}", "s"),
-                right=_value_or_placeholder("selectivity_upstream_min_s", "t_{up,min}", "s"),
-                margin=kr.get("selectivity_margin_s")
-                and self._build_value_view(kr["selectivity_margin_s"]),
-                status=_status_value("selectivity_ok"),
-                why_pl=_why(_status_value("selectivity_ok")),
-            )
-        )
-
-        return ProtectionComparisonView(rows=tuple(rows))
 
     def _build_counterfactual_view(
         self,

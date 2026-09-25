@@ -13,7 +13,9 @@ odczytów pochodzących z różnych rewizji modelu.
 
 ATOMOWOŚĆ — CO DOKŁADNIE OBIECUJEMY (karta B-02, §0.5). Projekcja jest atomowa
 względem JEDNEGO obiektu ``EnergyNetworkModel``, pobranego RAZ na początku
-obsługi żądania (``_get_enm(case_id)`` w końcówce ``api/enm.py``) i przekazanego
+obsługi żądania (``_get_enm(klucz)`` w końcówce ``api/enm.py`` — ``klucz``
+to klucz magazynu ENM projektu, przetłumaczony z ``case_id`` zależnością
+``KluczTwin``, CV-1-W) i przekazanego
 tutaj jako argument. Wszystkie składowe odpowiedzi — graf domeny, energizacja,
 kotwice SN, nakładka wyniku, SWZ per transformator — liczą się z TEGO SAMEGO
 obiektu w pamięci, a ``model_snapshot.model_hash`` jest odciskiem dokładnie tego
@@ -35,10 +37,11 @@ from typing import Any
 
 from application.analyses.fault_loop.service import (
     _find_station,
-    _system_for_station,
     build_feeder_fault_loop_view_for_transformer,
     station_transformers,
 )
+from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
+from application.analyses.opis_przebiegu import stan_przebiegu_pl
 from application.analyses.swz.service import build_swz_view
 from application.analyses.voltage_profile_view import build_voltage_profile_view
 from application.result_freshness import evaluate_result_freshness
@@ -48,6 +51,7 @@ from application.result_mapping.canonical_run_to_resultset_v1 import (
 from enm.canonical_analysis import CanonicalRun, build_bus_results
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.models import EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 
 from .audit import collect_validation_messages
 from .energization import upstream_source_refs_by_system
@@ -68,8 +72,10 @@ LV_DOMAIN_PROJECTION_CONTRACT = "LvDomainProjectionV1"
 #: pułapką dla każdego klienta, który go sprawdza (frontend
 #: `projectionApi.ts::isLvDomainProjectionV1` przypina wersję wprost). Nazwa
 #: kontraktu i ścieżka końcówki (`/projection/v1`) bez zmian — to identyfikator
-#: ZASOBU, wersja opisuje ładunek.
-LV_DOMAIN_PROJECTION_VERSION = "3.0.0"
+#: ZASOBU, wersja opisuje ładunek. 4.0.0 (karta AB-1a Pakiet E2, plan AB §8 F16): wartość
+#: `islands[].neutral_reference.status` „OK” → „ustalone” — stan danych odniesienia N/PE, nie
+#: werdykt; klient porównujący wartość dostałby cichą zmianę znaczenia, więc MAJOR.
+LV_DOMAIN_PROJECTION_VERSION = "4.0.0"
 
 
 class LvDomainProjectionRunMismatch(ValueError):
@@ -138,11 +144,11 @@ def _result_snapshot(
 
     if run.case_id != case_id:
         raise LvDomainProjectionRunMismatch(
-            f"Przebieg {run.id} należy do przypadku {run.case_id}, nie {case_id}."
+            "Wskazany przebieg należy do innego przypadku obliczeniowego niż oglądany."
         )
     if run.status != "FINISHED":
         raise LvDomainProjectionRunUnavailable(
-            f"Wyniki przebiegu {run.id} są niedostępne — status: {run.status}."
+            f"Wyniki przebiegu są niedostępne — przebieg {stan_przebiegu_pl(run.status)}."
         )
 
     result_set = build_resultset_v1_from_canonical_run(run)
@@ -278,7 +284,8 @@ def _swz_snapshot(enm: EnergyNetworkModel, station_ref: str) -> dict[str, Any]:
             "status": "brak danych",
             "reason_pl": None,
             "missing_data": ["transformer"],
-            "network_system": _system_for_station(station),
+            # W5-A: układ nN niesie transformator — bez transformatora nie ma nośnika.
+            "network_system": None,
             "transformers": [],
         }
 
@@ -354,7 +361,9 @@ def build_lv_domain_projection_v1(
     if graph.get("status") == "OK":
         domain_bus_refs = {str(b["ref_id"]) for b in graph.get("buses", [])}
         sources_by_system = upstream_source_refs_by_system(enm, domain_bus_refs)
-        source_name_by_ref = {s.ref_id: s.name for s in enm.sources}
+        # Nazwa źródła z modelu albo opis rodzaju; źródło spoza migawki — jawny brak, nigdy
+        # identyfikator (karta NAZWY-JEDNO-ZRODLO, klasa karty #144).
+        indeks_nazw = zbuduj_indeks_nazw(enm)
         for transformer in graph.get("transformers", []):
             transformer_ref = transformer.get("ref_id")
             if not transformer_ref:
@@ -375,7 +384,7 @@ def build_lv_domain_projection_v1(
             snapshot["upstream_system_id"] = system_id
             snapshot["upstream_source_ids"] = source_ids
             snapshot["upstream_source_names"] = [
-                source_name_by_ref.get(ref, ref) for ref in source_ids
+                nazwa_po_identyfikatorze(ref, indeks=indeks_nazw) for ref in source_ids
             ]
             upstream_equivalents.append(snapshot)
 
@@ -427,5 +436,8 @@ def build_lv_domain_projection_v1(
         "swz_snapshot": swz_snapshot,
         "validation_messages": validation_messages,
     }
+    # ADR-018 / M0-2: kanonizacja liczb PRZED odciskiem — odcisk i fixtury
+    # zależą od modelu, nie od jądra BLAS maszyny (patrz `kontrakt_liczb`).
+    payload = kwantyzuj_kontrakt(payload)
     payload["projection_hash"] = _canonical_hash(payload)
     return payload

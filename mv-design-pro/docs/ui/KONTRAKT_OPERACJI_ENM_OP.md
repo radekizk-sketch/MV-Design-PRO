@@ -247,9 +247,13 @@ alternatywne identyfikatory formularzy.
 | `voltage_kv` | `float` | TAK | Napiecie znamionowe szyny GPZ [kV], musi byc > 0 |
 | `source_name` | `string` | NIE | Nazwa zrodla zasilania |
 | `bus_name` | `string` | NIE | Nazwa szyny GPZ |
-| `sk3_mva` | `float` | NIE | Moc zwarciowa trojfazowa [MVA] |
-| `ik3_ka` | `float` | NIE | Prad zwarciowy trojfazowy [kA] |
-| `rx_ratio` | `float` | NIE | Stosunek R/X impedancji zwarciowej |
+| `sk3_mva` | `float` | NIE | Moc zwarciowa trojfazowa scenariusza MAX [MVA] |
+| `ik3_ka` | `float` | NIE | Prad zwarciowy trojfazowy scenariusza MAX [kA] |
+| `rx_ratio` | `float` | NIE | Stosunek R/X impedancji zwarciowej (scenariusz MAX) |
+| `sk3_min_mva` | `float` | NIE | Minimalna moc zwarciowa trojfazowa --- scenariusz MIN [MVA] (CV-4.3 K7, IEC 60909-0:2016 Sec.6.2.1 eq.6 z c_min). Brak = scenariusz MIN liczony z danych MAX, zalozenie jawnie oznaczone kodem gotowosci `source.sk_min_missing` --- zaden domyslny ulamek MAX |
+| `ik3_min_ka` | `float` | NIE | Minimalny prad zwarciowy trojfazowy --- scenariusz MIN [kA], alternatywa dla `sk3_min_mva` (tryb pradowy) |
+| `rx_ratio_min` | `float` | NIE | Stosunek R/X dla scenariusza MIN. Bez `sk3_min_mva`/`ik3_min_ka` nie ma zastosowania (operacja odrzuca kodem `source.manual_equivalent_invalid`) |
+| `u_set_pu` | `float` | NIE | Napiecie zadane szyny bilansujacej [p.u. Un szyny], pasmo 0,8--1,2; brak = 1,0 (znamionowe). Poza pasmem: `source.manual_equivalent_invalid` |
 | `pozycja_widokowa` | `object` | NIE | Pozycja na schemacie SLD |
 
 **Tworzy:**

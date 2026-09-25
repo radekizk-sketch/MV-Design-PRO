@@ -16,23 +16,30 @@ import {
   BranchSurface,
   NopSurface,
 } from '../InfrastructureSurfaces';
+import type { WorkspaceSurfaceDescriptor } from '../../types';
 
-const minimalSurface = {
+// Kompletny `WorkspaceSurfaceDescriptor` (nie `as never`) — `never` przechodzi
+// bezposrednie przypisanie do propa `surface`, ale `{ ...minimalSurface, ... }`
+// wymaga realnego typu obiektowego (TS2698), wiec kazde uzycie musi byc
+// prawdziwie typowane, nie obchodzone rzutowaniem.
+const minimalSurface: WorkspaceSurfaceDescriptor = {
   surfaceId: 'surface-test',
-  screenCode: 'E-12' as const,
+  screenCode: 'E-12',
+  surfaceKind: 'pomocniczy',
   titlePl: 'Test',
   entityRef: null,
   entityType: null,
-  routeState: { payload: {} },
+  parentSurfaceId: null,
+  tabId: null,
+  routeState: { route: 'unknown', payload: {} },
   breadcrumbs: [],
   supportsMiniSld: false,
-  supportsChildren: false,
-  sizeClass: 'C' as const,
-  stackLevel: 0 as const,
-  openMode: 'expand_workspace' as const,
-  subjectKind: 'helper_context' as const,
+  sizeClass: 'C',
+  stackLevel: 0,
+  openMode: 'expand_workspace',
+  subjectKind: 'helper_context',
   subjectRef: null,
-} as never;
+};
 
 const segmentSurface = {
   ...minimalSurface,
@@ -78,7 +85,7 @@ function buildSnapshot(endpointBusy = false): EnergyNetworkModel {
       {
         id: 'seg-1',
         ref_id: 'seg-1',
-        name: 'Odcinek /segment',
+        name: 'Odcinek bez nazwy',
         tags: [],
         meta: {},
         type: 'cable',
@@ -214,7 +221,7 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     const snapshot = buildSnapshot(false);
     snapshot.branches[0] = {
       ...snapshot.branches[0],
-      name: 'Odcinek /segment - za punktem rozgałęzienia',
+      name: 'Odcinek bez nazwy - za punktem rozgałęzienia',
       type: 'line_overhead',
       catalog_ref: 'line-base-al-150',
       cross_section_mm2: 150,
@@ -230,7 +237,7 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     expect(summary).toHaveTextContent('Linia napowietrzna Al 150 mm²');
     expect(summary).toHaveTextContent('Al 150 mm²');
     expect(summary).not.toHaveTextContent('line-base-al-150');
-    expect(screen.queryByText('Odcinek /segment - za punktem rozgałęzienia')).not.toBeInTheDocument();
+    expect(screen.queryByText('Odcinek bez nazwy - za punktem rozgałęzienia')).not.toBeInTheDocument();
   });
 
   it('SnSegmentSurface pokazuje tylko standardowe zakończenia dla kabla i linii napowietrznej', () => {
@@ -422,7 +429,7 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
         element_ref: 'zksn-1',
         element_type: 'ZKSN',
         source_type_label: 'ZKSN',
-        source_port_label: 'pole wyjściowe ciągu głównego',
+        source_port_label: 'pole liniowe wyjściowe ciągu głównego',
         segment_kind: 'KABEL_SN',
         segment: expect.objectContaining({
           rodzaj: 'cable',

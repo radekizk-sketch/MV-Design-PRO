@@ -65,7 +65,7 @@ describe('SectionSwitchModal — §8 UX 10/10', () => {
     it('SectionSwitchFormData has all required fields', () => {
       const data: SectionSwitchFormData = {
         ref_id: 'SW-001',
-        name: 'Lacznik sekcyjny S1',
+        name: 'Łącznik sekcyjny S1',
         switch_kind: 'ROZLACZNIK',
         switch_state: 'CLOSED',
         segment_ref: 'seg-001',
@@ -74,7 +74,7 @@ describe('SectionSwitchModal — §8 UX 10/10', () => {
       };
 
       expect(data.ref_id).toBe('SW-001');
-      expect(data.name).toBe('Lacznik sekcyjny S1');
+      expect(data.name).toBe('Łącznik sekcyjny S1');
       expect(data.switch_kind).toBe('ROZLACZNIK');
       expect(data.switch_state).toBe('CLOSED');
       expect(data.segment_ref).toBe('seg-001');
@@ -85,7 +85,7 @@ describe('SectionSwitchModal — §8 UX 10/10', () => {
     it('catalog_ref can be a string', () => {
       const data: SectionSwitchFormData = {
         ref_id: 'SW-002',
-        name: 'Lacznik S2',
+        name: 'Łącznik S2',
         switch_kind: 'WYLACZNIK',
         switch_state: 'OPEN',
         segment_ref: 'seg-002',
@@ -190,7 +190,7 @@ describe('SectionSwitchModal — §8 UX 10/10', () => {
     it('valid form data passes all constraints', () => {
       const valid: SectionSwitchFormData = {
         ref_id: 'SW-001',
-        name: 'Lacznik S1',
+        name: 'Łącznik S1',
         switch_kind: 'ROZLACZNIK',
         switch_state: 'CLOSED',
         segment_ref: 'seg-001',

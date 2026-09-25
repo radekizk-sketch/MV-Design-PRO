@@ -172,7 +172,7 @@ class InspectorExporter:
                     format="pdf",
                     content=b"",
                     success=False,
-                    error_message="LaTeX export nie zwrocil tekstu (nieoczekiwany typ).",
+                    error_message="LaTeX export nie zwrócił tekstu (nieoczekiwany typ).",
                 )
             pdf_content = self._compile_to_pdf(tex_content)
             return ExportResult(
@@ -282,13 +282,17 @@ class InspectorExporter:
                 result_label.bold = True
                 result_para.add_run(f"{step.result.value} {step.result.unit}")
 
-                # Unit check
+                # Unit check — derywacja jednostek (ta sama treść co krok w LaTeX-u,
+                # `latex_renderer._render_step`), nie plakietka „OK/BŁĄD” (inwentarz
+                # werdyktów C44, plan AB §8 F2: flaga bywa zaszyta na `True`).
                 if step.unit_check:
                     uc_para = docx_obj.add_paragraph()
                     uc_label = uc_para.add_run("Weryfikacja jednostek: ")
                     uc_label.bold = True
-                    uc_status = "OK" if step.unit_check.passed else "BŁĄD"
-                    uc_para.add_run(f"{uc_status} ({step.unit_check.expected_unit})")
+                    uc_para.add_run(
+                        f"{step.unit_check.derivation} "
+                        f"(jednostka wyniku: {step.unit_check.expected_unit})"
+                    )
 
             # Summary
             docx_obj.add_paragraph()
@@ -469,7 +473,7 @@ def export_to_pdf(document: ProofDocument) -> bytes:
     # export_pdf() (success=True) zawsze ustawia content na bytes skompilowanego
     # PDF — ExportResult.content jest unia str | bytes dzielona z eksportem tex
     # (str), tu narrowing do bytes.
-    assert isinstance(content, bytes), "PDF export musi zwracac bytes"
+    assert isinstance(content, bytes), "PDF export musi zwracać bytes"
     return bytes(content)
 
 
@@ -496,7 +500,7 @@ def export_to_docx(document: ProofDocument) -> bytes:
     # export_docx() (success=True) zawsze ustawia content na bytes dokumentu
     # DOCX — ExportResult.content jest unia str | bytes dzielona z eksportem tex
     # (str), tu narrowing do bytes.
-    assert isinstance(content, bytes), "DOCX export musi zwracac bytes"
+    assert isinstance(content, bytes), "DOCX export musi zwracać bytes"
     return bytes(content)
 
 

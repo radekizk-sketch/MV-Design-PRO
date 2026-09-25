@@ -1,22 +1,20 @@
 /*
- * EkranSsci — okno „Stabilność SSCI" (ekran wyników ui2/wyniki/ssci). Domyka lukę
- * B1 audytu: analiza SSCI (kryterium impedancyjne Nyquista, Sun 2011 / Wen 2016)
- * miała backend bez UI. Ekran dobiera przebieg SSCI przez utworzenie przebiegu
- * `ssci_impedance` na committed ENM aktywnego przypadku (wzór doboru z
- * `ui2/wyniki/akademickie`), a następnie pobiera werdykt:
+ * EkranSsci — okno „Stabilność SSCI" (ekran wyników ui2/wyniki/ssci). Dobiera przebieg
+ * SSCI przez utworzenie przebiegu `ssci_impedance` na committed ENM aktywnego
+ * przypadku (wzór doboru z `ui2/wyniki/akademickie`), a następnie pobiera widok:
  *   `POST /api/cases/{case_id}/runs/v126/ssci_impedance` → `run_id`
  *   `GET  /api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability`
  * i prezentuje:
- *   1. chip werdyktu z istotnością (stabilny / ryzyko SSCI / niestabilny / brak danych),
- *   2. uzasadnienie (`why_pl`) wprost z backendu,
- *   3. metryki (max|L|, margines różnicy faz Δφ, częstotliwość winna, odległość od −1,
- *      okrążenia, rezystancja ujemna),
- *   4. panel proweniencji (najgorsza jakość pól karty falownika),
- *   5. uczciwy stan zerowy „brak przekształtnika/DER = brak danych",
- *   6. ślad WHITE BOX w trybie eksperckim.
+ *   1. rekord oceny z backendu („Ocena niewykonana": zdanie, braki, akcja naprawcza),
+ *   2. wskaźnik strefy ujemnej rezystancji przekształtnika (informacja o jego modelu),
+ *   3. panel proweniencji danych przekształtnika i braki danych karty,
+ *   4. zwiniętą sekcję audytową metryk L(f) pod nagłówkiem z backendu,
+ *   5. ślad WHITE BOX w trybie eksperckim.
  *
- * Zero fizyki, zero ocen lokalnych — werdykt, metryki i flagi pochodzą WYŁĄCZNIE
- * z backendu. Bez aktywnego przypadku → uczciwa instrukcja (bez wołań API).
+ * UCZCIWOŚĆ (2026-09-23): Z_grid(f) liczone jest bez przekładni transformatora, więc
+ * werdyktu „stabilny / ryzyko / niestabilny" nie ma ani akcji decyzyjnej opartej na
+ * „ryzyku". Zero fizyki, zero ocen lokalnych. Bez aktywnego przypadku → uczciwa
+ * instrukcja (bez wołań API).
  */
 
 import { useState } from 'react';
@@ -29,9 +27,10 @@ import {
   type KrokWhiteBox,
   type WidokStabilnosciSsci,
 } from './api';
-import { etykietaWerdyktu, istotnoscWerdyktu, naMetryki } from './model';
-import { akcjaNaprawcza, useAkcjaPrzejdzDoPrzypadkow, usePoprawWModelu } from '../wzorzec';
-import { SSCI_STRINGS as S, fmtGain, fmtStopnie, type IstotnoscStanu } from './strings';
+import { naMetryki, opisRezystancjiUjemnej } from './model';
+import { useAkcjaPrzejdzDoPrzypadkow } from '../wzorzec';
+import { OcenaNiewykonana, SekcjaAudytowa } from '../wzorzec/OcenaNiewykonana';
+import { POLA_KARTY_SSCI, SSCI_STRINGS as S, fmtGain, type IstotnoscStanu } from './strings';
 
 // ---------------------------------------------------------------------------
 // Elementy wspólne (chip, tag, panel stanu)
@@ -44,7 +43,7 @@ function Tag({ tekst, istotnosc, testid }: { tekst: string; istotnosc: Istotnosc
     </span>
   );
 }
-import { PrzyciskAkcjiStanu } from '../wzorzec';
+import { InformacjeAudytowe, PrzyciskAkcjiStanu, useNazwaObiektu } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 
 function StanPanel({
@@ -75,57 +74,40 @@ function StanPanel({
 }
 
 // ---------------------------------------------------------------------------
-// Chip werdyktu + identyfikacja przekształtnika/węzła
+// Identyfikacja przekształtnika/węzła + strefa ujemnej rezystancji (informacja)
 // ---------------------------------------------------------------------------
 
-function ChipWerdyktu({ dane }: { dane: WidokStabilnosciSsci }) {
+function PanelPrzeksztaltnika({ dane }: { dane: WidokStabilnosciSsci }) {
   const w = dane.verdict;
-  const istotnosc = istotnoscWerdyktu(w.verdict);
-  const poprawWModelu = usePoprawWModelu();
-  // F-K4 (znalezisko Z4): ryzyko/brak stabilności podsynchronicznej prowadzi do
-  // SZYNY przyłączenia przekształtnika w modelu. Węzeł, bo to on jest elementem
-  // modelu wskazanym przez kontrakt werdyktu (`bus_ref`); `converter_ref` nie
-  // jest identyfikatorem elementu grafu, więc nawigacja po nim byłaby zgadywaniem.
-  const wezel = w.bus_ref;
-  const decyzja = w.is_risk && Boolean(wezel);
+  // Karta #145: przekształtnik i węzeł nazwane z modelu, nigdy referencją.
+  const nazwaObiektu = useNazwaObiektu();
   return (
-    <section className="mvd-ssci-werdykt" data-testid="mvd-ssci-werdykt">
+    <section className="mvd-ssci-werdykt" data-testid="mvd-ssci-przeksztaltnik">
       <div className="mvd-ssci-werdykt-glowny">
-        <span className="mvd-ssci-werdykt-etyk">{S.werdyktTytul}</span>
-        <span
-          className={`mvd-ssci-chip mvd-ssci-chip--${istotnosc}`}
-          data-testid="mvd-ssci-chip-werdykt"
-        >
-          {etykietaWerdyktu(w.verdict)}
-        </span>
         {w.converter_ref && (
           <span className="mvd-ssci-werdykt-meta">
-            {S.chipPrzekształtnik}: {w.converter_ref}
+            {S.chipPrzekształtnik}: {nazwaObiektu(w.converter_ref)}
           </span>
         )}
         {w.bus_ref && (
           <span className="mvd-ssci-werdykt-meta">
-            {S.chipWezel}: {w.bus_ref}
+            {S.chipWezel}: {nazwaObiektu(w.bus_ref)}
           </span>
         )}
-        {decyzja && (
-          <button
-            type="button"
-            className="mvd-ssci-popraw"
-            data-testid="mvd-ssci-popraw"
-            title={akcjaNaprawcza('stabilnosc-ssci').opis}
-            onClick={() => poprawWModelu(wezel as string, 'Bus', wezel as string, 'stabilnosc-ssci')}
-          >
-            {akcjaNaprawcza('stabilnosc-ssci').etykieta}
-          </button>
-        )}
+      </div>
+      <div className="mvd-ssci-metryka mvd-ssci-metryka--neutral">
+        <span className="mvd-ssci-metryka-etyk">{S.metrRezystancjaUjemna}</span>
+        <span className="mvd-ssci-metryka-wartosc mvd-num" data-testid="mvd-ssci-rezystancja-ujemna">
+          {opisRezystancjiUjemnej(w)}
+        </span>
+        <span className="mvd-ssci-metryka-opis">{S.metrRezystancjaOpis}</span>
       </div>
     </section>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Metryki kryterium impedancyjnego (grid)
+// Metryki kryterium impedancyjnego (sekcja audytowa, bez koloru)
 // ---------------------------------------------------------------------------
 
 function PanelMetryk({ dane }: { dane: WidokStabilnosciSsci }) {
@@ -137,7 +119,7 @@ function PanelMetryk({ dane }: { dane: WidokStabilnosciSsci }) {
         {metryki.map((m) => (
           <div
             key={m.klucz}
-            className={`mvd-ssci-metryka mvd-ssci-metryka--${m.istotnosc}`}
+            className="mvd-ssci-metryka mvd-ssci-metryka--neutral"
             data-testid={`mvd-ssci-metryka-${m.klucz}`}
           >
             <span className="mvd-ssci-metryka-etyk">{m.etykieta}</span>
@@ -172,7 +154,7 @@ function PanelProweniencji({ dane }: { dane: WidokStabilnosciSsci }) {
       <p className="mvd-ssci-prov-tag-pl">{prov.tag_pl}</p>
       {prov.consumed_fields.length > 0 && (
         <p className="mvd-ssci-prov-pola">
-          {S.provPolaZrodlowe}: {prov.consumed_fields.join(', ')}
+          {S.provPolaZrodlowe}: {prov.consumed_fields.map((pole) => POLA_KARTY_SSCI[pole]).join('; ')}
         </p>
       )}
     </section>
@@ -245,7 +227,7 @@ function SladSsci({ kroki }: { kroki: readonly KrokWhiteBox[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Prezentacja werdyktu
+// Prezentacja wyniku (ocena niewykonana + informacja + audyt)
 // ---------------------------------------------------------------------------
 
 function WynikSsci({
@@ -258,49 +240,43 @@ function WynikSsci({
   const w = dane.verdict;
   return (
     <div data-testid="mvd-ssci-wynik">
-      <ChipWerdyktu dane={dane} />
+      <OcenaNiewykonana ocena={dane.ocena} testid="mvd-ssci-ocena" />
 
-      <section className="mvd-ssci-dlaczego" data-testid="mvd-ssci-dlaczego">
-        <h3 className="mvd-ssci-sekcja-tytul">{S.dlaczegoTytul}</h3>
-        <p className="mvd-ssci-dlaczego-tresc">{w.why_pl}</p>
-      </section>
+      <PanelPrzeksztaltnika dane={dane} />
 
       {w.missing_data.length > 0 ? (
         <PanelBrakow dane={dane} />
       ) : (
-        <PanelMetryk dane={dane} />
+        <SekcjaAudytowa naglowek={dane.sekcja_audytowa_pl} testid="mvd-ssci-audyt">
+          <PanelMetryk dane={dane} />
+        </SekcjaAudytowa>
       )}
 
       <PanelProweniencji dane={dane} />
 
       {trybEkspercki && w.white_box.length > 0 && <SladSsci kroki={w.white_box} />}
 
+      {/* Karta #145: identyfikator analizy wyłącznie w „Informacjach audytowych"; próg
+          wzmocnienia (wielkość inżynierska) zostaje na pierwszym planie trybu eksperckiego. */}
       {trybEkspercki && (
         <dl className="mvd-ssci-eksp" data-testid="mvd-ssci-eksp">
-          <div className="mvd-ssci-eksp-para">
-            <dt>{S.ekspAnalizaId}</dt>
-            <dd className="mvd-num">{dane.analysis_id}</dd>
-          </div>
           <div className="mvd-ssci-eksp-para">
             <dt>{S.ekspProgGain}</dt>
             <dd className="mvd-num">{fmtGain(dane.gain_crossover_mag)}</dd>
           </div>
-          <div className="mvd-ssci-eksp-para">
-            <dt>{S.ekspProgRyzyko}</dt>
-            <dd className="mvd-num">{fmtStopnie(dane.pm_risk_deg)}</dd>
-          </div>
-          <div className="mvd-ssci-eksp-para">
-            <dt>{S.ekspProgNiestabilny}</dt>
-            <dd className="mvd-num">{fmtStopnie(dane.pm_unstable_deg)}</dd>
-          </div>
         </dl>
       )}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-ssci-informacje-audytowe"
+        wiersze={[{ etykieta: S.ekspAnalizaId, wartosc: dane.analysis_id }]}
+      />
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Zasób werdyktu — jawne stany
+// Zasób widoku — jawne stany
 // ---------------------------------------------------------------------------
 
 type StanWerdyktu =
@@ -368,12 +344,14 @@ export function EkranSsci({ trybZaawansowania }: EkranSsciProps) {
       <header className="mvd-ssci-naglowek">
         <h2 className="mvd-ssci-tytul">{S.tytul}</h2>
         <p className="mvd-ssci-opis">{S.opisWstep}</p>
-        {trybEkspercki && runId && (
-          <span className="mvd-ssci-run mvd-num" aria-label={S.runId}>
-            {runId}
-          </span>
-        )}
       </header>
+
+      {/* Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych". */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-ssci-przebieg-informacje-audytowe"
+        wiersze={runId ? [{ etykieta: S.runId, wartosc: runId }] : []}
+      />
 
       <section className="mvd-ssci-akcja-sekcja">
         <p className="mvd-ssci-pole-opis">{S.uruchomOpis}</p>

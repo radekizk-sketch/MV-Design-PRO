@@ -28,14 +28,24 @@ export const SZABLONY_STRINGS = {
   liczbaPolSkrot: 'pól SN',
   opisZastosowania: 'Zastosowanie',
   wlasny: 'własny',
+  kafelMoc: 'Moc',
+  kafelNapiecia: 'Napięcia',
+  kafelNapiecieSn: 'Napięcie SN',
+  kafelNapiecieSnDowolne: 'dowolne',
 
   // Filtry
   filtryTytul: 'Filtry',
-  filtrSzukaj: 'Szukaj (moc, napięcie, słowa kluczowe)',
-  filtrSzukajPlaceholder: 'np. 630 kVA, 15/0,4 kV, prosument…',
+  filtrSzukaj: 'Szukaj (słowa kluczowe)',
+  filtrSzukajPlaceholder: 'np. prosument, RMU, NOP…',
   filtrLiczbaPol: 'Liczba pól SN',
   filtrLiczbaPolOd: 'od',
   filtrLiczbaPolDo: 'do',
+  filtrMoc: 'Moc transformatora [kVA]',
+  filtrMocOd: 'od',
+  filtrMocDo: 'do',
+  filtrNapiecie: 'Napięcie SN',
+  filtrZastosowanie: 'Zastosowanie',
+  filtrZastosowanieWszystkie: 'Wszystkie',
   filtrWyczysc: 'Wyczyść filtry',
 
   // Panel szczegółów
@@ -56,7 +66,18 @@ export const SZABLONY_STRINGS = {
   menuPorownajUsun: 'Usuń z porównania',
   menuPorownajPelne: 'Porównanie pełne (wybierz max. 2 warianty)',
   menuWymaganiaDanych: 'Pokaż wymagania danych',
-  menuWymaganiaDanychNiedostepne: 'Niedostępne w tej karcie — patrz TODO-KARTA',
+
+  // Panel „Wymagania danych" (kontrakt szablonu: co katalog musi dostarczyć)
+  wymaganiaTytul: 'Wymagania danych szablonu',
+  wymaganiaNamespace: 'Typ katalogowy',
+  wymaganiaLiczbaOpcji: 'Dostępne opcje w katalogu',
+  wymaganiaDomyslna: 'Domyślna opcja',
+  wymaganiaAparaturaPol: 'Aparatura pól SN',
+  wymaganiaRozdzielnicaSn: 'Rozdzielnica SN (producent)',
+  wymaganiaPrzekladnikiPradowe: 'Przekładniki prądowe (CT)',
+  wymaganiaPrzekladnikiNapieciowe: 'Przekładniki napięciowe (VT)',
+  wymaganiaLicznikiEnergii: 'Liczniki energii',
+  wymaganiaZamknij: 'Zamknij',
 
   // Porównanie
   porownanieTytul: 'Porównanie szablonów',

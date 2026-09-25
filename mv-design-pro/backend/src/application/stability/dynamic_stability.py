@@ -1,38 +1,139 @@
+"""Tor „stabilność dynamiczna po wyłączeniu zwarcia" — echo scenariusza BEZ werdyktu.
+
+Bieg `dynamic_stability` NIE rozwiązuje sieci: kąty mocy źródła przed zwarciem, w czasie
+zwarcia i po nim, napięcie i częstotliwość po zwarciu oraz czas wyłączenia zwarcia WPISUJE
+użytkownik w opcjach biegu. Dawny „werdykt" STABLE/UNSTABLE (wraz z indeksem stabilności,
+czynnikiem ograniczającym, listą naruszonych kryteriów i marginesem czasu wyłączenia) był
+porównaniem TYCH liczb z progami przyjętymi w opcjach biegu — liczba wpisana przez
+użytkownika zwracała mu się jako „wynik" (uczciwość natychmiastowa, audyt dynamiki
+2026-09-23). Tor zostaje do kasacji przy wdrożeniu biegu kanonicznego dynamiki RMS; do tego
+czasu bieg się wykonuje i zwraca ECHO scenariusza z rekordem kontraktu werdyktu (`ocena`,
+``werdykt.OcenaKryterium`` o statusie ``NIE_OCENIONO``): dowód ``BRAK_METODY``, a wartości
+wpisane przez użytkownika jako dane przyjęte bez walidacji (``UNVALIDATED_INPUT``).
+"""
+
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import Any
+
+from application.ocena_niewykonana import ocena_niewykonana, rekord_json
+from enm.nazwy_elementow import SPOZA_MODELU, nazwa_po_identyfikatorze
+from solver_input.provenance import classify_dynamic_capability
+from werdykt import (
+    ClaimKind,
+    DanaPrzyjeta,
+    FieldQuality,
+    PodstawaWymagania,
+    Przedmiot,
+    StatusDanych,
+    Wielkosc,
+    ZakresWaznosci,
+)
+
+#: Wersja kontraktu echa scenariusza (dawniej `dynamic_stability_fault_clear_v1` — kontrakt
+#: z werdyktem progowym). Nowa wersja, bo wynik przestał nieść werdykt i jego składowe.
+WERSJA_KONTRAKTU_ECHA = "dynamic_stability_fault_clear_echo_v2"
+
+#: Konkretne braki toru (po brakach nazwanych przez regułę K) — co trzeba dostarczyć.
+BRAKI_OCENY_STABILNOSCI: tuple[str, ...] = (
+    "Bieg dynamiki RMS na silniku kanonicznym z modelem źródeł, sieci i obciążeń, "
+    "zweryfikowany wyrocznią — kąty mocy, napięcie i częstotliwość po zwarciu oraz czas "
+    "wyłączenia w tym biegu pochodzą z wartości wpisanych przez użytkownika, nie z rozwiązania "
+    "sieci.",
+    "Przebieg kątów mocy, napięcia i częstotliwości wyznaczony z rozwiązania sieci, a nie "
+    "wpisany ręcznie.",
+    "Zadziałanie zabezpieczeń wyznaczone z ich nastaw i przebiegu prądów zwarciowych "
+    "(zabezpieczenia nie są w tym biegu symulowane).",
+    "Obliczenie dynamiki czasowej z punktem pracy z rozpływu (bieg kanoniczny albo program "
+    "zewnętrzny) — do tego czasu ten bieg pokazuje wyłącznie scenariusz wpisany przez "
+    "użytkownika.",
+)
+#: Zdolność toru w rejestrze dowodowym (jedno źródło poziomu dowodowego).
+_ZDOLNOSC_TORU = "dynamic_stability.fault_clear"
+_POWOD_DANEJ_WPISANEJ = "wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci"
+
+
+def _dane_wpisane(scenario: FaultClearScenario) -> tuple[DanaPrzyjeta, ...]:
+    """Wartości scenariusza wpisane przez użytkownika — dane przyjęte bez walidacji."""
+    zrodlo = scenario.source_state
+
+    def dana(nazwa: str, wartosc: float, jednostka: str) -> DanaPrzyjeta:
+        return DanaPrzyjeta(
+            nazwa_pl=nazwa,
+            wartosc=Wielkosc(wartosc=_round_metric(wartosc), jednostka=jednostka),
+            powod_pl=_POWOD_DANEJ_WPISANEJ,
+            jakosc=FieldQuality.ESTIMATED,
+        )
+
+    return (
+        dana("czas wyłączenia zwarcia", scenario.clearing_time_ms, "ms"),
+        dana("kąt mocy przed zwarciem", zrodlo.pre_fault_angle_deg, "°"),
+        dana("kąt mocy w czasie zwarcia", zrodlo.during_fault_angle_deg, "°"),
+        dana("kąt mocy po zwarciu", zrodlo.post_fault_angle_deg, "°"),
+        dana("napięcie po zwarciu", zrodlo.post_fault_voltage_pu, "p.u. (U_n)"),
+        dana("częstotliwość po zwarciu", zrodlo.post_fault_frequency_pu, "p.u. (f_n)"),
+    )
+
+
+def ocena_stabilnosci_niewykonana(
+    scenario: FaultClearScenario, *, nazwy: Mapping[str, str]
+) -> dict[str, Any]:
+    """Rekord ``NIE_OCENIONO`` (``werdykt.OcenaKryterium``) toru z kątów wpisanych ręcznie.
+
+    ``nazwy`` — indeks ``ref_id -> nazwa`` migawki biegu (``enm.nazwy_elementow``): przedmiot
+    oceny nazywa źródło i element objęty zwarciem nazwą z modelu; identyfikator zostaje
+    w ``element_ref`` (karta #144 — dawniej „Źródło gen_sync … na elemencie line_b_c").
+    """
+    ewidencja = classify_dynamic_capability(_ZDOLNOSC_TORU)
+    zrodlo = scenario.source_state
+    return rekord_json(
+        ocena_niewykonana(
+            kryterium_id=f"dynamic_stability.fault_clear.{scenario.scenario_id}",
+            przedmiot=Przedmiot(
+                element_ref=zrodlo.source_id,
+                nazwa_pl="Źródło "
+                + nazwa_po_identyfikatorze(
+                    zrodlo.source_id, indeks=nazwy, spoza_modelu=SPOZA_MODELU
+                ),
+                opis_pl="Źródło w scenariuszu wyłączenia zwarcia na elemencie "
+                + nazwa_po_identyfikatorze(
+                    scenario.faulted_element_id, indeks=nazwy, spoza_modelu=SPOZA_MODELU
+                ),
+            ),
+            opis_kryterium_pl="Stabilność kątowa źródła po wyłączeniu zwarcia",
+            podstawa=PodstawaWymagania(
+                rodzaj="NIEUSTALONA",
+                dokument="Progi oceny stabilności podane w opcjach biegu",
+                status="NIEUSTALONE",
+                uwagi_pl="progi bez dokumentu źródłowego — przyjmowane w opcjach biegu",
+            ),
+            powod_stosowalnosci_pl="scenariusz wyłączenia zwarcia wskazuje oceniane źródło",
+            rodzaj_twierdzenia=ClaimKind.DYNAMIC_PERFORMANCE,
+            poziom=ewidencja.tier,
+            status_modelu="NIE_DOTYCZY",
+            zakres_waznosci=ZakresWaznosci(
+                opis_pl="Echo scenariusza wyłączenia zwarcia wpisanego przez użytkownika",
+                wykluczenia=(
+                    "przebieg kątów mocy wyznaczony z rozwiązania sieci",
+                    "zadziałanie zabezpieczeń wyznaczone z nastaw",
+                ),
+            ),
+            powod_braku_niepewnosci_pl=(
+                "brak wielkości rozstrzygającej — bieg nie rozwiązuje sieci, więc niepewność "
+                "wyniku nie dotyczy"
+            ),
+            czego_brakuje=BRAKI_OCENY_STABILNOSCI,
+            status_danych=StatusDanych(
+                stan="UNVALIDATED_INPUT", dane_przyjete=_dane_wpisane(scenario)
+            ),
+        )
+    )
 
 
 def _round_metric(value: float) -> float:
     return round(float(value), 6)
-
-
-def _normalize_margin(observed: float, limit: float) -> float:
-    if limit <= 0:
-        return 0.0
-    return _round_metric(max(0.0, min(1.0, 1.0 - (observed / limit))))
-
-
-def _normalize_floor(observed: float, floor: float) -> float:
-    if floor <= 0:
-        return 0.0
-    return _round_metric(max(0.0, min(1.0, observed / floor)))
-
-
-@dataclass(frozen=True)
-class DynamicStabilityThresholds:
-    max_clearing_time_ms: float = 150.0
-    max_angle_swing_deg: float = 120.0
-    min_voltage_recovery_pu: float = 0.95
-    min_frequency_recovery_pu: float = 0.98
-
-    def to_dict(self) -> dict[str, float]:
-        return {
-            "max_clearing_time_ms": _round_metric(self.max_clearing_time_ms),
-            "max_angle_swing_deg": _round_metric(self.max_angle_swing_deg),
-            "min_voltage_recovery_pu": _round_metric(self.min_voltage_recovery_pu),
-            "min_frequency_recovery_pu": _round_metric(self.min_frequency_recovery_pu),
-        }
 
 
 @dataclass(frozen=True)
@@ -66,7 +167,6 @@ class FaultClearScenario:
     clearing_time_ms: float
     source_state: FaultClearSourceState
     cleared_by_element_ids: tuple[str, ...] = field(default_factory=tuple)
-    thresholds: DynamicStabilityThresholds = field(default_factory=DynamicStabilityThresholds)
 
     def __post_init__(self) -> None:
         if not self.scenario_id or not self.scenario_id.strip():
@@ -91,30 +191,26 @@ class FaultClearScenario:
             "clearing_time_ms": _round_metric(self.clearing_time_ms),
             "cleared_by_element_ids": list(self.cleared_by_element_ids),
             "source_state": self.source_state.to_dict(),
-            "thresholds": self.thresholds.to_dict(),
         }
 
 
 @dataclass(frozen=True)
-class DynamicStabilityResult:
+class EchoScenariuszaStabilnosci:
+    """Echo scenariusza wpisanego przez użytkownika + ocena niewykonana (bez werdyktu)."""
+
     scenario_id: str
     scenario_type: str
     source_id: str
     faulted_element_id: str
     cleared_by_element_ids: tuple[str, ...]
-    stable: bool
-    status: str
-    criteria_version: str
-    stability_index: float
     clearing_time_ms: float
-    max_clearing_time_ms: float
-    clearing_margin_ms: float
-    angle_swing_deg: float
+    pre_fault_angle_deg: float
+    during_fault_angle_deg: float
+    post_fault_angle_deg: float
     post_fault_voltage_pu: float
     post_fault_frequency_pu: float
-    limiting_factor: str
-    violated_checks: tuple[str, ...]
-    checks: dict[str, bool]
+    ocena: dict[str, Any]
+    contract_version: str = WERSJA_KONTRAKTU_ECHA
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -123,84 +219,38 @@ class DynamicStabilityResult:
             "source_id": self.source_id,
             "faulted_element_id": self.faulted_element_id,
             "cleared_by_element_ids": list(self.cleared_by_element_ids),
-            "stable": self.stable,
-            "status": self.status,
-            "criteria_version": self.criteria_version,
-            "stability_index": _round_metric(self.stability_index),
+            # Status maszynowy WYPROWADZONY z rekordu oceny (jedno źródło prawdy) — echo nie
+            # ma własnego pola statusu obok rekordu kontraktu werdyktu.
+            "status": self.ocena["status_maszynowy"],
+            "contract_version": self.contract_version,
             "clearing_time_ms": _round_metric(self.clearing_time_ms),
-            "max_clearing_time_ms": _round_metric(self.max_clearing_time_ms),
-            "clearing_margin_ms": _round_metric(self.clearing_margin_ms),
-            "angle_swing_deg": _round_metric(self.angle_swing_deg),
+            "pre_fault_angle_deg": _round_metric(self.pre_fault_angle_deg),
+            "during_fault_angle_deg": _round_metric(self.during_fault_angle_deg),
+            "post_fault_angle_deg": _round_metric(self.post_fault_angle_deg),
             "post_fault_voltage_pu": _round_metric(self.post_fault_voltage_pu),
             "post_fault_frequency_pu": _round_metric(self.post_fault_frequency_pu),
-            "limiting_factor": self.limiting_factor,
-            "violated_checks": list(self.violated_checks),
-            "checks": dict(self.checks),
+            "ocena": dict(self.ocena),
         }
 
 
-def evaluate_fault_clear_dynamic_stability(
-    scenario: FaultClearScenario,
-) -> DynamicStabilityResult:
-    source_state = scenario.source_state
-    thresholds = scenario.thresholds
+def echo_scenariusza_stabilnosci(
+    scenario: FaultClearScenario, *, nazwy: Mapping[str, str]
+) -> EchoScenariuszaStabilnosci:
+    """Echo scenariusza wyłączenia zwarcia z oceną niewykonaną — ZERO porównań z progami.
 
-    angle_swing_deg = max(
-        abs(source_state.during_fault_angle_deg - source_state.pre_fault_angle_deg),
-        abs(source_state.post_fault_angle_deg - source_state.pre_fault_angle_deg),
-    )
-    clearing_margin_ms = _round_metric(thresholds.max_clearing_time_ms - scenario.clearing_time_ms)
-
-    checks = {
-        "clearing_time": scenario.clearing_time_ms <= thresholds.max_clearing_time_ms,
-        "angle_swing": angle_swing_deg <= thresholds.max_angle_swing_deg,
-        "voltage_recovery": (
-            source_state.post_fault_voltage_pu >= thresholds.min_voltage_recovery_pu
-        ),
-        "frequency_recovery": (
-            source_state.post_fault_frequency_pu >= thresholds.min_frequency_recovery_pu
-        ),
-    }
-    violated_checks = tuple(name for name, ok in checks.items() if not ok)
-
-    components = {
-        "clearing_time": _normalize_margin(
-            scenario.clearing_time_ms, thresholds.max_clearing_time_ms
-        ),
-        "angle_swing": _normalize_margin(angle_swing_deg, thresholds.max_angle_swing_deg),
-        "voltage_recovery": _normalize_floor(
-            source_state.post_fault_voltage_pu,
-            thresholds.min_voltage_recovery_pu,
-        ),
-        "frequency_recovery": _normalize_floor(
-            source_state.post_fault_frequency_pu,
-            thresholds.min_frequency_recovery_pu,
-        ),
-    }
-    limiting_factor = min(
-        components.items(),
-        key=lambda item: (item[1], item[0]),
-    )[0]
-    stability_index = _round_metric(sum(components.values()) / len(components))
-    stable = not violated_checks
-
-    return DynamicStabilityResult(
+    ``nazwy`` — indeks nazw migawki biegu (patrz ``ocena_stabilnosci_niewykonana``)."""
+    zrodlo = scenario.source_state
+    return EchoScenariuszaStabilnosci(
         scenario_id=scenario.scenario_id,
         scenario_type="FAULT_CLEAR",
-        source_id=source_state.source_id,
+        source_id=zrodlo.source_id,
         faulted_element_id=scenario.faulted_element_id,
         cleared_by_element_ids=scenario.cleared_by_element_ids,
-        stable=stable,
-        status="STABLE" if stable else "UNSTABLE",
-        criteria_version="dynamic_stability_fault_clear_v1",
-        stability_index=stability_index,
-        clearing_time_ms=_round_metric(scenario.clearing_time_ms),
-        max_clearing_time_ms=_round_metric(thresholds.max_clearing_time_ms),
-        clearing_margin_ms=clearing_margin_ms,
-        angle_swing_deg=_round_metric(angle_swing_deg),
-        post_fault_voltage_pu=_round_metric(source_state.post_fault_voltage_pu),
-        post_fault_frequency_pu=_round_metric(source_state.post_fault_frequency_pu),
-        limiting_factor=limiting_factor,
-        violated_checks=violated_checks,
-        checks=checks,
+        clearing_time_ms=scenario.clearing_time_ms,
+        pre_fault_angle_deg=zrodlo.pre_fault_angle_deg,
+        during_fault_angle_deg=zrodlo.during_fault_angle_deg,
+        post_fault_angle_deg=zrodlo.post_fault_angle_deg,
+        post_fault_voltage_pu=zrodlo.post_fault_voltage_pu,
+        post_fault_frequency_pu=zrodlo.post_fault_frequency_pu,
+        ocena=ocena_stabilnosci_niewykonana(scenario, nazwy=nazwy),
     )

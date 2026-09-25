@@ -41,11 +41,6 @@
   color: var(--mvd-muted);
   font-size: 12px;
 }
-.mvd-por-id {
-  color: var(--mvd-muted);
-  font-size: 11px;
-  white-space: nowrap;
-}
 
 /* ---- wybór A/B ---- */
 .mvd-por-wybor {
@@ -202,6 +197,13 @@
 .mvd-por-tab.mvd-on {
   color: var(--mvd-accent);
   border-bottom-color: var(--mvd-accent);
+}
+
+/* ---- dwie kolumny (wejścia/wyjścia kroku śladu porównania) ---- */
+.mvd-por-proweniencja-kolumny {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
 }
 
 /* ---- szczegół problemu ---- */

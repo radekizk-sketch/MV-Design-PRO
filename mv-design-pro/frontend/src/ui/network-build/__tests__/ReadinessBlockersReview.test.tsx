@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ReadinessBlockersReview } from '../mass-review/ReadinessBlockersReview';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
+import type { ReadinessInfo } from '../../../types/enm';
 
 const openOperationForm = vi.fn();
 const selectElement = vi.fn();
@@ -16,7 +17,7 @@ vi.mock('../../app-state', () => ({
 // (dawna atrapa `readinessLiveStore` była osobnym, nigdy nieodświeżanym źródłem).
 vi.mock('../../topology/snapshotStore', () => ({
   useSnapshotStore: (
-    selector: (state: { snapshot: unknown; fixActions: [] }) => unknown,
+    selector: (state: { snapshot: unknown; fixActions: []; readiness: ReadinessInfo | null }) => unknown,
   ) =>
     selector({
       snapshot: {

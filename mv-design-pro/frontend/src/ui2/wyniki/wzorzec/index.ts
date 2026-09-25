@@ -16,7 +16,21 @@ export type {
   StatusPozycjiWalidacji,
   WalidacjaWywodu,
 } from './SladSekcyjny';
-export { WZORZEC_STRINGS } from './strings';
+export { WZORZEC_STRINGS, etykietaPrzebieguWyniku, formatZnacznikaCzasu } from './strings';
+export { InformacjeAudytowe } from './InformacjeAudytowe';
+export { ZapisTechniczny, type ZapisTechnicznyProps } from './ZapisTechniczny';
+export { etykietaZeSlownika } from './slownikWyliczen';
+export {
+  NAZWY_SEGMENTOW,
+  SEGMENT_MASZYNOWY,
+  etykietaZapasowaRefu,
+  nazwaObiektuZMigawki,
+  tlumaczSegment,
+  useNazwaObiektu,
+} from './useNazwaObiektu';
+export type { NazwaObiektu } from './useNazwaObiektu';
+export type { WierszInformacjiAudytowych, InformacjeAudytoweProps } from './InformacjeAudytowe';
+export { KartaWerdyktu, type KartaWerdyktuProps } from './KartaWerdyktu';
 export { usePoprawWModelu } from './usePoprawWModelu';
 export { akcjaNaprawcza, AKCJA_GENERYCZNA } from './akcjeNaprawcze';
 export type { RodzajPrzekroczenia, AkcjaNaprawcza, CelAkcjiNaprawczej } from './akcjeNaprawcze';
@@ -26,9 +40,10 @@ export {
   useAkcjaOtworzDokumentacje,
   useAkcjaPorownajWarianty,
   useAkcjaPrzejdzDoPrzypadkow,
+  useAkcjaPrzejdzDoSchematu,
   useAkcjaUruchomObliczenie,
 } from './akcjeStanuZerowego';
-export type { AkcjaStanuZerowego } from './akcjeStanuZerowego';
+export type { AkcjaStanuZerowego, NadpisanieAkcjiBiegu } from './akcjeStanuZerowego';
 export { PrzyciskAkcjiStanu } from './PrzyciskAkcjiStanu';
 export type {
   EkranAnalizyProps,

@@ -71,8 +71,14 @@ def test_rodzina_bez_karty_odbija_kazde_sprawdzenie_walidatora(rodzina_widmo) ->
         lambda: fv.family_supports_short_circuit(ref, 16.0),
         lambda: fv.wymagaj_rodziny_oferowanej(ref),
     ):
-        with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie ma potwierdzonych"):
+        # Karta #142: zdanie dla projektanta nazywa powód blokady słowami
+        # („wymaga karty katalogowej producenta”), a status i referencja rodziny
+        # zostają w danych katalogu — nie w komunikacie.
+        with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie jest dopuszczona") as blad:
             wywolanie()
+        assert "wymaga karty katalogowej producenta" in str(blad.value)
+        assert rodzina_widmo.status not in str(blad.value)
+        assert ref not in str(blad.value)
 
 
 def test_rodzina_bez_zadeklarowanej_konstrukcji_nie_ma_toru(monkeypatch) -> None:
@@ -130,19 +136,19 @@ def test_family_supports_apparatus_para() -> None:
 
 def test_family_supports_voltage_para() -> None:
     fv.family_supports_voltage("ZPUE_WLOSZCZOWA__ROTOBLOK", 20.0)
-    with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie obsluguje napiecia"):
+    with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie obsługuje napięcia"):
         fv.family_supports_voltage("ZPUE_WLOSZCZOWA__TPM_AIR", 36.0)
 
 
 def test_family_supports_current_para() -> None:
     fv.family_supports_current("ZPUE_WLOSZCZOWA__RELF", 2500)
-    with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie obsluguje pradu szyn"):
+    with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie obsługuje prądu szyn"):
         fv.family_supports_current("ZPUE_WLOSZCZOWA__TPM_AIR", 1250)
 
 
 def test_family_supports_short_circuit_para() -> None:
     fv.family_supports_short_circuit("ZPUE_WLOSZCZOWA__RXD", 25.0)
-    with pytest.raises(NiezgodnoscKonfiguracjiError, match="pradu zwarciowego"):
+    with pytest.raises(NiezgodnoscKonfiguracjiError, match="prądu zwarciowego"):
         fv.family_supports_short_circuit("ZPUE_WLOSZCZOWA__ROTOBLOK_AIR", 25.0)
 
 
@@ -169,7 +175,7 @@ def test_bay_template_supports_apparatus_para() -> None:
     szablon = _szablon("ZPUE_WLOSZCZOWA__ROTOBLOK", "transformatorowe")
     assert fv.bay_template_supports_apparatus(szablon, "circuit_breaker") == "FABRYCZNY"
     # Aparat spoza listy pola = twardy błąd, nie ciche „nie ma".
-    with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie przewiduje elementu"):
+    with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie przewiduje aparatu"):
         fv.bay_template_supports_apparatus(szablon, "surge_arrester")
 
 

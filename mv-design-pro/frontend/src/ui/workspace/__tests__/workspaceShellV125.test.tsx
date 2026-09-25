@@ -3,21 +3,18 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../app-state/store';
-import {
-  ustawGotowoscMigawki,
-  wyczyscGotowoscMigawki,
-} from '../../../test/gotowoscTestUtils';
+import { wyczyscGotowoscMigawki } from '../../../test/gotowoscTestUtils';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useShellStore } from '../../../ui2/shell/useShellStore';
 import { renderWithQueryClient } from '../../../test/queryClientTestUtils';
+import katalogNcRfg from '../../../harness-fixtures/generated/ncrfg_katalog.json';
 
 // Faza 8: WorkspaceSurfaceRouter teraz uzywa hookow audit2 (React Query).
 // Wszystkie testy wymagaja QueryClientProvider.
 const render = renderWithQueryClient;
 void rtlRender; // keep import for type compat
-import { WorkspaceOperationalBar } from '../WorkspaceOperationalBar';
 import { WorkspaceSurfaceRouter } from '../WorkspaceSurfaceRouter';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
@@ -153,11 +150,10 @@ vi.mock('../../study-cases/RunHistoryPanel', () => ({
 // `data-testid` results-inspector-page / protection-results-page nie wystepuje w
 // ani jednym `expect` w tym pliku. Atrapa modulu, ktorego nikt nie importuje,
 // jest zerowa operacja udajaca pokrycie: wlacza czujnosc tam, gdzie nic nie ma.
-// Zostaje `power-flow-results` — bariera i eksport ISTNIEJA (inna klasa; brak
-// importera bariery jest zdolnoscia bez konsumenta, nie fikcja w tescie).
-vi.mock('../../power-flow-results', () => ({
-  PowerFlowResultsInspectorPage: () => <div data-testid="power-flow-results-page">PF</div>,
-}));
+// Atrapa `vi.mock('../../power-flow-results')` (eksport
+// `PowerFlowResultsInspectorPage`) ZDJETA w karcie AB-1a Pakiet L (2026-09-23):
+// sam ekran skasowany (LEGACY_USUNAC E14 — brak konsumenta produkcyjnego), a
+// router nie importuje tej bariery — atrapa bylaby ta sama zerowa operacja.
 
 vi.mock('../../comparison/ResultsComparisonPage', () => ({
   ResultsComparisonPage: () => <div data-testid="results-comparison-page">CMP</div>,
@@ -255,8 +251,12 @@ describe('workspace shell V12.5 surfaces', () => {
     render(<WorkspaceSurfaceRouter region="main" />);
 
     expect(screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-37'].titlePl })).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { level: 3, name: /Kontrakt raportu i eksportu/i })).toBeInTheDocument();
-    expect(screen.getAllByText('JSON').length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { level: 3, name: /Kontrakt raportu i eksportu/i })).toBeInTheDocument();
+    // Nagłówek panelu kontraktu rysuje `SectionCard` od razu, PRZED pobraniem kontraktu
+    // obliczenia (`useAnalysisRunContract`), więc czekanie na nagłówek niczego nie
+    // synchronizowało: asercje niżej ścigały się z odpowiedzią i pod obciążeniem maszyny
+    // przegrywały (pełny vitest partii integracji 3). Czekamy na treść zależną od danych.
+    expect((await screen.findAllByText('JSON')).length).toBeGreaterThan(0);
     expect(screen.getByText('pole statusu')).toBeInTheDocument();
     expect(screen.queryByText('proof-pack-1')).not.toBeInTheDocument();
     expect(screen.getAllByText('Zapisane w śladzie audytu').length).toBeGreaterThan(0);
@@ -380,6 +380,14 @@ describe('workspace shell V12.5 surfaces', () => {
 
   it('otwiera zakladke Testy NC RfG w kontenerze analitycznym E-35', async () => {
     const user = userEvent.setup();
+    // Karta AB-1a Pakiet D2 §7: zakładka renderuje JEDYNY ekran zdolności (macierz NC RfG
+    // na kontrakcie V2), który czyta katalog `GET /api/ncrfg-tests/catalog` — odpowiedź
+    // katalogu policzona backendem (fikstura generowana), pozostałe trasy bez zmian.
+    fetchMock.mockImplementation((input: RequestInfo | URL) =>
+      String(input).includes('/api/ncrfg-tests/catalog')
+        ? mockJsonResponse(katalogNcRfg)
+        : mockJsonResponse(mockAnalysisRunDetail),
+    );
     useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
       titlePl: 'Analizy techniczne',
       subjectKind: 'analysis_run',
@@ -393,8 +401,15 @@ describe('workspace shell V12.5 surfaces', () => {
     const activeSurface = useNetworkBuildStore.getState().activeSurface;
     expect(activeSurface?.screenCode).toBe(ANALYSIS_SURFACE_SCREEN_CODE);
     expect(activeSurface?.tabId).toBe('ncrfg-tests');
-    expect(screen.getByTestId('ncrfg-tests-tab')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 3, name: /Pakiet symulacji/i })).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-oze-macierz-ncrfg')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'Macierz wymogów NC RfG per moduł' }),
+    ).toBeInTheDocument();
+    // Wersja procedury z katalogu backendu (obiekt warstwy) — dowód, że ekran przeczytał
+    // katalog V2, a nie tylko się zamontował.
+    expect(await screen.findByTestId('mvd-oze-wersja-procedury')).toHaveTextContent(
+      katalogNcRfg.procedure_version.tytul,
+    );
   });
 
   it('nie pokazuje wewnetrznego typu analysis_run w kontekscie analitycznym', () => {
@@ -638,77 +653,5 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
     expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe(
       REPORT_SURFACE_SCREEN_CODE,
     );
-  });
-});
-
-describe('WorkspaceOperationalBar', () => {
-  beforeEach(() => {
-    fetchMock.mockReset();
-    fetchMock.mockImplementation(() => mockJsonResponse(mockAnalysisRunDetail));
-    useNetworkBuildStore.getState().reset();
-    useAppStateStore.getState().reset();
-    useExecutionRunsStore.getState().reset();
-    useSnapshotStore.getState().reset();
-    wyczyscGotowoscMigawki();
-  });
-
-  it('otwiera surface E-09 po kliknieciu segmentu aktywnej migawki', async () => {
-    const user = userEvent.setup();
-    useAppStateStore.getState().setActiveCase('case-1', 'Wariant A', 'PowerFlowCase', 'OUTDATED');
-    useAppStateStore.getState().setActiveSnapshot('snapshot-001');
-    useExecutionRunsStore.setState({
-      runs: [
-        {
-          id: 'run-1',
-          study_case_id: 'case-1',
-          analysis_type: 'LOAD_FLOW',
-          solver_input_hash: 'hash-1',
-          status: 'DONE',
-          started_at: '2026-04-19T10:00:00Z',
-          finished_at: '2026-04-19T10:01:00Z',
-          error_message: null,
-        },
-      ],
-    });
-    useAppStateStore.getState().setActiveRun('run-1');
-    ustawGotowoscMigawki({ ready: true });
-
-    render(<WorkspaceOperationalBar validationStatus="valid" />);
-
-    await user.click(screen.getByTestId('workspace-operational-snapshot'));
-
-    const activeSurface = useNetworkBuildStore.getState().activeSurface;
-    expect(activeSurface?.screenCode).toBe('E-09');
-    expect(activeSurface?.titlePl).toBe('Historia i audyt');
-  });
-
-  it('nie pokazuje technicznego jezyka runtime w pasku operacyjnym', () => {
-    useNetworkBuildStore.getState().openRouteSurface('E-09', {
-      titlePl: 'Historia i audyt',
-      sizeClass: 'B',
-      subjectKind: 'analysis_run',
-      subjectRef: 'case-1',
-    });
-
-    render(<WorkspaceOperationalBar validationStatus="valid" />);
-
-    expect(screen.getByText(/Aktywny widok:/)).toBeInTheDocument();
-    expect(screen.queryByText(/Aktywny surface:/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/surface/i)).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/Rama aplikacji pozostaje wspolna dla edycji, analityki i raportu/i),
-    ).toBeInTheDocument();
-  });
-
-  it('ukrywa techniczny sufiks wariantu w pasku operacyjnym', () => {
-    useAppStateStore
-      .getState()
-      .setActiveCase('case-1', 'Przypadek 50 szablonow mp9g6fu5', 'ShortCircuitCase', 'OUTDATED');
-
-    render(<WorkspaceOperationalBar validationStatus="valid" />);
-
-    const text = screen.getByTestId('workspace-operational-variant').textContent ?? '';
-    expect(text).toContain('Zakres 50 szablonow');
-    expect(text).not.toMatch(/mp9g6fu5|Przypadek/);
   });
 });

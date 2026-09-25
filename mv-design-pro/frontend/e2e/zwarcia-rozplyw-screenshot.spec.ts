@@ -6,14 +6,27 @@
  * overlayem zwarciowym (strzałki kierunku + znacznik pulse punktu zwarcia,
  * scena `screenshot-harness.html?fixture=gpzFeeder&overlay=faultflow`).
  *
- * Liczby [kA] obu scen pochodzą z JEDNEGO realnego wyniku IEC 60909 solvera
- * na fixturze testu TH-1 (`build_slack_radial_graph` + falownik `INV-B`,
- * `backend/tests/test_short_circuit_iec60909.py::
- * test_thevenin_addition_preserves_inverter_entries_byte_for_byte`) —
- * `creator-harness-main.tsx` (scena `zwarcia-rozplyw`) i
- * `screenshot-harness-main.tsx` (`FAULT_FLOW_DEMO_INPUT`) niosą TĘ SAMĄ
- * wartość Thevenina (5,552132022553349 kA ≈ ik_thevenin_ka) i maszyny
- * (0,024 kA) — jedna narracja, dwa realne render'y.
+ * HARNESS-ZWARCIA-Z-BACKENDU (2026-09-16): tabela `zwarcia-rozplyw:screenshot`
+ * niesie liczby [kA] z REALNEGO biegu backendu (`short_circuit_sn` na sieci
+ * złotej `build_golden_enm`, `eksport_fixtur_harnessu.py::
+ * zwarcia_rozplyw_scena_zwarcia`) — punkt „Szyna SN" (pierwszy wg sortu
+ * kanonicznego, bez preselekcji), tor sieci nadrzędnej (`THEVENIN_GRID`,
+ * gałąź „TR 110/15") ORAZ tor falownika (`gen_pv`, gałąź „TR 15/0.4").
+ *
+ * HARNESS-RESZTA (kontynuacja, 2026-09-16, ścieżka b): schemat
+ * `zwarcia-schemat:screenshot` DOMKNIĘTY — dawny dług (dawna fixtura testu
+ * TH-1, `build_slack_radial_graph` + falownik `INV-B`, liczby POŻYCZONE z
+ * INNEJ sieci niż renderowana) zastąpiony REALNYM biegiem `short_circuit_sn`
+ * na KOPII gpzFeeder z dołożonym falownikiem Stacji S02
+ * (`eksport_fixtur_harnessu.py::falowniki_rozplyw_scena_gpz_feeder_wynik`,
+ * `screenshot-harness-main.tsx`/`FAULT_FLOW_DEMO_INPUT`). Przy okazji
+ * naprawiony u źródła napotkany defekt klasy (`enm/canonical_analysis.py::
+ * _sc_rozplyw_galeziowy`): `branch_id`/`from_node_id`/`to_node_id` niosły
+ * klucz wewnętrzny grafu solvera zamiast `ref_id` domenowego — nakładka
+ * strzałek na KAŻDEJ realnej sieci wychodziła pusta przed naprawą (zmierzone
+ * sondą, `tests/enm/test_rozplyw_zwarciowy_przenosnosc.py`). Obie sceny nadal
+ * NIE dzielą wspólnych liczb — każda ma WŁASNE realne źródło (gpzFeeder+
+ * falownik S02 dla schematu, sieć złota dla tabeli).
  *
  * Wyjście: docs/audit/visual/flow-ekspert/zwarcia-{rozplyw,schemat}-{light,dark}.png.
  */
@@ -21,10 +34,31 @@ import { test, expect } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { adresHarnessu } from './adresHarnessu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const CREATOR_HARNESS_URL = 'http://127.0.0.1:5173/creator-harness.html';
-const SCREENSHOT_HARNESS_URL = 'http://127.0.0.1:5173/screenshot-harness.html';
+
+/**
+ * Prądy gałęzi toru zwarciowego z fikstury biegu backendu, którą karmi się scena —
+ * nie przepisane ręcznie (klasa defektu z CI 2026-09-24).
+ */
+const ZWARCIA_ROZPLYW = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/zwarcia_rozplyw_scena_zwarcia.json'),
+    'utf-8',
+  ),
+) as { branch_contributions: { branch_name: string; i_ka: number }[] };
+/** Największy prąd gałęzi o danej nazwie [kA] (tor dominujący przez tę gałąź). */
+const pradToru = (nazwa: string): number =>
+  Math.max(
+    ...ZWARCIA_ROZPLYW.branch_contributions
+      .filter((wklad) => wklad.branch_name === nazwa)
+      .map((wklad) => wklad.i_ka),
+  );
+const kaPl = (wartosc: number): string =>
+  wartosc.toLocaleString('pl-PL', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+const CREATOR_HARNESS_URL = adresHarnessu('creator-harness.html');
+const SCREENSHOT_HARNESS_URL = adresHarnessu('screenshot-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
 const THEMES = ['light', 'dark'] as const;
 
@@ -54,17 +88,21 @@ test.describe('zwarcia-rozplyw:screenshot', () => {
       await expect(sekcja).toContainText('Rozpływ prądu zwarciowego');
 
       const tabela = sekcja.getByTestId('mvd-wyn-tabela');
-      // Wiersz sieci nadrzędnej (Thevenin, kolumna „źródło" — tryb ekspercki).
+      // Kolumna „źródło" (tryb ekspercki) — nagłówek kolumny, niezależny od danych.
       await expect(sekcja.getByTestId('mvd-wyn-th-zrodlo')).toBeVisible();
+      // Wiersz sieci nadrzędnej (Thevenin, `source_id="THEVENIN_GRID"` -> PL).
       await expect(tabela).toContainText('sieć nadrzędna');
-      // Wiersz maszyny (identyfikator falownika, jak w kontrakcie backendu).
-      await expect(tabela).toContainText('INV-B');
-      // Prąd sieci nadrzędnej [kA] — format PL, przecinek dziesiętny.
-      await expect(tabela).toContainText('5,552');
-      // Prąd maszyny [kA].
-      await expect(tabela).toContainText('0,024');
-      // Nazwa gałęzi (wspólna dla obu wpisów — jedna linia niesie oba tory).
-      await expect(tabela).toContainText('Linia OZE');
+      // Wiersz maszyny (identyfikator falownika `gen_pv`, jak w kontrakcie backendu
+      // — `zrodloRozplywuPL` pokazuje surowy `source_id`, gdy nie jest THEVENIN_GRID).
+      await expect(tabela).toContainText('gen_pv');
+      // Prąd sieci nadrzędnej [kA] w torze dominującym (gałąź TR 110/15) — format PL.
+      await expect(tabela).toContainText(kaPl(pradToru('TR 110/15')));
+      // Prąd falownika [kA] w torze TR 15/0.4.
+      await expect(tabela).toContainText(kaPl(pradToru('TR 15/0.4')));
+      // Nazwy gałęzi realne (tor sieci nadrzędnej i tor falownika idą RÓŻNYMI
+      // gałęziami w tej sieci — inaczej niż w dawnej fixturze TH-1 z jedną linią).
+      await expect(tabela).toContainText('TR 110/15');
+      await expect(tabela).toContainText('TR 15/0.4');
 
       await page.waitForTimeout(200);
       expect(consoleErrors, `konsola bez błędów (${theme}): ${consoleErrors.join('; ')}`).toEqual([]);
@@ -126,10 +164,11 @@ test.describe('zwarcia-schemat:screenshot', () => {
       await expect(overlayLayer.getByTestId('sld-v3-fault-point-marker-dot')).toBeVisible();
       await expect(overlayLayer.getByTestId('sld-v3-fault-point-marker-pulse')).toBeVisible();
 
-      // Etykiety UCZCIWE: tor Thevenina „5,6 kA", tor maszyny w amperach
-      // („24 A" — zaokrąglenie do „0,0 kA" fałszowałoby realny wkład).
-      await expect(overlayLayer).toContainText('5,6 kA');
-      await expect(overlayLayer).toContainText('24 A');
+      // Etykiety UCZCIWE: tor Thevenina „9,1 kA" (realny bieg gpzFeeder, GPZ
+      // 250 MVA), tor falownika w amperach („16 A" — falownik 0,4 MW Stacji
+      // S02; zaokrąglenie do „0,0 kA" fałszowałoby realny wkład).
+      await expect(overlayLayer).toContainText('9,1 kA');
+      await expect(overlayLayer).toContainText('16 A');
 
       // Kadr do oceny właściciela bez legendy symboli arkusza (nakładała się
       // na tor rozpływu w małej fixturze) — ukrycie CZYSTO prezentacyjne,

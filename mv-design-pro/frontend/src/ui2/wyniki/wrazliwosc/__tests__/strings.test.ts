@@ -16,6 +16,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { KRYTERIA_PL, etykietaKryterium } from '../strings';
+import { WZORZEC_STRINGS } from '../../wzorzec/strings';
 
 /** Wyliczenie kontraktu buildera (patrz nagłówek — źródło prawdy). */
 const PARAMETER_ID_BUILDERA = [
@@ -40,7 +41,10 @@ describe('KRYTERIA_PL — zbiór zamknięty builderem analysis/sensitivity', () 
     }
   });
 
-  it('nieznany kod pokazuje się surowo (uczciwość zamiast zgadywania)', () => {
-    expect(etykietaKryterium('nowy_kod_bez_etykiety')).toBe('nowy_kod_bez_etykiety');
+  // Karta #145 (zmiana kanonu): kod spoza słownika nie trafia na ekran surowo — intencja
+  // „nie zgadujemy nazwy" zostaje (brak fabrykowanej etykiety), ale zamiast kodu stoi
+  // uczciwe zdanie po polsku.
+  it('nieznany kod → uczciwe zdanie, nie kod i nie zgadnięta nazwa', () => {
+    expect(etykietaKryterium('nowy_kod_bez_etykiety')).toBe(WZORZEC_STRINGS.wartoscSpozaSlownika);
   });
 });

@@ -31,6 +31,7 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from domain.execution import ExecutionAnalysisType
+from network_model.nazwy import jest_nazwa
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -343,7 +344,7 @@ def validate_fault_scenario(scenario: FaultScenario) -> None:
     - fault_mode=IMPEDANCE → fault_impedance is required
     - arc_params must be None (unsupported in v2)
     """
-    if not scenario.name or not scenario.name.strip():
+    if not jest_nazwa(scenario.name):
         raise FaultScenarioValidationError("Nazwa scenariusza jest wymagana")
 
     loc = scenario.location

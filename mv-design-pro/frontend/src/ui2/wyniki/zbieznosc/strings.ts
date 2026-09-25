@@ -59,8 +59,7 @@ export const ZBIEZNOSC_STRINGS = {
   // Regulacja zaczepów (OLTC) — ślad pętli regulacyjnej przebiegu.
   oltcTytul: 'Regulacja zaczepów w przebiegu (OLTC)',
   oltcOpis: 'Pozycje zaczepów wyznaczone przez pętlę automatycznej regulacji solvera '
-    + '(ślad pełnej jawności obliczeń przebiegu). Identyfikatory gałęzi transformatorów są '
-    + 'oznaczeniami technicznymi modelu.',
+    + '(ślad pełnej jawności obliczeń przebiegu).',
   oltcKolTransformator: 'Gałąź transformatora',
   oltcKolStrona: 'Strona regulowana',
   oltcKolSzynaKontrolowana: 'Szyna kontrolowana',
@@ -74,6 +73,21 @@ export const ZBIEZNOSC_STRINGS = {
   oltcSladNiedostepny: 'Ślad solvera dla tego przebiegu jest niedostępny — stan pętli '
     + 'regulacji zaczepów nie może być pokazany.',
   oltcLadowanie: 'Ładowanie śladu solvera…',
+
+  // Wyspy zasilone (rozpływ liczony per wyspa — sieć z kilkoma źródłami sieciowymi).
+  wyspyTytul: 'Wyspy zasilone w przebiegu (rozpływ per wyspa)',
+  wyspyOpis: 'Sieć ma kilka wysp z własnym źródłem sieciowym — solver rozwiązał każdą '
+    + 'osobno z własną szyną bilansującą; bilans mocy przebiegu jest sumą wysp, a szyna '
+    + 'bilansująca w założeniach to szyna pierwszej wyspy.',
+  wyspyKolSzyna: 'Szyna bilansująca',
+  wyspyKolZrodlo: 'Źródło sieciowe',
+  wyspyKolSzynyPq: 'Szyny PQ',
+  wyspyKolSzynyPv: 'Szyny PV',
+  wyspyKolIteracje: 'Iteracje',
+  wyspyKolZbieznosc: 'Zbieżność',
+  wyspyZbiezna: 'zbieżna',
+  wyspyNiezbiezna: 'NIEZBIEŻNA',
+  zalSzynyBilansujaceUwaga: 'kilka wysp zasilonych — po jednej szynie bilansującej na wyspę',
 
   // Założenia zaczepów w modelu (bieżąca wersja układu — snapshot ENM).
   modelTytul: 'Założenia zaczepów w modelu (bieżąca wersja układu)',

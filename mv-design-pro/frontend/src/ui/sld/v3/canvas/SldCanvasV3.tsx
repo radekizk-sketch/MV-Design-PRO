@@ -86,11 +86,9 @@ import { kotwicaWidoku } from './viewAnchor';
 // nie arkusza (V12K-222).
 import { screenToWorld } from '../../v2/viewport/ViewportController';
 import {
-  swzPresentationTone,
   type SegmentFaultFlowOverlay,
   type SegmentFlowOverlay,
   type SldV3Overlay,
-  type SwzOverlayEntry,
   type TransformerOltcOverlay,
 } from './overlay';
 import type { ResultLabelEntry, ResultLabelKind, ResultLabelLine } from './resultLabels';
@@ -1306,6 +1304,22 @@ export function formatOltcBadgeLabel(entry: TransformerOltcOverlay): string {
  * kładzie badge NA PRAWO od symbolu, wyśrodkowany pionowo. Brak wpisu ⇒ brak
  * badge (§14.2 „overlay wyłączony bez wyniku" — zero atrap). Deterministyczne:
  * kolejność = kolejność symboli sceny.
+ *
+ * FE-HIGIENA (2026-09-05, karta „dwa zastane długi frontendu"): `ownerRef`
+ * jest TOŻSAMOŚCIĄ POLA/BAY-a, nie pojedynczej instancji symbolu z
+ * KONSTRUKCJI — `scene/buildScene.ts` (komentarz przy `ownerRef` symbolu
+ * stacji: „nadal bayRef, nakładka energizacji kluczuje po refie POLA, nie
+ * per-aparat") i analogicznie `compose/gpz.ts::buildFieldStack`
+ * (`metaExtra` niesie TEN SAM `bayRef`/`transformerRef` do KAŻDEJ instancji
+ * stosu pola — pole z dwoma aparatami, np. odłącznik+wyłącznik, jest normą).
+ * `energizedByOwnerRef` już traktuje ten współdzielony ref jako JEDNĄ
+ * jednostkę (jeden wpis koloruje wszystkie symbole, które go niosą) — ta
+ * funkcja musi być SPÓJNA z tym kontraktem: jeden wpis nakładki ⇒ NAJWYŻEJ
+ * jedna odznaka, nie jedna na KAŻDY symbol dzielący ref (bez tego dwa
+ * symbole z tym samym `ownerRef` dawały dwa placementy o TEJ SAMEJ
+ * tożsamości ⇒ React „Encountered two children with the same key" w warstwie
+ * `sld-v3-oltc-overlay`). Pierwsze trafienie w kolejności sceny wygrywa
+ * (deterministyczne, ta sama reguła co `computeFaultPointMarkerPlacement`).
  */
 export function computeOltcBadgePlacements(
   scene: SceneV3,
@@ -1313,11 +1327,14 @@ export function computeOltcBadgePlacements(
 ): readonly OltcBadgePlacement[] {
   if (!oltcByOwnerRef) return [];
   const placements: OltcBadgePlacement[] = [];
+  const umieszczoneOwnerRefy = new Set<string>();
   for (const symbol of scene.symbols) {
     const ownerRef = symbol.meta?.ownerRef;
     if (!ownerRef || symbol.meta?.elementKind !== 'transformer') continue;
+    if (umieszczoneOwnerRefy.has(ownerRef)) continue;
     const entry = oltcByOwnerRef[ownerRef];
     if (!entry) continue;
+    umieszczoneOwnerRefy.add(ownerRef);
     const def = SYMBOL_DEFS[symbol.symbolId];
     const label = formatOltcBadgeLabel(entry);
     const width = measureLabelWidth(label, 't4') + GRID;
@@ -1332,102 +1349,6 @@ export function computeOltcBadgePlacements(
     });
   }
   return placements;
-}
-
-// ---------------------------------------------------------------------------
-// T2-WYNIKI (PLAN_SLD_NN_TOPOLOGIA_2026-08 §T2, §0 pkt 2 „odznaka SWZ na
-// kanwie"): dokończenie kontraktu P0.8 (`overlay.ts::swzByOwnerRef` istniał,
-// odznaka NIE była wdrożona — ten blok domyka lukę, WZORZEC IDENTYCZNY z
-// badge OLTC wyżej: element NAKŁADKI, nie symbol sceny). Fail-closed: brak
-// wpisu w `swzByOwnerRef` (backend nie mógł ocenić — model niekompletny albo
-// układ sieci nie jest TN) ⇒ BRAK odznaki (nie „ok" domyślne, §14.2 „overlay
-// wyłączony bez wyniku").
-// ---------------------------------------------------------------------------
-
-export interface SwzBadgePlacement {
-  readonly ownerRef: string;
-  readonly x: number;
-  readonly y: number;
-  readonly radius: number;
-  readonly tone: 'ok' | 'fail' | 'unknown';
-  readonly label: string;
-}
-
-/** Litera skrótowa odznaki — jedna litera, WYRÓŻNIALNA nawet bez koloru
- *  (dostępność — odznaka nie polega WYŁĄCZNIE na barwie). */
-function swzBadgeLetter(tone: 'ok' | 'fail' | 'unknown'): string {
-  if (tone === 'ok') return '✓';
-  if (tone === 'fail') return '✗';
-  return '?';
-}
-
-/**
- * Rozmieszczenie odznaki SWZ dla sceny — dla KAŻDEGO symbolu `apparatus`
- * (aparat odpływu nN, `meta.ownerRef` = `breaker_ref`) z wpisem w
- * `swzByOwnerRef` kładzie mały krążek tonowy W PRAWYM GÓRNYM rogu symbolu.
- * Brak wpisu ⇒ brak odznaki (zero fabrykacji werdyktu). Deterministyczne:
- * kolejność = kolejność symboli sceny.
- */
-export function computeSwzBadgePlacements(
-  scene: SceneV3,
-  swzByOwnerRef: Readonly<Record<string, SwzOverlayEntry>> | undefined,
-): readonly SwzBadgePlacement[] {
-  if (!swzByOwnerRef) return [];
-  const placements: SwzBadgePlacement[] = [];
-  for (const symbol of scene.symbols) {
-    const ownerRef = symbol.meta?.ownerRef;
-    if (!ownerRef || symbol.meta?.elementKind !== 'apparatus') continue;
-    const entry = swzByOwnerRef[ownerRef];
-    if (!entry) continue;
-    const def = SYMBOL_DEFS[symbol.symbolId];
-    const tone = swzPresentationTone(entry.status);
-    const radius = GRID / 4;
-    placements.push({
-      ownerRef,
-      x: symbol.x + def.width - radius,
-      y: symbol.y - radius,
-      radius,
-      tone,
-      label: swzBadgeLetter(tone),
-    });
-  }
-  return placements;
-}
-
-function SceneSwzBadgeNode(props: { readonly placement: SwzBadgePlacement; readonly index: number }): JSX.Element {
-  const { placement, index } = props;
-  const palette = useSldPalette();
-  const typo = LABEL_TYPOGRAPHY.t4;
-  const color = placement.tone === 'ok'
-    ? palette.highlight.swzOk
-    : placement.tone === 'fail'
-      ? palette.highlight.swzFail
-      : palette.highlight.swzUnknown;
-  return (
-    <g data-testid={`sld-v3-swz-badge-${index}`} data-swz-owner-ref={placement.ownerRef} data-swz-tone={placement.tone}>
-      <circle
-        cx={placement.x}
-        cy={placement.y}
-        r={placement.radius}
-        fill={palette.canvasBackground}
-        stroke={color}
-        strokeWidth={1.25}
-      />
-      <text
-        data-testid={`sld-v3-swz-label-${index}`}
-        x={placement.x}
-        y={placement.y}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill={color}
-        fontFamily="sans-serif"
-        fontSize={typo.fontSize}
-        fontWeight={typo.fontWeight}
-      >
-        {placement.label}
-      </text>
-    </g>
-  );
 }
 
 function SceneOltcBadgeNode(props: { readonly placement: OltcBadgePlacement; readonly index: number }): JSX.Element {
@@ -2723,13 +2644,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     () => computeOltcBadgePlacements(scene, effectiveOverlay?.oltcByOwnerRef),
     [scene, effectiveOverlay],
   );
-  // T2-WYNIKI (PLAN_SLD_NN_TOPOLOGIA_2026-08 §T2, §0 pkt 2): odznaka SWZ —
-  // ta sama warstwa „nakładki wyników" (filtr `effectiveOverlay`), TEN SAM
-  // wzorzec co badge OLTC.
-  const swzBadgePlacements = useMemo(
-    () => computeSwzBadgePlacements(scene, effectiveOverlay?.swzByOwnerRef),
-    [scene, effectiveOverlay],
-  );
   // Karta S-B (ZWARCIA-PRO pkt 7): strzałki rozpływu prądu zwarciowego — ta
   // sama warstwa „nakładki wyników" (filtr `effectiveOverlay`).
   const faultFlowPlacements = useMemo(
@@ -3484,17 +3398,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         <g data-testid="sld-v3-oltc-overlay">
           {oltcBadgePlacements.map((placement, index) => (
             <SceneOltcBadgeNode key={`oltc-${placement.ownerRef}`} placement={placement} index={index} />
-          ))}
-        </g>
-        {/* T2-WYNIKI (PLAN_SLD_NN_TOPOLOGIA_2026-08 §T2, §0 pkt 2): odznaka
-         * SWZ NAD warstwami bazowymi — werdykt 3-tonowy (spełnia/nie
-         * spełnia/nierozstrzygalne) przy aparacie odpływu nN. Warstwa pusta
-         * (zero węzłów), gdy `swzByOwnerRef` bez wpisu dla danego aparatu lub
-         * warstwa „nakładki wyników" ukryta — fail-closed, brak danych = brak
-         * odznaki (nigdy domyślne „ok"). */}
-        <g data-testid="sld-v3-swz-overlay">
-          {swzBadgePlacements.map((placement, index) => (
-            <SceneSwzBadgeNode key={`swz-${placement.ownerRef}`} placement={placement} index={index} />
           ))}
         </g>
         {/* W4 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §8): warstwa LICZBOWYCH

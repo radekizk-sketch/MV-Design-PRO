@@ -64,9 +64,11 @@ def _create_deterministic_protection_result() -> dict[str, Any]:
     # Fixed timestamp for determinism
     fixed_timestamp = "2024-01-01T00:00:00+00:00"
 
-    # Fixed device IDs (sorted alphabetically)
-    device_a_id = "DEV-A-001"
-    device_b_id = "DEV-B-002"
+    # Fixed device IDs (sorted alphabetically). Sprawdzenia wskazują urządzenia TYMI SAMYMI
+    # identyfikatorami co lista `devices` (kształt produkcyjny: `str(device.id)`), żeby
+    # tabele sprawdzeń raportu nazywały urządzenie nazwą z listy (karta #144).
+    device_a_id = str(UUID(int=1))
+    device_b_id = str(UUID(int=2))
 
     return {
         "run_id": "run_deterministic_e2e_test_001",
@@ -75,7 +77,7 @@ def _create_deterministic_protection_result() -> dict[str, Any]:
         "overall_verdict": "PASS",
         "devices": [
             {
-                "id": str(UUID(int=1)),
+                "id": device_a_id,
                 "name": "Przekaźnik A",
                 "device_type": "RELAY",
                 "manufacturer": "ABB",
@@ -107,7 +109,7 @@ def _create_deterministic_protection_result() -> dict[str, Any]:
                 "created_at": fixed_timestamp,
             },
             {
-                "id": str(UUID(int=2)),
+                "id": device_b_id,
                 "name": "Przekaźnik B",
                 "device_type": "RELAY",
                 "manufacturer": "Siemens",
@@ -431,6 +433,36 @@ class TestProtectionDOCXContentValidation:
 
             for section in required_sections:
                 assert section in full_text, f"Brak sekcji '{section}' w raporcie DOCX"
+
+    def test_tabele_sprawdzen_nazywaja_urzadzenia_nazwami_nie_identyfikatorami(self) -> None:
+        """Karta #144: tabele czułości, selektywności i przeciążalności nazywają urządzenie
+        nazwą z listy urządzeń wyniku; fragment identyfikatora (dawniej `device_id[:12]`)
+        nie trafia do żadnej komórki. Urządzenie spoza listy to jawny brak."""
+        from docx import Document as DocxDocument
+
+        result = _create_deterministic_protection_result()
+        result["overload_checks"] = [
+            *result["overload_checks"],
+            {**result["overload_checks"][0], "device_id": "urzadzenie-usuniete-7f3a"},
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "nazwy.docx"
+            export_protection_coordination_to_docx(result, path, deterministic=True)
+            doc = DocxDocument(str(path))
+
+        komorki = [
+            komorka.text
+            for tabela in doc.tables
+            for wiersz in tabela.rows[1:]
+            for komorka in wiersz.cells
+        ]
+        assert "Przekaźnik A" in komorki
+        assert "Przekaźnik B" in komorki
+        assert "Urządzenie spoza wyniku" in komorki
+        for komorka in komorki:
+            assert "00000000" not in komorka
+            assert "urzadzenie-usuniete" not in komorka
 
     def test_no_codenames_in_docx(self) -> None:
         """Raport DOCX nie zawiera nazw kodowych projektu."""

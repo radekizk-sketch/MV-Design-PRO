@@ -1,22 +1,23 @@
 /*
- * Model danych + czyste adaptery pulpitu instalacji OZE (karta P47).
+ * Model danych + czyste adaptery pulpitu instalacji OZE (karta P47; kontrakt V2 — karta
+ * AB-1a Pakiet D2 §6).
  *
- * WARSTWA PREZENTACJI (NOT-A-SOLVER): zero fizyki, zero ocen własnych. Adaptery
- * agregują ISTNIEJĄCE dane:
- *   - opisy modułów z P39 (`zbudujModuly` — REUŻYCIE, bez duplikacji),
- *   - werdykty i klasa modułu WYŁĄCZNIE z `NcRfgRunResult` (backend),
+ * WARSTWA PREZENTACJI (NOT-A-SOLVER): zero fizyki, zero ocen własnych, zero agregatów.
+ * Adaptery zestawiają ISTNIEJĄCE dane:
+ *   - opisy modułów modelu (`opisyModulow` z macierzy — REUŻYCIE, bez duplikacji),
+ *   - wynik modułu (klasyfikacja, dowód certyfikatu, powód odrzucenia tabliczki albo jawny
+ *     brak) i rekordy wymagań WYŁĄCZNIE z oceny zatwierdzonego modelu przypadku
+ *     (`ZgodnoscPrzypadkuNcRfg` — ta sama trasa co certyfikat; dane modułów i dowód
+ *     wyprowadza serwer z modelu) — bez statusu modułu i bez liczników,
  *   - dane magazynu (BESS) wyłącznie z realnego kształtu `StationDerConnection`.
  *
- * Zasada uczciwości: brak biegu → stan „testy nieprzeprowadzone" (nie „brak
- * danych"); brak realnych danych magazynu → sekcja pominięta (nie atrapa).
- * Determinizm: kolejność modułów = kolejność `zbudujModuly` (sort po id).
+ * Zasada uczciwości: oceny niewczytanej nie udaje się — jawny stan; moduł pominięty przez
+ * serwer niesie powód z serwera (o objęciu modułu oceną rozstrzyga WYŁĄCZNIE most modelu —
+ * klient nie powtarza jego reguły brak mocy / napięcia); brak realnych danych magazynu →
+ * sekcja pominięta (nie atrapa). Determinizm: kolejność modułów = kolejność `opisyModulow`
+ * (sort po id).
  */
 
-import type {
-  NcRfgModuleResult,
-  NcRfgRunResult,
-  NcRfgTestResult,
-} from '../../../ui/ncrfg-tests/api';
 import type {
   ConnectionSide,
   DerCatalogSelections,
@@ -25,29 +26,36 @@ import type {
 } from '../../../ui/network-build/station-der';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import type { RekordKonwertera, WidokAdekwatnosciQ, WidokSilySieci } from '../api';
-import { podsumowanieModulu, type OpisModulu } from '../macierz';
+import { ocenaWymaganModulu, wynikModulu, type OpisModuluModelu } from '../macierz';
+import type {
+  CertyfikatOdrzucony,
+  OcenaWymaganModulu,
+  WynikModuluNcRfg,
+  ZgodnoscPrzypadkuNcRfg,
+} from '../ncrfg/typy';
 
 // =============================================================================
 // Typy warstwy prezentacji
 // =============================================================================
 
-/** Status modułu na liście pulpitu (jawne rozróżnienie „przed biegiem"). */
-export type StatusPulpitu = 'nieprzeprowadzone' | 'zgodny' | 'niezgodny' | 'brak_danych';
-
-/** Pozycja lewej listy modułów pulpitu. */
+/**
+ * Pozycja modułu pulpitu (lista i karta): dane z modelu oraz — po wczytaniu oceny modelu —
+ * wynik modułu (klasyfikacja, technologia, źródło danych, dowód certyfikatu albo jawny brak),
+ * powód odrzucenia tabliczki, rekordy wymagań profilu albo powód pominięcia przez serwer.
+ * Bez statusu modułu i bez liczników (kontrakt V2 ich nie ma).
+ */
 export interface PozycjaModulu {
   readonly derRef: string;
   readonly nazwa: string;
   readonly rodzaj: DerKindUnified;
-  /** Czy dla tego modułu istnieje wynik biegu. */
-  readonly przeprowadzono: boolean;
-  /** Klasa modułu z odpowiedzi backendu (`module_type`); null przed biegiem. */
-  readonly klasa: string | null;
-  readonly status: StatusPulpitu;
-  readonly passCount: number;
-  readonly requiredCount: number;
-  /** Moduł zablokowany brakiem danych wejściowych (poza biegiem). */
-  readonly zablokowany: boolean;
+  /** Wynik modułu z oceny modelu; `null` bez oceny albo dla modułu spoza oceny. */
+  readonly wynik: WynikModuluNcRfg | null;
+  /** Rekordy wymagań profilu (`ocena_wymagan`); `null` bez wyniku modułu. */
+  readonly ocena: OcenaWymaganModulu | null;
+  /** Powód odrzucenia tabliczki certyfikatu przez serwer (`certyfikaty_odrzucone`). */
+  readonly odrzucony: CertyfikatOdrzucony | null;
+  /** Powód pominięcia modułu przez serwer (`pominiete[].powod_pl`) albo `null`. */
+  readonly pominietyPowodPl: string | null;
 }
 
 /** Odnośnik katalogowy modułu (etykieta PL + wartość-identyfikator). */
@@ -63,17 +71,6 @@ export interface DaneModulu {
   readonly napiecieKv: number | null;
   readonly stronaPrzylaczenia: ConnectionSide;
   readonly odnosniki: readonly OdnosnikKatalogowy[];
-}
-
-/** Zgodność NC RfG modułu (sekcja 2). */
-export interface ZgodnoscModulu {
-  readonly przeprowadzono: boolean;
-  readonly klasa: string | null;
-  readonly status: StatusPulpitu;
-  readonly passCount: number;
-  readonly requiredCount: number;
-  /** Testy niespełnione (werdykt `fail`) — z akcjami naprawczymi backendu. */
-  readonly niespelnione: readonly NcRfgTestResult[];
 }
 
 /** Praca magazynu (sekcja 3 — tylko BESS, tylko gdy dane realnie istnieją). */
@@ -98,39 +95,28 @@ export interface DopasowanieMagazynu {
 // Adaptery
 // =============================================================================
 
-function wynikModulu(wynik: NcRfgRunResult | null, derRef: string): NcRfgModuleResult | null {
-  if (!wynik) return null;
-  return wynik.modules.find((m) => m.der_ref === derRef) ?? null;
-}
-
-/** Status listy: przed biegiem „nieprzeprowadzone", zablokowany „brak danych". */
-function statusPozycji(
-  opis: OpisModulu,
-  wynik: NcRfgModuleResult | null,
-): StatusPulpitu {
-  if (opis.powodBlokady !== null) return 'brak_danych';
-  if (!wynik) return 'nieprzeprowadzone';
-  return wynik.overall_status;
-}
-
-/** Lista modułów projektu (lewa kolumna): klasa + status zgodności po biegu. */
+/**
+ * Pozycje modułów projektu: opis z warsztatu wytwórców + wynik modułu, rekordy wymagań,
+ * odrzucenie tabliczki i pominięcie — WYŁĄCZNIE z oceny zatwierdzonego modelu (serwer jest
+ * jedynym autorytetem: moduł, który serwer ocenił, pokazuje wynik także wtedy, gdy warsztat
+ * nie zna jego mocy albo napięcia).
+ */
 export function zbudujPozycje(
-  opisy: readonly OpisModulu[],
-  wynik: NcRfgRunResult | null,
+  opisy: readonly OpisModuluModelu[],
+  zgodnosc: ZgodnoscPrzypadkuNcRfg | null,
 ): PozycjaModulu[] {
+  const bieg = zgodnosc?.bieg ?? null;
   return opisy.map((opis) => {
-    const w = opis.powodBlokady !== null ? null : wynikModulu(wynik, opis.derRef);
-    const p = podsumowanieModulu(opis, wynik);
+    const wynikPozycji = wynikModulu(bieg, opis.derRef);
     return {
       derRef: opis.derRef,
       nazwa: opis.nazwa,
       rodzaj: opis.rodzaj,
-      przeprowadzono: w !== null,
-      klasa: w?.module_type ?? null,
-      status: statusPozycji(opis, w),
-      passCount: p.passCount,
-      requiredCount: p.requiredCount,
-      zablokowany: opis.powodBlokady !== null,
+      wynik: wynikPozycji,
+      ocena: wynikPozycji ? ocenaWymaganModulu(bieg, opis.derRef) : null,
+      odrzucony:
+        zgodnosc?.certyfikaty_odrzucone.find((o) => o.der_ref === opis.derRef) ?? null,
+      pominietyPowodPl: zgodnosc?.pominiete.find((d) => d.der_ref === opis.derRef)?.powod_pl ?? null,
     };
   });
 }
@@ -142,16 +128,28 @@ const ODNOSNIKI_KOLEJNOSC: readonly {
 }[] = [
   { klucz: 'device_catalog_ref', etykieta: 'Urządzenie wytwórcze' },
   { klucz: 'ptpiree_certificate_ref', etykieta: 'Certyfikat PTPiREE' },
-  { klucz: 'controller_catalog_ref', etykieta: 'Regulator instalacji' },
   { klucz: 'battery_catalog_ref', etykieta: 'Bateria magazynu' },
   { klucz: 'block_transformer_catalog_ref', etykieta: 'Transformator dedykowany' },
-  { klucz: 'cable_catalog_ref', etykieta: 'Kabel wewnętrzny' },
   { klucz: 'protection_catalog_ref', etykieta: 'Zabezpieczenie' },
   { klucz: 'dynamic_model_ref', etykieta: 'Model dynamiczny' },
 ];
 
+/**
+ * Polska nazwa pola, po którym dopasowano rekord magazynu (karta #145: klucz pola
+ * `battery_catalog_ref`/`device_catalog_ref` nie trafia na ekran). Mapa typowana
+ * unią pola dopasowania — nowe pole nie skompiluje się bez nazwy.
+ */
+const ETYKIETA_POLA_DOPASOWANIA: Readonly<Record<'battery_catalog_ref' | 'device_catalog_ref', string>> = {
+  battery_catalog_ref: 'Bateria magazynu',
+  device_catalog_ref: 'Urządzenie wytwórcze',
+};
+
+export function etykietaOdnosnika(klucz: 'battery_catalog_ref' | 'device_catalog_ref'): string {
+  return ETYKIETA_POLA_DOPASOWANIA[klucz];
+}
+
 /** Sekcja 1: dane modułu read-only (rodzaj, moc, napięcie, strona, odnośniki). */
-export function daneModulu(opis: OpisModulu, der: StationDerConnection): DaneModulu {
+export function daneModulu(opis: OpisModuluModelu, der: StationDerConnection): DaneModulu {
   const odnosniki: OdnosnikKatalogowy[] = [];
   for (const { klucz, etykieta } of ODNOSNIKI_KOLEJNOSC) {
     const wartosc = der.catalogs[klucz];
@@ -163,23 +161,6 @@ export function daneModulu(opis: OpisModulu, der: StationDerConnection): DaneMod
     napiecieKv: opis.napiecieKv,
     stronaPrzylaczenia: der.connection_side,
     odnosniki,
-  };
-}
-
-/** Sekcja 2: zgodność NC RfG (X/Y, klasa, testy niespełnione z akcjami). */
-export function zgodnoscModulu(
-  opis: OpisModulu,
-  wynik: NcRfgRunResult | null,
-): ZgodnoscModulu {
-  const w = opis.powodBlokady !== null ? null : wynikModulu(wynik, opis.derRef);
-  const p = podsumowanieModulu(opis, wynik);
-  return {
-    przeprowadzono: w !== null,
-    klasa: w?.module_type ?? null,
-    status: statusPozycji(opis, w),
-    passCount: p.passCount,
-    requiredCount: p.requiredCount,
-    niespelnione: w ? w.tests.filter((t) => t.verdict === 'fail') : [],
   };
 }
 

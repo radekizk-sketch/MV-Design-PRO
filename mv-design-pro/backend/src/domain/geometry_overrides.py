@@ -260,7 +260,7 @@ def validate_overrides(
                     OverrideValidationErrorV1(
                         element_id=item.element_id,
                         code="geometry.override_invalid_element",
-                        message="MOVE_DELTA: payload musi miec dx/dy",
+                        message="MOVE_DELTA: payload musi mieć dx/dy",
                     )
                 )
         elif item.operation == OverrideOperationV1.MOVE_LABEL:
@@ -269,7 +269,7 @@ def validate_overrides(
                     OverrideValidationErrorV1(
                         element_id=item.element_id,
                         code="geometry.override_invalid_element",
-                        message="MOVE_LABEL: payload musi miec anchorX/anchorY",
+                        message="MOVE_LABEL: payload musi mieć anchorX/anchorY",
                     )
                 )
         elif item.operation == OverrideOperationV1.REORDER_FIELD:
@@ -278,7 +278,7 @@ def validate_overrides(
                     OverrideValidationErrorV1(
                         element_id=item.element_id,
                         code="geometry.override_forbidden_for_station_type",
-                        message="REORDER_FIELD: payload musi miec fieldOrder",
+                        message="REORDER_FIELD: payload musi mieć fieldOrder",
                     )
                 )
 

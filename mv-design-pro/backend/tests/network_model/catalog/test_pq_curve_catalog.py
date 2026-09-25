@@ -72,12 +72,12 @@ def test_from_dict_parses_pq_curve_from_list() -> None:
 
 
 def test_pq_curve_unsorted_raises() -> None:
-    with pytest.raises(ValueError, match="rosnaco po p_mw"):
+    with pytest.raises(ValueError, match="rosnąco po p_mw"):
         _converter(pq_curve=((1.0, -0.6, 0.6), (0.5, -0.6, 0.6)))
 
 
 def test_pq_curve_duplicate_p_raises() -> None:
-    with pytest.raises(ValueError, match="rosnaco po p_mw"):
+    with pytest.raises(ValueError, match="rosnąco po p_mw"):
         _converter(pq_curve=((0.5, -0.6, 0.6), (0.5, -0.6, 0.6)))
 
 
@@ -92,12 +92,12 @@ def test_pq_curve_qmin_gt_qmax_raises() -> None:
 
 
 def test_pq_curve_empty_raises() -> None:
-    with pytest.raises(ValueError, match="nie moze byc pusta"):
+    with pytest.raises(ValueError, match="nie może być pusta"):
         _converter(pq_curve=())
 
 
 def test_pq_curve_wrong_arity_raises() -> None:
-    with pytest.raises(ValueError, match="3 wartosci"):
+    with pytest.raises(ValueError, match="3 wartości"):
         ConverterType.from_dict({**_converter().to_dict(), "pq_curve": [[0.0, -0.6]]})
 
 

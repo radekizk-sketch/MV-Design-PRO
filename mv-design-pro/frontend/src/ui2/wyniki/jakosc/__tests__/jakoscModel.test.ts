@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   KLUCZ_WIARYGODNOSCI_WEZEL,
+  KLUCZ_WIERSZA_ARC_FLASH,
+  KLUCZ_WIERSZA_MIGOTANIE,
   KLUCZ_WIERSZA_WALIDACJI,
+  KOLUMNY_ARC_FLASH,
+  KOLUMNY_MIGOTANIE,
   KOLUMNY_WALIDACJI,
   KOLUMNY_WIARYGODNOSCI,
   jestPrzebiegiemZwarciowym,
@@ -19,7 +23,12 @@ import {
   typElementuWalidacji,
 } from '../jakoscModel';
 import type { WynikArcFlash } from '../api';
+import { OPIS_PASMA_NN, OPIS_PASMA_SN } from '../../../model/pasmaNapieciowe';
 import { MIGOTANIE_FIXTURE, WALIDACJA_FIXTURE, WIARYGODNOSC_FIXTURE, przebiegTestowy } from './fixtures';
+
+/** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
+const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
+  nazwaZWyniku ?? `nazwa ${ref}`;
 
 describe('wybór przebiegu z rejestru', () => {
   it('rozpoznaje wszystkie rodzaje zwarcia jako SC', () => {
@@ -60,7 +69,7 @@ describe('wybór przebiegu z rejestru', () => {
 });
 
 describe('adapter wiarygodności', () => {
-  const wiersze = naWierszeWiarygodnosci(WIARYGODNOSC_FIXTURE.items);
+  const wiersze = naWierszeWiarygodnosci(WIARYGODNOSC_FIXTURE.items, NAZWA);
 
   it('mapuje wiersze 1:1 (liczba i kolejność źródłowa)', () => {
     expect(wiersze).toHaveLength(3);
@@ -69,7 +78,7 @@ describe('adapter wiarygodności', () => {
   });
 
   it('status pochodzi wprost z backendu (tekst polski, bez oceny lokalnej)', () => {
-    expect(wiersze[0].status.wartosc).toBe('zweryfikowany');
+    expect(wiersze[0].status.wartosc).toBe('w paśmie wiarygodności');
     expect(wiersze[1].status.wartosc).toBe('poza zakresem wiarygodności');
     expect(wiersze[2].status.wartosc).toBe('dane niekompletne');
   });
@@ -94,16 +103,21 @@ describe('adapter wiarygodności', () => {
     expect(wiersze[0].napiecie.wartosc).toBe('15,000');
   });
 
-  it('identyfikator węzła = target_id (kolumna ekspercka)', () => {
+  it('identyfikator węzła = target_id jako KLUCZ wiersza, nie kolumna (karta #145)', () => {
     expect(wiersze[0][KLUCZ_WIARYGODNOSCI_WEZEL].wartosc).toBe('bus-A');
     const kolId = KOLUMNY_WIARYGODNOSCI.find((k) => k.klucz === KLUCZ_WIARYGODNOSCI_WEZEL);
-    expect(kolId?.tylkoEkspercki).toBe(true);
+    expect(kolId).toBeUndefined();
   });
 
   it('założenia: metoda + pasma napięciowe', () => {
     const zal = naZalozeniaWiarygodnosci();
     expect(zal).toHaveLength(2);
-    expect(zal[1].wartosc).toContain('nN');
+    // Karta PASMO-1KV: pełne nazwy poziomów (skrót „NN" rozporządzenia koliduje z „nN")
+    // i granice z jednego lustra pasm — nN do 1 kV włącznie, SN poniżej 110 kV.
+    expect(zal[1].wartosc).toContain('niskie');
+    expect(zal[1].uwaga).toContain(OPIS_PASMA_NN);
+    expect(zal[1].uwaga).toContain(OPIS_PASMA_SN);
+    expect(zal[1].uwaga).not.toContain('60');
   });
 
   // K3/C1: Ik" pochodzi wprost z przebiegu zwarciowego → dowodRef (element_id ?? target_id);
@@ -119,7 +133,7 @@ describe('adapter wiarygodności', () => {
     const w = mapujWierszWiarygodnosci({
       ...WIARYGODNOSC_FIXTURE.items[1],
       element_id: null,
-    });
+    }, NAZWA);
     expect(w.ikss.dowodRef).toBe('bus-B');
   });
 
@@ -129,7 +143,7 @@ describe('adapter wiarygodności', () => {
 });
 
 describe('adapter walidacji energetycznej', () => {
-  const wiersze = naWierszeWalidacji(WALIDACJA_FIXTURE.items);
+  const wiersze = naWierszeWalidacji(WALIDACJA_FIXTURE.items, NAZWA);
 
   it('mapuje WSZYSTKIE rodzaje kontroli na polskie etykiety', () => {
     expect(wiersze.map((w) => w.rodzaj.wartosc)).toEqual([
@@ -175,9 +189,9 @@ describe('adapter walidacji energetycznej', () => {
     );
   });
 
-  it('kolumna identyfikatora obiektu jest ekspercka', () => {
+  it('identyfikator obiektu nie jest kolumną tabeli w żadnym trybie (karta #145)', () => {
     const kolId = KOLUMNY_WALIDACJI.find((k) => k.klucz === 'identyfikator');
-    expect(kolId?.tylkoEkspercki).toBe(true);
+    expect(kolId).toBeUndefined();
   });
 
   it('założenia: 6 progów z konfiguracji backendu, w procentach', () => {
@@ -203,7 +217,7 @@ describe('adapter walidacji energetycznej', () => {
 
 describe('K3/C1 — dowodRef adapterów migotania i Arc Flash', () => {
   it('migotanie: Sk" (wprost z przebiegu zwarciowego) niesie dowodRef = bus_ref; Pst/Plt/d bez ref (ślad na miejscu w ekranie)', () => {
-    const wiersze = naWierszeMigotania(MIGOTANIE_FIXTURE.buses);
+    const wiersze = naWierszeMigotania(MIGOTANIE_FIXTURE.buses, NAZWA);
     expect(wiersze[0].sk.dowodRef).toBe('bus-oze-1');
     expect(wiersze[0].pst.dowodRef).toBeUndefined();
     expect(wiersze[0].plt.dowodRef).toBeUndefined();
@@ -213,6 +227,7 @@ describe('K3/C1 — dowodRef adapterów migotania i Arc Flash', () => {
   it('Arc Flash: I_bf (wprost z przebiegu zwarciowego) niesie dowodRef = bus_ref; energia/granica bez ref (ślad IEEE 1584 na miejscu)', () => {
     const wynik: WynikArcFlash = {
       bus_ref: 'bus-af-1',
+      bus_name: 'Szyna AF 1',
       status: 'COMPUTED_IEEE_1584_OPEN_SOURCE',
       status_label_pl: 'obliczony (IEEE 1584 open-source)',
       method: 'IEEE_1584_2018',
@@ -234,7 +249,7 @@ describe('K3/C1 — dowodRef adapterów migotania i Arc Flash', () => {
       missing_data: [],
       white_box: [],
     };
-    const [w] = naWierszeArcFlash([wynik]);
+    const [w] = naWierszeArcFlash([wynik], NAZWA);
     expect(w.ibf.dowodRef).toBe('bus-af-1');
     expect(w.energia.dowodRef).toBeUndefined();
     expect(w.granica.dowodRef).toBeUndefined();
@@ -267,5 +282,47 @@ describe('rodzajPrzekroczeniaWalidacji — mapowanie check_type na rodzaj akcji 
 
   it('bilans strat → null (agregat systemowy — spójnie z typElementuWalidacji)', () => {
     expect(rodzajPrzekroczeniaWalidacji('LOSS_BUDGET')).toBeNull();
+  });
+});
+
+describe('Karta #144 — wiersz nazywa węzeł nazwą z modelu, identyfikator tylko wiąże', () => {
+  it('migotanie: kolumna „Węzeł" = bus_name, klucz wiersza = bus_ref (nie kolumna — karta #145)', () => {
+    const [wiersz] = naWierszeMigotania(MIGOTANIE_FIXTURE.buses, NAZWA);
+    expect(wiersz.wezel.wartosc).toBe('Szyna OZE 1');
+    expect(wiersz[KLUCZ_WIERSZA_MIGOTANIE].wartosc).toBe('bus-oze-1');
+    const kolumna = KOLUMNY_MIGOTANIE.find((k) => k.klucz === KLUCZ_WIERSZA_MIGOTANIE);
+    expect(kolumna).toBeUndefined();
+  });
+
+  it('Arc Flash: kolumna „Punkt (szyna)" = bus_name, klucz wiersza = bus_ref (nie kolumna — karta #145)', () => {
+    const wynik: WynikArcFlash = {
+      bus_ref: 'wezel/7f3a',
+      bus_name: 'Szyna SN S02',
+      status: 'COMPUTED_IEEE_1584_OPEN_SOURCE',
+      status_label_pl: 'obliczony (IEEE 1584 open-source)',
+      method: 'IEEE_1584_2018',
+      electrode_config: 'VCB',
+      i_bf_ka: 12.5,
+      voltage_kv: 15.0,
+      arc_time_s: 0.2,
+      conductor_gap_mm: 152,
+      working_distance_mm: 455,
+      i_arc_ka: 11.8,
+      incident_energy_cal_cm2: 8.42,
+      incident_energy_joule_cm2: 35.2,
+      arc_flash_boundary_mm: 1320,
+      ppe_category: '2',
+      ppe_table_provenance: null,
+      provenance: null,
+      provenance_caveat_pl: null,
+      why_pl: 'Energia incydentu wyznaczona wg IEEE 1584-2018.',
+      missing_data: [],
+      white_box: [],
+    };
+    const [wiersz] = naWierszeArcFlash([wynik], NAZWA);
+    expect(wiersz.punkt.wartosc).toBe('Szyna SN S02');
+    expect(wiersz[KLUCZ_WIERSZA_ARC_FLASH].wartosc).toBe('wezel/7f3a');
+    const kolumna = KOLUMNY_ARC_FLASH.find((k) => k.klucz === KLUCZ_WIERSZA_ARC_FLASH);
+    expect(kolumna).toBeUndefined();
   });
 });

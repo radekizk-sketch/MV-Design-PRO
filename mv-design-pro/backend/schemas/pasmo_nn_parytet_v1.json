@@ -1,0 +1,128 @@
+{
+  "$id": "pasmo_nn_parytet_v1",
+  "tytul": "Parytet predykatow pasma napieciowego — backend (jedno zrodlo) <-> frontend (jedno lustro)",
+  "karta": "PASMO-1KV (wczesniej: ETYKIETY-TR, bramka pasma nN)",
+  "opis_pl": [
+    "WSPOLNA tablica decyzyjna dwoch implementacji tych samych predykatow pasma:",
+    "  * BACKEND  — network_model/pochodne/pasma_napieciowe.py (pasmo_napieciowe, w_pasmie_nn, powyzej_pasma_nn, szyna_poza_pasmem_sn),",
+    "  * FRONTEND — ui2/model/pasmaNapieciowe.ts (pasmoNapieciowe, wPasmieNn, powyzejPasmaNn, szynaPozaPasmemSn).",
+    "Granice (napiecie znamionowe): nN <=> 0 < U <= 1 kV (IEC 60038 tab. 1, rozporzadzenie zal. 1 cz. I, IEC 60364-1 p. 11.2);",
+    "SN <=> 1 kV < U < 110 kV (rozporzadzenie zal. 1 cz. I pkt 3.2); WN <=> U >= 110 kV (pkt 2.2).",
+    "Brak napiecia albo wartosc niedodatnia: brak pasma (null), przynaleznosci do pasma nN ani SN nie da sie potwierdzic;",
+    "szyna_poza_pasmem_sn — brak danej nie dyskwalifikuje (false), wartosc niefizyczna lezy poza pasmem SN (true)."
+  ],
+  "wiersze": [
+    {
+      "napiecie_kv": null,
+      "pasmo": null,
+      "w_pasmie_nn": false,
+      "powyzej_pasma_nn": false,
+      "szyna_poza_pasmem_sn": false
+    },
+    {
+      "napiecie_kv": 0.0,
+      "pasmo": null,
+      "w_pasmie_nn": false,
+      "powyzej_pasma_nn": false,
+      "szyna_poza_pasmem_sn": true
+    },
+    {
+      "napiecie_kv": -0.4,
+      "pasmo": null,
+      "w_pasmie_nn": false,
+      "powyzej_pasma_nn": false,
+      "szyna_poza_pasmem_sn": true
+    },
+    {
+      "napiecie_kv": 0.23,
+      "pasmo": "nN",
+      "w_pasmie_nn": true,
+      "powyzej_pasma_nn": false,
+      "szyna_poza_pasmem_sn": true
+    },
+    {
+      "napiecie_kv": 0.4,
+      "pasmo": "nN",
+      "w_pasmie_nn": true,
+      "powyzej_pasma_nn": false,
+      "szyna_poza_pasmem_sn": true
+    },
+    {
+      "napiecie_kv": 0.69,
+      "pasmo": "nN",
+      "w_pasmie_nn": true,
+      "powyzej_pasma_nn": false,
+      "szyna_poza_pasmem_sn": true
+    },
+    {
+      "napiecie_kv": 0.999,
+      "pasmo": "nN",
+      "w_pasmie_nn": true,
+      "powyzej_pasma_nn": false,
+      "szyna_poza_pasmem_sn": true
+    },
+    {
+      "napiecie_kv": 1.0,
+      "pasmo": "nN",
+      "w_pasmie_nn": true,
+      "powyzej_pasma_nn": false,
+      "szyna_poza_pasmem_sn": true
+    },
+    {
+      "napiecie_kv": 1.001,
+      "pasmo": "SN",
+      "w_pasmie_nn": false,
+      "powyzej_pasma_nn": true,
+      "szyna_poza_pasmem_sn": false
+    },
+    {
+      "napiecie_kv": 6.0,
+      "pasmo": "SN",
+      "w_pasmie_nn": false,
+      "powyzej_pasma_nn": true,
+      "szyna_poza_pasmem_sn": false
+    },
+    {
+      "napiecie_kv": 15.0,
+      "pasmo": "SN",
+      "w_pasmie_nn": false,
+      "powyzej_pasma_nn": true,
+      "szyna_poza_pasmem_sn": false
+    },
+    {
+      "napiecie_kv": 60.0,
+      "pasmo": "SN",
+      "w_pasmie_nn": false,
+      "powyzej_pasma_nn": true,
+      "szyna_poza_pasmem_sn": false
+    },
+    {
+      "napiecie_kv": 66.0,
+      "pasmo": "SN",
+      "w_pasmie_nn": false,
+      "powyzej_pasma_nn": true,
+      "szyna_poza_pasmem_sn": false
+    },
+    {
+      "napiecie_kv": 109.999,
+      "pasmo": "SN",
+      "w_pasmie_nn": false,
+      "powyzej_pasma_nn": true,
+      "szyna_poza_pasmem_sn": false
+    },
+    {
+      "napiecie_kv": 110.0,
+      "pasmo": "WN",
+      "w_pasmie_nn": false,
+      "powyzej_pasma_nn": true,
+      "szyna_poza_pasmem_sn": true
+    },
+    {
+      "napiecie_kv": 220.0,
+      "pasmo": "WN",
+      "w_pasmie_nn": false,
+      "powyzej_pasma_nn": true,
+      "szyna_poza_pasmem_sn": true
+    }
+  ]
+}

@@ -7,6 +7,13 @@ D1 — propozycja TR/kabla/pola z pełnym śladem. Przykład kanonu: PV 998 kW �
 from __future__ import annotations
 
 import pytest
+from domain.generator_validation import (
+    KOD_WEJSCIE_KONTROLI_MOCY,
+    JawneWejsciaKontroliMocy,
+    blad_wejsc_kontroli_mocy,
+)
+
+from tests.enm import test_der_sn_validation_domain_ops as dsv
 
 
 def test_der_selection_preview_998kw_cascade(app_client) -> None:
@@ -431,3 +438,66 @@ def test_korekta_obciazalnosci_zglasza_przekroczenie(app_client) -> None:
     ).json()
     assert data["ok"] is False
     assert data["utilization_pct"] > 100.0
+
+
+# ---------------------------------------------------------------------------
+# Decyzja O-53 (2026-09-24): dziedzinę jawnych wejść kontroli mocy (cosφ, k_j, k_obc)
+# orzeka JEDNA funkcja domenowa — w podglądzie doboru toru i w operacji DER-SN. Dawniej
+# podgląd miał własne ograniczenia pól (k_j > 0 bez górnej granicy) i proponował tor dla
+# k_j = 1,2, który operacja dodania źródła odrzucała `converter.power_check_input_invalid`.
+# Iloczyn cech: cosφ {brak, 0,9, 0, 1,5} × k_j {brak, 0,8, 1,0, 1,2, 0} × k_obc {brak,
+# 1,25, 0, −1}; model poza wejściami przechodzi (0,5 MW na falowniku 0,5 MW, TR 2,5 MVA),
+# więc o werdykcie decyduje wyłącznie dziedzina wejść.
+# ---------------------------------------------------------------------------
+
+_WEJSCIA_KONTROLI_MOCY = [
+    (cos_phi, k_j, k_obc)
+    for cos_phi in (None, 0.9, 0.0, 1.5)
+    for k_j in (None, 0.8, 1.0, 1.2, 0.0)
+    for k_obc in (None, 1.25, 0.0, -1.0)
+]
+
+
+@pytest.mark.parametrize(("cos_phi", "k_j", "k_obc"), _WEJSCIA_KONTROLI_MOCY)
+def test_podglad_i_operacja_der_sn_orzekaja_te_sama_dziedzine_wejsc(
+    app_client, cos_phi: float | None, k_j: float | None, k_obc: float | None
+) -> None:
+    body: dict = {
+        "sum_active_power_mw": 0.5,
+        "inverter_output_kv": 0.4,
+        "sn_bus_voltage_kv": 15.0,
+        "cable_length_km": 1.0,
+    }
+    if cos_phi is not None:
+        body["cos_phi"] = cos_phi
+    if k_j is not None:
+        body["simultaneity_factor"] = k_j
+    if k_obc is not None:
+        body["loadability_pu"] = k_obc
+    podglad = app_client.post("/api/solver/der-selection-preview", json=body)
+
+    payload = dsv._der_sn_payload(
+        block_tr_ref="tr-sn-nn-15-04-2500kva-dyn11",
+        quantity=1,
+        power_setpoint_mw=0.5,
+        cos_phi=cos_phi,
+        loadability_pu=k_obc,
+        simultaneity_factor=k_j,
+    )
+    payload["catalog_binding"]["catalog_item_id"] = "conv-pv-nn-0p5mw-0p4kv"
+    kod_operacji = dsv._run(payload).get("error_code")
+
+    odmowa = blad_wejsc_kontroli_mocy(
+        JawneWejsciaKontroliMocy(
+            cos_phi=cos_phi,
+            wspolczynnik_jednoczesnosci=k_j,
+            przeciazalnosc_transformatora_pu=k_obc,
+        )
+    )
+    if odmowa is None:
+        assert kod_operacji is None
+        assert podglad.status_code == 200, podglad.text
+    else:
+        assert kod_operacji == KOD_WEJSCIE_KONTROLI_MOCY
+        assert podglad.status_code == 422
+        assert podglad.json()["detail"] == odmowa.komunikat_pl

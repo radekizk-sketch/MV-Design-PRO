@@ -6,12 +6,15 @@
  * EXPORTS:
  * - Types: OverlayPayloadV1, OverlayElement, etc.
  * - Store: useOverlayStore
- * - Engine: applyOverlayToSymbols, resolveElementStyle
- * - Hook: useOverlayRuntime
- * - Components: OverlayLegend
+ * - Adapters: ShortCircuitFlow, RawToTyped
+ *
+ * Karta AB-1a Pakiet L (2026-09-23): silnik stylow (`OverlayEngine`), hak
+ * `useOverlayRuntime`, legenda `OverlayLegend` oraz adaptery LoadFlow/ZeroSequence/
+ * Oltc skasowane (LEGACY_USUNAC E23 — domyslne 'OK' przy zbieznosci, brak
+ * konsumenta produkcyjnego); `VISUAL_STATE_STYLE` i `ProtectionCoverageOverlayBadges`
+ * (E22) razem z nimi.
  */
 
-// Types
 // Types
 export type {
   OverlayVisualState,
@@ -19,52 +22,18 @@ export type {
   OverlayLegendEntry,
   OverlayPayloadV1,
   OverlayAnalysisType,
-  ResolvedOverlayStyle,
   PowerFlowOverlayBadges,
   ShortCircuitOverlayBadges,
-  ProtectionCoverageOverlayBadges,
   VariantDeltaOverlayBadges,
 } from './overlayTypes';
 
-export {
-  COLOR_TOKEN_MAP,
-  STROKE_TOKEN_MAP,
-  ANIMATION_TOKEN_MAP,
-  VISUAL_STATE_STYLE,
-  OVERLAY_ANALYSIS_LABELS,
-} from './overlayTypes';
+export { OVERLAY_ANALYSIS_LABELS } from './overlayTypes';
 
 // Store
 export { useOverlayStore, ALL_OVERLAY_KINDS } from './overlayStore';
 export type { OverlayKind } from './overlayStore';
 
-// Engine
-export {
-  resolveElementStyle,
-  applyOverlayToSymbols,
-  getElementOverlayStyle,
-  formatBadgeValue,
-  formatBadgeWithUnit,
-  formatPercentBadge,
-  getOverlaySummary,
-} from './OverlayEngine';
-
-// Hook
-export { useOverlayRuntime } from './useOverlayRuntime';
-export type { OverlayRuntimeResult } from './useOverlayRuntime';
-
-// Components
-export { OverlayLegend } from './OverlayLegend';
-
 // Adapters
-export { adaptZeroSequenceToOverlay } from './ZeroSequenceOverlayAdapter';
-export type {
-  ZeroSequenceElementResult,
-  ZeroSequenceResultV1,
-  ZeroSequenceSeverity,
-} from './ZeroSequenceOverlayAdapter';
-export { adaptOltcControlToOverlay, formatOltcPositionLabel } from './OltcOverlayAdapter';
-export type { OltcControlResultV1 } from './OltcOverlayAdapter';
 export {
   adaptShortCircuitFlowToOverlay,
   faultFlowColorTokenForWeight,

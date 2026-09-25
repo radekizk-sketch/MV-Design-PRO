@@ -669,3 +669,214 @@ class TestOverallValidity:
         result = ProtectionSettingsEngine.calculate(inp)
         if result.spz.blocking_recommended:
             assert any("SPZ" in n for n in result.summary_notes)
+
+
+# =============================================================================
+# Test: Rozszerzenie W3-C2 — generacja lokalna (E-L)
+# =============================================================================
+#
+# Iloczyn cech (reguła KLASA NIE INSTANCJA): aktywna/nieaktywna x próg
+# podany/brak x ryzyko przekroczone/nie x typ źródła synchroniczne/
+# falownikowe/nieznany. Przeniesione z `line_overcurrent_setting/analyzer.py::
+# _check_local_generation`, wejścia JAWNE (karta W3-C2 §0.2 pkt 2).
+
+
+class TestLocalGenerationDiagnostic:
+    """Test the `local_generation` (generacja_lokalna) diagnostic block."""
+
+    def test_inactive_by_default(self):
+        """Default input has local generation inactive — block is present but inert."""
+        inp = _make_input()
+        result = ProtectionSettingsEngine.calculate(inp)
+        assert result.local_generation.aktywna is False
+        assert result.local_generation.ryzyko_blokady_zsz is None
+        assert result.local_generation.wklad_el_a == 0.0
+
+    def test_inactive_present_in_to_dict(self):
+        inp = _make_input()
+        d = ProtectionSettingsEngine.calculate(inp).to_dict()
+        assert d["generacja_lokalna"]["aktywna"] is False
+
+    def test_active_without_threshold_is_unavailable(self):
+        """No named threshold => werdykt NIEDOSTĘPNY (None), zero zgadywania."""
+        inp = _make_input(
+            lokalna_generacja_aktywna=True,
+            lokalna_generacja_wklad_a=3000.0,
+            ik3_max_beginning_a=10000.0,
+        )
+        result = ProtectionSettingsEngine.calculate(inp)
+        assert result.local_generation.aktywna is True
+        assert result.local_generation.ryzyko_blokady_zsz is None
+        assert any("NIEDOSTĘPNE" in n for n in result.local_generation.uwagi_pl)
+
+    def test_active_with_threshold_risk_triggered(self):
+        """Contribution ratio >= named threshold => risk True."""
+        inp = _make_input(
+            lokalna_generacja_aktywna=True,
+            lokalna_generacja_wklad_a=3000.0,
+            ik3_max_beginning_a=10000.0,  # udział E-L = 30%
+            lokalna_generacja_prog_udzialu_zsz=0.3,
+        )
+        result = ProtectionSettingsEngine.calculate(inp)
+        lg = result.local_generation
+        assert lg.udzial_el == pytest.approx(0.3, abs=1e-6)
+        assert lg.ryzyko_blokady_zsz is True
+        assert lg.wklad_systemu_a == pytest.approx(7000.0, abs=0.1)
+        assert any("blokady ZSZ" in n for n in lg.uwagi_pl)
+
+    def test_active_with_threshold_risk_not_triggered(self):
+        """Contribution ratio below named threshold => risk False."""
+        inp = _make_input(
+            lokalna_generacja_aktywna=True,
+            lokalna_generacja_wklad_a=500.0,
+            ik3_max_beginning_a=10000.0,  # udział E-L = 5%
+            lokalna_generacja_prog_udzialu_zsz=0.3,
+        )
+        result = ProtectionSettingsEngine.calculate(inp)
+        assert result.local_generation.ryzyko_blokady_zsz is False
+
+    def test_synchronous_source_recommendation(self):
+        inp = _make_input(
+            lokalna_generacja_aktywna=True,
+            lokalna_generacja_typ_zrodla="SYNCHRONICZNE",
+            lokalna_generacja_wklad_a=1000.0,
+            ik3_max_beginning_a=8000.0,
+            lokalna_generacja_prog_udzialu_zsz=0.3,
+        )
+        result = ProtectionSettingsEngine.calculate(inp)
+        assert any("synchroniczny" in n.lower() for n in result.local_generation.uwagi_pl)
+
+    def test_inverter_source_recommendation(self):
+        inp = _make_input(
+            lokalna_generacja_aktywna=True,
+            lokalna_generacja_typ_zrodla="FALOWNIKOWE",
+            lokalna_generacja_wklad_a=1000.0,
+            ik3_max_beginning_a=8000.0,
+            lokalna_generacja_prog_udzialu_zsz=0.3,
+        )
+        result = ProtectionSettingsEngine.calculate(inp)
+        assert any("falownikowe" in n.lower() for n in result.local_generation.uwagi_pl)
+
+    def test_trace_present(self):
+        inp = _make_input(
+            lokalna_generacja_aktywna=True,
+            lokalna_generacja_wklad_a=1000.0,
+            lokalna_generacja_prog_udzialu_zsz=0.3,
+        )
+        result = ProtectionSettingsEngine.calculate(inp)
+        assert len(result.local_generation.trace) >= 2
+
+    def test_does_not_affect_overall_valid_or_existing_notes(self):
+        """Rozszerzenie jest ADDYTYWNE — nie zmienia overall_valid/summary_notes."""
+        inp_bez = _make_input()
+        inp_z = _make_input(
+            lokalna_generacja_aktywna=True,
+            lokalna_generacja_wklad_a=1000.0,
+            lokalna_generacja_prog_udzialu_zsz=0.3,
+        )
+        wynik_bez = ProtectionSettingsEngine.calculate(inp_bez)
+        wynik_z = ProtectionSettingsEngine.calculate(inp_z)
+        assert wynik_bez.overall_valid == wynik_z.overall_valid
+        assert wynik_bez.summary_notes == wynik_z.summary_notes
+
+
+# =============================================================================
+# Test: Rozszerzenie W3-C2 — okno nastaw I>> (okno_nastaw)
+# =============================================================================
+#
+# Iloczyn cech: okno poprawne/sprzeczne x kryterium limitujące górną granicę
+# czułość/cieplne. Predykat `window_valid` czyta TO SAMO źródło co
+# `instantaneous.range_valid` — test niżej to przypina (`test_window_valid_
+# matches_range_valid_single_source_of_truth`).
+
+
+class TestSettingWindow:
+    """Test the `setting_window` (okno_nastaw) block."""
+
+    def test_valid_window_matches_instantaneous_bounds(self):
+        inp = _make_input(
+            ik_max_next_bus_a=1000.0,
+            ik3_min_beginning_a=10000.0,
+        )
+        result = ProtectionSettingsEngine.calculate(inp)
+        window = result.setting_window
+        assert window.window_valid is True
+        assert window.i_min_a == result.instantaneous.i_min_selectivity_a
+        assert window.limiting_criterion_min == "selectivity"
+        assert window.conflict_pl is None
+        assert any("Zalecana nastawa" in r for r in window.recommendations_pl)
+
+    def test_window_valid_matches_range_valid_single_source_of_truth(self):
+        """Predykaty parami: window_valid i instantaneous.range_valid z JEDNEGO źródła."""
+        for ik_next, ik_min_beg in ((1000.0, 10000.0), (10000.0, 5000.0), (3000.0, 4320.0)):
+            inp = _make_input(ik_max_next_bus_a=ik_next, ik3_min_beginning_a=ik_min_beg)
+            result = ProtectionSettingsEngine.calculate(inp)
+            assert result.setting_window.window_valid == result.instantaneous.range_valid
+
+    def test_limiting_criterion_max_is_sensitivity_when_lower(self):
+        inp = _make_input(cross_section_mm2=240.0, ik3_min_beginning_a=5000.0, k_b=1.2)
+        result = ProtectionSettingsEngine.calculate(inp)
+        # i_max_sens = 5000/1.2 = 4166.7, thermal na przewodzie 240mm2 jest znacznie wyzszy
+        assert result.instantaneous.i_max_sensitivity_a < result.instantaneous.i_max_thermal_a
+        assert result.setting_window.limiting_criterion_max == "sensitivity"
+
+    def test_limiting_criterion_max_is_thermal_when_lower(self):
+        inp = _make_input(cross_section_mm2=10.0, ik3_min_beginning_a=50000.0, k_b=1.2)
+        result = ProtectionSettingsEngine.calculate(inp)
+        assert result.instantaneous.i_max_thermal_a < result.instantaneous.i_max_sensitivity_a
+        assert result.setting_window.limiting_criterion_max == "thermal"
+
+    def test_conflict_window_has_deficit_and_named_criteria(self):
+        inp = _make_input(
+            ik_max_next_bus_a=10000.0,
+            ik3_min_beginning_a=5000.0,
+            k_b=1.2,
+        )
+        result = ProtectionSettingsEngine.calculate(inp)
+        window = result.setting_window
+        assert window.window_valid is False
+        assert window.conflict_pl is not None
+        assert "selektywność" in window.conflict_pl.lower()
+        assert "kA" in window.conflict_pl
+        assert len(window.recommendations_pl) >= 2
+
+    def test_conflict_recommendation_mentions_sensitivity_fix_when_limiting(self):
+        inp = _make_input(ik_max_next_bus_a=10000.0, ik3_min_beginning_a=5000.0, k_b=1.2)
+        result = ProtectionSettingsEngine.calculate(inp)
+        window = result.setting_window
+        assert window.limiting_criterion_max == "sensitivity"
+        assert any("k_b" in r for r in window.recommendations_pl)
+
+    def test_conflict_recommendation_mentions_thermal_fix_when_limiting(self):
+        # Bardzo maly przekroj + niska czulosc utrzymana wysoko -> cieplne staje sie
+        # gornym ograniczeniem, a selektywnosc wciaz je przewyzsza.
+        inp = _make_input(
+            cross_section_mm2=6.0,
+            conductor_material="Al",
+            ik_max_next_bus_a=10000.0,
+            ik3_min_beginning_a=500000.0,
+            k_b=1.2,
+        )
+        result = ProtectionSettingsEngine.calculate(inp)
+        window = result.setting_window
+        assert window.limiting_criterion_max == "thermal"
+        assert window.window_valid is False
+        assert any("przekrój" in r.lower() for r in window.recommendations_pl)
+
+    def test_trace_present_and_conflict_step_only_when_invalid(self):
+        inp_valid = _make_input(ik_max_next_bus_a=1000.0, ik3_min_beginning_a=10000.0)
+        inp_invalid = _make_input(ik_max_next_bus_a=10000.0, ik3_min_beginning_a=5000.0)
+
+        window_valid = ProtectionSettingsEngine.calculate(inp_valid).setting_window
+        window_invalid = ProtectionSettingsEngine.calculate(inp_invalid).setting_window
+
+        assert not any(s["step"] == "Konflikt okna nastaw I>>" for s in window_valid.trace)
+        assert any(s["step"] == "Konflikt okna nastaw I>>" for s in window_invalid.trace)
+
+    def test_does_not_affect_overall_valid_or_existing_notes(self):
+        """Rozszerzenie jest ADDYTYWNE — okno_nastaw nie zmienia overall_valid/notes."""
+        inp = _make_input()
+        wynik = ProtectionSettingsEngine.calculate(inp)
+        d = wynik.to_dict()
+        assert "okno_nastaw" in d
+        assert d["overall_valid"] == wynik.overall_valid

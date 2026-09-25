@@ -7,21 +7,72 @@ Jedno źródło prawdy dla projektu (case-bound).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal, get_args
 from uuid import UUID, uuid4
 
+from dziedziny.karta_widmowa import KartaWidmowa, ModeleWidmoweElementu
+from network_model.core.uziemienie import (
+    RolaUziemnika,
+    TypPunktuNeutralnego,
+    UziemienieEkranuKabla,
+)
 from pydantic import BaseModel, Field, model_validator
+
+from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
+from .dynamika_modele import ParametryDynamiczne
+from .nastawy_modulu import NastawyZabezpieczenModulu
+from .uziemienie import migruj_uziemienie_slownika
 
 # ---------------------------------------------------------------------------
 # Supporting types
 # ---------------------------------------------------------------------------
 
+#: Układ uziemienia sieci nN (IEC 60364-1 § 312.2) — JEDYNA definicja zbioru
+#: literałów (karta W5-A §1 p. 2). Enum solvera pętli zwarcia
+#: (`network_model/solvers/fault_loop_iec60364.py::NetworkType`, FROZEN) jest
+#: kontraktem solvera; JEDNA funkcja mapująca żyje w `solver_input/uklad_sieci_nn.py`
+#: z testem równości obu zbiorów. Front czyta ten literał ze snapshotu OpenAPI.
+UkladSieciNn = Literal["TN-S", "TN-C-S", "TN-C", "TT", "IT"]
+#: Jedyna definicja słownika układów nN (literał wyżej); krotka dla predykatów,
+#: migracji i komunikatów — nigdy druga lista literałów w innym module.
+UKLADY_SIECI_NN: tuple[str, ...] = get_args(UkladSieciNn)
+
 
 class GroundingConfig(BaseModel):
-    type: Literal["isolated", "petersen_coil", "directly_grounded", "resistor_grounded"]
+    """Sposób pracy punktu neutralnego — JEDYNY typ w systemie (W5-A §1 p. 1).
+
+    Nośniki: ``Transformer.hv_neutral``/``lv_neutral`` (punkt gwiazdowy uzwojenia
+    z wyprowadzonym neutralnym) i ``Source.neutral_grounding`` (punkt neutralny
+    sieci SN zasilanej z równoważnika GPZ). Zero kopii: ``Bus.grounding`` i
+    ``substation.meta["grounding"]`` skasowane z migracją przy wczytaniu.
+    """
+
+    type: TypPunktuNeutralnego
     r_ohm: float | None = None
     x_ohm: float | None = None
+
+
+#: Zbiór faz przyłączenia elementu (karta W5-D, decyzja F-1 `CANONICAL_TWIN_ARCHITECTURE.md`):
+#: trójfazowy `ABC`, jednofazowy do przewodu neutralnego `A`/`B`/`C`, międzyfazowy
+#: `AB`/`BC`/`CA`. JEDYNA definicja słownika faz w modelu — czytelnicy (assembler rozpływu
+#: niesymetrycznego, kreator odbioru nN, walidacja pisarzy odbioru) importują TEN typ,
+#: nie własną listę. Pole modelu z tym typem jest zawsze `PhaseSet | None`, a `None`
+#: znaczy „przyłączenie trójfazowe symetryczne" — jedyne znaczenie, jakie element bez
+#: pola faz miał kiedykolwiek; dzięki temu istniejące migawki zachowują odciski
+#: (`enm/hash.py::_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`).
+PhaseSet = Literal["ABC", "A", "B", "C", "AB", "BC", "CA"]
+
+#: Wartości `PhaseSet` jako krotka (do walidacji payloadów operacji domenowych i do
+#: budowy listy wyboru w UI z JEDNEGO źródła — bez drugiej listy literałów).
+FAZY_PRZYLACZENIA: tuple[str, ...] = ("ABC", "A", "B", "C", "AB", "BC", "CA")
+
+#: Fazy, które odbiór jednofazowy zasila względem przewodu neutralnego (kolejność
+#: A, B, C = L1, L2, L3). Odbiór `ABC`/`None` obciąża wszystkie trzy po równo;
+#: `AB`/`BC`/`CA` to odbiór międzyfazowy (bez przewodu neutralnego).
+FAZY_ODBIORU_JEDNOFAZOWEGO: frozenset[str] = frozenset({"A", "B", "C"})
+FAZY_ODBIORU_MIEDZYFAZOWEGO: frozenset[str] = frozenset({"AB", "BC", "CA"})
 
 
 class BusLimits(BaseModel):
@@ -147,17 +198,13 @@ class ENMHeader(BaseModel):
     hash_sha256: str = ""
     defaults: ENMDefaults = Field(default_factory=ENMDefaults)
 
-    # V12S-010: chain hashy (additive, opcjonalne dla wstecznej kompatybilnosci)
-    semantic_hash: str | None = None
-    """Hash topologii + rol + pasm napieciowych + catalog_ref."""
-    input_hash: str | None = None
-    """Hash wejsc obliczeniowych BEZ switching state."""
-    case_hash: str | None = None
-    """Hash parametrow przypadku obliczeniowego."""
-    variant_hash: str | None = None
-    """Hash delty wariantu (overlay)."""
-    switching_snapshot_hash: str | None = None
-    """Hash TYLKO stanow lacznikow."""
+    # CV-2 (H1): pola „lancucha hashy" V12S-010 (`semantic_hash`, `input_hash`,
+    # `case_hash`, `variant_hash`, `switching_snapshot_hash`) USUNIETE — zaden
+    # kod ich nie wypelnial (pomiar: zero pisarzy w `src/`), wiec byly obietnica
+    # bez dostawcy. Odciski ortogonalne nadal istnieja jako FUNKCJE
+    # (`enm/hash.py::compute_semantic_hash` i pokrewne) liczone na zadanie;
+    # tozsamosc biegu niesie koperta rewizji (`enm/envelope.py`). Wskrzeszenie
+    # tych pol pilnuje `tests/enm/test_hash_chain_split.py`.
 
     connection_conditions: ConnectionConditions | None = None
     """Warunki przyłączenia OSD (karta K2 FLOW EKSPERT+; dane WEJŚCIOWE
@@ -181,7 +228,6 @@ class Bus(ENMElement):
     frequency_hz: float | None = None
     phase_system: Literal["3ph"] = "3ph"
     zone: str | None = None
-    grounding: GroundingConfig | None = None
     nominal_limits: BusLimits | None = None
 
 
@@ -290,6 +336,11 @@ class Cable(BranchBase):
     # `Transformer.n_parallel` (Z/n, Sn*n) — zero nowej heurystyki, standardowe
     # łączenie równoległe impedancji identycznych torów.
     n_parallel: int | None = None
+    # W5-A (F9): układ uziemienia ekranu kabla — dana PROJEKTOWA bez fabrykacji
+    # fizyki. Katalogowe r0/x0 dotyczą układu odniesienia producenta
+    # (`CableType.z0_reference_bonding`); rozjazd = ostrzeżenie walidatora
+    # W-W5-01, nigdy przeliczenie (brak geometrii ułożenia). None = niezadeklarowany.
+    screen_bonding: UziemienieEkranuKabla | None = None
 
 
 class SwitchBranch(BranchBase):
@@ -359,9 +410,18 @@ class Transformer(ENMElement):
     pk_kw: float
     p0_kw: float | None = None
     i0_percent: float | None = None
+    # Grupa połączeń ze słownika IEC 60076-1 (`enm/grupa_polaczen.py`). Typ
+    # pozostaje `str`, żeby zastany zapis spoza słownika wczytał się i został
+    # NAZWANY przez walidator (E-W5-02 z nawigacją naprawczą), a nie zniknął przy
+    # `model_validate` (migawka odrzucona = projekt bez modelu).
     vector_group: str | None = None
     hv_neutral: GroundingConfig | None = None
     lv_neutral: GroundingConfig | None = None
+    # W5-A §1 p. 2: układ sieci nN zasilanej z tego transformatora — pole
+    # TYPOWANE w miejsce dawnego klucza meta stacji z układem nN (skasowane z
+    # migracją). Brak = odmowa nazwana (E063 / ELIG_FLNN_MISSING_EARTHING_SYSTEM),
+    # nigdy domyślka.
+    lv_earthing_system: UkladSieciNn | None = None
     # G-STK-6: liczba identycznych jednostek pracujących równolegle w polu
     # transformatorowym. None/1 = pojedynczy transformator (bez zmiany fizyki).
     # Agregacja: n jednostek → impedancja zastępcza Z/n (mapper skaluje Sn×n).
@@ -401,12 +461,29 @@ class Source(ENMElement):
     source_side: Literal["SN", "HV_110"] | None = None
     sn_voltage_kv: float | None = None
     voltage_hv_kv: float | None = None
+    # W5-A §1 p. 1: opis inżynierski punktu neutralnego sieci SN zasilanej z tego
+    # równoważnika (GPZ). Fizyka czyta, jak dotąd, `r0_ohm`/`x0_ohm` | `z0_z1_ratio`;
+    # kreator GPZ wyprowadza je z (Z_T0 + 3·Z_N) w `pochodne/skladowe_zerowe.py`
+    # i zapisuje OBA: opis i liczby (proweniencja `WYPROWADZONE` w `meta`).
+    neutral_grounding: GroundingConfig | None = None
     sk3_hv_mva: float | None = None
     sk3_mva: float | None = None
     ik3_ka: float | None = None
     r_ohm: float | None = None
     x_ohm: float | None = None
     rx_ratio: float | None = None
+    # CV-4.3 K7: dane zwarciowe scenariusza MIN (IEC 60909-0:2016 §6.2.1 eq. 6 z c_min),
+    # na TEJ SAMEJ szynie/stronie co ``sk3_mva``/``ik3_ka``. Brak = scenariusz MIN liczony
+    # z Z_Q(MAX) i JAWNYM założeniem ``source.sk_min_missing`` (``enm/zrodlo_zwarcie.py``).
+    sk3_min_mva: float | None = None
+    ik3_min_ka: float | None = None
+    rx_ratio_min: float | None = None
+    # Napięcie zadane szyny bilansującej [p.u. napięcia znamionowego szyny] — dana
+    # WEJŚCIOWA rozpływu mocy (MATPOWER/pandapower: ``Vm`` szyny slack / ``ext_grid.vm_pu``).
+    # ``None`` = 1,0 p.u. (napięcie znamionowe; jawne założenie modelowe, nie pomiar).
+    # Dotąd assembler wpisywał 1,0 KAŻDEMU źródłu — bliźniaki literatury ze slackiem
+    # 1,06 p.u. (IEEE case14) / 0,982 p.u. (IEEE case39) nie dały się odwzorować.
+    u_set_pu: float | None = None
     r0_ohm: float | None = None
     x0_ohm: float | None = None
     z0_z1_ratio: float | None = None
@@ -424,6 +501,15 @@ class Load(ENMElement):
     p_mw: float
     q_mvar: float
     model: Literal["pq", "zip"] = "pq"
+    # Karta W5-D (F-1): fazy przyłączenia odbioru. `None` = odbiór trójfazowy
+    # symetryczny (jedyne dotychczasowe znaczenie `Load` — rozpływ NR i zwarcie
+    # nie czytają tego pola; czyta je WYŁĄCZNIE assembler rozpływu
+    # niesymetrycznego, `enm/assembler.py::zloz_wejscie_rozplywu_niesymetrycznego`).
+    # Pole addytywne: `None` poza odciskiem (`enm/hash.py`), więc migawki sprzed
+    # karty zachowują hashe bit w bit. Pisarze: `add_nn_load`/`add_load_sn`
+    # (`enm/domain_operations_v2.py`) i `update_element_parameters` — każdy przez
+    # JEDEN walidator `enm/fazy_odbioru.py::waliduj_fazy_odbioru`.
+    phases: PhaseSet | None = None
     catalog_ref: str | None = None
     catalog_namespace: str | None = None
     quantity: int | None = None
@@ -520,13 +606,13 @@ class Generator(ENMElement):
         | None
     ) = None
     """
-    Wariant przylaczenia PV/BESS:
+    Wariant przyłączenia PV/BESS:
     - 'nn_side': po stronie nN stacji (przez transformator stacji SN/nN)
     - 'block_transformer': przez transformator blokowy do SN
     - None: brak informacji → FixAction generator.connection_variant_missing
     Dotyczy TYLKO gen_type in ('pv_inverter', 'wind_inverter',
     'fw_pmsg', 'fw_dfig', 'fw_scig', 'bess').
-    Generatory synchroniczne nie wymagaja wariantu.
+    Generatory synchroniczne nie wymagają wariantu.
     """
 
     blocking_transformer_ref: str | None = None
@@ -539,7 +625,58 @@ class Generator(ENMElement):
     station_ref: str | None = None
     """
     Referencja do stacji (ref_id substacji).
-    Wymagana dla wariantu 'nn_side' (wskazuje stacje SN/nN).
+    Wymagana dla wariantu 'nn_side' (wskazuje stację SN/nN).
+    """
+
+    dynamika: ParametryDynamiczne | None = None
+    """
+    Parametry dynamiczne źródła (karta W6-1 SS0 p.1, `enm/dynamika_modele.py`).
+    `None` = brak danych wejściowych DAE — NIGDY domyślka systemowa. Wymagany
+    blok jest unią dyskryminowaną po `rodzina` (synchroniczna/GFL/GFM/magazyn/
+    wiatr_typ_1..4), każdy z WYMAGANĄ proweniencją. Zero fizyki: pole niesie
+    wyłącznie dane wejściowe konsumowane przez solver W6-2
+    (`network_model/solvers/dynamika/`, jeszcze nie istnieje w tej karcie).
+    """
+
+    modele_widmowe: ModeleWidmoweElementu | None = None
+    """
+    Modele widmowe źródła (karta AB-H0 §0.7.6): ZMATERIALIZOWANA kopia modeli z kart
+    widmowych wskazanych kluczem `karty_widmowe_ref` operacji `set_der_catalog_bindings`,
+    z proweniencją każdej karty (id, wersja, przestrzeń STATYCZNA/PROJEKT, odcisk).
+    Konsumenci dziedziny częstotliwości czytają WYŁĄCZNIE to pole (wzorzec O-44).
+    `None` = brak modelu widmowego urządzenia (sekcja `harmonic` UNKNOWN z nazwanym
+    brakiem) — nigdy widmo typowe. Referencja karty NIE trafia do `materialized_params`.
+    """
+
+    modul_istniejacy: ModulIstniejacy | None = None
+    """
+    Moduł istniejący w rozumieniu art. 4 ust. 1 rozporządzenia 2016/631 (plan AB O-31).
+    `True` — wymagania rozporządzenia nie mają zastosowania bez modernizacji; `False` —
+    moduł nowy; `None` — status nieustalony (ocena wymagań traktuje moduł jak nowy, a każdy
+    rekord niesie zastrzeżenie). Most zgodności NC RfG przenosi pole 1:1 do wejścia solvera.
+    """
+
+    data_umowy_przylaczeniowej: DataUmowy | None = None
+    """
+    Data zawarcia umowy przyłączeniowej modułu (plan AB O-31) — resolver wersji warstw
+    profilu regulacyjnego (WOS, procedura PTPiREE, WiPWC, IRiESD) wybiera wydanie
+    obowiązujące w tym dniu. `None` — data nieustalona (wersja dobrana bez daty, z uwagą).
+    """
+
+    nastawy_zabezpieczen: NastawyZabezpieczenModulu | None = None
+    """
+    Nastawy zabezpieczeń modułu (U<, U>, f<, f>, RoCoF, skok wektora) ze źródłem
+    (`enm/nastawy_modulu.py`, plan AB O-32). `None` — brak nastaw w modelu: kryteria
+    koordynacji statycznej (`frt.koordynacja_nastaw_u_min`, `rocof.koordynacja_nastaw_lom`)
+    dają NIE_OCENIONO z nazwanym brakiem, nigdy wartość typowa.
+    """
+
+    deklaracje_modulu: DeklaracjeModulu | None = None
+    """
+    Deklaracje modułu dla testów zgodności NC RfG / PTPiREE (T05, T10-T13, T16-T20) ze
+    źródłem (`enm/deklaracje_modulu.py`, plan AB O-50): nazwy pól 1:1 z wejściem solvera
+    `NcRfgPtpireeModuleInput`. `None` albo pole puste — brak deklaracji: test daje
+    NIE_OCENIONO z nazwanym brakiem, nigdy wartość typowa ani „niezadeklarowane".
     """
 
     @model_validator(mode="after")
@@ -577,19 +714,19 @@ class Generator(ENMElement):
             if self.station_ref is not None:
                 raise ValueError(
                     f"Generator '{self.ref_id}': connection_variant="
-                    f"'DEDICATED_MV_CONNECTION' nie moze miec station_ref "
-                    f"(generator ma dedykowane przylacze SN, nie idzie przez stacje)."
+                    f"'DEDICATED_MV_CONNECTION' nie może mieć station_ref "
+                    f"(generator ma dedykowane przyłącze SN, nie idzie przez stację)."
                 )
         elif variant == "nn_side":
             if self.station_ref is None:
                 raise ValueError(
                     f"Generator '{self.ref_id}': connection_variant='nn_side' "
-                    f"wymaga station_ref (wskazuje stacje SN/nN)."
+                    f"wymaga station_ref (wskazuje stację SN/nN)."
                 )
             if self.blocking_transformer_ref is not None:
                 raise ValueError(
                     f"Generator '{self.ref_id}': connection_variant='nn_side' "
-                    f"nie moze miec blocking_transformer_ref "
+                    f"nie może mieć blocking_transformer_ref "
                     f"(generator po stronie nN, transformator stacji wystarczy)."
                 )
         elif variant == "block_transformer":
@@ -604,6 +741,40 @@ class Generator(ENMElement):
 # ---------------------------------------------------------------------------
 # Measurement (przekładnik CT/VT)
 # ---------------------------------------------------------------------------
+
+
+class ObciazenieAparatu(BaseModel):
+    """Pojedyncze obciążenie obwodu wtórnego CT/VT (aparat/licznik/przekaźnik).
+
+    Dana PROJEKTOWA (kreator stacji, ekran bilansu) — kształt 1:1 z żądaniem
+    końcówki `POST /api/solver/{ct,vt}-burden-check` (`api/equipment_checks.py`,
+    ``ObciazenieAparatu``), żeby dane wpisane w kreatorze i dane wysyłane do
+    solvera pochodziły z JEDNEGO źródła prawdy.
+    """
+
+    nazwa: str
+    moc_va: float = Field(ge=0.0)
+
+
+class ObwodWtorny(BaseModel):
+    """Obwód wtórny przekładnika CT/VT (karta KD-3/W3-B) — koniec liczenia
+    „na kartce" w ekranie bilansu.
+
+    ADDYTYWNY, opcjonalny blok `Measurement.obwod_wtorny`: kabel łączący
+    zaciski wtórne przekładnika z aparatami (przekaźnik, licznik) opisany
+    wielkościami, jakich wymaga jądro FROZEN `ct_burden_saturation.py`
+    (`check_ct_burden_saturation`) i `vt_burden_voltage_drop.py`. Wszystkie
+    pola opcjonalne, BEZ wartości domyślnych — brak danej zostaje brakiem
+    danej (kod gotowości), nigdy wartością zastępczą (zero fabrykacji).
+    """
+
+    #: Długość przewodu w JEDNĄ stronę [m] — solver liczy obwód dwuprzewodowy
+    #: (R_p = 2·ρ·L/s) sam, więc tu wchodzi odległość, nie droga tam i z powrotem.
+    dlugosc_przewodu_m: float | None = Field(default=None, gt=0)
+    przekroj_przewodu_mm2: float | None = Field(default=None, gt=0)
+    obciazenia_aparatow: list[ObciazenieAparatu] = Field(default_factory=list)
+    #: Moc tracona na stykach i zaciskach [VA] — TYLKO gdy podana jawnie.
+    moc_stykow_va: float | None = Field(default=None, ge=0)
 
 
 class Measurement(ENMElement):
@@ -649,6 +820,18 @@ class Measurement(ENMElement):
     # fizyczna montażu). None = dana niedostarczona (uczciwy brak, ZERO
     # fabrykacji).
     vt_mounting: Literal["bus", "cable"] | None = None
+    # KD-3/W3-B (karta W3-B, mapa 4 #3): obwód wtórny CT/VT — dana PROJEKTOWA
+    # (kreator stacji / ekran bilansu), WSPÓLNA dla CT i VT (oba typy mają
+    # zaciski wtórne i przewody do aparatów), więc BEZ ograniczenia do jednego
+    # measurement_type. None = obwód niezapisany (uczciwy brak, zero fabrykacji
+    # — kryterium nasycenia/spadku napięcia kończy się kodem gotowości).
+    obwod_wtorny: ObwodWtorny | None = None
+    # W3-B: które uzwojenie VT opisuje powyższy `obwod_wtorny` (limit ΔU zależy
+    # od kategorii uzwojenia — pomiarowe 0,5 % vs zabezpieczeniowe 1,0 %,
+    # `api/equipment_checks.py::VtBurdenRequest.uzwojenie`). WYŁĄCZNIE dla
+    # measurement_type=='VT': CT ma jedno uzwojenie wtórne na rdzeń, więc
+    # rozróżnienie pomiarowe/zabezpieczeniowe go nie dotyczy.
+    vt_uzwojenie: Literal["POMIAROWE", "ZABEZPIECZENIOWE"] | None = None
 
     @model_validator(mode="after")
     def _validate_arrangement_matches_measurement_type(self) -> Measurement:
@@ -667,15 +850,20 @@ class Measurement(ENMElement):
 
     @model_validator(mode="after")
     def _validate_ctvt_variant_matches_measurement_type(self) -> Measurement:
-        """CTVT-MODEL: `ct_cores`/`vt_mounting` to dane WYŁĄCZNIE dla
-        odpowiadającego `measurement_type` — CT nie ma montażu VT, a VT nie ma
-        rdzeni CT (spójność osi, WHITE BOX, `domain_no_guessing_guard`).
-        Dodatnia liczba rdzeni jest egzekwowana przez `Field(gt=0)`."""
+        """CTVT-MODEL/W3-B: `ct_cores`/`vt_mounting`/`vt_uzwojenie` to dane
+        WYŁĄCZNIE dla odpowiadającego `measurement_type` — CT nie ma montażu
+        VT ani uzwojenia VT, a VT nie ma rdzeni CT (spójność osi, WHITE BOX,
+        `domain_no_guessing_guard`). Dodatnia liczba rdzeni jest egzekwowana
+        przez `Field(gt=0)`."""
         if self.ct_cores is not None and self.measurement_type != "CT":
             raise ValueError(f"Measurement '{self.ref_id}': ct_cores wymaga measurement_type='CT'.")
         if self.vt_mounting is not None and self.measurement_type != "VT":
             raise ValueError(
                 f"Measurement '{self.ref_id}': vt_mounting wymaga measurement_type='VT'."
+            )
+        if self.vt_uzwojenie is not None and self.measurement_type != "VT":
+            raise ValueError(
+                f"Measurement '{self.ref_id}': vt_uzwojenie wymaga measurement_type='VT'."
             )
         return self
 
@@ -1012,11 +1200,16 @@ class BaySwitchState(BaseModel):
         "awaria",
     ]
     commanded_state: Literal["zamknij", "otworz"] | None = None
-    control_mode: Literal["miejscowe", "zdalne", "lokalne_zablokowane", "odstawione"]
+    # Stan ruchowy aparatu (karta #135): tryb sterowania, uzbrojenie napędu i komunikacja są
+    # TELEMETRIĄ — wartość wyłącznie ze źródła runtime (`BayRuntimeState.primary_device_states`
+    # albo rekord aparatu na migawce); `None` = brak telemetrii, nigdy wartość domyślna.
+    control_mode: Literal["miejscowe", "zdalne", "lokalne_zablokowane", "odstawione"] | None = None
     armed_for_close: bool | None = None
     armed_for_open: bool | None = None
-    communication_ok: bool = False
-    interlock_blocked: bool = False
+    communication_ok: bool | None = None
+    # Blokada zamknięcia z reguły modelu (`enm.interlock_rules.blokady_zamkniecia`), nie z
+    # telemetrii; `None` = reguła nie rozstrzyga (stan aparatu przeciwnego nieznany).
+    interlock_blocked: bool | None = None
     cause_code: str | None = None
     last_state_change_at: datetime | None = None
     last_command_at: datetime | None = None
@@ -1069,16 +1262,9 @@ class BayPrimaryDevice(BaseModel):
     # uziemienie ekranów kabla / konstrukcji / punktu neutralnego / gałąź
     # ogranicznika. None = dana niedostarczona (rysunek: generyczny uziemnik,
     # zero domysłu).
-    earthing_role: (
-        Literal[
-            "field_earth",
-            "cable_screen",
-            "structure",
-            "neutral_point",
-            "surge_ground",
-        ]
-        | None
-    ) = None
+    # W5-A: jeden słownik ról (`network_model/core/uziemienie.py::RolaUziemnika`) —
+    # ten sam czyta pisarz w `add_sn_bay` (payload `earthing_role`) i front.
+    earthing_role: RolaUziemnika | None = None
 
 
 class BayMeasurements(BaseModel):
@@ -1377,13 +1563,9 @@ class BayPowerFlowSourceContribution(BaseModel):
 
 
 class BayEarthFaultPath(BaseModel):
-    neutral_grounding_mode: Literal[
-        "izolowany",
-        "cewka_petersena",
-        "rezystor",
-        "bezposrednio_uziemiony",
-        "nieznany",
-    ] = "nieznany"
+    # W5-A §1 p. 1: ten sam słownik co `GroundingConfig.type` (koniec polskich
+    # literałów w kontrakcie; etykiety PL w prezentacji). None = nieznany.
+    neutral_grounding_mode: TypPunktuNeutralnego | None = None
     zero_sequence_current_source: Literal[
         "suma_ct", "przekladnik_ferrantiego", "zewnetrzne", "brak"
     ] = "brak"
@@ -1520,6 +1702,55 @@ class BranchPointSN(ENMElement):
 
 
 # ---------------------------------------------------------------------------
+# Katalog projektu (W1 — typy z danych inżyniera niesione przez model)
+# ---------------------------------------------------------------------------
+
+
+class RekordTypuProjektu(BaseModel):
+    """Pozycja katalogu projektu w kształcie rekordu `CatalogRepository.from_records`
+    (`id`, `name`, `params` = pola klasy typu, np. `LineType`/`TransformerType`, wraz
+    z proweniencją `source_reference`/`verification_status`). Kształt jest celowo TEN SAM
+    co rekordów katalogu statycznego — nakładka per model (`enm/katalog_projektu.py`) nie
+    tłumaczy pól, tylko dokłada rekordy do tego samego budowniczego."""
+
+    id: str
+    name: str
+    params: dict[str, Any] = {}
+
+
+class KatalogProjektu(BaseModel):
+    """Typy katalogowe niesione PRZEZ model (dane inżyniera z arkusza, nie karta
+    producenta) — patrz `enm/katalog_projektu.py`. Sekcja wchodzi do odcisku modelu
+    (parametr typu = wejście obliczeń) i jest deterministyczna: listy posortowane po `id`,
+    identyfikatory unikalne w obrębie całej sekcji."""
+
+    line_types: list[RekordTypuProjektu] = []
+    cable_types: list[RekordTypuProjektu] = []
+    transformer_types: list[RekordTypuProjektu] = []
+    #: Karta AB-H0 §0.7.3: karty widmowe PROJEKTU (dane inżyniera — widmo ręczne albo
+    #: import karty producenta dla projektu; status `NIEWERYFIKOWANY`/`PROJEKTOWY_V1`).
+    #: Kontrakt rekordu = `dziedziny.karta_widmowa.KartaWidmowa` (ten sam co katalogu
+    #: statycznego). Pusta lista jest poza odciskiem modelu (`enm/hash.py`).
+    karty_widmowe: list[KartaWidmowa] = []
+
+    @model_validator(mode="after")
+    def _unikalne_i_posortowane(self) -> KatalogProjektu:
+        widziane: set[str] = set()
+        for rodzaj in ("line_types", "cable_types", "transformer_types", "karty_widmowe"):
+            rekordy = getattr(self, rodzaj)
+            for rekord in rekordy:
+                if not rekord.id.strip():
+                    raise ValueError(f"katalog_projektu.{rodzaj}: pusty identyfikator pozycji")
+                if rekord.id in widziane:
+                    raise ValueError(
+                        f"katalog_projektu: identyfikator '{rekord.id}' powtarza się w sekcji"
+                    )
+                widziane.add(rekord.id)
+            rekordy.sort(key=lambda r: r.id)
+        return self
+
+
+# ---------------------------------------------------------------------------
 # ROOT
 # ---------------------------------------------------------------------------
 
@@ -1543,8 +1774,111 @@ class EnergyNetworkModel(BaseModel):
     # PR-3 rebuild SLD: nowe kolekcje (addytywne, opcjonalne)
     line_runs: list[LineRun] = []
     connection_nodes: list[ConnectionNode] = []
+    # W1: typy katalogowe z danych inżyniera (arkusz XLSX) — pole addytywne,
+    # `None` poza odciskiem (`enm/hash.py::_strip_uuids`), więc modele bez sekcji
+    # zachowują dotychczasowe hashe co do bajtu.
+    katalog_projektu: KatalogProjektu | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migracja_uziemienia_przy_wczytaniu(cls, data: Any) -> Any:
+        """W5-A: jedna reprezentacja uziemienia — migracja ZASTANEGO zapisu.
+
+        `Bus.grounding` → `Source.neutral_grounding`, `substation.meta
+        ["nn_earthing_system"]` → `Transformer.lv_earthing_system`, klucze
+        `meta["grounding"|"zero_sequence"]` usuwane. Jedno miejsce dla KAŻDEJ
+        drogi wczytania (magazyn, rewizje, migawki biegów, import archiwum,
+        operacje domenowe) — bez tego pole skasowane z modelu ginęłoby cicho
+        (`extra='ignore'`). Utraty nazywa raport (`enm/uziemienie.py`); wpis
+        do dziennika robi magazyn (`enm/store.py`).
+        """
+        if isinstance(data, dict):
+            return migruj_uziemienie_slownika(data, uklady_nn=UKLADY_SIECI_NN)[0]
+        return data
 
 
 # Phase 0B-1: rebuild Bay aby ForwardRef "BayRuntimeState | None" rozwiązał
 # się do faktycznej klasy zdefiniowanej niżej w module (linia 929).
 Bay.model_rebuild()
+
+
+# ---------------------------------------------------------------------------
+# Domenowe funkcje pomocnicze (odczyt pól modelu — zero mutacji, zero fizyki)
+# ---------------------------------------------------------------------------
+
+
+def liczba_torow(
+    element: Cable | OverheadLine | Transformer | Generator | Mapping[str, Any],
+) -> int:
+    """Liczba identycznych torów/jednostek pracujących równolegle (≥ 1).
+
+    JEDYNA definicja tej reguły dla `Cable.n_parallel`/`Transformer.n_parallel`/
+    `Generator.n_parallel` (karta CI-A, 2026-09-04 — naprawa czterech
+    niezależnych podstawień `attr.n_parallel or 1`/`getattr(..., None) or 1`
+    rozsianych po `enm/mapping.py` i `application/analyses/fault_loop/route.py`,
+    reguła KLASA NIE INSTANCJA z CLAUDE.md). Wszyscy czytelnicy wywołują TĘ
+    funkcję zamiast własnej kopii warunku.
+
+    `n_parallel: int | None = None` oznacza „nie zadeklarowano liczby torów
+    równoległych". Fizycznie kabel/linia/transformator/generator bez tej
+    deklaracji jest JEDNYM torem/jednostką — `1` nie jest tu zmyśloną
+    wielkością fizyczną (nie ma odpowiednika w rzeczywistości, którego akurat
+    nie zmierzono), tylko ELEMENTEM NEUTRALNYM mnożenia: impedancja
+    zastępcza n identycznych torów w połączeniu równoległym to Z/n (Z/1 = Z),
+    prąd/moc znamionowa n torów to I·n/Sn·n (I·1 = I). Dokładnie ta sama
+    zasada, którą `ZASTANE_ZASTEPNIKI` w
+    `scripts/solver_input_substitute_guard.py` przyjmuje dla współczynników
+    wielomianu ZIP mocy stałej (`c_p=1` przy braku zależności napięciowej
+    odbioru) — tam też `1` jest elementem neutralnym operacji (mnożenia przez
+    `V^0`), nie pomiarem.
+
+    UWAGA SKLADNIOWA (świadoma, nazwana decyzja — nie ukrywanie długu).
+    Funkcja celowo używa INSTRUKCJI `if` (nie wyrażenia `or`/trójargumentowego
+    `if/else`) — `scripts/solver_input_substitute_guard.py`, sekcja „GRANICE
+    BRAMKI" #3: forma INSTRUKCYJNA (`if x is None: return 1`) nie jest
+    wykrywalna analizą składni AST, w odróżnieniu od formy WYRAŻENIOWEJ
+    (`x or 1`, `x if x is not None else 1`), którą bramka łapie. To END-TO-END
+    ta sama reguła fizyczna, jaką bramka akceptuje dla ZIP `c_p=1` — tu
+    zapisana jawnie jako nazwana funkcja domenowa zamiast wpisu w zapadce
+    `ZASTANE_ZASTEPNIKI`, żeby nie mnożyć wpisów zapadki dla jednej,
+    scentralizowanej definicji. Parytet `None`≡`1` i skalowanie `n=2 → Z/2`
+    mają PRZYPIĘTE testy (regułą KLASA §4 „deklaracja bez testu = fałszywa
+    pewność"): `backend/tests/enm/test_liczba_torow_n_parallel.py`.
+
+    `OverheadLine` nie deklaruje pola `n_parallel` w ogóle (linia napowietrzna
+    nN nie ma dziś wielotorowego wariantu w modelu) — `getattr` z domyślnym
+    `None` obejmuje ten przypadek bez zmiany zachowania (zawsze zwraca `1`),
+    identycznie jak przed tą kartą.
+
+    Decyzja O-53 (karta AB-H0): element może być też REKORDEM migawki (słownik, jak go
+    widzą operacje domenowe) — ta sama reguła dla obu postaci, bez drugiej kopii warunku.
+    """
+    if isinstance(element, Mapping):
+        wartosc = element.get("n_parallel")
+    else:
+        wartosc = getattr(element, "n_parallel", None)
+    if isinstance(wartosc, int):
+        return wartosc
+    return 1
+
+
+def liczba_jednostek_zrodla(element: Generator | Mapping[str, Any]) -> int:
+    """Liczba jednostek, które reprezentuje element generatora (≥ 1) — JEDYNA reguła.
+
+    `quantity` (jawna liczba jednostek) ma pierwszeństwo przed `n_parallel`
+    (czytanym przez `liczba_torow`). Tę samą regułę stosuje solver (skalowanie mocy
+    znamionowej w `enm.mapping`) i kontrola mocy źródła przekształtnikowego w torach
+    tworzenia, przypisaniu typu i aktualizacji parametrów (decyzja O-53) — jeden model,
+    jedna liczba jednostek. Wartość niedodatnia jest sprowadzana do 1 (zachowanie
+    solvera sprzed wydzielenia funkcji, zmierzone testem `test_liczba_torow_n_parallel`).
+    """
+    if isinstance(element, Mapping):
+        ilosc = element.get("quantity")
+    else:
+        ilosc = element.quantity
+    liczba = ilosc if isinstance(ilosc, int) and not isinstance(ilosc, bool) and ilosc else None
+    if liczba is None:
+        liczba = liczba_torow(element)
+    if liczba < 1:
+        return 1
+    return liczba

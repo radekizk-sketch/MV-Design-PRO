@@ -61,8 +61,37 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # solver_input/audit2_solver_adjuster.py (jedna zmienna, dwa typy) ⇒ 13/9.
     # 2026-09-01 (przejecie po B-02): pomiar na kompletnym venv 0/0 — guard
     # zazadal utrwalenia; para prog<->metatest zmieniona RAZEM.
-    assert modul.BASELINE_ERRORS == 0
-    assert modul.BASELINE_FILES == 0
+    # 2026-09-23 (bramka mypy po naprawie: `mypy_path` + `explicit_package_bases` w
+    # pyproject, twardy `import-not-found` w guardzie): pomiar 0/0 z 2026-09-01 był
+    # fałszywy — mypy nie widział pakietów `src/` i połykał błędy importu jako ciszę.
+    # Pomiar na czystym drzewie HEAD (`scripts/mypy_ratchet_pomiar_2026-09-23.md`):
+    # 275/49, po naprawie archiwum projektu (`f9ac289c`) 271/48. Zapadka tylko w dół;
+    # para próg<->metatest zmieniana RAZEM (ten wiersz + `BASELINE_*` w guardzie).
+    # 2026-09-23 (Pakiet L): kasacja martwego dowodu P18 (4 bledy arg-type w
+    # `proof_inspector/inspector.py`) i rendererow krzywych I-t (1 blad w
+    # `protection_curves_it/renderer_svg.py`) ⇒ 271/48 → 266/46.
+    # 2026-09-23 (AB-H0): 271/48 -> 255/46 — pomiar `mypy src` na drzewie integracji
+    # vs czysty HEAD `2ef62bbc`: znika 9 błędów `enm/domain_operations.py` i 7
+    # `solver_input/v126_contracts.py`, zero nowych (opis w guardzie przy `BASELINE_*`).
+    # Decyzja O-53 (2026-09-24): 255/46 -> 254/45 — znika jedyny błąd
+    # `api/grid_source_preview.py` (opis przy `BASELINE_*` w guardzie), zero nowych.
+    # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
+    # `mypy src` na scalonym drzewie int/h0 (L i AB-H0 zdejmuja bledy w roznych plikach,
+    # roznice sie sumuja; zero nowych bledow).
+    # 2026-09-23 (karta integracyjna AB-1b.1a): przeciążenia `ensure_utc` w
+    # `infrastructure/persistence/time_utils.py` (11 błędów `datetime | None` w pięciu
+    # repozytoriach persystencji) i przepisany adapter dynamiki (1 błąd `attr-defined`)
+    # ⇒ 266/46 → 254/42; zastane błędy w plikach dotkniętych kartą (kolizje nazw w
+    # `power_flow_interpretation/builder.py` i `sanity_bounds.py`, zawężenia w
+    # `nn_circuit_sheet.py`) — kolejne 7 ⇒ 247/39 (różnica zbiorów błędów HEAD/drzewo =
+    # dokładnie te 19, zero nowych).
+    # Integracja AB-1b.1a na HEAD z AB-H0 (2026-09-24): pomiar na scalonym drzewie 249/43 -> 230/36.
+    # 2026-09-23 (Pakiet 0): `enm/canonical_analysis.py` bez bledow typow (kolizja nazwy
+    # `result` w `_run_oltc_study` — 2x assignment; `float(object)` w
+    # `_build_power_flow_trace_steps` — 2x arg-type) ⇒ 266/46 → 262/45.
+    # Ponowne złożenie Pakietu 0 na HEAD `1b422cdd` (2026-09-24): 230/36 → 226/35.
+    assert modul.BASELINE_ERRORS == 226
+    assert modul.BASELINE_FILES == 35
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

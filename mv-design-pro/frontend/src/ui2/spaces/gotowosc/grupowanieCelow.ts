@@ -28,8 +28,12 @@
  *   SOURCES     -> 'zwarcia'   (parametry źródła to wprost dane zwarciowe —
  *                  patrz też `enm/validator.py:287` kod
  *                  `sources.no_short_circuit_params`, message_pl: „Źródło...
- *                  nie ma parametrów zwarciowych"; współwymagane też przez
- *                  LOAD_FLOW — TODO-KARTA niżej)
+ *                  nie ma parametrów zwarciowych". SOURCES jest wg
+ *                  `get_blockers_for_analysis` wymagane RÓWNIEŻ przez
+ *                  LOAD_FLOW — mapowanie kod -> cel jest jednak PER KOD, nie
+ *                  per (kod, typ analizy): ten sam wpis rejestru pod celem
+ *                  'zwarcia' pokrywa blokadę niezależnie od tego, którą
+ *                  analizę projektant akurat sprawdza)
  *   TOPOLOGY, CATALOGS, ANALYSIS -> 'wspolne' (wymóg wspólny SC/LF/zabezp.)
  *   GENERATORS  -> 'rozplyw'   (wyłącznie LOAD_FLOW wg rejestru)
  *   PROTECTION  -> 'zabezpieczenia' (wyłącznie PROTECTION wg rejestru)
@@ -89,13 +93,21 @@
  * kodem dokładnym; nieznany, nowy kod tych prefiksów -> „Pozostałe" (bez
  * zgadywania, zgodnie z kartą §2).
  *
- * TODO-KARTA (ograniczenia — bez zgadywania):
+ * ZAMKNIĘCIE (KARTA-UI2 §1 p. 13): test parytetu
+ * (`__tests__/grupowanieCelow.parytetRejestru.test.ts`) porównuje TĘ mapę z
+ * pełnym kanonicznym rejestrem (`GET /api/readiness/registry`, snapshot
+ * `__tests__/fixtures/readiness_registry_snapshot.json`) — każdy kod rejestru
+ * MA grupę (≠ „pozostale"). Ujawnił 76 kodów dodanych do rejestru PO
+ * napisaniu poniższych tabel (dopisane niżej, ten sam wzorzec OBSZAR -> CEL).
+ *
+ * Pozostałe ograniczenia (bez zgadywania — poza zakresem testu parytetu, bo
+ * poza kanonicznym rejestrem):
  * 1. Kody generyczne bez separatora kropkowego (`E001`..`E042`, `W001`..`W040`,
  *    `I001`..`I005` z `enm/validator.py`) NIE MAJĄ przestrzeni nazw (prefiksu)
  *    wskazującej cel — trafiają do „Pozostałe". Ich znaczenie jest czytelne
  *    z `wizard_step_hint` (K2..K6) i treści `message_pl`, ale to inny sygnał
- *    niż „prefiks kodu" wskazany przez kartę — pytanie do zarządcy, czy
- *    rozszerzyć mapowanie o `wizard_step_hint` w kolejnej karcie.
+ *    niż „prefiks kodu" — GRANICA PRODUKTU (rozszerzenie mapowania o
+ *    `wizard_step_hint` wymaga osobnej decyzji o drugim kluczu grupowania).
  * 2. Kody z `network_model/validation/validator.py` i
  *    `network_model/catalog/readiness_checker.py` (np. `transformer.hv_invalid`,
  *    `transformer.polarity_reversed`) pochodzą z ODRĘBNEGO modułu walidacji
@@ -261,6 +273,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'catalog.gate_result_mismatch': 'wspolne',
   'load.catalog_missing': 'wspolne',
   'load.power_zero': 'wspolne',
+  // O-49 (model odbiorów): odbiory ZIP szyny, których rozpływ nie odwzorowuje dokładnie —
+  // blokuje wyłącznie rozpływ mocy (i wszystko, co z niego startuje).
+  'load.zip_agregat_niereprezentowalny': 'rozplyw',
   'nn.cable_catalog_missing': 'wspolne',
   // STATIONS (:564-599, :610-618, :620-637, :822-847)
   'station.type_invalid': 'stacje',
@@ -284,6 +299,100 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // ANALYSIS (:717-734)
   'study_case.missing_base_snapshot': 'wspolne',
   'analysis.blocked_by_readiness': 'wspolne',
+
+  // KARTA-UI2 §1 p. 13 (test parytetu `grupowanieCelow.parytetRejestru.test.ts`
+  // ujawnił 76 kodów kanonu dodanych do rejestru PO napisaniu tabeli powyżej —
+  // ten sam mapowanie OBSZAR -> CEL z nagłówka pliku, kod dokładny (nie
+  // fallback prefiksu: "nn"/"transformer" mają rozdzielone obszary w rejestrze,
+  // patrz nagłówek). Obszar z `READINESS_CODES` (`canonical_operations.py`,
+  // snapshot `__tests__/fixtures/readiness_registry_snapshot.json`).
+  // SOURCES (zwarcia)
+  'connection.cos_phi_required_missing': 'zwarcia',
+  'connection.power_flow_missing': 'zwarcia',
+  'connection.power_limit_missing': 'zwarcia',
+  'earthing.neutral_grounding_inconsistent': 'zwarcia',
+  'nn.measurement.required_missing': 'zwarcia',
+  'nn.source.field_missing': 'zwarcia',
+  'nn.source.parameters_missing': 'zwarcia',
+  'nn.source.switch_missing': 'zwarcia',
+  'source.multiple_grid_sources_in_island': 'zwarcia',
+  'source.sk_min_inconsistent': 'zwarcia',
+  'source.sk_min_missing': 'zwarcia',
+  'source.u_set_pu_out_of_range': 'zwarcia',
+  // CATALOGS (wspolne)
+  'branch.zero_sequence_missing': 'wspolne',
+  'cable.insulation_data_missing': 'wspolne',
+  'cable.operating_temperature_missing': 'wspolne',
+  'cable.screen_bonding_reference_mismatch': 'wspolne',
+  'conductor.fault_current_missing': 'wspolne',
+  'conductor.thermal_data_missing': 'wspolne',
+  'ct.accuracy_limit_missing': 'wspolne',
+  'ct.rated_burden_missing': 'wspolne',
+  'ct.winding_resistance_missing': 'wspolne',
+  'nn.source.catalog_missing': 'wspolne',
+  'nn.switch.catalog_ref_missing': 'wspolne',
+  'protection.curve_library_missing': 'wspolne',
+  'protection.curve_library_ref_broken': 'wspolne',
+  'transformer.loading_factor_missing': 'wspolne',
+  'transformer.loss_data_missing': 'wspolne',
+  'transformer.neutral_grounding_not_accessible': 'wspolne',
+  'transformer.no_load_params_missing': 'wspolne',
+  'transformer.vector_group_invalid': 'wspolne',
+  'transformer.vector_group_missing': 'wspolne',
+  'vt.rated_burden_missing': 'wspolne',
+  'vt.winding_category_missing': 'wspolne',
+  // STATIONS (stacje)
+  'earthing.electrode_data_missing': 'stacje',
+  'nn.voltage_missing': 'stacje',
+  'transformer.bay_missing': 'stacje',
+  'transformer.lv_earthing_system_missing': 'stacje',
+  // GENERATORS (rozplyw)
+  'bess.energy_module_missing': 'rozplyw',
+  'bess.soc_limits_invalid': 'rozplyw',
+  // Kod `der.dynamic_profile_default` SKASOWANY razem ze zrodlem, ktore go
+  // emitowalo (domyslne profile dynamiczne DER; karta kontraktow czasu) —
+  // mapa celow idzie za kanonicznym rejestrem `READINESS_CODES`, nie za
+  // historia. `der.dynamika_missing` to nowy bloker bloku dynamiki maszyny
+  // synchronicznej (obszar GENERATORS, jak siostrzane kody DER).
+  'der.dynamic_profile_missing': 'rozplyw',
+  'der.dynamika_missing': 'rozplyw',
+  'generator.converter_card_missing': 'rozplyw',
+  'generator.harmonic_spectrum_missing': 'rozplyw',
+  'generator.q_missing': 'rozplyw',
+  'generator.voltage_control_not_permitted': 'rozplyw',
+  'generator.voltage_control_profile_missing': 'rozplyw',
+  'generator.voltage_setpoint_missing': 'rozplyw',
+  'genset.fuel_type_missing': 'rozplyw',
+  'inverter.k_sc_default_forbidden': 'rozplyw',
+  'inverter.k_sc_missing': 'rozplyw',
+  'pv.control_mode_missing': 'rozplyw',
+  'ups.backup_time_invalid': 'rozplyw',
+  // PROTECTION (zabezpieczenia)
+  'conductor.fault_duration_missing': 'zabezpieczenia',
+  'ct.required_alf_missing': 'zabezpieczenia',
+  'ct.secondary_circuit_missing': 'zabezpieczenia',
+  'protection.fault_current_missing': 'zabezpieczenia',
+  'protection.nominal_current_missing': 'zabezpieczenia',
+  'vt.secondary_circuit_missing': 'zabezpieczenia',
+  // ANALYSIS (wspolne)
+  'analysis.dynamic_stability_scenario_incomplete': 'wspolne',
+  'fault.location_on_branch_requires_assembler': 'wspolne',
+  'oltc.deadband_missing': 'wspolne',
+  'oltc.target_voltage_missing': 'wspolne',
+  'power_flow.unbalanced_element_unsupported': 'wspolne',
+  'power_flow.unbalanced_load_phases_unsupported': 'wspolne',
+  'power_flow.unbalanced_losses_self_impedance': 'wspolne',
+  'power_flow.unbalanced_magnetising_branch_omitted': 'wspolne',
+  'power_flow.unbalanced_no_zero_sequence_path': 'wspolne',
+  'power_flow.unbalanced_requires_radial': 'wspolne',
+  'power_flow.unbalanced_shunt_admittance_omitted': 'wspolne',
+  'power_flow.unbalanced_transformer_series_model': 'wspolne',
+  'power_flow.unbalanced_zero_sequence_confined': 'wspolne',
+  'power_flow.unbalanced_zero_sequence_via_source': 'wspolne',
+  'verdict.input_data_missing': 'wspolne',
+  'verdict.run_failed': 'wspolne',
+  'verdict.run_missing': 'wspolne',
+  'verdict.run_stale': 'wspolne',
 };
 
 /**
@@ -332,6 +441,10 @@ const PREFIKS_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   source: 'zwarcia',
   sources: 'zwarcia',
   generator: 'rozplyw',
+  // O-53 (AB-H0, 2026-09-24): jedna regula mocy zrodla emituje kody `converter.*` w obszarze
+  // GENERATORS (`transformer_capacity_exceeded`, `setpoint_above_rating`,
+  // `power_check_input_invalid`) — ten sam cel co `generator.*`.
+  converter: 'rozplyw',
   oze: 'rozplyw',
   pv_bess: 'rozplyw',
   bess: 'rozplyw',

@@ -74,20 +74,21 @@
 | 24 | `link_relay_to_field`             | Powiazanie przekaznika z polem rozdzielczym                    | Domain / NetworkModel     |
 | 25 | `calculate_tcc_curve`             | Obliczenie krzywej czas-prad (TCC) dla przekaznika             | Analysis / Protection     |
 | 26 | `validate_selectivity`            | Walidacja selektywnosci miedzy urzadzeniami zabezpieczeniowymi | Analysis / Protection     |
+| 26a | `set_measurement_secondary_circuit` (karta W3-B, 2026-09) | Zapis/aktualizacja obwodu wtornego CT/VT na JUZ ISTNIEJACYM przekladniku -- jedyna droga edycji po utworzeniu (`update_element_parameters` odrzuca kolekcje `measurements`, patrz `LEGACY_FIELD_COLLECTIONS`) | Domain / NetworkModel |
 
-### 1.5 Operacje StudyCase (Przypadki obliczeniowe)
+### 1.5 Operacje StudyCase (Przypadki obliczeniowe) -- USUNIETE (CV-3.2, 58e520ce)
 
-| Nr | Nazwa kanoniczna                   | Opis (PL)                                                      | Warstwa docelowa          |
-|----|------------------------------------|-----------------------------------------------------------------|---------------------------|
-| 27 | `create_study_case`               | Utworzenie nowego przypadku obliczeniowego                      | Domain / StudyCase        |
-| 28 | `set_case_switch_state`           | Ustawienie stanu lacznika w kontekscie przypadku               | Domain / StudyCase        |
-| 29 | `set_case_normal_state`           | Ustawienie stanu normalnego eksploatacji w przypadku           | Domain / StudyCase        |
-| 30 | `set_case_source_mode`            | Ustawienie trybu pracy zrodla w kontekscie przypadku           | Domain / StudyCase        |
-| 31 | `set_case_time_profile`           | Ustawienie profilu czasowego w przypadku (chwila t)            | Domain / StudyCase        |
-| 32 | `run_short_circuit`               | Uruchomienie obliczen zwarciowych IEC 60909                    | Solver / IEC 60909        |
-| 33 | `run_power_flow`                  | Uruchomienie obliczen rozplywu mocy (Newton-Raphson)           | Solver / Power Flow       |
-| 34 | `run_time_series_power_flow`      | Uruchomienie serii obliczen rozplywu mocy w dziedzinie czasu   | Solver / Power Flow       |
-| 35 | `compare_study_cases`             | Porownanie dwoch przypadkow obliczeniowych                     | Analysis / Comparison     |
+9 operacji (Nr 27-35: `create_study_case`, `set_case_switch_state`, `set_case_normal_state`,
+`set_case_source_mode`, `set_case_time_profile`, `run_short_circuit`, `run_power_flow`,
+`run_time_series_power_flow`, `compare_study_cases`) zapisywaly `study_cases[]` do dokumentu
+ENM -- zapis w proznie (`EnergyNetworkModel` nie ma takiego pola, ginal przy `model_validate`),
+0 konsumentow produkcyjnych (frontend nigdy nie znal tych nazw -- `domainOps.ts`). Usuniete
+procedura 7 krokow razem z definicjami w `enm/domain_operations_v2.py`, rejestrem
+`domain/canonical_operations.py`. Semantyka "stanu roboczego" (lacznik/zrodlo/N-1) zyje
+WYLACZNIE w `enm/scenariusze.py::OperatingScenario` (CV-3.1); bieg i porownanie biegow --
+`enm/canonical_analysis.py::create_run/execute_run` (patrz `tests/invariants/test_scenariusz_i_bieg.py`).
+Zywe operacje StudyCase (utworzenie/porownanie PRZYPADKU jako konfiguracji, nie fizyki) sa
+inna warstwa: `api/study_cases.py`, `domain/study_case.py` (C1).
 
 ### 1.6 Operacje Uniwersalne
 
@@ -457,91 +458,6 @@ Kazdy przyklad zawiera kompletny obiekt JSON -- bez skrotow, bez "...", z realis
 }
 ```
 
-### Przyklad 13: `create_study_case`
-
-```json
-{
-  "operation": "create_study_case",
-  "meta": {
-    "snapshot_in": "S12",
-    "idempotency_key": "6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b",
-    "ui_click_id": "click_013",
-    "timestamp_utc": "2026-02-17T10:12:00Z"
-  },
-  "payload": {
-    "case_name": "Przypadek bazowy -- stan normalny lato 2026",
-    "description": "Stan normalny eksploatacji z pelnym obciazeniem letnim i wlaczonymi OZE",
-    "network_snapshot_id": "S12",
-    "config": {
-      "c_factor_max": 1.10,
-      "c_factor_min": 1.00,
-      "base_mva": 100.0,
-      "max_iterations": 50,
-      "tolerance": 1e-6,
-      "include_motor_contribution": true,
-      "include_inverter_contribution": true,
-      "thermal_time_seconds": 1.0
-    },
-    "is_active": true
-  }
-}
-```
-
-### Przyklad 14: `run_short_circuit`
-
-```json
-{
-  "operation": "run_short_circuit",
-  "meta": {
-    "snapshot_in": "S12",
-    "idempotency_key": "7b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c",
-    "ui_click_id": "click_014",
-    "timestamp_utc": "2026-02-17T10:13:00Z"
-  },
-  "payload": {
-    "case_id": "case-bazowy-lato-2026",
-    "fault_type": "SC3F",
-    "fault_bus_ids": [
-      "bus-st-01-sn",
-      "bus-st-02-sn",
-      "bus-rpz-polnocna-15kv"
-    ],
-    "c_factor": 1.10,
-    "include_inverter_contribution": true,
-    "include_motor_contribution": true,
-    "calculate_peak_current": true,
-    "calculate_thermal_current": true,
-    "thermal_time_s": 1.0,
-    "solver_version": "iec60909_v3.2"
-  }
-}
-```
-
-### Przyklad 15: `run_power_flow`
-
-```json
-{
-  "operation": "run_power_flow",
-  "meta": {
-    "snapshot_in": "S12",
-    "idempotency_key": "8c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d",
-    "ui_click_id": "click_015",
-    "timestamp_utc": "2026-02-17T10:14:00Z"
-  },
-  "payload": {
-    "case_id": "case-bazowy-lato-2026",
-    "solver_method": "NEWTON_RAPHSON",
-    "base_mva": 100.0,
-    "max_iterations": 50,
-    "tolerance": 1e-6,
-    "flat_start": true,
-    "enforce_reactive_limits": true,
-    "tap_adjustment": false,
-    "solver_version": "power_flow_newton_v2.1"
-  }
-}
-```
-
 ### Przyklad 16: `assign_catalog_to_element`
 
 ```json
@@ -587,9 +503,13 @@ Referencja wskazuje na modele Pydantic w `backend/src/domain/domain_ops_models.p
 | `source_name`  | `string` | TAK      | min 1, max 200 znakow           | Nazwa zrodla zasilania (GPZ)      |
 | `bus_name`     | `string` | TAK      | min 1, max 200 znakow           | Nazwa szyny GPZ                   |
 | `voltage_kv`   | `float`  | TAK      | > 0, typowo 6.0 / 10.0 / 15.0 / 20.0 / 30.0 | Napiecie znamionowe [kV] |
-| `sk3_mva`      | `float`  | TAK      | > 0                             | Moc zwarciowa trojfazowa [MVA]    |
-| `ik3_ka`       | `float`  | TAK      | > 0                             | Prad zwarciowy trojfazowy [kA]    |
-| `rx_ratio`     | `float`  | TAK      | > 0, typowo 0.05 -- 0.3         | Stosunek R/X zrodla               |
+| `sk3_mva`      | `float`  | TAK      | > 0                             | Moc zwarciowa trojfazowa scenariusza MAX [MVA] |
+| `ik3_ka`       | `float`  | TAK      | > 0                             | Prad zwarciowy trojfazowy scenariusza MAX [kA] |
+| `rx_ratio`     | `float`  | TAK      | > 0, typowo 0.05 -- 0.3         | Stosunek R/X zrodla (scenariusz MAX) |
+| `sk3_min_mva`  | `float`  | NIE      | > 0, jesli podane                | Minimalna moc zwarciowa trojfazowa -- scenariusz MIN [MVA] (CV-4.3 K7, IEC 60909-0:2016 §6.2.1 eq. 6 z c_min). Brak = scenariusz MIN liczony z impedancji dla `sk3_mva`/`ik3_ka` (scenariusz MAX) z jawnym zalozeniem `source.sk_min_missing` -- ZERO fabrykacji, zaden domyslny ulamek MAX |
+| `ik3_min_ka`   | `float`  | NIE      | > 0, jesli podane                 | Minimalny prad zwarciowy trojfazowy -- scenariusz MIN [kA] (alternatywa dla `sk3_min_mva`, tryb pradowy). `sk3_min_mva` i `ik3_min_ka` nie moga jednoczesnie przekraczac odpowiednio `sk3_mva`/`ik3_ka` -- operacja odrzuca sprzecznosc kodem `source.manual_equivalent_invalid` |
+| `rx_ratio_min` | `float`  | NIE      | > 0, jesli podane                 | Stosunek R/X dla scenariusza MIN. Bez `sk3_min_mva`/`ik3_min_ka` nie ma zastosowania (odrzucane -- scenariusz MIN bez wlasnej mocy zwarciowej liczy sie z danych MAX) |
+| `u_set_pu`     | `float`  | NIE      | 0,8 -- 1,2, jesli podane          | Napiecie zadane szyny bilansujacej [p.u. Un szyny] -- dana wejsciowa rozplywu mocy (MATPOWER `Vm` szyny slack / pandapower `ext_grid.vm_pu`). Brak = 1,0 p.u. (znamionowe, jawne zalozenie modelowe). Poza pasmem: `source.manual_equivalent_invalid` (operacja) / `sources.u_set_pu_out_of_range` (walidator, BLOCKER) |
 
 ### 4.3 `continue_trunk_segment_sn` -- ContinueTrunkSegmentSNPayload
 
@@ -663,22 +583,27 @@ Referencja wskazuje na modele Pydantic w `backend/src/domain/domain_ops_models.p
 
 ### 4.9 `add_transformer_sn_nn` -- AddTransformerSNnNPayload
 
-| Pole               | Typ      | Wymagane | Ograniczenia            | Opis                                    |
-|--------------------|----------|----------|-------------------------|-----------------------------------------|
-| `station_id`       | `string` | TAK      | musi istniec w modelu   | ID stacji                               |
-| `sn_bus_id`        | `string` | TAK      | musi istniec w modelu   | ID szyny SN (strona gorna)              |
-| `transformer_name` | `string` | TAK      | min 1                   | Nazwa transformatora                    |
-| `type_ref`         | `string` | NIE      | musi istniec w katalogu | Referencja do typu transformatora       |
-| `rated_power_mva`  | `float`  | TAK      | > 0                     | Moc znamionowa [MVA]                    |
-| `voltage_hv_kv`    | `float`  | TAK      | > 0                     | Napiecie znamionowe strony gornej [kV]  |
-| `voltage_lv_kv`    | `float`  | TAK      | > 0                     | Napiecie znamionowe strony dolnej [kV]  |
-| `uk_percent`       | `float`  | TAK      | > 0                     | Napiecie zwarcia [%]                    |
-| `pk_kw`            | `float`  | TAK      | >= 0                    | Straty zwarciowe [kW]                   |
-| `i0_percent`       | `float`  | NIE      | >= 0, dom. 0            | Prad jalowy [%]                         |
-| `p0_kw`            | `float`  | NIE      | >= 0, dom. 0            | Straty jalowe [kW]                      |
-| `vector_group`     | `string` | NIE      | dom. "Dyn11"            | Grupa polaczen                          |
-| `tap_position`     | `int`    | NIE      | dom. 0                  | Pozycja zaczepow                        |
-| `nn_bus_name`      | `string` | TAK      | min 1                   | Nazwa szyny nN (strona dolna)           |
+Tabela spisana z kodu (`enm/domain_operations.py::add_transformer_sn_nn`, 2026-09-09) --
+poprzednia wersja opisywala nieistniejacy dialekt (`station_id`/`sn_bus_id`/`nn_bus_name`).
+Szyny: dokladnie JEDNA z pary {`hv_bus_ref`, `hv_voltage_kv`} i dokladnie JEDNA z pary
+{`lv_bus_ref`, `lv_voltage_kv`}; obie nowe naraz sa odrzucane (`transformer.buses_missing`),
+obie z pary naraz -- `transformer.hv_bus_ambiguous` / `transformer.lv_bus_ambiguous`.
+
+| Pole                                 | Typ      | Wymagane | Ograniczenia                          | Opis |
+|--------------------------------------|----------|----------|---------------------------------------|------|
+| `hv_bus_ref`                         | `string` | warunkowo | musi istniec w modelu                | Istniejaca szyna strony HV |
+| `hv_voltage_kv`                      | `float`  | warunkowo | > 0; wymaga `lv_bus_ref`             | NOWA szyna HV nad istniejaca szyna LV (2026-09-09; zaczep MATPOWER po stronie "from" zostaje na uzwojeniu HV, gdy budowa dochodzi od strony "to" -- blizniak IEEE case39) |
+| `lv_bus_ref`                         | `string` | warunkowo | musi istniec w modelu                | Istniejaca szyna strony LV |
+| `lv_voltage_kv`                      | `float`  | warunkowo | > 0; wymaga `hv_bus_ref`             | NOWA szyna LV (CV-4.3 K1) |
+| `transformer_catalog_ref`            | `string` | TAK*     | musi istniec w katalogu TRAFO_SN_NN   | Typ katalogowy (*albo `catalog_binding` / `catalog_ref`) |
+| `catalog_binding`                    | `object` | NIE      | kontrakt CatalogBinding               | Wiazanie katalogowe (alternatywa dla `transformer_catalog_ref`) |
+| `sn_mva` / `uk_percent` / `pk_kw`    | `float`  | NIE      | > 0 / > 0 / >= 0                      | Nadpisania tabliczki (materializacja katalogowa uzupelnia brakujace) |
+| `uhv_kv` / `ulv_kv`                  | `float`  | NIE      | > 0                                   | Napiecia znamionowe uzwojen; brak = napiecia szyn |
+| `transformer_regulation_type`        | `string` | NIE      | `DETC` / `OLTC`                       | Zaczep: staly / regulowany (`_build_gpz_tap_changer`) |
+| `transformer_regulated_winding`      | `string` | NIE      | `HV` / `LV`, dom. `HV`                | Uzwojenie z zaczepem |
+| `transformer_tap_neutral_position` / `transformer_tap_current_position` / `transformer_tap_min_position` / `transformer_tap_max_position` | `int` | NIE | min <= neutral <= max | Pozycje zaczepu |
+| `transformer_tap_step_percent`       | `float`  | NIE      | >= 0                                  | Krok zaczepu [%] |
+| `station_ref`                        | `string` | NIE      | musi istniec w modelu                 | Stacja, do ktorej nalezy transformator |
 
 ### 4.10 `add_nn_load` -- AddNNLoadPayload
 
@@ -762,44 +687,8 @@ Referencja wskazuje na modele Pydantic w `backend/src/domain/domain_ops_models.p
 | `curve_settings`   | `object` | NIE      | Nastawy krzywej (dla IT)           |
 | `directional`      | `bool`   | NIE      | Czy stopien jest kierunkowy         |
 
-### 4.14 `create_study_case` -- CreateStudyCasePayload
-
-| Pole                  | Typ      | Wymagane | Ograniczenia       | Opis                                |
-|-----------------------|----------|----------|--------------------|-------------------------------------|
-| `case_name`           | `string` | TAK      | min 1, max 200     | Nazwa przypadku obliczeniowego      |
-| `description`         | `string` | NIE      |                    | Opis przypadku                      |
-| `network_snapshot_id` | `string` | TAK      |                    | ID snapshotu sieci                  |
-| `config`              | `object` | NIE      | StudyCaseConfig    | Konfiguracja obliczen               |
-| `is_active`           | `bool`   | NIE      | dom. false         | Czy przypadek ma byc aktywny        |
-
-### 4.15 `run_short_circuit` -- RunShortCircuitPayload
-
-| Pole                          | Typ        | Wymagane | Ograniczenia       | Opis                                  |
-|-------------------------------|------------|----------|--------------------|---------------------------------------|
-| `case_id`                     | `string`   | TAK      |                    | ID przypadku obliczeniowego           |
-| `fault_type`                  | `string`   | TAK      | SC3F / SC2F / SC1F / SC2FE | Typ zwarcia (wg IEC 60909)    |
-| `fault_bus_ids`               | `string[]` | TAK      | min 1 element      | Lista ID szyn z punktami zwarcia      |
-| `c_factor`                    | `float`    | NIE      | > 0, dom. 1.10     | Wspolczynnik napiecia c               |
-| `include_inverter_contribution` | `bool`   | NIE      | dom. true          | Uwzglednienie wkladu falownikow       |
-| `include_motor_contribution`  | `bool`     | NIE      | dom. true          | Uwzglednienie wkladu silnikow         |
-| `calculate_peak_current`      | `bool`     | NIE      | dom. true          | Obliczenie pradu udarowego ip         |
-| `calculate_thermal_current`   | `bool`     | NIE      | dom. true          | Obliczenie pradu cieplnego Ith        |
-| `thermal_time_s`              | `float`    | NIE      | > 0, dom. 1.0      | Czas trwania zwarcia [s]             |
-| `solver_version`              | `string`   | NIE      |                    | Wersja solvera (do reprodukowalnosci) |
-
-### 4.16 `run_power_flow` -- RunPowerFlowPayload
-
-| Pole                       | Typ      | Wymagane | Ograniczenia               | Opis                                    |
-|----------------------------|----------|----------|----------------------------|-----------------------------------------|
-| `case_id`                  | `string` | TAK      |                            | ID przypadku obliczeniowego             |
-| `solver_method`            | `string` | NIE      | NEWTON_RAPHSON / GAUSS_SEIDEL / FAST_DECOUPLED | Metoda obliczeniowa     |
-| `base_mva`                 | `float`  | NIE      | > 0, dom. 100.0            | Moc bazowa [MVA]                        |
-| `max_iterations`           | `int`    | NIE      | > 0, dom. 50               | Maksymalna liczba iteracji              |
-| `tolerance`                | `float`  | NIE      | > 0, dom. 1e-6             | Tolerancja zbieznosci                   |
-| `flat_start`               | `bool`   | NIE      | dom. true                  | Start plaski (U=1.0 pu, theta=0)       |
-| `enforce_reactive_limits`  | `bool`   | NIE      | dom. true                  | Egzekwowanie limitow mocy biernej       |
-| `tap_adjustment`           | `bool`   | NIE      | dom. false                 | Automatyczna regulacja zaczepow         |
-| `solver_version`           | `string` | NIE      |                            | Wersja solvera (do reprodukowalnosci)   |
+<!-- 4.14-4.16 (`create_study_case`/`run_short_circuit`/`run_power_flow` jako operacje C3
+     "study_cases[] w ENM") USUNIETE CV-3.2, 58e520ce -- patrz sekcja 1.5. -->
 
 ### 4.17 `assign_catalog_to_element` -- AssignCatalogToElementPayload
 
@@ -826,6 +715,7 @@ Referencja wskazuje na modele Pydantic w `backend/src/domain/domain_ops_models.p
 | `set_dynamic_profile`       | `source_id`, `profile_name`, `time_series`                     | SetDynamicProfilePayload              |
 | `add_ct`                    | `field_id`, `ct_name`, `ratio_primary_a`, `ratio_secondary_a`, `accuracy_class` | AddCTPayload              |
 | `add_vt`                    | `field_id`, `vt_name`, `ratio_primary_kv`, `ratio_secondary_v`, `accuracy_class` | AddVTPayload              |
+| `set_measurement_secondary_circuit` (karta W3-B, 2026-09) | `measurement_ref`, `obwod_wtorny` (`dlugosc_przewodu_m?`, `przekroj_przewodu_mm2?`, `obciazenia_aparatow?`, `moc_stykow_va?`), `vt_uzwojenie?` (WYLACZNIE gdy measurement jest VT) | `enm/models.py::ObwodWtorny` (patrz `Measurement.obwod_wtorny`) — realne pola operacji, nie schemat aspiracyjny jak sasiednie wiersze `add_ct`/`add_vt` powyzej (`field_id` -> realnie `field_ref`, patrz kod) |
 | `update_relay_settings`     | `relay_id`, `settings`                                         | UpdateRelaySettingsPayload            |
 | `link_relay_to_field`       | `relay_id`, `field_id`                                         | LinkRelayToFieldPayload               |
 | `calculate_tcc_curve`       | `relay_id`, `current_range_a`                                  | CalculateTCCCurvePayload              |
@@ -930,15 +820,6 @@ class DomainEvent(str, Enum):
 | `link_relay_to_field`             | `RELAY_SETTINGS_UPDATED`                                                   |
 | `calculate_tcc_curve`             | `TCC_CURVE_COMPUTED`                                                       |
 | `validate_selectivity`            | `SELECTIVITY_VALIDATED`                                                    |
-| `create_study_case`               | `STUDY_CASE_CREATED`                                                       |
-| `set_case_switch_state`           | `CASE_STATE_UPDATED`                                                       |
-| `set_case_normal_state`           | `CASE_STATE_UPDATED`                                                       |
-| `set_case_source_mode`            | `CASE_STATE_UPDATED`                                                       |
-| `set_case_time_profile`           | `CASE_STATE_UPDATED`                                                       |
-| `run_short_circuit`               | `ANALYSIS_RUN_STARTED`, `ANALYSIS_RUN_COMPLETED`, `RESULTS_MAPPED`         |
-| `run_power_flow`                  | `ANALYSIS_RUN_STARTED`, `ANALYSIS_RUN_COMPLETED`, `RESULTS_MAPPED`         |
-| `run_time_series_power_flow`      | `ANALYSIS_RUN_STARTED`, `ANALYSIS_RUN_COMPLETED`, `RESULTS_MAPPED`         |
-| `compare_study_cases`             | `RESULTS_MAPPED`                                                           |
 | `assign_catalog_to_element`       | `DEVICES_CREATED_SN` lub `DEVICES_CREATED_NN` (zaleznie od warstwy)        |
 | `update_element_parameters`       | `CASE_STATE_UPDATED`                                                       |
 | `rename_element`                  | `LOGICAL_VIEWS_UPDATED`                                                    |
@@ -971,8 +852,8 @@ class DomainEvent(str, Enum):
 3. **Typy katalogowe**: Operacje z `type_ref` / `cable_type_ref` MUSZA odwolywac sie do istniejacego typu w katalogu.
 4. **Unikalnosc nazw**: Nazwy elementow w obrebie jednego typu MUSZA byc unikalne (np. dwie szyny nie moga miec tej samej nazwy).
 5. **NOP**: W kazdym pierścieniu moze byc dokladnie jeden NOP. Operacja `set_normal_open_point` automatycznie zamyka poprzedni NOP (jesli `auto_close_previous = true`).
-6. **StudyCase immutability**: Operacje `set_case_*` modyfikuja WYLACZNIE dane przypadku obliczeniowego, NIGDY modelu sieci (zgodnie z regula Case Immutability).
-7. **Solver READ-ONLY**: Operacje `run_short_circuit`, `run_power_flow`, `run_time_series_power_flow` NIE modyfikuja modelu sieci -- dzialaja na niemutowalnym snapshocie.
+6. **Case immutability**: operacje przypadku obliczeniowego (C1: `api/study_cases.py`) modyfikuja WYLACZNIE dane przypadku, NIGDY modelu sieci (zgodnie z regula Case Immutability). Reguly 6-7 dawniej wskazywaly na 9 operacji `set_case_*`/`run_*` z sekcji 1.5 -- usuniete CV-3.2, intencja "case immutability" przechodzi na `api/study_cases.py`/`domain/study_case.py`.
+7. **Solver READ-ONLY**: zywe koncowki uruchomienia solvera (`api/enm.py::run_short_circuit/run_power_flow`, E2) NIE modyfikuja modelu sieci -- dzialaja na niemutowalnym snapshocie (`enm/canonical_analysis.py::create_run/execute_run`).
 
 ---
 

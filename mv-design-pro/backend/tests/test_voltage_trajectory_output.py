@@ -17,16 +17,18 @@ class TestTrajectoryGeneration:
     """U(t) sampling produces sensible 4-phase trajectory."""
 
     def test_default_params_produce_samples(self) -> None:
-        traj = generate_voltage_trajectory(TrajectoryGenerationParams())
+        traj = generate_voltage_trajectory(TrajectoryGenerationParams(recovery_time_constant_s=0.3))
         assert len(traj) > 100
 
     def test_pre_fault_voltage_is_one_pu(self) -> None:
-        traj = generate_voltage_trajectory(TrajectoryGenerationParams())
+        traj = generate_voltage_trajectory(TrajectoryGenerationParams(recovery_time_constant_s=0.3))
         pre_fault_samples = [p for p in traj if p.t_s < 0.0]
         assert all(abs(p.voltage_pu - 1.0) < 1e-9 for p in pre_fault_samples)
 
     def test_during_fault_voltage_is_zero(self) -> None:
-        params = TrajectoryGenerationParams(during_fault_voltage_pu=0.0)
+        params = TrajectoryGenerationParams(
+            during_fault_voltage_pu=0.0, recovery_time_constant_s=0.3
+        )
         traj = generate_voltage_trajectory(params)
         fault_samples = [p for p in traj if 0.0 < p.t_s < (params.clearing_time_ms / 1000.0)]
         assert all(p.voltage_pu < 0.01 for p in fault_samples)
@@ -35,6 +37,7 @@ class TestTrajectoryGeneration:
         params = TrajectoryGenerationParams(
             post_fault_voltage_pu=1.0,
             recovery_duration_s=3.0,
+            recovery_time_constant_s=0.3,
         )
         traj = generate_voltage_trajectory(params)
         # Last sample should be close to post_fault
@@ -42,7 +45,7 @@ class TestTrajectoryGeneration:
         assert last.voltage_pu > 0.95
 
     def test_trajectory_serializes_to_dict(self) -> None:
-        traj = generate_voltage_trajectory(TrajectoryGenerationParams())
+        traj = generate_voltage_trajectory(TrajectoryGenerationParams(recovery_time_constant_s=0.3))
         first_dict = traj[0].to_dict()
         assert "t_s" in first_dict
         assert "voltage_pu" in first_dict
@@ -100,7 +103,7 @@ class TestEnvelopeChecking:
         assert all_pass is False
 
     def test_per_sample_check_includes_envelope_bounds(self) -> None:
-        params = TrajectoryGenerationParams()
+        params = TrajectoryGenerationParams(recovery_time_constant_s=0.3)
         traj = generate_voltage_trajectory(params)
         per_sample, _ = check_trajectory_against_envelope(traj)
         for s in per_sample:
@@ -112,7 +115,7 @@ class TestEnvelopeChecking:
 
     def test_pre_fault_samples_skipped(self) -> None:
         """Samples at t < 0 should be marked in_envelope=True (no fault yet)."""
-        params = TrajectoryGenerationParams()
+        params = TrajectoryGenerationParams(recovery_time_constant_s=0.3)
         traj = generate_voltage_trajectory(params)
         per_sample, _ = check_trajectory_against_envelope(traj)
         pre_fault = [s for s in per_sample if s["t_s"] < 0.0]

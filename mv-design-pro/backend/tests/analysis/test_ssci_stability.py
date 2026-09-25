@@ -1,19 +1,22 @@
-"""Tests for the D-03 SSCI VERDICT (analysis layer) — impedance-based stability.
+"""Tests for the D-03 SSCI analysis layer — impedance-criterion METRICS without a verdict.
 
 The PHYSICS half (the SSCI solver emitting Z_grid(f)/Z_conv(f)/L(f)) is tested in
-``tests/test_v126_ssci_impedance.py``. Here we test the ANALYSIS-layer verdict:
-the Nyquist / impedance-ratio stability classification per Sun (2011) and Wen
-(2016), built by feeding the SERIALIZED solver payload to ``SsciStabilityBuilder``.
+``tests/test_v126_ssci_impedance.py``. Here we test the ANALYSIS layer built by feeding
+the SERIALIZED solver payload to ``SsciStabilityBuilder``.
 
-Two literature-anchored cases (built with the Huawei reference card so the
-controller bandwidths / filter are the cited ESTIMATED values):
-  - STRONG grid (SCR ~ 50): Sun 2011 unconditional stability (|Z_grid| < |Z_conv|
-    for every frequency, max|L| < 1) -> "stabilny".
-  - WEAK grid (SCR ~ 1.5): Wen 2016 PLL-induced weak-grid SSCI (the impedance
-    magnitudes intersect, max|L| >= 1, phase difference deep in the -1 half-plane)
-    -> "ryzyko SSCI"/"niestabilny" with an offending frequency reported.
+Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): Z_grid(f) solvera jest liczone na
+macierzy admitancyjnej bez przekładni transformatora (dla szyny 0,4 kV ok. 1400 razy za
+duże), więc warstwa NIE wydaje werdyktu — ``verdict`` = „nie oceniono", ``is_risk`` = None,
+a rekord kontraktu werdyktu ``ocena`` (status ``NIE_OCENIONO``) nazywa braki. Intencja
+zachowana: metryki kryterium Nyquista (max|L|, przecięcie modułów, częstotliwość
+najgorszego marginesu, bliskość −1, okrążenia) nadal są liczone poprawnie z tablic solvera
+— jako materiał audytowy — co sprawdzają dwa przypadki z literatury (karta referencyjna
+Huawei, pasma regulatora ESTIMATED):
+  - STRONG grid (SCR ~ 50): Sun 2011 — |Z_grid| < |Z_conv| w całym paśmie, max|L| < 1.
+  - WEAK grid (SCR ~ 1.5): Wen 2016 — moduły się przecinają, max|L| >= 1, różnica faz
+    głęboko w półpłaszczyźnie −1, częstotliwość najgorszego marginesu w paśmie skanu.
 
-The verdict module consumes the serialized result dict (it does NOT import the
+The analysis module consumes the serialized result dict (it does NOT import the
 solver — arch_guard forbids analysis -> solvers).
 """
 
@@ -21,18 +24,17 @@ from __future__ import annotations
 
 import dataclasses
 
+import pytest
 from analysis.ssci_stability import (
     SOLVER_INCOMPLETE_STATUS,
     SSCI_MANDATORY_FIELDS,
-    VERDICT_NO_DATA,
-    VERDICT_RISK,
-    VERDICT_STABLE,
-    VERDICT_UNSTABLE,
+    VERDICT_NIE_OCENIONO,
     SsciStabilityBuilder,
 )
+from analysis.ssci_stability.models import BRAK_TABLIC_SSCI_PL, BRAKI_OCENY_SSCI
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.solvers.v126_academic import V126AcademicSolver
-from solver_input.provenance import CardFieldStatus, FieldQuality
+from solver_input.provenance import CardFieldStatus
 from solver_input.v126_contracts import (
     V126AcademicInput,
     V126AnalysisType,
@@ -40,8 +42,11 @@ from solver_input.v126_contracts import (
     V126BusInput,
     V126ConverterInput,
 )
+from werdykt import FieldQuality
 
 _HUAWEI_CARD_ID = "conv-pv-card-huawei-sun2000-215ktl"
+#: Nazwy elementów modelu testowego (w ścieżce API indeks z migawki biegu, karta #144).
+_NAZWY = {"INV1": "Falownik PV 1", "CONV": "Szyna falownika", "PCC": "Szyna przyłączenia"}
 
 
 def _reference_card(card_id: str = _HUAWEI_CARD_ID):
@@ -99,24 +104,35 @@ def _ssci_payload(card, *, scr: float) -> dict:
     return result["result"]
 
 
+def _sprawdz_bez_werdyktu(v) -> None:
+    """Brak werdyktu: pole werdyktu „nie oceniono", brak flagi ryzyka, rekord NIE_OCENIONO
+    z brakami poprawnego Z_grid(f) i wyroczni, zdanie rekordu jako uzasadnienie."""
+    assert v.verdict == VERDICT_NIE_OCENIONO, v.verdict
+    assert v.is_risk is None
+    assert v.ocena["status_maszynowy"] == "NIE_OCENIONO"
+    assert v.why_pl == v.ocena["wyjasnienie"]["zdanie_pl"]
+    for brak in BRAKI_OCENY_SSCI:
+        assert brak in v.ocena["wyjasnienie"]["czego_brakuje"]
+
+
 # ---------------------------------------------------------------------------
 # Case 1: STRONG grid (Sun 2011 unconditional stability)
 # ---------------------------------------------------------------------------
 
 
-def test_strong_grid_is_stable() -> None:
+def test_strong_grid_metrics_without_verdict() -> None:
     card = _reference_card()
     payload = _ssci_payload(card, scr=50.0)
-    view = SsciStabilityBuilder().build(payload, converter=card)
+    view = SsciStabilityBuilder().build(payload, converter=card, nazwy=_NAZWY)
     v = view.verdict
 
-    assert v.verdict == VERDICT_STABLE, v.verdict
-    assert v.is_risk is False
+    # Dawniej „stabilny" — teraz brak werdyktu (Z_grid bez przekładni transformatora).
+    _sprawdz_bez_werdyktu(v)
     # Sun 2011 strong-grid: impedance magnitudes never intersect (max|L| < 1).
     assert v.max_minor_loop_gain is not None and v.max_minor_loop_gain < 1.0, v.max_minor_loop_gain
     assert v.has_magnitude_crossover is False
     assert v.gain_crossover is None
-    # No offending frequency on a stable verdict.
+    # No offending frequency without a magnitude crossover.
     assert v.offending_frequency_hz is None
     # Healthy distance from the -1 point.
     assert v.nearest_to_minus_one is not None
@@ -133,15 +149,14 @@ def test_strong_grid_is_stable() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_weak_grid_flags_ssci_risk_with_offending_frequency() -> None:
+def test_weak_grid_metrics_report_offending_frequency_without_verdict() -> None:
     card = _reference_card()
     payload = _ssci_payload(card, scr=1.5)
-    view = SsciStabilityBuilder().build(payload, converter=card)
+    view = SsciStabilityBuilder().build(payload, converter=card, nazwy=_NAZWY)
     v = view.verdict
 
-    # Literature-anchored expectation: weak grid is NOT unconditionally stable.
-    assert v.verdict in (VERDICT_RISK, VERDICT_UNSTABLE), v.verdict
-    assert v.is_risk is True
+    # Dawniej „ryzyko SSCI"/„niestabilny" — teraz brak werdyktu; metryki zostają audytem.
+    _sprawdz_bez_werdyktu(v)
     # Impedance magnitudes intersect (max|L| >= 1) -> conditional stability (Sun 2011).
     assert v.max_minor_loop_gain is not None and v.max_minor_loop_gain >= 1.0, v.max_minor_loop_gain
     assert v.has_magnitude_crossover is True
@@ -154,7 +169,11 @@ def test_weak_grid_flags_ssci_risk_with_offending_frequency() -> None:
     assert v.gain_crossover is not None
     assert abs(v.gain_crossover.phase_l_deg) > 90.0, v.gain_crossover
     # Closer approach to -1 than the strong grid.
-    strong = SsciStabilityBuilder().build(_ssci_payload(card, scr=50.0), converter=card).verdict
+    strong = (
+        SsciStabilityBuilder()
+        .build(_ssci_payload(card, scr=50.0), converter=card, nazwy=_NAZWY)
+        .verdict
+    )
     assert v.nearest_to_minus_one is not None and strong.nearest_to_minus_one is not None
     assert (
         v.nearest_to_minus_one.distance_to_minus_one
@@ -166,7 +185,7 @@ def test_weak_grid_offending_frequency_matches_worst_in_band_margin() -> None:
     """The reported offending frequency is the worst in-band phase-margin point
     (closest to the -1 condition among |L| >= 1)."""
     card = _reference_card()
-    view = SsciStabilityBuilder().build(_ssci_payload(card, scr=1.5), converter=card)
+    view = SsciStabilityBuilder().build(_ssci_payload(card, scr=1.5), converter=card, nazwy=_NAZWY)
     v = view.verdict
     assert v.offending_frequency_hz == v.worst_phase_margin_f_hz
     assert v.worst_phase_margin_deg is not None and v.worst_phase_margin_deg > 0.0
@@ -177,17 +196,20 @@ def test_weak_grid_offending_frequency_matches_worst_in_band_margin() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_incomplete_solver_payload_is_brak_danych() -> None:
+def test_incomplete_solver_payload_names_missing_converter() -> None:
     card = _reference_card()
     model = _model_with_grid(card, scr=4.0)
     model.converters = []  # solver returns "dane niekompletne"
     payload = V126AcademicSolver().run(V126AnalysisType.SSCI_IMPEDANCE, model)["result"]
     assert payload["status"] == SOLVER_INCOMPLETE_STATUS
 
-    view = SsciStabilityBuilder().build(payload, converter=None)
+    view = SsciStabilityBuilder().build(payload, converter=None, nazwy=_NAZWY)
     v = view.verdict
-    assert v.verdict == VERDICT_NO_DATA
-    assert v.is_risk is False
+    # Dawniej „brak danych" z is_risk=False („brak ryzyka") — teraz ocena niewykonana.
+    _sprawdz_bez_werdyktu(v)
+    braki = v.ocena["wyjasnienie"]["czego_brakuje"]
+    assert BRAK_TABLIC_SSCI_PL in braki
+    assert any(b.startswith("Przekształtnik w modelu sieci") for b in braki), braki
     assert v.max_minor_loop_gain is None
     assert v.offending_frequency_hz is None
     assert v.white_box == ()
@@ -195,9 +217,9 @@ def test_incomplete_solver_payload_is_brak_danych() -> None:
     assert v.missing_data == ("converter",)
 
 
-def test_missing_card_fields_payload_is_brak_danych() -> None:
-    """A converter missing a mandatory SSCI field surfaces solver
-    'dane niekompletne'; the verdict passes that through as 'brak danych'."""
+def test_missing_card_fields_payload_names_card_field() -> None:
+    """A converter missing a mandatory SSCI field surfaces solver 'dane niekompletne';
+    the record names the missing card field (dawniej werdykt „brak danych")."""
     card = _reference_card()
     converter = _converter_from_card(card)
     converter.pll_bandwidth_hz = None  # mandatory for Z_conv
@@ -206,9 +228,12 @@ def test_missing_card_fields_payload_is_brak_danych() -> None:
     payload = V126AcademicSolver().run(V126AnalysisType.SSCI_IMPEDANCE, model)["result"]
     assert payload["status"] == SOLVER_INCOMPLETE_STATUS
 
-    v = SsciStabilityBuilder().build(payload, converter=None).verdict
-    assert v.verdict == VERDICT_NO_DATA
+    v = SsciStabilityBuilder().build(payload, converter=None, nazwy=_NAZWY).verdict
+    _sprawdz_bez_werdyktu(v)
     assert "pll_bandwidth_hz" in v.missing_data
+    braki = v.ocena["wyjasnienie"]["czego_brakuje"]
+    assert "Pole karty przekształtnika: pll_bandwidth_hz." in braki
+    assert BRAK_TABLIC_SSCI_PL in braki
 
 
 # ---------------------------------------------------------------------------
@@ -219,16 +244,18 @@ def test_missing_card_fields_payload_is_brak_danych() -> None:
 def test_verdict_id_is_deterministic() -> None:
     card = _reference_card()
     payload = _ssci_payload(card, scr=1.5)
-    first = SsciStabilityBuilder().build(payload, converter=card)
-    second = SsciStabilityBuilder().build(payload, converter=card)
+    first = SsciStabilityBuilder().build(payload, converter=card, nazwy=_NAZWY)
+    second = SsciStabilityBuilder().build(payload, converter=card, nazwy=_NAZWY)
     assert first.analysis_id == second.analysis_id
     assert first.to_dict() == second.to_dict()
 
 
 def test_verdict_id_changes_with_grid_strength() -> None:
     card = _reference_card()
-    weak = SsciStabilityBuilder().build(_ssci_payload(card, scr=1.5), converter=card)
-    strong = SsciStabilityBuilder().build(_ssci_payload(card, scr=50.0), converter=card)
+    weak = SsciStabilityBuilder().build(_ssci_payload(card, scr=1.5), converter=card, nazwy=_NAZWY)
+    strong = SsciStabilityBuilder().build(
+        _ssci_payload(card, scr=50.0), converter=card, nazwy=_NAZWY
+    )
     assert weak.analysis_id != strong.analysis_id
 
 
@@ -237,24 +264,22 @@ def test_verdict_id_changes_with_grid_strength() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_reference_card_verdict_tagged_estimated() -> None:
+def test_reference_card_metrics_tagged_estimated() -> None:
     """Reference-card bandwidths seed to ESTIMATED, so the worst-case provenance
-    is ESTIMATED and the verdict carries the Polish 'estimated bandwidths' tag."""
+    is ESTIMATED and the metrics carry the Polish 'estimated bandwidths' tag."""
     card = _reference_card()
-    view = SsciStabilityBuilder().build(_ssci_payload(card, scr=1.5), converter=card)
+    view = SsciStabilityBuilder().build(_ssci_payload(card, scr=1.5), converter=card, nazwy=_NAZWY)
     prov = view.verdict.provenance
     assert prov is not None
     assert prov.worst_quality == FieldQuality.ESTIMATED.value
     assert prov.is_estimated is True
-    assert prov.tag_pl == "werdykt oparty na oszacowanych pasmach regulatora"
-    # The estimated tag composes into the human-readable rationale.
-    assert "oszacowanych pasmach regulatora" in view.verdict.why_pl
+    assert prov.tag_pl == "metryki oparte na oszacowanych pasmach regulatora"
     # All mandatory consumed fields are declared in the provenance.
     for name in SSCI_MANDATORY_FIELDS:
         assert name in prov.consumed_fields
 
 
-def test_datasheet_card_verdict_tagged_datasheet() -> None:
+def test_datasheet_card_metrics_tagged_datasheet() -> None:
     """If every consumed field were datasheet-grade, the worst-case provenance is
     DATASHEET (the estimated tag disappears) — proves the worst-case ordering."""
     card = _reference_card()
@@ -274,12 +299,14 @@ def test_datasheet_card_verdict_tagged_datasheet() -> None:
     }
     datasheet_card = dataclasses.replace(card, card_field_status=override)
 
-    view = SsciStabilityBuilder().build(_ssci_payload(card, scr=1.5), converter=datasheet_card)
+    view = SsciStabilityBuilder().build(
+        _ssci_payload(card, scr=1.5), converter=datasheet_card, nazwy=_NAZWY
+    )
     prov = view.verdict.provenance
     assert prov is not None
     assert prov.worst_quality == FieldQuality.DATASHEET.value
     assert prov.is_estimated is False
-    assert "oszacowanych" not in view.verdict.why_pl
+    assert "oszacowanych" not in prov.tag_pl
 
 
 def test_worst_case_is_lowest_quality_when_mixed() -> None:
@@ -306,8 +333,38 @@ def test_worst_case_is_lowest_quality_when_mixed() -> None:
 
     prov = (
         SsciStabilityBuilder()
-        .build(_ssci_payload(card, scr=1.5), converter=mixed_card)
+        .build(_ssci_payload(card, scr=1.5), converter=mixed_card, nazwy=_NAZWY)
         .verdict.provenance
     )
     assert prov is not None
     assert prov.worst_quality == FieldQuality.ESTIMATED.value
+
+
+@pytest.mark.parametrize(
+    ("nazwy", "nazwa_przeksztaltnika", "nazwa_szyny"),
+    [
+        (_NAZWY, "Falownik PV 1", "Szyna falownika"),
+        ({}, "spoza modelu", "spoza modelu"),
+    ],
+    ids=["elementy_w_modelu", "elementy_spoza_modelu"],
+)
+@pytest.mark.parametrize("scr", [1.5, 50.0], ids=["siec_slaba", "siec_silna"])
+def test_przedmiot_oceny_nazwy_z_modelu_nigdy_identyfikator(
+    nazwy: dict[str, str], nazwa_przeksztaltnika: str, nazwa_szyny: str, scr: float
+) -> None:
+    """Karta #144: przedmiot rekordu SSCI nazywa przekształtnik i szynę nazwami z modelu
+    biegu (iloczyn cech: element w modelu / spoza modelu × sieć słaba / silna); identyfikator
+    solvera zostaje wyłącznie w `element_ref`."""
+    card = _reference_card()
+    przedmiot = (
+        SsciStabilityBuilder()
+        .build(_ssci_payload(card, scr=scr), converter=card, nazwy=nazwy)
+        .verdict.ocena["przedmiot"]
+    )
+    assert przedmiot["element_ref"] == "INV1"
+    assert przedmiot["nazwa_pl"] == f"Przekształtnik {nazwa_przeksztaltnika}"
+    assert przedmiot["opis_pl"] == (
+        f"Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny {nazwa_szyny}"
+    )
+    for identyfikator in ("INV1", "CONV"):
+        assert identyfikator not in przedmiot["nazwa_pl"] + przedmiot["opis_pl"]

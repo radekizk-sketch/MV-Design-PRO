@@ -1,0 +1,28 @@
+[
+  {
+    "id": "bea90c9a-33e0-543b-b4e3-9514eca3921a",
+    "study_case_id": "case-demo",
+    "analysis_type": "LOAD_FLOW",
+    "solver_input_hash": "e575ae105159d9bfa96778967aebd08fb0a341978198c0fccae4be4dd2f54b16",
+    "status": "DONE",
+    "started_at": "2026-09-16T09:00:00+00:00",
+    "finished_at": "2026-09-16T09:00:00+00:00",
+    "error_message": null,
+    "model_revision": 1,
+    "created_at": "2026-09-16T09:00:00+00:00",
+    "snapshot_hash": "28198eac111b59d7935163cd19d00f92394bb37691f6f902dbe7dd080d838c76"
+  },
+  {
+    "id": "009c7838-7031-5d60-b828-58a66256da21",
+    "study_case_id": "case-demo",
+    "analysis_type": "SC_3F",
+    "solver_input_hash": "c082d3c8d3cb0c9da26ace6e399b82783288a91329bc3eff665a2c0acb032bc7",
+    "status": "DONE",
+    "started_at": "2026-09-16T09:00:00+00:00",
+    "finished_at": "2026-09-16T09:00:00+00:00",
+    "error_message": null,
+    "model_revision": 1,
+    "created_at": "2026-09-16T09:00:00+00:00",
+    "snapshot_hash": "28198eac111b59d7935163cd19d00f92394bb37691f6f902dbe7dd080d838c76"
+  }
+]

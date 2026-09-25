@@ -10,6 +10,7 @@ Uses golden network + synthetic PowerFlowResult data.
 from __future__ import annotations
 
 import json
+import math
 from datetime import UTC
 
 import pytest
@@ -136,6 +137,62 @@ def _build_pf_result(
 
 DEFAULT_CONFIG = EnergyValidationConfig()
 
+#: Węzeł `do` i jego napięcie w rozwiązaniu dla gałęzi prostego grafu.
+_ZACISK_DO = {"line-1": ("bus-a", 109.5), "tr-1": ("bus-b", 14.8)}
+
+
+def _zaciski(
+    prady_a: dict[str, tuple[float, float]],
+    *,
+    napiecia_kv: dict[str, float] | None = None,
+    zaciski_do: dict[str, tuple[str, float]] | None = None,
+) -> dict[str, dict]:
+    """Dane wyniku PF dla prądów OBU zacisków (kanon O-51, klasa P9).
+
+    Obciążenie gałęzi liczy się z prądu zacisku `od` (rdzeń: `branch_current_ka`) ORAZ
+    zacisku `do` (moc strony `to` i napięcie węzła `to`: |S| = √3·U·I). Test, który
+    podaje tylko `branch_current_ka`, dostaje dziś pozycję NIEOBLICZONĄ z nazwanym
+    powodem — dawniej ocena szła z samego zacisku `od`. Moc strony `to` liczona jest
+    napięciem, które węzeł `to` ma w wyniku (`napiecia_kv` wygrywa nad domyślnym).
+    """
+    zaciski = zaciski_do or _ZACISK_DO
+    node_voltage_kv: dict[str, float] = {}
+    for bid in prady_a:
+        wezel, u_kv = zaciski[bid]
+        node_voltage_kv[wezel] = u_kv
+    node_voltage_kv.update(napiecia_kv or {})
+    branch_current_ka: dict[str, float] = {}
+    branch_s_to_mva: dict[str, complex] = {}
+    for bid, (i_od_a, i_do_a) in prady_a.items():
+        u_kv = node_voltage_kv[zaciski[bid][0]]
+        branch_current_ka[bid] = i_od_a / 1000.0
+        branch_s_to_mva[bid] = complex(-math.sqrt(3.0) * u_kv * i_do_a / 1000.0, 0.0)
+    return {
+        "branch_current_ka": branch_current_ka,
+        "branch_s_to_mva": branch_s_to_mva,
+        "node_voltage_kv": node_voltage_kv,
+    }
+
+
+def _pf(
+    prady_a: dict[str, tuple[float, float]],
+    *,
+    node_voltage_kv: dict[str, float] | None = None,
+    **kwargs: object,
+) -> PowerFlowResult:
+    dane = _zaciski(prady_a, napiecia_kv=node_voltage_kv)
+    return _build_pf_result(
+        node_voltage_kv=dane["node_voltage_kv"],
+        branch_current_ka=dane["branch_current_ka"],
+        branch_s_to_mva=dane["branch_s_to_mva"],
+        **kwargs,  # type: ignore[arg-type]
+    )
+
+
+def _ir_trafo_a(u_kv: float) -> float:
+    """I_r zacisku transformatora 25 MVA — wzór wprost (wyrocznia niezależna od produktu)."""
+    return 25.0 * 1000.0 / (math.sqrt(3.0) * u_kv)
+
 
 # ============================================================================
 # TestBranchLoading
@@ -143,13 +200,15 @@ DEFAULT_CONFIG = EnergyValidationConfig()
 
 
 class TestBranchLoading:
-    """Branch (line/cable) loading checks."""
+    """Branch (line/cable) loading checks — prądy OBU zacisków (kanon O-51).
+
+    Intencje dawnych testów zachowane (20 % PASS, 90 % WARNING, 120 % FAIL, własne progi),
+    liczby podane jako prądy obu zacisków; zacisk decydujący pokrywa
+    `test_obciazenie_zaciskow_miejsca.py` (iloczyn cech)."""
 
     def test_pass_when_below_warn(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
-            branch_current_ka={"line-1": 0.1},  # 100A of 500A rated → 20%
-        )
+        pf = _pf({"line-1": (100.0, 100.0)})  # 100A of 500A rated → 20%
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         loading_items = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
         assert len(loading_items) == 1
@@ -158,22 +217,28 @@ class TestBranchLoading:
 
     def test_warning_when_above_warn(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
-            branch_current_ka={"line-1": 0.45},  # 450A of 500A → 90%
-        )
+        pf = _pf({"line-1": (450.0, 440.0)})  # 450A of 500A → 90%
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         items = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
         assert items[0].status == EnergyValidationStatus.WARNING
 
     def test_fail_when_above_fail(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
-            branch_current_ka={"line-1": 0.6},  # 600A of 500A → 120%
-        )
+        pf = _pf({"line-1": (600.0, 590.0)})  # 600A of 500A → 120%
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         items = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
         assert items[0].status == EnergyValidationStatus.FAIL
         assert items[0].observed_value == pytest.approx(120.0)
+
+    def test_zacisk_do_decyduje_gdy_ma_wiekszy_prad(self):
+        """Kabel z generacją bierną: prąd zacisku `do` większy — dawniej 76 % (PASS z
+        samego `od`), z obu zacisków 84 % (WARNING)."""
+        graph = _build_simple_graph()
+        pf = _pf({"line-1": (380.0, 420.0)})
+        view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
+        (item,) = (i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING)
+        assert item.observed_value == pytest.approx(84.0)
+        assert item.status == EnergyValidationStatus.WARNING
 
     def test_not_computed_when_missing_current(self):
         graph = _build_simple_graph()
@@ -182,21 +247,27 @@ class TestBranchLoading:
         items = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
         assert items[0].status == EnergyValidationStatus.NOT_COMPUTED
 
+    def test_not_computed_when_only_one_terminal_known(self):
+        """Sam prąd zacisku `od` NIE wystarcza — brak zacisku `do` = nazwany brak, nie
+        ocena z jednej strony."""
+        graph = _build_simple_graph()
+        pf = _build_pf_result(branch_current_ka={"line-1": 0.1})
+        view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
+        (item,) = (i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING)
+        assert item.status == EnergyValidationStatus.NOT_COMPUTED
+        assert "zacisku końcowego" in item.why_pl
+
     def test_ignores_transformers(self):
         """Branch loading only checks LineBranch, not TransformerBranch."""
         graph = _build_simple_graph()
-        pf = _build_pf_result(
-            branch_current_ka={"line-1": 0.1, "tr-1": 0.5},
-        )
+        pf = _pf({"line-1": (100.0, 100.0), "tr-1": (50.0, 360.0)})
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         bl_items = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
         assert all(i.target_id != "tr-1" for i in bl_items)
 
     def test_custom_thresholds(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
-            branch_current_ka={"line-1": 0.3},  # 300A/500A = 60%
-        )
+        pf = _pf({"line-1": (300.0, 300.0)})  # 300A/500A = 60%
         strict_config = EnergyValidationConfig(
             loading_warn_pct=50.0,
             loading_fail_pct=70.0,
@@ -212,43 +283,50 @@ class TestBranchLoading:
 
 
 class TestTransformerLoading:
-    """Transformer loading checks (S_apparent vs S_rated)."""
+    """Transformer loading — definicja prądowa (kanon O-51, IEC 60076-7: K = I / I_r).
+
+    Prąd znamionowy zacisku I_r = S_n / (√3 · U_n,strona): 25 MVA → 131,2 A po stronie
+    110 kV i 962,3 A po stronie 15 kV. Dawna definicja max(|S|)/S_n różni się o U/U_n
+    strony: przy U_DN = 14,8 kV prąd DN 962,3 A to 100 % prądowo, a 98,67 % z |S|/S_n.
+    """
 
     def test_pass_normal_loading(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
-            branch_s_from_mva={"tr-1": complex(10.0, 5.0)},
-        )
+        pf = _pf({"tr-1": (0.40 * _ir_trafo_a(110.0), 0.41 * _ir_trafo_a(15.0))})
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         items = [i for i in view.items if i.check_type == EnergyCheckType.TRANSFORMER_LOADING]
         assert len(items) == 1
-        s_mva = abs(complex(10.0, 5.0))
-        expected_pct = (s_mva / 25.0) * 100.0
-        assert items[0].observed_value == pytest.approx(expected_pct, rel=1e-3)
+        assert items[0].observed_value == pytest.approx(41.0, rel=1e-9)
         assert items[0].status == EnergyValidationStatus.PASS
 
     def test_fail_overloaded_transformer(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
-            branch_s_from_mva={"tr-1": complex(20.0, 15.0)},
-        )
+        pf = _pf({"tr-1": (1.02 * _ir_trafo_a(110.0), 1.0 * _ir_trafo_a(15.0))})
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         items = [i for i in view.items if i.check_type == EnergyCheckType.TRANSFORMER_LOADING]
+        assert items[0].status == EnergyValidationStatus.FAIL
+        assert items[0].observed_value == pytest.approx(102.0, rel=1e-9)
+
+    def test_uses_max_of_both_terminal_ratios(self):
+        """Obciążenie z WIĘKSZEGO z ilorazów prąd/prąd znamionowy zacisku (dawniej
+        max(|S_from|, |S_to|)/S_n)."""
+        graph = _build_simple_graph()
+        pf = _pf({"tr-1": (0.30 * _ir_trafo_a(110.0), 1.05 * _ir_trafo_a(15.0))})
+        view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
+        items = [i for i in view.items if i.check_type == EnergyCheckType.TRANSFORMER_LOADING]
+        assert items[0].observed_value == pytest.approx(105.0, rel=1e-9)
         assert items[0].status == EnergyValidationStatus.FAIL
 
-    def test_uses_max_of_from_and_to(self):
-        """Should use max(|S_from|, |S_to|) for loading calculation."""
+    def test_pradowa_definicja_rozni_sie_od_mocowej_przy_u_rozne_od_un(self):
+        """Prąd DN równy I_r przy U_DN = 14,8 kV: prądowo 100 % (FAIL na progu), dawne
+        |S|/S_n = 14,8/15 = 98,67 % (WARNING) — zaniżenie o 1,33 %."""
         graph = _build_simple_graph()
-        pf = _build_pf_result(
-            branch_s_from_mva={"tr-1": complex(5.0, 3.0)},
-            branch_s_to_mva={"tr-1": complex(22.0, 12.0)},
-        )
+        pf = _pf({"tr-1": (0.5 * _ir_trafo_a(110.0), _ir_trafo_a(15.0))})
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [i for i in view.items if i.check_type == EnergyCheckType.TRANSFORMER_LOADING]
-        s_to = abs(complex(22.0, 12.0))
-        expected_pct = (s_to / 25.0) * 100.0
-        assert items[0].observed_value == pytest.approx(expected_pct, rel=1e-3)
-        assert items[0].status == EnergyValidationStatus.FAIL
+        (item,) = (i for i in view.items if i.check_type == EnergyCheckType.TRANSFORMER_LOADING)
+        assert item.observed_value == pytest.approx(100.0, rel=1e-9)
+        dawna_definicja_pct = abs(pf.branch_s_to_mva["tr-1"]) / 25.0 * 100.0
+        assert dawna_definicja_pct == pytest.approx(100.0 * 14.8 / 15.0, rel=1e-9)
 
     def test_not_computed_missing_power(self):
         graph = _build_simple_graph()
@@ -423,10 +501,12 @@ class TestSummary:
 
     def test_all_pass_summary(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
+        pf = _pf(
+            {
+                "line-1": (50.0, 50.0),
+                "tr-1": (0.2 * _ir_trafo_a(110.0), 0.2 * _ir_trafo_a(15.0)),
+            },
             node_voltage_kv={"slack": 110.0, "bus-a": 110.0, "bus-b": 15.0},
-            branch_current_ka={"line-1": 0.05},
-            branch_s_from_mva={"tr-1": complex(5.0, 2.0)},
             losses_total_pu=0.005 + 0.002j,
             slack_power_pu=1.0 + 0.2j,
         )
@@ -437,10 +517,12 @@ class TestSummary:
 
     def test_worst_item_tracked(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
+        pf = _pf(
+            {
+                "line-1": (600.0, 590.0),
+                "tr-1": (0.2 * _ir_trafo_a(110.0), 0.2 * _ir_trafo_a(15.0)),
+            },
             node_voltage_kv={"slack": 110.0, "bus-a": 110.0, "bus-b": 12.0},
-            branch_current_ka={"line-1": 0.6},
-            branch_s_from_mva={"tr-1": complex(5.0, 2.0)},
             losses_total_pu=0.005 + 0.002j,
             slack_power_pu=1.0 + 0.2j,
         )
@@ -459,10 +541,12 @@ class TestSortOrder:
 
     def test_fail_items_first(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
+        pf = _pf(
+            {
+                "line-1": (50.0, 50.0),
+                "tr-1": (0.2 * _ir_trafo_a(110.0), 0.2 * _ir_trafo_a(15.0)),
+            },
             node_voltage_kv={"slack": 110.0, "bus-a": 110.0, "bus-b": 12.0},
-            branch_current_ka={"line-1": 0.05},
-            branch_s_from_mva={"tr-1": complex(5.0, 2.0)},
             losses_total_pu=0.005 + 0.002j,
             slack_power_pu=1.0 + 0.2j,
         )
@@ -484,10 +568,12 @@ class TestSerialization:
 
     def test_view_to_dict_roundtrip(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
+        pf = _pf(
+            {
+                "line-1": (100.0, 100.0),
+                "tr-1": (0.4 * _ir_trafo_a(110.0), 0.4 * _ir_trafo_a(15.0)),
+            },
             node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-            branch_current_ka={"line-1": 0.1},
-            branch_s_from_mva={"tr-1": complex(10.0, 5.0)},
             losses_total_pu=0.01 + 0.005j,
             slack_power_pu=1.0 + 0.3j,
         )
@@ -500,10 +586,12 @@ class TestSerialization:
 
     def test_json_serializable(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
+        pf = _pf(
+            {
+                "line-1": (100.0, 100.0),
+                "tr-1": (0.4 * _ir_trafo_a(110.0), 0.4 * _ir_trafo_a(15.0)),
+            },
             node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-            branch_current_ka={"line-1": 0.1},
-            branch_s_from_mva={"tr-1": complex(10.0, 5.0)},
             losses_total_pu=0.01 + 0.005j,
             slack_power_pu=1.0 + 0.3j,
         )
@@ -515,10 +603,12 @@ class TestSerialization:
 
     def test_deterministic_serialization(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
+        pf = _pf(
+            {
+                "line-1": (100.0, 100.0),
+                "tr-1": (0.4 * _ir_trafo_a(110.0), 0.4 * _ir_trafo_a(15.0)),
+            },
             node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-            branch_current_ka={"line-1": 0.1},
-            branch_s_from_mva={"tr-1": complex(10.0, 5.0)},
             losses_total_pu=0.01 + 0.005j,
             slack_power_pu=1.0 + 0.3j,
         )
@@ -530,9 +620,9 @@ class TestSerialization:
 
     def test_item_fields_present(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
+        pf = _pf(
+            {"line-1": (100.0, 100.0)},
             node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-            branch_current_ka={"line-1": 0.1},
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         d = view.to_dict()
@@ -613,34 +703,44 @@ class TestGoldenNetworkIntegration:
 
         return build_golden_network()
 
-    @pytest.fixture()
-    def golden_pf_result(self, golden_graph):
-        """Synthetic PF result for golden network — all nodes near nominal."""
-        node_voltage_kv = {}
-        for nid, node in golden_graph.nodes.items():
-            node_voltage_kv[nid] = node.voltage_level * 0.98
-
-        branch_current_ka = {}
+    @staticmethod
+    def _wynik_zaciskow(golden_graph, wspolczynnik_linii: float, wspolczynnik_trafo: float):
+        """Wynik PF z prądami OBU zacisków (kanon O-51): linia/kabel — ten sam ułamek In
+        na obu zaciskach, transformator — ułamek I_r strony GN i DN (S_n/(√3·U_n))."""
+        node_voltage_kv = {
+            nid: node.voltage_level * 0.98 for nid, node in golden_graph.nodes.items()
+        }
+        branch_current_ka: dict[str, float] = {}
+        branch_s_to_mva: dict[str, complex] = {}
         for bid, branch in golden_graph.branches.items():
+            u_do_kv = node_voltage_kv[branch.to_node_id]
             if isinstance(branch, LineBranch):
-                branch_current_ka[bid] = branch.rated_current_a * 0.5 / 1000.0
-
-        branch_s_mva = {}
-        for bid, branch in golden_graph.branches.items():
-            if isinstance(branch, TransformerBranch):
-                branch_s_mva[bid] = complex(
-                    branch.rated_power_mva * 0.6,
-                    branch.rated_power_mva * 0.2,
+                i_od_a = i_do_a = branch.rated_current_a * wspolczynnik_linii
+            elif isinstance(branch, TransformerBranch):
+                i_od_a = wspolczynnik_trafo * (
+                    branch.rated_power_mva * 1000.0 / (math.sqrt(3.0) * branch.voltage_hv_kv)
                 )
-
+                i_do_a = wspolczynnik_trafo * (
+                    branch.rated_power_mva * 1000.0 / (math.sqrt(3.0) * branch.voltage_lv_kv)
+                )
+            else:
+                continue
+            branch_current_ka[bid] = i_od_a / 1000.0
+            branch_s_to_mva[bid] = complex(-math.sqrt(3.0) * u_do_kv * i_do_a / 1000.0, 0.0)
         return _build_pf_result(
             node_voltage_kv=node_voltage_kv,
             branch_current_ka=branch_current_ka,
-            branch_s_from_mva=branch_s_mva,
+            branch_s_to_mva=branch_s_to_mva,
             losses_total_pu=0.02 + 0.01j,
             slack_power_pu=2.5 + 0.8j,
             slack_node_id="bus-system-ref",
         )
+
+    @pytest.fixture()
+    def golden_pf_result(self, golden_graph):
+        """Synthetic PF result for golden network — all nodes near nominal, lines at 50 %,
+        transformers at 60 % of the terminal rated current (both terminals)."""
+        return self._wynik_zaciskow(golden_graph, 0.5, 0.6)
 
     def test_all_checks_present(self, golden_graph, golden_pf_result):
         """All 5 check types should be present in the result."""
@@ -690,22 +790,8 @@ class TestGoldenNetworkIntegration:
         assert j1 == j2
 
     def test_overload_scenario(self, golden_graph):
-        """With 200% line loading, fail items should appear."""
-        node_voltage_kv = {
-            nid: node.voltage_level * 0.98 for nid, node in golden_graph.nodes.items()
-        }
-        branch_current_ka = {}
-        for bid, branch in golden_graph.branches.items():
-            if isinstance(branch, LineBranch):
-                branch_current_ka[bid] = branch.rated_current_a * 2.0 / 1000.0
-
-        pf = _build_pf_result(
-            node_voltage_kv=node_voltage_kv,
-            branch_current_ka=branch_current_ka,
-            losses_total_pu=0.02 + 0.01j,
-            slack_power_pu=2.5 + 0.8j,
-            slack_node_id="bus-system-ref",
-        )
+        """With 200% line loading (both terminals), fail items should appear."""
+        pf = self._wynik_zaciskow(golden_graph, 2.0, 0.6)
         view = EnergyValidationBuilder().build(pf, golden_graph, DEFAULT_CONFIG)
         assert view.summary.fail_count > 0
         bl_fails = [
@@ -716,121 +802,39 @@ class TestGoldenNetworkIntegration:
         ]
         assert len(bl_fails) > 0
 
-
-# ============================================================================
-# TestOrchestrator
-# ============================================================================
-
-
-class TestOrchestrator:
-    """Analysis orchestrator integration."""
-
-    def test_orchestrator_produces_bundle(self):
-        from application.analysis_run.orchestrator import AnalysisOrchestrator
-
-        graph = _build_simple_graph()
-        pf = _build_pf_result(
-            node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-            branch_current_ka={"line-1": 0.1},
-            branch_s_from_mva={"tr-1": complex(10.0, 5.0)},
-            losses_total_pu=0.01 + 0.005j,
-            slack_power_pu=1.0 + 0.3j,
-        )
-        orch = AnalysisOrchestrator()
-        bundle = orch.run_post_pf_analysis(
-            run_id="test-run-001",
-            power_flow_result=pf,
-            graph=graph,
-        )
-        assert bundle.run_id == "test-run-001"
-        assert bundle.energy_validation is not None
-        assert bundle.voltage_profile is not None
-        assert bundle.overall_status in {"PASS", "WARNING", "FAIL", "NOT_COMPUTED"}
-        assert len(bundle.fingerprint) == 64  # SHA-256 hex
-
-    def test_orchestrator_deterministic(self):
-        from application.analysis_run.orchestrator import AnalysisOrchestrator
-
-        graph = _build_simple_graph()
-        pf = _build_pf_result(
-            node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-            branch_current_ka={"line-1": 0.1},
-            branch_s_from_mva={"tr-1": complex(10.0, 5.0)},
-            losses_total_pu=0.01 + 0.005j,
-            slack_power_pu=1.0 + 0.3j,
-        )
-        orch = AnalysisOrchestrator()
-        b1 = orch.run_post_pf_analysis(run_id="run-x", power_flow_result=pf, graph=graph)
-        b2 = orch.run_post_pf_analysis(run_id="run-x", power_flow_result=pf, graph=graph)
-        assert b1.fingerprint == b2.fingerprint
-
-    def test_orchestrator_without_voltage_profile(self):
-        from application.analysis_run.orchestrator import AnalysisOrchestrator
-
-        graph = _build_simple_graph()
-        pf = _build_pf_result(
-            node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-        )
-        orch = AnalysisOrchestrator()
-        bundle = orch.run_post_pf_analysis(
-            run_id="run-y",
-            power_flow_result=pf,
-            graph=graph,
-            include_voltage_profile=False,
-        )
-        assert bundle.voltage_profile is None
-        assert bundle.energy_validation is not None
-
-    def test_bundle_to_dict(self):
-        from application.analysis_run.orchestrator import AnalysisOrchestrator
-
-        graph = _build_simple_graph()
-        pf = _build_pf_result(
-            node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-            branch_current_ka={"line-1": 0.1},
-            branch_s_from_mva={"tr-1": complex(10.0, 5.0)},
-        )
-        orch = AnalysisOrchestrator()
-        bundle = orch.run_post_pf_analysis(
-            run_id="run-z",
-            power_flow_result=pf,
-            graph=graph,
-        )
-        d = bundle.to_dict()
-        assert isinstance(d, dict)
-        serialized = json.dumps(d, sort_keys=True)
-        assert isinstance(serialized, str)
+    def test_all_pass_at_nominal_computes_every_loading(self, golden_graph, golden_pf_result):
+        """Brak FAIL nie może wynikać z pozycji NIEOBLICZONYCH (test nie jest pusty): KAŻDE
+        obciążenie linii i transformatora jest policzone z obu zacisków."""
+        view = EnergyValidationBuilder().build(golden_pf_result, golden_graph, DEFAULT_CONFIG)
+        obciazenia = [
+            i
+            for i in view.items
+            if i.check_type in (EnergyCheckType.BRANCH_LOADING, EnergyCheckType.TRANSFORMER_LOADING)
+        ]
+        assert obciazenia
+        assert all(i.status != EnergyValidationStatus.NOT_COMPUTED for i in obciazenia)
 
 
-# ============================================================================
-# TestEnvelopeAdapter
-# ============================================================================
+# TestOrchestrator (karta CV-3.3-A, 2026-09-05): skasowana razem z
+# `application/analysis_run/orchestrator.py::AnalysisOrchestrator` — podmodul
+# R2 martwy, zero konsumentow poza tymi 4 testami. Bilans/profil napieciowy
+# post-PF, ktory orkiestrator opakowywal, jest w tym samym pliku pokryty
+# bezposrednio przez `EnergyValidationBuilder` (klasy powyzej) i
+# `VoltageProfileBuilder` — bez przejscia przez orkiestrator; fizyka nie ginie
+# razem z kasowanym opakowaniem.
 
 
-class TestEnvelopeAdapter:
-    """Run envelope adapter for energy validation."""
-
-    def test_creates_envelope(self):
-        from application.analyses.energy_validation.envelope_adapter import (
-            to_run_envelope,
-        )
-
-        graph = _build_simple_graph()
-        pf = _build_pf_result(
-            node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-            branch_current_ka={"line-1": 0.1},
-        )
-        view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        envelope = to_run_envelope(view, run_id="ev-run-001")
-        assert envelope.analysis_type == "energy_validation.v0"
-        assert envelope.run_id == "ev-run-001"
-        assert len(envelope.fingerprint) == 64
-
-    def test_registered_in_registry(self):
-        from application.analyses.run_registry import get_run_envelope_adapter
-
-        adapter = get_run_envelope_adapter("energy_validation.v0")
-        assert adapter is not None
+# TestEnvelopeAdapter (karta W3-C1, 2026-09): skasowana razem z
+# `application/analyses/run_envelope.py` / `run_registry.py` /
+# `energy_validation/envelope_adapter.py`. `AnalysisRunEnvelope` mial CZTERY
+# adaptery (iec60909, energy_validation, protection.overcurrent.v0,
+# protection.device_mapping.v0); po kasacji V12K-189 (overcurrent + device
+# mapping) pozostale dwa (iec60909, energy_validation) mialy JEDYNEGO wolajacego
+# — `run_registry.get_run_envelope_adapter` — a TEN mial jedynego wolajacego w
+# TYM WLASNIE tescie (zero konsumentow produkcyjnych, zmierzone grepem po
+# `backend/src`). Caly ekosystem koperty biegu byl drugą, nigdy nieuzywaną
+# prawdą o wyniku analizy — fizyka (widok `EnergyValidationBuilder` powyzej)
+# nie ginie razem z opakowaniem, ktore jej nie mialo komu doniesc.
 
 
 # ============================================================================
@@ -843,20 +847,28 @@ class TestWhiteBoxTrace:
 
     def test_computed_item_carries_full_derivation(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(branch_current_ka={"line-1": 0.45})  # 90% -> WARNING
+        pf = _pf({"line-1": (450.0, 440.0)})  # 90% -> WARNING (decyduje zacisk od)
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         item = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING][0]
         assert len(item.white_box) == 5
         # R3-D: kroki strukturalne {tekst, latex} - wzor i podstawienie w LaTeX.
-        assert item.white_box[0]["tekst"].startswith("Wzor:")
-        assert r"\frac{|I|}{I_n}" in item.white_box[0]["latex"]
-        assert "0.4500 kA" in item.white_box[1]["tekst"]  # |I| z wyniku PF
-        assert "0.5000 kA" in item.white_box[1]["tekst"]  # I_n z danych galezi
+        # Kanon O-51: wzór z OBU zacisków (max ilorazów prąd / prąd znamionowy zacisku).
+        assert item.white_box[0]["tekst"].startswith("Wzór:")
+        assert r"\frac{|I_{od}|}{I_{r,od}}" in item.white_box[0]["latex"]
+        assert r"\frac{|I_{do}|}{I_{r,do}}" in item.white_box[0]["latex"]
+        # Karta #145: zdanie po polsku — przecinek dziesiętny, zacisk nazwany słowem.
+        assert "|I_od| = 0,4500 kA" in item.white_box[1]["tekst"]  # prąd zacisku od (PF)
+        assert "|I_do| = 0,4400 kA" in item.white_box[1]["tekst"]  # prąd zacisku do (PF)
+        assert "I_r,od = 0,5000 kA" in item.white_box[1]["tekst"]  # In z danych galezi
+        assert "decyduje zacisk początkowy" in item.white_box[1]["tekst"]
         assert item.white_box[1]["latex"] is None  # pochodzenie danych = tekst
-        assert "90.00 %" in item.white_box[2]["tekst"]
+        assert "90,00 %" in item.white_box[2]["tekst"]
         assert "= 90.00" in item.white_box[2]["latex"]  # podstawienie liczbowe
-        assert "ostrzezenie 80.0 %" in item.white_box[3]["tekst"]
-        assert item.white_box[4]["tekst"] == "Werdykt: OSTRZEZENIE"
+        assert "ostrzeżenie 80,0 %" in item.white_box[3]["tekst"]
+        # Karta #145: ostatni krok to porównanie z progami (liczby), nie etykieta statusu —
+        # to samo zdanie co `why_pl`, bez mapy status → tekst poza słownikiem werdyktu.
+        assert item.white_box[4]["tekst"] == f"Porównanie z progami: {item.why_pl}"
+        assert "zbliża się do limitu" in item.white_box[4]["tekst"]
 
     def test_not_computed_item_has_empty_trace(self):
         graph = _build_simple_graph()
@@ -868,9 +880,12 @@ class TestWhiteBoxTrace:
 
     def test_every_computed_item_has_trace_and_serializes(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(
+        pf = _pf(
+            {
+                "line-1": (100.0, 100.0),
+                "tr-1": (0.4 * _ir_trafo_a(110.0), 0.4 * _ir_trafo_a(15.0)),
+            },
             node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-            branch_current_ka={"line-1": 0.1},
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         data = view.to_dict()
@@ -878,13 +893,13 @@ class TestWhiteBoxTrace:
             assert item_dict["white_box"] == list(item.white_box)
             if item.status != EnergyValidationStatus.NOT_COMPUTED:
                 assert len(item.white_box) == 5
-                assert item.white_box[-1]["tekst"].startswith("Werdykt:")
+                assert item.white_box[-1]["tekst"] == f"Porównanie z progami: {item.why_pl}"
                 assert item.white_box[0]["latex"]  # wzor zawsze w LaTeX
         json.dumps(data)  # serializowalnosc
 
     def test_trace_is_deterministic(self):
         graph = _build_simple_graph()
-        pf = _build_pf_result(branch_current_ka={"line-1": 0.45})
+        pf = _pf({"line-1": (450.0, 440.0)})
         a = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         b = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         assert [i.white_box for i in a.items] == [i.white_box for i in b.items]
@@ -916,7 +931,7 @@ class TestZnacznikBrakuRozwiazania:
         pozycje = {i.target_id: i for i in self._pozycje(view, EnergyCheckType.VOLTAGE_DEVIATION)}
         assert pozycje["bus-a"].status == EnergyValidationStatus.NOT_COMPUTED
         assert pozycje["bus-a"].observed_value is None
-        assert pozycje["bus-a"].why_pl == "Brak danych napieciowych."
+        assert pozycje["bus-a"].why_pl == "Brak danych napięciowych."
         # Szyna Z rozwiazaniem nadal jest oceniana — predykat nie jest za szeroki.
         assert pozycje["slack"].status == EnergyValidationStatus.PASS
 
@@ -955,8 +970,10 @@ class TestZnacznikBrakuRozwiazania:
         bilans = self._pozycje(view, EnergyCheckType.REACTIVE_BALANCE)[0]
         assert straty.status == EnergyValidationStatus.NOT_COMPUTED
         assert bilans.status == EnergyValidationStatus.NOT_COMPUTED
-        assert "NaN" in straty.why_pl
-        assert "NaN" in bilans.why_pl
+        # Karta #145: brak rozwiązania nazwany po polsku, bez zapisu `NaN` języka programowania.
+        assert "wartość nieokreślona" in straty.why_pl
+        assert "wartość nieokreślona" in bilans.why_pl
+        assert "NaN" not in straty.why_pl and "NaN" not in bilans.why_pl
 
     def test_widok_z_nan_serializuje_sie_do_poprawnego_json(self):
         graph = _build_simple_graph()

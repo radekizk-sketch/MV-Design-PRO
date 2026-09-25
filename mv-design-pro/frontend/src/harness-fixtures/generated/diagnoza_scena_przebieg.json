@@ -1,0 +1,28 @@
+{
+  "run_id": "run-lf-scena-diagnoza",
+  "case_id": "case-demo",
+  "analysis_type": "PF",
+  "run_status": "DONE",
+  "iterative": true,
+  "code": "PRZ-NIEZBIEZNY-LIMIT",
+  "converged": false,
+  "iterations_count": 1,
+  "max_iterations": 1,
+  "tolerance": 1e-08,
+  "final_mismatch_pu": 0.07599999999999998,
+  "cause_if_failed": "max_iter",
+  "unsolved_node_ids": [],
+  "reporting_limitations": [
+    "solver_non_convergence"
+  ],
+  "quality_status": "failed",
+  "error_message": null,
+  "iteration_history": [
+    {
+      "iteracja": 1,
+      "niedopasowanie_pu": 0.07599999999999998,
+      "norma_niedopasowania_pu": 0.08728975733195751,
+      "przyczyna_przerwania": "max_iter"
+    }
+  ]
+}

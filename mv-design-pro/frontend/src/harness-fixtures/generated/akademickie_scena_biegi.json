@@ -1,0 +1,4394 @@
+{
+  "typy": {
+    "items": [
+      "power_quality_harmonics",
+      "ssci_impedance",
+      "voltage_stability",
+      "reliability_contingency",
+      "earthing_safety",
+      "insulation_coordination",
+      "earth_fault_detection",
+      "transient_trv",
+      "motor_starting",
+      "hosting_capacity",
+      "opf_loss_lcc",
+      "benchmark_validation",
+      "uncertainty_sensitivity",
+      "neutral_earthing_design"
+    ],
+    "namespace": "analysis-types"
+  },
+  "biegi": {
+    "ssci_impedance": {
+      "dowod": {
+        "analysis_type": "ssci_impedance",
+        "case_id": "case-demo",
+        "contract": "AcademicProofPackV1",
+        "proof_hash": "57978bef2a4510fa53c26a504a0bcb6120f2921780e4136cd745017ed718a4dd",
+        "proof_id": "proof:v126:ssci_impedance:1f5e266f9d6ce43e",
+        "run_id": "run-v126-scena-akademickie-ssci_impedance",
+        "source_result_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c",
+        "steps": [
+          {
+            "data": {
+              "control_delay_ms": 0.5,
+              "current_loop_bandwidth_hz": 900.0,
+              "filter_l_pu": 0.08,
+              "filter_r_pu": 0.005,
+              "pll_bandwidth_hz": 30.0,
+              "ref": "Sun 2011 (IEEE TPEL 26-11); Cespedes&Sun 2014 (29-3); Wen 2016 (31-1)",
+              "voltage_loop_bandwidth_hz": 80.0,
+              "z_base_ohm": 2.976744
+            },
+            "formula": "Z_conv(jw) = [Z_f + G_d*G_ci] / [1 - G_d*H_pll*(I0*G_ci - V0)/V0]",
+            "formula_latex": "Z_{\\mathrm{conv}}(j\\omega) = \\dfrac{Z_f + G_d G_{ci}}{1 - G_d H_{\\mathrm{pll}}\\left(\\dfrac{I_0 G_{ci} - V_0}{V_0}\\right)}",
+            "ordinal": 1,
+            "proof_ref": "proof:v126:ssci_impedance:ssci_zconv_model",
+            "proof_status": "complete",
+            "result": {
+              "G_ci": {
+                "im": -9.017294,
+                "mag": 9.449018,
+                "phase_deg": -72.613,
+                "re": 2.823534
+              },
+              "G_d": {
+                "im": -0.003142,
+                "mag": 1.0,
+                "phase_deg": -0.18,
+                "re": 0.999995
+              },
+              "H_pll": {
+                "im": -0.033296,
+                "mag": 0.999445,
+                "phase_deg": -1.909,
+                "re": 0.99889
+              },
+              "Z_conv_ohm": {
+                "im": -0.239406,
+                "mag": 1.643405,
+                "phase_deg": -171.624,
+                "re": -1.625873
+              },
+              "Z_conv_pu": {
+                "im": -0.080426,
+                "mag": 0.552081,
+                "phase_deg": -171.624,
+                "re": -0.546192
+              },
+              "Z_f_pu": {
+                "im": 0.0016,
+                "mag": 0.00525,
+                "phase_deg": 17.745,
+                "re": 0.005
+              },
+              "probe_f_hz": 1.0
+            },
+            "result_pl": "Impedancja wyjściowa przekształtnika przy 1.0 Hz: 1.6434 Ω",
+            "substitution": "w_ci=2*pi*900.0 rad/s; w_pll=2*pi*30.0 rad/s; T_d=0.5 ms; K_p=w_ci*L_f, K_i=w_ci*R_f (IMC); Z_base=Un^2/Sn",
+            "unit_check": "Impedancja filtru w jednostkach względnych, skalowana impedancją bazową [Ω]; wzmocnienia regulatorów bezwymiarowe."
+          },
+          {
+            "data": {
+              "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+              "f_max_hz": 250.0,
+              "f_min_hz": 1.0,
+              "points": 61
+            },
+            "formula": "Z_grid(f) = diag(pinv(Y_bus(f) + Y_src(f))) @ bus(falownika)",
+            "formula_latex": "Z_{\\mathrm{grid}}(f) = \\left[\\left(Y_{\\mathrm{bus}}(f) + Y_{\\mathrm{src}}(f)\\right)^{+}\\right]_{\\mathrm{diag}}\\Big|_{\\text{szyna przekształtnika}}",
+            "ordinal": 2,
+            "proof_ref": "proof:v126:ssci_impedance:ssci_zgrid_sweep",
+            "proof_status": "complete",
+            "result": {
+              "z_grid_at_f_min": {
+                "im": 1.707536,
+                "mag": 1.868156,
+                "phase_deg": 66.067,
+                "re": 0.757843
+              }
+            },
+            "result_pl": "Impedancja sieci przy 1.0 Hz: 1.8682 Ω",
+            "substitution": "Macierz admitancyjna jak w skanie jakości energii, powiększona o bocznik źródła zasilającego; impedancja sterująca wyznaczona na węźle przyłączenia przekształtnika.",
+            "unit_check": "Odwrócenie macierzy admitancyjnej [S] daje impedancję [Ω]."
+          },
+          {
+            "data": {
+              "points": 61
+            },
+            "formula": "L(jw) = Z_grid(jw) / Z_conv(jw)",
+            "formula_latex": "L(j\\omega) = \\dfrac{Z_{\\mathrm{grid}}(j\\omega)}{Z_{\\mathrm{conv}}(j\\omega)}",
+            "ordinal": 3,
+            "proof_ref": "proof:v126:ssci_impedance:ssci_minor_loop_gain",
+            "proof_status": "complete",
+            "result": {
+              "negative_resistance_region": true,
+              "re_zconv_min": -1.964213,
+              "re_zconv_min_f_hz": 8.3025
+            },
+            "result_pl": "Najmniejsza część rzeczywista impedancji przekształtnika: -1.9642 Ω przy 8.3025 Hz",
+            "substitution": "Iloraz impedancji sieci i impedancji wyjściowej przekształtnika; bliskość punktu krytycznego (kryterium Nyquista) ocenia warstwa analizy — tutaj wyłącznie fizyka.",
+            "unit_check": "Iloraz impedancji [Ω/Ω] jest bezwymiarowy."
+          }
+        ],
+        "trace_step_count": 3
+      },
+      "koperta": {
+        "analysis_type": "ssci_impedance",
+        "case_id": "case-demo",
+        "deterministic_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c",
+        "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance/proof",
+        "report_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance/report",
+        "result_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance",
+        "run_id": "run-v126-scena-akademickie-ssci_impedance",
+        "status": "FINISHED",
+        "trace_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance/trace"
+      },
+      "raport": {
+        "analysis_type": "ssci_impedance",
+        "case_id": "case-demo",
+        "contract": "AcademicReportV2",
+        "export_policy": "frozen_result_and_proof_only",
+        "report_hash": "7b7db37e415a59cc8220426d616a039e8a4d5a0dbca3cf57c88b8332b59256d0",
+        "report_id": "report:v126:ssci_impedance:1f5e266f9d6ce43e",
+        "run_id": "run-v126-scena-akademickie-ssci_impedance",
+        "sections": [
+          {
+            "metrics": [
+              {
+                "label": "proof_id",
+                "value": "proof:v126:ssci_impedance:1f5e266f9d6ce43e"
+              },
+              {
+                "label": "proof_hash",
+                "value": "57978bef2a4510fa53c26a504a0bcb6120f2921780e4136cd745017ed718a4dd"
+              },
+              {
+                "label": "trace_step_count",
+                "value": 3
+              }
+            ],
+            "section_id": "dowod",
+            "title": "Dowód obliczeń"
+          },
+          {
+            "metrics": [
+              {
+                "label": "result_hash",
+                "value": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c"
+              },
+              {
+                "label": "solver_version",
+                "value": "v126-academic-whitebox-1.2"
+              },
+              {
+                "label": "input_hash",
+                "value": "82644d2168c14ea888279b94d70ee6d86a4407c5dea1e99b7159b9b7f668c049"
+              }
+            ],
+            "section_id": "audyt",
+            "title": "Audyt deterministyczny"
+          }
+        ],
+        "source_proof_hash": "57978bef2a4510fa53c26a504a0bcb6120f2921780e4136cd745017ed718a4dd",
+        "source_result_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c"
+      },
+      "slad": {
+        "analysis_type": "ssci_impedance",
+        "deterministic_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c",
+        "run_id": "run-v126-scena-akademickie-ssci_impedance",
+        "steps": [
+          {
+            "data": {
+              "control_delay_ms": 0.5,
+              "current_loop_bandwidth_hz": 900.0,
+              "filter_l_pu": 0.08,
+              "filter_r_pu": 0.005,
+              "pll_bandwidth_hz": 30.0,
+              "ref": "Sun 2011 (IEEE TPEL 26-11); Cespedes&Sun 2014 (29-3); Wen 2016 (31-1)",
+              "voltage_loop_bandwidth_hz": 80.0,
+              "z_base_ohm": 2.976744
+            },
+            "formula": "Z_conv(jw) = [Z_f + G_d*G_ci] / [1 - G_d*H_pll*(I0*G_ci - V0)/V0]",
+            "formula_latex": "Z_{\\mathrm{conv}}(j\\omega) = \\dfrac{Z_f + G_d G_{ci}}{1 - G_d H_{\\mathrm{pll}}\\left(\\dfrac{I_0 G_{ci} - V_0}{V_0}\\right)}",
+            "key": "ssci_zconv_model",
+            "proof_ref": "proof:v126:ssci_impedance:ssci_zconv_model",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "G_ci": {
+                "im": -9.017294,
+                "mag": 9.449018,
+                "phase_deg": -72.613,
+                "re": 2.823534
+              },
+              "G_d": {
+                "im": -0.003142,
+                "mag": 1.0,
+                "phase_deg": -0.18,
+                "re": 0.999995
+              },
+              "H_pll": {
+                "im": -0.033296,
+                "mag": 0.999445,
+                "phase_deg": -1.909,
+                "re": 0.99889
+              },
+              "Z_conv_ohm": {
+                "im": -0.239406,
+                "mag": 1.643405,
+                "phase_deg": -171.624,
+                "re": -1.625873
+              },
+              "Z_conv_pu": {
+                "im": -0.080426,
+                "mag": 0.552081,
+                "phase_deg": -171.624,
+                "re": -0.546192
+              },
+              "Z_f_pu": {
+                "im": 0.0016,
+                "mag": 0.00525,
+                "phase_deg": 17.745,
+                "re": 0.005
+              },
+              "probe_f_hz": 1.0
+            },
+            "result_pl": "Impedancja wyjściowa przekształtnika przy 1.0 Hz: 1.6434 Ω",
+            "step": 1,
+            "substitution": "w_ci=2*pi*900.0 rad/s; w_pll=2*pi*30.0 rad/s; T_d=0.5 ms; K_p=w_ci*L_f, K_i=w_ci*R_f (IMC); Z_base=Un^2/Sn",
+            "unit_check": "Impedancja filtru w jednostkach względnych, skalowana impedancją bazową [Ω]; wzmocnienia regulatorów bezwymiarowe."
+          },
+          {
+            "data": {
+              "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+              "f_max_hz": 250.0,
+              "f_min_hz": 1.0,
+              "points": 61
+            },
+            "formula": "Z_grid(f) = diag(pinv(Y_bus(f) + Y_src(f))) @ bus(falownika)",
+            "formula_latex": "Z_{\\mathrm{grid}}(f) = \\left[\\left(Y_{\\mathrm{bus}}(f) + Y_{\\mathrm{src}}(f)\\right)^{+}\\right]_{\\mathrm{diag}}\\Big|_{\\text{szyna przekształtnika}}",
+            "key": "ssci_zgrid_sweep",
+            "proof_ref": "proof:v126:ssci_impedance:ssci_zgrid_sweep",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "z_grid_at_f_min": {
+                "im": 1.707536,
+                "mag": 1.868156,
+                "phase_deg": 66.067,
+                "re": 0.757843
+              }
+            },
+            "result_pl": "Impedancja sieci przy 1.0 Hz: 1.8682 Ω",
+            "step": 2,
+            "substitution": "Macierz admitancyjna jak w skanie jakości energii, powiększona o bocznik źródła zasilającego; impedancja sterująca wyznaczona na węźle przyłączenia przekształtnika.",
+            "unit_check": "Odwrócenie macierzy admitancyjnej [S] daje impedancję [Ω]."
+          },
+          {
+            "data": {
+              "points": 61
+            },
+            "formula": "L(jw) = Z_grid(jw) / Z_conv(jw)",
+            "formula_latex": "L(j\\omega) = \\dfrac{Z_{\\mathrm{grid}}(j\\omega)}{Z_{\\mathrm{conv}}(j\\omega)}",
+            "key": "ssci_minor_loop_gain",
+            "proof_ref": "proof:v126:ssci_impedance:ssci_minor_loop_gain",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "negative_resistance_region": true,
+              "re_zconv_min": -1.964213,
+              "re_zconv_min_f_hz": 8.3025
+            },
+            "result_pl": "Najmniejsza część rzeczywista impedancji przekształtnika: -1.9642 Ω przy 8.3025 Hz",
+            "step": 3,
+            "substitution": "Iloraz impedancji sieci i impedancji wyjściowej przekształtnika; bliskość punktu krytycznego (kryterium Nyquista) ocenia warstwa analizy — tutaj wyłącznie fizyka.",
+            "unit_check": "Iloraz impedancji [Ω/Ω] jest bezwymiarowy."
+          }
+        ],
+        "trace_version": "AcademicWhiteBoxTraceV1"
+      },
+      "stabilnosc": {
+        "analysis_id": "828617fdf32b21075f30a4cd7a1f2c0fdbcb25418784ccc896afc7fcf3eb9920",
+        "context": {
+          "case_id": "case-demo",
+          "case_name": null,
+          "project_name": null,
+          "run_id": "run-v126-scena-akademickie-ssci_impedance",
+          "run_timestamp": "2026-09-16T09:00:00+00:00",
+          "snapshot_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c"
+        },
+        "gain_crossover_mag": 1.0,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "BRAK_METODY",
+            "odniesienie": null,
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "UNVALIDATED_MODEL",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista)",
+            "relacja": "LOGICZNE",
+            "warunek_latex": "",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "ssci.nyquist.pv/9d008ed355939bef762652554f56b2e4/converter",
+          "limit": null,
+          "margines": null,
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "brak wielkości rozstrzygającej — metryki L(f) są materiałem audytowym, więc niepewność wyniku nie dotyczy",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)",
+            "jednostka_redakcyjna": null,
+            "rodzaj": "NIEUSTALONA",
+            "status": "NIEUSTALONE",
+            "uwagi_pl": "kryterium z literatury — brak wymagania normatywnego operatora dla SSCI",
+            "wydanie": null
+          },
+          "powody_niepelnosci": [
+            "Brak metody dowodu — właściwa metoda dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji) albo pomiar.",
+            "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji nie stanowi pełnego dowodu zgodności (wymagany: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany).",
+            "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+          ],
+          "przedmiot": {
+            "element_ref": "pv/9d008ed355939bef762652554f56b2e4/converter",
+            "nazwa_pl": "Przekształtnik Farma PV",
+            "opis_pl": "Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny Szyna nN producenta Farma PV"
+          },
+          "slad": [],
+          "status_maszynowy": "NIE_OCENIONO",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "przekształtnik przyłączony do sieci modelu (źródło przekształtnikowe)",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+              "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
+              "Impedancja sieci Z_grid(f) liczona na wspólnej macierzy admitancyjnej z przekładnią transformatora i impedancją źródła zasilania — impedancja sieci Z_grid(f) obecnego solvera jest liczona na macierzy admitancyjnej bez przekładni transformatora — dla przekształtnika na szynie 0,4 kV wychodzi około 1400 razy za duża — więc wzmocnienie pętli L = Z_grid/Z_conv i każdy wniosek z kryterium Nyquista są niewiarygodne; wynik nie ma też niezależnej wyroczni.",
+              "Niezależna wyrocznia kryterium impedancyjnego (obliczenie ręczne albo program zewnętrzny) dla węzła przyłączenia przekształtnika.",
+              "Do czasu poprawnego Z_grid(f): badanie zewnętrzne interakcji przekształtnik–sieć albo dane producenta; wskaźnik strefy ujemnej rezystancji przekształtnika zależy wyłącznie od jego modelu i pozostaje informacją."
+            ],
+            "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
+            "zastrzezenia": [
+              "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
+              "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
+              "Zakres ważności: Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
+            ],
+            "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+          },
+          "wynik": null,
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": null,
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "impedancja sieci z przekładnią transformatora"
+            ]
+          }
+        },
+        "sekcja_audytowa_pl": "Metryki kryterium impedancyjnego z Z_grid(f) liczonego bez przekładni transformatora — materiał audytowy, nie jest wynikiem inżynierskim",
+        "verdict": {
+          "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+          "converter_ref": "pv/9d008ed355939bef762652554f56b2e4/converter",
+          "encirclement_count": 1,
+          "gain_crossover": null,
+          "has_magnitude_crossover": true,
+          "is_risk": null,
+          "max_minor_loop_gain": 137.42,
+          "missing_data": [],
+          "nearest_to_minus_one": {
+            "distance_to_minus_one": 1.0378,
+            "f_hz": 1.0,
+            "mag": 1.1368,
+            "phase_deg": -122.309
+          },
+          "negative_resistance_f_hz": 8.3025,
+          "negative_resistance_present": true,
+          "negative_resistance_re_min_ohm": -1.964213,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "BRAK_METODY",
+              "odniesienie": null,
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "UNVALIDATED_MODEL",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Ocena niewykonana",
+              "semantyka": "neutralna"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista)",
+              "relacja": "LOGICZNE",
+              "warunek_latex": "",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "ssci.nyquist.pv/9d008ed355939bef762652554f56b2e4/converter",
+            "limit": null,
+            "margines": null,
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "brak wielkości rozstrzygającej — metryki L(f) są materiałem audytowym, więc niepewność wyniku nie dotyczy",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)",
+              "jednostka_redakcyjna": null,
+              "rodzaj": "NIEUSTALONA",
+              "status": "NIEUSTALONE",
+              "uwagi_pl": "kryterium z literatury — brak wymagania normatywnego operatora dla SSCI",
+              "wydanie": null
+            },
+            "powody_niepelnosci": [
+              "Brak metody dowodu — właściwa metoda dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji) albo pomiar.",
+              "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji nie stanowi pełnego dowodu zgodności (wymagany: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany).",
+              "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+            ],
+            "przedmiot": {
+              "element_ref": "pv/9d008ed355939bef762652554f56b2e4/converter",
+              "nazwa_pl": "Przekształtnik Farma PV",
+              "opis_pl": "Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny Szyna nN producenta Farma PV"
+            },
+            "slad": [],
+            "status_maszynowy": "NIE_OCENIONO",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "przekształtnik przyłączony do sieci modelu (źródło przekształtnikowe)",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [
+                "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+                "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+                "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
+                "Impedancja sieci Z_grid(f) liczona na wspólnej macierzy admitancyjnej z przekładnią transformatora i impedancją źródła zasilania — impedancja sieci Z_grid(f) obecnego solvera jest liczona na macierzy admitancyjnej bez przekładni transformatora — dla przekształtnika na szynie 0,4 kV wychodzi około 1400 razy za duża — więc wzmocnienie pętli L = Z_grid/Z_conv i każdy wniosek z kryterium Nyquista są niewiarygodne; wynik nie ma też niezależnej wyroczni.",
+                "Niezależna wyrocznia kryterium impedancyjnego (obliczenie ręczne albo program zewnętrzny) dla węzła przyłączenia przekształtnika.",
+                "Do czasu poprawnego Z_grid(f): badanie zewnętrzne interakcji przekształtnik–sieć albo dane producenta; wskaźnik strefy ujemnej rezystancji przekształtnika zależy wyłącznie od jego modelu i pozostaje informacją."
+              ],
+              "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
+              "zastrzezenia": [
+                "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
+                "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
+                "Zakres ważności: Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
+              ],
+              "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+            },
+            "wynik": null,
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": null,
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "impedancja sieci z przekładnią transformatora"
+              ]
+            }
+          },
+          "offending_frequency_hz": 47.7044,
+          "provenance": {
+            "consumed_fields": [
+              "control_delay_ms",
+              "current_loop_bandwidth_hz",
+              "filter_l_pu",
+              "filter_r_pu",
+              "pll_bandwidth_hz",
+              "voltage_loop_bandwidth_hz"
+            ],
+            "is_estimated": true,
+            "tag_pl": "metryki oparte na oszacowanych pasmach regulatora",
+            "worst_quality": "ESTIMATED",
+            "worst_quality_label_pl": "oszacowane"
+          },
+          "verdict": "nie oceniono",
+          "white_box": [
+            {
+              "formula_latex": "L(j\\omega) = \\dfrac{Z_{grid}(j\\omega)}{Z_{conv}(j\\omega)}",
+              "result_pl": "moduły impedancji przecinają się (|L| ≥ 1)",
+              "substitution_pl": "max|L| = 137.42 przy f = 250.0 Hz; próg przecięcia |L| = 1.0",
+              "symbol": "L(jω)",
+              "unit_check_pl": "L = Ω/Ω → bezwymiarowe; |L|=1 ⟺ |Z_grid|=|Z_conv|."
+            },
+            {
+              "formula_latex": "\\Delta\\varphi_{min} = \\min_{f:\\,|L(f)|\\geq 1}\\left(180^\\circ - |\\angle L(f)|\\right)",
+              "result_pl": "Δφ_min = 0.583°",
+              "substitution_pl": "min po paśmie |L| ≥ 1.0; f = 47.7 Hz",
+              "symbol": "Δφ_min",
+              "unit_check_pl": "stopnie; Δφ ≤ 0° ⟺ ∠L osiąga ±180° ⟺ okrążenie −1."
+            },
+            {
+              "formula_latex": "d_{-1} = \\min_{f}\\left|L(j\\omega) + 1\\right|",
+              "result_pl": "d(−1) = 1.0378 (odległość przebiegu od −1)",
+              "substitution_pl": "f = 1.0 Hz, |L| = 1.1368, ∠L = -122.309°",
+              "symbol": "|L+1|_min",
+              "unit_check_pl": "bezwymiarowe (na płaszczyźnie L); d→0 ⟺ podejście do −1."
+            },
+            {
+              "formula_latex": "N \\approx \\#\\{\\,\\mathrm{Im}\\,L = 0 \\wedge \\mathrm{Re}\\,L < -1\\,\\}",
+              "result_pl": "N ≈ 1 (przybliżenie skończonego skanu, wskaźnik wspierający)",
+              "substitution_pl": "zliczenie przejść Im(L)=0 na lewo od −1 (skan jednostronny)",
+              "symbol": "N(−1)",
+              "unit_check_pl": "liczba całkowita; N ≥ 1 ⟺ okrążenie −1 ⟺ niestabilność."
+            }
+          ],
+          "why_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar.",
+          "worst_phase_margin_deg": 0.583,
+          "worst_phase_margin_f_hz": 47.7044
+        }
+      },
+      "wynik": {
+        "analysis_type": "ssci_impedance",
+        "case_id": "case-demo",
+        "created_at": "2026-09-16T09:00:00+00:00",
+        "proof_ref": "proof:v126:ssci_impedance:1f5e266f9d6ce43e",
+        "report_ref": "report:v126:ssci_impedance:1f5e266f9d6ce43e",
+        "result": {
+          "analysis_type": "ssci_impedance",
+          "contract": "AcademicAnalysisResultV1",
+          "deterministic_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c",
+          "input_hash": "82644d2168c14ea888279b94d70ee6d86a4407c5dea1e99b7159b9b7f668c049",
+          "result": {
+            "base_frequency_hz": 50.0,
+            "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+            "converter_ref": "pv/9d008ed355939bef762652554f56b2e4/converter",
+            "frequencies_hz": [
+              1.0,
+              1.0964,
+              1.2021,
+              1.3179,
+              1.445,
+              1.5843,
+              1.737,
+              1.9044,
+              2.088,
+              2.2892,
+              2.5099,
+              2.7518,
+              3.0171,
+              3.3079,
+              3.6268,
+              3.9764,
+              4.3596,
+              4.7799,
+              5.2406,
+              5.7458,
+              6.2996,
+              6.9068,
+              7.5726,
+              8.3025,
+              9.1028,
+              9.9803,
+              10.9423,
+              11.997,
+              13.1534,
+              14.4213,
+              15.8114,
+              17.3355,
+              19.0065,
+              20.8385,
+              22.8472,
+              25.0495,
+              27.464,
+              30.1113,
+              33.0138,
+              36.196,
+              39.685,
+              43.5103,
+              47.7044,
+              52.3026,
+              57.3442,
+              62.8717,
+              68.932,
+              75.5764,
+              82.8614,
+              90.8485,
+              99.6055,
+              109.2066,
+              119.7332,
+              131.2745,
+              143.9282,
+              157.8017,
+              173.0124,
+              189.6894,
+              207.9738,
+              228.0207,
+              250.0
+            ],
+            "minor_loop_gain": [
+              {
+                "f_hz": 1.0,
+                "im": -0.960762,
+                "mag": 1.136759,
+                "phase_deg": -122.309,
+                "re": -0.607584
+              },
+              {
+                "f_hz": 1.0964,
+                "im": -1.046682,
+                "mag": 1.222881,
+                "phase_deg": -121.139,
+                "re": -0.632371
+              },
+              {
+                "f_hz": 1.2021,
+                "im": -1.139102,
+                "mag": 1.317137,
+                "phase_deg": -120.137,
+                "re": -0.661284
+              },
+              {
+                "f_hz": 1.3179,
+                "im": -1.238158,
+                "mag": 1.419792,
+                "phase_deg": -119.3,
+                "re": -0.694818
+              },
+              {
+                "f_hz": 1.445,
+                "im": -1.344221,
+                "mag": 1.531357,
+                "phase_deg": -118.622,
+                "re": -0.733571
+              },
+              {
+                "f_hz": 1.5843,
+                "im": -1.457287,
+                "mag": 1.651971,
+                "phase_deg": -118.097,
+                "re": -0.778026
+              },
+              {
+                "f_hz": 1.737,
+                "im": -1.577497,
+                "mag": 1.781924,
+                "phase_deg": -117.714,
+                "re": -0.828707
+              },
+              {
+                "f_hz": 1.9044,
+                "im": -1.704975,
+                "mag": 1.92149,
+                "phase_deg": -117.462,
+                "re": -0.886106
+              },
+              {
+                "f_hz": 2.088,
+                "im": -1.839915,
+                "mag": 2.071022,
+                "phase_deg": -117.326,
+                "re": -0.950706
+              },
+              {
+                "f_hz": 2.2892,
+                "im": -1.982397,
+                "mag": 2.230734,
+                "phase_deg": -117.293,
+                "re": -1.022877
+              },
+              {
+                "f_hz": 2.5099,
+                "im": -2.132847,
+                "mag": 2.401221,
+                "phase_deg": -117.348,
+                "re": -1.103098
+              },
+              {
+                "f_hz": 2.7518,
+                "im": -2.291575,
+                "mag": 2.582939,
+                "phase_deg": -117.477,
+                "re": -1.191747
+              },
+              {
+                "f_hz": 3.0171,
+                "im": -2.459275,
+                "mag": 2.776794,
+                "phase_deg": -117.668,
+                "re": -1.289399
+              },
+              {
+                "f_hz": 3.3079,
+                "im": -2.636641,
+                "mag": 2.983725,
+                "phase_deg": -117.911,
+                "re": -1.39669
+              },
+              {
+                "f_hz": 3.6268,
+                "im": -2.824724,
+                "mag": 3.205172,
+                "phase_deg": -118.2,
+                "re": -1.514615
+              },
+              {
+                "f_hz": 3.9764,
+                "im": -3.024585,
+                "mag": 3.44272,
+                "phase_deg": -118.533,
+                "re": -1.644446
+              },
+              {
+                "f_hz": 4.3596,
+                "im": -3.237398,
+                "mag": 3.698302,
+                "phase_deg": -118.911,
+                "re": -1.78793
+              },
+              {
+                "f_hz": 4.7799,
+                "im": -3.464506,
+                "mag": 3.974357,
+                "phase_deg": -119.341,
+                "re": -1.947489
+              },
+              {
+                "f_hz": 5.2406,
+                "im": -3.706847,
+                "mag": 4.273238,
+                "phase_deg": -119.836,
+                "re": -2.125994
+              },
+              {
+                "f_hz": 5.7458,
+                "im": -3.965343,
+                "mag": 4.597798,
+                "phase_deg": -120.408,
+                "re": -2.327187
+              },
+              {
+                "f_hz": 6.2996,
+                "im": -4.240296,
+                "mag": 4.950781,
+                "phase_deg": -121.075,
+                "re": -2.555411
+              },
+              {
+                "f_hz": 6.9068,
+                "im": -4.531548,
+                "mag": 5.335181,
+                "phase_deg": -121.857,
+                "re": -2.815889
+              },
+              {
+                "f_hz": 7.5726,
+                "im": -4.838103,
+                "mag": 5.753949,
+                "phase_deg": -122.772,
+                "re": -3.114592
+              },
+              {
+                "f_hz": 8.3025,
+                "im": -5.157844,
+                "mag": 6.20983,
+                "phase_deg": -123.84,
+                "re": -3.458125
+              },
+              {
+                "f_hz": 9.1028,
+                "im": -5.487494,
+                "mag": 6.70558,
+                "phase_deg": -125.08,
+                "re": -3.853856
+              },
+              {
+                "f_hz": 9.9803,
+                "im": -5.822194,
+                "mag": 7.243669,
+                "phase_deg": -126.509,
+                "re": -4.309616
+              },
+              {
+                "f_hz": 10.9423,
+                "im": -6.155235,
+                "mag": 7.826183,
+                "phase_deg": -128.141,
+                "re": -4.833449
+              },
+              {
+                "f_hz": 11.997,
+                "im": -6.477946,
+                "mag": 8.45497,
+                "phase_deg": -129.989,
+                "re": -5.433483
+              },
+              {
+                "f_hz": 13.1534,
+                "im": -6.779427,
+                "mag": 9.131477,
+                "phase_deg": -132.062,
+                "re": -6.117454
+              },
+              {
+                "f_hz": 14.4213,
+                "im": -7.046436,
+                "mag": 9.856682,
+                "phase_deg": -134.366,
+                "re": -6.892163
+              },
+              {
+                "f_hz": 15.8114,
+                "im": -7.263464,
+                "mag": 10.631117,
+                "phase_deg": -136.904,
+                "re": -7.762908
+              },
+              {
+                "f_hz": 17.3355,
+                "im": -7.412997,
+                "mag": 11.454996,
+                "phase_deg": -139.674,
+                "re": -8.73295
+              },
+              {
+                "f_hz": 19.0065,
+                "im": -7.47599,
+                "mag": 12.328303,
+                "phase_deg": -142.67,
+                "re": -9.802888
+              },
+              {
+                "f_hz": 20.8385,
+                "im": -7.432599,
+                "mag": 13.251019,
+                "phase_deg": -145.881,
+                "re": -10.970232
+              },
+              {
+                "f_hz": 22.8472,
+                "im": -7.2631,
+                "mag": 14.223606,
+                "phase_deg": -149.294,
+                "re": -12.229404
+              },
+              {
+                "f_hz": 25.0495,
+                "im": -6.948974,
+                "mag": 15.247169,
+                "phase_deg": -152.886,
+                "re": -13.571585
+              },
+              {
+                "f_hz": 27.464,
+                "im": -6.473953,
+                "mag": 16.324166,
+                "phase_deg": -156.635,
+                "re": -14.985538
+              },
+              {
+                "f_hz": 30.1113,
+                "im": -5.824836,
+                "mag": 17.459023,
+                "phase_deg": -160.511,
+                "re": -16.458699
+              },
+              {
+                "f_hz": 33.0138,
+                "im": -4.992088,
+                "mag": 18.658539,
+                "phase_deg": -164.481,
+                "re": -17.978324
+              },
+              {
+                "f_hz": 36.196,
+                "im": -3.969918,
+                "mag": 19.932474,
+                "phase_deg": -168.512,
+                "re": -19.533132
+              },
+              {
+                "f_hz": 39.685,
+                "im": -2.755749,
+                "mag": 21.29411,
+                "phase_deg": -172.564,
+                "re": -21.115041
+              },
+              {
+                "f_hz": 43.5103,
+                "im": -1.349478,
+                "mag": 22.760437,
+                "phase_deg": -176.601,
+                "re": -22.720396
+              },
+              {
+                "f_hz": 47.7044,
+                "im": 0.24785,
+                "mag": 24.35254,
+                "phase_deg": 179.417,
+                "re": -24.351279
+              },
+              {
+                "f_hz": 52.3026,
+                "im": 2.03525,
+                "mag": 26.095606,
+                "phase_deg": 175.527,
+                "re": -26.016119
+              },
+              {
+                "f_hz": 57.3442,
+                "im": 4.013532,
+                "mag": 28.019426,
+                "phase_deg": 171.765,
+                "re": -27.730485
+              },
+              {
+                "f_hz": 62.8717,
+                "im": 6.186109,
+                "mag": 30.158153,
+                "phase_deg": 168.163,
+                "re": -29.516881
+              },
+              {
+                "f_hz": 68.932,
+                "im": 8.560332,
+                "mag": 32.550902,
+                "phase_deg": 164.753,
+                "re": -31.405126
+              },
+              {
+                "f_hz": 75.5764,
+                "im": 11.148037,
+                "mag": 35.242014,
+                "phase_deg": 161.559,
+                "re": -33.432332
+              },
+              {
+                "f_hz": 82.8614,
+                "im": 13.96607,
+                "mag": 38.281815,
+                "phase_deg": 158.603,
+                "re": -35.64332
+              },
+              {
+                "f_hz": 90.8485,
+                "im": 17.036047,
+                "mag": 41.727196,
+                "phase_deg": 155.904,
+                "re": -38.091102
+              },
+              {
+                "f_hz": 99.6055,
+                "im": 20.384334,
+                "mag": 45.643127,
+                "phase_deg": 153.474,
+                "re": -40.838388
+              },
+              {
+                "f_hz": 109.2066,
+                "im": 24.041137,
+                "mag": 50.104082,
+                "phase_deg": 151.326,
+                "re": -43.959558
+              },
+              {
+                "f_hz": 119.7332,
+                "im": 28.039403,
+                "mag": 55.196387,
+                "phase_deg": 149.47,
+                "re": -47.544012
+              },
+              {
+                "f_hz": 131.2745,
+                "im": 32.413054,
+                "mag": 61.02137,
+                "phase_deg": 147.915,
+                "re": -51.701078
+              },
+              {
+                "f_hz": 143.9282,
+                "im": 37.194468,
+                "mag": 67.699894,
+                "phase_deg": 146.674,
+                "re": -56.567192
+              },
+              {
+                "f_hz": 157.8017,
+                "im": 42.410922,
+                "mag": 75.37916,
+                "phase_deg": 145.762,
+                "re": -62.316382
+              },
+              {
+                "f_hz": 173.0124,
+                "im": 48.078639,
+                "mag": 84.241947,
+                "phase_deg": 145.199,
+                "re": -69.174779
+              },
+              {
+                "f_hz": 189.6894,
+                "im": 54.193634,
+                "mag": 94.520912,
+                "phase_deg": 145.016,
+                "re": -77.441932
+              },
+              {
+                "f_hz": 207.9738,
+                "im": 60.715079,
+                "mag": 106.518382,
+                "phase_deg": 145.25,
+                "re": -87.520539
+              },
+              {
+                "f_hz": 228.0207,
+                "im": 67.535982,
+                "mag": 120.636442,
+                "phase_deg": 145.956,
+                "re": -99.960203
+              },
+              {
+                "f_hz": 250.0,
+                "im": 74.427466,
+                "mag": 137.419999,
+                "phase_deg": 147.207,
+                "re": -115.519732
+              }
+            ],
+            "ocena": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "BRAK_METODY",
+                "odniesienie": null,
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [],
+                  "stan": "ZWALIDOWANE"
+                },
+                "status_modelu": "UNVALIDATED_MODEL",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Ocena niewykonana",
+                "semantyka": "neutralna"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista)",
+                "relacja": "LOGICZNE",
+                "warunek_latex": "",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "ssci.nyquist.pv/9d008ed355939bef762652554f56b2e4/converter",
+              "limit": null,
+              "margines": null,
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "brak wielkości rozstrzygającej — metryki L(f) są materiałem audytowym, więc niepewność wyniku nie dotyczy",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)",
+                "jednostka_redakcyjna": null,
+                "rodzaj": "NIEUSTALONA",
+                "status": "NIEUSTALONE",
+                "uwagi_pl": "kryterium z literatury — brak wymagania normatywnego operatora dla SSCI",
+                "wydanie": null
+              },
+              "powody_niepelnosci": [
+                "Brak metody dowodu — właściwa metoda dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji) albo pomiar.",
+                "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji nie stanowi pełnego dowodu zgodności (wymagany: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany).",
+                "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+              ],
+              "przedmiot": {
+                "element_ref": "pv/9d008ed355939bef762652554f56b2e4/converter",
+                "nazwa_pl": "Przekształtnik Farma PV",
+                "opis_pl": "Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny Szyna nN producenta Farma PV"
+              },
+              "slad": [],
+              "status_maszynowy": "NIE_OCENIONO",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "przekształtnik przyłączony do sieci modelu (źródło przekształtnikowe)",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [
+                  "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+                  "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+                  "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
+                  "Impedancja sieci Z_grid(f) liczona na wspólnej macierzy admitancyjnej z przekładnią transformatora i impedancją źródła zasilania — impedancja sieci Z_grid(f) obecnego solvera jest liczona na macierzy admitancyjnej bez przekładni transformatora — dla przekształtnika na szynie 0,4 kV wychodzi około 1400 razy za duża — więc wzmocnienie pętli L = Z_grid/Z_conv i każdy wniosek z kryterium Nyquista są niewiarygodne; wynik nie ma też niezależnej wyroczni.",
+                  "Niezależna wyrocznia kryterium impedancyjnego (obliczenie ręczne albo program zewnętrzny) dla węzła przyłączenia przekształtnika.",
+                  "Do czasu poprawnego Z_grid(f): badanie zewnętrzne interakcji przekształtnik–sieć albo dane producenta; wskaźnik strefy ujemnej rezystancji przekształtnika zależy wyłącznie od jego modelu i pozostaje informacją."
+                ],
+                "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
+                "zastrzezenia": [
+                  "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
+                  "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
+                  "Zakres ważności: Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
+                ],
+                "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+              },
+              "wynik": null,
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": null,
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "impedancja sieci z przekładnią transformatora"
+                ]
+              }
+            },
+            "sanity": {
+              "checks_passed": 4,
+              "checks_total": 4,
+              "status": "w paśmie wiarygodności",
+              "violations": []
+            },
+            "z_conv": [
+              {
+                "f_hz": 1.0,
+                "im": -0.239406,
+                "mag": 1.643405,
+                "phase_deg": -171.624,
+                "re": -1.625873
+              },
+              {
+                "f_hz": 1.0964,
+                "im": -0.26124,
+                "mag": 1.651604,
+                "phase_deg": -170.899,
+                "re": -1.630812
+              },
+              {
+                "f_hz": 1.2021,
+                "im": -0.284815,
+                "mag": 1.661226,
+                "phase_deg": -170.128,
+                "re": -1.636628
+              },
+              {
+                "f_hz": 1.3179,
+                "im": -0.31018,
+                "mag": 1.672459,
+                "phase_deg": -169.312,
+                "re": -1.643444
+              },
+              {
+                "f_hz": 1.445,
+                "im": -0.337432,
+                "mag": 1.685532,
+                "phase_deg": -168.452,
+                "re": -1.651411
+              },
+              {
+                "f_hz": 1.5843,
+                "im": -0.366565,
+                "mag": 1.700633,
+                "phase_deg": -167.552,
+                "re": -1.660657
+              },
+              {
+                "f_hz": 1.737,
+                "im": -0.397588,
+                "mag": 1.717964,
+                "phase_deg": -166.619,
+                "re": -1.671324
+              },
+              {
+                "f_hz": 1.9044,
+                "im": -0.430474,
+                "mag": 1.737701,
+                "phase_deg": -165.657,
+                "re": -1.683537
+              },
+              {
+                "f_hz": 2.088,
+                "im": -0.465181,
+                "mag": 1.759997,
+                "phase_deg": -164.674,
+                "re": -1.697409
+              },
+              {
+                "f_hz": 2.2892,
+                "im": -0.501584,
+                "mag": 1.78492,
+                "phase_deg": -163.679,
+                "re": -1.712996
+              },
+              {
+                "f_hz": 2.5099,
+                "im": -0.539596,
+                "mag": 1.812511,
+                "phase_deg": -162.68,
+                "re": -1.730327
+              },
+              {
+                "f_hz": 2.7518,
+                "im": -0.579043,
+                "mag": 1.842679,
+                "phase_deg": -161.685,
+                "re": -1.749336
+              },
+              {
+                "f_hz": 3.0171,
+                "im": -0.619797,
+                "mag": 1.875278,
+                "phase_deg": -160.7,
+                "re": -1.769893
+              },
+              {
+                "f_hz": 3.3079,
+                "im": -0.661699,
+                "mag": 1.910024,
+                "phase_deg": -159.731,
+                "re": -1.791744
+              },
+              {
+                "f_hz": 3.6268,
+                "im": -0.70467,
+                "mag": 1.946576,
+                "phase_deg": -158.777,
+                "re": -1.814552
+              },
+              {
+                "f_hz": 3.9764,
+                "im": -0.748664,
+                "mag": 1.984488,
+                "phase_deg": -157.836,
+                "re": -1.837851
+              },
+              {
+                "f_hz": 4.3596,
+                "im": -0.793735,
+                "mag": 2.023276,
+                "phase_deg": -156.902,
+                "re": -1.861084
+              },
+              {
+                "f_hz": 4.7799,
+                "im": -0.840088,
+                "mag": 2.062474,
+                "phase_deg": -155.963,
+                "re": -1.883627
+              },
+              {
+                "f_hz": 5.2406,
+                "im": -0.887999,
+                "mag": 2.101594,
+                "phase_deg": -155.005,
+                "re": -1.904772
+              },
+              {
+                "f_hz": 5.7458,
+                "im": -0.937922,
+                "mag": 2.140257,
+                "phase_deg": -154.009,
+                "re": -1.9238
+              },
+              {
+                "f_hz": 6.2996,
+                "im": -0.990392,
+                "mag": 2.178155,
+                "phase_deg": -152.955,
+                "re": -1.93997
+              },
+              {
+                "f_hz": 6.9068,
+                "im": -1.046073,
+                "mag": 2.215123,
+                "phase_deg": -151.82,
+                "re": -1.952562
+              },
+              {
+                "f_hz": 7.5726,
+                "im": -1.105691,
+                "mag": 2.251127,
+                "phase_deg": -150.582,
+                "re": -1.960873
+              },
+              {
+                "f_hz": 8.3025,
+                "im": -1.169988,
+                "mag": 2.286265,
+                "phase_deg": -149.22,
+                "re": -1.964213
+              },
+              {
+                "f_hz": 9.1028,
+                "im": -1.239731,
+                "mag": 2.320778,
+                "phase_deg": -147.711,
+                "re": -1.961906
+              },
+              {
+                "f_hz": 9.9803,
+                "im": -1.31564,
+                "mag": 2.355023,
+                "phase_deg": -146.037,
+                "re": -1.953261
+              },
+              {
+                "f_hz": 10.9423,
+                "im": -1.398349,
+                "mag": 2.389456,
+                "phase_deg": -144.182,
+                "re": -1.937555
+              },
+              {
+                "f_hz": 11.997,
+                "im": -1.488407,
+                "mag": 2.424621,
+                "phase_deg": -142.13,
+                "re": -1.914009
+              },
+              {
+                "f_hz": 13.1534,
+                "im": -1.586222,
+                "mag": 2.461125,
+                "phase_deg": -139.871,
+                "re": -1.881764
+              },
+              {
+                "f_hz": 14.4213,
+                "im": -1.692024,
+                "mag": 2.499613,
+                "phase_deg": -137.397,
+                "re": -1.83987
+              },
+              {
+                "f_hz": 15.8114,
+                "im": -1.805824,
+                "mag": 2.540743,
+                "phase_deg": -134.704,
+                "re": -1.787282
+              },
+              {
+                "f_hz": 17.3355,
+                "im": -1.927383,
+                "mag": 2.585162,
+                "phase_deg": -131.793,
+                "re": -1.722864
+              },
+              {
+                "f_hz": 19.0065,
+                "im": -2.056154,
+                "mag": 2.633469,
+                "phase_deg": -128.668,
+                "re": -1.645415
+              },
+              {
+                "f_hz": 20.8385,
+                "im": -2.191237,
+                "mag": 2.686179,
+                "phase_deg": -125.339,
+                "re": -1.553718
+              },
+              {
+                "f_hz": 22.8472,
+                "im": -2.33135,
+                "mag": 2.743687,
+                "phase_deg": -121.819,
+                "re": -1.446591
+              },
+              {
+                "f_hz": 25.0495,
+                "im": -2.474763,
+                "mag": 2.806205,
+                "phase_deg": -118.129,
+                "re": -1.323002
+              },
+              {
+                "f_hz": 27.464,
+                "im": -2.619307,
+                "mag": 2.873726,
+                "phase_deg": -114.291,
+                "re": -1.182173
+              },
+              {
+                "f_hz": 30.1113,
+                "im": -2.762397,
+                "mag": 2.945981,
+                "phase_deg": -110.334,
+                "re": -1.023703
+              },
+              {
+                "f_hz": 33.0138,
+                "im": -2.901072,
+                "mag": 3.022395,
+                "phase_deg": -106.289,
+                "re": -0.847733
+              },
+              {
+                "f_hz": 36.196,
+                "im": -3.032111,
+                "mag": 3.102068,
+                "phase_deg": -102.191,
+                "re": -0.655079
+              },
+              {
+                "f_hz": 39.685,
+                "im": -3.152201,
+                "mag": 3.183783,
+                "phase_deg": -98.077,
+                "re": -0.447327
+              },
+              {
+                "f_hz": 43.5103,
+                "im": -3.258135,
+                "mag": 3.266027,
+                "phase_deg": -93.984,
+                "re": -0.226915
+              },
+              {
+                "f_hz": 47.7044,
+                "im": -3.34705,
+                "mag": 3.347051,
+                "phase_deg": -89.95,
+                "re": 0.002897
+              },
+              {
+                "f_hz": 52.3026,
+                "im": -3.416657,
+                "mag": 3.424943,
+                "phase_deg": -86.014,
+                "re": 0.238102
+              },
+              {
+                "f_hz": 57.3442,
+                "im": -3.465455,
+                "mag": 3.497745,
+                "phase_deg": -82.209,
+                "re": 0.474177
+              },
+              {
+                "f_hz": 62.8717,
+                "im": -3.492851,
+                "mag": 3.563543,
+                "phase_deg": -78.568,
+                "re": 0.706283
+              },
+              {
+                "f_hz": 68.932,
+                "im": -3.499213,
+                "mag": 3.620586,
+                "phase_deg": -75.123,
+                "re": 0.929597
+              },
+              {
+                "f_hz": 75.5764,
+                "im": -3.485818,
+                "mag": 3.667369,
+                "phase_deg": -71.896,
+                "re": 1.139592
+              },
+              {
+                "f_hz": 82.8614,
+                "im": -3.454714,
+                "mag": 3.702709,
+                "phase_deg": -68.911,
+                "re": 1.332293
+              },
+              {
+                "f_hz": 90.8485,
+                "im": -3.408523,
+                "mag": 3.725769,
+                "phase_deg": -66.185,
+                "re": 1.504436
+              },
+              {
+                "f_hz": 99.6055,
+                "im": -3.350218,
+                "mag": 3.736073,
+                "phase_deg": -63.73,
+                "re": 1.653566
+              },
+              {
+                "f_hz": 109.2066,
+                "im": -3.282901,
+                "mag": 3.733465,
+                "phase_deg": -61.56,
+                "re": 1.778011
+              },
+              {
+                "f_hz": 119.7332,
+                "im": -3.20961,
+                "mag": 3.718056,
+                "phase_deg": -59.683,
+                "re": 1.876792
+              },
+              {
+                "f_hz": 131.2745,
+                "im": -3.133169,
+                "mag": 3.690137,
+                "phase_deg": -58.11,
+                "re": 1.949451
+              },
+              {
+                "f_hz": 143.9282,
+                "im": -3.056073,
+                "mag": 3.650075,
+                "phase_deg": -56.852,
+                "re": 1.995862
+              },
+              {
+                "f_hz": 157.8017,
+                "im": -2.980399,
+                "mag": 3.598205,
+                "phase_deg": -55.925,
+                "re": 2.016012
+              },
+              {
+                "f_hz": 173.0124,
+                "im": -2.907744,
+                "mag": 3.534718,
+                "phase_deg": -55.348,
+                "re": 2.00979
+              },
+              {
+                "f_hz": 189.6894,
+                "im": -2.839155,
+                "mag": 3.459558,
+                "phase_deg": -55.152,
+                "re": 1.9768
+              },
+              {
+                "f_hz": 207.9738,
+                "im": -2.775056,
+                "mag": 3.372353,
+                "phase_deg": -55.375,
+                "re": 1.916201
+              },
+              {
+                "f_hz": 228.0207,
+                "im": -2.715149,
+                "mag": 3.27237,
+                "phase_deg": -56.07,
+                "re": 1.826574
+              },
+              {
+                "f_hz": 250.0,
+                "im": -2.658282,
+                "mag": 3.158535,
+                "phase_deg": -57.311,
+                "re": 1.705837
+              }
+            ],
+            "z_conv_negative_resistance": {
+              "f_at_re_min_hz": 8.3025,
+              "present": true,
+              "re_min_ohm": -1.964213
+            },
+            "z_grid": [
+              {
+                "f_hz": 1.0,
+                "im": 1.707536,
+                "mag": 1.868156,
+                "phase_deg": 66.067,
+                "re": 0.757843
+              },
+              {
+                "f_hz": 1.0964,
+                "im": 1.872143,
+                "mag": 2.019714,
+                "phase_deg": 67.962,
+                "re": 0.757843
+              },
+              {
+                "f_hz": 1.2021,
+                "im": 2.05263,
+                "mag": 2.188062,
+                "phase_deg": 69.736,
+                "re": 0.757843
+              },
+              {
+                "f_hz": 1.3179,
+                "im": 2.250363,
+                "mag": 2.374544,
+                "phase_deg": 71.388,
+                "re": 0.757843
+              },
+              {
+                "f_hz": 1.445,
+                "im": 2.467391,
+                "mag": 2.581151,
+                "phase_deg": 72.926,
+                "re": 0.757843
+              },
+              {
+                "f_hz": 1.5843,
+                "im": 2.705251,
+                "mag": 2.809396,
+                "phase_deg": 74.35,
+                "re": 0.757843
+              },
+              {
+                "f_hz": 1.737,
+                "im": 2.965992,
+                "mag": 3.06128,
+                "phase_deg": 75.667,
+                "re": 0.757844
+              },
+              {
+                "f_hz": 1.9044,
+                "im": 3.251834,
+                "mag": 3.338975,
+                "phase_deg": 76.881,
+                "re": 0.757844
+              },
+              {
+                "f_hz": 2.088,
+                "im": 3.565339,
+                "mag": 3.644992,
+                "phase_deg": 78.0,
+                "re": 0.757844
+              },
+              {
+                "f_hz": 2.2892,
+                "im": 3.908896,
+                "mag": 3.981683,
+                "phase_deg": 79.028,
+                "re": 0.757845
+              },
+              {
+                "f_hz": 2.5099,
+                "im": 4.285751,
+                "mag": 4.35224,
+                "phase_deg": 79.972,
+                "re": 0.757845
+              },
+              {
+                "f_hz": 2.7518,
+                "im": 4.698806,
+                "mag": 4.759529,
+                "phase_deg": 80.838,
+                "re": 0.757846
+              },
+              {
+                "f_hz": 3.0171,
+                "im": 5.151819,
+                "mag": 5.207261,
+                "phase_deg": 81.632,
+                "re": 0.757847
+              },
+              {
+                "f_hz": 3.3079,
+                "im": 5.648374,
+                "mag": 5.698988,
+                "phase_deg": 82.358,
+                "re": 0.757848
+              },
+              {
+                "f_hz": 3.6268,
+                "im": 6.192912,
+                "mag": 6.23911,
+                "phase_deg": 83.023,
+                "re": 0.757849
+              },
+              {
+                "f_hz": 3.9764,
+                "im": 6.789874,
+                "mag": 6.832036,
+                "phase_deg": 83.631,
+                "re": 0.75785
+              },
+              {
+                "f_hz": 4.3596,
+                "im": 7.44421,
+                "mag": 7.482687,
+                "phase_deg": 84.187,
+                "re": 0.757852
+              },
+              {
+                "f_hz": 4.7799,
+                "im": 8.1619,
+                "mag": 8.197008,
+                "phase_deg": 84.695,
+                "re": 0.757854
+              },
+              {
+                "f_hz": 5.2406,
+                "im": 8.948577,
+                "mag": 8.980611,
+                "phase_deg": 85.159,
+                "re": 0.757856
+              },
+              {
+                "f_hz": 5.7458,
+                "im": 9.811244,
+                "mag": 9.840471,
+                "phase_deg": 85.583,
+                "re": 0.757859
+              },
+              {
+                "f_hz": 6.2996,
+                "im": 10.756905,
+                "mag": 10.783569,
+                "phase_deg": 85.97,
+                "re": 0.757863
+              },
+              {
+                "f_hz": 6.9068,
+                "im": 11.793756,
+                "mag": 11.818081,
+                "phase_deg": 86.323,
+                "re": 0.757867
+              },
+              {
+                "f_hz": 7.5726,
+                "im": 12.930681,
+                "mag": 12.952871,
+                "phase_deg": 86.646,
+                "re": 0.757872
+              },
+              {
+                "f_hz": 8.3025,
+                "im": 14.177073,
+                "mag": 14.197316,
+                "phase_deg": 86.94,
+                "re": 0.757878
+              },
+              {
+                "f_hz": 9.1028,
+                "im": 15.543695,
+                "mag": 15.562161,
+                "phase_deg": 87.209,
+                "re": 0.757885
+              },
+              {
+                "f_hz": 9.9803,
+                "im": 17.042166,
+                "mag": 17.05901,
+                "phase_deg": 87.454,
+                "re": 0.757894
+              },
+              {
+                "f_hz": 10.9423,
+                "im": 18.684957,
+                "mag": 18.700321,
+                "phase_deg": 87.677,
+                "re": 0.757904
+              },
+              {
+                "f_hz": 11.997,
+                "im": 20.486081,
+                "mag": 20.500097,
+                "phase_deg": 87.881,
+                "re": 0.757917
+              },
+              {
+                "f_hz": 13.1534,
+                "im": 22.460922,
+                "mag": 22.473706,
+                "phase_deg": 88.067,
+                "re": 0.757932
+              },
+              {
+                "f_hz": 14.4213,
+                "im": 24.626231,
+                "mag": 24.637892,
+                "phase_deg": 88.237,
+                "re": 0.75795
+              },
+              {
+                "f_hz": 15.8114,
+                "im": 27.000304,
+                "mag": 27.010941,
+                "phase_deg": 88.392,
+                "re": 0.757972
+              },
+              {
+                "f_hz": 17.3355,
+                "im": 29.603322,
+                "mag": 29.613025,
+                "phase_deg": 88.533,
+                "re": 0.757998
+              },
+              {
+                "f_hz": 19.0065,
+                "im": 32.457357,
+                "mag": 32.466208,
+                "phase_deg": 88.662,
+                "re": 0.758029
+              },
+              {
+                "f_hz": 20.8385,
+                "im": 35.586541,
+                "mag": 35.594614,
+                "phase_deg": 88.78,
+                "re": 0.758067
+              },
+              {
+                "f_hz": 22.8472,
+                "im": 39.017758,
+                "mag": 39.025122,
+                "phase_deg": 88.887,
+                "re": 0.758113
+              },
+              {
+                "f_hz": 25.0495,
+                "im": 42.779964,
+                "mag": 42.786682,
+                "phase_deg": 88.985,
+                "re": 0.758167
+              },
+              {
+                "f_hz": 27.464,
+                "im": 46.905049,
+                "mag": 46.911178,
+                "phase_deg": 89.074,
+                "re": 0.758233
+              },
+              {
+                "f_hz": 30.1113,
+                "im": 51.428362,
+                "mag": 51.433952,
+                "phase_deg": 89.155,
+                "re": 0.758312
+              },
+              {
+                "f_hz": 33.0138,
+                "im": 56.388377,
+                "mag": 56.393476,
+                "phase_deg": 89.229,
+                "re": 0.758407
+              },
+              {
+                "f_hz": 36.196,
+                "im": 61.827227,
+                "mag": 61.83188,
+                "phase_deg": 89.297,
+                "re": 0.758522
+              },
+              {
+                "f_hz": 39.685,
+                "im": 67.791582,
+                "mag": 67.795826,
+                "phase_deg": 89.359,
+                "re": 0.758659
+              },
+              {
+                "f_hz": 43.5103,
+                "im": 74.332332,
+                "mag": 74.336205,
+                "phase_deg": 89.415,
+                "re": 0.758824
+              },
+              {
+                "f_hz": 47.7044,
+                "im": 81.505658,
+                "mag": 81.509192,
+                "phase_deg": 89.466,
+                "re": 0.759023
+              },
+              {
+                "f_hz": 52.3026,
+                "im": 89.372739,
+                "mag": 89.375964,
+                "phase_deg": 89.513,
+                "re": 0.759262
+              },
+              {
+                "f_hz": 57.3442,
+                "im": 98.001872,
+                "mag": 98.004815,
+                "phase_deg": 89.556,
+                "re": 0.75955
+              },
+              {
+                "f_hz": 62.8717,
+                "im": 107.467199,
+                "mag": 107.469886,
+                "phase_deg": 89.595,
+                "re": 0.759895
+              },
+              {
+                "f_hz": 68.932,
+                "im": 117.850877,
+                "mag": 117.85333,
+                "phase_deg": 89.63,
+                "re": 0.760311
+              },
+              {
+                "f_hz": 75.5764,
+                "im": 129.243237,
+                "mag": 129.245477,
+                "phase_deg": 89.663,
+                "re": 0.760812
+              },
+              {
+                "f_hz": 82.8614,
+                "im": 141.744368,
+                "mag": 141.746413,
+                "phase_deg": 89.692,
+                "re": 0.761415
+              },
+              {
+                "f_hz": 90.8485,
+                "im": 155.464047,
+                "mag": 155.465915,
+                "phase_deg": 89.719,
+                "re": 0.76214
+              },
+              {
+                "f_hz": 99.6055,
+                "im": 170.524343,
+                "mag": 170.52605,
+                "phase_deg": 89.744,
+                "re": 0.763013
+              },
+              {
+                "f_hz": 109.2066,
+                "im": 187.060275,
+                "mag": 187.061835,
+                "phase_deg": 89.766,
+                "re": 0.764065
+              },
+              {
+                "f_hz": 119.7332,
+                "im": 205.221834,
+                "mag": 205.223261,
+                "phase_deg": 89.786,
+                "re": 0.765333
+              },
+              {
+                "f_hz": 131.2745,
+                "im": 225.175881,
+                "mag": 225.177187,
+                "phase_deg": 89.805,
+                "re": 0.766861
+              },
+              {
+                "f_hz": 143.9282,
+                "im": 247.108502,
+                "mag": 247.109698,
+                "phase_deg": 89.822,
+                "re": 0.768705
+              },
+              {
+                "f_hz": 157.8017,
+                "im": 271.228611,
+                "mag": 271.229707,
+                "phase_deg": 89.837,
+                "re": 0.770931
+              },
+              {
+                "f_hz": 173.0124,
+                "im": 297.77052,
+                "mag": 297.771525,
+                "phase_deg": 89.851,
+                "re": 0.773621
+              },
+              {
+                "f_hz": 189.6894,
+                "im": 326.999645,
+                "mag": 327.000568,
+                "phase_deg": 89.864,
+                "re": 0.776875
+              },
+              {
+                "f_hz": 207.9738,
+                "im": 359.216728,
+                "mag": 359.217577,
+                "phase_deg": 89.875,
+                "re": 0.780816
+              },
+              {
+                "f_hz": 228.0207,
+                "im": 394.766348,
+                "mag": 394.76713,
+                "phase_deg": 89.886,
+                "re": 0.785596
+              },
+              {
+                "f_hz": 250.0,
+                "im": 434.045139,
+                "mag": 434.04586,
+                "phase_deg": 89.896,
+                "re": 0.791406
+              }
+            ]
+          },
+          "solver_version": "v126-academic-whitebox-1.2",
+          "white_box_trace": [
+            {
+              "data": {
+                "control_delay_ms": 0.5,
+                "current_loop_bandwidth_hz": 900.0,
+                "filter_l_pu": 0.08,
+                "filter_r_pu": 0.005,
+                "pll_bandwidth_hz": 30.0,
+                "ref": "Sun 2011 (IEEE TPEL 26-11); Cespedes&Sun 2014 (29-3); Wen 2016 (31-1)",
+                "voltage_loop_bandwidth_hz": 80.0,
+                "z_base_ohm": 2.976744
+              },
+              "formula": "Z_conv(jw) = [Z_f + G_d*G_ci] / [1 - G_d*H_pll*(I0*G_ci - V0)/V0]",
+              "key": "ssci_zconv_model",
+              "proof_ref": "proof:v126:ssci_impedance:ssci_zconv_model",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "G_ci": {
+                  "im": -9.017294,
+                  "mag": 9.449018,
+                  "phase_deg": -72.613,
+                  "re": 2.823534
+                },
+                "G_d": {
+                  "im": -0.003142,
+                  "mag": 1.0,
+                  "phase_deg": -0.18,
+                  "re": 0.999995
+                },
+                "H_pll": {
+                  "im": -0.033296,
+                  "mag": 0.999445,
+                  "phase_deg": -1.909,
+                  "re": 0.99889
+                },
+                "Z_conv_ohm": {
+                  "im": -0.239406,
+                  "mag": 1.643405,
+                  "phase_deg": -171.624,
+                  "re": -1.625873
+                },
+                "Z_conv_pu": {
+                  "im": -0.080426,
+                  "mag": 0.552081,
+                  "phase_deg": -171.624,
+                  "re": -0.546192
+                },
+                "Z_f_pu": {
+                  "im": 0.0016,
+                  "mag": 0.00525,
+                  "phase_deg": 17.745,
+                  "re": 0.005
+                },
+                "probe_f_hz": 1.0
+              },
+              "result_pl": "Impedancja wyjściowa przekształtnika przy 1.0 Hz: 1.6434 Ω",
+              "step": 1,
+              "substitution": "w_ci=2*pi*900.0 rad/s; w_pll=2*pi*30.0 rad/s; T_d=0.5 ms; K_p=w_ci*L_f, K_i=w_ci*R_f (IMC); Z_base=Un^2/Sn",
+              "unit_check": "Impedancja filtru w jednostkach względnych, skalowana impedancją bazową [Ω]; wzmocnienia regulatorów bezwymiarowe."
+            },
+            {
+              "data": {
+                "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+                "f_max_hz": 250.0,
+                "f_min_hz": 1.0,
+                "points": 61
+              },
+              "formula": "Z_grid(f) = diag(pinv(Y_bus(f) + Y_src(f))) @ bus(falownika)",
+              "key": "ssci_zgrid_sweep",
+              "proof_ref": "proof:v126:ssci_impedance:ssci_zgrid_sweep",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "z_grid_at_f_min": {
+                  "im": 1.707536,
+                  "mag": 1.868156,
+                  "phase_deg": 66.067,
+                  "re": 0.757843
+                }
+              },
+              "result_pl": "Impedancja sieci przy 1.0 Hz: 1.8682 Ω",
+              "step": 2,
+              "substitution": "Macierz admitancyjna jak w skanie jakości energii, powiększona o bocznik źródła zasilającego; impedancja sterująca wyznaczona na węźle przyłączenia przekształtnika.",
+              "unit_check": "Odwrócenie macierzy admitancyjnej [S] daje impedancję [Ω]."
+            },
+            {
+              "data": {
+                "points": 61
+              },
+              "formula": "L(jw) = Z_grid(jw) / Z_conv(jw)",
+              "key": "ssci_minor_loop_gain",
+              "proof_ref": "proof:v126:ssci_impedance:ssci_minor_loop_gain",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "negative_resistance_region": true,
+                "re_zconv_min": -1.964213,
+                "re_zconv_min_f_hz": 8.3025
+              },
+              "result_pl": "Najmniejsza część rzeczywista impedancji przekształtnika: -1.9642 Ω przy 8.3025 Hz",
+              "step": 3,
+              "substitution": "Iloraz impedancji sieci i impedancji wyjściowej przekształtnika; bliskość punktu krytycznego (kryterium Nyquista) ocenia warstwa analizy — tutaj wyłącznie fizyka.",
+              "unit_check": "Iloraz impedancji [Ω/Ω] jest bezwymiarowy."
+            }
+          ]
+        },
+        "run_id": "run-v126-scena-akademickie-ssci_impedance",
+        "status": "FINISHED"
+      }
+    },
+    "voltage_stability": {
+      "dowod": {
+        "analysis_type": "voltage_stability",
+        "case_id": "case-demo",
+        "contract": "AcademicProofPackV1",
+        "proof_hash": "a5fc0ca1573a0a8b7d978f883f5ee3d3ee54cf41561b1c7d569a87001c841508",
+        "proof_id": "proof:v126:voltage_stability:1ff1f161482e6971",
+        "run_id": "run-v126-scena-akademickie-voltage_stability",
+        "source_result_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342",
+        "steps": [
+          {
+            "data": {
+              "buses": 8,
+              "buses_with_fault_level": 1,
+              "reactive_capability_source": null
+            },
+            "formula": "\\text{brak danych wejściowych} \\Rightarrow \\text{wielkość niewyznaczana}",
+            "formula_latex": "\\text{brak danych wejściowych} \\Rightarrow \\text{wielkość niewyznaczana}",
+            "ordinal": 1,
+            "proof_ref": "proof:v126:voltage_stability:voltage_stability_indices",
+            "proof_status": "complete",
+            "result": {
+              "l_index_per_bus": null,
+              "modal_analysis": null,
+              "pv_curves": null,
+              "qv_curves": null
+            },
+            "result_pl": "Analiza wstrzymana: brak danych wejściowych (moc zwarciowa węzłów podana dla 1 z 8 szyn; zdolność wytwórcza mocy biernej nieprzenoszona przez kontrakt wejściowy).",
+            "substitution": "Żadna z wielkości stabilności napięciowej nie została wyznaczona — brakuje mocy zwarciowej węzłów oraz zdolności wytwórczej mocy biernej, a poprzednie wzory zastępowały te dane współczynnikami bez pokrycia.",
+            "unit_check": "Brak wielkości do sprawdzenia jednostek — analiza nie wyznacza liczb."
+          }
+        ],
+        "trace_step_count": 1
+      },
+      "koperta": {
+        "analysis_type": "voltage_stability",
+        "case_id": "case-demo",
+        "deterministic_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342",
+        "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-voltage_stability/results/v126/voltage_stability/proof",
+        "report_url": "/api/analysis-runs/run-v126-scena-akademickie-voltage_stability/results/v126/voltage_stability/report",
+        "result_url": "/api/analysis-runs/run-v126-scena-akademickie-voltage_stability/results/v126/voltage_stability",
+        "run_id": "run-v126-scena-akademickie-voltage_stability",
+        "status": "FINISHED",
+        "trace_url": "/api/analysis-runs/run-v126-scena-akademickie-voltage_stability/results/v126/voltage_stability/trace"
+      },
+      "raport": {
+        "analysis_type": "voltage_stability",
+        "case_id": "case-demo",
+        "contract": "AcademicReportV2",
+        "export_policy": "frozen_result_and_proof_only",
+        "report_hash": "45aaad4fe19177990d4e0ee032859feff9f7181f189d3f856fc8c97a960d2d32",
+        "report_id": "report:v126:voltage_stability:1ff1f161482e6971",
+        "run_id": "run-v126-scena-akademickie-voltage_stability",
+        "sections": [
+          {
+            "metrics": [
+              {
+                "label": "proof_id",
+                "value": "proof:v126:voltage_stability:1ff1f161482e6971"
+              },
+              {
+                "label": "proof_hash",
+                "value": "a5fc0ca1573a0a8b7d978f883f5ee3d3ee54cf41561b1c7d569a87001c841508"
+              },
+              {
+                "label": "trace_step_count",
+                "value": 1
+              }
+            ],
+            "section_id": "dowod",
+            "title": "Dowód obliczeń"
+          },
+          {
+            "metrics": [
+              {
+                "label": "result_hash",
+                "value": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342"
+              },
+              {
+                "label": "solver_version",
+                "value": "v126-academic-whitebox-1.2"
+              },
+              {
+                "label": "input_hash",
+                "value": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5"
+              }
+            ],
+            "section_id": "audyt",
+            "title": "Audyt deterministyczny"
+          }
+        ],
+        "source_proof_hash": "a5fc0ca1573a0a8b7d978f883f5ee3d3ee54cf41561b1c7d569a87001c841508",
+        "source_result_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342"
+      },
+      "slad": {
+        "analysis_type": "voltage_stability",
+        "deterministic_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342",
+        "run_id": "run-v126-scena-akademickie-voltage_stability",
+        "steps": [
+          {
+            "data": {
+              "buses": 8,
+              "buses_with_fault_level": 1,
+              "reactive_capability_source": null
+            },
+            "formula": "\\text{brak danych wejściowych} \\Rightarrow \\text{wielkość niewyznaczana}",
+            "formula_latex": "\\text{brak danych wejściowych} \\Rightarrow \\text{wielkość niewyznaczana}",
+            "key": "voltage_stability_indices",
+            "proof_ref": "proof:v126:voltage_stability:voltage_stability_indices",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "l_index_per_bus": null,
+              "modal_analysis": null,
+              "pv_curves": null,
+              "qv_curves": null
+            },
+            "result_pl": "Analiza wstrzymana: brak danych wejściowych (moc zwarciowa węzłów podana dla 1 z 8 szyn; zdolność wytwórcza mocy biernej nieprzenoszona przez kontrakt wejściowy).",
+            "step": 1,
+            "substitution": "Żadna z wielkości stabilności napięciowej nie została wyznaczona — brakuje mocy zwarciowej węzłów oraz zdolności wytwórczej mocy biernej, a poprzednie wzory zastępowały te dane współczynnikami bez pokrycia.",
+            "unit_check": "Brak wielkości do sprawdzenia jednostek — analiza nie wyznacza liczb."
+          }
+        ],
+        "trace_version": "AcademicWhiteBoxTraceV1"
+      },
+      "wynik": {
+        "analysis_type": "voltage_stability",
+        "case_id": "case-demo",
+        "created_at": "2026-09-16T09:00:00+00:00",
+        "proof_ref": "proof:v126:voltage_stability:1ff1f161482e6971",
+        "report_ref": "report:v126:voltage_stability:1ff1f161482e6971",
+        "result": {
+          "analysis_type": "voltage_stability",
+          "contract": "AcademicAnalysisResultV1",
+          "deterministic_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342",
+          "input_hash": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5",
+          "result": {
+            "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
+            "l_index_per_bus": [
+              {
+                "alert": null,
+                "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
+                "bus_ref": "bus_hv",
+                "l_index": null
+              },
+              {
+                "alert": null,
+                "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
+                "bus_ref": "bus_sn_main",
+                "l_index": null
+              },
+              {
+                "alert": null,
+                "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
+                "bus_ref": "bus_sn_b",
+                "l_index": null
+              },
+              {
+                "alert": null,
+                "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
+                "bus_ref": "bus_sn_c",
+                "l_index": null
+              },
+              {
+                "alert": null,
+                "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
+                "bus_ref": "bus_nn",
+                "l_index": null
+              },
+              {
+                "alert": null,
+                "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
+                "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+                "l_index": null
+              },
+              {
+                "alert": null,
+                "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
+                "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+                "l_index": null
+              },
+              {
+                "alert": null,
+                "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
+                "bus_ref": "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+                "l_index": null
+              }
+            ],
+            "modal_analysis": {
+              "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
+              "critical_mode": {
+                "eigenvalue": null,
+                "participating_buses": []
+              },
+              "smallest_eigenvalue": null
+            },
+            "pv_curves": [
+              {
+                "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
+                "bus_ref": "bus_hv",
+                "lambda_max": null,
+                "margin_percent": null,
+                "u_at_max": null
+              },
+              {
+                "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
+                "bus_ref": "bus_sn_main",
+                "lambda_max": null,
+                "margin_percent": null,
+                "u_at_max": null
+              },
+              {
+                "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
+                "bus_ref": "bus_sn_b",
+                "lambda_max": null,
+                "margin_percent": null,
+                "u_at_max": null
+              },
+              {
+                "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
+                "bus_ref": "bus_sn_c",
+                "lambda_max": null,
+                "margin_percent": null,
+                "u_at_max": null
+              },
+              {
+                "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
+                "bus_ref": "bus_nn",
+                "lambda_max": null,
+                "margin_percent": null,
+                "u_at_max": null
+              },
+              {
+                "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
+                "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+                "lambda_max": null,
+                "margin_percent": null,
+                "u_at_max": null
+              },
+              {
+                "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
+                "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+                "lambda_max": null,
+                "margin_percent": null,
+                "u_at_max": null
+              },
+              {
+                "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
+                "bus_ref": "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+                "lambda_max": null,
+                "margin_percent": null,
+                "u_at_max": null
+              }
+            ],
+            "qv_curves": [
+              {
+                "brak_danych": "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby przywrócić tę wielkość.",
+                "bus_ref": "bus_hv",
+                "margin_mvar": null,
+                "q_available_mvar": null,
+                "q_min_mvar": null
+              },
+              {
+                "brak_danych": "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby przywrócić tę wielkość.",
+                "bus_ref": "bus_sn_main",
+                "margin_mvar": null,
+                "q_available_mvar": null,
+                "q_min_mvar": null
+              },
+              {
+                "brak_danych": "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby przywrócić tę wielkość.",
+                "bus_ref": "bus_sn_b",
+                "margin_mvar": null,
+                "q_available_mvar": null,
+                "q_min_mvar": null
+              },
+              {
+                "brak_danych": "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby przywrócić tę wielkość.",
+                "bus_ref": "bus_sn_c",
+                "margin_mvar": null,
+                "q_available_mvar": null,
+                "q_min_mvar": null
+              },
+              {
+                "brak_danych": "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby przywrócić tę wielkość.",
+                "bus_ref": "bus_nn",
+                "margin_mvar": null,
+                "q_available_mvar": null,
+                "q_min_mvar": null
+              },
+              {
+                "brak_danych": "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby przywrócić tę wielkość.",
+                "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+                "margin_mvar": null,
+                "q_available_mvar": null,
+                "q_min_mvar": null
+              },
+              {
+                "brak_danych": "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby przywrócić tę wielkość.",
+                "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+                "margin_mvar": null,
+                "q_available_mvar": null,
+                "q_min_mvar": null
+              },
+              {
+                "brak_danych": "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby przywrócić tę wielkość.",
+                "bus_ref": "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+                "margin_mvar": null,
+                "q_available_mvar": null,
+                "q_min_mvar": null
+              }
+            ],
+            "sanity": {
+              "checks_passed": 0,
+              "checks_total": 4,
+              "status": "dane niekompletne",
+              "violations": []
+            },
+            "voltage_stability_margin_percent": null
+          },
+          "solver_version": "v126-academic-whitebox-1.2",
+          "white_box_trace": [
+            {
+              "data": {
+                "buses": 8,
+                "buses_with_fault_level": 1,
+                "reactive_capability_source": null
+              },
+              "formula": "\\text{brak danych wejściowych} \\Rightarrow \\text{wielkość niewyznaczana}",
+              "key": "voltage_stability_indices",
+              "proof_ref": "proof:v126:voltage_stability:voltage_stability_indices",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "l_index_per_bus": null,
+                "modal_analysis": null,
+                "pv_curves": null,
+                "qv_curves": null
+              },
+              "result_pl": "Analiza wstrzymana: brak danych wejściowych (moc zwarciowa węzłów podana dla 1 z 8 szyn; zdolność wytwórcza mocy biernej nieprzenoszona przez kontrakt wejściowy).",
+              "step": 1,
+              "substitution": "Żadna z wielkości stabilności napięciowej nie została wyznaczona — brakuje mocy zwarciowej węzłów oraz zdolności wytwórczej mocy biernej, a poprzednie wzory zastępowały te dane współczynnikami bez pokrycia.",
+              "unit_check": "Brak wielkości do sprawdzenia jednostek — analiza nie wyznacza liczb."
+            }
+          ]
+        },
+        "run_id": "run-v126-scena-akademickie-voltage_stability",
+        "status": "FINISHED"
+      }
+    },
+    "reliability_contingency": {
+      "dowod": {
+        "analysis_type": "reliability_contingency",
+        "case_id": "case-demo",
+        "contract": "AcademicProofPackV1",
+        "proof_hash": "52cf65864b445f44d7f992ed1ba96ab602bf1f8ce6b551a874ec4d5e8eef8d36",
+        "proof_id": "proof:v126:reliability_contingency:b27734df66f10ceb",
+        "run_id": "run-v126-scena-akademickie-reliability_contingency",
+        "source_result_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8",
+        "steps": [
+          {
+            "data": {
+              "branches": 5,
+              "customers_total": 195
+            },
+            "formula": "SAIDI = sum(lambda_e * MTTR_e * 60 * N_e) / N_t; SAIFI = sum(lambda_e * N_e)/N_t",
+            "formula_latex": "\\mathrm{SAIDI} = \\dfrac{\\sum_e \\lambda_e \\cdot \\mathrm{MTTR}_e \\cdot 60 \\cdot N_e}{N_t}\\text{,}\\quad \\mathrm{SAIFI} = \\dfrac{\\sum_e \\lambda_e \\cdot N_e}{N_t}",
+            "ordinal": 1,
+            "proof_ref": "proof:v126:reliability_contingency:reliability_indices",
+            "proof_status": "complete",
+            "result": {
+              "saidi_min_per_year": 27.5138,
+              "saifi_per_year": 0.0759
+            },
+            "result_pl": "Przerwy na odbiorcę: 27.5138 min/rok, 0.0759 1/rok",
+            "substitution": "Dla każdej gałęzi wyznaczono liczbę odbiorców zasilanych za nią oraz roczny wkład jej awaryjności do wskaźników przerw.",
+            "unit_check": "Intensywność uszkodzeń [1/rok] razy czas odtworzenia [h] razy 60 daje [min/rok]."
+          }
+        ],
+        "trace_step_count": 1
+      },
+      "koperta": {
+        "analysis_type": "reliability_contingency",
+        "case_id": "case-demo",
+        "deterministic_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8",
+        "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-reliability_contingency/results/v126/reliability_contingency/proof",
+        "report_url": "/api/analysis-runs/run-v126-scena-akademickie-reliability_contingency/results/v126/reliability_contingency/report",
+        "result_url": "/api/analysis-runs/run-v126-scena-akademickie-reliability_contingency/results/v126/reliability_contingency",
+        "run_id": "run-v126-scena-akademickie-reliability_contingency",
+        "status": "FINISHED",
+        "trace_url": "/api/analysis-runs/run-v126-scena-akademickie-reliability_contingency/results/v126/reliability_contingency/trace"
+      },
+      "raport": {
+        "analysis_type": "reliability_contingency",
+        "case_id": "case-demo",
+        "contract": "AcademicReportV2",
+        "export_policy": "frozen_result_and_proof_only",
+        "report_hash": "f435ec601b7b9cbd03b275baa654153376f44db1ce4fd365f93144d7a45bea27",
+        "report_id": "report:v126:reliability_contingency:b27734df66f10ceb",
+        "run_id": "run-v126-scena-akademickie-reliability_contingency",
+        "sections": [
+          {
+            "metrics": [
+              {
+                "label": "proof_id",
+                "value": "proof:v126:reliability_contingency:b27734df66f10ceb"
+              },
+              {
+                "label": "proof_hash",
+                "value": "52cf65864b445f44d7f992ed1ba96ab602bf1f8ce6b551a874ec4d5e8eef8d36"
+              },
+              {
+                "label": "trace_step_count",
+                "value": 1
+              }
+            ],
+            "section_id": "dowod",
+            "title": "Dowód obliczeń"
+          },
+          {
+            "metrics": [
+              {
+                "label": "result_hash",
+                "value": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8"
+              },
+              {
+                "label": "solver_version",
+                "value": "v126-academic-whitebox-1.2"
+              },
+              {
+                "label": "input_hash",
+                "value": "c50888922ae0c0a3b2516ba81fc23abfdd528e684b80b4388ff10a99f04fa215"
+              }
+            ],
+            "section_id": "audyt",
+            "title": "Audyt deterministyczny"
+          }
+        ],
+        "source_proof_hash": "52cf65864b445f44d7f992ed1ba96ab602bf1f8ce6b551a874ec4d5e8eef8d36",
+        "source_result_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8"
+      },
+      "slad": {
+        "analysis_type": "reliability_contingency",
+        "deterministic_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8",
+        "run_id": "run-v126-scena-akademickie-reliability_contingency",
+        "steps": [
+          {
+            "data": {
+              "branches": 5,
+              "customers_total": 195
+            },
+            "formula": "SAIDI = sum(lambda_e * MTTR_e * 60 * N_e) / N_t; SAIFI = sum(lambda_e * N_e)/N_t",
+            "formula_latex": "\\mathrm{SAIDI} = \\dfrac{\\sum_e \\lambda_e \\cdot \\mathrm{MTTR}_e \\cdot 60 \\cdot N_e}{N_t}\\text{,}\\quad \\mathrm{SAIFI} = \\dfrac{\\sum_e \\lambda_e \\cdot N_e}{N_t}",
+            "key": "reliability_indices",
+            "proof_ref": "proof:v126:reliability_contingency:reliability_indices",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "saidi_min_per_year": 27.5138,
+              "saifi_per_year": 0.0759
+            },
+            "result_pl": "Przerwy na odbiorcę: 27.5138 min/rok, 0.0759 1/rok",
+            "step": 1,
+            "substitution": "Dla każdej gałęzi wyznaczono liczbę odbiorców zasilanych za nią oraz roczny wkład jej awaryjności do wskaźników przerw.",
+            "unit_check": "Intensywność uszkodzeń [1/rok] razy czas odtworzenia [h] razy 60 daje [min/rok]."
+          }
+        ],
+        "trace_version": "AcademicWhiteBoxTraceV1"
+      },
+      "wynik": {
+        "analysis_type": "reliability_contingency",
+        "case_id": "case-demo",
+        "created_at": "2026-09-16T09:00:00+00:00",
+        "proof_ref": "proof:v126:reliability_contingency:b27734df66f10ceb",
+        "report_ref": "report:v126:reliability_contingency:b27734df66f10ceb",
+        "result": {
+          "analysis_type": "reliability_contingency",
+          "contract": "AcademicAnalysisResultV1",
+          "deterministic_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8",
+          "input_hash": "c50888922ae0c0a3b2516ba81fc23abfdd528e684b80b4388ff10a99f04fa215",
+          "result": {
+            "indices": {
+              "caidi_min_per_interruption": 362.5135,
+              "maifi_per_year": 0.00911,
+              "saidi_min_per_year": 27.5138,
+              "saifi_per_year": 0.0759
+            },
+            "ranking_n1": {
+              "ekran": "Wyniki › Kontyngencje",
+              "powod_pl": "ranking liczony z prądu gałęzi bez rozpływu (V12.6); ranking kanoniczny = pełny re-solve",
+              "status": "NIEPREZENTOWANY",
+              "trasa": "/api/insights/n-1-contingency"
+            },
+            "sanity": {
+              "checks_passed": 4,
+              "checks_total": 4,
+              "status": "w paśmie wiarygodności",
+              "violations": []
+            }
+          },
+          "solver_version": "v126-academic-whitebox-1.2",
+          "white_box_trace": [
+            {
+              "data": {
+                "branches": 5,
+                "customers_total": 195
+              },
+              "formula": "SAIDI = sum(lambda_e * MTTR_e * 60 * N_e) / N_t; SAIFI = sum(lambda_e * N_e)/N_t",
+              "key": "reliability_indices",
+              "proof_ref": "proof:v126:reliability_contingency:reliability_indices",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "saidi_min_per_year": 27.5138,
+                "saifi_per_year": 0.0759
+              },
+              "result_pl": "Przerwy na odbiorcę: 27.5138 min/rok, 0.0759 1/rok",
+              "step": 1,
+              "substitution": "Dla każdej gałęzi wyznaczono liczbę odbiorców zasilanych za nią oraz roczny wkład jej awaryjności do wskaźników przerw.",
+              "unit_check": "Intensywność uszkodzeń [1/rok] razy czas odtworzenia [h] razy 60 daje [min/rok]."
+            }
+          ]
+        },
+        "run_id": "run-v126-scena-akademickie-reliability_contingency",
+        "status": "FINISHED"
+      }
+    },
+    "earthing_safety": {
+      "dowod": {
+        "analysis_type": "earthing_safety",
+        "case_id": "case-demo",
+        "contract": "AcademicProofPackV1",
+        "proof_hash": "ccb2f7f59aa7f633b66048021e779ef985f1ddd34df6f5c07bd3d53b241389d8",
+        "proof_id": "proof:v126:earthing_safety:4651d15a7446d0cf",
+        "run_id": "run-v126-scena-akademickie-earthing_safety",
+        "source_result_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc",
+        "steps": [
+          {
+            "data": {
+              "area_m2": 1200.0,
+              "lc_m": 610.0,
+              "rho_ohm_m": 100.0
+            },
+            "formula": "Rg = rho * [1/Lc + 1/sqrt(20A)*(1 + 1/(1+h*sqrt(20/A)))]",
+            "formula_latex": "R_g = \\rho_1 \\left[\\dfrac{1}{L_c} + \\dfrac{1}{\\sqrt{20A}}\\left(1 + \\dfrac{1}{1+h\\sqrt{20/A}}\\right)\\right]",
+            "ordinal": 1,
+            "proof_ref": "proof:v126:earthing_safety:ieee80_sverak",
+            "proof_status": "complete",
+            "result": {
+              "gpr_kv": 6.726865,
+              "r_g_ohm": 1.40143
+            },
+            "result_pl": "Rezystancja uziomu: 1.40143 Ω; wzrost potencjału: 6.726865 kV",
+            "substitution": "R_g = 100.0 Ω·m · (1/610.0 m + człon powierzchniowy siatki)",
+            "substitution_latex": "R_g = 100\\ \\Omega{\\cdot}\\mathrm{m} \\cdot \\left(\\dfrac{1}{610\\ \\mathrm{m}} + \\text{człon powierzchniowy siatki (}A=1200\\ \\mathrm{m}^2\\text{)}\\right)",
+            "unit_check": "Rezystywność [Ω·m] razy odwrotność długości [1/m] daje rezystancję [Ω]; prąd [kA] razy rezystancja [Ω] daje napięcie [kV]."
+          }
+        ],
+        "trace_step_count": 1
+      },
+      "koperta": {
+        "analysis_type": "earthing_safety",
+        "case_id": "case-demo",
+        "deterministic_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc",
+        "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety/proof",
+        "report_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety/report",
+        "result_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety",
+        "run_id": "run-v126-scena-akademickie-earthing_safety",
+        "status": "FINISHED",
+        "trace_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety/trace"
+      },
+      "raport": {
+        "analysis_type": "earthing_safety",
+        "case_id": "case-demo",
+        "contract": "AcademicReportV2",
+        "export_policy": "frozen_result_and_proof_only",
+        "report_hash": "97638f0b07a480c6ab361fd53eda03869db418f7b5e2e9861bb55e5832bd99af",
+        "report_id": "report:v126:earthing_safety:4651d15a7446d0cf",
+        "run_id": "run-v126-scena-akademickie-earthing_safety",
+        "sections": [
+          {
+            "metrics": [
+              {
+                "label": "proof_id",
+                "value": "proof:v126:earthing_safety:4651d15a7446d0cf"
+              },
+              {
+                "label": "proof_hash",
+                "value": "ccb2f7f59aa7f633b66048021e779ef985f1ddd34df6f5c07bd3d53b241389d8"
+              },
+              {
+                "label": "trace_step_count",
+                "value": 1
+              }
+            ],
+            "section_id": "dowod",
+            "title": "Dowód obliczeń"
+          },
+          {
+            "metrics": [
+              {
+                "label": "result_hash",
+                "value": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc"
+              },
+              {
+                "label": "solver_version",
+                "value": "v126-academic-whitebox-1.2"
+              },
+              {
+                "label": "input_hash",
+                "value": "8fe4cf4f43d5d2eaa79184ece74dbb88fabd9c66bcad817754171a3dfca46e25"
+              }
+            ],
+            "section_id": "audyt",
+            "title": "Audyt deterministyczny"
+          }
+        ],
+        "source_proof_hash": "ccb2f7f59aa7f633b66048021e779ef985f1ddd34df6f5c07bd3d53b241389d8",
+        "source_result_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc"
+      },
+      "slad": {
+        "analysis_type": "earthing_safety",
+        "deterministic_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc",
+        "run_id": "run-v126-scena-akademickie-earthing_safety",
+        "steps": [
+          {
+            "data": {
+              "area_m2": 1200.0,
+              "lc_m": 610.0,
+              "rho_ohm_m": 100.0
+            },
+            "formula": "Rg = rho * [1/Lc + 1/sqrt(20A)*(1 + 1/(1+h*sqrt(20/A)))]",
+            "formula_latex": "R_g = \\rho_1 \\left[\\dfrac{1}{L_c} + \\dfrac{1}{\\sqrt{20A}}\\left(1 + \\dfrac{1}{1+h\\sqrt{20/A}}\\right)\\right]",
+            "key": "ieee80_sverak",
+            "proof_ref": "proof:v126:earthing_safety:ieee80_sverak",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "gpr_kv": 6.726865,
+              "r_g_ohm": 1.40143
+            },
+            "result_pl": "Rezystancja uziomu: 1.40143 Ω; wzrost potencjału: 6.726865 kV",
+            "step": 1,
+            "substitution": "R_g = 100.0 Ω·m · (1/610.0 m + człon powierzchniowy siatki)",
+            "substitution_latex": "R_g = 100\\ \\Omega{\\cdot}\\mathrm{m} \\cdot \\left(\\dfrac{1}{610\\ \\mathrm{m}} + \\text{człon powierzchniowy siatki (}A=1200\\ \\mathrm{m}^2\\text{)}\\right)",
+            "unit_check": "Rezystywność [Ω·m] razy odwrotność długości [1/m] daje rezystancję [Ω]; prąd [kA] razy rezystancja [Ω] daje napięcie [kV]."
+          }
+        ],
+        "trace_version": "AcademicWhiteBoxTraceV1"
+      },
+      "wynik": {
+        "analysis_type": "earthing_safety",
+        "case_id": "case-demo",
+        "created_at": "2026-09-16T09:00:00+00:00",
+        "proof_ref": "proof:v126:earthing_safety:4651d15a7446d0cf",
+        "report_ref": "report:v126:earthing_safety:4651d15a7446d0cf",
+        "result": {
+          "analysis_type": "earthing_safety",
+          "contract": "AcademicAnalysisResultV1",
+          "deterministic_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc",
+          "input_hash": "8fe4cf4f43d5d2eaa79184ece74dbb88fabd9c66bcad817754171a3dfca46e25",
+          "result": {
+            "fault_clearing_time_s": 0.5,
+            "gpr_kv": 6.726865,
+            "gpz_ref": "bus_hv",
+            "grid_geometry": {
+              "buried_depth_m": 0.7,
+              "length_m": 40.0,
+              "mesh_spacing_m": 5.0,
+              "width_m": 30.0
+            },
+            "i_g_ka": 4.8,
+            "r_g_ohm": 1.40143,
+            "safety_status": "niezgodny",
+            "sanity": {
+              "checks_passed": 4,
+              "checks_total": 4,
+              "status": "w paśmie wiarygodności",
+              "violations": []
+            },
+            "soil_model": {
+              "h1": 2.0,
+              "rho1": 100.0,
+              "rho2": 300.0
+            },
+            "split_factor": 0.6,
+            "u_step_allowable_v": 3019.629,
+            "u_step_calculated_v": 1919.056,
+            "u_touch_allowable_v": 921.431,
+            "u_touch_calculated_v": 2499.069
+          },
+          "solver_version": "v126-academic-whitebox-1.2",
+          "white_box_trace": [
+            {
+              "data": {
+                "area_m2": 1200.0,
+                "lc_m": 610.0,
+                "rho_ohm_m": 100.0
+              },
+              "formula": "Rg = rho * [1/Lc + 1/sqrt(20A)*(1 + 1/(1+h*sqrt(20/A)))]",
+              "key": "ieee80_sverak",
+              "proof_ref": "proof:v126:earthing_safety:ieee80_sverak",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "gpr_kv": 6.726865,
+                "r_g_ohm": 1.40143
+              },
+              "result_pl": "Rezystancja uziomu: 1.40143 Ω; wzrost potencjału: 6.726865 kV",
+              "step": 1,
+              "substitution": "R_g = 100.0 Ω·m · (1/610.0 m + człon powierzchniowy siatki)",
+              "unit_check": "Rezystywność [Ω·m] razy odwrotność długości [1/m] daje rezystancję [Ω]; prąd [kA] razy rezystancja [Ω] daje napięcie [kV]."
+            }
+          ]
+        },
+        "run_id": "run-v126-scena-akademickie-earthing_safety",
+        "status": "FINISHED"
+      }
+    },
+    "earth_fault_detection": {
+      "dowod": {
+        "analysis_type": "earth_fault_detection",
+        "case_id": "case-demo",
+        "contract": "AcademicProofPackV1",
+        "proof_hash": "e663023637966865e6040da15c0606a31215ab464674790e6401b62037cfb1b1",
+        "proof_id": "proof:v126:earth_fault_detection:5d650527329a3346",
+        "run_id": "run-v126-scena-akademickie-earth_fault_detection",
+        "source_result_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c",
+        "steps": [
+          {
+            "data": {
+              "neutral_grounding": "petersen_tuned",
+              "relay_methods": [
+                "admittance",
+                "wattmetric"
+              ]
+            },
+            "formula": "Metoda detekcji = f(sposób uziemienia punktu neutralnego, wyposażenie przekaźnika)",
+            "formula_latex": "\\text{Metoda detekcji} = f(\\text{sposób uziemienia punktu neutralnego},\\ \\text{wyposażenie przekaźnika})",
+            "ordinal": 1,
+            "proof_ref": "proof:v126:earth_fault_detection:earth_fault_method_selection",
+            "proof_status": "complete",
+            "result": {
+              "available": true,
+              "recommended_method": "wattmetric"
+            },
+            "result_pl": "Metoda zalecana: watometryczna; dostępna w przekaźniku: tak",
+            "substitution": "petersen_tuned -> wattmetric",
+            "substitution_latex": "\\text{punkt neutralny: skompensowany dławikiem dostrojonym;}\\ \\text{metody dostępne w przekaźniku: admitancyjna, watometryczna}",
+            "unit_check": "Wybór metody jest decyzją logiczną — bez jednostek fizycznych."
+          }
+        ],
+        "trace_step_count": 1
+      },
+      "koperta": {
+        "analysis_type": "earth_fault_detection",
+        "case_id": "case-demo",
+        "deterministic_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c",
+        "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/proof",
+        "report_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/report",
+        "result_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection",
+        "run_id": "run-v126-scena-akademickie-earth_fault_detection",
+        "status": "FINISHED",
+        "trace_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/trace"
+      },
+      "raport": {
+        "analysis_type": "earth_fault_detection",
+        "case_id": "case-demo",
+        "contract": "AcademicReportV2",
+        "export_policy": "frozen_result_and_proof_only",
+        "report_hash": "428e2f395616dee5ba74c3e457fcfd10cab0ff39a189c0bdd2ed764e2799e24e",
+        "report_id": "report:v126:earth_fault_detection:5d650527329a3346",
+        "run_id": "run-v126-scena-akademickie-earth_fault_detection",
+        "sections": [
+          {
+            "metrics": [
+              {
+                "label": "proof_id",
+                "value": "proof:v126:earth_fault_detection:5d650527329a3346"
+              },
+              {
+                "label": "proof_hash",
+                "value": "e663023637966865e6040da15c0606a31215ab464674790e6401b62037cfb1b1"
+              },
+              {
+                "label": "trace_step_count",
+                "value": 1
+              }
+            ],
+            "section_id": "dowod",
+            "title": "Dowód obliczeń"
+          },
+          {
+            "metrics": [
+              {
+                "label": "result_hash",
+                "value": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c"
+              },
+              {
+                "label": "solver_version",
+                "value": "v126-academic-whitebox-1.2"
+              },
+              {
+                "label": "input_hash",
+                "value": "b83330313c6f60ea5789d0a4a72935d8f4d0bccc32f59ad223d34dee6a8d0041"
+              }
+            ],
+            "section_id": "audyt",
+            "title": "Audyt deterministyczny"
+          }
+        ],
+        "source_proof_hash": "e663023637966865e6040da15c0606a31215ab464674790e6401b62037cfb1b1",
+        "source_result_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c"
+      },
+      "slad": {
+        "analysis_type": "earth_fault_detection",
+        "deterministic_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c",
+        "run_id": "run-v126-scena-akademickie-earth_fault_detection",
+        "steps": [
+          {
+            "data": {
+              "neutral_grounding": "petersen_tuned",
+              "relay_methods": [
+                "admittance",
+                "wattmetric"
+              ]
+            },
+            "formula": "Metoda detekcji = f(sposób uziemienia punktu neutralnego, wyposażenie przekaźnika)",
+            "formula_latex": "\\text{Metoda detekcji} = f(\\text{sposób uziemienia punktu neutralnego},\\ \\text{wyposażenie przekaźnika})",
+            "key": "earth_fault_method_selection",
+            "proof_ref": "proof:v126:earth_fault_detection:earth_fault_method_selection",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "available": true,
+              "recommended_method": "wattmetric"
+            },
+            "result_pl": "Metoda zalecana: watometryczna; dostępna w przekaźniku: tak",
+            "step": 1,
+            "substitution": "petersen_tuned -> wattmetric",
+            "substitution_latex": "\\text{punkt neutralny: skompensowany dławikiem dostrojonym;}\\ \\text{metody dostępne w przekaźniku: admitancyjna, watometryczna}",
+            "unit_check": "Wybór metody jest decyzją logiczną — bez jednostek fizycznych."
+          }
+        ],
+        "trace_version": "AcademicWhiteBoxTraceV1"
+      },
+      "wynik": {
+        "analysis_type": "earth_fault_detection",
+        "case_id": "case-demo",
+        "created_at": "2026-09-16T09:00:00+00:00",
+        "proof_ref": "proof:v126:earth_fault_detection:5d650527329a3346",
+        "report_ref": "report:v126:earth_fault_detection:5d650527329a3346",
+        "result": {
+          "analysis_type": "earth_fault_detection",
+          "contract": "AcademicAnalysisResultV1",
+          "deterministic_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c",
+          "input_hash": "b83330313c6f60ea5789d0a4a72935d8f4d0bccc32f59ad223d34dee6a8d0041",
+          "result": {
+            "alternative_method": "fifth_harmonic",
+            "neutral_grounding": "petersen_tuned",
+            "recommended_method": "wattmetric",
+            "relay_support_status": "spelniony",
+            "sanity": {
+              "checks_passed": 2,
+              "checks_total": 2,
+              "status": "w paśmie wiarygodności",
+              "violations": []
+            },
+            "settings": {
+              "i5_multiplier": null,
+              "p0_set_w": 1.0,
+              "u0_start_percent": 5.0
+            }
+          },
+          "solver_version": "v126-academic-whitebox-1.2",
+          "white_box_trace": [
+            {
+              "data": {
+                "neutral_grounding": "petersen_tuned",
+                "relay_methods": [
+                  "admittance",
+                  "wattmetric"
+                ]
+              },
+              "formula": "Metoda detekcji = f(sposób uziemienia punktu neutralnego, wyposażenie przekaźnika)",
+              "key": "earth_fault_method_selection",
+              "proof_ref": "proof:v126:earth_fault_detection:earth_fault_method_selection",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "available": true,
+                "recommended_method": "wattmetric"
+              },
+              "result_pl": "Metoda zalecana: wattmetric; dostępna w przekaźniku: tak",
+              "step": 1,
+              "substitution": "petersen_tuned -> wattmetric",
+              "unit_check": "Wybór metody jest decyzją logiczną — bez jednostek fizycznych."
+            }
+          ]
+        },
+        "run_id": "run-v126-scena-akademickie-earth_fault_detection",
+        "status": "FINISHED"
+      }
+    },
+    "transient_trv": {
+      "dowod": {
+        "analysis_type": "transient_trv",
+        "case_id": "case-demo",
+        "contract": "AcademicProofPackV1",
+        "proof_hash": "7e556ebfaeae87aded42fabd8c48bc3946b2893d756f7426c825581cecc04288",
+        "proof_id": "proof:v126:transient_trv:18595c77271bad2b",
+        "run_id": "run-v126-scena-akademickie-transient_trv",
+        "source_result_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c",
+        "steps": [
+          {
+            "data": {
+              "f_n_hz": 12000.0,
+              "tau_s": 0.00018,
+              "u_r_kv": 17.5
+            },
+            "formula": "u_TRV(t)=Ur*(1-cos(wn*t))*exp(-t/tau)+Ur/sqrt(3)",
+            "formula_latex": "u_{\\mathrm{TRV}}(t) = U_r\\left(1-\\cos(\\omega_n t)\\right)e^{-t/\\tau} + \\dfrac{U_r}{\\sqrt{3}}",
+            "ordinal": 1,
+            "proof_ref": "proof:v126:transient_trv:trv_inrush_ferro",
+            "proof_status": "complete",
+            "result": {
+              "ferro_risk": false,
+              "trv_margin_percent": -1194.8609
+            },
+            "result_pl": "Najmniejszy margines napięcia powrotnego: -1194.8609 %",
+            "substitution": "Przebieg napięcia powrotnego porównano punkt po punkcie z obwiednią wytrzymałości wyłącznika wg IEC 62271-100.",
+            "unit_check": "Napięcia porównywane w [kV]; margines wyrażony w %."
+          }
+        ],
+        "trace_step_count": 1
+      },
+      "koperta": {
+        "analysis_type": "transient_trv",
+        "case_id": "case-demo",
+        "deterministic_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c",
+        "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv/proof",
+        "report_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv/report",
+        "result_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv",
+        "run_id": "run-v126-scena-akademickie-transient_trv",
+        "status": "FINISHED",
+        "trace_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv/trace"
+      },
+      "raport": {
+        "analysis_type": "transient_trv",
+        "case_id": "case-demo",
+        "contract": "AcademicReportV2",
+        "export_policy": "frozen_result_and_proof_only",
+        "report_hash": "8bee182941d8ef419ad0732c2098eb0212ea962ae37496aacdc25d3ae504097d",
+        "report_id": "report:v126:transient_trv:18595c77271bad2b",
+        "run_id": "run-v126-scena-akademickie-transient_trv",
+        "sections": [
+          {
+            "metrics": [
+              {
+                "label": "proof_id",
+                "value": "proof:v126:transient_trv:18595c77271bad2b"
+              },
+              {
+                "label": "proof_hash",
+                "value": "7e556ebfaeae87aded42fabd8c48bc3946b2893d756f7426c825581cecc04288"
+              },
+              {
+                "label": "trace_step_count",
+                "value": 1
+              }
+            ],
+            "section_id": "dowod",
+            "title": "Dowód obliczeń"
+          },
+          {
+            "metrics": [
+              {
+                "label": "result_hash",
+                "value": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c"
+              },
+              {
+                "label": "solver_version",
+                "value": "v126-academic-whitebox-1.2"
+              },
+              {
+                "label": "input_hash",
+                "value": "0dd328a387ad806dd0b49ce585908b458f1f686646aa3dd520f9c3818e68f96b"
+              }
+            ],
+            "section_id": "audyt",
+            "title": "Audyt deterministyczny"
+          }
+        ],
+        "source_proof_hash": "7e556ebfaeae87aded42fabd8c48bc3946b2893d756f7426c825581cecc04288",
+        "source_result_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c"
+      },
+      "slad": {
+        "analysis_type": "transient_trv",
+        "deterministic_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c",
+        "run_id": "run-v126-scena-akademickie-transient_trv",
+        "steps": [
+          {
+            "data": {
+              "f_n_hz": 12000.0,
+              "tau_s": 0.00018,
+              "u_r_kv": 17.5
+            },
+            "formula": "u_TRV(t)=Ur*(1-cos(wn*t))*exp(-t/tau)+Ur/sqrt(3)",
+            "formula_latex": "u_{\\mathrm{TRV}}(t) = U_r\\left(1-\\cos(\\omega_n t)\\right)e^{-t/\\tau} + \\dfrac{U_r}{\\sqrt{3}}",
+            "key": "trv_inrush_ferro",
+            "proof_ref": "proof:v126:transient_trv:trv_inrush_ferro",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "ferro_risk": false,
+              "trv_margin_percent": -1194.8609
+            },
+            "result_pl": "Najmniejszy margines napięcia powrotnego: -1194.8609 %",
+            "step": 1,
+            "substitution": "Przebieg napięcia powrotnego porównano punkt po punkcie z obwiednią wytrzymałości wyłącznika wg IEC 62271-100.",
+            "unit_check": "Napięcia porównywane w [kV]; margines wyrażony w %."
+          }
+        ],
+        "trace_version": "AcademicWhiteBoxTraceV1"
+      },
+      "wynik": {
+        "analysis_type": "transient_trv",
+        "case_id": "case-demo",
+        "created_at": "2026-09-16T09:00:00+00:00",
+        "proof_ref": "proof:v126:transient_trv:18595c77271bad2b",
+        "report_ref": "report:v126:transient_trv:18595c77271bad2b",
+        "result": {
+          "analysis_type": "transient_trv",
+          "contract": "AcademicAnalysisResultV1",
+          "deterministic_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c",
+          "input_hash": "0dd328a387ad806dd0b49ce585908b458f1f686646aa3dd520f9c3818e68f96b",
+          "result": {
+            "ferroresonance": {
+              "recommendation": "brak przesłanek do ferrorezonansu",
+              "risk": false
+            },
+            "inrush": {
+              "blocking_87t_recommended": false,
+              "peak_multiple_in": 8.0,
+              "second_harmonic_percent_of_peak": 7.875
+            },
+            "sanity": {
+              "checks_passed": 3,
+              "checks_total": 3,
+              "status": "w paśmie wiarygodności",
+              "violations": []
+            },
+            "trv_curve": [
+              {
+                "envelope_kv": 0.79545,
+                "t_us": 2.0,
+                "u_trv_kv": 10.30003
+              },
+              {
+                "envelope_kv": 1.59091,
+                "t_us": 4.0,
+                "u_trv_kv": 10.87614
+              },
+              {
+                "envelope_kv": 2.38636,
+                "t_us": 6.0,
+                "u_trv_kv": 11.80632
+              },
+              {
+                "envelope_kv": 3.18182,
+                "t_us": 8.0,
+                "u_trv_kv": 13.05756
+              },
+              {
+                "envelope_kv": 3.97727,
+                "t_us": 10.0,
+                "u_trv_kv": 14.59036
+              },
+              {
+                "envelope_kv": 4.77273,
+                "t_us": 12.0,
+                "u_trv_kv": 16.35979
+              },
+              {
+                "envelope_kv": 5.56818,
+                "t_us": 14.0,
+                "u_trv_kv": 18.31661
+              },
+              {
+                "envelope_kv": 6.36364,
+                "t_us": 16.0,
+                "u_trv_kv": 20.40849
+              },
+              {
+                "envelope_kv": 7.15909,
+                "t_us": 18.0,
+                "u_trv_kv": 22.58123
+              },
+              {
+                "envelope_kv": 7.95455,
+                "t_us": 20.0,
+                "u_trv_kv": 24.78004
+              },
+              {
+                "envelope_kv": 8.75,
+                "t_us": 22.0,
+                "u_trv_kv": 26.95081
+              },
+              {
+                "envelope_kv": 9.54545,
+                "t_us": 24.0,
+                "u_trv_kv": 29.04127
+              },
+              {
+                "envelope_kv": 10.34091,
+                "t_us": 26.0,
+                "u_trv_kv": 31.00218
+              },
+              {
+                "envelope_kv": 11.13636,
+                "t_us": 28.0,
+                "u_trv_kv": 32.78833
+              },
+              {
+                "envelope_kv": 11.93182,
+                "t_us": 30.0,
+                "u_trv_kv": 34.3595
+              },
+              {
+                "envelope_kv": 12.72727,
+                "t_us": 32.0,
+                "u_trv_kv": 35.68123
+              },
+              {
+                "envelope_kv": 13.52273,
+                "t_us": 34.0,
+                "u_trv_kv": 36.7255
+              },
+              {
+                "envelope_kv": 14.31818,
+                "t_us": 36.0,
+                "u_trv_kv": 37.47122
+              },
+              {
+                "envelope_kv": 15.11364,
+                "t_us": 38.0,
+                "u_trv_kv": 37.90453
+              },
+              {
+                "envelope_kv": 15.90909,
+                "t_us": 40.0,
+                "u_trv_kv": 38.01894
+              },
+              {
+                "envelope_kv": 16.70455,
+                "t_us": 42.0,
+                "u_trv_kv": 37.81539
+              },
+              {
+                "envelope_kv": 17.5,
+                "t_us": 44.0,
+                "u_trv_kv": 37.30197
+              },
+              {
+                "envelope_kv": 18.29545,
+                "t_us": 46.0,
+                "u_trv_kv": 36.49364
+              },
+              {
+                "envelope_kv": 19.09091,
+                "t_us": 48.0,
+                "u_trv_kv": 35.41173
+              },
+              {
+                "envelope_kv": 19.88636,
+                "t_us": 50.0,
+                "u_trv_kv": 34.08331
+              },
+              {
+                "envelope_kv": 20.68182,
+                "t_us": 52.0,
+                "u_trv_kv": 32.54044
+              },
+              {
+                "envelope_kv": 21.47727,
+                "t_us": 54.0,
+                "u_trv_kv": 30.81938
+              },
+              {
+                "envelope_kv": 22.27273,
+                "t_us": 56.0,
+                "u_trv_kv": 28.95963
+              },
+              {
+                "envelope_kv": 23.06818,
+                "t_us": 58.0,
+                "u_trv_kv": 27.00298
+              },
+              {
+                "envelope_kv": 23.86364,
+                "t_us": 60.0,
+                "u_trv_kv": 24.99256
+              },
+              {
+                "envelope_kv": 24.65909,
+                "t_us": 62.0,
+                "u_trv_kv": 22.97176
+              },
+              {
+                "envelope_kv": 25.45455,
+                "t_us": 64.0,
+                "u_trv_kv": 20.98331
+              },
+              {
+                "envelope_kv": 26.25,
+                "t_us": 66.0,
+                "u_trv_kv": 19.0683
+              },
+              {
+                "envelope_kv": 27.04545,
+                "t_us": 68.0,
+                "u_trv_kv": 17.26529
+              },
+              {
+                "envelope_kv": 27.84091,
+                "t_us": 70.0,
+                "u_trv_kv": 15.6095
+              },
+              {
+                "envelope_kv": 28.63636,
+                "t_us": 72.0,
+                "u_trv_kv": 14.13209
+              },
+              {
+                "envelope_kv": 29.43182,
+                "t_us": 74.0,
+                "u_trv_kv": 12.85953
+              },
+              {
+                "envelope_kv": 30.22727,
+                "t_us": 76.0,
+                "u_trv_kv": 11.81314
+              },
+              {
+                "envelope_kv": 31.02273,
+                "t_us": 78.0,
+                "u_trv_kv": 11.00868
+              },
+              {
+                "envelope_kv": 31.81818,
+                "t_us": 80.0,
+                "u_trv_kv": 10.45615
+              },
+              {
+                "envelope_kv": 32.61364,
+                "t_us": 82.0,
+                "u_trv_kv": 10.15966
+              },
+              {
+                "envelope_kv": 33.40909,
+                "t_us": 84.0,
+                "u_trv_kv": 10.11749
+              },
+              {
+                "envelope_kv": 34.20455,
+                "t_us": 86.0,
+                "u_trv_kv": 10.32226
+              },
+              {
+                "envelope_kv": 35.0,
+                "t_us": 88.0,
+                "u_trv_kv": 10.76119
+              },
+              {
+                "envelope_kv": 35.0,
+                "t_us": 90.0,
+                "u_trv_kv": 11.41655
+              },
+              {
+                "envelope_kv": 35.0,
+                "t_us": 92.0,
+                "u_trv_kv": 12.26611
+              },
+              {
+                "envelope_kv": 35.0,
+                "t_us": 94.0,
+                "u_trv_kv": 13.28382
+              },
+              {
+                "envelope_kv": 35.0,
+                "t_us": 96.0,
+                "u_trv_kv": 14.4404
+              },
+              {
+                "envelope_kv": 35.0,
+                "t_us": 98.0,
+                "u_trv_kv": 15.70412
+              },
+              {
+                "envelope_kv": 35.0,
+                "t_us": 100.0,
+                "u_trv_kv": 17.04157
+              }
+            ],
+            "trv_margin_percent": -1194.8609,
+            "trv_status": "niespelniony"
+          },
+          "solver_version": "v126-academic-whitebox-1.2",
+          "white_box_trace": [
+            {
+              "data": {
+                "f_n_hz": 12000.0,
+                "tau_s": 0.00018,
+                "u_r_kv": 17.5
+              },
+              "formula": "u_TRV(t)=Ur*(1-cos(wn*t))*exp(-t/tau)+Ur/sqrt(3)",
+              "key": "trv_inrush_ferro",
+              "proof_ref": "proof:v126:transient_trv:trv_inrush_ferro",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "ferro_risk": false,
+                "trv_margin_percent": -1194.8609
+              },
+              "result_pl": "Najmniejszy margines napięcia powrotnego: -1194.8609 %",
+              "step": 1,
+              "substitution": "Przebieg napięcia powrotnego porównano punkt po punkcie z obwiednią wytrzymałości wyłącznika wg IEC 62271-100.",
+              "unit_check": "Napięcia porównywane w [kV]; margines wyrażony w %."
+            }
+          ]
+        },
+        "run_id": "run-v126-scena-akademickie-transient_trv",
+        "status": "FINISHED"
+      }
+    },
+    "motor_starting": {
+      "dowod": {
+        "analysis_type": "motor_starting",
+        "case_id": "case-demo",
+        "contract": "AcademicProofPackV1",
+        "proof_hash": "8bf704de162529b92e7e32711bb90ccf3971cc946a82dc9efc8cfe28242cb6e2",
+        "proof_id": "proof:v126:motor_starting:8cf74b9561d1aeae",
+        "run_id": "run-v126-scena-akademickie-motor_starting",
+        "source_result_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc",
+        "steps": [
+          {
+            "data": {
+              "motors": 1
+            },
+            "formula": "DeltaU = |I_start * Z_src| / U_phase * 100%; I_start = k_LR * I_n",
+            "formula_latex": "\\Delta U = \\dfrac{|I_{\\mathrm{start}} \\cdot Z_{\\mathrm{src}}|}{U_{\\mathrm{phase}}}\\cdot 100\\%\\text{,}\\quad I_{\\mathrm{start}} = k_{LR}\\cdot I_n",
+            "ordinal": 1,
+            "proof_ref": "proof:v126:motor_starting:motor_starting",
+            "proof_status": "complete",
+            "result": {
+              "non_compliant": 1
+            },
+            "result_pl": "Silników niespełniających kryteriów rozruchu: 1 z 1",
+            "substitution": "Impedancja źródła wyznaczona z mocy zwarciowej w węźle, a przy jej braku z parametrów pierwszej gałęzi zasilającej.",
+            "unit_check": "Iloczyn prądu [A] i impedancji [Ω] odniesiony do napięcia [V] jest bezwymiarowy; razy 100 daje %."
+          }
+        ],
+        "trace_step_count": 1
+      },
+      "koperta": {
+        "analysis_type": "motor_starting",
+        "case_id": "case-demo",
+        "deterministic_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc",
+        "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting/proof",
+        "report_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting/report",
+        "result_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting",
+        "run_id": "run-v126-scena-akademickie-motor_starting",
+        "status": "FINISHED",
+        "trace_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting/trace"
+      },
+      "raport": {
+        "analysis_type": "motor_starting",
+        "case_id": "case-demo",
+        "contract": "AcademicReportV2",
+        "export_policy": "frozen_result_and_proof_only",
+        "report_hash": "61a68fb1f9a3ec91078f74c66d26dd8a06fd8e30f752189d660b8e47bb6fe7eb",
+        "report_id": "report:v126:motor_starting:8cf74b9561d1aeae",
+        "run_id": "run-v126-scena-akademickie-motor_starting",
+        "sections": [
+          {
+            "metrics": [
+              {
+                "label": "proof_id",
+                "value": "proof:v126:motor_starting:8cf74b9561d1aeae"
+              },
+              {
+                "label": "proof_hash",
+                "value": "8bf704de162529b92e7e32711bb90ccf3971cc946a82dc9efc8cfe28242cb6e2"
+              },
+              {
+                "label": "trace_step_count",
+                "value": 1
+              }
+            ],
+            "section_id": "dowod",
+            "title": "Dowód obliczeń"
+          },
+          {
+            "metrics": [
+              {
+                "label": "result_hash",
+                "value": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc"
+              },
+              {
+                "label": "solver_version",
+                "value": "v126-academic-whitebox-1.2"
+              },
+              {
+                "label": "input_hash",
+                "value": "764b7c0f908b5d1193d9a848aea9c1ddd382769939b3d6adb7564c47f58de979"
+              }
+            ],
+            "section_id": "audyt",
+            "title": "Audyt deterministyczny"
+          }
+        ],
+        "source_proof_hash": "8bf704de162529b92e7e32711bb90ccf3971cc946a82dc9efc8cfe28242cb6e2",
+        "source_result_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc"
+      },
+      "slad": {
+        "analysis_type": "motor_starting",
+        "deterministic_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc",
+        "run_id": "run-v126-scena-akademickie-motor_starting",
+        "steps": [
+          {
+            "data": {
+              "motors": 1
+            },
+            "formula": "DeltaU = |I_start * Z_src| / U_phase * 100%; I_start = k_LR * I_n",
+            "formula_latex": "\\Delta U = \\dfrac{|I_{\\mathrm{start}} \\cdot Z_{\\mathrm{src}}|}{U_{\\mathrm{phase}}}\\cdot 100\\%\\text{,}\\quad I_{\\mathrm{start}} = k_{LR}\\cdot I_n",
+            "key": "motor_starting",
+            "proof_ref": "proof:v126:motor_starting:motor_starting",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "non_compliant": 1
+            },
+            "result_pl": "Silników niespełniających kryteriów rozruchu: 1 z 1",
+            "step": 1,
+            "substitution": "Impedancja źródła wyznaczona z mocy zwarciowej w węźle, a przy jej braku z parametrów pierwszej gałęzi zasilającej.",
+            "unit_check": "Iloczyn prądu [A] i impedancji [Ω] odniesiony do napięcia [V] jest bezwymiarowy; razy 100 daje %."
+          }
+        ],
+        "trace_version": "AcademicWhiteBoxTraceV1"
+      },
+      "wynik": {
+        "analysis_type": "motor_starting",
+        "case_id": "case-demo",
+        "created_at": "2026-09-16T09:00:00+00:00",
+        "proof_ref": "proof:v126:motor_starting:8cf74b9561d1aeae",
+        "report_ref": "report:v126:motor_starting:8cf74b9561d1aeae",
+        "result": {
+          "analysis_type": "motor_starting",
+          "contract": "AcademicAnalysisResultV1",
+          "deterministic_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc",
+          "input_hash": "764b7c0f908b5d1193d9a848aea9c1ddd382769939b3d6adb7564c47f58de979",
+          "result": {
+            "motors": [
+              {
+                "bus_ref": "bus_sn_b",
+                "i_start_a": 102.64,
+                "motor_ref": "M-1",
+                "thermal_i2t_ratio": 12.0,
+                "torque_margin_pu": 0.0455,
+                "torque_start_pu": 0.6455,
+                "verification_status": "niezgodny",
+                "voltage_dip_percent": 0.5467
+              }
+            ],
+            "sanity": {
+              "checks_passed": 4,
+              "checks_total": 4,
+              "status": "w paśmie wiarygodności",
+              "violations": []
+            }
+          },
+          "solver_version": "v126-academic-whitebox-1.2",
+          "white_box_trace": [
+            {
+              "data": {
+                "motors": 1
+              },
+              "formula": "DeltaU = |I_start * Z_src| / U_phase * 100%; I_start = k_LR * I_n",
+              "key": "motor_starting",
+              "proof_ref": "proof:v126:motor_starting:motor_starting",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "non_compliant": 1
+              },
+              "result_pl": "Silników niespełniających kryteriów rozruchu: 1 z 1",
+              "step": 1,
+              "substitution": "Impedancja źródła wyznaczona z mocy zwarciowej w węźle, a przy jej braku z parametrów pierwszej gałęzi zasilającej.",
+              "unit_check": "Iloczyn prądu [A] i impedancji [Ω] odniesiony do napięcia [V] jest bezwymiarowy; razy 100 daje %."
+            }
+          ]
+        },
+        "run_id": "run-v126-scena-akademickie-motor_starting",
+        "status": "FINISHED"
+      }
+    },
+    "benchmark_validation": {
+      "dowod": {
+        "analysis_type": "benchmark_validation",
+        "case_id": "case-demo",
+        "contract": "AcademicProofPackV1",
+        "proof_hash": "01d26668a7192ce53dce5288ced8eeb5612b59a3c48fd7f7badf6ce0f2386df9",
+        "proof_id": "proof:v126:benchmark_validation:ecd352bcb031c442",
+        "run_id": "run-v126-scena-akademickie-benchmark_validation",
+        "source_result_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb",
+        "steps": [
+          {
+            "data": {
+              "benchmarks": 0,
+              "references_provided": false
+            },
+            "formula": "delta_percent = |calc - ref| / |ref| * 100%",
+            "formula_latex": "\\delta = \\dfrac{|\\mathrm{calc} - \\mathrm{ref}|}{|\\mathrm{ref}|}\\cdot 100\\%",
+            "ordinal": 1,
+            "proof_ref": "proof:v126:benchmark_validation:benchmark_regression",
+            "proof_status": "complete",
+            "result": {
+              "status": "dane niekompletne"
+            },
+            "result_pl": "Walidacji nie wykonano — brak wartości referencyjnych",
+            "substitution": "Brak wartości referencyjnych w danych wejściowych — walidacji nie wykonano.",
+            "unit_check": "Brak wartości referencyjnych sieci odniesienia."
+          }
+        ],
+        "trace_step_count": 1
+      },
+      "koperta": {
+        "analysis_type": "benchmark_validation",
+        "case_id": "case-demo",
+        "deterministic_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb",
+        "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-benchmark_validation/results/v126/benchmark_validation/proof",
+        "report_url": "/api/analysis-runs/run-v126-scena-akademickie-benchmark_validation/results/v126/benchmark_validation/report",
+        "result_url": "/api/analysis-runs/run-v126-scena-akademickie-benchmark_validation/results/v126/benchmark_validation",
+        "run_id": "run-v126-scena-akademickie-benchmark_validation",
+        "status": "FINISHED",
+        "trace_url": "/api/analysis-runs/run-v126-scena-akademickie-benchmark_validation/results/v126/benchmark_validation/trace"
+      },
+      "raport": {
+        "analysis_type": "benchmark_validation",
+        "case_id": "case-demo",
+        "contract": "AcademicReportV2",
+        "export_policy": "frozen_result_and_proof_only",
+        "report_hash": "30b721c9a1f7a30ca817c5747a35010f12f494f515e107fa348f132e225b16fa",
+        "report_id": "report:v126:benchmark_validation:ecd352bcb031c442",
+        "run_id": "run-v126-scena-akademickie-benchmark_validation",
+        "sections": [
+          {
+            "metrics": [
+              {
+                "label": "proof_id",
+                "value": "proof:v126:benchmark_validation:ecd352bcb031c442"
+              },
+              {
+                "label": "proof_hash",
+                "value": "01d26668a7192ce53dce5288ced8eeb5612b59a3c48fd7f7badf6ce0f2386df9"
+              },
+              {
+                "label": "trace_step_count",
+                "value": 1
+              }
+            ],
+            "section_id": "dowod",
+            "title": "Dowód obliczeń"
+          },
+          {
+            "metrics": [
+              {
+                "label": "result_hash",
+                "value": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb"
+              },
+              {
+                "label": "solver_version",
+                "value": "v126-academic-whitebox-1.2"
+              },
+              {
+                "label": "input_hash",
+                "value": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5"
+              }
+            ],
+            "section_id": "audyt",
+            "title": "Audyt deterministyczny"
+          }
+        ],
+        "source_proof_hash": "01d26668a7192ce53dce5288ced8eeb5612b59a3c48fd7f7badf6ce0f2386df9",
+        "source_result_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb"
+      },
+      "slad": {
+        "analysis_type": "benchmark_validation",
+        "deterministic_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb",
+        "run_id": "run-v126-scena-akademickie-benchmark_validation",
+        "steps": [
+          {
+            "data": {
+              "benchmarks": 0,
+              "references_provided": false
+            },
+            "formula": "delta_percent = |calc - ref| / |ref| * 100%",
+            "formula_latex": "\\delta = \\dfrac{|\\mathrm{calc} - \\mathrm{ref}|}{|\\mathrm{ref}|}\\cdot 100\\%",
+            "key": "benchmark_regression",
+            "proof_ref": "proof:v126:benchmark_validation:benchmark_regression",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "status": "dane niekompletne"
+            },
+            "result_pl": "Walidacji nie wykonano — brak wartości referencyjnych",
+            "step": 1,
+            "substitution": "Brak wartości referencyjnych w danych wejściowych — walidacji nie wykonano.",
+            "unit_check": "Brak wartości referencyjnych sieci odniesienia."
+          }
+        ],
+        "trace_version": "AcademicWhiteBoxTraceV1"
+      },
+      "wynik": {
+        "analysis_type": "benchmark_validation",
+        "case_id": "case-demo",
+        "created_at": "2026-09-16T09:00:00+00:00",
+        "proof_ref": "proof:v126:benchmark_validation:ecd352bcb031c442",
+        "report_ref": "report:v126:benchmark_validation:ecd352bcb031c442",
+        "result": {
+          "analysis_type": "benchmark_validation",
+          "contract": "AcademicAnalysisResultV1",
+          "deterministic_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb",
+          "input_hash": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5",
+          "result": {
+            "message_pl": "Walidacja benchmarkowa wymaga referencji (IEEE 9/14/39-bus, CIGRE MV) z wartościami policzonymi przez solver. Bez nich werdyktu PASS/FAIL nie wystawia się (zakaz cichego fałszu K-09).",
+            "references_provided": false,
+            "sanity": {
+              "checks_passed": 0,
+              "checks_total": 0,
+              "status": "dane niekompletne",
+              "violations": []
+            },
+            "status": "dane niekompletne",
+            "validation_report": []
+          },
+          "solver_version": "v126-academic-whitebox-1.2",
+          "white_box_trace": [
+            {
+              "data": {
+                "benchmarks": 0,
+                "references_provided": false
+              },
+              "formula": "delta_percent = |calc - ref| / |ref| * 100%",
+              "key": "benchmark_regression",
+              "proof_ref": "proof:v126:benchmark_validation:benchmark_regression",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "status": "dane niekompletne"
+              },
+              "result_pl": "Walidacji nie wykonano — brak wartości referencyjnych",
+              "step": 1,
+              "substitution": "Brak wartości referencyjnych w danych wejściowych — walidacji nie wykonano.",
+              "unit_check": "Brak wartości referencyjnych sieci odniesienia."
+            }
+          ]
+        },
+        "run_id": "run-v126-scena-akademickie-benchmark_validation",
+        "status": "FINISHED"
+      }
+    },
+    "uncertainty_sensitivity": {
+      "dowod": {
+        "analysis_type": "uncertainty_sensitivity",
+        "case_id": "case-demo",
+        "contract": "AcademicProofPackV1",
+        "proof_hash": "64452c0798b796f07309906b9a4e4ce0545f09e4b8e9611640bd8666ee997b38",
+        "proof_id": "proof:v126:uncertainty_sensitivity:1500947651959ed4",
+        "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
+        "source_result_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1",
+        "steps": [
+          {
+            "data": {
+              "parameters": 9
+            },
+            "formula": "sigma_Y^2 = sum((dY/dx_i * sigma_x_i)^2); U95 = 2*sigma_Y",
+            "formula_latex": "\\sigma_Y^2 = \\sum_i \\left(\\dfrac{\\partial Y}{\\partial x_i}\\cdot \\sigma_{x_i}\\right)^2\\text{,}\\quad U_{95} = 2\\sigma_Y",
+            "ordinal": 1,
+            "proof_ref": "proof:v126:uncertainty_sensitivity:uncertainty_propagation",
+            "proof_status": "complete",
+            "result": {
+              "expanded_uncertainty_percent_k2": 5.70896
+            },
+            "result_pl": "Niepewność rozszerzona (k = 2): 5.70896 %",
+            "substitution": "Tolerancje katalogowe propagowane jako niezależne składowe wariancji wyniku.",
+            "unit_check": "Pierwiastek z sumy kwadratów udziałów procentowych daje niepewność w %."
+          }
+        ],
+        "trace_step_count": 1
+      },
+      "koperta": {
+        "analysis_type": "uncertainty_sensitivity",
+        "case_id": "case-demo",
+        "deterministic_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1",
+        "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-uncertainty_sensitivity/results/v126/uncertainty_sensitivity/proof",
+        "report_url": "/api/analysis-runs/run-v126-scena-akademickie-uncertainty_sensitivity/results/v126/uncertainty_sensitivity/report",
+        "result_url": "/api/analysis-runs/run-v126-scena-akademickie-uncertainty_sensitivity/results/v126/uncertainty_sensitivity",
+        "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
+        "status": "FINISHED",
+        "trace_url": "/api/analysis-runs/run-v126-scena-akademickie-uncertainty_sensitivity/results/v126/uncertainty_sensitivity/trace"
+      },
+      "raport": {
+        "analysis_type": "uncertainty_sensitivity",
+        "case_id": "case-demo",
+        "contract": "AcademicReportV2",
+        "export_policy": "frozen_result_and_proof_only",
+        "report_hash": "614b67b96a441a52af814f337b101a6af1d7f8e084efd17cd69e0ab9702ccebc",
+        "report_id": "report:v126:uncertainty_sensitivity:1500947651959ed4",
+        "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
+        "sections": [
+          {
+            "metrics": [
+              {
+                "label": "proof_id",
+                "value": "proof:v126:uncertainty_sensitivity:1500947651959ed4"
+              },
+              {
+                "label": "proof_hash",
+                "value": "64452c0798b796f07309906b9a4e4ce0545f09e4b8e9611640bd8666ee997b38"
+              },
+              {
+                "label": "trace_step_count",
+                "value": 1
+              }
+            ],
+            "section_id": "dowod",
+            "title": "Dowód obliczeń"
+          },
+          {
+            "metrics": [
+              {
+                "label": "result_hash",
+                "value": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1"
+              },
+              {
+                "label": "solver_version",
+                "value": "v126-academic-whitebox-1.2"
+              },
+              {
+                "label": "input_hash",
+                "value": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5"
+              }
+            ],
+            "section_id": "audyt",
+            "title": "Audyt deterministyczny"
+          }
+        ],
+        "source_proof_hash": "64452c0798b796f07309906b9a4e4ce0545f09e4b8e9611640bd8666ee997b38",
+        "source_result_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1"
+      },
+      "slad": {
+        "analysis_type": "uncertainty_sensitivity",
+        "deterministic_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1",
+        "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
+        "steps": [
+          {
+            "data": {
+              "parameters": 9
+            },
+            "formula": "sigma_Y^2 = sum((dY/dx_i * sigma_x_i)^2); U95 = 2*sigma_Y",
+            "formula_latex": "\\sigma_Y^2 = \\sum_i \\left(\\dfrac{\\partial Y}{\\partial x_i}\\cdot \\sigma_{x_i}\\right)^2\\text{,}\\quad U_{95} = 2\\sigma_Y",
+            "key": "uncertainty_propagation",
+            "proof_ref": "proof:v126:uncertainty_sensitivity:uncertainty_propagation",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "expanded_uncertainty_percent_k2": 5.70896
+            },
+            "result_pl": "Niepewność rozszerzona (k = 2): 5.70896 %",
+            "step": 1,
+            "substitution": "Tolerancje katalogowe propagowane jako niezależne składowe wariancji wyniku.",
+            "unit_check": "Pierwiastek z sumy kwadratów udziałów procentowych daje niepewność w %."
+          }
+        ],
+        "trace_version": "AcademicWhiteBoxTraceV1"
+      },
+      "wynik": {
+        "analysis_type": "uncertainty_sensitivity",
+        "case_id": "case-demo",
+        "created_at": "2026-09-16T09:00:00+00:00",
+        "proof_ref": "proof:v126:uncertainty_sensitivity:1500947651959ed4",
+        "report_ref": "report:v126:uncertainty_sensitivity:1500947651959ed4",
+        "result": {
+          "analysis_type": "uncertainty_sensitivity",
+          "contract": "AcademicAnalysisResultV1",
+          "deterministic_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1",
+          "input_hash": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5",
+          "result": {
+            "display_contract": "wartość nominalna ± niepewność rozszerzona k=2",
+            "expanded_uncertainty_percent_k2": 5.70896,
+            "sanity": {
+              "checks_passed": 3,
+              "checks_total": 3,
+              "status": "w paśmie wiarygodności",
+              "violations": []
+            },
+            "sensitivity_ranking": [
+              {
+                "parameter": "bus_hv.s_sc_mva",
+                "share_percent": 52.6939,
+                "sigma_contribution_percent": 2.5
+              },
+              {
+                "parameter": "tr_hv_sn.uk_percent",
+                "share_percent": 25.2931,
+                "sigma_contribution_percent": 1.2
+              },
+              {
+                "parameter": "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer.uk_percent",
+                "share_percent": 10.5388,
+                "sigma_contribution_percent": 0.5
+              },
+              {
+                "parameter": "tr_sn_nn.uk_percent",
+                "share_percent": 9.4849,
+                "sigma_contribution_percent": 0.45
+              },
+              {
+                "parameter": "line_b_c.z_ohm",
+                "share_percent": 1.4944,
+                "sigma_contribution_percent": 0.0709
+              },
+              {
+                "parameter": "cab_main_b.z_ohm",
+                "share_percent": 0.4863,
+                "sigma_contribution_percent": 0.02307
+              },
+              {
+                "parameter": "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable.z_ohm",
+                "share_percent": 0.0086,
+                "sigma_contribution_percent": 0.00041
+              },
+              {
+                "parameter": "sw_coupler.z_ohm",
+                "share_percent": 0.0,
+                "sigma_contribution_percent": 0.0
+              },
+              {
+                "parameter": "sn/9d008ed355939bef762652554f56b2e4/der/field_device.z_ohm",
+                "share_percent": 0.0,
+                "sigma_contribution_percent": 0.0
+              }
+            ]
+          },
+          "solver_version": "v126-academic-whitebox-1.2",
+          "white_box_trace": [
+            {
+              "data": {
+                "parameters": 9
+              },
+              "formula": "sigma_Y^2 = sum((dY/dx_i * sigma_x_i)^2); U95 = 2*sigma_Y",
+              "key": "uncertainty_propagation",
+              "proof_ref": "proof:v126:uncertainty_sensitivity:uncertainty_propagation",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "expanded_uncertainty_percent_k2": 5.70896
+              },
+              "result_pl": "Niepewność rozszerzona (k = 2): 5.70896 %",
+              "step": 1,
+              "substitution": "Tolerancje katalogowe propagowane jako niezależne składowe wariancji wyniku.",
+              "unit_check": "Pierwiastek z sumy kwadratów udziałów procentowych daje niepewność w %."
+            }
+          ]
+        },
+        "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
+        "status": "FINISHED"
+      }
+    },
+    "neutral_earthing_design": {
+      "dowod": {
+        "analysis_type": "neutral_earthing_design",
+        "case_id": "case-demo",
+        "contract": "AcademicProofPackV1",
+        "proof_hash": "1f6c6a40309426d245d8b323a296e231a8174061097a49005aa694c771688f3c",
+        "proof_id": "proof:v126:neutral_earthing_design:59a348096c99235c",
+        "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
+        "source_result_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303",
+        "steps": [
+          {
+            "data": {
+              "b0_total_siemens": 9.84e-05,
+              "branches_contributing": 1,
+              "branches_missing_b0": [
+                "line_b_c",
+                "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
+              ],
+              "omega_rad_s": 314.159265,
+              "ref": "Petersen resonant earthing; IEC 62271-203 / VDE practice",
+              "u_line_kv": 110.0
+            },
+            "formula": "C0 = (1/ω)·Σ(b0·len);  Ic = 3·ω·C0·U_f = √3·ω·C0·U_l",
+            "formula_latex": "C_0 = \\dfrac{1}{\\omega}\\sum b_0 \\cdot \\ell\\text{,}\\quad I_C = 3\\,\\omega\\, C_0\\, U_f = \\sqrt{3}\\,\\omega\\, C_0\\, U_l",
+            "ordinal": 1,
+            "proof_ref": "proof:v126:neutral_earthing_design:neutral_earthing_capacitive_current",
+            "proof_status": "complete",
+            "result": {
+              "c0_farad": 3.13217e-07,
+              "ic_a": 18.7477
+            },
+            "result_pl": "Prąd pojemnościowy doziemienia sieci: 18.7477 A",
+            "substitution": "C0=9.84e-05/314.1593; Ic=√3·314.1593·3.13217e-07·110000.0",
+            "substitution_latex": "C_0 = \\dfrac{0,000098\\ \\mathrm{S}}{314,1593\\ \\mathrm{rad/s}}\\text{,}\\quad I_C = \\sqrt{3}\\cdot 314,1593\\cdot C_0 \\cdot 110\\ \\mathrm{kV}",
+            "unit_check": "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l."
+          },
+          {
+            "data": {
+              "c0_farad": 3.13217e-07,
+              "ic_a": 18.7477,
+              "omega_rad_s": 314.159265,
+              "ref": "W. Petersen, kompensacja rezonansowa (sieć skompensowana)"
+            },
+            "formula": "ωL = 1/(3ωC0)  ⇒  L = 1/(3·ω²·C0);  X_L = ωL;  I_L(rezonans)=Ic",
+            "formula_latex": "\\omega L = \\dfrac{1}{3\\omega C_0} \\;\\Rightarrow\\; L = \\dfrac{1}{3\\omega^2 C_0}\\text{,}\\quad X_L = \\omega L\\text{,}\\quad I_L^{\\,(\\mathrm{rezonans})} = I_C",
+            "ordinal": 2,
+            "proof_ref": "proof:v126:neutral_earthing_design:petersen_resonance_tuning",
+            "proof_status": "complete",
+            "result": {
+              "i_coil_rating_a": 18.7477,
+              "l_coil_h": 10.78285522,
+              "x_coil_ohm": 3387.5339
+            },
+            "result_pl": "Dławik gaszący: 10.78285522 H, 3387.5339 Ω, prąd znamionowy 18.7477 A",
+            "substitution": "L=1/(3·314.1593²·3.13217e-07); X_L=1/(3·314.1593·3.13217e-07)",
+            "substitution_latex": "L = \\dfrac{1}{3\\cdot 314,1593^2 \\cdot 0,000000313\\ \\mathrm{F}}\\text{,}\\quad X_L = \\dfrac{1}{3\\cdot 314,1593\\cdot 0,000000313\\ \\mathrm{F}}\\text{,}\\quad I_L^{(\\mathrm{rezonans})} = I_C = 18,7477\\ \\mathrm{A}",
+            "unit_check": "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A]."
+          },
+          {
+            "data": {
+              "detuning_v": 0.05,
+              "ic_a": 18.7477,
+              "residual_damping_d": 0.0
+            },
+            "formula": "v=(I_L−I_C)/I_C;  I_res = I_C·√(d² + v²)",
+            "formula_latex": "v = \\dfrac{I_L - I_C}{I_C}\\text{,}\\quad I_{\\mathrm{res}} = I_C\\sqrt{d^2+v^2}",
+            "ordinal": 3,
+            "proof_ref": "proof:v126:neutral_earthing_design:petersen_residual_current",
+            "proof_status": "complete",
+            "result": {
+              "i_residual_detuned_a": 0.937386,
+              "i_residual_resonance_a": 0.0
+            },
+            "result_pl": "Prąd resztkowy: 0.0 A w rezonansie, 0.937386 A przy rozstrojeniu",
+            "substitution": "I_res(rezonans)=Ic·0.0; I_res(±0.05)=Ic·√(0.0²+0.05²)",
+            "substitution_latex": "I_{\\mathrm{res}}(\\mathrm{rezonans}) = 18,7477\\ \\mathrm{A}\\cdot 0\\text{,}\\quad I_{\\mathrm{res}}(\\pm0,05) = 18,7477\\ \\mathrm{A}\\cdot \\sqrt{0^2 + 0,05^2}",
+            "unit_check": "Mnożnik bezwymiarowy razy prąd [A] daje prąd [A]."
+          }
+        ],
+        "trace_step_count": 3
+      },
+      "koperta": {
+        "analysis_type": "neutral_earthing_design",
+        "case_id": "case-demo",
+        "deterministic_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303",
+        "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/proof",
+        "report_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/report",
+        "result_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design",
+        "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
+        "status": "FINISHED",
+        "trace_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/trace"
+      },
+      "raport": {
+        "analysis_type": "neutral_earthing_design",
+        "case_id": "case-demo",
+        "contract": "AcademicReportV2",
+        "export_policy": "frozen_result_and_proof_only",
+        "report_hash": "cf241832de846f20c7fbc6da3d81f491d4f4d540d71811b8375cf44d585d4a65",
+        "report_id": "report:v126:neutral_earthing_design:59a348096c99235c",
+        "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
+        "sections": [
+          {
+            "metrics": [
+              {
+                "label": "proof_id",
+                "value": "proof:v126:neutral_earthing_design:59a348096c99235c"
+              },
+              {
+                "label": "proof_hash",
+                "value": "1f6c6a40309426d245d8b323a296e231a8174061097a49005aa694c771688f3c"
+              },
+              {
+                "label": "trace_step_count",
+                "value": 3
+              }
+            ],
+            "section_id": "dowod",
+            "title": "Dowód obliczeń"
+          },
+          {
+            "metrics": [
+              {
+                "label": "result_hash",
+                "value": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303"
+              },
+              {
+                "label": "solver_version",
+                "value": "v126-academic-whitebox-1.2"
+              },
+              {
+                "label": "input_hash",
+                "value": "e5dff5c0e914fb7fd061ef26a68913fbadb401d0f99c1e3f8f5397058bf489dc"
+              }
+            ],
+            "section_id": "audyt",
+            "title": "Audyt deterministyczny"
+          }
+        ],
+        "source_proof_hash": "1f6c6a40309426d245d8b323a296e231a8174061097a49005aa694c771688f3c",
+        "source_result_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303"
+      },
+      "slad": {
+        "analysis_type": "neutral_earthing_design",
+        "deterministic_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303",
+        "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
+        "steps": [
+          {
+            "data": {
+              "b0_total_siemens": 9.84e-05,
+              "branches_contributing": 1,
+              "branches_missing_b0": [
+                "line_b_c",
+                "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
+              ],
+              "omega_rad_s": 314.159265,
+              "ref": "Petersen resonant earthing; IEC 62271-203 / VDE practice",
+              "u_line_kv": 110.0
+            },
+            "formula": "C0 = (1/ω)·Σ(b0·len);  Ic = 3·ω·C0·U_f = √3·ω·C0·U_l",
+            "formula_latex": "C_0 = \\dfrac{1}{\\omega}\\sum b_0 \\cdot \\ell\\text{,}\\quad I_C = 3\\,\\omega\\, C_0\\, U_f = \\sqrt{3}\\,\\omega\\, C_0\\, U_l",
+            "key": "neutral_earthing_capacitive_current",
+            "proof_ref": "proof:v126:neutral_earthing_design:neutral_earthing_capacitive_current",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "c0_farad": 3.13217e-07,
+              "ic_a": 18.7477
+            },
+            "result_pl": "Prąd pojemnościowy doziemienia sieci: 18.7477 A",
+            "step": 1,
+            "substitution": "C0=9.84e-05/314.1593; Ic=√3·314.1593·3.13217e-07·110000.0",
+            "substitution_latex": "C_0 = \\dfrac{0,000098\\ \\mathrm{S}}{314,1593\\ \\mathrm{rad/s}}\\text{,}\\quad I_C = \\sqrt{3}\\cdot 314,1593\\cdot C_0 \\cdot 110\\ \\mathrm{kV}",
+            "unit_check": "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l."
+          },
+          {
+            "data": {
+              "c0_farad": 3.13217e-07,
+              "ic_a": 18.7477,
+              "omega_rad_s": 314.159265,
+              "ref": "W. Petersen, kompensacja rezonansowa (sieć skompensowana)"
+            },
+            "formula": "ωL = 1/(3ωC0)  ⇒  L = 1/(3·ω²·C0);  X_L = ωL;  I_L(rezonans)=Ic",
+            "formula_latex": "\\omega L = \\dfrac{1}{3\\omega C_0} \\;\\Rightarrow\\; L = \\dfrac{1}{3\\omega^2 C_0}\\text{,}\\quad X_L = \\omega L\\text{,}\\quad I_L^{\\,(\\mathrm{rezonans})} = I_C",
+            "key": "petersen_resonance_tuning",
+            "proof_ref": "proof:v126:neutral_earthing_design:petersen_resonance_tuning",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "i_coil_rating_a": 18.7477,
+              "l_coil_h": 10.78285522,
+              "x_coil_ohm": 3387.5339
+            },
+            "result_pl": "Dławik gaszący: 10.78285522 H, 3387.5339 Ω, prąd znamionowy 18.7477 A",
+            "step": 2,
+            "substitution": "L=1/(3·314.1593²·3.13217e-07); X_L=1/(3·314.1593·3.13217e-07)",
+            "substitution_latex": "L = \\dfrac{1}{3\\cdot 314,1593^2 \\cdot 0,000000313\\ \\mathrm{F}}\\text{,}\\quad X_L = \\dfrac{1}{3\\cdot 314,1593\\cdot 0,000000313\\ \\mathrm{F}}\\text{,}\\quad I_L^{(\\mathrm{rezonans})} = I_C = 18,7477\\ \\mathrm{A}",
+            "unit_check": "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A]."
+          },
+          {
+            "data": {
+              "detuning_v": 0.05,
+              "ic_a": 18.7477,
+              "residual_damping_d": 0.0
+            },
+            "formula": "v=(I_L−I_C)/I_C;  I_res = I_C·√(d² + v²)",
+            "formula_latex": "v = \\dfrac{I_L - I_C}{I_C}\\text{,}\\quad I_{\\mathrm{res}} = I_C\\sqrt{d^2+v^2}",
+            "key": "petersen_residual_current",
+            "proof_ref": "proof:v126:neutral_earthing_design:petersen_residual_current",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+              "i_residual_detuned_a": 0.937386,
+              "i_residual_resonance_a": 0.0
+            },
+            "result_pl": "Prąd resztkowy: 0.0 A w rezonansie, 0.937386 A przy rozstrojeniu",
+            "step": 3,
+            "substitution": "I_res(rezonans)=Ic·0.0; I_res(±0.05)=Ic·√(0.0²+0.05²)",
+            "substitution_latex": "I_{\\mathrm{res}}(\\mathrm{rezonans}) = 18,7477\\ \\mathrm{A}\\cdot 0\\text{,}\\quad I_{\\mathrm{res}}(\\pm0,05) = 18,7477\\ \\mathrm{A}\\cdot \\sqrt{0^2 + 0,05^2}",
+            "unit_check": "Mnożnik bezwymiarowy razy prąd [A] daje prąd [A]."
+          }
+        ],
+        "trace_version": "AcademicWhiteBoxTraceV1"
+      },
+      "wynik": {
+        "analysis_type": "neutral_earthing_design",
+        "case_id": "case-demo",
+        "created_at": "2026-09-16T09:00:00+00:00",
+        "proof_ref": "proof:v126:neutral_earthing_design:59a348096c99235c",
+        "report_ref": "report:v126:neutral_earthing_design:59a348096c99235c",
+        "result": {
+          "analysis_type": "neutral_earthing_design",
+          "contract": "AcademicAnalysisResultV1",
+          "deterministic_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303",
+          "input_hash": "e5dff5c0e914fb7fd061ef26a68913fbadb401d0f99c1e3f8f5397058bf489dc",
+          "result": {
+            "branches_contributing": [
+              {
+                "b0_siemens_per_km": 4.1e-05,
+                "b0_total_siemens": 9.84e-05,
+                "branch_ref": "cab_main_b",
+                "kind": "cable",
+                "length_km": 2.4
+              }
+            ],
+            "branches_missing_b0": [
+              "line_b_c",
+              "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
+            ],
+            "c0_farad": 3.13217e-07,
+            "capacitive_earth_fault_current_a": 18.7477,
+            "coil_current_rating_a": 18.7477,
+            "coil_inductance_h": 10.78285522,
+            "coil_reactance_ohm": 3387.5339,
+            "design_mode": "petersen_coil",
+            "detuning_assumed": 0.05,
+            "network_line_voltage_kv": 110.0,
+            "neutral_earthing_type": "petersen_coil",
+            "residual_current_at_detuning_a": 0.937386,
+            "residual_current_at_resonance_a": 0.0,
+            "residual_damping_assumed": 0.0,
+            "sanity": {
+              "checks_passed": 4,
+              "checks_total": 4,
+              "status": "w paśmie wiarygodności",
+              "violations": []
+            },
+            "tuning_status": "dostrojony"
+          },
+          "solver_version": "v126-academic-whitebox-1.2",
+          "white_box_trace": [
+            {
+              "data": {
+                "b0_total_siemens": 9.84e-05,
+                "branches_contributing": 1,
+                "branches_missing_b0": [
+                  "line_b_c",
+                  "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
+                ],
+                "omega_rad_s": 314.159265,
+                "ref": "Petersen resonant earthing; IEC 62271-203 / VDE practice",
+                "u_line_kv": 110.0
+              },
+              "formula": "C0 = (1/ω)·Σ(b0·len);  Ic = 3·ω·C0·U_f = √3·ω·C0·U_l",
+              "key": "neutral_earthing_capacitive_current",
+              "proof_ref": "proof:v126:neutral_earthing_design:neutral_earthing_capacitive_current",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "c0_farad": 3.13217e-07,
+                "ic_a": 18.7477
+              },
+              "result_pl": "Prąd pojemnościowy doziemienia sieci: 18.7477 A",
+              "step": 1,
+              "substitution": "C0=9.84e-05/314.1593; Ic=√3·314.1593·3.13217e-07·110000.0",
+              "unit_check": "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l."
+            },
+            {
+              "data": {
+                "c0_farad": 3.13217e-07,
+                "ic_a": 18.7477,
+                "omega_rad_s": 314.159265,
+                "ref": "W. Petersen, kompensacja rezonansowa (sieć skompensowana)"
+              },
+              "formula": "ωL = 1/(3ωC0)  ⇒  L = 1/(3·ω²·C0);  X_L = ωL;  I_L(rezonans)=Ic",
+              "key": "petersen_resonance_tuning",
+              "proof_ref": "proof:v126:neutral_earthing_design:petersen_resonance_tuning",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "i_coil_rating_a": 18.7477,
+                "l_coil_h": 10.78285522,
+                "x_coil_ohm": 3387.5339
+              },
+              "result_pl": "Dławik gaszący: 10.78285522 H, 3387.5339 Ω, prąd znamionowy 18.7477 A",
+              "step": 2,
+              "substitution": "L=1/(3·314.1593²·3.13217e-07); X_L=1/(3·314.1593·3.13217e-07)",
+              "unit_check": "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A]."
+            },
+            {
+              "data": {
+                "detuning_v": 0.05,
+                "ic_a": 18.7477,
+                "residual_damping_d": 0.0
+              },
+              "formula": "v=(I_L−I_C)/I_C;  I_res = I_C·√(d² + v²)",
+              "key": "petersen_residual_current",
+              "proof_ref": "proof:v126:neutral_earthing_design:petersen_residual_current",
+              "proof_status": "complete",
+              "reporting_status": "reportable",
+              "result": {
+                "i_residual_detuned_a": 0.937386,
+                "i_residual_resonance_a": 0.0
+              },
+              "result_pl": "Prąd resztkowy: 0.0 A w rezonansie, 0.937386 A przy rozstrojeniu",
+              "step": 3,
+              "substitution": "I_res(rezonans)=Ic·0.0; I_res(±0.05)=Ic·√(0.0²+0.05²)",
+              "unit_check": "Mnożnik bezwymiarowy razy prąd [A] daje prąd [A]."
+            }
+          ]
+        },
+        "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
+        "status": "FINISHED"
+      }
+    }
+  }
+}

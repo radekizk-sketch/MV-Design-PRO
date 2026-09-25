@@ -110,6 +110,10 @@ def _gpz_z_koncem_ciagu() -> tuple[dict[str, Any], str]:
                     "catalog_item_id": CATALOG_APARAT_SN,
                 },
             },
+            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref).
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     assert odpowiedz.get("error") in (None, ""), odpowiedz
@@ -148,6 +152,10 @@ def _gpz(pole_ref: str | None, rodzina_ref: str | None) -> dict[str, Any]:
         "sections_count": 1,
         "gpz_sections": [{"order": 0, "name": "Sekcja A", "bays": [bay]}],
         "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+        # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+        # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref).
+        "hv_voltage_kv": 110.0,
+        "transformer_sn_mva": 25.0,
     }
     if rodzina_ref:
         payload["switchgear_family_ref"] = rodzina_ref
@@ -273,9 +281,11 @@ def test_rodzina_blokowa_jest_odrzucona_z_wskazaniem_kanalu_blokow(tor: str) -> 
     assert odpowiedz.get("error"), f"tor {tor}: rodzina blokowa przeszla bez bledu"
     assert odpowiedz.get("error_code") == KOD_BLEDU_POLA_KATALOGOWEGO
     komunikat = str(odpowiedz["error"])
-    assert "BLOKOW fabrycznych" in komunikat
-    assert "add_sn_bay_from_catalog" in komunikat
-    assert "factory_configuration_ref" in komunikat
+    # Karta #142: kanał bloków nazwany polami formularza, bez nazwy operacji i klucza.
+    assert "z bloków fabrycznych" in komunikat
+    assert "„Blok fabryczny”" in komunikat
+    assert "add_sn_bay_from_catalog" not in komunikat
+    assert "factory_configuration_ref" not in komunikat
     # Operacja meldująca błąd nie zostawia skutku: brak migawki i brak elementów.
     assert odpowiedz.get("snapshot") is None
     assert not odpowiedz.get("created")

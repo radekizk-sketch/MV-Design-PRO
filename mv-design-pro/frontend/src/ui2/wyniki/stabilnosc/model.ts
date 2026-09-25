@@ -2,60 +2,64 @@
  * Model i adaptery ekranu „Stabilność dynamiczna" (E-32, karta P-3).
  * Czyste projekcje read-only — ZERO fizyki, ZERO pobrań, ZERO mutacji.
  *
+ * UCZCIWOŚĆ (2026-09-23): bieg `dynamic_stability` NIE rozwiązuje sieci — kąty mocy,
+ * napięcie i częstotliwość po zwarciu oraz czas wyłączenia WPISUJE użytkownik. Dawny
+ * werdykt STABILNY/NIESTABILNY (wskaźnik, margines, czynnik, statusy kryteriów) był
+ * porównaniem tych liczb z progami z opcji biegu, a ślad automatyki opowiadał
+ * „wyłączenie przez zabezpieczenia" z czasu wpisanego ręcznie. Kontrakt wyniku to
+ * teraz ECHO scenariusza + rekord oceny `NIE_OCENIONO` (`ocena`) z backendu.
+ *
  * ŹRÓDŁA DANYCH — realny kontrakt (mapowanie plik:linia, zero zgadywania):
- * - Wiersz wyniku: `build_dynamic_stability_results` (enm/canonical_analysis.py:
- *   2037-2059) → jeden wiersz = `DynamicStabilityResult.to_dict`
- *   (application/stability/dynamic_stability.py:119-140): status STABLE/UNSTABLE,
- *   stability_index, clearing_time_ms, max_clearing_time_ms, clearing_margin_ms,
- *   angle_swing_deg, post_fault_voltage_pu, post_fault_frequency_pu,
- *   limiting_factor, violated_checks, checks + werdykt raportowalności.
- *   Endpoint: `GET /analysis-runs/{id}/results/dynamic-stability`
- *   (api/analysis_runs.py:398-402).
- * - Ślad automatyki: `build_automation_trace_results` (canonical_analysis.py:
- *   2062-2072) → zdarzenia {event_seq, event_type, element_id, detail} +
- *   topology_effect (application/automation/trace.py:17-55).
+ * - Wiersz wyniku: `build_dynamic_stability_results` (enm/canonical_analysis.py) →
+ *   `EchoScenariuszaStabilnosci.to_dict` (application/stability/dynamic_stability.py):
+ *   scenariusz, kąty, napięcie i częstotliwość po zwarciu, czas wyłączenia, status
+ *   `NIE_OCENIONO`, `ocena` + pola raportowalności.
+ *   Endpoint: `GET /analysis-runs/{id}/results/dynamic-stability`.
+ * - Ślad automatyki: `build_automation_trace_results` → `rows` zawsze puste (zdarzeń
+ *   nie ma skąd wziąć — zabezpieczenia nie są symulowane) + `topology_effect`
+ *   ZADEKLAROWANY w opcjach biegu + `ocena`.
  *   Endpoint: `GET /analysis-runs/{id}/results/automation-trace`.
- * - GAP (uczciwa granica): kontrakt NIE niesie szeregu czasowego przebiegu —
- *   sekcja wielkości prezentuje wartości skrajne/końcowe backendu z jawną notą.
+ * - Przebieg: `GET …/dynamic-stability/time-series` — przebieg ZADANY z `uwaga_pl`.
  */
 
-import type { ElementType } from '../../../ui/types';
+import type { Branch, EnergyNetworkModel } from '../../../types/enm';
 import type { WierszZalozenia } from '../wzorzec';
-import { kryteriumPL, STABILNOSC_STRINGS as T } from './strings';
+import type { RekordOcenyNiewykonanej } from '../wzorzec/OcenaNiewykonana';
+import { STABILNOSC_STRINGS as T } from './strings';
 
 // ---------------------------------------------------------------------------
 // Kształty odpowiedzi backendu (lustro 1:1 pól konsumowanych)
 // ---------------------------------------------------------------------------
 
-/** Wiersz wyniku stabilności (pola opcjonalne — starsze zapisy bez pól → uczciwa kreska). */
+/** Wiersz wyniku — echo scenariusza wpisanego przez użytkownika + rekord oceny. */
 export interface WierszStabilnosci {
   readonly scenario_id?: string;
+  readonly scenario_type?: string;
   readonly source_id?: string;
   readonly faulted_element_id?: string;
-  /** Rodzaj elementu ze snapshotu biegu (F-K4 faza 3) — bez niego nie da się
-   *  zaznaczyć elementu w modelu; `null`/brak = nie ustalono (zero zgadywania). */
-  readonly source_kind?: string | null;
-  readonly faulted_element_kind?: string | null;
   readonly cleared_by_element_ids?: readonly string[];
-  readonly stable?: boolean;
+  /** Status maszynowy — jedyna wartość `NIE_OCENIONO` (tor nie wydaje werdyktu). */
   readonly status?: string;
-  readonly criteria_version?: string;
-  readonly stability_index?: number;
+  readonly contract_version?: string;
   readonly clearing_time_ms?: number;
-  readonly max_clearing_time_ms?: number;
-  readonly clearing_margin_ms?: number;
-  readonly angle_swing_deg?: number;
+  readonly pre_fault_angle_deg?: number;
+  readonly during_fault_angle_deg?: number;
+  readonly post_fault_angle_deg?: number;
   readonly post_fault_voltage_pu?: number;
   readonly post_fault_frequency_pu?: number;
-  readonly limiting_factor?: string;
-  readonly violated_checks?: readonly string[];
-  readonly checks?: Readonly<Record<string, boolean>>;
+  /** Rekord oceny niewykonanej (zdanie, czego brakuje, akcja naprawcza). */
+  readonly ocena?: RekordOcenyNiewykonanej;
   readonly proof_ref?: string | null;
   readonly proof_status?: string | null;
   readonly proof_status_pl?: string | null;
   readonly reporting_status?: string | null;
   readonly reporting_status_pl?: string | null;
   readonly reporting_limitations?: readonly string[];
+  /**
+   * Ograniczenia raportowe jako polskie zdania (backend: `etykiety_raportowe_pl` —
+   * kod ograniczenia → opis). Pierwszy plan czyta WYŁĄCZNIE to pole, nigdy kodów.
+   */
+  readonly reporting_limitations_pl?: readonly string[];
 }
 
 export interface OdpowiedzStabilnosci {
@@ -63,25 +67,42 @@ export interface OdpowiedzStabilnosci {
   readonly rows: readonly WierszStabilnosci[];
 }
 
-/** Zdarzenie śladu automatyki (AutomationTraceEvent.to_dict). */
-export interface ZdarzenieAutomatyki {
-  readonly event_seq: number;
-  readonly event_type: string;
-  readonly element_id?: string | null;
-  readonly detail?: string;
-}
+/** Stan sieci po zakłóceniu — unia 1:1 z `application/automation/trace.py`. */
+export type StanSieciPoZakloceniu = 'ISLANDED' | 'RECONFIGURED' | 'UNCHANGED';
 
-/** Efekt topologiczny po wyłączeniu (PostFaultTopologyEffect.to_dict — pola konsumowane). */
+/** Zakres wyłączeń — unia 1:1 z `application/automation/trace.py`. */
+export type ZakresWylaczen = 'NONE' | 'LOCAL' | 'WIDE';
+
+/** Efekt topologiczny ZADEKLAROWANY w opcjach biegu (PostFaultTopologyEffect.to_dict). */
 export interface EfektTopologii {
-  readonly network_state?: string;
-  readonly outage_scope?: string;
+  readonly network_state?: StanSieciPoZakloceniu;
+  readonly outage_scope?: ZakresWylaczen;
   readonly opened_element_ids?: readonly string[];
 }
 
+/**
+ * Polskie etykiety stanu sieci po zakłóceniu — mapa TYPOWANA unią kontraktu: nowy kod
+ * w backendzie nie skompiluje się tu bez etykiety, więc kod nie trafi na ekran.
+ */
+export const ETYKIETY_STANU_SIECI: Readonly<Record<StanSieciPoZakloceniu, string>> = {
+  ISLANDED: T.stanSieciWyspa,
+  RECONFIGURED: T.stanSieciPrzekonfigurowana,
+  UNCHANGED: T.stanSieciBezZmian,
+};
+
+/** Polskie etykiety zakresu wyłączeń (liczba elementów odłączonych od zasilania). */
+export const ETYKIETY_ZAKRESU_WYLACZEN: Readonly<Record<ZakresWylaczen, string>> = {
+  NONE: T.zakresBrak,
+  LOCAL: T.zakresLokalny,
+  WIDE: T.zakresRozlegly,
+};
+
+/** Ślad automatyki — `rows` zawsze puste (zabezpieczenia niesymulowane). */
 export interface OdpowiedzSladuAutomatyki {
   readonly run_id: string;
   readonly topology_effect?: EfektTopologii | null;
-  readonly rows: readonly ZdarzenieAutomatyki[];
+  readonly rows: readonly unknown[];
+  readonly ocena?: RekordOcenyNiewykonanej | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,9 +128,238 @@ export interface OdpowiedzPrzebieguStabilnosci {
   readonly run_id: string;
   readonly has_time_series: boolean;
   readonly time_unit: string;
-  readonly criteria_version?: string | null;
+  readonly contract_version?: string | null;
+  /** Charakter przebiegu (zadany, nie rozwiązanie sieci) — z backendu, przy liczbach. */
+  readonly uwaga_pl?: string | null;
   readonly quantities: readonly WielkoscPrzebiegu[];
   readonly points: readonly PunktPrzebiegu[];
+}
+
+// ---------------------------------------------------------------------------
+// Formularz scenariusza wyłączenia zwarcia (karta W2 pkt 1, zero fabrykacji)
+// ---------------------------------------------------------------------------
+
+/**
+ * Pola formularza scenariusza — DOKŁADNIE kontrakt opcji biegu
+ * (`enm/canonical_analysis.py::_POLA_SCENARIUSZA_STABILNOSCI_DYNAMICZNEJ`, ten
+ * sam klucz w `run.options`, ten sam komplet dziewięciu pól, ten sam powód
+ * odmowy przy braku). `typ` steruje WYŁĄCZNIE walidacją i parsowaniem w tym
+ * pliku — backend jest jedynym źródłem prawdy o tym, co pole znaczy fizycznie.
+ */
+/**
+ * `element` — jeden element modelu wybierany z listy po nazwie (element objęty
+ * zwarciem); `aparaty` — lista aparatów wyłączających zaznaczanych po nazwie;
+ * `liczba` — wartość wpisana. Referencje modelu są WARTOŚCIĄ opcji, nigdy tekstem,
+ * który projektant musiałby znać i wpisać.
+ */
+export type TypPolaScenariusza = 'element' | 'aparaty' | 'liczba';
+
+export interface PoleScenariusza {
+  readonly klucz: string;
+  readonly etykieta: string;
+  readonly jednostka?: string;
+  readonly typ: TypPolaScenariusza;
+  /** Wartość musi być > 0 (kontrakt: `clearing_time_ms`/`recovery_time_constant_s`
+   *  wchodzą jako dzielnik/czas dodatni — backend odrzuca <= 0 albo dzieli przez τ). */
+  readonly wymagaDodatniej?: boolean;
+}
+
+export const POLA_SCENARIUSZA_STABILNOSCI: readonly PoleScenariusza[] = [
+  { klucz: 'faulted_element_id', etykieta: T.poleElement, typ: 'element' },
+  {
+    klucz: 'clearing_time_ms',
+    etykieta: T.poleCzasWylaczenia,
+    jednostka: T.jednMs,
+    typ: 'liczba',
+    wymagaDodatniej: true,
+  },
+  { klucz: 'cleared_by_element_ids', etykieta: T.poleElementyWylaczajace, typ: 'aparaty' },
+  { klucz: 'pre_fault_angle_deg', etykieta: T.poleKatPrzed, jednostka: T.jednDeg, typ: 'liczba' },
+  {
+    klucz: 'during_fault_angle_deg',
+    etykieta: T.poleKatWCzasie,
+    jednostka: T.jednDeg,
+    typ: 'liczba',
+  },
+  { klucz: 'post_fault_angle_deg', etykieta: T.poleKatPo, jednostka: T.jednDeg, typ: 'liczba' },
+  {
+    klucz: 'post_fault_voltage_pu',
+    etykieta: T.poleNapiecie,
+    jednostka: T.jednPu,
+    typ: 'liczba',
+  },
+  {
+    klucz: 'post_fault_frequency_pu',
+    etykieta: T.poleCzestotliwosc,
+    jednostka: T.jednPu,
+    typ: 'liczba',
+  },
+  {
+    klucz: 'recovery_time_constant_s',
+    etykieta: T.poleStalaCzasowa,
+    jednostka: T.jednS,
+    typ: 'liczba',
+    wymagaDodatniej: true,
+  },
+] as const;
+
+/**
+ * Wartości formularza (kontrolowane pola): liczby jako tekst wpisany przez inżyniera,
+ * element jako referencja wybranej opcji, aparaty jako referencje rozdzielone przecinkiem.
+ */
+export type WartosciFormularzaScenariusza = Record<string, string>;
+
+/** Referencje zaznaczonych aparatów z wartości pola `aparaty`. */
+export function referencjeAparatow(wartosc: string | undefined): string[] {
+  return (wartosc ?? '')
+    .split(',')
+    .map((wpis) => wpis.trim())
+    .filter((wpis) => wpis !== '');
+}
+
+/** Przełącza aparat w wartości pola `aparaty` (kolejność = kolejność zaznaczania). */
+export function przelaczAparat(wartosc: string | undefined, ref: string): string {
+  const obecne = referencjeAparatow(wartosc);
+  return (obecne.includes(ref) ? obecne.filter((wpis) => wpis !== ref) : [...obecne, ref]).join(
+    ',',
+  );
+}
+
+/** Opcja doboru elementu scenariusza — nazwa i rodzaj z modelu, referencja jako wartość. */
+export interface OpcjaElementuScenariusza {
+  readonly ref: string;
+  readonly nazwa: string;
+  readonly rodzaj: string;
+}
+
+const RODZAJ_GALEZI: Readonly<Record<Branch['type'], string>> = {
+  line_overhead: T.rodzajLinia,
+  cable: T.rodzajKabel,
+  switch: T.rodzajLacznik,
+  breaker: T.rodzajWylacznik,
+  bus_coupler: T.rodzajSprzeglo,
+  disconnector: T.rodzajOdlacznik,
+  fuse: T.rodzajBezpiecznik,
+};
+
+const GALEZIE_PRZEWODZACE: ReadonlySet<Branch['type']> = new Set(['line_overhead', 'cable']);
+
+function nazwaLubRodzaj(nazwa: string | null | undefined, rodzaj: string): string {
+  const przycieta = (nazwa ?? '').trim();
+  return przycieta === '' ? `${rodzaj} ${T.bezNazwy}` : przycieta;
+}
+
+function poNazwie(a: OpcjaElementuScenariusza, b: OpcjaElementuScenariusza): number {
+  return a.nazwa.localeCompare(b.nazwa, 'pl') || a.ref.localeCompare(b.ref);
+}
+
+/**
+ * Elementy, na których projektant może zadać zwarcie: linie, kable, szyny i
+ * transformatory z migawki modelu (nazwa z modelu — ta sama co na schemacie).
+ * Deterministycznie: sortowanie po nazwie, remis po referencji.
+ */
+export function opcjeElementuZwarcia(
+  snapshot: EnergyNetworkModel | null,
+): OpcjaElementuScenariusza[] {
+  if (!snapshot) return [];
+  const galezie = (snapshot.branches ?? [])
+    .filter((galaz) => GALEZIE_PRZEWODZACE.has(galaz.type))
+    .map((galaz) => ({
+      ref: galaz.ref_id,
+      nazwa: nazwaLubRodzaj(galaz.name, RODZAJ_GALEZI[galaz.type]),
+      rodzaj: RODZAJ_GALEZI[galaz.type],
+    }));
+  const szyny = (snapshot.buses ?? []).map((szyna) => ({
+    ref: szyna.ref_id,
+    nazwa: nazwaLubRodzaj(szyna.name, T.rodzajSzyna),
+    rodzaj: T.rodzajSzyna,
+  }));
+  const transformatory = (snapshot.transformers ?? []).map((tr) => ({
+    ref: tr.ref_id,
+    nazwa: nazwaLubRodzaj(tr.name, T.rodzajTransformator),
+    rodzaj: T.rodzajTransformator,
+  }));
+  return [...galezie, ...szyny, ...transformatory].sort(poNazwie);
+}
+
+/**
+ * Aparaty, które mogą wyłączyć zwarcie: wyłączniki, łączniki, odłączniki, sprzęgła
+ * i bezpieczniki z migawki modelu (nazwa z modelu). Deterministycznie jak wyżej.
+ */
+export function opcjeAparatowWylaczajacych(
+  snapshot: EnergyNetworkModel | null,
+): OpcjaElementuScenariusza[] {
+  if (!snapshot) return [];
+  return (snapshot.branches ?? [])
+    .filter((galaz) => !GALEZIE_PRZEWODZACE.has(galaz.type))
+    .map((galaz) => ({
+      ref: galaz.ref_id,
+      nazwa: nazwaLubRodzaj(galaz.name, RODZAJ_GALEZI[galaz.type]),
+      rodzaj: RODZAJ_GALEZI[galaz.type],
+    }))
+    .sort(poNazwie);
+}
+
+/** Formularz startuje PUSTY — zero wartości podpowiadanych jako „typowe" (karta W2 pkt 1). */
+export function pusteWartosciScenariusza(): WartosciFormularzaScenariusza {
+  return Object.fromEntries(POLA_SCENARIUSZA_STABILNOSCI.map((pole) => [pole.klucz, '']));
+}
+
+/** Błąd walidacji jednego pola formularza (klucz pola → treść błędu PL). */
+export type BledyFormularzaScenariusza = Record<string, string>;
+
+/**
+ * Waliduje formularz WYŁĄCZNIE względem tego, co kontrakt backendu faktycznie
+ * sprawdza (`FaultClearScenario.__post_init__`: pole wymagane, `clearing_time_ms`
+ * i `recovery_time_constant_s` > 0, `cleared_by_element_ids` niepuste) — zero
+ * progów inżynierskich wymyślonych w UI (zakaz fizyki w interfejsie).
+ */
+export function walidujFormularzScenariusza(
+  wartosci: WartosciFormularzaScenariusza,
+): BledyFormularzaScenariusza {
+  const bledy: BledyFormularzaScenariusza = {};
+  for (const pole of POLA_SCENARIUSZA_STABILNOSCI) {
+    const surowa = (wartosci[pole.klucz] ?? '').trim();
+    if (pole.typ === 'aparaty') {
+      if (referencjeAparatow(surowa).length === 0) bledy[pole.klucz] = T.bladListaPusta;
+      continue;
+    }
+    if (surowa === '') {
+      bledy[pole.klucz] = T.bladWymagane;
+      continue;
+    }
+    if (pole.typ === 'liczba') {
+      const liczba = Number(surowa.replace(',', '.'));
+      if (!Number.isFinite(liczba)) {
+        bledy[pole.klucz] = T.bladWymagane;
+      } else if (pole.wymagaDodatniej && liczba <= 0) {
+        bledy[pole.klucz] = T.bladDodatnie;
+      }
+    }
+  }
+  return bledy;
+}
+
+/**
+ * Buduje `options` biegu z formularza — 1:1 kontrakt opcji biegu backendu.
+ * Wołający MUSI sprawdzić `walidujFormularzScenariusza` wcześniej (zero pól
+ * pustych/błędnych trafia tu) — funkcja nie waliduje ponownie, tylko rzutuje.
+ */
+export function zbudujOpcjeScenariusza(
+  wartosci: WartosciFormularzaScenariusza,
+): Record<string, unknown> {
+  const opcje: Record<string, unknown> = {};
+  for (const pole of POLA_SCENARIUSZA_STABILNOSCI) {
+    const surowa = wartosci[pole.klucz]?.trim() ?? '';
+    if (pole.typ === 'aparaty') {
+      opcje[pole.klucz] = referencjeAparatow(surowa);
+    } else if (pole.typ === 'liczba') {
+      opcje[pole.klucz] = Number(surowa.replace(',', '.'));
+    } else {
+      opcje[pole.klucz] = surowa;
+    }
+  }
+  return opcje;
 }
 
 // ---------------------------------------------------------------------------
@@ -177,103 +427,72 @@ export function fmtPu(n: number): string {
   return fmtLiczba(n, 3);
 }
 
-/** Wskaźnik bezwymiarowy — 3 miejsca po przecinku. */
-export function fmtWskaznik(n: number): string {
-  return fmtLiczba(n, 3);
-}
-
 // ---------------------------------------------------------------------------
 // Adaptery sekcji
 // ---------------------------------------------------------------------------
 
-/** ZAŁOŻENIA — scenariusz zakłócenia (część wyniku, W-602). */
-export function naZalozeniaStabilnosci(row: WierszStabilnosci): WierszZalozenia[] {
+/**
+ * ZAŁOŻENIA — scenariusz zakłócenia (część wyniku, W-602). Elementy nazwane mostem
+ * nazw wyników (`nazwa` = `useNazwaObiektu()`): projektant czyta nazwy z modelu, nie
+ * referencje (karta #145).
+ */
+export function naZalozeniaStabilnosci(
+  row: WierszStabilnosci,
+  nazwa: (ref: string) => string,
+): WierszZalozenia[] {
   return [
-    { etykieta: T.zalElement, wartosc: row.faulted_element_id ?? T.kreska },
-    { etykieta: T.zalZrodlo, wartosc: row.source_id ?? T.kreska },
     {
-      etykieta: T.zalCzasWylaczenia,
-      wartosc: row.clearing_time_ms != null ? fmtMs(row.clearing_time_ms) : T.kreska,
-      jednostka: row.clearing_time_ms != null ? T.jednMs : undefined,
+      etykieta: T.zalElement,
+      wartosc: row.faulted_element_id ? nazwa(row.faulted_element_id) : T.kreska,
     },
+    { etykieta: T.zalZrodlo, wartosc: row.source_id ? nazwa(row.source_id) : T.kreska },
     {
       etykieta: T.zalWylaczaly,
       wartosc:
         row.cleared_by_element_ids && row.cleared_by_element_ids.length > 0
-          ? row.cleared_by_element_ids.join(', ')
+          ? row.cleared_by_element_ids.map((ref) => nazwa(ref)).join(', ')
           : T.kreska,
     },
-    {
-      etykieta: T.zalMaksCzas,
-      wartosc: row.max_clearing_time_ms != null ? fmtMs(row.max_clearing_time_ms) : T.kreska,
-      jednostka: row.max_clearing_time_ms != null ? T.jednMs : undefined,
-    },
-    { etykieta: T.zalKryteria, wartosc: row.criteria_version ?? T.kreska },
   ];
 }
 
-/** Werdykt PL — wprost ze statusu backendu (STABLE/UNSTABLE), bez interpretacji. */
-export function werdyktStabilnosciPL(row: WierszStabilnosci): string {
-  if (row.status === 'STABLE') return T.werdyktStabilny;
-  if (row.status === 'UNSTABLE') return T.werdyktNiestabilny;
-  return row.status ?? T.kreska;
-}
-
-/** Naruszone kryteria (PL) — z pola `violated_checks` backendu. */
-export function naruszoneKryteriaPL(row: WierszStabilnosci): string {
-  const naruszone = row.violated_checks ?? [];
-  if (naruszone.length === 0) return T.werdyktBrakNaruszen;
-  return naruszone.map(kryteriumPL).join(', ');
-}
-
-/** Jedna pozycja tabeli wielkości po zakłóceniu. */
-export interface PozycjaWielkosci {
+/** Jedna pozycja echa scenariusza (wartość wpisana przez użytkownika). */
+export interface PozycjaEcha {
   readonly klucz: string;
   readonly wielkosc: string;
   readonly wartosc: string;
-  readonly jednostka: string;
-  /** Status kryterium backendu (`checks[klucz]`); undefined = kontrakt bez wpisu. */
-  readonly spelnione: boolean | undefined;
 }
 
 /**
- * Tabela wielkości po zakłóceniu — wartości i statusy kryteriów WPROST
- * z wiersza backendu (`checks`); zero progów i porównań w UI.
+ * Echo scenariusza — liczby WPISANE przez użytkownika, zwrócone przez backend bez
+ * żadnego porównania z progami. Brak pola → kreska (uczciwy brak, zero domysłu).
  */
-export function naWielkosciStabilnosci(row: WierszStabilnosci): PozycjaWielkosci[] {
-  const checks = row.checks ?? {};
+export function naEchoScenariusza(row: WierszStabilnosci): PozycjaEcha[] {
   const pozycja = (
     klucz: string,
     wielkosc: string,
     wartosc: number | undefined,
     format: (n: number) => string,
     jednostka: string,
-  ): PozycjaWielkosci => ({
+  ): PozycjaEcha => ({
     klucz,
     wielkosc,
-    wartosc: wartosc != null ? format(wartosc) : T.kreska,
-    jednostka,
-    spelnione: klucz in checks ? checks[klucz] : undefined,
+    wartosc: wartosc != null ? `${format(wartosc)} ${jednostka}` : T.kreska,
   });
   return [
-    pozycja('clearing_time', T.wielkoscCzas, row.clearing_time_ms, fmtMs, T.jednMs),
-    pozycja('angle_swing', T.wielkoscKat, row.angle_swing_deg, fmtDeg, T.jednDeg),
-    pozycja('voltage_recovery', T.wielkoscNapiecie, row.post_fault_voltage_pu, fmtPu, T.jednPu),
+    pozycja('clearing_time_ms', T.echoCzas, row.clearing_time_ms, fmtMs, T.jednMs),
+    pozycja('pre_fault_angle_deg', T.echoKatPrzed, row.pre_fault_angle_deg, fmtDeg, T.jednDeg),
+    pozycja('during_fault_angle_deg', T.echoKatWCzasie, row.during_fault_angle_deg, fmtDeg, T.jednDeg),
+    pozycja('post_fault_angle_deg', T.echoKatPo, row.post_fault_angle_deg, fmtDeg, T.jednDeg),
+    pozycja('post_fault_voltage_pu', T.echoNapiecie, row.post_fault_voltage_pu, fmtPu, T.jednPu),
     pozycja(
-      'frequency_recovery',
-      T.wielkoscCzestotliwosc,
+      'post_fault_frequency_pu',
+      T.echoCzestotliwosc,
       row.post_fault_frequency_pu,
       fmtPu,
       T.jednPu,
     ),
   ];
-}
-
-/** Zdarzenia śladu automatyki posortowane deterministycznie po event_seq. */
-export function naZdarzenia(rows: readonly ZdarzenieAutomatyki[]): ZdarzenieAutomatyki[] {
-  return [...rows].sort(
-    (a, b) => a.event_seq - b.event_seq || a.event_type.localeCompare(b.event_type),
-  );
 }
 
 /** Jedna seria wykresu przebiegu (pole punktu → etykieta PL + jednostka). */
@@ -305,46 +524,4 @@ export function naSeriePrzebiegu(
     serie.push({ dataKey: mapa.klucz, nazwa: mapa.nazwa, jednostka: q.unit });
   }
   return serie;
-}
-
-// ---------------------------------------------------------------------------
-// Pętla decyzji (F-K4 faza 3): rodzaj domenowy z kontraktu → typ elementu UI
-// ---------------------------------------------------------------------------
-
-/**
- * Typ elementu interfejsu dla rodzaju z kontraktu backendu (`enm/element_kind.py`).
- * `null` = rodzaju nie ustalono albo nie mapuje się na element schematu — wtedy
- * akcji nie ma, bo prowadziłaby w nikąd.
- */
-export function typElementuStabilnosci(rodzaj: string | null | undefined): ElementType | null {
-  switch (rodzaj) {
-    case 'szyna':
-      return 'Bus';
-    case 'galaz_liniowa':
-      return 'LineBranch';
-    case 'transformator':
-      return 'TransformerBranch';
-    case 'zrodlo':
-      return 'Source';
-    case 'generator':
-      return 'Generator';
-    default:
-      return null;
-  }
-}
-
-/** Element, do którego prowadzi werdykt niestabilności: najpierw miejsce zwarcia,
- *  potem źródło (to ono traci stabilność). `null` gdy kontrakt nie niesie rodzaju. */
-export function elementWerdyktuStabilnosci(
-  wiersz: WierszStabilnosci,
-): { ref: string; typ: ElementType } | null {
-  const kandydaci: readonly [string | undefined, string | null | undefined][] = [
-    [wiersz.faulted_element_id, wiersz.faulted_element_kind],
-    [wiersz.source_id, wiersz.source_kind],
-  ];
-  for (const [ref, rodzaj] of kandydaci) {
-    const typ = typElementuStabilnosci(rodzaj);
-    if (ref && typ) return { ref, typ };
-  }
-  return null;
 }

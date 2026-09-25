@@ -147,13 +147,13 @@ export function formatStationSwitchgearLayoutLabelPl(type: string | null | undef
 export function formatStationSwitchgearDescriptionPl(type: string | null | undefined): string {
   switch (normalizeTopologicalStationKind(type)) {
     case 'terminal':
-      return 'Rozdzielnica SN: układ końcowy z polem zasilającym i polem transformatorowym.';
+      return 'Rozdzielnica SN: układ końcowy z polem liniowym wejściowym i polem transformatorowym.';
     case 'branch':
-      return 'Rozdzielnica SN: układ odgałęźny z polem zasilającym, odpływowym, odgałęźnym i transformatorowym.';
+      return 'Rozdzielnica SN: układ odgałęźny z polem liniowym wejściowym, liniowym wyjściowym, odgałęźnym i transformatorowym.';
     case 'sectional':
-      return 'Rozdzielnica SN: układ sekcyjny z podziałem ciągu, polem sprzęgłowym i polem transformatorowym.';
+      return 'Rozdzielnica SN: układ sekcyjny z podziałem ciągu, polem sprzęgła i polem transformatorowym.';
     case 'inline':
     default:
-      return 'Rozdzielnica SN: układ przelotowy z polem wejściowym, wyjściowym i transformatorowym.';
+      return 'Rozdzielnica SN: układ przelotowy z polem liniowym wejściowym, liniowym wyjściowym i transformatorowym.';
   }
 }

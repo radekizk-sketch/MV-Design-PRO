@@ -99,7 +99,7 @@ def test_zadna_wkladka_nie_niesie_wartosci_bez_pokrycia_w_karcie() -> None:
     tabeli jedną zdolność wyłączania, a nasze pozycje cytują ją wprost.
     """
     for pozycja in _bezpieczniki():
-        deklarowana_w_zrodle = f"zdolnosc wylaczania {pozycja.i_cu_ka:g} kA"
+        deklarowana_w_zrodle = f"zdolność wyłączania {pozycja.i_cu_ka:g} kA"
         assert deklarowana_w_zrodle in pozycja.source_reference, (
             pozycja.id,
             deklarowana_w_zrodle,

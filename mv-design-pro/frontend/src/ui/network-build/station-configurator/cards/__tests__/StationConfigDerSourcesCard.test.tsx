@@ -10,10 +10,37 @@ import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
   EMPTY_DER_READINESS,
+  type BlockTransformerItem,
   type StationDerConnection,
 } from '../../../station-der';
 
 const FROZEN_NOW = '2026-05-06T10:00:00Z';
+
+/**
+ * Karta FAB-J: transformator dedykowany JEST danym backendu (snapshot audytu 2,
+ * `useAudit2CatalogSnapshot`) — karta go już nie ma lokalnie, więc test podaje
+ * fikstury jawnie zamiast liczyć na usunięty `BLOCK_TRANSFORMER_CATALOG`.
+ */
+const BLOCK_TRANSFORMER_FIXTURE: BlockTransformerItem = {
+  id: 'btr_pv_15_069_1250',
+  catalog_namespace: 'block_transformer',
+  catalog_version: '1.0',
+  label_pl: 'Transformator dedykowany 15/0,69 kV · 1250 kVA · Dyn11',
+  transformer_type_ref: 'tr-test-btr_pv_15_069_1250',
+  sn_kva: 1250,
+  hv_kv: 15,
+  lv_kv: 0.69,
+  uk_percent: 6,
+  pk_kw: 12.5,
+  p0_kw: 2.5,
+  i0_percent: 0.5,
+  vector_group: 'Dyn11',
+  is_mv_to_mv: false,
+  applicable_der_kinds: ['PV', 'BESS', 'FW'],
+  galvanic_isolation: true,
+  source_reference: 'Fikstura testowa',
+  verification_status: 'VERIFIED',
+};
 
 function makeDer(
   overrides: Partial<StationDerConnection> = {},
@@ -24,16 +51,23 @@ function makeDer(
     station_id: 'station_1',
     der_kind: 'PV',
     name: 'PV Centralna',
-    connection_side: 'SN',
+    // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — DER przez
+    // transformator dedykowany na szynie stacji (zgodne z niżej podanym
+    // `bay_ref`/napięciem 0,69 kV strony dolnej TR blokowego 15/0,69 kV).
+    connection_side: 'dedicated_transformer',
+    sn_connection_bus_ref: 'bus_sn_station_1',
+    sn_connection_point_kind: 'station_bus',
     bus_przylaczenia_ref: 'pcc_1',
     bay_ref: 'bay_1',
     transformer_ref: null,
     lv_busbar_ref: null,
-    internal_cable_ref: null,
-    voltage_level_ref: 'lv_0_69kV',
+    // Karta FAB-K (§0 R4): `voltage_level_ref` USUNIĘTY jako phantom —
+    // `connection_voltage_kv` (napięcie WYŁĄCZNIE z modelu) jest jedynym źródłem.
+    connection_voltage_kv: 0.69,
     catalogs: { ...EMPTY_DER_CATALOGS, device_catalog_ref: 'pv_inv_sma_2500' },
     profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'ncrfg_pse' },
     nominal_power_kw: 2500,
+    unit_count: null,
     completeness: 'complete',
     readiness: { ...EMPTY_DER_READINESS },
     created_at: FROZEN_NOW,
@@ -91,9 +125,9 @@ describe('StationConfigDerSourcesCard — Karta 7 "Układy PV/BESS/FW"', () => {
               block_transformer_catalog_ref: 'btr_pv_15_069_1250',
             },
             nominal_power_kw: 1000,
-            voltage_level_ref: null,
           }),
         ]}
+        blockTransformers={[BLOCK_TRANSFORMER_FIXTURE]}
       />,
     );
 

@@ -41,12 +41,14 @@ def _reset() -> None:
 
 def _pf_run_id():
     set_enm("c-pf", build_golden_enm())
-    return execute_run(create_run(case_id="c-pf", analysis_type="PF").id).id
+    return execute_run(create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id).id
 
 
 def _sc_run_id():
     set_enm("c-sc", build_golden_enm())
-    return execute_run(create_run(case_id="c-sc", analysis_type="short_circuit_sn").id).id
+    return execute_run(
+        create_run(case_id="c-sc", klucz_twin="c-sc", analysis_type="short_circuit_sn").id
+    ).id
 
 
 def _flat_measurements(run_id) -> list[dict[str, Any]]:
@@ -138,7 +140,7 @@ def test_state_estimation_returns_view(app_client) -> None:
     data = resp.json()
     assert data["analysis_id"] == str(run_id)
     assert data["converged"] is True
-    assert data["status"] == "OK"
+    assert data["status"] == "ZBIEZNY"
     # Estymowany stan per węzeł: |V|/kąt. RE-BASELINE 6 → 5 (V12K-184): sieć
     # wzorcowa ma 5 szyn, a szósty węzeł był WIRTUALNĄ ZIEMIĄ źródła, tworzoną
     # przez mapowanie ENM→graf. Zasilanie systemowe jest teraz bocznikiem

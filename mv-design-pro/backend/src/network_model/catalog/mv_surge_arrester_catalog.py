@@ -5,7 +5,7 @@ from typing import Any
 
 from .types import CATALOG_CONTRACT_VERSION, CatalogStatus, CatalogVerificationStatus
 
-SOURCE_REFERENCE = "PN-EN 60099-4 / IEC 60099-4 / referencyjny typoszereg ogranicznikow SN"
+SOURCE_REFERENCE = "PN-EN 60099-4 / IEC 60099-4 / referencyjny typoszereg ograniczników SN"
 
 
 def _record(
@@ -47,8 +47,8 @@ def _record(
             "source_reference": SOURCE_REFERENCE,
             "contract_version": CATALOG_CONTRACT_VERSION,
             "verification_note": (
-                "Rekord referencyjny do doboru wstepnego. Dobor wykonawczy wymaga "
-                "karty katalogowej producenta i weryfikacji TOV dla ukladu sieci."
+                "Rekord referencyjny do doboru wstępnego. Dobór wykonawczy wymaga "
+                "karty katalogowej producenta i weryfikacji TOV dla układu sieci."
             ),
         },
     }

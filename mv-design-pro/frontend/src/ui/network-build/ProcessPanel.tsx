@@ -247,7 +247,7 @@ function SnFieldSection({
         </div>
       ) : (
         <p className={clsx('text-[11px]', mutedTextClass)}>
-          Skonfiguruj pole odpływowe SN z aparaturą. Magistrala będzie wyprowadzona z jego zacisku wyjściowego.
+          Skonfiguruj pole liniowe SN z aparaturą. Magistrala będzie wyprowadzona z jego zacisku wyjściowego.
         </p>
       )}
       {firstUnconfiguredField && (

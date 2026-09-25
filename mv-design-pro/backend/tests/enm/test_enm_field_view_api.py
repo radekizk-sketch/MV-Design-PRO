@@ -10,8 +10,13 @@ INTENCJA TESTOW BEZ ZMIAN: sprawdzaja TRESC modelu odczytu pol, a nie sposob
 wykonania koncowki. `asyncio.run` bylo tu wylacznie adapterem do `async def`.
 """
 
+from uuid import uuid4
+
 import pytest
 from api.enm import get_enm_field_view
+from application.twin_key import klucz_twin_dla_przypadku
+from domain.models import Project
+from domain.study_case import StudyCase
 from enm.canonical_analysis import reset_canonical_runs, run_short_circuit_now
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm, reset_enm_store, set_enm
@@ -19,8 +24,35 @@ from enm.store import get_enm, reset_enm_store, set_enm
 from tests.catalog_test_helpers import gpz_source_record
 
 
-def _seed_enm(case_id: str, payload: dict) -> None:
-    set_enm(case_id, EnergyNetworkModel.model_validate(payload))
+def _nowy_przypadek(uow_factory) -> str:
+    """Utworz REALNY projekt + przypadek wprost przez UoW; zwroc `case_id`.
+
+    CV-1-W: `get_enm_field_view`/`run_short_circuit_now` wolane sa TU
+    bezposrednio (bez HTTP) i wymagaja `klucz` juz przetlumaczonego — a
+    przypadek bez wiersza w bazie dostaje 404/`PrzypadekBezProjektuError`
+    (inwariant I-2), wiec potrzebujemy prawdziwej pary projekt+przypadek,
+    dokladnie jak `tests/invariants/test_wlasnosc_modelu_projektu.py
+    ::_projekt_z_przypadkami`.
+    """
+    project_id = uuid4()
+    case_id = uuid4()
+    with uow_factory() as uow:
+        uow.projects.add(Project(id=project_id, name="Test field-view API"), commit=False)
+        uow.cases.add_study_case(
+            StudyCase(id=case_id, project_id=project_id, name="Przypadek testu"),
+            commit=False,
+        )
+        uow.commit()
+    return str(case_id)
+
+
+def _klucz(case_id: str, uow_factory) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tlumaczenie co warstwa API (CV-1)."""
+    return klucz_twin_dla_przypadku(case_id, uow_factory)
+
+
+def _seed_enm(case_id: str, payload: dict, uow_factory) -> None:
+    set_enm(_klucz(case_id, uow_factory), EnergyNetworkModel.model_validate(payload))
 
 
 @pytest.fixture(autouse=True)
@@ -262,10 +294,11 @@ def _enm_with_fw_bay() -> dict:
     return payload
 
 
-def test_get_field_view_empty():
-    data = get_enm_field_view("field-empty")
+def test_get_field_view_empty(uow_factory):
+    case_id = _nowy_przypadek(uow_factory)
+    data = get_enm_field_view(case_id, _klucz(case_id, uow_factory))
 
-    assert data["case_id"] == "field-empty"
+    assert data["case_id"] == case_id
     assert data["view_status"] == {
         "data_source": "ENM_FIELD_READ_MODEL",
         "result_state": "NONE",
@@ -275,14 +308,16 @@ def test_get_field_view_empty():
     assert data["fields"] == []
 
 
-def test_get_field_view_returns_canonical_bay_contract():
-    _seed_enm("field-ready", _enm_with_bay())
-    run_short_circuit_now(case_id="field-ready")
+def test_get_field_view_returns_canonical_bay_contract(uow_factory):
+    case_id = _nowy_przypadek(uow_factory)
+    klucz = _klucz(case_id, uow_factory)
+    _seed_enm(case_id, _enm_with_bay(), uow_factory)
+    run_short_circuit_now(case_id=case_id, klucz_twin=klucz)
 
-    data = get_enm_field_view("field-ready")
-    stored_enm = get_enm("field-ready")
+    data = get_enm_field_view(case_id, klucz)
+    stored_enm = get_enm(klucz)
 
-    assert data["case_id"] == "field-ready"
+    assert data["case_id"] == case_id
     assert data["enm_revision"] == stored_enm.header.revision
     assert data["view_status"] == {
         "data_source": "ENM_FIELD_READ_MODEL",
@@ -303,8 +338,17 @@ def test_get_field_view_returns_canonical_bay_contract():
     assert canonical["base_model"]["bay_role"] == "LINIA_IN"
     assert canonical["base_model"]["measurement_chain"]["ct_refs"] == ["ct_in_1"]
     assert canonical["base_model"]["protection_config"]["functions"][0]["code"] in {"50", "51"}
-    assert canonical["runtime_state"]["measurement_availability"] == "czesciowe"
-    assert canonical["runtime_state"]["control_availability"] == "czesciowo_dostepne"
+    # Zmiana kanonu (karta #135, fabrykacja stanu ruchowego pola): dostępność pomiarów
+    # i sterowania ("czesciowe" / "czesciowo_dostepne") była wymyślana z samej obecności
+    # przekładnika i zabezpieczenia w modelu. Model bez źródła runtime nie ma telemetrii —
+    # rekord runtime jest pusty, a stan łącznika pochodzi z modelu. Intencja zachowana:
+    # kontrakt pola niesie stan runtime wyłącznie ze źródła, a aparat — stan z modelu.
+    assert canonical["runtime_state"] is None
+    wylacznik = next(
+        d for d in canonical["base_model"]["primary_devices"] if d["device_ref"] == "cb_in_1"
+    )
+    assert wylacznik["switch_state"]["actual_state"] == "zamkniety"
+    assert wylacznik["switch_state"]["communication_ok"] is None
 
     results = item["project_results"]
     assert results["run_ref"]
@@ -314,10 +358,11 @@ def test_get_field_view_returns_canonical_bay_contract():
     assert results["proof_binding"]["proof_ref"].startswith("proof:bay_in_1:")
 
 
-def test_get_field_view_synthesizes_fields_from_substation_meta():
-    _seed_enm("field-specs", _enm_with_field_specs_only())
+def test_get_field_view_synthesizes_fields_from_substation_meta(uow_factory):
+    case_id = _nowy_przypadek(uow_factory)
+    _seed_enm(case_id, _enm_with_field_specs_only(), uow_factory)
 
-    data = get_enm_field_view("field-specs")
+    data = get_enm_field_view(case_id, _klucz(case_id, uow_factory))
 
     assert data["summary"]["total_fields"] == 1
     item = data["fields"][0]
@@ -328,10 +373,11 @@ def test_get_field_view_synthesizes_fields_from_substation_meta():
     assert item["canonical_model"]["base_model"]["protection_config"]["unit_ref"] == "prot_oc_1"
 
 
-def test_get_field_view_reads_nn_field_specs_from_substation_meta():
-    _seed_enm("field-nn-specs", _enm_with_nn_field_specs_only())
+def test_get_field_view_reads_nn_field_specs_from_substation_meta(uow_factory):
+    case_id = _nowy_przypadek(uow_factory)
+    _seed_enm(case_id, _enm_with_nn_field_specs_only(), uow_factory)
 
-    data = get_enm_field_view("field-nn-specs")
+    data = get_enm_field_view(case_id, _klucz(case_id, uow_factory))
 
     assert data["summary"]["total_fields"] == 1
     item = data["fields"][0]
@@ -340,11 +386,13 @@ def test_get_field_view_reads_nn_field_specs_from_substation_meta():
     assert item["canonical_model"]["base_model"]["measurement_chain"]["ct_refs"] == ["ct_in_1"]
 
 
-def test_get_field_view_returns_fw_source_field():
-    _seed_enm("field-fw", _enm_with_fw_bay())
-    run_short_circuit_now(case_id="field-fw")
+def test_get_field_view_returns_fw_source_field(uow_factory):
+    case_id = _nowy_przypadek(uow_factory)
+    klucz = _klucz(case_id, uow_factory)
+    _seed_enm(case_id, _enm_with_fw_bay(), uow_factory)
+    run_short_circuit_now(case_id=case_id, klucz_twin=klucz)
 
-    data = get_enm_field_view("field-fw")
+    data = get_enm_field_view(case_id, klucz)
 
     assert data["summary"]["source_fields_count"] == 1
 

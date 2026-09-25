@@ -15,7 +15,11 @@ OPERATIONS:
 - Clone: Copy config, no results
 - Activate: Set as active (deactivates others)
 - Compare: Read-only diff between two cases
-- Invalidate: Mark as OUTDATED on model/config change
+
+STATUS WYNIKOW NIE JEST TU ZARZADZANY (CV-2-W): serwis nie ma zadnego
+`mark_*_outdated` / `mark_case_fresh`, bo status przypadku jest FUNKCJA jego
+biegow i biezacej rewizji modelu — liczy go `application/study_case/status_wynikow.py`
+na zadanie, a doklada do odpowiedzi warstwa API.
 """
 
 from __future__ import annotations
@@ -31,7 +35,6 @@ from domain.study_case import (
     StudyCase,
     StudyCaseComparison,
     StudyCaseConfig,
-    StudyCaseResult,
     compare_study_cases,
     new_study_case,
 )
@@ -43,15 +46,36 @@ from .errors import (
 )
 
 
+def _migawka_modelu_przypadku(
+    case_id: str, uow_factory: Callable[[], Any]
+) -> dict[str, Any] | None:
+    """Migawka modelu projektu przypadku (magazyn Canonical Project Twin) albo `None`, gdy
+    przypadek nie należy do projektu albo projekt nie ma jeszcze modelu — walidacja
+    zacisku urządzeń sprawdza wtedy wyłącznie literał (nie ma czego być sprzecznym)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+    from enm import store
+    from enm.klucz_twin import PrzypadekBezProjektuError
+
+    try:
+        klucz = klucz_twin_dla_przypadku(case_id, uow_factory)
+    except PrzypadekBezProjektuError:
+        return None
+    if not store.has_enm(klucz):
+        return None
+    return store.get_enm(klucz).model_dump(mode="json")
+
+
 @dataclass
 class StudyCaseListItem:
-    """Summary item for listing study cases."""
+    """Summary item for listing study cases.
+
+    BEZ statusu wynikow: `result_status` / `results_valid` dokleja warstwa API z
+    werdyktu wyprowadzonego z biegow przypadku (CV-2-W).
+    """
 
     id: str
     name: str
     description: str
-    result_status: str
-    results_valid: bool  # PR-4: explicit validity flag
     is_active: bool
     updated_at: str
 
@@ -60,8 +84,6 @@ class StudyCaseListItem:
             "id": self.id,
             "name": self.name,
             "description": self.description,
-            "result_status": self.result_status,
-            "results_valid": self.results_valid,
             "is_active": self.is_active,
             "updated_at": self.updated_at,
         }
@@ -170,8 +192,6 @@ class StudyCaseService:
                     id=str(case.id),
                     name=case.name,
                     description=case.description,
-                    result_status=case.result_status.value,
-                    results_valid=case.results_valid,
                     is_active=case.is_active,
                     updated_at=case.updated_at.isoformat(),
                 )
@@ -363,79 +383,6 @@ class StudyCaseService:
             return compare_study_cases(case_a, case_b)
 
     # =========================================================================
-    # Result Status Management
-    # =========================================================================
-
-    def mark_all_outdated(self, project_id: UUID) -> int:
-        """
-        Mark all study cases in a project as OUTDATED.
-
-        Called when NetworkModel changes.
-        Only affects cases with FRESH status.
-
-        Args:
-            project_id: Project ID
-
-        Returns:
-            Number of cases marked as OUTDATED
-        """
-        with self._uow_factory() as uow:
-            repo = uow.cases
-            if repo is None:
-                raise CaseConfigurationError("Repozytorium przypadków jest niedostępne")
-            return repo.mark_all_cases_outdated(project_id)
-
-    def mark_case_outdated(self, case_id: UUID) -> bool:
-        """
-        Mark a single study case as OUTDATED.
-
-        Called when case configuration changes.
-
-        Args:
-            case_id: Case ID
-
-        Returns:
-            True if case was marked, False if not found or already OUTDATED/NONE
-        """
-        with self._uow_factory() as uow:
-            repo = uow.cases
-            if repo is None:
-                raise CaseConfigurationError("Repozytorium przypadków jest niedostępne")
-            return repo.mark_case_outdated(case_id)
-
-    def mark_case_fresh(
-        self,
-        case_id: UUID,
-        analysis_run_id: UUID,
-        analysis_type: str,
-        input_hash: str,
-    ) -> bool:
-        """
-        Mark a study case as FRESH after successful calculation.
-
-        Args:
-            case_id: Case ID
-            analysis_run_id: ID of the analysis run with results
-            analysis_type: Type of analysis (e.g., "short_circuit_sn")
-            input_hash: Hash of the input for cache invalidation
-
-        Returns:
-            True if case was marked, False if not found
-        """
-        with self._uow_factory() as uow:
-            repo = uow.cases
-            if repo is None:
-                raise CaseConfigurationError("Repozytorium przypadków jest niedostępne")
-
-            result_ref = StudyCaseResult(
-                analysis_run_id=analysis_run_id,
-                analysis_type=analysis_type,
-                calculated_at=datetime.now(UTC),
-                input_hash=input_hash,
-            )
-            return repo.mark_case_fresh(case_id, result_ref)
-
-    # =========================================================================
     # Validation Helpers
     # =========================================================================
 
@@ -514,8 +461,23 @@ class StudyCaseService:
 
         Raises:
             StudyCaseNotFoundError: If case doesn't exist
-            ValueError: If template_ref doesn't exist in catalog
+            ValueError: If template_ref doesn't exist in catalog, or a coordination
+                device carries an invalid terminal (`zacisk`) or one contradicting the model
         """
+        # Decyzja O-51 (pkt 7): zacisk urządzenia koordynacji — walidacja ADDYTYWNA tym
+        # samym resolverem co pakiet nastaw (sprzeczność z modelem = odmowa nazwana).
+        # Model projektu czytany PRZED otwarciem jednostki pracy zapisu (tłumaczenie
+        # klucza otwiera własną jednostkę pracy).
+        from application.protection_settings.zacisk_zabezpieczenia import (
+            odmowy_zaciskow_urzadzen,
+        )
+
+        powody = odmowy_zaciskow_urzadzen(
+            _migawka_modelu_przypadku(str(case_id), self._uow_factory), overrides or {}
+        )
+        if powody:
+            raise ValueError(" ".join(powody))
+
         with self._uow_factory() as uow:
             repo = uow.cases
             if repo is None:
@@ -526,8 +488,19 @@ class StudyCaseService:
             if case is None:
                 raise StudyCaseNotFoundError(str(case_id))
 
-            # TODO P14c: Validate template_ref exists in catalog
-            # For now, we trust the frontend validation
+            # Walidacja P14c: template_ref musi istnieć w katalogu zabezpieczeń,
+            # gdy podany — kontrakt trasy PUT .../protection-config to obiecuje
+            # (422 przy braku, patrz api/study_cases.py). Reużycie odczytu
+            # katalogu z biegu kanonicznego (CV-3.3-B), nie nowa ścieżka.
+            if template_ref is not None:
+                from application.protection_analysis.catalog_lookup import (
+                    get_protection_template,
+                )
+
+                if get_protection_template(uow, template_ref) is None:
+                    raise ValueError(
+                        f"Szablon nastaw zabezpieczeń '{template_ref}' " "nie istnieje w katalogu"
+                    )
 
             # Create new ProtectionConfig
             now = datetime.now(UTC)

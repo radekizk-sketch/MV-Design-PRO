@@ -71,7 +71,8 @@
  * `power_flow_newton_internal.py::build_power_spec_v2` neguje ponownie
  * oczekując konwencji obciążeniowej. Naprawione konwersją gen→load NA
  * GRANICY budowy `PQSpec` (`canonical_analysis.py` oraz analogiczny
- * `application/reference_networks/sld_substrate_power_flow.py`); `mapping.py`
+ * `backend/tests/golden/sld_substrate_power_flow.py` — przeniesiony z
+ * `application/reference_networks/` kartą K2, 2026-09-09); `mapping.py`
  * i solver NIETKNIĘTE (oba poprawne na własnych warunkach). Dowód fizyczny:
  * `backend/tests/test_canonical_analysis_api.py
  * ::test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct`
@@ -283,20 +284,6 @@ export interface SldV3Overlay {
      *  czasu (uczciwy brak, zero fabrykacji czasu we froncie). */
     readonly completedAtLabel?: string;
   };
-  /**
-   * P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8 pkt 5, karta P0.6/G-22): werdykt
-   * SWZ (samoczynne wyłączenie zasilania, IEC 60364-4-41) per APARAT odpływu
-   * nN — NOWA metryka w nakładce, ADDYTYWNA (zero zmian kanałów U/ΔU/I/
-   * loading/Ik wyżej). Klucz = `ownerRef` aparatu odpływu (ENM `ref_id`
-   * gałęzi switch/fuse — TA SAMA przestrzeń refów co `nnBreaker`/
-   * `nnFuseSwitch` na scenie, `compose/station.ts` `sourceRef`). Źródło:
-   * endpoint SWZ per obwód (`GET /{case_id}/enm/swz`, P0.6/G-22) —
-   * `buildSwzOverlayFromResponses` niżej WYŁĄCZNIE przepisuje gotowy werdykt
-   * 3-stanowy (ZERO fizyki w UI, mapper FROZEN backendu nietknięty). Brak
-   * wpisu = brak werdyktu dla tego aparatu (§14.2 „overlay wyłączony bez
-   * wyniku") — kanwa NIE rysuje badge'a, nie fabrykuje statusu.
-   */
-  readonly swzByOwnerRef?: Readonly<Record<string, SwzOverlayEntry>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -373,21 +360,6 @@ export function buildSwzOverlayFromResponses(
   return out;
 }
 
-/**
- * Ton prezentacji werdyktu SWZ — CZYSTA klasyfikacja STATUSU na jedną z
- * trzech klas renderu (`ok`/`fail`/`unknown`; kolor/ikonę dobiera renderer,
- * ta funkcja WYŁĄCZNIE nazywa klasę). Zero progów liczonych w UI —
- * klasyfikacja WPROST z gotowego, 3-stanowego werdyktu backendu (§0.3 karty
- * P0.6: `'nierozstrzygalne'` fail-closed, nigdy cichy fallback na `'ok'`).
- */
-export type SwzPresentationTone = 'ok' | 'fail' | 'unknown';
-
-export function swzPresentationTone(status: SwzVerdictStatus): SwzPresentationTone {
-  if (status === 'spełnia') return 'ok';
-  if (status === 'nie spełnia') return 'fail';
-  return 'unknown';
-}
-
 /** Pojedyncza wartość liczbowa z wyniku solvera + jednostka — WYŁĄCZNIE
  *  odczyt (`RawMetricValue.value`/`unit`), zero przeliczeń fizycznych (§10:
  *  formatowanie dozwolone, fizyka nie). */
@@ -457,7 +429,7 @@ const FLOW_METRIC_CODE_I = 'I_A';
  *  `"LOAD_FLOW"`, przenoszone 1:1 przez `build_execution_result_set` →
  *  `build_resultset_v1(analysis_type=...)` → `/api/execution/runs/{run_id}/
  *  results/v1` → `RawOverlayPayload.analysis_type`). Payload NIEZNANEGO typu
- *  (SC_3F, PHASE_STATE_SN, DYNAMIC_STABILITY, SOURCE_COMPLIANCE, przyszłe)
+ *  (SC_3F, PHASE_STATE_SN, DYNAMIC_STABILITY, przyszłe)
  *  ⇒ nakładka pusta — uczciwe nic zamiast czytania `P_MW` z niewiadomego
  *  przebiegu. Denylista sprzed poprawki przepuszczałaby każdy nowy typ. */
 function isLoadFlowPayload(payload: RawOverlayPayload): boolean {

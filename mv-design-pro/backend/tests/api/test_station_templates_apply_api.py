@@ -3,7 +3,10 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from application.station_templates import get_template
+from application.station_templates import get_template, list_templates
+from application.station_templates.apply import _template_der_required_kva
+from domain.generator_validation import moc_pozorna_wymagana_generatora_mva
+from network_model.pochodne import mva_na_kva
 
 pytest.importorskip("fastapi")
 
@@ -71,16 +74,26 @@ def _execute_domain_op(app_client, case_id: str, name: str, payload: dict) -> di
     return body
 
 
+#: Decyzja O-53 (KLASA, nie instancja): KAŻDY szablon z źródłem przekształtnikowym musi
+#: się dać zastosować bez odmowy kontroli mocy (nastawa ≤ moc znamionowa, moc TR) — dawny
+#: szablon BESS 5 MW (2 kontenery po 2,5 MW bez pozycji katalogowej 2,5 MW) przechodził
+#: tylko dlatego, że tor nie sprawdzał nastawy. Lista wyprowadzona z katalogu szablonów.
+_SZABLONY_Z_OZE = tuple(sorted(t.id for t in list_templates() if t.schema.der_options))
+
+
 @pytest.mark.parametrize(
     "template_id",
-    [
-        "tpl_sn_nn_630kva",
-        "tpl_slupowa_100kva",
-        "tpl_farma_pv_1mw",
-        "tpl_hybrid_pv05_bess05",
-        "tpl_bess_5mw_10mwh_fcr_n",
-        "tpl_wiatr_3mw",
-    ],
+    sorted(
+        {
+            "tpl_sn_nn_630kva",
+            "tpl_slupowa_100kva",
+            "tpl_farma_pv_1mw",
+            "tpl_hybrid_pv05_bess05",
+            "tpl_bess_5mw_10mwh_fcr_n",
+            "tpl_wiatr_3mw",
+            *_SZABLONY_Z_OZE,
+        }
+    ),
 )
 def test_apply_station_template_reuses_existing_case_enm_snapshot(
     app_client, template_id: str
@@ -96,6 +109,8 @@ def test_apply_station_template_reuses_existing_case_enm_snapshot(
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_binding": _binding("ZRODLO_SN", SOURCE_ID),
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     segment_result = _execute_domain_op(
@@ -140,7 +155,10 @@ def test_apply_station_template_reuses_existing_case_enm_snapshot(
 
     template = get_template(template_id)
     assert template is not None
-    assert not any(op.get("status") == "FAIL" for op in payload["operations_log"])
+    # Dziennik operacji wymienia WYŁĄCZNIE operacje wykonane (błąd przerywa zastosowanie
+    # szablonu wyjątkiem) — wpis nie niesie stałego pola „status” (dawniej zawsze „OK”,
+    # słowo ze słownika werdyktów bez informacji; karta AB-1a Pakiet E2).
+    assert all("status" not in op for op in payload["operations_log"])
     station = next(
         station
         for station in snapshot["substations"]
@@ -156,11 +174,7 @@ def test_apply_station_template_reuses_existing_case_enm_snapshot(
     assert len(feeder_refs) == expected_feeders
 
     expected_load_kw = template.schema.nn_load_default_kw.default
-    load_ops = [
-        op
-        for op in payload["operations_log"]
-        if op.get("op") == "add_nn_load" and op.get("status") == "OK"
-    ]
+    load_ops = [op for op in payload["operations_log"] if op.get("op") == "add_nn_load"]
     if expected_feeders > 0 and expected_load_kw > 0:
         feeder_ref_set = set(feeder_refs)
         station_loads = [
@@ -176,11 +190,7 @@ def test_apply_station_template_reuses_existing_case_enm_snapshot(
         assert load_ops == []
 
     expected_der_count = template.schema.der_total_count.default
-    der_ops = [
-        op
-        for op in payload["operations_log"]
-        if op.get("op") == "add_converter_source" and op.get("status") == "OK"
-    ]
+    der_ops = [op for op in payload["operations_log"] if op.get("op") == "add_converter_source"]
     assert len(der_ops) == expected_der_count
     if expected_der_count > 0:
         station_generators = [
@@ -194,6 +204,22 @@ def test_apply_station_template_reuses_existing_case_enm_snapshot(
         ]
         assert len(station_generators) >= expected_der_count
         assert all(generator.get("catalog_ref") for generator in station_generators)
+        # Decyzja O-53 (predykaty parami, pomiar 2026-09-24): wielkość, z którą selektor
+        # szablonu dobrał transformator, to SUMA reguły domenowej `max(S_n,jedn·n, P/cosφ)`
+        # na generatorach, które szablon RZECZYWIŚCIE utworzył (ta sama tabliczka, ta sama
+        # funkcja) — dawniej selektor liczył `sn_mva` albo moc czynną nastawy osobno.
+        utworzone = set(payload["created_element_refs"])
+        generatory_szablonu = [
+            generator
+            for generator in snapshot.get("generators", [])
+            if generator["ref_id"] in utworzone
+        ]
+        assert len(generatory_szablonu) == expected_der_count
+        suma_wymagana_mva = sum(
+            moc_pozorna_wymagana_generatora_mva(generator) or 0.0
+            for generator in generatory_szablonu
+        )
+        assert _template_der_required_kva(template, {}) == int(round(mva_na_kva(suma_wymagana_mva)))
 
 
 def test_szablon_z_pomiarem_przylaczany_odgalezieniem_przez_koncowke_api(app_client) -> None:
@@ -215,6 +241,8 @@ def test_szablon_z_pomiarem_przylaczany_odgalezieniem_przez_koncowke_api(app_cli
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_binding": _binding("ZRODLO_SN", SOURCE_ID),
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     segmenty: list[str] = []

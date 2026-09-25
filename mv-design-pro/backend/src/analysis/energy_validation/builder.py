@@ -19,9 +19,16 @@ from analysis.energy_validation.models import (
     EnergyValidationView,
 )
 from analysis.energy_validation.serializer import STATUS_ORDER
+from analysis.obciazenie_galezi import (
+    obciazenie_galezi,
+    prad_zacisku_do_a,
+    prad_zacisku_od_a,
+)
 from analysis.power_flow.result import PowerFlowResult
+from enm.nazwy_elementow import nazwa_elementu
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.pochodne import a_na_ka
 
 
 def _znana(wartosc: float | None) -> float | None:
@@ -92,86 +99,11 @@ class EnergyValidationBuilder:
         graph: NetworkGraph,
         config: EnergyValidationConfig,
     ) -> list[EnergyValidationItem]:
-        items: list[EnergyValidationItem] = []
-        for branch_id in sorted(graph.branches.keys()):
-            branch = graph.branches[branch_id]
-            if not isinstance(branch, LineBranch):
-                continue
-            if not branch.in_service:
-                continue
-
-            i_ka = _znana(pf.branch_current_ka.get(branch_id))
-            if i_ka is None:
-                items.append(
-                    EnergyValidationItem(
-                        check_type=EnergyCheckType.BRANCH_LOADING,
-                        target_id=branch_id,
-                        target_name=branch.name,
-                        observed_value=None,
-                        unit="%",
-                        limit_warn=config.loading_warn_pct,
-                        limit_fail=config.loading_fail_pct,
-                        margin_pct=None,
-                        status=EnergyValidationStatus.NOT_COMPUTED,
-                        why_pl="Brak pradu galezi w wynikach PF.",
-                    )
-                )
-                continue
-
-            rated_ka = branch.rated_current_a / 1000.0
-            if rated_ka <= 0:
-                items.append(
-                    EnergyValidationItem(
-                        check_type=EnergyCheckType.BRANCH_LOADING,
-                        target_id=branch_id,
-                        target_name=branch.name,
-                        observed_value=None,
-                        unit="%",
-                        limit_warn=config.loading_warn_pct,
-                        limit_fail=config.loading_fail_pct,
-                        margin_pct=None,
-                        status=EnergyValidationStatus.NOT_COMPUTED,
-                        why_pl="Brak pradu znamionowego galezi.",
-                    )
-                )
-                continue
-
-            loading_pct = (abs(i_ka) / rated_ka) * 100.0
-            status, why = _threshold_check(
-                loading_pct,
-                config.loading_warn_pct,
-                config.loading_fail_pct,
-                "Obciazenie",
-                "%",
-            )
-            margin = loading_pct - config.loading_fail_pct
-
-            items.append(
-                EnergyValidationItem(
-                    check_type=EnergyCheckType.BRANCH_LOADING,
-                    target_id=branch_id,
-                    target_name=branch.name,
-                    observed_value=loading_pct,
-                    unit="%",
-                    limit_warn=config.loading_warn_pct,
-                    limit_fail=config.loading_fail_pct,
-                    margin_pct=margin,
-                    status=status,
-                    why_pl=why,
-                    white_box=_white_box_progowe(
-                        "obciazenie = |I| / I_n * 100%",
-                        r"\varepsilon = \frac{|I|}{I_n} \cdot 100\%",
-                        f"|I| = {abs(i_ka):.4f} kA (wynik PF), I_n = {rated_ka:.4f} kA (dane galezi)",
-                        rf"\varepsilon = \frac{{{abs(i_ka):.4f}}}{{{rated_ka:.4f}}} \cdot 100\% = {loading_pct:.2f}\%",
-                        f"obciazenie = {loading_pct:.2f} %",
-                        config.loading_warn_pct,
-                        config.loading_fail_pct,
-                        "%",
-                        status,
-                    ),
-                )
-            )
-        return items
+        return [
+            self._pozycja_obciazenia(EnergyCheckType.BRANCH_LOADING, branch_id, branch, pf, config)
+            for branch_id, branch in sorted(graph.branches.items())
+            if isinstance(branch, LineBranch) and branch.in_service
+        ]
 
     def _check_transformer_loading(
         self,
@@ -179,92 +111,109 @@ class EnergyValidationBuilder:
         graph: NetworkGraph,
         config: EnergyValidationConfig,
     ) -> list[EnergyValidationItem]:
-        items: list[EnergyValidationItem] = []
-        for branch_id in sorted(graph.branches.keys()):
-            branch = graph.branches[branch_id]
-            if not isinstance(branch, TransformerBranch):
-                continue
-            if not branch.in_service:
-                continue
-
-            s_from = _znana_zespolona(pf.branch_s_from_mva.get(branch_id))
-            s_to = _znana_zespolona(pf.branch_s_to_mva.get(branch_id))
-
-            if s_from is None and s_to is None:
-                items.append(
-                    EnergyValidationItem(
-                        check_type=EnergyCheckType.TRANSFORMER_LOADING,
-                        target_id=branch_id,
-                        target_name=branch.name,
-                        observed_value=None,
-                        unit="%",
-                        limit_warn=config.loading_warn_pct,
-                        limit_fail=config.loading_fail_pct,
-                        margin_pct=None,
-                        status=EnergyValidationStatus.NOT_COMPUTED,
-                        why_pl="Brak mocy pozornej transformatora w wynikach PF.",
-                    )
-                )
-                continue
-
-            s_mva = max(
-                abs(s_from) if s_from is not None else 0.0,
-                abs(s_to) if s_to is not None else 0.0,
+        return [
+            self._pozycja_obciazenia(
+                EnergyCheckType.TRANSFORMER_LOADING, branch_id, branch, pf, config
             )
+            for branch_id, branch in sorted(graph.branches.items())
+            if isinstance(branch, TransformerBranch) and branch.in_service
+        ]
 
-            if branch.rated_power_mva <= 0:
-                items.append(
-                    EnergyValidationItem(
-                        check_type=EnergyCheckType.TRANSFORMER_LOADING,
-                        target_id=branch_id,
-                        target_name=branch.name,
-                        observed_value=None,
-                        unit="%",
-                        limit_warn=config.loading_warn_pct,
-                        limit_fail=config.loading_fail_pct,
-                        margin_pct=None,
-                        status=EnergyValidationStatus.NOT_COMPUTED,
-                        why_pl="Brak mocy znamionowej transformatora.",
-                    )
-                )
-                continue
+    @staticmethod
+    def _pozycja_obciazenia(
+        check_type: EnergyCheckType,
+        branch_id: str,
+        branch: LineBranch | TransformerBranch,
+        pf: PowerFlowResult,
+        config: EnergyValidationConfig,
+    ) -> EnergyValidationItem:
+        """Obciążenie linii, kabla albo transformatora — JEDNA definicja (decyzja O-51).
 
-            loading_pct = (s_mva / branch.rated_power_mva) * 100.0
-            status, why = _threshold_check(
-                loading_pct,
+        ε = max(|I_od| / I_r,od ; |I_do| / I_r,do) · 100 % przez
+        `analysis/obciazenie_galezi.py` (ta sama funkcja co tabela gałęzi i pasma
+        wiarygodności): prąd zacisku `od` z rdzenia rozpływu, prąd zacisku `do` z mocy
+        strony `to` i napięcia węzła `to`; prąd znamionowy linii z obciążalności, a
+        transformatora z S_n i U_n każdej strony. Dla transformatora to definicja
+        prądowa (IEC 60076-7: współczynnik obciążenia K = I / I_r) — różni się od
+        dawnego max(|S|) / S_n, gdy napięcie strony odbiega od znamionowego. Brak danej
+        = pozycja NOT_COMPUTED z nazwanym powodem.
+        """
+        wynik = obciazenie_galezi(
+            branch,
+            prad_od_a=prad_zacisku_od_a(pf.branch_current_ka.get(branch_id)),
+            prad_do_a=prad_zacisku_do_a(
+                pf.branch_s_to_mva.get(branch_id),
+                pf.node_voltage_kv.get(branch.to_node_id),
+            ),
+        )
+        if wynik.obciazenie_pct is None:
+            return EnergyValidationItem(
+                check_type=check_type,
+                target_id=branch_id,
+                target_name=nazwa_elementu(
+                    branch,
+                    "transformers" if isinstance(branch, TransformerBranch) else "branches",
+                ),
+                observed_value=None,
+                unit="%",
+                limit_warn=config.loading_warn_pct,
+                limit_fail=config.loading_fail_pct,
+                margin_pct=None,
+                status=EnergyValidationStatus.NOT_COMPUTED,
+                why_pl=wynik.powod_braku_pl or "",
+            )
+        loading_pct = wynik.obciazenie_pct
+        status, why = _threshold_check(
+            loading_pct,
+            config.loading_warn_pct,
+            config.loading_fail_pct,
+            "Obciążenie",
+            "%",
+        )
+        assert wynik.prad_od_a is not None and wynik.prad_do_a is not None
+        assert wynik.prad_znamionowy_od_a is not None and wynik.prad_znamionowy_do_a is not None
+        assert wynik.zacisk_decydujacy is not None
+        i_od_ka = a_na_ka(abs(wynik.prad_od_a))
+        i_do_ka = a_na_ka(abs(wynik.prad_do_a))
+        ir_od_ka = a_na_ka(wynik.prad_znamionowy_od_a)
+        ir_do_ka = a_na_ka(wynik.prad_znamionowy_do_a)
+        zrodlo_znamionowych = (
+            "S_n i U_n strony transformatora"
+            if isinstance(branch, TransformerBranch)
+            else "obciążalność gałęzi"
+        )
+        return EnergyValidationItem(
+            check_type=check_type,
+            target_id=branch_id,
+            target_name=nazwa_elementu(
+                branch,
+                "transformers" if isinstance(branch, TransformerBranch) else "branches",
+            ),
+            observed_value=loading_pct,
+            unit="%",
+            limit_warn=config.loading_warn_pct,
+            limit_fail=config.loading_fail_pct,
+            margin_pct=loading_pct - config.loading_fail_pct,
+            status=status,
+            why_pl=why,
+            white_box=_white_box_progowe(
+                "obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
+                r"\varepsilon = \max\left(\frac{|I_{od}|}{I_{r,od}}, "
+                r"\frac{|I_{do}|}{I_{r,do}}\right) \cdot 100\%",
+                f"|I_od| = {_pl(i_od_ka, 4)} kA, |I_do| = {_pl(i_do_ka, 4)} kA (wynik rozpływu), "
+                f"I_r,od = {_pl(ir_od_ka, 4)} kA, I_r,do = {_pl(ir_do_ka, 4)} kA "
+                f"({zrodlo_znamionowych}); decyduje zacisk "
+                f"{_ZACISK_PL[wynik.zacisk_decydujacy]}",
+                rf"\varepsilon = \max\left(\frac{{{i_od_ka:.4f}}}{{{ir_od_ka:.4f}}}, "
+                rf"\frac{{{i_do_ka:.4f}}}{{{ir_do_ka:.4f}}}\right) \cdot 100\% "
+                rf"= {loading_pct:.2f}\%",
+                f"obciążenie = {_pl(loading_pct, 2)} %",
                 config.loading_warn_pct,
                 config.loading_fail_pct,
-                "Obciazenie",
                 "%",
-            )
-            margin = loading_pct - config.loading_fail_pct
-
-            items.append(
-                EnergyValidationItem(
-                    check_type=EnergyCheckType.TRANSFORMER_LOADING,
-                    target_id=branch_id,
-                    target_name=branch.name,
-                    observed_value=loading_pct,
-                    unit="%",
-                    limit_warn=config.loading_warn_pct,
-                    limit_fail=config.loading_fail_pct,
-                    margin_pct=margin,
-                    status=status,
-                    why_pl=why,
-                    white_box=_white_box_progowe(
-                        "obciazenie = max(|S_gora|, |S_dol|) / S_n * 100%",
-                        r"\varepsilon = \frac{\max(|S_{\text{gora}}|, |S_{\text{dol}}|)}{S_n} \cdot 100\%",
-                        f"S = {s_mva:.4f} MVA (wynik PF), S_n = {branch.rated_power_mva:.4f} MVA",
-                        rf"\varepsilon = \frac{{{s_mva:.4f}}}{{{branch.rated_power_mva:.4f}}} \cdot 100\% = {loading_pct:.2f}\%",
-                        f"obciazenie = {loading_pct:.2f} %",
-                        config.loading_warn_pct,
-                        config.loading_fail_pct,
-                        "%",
-                        status,
-                    ),
-                )
-            )
-        return items
+                why,
+            ),
+        )
 
     def _check_voltage_deviation(
         self,
@@ -283,14 +232,14 @@ class EnergyValidationBuilder:
                     EnergyValidationItem(
                         check_type=EnergyCheckType.VOLTAGE_DEVIATION,
                         target_id=node_id,
-                        target_name=node.name,
+                        target_name=nazwa_elementu(node, "buses"),
                         observed_value=None,
                         unit="%",
                         limit_warn=config.voltage_warn_pct,
                         limit_fail=config.voltage_fail_pct,
                         margin_pct=None,
                         status=EnergyValidationStatus.NOT_COMPUTED,
-                        why_pl="Brak danych napieciowych.",
+                        why_pl="Brak danych napięciowych.",
                     )
                 )
                 continue
@@ -300,7 +249,7 @@ class EnergyValidationBuilder:
                 delta_pct,
                 config.voltage_warn_pct,
                 config.voltage_fail_pct,
-                "Odchylenie napieciowe",
+                "Odchylenie napięcia",
                 "%",
             )
             margin = delta_pct - config.voltage_fail_pct
@@ -309,7 +258,7 @@ class EnergyValidationBuilder:
                 EnergyValidationItem(
                     check_type=EnergyCheckType.VOLTAGE_DEVIATION,
                     target_id=node_id,
-                    target_name=node.name,
+                    target_name=nazwa_elementu(node, "buses"),
                     observed_value=delta_pct,
                     unit="%",
                     limit_warn=config.voltage_warn_pct,
@@ -318,15 +267,15 @@ class EnergyValidationBuilder:
                     status=status,
                     why_pl=why,
                     white_box=_white_box_progowe(
-                        "odchylenie = |U - U_n| / U_n * 100%",
+                        "odchylenie = |U − U_n| / U_n · 100 %",
                         r"\delta U = \frac{|U - U_n|}{U_n} \cdot 100\%",
-                        f"U = {u_kv:.4f} kV (wynik PF), U_n = {u_nom_kv:.4f} kV",
+                        f"U = {_pl(u_kv, 4)} kV (wynik rozpływu), U_n = {_pl(u_nom_kv, 4)} kV",
                         rf"\delta U = \frac{{|{u_kv:.4f} - {u_nom_kv:.4f}|}}{{{u_nom_kv:.4f}}} \cdot 100\% = {delta_pct:.2f}\%",
-                        f"odchylenie = {delta_pct:.2f} %",
+                        f"odchylenie = {_pl(delta_pct, 2)} %",
                         config.voltage_warn_pct,
                         config.voltage_fail_pct,
                         "%",
-                        status,
+                        why,
                     ),
                 )
             )
@@ -348,7 +297,7 @@ class EnergyValidationBuilder:
                 EnergyValidationItem(
                     check_type=EnergyCheckType.LOSS_BUDGET,
                     target_id="network",
-                    target_name="Siec",
+                    target_name="Sieć",
                     observed_value=None,
                     unit="%",
                     limit_warn=config.loss_warn_pct,
@@ -356,9 +305,9 @@ class EnergyValidationBuilder:
                     margin_pct=None,
                     status=EnergyValidationStatus.NOT_COMPUTED,
                     why_pl=(
-                        "Bilans strat nieoznaczony w wyniku PF (wartosc NaN)."
+                        "Bilans strat nieoznaczony w wyniku rozpływu (wartość nieokreślona)."
                         if (straty_pu is None or moc_slack_pu is None)
-                        else "Brak mocy bilansowej slack (P_slack ~ 0)."
+                        else "Brak mocy bilansowej węzła bilansującego (P ≈ 0)."
                     ),
                 )
             ]
@@ -377,7 +326,7 @@ class EnergyValidationBuilder:
             EnergyValidationItem(
                 check_type=EnergyCheckType.LOSS_BUDGET,
                 target_id="network",
-                target_name="Siec",
+                target_name="Sieć",
                 observed_value=loss_pct,
                 unit="%",
                 limit_warn=config.loss_warn_pct,
@@ -386,15 +335,16 @@ class EnergyValidationBuilder:
                 status=status,
                 why_pl=why,
                 white_box=_white_box_progowe(
-                    "straty = |P_strat / P_slack| * 100%",
+                    "straty = |P_strat / P_bil| · 100 %",
                     r"\Delta P\% = \left|\frac{P_{\text{strat}}}{P_{\text{slack}}}\right| \cdot 100\%",
-                    f"P_strat = {p_loss_pu:.6f} p.u., P_slack = {p_slack_pu:.6f} p.u. (wynik PF)",
+                    f"P_strat = {_pl(p_loss_pu, 6)} j.w., P_bil = {_pl(p_slack_pu, 6)} j.w. "
+                    "(wynik rozpływu, węzeł bilansujący)",
                     rf"\Delta P\% = \left|\frac{{{p_loss_pu:.6f}}}{{{p_slack_pu:.6f}}}\right| \cdot 100\% = {loss_pct:.2f}\%",
-                    f"straty = {loss_pct:.2f} %",
+                    f"straty = {_pl(loss_pct, 2)} %",
                     config.loss_warn_pct,
                     config.loss_fail_pct,
                     "%",
-                    status,
+                    why,
                 ),
             )
         ]
@@ -413,7 +363,7 @@ class EnergyValidationBuilder:
                 EnergyValidationItem(
                     check_type=EnergyCheckType.REACTIVE_BALANCE,
                     target_id=pf.slack_node_id,
-                    target_name="Slack bus",
+                    target_name="Węzeł bilansujący",
                     observed_value=None,
                     unit="p.u.",
                     limit_warn=None,
@@ -421,9 +371,10 @@ class EnergyValidationBuilder:
                     margin_pct=None,
                     status=EnergyValidationStatus.NOT_COMPUTED,
                     why_pl=(
-                        "Moc bilansowa slack nieoznaczona w wyniku PF (wartosc NaN)."
+                        "Moc węzła bilansującego nieoznaczona w wyniku rozpływu (wartość "
+                        "nieokreślona)."
                         if moc_slack_pu is None
-                        else "Brak mocy bilansowej slack."
+                        else "Brak mocy bilansowej węzła bilansującego."
                     ),
                 )
             ]
@@ -433,19 +384,19 @@ class EnergyValidationBuilder:
 
         if cos_phi >= 0.9:
             status = EnergyValidationStatus.PASS
-            why = f"cos(phi) = {cos_phi:.3f} >= 0.9 — bilans mocy biernej prawidlowy."
+            why = f"cosφ = {_pl(cos_phi, 3)} ≥ 0,9 — bilans mocy biernej prawidłowy."
         elif cos_phi >= 0.8:
             status = EnergyValidationStatus.WARNING
-            why = f"cos(phi) = {cos_phi:.3f} — bilans mocy biernej " "na granicy akceptowalnosci."
+            why = f"cosφ = {_pl(cos_phi, 3)} — bilans mocy biernej na granicy akceptowalności."
         else:
             status = EnergyValidationStatus.FAIL
-            why = f"cos(phi) = {cos_phi:.3f} < 0.8 — " "nadmierny pobor mocy biernej z sieci."
+            why = f"cosφ = {_pl(cos_phi, 3)} < 0,8 — nadmierny pobór mocy biernej z sieci."
 
         return [
             EnergyValidationItem(
                 check_type=EnergyCheckType.REACTIVE_BALANCE,
                 target_id=pf.slack_node_id,
-                target_name="Slack bus",
+                target_name="Węzeł bilansujący",
                 observed_value=cos_phi,
                 unit="cos(phi)",
                 limit_warn=0.9,
@@ -455,33 +406,35 @@ class EnergyValidationBuilder:
                 why_pl=why,
                 white_box=(
                     _krok(
-                        "Wzor: tan(phi) = |Q_slack / P_slack|; cos(phi) = cos(arctan(tan(phi)))",
+                        "Wzór: tgφ = |Q_bil / P_bil|; cosφ = cos(arctg(tgφ))",
                         r"\cos\varphi = \cos\!\left(\arctan\left|\frac{Q_{\text{slack}}}{P_{\text{slack}}}\right|\right)",
                     ),
                     _krok(
-                        f"Dane: Q_slack = {q_slack_pu:.6f} p.u., P_slack = {p_slack_pu:.6f} p.u. (wynik PF)"
+                        f"Dane: Q_bil = {_pl(q_slack_pu, 6)} j.w., P_bil = {_pl(p_slack_pu, 6)} j.w. "
+                        "(wynik rozpływu, węzeł bilansujący)"
                     ),
                     _krok(
-                        f"Wynik: tan(phi) = {tan_phi:.4f}, cos(phi) = {cos_phi:.3f}",
+                        f"Wynik: tgφ = {_pl(tan_phi, 4)}, cosφ = {_pl(cos_phi, 3)}",
                         rf"\tan\varphi = {tan_phi:.4f} \Rightarrow \cos\varphi = {cos_phi:.3f}",
                     ),
-                    _krok("Progi: ostrzezenie cos(phi) < 0.9, przekroczenie cos(phi) < 0.8"),
-                    _krok(f"Werdykt: {_WERDYKT_PL[status]}"),
+                    _krok("Progi: ostrzeżenie cosφ < 0,9, przekroczenie cosφ < 0,8"),
+                    _krok(f"Porównanie z progami: {why}"),
                 ),
             )
         ]
 
 
-_WERDYKT_PL: dict[EnergyValidationStatus, str] = {
-    EnergyValidationStatus.PASS: "ZGODNY",
-    EnergyValidationStatus.WARNING: "OSTRZEZENIE",
-    EnergyValidationStatus.FAIL: "PRZEKROCZENIE",
-    EnergyValidationStatus.NOT_COMPUTED: "NIE OBLICZONO",
-}
+def _pl(wartosc: float, cyfry: int) -> str:
+    """Liczba o stałej liczbie cyfr po przecinku, zapis polski (przecinek dziesiętny)."""
+    return f"{wartosc:.{cyfry}f}".replace(".", ",")
+
+
+#: Zacisk decydujący o obciążeniu gałęzi (`obciazenie_galezi.zacisk_decydujacy`).
+_ZACISK_PL: dict[str, str] = {"od": "początkowy", "do": "końcowy"}
 
 
 def _krok(tekst: str, latex: str | None = None) -> dict:
-    """Krok sladu WHITE BOX: tekst (raporty/ASCII) + opcjonalny LaTeX (UI/KaTeX)."""
+    """Krok śladu WHITE BOX: tekst po polsku (raporty i ekran) + opcjonalny LaTeX (KaTeX)."""
     return {"tekst": tekst, "latex": latex}
 
 
@@ -494,18 +447,20 @@ def _white_box_progowe(
     warn: float,
     fail: float,
     unit: str,
-    status: EnergyValidationStatus,
+    porownanie: str,
 ) -> tuple[dict, ...]:
     """Wywod WHITE BOX pozycji progowej (R2-A / K3-G1; struktura R3-D):
     wzor (LaTeX) -> dane (pochodzenie) -> podstawienie z wynikiem (LaTeX) ->
-    progi -> werdykt. Ciagi deterministyczne (stale formaty); tekst ASCII-PL
-    jak why_pl, matematyka w LaTeX (kanon Proof Engine)."""
+    progi -> porównanie z progami (to samo zdanie co `why_pl`, z liczbami; bez etykiety
+    statusu — karta #145, kontrakt werdyktu wyjaśnialnego). Ciągi deterministyczne (stałe formaty); tekst po polsku z
+    przecinkiem dziesiętnym jak why_pl (karta #145), matematyka w LaTeX (kanon Proof
+    Engine)."""
     return (
-        _krok(f"Wzor: {wzor}", wzor_latex),
+        _krok(f"Wzór: {wzor}", wzor_latex),
         _krok(f"Dane: {dane}"),
         _krok(f"Wynik: {wynik}", podstawienie_latex),
-        _krok(f"Progi: ostrzezenie {warn:.1f} {unit}, przekroczenie {fail:.1f} {unit}"),
-        _krok(f"Werdykt: {_WERDYKT_PL[status]}"),
+        _krok(f"Progi: ostrzeżenie {_pl(warn, 1)} {unit}, przekroczenie {_pl(fail, 1)} {unit}"),
+        _krok(f"Porównanie z progami: {porownanie}"),
     )
 
 
@@ -519,16 +474,16 @@ def _threshold_check(
     if value >= fail:
         return (
             EnergyValidationStatus.FAIL,
-            f"{label} {value:.2f} {unit} przekracza limit {fail:.1f} {unit}.",
+            f"{label} {_pl(value, 2)} {unit} przekracza limit {_pl(fail, 1)} {unit}.",
         )
     if value >= warn:
         return (
             EnergyValidationStatus.WARNING,
-            f"{label} {value:.2f} {unit} zbliza sie do limitu {fail:.1f} {unit}.",
+            f"{label} {_pl(value, 2)} {unit} zbliża się do limitu {_pl(fail, 1)} {unit}.",
         )
     return (
         EnergyValidationStatus.PASS,
-        f"{label} {value:.2f} {unit} ponizej limitu {warn:.1f} {unit}.",
+        f"{label} {_pl(value, 2)} {unit} poniżej limitu {_pl(warn, 1)} {unit}.",
     )
 
 

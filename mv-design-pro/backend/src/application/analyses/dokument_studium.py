@@ -11,12 +11,15 @@ P–Q → pokrycie wymagań P–Q. Serwisy wołane BEZPOŚREDNIO (nie przez HTTP
 
 ZERO nowej fizyki i ZERO nowych ocen — dokument tylko zestawia gotowe widoki.
 
-Klasa NC RfG wariantu: użyta ISTNIEJĄCA klasyfikacja backendowa
-``NcRfgProfile.classify_module`` (``catalog/profiles/nc_rfg/loader.py``) —
-ZERO dwóch prawd. Frontendowy ``klasaNcRfg`` (``ranking/rankingModel.ts``) jest
-udokumentowanym lustrem 1:1 tej samej klasyfikacji; źródłem prawdy jest backend,
-więc dokument nie dubluje mapowania — wywołuje istniejącą funkcję. Klasa liczona
-jak w kreatorze studium: moc przyłączalna wariantu [MW→kW] + napięcie węzła [kV].
+Typ modułu NC RfG wariantu: JEDNA klasyfikacja backendowa ``klasyfikacja_modulu``
+(``catalog/profiles/nc_rfg/loader.py`` — progi warstwy WOS, art. 5) — ZERO dwóch prawd.
+Wejście jak w kreatorze studium: moc przyłączalna wariantu [MW→kW] + napięcie węzła [kV].
+Brak dodatniej mocy przyłączalnej albo brak napięcia węzła → typ nieokreślony z nazwanym
+powodem (bez podstawiania wartości). Widok niesie typ, powód i podstawę klasyfikacji.
+
+Dowód certyfikatu urządzenia (gdy wskazano przypadek): TA SAMA weryfikacja tabliczki × wykaz
+PTPiREE co moduły zgodności NC RfG (``model_bridge.weryfikacje_certyfikatow_typu``) dla urządzeń
+modelu związanych z typem katalogowym dokumentu.
 
 Bramka braków twardych (przed generacją, kolejność deterministyczna: przebieg →
 typ katalogowy → operator → warianty): przebieg złego rodzaju lub niezakończony,
@@ -41,22 +44,25 @@ from collections.abc import Sequence
 from io import BytesIO
 from typing import Any
 
-from application.analyses.dowod_certyfikatu import (
-    BRAK_URZADZEN_TYPU_PL,
-    TYTUL_DOWODU,
-    NcRfgCertificateEvidence,
-    sekcje_dowodow,
-    wiersze_dowodu_pl,
-)
 from application.analyses.hosting_capacity import build_hosting_capacity_view
+from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.pq_area import build_pq_area_view
 from application.analyses.pq_coverage import build_pq_coverage_view
+from application.analyses.sekcja_zgodnosci_ncrfg import wiersze_dowodu
+from application.ncrfg_compliance import NcRfgCertyfikatOdrzucony
+from catalog.profiles.nc_rfg import klasyfikacja_modulu
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from enm.canonical_analysis import CanonicalRun
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from network_model.catalog.types import ConverterType
+from network_model.nazwy import nazwa_nadana
+from network_model.pochodne import mw_na_kw
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
+from network_model.solvers.ncrfg_ptpiree.contracts import DowodCertyfikatu
 from pydantic import BaseModel, Field
+from werdykt import opis_podstawy
 
 try:  # pragma: no cover - zależy od środowiska
     from docx import Document
@@ -77,8 +83,16 @@ try:  # pragma: no cover - zależy od środowiska
 except ImportError:  # pragma: no cover
     _PDF_AVAILABLE = False
 
-DOKUMENT_STUDIUM_CONTRACT = "DokumentStudiumPrzylaczeniowegoV1"
+DOKUMENT_STUDIUM_CONTRACT = "DokumentStudiumPrzylaczeniowegoV2"
 DOKUMENT_STUDIUM_TYTUL = "Dokument studium przyłączeniowego OZE"
+TYTUL_DOWODU = "Dowód certyfikatu urządzeń typu (wykaz PTPiREE)"
+#: Uczciwy stan zerowy dokumentu studium — w modelu nie ma urządzenia tego typu.
+BRAK_URZADZEN_TYPU_PL = (
+    "w modelu przypadku nie ma urządzenia tego typu katalogowego — brak tabliczki do "
+    "weryfikacji w wykazie PTPiREE"
+)
+#: Weryfikacja certyfikatu urządzenia modelu: (element, dowód | odrzucenie | brak wskazania).
+WeryfikacjaUrzadzenia = tuple[str, DowodCertyfikatu | NcRfgCertyfikatOdrzucony | None]
 
 
 class DokumentStudiumIdentyfikacja(BaseModel):
@@ -99,8 +113,16 @@ class DokumentStudiumBrakiError(Exception):
 
 
 def _odcisk(payload: Any) -> str:
-    """Deterministyczny odcisk SHA-256 sekcji (kanoniczny JSON, sortowane klucze)."""
-    canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
+    """Deterministyczny odcisk SHA-256 sekcji: kanoniczny JSON (sortowane klucze) nad sekcją
+    skwantyzowaną regułą kontraktu wyjściowego (``kontrakt_liczb.kwantyzuj_kontrakt``,
+    ``CYFRY_ZNACZACE`` = 9). Surowe liczby solvera (Ik″, ip, Ith, S″k z algebry macierzowej)
+    różnią się między maszynami szumem BLAS rzędu 1e-12 względnie ≪ 1e-9 granicy kwantyzacji —
+    odcisk nad surową reprezentacją ``float`` byłby funkcją MASZYNY, nie danych (pomiar
+    sondą szumu, karta AB-1a Pakiet D2 §5.2). Sekcje widoku są kwantyzowane tą samą funkcją,
+    więc dokument pokazuje dokładnie te liczby, nad którymi liczono odcisk."""
+    canonical = json.dumps(
+        kwantyzuj_kontrakt(payload), sort_keys=True, ensure_ascii=False, default=str
+    )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
@@ -121,12 +143,12 @@ def zbierz_braki_dokumentu(
 
     if run.analysis_type != "PF":
         braki.append(
-            "Przebieg bazowy: wskazany przebieg nie jest rozpływem mocy (PF); "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            "Przebieg bazowy: wskazany przebieg nie jest rozpływem mocy; "
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     elif run.status != "FINISHED":
         braki.append(
-            f"Przebieg bazowy: przebieg {run.id} nie jest zakończony (status={run.status})."
+            f"Przebieg bazowy: przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)})."
         )
 
     if converter is None:
@@ -154,9 +176,10 @@ def _bus_voltage_index(snapshot: dict[str, Any]) -> dict[str, float]:
     return index
 
 
-def _bus_name_index(snapshot: dict[str, Any]) -> dict[str, str | None]:
+def _bus_name_index(snapshot: dict[str, Any]) -> dict[str, str]:
+    """Mapa ref_id → nazwa szyny z modelu (szyna bez nazwy → opis rodzaju, karta #144)."""
     return {
-        str(bus["ref_id"]): bus.get("name")
+        str(bus["ref_id"]): nazwa_elementu(bus, "buses")
         for bus in (snapshot.get("buses") or [])
         if bus.get("ref_id")
     }
@@ -169,7 +192,7 @@ def _ograniczenie_pl(binding: dict[str, Any]) -> str:
         return "Brak ograniczenia w zakresie przeglądu."
     if kind == "non_convergence":
         return "Rozpływ mocy nie osiągnął zbieżności."
-    element = binding.get("element_name") or binding.get("element_id") or "—"
+    element = nazwa_nadana(binding.get("element_name")) or "—"
     if kind == "voltage":
         return f"Kryterium napięciowe — węzeł „{element}”."
     if kind == "loading":
@@ -215,28 +238,35 @@ def _pasmo_q_pl(pq_view: dict[str, Any], moc_zrodla_mw: float) -> str:
     return f"{wierzcholek['q_min_dop_mvar']}…{wierzcholek['q_max_dop_mvar']} Mvar"
 
 
-def _klasa_nc_rfg(
-    profile: NcRfgProfile, max_moc_mw: float | None, napiecie_kv: float | None
-) -> dict[str, Any]:
-    """Klasa NC RfG wariantu z ISTNIEJĄCEJ klasyfikacji backendowej (art. 5).
+def _klasa_nc_rfg(max_moc_mw: float | None, napiecie_kv: float | None) -> dict[str, Any]:
+    """Typ modułu NC RfG wariantu z JEDNEJ klasyfikacji backendowej (art. 5, progi WOS).
 
-    Wywołuje ``NcRfgProfile.classify_module`` (jedyne źródło prawdy). Moc
-    przyłączalną wariantu przelicza MW→kW (jak kreator studium). Brak dodatniej
-    mocy przyłączalnej → klasa nieokreślona (bez zgadywania).
+    Moc przyłączalną wariantu przelicza MW→kW (jak kreator studium). Brak dodatniej mocy
+    przyłączalnej albo brak napięcia węzła → typ nieokreślony z nazwanym powodem (bez
+    podstawiania wartości). Moduł poniżej progu istotności ma typ ``None`` z powodem i
+    podstawą klasyfikacji.
     """
     if max_moc_mw is None or max_moc_mw <= 0.0:
         return {
-            "klasa": None,
-            "opis_pl": "Klasa nieokreślona — brak dodatniej mocy przyłączalnej.",
+            "modul": None,
+            "powod_pl": "typ modułu nieokreślony — brak dodatniej mocy przyłączalnej wariantu",
+            "podstawa": None,
+            "podstawa_pl": None,
         }
-    p_max_kw = max_moc_mw * 1000.0
-    modul = profile.classify_module(p_max_kw, napiecie_kv if napiecie_kv is not None else 0.0)
-    if modul is None:
+    if napiecie_kv is None:
         return {
-            "klasa": None,
-            "opis_pl": "Klasa nieokreślona — profil operatora nie zawiera kategorii.",
+            "modul": None,
+            "powod_pl": "typ modułu nieokreślony — brak napięcia przyłączenia wariantu",
+            "podstawa": None,
+            "podstawa_pl": None,
         }
-    return {"klasa": modul.id, "opis_pl": modul.description_pl}
+    klasyfikacja = klasyfikacja_modulu(mw_na_kw(max_moc_mw), napiecie_kv)
+    return {
+        "modul": klasyfikacja.modul,
+        "powod_pl": klasyfikacja.powod_pl,
+        "podstawa": klasyfikacja.podstawa.model_dump(mode="json"),
+        "podstawa_pl": opis_podstawy(klasyfikacja.podstawa),
+    }
 
 
 def _wariant_sekcja(
@@ -245,7 +275,7 @@ def _wariant_sekcja(
     profile: NcRfgProfile,
     bus_ref: str,
     *,
-    bus_names: dict[str, str | None],
+    bus_names: dict[str, str],
     bus_voltages: dict[str, float],
 ) -> dict[str, Any]:
     """Zbuduj sekcję jednego wariantu (trzy fazy odporne na błąd pojedynczej fazy)."""
@@ -288,37 +318,25 @@ def _wariant_sekcja(
             "komunikat_bledu": str(exc),
         }
 
-    # Faza 3 — pokrycie wymagania operatora (pq-coverage, typ + operator).
-    try:
-        cov_view = build_pq_coverage_view(converter, profile)
-        werdykt = cov_view["werdykt"]
-        pokrycie = {
-            "status": "ok",
-            "pokryty": werdykt["pokryty"],
-            "werdykt_pl": ("Pokryte" if werdykt["pokryty"] else "Niepokryte"),
-            "opis_pl": werdykt["opis_pl"],
-            "komunikat_bledu": None,
-        }
-    except Exception as exc:  # noqa: BLE001
-        pokrycie = {
-            "status": "blad",
-            "pokryty": None,
-            "werdykt_pl": None,
-            "opis_pl": None,
-            "komunikat_bledu": str(exc),
-        }
+    # Faza 3 — pokrycie wymagania operatora (pq-coverage, typ + operator): rekord
+    # ``OcenaKryterium`` tej samej funkcji co końcówka ``/api/oze-analysis/pq-coverage`` —
+    # status, margines, wyjaśnienie i braki liczy kontrakt werdyktu (typ bez krzywej
+    # producenta → NIE_OCENIONO z nazwanym brakiem), sekcja nie ma własnego statusu.
+    pokrycie = {"ocena": build_pq_coverage_view(converter, profile)["ocena"]}
 
-    klasa = _klasa_nc_rfg(profile, max_moc_mw, napiecie_kv)
+    klasa = _klasa_nc_rfg(max_moc_mw, napiecie_kv)
 
     sekcja = {
         "bus_ref": bus_ref,
-        "nazwa_wezla": bus_names.get(bus_ref) or bus_ref,
+        "nazwa_wezla": bus_names.get(bus_ref) or ELEMENT_SPOZA_MODELU,
         "napiecie_kv": napiecie_kv,
         "zdolnosc": zdolnosc,
         "obszar_pq": obszar,
         "pokrycie_pq": pokrycie,
         "klasa_nc_rfg": klasa,
     }
+    # Sekcja skwantyzowana regułą kontraktu wyjściowego (patrz `_odcisk`).
+    sekcja = kwantyzuj_kontrakt(sekcja)
     sekcja["odcisk_sekcji_sha256"] = _odcisk(sekcja)
     return sekcja
 
@@ -329,8 +347,8 @@ def _podsumowanie_wariant(sekcja: dict[str, Any]) -> dict[str, Any]:
         "bus_ref": sekcja["bus_ref"],
         "nazwa_wezla": sekcja["nazwa_wezla"],
         "max_moc_mw": sekcja["zdolnosc"]["max_moc_mw"],
-        "klasa": sekcja["klasa_nc_rfg"]["klasa"],
-        "pokrycie_pl": sekcja["pokrycie_pq"]["werdykt_pl"],
+        "klasa": sekcja["klasa_nc_rfg"]["modul"],
+        "pokrycie_pl": sekcja["pokrycie_pq"]["ocena"]["etykieta"]["etykieta_pl"],
         "pasmo_q_pl": sekcja["obszar_pq"]["pasmo_q_pl"],
     }
 
@@ -344,18 +362,16 @@ def build_dokument_studium_view(
     operator_id: str,
     warianty: list[str],
     identyfikacja: DokumentStudiumIdentyfikacja,
-    dowody: Sequence[NcRfgCertificateEvidence] | None = None,
+    dowody: Sequence[WeryfikacjaUrzadzenia] | None = None,
 ) -> dict[str, Any]:
     """Zbuduj widok JSON dokumentu studium przyłączeniowego.
 
     Rzuca ``DokumentStudiumBrakiError`` gdy dane wejściowe są niekompletne
     (bramka braków twardych przed generacją).
 
-    ``dowody`` (opcjonalne) to dowód certyfikacji PTPiREE urządzeń modelu
-    związanych z TYPEM katalogowym dokumentu (tożsamość urządzenia w studium to
-    typ przekształtnika, nie moduł biegu). Bez dowodów (wywołanie bez wskazanego
-    przypadku) widok jest IDENTYCZNY jak przed dodaniem sekcji — łącznie
-    z odciskiem sekcji założeń i ``input_hash``.
+    ``dowody`` (opcjonalne, gdy wskazano przypadek) to weryfikacje tabliczek urządzeń modelu
+    związanych z TYPEM katalogowym dokumentu w wykazie PTPiREE (serwer — ta sama weryfikacja co
+    moduły zgodności NC RfG). Bez przypadku sekcja nie powstaje.
     """
     braki = zbierz_braki_dokumentu(
         run,
@@ -412,7 +428,7 @@ def build_dokument_studium_view(
         # lista + jawny opis, nigdy dowód urządzenia innego typu.
         zalozenia["dowod_certyfikatu"] = {
             "catalog_item_id": catalog_item_id,
-            "urzadzenia": sekcje_dowodow(dowody),
+            "urzadzenia": [_urzadzenie(der_ref, weryfikacja) for der_ref, weryfikacja in dowody],
             "stan_pl": BRAK_URZADZEN_TYPU_PL if not dowody else None,
         }
 
@@ -425,8 +441,8 @@ def build_dokument_studium_view(
         f"{run.snapshot_hash}).",
         f"Typ katalogowy przekształtnika: {converter.name} ({converter.id}).",
         f"Profil operatora: {profile.operator_name_pl} ({profile.operator_id}).",
-        "Klasa NC RfG wyznaczona istniejącą klasyfikacją katalogową operatora "
-        "(art. 5) na podstawie mocy przyłączalnej wariantu.",
+        "Typ modułu NC RfG wyznaczony klasyfikacją art. 5 (progi warstwy WOS) z mocy "
+        "przyłączalnej i napięcia węzła wariantu.",
     ]
 
     odciski_sekcji = {sekcja["bus_ref"]: sekcja["odcisk_sekcji_sha256"] for sekcja in warianty_view}
@@ -461,6 +477,20 @@ def build_dokument_studium_view(
     }
 
 
+def _urzadzenie(
+    der_ref: str, weryfikacja: DowodCertyfikatu | NcRfgCertyfikatOdrzucony | None
+) -> dict[str, Any]:
+    """Pozycja urządzenia w sekcji dowodu: rekord wykazu albo powód odrzucenia i wiersze."""
+    dowod = weryfikacja if isinstance(weryfikacja, DowodCertyfikatu) else None
+    odrzucony = weryfikacja if isinstance(weryfikacja, NcRfgCertyfikatOdrzucony) else None
+    return {
+        "der_ref": der_ref,
+        "dowod": dowod.model_dump(mode="json") if dowod is not None else None,
+        "odrzucony": odrzucony.model_dump(mode="json") if odrzucony is not None else None,
+        "wiersze": [p.model_dump(mode="json") for p in wiersze_dowodu(dowod, odrzucony)],
+    }
+
+
 def _fmt(value: Any, unit: str = "") -> str:
     """Sformatuj wartość liczbową dla eksportu (myślnik gdy brak)."""
     if value is None:
@@ -469,13 +499,24 @@ def _fmt(value: Any, unit: str = "") -> str:
 
 
 def _klasa_tekst(klasa: dict[str, Any]) -> str:
-    """Tekst klasy NC RfG na potrzeby eksportu (kod klasy + opis, lub myślnik)."""
-    if klasa.get("klasa") is None:
-        return "—"
-    return f"{klasa['klasa']} — {klasa['opis_pl']}"
+    """Typ modułu NC RfG na potrzeby eksportu: typ i powód klasyfikacji (albo sam powód)."""
+    if klasa["modul"] is None:
+        return str(klasa["powod_pl"])
+    return f"{klasa['modul']} — {klasa['powod_pl']}"
 
 
-def render_dokument_studium_docx(view: dict) -> bytes:
+def _pokrycie_tekst(pokrycie: dict[str, Any]) -> str:
+    """Pokrycie P–Q w eksporcie: etykieta i zdanie rekordu ``OcenaKryterium`` (bez własnego
+    słownika statusów)."""
+    ocena = pokrycie["ocena"]
+    return f"{ocena['etykieta']['etykieta_pl']} — {ocena['wyjasnienie']['zdanie_pl']}"
+
+
+def _wiersze_dowodu_urzadzenia(urzadzenie: dict[str, Any]) -> str:
+    return "; ".join(f"{w['etykieta_pl']}: {w['tresc_pl']}" for w in urzadzenie["wiersze"])
+
+
+def render_dokument_studium_docx(view: dict[str, Any]) -> bytes:
     """Zrenderuj deterministyczny DOCX dokumentu studium z widoku JSON.
 
     Zwraca bajty znormalizowane przez ``make_docx_bytes_deterministic`` — dwa
@@ -522,16 +563,10 @@ def render_dokument_studium_docx(view: dict) -> bytes:
         doc.add_heading(TYTUL_DOWODU, level=2)
         if dowod_blok["stan_pl"]:
             doc.add_paragraph(str(dowod_blok["stan_pl"]))
-        for dowod in dowod_blok["urzadzenia"]:
+        for urzadzenie in dowod_blok["urzadzenia"]:
             dow_para = doc.add_paragraph()
-            dow_para.add_run(f"{dowod['der_ref']}: ").bold = True
-            wiersze = wiersze_dowodu_pl(dowod)
-            if wiersze:
-                dow_para.add_run(
-                    "  |  ".join(f"{etykieta}: {wartosc}" for etykieta, wartosc in wiersze)
-                )
-            else:
-                dow_para.add_run(str(dowod["stan_pl"]))
+            dow_para.add_run(f"{urzadzenie['der_ref']}: ").bold = True
+            dow_para.add_run(_wiersze_dowodu_urzadzenia(urzadzenie))
 
     # Warianty.
     for i, wariant in enumerate(view["warianty"], start=1):
@@ -553,14 +588,10 @@ def render_dokument_studium_docx(view: dict) -> bytes:
             doc.add_paragraph(f"Obszar pracy P–Q: pasmo Q {obszar['pasmo_q_pl']}")
         else:
             doc.add_paragraph(f"Obszar pracy P–Q: błąd — {obszar['komunikat_bledu']}")
-        pokrycie = wariant["pokrycie_pq"]
-        if pokrycie["status"] == "ok":
-            doc.add_paragraph(
-                f"Pokrycie wymagań P–Q: {pokrycie['werdykt_pl']} — {pokrycie['opis_pl']}"
-            )
-        else:
-            doc.add_paragraph(f"Pokrycie wymagań P–Q: błąd — {pokrycie['komunikat_bledu']}")
-        doc.add_paragraph(f"Klasa NC RfG: {_klasa_tekst(wariant['klasa_nc_rfg'])}")
+        doc.add_paragraph(f"Pokrycie wymagań P–Q: {_pokrycie_tekst(wariant['pokrycie_pq'])}")
+        doc.add_paragraph(f"Typ modułu NC RfG: {_klasa_tekst(wariant['klasa_nc_rfg'])}")
+        if wariant["klasa_nc_rfg"]["podstawa_pl"] is not None:
+            doc.add_paragraph(f"Podstawa klasyfikacji: {wariant['klasa_nc_rfg']['podstawa_pl']}")
 
     # Podsumowanie porównawcze wariantów (tabela).
     doc.add_heading("Podsumowanie porównawcze wariantów", level=1)
@@ -598,7 +629,7 @@ def render_dokument_studium_docx(view: dict) -> bytes:
     return make_docx_bytes_deterministic(buffer.getvalue())
 
 
-def render_dokument_studium_pdf(view: dict) -> bytes:
+def render_dokument_studium_pdf(view: dict[str, Any]) -> bytes:
     """Zrenderuj deterministyczny PDF dokumentu studium z widoku JSON (układ 1:1 z DOCX).
 
     Determinizm bajtowy: canvas z ``invariant=1`` (stały ``CreationDate`` i ``ID``
@@ -676,14 +707,12 @@ def render_dokument_studium_pdf(view: dict) -> bytes:
         para(TYTUL_DOWODU, size=10, bold=True)
         if dowod_blok["stan_pl"]:
             para(str(dowod_blok["stan_pl"]), size=9, indent=4 * mm)
-        for dowod in dowod_blok["urzadzenia"]:
-            wiersze = wiersze_dowodu_pl(dowod)
-            tresc = (
-                "  |  ".join(f"{etykieta}: {wartosc}" for etykieta, wartosc in wiersze)
-                if wiersze
-                else str(dowod["stan_pl"])
+        for urzadzenie in dowod_blok["urzadzenia"]:
+            para(
+                f"{urzadzenie['der_ref']}: {_wiersze_dowodu_urzadzenia(urzadzenie)}",
+                size=9,
+                indent=4 * mm,
             )
-            para(f"{dowod['der_ref']}: {tresc}", size=9, indent=4 * mm)
     y -= line_height
 
     # Warianty.
@@ -708,12 +737,10 @@ def render_dokument_studium_pdf(view: dict) -> bytes:
             para(f"Obszar pracy P–Q: pasmo Q {obszar['pasmo_q_pl']}")
         else:
             para(f"Obszar pracy P–Q: błąd — {obszar['komunikat_bledu']}")
-        pokrycie = wariant["pokrycie_pq"]
-        if pokrycie["status"] == "ok":
-            para(f"Pokrycie wymagań P–Q: {pokrycie['werdykt_pl']} — {pokrycie['opis_pl']}")
-        else:
-            para(f"Pokrycie wymagań P–Q: błąd — {pokrycie['komunikat_bledu']}")
-        para(f"Klasa NC RfG: {_klasa_tekst(wariant['klasa_nc_rfg'])}")
+        para(f"Pokrycie wymagań P–Q: {_pokrycie_tekst(wariant['pokrycie_pq'])}")
+        para(f"Typ modułu NC RfG: {_klasa_tekst(wariant['klasa_nc_rfg'])}")
+        if wariant["klasa_nc_rfg"]["podstawa_pl"] is not None:
+            para(f"Podstawa klasyfikacji: {wariant['klasa_nc_rfg']['podstawa_pl']}", size=9)
         y -= line_height
 
     # Podsumowanie porównawcze wariantów (tabela).

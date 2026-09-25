@@ -310,7 +310,7 @@ function etykietaWyspy(island: LvDomainIsland, nameByRef: ReadonlyMap<string, st
   if (!island.is_islanded) return null;
   const nazwy = island.energizing_source_ids.map((ref) => nameByRef.get(ref) ?? ref);
   const zrodla = nazwy.length ? ` z: ${nazwy.join(', ')}` : '';
-  const npe = island.neutral_reference.status === 'OK'
+  const npe = island.neutral_reference.status === 'ustalone'
     ? `N/PE: ${island.neutral_reference.system ?? '—'} (${nameByRef.get(island.neutral_reference.source_ref ?? '') ?? island.neutral_reference.source_ref ?? '—'})`
     : island.neutral_reference.status === 'brak_ukladu'
       ? 'N/PE: układ sieci niezadeklarowany'

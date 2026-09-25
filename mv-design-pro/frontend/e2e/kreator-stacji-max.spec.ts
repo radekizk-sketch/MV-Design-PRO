@@ -67,6 +67,7 @@ type Substation = {
   name?: string;
   designation?: string | null;
   construction_type?: string | null;
+  transformer_refs?: string[];
   meta?: { field_specs?: Array<Record<string, unknown>> } | null;
 };
 
@@ -74,10 +75,24 @@ type Snapshot = {
   corridors?: Array<{ ordered_segment_refs?: string[] }>;
   branches?: Array<{ ref_id: string; catalog_ref?: string | null; tags?: string[]; meta?: Record<string, unknown> }>;
   substations?: Substation[];
-  measurements?: Array<{ ref_id: string; measurement_type?: string; bay_ref?: string | null }>;
+  measurements?: Array<{
+    ref_id: string;
+    measurement_type?: string;
+    bay_ref?: string | null;
+    // Karta W3-B (mapa 4 #3): obwód wtórny zapisany razem z przekładnikiem.
+    obwod_wtorny?: {
+      dlugosc_przewodu_m?: number | null;
+      przekroj_przewodu_mm2?: number | null;
+      obciazenia_aparatow?: Array<{ nazwa: string; moc_va: number }>;
+      moc_stykow_va?: number | null;
+    } | null;
+  }>;
   protection_assignments?: Array<{ ref_id: string; catalog_ref?: string | null; meta?: Record<string, unknown> }>;
   transformers?: Array<{
     ref_id: string;
+    // W5-A: jedyne nośniki układu sieci nN i punktu neutralnego nN.
+    lv_earthing_system?: string | null;
+    lv_neutral?: { type: string; r_ohm?: number | null; x_ohm?: number | null } | null;
     tap_changer?: {
       regulation_type?: string;
       current_position?: number;
@@ -192,6 +207,8 @@ async function zbudujMagistrale(request: APIRequestContext, caseId: string): Pro
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
   for (const [idx, length] of [300, 250, 200].entries()) {
     op = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {
@@ -383,6 +400,14 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   await page.getByTestId('mvd-kreator-stacja-zaczepy-rodzaj').selectOption('DETC');
   await page.getByTestId('mvd-kreator-stacja-zaczepy-biezaca').fill('-1');
   await expect(page.getByTestId('mvd-kreator-stacja-zaczepy-krok')).toHaveValue('2.5');
+
+  // ---------------------------------------------------- W5-A: uziemienie (natywnie)
+  // Układ sieci nN i punkt neutralny nN z listy słownika (te same literały, które
+  // waliduje backend); rezystor wymaga R_N — wpisujemy, żeby zapis nie był odmową.
+  await przejdzDoKroku(page, 'Uziemienie i punkt neutralny');
+  await page.getByTestId('mvd-kreator-stacja-uklad-nn').selectOption('TN-S');
+  await page.getByTestId('mvd-kreator-stacja-punkt-neutralny').selectOption('resistor_grounded');
+  await page.getByTestId('mvd-kreator-stacja-rezystancja-uziemienia').fill('10');
   await przejdzDoKroku(page, 'Pomiar i zabezpieczenia pól');
 
   // ---------------------------------------------------------------- krok 7
@@ -471,6 +496,18 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   const polaStacji = (stacja?.meta?.field_specs ?? []) as Array<Record<string, unknown>>;
   expect(polaStacji.length).toBeGreaterThan(0);
 
+  // W5-A: układ sieci nN i punkt neutralny nN NA TRANSFORMATORZE stacji (jedyne nośniki);
+  // meta stacji nie niesie kopii `nn_earthing_system`.
+  const transformatorStacji = (enm.transformers ?? []).find((t) =>
+    (stacja?.transformer_refs ?? []).includes(t.ref_id),
+  );
+  expect(transformatorStacji, 'transformator stacji w modelu').toBeTruthy();
+  expect(transformatorStacji?.lv_earthing_system).toBe('TN-S');
+  // Odpowiedź `/enm` serializuje pełny kontrakt `GroundingConfig` (składowa nieużywana = null).
+  expect(transformatorStacji?.lv_neutral).toMatchObject({ type: 'resistor_grounded', r_ohm: 10 });
+  expect(transformatorStacji?.lv_neutral?.x_ohm ?? null).toBeNull();
+  expect((stacja?.meta ?? {}) as Record<string, unknown>).not.toHaveProperty('nn_earthing_system');
+
   // B-12: KAŻDY aparat pola ma jawną referencję katalogową (żadnego domysłu).
   const aparaty = (enm.branches ?? []).filter((b) => (b.tags ?? []).includes('station_field_device'));
   expect(aparaty.length).toBe(polaStacji.length);
@@ -486,6 +523,24 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   expect(pomiary.some((m) => m.measurement_type === 'CT')).toBe(true);
   expect(pomiary.some((m) => m.measurement_type === 'VT')).toBe(true);
   expect((enm.protection_assignments ?? []).length).toBeGreaterThan(0);
+
+  // Karta W3-B (mapa 4 #3): obwód wtórny wpisany w kroku 4 (linie 339-369
+  // powyżej) NIE JEST wyrzucany po zapisie — trafia do modelu razem z
+  // przekładnikiem, w TEJ SAMEJ operacji atomowej co stacja. Koniec stanu
+  // „liczę na kartce": dane wpisane w kreatorze SĄ danymi modelu, nie tylko
+  // danymi do jednorazowego podglądu bilansu.
+  const pomiarCt = pomiary.find((m) => m.measurement_type === 'CT');
+  expect(pomiarCt?.obwod_wtorny, 'obwód wtórny CT zapisany na Measurement').toMatchObject({
+    dlugosc_przewodu_m: 25,
+    przekroj_przewodu_mm2: 4,
+    obciazenia_aparatow: [{ moc_va: 3.5 }],
+  });
+  const pomiarVt = pomiary.find((m) => m.measurement_type === 'VT');
+  expect(pomiarVt?.obwod_wtorny, 'obwód wtórny VT zapisany na Measurement').toMatchObject({
+    dlugosc_przewodu_m: 40,
+    przekroj_przewodu_mm2: 2.5,
+    obciazenia_aparatow: [{ moc_va: 12 }],
+  });
 
   // KD-3 (B-2): zaczepy zapisane w TEJ SAMEJ operacji co stacja — kanoniczny
   // podzespół `tap_changer`, bez osobnej operacji po zapisie.

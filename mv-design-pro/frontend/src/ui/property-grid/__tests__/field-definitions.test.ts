@@ -16,15 +16,27 @@ describe('P30e: field-definitions (mode-aware)', () => {
     describe('MODEL_EDIT mode', () => {
       const mode: OperatingMode = 'MODEL_EDIT';
 
-      it('Bus: includes identification, state, electrical_params, nameplate, audit', () => {
+      it('Bus: includes identification, state, electrical_params, audit', () => {
         const sections = getFieldDefinitionsForMode('Bus', mode);
         const sectionIds = sections.map((s) => s.id);
 
         expect(sectionIds).toContain('identification');
         expect(sectionIds).toContain('state');
         expect(sectionIds).toContain('electrical_params');
-        expect(sectionIds).toContain('nameplate');
         expect(sectionIds).toContain('audit');
+      });
+
+      // WIERSZ ZASTĄPIONY, INTENCJA ZACHOWANA (karta K7c-FE): poprzednio
+      // sprawdzał, że Bus niesie sekcję `nameplate` (Producent/Typ rozdzielnicy/
+      // Rok instalacji). Grep property-grid vs modelem ENM Bus wykazał, że
+      // WSZYSTKIE trzy pola tej sekcji są fantomami — `Bus` (`types/enm.ts`)
+      // nie ma odpowiadających pól, więc sekcja zawsze pokazywała puste/zaszyte
+      // wartości i zapisywała klucze, których nic nie czyta. Sekcja usunięta
+      // (`field-definitions.ts::getBusFieldDefinitions`); test teraz pilnuje,
+      // że nie wróciła po cichu.
+      it('Bus: sekcja nameplate NIE występuje (usunięta jako fantom — zero pól w modelu ENM Bus)', () => {
+        const sections = getFieldDefinitionsForMode('Bus', mode);
+        expect(sections.map((s) => s.id)).not.toContain('nameplate');
       });
 
       it('Bus: excludes calculated section (not relevant in MODEL_EDIT)', () => {
@@ -44,15 +56,15 @@ describe('P30e: field-definitions (mode-aware)', () => {
         expect(nameField?.editable).toBe(true);
       });
 
-      it('Bus: id and uuid fields are read-only', () => {
+      it('Bus: pola id (UUID) i ref_id (identyfikator kanoniczny) są tylko do odczytu', () => {
         const sections = getFieldDefinitionsForMode('Bus', mode);
         const identSection = sections.find((s) => s.id === 'identification');
 
         const idField = identSection?.fields.find((f) => f.key === 'id');
-        const uuidField = identSection?.fields.find((f) => f.key === 'uuid');
+        const refIdField = identSection?.fields.find((f) => f.key === 'ref_id');
 
         expect(idField?.editable).toBe(false);
-        expect(uuidField?.editable).toBe(false);
+        expect(refIdField?.editable).toBe(false);
       });
 
       it('Bus: audit fields are read-only', () => {
@@ -127,11 +139,88 @@ describe('P30e: field-definitions (mode-aware)', () => {
         const sections = getFieldDefinitionsForMode('Source', mode);
         const shortCircuitSection = sections.find((s) => s.id === 'short_circuit');
 
-        const skField = shortCircuitSection?.fields.find((f) => f.key === 'sk_mva');
+        const skField = shortCircuitSection?.fields.find((f) => f.key === 'sk3_mva');
         const rxField = shortCircuitSection?.fields.find((f) => f.key === 'rx_ratio');
 
         expect(skField?.editable).toBe(true);
         expect(rxField?.editable).toBe(true);
+      });
+
+      // CV-4.3 K7: dane scenariusza MIN — opcjonalne (value null, zero fabrykacji),
+      // ale edytowalne w MODEL_EDIT jak Sk3/R-X (ten sam poziom mutowalności).
+      it('Source: scenariusz MIN (sk3_min_mva/ik3_min_ka/rx_ratio_min) is present, editable, and null by default', () => {
+        const sections = getFieldDefinitionsForMode('Source', mode);
+        const shortCircuitSection = sections.find((s) => s.id === 'short_circuit');
+
+        const sk3MinField = shortCircuitSection?.fields.find((f) => f.key === 'sk3_min_mva');
+        const ik3MinField = shortCircuitSection?.fields.find((f) => f.key === 'ik3_min_ka');
+        const rxMinField = shortCircuitSection?.fields.find((f) => f.key === 'rx_ratio_min');
+
+        expect(sk3MinField?.editable).toBe(true);
+        expect(sk3MinField?.value).toBeNull();
+        expect(ik3MinField?.editable).toBe(true);
+        expect(ik3MinField?.value).toBeNull();
+        expect(rxMinField?.editable).toBe(true);
+        expect(rxMinField?.value).toBeNull();
+      });
+
+      // Karta K7c-FE: napięcie zadane szyny bilansującej — ta sama klasa
+      // mutowalności co scenariusz MIN powyżej (opcjonalne, null domyślnie).
+      it('Source: u_set_pu (napięcie zadane szyny bilansującej) is present, editable, and null by default', () => {
+        const sections = getFieldDefinitionsForMode('Source', mode);
+        const shortCircuitSection = sections.find((s) => s.id === 'short_circuit');
+        const uSetField = shortCircuitSection?.fields.find((f) => f.key === 'u_set_pu');
+
+        expect(uSetField).toBeDefined();
+        expect(uSetField?.editable).toBe(true);
+        expect(uSetField?.value).toBeNull();
+        expect(uSetField?.unit).toBe('pu');
+      });
+
+      // Karta K7c-FE (grep property-grid vs modelem ENM Source/Bus/Generator):
+      // klucze naprawione do zgodności z modelem — regresja klasy pinowana tu,
+      // żeby fantom (`voltage_kv`/`bus_id`) nie wrócił po cichu.
+      it('Source: klucze topology/short_circuit są zgodne z modelem ENM (bus_ref, sn_voltage_kv — NIE bus_id/voltage_kv)', () => {
+        const sections = getFieldDefinitionsForMode('Source', mode);
+        const topologySection = sections.find((s) => s.id === 'topology');
+        const shortCircuitSection = sections.find((s) => s.id === 'short_circuit');
+
+        expect(topologySection?.fields.find((f) => f.key === 'bus_ref')).toBeDefined();
+        expect(topologySection?.fields.find((f) => f.key === 'bus_id')).toBeUndefined();
+        expect(shortCircuitSection?.fields.find((f) => f.key === 'sn_voltage_kv')).toBeDefined();
+        expect(shortCircuitSection?.fields.find((f) => f.key === 'voltage_kv')).toBeUndefined();
+      });
+
+      // Karta K7c-FE: `Bus` (`electrical_params`) nie ma odpowiadających pól
+      // ENM dla `bus_type`/`rated_current_a` — usunięte jako fantom.
+      it('Bus: electrical_params NIE niesie bus_type/rated_current_a (usunięte jako fantom)', () => {
+        const sections = getFieldDefinitionsForMode('Bus', mode);
+        const electricalSection = sections.find((s) => s.id === 'electrical_params');
+
+        expect(electricalSection?.fields.find((f) => f.key === 'bus_type')).toBeUndefined();
+        expect(electricalSection?.fields.find((f) => f.key === 'rated_current_a')).toBeUndefined();
+        // voltage_kv zostaje — Bus.voltage_kv jest realnym polem modelu ENM.
+        expect(electricalSection?.fields.find((f) => f.key === 'voltage_kv')).toBeDefined();
+      });
+
+      // Odbiór K7c-FE (KLASA, NIE INSTANCJA): ta sama klasa fantomów kluczy w POZOSTAŁYCH
+      // typach elementów — referencje szyn (`*_bus_id` → `*_bus_ref`, jak w modelu ENM
+      // `BranchBase`/`Transformer`/`Load`) i `uuid` (nieistniejący; `ENMElement` ma `id` i
+      // `ref_id`). Iloczyn: każdy typ elementu × każda sekcja — żaden klucz `*_bus_id`/`uuid`.
+      it('żaden typ elementu nie niesie kluczy-fantomów *_bus_id ani uuid; referencje szyn = klucze modelu ENM', () => {
+        const typy: ElementType[] = ['Bus', 'LineBranch', 'TransformerBranch', 'Switch', 'Source', 'Load'];
+        for (const typ of typy) {
+          const klucze = getFieldDefinitionsForMode(typ, mode).flatMap((s) => s.fields.map((f) => f.key));
+          expect(klucze.filter((k) => k === 'uuid' || k.endsWith('bus_id'))).toEqual([]);
+          const ident = getFieldDefinitionsForMode(typ, mode).find((s) => s.id === 'identification');
+          expect(ident?.fields.find((f) => f.key === 'ref_id')?.editable).toBe(false);
+        }
+        const topologia = (typ: ElementType) =>
+          getFieldDefinitionsForMode(typ, mode).find((s) => s.id === 'topology')?.fields.map((f) => f.key) ?? [];
+        expect(topologia('LineBranch')).toEqual(['from_bus_ref', 'to_bus_ref']);
+        expect(topologia('TransformerBranch')).toEqual(['hv_bus_ref', 'lv_bus_ref']);
+        expect(topologia('Load')).toEqual(['bus_ref']);
+        expect(topologia('Source')).toEqual(['bus_ref']);
       });
     });
 
@@ -202,15 +291,30 @@ describe('P30e: field-definitions (mode-aware)', () => {
         expect(qField?.editable).toBe(true);
       });
 
-      it('Source: sk_mva and rx_ratio are editable (wariantowe parametry)', () => {
+      it('Source: sk3_mva and rx_ratio are editable (wariantowe parametry)', () => {
         const sections = getFieldDefinitionsForMode('Source', mode);
         const shortCircuitSection = sections.find((s) => s.id === 'short_circuit');
 
-        const skField = shortCircuitSection?.fields.find((f) => f.key === 'sk_mva');
+        const skField = shortCircuitSection?.fields.find((f) => f.key === 'sk3_mva');
         const rxField = shortCircuitSection?.fields.find((f) => f.key === 'rx_ratio');
 
         expect(skField?.editable).toBe(true);
         expect(rxField?.editable).toBe(true);
+      });
+
+      // CV-4.3 K7: CASE_CONFIG dzieli mutowalność MIN z Sk3/R-X (ta sama klasa
+      // wariantowych parametrów zwarciowych).
+      it('Source: scenariusz MIN fields are editable (wariantowe parametry)', () => {
+        const sections = getFieldDefinitionsForMode('Source', mode);
+        const shortCircuitSection = sections.find((s) => s.id === 'short_circuit');
+
+        const sk3MinField = shortCircuitSection?.fields.find((f) => f.key === 'sk3_min_mva');
+        const ik3MinField = shortCircuitSection?.fields.find((f) => f.key === 'ik3_min_ka');
+        const rxMinField = shortCircuitSection?.fields.find((f) => f.key === 'rx_ratio_min');
+
+        expect(sk3MinField?.editable).toBe(true);
+        expect(ik3MinField?.editable).toBe(true);
+        expect(rxMinField?.editable).toBe(true);
       });
 
       it('LineBranch: in_service is editable, length_km is read-only', () => {

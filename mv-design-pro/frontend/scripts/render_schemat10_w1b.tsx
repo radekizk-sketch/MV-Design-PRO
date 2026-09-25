@@ -21,6 +21,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildSceneV3 } from '../src/ui/sld/v3/scene/buildScene';
+import { FIELD_ROLE_LABEL_PL, fieldLabelPluralPl } from '../src/ui/sld/v2/station-rozdzielnia/contract';
 import { SYMBOL_DEFS, type SymbolId } from '../src/ui/sld/v3/symbols/defs';
 import { SYMBOL_GLYPHS } from '../src/ui/sld/v3/symbols/glyphs';
 import {
@@ -174,9 +175,10 @@ function renderCell(variant: W1Variant, fieldRef: string, cx: number, cy: number
   );
 }
 
+// Nazwa grupy pól transformatorowych z kanonu słownictwa ról pól (karta #141).
 const GROUP_LABEL: Record<W1Group, string> = {
   liniowe: 'Pola liniowe',
-  transformatorowe: 'Pola transformatorowe',
+  transformatorowe: fieldLabelPluralPl(FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE),
 };
 const GROUP_ORDER: readonly W1Group[] = ['liniowe', 'transformatorowe'];
 

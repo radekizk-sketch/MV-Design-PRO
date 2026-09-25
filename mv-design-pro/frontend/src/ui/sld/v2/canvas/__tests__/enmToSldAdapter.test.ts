@@ -19,13 +19,13 @@ import { describe, it, expect } from 'vitest';
 import { buildSldDataFromSnapshot, projectBayTelemetry } from '../enmToSldAdapter';
 import { FIELD_ROLE } from '../../domain/apparatusContracts';
 import type {
-  Bay,
   BayPrimaryDevice,
   BayRuntimeState,
   BaySwitchState,
   EnergyNetworkModel,
   LogicalViewsV1,
 } from '../../../../../types/enm';
+import { at } from '../../../../../test/arrayAt';
 
 function makeSwitchState(overrides: Partial<BaySwitchState>): BaySwitchState {
   return {
@@ -330,29 +330,22 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.ders.find((d) => d.id === 'PV-1')?.nominalPowerKw).toBe(1500);
   });
 
-  it('NC RFG Module derivowany z p_mw per ENEA profile progi (enea.yaml)', () => {
+  it('NC RfG Module bez klasyfikacji w modelu → brak oznaczenia (zero klienckich progów mocy)', () => {
+    // Karta AB-1a Pakiet D2: dawny zastępczy podział wg mocy (progi 1/50/75 MW, sprzeczne
+    // z art. 5 rozporządzenia 2016/631) usunięty — moduł pochodzi WYŁĄCZNIE z modelu.
     const snap = buildEmptySnapshot();
-    snap.generators = [
-      // Moduł A: <1 MW (Mikro)
-      { id: 'g1', ref_id: 'PV-A', name: 'PV-A', tags: [], meta: {}, bus_ref: 'b', p_mw: 0.05, gen_type: 'pv_inverter' } as never,
-      // Moduł B: 1–50 MW (Małe)
-      { id: 'g2', ref_id: 'PV-B', name: 'PV-B', tags: [], meta: {}, bus_ref: 'b', p_mw: 5.0, gen_type: 'pv_inverter' } as never,
-      // Moduł C: 50–75 MW (Duże)
-      { id: 'g3', ref_id: 'PV-C', name: 'PV-C', tags: [], meta: {}, bus_ref: 'b', p_mw: 60.0, gen_type: 'pv_inverter' } as never,
-      // Moduł D: >75 MW (B. duże)
-      { id: 'g4', ref_id: 'PV-D', name: 'PV-D', tags: [], meta: {}, bus_ref: 'b', p_mw: 100.0, gen_type: 'pv_inverter' } as never,
-    ];
+    snap.generators = [0.05, 5.0, 60.0, 100.0].map(
+      (p_mw, i) =>
+        ({ id: `g${i}`, ref_id: `PV-${i}`, name: `PV-${i}`, tags: [], meta: {}, bus_ref: 'b', p_mw, gen_type: 'pv_inverter' }) as never,
+    );
     const r = buildSldDataFromSnapshot(snap, null);
-    expect(r.ders.find((d) => d.id === 'PV-A')?.ncRfgModule).toBe('A');
-    expect(r.ders.find((d) => d.id === 'PV-B')?.ncRfgModule).toBe('B');
-    expect(r.ders.find((d) => d.id === 'PV-C')?.ncRfgModule).toBe('C');
-    expect(r.ders.find((d) => d.id === 'PV-D')?.ncRfgModule).toBe('D');
+    expect(r.ders.map((d) => d.ncRfgModule)).toEqual([null, null, null, null]);
   });
 
-  it('NC RFG Module z backend nc_rfg_module nadpisuje pochodny', () => {
+  it('NC RfG Module z modelu (`nc_rfg_module`) przechodzi 1:1', () => {
     const snap = buildEmptySnapshot();
     snap.generators = [
-      // p_mw = 5MW (Moduł B) ale backend ustawił C
+      // Moduł z klasyfikacji zapisanej w modelu — adapter go nie przelicza
       { id: 'g1', ref_id: 'PV-1', name: 'PV-1', tags: [], meta: {}, bus_ref: 'b', p_mw: 5.0, gen_type: 'pv_inverter', nc_rfg_module: 'C' } as never,
     ];
     const r = buildSldDataFromSnapshot(snap, null);
@@ -1023,9 +1016,9 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
         tags: [],
         meta: {
           field_specs: [
-            { field_ref: 'field-in', name: 'Pole LINIA_IN 1', bay_role: 'IN', bus_ref: 'bus-sn', equipment_refs: ['sw-in'], meta: { field_role: 'LINIA_IN' } },
-            { field_ref: 'field-out', name: 'Pole LINIA_OUT 1', bay_role: 'OUT', bus_ref: 'bus-sn', equipment_refs: ['sw-out'], meta: { field_role: 'LINIA_OUT' } },
-            { field_ref: 'field-tr', name: 'Pole TRANSFORMATOROWE 1', bay_role: 'TR', bus_ref: 'bus-sn', equipment_refs: ['sw-tr'], meta: { field_role: 'TRANSFORMATOROWE' } },
+            { field_ref: 'field-in', name: 'Pole liniowe wejściowe 1', bay_role: 'IN', bus_ref: 'bus-sn', equipment_refs: ['sw-in'], meta: { field_role: 'LINIA_IN' } },
+            { field_ref: 'field-out', name: 'Pole liniowe wyjściowe 1', bay_role: 'OUT', bus_ref: 'bus-sn', equipment_refs: ['sw-out'], meta: { field_role: 'LINIA_OUT' } },
+            { field_ref: 'field-tr', name: 'Pole transformatorowe 1', bay_role: 'TR', bus_ref: 'bus-sn', equipment_refs: ['sw-tr'], meta: { field_role: 'TRANSFORMATOROWE' } },
           ],
         },
         station_type: 'inline',
@@ -1037,6 +1030,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
 
     const r = buildSldDataFromSnapshot(snap, null);
     const station = r.stations[0];
+    if (!station.snBays) throw new Error('stacja inline z Bay powinna niesc snBays');
 
     expect(station.snBays).toHaveLength(3);
     expect(station.snBays.map((bay) => bay.designation)).toEqual(['WE', 'WY', 'TR']);
@@ -1101,13 +1095,14 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
 
     const r = buildSldDataFromSnapshot(snap, null);
     const station = r.stations[0];
+    if (!station.snBays) throw new Error('stacja der_station powinna niesc snBays');
 
     expect(station.snBays.map((bay) => bay.fieldRole)).toContain(FIELD_ROLE.DER_PV);
     expect(station.snBays.find((bay) => bay.fieldRole === FIELD_ROLE.DER_PV)?.designation).toBe('PV');
     expect(station.footprintType).toBe('der_station');
   });
 
-  it('K30-37: adapter propaguje busVoltageKv z snapshot.buses (najwyższe > 0.5 kV)', () => {
+  it('adapter propaguje busVoltageKv z snapshot.buses (najwyższe > 0.5 kV)', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 'st', ref_id: 'ST-V', name: 'Stacja SN', tags: [], meta: {}, station_type: 'inline', bus_refs: ['b-sn', 'b-nn'], transformer_refs: [] } as never,
@@ -1122,7 +1117,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.stations[0].busVoltageKv).toBe(15);
   });
 
-  it('K30-37: adapter zwraca busVoltageKv=null gdy stacja nie ma SN buses (LV-only excluded)', () => {
+  it('adapter zwraca busVoltageKv=null gdy stacja nie ma SN buses (LV-only excluded)', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 'st', ref_id: 'ST-LV', name: 'Stacja LV-only', tags: [], meta: {}, station_type: 'inline', bus_refs: ['b-nn'], transformer_refs: [] } as never,
@@ -1136,7 +1131,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.stations[0].busVoltageKv).toBeNull();
   });
 
-  it('K30-41: adapter propaguje voltageKv ciągów kabli z `from_bus` voltage_kv', () => {
+  it('adapter propaguje voltageKv ciągów kabli z `from_bus` voltage_kv', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 'g', ref_id: 'GPZ', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [] } as never,
@@ -1163,7 +1158,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     }
   });
 
-  it('K30-41: voltageKv=null gdy from_bus.voltage_kv niedostępne', () => {
+  it('voltageKv=null gdy from_bus.voltage_kv niedostępne', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 'g', ref_id: 'GPZ', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['b-empty'], transformer_refs: [] } as never,
@@ -1322,13 +1317,13 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     ];
 
     const r = buildSldDataFromSnapshot(snap, {
-      trunks: [{ corridor_ref: 'run-1', segments: ['SEG-1'] }],
+      trunks: [{ corridor_ref: 'run-1', corridor_type: 'main', segments: ['SEG-1'], no_point_ref: null, terminals: [] }],
       branches: [],
       secondary_connectors: [],
       terminals: [],
     });
 
-    const cableY = r.cableRuns[0].pathPoints.at(-1)?.y;
+    const cableY = at(r.cableRuns[0].pathPoints, -1)?.y;
     expect(cableY).toBeDefined();
     expect(r.stations[0].y).toBe(cableY! + 80);
   });
@@ -1547,7 +1542,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
 
     expect(points[0].x).toBe(416);
     expect(points[0].x).toBe(points[1].x);
-    expect(points.at(-1)?.x).toBe(points[0].x + 140);
+    expect(at(points, -1)?.x).toBe(points[0].x + 140);
     expect(r.cableRuns[0].label).toBe('XRUHAKXS 120/25 · 500 m');
   });
 
@@ -1598,7 +1593,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const r = buildSldDataFromSnapshot(snap, null);
     const points = r.cableRuns[0].pathPoints;
     const start = points[0];
-    const end = points.at(-1);
+    const end = at(points, -1);
 
     expect(r.cableRuns[0].label).toBe('XRUHAKXS 120/25 · 500 m');
     expect(r.cableRuns[0].pendingEndpoint).toBe(true);
@@ -1654,7 +1649,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const r = buildSldDataFromSnapshot(snap, null);
     const points = r.cableRuns[0].pathPoints;
     const start = points[0];
-    const end = points.at(-1);
+    const end = at(points, -1);
 
     expect(r.cableRuns[0].label).toBe('XRUHAKXS 120/25 · 100 m');
     expect(r.cableRuns[0].pendingEndpoint).toBe(true);
@@ -1851,7 +1846,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const run = r.cableRuns[0];
     const startX = run.pathPoints[0].x;
 
-    expect(run.pathPoints.at(-1)?.x).toBe(startX + 360);
+    expect(at(run.pathPoints, -1)?.x).toBe(startX + 360);
     // 3 segment labels + 1 voltage annotation (15 kV)
     const segmentTextLabels = run.segmentLabels?.filter(
       (l) => !l.segmentRef?.startsWith('voltage-kv-'),
@@ -1870,7 +1865,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       (l) => l.segmentRef?.startsWith('voltage-kv-'),
     );
     expect(voltageLabel?.text).toBe('15 kV');
-    expect(run.segmentPaths?.map((segmentPath) => segmentPath.pathPoints.at(-1)?.x)).toEqual([
+    expect(run.segmentPaths?.map((segmentPath) => at(segmentPath.pathPoints, -1)?.x)).toEqual([
       startX + 120,
       startX + 240,
       startX + 360,
@@ -1930,7 +1925,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
 
     expect(r.cableRuns).toHaveLength(1);
     expect(r.stations.map((station) => station.id)).toEqual(['ST-1', 'ST-2']);
-    const lastCablePoint = r.cableRuns[0].pathPoints.at(-1);
+    const lastCablePoint = at(r.cableRuns[0].pathPoints, -1);
     expect(lastCablePoint?.x).toBeLessThanOrEqual(r.stations[1].x);
     expect(lastCablePoint?.y).toBe(r.stations[1].y - 80);
     expect(r.stations[0].x).toBeLessThan(r.stations[1].x);
@@ -1943,12 +1938,14 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       'SEG-1',
       'SEG-2',
     ]);
-    expect(r.cableRuns[0].segmentPaths?.[0]?.pathPoints.at(0)?.x).toBe(r.cableRuns[0].pathPoints[0].x);
-    const firstStationInputX = r.cableRuns[0].segmentPaths?.[0]?.pathPoints.at(-1)?.x;
-    const firstStationOutputX = r.cableRuns[0].segmentPaths?.[1]?.pathPoints.at(0)?.x;
+    expect(at(r.cableRuns[0].segmentPaths?.[0]?.pathPoints ?? [], 0)?.x).toBe(
+      r.cableRuns[0].pathPoints[0].x,
+    );
+    const firstStationInputX = at(r.cableRuns[0].segmentPaths?.[0]?.pathPoints ?? [], -1)?.x;
+    const firstStationOutputX = at(r.cableRuns[0].segmentPaths?.[1]?.pathPoints ?? [], 0)?.x;
     expect(firstStationInputX).toBeLessThan(r.stations[0].x);
     expect(firstStationOutputX).toBeGreaterThanOrEqual(r.stations[0].x);
-    expect(r.cableRuns[0].segmentPaths?.[1]?.pathPoints.at(-1)?.x).toBe(lastCablePoint?.x);
+    expect(at(r.cableRuns[0].segmentPaths?.[1]?.pathPoints ?? [], -1)?.x).toBe(lastCablePoint?.x);
   });
 
   it('syntetyczny ciąg SN przechodzi przez kolejną szynę SN stacji, gdy from/to używa aliasów', () => {
@@ -2006,7 +2003,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.cableRuns).toHaveLength(1);
     expect(r.cableRuns[0].segmentRefs).toEqual(['SEG-ALIAS-1', 'SEG-ALIAS-2']);
     expect(r.cableRuns[0].segmentPaths).toHaveLength(2);
-    expect(r.cableRuns[0].pathPoints.at(-1)?.x).toBeLessThanOrEqual(r.stations[1].x);
+    expect(at(r.cableRuns[0].pathPoints, -1)?.x).toBeLessThanOrEqual(r.stations[1].x);
   });
 });
 
@@ -2499,7 +2496,7 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
 
   // K30 audit loop: synthetic snapshot z 30 stacji + 2 GPZ + 2 line_runs (A/B)
   // weryfikuje że adapter skaluje się do K30 bez backendu (no-op safety net).
-  it('K30 synthetic: 30 stations + 2 GPZ + 2 line_runs → 32 stations, 2 lineRuns, cumulative km', () => {
+  it('synthetic: 30 stations + 2 GPZ + 2 line_runs → 32 stations, 2 lineRuns, cumulative km', () => {
     const snap = buildEmptySnapshot();
     // 2 GPZ
     snap.substations = [
@@ -2564,7 +2561,7 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
 
   // K30 audit loop: weryfikacja że adapter syntezuje main_trunk z łańcucha
   // branches gdy brak jawnych line_runs (K30 live seed case).
-  it('K30 synthetic: 5 cables w łańcuchu GPZ→S2→S3→S4→S5 bez line_runs → 1 syntetyczny main_trunk', () => {
+  it('synthetic: 5 cables w łańcuchu GPZ→S2→S3→S4→S5 bez line_runs → 1 syntetyczny main_trunk', () => {
     const snap = buildEmptySnapshot();
     snap.buses = [
       { id: 'gpz_bus', ref_id: 'gpz/abc/section/001/bus_sn', name: 'GPZ Sec1', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
@@ -2602,7 +2599,7 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
 
   // K30 audit loop: weryfikacja że adapter nie crashes z runtime errors na
   // dużych snapshot (30 stacji = 30+ buses + 30+ transformers + DERs).
-  it('K30 synthetic: deterministic output 3× pod rząd (no flaky behavior)', () => {
+  it('synthetic: deterministic output 3× pod rząd (no flaky behavior)', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 'gpz-a', ref_id: 'GPZ-A', name: 'GPZ-A', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['busA'], transformer_refs: [], gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'busA' }] } as never,
@@ -2840,7 +2837,7 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
         // Energized incoming cable (source side).
         { id: 'c1', ref_id: 'seg/c1/segment', name: 'C1', type: 'cable', from_bus_ref: 'b_a', to_bus_ref: 'b_mid', status: 'closed', length_km: 1, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
         // Open section switch (NMO) carrying a real model name.
-        { id: 'sw1', ref_id: 'sw/op1/switch', name: 'Lacznik sekcyjny NO (rezerwa)', type: 'switch', from_bus_ref: 'b_mid', to_bus_ref: 'b_end', status: 'open' } as never,
+        { id: 'sw1', ref_id: 'sw/op1/switch', name: 'Łącznik sekcyjny NO (rezerwa)', type: 'switch', from_bus_ref: 'b_mid', to_bus_ref: 'b_end', status: 'open' } as never,
         // De-energized reserve cable (beyond the open point).
         { id: 'c2', ref_id: 'seg/c2/segment', name: 'C2', type: 'cable', from_bus_ref: 'b_end', to_bus_ref: 'b_far', status: 'closed', length_km: 1, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
       ];
@@ -2849,7 +2846,7 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
       expect(markers).toHaveLength(1);
       // REAL identifier from the model — no fabricated "P-xx" number.
       expect(markers[0].id).toBe('sw/op1/switch');
-      expect(markers[0].label).toBe('Lacznik sekcyjny NO (…');
+      expect(markers[0].label).toBe('Łącznik sekcyjny NO (…');
       expect(markers[0].label).not.toMatch(/P-\d/);
       // The run carrying the marker is flagged as containing an open point.
       expect(r.cableRuns.some((run) => run.containsOpenPoint && (run.openPointMarkers?.length ?? 0) > 0)).toBe(true);
@@ -3066,7 +3063,7 @@ describe('enmToSldAdapter — kontrakt topologii terenowej SLD', () => {
         name: 'Magistrala 1',
         run_kind: 'main_trunk',
         starting_bay_ref: 'gpz/1/bay/001',
-        starting_port_ref: null,
+        starting_port_ref: 'gpz/1/bay/001/port',
         segments: [{ segment_ref: 'seg/line-1/segment', order: 1 }],
         stations: [],
       },
@@ -3127,8 +3124,11 @@ describe('enmToSldAdapter — kontrakt topologii terenowej SLD', () => {
       {
         id: 'run-open',
         run_kind: 'main_trunk',
-        starting_bay_ref: null,
-        starting_port_ref: null,
+        // Puste (nie `null`, LineRunV1.starting_bay_ref/starting_port_ref sa
+        // wymaganym `string` w kanonie ENM) — test celuje w brakujaca szyne
+        // koncowa (`to_bus_ref: ''` nizej), nie w brakujacy poczatek ciagu.
+        starting_bay_ref: '',
+        starting_port_ref: '',
         segments: [{ segment_ref: 'seg/line-open/segment', order: 1 }],
         stations: [],
       },
@@ -3355,7 +3355,7 @@ describe('enmToSldAdapter — kontrakt topologii terenowej SLD', () => {
 });
 
 
-describe('K30-19 countNnFeedersFromMeta — adapter respects station.meta.nn_field_specs', () => {
+describe('countNnFeedersFromMeta — adapter respects station.meta.nn_field_specs', () => {
   function buildStationFixture(meta: Record<string, unknown>) {
     const snapshot = buildEmptySnapshot();
     (snapshot as { substations: unknown[] }).substations = [
@@ -3401,7 +3401,7 @@ describe('K30-19 countNnFeedersFromMeta — adapter respects station.meta.nn_fie
         { bay_role: 'OZE', field_index: 3 }, // not a FEEDER
       ],
     });
-    const result = buildSldDataFromSnapshot(snapshot);
+    const result = buildSldDataFromSnapshot(snapshot, null);
     const station = result.stations.find((s) => s.id === 'stn/abc/station');
     expect(station).toBeDefined();
     expect(station!.nnFeedersCount).toBe(3);
@@ -3409,7 +3409,7 @@ describe('K30-19 countNnFeedersFromMeta — adapter respects station.meta.nn_fie
 
   it('brak meta.nn_field_specs ⇒ 0 (zero fabrykacji — dawna heurystyka „1 bez DER / 2 z DER" usunięta u źródła)', () => {
     const snapshot = buildStationFixture({});
-    const result = buildSldDataFromSnapshot(snapshot);
+    const result = buildSldDataFromSnapshot(snapshot, null);
     const station = result.stations.find((s) => s.id === 'stn/abc/station');
     expect(station).toBeDefined();
     expect(station!.nnFeedersCount).toBe(0);
@@ -3423,7 +3423,7 @@ describe('K30-19 countNnFeedersFromMeta — adapter respects station.meta.nn_fie
           field_index: i,
         })),
       });
-      const result = buildSldDataFromSnapshot(snapshot);
+      const result = buildSldDataFromSnapshot(snapshot, null);
       const station = result.stations.find((s) => s.id === 'stn/abc/station');
       expect(station!.nnFeedersCount).toBe(count);
     }
@@ -3831,7 +3831,7 @@ describe('F9.2 — projekcja Bay.primary_devices (SLD_CAD_SPEC_V3 §12.1)', () =
     const r = buildSldDataFromSnapshot(snap, null);
     const station = r.stations.find((s) => s.id === 'ST-1');
     expect(station?.snBays).toHaveLength(1);
-    expect(station?.snBays[0]?.primaryDevices).toBeUndefined();
+    expect(station?.snBays?.[0]?.primaryDevices).toBeUndefined();
   });
 
   it('gdy primary_devices obecne (kontrakt forward-compat), sortuje wg placement UPSTREAM→MIDSTREAM→DOWNSTREAM ze stabilnym tie-breakerem = kolejność ENM', () => {
@@ -3851,7 +3851,7 @@ describe('F9.2 — projekcja Bay.primary_devices (SLD_CAD_SPEC_V3 §12.1)', () =
     ];
 
     const r = buildSldDataFromSnapshot(snap, null);
-    const devices = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.primaryDevices;
+    const devices = r.stations.find((s) => s.id === 'ST-1')?.snBays?.[0]?.primaryDevices;
     expect(devices?.map((d) => d.deviceRef)).toEqual(['ds-bus', 'ct-1', 'cb-1', 'head']);
     expect(devices?.map((d) => d.placement)).toEqual(['UPSTREAM', 'MIDSTREAM', 'MIDSTREAM', 'DOWNSTREAM']);
     expect(devices?.map((d) => d.kind)).toEqual(['DS', 'CT', 'CB', 'CABLE_HEAD']);
@@ -3883,7 +3883,7 @@ describe('F9.2 — projekcja Bay.primary_devices (SLD_CAD_SPEC_V3 §12.1)', () =
     ];
 
     const r = buildSldDataFromSnapshot(snap, null);
-    const devices = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.primaryDevices ?? [];
+    const devices = r.stations.find((s) => s.id === 'ST-1')?.snBays?.[0]?.primaryDevices ?? [];
     const byRef = new Map(devices.map((d) => [d.deviceRef, d.switchState]));
     expect(byRef.get('ds-open')).toBe('open');
     expect(byRef.get('cb-closed')).toBe('closed');
@@ -3907,7 +3907,7 @@ describe('F9.2 — projekcja Bay.primary_devices (SLD_CAD_SPEC_V3 §12.1)', () =
     ];
 
     const r = buildSldDataFromSnapshot(snap, null);
-    const devices = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.primaryDevices ?? [];
+    const devices = r.stations.find((s) => s.id === 'ST-1')?.snBays?.[0]?.primaryDevices ?? [];
     const byRef = new Map(devices.map((d) => [d.deviceRef, d.sectionSide]));
     expect(byRef.get('ds-left')).toBe('LEFT');
     expect(byRef.get('cb-right')).toBe('RIGHT');
@@ -3929,7 +3929,7 @@ describe('F9.2 — projekcja Bay.primary_devices (SLD_CAD_SPEC_V3 §12.1)', () =
     ];
 
     const runs = Array.from({ length: 10 }, () =>
-      buildSldDataFromSnapshot(snap, null).stations.find((s) => s.id === 'ST-1')?.snBays[0]?.primaryDevices,
+      buildSldDataFromSnapshot(snap, null).stations.find((s) => s.id === 'ST-1')?.snBays?.[0]?.primaryDevices,
     );
     for (const run of runs) {
       expect(run).toEqual(runs[0]);
@@ -3953,7 +3953,7 @@ describe('F10.6 — designation per-aparat (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035
     ];
 
     const r = buildSldDataFromSnapshot(snap, null);
-    const devices = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.primaryDevices ?? [];
+    const devices = r.stations.find((s) => s.id === 'ST-1')?.snBays?.[0]?.primaryDevices ?? [];
     const byRef = new Map(devices.map((d) => [d.deviceRef, d.designation]));
     expect(byRef.get('cb-1')).toBe('Q7');
     expect(byRef.get('ds-1')).toBeUndefined();
@@ -3985,7 +3985,7 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     ] as never;
 
     const r = buildSldDataFromSnapshot(snap, null);
-    const annotations = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.ctRatingAnnotations ?? [];
+    const annotations = r.stations.find((s) => s.id === 'ST-1')?.snBays?.[0]?.ctRatingAnnotations ?? [];
     const byRef = new Map(annotations.map((a) => [a.measurementRef, a.arrangement]));
     expect(byRef.get('ct-1')).toBe('3xCT');
     expect(byRef.get('ct-2')).toBeUndefined();
@@ -4015,7 +4015,7 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     ] as never;
 
     const r = buildSldDataFromSnapshot(snap, null);
-    const annotations = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.ctRatingAnnotations ?? [];
+    const annotations = r.stations.find((s) => s.id === 'ST-1')?.snBays?.[0]?.ctRatingAnnotations ?? [];
     const byRef = new Map(annotations.map((a) => [a.measurementRef, a]));
     // przeznaczenie CT rozróżnione Z DANYCH (pomiarowy vs zabezpieczeniowy)
     expect(byRef.get('ct-p')?.purpose).toBe('protection');
@@ -4117,7 +4117,7 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     ] as never;
 
     const r = buildSldDataFromSnapshot(snap, null);
-    const annotations = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.ctRatingAnnotations ?? [];
+    const annotations = r.stations.find((s) => s.id === 'ST-1')?.snBays?.[0]?.ctRatingAnnotations ?? [];
     const byRef = new Map(annotations.map((a) => [a.measurementRef, a.cores]));
     expect(byRef.get('ct-3rdz')).toBe(3);
     expect(byRef.get('ct-brak')).toBeUndefined();
@@ -4247,7 +4247,117 @@ describe('F9.2 — projekcja źródeł SldDataPayload.sources (SLD_CAD_SPEC_V3 �
 
     expect(enm.bays).toHaveLength(0);
     const r = buildSldDataFromSnapshot(enm, null);
-    const withPrimaryDevices = r.stations.flatMap((s) => s.snBays).filter((b) => b.primaryDevices !== undefined);
+    const withPrimaryDevices = r.stations
+      .flatMap((s) => s.snBays ?? [])
+      .filter((b) => b.primaryDevices !== undefined);
     expect(withPrimaryDevices).toHaveLength(0);
   });
+});
+
+// =============================================================================
+// Karta #135 — stan ruchowy pola bez fabrykacji (telemetria łącznika)
+// =============================================================================
+
+describe('stan ruchowy pola bez fabrykacji — adapter v2 (karta #135)', () => {
+  function snapshotZAparatemPola(switchState: Record<string, unknown> | undefined): EnergyNetworkModel {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'bus-sn', ref_id: 'bus-sn', name: 'Szyna SN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {}, substation_ref: 'ST-T' } as never,
+    ];
+    snap.branches = [
+      { id: 'sw-in', ref_id: 'sw-in', name: 'Aparat WE', type: 'breaker', from_bus_ref: 'bus-sn', to_bus_ref: 't-in', status: 'closed', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 'st',
+        ref_id: 'ST-T',
+        name: 'Stacja telemetrii',
+        tags: [],
+        meta: {
+          field_specs: [
+            {
+              field_ref: 'field-in',
+              name: 'Pole WE',
+              bay_role: 'IN',
+              bus_ref: 'bus-sn',
+              equipment_refs: ['sw-in'],
+              meta: { field_role: 'LINIA_IN' },
+              primary_devices: [
+                {
+                  device_ref: 'q0',
+                  symbol_ref: 'symbol:cb',
+                  kind: 'CB',
+                  placement: 'MIDSTREAM',
+                  is_controllable: true,
+                  ...(switchState === undefined ? {} : { switch_state: switchState }),
+                },
+              ],
+            },
+          ],
+        },
+        station_type: 'inline',
+        bus_refs: ['bus-sn'],
+        transformer_refs: [],
+      } as never,
+    ];
+    attachMainRun(snap, ['ST-T'], 'run-telemetria');
+    return snap;
+  }
+
+  function stanAparatu(snap: EnergyNetworkModel): string | undefined {
+    const station = buildSldDataFromSnapshot(snap, null).stations[0];
+    if (!station.snBays) throw new Error('stacja z field_specs powinna nieść snBays');
+    return station.snBays[0].primaryDevices?.[0]?.switchState;
+  }
+
+  it('rekord z samym stanem łącznika (bez telemetrii) zachowuje stan — telemetria nie jest warunkiem', () => {
+    expect(stanAparatu(snapshotZAparatemPola({ actual_state: 'otwarty' }))).toBe('open');
+  });
+
+  it('rekord z telemetrią (null i wartości) — ten sam stan łącznika', () => {
+    expect(
+      stanAparatu(snapshotZAparatemPola({
+        actual_state: 'otwarty',
+        control_mode: null,
+        communication_ok: null,
+        interlock_blocked: null,
+      })),
+    ).toBe('open');
+    expect(
+      stanAparatu(snapshotZAparatemPola({
+        actual_state: 'zamkniety',
+        control_mode: 'zdalne',
+        communication_ok: true,
+        interlock_blocked: false,
+      })),
+    ).toBe('closed');
+  });
+
+  it('brak rekordu stanu — brak stanu (zero domysłu)', () => {
+    expect(stanAparatu(snapshotZAparatemPola(undefined))).toBeUndefined();
+  });
+
+  const BLOKADY: ReadonlyArray<boolean | null> = [true, false, null];
+  for (const blokada of BLOKADY) {
+    for (const polecenie of [true, false]) {
+      it(`manipulacja: blokada=${String(blokada)} polecenie=${String(polecenie)} — tylko z rekordu źródła`, () => {
+        const rt = makeRuntime(
+          { apparatus_cb_q0: makeSwitchState({ actual_state: 'zamkniety', control_mode: null, communication_ok: null, interlock_blocked: blokada }) },
+          polecenie
+            ? {
+                pending_command: {
+                  command_ref: 'cmd-1',
+                  target_device_ref: 'apparatus_cb_q0',
+                  command: 'otworz',
+                  state: 'oczekuje',
+                  created_at: '2026-09-24T08:00:00Z',
+                },
+              }
+            : {},
+        );
+        const oczekiwane = polecenie || blokada === true ? true : undefined;
+        expect(projectBayTelemetry(rt).inManipulation).toBe(oczekiwane);
+      });
+    }
+  }
 });

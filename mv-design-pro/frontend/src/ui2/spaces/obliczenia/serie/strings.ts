@@ -34,6 +34,8 @@ export const SERIE_STRINGS = {
   zaznaczWszystkie: 'Zaznacz wszystkie',
   odznaczWszystkie: 'Odznacz wszystkie',
   nicNieZaznaczono: 'Zaznacz co najmniej jeden scenariusz, aby uruchomić serię.',
+  nazwaSerii: 'Nazwa serii (opcjonalnie)',
+  nazwaSeriiPodpowiedz: 'np. zwarcia na odpływach — wariant letni',
 
   // Lista serii
   sekcjaLista: 'Wykonane serie',
@@ -50,6 +52,7 @@ export const SERIE_STRINGS = {
 
   // Ogłoszenia po wykonaniu
   seriaZakonczona: 'Seria zakończona — wyniki przebiegów są dostępne poniżej.',
+  seriaCzesciowa: 'Seria zakończona częściowo — część przebiegów się nie powiodła (treść błędów przy serii).',
   seriaNieudana: 'Seria zakończona błędem — treść błędu przy serii.',
 } as const;
 

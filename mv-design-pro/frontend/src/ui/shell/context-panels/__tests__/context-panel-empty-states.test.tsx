@@ -236,6 +236,9 @@ describe('context-panel-empty-states - stany puste z przyczyną i akcją', () =>
     }));
   });
 
+  // Backend nazywa odcinek bez nazwy opisem braku („Odcinek bez nazwy", karta #144 —
+  // nigdy fragmentem identyfikatora); drzewo zastępuje go numerem porządkowym, a surowa
+  // referencja odcinka nie pojawia się nigdzie.
   it('ukrywa surowe referencje techniczne w nazwach odcinkow drzewa', () => {
     act(() => {
       useSnapshotStore.setState({
@@ -247,7 +250,7 @@ describe('context-panel-empty-states - stany puste z przyczyną i akcją', () =>
           branches: [
             {
               ref_id: 'seg/4c91e33924540576433c30ade2431340/segment',
-              name: 'Odcinek /segment',
+              name: 'Odcinek bez nazwy',
               type: 'cable',
               length_km: 0.18,
             },
@@ -271,6 +274,7 @@ describe('context-panel-empty-states - stany puste z przyczyną i akcją', () =>
 
     expect(screen.getByText('Odcinek 01')).toBeInTheDocument();
     expect(screen.queryByText(/\/segment/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/seg\/4c91e339/)).not.toBeInTheDocument();
   });
 
   it('pokazuje projektowe oznaczenie katalogowe kabla zamiast identyfikatora technicznego', () => {

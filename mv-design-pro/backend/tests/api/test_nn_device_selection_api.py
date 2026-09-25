@@ -3,12 +3,27 @@
 
 from __future__ import annotations
 
-from uuid import uuid4
+
+def _nowy_przypadek(client) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) PRZED jakąkolwiek walidacją parametrów zapytania — testy
+    tego pliku potrzebują prawdziwej pary projekt+przypadek.
+    """
+    project_resp = client.post("/api/projects", json={"name": "Dobor aparatu nN — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
 
 
 def test_nn_device_selection_wymaga_parametrow(app_client) -> None:
     """`station_ref`, `bus_ref`, `ib_a`, `iz_prime_a` są WYMAGANE — brak = 422."""
-    case_id = uuid4()
+    case_id = _nowy_przypadek(app_client)
     assert app_client.get(f"/api/cases/{case_id}/enm/nn-device-selection").status_code == 422
     assert (
         app_client.get(
@@ -20,8 +35,9 @@ def test_nn_device_selection_wymaga_parametrow(app_client) -> None:
 
 
 def test_nn_device_selection_melduje_brak_danych_zamiast_zgadywac(app_client) -> None:
+    case_id = _nowy_przypadek(app_client)
     response = app_client.get(
-        f"/api/cases/{uuid4()}/enm/nn-device-selection",
+        f"/api/cases/{case_id}/enm/nn-device-selection",
         params={
             "station_ref": "ST-NIEISTNIEJACA",
             "bus_ref": "nn",
@@ -41,8 +57,9 @@ def test_nn_device_selection_melduje_brak_danych_zamiast_zgadywac(app_client) ->
 def test_nn_device_selection_ik_max_ka_opcjonalny(app_client) -> None:
     """`ik_max_ka` jest opcjonalny — jego brak nie daje 422 (kryterium iii
     staje się wtedy NIEROZSTRZYGALNE per kandydat, nie błąd żądania)."""
+    case_id = _nowy_przypadek(app_client)
     response = app_client.get(
-        f"/api/cases/{uuid4()}/enm/nn-device-selection",
+        f"/api/cases/{case_id}/enm/nn-device-selection",
         params={"station_ref": "ST-X", "bus_ref": "nn", "ib_a": 10.0, "iz_prime_a": 20.0},
     )
     assert response.status_code == 200

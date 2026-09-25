@@ -1,0 +1,10 @@
+{
+  "apparent_power_kva": 53.76344086021505,
+  "assumptions": [
+    "Uklad 3-fazowy symetryczny; wspolczynnik linii √3.",
+    "S_n = P / cosφ (moc pozorna z mocy czynnej).",
+    "I = S_n / (√3 · U_linii) (U_linii miedzyfazowe)."
+  ],
+  "formula_ref": "I = S_n / (√3·U);  S_n = P / cosφ",
+  "rated_current_a": 77.60084263301421
+}

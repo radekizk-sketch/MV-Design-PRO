@@ -214,7 +214,7 @@ def ocen_swz(
             trace.append(
                 {
                     "step": "aparat_wkladka_gg_poza_zakresem",
-                    "method": "G-D2 — mnożniki bramek dla In<=16A NIE zaimplementowane",
+                    "method": "G-D2 — mnożniki bramek dla In<=16 A NIE zaimplementowane",
                     "in_a": aparat.in_a,
                     "result": "NIEROZSTRZYGALNE",
                 }
@@ -223,8 +223,8 @@ def ocen_swz(
                 status=SwzStatus.NIEROZSTRZYGALNE,
                 przyczyna_pl=(
                     f"Wkładka topikowa gG In={aparat.in_a:g} A <= 16 A — poza zweryfikowanym "
-                    "zakresem G-D2 (mnożniki bramek Inf/If dla In<=16A różnią się od "
-                    "In>16A wg IEC 60269-1 i nie mają w tej karcie podwójnej weryfikacji "
+                    "zakresem G-D2 (mnożniki bramek Inf/If dla In<=16 A różnią się od "
+                    "In>16 A wg IEC 60269-1 i nie mają w tej karcie podwójnej weryfikacji "
                     "źródłowej — patrz `protection_lv_curves._czas_umowny_fuse_gg_s`). "
                     "Werdykt SWZ NIEROZSTRZYGALNY, nie fabrykacja mnożnika."
                 ),

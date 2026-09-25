@@ -24,6 +24,7 @@ import {
 } from '../networkBuildStore';
 import type { EnergyNetworkModel, LogicalViewsV1, ReadinessInfo } from '../../../types/enm';
 import { ANALYSIS_SURFACE_SCREEN_CODE } from '../../workspace/types';
+import { FIELD_ROLE_LABEL_PL } from '../../sld/v2/station-rozdzielnia/contract';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -93,7 +94,7 @@ describe('computeBuildPhase', () => {
   it('returns READY when readiness.ready is true', () => {
     const enm = { ...enmWithSource(), substations: [{ id: 's1', name: 'S1', station_type: 'terminal', transformer_refs: [], bus_refs: [] }] } as unknown as EnergyNetworkModel;
     const lv = { trunks: [{ id: 't1', segments: ['seg-1'] }], terminals: [], branches: [] } as unknown as LogicalViewsV1;
-    const readiness = { ready: true, blockers: [] } as ReadinessInfo;
+    const readiness: ReadinessInfo = { ready: true, blockers: [], warnings: [] };
     expect(computeBuildPhase(enm, lv, readiness)).toBe('READY');
   });
 });
@@ -209,7 +210,8 @@ describe('selectConfiguredGridSourceSnFields', () => {
       ],
     } as unknown as EnergyNetworkModel;
 
-    expect(selectConfiguredGridSourceSnFields(enm)[0]?.name).toBe('Pole odpływowe SN');
+    // Nazwa roli z kanonu słownictwa ról pól (karta #141) — ta sama, którą backend nadaje polu.
+    expect(selectConfiguredGridSourceSnFields(enm)[0]?.name).toBe(FIELD_ROLE_LABEL_PL.LINIA_OUT);
   });
 });
 

@@ -29,6 +29,11 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
             ],
             "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
             "zero_sequence": {"enabled": True, "r0_ohm": 0.4, "x0_ohm": 1.8, "z0_z1_ratio": 1.3},
+            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref) —
+            # zgodna z asercjami ponizej (110 kV, 25 MVA, tr-wn-sn-110-15-25mva-yd11).
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
 
@@ -52,8 +57,11 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert substation["meta"]["gpz_section_count"] == 2
     assert substation["meta"]["wn_sn_transformer_count"] == 2
     assert len(substation["meta"]["gpz_hv_bus_refs"]) == 2
-    assert substation["meta"]["grounding"]["type"] == "resistor_grounded"
-    assert substation["meta"]["zero_sequence"]["enabled"] is True
+    # W5-A: opis punktu neutralnego sieci SN WYŁĄCZNIE na źródle (`neutral_grounding`);
+    # meta stacji nie niesie kopii `grounding`/`zero_sequence`.
+    assert "grounding" not in substation["meta"]
+    assert "zero_sequence" not in substation["meta"]
+    assert source["neutral_grounding"] == {"type": "resistor_grounded", "r_ohm": 12.0}
     assert substation["meta"]["short_circuit_mode"] == "SHORT_CIRCUIT_POWER"
 
     assert sections[0]["name"] == "Sekcja A"
@@ -89,8 +97,11 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
         assert transformer["meta"]["catalog_role"] == "TRANSFORMATOR_WN_SN"
 
     buses = {bus["ref_id"]: bus for bus in snapshot["buses"]}
-    assert buses[sections[0]["bus_ref"]]["grounding"]["type"] == "resistor_grounded"
-    assert buses[sections[1]["bus_ref"]]["grounding"]["type"] == "resistor_grounded"
+    # W5-A: szyny sekcji NIE niosą uziemienia (`Bus.grounding` skasowane).
+    assert "grounding" not in buses[sections[0]["bus_ref"]]
+    assert "grounding" not in buses[sections[1]["bus_ref"]]
+    # Jawne liczby Z0 z payloadu (DEKLARACJA) — bez wyprowadzania z opisu punktu neutralnego.
+    assert "zero_sequence_provenance" not in source["materialized_params"]
 
     field_specs = substation["meta"]["field_specs"]
     field_by_section = {field["gpz_section_id"]: field for field in field_specs}
@@ -136,6 +147,10 @@ def test_add_grid_source_sn_creates_real_line_fields_for_each_gpz_section():
                     "catalog_item_version": "2024.1",
                 },
             },
+            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref).
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
 
@@ -182,6 +197,9 @@ def test_add_grid_source_sn_manual_hv_short_circuit_anchors_source_on_110kv_bus(
             "source_name": "GPZ WN/SN",
             "voltage_kv": 15.0,
             "hv_voltage_kv": 110.0,
+            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref).
+            "transformer_sn_mva": 25.0,
             "sections_count": 2,
             "transformer_count": 2,
             "gpz_sections": [
@@ -228,6 +246,8 @@ def test_add_sn_bay_updates_existing_gpz_field_instead_of_appending_new_field():
             "gpz_sections": [{"order": 0, "name": "Sekcja 1", "line_field_name": "Pole 1"}],
             "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
             "zero_sequence": {"enabled": True, "z0_z1_ratio": 3.2},
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     snapshot = created["snapshot"]
@@ -312,6 +332,8 @@ def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
                 },
             ],
             "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
 
@@ -353,6 +375,8 @@ def test_add_grid_source_sn_bez_rodziny_zachowuje_dotychczasowy_kontrakt():
             "sections_count": 1,
             "gpz_sections": [{"order": 0, "name": "Sekcja A", "line_fields_count": 1}],
             "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") in (None, "")
@@ -375,6 +399,8 @@ def test_add_grid_source_sn_bez_oltc_nie_niesie_tap_changer():
             "sections_count": 1,
             "gpz_sections": [{"order": 0, "name": "Sekcja A", "line_fields_count": 1}],
             "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") in (None, "")
@@ -399,6 +425,8 @@ def test_add_grid_source_sn_materializuje_oltc_na_kazdym_transformatorze():
             ],
             "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
             "transformer_count": 2,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
             # OLTC z katalogu + jawne nastawy (zero fabrykacji — każde pole realne).
             "transformer_regulation_type": "OLTC",
             "transformer_tap_changer_catalog_ref": "tc_oltc_110sn_19_125",
@@ -450,3 +478,28 @@ def test_add_grid_source_sn_materializuje_oltc_na_kazdym_transformatorze():
     for reg in regs:
         assert reg.tap_changer.is_automatic()
         assert reg.tap_changer.controlled_bus_id is not None
+
+
+def test_add_grid_source_sn_ldc_bez_r_x_zostaje_nieskonfigurowane():
+    """Karta FAB-D1 (D4): transformer_ldc_enabled=True BEZ jawnych r_ohm/x_ohm nie
+    fabrykuje 0 Ω (impedancja kompensacji udająca pomiar) — blok LDC zostaje
+    NIESKONFIGUROWANY (nieobecny), zamiast zapisać zerową impedancję."""
+    result = execute_domain_operation(
+        enm_dict=_empty_enm(),
+        op_name="add_grid_source_sn",
+        payload={
+            "source_name": "GPZ z OLTC bez LDC",
+            "voltage_kv": 15.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+            "transformer_regulation_type": "OLTC",
+            "transformer_tap_changer_catalog_ref": "tc_oltc_110sn_19_125",
+            "transformer_ldc_enabled": True,
+            # transformer_ldc_r_ohm / transformer_ldc_x_ohm CELOWO pominięte.
+        },
+    )
+    assert result.get("error") in (None, "")
+    trafo = result["snapshot"]["transformers"][0]
+    tc = trafo["tap_changer"]
+    assert tc.get("line_drop_compensation") in (None, {})

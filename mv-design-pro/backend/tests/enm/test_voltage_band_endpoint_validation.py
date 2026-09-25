@@ -15,7 +15,8 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
-from enm.validator import ENMValidator, _voltage_band
+from enm.validator import ENMValidator
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 
 def _enm(**kwargs) -> EnergyNetworkModel:
@@ -37,20 +38,33 @@ def _source(bus_ref: str = "bus_sn") -> Source:
 
 
 class TestVoltageBandClassification:
+    """Granice pasm (karta PASMO-1KV): nN ⇔ 0 < U ≤ 1 kV (IEC 60038 tab. 1),
+    SN ⇔ 1 kV < U < 110 kV, WN ⇔ U ≥ 110 kV (rozporządzenie, zał. 1 cz. I pkt 2.2/3.2)."""
+
     def test_band_nn(self) -> None:
-        assert _voltage_band(0.4) == "nN"
-        assert _voltage_band(0.23) == "nN"
-        assert _voltage_band(0.999) == "nN"
+        assert pasmo_napieciowe(0.4) == "nN"
+        assert pasmo_napieciowe(0.23) == "nN"
+        assert pasmo_napieciowe(0.999) == "nN"
+        assert pasmo_napieciowe(1.0) == "nN"
 
     def test_band_sn(self) -> None:
-        assert _voltage_band(1.0) == "SN"
-        assert _voltage_band(15.0) == "SN"
-        assert _voltage_band(60.0) == "SN"
+        assert pasmo_napieciowe(1.001) == "SN"
+        assert pasmo_napieciowe(15.0) == "SN"
+        assert pasmo_napieciowe(60.0) == "SN"
+        assert pasmo_napieciowe(66.0) == "SN"
+        assert pasmo_napieciowe(109.999) == "SN"
 
     def test_band_wn(self) -> None:
-        assert _voltage_band(60.001) == "WN"
-        assert _voltage_band(110.0) == "WN"
-        assert _voltage_band(400.0) == "WN"
+        assert pasmo_napieciowe(110.0) == "WN"
+        assert pasmo_napieciowe(220.0) == "WN"
+        assert pasmo_napieciowe(400.0) == "WN"
+
+    def test_brak_pasma_dla_napiecia_niefizycznego(self) -> None:
+        assert pasmo_napieciowe(None) is None
+        assert pasmo_napieciowe(0.0) is None
+        assert pasmo_napieciowe(-0.4) is None
+        assert pasmo_napieciowe(float("nan")) is None
+        assert pasmo_napieciowe(float("inf")) is None
 
 
 class TestBranchEndpointVoltageBand:

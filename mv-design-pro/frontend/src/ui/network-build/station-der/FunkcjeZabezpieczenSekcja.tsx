@@ -41,7 +41,7 @@ export interface OcenaUrzadzenia {
 
 export interface DoborFunkcji {
   readonly fakty: {
-    readonly neutral_grounding_mode: string;
+    readonly neutral_grounding_mode: string | null;
     readonly zero_sequence_current_source: string;
     readonly zero_sequence_voltage_source: string;
   };
@@ -98,12 +98,13 @@ function maObowiazkowyKsztalt(payload: unknown): payload is DoborFunkcji {
 
 /** Opis toru pomiarowego po polsku — ta sama treść, którą rozstrzyga reguła. */
 function torPomiaruPl(fakty: DoborFunkcji['fakty']): string {
+  // W5-A: klucze = literały `GroundingConfig.type` (jeden słownik kontraktu); `null` =
+  // punkt neutralny nieokreślony w modelu.
   const uziemienie: Record<string, string> = {
-    izolowany: 'sieć izolowana',
-    cewka_petersena: 'sieć kompensowana (cewka Petersena)',
-    rezystor: 'sieć uziemiona przez rezystor',
-    bezposrednio_uziemiony: 'sieć bezpośrednio uziemiona',
-    nieznany: 'punkt neutralny nieokreślony w modelu',
+    isolated: 'sieć izolowana',
+    petersen_coil: 'sieć kompensowana (cewka Petersena)',
+    resistor_grounded: 'sieć uziemiona przez rezystor',
+    directly_grounded: 'sieć bezpośrednio uziemiona',
   };
   const prad: Record<string, string> = {
     suma_ct: 'prąd zerowy z sumy prądów fazowych',
@@ -118,7 +119,9 @@ function torPomiaruPl(fakty: DoborFunkcji['fakty']): string {
     brak: 'brak toru napięcia zerowego',
   };
   return [
-    uziemienie[fakty.neutral_grounding_mode] ?? fakty.neutral_grounding_mode,
+    fakty.neutral_grounding_mode === null
+      ? 'punkt neutralny nieokreślony w modelu'
+      : (uziemienie[fakty.neutral_grounding_mode] ?? fakty.neutral_grounding_mode),
     prad[fakty.zero_sequence_current_source] ?? fakty.zero_sequence_current_source,
     napiecie[fakty.zero_sequence_voltage_source] ?? fakty.zero_sequence_voltage_source,
   ].join(' · ');

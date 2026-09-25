@@ -484,7 +484,7 @@ function PowerTowerColumn(props: PowerTowerColumnProps): JSX.Element {
           fontFamily={FONT_SANS}
           fontSize={FONT_SIZES.technicalPanel}
         >
-          {`${outgoingBayCount}× pole odpływowe SN`}
+          {`${outgoingBayCount}× pole liniowe SN`}
         </text>
       )}
     </g>
@@ -523,7 +523,7 @@ function TransformerSymbol(props: TransformerSymbolProps): JSX.Element {
         stroke={COLOR_LINE_PRIMARY}
         strokeWidth={1.4}
       />
-      <title>{`Transformator 110/SN — ${designation}`}</title>
+      <title>{`Transformator ${designation}`}</title>
       {/* Etykieta TR po prawej stronie */}
       <text
         x={cx + TR_RADIUS + 4}

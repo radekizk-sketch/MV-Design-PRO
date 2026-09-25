@@ -1,0 +1,2275 @@
+{
+  "kontrakt": "CertyfikatZgodnosciNcRfgV2",
+  "tytul": "Certyfikat zgodności projektu z wymaganiami NC RfG",
+  "identyfikacja": {
+    "projekt": "Przyłączenie farmy PV 8 MW",
+    "przypadek": "Stan normalny",
+    "case_id": "case-demo",
+    "operator_id": "enea",
+    "procedura": {
+      "tytul": "PTPiREE — Procedura testowania modułów wytwarzania energii",
+      "wydanie": "3.0",
+      "status": "WSKAZANE",
+      "adres": "https://ptpiree.pl/kodeksy-sieci/procedura-testowania/",
+      "obowiazuje_od": null,
+      "uwagi_pl": null
+    },
+    "wersja_narzedzia": "ncrfg-ptpiree-whitebox-2.0"
+  },
+  "moduly": [
+    {
+      "der_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
+      "der_name": "Magazyn energii 1,5 MW",
+      "operator_pl": "Enea Operator",
+      "p_max_kw": 1500.0,
+      "voltage_kv": 0.4,
+      "klasyfikacja": {
+        "modul": "B",
+        "prog_min_kw": 0.8,
+        "progi_kw": {
+          "B": 200.0,
+          "C": 10000.0,
+          "D": 75000.0
+        },
+        "napiecie_d_kv": 110.0,
+        "podstawa": {
+          "rodzaj": "WOS",
+          "dokument": "Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE",
+          "wydanie": "2018",
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartości progów wg decyzji właściciela O-1 (plan AB §2.1); jednostka redakcyjna dokumentu WOS do wskazania (plan AB §12.1)"
+        },
+        "powod_pl": "moc 1500 kW w przedziale [200; 10000) kW (progi typów B i C wg WOS) przy napięciu przyłączenia 0,4 kV < 110 kV → typ B"
+      },
+      "technologia": "MAGAZYN",
+      "zrodlo_danych": "ZATWIERDZONY_MODEL",
+      "dowod_certyfikatu": null,
+      "certyfikat_odrzucony": null,
+      "wiersze": [
+        {
+          "etykieta_pl": "Moduł",
+          "tresc_pl": "Magazyn energii 1,5 MW; operator: Enea Operator; moc maksymalna 1500 kW; napięcie przyłączenia 0,4 kV"
+        },
+        {
+          "etykieta_pl": "Klasyfikacja modułu",
+          "tresc_pl": "moc 1500 kW w przedziale [200; 10000) kW (progi typów B i C wg WOS) przy napięciu przyłączenia 0,4 kV < 110 kV → typ B"
+        },
+        {
+          "etykieta_pl": "Podstawa klasyfikacji",
+          "tresc_pl": "dokument: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”; wydanie: 2018; jednostka redakcyjna: nie wskazano; rodzaj: wymogi ogólnego stosowania (WOS); stan źródła: nieustalone; uwagi: wartości progów wg decyzji właściciela O-1 (plan AB §2.1); jednostka redakcyjna dokumentu WOS do wskazania (plan AB §12.1)"
+        },
+        {
+          "etykieta_pl": "Technologia",
+          "tresc_pl": "magazyn energii"
+        },
+        {
+          "etykieta_pl": "Dowód certyfikatu urządzenia",
+          "tresc_pl": "tabliczka urządzenia w modelu nie wskazuje rekordu wykazu certyfikowanych urządzeń PTPiREE"
+        }
+      ],
+      "wymagania": [
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_13_1A",
+            "nazwa_pl": "Praca w zakresach częstotliwości przez wymagany czas",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 13 ust. 1 lit. a (tabela 2)",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "BRAK_METODY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Praca w zakresach częstotliwości przez wymagany czas (art. 13 ust. 1 lit. a (tabela 2) „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 1 lit. a (tabela 2) (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "BRAK_METODY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Praca w zakresach częstotliwości przez wymagany czas"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "brak metody"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Praca w zakresach częstotliwości przez wymagany czas (art. 13 ust. 1 lit. a (tabela 2) „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 1 lit. a (tabela 2) (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 13 ust. 1 lit. a (tabela 2); rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: brak metody; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_13_1B",
+            "nazwa_pl": "Odporność na szybkość zmian częstotliwości (RoCoF)",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 13 ust. 1 lit. b",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "BRAK_METODY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Odporność na szybkość zmian częstotliwości (RoCoF) (art. 13 ust. 1 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 1 lit. b (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "BRAK_METODY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Odporność na szybkość zmian częstotliwości (RoCoF)"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "brak metody"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Odporność na szybkość zmian częstotliwości (RoCoF) (art. 13 ust. 1 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 1 lit. b (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 13 ust. 1 lit. b; rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: brak metody; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_13_2",
+            "nazwa_pl": "LFSM-O — ograniczanie mocy czynnej przy nadczęstotliwości",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 13 ust. 2",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "DOWOD_LACZONY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "LFSM-O — ograniczanie mocy czynnej przy nadczęstotliwości (art. 13 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 2 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "DOWOD_LACZONY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "LFSM-O — ograniczanie mocy czynnej przy nadczęstotliwości"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "dowód łączony"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "LFSM-O — ograniczanie mocy czynnej przy nadczęstotliwości (art. 13 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 2 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 13 ust. 2; rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: dowód łączony; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_13_3",
+            "nazwa_pl": "Utrzymanie zadanej mocy czynnej niezależnie od zmian częstotliwości",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 13 ust. 3",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "BRAK_METODY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Utrzymanie zadanej mocy czynnej niezależnie od zmian częstotliwości (art. 13 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "BRAK_METODY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Utrzymanie zadanej mocy czynnej niezależnie od zmian częstotliwości"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "brak metody"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Utrzymanie zadanej mocy czynnej niezależnie od zmian częstotliwości (art. 13 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 13 ust. 3; rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: brak metody; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_13_4",
+            "nazwa_pl": "Dopuszczalne obniżenie mocy czynnej przy spadku częstotliwości",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 13 ust. 4 i ust. 5",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "BRAK_METODY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Dopuszczalne obniżenie mocy czynnej przy spadku częstotliwości (art. 13 ust. 4 i ust. 5 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 4 i ust. 5 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "BRAK_METODY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Dopuszczalne obniżenie mocy czynnej przy spadku częstotliwości"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "brak metody"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Dopuszczalne obniżenie mocy czynnej przy spadku częstotliwości (art. 13 ust. 4 i ust. 5 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 4 i ust. 5 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 13 ust. 4 i ust. 5; rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: brak metody; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_13_6",
+            "nazwa_pl": "Zaprzestanie generacji mocy czynnej na polecenie (interfejs logiczny)",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 13 ust. 6",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "DOWOD_LACZONY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Zaprzestanie generacji mocy czynnej na polecenie (interfejs logiczny) (art. 13 ust. 6 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 6 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "DOWOD_LACZONY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Zaprzestanie generacji mocy czynnej na polecenie (interfejs logiczny)"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "dowód łączony"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Zaprzestanie generacji mocy czynnej na polecenie (interfejs logiczny) (art. 13 ust. 6 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 6 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 13 ust. 6; rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: dowód łączony; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_13_7",
+            "nazwa_pl": "Warunki automatycznego przyłączenia do sieci",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 13 ust. 7",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "BRAK_METODY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Warunki automatycznego przyłączenia do sieci (art. 13 ust. 7 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 7 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "BRAK_METODY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Warunki automatycznego przyłączenia do sieci"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "brak metody"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Warunki automatycznego przyłączenia do sieci (art. 13 ust. 7 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 13 ust. 7 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 13 ust. 7; rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: brak metody; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_14_2",
+            "nazwa_pl": "Zmniejszenie mocy czynnej na polecenie (port wejściowy)",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 14 ust. 2",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "DOWOD_LACZONY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Zmniejszenie mocy czynnej na polecenie (port wejściowy) (art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 2 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "DOWOD_LACZONY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Zmniejszenie mocy czynnej na polecenie (port wejściowy)"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "dowód łączony"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Zmniejszenie mocy czynnej na polecenie (port wejściowy) (art. 14 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 2 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 14 ust. 2; rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: dowód łączony; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_14_3",
+            "nazwa_pl": "Zdolność do pozostania w pracy podczas zwarcia (FRT)",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 14 ust. 3",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "DOWOD_LACZONY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Zdolność do pozostania w pracy podczas zwarcia (FRT) (art. 14 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "DOWOD_LACZONY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Zdolność do pozostania w pracy podczas zwarcia (FRT)"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "dowód łączony"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Zdolność do pozostania w pracy podczas zwarcia (FRT) (art. 14 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 14 ust. 3; rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: dowód łączony; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_14_4",
+            "nazwa_pl": "Automatyczne ponowne przyłączenie po przypadkowym odłączeniu",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 14 ust. 4",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "BRAK_METODY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Automatyczne ponowne przyłączenie po przypadkowym odłączeniu (art. 14 ust. 4 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 4 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "BRAK_METODY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Automatyczne ponowne przyłączenie po przypadkowym odłączeniu"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "brak metody"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Automatyczne ponowne przyłączenie po przypadkowym odłączeniu (art. 14 ust. 4 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 14 ust. 4 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 14 ust. 4; rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: brak metody; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_17_2",
+            "nazwa_pl": "Zdolność do generacji mocy biernej (moduł synchroniczny)",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 17 ust. 2",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "DOWOD_LACZONY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Zdolność do generacji mocy biernej (moduł synchroniczny) (art. 17 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 17 ust. 2 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "DOWOD_LACZONY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Zdolność do generacji mocy biernej (moduł synchroniczny)"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "dowód łączony"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Zdolność do generacji mocy biernej (moduł synchroniczny) (art. 17 ust. 2 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 17 ust. 2 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 17 ust. 2; rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: dowód łączony; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_17_3",
+            "nazwa_pl": "Odbudowa mocy czynnej po zwarciu (moduł synchroniczny)",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 17 ust. 3",
+              "status": "NIEUSTALONE",
+              "uwagi_pl": "jednostka redakcyjna do potwierdzenia z tekstem rozporządzenia"
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "DOWOD_LACZONY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Odbudowa mocy czynnej po zwarciu (moduł synchroniczny) (art. 17 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 17 ust. 3 (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (jednostka redakcyjna do potwierdzenia z tekstem rozporządzenia).",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "DOWOD_LACZONY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Odbudowa mocy czynnej po zwarciu (moduł synchroniczny)"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "dowód łączony"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Odbudowa mocy czynnej po zwarciu (moduł synchroniczny) (art. 17 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 17 ust. 3 (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (jednostka redakcyjna do potwierdzenia z tekstem rozporządzenia)."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 17 ust. 3; rodzaj: rozporządzenie UE; stan źródła: nieustalone; uwagi: jednostka redakcyjna do potwierdzenia z tekstem rozporządzenia"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: dowód łączony; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_20_2A",
+            "nazwa_pl": "Zdolność do generacji mocy biernej (moduł parku energii)",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 20 ust. 2 lit. a",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "DOWOD_LACZONY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Zdolność do generacji mocy biernej (moduł parku energii) (art. 20 ust. 2 lit. a „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 20 ust. 2 lit. a (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "DOWOD_LACZONY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Zdolność do generacji mocy biernej (moduł parku energii)"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "dowód łączony"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Zdolność do generacji mocy biernej (moduł parku energii) (art. 20 ust. 2 lit. a „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 20 ust. 2 lit. a (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 20 ust. 2 lit. a; rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: dowód łączony; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_20_2B",
+            "nazwa_pl": "Szybki prąd zwarciowy przy zwarciach symetrycznych (moduł parku energii)",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 20 ust. 2 lit. b",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "DOWOD_LACZONY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Szybki prąd zwarciowy przy zwarciach symetrycznych (moduł parku energii) (art. 20 ust. 2 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 20 ust. 2 lit. b (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "DOWOD_LACZONY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Szybki prąd zwarciowy przy zwarciach symetrycznych (moduł parku energii)"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "dowód łączony"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Szybki prąd zwarciowy przy zwarciach symetrycznych (moduł parku energii) (art. 20 ust. 2 lit. b „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 20 ust. 2 lit. b (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 20 ust. 2 lit. b; rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: dowód łączony; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "RFG_20_3",
+            "nazwa_pl": "Odbudowa mocy czynnej po zwarciu (moduł parku energii)",
+            "podstawa": {
+              "rodzaj": "ROZPORZADZENIE_UE",
+              "dokument": "Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)",
+              "wydanie": "2016/631",
+              "jednostka_redakcyjna": "art. 20 ust. 3",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "DOWOD_LACZONY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Odbudowa mocy czynnej po zwarciu (moduł parku energii) (art. 20 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 20 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "DOWOD_LACZONY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Odbudowa mocy czynnej po zwarciu (moduł parku energii)"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "dowód łączony"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Odbudowa mocy czynnej po zwarciu (moduł parku energii) (art. 20 ust. 3 „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”, wydanie 2016/631, art. 20 ust. 3 (rozporządzenie UE): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)”; wydanie: 2016/631; jednostka redakcyjna: art. 20 ust. 3; rodzaj: rozporządzenie UE; stan źródła: wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: dowód łączony; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        },
+        {
+          "rekord": {
+            "wymaganie_id": "ZASTANE_HVRT",
+            "nazwa_pl": "Zdolność do pozostania w pracy przy wzroście napięcia (HVRT)",
+            "podstawa": {
+              "rodzaj": "NIEUSTALONA",
+              "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+              "wydanie": null,
+              "jednostka_redakcyjna": null,
+              "status": "NIEUSTALONE",
+              "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+            },
+            "stosowalnosc": {
+              "typ_modulu": "B",
+              "technologia": "magazyn energii",
+              "modul_istniejacy": null,
+              "dotyczy": false,
+              "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "sposob_wykazania": "DOWOD_LACZONY",
+            "podstawa_sposobu_wykazania": null,
+            "oceny_skladowe": [],
+            "pokrycie_programu": "NIE_DOTYCZY",
+            "pokrycie_programu_pl": "wymaganie nie dotyczy modułu — program badań nie ma zastosowania",
+            "status_maszynowy": "NIE_DOTYCZY",
+            "kompletnosc_dowodu": "NIE_DOTYCZY",
+            "powody_niepelnosci": [],
+            "kryteria_naruszone": [],
+            "kryterium_najblizej_granicy": null,
+            "etykieta": {
+              "etykieta_pl": "Nie dotyczy",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Zdolność do pozostania w pracy przy wzroście napięcia (HVRT) („Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+              "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
+                "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+              ]
+            },
+            "dowod": {
+              "metoda": "DOWOD_LACZONY",
+              "poziom": "NOT_SIMULATED",
+              "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": null,
+              "opis_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki",
+              "technologia": "magazyn energii",
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": []
+            },
+            "slad": []
+          },
+          "blok": [
+            {
+              "etykieta_pl": "Wymaganie",
+              "tresc_pl": "Zdolność do pozostania w pracy przy wzroście napięcia (HVRT)"
+            },
+            {
+              "etykieta_pl": "Ocena",
+              "tresc_pl": "Nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Stosowalność",
+              "tresc_pl": "nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu; typ modułu: B; technologia: magazyn energii; status nowy/istniejący modułu nieustalony"
+            },
+            {
+              "etykieta_pl": "Sposób wykazania",
+              "tresc_pl": "dowód łączony"
+            },
+            {
+              "etykieta_pl": "Pokrycie programu badań",
+              "tresc_pl": "nie dotyczy — wymaganie nie dotyczy modułu — program badań nie ma zastosowania"
+            },
+            {
+              "etykieta_pl": "Wyjaśnienie",
+              "tresc_pl": "Zdolność do pozostania w pracy przy wzroście napięcia (HVRT) („Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)”) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu."
+            },
+            {
+              "etykieta_pl": "Przyczyna",
+              "tresc_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony)."
+            },
+            {
+              "etykieta_pl": "Zastrzeżenia",
+              "tresc_pl": "Status nowy/istniejący modułu nieustalony (art. 4 rozporządzenia 2016/631) — stosowalność wymagań wyznaczona bez rozstrzygnięcia tego statusu."
+            },
+            {
+              "etykieta_pl": "Podstawa",
+              "tresc_pl": "dokument: „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)”; wydanie: nie wskazano; jednostka redakcyjna: nie wskazano; rodzaj: warstwa o nieustalonym pochodzeniu; stan źródła: nieustalone; uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+            },
+            {
+              "etykieta_pl": "Dowód",
+              "tresc_pl": "metoda: dowód łączony; poziom: brak symulacji; rodzaj twierdzenia: zachowanie dynamiczne; przydatność dowodowa: nie"
+            },
+            {
+              "etykieta_pl": "Odniesienie do dowodu",
+              "tresc_pl": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724"
+            },
+            {
+              "etykieta_pl": "Kompletność dowodu",
+              "tresc_pl": "nie dotyczy"
+            },
+            {
+              "etykieta_pl": "Walidacja modelu urządzenia",
+              "tresc_pl": "nie dotyczy (bez modelu urządzenia)"
+            },
+            {
+              "etykieta_pl": "Stan danych wejściowych",
+              "tresc_pl": "dane zwalidowane"
+            },
+            {
+              "etykieta_pl": "Zakres ważności",
+              "tresc_pl": "wymaganie wykazywane rekordami składowymi (porównanie danych zadeklarowanych, certyfikat urządzenia) — nie wykazuje zachowania dynamicznego bez biegu dynamiki; technologia: magazyn energii"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "zalozenia_i_zrodla": [
+    "Certyfikat zestawia rekordy oceny wymagań NC RfG policzone z zatwierdzonego modelu przypadku — nie przelicza testów i nie zastępuje badań terenowych ani sprawdzeń u operatora systemu.",
+    "Procedura testowania: PTPiREE — Procedura testowania modułów wytwarzania energii, wydanie 3.0 (stan źródła: WSKAZANE).",
+    "Wersja narzędzia obliczeniowego: ncrfg-ptpiree-whitebox-2.0.",
+    "Profil operatora: Enea Operator, wersja profilu NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4)."
+  ],
+  "odcisk_wejscia_sha256": "161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+  "odcisk_wyniku_sha256": "300ed701ff359a93ba064d9aa9ae10c3fb318adda22273ae75306705a1afe761"
+}

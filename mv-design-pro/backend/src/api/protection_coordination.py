@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from application.analyses.protection.coordination import (
@@ -37,6 +37,14 @@ from application.analyses.protection.coordination.models import (
     FaultCurrentData,
     OperatingCurrentData,
 )
+from application.autorytet_biegu_zwarciowego import (
+    BiegNiemiarodajnyError,
+    niezgodnosci_pradow_koordynacji,
+    wejscie_koordynacji_z_biegow,
+)
+from application.protection_settings.zacisk_zabezpieczenia import (
+    szyny_zwarcia_lokalizacji,
+)
 from domain.protection_device import (
     CurveStandard,
     OvercurrentProtectionSettings,
@@ -45,8 +53,11 @@ from domain.protection_device import (
     ProtectionDevice,
     ProtectionDeviceType,
 )
+from enm.nazwy_elementow import zbuduj_indeks_nazw
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import Response
+from network_model.core.autorytet_wyniku_zwarciowego import BrakAutorytetuWyniku, wymagaj_autorytetu
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from protection.curves.iec_curves import IECCurveType
 from protection.curves.ieee_curves import IEEECurveType
 from pydantic import BaseModel, Field
@@ -96,6 +107,13 @@ class DeviceRequest(BaseModel):
     name: str
     device_type: str = Field(..., description="RELAY/FUSE/RECLOSER/CIRCUIT_BREAKER")
     location_element_id: str
+    zacisk: Literal["od", "do"] | None = Field(
+        None,
+        description=(
+            "Zacisk gałęzi lokalizacji (decyzja O-51 pkt 7): wymagany dla lokalizacji-gałęzi, "
+            "dla łącznika rozstrzyga model; prąd zwarciowy lokalizacji = prąd szyny zacisku"
+        ),
+    )
     settings: ProtectionSettingsRequest
     manufacturer: str | None = None
     model: str | None = None
@@ -138,7 +156,15 @@ class CoordinationConfigRequest(BaseModel):
 
 
 class RunCoordinationRequest(BaseModel):
-    """Request to run coordination analysis."""
+    """Request to run coordination analysis.
+
+    Karta S-2 AUTORYTET: ``sc_run_id`` (bieg MAX) i ``sc_run_id_min`` (bieg MIN)
+    są WYMAGANE przy egzekucji (`_check_run_eligibility` + `wejscie_koordynacji_
+    z_biegow`) — pola pozostają ``str | None`` na poziomie pydantic (nie
+    ``Field(...)``), żeby brak dał komunikat PL jednego mostu autorytetu zamiast
+    generycznego błędu walidacji pydantic. ``fault_currents`` staje się ECHEM:
+    liczby idą do decyzji WYŁĄCZNIE z obu biegów, rozbieżność z żądaniem = 422.
+    """
 
     devices: list[DeviceRequest]
     fault_currents: list[FaultCurrentRequest]
@@ -146,6 +172,7 @@ class RunCoordinationRequest(BaseModel):
     config: CoordinationConfigRequest | None = None
     pf_run_id: str | None = None
     sc_run_id: str | None = None
+    sc_run_id_min: str | None = None
 
 
 class CoordinationSummaryResponse(BaseModel):
@@ -311,20 +338,20 @@ def _check_run_eligibility(request: RunCoordinationRequest) -> list[str]:
     blockers: list[str] = []
     if not request.devices:
         blockers.append(
-            "Analiza koordynacji wymaga co najmniej jednego urzadzenia "
-            "zabezpieczajacego (lista 'devices' jest pusta)."
+            "Analiza koordynacji wymaga co najmniej jednego urządzenia "
+            "zabezpieczającego (lista 'devices' jest pusta)."
         )
     if not request.fault_currents:
         blockers.append(
-            "Analiza koordynacji wymaga danych o pradach zwarciowych "
-            "(lista 'fault_currents' jest pusta) — sprawdzenie czulosci "
-            "i selektywnosci wymaga wynikow zwarciowych IEC 60909."
+            "Analiza koordynacji wymaga danych o prądach zwarciowych "
+            "(lista 'fault_currents' jest pusta) — sprawdzenie czułości "
+            "i selektywności wymaga wyników zwarciowych IEC 60909."
         )
     if not request.operating_currents:
         blockers.append(
-            "Analiza koordynacji wymaga danych o pradach roboczych "
+            "Analiza koordynacji wymaga danych o prądach roboczych "
             "(lista 'operating_currents' jest pusta) — sprawdzenie "
-            "przeciazalnosci wymaga wynikow rozplywu mocy."
+            "przeciążalności wymaga wyników rozpływu mocy."
         )
     return blockers
 
@@ -351,6 +378,27 @@ def run_coordination_analysis(
     pradu roboczego — inaczej 400 z uczciwym komunikatem PL (nie 500, nie
     fabrykowany PASS).
 
+    GRANICA AUTORYTETU (karta S-2 AUTORYTET) — DWIE BRAMKI, OBIE KONIECZNE.
+    Bramka pierwsza: prądy zwarciowe przychodziły dotąd jako GOŁE LICZBY w
+    żądaniu i nikt nie pytał, skąd pochodzą — wystarczyło je podać, żeby
+    dostać werdykt selektywności/czułości na dowolnie wymyślonych danych.
+    Bramka druga: proweniencja wkładu falownikowego biegów, z których te
+    liczby pochodzą, musi być miarodajna (nie domyślka systemowa). Pierwsza
+    bez drugiej przepuszczałaby liczby z powietrza policzone na dobrym
+    modelu; druga bez pierwszej — liczby z biegu policzonego z domyślki k_sc.
+
+    MIEJSCE URZĄDZENIA (decyzja O-51 pkt 7). Lokalizacja urządzenia to szyna,
+    gałąź ze wskazanym zaciskiem (`DeviceRequest.zacisk`) albo łącznik (zacisk
+    z modelu — łańcuch szeregowy, `zacisk_zabezpieczenia.miejsce_urzadzenia`).
+    Prąd zwarciowy lokalizacji-gałęzi/łącznika to prąd SZYNY zacisku i tak
+    jest potwierdzany wobec biegów (`szyny_zwarcia_lokalizacji`); prąd roboczy
+    to prąd TEGO zacisku z biegu rozpływu (ekran czyta go z wiersza gałęzi:
+    `i_a` dla `od`, `i_do_a` dla `do`).
+
+    PRĄDY ROBOCZE NIE SĄ POTWIERDZANE WOBEC BIEGU ROZPŁYWU — NAZWANY BRAK.
+    `pf_run_id` jest opcjonalny i nie wchodzi do bramki autorytetu; liczba prądu
+    roboczego przechodzi jako echo ekranu (patrz rejestr planu AB, wpis O-51).
+
     Analyzes:
     - Sensitivity (will devices trip for minimum fault?)
     - Selectivity (proper time grading between devices?)
@@ -367,6 +415,53 @@ def run_coordination_analysis(
 
     # Convert request to domain models
     devices = tuple(_convert_device(d) for d in request.devices)
+
+    try:
+        wejscie = wejscie_koordynacji_z_biegow(
+            run_id_max=request.sc_run_id, run_id_min=request.sc_run_id_min
+        )
+    except BiegNiemiarodajnyError as brak:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"powod": brak.powod, "komunikat_pl": brak.komunikat_pl},
+        ) from brak
+
+    # Decyzja O-51 pkt 7: lokalizacja-gałąź (ze wskazanym zaciskiem) albo łącznik ma prąd
+    # zwarciowy SZYNY swojego zacisku — ten sam resolver, z którego czyta go ekran.
+    szyny_zwarcia, odmowy_zwarcia = szyny_zwarcia_lokalizacji(
+        dict(wejscie.migawka),
+        [(d.location_element_id, d.zacisk) for d in request.devices],
+    )
+    niezgodnosci = niezgodnosci_pradow_koordynacji(
+        wejscie,
+        [pozycja.model_dump() for pozycja in request.fault_currents],
+        szyny_lokalizacji=szyny_zwarcia,
+        odmowy_lokalizacji=odmowy_zwarcia,
+    )
+    if niezgodnosci:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "powod": "PRADY_NIEZGODNE_Z_BIEGIEM",
+                "komunikat_pl": (
+                    "Prądy zwarciowe podane w żądaniu różnią się od prądów policzonych w "
+                    "biegach. Nastawy powstają z wyniku solvera — przelicz biegi albo popraw "
+                    "dane w żądaniu."
+                ),
+                "niezgodnosci": list(niezgodnosci),
+            },
+        )
+
+    try:
+        wymagaj_autorytetu((ZdolnoscMiarodajna.PROTECTION_COORDINATION,), wejscie.proweniencja)
+    except BrakAutorytetuWyniku as brak:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "powod": "WEJSCIE_NIEMIARODAJNE",
+                "blokady": [b.to_dict() for b in brak.blokady],
+            },
+        ) from brak
 
     fault_currents = tuple(
         FaultCurrentData(
@@ -412,6 +507,7 @@ def run_coordination_analysis(
         pf_run_id=request.pf_run_id,
         sc_run_id=request.sc_run_id,
         project_id=str(project_id),
+        nazwy_lokalizacji=zbuduj_indeks_nazw(dict(wejscie.migawka)),
     )
 
     # Run analysis
@@ -592,7 +688,7 @@ def get_overload_checks(run_id: str) -> list[dict[str, Any]]:
 
 @router.get(
     "/{run_id}/export/pdf",
-    summary="Eksportuj wynik koordynacji zabezpieczen do PDF",
+    summary="Eksportuj wynik koordynacji zabezpieczeń do PDF",
 )
 def export_coordination_pdf(run_id: str) -> Response:
     """Eksport wyniku koordynacji zabezpieczen nadprądowych do PDF.
@@ -642,7 +738,7 @@ def export_coordination_pdf(run_id: str) -> Response:
 
 @router.get(
     "/{run_id}/export/docx",
-    summary="Eksportuj wynik koordynacji zabezpieczen do DOCX",
+    summary="Eksportuj wynik koordynacji zabezpieczeń do DOCX",
 )
 def export_coordination_docx(run_id: str) -> Response:
     """Eksport wyniku koordynacji zabezpieczen nadprądowych do DOCX.

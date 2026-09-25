@@ -9,6 +9,7 @@
  * Katalog-first (KABEL_SN/LINIA_SN). Kontrakt payloadów 1:1 z retirowanym ConnectRingForm.
  */
 
+import type { UziemienieEkranuKabla } from '../../../types/uziemienie';
 import {
   normalizeCatalogBinding,
   normalizeSegmentKind,
@@ -20,6 +21,8 @@ export type RodzajOdcinka = 'KABEL' | 'LINIA';
 export interface PierscienFormData {
   rodzaj: RodzajOdcinka;
   catalog_ref: string | null;
+  /** W5-A: układ uziemienia ekranu kabla (pusty = nie zadeklarowano; tylko dla KABEL). */
+  screen_bonding: UziemienieEkranuKabla | '';
   dlugosc_m: number | null;
   /** Wybrany element punktu normalnie otwartego (ref łącznika). */
   nop_ref: string | null;
@@ -47,6 +50,7 @@ export interface KontekstPierscienia {
 export const DANE_DOMYSLNE: PierscienFormData = {
   rodzaj: 'KABEL',
   catalog_ref: null,
+  screen_bonding: '',
   dlugosc_m: 500,
   nop_ref: null,
 };
@@ -98,6 +102,8 @@ export function zbudujPayloadDomkniecie(
       rodzaj: normalizeSegmentKind(kindInput),
       dlugosc_m: data.dlugosc_m,
       catalog_binding: catalogBinding ?? undefined,
+      // W5-A: deklaracja ekranu tylko dla kabla i tylko gdy wybrana (zero fantomów).
+      ...(kindInput === 'KABEL' && data.screen_bonding ? { screen_bonding: data.screen_bonding } : {}),
     },
   };
 }

@@ -271,6 +271,22 @@ export interface CanonicalGpzHvSystemSource {
   readonly name: string;
   readonly sk3Mva: number | null;
   readonly ik3Ka: number | null;
+  /**
+   * Dane scenariusza MIN (CV-4.3 K7) — warunki przyłączenia OSD, ta sama szyna
+   * źródła co `sk3Mva`/`ik3Ka`. `null` = OSD ich nie podał (zero fabrykacji);
+   * tabliczka danych (`compose/gpz.ts::gpzSystemSourceDataplateText`) pokazuje
+   * wtedy WYŁĄCZNIE wartość maksymalną, jak dotychczas.
+   */
+  readonly sk3MinMva: number | null;
+  readonly ik3MinKa: number | null;
+  /**
+   * Napięcie zadane szyny bilansującej (CV-4.3 K7c, `Source.u_set_pu`) — ta
+   * sama szyna źródła co `sk3Mva`/`ik3Ka`/`sk3MinMva`/`ik3MinKa` powyżej.
+   * `null` = OSD go nie podał (zero fabrykacji); tabliczka danych
+   * (`compose/gpz.ts::gpzSystemSourceDataplateText`) pomija wtedy człon
+   * napięcia zadanego, jak dotychczas.
+   */
+  readonly uSetPu: number | null;
   /** Napięcie SZYNY ŹRÓDŁA (`Bus.voltage_kv` szyny z `Source.bus_ref`) —
    *  recenzja NO-GO właściciela 2026-07-17 pkt 2: dawna semantyka („zawsze
    *  strona WN") sklejała Sk″/Ik″ ekwiwalentu 15 kV z napięciem 110 kV w
@@ -283,7 +299,7 @@ export interface CanonicalGpzHvSystemSource {
    *  symbol źródła i tabliczka przy szynie SN (mieszanie wariantów pełnego
    *  i uproszczonego w jednym rysunku ZAKAZANE — recenzja pkt 3). */
   readonly sourceOnHvBus: boolean;
-  /** Napięcie SZYNY WN GPZ (`Bus.voltage_kv` szyny `voltage_kv > 60`) —
+  /** Napięcie SZYNY WN GPZ (`Bus.voltage_kv` szyny w paśmie WN, `wPasmieWn`) —
    *  osobne od `voltageKv` (szyna ŹRÓDŁA), bo etykieta „Szyna WN · V kV"
    *  musi czytać napięcie SZYNY WN także gdy źródło to ekwiwalent SN
    *  (regres wykryty renderem: „Szyna WN · 15 kV" po zmianie semantyki
@@ -292,8 +308,8 @@ export interface CanonicalGpzHvSystemSource {
 }
 
 export interface GpzCanonicalRendererProps {
-  /** Sposób pracy punktu neutralnego sieci SN (V12K-219) — wyprowadzony z
-   *  `Bus.grounding` szyny SN GPZ. `null`/brak = model uziemienia nieokreślony
+  /** Sposób pracy punktu neutralnego sieci SN (V12K-219 / W5-A) — wyprowadzony z
+   *  `Source.neutral_grounding` źródła GPZ. `null`/brak = model uziemienia nieokreślony
    *  i wtedy schemat NIE rysuje niczego (zero domysłu: „brak danej" to nie to
    *  samo co „sieć izolowana", a pomyłka zmienia prąd doziemny o rzędy
    *  wielkości). Rysowany przy szynie, bo przy transformatorze o dolnej stronie
@@ -327,7 +343,7 @@ export interface GpzCanonicalRendererProps {
    *  GPZ) nieobecny (uczciwy brak, adapter NIE zgaduje). */
   readonly hvSystemSource?: CanonicalGpzHvSystemSource | null;
   /** ADAPTER-BUSREF (dług W4/R2/V12K-163): KANONICZNY ref Bus ENM szyny WN
-   *  (jedna szyna GPZ z `voltage_kv > 60` w `Substation.bus_refs`). Metadana do
+   *  (jedna szyna GPZ w paśmie WN — `wPasmieWn` — w `Substation.bus_refs`). Metadana do
    *  powiązania rysowanej szyny WN (`${id}#hv-bus`) z wynikami/energizacją —
    *  identyfikator sceny NIETKNIĘTY. `null`/brak gdy snapshot nie ma szyny WN. */
   readonly hvBusRef?: string | null;

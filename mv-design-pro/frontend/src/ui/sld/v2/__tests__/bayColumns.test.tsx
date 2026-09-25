@@ -116,7 +116,7 @@ describe('BayColumnSn — SN bay column z apparatus stack', () => {
     expect(label?.textContent).toBe('Q11');
   });
 
-  it('K30-124: Designation VISIBLE w overview variant z mniejszą czcionką (UX consistency)', () => {
+  it('Designation VISIBLE w overview variant z mniejszą czcionką (UX consistency)', () => {
     const { container } = render(
       wrap(
         <BayColumnSn

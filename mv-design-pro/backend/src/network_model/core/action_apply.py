@@ -65,7 +65,8 @@ def _branch_from_action(action: ActionEnvelope) -> Branch:
     branch_kind = payload.get("branch_kind", "LINE")
     payload["id"] = str(branch_id)
     payload["branch_type"] = _coerce_branch_type(branch_kind)
-    payload.setdefault("name", str(payload["id"]))
+    # Nazwa wyłącznie z ładunku akcji — gałąź bez nazwy zostaje bez nazwy (jak węzeł),
+    # identyfikator nie jest nazwą (karta #144).
     return Branch.from_dict(payload)
 
 

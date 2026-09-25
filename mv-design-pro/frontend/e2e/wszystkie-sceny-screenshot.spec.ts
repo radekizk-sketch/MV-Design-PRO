@@ -18,22 +18,62 @@ import { test, expect } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { adresHarnessu } from './adresHarnessu';
+import { zbierajNieudaneZadaniaApi } from './nieudaneZadaniaApi';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const HARNESS_URL = 'http://127.0.0.1:5173/creator-harness.html';
+const HARNESS_URL = adresHarnessu('creator-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/sceny');
+
+/**
+ * HARNESS-RESZTA-2 (2026-09-17): asercje sceny koordynacji CYTUJĄ fixturę
+ * REALNEGO biegu backendu (tę samą, którą serwuje harness) — zero refów sieci
+ * wpisanych w specu. Odczyt przez `readFileSync`, nie `import … .json`: moduł
+ * specu jest ESM Node'a, gdzie import JSON wymaga atrybutu `with { type: 'json' }`
+ * (zmierzone: bez tego bieg kończy się `TypeError` przed zebraniem testów).
+ */
+const KOORDYNACJA_SCENA_WYNIK = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/koordynacja_scena_wynik.json'),
+    'utf-8',
+  ),
+) as { devices: { location_element_id: string; name: string }[] };
+
+/**
+ * Decyzja O-51 pkt 7: zabezpieczenia sceny stoją na odcinkach magistrali przy WSKAZANYM
+ * zacisku — lokalizacje i zaciski z fixtury rozstrzygnięć backendu (tej samej, którą
+ * serwuje atrapa `GET …/enm/zacisk-lokalizacji`).
+ */
+const KOORDYNACJA_SCENA_MIEJSCA = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/koordynacja_scena_miejsca.json'),
+    'utf-8',
+  ),
+) as { urzadzenia_sceny: { lokalizacja: string; zacisk: 'od' | 'do' }[] };
 
 /** Sceny kadrowane przez `creator-screenshot.spec.ts` — tam mają własne interakcje. */
 const JUZ_KADROWANE = new Set([
   'pole', 'oze', 'arcflash', 'magistrala', 'kompensator', 'transformator', 'odbior', 'wiazania',
+  // V12T-016 (karta SZABLONY-ROLA-A): `szablony-rola-a-screenshot.spec.ts`
+  // rozwija i wybiera rolę A (drzewko startuje zwinięte) — własna interakcja.
+  'szablony',
 ]);
 
 const SCENY = [
-  'cieplna', 'dokumentacja', 'edycja-parametrow', 'estymacja', 'frt', 'kompensacja',
-  'kompensacja-wynik', 'lom', 'macierz', 'migotanie', 'odbior-zgodnosc', 'odgalezienie',
+  // B-02 / W3-E (2026-09-10): „akademickie" = katalog kart „Analizy specjalistyczne"
+  // (widok domyślny, bez `rodzaj`); „ocena" / „ocena-przekroczenia" = ekran „Ocena
+  // techniczna wyników" bez przekroczeń i z realnymi NIE SPEŁNIA (obciążenie ×8).
+  // Karta AB-1a Pakiet D2: „certyfikat" / „wniosek" / „wniosek-braki" / „pulpit-oze" — ekrany
+  // dokumentów NC RfG i pulpit instalacji OZE na kontrakcie V2 (stan wejściowy sceny).
+  'akademickie', 'certyfikat', 'cieplna', 'dokumentacja', 'edycja-parametrow', 'estymacja', 'frt',
+  'kompensacja',
+  'kompensacja-wynik', 'lom', 'macierz', 'migotanie', 'ocena', 'ocena-przekroczenia',
+  'odbior-zgodnosc', 'odgalezienie',
   'oltc', 'pole-nn', 'pomiar', 'porownanie', 'przekaznik', 'przypisanie-katalogu', 'pulpit',
+  'pulpit-oze',
   'rozplyw', 'sila-sieci', 'slup-odgalezny', 'ssci', 'swiezosc', 'uwaga', 'walidacja',
-  'wyniki-skladowe', 'wyniki-stabilnosc', 'wyniki-stan-fazowy', 'wyniki-zbieznosc', 'zksn',
+  'wniosek', 'wniosek-braki', 'wyniki-skladowe', 'wyniki-stabilnosc', 'wyniki-stan-fazowy',
+  'wyniki-zbieznosc', 'zksn',
   'zrodlo', 'zrodlo-dyspozycyjne', 'zwarcia', 'zwarcia-rozplyw',
 ].filter((s) => !JUZ_KADROWANE.has(s));
 
@@ -54,6 +94,7 @@ test.describe('sceny:screenshot', () => {
           if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
         });
         page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+        zbierajNieudaneZadaniaApi(page, errs);
 
         await page.setViewportSize({ width: 1220, height: 900 });
         await page.goto(`${HARNESS_URL}?creator=${scena}&theme=${theme}`, {
@@ -105,6 +146,23 @@ test.describe('sceny:screenshot', () => {
           );
         }
 
+        // B-02 / W3-E: scena „ocena" pokazuje OCENĘ (nie stan blokujący „brak wyników"),
+        // scena przekroczeń niesie co najmniej jedną pozycję NIE SPEŁNIA; katalog kart
+        // „akademickie" pokazuje karty pogrupowane (nie listę rozwijaną).
+        if (scena === 'ocena' || scena === 'ocena-przekroczenia') {
+          await expect(page.getByTestId('mvd-ocena-podsumowanie')).toBeVisible({ timeout: 15000 });
+          await expect(page.getByTestId('mvd-ocena-brak-wynikow')).toHaveCount(0);
+          const nieSpelnia = Number(
+            (await page.getByTestId('mvd-ocena-licznik-nie-spelnia').locator('.mvd-ocena-licznik-liczba').textContent())?.trim(),
+          );
+          if (scena === 'ocena') expect(nieSpelnia).toBe(0);
+          else expect(nieSpelnia).toBeGreaterThan(0);
+        }
+        if (scena === 'akademickie') {
+          await expect(page.getByTestId('mvd-akad-katalog-kart')).toBeVisible({ timeout: 15000 });
+          expect(await page.locator('[data-testid^="mvd-akad-karta-otworz-"]').count()).toBeGreaterThan(0);
+        }
+
         await page.waitForTimeout(250);
         await root.screenshot({ path: path.join(OUTPUT_DIR, `scena_${scena}_${theme}.png`) });
 
@@ -134,6 +192,7 @@ test.describe('koordynacja:screenshot', () => {
         if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
       });
       page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+      zbierajNieudaneZadaniaApi(page, errs);
 
       await page.setViewportSize({ width: 1220, height: 1400 });
       await page.goto(`${HARNESS_URL}?creator=koordynacja&theme=${theme}`, {
@@ -150,20 +209,39 @@ test.describe('koordynacja:screenshot', () => {
       // Dwa zabezpieczenia z szablonu — realną drogą projektanta: szablon,
       // WSKAZANIE ELEMENTU MODELU z listy (V12K-262: lokalizacji nie da się już
       // dostać „za darmo", bo ekran jej nie wymyśla), zapis konfiguracji.
-      const elementy = ['gpz/sekcja_a/bus_sn', 'stacja_s02/bus_sn'];
-      for (const element of elementy) {
+      // HARNESS-RESZTA-2 (2026-09-17): refy CYTOWANE Z FIXTURY realnego biegu
+      // backendu (szyny SN obu stacji magistrali sceny) — wcześniej spec podawał
+      // refy sieci, która nie istnieje w żadnym modelu repozytorium.
+      const miejsca = KOORDYNACJA_SCENA_MIEJSCA.urzadzenia_sceny;
+      expect(miejsca.length, 'fixtura koordynacji musi opisywać dwa zabezpieczenia').toBe(2);
+      expect(miejsca.map((m) => m.lokalizacja).sort()).toEqual(
+        KOORDYNACJA_SCENA_WYNIK.devices.map((u) => u.location_element_id).sort(),
+      );
+      for (const { lokalizacja, zacisk } of miejsca) {
         await page.getByTitle('Zastosuj szablon').click();
         // Klik ZAWĘŻONY do okna szablonów: po dodaniu pierwszego zabezpieczenia ta sama
         // nazwa jest też na liście urządzeń POD nakładką, a `.first()` trafiał w nią
         // i modal przechwytywał zdarzenie.
-        await page.locator('div.fixed.inset-0').getByText('Przekaznik 50/51 (typowy)').click();
+        // Nazwa szablonu z fixtury biegu (backend zasiewa ją 1:1 z `DEVICE_TEMPLATES`),
+        // nie literał przepisany ręcznie (karta PL-ZNAKI).
+        await page
+          .locator('div.fixed.inset-0')
+          .getByText(KOORDYNACJA_SCENA_WYNIK.devices[0].name)
+          .click();
         await expect(page.getByTestId('protection-settings-editor')).toBeVisible();
-        await page.getByTestId('device-location-select').selectOption(element);
+        await page.getByTestId('device-location-select').selectOption(lokalizacja);
+        // Zacisk gałęzi — etykieta z nazwą szyny z backendu, brak zacisku domyślnego.
+        const zaciskUrzadzenia = page.getByTestId(`device-terminal-${zacisk}`);
+        await expect(zaciskUrzadzenia).not.toBeChecked();
+        await zaciskUrzadzenia.click();
         await page.getByRole('button', { name: 'Zapisz konfigurację' }).click();
       }
 
-      // Bramka lokalizacji jest zdjęta, prądy z obu biegów (c = 1,10 i c = 0,95)
-      // związały się z elementami — dopiero teraz analiza ma na czym liczyć.
+      // Decyzja O-51 pkt 7: prąd ZWARCIOWY szyny zacisku (biegi c_max i c_min) i prąd
+      // ROBOCZY tego samego zacisku (bieg rozpływu) związały się z obydwoma
+      // zabezpieczeniami — panel braków nie ma czego meldować. Do tej karty
+      // zabezpieczenia stały na szynach, a prąd roboczy był nazwanym brakiem (relacji
+      // „zabezpieczenie → chroniona gałąź" wtedy nie było).
       await expect(page.getByTestId('coordination-missing-currents')).toHaveCount(0);
       const uruchom = page.getByTestId('run-analysis-button');
       await expect(uruchom).toBeEnabled();
@@ -171,9 +249,12 @@ test.describe('koordynacja:screenshot', () => {
 
       // Werdykt pary z NARUSZENIEM musi dojechać na ekran wraz z widoczną akcją
       // naprawczą (V12K-261) — to jest dowód, że łańcuch domknął się do końca.
+      // Tożsamość zabezpieczenia nadrzędnego wymyśla EKRAN (`crypto.randomUUID()`
+      // przy zastosowaniu szablonu), więc spec nie może jej znać — czyta ją z
+      // wiersza selektywności, który ekran wyrenderował.
       await page.getByTestId('tab-selectivity').click();
       await expect(page.getByTestId('selectivity-table')).toBeVisible({ timeout: 15000 });
-      await expect(page.getByTestId('selectivity-fix-dev-nadrzedne')).toBeVisible();
+      await expect(page.locator('[data-testid^="selectivity-fix-"]').first()).toBeVisible();
 
       // Krzywe czasowo-prądowe: sedno tego ekranu i jedyny wykres log-log w systemie.
       await page.getByTestId('tab-tcc').click();

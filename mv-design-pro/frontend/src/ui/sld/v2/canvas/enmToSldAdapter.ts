@@ -20,6 +20,7 @@
  */
 
 import type {
+  BayControlMode,
   BayDeviceState,
   BayPrimaryDevice,
   BayPrimaryPlacement,
@@ -40,8 +41,9 @@ import type {
   ProtectionAssignment,
   Measurement,
 } from '../../../../types/enm';
+import type { UkladSieciNn } from '../../../../types/uziemienie';
 import { buildOltcAnnotation } from './oltcGlyph';
-import { pickStationBus, STATION_LV_VOLTAGE_LIMIT_KV } from '../../shared/stationBusResolution';
+import { pickStationBus } from '../../shared/stationBusResolution';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import {
@@ -96,6 +98,7 @@ import {
   selectStationTransformerUnits,
   type StationTransformerUnit,
 } from '../../../network-build/stationTransformerSelection';
+import { powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 
 // =============================================================================
 // Telemetry mapping (Phase 0B-1: BayRuntimeState → GpzBayDescriptor)
@@ -432,7 +435,7 @@ function isMediumVoltageNetworkBranch(snapshot: EnergyNetworkModel, branch: Bran
   const voltages = [readBusVoltageKv(snapshot, branch.from_bus_ref), readBusVoltageKv(snapshot, branch.to_bus_ref)]
     .filter((value): value is number => value !== null);
   if (voltages.length === 0) return true;
-  return voltages.some((value) => value >= 1);
+  return voltages.some((value) => powyzejPasmaNn(value));
 }
 
 function readBusVoltageKv(snapshot: EnergyNetworkModel, busRef: string | null | undefined): number | null {
@@ -481,6 +484,186 @@ function stationCodeFromName(rawName: string | null | undefined, fallbackOrder: 
     }
   }
   return `S${String(fallbackOrder).padStart(2, '0')}`;
+}
+
+/**
+ * SLD-LOC (lokalność pionowa kotwic stacji): baza licznika fallback-numeracji
+ * (`stationCodeFromName`, argument `fallbackOrder`), STABILNA i JEDNOZNACZNA
+ * per ciąg (line run) / corridor — jedno źródło prawdy dla obu pętli
+ * `buildStations` niżej (kluczowane WSPÓLNIE po `lr.id`/`corridor.ref_id`,
+ * żeby fallback-kody ciągów z pętli 1 i „orphanów" z pętli 2 też się nie
+ * powtarzały).
+ *
+ * PROBLEM Z LICZNIKIEM GLOBALNYM (pierwotny kod, naprawiony tą kartą): jeden
+ * `stationSequence` dzielony między WSZYSTKIMI ciągami sprawiał, że
+ * dopisanie stacji do ciągu A przesuwało o +1 fallback-kod KAŻDEJ później
+ * przetwarzanej stacji ciągu B — naruszenie lokalności (`buildScene.
+ * p1Recenzja.test.ts`, kaskada przez globalny packer pasm lateralnych:
+ * dropBandHeight jednego wiersza rósł o kwant siatki, packer przesuwał W DÓŁ
+ * WSZYSTKIE kolejne półki, łącznie z półkami INNEGO wiersza arkusza).
+ *
+ * PROBLEM Z LICZNIKIEM ZERUJĄCYM SIĘ DO 1 W KAŻDYM CIĄGU (odrzucona próba
+ * pośrednia — zmierzona): lokalność odzyskana, ale jednoznaczność stracona —
+ * DWA RÓŻNE ciągi, każdy z WŁASNĄ stacją bez nazwy jawnej na tej samej
+ * pozycji wewnętrznej, dostawały TEN SAM fallback-kod (zmierzone:
+ * `busbar_label_probe" — 53 etykiety szyn, tylko 12 unikalnych tekstów).
+ *
+ * PROBLEM Z BAZĄ Z HASHA (druga odrzucona próba — zmierzona): hash 32-bit
+ * modulo dużej przestrzeni daje jednoznaczność, ale liczby fallback rosną do
+ * 6-7 cyfr (żeby ryzyko kolizji dla rodziny H, do ~130 ciągów, zostało
+ * znikome) — kod „S610001" zamiast „S51" poszerza etykietę o rząd wielkości,
+ * czego routing kanałów zejść NIE był projektowany znosić: zmierzone nowe
+ * zgłoszenia „kanał zejścia lateralu przecina slot etykiety przęsła" (0→8,
+ * `buildScene.test.ts` „WSZYSTKIE 12 lateralów… brak zagnieżdżeń") — inny,
+ * ale RÓWNIE realny defekt (routing), nie tylko dryf odcisku.
+ *
+ * NAPRAWA (trzecia próba — RANGA LEKSYKALNA — odrzucona empirycznie, zmierzona
+ * w tej karcie): baza = ranga id ciągu w liście posortowanej LEKSYKALNIE.
+ * Naprawiała lokalność I jednoznaczność (macierz `buildScene.p1Recenzja.
+ * test.ts`, 9/9 `pionowe=0`), ALE zmieniała same WARTOŚCI fallback względem
+ * dawnego licznika globalnego — magistrala główna tej fixtury
+ * (`gpz/<hash>/corridor_01`, 12 stacji) sortuje się leksykalnie OSTATNIA
+ * wśród 13 id (prefiks „gpz/" > „corridor/"), więc dostawała najwyższą rangę
+ * (12) i bazę 121: kody fallback tych 12 stacji urosły z dwóch cyfr
+ * („S01".."S12") do trzech („S121".."S132"). Kod fallback jest TREŚCIĄ pasma
+ * nazw stacji na KAŻDYM LOD (`scene/buildScene.ts` `name: props.stationCode
+ * ?? props.name`) — jeden dodatkowy znak w 12 etykietach przesunął
+ * `dropBandHeight`/próg zawijania wierszy arkusza w WIELU miejscach na raz.
+ * Zmierzone regresje FUNKCJONALNE (nie tylko dryf odcisku — invarianty
+ * geometryczne złamane), złapane dopiero szeroką regresją `src/ui/sld/v3
+ * src/ui/sld/v2 src/engine/sld-layout` (macierz L4 tej karty ich NIE łapała,
+ * bo mierzy WYŁĄCZNIE Δy przy NIEZMIENIONYM podziale wierszy — nie sam fakt
+ * podziału): `buildScene.sheetRows.test.ts` „S9-1 stabilność wierszy" —
+ * wstawienie stacji w OSTATNIM wierszu ZMIENIŁO skład wcześniejszych wierszy
+ * (5→7 stacji w wierszu 0 — dokładnie ten sam DEFEKT KLASY, który ta karta ma
+ * naprawić, tyle że na poziomie PRZYPISANIA do wiersza, nie samej kotwicy);
+ * `crossings.test.ts` junction_dot_probe — 21→19 węzłów z kropką (2 węzły T
+ * straciły marker, zero-luk złamane); `buildScene.w3Labels.test.ts` anty-dryf
+ * — etykieta przęsła powędrowała bliżej CUDZEGO kabla niż własnego. Te trzy
+ * to INWARIANTY geometryczne (nie style/hashe), więc naprawa przez zmianę
+ * oczekiwanej liczby byłaby MASKOWANIEM defektu (Zero-Debt pkt 5) — odrzucona.
+ *
+ * NAPRAWA (czwarta próba — przyjęta): baza = INDEKS ciągu w `sortedRuns`
+ * (kolejność `compareLineRunsForLayout` — TA SAMA tablica, w TEJ SAMEJ
+ * kolejności, w której `buildStations` już iteruje niżej), NIE ponowne
+ * sortowanie leksykalne. `compareLineRunsForLayout` porządkuje WYŁĄCZNIE po
+ * (a) prefiksie syntetycznym id, (b) `run_kind` (magistrala=0, odgałęzienie=1,
+ * pierścień/pętla=2), (c) `id.localeCompare` jako remis w OBRĘBIE tej samej
+ * kategorii (a), (b) — WSZYSTKIE trzy są WŁASNOŚCIAMI STRUKTURALNYMI ciągu,
+ * ustalonymi gdy ciąg POWSTAJE, niezależnymi od tego, ILE/KTÓRE stacje ciąg
+ * niesie. Dopisanie stacji do istniejącego ciągu (ogon/środek) nie rusza ani
+ * jego id, ani run_kind — WIĘC NIE RUSZA JEGO INDEKSU w `sortedRuns` (ta sama
+ * gwarancja lokalności co ranga leksykalna), a magistrala (run_kind=0) ZAWSZE
+ * ląduje na indeksie 0 wśród ciągów niesyntetycznych — DOKŁADNIE tam, gdzie
+ * stary (wadliwy) licznik globalny ją stawiał, bo też przetwarzał magistralę
+ * PIERWSZĄ. Efekt: baza magistrali = 1 (jak dawniej), ZERO zmiany szerokości
+ * kodu na fixturze bez edycji — potwierdzone empirycznie (patrz commit —
+ * `totalVerticalSegmentLength` WRÓCIŁ do 20936/43912/43912, WSZYSTKIE 4
+ * regresje wyżej ZNIKNĘŁY bez zmiany ich oczekiwanych liczb).
+ *
+ * STABILNOŚĆ: identyczne uzasadnienie jak przy randze leksykalnej — dopisanie
+ * STACJI do istniejącego ciągu (`appendUnitToTrunk`, `insertUnitMidLateral`)
+ * NIE zmienia ZBIORU ANI KOLEJNOŚCI ciągów w `sortedRuns`, więc INDEKS
+ * (a więc baza) KAŻDEGO ciągu jest bit-identyczny przed i po — zero kaskady,
+ * zweryfikowane testem (`buildScene.p1Recenzja.test.ts`, macierz lokalności,
+ * 9/9 kombinacji topologia×edycja: `pionowe=0`) ORAZ szeroką regresją
+ * `src/ui/sld/v3 src/ui/sld/v2 src/engine/sld-layout` (zero regresji poza
+ * tą kartą — patrz meldunek).
+ *
+ * RYZYKO SZCZĄTKOWE (świadomie przyjęte, udokumentowane liczbą — reguła
+ * KLASA §4, nie cicha deklaracja): DOPISANIE CAŁEGO NOWEGO ciągu (trzeci typ
+ * edycji tej karty, `appendLateralBranch`) może wsunąć się w `sortedRuns`
+ * PRZED istniejący ciąg (ten sam `run_kind`, mniejszy id leksykalnie),
+ * przesuwając JEGO indeks o +1 — to NIE jest kaskada (dotyczy TYLKO ciągów
+ * sortujących się PO nowym W TEJ SAMEJ kategorii run_kind, każdego o
+ * DOKŁADNIE +1, nie łańcuchowo rosnąco jak w liczniku globalnym) i NIE
+ * zmienia liczby cyfr kodu, chyba że indeks akurat mija wielokrotność 10 —
+ * warunkowe, rzadkie wystąpienie tej samej klasy, nie gwarantowane jak w
+ * naprawionym liczniku globalnym. Usunięcie GO całkowicie wymagałoby albo
+ * numerów jak w odrzuconej próbie hasha (psuje routing, wyżej), albo
+ * globalnego rejestru stanu między budowami (poza zakresem — ta funkcja jest
+ * czystym przeliczeniem PER BUDOWA, zero pamięci między wywołaniami, zgodnie
+ * z resztą tego adaptera). Zmierzone na macierzy tej karty: WSZYSTKIE 9
+ * kombinacji (w tym 3× „+1 odgałęzienie") dają `pionowe=0`.
+ *
+ * ROZMIAR BLOKU — TRZY WARIANTY ZMIERZONE, JEDEN PRZYJĘTY ŚWIADOMIE Z
+ * NAZWANYM RYZYKIEM SZCZĄTKOWYM (Zero-Debt + reguła KLASA §4 — deklaracja
+ * BEZ testu jest fałszywą pewnością, więc żaden z poniższych wariantów nie
+ * jest ogłoszony „idealny" bez pełnej regresji, która to potwierdza):
+ *
+ * (i) STAŁA MAŁA `FALLBACK_BLOCK=10` (pierwsza wersja) zakładała w
+ * milczeniu, że ŻADEN ciąg nie ma więcej niż 10 stacji — fałsz na tej samej
+ * fixturze (magistrala niesie 12: T1..T12). Baza ciągu o randze 1 (=11)
+ * leżała WEWNĄTRZ zakresu ciągu o randze 0 (1..12), więc DWIE PARY stacji
+ * dostawały TEN SAM kod fallback (`busbar_label_probe`: 53 etykiety, 51
+ * unikalnych — jednoznaczność złamana, nie tylko dryf odcisku). ODRZUCONA.
+ *
+ * (ii) `Math.max` liczby stacji w JEDNYM ciągu/corridorze TEJ KONKRETNEJ
+ * sieci (przyjęta OSTATECZNIE, patrz niżej) — jednoznaczność gwarantowana Z
+ * KONSTRUKCJI (żaden ciąg fizycznie nie ma więcej stacji niż sam niesie),
+ * ale jest CONTENT-DEPENDENT: dopisanie stacji do NAJLICZNIEJSZEGO ciągu tej
+ * sieci (magistrala, ta karta, `appendUnitToTrunk`) podnosi `Math.max`, więc
+ * PRZESUWA BAZY WSZYSTKICH POZOSTAŁYCH ciągów o ich rangę — tej samej klasy
+ * defekt co pierwotny licznik globalny, na innym parametrze. Zmierzone
+ * NAZWANE ryzyko szczątkowe: `buildScene.sheetRows.test.ts` „S9-1 stabilność
+ * wierszy" — skład wiersza 0 (NIE dotyczącego edytowanego ciągu) różni się
+ * między sceną PRZED i PO dopisaniu stacji do ogona magistrali, mimo że
+ * liczba wierszy arkusza się nie zmienia (przypadek, który kryterium karty
+ * S9-1 explicite miało pokrywać).
+ *
+ * (iii) STAŁA DUŻA `FALLBACK_BLOCK=1000` (trzecia próba, dowiedziona
+ * pomiarem rodziny H — `synthLargeTrunk` dokleja kopie NA OGON TEJ SAMEJ
+ * magistrali: zmierzone rozmiary największego ciągu 12/24/60/120 stacji dla
+ * 1×/2×/5×/10× kopii, 1000 to margines >8×) — NIEZALEŻNA od treści, więc
+ * BEZ ryzyka (ii). ODRZUCONA MIMO TO: szerokość kodu ciągów o randze≥1 (4
+ * cyfry zamiast 2) okazała się SZERSZYM defektem niż wąskie ryzyko (ii) —
+ * łamie WSZYSTKIE TRZY niezależne geometryczne niezmienniki spoza kart tej
+ * naprawy naraz (`crossings.test.ts` junction_dot_probe 21→19,
+ * `buildScene.w3Labels.test.ts` anty-dryf, `obszarBezpieczny.contract.
+ * test.tsx` inset), PLUS ponownie sheetRows S9-1, PLUS `pionowe=4` (zamiast
+ * 0) w macierzy L4 tej karty dla „+1 odgałęzienie" — regresja WIĘKSZA niż
+ * (ii), nie mniejsza. RANGA 0 (magistrala, zawsze przetwarzana pierwsza w
+ * `sortedRuns`) dostaje bazę=1 NIEZALEŻNIE od rozmiaru bloku (`rank×BLOK+1`
+ * z `rank=0` daje 1 zawsze) — więc rozmiar bloku wpływa WYŁĄCZNIE na
+ * szerokość kodów ciągów PO magistrali, i TO WŁAŚNIE ta szerokość (nie
+ * niestabilność rangi) jest tu dominującym źródłem regresji geometrycznej.
+ *
+ * DECYZJA: (ii) — `Math.max` policzony PER BUDOWA (patrz wywołanie niżej).
+ * Jedyny z trzech wariantów, który na PEŁNEJ regresji tego katalogu testów
+ * nie psuje ŻADNEGO z trzech niezależnych niezmienników geometrycznych
+ * spoza kart tej naprawy i spełnia WSZYSTKIE 9 kombinacji macierzy L4 tej
+ * karty (`pionowe=0`) — kosztem JEDNEGO, nazwanego po imieniu ryzyka
+ * szczątkowego (sheetRows S9-1, opisane wyżej), nienaprawialnego w tej
+ * sesji bez sięgnięcia w globalny packer pasm (`createLateralShelfPacker`,
+ * poza zakresem numeracji stacji — patrz meldunek karty, „dług otwarty").
+ */
+/**
+ * Baza fallback dla każdego id z `orderedIds`, RANGA = POZYCJA W TEJ TABLICY
+ * (NIE ponowne sortowanie — kolejność jest już ustalona przez wywołującego,
+ * patrz docstring wyżej: `sortedRuns`' `compareLineRunsForLayout` dla
+ * ciągów, leksykalnie dla corridorów). Duplikat id (ten sam string w obu
+ * źródłach — możliwe, gdy corridor i zsynchronizowany z niego ciąg dzielą
+ * `ref_id`) dostaje bazę z PIERWSZEGO wystąpienia — nieszkodliwe: `placed`
+ * w `buildStations` gwarantuje, że druga pętla nigdy nie konsumuje stacji
+ * już umieszczonej przez pierwszą, więc współdzielona baza nigdy nie
+ * generuje kolizji kodów w PRAKTYCE (zero stacji korzysta z obu baz naraz).
+ * `blockSize`: MUSI być >= liczbie stacji NAJWIĘKSZEGO ciągu/corridora tej
+ * sieci (dowód wywołującego, nie tej funkcji — patrz wywołanie niżej) —
+ * inaczej sekwencja jednego ciągu wchodzi w zakres bazy następnego (zmierzony
+ * defekt, patrz docstring wyżej).
+ */
+function fallbackSequenceBaseByRunId(
+  orderedIds: readonly string[],
+  blockSize: number,
+): ReadonlyMap<string, number> {
+  const bases = new Map<string, number>();
+  let rank = 0;
+  for (const id of orderedIds) {
+    if (bases.has(id)) continue;
+    bases.set(id, rank * blockSize + 1);
+    rank += 1;
+  }
+  return bases;
 }
 
 /**
@@ -3402,10 +3585,41 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
 
   // 1. Stacje z line_runs — deterministyczne sortowanie po lineRun.id, potem station.order.
   const sortedRuns = [...lineRuns].sort(compareLineRunsForLayout);
+  // SLD-LOC: JEDNA wspólna mapa rang dla WSZYSTKICH ciągów tej budowy —
+  // line_runs (pętla 1 niżej) i corridory-orphan (pętla 2 niżej) dzielą tę
+  // samą listę wejściową, więc żaden fallback-kod stacji z pętli 1 nie może
+  // kolidować z fallback-kodem stacji z pętli 2 (i odwrotnie). Patrz
+  // docstring `fallbackSequenceBaseByRunId` wyżej dla uzasadnienia i
+  // udokumentowanego ryzyka szczątkowego.
+  // Rozmiar bloku: MAKSIMUM liczby stacji w JEDNYM ciągu/corridorze TEJ
+  // KONKRETNEJ sieci (patrz docstring wyżej, „ROZMIAR BLOKU" — próba (ii),
+  // przyjęta OSTATECZNIE mimo udokumentowanego kompromisu: jedyna z trzech
+  // zbadanych opcji, która na PEŁNEJ regresji tego katalogu testów nie
+  // psuje ANI JEDNEGO z trzech niezależnych geometrycznych niezmienników
+  // spoza kart tej naprawy — `junction_dot_probe`, W3 anty-dryf, obszar
+  // bezpieczny pod dokami — które udokumentowana stała ROZMIAR=1000 łamie
+  // WSZYSTKIE TRZY jednocześnie, zmierzone w tej karcie). Podłoga 10 dla
+  // sieci bardzo małych (mniej niż 10 stacji w każdym ciągu).
+  const fallbackBlockSize = Math.max(
+    10,
+    ...sortedRuns.map((r) => r.stations.length),
+    ...corridors.map((c) => (c.station_refs ?? []).length),
+  );
+  const fallbackBases = fallbackSequenceBaseByRunId(
+    [
+      ...sortedRuns.map((r) => r.id),
+      // Corridory osobno posortowane leksykalnie PRZED złączeniem (nie przez
+      // `fallbackSequenceBaseByRunId` — ta już NIE sortuje, patrz docstring
+      // funkcji): ta sama kolejność, w której pętla 2 niżej PRZETWARZA
+      // corridory (`sortedCorridorsWithStations`), więc ranga = pozycja
+      // przetwarzania także dla „orphanów", spójnie z pętlą 1.
+      ...[...corridors.map((c) => c.ref_id)].sort(),
+    ],
+    fallbackBlockSize,
+  );
   // Długie ciągi terenowe zawijamy do kanałów SLD. To nie jest limit produktu:
   // ENM może mieć dowolną liczbę stacji, a adapter zachowuje kolejność
   // topologiczną przez układ wężowy zamiast ściskać dużą sieć w jednym rzędzie.
-  let stationSequence = 1;
   // V-03: X każdej umieszczonej stacji — by laterale startowały od stacji-rodzica
   // (rozłożone drzewo), a nie wszystkie od lewej krawędzi (stos).
   const stationXByRef = new Map<string, number>();
@@ -3425,6 +3639,33 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
     const minimumBaseX = parentX ?? X_STATIONS_START;
     // K30-51: track previous station X per row for collision-avoidance (min pitch).
     let previousXInRow: number | null = null;
+    // SLD-LOC (lokalność pionowa kotwic stacji): fallback numeracji stacji BEZ
+    // nazwy jawnej (`stationCodeFromName`) MUSI być lokalny do WŁASNEGO ciągu
+    // (line run) — dawniej licznik był dzielony GLOBALNIE między wszystkimi
+    // ciągami (`sortedRuns`), więc dopisanie stacji na ogonie main_trunk
+    // (przetwarzanego zawsze pierwszy) przesuwało o +1 fallback-kod KAŻDEJ
+    // później przetwarzanej stacji odgałęzienia — nawet takiej, której własna
+    // elektryczna tożsamość/footprint w ogóle się nie zmieniły. Skutek w
+    // warstwie SLD v3: etykieta zejścia jednego lateralu przekraczała próg
+    // cyfr (np. „S99"→„S100"), `dropBandHeight` tego wiersza arkusza rósł o
+    // jeden kwant siatki, a globalny packer pasm lateralnych
+    // (`createLateralShelfPacker`, `scene/buildScene.ts`) kaskadowo przesuwał
+    // w dół WSZYSTKIE kolejne półki — łącznie z półkami INNEGO wiersza
+    // arkusza, który z dopisaną stacją nie ma nic wspólnego (naruszenie
+    // lokalności, `anchorDisplacementMetrics`/`buildScene.p1Recenzja.test.ts`).
+    // Baza per-run (`fallbackBases`, ranga w POSORTOWANEJ liście id — patrz
+    // docstring `fallbackSequenceBaseByRunId` wyżej) usuwa przyczynę u
+    // źródła: numeracja fallback stacji ciągu A nie zależy już od liczby
+    // stacji w ciągu B ANI od tego, ile innych ciągów istnieje — a mimo to
+    // różne ciągi dostają różne, ROZŁOŻONE zakresy (nie prosty reset do 1,
+    // który łamał globalną jednoznaczność — zmierzone: `busbar_label_probe`).
+    // Ten sam mechanizm (ta sama mapa `fallbackBases`) zastosowany niżej w
+    // pętli 2 — stacje „orphan" dopięte przez corridory
+    // (`append_station_on_endpoint`). `.get(lr.id)!`: `lr.id` jest jednym z
+    // id użytych do ZBUDOWANIA `fallbackBases` (mapowanie z `sortedRuns`
+    // powyżej) — obecność klucza jest gwarancją z konstrukcji, nie
+    // założeniem czasu wykonania.
+    let stationSequence = fallbackBases.get(lr.id)!;
     sortedStations.forEach((sref, posInRun) => {
       if (placed.has(sref.substation_ref)) return;
       const sub = fieldStationByRef.get(sref.substation_ref);
@@ -3473,6 +3714,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         nnVoltageKv: stationSldDetails.nnVoltageKv,
         aggregatedLvLoad: stationSldDetails.aggregatedLvLoad,
         transformerVectorGroup: stationSldDetails.transformerVectorGroup,
+        earthingScheme: stationSldDetails.earthingScheme,
         ...(isNop ? { isNop: true } : {}),
         ...(cumKm > 0 ? { distanceFromGpzKm: Math.round(cumKm * 100) / 100 } : {}),
       });
@@ -3484,6 +3726,14 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
     .filter((corridor) => (corridor.station_refs ?? []).length > 0)
     .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
   sortedCorridorsWithStations.forEach((corridor, corridorIdx) => {
+    // SLD-LOC: ta sama naprawa co w pętli 1 wyżej — baza fallback per WŁASNY
+    // corridor (ranga jego `ref_id` we WSPÓLNEJ mapie `fallbackBases`, patrz
+    // wyżej), żeby stacja doklejona do jednego corridora ani nie przesuwała,
+    // ani nie duplikowała fallback-kodu stacji „orphan" innego,
+    // niepowiązanego corridora — ani stacji z pętli 1 (line_runs).
+    // `.get(corridor.ref_id)!`: gwarancja z konstrukcji, patrz komentarz przy
+    // analogicznym lookupie w pętli 1 wyżej.
+    let stationSequence = fallbackBases.get(corridor.ref_id)!;
     (corridor.station_refs ?? []).forEach((substationRef, posInRun) => {
       if (placed.has(substationRef)) return;
       const sub = fieldStationByRef.get(substationRef);
@@ -3517,6 +3767,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         nnVoltageKv: stationSldDetails.nnVoltageKv,
         aggregatedLvLoad: stationSldDetails.aggregatedLvLoad,
         transformerVectorGroup: stationSldDetails.transformerVectorGroup,
+        earthingScheme: stationSldDetails.earthingScheme,
       });
       stationSequence += 1;
     });
@@ -3557,6 +3808,9 @@ interface StationMiniBlockDetails {
   /** K30-62: vector group transformatora (np. "Dyn5", "Yd11"). Real
    *  industrial SLD pokazuje vector group obok TR symbol per IEC 60076-1. */
   readonly transformerVectorGroup: string | null;
+  /** W5-A: układ sieci nN stacji (`Transformer.lv_earthing_system` transformatora
+   *  zasilającego; PN-EN 60364-1 § 312) — `null` = niezadeklarowany / różne. */
+  readonly earthingScheme: UkladSieciNn | null;
   /** P0.8 nN (seam A8 §9.2.1): sekcje szyny nN z odpływami RZECZYWISTYMI
    *  (aparat + odbiorca, gdy model je niesie) — `[]` gdy stacja bez szyny nN
    *  (uczciwy brak, zero fabrykacji sekcji). NIEZALEŻNE od `aggregatedLvLoad`
@@ -3632,7 +3886,7 @@ function buildStationMiniBlockDetails(
     if (!bus) continue;
     stationBusRefs.add(bus.ref_id);
     const v = bus.voltage_kv;
-    if (typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= STATION_LV_VOLTAGE_LIMIT_KV) {
+    if (typeof v === 'number' && wPasmieNn(v)) {
       nnBusRefs.add(bus.ref_id);
     }
   }
@@ -3685,7 +3939,25 @@ function buildStationMiniBlockDetails(
     nnVoltageKv,
     aggregatedLvLoad,
     transformerVectorGroup: inferTransformerVectorGroup(snapshot, transformerRefs),
+    earthingScheme: inferEarthingScheme(snapshot, transformerRefs),
   };
+}
+
+/**
+ * W5-A: układ sieci nN stacji z transformatorów zasilających — JEDEN wspólny
+ * układ albo `null` (brak deklaracji / transformatory deklarują różne układy —
+ * wtedy schemat nie zgaduje). Ten sam predykat co `enm/uklad_sieci_nn.py::uklad_nn_stacji`.
+ */
+function inferEarthingScheme(
+  snapshot: EnergyNetworkModel,
+  transformerRefs: readonly string[],
+): UkladSieciNn | null {
+  const uklady = new Set<UkladSieciNn>();
+  for (const ref of transformerRefs) {
+    const tr = (snapshot.transformers ?? []).find((t) => t.ref_id === ref || t.id === ref);
+    if (tr?.lv_earthing_system) uklady.add(tr.lv_earthing_system);
+  }
+  return uklady.size === 1 ? [...uklady][0] : null;
 }
 
 /**
@@ -3859,7 +4131,7 @@ function sanitizeRefToken(ref: string): string {
   return ref.replace(/[^a-zA-Z0-9_.-]+/g, '_');
 }
 
-interface StationFieldSpec {
+export interface StationFieldSpec {
   readonly field_ref?: string;
   readonly name?: string;
   readonly bay_role?: string;
@@ -3931,7 +4203,9 @@ function buildStationMiniBaysFromFieldSpecs(
     });
 }
 
-function readStationFieldSpecs(station: Substation): StationFieldSpec[] {
+/** Specyfikacje pól stacji (`meta.field_specs`) w kolejności z danych — JEDEN parser dla
+ *  rysunku i szuflady (pola stacji wstawionej operacją nie mają elementu `bays`). */
+export function readStationFieldSpecs(station: Substation): StationFieldSpec[] {
   const rawSpecs = station.meta?.field_specs;
   if (!Array.isArray(rawSpecs)) return [];
   return rawSpecs
@@ -3956,6 +4230,21 @@ const PRIMARY_DEVICE_KINDS: ReadonlySet<string> = new Set<string>([
   'CB', 'LOAD_SWITCH', 'DS', 'ES', 'CT', 'VT', 'CABLE_HEAD', 'TRANSFORMER_DEVICE',
   'FUSE', 'GENERATOR_PV', 'GENERATOR_BESS', 'GENERATOR_FW', 'PCS', 'BATTERY', 'SURGE_ARRESTER',
 ]);
+
+/** Dozwolone stany aparatu (lustro `BayDeviceState`, ENM). */
+const BAY_DEVICE_STATES: ReadonlySet<string> = new Set<string>([
+  'zamkniety', 'otwarty', 'zamkniety_naped_rozbrojony', 'otwarty_naped_rozbrojony', 'nieznany', 'awaria',
+]);
+
+/** Dozwolone tryby sterowania aparatu (lustro `BayControlMode`, ENM). */
+const BAY_CONTROL_MODES: ReadonlySet<string> = new Set<string>([
+  'miejscowe', 'zdalne', 'lokalne_zablokowane', 'odstawione',
+]);
+
+/** Wartość trójstanowa telemetrii: `true`/`false` ze źródła, wszystko inne = `null`. */
+function trojstan(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
+}
 
 /** Dozwolone położenia aparatu (lustro `BayPrimaryPlacement`, ENM). */
 const PRIMARY_DEVICE_PLACEMENTS: ReadonlySet<string> = new Set<string>([
@@ -4011,14 +4300,19 @@ function parseStationFieldPrimaryDevices(value: unknown): readonly BayPrimaryDev
       device.earthing_role = earthingRole;
     }
     if (isPlainRecord(raw.switch_state)) {
+      // Karta #135: stan łącznika (`actual_state`) NIE zależy od telemetrii — rekord bez
+      // trybu sterowania dawniej ginął w całości, a brak komunikacji/blokady stawał się
+      // `false` („komunikacja zła", „brak blokady"). Telemetria trójstanowa: wartość albo
+      // `null` (brak telemetrii); przepisana bez zmian.
       const actualState = getString(raw.switch_state.actual_state);
-      const controlMode = getString(raw.switch_state.control_mode);
-      if (actualState && controlMode) {
+      if (actualState && BAY_DEVICE_STATES.has(actualState)) {
+        const controlMode = getString(raw.switch_state.control_mode);
         device.switch_state = {
-          actual_state: actualState as NonNullable<BayPrimaryDevice['switch_state']>['actual_state'],
-          control_mode: controlMode as NonNullable<BayPrimaryDevice['switch_state']>['control_mode'],
-          communication_ok: raw.switch_state.communication_ok === true,
-          interlock_blocked: raw.switch_state.interlock_blocked === true,
+          actual_state: actualState as BayDeviceState,
+          control_mode:
+            controlMode && BAY_CONTROL_MODES.has(controlMode) ? (controlMode as BayControlMode) : null,
+          communication_ok: trojstan(raw.switch_state.communication_ok),
+          interlock_blocked: trojstan(raw.switch_state.interlock_blocked),
         };
       }
     }
@@ -4689,7 +4983,7 @@ function inferLineRunsFromMvBusGraph(
       `${baseRef}/sn_bus_out`,
     ]).filter((busRef) => {
       const voltageKv = busVoltageByRef.get(busRef);
-      return voltageKv === undefined || voltageKv >= 1;
+      return voltageKv === undefined || powyzejPasmaNn(voltageKv);
     });
     busRefsByStationRef.set(substation.ref_id, busRefs);
     for (const busRef of busRefs) {
@@ -6291,7 +6585,10 @@ function buildDers(
       hasBlockTransformer: isBlockTransformerConnection,
       blockTransformerLabel: formatDerBlockTransformerLabel(blockTransformer),
       connectionVariant: gen.connection_variant ?? undefined,
-      ncRfgModule: gen.nc_rfg_module ?? deriveNcRfgModule(gen.p_mw),
+      // Moduł NC RfG WYŁĄCZNIE z modelu (klasyfikacja backendu zapisana przy wytwórcy);
+      // brak = brak oznaczenia. Dawny zastępczy podział wg mocy (progi 1/50/75 MW, sprzeczne
+      // z art. 5 rozporządzenia 2016/631) był domysłem klienta — usunięty (Pakiet D2).
+      ncRfgModule: gen.nc_rfg_module ?? null,
       operatingPMw: gen.p_mw ?? null,
       operatingQMvar: gen.q_mvar ?? null,
       lod: 'compact',
@@ -6571,15 +6868,3 @@ function buildDerSnChain(snapshot: EnergyNetworkModel, gen: Generator): SldDerSn
   };
 }
 
-/**
- * Wyprowadza NC RFG Module z mocy nominalnej wg progów ENEA profile (enea.yaml).
- * Fallback gdy backend nie ustawił nc_rfg_module.
- * A: Mikro (<1 MW), B: Małe (1–50 MW), C: Duże (50–75 MW), D: B. duże (>75 MW).
- */
-function deriveNcRfgModule(pMw: number | null | undefined): 'A' | 'B' | 'C' | 'D' | null {
-  if (pMw === null || pMw === undefined || pMw <= 0) return null;
-  if (pMw < 1) return 'A';
-  if (pMw < 50) return 'B';
-  if (pMw < 75) return 'C';
-  return 'D';
-}

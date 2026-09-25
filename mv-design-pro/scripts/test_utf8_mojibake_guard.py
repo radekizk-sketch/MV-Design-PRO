@@ -107,12 +107,18 @@ def test_zakres_obejmuje_pozostale_drzewa_z_trescia_autorska() -> None:
 
 
 def test_zakres_obejmuje_pliki_korzenia_ktorych_nie_bylo_na_liscie() -> None:
-    """Stara lista wymieniała 4 pliki korzenia; reszta była niewidoczna."""
+    """Stara lista wymieniała 4 pliki korzenia; reszta była niewidoczna.
+
+    `mv-design-pro/CANONICAL_COMPLIANCE.md` zastąpiony `mv-design-pro/AGENTS.md`
+    2026-09-09 (karta ARCHIWUM-CANONICAL-COMPLIANCE) -- oryginalny plik przeniesiony
+    do `docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md`, więc przestał być
+    przykładem pliku KORZENIA; AGENTS.md pełni tę samą rolę pinu regresji.
+    """
     zakres = _zbior_zakresu()
     for plik in (
         "mv-design-pro/README.md",
         "mv-design-pro/STAN_REPO.md",
-        "mv-design-pro/CANONICAL_COMPLIANCE.md",
+        "mv-design-pro/AGENTS.md",
         "CLAUDE.md",
     ):
         assert plik in zakres, f"plik korzenia poza zakresem: {plik}"
@@ -282,22 +288,33 @@ def test_naprawiacz_widzi_dokladnie_ten_sam_zbior_co_straznik() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_uszkodzony_zapis_w_testach_backendu_czyni_straznika_czerwonym() -> None:
-    """Ścieżka REALNA: plik trafia do `backend/tests`, uruchamiamy `main()`.
+def test_uszkodzony_zapis_w_testach_backendu_czyni_straznika_czerwonym(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Uszkodzony zapis w `backend/tests` zapala strażnika — bieg `main()` na drzewie izolowanym.
 
-    Przed kartą W4 taki plik nie zapalał niczego — katalog był poza `SCAN_DIRS`.
-    Plik jest usuwany w `finally`, żeby test nie zostawiał śladu w drzewie.
+    Przed kartą W4 taki plik nie zapalał niczego — katalog był poza `SCAN_DIRS`. To, że
+    PRAWDZIWY `backend/tests` jest w zakresie, przypina `test_zakres_obejmuje_katalog_testow_
+    backendu`; tu sprawdzamy, że plik w tym położeniu czyni `main()` czerwonym, a po jego
+    usunięciu zielonym.
+
+    Drzewo izolowane (`tmp_path` o układzie repozytorium), nie prawdziwe `backend/tests`
+    (partia integracji 4, 2026-09-25): próbka pisana do repozytorium ścigała się z każdym
+    równoległym biegiem na tym samym drzewie — drugi bieg widział cudzą próbkę po własnym
+    sprzątnięciu i czerwieniał na `main() == 0`, a równoległy pytest backendu zbierał
+    obcy moduł `test_sonda_kodowania_*.py`.
     """
-    katalog = KORZEN / "mv-design-pro" / "backend" / "tests"
+    import utf8_mojibake_guard
+
+    katalog = tmp_path / "mv-design-pro" / "backend" / "tests"
+    katalog.mkdir(parents=True)
+    (katalog / "test_zdrowy.py").write_text('CATALOG_REF = "kabel-240"\n', encoding="utf-8")
     plik = katalog / f"test_sonda_kodowania_{uuid.uuid4().hex}.py"
-    plik.write_text(
-        f'CATALOG_REF = "kabel-{_MOJIBAKE_A}-240"\n',
-        encoding="utf-8",
-    )
-    try:
-        assert main() == 1, "strażnik zielony mimo uszkodzonego zapisu w backend/tests"
-    finally:
-        plik.unlink()
+    plik.write_text(f'CATALOG_REF = "kabel-{_MOJIBAKE_A}-240"\n', encoding="utf-8")
+    monkeypatch.setattr(utf8_mojibake_guard, "KORZEN", tmp_path)
+
+    assert main() == 1, "strażnik zielony mimo uszkodzonego zapisu w backend/tests"
+    plik.unlink()
     assert main() == 0, "drzewo po sprzątnięciu próbki musi być czyste"
 
 

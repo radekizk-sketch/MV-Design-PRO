@@ -15,6 +15,7 @@
  * pobranych z wyniku biegu (`/api/analysis-runs/{id}/results/short-circuit`).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -140,6 +141,8 @@ async function zbudujProjektZeStacja(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   let op: DomainOpResponse = {};
@@ -307,7 +310,7 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
 
   await page.goto(`/#analysis?run=${runId}`, { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
-  await page.getByRole('tab', { name: /Zwarcia/ }).click();
+  await otworzZakladkeWynikow(page, 'zwarcia');
   await expect(page.getByTestId('mvd-zwarcia-ekran')).toBeVisible({ timeout: 30000 });
 
   // Wybór punktu zwarcia = NATYWNY klik wiersza tabeli punktów.
@@ -392,7 +395,7 @@ test('ogniwo: stacja BEZ ręcznej konfiguracji — werdykty z MODELU (KD-6)', as
 
   await page.goto(`/#analysis?run=${runId}`, { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
-  await page.getByRole('tab', { name: /Zwarcia/ }).click();
+  await otworzZakladkeWynikow(page, 'zwarcia');
   await expect(page.getByTestId('mvd-zwarcia-ekran')).toBeVisible({ timeout: 30000 });
 
   const nazwaPunktu = punktStacji.target_name ?? punktStacji.target_id;

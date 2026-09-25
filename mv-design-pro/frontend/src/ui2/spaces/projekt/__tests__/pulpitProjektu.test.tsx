@@ -6,9 +6,11 @@ import { ETAPY } from '../../../proces';
 import { PULPIT_STRINGS } from '../strings';
 import { INSPECTOR_STRINGS } from '../../../inspector';
 import { useAppStateStore } from '../../../../ui/app-state';
+import { useShellStore } from '../../../shell/useShellStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useStudyCasesStore } from '../../../../ui/study-cases/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
+import * as studyCasesApi from '../../../../ui/study-cases/api';
 import {
   snapshotFixture,
   readinessZBlokadami,
@@ -16,6 +18,16 @@ import {
   activeCaseFixture,
   runFixture,
 } from './fixtures';
+
+// `useWszystkiePrzebiegiProjektu` (TODO-UI2 §1 p. 10) pobiera biegi WSZYSTKICH
+// przypadków przez `listRuns` per-przypadkowe — mock zwraca bieg K2 (aktywny
+// K2 fixture) dla K2, pustą listę dla pozostałych (rzeczywisty kształt API).
+vi.mock('../../../../ui/study-cases/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../ui/study-cases/api')>();
+  return { ...actual, listRuns: vi.fn() };
+});
+
+const mockListRuns = vi.mocked(studyCasesApi.listRuns);
 
 function ustawGotowy() {
   useSnapshotStore.setState({
@@ -28,7 +40,11 @@ function ustawGotowy() {
       caseListItem('K1', 'Stan normalny', 'FRESH'),
       caseListItem('K2', 'Zwarcia maks.', 'OUTDATED', { is_active: true }),
     ],
-    activeCase: activeCaseFixture('FRESH'),
+    // rewizja_biegu = 7 dopasowana do snapshotFixture().header.revision (7) —
+    // FRESH oznacza wynik POLICZONY NA bieżącej rewizji modelu (wewnętrznie
+    // spójna fixture; TODO-UI2 §1 p. 10 ujawniło rozjazd 4≠7 dotąd niewidoczny,
+    // bo KafelSpojnosci fabrykował rewizjaDanej=rewizjaModelu zamiast porównywać).
+    activeCase: activeCaseFixture('FRESH', { rewizja_biegu: 7 }),
   });
   useExecutionRunsStore.setState({
     runs: [runFixture({ started_at: '2026-07-15T14:32:00Z', status: 'DONE' })],
@@ -52,6 +68,8 @@ beforeEach(() => {
   useSnapshotStore.setState({ snapshot: null, readiness: null, loading: false });
   useStudyCasesStore.setState({ cases: [], activeCase: null });
   useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: null });
+  mockListRuns.mockReset();
+  mockListRuns.mockResolvedValue({ runs: [], count: 0 });
 });
 
 describe('PulpitProjektu — stany przestrzeni', () => {
@@ -108,6 +126,36 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
   // WIERSZ ZASTĄPIONY, INTENCJA ZACHOWANA: poprzednio sprawdzał, że na pulpicie
   // jest DOKŁADNIE jeden kafel-zaślepka „wkrótce". Karta PULPIT-NBA usunęła
   // zaślepkę (ZASADA NR 1), więc test pilnuje teraz, że nie wróciła.
+  it.each([
+    ['basic', false],
+    ['extended', false],
+    ['expert', true],
+  ] as const)(
+    'odcisk modelu poza kaflami — informacje audytowe pulpitu tylko w trybie %s → %s',
+    async (tryb, widoczne) => {
+      const poprzedni = useShellStore.getState().advancementMode;
+      useShellStore.setState({ advancementMode: tryb });
+      try {
+        const odcisk = useSnapshotStore.getState().snapshot!.header.hash_sha256;
+        const { container, unmount } = render(<PulpitProjektu {...props()} />);
+        const siatka = container.querySelector('.mvd-pulpit-grid') as HTMLElement;
+        expect(siatka.textContent).not.toContain(odcisk.slice(0, 10));
+        if (!widoczne) {
+          expect(screen.queryByTestId('pulpit-audyt')).toBeNull();
+          unmount();
+          return;
+        }
+        fireEvent.click(screen.getByTestId('pulpit-audyt-przelacz'));
+        expect(screen.getByTestId('pulpit-audyt-lista')).toHaveTextContent(
+          `${PULPIT_STRINGS.odcisk}${odcisk}`,
+        );
+        unmount();
+      } finally {
+        useShellStore.setState({ advancementMode: poprzedni });
+      }
+    },
+  );
+
   it('pulpit nie ma ŻADNEJ zaślepki „wkrótce" (zakaz zaślepek)', () => {
     render(<PulpitProjektu {...props()} />);
     expect(screen.queryByText(/wkrótce/i)).not.toBeInTheDocument();
@@ -138,6 +186,71 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
     });
     render(<PulpitProjektu {...props()} />);
     expect(screen.getByTestId('pulpit-przylaczenie-brak')).toBeInTheDocument();
+  });
+
+  // CV-4.3 K7: scenariusz MIN (warunki przyłączenia OSD) — „Sk″maks/Sk″min" gdy
+  // podane, samo „Sk″" gdy nie (już pokryte testem powyżej — zero fabrykacji).
+  it('KafelPrzylaczenia: dane MIN → wiersze maks./min. Sk″ i Ik″ obok siebie', () => {
+    useSnapshotStore.setState({
+      snapshot: snapshotFixture({
+        buses: [{ ref_id: 'B-GPZ', id: 'B-GPZ', voltage_kv: 15 }] as never,
+        sources: [
+          {
+            ref_id: 'S',
+            id: 'S',
+            name: 'GPZ',
+            bus_ref: 'B-GPZ',
+            sk3_mva: 250,
+            ik3_ka: 9.6,
+            sk3_min_mva: 150,
+            ik3_min_ka: 5.8,
+          },
+        ] as never,
+      }),
+    });
+    render(<PulpitProjektu {...props()} />);
+    expect(screen.getByText(PULPIT_STRINGS.przylaczenieSkMaks)).toBeInTheDocument();
+    expect(screen.getByTestId('pulpit-przylaczenie-sk')).toHaveTextContent('250');
+    expect(screen.getByTestId('pulpit-przylaczenie-sk-min')).toHaveTextContent('150');
+    expect(screen.getByText(PULPIT_STRINGS.przylaczenieIkMaks)).toBeInTheDocument();
+    expect(screen.getByTestId('pulpit-przylaczenie-ik-min')).toHaveTextContent('5,80');
+  });
+
+  // CV-4.3 K7c: napięcie zadane szyny bilansującej — wiersz WYŁĄCZNIE gdy
+  // źródło je niesie (zero fabrykacji), ta sama reguła jak scenariusz MIN.
+  it('KafelPrzylaczenia: „U zadane" WYŁĄCZNIE gdy źródło niesie u_set_pu (zero fabrykacji)', () => {
+    useSnapshotStore.setState({
+      snapshot: snapshotFixture({
+        buses: [{ ref_id: 'B-GPZ', id: 'B-GPZ', voltage_kv: 15 }] as never,
+        sources: [
+          { ref_id: 'S', id: 'S', name: 'GPZ', bus_ref: 'B-GPZ', sk3_mva: 250, ik3_ka: 9.6 },
+        ] as never,
+      }),
+    });
+    render(<PulpitProjektu {...props()} />);
+    expect(screen.queryByTestId('pulpit-przylaczenie-u-zadane')).toBeNull();
+  });
+
+  it('KafelPrzylaczenia: „U zadane" pokazuje wartość z pola źródła gdy podane', () => {
+    useSnapshotStore.setState({
+      snapshot: snapshotFixture({
+        buses: [{ ref_id: 'B-GPZ', id: 'B-GPZ', voltage_kv: 15 }] as never,
+        sources: [
+          {
+            ref_id: 'S',
+            id: 'S',
+            name: 'GPZ',
+            bus_ref: 'B-GPZ',
+            sk3_mva: 250,
+            ik3_ka: 9.6,
+            u_set_pu: 1.06,
+          },
+        ] as never,
+      }),
+    });
+    render(<PulpitProjektu {...props()} />);
+    expect(screen.getByText(PULPIT_STRINGS.przylaczenieUZadane)).toBeInTheDocument();
+    expect(screen.getByTestId('pulpit-przylaczenie-u-zadane')).toHaveTextContent('1,060');
   });
 
   it('warunki OSD nie podane → uczciwa informacja + przycisk „Uzupełnij warunki OSD"', () => {
@@ -200,13 +313,33 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
     expect(screen.getByText('Zwarcia maks.')).toBeInTheDocument();
   });
 
-  it('„Ostatni przebieg" per wiersz tylko dla aktywnego przypadku (TODO-KARTA #3)', () => {
+  it('„Ostatni przebieg" per wiersz dla KAŻDEGO przypadku z historią (TODO-UI2 §1 p. 10: pełna historia, nie tylko aktywny)', async () => {
+    mockListRuns.mockImplementation(async (caseId: string) =>
+      caseId === 'K2'
+        ? { runs: [runFixture({ started_at: '2026-07-15T14:32:00Z', status: 'DONE' })], count: 1 }
+        : { runs: [], count: 0 },
+    );
     render(<PulpitProjektu {...props()} />);
-    // Aktywny K2 → czas przebiegu; K1 → „—".
+    // K2 ma bieg (mock) → czas przebiegu; K1 bez biegu → „—" (stan zerowy, nie luka danych).
     const wierszK2 = screen.getByText('Zwarcia maks.').closest('tr')!;
-    expect(within(wierszK2).getByText('2026-07-15 14:32')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(wierszK2).getByText('2026-07-15 14:32')).toBeInTheDocument();
+    });
     const wierszK1 = screen.getByText('Stan normalny').closest('tr')!;
     expect(within(wierszK1).getByText('—')).toBeInTheDocument();
+  });
+
+  it('„Ostatni przebieg": przypadek BEZ aktywnego przebiegu w store też dostaje historię z pełnego zbioru (K1 też ma bieg)', async () => {
+    mockListRuns.mockImplementation(async (caseId: string) =>
+      caseId === 'K1'
+        ? { runs: [runFixture({ id: 'run-k1', study_case_id: 'K1', started_at: '2026-07-10T09:15:00Z', status: 'DONE' })], count: 1 }
+        : { runs: [], count: 0 },
+    );
+    render(<PulpitProjektu {...props()} />);
+    const wierszK1 = screen.getByText('Stan normalny').closest('tr')!;
+    await waitFor(() => {
+      expect(within(wierszK1).getByText('2026-07-10 09:15')).toBeInTheDocument();
+    });
   });
 });
 

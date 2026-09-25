@@ -25,7 +25,6 @@ KLUCZE_KANONU = {
     "canonical_priority",
     "canonical_area",
     "canonical_message_pl",
-    "canonical_fix_action_id",
     "canonical_fix_navigation",
 }
 
@@ -151,3 +150,20 @@ def test_wzbogacenie_nie_zmienia_werdyktu_gotowosci() -> None:
     assert powtorka["ready"] == gotowosc
     assert len(powtorka["blockers"]) == liczba_blokad
     assert len(powtorka["warnings"]) == liczba_ostrzezen
+
+
+# ---------------------------------------------------------------------------
+# Odbiór CV-3.3-B: `sources.bus_missing` walidatora → kanon `source.connection_missing`
+# ---------------------------------------------------------------------------
+
+
+def test_zrodlo_bez_szyny_ma_droge_do_kanonu() -> None:
+    """Jedyny dawny emiter `source.connection_missing` był w skasowanym R2 —
+    droga do projektanta prowadzi odtąd z walidatora ENM przez most."""
+    assert ODWZOROWANIE_WALIDATOR_NA_KANON["sources.bus_missing"] == "source.connection_missing"
+    spec = READINESS_CODES["source.connection_missing"]
+    zgloszenia = [_zgloszenie("sources.bus_missing", "src_1")]
+    _wzbogac_o_kanon(zgloszenia)
+    assert zgloszenia[0]["canonical_code"] == "source.connection_missing"
+    assert zgloszenia[0]["canonical_priority"] == spec.priority
+    assert zgloszenia[0]["canonical_fix_navigation"] == spec.fix_navigation

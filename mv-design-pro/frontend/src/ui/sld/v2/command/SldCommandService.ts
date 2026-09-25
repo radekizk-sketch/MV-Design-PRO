@@ -64,7 +64,12 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     /* K5-A (H-4): wejście do kreatora baterii kondensatorów SN — realna
      * operacja add_shunt_compensator_sn (bus_ref = kliknięta szyna). */
     { id: 'add-compensator', labelPl: 'Dodaj kompensator mocy biernej', group: 'budowa' },
-    { id: 'show-sc-data', labelPl: 'Pokaż dane zwarciowe źródła', group: 'widok' },
+    // Karta W2-B: etykieta byla identyczna z 'show-sc-source' menu GPZ
+    // ('Pokaz dane zwarciowe zrodla') mimo innego przedmiotu akcji (sekcja,
+    // nie zrodlo) — naprawione przy okazji wpiecia realnej nawigacji dla obu
+    // akcji (byly wczesniej dwoma zaslepkami roadmapy, jedna dokladnie
+    // skopiowana etykieta z drugiej).
+    { id: 'show-sc-data', labelPl: 'Pokaż dane zwarciowe sekcji', group: 'widok' },
     { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', group: 'widok' },
   ],
   bay: [
@@ -276,7 +281,7 @@ export function getMenuActions(
         ...a,
         disabled: true,
         disabledReasonPl:
-          'Brak wolnego pola liniowego SN w tej rozdzielni. Dodaj pole odpływowe albo kontynuuj ciąg z istniejącego odcinka.',
+          'Brak wolnego pola liniowego SN w tej rozdzielni. Dodaj pole liniowe wyjściowe albo kontynuuj ciąg z istniejącego odcinka.',
       };
     }
     /* S9-10 (klasa S9-5, predykaty PARAMI): pozycja „Rozpocznij odgałęzienie"
@@ -292,7 +297,7 @@ export function getMenuActions(
         ...a,
         disabled: true,
         disabledReasonPl:
-          'Brak wolnego pola odgałęźnego SN (pole roli FEEDER z wolnym zaciskiem). Najpierw dodaj pole odgałęzienia w rozdzielni.',
+          'Brak wolnego pola odgałęźnego SN z wolnym zaciskiem. Najpierw dodaj pole odgałęźne w rozdzielni.',
       };
     }
     if (a.id === 'show-results' && ctx.hasResults === false) {
@@ -356,7 +361,6 @@ export const toastBus = new ToastBus();
 export const COMMAND_FEEDBACK_PL = {
   bayCreated: (designation: string) => `Utworzono pole ${designation}.`,
   segmentSplit: 'Odcinek podzielono na dwa odcinki end-to-end.',
-  transformerAdded: (designation: string) => `Dodano transformator SN/nN ${designation}.`,
   derAttached: (kind: 'PV' | 'BESS' | 'FW', name: string) =>
     `Dodano źródło ${kind} "${name}" z punktem przyłączenia.`,
   missingInverterData: 'Brakuje danych falownika do obliczeń zwarciowych.',

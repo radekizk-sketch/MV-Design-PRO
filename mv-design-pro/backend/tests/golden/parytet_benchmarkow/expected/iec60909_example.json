@@ -1,0 +1,30 @@
+{
+  "network_id": "iec60909-example",
+  "source": "IEC 60909-4:2000 Examples for the calculation of short-circuit currents, Section 4",
+  "source_note": "Uproszczona siec IEC-style: zrodlo 110 kV Sk''=4000 MVA X/R=10 i transformator sieciowy 110/33 kV 25 MVA, uk=10%, pk=0 kW. Wartosci oczekiwane sa WYROCZNIA RECZNA (IEC 60909-0:2016), niezalezna od solvera: CV-4.3 K1 (2026-09-06) przywrocilo impedancje zrodla sieciowego Z_Q' przeniesiona na 33 kV do Z_k (poprzedni baseline V12K-178 liczyl Ik'' wylacznie z Z_TK transformatora); CV-4.3 K6 (2026-09-06, odbior A1) liczy Z_Q z wspolczynnikiem c wg IEC 60909-0:2016 par. 6.2.1 eq. (6): Z_Q = c*U_nQ^2/S''_kQ (|Z_Q| = 3.327500 ohm przy 110 kV zamiast 3,025 ohm bez c), wiec Ik'' 3F na szynie 33 kV = 4563.543 A (A1 bez c: 4590,638 A; V12K-178 bez Z_Q: 4880,313 A). Skladowe: Z_Q' = (0.029799+j0.297989) ohm, Z_TK = K_T*Z_T = 0.9858490566*j4.356000 = j4.294358 ohm, Z_k = (0.029799+j4.592347) ohm, |Z_k| = 4.592444 ohm, kappa = 1.981107 (R/X = 0.0064888), m = 0.512733, n = 1. Tor kanoniczny (enm_builders/iec60909_example.py -> enm/assembler.py -> FROZEN ShortCircuitIEC60909Solver) musi odtworzyc te liczby w tolerancji rtol=1e-4 wiersza.",
+  "power_flow": [],
+  "power_flow_branches": [],
+  "short_circuit": [
+    {
+      "fault_node_id": "BUS-MV",
+      "sc_type": "3F",
+      "ikss_a": 4563.543,
+      "ip_a": 12785.719,
+      "ith_a": 5612.848,
+      "sk_mva": 260.842,
+      "rtol": 0.0001,
+      "note": "Zwarcie 3F na szynie 33 kV, c=1,10 (wyrocznia RECZNA, IEC 60909-0:2016). Z_Q = c*U_nQ^2/S''_kQ (eq. 6) = 1,1*110^2/4000 = 3.327500 ohm; X_Q = Z_Q/sqrt(1+(R/X)^2), R_Q = 0,1*X_Q; przeniesione na 33 kV *(33/110)^2 = 0,09: Z_Q' = (0.029799+j0.297989) ohm. Z_T = uk*U_n^2/S_rT = 4.356000 ohm (pk = 0 -> R_T = 0), K_T = 0,95*c_max/(1+0,6*x_T) = 0.9858490566 (x_T = uk = 0,10), Z_TK = j4.294358 ohm. Z_k = Z_Q'+Z_TK = (0.029799+j4.592347) ohm, |Z_k| = 4.592444 ohm. Ikss = c*U_n/(sqrt(3)*|Z_k|) [3F] = 4563.543 A. kappa = 1,02+0,98*exp(-3*R/X) = 1.981107 (R/X = 0.0064888), Ip = kappa*sqrt(2)*Ikss = 12785.719 A, m = 0.512733 (tk = 1 s), n = 1 (zwarcie odlegle od generatora), Ith = Ikss*sqrt(m+n) = 5612.848 A, Sk = sqrt(3)*U_n*Ikss = 260.842 MVA. Poprzedni baseline A1 (Z_Q bez c, tor kanoniczny sprzed K6): 4590,638 A."
+    },
+    {
+      "fault_node_id": "BUS-MV",
+      "sc_type": "2F",
+      "ikss_a": 3952.144,
+      "ip_a": 11072.757,
+      "ith_a": 4860.869,
+      "sk_mva": 225.895,
+      "rtol": 0.0001,
+      "note": "Zwarcie 2F na szynie 33 kV, c=1,10 (wyrocznia RECZNA, IEC 60909-0:2016). Z_Q = c*U_nQ^2/S''_kQ (eq. 6) = 1,1*110^2/4000 = 3.327500 ohm; X_Q = Z_Q/sqrt(1+(R/X)^2), R_Q = 0,1*X_Q; przeniesione na 33 kV *(33/110)^2 = 0,09: Z_Q' = (0.029799+j0.297989) ohm. Z_T = uk*U_n^2/S_rT = 4.356000 ohm (pk = 0 -> R_T = 0), K_T = 0,95*c_max/(1+0,6*x_T) = 0.9858490566 (x_T = uk = 0,10), Z_TK = j4.294358 ohm. Z_k = Z_Q'+Z_TK = (0.029799+j4.592347) ohm, |Z_k| = 4.592444 ohm, Z_k(2F) = Z_1+Z_2 = 2*Z_1. Ikss = c*U_n/(sqrt(3)*|Z_k|) -> dla 2F: c*U_n/|Z_1+Z_2| = 3952.144 A. kappa = 1,02+0,98*exp(-3*R/X) = 1.981107 (R/X = 0.0064888), Ip = kappa*sqrt(2)*Ikss = 11072.757 A, m = 0.512733 (tk = 1 s), n = 1 (zwarcie odlegle od generatora), Ith = Ikss*sqrt(m+n) = 4860.869 A, Sk = sqrt(3)*U_n*Ikss = 225.895 MVA. Poprzedni baseline A1 (Z_Q bez c, tor kanoniczny sprzed K6): 3975,609 A."
+    }
+  ],
+  "dynamic_samples": []
+}

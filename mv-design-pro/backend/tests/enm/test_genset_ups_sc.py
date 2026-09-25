@@ -93,3 +93,44 @@ def test_ups_validates_and_becomes_inverter_sc_source():
     graph = map_enm_to_network_graph(enm)
     inverters = graph.get_inverter_sources()
     assert len(inverters) == 1
+
+
+# ---------------------------------------------------------------------------
+# Karta FAB-D1 (D3 sibling): brak mocy znamionowej NIE fabrykuje 0 kW/0 MW.
+# ---------------------------------------------------------------------------
+
+
+def test_genset_bez_rated_power_kw_odrzucony() -> None:
+    payload = _genset_payload()
+    del payload["genset_spec"]["rated_power_kw"]
+    result = execute_domain_operation(_base_enm(), "add_genset_nn", payload)
+    assert result.get("error")
+    assert result.get("error_code") == "generator.power_missing"
+    assert result.get("snapshot") is None
+
+
+def test_genset_bez_power_factor_odrzucony() -> None:
+    payload = _genset_payload()
+    del payload["genset_spec"]["power_factor"]
+    result = execute_domain_operation(_base_enm(), "add_genset_nn", payload)
+    assert result.get("error")
+    assert result.get("error_code") == "generator.power_missing"
+    assert result.get("snapshot") is None
+
+
+def test_genset_power_factor_poza_zakresem_odrzucony_osobnym_kodem() -> None:
+    """Dana JAWNA, ale niepoprawna (poza (0, 1]), to inny przypadek niż brak danej."""
+    payload = _genset_payload()
+    payload["genset_spec"]["power_factor"] = 1.5
+    result = execute_domain_operation(_base_enm(), "add_genset_nn", payload)
+    assert result.get("error")
+    assert result.get("error_code") == "generator.power_factor_invalid"
+
+
+def test_ups_bez_rated_power_kw_odrzucony() -> None:
+    payload = _ups_payload()
+    del payload["ups_spec"]["rated_power_kw"]
+    result = execute_domain_operation(_base_enm(), "add_ups_nn", payload)
+    assert result.get("error")
+    assert result.get("error_code") == "generator.power_missing"
+    assert result.get("snapshot") is None

@@ -46,7 +46,6 @@ NIGDY domyślna/zgadnięta wartość.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -57,14 +56,13 @@ from application.analyses.fault_loop.route import (
     route_segments_min_scenario,
 )
 from application.analyses.fault_loop.service import (
-    _DEFAULT_SYSTEM,
-    _NON_TN_SYSTEMS,
-    _SYSTEM_MAP,
     _find_station,
-    _system_for_station,
     _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
+    oblicz_petle_na_trasie,
+    odmowa_analizy_nn,
     resolve_transformer_for_bus,
+    uklad_nn_transformatora,
 )
 from application.analyses.swz.werdykt import AparatZabezpieczajacy, ocen_swz
 from application.proof_engine.packs.lv_circuit_verification import (
@@ -75,15 +73,15 @@ from application.proof_engine.packs.lv_circuit_verification import (
     UrzadzenieOchronneNn,
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
+from network_model.pochodne import kv_na_v, napiecie_fazowe_v
 from network_model.solvers.cable_ampacity_derating import WspolczynnikiObciazalnosciNN
 from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
 from network_model.solvers.fault_loop_builder import (
-    FaultLoopBuildRequest,
-    build_fault_loop_input,
     sum_phase_and_return_route,
 )
-from network_model.solvers.fault_loop_iec60364 import compute_fault_loop
+from solver_input.uklad_sieci_nn import typ_sieci_solvera
 
 
 class LVCircuitVerificationInputError(ValueError):
@@ -131,7 +129,7 @@ def resolve_urzadzenie_ochronne(
             UrzadzenieOchronneNn(
                 kind=KIND_MCB,
                 id=breaker.ref_id,
-                nazwa=breaker.name,
+                nazwa=nazwa_elementu(breaker, "branches"),
                 in_a=float(in_a),
                 klasa_mcb=str(klasa),
                 wlasna_zdolnosc_ka=(
@@ -158,7 +156,7 @@ def resolve_urzadzenie_ochronne(
             UrzadzenieOchronneNn(
                 kind=KIND_FUSE_SWITCH,
                 id=breaker.ref_id,
-                nazwa=breaker.name,
+                nazwa=nazwa_elementu(breaker, "branches"),
                 in_a=float(in_a),
                 conditional_sc_current_ka=conditional_ka,
             ),
@@ -175,7 +173,7 @@ def resolve_urzadzenie_ochronne(
                 UrzadzenieOchronneNn(
                     kind=KIND_FUSE_SWITCH,
                     id=breaker.ref_id,
-                    nazwa=breaker.name,
+                    nazwa=nazwa_elementu(breaker, "branches"),
                     in_a=float(in_a),
                     conditional_sc_current_ka=(
                         float(params["conditional_sc_current_ka"])
@@ -210,7 +208,7 @@ def resolve_urzadzenie_ochronne(
             UrzadzenieOchronneNn(
                 kind=KIND_MCCB,
                 id=breaker.ref_id,
-                nazwa=breaker.name,
+                nazwa=nazwa_elementu(breaker, "branches"),
                 in_a=float(in_a),
                 wlasna_zdolnosc_ka=(
                     float(params["i_cu_ka"]) if params.get("i_cu_ka") is not None else None
@@ -238,68 +236,61 @@ class Ik1MinPetla:
 
 def _petla_zwarcia_min(
     enm: EnergyNetworkModel, station_ref: str, bus_ref: str
-) -> tuple[Ik1MinPetla | None, list[str], str | None]:
+) -> tuple[Ik1MinPetla | None, list[str], str | None, str | None]:
     """Rozwiąż pętlę zwarcia minimalnego dla obwodu (REUSE dokładnie tej samej
     sekwencji co ``swz.service.build_swz_view``/``nn_device_selection._ik1_min_i_u0``)."""
     station = _find_station(enm, station_ref)
     if station is None:
-        return None, ["station"], None
-
-    system = _system_for_station(station)
-    if system in _NON_TN_SYSTEMS:
-        return (
-            None,
-            [],
-            (
-                f"Układ {system}: SWZ/pętla TN (IEC 60364-4-41) nie dotyczy — inny mechanizm "
-                "ochrony przeciwporażeniowej."
-            ),
-        )
+        return None, ["station"], None, None
 
     # Transformator ZASILAJĄCY punkt obwodu (właściciel szyny po zamkniętych
     # gałęziach), nie „pierwszy transformator stacji" — klasa B-02 (2×TR).
     trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
-        return None, transformer_missing, None
+        return None, transformer_missing, None, None
+
+    # W5-A: układ sieci nN z transformatora zasilającego; brak/TT/IT = odmowa nazwana.
+    system = uklad_nn_transformatora(trafo)
+    odmowa = odmowa_analizy_nn({}, trafo)
+    if odmowa is not None:
+        return (
+            None,
+            list(odmowa.get("missing_data", [])),
+            odmowa.get("reason_pl"),
+            odmowa.get("kod_odmowy"),
+        )
+    assert system is not None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
-        return None, missing, None
+        return None, missing, None, None
 
     upstream, upstream_missing = _upstream_thevenin_lv_component(enm, trafo)
     if upstream is None:
-        return None, upstream_missing, None
+        return None, upstream_missing, None, None
 
     try:
         path = path_to_bus(enm, trafo.lv_bus_ref, bus_ref)
         segments = route_segments_min_scenario(path)
     except RouteExtractionError as exc:
-        return None, ["route"], str(exc)
+        return None, ["route"], str(exc), None
 
     phase_component, return_component = sum_phase_and_return_route(segments)
-    net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    net_type, protection = typ_sieci_solvera(system)
+    u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
-    request = FaultLoopBuildRequest(
+    loop_result = oblicz_petle_na_trasie(
+        trafo=trafo,
         fault_node_id=bus_ref,
-        u_nom_v=u_phase_v,
-        network_type=net_type,
-        protection_arrangement=protection,
-        phase_conductor_r_ohm=phase_component.r_ohm,
-        phase_conductor_x_ohm=phase_component.x_ohm,
-        return_conductor_r_ohm=return_component.r_ohm,
-        return_conductor_x_ohm=return_component.x_ohm,
-        transformer_r_ohm=z_tr.r_ohm,
-        transformer_x_ohm=z_tr.x_ohm,
-        transformer_label=f"Transformator SN/nN {trafo.name}",
-        upstream_r_ohm=upstream.r_ohm,
-        upstream_x_ohm=upstream.x_ohm,
-        upstream_label=upstream.label,
-        phase_label=phase_component.label,
-        return_label=return_component.label,
+        u_phase_v=u_phase_v,
+        net_type=net_type,
+        protection=protection,
+        z_tr=z_tr,
+        upstream=upstream,
+        phase_component=phase_component,
+        return_component=return_component,
     )
-    loop_result = compute_fault_loop(build_fault_loop_input(request))
-    return Ik1MinPetla(fault_loop=loop_result, u0_v=u_phase_v, system=system), [], None
+    return Ik1MinPetla(fault_loop=loop_result, u0_v=u_phase_v, system=system), [], None, None
 
 
 def zbuduj_wejscie_dowodu_obwodu_nn(
@@ -334,7 +325,9 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
     ``nn_device_selection.wybierz_aparat_dla_obwodu_nn`` stosuje dla Ib/Iz′/Ik″max).
 
     Zwraca ``{"status": "OK", "wejscie": LVCircuitVerificationInput}`` albo
-    ``{"status": "brak danych", "missing_data": [...], "reason_pl": ...}``.
+    ``{"status": "brak danych", "missing_data": [...], "reason_pl": ...}`` albo — gdy
+    strona dolna transformatora zasilającego leży poza pasmem nN —
+    ``{"status": "nie dotyczy", "kod_odmowy": ..., "reason_pl": ...}``.
     """
     breaker = _find_branch(enm, breaker_ref)
     if breaker is None:
@@ -350,7 +343,14 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
             "reason_pl": reason,
         }
 
-    petla, missing, reason_pl = _petla_zwarcia_min(enm, station_ref, bus_ref)
+    petla, missing, reason_pl, kod_odmowy = _petla_zwarcia_min(enm, station_ref, bus_ref)
+    if kod_odmowy is not None:
+        return {
+            "status": "nie dotyczy",
+            "kod_odmowy": kod_odmowy,
+            "missing_data": missing,
+            "reason_pl": reason_pl,
+        }
     if petla is None:
         return {"status": "brak danych", "missing_data": missing, "reason_pl": reason_pl}
 
@@ -370,6 +370,7 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
     )
     swz = ocen_swz(ik1_min_a=petla.fault_loop.ik_min_a, u0_v=petla.u0_v, aparat=aparat_swz)
 
+    odcinek = _find_branch(enm, segment_ref)
     wejscie = LVCircuitVerificationInput(
         project_name=project_name,
         case_name=case_name,
@@ -379,6 +380,11 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
         bus_ref=bus_ref,
         breaker_ref=breaker_ref,
         segment_ref=segment_ref,
+        # Tytuł dowodu nazywa odcinek nazwą z modelu (karta #144); odcinek spoza modelu
+        # to jawny brak, nie jego identyfikator.
+        nazwa_odcinka=(
+            nazwa_elementu(odcinek, "branches") if odcinek is not None else ELEMENT_SPOZA_MODELU
+        ),
         p_mw=p_mw,
         q_mvar=q_mvar,
         u_ll_kv=u_ll_kv,

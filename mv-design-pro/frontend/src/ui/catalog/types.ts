@@ -28,10 +28,11 @@ export interface LineType extends CatalogType {
   b_us_per_km: number;
   rated_current_a: number;
   standard?: string;
-  max_temperature_c: number;
+  /** null = dana tabliczkowa nieznana z definicji źródła (typ z literatury benchmarkowej). */
+  max_temperature_c: number | null;
   voltage_rating_kv: number;
   conductor_material?: string;
-  cross_section_mm2: number;
+  cross_section_mm2: number | null;
 }
 
 /**
@@ -125,6 +126,12 @@ export interface ConverterType extends CatalogType {
   qmax_mvar?: number;
   cosphi_min?: number;
   cosphi_max?: number;
+  /**
+   * Wspolczynnik udzialu zwarciowego z karty producenta (Ik = k_sc * In, IEC 60909-0).
+   * `null`/brak = domyslka systemowa 1.1 (karta S-2 AUTORYTET) — wynik zwarciowy
+   * oparty na domyslce NIE jest miarodajny dla doboru aparatury/nastaw/dowodu.
+   */
+  k_sc?: number | null;
   e_kwh?: number;
   model?: string;
   control_mode?: string | null;
@@ -142,18 +149,6 @@ export interface ConverterType extends CatalogType {
   verification_status?: string | null;
   source_reference?: string | null;
   catalog_status?: string | null;
-}
-
-/**
- * Measurement Transformer Type (CT/VT).
- * Derived from backend MeasurementRating + catalog patterns.
- */
-export interface MeasurementTransformerType extends CatalogType {
-  measurement_kind: 'CT' | 'VT';
-  ratio_primary: number;
-  ratio_secondary: number;
-  accuracy_class: string;
-  burden_va: number;
 }
 
 /**
@@ -327,6 +322,14 @@ export interface VTCatalogType extends CatalogType {
  * Source: backend PVInverterType dataclass.
  */
 export interface PVInverterCatalogType extends CatalogType {
+  /**
+   * Metadane katalogowe rekordu (kontrakt `_catalog_metadata_to_dict` backendu).
+   * Karta KATALOG-NIEZMIENNIKI §5 p.2: mapowanie `fetchConverterTypes` niesie je
+   * dalej, bo projektant ma widzieć, czy pozycja jest produkcyjna i skąd pochodzi.
+   */
+  verification_status?: string | null;
+  source_reference?: string | null;
+  catalog_status?: string | null;
   s_n_kva: number;
   p_max_kw: number;
   un_kv?: number;
@@ -335,6 +338,7 @@ export interface PVInverterCatalogType extends CatalogType {
   voltage_lv_kv?: number;
   cos_phi_min?: number;
   cos_phi_max?: number;
+  k_sc?: number | null;
   control_mode?: string;
   grid_code?: string;
   dynamic_profile_id?: string | null;
@@ -354,40 +358,24 @@ export interface PVInverterCatalogType extends CatalogType {
  * Source: backend BESSInverterType dataclass.
  */
 export interface BESSInverterCatalogType extends CatalogType {
+  /**
+   * Metadane katalogowe rekordu (kontrakt `_catalog_metadata_to_dict` backendu).
+   * Karta KATALOG-NIEZMIENNIKI §5 p.2: mapowanie `fetchConverterTypes` niesie je
+   * dalej, bo projektant ma widzieć, czy pozycja jest produkcyjna i skąd pochodzi.
+   */
+  verification_status?: string | null;
+  source_reference?: string | null;
+  catalog_status?: string | null;
   p_charge_kw: number;
   p_discharge_kw: number;
   e_kwh: number;
+  k_sc?: number | null;
   s_n_kva?: number;
   un_kv?: number;
   u_n_kv?: number;
   voltage_kv?: number;
   voltage_lv_kv?: number;
   dynamic_profile_id?: string | null;
-  ptpiree_status?: 'POWIAZANY' | 'NIEPOWIAZANY' | string;
-  ptpiree_certificate_ref?: string | null;
-  ptpiree_document_number?: string | null;
-  ptpiree_document_acceptance_date?: string | null;
-  ptpiree_wos_version?: string | null;
-  ptpiree_wipwc_version?: string | null;
-  ptpiree_ppm_scope?: string | null;
-  ptpiree_source_url?: string | null;
-  ptpiree_publication_date?: string | null;
-}
-
-/**
- * Generic inverter catalog type (INVERTER).
- * Source: backend InverterType dataclass.
- */
-export interface InverterCatalogType extends CatalogType {
-  kind: 'PV' | 'WIND' | 'BESS' | 'INVERTER' | string;
-  un_kv: number;
-  sn_mva: number;
-  pmax_mw: number;
-  qmin_mvar?: number | null;
-  qmax_mvar?: number | null;
-  cosphi_min?: number | null;
-  cosphi_max?: number | null;
-  model?: string | null;
   ptpiree_status?: 'POWIAZANY' | 'NIEPOWIAZANY' | string;
   ptpiree_certificate_ref?: string | null;
   ptpiree_document_number?: string | null;
@@ -458,7 +446,10 @@ export interface SourceSystemCatalogType extends CatalogType {
   sk3_mva: number;
   ik3_ka?: number;
   rx_ratio?: number;
-  earthing_system?: string;
+  /** Dane scenariusza MIN (CV-4.3 K7); null = OSD nie podał (zero fabrykacji). */
+  sk3_min_mva?: number | null;
+  ik3_min_ka?: number | null;
+  rx_ratio_min?: number | null;
   short_circuit_model?: string;
   operator_name?: string;
   supply_role?: string;
@@ -532,7 +523,6 @@ export type CatalogNamespace =
   | 'NASTAWY_ZABEZPIECZEN'
   | 'PTPIREE_CERTYFIKAT_GENERATORA'
   | 'CONVERTER'
-  | 'INVERTER'
   | 'mv_branch_points';
 
 /**

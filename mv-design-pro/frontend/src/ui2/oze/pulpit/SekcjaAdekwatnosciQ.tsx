@@ -10,14 +10,17 @@ import { useState } from 'react';
 
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { pobierzAdekwatnoscQ, type WpisZrodlaQ } from '../api';
+import { InformacjeAudytowe, useNazwaObiektu } from '../../wyniki/wzorzec';
 import { SladAnalizy } from './SladAnalizy';
 import { busRefModuluQ, wybierzPrzebiegRozplywu } from './pulpitModel';
 import { useAnaliza } from './useAnaliza';
 import {
+  BRAKI_DANYCH_Q,
   formatMvar,
   formatPu,
   klasaWerdyktuQ,
   PULPIT_STRINGS,
+  WERDYKTY_ADEKWATNOSCI_Q,
 } from './strings';
 
 export interface SekcjaAdekwatnosciQProps {
@@ -35,6 +38,8 @@ function WpisZrodla({
   readonly wyrozniony: boolean;
 }): JSX.Element {
   const [sladWidoczny, setSladWidoczny] = useState(false);
+  // Karta #145: źródło i węzeł nazwane z modelu, nigdy referencją.
+  const nazwaObiektu = useNazwaObiektu();
   return (
     <li
       className={`mvd-oze-slad-krok${wyrozniony ? ' mvd-oze-wyrozniony' : ''}`}
@@ -42,7 +47,7 @@ function WpisZrodla({
       data-wyrozniony={wyrozniony ? 'true' : undefined}
     >
       <div className="mvd-oze-metryka">
-        <span>{wpis.ref}</span>
+        <span>{nazwaObiektu(wpis.ref)}</span>
         <span
           className={`mvd-oze-komorka ${
             wpis.is_saturated ? 'mvd-oze-werdykt-warn' : 'mvd-oze-werdykt-ok'
@@ -55,7 +60,7 @@ function WpisZrodla({
       {wpis.bus_ref ? (
         <div className="mvd-oze-metryka">
           <span>{PULPIT_STRINGS.adekwWezel}</span>
-          <span className="mvd-oze-num">{wpis.bus_ref}</span>
+          <span>{nazwaObiektu(wpis.bus_ref)}</span>
         </div>
       ) : null}
       <div className="mvd-oze-metryka">
@@ -80,7 +85,7 @@ function WpisZrodla({
       {wpis.missing_data.length > 0 ? (
         <div className="mvd-oze-metryka">
           <span>{PULPIT_STRINGS.adekwBrakDanych}</span>
-          <span className="mvd-oze-num">{wpis.missing_data.join(', ')}</span>
+          <span>{wpis.missing_data.map((kod) => BRAKI_DANYCH_Q[kod]).join('; ')}</span>
         </div>
       ) : null}
       {wpis.white_box.length > 0 ? (
@@ -109,6 +114,7 @@ export function SekcjaAdekwatnosciQ({
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
   const runId = wybierzPrzebiegRozplywu(runs, activeRunId);
   const stan = useAnaliza(runId, pobierzAdekwatnoscQ);
+  const nazwaObiektu = useNazwaObiektu();
 
   const wyroznionyWezel =
     stan.rodzaj === 'gotowe' && wyroznionyModul
@@ -150,7 +156,7 @@ export function SekcjaAdekwatnosciQ({
                 )}`}
                 data-testid="mvd-oze-adekw-werdykt"
               >
-                {stan.dane.verdict}
+                {WERDYKTY_ADEKWATNOSCI_Q[stan.dane.verdict]}
               </span>
             </div>
             <div className="mvd-oze-podsum-poz">
@@ -224,7 +230,7 @@ export function SekcjaAdekwatnosciQ({
                     data-testid={`mvd-oze-adekw-naruszenie-${n.bus_ref}`}
                   >
                     <div style={{ fontWeight: 600 }}>
-                      {n.bus_ref} · {n.kind_pl}
+                      {nazwaObiektu(n.bus_ref)} · {n.kind_pl}
                     </div>
                     <div className="mvd-oze-metryka">
                       <span>|V|</span>
@@ -239,11 +245,12 @@ export function SekcjaAdekwatnosciQ({
             )}
           </div>
 
-          {trybEkspercki ? (
-            <p className="mvd-oze-panel-etyk" data-testid="mvd-oze-adekw-analiza-id">
-              {stan.dane.analysis_id}
-            </p>
-          ) : null}
+          {/* Karta #145: identyfikator analizy wyłącznie w „Informacjach audytowych". */}
+          <InformacjeAudytowe
+            trybEkspercki={trybEkspercki}
+            testid="mvd-oze-adekw-analiza-id"
+            wiersze={[{ etykieta: PULPIT_STRINGS.identyfikatorAnalizy, wartosc: stan.dane.analysis_id }]}
+          />
         </div>
       )}
     </section>

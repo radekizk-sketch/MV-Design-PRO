@@ -17,6 +17,8 @@ from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 # Realne pozycje katalogowe (parytet z test_der_sn_topology_domain_ops + katalog aparatu SN).
 _TR_BLOCK_04 = "tr-sn-nn-15-04-1000kva-dyn11"  # Sn = 1,0 MVA (katalog autorytatywny)
 _TR_BLOCK_04_630 = "tr-sn-nn-15-04-630kva-dyn11"  # Sn = 0,63 MVA
+_TR_BLOCK_04_1250 = "tr-sn-nn-15-04-1250kva-dyn11"  # Sn = 1,25 MVA
+_KOD_MOCY_TR = "converter.transformer_capacity_exceeded"
 _CABLE = "cable-base-epr-al-1c-240"
 _APARAT_SN_REAL = "sw-cb-abb-vd4-24kv-630a"  # niesie i_n_a=630 A → ogniwo In pola dostępne
 
@@ -81,7 +83,11 @@ def _der_sn_payload(
     block_primary_kv: float = 15.0,
     block_rated_power_mva: float = 1.0,
     block_tr_ref: str = _TR_BLOCK_04,
-    power_setpoint_mw: float = 1.0,
+    # Decyzja O-53: nastawa ≤ moc znamionowa instalacji (P_max,jedn · n). Pozycje
+    # `_FALOWNIK_WG_NAPIECIA` to jednostki 0,5 MW (S_n 0,55 MVA) — domyślny tor to jedna
+    # jednostka z pełną mocą; dawna domyślka 1,0 MW przy JEDNEJ jednostce 0,5 MW była
+    # nastawą ponad moc falownika, dziś odmawianą nazwanym kodem.
+    power_setpoint_mw: float = 0.5,
     cos_phi: float | None = None,
     loadability_pu: float | None = None,
     simultaneity_factor: float | None = None,
@@ -235,39 +241,64 @@ def test_req6_tr_primary_15kv_vs_grid_15kv_accepted() -> None:
 
 
 def test_req5_power_exceeds_transformer_rejected() -> None:
-    """Kanon: wybór TR 0,63 MVA (katalog) dla 1,0 MW ⇒ moc niewystarczająca."""
-    result = _run(_der_sn_payload(block_tr_ref=_TR_BLOCK_04_630, power_setpoint_mw=1.0))
-    assert result["error_code"] == "converter.der_sn.moc_transformatora_niewystarczajaca"
-    assert "MVA" in result["error"]
+    """Kanon O-53: 2 × 0,5 MW (S_n,jedn·n = 1,1 MVA) na TR 0,63 MVA ⇒ moc niewystarczająca."""
+    result = _run(_der_sn_payload(block_tr_ref=_TR_BLOCK_04_630, quantity=2, power_setpoint_mw=1.0))
+    assert result["error_code"] == _KOD_MOCY_TR
+    assert "kVA" in result["error"]
 
 
 def test_req5_power_within_transformer_accepted() -> None:
-    result = _run(_der_sn_payload(block_tr_ref=_TR_BLOCK_04, power_setpoint_mw=1.0))
+    """2 × 0,5 MW: max(1,1 MVA; 1,0 MW) = 1,1 MVA ≤ 1,25 MVA."""
+    result = _run(
+        _der_sn_payload(block_tr_ref=_TR_BLOCK_04_1250, quantity=2, power_setpoint_mw=1.0)
+    )
     assert not result.get("error"), result.get("error")
 
 
 def test_req5_cos_phi_converts_mw_to_mva_and_rejects() -> None:
-    """cosφ=0,9: 0,95 MW / 0,9 = 1,055 MVA > 1,0 MVA (TR 1,0 MVA katalogowy)."""
-    result = _run(_der_sn_payload(block_tr_ref=_TR_BLOCK_04, power_setpoint_mw=0.95, cos_phi=0.9))
-    assert result["error_code"] == "converter.der_sn.moc_transformatora_niewystarczajaca"
+    """Człon nastawy rządzi, gdy P/cosφ > S_n,jedn·n: 1,0 MW / 0,75 = 1,33 MVA > 1,25 MVA,
+    a przy cosφ = 0,9 (1,11 MVA) ten sam tor się mieści."""
+    odrzucony = _run(
+        _der_sn_payload(
+            block_tr_ref=_TR_BLOCK_04_1250, quantity=2, power_setpoint_mw=1.0, cos_phi=0.75
+        )
+    )
+    assert odrzucony["error_code"] == _KOD_MOCY_TR
+    przyjety = _run(
+        _der_sn_payload(
+            block_tr_ref=_TR_BLOCK_04_1250, quantity=2, power_setpoint_mw=1.0, cos_phi=0.9
+        )
+    )
+    assert not przyjety.get("error"), przyjety.get("error")
 
 
 def test_req5_loadability_relaxes_power_limit() -> None:
-    """Jawna przeciążalność 1,25 pu dopuszcza 1,2 MW na TR 1,0 MVA (P=S konserwatywnie)."""
-    strict = _run(_der_sn_payload(block_tr_ref=_TR_BLOCK_04, power_setpoint_mw=1.2))
-    assert strict["error_code"] == "converter.der_sn.moc_transformatora_niewystarczajaca"
+    """Jawna przeciążalność 1,25 pu dopuszcza 1,1 MVA (2 × 0,55) na TR 1,0 MVA."""
+    strict = _run(_der_sn_payload(block_tr_ref=_TR_BLOCK_04, quantity=2, power_setpoint_mw=1.0))
+    assert strict["error_code"] == _KOD_MOCY_TR
     relaxed = _run(
-        _der_sn_payload(block_tr_ref=_TR_BLOCK_04, power_setpoint_mw=1.2, loadability_pu=1.25)
+        _der_sn_payload(
+            block_tr_ref=_TR_BLOCK_04, quantity=2, power_setpoint_mw=1.0, loadability_pu=1.25
+        )
     )
     assert not relaxed.get("error"), relaxed.get("error")
 
 
 def test_req5_simultaneity_factor_reduces_load() -> None:
-    """Współczynnik jednoczesności 0,8 obniża ΣS: 1,2 MW · 0,8 = 0,96 MVA ≤ 1,0 MVA."""
+    """Współczynnik jednoczesności 0,8 obniża moc wymaganą: 1,1 MVA · 0,8 = 0,88 ≤ 1,0 MVA."""
     result = _run(
-        _der_sn_payload(block_tr_ref=_TR_BLOCK_04, power_setpoint_mw=1.2, simultaneity_factor=0.8)
+        _der_sn_payload(
+            block_tr_ref=_TR_BLOCK_04, quantity=2, power_setpoint_mw=1.0, simultaneity_factor=0.8
+        )
     )
     assert not result.get("error"), result.get("error")
+
+
+def test_req5_nastawa_powyzej_mocy_znamionowej_jest_odmowa() -> None:
+    """O-53: 1,0 MW na JEDNEJ jednostce 0,5 MW — nastawa ponad moc znamionową instalacji."""
+    result = _run(_der_sn_payload(block_tr_ref=_TR_BLOCK_04_1250, power_setpoint_mw=1.0))
+    assert result["error_code"] == "converter.setpoint_above_rating"
+    assert result.get("snapshot") is None
 
 
 # ---------------------------------------------------------------------------

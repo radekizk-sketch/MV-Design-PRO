@@ -19,6 +19,7 @@ mapowanie rule_code → kod walidatora. Zasady na żywo (spec §6):
 from __future__ import annotations
 
 from enm.models import EnergyNetworkModel
+from enm.slownik_komunikatow import opis_elementu
 from pydantic import BaseModel
 
 from .compliance import evaluate_enm
@@ -45,9 +46,13 @@ _RULE_CODE_TO_ISSUE_CODE: list[tuple[str, str]] = [
 ]
 
 _SUGGESTED_FIX_PL = (
-    "Uzupełnij aparaty pola (Bay.primary_devices) zgodnie z profilem "
-    "referencyjnym (REFERENCE_ENGINE_SPEC_V1 §4) albo skoryguj dane pola."
+    "Uzupełnij aparaty pola zgodnie z profilem referencyjnym pola albo skoryguj dane pola."
 )
+
+
+def _opis_pola(enm: EnergyNetworkModel, bay_ref: str) -> str:
+    """Pole w treści komunikatu gotowości — nazwa z modelu, nigdy identyfikator (#142)."""
+    return opis_elementu(enm, bay_ref, "Pole")
 
 
 def _issue_code_for_rule(rule_code: str) -> str | None:
@@ -75,7 +80,7 @@ def reference_validation_issues(enm: EnergyNetworkModel) -> list[LiveReferenceFi
             findings.append(
                 LiveReferenceFinding(
                     code=issue_code,
-                    message_pl=f"Pole '{check.element_ref}': {check.message_pl}",
+                    message_pl=f"{_opis_pola(enm, check.element_ref)}: {check.message_pl}",
                     element_ref=check.element_ref,
                     suggested_fix=_SUGGESTED_FIX_PL,
                 )
@@ -124,7 +129,7 @@ def reference_validation_issues(enm: EnergyNetworkModel) -> list[LiveReferenceFi
                 findings.append(
                     LiveReferenceFinding(
                         code=issue_code,
-                        message_pl=f"Pole '{check.element_ref}': {check.message_pl}",
+                        message_pl=f"{_opis_pola(enm, check.element_ref)}: {check.message_pl}",
                         element_ref=check.element_ref,
                         suggested_fix=_SUGGESTED_FIX_PL,
                     )

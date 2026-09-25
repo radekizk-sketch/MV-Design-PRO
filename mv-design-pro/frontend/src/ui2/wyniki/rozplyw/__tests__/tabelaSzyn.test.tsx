@@ -3,8 +3,19 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { TabelaSzyn } from '../TabelaSzyn';
 import { ROZPLYW_STRINGS } from '../strings';
 import { WZORZEC_STRINGS } from '../../wzorzec';
+import { INSPECTOR_STRINGS, znacznikNieaktualne } from '../../../inspector';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { powerFlowResultFixture, runHeaderFixture } from './fixtures';
+
+// Karta TODO-UI2 p.9: znacznik świeżości nagłówka (`useSwiezoscNaglowka`, V12K-264)
+// czyta `analysisCaseContext.rewizjaModelu` z kontraktu przebiegu — mockowany tu
+// tak samo jak we własnym teście hooka (`freshness/__tests__/useSwiezoscNaglowka.test.tsx`),
+// żeby nie zależeć od realnego `fetch`.
+const kontraktMock = vi.fn();
+vi.mock('../../../../ui/workspace/analysisRunContract', () => ({
+  useAnalysisRunContract: (runId: string | null) => kontraktMock(runId),
+}));
 
 function props(over: Partial<Parameters<typeof TabelaSzyn>[0]> = {}) {
   return {
@@ -16,6 +27,8 @@ function props(over: Partial<Parameters<typeof TabelaSzyn>[0]> = {}) {
 
 beforeEach(() => {
   usePowerFlowResultsStore.getState().reset();
+  kontraktMock.mockReset();
+  kontraktMock.mockReturnValue({ data: null, isLoading: false, error: null });
 });
 
 function ustawWynik() {
@@ -76,9 +89,11 @@ describe('TabelaSzyn — konkretyzacja wzorca na realnym kształcie danych', () 
 
   it('identyfikator przebiegu tylko w trybie eksperckim (§2.7)', () => {
     const { rerender } = render(<TabelaSzyn {...props({ trybZaawansowania: 'basic' })} />);
-    expect(screen.queryByTestId('mvd-wyn-run-id')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-wyn-informacje-audytowe')).not.toBeInTheDocument();
     rerender(<TabelaSzyn {...props({ trybZaawansowania: 'expert' })} />);
-    expect(screen.getByTestId('mvd-wyn-run-id')).toHaveTextContent('pf-run-1');
+    // Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych" (zwinięte).
+    fireEvent.click(screen.getByTestId('mvd-wyn-informacje-audytowe-przelacz'));
+    expect(screen.getByTestId('mvd-wyn-informacje-audytowe-lista')).toHaveTextContent('pf-run-1');
   });
 
   it('K3/C1 realna ścieżka: 2× klik na napięciu szyny → onOtworzDowod(bus_id)', () => {
@@ -96,5 +111,52 @@ describe('TabelaSzyn — konkretyzacja wzorca na realnym kształcie danych', () 
     render(<TabelaSzyn {...props({ onEksport })} />);
     screen.getByRole('button', { name: WZORZEC_STRINGS.eksport }).click();
     expect(onEksport).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('TabelaSzyn — znacznik świeżości nagłówka (karta TODO-UI2 p.9, V12K-264)', () => {
+  // Dowód, że komentarz nagłówkowy `rozplywAdapter.ts` ("FreshnessBadge się
+  // pokazuje") jest FAKTEM, nie deklaracją: `useSwiezoscNaglowka(runId)` musi
+  // być realnie wpięty w `naglowek`, a nie tylko architektonicznie dostępny.
+  beforeEach(ustawWynik);
+
+  it('rewizja biegu ≠ bieżąca rewizja modelu → FreshnessBadge „nieaktualne (rew. a → b)"', () => {
+    useSnapshotStore.setState({ rewizjaBiezacegoModelu: 5 } as never);
+    kontraktMock.mockReturnValue({
+      data: { analysisCaseContext: { rewizjaModelu: 3 } },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<TabelaSzyn {...props()} />);
+
+    expect(screen.getByText(znacznikNieaktualne(3, 5))).toBeInTheDocument();
+  });
+
+  it('rewizja biegu = bieżąca rewizja modelu → FreshnessBadge „aktualne"', () => {
+    useSnapshotStore.setState({ rewizjaBiezacegoModelu: 5 } as never);
+    kontraktMock.mockReturnValue({
+      data: { analysisCaseContext: { rewizjaModelu: 5 } },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<TabelaSzyn {...props()} />);
+
+    expect(screen.getByText(INSPECTOR_STRINGS.aktualne)).toBeInTheDocument();
+  });
+
+  it('kontrakt biegu bez liczbowej rewizji (starszy zapis) → BRAK znacznika (zero zgadywania)', () => {
+    useSnapshotStore.setState({ rewizjaBiezacegoModelu: 5 } as never);
+    kontraktMock.mockReturnValue({
+      data: { analysisCaseContext: { rewizjaModelu: null } },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<TabelaSzyn {...props()} />);
+
+    expect(screen.queryByText(INSPECTOR_STRINGS.aktualne)).not.toBeInTheDocument();
+    expect(screen.queryByText(/nieaktualne/i)).not.toBeInTheDocument();
   });
 });

@@ -7,6 +7,8 @@
  */
 
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
+import { ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA, type RolaUziemnika } from '../../../types/uziemienie';
+import { fieldRoleLabelPl } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 
 export type RolaPola = 'IN' | 'OUT' | 'FEEDER' | 'TR' | 'COUPLER' | 'MEASUREMENT' | 'OZE';
 export type RodzajAparatu = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'MEASUREMENT';
@@ -69,6 +71,8 @@ export interface PolaSnFormData {
   switchgear_family_ref: string | null;
   bay_template_ref: string | null;
   manufacturer_ref: string | null;
+  /** W5-A: rola uziemnika pola (`BayPrimaryDevice.earthing_role`); pusty = wg szablonu (uziemnik pola). */
+  earthing_role: RolaUziemnika | '';
 }
 
 export interface BladPola {
@@ -96,23 +100,23 @@ export const DANE_DOMYSLNE: PolaSnFormData = {
   switchgear_family_ref: null,
   bay_template_ref: null,
   manufacturer_ref: null,
+  earthing_role: '',
 };
+
+/** Kolejność ról w wyborze kreatora (najczęstsza rola dokładanego pola na początku). */
+const ROLE_KOLEJNOSC: readonly RolaPola[] = ['OUT', 'IN', 'FEEDER', 'TR', 'COUPLER', 'MEASUREMENT', 'OZE'];
 
 /**
  * Opcje roli/aparatu = KONTRAKT DANYCH (warstwa modelu): `value` to kanoniczny kod
  * operacji domenowej `add_sn_bay` (backend), `label` to polskie nazewnictwo UI.
- * Kody backendu (np. odpływowe/dopływowe/transformatorowe) NIE są terminologią UI —
- * do prezentacji służy wyłącznie `label`. (V12K-057 popr.: zakaz surowych kodów w UI.)
+ * Kody backendu (IN/OUT/FEEDER/TR…) NIE są terminologią UI — do prezentacji służy wyłącznie
+ * `label`. (V12K-057 popr.: zakaz surowych kodów w UI.) Nazwa roli pochodzi z kanonu
+ * słownictwa ról pól (`FIELD_ROLE_LABEL_PL`, karta #141) — ta sama co na schemacie, w szufladzie
+ * i w nazwie pola nadanej przez backend (`enm.rola_pola_sn`), nie z drugiej listy.
  */
-export const ROLE_OPCJE: ReadonlyArray<{ value: RolaPola; label: string }> = [
-  { value: 'OUT', label: 'Pole liniowe odpływowe' },
-  { value: 'IN', label: 'Pole liniowe dopływowe' },
-  { value: 'FEEDER', label: 'Pole liniowe / odgałęźne' },
-  { value: 'TR', label: 'Pole transformatorowe' },
-  { value: 'COUPLER', label: 'Pole sprzęgła sekcji' },
-  { value: 'MEASUREMENT', label: 'Pole pomiarowe' },
-  { value: 'OZE', label: 'Pole źródłowe (OZE/DER)' },
-];
+export const ROLE_OPCJE: ReadonlyArray<{ value: RolaPola; label: string }> = ROLE_KOLEJNOSC.map(
+  (value) => ({ value, label: fieldRoleLabelPl(value) }),
+);
 
 export const APARAT_OPCJE: ReadonlyArray<{ value: RodzajAparatu; label: string }> = [
   { value: 'BREAKER', label: 'Wyłącznik mocy' },
@@ -193,8 +197,19 @@ export function zbudujPayload(
     switchgear_family_ref: data.switchgear_family_ref?.trim() || undefined,
     bay_template_ref: data.bay_template_ref?.trim() || undefined,
     manufacturer_ref: data.manufacturer_ref?.trim() || undefined,
+    // W5-A: rola uziemnika tylko gdy projektant ją wybrał (backend odrzuca rolę bez uziemnika w torze).
+    earthing_role: data.earthing_role || undefined,
   };
 }
+
+/** Opcje roli uziemnika pola — bez `surge_ground` (to gałąź ogranicznika, nie uziemnika). */
+export const OPCJE_ROLI_UZIEMNIKA: ReadonlyArray<{ id: string; etykieta: string }> = [
+  { id: '', etykieta: 'wg szablonu pola (uziemnik pola)' },
+  ...ROLE_UZIEMNIKA.filter((rola) => rola !== 'surge_ground').map((rola) => ({
+    id: rola,
+    etykieta: ETYKIETA_PL_ROLI_UZIEMNIKA[rola],
+  })),
+];
 
 /** Kompletność powiązania producenckiego (szablon pola). */
 export function maSzablonProducenta(data: PolaSnFormData): boolean {

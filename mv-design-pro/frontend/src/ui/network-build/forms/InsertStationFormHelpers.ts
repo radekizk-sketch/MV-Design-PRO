@@ -9,14 +9,17 @@
  * Wszystkie funkcje pure (bez side-effects, deterministyczne).
  */
 
-import type {
-  BayKind,
-  CompleteMvBayTemplateSummary,
+import {
+  bayKindLabelPl,
+  type BayKind,
+  type CompleteMvBayTemplateSummary,
 } from '../../catalog/BayTemplatePicker';
 import type { Manufacturer } from '../../catalog/manufacturer';
 import type { SwitchgearFamily } from '../../catalog/SwitchgearFamilyPicker';
 import type { ConverterType, TransformerType } from '../../catalog/types';
 import type { Substation } from '../../../types/enm';
+import { FIELD_ROLE_LABEL_PL } from '../../sld/v2/station-rozdzielnia/contract';
+import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 export type SnFieldRole = 'LINIA_IN' | 'LINIA_OUT' | 'LINIA_ODG' | 'TRANSFORMATOROWE' | 'SPRZEGLO';
 
@@ -27,14 +30,6 @@ export const SWITCHGEAR_MANUFACTURER_ORDER = [
   'SIEMENS',
   'ABB',
 ];
-
-export const FIELD_ROLE_LABELS: Readonly<Record<string, string>> = {
-  LINIA_IN: 'Pole liniowe wejściowe',
-  LINIA_OUT: 'Pole liniowe wyjściowe',
-  LINIA_ODG: 'Pole odgałęźne',
-  TRANSFORMATOROWE: 'Pole transformatorowe',
-  SPRZEGLO: 'Pole sprzęgłowe',
-};
 
 export const SOURCE_STATUS_LABEL_PL: Readonly<Record<CompleteMvBayTemplateSummary['source_status'], string>> = {
   official_catalog: 'pakiet katalogowy',
@@ -93,33 +88,13 @@ export function compareBayTemplateOptions(
     || left.template_ref.localeCompare(right.template_ref, 'pl-PL');
 }
 
-export function bayKindLabel(kind: BayKind): string {
-  switch (kind) {
-    case 'liniowe_doplywowe':
-      return 'Pole liniowe wejściowe';
-    case 'liniowe_odplywowe':
-      return 'Pole liniowe wyjściowe';
-    case 'transformatorowe':
-      return 'Pole transformatorowe';
-    case 'sprzeglowe_poprzeczne':
-    case 'sprzeglowe_podluzne':
-      return 'Pole sprzęgłowe';
-    case 'pomiarowe':
-      return 'Pole pomiarowe';
-    case 'pv':
-      return 'Pole przyłączeniowe PV';
-    case 'bess':
-      return 'Pole przyłączeniowe BESS';
-    case 'fw':
-      return 'Pole przyłączeniowe FW';
-    default:
-      return 'Pole SN';
-  }
-}
-
+/**
+ * Opcja szablonu pola w kreatorze: nazwa roli pola z kanonu słownictwa ról (`FIELD_ROLE_LABEL_PL`,
+ * karta #141), a bez roli — nazwa rodzaju pola katalogu (też z kanonu) + status źródła danych.
+ */
 export function templateOptionLabel(template: CompleteMvBayTemplateSummary, role?: SnFieldRole): string {
-  const roleLabel = role ? FIELD_ROLE_LABELS[role] : null;
-  return `${roleLabel ?? bayKindLabel(template.bay_kind)} · ${SOURCE_STATUS_LABEL_PL[template.source_status]}`;
+  const roleLabel = role ? FIELD_ROLE_LABEL_PL[role] : bayKindLabelPl(template.bay_kind);
+  return `${roleLabel} · ${SOURCE_STATUS_LABEL_PL[template.source_status]}`;
 }
 
 // Pure helpers - manufacturers
@@ -150,15 +125,8 @@ export function isUsableSwitchgearFamily(family: SwitchgearFamily): boolean {
 }
 
 // Pure helpers - transformers
-const MAX_STATION_NN_SOURCE_VOLTAGE_KV = 1.0;
-
 export function isStationNnSourceConverter(type: ConverterType): boolean {
-  return (
-    typeof type.un_kv === 'number'
-    && Number.isFinite(type.un_kv)
-    && type.un_kv > 0
-    && type.un_kv <= MAX_STATION_NN_SOURCE_VOLTAGE_KV
-  );
+  return typeof type.un_kv === 'number' && wPasmieNn(type.un_kv);
 }
 
 export function hasEnoughTransformerPower(

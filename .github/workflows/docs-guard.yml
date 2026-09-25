@@ -23,3 +23,9 @@ jobs:
       # warstwie `ui2/`), wiec tekst dostaje straznika zamiast kolejnej korekty.
       - name: Run CLAUDE.md structure guard
         run: python mv-design-pro/scripts/claude_md_struktura_guard.py
+      # Plan A/B §13 (decyzja O-35, karta AB-1a Pakiet E1): wiazaca sekwencja przyrostow §5
+      # sprawdzana wobec kolumny „Zaleznosc" §11 — przyrost przed zaleznoscia, cykl albo
+      # przyrost bez miejsca w sekwencji = czerwony. Przeglad adwersarzowy znalazl cykl
+      # AB-4 <-> AB-H2, ktorego nikt nie widzial, bo nic tego nie liczylo.
+      - name: Run plan A/B dependency guard
+        run: python mv-design-pro/scripts/plan_ab_zaleznosci_guard.py

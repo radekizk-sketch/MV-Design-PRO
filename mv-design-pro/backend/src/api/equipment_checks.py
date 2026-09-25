@@ -42,6 +42,13 @@ from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/solver", tags=["equipment-checks"])
 
+#: Werdykt kryterium wyposazenia w kontrakcie HTTP — DOKLADNIE stale `STATUS_PASS`,
+#: `STATUS_FAIL`, `STATUS_UNAVAILABLE` z `network_model/solvers/equipment_checks/slad.py`
+#: (rdzen solvera zamrozony, wiec typ stoi tu, a zgodnosc obu zapisow przypina test
+#: `tests/api/test_equipment_checks_api.py::test_typ_statusu_sprawdzenia_to_dokladnie_stale_sladu`).
+#: Werdykt bez rekordu wyjasnienia — do migracji (inwentarz C34, fala WW-3).
+StatusSprawdzenia = Literal["PASS", "FAIL", "UNAVAILABLE"]
+
 
 class ObciazenieAparatu(BaseModel):
     """Pojedyncze obciazenie obwodu wtornego podane przez projektanta."""
@@ -80,9 +87,9 @@ class CtBurdenRequest(BaseModel):
 
 
 class CtBurdenResponse(BaseModel):
-    status: str
-    status_obciazenia: str
-    status_nasycenia: str
+    status: StatusSprawdzenia
+    status_obciazenia: StatusSprawdzenia
+    status_nasycenia: StatusSprawdzenia
     rezystancja_przewodow_ohm: float | None = None
     moc_przewodow_va: float | None = None
     moc_aparatow_va: float | None = None
@@ -177,9 +184,9 @@ class VtBurdenRequest(BaseModel):
 
 
 class VtBurdenResponse(BaseModel):
-    status: str
-    status_obciazenia: str
-    status_spadku: str
+    status: StatusSprawdzenia
+    status_obciazenia: StatusSprawdzenia
+    status_spadku: StatusSprawdzenia
     rezystancja_przewodow_ohm: float | None = None
     moc_aparatow_va: float | None = None
     moc_stykow_va: float | None = None
@@ -288,7 +295,7 @@ class CableAgingRequest(BaseModel):
 
 
 class CableAgingResponse(BaseModel):
-    status: str
+    status: StatusSprawdzenia
     roznica_temperatur_c: float | None = None
     wspolczynnik_starzenia: float | None = None
     wzgledna_zywotnosc: float | None = None
@@ -359,7 +366,7 @@ class TransformerLossesRequest(BaseModel):
 
 
 class TransformerLossesResponse(BaseModel):
-    status: str
+    status: StatusSprawdzenia
     straty_jalowe_kw: float | None = None
     straty_obciazeniowe_kw: float | None = None
     straty_calkowite_kw: float | None = None

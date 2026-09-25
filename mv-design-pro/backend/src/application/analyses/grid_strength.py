@@ -4,13 +4,17 @@ Warstwa APPLICATION (mapowanie, NIE fizyka). Odczytuje GOTOWY wynik przebiegu
 zwarciowego (``short_circuit_sn``) oraz dane modelu (moc zainstalowana źródeł
 falownikowych IBG w węźle przyłączenia) i buduje wejścia dla gotowego buildera
 interpretacji ``analysis.grid_strength``. ZERO obliczeń fizycznych — moc zwarciowa
-S_sc'' pochodzi z solvera IEC 60909, moc zainstalowana z katalogu przekształtnika.
+S_sc'' pochodzi z solvera IEC 60909, moc zainstalowana z karty przekształtnika
+zmaterializowanej w elemencie ENM.
 
 Odwzorowania (plik:linia w kodzie źródłowym):
 - ``s_sc_mva`` ← ``build_short_circuit_results(run)`` → wiersz ``sk_mva`` per węzeł
   (``enm.canonical_analysis.build_short_circuit_results``),
-- ``s_installed_mva`` ← suma ``sn_mva`` przekształtników źródeł IBG w węźle
-  (``materialized_params.sn_mva`` lub ``ConverterType.sn_mva`` z katalogu).
+- ``s_installed_mva`` ← suma ``materialized_params.sn_mva`` przekształtników źródeł IBG
+  w węźle — WYŁĄCZNIE z migawki modelu przebiegu. Karta AB-H0 Pakiet D: skasowany
+  odczyt zapasowy ``ConverterType.sn_mva`` z katalogu STATYCZNEGO po ``catalog_ref``
+  (omijał materializację i katalog projektu modelu; wynik zależał od stanu katalogu w
+  chwili odczytu, nie od modelu, na którym liczono zwarcie).
 """
 
 from __future__ import annotations
@@ -23,26 +27,15 @@ from analysis.grid_strength.models import (
     BusStrengthInput,
     GridStrengthContext,
 )
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
+from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
+from network_model.nazwy import nazwa_nadana
 
-# Typy źródeł falownikowych (Inverter-Based Generation) — SCR dotyczy punktu
-# przyłączenia źródeł energoelektronicznych. Generatory synchroniczne pominięte.
-IBG_GEN_TYPES: frozenset[str] = frozenset(
-    {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
-)
-
-
-def _resolve_converter(catalog_ref: str | None) -> Any | None:
-    """Rozwiąż ``ConverterType`` z katalogu domyślnego po ``catalog_ref``.
-
-    Zwraca ``None`` gdy ref pusty lub pozycja nie jest przekształtnikiem
-    (uczciwie — brak fabrykowania mocy znamionowej).
-    """
-    if not catalog_ref:
-        return None
-    from network_model.catalog.repository import get_default_mv_catalog
-
-    return get_default_mv_catalog().get_converter_type(str(catalog_ref))
+# Źródła falownikowe (Inverter-Based Generation) — SCR dotyczy punktu przyłączenia
+# źródeł energoelektronicznych; zbiór = kanoniczny `GEN_TYPES_PRZEKSZTALTNIKOWE`
+# (karta AB-H0 Pakiet D: lokalna kopia skasowana, parytet w
+# `tests/enm/test_gen_types_przeksztaltnikowe.py`). Generatory synchroniczne pominięte.
 
 
 def resolve_n_parallel(gen: dict[str, Any]) -> int:
@@ -68,11 +61,10 @@ def resolve_n_parallel(gen: dict[str, Any]) -> int:
 def _installed_mva_for_generator(gen: dict[str, Any]) -> float | None:
     """Moc pozorna zainstalowana źródła IBG [MVA] z danych modelu.
 
-    Moc znamionowa pojedynczej jednostki S_n (priorytet:
-    ``materialized_params.sn_mva`` → ``ConverterType.sn_mva`` z katalogu)
-    przemnożona przez krotność jednostek równoległych ``n_parallel``
-    (``resolve_n_parallel``; brak/None → 1): moc zainstalowana = S_n × n_parallel.
-    Brak S_n → None.
+    Moc znamionowa pojedynczej jednostki S_n (``materialized_params.sn_mva`` —
+    karta zmaterializowana w elemencie, jedyne źródło) przemnożona przez krotność
+    jednostek równoległych ``n_parallel`` (``resolve_n_parallel``; brak/None → 1):
+    moc zainstalowana = S_n × n_parallel. Brak S_n → None.
     """
     materialized = gen.get("materialized_params") or {}
     unit_sn: float | None = None
@@ -85,39 +77,46 @@ def _installed_mva_for_generator(gen: dict[str, Any]) -> float | None:
         if value > 0.0:
             unit_sn = value
     if unit_sn is None:
-        converter = _resolve_converter(gen.get("catalog_ref"))
-        if converter is not None and getattr(converter, "sn_mva", None):
-            value = float(converter.sn_mva)
-            if value > 0.0:
-                unit_sn = value
-    if unit_sn is None:
         return None
     return unit_sn * resolve_n_parallel(gen)
 
 
-def _installed_mva_by_bus(snapshot: dict[str, Any]) -> dict[str, float]:
+def _installed_mva_by_bus(snapshot: dict[str, Any]) -> dict[str, float | None]:
     """Suma mocy zainstalowanej źródeł IBG per węzeł (ref_id szyny).
 
     Agreguje po WSZYSTKICH elementach-źródłach IBG przyłączonych do danej szyny
-    (test: „suma mocy wielu źródeł w jednym węźle").
+    (test: „suma mocy wielu źródeł w jednym węźle"). Gdy KTÓRYKOLWIEK generator
+    w węźle ma nieznaną moc znamionową (``_installed_mva_for_generator`` →
+    ``None``), suma CAŁEGO węzła jest ``None`` — nie da się uczciwie podać
+    sumy zainstalowanej mocy, gdy jeden ze składników jest nieznany, niezależnie
+    od tego, czy w tym samym węźle są też generatory o znanej mocy (FAB-E, E1:
+    brak wyniku ≠ zero).
+
+    Poprzednia wersja trzymała ``0.0`` jako sentinel „nieznane" i wpisywała go
+    WYŁĄCZNIE przez ``setdefault`` — gdy w tym samym węźle wcześniej lub później
+    trafił generator o ZNANEJ mocy, jego suma cicho „wygrywała" i sentinel nigdy
+    nie był widoczny (defekt KLASA NIE INSTANCJA: ten sam plik ma trzy siostrzane
+    funkcje — ``_sk_mva_by_bus``, ``_nominal_kv_by_bus``, ``BusSourceModule.sn_mva``
+    przez ``_modules_by_bus`` — i wszystkie poprawnie zwracają ``float | None``;
+    tylko ta jedna używała fikcyjnego zera zamiast jawnego braku).
     """
-    by_bus: dict[str, float] = {}
+    suma: dict[str, float] = {}
+    nieznane: set[str] = set()
     for gen in snapshot.get("generators") or []:
         if not isinstance(gen, dict):
             continue
-        if str(gen.get("gen_type") or "") not in IBG_GEN_TYPES:
+        if str(gen.get("gen_type") or "") not in GEN_TYPES_PRZEKSZTALTNIKOWE:
             continue
         bus_ref = gen.get("bus_ref")
         if not isinstance(bus_ref, str):
             continue
         installed = _installed_mva_for_generator(gen)
         if installed is None:
-            # Węzeł hostuje IBG, ale bez znanej mocy znamionowej — utrzymujemy
-            # klucz z sumą 0.0, aby builder wydał uczciwie „brak danych".
-            by_bus.setdefault(bus_ref, 0.0)
+            nieznane.add(bus_ref)
+            suma.setdefault(bus_ref, 0.0)
             continue
-        by_bus[bus_ref] = by_bus.get(bus_ref, 0.0) + installed
-    return by_bus
+        suma[bus_ref] = suma.get(bus_ref, 0.0) + installed
+    return {bus_ref: (None if bus_ref in nieznane else total) for bus_ref, total in suma.items()}
 
 
 def _modules_by_bus(snapshot: dict[str, Any]) -> dict[str, tuple[BusSourceModule, ...]]:
@@ -134,7 +133,7 @@ def _modules_by_bus(snapshot: dict[str, Any]) -> dict[str, tuple[BusSourceModule
     for gen in snapshot.get("generators") or []:
         if not isinstance(gen, dict):
             continue
-        if str(gen.get("gen_type") or "") not in IBG_GEN_TYPES:
+        if str(gen.get("gen_type") or "") not in GEN_TYPES_PRZEKSZTALTNIKOWE:
             continue
         bus_ref = gen.get("bus_ref")
         if not isinstance(bus_ref, str):
@@ -145,7 +144,7 @@ def _modules_by_bus(snapshot: dict[str, Any]) -> dict[str, tuple[BusSourceModule
         name = gen.get("name")
         module = BusSourceModule(
             ref=ref,
-            name=str(name) if isinstance(name, str) and name else None,
+            name=nazwa_nadana(name),
             sn_mva=_installed_mva_for_generator(gen),
         )
         grouped.setdefault(bus_ref, []).append(module)
@@ -182,7 +181,7 @@ def _nominal_kv_by_bus(snapshot: dict[str, Any]) -> dict[str, float | None]:
 def _context(run: CanonicalRun) -> GridStrengthContext:
     header = (run.snapshot or {}).get("header") or {}
     return GridStrengthContext(
-        project_name=str(header.get("name")) if header.get("name") else None,
+        project_name=nazwa_nadana(header.get("name")),
         case_name=None,
         case_id=str(run.case_id) if run.case_id else None,
         run_timestamp=run.created_at,
@@ -201,11 +200,11 @@ def build_grid_strength_view(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
         raise ValueError(
             "Siła sieci (SCR/WSCR) wymaga przebiegu zwarciowego; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )
 
@@ -220,7 +219,9 @@ def build_grid_strength_view(run: CanonicalRun) -> dict[str, Any]:
             bus_ref=bus_ref,
             nominal_kv=kv_by_bus.get(bus_ref),
             s_sc_mva=sk_by_bus.get(bus_ref),
-            s_installed_mva=(installed if installed > 0.0 else None),
+            # `_installed_mva_by_bus` już zwraca `None` dla węzła z nieznaną
+            # mocą zainstalowaną — przekazanie wprost, bez własnej translacji.
+            s_installed_mva=installed,
             modules=modules_by_bus.get(bus_ref, ()),
         )
         for bus_ref, installed in installed_by_bus.items()

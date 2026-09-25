@@ -32,6 +32,10 @@ type EnmFragment = Pick<
   // `resolveBayCtRatingAnnotations`, reużyte ze stacji).
   | 'protection_assignments'
   | 'measurements'
+  // F13.1 (spec §21.1, D3-1): derywacja kolumny WN gdy `gpz_hv_sections`
+  // puste czyta `snapshot.sources` — `buildCanonicalGpzProps` wymaga tej
+  // kolekcji dokładnie jak produkcyjny wywołujący (`buildScene.ts`).
+  | 'sources'
 >;
 
 function emptyEnm(): EnmFragment {
@@ -44,6 +48,7 @@ function emptyEnm(): EnmFragment {
     branches: [],
     protection_assignments: [],
     measurements: [],
+    sources: [],
   };
 }
 
@@ -938,4 +943,66 @@ describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)'
     const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
     expect(props.hvBusRef).toBe('bus-110');
   });
+});
+
+/* ---------------------------------------------------------------------------
+   Karta #135 — stan ruchowy pola bez fabrykacji: „w manipulacji" wyłącznie ze
+   źródła runtime (polecenie w toku albo blokada z rekordu źródła); brak źródła
+   i blokada nieustalona (null) NIE są blokadą.
+   --------------------------------------------------------------------------- */
+
+describe('buildCanonicalGpzProps — manipulacja tylko ze źródła runtime (karta #135)', () => {
+  function poleGpz(runtime: Bay['runtime_state']): boolean | undefined {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
+      })],
+      bays: [bay('b-out', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1', runtime_state: runtime })],
+      buses: [bus('bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    return props.sections[0].bays.find((b) => b.bayRef === 'b-out')?.inManipulation;
+  }
+
+  function runtime(blokada: boolean | null, polecenie: boolean): NonNullable<Bay['runtime_state']> {
+    return {
+      secondary_communication_status: 'ok',
+      control_availability: 'dostepne',
+      measurement_availability: 'dostepne',
+      primary_device_states: {
+        b_out_cb: { actual_state: 'zamkniety', control_mode: null, communication_ok: null, interlock_blocked: blokada },
+      },
+      active_alarms: [],
+      pending_command: polecenie
+        ? {
+            command_ref: 'cmd-1',
+            target_device_ref: 'b_out_cb',
+            command: 'otworz',
+            state: 'oczekuje',
+            created_at: '2026-09-24T08:00:00Z',
+          }
+        : null,
+      energization_and_safety: {
+        energized_from_bus_side: false,
+        energized_from_feeder_side: false,
+        grounded: false,
+        visible_isolation_gap: false,
+        safe_to_work: false,
+      },
+    };
+  }
+
+  it('brak źródła runtime → pole nie jest w manipulacji', () => {
+    expect(poleGpz(null)).toBe(false);
+  });
+
+  const BLOKADY: ReadonlyArray<boolean | null> = [true, false, null];
+  for (const blokada of BLOKADY) {
+    for (const polecenie of [true, false]) {
+      it(`blokada=${String(blokada)} polecenie=${String(polecenie)} → manipulacja = polecenie ∨ blokada===true`, () => {
+        expect(poleGpz(runtime(blokada, polecenie))).toBe(polecenie || blokada === true);
+      });
+    }
+  }
 });

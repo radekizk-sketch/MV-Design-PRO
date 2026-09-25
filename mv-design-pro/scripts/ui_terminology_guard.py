@@ -86,7 +86,8 @@ BANNED_UI_TERMS: dict[str, re.Pattern[str]] = {
     "BRANCH": re.compile(r"\bBRANCH\b"),
     "COUPLER": re.compile(r"\bCOUPLER\b"),
     # Kody roli pola SN (kontrakt add_sn_bay) — zakazane jako terminologia UI;
-    # w warstwie prezentacji uzywamy polskich nazw (odplywowe/doplywowe/…).
+    # w warstwie prezentacji uzywamy polskich nazw ról z kanonu (FIELD_ROLE_LABEL_PL:
+    # „Pole liniowe wejściowe/wyjściowe”, „Pole odgałęźne”…; karta #141).
     # (Decyzja watku SLD 2026-07-19: „IN/OUT zabronione"; V12K-057 popr.)
     "IN (kod roli)": re.compile(r"\bIN\b"),
     "OUT (kod roli)": re.compile(r"\bOUT\b"),

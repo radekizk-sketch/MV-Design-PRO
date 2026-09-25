@@ -13,7 +13,10 @@
  *   (`ui/results-inspector/store.ts:104`), `selectedRunId` (`store.ts:96`).
  * - Etykiety wielkości PL: `TRACE_VALUE_LABELS` (`types.ts:306-333`).
  *
- * TODO-KARTA (ograniczenia — brak źródła w kontrakcie read-only, karta §2 „NIE zgaduj"):
+ * HISTORIA DOMKNIĘCIA (dawne ograniczenia kontraktu read-only, karta §2 „NIE
+ * zgaduj") — WSZYSTKIE cztery pozycje niżej są dziś ZAMKNIĘTE; zapis zostaje
+ * jako mapowanie plik:linia realnego dostawcy każdej wartości (audyt „skąd to
+ * wzięło"), nie jako lista otwartych braków:
  * 1. WKŁADY ŹRÓDEŁ: DOMKNIĘTE (R3-B / K3-G3) — realny dostawca to endpoint
  *    `POST /api/proof/sc3f/contributions` (`zwarcia/api.ts`), rozbicie maszynowe
  *    per źródło (machine_type, Ir, Ik"/Ir, μ, q, Ib, wywód dyplomowy) renderuje
@@ -38,22 +41,44 @@
  *    `zrodloRozplywuPL`); strzałki v3 dostają pełny rozpływ. Pusta lista =
  *    policzono, brak prądu w gałęziach (sieć bez źródła zastępczego i bez
  *    falowników zasilających zwarcie).
- * 2. ŚWIEŻOŚĆ (FreshnessBadge): kontrakt wyników zwarciowych nie niesie LICZBOWEJ
- *    rewizji modelu z chwili liczenia → nagłówek nie podaje rewizji (badge
- *    pominięty, jak w oknie rozpływu). Numeryczną świeżość dostarczy karta
- *    integracyjna (spięcie ze snapshot store'em modelu).
- * 3. ZAŁOŻENIA c / czas cieplny: wartości należą do konfiguracji przebiegu
- *    (`ShortCircuitConfigRequest.c_factor`/`thermal_time_seconds`,
- *    `api/fault_scenarios.py:75-76`), nie do kontraktu wyników. `EkranZwarc`
- *    przyjmuje je PRZEZ PROPS (zarządca podaje przy scaleniu); przy braku
- *    prezentowana jest „—" z uwagą o pochodzeniu. Metoda „IEC 60909" jest stałą
- *    normatywną rodziny solvera (nie zgadywanie).
+ *    GAP DOMKNIĘTY (karta WB-ROZPLYW): sam `branch_flow_trace` (WHITE BOX
+ *    podziału, TH-1) był od `1e9f21c5` dostępny WYŁĄCZNIE na żądanie
+ *    (`GET …/results/short-circuit/rozplyw`), niewpięty w żaden ekran (dług
+ *    — treść WHITE BOX istniejąca tylko w magazynie). Sekcja `SladPodzialuPradu`
+ *    (pod `RozplywZwarciowy`) renderuje kroki tego śladu REUŻYWAJĄC istniejący
+ *    kanon pięciu pól (`KrokDowodu`/`mapujKroki`, `ui2/wyniki/dowod` — ten sam
+ *    komponent, którym ekran „Dowód obliczeń" pokazuje `white_box_trace`).
+ *    Dostawca `useRozplywZwarciowy` (`zwarcia/api.ts`) zwraca teraz PARĘ
+ *    `{flows, trace, blad}` z jednego wywołania endpointu (`RozplywOdpowiedz`
+ *    rozszerzony o `branch_flow_trace`) — jedno źródło prawdy dla obu sekcji,
+ *    nie dwa niezależne wołania. Naprawiono PRZY OKAZJI defekt klasy w
+ *    `dowod/dowodModel.ts` (`mapujWielkosci`): adapter zakładał WYŁĄCZNIE
+ *    opakowany kształt `TraceValue` ({value, unit, label}), a REALNY solver
+ *    (`WhiteBoxTracer.add`) emituje skalar/liczbę zespoloną `{re, im}` wprost —
+ *    każda wartość realnego śladu (SC/PF/branch_flow_trace) renderowała się
+ *    jako pusta kreska (KLASA NIE INSTANCJA — naprawa u źródła, nie lokalna
+ *    obejście w tej sekcji).
+ * 2. ŚWIEŻOŚĆ (FreshnessBadge): DOMKNIĘTE (V12K-264/265) — `EkranZwarc` czyta
+ *    `useSwiezoscNaglowka(runId)` (ten sam mechanizm co okna rozpływu/zbieżności,
+ *    `ui2/freshness`), więc nagłówek podaje parę rewizji i panel przyczyn, gdy
+ *    wynik jest nieaktualny wobec modelu.
+ * 3. ZAŁOŻENIA c / czas cieplny: DOMKNIĘTE (karta UI2 p.7) — wartości
+ *    pochodzą z konfiguracji ZAPISANEJ NA TYM BIEGU (`konfiguracja_biegu`
+ *    odpowiedzi, `api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`),
+ *    nie z aktywnego przypadku obliczeniowego (mogą się różnić po fakcie) ani
+ *    z propsów. Pełny opis reguł prezentacji (tryb `auto_per_wezel`, starszy
+ *    zapis biegu bez pola, pochodzenie domyślnego czasu cieplnego) stoi przy
+ *    `naZalozeniaZwarc` niżej. Metoda „IEC 60909" jest stałą normatywną rodziny
+ *    solvera (nie zgadywanie).
  */
 
 import type {
+  KonfiguracjaBieguZwarcia,
   ShortCircuitBranchFlow,
   ShortCircuitResults,
   ShortCircuitRow,
+  ZalozenieBieguSlad,
+  ZrodloSiecioweSlad,
 } from '../../../ui/results-inspector/types';
 import { useResultsInspectorStore } from '../../../ui/results-inspector/store';
 import type {
@@ -73,6 +98,9 @@ import {
   fmtProcent,
   fmtWspolczynnik,
   rodzajZwarciaPL,
+  rxRatioZrodloPL,
+  scenariuszZwarciaPL,
+  trybZrodlaSiecowegoPL,
   typMaszynyPL,
   uwagiZwarciaPL,
   zrodloRozplywuPL,
@@ -117,13 +145,8 @@ export const KOLUMNY_ZWARC: DefinicjaKolumny[] = [
   { klucz: 'xr', etykieta: ZWARCIA_STRINGS.kolXR, mono: true, tylkoEkspercki: true },
   { klucz: 'kappa', etykieta: ZWARCIA_STRINGS.kolKappa, mono: true, tylkoEkspercki: true },
   { klucz: 'uwagi', etykieta: ZWARCIA_STRINGS.kolUwagi, wyrownanie: 'lewo', sortowalna: false },
-  {
-    klucz: KLUCZ_PUNKT,
-    etykieta: ZWARCIA_STRINGS.kolIdentyfikator,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
+  // Karta #145: `target_id` jest KLUCZEM wiersza (`KLUCZ_PUNKT`, komórka bez kolumny) —
+  // identyfikator nie jest tekstem pierwszego planu, także w trybie eksperckim.
 ];
 
 // ---------------------------------------------------------------------------
@@ -148,13 +171,25 @@ function komorkaWielkosci(
 }
 
 /**
+ * Nazwa punktu zwarcia dla projektanta: most nazw wyników po `element_id` (ref ENM
+ * szyny), a gdy migawka go nie zna — nazwa podana przez wynik (`target_name`), nigdy
+ * identyfikator (karta #145).
+ */
+export function nazwaPunktuZwarcia(row: ShortCircuitRow, nazwa: (ref: string, zWyniku?: string | null) => string): string {
+  return nazwa(row.element_id ?? row.target_id, row.target_name);
+}
+
+/**
  * Adapter read-only: `ShortCircuitRow` → wiersz tabeli wzorca. `dowodRef` =
  * `element_id` (gdy jest) lub `target_id` (karta §2: ref dowodu = target/element).
  */
-export function mapujWierszZwarcia(row: ShortCircuitRow): WierszTabeli {
+export function mapujWierszZwarcia(
+  row: ShortCircuitRow,
+  nazwa: (ref: string, zWyniku?: string | null) => string,
+): WierszTabeli {
   const dowodRef = row.element_id ?? row.target_id;
   return {
-    punkt: { wartosc: row.target_name ?? ZWARCIA_STRINGS.kreska },
+    punkt: { wartosc: nazwaPunktuZwarcia(row, nazwa) },
     rodzaj: { wartosc: rodzajZwarciaPL(row.fault_type) },
     ikss: komorkaWielkosci(row.ikss_ka, fmtKA, dowodRef),
     ip: komorkaWielkosci(row.ip_ka, fmtKA, dowodRef),
@@ -172,33 +207,88 @@ export function mapujWierszZwarcia(row: ShortCircuitRow): WierszTabeli {
 }
 
 /** Mapuje wiersze zwarciowe na wiersze tabeli wzorca (kolejność źródłowa). */
-export function naWierszeZwarc(rows: ShortCircuitRow[]): WierszTabeli[] {
-  return rows.map(mapujWierszZwarcia);
+export function naWierszeZwarc(
+  rows: ShortCircuitRow[],
+  nazwa: (ref: string, zWyniku?: string | null) => string,
+): WierszTabeli[] {
+  return rows.map((row) => mapujWierszZwarcia(row, nazwa));
+}
+
+/** Wiersz „Współczynnik napięciowy c" — z KONFIGURACJI TEGO BIEGU (nie z
+ * aktywnego przypadku obliczeniowego, karta UI2 p.7). Tryb `jawny` →
+ * liczba; `auto_per_wezel` → uczciwy opis (solver dobiera c per węzeł, nie ma
+ * jednej wspólnej wartości biegu); brak konfiguracji (starszy zapis) → „—".
+ */
+function wierszWspolczynnikaC(c: KonfiguracjaBieguZwarcia['c_factor'] | undefined): WierszZalozenia {
+  if (c === undefined) {
+    return {
+      etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
+      wartosc: ZWARCIA_STRINGS.kreska,
+      uwaga: ZWARCIA_STRINGS.zalKonfiguracjaBieguNiedostepna,
+    };
+  }
+  if (c.tryb === 'auto_per_wezel' || c.wartosc === null) {
+    return {
+      etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
+      wartosc: ZWARCIA_STRINGS.zalWspolczynnikCAuto,
+      uwaga: ZWARCIA_STRINGS.zalWspolczynnikCAutoUwaga,
+    };
+  }
+  return { etykieta: ZWARCIA_STRINGS.zalWspolczynnikC, wartosc: fmtWspolczynnik(c.wartosc) };
+}
+
+/** Wiersz „Czas cieplny" — z KONFIGURACJI TEGO BIEGU; `pochodzenie:
+ * 'domyslna_assemblera'` dostaje uwagę (1,0 s nie jest ukrywana jako gdyby
+ * pochodziła z jawnych opcji biegu — zero fabrykacji pochodzenia). */
+function wierszCzasuCieplnego(
+  t: KonfiguracjaBieguZwarcia['thermal_time_seconds'] | undefined,
+): WierszZalozenia {
+  if (t === undefined) {
+    return {
+      etykieta: ZWARCIA_STRINGS.zalCzasCieplny,
+      wartosc: ZWARCIA_STRINGS.kreska,
+      uwaga: ZWARCIA_STRINGS.zalKonfiguracjaBieguNiedostepna,
+    };
+  }
+  return {
+    etykieta: ZWARCIA_STRINGS.zalCzasCieplny,
+    wartosc: fmtCzas(t.wartosc),
+    jednostka: ZWARCIA_STRINGS.jednS,
+    uwaga: t.pochodzenie === 'domyslna_assemblera' ? ZWARCIA_STRINGS.zalCzasCieplnyDomyslny : undefined,
+  };
 }
 
 /**
- * Buduje sekcję ZAŁOŻENIA (W-602). Metoda „IEC 60909" — stała normatywna rodziny
- * solvera. Współczynnik c i czas cieplny pochodzą z konfiguracji przebiegu
- * (props); przy braku prezentowana jest „—" z uwagą o pochodzeniu (TODO-KARTA 3).
+ * Buduje sekcję ZAŁOŻENIA (W-602). Metoda / współczynnik c / czas cieplny
+ * pochodzą z `konfiguracja_biegu` odpowiedzi (`GET …/results/short-circuit`,
+ * `api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`) — konfiguracja
+ * ZAPISANA na TYM biegu, nigdy aktywnego przypadku obliczeniowego (karta
+ * UI2 p.7: przypadek aktywny może się różnić od przypadku biegu po
+ * fakcie — dwie różne rzeczy). Starszy zapis biegu sprzed tej karty → pole
+ * nieobecne → uczciwa kreska (bez zgadywania), metoda pozostaje stałą normatywną.
+ *
+ * CV-4.3 K7: `zalozeniaBiegu` (opcjonalny, `raw_result.zalozenia`) dokłada po
+ * jednym wierszu na każde założenie biegu nazwane kodem gotowości (np. scenariusz
+ * MIN bez S″kQmin — Z_Q z danych MAX) — treść (`message_pl`) WPROST z backendu,
+ * nigdy cicho. Brak/pusta lista = bieg bez założeń (wiersze bazowe bez zmian).
+ * Karta #145: źródło założenia nazywa most nazw wyników (`nazwa`), nie referencja.
  */
 export function naZalozeniaZwarc(
-  wspolczynnikC?: number,
-  czasCieplnyS?: number,
+  konfiguracja: KonfiguracjaBieguZwarcia | undefined,
+  zalozeniaBiegu: readonly ZalozenieBieguSlad[] | undefined,
+  nazwa: (ref: string) => string,
 ): WierszZalozenia[] {
-  return [
-    { etykieta: ZWARCIA_STRINGS.zalMetoda, wartosc: ZWARCIA_STRINGS.zalMetodaWartosc },
-    {
-      etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
-      wartosc: wspolczynnikC !== undefined ? fmtWspolczynnik(wspolczynnikC) : ZWARCIA_STRINGS.kreska,
-      uwaga: wspolczynnikC === undefined ? ZWARCIA_STRINGS.zalWartoscZKonfiguracji : undefined,
-    },
-    {
-      etykieta: ZWARCIA_STRINGS.zalCzasCieplny,
-      wartosc: czasCieplnyS !== undefined ? fmtCzas(czasCieplnyS) : ZWARCIA_STRINGS.kreska,
-      jednostka: czasCieplnyS !== undefined ? ZWARCIA_STRINGS.jednS : undefined,
-      uwaga: czasCieplnyS === undefined ? ZWARCIA_STRINGS.zalWartoscZKonfiguracji : undefined,
-    },
+  const bazowe: WierszZalozenia[] = [
+    { etykieta: ZWARCIA_STRINGS.zalMetoda, wartosc: konfiguracja?.metoda ?? ZWARCIA_STRINGS.zalMetodaWartosc },
+    wierszWspolczynnikaC(konfiguracja?.c_factor),
+    wierszCzasuCieplnego(konfiguracja?.thermal_time_seconds),
   ];
+  const zZaZrodel: WierszZalozenia[] = (zalozeniaBiegu ?? []).map((z) => ({
+    etykieta: ZWARCIA_STRINGS.zalozenieEtykieta(nazwa(z.element_ref)),
+    wartosc: z.message_pl,
+    uwaga: ZWARCIA_STRINGS.zalozenieUwaga(scenariuszZwarciaPL(z.scenariusz)),
+  }));
+  return [...bazowe, ...zZaZrodel];
 }
 
 // ---------------------------------------------------------------------------
@@ -290,22 +380,27 @@ export const KONFIG_WYKRESU_ZWARC: Record<WielkoscWykresu, KonfigWykresuZwarc> =
 export function naSlupkiWielkosci(
   rows: ShortCircuitRow[],
   wielkosc: WielkoscWykresu,
+  nazwa: (ref: string, zWyniku?: string | null) => string,
 ): SlupekIkss[] {
   const odczyt = KONFIG_WYKRESU_ZWARC[wielkosc].wartosc;
   return rows.flatMap((r) => {
     const wartosc = odczyt(r);
     if (wartosc === null || wartosc === undefined) return [];
-    return [{ punkt: r.target_name ?? r.target_id, ikss: wartosc }];
+    return [{ punkt: nazwaPunktuZwarcia(r, nazwa), ikss: wartosc }];
   });
 }
 
 /** Punkty wykresu Ik" (kontrakt 1:1 sprzed karty W-A F2 — deleguje do wielkości). */
-export function naSlupkiIkss(rows: ShortCircuitRow[]): SlupekIkss[] {
-  return naSlupkiWielkosci(rows, 'ikss');
+export function naSlupkiIkss(
+  rows: ShortCircuitRow[],
+  nazwa: (ref: string, zWyniku?: string | null) => string,
+): SlupekIkss[] {
+  return naSlupkiWielkosci(rows, 'ikss', nazwa);
 }
 
 // ---------------------------------------------------------------------------
-// Wkłady zwarciowe — projekcja prezentacyjna (dane przez props, patrz TODO-KARTA 1)
+// Wkłady zwarciowe — projekcja prezentacyjna (dostawca produkcyjny: `zwarcia/api.ts`
+// `useWkladyZwarciowe`; props `wklady` = nadpisanie testowe, patrz pozycja 1 wyżej)
 // ---------------------------------------------------------------------------
 
 /**
@@ -360,13 +455,7 @@ export const KOLUMNY_WKLADOW: DefinicjaKolumny[] = [
   { klucz: 'zrodlo', etykieta: ZWARCIA_STRINGS.wkladyKolZrodlo, wyrownanie: 'lewo' },
   { klucz: 'prad', etykieta: ZWARCIA_STRINGS.wkladyKolPrad, jednostka: ZWARCIA_STRINGS.jednKA, mono: true },
   { klucz: 'udzial', etykieta: ZWARCIA_STRINGS.wkladyKolUdzial, jednostka: ZWARCIA_STRINGS.jednProcent, mono: true },
-  {
-    klucz: KLUCZ_WKLAD,
-    etykieta: ZWARCIA_STRINGS.wkladyKolIdentyfikator,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
+  // Karta #145: identyfikator źródła jest kluczem wiersza (`KLUCZ_WKLAD`), nie kolumną.
 ];
 
 /**
@@ -472,17 +561,10 @@ export const KOLUMNY_ROZPLYWU: DefinicjaKolumny[] = [
   {
     klucz: 'zrodlo',
     etykieta: ZWARCIA_STRINGS.rozplywKolZrodlo,
-    mono: true,
     wyrownanie: 'lewo',
     tylkoEkspercki: true,
   },
-  {
-    klucz: KLUCZ_ROZPLYW,
-    etykieta: ZWARCIA_STRINGS.rozplywKolIdentyfikator,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
+  // Karta #145: klucz wpisu (`branch_id::source_id`) jest kluczem wiersza, nie kolumną.
 ];
 
 /**
@@ -490,10 +572,15 @@ export const KOLUMNY_ROZPLYWU: DefinicjaKolumny[] = [
  * "to_from") obraca parę nazw węzłów gałęzi — czysta prezentacja danych,
  * zero interpretacji. Token nieznany → para bez strzałki (uczciwy brak).
  */
-export function kierunekPrzeplywuPL(flow: ShortCircuitBranchFlow): string {
-  if (flow.direction === 'from_to') return `${flow.from_node_name} → ${flow.to_node_name}`;
-  if (flow.direction === 'to_from') return `${flow.to_node_name} → ${flow.from_node_name}`;
-  return `${flow.from_node_name} – ${flow.to_node_name}`;
+export function kierunekPrzeplywuPL(
+  flow: ShortCircuitBranchFlow,
+  nazwa: (ref: string, zWyniku?: string | null) => string,
+): string {
+  const od = nazwa(flow.from_node_id, flow.from_node_name);
+  const doWezla = nazwa(flow.to_node_id, flow.to_node_name);
+  if (flow.direction === 'from_to') return `${od} → ${doWezla}`;
+  if (flow.direction === 'to_from') return `${doWezla} → ${od}`;
+  return `${od} – ${doWezla}`;
 }
 
 /**
@@ -501,14 +588,17 @@ export function kierunekPrzeplywuPL(flow: ShortCircuitBranchFlow): string {
  * source_id) na wiersze tabeli wzorca. `dowodRef` = branch_id (2× klik →
  * dowód gałęzi). Klucz wiersza = `branch_id::source_id` (unikalny wpis).
  */
-export function naWierszeRozplywu(flows: ShortCircuitBranchFlow[]): WierszTabeli[] {
+export function naWierszeRozplywu(
+  flows: ShortCircuitBranchFlow[],
+  nazwa: (ref: string, zWyniku?: string | null) => string,
+): WierszTabeli[] {
   return flows.map((flow) => ({
-    galaz: { wartosc: flow.branch_name },
-    kierunek: { wartosc: kierunekPrzeplywuPL(flow) },
+    galaz: { wartosc: nazwa(flow.branch_id, flow.branch_name) },
+    kierunek: { wartosc: kierunekPrzeplywuPL(flow, nazwa) },
     prad: komorkaWielkosci(flow.i_ka, fmtKA, flow.branch_id),
     // V12K-132 (pkt 7): rozróżnienie źródła wkładu PL — „sieć nadrzędna"
-    // (Thevenin, source_id="THEVENIN_GRID") vs identyfikator falownika/maszyny.
-    zrodlo: { wartosc: zrodloRozplywuPL(flow.source_id) },
+    // (Thevenin, source_id="THEVENIN_GRID") vs falownik/maszyna nazwana z modelu.
+    zrodlo: { wartosc: zrodloRozplywuPL(flow.source_id, nazwa) },
     [KLUCZ_ROZPLYW]: { wartosc: `${flow.branch_id}::${flow.source_id}` },
   }));
 }
@@ -520,6 +610,66 @@ export function naWierszeRozplywu(flows: ShortCircuitBranchFlow[]): WierszTabeli
  */
 export function rozplywDlaWiersza(row: ShortCircuitRow): ShortCircuitBranchFlow[] | null {
   return row.branch_contributions ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Źródła sieciowe (Z_Q) — ślad WHITE BOX wyprowadzenia impedancji zastępczej
+// (CV-4.3 K6/K7, IEC 60909-0:2016 §6.2.1 eq. 6) — projekcja read-only
+// `ShortCircuitResults.zrodla_sieciowe`, zero fizyki (formatowanie wyłącznie).
+// ---------------------------------------------------------------------------
+
+/** Kolumny tabeli źródeł sieciowych (deklaratywne — jednostka w nagłówku gdy stała). */
+export const KLUCZ_ZRODLA_SIECIOWE = 'identyfikator';
+
+export const KOLUMNY_ZRODEL_SIECIOWYCH: DefinicjaKolumny[] = [
+  { klucz: 'zrodlo', etykieta: ZWARCIA_STRINGS.zrodlaKolZrodlo, wyrownanie: 'lewo' },
+  { klucz: 'scenariusz', etykieta: ZWARCIA_STRINGS.zrodlaKolScenariusz, wyrownanie: 'lewo' },
+  { klucz: 'tryb', etykieta: ZWARCIA_STRINGS.zrodlaKolTryb, wyrownanie: 'lewo' },
+  // S″kQ/I″kQ niesie własną jednostkę w tekście (MVA albo kA różnią się per
+  // wiersz — tryb prądowy vs mocowy), więc kolumna nie deklaruje `jednostka`.
+  { klucz: 'mocPrad', etykieta: ZWARCIA_STRINGS.zrodlaKolMocPrad, mono: true },
+  { klucz: 'c', etykieta: ZWARCIA_STRINGS.zrodlaKolC, mono: true },
+  { klucz: 'rx', etykieta: ZWARCIA_STRINGS.zrodlaKolRx, wyrownanie: 'lewo' },
+  { klucz: 'zq', etykieta: ZWARCIA_STRINGS.zrodlaKolZq, jednostka: ZWARCIA_STRINGS.jednOhm, mono: true },
+  { klucz: 'wzor', etykieta: ZWARCIA_STRINGS.zrodlaKolWzor, wyrownanie: 'lewo', sortowalna: false },
+  // Karta #145: klucz wpisu (`ref_id::scenariusz`) jest kluczem wiersza, nie kolumną.
+];
+
+/**
+ * Mapuje ślad źródeł sieciowych (`ShortCircuitResults.zrodla_sieciowe`) na wiersze
+ * tabeli wzorca (kolejność źródłowa — backend sortuje po `ref_id`). Tryb
+ * `IMPEDANCJA_JAWNA` nie niesie `sk3_mva`/`ik3_ka`/`c`/`rx_ratio`/`z_q_abs_ohm`
+ * (impedancja fizyczna, bez c, bez wariantu MIN) — komórki wtedy „—" (uczciwy
+ * brak, nie zero fabrykowane).
+ */
+export function naWierszeZrodelSieciowych(
+  slad: readonly ZrodloSiecioweSlad[],
+  nazwa: (ref: string) => string,
+): WierszTabeli[] {
+  return slad.map((wpis) => {
+    const mocPrad = wpis.sk3_mva !== undefined
+      ? `${fmtMVA(wpis.sk3_mva)} ${ZWARCIA_STRINGS.jednMVA}`
+      : wpis.ik3_ka !== undefined
+        ? `${fmtKA(wpis.ik3_ka)} ${ZWARCIA_STRINGS.jednKA}`
+        : ZWARCIA_STRINGS.kreska;
+    const rx = wpis.rx_ratio !== undefined && wpis.rx_ratio_zrodlo !== undefined
+      ? `${fmtWspolczynnik(wpis.rx_ratio)} (${rxRatioZrodloPL(wpis.rx_ratio_zrodlo)})`
+      : ZWARCIA_STRINGS.kreska;
+    return {
+      zrodlo: { wartosc: nazwa(wpis.ref_id) },
+      scenariusz: { wartosc: scenariuszZwarciaPL(wpis.scenariusz) },
+      tryb: { wartosc: trybZrodlaSiecowegoPL(wpis.tryb) },
+      mocPrad: { wartosc: mocPrad },
+      c: { wartosc: wpis.c !== undefined ? fmtWspolczynnik(wpis.c) : ZWARCIA_STRINGS.kreska },
+      rx: { wartosc: rx },
+      zq: {
+        wartosc: wpis.z_q_abs_ohm !== undefined ? fmtOhm(wpis.z_q_abs_ohm) : ZWARCIA_STRINGS.kreska,
+        sortKey: wpis.z_q_abs_ohm ?? Number.NEGATIVE_INFINITY,
+      },
+      wzor: { wartosc: wpis.formula },
+      [KLUCZ_ZRODLA_SIECIOWE]: { wartosc: `${wpis.ref_id}::${wpis.scenariusz}` },
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

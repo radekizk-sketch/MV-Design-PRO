@@ -2,20 +2,27 @@
  * Model i adaptery okna „Walidacja modelu falownika" (trajektorie FRT, karta U4
  * P38). Czyste, read-only odwzorowanie stanu modelu (moduły DER ze store'a) oraz
  * odpowiedzi końcówki frt-trajectories (`../api`) na struktury prezentacji (opcje
- * doboru / serie wykresu / tabela wzorcowa / werdykt całości).
+ * doboru / serie wykresu / tabela scenariuszy / tabela audytowa pól solvera).
  *
- * GRANICE (NOT-A-SOLVER / zero fizyki): warstwa wyłącznie prezentuje. Werdykty
- * per scenariusz i pola trajektorii pochodzą WYŁĄCZNIE z backendu; werdykt całości
- * to prezentacyjna AGREGACJA SŁOWNIKOWA najgorszego werdyktu (bez oceny fizycznej).
- * „Napięcie skrajne" scenariusza to projekcja min/max napięcia trajektorii (rzut
- * danych odpowiedzi, nie wyliczenie fizyczne). Zero mutacji, zero wołań API stąd.
+ * UCZCIWOŚĆ (2026-09-23): okno NIE wystawia werdyktu FRT. Trajektoria solvera jest
+ * zadana profilem wejściowym scenariusza, a „utrzymanie pracy" i „margines do krzywej"
+ * to kryterium v > 0,05 p.u. wobec TEGO SAMEGO profilu (tautologia). Tabela pierwszego
+ * planu niesie echo scenariusza i etykietę rekordu oceny z backendu; pola solvera
+ * trafiają WYŁĄCZNIE do tabeli audytowej — bez tagów ostrzegawczych, bo kolor też
+ * byłby oceną. Dawna agregacja „werdyktu całości" skasowana razem z werdyktem.
+ * Scenariusz nazywa `nazwa_pl` z backendu (parametry próby), a klucze techniczne
+ * (scenariusz, typ przekształtnika, operator) idą do „Informacji audytowych".
+ *
+ * GRANICE (NOT-A-SOLVER / zero fizyki): warstwa wyłącznie prezentuje. „Napięcie
+ * skrajne" scenariusza to projekcja min/max napięcia trajektorii (rzut danych
+ * odpowiedzi, nie wyliczenie fizyczne). Zero mutacji, zero wołań API stąd.
  *
  * Determinizm: kolejność modułów = kolejność `selectAllDers` (sort po id);
  * kolejność scenariuszy/punktów = kolejność źródłowa odpowiedzi. Brak `Date.now`.
  */
 
+import type { ProfilOperatoraNcRfg } from '../ncrfg/typy';
 import type {
-  ProfilOperatoraNcRfg,
   RodzajTestuFrt,
   ScenariuszFrt,
   WidokTrajektoriiFrt,
@@ -25,8 +32,11 @@ import type {
   StationDerConnection,
 } from '../../../ui/network-build/station-der';
 import type { DefinicjaKolumny, WierszTabeli } from '../../wyniki/wzorzec/wzorzecModel';
+import type { WierszInformacjiAudytowych } from '../../wyniki/wzorzec/InformacjeAudytowe';
+import type { StatusSolveraFrt } from '../api';
 import {
   FRT_STRINGS,
+  etykietaStatusuFrt,
   fmtPuFrt,
   fmtPuOpcjaFrt,
   fmtSOpcjaFrt,
@@ -111,9 +121,14 @@ export interface PunktObwiedniWykresu {
   readonly napiecie: number;
 }
 
-/** Adapter: obwiednia profilu → punkty wykresu (kolejność źródłowa). */
+/**
+ * Adapter: obwiednia profilu → punkty wykresu (kolejność źródłowa).
+ * `obwiednia_profilu` jest nieobecna WYŁĄCZNIE przy `status_solvera ===
+ * 'blocked'` (karta S-4) — wywołujący (`WynikTrajektorii`) renderuje się
+ * tylko poza tym stanem, ale sygnatura pozostaje uczciwa: brak → pusto.
+ */
 export function punktyObwiedniFrt(widok: WidokTrajektoriiFrt): PunktObwiedniWykresu[] {
-  return widok.obwiednia_profilu.punkty.map((pt) => ({
+  return (widok.obwiednia_profilu?.punkty ?? []).map((pt) => ({
     czas: pt.czas_s,
     napiecie: pt.napiecie_pu,
   }));
@@ -126,8 +141,9 @@ export function punktyObwiedniFrt(widok: WidokTrajektoriiFrt): PunktObwiedniWykr
 /**
  * Napięcie skrajne zakłócenia [p.u.] — projekcja danych trajektorii odpowiedzi:
  * minimum napięcia dla LVRT (najgłębszy zapad), maksimum dla HVRT (najwyższy
- * wzrost). To RZUT danych z odpowiedzi (min/max), nie wyliczenie fizyczne — ta
- * sama klasa co agregacja werdyktu. Brak punktów → `null`.
+ * wzrost). To RZUT danych z odpowiedzi (min/max), nie wyliczenie fizyczne; skoro
+ * napięcie trajektorii jest zadane profilem wejściowym, to echo zapadu z wejścia.
+ * Brak punktów → `null`.
  */
 export function napiecieSkrajneFrt(
   scenariusz: ScenariuszFrt,
@@ -139,10 +155,10 @@ export function napiecieSkrajneFrt(
 }
 
 // ---------------------------------------------------------------------------
-// Tabela scenariuszy — wzorzec `TabelaWynikow` (ui2/wyniki/wzorzec)
+// Tabela scenariuszy (pierwszy plan) — wzorzec `TabelaWynikow` (ui2/wyniki/wzorzec)
 // ---------------------------------------------------------------------------
 
-/** Deklaratywne kolumny tabeli scenariuszy (etykiety PL, jednostki zawsze). */
+/** Kolumny tabeli scenariuszy pierwszego planu: echo scenariusza + etykieta oceny. */
 export function kolumnyTabeliFrt(): DefinicjaKolumny[] {
   return [
     { klucz: 'scenariusz', etykieta: FRT_STRINGS.kolScenariusz, sortowalna: false },
@@ -152,6 +168,37 @@ export function kolumnyTabeliFrt(): DefinicjaKolumny[] {
       jednostka: FRT_STRINGS.jednPu,
       mono: true,
     },
+    { klucz: 'ocena', etykieta: FRT_STRINGS.kolOcena, sortowalna: false },
+  ];
+}
+
+/** Adapter jednego scenariusza → wiersz pierwszego planu (etykieta z rekordu backendu). */
+function wierszScenariuszaFrt(scenariusz: ScenariuszFrt, rodzaj: RodzajTestuFrt): WierszTabeli {
+  const skrajne = napiecieSkrajneFrt(scenariusz, rodzaj);
+  return {
+    scenariusz: { wartosc: scenariusz.nazwa_pl },
+    glebokosc: {
+      wartosc: skrajne === null ? FRT_STRINGS.kreska : fmtPuFrt(skrajne),
+      sortKey: skrajne ?? undefined,
+    },
+    ocena: { wartosc: scenariusz.ocena.etykieta.etykieta_pl },
+  };
+}
+
+/** Adapter: widok trajektorii → wiersze tabeli scenariuszy (kolejność źródłowa). */
+export function wierszeTabeliFrt(widok: WidokTrajektoriiFrt): WierszTabeli[] {
+  return widok.scenariusze.map((sc) => wierszScenariuszaFrt(sc, widok.test_kind));
+}
+
+// ---------------------------------------------------------------------------
+// Tabela audytowa pól solvera (tylko sekcja audytowa, bez tagów ostrzegawczych)
+// ---------------------------------------------------------------------------
+
+/** Kolumny tabeli audytowej: pola solvera uproszczonego (materiał audytowy). */
+export function kolumnyAudytuFrt(): DefinicjaKolumny[] {
+  return [
+    { klucz: 'scenariusz', etykieta: FRT_STRINGS.kolScenariusz, sortowalna: false },
+    { klucz: 'status', etykieta: FRT_STRINGS.kolStatusSolvera, sortowalna: false },
     { klucz: 'utrzymanie', etykieta: FRT_STRINGS.kolUtrzymanie },
     {
       klucz: 'margines_s',
@@ -171,89 +218,68 @@ export function kolumnyTabeliFrt(): DefinicjaKolumny[] {
       jednostka: FRT_STRINGS.jednS,
       mono: true,
     },
-    { klucz: 'werdykt', etykieta: FRT_STRINGS.kolWerdykt, sortowalna: false },
   ];
 }
 
-/** Adapter jednego scenariusza → wiersz wzorca tabeli (semantyka `ValueRow`). */
-function wierszScenariuszaFrt(scenariusz: ScenariuszFrt, rodzaj: RodzajTestuFrt): WierszTabeli {
-  const skrajne = napiecieSkrajneFrt(scenariusz, rodzaj);
+/** Pola solvera wspólne dla scenariusza trajektorii i zapadu sekwencji. */
+export interface PolaSolveraFrt {
+  readonly status: StatusSolveraFrt;
+  readonly stayed_connected: boolean;
+  readonly margin_to_curve_s: number | null;
+  readonly margin_to_curve_pu: number | null;
+  readonly p_recovery_time_s: number | null;
+}
+
+/**
+ * Adapter pól solvera → komórki tabeli audytowej. Wartości WPROST z pól solvera,
+ * bez tagu ostrzegawczego (kolor byłby oceną wyprowadzoną z tautologii).
+ */
+export function komorkiAudytuFrt(pola: PolaSolveraFrt): WierszTabeli {
   return {
-    scenariusz: { wartosc: scenariusz.scenario_id },
-    glebokosc: {
-      wartosc: skrajne === null ? FRT_STRINGS.kreska : fmtPuFrt(skrajne),
-      sortKey: skrajne ?? undefined,
-    },
-    // Tag „Nie" czyta WYŁĄCZNIE flagę `stayed_connected` z backendu — bez oceny lokalnej.
+    status: { wartosc: etykietaStatusuFrt(pola.status) },
     utrzymanie: {
-      wartosc: scenariusz.stayed_connected
-        ? FRT_STRINGS.utrzymanieTak
-        : FRT_STRINGS.utrzymanieNie,
-      ostrzezenie: !scenariusz.stayed_connected,
+      wartosc: pola.stayed_connected ? FRT_STRINGS.utrzymanieTak : FRT_STRINGS.utrzymanieNie,
     },
     margines_s: {
-      wartosc: fmtSOpcjaFrt(scenariusz.margin_to_curve_s),
-      sortKey: scenariusz.margin_to_curve_s ?? undefined,
+      wartosc: fmtSOpcjaFrt(pola.margin_to_curve_s),
+      sortKey: pola.margin_to_curve_s ?? undefined,
     },
-    // Tag ostrzegawczy dla marginesu ujemnego (poza obwiednią) — flaga z pola solvera.
     margines_pu: {
-      wartosc: fmtPuOpcjaFrt(scenariusz.margin_to_curve_pu),
-      sortKey: scenariusz.margin_to_curve_pu ?? undefined,
-      ostrzezenie: scenariusz.margin_to_curve_pu !== null && scenariusz.margin_to_curve_pu < 0,
+      wartosc: fmtPuOpcjaFrt(pola.margin_to_curve_pu),
+      sortKey: pola.margin_to_curve_pu ?? undefined,
     },
     odzysk: {
-      wartosc: fmtSOpcjaFrt(scenariusz.p_recovery_time_s),
-      sortKey: scenariusz.p_recovery_time_s ?? undefined,
+      wartosc: fmtSOpcjaFrt(pola.p_recovery_time_s),
+      sortKey: pola.p_recovery_time_s ?? undefined,
     },
-    werdykt: { wartosc: scenariusz.werdykt_pl },
   };
 }
 
-/** Adapter: widok trajektorii → wiersze tabeli scenariuszy (kolejność źródłowa). */
-export function wierszeTabeliFrt(widok: WidokTrajektoriiFrt): WierszTabeli[] {
-  return widok.scenariusze.map((sc) => wierszScenariuszaFrt(sc, widok.test_kind));
+/** Adapter: widok trajektorii → wiersze tabeli audytowej (kolejność źródłowa). */
+export function wierszeAudytuFrt(widok: WidokTrajektoriiFrt): WierszTabeli[] {
+  return widok.scenariusze.map((sc) => ({
+    scenariusz: { wartosc: sc.nazwa_pl },
+    ...komorkiAudytuFrt(sc),
+  }));
 }
 
 // ---------------------------------------------------------------------------
-// Werdykt całości — agregacja słownikowa najgorszego werdyktu per scenariusz
+// Informacje audytowe (karta #145) — identyfikatory techniczne biegu
 // ---------------------------------------------------------------------------
 
-/** Istotność werdyktu do doboru koloru banera (wyłącznie prezentacja). */
-export type IstotnoscFrt = 'ok' | 'warn' | 'err';
-
-/** Werdykt całości: tekst PL + istotność banera. */
-export interface WerdyktCalosciFrt {
-  readonly tekst: string;
-  readonly istotnosc: IstotnoscFrt;
-}
-
 /**
- * Ranga werdyktu per scenariusz (słownik — im wyżej, tym gorzej). Wartości pól
- * `werdykt_pl` pochodzą z backendu: „w obwiedni" / „poza obwiednią" / „moduł wypadł".
+ * Wiersze „Informacji audytowych" widoku trajektorii: identyfikator typu
+ * katalogowego przekształtnika, identyfikator operatora i klucze scenariuszy.
+ * Pierwszy plan niesie ich nazwy (moduł, operator, nazwa scenariusza z parametrów
+ * próby); identyfikatory są metadanymi i żyją wyłącznie tutaj.
  */
-const RANGA_WERDYKTU: Record<string, number> = {
-  'w obwiedni': 0,
-  'poza obwiednią': 1,
-  'moduł wypadł': 2,
-};
-
-const WERDYKT_CALOSCI: Record<number, WerdyktCalosciFrt> = {
-  0: { tekst: FRT_STRINGS.werdyktWObwiedni, istotnosc: 'ok' },
-  1: { tekst: FRT_STRINGS.werdyktPozaObwiednia, istotnosc: 'warn' },
-  2: { tekst: FRT_STRINGS.werdyktModulWypadl, istotnosc: 'err' },
-};
-
-/**
- * Werdykt całości = prezentacyjna AGREGACJA SŁOWNIKOWA najgorszego werdyktu
- * scenariusza (najwyższa ranga). Brak scenariuszy → stan „w obwiedni" jako neutralny
- * (nic nie naruszone). To NIE jest odrębna ocena fizyczna — jedynie rzut najgorszego
- * werdyktu z pól solvera. Werdykt nieznany (spoza słownika) traktowany jako najgorszy.
- */
-export function werdyktCalosciFrt(widok: WidokTrajektoriiFrt): WerdyktCalosciFrt {
-  let najgorszaRanga = 0;
-  for (const sc of widok.scenariusze) {
-    const ranga = RANGA_WERDYKTU[sc.werdykt_pl];
-    najgorszaRanga = Math.max(najgorszaRanga, ranga ?? 2);
-  }
-  return WERDYKT_CALOSCI[najgorszaRanga];
+export function informacjeAudytoweFrt(widok: WidokTrajektoriiFrt): WierszInformacjiAudytowych[] {
+  return [
+    { etykieta: FRT_STRINGS.ekspModulId, wartosc: widok.modul_der.id },
+    { etykieta: FRT_STRINGS.ekspOperatorId, wartosc: widok.operator.id },
+    ...widok.scenariusze.map((sc, indeks) => ({
+      etykieta: `${FRT_STRINGS.ekspScenariuszId} (${indeks + 1})`,
+      wartosc: sc.scenario_id,
+    })),
+  ];
 }

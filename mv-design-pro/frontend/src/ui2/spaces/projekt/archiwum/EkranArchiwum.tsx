@@ -4,8 +4,9 @@
  * prowadziła do przestrzeni, w której NIE BYŁO żadnej akcji archiwum: backend
  * miał komplet końcówek, a interfejs nie miał ani jednego punktu wejścia.
  *
- * Kontrakt ekranu prowadzącego: cel jednym zdaniem · dwie ścieżki (spakuj /
- * odtwórz) · uczciwe stany zerowe · jawny następny krok. ZERO fizyki, ZERO
+ * Kontrakt ekranu prowadzącego: cel jednym zdaniem · cztery ścieżki (spakuj /
+ * odtwórz / porównaj wersje / przekaż same zmiany — dwie ostatnie w
+ * `PorownanieWersji` i `PaczkaZmian`) · uczciwe stany zerowe · jawny następny krok. ZERO fizyki, ZERO
  * mutacji modelu — wyłącznie wołania REALNYCH końcówek archiwum i prezentacja
  * ich odpowiedzi (wynik importu 1:1 z backendu, łącznie z bramką katalogową).
  *
@@ -21,7 +22,9 @@ import { useCallback, useRef, useState, type ChangeEvent } from 'react';
 import './archiwum.css';
 
 import { useAppStateStore } from '../../../../ui/app-state';
+import { getProject } from '../../../../ui/projects/api';
 import { getActiveStudyCase } from '../../../../ui/study-cases/api';
+import { InformacjeAudytowe } from '../../../wyniki/wzorzec';
 import {
   eksportujArchiwum,
   importujArchiwum,
@@ -29,62 +32,19 @@ import {
   type PodgladArchiwum,
   type WynikImportu,
 } from './api';
+import { PaczkaZmian } from './PaczkaZmian';
+import { PorownanieWersji } from './PorownanieWersji';
 import {
   ARCHIWUM_STRINGS as T,
   formatujDateArchiwum,
   jestPlikiemArchiwum,
   nazwaPlikuArchiwum,
 } from './strings';
-
-/** Zapisz treść odpowiedzi jako plik do pobrania (mechanika przeglądarkowa). */
-function zapiszBlob(blob: Blob, nazwa: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = nazwa;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-/** Wiersz klucz–wartość podglądu/raportu. */
-function Wiersz({ etykieta, wartosc }: { etykieta: string; wartosc: string }) {
-  return (
-    <div className="mvd-arch-kv">
-      <span className="mvd-arch-kv-k">{etykieta}</span>
-      <span className="mvd-arch-kv-v mvd-num">{wartosc}</span>
-    </div>
-  );
-}
-
-/** Lista komunikatów backendu (ostrzeżenia / błędy / elementy bez typu). */
-function ListaKomunikatow({
-  tytul,
-  pozycje,
-  testid,
-  wariant,
-}: {
-  tytul: string;
-  pozycje: readonly string[];
-  testid: string;
-  wariant: 'warn' | 'err';
-}) {
-  if (pozycje.length === 0) return null;
-  return (
-    <div className="mvd-arch-komunikaty" data-wariant={wariant} data-testid={testid}>
-      <span className="mvd-arch-meta-k">{tytul}</span>
-      <ul>
-        {pozycje.map((tekst) => (
-          <li key={tekst}>{tekst}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+import { RaportImportu, Wiersz, useTrybEkspercki, wierszeAudytowe, zapiszBlob } from './wspolne';
 
 /** Podgląd zawartości paczki (odpowiedź końcówki podglądu, bez importu). */
 function PodgladPaczki({ podglad }: { podglad: PodgladArchiwum }) {
+  const trybEkspercki = useTrybEkspercki();
   if (!podglad.valid) {
     return (
       <div className="mvd-arch-blad" role="alert" data-testid="mvd-arch-podglad-blad">
@@ -101,44 +61,29 @@ function PodgladPaczki({ podglad }: { podglad: PodgladArchiwum }) {
         <p className="mvd-arch-opis">{podglad.project_description}</p>
       ) : null}
       <div className="mvd-arch-kv-siatka">
-        <Wiersz etykieta={T.podgladWersja} wartosc={podglad.schema_version ?? '—'} />
         <Wiersz etykieta={T.podgladData} wartosc={formatujDateArchiwum(podglad.exported_at)} />
-        <Wiersz
-          etykieta={T.podgladOdcisk}
-          wartosc={podglad.archive_hash ? podglad.archive_hash.slice(0, 16) : '—'}
-        />
       </div>
       {z ? (
         <div className="mvd-arch-kv-siatka" data-testid="mvd-arch-podglad-zawartosc">
-          <Wiersz etykieta={T.podgladWezly} wartosc={String(z.nodes_count)} />
-          <Wiersz etykieta={T.podgladGalezie} wartosc={String(z.branches_count)} />
-          <Wiersz etykieta={T.podgladZrodla} wartosc={String(z.sources_count)} />
-          <Wiersz etykieta={T.podgladOdbiory} wartosc={String(z.loads_count)} />
-          <Wiersz etykieta={T.podgladSchematy} wartosc={String(z.sld_diagrams_count)} />
           <Wiersz
             etykieta={T.podgladWarianty}
             wartosc={String(z.study_cases_count + z.operating_cases_count)}
           />
-          <Wiersz
-            etykieta={T.podgladPrzebiegi}
-            wartosc={String(z.analysis_runs_count + z.study_runs_count)}
-          />
-          <Wiersz etykieta={T.podgladWyniki} wartosc={String(z.results_count)} />
-          <Wiersz etykieta={T.podgladDowody} wartosc={String(z.proofs_count)} />
+          <Wiersz etykieta={T.podgladPrzebiegi} wartosc={String(z.canonical_runs_count)} />
+          <Wiersz etykieta={T.podgladModele} wartosc={String(z.enm_models_count)} />
         </div>
       ) : null}
+      {/* Wersja zapisu i odcisk paczki — metadane produkcyjne (V12.7 §0.3). */}
+      <InformacjeAudytowe
+        wiersze={wierszeAudytowe([
+          [T.podgladWersja, podglad.schema_version],
+          [T.podgladOdcisk, podglad.archive_hash],
+        ])}
+        trybEkspercki={trybEkspercki}
+        testid="mvd-arch-podglad-audyt"
+      />
     </div>
   );
-}
-
-/** Zdanie werdyktu dla statusu importu (uczciwie, wprost z odpowiedzi). */
-function werdyktImportu(wynik: WynikImportu): { tekst: string; wariant: 'ok' | 'warn' | 'err' } {
-  if (wynik.status === 'SUCCESS') return { tekst: T.raportSukces, wariant: 'ok' };
-  if (wynik.status === 'PARTIAL') return { tekst: T.raportCzesciowy, wariant: 'warn' };
-  if (wynik.status === 'CATALOG_MAPPING_REQUIRED') {
-    return { tekst: T.raportBramkaKatalogu, wariant: 'warn' };
-  }
-  return { tekst: T.raportNiepowodzenie, wariant: 'err' };
 }
 
 export interface EkranArchiwumProps {
@@ -237,26 +182,38 @@ export function EkranArchiwum({ onZamknij }: EkranArchiwumProps) {
     if (polePliku.current) polePliku.current.value = '';
   }, []);
 
-  const otworzOdtworzony = useCallback(async () => {
-    if (!wynik?.project_id) return;
-    const id = wynik.project_id;
-    setActiveProject(id, nowaNazwa.trim() || podglad?.project_name || null);
-    // Ten sam tor otwarcia co ekran „Nowy / otwórz projekt": bez aktywnego
-    // wariantu obliczeniowego migawka modelu nigdy by się nie załadowała.
-    try {
-      const aktywny = await getActiveStudyCase(id);
-      if (useAppStateStore.getState().activeProjectId !== id) return;
-      if (aktywny?.id) {
-        setActiveCase(aktywny.id, aktywny.name ?? null, null, aktywny.result_status ?? 'NONE');
+  /**
+   * Otwarcie projektu odtworzonego z paczki (pełnej albo paczki zmian). Nazwa
+   * nieznana na ekranie (pole nazwy puste, brak podglądu) jest czytana z
+   * backendu — nazwa projektu nigdy nie jest zgadywana.
+   */
+  const otworzProjekt = useCallback(
+    async (id: string, nazwa: string | null) => {
+      // Ten sam tor otwarcia co ekran „Nowy / otwórz projekt": bez aktywnego
+      // wariantu obliczeniowego migawka modelu nigdy by się nie załadowała.
+      try {
+        const nazwaProjektu = nazwa ?? (await getProject(id)).name;
+        setActiveProject(id, nazwaProjektu);
+        const aktywny = await getActiveStudyCase(id);
+        if (useAppStateStore.getState().activeProjectId !== id) return;
+        if (aktywny?.id) {
+          setActiveCase(aktywny.id, aktywny.name ?? null, null, aktywny.result_status ?? 'NONE');
+        }
+      } catch {
+        // Nazwany wynik: projekt już istnieje na serwerze, a brak wariantu albo
+        // nazwy nie blokuje otwarcia — pulpit pokaże stan uczciwie.
+        if (useAppStateStore.getState().activeProjectId !== id) setActiveProject(id, nazwa);
+      } finally {
+        onZamknij();
       }
-    } catch {
-      // Brak wariantu nie blokuje otwarcia — pulpit pokaże stan uczciwie.
-    } finally {
-      onZamknij();
-    }
-  }, [nowaNazwa, onZamknij, podglad, setActiveCase, setActiveProject, wynik]);
+    },
+    [onZamknij, setActiveCase, setActiveProject],
+  );
 
-  const werdykt = wynik ? werdyktImportu(wynik) : null;
+  const otworzOdtworzony = useCallback(() => {
+    if (!wynik?.project_id) return;
+    void otworzProjekt(wynik.project_id, nowaNazwa.trim() || podglad?.project_name || null);
+  }, [nowaNazwa, otworzProjekt, podglad, wynik]);
 
   return (
     <div className="mvd-arch" data-testid="mvd-archiwum-projektu">
@@ -382,61 +339,25 @@ export function EkranArchiwum({ onZamknij }: EkranArchiwumProps) {
           </p>
         )}
 
-        {wynik && werdykt && (
-          <div className="mvd-arch-raport" data-wariant={werdykt.wariant} data-testid="mvd-arch-raport">
-            <span className="mvd-arch-meta-k">{T.raportTytul}</span>
-            <p className="mvd-arch-werdykt" role="status">
-              {werdykt.tekst}
-            </p>
-            {wynik.migrated_from_version && (
-              <div className="mvd-arch-kv-siatka">
-                <Wiersz etykieta={T.raportMigracja} wartosc={wynik.migrated_from_version} />
-              </div>
-            )}
-            <ListaKomunikatow
-              tytul={T.raportOstrzezenia}
-              pozycje={wynik.warnings}
-              testid="mvd-arch-ostrzezenia"
-              wariant="warn"
-            />
-            <ListaKomunikatow
-              tytul={T.raportBledy}
-              pozycje={wynik.errors}
-              testid="mvd-arch-bledy"
-              wariant="err"
-            />
-            <ListaKomunikatow
-              tytul={T.raportBezKatalogu}
-              pozycje={wynik.elements_without_catalog ?? []}
-              testid="mvd-arch-bez-katalogu"
-              wariant="warn"
-            />
-            <div className="mvd-arch-akcje">
-              {wynik.project_id ? (
-                <button
-                  type="button"
-                  className="mvd-btn mvd-btn-primary"
-                  onClick={() => void otworzOdtworzony()}
-                  data-testid="mvd-arch-otworz"
-                >
-                  {T.raportOtworz}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="mvd-btn"
-                onClick={wyczysc}
-                data-testid="mvd-arch-ponow"
-              >
-                {T.raportPonow}
-              </button>
-            </div>
-            {wynik.project_id ? (
-              <p className="mvd-arch-nastepny">{T.raportNastepnyKrok}</p>
-            ) : null}
-          </div>
+        {wynik && (
+          <RaportImportu
+            wynik={wynik}
+            prefiks="mvd-arch"
+            onOtworz={otworzOdtworzony}
+            onPonow={wyczysc}
+          />
         )}
       </section>
+
+      {/* Ścieżka 3 — porównanie dwóch wersji projektu (paczki albo projekty). */}
+      <PorownanieWersji activeProjectId={activeProjectId} />
+
+      {/* Ścieżka 4 — przekazanie samych zmian (paczka zmian). */}
+      <PaczkaZmian
+        activeProjectId={activeProjectId}
+        activeProjectName={activeProjectName}
+        onOtworzProjekt={(id, nazwa) => void otworzProjekt(id, nazwa)}
+      />
     </div>
   );
 }

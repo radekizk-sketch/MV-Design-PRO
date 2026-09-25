@@ -1,27 +1,37 @@
 /*
  * SekcjaSekwencjiZapadow — sekcja „Sekwencja zapadów" okna „Walidacja modelu
- * falownika" (P43 / strumień OZE). Edytor listy zapadów (głębokość p.u. + czas s,
+ * falownika" (strumień OZE). Edytor listy zapadów (głębokość p.u. + czas s,
  * dodaj/usuń wiersz) + JAWNY bieg `GET /api/oze-analysis/frt-sequence` (moduł DER
  * i operator reużyte z górnej części ekranu) → prezentacja:
- *   1. odznaka werdyktu sekwencji (koniunkcja werdyktów zapadów — z backendu),
+ *   1. rekord oceny z backendu („Ocena niewykonana" — sekwencja nie jest oceniana,
+ *      bo każdy zapad liczony jest trajektorią zadaną profilem wejściowym),
  *   2. założenia ZAWSZE widoczne (brak modelu stanu między zapadami — uczciwość),
- *   3. tabela zapadów na wzorcu `TabelaWynikow` (parametry, marginesy, werdykt),
+ *   3. tabela zapadów (echo wejścia + etykieta oceny) i zwinięta sekcja audytowa
+ *      pól solvera pod nagłówkiem z backendu,
  *   4. kontekst siły sieci (SCR/WSCR węzła) albo uczciwy powód jego braku;
  *      uzasadnienie `why_pl` + rozwijany ślad WHITE BOX (`white_box` z backendu,
  *      reużyty `SladAnalizy` z pulpitu — kroki tekstowe, zero LaTeX-a doklejanego w UI).
  *
- * Zero fizyki, zero ocen lokalnych — werdykty, marginesy i kontekst pochodzą
- * WYŁĄCZNIE z backendu. Serializacja (kropka dziesiętna) należy do klienta;
- * edytor prezentuje z przecinkiem PL. Identyfikator wejścia (hash) — tryb ekspercki.
+ * Zero fizyki, zero ocen lokalnych — pola solvera i kontekst pochodzą WYŁĄCZNIE
+ * z backendu. Serializacja (kropka dziesiętna) należy do klienta;
+ * edytor prezentuje z przecinkiem PL. Szynę przyłączenia projektant wybiera z listy
+ * szyn modelu po nazwie (`selectBusOptions`), a kontekst nazywa ją mostem nazw wyników;
+ * odcisk wejścia — wyłącznie w „Informacjach audytowych" (karta #145).
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { isModeAtLeast } from '../../shell/modeModel';
-import { TabelaWynikow } from '../../wyniki/wzorzec';
+import {
+  InformacjeAudytowe,
+  TabelaWynikow,
+  etykietaPrzebieguWyniku,
+  useNazwaObiektu,
+} from '../../wyniki/wzorzec';
+import { OcenaNiewykonana, SekcjaAudytowa } from '../../wyniki/wzorzec/OcenaNiewykonana';
 import { SladAnalizy } from '../pulpit';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
-import { ANALYSIS_TYPE_LABELS, type ExecutionRun } from '../../../ui/study-cases/types';
+import { selectBusOptions, useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
   pobierzSekwencjeFrt,
   type ParaZapaduFrt,
@@ -29,19 +39,15 @@ import {
   type ZapytanieSekwencjiFrt,
 } from '../api';
 import {
+  kolumnyAudytuSekwencji,
   kolumnyTabeliSekwencji,
-  werdyktSekwencji,
+  wierszeAudytuSekwencji,
   wierszeTabeliSekwencji,
 } from './sekwencjaModel';
 import { FRT_STRINGS, fmtPuFrt, fmtSFrt } from './strings';
 
 const ZAPAD_DOMYSLNY: ParaZapaduFrt = { glebokoscPu: 0.05, czasS: 0.15 };
 
-/** Etykieta PL zakończonego przebiegu zwarciowego dla selektora kontekstu. */
-function etykietaPrzebieguZwarciowego(run: ExecutionRun): string {
-  const analiza = ANALYSIS_TYPE_LABELS[run.analysis_type];
-  return run.finished_at ? `${analiza} · ${run.finished_at}` : analiza;
-}
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
@@ -79,33 +85,31 @@ function StanPanel({
 }
 
 // ---------------------------------------------------------------------------
-// Wynik sekwencji: odznaka werdyktu + założenia + tabela + kontekst siły sieci
+// Wynik sekwencji: ocena + założenia + tabela + audyt + kontekst siły sieci
 // ---------------------------------------------------------------------------
 
 function WynikSekwencji({
   dane,
   trybZaawansowania,
+  onOtworzDowod,
 }: {
   dane: WidokSekwencjiFrt;
   trybZaawansowania: AdvancementMode;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
+  const nazwaObiektu = useNazwaObiektu();
   // Ślad WHITE BOX kontekstu siły sieci — NA ŻĄDANIE (domyślnie zwinięty).
   const [sladWidoczny, setSladWidoczny] = useState(false);
-  const werdykt = useMemo(() => werdyktSekwencji(dane), [dane]);
   const kolumny = useMemo(() => kolumnyTabeliSekwencji(), []);
   const wiersze = useMemo(() => wierszeTabeliSekwencji(dane), [dane]);
+  const kolumnyAudytu = useMemo(() => kolumnyAudytuSekwencji(), []);
+  const wierszeAudytu = useMemo(() => wierszeAudytuSekwencji(dane), [dane]);
   const kontekst = dane.kontekst_sily_sieci;
 
   return (
     <div data-testid="mvd-frt-sekw-wynik">
-      <span
-        className={`mvd-frt-sekw-odznaka mvd-frt-sekw-odznaka--${werdykt.istotnosc}`}
-        data-testid="mvd-frt-sekw-werdykt"
-      >
-        {werdykt.tekst}
-      </span>
-      <p className="mvd-frt-sekw-opis">{FRT_STRINGS.sekwWerdyktOpis}</p>
+      {dane.ocena && <OcenaNiewykonana ocena={dane.ocena} testid="mvd-frt-sekw-ocena" />}
 
       <p className="mvd-frt-sekw-zalozenia" data-testid="mvd-frt-sekw-zalozenia">
         {dane.zalozenia_pl}
@@ -114,13 +118,24 @@ function WynikSekwencji({
       <TabelaWynikow
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
       />
 
+      {dane.sekcja_audytowa_pl && (
+        <SekcjaAudytowa naglowek={dane.sekcja_audytowa_pl} testid="mvd-frt-sekw-audyt">
+          <TabelaWynikow
+            kolumny={kolumnyAudytu}
+            wiersze={wierszeAudytu}
+            onOtworzDowod={onOtworzDowod}
+            trybZaawansowania={trybZaawansowania}
+          />
+        </SekcjaAudytowa>
+      )}
+
       <section className="mvd-frt-sekw-kontekst" data-testid="mvd-frt-sekw-kontekst">
         <h4 className="mvd-frt-sekw-kontekst-tytul">{FRT_STRINGS.sekwKontekstTytul}</h4>
-        {kontekst === null ? (
+        {kontekst == null ? (
           <p className="mvd-frt-sekw-kontekst-powod" data-testid="mvd-frt-sekw-kontekst-powod">
             {dane.kontekst_sily_sieci_powod_pl ?? FRT_STRINGS.kreska}
           </p>
@@ -129,7 +144,7 @@ function WynikSekwencji({
             <dl className="mvd-frt-sekw-kontekst-dane" data-testid="mvd-frt-sekw-kontekst-dane">
             <div className="mvd-frt-zal-para">
               <dt>{FRT_STRINGS.sekwKontekstWezel}</dt>
-              <dd>{kontekst.bus_ref}</dd>
+              <dd>{nazwaObiektu(kontekst.bus_ref)}</dd>
             </div>
             <div className="mvd-frt-zal-para">
               <dt>{FRT_STRINGS.sekwKontekstScr}</dt>
@@ -188,14 +203,13 @@ function WynikSekwencji({
         )}
       </section>
 
-      {trybEkspercki && (
-        <dl className="mvd-frt-eksp" data-testid="mvd-frt-sekw-eksp">
-          <div className="mvd-frt-eksp-para">
-            <dt>{FRT_STRINGS.sekwEkspHash}</dt>
-            <dd className="mvd-num">{dane.input_hash}</dd>
-          </div>
-        </dl>
-      )}
+      <InformacjeAudytowe
+        wiersze={
+          dane.input_hash ? [{ etykieta: FRT_STRINGS.sekwEkspHash, wartosc: dane.input_hash }] : []
+        }
+        trybEkspercki={trybEkspercki}
+        testid="mvd-frt-sekw-informacje-audytowe"
+      />
     </div>
   );
 }
@@ -210,12 +224,16 @@ export interface SekcjaSekwencjiZapadowProps {
   /** Operator OSD (z górnego doboru) — pusty łańcuch blokuje bieg. */
   operatorId: string;
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
+   * z `EkranFrt`, nie zaślepka). */
+  onOtworzDowod: (ref: string) => void;
 }
 
 export function SekcjaSekwencjiZapadow({
   derRef,
   operatorId,
   trybZaawansowania,
+  onOtworzDowod,
 }: SekcjaSekwencjiZapadowProps) {
   const [zapady, setZapady] = useState<ParaZapaduFrt[]>([ZAPAD_DOMYSLNY]);
   const [wybranyRun, setWybranyRun] = useState('');
@@ -230,6 +248,10 @@ export function SekcjaSekwencjiZapadow({
     () => przebiegi.filter((r) => r.status === 'DONE' && r.analysis_type.startsWith('SC_')),
     [przebiegi],
   );
+  // Szyny modelu po nazwie (ten sam dobór co kompensacja mocy biernej) — projektant
+  // nie wpisuje referencji, wybiera szynę, którą widzi na schemacie.
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const opcjeSzyn = useMemo(() => selectBusOptions(snapshot), [snapshot]);
 
   // Zmiana doboru/edytora unieważnia poprzedni wynik (stale-result guard).
   const unewaznij = () => {
@@ -288,7 +310,7 @@ export function SekcjaSekwencjiZapadow({
     if (derRef === null || operatorId === '' || zapady.length === 0) return;
     // Bez wyboru przebiegu/węzła — zachowanie dzisiejsze (kontekst pominięty).
     const runId = wybranyRun || undefined;
-    const wezel = busRef.trim() || undefined;
+    const wezel = busRef || undefined;
     setZapytanie({
       derRef,
       operatorId,
@@ -334,7 +356,7 @@ export function SekcjaSekwencjiZapadow({
                   <option value="">{FRT_STRINGS.sekwKontekstRunPusty}</option>
                   {przebiegiZwarciowe.map((run) => (
                     <option key={run.id} value={run.id}>
-                      {etykietaPrzebieguZwarciowego(run)}
+                      {etykietaPrzebieguWyniku(run)}
                     </option>
                   ))}
                 </select>
@@ -346,15 +368,26 @@ export function SekcjaSekwencjiZapadow({
               </div>
               <div className="mvd-frt-sekw-pole">
                 <label htmlFor="mvd-frt-sekw-bus">{FRT_STRINGS.sekwKontekstBusEtykieta}</label>
-                <input
+                <select
                   id="mvd-frt-sekw-bus"
-                  type="text"
                   value={busRef}
                   onChange={(e) => zmienBus(e.target.value)}
-                  placeholder={FRT_STRINGS.sekwKontekstBusPlaceholder}
                   data-testid="mvd-frt-sekw-bus"
-                />
-                <p className="mvd-frt-pole-opis">{FRT_STRINGS.sekwKontekstBusOpis}</p>
+                >
+                  <option value="">{FRT_STRINGS.sekwKontekstBusWybierz}</option>
+                  {opcjeSzyn.map((szyna) => (
+                    <option key={szyna.ref_id} value={szyna.ref_id}>
+                      {szyna.name}
+                    </option>
+                  ))}
+                </select>
+                {opcjeSzyn.length === 0 ? (
+                  <p className="mvd-frt-pole-opis" data-testid="mvd-frt-sekw-bus-brak">
+                    {FRT_STRINGS.sekwKontekstBusBrak}
+                  </p>
+                ) : (
+                  <p className="mvd-frt-pole-opis">{FRT_STRINGS.sekwKontekstBusOpis}</p>
+                )}
               </div>
             </div>
 
@@ -441,8 +474,25 @@ export function SekcjaSekwencjiZapadow({
               wariant="blad"
               testid="mvd-frt-sekw-blad"
             />
+          ) : stan.dane.status_solvera === 'blocked' ? (
+            // Karta S-4: brak modelu dynamicznego solvera FROZEN mapowany NA
+            // GRANICY na `blocked` — panel dedykowany (uczciwy stan zerowy).
+            <StanPanel
+              komunikat={FRT_STRINGS.brakModeluTytul}
+              opis={
+                stan.dane.missing_fields_pl && stan.dane.missing_fields_pl.length > 0
+                  ? stan.dane.missing_fields_pl.join(' ')
+                  : FRT_STRINGS.brakModeluOpis
+              }
+              wariant="blad"
+              testid="mvd-frt-sekw-brak-modelu"
+            />
           ) : (
-            <WynikSekwencji dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+            <WynikSekwencji
+              dane={stan.dane}
+              trybZaawansowania={trybZaawansowania}
+              onOtworzDowod={onOtworzDowod}
+            />
           )}
         </>
       )}

@@ -6,7 +6,12 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { formatujDateArchiwum, jestPlikiemArchiwum, nazwaPlikuArchiwum } from '../strings';
+import {
+  formatujDateArchiwum,
+  jestPlikiemArchiwum,
+  nazwaPlikuArchiwum,
+  nazwaPlikuPaczkiZmian,
+} from '../strings';
 
 const DATA = new Date(2026, 7, 5); // 2026-08-05 (lokalna, bez strefy)
 
@@ -52,5 +57,18 @@ describe('formatujDateArchiwum', () => {
   it('brak daty → myślnik', () => {
     expect(formatujDateArchiwum(null)).toBe('—');
     expect(formatujDateArchiwum(undefined)).toBe('—');
+  });
+});
+
+describe('nazwaPlikuPaczkiZmian — ta sama reguła nazwy co paczka pełna', () => {
+  it('przedrostek „zmiany", rozszerzenie paczki zmian', () => {
+    expect(nazwaPlikuPaczkiZmian('Sieć Wschód', DATA)).toBe(
+      'zmiany-siec-wschod-2026-08-05.mvdp-delta.zip',
+    );
+    expect(nazwaPlikuPaczkiZmian(null, DATA)).toBe('zmiany-2026-08-05.mvdp-delta.zip');
+  });
+
+  it('paczka zmian przechodzi bramkę rozszerzenia ekranu (ten sam predykat co backend)', () => {
+    expect(jestPlikiemArchiwum(nazwaPlikuPaczkiZmian('A', DATA))).toBe(true);
   });
 });

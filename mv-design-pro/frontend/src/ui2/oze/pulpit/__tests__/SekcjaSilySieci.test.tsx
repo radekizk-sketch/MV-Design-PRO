@@ -9,6 +9,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { SekcjaSilySieci } from '../SekcjaSilySieci';
+import { BRAKI_DANYCH_SILY } from '../strings';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { przebiegFixture, silaSieciFixture } from './analizyFixtures';
 
 const pobierzSileSieci = vi.fn();
@@ -50,6 +52,20 @@ describe('SekcjaSilySieci — wynik z przebiegu SC (kryterium 2)', () => {
     expect(screen.getByTestId('mvd-oze-sila-wscr')).toHaveTextContent('4,5');
     expect(screen.getByTestId('mvd-oze-sila-werdykt-bus-pcc-1')).toHaveTextContent('mocna');
     expect(screen.getByTestId('mvd-oze-sila-werdykt-bus-pcc-2')).toHaveTextContent('bardzo słaba');
+  });
+
+  it('karta #145: węzeł nazwany z modelu, braki danych po polsku — bez referencji i kodów', async () => {
+    useSnapshotStore.setState({
+      snapshot: { buses: [{ ref_id: 'bus-pcc-3', id: 'b3', name: 'Szyna PCC farmy 3', voltage_kv: 15 }] },
+    } as never);
+    pobierzSileSieci.mockResolvedValue(silaSieciFixture());
+    render(<SekcjaSilySieci trybEkspercki={false} />);
+    const wezel = await screen.findByTestId('mvd-oze-sila-wezel-bus-pcc-3');
+    expect(wezel).toHaveTextContent('Szyna PCC farmy 3');
+    expect(wezel).toHaveTextContent(BRAKI_DANYCH_SILY.s_sc_mva);
+    expect(wezel).not.toHaveTextContent('bus-pcc-3');
+    expect(wezel).not.toHaveTextContent('s_sc_mva');
+    useSnapshotStore.setState({ snapshot: null } as never);
   });
 
   it('rozwija ślad WHITE BOX węzła inline (wzór ASCII)', async () => {

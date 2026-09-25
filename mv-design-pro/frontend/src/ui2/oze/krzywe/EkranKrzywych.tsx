@@ -1,32 +1,36 @@
 /*
  * EkranKrzywych — okno „Krzywe zdolności P–Q" (karta P41 / strumień OZE).
  * Dobór typu falownika z katalogu konwerterów (`GET /api/catalog/converter-types`;
- * typy bez krzywej producenta widoczne ze stanem „brak krzywej producenta" —
- * bieg zablokowany z uczciwym komunikatem) + operatora OSD z katalogu NC RfG
+ * typy bez krzywej producenta z adnotacją „brak krzywej producenta") + operatora OSD z katalogu NC RfG
  * (`GET /api/ncrfg-tests/catalog`) → JAWNY bieg `GET /api/oze-analysis/pq-coverage`
  * → prezentacja:
  *   1. wykres P–Q (pasmo producenta + nakładka wymagania operatora),
- *   2. tabela punktów na wzorcu `TabelaWynikow` (margines + tag statusu),
- *   3. werdykt całości PL + rozwijany ślad WHITE BOX (reużyty `SladAnalizy` z pulpitu).
+ *   2. tabela punktów na wzorcu `TabelaWynikow` (zapasy punktu — liczby z backendu),
+ *   3. ocena = rekord `OcenaKryterium` backendu w `KartaWerdyktu` (etykieta z rekordu) +
+ *      rozwijany ślad WHITE BOX (reużyty `SladAnalizy` z pulpitu).
  *
- * Zero fizyki, zero ocen lokalnych — pokrycie, marginesy i werdykt pochodzą
- * WYŁĄCZNIE z backendu. Identyfikatory (catalog_item_id, operator_id) wyłącznie
- * w trybie eksperckim; nazwy PL typów/operatorów na pierwszym planie.
+ * Zero fizyki, zero ocen lokalnych — zapasy i ocena pochodzą WYŁĄCZNIE z backendu; typ bez
+ * krzywej producenta daje rekord „nie oceniono" z nazwanym brakiem (bieg dozwolony).
+ * Identyfikatory (catalog_item_id, operator_id) wyłącznie w sekcji `InformacjeAudytowe`
+ * (tryb ekspercki); nazwy PL typów/operatorów na pierwszym planie.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import './krzywe.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { TabelaWynikow } from '../../wyniki/wzorzec';
+import { InformacjeAudytowe, TabelaWynikow } from '../../wyniki/wzorzec';
+import { EtykietaWerdyktu, KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { SladAnalizy } from '../pulpit';
 import { useAppStateStore } from '../../../ui/app-state';
 import { notify } from '../../../ui/notifications/store';
 import {
-  HVRT_CURVE_CATALOG,
-  LVRT_CURVE_CATALOG,
-  PF_CURVE_CATALOG,
+  fetchAudit2CatalogSnapshot,
+  fetchNcRfgOperators,
+  getNcRfgOperator,
   selectAllDers,
   useStationDerStore,
+  type NcRfgOperatorItem,
+  type PfCurveItem,
 } from '../../../ui/network-build/station-der';
 import {
   DerPersistenceApiError,
@@ -34,15 +38,14 @@ import {
   type DerCatalogBindingsRequest,
 } from '../../../ui/sld/v2/canvas/derPersistenceApi';
 import {
-  pobierzKatalogKlasNcRfg,
   pobierzKonwertery,
   pobierzPokryciePQ,
   type WidokPokryciaPQ,
   type ZapytaniePokryciaPQ,
 } from '../api';
+import { pobierzKatalogNcRfg } from '../ncrfg/api';
 import { WykresPQChart } from './WykresPQChart';
 import {
-  istotnoscWerdyktuPQ,
   kolumnyTabeliPQ,
   krokiSladuPQ,
   opcjeOperatorowPQ,
@@ -105,9 +108,11 @@ function StanPanel({
 function WynikPokrycia({
   dane,
   trybZaawansowania,
+  onOtworzDowod,
 }: {
   dane: WidokPokryciaPQ;
   trybZaawansowania: AdvancementMode;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = trybZaawansowania === 'expert';
   const [sladWidoczny, setSladWidoczny] = useState(false);
@@ -116,21 +121,22 @@ function WynikPokrycia({
   const kolumny = useMemo(() => kolumnyTabeliPQ(), []);
   const wiersze = useMemo(() => wierszeTabeliPQ(dane), [dane]);
   const kroki = useMemo(() => krokiSladuPQ(dane), [dane]);
-  const istotnosc = istotnoscWerdyktuPQ(dane);
 
   return (
     <div data-testid="mvd-krzywe-wynik">
-      <div
-        className={`mvd-krzywe-werdykt mvd-krzywe-werdykt--${istotnosc}`}
-        data-testid="mvd-krzywe-werdykt"
-      >
-        <span className="mvd-krzywe-werdykt-tytul">
-          {dane.werdykt.pokryty
-            ? KRZYWE_STRINGS.werdyktPokryte
-            : KRZYWE_STRINGS.werdyktNiepokryte}
-        </span>
-        <span className="mvd-krzywe-werdykt-opis">{dane.werdykt.opis_pl}</span>
-      </div>
+      {/* Ocena pokrycia = rekord `OcenaKryterium` backendu: plakietka i zdanie z rekordu,
+          pełna karta (podstawa, dowód, kompletność) pod spodem — zero mapy status→tekst. */}
+      <section className="mvd-krzywe-werdykt" data-testid="mvd-krzywe-werdykt">
+        <p className="mvd-krzywe-werdykt-tytul">
+          <EtykietaWerdyktu
+            etykieta={dane.ocena.etykieta}
+            status={dane.ocena.status_maszynowy}
+            testid="mvd-krzywe-werdykt-etykieta"
+          />
+        </p>
+        <p className="mvd-krzywe-werdykt-opis">{dane.ocena.wyjasnienie.zdanie_pl}</p>
+        <KartaWerdyktu rekord={dane.ocena} />
+      </section>
 
       <dl className="mvd-krzywe-zalozenia" data-testid="mvd-krzywe-zalozenia">
         <div className="mvd-krzywe-zal-para">
@@ -176,7 +182,7 @@ function WynikPokrycia({
       <TabelaWynikow
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
       />
 
@@ -198,28 +204,32 @@ function WynikPokrycia({
         )}
       </div>
 
-      {trybEkspercki && (
-        <dl className="mvd-krzywe-eksp" data-testid="mvd-krzywe-eksp">
-          <div className="mvd-krzywe-eksp-para">
-            <dt>{KRZYWE_STRINGS.ekspTypId}</dt>
-            <dd className="mvd-num">{dane.typ_katalogowy.id}</dd>
-          </div>
-          <div className="mvd-krzywe-eksp-para">
-            <dt>{KRZYWE_STRINGS.ekspOperatorId}</dt>
-            <dd className="mvd-num">{dane.operator.id}</dd>
-          </div>
-        </dl>
-      )}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-krzywe-eksp"
+        wiersze={[
+          { etykieta: KRZYWE_STRINGS.ekspTypId, wartosc: dane.typ_katalogowy.id },
+          { etykieta: KRZYWE_STRINGS.ekspOperatorId, wartosc: dane.operator.id },
+        ]}
+      />
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// K5-B (H-3 pkt 2): akcja wyjściowa — przypisanie krzywych zgodności (P(f) /
-// LVRT / HVRT) do wiązań modułu DER w modelu sieci. Zapis kanoniczną operacją
-// `set_der_catalog_bindings` (PATCH .../generators/{ref}/bindings), pominięcie
-// ≠ null: wysyłane są WYŁĄCZNIE pola z wybraną krzywą. Katalogi krzywych to
-// REUŻYCIE list kreatora DER (station-der/catalogs) — jedna prawda wyboru.
+// K5-B (H-3 pkt 2): akcja wyjściowa — przypisanie krzywej P(f) do wiązań
+// modułu DER w modelu sieci. Zapis kanoniczną operacją `set_der_catalog_bindings`
+// (PATCH .../generators/{ref}/bindings), pominięcie ≠ null: wysyłane są
+// WYŁĄCZNIE pola z wybraną krzywą.
+//
+// Karta FAB-J: P(f) WYŁĄCZNIE ze snapshotu audytu 2 (`GET /api/v1/catalog/
+// audit2/snapshot`) — zero drugiej kopii katalogu w froncie. LVRT/HVRT NIE SĄ
+// tu już niezależnie wybieralne: backend niesie JEDNĄ parę krzywych
+// ride-through na operatora NC RfG (`GET /api/ncrfg-tests/catalog`), więc
+// `lvrt_curve_ref`/`hvrt_curve_ref` są tożsamościowo związane z
+// `nc_rfg_profile_ref` już przypisanym modułowi (ten sam operator) — ten
+// ekran je pokazuje jako dowód White Box, nie oferuje wyboru niespójnego z
+// profilem. Zmiana operatora dzieje się w kreatorze DER / szufladzie SLD.
 // ---------------------------------------------------------------------------
 
 function SekcjaWiazanKrzywych() {
@@ -230,20 +240,46 @@ function SekcjaWiazanKrzywych() {
 
   const [wybranyModul, setWybranyModul] = useState('');
   const [pfRef, setPfRef] = useState('');
-  const [lvrtRef, setLvrtRef] = useState('');
-  const [hvrtRef, setHvrtRef] = useState('');
   const [zapisywanie, setZapisywanie] = useState(false);
   const [blad, setBlad] = useState<string | null>(null);
+  const [katalogKrzywych, setKatalogKrzywych] = useState<
+    StanZasobu<{ readonly operatorzy: readonly NcRfgOperatorItem[]; readonly pfKrzywe: readonly PfCurveItem[] }>
+  >({ rodzaj: 'idle' });
+
+  useEffect(() => {
+    let aktywny = true;
+    setKatalogKrzywych({ rodzaj: 'ladowanie' });
+    Promise.all([fetchNcRfgOperators(), fetchAudit2CatalogSnapshot()])
+      .then(([operatorzy, snapshot]) => {
+        if (!aktywny) return;
+        setKatalogKrzywych({
+          rodzaj: 'gotowe',
+          dane: { operatorzy, pfKrzywe: snapshot.pf_curves },
+        });
+      })
+      .catch((err: unknown) => {
+        if (!aktywny) return;
+        setKatalogKrzywych({
+          rodzaj: 'blad',
+          komunikat: err instanceof Error ? err.message : KRZYWE_STRINGS.wiazaniaBladZapisu,
+        });
+      });
+    return () => {
+      aktywny = false;
+    };
+  }, []);
+
+  const ncRfgOperatorzy = katalogKrzywych.rodzaj === 'gotowe' ? katalogKrzywych.dane.operatorzy : [];
+  const pfKrzywe = katalogKrzywych.rodzaj === 'gotowe' ? katalogKrzywych.dane.pfKrzywe : [];
 
   const modul = ders.find((d) => d.id === wybranyModul) ?? null;
+  const modulProfil = getNcRfgOperator(ncRfgOperatorzy, modul?.profiles.nc_rfg_profile_ref ?? null);
   const kontekstKompletny = Boolean(projectId && caseId);
 
   const zapisz = async () => {
     if (!modul || !projectId || !caseId) return;
     const zmiany: DerCatalogBindingsRequest = {
       ...(pfRef ? { pf_curve_ref: pfRef } : {}),
-      ...(lvrtRef ? { lvrt_curve_ref: lvrtRef } : {}),
-      ...(hvrtRef ? { hvrt_curve_ref: hvrtRef } : {}),
     };
     if (Object.keys(zmiany).length === 0) {
       setBlad(KRZYWE_STRINGS.wiazaniaZadnaZmiana);
@@ -257,8 +293,6 @@ function SekcjaWiazanKrzywych() {
       // widzą nowe krzywe bez odświeżania strony (wzorzec DerSurfaces.poZapisie).
       updateDerProfiles(modul.id, {
         ...(pfRef ? { pf_curve_ref: pfRef } : {}),
-        ...(lvrtRef ? { lvrt_curve_ref: lvrtRef } : {}),
-        ...(hvrtRef ? { hvrt_curve_ref: hvrtRef } : {}),
       });
       notify(KRZYWE_STRINGS.wiazaniaZapisano, 'success');
     } catch (err) {
@@ -312,47 +346,39 @@ function SekcjaWiazanKrzywych() {
                   id="mvd-krzywe-wiazania-pf"
                   value={pfRef}
                   onChange={(e) => setPfRef(e.target.value)}
+                  disabled={katalogKrzywych.rodzaj === 'ladowanie'}
                   data-testid="mvd-krzywe-wiazania-pf"
                 >
                   <option value="">{KRZYWE_STRINGS.wiazaniaBezZmiany}</option>
-                  {PF_CURVE_CATALOG.map((c) => (
+                  {pfKrzywe.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.label_pl}
                     </option>
                   ))}
                 </select>
               </div>
-              <div className="mvd-krzywe-pole">
-                <label htmlFor="mvd-krzywe-wiazania-lvrt">{KRZYWE_STRINGS.wiazaniaKrzywaLvrt}</label>
-                <select
-                  id="mvd-krzywe-wiazania-lvrt"
-                  value={lvrtRef}
-                  onChange={(e) => setLvrtRef(e.target.value)}
-                  data-testid="mvd-krzywe-wiazania-lvrt"
-                >
-                  <option value="">{KRZYWE_STRINGS.wiazaniaBezZmiany}</option>
-                  {LVRT_CURVE_CATALOG.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label_pl}
-                    </option>
-                  ))}
-                </select>
+              {/* Karta FAB-J: backend niesie JEDNĄ krzywą LVRT/HVRT na operatora
+                  NC RfG już przypisanego modułowi — pokazywana jako dowód White
+                  Box, nie jako niezależny wybór (zero niespójności profil↔krzywa). */}
+              <div className="mvd-krzywe-pole" data-testid="mvd-krzywe-wiazania-lvrt">
+                <label>{KRZYWE_STRINGS.wiazaniaKrzywaLvrt}</label>
+                <p className="mvd-krzywe-pole-opis">
+                  {modulProfil
+                    ? modulProfil.ride_through.lvrt
+                      .map((p) => `${p.time_s.toFixed(2)} s / ${p.voltage_pu.toFixed(2)} pu`)
+                      .join(' → ')
+                    : KRZYWE_STRINGS.wiazaniaBrakProfiluOperatora}
+                </p>
               </div>
-              <div className="mvd-krzywe-pole">
-                <label htmlFor="mvd-krzywe-wiazania-hvrt">{KRZYWE_STRINGS.wiazaniaKrzywaHvrt}</label>
-                <select
-                  id="mvd-krzywe-wiazania-hvrt"
-                  value={hvrtRef}
-                  onChange={(e) => setHvrtRef(e.target.value)}
-                  data-testid="mvd-krzywe-wiazania-hvrt"
-                >
-                  <option value="">{KRZYWE_STRINGS.wiazaniaBezZmiany}</option>
-                  {HVRT_CURVE_CATALOG.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label_pl}
-                    </option>
-                  ))}
-                </select>
+              <div className="mvd-krzywe-pole" data-testid="mvd-krzywe-wiazania-hvrt">
+                <label>{KRZYWE_STRINGS.wiazaniaKrzywaHvrt}</label>
+                <p className="mvd-krzywe-pole-opis">
+                  {modulProfil
+                    ? modulProfil.ride_through.hvrt
+                      .map((p) => `${p.time_s.toFixed(2)} s / ${p.voltage_pu.toFixed(2)} pu`)
+                      .join(' → ')
+                    : KRZYWE_STRINGS.wiazaniaBrakProfiluOperatora}
+                </p>
               </div>
 
               {!kontekstKompletny && (
@@ -393,9 +419,12 @@ function SekcjaWiazanKrzywych() {
 
 export interface EkranKrzywychProps {
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
+   * z rodzica, `WynikiWarsztat`), nie zaślepka. */
+  onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranKrzywych({ trybZaawansowania }: EkranKrzywychProps) {
+export function EkranKrzywych({ trybZaawansowania, onOtworzDowod }: EkranKrzywychProps) {
   const [katalog, setKatalog] = useState<StanZasobu<KatalogPQ>>({ rodzaj: 'idle' });
   const [wybranyTyp, setWybranyTyp] = useState('');
   const [wybranyOperator, setWybranyOperator] = useState('');
@@ -407,7 +436,7 @@ export function EkranKrzywych({ trybZaawansowania }: EkranKrzywychProps) {
   useEffect(() => {
     let anulowane = false;
     setKatalog({ rodzaj: 'ladowanie' });
-    Promise.all([pobierzKonwertery(), pobierzKatalogKlasNcRfg()])
+    Promise.all([pobierzKonwertery(), pobierzKatalogNcRfg()])
       .then(([rekordy, katalogNcRfg]) => {
         if (anulowane) return;
         setKatalog({
@@ -464,9 +493,9 @@ export function EkranKrzywych({ trybZaawansowania }: EkranKrzywychProps) {
     setStan({ rodzaj: 'idle' });
   };
 
-  const typBezKrzywej = opcjaWybranegoTypu !== null && !opcjaWybranegoTypu.maKrzywa;
-  const mozliwyBieg =
-    wybranyTyp !== '' && wybranyOperator !== '' && opcjaWybranegoTypu?.maKrzywa === true;
+  // Typ bez krzywej producenta NIE blokuje biegu: backend zwraca rekord oceny „nie
+  // oceniono" z nazwanym brakiem krzywej — to jest odpowiedź, nie błąd.
+  const mozliwyBieg = wybranyTyp !== '' && wybranyOperator !== '' && opcjaWybranegoTypu !== null;
 
   const uruchom = () => {
     if (!mozliwyBieg) return;
@@ -545,14 +574,7 @@ export function EkranKrzywych({ trybZaawansowania }: EkranKrzywychProps) {
             </button>
           </section>
 
-          {typBezKrzywej ? (
-            <StanPanel
-              komunikat={KRZYWE_STRINGS.typBezKrzywej}
-              opis={KRZYWE_STRINGS.typBezKrzywejOpis}
-              wariant="blad"
-              testid="mvd-krzywe-typ-bez-krzywej"
-            />
-          ) : stan.rodzaj === 'idle' ? (
+          {stan.rodzaj === 'idle' ? (
             <StanPanel
               komunikat={KRZYWE_STRINGS.brakWyniku}
               opis={KRZYWE_STRINGS.brakWynikuOpis}
@@ -574,7 +596,11 @@ export function EkranKrzywych({ trybZaawansowania }: EkranKrzywychProps) {
             />
           ) : (
             <>
-              <WynikPokrycia dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+              <WynikPokrycia
+                dane={stan.dane}
+                trybZaawansowania={trybZaawansowania}
+                onOtworzDowod={onOtworzDowod}
+              />
               {/* Akcja wyjściowa PO biegu — dopiero zweryfikowana krzywa ma
                   sens jako profil zgodności modułu. */}
               <SekcjaWiazanKrzywych />

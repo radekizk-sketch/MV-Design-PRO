@@ -89,6 +89,7 @@ import {
   useRawResultOverlayStore,
   type RawOverlayPayload,
 } from '../../../sld-overlay/rawResultOverlayStore';
+import { wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 // Karta S-B (ZWARCIA-PRO pkt 7): kanał KIERUNKU rozpływu prądu zwarciowego —
 // zasilany przez ekran zwarć (`ui2/wyniki/zwarcia/pokazNaSchemacie.ts`,
 // `loadFaultFlow` PO `loadOverlay`), czyszczony automatycznie przy podmianie
@@ -1931,7 +1932,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // K5-A + S9-5: kontekst dostępności akcji menu liczony z TEMATU (jedno
   // źródło prawdy o obiekcie), nie z ponownego dopasowania `elementId`.
   // Dla stacji sprawdzamy realne FK `substation.bus_refs` → szyna nN
-  // (0 < U < 1 kV); bez stacji = `undefined` (brak danych, zero zgadywania).
+  // (pasmo nN, `wPasmieNn`); bez stacji = `undefined` (brak danych, zero zgadywania).
   const contextMenuAvailability = useMemo<SldMenuContext | undefined>(() => {
     // Karta S9-5: wejścia budowy ciągu (GPZ / szyna sekcji) są dostępne tylko
     // wtedy, gdy rozdzielnia ma WOLNE POLE LINIOWE — inaczej kreator otwarłby
@@ -1960,7 +1961,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       const bus = (snapshot?.buses ?? []).find(
         (candidate) => candidate.ref_id === busRef || candidate.id === busRef,
       );
-      return bus != null && bus.voltage_kv > 0 && bus.voltage_kv < 1;
+      return bus != null && wPasmieNn(bus.voltage_kv);
     });
     return {
       stationHasNnBus: hasNnBus,
@@ -2553,7 +2554,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           if (dropResult) {
             // F11.4-B: `buildDerDropDetailDrawerData` — WSPÓŁDZIELONA z v2
             // (dawniej zduplikowana tu, patrz nagłówek modułu współdzielonego).
-            setDetailDrawerData(buildDerDropDetailDrawerData(sldData, id, dropResult.kind));
+            setDetailDrawerData(buildDerDropDetailDrawerData(snapshot, sldData, id, dropResult.kind));
           }
         } else {
           derDrag.cancel();

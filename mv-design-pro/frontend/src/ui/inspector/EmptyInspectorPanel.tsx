@@ -6,7 +6,7 @@ import { getVisibleInspectorTabs, type InspectorTabId } from './inspectorTabRegi
 const ELEMENT_TYPE_LABELS_PL: Record<ElementType, string> = {
   Bus: 'Szyna zbiorcza',
   LineBranch: 'Odcinek sieci SN',
-  TransformerBranch: 'Transformator SN/nN',
+  TransformerBranch: 'Transformator',
   Switch: 'Aparat łączeniowy',
   Source: 'Główny Punkt Zasilający',
   Load: 'Odbiór',
@@ -35,7 +35,6 @@ const ELEMENT_TYPE_LABELS_PL: Record<ElementType, string> = {
   Genset: 'Agregat prądotwórczy',
   UPS: 'Zasilacz gwarantowany',
   EnergyMeter: 'Licznik energii',
-  PowerQualityMeter: 'Analizator jakości energii',
   SurgeArresterNN: 'Ogranicznik przepięć',
   Earthing: 'Uziemienie',
   MeasurementNN: 'Pomiar nN',

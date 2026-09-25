@@ -1,15 +1,15 @@
 /*
- * Model okna „Wniosek OSD" (karta W-707 / E13). Czyste funkcje warstwy
- * prezentacji: wybór zakończonych przebiegów (rozpływ/zwarcie) z rejestru biegów,
- * uczciwa bramka kompletności formularza (powód blokady PL) oraz budowa żądania
- * `ZadanieWniosku` z danych okna i biegu NC RfG. Zero fizyki, zero mutacji, zero
- * wołań API stąd — wszystkie wielkości i werdykty pochodzą z backendu.
+ * Model okna „Wniosek OSD" (karta W-707 / E13; kontrakt V2 — karta AB-1a Pakiet D2 §5).
+ * Czyste funkcje warstwy prezentacji: wybór zakończonych przebiegów (rozpływ/zwarcie)
+ * z rejestru biegów, uczciwa bramka kompletności formularza (powód blokady PL) oraz budowa
+ * żądania `ZadanieWniosku` (`WniosekOsdRequest`) z danych okna. Zgodność NC RfG wyprowadza
+ * serwer z ZATWIERDZONEGO modelu przypadku (`case_id` w zapytaniu) — żądanie nie niesie
+ * biegu ani modułów. Zero fizyki, zero mutacji, zero wołań API stąd.
  */
 
-import type { NcRfgModuleInput } from '../../../ui/ncrfg-tests/api';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { jestPrzebiegiemZwarciowym } from '../../wyniki/jakosc';
-import type { ZadanieWniosku } from '../api';
+import type { ZadanieWniosku } from '../ncrfg/typy';
 import { WNIOSEK_STRINGS } from './strings';
 
 /** Zakończone przebiegi rozpływu mocy (LOAD_FLOW/DONE) — kolejność źródłowa. */
@@ -37,21 +37,24 @@ export function domyslnyPrzebieg(
 
 /** Stan formularza wniosku decydujący o dostępności generacji. */
 export interface WejscieWniosku {
+  /** Aktywny przypadek — źródło zatwierdzonego modelu (`case_id`). */
+  readonly caseId: string | null;
+  /** Operator (profil wymagań NC RfG) — z modelu albo jawny wybór; nigdy domyślny. */
+  readonly operatorId: string | null;
   readonly pfRunId: string | null;
   readonly scRunId: string | null;
   readonly busRef: string;
   readonly nazwaProjektu: string;
-  /** Czy istnieje zakończony bieg NC RfG (macierz/certyfikat). */
-  readonly maBiegNcRfg: boolean;
 }
 
 /**
  * Pierwszy powód blokady generacji (PL) lub `null`, gdy formularz kompletny.
- * Kolejność deterministyczna i spójna z bramką backendu: bieg NC RfG →
- * rozpływ → zwarcie → węzeł → nazwa projektu.
+ * Kolejność deterministyczna: przypadek → operator → rozpływ → zwarcie → węzeł → nazwa
+ * projektu (pola wymagane `WniosekOsdRequest` i parametr `case_id`).
  */
 export function powodBlokadyWniosku(w: WejscieWniosku): string | null {
-  if (!w.maBiegNcRfg) return WNIOSEK_STRINGS.blokadaNcRfg;
+  if (w.caseId === null) return WNIOSEK_STRINGS.blokadaBrakPrzypadku;
+  if (w.operatorId === null) return WNIOSEK_STRINGS.blokadaBrakOperatora;
   if (w.pfRunId === null) return WNIOSEK_STRINGS.blokadaBrakRozplywu;
   if (w.scRunId === null) return WNIOSEK_STRINGS.blokadaBrakZwarcia;
   if (w.busRef.trim() === '') return WNIOSEK_STRINGS.blokadaBrakWezla;
@@ -73,8 +76,7 @@ export interface ParametryZadaniaWniosku {
   readonly scRunId: string;
   readonly busRef: string;
   readonly identyfikacja: IdentyfikacjaFormularza;
-  readonly modules: readonly NcRfgModuleInput[];
-  readonly procedureVersion?: string;
+  readonly operatorId: string;
 }
 
 /** Pole opcjonalne: przycięte i `null`, gdy puste (kontrakt backendu). */
@@ -84,9 +86,9 @@ function polePcjonalne(wartosc: string): string | null {
 }
 
 /**
- * Zbuduj żądanie wniosku OSD 1:1 z danymi okna i biegu NC RfG
- * (`ncRfgStore.ostatnieWejscia`). Pola opcjonalne przycięte i zamienione na
- * `null`, gdy puste; węzeł i nazwa projektu przycięte (bramka wymaga niepustych).
+ * Zbuduj żądanie wniosku OSD 1:1 z polami `WniosekOsdRequest`. Pola opcjonalne przycięte
+ * i zamienione na `null`, gdy puste; węzeł i nazwa projektu przycięte (bramka wymaga
+ * niepustych); operator z modelu albo z jawnego wyboru.
  */
 export function zbudujZadanieWniosku(params: ParametryZadaniaWniosku): ZadanieWniosku {
   return {
@@ -97,9 +99,6 @@ export function zbudujZadanieWniosku(params: ParametryZadaniaWniosku): ZadanieWn
     pf_run_id: params.pfRunId,
     sc_run_id: params.scRunId,
     bus_ref: params.busRef.trim(),
-    run_request: {
-      modules: params.modules,
-      procedure_version: params.procedureVersion,
-    },
+    operator_id: params.operatorId,
   };
 }

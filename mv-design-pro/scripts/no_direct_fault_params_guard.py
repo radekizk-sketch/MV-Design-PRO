@@ -130,7 +130,6 @@ FAULT_NODE_PARAM = "fault_node_id"
 WHITELISTED_PATHS = {
     "domain/fault_scenario.py",
     "application/solvers/short_circuit_binding.py",
-    "application/execution_engine/service.py",
     "application/result_mapping/short_circuit_to_resultset_v1.py",
     "application/fault_scenario_service.py",
 }
@@ -168,7 +167,6 @@ LEGACY_DIRECT_SOLVER_CALLERS: dict[str, dict[str, int]] = {
         "A:compute_3ph_short_circuit": 1,
         "C:compute_machine_contributions": 1,
     },
-    "application/network_wizard/service.py": {},
     # Wejscie `A:compute_3ph_short_circuit` ZDJETE 2026-08-07 (dlug
     # PACK-SC3F-WIAZANIE): mapowanie snapshotu i wywolanie solvera przeniesione do
     # warstwy wiazania (`zwarcie_3f_ze_snapshotu`), wiec pakiet dowodowy przestal
@@ -179,14 +177,12 @@ LEGACY_DIRECT_SOLVER_CALLERS: dict[str, dict[str, int]] = {
     "application/proof_engine/packs/sc_symmetrical.py": {
         "C:compute_machine_contributions": 1,
     },
-    "application/reference_networks/computation.py": {
-        "A:compute_2ph_short_circuit": 1,
-        "A:compute_3ph_short_circuit": 1,
-    },
-    "application/reference_networks/station_archetype_substrate.py": {
-        "A:compute_3ph_short_circuit": 1,
-        "C:compute_machine_contributions": 2,
-    },
+    # `application/reference_networks/computation.py` i
+    # `.../station_archetype_substrate.py` usuniete/przeniesione karta K2
+    # (2026-09-09): computation.py skasowany razem z calym dawnym dialektem;
+    # station_archetype_substrate.py przeniesiony do `backend/tests/` (poza
+    # BACKEND_SRC, wiec poza skanem tego guarda) — oba wpisy zdjete (zapadka
+    # w obie strony, niedobor = obniz budzet).
     "enm/canonical_analysis.py": {
         "A:compute_1ph_short_circuit": 1,
         "A:compute_2ph_ground_short_circuit": 1,

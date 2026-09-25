@@ -7,6 +7,7 @@ import time
 import uuid
 from collections.abc import Callable
 
+from network_model.pochodne import s_na_ms
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -17,13 +18,13 @@ logger = logging.getLogger("mv_design_pro")
 class RequestIdMiddleware(BaseHTTPMiddleware):
     """Adds X-Request-Id header to every request/response for error correlation."""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:  # type: ignore[type-arg]
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         request_id = request.headers.get("X-Request-Id") or str(uuid.uuid4())
         request.state.request_id = request_id
 
         start = time.monotonic()
         response: Response = await call_next(request)
-        elapsed_ms = round((time.monotonic() - start) * 1000, 1)
+        elapsed_ms = round(s_na_ms(time.monotonic() - start), 1)
 
         response.headers["X-Request-Id"] = request_id
 

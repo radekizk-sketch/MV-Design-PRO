@@ -14,6 +14,8 @@ import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
+import { FIELD_SOURCE_LABEL_PL, fieldLabelPluralPl } from '../../sld/v2/station-rozdzielnia/contract';
+import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 // =============================================================================
 // Helpers
@@ -67,11 +69,11 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
     [snapshot, elementId],
   );
 
-  // nN buses belonging to this station (voltage < 1 kV)
+  // Szyny nN tej stacji (pasmo nN z jednego lustra granic)
   const nnBuses = useMemo(() => {
     if (!station || !snapshot) return [];
     return (snapshot.buses ?? []).filter(
-      (b) => station.bus_refs.includes(b.ref_id) && b.voltage_kv < 1,
+      (b) => station.bus_refs.includes(b.ref_id) && wPasmieNn(b.voltage_kv),
     );
   }, [snapshot, station]);
 
@@ -151,7 +153,8 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
               },
               {
                 key: 'oze_bays_count',
-                label: 'Pola OZE',
+                // Pola rozdzielnicy SN o roli źródłowej — nazwa z kanonu ról pól (karta #141).
+                label: fieldLabelPluralPl(FIELD_SOURCE_LABEL_PL),
                 value: ozeBays.length,
                 unit: 'szt.',
               },

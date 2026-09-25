@@ -256,19 +256,20 @@ const CIRCLED = ['①', '②', '③', '④', '⑤'];
 export function NodeReadout(props: {
   x: number; y: number; n: number; title: string;
   uKv: number; uPu: number; uOk: boolean; ik3fMax: number; ik3fMin: number;
-  // idyn is the bus dynamic-withstand nameplate (PER-BUS, paired with Icw): ip ≤ Idyn is the
-  // dynamic verdict shown beside the thermal Icw one.
+  // idyn is the bus dynamic-withstand nameplate (PER-BUS, paired with Icw), shown beside ip as
+  // two numbers. Karta MAGISTRALA-OCENA (ui_no_physics_guard, porównanie wielkości fizycznych):
+  // the readout does NOT compare ip with Idyn — a ✓/✗ computed here was a verdict formed in the
+  // presentation layer without criterion, basis or margin (explainable-verdict contract).
   ik1f: string; share: string; icw: number; icwOk: boolean; ip: number; idyn: number;
 }): JSX.Element {
   const { x, y, n, title, uKv, uPu, uOk, ik3fMax, ik3fMin, ik1f, share, icw, icwOk, ip, idyn } = props;
-  const ipOk = ip <= idyn;
   const rows: Array<[string, string, string]> = [
     ['U', `${fmt(uKv)} kV · ${fmt(uPu)} pu${uOk ? ' ✓' : ''}`, uOk ? OK : AMBER],
     ['Ik″ 3f', `${fmt(ik3fMax, 1)} / ${fmt(ik3fMin, 1)} kA`, TXT],
     ['Ik″ 1f-z', ik1f, TXT],
     ['udział', share, TXT],
     ['Icw', `${fmt(icw, 0)} kA${icwOk ? ' ✓' : ''}`, icwOk ? OK : '#FF6B6B'],
-    ['ip', `${fmt(ip, 1)} kA · idyn ${fmt(idyn, 0)} ${ipOk ? '✓' : '✗'}`, ipOk ? OK : '#FF6B6B'],
+    ['ip', `${fmt(ip, 1)} kA · idyn ${fmt(idyn, 0)} kA`, TXT],
   ];
   return (
     <g>

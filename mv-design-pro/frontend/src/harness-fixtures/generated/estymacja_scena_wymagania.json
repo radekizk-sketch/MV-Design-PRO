@@ -1,0 +1,82 @@
+{
+  "analysis_id": "run-lf-scena-pomiary",
+  "base_mva": 100.0,
+  "buses": [
+    {
+      "bus_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "index": 0,
+      "is_slack": false,
+      "name": "Szyna SN",
+      "voltage_kv": 15.0
+    },
+    {
+      "bus_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "index": 1,
+      "is_slack": true,
+      "name": "GPZ 110 kV",
+      "voltage_kv": 110.0
+    },
+    {
+      "bus_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "index": 2,
+      "is_slack": false,
+      "name": "Szyna nN",
+      "voltage_kv": 0.4
+    },
+    {
+      "bus_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "index": 3,
+      "is_slack": false,
+      "name": "Stacja B SN",
+      "voltage_kv": 15.0
+    },
+    {
+      "bus_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "index": 4,
+      "is_slack": false,
+      "name": "Stacja C SN",
+      "voltage_kv": 15.0
+    }
+  ],
+  "context": {
+    "case_id": "case-demo",
+    "case_name": null,
+    "project_name": "CGMES Golden Net",
+    "run_id": "run-lf-scena-pomiary",
+    "run_timestamp": "2026-09-10T08:00:00+00:00",
+    "snapshot_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0"
+  },
+  "measurement_types": [
+    {
+      "code": "V_MAGNITUDE",
+      "label_pl": "Moduł napięcia węzła |V| [pu]",
+      "requires_bus_j": false
+    },
+    {
+      "code": "P_INJECTION",
+      "label_pl": "Iniekcja mocy czynnej w węźle P [pu]",
+      "requires_bus_j": false
+    },
+    {
+      "code": "Q_INJECTION",
+      "label_pl": "Iniekcja mocy biernej w węźle Q [pu]",
+      "requires_bus_j": false
+    },
+    {
+      "code": "P_FLOW",
+      "label_pl": "Przepływ mocy czynnej w gałęzi P_ij [pu]",
+      "requires_bus_j": true
+    },
+    {
+      "code": "Q_FLOW",
+      "label_pl": "Przepływ mocy biernej w gałęzi Q_ij [pu]",
+      "requires_bus_j": true
+    }
+  ],
+  "min_measurements": 9,
+  "n_buses": 5,
+  "n_states": 9,
+  "note_pl": "Pomiary muszą być w jednostkach względnych (pu) na tej samej bazie mocy co macierz admitancyjna Y-bus. Pomiary przepływu mocy czynnej i biernej w gałęzi wymagają wskazania węzła końcowego tej gałęzi.",
+  "slack_bus_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+  "slack_index": 1
+}

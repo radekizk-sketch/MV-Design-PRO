@@ -9,6 +9,7 @@
  * w oknie „Wrażliwość").
  */
 
+import type { ElementType } from '../../../ui/types';
 import type { DefinicjaKolumny, WierszTabeli, WierszZalozenia } from '../wzorzec';
 import type { KryteriaOceny, PozycjaRankingu, ZakresResponse } from './api';
 import {
@@ -20,6 +21,27 @@ import {
 } from './strings';
 
 export { przebiegRozplywu } from '../jakosc/jakoscModel';
+
+/**
+ * Typ elementu sieci dla wiersza rankingu N-1 (karta UI2 p.6) — mapowanie
+ * gruntowane REALNYM backendem (`application/analyses/kontyngencje_n1.py`):
+ * zbiór kwalifikowanych rodzajów jest ZAMKNIĘTY do `KWALIFIKOWANE_TYPY_GALEZI
+ * = {"line_overhead", "cable"}` (→ LineBranch) i `kind="transformer"`
+ * (→ TransformerBranch) — kontyngencja N-1 nie kwalifikuje źródeł/generatorów/
+ * odbiorów, więc te dwie gałęzie wyczerpują całą domenę `element_kind`.
+ * Rodzaj spoza tego zbioru (kontrakt się zmienił) → `undefined`, NIGDY zgadnięty.
+ */
+export function typElementuKontyngencji(elementKind: string): ElementType | undefined {
+  switch (elementKind) {
+    case 'line_overhead':
+    case 'cable':
+      return 'LineBranch';
+    case 'transformer':
+      return 'TransformerBranch';
+    default:
+      return undefined;
+  }
+}
 
 /** Klucz wiersza rankingu = `element_ref` (stabilny przy sortowaniu i wyborze). */
 export const KLUCZ_WIERSZA_RANKINGU = 'elementRef';
@@ -33,7 +55,6 @@ export const KOLUMNY_RANKINGU: DefinicjaKolumny[] = [
   { klucz: 'przeciazenia', etykieta: T.kolPrzeciazenia, mono: true },
   { klucz: 'napiecia', etykieta: T.kolNapiecia, mono: true },
   { klucz: 'pominiete', etykieta: T.kolPominiete, mono: true },
-  { klucz: 'elementRef', etykieta: T.kolIdentyfikator, mono: true, tylkoEkspercki: true },
 ];
 
 /**

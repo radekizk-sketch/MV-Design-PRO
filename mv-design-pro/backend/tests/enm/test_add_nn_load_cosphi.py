@@ -54,6 +54,28 @@ def test_reactive_power_derived_from_cos_phi() -> None:
     assert load["q_mvar"] > 0.0  # regresja phantomu (było 0.0)
 
 
+def test_load_profile_ref_kasacja_w6_1() -> None:
+    """Karta W6-1 SS0 p.8 (K-E): pole niosące referencję profilu obciążenia
+    było zapisywane w `meta` bez ŻADNEGO czytelnika w repo — skasowane.
+    Nawet jeśli wołający wciąż podaje ten klucz w payloadzie (legacy caller),
+    `meta` odbioru go NIE niesie — zero wskrzeszenia przez tylne drzwi."""
+    snapshot, feeder_ref = _enm_with_feeder()
+    result = execute_domain_operation(
+        snapshot,
+        "add_nn_load",
+        {
+            "feeder_ref": feeder_ref,
+            "bus_nn_ref": "bus-nn",
+            "active_power_kw": 100.0,
+            "cos_phi": 0.9,
+            "load_profile_ref": "profil-legacy-caller",
+        },
+    )
+    assert not result.get("error"), result
+    load = _load(result["snapshot"])
+    assert "load_profile_ref" not in load.get("meta", {})
+
+
 def test_explicit_reactive_power_is_not_overridden() -> None:
     snapshot, feeder_ref = _enm_with_feeder()
     result = execute_domain_operation(
@@ -71,12 +93,18 @@ def test_explicit_reactive_power_is_not_overridden() -> None:
     assert load["q_mvar"] == pytest.approx(0.02)
 
 
-def test_no_cos_phi_no_reactive_gives_zero() -> None:
+def test_no_cos_phi_no_reactive_rejects_with_q_missing() -> None:
+    """Karta FAB-D1 (D5 sibling): brak Q i brak cosφ NIE fabrykuje Q=0 (praca
+    przy cosφ=1 jest TWIERDZENIEM o odbiorze, nie brakiem danej) — `Load.q_mvar`
+    jest polem WYMAGANYM kontraktu, więc operacja jest ODRZUCONA, nie milcząco
+    zapisana z zerową mocą bierną (poprzednia wersja tego testu, `test_no_cos_
+    phi_no_reactive_gives_zero`, asertowała dokładnie tę fabrykację)."""
     snapshot, feeder_ref = _enm_with_feeder()
     result = execute_domain_operation(
         snapshot,
         "add_nn_load",
         {"feeder_ref": feeder_ref, "bus_nn_ref": "bus-nn", "active_power_kw": 50.0},
     )
-    load = _load(result["snapshot"])
-    assert load["q_mvar"] == pytest.approx(0.0)
+    assert result.get("error")
+    assert result.get("error_code") == "load.q_missing"
+    assert result.get("snapshot") is None

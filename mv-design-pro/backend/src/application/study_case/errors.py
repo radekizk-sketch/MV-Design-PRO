@@ -52,24 +52,3 @@ class OperationNotAllowedError(StudyCaseError):
         self.operation = operation
         self.mode = mode
         super().__init__(f"Operacja '{operation}' niedozwolona w trybie '{mode}'")
-
-
-class StaleResultsError(StudyCaseError):
-    """
-    PR-4: Raised when stale/outdated results are accessed.
-
-    Results become stale when:
-    - ENM/topology changes after calculation
-    - Solver parameters change after calculation
-    - Protection config changes after calculation
-
-    UI/API MUST NOT use stale results for display, export, or analysis.
-    """
-
-    def __init__(self, run_id: str, result_status: str):
-        self.run_id = run_id
-        self.result_status = result_status
-        super().__init__(
-            f"Wyniki przebiegu {run_id} są nieaktualne (status: {result_status}). "
-            "Wymagane ponowne obliczenie."
-        )

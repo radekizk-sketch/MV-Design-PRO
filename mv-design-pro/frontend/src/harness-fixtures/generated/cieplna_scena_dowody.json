@@ -1,0 +1,82 @@
+{
+  "dowody": {
+    "39aa2231-26fb-59c4-87e3-39a81c06367c": {
+      "run_id": "run-sc-scena-zwarcia",
+      "branch_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
+      "branch_name": "Kabel SN 1",
+      "status": "PASS",
+      "kroki": [
+        {
+          "step": 1,
+          "key": "conductor_thermal_time_source",
+          "title": "Czas trwania zwarcia z założenia przypadku",
+          "inputs": {
+            "i_galezi_a": {
+              "value": 0.0,
+              "unit": "A",
+              "label": "Prąd zwarciowy gałęzi"
+            }
+          },
+          "substitution": "$$t_k = 1\\ \\mathrm{s}$$",
+          "result": {
+            "tk_s": {
+              "value": 1.0,
+              "unit": "s",
+              "label": "Czas trwania zwarcia"
+            }
+          },
+          "notes": "Aparat Sprzęgło Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s."
+        },
+        {
+          "step": 2,
+          "key": "conductor_thermal_no_calculation",
+          "title": "Rachunku cieplnego nie przeprowadzono",
+          "inputs": {},
+          "substitution": "",
+          "result": {},
+          "notes": "Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; kryterium cieplne spełnione trywialnie.",
+          "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c"
+        }
+      ]
+    },
+    "9d39ac30-f6b6-56bb-b1fe-3841951e2a85": {
+      "run_id": "run-sc-scena-zwarcia",
+      "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+      "branch_name": "Linia SN 1",
+      "status": "UNAVAILABLE",
+      "kroki": [
+        {
+          "step": 1,
+          "key": "conductor_thermal_time_source",
+          "title": "Czas trwania zwarcia z założenia przypadku",
+          "inputs": {
+            "i_galezi_a": {
+              "value": 643.603362,
+              "unit": "A",
+              "label": "Prąd zwarciowy gałęzi"
+            }
+          },
+          "substitution": "$$t_k = 1\\ \\mathrm{s}$$",
+          "result": {
+            "tk_s": {
+              "value": 1.0,
+              "unit": "s",
+              "label": "Czas trwania zwarcia"
+            }
+          },
+          "notes": "Aparat Sprzęgło Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s."
+        },
+        {
+          "step": 2,
+          "key": "conductor_thermal_no_calculation",
+          "title": "Rachunku cieplnego nie przeprowadzono",
+          "inputs": {},
+          "substitution": "",
+          "result": {},
+          "notes": "Brak danych do rachunku: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
+          "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85"
+        }
+      ]
+    }
+  }
+}

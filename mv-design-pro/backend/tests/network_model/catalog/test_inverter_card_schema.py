@@ -143,9 +143,9 @@ def test_power_hierarchy_partial_values_never_raise_spuriously() -> None:
 
 def test_field_quality_enum_values_and_labels() -> None:
     assert [q.value for q in FieldQuality] == ["DATASHEET", "ESTIMATED", "SYSTEM_DEFAULT"]
-    assert FieldQuality.DATASHEET.label_pl == "karta_techniczna"
+    assert FieldQuality.DATASHEET.label_pl == "karta techniczna"
     assert FieldQuality.ESTIMATED.label_pl == "oszacowane"
-    assert FieldQuality.SYSTEM_DEFAULT.label_pl == "domyslne_techniczne"
+    assert FieldQuality.SYSTEM_DEFAULT.label_pl == "domyślne techniczne"
 
 
 def test_card_field_status_round_trip() -> None:
@@ -185,7 +185,7 @@ def test_provenance_entry_quality_emitted_when_set() -> None:
 
 
 def test_card_field_quality_map_seed_rules() -> None:
-    c = _make_converter(manufacturer="ACME", model="X1", pll_bandwidth_hz=30.0)
+    c = _make_converter(manufacturer="Producent testowy", model="X1", pll_bandwidth_hz=30.0)
     quality_map = card_field_quality_map(c)
 
     # Complete: every card schema field + ratings present in the map.
@@ -211,7 +211,7 @@ def test_card_field_quality_map_never_emits_datasheet_for_estimated_bandwidth() 
     # Even with a fully-rated converter, controller bands stay ESTIMATED until a
     # real source is attached. This is the anti-fabrication guarantee.
     c = _make_converter(
-        manufacturer="ACME",
+        manufacturer="Producent testowy",
         current_loop_bandwidth_hz=800.0,
         voltage_loop_bandwidth_hz=80.0,
         pll_bandwidth_hz=30.0,

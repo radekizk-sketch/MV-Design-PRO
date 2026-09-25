@@ -1,14 +1,13 @@
 """
 Unified protection curve calculator.
 
-This module provides a unified interface for calculating protection curves
-and performing coordination analysis between multiple protection devices.
+This module provides a unified interface for calculating protection curve
+points and trip times (IEC 60255 SI/VI/EI/LTI/DT, IEEE C37.112 MI/VI/EI/STI/DT).
 
-The calculator supports:
-- IEC 60255 curves (SI, VI, EI, LTI, DT)
-- IEEE C37.112 curves (MI, VI, EI, STI, DT)
-- Coordination margin analysis
-- Grading calculations
+Karta AB-1a Pakiet L (2026-09-23): lokalna ocena koordynacji (`CoordinationStatus`,
+`check_coordination`, `analyze_curve_set`, `calculate_grading_margin`) skasowana —
+LEGACY_USUNAC A1 inwentarza werdyktow (0 importerow, zaszyty margines 0,05+0,05+0,1 s).
+Ocena koordynacji zyje WYLACZNIE w `application/analyses/protection/coordination/`.
 
 WHITE BOX: All calculation steps are exposed for auditability.
 """
@@ -38,24 +37,6 @@ class CurveStandard(StrEnum):
     IEEE = "IEEE"  # IEEE C37.112
 
 
-class CoordinationStatus(StrEnum):
-    """Coordination analysis result status."""
-
-    COORDINATED = "COORDINATED"  # Skoordynowane
-    MARGIN_LOW = "MARGIN_LOW"  # Margines niski
-    NOT_COORDINATED = "NOT_COORDINATED"  # Nieskoordynowane
-    UNKNOWN = "UNKNOWN"  # Nieznane
-
-
-# Polish labels
-COORDINATION_STATUS_LABELS_PL: dict[str, str] = {
-    "COORDINATED": "Skoordynowane",
-    "MARGIN_LOW": "Margines niski",
-    "NOT_COORDINATED": "Nieskoordynowane",
-    "UNKNOWN": "Nieznane",
-}
-
-
 @dataclass(frozen=True)
 class CurvePoint:
     """Single point on a protection curve."""
@@ -70,27 +51,6 @@ class CurvePoint:
             "current_a": self.current_a,
             "current_multiple": self.current_multiple,
             "time_s": self.time_s,
-        }
-
-
-@dataclass(frozen=True)
-class FaultMarker:
-    """Fault current marker for display on curve chart."""
-
-    id: str
-    label_pl: str  # Polish label
-    current_a: float  # Fault current [A]
-    fault_type: str  # e.g., "3F", "2F", "1F"
-    location: str  # Fault location description
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize to dictionary."""
-        return {
-            "id": self.id,
-            "label_pl": self.label_pl,
-            "current_a": self.current_a,
-            "fault_type": self.fault_type,
-            "location": self.location,
         }
 
 
@@ -139,46 +99,6 @@ class CurveDefinition:
             "device_id": self.device_id,
             "enabled": self.enabled,
             "points": [p.to_dict() for p in self.points],
-        }
-
-
-@dataclass(frozen=True)
-class CoordinationResult:
-    """
-    Result of coordination analysis between two curves.
-
-    WHITE BOX: Exposes all intermediate values.
-    """
-
-    upstream_curve_id: str
-    downstream_curve_id: str
-    status: CoordinationStatus
-    margin_s: float  # Time margin [s]
-    margin_percent: float  # Margin as percentage
-    # Analysis at specific current
-    analysis_current_a: float
-    upstream_trip_time_s: float
-    downstream_trip_time_s: float
-    # Recommendations
-    recommendation_pl: str  # Polish recommendation text
-    min_required_margin_s: float  # Required grading margin
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize to dictionary for WHITE BOX trace."""
-        return {
-            "upstream_curve_id": self.upstream_curve_id,
-            "downstream_curve_id": self.downstream_curve_id,
-            "status": self.status.value,
-            "status_pl": COORDINATION_STATUS_LABELS_PL.get(self.status.value, self.status.value),
-            "margin_s": self.margin_s,
-            "margin_percent": self.margin_percent,
-            "analysis": {
-                "current_a": self.analysis_current_a,
-                "upstream_trip_time_s": self.upstream_trip_time_s,
-                "downstream_trip_time_s": self.downstream_trip_time_s,
-            },
-            "recommendation_pl": self.recommendation_pl,
-            "min_required_margin_s": self.min_required_margin_s,
         }
 
 
@@ -267,182 +187,3 @@ def calculate_trip_time(
             definite_time_s=curve.definite_time_s,
         )
         return ieee_result.tripping_time_s
-
-
-def calculate_grading_margin(
-    breaker_time_s: float = 0.05,
-    relay_overtravel_s: float = 0.05,
-    safety_factor_s: float = 0.1,
-) -> float:
-    """
-    Calculate minimum grading margin for coordination.
-
-    Standard formula: CTI = CB + OR + SF
-    where:
-        CB = Circuit breaker operating time
-        OR = Relay overtravel (for electromechanical relays)
-        SF = Safety factor
-
-    For modern digital relays, typical values:
-        - CB: 50-80ms
-        - OR: 0-50ms (0 for digital)
-        - SF: 100-200ms
-
-    Total typical CTI: 200-400ms
-
-    Args:
-        breaker_time_s: Circuit breaker operating time [s]
-        relay_overtravel_s: Relay overtravel time [s]
-        safety_factor_s: Safety factor [s]
-
-    Returns:
-        Minimum grading margin [s]
-    """
-    return breaker_time_s + relay_overtravel_s + safety_factor_s
-
-
-def check_coordination(
-    upstream_curve: CurveDefinition,
-    downstream_curve: CurveDefinition,
-    analysis_current_a: float | None = None,
-    min_margin_s: float | None = None,
-) -> CoordinationResult:
-    """
-    Check coordination between upstream and downstream protection curves.
-
-    The downstream device should trip before the upstream device with
-    sufficient time margin (grading margin / CTI).
-
-    Args:
-        upstream_curve: Upstream (backup) protection curve
-        downstream_curve: Downstream (primary) protection curve
-        analysis_current_a: Current at which to analyze (default: max pickup)
-        min_margin_s: Minimum required margin (default: calculated)
-
-    Returns:
-        CoordinationResult with analysis details
-    """
-    # Use default analysis current if not specified
-    if analysis_current_a is None:
-        # Analyze at 10x the higher pickup current
-        max_pickup = max(
-            upstream_curve.pickup_current_a,
-            downstream_curve.pickup_current_a,
-        )
-        analysis_current_a = max_pickup * 10.0
-
-    # Calculate default grading margin if not specified
-    if min_margin_s is None:
-        min_margin_s = calculate_grading_margin()
-
-    # Calculate trip times
-    upstream_trip_s = calculate_trip_time(upstream_curve, analysis_current_a)
-    downstream_trip_s = calculate_trip_time(downstream_curve, analysis_current_a)
-
-    # Calculate margin
-    if upstream_trip_s == float("inf") or downstream_trip_s == float("inf"):
-        margin_s = float("inf")
-        margin_percent = float("inf")
-    else:
-        margin_s = upstream_trip_s - downstream_trip_s
-        if downstream_trip_s > 0:
-            margin_percent = (margin_s / downstream_trip_s) * 100
-        else:
-            margin_percent = float("inf")
-
-    # Determine coordination status
-    if margin_s >= min_margin_s * 1.2:  # 20% above minimum
-        status = CoordinationStatus.COORDINATED
-        recommendation_pl = "Koordynacja prawidłowa. Margines czasowy wystarczający."
-    elif margin_s >= min_margin_s:
-        status = CoordinationStatus.MARGIN_LOW
-        recommendation_pl = (
-            f"Margines czasowy niski ({margin_s:.3f}s). "
-            f"Zalecane zwiększenie do min. {min_margin_s * 1.2:.3f}s."
-        )
-    elif margin_s > 0:
-        status = CoordinationStatus.NOT_COORDINATED
-        recommendation_pl = (
-            f"Brak koordynacji! Margines {margin_s:.3f}s poniżej wymaganego "
-            f"{min_margin_s:.3f}s. Wymagana korekta nastaw."
-        )
-    else:
-        status = CoordinationStatus.NOT_COORDINATED
-        recommendation_pl = (
-            "Brak koordynacji! Zabezpieczenie nadrzędne zadziała przed podrzędnym. "
-            "Konieczna zmiana charakterystyk lub nastaw."
-        )
-
-    return CoordinationResult(
-        upstream_curve_id=upstream_curve.id,
-        downstream_curve_id=downstream_curve.id,
-        status=status,
-        margin_s=margin_s if margin_s != float("inf") else 999.999,
-        margin_percent=margin_percent if margin_percent != float("inf") else 999.999,
-        analysis_current_a=analysis_current_a,
-        upstream_trip_time_s=upstream_trip_s if upstream_trip_s != float("inf") else 999.999,
-        downstream_trip_time_s=downstream_trip_s if downstream_trip_s != float("inf") else 999.999,
-        recommendation_pl=recommendation_pl,
-        min_required_margin_s=min_margin_s,
-    )
-
-
-def analyze_curve_set(
-    curves: list[CurveDefinition],
-    fault_markers: list[FaultMarker] | None = None,
-) -> dict[str, Any]:
-    """
-    Analyze a complete set of protection curves.
-
-    Performs:
-    - Point generation for all curves
-    - Coordination check between adjacent curves
-    - Trip time calculation at fault points
-
-    Args:
-        curves: List of curve definitions (ordered downstream to upstream)
-        fault_markers: Optional list of fault current markers
-
-    Returns:
-        Analysis results dictionary
-    """
-    results: dict[str, Any] = {
-        "curves": [],
-        "coordination": [],
-        "fault_analysis": [],
-    }
-
-    # Generate points for each curve
-    for curve in curves:
-        if curve.enabled:
-            curve.points = calculate_curve_points(curve)
-            results["curves"].append(curve.to_dict())
-
-    # Check coordination between adjacent curves
-    enabled_curves = [c for c in curves if c.enabled]
-    for i in range(len(enabled_curves) - 1):
-        downstream = enabled_curves[i]
-        upstream = enabled_curves[i + 1]
-        coord_result = check_coordination(upstream, downstream)
-        results["coordination"].append(coord_result.to_dict())
-
-    # Analyze at fault points
-    if fault_markers:
-        for marker in fault_markers:
-            fault_result: dict[str, Any] = {
-                "marker": marker.to_dict(),
-                "trip_times": [],
-            }
-            for curve in enabled_curves:
-                trip_time = calculate_trip_time(curve, marker.current_a)
-                fault_result["trip_times"].append(
-                    {
-                        "curve_id": curve.id,
-                        "curve_name": curve.name_pl,
-                        "trip_time_s": trip_time if trip_time != float("inf") else None,
-                        "will_trip": trip_time != float("inf"),
-                    }
-                )
-            results["fault_analysis"].append(fault_result)
-
-    return results

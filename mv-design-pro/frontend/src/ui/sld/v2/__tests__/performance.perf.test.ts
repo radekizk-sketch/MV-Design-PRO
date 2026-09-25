@@ -25,13 +25,13 @@ import {
   computeHashTriad,
   computeTopologyHash,
 } from '../core/hashes';
+import { zmierzCzasProcesora } from '../../../../test/czasProcesora';
 
-/** Helper: pomiar duration w ms. */
+/** Helper: pomiar CZASU PROCESORA w ms (`src/test/czasProcesora.ts`) — zegar ścienny mierzy
+ *  też czekanie w kolejce planisty, czyli obciążenie maszyny, a nie koszt funkcji. */
 function measure<T>(fn: () => T): { result: T; durationMs: number } {
-  const start = performance.now();
-  const result = fn();
-  const durationMs = performance.now() - start;
-  return { result, durationMs };
+  const { wynik, ms } = zmierzCzasProcesora(fn);
+  return { result: wynik, durationMs: ms };
 }
 
 /* ---------------------------------------------------------------------------

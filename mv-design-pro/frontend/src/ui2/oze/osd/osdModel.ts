@@ -22,6 +22,7 @@
  * wzór P41 (`krzyweModel.ts::krokiSladuPQ`).
  */
 
+import { nazwaObiektuZMigawki } from '../../wyniki/wzorzec/useNazwaObiektu';
 import type { EnergyNetworkModel } from '../../../types/enm';
 import type { DefinicjaKolumny, WierszTabeli } from '../../wyniki/wzorzec/wzorzecModel';
 import type {
@@ -58,7 +59,7 @@ export interface OpcjaZrodlaOsd {
 export function opcjeZrodel(snapshot: EnergyNetworkModel | null): OpcjaZrodlaOsd[] {
   const generatory = snapshot?.generators ?? [];
   return generatory
-    .map((gen) => ({ refId: gen.ref_id, etykieta: gen.name ?? gen.ref_id }))
+    .map((gen) => ({ refId: gen.ref_id, etykieta: nazwaObiektuZMigawki(snapshot, gen.ref_id, gen.name) }))
     .sort((a, b) => a.refId.localeCompare(b.refId));
 }
 
@@ -193,7 +194,7 @@ export function kolumnyTabeliOsd(): DefinicjaKolumny[] {
  */
 function wierszWezlaOsd(wezel: WezelOsd): WierszTabeli {
   return {
-    wezel: { wartosc: wezel.bus_name ?? wezel.bus_ref },
+    wezel: { wartosc: nazwaObiektuZMigawki(null, wezel.bus_ref, wezel.bus_name) },
     u_przed: {
       wartosc: fmtPuOsd(wezel.v_before_pu),
       sortKey: wezel.v_before_pu ?? undefined,

@@ -1,0 +1,67 @@
+{
+  "dostepny": true,
+  "linie": [
+    {
+      "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
+      "nastepne_szyny_wg_zacisku": {
+        "do": [],
+        "od": [
+          "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+        ]
+      },
+      "nazwa": "Magistrala GPZ (1)",
+      "odmowa_zacisku": {
+        "kod": "protection.relay_terminal_indication_missing",
+        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_L: Zacisk początkowy — szyna Szyna GPZ S1 15 kV albo Zacisk końcowy — szyna Stacja S01."
+      },
+      "wymaga_wskazania_zacisku": true,
+      "zacisk_z_modelu": null,
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Stacja S01",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Szyna GPZ S1 15 kV",
+          "szyna_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn"
+        }
+      },
+      "zaciski_dozwolone": [
+        "od",
+        "do"
+      ]
+    },
+    {
+      "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
+      "nastepne_szyny_wg_zacisku": {
+        "do": [
+          "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn"
+        ],
+        "od": []
+      },
+      "nazwa": "Magistrala GPZ (2) (1)",
+      "odmowa_zacisku": {
+        "kod": "protection.relay_terminal_indication_missing",
+        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L: Zacisk początkowy — szyna Stacja S01 albo Zacisk końcowy — szyna Stacja S02."
+      },
+      "wymaga_wskazania_zacisku": true,
+      "zacisk_z_modelu": null,
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Stacja S02",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Stacja S01",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
+        }
+      },
+      "zaciski_dozwolone": [
+        "od",
+        "do"
+      ]
+    }
+  ],
+  "powod_pl": null,
+  "run_id": "run-sc-scena-koordynacja-min"
+}

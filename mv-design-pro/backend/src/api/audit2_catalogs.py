@@ -35,6 +35,7 @@ from network_model.catalog.audit2_catalogs import (
     validate_device_withstand,
     validate_hosting_capacity_export,
 )
+from network_model.core.uziemienie import TYPY_PUNKTU_NEUTRALNEGO
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/v1/catalog/audit2", tags=["Audit2 Catalogs"])
@@ -102,7 +103,7 @@ class VtGroundingValidationRequest(BaseModel):
 def validate_vt_grounding(req: VtGroundingValidationRequest) -> dict[str, Any]:
     """Naprawa eng.20: walidacja VT voltage_factor vs typ uziemienia."""
     grounding = req.grounding_type
-    if grounding not in {"isolated", "petersen_coil", "resistor_grounded", "directly_grounded"}:
+    if grounding not in TYPY_PUNKTU_NEUTRALNEGO:
         return {"ok": False, "message_pl": f"Nieznany typ uziemienia: {grounding}"}
     ok, message = is_vt_voltage_factor_valid_for_grounding(req.voltage_factor, grounding)  # type: ignore[arg-type]
     return {"ok": ok, "message_pl": message}
@@ -232,6 +233,9 @@ def generate_audit2_proof_pack_endpoint(
 class GenerateAudit2ReportRequest(BaseModel):
     project_name: str
     station_id: str
+    #: Nazwa stacji z modelu — raport pokazuje ją projektantowi; `station_id` zostaje
+    #: wyłącznie w strukturze JSON raportu (karta #144: nazwa nigdy z identyfikatora).
+    station_name: str
     proof_pack: dict[str, Any]
     operator_pl: str = ""
     generated_at_iso: str = "1970-01-01T00:00:00Z"
@@ -257,6 +261,7 @@ def generate_audit2_report_endpoint(
     ctx = Audit2ReportContext(
         project_name=req.project_name,
         station_id=req.station_id,
+        station_name=req.station_name,
         proof_pack_dict=req.proof_pack,
         operator_pl=req.operator_pl,
         generated_at_iso=req.generated_at_iso,

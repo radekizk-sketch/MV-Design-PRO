@@ -51,6 +51,8 @@ class TestGN01SNProsta:
                 "sk3_mva": 500.0,
                 "rx_ratio": 0.1,
                 "catalog_ref": "src-gpz-15kv-500mva-rx010",
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
             },
         )
         assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
@@ -127,8 +129,14 @@ class TestGN02SNODG:
         r = execute_domain_operation(
             enm,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "catalog_ref": "src-gpz-15kv-250mva-rx010"},
+            {
+                "voltage_kv": 15.0,
+                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
+            },
         )
+        assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
         enm = r["snapshot"]
 
         for length in [200, 300]:
@@ -205,8 +213,14 @@ class TestGN03SNRingNOP:
         r = execute_domain_operation(
             enm,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "catalog_ref": "src-gpz-15kv-250mva-rx010"},
+            {
+                "voltage_kv": 15.0,
+                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
+            },
         )
+        assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
         enm = r["snapshot"]
 
         for length in [200, 250, 300]:
@@ -281,8 +295,15 @@ class TestRepeatability:
             r = execute_domain_operation(
                 enm,
                 "add_grid_source_sn",
-                {"voltage_kv": 15.0, "sk3_mva": 500.0, "catalog_ref": "src-gpz-15kv-500mva-rx010"},
+                {
+                    "voltage_kv": 15.0,
+                    "sk3_mva": 500.0,
+                    "catalog_ref": "src-gpz-15kv-500mva-rx010",
+                    "hv_voltage_kv": 110.0,
+                    "transformer_sn_mva": 25.0,
+                },
             )
+            assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
             enm = r["snapshot"]
             r = execute_domain_operation(
                 enm,
@@ -295,5 +316,6 @@ class TestRepeatability:
                     },
                 },
             )
+            assert r.get("error") is None, f"Odcinek failed: {r.get('error')}"
             hashes.add(r["layout"]["layout_hash"])
         assert len(hashes) == 1, f"Non-deterministic: {hashes}"

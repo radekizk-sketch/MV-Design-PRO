@@ -20,6 +20,14 @@ def test_list_bess_operation_modes(app_client):
     assert "afrr" in codes
     assert "voltage_support" in codes
     assert "island_backup" in codes
+    # Karta FAB-L (migracja z usunietego testu frontowego eng.10 —
+    # `audit-round2-fixes.test.ts`, ktory sprawdzal te same fakty na mirrorze
+    # frontu usunietym w tej karcie): FCR-N wymaga 4-kwadrantowego PCS, praca
+    # wyspowa wymaga PCS grid-forming (falownik TWORZACY napiecie, nie tylko
+    # podazajacy za siecia).
+    by_code = {item["mode_code"]: item for item in body}
+    assert by_code["fcr_n"]["requires_four_quadrant"] is True
+    assert by_code["island_backup"]["requires_grid_forming"] is True
 
 
 def test_list_tap_changers(app_client):
@@ -33,6 +41,14 @@ def test_list_tap_changers(app_client):
     # OLTC 110/SN ma 17 lub 19 zaczepow
     oltcs = [t for t in body if t["type"] == "oltc"]
     assert any(t["tap_count"] in (17, 19) for t in oltcs)
+    # Karta FAB-L (migracja z usunietego testu frontowego eng.13): OLTC 110/SN
+    # reguluje pod obciazeniem (AVR), krok 1,25%; DETC SN/nN przelacza sie
+    # WYLACZNIE bez obciazenia (brak AVR) — to rozroznia oba typy przelacznikow.
+    oltc_110 = next(t for t in oltcs if "transformer_110_15" in t["applicable_to"])
+    assert oltc_110["step_percent"] == 1.25
+    assert oltc_110["supports_avr"] is True
+    detcs = [t for t in body if t["type"] == "detc"]
+    assert detcs and all(t["supports_avr"] is False for t in detcs)
 
 
 def test_list_hv_fuses(app_client):

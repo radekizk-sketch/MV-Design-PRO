@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import pytest
 from network_model.catalog.repository import get_default_mv_catalog
-from network_model.catalog.types import CATALOG_CONTRACT_VERSION
+from network_model.catalog.types import (
+    CATALOG_CONTRACT_VERSION,
+    LineType,
+    _normalize_catalog_status,
+    _normalize_verification_status,
+)
 
 
 def _catalog_groups() -> dict[str, list[object]]:
@@ -23,6 +29,7 @@ def _catalog_groups() -> dict[str, list[object]]:
         "ZRODLO_SN": repo.list_source_system_types(),
         "FALOWNIK_PV": repo.list_pv_inverter_types(),
         "FALOWNIK_BESS": repo.list_bess_inverter_types(),
+        "BATERIA_BESS": repo.list_bess_battery_types(),
         "ZABEZPIECZENIE": repo.list_protection_device_types(),
         "KRZYWA_ZABEZPIECZENIA": repo.list_protection_curves(),
         "SZABLON_NASTAW": repo.list_protection_setting_templates(),
@@ -79,6 +86,48 @@ def test_production_records_are_not_unverified() -> None:
             data = item.to_dict()
             if data["catalog_status"] == "PRODUKCYJNY_V1":
                 assert data["verification_status"] != "NIEWERYFIKOWANY", group
+
+
+@pytest.mark.parametrize(
+    ("normalizuj", "wartosc_referencyjna"),
+    [
+        (_normalize_verification_status, "REFERENCYJNY"),
+        (_normalize_catalog_status, "REFERENCYJNY_V1"),
+    ],
+)
+def test_normalize_status_rejects_unrecognized_string(normalizuj, wartosc_referencyjna) -> None:
+    """Karta FAB-D2 (D7): nierozpoznany łańcuch statusu = rekord katalogu
+    USZKODZONY -> ValueError, nie ciche REFERENCYJNY."""
+    with pytest.raises(ValueError, match="[Nn]ierozpoznany status"):
+        normalizuj("TOTALNIE_ZMYSLONY_STATUS")
+
+
+@pytest.mark.parametrize("normalizuj", [_normalize_verification_status, _normalize_catalog_status])
+def test_normalize_status_absent_value_uses_default(normalizuj) -> None:
+    """Predykaty parami — brak WARTOŚCI (pole nie podane) to inny przypadek
+    niż wartość NIEROZPOZNANA: brak legalnie dostaje domyślny status
+    (konwencja klasyfikacji), test broni tego rozróżnienia."""
+    assert normalizuj(None)
+    assert normalizuj("")
+
+
+def test_line_type_from_dict_rejects_unrecognized_verification_status() -> None:
+    """Ten sam defekt na granicy `from_dict` — nie tylko w izolowanej funkcji."""
+    with pytest.raises(ValueError, match="[Nn]ierozpoznany status"):
+        LineType.from_dict(
+            {
+                "id": "t1",
+                "name": "Test",
+                "r_ohm_per_km": 0.1,
+                "x_ohm_per_km": 0.2,
+                "b_us_per_km": 0.0,
+                "rated_current_a": 100.0,
+                "max_temperature_c": 70.0,
+                "voltage_rating_kv": 15.0,
+                "cross_section_mm2": 50.0,
+                "verification_status": "TOTALNIE_ZMYSLONY_STATUS",
+            }
+        )
 
 
 def test_catalog_groups_do_not_mix_status_semantics() -> None:

@@ -1,0 +1,67 @@
+{
+  "comparison_id": "run-lf-scena-porownanie-a::run-lf-scena-porownanie-b",
+  "created_at": "2026-09-10T08:00:00+00:00",
+  "input_hash_a": "8b9b5c176c362aa39e2fd24ef163bb24891a310ba59594ef6345e17f8ab91776",
+  "input_hash_b": "7bd091ef9e47b994709d33f9d1a45dfcbf72f099d3485a4a1aa0d4ffe37016a7",
+  "ranking_thresholds": {
+    "angle_delta_threshold_deg": 5.0,
+    "losses_decrease_threshold_mw": 0.1,
+    "losses_increase_threshold_mw": 0.1,
+    "slack_power_change_threshold_mw": 0.5,
+    "top_n_for_ranking": 5,
+    "voltage_delta_threshold_pu": 0.02
+  },
+  "run_a_id": "run-lf-scena-porownanie-a",
+  "run_b_id": "run-lf-scena-porownanie-b",
+  "snapshot_hash_a": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+  "snapshot_hash_b": "c5594e9965433b0635cb16fd5100028b336f7caa1c44a13cbf1edce596273aac",
+  "solver_version": "newton-raphson",
+  "steps": [
+    {
+      "description_pl": "Dopasowanie szyn obu biegów po elemencie modelu sieci",
+      "inputs": {
+        "buses_a_count": 5,
+        "buses_b_count": 5
+      },
+      "outputs": {
+        "matched_buses": 5
+      },
+      "step": "MATCH_BUSES"
+    },
+    {
+      "description_pl": "Dopasowanie gałęzi obu biegów po elemencie modelu sieci",
+      "inputs": {
+        "branches_a_count": 4,
+        "branches_b_count": 4
+      },
+      "outputs": {
+        "matched_branches": 4
+      },
+      "step": "MATCH_BRANCHES"
+    },
+    {
+      "description_pl": "Ranking problemów według wagi (od 5 do 1)",
+      "inputs": {
+        "branch_diffs_count": 4,
+        "bus_diffs_count": 5,
+        "thresholds": {
+          "angle_delta_threshold_deg": 5.0,
+          "losses_decrease_threshold_mw": 0.1,
+          "losses_increase_threshold_mw": 0.1,
+          "slack_power_change_threshold_mw": 0.5,
+          "top_n_for_ranking": 5,
+          "voltage_delta_threshold_pu": 0.02
+        }
+      },
+      "outputs": {
+        "critical_issues": 0,
+        "informational_issues": 0,
+        "major_issues": 0,
+        "minor_issues": 1,
+        "moderate_issues": 0,
+        "total_issues": 1
+      },
+      "step": "RANK_ISSUES"
+    }
+  ]
+}

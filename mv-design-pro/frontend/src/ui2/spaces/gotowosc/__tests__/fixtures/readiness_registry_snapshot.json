@@ -1,0 +1,581 @@
+{
+  "codes": [
+    {
+      "area": "ANALYSIS",
+      "code": "analysis.as_built_measurement_terminal_missing"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "analysis.blocked_by_readiness"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "analysis.dynamic_stability_scenario_incomplete"
+    },
+    {
+      "area": "STATIONS",
+      "code": "apparatus.nn_catalog_missing"
+    },
+    {
+      "area": "STATIONS",
+      "code": "apparatus.sn_catalog_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "bess.energy_module_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "bess.soc_limits_invalid"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "branch.zero_sequence_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "cable.insulation_data_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "cable.operating_temperature_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "cable.screen_bonding_reference_mismatch"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.binding_invalid"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.binding_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.binding_required"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.binding_version_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.clear_forbidden"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.element_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.element_not_found"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.gate_result_mismatch"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.item_id_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.item_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.item_not_found"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.materialization_failed"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.materialization_incomplete"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.materialization_required"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.nameplate_mismatch"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.namespace_mismatch"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.namespace_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.namespace_required"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.ref_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.ref_required"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.unknown_namespace"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "conductor.fault_current_missing"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "conductor.fault_duration_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "conductor.thermal_data_missing"
+    },
+    {
+      "area": "SOURCES",
+      "code": "connection.cos_phi_required_missing"
+    },
+    {
+      "area": "SOURCES",
+      "code": "connection.power_flow_missing"
+    },
+    {
+      "area": "SOURCES",
+      "code": "connection.power_limit_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "converter.power_check_input_invalid"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "converter.setpoint_above_rating"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "converter.transformer_capacity_exceeded"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "ct.accuracy_limit_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "ct.rated_burden_missing"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "ct.required_alf_missing"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "ct.secondary_circuit_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "ct.winding_resistance_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "der.dynamic_profile_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "der.dynamika_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "der.inverter_certificate_conditional"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "der.inverter_certificate_unlinked"
+    },
+    {
+      "area": "STATIONS",
+      "code": "earthing.electrode_data_missing"
+    },
+    {
+      "area": "SOURCES",
+      "code": "earthing.neutral_grounding_inconsistent"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "fault.location_on_branch_requires_assembler"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "generator.converter_card_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "generator.harmonic_spectrum_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "generator.q_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "generator.voltage_control_not_permitted"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "generator.voltage_control_profile_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "generator.voltage_setpoint_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "genset.fuel_type_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "import.catalog_mapping_required"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "inverter.k_sc_default_forbidden"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "inverter.k_sc_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "load.catalog_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "load.power_zero"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "load.zip_agregat_niereprezentowalny"
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.bus_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "nn.cable_catalog_missing"
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.main_breaker_missing"
+    },
+    {
+      "area": "SOURCES",
+      "code": "nn.measurement.required_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "nn.source.catalog_missing"
+    },
+    {
+      "area": "SOURCES",
+      "code": "nn.source.field_missing"
+    },
+    {
+      "area": "SOURCES",
+      "code": "nn.source.parameters_missing"
+    },
+    {
+      "area": "SOURCES",
+      "code": "nn.source.switch_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "nn.switch.catalog_ref_missing"
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.voltage_missing"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "oltc.deadband_missing"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "oltc.target_voltage_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "oze.bess_no_transformer"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "oze.card_field_not_accepted"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "oze.nn_bus_required"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "oze.pv_no_transformer"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "oze.transformer_required"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "power_flow.unbalanced_element_unsupported"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "power_flow.unbalanced_load_phases_unsupported"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "power_flow.unbalanced_losses_self_impedance"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "power_flow.unbalanced_magnetising_branch_omitted"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "power_flow.unbalanced_no_zero_sequence_path"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "power_flow.unbalanced_requires_radial"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "power_flow.unbalanced_shunt_admittance_omitted"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "power_flow.unbalanced_transformer_series_model"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "power_flow.unbalanced_zero_sequence_confined"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "power_flow.unbalanced_zero_sequence_via_source"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.ct_required"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "protection.curve_library_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "protection.curve_library_ref_broken"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.device_breaker_not_in_series"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.fault_current_missing"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.nominal_current_missing"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.relay_terminal_breaker_loop"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.relay_terminal_choice_missing"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.relay_terminal_contradicts_model"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.relay_terminal_indication_missing"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.settings_incomplete"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.vt_required"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "pv.control_mode_missing"
+    },
+    {
+      "area": "TOPOLOGY",
+      "code": "ring.endpoints_missing"
+    },
+    {
+      "area": "TOPOLOGY",
+      "code": "ring.nop_required"
+    },
+    {
+      "area": "SOURCES",
+      "code": "source.connection_missing"
+    },
+    {
+      "area": "SOURCES",
+      "code": "source.grid_supply_missing"
+    },
+    {
+      "area": "SOURCES",
+      "code": "source.multiple_grid_sources_in_island"
+    },
+    {
+      "area": "SOURCES",
+      "code": "source.sk3_invalid"
+    },
+    {
+      "area": "SOURCES",
+      "code": "source.sk_min_inconsistent"
+    },
+    {
+      "area": "SOURCES",
+      "code": "source.sk_min_missing"
+    },
+    {
+      "area": "SOURCES",
+      "code": "source.u_set_pu_out_of_range"
+    },
+    {
+      "area": "SOURCES",
+      "code": "source.voltage_invalid"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.nn_outgoing_min_1"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.required_field_missing"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.type_invalid"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.voltage_missing"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "study_case.missing_base_snapshot"
+    },
+    {
+      "area": "STATIONS",
+      "code": "transformer.bay_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "transformer.catalog_missing"
+    },
+    {
+      "area": "STATIONS",
+      "code": "transformer.connection_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "transformer.loading_factor_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "transformer.loss_data_missing"
+    },
+    {
+      "area": "STATIONS",
+      "code": "transformer.lv_earthing_system_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "transformer.neutral_grounding_not_accessible"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "transformer.no_load_params_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "transformer.vector_group_invalid"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "transformer.vector_group_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "trunk.catalog_missing"
+    },
+    {
+      "area": "TOPOLOGY",
+      "code": "trunk.segment_length_invalid"
+    },
+    {
+      "area": "TOPOLOGY",
+      "code": "trunk.segment_length_missing"
+    },
+    {
+      "area": "TOPOLOGY",
+      "code": "trunk.segment_missing"
+    },
+    {
+      "area": "TOPOLOGY",
+      "code": "trunk.terminal_missing"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "ups.backup_time_invalid"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "verdict.input_data_missing"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "verdict.run_failed"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "verdict.run_missing"
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "verdict.run_stale"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "vt.rated_burden_missing"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "vt.secondary_circuit_missing"
+    },
+    {
+      "area": "CATALOGS",
+      "code": "vt.winding_category_missing"
+    }
+  ],
+  "count": 144
+}

@@ -1,0 +1,2508 @@
+{
+  "run_id": "run-sc-scena-skladowe",
+  "snapshot_id": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+  "input_hash": "4024336d9eb7c0bc845d7318534d02b1748c75ba5ff7d02b240b5a03ce392d0b",
+  "white_box_trace": [
+    {
+      "key": "KT[158eec95-939b-5b35-97ad-9433334b5506]",
+      "title": "Korekcja impedancji transformatora sieciowego TR 15/0.4",
+      "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
+      "inputs": {
+        "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
+        "s_rt_mva": 0.63,
+        "u_rt_hv_kv": 15.0,
+        "u_rt_lv_kv": 0.4,
+        "x_t_pu": 0.043801255833567504,
+        "x_t_ohm_hv": 15.643305654845538,
+        "c_max": 1.05
+      },
+      "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
+      "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
+      "result": {
+        "k_t": 0.9719562571918224,
+        "z_t_pu": {
+          "re": 0.010317460317460317,
+          "im": 0.043801255833567504
+        },
+        "z_tk_pu": {
+          "re": 0.010028120113883881,
+          "im": 0.04257290468029575
+        },
+        "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.971956 \\cdot \\left(0.0103175 + j 0.0438013\\right) = \\left(0.0100281 + j 0.0425729\\right)"
+      },
+      "notes": null,
+      "step": 1,
+      "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "element_id": "bus_sn_main",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_main",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_main",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_main"
+      ]
+    },
+    {
+      "key": "KT[7bf296a0-8f1c-5c72-9760-6987d84d6a4a]",
+      "title": "Korekcja impedancji transformatora sieciowego TR 110/15",
+      "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
+      "inputs": {
+        "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+        "s_rt_mva": 25.0,
+        "u_rt_hv_kv": 110.0,
+        "u_rt_lv_kv": 15.0,
+        "x_t_pu": 0.11990396156924925,
+        "x_t_ohm_hv": 58.03351739951663,
+        "c_max": 1.1
+      },
+      "substitution": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
+      "substitution_latex": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
+      "result": {
+        "k_t": 0.9748658346557572,
+        "z_t_pu": {
+          "re": 0.0048,
+          "im": 0.11990396156924925
+        },
+        "z_tk_pu": {
+          "re": 0.004679356006347634,
+          "im": 0.116890275573738
+        },
+        "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.974866 \\cdot \\left(0.0048 + j 0.119904\\right) = \\left(0.00467936 + j 0.11689\\right)"
+      },
+      "notes": null,
+      "step": 2,
+      "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "element_id": "bus_sn_main",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_main",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_main",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_main"
+      ]
+    },
+    {
+      "key": "Zk",
+      "title": "Impedancja zastępcza w punkcie zwarcia",
+      "formula_latex": "Z_k = Z_1 + Z_2 + Z_0",
+      "inputs": {
+        "z1_ohm": {
+          "re": 0.05413962601553552,
+          "im": 1.062646512021273
+        },
+        "z2_ohm": {
+          "re": 0.05413962601553552,
+          "im": 1.062646512021273
+        },
+        "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+        "short_circuit_type": "1F",
+        "z0_ohm": {
+          "re": 1.2745363593957127e-09,
+          "im": -10162.601626014506
+        }
+      },
+      "substitution": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
+      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
+      "result": {
+        "z_equiv_ohm": {
+          "re": 0.1082792533056074,
+          "im": -10160.476332990464
+        },
+        "r_ohm": 0.1082792533056074,
+        "x_ohm": -10160.476332990464,
+        "z_equiv_abs_ohm": 10160.476333567425
+      },
+      "notes": null,
+      "step": 3,
+      "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "element_id": "bus_sn_main",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_main",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_main",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_main"
+      ]
+    },
+    {
+      "key": "Ikss",
+      "title": "Prąd zwarciowy początkowy symetryczny",
+      "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
+      "inputs": {
+        "c_factor": 1.1,
+        "un_v": 15000.0,
+        "voltage_factor": 1.7320508075688772,
+        "z_equiv_abs_ohm": 10160.476333567425
+      },
+      "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 1.73205}{10160.5}",
+      "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 1.73205}{10160.5}",
+      "result": {
+        "ikss_a": 2.8127459172824247
+      },
+      "notes": null,
+      "step": 4,
+      "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "element_id": "bus_sn_main",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_main",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_main",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_main"
+      ]
+    },
+    {
+      "key": "kappa",
+      "title": "Współczynnik udaru",
+      "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
+      "inputs": {
+        "r_ohm": 0.1082792533056074,
+        "x_ohm": -10160.476332990464,
+        "rx_ratio": -1.0656907191844057e-05
+      },
+      "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
+      "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
+      "result": {
+        "kappa": 2.0000313318079916
+      },
+      "notes": null,
+      "step": 5,
+      "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "element_id": "bus_sn_main",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_main",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_main",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_main"
+      ]
+    },
+    {
+      "key": "Ip",
+      "title": "Prąd udarowy",
+      "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
+      "inputs": {
+        "kappa": 2.0000313318079916,
+        "ikss_a": 2.8127459172824247
+      },
+      "substitution": "2.00003 \\cdot \\sqrt{2} \\cdot 2.81275",
+      "substitution_latex": "2.00003 \\cdot \\sqrt{2} \\cdot 2.81275",
+      "result": {
+        "ip_a": 7.955771479860451
+      },
+      "notes": null,
+      "step": 6,
+      "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "element_id": "bus_sn_main",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_main",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_main",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_main"
+      ]
+    },
+    {
+      "key": "Ib",
+      "title": "Prąd zwarciowy do obliczeń cieplnych",
+      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "inputs": {
+        "ikss_a": 2.8127459172824247,
+        "kappa": 2.0000313318079916,
+        "tb_s": 0.1,
+        "ta_s": 0.0,
+        "exp_factor": 0.0
+      },
+      "substitution": "2.81275 \\cdot \\sqrt{1 + \\left((2.00003 - 1) \\cdot 0\\right)^2}",
+      "substitution_latex": "2.81275 \\cdot \\sqrt{1 + \\left((2.00003 - 1) \\cdot 0\\right)^2}",
+      "result": {
+        "ib_a": 2.8127459172824247
+      },
+      "notes": null,
+      "step": 7,
+      "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "element_id": "bus_sn_main",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_main",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_main",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_main"
+      ]
+    },
+    {
+      "key": "Ith",
+      "title": "Prąd zastępczy cieplny",
+      "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
+      "inputs": {
+        "ikss_a": 2.8127459172824247,
+        "m_factor": 2.0062793726479917,
+        "n_factor": 1.0
+      },
+      "substitution": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
+      "substitution_latex": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
+      "result": {
+        "ith_a": 4.876914833263379
+      },
+      "notes": null,
+      "step": 8,
+      "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "element_id": "bus_sn_main",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_main",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_main",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_main"
+      ]
+    },
+    {
+      "key": "Sk",
+      "title": "Moc zwarciowa",
+      "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
+      "inputs": {
+        "un_v": 15000.0,
+        "ikss_a": 2.8127459172824247
+      },
+      "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 2.81275 / 10^6",
+      "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 2.81275 / 10^6",
+      "result": {
+        "sk_mva": 0.07307728256272629
+      },
+      "notes": null,
+      "step": 9,
+      "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "element_id": "bus_sn_main",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_main",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_main",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_main"
+      ]
+    },
+    {
+      "key": "KT[158eec95-939b-5b35-97ad-9433334b5506]",
+      "title": "Korekcja impedancji transformatora sieciowego TR 15/0.4",
+      "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
+      "inputs": {
+        "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
+        "s_rt_mva": 0.63,
+        "u_rt_hv_kv": 15.0,
+        "u_rt_lv_kv": 0.4,
+        "x_t_pu": 0.043801255833567504,
+        "x_t_ohm_hv": 15.643305654845538,
+        "c_max": 1.05
+      },
+      "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
+      "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
+      "result": {
+        "k_t": 0.9719562571918224,
+        "z_t_pu": {
+          "re": 0.010317460317460317,
+          "im": 0.043801255833567504
+        },
+        "z_tk_pu": {
+          "re": 0.010028120113883881,
+          "im": 0.04257290468029575
+        },
+        "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.971956 \\cdot \\left(0.0103175 + j 0.0438013\\right) = \\left(0.0100281 + j 0.0425729\\right)"
+      },
+      "notes": null,
+      "step": 10,
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "element_id": "bus_hv",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_hv",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_hv",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_hv"
+      ]
+    },
+    {
+      "key": "KT[7bf296a0-8f1c-5c72-9760-6987d84d6a4a]",
+      "title": "Korekcja impedancji transformatora sieciowego TR 110/15",
+      "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
+      "inputs": {
+        "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+        "s_rt_mva": 25.0,
+        "u_rt_hv_kv": 110.0,
+        "u_rt_lv_kv": 15.0,
+        "x_t_pu": 0.11990396156924925,
+        "x_t_ohm_hv": 58.03351739951663,
+        "c_max": 1.1
+      },
+      "substitution": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
+      "substitution_latex": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
+      "result": {
+        "k_t": 0.9748658346557572,
+        "z_t_pu": {
+          "re": 0.0048,
+          "im": 0.11990396156924925
+        },
+        "z_tk_pu": {
+          "re": 0.004679356006347634,
+          "im": 0.116890275573738
+        },
+        "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.974866 \\cdot \\left(0.0048 + j 0.119904\\right) = \\left(0.00467936 + j 0.11689\\right)"
+      },
+      "notes": null,
+      "step": 11,
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "element_id": "bus_hv",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_hv",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_hv",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_hv"
+      ]
+    },
+    {
+      "key": "Zk",
+      "title": "Impedancja zastępcza w punkcie zwarcia",
+      "formula_latex": "Z_k = Z_1 + Z_2 + Z_0",
+      "inputs": {
+        "z1_ohm": {
+          "re": 0.49775018509306584,
+          "im": 4.970639317498279
+        },
+        "z2_ohm": {
+          "re": 0.49775018509306584,
+          "im": 4.970639317498279
+        },
+        "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+        "short_circuit_type": "1F",
+        "z0_ohm": {
+          "re": 0.5131485320178064,
+          "im": 5.439451623635524
+        }
+      },
+      "substitution": "\\left(0.49775 + j 4.97064\\right) + \\left(0.49775 + j 4.97064\\right) + \\left(0.513149 + j 5.43945\\right)",
+      "substitution_latex": "\\left(0.49775 + j 4.97064\\right) + \\left(0.49775 + j 4.97064\\right) + \\left(0.513149 + j 5.43945\\right)",
+      "result": {
+        "z_equiv_ohm": {
+          "re": 1.5086489022039382,
+          "im": 15.38073025863208
+        },
+        "r_ohm": 1.5086489022039382,
+        "x_ohm": 15.38073025863208,
+        "z_equiv_abs_ohm": 15.454542529590503
+      },
+      "notes": null,
+      "step": 12,
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "element_id": "bus_hv",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_hv",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_hv",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_hv"
+      ]
+    },
+    {
+      "key": "Ikss",
+      "title": "Prąd zwarciowy początkowy symetryczny",
+      "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
+      "inputs": {
+        "c_factor": 1.1,
+        "un_v": 110000.0,
+        "voltage_factor": 1.7320508075688772,
+        "z_equiv_abs_ohm": 15.454542529590503
+      },
+      "substitution": "\\frac{1.1 \\cdot 110000 \\cdot 1.73205}{15.4545}",
+      "substitution_latex": "\\frac{1.1 \\cdot 110000 \\cdot 1.73205}{15.4545}",
+      "result": {
+        "ikss_a": 13560.941536416176
+      },
+      "notes": null,
+      "step": 13,
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "element_id": "bus_hv",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_hv",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_hv",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_hv"
+      ]
+    },
+    {
+      "key": "kappa",
+      "title": "Współczynnik udaru",
+      "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
+      "inputs": {
+        "r_ohm": 1.5086489022039382,
+        "x_ohm": 15.38073025863208,
+        "rx_ratio": 0.0980869488532408
+      },
+      "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0980869}",
+      "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0980869}",
+      "result": {
+        "kappa": 1.7501804717071632
+      },
+      "notes": null,
+      "step": 14,
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "element_id": "bus_hv",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_hv",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_hv",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_hv"
+      ]
+    },
+    {
+      "key": "Ip",
+      "title": "Prąd udarowy",
+      "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
+      "inputs": {
+        "kappa": 1.7501804717071632,
+        "ikss_a": 13560.941536416176
+      },
+      "substitution": "1.75018 \\cdot \\sqrt{2} \\cdot 13560.9",
+      "substitution_latex": "1.75018 \\cdot \\sqrt{2} \\cdot 13560.9",
+      "result": {
+        "ip_a": 33565.07911743056
+      },
+      "notes": null,
+      "step": 15,
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "element_id": "bus_hv",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_hv",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_hv",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_hv"
+      ]
+    },
+    {
+      "key": "Ib",
+      "title": "Prąd zwarciowy do obliczeń cieplnych",
+      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "inputs": {
+        "ikss_a": 13560.941536416176,
+        "kappa": 1.7501804717071632,
+        "tb_s": 0.1,
+        "ta_s": 0.03245180830938586,
+        "exp_factor": 0.04589071916028893
+      },
+      "substitution": "13560.9 \\cdot \\sqrt{1 + \\left((1.75018 - 1) \\cdot 0.0458907\\right)^2}",
+      "substitution_latex": "13560.9 \\cdot \\sqrt{1 + \\left((1.75018 - 1) \\cdot 0.0458907\\right)^2}",
+      "result": {
+        "ib_a": 13568.975178209026
+      },
+      "notes": null,
+      "step": 16,
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "element_id": "bus_hv",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_hv",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_hv",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_hv"
+      ]
+    },
+    {
+      "key": "Ith",
+      "title": "Prąd zastępczy cieplny",
+      "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
+      "inputs": {
+        "ikss_a": 13560.941536416176,
+        "m_factor": 0.03478969097457471,
+        "n_factor": 1.0
+      },
+      "substitution": "13560.9 \\cdot \\sqrt{0.0347897 + 1}",
+      "substitution_latex": "13560.9 \\cdot \\sqrt{0.0347897 + 1}",
+      "result": {
+        "ith_a": 13794.815310237324
+      },
+      "notes": null,
+      "step": 17,
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "element_id": "bus_hv",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_hv",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_hv",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_hv"
+      ]
+    },
+    {
+      "key": "Sk",
+      "title": "Moc zwarciowa",
+      "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
+      "inputs": {
+        "un_v": 110000.0,
+        "ikss_a": 13560.941536416176
+      },
+      "substitution": "\\sqrt{3} \\cdot 110000 \\cdot 13560.9 / 10^6",
+      "substitution_latex": "\\sqrt{3} \\cdot 110000 \\cdot 13560.9 / 10^6",
+      "result": {
+        "sk_mva": 2583.7063713498364
+      },
+      "notes": null,
+      "step": 18,
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "element_id": "bus_hv",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_hv",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_hv",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_hv"
+      ]
+    },
+    {
+      "key": "KT[158eec95-939b-5b35-97ad-9433334b5506]",
+      "title": "Korekcja impedancji transformatora sieciowego TR 15/0.4",
+      "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
+      "inputs": {
+        "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
+        "s_rt_mva": 0.63,
+        "u_rt_hv_kv": 15.0,
+        "u_rt_lv_kv": 0.4,
+        "x_t_pu": 0.043801255833567504,
+        "x_t_ohm_hv": 15.643305654845538,
+        "c_max": 1.05
+      },
+      "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
+      "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
+      "result": {
+        "k_t": 0.9719562571918224,
+        "z_t_pu": {
+          "re": 0.010317460317460317,
+          "im": 0.043801255833567504
+        },
+        "z_tk_pu": {
+          "re": 0.010028120113883881,
+          "im": 0.04257290468029575
+        },
+        "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.971956 \\cdot \\left(0.0103175 + j 0.0438013\\right) = \\left(0.0100281 + j 0.0425729\\right)"
+      },
+      "notes": null,
+      "step": 19,
+      "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "element_id": "bus_nn",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_nn",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_nn",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_nn"
+      ]
+    },
+    {
+      "key": "KT[7bf296a0-8f1c-5c72-9760-6987d84d6a4a]",
+      "title": "Korekcja impedancji transformatora sieciowego TR 110/15",
+      "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
+      "inputs": {
+        "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+        "s_rt_mva": 25.0,
+        "u_rt_hv_kv": 110.0,
+        "u_rt_lv_kv": 15.0,
+        "x_t_pu": 0.11990396156924925,
+        "x_t_ohm_hv": 58.03351739951663,
+        "c_max": 1.1
+      },
+      "substitution": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
+      "substitution_latex": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
+      "result": {
+        "k_t": 0.9748658346557572,
+        "z_t_pu": {
+          "re": 0.0048,
+          "im": 0.11990396156924925
+        },
+        "z_tk_pu": {
+          "re": 0.004679356006347634,
+          "im": 0.116890275573738
+        },
+        "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.974866 \\cdot \\left(0.0048 + j 0.119904\\right) = \\left(0.00467936 + j 0.11689\\right)"
+      },
+      "notes": null,
+      "step": 20,
+      "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "element_id": "bus_nn",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_nn",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_nn",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_nn"
+      ]
+    },
+    {
+      "key": "Zk",
+      "title": "Impedancja zastępcza w punkcie zwarcia",
+      "formula_latex": "Z_k = Z_1 + Z_2 + Z_0",
+      "inputs": {
+        "z1_ohm": {
+          "re": 0.0025853234455180643,
+          "im": 0.011567826009893416
+        },
+        "z2_ohm": {
+          "re": 0.0025853234455180643,
+          "im": 0.011567826009893416
+        },
+        "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+        "short_circuit_type": "1F",
+        "z0_ohm": {
+          "re": 0.002620307382212145,
+          "im": 0.01112412846566794
+        }
+      },
+      "substitution": "\\left(0.00258532 + j 0.0115678\\right) + \\left(0.00258532 + j 0.0115678\\right) + \\left(0.00262031 + j 0.0111241\\right)",
+      "substitution_latex": "\\left(0.00258532 + j 0.0115678\\right) + \\left(0.00258532 + j 0.0115678\\right) + \\left(0.00262031 + j 0.0111241\\right)",
+      "result": {
+        "z_equiv_ohm": {
+          "re": 0.007790954273248274,
+          "im": 0.03425978048545477
+        },
+        "r_ohm": 0.007790954273248274,
+        "x_ohm": 0.03425978048545477,
+        "z_equiv_abs_ohm": 0.035134477759024584
+      },
+      "notes": null,
+      "step": 21,
+      "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "element_id": "bus_nn",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_nn",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_nn",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_nn"
+      ]
+    },
+    {
+      "key": "Ikss",
+      "title": "Prąd zwarciowy początkowy symetryczny",
+      "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
+      "inputs": {
+        "c_factor": 1.05,
+        "un_v": 400.0,
+        "voltage_factor": 1.7320508075688772,
+        "z_equiv_abs_ohm": 0.035134477759024584
+      },
+      "substitution": "\\frac{1.05 \\cdot 400 \\cdot 1.73205}{0.0351345}",
+      "substitution_latex": "\\frac{1.05 \\cdot 400 \\cdot 1.73205}{0.0351345}",
+      "result": {
+        "ikss_a": 20705.056274589817
+      },
+      "notes": null,
+      "step": 22,
+      "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "element_id": "bus_nn",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_nn",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_nn",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_nn"
+      ]
+    },
+    {
+      "key": "kappa",
+      "title": "Współczynnik udaru",
+      "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
+      "inputs": {
+        "r_ohm": 0.007790954273248274,
+        "x_ohm": 0.03425978048545477,
+        "rx_ratio": 0.2274081784194729
+      },
+      "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.227408}",
+      "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.227408}",
+      "result": {
+        "kappa": 1.51538143243442
+      },
+      "notes": null,
+      "step": 23,
+      "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "element_id": "bus_nn",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_nn",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_nn",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_nn"
+      ]
+    },
+    {
+      "key": "Ip",
+      "title": "Prąd udarowy",
+      "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
+      "inputs": {
+        "kappa": 1.51538143243442,
+        "ikss_a": 20705.056274589817
+      },
+      "substitution": "1.51538 \\cdot \\sqrt{2} \\cdot 20705.1",
+      "substitution_latex": "1.51538 \\cdot \\sqrt{2} \\cdot 20705.1",
+      "result": {
+        "ip_a": 44372.446525506624
+      },
+      "notes": null,
+      "step": 24,
+      "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "element_id": "bus_nn",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_nn",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_nn",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_nn"
+      ]
+    },
+    {
+      "key": "Ib",
+      "title": "Prąd zwarciowy do obliczeń cieplnych",
+      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "inputs": {
+        "ikss_a": 20705.056274589817,
+        "kappa": 1.51538143243442,
+        "tb_s": 0.1,
+        "ta_s": 0.013997292814889102,
+        "exp_factor": 0.0007893990273390189
+      },
+      "substitution": "20705.1 \\cdot \\sqrt{1 + \\left((1.51538 - 1) \\cdot 0.000789399\\right)^2}",
+      "substitution_latex": "20705.1 \\cdot \\sqrt{1 + \\left((1.51538 - 1) \\cdot 0.000789399\\right)^2}",
+      "result": {
+        "ib_a": 20705.057988141125
+      },
+      "notes": null,
+      "step": 25,
+      "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "element_id": "bus_nn",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_nn",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_nn",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_nn"
+      ]
+    },
+    {
+      "key": "Ith",
+      "title": "Prąd zastępczy cieplny",
+      "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
+      "inputs": {
+        "ikss_a": 20705.056274589817,
+        "m_factor": 0.015086414826688448,
+        "n_factor": 1.0
+      },
+      "substitution": "20705.1 \\cdot \\sqrt{0.0150864 + 1}",
+      "substitution_latex": "20705.1 \\cdot \\sqrt{0.0150864 + 1}",
+      "result": {
+        "ith_a": 20860.654151882027
+      },
+      "notes": null,
+      "step": 26,
+      "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "element_id": "bus_nn",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_nn",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_nn",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_nn"
+      ]
+    },
+    {
+      "key": "Sk",
+      "title": "Moc zwarciowa",
+      "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
+      "inputs": {
+        "un_v": 400.0,
+        "ikss_a": 20705.056274589817
+      },
+      "substitution": "\\sqrt{3} \\cdot 400 \\cdot 20705.1 / 10^6",
+      "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 20705.1 / 10^6",
+      "result": {
+        "sk_mva": 14.344883776464938
+      },
+      "notes": null,
+      "step": 27,
+      "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "element_id": "bus_nn",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_nn",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_nn",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_nn"
+      ]
+    },
+    {
+      "key": "KT[158eec95-939b-5b35-97ad-9433334b5506]",
+      "title": "Korekcja impedancji transformatora sieciowego TR 15/0.4",
+      "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
+      "inputs": {
+        "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
+        "s_rt_mva": 0.63,
+        "u_rt_hv_kv": 15.0,
+        "u_rt_lv_kv": 0.4,
+        "x_t_pu": 0.043801255833567504,
+        "x_t_ohm_hv": 15.643305654845538,
+        "c_max": 1.05
+      },
+      "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
+      "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
+      "result": {
+        "k_t": 0.9719562571918224,
+        "z_t_pu": {
+          "re": 0.010317460317460317,
+          "im": 0.043801255833567504
+        },
+        "z_tk_pu": {
+          "re": 0.010028120113883881,
+          "im": 0.04257290468029575
+        },
+        "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.971956 \\cdot \\left(0.0103175 + j 0.0438013\\right) = \\left(0.0100281 + j 0.0425729\\right)"
+      },
+      "notes": null,
+      "step": 28,
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "element_id": "bus_sn_b",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_b",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_b",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_b"
+      ]
+    },
+    {
+      "key": "KT[7bf296a0-8f1c-5c72-9760-6987d84d6a4a]",
+      "title": "Korekcja impedancji transformatora sieciowego TR 110/15",
+      "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
+      "inputs": {
+        "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+        "s_rt_mva": 25.0,
+        "u_rt_hv_kv": 110.0,
+        "u_rt_lv_kv": 15.0,
+        "x_t_pu": 0.11990396156924925,
+        "x_t_ohm_hv": 58.03351739951663,
+        "c_max": 1.1
+      },
+      "substitution": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
+      "substitution_latex": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
+      "result": {
+        "k_t": 0.9748658346557572,
+        "z_t_pu": {
+          "re": 0.0048,
+          "im": 0.11990396156924925
+        },
+        "z_tk_pu": {
+          "re": 0.004679356006347634,
+          "im": 0.116890275573738
+        },
+        "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.974866 \\cdot \\left(0.0048 + j 0.119904\\right) = \\left(0.00467936 + j 0.11689\\right)"
+      },
+      "notes": null,
+      "step": 29,
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "element_id": "bus_sn_b",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_b",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_b",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_b"
+      ]
+    },
+    {
+      "key": "Zk",
+      "title": "Impedancja zastępcza w punkcie zwarcia",
+      "formula_latex": "Z_k = Z_1 + Z_2 + Z_0",
+      "inputs": {
+        "z1_ohm": {
+          "re": 0.05413962601553552,
+          "im": 1.062646512021273
+        },
+        "z2_ohm": {
+          "re": 0.05413962601553552,
+          "im": 1.062646512021273
+        },
+        "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+        "short_circuit_type": "1F",
+        "z0_ohm": {
+          "re": 1.2745363593957127e-09,
+          "im": -10162.601626014506
+        }
+      },
+      "substitution": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
+      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
+      "result": {
+        "z_equiv_ohm": {
+          "re": 0.1082792533056074,
+          "im": -10160.476332990464
+        },
+        "r_ohm": 0.1082792533056074,
+        "x_ohm": -10160.476332990464,
+        "z_equiv_abs_ohm": 10160.476333567425
+      },
+      "notes": null,
+      "step": 30,
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "element_id": "bus_sn_b",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_b",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_b",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_b"
+      ]
+    },
+    {
+      "key": "Ikss",
+      "title": "Prąd zwarciowy początkowy symetryczny",
+      "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
+      "inputs": {
+        "c_factor": 1.1,
+        "un_v": 15000.0,
+        "voltage_factor": 1.7320508075688772,
+        "z_equiv_abs_ohm": 10160.476333567425
+      },
+      "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 1.73205}{10160.5}",
+      "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 1.73205}{10160.5}",
+      "result": {
+        "ikss_a": 2.8127459172824247
+      },
+      "notes": null,
+      "step": 31,
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "element_id": "bus_sn_b",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_b",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_b",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_b"
+      ]
+    },
+    {
+      "key": "kappa",
+      "title": "Współczynnik udaru",
+      "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
+      "inputs": {
+        "r_ohm": 0.1082792533056074,
+        "x_ohm": -10160.476332990464,
+        "rx_ratio": -1.0656907191844057e-05
+      },
+      "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
+      "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
+      "result": {
+        "kappa": 2.0000313318079916
+      },
+      "notes": null,
+      "step": 32,
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "element_id": "bus_sn_b",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_b",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_b",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_b"
+      ]
+    },
+    {
+      "key": "Ip",
+      "title": "Prąd udarowy",
+      "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
+      "inputs": {
+        "kappa": 2.0000313318079916,
+        "ikss_a": 2.8127459172824247
+      },
+      "substitution": "2.00003 \\cdot \\sqrt{2} \\cdot 2.81275",
+      "substitution_latex": "2.00003 \\cdot \\sqrt{2} \\cdot 2.81275",
+      "result": {
+        "ip_a": 7.955771479860451
+      },
+      "notes": null,
+      "step": 33,
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "element_id": "bus_sn_b",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_b",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_b",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_b"
+      ]
+    },
+    {
+      "key": "Ib",
+      "title": "Prąd zwarciowy do obliczeń cieplnych",
+      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "inputs": {
+        "ikss_a": 2.8127459172824247,
+        "kappa": 2.0000313318079916,
+        "tb_s": 0.1,
+        "ta_s": 0.0,
+        "exp_factor": 0.0
+      },
+      "substitution": "2.81275 \\cdot \\sqrt{1 + \\left((2.00003 - 1) \\cdot 0\\right)^2}",
+      "substitution_latex": "2.81275 \\cdot \\sqrt{1 + \\left((2.00003 - 1) \\cdot 0\\right)^2}",
+      "result": {
+        "ib_a": 2.8127459172824247
+      },
+      "notes": null,
+      "step": 34,
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "element_id": "bus_sn_b",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_b",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_b",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_b"
+      ]
+    },
+    {
+      "key": "Ith",
+      "title": "Prąd zastępczy cieplny",
+      "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
+      "inputs": {
+        "ikss_a": 2.8127459172824247,
+        "m_factor": 2.0062793726479917,
+        "n_factor": 1.0
+      },
+      "substitution": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
+      "substitution_latex": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
+      "result": {
+        "ith_a": 4.876914833263379
+      },
+      "notes": null,
+      "step": 35,
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "element_id": "bus_sn_b",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_b",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_b",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_b"
+      ]
+    },
+    {
+      "key": "Sk",
+      "title": "Moc zwarciowa",
+      "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
+      "inputs": {
+        "un_v": 15000.0,
+        "ikss_a": 2.8127459172824247
+      },
+      "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 2.81275 / 10^6",
+      "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 2.81275 / 10^6",
+      "result": {
+        "sk_mva": 0.07307728256272629
+      },
+      "notes": null,
+      "step": 36,
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "element_id": "bus_sn_b",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_b",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_b",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_b"
+      ]
+    },
+    {
+      "key": "KT[158eec95-939b-5b35-97ad-9433334b5506]",
+      "title": "Korekcja impedancji transformatora sieciowego TR 15/0.4",
+      "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
+      "inputs": {
+        "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
+        "s_rt_mva": 0.63,
+        "u_rt_hv_kv": 15.0,
+        "u_rt_lv_kv": 0.4,
+        "x_t_pu": 0.043801255833567504,
+        "x_t_ohm_hv": 15.643305654845538,
+        "c_max": 1.05
+      },
+      "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
+      "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
+      "result": {
+        "k_t": 0.9719562571918224,
+        "z_t_pu": {
+          "re": 0.010317460317460317,
+          "im": 0.043801255833567504
+        },
+        "z_tk_pu": {
+          "re": 0.010028120113883881,
+          "im": 0.04257290468029575
+        },
+        "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.971956 \\cdot \\left(0.0103175 + j 0.0438013\\right) = \\left(0.0100281 + j 0.0425729\\right)"
+      },
+      "notes": null,
+      "step": 37,
+      "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "element_id": "bus_sn_c",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_c",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_c",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_c"
+      ]
+    },
+    {
+      "key": "KT[7bf296a0-8f1c-5c72-9760-6987d84d6a4a]",
+      "title": "Korekcja impedancji transformatora sieciowego TR 110/15",
+      "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
+      "inputs": {
+        "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+        "s_rt_mva": 25.0,
+        "u_rt_hv_kv": 110.0,
+        "u_rt_lv_kv": 15.0,
+        "x_t_pu": 0.11990396156924925,
+        "x_t_ohm_hv": 58.03351739951663,
+        "c_max": 1.1
+      },
+      "substitution": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
+      "substitution_latex": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
+      "result": {
+        "k_t": 0.9748658346557572,
+        "z_t_pu": {
+          "re": 0.0048,
+          "im": 0.11990396156924925
+        },
+        "z_tk_pu": {
+          "re": 0.004679356006347634,
+          "im": 0.116890275573738
+        },
+        "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.974866 \\cdot \\left(0.0048 + j 0.119904\\right) = \\left(0.00467936 + j 0.11689\\right)"
+      },
+      "notes": null,
+      "step": 38,
+      "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "element_id": "bus_sn_c",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_c",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_c",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_c"
+      ]
+    },
+    {
+      "key": "Zk",
+      "title": "Impedancja zastępcza w punkcie zwarcia",
+      "formula_latex": "Z_k = Z_1 + Z_2 + Z_0",
+      "inputs": {
+        "z1_ohm": {
+          "re": 0.7557255080898567,
+          "im": 1.9264383236339517
+        },
+        "z2_ohm": {
+          "re": 0.7557255080898567,
+          "im": 1.9264383236339517
+        },
+        "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+        "short_circuit_type": "1F",
+        "z0_ohm": {
+          "re": 1.4260000012739338,
+          "im": -10158.881626014505
+        }
+      },
+      "substitution": "\\left(0.755726 + j 1.92644\\right) + \\left(0.755726 + j 1.92644\\right) + \\left(1.426 - j 10158.9\\right)",
+      "substitution_latex": "\\left(0.755726 + j 1.92644\\right) + \\left(0.755726 + j 1.92644\\right) + \\left(1.426 - j 10158.9\\right)",
+      "result": {
+        "z_equiv_ohm": {
+          "re": 2.9374510174536472,
+          "im": -10155.028749367237
+        },
+        "r_ohm": 2.9374510174536472,
+        "x_ohm": -10155.028749367237,
+        "z_equiv_abs_ohm": 10155.029174211839
+      },
+      "notes": null,
+      "step": 39,
+      "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "element_id": "bus_sn_c",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_c",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_c",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_c"
+      ]
+    },
+    {
+      "key": "Ikss",
+      "title": "Prąd zwarciowy początkowy symetryczny",
+      "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
+      "inputs": {
+        "c_factor": 1.1,
+        "un_v": 15000.0,
+        "voltage_factor": 1.7320508075688772,
+        "z_equiv_abs_ohm": 10155.029174211839
+      },
+      "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 1.73205}{10155}",
+      "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 1.73205}{10155}",
+      "result": {
+        "ikss_a": 2.814254674665133
+      },
+      "notes": null,
+      "step": 40,
+      "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "element_id": "bus_sn_c",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_c",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_c",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_c"
+      ]
+    },
+    {
+      "key": "kappa",
+      "title": "Współczynnik udaru",
+      "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
+      "inputs": {
+        "r_ohm": 2.9374510174536472,
+        "x_ohm": -10155.028749367237,
+        "rx_ratio": -0.0002892607288420213
+      },
+      "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot -0.000289261}",
+      "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -0.000289261}",
+      "result": {
+        "kappa": 2.000850795642056
+      },
+      "notes": null,
+      "step": 41,
+      "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "element_id": "bus_sn_c",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_c",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_c",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_c"
+      ]
+    },
+    {
+      "key": "Ip",
+      "title": "Prąd udarowy",
+      "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
+      "inputs": {
+        "kappa": 2.000850795642056,
+        "ikss_a": 2.814254674665133
+      },
+      "substitution": "2.00085 \\cdot \\sqrt{2} \\cdot 2.81425",
+      "substitution_latex": "2.00085 \\cdot \\sqrt{2} \\cdot 2.81425",
+      "result": {
+        "ip_a": 7.963300387947451
+      },
+      "notes": null,
+      "step": 42,
+      "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "element_id": "bus_sn_c",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_c",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_c",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_c"
+      ]
+    },
+    {
+      "key": "Ib",
+      "title": "Prąd zwarciowy do obliczeń cieplnych",
+      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "inputs": {
+        "ikss_a": 2.814254674665133,
+        "kappa": 2.000850795642056,
+        "tb_s": 0.1,
+        "ta_s": 0.0,
+        "exp_factor": 0.0
+      },
+      "substitution": "2.81425 \\cdot \\sqrt{1 + \\left((2.00085 - 1) \\cdot 0\\right)^2}",
+      "substitution_latex": "2.81425 \\cdot \\sqrt{1 + \\left((2.00085 - 1) \\cdot 0\\right)^2}",
+      "result": {
+        "ib_a": 2.814254674665133
+      },
+      "notes": null,
+      "step": 43,
+      "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "element_id": "bus_sn_c",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_c",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_c",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_c"
+      ]
+    },
+    {
+      "key": "Ith",
+      "title": "Prąd zastępczy cieplny",
+      "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
+      "inputs": {
+        "ikss_a": 2.814254674665133,
+        "m_factor": 2.1801543533403005,
+        "n_factor": 1.0
+      },
+      "substitution": "2.81425 \\cdot \\sqrt{2.18015 + 1}",
+      "substitution_latex": "2.81425 \\cdot \\sqrt{2.18015 + 1}",
+      "result": {
+        "ith_a": 5.018656781640902
+      },
+      "notes": null,
+      "step": 44,
+      "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "element_id": "bus_sn_c",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_c",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_c",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_c"
+      ]
+    },
+    {
+      "key": "Sk",
+      "title": "Moc zwarciowa",
+      "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
+      "inputs": {
+        "un_v": 15000.0,
+        "ikss_a": 2.814254674665133
+      },
+      "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 2.81425 / 10^6",
+      "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 2.81425 / 10^6",
+      "result": {
+        "sk_mva": 0.07311648122937348
+      },
+      "notes": null,
+      "step": 45,
+      "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "element_id": "bus_sn_c",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_c",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_c",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_c"
+      ]
+    }
+  ],
+  "selection_index": {
+    "bus_sn_main": 0,
+    "bus_hv": 9,
+    "bus_nn": 18,
+    "bus_sn_b": 27,
+    "bus_sn_c": 36
+  },
+  "catalog_context": [
+    {
+      "element_id": "cab_main_b",
+      "element_type": "ODCINEK_SN",
+      "name": "Kabel SN 1",
+      "catalog_binding": {
+        "catalog_namespace": "KABEL_SN",
+        "catalog_item_id": "cable-yakxs-3x120",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "KABEL_SN",
+        "catalog_item_id": "cable-yakxs-3x120",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "KABEL_SN:cable-yakxs-3x120",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    {
+      "element_id": "line_b_c",
+      "element_type": "ODCINEK_SN",
+      "name": "Linia SN 1",
+      "catalog_binding": {
+        "catalog_namespace": "LINIA_SN",
+        "catalog_item_id": "line-afl-70",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "LINIA_SN",
+        "catalog_item_id": "line-afl-70",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "LINIA_SN:line-afl-70",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    {
+      "element_id": "tr_hv_sn",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "name": "TR 110/15",
+      "catalog_binding": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-110-15-25mva-ynd11",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-110-15-25mva-ynd11",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-110-15-25mva-ynd11",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    {
+      "element_id": "tr_sn_nn",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "name": "TR 15/0.4",
+      "catalog_binding": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-15-04-630kva-dyn11",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-15-04-630kva-dyn11",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-15-04-630kva-dyn11",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    {
+      "element_id": "gen_pv",
+      "element_type": "ZRODLO",
+      "name": "Farma PV",
+      "catalog_binding": {
+        "catalog_namespace": null,
+        "catalog_item_id": "conv-pv-nn-0p5mw",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": null,
+        "catalog_item_id": "conv-pv-nn-0p5mw",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "conv-pv-nn-0p5mw",
+      "materialized_params": null,
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    {
+      "element_id": "gen_sync",
+      "element_type": "ZRODLO",
+      "name": "Generator synchroniczny",
+      "catalog_binding": {
+        "catalog_namespace": null,
+        "catalog_item_id": "gen-sync-2mva",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": null,
+        "catalog_item_id": "gen-sync-2mva",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "gen-sync-2mva",
+      "materialized_params": null,
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    {
+      "element_id": "src_gpz",
+      "element_type": "ZRODLO_SN",
+      "name": "System 110 kV",
+      "catalog_binding": {
+        "catalog_namespace": "ZRODLO_SN",
+        "catalog_item_id": "src-gpz-110kv-2500mva",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "ZRODLO_SN",
+        "catalog_item_id": "src-gpz-110kv-2500mva",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "ZRODLO_SN:src-gpz-110kv-2500mva",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    }
+  ],
+  "catalog_context_by_element": {
+    "cab_main_b": {
+      "element_id": "cab_main_b",
+      "element_type": "ODCINEK_SN",
+      "name": "Kabel SN 1",
+      "catalog_binding": {
+        "catalog_namespace": "KABEL_SN",
+        "catalog_item_id": "cable-yakxs-3x120",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "KABEL_SN",
+        "catalog_item_id": "cable-yakxs-3x120",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "KABEL_SN:cable-yakxs-3x120",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    "line_b_c": {
+      "element_id": "line_b_c",
+      "element_type": "ODCINEK_SN",
+      "name": "Linia SN 1",
+      "catalog_binding": {
+        "catalog_namespace": "LINIA_SN",
+        "catalog_item_id": "line-afl-70",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "LINIA_SN",
+        "catalog_item_id": "line-afl-70",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "LINIA_SN:line-afl-70",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    "tr_hv_sn": {
+      "element_id": "tr_hv_sn",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "name": "TR 110/15",
+      "catalog_binding": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-110-15-25mva-ynd11",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-110-15-25mva-ynd11",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-110-15-25mva-ynd11",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    "tr_sn_nn": {
+      "element_id": "tr_sn_nn",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "name": "TR 15/0.4",
+      "catalog_binding": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-15-04-630kva-dyn11",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-15-04-630kva-dyn11",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-15-04-630kva-dyn11",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    "gen_pv": {
+      "element_id": "gen_pv",
+      "element_type": "ZRODLO",
+      "name": "Farma PV",
+      "catalog_binding": {
+        "catalog_namespace": null,
+        "catalog_item_id": "conv-pv-nn-0p5mw",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": null,
+        "catalog_item_id": "conv-pv-nn-0p5mw",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "conv-pv-nn-0p5mw",
+      "materialized_params": null,
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    "gen_sync": {
+      "element_id": "gen_sync",
+      "element_type": "ZRODLO",
+      "name": "Generator synchroniczny",
+      "catalog_binding": {
+        "catalog_namespace": null,
+        "catalog_item_id": "gen-sync-2mva",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": null,
+        "catalog_item_id": "gen-sync-2mva",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "gen-sync-2mva",
+      "materialized_params": null,
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    },
+    "src_gpz": {
+      "element_id": "src_gpz",
+      "element_type": "ZRODLO_SN",
+      "name": "System 110 kV",
+      "catalog_binding": {
+        "catalog_namespace": "ZRODLO_SN",
+        "catalog_item_id": "src-gpz-110kv-2500mva",
+        "catalog_item_version": null
+      },
+      "source_catalog": {
+        "catalog_namespace": "ZRODLO_SN",
+        "catalog_item_id": "src-gpz-110kv-2500mva",
+        "catalog_item_version": null
+      },
+      "source_catalog_label": "ZRODLO_SN:src-gpz-110kv-2500mva",
+      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
+      "manual_override_count": 0,
+      "has_manual_overrides": false
+    }
+  },
+  "catalog_context_summary": {
+    "element_count": 7,
+    "by_type": {
+      "ODCINEK_SN": 2,
+      "TRANSFORMATOR_SN_NN": 2,
+      "ZRODLO": 2,
+      "ZRODLO_SN": 1
+    },
+    "by_parameter_origin": {
+      "CATALOG": 5
+    },
+    "manual_override_element_count": 0,
+    "manual_override_count": 0
+  },
+  "analysis_case_context": {
+    "case_ref": "case-demo",
+    "case_kind": "ZWARCIOWY_MAKS",
+    "rodzaj_przypadku": "ZWARCIOWY_MAKS",
+    "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+    "rewizja_modelu": 1,
+    "variant_ref": null,
+    "run_ref": "run-sc-scena-skladowe",
+    "proof_pack_ref": "proof-pack:run-sc-scena-skladowe",
+    "quality_gate": "G4",
+    "applicability_scope": [
+      "SC",
+      "REPORT"
+    ],
+    "completeness": "complete",
+    "completeness_legacy": "pelny",
+    "missing_prerequisites": [],
+    "assumptions": {
+      "source_assumptions_ref": "sc_source_max",
+      "load_assumptions_ref": "sc_load_snapshot",
+      "switching_state_ref": null,
+      "grounding_assumptions_ref": "network_grounding_snapshot",
+      "temperature_assumptions_ref": "temperature_short_circuit",
+      "transformer_tap_assumptions_ref": "tap_frozen",
+      "ibg_assumptions_ref": "ibg_model_snapshot"
+    },
+    "lineage": {
+      "project_ref": null,
+      "run_ref": "run-sc-scena-skladowe",
+      "analysis_type": "short_circuit_sn",
+      "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0"
+    },
+    "reproducibility": {
+      "case_ref": "case-demo",
+      "analysis_case_ref": "case-demo",
+      "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "enm_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "enm_snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "enm_projection_version": "v12xx.m1.1",
+      "variant_ref": null,
+      "operating_variant_ref": null,
+      "switching_snapshot_ref": null,
+      "solver_family": "iec60909_short_circuit",
+      "solver_version": null,
+      "method_version": "canonical_run_v1",
+      "formula_set_version": "iec60909_v1",
+      "standard_basis_ref": "IEC_60909",
+      "input_hash": "4024336d9eb7c0bc845d7318534d02b1748c75ba5ff7d02b240b5a03ce392d0b",
+      "result_hash": "6bf3ce15e59dd502f7800066414ee27f672efbe0ed9befa66b98d447dceb6a7c",
+      "domain_model_version": "1.0",
+      "bay_contract_version": "V12.5",
+      "results_contract_version": "V12.5",
+      "proof_renderer_version": "white_box_trace_v1",
+      "catalog_snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "catalog_materialization_ref": "catalog-materialization:6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
+      "catalog_materialization_hash": "6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
+      "catalog_materialization_status": "not_materialized",
+      "catalog_materialization_contract_version": "catalog_materialization_v1",
+      "catalog_schema_version": null,
+      "catalog_fingerprint": "cea426cf988f650cf00a87e531d693e93a693f4fa529acf1f74e5e77b8b46977",
+      "model_revision": 1,
+      "tolerance_policy_ref": "solver_tolerance/default",
+      "rounding_policy_ref": "rounding/default",
+      "quality_gate_policy_version": "v12_5_quality_gate",
+      "report_contract_version": "analysis_report_v2",
+      "export_generator_version": "v12_5_export_artifact/1.0",
+      "result_rules_version": "result_rules_v12_5",
+      "ruleset_version": "result_rules_v12_5"
+    }
+  }
+}

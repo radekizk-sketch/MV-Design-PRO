@@ -14,14 +14,26 @@ Returns: { created_element_refs, snapshot, readiness }
 from __future__ import annotations
 
 import logging
-import re
 from typing import Any
-from uuid import UUID
 
-from application.station_templates.schema import StationTemplate
-from enm.domain_operations import execute_domain_operation
+from application.station_templates.schema import (
+    StationTemplate,
+    TemplateCategory,
+    _der_catalog_for_power,
+    _moc_wymagana_jednostki_der_mva,
+    _opcja_transformatora_dla_wymaganej_mocy,
+    _opcja_transformatora_wg_tokenu_id,
+    resolve_template_default_shunt_choice,
+    template_wchodzi_w_segment,
+    transformer_voltages_kv,
+)
+from enm.domain_operations import execute_domain_operation, nazwa_roli_pola_sn
 from enm.models import EnergyNetworkModel
-from enm.store import blokada_przypadku
+from enm.rola_pola_sn import kanoniczna_rola_pola_sn
+from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu, opis_pozycji_katalogu
+from enm.store import blokada_twin
+from network_model.pochodne import mva_na_kva
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +50,16 @@ class TemplateApplyError(Exception):
 def apply_template_to_case(
     *,
     template: StationTemplate,
-    case_id: UUID,
-    target_segment_id: str,
+    klucz_twin: str,
+    target_segment_id: str | None = None,
     insert_at_ratio: float = 0.5,
     params_override: dict[str, Any] | None = None,
     catalog_profile: str | None = None,
 ) -> dict[str, Any]:
     """Apply template do active ENM. Returns aggregated result.
+
+    `klucz_twin` — klucz magazynu ENM (Canonical Project Twin, CV-1-W),
+    przetlumaczony z `case_id` na granicy API (`api/station_templates.py`).
 
     Flow:
     1. Load case ENM
@@ -53,6 +68,14 @@ def apply_template_to_case(
     4. Chain additional nN feeders (jeśli nn_feeders_count > default)
     5. Chain DER additions per template.schema.der_options
     6. Persist final ENM
+
+    `target_segment_id` jest `None` WYŁĄCZNIE dla `category == GPZ_110_SN`
+    (V12T-016, rola A): GPZ jest KORZENIEM modelu — nie wstawia się „w
+    segment", bo żadnego jeszcze nie ma (`add_grid_source_sn`, nie
+    `insert_station_on_segment_sn`). Dla pozostałych kategorii `None` kończy
+    się jawnym błędem PRZED jakąkolwiek mutacją modelu (addytywne pole
+    kontraktu API — `ApplyTemplateRequest.target_segment_id` przyjmuje `None`
+    tylko dla tej jednej kategorii, sprawdzone w `api/station_templates.py`).
 
     WSPOLBIEZNOSC (defekt D4 audytu 2026-08-01). Koncowka `POST
     /api/station-templates/{id}/apply` jest zdefiniowana jako `def`, wiec Starlette
@@ -67,11 +90,46 @@ def apply_template_to_case(
     Blokada jest per przypadek obliczeniowy — zastosowania szablonu na ROZNYCH
     przypadkach nadal biegna rownolegle.
     """
-    case_key = str(case_id)
-    with blokada_przypadku(case_key):
+    if template_wchodzi_w_segment(template) and not target_segment_id:
+        raise TemplateApplyError(
+            code="template.target_segment_required",
+            message_pl=(
+                f"Szablon „{template.name_pl}” wstawia się w istniejący odcinek SN — "
+                "wskaż odcinek magistrali, w który ma zostać wstawiona stacja."
+            ),
+        )
+    if not template_wchodzi_w_segment(template) and target_segment_id:
+        # DEFEKT ZNALEZIONY PRZEZ NIEZMIENNIK E2E (2026-09-17): żądanie mówiło
+        # „wstaw w odcinek X", a produkt budował NOWY korzeń modelu (GPZ tworzy
+        # własną wyspę przez `add_grid_source_sn`) i milczał o tej różnicy —
+        # projektant wybierający szablon GPZ w kreatorze wcięcia w magistralę
+        # 15 kV dostawał osobną wyspę 20 kV zamiast stacji w swojej magistrali.
+        # Ciche rozejście się żądania z wykonaniem jest zakazane: odmowa NAZWANA
+        # zamiast domysłu, a kreator wcięcia nie oferuje już tej kategorii.
+        raise TemplateApplyError(
+            code="template.korzen_modelu_nie_wchodzi_w_segment",
+            message_pl=(
+                f"Szablon „{template.name_pl}” to stacja zasilająca (GPZ 110/SN) — "
+                "jest korzeniem modelu, a nie stacją wstawianą w istniejący "
+                "odcinek magistrali. Zbuduj ją jako źródło zasilania sieci "
+                "(bez wskazywania odcinka)."
+            ),
+        )
+    with blokada_twin(klucz_twin):
+        if not template_wchodzi_w_segment(template):
+            return _zastosuj_gpz_pod_blokada(
+                template=template,
+                klucz=klucz_twin,
+                params_override=params_override,
+                catalog_profile=catalog_profile,
+            )
+        # Zawężenie typu dla mypy: odrzucone wyżej dla WSZYSTKICH kategorii
+        # poza GPZ_110_SN (obsłużoną w gałęzi powyżej) — w tym miejscu
+        # `target_segment_id` jest zawsze niepustym `str`.
+        assert target_segment_id
         return _zastosuj_szablon_pod_blokada(
             template=template,
-            case_key=case_key,
+            klucz=klucz_twin,
             target_segment_id=target_segment_id,
             insert_at_ratio=insert_at_ratio,
             params_override=params_override,
@@ -79,10 +137,140 @@ def apply_template_to_case(
         )
 
 
+#: GPZ 2-sekcyjny (układ H5 + mostek) — sekcje FIXED na 2 dla WSZYSTKICH
+#: szablonów `GPZ_110_SN` (V12T-016): to definiująca cecha tej kategorii
+#: (nazwa/opis KAŻDEGO szablonu obiecuje „2-sekcyjny"), nie parametr do
+#: nadpisania — `add_grid_source_sn` buduje sprzęgło międzysekcyjne
+#: automatycznie dla `sections_count >= 2`.
+_GPZ_SECTIONS_COUNT = 2
+
+
+def _zastosuj_gpz_pod_blokada(
+    *,
+    template: StationTemplate,
+    klucz: str,
+    params_override: dict[str, Any] | None,
+    catalog_profile: str | None,
+) -> dict[str, Any]:
+    """Zastosuj szablon GPZ (rola A, V12T-016) — `add_grid_source_sn`, KORZEŃ
+    modelu, nie wcięcie w segment.
+
+    Impedancja układu WN/SN NIE dubluje się (patrz `templates/gpz_110_sn.py`
+    docstring): równoważnik systemowy (`grid_source_options`, ZRODLO_SN) niesie
+    Sk3/R/X widziane z szyny SN, transformator(y) WN/SN materializują się OBOK
+    (tabliczka + SLD). Uziemienie punktu neutralnego: `isolated` — jedyny
+    wybór bez fabrykowanego R/X (najczęstszy w sieciach SN 15/20 kV).
+    """
+    overrides = params_override or {}
+
+    from api.enm import _get_enm, _set_enm
+
+    enm = _get_enm(klucz)
+    enm_dict: dict[str, Any] = enm.model_dump(mode="json")
+
+    transformer_ref = _resolve_transformer_ref_for_template(
+        template, overrides=overrides, catalog_profile=catalog_profile
+    )
+    if not transformer_ref:
+        raise TemplateApplyError(
+            code="template.transformer_catalog_missing",
+            message_pl=f"Szablon „{template.name_pl}” nie wskazuje transformatora WN/SN.",
+        )
+    source_ref = overrides.get("grid_source_ref") or _cascade_manufacturer_choice(
+        template.schema.grid_source_options, catalog_profile
+    )
+    if not source_ref:
+        raise TemplateApplyError(
+            code="template.grid_source_catalog_missing",
+            message_pl=(
+                f"Szablon „{template.name_pl}” nie wskazuje warunków zasilania GPZ (typ z katalogu "
+                "źródeł zasilania SN)."
+            ),
+        )
+    apparatus_ref = overrides.get("sn_bay_apparatus_ref") or _cascade_manufacturer_choice(
+        template.schema.sn_bay_apparatus_options, catalog_profile
+    )
+    if not apparatus_ref:
+        raise TemplateApplyError(
+            code="template.sn_bay_apparatus_missing",
+            message_pl=f"Szablon „{template.name_pl}” nie wskazuje aparatu pól liniowych GPZ.",
+        )
+    transformer_count = int(
+        overrides.get("transformer_count", template.schema.transformer_count.default)
+    )
+    line_fields_per_section = int(
+        overrides.get("sn_bays_count", template.schema.sn_bays_count.default)
+    )
+    voltage_kv = transformer_voltages_kv(transformer_ref)[1]
+    if voltage_kv is None:
+        raise TemplateApplyError(
+            code="template.transformer_catalog_missing",
+            message_pl=(
+                f"Szablon „{template.name_pl}”: katalog nie ma napięcia dolnego strony "
+                f"transformatora ({opis_pozycji_katalogu(transformer_ref, None, 'typ')})."
+            ),
+        )
+
+    payload = {
+        "name_pl": template.name_pl,
+        "source_name": template.name_pl,
+        "voltage_kv": voltage_kv,
+        "catalog_ref": source_ref,
+        "sections_count": _GPZ_SECTIONS_COUNT,
+        "transformer_count": transformer_count,
+        "transformer_catalog_ref": transformer_ref,
+        "line_fields_count": line_fields_per_section,
+        "gpz_line_field_apparatus": {
+            "catalog_ref": apparatus_ref,
+            "apparatus_kind": "BREAKER",
+        },
+        # Sieć izolowana — najczęstszy wybór polskich sieci SN 15/20 kV, bez
+        # fabrykowanego R/X rezystora/dławika (katalog produkcyjny go nie niesie).
+        "grounding": {"type": "isolated"},
+    }
+    result = execute_domain_operation(
+        enm_dict=enm_dict, op_name="add_grid_source_sn", payload=payload
+    )
+    if result.get("error"):
+        raise TemplateApplyError(
+            code=result.get("error_code", "template.gpz_insert_failed"),
+            message_pl=result.get("error") or "Utworzenie GPZ z szablonu nie powiodło się.",
+        )
+    enm_dict = result.get("snapshot") or enm_dict
+    created_refs = (result.get("changes") or {}).get("created_element_ids") or []
+    station_ref = _ref_wyboru(result)
+    operations_log = [{"op": "add_grid_source_sn", "created": created_refs}]
+
+    try:
+        new_enm = EnergyNetworkModel.model_validate(enm_dict)
+        saved = _set_enm(klucz, new_enm)
+        enm_dict = saved.model_dump(mode="json")
+    except Exception as exc:
+        logger.exception("Zapis modelu po zastosowaniu szablonu '%s' nie powiódł się", template.id)
+        raise TemplateApplyError(
+            code="template.persist_failed",
+            message_pl=(
+                "Nie udało się zapisać modelu sieci po zastosowaniu szablonu — "
+                "model pozostał bez zmian. Powtórz operację; jeśli błąd wraca, "
+                "zgłoś go administratorowi (szczegóły są w dzienniku serwera)."
+            ),
+        ) from exc
+
+    return {
+        "template_id": template.id,
+        "template_name_pl": template.name_pl,
+        "station_ref": station_ref,
+        "created_element_refs": created_refs,
+        "operations_log": operations_log,
+        "catalog_profile_applied": catalog_profile,
+        "snapshot_hash": enm_dict.get("header", {}).get("hash_sha256"),
+    }
+
+
 def _zastosuj_szablon_pod_blokada(
     *,
     template: StationTemplate,
-    case_key: str,
+    klucz: str,
     target_segment_id: str,
     insert_at_ratio: float,
     params_override: dict[str, Any] | None,
@@ -93,7 +281,7 @@ def _zastosuj_szablon_pod_blokada(
     # Avoid circular import — import here
     from api.enm import _get_enm, _set_enm
 
-    enm = _get_enm(case_key)
+    enm = _get_enm(klucz)
     enm_dict: dict[str, Any] = enm.model_dump(mode="json")
 
     created_refs: list[str] = []
@@ -131,10 +319,22 @@ def _zastosuj_szablon_pod_blokada(
         for _ in range(max(0, nn_feeders_requested))
     ]
 
-    nn_voltage_kv = _transformer_lv_voltage_kv(transformer_ref) or 0.4
+    nn_voltage_kv = transformer_voltages_kv(transformer_ref)[1] or 0.4
     station_spec = {
         "name_pl": template.name_pl,
-        "sn_voltage_kv": 15,
+        # BEZ `sn_voltage_kv` jawnego (KLASA NIE INSTANCJA, V12T-016): sztywne
+        # `15` przesłaniało topologiczne dziedziczenie napięcia z segmentu
+        # (`insert_station_on_segment_sn`: „Napięcia — topologiczne
+        # dziedziczenie z segmentu, brak domyślnych" — `station.get(
+        # "sn_voltage_kv")` wygrywa z dziedziczeniem, gdy jest liczbą > 0).
+        # Zmierzone przy budowie szablonów 20 kV (STACJA_ABONENCKA/
+        # KOMPENSACJA): wstawienie na magistrali 20 kV materializowało nową
+        # szynę SN na 15 kV, więc transformator/bateria o napięciu 20 kV
+        # odrzucały się jako niezgodne z WŁASNĄ, błędnie wymuszoną szyną.
+        # Istniejące migawki 15 kV dają TĘ SAMĄ wartość dziedziczoną z
+        # segmentu (żaden dzisiejszy projekt referencyjny nie jest inny niż
+        # 15 kV) — determinizm testów regresji zachowany.
+        #
         # Strona nN PODĄŻA za katalogową stroną dolną WYBRANEGO
         # transformatora (nie stała 0.4): blok falownikowy turbiny pracuje
         # na napięciu generatora (np. 0.69 kV) — sztywne 0.4 wywalało
@@ -142,7 +342,19 @@ def _zastosuj_szablon_pod_blokada(
         # dobranego TR 3.15 MVA (tpl_wiatr_3mw).
         "nn_voltage_kv": nn_voltage_kv,
     }
-    transformer_spec = {"transformer_catalog_ref": transformer_ref}
+    transformer_spec: dict[str, Any] = {"transformer_catalog_ref": transformer_ref}
+    if not template.schema.transformer_options:
+        # Szablon BEZ transformatora (rola A "rozdzielnia sieciowa"/E
+        # "kompensacja"/"rezerwa zasilania", V12T-016): węzeł czysto
+        # przełączeniowy — `insert_station_on_segment_sn` DOMYŚLNIE wymaga
+        # katalogu transformatora (`transformer.create=True`); bez tej flagi
+        # operacja odrzucałaby KAŻDY szablon bez `transformer_options` błędem
+        # `catalog.ref_required`, mimo że `transformer_ref` jest jawnie `None`
+        # z zamierzenia szablonu (nie brakiem danych). Ten sam, już
+        # przetestowany kontrakt operacji co „złącze pętlowe" bez TR
+        # (`tests/enm/test_catalog_gate.py::
+        # test_station_without_create_transformer_passes`).
+        transformer_spec["create"] = False
     nn_block_spec = {
         "outgoing_feeders_nn_count": max(0, nn_feeders_requested),
         "outgoing_feeders_nn": nn_feeder_specs,
@@ -193,9 +405,7 @@ def _zastosuj_szablon_pod_blokada(
         enm_dict = insert_result.get("snapshot") or enm_dict
         changes = insert_result.get("changes") or {}
         new_ids = changes.get("created_element_ids") or []
-        operations_log.append(
-            {"op": "insert_station_on_segment_sn", "status": "OK", "created": new_ids}
-        )
+        operations_log.append({"op": "insert_station_on_segment_sn", "created": new_ids})
         station_ref = _ref_wyboru(insert_result)
         nn_bus_ref = _szyna_nn_stacji(enm_dict, station_ref, nn_voltage_kv)
 
@@ -214,7 +424,7 @@ def _zastosuj_szablon_pod_blokada(
                     "bus_nn_ref": nn_bus_ref,
                     "station_ref": station_ref,
                     "field_role": "OUTGOING",
-                    "field_name": f"Odpływ nN {i + 2}",
+                    "field_name": f"Odpływ {pasmo_napieciowe(nn_voltage_kv)} {i + 2}",
                     "catalog_ref": cb_catalog or "cb_nn_400a",
                 },
             )
@@ -230,7 +440,6 @@ def _zastosuj_szablon_pod_blokada(
             operations_log.append(
                 {
                     "op": "add_nn_outgoing_field",
-                    "status": "OK",
                     "created": new_feeder_ids,
                 }
             )
@@ -273,7 +482,6 @@ def _zastosuj_szablon_pod_blokada(
             operations_log.append(
                 {
                     "op": "add_nn_load",
-                    "status": "OK",
                     "created": new_load_ids,
                     "feeder_ref": feeder_ref,
                     "catalog_ref": load_catalog_ref,
@@ -335,15 +543,119 @@ def _zastosuj_szablon_pod_blokada(
                 {
                     "op": "add_converter_source",
                     "kind": der_spec.kind,
-                    "status": "OK",
                     "created": new_der_ids,
                 }
             )
 
+    # Step 5: materialize CT/VT on the MEASUREMENT field (rewizja V12T-016 —
+    # KLASA NIE INSTANCJA: `ct_options`/`vt_options` istniały w schemacie 41
+    # szablonów z rolą MEASUREMENT od dawna, ale `apply()` nigdy ich nie
+    # materializował — pole pomiarowe powstawało bez CT/VT mimo deklaracji
+    # szablonu „pole pomiarowe (CT/VT)". Naprawa obejmuje WSZYSTKIE takie
+    # szablony, nie tylko nowe STACJA_ABONENCKA, dla której karta ją zażądała.
+    measurement_field_ref = _measurement_field_ref(enm_dict, station_ref)
+    if measurement_field_ref and (template.schema.ct_options or template.schema.vt_options):
+        ct_catalog_ref = overrides.get("ct_ref") or _first_default_choice(
+            template.schema.ct_options
+        )
+        vt_catalog_ref = overrides.get("vt_ref") or _first_default_choice(
+            template.schema.vt_options
+        )
+        if ct_catalog_ref:
+            ct_ratio = _ct_ratio_from_catalog(ct_catalog_ref)
+            if ct_ratio is None:
+                raise TemplateApplyError(
+                    code="template.ct_catalog_missing",
+                    message_pl=(
+                        f"Szablon „{template.name_pl}” wskazuje przekładnik prądowy (CT), "
+                        "którego katalog nie ma."
+                    ),
+                )
+            ct_result = execute_domain_operation(
+                enm_dict=enm_dict,
+                op_name="add_ct",
+                payload={
+                    "field_ref": measurement_field_ref,
+                    "catalog_ref": ct_catalog_ref,
+                    "ratio_primary_a": ct_ratio[0],
+                    "ratio_secondary_a": ct_ratio[1],
+                    "purpose": "metering",
+                },
+            )
+            if ct_result.get("error"):
+                raise TemplateApplyError(
+                    code=ct_result.get("error_code", "template.ct_failed"),
+                    message_pl=ct_result.get("error")
+                    or "Materializacja przekładnika CT z szablonu nie powiodła się.",
+                )
+            enm_dict = ct_result.get("snapshot") or enm_dict
+            new_ct_ids = (ct_result.get("changes") or {}).get("created_element_ids") or []
+            created_refs.extend(new_ct_ids)
+            operations_log.append({"op": "add_ct", "created": new_ct_ids})
+        if vt_catalog_ref:
+            vt_ratio = _vt_ratio_from_catalog(vt_catalog_ref)
+            if vt_ratio is None:
+                raise TemplateApplyError(
+                    code="template.vt_catalog_missing",
+                    message_pl=(
+                        f"Szablon „{template.name_pl}” wskazuje przekładnik napięciowy (VT), "
+                        "którego katalog nie ma."
+                    ),
+                )
+            vt_result = execute_domain_operation(
+                enm_dict=enm_dict,
+                op_name="add_vt",
+                payload={
+                    "field_ref": measurement_field_ref,
+                    "catalog_ref": vt_catalog_ref,
+                    "ratio_primary_v": vt_ratio[0],
+                    "ratio_secondary_v": vt_ratio[1],
+                    "purpose": "metering",
+                },
+            )
+            if vt_result.get("error"):
+                raise TemplateApplyError(
+                    code=vt_result.get("error_code", "template.vt_failed"),
+                    message_pl=vt_result.get("error")
+                    or "Materializacja przekładnika VT z szablonu nie powiodła się.",
+                )
+            enm_dict = vt_result.get("snapshot") or enm_dict
+            new_vt_ids = (vt_result.get("changes") or {}).get("created_element_ids") or []
+            created_refs.extend(new_vt_ids)
+            operations_log.append({"op": "add_vt", "created": new_vt_ids})
+
+    # Step 6: kompensacja mocy biernej (rola E, V12T-016) — bateria
+    # kondensatorów SN na szynie SN stacji, gdy szablon ją niesie.
+    if station_ref and template.schema.shunt_capacitor_options:
+        sn_bus_ref = _szyna_sn_stacji_dla_szablonu(enm_dict, station_ref, nn_bus_ref)
+        # Domyślny wybór baterii idzie przez `schema.resolve_template_default_shunt_choice`
+        # — TĘ SAMĄ regułę pokazuje `structural_fields()` w `required_sn_voltage_kv`,
+        # więc oferta i materializacja nie mogą się rozjechać.
+        domyslna_bateria = resolve_template_default_shunt_choice(template)
+        shunt_catalog_ref = overrides.get("shunt_capacitor_ref") or (
+            domyslna_bateria.catalog_ref if domyslna_bateria is not None else None
+        )
+        if sn_bus_ref and shunt_catalog_ref:
+            shunt_result = execute_domain_operation(
+                enm_dict=enm_dict,
+                op_name="add_shunt_compensator_sn",
+                payload={"bus_ref": sn_bus_ref, "catalog_ref": shunt_catalog_ref},
+            )
+            if shunt_result.get("error"):
+                raise TemplateApplyError(
+                    code=shunt_result.get("error_code", "template.shunt_failed"),
+                    message_pl=shunt_result.get("error")
+                    or "Materializacja baterii kondensatorów z szablonu nie powiodła się.",
+                )
+            enm_dict = shunt_result.get("snapshot") or enm_dict
+            new_shunt_ids = (shunt_result.get("changes") or {}).get("created_element_ids") or []
+            created_refs.extend(new_shunt_ids)
+            operations_log.append({"op": "add_shunt_compensator_sn", "created": new_shunt_ids})
+
     # Persist final snapshot
     try:
         new_enm = EnergyNetworkModel.model_validate(enm_dict)
-        saved = _set_enm(case_key, new_enm)
+        saved = _set_enm(klucz, new_enm)
         enm_dict = saved.model_dump(mode="json")
     except Exception as exc:
         # Szczegol techniczny (typ wyjatku, sciezka pliku) idzie do dziennika
@@ -351,7 +663,7 @@ def _zastosuj_szablon_pod_blokada(
         # wypychalo na ekran bezwzgledna sciezke systemu plikow backendu.
         # Komunikat mowi to, co dla projektanta jest istotne: model pozostal
         # nietkniety, wiec operacje mozna powtorzyc bez sprzatania po niej.
-        logger.exception("Zapis modelu po zastosowaniu szablonu '%s' nie powiodl sie", template.id)
+        logger.exception("Zapis modelu po zastosowaniu szablonu '%s' nie powiódł się", template.id)
         raise TemplateApplyError(
             code="template.persist_failed",
             message_pl=(
@@ -495,7 +807,7 @@ def _zabuduj_stacje_w_odgalezieniu(
         raise TemplateApplyError(
             code="template.branch_segment_missing",
             message_pl=(
-                f"Odcinek '{target_segment_id}' nie istnieje w modelu — "
+                "Wskazany odcinek nie istnieje w modelu — "
                 "nie ma od czego poprowadzić odgałęzienia do stacji klienta."
             ),
         )
@@ -504,9 +816,9 @@ def _zabuduj_stacje_w_odgalezieniu(
         raise TemplateApplyError(
             code="template.branch_segment_not_sn",
             message_pl=(
-                f"Odcinek '{target_segment_id}' nie jest odcinkiem SN "
-                f"(typ: '{seg_type}'), więc nie można z niego wyprowadzić "
-                "odgałęzienia do stacji abonenckiej."
+                f"{opis_obiektu(segment, 'Odcinek')} nie jest odcinkiem SN "
+                f"(rodzaj: {nazwa_rodzaju_galezi(seg_type)}), więc nie można z niego "
+                "wyprowadzić odgałęzienia do stacji abonenckiej."
             ),
         )
 
@@ -520,7 +832,8 @@ def _zabuduj_stacje_w_odgalezieniu(
             code="template.branch_point_catalog_missing",
             message_pl=(
                 "Katalog punktów rozgałęzienia nie ma pozycji dla tego rodzaju "
-                "odcinka. Wskaż pozycję parametrem 'branch_point_catalog_ref'."
+                "odcinka. Wskaż pozycję punktu rozgałęzienia (słup rozgałęźny albo ZKSN) "
+                "w parametrach szablonu."
             ),
         )
 
@@ -539,7 +852,7 @@ def _zabuduj_stacje_w_odgalezieniu(
     enm_dict = wynik_punktu.get("snapshot") or enm_dict
     ids_punktu = (wynik_punktu.get("changes") or {}).get("created_element_ids") or []
     created.extend(ids_punktu)
-    operations_log.append({"op": op_punktu, "status": "OK", "created": ids_punktu})
+    operations_log.append({"op": op_punktu, "created": ids_punktu})
 
     punkt_ref = _ref_wyboru(wynik_punktu)
     if not punkt_ref:
@@ -553,10 +866,7 @@ def _zabuduj_stacje_w_odgalezieniu(
     if dlugosc_m <= 0:
         raise TemplateApplyError(
             code="template.branch_length_invalid",
-            message_pl=(
-                "Długość odgałęzienia do stacji klienta musi być większa od zera "
-                "(parametr 'branch_length_m')."
-            ),
+            message_pl="Długość odgałęzienia do stacji klienta musi być większa od zera.",
         )
     # Typ kabla/linii gałęzi: wskazanie projektanta, inaczej TEN SAM typ, co odcinek
     # macierzysty — wzorzec kreatora odgałęzienia (`initial_catalog_ref` z
@@ -569,7 +879,7 @@ def _zabuduj_stacje_w_odgalezieniu(
             message_pl=(
                 "Brak pozycji katalogowej odcinka odgałęzienia. Odcinek magistrali "
                 "nie ma wiązania katalogowego, więc wskaż typ kabla/linii gałęzi "
-                "parametrem 'branch_segment_catalog_ref'."
+                "w parametrach szablonu."
             ),
         )
 
@@ -592,7 +902,7 @@ def _zabuduj_stacje_w_odgalezieniu(
     enm_dict = wynik_galezi.get("snapshot") or enm_dict
     ids_galezi = (wynik_galezi.get("changes") or {}).get("created_element_ids") or []
     created.extend(ids_galezi)
-    operations_log.append({"op": "start_branch_segment_sn", "status": "OK", "created": ids_galezi})
+    operations_log.append({"op": "start_branch_segment_sn", "created": ids_galezi})
 
     odcinek_ref = _ref_wyboru(wynik_galezi)
     koniec_galezi = next(
@@ -627,9 +937,7 @@ def _zabuduj_stacje_w_odgalezieniu(
     enm_dict = wynik_stacji.get("snapshot") or enm_dict
     ids_stacji = (wynik_stacji.get("changes") or {}).get("created_element_ids") or []
     created.extend(ids_stacji)
-    operations_log.append(
-        {"op": "append_station_on_endpoint", "status": "OK", "created": ids_stacji}
-    )
+    operations_log.append({"op": "append_station_on_endpoint", "created": ids_stacji})
 
     station_ref = _ref_wyboru(wynik_stacji)
     nn_bus_ref = _szyna_nn_stacji(
@@ -731,6 +1039,86 @@ def _station_nn_feeder_refs(
     return []
 
 
+def _measurement_field_ref(enm_dict: dict[str, Any], station_ref: str | None) -> str | None:
+    """`field_ref` pola SN o roli `MEASUREMENT` stacji (Step 5 — CT/VT).
+
+    Czyta `meta.field_specs` — TĘ SAMĄ tablicę, którą wypełniają OBIE drogi
+    zabudowy (`insert_station_on_segment_sn` i `append_station_on_endpoint`,
+    „parytet" udokumentowany przy tworzeniu pola SN), więc działa niezależnie
+    od klasy przyłączenia. `None` gdy stacja nie ma pola pomiarowego (szablon
+    bez roli MEASUREMENT) — uczciwy brak, Step 5 wtedy nic nie robi."""
+    if not station_ref:
+        return None
+    for substation in enm_dict.get("substations", []):
+        if not isinstance(substation, dict) or substation.get("ref_id") != station_ref:
+            continue
+        meta = substation.get("meta")
+        if not isinstance(meta, dict):
+            return None
+        raw_specs = meta.get("field_specs")
+        if not isinstance(raw_specs, list):
+            return None
+        for spec in raw_specs:
+            if not isinstance(spec, dict) or spec.get("bay_role") != "MEASUREMENT":
+                continue
+            field_ref = spec.get("field_ref")
+            if isinstance(field_ref, str) and field_ref.strip():
+                return field_ref
+        return None
+    return None
+
+
+def _szyna_sn_stacji_dla_szablonu(
+    enm_dict: dict[str, Any],
+    station_ref: str | None,
+    nn_bus_ref: str | None,
+) -> str | None:
+    """Szyna SN stacji (Step 6 — kompensacja): pierwsza szyna stacji różna od
+    szyny nN. Dla stacji BEZ transformatora `nn_bus_ref` jest szyną-widmem
+    (`insert_station_on_segment_sn` tworzy ją bezwarunkowo, patrz
+    `transformer.create=False` wyżej) — to WŁAŚNIE ją trzeba wykluczyć, żeby
+    bateria kondensatorów nie trafiła na nieużywaną szynę 0,4 kV."""
+    if not station_ref:
+        return None
+    for substation in enm_dict.get("substations", []):
+        if not isinstance(substation, dict) or substation.get("ref_id") != station_ref:
+            continue
+        bus_refs = [ref for ref in substation.get("bus_refs") or [] if isinstance(ref, str)]
+        for ref in bus_refs:
+            if ref != nn_bus_ref:
+                return ref
+        return None
+    return None
+
+
+def _ct_ratio_from_catalog(catalog_ref: str) -> tuple[float, float] | None:
+    """Przekładnia CT (`ratio_primary_a`, `ratio_secondary_a`) z REALNEGO
+    rekordu katalogu — zero fabrykacji: `add_ct` odrzuca payload, którego
+    przekładnia nie zgadza się z pozycją katalogową, więc liczby muszą
+    pochodzić z TEGO SAMEGO źródła, które sprawdzi operacja domenowa."""
+    try:
+        from network_model.catalog import get_default_mv_catalog
+    except ImportError:
+        return None
+    item = get_default_mv_catalog().get_ct_type(catalog_ref)
+    if item is None:
+        return None
+    return float(item.ratio_primary_a), float(item.ratio_secondary_a)
+
+
+def _vt_ratio_from_catalog(catalog_ref: str) -> tuple[float, float] | None:
+    """Przekładnia VT (`ratio_primary_v`, `ratio_secondary_v`) z REALNEGO
+    rekordu katalogu — jak `_ct_ratio_from_catalog`."""
+    try:
+        from network_model.catalog import get_default_mv_catalog
+    except ImportError:
+        return None
+    item = get_default_mv_catalog().get_vt_type(catalog_ref)
+    if item is None:
+        return None
+    return float(item.ratio_primary_v), float(item.ratio_secondary_v)
+
+
 def _resolve_load_ref_for_template(template: StationTemplate, *, load_kw: float) -> str:
     category_value = getattr(template.category, "value", str(template.category))
     if category_value == "przemyslowa" or load_kw >= 60:
@@ -781,8 +1169,12 @@ def _resolve_transformer_ref_for_template(
 
     Szablony kodują moc w identyfikatorze (`..._630kva`). Używamy jej przed
     fallbackiem, żeby stacja 100 kVA nie dostała pierwszej pozycji z listy
-    wspólnych opcji. Dla historycznego szablonu 50 kVA wybieramy najbliższy
-    obecny typoszereg katalogowy 63 kVA.
+    wspólnych opcji. Token ID i selektor „najmniejsza opcja >= wymaganej mocy
+    DER" są WSPÓLNE ze `schema.py::resolve_template_default_transformer_choice`
+    (KLASA NIE INSTANCJA pkt 3, 2026-09 — przed tym promowaniem obie ścieżki
+    liczyły „domyślną" opcję dwiema różnymi regułami i rozjeżdżały się dla 34
+    z 73 szablonów: kafel przeglądarki pokazywał moc, której `apply()` wcale
+    by nie zmaterializował).
     """
     explicit = overrides.get("transformer_ref")
     if isinstance(explicit, str) and explicit.strip():
@@ -795,116 +1187,33 @@ def _resolve_transformer_ref_for_template(
     if catalog_profile and manufacturer_match:
         return manufacturer_match
 
-    rating_match = re.search(r"_(\d+)kva(?:_|$)", template.id.lower())
-    if rating_match:
-        rating_kva = int(rating_match.group(1))
-        if rating_kva == 50:
-            rating_kva = 63
-        token = f"-{rating_kva}kva-"
-        for option in template.schema.transformer_options:
-            ref = getattr(option, "catalog_ref", None)
-            if isinstance(ref, str) and token in ref.lower():
-                return ref
+    wg_id = _opcja_transformatora_wg_tokenu_id(template.schema.transformer_options, template.id)
+    if wg_id is not None:
+        return wg_id.catalog_ref
 
     der_required_kva = _template_der_required_kva(template, overrides)
     if der_required_kva is not None:
-        rated_options = sorted(
-            (
-                (rating, ref)
-                for option in template.schema.transformer_options
-                for rating, ref in [_catalog_choice_rating_kva(option)]
-                if rating is not None and ref is not None
-            ),
-            key=lambda item: item[0],
+        wg_der = _opcja_transformatora_dla_wymaganej_mocy(
+            template.schema.transformer_options, der_required_kva
         )
-        for rating, ref in rated_options:
-            if rating >= der_required_kva:
-                return ref
-        if rated_options:
-            return rated_options[-1][1]
+        if wg_der is not None:
+            return wg_der.catalog_ref
 
     return manufacturer_match or _first_default_choice(template.schema.transformer_options)
-
-
-def _der_catalog_for_power(der_spec: Any, p_mw_each: float) -> str | None:
-    """Domyślna pozycja katalogowa DER dobrana do mocy JEDNOSTKOWEJ szablonu.
-
-    Opcje katalogowe kodują moc w identyfikatorze (`conv-wind-3mw-…`,
-    `conv-bess-0.5mw-…`) — dotychczasowe „pierwsza z listy" dawało np.
-    szablonowi turbiny 3 MW jednostkę 2 MW (niespójność nazwa↔model).
-    Deterministyczny selektor (jak dobór transformatora): dopasowanie DOKŁADNE
-    mocy, w braku — najbliższe; brak parsowalnych tokenów ⇒ None (wołający
-    stosuje dotychczasowy fallback pierwszej opcji). Zero fizyki — wyłącznie
-    wybór pozycji; parametry i tak materializuje katalog.
-    """
-    options = getattr(der_spec, "catalog_options", ()) or ()
-    parsed: list[tuple[float, str]] = []
-    for option in options:
-        ref = getattr(option, "catalog_ref", None)
-        if not isinstance(ref, str):
-            continue
-        match = re.search(r"-(\d+(?:\.\d+)?)mw", ref.lower())
-        if match is not None:
-            parsed.append((float(match.group(1)), ref))
-    if not parsed:
-        return None
-    exact = [ref for power, ref in parsed if abs(power - p_mw_each) < 1e-9]
-    if exact:
-        return exact[0]
-    return min(parsed, key=lambda item: (abs(item[0] - p_mw_each), item[0]))[1]
-
-
-def _transformer_lv_voltage_kv(transformer_ref: str | None) -> float | None:
-    """Katalogowa strona dolna wybranego transformatora [kV] — z REALNEGO
-    rekordu katalogu (nie z tokenu id): jedna prawda napięć, ta sama, którą
-    waliduje `station.insert` (`_validate_transformer_voltage_compatibility`).
-    `None` gdy brak referencji/rekordu — wołający stosuje dotychczasowy
-    domyślny poziom sieci nN."""
-    if not isinstance(transformer_ref, str) or not transformer_ref.strip():
-        return None
-    try:
-        from network_model.catalog import get_default_mv_catalog
-    except ImportError:
-        return None
-    catalog = get_default_mv_catalog()
-    item = catalog.get_transformer_type(transformer_ref)
-    if item is None:
-        return None
-    value = getattr(item, "voltage_lv_kv", None) or getattr(item, "ulv_kv", None)
-    if value is None:
-        return None
-    try:
-        parsed = float(value)
-    except (TypeError, ValueError):
-        return None
-    return parsed if parsed > 0 else None
-
-
-def _catalog_choice_rating_kva(option: Any) -> tuple[int | None, str | None]:
-    ref = getattr(option, "catalog_ref", None)
-    if not isinstance(ref, str):
-        return None, None
-    # Typoszereg blokowy falowników koduje moc tokenem MVA (`-3p15mva-`,
-    # `p` = separator dziesiętny `_catalog_token`) — bez tej gałęzi selektor
-    # DER-aware nie widział ratingu tych pozycji i spadał do pierwszej opcji
-    # listy (dobór TR ignorował moc szablonu).
-    mva_match = re.search(r"-(\d+(?:p\d+)?)mva-", ref.lower())
-    if mva_match is not None:
-        return int(round(float(mva_match.group(1).replace("p", ".")) * 1000)), ref
-    match = re.search(r"-(\d+)kva-", ref.lower())
-    if match is None:
-        return None, ref
-    return int(match.group(1)), ref
 
 
 def _template_der_required_kva(
     template: StationTemplate,
     overrides: dict[str, Any],
 ) -> int | None:
-    """Return apparent catalog size hint from template DER defaults.
+    """Return apparent catalog size hint from template DER defaults/overrides.
 
     This is only a deterministic catalog selector. Network physics still lives
-    in solver/domain code and uses materialized catalog data.
+    in solver/domain code and uses materialized catalog data. `_der_catalog_
+    for_power`/`_moc_wymagana_jednostki_der_mva` są WSPÓLNYMI prymitywami ze
+    `schema.py` (2026-09, przegląd V12T-016) — czyste, bez zależności od
+    `overrides`, więc bez ryzyka rozjazdu z wersją wyświetlania (`schema.py::
+    _wymagana_moc_der_domyslna_kva`, ta sama logika z `overrides={}`).
     """
     der_specs = template.schema.der_options
     if not der_specs:
@@ -914,58 +1223,25 @@ def _template_der_required_kva(
     if der_total <= 0:
         return None
 
-    total_mw = 0.0
+    total_mva = 0.0
     for i in range(der_total):
         spec = der_specs[i % len(der_specs)]
         override_key = f"der_{spec.kind}_p_mw_each"
         p_mw_each = float(overrides.get(override_key, spec.default_p_mw_each))
-        # Jedna prawda mocy: walidacja domenowa
-        # (`converter.transformer_capacity_exceeded`) porównuje z KATALOGOWĄ
-        # mocą POZORNĄ jednostki (`sn_mva`, np. Vestas 3 MW = 3.3 MVA) —
-        # selektor transformatora musi liczyć tę samą wielkość, inaczej
-        # dobiera TR po mocy czynnej i walidacja odrzuca (3300 > 3150 kVA).
+        # Jedna prawda mocy (decyzja O-53): tor tworzenia sprawdza
+        # `converter.transformer_capacity_exceeded` regułą `max(S_n,jedn·n, P/cosφ)·k_j`
+        # na tabliczce pozycji — selektor transformatora liczy TĘ SAMĄ wielkość tą samą
+        # funkcją (`_moc_wymagana_jednostki_der_mva`), inaczej dobierałby TR po innej
+        # mocy niż ta, którą operacja potem odrzuca (np. Vestas 3 MW: S_n = 3,3 MVA,
+        # nie 3,0 MW — 3300 > 3150 kVA).
         catalog_ref = overrides.get(f"der_{spec.kind}_ref") or _der_catalog_for_power(
             spec, p_mw_each
         )
-        apparent_mva = _converter_apparent_power_mva(catalog_ref)
-        total_mw += apparent_mva if apparent_mva is not None else p_mw_each
+        total_mva += _moc_wymagana_jednostki_der_mva(spec.kind, catalog_ref, p_mw_each) or 0.0
 
-    if total_mw <= 0:
+    if total_mva <= 0:
         return None
-    return int(round(total_mw * 1000))
-
-
-def _converter_apparent_power_mva(catalog_ref: object) -> float | None:
-    """Katalogowa moc pozorna jednostki przekształtnikowej [MVA] — z REALNEGO
-    rekordu katalogu (`ConverterType.sn_mva`); None gdy brak refu/rekordu."""
-    if not isinstance(catalog_ref, str) or not catalog_ref.strip():
-        return None
-    try:
-        from network_model.catalog import get_default_mv_catalog
-    except ImportError:
-        return None
-    item = get_default_mv_catalog().get_converter_type(catalog_ref)
-    value = getattr(item, "sn_mva", None) if item is not None else None
-    if value is None:
-        return None
-    try:
-        parsed = float(value)
-    except (TypeError, ValueError):
-        return None
-    return parsed if parsed > 0 else None
-
-
-#: Kody ról pól SN szablonu → kanoniczne role pola operacji domenowych
-#: (`_SN_FIELD_ROLE_ALIASES` w `enm.domain_operations`; role spoza mapy
-#: przechodzą bez zmiany — operacja traktuje je jak pole odpływowe).
-_TEMPLATE_ROLE_TO_FIELD_ROLE = {
-    "IN": "LINIA_IN",
-    "OUT": "LINIA_OUT",
-    "FEEDER": "LINIA_ODG",
-    "TR": "TRANSFORMATOROWE",
-    "COUPLER": "SPRZEGLO",
-    "MEASUREMENT": "POMIAROWE",
-}
+    return int(round(mva_na_kva(total_mva)))
 
 
 def _resolve_sn_field_specs(
@@ -1001,13 +1277,16 @@ def _resolve_sn_field_specs(
             raise TemplateApplyError(
                 code="template.sn_bay_apparatus_missing",
                 message_pl=(
-                    f"Szablon '{template.id}' nie wskazuje aparatu dla pola SN o roli "
-                    f"'{role}'. Uzupełnij listę aparatury szablonu albo podaj "
-                    "'sn_bay_apparatus_ref' w parametrach."
+                    f"Szablon „{template.name_pl}” nie wskazuje aparatu dla pola "
+                    f"„{nazwa_roli_pola_sn(role)}”. Uzupełnij listę aparatury szablonu albo "
+                    "wskaż aparat pola SN w parametrach szablonu."
                 ),
             )
         spec: dict[str, Any] = {
-            "field_role": _TEMPLATE_ROLE_TO_FIELD_ROLE.get(role, role),
+            # Kod roli szablonu → rola kanoniczna operacji: ten sam słownik aliasów, z którego
+            # pole dostaje nazwę (`enm.rola_pola_sn`, karta #141); rola spoza słownika przechodzi
+            # bez zmiany (operacja decyduje, co z nią zrobić).
+            "field_role": kanoniczna_rola_pola_sn(role),
             "apparatus_catalog_ref": apparatus_ref,
         }
         # Pomiar JAWNIE (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5, V12K-335
@@ -1060,9 +1339,9 @@ def _resolve_sn_bay_roles(template: StationTemplate, count: int) -> list[str]:
         raise TemplateApplyError(
             code="template.sn_bays_count_below_minimum",
             message_pl=(
-                f"Szablon '{template.id}' opisuje przyłącze klienta z układem "
+                f"Szablon „{template.name_pl}” opisuje przyłącze klienta z układem "
                 f"pomiarowo-rozliczeniowym, więc wymaga co najmniej {len(wymagane)} "
-                f"pól SN ({', '.join(declared[i] for i in sorted(wymagane))}). "
+                f"pól SN ({', '.join(nazwa_roli_pola_sn(declared[i]) for i in sorted(wymagane))}). "
                 f"Żądano {count}. Zwiększ liczbę pól albo wybierz szablon stacji "
                 "dystrybucyjnej (bez pomiaru rozliczeniowego)."
             ),
@@ -1087,10 +1366,14 @@ def _resolve_sn_bay_roles(template: StationTemplate, count: int) -> list[str]:
 
 def _resolve_station_type(template: StationTemplate) -> str:
     """Map template category → station_type string."""
-    from application.station_templates.schema import TemplateCategory
-
     if template.category == TemplateCategory.SLUPOWA:
         return "terminal"
-    if template.category == TemplateCategory.SEKCYJNA:
+    if template.category in (
+        TemplateCategory.SEKCYJNA,
+        TemplateCategory.ROZDZIELNIA_SIECIOWA,
+        TemplateCategory.REZERWA_ZASILANIA,
+    ):
+        # Dwusekcyjne, ze sprzęgłem (V12T-016: RS/RSM i rezerwa zasilania
+        # mają rolę COUPLER w `sn_bay_roles`, tak jak SEKCYJNA).
         return "sectional"
     return "inline"

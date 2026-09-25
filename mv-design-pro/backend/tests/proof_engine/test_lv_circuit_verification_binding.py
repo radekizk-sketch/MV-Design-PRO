@@ -83,6 +83,7 @@ def _enm(
                 uk_percent=4.0,
                 pk_kw=6.5,
                 vector_group="Dyn11",
+                lv_earthing_system=earthing_system,
             )
         ],
         branches=branches,
@@ -93,7 +94,6 @@ def _enm(
                 station_type="mv_lv",
                 bus_refs=["nn"],
                 transformer_refs=["tr"],
-                meta={"nn_earthing_system": earthing_system},
             )
         ],
     )

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Literal, Protocol
 
 from application.symphony.models import Issue, RunAttempt
 
@@ -14,9 +14,14 @@ class IssueTrackerClient(Protocol):
     def list_terminal_issues(self, terminal_states: tuple[str, ...]) -> list[Issue]: ...
 
 
+#: Wynik próby agenta: zakończona albo przerwana błędem (przyczyna w `error`) — stan
+#: wykonania, nie werdykt (plan AB §8 F11).
+WynikProby = Literal["success", "error"]
+
+
 @dataclass(frozen=True)
 class AgentRunResult:
-    status: str
+    status: WynikProby
     error: str | None = None
 
 

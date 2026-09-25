@@ -8,6 +8,7 @@ wyniku solvera ani nie tworzy drugiej odmiany nakładki.
 
 from __future__ import annotations
 
+from application.analyses.opis_przebiegu import stan_przebiegu_pl
 from domain.result_builder_v1 import build_resultset_v1
 from domain.result_contract_v1 import ResultSetV1
 from enm.canonical_analysis import CanonicalRun, build_execution_result_set
@@ -16,7 +17,7 @@ from enm.canonical_analysis import CanonicalRun, build_execution_result_set
 def build_resultset_v1_from_canonical_run(run: CanonicalRun) -> ResultSetV1:
     """Zbuduj zamrożony ``ResultSetV1`` dla zakończonego przebiegu."""
     if run.status != "FINISHED":
-        raise ValueError(f"Wyniki niedostępne — status przebiegu: {run.status}")
+        raise ValueError(f"Wyniki niedostępne — przebieg {stan_przebiegu_pl(run.status)}.")
 
     result_set = build_execution_result_set(run)
     element_results_raw = [

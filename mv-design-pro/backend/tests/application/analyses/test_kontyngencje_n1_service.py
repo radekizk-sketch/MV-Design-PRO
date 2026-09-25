@@ -26,6 +26,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
+from analysis.obciazenie_galezi import POWOD_BRAK_PRADU_ZNAMIONOWEGO_PL
 from application.analyses.kontyngencje_n1 import (
     POWOD_WYKLUCZENIA_PL,
     _klucz_rankingu,
@@ -349,20 +350,29 @@ def test_enumeruje_wszystkie_kwalifikowane_elementy_po_sortowanym_ref() -> None:
 def test_kazdy_rodzaj_elementu_znika_z_grafu_wariantu() -> None:
     """Warunek WYJŚCIA wariantu jest jeden dla wszystkich rodzajów elementu.
 
-    Gałąź i transformator schodzą z ruchu tym samym mechanizmem, więc test
-    sprawdza oba: krawędź elementu jest w grafie bazowym i nie ma jej w grafie
-    wariantu. Bez tej pary rozjazd mechanizmów byłby niewidoczny.
+    Gałąź i transformator schodzą z ruchu tym samym mechanizmem —
+    ``enm.scenariusze.apply_scenario`` ze scenariuszem
+    ``out_of_service=(element.ref,)`` (karta CV-3-W, 2026-09-05; przed migracją:
+    prywatny pomocnik ``_wariant_bez_elementu``, USUNIĘTY) — więc test sprawdza
+    oba: krawędź elementu jest w grafie bazowym i nie ma jej w grafie wariantu.
+    Bez tej pary rozjazd mechanizmów byłby niewidoczny.
     """
     from application.analyses.kontyngencje_n1 import (  # noqa: PLC0415 — szczegół wewnętrzny
         _inwentarz_elementow,
-        _wariant_bez_elementu,
     )
+    from enm.scenariusze import OperatingScenario, RodzajScenariusza, apply_scenario
 
     enm = _promien_z_transformatorem()
     snapshot = enm.model_dump(mode="json")
     graf_bazowy = map_enm_to_network_graph(enm)
     for element in _inwentarz_elementow(snapshot):
-        wariant = _wariant_bez_elementu(snapshot, element)
+        scenariusz = OperatingScenario(
+            scenario_id=f"__test_n1__{element.ref}",
+            name="Test wariantu N-1",
+            kind=RodzajScenariusza.N_1,
+            out_of_service=(element.ref,),
+        )
+        wariant = apply_scenario(enm, scenariusz).snapshot
         graf_wariantu = map_enm_to_network_graph(EnergyNetworkModel.model_validate(wariant))
         id_elementu = ref_to_graph_id(element.ref)
         assert id_elementu in graf_bazowy.branches, element.ref
@@ -401,7 +411,7 @@ def test_wylaczenie_galezi_pierscienia_daje_przeciazenie_objazdu() -> None:
     }
     assert pozycja["wartosc"] > pozycja["granica_pct"]
     # WHITE BOX kryterium pochodzi z buildera D2 (wzór → dane → wynik → próg).
-    assert [krok["tekst"] for krok in pozycja["slad_kryterium"]][0].startswith("Wzor:")
+    assert [krok["tekst"] for krok in pozycja["slad_kryterium"]][0].startswith("Wzór:")
 
     # Ta sama sieć, inna kontyngencja: rozcięcie pierścienia bez przeciążenia.
     bez_skutku = _po_ref(widok, "ka_a_b")
@@ -479,7 +489,8 @@ def test_brak_obciazalnosci_pomija_kryterium_pradowe_jawnie() -> None:
         p for p in kontyngencja["kryteria_pominiete"] if p["check_type"] == "BRANCH_LOADING"
     ]
     assert [p["element_name"] for p in pominiete] == ["Linia bez obciazalnosci"]
-    assert pominiete[0]["powod_pl"] == "Brak pradu znamionowego galezi."
+    # Powód z JEDNEJ definicji obciążenia gałęzi (AB-1b.1a, O-51) — nie literał kopiowany.
+    assert pominiete[0]["powod_pl"] == POWOD_BRAK_PRADU_ZNAMIONOWEGO_PL
     assert pominiete[0]["element_ref"] == "ln_bez_ratingu"
     # Gałąź bez obciążalności NIE MOŻE trafić do przeciążeń: przed naprawą
     # mostu ENM→graf dostawała podstawiony prąd znamionowy 1 A i meldowała
@@ -494,7 +505,7 @@ def test_brak_obciazalnosci_pomija_kryterium_pradowe_jawnie() -> None:
 
 def test_enumeracja_nie_mutuje_modelu_ani_migawki_biegu() -> None:
     set_enm("c-n1", build_golden_enm())
-    bieg = execute_run(create_run(case_id="c-n1", analysis_type="PF").id)
+    bieg = execute_run(create_run(case_id="c-n1", klucz_twin="c-n1", analysis_type="PF").id)
     hash_przed = compute_enm_hash(get_enm("c-n1"))
     migawka_przed = copy.deepcopy(bieg.snapshot)
 
@@ -770,9 +781,84 @@ def test_remis_pelnej_dotkliwosci_rozstrzyga_element_ref_rosnaco() -> None:
 #: żadna wielkość liczbowa nie ma prawa się różnić — potwierdzone zielenią
 #: wszystkich pozostałych testów enumeracji przy czerwieni wyłącznie tych
 #: dwóch odcisków.
+#: CV-4.3 K1 (odbiór 2026-09-09): odciski PRZELICZONE, bo K1 zmieniła seed identyfikatorów
+#: odcinków budowanych operacjami `continue_trunk_segment_sn`/`start_branch_segment_sn`
+#: (seed niesie odtąd catalog_ref/segment_name/bus_name — usunięcie kolizji ref_id
+#: dwóch różnych odcinków z tej samej szyny). Widok N-1 sortuje kontyngencje i węzły po
+#: identyfikatorach, numeruje powtarzające się nazwy „(1)/(2)" wg tej kolejności i
+#: rozstrzyga remisy rankingu po id — więc zmieniły się WYŁĄCZNIE: kolejność wierszy,
+#: sufiksy nazw i pozycje remisowe w rankingu. DOWÓD (sonda koordynatora, K6 5adc958d vs
+#: drzewo K1): po normalizacji identyfikatorów, sufiksów „(n)" i kolejności list oba
+#: widoki są identyczne z dokładnością do pola `ranking[].pozycja` przy równej
+#: dotkliwości; każda liczba fizyczna (dotkliwość, napięcia, przepływy, iteracje NR)
+#: bez zmian. To NIE jest skutek optymalizacji wydajności (intencja odcisku zachowana).
+#: Karta W3-F (§0.6, 2026-09-09): odciski PRZELICZONE po dodaniu znacznika
+#: proweniencji `materialized_params["frequency_hz"]` (skąd policzono susceptancję
+#: kabla z pojemności, B=2πfC) przy materializacji KABEL_SN w
+#: `enm/domain_operations.py::_apply_materialized_branch_fields` — jedno pole
+#: ADDYTYWNE w migawce ENM, którą odcisk widoku niesie w całości (`dane["enm"]`).
+#: DOWÓD (diff pełnego `widok` przed/po, nie tylko odcisku): jedyne różnice to
+#: `snapshot_hash`/`input_hash` (kaskada z dodanego pola przez hash migawki) —
+#: dotkliwość, ranking, napięcia, przepływy, iteracje NR, kolejność i sufiksy
+#: nazw BEZ ZMIAN. Formuła B=2πfC (`math.pi`, f=50.0 Hz ze studium) jest bit
+#: w bit identyczna z formułą sprzed migracji — rozjazd odcisku to WYŁĄCZNIE
+#: nowe pole, nie zmiana fizyki.
+#: W5-A (2026-09-16): odciski przeliczone ŚWIADOMIE — sieci gn01/gn03 niosą odtąd układ
+#: sieci nN na `Transformer.lv_earthing_system` (zamiast `substation.meta`), a szyny/meta
+#: GPZ nie niosą pustych kluczy `grounding`/`zero_sequence`. Dowód (skrypt porównawczy
+#: widoków nowy vs. model bez pola): różnią się WYŁĄCZNIE `context.snapshot_hash` i
+#: `input_hash` (odcisk treści modelu); `kontyngencje`, `ranking`, `podsumowanie`,
+#: `przypadek_bazowy` są identyczne co do bajtu — fizyka N-1 bez zmian.
+#: AB-1b.1a (2026-09-23, klasa P9 — decyzje O-46, O-51): odciski przeliczone ŚWIADOMIE.
+#: Kontrola BRANCH_LOADING walidacji energetycznej (z której widok N-1 bierze kryteria
+#: pominięte) liczy odtąd obciążenie JEDNĄ definicją z prądów obu zacisków
+#: (`analysis/obciazenie_galezi.py`), także dla transformatorów (prąd znamionowy zacisku
+#: z `network_model/pochodne`, zamiast mocy pozornej). DOWÓD (pełny `widok` HEAD vs
+#: drzewo, `scratchpad/integracja_1b1/n1/roznice.txt`): różnią się WYŁĄCZNIE teksty
+#: `kryteria_pominiete[*].powod_pl` (9 pozycji gn01, 14 gn03 — powody tej jednej definicji:
+#: „Brak prądu zacisku początkowego w wyniku rozpływu.", „Brak prądu znamionowego
+#: (obciążalności) gałęzi w modelu."); dotkliwość, ranking, napięcia, przepływy,
+#: iteracje NR, liczniki i kolejność BEZ ZMIAN.
+#: Karta #142 (2026-09-24): odcisk gn01 przeliczony ŚWIADOMIE. Stan wyjściowy: na bazie
+#: 3243077b test był już czerwony (odcisk f2826159…, bo karta #140 zmieniła treść
+#: `catalog_message` aparatów pól stacji). Karta #142 zmienia tę treść ponownie (nazwa typu
+#: aparatu zamiast kodu grupy katalogu i identyfikatora pozycji). DOWÓD (pełny `widok`
+#: baza vs drzewo, `diff` JSON): różnią się WYŁĄCZNIE `context.snapshot_hash` i
+#: `input_hash` (treść komunikatu w meta gałęzi migawki); kontyngencje, ranking,
+#: podsumowanie, przypadek bazowy — identyczne co do bajtu. gn03 nie ma pól z tą treścią.
 ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
-    "gn01_promieniowa": "fbf4ccd6d49375fdb9a43ccf5cd97ab9f1de34fa39e4fb28f730717060f34125",
-    "gn03_pierscien": "b4639a3b1347f4b9e5df80b5eb2e26aec214f252d1a41682fb9e04091d94e22b",
+    # 2026-09-24 (karta #140): 949454ac… → f2826159…. Różnica ustalona porównaniem
+    # pełnych widoków przed i po karcie pole po polu: zmieniły się WYŁĄCZNIE
+    # `context.snapshot_hash` i `input_hash` — sieć gn01 buduje stacje operacjami
+    # domenowymi, a #140 zmienił domyślne nazwy pól SN (np. „Pole LINIA_IN 1” →
+    # „Pole liniowe wejściowe 1”), które wchodzą do odcisku modelu wejściowego.
+    # Wynik kontyngencji (enumeracja, dotkliwości, odbiory bez zasilania) identyczny.
+    # Sieć gn03 bez zmiany odcisku (jej stacje nie biorą nazw domyślnych pól).
+    # 2026-09-24 (karta PL-ZNAKI): f2826159… → b627c5f2… (gn01), 9bd7b9a8… → 0b3792fb…
+    # (gn03). Porównanie pełnych widoków HEAD vs drzewo liść po liściu: IDENTYCZNY zbiór
+    # kluczy, różnią się WYŁĄCZNIE teksty `kryteria_pominiete[*].powod_pl`
+    # („Brak danych napieciowych." → „Brak danych napięciowych.": 24 pozycje gn01,
+    # 10 gn03). Identyfikatory, dotkliwości, ranking, liczby i kolejność bez zmian.
+    # 2026-09-25 (karta #142 na czubku z PL-ZNAKI, #141 i E2): b627c5f2… → db8480a0… (gn01).
+    # Pełny widok przed i po liść po liściu: różnią się WYŁĄCZNIE `snapshot_hash` i
+    # `input_hash`; w migawce modelu gn01 jedyną różnicą jest `catalog_message` trzech
+    # aparatów pól SN („…pozycji katalogu APARAT_SN: sw-cb-abb-vd4-17kv-630a." → „…pozycji
+    # katalogu — typ „ABB VD4 17.5 kV 630 A"."), czyli komunikat karty #142 zapisany w
+    # modelu. Wynik kontyngencji identyczny; gn03 bez zmiany (jej pola nie niosą tego komunikatu).
+    # 2026-09-25 (karta ETYKIETY-TR na czubku partii 2): gn01 db8480a0… → 9a2933f5…, gn03
+    # 0b3792fb… → 70f8393a…. Pełne widoki z kodu czubka sprzed karty (odtwarzają dokładnie
+    # poprzednie piny) i po karcie porównane liść po liściu: różnią się WYŁĄCZNIE
+    # `snapshot_hash` i `input_hash`; jedyna różnica modeli wejściowych obu sieci to nazwa
+    # szyny sekcji GPZ „Szyna GPZ S1 15.0 kV" → „Szyna GPZ S1 15 kV" (napięcie przez `:g`).
+    # Wynik kontyngencji identyczny.
+    # 2026-09-25 (karta #144 na czubku z ETYKIETY-TR): gn01 bez zmiany (9a2933f5…), gn03
+    # 70f8393a… → a19dcb6d…. Pełne widoki przed i po liść po liściu: w gn03 różnią się
+    # WYŁĄCZNIE `snapshot_hash`, `input_hash` i 22 pola `element_name` odcinków magistrali
+    # („Odcinek /segment" → „Magistrala 01 — odcinek 0N", połówki „… (1)"/„… (2)"); jedyna
+    # różnica modelu to nazwy tych 4 odcinków (nazwa ciągu + numer z istniejącej numeracji,
+    # karta #144). Wynik kontyngencji identyczny.
+    "gn01_promieniowa": "9a2933f595b709eafedc6d81654218259ad5df7c564bc976c79eb341846cc822",
+    "gn03_pierscien": "a19dcb6d6bdce7b3e5efd580ba70c6fb9c648ca7fb2d86ded961690b59fe5229",
 }
 
 
@@ -971,18 +1057,19 @@ def test_zakres_nie_uruchamia_solvera() -> None:
 
     Gdyby zapowiedź liczyła cokolwiek rozpływem, ekran płaciłby pełny koszt N-1
     zanim inżynier zdecydował o biegu — czyli dokładnie ten koszt, przed którym
-    ma go chronić. Pin: podmieniona ścieżka wykonania rozpływu nie może zostać
-    wywołana ani razu.
+    ma go chronić. Pin: podmieniona ścieżka wykonania rozpływu
+    (``enm.canonical_analysis.wykonaj_bieg_w_pamieci``, karta CV-3-W; przed
+    migracją: prywatny ``_execute_power_flow``) nie może zostać wywołana ani razu.
     """
     import application.analyses.kontyngencje_n1 as modul
 
     wywolania: list[object] = []
-    oryginal = modul._execute_power_flow
-    modul._execute_power_flow = lambda bieg: wywolania.append(bieg)  # type: ignore[assignment]
+    oryginal = modul.wykonaj_bieg_w_pamieci
+    modul.wykonaj_bieg_w_pamieci = lambda bieg, graf=None: wywolania.append(bieg)  # type: ignore[assignment]
     try:
         build_kontyngencje_n1_zakres_view(_bieg(_pierscien()))
     finally:
-        modul._execute_power_flow = oryginal  # type: ignore[assignment]
+        modul.wykonaj_bieg_w_pamieci = oryginal  # type: ignore[assignment]
 
     assert wywolania == []
 
@@ -995,3 +1082,34 @@ def test_zakres_nie_mutuje_migawki_biegu() -> None:
     build_kontyngencje_n1_zakres_view(bieg)
 
     assert json.dumps(bieg.snapshot, sort_keys=True, ensure_ascii=False) == przed
+
+
+def test_jedna_budowa_grafu_na_kontyngencje(monkeypatch) -> None:
+    """Pin optymalizacji #2 (nagłówek modułu): graf wariantu budowany RAZ na
+    kontyngencję — odczyt topologii zasilania i rozpływ dzielą ten sam obiekt
+    (`wykonaj_bieg_w_pamieci(bieg, graf=)`), zamiast budować go dwa razy z tej
+    samej migawki. Liczymy wywołania mostu ENM→graf: jedno na kontyngencję plus
+    jedno na przypadek bazowy."""
+    import application.analyses.kontyngencje_n1 as modul
+
+    budowy: list[object] = []
+    oryginal = modul.map_enm_to_network_graph
+
+    def _liczony(enm):  # type: ignore[no-untyped-def]
+        budowy.append(enm)
+        return oryginal(enm)
+
+    monkeypatch.setattr(modul, "map_enm_to_network_graph", _liczony)
+    grafy_rozplywu: list[object] = []
+    oryginal_bieg = modul.wykonaj_bieg_w_pamieci
+
+    def _z_grafem(bieg, graf=None):  # type: ignore[no-untyped-def]
+        grafy_rozplywu.append(graf)
+        return oryginal_bieg(bieg, graf=graf)
+
+    monkeypatch.setattr(modul, "wykonaj_bieg_w_pamieci", _z_grafem)
+    widok = build_kontyngencje_n1_view(_bieg(_pierscien()))
+    liczba_kontyngencji = len(widok["kontyngencje"])
+    assert liczba_kontyngencji >= 3
+    assert len(budowy) == liczba_kontyngencji + 1, "graf budowany raz na kontyngencję + raz na bazę"
+    assert all(graf is not None for graf in grafy_rozplywu), "rozpływ dostaje gotowy graf"

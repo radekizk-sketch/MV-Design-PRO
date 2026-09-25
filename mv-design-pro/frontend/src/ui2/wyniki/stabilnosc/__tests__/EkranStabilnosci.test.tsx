@@ -3,6 +3,12 @@
  * Interakcje natywne (userEvent.click) — Zero-Debt pkt 5. Dostawca danych
  * mockuje `fetch` 1:1 z endpointami results/dynamic-stability i
  * results/automation-trace — bez fabrykacji danych po stronie ekranu.
+ *
+ * Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): bieg zwraca ECHO scenariusza
+ * wpisanego przez użytkownika z oceną niewykonaną — werdykt STABILNY/NIESTABILNY,
+ * wskaźnik, margines, kryteria progowe, statusy wielkości, narracja zdarzeń automatyki
+ * i akcja „Popraw w modelu" z utraty stabilności skasowane. Testy, które przypinały te
+ * werdykty, są odwrócone; pełny iloczyn cech pilnuje `uczciwosc.test.tsx`.
  */
 
 import { cleanup, render, screen } from '@testing-library/react';
@@ -12,10 +18,69 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../../shell/useShellStore';
-import { useSelectionStore } from '../../../../ui/selection/store';
 import { EkranStabilnosci } from '../EkranStabilnosci';
+import type { RekordOcenyNiewykonanej } from '../../wzorzec/OcenaNiewykonana';
+import rekordyOceny from './rekordyOceny.json';
+import {
+  ETYKIETY_STANU_SIECI,
+  ETYKIETY_ZAKRESU_WYLACZEN,
+  POLA_SCENARIUSZA_STABILNOSCI,
+  type PoleScenariusza,
+} from '../model';
 import { STABILNOSC_STRINGS as T } from '../strings';
+
+const CASE_ID = '3f2504e0-4f89-11d3-9a0c-0305e82c3301';
+
+/** Wartości scenariusza KOMPLETNE — jedna dla wszystkich testów formularza,
+ *  żeby test iloczynu cech (walidacja per pole) nie duplikował literałów. */
+const WARTOSCI_SCENARIUSZA: Record<string, string> = {
+  faulted_element_id: 'line/gpz/1',
+  clearing_time_ms: '120',
+  cleared_by_element_ids: 'cb-a, cb-b',
+  pre_fault_angle_deg: '10',
+  during_fault_angle_deg: '75',
+  post_fault_angle_deg: '28',
+  post_fault_voltage_pu: '0,97',
+  post_fault_frequency_pu: '0.99',
+  recovery_time_constant_s: '0,3',
+};
+
+/**
+ * Migawka modelu (karta #145): element zakłócenia i aparaty wyłączające wybiera się
+ * z listy elementów modelu PO NAZWIE — referencja jest wyłącznie wartością opcji.
+ */
+const MIGAWKA = {
+  buses: [],
+  branches: [
+    { ref_id: 'line/gpz/1', id: 'l1', name: 'Linia GPZ – Stacja 1', type: 'line_overhead' },
+    { ref_id: 'cb-a', id: 'w1', name: 'Wyłącznik pola A', type: 'breaker' },
+    { ref_id: 'cb-b', id: 'w2', name: 'Wyłącznik pola B', type: 'breaker' },
+    { ref_id: 'cb-main', id: 'w3', name: 'Wyłącznik główny', type: 'breaker' },
+  ],
+  generators: [{ ref_id: 'src/pv/1', id: 'g1', name: 'Farma PV 1' }],
+};
+
+/** Wypełnia pole formularza ścieżką natywną właściwą dla rodzaju pola. */
+async function wypelnijPole(
+  user: ReturnType<typeof userEvent.setup>,
+  pole: PoleScenariusza,
+  wartosc: string,
+): Promise<void> {
+  const element = screen.getByTestId(`mvd-stabilnosc-pole-${pole.klucz}`);
+  if (pole.typ === 'element') {
+    await user.selectOptions(element, wartosc);
+    return;
+  }
+  if (pole.typ === 'aparaty') {
+    for (const ref of wartosc.split(',').map((r) => r.trim()).filter((r) => r !== '')) {
+      await user.click(screen.getByTestId(`mvd-stabilnosc-pole-${pole.klucz}-${ref}`));
+    }
+    return;
+  }
+  await user.type(element, wartosc);
+}
 
 const RUN_DYN = {
   id: 'run-dyn',
@@ -25,53 +90,64 @@ const RUN_DYN = {
   started_at: '2026-07-21T09:59:00Z',
 } as never;
 
+/** Rekord oceny niewykonanej — 1:1 z `ocena_stabilnosci_niewykonana()` (skrócony opis braków). */
+const OCENA = (rekordyOceny as unknown as { scenariusz_dyn_1: RekordOcenyNiewykonanej })
+  .scenariusz_dyn_1;
+
+/** Wiersz wyniku — echo scenariusza (`EchoScenariuszaStabilnosci.to_dict`) + raportowalność. */
 const WYNIK = {
   run_id: 'run-dyn',
   rows: [
     {
       scenario_id: 'dyn-1',
+      scenario_type: 'FAULT_CLEAR',
       source_id: 'src/pv/1',
       faulted_element_id: 'line/gpz/1',
       cleared_by_element_ids: ['cb-main'],
-      stable: true,
-      status: 'STABLE',
-      criteria_version: 'dynamic_stability_fault_clear_v1',
-      stability_index: 0.812,
+      status: 'NIE_OCENIONO',
+      contract_version: 'dynamic_stability_fault_clear_echo_v2',
       clearing_time_ms: 120,
-      max_clearing_time_ms: 150,
-      clearing_margin_ms: 30,
-      angle_swing_deg: 65,
+      pre_fault_angle_deg: 10,
+      during_fault_angle_deg: 75,
+      post_fault_angle_deg: 28,
       post_fault_voltage_pu: 0.97,
       post_fault_frequency_pu: 0.99,
-      limiting_factor: 'angle_swing',
-      violated_checks: [],
-      checks: {
-        clearing_time: true,
-        angle_swing: true,
-        voltage_recovery: true,
-        frequency_recovery: true,
-      },
-      reporting_status_pl: 'raportowalny',
-      proof_status_pl: 'pelny',
-      reporting_limitations: [],
+      ocena: OCENA,
+      source_kind: 'generator',
+      faulted_element_kind: 'galaz_liniowa',
+      reporting_status_pl: 'nieraportowalny',
+      proof_status_pl: 'czesciowy',
+      reporting_limitations: [
+        'Kąty wirnika i wielkości pozwarciowe pochodzą z opcji biegu — wynik nie jest dowodem '
+        + 'regulacyjnym.',
+      ],
+      reporting_limitations_pl: [
+        'Kąty wirnika i wielkości pozwarciowe pochodzą z opcji biegu — wynik nie jest dowodem '
+        + 'regulacyjnym.',
+      ],
     },
   ],
 };
 
+/** Ślad automatyki — `build_automation_trace_results`: bez zdarzeń, efekt zadeklarowany. */
 const SLAD = {
   run_id: 'run-dyn',
-  topology_effect: { network_state: 'ISLANDED_SECTION', outage_scope: 'SECTION' },
-  rows: [
-    { event_seq: 2, event_type: 'FAULT_APPLIED', element_id: 'line/gpz/1', detail: 'Fault applied' },
-    { event_seq: 1, event_type: 'AUTOMATION_STARTED', element_id: null, detail: 'Start' },
-  ],
+  // Wartości kontraktu `application/automation/trace.py` (ISLANDED|RECONFIGURED|UNCHANGED,
+  // NONE|LOCAL|WIDE) — dawne 'ISLANDED_SECTION'/'SECTION' nie istniały w backendzie.
+  topology_effect: { network_state: 'ISLANDED', outage_scope: 'LOCAL' },
+  rows: [],
+  ocena: OCENA,
 };
 
 const PRZEBIEG = {
   run_id: 'run-dyn',
   has_time_series: true,
   time_unit: 's',
-  criteria_version: 'dynamic_stability_fault_clear_v1',
+  contract_version: 'dynamic_stability_fault_clear_echo_v2',
+  uwaga_pl:
+    'Przebieg zadany: funkcja wykładnicza odbudowy do napięcia i częstotliwości po zwarciu '
+    + 'wpisanych przez użytkownika, ze stałą czasową z opcji biegu — nie jest rozwiązaniem '
+    + 'sieci ani przebiegiem zmierzonym.',
   quantities: [
     { key: 'voltage_pu', label_pl: 'Napięcie', unit: 'p.u.' },
     { key: 'frequency_pu', label_pl: 'Częstotliwość', unit: 'p.u.' },
@@ -131,15 +207,143 @@ describe('EkranStabilnosci — kontrakt ekranu prowadzącego (FLOW §0.3)', () =
     expect(screen.getByText(T.cel)).toBeInTheDocument();
   });
 
-  it('brak zakończonego przebiegu stabilności → uczciwy stan zerowy z akcją', async () => {
+  it('brak zakończonego przebiegu stabilności → uczciwy stan zerowy z formularzem, bez oceny', async () => {
     const user = userEvent.setup();
     render(<EkranStabilnosci />);
 
-    expect(screen.getByTestId('mvd-stabilnosc-zero')).toBeInTheDocument();
-    expect(screen.queryByTestId('mvd-stabilnosc-werdykt')).not.toBeInTheDocument();
+    const zero = screen.getByTestId('mvd-stabilnosc-zero');
+    expect(zero).toBeInTheDocument();
+    expect(zero).toHaveTextContent(T.zeroTytul);
+    expect(screen.queryByTestId('mvd-stabilnosc-ocena')).not.toBeInTheDocument();
+    // Stan zerowy pokazuje FORMULARZ scenariusza, nie tylko akcję nawigacyjną.
+    expect(screen.getByTestId('mvd-stabilnosc-formularz')).toBeInTheDocument();
+    for (const pole of POLA_SCENARIUSZA_STABILNOSCI) {
+      const element = screen.getByTestId(`mvd-stabilnosc-pole-${pole.klucz}`);
+      if (pole.typ === 'aparaty') {
+        // Lista aparatów startuje bez zaznaczenia (zero wartości podpowiadanych).
+        expect(element.querySelectorAll('input:checked')).toHaveLength(0);
+      } else {
+        expect(element).toHaveValue('');
+      }
+    }
 
     await user.click(screen.getByTestId('mvd-stabilnosc-zero-akcja'));
     expect(useShellStore.getState().activeSpace).toBe('obliczenia');
+  });
+});
+
+describe('EkranStabilnosci — formularz scenariusza (karta W2 pkt 1, zero fabrykacji)', () => {
+  beforeEach(() => {
+    useAppStateStore.setState({ activeCaseId: CASE_ID, activeProjectId: 'projekt-1' } as never);
+    useSnapshotStore.setState({
+      readiness: { ready: true, blockers: [], warnings: [] },
+      snapshot: MIGAWKA,
+    } as never);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }) as Response),
+    );
+  });
+
+  // Pomiar 2026-09-23 (odbiór AB-H0): iloczyn braków był JEDNYM testem z pętlą po 9 polach
+  // (9 renderów ekranu × 8 pól wpisywanych znak po znaku) — 2,37 s samodzielnie, a pod
+  // obciążeniem maszyny przekraczał limit 5 s i wywracał także następny test. Przyczyna to
+  // długość jednego testu, nie wolna ścieżka produktu: każdy brak jest teraz OSOBNYM
+  // przypadkiem (`it.each`) z tą samą, w pełni natywną ścieżką (wpisywanie znak po znaku,
+  // natywny klik) — iloczyn cech bez zmian, a każdy przypadek mieści się w limicie z zapasem.
+  it.each(POLA_SCENARIUSZA_STABILNOSCI.map((pole) => [pole.klucz, pole] as const))(
+    'brak pola %s z osobna blokuje wysyłkę (iloczyn cech, nie przykład z karty)',
+    async (_klucz, pominietePole) => {
+      const user = userEvent.setup();
+      const createAndExecuteRun = vi.fn();
+      useExecutionRunsStore.setState({ runs: [], createAndExecuteRun } as never);
+      render(<EkranStabilnosci />);
+
+      for (const pole of POLA_SCENARIUSZA_STABILNOSCI) {
+        if (pole.klucz === pominietePole.klucz) continue;
+        await wypelnijPole(user, pole, WARTOSCI_SCENARIUSZA[pole.klucz]);
+      }
+      await user.click(screen.getByTestId('mvd-stabilnosc-formularz-uruchom'));
+
+      expect(
+        screen.getByTestId(`mvd-stabilnosc-pole-${pominietePole.klucz}-blad`),
+        `pole ${pominietePole.klucz}: brak komunikatu błędu`,
+      ).toBeInTheDocument();
+      expect(
+        createAndExecuteRun,
+        `pole ${pominietePole.klucz}: bieg NIE powinien wystartować`,
+      ).not.toHaveBeenCalled();
+    },
+  );
+
+  it('natywny klik „Uruchom bieg scenariusza" z kompletem pól wysyła DOKŁADNIE kontrakt opcji biegu', async () => {
+    const user = userEvent.setup();
+    // Sygnatura mocka jawna (caseId, zadanie), zeby `mock.calls[0]` bylo typem krotki bez
+    // rzutowania `[] as [string, unknown]` (dlug typow poza bramka, tsconfig_gate_guard).
+    const createAndExecuteRun = vi.fn(async (_caseId: string, _zadanie: unknown) => ({
+      id: 'run-nowy',
+      study_case_id: CASE_ID,
+      analysis_type: 'DYNAMIC_STABILITY',
+      solver_input_hash: 'hash',
+      status: 'DONE',
+      started_at: '2026-09-09T10:00:00Z',
+      finished_at: '2026-09-09T10:00:01Z',
+      error_message: null,
+    }));
+    useExecutionRunsStore.setState({
+      runs: [],
+      createAndExecuteRun,
+      pollRunStatus: vi.fn(),
+      loadRuns: vi.fn(),
+    } as never);
+    render(<EkranStabilnosci />);
+
+    for (const pole of POLA_SCENARIUSZA_STABILNOSCI) {
+      await wypelnijPole(user, pole, WARTOSCI_SCENARIUSZA[pole.klucz]);
+    }
+    await user.click(screen.getByTestId('mvd-stabilnosc-formularz-uruchom'));
+
+    expect(createAndExecuteRun).toHaveBeenCalledTimes(1);
+    const [wolanyCaseId, zadanie] = createAndExecuteRun.mock.calls[0];
+    expect(wolanyCaseId).toBe(CASE_ID);
+    expect(zadanie).toEqual({
+      analysis_type: 'DYNAMIC_STABILITY',
+      solver_input: {
+        faulted_element_id: 'line/gpz/1',
+        clearing_time_ms: 120,
+        cleared_by_element_ids: ['cb-a', 'cb-b'],
+        pre_fault_angle_deg: 10,
+        during_fault_angle_deg: 75,
+        post_fault_angle_deg: 28,
+        post_fault_voltage_pu: 0.97,
+        post_fault_frequency_pu: 0.99,
+        recovery_time_constant_s: 0.3,
+      },
+    });
+  });
+
+  it('czas wyłączenia i stała czasowa <= 0 dają błąd „wartość musi być dodatnia"', async () => {
+    const user = userEvent.setup();
+    const createAndExecuteRun = vi.fn();
+    useExecutionRunsStore.setState({ runs: [], createAndExecuteRun } as never);
+    render(<EkranStabilnosci />);
+
+    for (const pole of POLA_SCENARIUSZA_STABILNOSCI) {
+      const wartosc =
+        pole.klucz === 'clearing_time_ms' || pole.klucz === 'recovery_time_constant_s'
+          ? '0'
+          : WARTOSCI_SCENARIUSZA[pole.klucz];
+      await wypelnijPole(user, pole, wartosc);
+    }
+    await user.click(screen.getByTestId('mvd-stabilnosc-formularz-uruchom'));
+
+    expect(screen.getByTestId('mvd-stabilnosc-pole-clearing_time_ms-blad')).toHaveTextContent(
+      T.bladDodatnie,
+    );
+    expect(
+      screen.getByTestId('mvd-stabilnosc-pole-recovery_time_constant_s-blad'),
+    ).toHaveTextContent(T.bladDodatnie);
+    expect(createAndExecuteRun).not.toHaveBeenCalled();
   });
 });
 
@@ -147,54 +351,67 @@ describe('EkranStabilnosci — dane przebiegu (fetch 1:1 z endpointami)', () => 
   beforeEach(() => {
     mockFetchStabilnosci();
     useExecutionRunsStore.setState({ runs: [RUN_DYN] });
+    useSnapshotStore.setState({ snapshot: MIGAWKA } as never);
+  });
+  afterEach(() => {
+    useSnapshotStore.setState({ snapshot: null } as never);
   });
 
-  it('założenia scenariusza i werdykt backendu (STABLE → STABILNY)', async () => {
+  // Odwrócone: dawny werdykt STABLE → „STABILNY" z wskaźnikiem i marginesem.
+  it('założenia scenariusza i ocena niewykonana z backendu (bez werdyktu)', async () => {
     render(<EkranStabilnosci />);
-    const werdykt = await screen.findByTestId('mvd-stabilnosc-werdykt');
-    expect(werdykt).toHaveAttribute('data-werdykt', 'STABLE');
-    expect(screen.getByTestId('mvd-stabilnosc-werdykt-status')).toHaveTextContent(T.werdyktStabilny);
-    expect(screen.getByTestId('mvd-stabilnosc-wskaznik')).toHaveTextContent('0,812');
-    expect(screen.getByTestId('mvd-stabilnosc-margines')).toHaveTextContent('30,0 ms');
-    expect(screen.getByTestId('mvd-stabilnosc-czynnik')).toHaveTextContent(
-      'wychylenie kąta wirnika',
+    expect(
+      await screen.findByTestId(`mvd-werdykt-${OCENA.kryterium_id}-zdanie`),
+    ).toHaveTextContent(OCENA.wyjasnienie.zdanie_pl);
+    expect(screen.queryByTestId('mvd-stabilnosc-werdykt')).not.toBeInTheDocument();
+    // Założenia: element zakłócenia i elementy wyłączające scenariusza — NAZWAMI z modelu
+    // (karta #145), nigdy referencją.
+    const zalozenia = screen.getByTestId('mvd-wyn-zalozenia');
+    expect(zalozenia).toHaveTextContent('Linia GPZ – Stacja 1');
+    expect(zalozenia).toHaveTextContent('Wyłącznik główny');
+    expect(zalozenia).not.toHaveTextContent('line/gpz/1');
+    expect(zalozenia).not.toHaveTextContent('cb-main');
+  });
+
+  // Intencja zachowana: liczby scenariusza widoczne z jednostkami. Zmiana kanonu: echo
+  // wartości wpisanych, bez statusów kryteriów i bez sekcji kryteriów progowych.
+  it('echo scenariusza zamiast wielkości ze statusami kryteriów i kryteriów progowych', async () => {
+    render(<EkranStabilnosci />);
+    const echo = await screen.findByTestId('mvd-stabilnosc-echo');
+    expect(echo).toHaveTextContent(T.echoTytul);
+    expect(screen.getByTestId('mvd-stabilnosc-echo-clearing_time_ms')).toHaveTextContent(
+      '120,0 ms',
     );
-    // Założenia: element zakłócenia + czas wyłączenia scenariusza.
-    expect(screen.getByText('line/gpz/1')).toBeInTheDocument();
-  });
-
-  it('tabela wielkości ze statusami kryteriów backendu + jawna nota o braku szeregu czasowego', async () => {
-    render(<EkranStabilnosci />);
-    expect(await screen.findByTestId('mvd-stabilnosc-wielkosci')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-stabilnosc-wielkosc-angle_swing')).toHaveTextContent('65,0 °');
-    expect(screen.getByTestId('mvd-stabilnosc-wielkosc-voltage_recovery')).toHaveTextContent(
+    expect(screen.getByTestId('mvd-stabilnosc-echo-post_fault_voltage_pu')).toHaveTextContent(
       '0,970 p.u.',
     );
-    expect(screen.getByTestId('mvd-stabilnosc-brak-szeregu')).toHaveTextContent(
-      T.brakSzereguCzasowego,
-    );
+    expect(screen.queryByTestId('mvd-stabilnosc-kryteria')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-stabilnosc-wielkosci')).not.toBeInTheDocument();
   });
 
-  it('ślad automatyki na żądanie (natywny klik) — zdarzenia w kolejności event_seq', async () => {
+  // Odwrócone: dawna tabela zdarzeń („start sekwencji automatyki", „wystąpienie zwarcia").
+  it('ślad automatyki na żądanie (natywny klik) — bez zdarzeń, efekt topologii zadeklarowany', async () => {
     const user = userEvent.setup();
     render(<EkranStabilnosci />);
-    await screen.findByTestId('mvd-stabilnosc-werdykt');
+    await screen.findByTestId('mvd-stabilnosc-ocena');
 
-    expect(screen.queryByTestId('mvd-stabilnosc-zdarzenia')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-stabilnosc-slad-brak')).not.toBeInTheDocument();
     await user.click(screen.getByTestId('mvd-stabilnosc-slad-btn'));
 
-    const tabela = screen.getByTestId('mvd-stabilnosc-zdarzenia');
-    const wiersze = tabela.querySelectorAll('tbody tr');
-    expect(wiersze).toHaveLength(2);
-    expect(wiersze[0]).toHaveTextContent('start sekwencji automatyki');
-    expect(wiersze[1]).toHaveTextContent('wystąpienie zwarcia');
-    expect(screen.getByTestId('mvd-stabilnosc-topologia')).toHaveTextContent('ISLANDED_SECTION');
+    expect(screen.queryByTestId('mvd-stabilnosc-zdarzenia')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-stabilnosc-slad-brak')).toHaveTextContent(T.sladBrak);
+    const topologia = screen.getByTestId('mvd-stabilnosc-topologia');
+    expect(topologia).toHaveTextContent(T.sladTopologiaTytul);
+    // Karta #145: stan sieci i zakres wyłączeń z typowanych map polskich etykiet — nie kod.
+    expect(topologia).toHaveTextContent(ETYKIETY_STANU_SIECI.ISLANDED);
+    expect(topologia).toHaveTextContent(ETYKIETY_ZAKRESU_WYLACZEN.LOCAL);
+    expect(topologia).not.toHaveTextContent('ISLANDED');
   });
 
   it('akcja „Otwórz pełny dowód obliczeń" otwiera zakładkę dowodu przebiegu', async () => {
     const user = userEvent.setup();
     render(<EkranStabilnosci />);
-    await screen.findByTestId('mvd-stabilnosc-werdykt');
+    await screen.findByTestId('mvd-stabilnosc-ocena');
 
     await user.click(screen.getByTestId('mvd-stabilnosc-dowod'));
     expect(useShellStore.getState().wynikiTab).toBe('dowod');
@@ -207,34 +424,84 @@ describe('EkranStabilnosci — dane przebiegu (fetch 1:1 z endpointami)', () => 
     render(<EkranStabilnosci />);
 
     expect(await screen.findByTestId('mvd-stabilnosc-raport-status')).toHaveTextContent(
-      'raportowalny',
+      'nieraportowalny',
     );
     await user.click(screen.getByTestId('mvd-stabilnosc-powrot'));
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
+
+  it('karta S-1: wynik nieraportowalny (UNVALIDATED_MODEL) pokazuje ograniczenia z rejestru', async () => {
+    const wynikNieraportowalny = {
+      run_id: 'run-dyn',
+      rows: [
+        {
+          ...WYNIK.rows[0],
+          proof_status_pl: 'czesciowy',
+          reporting_status_pl: 'nieraportowalny',
+          dopuszczalnosc_raportowa: false,
+          reporting_limitations: [
+            'Model niezwalidowany: kąty wirnika i wielkości pozwarciowe pochodzą z opcji biegu '
+              + '— wynik nie jest dowodem regulacyjnym.',
+          ],
+          reporting_limitations_pl: [
+            'Model niezwalidowany: kąty wirnika i wielkości pozwarciowe pochodzą z opcji biegu '
+              + '— wynik nie jest dowodem regulacyjnym.',
+          ],
+        },
+      ],
+    };
+    mockFetchStabilnosci();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        const json = url.endsWith('/results/dynamic-stability/time-series')
+          ? PRZEBIEG
+          : url.endsWith('/results/dynamic-stability')
+            ? wynikNieraportowalny
+            : url.endsWith('/results/automation-trace')
+              ? SLAD
+              : null;
+        if (json === null) throw new Error(`Nieoczekiwany URL w teście: ${url}`);
+        return { ok: true, status: 200, json: async () => json } as Response;
+      }),
+    );
+    render(<EkranStabilnosci />);
+
+    expect(await screen.findByTestId('mvd-stabilnosc-raport-status')).toHaveTextContent(
+      'nieraportowalny',
+    );
+    expect(screen.getByTestId('mvd-stabilnosc-raport-ograniczenia')).toHaveTextContent(
+      'nie jest dowodem regulacyjnym',
+    );
+  });
 });
 
 describe('EkranStabilnosci — przebieg czasowy na żądanie (ST-1)', () => {
-  it('nie pobiera przebiegu przed klikiem (na żądanie); klik ładuje wykres i chowa notę', async () => {
+  // Intencja zachowana: przebieg na żądanie. Zmiana kanonu: przy wykresie uwaga
+  // backendu o przebiegu ZADANYM (nie rozwiązanie sieci); dawna nota o braku szeregu
+  // należała do skasowanej tabeli wielkości ze statusami kryteriów.
+  it('nie pobiera przebiegu przed klikiem (na żądanie); klik ładuje wykres z uwagą backendu', async () => {
     const user = userEvent.setup();
     const fetchMock = mockFetchStabilnosci();
     useExecutionRunsStore.setState({ runs: [RUN_DYN] });
     render(<EkranStabilnosci />);
-    await screen.findByTestId('mvd-stabilnosc-werdykt');
+    await screen.findByTestId('mvd-stabilnosc-ocena');
 
     // Na żądanie: endpoint szeregu NIE jest wołany przed klikiem.
     const wolaniaPrzed = fetchMock.mock.calls.filter((c) =>
       String(c[0]).endsWith('/time-series'),
     );
     expect(wolaniaPrzed).toHaveLength(0);
-    // Zanim pobierzemy szereg — nota o braku szeregu jest widoczna.
-    expect(screen.getByTestId('mvd-stabilnosc-brak-szeregu')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-stabilnosc-wykres')).not.toBeInTheDocument();
 
     await user.click(screen.getByTestId('mvd-stabilnosc-przebieg-btn'));
 
-    // Wykres pojawia się z danymi i seriami PL; nota o braku szeregu znika.
+    // Wykres pojawia się z danymi i seriami PL oraz z uwagą o przebiegu zadanym.
     expect(await screen.findByTestId('mvd-stabilnosc-wykres')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-stabilnosc-przebieg-uwaga')).toHaveTextContent(
+      PRZEBIEG.uwaga_pl,
+    );
     // Nazwa serii występuje w przełączniku i w legendzie wykresu.
     expect(screen.getAllByText(T.przebiegSeriaNapiecie).length).toBeGreaterThan(0);
     expect(screen.getAllByText(T.przebiegSeriaCzestotliwosc).length).toBeGreaterThan(0);
@@ -242,19 +509,18 @@ describe('EkranStabilnosci — przebieg czasowy na żądanie (ST-1)', () => {
       'aria-pressed',
       'true',
     );
-    expect(screen.queryByTestId('mvd-stabilnosc-brak-szeregu')).not.toBeInTheDocument();
     // Endpoint szeregu wołany dokładnie raz (po kliku).
     expect(
       fetchMock.mock.calls.filter((c) => String(c[0]).endsWith('/time-series')),
     ).toHaveLength(1);
   });
 
-  it('starszy bieg bez szeregu → uczciwy stan zerowy, nota o braku szeregu zostaje', async () => {
+  it('starszy bieg bez szeregu → uczciwy stan zerowy przebiegu', async () => {
     const user = userEvent.setup();
     mockFetchStabilnosci(PRZEBIEG_BRAK);
     useExecutionRunsStore.setState({ runs: [RUN_DYN] });
     render(<EkranStabilnosci />);
-    await screen.findByTestId('mvd-stabilnosc-werdykt');
+    await screen.findByTestId('mvd-stabilnosc-ocena');
 
     await user.click(screen.getByTestId('mvd-stabilnosc-przebieg-btn'));
 
@@ -262,8 +528,7 @@ describe('EkranStabilnosci — przebieg czasowy na żądanie (ST-1)', () => {
       T.przebiegBrak,
     );
     expect(screen.queryByTestId('mvd-stabilnosc-wykres')).not.toBeInTheDocument();
-    // Bieg bez szeregu → nota o braku szeregu zostaje (usuwana TYLKO dla biegów z szeregiem).
-    expect(screen.getByTestId('mvd-stabilnosc-brak-szeregu')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-stabilnosc-przebieg-uwaga')).not.toBeInTheDocument();
   });
 
   it('błąd endpointu przebiegu → uczciwy komunikat, bez wykresu', async () => {
@@ -283,7 +548,7 @@ describe('EkranStabilnosci — przebieg czasowy na żądanie (ST-1)', () => {
     );
     useExecutionRunsStore.setState({ runs: [RUN_DYN] });
     render(<EkranStabilnosci />);
-    await screen.findByTestId('mvd-stabilnosc-werdykt');
+    await screen.findByTestId('mvd-stabilnosc-ocena');
 
     await user.click(screen.getByTestId('mvd-stabilnosc-przebieg-btn'));
     expect(await screen.findByTestId('mvd-stabilnosc-przebieg-blad')).toHaveTextContent(
@@ -294,7 +559,7 @@ describe('EkranStabilnosci — przebieg czasowy na żądanie (ST-1)', () => {
 });
 
 describe('EkranStabilnosci — uczciwe braki', () => {
-  it('werdykt niedostępny (błąd endpointu) → stan błędu z akcją naprawczą', async () => {
+  it('wynik niedostępny (błąd endpointu) → stan błędu z akcją naprawczą', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}) }) as Response),
@@ -303,7 +568,7 @@ describe('EkranStabilnosci — uczciwe braki', () => {
     render(<EkranStabilnosci />);
 
     expect(await screen.findByTestId('mvd-stabilnosc-blad')).toBeInTheDocument();
-    expect(screen.queryByTestId('mvd-stabilnosc-werdykt')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-stabilnosc-ocena')).not.toBeInTheDocument();
   });
 
   it('przebieg bez wiersza wyniku → uczciwy komunikat, bez tabel', async () => {
@@ -321,85 +586,19 @@ describe('EkranStabilnosci — uczciwe braki', () => {
     render(<EkranStabilnosci />);
 
     expect(await screen.findByTestId('mvd-stabilnosc-brak-wiersza')).toBeInTheDocument();
-    expect(screen.queryByTestId('mvd-stabilnosc-wielkosci')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-stabilnosc-echo')).not.toBeInTheDocument();
   });
 });
 
-describe('EkranStabilnosci — pętla decyzji (F-K4 faza 3, znalezisko Z4)', () => {
-  /** Wynik NIESTABILNY z rodzajami elementów z kontraktu (`*_kind` ze snapshotu biegu). */
-  function mockNiestabilny(over: Record<string, unknown> = {}) {
-    const wiersz = {
-      ...WYNIK.rows[0],
-      stable: false,
-      status: 'UNSTABLE',
-      violated_checks: ['angle_swing'],
-      faulted_element_kind: 'galaz_liniowa',
-      source_kind: 'generator',
-      ...over,
-    };
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        const json = url.endsWith('/results/dynamic-stability')
-          ? { run_id: 'run-dyn', rows: [wiersz] }
-          : url.endsWith('/results/automation-trace')
-            ? SLAD
-            : null;
-        if (json === null) throw new Error(`Nieoczekiwany URL w teście: ${url}`);
-        return { ok: true, status: 200, json: async () => json } as Response;
-      }),
-    );
-  }
-
-  beforeEach(() => {
-    useExecutionRunsStore.setState({ runs: [RUN_DYN] });
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
-  });
-
-  it('utrata stabilności prowadzi do MIEJSCA ZWARCIA w modelu (typ z kontraktu)', async () => {
-    const user = userEvent.setup();
-    mockNiestabilny();
-    render(<EkranStabilnosci />);
-    await screen.findByTestId('mvd-stabilnosc-werdykt');
-
-    await user.click(screen.getByTestId('mvd-stabilnosc-popraw'));
-
-    expect(useSelectionStore.getState().selectedElement).toEqual({
-      id: 'line/gpz/1',
-      type: 'LineBranch',
-      name: 'line/gpz/1',
-    });
-    expect(useShellStore.getState().activeSpace).toBe('schemat');
-  });
-
-  it('bez rodzaju miejsca zwarcia akcja prowadzi do ŹRÓDŁA (drugi kandydat kontraktu)', async () => {
-    const user = userEvent.setup();
-    mockNiestabilny({ faulted_element_kind: null });
-    render(<EkranStabilnosci />);
-    await screen.findByTestId('mvd-stabilnosc-werdykt');
-
-    await user.click(screen.getByTestId('mvd-stabilnosc-popraw'));
-
-    expect(useSelectionStore.getState().selectedElement).toEqual({
-      id: 'src/pv/1',
-      type: 'Generator',
-      name: 'src/pv/1',
-    });
-  });
-
-  it('kontrakt BEZ rodzajów (starszy bieg) → brak akcji, bo prowadziłaby w nikąd', async () => {
-    mockNiestabilny({ faulted_element_kind: null, source_kind: null });
-    render(<EkranStabilnosci />);
-    await screen.findByTestId('mvd-stabilnosc-werdykt');
-
-    expect(screen.queryByTestId('mvd-stabilnosc-popraw')).toBeNull();
-  });
-
-  it('wynik STABILNY nie dostaje akcji naprawczej (nie ma czego naprawiać)', async () => {
+describe('EkranStabilnosci — pętla decyzji bez werdyktu (F-K4 faza 3 odwrócona)', () => {
+  // Odwrócone: dawna akcja „Popraw w modelu" z utraty stabilności (miejsce zwarcia albo
+  // źródło). Bez oceny stabilności nie ma przyczyny do naprawy — akcja zniknęła dla
+  // KAŻDEGO wiersza, także tego, który niesie rodzaje elementów z kontraktu.
+  it('wiersz z rodzajami elementów z kontraktu NIE dostaje akcji „Popraw w modelu"', async () => {
     mockFetchStabilnosci();
+    useExecutionRunsStore.setState({ runs: [RUN_DYN] });
     render(<EkranStabilnosci />);
-    await screen.findByTestId('mvd-stabilnosc-werdykt');
+    await screen.findByTestId('mvd-stabilnosc-ocena');
 
     expect(screen.queryByTestId('mvd-stabilnosc-popraw')).toBeNull();
   });

@@ -1,11 +1,15 @@
 """CTVT-MODEL [DOMAIN] — testy nowych pól ENM `Measurement` (karta CTVT-MODEL,
-domknięcie luki W5/V12K-173):
+domknięcie luki W5/V12K-173; karta W3-B, mapa 4 #3 — obwód wtórny):
 
 1. `Measurement.ct_cores` — liczba rdzeni przekładnika prądowego (dane
    producenta wg IEC 61869-2). WYŁĄCZNIE dla measurement_type=='CT'; wartość
    > 0; None = uczciwy brak (zero fabrykacji).
 2. `Measurement.vt_mounting` — typ montażu VT (`bus`/`cable`). WYŁĄCZNIE dla
    measurement_type=='VT'; oś ODRĘBNA od `vt_arrangement`.
+3. `Measurement.obwod_wtorny` (karta W3-B) — obwód wtórny CT/VT (długość,
+   przekrój, obciążenia aparatów, moc styków). WSPÓLNY dla CT i VT.
+4. `Measurement.vt_uzwojenie` (karta W3-B) — które uzwojenie VT opisuje
+   `obwod_wtorny`. WYŁĄCZNIE dla measurement_type=='VT'.
 
 Wszystkie pola są ADDYTYWNE (default None) — zero łamania fixture/hash
 istniejących danych (asercja determinizmu poniżej). Materializacja „gdzie
@@ -22,6 +26,8 @@ from enm.models import (
     ENMDefaults,
     ENMHeader,
     Measurement,
+    ObciazenieAparatu,
+    ObwodWtorny,
 )
 
 
@@ -100,6 +106,99 @@ class TestCtVtVariantFields:
 
 
 # ---------------------------------------------------------------------------
+# 1b. Karta W3-B — `obwod_wtorny` (CT+VT) i `vt_uzwojenie` (VT-only)
+# ---------------------------------------------------------------------------
+
+
+class TestObwodWtorny:
+    def test_obwod_wtorny_accepted_on_ct(self):
+        m = Measurement.model_validate(
+            _ct(
+                obwod_wtorny={
+                    "dlugosc_przewodu_m": 30.0,
+                    "przekroj_przewodu_mm2": 2.5,
+                    "obciazenia_aparatow": [{"nazwa": "Przekaźnik", "moc_va": 3.0}],
+                    "moc_stykow_va": 0.5,
+                }
+            )
+        )
+        assert m.obwod_wtorny is not None
+        assert m.obwod_wtorny.dlugosc_przewodu_m == 30.0
+        assert m.obwod_wtorny.obciazenia_aparatow == [
+            ObciazenieAparatu(nazwa="Przekaźnik", moc_va=3.0)
+        ]
+
+    def test_obwod_wtorny_accepted_on_vt(self):
+        m = Measurement.model_validate(
+            _vt(obwod_wtorny={"dlugosc_przewodu_m": 12.0, "przekroj_przewodu_mm2": 1.5})
+        )
+        assert m.obwod_wtorny is not None
+        assert m.obwod_wtorny.dlugosc_przewodu_m == 12.0
+
+    def test_obwod_wtorny_default_none_honest_brak(self):
+        assert Measurement.model_validate(_ct()).obwod_wtorny is None
+        assert Measurement.model_validate(_vt()).obwod_wtorny is None
+
+    def test_obwod_wtorny_obciazenia_aparatow_default_pusta_lista(self):
+        m = Measurement.model_validate(
+            _ct(obwod_wtorny={"dlugosc_przewodu_m": 10.0, "przekroj_przewodu_mm2": 2.5})
+        )
+        assert m.obwod_wtorny.obciazenia_aparatow == []
+
+    def test_dlugosc_przewodu_musi_byc_dodatnia(self):
+        with pytest.raises(ValueError):
+            Measurement.model_validate(_ct(obwod_wtorny={"dlugosc_przewodu_m": 0.0}))
+        with pytest.raises(ValueError):
+            Measurement.model_validate(_ct(obwod_wtorny={"dlugosc_przewodu_m": -5.0}))
+
+    def test_przekroj_przewodu_musi_byc_dodatni(self):
+        with pytest.raises(ValueError):
+            Measurement.model_validate(_ct(obwod_wtorny={"przekroj_przewodu_mm2": -1.0}))
+
+    def test_moc_stykow_va_nieujemna(self):
+        with pytest.raises(ValueError):
+            Measurement.model_validate(_ct(obwod_wtorny={"moc_stykow_va": -1.0}))
+
+    def test_moc_va_aparatu_nieujemna(self):
+        with pytest.raises(ValueError):
+            Measurement.model_validate(
+                _ct(obwod_wtorny={"obciazenia_aparatow": [{"nazwa": "X", "moc_va": -1.0}]})
+            )
+
+    def test_obwod_wtorny_jako_model_bezposredni(self):
+        # Kontrakt nazwany 1:1 z żądaniem `POST /api/solver/ct-burden-check`
+        # (`api/equipment_checks.py::CtBurdenRequest`) — konstruktor bezpośredni
+        # (nie tylko dict przez model_validate) daje ten sam kształt.
+        obwod = ObwodWtorny(
+            dlugosc_przewodu_m=20.0,
+            przekroj_przewodu_mm2=4.0,
+            obciazenia_aparatow=[ObciazenieAparatu(nazwa="Licznik", moc_va=1.5)],
+        )
+        m = Measurement.model_validate(_ct())
+        m2 = m.model_copy(update={"obwod_wtorny": obwod})
+        assert m2.obwod_wtorny.dlugosc_przewodu_m == 20.0
+
+
+class TestVtUzwojenie:
+    def test_vt_uzwojenie_accepted_for_vt(self):
+        m = Measurement.model_validate(_vt(vt_uzwojenie="POMIAROWE"))
+        assert m.vt_uzwojenie == "POMIAROWE"
+        m2 = Measurement.model_validate(_vt(vt_uzwojenie="ZABEZPIECZENIOWE"))
+        assert m2.vt_uzwojenie == "ZABEZPIECZENIOWE"
+
+    def test_vt_uzwojenie_rejected_on_ct_measurement(self):
+        with pytest.raises(ValueError, match="vt_uzwojenie wymaga measurement_type='VT'"):
+            Measurement.model_validate(_ct(vt_uzwojenie="POMIAROWE"))
+
+    def test_vt_uzwojenie_unknown_value_rejected(self):
+        with pytest.raises(ValueError):
+            Measurement.model_validate(_vt(vt_uzwojenie="OBLICZENIOWE"))
+
+    def test_vt_uzwojenie_default_none(self):
+        assert Measurement.model_validate(_vt()).vt_uzwojenie is None
+
+
+# ---------------------------------------------------------------------------
 # 2. Serializacja — exclude_none (kontrakt addytywny)
 # ---------------------------------------------------------------------------
 
@@ -115,6 +214,8 @@ class TestSerialization:
         dumped = Measurement.model_validate(_ct()).model_dump(exclude_none=True)
         assert "ct_cores" not in dumped
         assert "vt_mounting" not in dumped
+        assert "obwod_wtorny" not in dumped
+        assert "vt_uzwojenie" not in dumped
 
     def test_round_trip_materialization_from_producer_data(self):
         """Materializacja end-to-end: payload z danymi producenta (dict) →
@@ -123,6 +224,29 @@ class TestSerialization:
         vt = Measurement.model_validate(_vt(vt_mounting="bus", vt_arrangement="open_delta"))
         assert Measurement.model_validate(ct.model_dump()).ct_cores == 4
         assert Measurement.model_validate(vt.model_dump()).vt_mounting == "bus"
+
+    def test_obwod_wtorny_round_trip(self):
+        """Karta W3-B: obwod wtorny przezywa dict -> model -> dict -> model
+        bez utraty danych (kontrakt addytywny, ten sam ksztalt co
+        `api/equipment_checks.py::CtBurdenRequest`)."""
+        ct = Measurement.model_validate(
+            _ct(
+                obwod_wtorny={
+                    "dlugosc_przewodu_m": 30.0,
+                    "przekroj_przewodu_mm2": 2.5,
+                    "obciazenia_aparatow": [{"nazwa": "Przekaźnik", "moc_va": 3.0}],
+                    "moc_stykow_va": 0.5,
+                }
+            )
+        )
+        dumped = ct.model_dump()
+        assert dumped["obwod_wtorny"]["dlugosc_przewodu_m"] == 30.0
+        odtworzony = Measurement.model_validate(dumped)
+        assert odtworzony.obwod_wtorny == ct.obwod_wtorny
+
+    def test_vt_uzwojenie_round_trip(self):
+        vt = Measurement.model_validate(_vt(vt_uzwojenie="ZABEZPIECZENIOWE"))
+        assert Measurement.model_validate(vt.model_dump()).vt_uzwojenie == "ZABEZPIECZENIOWE"
 
 
 # ---------------------------------------------------------------------------
@@ -149,6 +273,20 @@ class TestDeterminism:
         enm2 = EnergyNetworkModel(
             header=ENMHeader(name="CTVT hash test 2", defaults=ENMDefaults()),
             measurements=[measurement.model_copy()],
+        )
+        assert compute_enm_hash(enm1) == compute_enm_hash(enm2)
+
+    def test_hash_stable_when_obwod_wtorny_set(self) -> None:
+        measurement = Measurement.model_validate(
+            _ct(obwod_wtorny={"dlugosc_przewodu_m": 30.0, "przekroj_przewodu_mm2": 2.5})
+        )
+        enm1 = EnergyNetworkModel(
+            header=ENMHeader(name="CTVT hash test 2b", defaults=ENMDefaults()),
+            measurements=[measurement],
+        )
+        enm2 = EnergyNetworkModel(
+            header=ENMHeader(name="CTVT hash test 2b", defaults=ENMDefaults()),
+            measurements=[measurement.model_copy(deep=True)],
         )
         assert compute_enm_hash(enm1) == compute_enm_hash(enm2)
 

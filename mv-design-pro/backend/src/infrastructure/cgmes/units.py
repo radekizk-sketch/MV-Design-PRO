@@ -31,6 +31,7 @@ _KV_TO_V: Final[float] = 1.0e3
 _MVA_TO_VA: Final[float] = 1.0e6
 _MW_TO_W: Final[float] = 1.0e6
 _KM_TO_M: Final[float] = 1.0e3
+_KA_TO_A: Final[float] = 1.0e3
 
 # ---------------------------------------------------------------------------
 # Deterministic float formatter
@@ -66,6 +67,18 @@ def mw_to_w(mw: float) -> float:
 
 def km_to_m(km: float) -> float:
     return float(km) * _KM_TO_M
+
+
+def ka_to_a(ka: float) -> float:
+    """kA -> A (CV-4.3 K7: ``ExternalNetworkInjection.*InitialSymShCCurrent`` — źródło
+    z danymi prądowymi Ik''/Ik''min). Inwersja ``a_to_ka`` czyta te atrybuty z powrotem
+    do ENM w ``cgmes_importer.py`` (tor obcego EQ+TP bez side-cara)."""
+    return float(ka) * _KA_TO_A
+
+
+def a_to_ka(a: float) -> float:
+    """A -> kA (inwersja ``ka_to_a``; import ``*InitialSymShCCurrent`` -> ``ik3_ka``/``ik3_min_ka``)."""
+    return float(a) / _KA_TO_A
 
 
 def per_km_to_total_ohm(value_per_km: float, length_km: float) -> float:

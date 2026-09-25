@@ -1,11 +1,23 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { EkranZwarc } from '../EkranZwarc';
 import { ZWARCIA_STRINGS } from '../strings';
 import { WZORZEC_STRINGS } from '../../wzorzec';
+import { INSPECTOR_STRINGS, znacznikNieaktualne } from '../../../inspector';
 import { useResultsInspectorStore } from '../../../../ui/results-inspector/store';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
-import { shortCircuitResultsFixture, wkladyFixture } from './fixtures';
+import { konfiguracjaBieguFixture, shortCircuitResultsFixture, wkladyFixture } from './fixtures';
+import { atrapaFetchPasma, renderEkranZwarc } from './renderEkranZwarc';
+
+// Karta UI2 p.9 (test klasy §2: {koperta obecna, koperta nieobecna} × {rozpływ,
+// zbieżność, ZWARCIA}) — trzeci człon macierzy, dotąd nietestowany w tym pliku
+// (blankietowa atrapa `fetch` 404 z `renderEkranZwarc.tsx` domyślnie tłumiła
+// realny `useAnalysisRunContract`, więc znacznik nigdy się nie pokazywał —
+// mockowany tu tak samo jak w `tabelaSzyn.test.tsx`/`ekranZbieznosci.test.tsx`).
+const kontraktMock = vi.fn();
+vi.mock('../../../../ui/workspace/analysisRunContract', () => ({
+  useAnalysisRunContract: (runId: string | null) => kontraktMock(runId),
+}));
 
 function props(over: Partial<Parameters<typeof EkranZwarc>[0]> = {}) {
   return {
@@ -17,6 +29,16 @@ function props(over: Partial<Parameters<typeof EkranZwarc>[0]> = {}) {
 
 beforeEach(() => {
   useResultsInspectorStore.getState().reset();
+  // Pasmo MIN/MAX (W3-G3) pobiera się efektem przy KAŻDYM renderze z biegiem —
+  // atrapa i render z odczekaniem w `renderEkranZwarc.tsx` (jedno miejsce dla
+  // wszystkich plików testów ekranu zwarć).
+  atrapaFetchPasma();
+  kontraktMock.mockReset();
+  kontraktMock.mockReturnValue({ data: null, isLoading: false, error: null });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 function ustawWynik() {
@@ -29,8 +51,8 @@ function ustawWynik() {
 describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
   beforeEach(ustawWynik);
 
-  it('bilans wybranego punktu pokazuje komplet wielkosci z wiersza kanonicznego', () => {
-    render(<EkranZwarc {...props()} />);
+  it('bilans wybranego punktu pokazuje komplet wielkosci z wiersza kanonicznego', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     const bilans = screen.getByTestId('mvd-zwarcia-bilans');
     // Wielkosci impedancyjne i wspolczynniki (z FROZEN solvera, format PL).
     expect(within(bilans).getByText(ZWARCIA_STRINGS.bilansZk)).toBeInTheDocument();
@@ -42,8 +64,8 @@ describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
     expect(within(bilans).getByText('156,250 kA²·s')).toBeInTheDocument(); // I2t
   });
 
-  it('klik innego wiersza przelacza bilans na ten punkt', () => {
-    render(<EkranZwarc {...props()} />);
+  it('klik innego wiersza przelacza bilans na ten punkt', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     const wiersze = screen.getAllByTestId('mvd-wyn-wiersz');
     fireEvent.click(wiersze[2]); // BUS-ST2 — starszy wynik bez bilansu
     const bilans = screen.getByTestId('mvd-zwarcia-bilans');
@@ -55,37 +77,96 @@ describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
     expect(kreski.length).toBe(16);
   });
 
-  it('kolumny impedancyjne (Rk/Xk/|Zk|/X/R/kappa) w trybie eksperckim, ukryte w podstawowym', () => {
-    const { unmount } = render(<EkranZwarc {...props({ trybZaawansowania: 'expert' })} />);
+  it('kolumny impedancyjne (Rk/Xk/|Zk|/X/R/kappa) w trybie eksperckim, ukryte w podstawowym', async () => {
+    const { unmount } = await renderEkranZwarc(<EkranZwarc {...props({ trybZaawansowania: 'expert' })} />);
     expect(screen.getByTestId('mvd-wyn-th-zk')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-wyn-th-kappa')).toBeInTheDocument();
     unmount();
     ustawWynik();
-    render(<EkranZwarc {...props({ trybZaawansowania: 'basic' })} />);
+    await renderEkranZwarc(<EkranZwarc {...props({ trybZaawansowania: 'basic' })} />);
     expect(screen.queryByTestId('mvd-wyn-th-zk')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-wyn-th-kappa')).not.toBeInTheDocument();
   });
 });
 
 describe('EkranZwarc — stan pusty (brak wyniku w store)', () => {
-  it('bez wyniku: komunikat PL zamiast tabeli', () => {
-    render(<EkranZwarc {...props()} />);
+  it('bez wyniku: komunikat PL zamiast tabeli', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     expect(screen.getByText(ZWARCIA_STRINGS.brakWyniku)).toBeInTheDocument();
     expect(screen.getByText(ZWARCIA_STRINGS.brakWynikuOpis)).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-wyn-tabela')).not.toBeInTheDocument();
   });
 });
 
+describe('EkranZwarc — znacznik świeżości nagłówka (karta UI2 p.9, V12K-264)', () => {
+  // Dowód, że pozycja 2 historii domknięcia w `zwarciaModel.ts` ("FreshnessBadge
+  // się pokazuje") jest FAKTEM: `useSwiezoscNaglowka(runId)` musi być realnie
+  // wpięty w `naglowek`, nie tylko architektonicznie dostępny.
+  beforeEach(ustawWynik);
+
+  it('rewizja biegu ≠ bieżąca rewizja modelu → FreshnessBadge „nieaktualne (rew. a → b)"', async () => {
+    useSnapshotStore.setState({ rewizjaBiezacegoModelu: 5 } as never);
+    kontraktMock.mockReturnValue({
+      data: { analysisCaseContext: { rewizjaModelu: 3 } },
+      isLoading: false,
+      error: null,
+    });
+
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+
+    expect(screen.getByText(znacznikNieaktualne(3, 5))).toBeInTheDocument();
+  });
+
+  it('rewizja biegu = bieżąca rewizja modelu → FreshnessBadge „aktualne"', async () => {
+    useSnapshotStore.setState({ rewizjaBiezacegoModelu: 5 } as never);
+    kontraktMock.mockReturnValue({
+      data: { analysisCaseContext: { rewizjaModelu: 5 } },
+      isLoading: false,
+      error: null,
+    });
+
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+
+    expect(screen.getByText(INSPECTOR_STRINGS.aktualne)).toBeInTheDocument();
+  });
+
+  it('kontrakt biegu bez koperty rewizji (bieg sprzed CV-2) → BRAK znacznika (zero zgadywania)', async () => {
+    useSnapshotStore.setState({ rewizjaBiezacegoModelu: 5 } as never);
+    kontraktMock.mockReturnValue({
+      data: { analysisCaseContext: { rewizjaModelu: null } },
+      isLoading: false,
+      error: null,
+    });
+
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+
+    expect(screen.queryByText(INSPECTOR_STRINGS.aktualne)).not.toBeInTheDocument();
+    expect(screen.queryByText(/nieaktualne/i)).not.toBeInTheDocument();
+  });
+});
+
 describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () => {
   beforeEach(ustawWynik);
 
-  it('nagłówek: nazwa analizy PL', () => {
-    render(<EkranZwarc {...props()} />);
+  it('nagłówek: nazwa analizy PL', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     expect(screen.getByText(ZWARCIA_STRINGS.analiza)).toBeInTheDocument();
   });
 
-  it('założenia: metoda IEC 60909 oraz c/czas z propsów', () => {
-    render(<EkranZwarc {...props({ wspolczynnikC: 1.1, czasCieplnyS: 1.0 })} />);
+  it('założenia: metoda IEC 60909 oraz c/czas z konfiguracji ZAPISANEJ na biegu (nie z aktywnego przypadku)', async () => {
+    // Karta TODO-UI2 p.7: c/czas cieplny pochodzą z `wynik.konfiguracja_biegu`
+    // (odpowiedź endpointu wyników TEGO biegu), nie z propsów zasilanych
+    // wcześniej aktywnym przypadkiem obliczeniowym.
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({
+        konfiguracja_biegu: konfiguracjaBieguFixture({
+          c_factor: { tryb: 'jawny', wartosc: 1.1 },
+          thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' },
+        }),
+      }),
+      selectedRunId: 'sc-run-1',
+    });
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     const zalozenia = screen.getByTestId('mvd-wyn-zalozenia');
     expect(within(zalozenia).getByText(ZWARCIA_STRINGS.zalMetoda)).toBeInTheDocument();
     expect(within(zalozenia).getByText('IEC 60909')).toBeInTheDocument();
@@ -93,8 +174,33 @@ describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () 
     expect(within(zalozenia).getByText('1,10')).toBeInTheDocument();
   });
 
-  it('tabela: wiersz per punkt, wielkości Ik"/ip/Ith/Sk" z jednostkami w nagłówkach', () => {
-    render(<EkranZwarc {...props()} />);
+  it('założenia: c auto-per-węzeł (bez jawnego override) pokazuje uczciwy opis, nie liczbę', async () => {
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({
+        konfiguracja_biegu: konfiguracjaBieguFixture({
+          c_factor: { tryb: 'auto_per_wezel', wartosc: null },
+        }),
+      }),
+      selectedRunId: 'sc-run-1',
+    });
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+    const zalozenia = screen.getByTestId('mvd-wyn-zalozenia');
+    expect(within(zalozenia).getByText(ZWARCIA_STRINGS.zalWspolczynnikCAuto)).toBeInTheDocument();
+  });
+
+  it('założenia: brak konfiguracji biegu (starszy zapis) → kreska uczciwa, nie zgadnięta liczba', async () => {
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({ konfiguracja_biegu: undefined }),
+      selectedRunId: 'sc-run-1',
+    });
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+    const zalozenia = screen.getByTestId('mvd-wyn-zalozenia');
+    expect(within(zalozenia).getByText(ZWARCIA_STRINGS.zalWspolczynnikC)).toBeInTheDocument();
+    expect(within(zalozenia).getAllByText(ZWARCIA_STRINGS.kreska).length).toBeGreaterThan(0);
+  });
+
+  it('tabela: wiersz per punkt, wielkości Ik"/ip/Ith/Sk" z jednostkami w nagłówkach', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     expect(screen.getAllByTestId('mvd-wyn-wiersz')).toHaveLength(3);
     const tabela = within(screen.getByTestId('mvd-wyn-tabela'));
     expect(tabela.getByText('12,345')).toBeInTheDocument();
@@ -103,30 +209,30 @@ describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () 
     expect(within(screen.getByTestId('mvd-wyn-th-sk')).getByText(`[${ZWARCIA_STRINGS.jednMVA}]`)).toBeInTheDocument();
   });
 
-  it('wartości null renderowane jako „—"', () => {
-    render(<EkranZwarc {...props()} />);
+  it('wartości null renderowane jako „—"', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     const tabela = within(screen.getByTestId('mvd-wyn-tabela'));
     // Wiersz BUS-ST2 ma wszystkie wielkości null → co najmniej 4 kreski w tabeli.
     expect(tabela.getAllByText(ZWARCIA_STRINGS.kreska).length).toBeGreaterThanOrEqual(4);
   });
 
-  it('rodzaj zwarcia mapowany na polską nazwę', () => {
-    render(<EkranZwarc {...props()} />);
+  it('rodzaj zwarcia mapowany na polską nazwę', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     const tabela = within(screen.getByTestId('mvd-wyn-tabela'));
     expect(tabela.getByText('zwarcie trójfazowe')).toBeInTheDocument();
     expect(tabela.getByText('zwarcie jednofazowe (doziemne)')).toBeInTheDocument();
   });
 
-  it('podwójne kliknięcie na wartości Ik" → onOtworzDowod z ref (element_id)', () => {
+  it('podwójne kliknięcie na wartości Ik" → onOtworzDowod z ref (element_id)', async () => {
     const onOtworzDowod = vi.fn();
-    render(<EkranZwarc {...props({ onOtworzDowod })} />);
+    await renderEkranZwarc(<EkranZwarc {...props({ onOtworzDowod })} />);
     const tabela = within(screen.getByTestId('mvd-wyn-tabela'));
     fireEvent.doubleClick(tabela.getByText('12,345'));
     expect(onOtworzDowod).toHaveBeenCalledWith('EL-GPZ');
   });
 
-  it('sortowanie po kolumnie liczbowej (Sk") — malejąco po dwóch kliknięciach', () => {
-    render(<EkranZwarc {...props()} />);
+  it('sortowanie po kolumnie liczbowej (Sk") — malejąco po dwóch kliknięciach', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     const thSk = within(screen.getByTestId('mvd-wyn-th-sk')).getByRole('button');
     fireEvent.click(thSk); // rosnąco
     fireEvent.click(thSk); // malejąco
@@ -135,33 +241,35 @@ describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () 
     expect(pierwszy.getByText('320,8')).toBeInTheDocument(); // największe Sk" na górze
   });
 
-  it('identyfikator punktu widoczny wyłącznie w trybie eksperckim', () => {
-    const { rerender } = render(<EkranZwarc {...props({ trybZaawansowania: 'basic' })} />);
+  it('identyfikatory punktu i przebiegu nie stoją na pierwszym planie w żadnym trybie (karta #145)', async () => {
+    const { rerender } = await renderEkranZwarc(<EkranZwarc {...props({ trybZaawansowania: 'basic' })} />);
     expect(screen.queryByTestId('mvd-wyn-th-identyfikator')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('mvd-wyn-run-id')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-wyn-informacje-audytowe')).not.toBeInTheDocument();
     rerender(<EkranZwarc {...props({ trybZaawansowania: 'expert' })} />);
-    expect(screen.getByTestId('mvd-wyn-th-identyfikator')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-wyn-run-id')).toHaveTextContent('sc-run-1');
+    expect(screen.queryByTestId('mvd-wyn-th-identyfikator')).not.toBeInTheDocument();
+    // Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych" (zwinięte).
+    fireEvent.click(screen.getByTestId('mvd-wyn-informacje-audytowe-przelacz'));
+    expect(screen.getByTestId('mvd-wyn-informacje-audytowe-lista')).toHaveTextContent('sc-run-1');
   });
 
-  it('wykres słupkowy Ik" obecny w slocie wykresu', () => {
-    render(<EkranZwarc {...props()} />);
+  it('wykres słupkowy Ik" obecny w slocie wykresu', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     const slot = screen.getByTestId('mvd-wyn-wykres');
     expect(within(slot).getByTestId('mvd-zwarcia-wykres')).toBeInTheDocument();
     expect(within(slot).getByText(ZWARCIA_STRINGS.wykresTytul)).toBeInTheDocument();
   });
 
-  it('przełącznik wielkości w slocie wykresu — klik Sk" zmienia podpis (karta W-A F2)', () => {
-    render(<EkranZwarc {...props()} />);
+  it('przełącznik wielkości w slocie wykresu — klik Sk" zmienia podpis (karta W-A F2)', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     const slot = screen.getByTestId('mvd-wyn-wykres');
     fireEvent.click(within(slot).getByTestId('mvd-zwarcia-wykres-btn-sk'));
     expect(within(slot).getByText(ZWARCIA_STRINGS.wykresTytulSk)).toBeInTheDocument();
     expect(within(slot).queryByText(ZWARCIA_STRINGS.wykresTytul)).not.toBeInTheDocument();
   });
 
-  it('onEksport przekazany do stopki wzorca', () => {
+  it('onEksport przekazany do stopki wzorca', async () => {
     const onEksport = vi.fn();
-    render(<EkranZwarc {...props({ onEksport })} />);
+    await renderEkranZwarc(<EkranZwarc {...props({ onEksport })} />);
     screen.getByRole('button', { name: WZORZEC_STRINGS.eksport }).click();
     expect(onEksport).toHaveBeenCalledTimes(1);
   });
@@ -170,8 +278,8 @@ describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () 
 describe('EkranZwarc — wybór punktu i sekcja wkładów', () => {
   beforeEach(ustawWynik);
 
-  it('domyślnie wybrany pierwszy punkt; wkłady z propsów renderowane w tabeli', () => {
-    render(<EkranZwarc {...props({ wklady: { 'BUS-GPZ': wkladyFixture() } })} />);
+  it('domyślnie wybrany pierwszy punkt; wkłady z propsów renderowane w tabeli', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props({ wklady: { 'BUS-GPZ': wkladyFixture() } })} />);
     const wklady = screen.getByTestId('mvd-zwarcia-wklady');
     // Zapytania w zakresie TABELI wkładów — te same etykiety niesie także wykres
     // udziałów (karta W-A F2); intencja testu bez zmian.
@@ -181,14 +289,14 @@ describe('EkranZwarc — wybór punktu i sekcja wkładów', () => {
     expect(within(wklady).queryByTestId('mvd-zwarcia-wklady-brak')).not.toBeInTheDocument();
   });
 
-  it('brak wkładów dla punktu → stan „dane niedostępne w tym przebiegu"', () => {
-    render(<EkranZwarc {...props()} />);
+  it('brak wkładów dla punktu → stan „dane niedostępne w tym przebiegu"', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     expect(screen.getByTestId('mvd-zwarcia-wklady-brak')).toBeInTheDocument();
     expect(screen.getByText(ZWARCIA_STRINGS.wkladyNiedostepne)).toBeInTheDocument();
   });
 
-  it('natywny wybór wiersza tabeli przełącza sekcję wkładów (delta API wzorca)', () => {
-    render(<EkranZwarc {...props({ wklady: { 'BUS-GPZ': wkladyFixture() } })} />);
+  it('natywny wybór wiersza tabeli przełącza sekcję wkładów (delta API wzorca)', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props({ wklady: { 'BUS-GPZ': wkladyFixture() } })} />);
     // Start: BUS-GPZ (pierwszy wiersz) ma wkłady i jest wybrany.
     const wiersze = screen.getAllByTestId('mvd-wyn-wiersz');
     expect(wiersze[0]).toHaveAttribute('aria-selected', 'true');
@@ -200,8 +308,8 @@ describe('EkranZwarc — wybór punktu i sekcja wkładów', () => {
     expect(screen.getByTestId('mvd-zwarcia-wklady-brak')).toBeInTheDocument();
   });
 
-  it('Enter na wierszu wybiera punkt (klawiatura)', () => {
-    render(<EkranZwarc {...props()} />);
+  it('Enter na wierszu wybiera punkt (klawiatura)', async () => {
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     const wiersze = screen.getAllByTestId('mvd-wyn-wiersz');
     fireEvent.keyDown(wiersze[1], { key: 'Enter' });
     expect(wiersze[1]).toHaveAttribute('aria-selected', 'true');
@@ -226,7 +334,7 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
       }),
     });
     vi.stubGlobal('fetch', fetchMock);
-    render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
     // Zakres TABELI wkładów — nazwę źródła niesie także wykres udziałów (W-A F2).
     const tabela = within(await within(sekcja).findByTestId('mvd-wyn-tabela'));
@@ -275,7 +383,7 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
         }),
       }),
     );
-    render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
     // Domyslnie zwiniety (bez przeladowania ekranu) — dostepny na klik.
     expect(within(sekcja).queryByTestId('mvd-zwarcia-wklady-slad')).not.toBeInTheDocument();
@@ -327,7 +435,7 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
         }),
       }),
     );
-    render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
     // Slad na zadanie: zwiniety przed klikiem.
     expect(within(sekcja).queryByTestId('mvd-zwarcia-wklady-slad')).not.toBeInTheDocument();
@@ -370,7 +478,7 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
         }),
       }),
     );
-    render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
     fireEvent.click(await within(sekcja).findByTestId('mvd-zwarcia-wklady-slad-btn'));
     // Plaska lista krokow (kompatybilnosc), zero przyciskow sekcji.
@@ -413,7 +521,7 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
         }),
       }),
     );
-    render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
     // Natywny klik komórki wiersza wkladu rozwija szczegol maszyny (zakres tabeli —
     // nazwa źródła występuje też na wykresie udziałów).
@@ -434,22 +542,31 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
 
   it('blad pobrania -> uczciwy stan "dane niedostepne" (bez fabrykacji)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
-    render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     expect(await screen.findByTestId('mvd-zwarcia-wklady-brak')).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
 
-  it('props wklady ma pierwszenstwo - dostawca nie pobiera (1:1 dla testow)', () => {
-    const fetchMock = vi.fn();
+  it('props wklady ma pierwszenstwo - dostawca wkladow nie pobiera (1:1 dla testow)', async () => {
+    // Karta W3-G3: ekran ma DRUGI dostawca na zadanie (pasmo MIN/MAX, właściwość
+    // CAŁEGO biegu — niezależny od wybranego punktu/propsu `wklady`), więc
+    // asercja celuje w KONKRETNĄ końcówkę wkładów (jak w innych testach tego
+    // pliku), nie w brak JAKIEGOKOLWIEK zapytania sieciowego ekranu.
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 404 });
     vi.stubGlobal('fetch', fetchMock);
-    render(
+    // Kontrakt propsu: mapa punkt -> wkłady (`Record<string, WkladZwarciowy[]>`),
+    // jak w pozostałych testach tego pliku (odbiór fali 3 W3: dług typów poza
+    // bramką naprawiony u źródła, nie wyciszony).
+    await renderEkranZwarc(
       <EkranZwarc
         trybZaawansowania="basic"
         onOtworzDowod={() => undefined}
-        wklady={wkladyFixture()}
+        wklady={{ 'BUS-GPZ': wkladyFixture() }}
       />,
     );
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(
+      fetchMock.mock.calls.some(([url]) => String(url).includes('/api/proof/sc3f/contributions')),
+    ).toBe(false);
     vi.unstubAllGlobals();
   });
 });

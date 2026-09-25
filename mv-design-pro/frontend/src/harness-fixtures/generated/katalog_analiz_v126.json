@@ -1,0 +1,1226 @@
+{
+  "namespace": "analysis-catalog",
+  "items": [
+    {
+      "kod": "power_quality_harmonics",
+      "nazwa_pl": "Jakość energii i harmoniczne",
+      "grupa": {
+        "kod": "jakosc_energii_i_stabilnosc",
+        "nazwa_pl": "Jakość energii i stabilność przekształtników"
+      },
+      "pytanie_pl": "Czy odkształcenie napięcia i prądu w węzłach sieci mieści się w granicach kompatybilności elektromagnetycznej?",
+      "zakres_pl": "Wszystkie szyny modelu; źródła odkształcające = przekształtniki z widmem harmonicznym (karta katalogowa albo widmo podane ręcznie); 18 zaszytych rzędów harmonicznych (pozostałe rzędy widma są pomijane); skan modułu impedancji węzłów w paśmie 50–2500 Hz. Wynik solvera jest niezwalidowany — ocena kompatybilności nie jest wykonywana, liczby są dostępne wyłącznie w sekcji audytowej.",
+      "wielkosci_glowne": [
+        {
+          "symbol": "THD_U",
+          "nazwa_pl": "Współczynnik odkształcenia napięcia",
+          "jednostka": "%",
+          "symbol_latex": "\\mathrm{THD}_U"
+        },
+        {
+          "symbol": "TDD",
+          "nazwa_pl": "Odkształcenie prądu odbiorcy",
+          "jednostka": "%",
+          "symbol_latex": "\\mathrm{TDD}"
+        },
+        {
+          "symbol": "K",
+          "nazwa_pl": "Współczynnik K obciążenia transformatora",
+          "jednostka": "-",
+          "symbol_latex": "K"
+        },
+        {
+          "symbol": "Z(f)",
+          "nazwa_pl": "Impedancja węzła w funkcji częstotliwości",
+          "jednostka": "Ω",
+          "symbol_latex": "Z(f)"
+        }
+      ],
+      "podstawa_oceny": [
+        {
+          "wielkosc_pl": "Odkształcenie napięcia",
+          "symbol": "THD_U",
+          "jednostka": "%",
+          "warunek_pl": "w każdym węźle modelu, dla sieci SN i nN",
+          "wartosc_graniczna": 8.0,
+          "zrodlo_pl": "PN-EN 50160",
+          "symbol_latex": "\\mathrm{THD}_U",
+          "warunek_latex": "\\mathrm{THD}_U \\leq 8\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
+        },
+        {
+          "wielkosc_pl": "Odkształcenie napięcia",
+          "symbol": "THD_U",
+          "jednostka": "%",
+          "warunek_pl": "w każdym węźle modelu (granica ostrzejsza)",
+          "wartosc_graniczna": 5.0,
+          "zrodlo_pl": "IEEE 519",
+          "symbol_latex": "\\mathrm{THD}_U",
+          "warunek_latex": "\\mathrm{THD}_U \\leq 5\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
+        },
+        {
+          "wielkosc_pl": "Odkształcenie prądu odbiorcy",
+          "symbol": "TDD",
+          "jednostka": "%",
+          "warunek_pl": "odniesione do prądu obciążenia szyny wyznaczonego z mocy czynnej szyny",
+          "wartosc_graniczna": 5.0,
+          "zrodlo_pl": "IEEE 519",
+          "symbol_latex": "\\mathrm{TDD}",
+          "warunek_latex": "\\mathrm{TDD} \\leq 5\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
+        }
+      ],
+      "bez_podstawy_pl": null,
+      "dane": {
+        "z_modelu": [
+          {
+            "nazwa_pl": "Napięcie znamionowe i obciążenie szyn",
+            "elementy_pl": "szyny, odbiory"
+          },
+          {
+            "nazwa_pl": "Impedancje i susceptancje gałęzi",
+            "elementy_pl": "linie, kable, aparaty łączeniowe"
+          },
+          {
+            "nazwa_pl": "Parametry transformatorów",
+            "elementy_pl": "transformatory (S_n, u_k)"
+          },
+          {
+            "nazwa_pl": "Widmo harmoniczne i moc znamionowa przekształtników",
+            "elementy_pl": "karty katalogowe przekształtników PV/BESS/wiatrowych"
+          }
+        ],
+        "od_uzytkownika": [
+          {
+            "klucz": "harmonic_spectra",
+            "nazwa_pl": "Widmo harmoniczne przekształtnika (wejście ręczne)",
+            "jednostka": "% I_n per rząd",
+            "wymagane": false,
+            "opis_pl": "Nadpisuje widmo karty katalogowej wskazanego przekształtnika."
+          }
+        ],
+        "domyslne_solvera": []
+      },
+      "prezentowany": true,
+      "powod_wycofania_pl": null,
+      "katalog_odniesienia": "harmonic-limits",
+      "uwagi_metody_pl": [
+        "Brak przekładni transformatora: szyny różnych poziomów napięcia liczone są w omach bez sprowadzenia do wspólnej bazy.",
+        "Rezystancja transformatora zaniżona o czynnik kwadratu napięcia znamionowego.",
+        "Sieć nadrzędna zastąpiona admitancją 1e6 S na pierwszej szynie modelu; moc zwarciowa źródła zasilania nie wchodzi do obliczeń harmonicznych.",
+        "Kondensatory, odbiory i admitancja przekształtnika nie są modelowane.",
+        "Liczonych jest wyłącznie 18 zaszytych rzędów (2, 3, 5, 7, 11, 13, 17, 19, 23, 25, 29, 31, 35, 37, 41, 43, 47, 49); pozostałe rzędy widma są cicho pomijane.",
+        "Wszystkie źródła mają fazę zerową — prądy harmoniczne sumują się koherentnie.",
+        "Współczynnik THD odniesiony jest do napięcia znamionowego, nie do składowej podstawowej z rozpływu.",
+        "„Rezonans” to każdy punkt skanu z modułem impedancji ponad 10 razy większym niż przy 50 Hz — jeden rezonans daje dziesiątki wpisów.",
+        "Żadna wielkość nie ma niezależnej wyroczni (obliczenia ręcznego ani programu zewnętrznego)."
+      ],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "ssci_impedance",
+      "nazwa_pl": "Stabilność podsynchroniczna (SSCI)",
+      "grupa": {
+        "kod": "jakosc_energii_i_stabilnosc",
+        "nazwa_pl": "Jakość energii i stabilność przekształtników"
+      },
+      "pytanie_pl": "Czy przekształtnik przyłączony do sieci o danej sztywności nie wejdzie w interakcję podsynchroniczną (rezonans regulacyjny)?",
+      "zakres_pl": "Jeden przekształtnik — wskazany parametrem albo pierwszy przekształtnik modelu; impedancja sieci widziana z jego szyny i impedancja wyjściowa przekształtnika w paśmie podsynchronicznym. Ocena stabilności kryterium Nyquista nie jest wykonywana: impedancja sieci liczona jest bez przekładni transformatora.",
+      "wielkosci_glowne": [
+        {
+          "symbol": "Z_grid(f)",
+          "nazwa_pl": "Impedancja sieci z szyny przekształtnika",
+          "jednostka": "Ω",
+          "symbol_latex": "Z_{\\mathrm{grid}}(f)"
+        },
+        {
+          "symbol": "Z_conv(f)",
+          "nazwa_pl": "Impedancja wyjściowa przekształtnika",
+          "jednostka": "Ω",
+          "symbol_latex": "Z_{\\mathrm{conv}}(f)"
+        },
+        {
+          "symbol": "L(f)",
+          "nazwa_pl": "Wzmocnienie pętli mniejszej Z_grid/Z_conv",
+          "jednostka": "-",
+          "symbol_latex": "L(f) = Z_{\\mathrm{grid}}(f)/Z_{\\mathrm{conv}}(f)"
+        },
+        {
+          "symbol": "Re Z_conv,min",
+          "nazwa_pl": "Najmniejsza rezystancja wyjściowa przekształtnika",
+          "jednostka": "Ω",
+          "symbol_latex": "\\min\\ \\mathrm{Re}\\,Z_{\\mathrm{conv}}"
+        }
+      ],
+      "podstawa_oceny": [],
+      "bez_podstawy_pl": "Ta analiza dostarcza tablice impedancji. Ocena stabilności (kryterium impedancyjne Nyquista wg Sun 2011 / Wen 2016) nie jest wykonywana — impedancja sieci Z_grid(f) liczona jest bez przekładni transformatora; okno „Stabilność SSCI” pokazuje wyjaśnienie i metryki wyłącznie jako materiał audytowy.",
+      "dane": {
+        "z_modelu": [
+          {
+            "nazwa_pl": "Karta przekształtnika: napięcie i moc znamionowa, pasma pętli prądowej, napięciowej i PLL, opóźnienie regulacji, indukcyjność i rezystancja filtra, tryb pracy, punkt pracy P/Q",
+            "elementy_pl": "przekształtnik PV/BESS/wiatrowy z kartą katalogową"
+          },
+          {
+            "nazwa_pl": "Impedancje i susceptancje gałęzi",
+            "elementy_pl": "linie, kable, aparaty łączeniowe"
+          },
+          {
+            "nazwa_pl": "Moc zwarciowa źródła zasilania",
+            "elementy_pl": "źródło sieci nadrzędnej"
+          }
+        ],
+        "od_uzytkownika": [
+          {
+            "klucz": "ssci_converter_ref",
+            "nazwa_pl": "Oznaczenie przekształtnika do badania",
+            "jednostka": "-",
+            "wymagane": false,
+            "opis_pl": "Puste = pierwszy przekształtnik modelu."
+          }
+        ],
+        "domyslne_solvera": []
+      },
+      "prezentowany": true,
+      "powod_wycofania_pl": null,
+      "katalog_odniesienia": "converter-modes",
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "earthing_safety",
+      "nazwa_pl": "Bezpieczeństwo uziomu stacji",
+      "grupa": {
+        "kod": "uziemienia_i_izolacja",
+        "nazwa_pl": "Uziemienia, punkt neutralny i izolacja"
+      },
+      "pytanie_pl": "Czy przy zwarciu doziemnym napięcia rażenia na terenie stacji nie zagrażają człowiekowi?",
+      "zakres_pl": "Uziom kratowy jednej stacji: geometria siatki i uziomów pionowych, grunt dwuwarstwowy, warstwa powierzchniowa; rażenie dotykowe i krokowe przy prądzie zwarcia doziemnego odprowadzanym przez uziom w czasie wyłączenia.",
+      "wielkosci_glowne": [
+        {
+          "symbol": "R_g",
+          "nazwa_pl": "Rezystancja uziomu stacji",
+          "jednostka": "Ω",
+          "symbol_latex": "R_g"
+        },
+        {
+          "symbol": "GPR",
+          "nazwa_pl": "Wzrost potencjału uziomu",
+          "jednostka": "kV",
+          "symbol_latex": "\\mathrm{GPR}"
+        },
+        {
+          "symbol": "U_dot",
+          "nazwa_pl": "Napięcie dotykowe rażeniowe",
+          "jednostka": "V",
+          "symbol_latex": "U_{\\mathrm{dot}}"
+        },
+        {
+          "symbol": "U_kr",
+          "nazwa_pl": "Napięcie krokowe",
+          "jednostka": "V",
+          "symbol_latex": "U_{\\mathrm{kr}}"
+        },
+        {
+          "symbol": "I_g",
+          "nazwa_pl": "Prąd odprowadzany przez uziom",
+          "jednostka": "kA",
+          "symbol_latex": "I_g"
+        }
+      ],
+      "podstawa_oceny": [
+        {
+          "wielkosc_pl": "Napięcie dotykowe rażeniowe",
+          "symbol": "U_dot",
+          "jednostka": "V",
+          "warunek_pl": "wartość dopuszczalna liczona z rezystywności warstwy powierzchniowej, jej współczynnika redukcji i czasu wyłączenia zwarcia (ciało 70 kg) — wzór obok",
+          "wartosc_graniczna": "U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f",
+          "zrodlo_pl": "IEEE 80 (metoda Sverak) · PN-EN 50522",
+          "symbol_latex": "U_{\\mathrm{dot}}",
+          "warunek_latex": "U_{\\mathrm{dot}} \\leq U_{\\mathrm{dot,dop}}",
+          "wzor_latex": "U_{\\mathrm{dot,dop}} = \\left(1000 + 1{,}5\\, C_s\\, \\rho_s\\right)\\cdot \\dfrac{0{,}157}{\\sqrt{t_f}}",
+          "wzor_opis_pl": "ρ_s — rezystywność warstwy powierzchniowej [Ω·m]; C_s — współczynnik redukcji warstwy powierzchniowej; t_f — czas wyłączenia zwarcia [s]; ciało człowieka 70 kg. IEEE 80 (metoda Sveraka) · PN-EN 50522."
+        },
+        {
+          "wielkosc_pl": "Napięcie krokowe",
+          "symbol": "U_kr",
+          "jednostka": "V",
+          "warunek_pl": "wartość dopuszczalna liczona jak dla napięcia dotykowego, ze współczynnikiem 6 zamiast 1,5 — wzór obok",
+          "wartosc_graniczna": "U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f",
+          "zrodlo_pl": "IEEE 80 (metoda Sverak) · PN-EN 50522",
+          "symbol_latex": "U_{\\mathrm{kr}}",
+          "warunek_latex": "U_{\\mathrm{kr}} \\leq U_{\\mathrm{kr,dop}}",
+          "wzor_latex": "U_{\\mathrm{kr,dop}} = \\left(1000 + 6\\, C_s\\, \\rho_s\\right)\\cdot \\dfrac{0{,}157}{\\sqrt{t_f}}",
+          "wzor_opis_pl": "ρ_s — rezystywność warstwy powierzchniowej [Ω·m]; C_s — współczynnik redukcji warstwy powierzchniowej; t_f — czas wyłączenia zwarcia [s]; ciało człowieka 70 kg. IEEE 80 (metoda Sveraka) · PN-EN 50522."
+        },
+        {
+          "wielkosc_pl": "Przekroczenie tolerowane ze środkami dodatkowymi",
+          "symbol": "U/U_dop",
+          "jednostka": "-",
+          "warunek_pl": "przekroczenie do 25 % daje stan „wymaga ochrony\", powyżej — „niezgodny\"",
+          "wartosc_graniczna": 1.25,
+          "zrodlo_pl": "reguła solvera (klasyfikacja stanu)",
+          "symbol_latex": "U/U_{\\mathrm{dop}}",
+          "warunek_latex": "U/U_{\\mathrm{dop}} \\leq 1{,}25",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
+        }
+      ],
+      "bez_podstawy_pl": null,
+      "dane": {
+        "z_modelu": [],
+        "od_uzytkownika": [
+          {
+            "klucz": "earthing.gpz_ref",
+            "nazwa_pl": "Oznaczenie stacji",
+            "jednostka": "-",
+            "wymagane": false,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "earthing.rho1_ohm_m",
+            "nazwa_pl": "Rezystywność warstwy górnej gruntu",
+            "jednostka": "Ω·m",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "earthing.rho2_ohm_m",
+            "nazwa_pl": "Rezystywność warstwy dolnej gruntu",
+            "jednostka": "Ω·m",
+            "wymagane": false,
+            "opis_pl": "Raportowana w wyniku; rachunek IEEE 80 solvera używa warstwy górnej."
+          },
+          {
+            "klucz": "earthing.h1_m",
+            "nazwa_pl": "Grubość warstwy górnej gruntu",
+            "jednostka": "m",
+            "wymagane": false,
+            "opis_pl": "Raportowana w wyniku; rachunek solvera jej nie używa."
+          },
+          {
+            "klucz": "earthing.length_m",
+            "nazwa_pl": "Długość uziomu kratowego",
+            "jednostka": "m",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "earthing.width_m",
+            "nazwa_pl": "Szerokość uziomu kratowego",
+            "jednostka": "m",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "earthing.mesh_spacing_m",
+            "nazwa_pl": "Rozstaw oczek siatki",
+            "jednostka": "m",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "earthing.buried_depth_m",
+            "nazwa_pl": "Głębokość ułożenia siatki",
+            "jednostka": "m",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "earthing.rods_total_length_m",
+            "nazwa_pl": "Sumaryczna długość uziomów pionowych",
+            "jednostka": "m",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "earthing.split_factor",
+            "nazwa_pl": "Współczynnik podziału prądu zwarciowego",
+            "jednostka": "-",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "earthing.fault_current_ka",
+            "nazwa_pl": "Prąd zwarcia doziemnego",
+            "jednostka": "kA",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "earthing.fault_clearing_time_s",
+            "nazwa_pl": "Czas wyłączenia zwarcia",
+            "jednostka": "s",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "earthing.surface_layer_rho_ohm_m",
+            "nazwa_pl": "Rezystywność warstwy powierzchniowej",
+            "jednostka": "Ω·m",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "earthing.surface_layer_derating",
+            "nazwa_pl": "Współczynnik redukcji warstwy powierzchniowej",
+            "jednostka": "-",
+            "wymagane": true,
+            "opis_pl": ""
+          }
+        ],
+        "domyslne_solvera": []
+      },
+      "prezentowany": true,
+      "powod_wycofania_pl": null,
+      "katalog_odniesienia": null,
+      "uwagi_metody_pl": [
+        "Model sieci nie niesie geometrii uziomu ani danych gruntu — bez danych projektanta analiza nie jest uruchamiana (zakaz podstawiania uziomu domyślnego)."
+      ],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "insulation_coordination",
+      "nazwa_pl": "Koordynacja izolacji",
+      "grupa": {
+        "kod": "uziemienia_i_izolacja",
+        "nazwa_pl": "Uziemienia, punkt neutralny i izolacja"
+      },
+      "pytanie_pl": "Czy dobrane ograniczniki przepięć chronią izolację aparatów z wymaganym zapasem?",
+      "zakres_pl": "Ograniczniki przepięć modelu (aparaty pierwotne pól i stacji) — jedno miejsce zainstalowania per szyna i typ; poziom izolacji z typoszeregu IEC 60071-1 dla najwyższego napięcia urządzenia; sposób uziemienia punktu neutralnego z modelu.",
+      "wielkosci_glowne": [
+        {
+          "symbol": "MCOV",
+          "nazwa_pl": "Trwałe dopuszczalne napięcie pracy ogranicznika",
+          "jednostka": "kV",
+          "symbol_latex": "\\mathrm{MCOV}"
+        },
+        {
+          "symbol": "U_res",
+          "nazwa_pl": "Napięcie obniżone przy prądzie 10 kA",
+          "jednostka": "kV",
+          "symbol_latex": "U_{\\mathrm{res}}"
+        },
+        {
+          "symbol": "BIL",
+          "nazwa_pl": "Wytrzymałość udarowa piorunowa izolacji",
+          "jednostka": "kV",
+          "symbol_latex": "\\mathrm{BIL}"
+        },
+        {
+          "symbol": "TOV",
+          "nazwa_pl": "Przewidywane przepięcie dorywcze",
+          "jednostka": "kV",
+          "symbol_latex": "\\mathrm{TOV}"
+        },
+        {
+          "symbol": "M_BIL",
+          "nazwa_pl": "Margines ochrony izolacji",
+          "jednostka": "%",
+          "symbol_latex": "M_{\\mathrm{BIL}}"
+        }
+      ],
+      "podstawa_oceny": [
+        {
+          "wielkosc_pl": "Margines ochrony izolacji",
+          "symbol": "M_BIL",
+          "jednostka": "%",
+          "warunek_pl": "M_BIL = (BIL − U_res)/U_res·100 ≥ granica, w każdym miejscu zainstalowania",
+          "wartosc_graniczna": 20.0,
+          "zrodlo_pl": "IEC 60071 (koordynacja izolacji)",
+          "symbol_latex": "M_{\\mathrm{BIL}}",
+          "warunek_latex": "M_{\\mathrm{BIL}} = \\dfrac{\\mathrm{BIL} - U_{\\mathrm{res}}}{U_{\\mathrm{res}}}\\cdot 100\\% \\geq 20\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
+        },
+        {
+          "wielkosc_pl": "Przepięcie dorywcze",
+          "symbol": "TOV",
+          "jednostka": "kV",
+          "warunek_pl": "TOV ≤ U_r ogranicznika (1,25·MCOV)",
+          "wartosc_graniczna": "U_r = 1,25·MCOV",
+          "zrodlo_pl": "IEC 60071 / IEC 60099-4",
+          "symbol_latex": "\\mathrm{TOV}",
+          "warunek_latex": "\\mathrm{TOV} \\leq U_r",
+          "wzor_latex": "U_r = 1{,}25\\cdot \\mathrm{MCOV}",
+          "wzor_opis_pl": "MCOV — trwałe dopuszczalne napięcie pracy ogranicznika [kV]; U_r — napięcie znamionowe ogranicznika [kV]. IEC 60071 / IEC 60099-4."
+        }
+      ],
+      "bez_podstawy_pl": null,
+      "dane": {
+        "z_modelu": [
+          {
+            "nazwa_pl": "Ograniczniki przepięć i ich karty katalogowe (MCOV, U_res, TOV, energia)",
+            "elementy_pl": "aparaty pierwotne pól i stacji"
+          },
+          {
+            "nazwa_pl": "Najwyższe napięcie urządzenia U_m",
+            "elementy_pl": "karta ogranicznika albo poziom napięcia szyny"
+          },
+          {
+            "nazwa_pl": "Sposób uziemienia punktu neutralnego",
+            "elementy_pl": "szyny, transformatory"
+          }
+        ],
+        "od_uzytkownika": [],
+        "domyslne_solvera": [
+          {
+            "klucz": "arrester_mcov_kv",
+            "nazwa_pl": "Dobór wstępny ogranicznika bez karty katalogowej",
+            "wartosc": "MCOV = 1,05·U_m (sieć izolowana) albo 1,05·U_m/√3 (uziemiona); U_res = 2,8·MCOV; TOV = 1,4·U_m (izolowana) albo 1,15·U_m",
+            "jednostka": "kV",
+            "uzasadnienie_pl": "Reguły doboru wstępnego solvera stosowane WYŁĄCZNIE przy braku karty ogranicznika — miejsce bez karty jest oznaczone w gotowości."
+          }
+        ]
+      },
+      "prezentowany": true,
+      "powod_wycofania_pl": null,
+      "katalog_odniesienia": "insulation-levels",
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "earth_fault_detection",
+      "nazwa_pl": "Detekcja zwarć doziemnych",
+      "grupa": {
+        "kod": "uziemienia_i_izolacja",
+        "nazwa_pl": "Uziemienia, punkt neutralny i izolacja"
+      },
+      "pytanie_pl": "Jaką metodą wykryć zwarcie doziemne przy danym sposobie uziemienia punktu neutralnego i czy przekaźnik w polu ją obsługuje?",
+      "zakres_pl": "Sieć SN jako całość: sposób uziemienia punktu neutralnego wobec wyposażenia przekaźnika; wynik = metoda zalecana i alternatywna z tabeli decyzyjnej.",
+      "wielkosci_glowne": [
+        {
+          "symbol": "metoda",
+          "nazwa_pl": "Metoda detekcji zalecana i alternatywna",
+          "jednostka": "-",
+          "symbol_latex": "\\text{metoda}"
+        },
+        {
+          "symbol": "obsługa",
+          "nazwa_pl": "Dostępność metody zalecanej w przekaźniku",
+          "jednostka": "-",
+          "symbol_latex": "\\text{obsługa}"
+        }
+      ],
+      "podstawa_oceny": [],
+      "bez_podstawy_pl": "Tabela decyzyjna (praktyka sieci SN kompensowanych i uziemionych przez rezystor) — bez wartości granicznej; nastawy rozruchowe U0/P0/I5 nie są prezentowane, bo solver nie ma dla nich udokumentowanej podstawy.",
+      "dane": {
+        "z_modelu": [
+          {
+            "nazwa_pl": "Sposób uziemienia punktu neutralnego (wartość proponowana do potwierdzenia)",
+            "elementy_pl": "szyny SN, transformatory"
+          }
+        ],
+        "od_uzytkownika": [
+          {
+            "klucz": "neutral_grounding",
+            "nazwa_pl": "Sposób uziemienia punktu neutralnego",
+            "jednostka": "-",
+            "wymagane": true,
+            "opis_pl": "Proponowany z modelu, gdy model niesie uziemienie punktu neutralnego."
+          },
+          {
+            "klucz": "relay_methods",
+            "nazwa_pl": "Metody detekcji dostępne w przekaźniku",
+            "jednostka": "-",
+            "wymagane": true,
+            "opis_pl": "Wyposażenie przekaźnika pola — model go nie niesie."
+          }
+        ],
+        "domyslne_solvera": []
+      },
+      "prezentowany": true,
+      "powod_wycofania_pl": null,
+      "katalog_odniesienia": null,
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "neutral_earthing_design",
+      "nazwa_pl": "Dobór uziemienia punktu neutralnego",
+      "grupa": {
+        "kod": "uziemienia_i_izolacja",
+        "nazwa_pl": "Uziemienia, punkt neutralny i izolacja"
+      },
+      "pytanie_pl": "Jak uziemić punkt neutralny sieci i jaki dobrać dławik gaszący albo rezystor, żeby ograniczyć prąd zwarcia doziemnego?",
+      "zakres_pl": "Galwanicznie połączona sieć SN: pojemność doziemna z susceptancji zerowej linii i kabli (łączniki otwarte pominięte; element bez susceptancji zerowej jest pomijany i wymieniony); napięcie sieci = najwyższe napięcie znamionowe szyny modelu; dobór dławika gaszącego (Petersen) albo rezystora uziemiającego.",
+      "wielkosci_glowne": [
+        {
+          "symbol": "I_C",
+          "nazwa_pl": "Prąd pojemnościowy doziemienia sieci",
+          "jednostka": "A",
+          "symbol_latex": "I_C"
+        },
+        {
+          "symbol": "C_0",
+          "nazwa_pl": "Pojemność doziemna sieci",
+          "jednostka": "F",
+          "symbol_latex": "C_0"
+        },
+        {
+          "symbol": "L, X_L",
+          "nazwa_pl": "Indukcyjność i reaktancja dławika",
+          "jednostka": "H, Ω",
+          "symbol_latex": "L,\\ X_L"
+        },
+        {
+          "symbol": "I_res",
+          "nazwa_pl": "Prąd resztkowy przy rozstrojeniu",
+          "jednostka": "A",
+          "symbol_latex": "I_{\\mathrm{res}}"
+        },
+        {
+          "symbol": "R_N",
+          "nazwa_pl": "Rezystancja uziemiająca punktu neutralnego",
+          "jednostka": "Ω",
+          "symbol_latex": "R_N"
+        },
+        {
+          "symbol": "E",
+          "nazwa_pl": "Energia wydzielona w rezystorze w czasie wyłączenia",
+          "jednostka": "J",
+          "symbol_latex": "E"
+        }
+      ],
+      "podstawa_oceny": [
+        {
+          "wielkosc_pl": "Prąd resztkowy (sieć kompensowana)",
+          "symbol": "I_res/I_C",
+          "jednostka": "-",
+          "warunek_pl": "I_res przy przyjętym rozstrojeniu ≤ udział granicznego prądu pojemnościowego",
+          "wartosc_graniczna": 0.1,
+          "zrodlo_pl": "kompensacja rezonansowa Petersena · IEC 62271-203",
+          "symbol_latex": "I_{\\mathrm{res}}/I_C",
+          "warunek_latex": "I_{\\mathrm{res}}/I_C \\leq 10\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
+        },
+        {
+          "wielkosc_pl": "Energia w rezystorze (sieć uziemiona przez rezystor)",
+          "symbol": "E",
+          "jednostka": "J",
+          "warunek_pl": "E = I_ef²·R·t_wył ≤ E_n rezystora",
+          "wartosc_graniczna": "E ≤ E_n",
+          "zrodlo_pl": "IEC 60364 / praktyka sieci uziemionych przez rezystor",
+          "symbol_latex": "E",
+          "warunek_latex": "E \\leq E_n",
+          "wzor_latex": "E = I_{\\mathrm{ef}}^2 \\cdot R \\cdot t_{\\text{wył}}",
+          "wzor_opis_pl": "I_ef — wynikowy prąd doziemienia [A]; R — rezystancja uziemiająca punktu neutralnego [Ω]; t_wył — czas wyłączenia zwarcia [s]; E_n — energia znamionowa rezystora [J]."
+        }
+      ],
+      "bez_podstawy_pl": null,
+      "dane": {
+        "z_modelu": [
+          {
+            "nazwa_pl": "Susceptancja zerowa (doziemna) i długość gałęzi",
+            "elementy_pl": "linie, kable"
+          },
+          {
+            "nazwa_pl": "Napięcie znamionowe sieci",
+            "elementy_pl": "szyny"
+          },
+          {
+            "nazwa_pl": "Sposób uziemienia punktu neutralnego (wartość proponowana do potwierdzenia)",
+            "elementy_pl": "szyny SN, transformatory"
+          }
+        ],
+        "od_uzytkownika": [
+          {
+            "klucz": "neutral_earthing_type",
+            "nazwa_pl": "Schemat uziemienia punktu neutralnego",
+            "jednostka": "-",
+            "wymagane": true,
+            "opis_pl": "Dławik gaszący albo rezystor; proponowany z modelu."
+          },
+          {
+            "klucz": "ner_target_earth_fault_current_a",
+            "nazwa_pl": "Docelowy prąd doziemienia (rezystor)",
+            "jednostka": "A",
+            "wymagane": true,
+            "opis_pl": "Wymagany dla schematu rezystorowego."
+          },
+          {
+            "klucz": "ner_clearing_time_s",
+            "nazwa_pl": "Czas wyłączenia (rezystor)",
+            "jednostka": "s",
+            "wymagane": true,
+            "opis_pl": "Wymagany dla sprawdzenia cieplnego rezystora."
+          },
+          {
+            "klucz": "ner_energy_rating_j",
+            "nazwa_pl": "Energia znamionowa rezystora",
+            "jednostka": "J",
+            "wymagane": true,
+            "opis_pl": "Wymagana dla sprawdzenia cieplnego rezystora."
+          },
+          {
+            "klucz": "petersen_detuning",
+            "nazwa_pl": "Stopień rozstrojenia dławika",
+            "jednostka": "-",
+            "wymagane": false,
+            "opis_pl": "Opcjonalnie; bez wpisu solver przyjmuje wartość domyślną 0,05 (±5 %)."
+          },
+          {
+            "klucz": "petersen_residual_damping",
+            "nazwa_pl": "Tłumienie prądu resztkowego",
+            "jednostka": "-",
+            "wymagane": false,
+            "opis_pl": "Opcjonalnie (d = I_R/I_C z karty dławika); bez wpisu 0 — bez strat dławika."
+          }
+        ],
+        "domyslne_solvera": [
+          {
+            "klucz": "petersen_detuning",
+            "nazwa_pl": "Stopień rozstrojenia dławika",
+            "wartosc": 0.05,
+            "jednostka": "-",
+            "uzasadnienie_pl": "Parametr metody: ±5 % rozstrojenia przyjęte przy braku wartości projektanta."
+          },
+          {
+            "klucz": "petersen_residual_damping",
+            "nazwa_pl": "Składowa tłumienia prądu resztkowego",
+            "wartosc": 0.0,
+            "jednostka": "-",
+            "uzasadnienie_pl": "Parametr metody: brak strat dławika w karcie ⇒ 0 (prąd resztkowy w rezonansie = 0)."
+          }
+        ]
+      },
+      "prezentowany": true,
+      "powod_wycofania_pl": null,
+      "katalog_odniesienia": null,
+      "uwagi_metody_pl": [
+        "Solver przyjmuje jako napięcie sieci najwyższe napięcie znamionowe szyny modelu — w modelu z szyną WN (np. 110 kV) dobór odnosi się do tego poziomu, nie do SN."
+      ],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "transient_trv",
+      "nazwa_pl": "Napięcie powrotne i stany przejściowe",
+      "grupa": {
+        "kod": "aparatura_i_stany_przejsciowe",
+        "nazwa_pl": "Aparatura i stany przejściowe"
+      },
+      "pytanie_pl": "Czy napięcie powrotne po przerwaniu prądu zwarciowego mieści się pod obwiednią wytrzymałości wyłącznika?",
+      "zakres_pl": "Wyłącznik o napięciu znamionowym U_r; przebieg napięcia powrotnego 2–100 µs wobec obwiedni wytrzymałości; udar załączania transformatora i zalecenie blokady różnicowej; ryzyko ferrorezonansu z pojemności doczepnej gałęzi sieci izolowanej.",
+      "wielkosci_glowne": [
+        {
+          "symbol": "M_TRV",
+          "nazwa_pl": "Najmniejszy margines napięcia powrotnego",
+          "jednostka": "%",
+          "symbol_latex": "M_{\\mathrm{TRV}}"
+        },
+        {
+          "symbol": "I_2h/I_szczyt",
+          "nazwa_pl": "Udział 2. harmonicznej w prądzie załączania",
+          "jednostka": "%",
+          "symbol_latex": "I_{2h}/I_{\\mathrm{szczyt}}"
+        },
+        {
+          "symbol": "ferro",
+          "nazwa_pl": "Ryzyko ferrorezonansu",
+          "jednostka": "-",
+          "symbol_latex": "\\text{ferro}"
+        }
+      ],
+      "podstawa_oceny": [
+        {
+          "wielkosc_pl": "Margines napięcia powrotnego",
+          "symbol": "M_TRV",
+          "jednostka": "%",
+          "warunek_pl": "M_TRV = (obwiednia − u_TRV)/obwiednia·100 ≥ granica w całym przebiegu",
+          "wartosc_graniczna": 10.0,
+          "zrodlo_pl": "IEC 62271-100 (obwiednia napięcia powrotnego)",
+          "symbol_latex": "M_{\\mathrm{TRV}}",
+          "warunek_latex": "M_{\\mathrm{TRV}} = \\dfrac{\\text{obwiednia} - u_{\\mathrm{TRV}}}{\\text{obwiednia}}\\cdot 100\\% \\geq 10\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
+        },
+        {
+          "wielkosc_pl": "Blokada różnicowej od 2. harmonicznej",
+          "symbol": "I_2h/I_szczyt",
+          "jednostka": "%",
+          "warunek_pl": "udział ≥ granica ⇒ blokada 87T zalecana",
+          "wartosc_graniczna": 10.0,
+          "zrodlo_pl": "reguła solvera (praktyka zabezpieczeń różnicowych)",
+          "symbol_latex": "I_{2h}/I_{\\mathrm{szczyt}}",
+          "warunek_latex": "I_{2h}/I_{\\mathrm{szczyt}} \\geq 10\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
+        }
+      ],
+      "bez_podstawy_pl": null,
+      "dane": {
+        "z_modelu": [
+          {
+            "nazwa_pl": "Najwyższe napięcie znamionowe szyn (proponowane U_r)",
+            "elementy_pl": "szyny"
+          },
+          {
+            "nazwa_pl": "Susceptancje doziemne gałęzi (ferrorezonans)",
+            "elementy_pl": "linie, kable"
+          },
+          {
+            "nazwa_pl": "Sposób uziemienia punktu neutralnego (wartość proponowana do potwierdzenia)",
+            "elementy_pl": "szyny SN, transformatory"
+          }
+        ],
+        "od_uzytkownika": [
+          {
+            "klucz": "breaker_rated_voltage_kv",
+            "nazwa_pl": "Napięcie znamionowe wyłącznika",
+            "jednostka": "kV",
+            "wymagane": false,
+            "opis_pl": "Puste = najwyższe napięcie znamionowe szyny modelu."
+          },
+          {
+            "klucz": "trv_natural_frequency_hz",
+            "nazwa_pl": "Częstotliwość własna napięcia powrotnego",
+            "jednostka": "Hz",
+            "wymagane": true,
+            "opis_pl": "Właściwość obwodu wyłączanego — model jej nie niesie."
+          },
+          {
+            "klucz": "trv_tau_s",
+            "nazwa_pl": "Stała czasowa napięcia powrotnego",
+            "jednostka": "s",
+            "wymagane": true,
+            "opis_pl": "Właściwość obwodu."
+          },
+          {
+            "klucz": "inrush_multiple_in",
+            "nazwa_pl": "Krotność prądu załączania transformatora",
+            "jednostka": "× I_n",
+            "wymagane": true,
+            "opis_pl": "Właściwość transformatora — model jej nie niesie."
+          },
+          {
+            "klucz": "neutral_grounding",
+            "nazwa_pl": "Sposób uziemienia punktu neutralnego",
+            "jednostka": "-",
+            "wymagane": true,
+            "opis_pl": "Proponowany z modelu, gdy model niesie uziemienie punktu neutralnego."
+          }
+        ],
+        "domyslne_solvera": []
+      },
+      "prezentowany": true,
+      "powod_wycofania_pl": null,
+      "katalog_odniesienia": null,
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "motor_starting",
+      "nazwa_pl": "Rozruch silników",
+      "grupa": {
+        "kod": "aparatura_i_stany_przejsciowe",
+        "nazwa_pl": "Aparatura i stany przejściowe"
+      },
+      "pytanie_pl": "Czy silnik ruszy pod obciążeniem i czy jego rozruch nie zapadnie napięcia na szynie poniżej dopuszczalnego?",
+      "zakres_pl": "Silniki podane przez projektanta (model sieci nie zawiera silników), każdy na wskazanej szynie; impedancja źródła z mocy zwarciowej szyny albo z pierwszej gałęzi zasilającej.",
+      "wielkosci_glowne": [
+        {
+          "symbol": "I_r",
+          "nazwa_pl": "Prąd rozruchowy",
+          "jednostka": "A",
+          "symbol_latex": "I_r"
+        },
+        {
+          "symbol": "ΔU",
+          "nazwa_pl": "Zapad napięcia na szynie",
+          "jednostka": "%",
+          "symbol_latex": "\\Delta U"
+        },
+        {
+          "symbol": "M_r",
+          "nazwa_pl": "Moment rozruchowy",
+          "jednostka": "j.w.",
+          "symbol_latex": "M_r"
+        },
+        {
+          "symbol": "I²t",
+          "nazwa_pl": "Wykorzystanie dopuszczalnego czasu utyku",
+          "jednostka": "-",
+          "symbol_latex": "I^{2} t"
+        }
+      ],
+      "podstawa_oceny": [
+        {
+          "wielkosc_pl": "Zapad napięcia na szynie",
+          "symbol": "ΔU",
+          "jednostka": "%",
+          "warunek_pl": "ΔU ≤ granica przy prądzie rozruchowym k_LR·I_n",
+          "wartosc_graniczna": 15.0,
+          "zrodlo_pl": "kryteria rozruchowe silników SN (reguła solvera)",
+          "symbol_latex": "\\Delta U",
+          "warunek_latex": "\\Delta U \\leq 15\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
+        },
+        {
+          "wielkosc_pl": "Wskaźnik cieplny rozruchu",
+          "symbol": "I²t",
+          "jednostka": "-",
+          "warunek_pl": "k_LR²·t_rozruchu/t_utyku ≤ granica",
+          "wartosc_graniczna": 1.0,
+          "zrodlo_pl": "kryteria rozruchowe silników SN (reguła solvera)",
+          "symbol_latex": "I^{2} t",
+          "warunek_latex": "k_{LR}^2 \\cdot \\dfrac{t_{\\mathrm{rozruchu}}}{t_{\\mathrm{utyku}}} \\leq 1",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
+        },
+        {
+          "wielkosc_pl": "Moment rozruchowy",
+          "symbol": "M_r",
+          "jednostka": "j.w.",
+          "warunek_pl": "M_r > M_obciążenia przy rozruchu",
+          "wartosc_graniczna": "M_r > M_obc",
+          "zrodlo_pl": "kryteria rozruchowe silników SN (reguła solvera)",
+          "symbol_latex": "M_r",
+          "warunek_latex": "M_r > M_{\\mathrm{obc}}",
+          "wzor_latex": "M_r > M_{\\mathrm{obc}}",
+          "wzor_opis_pl": "M_r — moment rozruchowy silnika w jednostkach względnych; M_obc — moment obciążenia napędzanego mechanizmu przy rozruchu, w tych samych jednostkach. Granica nie jest stałą liczbą — jest porównaniem dwóch wielkości z tego samego biegu."
+        }
+      ],
+      "bez_podstawy_pl": null,
+      "dane": {
+        "z_modelu": [
+          {
+            "nazwa_pl": "Moc zwarciowa szyny albo impedancja gałęzi zasilającej",
+            "elementy_pl": "szyny, gałęzie"
+          }
+        ],
+        "od_uzytkownika": [
+          {
+            "klucz": "motors[].ref",
+            "nazwa_pl": "Oznaczenie silnika",
+            "jednostka": "-",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "motors[].bus_ref",
+            "nazwa_pl": "Szyna przyłączenia",
+            "jednostka": "-",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "motors[].rated_kw",
+            "nazwa_pl": "Moc znamionowa",
+            "jednostka": "kW",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "motors[].rated_voltage_kv",
+            "nazwa_pl": "Napięcie znamionowe",
+            "jednostka": "kV",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "motors[].locked_rotor_multiplier",
+            "nazwa_pl": "Krotność prądu rozruchowego",
+            "jednostka": "-",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "motors[].start_power_factor",
+            "nazwa_pl": "Współczynnik mocy przy rozruchu",
+            "jednostka": "-",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "motors[].start_time_s",
+            "nazwa_pl": "Czas rozruchu",
+            "jednostka": "s",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "motors[].allowable_locked_rotor_time_s",
+            "nazwa_pl": "Dopuszczalny czas utyku",
+            "jednostka": "s",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "motors[].max_torque_pu",
+            "nazwa_pl": "Moment maksymalny",
+            "jednostka": "j.w.",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "motors[].critical_slip",
+            "nazwa_pl": "Poślizg krytyczny",
+            "jednostka": "-",
+            "wymagane": true,
+            "opis_pl": ""
+          },
+          {
+            "klucz": "motors[].load_start_torque_pu",
+            "nazwa_pl": "Moment obciążenia przy rozruchu",
+            "jednostka": "j.w.",
+            "wymagane": true,
+            "opis_pl": ""
+          }
+        ],
+        "domyslne_solvera": []
+      },
+      "prezentowany": true,
+      "powod_wycofania_pl": null,
+      "katalog_odniesienia": null,
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "reliability_contingency",
+      "nazwa_pl": "Niezawodność zasilania",
+      "grupa": {
+        "kod": "niezawodnosc_i_niepewnosc",
+        "nazwa_pl": "Niezawodność i niepewność wyniku"
+      },
+      "pytanie_pl": "Jak często i jak długo odbiorcy pozostaną bez zasilania z powodu awarii elementów sieci?",
+      "zakres_pl": "Wszystkie gałęzie modelu (linie, kable, aparaty łączeniowe) jako zdarzenia N-1; odbiorcy dotknięci awarią = odbiorcy szyny końcowej gałęzi; wskaźniki liczone z intensywności uszkodzeń i czasów odtworzenia elementów.",
+      "wielkosci_glowne": [
+        {
+          "symbol": "SAIDI",
+          "nazwa_pl": "Średni czas przerw na odbiorcę",
+          "jednostka": "min/rok",
+          "symbol_latex": "\\mathrm{SAIDI}"
+        },
+        {
+          "symbol": "SAIFI",
+          "nazwa_pl": "Średnia liczba przerw na odbiorcę",
+          "jednostka": "1/rok",
+          "symbol_latex": "\\mathrm{SAIFI}"
+        },
+        {
+          "symbol": "CAIDI",
+          "nazwa_pl": "Średni czas trwania jednej przerwy",
+          "jednostka": "min",
+          "symbol_latex": "\\mathrm{CAIDI}"
+        },
+        {
+          "symbol": "MAIFI",
+          "nazwa_pl": "Średnia liczba przerw krótkich",
+          "jednostka": "1/rok",
+          "symbol_latex": "\\mathrm{MAIFI}"
+        }
+      ],
+      "podstawa_oceny": [],
+      "bez_podstawy_pl": "Solver nie stosuje progu normatywnego — wartości docelowe wskaźników określa operator; IEEE 1366 definiuje wyłącznie sposób liczenia wskaźników.",
+      "dane": {
+        "z_modelu": [
+          {
+            "nazwa_pl": "Rodzaj i długość gałęzi",
+            "elementy_pl": "linie, kable, aparaty łączeniowe"
+          },
+          {
+            "nazwa_pl": "Obciążenie i generacja szyn (moc czynna i bierna)",
+            "elementy_pl": "odbiory, wytwórcy"
+          },
+          {
+            "nazwa_pl": "Obciążalność długotrwała gałęzi",
+            "elementy_pl": "linie, kable, aparaty (model lub karta)"
+          }
+        ],
+        "od_uzytkownika": [
+          {
+            "klucz": "customer_counts",
+            "nazwa_pl": "Liczba odbiorców zasilanych z szyny",
+            "jednostka": "-",
+            "wymagane": true,
+            "opis_pl": "Model sieci nie niesie liczby odbiorców — projektant podaje ją dla szyn zasilających odbiorców (identyfikator szyny → liczba odbiorców); wskaźniki SAIDI/SAIFI/CAIDI są tą liczbą ważone."
+          }
+        ],
+        "domyslne_solvera": [
+          {
+            "klucz": "failure_rate_per_year",
+            "nazwa_pl": "Intensywność uszkodzeń elementu",
+            "wartosc": "0,08 (linia napowietrzna) / 0,015 (kabel) na km i rok; 0,015 na rok (aparat)",
+            "jednostka": "1/rok",
+            "uzasadnienie_pl": "Wartości typowe z katalogu danych odniesienia „reliability-defaults”; model nie niesie danych niezawodnościowych elementów."
+          },
+          {
+            "klucz": "mttr_h",
+            "nazwa_pl": "Czas odtworzenia zasilania po awarii elementu",
+            "wartosc": "3,5 (linia napowietrzna) / 12 (kabel) / 4 (aparat)",
+            "jednostka": "h",
+            "uzasadnienie_pl": "Wartości typowe z katalogu danych odniesienia „reliability-defaults”."
+          }
+        ]
+      },
+      "prezentowany": true,
+      "powod_wycofania_pl": null,
+      "katalog_odniesienia": "reliability-defaults",
+      "uwagi_metody_pl": [
+        "Ranking dotkliwości kontyngencji N-1 nie jest prezentowany z tej analizy — kanon liczy go pełnym rozpływem na ekranie „Kontyngencje N-1”."
+      ],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "uncertainty_sensitivity",
+      "nazwa_pl": "Niepewność i wrażliwość wyniku",
+      "grupa": {
+        "kod": "niezawodnosc_i_niepewnosc",
+        "nazwa_pl": "Niezawodność i niepewność wyniku"
+      },
+      "pytanie_pl": "Jak bardzo niepewność danych katalogowych przenosi się na wynik i który parametr o tym decyduje?",
+      "zakres_pl": "Transformatory (napięcie zwarcia), gałęzie (moduł impedancji) i szyny z mocą zwarciową; tolerancje propagowane jako niezależne składowe wariancji wyniku; ranking udziałów parametrów.",
+      "wielkosci_glowne": [
+        {
+          "symbol": "U_95",
+          "nazwa_pl": "Niepewność rozszerzona wyniku (k = 2)",
+          "jednostka": "%",
+          "symbol_latex": "U_{95}"
+        },
+        {
+          "symbol": "udział",
+          "nazwa_pl": "Udział parametru w całkowitej niepewności",
+          "jednostka": "%",
+          "symbol_latex": "\\text{udział}"
+        }
+      ],
+      "podstawa_oceny": [],
+      "bez_podstawy_pl": "Solver nie stosuje progu normatywnego; niepewność powyżej 100 % oznacza wynik niewiarygodny (blok wiarygodności), a ranking wskazuje parametr do uściślenia.",
+      "dane": {
+        "z_modelu": [
+          {
+            "nazwa_pl": "Napięcie zwarcia transformatorów",
+            "elementy_pl": "transformatory"
+          },
+          {
+            "nazwa_pl": "Impedancje gałęzi",
+            "elementy_pl": "linie, kable, aparaty łączeniowe"
+          },
+          {
+            "nazwa_pl": "Moc zwarciowa szyn zasilanych ze źródła",
+            "elementy_pl": "źródła"
+          }
+        ],
+        "od_uzytkownika": [],
+        "domyslne_solvera": [
+          {
+            "klucz": "tolerancje",
+            "nazwa_pl": "Tolerancje danych katalogowych przyjęte w propagacji",
+            "wartosc": "10 % napięcia zwarcia; 5 % modułu impedancji gałęzi; 10 % mocy zwarciowej",
+            "jednostka": "%",
+            "uzasadnienie_pl": "Założenie metody zaszyte w solverze (dokumentowane w śladzie obliczeń)."
+          },
+          {
+            "klucz": "k",
+            "nazwa_pl": "Współczynnik rozszerzenia przedziału",
+            "wartosc": 2.0,
+            "jednostka": "-",
+            "uzasadnienie_pl": "Przedział rozszerzony k = 2 (ok. 95 %)."
+          }
+        ]
+      },
+      "prezentowany": true,
+      "powod_wycofania_pl": null,
+      "katalog_odniesienia": null,
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "voltage_stability",
+      "nazwa_pl": "Stabilność napięciowa",
+      "grupa": {
+        "kod": "wycofane_z_powierzchni",
+        "nazwa_pl": "Rodzaje wycofane z powierzchni"
+      },
+      "pytanie_pl": "Jak blisko punktu załamania napięcia pracują węzły sieci?",
+      "zakres_pl": "Rodzaj wycofany z toru projektanta — bieg nie wyznacza wielkości.",
+      "wielkosci_glowne": [],
+      "podstawa_oceny": [],
+      "bez_podstawy_pl": "Solver nie wyznacza już wielkości tej analizy: wskaźniki stały na współczynnikach bez pokrycia w danych i normie oraz na mocy zwarciowej węzłów podstawianej z napięcia znamionowego. Powrót wymaga policzenia wielkości rozpływem, nie przywrócenia tabel.",
+      "dane": {
+        "z_modelu": [],
+        "od_uzytkownika": [],
+        "domyslne_solvera": []
+      },
+      "prezentowany": false,
+      "powod_wycofania_pl": "Solver nie wyznacza już wielkości tej analizy: wskaźniki stały na współczynnikach bez pokrycia w danych i normie oraz na mocy zwarciowej węzłów podstawianej z napięcia znamionowego. Powrót wymaga policzenia wielkości rozpływem, nie przywrócenia tabel.",
+      "katalog_odniesienia": null,
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "hosting_capacity",
+      "nazwa_pl": "Zdolność przyłączeniowa źródeł",
+      "grupa": {
+        "kod": "wycofane_z_powierzchni",
+        "nazwa_pl": "Rodzaje wycofane z powierzchni"
+      },
+      "pytanie_pl": "Ile generacji rozproszonej można przyłączyć bez naruszenia kryteriów?",
+      "zakres_pl": "Rodzaj wycofany z powierzchni — kanon na ekranie „OZE › Zdolność przyłączeniowa”.",
+      "wielkosci_glowne": [],
+      "podstawa_oceny": [],
+      "bez_podstawy_pl": "Lokalna impedancja Thevenina per szyna, metodą Monte Carlo, bez sprzężenia sieci — kanon liczy zdolność przyłączeniową pełnym rozpływem przez wariant sieci (ekran „OZE › Zdolność przyłączeniowa”). Uruchomienie nowego biegu jest odmawiane.",
+      "dane": {
+        "z_modelu": [],
+        "od_uzytkownika": [],
+        "domyslne_solvera": []
+      },
+      "prezentowany": false,
+      "powod_wycofania_pl": "Lokalna impedancja Thevenina per szyna, metodą Monte Carlo, bez sprzężenia sieci — kanon liczy zdolność przyłączeniową pełnym rozpływem przez wariant sieci (ekran „OZE › Zdolność przyłączeniowa”). Uruchomienie nowego biegu jest odmawiane.",
+      "katalog_odniesienia": null,
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "opf_loss_lcc",
+      "nazwa_pl": "Optymalizacja strat i koszt cyklu życia",
+      "grupa": {
+        "kod": "wycofane_z_powierzchni",
+        "nazwa_pl": "Rodzaje wycofane z powierzchni"
+      },
+      "pytanie_pl": "Jakie są straty energii i ich koszt w cyklu życia?",
+      "zakres_pl": "Rodzaj wycofany z powierzchni — kanon strat i zaczepu w innych ekranach.",
+      "wielkosci_glowne": [],
+      "podstawa_oceny": [],
+      "bez_podstawy_pl": "Straty ze współczynnikiem obciążenia 0,45 zaszytym w solverze i zaczepem zawsze zerowym — kanon czyta straty z karty katalogowej transformatora (ekran „Kryteria › Wyposażenie”) i optymalizuje zaczep w badaniach OLTC. Uruchomienie nowego biegu jest odmawiane.",
+      "dane": {
+        "z_modelu": [],
+        "od_uzytkownika": [],
+        "domyslne_solvera": []
+      },
+      "prezentowany": false,
+      "powod_wycofania_pl": "Straty ze współczynnikiem obciążenia 0,45 zaszytym w solverze i zaczepem zawsze zerowym — kanon czyta straty z karty katalogowej transformatora (ekran „Kryteria › Wyposażenie”) i optymalizuje zaczep w badaniach OLTC. Uruchomienie nowego biegu jest odmawiane.",
+      "katalog_odniesienia": null,
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "benchmark_validation",
+      "nazwa_pl": "Walidacja na sieciach odniesienia",
+      "grupa": {
+        "kod": "wycofane_z_powierzchni",
+        "nazwa_pl": "Rodzaje wycofane z powierzchni"
+      },
+      "pytanie_pl": "Czy solver odtwarza wyniki sieci odniesienia w zadanych tolerancjach?",
+      "zakres_pl": "Rodzaj wycofany z toru projektanta — kontrola jakości narzędzia.",
+      "wielkosci_glowne": [],
+      "podstawa_oceny": [],
+      "bez_podstawy_pl": "Bada, czy solver odtwarza sieci odniesienia — sprawdza narzędzie, nie projekt; miejsce tego sprawdzenia to kontrola jakości, nie ekran projektanta.",
+      "dane": {
+        "z_modelu": [],
+        "od_uzytkownika": [],
+        "domyslne_solvera": []
+      },
+      "prezentowany": false,
+      "powod_wycofania_pl": "Bada, czy solver odtwarza sieci odniesienia — sprawdza narzędzie, nie projekt; miejsce tego sprawdzenia to kontrola jakości, nie ekran projektanta.",
+      "katalog_odniesienia": null,
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
+    }
+  ]
+}

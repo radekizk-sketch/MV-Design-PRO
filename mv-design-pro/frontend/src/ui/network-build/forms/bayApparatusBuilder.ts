@@ -90,7 +90,7 @@ export function validateApparatusSequence(
       break;
     case 'OZE':
       if (!actual.includes('CT')) {
-        issues.push('Pole OZE wymaga CT dla pomiarów + zabezpieczeń (50/51/27/59/81).');
+        issues.push('Pole źródłowe wymaga CT dla pomiarów + zabezpieczeń (50/51/27/59/81).');
       }
       break;
     case 'TR':

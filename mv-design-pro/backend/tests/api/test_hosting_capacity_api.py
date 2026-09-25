@@ -29,12 +29,14 @@ def _reset() -> None:
 
 def _pf_run_id():
     set_enm("c-pf", build_golden_enm())
-    return execute_run(create_run(case_id="c-pf", analysis_type="PF").id).id
+    return execute_run(create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id).id
 
 
 def _sc_run_id():
     set_enm("c-sc", build_golden_enm())
-    return execute_run(create_run(case_id="c-sc", analysis_type="short_circuit_sn").id).id
+    return execute_run(
+        create_run(case_id="c-sc", klucz_twin="c-sc", analysis_type="short_circuit_sn").id
+    ).id
 
 
 def test_hosting_capacity_returns_view(app_client) -> None:
