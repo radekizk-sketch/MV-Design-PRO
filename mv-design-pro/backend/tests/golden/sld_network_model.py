@@ -271,8 +271,7 @@ def render_sld_network_fixture(model: dict[str, Any]) -> str:
     porownujacego artefakt z generatorem, wiec reczna edycja rozjezdzala go
     z modelem bez jednego czerwonego testu.
     """
-    import json
+    from tests.golden.zapis_fikstur import json_fikstury
 
-    return (
-        _NAGLOWEK_FIXTURY + json.dumps(model, indent=2, sort_keys=True, ensure_ascii=False) + ";\n"
-    )
+    # Regula zapisu liczb wspolna dla wszystkich fikstur (``zapis_fikstur``).
+    return _NAGLOWEK_FIXTURY + json_fikstury(model).removesuffix("\n") + ";\n"

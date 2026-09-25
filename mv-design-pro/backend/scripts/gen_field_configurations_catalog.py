@@ -13,15 +13,17 @@ Uruchomienie (cwd: mv-design-pro/backend):
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from reference_engine.field_configuration_catalog import (  # noqa: E402
     enumerate_field_configurations,
 )
+
+from tests.golden.zapis_fikstur import json_fikstury  # noqa: E402
 
 OUT = (
     Path(__file__).resolve().parent.parent.parent
@@ -38,8 +40,8 @@ OUT = (
 
 
 def serialize() -> str:
-    catalog = enumerate_field_configurations()
-    return json.dumps(catalog, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    # Regula zapisu liczb wspolna dla fikstur (``tests/golden/zapis_fikstur``).
+    return json_fikstury(enumerate_field_configurations())
 
 
 def main() -> None:

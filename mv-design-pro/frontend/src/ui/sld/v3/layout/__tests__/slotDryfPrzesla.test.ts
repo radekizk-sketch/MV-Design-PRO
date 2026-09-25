@@ -68,6 +68,7 @@ import { buildSceneV3, type SceneLod, type SceneV3 } from '../../scene/buildScen
 import { composeStation } from '../../compose/station';
 import { computeBands, type StationBandHeights } from '../bands';
 import { computeColumns, insertColumnChannels } from '../columns';
+import { MIN_ROUTE_CLEARANCE } from '../clearances';
 import {
   colorSegmentLabelRows,
   computeSegmentLabelSlotX,
@@ -451,6 +452,54 @@ describe('SLOT-DRYF-PRZĘSŁA §4 — kanał zejścia przesuwa etykietę wzdłu�
     const kanal = slot.rect.x + Math.floor(slot.rect.width / 2);
     const wynik = insertColumnChannels(columns, [kanal], 'test');
     expect(wynik.result.segmentLabelSlots.find((s) => s.stationIndex === 1)!.rect.x).toBe(slot.rect.x);
+  });
+
+  // KARTA SLD-SUBSTRAT — JEDEN predykat prześwitu (`naruszaPrzeswit`, columns.ts). Odstęp
+  // RÓWNY prześwitowi jest dozwolony; mniejszy — nie. Iloczyn cech, w którym schowała się
+  // wada: {kanał po PRAWEJ / po LEWEJ stronie slotu} × {odstęp = prześwit / prześwit − 1}.
+  // Przed naprawą odstęp równy prześwitowi był kolizją, a kandydat „tuż przed/za"
+  // kanałem (postawiony DOKŁADNIE w prześwicie) był zawsze odrzucany — geometria w
+  // siatce dawała fałszywą notatkę STOP na zregenerowanym substracie 52 stacji.
+  for (const strona of ['prawa', 'lewa'] as const) {
+    it(`kanał po stronie ${strona} slotu w odstępie RÓWNYM prześwitowi: brak kolizji, slot i kolumny bez zmian`, () => {
+      const { stations, columns } = ukladDwochStacji();
+      const slot = columns.segmentLabelSlots.find((s) => s.stationIndex === 1)!;
+      const kanal =
+        strona === 'prawa' ? slot.rect.x + slot.rect.width + MIN_ROUTE_CLEARANCE : slot.rect.x - MIN_ROUTE_CLEARANCE;
+      const wynik = insertColumnChannels(columns, [kanal], 'test', stations);
+      expect(wynik.stopNotes.filter((n) => n.includes('slot etykiety przęsła'))).toEqual([]);
+      expect(wynik.result.segmentLabelSlots.find((s) => s.stationIndex === 1)!.rect.x).toBe(slot.rect.x);
+    });
+
+    it(`kanał po stronie ${strona} slotu w odstępie o 1 MNIEJSZYM niż prześwit: slot ustępuje DOKŁADNIE do prześwitu`, () => {
+      const { stations, columns } = ukladDwochStacji();
+      const slot = columns.segmentLabelSlots.find((s) => s.stationIndex === 1)!;
+      const kanal =
+        strona === 'prawa'
+          ? slot.rect.x + slot.rect.width + MIN_ROUTE_CLEARANCE - 1
+          : slot.rect.x - MIN_ROUTE_CLEARANCE + 1;
+      const wynik = insertColumnChannels(columns, [kanal], 'test', stations);
+      const po = wynik.result.segmentLabelSlots.find((s) => s.stationIndex === 1)!;
+      // Albo slot ustąpił (i ma co najmniej prześwit od kanału), albo mechanizm meldował
+      // STOP — nigdy cichy rozjazd.
+      const notatki = wynik.stopNotes.filter((n) => n.includes('slot etykiety przęsła'));
+      if (notatki.length === 0) {
+        expect(po.rect.x).not.toBe(slot.rect.x);
+        const odstep = kanal < po.rect.x ? po.rect.x - kanal : kanal - (po.rect.x + po.rect.width);
+        expect(odstep).toBeGreaterThanOrEqual(MIN_ROUTE_CLEARANCE);
+      } else {
+        expect(po.rect.x).toBe(slot.rect.x);
+      }
+    });
+  }
+
+  it('kanał w odstępie RÓWNYM prześwitowi za prawą krawędzią BLOKU: kolumna nie jest przesuwana', () => {
+    const { stations, columns } = ukladDwochStacji();
+    const kolumna = columns.columns[1];
+    const kanal = kolumna.x + kolumna.width + MIN_ROUTE_CLEARANCE;
+    const wynik = insertColumnChannels(columns, [kanal], 'test', stations);
+    expect(wynik.result.columns.map((c) => c.x)).toEqual(columns.columns.map((c) => c.x));
+    expect(wynik.result.totalWidth).toBe(columns.totalWidth);
   });
 
   it('kanał w BLOKU stacji nadal przesuwa kolumnę (druga połowa pary predykatów)', () => {

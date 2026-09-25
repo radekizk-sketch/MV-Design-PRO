@@ -58,6 +58,10 @@ Pomiar po karcie: ui/** 8 surowych trafien (w tym 1 nowe: granica stron stacji
 domyslna polecenia OSD `DOMYSLNY_LIMIT_P_PCT`, klasa b); jedyne trafienie
 klasy a poza kreatorem (`sldCanonKit.tsx`: `ipOk = ip <= idyn`, znak ✓/✗
 w odczycie wezla SLD) zostalo usuniete u zrodla w tej samej karcie.
+Korekta (karta SLD-SUBSTRAT, 2026-09-25): stala `STATION_LV_VOLTAGE_LIMIT_KV`
+zniknela z `stationBusResolution.ts` w karcie pasm napieciowych (jedno zrodlo granic
+nN/SN, `f5058fc3`), a jej wpis ALLOWLIST zostal osierocony po scaleniu obu kart
+(sprawdzenie swiezosci czerwone na bazie) — wpis usuniety.
 Czego te wzorce NIE widza (nazwane): porownania na odchyleniu napiecia
 `deviation_percent` w rendererach SLD (`Math.abs(v.deviation_percent) <= 5`,
 wiersz F8 planu AB §8) — pilnuje ich zapadka `werdykt_wyjasnialny_guard`
@@ -220,10 +224,6 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     ): "b: przeliczenie jednostki A→kA wartości otrzymanej z backendu (ikss_partial_a / 1000) — wprost dozwolone skalowanie jednostek",
     # MAGISTRALA-OCENA (2026-09-25): trafienia wzorca deklaracji stalej progu, ktore NIE
     # sa kryterium oceny wyniku sieci.
-    (
-        "frontend/src/ui/sld/shared/stationBusResolution.ts",
-        "export const STATION_LV_VOLTAGE_LIMIT_KV = 0.5;",
-    ): "b: granica stron stacji (klasyfikacja rekordu Bus jako szyny SN albo nN po zadeklarowanym voltage_kv) — semantyka topologii, nie kryterium oceny wyniku sieci",
     (
         "frontend/src/ui2/oze/osd/EkranOsd.tsx",
         "const DOMYSLNY_LIMIT_P_PCT = 60;",

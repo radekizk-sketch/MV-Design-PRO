@@ -217,6 +217,11 @@ from solver_input.v126_contracts import (  # noqa: E402
 )
 
 from tests.cgmes.golden_enm import build_golden_enm  # noqa: E402
+from tests.ci.tolerancja_fikstur import roznice_z_tolerancja  # noqa: E402
+from tests.golden.zapis_fikstur import (  # noqa: E402
+    json_fikstury,
+    przypnij_identyfikatory_modelu,
+)
 
 FIXTURES_DIR = BACKEND_DIR.parent / "frontend" / "src" / "harness-fixtures" / "generated"
 
@@ -1271,15 +1276,7 @@ def _fiksuj_niedeterminizm_sceny_zwarcia(enm: EnergyNetworkModel) -> None:
     różnił się między dwoma wywołaniami fixtury: zmierzone bezpośrednio).
     Iteracja idzie po polach modelu, więc nowa kolekcja ENM jest objęta
     automatycznie — nie trzeba pamiętać o dopisaniu jej tutaj."""
-    for nazwa_pola in type(enm).model_fields:
-        wartosc = getattr(enm, nazwa_pola, None)
-        if not isinstance(wartosc, list):
-            continue
-        for element in wartosc:
-            ref_id = getattr(element, "ref_id", None)
-            if not isinstance(ref_id, str) or not hasattr(element, "id"):
-                continue
-            element.id = uuid5(NAMESPACE_URL, f"mv-design-pro:harness:element-id:{ref_id}")
+    przypnij_identyfikatory_modelu(enm)
     enm.header.created_at = _CZAS_NAGLOWKA_SCENY_ZWARCIA
     enm.header.updated_at = _CZAS_NAGLOWKA_SCENY_ZWARCIA
 
@@ -1440,39 +1437,64 @@ _UUID_SCENY_ROZPLYW_ZWARCIOWY_GPZ_FEEDER = uuid5(
     NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ROZPLYW_ZWARCIOWY_GPZ_FEEDER
 )
 
-#: Refy topologii gpzFeeder (`frontend/public/test-fixtures/gpzFeeder.enm.json`,
-#: NIETKNIĘTY plik — te refy są jego istniejącą treścią, przepisane tu WYŁĄCZNIE
-#: do adresowania biegu, nie nowa fizyka). Falownik dokładany na szynie nN
-#: Stacji S02 (za transformatorem stacji, jak `gen_pv` sieci złotej).
-_REF_BUS_NN_S02_GPZ_FEEDER = "stn/0188f98f1309b5535301f05ec09e6133/nn_bus"
-_REF_STACJA_S02_GPZ_FEEDER = "stn/0188f98f1309b5535301f05ec09e6133/station"
-#: Punkt zwarcia = szyna SN Stacji S01 (ta sama stacja, której znacznik
-#: pulsuje na kanwie — `FAULT_FLOW_DEMO_STATION_S01` w
-#: `screenshot-harness-main.tsx`, wartość IDENTYCZNA poniżej).
-_REF_BUS_SN_S01_GPZ_FEEDER = "stn/980a625dd13777cd339a1a173a2a2864/sn_bus"
-_REF_STACJA_S01_GPZ_FEEDER = "stn/980a625dd13777cd339a1a173a2a2864/station"
+_SCIEZKA_GPZ_FEEDER = (
+    BACKEND_DIR.parent / "frontend" / "public" / "test-fixtures" / "gpzFeeder.enm.json"
+)
+
+
+def _refy_gpz_feeder() -> dict[str, str]:
+    """Refy topologii gpzFeeder ODCZYTANE z fikstury (karta SLD-SUBSTRAT).
+
+    Fikstura powstaje generatorem (``tests/reference_networks/fikstury_enm_sld.py``), więc
+    jej identyfikatory są wyprowadzane z ziaren operacji domenowych — przepisane tu jako
+    literały rozjechałyby się przy pierwszej zmianie ziarna (tak było: literały sprzed
+    CV-4.3 K1 wskazywały na sieć, której produkt już nie wytwarzał). Adresowanie idzie
+    po NAZWACH stacji i kolejności korytarzy — treści sieci, nie jej kodach maszynowych.
+    Falownik dokładany na szynie nN Stacji S02 (za transformatorem stacji, jak ``gen_pv``
+    sieci złotej); punkt zwarcia = szyna SN Stacji S01; gałęzie „nagłówkowe" nakładki =
+    pierwszy odcinek magistrali (tor GPZ→S01) i pierwszy odcinek odgałęzienia (GPZ→S02).
+    """
+    surowy = json.loads(_SCIEZKA_GPZ_FEEDER.read_text(encoding="utf-8"))["enm"]
+    stacje = {s["name"]: s for s in surowy["substations"]}
+
+    def szyna(stacja: str, koncowka: str) -> str:
+        return next(r for r in stacje[stacja]["bus_refs"] if r.endswith(koncowka))
+
+    return {
+        "stacja_s01": stacje["Stacja S01 (typ B)"]["ref_id"],
+        "szyna_sn_s01": szyna("Stacja S01 (typ B)", "/sn_bus"),
+        "stacja_s02": stacje["Stacja S02 (typ B)"]["ref_id"],
+        "szyna_nn_s02": szyna("Stacja S02 (typ B)", "/nn_bus"),
+        "odcinek_s01": surowy["corridors"][0]["ordered_segment_refs"][0],
+        "odcinek_s02": surowy["corridors"][1]["ordered_segment_refs"][0],
+    }
+
+
+_REFY_GPZ_FEEDER = _refy_gpz_feeder()
+_REF_BUS_NN_S02_GPZ_FEEDER = _REFY_GPZ_FEEDER["szyna_nn_s02"]
+_REF_STACJA_S02_GPZ_FEEDER = _REFY_GPZ_FEEDER["stacja_s02"]
+#: Punkt zwarcia = szyna SN Stacji S01 (ta sama stacja, której znacznik pulsuje na kanwie).
+_REF_BUS_SN_S01_GPZ_FEEDER = _REFY_GPZ_FEEDER["szyna_sn_s01"]
+_REF_STACJA_S01_GPZ_FEEDER = _REFY_GPZ_FEEDER["stacja_s01"]
 #: Gałęzie „nagłówkowe" nakładki (te same dwie, które `FAULT_FLOW_DEMO_INPUT`
 #: zawsze pokazywał — tor GPZ→S01 i tor GPZ→S02 — zakres wizualny NIETKNIĘTY,
 #: żeby zmiana nie wymagała nowej bramki B-02: naprawiamy LICZBY, nie kompozycję
-#: zrzutu). Realny rozpływ niesie WIĘCEJ gałęzi/źródeł (9 gałęzi × 2 źródła —
-#: zmierzone), w tym wpisy o prądzie rzędu pojedynczych/dziesiątek A ze
-#: SPRZECZNYM tokenem kierunku względem dominanty tej samej gałęzi (sprzężenie
-#: numeryczne superpozycji źródeł, nie błąd solvera — `buildFaultFlowOverlayFromScene`,
-#: `ui/sld/v3/canvas/overlay.ts`, świadomie POMIJA gałąź z niejednoznacznym
-#: kierunkiem: `entries.some(direction !== direction) → continue`). Dlatego
-#: eksport bierze WYŁĄCZNIE wpis DOMINUJĄCY (największy |i_ka|) na KAŻDEJ z
-#: tych dwóch gałęzi (`_dominujacy_wplyw_na_galezi` niżej) — filtr wielkości,
-#: zero fabrykacji (obie liczby z TEGO SAMEGO realnego biegu).
-_REF_BRANCH_SEGMENT_L_S01 = "seg/ac2e267391eabbcc94c58ee4ace01e6f/segment_L"
-_REF_BRANCH_SEGMENT_L_S02 = "seg/c65b9d08fb6c84a5c80c518b45111a42/branch_segment_L"
+#: zrzutu). Realny rozpływ niesie WIĘCEJ gałęzi/źródeł, w tym wpisy o prądzie rzędu
+#: pojedynczych/dziesiątek A ze SPRZECZNYM tokenem kierunku względem dominanty tej samej
+#: gałęzi (sprzężenie numeryczne superpozycji źródeł, nie błąd solvera —
+#: `buildFaultFlowOverlayFromScene`, `ui/sld/v3/canvas/overlay.ts`, świadomie POMIJA gałąź
+#: z niejednoznacznym kierunkiem). Dlatego eksport bierze WYŁĄCZNIE wpis DOMINUJĄCY
+#: (największy |i_ka|) na KAŻDEJ z tych dwóch gałęzi (`_dominujacy_wplyw_na_galezi`
+#: niżej) — filtr wielkości, zero fabrykacji (obie liczby z TEGO SAMEGO realnego biegu).
+_REF_BRANCH_SEGMENT_L_S01 = _REFY_GPZ_FEEDER["odcinek_s01"]
+_REF_BRANCH_SEGMENT_L_S02 = _REFY_GPZ_FEEDER["odcinek_s02"]
 
 
 def _gpz_feeder_enm_z_falownikiem() -> EnergyNetworkModel:
     """Kopia `frontend/public/test-fixtures/gpzFeeder.enm.json` (fixtura
     WSPÓŁDZIELONA z kanwą SLD — NIETKNIĘTA, patrz nagłówek sekcji wyżej) z
     DOŁOŻONYM falownikiem PV na szynie nN Stacji S02."""
-    sciezka = BACKEND_DIR.parent / "frontend" / "public" / "test-fixtures" / "gpzFeeder.enm.json"
-    surowy = json.loads(sciezka.read_text(encoding="utf-8"))
+    surowy = json.loads(_SCIEZKA_GPZ_FEEDER.read_text(encoding="utf-8"))
     enm = EnergyNetworkModel.model_validate(surowy["enm"])
     # W5-A: transformator zasilajacy odbiory nN musi DEKLAROWAC uklad sieci nN
     # (walidator E063 blokuje bieg bez niego; fixtura SLD tej deklaracji nie niesie,
@@ -1531,12 +1553,12 @@ def _bieg_sceny_rozplyw_zwarciowy_gpz_feeder() -> tuple[Any, str, str | None]:
 def _dominujacy_wplyw_na_galezi(
     wplywy: list[dict[str, Any]], ref_galezi: str
 ) -> dict[str, Any] | None:
-    """Wpis o NAJWIĘKSZYM |i_ka| na gałęzi `ref_galezi` (dopasowanie po
-    `branch_name` — `_sc_rozplyw_galeziowy` ustawia `"Odcinek " + ref_id`,
-    ten sam wzorzec nazewnictwa co reszta grafu przebiegu). `None`, gdy
-    gałąź nie niesie żadnego wpisu (uczciwy brak, wołający decyduje)."""
-    nazwa = f"Odcinek {ref_galezi}"
-    kandydaci = [w for w in wplywy if w["branch_name"] == nazwa and w["i_ka"] is not None]
+    """Wpis o NAJWIĘKSZYM |i_ka| na gałęzi `ref_galezi` (dopasowanie po TOŻSAMOŚCI
+    `branch_id`, nie po nazwie wyświetlanej — do karty SLD-SUBSTRAT dopasowanie szło po
+    `branch_name == "Odcinek " + ref_id`, czyli po nazwie z kodu maszynowego sprzed karty
+    #144; po regeneracji fikstury nazwą jest nazwa z modelu). `None`, gdy gałąź nie
+    niesie żadnego wpisu (uczciwy brak, wołający decyduje)."""
+    kandydaci = [w for w in wplywy if w["branch_id"] == ref_galezi and w["i_ka"] is not None]
     if not kandydaci:
         return None
     return max(kandydaci, key=lambda w: abs(w["i_ka"]))
@@ -4769,7 +4791,34 @@ FIXTURY: dict[str, Any] = {
 
 
 def _json(dane: Any) -> str:
-    return json.dumps(dane, ensure_ascii=False, indent=2, sort_keys=False) + "\n"
+    """Tekst fixtury: reguła zapisu liczb wspólna dla fikstur (``tests/golden/zapis_fikstur``)."""
+    return json_fikstury(dane, sort_keys=False)
+
+
+def tresc_do_zapisu(sciezka: Path, dane: Any) -> str:
+    """Treść, którą generator zapisuje pod ``sciezka`` — KOTWICA W SZUMIE.
+
+    Reguła zapisu liczb usuwa szum numeryki tam, gdzie leży poniżej 12. cyfry znaczącej,
+    ale NIE tam, gdzie sięga wyżej (reszty znormalizowane estymacji WLS — szum względny do
+    3e-5; niedopasowanie po zbieżności rzędu 1e-12 — sam szum; skrót wyniku nad takimi
+    liczbami). Gdy świeża odpowiedź różni się od pliku na dysku WYŁĄCZNIE w tolerancji
+    przenośności (``roznice_z_tolerancja`` — ten sam predykat, którym test harnessu
+    rozstrzyga, czy fixtura jest aktualna: jedno źródło prawdy dla zapisu i porównania),
+    generator zapisuje LICZBY Z DYSKU przepuszczone przez regułę zapisu — plik będący już
+    punktem stałym reguły zostaje bajt w bajt, a plik sprzed reguły dostaje wyłącznie
+    zaokrąglenie ostatnich cyfr. Treść różna ponad tolerancję = świeża odpowiedź.
+    Skutek: regeneracja na innej maszynie nie wnosi do repo szumu, a ``--sprawdz`` jest
+    zielony wszędzie tam, gdzie treść się nie zmieniła."""
+    tresc = _json(dane)
+    if not sciezka.exists():
+        return tresc
+    na_dysku = sciezka.read_text(encoding="utf-8")
+    if na_dysku == tresc:
+        return tresc
+    zapisane = json.loads(na_dysku)
+    if not roznice_z_tolerancja(zapisane, json.loads(tresc)):
+        return _json(zapisane)
+    return tresc
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -4792,7 +4841,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.tylko and nazwa not in args.tylko:
             continue
         sciezka = FIXTURES_DIR / f"{nazwa}.json"
-        tresc = _json(funkcja())
+        tresc = tresc_do_zapisu(sciezka, funkcja())
         if args.sprawdz:
             if not sciezka.exists() or sciezka.read_text(encoding="utf-8") != tresc:
                 rozjazdy.append(nazwa)

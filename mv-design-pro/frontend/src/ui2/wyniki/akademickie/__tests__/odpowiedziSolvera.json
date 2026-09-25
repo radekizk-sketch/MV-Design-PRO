@@ -355,127 +355,127 @@
           "z_scan": [
             {
               "f_hz": 50,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 150,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 250,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 350,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 450,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 550,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 650,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 750,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 850,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 950,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 1050,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 1150,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 1250,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 1350,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 1450,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 1550,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 1650,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 1750,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 1850,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 1950,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 2050,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 2150,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 2250,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 2350,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             },
             {
               "f_hz": 2450,
-              "phase_deg": -0.0,
+              "phase_deg": 0.0,
               "z_ohm": 1e-06
             }
           ]

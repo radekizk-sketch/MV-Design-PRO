@@ -15,14 +15,16 @@ odpowiedzią backendu (rozjazd = czerwony test, nie cicha rozbieżność).
 Użycie (z katalogu `backend`):
     poetry run python scripts/eksport_fixtur_projekcji_nn.py [--sprawdz]
 
-`--sprawdz` nie zapisuje — kończy kodem 1, gdy którykolwiek JSON różni się od
-świeżo policzonej projekcji.
+`--sprawdz` nie zapisuje — kończy kodem 1, gdy generator zapisałby inne bajty niż leżą
+w repo (reguła zapisu liczb ``tests/golden/zapis_fikstur`` + kotwica w szumie
+``tresc_do_zapisu``: różnica wyłącznie w tolerancji międzymaszynowej nie przepisuje pliku).
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -42,6 +44,7 @@ from tests.application.analyses.lv_domain.scenariusze_nn import (  # noqa: E402
     SCENARIUSZE,
     ScenariuszNn,
 )
+from tests.golden.zapis_fikstur import json_fikstury, zaokraglij_liczby  # noqa: E402
 
 FIXTURES_DIR = (
     BACKEND_DIR.parent
@@ -111,17 +114,75 @@ def normalizuj_projekcje(projekcja: dict[str, Any], slug: str) -> dict[str, Any]
             if wiersz.get("run_timestamp"):
                 wiersz["run_timestamp"] = ZNACZNIK_CZASU_FIXTURY
     wynik.pop("projection_hash", None)
+    # Reguła zapisu liczb PRZED odciskiem: odcisk fixtury jest skrótem liczb, które w niej
+    # leżą (spójność sprawdza test tą samą funkcją co backend).
+    wynik = zaokraglij_liczby(wynik)
     wynik["projection_hash"] = _canonical_hash(wynik)
     return wynik
 
 
-def zapisz(slug: str, projekcja: dict[str, Any]) -> Path:
-    FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
-    sciezka = FIXTURES_DIR / f"{slug}.json"
-    sciezka.write_text(
-        json.dumps(projekcja, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    return sciezka
+#: Tolerancja względna liczb projekcji MIĘDZY MASZYNAMI. Wartości rozpływu (Newton,
+#: tolerancja zbieżności 1e-8) i Z-bus (LAPACK) nie są bitowo identyczne między
+#: procesorami — ścieżka SIMD biblioteki zmienia ostatnie bity i drogę zbieżności
+#: (precedens: pin jakobianu, commit 98580f24). Zmierzone odchylenie runner CI vs
+#: kontener deweloperski: max 2,1e-10 względnie (Q kabla w 16_stale_result).
+#: 1e-9 leży rząd wielkości ponad pomiarem i siedem rzędów pod dokładnością
+#: prezentowaną inżynierowi. Struktura, klucze, teksty, stany i identyfikatory
+#: porównywane są DOKŁADNIE; odcisk `projection_hash` (skrót liczb) — przez
+#: spójność fixtury z jej własną treścią.
+TOLERANCJA_WZGLEDNA_MIEDZY_MASZYNAMI = 1e-9
+
+
+def roznice_z_tolerancja(repo: object, backend: object, sciezka: str = "$") -> list[str]:
+    """Ścieżki, na których fixtura różni się od projekcji backendu poza tolerancją.
+
+    JEDEN predykat dla testu (``test_scenariusze_nn``: lista pusta = fixtura aktualna)
+    i dla zapisu (``tresc_do_zapisu``: lista pusta = plik zostaje bajt w bajt)."""
+    if isinstance(repo, bool) or isinstance(backend, bool):
+        ok = type(repo) is type(backend) and repo == backend
+        return [] if ok else [f"{sciezka}: {repo!r} != {backend!r}"]
+    if isinstance(repo, int | float) and isinstance(backend, int | float):
+        ok = math.isclose(
+            repo, backend, rel_tol=TOLERANCJA_WZGLEDNA_MIEDZY_MASZYNAMI, abs_tol=1e-15
+        )
+        return [] if ok else [f"{sciezka}: {repo!r} != {backend!r}"]
+    if isinstance(repo, dict) and isinstance(backend, dict):
+        if set(repo) != set(backend):
+            return [f"{sciezka}: klucze {set(repo) ^ set(backend)}"]
+        return [
+            r
+            for klucz in repo
+            if klucz != "projection_hash"
+            for r in roznice_z_tolerancja(repo[klucz], backend[klucz], f"{sciezka}/{klucz}")
+        ]
+    if isinstance(repo, list) and isinstance(backend, list):
+        if len(repo) != len(backend):
+            return [f"{sciezka}: długość {len(repo)} != {len(backend)}"]
+        return [
+            r
+            for i, (a, b) in enumerate(zip(repo, backend, strict=True))
+            for r in roznice_z_tolerancja(a, b, f"{sciezka}[{i}]")
+        ]
+    return [] if repo == backend else [f"{sciezka}: {repo!r} != {backend!r}"]
+
+
+def tresc_do_zapisu(sciezka: Path, projekcja: dict[str, Any]) -> str:
+    """Treść pliku fixtury — KOTWICA W SZUMIE (ten sam wzorzec co harness scen).
+
+    Gdy świeża projekcja różni się od pliku na dysku wyłącznie w tolerancji
+    międzymaszynowej (``roznice_z_tolerancja`` — predykat testu), zapisywane są LICZBY Z
+    DYSKU przepuszczone przez regułę zapisu: regeneracja na innej maszynie nie wnosi do
+    repo szumu ostatnich cyfr, a plik będący punktem stałym reguły zostaje bajt w bajt."""
+    tresc = json_fikstury(projekcja)
+    if not sciezka.exists():
+        return tresc
+    na_dysku = sciezka.read_text(encoding="utf-8")
+    if na_dysku == tresc:
+        return tresc
+    zapisana = json.loads(na_dysku)
+    if not roznice_z_tolerancja(zapisana, projekcja):
+        return json_fikstury(zapisana)
+    return tresc
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -132,18 +193,17 @@ def main(argv: list[str] | None = None) -> int:
     rozjazdy: list[str] = []
     for scenariusz in SCENARIUSZE:
         projekcja = normalizuj_projekcje(zbuduj_projekcje_scenariusza(scenariusz), scenariusz.slug)
+        sciezka = FIXTURES_DIR / f"{scenariusz.slug}.json"
+        tresc = tresc_do_zapisu(sciezka, projekcja)
         if args.sprawdz:
-            sciezka = FIXTURES_DIR / f"{scenariusz.slug}.json"
             if not sciezka.exists():
                 rozjazdy.append(f"{scenariusz.slug}: brak pliku {sciezka}")
-                continue
-            if json.loads(sciezka.read_text(encoding="utf-8")) != projekcja:
+            elif sciezka.read_text(encoding="utf-8") != tresc:
                 rozjazdy.append(f"{scenariusz.slug}: JSON w repo różni się od odpowiedzi backendu")
-        else:
-            sciezka = zapisz(scenariusz.slug, projekcja)
-            print(
-                f"zapisano {sciezka.relative_to(BACKEND_DIR.parent)}  status={projekcja['status']}"
-            )
+            continue
+        FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
+        sciezka.write_text(tresc, encoding="utf-8")
+        print(f"zapisano {sciezka.relative_to(BACKEND_DIR.parent)}  status={projekcja['status']}")
     if rozjazdy:
         print("\n".join(rozjazdy))
         return 1

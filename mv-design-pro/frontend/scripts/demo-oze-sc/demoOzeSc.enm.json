@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "builder_snapshot_hash": "ae05a2de202f386a32a95d1dae0b2e15ae9e011139c42076c6ab187912c1513e",
+    "builder_snapshot_hash": "d212d6c8c6a8853504d30029182f385c10a656a2d6ca5c4f70943b8962a1f7e1",
     "config_count": 12,
     "der_count": 15,
     "der_types": [
@@ -301,7 +301,7 @@
     "branches": [
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -310,7 +310,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "gpz/898bf4c094fa05a9c12c999755c14897/section/001/bus_sn",
-        "id": "58c5a1a2-7264-5d2a-b17d-a244642712d4",
+        "id": "d28254bd-543c-5c38-9ba9-52ee6fd43904",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -382,7 +382,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -391,7 +391,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/ecf50c9e4cee78e5883ce893bc7deee4/downstream",
-        "id": "c7d5eb04-278c-5741-b98c-4dca1d2d86a8",
+        "id": "65eca983-ec1e-5754-9988-2f4f3847f178",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -468,7 +468,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/1475463a1f08993c03a677d86a5242a0/downstream",
-        "id": "26943ec9-f8ae-56a2-a3a3-07ecaa0665b8",
+        "id": "36410b74-23e7-5419-92aa-76b1fccc4138",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
         "length_km": 0.34,
@@ -520,7 +520,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -529,7 +529,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/18537a3eeff0d140327416eafb8f5347/downstream",
-        "id": "42427f2f-5dcb-5836-83a4-cab5b4e63703",
+        "id": "84d1fe10-fe6b-5f63-a89f-6e8feb161900",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -598,7 +598,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -607,7 +607,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/299a3c1ce9b203af4ab05cec53f01c42/downstream",
-        "id": "05d97a27-54d5-5059-9c11-35a41b62ef17",
+        "id": "b5fba981-8782-5a5d-b772-4a3a89ebb297",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -684,7 +684,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/49e7ef63fcd045406e8d8d685ede3c64/downstream",
-        "id": "f0980945-beb7-5427-8e79-55e511846bbc",
+        "id": "eed143e3-ffb7-5e2e-817c-648a7c2969c6",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
         "length_km": 0.32,
@@ -736,7 +736,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -745,7 +745,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/710f1b83cd004b73ebbbdd5177e8ffc5/downstream",
-        "id": "ccbca67b-b660-5b2f-9203-000220bd5a58",
+        "id": "f1152f95-5c88-59e7-ab8e-032c687354d9",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -814,7 +814,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -823,7 +823,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/898eaba182b35c596adfcf8e4fe6a975/downstream",
-        "id": "7a9c991c-af1e-5f24-ba69-2e23696acd2d",
+        "id": "fc7844a1-dd8e-54fc-b2eb-fca51fcd938c",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -892,7 +892,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -901,7 +901,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/sn_bus",
-        "id": "d667f688-4da7-5ff6-a934-06b3bdd6414d",
+        "id": "93f8aa1a-e53d-568d-a8d3-e03b299d616d",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -972,7 +972,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/sn_bus",
-        "id": "f568abe5-c6e7-5004-88a7-49ab7dcbdd8e",
+        "id": "50ccd4c6-fa40-5299-bfa9-08231d89bed6",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1007,7 +1007,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/sn_bus",
-        "id": "08fd4fe7-3acd-5f71-8fb6-44cc9c41275c",
+        "id": "0aca00af-b70e-5316-8597-3f197b8c24b2",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1042,7 +1042,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/sn_bus",
-        "id": "92d701a8-e775-5db8-abed-deceb69aa48f",
+        "id": "05cd7e2d-71c5-5e4c-b9cd-c36a9551def6",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1077,7 +1077,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/sn_bus",
-        "id": "b101f465-a3eb-5513-b9d1-1940ea5cf339",
+        "id": "779592e0-9476-5c40-969a-92687aa01dc0",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1110,7 +1110,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -1119,7 +1119,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/f025378cca5d761fb5f645c11867d19e/downstream",
-        "id": "5335a053-9bc1-51ea-9400-6b46881efbd5",
+        "id": "23c33b8c-055a-5a46-adae-59e7d490eb8e",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -1190,7 +1190,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/7350682d9a38bd995d010426b65f26c3/sn_bus",
-        "id": "34d925ea-bdbe-566f-b3b1-f96851c3a85d",
+        "id": "2282dfbd-d134-5fba-9726-e777bce97a5f",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1225,7 +1225,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/7350682d9a38bd995d010426b65f26c3/sn_bus",
-        "id": "5da8183b-f2d8-5fad-a5c8-a31670105238",
+        "id": "08b4d546-9f33-5575-a1c4-24a3a1ef1db6",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1260,7 +1260,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/7350682d9a38bd995d010426b65f26c3/sn_bus",
-        "id": "f104356f-4fcf-56dd-9e37-7824f4036fce",
+        "id": "f2749ab4-6566-524c-a730-f15c023218d6",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1295,7 +1295,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/7350682d9a38bd995d010426b65f26c3/sn_bus",
-        "id": "8a674228-87a8-50d8-837a-385aa6f210a9",
+        "id": "7d52f1c3-dddb-5e96-9ec9-df1ffc40eb33",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1328,7 +1328,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -1337,7 +1337,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/4db118e85a4844362c8fff4a2af58959/downstream",
-        "id": "907c6f68-2331-5050-9849-67d8da2b9671",
+        "id": "1c4a5a82-12e0-5d4a-bfe4-95e3dca032e2",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -1406,7 +1406,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -1415,7 +1415,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/sn_bus",
-        "id": "546b0861-cf02-5f35-ad4e-91bdf9a558d7",
+        "id": "6ef79f60-1fef-50a8-8346-248346d92b57",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -1486,7 +1486,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/sn_bus",
-        "id": "29ab2eee-32af-596f-9b52-1d75e4785497",
+        "id": "288e0d17-55a2-5a7b-ac00-b2ee60e421e5",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1521,7 +1521,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/sn_bus",
-        "id": "445ae03f-3ff7-54ba-b0ce-89dc96bd08c9",
+        "id": "324cd406-7bfd-57f7-8a89-2e0611dc9fa3",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1556,7 +1556,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/sn_bus",
-        "id": "4a1eb730-6227-5683-80b8-e90b9e02ec67",
+        "id": "60a54c67-2ea9-5bb3-8211-1923f24f8a0e",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1591,7 +1591,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/sn_bus",
-        "id": "05738374-7472-5305-b90c-268be9e8a548",
+        "id": "740351d0-37de-53a5-86f3-1fbf6fcbbdfb",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1624,7 +1624,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -1633,7 +1633,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_bus",
-        "id": "26acee64-9507-52ea-a620-4f7582766e6a",
+        "id": "271b01ac-c490-55dc-9290-d500faeb947c",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -1704,7 +1704,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_bus",
-        "id": "077d4707-4d03-5f63-bba5-5cd4e3e895e9",
+        "id": "d31d4ffb-c689-5ed6-a130-d18b8ca52d83",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1739,7 +1739,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_bus",
-        "id": "360acf4e-58e6-5561-951a-3adb3b2e5c64",
+        "id": "631e6e40-4dc0-562d-81d9-f94039323642",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1774,7 +1774,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_bus",
-        "id": "27eafe97-0433-5f29-823c-e67ff7ad8455",
+        "id": "308905f1-cdea-54dc-a18e-796565bee0c3",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1809,7 +1809,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_bus",
-        "id": "5d6a967a-c6a5-5b12-b71e-c9474d481140",
+        "id": "c662432e-be08-59cc-b5b3-7967acb340f1",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1842,7 +1842,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -1851,7 +1851,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/cdf4860dda31373d79c4e357415dbcec/downstream",
-        "id": "036021cc-07eb-5fdd-8c77-5701d93aade4",
+        "id": "2e1399f4-021b-5832-ab5a-0f3b6c72e90e",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -1922,7 +1922,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/82b9a808f5d77984e6d154f129a6d9b3/sn_bus",
-        "id": "2dd9c10e-bf8c-5f5f-81a5-de923f8590a2",
+        "id": "490f5072-3208-5dab-b9fe-a7d1f217baca",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1957,7 +1957,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/82b9a808f5d77984e6d154f129a6d9b3/sn_bus",
-        "id": "21727aee-4d97-5631-a82c-79234bd18536",
+        "id": "1125861b-6588-5565-a9ac-4d1a88ac7e3f",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1992,7 +1992,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/82b9a808f5d77984e6d154f129a6d9b3/sn_bus",
-        "id": "5147eaa1-5449-5fc7-9170-217629c7ed6d",
+        "id": "02773742-2e28-5933-a9fe-8599c925fcbc",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2027,7 +2027,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/82b9a808f5d77984e6d154f129a6d9b3/sn_bus",
-        "id": "09246596-a598-54e3-be0b-ce0c4227eaaa",
+        "id": "03f1695e-e22e-50f4-bc97-189e589d50f8",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2060,7 +2060,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -2069,7 +2069,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/616f7f7c71948df7d7fb31866c6bf45e/downstream",
-        "id": "0f1b0f64-c9a3-5cab-9352-bbc2f73ec775",
+        "id": "c6a218fe-fe1f-561f-b62a-3114d49df51f",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -2138,7 +2138,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -2147,7 +2147,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/500c9efcafdd0c69e4239e5121213746/sn_bus",
-        "id": "541e0bf9-82f8-593b-8e28-772b1b1d187f",
+        "id": "b211016f-a54a-5e4f-892c-0610e0bbc53e",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -2218,7 +2218,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/500c9efcafdd0c69e4239e5121213746/sn_bus",
-        "id": "21aa5f01-697a-50c4-bb6f-e8ba1e99c758",
+        "id": "4a6a3c99-1551-5f48-8c74-18f072b18ad4",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2253,7 +2253,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/500c9efcafdd0c69e4239e5121213746/sn_bus",
-        "id": "e88b7c79-2940-56b1-ae1d-31e83f91e36b",
+        "id": "0f5e6899-b31c-5786-8170-a887a68680e1",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2288,7 +2288,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/500c9efcafdd0c69e4239e5121213746/sn_bus",
-        "id": "cf7c9250-fb3a-51a9-a4ec-d4e0d391e81d",
+        "id": "4f48ed38-9e2a-5899-adbf-2317c62f6116",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2323,7 +2323,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/500c9efcafdd0c69e4239e5121213746/sn_bus",
-        "id": "abb9162c-3e86-555f-9b5a-be07d72dd4a3",
+        "id": "4dd76c52-f49d-5bb0-ba52-80df8365807c",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2356,7 +2356,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -2365,7 +2365,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_bus",
-        "id": "d3de584e-5f10-57c5-b1cc-776fcd52d6d3",
+        "id": "93c81756-c580-5a08-9ad8-ca4ab55d73a7",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -2436,7 +2436,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_bus",
-        "id": "32fc6f74-78bb-51c7-b316-a10d03943dfa",
+        "id": "98719d53-6e96-5e66-bd3b-4817311d8e38",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2471,7 +2471,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_bus",
-        "id": "6b6bc743-7dcb-559d-95e7-6d432199dbd7",
+        "id": "cc6f865d-8609-5d5b-a521-d50d331f448a",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2506,7 +2506,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_bus",
-        "id": "08e75bf7-8271-5d6f-866e-ae2ab49ecb12",
+        "id": "30647ce8-be0a-5c3e-a7af-e3f7928ba3e3",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2541,7 +2541,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_bus",
-        "id": "ed33de48-3401-5599-8fdc-adfae541c08f",
+        "id": "b2aa1250-3a38-5d66-bbc7-b5c058ef016d",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2574,7 +2574,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -2583,7 +2583,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/4b840060f470b53f561276fba411f946/downstream",
-        "id": "4548bcf4-6c95-5a30-baca-cfa408a81a97",
+        "id": "3a86dbe0-eb45-58d0-b671-beb70ed910e6",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -2652,7 +2652,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -2661,7 +2661,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_bus",
-        "id": "7aa282d1-ee46-5d5b-839e-6fe081a30372",
+        "id": "05006dc0-786f-5f5f-ad49-7aa15dcb86e2",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -2732,7 +2732,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_bus",
-        "id": "8f06c5ad-e6e7-521b-bd89-c573ef590da5",
+        "id": "ae836298-0164-52dc-8d73-4ad37b9c12eb",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2767,7 +2767,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_bus",
-        "id": "ec750169-605a-588c-b3d3-3a01ddd52b13",
+        "id": "da7b48b8-96ae-5688-ad38-383bbe85b35d",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2802,7 +2802,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_bus",
-        "id": "8795ba6b-c07b-55c3-b5ff-f43ab0506faf",
+        "id": "c7d72b9e-f7dd-57ff-8ab7-8d3bc29ca2b2",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2837,7 +2837,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_bus",
-        "id": "7e9860c4-0f03-50f6-9ea5-6b74d47b5e42",
+        "id": "8782d581-70af-52bb-a7da-53a72788242f",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2870,7 +2870,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -2879,7 +2879,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/8fe0aa17d4cd16535a3ade643399d75d/sn_bus",
-        "id": "9adac244-33e3-56f9-8caf-8d1cd64c3e57",
+        "id": "5f580d6f-9214-54e8-99c2-db221286960c",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -2950,7 +2950,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/8fe0aa17d4cd16535a3ade643399d75d/sn_bus",
-        "id": "19f3c66e-1293-553f-b10f-618916a18673",
+        "id": "3d55fc9a-e483-5b8f-ada8-9af7e167505a",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2985,7 +2985,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/8fe0aa17d4cd16535a3ade643399d75d/sn_bus",
-        "id": "fc096499-69f2-5fbd-8aab-7ca2e25c66ca",
+        "id": "d481bdf1-4f44-57a1-9c67-1c4e7eaf2274",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3020,7 +3020,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/8fe0aa17d4cd16535a3ade643399d75d/sn_bus",
-        "id": "7f122aed-1686-5567-bbca-ee34b0c414d0",
+        "id": "a20c805c-73f2-5b24-b78c-74a4d77725d5",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3055,7 +3055,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/8fe0aa17d4cd16535a3ade643399d75d/sn_bus",
-        "id": "79780d22-7836-5799-915d-1444e6b87a5e",
+        "id": "bd878b5e-742e-5de6-8969-3d73ec644124",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3088,7 +3088,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -3097,7 +3097,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/7350682d9a38bd995d010426b65f26c3/sn_bus",
-        "id": "17f3994e-0e0b-50cd-8fac-b3bd3fb98cdd",
+        "id": "3ec72ce7-9883-5de1-a84f-45bba01c8b59",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -3166,7 +3166,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -3175,7 +3175,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/70b011920dfa74cdb26036fe27cc7f31/sn_bus",
-        "id": "54e43796-b8ff-5f4d-9b9b-5753a5a594d5",
+        "id": "a1b52dab-0dff-5980-adb4-eae2ff5ebb6d",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -3246,7 +3246,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/70b011920dfa74cdb26036fe27cc7f31/sn_bus",
-        "id": "cb0db196-a6d7-538a-a1cd-c564e0ce23f2",
+        "id": "262b1c99-dd14-54f8-8786-d2ea556c41d7",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3281,7 +3281,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/70b011920dfa74cdb26036fe27cc7f31/sn_bus",
-        "id": "7e330c46-61e0-5eb6-a5a7-9420462b1b49",
+        "id": "b7b0737f-c579-5459-aef0-7eae3ca4bdc2",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3316,7 +3316,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/70b011920dfa74cdb26036fe27cc7f31/sn_bus",
-        "id": "b5ae6033-0b01-5ff1-8bde-c1eb762c52ae",
+        "id": "508cbaf3-59b3-552b-9f3f-15719b49d894",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3351,7 +3351,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/70b011920dfa74cdb26036fe27cc7f31/sn_bus",
-        "id": "2e6ac1f2-5370-564c-a2db-f79f262a8dbb",
+        "id": "3d6b06df-89bc-577f-850f-e9120d09871e",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3384,7 +3384,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -3393,7 +3393,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/afb4bbd51ef7f159768c15d69ddc97b5/sn_bus",
-        "id": "f2c7fefe-7f37-53d1-9a89-924f04987353",
+        "id": "fbefc5eb-0743-5c73-9048-fbe3608be793",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -3464,7 +3464,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/afb4bbd51ef7f159768c15d69ddc97b5/sn_bus",
-        "id": "8f929559-c9c2-5d7c-8684-405d5dc3c3b9",
+        "id": "92288c6a-7383-5cd7-b737-a212e240b3d5",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3499,7 +3499,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/afb4bbd51ef7f159768c15d69ddc97b5/sn_bus",
-        "id": "d64c7a30-6f5e-5522-8909-c446d84338b8",
+        "id": "86b5f4d2-439f-587e-be41-4c887210f9e7",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3534,7 +3534,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/afb4bbd51ef7f159768c15d69ddc97b5/sn_bus",
-        "id": "4becfddf-fc7a-529b-852e-456dbb02a3c7",
+        "id": "dc2838c7-e170-524e-a39f-09a015d75952",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3569,7 +3569,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/afb4bbd51ef7f159768c15d69ddc97b5/sn_bus",
-        "id": "c864cb60-0e5b-524a-8208-1a30750f6392",
+        "id": "979b43fc-a6ef-5d73-a648-c123a1585c03",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3602,7 +3602,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -3611,7 +3611,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/82b9a808f5d77984e6d154f129a6d9b3/sn_bus",
-        "id": "cc6a5ad8-a01f-5c78-88c2-f53d89b5675e",
+        "id": "0451d4cc-c932-5d20-8a39-10a8a02d3de6",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -3680,7 +3680,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349000195,
+        "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-tfk-yakxs-3x120",
@@ -3689,7 +3689,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/44385fc6f27c4dbd058bb54e616bb949/sn_bus",
-        "id": "95a4fcda-1598-5684-b898-4c8827238df3",
+        "id": "30bb09eb-13bb-5f03-918a-69ee5f5f94ce",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -3760,7 +3760,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/44385fc6f27c4dbd058bb54e616bb949/sn_bus",
-        "id": "a6632fb2-5316-5967-86f1-ae3fa2e3c2ec",
+        "id": "3bc1f77f-e98e-5ff3-a6d8-aaaa57a5f90f",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3795,7 +3795,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/44385fc6f27c4dbd058bb54e616bb949/sn_bus",
-        "id": "593e7037-5354-5a74-b174-99bd71ef9445",
+        "id": "9023bef3-7349-5354-b8b0-80fd51f880c0",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3830,7 +3830,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/44385fc6f27c4dbd058bb54e616bb949/sn_bus",
-        "id": "1d9e2e8c-c423-5ed6-ab89-2e0c51ea2817",
+        "id": "25e2541f-f827-505e-ba00-6ebc0ea9d997",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3865,7 +3865,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/44385fc6f27c4dbd058bb54e616bb949/sn_bus",
-        "id": "cfdb60a0-2075-5162-8759-2af52555578e",
+        "id": "3939736b-28ae-52c7-895f-a91095e33e43",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -3900,7 +3900,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_bus",
-        "id": "c9ba0c92-78f0-5305-9e59-0245652ba84f",
+        "id": "4d5cabe7-1b87-52c3-8db4-9a8fc62dab33",
         "materialized_params": null,
         "meta": {
           "apparatus_kind": "BREAKER",
@@ -3936,7 +3936,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 9.738937226128359e-05,
+        "b_siemens_per_km": 9.73893722613e-05,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-base-epr-al-1c-240",
@@ -3945,7 +3945,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "pv/c5b3ff6eb9e66ed7bc6702bc26b389d3/der/block_hv_bus",
-        "id": "c480a44e-95cf-5354-8052-7b56b63eb0af",
+        "id": "8b3b5c6e-ce82-506e-8e79-7509663bcdb6",
         "insulation": "EPR",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -4020,7 +4020,7 @@
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_bus",
-        "id": "6b2b8c25-926f-5991-af0f-255fde4c9244",
+        "id": "9a4651aa-9e69-5440-85eb-51958fae3945",
         "materialized_params": null,
         "meta": {
           "apparatus_kind": "BREAKER",
@@ -4056,7 +4056,7 @@
       },
       {
         "b0_siemens_per_km": null,
-        "b_siemens_per_km": 9.738937226128359e-05,
+        "b_siemens_per_km": 9.73893722613e-05,
         "cable_joints": [],
         "catalog_namespace": "KABEL_SN",
         "catalog_ref": "cable-base-epr-al-1c-240",
@@ -4065,7 +4065,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bess/856cc4b6e0d379b5b28aa4ae75cb45ee/der/block_hv_bus",
-        "id": "072914ad-d341-50a4-b479-75079285a993",
+        "id": "16636591-0f17-5d32-88a0-b7a70f438f98",
         "insulation": "EPR",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -4140,7 +4140,7 @@
     "buses": [
       {
         "frequency_hz": null,
-        "id": "95a5abec-8248-5e4f-b04c-85dee8069702",
+        "id": "411ad71d-7b41-5594-a7d0-7944ee6889a2",
         "meta": {
           "gpz_section_id": "gpz/898bf4c094fa05a9c12c999755c14897/section/001",
           "gpz_section_order": 0,
@@ -4156,7 +4156,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "8ad6574a-6b3c-51e9-8446-4c3e0e378a26",
+        "id": "8447cf1a-698e-5774-9fa8-6e7dd8a7b118",
         "meta": {
           "gpz_substation_ref": "gpz/898bf4c094fa05a9c12c999755c14897/substation",
           "gpz_transformer_ref": "gpz/898bf4c094fa05a9c12c999755c14897/transformer/001/wn_sn",
@@ -4177,7 +4177,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "6575dfee-56dd-5e03-87aa-d3f252163105",
+        "id": "3efb3b3c-f89d-5099-8fb4-c87765b9b945",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -4196,7 +4196,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "79cd96ad-4c6f-57f8-9be7-20468c0d22e7",
+        "id": "02736cf7-f2fd-5c04-8587-5c76b5caf0eb",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -4215,7 +4215,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "56524ea8-06fe-53a3-a6b4-0a4ae071112a",
+        "id": "83962bae-61a4-5cee-b593-e9080f78034b",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -4234,7 +4234,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "d3196333-4d0e-539b-a490-45a232f3a521",
+        "id": "4424cad8-a21d-5ada-a6e7-8314229ede6b",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -4253,7 +4253,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "a746bb26-ba35-52f2-928e-e9038a590bf1",
+        "id": "a0f66304-48ec-59be-b957-9671e9ee86cc",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -4272,7 +4272,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "64c44dd9-feff-51e8-aad0-d5ce1d7aa252",
+        "id": "a3fae238-ef77-5008-bde8-a9f03f4381ea",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -4291,7 +4291,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "42059171-07ad-588f-bc72-d265262a1d45",
+        "id": "4ffc03fd-1ec6-5db5-b791-edc41c63c30d",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -4310,7 +4310,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "8224ebe1-3a14-596f-94ae-87acf2885586",
+        "id": "00afc143-6d7a-56e8-9af1-d93516b6c8bc",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -4329,7 +4329,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "babe5700-1949-5135-a755-6ca9b68e37dd",
+        "id": "ae00d6be-e332-50ed-a376-74909637149c",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -4348,7 +4348,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "22e100a6-3ae3-5a0f-a0ad-661376e1c43d",
+        "id": "8c01688a-85f8-5793-876b-41384e9c7268",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -4367,7 +4367,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "2fe54f0b-7752-5e13-bb31-a8652f7ccf8c",
+        "id": "916c8291-f566-5874-be5b-4f1d0cad9b42",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -4386,7 +4386,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "eb5d54a3-21ef-5dc0-a1e0-4068930591d6",
+        "id": "eca35787-eddb-5a6f-bdc2-1793e7d162e8",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -4405,7 +4405,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "9639c8a2-2311-56d8-b753-47cdea16911a",
+        "id": "8d808508-2a3b-56f1-8ebe-87563a3edf60",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -4424,7 +4424,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "ed33f59b-b9b3-5d5d-8469-cd55e555dbdf",
+        "id": "43492904-8585-51a2-84b7-7d4ba69d0a80",
         "meta": {},
         "name": "Stacja S1",
         "nominal_limits": null,
@@ -4436,7 +4436,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "213a0f27-69d9-588b-8002-017e0ce73d82",
+        "id": "325f6aab-c08b-5508-b27c-a20ff72bd6d0",
         "meta": {
           "field_ref": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/sn_field/000",
           "render_on_sld": false,
@@ -4457,7 +4457,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "c56a87cd-a6a8-5d12-9efa-3bcf2f5d6675",
+        "id": "180534f9-ee57-5735-85dd-be231d0e3b1c",
         "meta": {
           "field_ref": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/sn_field/001",
           "render_on_sld": false,
@@ -4478,7 +4478,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "18943de4-7c21-5b02-acac-42b9f198c86a",
+        "id": "e567b95b-6dae-5957-9665-4c31b7b28200",
         "meta": {
           "field_ref": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/sn_field/002",
           "render_on_sld": false,
@@ -4499,7 +4499,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "8705061c-38d5-55ee-9cdf-29496b547942",
+        "id": "fa085d33-3fba-5800-948c-cf2107f4a74c",
         "meta": {
           "field_ref": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/sn_field/003",
           "render_on_sld": false,
@@ -4520,7 +4520,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "58a06b75-b5a7-50dc-b7c6-a70918203b77",
+        "id": "2b24b551-c8d7-5d5d-9859-659f4e94dd88",
         "meta": {},
         "name": "Szyna nN stacji",
         "nominal_limits": null,
@@ -4532,7 +4532,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "cfe800cd-9523-58d9-bb33-9842f3bee92d",
+        "id": "629140e2-8190-5094-a3ab-3dbc0473b515",
         "meta": {},
         "name": "Stacja S2",
         "nominal_limits": null,
@@ -4544,7 +4544,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "b54d2735-151d-5041-8aeb-471962c34a2e",
+        "id": "178d25a8-471a-50d7-9527-bcd6f7cf64f0",
         "meta": {
           "field_ref": "stn/7350682d9a38bd995d010426b65f26c3/sn_field/000",
           "render_on_sld": false,
@@ -4565,7 +4565,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "42a93384-5ed0-5507-a145-26fe4ef46209",
+        "id": "249b9dcd-209c-5f67-b443-5aa3bc5f8118",
         "meta": {
           "field_ref": "stn/7350682d9a38bd995d010426b65f26c3/sn_field/001",
           "render_on_sld": false,
@@ -4586,7 +4586,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "df9a7407-19bf-5f88-87e5-6e96bab3c284",
+        "id": "c708bec2-769a-5226-9a57-5f7c09cf46af",
         "meta": {
           "field_ref": "stn/7350682d9a38bd995d010426b65f26c3/sn_field/002",
           "render_on_sld": false,
@@ -4607,7 +4607,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "cfdd439a-bfee-500f-90a2-456c7b278ba9",
+        "id": "cfde74af-ec85-5bd4-babc-6da0341ba62c",
         "meta": {
           "field_ref": "stn/7350682d9a38bd995d010426b65f26c3/sn_field/003",
           "render_on_sld": false,
@@ -4628,7 +4628,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "9cdd86a6-248a-5c24-9a45-4eed436403cd",
+        "id": "04140d1d-ce80-58ba-b97c-7a1a283660e6",
         "meta": {},
         "name": "Szyna nN stacji",
         "nominal_limits": null,
@@ -4640,7 +4640,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "5e8fd6e1-da9a-5b85-ba94-fbe9eca20ea0",
+        "id": "0647d154-feda-56ef-81ac-e8747fe7e073",
         "meta": {},
         "name": "Stacja S3",
         "nominal_limits": null,
@@ -4652,7 +4652,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "95b9250e-1b4c-560e-9313-65cea24a13fa",
+        "id": "bb4d8fe6-ac90-52de-b8d9-7c7488dcd580",
         "meta": {
           "field_ref": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/sn_field/000",
           "render_on_sld": false,
@@ -4673,7 +4673,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "1492fb7d-2680-5483-8492-239ea81510df",
+        "id": "c5c729c1-fd82-5df1-8902-ca2a68e8f35d",
         "meta": {
           "field_ref": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/sn_field/001",
           "render_on_sld": false,
@@ -4694,7 +4694,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "f4af3e0e-538d-573c-8ebc-32452e12a232",
+        "id": "00670cbb-9737-5241-b8a1-ac4225d4ae07",
         "meta": {
           "field_ref": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/sn_field/002",
           "render_on_sld": false,
@@ -4715,7 +4715,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "3e9d5c13-6c16-5721-98bd-68d8e8756541",
+        "id": "8463737e-cba5-5912-b15b-d1fe38c16ee0",
         "meta": {
           "field_ref": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/sn_field/003",
           "render_on_sld": false,
@@ -4736,7 +4736,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "c9dc80e7-5a8f-582e-a6bb-09eff21a4d47",
+        "id": "b11dc6e9-9ebf-5012-a0af-796675104e82",
         "meta": {},
         "name": "Szyna nN stacji",
         "nominal_limits": null,
@@ -4748,7 +4748,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "86ace192-1657-561a-b2e0-ea44272fd873",
+        "id": "25f76204-94f5-562a-979f-22415508ca49",
         "meta": {},
         "name": "Stacja S4",
         "nominal_limits": null,
@@ -4760,7 +4760,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "70da931c-f455-562c-aebf-4d72747d2ba3",
+        "id": "2f11cf9f-9b7e-5ffc-8417-128662caea8c",
         "meta": {
           "field_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_field/000",
           "render_on_sld": false,
@@ -4781,7 +4781,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "c7a9911b-5c6a-5276-96e7-0fc336a4cde9",
+        "id": "735665c0-8801-529a-a3c5-902b7cd5bd45",
         "meta": {
           "field_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_field/001",
           "render_on_sld": false,
@@ -4802,7 +4802,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "2c2a8cd2-1f06-57e9-8f16-75b660d7588a",
+        "id": "1c74f160-8966-56a1-890e-fc9f395f5f44",
         "meta": {
           "field_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_field/002",
           "render_on_sld": false,
@@ -4823,7 +4823,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "843531fe-2903-5b30-8651-3cb89dd818c8",
+        "id": "0094accd-47ea-5de2-b985-f810fa207bba",
         "meta": {
           "field_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_field/003",
           "render_on_sld": false,
@@ -4844,7 +4844,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "25f75417-ff89-5166-90c1-e84de6dbccf4",
+        "id": "23abdb06-de92-59a5-b66e-33ed8d3ec2d5",
         "meta": {},
         "name": "Szyna nN stacji",
         "nominal_limits": null,
@@ -4856,7 +4856,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "00dec99d-a5dd-59f6-8066-61ea242ac06f",
+        "id": "5d1182e4-6073-5797-a7b1-76a4f987348d",
         "meta": {},
         "name": "Stacja S5",
         "nominal_limits": null,
@@ -4868,7 +4868,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "f6a086e8-0927-59bc-b850-e1577a589652",
+        "id": "a7cab696-0db8-50e2-8c27-328bea6feaa0",
         "meta": {
           "field_ref": "stn/82b9a808f5d77984e6d154f129a6d9b3/sn_field/000",
           "render_on_sld": false,
@@ -4889,7 +4889,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "260b9e72-2570-5572-baae-eb69e6e0b505",
+        "id": "07389106-be56-557a-a117-e4c94bd7b7e8",
         "meta": {
           "field_ref": "stn/82b9a808f5d77984e6d154f129a6d9b3/sn_field/001",
           "render_on_sld": false,
@@ -4910,7 +4910,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "58a5307d-93eb-5c8b-9a3f-0c3429356824",
+        "id": "7d2a8e7a-d727-5493-a491-c1334d9d175b",
         "meta": {
           "field_ref": "stn/82b9a808f5d77984e6d154f129a6d9b3/sn_field/002",
           "render_on_sld": false,
@@ -4931,7 +4931,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "c56d5232-727c-576d-8d71-5515b755badd",
+        "id": "619df1a6-0168-5a8a-8480-7f797320b1bb",
         "meta": {
           "field_ref": "stn/82b9a808f5d77984e6d154f129a6d9b3/sn_field/003",
           "render_on_sld": false,
@@ -4952,7 +4952,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "8d9bd4d8-9ab2-51e0-840b-6d8e32dcf13d",
+        "id": "58eab13c-abf2-56fe-880f-d4743e5cec30",
         "meta": {},
         "name": "Szyna nN stacji",
         "nominal_limits": null,
@@ -4964,7 +4964,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "ded377be-0072-598a-8928-582a739d2ca1",
+        "id": "c34d91b3-379f-55af-a988-377af9b176a0",
         "meta": {},
         "name": "Stacja S6",
         "nominal_limits": null,
@@ -4976,7 +4976,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "e405e8c4-9a6f-50bb-9f0e-f44e7ca7db6e",
+        "id": "ade38daa-1009-55f8-b323-1fee0fee754d",
         "meta": {
           "field_ref": "stn/500c9efcafdd0c69e4239e5121213746/sn_field/000",
           "render_on_sld": false,
@@ -4997,7 +4997,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "29f629b1-baaf-5d7e-a99d-2fb71f9a6bb7",
+        "id": "0de2c62a-f490-5960-bf03-70227e95351c",
         "meta": {
           "field_ref": "stn/500c9efcafdd0c69e4239e5121213746/sn_field/001",
           "render_on_sld": false,
@@ -5018,7 +5018,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "e2ed79f1-be0e-531f-9dee-c8a5c0c9aac4",
+        "id": "203c70d2-9809-55a8-a2d6-df610c5d238c",
         "meta": {
           "field_ref": "stn/500c9efcafdd0c69e4239e5121213746/sn_field/002",
           "render_on_sld": false,
@@ -5039,7 +5039,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "b1431e03-ae98-55c1-91a5-ee95cc91c465",
+        "id": "28b350b5-9fc6-51ea-819a-169fef9e7929",
         "meta": {
           "field_ref": "stn/500c9efcafdd0c69e4239e5121213746/sn_field/003",
           "render_on_sld": false,
@@ -5060,7 +5060,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "5941d923-f4f4-5cfb-881e-04e0bebabf3b",
+        "id": "f49fac1e-c9c2-562c-9ff7-feb24f63b7a9",
         "meta": {},
         "name": "Szyna nN stacji",
         "nominal_limits": null,
@@ -5072,7 +5072,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "c3c18121-08da-50e4-bbe2-d474cc262aba",
+        "id": "c34b678c-c376-5f04-8e17-2557e5e8a2ec",
         "meta": {},
         "name": "Stacja S7",
         "nominal_limits": null,
@@ -5084,7 +5084,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "df5c3ed1-8d36-592e-a3d2-97b8a1c2d7cf",
+        "id": "6b96f9e3-2297-5588-8502-c05f9637f061",
         "meta": {
           "field_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_field/000",
           "render_on_sld": false,
@@ -5105,7 +5105,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "8bd9217c-20c2-5cad-ab74-8ae1a1159c1d",
+        "id": "9c79ea1c-b711-504c-a2d7-c4b1476171bf",
         "meta": {
           "field_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_field/001",
           "render_on_sld": false,
@@ -5126,7 +5126,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "7ba15029-63a3-556a-9c3b-1c5e9b06ccae",
+        "id": "97f973a4-9b69-5b2c-85aa-1a9c19bbe435",
         "meta": {
           "field_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_field/002",
           "render_on_sld": false,
@@ -5147,7 +5147,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "cf66fd16-b068-5f9c-b82a-f6e940ba7ea8",
+        "id": "b79a0795-8a23-5408-bfc1-3a81f8c38a82",
         "meta": {
           "field_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_field/003",
           "render_on_sld": false,
@@ -5168,7 +5168,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "02a84379-439b-59b3-b24e-9e98315e595d",
+        "id": "68990fb9-8793-58ce-bfe6-aa48bc7fe270",
         "meta": {},
         "name": "Szyna nN stacji",
         "nominal_limits": null,
@@ -5180,7 +5180,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "3640c982-8629-5fa8-a536-8bab637ca99b",
+        "id": "61111b0a-8d1a-50da-88a9-d45c620da18c",
         "meta": {},
         "name": "Stacja S8",
         "nominal_limits": null,
@@ -5192,7 +5192,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "a4d07ac0-11a7-56d1-a46e-c7dd81a98eb1",
+        "id": "b9340695-70c7-5d5f-b70d-f52cbd16d293",
         "meta": {
           "field_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_field/000",
           "render_on_sld": false,
@@ -5213,7 +5213,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "881bde69-bff3-5540-92a3-579a51bd72a1",
+        "id": "149069e8-a82f-564f-8b9d-c58d1cedb8ef",
         "meta": {
           "field_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_field/001",
           "render_on_sld": false,
@@ -5234,7 +5234,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "4d472872-aaed-5194-a4e0-ef8e87a2265e",
+        "id": "54dc1f02-e931-5b61-a707-d9b3d25dbcff",
         "meta": {
           "field_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_field/002",
           "render_on_sld": false,
@@ -5255,7 +5255,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "6865507c-6640-5374-a91c-12979c348b13",
+        "id": "1c906765-ae0c-5a1a-bc15-2b469078f6e4",
         "meta": {
           "field_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_field/003",
           "render_on_sld": false,
@@ -5276,7 +5276,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "70229955-3153-5248-9e2f-0437f88cc595",
+        "id": "e74a7a1f-4a91-5f7c-93e1-a82e092772c4",
         "meta": {},
         "name": "Szyna nN stacji",
         "nominal_limits": null,
@@ -5288,7 +5288,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "3fbb862f-5fad-544b-9fb7-9533d4fb3ede",
+        "id": "98ec71b2-12cc-521d-8a0f-66c95fa0b788",
         "meta": {},
         "name": "Stacja S9",
         "nominal_limits": null,
@@ -5300,7 +5300,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "f087adda-bf2a-5c48-b68a-21f7600eeb07",
+        "id": "a2b7ef5c-45e2-52bf-85f2-2bb4fe43654e",
         "meta": {
           "field_ref": "stn/8fe0aa17d4cd16535a3ade643399d75d/sn_field/000",
           "render_on_sld": false,
@@ -5321,7 +5321,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "98e5c12e-0b8a-5891-bc53-43f44defef74",
+        "id": "6f8ae56b-aad4-5560-83bf-a064abf63a35",
         "meta": {
           "field_ref": "stn/8fe0aa17d4cd16535a3ade643399d75d/sn_field/001",
           "render_on_sld": false,
@@ -5342,7 +5342,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "93ce8471-fbaa-54cd-9a76-d8577240d9d4",
+        "id": "f1ba5281-f4ab-5949-a6ab-9a3e7ad1854c",
         "meta": {
           "field_ref": "stn/8fe0aa17d4cd16535a3ade643399d75d/sn_field/002",
           "render_on_sld": false,
@@ -5363,7 +5363,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "feba2c0c-7724-51ee-ad85-6d2926c78d7d",
+        "id": "1aac6d2e-0548-52b3-87a4-59fc94b2ae80",
         "meta": {
           "field_ref": "stn/8fe0aa17d4cd16535a3ade643399d75d/sn_field/003",
           "render_on_sld": false,
@@ -5384,7 +5384,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "acfe1a6b-b696-5270-a600-d28088566622",
+        "id": "8e1a1f79-3fe7-57ed-95d7-e6afa0451a46",
         "meta": {},
         "name": "Szyna nN stacji",
         "nominal_limits": null,
@@ -5396,7 +5396,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "03d6bce5-cfe7-5668-83e3-43bc86cf7882",
+        "id": "f4cb0b2d-b4e2-5fce-944d-e875f517567f",
         "meta": {},
         "name": "Stacja S10",
         "nominal_limits": null,
@@ -5408,7 +5408,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "df42c3d5-de07-5d02-9f5b-cb253b9ba22c",
+        "id": "97db1407-d71c-5856-98c3-24c1bd3676ca",
         "meta": {
           "field_ref": "stn/70b011920dfa74cdb26036fe27cc7f31/sn_field/000",
           "render_on_sld": false,
@@ -5429,7 +5429,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "3c1847a3-094f-58d0-afb7-e86d741c12e2",
+        "id": "9da366dd-a044-56e0-a80d-6049b2c5803c",
         "meta": {
           "field_ref": "stn/70b011920dfa74cdb26036fe27cc7f31/sn_field/001",
           "render_on_sld": false,
@@ -5450,7 +5450,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "222c0ca8-3dee-5f0f-9615-d8695e541def",
+        "id": "9f55a87b-e7cc-5d65-ac3d-e1f3c46d4b7b",
         "meta": {
           "field_ref": "stn/70b011920dfa74cdb26036fe27cc7f31/sn_field/002",
           "render_on_sld": false,
@@ -5471,7 +5471,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "a73c1787-30b1-5f3d-b36c-91b99cfbab54",
+        "id": "d0724c64-e13a-5b65-b0fd-5bb1a868971e",
         "meta": {
           "field_ref": "stn/70b011920dfa74cdb26036fe27cc7f31/sn_field/003",
           "render_on_sld": false,
@@ -5492,7 +5492,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "ff226577-6d42-5b5a-802b-b037f4b57ebc",
+        "id": "2bc841ce-23a0-52ab-942a-f69b60029c7e",
         "meta": {},
         "name": "Szyna nN stacji",
         "nominal_limits": null,
@@ -5504,7 +5504,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "012adb7d-e046-5958-843a-402bf9480933",
+        "id": "fbebc1bc-e101-5965-850c-f1f967d5908e",
         "meta": {},
         "name": "Stacja S11",
         "nominal_limits": null,
@@ -5516,7 +5516,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "55391d9e-7369-5236-9a14-565b89de0f5d",
+        "id": "e25fb776-4684-592f-926a-f9d0e726c4a0",
         "meta": {
           "field_ref": "stn/afb4bbd51ef7f159768c15d69ddc97b5/sn_field/000",
           "render_on_sld": false,
@@ -5537,7 +5537,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "a089ac8a-75bf-5e0c-b38d-6951a9bbc13c",
+        "id": "f36837d4-c158-5756-a6bf-bf053dc60f67",
         "meta": {
           "field_ref": "stn/afb4bbd51ef7f159768c15d69ddc97b5/sn_field/001",
           "render_on_sld": false,
@@ -5558,7 +5558,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "ef90ecc7-be80-5ba7-ad55-fd2124ccc498",
+        "id": "31bcdebc-641e-58f7-9a96-fd7c76e3f340",
         "meta": {
           "field_ref": "stn/afb4bbd51ef7f159768c15d69ddc97b5/sn_field/002",
           "render_on_sld": false,
@@ -5579,7 +5579,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "0258fd31-7eaf-55ee-a2c3-9c975709b205",
+        "id": "305c73f6-4095-58f6-ba34-dd605ebfe5fa",
         "meta": {
           "field_ref": "stn/afb4bbd51ef7f159768c15d69ddc97b5/sn_field/003",
           "render_on_sld": false,
@@ -5600,7 +5600,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "0bf9d72d-76e6-5ff5-b565-eafe725625a1",
+        "id": "e4391304-64df-584c-b265-6b657999b935",
         "meta": {},
         "name": "Szyna nN stacji",
         "nominal_limits": null,
@@ -5612,7 +5612,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "1ec3bebc-64bd-5f14-8d9d-29176947a26e",
+        "id": "c832ffb0-df36-5061-a6a2-5c8da67f78f3",
         "meta": {},
         "name": "Stacja S12",
         "nominal_limits": null,
@@ -5624,7 +5624,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "4a3aee19-55ef-5cb1-8226-a26f7e4df21d",
+        "id": "a3ba682c-0efc-5c19-88b9-3537a4bae5c1",
         "meta": {
           "field_ref": "stn/44385fc6f27c4dbd058bb54e616bb949/sn_field/000",
           "render_on_sld": false,
@@ -5645,7 +5645,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "d5eaff6f-73ee-52f5-a82f-ab6da9ad0010",
+        "id": "12e0e629-b2da-5a2e-b25c-ba1dfc6f21e1",
         "meta": {
           "field_ref": "stn/44385fc6f27c4dbd058bb54e616bb949/sn_field/001",
           "render_on_sld": false,
@@ -5666,7 +5666,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "b6c4cb1d-7fda-5c98-bde4-01c1cf6b0a01",
+        "id": "b369af02-12d8-5fc0-bcf8-9a779e1f6690",
         "meta": {
           "field_ref": "stn/44385fc6f27c4dbd058bb54e616bb949/sn_field/002",
           "render_on_sld": false,
@@ -5687,7 +5687,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "95fecf2b-eaa3-5e0f-8c40-d8e7f0d088d7",
+        "id": "1102192e-d1e9-5ff7-93bd-5e040373b69f",
         "meta": {
           "field_ref": "stn/44385fc6f27c4dbd058bb54e616bb949/sn_field/003",
           "render_on_sld": false,
@@ -5708,7 +5708,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "337b856a-5b57-5f1d-bf00-3daa0dfb5701",
+        "id": "2a2a37fe-f06a-5dcf-81c6-9c7091ba1487",
         "meta": {},
         "name": "Szyna nN stacji",
         "nominal_limits": null,
@@ -5720,7 +5720,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "013475cc-1bbe-5188-b709-496202349e16",
+        "id": "43a00d5d-ec37-527f-9e7e-aaf31dc554ff",
         "meta": {
           "der_role": "producer_lv_bus",
           "has_manufacturer_lv_switchgear": true,
@@ -5741,7 +5741,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "a66f0a07-2e17-5c16-9294-1d159683b186",
+        "id": "0cebc846-ca9b-541e-819c-2c36ce083f97",
         "meta": {
           "der_role": "block_hv_bus",
           "station_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/station",
@@ -5760,7 +5760,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "01d0e2b9-daa4-526a-9c77-1f03c87732a3",
+        "id": "cf55e76f-399f-5ea2-aa74-28666967daef",
         "meta": {
           "field_ref": "sn/c5b3ff6eb9e66ed7bc6702bc26b389d3/der/source_field",
           "port_kind": "der_source_in",
@@ -5782,7 +5782,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "093ba32d-d91a-58d7-8d78-e5ce13d05c7c",
+        "id": "7e42e1e0-5fca-526e-9fd1-de1d34877377",
         "meta": {
           "der_role": "producer_lv_bus",
           "has_manufacturer_lv_switchgear": true,
@@ -5803,7 +5803,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "a8f8e374-9bec-5848-977f-59447ad2b097",
+        "id": "15ff4b4a-eda7-5ae8-9c49-77d08126d1aa",
         "meta": {
           "der_role": "block_hv_bus",
           "station_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/station",
@@ -5822,7 +5822,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "4d62cedb-8873-5d41-80c3-c95c7e4d65df",
+        "id": "15129824-da78-5f20-848f-afd1634c4fc5",
         "meta": {
           "field_ref": "sn/856cc4b6e0d379b5b28aa4ae75cb45ee/der/source_field",
           "port_kind": "der_source_in",
@@ -5847,7 +5847,7 @@
     "corridors": [
       {
         "corridor_type": "radial",
-        "id": "d1c11161-df1e-5b21-bf30-3a5d7ae1d795",
+        "id": "8584fbe3-c0ba-5178-b86a-4eb122058acb",
         "meta": {},
         "name": "Magistrala 01",
         "no_point_ref": null,
@@ -5893,7 +5893,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "pv_inverter",
-        "id": "748e87f7-61f1-59dc-8ebc-c7aa26501207",
+        "id": "4d28d7ba-8c31-5d2e-9326-ac9afb09e171",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
@@ -5960,7 +5960,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "bess",
-        "id": "364b931a-03e4-55f5-87b4-4b93ac568d49",
+        "id": "a5adfe8c-a630-58de-b8e7-12c88b7894ef",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-bess-nn-0p5mw-0p4kv",
@@ -6034,7 +6034,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "wind_inverter",
-        "id": "5f86a1fe-2dd4-5620-b557-d23a7a5f5e0b",
+        "id": "43caeeda-0559-545f-af30-688087c20594",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-wind-nn-2mw-0p4kv",
@@ -6101,7 +6101,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "pv_inverter",
-        "id": "6345db7b-ad86-555a-b91e-6f5c5ff8c432",
+        "id": "27ff019e-5636-5fe5-a13c-c740de6d184d",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
@@ -6168,7 +6168,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "bess",
-        "id": "bb1267c0-52ae-5aab-88af-3578c108c559",
+        "id": "b4d5edd7-3125-59c0-98b9-471c61ee5712",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-bess-nn-0p5mw-0p4kv",
@@ -6242,7 +6242,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "pv_inverter",
-        "id": "7c832837-b60e-5c02-9cec-8d32ea7488ef",
+        "id": "b9b13572-82e3-57f6-8db8-5b9feb45e2c8",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-pv-nn-1mw-0p4kv",
@@ -6309,7 +6309,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "pv_inverter",
-        "id": "8dab903d-f8d5-553d-921d-3efb4cf11023",
+        "id": "2eaf30ba-c986-52f9-b414-e0fb3e3f1941",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "pv_inv_catalog_50",
@@ -6376,7 +6376,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "pv_inverter",
-        "id": "556d5d29-1f93-5e38-b009-2b3f6c87b8ff",
+        "id": "a9a669f8-a85e-5fd5-9aa3-0add02767f0d",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
@@ -6457,7 +6457,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "bess",
-        "id": "1a7e4179-c486-5054-bbd3-82001ddb6f7d",
+        "id": "150a50c8-9032-52f1-b25b-3e43b6d928d0",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-bess-nn-0p5mw-0p4kv",
@@ -6545,7 +6545,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "wind_inverter",
-        "id": "3c012ba4-735d-50cc-a631-9b601e0b6337",
+        "id": "419b4b7d-c086-502c-b87f-1138f0e4722c",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-wind-nn-2mw-0p4kv",
@@ -6612,7 +6612,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "pv_inverter",
-        "id": "af2a9d8e-dc01-5bf0-a169-261b8c82af74",
+        "id": "8e897537-480d-50b9-9267-2b191274fde3",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
@@ -6679,7 +6679,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "bess",
-        "id": "08e49f83-2eb8-5dfc-a8e9-e8452faa4950",
+        "id": "6d5bfb6c-fc3c-5178-a3d6-bfd5fe0ca410",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-bess-nn-1mw-0p4kv",
@@ -6753,7 +6753,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "pv_inverter",
-        "id": "7c1dc284-037f-59d5-9f0b-df95b90392a7",
+        "id": "261d4959-f223-5f87-bd9f-3684d314fda4",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
@@ -6820,7 +6820,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "bess",
-        "id": "112fa0f8-ac21-5079-9e6a-0cb972c634cd",
+        "id": "da59b02f-3c9d-50aa-ba42-dd37eb027a8e",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-bess-nn-0p5mw-0p4kv",
@@ -6894,7 +6894,7 @@
         "deklaracje_modulu": null,
         "dynamika": null,
         "gen_type": "wind_inverter",
-        "id": "81cd74fd-1448-5cff-88c4-3d5fbc6533db",
+        "id": "0f491ae1-3549-535b-a8f4-97568daabaf6",
         "limits": null,
         "materialized_params": {
           "catalog_item_id": "conv-wind-nn-2mw-0p4kv",
@@ -6962,7 +6962,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "ae05a2de202f386a32a95d1dae0b2e15ae9e011139c42076c6ab187912c1513e",
+      "hash_sha256": "d212d6c8c6a8853504d30029182f385c10a656a2d6ca5c4f70943b8962a1f7e1",
       "name": "Sieć demonstracyjna OZE + zwarcia",
       "revision": 0,
       "updated_at": "2026-07-24T00:00:00Z"
@@ -7041,7 +7041,7 @@
         "bus_ref": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/nn_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "id": "5fd2bd90-41e6-5484-860e-bd9906ba4aa1",
+        "id": "9d5760cb-28a3-5085-ad36-afee28256a8b",
         "materialized_params": null,
         "meta": {
           "catalog_binding": null,
@@ -7066,7 +7066,7 @@
         "bus_ref": "stn/7350682d9a38bd995d010426b65f26c3/nn_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "id": "4d50198b-6536-536d-801d-4a4f2d0849ea",
+        "id": "d8e32868-19c2-51b0-9174-99bc0483a937",
         "materialized_params": null,
         "meta": {
           "catalog_binding": null,
@@ -7091,7 +7091,7 @@
         "bus_ref": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/nn_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "id": "206152ad-f937-5feb-bb91-00ef8f64013a",
+        "id": "25787d16-e9f2-527b-af5b-73d26f29be80",
         "materialized_params": null,
         "meta": {
           "catalog_binding": null,
@@ -7116,7 +7116,7 @@
         "bus_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/nn_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "id": "d348682b-9184-526a-bcb6-6d77049a0d73",
+        "id": "6fc0b497-abf9-5204-b46b-49dac63c60e3",
         "materialized_params": null,
         "meta": {
           "catalog_binding": null,
@@ -7141,7 +7141,7 @@
         "bus_ref": "stn/82b9a808f5d77984e6d154f129a6d9b3/nn_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "id": "d1a70d68-3887-58f4-aeba-9bf0bd2cfce8",
+        "id": "71071a8a-ebb5-5d56-b940-7419b3efaa13",
         "materialized_params": null,
         "meta": {
           "catalog_binding": null,
@@ -7166,7 +7166,7 @@
         "bus_ref": "stn/500c9efcafdd0c69e4239e5121213746/nn_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "id": "dd442c6c-8a74-5704-8bde-16fe33e29743",
+        "id": "f04b7ca2-759f-5df2-97bc-2e1a93c73786",
         "materialized_params": null,
         "meta": {
           "catalog_binding": null,
@@ -7191,7 +7191,7 @@
         "bus_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/nn_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "id": "f25d6a26-d65f-5eb3-968c-e362ed664fa1",
+        "id": "60201b4e-07a4-526c-9649-e66295a36f75",
         "materialized_params": null,
         "meta": {
           "catalog_binding": null,
@@ -7216,7 +7216,7 @@
         "bus_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/nn_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "id": "f2240992-a866-53b1-a0f2-9aba28f43039",
+        "id": "0c4932f2-bf90-5925-99fd-e73544077b9a",
         "materialized_params": null,
         "meta": {
           "catalog_binding": null,
@@ -7241,7 +7241,7 @@
         "bus_ref": "stn/8fe0aa17d4cd16535a3ade643399d75d/nn_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "id": "bb64c565-830e-5db2-8832-ef28227bb3bd",
+        "id": "c62fea8e-0da9-5926-b0aa-213f60984eef",
         "materialized_params": null,
         "meta": {
           "catalog_binding": null,
@@ -7266,7 +7266,7 @@
         "bus_ref": "stn/70b011920dfa74cdb26036fe27cc7f31/nn_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "id": "acc4cdf5-fd61-5146-9b28-2036afbc7919",
+        "id": "a335ecf4-ef64-5eb0-8ff8-67f14f48f290",
         "materialized_params": null,
         "meta": {
           "catalog_binding": null,
@@ -7291,7 +7291,7 @@
         "bus_ref": "stn/afb4bbd51ef7f159768c15d69ddc97b5/nn_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "id": "c58c3fd4-2a9f-55a8-b8ae-cfd6782dbf01",
+        "id": "d7d24c05-700c-5e00-8021-9b23abfad06e",
         "materialized_params": null,
         "meta": {
           "catalog_binding": null,
@@ -7316,7 +7316,7 @@
         "bus_ref": "stn/44385fc6f27c4dbd058bb54e616bb949/nn_bus",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "id": "8b2a8945-855e-53dd-9ec6-68dfb61d7a2d",
+        "id": "c8f590aa-aee8-5881-9126-b4dd84a28853",
         "materialized_params": null,
         "meta": {
           "catalog_binding": null,
@@ -7349,7 +7349,7 @@
         "catalog_namespace": "ZRODLO_SN",
         "catalog_ref": "src-gpz-15kv-250mva-rx010",
         "gpz_section_id": "gpz/898bf4c094fa05a9c12c999755c14897/section/001",
-        "id": "24b1bfc6-7bb4-5ac2-8f1c-b6161b0a17f2",
+        "id": "9bdfb3ab-bccc-55ab-b135-ae153b1330de",
         "ik3_ka": 9.62,
         "ik3_min_ka": null,
         "materialized_params": {
@@ -7416,7 +7416,7 @@
             "section_id": "gpz/898bf4c094fa05a9c12c999755c14897/section/001"
           }
         ],
-        "id": "329bb493-1048-5791-93b7-9d5c75c3d908",
+        "id": "70777c9c-26bd-5548-8182-6565fc4662b8",
         "meta": {
           "field_specs": [
             {
@@ -7469,7 +7469,7 @@
         "external_ports": [],
         "gpz_hv_sections": [],
         "gpz_sections": [],
-        "id": "687d7cce-f1b8-5b53-9c58-c1d9ec77a2de",
+        "id": "f6589a27-f52b-5f82-ab61-a1819ef033b3",
         "meta": {
           "field_specs": [
             {
@@ -7665,7 +7665,7 @@
         "external_ports": [],
         "gpz_hv_sections": [],
         "gpz_sections": [],
-        "id": "108e29ab-7b11-58ec-806b-0c0a852a3eb3",
+        "id": "0cba7ba2-ffd4-525b-b84c-6e4676b2ac52",
         "meta": {
           "field_specs": [
             {
@@ -7861,7 +7861,7 @@
         "external_ports": [],
         "gpz_hv_sections": [],
         "gpz_sections": [],
-        "id": "43d9249c-1cec-58ba-8e92-61d19da47105",
+        "id": "5fd509a0-125f-5f98-9691-b56b083a5f89",
         "meta": {
           "field_specs": [
             {
@@ -8057,7 +8057,7 @@
         "external_ports": [],
         "gpz_hv_sections": [],
         "gpz_sections": [],
-        "id": "a57799b8-4940-506f-85b4-0498f6af295e",
+        "id": "32f82eec-57be-5c18-9083-8f3d41f23601",
         "meta": {
           "field_specs": [
             {
@@ -8267,7 +8267,7 @@
         "external_ports": [],
         "gpz_hv_sections": [],
         "gpz_sections": [],
-        "id": "8fe2e2aa-e164-59ef-974c-29bb0a7dfd4f",
+        "id": "c4c60027-1725-5e82-97c2-321ff39c72e8",
         "meta": {
           "field_specs": [
             {
@@ -8463,7 +8463,7 @@
         "external_ports": [],
         "gpz_hv_sections": [],
         "gpz_sections": [],
-        "id": "8fb83334-7322-5e6c-b982-b8494123096d",
+        "id": "60a9215f-6024-5413-b0fc-def1429d6401",
         "meta": {
           "field_specs": [
             {
@@ -8659,7 +8659,7 @@
         "external_ports": [],
         "gpz_hv_sections": [],
         "gpz_sections": [],
-        "id": "356c78c9-3887-5189-be48-faeb5f271ba0",
+        "id": "78565eea-30ba-5e2e-bc8f-4fb992461ce8",
         "meta": {
           "field_specs": [
             {
@@ -8957,7 +8957,7 @@
         "external_ports": [],
         "gpz_hv_sections": [],
         "gpz_sections": [],
-        "id": "23279772-754c-58ad-8c2b-ecaaef793177",
+        "id": "67ee51bf-c7e6-5914-afd1-01498ba07d2c",
         "meta": {
           "field_specs": [
             {
@@ -9255,7 +9255,7 @@
         "external_ports": [],
         "gpz_hv_sections": [],
         "gpz_sections": [],
-        "id": "5579075d-1cc5-5ab6-ba59-d862892d857e",
+        "id": "97311fb6-ccfb-5e1d-8d35-0dd2875b37a7",
         "meta": {
           "field_specs": [
             {
@@ -9465,7 +9465,7 @@
         "external_ports": [],
         "gpz_hv_sections": [],
         "gpz_sections": [],
-        "id": "31286385-e35a-5c25-9730-cc6937efb26a",
+        "id": "623a1d83-d0f7-50f2-a256-6fb106be6f75",
         "meta": {
           "field_specs": [
             {
@@ -9661,7 +9661,7 @@
         "external_ports": [],
         "gpz_hv_sections": [],
         "gpz_sections": [],
-        "id": "95921f9c-e68c-5cdc-a051-10df2d08c12f",
+        "id": "360427f3-ec6d-5eee-a12b-aba93c61876d",
         "meta": {
           "field_specs": [
             {
@@ -9885,7 +9885,7 @@
         "external_ports": [],
         "gpz_hv_sections": [],
         "gpz_sections": [],
-        "id": "7286bbe3-1ea2-54c8-aa2a-f343ac128667",
+        "id": "161e5dea-12c4-5ff1-b353-b9e335d69074",
         "meta": {
           "field_specs": [
             {
@@ -10064,7 +10064,7 @@
         "hv_bus_ref": "gpz/898bf4c094fa05a9c12c999755c14897/transformer/001/bus_110",
         "hv_neutral": null,
         "i0_percent": 0.35,
-        "id": "d120b623-0d87-558e-b02c-c6f003eaa476",
+        "id": "292a3186-c258-56c6-850d-8a307f9ac714",
         "lv_bus_ref": "gpz/898bf4c094fa05a9c12c999755c14897/section/001/bus_sn",
         "lv_earthing_system": null,
         "lv_neutral": null,
@@ -10116,7 +10116,7 @@
         "hv_bus_ref": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/sn_bus",
         "hv_neutral": null,
         "i0_percent": 1.5,
-        "id": "db51e11c-902c-592d-8a05-514377aa30f7",
+        "id": "06968e3a-cd9c-5212-941e-82a5fe0c0df3",
         "lv_bus_ref": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/nn_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
@@ -10161,7 +10161,7 @@
         "hv_bus_ref": "stn/7350682d9a38bd995d010426b65f26c3/sn_bus",
         "hv_neutral": null,
         "i0_percent": 1.5,
-        "id": "87dfcd96-067d-5441-b0bb-e98b35f98ccf",
+        "id": "06e7da85-ee1a-5238-a990-0f3f2f729de1",
         "lv_bus_ref": "stn/7350682d9a38bd995d010426b65f26c3/nn_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
@@ -10206,7 +10206,7 @@
         "hv_bus_ref": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/sn_bus",
         "hv_neutral": null,
         "i0_percent": 0.7,
-        "id": "e386cde1-8a2a-55a7-812f-25e680489f83",
+        "id": "d2cd7450-ed4f-5c65-a3bb-4880d4f9f46f",
         "lv_bus_ref": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/nn_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
@@ -10251,7 +10251,7 @@
         "hv_bus_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_bus",
         "hv_neutral": null,
         "i0_percent": 1.5,
-        "id": "fea82e0a-a037-56f7-8a08-296f2172b36f",
+        "id": "acd817c9-9aae-573c-bba8-be150cdbb90c",
         "lv_bus_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/nn_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
@@ -10296,7 +10296,7 @@
         "hv_bus_ref": "stn/82b9a808f5d77984e6d154f129a6d9b3/sn_bus",
         "hv_neutral": null,
         "i0_percent": 0.7,
-        "id": "654269fe-907f-5743-99bb-c7884e47b2c7",
+        "id": "dae06375-bb16-56f2-ab46-dfe35762ce88",
         "lv_bus_ref": "stn/82b9a808f5d77984e6d154f129a6d9b3/nn_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
@@ -10341,7 +10341,7 @@
         "hv_bus_ref": "stn/500c9efcafdd0c69e4239e5121213746/sn_bus",
         "hv_neutral": null,
         "i0_percent": 1.5,
-        "id": "c9d76a69-cefd-5098-bb78-aef12297a5c9",
+        "id": "f79899f9-78f7-5cf1-8b3a-6d842667f6bc",
         "lv_bus_ref": "stn/500c9efcafdd0c69e4239e5121213746/nn_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
@@ -10386,7 +10386,7 @@
         "hv_bus_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_bus",
         "hv_neutral": null,
         "i0_percent": 1.5,
-        "id": "d98e0540-6f58-505d-8d6d-dcab2a07374a",
+        "id": "3a40ce4e-9d98-5a78-b046-3e9d9444e2f1",
         "lv_bus_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/nn_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
@@ -10431,7 +10431,7 @@
         "hv_bus_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_bus",
         "hv_neutral": null,
         "i0_percent": 1.5,
-        "id": "47104231-daf7-5643-b46e-9dbf3df1d8c6",
+        "id": "23921adf-463f-5eee-b3a4-9b0786d385c0",
         "lv_bus_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/nn_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
@@ -10476,7 +10476,7 @@
         "hv_bus_ref": "stn/8fe0aa17d4cd16535a3ade643399d75d/sn_bus",
         "hv_neutral": null,
         "i0_percent": 0.7,
-        "id": "471c5c26-31a3-5353-b0e3-4b36a0ac390d",
+        "id": "11edf0cb-6dc3-5b7a-a184-2e5ce7ef895b",
         "lv_bus_ref": "stn/8fe0aa17d4cd16535a3ade643399d75d/nn_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
@@ -10521,7 +10521,7 @@
         "hv_bus_ref": "stn/70b011920dfa74cdb26036fe27cc7f31/sn_bus",
         "hv_neutral": null,
         "i0_percent": 0.7,
-        "id": "b2648b82-0bc6-5435-a920-9d56e6550d48",
+        "id": "aa33c255-978c-567f-a9b8-0d95fabd2883",
         "lv_bus_ref": "stn/70b011920dfa74cdb26036fe27cc7f31/nn_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
@@ -10566,7 +10566,7 @@
         "hv_bus_ref": "stn/afb4bbd51ef7f159768c15d69ddc97b5/sn_bus",
         "hv_neutral": null,
         "i0_percent": 0.7,
-        "id": "c1d0e096-a978-58d0-b9e5-30ea65b9f11a",
+        "id": "05ce5eb5-ac27-59b1-86c0-9c1126cd3423",
         "lv_bus_ref": "stn/afb4bbd51ef7f159768c15d69ddc97b5/nn_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
@@ -10611,7 +10611,7 @@
         "hv_bus_ref": "stn/44385fc6f27c4dbd058bb54e616bb949/sn_bus",
         "hv_neutral": null,
         "i0_percent": 1.5,
-        "id": "bacbe1f3-eb19-5a27-8105-7d6db1d044f2",
+        "id": "3b6b8f1a-d0f6-5274-ab79-6407cb67bf13",
         "lv_bus_ref": "stn/44385fc6f27c4dbd058bb54e616bb949/nn_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
@@ -10656,7 +10656,7 @@
         "hv_bus_ref": "pv/c5b3ff6eb9e66ed7bc6702bc26b389d3/der/block_hv_bus",
         "hv_neutral": null,
         "i0_percent": 1.2,
-        "id": "0d946fbd-106e-53a6-8855-8777dd598700",
+        "id": "bd983e9b-3d1c-5b2b-aebd-195513b6c7dd",
         "lv_bus_ref": "pv/c5b3ff6eb9e66ed7bc6702bc26b389d3/der/producer_nn_bus",
         "lv_earthing_system": null,
         "lv_neutral": null,
@@ -10706,7 +10706,7 @@
         "hv_bus_ref": "bess/856cc4b6e0d379b5b28aa4ae75cb45ee/der/block_hv_bus",
         "hv_neutral": null,
         "i0_percent": 1.2,
-        "id": "53e7bdab-6642-5658-898e-5977bad0da7c",
+        "id": "567d96f0-4f21-56dd-b5d9-4cb730bbea92",
         "lv_bus_ref": "bess/856cc4b6e0d379b5b28aa4ae75cb45ee/der/producer_nn_bus",
         "lv_earthing_system": null,
         "lv_neutral": null,

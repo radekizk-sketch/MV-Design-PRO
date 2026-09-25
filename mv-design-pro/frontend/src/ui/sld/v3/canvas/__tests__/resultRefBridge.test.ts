@@ -15,7 +15,11 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildResultRefBridge, resultPointsHiddenByModel } from '../resultRefBridge';
+import {
+  buildResultRefBridge,
+  resultPointsHiddenByModel,
+  resultPointsInStationNnBoard,
+} from '../resultRefBridge';
 import { pickStationBus } from '../../../shared/stationBusResolution';
 import type { Bus, EnergyNetworkModel, Substation } from '../../../../../types/enm';
 
@@ -24,13 +28,26 @@ const enm = JSON.parse(
   readFileSync(resolve(here, 'fixtures', 's92Bieg.enm.json'), 'utf8'),
 ) as EnergyNetworkModel;
 
-const STACJA = 'stn/6db7ec2086af7dc462ff4bbb91f42b90/station';
-const STACJA_SN_BUS = 'stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_bus';
-const STACJA_NN_BUS = 'stn/6db7ec2086af7dc462ff4bbb91f42b90/nn_bus';
-const STACJA_TR = 'stn/6db7ec2086af7dc462ff4bbb91f42b90/transformer';
-const STACJA_POLE_TR = 'stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_field/003';
-const GPZ = 'gpz/a6b30c58f8be3a034fd29c5254ae4326/substation';
-const GPZ_SEKCJA_BUS = 'gpz/a6b30c58f8be3a034fd29c5254ae4326/section/001/bus_sn';
+// Tożsamość wyprowadzana z modelu (rodzaj stacji, końcówki refów, rola pola), nie
+// z ziaren identyfikatorów — fikstura jest regenerowana z API (karta SLD-SUBSTRAT:
+// ziarna odcinków i stacji zmieniły się z CV-4.3 K1; szablon 1250 kVA ma pole TR na
+// pozycji 002, dawny zrzut 1000 kVA — na 003).
+type PoleSn = { readonly field_ref: string; readonly bay_role?: string; readonly bus_ref?: string };
+const stacjaInline = (enm.substations ?? []).find((s) => s.station_type === 'inline')!;
+const gpz = (enm.substations ?? []).find((s) => s.station_type === 'gpz')!;
+const polaStacji = (stacjaInline.meta as { field_specs: PoleSn[] }).field_specs;
+const STACJA = stacjaInline.ref_id;
+const STACJA_SN_BUS = stacjaInline.bus_refs.find((ref) => ref.endsWith('/sn_bus'))!;
+const STACJA_NN_BUS = stacjaInline.bus_refs.find((ref) => ref.endsWith('/nn_bus'))!;
+const STACJA_TR = stacjaInline.transformer_refs![0];
+const STACJA_POLE_TR = polaStacji.find((pole) => pole.bay_role === 'TR')!.field_ref;
+const STACJA_POLA_LINIOWE = polaStacji.filter((pole) => pole.bay_role === 'IN' || pole.bay_role === 'OUT');
+const GPZ = gpz.ref_id;
+const GPZ_SEKCJA_BUS = gpz.bus_refs.find((ref) => ref.endsWith('/bus_sn'))!;
+const GPZ_BUS_110 = gpz.bus_refs.find((ref) => ref.endsWith('/bus_110'))!;
+const MUFA = (enm.buses ?? []).find((bus) => bus.ref_id.endsWith('/downstream'))!.ref_id;
+const ZACISK_POLA = (enm.buses ?? []).find((bus) => bus.ref_id.includes('/sn_field_terminal/'))!.ref_id;
+const ODCINEK_0 = (enm.branches ?? []).find((g) => g.name === 'Odcinek 0')!.ref_id;
 
 const klon = (): EnergyNetworkModel => JSON.parse(JSON.stringify(enm)) as EnergyNetworkModel;
 const stacjaW = (model: EnergyNetworkModel, ref: string): Substation =>
@@ -64,8 +81,8 @@ describe('resultRefBridge — most refów rysunek ↔ punkt wyniku', () => {
   });
 
   it('pola o roli innej niż TR nie wchodzą do mostu (brak fabrykacji transformatora na polu liniowym)', () => {
-    expect(bridge.has('stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_field/000')).toBe(false);
-    expect(bridge.has('stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_field/001')).toBe(false);
+    expect(STACJA_POLA_LINIOWE.length).toBeGreaterThanOrEqual(2);
+    for (const pole of STACJA_POLA_LINIOWE) expect(bridge.has(pole.field_ref)).toBe(false);
   });
 
   it('brak migawki ⇒ most pusty (zero atrap)', () => {
@@ -133,18 +150,65 @@ describe('resultPointsHiddenByModel — deklaracja modelu „tego nie rysujemy"'
   const hidden = resultPointsHiddenByModel(enm);
 
   it('mufy ciągu (`INLINE_TERMINAL`) i zaciski pól (`FIELD_TERMINAL`) są zadeklarowane jako nierysowane', () => {
-    expect(hidden.has('bus/579ff99a3d0449ee89eb53b41d3f1bca/downstream')).toBe(true);
-    expect(hidden.has('stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_field_terminal/000')).toBe(true);
+    expect(hidden.has(MUFA)).toBe(true);
+    expect(hidden.has(ZACISK_POLA)).toBe(true);
   });
 
   it('szyny stacji, szyna 110 kV GPZ i gałęzie ciągu NIE są zadeklarowane jako nierysowane', () => {
     expect(hidden.has(STACJA_SN_BUS)).toBe(false);
     expect(hidden.has(STACJA_NN_BUS)).toBe(false);
-    expect(hidden.has('gpz/a6b30c58f8be3a034fd29c5254ae4326/transformer/001/bus_110')).toBe(false);
-    expect(hidden.has('seg/579ff99a3d0449ee89eb53b41d3f1bca/segment')).toBe(false);
+    expect(hidden.has(GPZ_BUS_110)).toBe(false);
+    expect(hidden.has(ODCINEK_0)).toBe(false);
   });
 
   it('brak migawki ⇒ zbiór pusty', () => {
     expect(resultPointsHiddenByModel(null).size).toBe(0);
+  });
+});
+
+/**
+ * ILOCZYN CECH predykatu „punkt w rozdzielnicy nN stacji": rodzaj szyny {szyna
+ * odpływu nN tej stacji, szyna nN stacji, szyna SN stacji, szyna GPZ, mufa} ×
+ * stan deklaracji {pole w `nn_field_specs` stacji, pole usunięte ze specyfikacji,
+ * gałąź wychodząca z obcej szyny}. Źródło prawdy wspólne z agregatem odbioru
+ * (`stationLoadBusRefs`) — zbiory nie mogą się rozjechać.
+ */
+describe('resultPointsInStationNnBoard — szyny odpływów nN stacji (poza schematem SN)', () => {
+  const nnBoard = resultPointsInStationNnBoard(enm);
+  const aparatyOdplywow = (enm.branches ?? []).filter((g) => typeof g.meta?.nn_field_migrowany_z === 'string');
+
+  it('każda szyna za aparatem pola nN stacji należy do zbioru; szyny stacji, GPZ i mufy — nie', () => {
+    expect(aparatyOdplywow).toHaveLength(6);
+    expect([...nnBoard].sort()).toEqual(aparatyOdplywow.map((g) => String(g.to_bus_ref)).sort());
+    for (const ref of [STACJA_SN_BUS, STACJA_NN_BUS, GPZ_SEKCJA_BUS, GPZ_BUS_110, MUFA]) {
+      expect(nnBoard.has(ref)).toBe(false);
+    }
+  });
+
+  it('pole usunięte z `nn_field_specs` stacji ⇒ jego szyna wypada ze zbioru (deklaracja, nie wędrówka po grafie)', () => {
+    const model = klon();
+    const stacja = stacjaW(model, STACJA);
+    const meta = stacja.meta as { nn_field_specs: { field_ref: string }[] };
+    const usuniete = meta.nn_field_specs.shift()!;
+    const szyna = aparatyOdplywow.find((g) => g.meta?.nn_field_migrowany_z === usuniete.field_ref)!.to_bus_ref;
+    const zbior = resultPointsInStationNnBoard(model);
+    expect(zbior.has(String(szyna))).toBe(false);
+    expect(zbior.size).toBe(5);
+  });
+
+  it('aparat pola nN wychodzący z OBCEJ szyny (nie tej stacji) ⇒ jego szyna nie należy do rozdzielnicy stacji', () => {
+    const model = klon();
+    const aparat = (model.branches ?? []).find((g) => g.ref_id === aparatyOdplywow[0].ref_id)!;
+    aparat.from_bus_ref = GPZ_SEKCJA_BUS;
+    expect(resultPointsInStationNnBoard(model).has(String(aparat.to_bus_ref))).toBe(false);
+  });
+
+  it('zbiory „nierysowane w modelu" i „w rozdzielnicy nN" są rozłączne na tej migawce', () => {
+    const hidden = resultPointsHiddenByModel(enm);
+    expect([...nnBoard].filter((ref) => hidden.has(ref))).toEqual([]);
+  });
+
+  it('brak migawki ⇒ zbiór pusty', () => {
+    expect(resultPointsInStationNnBoard(null).size).toBe(0);
   });
 });

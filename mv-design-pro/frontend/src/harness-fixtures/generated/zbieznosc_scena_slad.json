@@ -11,7 +11,7 @@
   "init_state": {
     "63203cbc-ac91-5100-a0ee-a275d24514ff": {
       "v_pu": 1.0,
-      "theta_rad": 0.5235987755982988
+      "theta_rad": 0.523598775598
     },
     "80c21edb-e0ec-5378-acd6-e90f5ec0bc57": {
       "v_pu": 1.0,
@@ -19,15 +19,15 @@
     },
     "d70aff7b-d056-5804-acce-c9bc5707612b": {
       "v_pu": 1.0,
-      "theta_rad": 1.0471975511965974
+      "theta_rad": 1.0471975512
     },
     "d93618a6-23da-5d59-ae10-a7242961b790": {
       "v_pu": 1.0,
-      "theta_rad": 0.5235987755982988
+      "theta_rad": 0.523598775598
     },
     "e22c09ea-bf55-54b7-8c57-88efc2eb8989": {
       "v_pu": 1.0,
-      "theta_rad": 0.5235987755982988
+      "theta_rad": 0.523598775598
     }
   },
   "init_method": "flat_start",
@@ -58,47 +58,47 @@
         "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
         "vector_group": "YNd11",
         "clock_number": 11,
-        "phase_shift_deg": 29.999999999999996,
-        "phase_shift_rad": 0.5235987755982988,
+        "phase_shift_deg": 30.0,
+        "phase_shift_rad": 0.523598775598,
         "tap_abs": 0.975,
-        "tap_complex_real": 0.8443747686898277,
-        "tap_complex_imag": -0.48749999999999993
+        "tap_complex_real": 0.84437476869,
+        "tap_complex_imag": -0.4875
       },
       {
         "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
         "vector_group": "Dyn11",
         "clock_number": 11,
-        "phase_shift_deg": 29.999999999999996,
-        "phase_shift_rad": 0.5235987755982988,
+        "phase_shift_deg": 30.0,
+        "phase_shift_rad": 0.523598775598,
         "tap_abs": 1.0,
-        "tap_complex_real": 0.8660254037844387,
-        "tap_complex_imag": -0.49999999999999994
+        "tap_complex_real": 0.866025403784,
+        "tap_complex_imag": -0.5
       }
     ]
   },
   "iterations": [
     {
       "k": 1,
-      "norm_mismatch": 0.05421919079168506,
-      "max_mismatch_pu": 0.05352185126632367,
+      "norm_mismatch": 0.0542191907917,
+      "max_mismatch_pu": 0.0535218512663,
       "cause_if_failed": null
     },
     {
       "k": 2,
-      "norm_mismatch": 0.0016231147936781238,
-      "max_mismatch_pu": 0.0015843984039765528,
+      "norm_mismatch": 0.00162311479368,
+      "max_mismatch_pu": 0.00158439840398,
       "cause_if_failed": null
     },
     {
       "k": 3,
-      "norm_mismatch": 1.350457163506022e-06,
-      "max_mismatch_pu": 1.2609951435834447e-06,
+      "norm_mismatch": 1.35045716351e-06,
+      "max_mismatch_pu": 1.26099514358e-06,
       "cause_if_failed": null
     },
     {
       "k": 4,
-      "norm_mismatch": 2.7896262452039595e-12,
-      "max_mismatch_pu": 2.082668872789261e-12,
+      "norm_mismatch": 2.7896262452e-12,
+      "max_mismatch_pu": 2.08266887279e-12,
       "cause_if_failed": null
     }
   ],
@@ -275,8 +275,8 @@
             "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
             "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
             "position_before": 0,
-            "u_controlled_kv": 15.007544940787783,
-            "u_regulation_kv": 15.007544940787783,
+            "u_controlled_kv": 15.0075449408,
+            "u_regulation_kv": 15.0075449408,
             "setpoint_kv": 15.4,
             "deadband_kv": 0.1,
             "position_after": -1,
@@ -291,8 +291,8 @@
             "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
             "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
             "position_before": -1,
-            "u_controlled_kv": 15.197391901075576,
-            "u_regulation_kv": 15.197391901075576,
+            "u_controlled_kv": 15.1973919011,
+            "u_regulation_kv": 15.1973919011,
             "setpoint_kv": 15.4,
             "deadband_kv": 0.1,
             "position_after": -2,
@@ -307,8 +307,8 @@
             "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
             "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
             "position_before": -2,
-            "u_controlled_kv": 15.39210775298142,
-            "u_regulation_kv": 15.39210775298142,
+            "u_controlled_kv": 15.392107753,
+            "u_regulation_kv": 15.392107753,
             "setpoint_kv": 15.4,
             "deadband_kv": 0.1,
             "position_after": -2,
