@@ -379,7 +379,14 @@ POMIJANE_KATALOGI = {
 #: naprawione u zrodla w tych samych testach; zero nowych bledow.
 #: Partia integracji 2 (2026-09-25, pomiar guardem na `73d435c2`): 94 -> 93 — oba zejscia
 #: opisane wyzej (scalenie main i karta #141) policzone razem na jednym drzewie.
-BUDZET_BLEDOW_POZA_BRAMKA = 93
+#: Partia integracji 3 (2026-09-25, pomiar guardem na drzewie `0a4a3eff` + naprawa, lista bledow
+#: PRZED/PO porownana linia po linii z drzewem partii 2 `7e59dd26`): 93 -> 91. Karta
+#: MAGISTRALA-OCENA zdjela dwa bledy TS2741 w `ui2/kreatory/magistrala/__tests__/
+#: magistralaModel.test.ts` (pole `delta_u_pct` odcinka budowy zniknelo z kontraktu, bo spadek
+#: liczy backend) i dopisala trzy TS2550 w `KreatorMagistralaSn.test.tsx` (`.at(-1)` na
+#: `mock.calls`, `lib` ES2020) — naprawione U ZRODLA wspolnym pomocnikiem `src/test/arrayAt.ts`
+#: (ten sam wzorzec co w testach SLD i NC RfG); zero nowych bledow.
+BUDZET_BLEDOW_POZA_BRAMKA = 91
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

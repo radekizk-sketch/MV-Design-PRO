@@ -562,6 +562,16 @@ DOZWOLONE: dict[str, tuple[int, str]] = {
         "pochodzi z nazwy pola kontraktu wyniku; wartość jest dokładnie tym, co pozycja "
         "podstawy pokazuje projektantowi.",
     ),
+    (
+        "application/analyses/ocena_doboru_magistrali.py:_ocena_spadku_odcinka:"
+        "tekst_argument:opis_pl:slad_opis"
+    ): (
+        1,
+        "`slad_opis` składa `formula_ref` wyniku `cable_voltage_drop` — TREŚĆ wzoru "
+        "(„ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ)”), nie identyfikator — z wielkościami wejścia "
+        "odcinka opisanego numerem porządkowym w ciągu magistrali; token „ref” pochodzi z nazwy "
+        "pola kontraktu wyniku (ten sam przypadek co `dobor_przekladnika`).",
+    ),
     "enm/kompilator_grafu.py:_nazwa_krawedzi:zwrot:_nazwa_krawedzi:.edge_id": (
         1,
         "W grafie wejściowym kompilatora `edge_id` to oznaczenie nadane przez człowieka: "

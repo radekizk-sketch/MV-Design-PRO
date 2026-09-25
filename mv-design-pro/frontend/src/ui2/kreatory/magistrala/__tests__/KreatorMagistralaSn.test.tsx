@@ -10,6 +10,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { at } from '../../../../test/arrayAt';
 import { KreatorMagistralaSn } from '../KreatorMagistralaSn';
 import type { OcenaDoboruMagistraliResponse } from '../ocenaDoboruApi';
 // Odpowiedzi trasy oceny policzone BACKENDEM (`scripts/eksport_fixtur_harnessu.py`, ta sama
@@ -434,7 +435,7 @@ describe('KreatorMagistralaSn — ocena doboru z backendu (rekordy werdyktu)', (
     await pickCable();
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
     await waitFor(() => expect(fetchOcenaMock).toHaveBeenCalled());
-    const bezPradu = fetchOcenaMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    const bezPradu = at(fetchOcenaMock.mock.calls, -1)?.[0] as Record<string, unknown>;
     expect(bezPradu).toMatchObject({
       napiecie_kv: 15,
       odcinek: { rodzaj: 'KABEL', catalog_ref: 'kab-120', dlugosc_m: 500, prad_roboczy_a: null },
@@ -442,7 +443,7 @@ describe('KreatorMagistralaSn — ocena doboru z backendu (rekordy werdyktu)', (
     });
     await userEvent.type(screen.getByTestId('mvd-kreator-magistrala-prad'), '300');
     await waitFor(() => {
-      const ostatnie = fetchOcenaMock.mock.calls.at(-1)?.[0] as { odcinek: { prad_roboczy_a: number | null } };
+      const ostatnie = at(fetchOcenaMock.mock.calls, -1)?.[0] as { odcinek: { prad_roboczy_a: number | null } };
       expect(ostatnie.odcinek.prad_roboczy_a).toBe(300);
     });
   });
@@ -458,7 +459,7 @@ describe('KreatorMagistralaSn — ocena doboru z backendu (rekordy werdyktu)', (
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-magistrala-next'), 'continue');
     await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
     await waitFor(() => {
-      const ostatnie = fetchOcenaMock.mock.calls.at(-1)?.[0] as { odcinki_zbudowane: unknown[] };
+      const ostatnie = at(fetchOcenaMock.mock.calls, -1)?.[0] as { odcinki_zbudowane: unknown[] };
       expect(ostatnie.odcinki_zbudowane).toEqual([
         { rodzaj: 'KABEL', catalog_ref: 'kab-120', dlugosc_m: 500, prad_roboczy_a: 200, cos_phi: 0.95, nazwa: null },
       ]);
