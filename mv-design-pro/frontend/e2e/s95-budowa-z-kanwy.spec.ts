@@ -30,8 +30,9 @@ const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:800
  * żywej aplikacji — każde ogniwo łańcucha wykonane natywnym prawym klikiem na
  * rysunku, z realnym zapisem do modelu przez backend. POWTARZALNOŚĆ do 15
  * stacji mierzy sonda odbioru `scripts/sld_v3_acceptance.mjs`
- * (`menu_chain_probe`): na sieci referencyjnej 54 stacje i 115 odcinków mają
- * realne wejście budowy, przy progu karty 15. Rozdzielenie jest świadome —
+ * (`menu_chain_probe`): na sieci referencyjnej 53 stacje i 115 odcinków mają
+ * realne wejście budowy, przy progu karty 15 (pomiar po karcie S95-START; dawne 54
+ * liczyło też GPZ bez wolnego pola liniowego). Rozdzielenie jest świadome —
  * pętla 15 kreatorów w e2e mierzyłaby czas kreatorów, nie dostępność operacji
  * z rysunku (dług `S9-5-DLUG-E2E-PETLA` w rejestrze).
  */
@@ -292,7 +293,7 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
 
     // ---- Ogniwo 4: cykl domknięty — KOLEJNY odcinek ZE STACJI ---------------
     // Uchwytem stacji na pełnym szczególe jest etykieta jej nazwy (lekcja
-    // pomiaru nr 2). Dostępność wejść budowy NA SKALĘ (54 stacje / 115
+    // pomiaru nr 2). Dostępność wejść budowy NA SKALĘ (53 stacje / 115
     // odcinków, próg 15) mierzy nadal sonda odbioru `menu_chain_probe` —
     // tutaj domykamy PĘTLĘ: stacja zapisana ogniwem 3 jest źródłem ogniwa 4.
     const enmPoStacji = await pobierzEnm(request, caseId);
