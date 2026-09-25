@@ -58,6 +58,9 @@ Pomiar po karcie: ui/** 8 surowych trafien (w tym 1 nowe: granica stron stacji
 domyslna polecenia OSD `DOMYSLNY_LIMIT_P_PCT`, klasa b); jedyne trafienie
 klasy a poza kreatorem (`sldCanonKit.tsx`: `ipOk = ip <= idyn`, znak ✓/✗
 w odczycie wezla SLD) zostalo usuniete u zrodla w tej samej karcie.
+Karta PASMO-1KV (2026-09-25) usunela stala `STATION_LV_VOLTAGE_LIMIT_KV` (granice
+stron stacji czyta jedno lustro pasm `ui2/model/pasmaNapieciowe`), wiec trafienie
+klasy b w ui/** i jego wpis listy dozwolonej zniknely.
 Czego te wzorce NIE widza (nazwane): porownania na odchyleniu napiecia
 `deviation_percent` w rendererach SLD (`Math.abs(v.deviation_percent) <= 5`,
 wiersz F8 planu AB §8) — pilnuje ich zapadka `werdykt_wyjasnialny_guard`
@@ -219,11 +222,10 @@ ALLOWLIST: dict[tuple[str, str], str] = {
         "pradKA: c.ikss_partial_a / 1000,",
     ): "b: przeliczenie jednostki A→kA wartości otrzymanej z backendu (ikss_partial_a / 1000) — wprost dozwolone skalowanie jednostek",
     # MAGISTRALA-OCENA (2026-09-25): trafienia wzorca deklaracji stalej progu, ktore NIE
-    # sa kryterium oceny wyniku sieci.
-    (
-        "frontend/src/ui/sld/shared/stationBusResolution.ts",
-        "export const STATION_LV_VOLTAGE_LIMIT_KV = 0.5;",
-    ): "b: granica stron stacji (klasyfikacja rekordu Bus jako szyny SN albo nN po zadeklarowanym voltage_kv) — semantyka topologii, nie kryterium oceny wyniku sieci",
+    # sa kryterium oceny wyniku sieci. Wpis granicy stron stacji
+    # (`stationBusResolution.ts`, `STATION_LV_VOLTAGE_LIMIT_KV = 0.5`) zdjety po karcie
+    # PASMO-1KV: stala usunieta, granice stron stacji czyta lustro pasm
+    # `ui2/model/pasmaNapieciowe` (sprawdzenie swiezosci listy dozwolonej).
     (
         "frontend/src/ui2/oze/osd/EkranOsd.tsx",
         "const DOMYSLNY_LIMIT_P_PCT = 60;",

@@ -90,7 +90,10 @@ def test_ui_allowlist_matches_measured_baseline():
     Measured 8 = previous 7 + `STATION_LV_VOLTAGE_LIMIT_KV` (class b, allowlisted:
     bus-side classification, not an assessment threshold); the only class-a hit
     of the new patterns in ui/** (`sldCanonKit.tsx` `ipOk = ip <= idyn`) was
-    removed at the source in the same card.
+    removed at the source in the same card. PASMO-1KV (2026-09-25) re-measured 7:
+    the constant `STATION_LV_VOLTAGE_LIMIT_KV` was deleted (station bus sides read
+    the one band mirror `ui2/model/pasmaNapieciowe`), so its class-b hit and its
+    allowlist entry are gone -- a decrease by deletion, measured on the merged tip.
     """
     scan_dir = ui_no_physics_guard.REPO_ROOT / "frontend" / "src" / "ui"
     raw = 0
@@ -100,7 +103,7 @@ def test_ui_allowlist_matches_measured_baseline():
         if ui_no_physics_guard._should_exclude_file(path):
             continue
         raw += len(ui_no_physics_guard.scan_file(path))
-    assert raw == 8
+    assert raw == 7
 
 
 def test_ui_allowlist_entries_are_not_stale():
