@@ -740,11 +740,12 @@ The system is fully functional with:
 - 19 analysis modules (incl. Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds,
   Energy Validation — see inventory)
 - Full frontend (63 UI modules): SLD editor, Results, Study Cases, Proof Inspector, Protection, NC RfG tests
-- 10 310 backend test functions (`grep -rn "def test_" backend/tests --include=*.py`, 2026-09-24,
-  po scaleniu main → gałąź programu); 12 367 frontend tests in 866 files (full vitest run,
-  2026-09-24); 99 guard scripts + 55 guard self-test files (`ls scripts/*_guard.py
-  scripts/*_guards.py`, `ls scripts/test_*guard*.py`) — full backend regression
-  `-m "not pandapower and not andes"`: **23 711 passed, 0 failed** (2026-09-24)
+- 10 686 backend test functions (`grep -rn "def test_" backend/tests --include=*.py`, 2026-09-25,
+  partia integracji 4); 12 644 frontend tests in 878 files (full vitest run, 2026-09-25);
+  101 guard scripts + 57 guard self-test files (`ls scripts/*_guard.py scripts/*_guards.py`,
+  `ls scripts/test_*guard*.py`) — full backend regression `-m "not pandapower and not andes"`:
+  **26 165 passed** (2026-09-25, partia integracji 4; jedyny czerwony test — pin strażnika
+  fizyki w UI po kasacji stałej granicy stron stacji — naprawiony w `f434e1cb`)
 - Project import/export (ZIP, deterministic, versioned), CAD geometry editing in SLD,
   PDF/DOCX report generation, ENM v1.0 (EnergyNetworkModel)
 
