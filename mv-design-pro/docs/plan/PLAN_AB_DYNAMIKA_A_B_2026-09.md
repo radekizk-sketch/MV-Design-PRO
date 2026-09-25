@@ -572,6 +572,44 @@ stany, które nie są oceną wobec kryterium inżynierskiego, a strażnik łapie
 | F19 | `frontend/src/ui/network-build/GuidedBuildActionPanel.tsx:GuidedBuildActionPanel.ok`, `frontend/src/ui/network-build/ProcessPanel.tsx:CalculationControlSection.level`, `frontend/src/ui/network-build/ProcessPanel.tsx:ProcessPanel.readinessStatus`, `frontend/src/ui/network-build/liveReadiness.ts:useElementStatusDot`, `frontend/src/ui/shell/context-panels/MoContextPanel.tsx:MoContextPanel.navigatorRows.tone`, `frontend/src/ui2/kreatory/zrodlo-oze/KreatorZrodlaOze.tsx:KreatorZrodlaOze.wierszeGotowosci.stan`, `frontend/src/ui2/kreatory/pomiar/KreatorPomiaru.tsx:KreatorPomiaru.przekladniaOk` (7) | próg frontendu | gotowość danych budowy sieci i walidacja pól kreatorów (liczność elementów > 0, przekładnia > 0, etapy zapisu) | ENUM_WEWNETRZNY z uzasadnieniem „kompletność danych, nie ocena wobec kryterium"; stan gotowości tam, gdzie istnieje kod bramki gotowości backendu, czytany z niej |
 | F20 | `werdykt.decyzja:PochodneKryterium.status`, `werdykt.decyzja:PochodneWymagania.status`, `werdykt.decyzja:_WynikKroku.status`, `werdykt.etykiety:PozycjaSlownikaEtykiet.status` (4) | backend | typy pomocnicze implementacji kontraktu (już ENUM_WEWNETRZNY) | bez działania |
 
+
+Stan wierszy F10–F19 po Pakiecie E2 (2026-09-24): F10 domknięty — jeden słownik cyklu życia
+biegu `domain.execution.StanBiegu` z zawężeniem `stan_biegu` przy obu odczytach proweniencji
+i pozycji serii (`RunResponse.status` → `RunStatus`, `BatchResponse.status` → `RunBatchStatus`,
+`status_a`/`status_b` → `ResultFreshness`; `AnalysisRunIndexEntry` skasowany razem z
+repozytorium indeksu biegów, zero wołających), 13 tożsamości zdjętych; F11 domknięty
+(`StanProby`, `WynikProby`), 2 zdjęte; F12 częściowo (`StatusImportu`,
+`StatusMigracjiKlucza` z wartością `ZGODNY` → `IDENTYCZNY`, bo słowo ze słownika werdyktów
+brzmiało jak ocena), 3 zdjęte — pola `api.project_archive` i `api.incremental_archive` należą
+do karty archiwum; F13 bez zmian (karta archiwum); F14 domknięty (`StanAkcji` z zawężeniem
+`stan_akcji`), 3 zdjęte; F15 domknięty (`EligibilityStatus` jako ENUM_WEWNETRZNY z C54,
+`StanGotowosciRaportuPl`), 1 zdjęta; F16 domknięty (`OK` → `ustalone`, kontrakt projekcji nN
+4.0.0; `status_pl` jako ENUM_WEWNETRZNY); F17 bez zmian (`enm/models.py`, W5-B; mapa etykiet
+`fieldLabels.ts:communicationStatusLabel` wpisana jako MIGRACJA 6c); F18 domknięty (`ok` →
+`pelny` w `CalculationStatus`), 2 zdjęte; F19 — 7 wpisów przeklasyfikowanych na
+ENUM_WEWNETRZNY z uzasadnieniem wiersza.
+
+**Reguła 6 strażnika (Pakiet E2).** `werdykt_wyjasnialny_guard` sprawdza werdykt POZA
+rekordem w trzech kształtach, w Pythonie i TypeScripcie, z jednym słownikiem werdyktów dla
+wszystkich sprawdzeń i obu języków: 6a — ładunek słownikowy z kluczem statusu/werdyktu i
+wartością ze słownika bez pola wyjaśnienia; 6b — tekst składany z werdyktem (f-string, szablon,
+konkatenacja); 6c — mapa warunkowa (obiekt, `switch`, `dict`) z kluczami-werdyktami bez
+wyjaśnienia. Pomiar bazy: 137 tożsamości → 123 po naprawach u źródła (m.in. stałe `status: OK`
+dziennika operacji szablonu stacji, „OK" zbieżności estymacji → `ZBIEZNY`, „OK" odniesienia
+N/PE → `ustalone`). Pozostałe 123 są na liście dozwolonej jako MIGRACJA albo ENUM_WEWNETRZNY
+(rdzenie FROZEN, dowody ze złotymi plikami, wzorce referencyjne, mapy UI, pliki kart w toku).
+Katalog `ui2/wyniki/wzorzec` jest wyłączony wyłącznie dla map po kolorze; mapa po statusie jest
+zgłaszana także tam (żywa `SladSekcyjny.opisStatusu`, MIGRACJA D22).
+
+Wiersze dopisane przez Pakiet E2 (tożsamości reguły 6 bez wiersza w inwentarzu audytowym):
+
+| Wiersz | Tożsamości (moduł:symbol) | Sprawdzenie | Klasa | Fala | Co jest nie tak i dokąd migruje |
+|--------|---------------------------|-------------|-------|------|---------------------------------|
+| F21 | koperta widoku łańcucha nN `status: "OK"/"brak danych"/"nie dotyczy"`: `application.analyses.fault_loop.service:build_fault_loop_view_at_point.status`, `application.analyses.fault_loop.service:build_feeder_fault_loop_view.status`, `application.analyses.fault_loop.service:build_feeder_fault_loop_view_for_transformer.status`, `application.analyses.fault_loop.service:build_station_fault_loop_view.status`, `application.analyses.lv_domain.graph_view:build_lv_domain_view.status`, `application.analyses.lv_domain.projection_v1:_swz_snapshot.status`, `application.analyses.lv_domain.upstream_equivalent:_build_upstream_equivalent_snapshot_surowy.status`, `application.analyses.nn_device_selection:wybierz_aparat_dla_obwodu_nn.status`, `application.analyses.swz.service:build_swz_view.status`, `application.proof_engine.lv_circuit_verification_binding:zbuduj_wejscie_dowodu_obwodu_nn.status` (10, ENUM_WEWNETRZNY); `application.analyses.nn_circuit_sheet:_iz_prime_dla_kabla.status`, `application.analyses.nn_circuit_sheet:_wartosc.status`, `application.analyses.nn_circuit_sheet:build_nn_circuit_sheet.status`, `application.analyses.nn_circuit_sheet:build_nn_circuit_sheet_row_for_breaker.status` (4, MIGRACJA — plik karty #144) | 6a | ENUM_WEWNETRZNY (C26) / MIGRACJA | WW-3 | stan dostępności danych w kopercie widoku, nie ocena wobec kryterium; wartość `OK` do nazwy stanu danych razem z falą WW-3; arkusz obwodu nN migruje z kartą #144 |
+| F22 | `api.health:health_check.status` (1) | 6a | ENUM_WEWNETRZNY | — | konwencja sondy monitoringu (`ok`/`degraded`), nie werdykt inżynierski |
+| F23 | `enm.domain_operations_v2:validate_selectivity.audit.action:OK`, `enm.domain_operations_v2:validate_selectivity.audit.action:NIESPELNIONA` (2) | 6b | MIGRACJA | WW-2 | wpis dziennika z „OK"/„NIESPEŁNIONA" składany w tekście bez wartości, limitu i podstawy — do rekordu oceny selektywności |
+| F24 | `frontend/src/ui2/kreatory/magistrala/strings.ts:MAGISTRALA_STRINGS.ocenaOK` (1) | 6a | MIGRACJA | WW-4 | **ocena magistrali liczona w interfejsie** — werdykt i jego wyjaśnienie mają przyjść z backendu (zakaz fizyki i werdyktu w UI) |
+
 Reguła wykonania każdej fali: inwentarz klasy przed naprawą (komplet wierszy fali), test jako
 iloczyn cech (status × kompletność × stan źródła × status modelu × status danych), predykaty
 parami, zero tekstu werdyktu poza generatorem, zapadka strażnika obniżona w tym samym commicie.
