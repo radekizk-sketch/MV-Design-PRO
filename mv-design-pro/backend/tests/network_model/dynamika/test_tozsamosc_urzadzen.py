@@ -23,6 +23,7 @@ from typing import Any
 
 import pytest
 from network_model.solvers.dynamika.tozsamosc import odcisk_migawki
+from network_model.solvers.dynamika.urzadzenia import UrzadzenieCzesciowe, zbuduj_zrodlo_testowe
 from network_model.solvers.dynamika.urzadzenia.odlaczone import UrzadzenieOdlaczone
 
 from tests.network_model.dynamika import biblioteka_urzadzen as b
@@ -44,6 +45,14 @@ URZADZENIA: dict[str, Callable[[], Any]] = {
     "wiatr_typ_3_z_crowbarem": lambda: b.turbina(typ="wiatr_typ_3", crowbar=b.crowbar_typowy()),
     "wiatr_typ_4": lambda: b.turbina(),
     "odlaczone_maszyna": lambda: UrzadzenieOdlaczone(uklady._maszyna(2.0, 0.01)),
+    # Karta AB-1b.1 (P6, P7): opakowanie czesciowej utraty i zrodlo testowe stanowiska.
+    "czesciowe_gfl": lambda: UrzadzenieCzesciowe(b.przeksztaltnik_gfl(), 0.6),
+    "zrodlo_testowe_norton": lambda: zbuduj_zrodlo_testowe(
+        ident="ZT", wezel="SYS", impedancja_pu=complex(0.001, 0.02), f_bazowa_hz=50.0
+    ),
+    "zrodlo_testowe_idealne": lambda: zbuduj_zrodlo_testowe(
+        ident="ZT", wezel="SYS", impedancja_pu=None, f_bazowa_hz=50.0
+    ),
 }
 
 
@@ -84,6 +93,8 @@ def _zaburz(obiekt: Any, sciezka: tuple[str, ...]) -> Any:
         nowa = _zaburz(wartosc, tuple(reszta))
     elif isinstance(wartosc, bool):
         nowa = not wartosc
+    elif isinstance(wartosc, complex):
+        nowa = wartosc * 1.5 + 0.125j
     elif isinstance(wartosc, int | float):
         nowa = float(wartosc) * 1.5 + 0.125
     elif isinstance(wartosc, str):
@@ -160,3 +171,13 @@ def test_sprzezenie_jest_zadeklarowane_jawnie_w_klasie(nazwa: str) -> None:
     assert urzadzenie.sprzezenie in ("pradowe", "napieciowe")
     assert "parametry_tozsamosci" in vars(type(urzadzenie)), type(urzadzenie).__name__
     assert "POLA_POZA_ODCISKIEM" in vars(type(urzadzenie)), type(urzadzenie).__name__
+
+
+@pytest.mark.parametrize("nazwa", sorted(URZADZENIA))
+@pytest.mark.parametrize("czlon", ["stany_przypisywalne", "nastawy_regulacji", "agregat_jednostek"])
+def test_czlony_przypisan_sa_zadeklarowane_jawnie_w_klasie(nazwa: str, czlon: str) -> None:
+    """Karta AB-1b.1 par. 0 pkt 9-10: protokol nie ma domyslek stanow przypisywalnych,
+    nastaw regulacji ani flagi agregatu — kazda klasa deklaruje je SAMA (klasa bez
+    deklaracji odziedziczylaby cudza tablice komend albo cudza zgode na czesciowa utrate)."""
+    urzadzenie = URZADZENIA[nazwa]()
+    assert czlon in vars(type(urzadzenie)), (type(urzadzenie).__name__, czlon)

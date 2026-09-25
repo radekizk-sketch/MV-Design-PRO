@@ -248,6 +248,18 @@ chwili"* (`dynamika/silnik.py:744` i dalej, `ZALOZENIA_RDZENIA`). W6-A dopisuje 
 > zdanie o próbce prawostronnej (`silnik.py`, `ZALOZENIA_RDZENIA`) zostało zastąpione. Twierdzenie
 > D-18 (bramka G20: `L` wobec algebry SMIB sprzed zdarzenia, `P` — po; mutacje M28, M29).
 
+> **UZUPEŁNIENIE 2026-09-24 (karta AB-1b.1b, P6–P8).** Ta sama para `L`/`P` obowiązuje dla
+> zdarzeń WARUNKOWYCH (akcja dozoru wykonana w zlokalizowanej chwili `t*` albo w `t* + zwłoka`),
+> dla przypisania stanu i komendy regulacji oraz dla segmentów profilu źródła testowego. Gdy
+> ocena dozorów w próbce `P` pobudza w TEJ SAMEJ chwili kolejne akcje bez zwłoki, chwila ma kilka
+> RUND, każda z własną parą `L`/`P` (dozór pobudzony drugi raz w tej samej chwili = odmowa
+> `dynamika.petla_zdarzen_warunkowych`). Detektor częstotliwości nie jest oceniany w próbkach
+> `L`/`P` (tam `f = None`, kod 3): przejście przez chwilę zdarzenia rozstrzyga pierwsza ocena
+> po niej, a przekroczenie niesie uczciwą szerokość przedziału od ostatniej oceny liczbowej.
+> Chwila przekroczenia (`przekroczenia`, `t_zlokalizowany_s`) jest w wyniku rdzenia w pełnej
+> precyzji; kontrakt `resultset_dynamic_v2` kwantyzuje czas do 9 cyfr znaczących — rozdzielczość
+> publikacji nazwana w opisach pól kontraktu. Dowody: D-12 (bramka G14), D-13 (G18).
+
 ---
 
 ## 6. ROCOF — osobna kwalifikacja, osobne nazwy
@@ -397,6 +409,12 @@ z punktem pracy, od którego bieg wystartował, to cała reszta przebiegu opisuj
 
 > **ODCZYT PRZYJĘTY 2026-09-23 (karta AB-1b.1 P5).** F-3: szyna sztywna ma stałą SEM (stała
 > częstotliwość) — przypadek wymaga źródła testowego U/f/θ (AB-1b.1 P7, poza zakresem P0–P5).
+> **F-3 ZAMKNIĘTE 2026-09-24 (karta AB-1b.1b P7, twierdzenie D-14).** Źródło testowe idealne
+> (`urzadzenia/zrodlo_testowe.py`, wiersz ograniczenia `V = E(x)`) narzuca skok i rampę
+> częstotliwości SEM: w próbkach `C` `f_hz@` węzła źródła = `f_n (1 + Δω)` — wartość DOKŁADNA,
+> nie „zbieżna z krokiem", bo profil jest całkowany bez błędu dyskretyzacji (równania liniowe,
+> przebiegi odcinkami wielomianowe); bramka G15 (`G15_blad_czestotliwosci_zrodla_idealnego_hz`,
+> próg 10⁻¹² Hz) i mutacja M31 (kąt SEM bez członu odchyłki pulsacji).
 > F-6: próbka w `t_zd` nie jest jedna — para `L`/`P` (§5), obie z `f = None` i kodem 3; wartości
 > lewo- i prawostronne NIE są liczbami częstotliwości (pochodna przez nieciągłość nie istnieje),
 > a skończone i różne są napięcia i prądy obu próbek. F-13: gałąź wyłączona ma kanały od `t = 0`,
@@ -902,6 +920,15 @@ równowagą.
 Testy: `TestPodzialMocyWezla` (4 przypadki klasy) + `test_punkt_pracy_dzieli_moc_wezla_miedzy_obie_instalacje`.
 **Mutacja M-S1** (każdy wytwórca dostaje wypadkową szyny — dawne zachowanie rozciągnięte na N)
 zabija **3 testy**; sam fakt, że bieg się wykonuje, defektu NIE wykrywa.
+
+> **ZASTĄPIONE 2026-09-24 (karta AB-1b.1b §0 pkt 11).** Odmowa „źródło sieciowe + wytwórca na
+> jednej szynie" została zastąpiona REGUŁĄ RESZTY: wytwórca dostaje moc z modelu (to samo źródło
+> mocy biernej, co assembler rozpływu), źródło sieciowe (szyna sztywna albo źródło testowe
+> stanowiska) — resztę bilansu szyny z rozpływu; to jest dokładnie rachunek rozpływu (szyna
+> bilansująca domyka bilans). Odmową modelową `dynamika.wiele_urzadzen_w_wezle` zostają
+> wyłącznie DWA źródła sieciowe na jednej szynie (podziału reszty między dwa warunki brzegowe
+> nie da się wyprowadzić). Ten sam predykat czytają bramka gotowości i bieg
+> (`adapter_dynamiki._zrodla_szyn`); testy `TestBrakiModelu`, `TestStanowiskoBadawcze`.
 
 **D-2. Zwarcie metaliczne kończyło się gołym `ZeroDivisionError`.**
 Docstring `konwencje.admitancja_zwarcia_pu` deklarował, że taki przypadek „jest odrzucany

@@ -15,6 +15,16 @@
   WSZYSTKICH 16 podzbiorow otwieranych galezi pierscienia.
 * D-21 — zwarcie w linii w miejscu x*L; wyrocznia: gesta algebra z JAWNYM wezlem
   wewnetrznym (`wyrocznia_pradow`), bez redukcji Krona.
+
+Pakiety P6-P8 (twierdzenia D-12, D-13, D-14, D-20):
+
+* D-12 — lokalizacja zdarzen warunkowych: rampa zrodla idealnego i pierwiastek trajektorii
+  dyskretnej trapezu czlonu inercyjnego w postaci zamknietej (`wyrocznia_zdarzen`),
+* D-13 — przypisanie stanu: ciaglosc stanow nieprzypisanych i trajektoria kata po dwoch
+  skokach P_m wobec `solve_ivp` wyroczni (`wyrocznia.UkladSMIB.calkuj`),
+* D-14 — zrodlo testowe: postac zamknieta profilu (`wyrocznia_zdarzen.profil_zamkniety`),
+* D-20 — czesciowa utrata: rownowaznosc agregatu i przyspieszenie wyspy wobec algebry
+  sieci liniowej wyroczni (`wyrocznia_pradow.rozwiaz_siec_liniowa`).
 """
 
 from __future__ import annotations
@@ -197,5 +207,83 @@ def test_d18_probki_obustronne_wobec_algebry_smib() -> None:
         "G20_blad_algebry_probek_L_P_wzgl",
         "G20_skok_stanu_rozniczkowego_rad",
         "G20_naruszenia_osi_i_czestotliwosci",
+    ):
+        assert pomiary[klucz] <= bramki.PROGI[klucz], (klucz, pomiary)
+
+
+# --------------------------------------------------------------------------- D-12 .. D-14, D-20
+# Karta AB-1b.1, pakiety P6-P8: przypisanie stanu, zrodlo testowe, zdarzenia warunkowe,
+# czesciowa utrata zrodla — kazde twierdzenie wobec wyroczni bez importow z rdzenia.
+
+
+def test_d12_lokalizacja_zdarzen_warunkowych_wobec_postaci_zamknietych() -> None:
+    pomiary = bramki.g14_lokalizacja_zdarzen_warunkowych()
+    for klucz in (
+        "G14_blad_lokalizacji_wzgl_tolerancji",
+        "G14_pobudzenia_niezgodne_z_kierunkiem",
+        "G14_akcje_niezgodne_z_kasowaniem",
+    ):
+        assert pomiary[klucz] <= bramki.PROGI[klucz], (klucz, pomiary)
+
+
+def test_d12_wyrocznia_kroku_trapezu_spelnia_rownanie_kroku() -> None:
+    """Samokontrola wyroczni: `tau` z postaci zamknietej spelnia rownanie JEDNEGO kroku
+    trapezu `x1 = x0 + tau/2 (f(x0) + f(x1))` dla czlonu `dx/dt = (x_inf - x)/T`."""
+    from .wyrocznia_zdarzen import pierwiastek_kroku_trapezu
+
+    x_0, x_inf, stala, prog = 0.2, 1.0, 0.05, 0.55
+    tau = pierwiastek_kroku_trapezu(x_0, x_inf, stala, prog)
+    residuum = prog - x_0 - 0.5 * tau * ((x_inf - x_0) / stala + (x_inf - prog) / stala)
+    assert abs(residuum) < 1e-15
+
+
+def test_d13_przypisanie_stanu_wobec_wyroczni_rownania_wahan() -> None:
+    pomiary = bramki.g18_przypisanie_stanu()
+    assert pomiary["G18_skok_stanow_nieprzypisanych"] == 0.0
+    assert pomiary["G18_blad_wartosci_przypisanej"] == 0.0
+    for klucz in ("G18_residuum_algebry_po_przypisaniu", "G18_blad_trajektorii_po_przypisaniu_rad"):
+        assert pomiary[klucz] <= bramki.PROGI[klucz], (klucz, pomiary)
+
+
+def test_d14_zrodlo_testowe_wobec_postaci_zamknietej() -> None:
+    pomiary = bramki.g15_zrodlo_testowe()
+    for klucz in (
+        "G15_blad_postaci_zamknietej_wzgl",
+        "G15_napiecie_wezla_rozne_od_sem",
+        "G15_blad_czestotliwosci_zrodla_idealnego_hz",
+    ):
+        assert pomiary[klucz] <= bramki.PROGI[klucz], (klucz, pomiary)
+
+
+def test_d14_wyrocznia_profilu_jest_ciagla_poza_skokami() -> None:
+    """Samokontrola wyroczni: kat i amplituda ciagle na koncach ramp (strona L == P), skok
+    amplitudy i fazy — nieciaglosc dokladnie o wartosc segmentu."""
+    from .wyrocznia_zdarzen import profil_zamkniety
+
+    segmenty = bramki.PROFIL_SONDY_7_WYROCZNIA
+
+    def punkt(t: float, strona: str) -> tuple[float, float, float]:
+        return profil_zamkniety(segmenty, m_0=1.0, kat_0_rad=0.0, f_n_hz=50.0, t_s=t, strona=strona)
+
+    for t in (1.0, 2.0, 3.0):  # poczatki i konce ramp
+        assert punkt(t, "L") == pytest.approx(punkt(t, "P"), abs=1e-15)
+    assert punkt(0.2, "P")[0] - punkt(0.2, "L")[0] == pytest.approx(-0.5, abs=1e-15)
+    assert punkt(1.5, "P")[1] - punkt(1.5, "L")[1] == pytest.approx(math.radians(30.0), abs=1e-15)
+
+
+@pytest.mark.parametrize("rodzina", ["gfl", "maszyna_klasyczna"])
+def test_d20_agregat_z_udzialem_polowy_rowny_dwom_polowom_z_odlaczeniem(rodzina: str) -> None:
+    assert (
+        bramki.zmierz_rownowaznosc_agregatu(rodzina)
+        <= bramki.PROGI["G21_blad_rownowaznosci_agregatu_wzgl"]
+    )
+
+
+def test_d20_przyspieszenie_wyspy_po_czesciowej_utracie_wobec_algebry_wyroczni() -> None:
+    pomiary = bramki.g21_utrata_czesciowa()
+    for klucz in (
+        "G21_blad_rocof_maszyn_po_utracie_wzgl",
+        "G21_blad_rocof_srodka_bezwladnosci_wzgl",
+        "G21_blad_rownowaznosci_agregatu_wzgl",
     ):
         assert pomiary[klucz] <= bramki.PROGI[klucz], (klucz, pomiary)

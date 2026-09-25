@@ -25,7 +25,7 @@ from typing import ClassVar
 
 import numpy as np
 
-from ..kontrakty import SprzezenieUrzadzenia
+from ..kontrakty import WIELKOSCI_NASTAW, NastawaRegulacji, SprzezenieUrzadzenia
 from ..konwencje import zmiana_bazy_impedancji
 from .bazowe import (
     admitancja_wewnetrzna,
@@ -56,6 +56,34 @@ class SzynaSztywna:
     def sprzezenie(self) -> SprzezenieUrzadzenia:
         """SEM za impedancja Thevenina (niezerowa) — sprzezenie przez prad."""
         return "pradowe"
+
+    @property
+    def stany_przypisywalne(self) -> tuple[str, ...]:
+        """Zaden: SEM szyny sztywnej jest warunkiem brzegowym z punktu pracy. Profil
+        napiecia, czestotliwosci i fazy sieci zadaje ZRODLO TESTOWE stanowiska
+        (`urzadzenia.zrodlo_testowe`), nie przypisanie stanu ekwiwalentu."""
+        return ()
+
+    @property
+    def nastawy_regulacji(self) -> tuple[NastawaRegulacji, ...]:
+        """Ekwiwalent sieci nadrzednej nie ma regulatora — kazda wielkosc odmawiana."""
+        return tuple(
+            NastawaRegulacji(
+                wielkosc=wielkosc,
+                stan=None,
+                powod_pl="szyna sztywna jest warunkiem brzegowym sieci nadrzednej (SEM stała "
+                "za impedancja Thevenina) — nie ma regulatora; przebieg napięcia, "
+                "częstotliwości i fazy sieci zadaje źródło testowe stanowiska badawczego",
+                zakres=None,
+                mnoznik=1.0,
+            )
+            for wielkosc in WIELKOSCI_NASTAW
+        )
+
+    @property
+    def agregat_jednostek(self) -> bool:
+        """Ekwiwalent Thevenina sieci nadrzednej nie jest agregatem jednostek."""
+        return False
 
     def parametry_tozsamosci(self) -> dict[str, object]:
         """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""

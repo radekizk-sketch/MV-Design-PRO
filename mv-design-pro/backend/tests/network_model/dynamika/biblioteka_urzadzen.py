@@ -146,6 +146,7 @@ def nastawy(
     horyzont_s: float = 2.0,
     krok_wyjscia_s: float = 0.01,
     eps_init: float = 1.0e-8,
+    tolerancja_lokalizacji_zdarzen_s: float | None = None,
 ) -> NastawySolvera:
     """Nastawy testowe — krok STALY, trapez niejawny."""
     return NastawySolvera(
@@ -160,6 +161,7 @@ def nastawy(
         horyzont_s=horyzont_s,
         krok_wyjscia_s=krok_wyjscia_s,
         integrator="trapez_niejawny",
+        tolerancja_lokalizacji_zdarzen_s=tolerancja_lokalizacji_zdarzen_s,
     )
 
 

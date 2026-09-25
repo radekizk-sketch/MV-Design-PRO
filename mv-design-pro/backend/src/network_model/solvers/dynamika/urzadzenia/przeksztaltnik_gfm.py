@@ -66,6 +66,7 @@ import numpy as np
 from ..kontrakty import (
     KOD_PARAMETRY_SPRZECZNE,
     KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
+    NastawaRegulacji,
     OdmowaDynamiki,
     SprzezenieUrzadzenia,
 )
@@ -83,6 +84,7 @@ from .pochodne_kierunkowe import (
     obrot,
     pierwiastek,
 )
+from .przeksztaltnik_gfl import nastawy_przeksztaltnika
 from .uklad_stanow import UkladStanow
 
 STAN_KATA = "kat_rad"
@@ -448,6 +450,21 @@ class PrzeksztaltnikGFM:
     def sprzezenie(self) -> SprzezenieUrzadzenia:
         """Przeksztaltnik tworzacy siec: SEM za impedancja WIRTUALNA (niezerowa) — do sieci wchodzi prad."""
         return "pradowe"
+
+    @property
+    def stany_przypisywalne(self) -> tuple[str, ...]:
+        """Zadania mocy czynnej i biernej oraz odniesienie napiecia — stany o zerowej
+        pochodnej. Kat, predkosc wirtualna i filtry mocy sa calkami."""
+        return (STAN_ZADANIA_CZYNNEGO, STAN_ZADANIA_BIERNEGO, STAN_ODNIESIENIA_NAPIECIA)
+
+    @property
+    def nastawy_regulacji(self) -> tuple[NastawaRegulacji, ...]:
+        return nastawy_przeksztaltnika(self.okno_mocy, powod_p=None)
+
+    @property
+    def agregat_jednostek(self) -> bool:
+        """Instalacja przeksztaltnikowa jest agregatem identycznych falownikow."""
+        return True
 
     def parametry_tozsamosci(self) -> dict[str, object]:
         """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""

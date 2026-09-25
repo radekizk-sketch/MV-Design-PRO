@@ -149,6 +149,7 @@ def nastawy(
     tolerancja: float = 1e-11,
     tolerancja_kroku: float = 1e-6,
     max_iteracji_newtona: int = 60,
+    tolerancja_lokalizacji_zdarzen_s: float | None = None,
 ) -> NastawySolvera:
     """Nastawy wzorca — kazde pole podane JAWNIE (kontrakt zakazuje domyslek)."""
     return NastawySolvera(
@@ -163,11 +164,12 @@ def nastawy(
         horyzont_s=horyzont_s,
         krok_wyjscia_s=krok_wyjscia_s,
         integrator=integrator,  # type: ignore[arg-type]
+        tolerancja_lokalizacji_zdarzen_s=tolerancja_lokalizacji_zdarzen_s,
     )
 
 
-def uruchom(uklad: dict, harmonogram=(), **kw):
-    """Bieg produktu na zadanym ukladzie i harmonogramie zdarzen."""
+def uruchom(uklad: dict, harmonogram=(), dozory=(), **kw):
+    """Bieg produktu na zadanym ukladzie, harmonogramie zdarzen i dozorach."""
     ust = nastawy(**kw)
     wejscie = WejscieDynamiki(
         wezly=uklad["wezly"],
@@ -176,7 +178,7 @@ def uruchom(uklad: dict, harmonogram=(), **kw):
         odbiory=uklad["odbiory"],
         urzadzenia=uklad["urzadzenia"],
         punkt_pracy=uklad["punkt_pracy"],
-        harmonogram=HarmonogramDynamiki(zdarzenia=tuple(harmonogram)),
+        harmonogram=HarmonogramDynamiki(zdarzenia=tuple(harmonogram), dozory=tuple(dozory)),
         nastawy=ust,
         s_bazowa_mva=S_BAZOWA_MVA,
         f_bazowa_hz=F_BAZOWA_HZ,

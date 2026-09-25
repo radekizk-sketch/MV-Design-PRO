@@ -193,6 +193,30 @@ Klucz łączący z tablicą B: kolumna **ZDOLNOŚĆ**.
 > przebiegu). Kontrakt wyniku: `resultset_dynamic_v2` (próbki obustronne `L`/`P`, `None` dla
 > wartości niedostępnej, dziedzina fizyki z mapy produktu).
 
+> **STAN PO KARCIE AB-1b.1b, pakiety P6–P8 i P10 (2026-09-24) — zastępuje zdania o D13/D14 i
+> „P6–P8 nadal brak" z akapitu wyżej.** **A3** — PARTIAL (bez zmiany klasy): dochodzą przypisanie
+> stanu (`PrzypisanieStanu`), komenda regulacji P/Q/U (`komenda_regulacji` wykonywana, nie
+> odmawiana), częściowa utrata źródła (`utrata_czesciowa_zrodla`, agregat identycznych
+> jednostek) i profil źródła testowego (tryb `stanowisko`, rozdzielony typowo od zakłóceń sieci);
+> brak zabezpieczeń i automatyki w pętli (D14 pełne, D15 — AB-5). **D13** — EXECUTABLE L5
+> (twierdzenie D-13, bramka G18: stany nieprzypisane BITOWO ciągłe, `delta_x_nieprzypisane_max`
+> mierzone wobec stanów sprzed całej chwili, trajektoria kąta po dwóch skokach `P_m` wobec
+> niezależnego `solve_ivp`); tablica wielkość → stan z deklaracji klasy urządzenia
+> (`nastawy_regulacji`), odmowy nazwane `dynamika.nastawa_nieobslugiwana` (Q maszyny bez
+> regulatora mocy biernej, U przy stałym wzbudzeniu, P turbiny wiatrowej — moc dostępna z wiatru
+> to AB-1b.2) i `dynamika.punkt_pracy_poza_ograniczeniem` (nastawa poza oknem mocy). **D14
+> (prymityw zdarzeń warunkowych)** — EXECUTABLE L5 jako PRYMITYW (twierdzenie D-12, bramka G14:
+> lokalizacja Illinois z krokiem bisekcji na trajektorii dyskretnej, wykonanie akcji w `t*` co do
+> bitu, zwłoka i kasowanie przy powrocie; akcje w testach rdzenia i bramce); konsument produktowy
+> w tej karcie = **detektory przekroczeń bez akcji** (`ScenariuszDynamiczny.detektory` → wynik
+> `przekroczenia`); zabezpieczenie w pętli z nastawami z MODELU (OD-34) — AB-5, dlatego wiersz
+> D14 jako zdolność „działanie zabezpieczenia" pozostaje GAP. **D5/D6 (część)** — częściowa
+> utrata źródła EXECUTABLE L5 (D-20, bramka G21: równoważność agregatu z udziałem 0,5 i dwóch
+> połówek z odłączeniem jednej, przyspieszenie maszyn wyspy w `t = 0⁺` wobec algebry wyroczni).
+> **Źródło testowe U/f/θ** (mandat: `ComplianceStimulus`, O-18/O-38) — EXECUTABLE L5 (D-14,
+> bramka G15: profil całkowany bez błędu dyskretyzacji, przy `Z = 0` napięcie i częstotliwość
+> węzła narzucone), zamyka W6-A F-3. Metryki na gęstej siatce i niepewność (E1–E3) — AB-1b.2.
+
 ---
 
 ## 3. MACIERZ — tablica B (luki, zależności, dowód odbioru)

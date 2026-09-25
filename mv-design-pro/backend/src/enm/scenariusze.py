@@ -154,6 +154,35 @@ class Nastawa(BaseModel):
         return self
 
 
+class NastawaDynamiczna(BaseModel):
+    """Nastawa regulatora wytworcy wydana komenda regulacji w biegu czasowym (co najmniej
+    jedno z pol): moc czynna [MW], moc bierna [Mvar], napiecie odniesienia [pu].
+
+    OSOBNA od `Nastawa` scenariusza statycznego (karta AB-1b.1 par. 0 pkt 9): rozplyw nie
+    ma zadanego napiecia wytworcy, wiec pole `u_pu` w `Nastawa` byloby fantomem w
+    `apply_scenario`. Przeliczenie MW/Mvar na jednostki wzgledne bazy ukladu robi rdzen
+    dynamiki (jedna konwencja mocy), nie ten kontrakt. Ktora nastawa istnieje w ktorej
+    rodzinie urzadzen (np. maszyna synchroniczna nie ma regulatora mocy biernej) rozstrzyga
+    rdzen odmowa nazwana `dynamika.nastawa_nieobslugiwana`.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    # Liczby skonczone bez zaszytych granic: czy nastawa miesci sie w oknie mocy urzadzenia,
+    # rozstrzyga rdzen tym samym predykatem, co punkt poczatkowy (odmowa nazwana).
+    p_mw: float | None = Field(default=None, allow_inf_nan=False)
+    q_mvar: float | None = Field(default=None, allow_inf_nan=False)
+    u_pu: float | None = Field(default=None, gt=0.0, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def _co_najmniej_jedno(self) -> NastawaDynamiczna:
+        if self.p_mw is None and self.q_mvar is None and self.u_pu is None:
+            raise ValueError(
+                "NastawaDynamiczna bez żadnej wartości (p_mw/q_mvar/u_pu) nie jest komenda"
+            )
+        return self
+
+
 # ---------------------------------------------------------------------------
 # Zdarzenia dynamiczne (karta W6-1 SS0 p.5) — harmonogram czytany przez solver
 # W6-2 (`network_model/solvers/dynamika/`, nie istnieje w tej karcie). ZERO
@@ -299,16 +328,38 @@ class ZalaczenieOdbioru(BaseModel):
 
 
 class KomendaRegulacji(BaseModel):
-    """Zmiana nastawy regulatora zrodla w chwili t_s — reuzywa `Nastawa`
-    (jedno zrodlo prawdy ksztaltu nastawy: scenariusz statyczny i harmonogram
-    dynamiczny nadpisuja p_mw/q_mvar tym samym kontraktem)."""
+    """Zmiana nastawy regulatora wytworcy w chwili t_s (skokowa zmiana generacji jest ta
+    komenda, nie osobnym zdarzeniem).
+
+    KOREKTA 2026-09-24 (karta AB-1b.1 par. 0 pkt 9): docstring mowil, ze komenda
+    „reuzywa `Nastawa`" scenariusza statycznego; komenda niesie `NastawaDynamiczna`, bo
+    nastawa napiecia odniesienia nie istnieje w rozplywie. Rdzen dynamiki wykonuje
+    komende jako przypisanie stanu nastawy urzadzenia (bez zmiany pozostalych stanow)."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     rodzaj: Literal["komenda_regulacji"] = "komenda_regulacji"
     t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
     ref_id: str = Field(min_length=1)
-    nastawa: Nastawa
+    nastawa: NastawaDynamiczna
+
+
+class UtrataCzesciowaZrodla(BaseModel):
+    """Czesciowa utrata wytworcy w chwili t_s: z agregatu identycznych jednostek pracuje
+    dalej udzial `udzial_pozostaly` (0 < u < 1) wzgledem stanu poczatkowego.
+
+    Kolejne utraty tego samego wytworcy tylko malejaco (wzrost udzialu bylby ponownym
+    przylaczeniem jednostek); pelna utrata to `odlaczenie_zrodla`. Zrodlo sieciowe
+    (ekwiwalent sieci zasilajacej) nie jest agregatem jednostek — zdarzenie dziala
+    wylacznie na generatory.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["utrata_czesciowa_zrodla"] = "utrata_czesciowa_zrodla"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    ref_id: str = Field(min_length=1)
+    udzial_pozostaly: float = Field(gt=0.0, lt=1.0)
 
 
 class Synchronizacja(BaseModel):
@@ -331,9 +382,228 @@ ZdarzenieDynamiczne = Annotated[
     | OdlaczenieOdbioru
     | ZalaczenieOdbioru
     | KomendaRegulacji
+    | UtrataCzesciowaZrodla
     | Synchronizacja,
     Field(discriminator="rodzaj"),
 ]
+
+
+# ---------------------------------------------------------------------------
+# Stanowisko badawcze (karta AB-1b.1 par. 0 pkt 11) — zrodlo testowe o profilu U/f/faza
+# ---------------------------------------------------------------------------
+
+
+class SkokNapieciaProfilu(BaseModel):
+    """Amplituda SEM zrodla testowego przyjmuje w `t_s` wartosc `u_pu` (bezwzglednie)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["skok_napiecia"] = "skok_napiecia"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    u_pu: float = Field(ge=0.0, allow_inf_nan=False)
+
+
+class RampaNapieciaProfilu(BaseModel):
+    """Amplituda SEM zmienia sie od `t_s` przez `czas_trwania_s` z tempem `tempo_pu_na_s`
+    (od wartosci w chwili poczatku rampy; wartosc koncowa jest calka, nie przypisaniem;
+    rampa w dol konczy sie najnizej na amplitudzie zerowej)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["rampa_napiecia"] = "rampa_napiecia"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    tempo_pu_na_s: float = Field(allow_inf_nan=False)
+    czas_trwania_s: float = Field(gt=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+
+
+class SkokCzestotliwosciProfilu(BaseModel):
+    """Czestotliwosc SEM przyjmuje w `t_s` wartosc znamionowa + `odchylka_hz`."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["skok_czestotliwosci"] = "skok_czestotliwosci"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    odchylka_hz: float = Field(allow_inf_nan=False)
+
+
+class RampaCzestotliwosciProfilu(BaseModel):
+    """Czestotliwosc SEM zmienia sie od `t_s` przez `czas_trwania_s` z tempem `tempo_hz_na_s`."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["rampa_czestotliwosci"] = "rampa_czestotliwosci"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    tempo_hz_na_s: float = Field(allow_inf_nan=False)
+    czas_trwania_s: float = Field(gt=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+
+
+class SkokFazyProfilu(BaseModel):
+    """Faza SEM przeskakuje w `t_s` o `kat_deg` (przyrost wzgledem fazy sprzed skoku)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["skok_fazy"] = "skok_fazy"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    kat_deg: float = Field(allow_inf_nan=False)
+
+
+SegmentProfiluStanowiska = Annotated[
+    SkokNapieciaProfilu
+    | RampaNapieciaProfilu
+    | SkokCzestotliwosciProfilu
+    | RampaCzestotliwosciProfilu
+    | SkokFazyProfilu,
+    Field(discriminator="rodzaj"),
+]
+
+
+def _koniec_segmentu(segment: SegmentProfiluStanowiska) -> float:
+    if isinstance(segment, RampaNapieciaProfilu | RampaCzestotliwosciProfilu):
+        return segment.t_s + segment.czas_trwania_s
+    return segment.t_s
+
+
+class StanowiskoBadawcze(BaseModel):
+    """Stanowisko badawcze (w mandacie `ComplianceStimulus`): zrodlo sieciowe modelu
+    `zrodlo_ref` zastapione w biegu ZRODLEM TESTOWYM o zadanym profilu amplitudy,
+    czestotliwosci i fazy SEM.
+
+    OSOBNY kontener od `ScenariuszDynamiczny.zdarzenia` (typowe rozdzielenie): profil
+    stanowiska nie jest zakloceniem sieci. Gdy stanowisko jest ustawione, harmonogram
+    zdarzen moze zawierac wylacznie `komenda_regulacji` (polecenia dla badanego urzadzenia)
+    — mieszanie profilu stanowiska z zakloceniem sieci dawaloby wynik dwoch badan naraz.
+    `impedancja`: `z_modelu` — SEM za ta sama impedancja zastepcza, ktora zrodlo podaje
+    obliczeniom zwarciowym; `idealna` — impedancja zerowa (SEM = napiecie punktu
+    przylaczenia). Profil moze byc pusty (bieg stanowiska z samymi komendami regulacji,
+    np. odpowiedz na skok nastawy mocy przy sztywnym napieciu zrodla).
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    zrodlo_ref: str = Field(min_length=1)
+    impedancja: Literal["z_modelu", "idealna"]
+    profil: tuple[SegmentProfiluStanowiska, ...]
+
+    @model_validator(mode="after")
+    def _spojnosc_profilu(self) -> StanowiskoBadawcze:
+        """Brak nakladania segmentow tej samej wielkosci — ten sam predykat, co rdzen
+        (`zrodlo_testowe.sprawdz_profil`; zgodnosc obu przypieta testem parami)."""
+        for skoki_typ, rampy_typ, wielkosc in (
+            (SkokNapieciaProfilu, RampaNapieciaProfilu, "amplitudy napięcia"),
+            (SkokCzestotliwosciProfilu, RampaCzestotliwosciProfilu, "czestotliwosci"),
+        ):
+            chwile = [s.t_s for s in self.profil if isinstance(s, skoki_typ)]
+            if len(set(chwile)) != len(chwile):
+                raise ValueError(
+                    f"StanowiskoBadawcze: dwa skoki {wielkosc} w tej samej chwili — profil "
+                    "nie ma jednej treści."
+                )
+            przedzialy = sorted(
+                (s.t_s, _koniec_segmentu(s)) for s in self.profil if isinstance(s, rampy_typ)
+            )
+            for (poczatek_a, koniec_a), (poczatek_b, _) in zip(
+                przedzialy, przedzialy[1:], strict=False
+            ):
+                if poczatek_b < koniec_a:
+                    raise ValueError(
+                        f"StanowiskoBadawcze: rampy {wielkosc} nakladaja się: [{poczatek_a}, "
+                        f"{koniec_a}) i rampa od {poczatek_b} s."
+                    )
+            for chwila in chwile:
+                for poczatek, koniec in przedzialy:
+                    if poczatek < chwila < koniec:
+                        raise ValueError(
+                            f"StanowiskoBadawcze: skok {wielkosc} w t={chwila} s lezy wewnątrz "
+                            f"rampy [{poczatek}, {koniec})."
+                        )
+        return self
+
+
+# ---------------------------------------------------------------------------
+# Detektory przekroczen (karta AB-1b.1 par. 0 pkt 12) — dozory BEZ akcji
+# ---------------------------------------------------------------------------
+
+
+class ModulNapieciaSzyny(BaseModel):
+    """Modul napiecia szyny [pu] — kanal wyniku `u_pu@<szyna>`."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["modul_napiecia"] = "modul_napiecia"
+    bus_ref: str = Field(min_length=1)
+
+
+class CzestotliwoscSzyny(BaseModel):
+    """Czestotliwosc elektryczna szyny [Hz] — kanal `f_hz@<szyna>`; w chwilach zdarzen
+    (i przy jakosci NIEDOSTEPNA) nieoceniana, jak kanal."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["czestotliwosc"] = "czestotliwosc"
+    bus_ref: str = Field(min_length=1)
+
+
+class ModulPraduZaciskuGalezi(BaseModel):
+    """Modul pradu JAWNIE nazwanego zacisku galezi [pu bazy ukladu] — kanal `i_od_pu@` albo
+    `i_do_pu@` (zacisk poczatkowy / koncowy galezi, nigdy domyslny)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["modul_pradu_zacisku"] = "modul_pradu_zacisku"
+    element_ref: str = Field(min_length=1)
+    zacisk: Literal["od", "do"]
+
+
+class StanUrzadzeniaDynamicznego(BaseModel):
+    """Stan rozniczkowy urzadzenia (jednostka z sufiksu nazwy stanu) — kanal `<stan>@<ref>`."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["stan_urzadzenia"] = "stan_urzadzenia"
+    ref_id: str = Field(min_length=1)
+    stan: str = Field(min_length=1)
+
+
+class MocUrzadzeniaDynamicznego(BaseModel):
+    """Moc czynna albo bierna oddawana przez urzadzenie [pu bazy ukladu] — kanal `p_pu@` /
+    `q_pu@`."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["moc_urzadzenia"] = "moc_urzadzenia"
+    ref_id: str = Field(min_length=1)
+    skladowa: Literal["p", "q"]
+
+
+WielkoscDetektora = Annotated[
+    ModulNapieciaSzyny
+    | CzestotliwoscSzyny
+    | ModulPraduZaciskuGalezi
+    | StanUrzadzeniaDynamicznego
+    | MocUrzadzeniaDynamicznego,
+    Field(discriminator="rodzaj"),
+]
+
+
+class Detektor(BaseModel):
+    """Detektor przekroczenia progu: wynik biegu niesie DOKLADNE chwile przekroczen
+    (`przekroczenia`) zamiast siatki probek — bez zadnego skutku w przebiegu.
+
+    Detektor NIE MA akcji z konstrukcji (brak pola; `extra="forbid"` odrzuca je jawnie):
+    dozor z akcjami w scenariuszu bylby druga kopia nastaw zabezpieczen — akcje przychodza
+    z modelu (automatyka, przekazniki, system zarzadzania magazynem). `prog` jest w jednostce
+    kanalu wielkosci, `kierunek` — `w_dol` (wartosc spada ponizej progu) albo `w_gore`.
+    Detektor niejednorazowy melduje kazde przekroczenie po powrocie wielkosci na strone
+    przed progiem.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    ident: str = Field(min_length=1)
+    wielkosc: WielkoscDetektora
+    prog: float = Field(allow_inf_nan=False)
+    kierunek: Literal["w_dol", "w_gore"]
+    jednorazowy: bool
 
 
 class ScenariuszDynamiczny(BaseModel):
@@ -343,6 +613,11 @@ class ScenariuszDynamiczny(BaseModel):
     STABILNIE po t_s (Python `sorted` jest stabilny, wiec remisy zachowuja
     kolejnosc zapisu = "indeks"), zeby solver W6-2 czytal zawsze ten sam
     porzadek niezaleznie od kolejnosci podanej przez wolajacego.
+
+    `stanowisko` (karta AB-1b.1 par. 0 pkt 11) — tryb STANOWISKA badawczego: zrodlo testowe
+    o profilu U/f/faza zamiast zrodla sieciowego; wtedy `zdarzenia` niosa wylacznie komendy
+    regulacji. Tryb biegu (`siec`/`stanowisko`) jest wyprowadzany z obecnosci stanowiska,
+    nie deklarowany osobnym polem.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -350,6 +625,8 @@ class ScenariuszDynamiczny(BaseModel):
     horyzont_s: float = Field(gt=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
     krok_wyjscia_s: float = Field(gt=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
     zdarzenia: tuple[ZdarzenieDynamiczne, ...] = ()
+    stanowisko: StanowiskoBadawcze | None = None
+    detektory: tuple[Detektor, ...] = ()
 
     @model_validator(mode="after")
     def _spojnosc_harmonogramu(self) -> ScenariuszDynamiczny:
@@ -358,6 +635,21 @@ class ScenariuszDynamiczny(BaseModel):
                 f"ScenariuszDynamiczny: krok_wyjscia_s ({self.krok_wyjscia_s}) nie może "
                 f"być większy niż horyzont_s ({self.horyzont_s})."
             )
+        if self.stanowisko is not None:
+            obce = sorted({z.rodzaj for z in self.zdarzenia if not isinstance(z, KomendaRegulacji)})
+            if obce:
+                raise ValueError(
+                    "ScenariuszDynamiczny: w trybie stanowiska badawczego harmonogram zdarzeń "
+                    f"przyjmuje wyłącznie komendy regulacji; zakłócenia sieci {obce} należą do "
+                    "scenariusza bez stanowiska (mieszanie trybów daloby wynik dwóch badań)."
+                )
+            for segment in self.stanowisko.profil:
+                if _koniec_segmentu(segment) > self.horyzont_s:
+                    raise ValueError(
+                        f"ScenariuszDynamiczny: segment profilu {segment.rodzaj!r} w t_s="
+                        f"{segment.t_s} kończy się w {_koniec_segmentu(segment)} s, poza "
+                        f"horyzont_s ({self.horyzont_s})."
+                    )
         for zdarzenie in self.zdarzenia:
             if zdarzenie.t_s > self.horyzont_s:
                 raise ValueError(
@@ -376,6 +668,17 @@ class ScenariuszDynamiczny(BaseModel):
                 )
         return self
 
+    @model_validator(mode="after")
+    def _unikalne_detektory(self) -> ScenariuszDynamiczny:
+        identy = [detektor.ident for detektor in self.detektory]
+        powtorzone = sorted({ident for ident in identy if identy.count(ident) > 1})
+        if powtorzone:
+            raise ValueError(
+                f"ScenariuszDynamiczny: detektory o powtorzonych identyfikatorach {powtorzone} "
+                "— przekroczenie nie mialoby jednoznacznego adresu."
+            )
+        return self
+
     @property
     def zdarzenia_uporzadkowane(self) -> tuple[ZdarzenieDynamiczne, ...]:
         """Kolejnosc kanoniczna (t_s, indeks) — sort stabilny po t_s."""
@@ -386,11 +689,18 @@ class ScenariuszDynamiczny(BaseModel):
         posortowana): dwa scenariusze z tymi samymi zdarzeniami w innej
         kolejnosci zapisu maja INNY hash (kolejnosc jest czescia tresci,
         `indeks` w "(t_s, indeks)" to pozycja zapisu)."""
-        return {
+        tresc: dict[str, Any] = {
             "horyzont_s": self.horyzont_s,
             "krok_wyjscia_s": self.krok_wyjscia_s,
             "zdarzenia": [z.model_dump(mode="json") for z in self.zdarzenia],
         }
+        # Klucze karty AB-1b.1 WYLACZNIE, gdy sa ustawione: tresc (hash scenariusza i klucz
+        # `dynamika` opcji biegu) scenariuszy bez stanowiska jest bajtowo ta sama co przed nia.
+        if self.stanowisko is not None:
+            tresc["stanowisko"] = self.stanowisko.model_dump(mode="json")
+        if self.detektory:
+            tresc["detektory"] = [detektor.model_dump(mode="json") for detektor in self.detektory]
+        return tresc
 
 
 #: Referencje elementu wymagane przez kazdy rodzaj zdarzenia — (atrybut, opis)
@@ -422,6 +732,8 @@ def _refy_zdarzenia(
         return (("element_ref", zdarzenie.element_ref, KOLEKCJE_LACZENIA_GALEZI),)
     if isinstance(zdarzenie, OdlaczenieZrodla | KomendaRegulacji):
         return (("ref_id", zdarzenie.ref_id, ("generators", "sources")),)
+    if isinstance(zdarzenie, UtrataCzesciowaZrodla):
+        return (("ref_id", zdarzenie.ref_id, ("generators",)),)
     if isinstance(zdarzenie, SkokObciazenia | OdlaczenieOdbioru | ZalaczenieOdbioru):
         return (("ref_id", zdarzenie.ref_id, ("loads",)),)
     if isinstance(zdarzenie, Synchronizacja):
@@ -430,6 +742,16 @@ def _refy_zdarzenia(
             ("bus_ref", zdarzenie.bus_ref, ("buses",)),
         )
     raise AssertionError(f"Nieznany rodzaj zdarzenia: {zdarzenie!r}")  # pragma: no cover
+
+
+def _ref_detektora(detektor: Detektor) -> tuple[str, tuple[str, ...]]:
+    """(ref, DOZWOLONE kolekcje) wielkosci detektora — ten sam predykat roli, co zdarzenia."""
+    wielkosc = detektor.wielkosc
+    if isinstance(wielkosc, ModulNapieciaSzyny | CzestotliwoscSzyny):
+        return wielkosc.bus_ref, ("buses",)
+    if isinstance(wielkosc, ModulPraduZaciskuGalezi):
+        return wielkosc.element_ref, ("branches", "transformers")
+    return wielkosc.ref_id, ("generators", "sources")
 
 
 def _domyslne_ziarno(dane: Any, prefiks: str) -> Any:
@@ -705,6 +1027,41 @@ def _waliduj_zdarzenia_dynamiczne(snapshot: dict[str, Any], scenariusz: Operatin
     wejsciowych o tym samym tresci)."""
     dynamika = scenariusz.dynamika
     assert dynamika is not None  # wolane wylacznie gdy blok ustawiony
+    if dynamika.stanowisko is not None:
+        # Ten sam predykat „ref istnieje I jest w dozwolonej kolekcji": zrodlo testowe
+        # zastepuje ZRODLO SIECIOWE modelu (ekwiwalent sieci), nie wytworce.
+        ref = dynamika.stanowisko.zrodlo_ref
+        kolekcja = _znajdz_kolekcje(snapshot, ref)
+        if kolekcja != "sources":
+            raise ScenariuszNieprzystajeError(
+                scenariusz.scenario_id,
+                ref,
+                "stanowisko badawcze: źródło testowe zastępuje źródło sieciowe modelu, a "
+                + (
+                    "takiego elementu nie ma w żadnej kolekcji"
+                    if kolekcja is None
+                    else f"element należy do kolekcji '{kolekcja}'"
+                ),
+            )
+    for detektor in dynamika.detektory:
+        ref, dozwolone = _ref_detektora(detektor)
+        kolekcja = (
+            ("buses" if ref in _indeks_elementow(snapshot, "buses") else None)
+            if dozwolone == ("buses",)
+            else _znajdz_kolekcje(snapshot, ref)
+        )
+        if kolekcja is None or kolekcja not in dozwolone:
+            raise ScenariuszNieprzystajeError(
+                scenariusz.scenario_id,
+                ref,
+                f"detektor '{detektor.ident}' ({detektor.wielkosc.rodzaj}): "
+                + (
+                    "brak elementu w żadnej kolekcji"
+                    if kolekcja is None
+                    else f"element należy do kolekcji '{kolekcja}', a ta wielkość dotyczy "
+                    f"wyłącznie {', '.join(dozwolone)}"
+                ),
+            )
     for zdarzenie in dynamika.zdarzenia_uporzadkowane:
         for atrybut, ref, dozwolone in _refy_zdarzenia(zdarzenie):
             if atrybut == "bus_ref":
@@ -895,7 +1252,10 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
     """
     opcje: dict[str, Any] = {}
     if scenariusz.dynamika is not None:
-        opcje["dynamika"] = scenariusz.dynamika.model_dump(mode="json")
+        # `tresc()`, nie `model_dump()`: pola karty AB-1b.1 (stanowisko, detektory) wchodza
+        # do opcji WYLACZNIE, gdy sa ustawione — opcje i `input_hash` biegow bez nich sa
+        # bajtowo te same, co przed ich wprowadzeniem.
+        opcje["dynamika"] = scenariusz.dynamika.tresc()
     spec = scenariusz.fault_spec
     if spec is None:
         return opcje

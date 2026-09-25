@@ -10,8 +10,10 @@ Co robi, po kolei, i dlaczego akurat w tej kolejnosci:
 2. MANIFEST — sprawdzenie, ze kazde twierdzenie wskazuje istniejacy test i istniejaca
    mutacje. To jest bramka na fikcje w dokumencie, nie na fizyke.
 3. BRAMKI FIZYCZNE — komplet G1-G13 wobec wyroczni analitycznej oraz bramki zdarzen
-   rdzenia (karta AB-1b.1): bramka G16 (zwarcie w linii x*L), bramka G17 (obszar
-   beznapieciowy), bramka G19 (predykat izolacji).
+   rdzenia (karta AB-1b.1): bramka G14 (zdarzenia warunkowe), G15 (zrodlo testowe), G16
+   (zwarcie w linii x*L, fazory, parytet IEC 60909), G17 (obszar beznapieciowy), G18
+   (przypisanie stanu), G19 (predykat izolacji), G20 (probki obustronne), G21 (czesciowa
+   utrata zrodla).
 4. POZOSTALE TESTY PAKIETU — obserwable, zdarzenia, odpornosc numeryczna, mutacje.
 5. PODSUMOWANIE — jeden werdykt i jeden kod wyjscia.
 
@@ -67,7 +69,7 @@ def main() -> int:
             [sys.executable, "-m", "pytest", "tests/walidacja_fizyczna/test_manifest.py", "-q"],
         ),
         _krok(
-            "bramki fizyczne G1-G13, bramki G16 (linia x*L), G17, G19",
+            "bramki fizyczne G1-G13 i bramki G14-G21",
             [sys.executable, "-m", "pytest", "tests/walidacja_fizyczna/test_bramki.py", "-q"],
         ),
         _krok(

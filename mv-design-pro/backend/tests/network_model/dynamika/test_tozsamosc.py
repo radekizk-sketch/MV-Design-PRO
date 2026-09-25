@@ -95,6 +95,9 @@ def test_odcisk_nastaw_reaguje_na_kazda_nastawe() -> None:
         "horyzont_s": 2.0,
         "krok_wyjscia_s": 0.02,
         "integrator": "rk4_jawny",
+        # Tolerancja lokalizacji zdarzen warunkowych (karta AB-1b.1 par. 0 pkt 13) zmienia
+        # chwile pobudzen, wiec wchodzi do odcisku (None -> liczba).
+        "tolerancja_lokalizacji_zdarzen_s": 1e-6,
     }
     odcisk_podstawy = odcisk_nastaw(podstawa)
     for pole, wartosc in zmiany.items():

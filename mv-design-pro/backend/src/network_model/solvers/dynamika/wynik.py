@@ -40,12 +40,25 @@ class KanalWyniku:
 
 
 @dataclass(frozen=True)
+class PrzypisanieWykonane:
+    """Jedno przypisanie stanu wykonane w chwili zdarzenia: adres, wartosc PRZED i PO.
+
+    `adres` = `urzadzenie.stan`. Wartosc `po` jest wartoscia zadana DOKLADNIE (komenda
+    regulacji: po przeliczeniu MW/Mvar na jednostki wzgledne i mnozniku agregatu).
+    """
+
+    adres: str
+    przed: float
+    po: float
+
+
+@dataclass(frozen=True)
 class ZdarzenieWykonane:
     """Zdarzenie FAKTYCZNIE wykonane — z pomiarem skoku i bilansu.
 
     Zdarzenia ROWNOCZESNE (ta sama chwila) dziela JEDEN pomiar re-inicjalizacji:
-    `delta_x_max`, `delta_y_max` i `residuum_kcl_max` opisuja skok CHWILI, bo
-    algebra jest rozwiazywana raz, po naniesieniu wszystkich zdarzen tej chwili.
+    `delta_x_nieprzypisane_max`, `delta_y_max` i `residuum_kcl_max` opisuja skok CHWILI,
+    bo algebra jest rozwiazywana raz, po naniesieniu wszystkich zdarzen tej chwili.
     Rozdzielanie pomiaru na „wklad kazdego zdarzenia" wymagaloby posrednich
     topologii, ktore w rzeczywistosci nigdy nie istnialy. Ta sama zasada dotyczy
     skutkow topologicznych chwili (karta AB-1b.1 par. 0 pkt 2): `obszary_odciete`
@@ -53,18 +66,60 @@ class ZdarzenieWykonane:
     ktore w tej chwili stracily obwod — identyfikator i moc zadana sprzed odciecia,
     pu, konwencja poboru) oraz `obszary_zasilone_ponownie` (wezly, ktore w tej
     chwili PRZESTALY byc beznapieciowe). Kolejnosc = kolejnosc wezlow/odbiorow wejscia.
+
+    CIAGLOSC STANOW MIERZONA, NIE DEKLAROWANA (karta AB-1b.1 par. 0 pkt 9, S19).
+    `delta_x_nieprzypisane_max` to najwiekszy skok stanu rozniczkowego, ktorego ZADNE
+    przypisanie tej chwili nie wskazalo, liczony wobec stanow sprzed CALEJ chwili (przed
+    zdarzeniami, przypisaniami i re-inicjalizacja) — musi byc 0,0 bitowo. Dawne
+    `delta_x_max` mierzylo wylacznie brak mutacji kopii stanow w algebrze, a bylo czytane
+    jako dowod ciaglosci przez zdarzenie. `przypisania` — adres, wartosc przed i po
+    kazdego przypisania wykonanego przez ten wpis (przypisanie stanu, komenda regulacji).
+
+    ZDARZENIE WARUNKOWE (karta AB-1b.1 par. 0 pkt 12): `przyczyna` = `dozor:<ident>`,
+    `t_zlokalizowany_s` — chwila pobudzenia dozoru (prawy koniec przedzialu lokalizacji;
+    przy zwloce `t_wykonany_s` = `t_zlokalizowany_s` + zwloka), `szerokosc_przedzialu_s` i
+    `iteracje_lokalizacji` — pomiar lokalizacji, `g_przed`/`g_po` — funkcja przekroczenia
+    (wielkosc - prog) na koncach przedzialu. Wpis harmonogramu planowanego ma
+    `przyczyna` = `harmonogram` i te pola puste.
     """
 
     t_zaplanowany_s: float
     t_wykonany_s: float
     rodzaj: str
     ref: str | None
-    delta_x_max: float
+    przyczyna: str
+    delta_x_nieprzypisane_max: float
     delta_y_max: float
     residuum_kcl_max: float
     obszary_odciete: tuple[str, ...]
     odbiory_odciete: tuple[tuple[str, complex], ...]
     obszary_zasilone_ponownie: tuple[str, ...]
+    przypisania: tuple[PrzypisanieWykonane, ...]
+    t_zlokalizowany_s: float | None
+    szerokosc_przedzialu_s: float | None
+    iteracje_lokalizacji: int | None
+    g_przed: float | None
+    g_po: float | None
+
+
+@dataclass(frozen=True)
+class Przekroczenie:
+    """Chwila przekroczenia progu przez wielkosc DETEKTORA (dozor bez akcji, par. 0 pkt 12).
+
+    `wielkosc` = klucz kanalu wyniku, ktory dozor czyta (ta sama funkcja, co kanal);
+    `t_s` = prawy koniec przedzialu lokalizacji (strona po przekroczeniu) w PELNEJ
+    precyzji rdzenia — ladunek kontraktu kwantyzuje go do 9 cyfr znaczacych (rozdzielczosc
+    publikacji nazwana w kontrakcie). Przekroczenie w chwili zdarzenia (miedzy probkami `L`
+    i `P`) ma `t_s` rowne chwili zdarzenia, szerokosc 0 i zero iteracji.
+    """
+
+    dozor: str
+    wielkosc: str
+    prog: float
+    kierunek: str
+    t_s: float
+    szerokosc_przedzialu_s: float
+    iteracje: int
 
 
 @dataclass(frozen=True)
@@ -104,6 +159,11 @@ class WynikDynamiki:
     strona_probki: tuple[str, ...]
     probki: dict[str, tuple[float | None, ...]]
     zdarzenia_wykonane: tuple[ZdarzenieWykonane, ...]
+    #: `siec` — zaklocenia fizyczne sieci; `stanowisko` — siec zasilana zrodlem testowym
+    #: U/f/theta (karta AB-1b.1 par. 0 pkt 11). Tryb WYPROWADZONY z wejscia, nie deklarowany.
+    tryb_scenariusza: str
+    #: Przekroczenia progow przez wielkosci detektorow — w kolejnosci chwil.
+    przekroczenia: tuple[Przekroczenie, ...]
     wlasnosci: WlasnosciBiegu
     tozsamosc: TozsamoscBiegu
     metryki: tuple[Metryka, ...]
@@ -150,7 +210,8 @@ def ladunek_resultset_dynamic_v2(wynik: WynikDynamiki, run_id: str) -> dict[str,
                 "t_wykonany_s": kwantyzuj(zdarzenie.t_wykonany_s),
                 "rodzaj": zdarzenie.rodzaj,
                 "ref": zdarzenie.ref,
-                "delta_x_max": kwantyzuj(zdarzenie.delta_x_max),
+                "przyczyna": zdarzenie.przyczyna,
+                "delta_x_nieprzypisane_max": kwantyzuj(zdarzenie.delta_x_nieprzypisane_max),
                 "delta_y_max": kwantyzuj(zdarzenie.delta_y_max),
                 "residuum_kcl_max": kwantyzuj(zdarzenie.residuum_kcl_max),
                 "obszary_odciete": list(zdarzenie.obszary_odciete),
@@ -159,8 +220,34 @@ def ladunek_resultset_dynamic_v2(wynik: WynikDynamiki, run_id: str) -> dict[str,
                     for ident, moc in zdarzenie.odbiory_odciete
                 ],
                 "obszary_zasilone_ponownie": list(zdarzenie.obszary_zasilone_ponownie),
+                "przypisania": [
+                    {
+                        "adres": przypisanie.adres,
+                        "przed": kwantyzuj(przypisanie.przed),
+                        "po": kwantyzuj(przypisanie.po),
+                    }
+                    for przypisanie in zdarzenie.przypisania
+                ],
+                "t_zlokalizowany_s": _kwantyzuj_lub_brak(zdarzenie.t_zlokalizowany_s),
+                "szerokosc_przedzialu_s": _kwantyzuj_lub_brak(zdarzenie.szerokosc_przedzialu_s),
+                "iteracje_lokalizacji": zdarzenie.iteracje_lokalizacji,
+                "g_przed": _kwantyzuj_lub_brak(zdarzenie.g_przed),
+                "g_po": _kwantyzuj_lub_brak(zdarzenie.g_po),
             }
             for zdarzenie in wynik.zdarzenia_wykonane
+        ],
+        "tryb_scenariusza": wynik.tryb_scenariusza,
+        "przekroczenia": [
+            {
+                "dozor": przekroczenie.dozor,
+                "wielkosc": przekroczenie.wielkosc,
+                "prog": kwantyzuj(przekroczenie.prog),
+                "kierunek": przekroczenie.kierunek,
+                "t_s": kwantyzuj(przekroczenie.t_s),
+                "szerokosc_przedzialu_s": kwantyzuj(przekroczenie.szerokosc_przedzialu_s),
+                "iteracje": przekroczenie.iteracje,
+            }
+            for przekroczenie in wynik.przekroczenia
         ],
         "wlasnosci_biegu": {
             "zbiegl": wynik.wlasnosci.zbiegl,
@@ -199,6 +286,8 @@ def ladunek_resultset_dynamic_v2(wynik: WynikDynamiki, run_id: str) -> dict[str,
 __all__ = [
     "KanalWyniku",
     "Metryka",
+    "Przekroczenie",
+    "PrzypisanieWykonane",
     "WlasnosciBiegu",
     "WynikDynamiki",
     "ZdarzenieWykonane",

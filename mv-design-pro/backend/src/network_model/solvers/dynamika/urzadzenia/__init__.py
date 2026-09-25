@@ -9,6 +9,9 @@ powodem — cicha degradacja do maszyny klasycznej jest zakazana.
   malosygnalowa rdzenia sa sformulowane dokladnie dla niego;
 * `szyna_sztywna` — warunek brzegowy ukladu SMIB (SEM za impedancja Thevenina);
 * `odlaczone` — opakowanie urzadzenia odlaczonego zdarzeniem scenariusza;
+* `czesciowe` — opakowanie agregatu jednostek po czesciowej utracie zrodla;
+* `zrodlo_testowe` — SEM stanowiska badawczego o zadanym profilu napiecia,
+  czestotliwosci i fazy (za impedancja albo idealna);
 * `maszyna_synchroniczna` — model 6. rzedu (osie d/q) z AVR, regulatorem obrotow
   i stabilizatorem systemowym;
 * `przeksztaltnik_gfl` — przeksztaltnik nadazny (PLL, ogranicznik pradu z
@@ -35,6 +38,7 @@ from .bazowe import (
     modul_niezerowy,
     prad_zrodla_napieciowego,
 )
+from .czesciowe import UrzadzenieCzesciowe
 from .fabryka import (
     INWENTARZ_POL,
     RODZINY_BEZ_MODELU,
@@ -114,6 +118,19 @@ from .turbina_wiatrowa import (
     zbuduj_turbine_wiatrowa,
 )
 from .uklad_stanow import UkladStanow
+from .zrodlo_testowe import (
+    NAZWY_STANOW_ZRODLA_TESTOWEGO,
+    RampaCzestotliwosci,
+    RampaNapiecia,
+    SegmentProfilu,
+    SkokCzestotliwosci,
+    SkokFazy,
+    SkokNapiecia,
+    ZrodloTestowe,
+    rozwin_profil,
+    sprawdz_profil,
+    zbuduj_zrodlo_testowe,
+)
 
 __all__ = [
     "INDEKS_DELTA",
@@ -125,6 +142,7 @@ __all__ = [
     "INWENTARZ_POL",
     "NAZWY_STANOW_MASZYNY_KLASYCZNEJ",
     "NAZWY_STANOW_SZYNY_SZTYWNEJ",
+    "NAZWY_STANOW_ZRODLA_TESTOWEGO",
     "RODZINY_BEZ_MODELU",
     "RODZINY_OBSLUGIWANE",
     "STANY_GFL",
@@ -151,18 +169,26 @@ __all__ = [
     "PrzeksztaltnikGFL",
     "PrzeksztaltnikGFM",
     "PunktPracyUrzadzenia",
+    "RampaCzestotliwosci",
+    "RampaNapiecia",
     "RdzenGFL",
     "RdzenGFM",
     "RegulatorNapieciaSEXS",
     "RegulatorObrotowTGOV1",
+    "SegmentProfilu",
+    "SkokCzestotliwosci",
+    "SkokFazy",
+    "SkokNapiecia",
     "StabilizatorPSS1A",
     "SzynaSztywna",
     "TorMechaniczny",
     "TurbinaWiatrowa",
     "UkladStanow",
+    "UrzadzenieCzesciowe",
     "UrzadzenieOdlaczone",
     "WspolczynnikiNasycenia",
     "Zasobnik",
+    "ZrodloTestowe",
     "admitancja_wewnetrzna",
     "blok_mnozenia_zespolonego",
     "dopasuj_nasycenie",
@@ -174,6 +200,8 @@ __all__ = [
     "okno_symetryczne",
     "okno_tylko_oddawanie",
     "prad_zrodla_napieciowego",
+    "rozwin_profil",
+    "sprawdz_profil",
     "zbuduj_magazyn",
     "zbuduj_maszyne_klasyczna",
     "zbuduj_maszyne_synchroniczna",
@@ -186,4 +214,5 @@ __all__ = [
     "zbuduj_turbine_wiatrowa",
     "zbuduj_urzadzenie",
     "zbuduj_zasobnik",
+    "zbuduj_zrodlo_testowe",
 ]

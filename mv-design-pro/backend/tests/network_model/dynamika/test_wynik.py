@@ -117,7 +117,11 @@ def test_zdarzenia_wykonane_niosa_pomiar_reinicjalizacji(ladunek: dict) -> None:
     ]
     for zdarzenie in wynik.zdarzenia_wykonane:
         assert zdarzenie.t_wykonany_s == zdarzenie.t_zaplanowany_s
-        assert zdarzenie.delta_x_max == 0.0
+        # Ciaglosc stanow mierzona wobec stanow sprzed CALEJ chwili (karta AB-1b.1 S19).
+        assert zdarzenie.delta_x_nieprzypisane_max == 0.0
+        assert zdarzenie.przyczyna == "harmonogram"
+        assert zdarzenie.przypisania == ()
+        assert zdarzenie.t_zlokalizowany_s is None
         assert zdarzenie.delta_y_max > 0.0
         assert zdarzenie.residuum_kcl_max < 1e-9
 

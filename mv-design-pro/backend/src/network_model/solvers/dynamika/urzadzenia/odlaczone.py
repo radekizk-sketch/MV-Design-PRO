@@ -25,7 +25,7 @@ from typing import ClassVar
 
 import numpy as np
 
-from ..kontrakty import SprzezenieUrzadzenia, Urzadzenie
+from ..kontrakty import WIELKOSCI_NASTAW, NastawaRegulacji, SprzezenieUrzadzenia, Urzadzenie
 
 
 @dataclass(frozen=True)
@@ -73,6 +73,34 @@ class UrzadzenieOdlaczone:
         pradowe z pradem tozsamosciowo zerowym — takze wtedy, gdy urzadzenie bazowe
         bylo zrodlem napieciowym (wezel wraca wtedy do zwyklego rownania KCL)."""
         return "pradowe"
+
+    @property
+    def stany_przypisywalne(self) -> tuple[str, ...]:
+        """Zaden: urzadzenie odlaczone nie ma czynnej regulacji, ktora nastawa mialaby
+        sterowac — przypisanie konczy sie odmowa `dynamika.zdarzenie_przypisania_niedozwolone`
+        (ponowne przylaczenie, przy ktorym nastawa zaczelaby dzialac, nie jest wykonywane)."""
+        return ()
+
+    @property
+    def nastawy_regulacji(self) -> tuple[NastawaRegulacji, ...]:
+        """Kazda wielkosc odmawiana — urzadzenie jest odlaczone od sieci."""
+        return tuple(
+            NastawaRegulacji(
+                wielkosc=wielkosc,
+                stan=None,
+                powod_pl=f"urządzenie {self.bazowe.ident} jest odlaczone od sieci — nastawa "
+                "nie miałaby skutku do ponownego przyłączenia, którego rdzeń nie wykonuje",
+                zakres=None,
+                mnoznik=1.0,
+            )
+            for wielkosc in WIELKOSCI_NASTAW
+        )
+
+    @property
+    def agregat_jednostek(self) -> bool:
+        """Odlaczenie nie zmienia natury urzadzenia — deklaracja bazowego. Czesciowej
+        utraty urzadzenia JUZ odlaczonego rdzen i tak odmawia (stan scenariusza)."""
+        return self.bazowe.agregat_jednostek
 
     def parametry_tozsamosci(self) -> dict[str, object]:
         """Parametry urzadzenia bazowego — opakowanie jest rozpoznawane po nazwie klasy."""

@@ -43,10 +43,17 @@ def test_stany_rozniczkowe_sa_trzymane_a_algebra_liczona_od_nowa() -> None:
     model_zwarcie = zloz_model_sieci(
         uklad.wezly, uklad.galezie, (), admitancje_zwarc=(("GEN", complex(0.0, -50.0)),)
     )
+    stany_przed = tuple(stan.copy() for stan in stany)
     napiecia_po, raport = reinicjalizuj(
         model_zwarcie, (), urzadzenia, stany, napiecia, nastawy=nastawy(), t_s=0.1
     )
-    assert raport.delta_x_max == 0.0
+    # Intencja (przepisane 2026-09-24, karta AB-1b.1 S19): re-inicjalizacja NIE zmienia
+    # stanow wolajacego — dawne `raport.delta_x_max` mierzylo to samo na kopii w algebrze i
+    # zostalo usuniete; ciaglosc stanow przez cala chwile zdarzen mierzy silnik
+    # (`delta_x_nieprzypisane_max`, twierdzenie D-13).
+    for stan, przed in zip(stany, stany_przed, strict=True):
+        assert np.array_equal(stan, przed)
+    assert not hasattr(raport, "delta_x_max")
     assert raport.delta_y_max > 0.5
     assert raport.residuum_kcl_max < 1e-10
     assert not np.allclose(napiecia_po, napiecia)

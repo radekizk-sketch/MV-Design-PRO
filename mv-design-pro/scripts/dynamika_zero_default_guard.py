@@ -11,9 +11,10 @@ SCAN FILES (KLASA, nie jeden plik — ten sam kontrakt żyje w trzech miejscach)
   backend/src/enm/dynamika_modele.py                          (ParametryDynamiczne)
   backend/src/network_model/catalog/der_dynamic/models.py     (profile DER — mapują
                                                                  się 1:1 na powyższe)
-  backend/src/network_model/solvers/dynamika/kontrakty.py     (wejście rdzenia DAE:
-                                                                 nastawy solvera i
-                                                                 elementy sieci)
+  backend/src/network_model/solvers/dynamika/**               (CAŁY pakiet rdzenia DAE:
+                                                                 nastawy, elementy sieci,
+                                                                 dozory, profil źródła
+                                                                 testowego, agregat)
 
 CO JEST DOZWOLONE (jedyne dwa legalne wyjątki, oba NIEliczbowe albo jawnie None):
   * `rodzina`/`typ`/`tryb`/`priorytet_ogranicznika`/... — dyskryminator/literał
@@ -44,11 +45,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SCAN_FILES: tuple[str, ...] = (
     "backend/src/enm/dynamika_modele.py",
     "backend/src/network_model/catalog/der_dynamic/models.py",
-    # Karta W6-2: TRZECIE miejsce, w którym żyje kontrakt danych dynamiki —
-    # wejście rdzenia DAE (`WejscieDynamiki`, `NastawySolvera`, elementy sieci).
-    # Ten sam zakaz domyślek liczbowych: brak nastawy albo brak parametru sieci
-    # to brak pola wymaganego, nigdy cicha wartość zastępcza.
-    "backend/src/network_model/solvers/dynamika/kontrakty.py",
+    # Karta W6-2: TRZECIE miejsce, w którym żyje kontrakt danych dynamiki — wejście
+    # rdzenia DAE (`kontrakty.py`) — skanowane razem z CAŁYM pakietem rdzenia (niżej,
+    # `KATALOGI_SKANU`): karta AB-1b.1 dołożyła kontrakty liczbowe poza `kontrakty.py`
+    # (specyfikacja dozoru `dozory.py`, segmenty profilu źródła testowego
+    # `urzadzenia/zrodlo_testowe.py`, udział agregatu `urzadzenia/czesciowe.py`).
     # Karta AB-H0 §0.1: kontrakty dziedziny częstotliwości (liść `dziedziny/`) — ten
     # sam zakaz: pole fizyczne widma, pomiaru, pasma, punktu pracy albo wymagania
     # jakości energii nie ma domyślki liczbowej (brak danej = `None` albo pole
@@ -63,6 +64,19 @@ SCAN_FILES: tuple[str, ...] = (
     "backend/src/dziedziny/pomiar.py",
     "backend/src/dziedziny/sekcje.py",
     "backend/src/dziedziny/widmo.py",
+)
+
+#: Pakiety skanowane W CAŁOŚCI (każdy moduł, także dopisany w przyszłości): rdzeń
+#: dynamiki niesie kontrakty liczbowe w kilku modułach (karta AB-1b.1), więc lista plików
+#: nie może rosnąć wolniej niż pakiet. Kolejność posortowana — wynik deterministyczny.
+KATALOGI_SKANU: tuple[str, ...] = ("backend/src/network_model/solvers/dynamika",)
+
+SCAN_FILES = SCAN_FILES + tuple(
+    sorted(
+        sciezka.relative_to(ROOT).as_posix()
+        for katalog in KATALOGI_SKANU
+        for sciezka in (ROOT / katalog).rglob("*.py")
+    )
 )
 
 #: Pola dozwolone z domyślką TEKSTOWĄ (dyskryminator wariantu, nie wielkość

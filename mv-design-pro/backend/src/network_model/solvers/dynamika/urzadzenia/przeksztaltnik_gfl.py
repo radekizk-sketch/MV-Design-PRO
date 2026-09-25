@@ -64,7 +64,12 @@ from typing import ClassVar
 
 import numpy as np
 
-from ..kontrakty import KOD_PUNKT_PRACY_POZA_OGRANICZENIEM, OdmowaDynamiki, SprzezenieUrzadzenia
+from ..kontrakty import (
+    KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
+    NastawaRegulacji,
+    OdmowaDynamiki,
+    SprzezenieUrzadzenia,
+)
 from ..konwencje import (
     CWIERC_OBROTU_RAD,
     pulsacja_bazowa_rad_s,
@@ -429,6 +434,55 @@ class RdzenGFL:
         return wartosci
 
 
+#: Stany-odniesienia rdzenia przeksztaltnika, ktorym komenda regulacji przypisuje wartosc —
+#: te same nazwy w rdzeniu nadaznym i tworzacym siec (`przeksztaltnik_gfm`), wiec magazyn i
+#: turbina skladaja swoje deklaracje z JEDNEJ listy.
+STANY_NASTAW_PRZEKSZTALTNIKA: tuple[str, ...] = (
+    STAN_ZADANIA_CZYNNEGO,
+    STAN_ZADANIA_BIERNEGO,
+    STAN_ODNIESIENIA_NAPIECIA,
+)
+
+
+def nastawy_przeksztaltnika(okno: OknoMocy, *, powod_p: str | None) -> tuple[NastawaRegulacji, ...]:
+    """Deklaracja komend P/Q/U rdzenia przeksztaltnika (nadaznego albo tworzacego siec).
+
+    P -> zadanie mocy czynnej z zakresem OKNA MOCY urzadzenia — `(okno.dol_pu,
+    okno.gora_pu)` to te same granice, ktorymi `OknoMocy.zawiera` sprawdza punkt pracy w
+    `stany_rownowagi` (predykaty parami); `powod_p` rozne od `None` znaczy, ze moc czynnej
+    nie da sie zadac (turbina wiatrowa — moc dostepna z wiatru), i wtedy P jest odmawiane z
+    tym powodem. Q -> zadanie mocy biernej (bez granicy nastawy: ogranicznik pradu dziala w
+    modelu). U -> odniesienie napiecia (statyzm Q/U albo SEM zrodla tworzacego siec).
+    """
+    return (
+        NastawaRegulacji(
+            wielkosc="p",
+            stan=None if powod_p is not None else STAN_ZADANIA_CZYNNEGO,
+            powod_pl=(
+                powod_p
+                if powod_p is not None
+                else "zadanie mocy czynnej przekształtnika (w granicach okna mocy urządzenia)"
+            ),
+            zakres=None if powod_p is not None else (okno.dol_pu, okno.gora_pu),
+            mnoznik=1.0,
+        ),
+        NastawaRegulacji(
+            wielkosc="q",
+            stan=STAN_ZADANIA_BIERNEGO,
+            powod_pl="zadanie mocy biernej przekształtnika (ogranicznik prądu działa w modelu)",
+            zakres=None,
+            mnoznik=1.0,
+        ),
+        NastawaRegulacji(
+            wielkosc="u",
+            stan=STAN_ODNIESIENIA_NAPIECIA,
+            powod_pl="odniesienie napięcia przekształtnika",
+            zakres=None,
+            mnoznik=1.0,
+        ),
+    )
+
+
 def _uklad_stanow_gfl(ma_zwolnienie: bool) -> UkladStanow:
     nazwy = list(STANY_GFL)
     if ma_zwolnienie:
@@ -512,6 +566,21 @@ class PrzeksztaltnikGFL:
     def sprzezenie(self) -> SprzezenieUrzadzenia:
         """Przeksztaltnik nadazny: zrodlo PRADU sterowane petla synchronizacji."""
         return "pradowe"
+
+    @property
+    def stany_przypisywalne(self) -> tuple[str, ...]:
+        """Zadania mocy czynnej i biernej oraz odniesienie napiecia — stany o zerowej
+        pochodnej. Petla synchronizacji i prady sa calkami; ich skok bylby skokiem pradu."""
+        return STANY_NASTAW_PRZEKSZTALTNIKA
+
+    @property
+    def nastawy_regulacji(self) -> tuple[NastawaRegulacji, ...]:
+        return nastawy_przeksztaltnika(self.okno_mocy, powod_p=None)
+
+    @property
+    def agregat_jednostek(self) -> bool:
+        """Instalacja przeksztaltnikowa jest agregatem identycznych falownikow."""
+        return True
 
     def parametry_tozsamosci(self) -> dict[str, object]:
         """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
@@ -641,6 +710,7 @@ def zbuduj_przeksztaltnik_gfl(
 
 __all__ = [
     "STANY_GFL",
+    "STANY_NASTAW_PRZEKSZTALTNIKA",
     "STAN_CALKI_PLL",
     "STAN_KATA_PLL",
     "STAN_ODNIESIENIA_NAPIECIA",
@@ -651,6 +721,7 @@ __all__ = [
     "STAN_ZWOLNIENIA_ODBUDOWY",
     "PrzeksztaltnikGFL",
     "RdzenGFL",
+    "nastawy_przeksztaltnika",
     "ogranicz_prad",
     "zbuduj_przeksztaltnik_gfl",
     "zbuduj_rdzen_gfl",

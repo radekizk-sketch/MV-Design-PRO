@@ -54,9 +54,17 @@ from .siec import ModelSieci, residuum_kcl_niezalezne, rozwiaz_algebre, wezly_og
 
 @dataclass(frozen=True)
 class RaportReinicjalizacji:
-    """Pomiar skoku i bilansu po re-inicjalizacji — dane do `zdarzenia_wykonane`."""
+    """Pomiar skoku algebry i bilansu po re-inicjalizacji — dane do `zdarzenia_wykonane`.
 
-    delta_x_max: float
+    Ciaglosci stanow rozniczkowych ten raport NIE mierzy (korekta 2026-09-24, karta
+    AB-1b.1 S19): dawne pole `delta_x_max` porownywalo kopie stanow przekazana do algebry
+    z ta sama kopia po rozwiazaniu, czyli wykrywalo wylacznie mutacje w miejscu wewnatrz
+    Newtona, a bylo przedstawiane jako dowod ciaglosci stanow przez zdarzenie. Pomiar z
+    trescia (`delta_x_nieprzypisane_max`) liczy silnik wobec stanow sprzed CALEJ chwili
+    zdarzen, z wylaczeniem pozycji przypisanych jawnie (przypisanie stanu, komenda
+    regulacji).
+    """
+
     delta_y_max: float
     delta_y_per_wezel: tuple[tuple[str, float], ...]
     residuum_kcl_max: float
@@ -83,9 +91,9 @@ def reinicjalizuj(
     """Rozwiaz algebre na NOWEJ topologii przy TRZYMANYCH stanach rozniczkowych.
 
     Zwraca nowe napiecia i raport skoku. Stany rozniczkowe NIE sa zwracane, bo
-    sie nie zmieniaja — to nie jest uproszczenie, tylko fizyka ciaglosci; raport
-    i tak MIERZY ich zmiane (`delta_x_max`), zeby deklaracja miala pomiar, a nie
-    tylko zdanie w dokumentacji.
+    re-inicjalizacja ich nie zmienia — to nie jest uproszczenie, tylko fizyka ciaglosci.
+    Algebra dostaje KOPIE stanow, wiec nie ma jak zmienic stanow wolajacego; ciaglosc
+    stanow przez cala chwile zdarzen mierzy silnik (`delta_x_nieprzypisane_max`).
     """
     migawka_napiec = np.array(napiecia_przed, dtype=complex, copy=True)
     migawka_stanow = tuple(np.array(stan, dtype=float, copy=True) for stan in stany_przed)
@@ -125,15 +133,7 @@ def reinicjalizuj(
     delta_y_per_wezel = tuple(
         (ident, float(roznice[pozycja])) for pozycja, ident in enumerate(model.identy_wezlow)
     )
-    delta_x = max(
-        (
-            float(np.max(np.abs(po - przed))) if po.size else 0.0
-            for po, przed in zip(migawka_stanow, stany_przed, strict=True)
-        ),
-        default=0.0,
-    )
     return wynik.napiecia, RaportReinicjalizacji(
-        delta_x_max=delta_x,
         delta_y_max=float(np.max(roznice)) if roznice.size else 0.0,
         delta_y_per_wezel=delta_y_per_wezel,
         residuum_kcl_max=residuum_kcl_niezalezne(

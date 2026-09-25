@@ -79,9 +79,11 @@ def test_stan_rozniczkowy_ciagly_a_algebraiczny_skacze() -> None:
         krok_wyjscia_s=5e-4,
     )
     (zdarzenie,) = wynik.zdarzenia_wykonane
-    assert zdarzenie.delta_x_max == pytest.approx(
-        0.0, abs=1e-12
-    ), "stan rozniczkowy musi byc ciagly"
+    # PRZEPISANY SWIADOMIE (karta AB-1b.1 S19): dawne `delta_x_max` mierzylo wylacznie brak
+    # mutacji kopii stanow w algebrze. `delta_x_nieprzypisane_max` mierzy skok stanow wobec
+    # stanow sprzed CALEJ chwili, wiec intencja („stan rozniczkowy ciagly") ma teraz pomiar
+    # z trescia — i jest BITOWA (0,0), a nie w tolerancji.
+    assert zdarzenie.delta_x_nieprzypisane_max == 0.0, "stan rozniczkowy musi byc ciagly"
     assert zdarzenie.delta_y_max > 0.1, "napiecie wezla musi skoczyc przy zwarciu"
 
 

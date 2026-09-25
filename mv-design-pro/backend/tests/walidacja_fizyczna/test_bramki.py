@@ -128,6 +128,51 @@ def test_g20_probki_obustronne() -> None:
     )
 
 
+def test_g14_lokalizacja_zdarzen_warunkowych() -> None:
+    _sprawdz(
+        bramki.g14_lokalizacja_zdarzen_warunkowych(),
+        (
+            "G14_blad_lokalizacji_wzgl_tolerancji",
+            "G14_pobudzenia_niezgodne_z_kierunkiem",
+            "G14_akcje_niezgodne_z_kasowaniem",
+        ),
+    )
+
+
+def test_g15_zrodlo_testowe() -> None:
+    _sprawdz(
+        bramki.g15_zrodlo_testowe(),
+        (
+            "G15_blad_postaci_zamknietej_wzgl",
+            "G15_napiecie_wezla_rozne_od_sem",
+            "G15_blad_czestotliwosci_zrodla_idealnego_hz",
+        ),
+    )
+
+
+def test_g18_przypisanie_stanu() -> None:
+    _sprawdz(
+        bramki.g18_przypisanie_stanu(),
+        (
+            "G18_skok_stanow_nieprzypisanych",
+            "G18_blad_wartosci_przypisanej",
+            "G18_residuum_algebry_po_przypisaniu",
+            "G18_blad_trajektorii_po_przypisaniu_rad",
+        ),
+    )
+
+
+def test_g21_utrata_czesciowa() -> None:
+    _sprawdz(
+        bramki.g21_utrata_czesciowa(),
+        (
+            "G21_blad_rownowaznosci_agregatu_wzgl",
+            "G21_blad_rocof_maszyn_po_utracie_wzgl",
+            "G21_blad_rocof_srodka_bezwladnosci_wzgl",
+        ),
+    )
+
+
 def test_rejestr_progow_pokrywa_wszystkie_bramki() -> None:
     """Kazdy prog ma bramke, ktora go liczy — i odwrotnie. Zero progow-sierot."""
     zmierzone: set[str] = set()

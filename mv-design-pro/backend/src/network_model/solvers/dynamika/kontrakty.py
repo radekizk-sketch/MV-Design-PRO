@@ -31,9 +31,12 @@ na jego liscie skanu razem z `enm/dynamika_modele.py` i katalogiem `der_dynamic`
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 import numpy as np
+
+if TYPE_CHECKING:  # pragma: no cover — wylacznie adnotacja (brak cyklu importow w biegu)
+    from .dozory import Dozor
 
 # ---------------------------------------------------------------------------
 # Kody odmow (SS0 p.2/p.3/p.5) — rejestr ZAMKNIETY, przypiety testem
@@ -77,7 +80,10 @@ KOD_WARIANT_BEZ_PARAMETROW = "dynamika.wariant_regulatora_bez_parametrow"
 #: Punkt pracy lezy poza ograniczeniem urzadzenia (prad ponad `i_max`, wzbudzenie
 #: poza [Efd_min, Efd_max], moc turbiny poza [P_min, P_max], SOC poza zakresem),
 #: wiec rownowaga poczatkowa nie istnieje — odmowa NAZWANA zamiast biegu, ktory
-#: „startuje skokiem" i tlumaczy pierwsza sekunde artefaktem rozruchu.
+#: „startuje skokiem" i tlumaczy pierwsza sekunde artefaktem rozruchu. TEN SAM kod (i ten
+#: sam predykat, np. `OknoMocy.zawiera`, granice mocy turbiny) niesie komenda regulacji,
+#: ktorej nastawa lezy poza ogranicznikiem urzadzenia (`NastawaRegulacji.zakres`) —
+#: zadany punkt pracy nie istnieje z tego samego powodu, co punkt poczatkowy.
 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM = "dynamika.punkt_pracy_poza_ograniczeniem"
 #: Stan wyszedl poza ZAKRES WAZNOSCI modelu urzadzenia (nie poza ogranicznik — te
 #: dwie rzeczy sa rozne, patrz `Urzadzenie.zakresy_waznosci`). Przyklad jedyny w
@@ -116,6 +122,28 @@ KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU = "dynamika.odbior_stalej_mocy_przy
 #: uklad jest sprzeczny — pierwsze prawo Kirchhoffa zadaloby nieskonczonego pradu.
 KOD_NAPIECIE_NARZUCONE_SPRZECZNE = "dynamika.napiecie_narzucone_sprzeczne"
 
+#: Komenda regulacji wskazuje wielkosc (P, Q albo U), ktorej model urzadzenia nie ma jak
+#: zadac: rodzina bez regulatora tej wielkosci (maszyna synchroniczna bez regulatora mocy
+#: biernej, stale wzbudzenie bez nastawy napiecia), warunek brzegowy (szyna sztywna, zrodlo
+#: testowe), moc czynna turbiny wiatrowej zalezna od mocy dostepnej z wiatru albo
+#: urzadzenie odlaczone. Odmowa niesie urzadzenie, wielkosc i powod z deklaracji klasy
+#: (`Urzadzenie.nastawy_regulacji`), nigdy cicha podmiane na inny stan.
+KOD_NASTAWA_NIEOBSLUGIWANA = "dynamika.nastawa_nieobslugiwana"
+#: Przypisanie stanu, ktorego klasa urzadzenia NIE deklaruje jako przypisywalnego
+#: (`Urzadzenie.stany_przypisywalne`): skok strumienia, kata, predkosci albo stanu
+#: naladowania wymagalby nieskonczonego napiecia, momentu albo mocy
+#: (`reinicjalizacja.py`) — przypisac wolno wylacznie odniesienie albo nastawe.
+KOD_ZDARZENIE_PRZYPISANIA_NIEDOZWOLONE = "dynamika.zdarzenie_przypisania_niedozwolone"
+#: Czesciowa utrata zrodla z udzialem pozostalym spoza przedzialu otwartego (0, 1), z
+#: udzialem nie mniejszym niz poprzedni (wzrost = ponowne przylaczenie jednostek, ktore
+#: wymaga kryteriow synchronizacji), dla urzadzenia, ktore nie jest agregatem jednostek
+#: (szyna sztywna, zrodlo testowe — ekwiwalent sieci), albo dla urzadzenia juz odlaczonego.
+KOD_UDZIAL_ZRODLA_NIEDOZWOLONY = "dynamika.udzial_zrodla_niedozwolony"
+#: Dozor zdarzenia warunkowego pobudzony DRUGI raz w tej samej chwili — akcje wykonane w
+#: tej chwili przywrocily jego warunek. Bez tej odmowy petla zdarzen bez uplywu czasu
+#: nie mialaby konca.
+KOD_PETLA_ZDARZEN_WARUNKOWYCH = "dynamika.petla_zdarzen_warunkowych"
+
 #: Zamkniety rejestr kodow odmow tego rdzenia. Nowy kod DOPISUJESZ tutaj —
 #: `OdmowaDynamiki` odrzuca kod spoza rejestru (deklaracja z przypietym testem,
 #: nie obietnica w docstringu). Kod DOPISYWANY jest razem z mechanizmem, ktory go
@@ -125,18 +153,22 @@ KODY_ODMOW: tuple[str, ...] = (
     KOD_INICJALIZACJA_NIEZBIEZNA,
     KOD_KROK_NIEZBIEZNY,
     KOD_NAPIECIE_NARZUCONE_SPRZECZNE,
+    KOD_NASTAWA_NIEOBSLUGIWANA,
     KOD_NASTAWY_SPRZECZNE,
     KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU,
     KOD_PARAMETRY_SPRZECZNE,
+    KOD_PETLA_ZDARZEN_WARUNKOWYCH,
     KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
     KOD_REINICJALIZACJA_NIEZBIEZNA,
     KOD_RODZINA_NIEOBSLUGIWANA,
     KOD_SIEC_NIESPOJNA,
+    KOD_UDZIAL_ZRODLA_NIEDOZWOLONY,
     KOD_WARIANT_BEZ_PARAMETROW,
     KOD_WARTOSC_NIESKONCZONA,
     KOD_WYSPA_BEZ_ZRODLA,
     KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY,
     KOD_ZDARZENIE_BEZ_ELEMENTU,
+    KOD_ZDARZENIE_PRZYPISANIA_NIEDOZWOLONE,
     KOD_ZDARZENIE_SPRZECZNE,
     KOD_ZWARCIE_GALEZI_NIEOBSLUGIWANE,
     KOD_ZWARCIE_NIEODIZOLOWANE,
@@ -438,6 +470,84 @@ class SkokObciazenia:
     delta_q_pu: float
 
 
+@dataclass(frozen=True)
+class PrzypisanieStanu:
+    """Przypisanie WARTOSCI stanowi urzadzenia w chwili t (karta AB-1b.1 par. 0 pkt 9, D13).
+
+    Dozwolone WYLACZNIE dla stanow, ktore klasa urzadzenia deklaruje w
+    `Urzadzenie.stany_przypisywalne` (odniesienia i nastawy regulatorow, stany profilu
+    zrodla testowego) — nigdy strumien, kat, predkosc ani stan naladowania, bo ich skok
+    wymagalby nieskonczonego napiecia, momentu albo mocy. Pozostale stany przechodza przez
+    chwile BITOWO bez zmiany (pomiar `delta_x_nieprzypisane_max` w wyniku), a algebra jest
+    rozwiazywana od nowa przy stanach po przypisaniu. `wartosc` jest wartoscia STANU w jego
+    jednostce (sufiks nazwy stanu), nie wielkoscia inzynierska — przeliczenie MW/Mvar na
+    jednostki wzgledne robi `KomendaRegulacji`.
+    """
+
+    t_s: float
+    urzadzenie: str
+    stan: str
+    wartosc: float
+
+
+@dataclass(frozen=True)
+class KomendaRegulacji:
+    """Zmiana nastawy regulatora urzadzenia w chwili t — wielkosci inzynierskie P, Q, U.
+
+    Co najmniej jedna z wielkosci jest podana. Rdzen przelicza MW i Mvar na jednostki
+    wzgledne bazy ukladu (`konwencje.moc_pu`) i wykonuje komende jako przypisanie stanu
+    wskazanego DEKLARACJA klasy urzadzenia (`Urzadzenie.nastawy_regulacji`) — tablica
+    odwzorowania wielkosc -> stan zyje w urzadzeniu, a nie w silniku. Wielkosc, ktorej
+    urzadzenie nie ma jak zadac, konczy sie odmowa `dynamika.nastawa_nieobslugiwana` z
+    powodem z deklaracji. „Skok generacji" jest komenda P (nie osobnym zdarzeniem).
+    """
+
+    t_s: float
+    urzadzenie: str
+    p_mw: float | None
+    q_mvar: float | None
+    u_pu: float | None
+
+    def __post_init__(self) -> None:
+        if self.p_mw is None and self.q_mvar is None and self.u_pu is None:
+            raise OdmowaDynamiki(
+                KOD_ZDARZENIE_SPRZECZNE,
+                f"Komenda regulacji urządzenia {self.urzadzenie!r} w t={self.t_s} s nie zadaje "
+                "żadnej wielkości (P, Q, U) — komenda bez nastawy nie jest poleceniem",
+                urzadzenie=self.urzadzenie,
+                t_s=self.t_s,
+            )
+
+
+@dataclass(frozen=True)
+class UtrataCzesciowaZrodla:
+    """Ubytek czesci jednostek zrodla bedacego agregatem identycznych jednostek (D-20).
+
+    `udzial_pozostaly` jest udzialem WZGLEDEM STANU POCZATKOWEGO (przedzial otwarty
+    (0, 1)): 0,6 znaczy, ze pracuje 60 % jednostek z chwili t = 0. Kolejne zdarzenia tego
+    samego zrodla wolno podawac WYLACZNIE malejaco — wzrost udzialu to ponowne przylaczenie
+    jednostek (kryteria synchronizacji, poza tym rdzeniem), a pelna utrata to
+    `OdlaczenieZrodla`. Model: prad do sieci i jego jakobiany skalowane udzialem, pochodne
+    stanow bez skalowania (kazda pozostala jednostka zachowuje stan na jednostke) —
+    `urzadzenia.czesciowe.UrzadzenieCzesciowe`.
+    """
+
+    t_s: float
+    zrodlo: str
+    udzial_pozostaly: float
+
+    def __post_init__(self) -> None:
+        if not 0.0 < self.udzial_pozostaly < 1.0:
+            raise OdmowaDynamiki(
+                KOD_UDZIAL_ZRODLA_NIEDOZWOLONY,
+                f"Częściowa utrata źródła {self.zrodlo!r} w t={self.t_s} s: udział pozostaly "
+                f"{self.udzial_pozostaly} spoza przedziału otwartego (0, 1) — udział 1 to brak "
+                "utraty, udział 0 to odlaczenie całego źródła (`OdlaczenieZrodla`)",
+                zrodlo=self.zrodlo,
+                udzial_pozostaly=self.udzial_pozostaly,
+            )
+
+
 ZdarzenieDynamiki = (
     ZwarcieWezla
     | ZwarcieGalezi
@@ -445,7 +555,10 @@ ZdarzenieDynamiki = (
     | ZmianaOdsprzegu
     | ZmianaOdbioru
     | OdlaczenieZrodla
+    | UtrataCzesciowaZrodla
     | SkokObciazenia
+    | PrzypisanieStanu
+    | KomendaRegulacji
 )
 
 
@@ -458,9 +571,16 @@ class HarmonogramDynamiki:
     po czasie, wiec remisy zachowuja kolejnosc zapisu. Ten sam kontrakt
     kolejnosci, co `ScenariuszDynamiczny.zdarzenia_uporzadkowane` w warstwie
     danych — jedno zrodlo prawdy porzadku, dwa miejsca zapisu.
+
+    `dozory` (karta AB-1b.1 par. 0 pkt 12) to zdarzenia WARUNKOWE: specyfikacja jest
+    DANA (`dozory.Dozor`), a chwila pobudzenia wynika z przebiegu, lokalizowana z
+    tolerancja `NastawySolvera.tolerancja_lokalizacji_zdarzen_s`. Pusta krotka znaczy
+    „bieg bez dozorow" (zbior pusty, nie brak danej) — i wtedy silnik idzie
+    dotychczasowa sciezka, bitowo.
     """
 
     zdarzenia: tuple[ZdarzenieDynamiki, ...]
+    dozory: tuple[Dozor, ...] = ()
 
 
 # ---------------------------------------------------------------------------
@@ -492,6 +612,12 @@ class NastawySolvera:
     horyzont_s: float
     krok_wyjscia_s: float
     integrator: NazwaIntegratora
+    #: Szerokosc przedzialu, do ktorego jest zawezana chwila zdarzenia WARUNKOWEGO
+    #: (karta AB-1b.1 par. 0 pkt 12). Pole WYMAGANE bez domyslki: `None` jest dozwolone
+    #: wylacznie dla biegu bez dozorow (silnik odmawia `dynamika.nastawy_sprzeczne`, gdy
+    #: harmonogram niesie dozory, a tolerancji nie podano). LOKALIZACJA ma te tolerancje
+    #: wzgledem trajektorii dyskretnej; WYKONANIE akcji jest dokladne (ladowanie w t*).
+    tolerancja_lokalizacji_zdarzen_s: float | None
 
     def __post_init__(self) -> None:
         if not (self.dt_min_s <= self.dt_s <= self.dt_max_s):
@@ -532,6 +658,18 @@ class NastawySolvera:
                 krok_wyjscia_s=self.krok_wyjscia_s,
                 horyzont_s=self.horyzont_s,
             )
+        if (
+            self.tolerancja_lokalizacji_zdarzen_s is not None
+            and not self.tolerancja_lokalizacji_zdarzen_s > 0.0
+        ):
+            raise OdmowaDynamiki(
+                KOD_NASTAWY_SPRZECZNE,
+                "tolerancja_lokalizacji_zdarzen_s="
+                f"{self.tolerancja_lokalizacji_zdarzen_s} musi być dodatnia (albo None dla "
+                "biegu bez dozorow)",
+                pole="tolerancja_lokalizacji_zdarzen_s",
+                wartosc=self.tolerancja_lokalizacji_zdarzen_s,
+            )
 
     @property
     def krok_staly(self) -> bool:
@@ -545,6 +683,36 @@ class NastawySolvera:
 
 #: Sposob wejscia urzadzenia do algebry sieci — patrz `Urzadzenie.sprzezenie`.
 SprzezenieUrzadzenia = Literal["pradowe", "napieciowe"]
+
+#: Wielkosc komendy regulacji: moc czynna, moc bierna, napiecie (karta AB-1b.1 par. 0 pkt 9).
+WielkoscNastawy = Literal["p", "q", "u"]
+#: Kolejnosc kanoniczna wielkosci w deklaracji `Urzadzenie.nastawy_regulacji` — przypieta.
+WIELKOSCI_NASTAW: tuple[WielkoscNastawy, ...] = ("p", "q", "u")
+
+
+@dataclass(frozen=True)
+class NastawaRegulacji:
+    """Jak urzadzenie wykonuje komende regulacji JEDNEJ wielkosci — deklaracja klasy.
+
+    * `stan` — stan-odniesienie, ktoremu komenda przypisuje wartosc (`None` = urzadzenie
+      tej wielkosci nie zadaje; wtedy `powod_pl` mowi dlaczego, a komenda konczy sie
+      odmowa `dynamika.nastawa_nieobslugiwana`).
+    * `zakres` — dopuszczalny przedzial wartosci STANU (`None` = bez ograniczenia
+      nastawy). To jest TEN SAM predykat, ktorym urzadzenie sprawdza punkt poczatkowy
+      (okno mocy przeksztaltnika i magazynu, granice mocy turbiny maszyny) — nastawa poza
+      nim konczy sie odmowa `dynamika.punkt_pracy_poza_ograniczeniem`, a nie cichym
+      nasyceniem w ograniczniku.
+    * `mnoznik` — wartosc stanu = `mnoznik` * wartosc komendy w jednostkach wzglednych
+      bazy ukladu. Dla urzadzenia calego 1,0; po czesciowej utracie zrodla stany opisuja
+      agregat WSZYSTKICH jednostek, a komenda dotyczy jednostek POZOSTALYCH, wiec
+      nastawa mocy jest dzielona przez udzial (`urzadzenia.czesciowe`).
+    """
+
+    wielkosc: WielkoscNastawy
+    stan: str | None
+    powod_pl: str
+    zakres: tuple[float, float] | None
+    mnoznik: float
 
 
 @runtime_checkable
@@ -680,6 +848,34 @@ class Urzadzenie(Protocol):
         jako pradowe policzyloby inny uklad niz zbudowany, bez jednego sladu.
         """
 
+    @property
+    def stany_przypisywalne(self) -> tuple[str, ...]:
+        """Stany, ktorym zdarzenie `PrzypisanieStanu` wolno nadac wartosc — deklaracja JAWNA.
+
+        Wylacznie odniesienia i nastawy regulatorow (oraz stany profilu zrodla testowego):
+        ich skok nie wymaga nieskonczonej wielkosci fizycznej, bo zaden z nich nie jest
+        calka mocy, momentu ani napiecia. Strumien, kat, predkosc i stan naladowania NIE
+        sa tu nigdy wymieniane (`reinicjalizacja.py`). Protokol nie ma domyslki: klasa bez
+        takich stanow zwraca krotke pusta i kazde przypisanie konczy sie odmowa
+        `dynamika.zdarzenie_przypisania_niedozwolone`.
+        """
+
+    @property
+    def nastawy_regulacji(self) -> tuple[NastawaRegulacji, ...]:
+        """Deklaracja wykonania komendy regulacji — DOKLADNIE trzy pozycje w kolejnosci
+        `WIELKOSCI_NASTAW` (P, Q, U). Stan kazdej obslugiwanej wielkosci nalezy do
+        `stany_przypisywalne` (przypiete testem)."""
+
+    @property
+    def agregat_jednostek(self) -> bool:
+        """Czy urzadzenie jest agregatem IDENTYCZNYCH jednostek rownoleglych.
+
+        Warunek czesciowej utraty zrodla (`UtrataCzesciowaZrodla`): ubytek czesci jednostek
+        ma sens wylacznie dla elektrowni zlozonej z jednostek (falowniki, maszyny,
+        zasobniki, turbiny). Ekwiwalent sieci nadrzednej (szyna sztywna) i zrodlo testowe
+        nie sa agregatami — ich „czesciowa utrata" nie opisuje zadnego zjawiska.
+        """
+
     def parametry_tozsamosci(self) -> dict[str, object]:
         """Parametry urzadzenia wchodzace do `tozsamosc.odcisk_migawki` — JAWNIE, bez refleksji.
 
@@ -766,38 +962,48 @@ __all__ = [
     "KOD_INICJALIZACJA_NIEZBIEZNA",
     "KOD_KROK_NIEZBIEZNY",
     "KOD_NAPIECIE_NARZUCONE_SPRZECZNE",
+    "KOD_NASTAWA_NIEOBSLUGIWANA",
     "KOD_NASTAWY_SPRZECZNE",
     "KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU",
     "KOD_PARAMETRY_SPRZECZNE",
+    "KOD_PETLA_ZDARZEN_WARUNKOWYCH",
     "KOD_PUNKT_PRACY_POZA_OGRANICZENIEM",
     "KOD_REINICJALIZACJA_NIEZBIEZNA",
     "KOD_RODZINA_NIEOBSLUGIWANA",
     "KOD_SIEC_NIESPOJNA",
+    "KOD_UDZIAL_ZRODLA_NIEDOZWOLONY",
     "KOD_WARIANT_BEZ_PARAMETROW",
     "KOD_WARTOSC_NIESKONCZONA",
     "KOD_WYSPA_BEZ_ZRODLA",
     "KOD_ZDARZENIE_BEZ_ELEMENTU",
+    "KOD_ZDARZENIE_PRZYPISANIA_NIEDOZWOLONE",
     "KOD_ZDARZENIE_SPRZECZNE",
     "KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY",
     "KOD_ZWARCIE_GALEZI_NIEOBSLUGIWANE",
     "KOD_ZWARCIE_NIEODIZOLOWANE",
     "KOD_ZWARCIE_NIESYMETRYCZNE",
+    "WIELKOSCI_NASTAW",
     "GalazDynamiki",
     "HarmonogramDynamiki",
+    "KomendaRegulacji",
+    "NastawaRegulacji",
     "NastawySolvera",
     "NazwaIntegratora",
     "OdbiorDynamiki",
     "OdlaczenieZrodla",
     "OdmowaDynamiki",
     "OdsprzegDynamiki",
+    "PrzypisanieStanu",
     "PunktPracy",
     "RodzajGalezi",
     "SkokObciazenia",
     "SposobUsuniecia",
     "SprzezenieUrzadzenia",
     "Urzadzenie",
+    "UtrataCzesciowaZrodla",
     "WejscieDynamiki",
     "WezelDynamiki",
+    "WielkoscNastawy",
     "ZdarzenieDynamiki",
     "ZmianaGalezi",
     "ZmianaOdbioru",

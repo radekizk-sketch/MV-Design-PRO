@@ -33,7 +33,10 @@ MODELE:
 - KanalDynamicznyV2: opis jednego kanalu wyniku (klucz, przestrzen, jednostka).
 - OdbiorOdcietyV2: odbior, ktory w chwili zdarzenia stracil obwod (moc sprzed odciecia).
 - ZdarzenieWykonaneV2: zdarzenie z harmonogramu FAKTYCZNIE wykonane przez solver
-  (t zaplanowany vs wykonany, residua re-inicjalizacji, skutki topologiczne chwili).
+  (t zaplanowany vs wykonany, residua re-inicjalizacji, skutki topologiczne chwili,
+  przypisania stanu z pomiarem ciaglosci, pomiar lokalizacji zdarzenia warunkowego).
+- PrzypisanieWykonaneV2: adres stanu, wartosc przed i po przypisaniu.
+- PrzekroczenieV2: chwila przekroczenia progu przez wielkosc detektora scenariusza.
 - WlasnosciBieguV2: zbieznosc, liczba krokow/odrzuconych, residua, integrator.
 - TozsamoscBieguDynamicznegoV2: piec odciskow + wersja solvera (determinizm).
 - MetrykaDynamicznaV2: pojedyncza metryka skalarna (np. u_min_pu, cct_s).
@@ -108,19 +111,48 @@ class OdbiorOdcietyV2(BaseModel):
     model_config = {"frozen": True, "extra": "forbid"}
 
 
+class PrzypisanieWykonaneV2(BaseModel):
+    """Przypisanie stanu wykonane w chwili zdarzenia (przypisanie, komenda regulacji)."""
+
+    adres: str = Field(min_length=1, description="Adres stanu `urzadzenie.stan`.")
+    przed: float = Field(description="Wartość stanu tuz przed przypisaniem.")
+    po: float = Field(description="Wartość zadana, przypisana dokładnie.")
+
+    model_config = {"frozen": True, "extra": "forbid"}
+
+
+#: Rozdzielczosc publikacji czasu (karta AB-1b.1 par. 0 pkt 12): kazdy czas w tym kontrakcie
+#: jest skwantyzowany do 9 cyfr znaczacych — przy horyzoncie 600 s to 1e-6 s, grubiej niz
+#: typowa tolerancja lokalizacji zdarzen warunkowych. Pelna precyzja zyje w wyniku rdzenia.
+OPIS_ROZDZIELCZOSCI_CZASU = (
+    "Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); "
+    "chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji."
+)
+
+
 class ZdarzenieWykonaneV2(BaseModel):
     """Zdarzenie harmonogramu FAKTYCZNIE wykonane przez solver (nie zaplanowane).
 
     Skutki topologiczne CHWILI (wspolne dla zdarzen rownoczesnych, jak pomiar
     re-inicjalizacji): wezly, ktore w tej chwili staly sie beznapieciowe, odbiory,
-    ktore stracily obwod, i wezly zasilone ponownie.
+    ktore stracily obwod, i wezly zasilone ponownie. Przypisania stanu (komendy
+    regulacji, przypisania) z pomiarem ciaglosci stanow NIEprzypisanych. Zdarzenie
+    WARUNKOWE (akcja dozoru) niesie przyczyne `dozor:<ident>` i pomiar lokalizacji.
     """
 
-    t_zaplanowany_s: float
-    t_wykonany_s: float
+    t_zaplanowany_s: float = Field(description=OPIS_ROZDZIELCZOSCI_CZASU)
+    t_wykonany_s: float = Field(description=OPIS_ROZDZIELCZOSCI_CZASU)
     rodzaj: str = Field(min_length=1)
     ref: str | None = None
-    delta_x_max: float = Field(description="Maks. skok stanu różniczkowego przy re-inicjalizacji.")
+    przyczyna: str = Field(
+        min_length=1, description="`harmonogram` albo `dozor:<ident>` (zdarzenie warunkowe)."
+    )
+    delta_x_nieprzypisane_max: float = Field(
+        description=(
+            "Maks. skok stanu różniczkowego NIEprzypisanego w tej chwili, wobec stanow sprzed "
+            "całej chwili — 0,0 dokładnie (ciągłość stanow mierzona, nie deklarowana)."
+        )
+    )
     delta_y_max: float = Field(description="Maks. skok stanu algebraicznego przy re-inicjalizacji.")
     residuum_kcl_max: float = Field(
         description="Maks. residuum bilansu prądowego po re-inicjalizacji."
@@ -134,8 +166,58 @@ class ZdarzenieWykonaneV2(BaseModel):
     obszary_zasilone_ponownie: tuple[str, ...] = Field(
         description="Węzły, które w tej chwili przestały być beznapięciowe."
     )
+    przypisania: tuple[PrzypisanieWykonaneV2, ...] = Field(
+        description="Przypisania stanu wykonane przez ten wpis (adres, przed, po)."
+    )
+    t_zlokalizowany_s: float | None = Field(
+        description="Chwila pobudzenia dozoru (zdarzenie warunkowe); None dla planowanego. "
+        + OPIS_ROZDZIELCZOSCI_CZASU
+    )
+    szerokosc_przedzialu_s: float | None = Field(
+        description="Szerokosc przedziału lokalizacji pobudzenia; None dla planowanego."
+    )
+    iteracje_lokalizacji: int | None = Field(
+        description="Liczba prób kroku lokalizacji pobudzenia; None dla planowanego."
+    )
+    g_przed: float | None = Field(
+        description="Wielkość minus próg na lewym koncu przedziału lokalizacji."
+    )
+    g_po: float | None = Field(
+        description="Wielkość minus próg na prawym koncu przedziału lokalizacji."
+    )
 
     model_config = {"frozen": True, "extra": "forbid"}
+
+
+#: Kierunek przekroczenia — TEN SAM slownik, co detektor scenariusza (`enm.scenariusze.Detektor`)
+#: i dozor rdzenia (`dozory.KierunekDozoru`): `w_dol` — wartosc spada ponizej progu,
+#: `w_gore` — rosnie powyzej.
+KierunekPrzekroczenia = Literal["w_dol", "w_gore"]
+
+
+class PrzekroczenieV2(BaseModel):
+    """Chwila przekroczenia progu przez wielkosc DETEKTORA scenariusza (bez akcji)."""
+
+    dozor: str = Field(min_length=1, description="Identyfikator detektora ze scenariusza.")
+    wielkosc: str = Field(
+        min_length=1, description="Klucz kanału wyniku, który detektor czyta (ta sama funkcja)."
+    )
+    prog: float = Field(description="Próg w jednostce kanału.")
+    kierunek: KierunekPrzekroczenia
+    t_s: float = Field(
+        description="Chwila przekroczenia (strona po przekroczeniu). " + OPIS_ROZDZIELCZOSCI_CZASU
+    )
+    szerokosc_przedzialu_s: float = Field(
+        ge=0.0, description="Szerokosc przedziału lokalizacji (0 dla chwili zdarzenia)."
+    )
+    iteracje: int = Field(ge=0, description="Liczba prób kroku lokalizacji.")
+
+    model_config = {"frozen": True, "extra": "forbid"}
+
+
+TrybScenariusza = Literal["siec", "stanowisko"]
+"""`siec` — zakłócenia fizyczne sieci; `stanowisko` — sieć zasilana źródłem testowym U/f/θ
+(karta AB-1b.1 par. 0 pkt 11, rozdzielenie typowe O-18). Wyprowadzony z wejścia biegu."""
 
 
 class WlasnosciBieguV2(BaseModel):
@@ -225,10 +307,12 @@ class ResultSetDynamicV2(BaseModel):
     analysis_type: Literal["dynamika_rms"] = "dynamika_rms"
     dziedzina_fizyki: tuple[DziedzinaFizyki, ...]
     kanaly: tuple[KanalDynamicznyV2, ...] = ()
-    os_czasu_s: tuple[float, ...] = ()
+    os_czasu_s: tuple[float, ...] = Field(default=(), description=OPIS_ROZDZIELCZOSCI_CZASU)
     strona_probki: tuple[StronaProbki, ...] = ()
     probki: dict[str, tuple[float | None, ...]] = Field(default_factory=dict)
     zdarzenia_wykonane: tuple[ZdarzenieWykonaneV2, ...] = ()
+    tryb_scenariusza: TrybScenariusza
+    przekroczenia: tuple[PrzekroczenieV2, ...] = ()
     wlasnosci_biegu: WlasnosciBieguV2
     tozsamosc: TozsamoscBieguDynamicznegoV2
     metryki: tuple[MetrykaDynamicznaV2, ...] = ()
@@ -280,13 +364,18 @@ __all__ = [
     "RODZAJ_ANALIZY_DYNAMIKI",
     "KanalDynamicznyV2",
     "MetrykaDynamicznaV2",
+    "OPIS_ROZDZIELCZOSCI_CZASU",
+    "KierunekPrzekroczenia",
     "OdbiorOdcietyV2",
+    "PrzekroczenieV2",
     "PrzestrzenKanalu",
+    "PrzypisanieWykonaneV2",
     "ResultSetDynamicV2",
     "StopienDowodowyV2",
     "TozsamoscBieguDynamicznegoV2",
     "WlasnosciBieguV2",
     "StronaProbki",
+    "TrybScenariusza",
     "ZdarzenieWykonaneV2",
     "dziedzina_fizyki_dynamiki",
     "zbuduj_resultset_dynamiczny_v2",

@@ -49,6 +49,8 @@ def test_odmowa_braku_pola_ma_ksztalt_z_karty() -> None:
         ({"max_iteracji_newtona": 0}, "max_iteracji_newtona"),
         ({"max_nawrotow": -1}, "max_nawrotow"),
         ({"krok_wyjscia_s": 5.0, "horyzont_s": 1.0}, "krok_wyjscia_s"),
+        ({"tolerancja_lokalizacji_zdarzen_s": 0.0}, "musi byc dodatnia"),
+        ({"tolerancja_lokalizacji_zdarzen_s": -1e-9}, "musi byc dodatnia"),
     ],
 )
 def test_nastawy_sprzeczne_sa_odmawiane(zmiana: dict[str, float], fragment: str) -> None:
@@ -65,6 +67,7 @@ def test_nastawy_sprzeczne_sa_odmawiane(zmiana: dict[str, float], fragment: str)
         "horyzont_s": 1.0,
         "krok_wyjscia_s": 0.01,
         "integrator": "trapez_niejawny",
+        "tolerancja_lokalizacji_zdarzen_s": None,
     }
     pola.update(zmiana)
     with pytest.raises(OdmowaDynamiki) as blad:

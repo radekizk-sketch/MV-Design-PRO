@@ -1645,7 +1645,31 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # karta #141: `okreslenie_pl` w `station_templates/schema.py`; karta #142:
     # `transformer_name` w `enm/pole_transformatorowe.py`), -2 (`deterministic_id` — E2,
     # `new_archive_hash` — archiwum). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4042." in wyjscie, wyjscie
+    # Karta AB-1b.1b (P6-P8 rdzenia dynamiki, 2026-09-24): 4033 -> 4072 — POMIAR
+    # `contract_fields()` na HEAD `7b05931e` i na drzewie karty, roznica zbiorow na
+    # posortowanych nazwach: +40 (kontrakty rdzenia `PrzypisanieStanu`, `KomendaRegulacji`,
+    # `UtrataCzesciowaZrodla`, `NastawaRegulacji`, `Dozor` i wielkosci dozoru, wpis
+    # harmonogramu i `KontekstHarmonogramu`, `ZrodloTestowe` i segmenty profilu,
+    # `UrzadzenieCzesciowe`; kontrakt danych `NastawaDynamiczna`, `StanowiskoBadawcze`,
+    # `detektory`/`Detektor`, `UtrataCzesciowaZrodla`; kontrakt wyniku `przekroczenia`,
+    # `tryb_scenariusza`, `przyczyna`, `przypisania`, pomiar lokalizacji: `akcja`, `akcje`,
+    # `delta_x_nieprzypisane_max`, `detektory`, `dozor`, `dozory`, `g_po`, `g_przed`,
+    # `identy_odbiorow`, `identy_odsprzegow`, `impedancja_pu`, `iteracje_lokalizacji`,
+    # `jednorazowy`, `kasowanie_przy_powrocie`, `kat_deg`, `lokalizacja`, `mnoznik`,
+    # `napiecia_wezlow`, `odchylka_hz`, `opoznienie_s`, `profil`, `prog`, `przekroczenia`,
+    # `przyczyna`, `przypisania`, `skladowa`, `stanowisko`, `strona`, `szerokosc_przedzialu_s`,
+    # `szerokosc_s`, `t_zlokalizowany_s`, `tempo_hz_na_s`, `tempo_pu_na_s`,
+    # `tolerancja_lokalizacji_zdarzen_s`, `tryb_scenariusza`, `udzial`, `udzial_pozostaly`,
+    # `udzialy_zrodel`, `w_gore`, `zakres`), -1 (`delta_x_max` — pomiar kopii stanow w algebrze
+    # zastapiony `delta_x_nieprzypisane_max`, karta AB-1b.1 S19). PASS niezmieniony (zero
+    # podstawien liczby za nieobecna dana).
+    # Partia integracji 3 (2026-09-25): 4042 -> 4051 — POMIAR `contract_fields()` na `d5f66b6a`
+    # i na `bfbb3698`, roznica zbiorow: +9 (karta #144: `_nazwy_lokalizacji`,
+    # `nazwy_lokalizacji`, `nazwa_odcinka`, `projekt`, `przypadek`, `source_nazwa`,
+    # `target_nazwa`; karta ETYKIETY-TR: `source_bus_name`, `target_bus_name`), -0; pin nie
+    # byl podniesiony przy integracji #144 (czerwony samotest na `b24144d5`/`bfbb3698`).
+    # Po AB-1b.1b na tej samej partii: 4051 -> 4090 (+40, -1 jak wyzej). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4090." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1778,7 +1802,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 2 (2026-09-25): 540 -> 542 (+1 `enm/rola_pola_sn.py` — kanon
         # rol pol SN, karta #141; +1 `enm/slownik_komunikatow.py` — slownik nazw pol
         # formularza w komunikatach, karta #142). POMIAR guardem na czubku partii.
-        "Przeskanowano 542 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta AB-1b.1b (2026-09-24): 541 -> 544 (+3 moduly rdzenia dynamiki:
+        # `solvers/dynamika/dozory.py`, `solvers/dynamika/urzadzenia/czesciowe.py`,
+        # `solvers/dynamika/urzadzenia/zrodlo_testowe.py`; zero wpisow w zapadce i wykluczeniach).
+        # Partia integracji 3 (2026-09-25): 542 -> 544 (+1 `enm/nazwy_elementow.py`, +1
+        # `application/nazwy_biegu.py` — karta #144), potem +3 AB-1b.1b: 544 -> 547.
+        # POMIAR guardem na `bfbb3698` i na drzewie integracji.
+        "Przeskanowano 547 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1874,7 +1904,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta AB-1a Pakiet C (2026-09-23): network_model 178 -> 179 (+1
         # `network_model/solvers/ncrfg_ptpiree/stosowalnosc.py` — jedna funkcja stosowalnosci
         # wymagania i testu); dlug 14/77 i wykluczenia 3/6 BEZ ZMIANY.
-        "  network_model: pliki_skanowane=175, dlug=12 plikow/suma 71, "
+        # Karta AB-1b.1b (2026-09-24): network_model 175 -> 178 (+3: `dozory.py`,
+        # `urzadzenia/czesciowe.py`, `urzadzenia/zrodlo_testowe.py`); dlug i wykluczenia BEZ ZMIAN.
+        "  network_model: pliki_skanowane=178, dlug=12 plikow/suma 71, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -1905,7 +1937,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # w `enm/canonical_analysis.py` zdjety razem z narracja zdarzen toru T1).
         # Partia integracji 2 (2026-09-25): enm 52 -> 54 (`rola_pola_sn.py` — #141,
         # `slownik_komunikatow.py` — #142); dlug/wykluczenia BEZ ZMIANY.
-        "  enm: pliki_skanowane=54, dlug=7 plikow/suma 71, wykluczenia=0 plikow/suma 0",
+        # Partia integracji 3 (2026-09-25): enm 54 -> 55 (`nazwy_elementow.py` — karta #144);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na `bfbb3698`.
+        "  enm: pliki_skanowane=55, dlug=7 plikow/suma 71, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -1946,7 +1980,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta AB-1a Pakiet E2 (2026-09-24): application 240 -> 239 (-1 skasowany
         # `application/analyses/run_index.py`; plik nie mial wpisu w zapadce ani w
         # wykluczeniach, wiec ubyl tylko z licznika skanu).
-        "  application: pliki_skanowane=239, dlug=30 plikow/suma 91, "
+        # Partia integracji 3 (2026-09-25): application 239 -> 240 (`nazwy_biegu.py` — karta
+        # #144); dlug 30/91 i wykluczenia 4/10 BEZ ZMIANY. POMIAR guardem na `bfbb3698`.
+        "  application: pliki_skanowane=240, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=63, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]

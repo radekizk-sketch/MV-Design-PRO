@@ -83,17 +83,29 @@ from enm.models import (
 # (`*Scenariusza`), żeby nazwy rdzenia zostały w module dokładnie takie, jakie
 # niesie jego kontrakt.
 from enm.scenariusze import (
-    KomendaRegulacji,
+    CzestotliwoscSzyny,
+    Detektor,
+    MocUrzadzeniaDynamicznego,
+    ModulNapieciaSzyny,
+    ModulPraduZaciskuGalezi,
     OdlaczenieOdbioru,
+    RampaCzestotliwosciProfilu,
+    RampaNapieciaProfilu,
     ScenariuszDynamiczny,
+    SegmentProfiluStanowiska,
+    SkokCzestotliwosciProfilu,
+    SkokNapieciaProfilu,
+    StanowiskoBadawcze,
     Synchronizacja,
     WylaczenieGalezi,
     ZalaczenieGalezi,
     ZalaczenieOdbioru,
     Zwarcie,
 )
+from enm.scenariusze import KomendaRegulacji as KomendaRegulacjiScenariusza
 from enm.scenariusze import OdlaczenieZrodla as OdlaczenieZrodlaScenariusza
 from enm.scenariusze import SkokObciazenia as SkokObciazeniaScenariusza
+from enm.scenariusze import UtrataCzesciowaZrodla as UtrataCzesciowaZrodlaScenariusza
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.switch import SwitchState
@@ -101,6 +113,7 @@ from network_model.pochodne import impedancja_z_napiecia_i_mocy_ohm
 from network_model.solvers.dynamika import (
     GalazDynamiki,
     HarmonogramDynamiki,
+    KomendaRegulacji,
     NastawySolvera,
     OdbiorDynamiki,
     OdlaczenieZrodla,
@@ -108,6 +121,7 @@ from network_model.solvers.dynamika import (
     PunktPracy,
     SkokObciazenia,
     Urzadzenie,
+    UtrataCzesciowaZrodla,
     WejscieDynamiki,
     WezelDynamiki,
     ZmianaGalezi,
@@ -116,12 +130,29 @@ from network_model.solvers.dynamika import (
     ZwarcieGalezi,
     ZwarcieWezla,
 )
+from network_model.solvers.dynamika.dozory import (
+    CzestotliwoscElektrycznaWezla,
+    Dozor,
+    MocUrzadzenia,
+    ModulNapieciaWezla,
+    ModulPraduZacisku,
+    StanUrzadzenia,
+    WielkoscDozoru,
+)
 from network_model.solvers.dynamika.kontrakty import ZdarzenieDynamiki
 from network_model.solvers.dynamika.konwencje import moc_pu
 from network_model.solvers.dynamika.urzadzenia import (
     PunktPracyUrzadzenia,
+    RampaCzestotliwosci,
+    RampaNapiecia,
+    SegmentProfilu,
+    SkokCzestotliwosci,
+    SkokFazy,
+    SkokNapiecia,
+    rozwin_profil,
     zbuduj_szyne_sztywna,
     zbuduj_urzadzenie,
+    zbuduj_zrodlo_testowe,
 )
 from network_model.solvers.dynamika.urzadzenia.fabryka import RODZINY_OBSLUGIWANE
 from network_model.solvers.power_flow_newton_internal import transformer_phase_shift_rad
@@ -156,8 +187,9 @@ KOD_SKOK_POZA_ODBIOREM = "dynamika.skok_obciazenia_poza_odbiorem"
 KOD_ZRODLO_BEZ_DYNAMIKI = "dynamika.zrodlo_bez_bloku_dynamiki"
 #: Rodzina parametrów, dla której biblioteka urządzeń nie ma modelu.
 KOD_RODZINA_BEZ_MODELU = "dynamika.rodzina_urzadzenia_bez_modelu"
-#: Źródło sieciowe (szyna sztywna) razem z innym urządzeniem na jednej szynie —
-#: szyna sztywna nie ma zadeklarowanej mocy, więc podziału nie da się wyprowadzić.
+#: Dwa źródła sieciowe na jednej szynie — źródło sieciowe bierze RESZTĘ bilansu szyny
+#: (wypadkowa z rozpływu minus moc wytwórców z modelu), a podziału reszty między dwa
+#: warunki brzegowe bez zadeklarowanej mocy nie da się wyprowadzić z żadnej danej.
 KOD_WIELE_URZADZEN_W_WEZLE = "dynamika.wiele_urzadzen_w_wezle"
 #: Kilku wytwórców na jednej szynie, ale suma ich mocy z modelu NIE uzgadnia się
 #: z wypadkową szyny z rozpływu — podział byłby domysłem.
@@ -330,43 +362,36 @@ def braki_modelu_dynamiki(enm: EnergyNetworkModel) -> tuple[BrakDynamiki, ...]:
             )
         )
 
-    # Szyna sztywna (źródło sieciowe) NIE MA zadeklarowanej mocy — jest warunkiem
-    # brzegowym, a nie wytwórcą projektu (`zloz_urzadzenia` buduje ją z samej
-    # impedancji). Dlatego na szynie ze źródłem sieciowym podziału mocy węzła
-    # między źródło a wytwórcę nie da się wyprowadzić z ŻADNEJ danej wejściowej:
-    # brakuje jednego z dwóch składników. To zostaje odmową MODELOWĄ.
+    # Źródło sieciowe (szyna sztywna albo źródło testowe stanowiska) NIE MA zadeklarowanej
+    # mocy — jest warunkiem brzegowym, a nie wytwórcą projektu. Na szynie ze źródłem
+    # sieciowym i wytwórcami obowiązuje REGUŁA RESZTY (karta AB-1b.1 §0 pkt 11): wytwórcy
+    # dostają moc z modelu (to samo źródło mocy biernej, co assembler rozpływu —
+    # `solver_input/moc_bierna_wytworcy.py`), a źródło sieciowe resztę bilansu szyny. To
+    # jest dokładnie rachunek rozpływu: wytwórca jest wstrzykiem z danych, szyna
+    # bilansująca domyka bilans. Bez tej reguły stanowisko „źródło i badany moduł w
+    # punkcie przyłączenia" było nieosiągalne (dawna odmowa każdej pary źródło+wytwórca).
     #
-    # KOREKTA 2026-09-18 (bramka SO-1A). Do tej pory ten warunek odrzucał KAŻDĄ
-    # szynę z dwoma urządzeniami, także dwoma WYTWÓRCAMI — z uzasadnieniem, że
-    # „rozpływ podaje moc wypadkową szyny". Uzasadnienie było fałszywe dla klasy
-    # wytwórca+wytwórca: `Generator.p_mw`/`q_mvar` to dane PER WYTWÓRCA i to
-    # WŁAŚNIE z nich assembler zbudował wstrzyk węzłowy rozpływu. Podział jest
-    # więc daną wejściową, nie domysłem — pod warunkiem, że suma mocy wytwórców
-    # z modelu UZGADNIA SIĘ z wypadkową szyny (rozpływ mógł ją przesunąć:
-    # przełączenie PV→PQ, ograniczenie Q, bilans szyny bilansującej). Uzgodnienie
-    # zależy od punktu pracy, którego model nie zna, więc sprawdza je adapter
-    # przy składaniu wejścia (`_moce_urzadzen_pu`, kod
-    # `dynamika.podzial_mocy_wezla_niespojny`) — tak samo jak inne warunki PER BIEG.
-    wytworcy_wezla: dict[str, list[str]] = {}
-    for gen in enm.generators:
-        wytworcy_wezla.setdefault(gen.bus_ref, []).append(gen.ref_id)
-    urzadzenia_wezla: dict[str, list[str]] = {}
-    for zrodlo in enm.sources:
-        urzadzenia_wezla.setdefault(zrodlo.bus_ref, []).append(zrodlo.ref_id)
+    # KOREKTA 2026-09-18 (bramka SO-1A): dwóch WYTWÓRCÓW na szynie bez źródła sieciowego
+    # dzieli moc z modelu pod warunkiem uzgodnienia z wypadkową szyny (`_moce_urzadzen_pu`,
+    # kod `dynamika.podzial_mocy_wezla_niespojny`, warunek PER BIEG).
+    #
+    # Zostaje odmową MODELOWĄ wyłącznie DWA ŹRÓDŁA SIECIOWE na jednej szynie: reszty
+    # bilansu nie da się podzielić między dwa warunki brzegowe bez zadeklarowanej mocy.
+    # Ten sam predykat czyta `zloz_urzadzenia` (`_zrodla_szyn`) — gotowość i bieg mówią jedno.
     kolizje = tuple(
-        f"{szyna}: {', '.join(sorted([*refy, *wytworcy_wezla.get(szyna, ())]))}"
-        for szyna, refy in sorted(urzadzenia_wezla.items())
-        if len(refy) + len(wytworcy_wezla.get(szyna, ())) > 1
+        f"{szyna}: {', '.join(refy)}"
+        for szyna, refy in sorted(_zrodla_szyn(enm).items())
+        if len(refy) > 1
     )
     if kolizje:
         braki.append(
             BrakDynamiki(
                 kod=KOD_WIELE_URZADZEN_W_WEZLE,
                 komunikat_pl=(
-                    "Na jednej szynie stoi źródło sieciowe razem z innym urządzeniem "
-                    "dynamicznym. Źródło sieciowe wchodzi do biegu czasowego jako szyna "
-                    "sztywna — warunek brzegowy BEZ zadeklarowanej mocy — więc podziału mocy "
-                    "węzła między nie a pozostałe urządzenia nie da się wyprowadzić z żadnej "
+                    "Na jednej szynie stoją dwa źródła sieciowe. Źródło sieciowe wchodzi do "
+                    "biegu czasowego jako warunek brzegowy BEZ zadeklarowanej mocy i bierze "
+                    "resztę bilansu szyny (wypadkowa z rozpływu minus moc wytwórców z modelu) — "
+                    "podziału tej reszty między dwa źródła nie da się wyprowadzić z żadnej "
                     f"danej wejściowej. Szyny: {'; '.join(kolizje)}."
                 ),
                 elementy=kolizje,
@@ -379,6 +404,15 @@ def braki_modelu_dynamiki(enm: EnergyNetworkModel) -> tuple[BrakDynamiki, ...]:
 # ---------------------------------------------------------------------------
 # Punkt pracy z biegu rozpływu
 # ---------------------------------------------------------------------------
+
+
+def _zrodla_szyn(enm: EnergyNetworkModel) -> dict[str, tuple[str, ...]]:
+    """Źródła sieciowe KAŻDEJ szyny (posortowane `ref_id`) — jeden predykat dla bramki
+    modelowej (dwa źródła na szynie = odmowa) i dla reguły reszty w `zloz_urzadzenia`."""
+    zrodla: dict[str, list[str]] = {}
+    for zrodlo in enm.sources:
+        zrodla.setdefault(zrodlo.bus_ref, []).append(zrodlo.ref_id)
+    return {szyna: tuple(sorted(refy)) for szyna, refy in zrodla.items()}
 
 
 def odmow_gdy_braki_modelu(enm: EnergyNetworkModel) -> None:
@@ -540,7 +574,13 @@ POLA_NASTAW: tuple[str, ...] = (
     "max_iteracji_newtona",
     "max_nawrotow",
     "integrator",
+    "tolerancja_lokalizacji_zdarzen_s",
 )
+#: Nastawy, których KLUCZ jest wymagany, a wartość może być `null`: kontrakt rdzenia
+#: dopuszcza brak tolerancji lokalizacji zdarzeń wyłącznie dla biegu bez dozorów i
+#: detektorów (inaczej odmowa rdzenia `dynamika.nastawy_sprzeczne`). Brak KLUCZA jest
+#: nadal brakiem pola — `null` jest decyzją wołającego, nie domysłem adaptera.
+POLA_NASTAW_Z_WARTOSCIA_NULL: tuple[str, ...] = ("tolerancja_lokalizacji_zdarzen_s",)
 
 #: Klucz opcji biegu niosący nastawy numeryczne solvera.
 KLUCZ_NASTAW = "nastawy_solvera"
@@ -566,7 +606,11 @@ def nastawy_z_opcji(options: dict[str, Any], scenariusz: ScenariuszDynamiczny) -
             f"(`{KLUCZ_NASTAW}`): {', '.join(POLA_NASTAW)}",
             elementy=POLA_NASTAW,
         )
-    brakujace = tuple(pole for pole in POLA_NASTAW if surowe.get(pole) is None)
+    brakujace = tuple(
+        pole
+        for pole in POLA_NASTAW
+        if pole not in surowe or (surowe[pole] is None and pole not in POLA_NASTAW_Z_WARTOSCIA_NULL)
+    )
     if brakujace:
         raise OdmowaWejsciaDynamiki(
             KOD_NASTAWY_BRAK,
@@ -592,6 +636,11 @@ def nastawy_z_opcji(options: dict[str, Any], scenariusz: ScenariuszDynamiczny) -
         horyzont_s=float(scenariusz.horyzont_s),
         krok_wyjscia_s=float(scenariusz.krok_wyjscia_s),
         integrator=str(surowe["integrator"]),  # type: ignore[arg-type]
+        tolerancja_lokalizacji_zdarzen_s=(
+            None
+            if surowe["tolerancja_lokalizacji_zdarzen_s"] is None
+            else float(surowe["tolerancja_lokalizacji_zdarzen_s"])
+        ),
     )
 
 
@@ -613,12 +662,71 @@ def scenariusz_z_opcji(options: dict[str, Any]) -> ScenariuszDynamiczny:
     return ScenariuszDynamiczny.model_validate(surowy)
 
 
+def _segment_rdzenia(segment: SegmentProfiluStanowiska) -> SegmentProfilu:
+    """Segment profilu danych -> segment rdzenia (te same pola i jednostki, zero przeliczeń:
+    odchylkę częstotliwości na jednostki względne i kąt na radiany przelicza rdzeń)."""
+    if isinstance(segment, SkokNapieciaProfilu):
+        return SkokNapiecia(t_s=segment.t_s, u_pu=segment.u_pu)
+    if isinstance(segment, RampaNapieciaProfilu):
+        return RampaNapiecia(
+            t_s=segment.t_s,
+            tempo_pu_na_s=segment.tempo_pu_na_s,
+            czas_trwania_s=segment.czas_trwania_s,
+        )
+    if isinstance(segment, SkokCzestotliwosciProfilu):
+        return SkokCzestotliwosci(t_s=segment.t_s, odchylka_hz=segment.odchylka_hz)
+    if isinstance(segment, RampaCzestotliwosciProfilu):
+        return RampaCzestotliwosci(
+            t_s=segment.t_s,
+            tempo_hz_na_s=segment.tempo_hz_na_s,
+            czas_trwania_s=segment.czas_trwania_s,
+        )
+    return SkokFazy(t_s=segment.t_s, kat_deg=segment.kat_deg)
+
+
+def _wielkosc_dozoru(detektor: Detektor) -> WielkoscDozoru:
+    """Wielkosc detektora danych -> wielkosc dozoru rdzenia (te same referencje i zacisk)."""
+    wielkosc = detektor.wielkosc
+    if isinstance(wielkosc, ModulNapieciaSzyny):
+        return ModulNapieciaWezla(wezel=wielkosc.bus_ref)
+    if isinstance(wielkosc, CzestotliwoscSzyny):
+        return CzestotliwoscElektrycznaWezla(wezel=wielkosc.bus_ref)
+    if isinstance(wielkosc, ModulPraduZaciskuGalezi):
+        return ModulPraduZacisku(galaz=wielkosc.element_ref, zacisk=wielkosc.zacisk)
+    if isinstance(wielkosc, MocUrzadzeniaDynamicznego):
+        return MocUrzadzenia(urzadzenie=wielkosc.ref_id, skladowa=wielkosc.skladowa)
+    return StanUrzadzenia(urzadzenie=wielkosc.ref_id, stan=wielkosc.stan)
+
+
+def dozory_z_detektorow(scenariusz: ScenariuszDynamiczny) -> tuple[Dozor, ...]:
+    """Detektory scenariusza jako dozory rdzenia BEZ akcji (bez zwloki, bez kasowania).
+
+    Akcje dozorow nie przychodza ze scenariusza (kontrakt danych nie ma na nie pola) —
+    przychodza z modelu (automatyka napieciowa, przekazniki, system zarzadzania
+    magazynem); adapter nie ma tu czego dopisac.
+    """
+    return tuple(
+        Dozor(
+            ident=detektor.ident,
+            wielkosc=_wielkosc_dozoru(detektor),
+            prog=detektor.prog,
+            kierunek=detektor.kierunek,
+            opoznienie_s=0.0,
+            kasowanie_przy_powrocie=False,
+            akcje=(),
+            jednorazowy=detektor.jednorazowy,
+        )
+        for detektor in scenariusz.detektory
+    )
+
+
 def harmonogram_z_scenariusza(
     scenariusz: ScenariuszDynamiczny,
     *,
     identy_odbiorow: frozenset[str],
     identy_odsprzegow: frozenset[str],
     base_mva: float,
+    f_bazowa_hz: float,
 ) -> HarmonogramDynamiki:
     """`HarmonogramDynamiki` z harmonogramu scenariusza — rodzaj spoza zbioru = odmowa.
 
@@ -628,14 +736,22 @@ def harmonogram_z_scenariusza(
     wyłączenie i załączenie odsprzęgu (bateria wskazana przez `wylaczenie_galezi` /
     `zalaczenie_galezi` — adapter rozpoznaje kolekcję, ta sama klasyfikacja co
     `enm.scenariusze._refy_zdarzenia`), odłączenie i załączenie odbioru, odłączenie
-    źródła i skok obciążenia. Komenda regulacji i synchronizacja źródła są w
-    kontrakcie danych (W6-1), ale rdzeń ich nie wykonuje — kończą się NAZWANĄ
-    odmową, nigdy cichym pominięciem (pominięte zdarzenie zamieniłoby scenariusz
-    projektanta w inny scenariusz bez jednego śladu).
+    źródła, częściową utratę źródła, skok obciążenia i komendę regulacji (nastawa
+    P [MW] / Q [Mvar] / U [pu] przepisana bez przeliczeń — jednostki względne liczy
+    rdzeń, a to, która nastawa istnieje w której rodzinie urządzeń, rozstrzyga rdzeń
+    odmową `dynamika.nastawa_nieobslugiwana`). Synchronizacja źródła jest w kontrakcie
+    danych (W6-1), ale rdzeń jej nie wykonuje — kończy się NAZWANĄ odmową, nigdy
+    cichym pominięciem (pominięte zdarzenie zamieniłoby scenariusz projektanta w inny
+    scenariusz bez jednego śladu).
 
     Kolejność ZAPISU jest zachowana (`zdarzenia`, nie `zdarzenia_uporzadkowane`) —
     to ona jest treścią odcisku harmonogramu i rozstrzyga remisy czasowe; sortowanie
     stabilne po czasie robi rdzeń (`zdarzenia.zbuduj_harmonogram`), w jednym miejscu.
+
+    STANOWISKO BADAWCZE (karta AB-1b.1 §0 pkt 11): profil źródła testowego rozwija RDZEŃ
+    (`zrodlo_testowe.rozwin_profil` — przypisania stanów w dokładnych chwilach, przeliczenie
+    jednostek, spójność profilu); adapter przepisuje segmenty i dokleja wynik ZA komendami
+    regulacji (remis czasowy komendy i segmentu profilu dotyczy różnych urządzeń).
     """
     zdarzenia: list[ZdarzenieDynamiki] = []
     for zdarzenie in scenariusz.zdarzenia:
@@ -699,7 +815,7 @@ def harmonogram_z_scenariusza(
                     f"Skok obciążenia w chwili {zdarzenie.t_s} s wskazuje element "
                     f"{zdarzenie.ref_id!r}, który nie jest odbiorem modelu — rdzeń dynamiki "
                     "zmienia skokowo moc ODBIORU; skokowa zmiana nastawy wytwórcy jest "
-                    "komendą regulacji, której rdzeń nie wykonuje",
+                    "komendą regulacji (zdarzenie `komenda_regulacji`)",
                     elementy=(zdarzenie.ref_id,),
                 )
             zdarzenia.append(
@@ -710,7 +826,25 @@ def harmonogram_z_scenariusza(
                     delta_q_pu=moc_pu(zdarzenie.delta_q_mvar, base_mva),
                 )
             )
-        elif isinstance(zdarzenie, KomendaRegulacji | Synchronizacja):
+        elif isinstance(zdarzenie, KomendaRegulacjiScenariusza):
+            zdarzenia.append(
+                KomendaRegulacji(
+                    t_s=zdarzenie.t_s,
+                    urzadzenie=zdarzenie.ref_id,
+                    p_mw=zdarzenie.nastawa.p_mw,
+                    q_mvar=zdarzenie.nastawa.q_mvar,
+                    u_pu=zdarzenie.nastawa.u_pu,
+                )
+            )
+        elif isinstance(zdarzenie, UtrataCzesciowaZrodlaScenariusza):
+            zdarzenia.append(
+                UtrataCzesciowaZrodla(
+                    t_s=zdarzenie.t_s,
+                    zrodlo=zdarzenie.ref_id,
+                    udzial_pozostaly=zdarzenie.udzial_pozostaly,
+                )
+            )
+        elif isinstance(zdarzenie, Synchronizacja):
             raise OdmowaWejsciaDynamiki(
                 KOD_ZDARZENIE_NIEOBSLUGIWANE,
                 f"Zdarzenie {zdarzenie.rodzaj!r} w chwili {zdarzenie.t_s} s jest w kontrakcie "
@@ -720,7 +854,15 @@ def harmonogram_z_scenariusza(
             )
         else:  # pragma: no cover — unia zamknięta, gałąź istnieje dla czytelnika
             raise AssertionError(f"Nieznany rodzaj zdarzenia scenariusza: {zdarzenie!r}")
-    return HarmonogramDynamiki(zdarzenia=tuple(zdarzenia))
+    if scenariusz.stanowisko is not None:
+        zdarzenia.extend(
+            rozwin_profil(
+                scenariusz.stanowisko.zrodlo_ref,
+                tuple(_segment_rdzenia(segment) for segment in scenariusz.stanowisko.profil),
+                f_bazowa_hz=f_bazowa_hz,
+            )
+        )
+    return HarmonogramDynamiki(zdarzenia=tuple(zdarzenia), dozory=dozory_z_detektorow(scenariusz))
 
 
 # ---------------------------------------------------------------------------
@@ -978,6 +1120,31 @@ def _moc_wypadkowa_urzadzen_pu(
     return punkt.wstrzyki_pu[szyna] + moc_odbiorow
 
 
+def _moce_wytworcow_z_modelu_pu(
+    wytworcy: tuple[Generator, ...], base_mva: float
+) -> dict[str, complex]:
+    """Moc KAŻDEGO wytwórcy z modelu [pu] — jedno źródło prawdy dla podziału mocy szyny
+    kilku wytwórców i dla reguły reszty szyny ze źródłem sieciowym.
+
+    Moc bierną rozstrzyga JEDNO wspólne źródło prawdy (`solver_input/moc_bierna_wytworcy.py`)
+    — to samo, z którego assembler i `enm/mapping.py` zbudowały wstrzyk węzłowy rozpływu.
+    Druga, niezależna reguła („weź `q_mvar`, a gdy brak, podstaw zero") zgadzałaby się
+    dopóty, dopóki wszyscy wytwórcy mają Q jawne, i rozjechała się przy pierwszej karcie z
+    Q-set-pointem. Q NIEZNANE = wkład POMINIĘTY (nie zero) — dokładnie jak w `mapping.py`,
+    więc obie strony bilansu pomijają je tak samo.
+    """
+    from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
+
+    z_modelu: dict[str, complex] = {}
+    for gen in wytworcy:
+        q_mvar = moc_bierna_wytworcy(gen, gen.materialized_params).q_mvar
+        z_modelu[gen.ref_id] = complex(
+            moc_pu(float(gen.p_mw), base_mva),
+            0.0 if q_mvar is None else moc_pu(float(q_mvar), base_mva),
+        )
+    return z_modelu
+
+
 def _moce_urzadzen_pu(
     *,
     szyna: str,
@@ -1013,22 +1180,7 @@ def _moce_urzadzen_pu(
     if len(wytworcy) == 1:
         return {wytworcy[0].ref_id: wypadkowa}
 
-    # Moc bierna wytwórcy rozstrzyga JEDNO wspólne źródło prawdy
-    # (`solver_input/moc_bierna_wytworcy.py`) — to samo, z którego assembler i
-    # `enm/mapping.py` zbudowały wstrzyk węzłowy rozpływu. Druga, niezależna
-    # reguła („weź `q_mvar`, a gdy brak, podstaw zero") zgadzałaby się dopóty,
-    # dopóki wszystkie wytwórcy mają Q jawne, i rozjechała się przy pierwszej
-    # karcie z Q-set-pointem. Q NIEZNANE = wkład POMINIĘTY (nie zero) — dokładnie
-    # jak w `mapping.py`, więc obie strony uzgodnienia pomijają je tak samo.
-    from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
-
-    z_modelu: dict[str, complex] = {}
-    for gen in wytworcy:
-        q_mvar = moc_bierna_wytworcy(gen, gen.materialized_params).q_mvar
-        z_modelu[gen.ref_id] = complex(
-            moc_pu(float(gen.p_mw), punkt.base_mva),
-            0.0 if q_mvar is None else moc_pu(float(q_mvar), punkt.base_mva),
-        )
+    z_modelu = _moce_wytworcow_z_modelu_pu(wytworcy, punkt.base_mva)
     niezgodnosc_mocy = sum(z_modelu.values(), complex(0.0, 0.0)) - wypadkowa
     napiecie = punkt.napiecia_pu[szyna]
     if napiecie == 0:
@@ -1062,14 +1214,25 @@ def zloz_urzadzenia(
     base_mva: float,
     f_bazowa_hz: float,
     eps_init: float,
+    stanowisko: StanowiskoBadawcze | None,
 ) -> UrzadzeniaDynamiki:
-    """Urządzenia dynamiczne: źródła sieciowe jako szyny sztywne, wytwórcy przez fabrykę.
+    """Urządzenia dynamiczne: źródła sieciowe jako szyny sztywne (albo źródło testowe
+    stanowiska), wytwórcy przez fabrykę.
 
     Fabryka (`solvers/dynamika/urzadzenia/fabryka.py::zbuduj_urzadzenie`) jest
     JEDYNYM szwem między kontraktem danych a rdzeniem — adapter nie zna ani jednej
     klasy urządzenia i nie ma gdzie „poprawić" fizyki. Źródło sieciowe nie ma bloku
     `ParametryDynamiczne` (nie jest wytwórcą projektu, jest warunkiem brzegowym), więc
-    idzie własnym, jawnym konstruktorem szyny sztywnej.
+    idzie własnym, jawnym konstruktorem szyny sztywnej — albo, gdy scenariusz ustawia
+    STANOWISKO BADAWCZE wskazujące to źródło, konstruktorem źródła testowego (ta sama
+    impedancja Z_Q dla wariantu `z_modelu`, impedancja zerowa dla `idealna`). Stan t = 0
+    źródła testowego wyznacza rdzeń z tego samego punktu pracy, więc punkt pracy pozostaje
+    równowagą.
+
+    MOC ŹRÓDŁA SIECIOWEGO = REGUŁA RESZTY: wypadkowa szyny z rozpływu plus odbiory szyny
+    minus moc wytwórców tej szyny z modelu (`_moce_wytworcow_z_modelu_pu`). Wytwórcy szyny
+    ze źródłem sieciowym dostają moc z modelu (tą samą, którą assembler rozpływu zapisał
+    jako ich wstrzyk). Szyna bez źródła sieciowego — jak dotąd `_moce_urzadzen_pu`.
     """
     enm = EnergyNetworkModel.model_validate(snapshot)
     urzadzenia: list[Urzadzenie] = []
@@ -1091,9 +1254,33 @@ def zloz_urzadzenia(
         )
 
     moce: dict[str, complex] = {}
+    if stanowisko is not None and stanowisko.zrodlo_ref not in {
+        zrodlo.ref_id for zrodlo in enm.sources
+    }:  # pragma: no cover — walidacja scenariusza (`_waliduj_zdarzenia_dynamiczne`)
+        raise AssertionError(
+            f"Stanowisko wskazuje {stanowisko.zrodlo_ref!r}, który nie jest źródłem sieciowym"
+        )
+    wytworcy_szyny: dict[str, list[Generator]] = {}
+    for gen in sorted(enm.generators, key=lambda g: g.ref_id):
+        wytworcy_szyny.setdefault(gen.bus_ref, []).append(gen)
+    zrodla_szyn = _zrodla_szyn(enm)
 
     impedancje_zrodel = {zrodlo.name: zrodlo.z_ohm for zrodlo in graph.get_grid_sc_sources()}
     for zrodlo in sorted(enm.sources, key=lambda s: s.ref_id):
+        testowe = stanowisko is not None and stanowisko.zrodlo_ref == zrodlo.ref_id
+        if testowe and stanowisko is not None and stanowisko.impedancja == "idealna":
+            urzadzenia.append(
+                zbuduj_zrodlo_testowe(
+                    ident=zrodlo.ref_id,
+                    wezel=zrodlo.bus_ref,
+                    impedancja_pu=None,
+                    f_bazowa_hz=f_bazowa_hz,
+                )
+            )
+            moce[zrodlo.ref_id] = _moc_reszty_szyny_pu(
+                zrodlo.bus_ref, wytworcy_szyny, punkt=punkt, odbiory=odbiory
+            )
+            continue
         z_ohm = _impedancja_zrodla_ohm(zrodlo, impedancje_zrodel)
         if z_ohm is None or z_ohm == 0:
             raise OdmowaWejsciaDynamiki(
@@ -1108,28 +1295,39 @@ def zloz_urzadzenia(
             _napiecie_wezla_kv(graph, ref_to_graph_id(zrodlo.bus_ref)), base_mva
         )
         z_pu = z_ohm / z_bazowa
-        urzadzenia.append(
-            zbuduj_szyne_sztywna(
-                ident=zrodlo.ref_id,
-                wezel=zrodlo.bus_ref,
-                # Impedancja jest JUŻ w bazie układu (przeliczona wyżej bazą szyny
-                # przyłączenia), więc przelicznik bazy fabryki jest tożsamością.
-                s_zwarciowa_mva=base_mva,
-                r_pu=z_pu.real,
-                x_pu=z_pu.imag,
-                s_bazowa_mva=base_mva,
+        if testowe:
+            urzadzenia.append(
+                zbuduj_zrodlo_testowe(
+                    ident=zrodlo.ref_id,
+                    wezel=zrodlo.bus_ref,
+                    impedancja_pu=z_pu,
+                    f_bazowa_hz=f_bazowa_hz,
+                )
             )
-        )
-        # Szyna sztywna jest sama na swojej szynie (bramka `KOD_WIELE_URZADZEN_W_WEZLE`),
-        # więc cała moc węzła należy do niej.
-        moce[zrodlo.ref_id] = _moc_wypadkowa_urzadzen_pu(
-            szyna=zrodlo.bus_ref, punkt=punkt, odbiory=odbiory
+        else:
+            urzadzenia.append(
+                zbuduj_szyne_sztywna(
+                    ident=zrodlo.ref_id,
+                    wezel=zrodlo.bus_ref,
+                    # Impedancja jest JUŻ w bazie układu (przeliczona wyżej bazą szyny
+                    # przyłączenia), więc przelicznik bazy fabryki jest tożsamością.
+                    s_zwarciowa_mva=base_mva,
+                    r_pu=z_pu.real,
+                    x_pu=z_pu.imag,
+                    s_bazowa_mva=base_mva,
+                )
+            )
+        # Źródło sieciowe jest jedynym źródłem swojej szyny (bramka
+        # `KOD_WIELE_URZADZEN_W_WEZLE`) i bierze RESZTĘ bilansu szyny.
+        moce[zrodlo.ref_id] = _moc_reszty_szyny_pu(
+            zrodlo.bus_ref, wytworcy_szyny, punkt=punkt, odbiory=odbiory
         )
 
-    wytworcy_szyny: dict[str, list[Generator]] = {}
-    for gen in sorted(enm.generators, key=lambda g: g.ref_id):
-        wytworcy_szyny.setdefault(gen.bus_ref, []).append(gen)
     for szyna, wytworcy in sorted(wytworcy_szyny.items()):
+        if szyna in zrodla_szyn:
+            # Szyna ze źródłem sieciowym: wytwórcy dostają moc z MODELU (reguła reszty).
+            moce.update(_moce_wytworcow_z_modelu_pu(tuple(wytworcy), punkt.base_mva))
+            continue
         moce.update(
             _moce_urzadzen_pu(
                 szyna=szyna,
@@ -1163,6 +1361,25 @@ def zloz_urzadzenia(
             )
         )
     return UrzadzeniaDynamiki(urzadzenia=tuple(urzadzenia), moce_pu=moce)
+
+
+def _moc_reszty_szyny_pu(
+    szyna: str,
+    wytworcy_szyny: dict[str, list[Generator]],
+    *,
+    punkt: PunktPracyRozplywu,
+    odbiory: tuple[OdbiorDynamiki, ...],
+) -> complex:
+    """REGUŁA RESZTY: moc źródła sieciowego = wypadkowa szyny + odbiory szyny − wytwórcy
+    szyny z modelu. Szyna bez wytwórców: cała moc urządzeń szyny (zachowanie sprzed reguły,
+    bit w bit — odejmowana jest suma pusta)."""
+    wypadkowa = _moc_wypadkowa_urzadzen_pu(szyna=szyna, punkt=punkt, odbiory=odbiory)
+    wytworcy = tuple(wytworcy_szyny.get(szyna, ()))
+    if not wytworcy:
+        return wypadkowa
+    return wypadkowa - sum(
+        _moce_wytworcow_z_modelu_pu(wytworcy, punkt.base_mva).values(), complex(0.0, 0.0)
+    )
 
 
 def _impedancja_zrodla_ohm(
@@ -1213,6 +1430,7 @@ def zloz_wejscie_dynamiki(
         base_mva=base_mva,
         f_bazowa_hz=f_bazowa_hz,
         eps_init=nastawy.eps_init,
+        stanowisko=scenariusz.stanowisko,
     )
     urzadzenia = zlozone.urzadzenia
     harmonogram = harmonogram_z_scenariusza(
@@ -1220,6 +1438,7 @@ def zloz_wejscie_dynamiki(
         identy_odbiorow=frozenset(odbior.ident for odbior in widok.odbiory),
         identy_odsprzegow=frozenset(odsprzeg.ident for odsprzeg in widok.odsprzegi),
         base_mva=base_mva,
+        f_bazowa_hz=f_bazowa_hz,
     )
     # Moc punktu pracy KAŻDEGO urządzenia pochodzi z tego samego podziału, z którego
     # zbudowano jego stan początkowy — drugie, niezależne wyliczenie tej samej
@@ -1255,6 +1474,15 @@ def zalozenia_wejscia(snapshot: dict[str, Any]) -> tuple[str, ...]:
         "Łącznik zamknięty wchodzi do macierzy admitancyjnej jako gałąź o impedancji "
         "zastępczej łącznika — tak samo jak w rozpływie mocy.",
     ]
+    szyny_wytworcow = {gen.bus_ref for gen in enm.generators}
+    for szyna, zrodla in sorted(_zrodla_szyn(enm).items()):
+        if szyna not in szyny_wytworcow:
+            continue
+        zalozenia.append(
+            f"Źródło sieciowe {', '.join(zrodla)} na szynie {szyna} dzieli ją z wytwórcami: "
+            "wytwórcy startują z mocą z modelu (tą samą, którą rozpływ przyjął jako ich "
+            "wstrzyk), a źródło sieciowe z resztą bilansu szyny z rozpływu."
+        )
     for gen in sorted(enm.generators, key=lambda g: g.ref_id):
         if gen.dynamika is None:  # pragma: no cover — odmowa zadziałałaby wcześniej
             continue
@@ -1289,11 +1517,13 @@ __all__ = [
     "KOD_ZRODLO_BEZ_DYNAMIKI",
     "KOD_ZRODLO_BEZ_IMPEDANCJI",
     "POLA_NASTAW",
+    "POLA_NASTAW_Z_WARTOSCIA_NULL",
     "BrakDynamiki",
     "OdmowaWejsciaDynamiki",
     "PunktPracyRozplywu",
     "WidokSieciDynamiki",
     "braki_modelu_dynamiki",
+    "dozory_z_detektorow",
     "odmow_gdy_braki_modelu",
     "harmonogram_z_scenariusza",
     "nastawy_z_opcji",

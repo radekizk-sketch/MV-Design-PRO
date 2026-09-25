@@ -60,14 +60,19 @@ from .calkowanie import (
     INTEGRATORY,
     Integrator,
     KontekstKroku,
+    WynikKroku,
     blad_lokalny,
     pochodne_ukladu,
     spakuj_stany,
+    zakresy_waznosci_urzadzen,
 )
+from .dozory import AkcjaOczekujaca, Lokalizacja, NadzorDozorow, StanUkladu, StronaOceny
 from .kontrakty import (
     KOD_INICJALIZACJA_NIEZBIEZNA,
     KOD_KROK_NIEZBIEZNY,
+    KOD_NASTAWY_SPRZECZNE,
     KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU,
+    KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
     KOD_ZWARCIE_NIEODIZOLOWANE,
     HarmonogramDynamiki,
     NastawySolvera,
@@ -80,13 +85,11 @@ from .kontrakty import (
     odmowa_braku_pola,
 )
 from .obserwable import (
-    JAKOSC_BEZ_NAPIECIA,
     JAKOSC_CHWILA_ZDARZENIA,
-    JAKOSC_NIEDOSTEPNA,
     CzestotliwoscWezla,
     czestotliwosc_niedostepna,
-    czestotliwosc_wezla,
-    pochodna_napiec_z_niepewnoscia,
+    czestotliwosci_wezlow,
+    moc_urzadzenia_pu,
     wielkosci_galezi,
 )
 from .reinicjalizacja import reinicjalizuj
@@ -103,15 +106,29 @@ from .siec import (
 from .skonczonosc import sprawdz_napiecia
 from .tozsamosc import kwantyzuj, skrot_kanoniczny, zbuduj_tozsamosc
 from .urzadzenia.fabryka import RODZINY_OBSLUGIWANE
-from .urzadzenia.odlaczone import UrzadzenieOdlaczone
+from .urzadzenia.zrodlo_testowe import ZrodloTestowe
 from .waznosc import sprawdz_zakresy_waznosci
-from .wynik import KanalWyniku, Metryka, WlasnosciBiegu, WynikDynamiki, ZdarzenieWykonane
+from .wynik import (
+    KanalWyniku,
+    Metryka,
+    Przekroczenie,
+    PrzypisanieWykonane,
+    WlasnosciBiegu,
+    WynikDynamiki,
+    ZdarzenieWykonane,
+)
 from .wyspy import klasyfikuj_wyspy, przydzial_wysp, urzadzenie_wnosi_do_algebry
 from .zdarzenia import (
+    RODZAJE_PRZYPISAN,
     StanScenariusza,
     WpisHarmonogramu,
+    jest_trybem_stanowiska,
+    nastawa_regulacji,
     odbiory_po_zdarzeniach,
+    sprawdz_przypisanie,
     stan_poczatkowy_scenariusza,
+    szablony_akcji_dozorow,
+    urzadzenia_w_stanie,
     zastosuj,
     zbuduj_harmonogram,
 )
@@ -143,6 +160,9 @@ class _Chwila:
     model: ModelSieci
     odbiory: tuple[OdbiorDynamiki, ...]
     urzadzenia: tuple[Urzadzenie, ...]
+    #: Stany rozniczkowe PO chwili — rowne stanom sprzed niej poza pozycjami przypisanymi
+    #: (przypisanie stanu, komenda regulacji); pomiar `delta_x_nieprzypisane_max`.
+    stany: tuple[np.ndarray, ...]
     napiecia: np.ndarray
     kontekst: KontekstKroku
     bylo_zdarzenie: bool
@@ -220,6 +240,7 @@ class SilnikDynamiki:
             model=model,
             odbiory=odbiory,
             urzadzenia=urzadzenia,
+            stany=stany,
             napiecia=napiecia,
             kontekst=kontekst,
             bylo_zdarzenie=False,
@@ -228,19 +249,92 @@ class SilnikDynamiki:
             start_od_sasiada=False,
         )
 
+        probkowanie = _Probkowanie(probki, os_czasu, strony, miejsca_zwarc)
+        nadzor = self._nadzor()
+
+        def chwila_zdarzen(
+            t_chwili: float,
+            poprzednia: _Chwila,
+            stany_wejscia: tuple[np.ndarray, ...],
+            napiecia_wejscia: np.ndarray,
+            *,
+            na_siatce: bool,
+        ) -> _Chwila:
+            """Chwila osi czasu: zdarzenia planowane i akcje dozorow tej chwili, potem RUNDY —
+            dopoki ocena dozorow w probce `P` pobudza akcje bez zwloki w tej samej chwili
+            (kazda runda ma wlasna pare `L`/`P`; dozor pobudzony drugi raz w tej samej
+            chwili to odmowa `dynamika.petla_zdarzen_warunkowych`)."""
+            akcje = [] if nadzor is None else nadzor.akcje_chwili(t_chwili, TOLERANCJA_CZASU_S)
+            nowa = self._chwila_z_probkami(
+                t_chwili,
+                wpisy,
+                akcje,
+                poprzednia,
+                stany_wejscia,
+                napiecia_wejscia,
+                wykonane,
+                kroki_szczegolne,
+                probkowanie,
+                na_siatce=na_siatce,
+            )
+            if nadzor is None:
+                return nowa
+            nadzor.zdejmij(akcje)
+            if nowa.bylo_zdarzenie:
+                nadzor.po_chwili(t_chwili, _uklad_chwili(nowa, "P"))
+                kroki_szczegolne.extend(_zapisy_nadzoru(nadzor, t_chwili))
+            while True:
+                akcje = nadzor.akcje_chwili(t_chwili, TOLERANCJA_CZASU_S)
+                if not akcje:
+                    return nowa
+                nowa = self._chwila_z_probkami(
+                    t_chwili,
+                    wpisy,
+                    akcje,
+                    nowa,
+                    nowa.stany,
+                    nowa.napiecia,
+                    wykonane,
+                    kroki_szczegolne,
+                    probkowanie,
+                    na_siatce=False,
+                )
+                nadzor.zdejmij(akcje)
+                nadzor.po_chwili(t_chwili, _uklad_chwili(nowa, "P"))
+                kroki_szczegolne.extend(_zapisy_nadzoru(nadzor, t_chwili))
+
+        # Chwila t = 0. Dozor, ktorego warunek jest spelniony w t = 0+, pobudza sie w 0:
+        # bez zdarzen planowanych w 0 stanem 0+ jest punkt pracy (ocena PRZED probkowaniem,
+        # zeby akcje w 0 daly pare L/P, a nie probke C i pare L/P tej samej chwili); ze
+        # zdarzeniami — stan po nich (ocena w P).
+        planowane_w_zerze = bool(self._wpisy_chwili(t_s, wpisy, 0))
+        if nadzor is not None and not planowane_w_zerze:
+            nadzor.start(t_s, _uklad_chwili(chwila, "C"))
+            kroki_szczegolne.extend(_zapisy_nadzoru(nadzor, t_s))
+        akcje_zera = [] if nadzor is None else nadzor.akcje_chwili(t_s, TOLERANCJA_CZASU_S)
         chwila = self._chwila_z_probkami(
             t_s,
             wpisy,
+            akcje_zera,
             chwila,
             stany,
             napiecia,
             wykonane,
             kroki_szczegolne,
-            _Probkowanie(probki, os_czasu, strony, miejsca_zwarc),
+            probkowanie,
             na_siatce=True,
         )
+        if nadzor is not None:
+            nadzor.zdejmij(akcje_zera)
+            if planowane_w_zerze:
+                nadzor.start(t_s, _uklad_chwili(chwila, "P"))
+            elif chwila.bylo_zdarzenie:
+                nadzor.po_chwili(t_s, _uklad_chwili(chwila, "P"))
+            kroki_szczegolne.extend(_zapisy_nadzoru(nadzor, t_s))
+            if nadzor.akcje_chwili(t_s, TOLERANCJA_CZASU_S):
+                chwila = chwila_zdarzen(t_s, chwila, chwila.stany, chwila.napiecia, na_siatce=False)
         model, odbiory, urzadzenia = chwila.model, chwila.odbiory, chwila.urzadzenia
-        napiecia, kontekst = chwila.napiecia, chwila.kontekst
+        stany, napiecia, kontekst = chwila.stany, chwila.napiecia, chwila.kontekst
         indeks_wpisu = chwila.indeks_wpisu
         max_residuum_g = max(max_residuum_g, chwila.residuum_kcl_max)
         odciecia_w_biegu = odciecia_w_biegu or bool(model.wezly_beznapieciowe)
@@ -249,7 +343,7 @@ class SilnikDynamiki:
 
         dt_biezace = nastawy.dt_s
         while nastawy.horyzont_s - t_s > TOLERANCJA_CZASU_S:
-            cel = self._punkt_obowiazkowy(t_s, wpisy, indeks_wpisu, indeks_probki, nastawy)
+            cel = self._punkt_obowiazkowy(t_s, wpisy, indeks_wpisu, indeks_probki, nastawy, nadzor)
             while cel - t_s > TOLERANCJA_CZASU_S:
                 krok = min(dt_biezace, cel - t_s)
                 wynik_kroku = integrator.krok(kontekst, stany, napiecia, t_s, krok)
@@ -287,9 +381,27 @@ class SilnikDynamiki:
                         ),
                         nastawy.dt_max_s,
                     )
+                t_konca = t_s + krok
+                ladowanie: float | None = None
+                if nadzor is not None:
+                    ladowanie, wynik_kroku = self._dozory_po_kroku(
+                        nadzor,
+                        integrator,
+                        kontekst,
+                        stany,
+                        napiecia,
+                        t_s,
+                        t_konca,
+                        wynik_kroku,
+                        zdarzenia_w_koncu=abs(t_konca - cel) <= TOLERANCJA_CZASU_S
+                        and self._jest_chwila_zdarzen(cel, wpisy, indeks_wpisu, nadzor),
+                    )
+                    if ladowanie is not None:
+                        t_konca = ladowanie
+                    kroki_szczegolne.extend(_zapisy_nadzoru(nadzor, t_konca))
                 stany = wynik_kroku.stany
                 napiecia = wynik_kroku.napiecia
-                t_s += krok
+                t_s = t_konca
                 sprawdz_napiecia(napiecia, model.identy_wezlow, t_s)
                 dolne_wazne, gorne_wazne = kontekst.zakresy_waznosci
                 sprawdz_zakresy_waznosci(
@@ -304,22 +416,17 @@ class SilnikDynamiki:
                 iteracje_max = max(iteracje_max, wynik_kroku.iteracje)
                 max_residuum_f = max(max_residuum_f, wynik_kroku.residuum_stanow)
                 max_residuum_g = max(max_residuum_g, wynik_kroku.residuum_algebry)
+                if ladowanie is not None:
+                    # Akcja dozoru wykonuje sie w chwili ladowania — to ona jest punktem
+                    # obowiazkowym tego kroku (czas USTAWIANY na chwile akcji, co do bitu).
+                    cel = ladowanie
+                    break
             t_s = cel
 
             na_siatce = self._jest_chwila_probki(t_s, indeks_probki, nastawy)
-            chwila = self._chwila_z_probkami(
-                t_s,
-                wpisy,
-                chwila,
-                stany,
-                napiecia,
-                wykonane,
-                kroki_szczegolne,
-                _Probkowanie(probki, os_czasu, strony, miejsca_zwarc),
-                na_siatce=na_siatce,
-            )
+            chwila = chwila_zdarzen(t_s, chwila, stany, napiecia, na_siatce=na_siatce)
             model, odbiory, urzadzenia = chwila.model, chwila.odbiory, chwila.urzadzenia
-            napiecia, kontekst = chwila.napiecia, chwila.kontekst
+            stany, napiecia, kontekst = chwila.stany, chwila.napiecia, chwila.kontekst
             indeks_wpisu = chwila.indeks_wpisu
             max_residuum_g = max(max_residuum_g, chwila.residuum_kcl_max)
             odciecia_w_biegu = odciecia_w_biegu or bool(model.wezly_beznapieciowe)
@@ -327,6 +434,18 @@ class SilnikDynamiki:
             if na_siatce:
                 indeks_probki += 1
 
+        if nadzor is not None:
+            for akcja in nadzor.oczekujace:
+                kroki_szczegolne.append(
+                    {
+                        "t_s": kwantyzuj(akcja.t_s),
+                        "powod": "akcja_dozoru_poza_horyzontem",
+                        "dozor": nadzor.dozory[akcja.dozor].ident,
+                        "rodzaj": akcja.wpis.rodzaj,
+                        "ref": akcja.wpis.ref,
+                        "t_zlokalizowany_s": kwantyzuj(akcja.lokalizacja.t_s),
+                    }
+                )
         if indeks_wpisu != len(wpisy):
             pominiete = [(wpis.rodzaj, wpis.ref, wpis.t_s) for wpis in wpisy[indeks_wpisu:]]
             raise AssertionError(
@@ -335,9 +454,23 @@ class SilnikDynamiki:
                 "cichy skip jest defektem silnika, nie wlasnoscia scenariusza."
             )
 
-        zalozenia_biegu = zalozenia_harmonogramu(wejscie.harmonogram) + (
-            ((ZALOZENIE_OBSZARU_BEZNAPIECIOWEGO,) if odciecia_w_biegu else ())
-            + ((ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA,) if starty_od_sasiada else ())
+        zalozenia_biegu = (
+            zalozenia_trybu(wejscie.urzadzenia)
+            + zalozenia_harmonogramu(wejscie.harmonogram)
+            + (
+                ((ZALOZENIE_OBSZARU_BEZNAPIECIOWEGO,) if odciecia_w_biegu else ())
+                + ((ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA,) if starty_od_sasiada else ())
+                + (
+                    (ZALOZENIE_PRZYPISANIA_STANU,)
+                    if any(zdarzenie.przypisania for zdarzenie in wykonane)
+                    else ()
+                )
+                + (
+                    (ZALOZENIE_UTRATY_CZESCIOWEJ,)
+                    if any(zdarzenie.rodzaj == "utrata_czesciowa_zrodla" for zdarzenie in wykonane)
+                    else ()
+                )
+            )
         )
         wlasnosci = WlasnosciBiegu(
             zbiegl=True,
@@ -356,6 +489,8 @@ class SilnikDynamiki:
             strona_probki=tuple(strony),
             probki={klucz: tuple(szereg) for klucz, szereg in probki.items()},
             zdarzenia_wykonane=tuple(wykonane),
+            tryb_scenariusza=tryb_scenariusza(wejscie.urzadzenia),
+            przekroczenia=() if nadzor is None else _przekroczenia(nadzor),
             wlasnosci=wlasnosci,
             tozsamosc=zbuduj_tozsamosc(wejscie),
             metryki=self._metryki(kanaly, probki, os_czasu),
@@ -708,6 +843,7 @@ class SilnikDynamiki:
         self,
         t_s: float,
         wpisy: tuple[WpisHarmonogramu, ...],
+        akcje: list[AkcjaOczekujaca],
         poprzednia: _Chwila,
         stany: tuple[np.ndarray, ...],
         napiecia: np.ndarray,
@@ -725,7 +861,9 @@ class SilnikDynamiki:
         po jednej re-inicjalizacji. Jedna regula dla calej osi, takze dla `t = 0` (tam
         `L` jest punktem pracy z rozplywu) i dla chwili horyzontu.
         """
-        zdarzenia_chwili = bool(self._wpisy_chwili(t_s, wpisy, poprzednia.indeks_wpisu))
+        zdarzenia_chwili = bool(self._wpisy_chwili(t_s, wpisy, poprzednia.indeks_wpisu)) or bool(
+            akcje
+        )
         if zdarzenia_chwili:
             self._probkuj(
                 probkowanie,
@@ -738,7 +876,7 @@ class SilnikDynamiki:
                 napiecia,
             )
         chwila = self._nanies_chwile(
-            t_s, wpisy, poprzednia, stany, napiecia, wykonane, kroki_szczegolne
+            t_s, wpisy, akcje, poprzednia, stany, napiecia, wykonane, kroki_szczegolne
         )
         if zdarzenia_chwili or na_siatce:
             self._probkuj(
@@ -748,7 +886,7 @@ class SilnikDynamiki:
                 chwila.model,
                 chwila.odbiory,
                 chwila.urzadzenia,
-                stany,
+                chwila.stany,
                 chwila.napiecia,
             )
         return chwila
@@ -757,6 +895,7 @@ class SilnikDynamiki:
         self,
         t_s: float,
         wpisy: tuple[WpisHarmonogramu, ...],
+        akcje: list[AkcjaOczekujaca],
         poprzednia: _Chwila,
         stany: tuple[np.ndarray, ...],
         napiecia: np.ndarray,
@@ -770,9 +909,22 @@ class SilnikDynamiki:
         samego stanu daloby bitowo ta sama macierz). Chwila ZE zdarzeniami klasyfikuje
         wyspy stanu PO zdarzeniach, odcina obszary beznapieciowe i dopiero wtedy
         rozwiazuje algebre.
+
+        KOLEJNOSC W CHWILI (karta AB-1b.1 par. 0 pkt 9): zdarzenia topologiczne i czesciowe
+        utraty -> urzadzenia chwili skladane od nowa z urzadzen wejscia -> przypisania stanu
+        i komendy regulacji na TYCH urzadzeniach (urzadzenie odlaczone nie ma stanow
+        przypisywalnych; agregat po utracie dzieli nastawe mocy przez udzial) -> kontrola
+        zakresu waznosci stanow po przypisaniu -> jedna re-inicjalizacja. Ciaglosc stanow
+        nieprzypisanych jest MIERZONA wobec stanow sprzed calej chwili.
         """
         wejscie = self.wejscie
-        do_wykonania = self._wpisy_chwili(t_s, wpisy, poprzednia.indeks_wpisu)
+        planowane = self._wpisy_chwili(t_s, wpisy, poprzednia.indeks_wpisu)
+        # Wpisy planowane (kolejnosc kanoniczna harmonogramu), potem akcje dozorow (kolejnosc
+        # chwili wykonania, indeksu dozoru i akcji) — z lokalizacja przekroczenia albo bez.
+        do_wykonania = planowane + [akcja.wpis for akcja in akcje]
+        lokalizacje: list[Lokalizacja | None] = [None] * len(planowane) + [
+            akcja.lokalizacja for akcja in akcje
+        ]
 
         if not do_wykonania:
             return _Chwila(
@@ -781,6 +933,7 @@ class SilnikDynamiki:
                 model=poprzednia.model,
                 odbiory=poprzednia.odbiory,
                 urzadzenia=poprzednia.urzadzenia,
+                stany=stany,
                 napiecia=napiecia,
                 kontekst=poprzednia.kontekst,
                 bylo_zdarzenie=False,
@@ -789,42 +942,58 @@ class SilnikDynamiki:
                 start_od_sasiada=False,
             )
 
+        stany_przed_chwila = tuple(np.array(stan, dtype=float, copy=True) for stan in stany)
         nowy_stan = poprzednia.stan_scenariusza
         for wpis in do_wykonania:
             nowy_stan = zastosuj(wpis, nowy_stan)
-        urzadzenia_po = tuple(
-            (
-                UrzadzenieOdlaczone(urzadzenie)
-                if urzadzenie.ident in nowy_stan.zrodla_odlaczone
-                and not isinstance(urzadzenie, UrzadzenieOdlaczone)
-                else urzadzenie
-            )
-            for urzadzenie in poprzednia.urzadzenia
+        urzadzenia_po = urzadzenia_w_stanie(wejscie.urzadzenia, nowy_stan)
+        stany_po, przypisania_wpisow, przypisane = self._przypisz(
+            t_s, do_wykonania, urzadzenia_po, stany
         )
+        if przypisane:
+            dolne_wazne, gorne_wazne = zakresy_waznosci_urzadzen(urzadzenia_po)
+            sprawdz_zakresy_waznosci(
+                spakuj_stany(stany_po),
+                dolne_wazne,
+                gorne_wazne,
+                KontekstKroku(poprzednia.model, (), urzadzenia_po, wejscie.nastawy).adresy_stanow,
+                wejscie.nastawy,
+                t_s,
+            )
         beznapieciowe, przydzial = self._obszary_beznapieciowe(
-            nowy_stan, urzadzenia_po, stany, napiecia
+            nowy_stan, urzadzenia_po, stany_po, napiecia
         )
         self._sprawdz_izolacje(
-            t_s, do_wykonania, nowy_stan, beznapieciowe, przydzial, urzadzenia_po, stany, napiecia
+            t_s,
+            do_wykonania,
+            nowy_stan,
+            beznapieciowe,
+            przydzial,
+            urzadzenia_po,
+            stany_po,
+            napiecia,
         )
         model = self._model_dla(nowy_stan, beznapieciowe)
         odbiory, odciete = _rozdziel_odbiory(
             odbiory_po_zdarzeniach(wejscie.odbiory, nowy_stan), beznapieciowe
         )
-        self._sprawdz_wezly_zerowe(t_s, model, odbiory, urzadzenia_po, stany)
+        self._sprawdz_wezly_zerowe(t_s, model, odbiory, urzadzenia_po, stany_po)
         napiecia_startowe, start_od_sasiada, start_od_sem = self._napiecia_startowe(
-            poprzednia.model, model, napiecia, urzadzenia_po, stany
+            poprzednia.model, model, napiecia, urzadzenia_po, stany_po
         )
 
         napiecia_po, raport = reinicjalizuj(
             model,
             odbiory,
             urzadzenia_po,
-            stany,
+            stany_po,
             napiecia,
             nastawy=wejscie.nastawy,
             t_s=t_s,
             napiecia_startowe=napiecia_startowe,
+        )
+        delta_x_nieprzypisane = _skok_stanow_nieprzypisanych(
+            stany_przed_chwila, stany_po, przypisane
         )
         przed_martwe = poprzednia.model.wezly_beznapieciowe
         obszary_odciete = tuple(
@@ -842,19 +1011,28 @@ class SilnikDynamiki:
             for odbior in odciete
             if odbior.ident not in poprzednia.odbiory_odciete
         )
-        for wpis in do_wykonania:
+        for wpis, przypisania, lokalizacja in zip(
+            do_wykonania, przypisania_wpisow, lokalizacje, strict=True
+        ):
             wykonane.append(
                 ZdarzenieWykonane(
                     t_zaplanowany_s=wpis.t_s,
                     t_wykonany_s=t_s,
                     rodzaj=wpis.rodzaj,
                     ref=wpis.ref,
-                    delta_x_max=raport.delta_x_max,
+                    przyczyna=wpis.przyczyna,
+                    delta_x_nieprzypisane_max=delta_x_nieprzypisane,
                     delta_y_max=raport.delta_y_max,
                     residuum_kcl_max=raport.residuum_kcl_max,
                     obszary_odciete=obszary_odciete,
                     odbiory_odciete=odbiory_odciete,
                     obszary_zasilone_ponownie=obszary_zasilone,
+                    przypisania=przypisania,
+                    t_zlokalizowany_s=None if lokalizacja is None else lokalizacja.t_s,
+                    szerokosc_przedzialu_s=None if lokalizacja is None else lokalizacja.szerokosc_s,
+                    iteracje_lokalizacji=None if lokalizacja is None else lokalizacja.iteracje,
+                    g_przed=None if lokalizacja is None else lokalizacja.g_przed,
+                    g_po=None if lokalizacja is None else lokalizacja.g_po,
                 )
             )
         kroki_szczegolne.append(
@@ -862,7 +1040,8 @@ class SilnikDynamiki:
                 "t_s": kwantyzuj(t_s),
                 "powod": "zdarzenie",
                 "rodzaje": [wpis.rodzaj for wpis in do_wykonania],
-                "delta_x_max": kwantyzuj(raport.delta_x_max),
+                "przyczyny": [wpis.przyczyna for wpis in do_wykonania],
+                "delta_x_nieprzypisane_max": kwantyzuj(delta_x_nieprzypisane),
                 "delta_y_max": kwantyzuj(raport.delta_y_max),
                 "residuum_kcl_max": kwantyzuj(raport.residuum_kcl_max),
                 "iteracje": raport.iteracje,
@@ -875,14 +1054,20 @@ class SilnikDynamiki:
                 "wezly_ograniczone": list(raport.wezly_ograniczone),
                 "wezly_start_od_sasiada": list(start_od_sasiada),
                 "wezly_start_od_sem_urzadzenia": list(start_od_sem),
+                "przypisania": [
+                    [przypisanie.adres, kwantyzuj(przypisanie.przed), kwantyzuj(przypisanie.po)]
+                    for przypisania in przypisania_wpisow
+                    for przypisanie in przypisania
+                ],
             }
         )
         return _Chwila(
-            indeks_wpisu=poprzednia.indeks_wpisu + len(do_wykonania),
+            indeks_wpisu=poprzednia.indeks_wpisu + len(planowane),
             stan_scenariusza=nowy_stan,
             model=model,
             odbiory=odbiory,
             urzadzenia=urzadzenia_po,
+            stany=stany_po,
             napiecia=napiecia_po,
             kontekst=KontekstKroku(model, odbiory, urzadzenia_po, wejscie.nastawy),
             bylo_zdarzenie=True,
@@ -890,6 +1075,80 @@ class SilnikDynamiki:
             odbiory_odciete=frozenset(odbior.ident for odbior in odciete),
             start_od_sasiada=bool(start_od_sasiada or start_od_sem),
         )
+
+    @staticmethod
+    def _przypisz(
+        t_s: float,
+        do_wykonania: list[WpisHarmonogramu],
+        urzadzenia: tuple[Urzadzenie, ...],
+        stany: tuple[np.ndarray, ...],
+    ) -> tuple[
+        tuple[np.ndarray, ...],
+        tuple[tuple[PrzypisanieWykonane, ...], ...],
+        frozenset[tuple[int, int]],
+    ]:
+        """Przypisania stanu i komendy regulacji chwili — na urzadzeniach TEJ chwili.
+
+        Zwraca (stany po przypisaniu, przypisania kazdego wpisu, pozycje przypisane).
+        Stany nieprzypisane sa KOPIAMI bez zmiany; stan przypisany dostaje wartosc
+        zadana DOKLADNIE (bez „dociagania" i bez reinicjalizacji urzadzenia z punktu
+        pracy, ktora zniszczylaby ciaglosc pozostalych stanow). Komenda wybiera stan z
+        deklaracji urzadzenia chwili (`nastawy_regulacji`): mnoznik agregatu po czesciowej
+        utracie i zakres nastawy (ten sam predykat, co punkt poczatkowy) sa tam.
+        """
+        nowe = [np.array(stan, dtype=float, copy=True) for stan in stany]
+        indeksy = {urzadzenie.ident: pozycja for pozycja, urzadzenie in enumerate(urzadzenia)}
+        przypisane: set[tuple[int, int]] = set()
+        wszystkie: list[tuple[PrzypisanieWykonane, ...]] = []
+        for wpis in do_wykonania:
+            if wpis.rodzaj not in RODZAJE_PRZYPISAN:
+                wszystkie.append(())
+                continue
+            indeks = indeksy[wpis.ref]
+            urzadzenie = urzadzenia[indeks]
+            wpisu: list[PrzypisanieWykonane] = []
+            for klucz, wartosc in wpis.przypisania:
+                if wpis.rodzaj == "przypisanie_stanu":
+                    nazwa, wartosc_stanu = klucz, wartosc
+                else:
+                    nazwa = nastawa_regulacji(urzadzenie, klucz, t_s)  # type: ignore[arg-type]
+                    (nastawa,) = (
+                        pozycja
+                        for pozycja in urzadzenie.nastawy_regulacji
+                        if pozycja.wielkosc == klucz
+                    )
+                    wartosc_stanu = nastawa.mnoznik * wartosc
+                    if nastawa.zakres is not None and not (
+                        nastawa.zakres[0] <= wartosc_stanu <= nastawa.zakres[1]
+                    ):
+                        raise OdmowaDynamiki(
+                            KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
+                            f"Komenda regulacji {klucz.upper()} urządzenia {urzadzenie.ident!r} "
+                            f"w t={t_s} s: nastawa {wartosc_stanu} pu (stan {nazwa}) poza "
+                            f"zakresem urządzenia [{nastawa.zakres[0]}, {nastawa.zakres[1]}] pu "
+                            f"({nastawa.powod_pl}) — zadany punkt pracy nie istnieje; nastawa "
+                            "nie jest przycinana po cichu",
+                            urzadzenie=urzadzenie.ident,
+                            wielkosc=klucz,
+                            stan=nazwa,
+                            nastawa_pu=wartosc_stanu,
+                            zakres=nastawa.zakres,
+                            t_s=t_s,
+                        )
+                sprawdz_przypisanie(urzadzenie, nazwa, wartosc_stanu, t_s)
+                pozycja_stanu = urzadzenie.nazwy_stanow.index(nazwa)
+                przed = float(nowe[indeks][pozycja_stanu])
+                nowe[indeks][pozycja_stanu] = wartosc_stanu
+                przypisane.add((indeks, pozycja_stanu))
+                wpisu.append(
+                    PrzypisanieWykonane(
+                        adres=f"{urzadzenie.ident}.{nazwa}", przed=przed, po=wartosc_stanu
+                    )
+                )
+            wszystkie.append(tuple(wpisu))
+        if not przypisane:
+            return stany, tuple(wszystkie), frozenset()
+        return tuple(nowe), tuple(wszystkie), frozenset(przypisane)
 
     def _obszary_beznapieciowe(
         self,
@@ -1007,6 +1266,7 @@ class SilnikDynamiki:
         indeks_wpisu: int,
         indeks_probki: int,
         nastawy: NastawySolvera,
+        nadzor: NadzorDozorow | None,
     ) -> float:
         kandydaci = [nastawy.horyzont_s]
         chwila_probki = indeks_probki * nastawy.krok_wyjscia_s
@@ -1016,7 +1276,111 @@ class SilnikDynamiki:
             if wpis.t_s > t_s + TOLERANCJA_CZASU_S:
                 kandydaci.append(wpis.t_s)
                 break
+        if nadzor is not None:
+            # Akcja dozoru ze zwloka jest punktem obowiazkowym jak wpis planowany: krok
+            # laduje DOKLADNIE w `t* + zwloka`, nie „gdzies w kroku".
+            akcja = nadzor.nastepna_akcja_s(t_s, TOLERANCJA_CZASU_S)
+            if akcja is not None:
+                kandydaci.append(akcja)
         return min(kandydat for kandydat in kandydaci if kandydat > t_s + TOLERANCJA_CZASU_S)
+
+    def _jest_chwila_zdarzen(
+        self,
+        t_s: float,
+        wpisy: tuple[WpisHarmonogramu, ...],
+        indeks_wpisu: int,
+        nadzor: NadzorDozorow,
+    ) -> bool:
+        """Czy w chwili `t_s` wykonuje sie zdarzenie (planowane albo akcja dozoru)."""
+        return bool(self._wpisy_chwili(t_s, wpisy, indeks_wpisu)) or bool(
+            nadzor.akcje_chwili(t_s, TOLERANCJA_CZASU_S)
+        )
+
+    def _nadzor(self) -> NadzorDozorow | None:
+        """Nadzor dozorow biegu — `None`, gdy harmonogram nie niesie dozorow (sciezka bez
+        zmian, bitowo). Dozory bez tolerancji lokalizacji to odmowa `nastawy_sprzeczne`;
+        akcje i wielkosci sa walidowane PRZED biegiem (`zdarzenia.szablony_akcji_dozorow`)."""
+        wejscie = self.wejscie
+        dozory = wejscie.harmonogram.dozory
+        if not dozory:
+            return None
+        tolerancja = wejscie.nastawy.tolerancja_lokalizacji_zdarzen_s
+        if tolerancja is None:
+            raise OdmowaDynamiki(
+                KOD_NASTAWY_SPRZECZNE,
+                f"Harmonogram niesie {len(dozory)} dozorow (zdarzeń warunkowych), a nastawy "
+                "nie podaja tolerancji lokalizacji zdarzeń — chwila przekroczenia nie miałaby "
+                "zadeklarowanej dokładności",
+                pole="tolerancja_lokalizacji_zdarzen_s",
+                dozory=tuple(dozor.ident for dozor in dozory),
+            )
+        szablony = szablony_akcji_dozorow(
+            dozory,
+            wezly=wejscie.wezly,
+            galezie=wejscie.galezie,
+            odsprzegi=wejscie.odsprzegi,
+            odbiory=wejscie.odbiory,
+            urzadzenia=wejscie.urzadzenia,
+            s_bazowa_mva=wejscie.s_bazowa_mva,
+            horyzont_s=wejscie.nastawy.horyzont_s,
+            indeks_bazowy=len(wejscie.harmonogram.zdarzenia),
+        )
+        return NadzorDozorow(
+            dozory,
+            szablony,
+            tolerancja_s=tolerancja,
+            tolerancja_czasu_s=TOLERANCJA_CZASU_S,
+            f_bazowa_hz=wejscie.f_bazowa_hz,
+        )
+
+    @staticmethod
+    def _dozory_po_kroku(
+        nadzor: NadzorDozorow,
+        integrator: Integrator,
+        kontekst: KontekstKroku,
+        stany: tuple[np.ndarray, ...],
+        napiecia: np.ndarray,
+        t0_s: float,
+        t1_s: float,
+        wynik_kroku: WynikKroku,
+        *,
+        zdarzenia_w_koncu: bool,
+    ) -> tuple[float | None, WynikKroku]:
+        """Ocena dozorow po przyjetym kroku; przy pobudzeniu — krok SKROCONY do chwili akcji.
+
+        Kazda proba lokalizacji jest JEDNYM krokiem tego samego integratora z zapisanego
+        stanu `t0` (krok nie ma pamieci), wiec lokalizowany jest pierwiastek trajektorii
+        dyskretnej. Proby sa zapamietywane po dlugosci — krok wyladowany w chwili akcji
+        jest DOKLADNIE ta proba, ktora wyznaczyla chwile (bez ponownego liczenia).
+        Koniec kroku bedacy chwila zdarzenia jest oceniany jako probka `L`.
+        """
+        proby: dict[float, WynikKroku] = {}
+
+        def proba(tau_s: float) -> StanUkladu:
+            if tau_s not in proby:
+                proby[tau_s] = integrator.krok(kontekst, stany, napiecia, t0_s, tau_s)
+            wynik = proby[tau_s]
+            return StanUkladu(
+                kontekst.model,
+                kontekst.odbiory,
+                kontekst.urzadzenia,
+                wynik.stany,
+                wynik.napiecia,
+                "C",
+            )
+
+        koniec = StanUkladu(
+            kontekst.model,
+            kontekst.odbiory,
+            kontekst.urzadzenia,
+            wynik_kroku.stany,
+            wynik_kroku.napiecia,
+            "L" if zdarzenia_w_koncu else "C",
+        )
+        ladowanie = nadzor.po_kroku(t0_s, t1_s, koniec, proba)
+        if ladowanie is None or ladowanie == t1_s:
+            return ladowanie, wynik_kroku
+        return ladowanie, proby[ladowanie - t0_s]
 
     def _jest_chwila_probki(self, t_s: float, indeks_probki: int, nastawy: NastawySolvera) -> bool:
         chwila = indeks_probki * nastawy.krok_wyjscia_s
@@ -1250,19 +1614,10 @@ class SilnikDynamiki:
             napiecie = complex(napiecia[pozycja])
             probki[f"u_pu@{ident}"].append(abs(napiecie))
             probki[f"kat_deg@{ident}"].append(_kat_deg(napiecie))
-        for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
+        for indeks, (urzadzenie, stan) in enumerate(zip(urzadzenia, stany, strict=True)):
             for nazwa, wartosc in zip(urzadzenie.nazwy_stanow, stan, strict=True):
                 probki[f"{nazwa}@{urzadzenie.ident}"].append(float(wartosc))
-            pozycja = model.indeks_wezla[urzadzenie.wezel]
-            napiecie = complex(napiecia[pozycja])
-            prad = (
-                prad_wezla_ograniczonego(
-                    model, odbiory, urzadzenia, stany, napiecia, urzadzenie.wezel
-                )
-                if urzadzenie.sprzezenie == "napieciowe"
-                else urzadzenie.prad_pu(stan, napiecie)
-            )
-            moc = napiecie * prad.conjugate()
+            moc = moc_urzadzenia_pu(model, odbiory, urzadzenia, stany, napiecia, indeks)
             probki[f"p_pu@{urzadzenie.ident}"].append(float(moc.real))
             probki[f"q_pu@{urzadzenie.ident}"].append(float(moc.imag))
         self._probkuj_obserwable(probki, strona, model, odbiory, urzadzenia, stany, napiecia)
@@ -1394,30 +1749,9 @@ class SilnikDynamiki:
                 czestotliwosc_niedostepna(JAKOSC_CHWILA_ZDARZENIA) for _ in model.identy_wezlow
             ]
         else:
-            try:
-                pomiar = pochodna_napiec_z_niepewnoscia(model, odbiory, urzadzenia, stany, napiecia)
-            except OdmowaDynamiki:
-                czestotliwosci = [
-                    czestotliwosc_niedostepna(JAKOSC_NIEDOSTEPNA) for _ in model.identy_wezlow
-                ]
-            else:
-                zerowe = set(model.pozycje_zerowe)
-                czestotliwosci = [
-                    (
-                        czestotliwosc_niedostepna(JAKOSC_BEZ_NAPIECIA)
-                        if pozycja in zerowe
-                        else czestotliwosc_wezla(
-                            complex(napiecia[pozycja]),
-                            complex(pomiar.pochodna_pu_s[pozycja]),
-                            f_bazowa_hz=f_bazowa_hz,
-                            niepewnosc_napiecia_pu=float(pomiar.niepewnosc_napiecia_pu[pozycja]),
-                            niepewnosc_pochodnej_pu_s=float(
-                                pomiar.niepewnosc_pochodnej_pu_s[pozycja]
-                            ),
-                        )
-                    )
-                    for pozycja in range(model.liczba_wezlow)
-                ]
+            czestotliwosci = czestotliwosci_wezlow(
+                model, odbiory, urzadzenia, stany, napiecia, f_bazowa_hz=f_bazowa_hz
+            )
         for ident, czestotliwosc in zip(model.identy_wezlow, czestotliwosci, strict=True):
             probki[f"f_hz@{ident}"].append(czestotliwosc.f_hz)
             probki[f"u_f_est_hz@{ident}"].append(czestotliwosc.niepewnosc_hz)
@@ -1529,6 +1863,11 @@ class SilnikDynamiki:
                 "max_nawrotow": nastawy.max_nawrotow,
                 "horyzont_s": kwantyzuj(nastawy.horyzont_s),
                 "krok_wyjscia_s": kwantyzuj(nastawy.krok_wyjscia_s),
+                "tolerancja_lokalizacji_zdarzen_s": (
+                    None
+                    if nastawy.tolerancja_lokalizacji_zdarzen_s is None
+                    else kwantyzuj(nastawy.tolerancja_lokalizacji_zdarzen_s)
+                ),
             },
             "kroki_szczegolne": kroki_szczegolne,
             # Idealizacje zadeklarowane w harmonogramie (usuniecie zwarcia `samoczynne`)
@@ -1616,6 +1955,122 @@ ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA = (
     "przylaczonego w tym wezle; to jest wybor punktu startowego Newtona, nie korekta "
     "rozwiazania; przy odbiorach o stalej mocy prowadzi do rozwiazania o wyzszym napieciu."
 )
+#: Zalozenie dopisywane do wyniku, gdy w biegu wykonano przypisanie stanu albo komende
+#: regulacji (karta AB-1b.1 par. 0 pkt 9).
+ZALOZENIE_PRZYPISANIA_STANU = (
+    "Przypisanie stanu i komenda regulacji zmieniaja w chwili zdarzenia wyłącznie nastawy "
+    "wymienione w zdarzeniu (wartość zadana dokładnie, bez dociagania i bez ponownego "
+    "wyznaczania stanu urządzenia z punktu pracy); pozostale stany rozniczkowe są ciagle, "
+    "a algebra jest rozwiazywana od nowa raz na chwile; kazde przypisanie (adres, przed, po) "
+    "i zmierzony skok stanow nieprzypisanych niesie wykonane zdarzenie."
+)
+#: Zalozenie dopisywane do wyniku, gdy w biegu wykonano czesciowa utrate zrodla
+#: (karta AB-1b.1 par. 0 pkt 10).
+ZALOZENIE_UTRATY_CZESCIOWEJ = (
+    "Częściowa utrata źródła: źródło jest agregatem identycznych jednostek rownoleglych; "
+    "ubytek jednostek zmienia wyłącznie prąd oddawany do sieci (mnozony przez udział "
+    "pozostaly) i nie zmienia stanu na jednostkę (prądu zadanego, katow regulatorów, "
+    "predkosci, stanu naladowania); nastawa mocy wydana po utracie dotyczy jednostek "
+    "pozostałych."
+)
+#: Tryby scenariusza (karta AB-1b.1 par. 0 pkt 11) — wyprowadzane z urzadzen biegu,
+#: nie deklarowane: `stanowisko`, gdy siec zasila zrodlo testowe, inaczej `siec`.
+TRYB_SIEC = "siec"
+TRYB_STANOWISKO = "stanowisko"
+
+
+def tryb_scenariusza(urzadzenia: tuple[Urzadzenie, ...]) -> str:
+    """Tryb biegu wyprowadzony z urzadzen: `stanowisko`, gdy siec zasila zrodlo testowe
+    (ten sam predykat, ktorym harmonogram odmawia zaklocen sieci w biegu stanowiska)."""
+    return TRYB_STANOWISKO if jest_trybem_stanowiska(urzadzenia) else TRYB_SIEC
+
+
+def zalozenia_trybu(urzadzenia: tuple[Urzadzenie, ...]) -> tuple[str, ...]:
+    """Zdanie trybu STANOWISKA dla kazdego zrodla testowego (kolejnosc urzadzen wejscia)."""
+    zdania: list[str] = []
+    for urzadzenie in urzadzenia:
+        if not isinstance(urzadzenie, ZrodloTestowe):
+            continue
+        sprzezenie = (
+            "jako idealne źródło napięciowe (impedancja zerowa, napięcie punktu przyłączenia "
+            "narzucone rowne SEM)"
+            if urzadzenie.impedancja_pu is None
+            else "za impedancja zastępcza sieci (sprzężenie prądowe)"
+        )
+        zdania.append(
+            f"Tryb stanowiska badawczego: źródło testowe {urzadzenie.ident} w węźle "
+            f"{urzadzenie.wezel} zadaje SEM o profilu amplitudy, częstotliwości i fazy "
+            f"{sprzezenie}; przebieg jest odpowiedzia sieci i badanych urządzeń na profil "
+            "stanowiska, nie na zaklocenie sieci; profil jest calkowany bez błędu "
+            "dyskretyzacji (równania liniowe, przebiegi odcinkami wielomianowe)."
+        )
+    return tuple(zdania)
+
+
+def _skok_stanow_nieprzypisanych(
+    przed: tuple[np.ndarray, ...],
+    po: tuple[np.ndarray, ...],
+    przypisane: frozenset[tuple[int, int]],
+) -> float:
+    """Najwiekszy modul zmiany stanu NIEPRZYPISANEGO w chwili zdarzen (karta par. 0 pkt 9).
+
+    Porownanie ze stanami sprzed CALEJ chwili (przed zdarzeniami topologicznymi,
+    utratami, przypisaniami i re-inicjalizacja), wiec pomiar obejmuje kazda droge, ktora
+    mogla zmienic stan: przypisanie w zlym miejscu, ponowne wyznaczenie stanu urzadzenia z
+    punktu pracy, mutacje w algebrze. Pozycje przypisane sa wylaczone — ich zmiane niesie
+    `przypisania` (adres, przed, po).
+    """
+    skok = 0.0
+    for indeks, (stan_przed, stan_po) in enumerate(zip(przed, po, strict=True)):
+        for pozycja in range(stan_przed.shape[0]):
+            if (indeks, pozycja) in przypisane:
+                continue
+            skok = max(skok, abs(float(stan_po[pozycja]) - float(stan_przed[pozycja])))
+    return skok
+
+
+def _uklad_chwili(chwila: _Chwila, strona: StronaOceny) -> StanUkladu:
+    """Punkt oceny dozorow w stanie chwili (probka `C` albo `P`)."""
+    return StanUkladu(
+        chwila.model, chwila.odbiory, chwila.urzadzenia, chwila.stany, chwila.napiecia, strona
+    )
+
+
+def _zapisy_nadzoru(nadzor: NadzorDozorow, t_s: float) -> list[dict[str, Any]]:
+    """Nowe zapisy nadzoru (pobudzenia, kasowania) jako wpisy sladu — liczby skwantyzowane
+    jak kazdy inny wpis `kroki_szczegolne`; zapisy nadzoru sa po pobraniu czyszczone."""
+    zapisy = []
+    for zapis in nadzor.zapisy:
+        wpis: dict[str, Any] = {"t_s": kwantyzuj(t_s)}
+        for klucz, wartosc in zapis.items():
+            if isinstance(wartosc, bool) or wartosc is None or isinstance(wartosc, str | int):
+                wpis[klucz] = wartosc
+            elif isinstance(wartosc, float):
+                wpis[klucz] = kwantyzuj(wartosc)
+            else:
+                wpis[klucz] = [kwantyzuj(pozycja) for pozycja in wartosc]
+        zapisy.append(wpis)
+    nadzor.zapisy.clear()
+    return zapisy
+
+
+def _przekroczenia(nadzor: NadzorDozorow) -> tuple[Przekroczenie, ...]:
+    """Przekroczenia DETEKTOROW w kolejnosci wystapienia — pelna precyzja rdzenia."""
+    wynik = []
+    for przekroczenie in nadzor.przekroczenia:
+        dozor = nadzor.dozory[przekroczenie.dozor]
+        wynik.append(
+            Przekroczenie(
+                dozor=dozor.ident,
+                wielkosc=dozor.wielkosc.klucz_kanalu,
+                prog=dozor.prog,
+                kierunek=dozor.kierunek,
+                t_s=przekroczenie.lokalizacja.t_s,
+                szerokosc_przedzialu_s=przekroczenie.lokalizacja.szerokosc_s,
+                iteracje=przekroczenie.lokalizacja.iteracje,
+            )
+        )
+    return tuple(wynik)
 
 
 @dataclass(frozen=True)
@@ -1729,8 +2184,14 @@ __all__ = [
     "TOLERANCJA_CZASU_S",
     "ZALOZENIA_RDZENIA",
     "ZALOZENIE_OBSZARU_BEZNAPIECIOWEGO",
+    "ZALOZENIE_PRZYPISANIA_STANU",
     "ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA",
+    "ZALOZENIE_UTRATY_CZESCIOWEJ",
+    "TRYB_SIEC",
+    "TRYB_STANOWISKO",
     "SilnikDynamiki",
     "jednostka_stanu",
+    "tryb_scenariusza",
     "zalozenia_harmonogramu",
+    "zalozenia_trybu",
 ]

@@ -128,6 +128,24 @@ def test_kazdy_modul_dziedziny_jest_skanowany() -> None:
     assert moduly <= set(SCAN_FILES), sorted(moduly - set(SCAN_FILES))
 
 
+def test_kazdy_modul_rdzenia_dynamiki_jest_skanowany() -> None:
+    """Karta AB-1b.1: kontrakty liczbowe rdzenia żyją także poza `kontrakty.py` (dozory,
+    profil źródła testowego, agregat częściowej utraty) — skan obejmuje CAŁY pakiet, a
+    moduł dopisany w przyszłości wchodzi do skanu bez edycji listy."""
+    pakiet = ROOT / "backend" / "src" / "network_model" / "solvers" / "dynamika"
+    moduly = {sciezka.relative_to(ROOT).as_posix() for sciezka in pakiet.rglob("*.py")}
+    assert len(moduly) >= 36, "skan pakietu rdzenia dynamiki stracił kotwicę"
+    assert moduly <= set(SCAN_FILES), sorted(moduly - set(SCAN_FILES))
+    for kontrakt in (
+        "kontrakty.py",
+        "dozory.py",
+        "urzadzenia/zrodlo_testowe.py",
+        "urzadzenia/czesciowe.py",
+    ):
+        assert f"backend/src/network_model/solvers/dynamika/{kontrakt}" in SCAN_FILES
+    assert len(SCAN_FILES) == len(set(SCAN_FILES)), "plik skanowany dwa razy"
+
+
 if __name__ == "__main__":
     test_czysta_klasa_zielona()
     test_iniekcje_wszystkich_postaci_czerwone()
@@ -135,4 +153,5 @@ if __name__ == "__main__":
     test_dyskryminator_tekstowy_nie_jest_naruszeniem()
     test_realne_pliki_sa_zielone()
     test_kazdy_modul_dziedziny_jest_skanowany()
+    test_kazdy_modul_rdzenia_dynamiki_jest_skanowany()
     print("test_dynamika_zero_default_guard: OK")

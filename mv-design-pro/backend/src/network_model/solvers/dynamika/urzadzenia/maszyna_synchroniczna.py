@@ -79,6 +79,7 @@ import numpy as np
 from ..kontrakty import (
     KOD_PARAMETRY_SPRZECZNE,
     KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
+    NastawaRegulacji,
     OdmowaDynamiki,
     SprzezenieUrzadzenia,
 )
@@ -270,6 +271,69 @@ class MaszynaSynchroniczna:
     def sprzezenie(self) -> SprzezenieUrzadzenia:
         """Maszyna 6. rzedu: SEM podprzejsciowa za reaktancja — prad do wezla."""
         return "pradowe"
+
+    @property
+    def stan_nastawy_mocy(self) -> str:
+        """Stan-odniesienie mocy czynnej: odniesienie regulatora obrotow, gdy jest TGOV1;
+        bez niego moc mechaniczna napedu (stala punktu pracy o zerowej pochodnej)."""
+        return STAN_ODNIESIENIA_TURBINY if self.turbina is not None else STAN_MOCY_MECHANICZNEJ
+
+    @property
+    def stany_przypisywalne(self) -> tuple[str, ...]:
+        """Odniesienie mocy (turbiny albo napedu) i odniesienie regulatora napiecia, gdy
+        jest AVR. Strumienie, kat, predkosc, napiecie wzbudzenia i stany czlonow
+        dynamicznych regulatorow NIE — ich skok wymagalby nieskonczonego napiecia albo
+        momentu. Bez AVR napiecie wzbudzenia jest stala punktu pracy, ale nie nastawa:
+        stale wzbudzenie nie ma nastawy napiecia."""
+        stany = [self.stan_nastawy_mocy]
+        if self.wzbudzenie is not None:
+            stany.append(STAN_ODNIESIENIA_WZBUDZENIA)
+        return tuple(stany)
+
+    @property
+    def nastawy_regulacji(self) -> tuple[NastawaRegulacji, ...]:
+        """P -> odniesienie turbiny (z granicami [P_min, P_max] regulatora — TEN SAM
+        predykat, ktorym `_stany_turbiny` sprawdza punkt pracy) albo moc napedu; Q ->
+        odmowa (biblioteka nie ma regulatora mocy biernej maszyny); U -> odniesienie AVR
+        albo odmowa (stale wzbudzenie)."""
+        turbina = self.turbina
+        nastawa_p = NastawaRegulacji(
+            wielkosc="p",
+            stan=self.stan_nastawy_mocy,
+            powod_pl=(
+                "odniesienie mocy regulatora obrotów TGOV1 (moc mechaniczna w szczelinie)"
+                if turbina is not None
+                else "moc mechaniczna napedu bez regulatora obrotów (moc w szczelinie)"
+            ),
+            zakres=None if turbina is None else (turbina.p_min_pu, turbina.p_max_pu),
+            mnoznik=1.0,
+        )
+        nastawa_q = NastawaRegulacji(
+            wielkosc="q",
+            stan=None,
+            powod_pl="biblioteka nie ma regulatora mocy biernej maszyny synchronicznej — "
+            "moc bierna wynika z regulacji napięcia (AVR) albo ze stałego wzbudzenia",
+            zakres=None,
+            mnoznik=1.0,
+        )
+        nastawa_u = NastawaRegulacji(
+            wielkosc="u",
+            stan=STAN_ODNIESIENIA_WZBUDZENIA if self.wzbudzenie is not None else None,
+            powod_pl=(
+                "odniesienie napięcia regulatora wzbudzenia (AVR)"
+                if self.wzbudzenie is not None
+                else "maszyna bez regulatora napięcia — stałe wzbudzenie nie ma nastawy napięcia"
+            ),
+            zakres=None,
+            mnoznik=1.0,
+        )
+        return (nastawa_p, nastawa_q, nastawa_u)
+
+    @property
+    def agregat_jednostek(self) -> bool:
+        """Maszyna o parametrach w bazie znamionowej moze byc agregatem identycznych
+        maszyn rownoleglych (moc, bezwladnosc i granice turbiny skaluja sie liczba)."""
+        return True
 
     def parametry_tozsamosci(self) -> dict[str, object]:
         """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""

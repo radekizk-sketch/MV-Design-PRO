@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import cmath
 import copy
+import dataclasses
 import math
 from datetime import UTC, datetime
 from typing import Any
@@ -44,6 +45,7 @@ from enm.adapter_dynamiki import (
     braki_modelu_dynamiki,
     odmow_gdy_braki_modelu,
     punkt_pracy_z_biegu_rozplywu,
+    zalozenia_wejscia,
     zloz_wejscie_dynamiki,
     zloz_widok_sieci,
 )
@@ -76,6 +78,8 @@ NASTAWY: dict[str, Any] = {
     "max_iteracji_newtona": 40,
     "max_nawrotow": 30,
     "integrator": "trapez_niejawny",
+    # Klucz WYMAGANY; `null` dozwolony wyłącznie dla biegu bez detektorów (karta AB-1b.1).
+    "tolerancja_lokalizacji_zdarzen_s": None,
 }
 
 #: Scenariusz czasowy: zwarcie 3F na sekcji B z wyłączeniem + skok obciążenia.
@@ -958,6 +962,258 @@ class TestBiegKoncaDoKonca:
 
 
 # ---------------------------------------------------------------------------
+# Karta AB-1b.1 (P6-P8) przez adapter: komenda regulacji, czesciowa utrata, stanowisko
+# badawcze, detektory — ta sama sciezka rozplyw -> adapter -> rdzen co bieg uzytkownika
+# ---------------------------------------------------------------------------
+
+
+def _scenariusz(zdarzenia: list[dict[str, Any]], **pola: Any) -> dict[str, Any]:
+    return {"horyzont_s": 0.3, "krok_wyjscia_s": 0.02, "zdarzenia": zdarzenia, **pola}
+
+
+def _indeks(wynik: Any, t_s: float, strona: str) -> int:
+    return list(zip(wynik.os_czasu_s, wynik.strona_probki, strict=True)).index((t_s, strona))
+
+
+class TestKomendaIUtrataCzesciowa:
+    """Iloczyn: {maszyna synchroniczna bez regulatorow, przeksztaltnik nadazny} x {P, Q, U}
+    x {wykonana, odmowa nazwana rdzenia}; czesciowa utrata {agregat, zrodlo sieciowe}."""
+
+    @pytest.mark.parametrize(
+        "ref, nastawa, stan",
+        [
+            ("gen-synchroniczny", {"p_mw": 4.0}, "p_mechaniczna_pu"),
+            ("gen-synchroniczny", {"q_mvar": 2.0}, None),
+            ("gen-synchroniczny", {"u_pu": 1.02}, None),
+            ("gen-pv", {"p_mw": 1.2}, "p_zadane_pu"),
+            ("gen-pv", {"q_mvar": 0.2}, "q_zadane_pu"),
+            ("gen-pv", {"u_pu": 1.01}, "u_odniesienia_pu"),
+        ],
+        ids=["sync_P", "sync_Q_odmowa", "sync_U_odmowa", "pv_P", "pv_Q", "pv_U"],
+    )
+    def test_komenda_regulacji_przez_adapter(
+        self,
+        snapshot_g16: dict[str, Any],
+        punkt_g16: PunktPracyRozplywu,
+        ref: str,
+        nastawa: dict[str, float],
+        stan: str | None,
+    ) -> None:
+        scenariusz = _scenariusz(
+            [{"rodzaj": "komenda_regulacji", "t_s": 0.1, "ref_id": ref, "nastawa": nastawa}]
+        )
+        wejscie = zloz(snapshot_g16, opcje(dynamika=scenariusz), punkt_g16)
+        if stan is None:
+            # Maszyna bez regulatora mocy biernej i ze stalym wzbudzeniem: odmowa rdzenia
+            # z powodem z deklaracji klasy — adapter niczego nie podmienia po cichu.
+            with pytest.raises(OdmowaDynamiki) as blad:
+                SilnikDynamiki(wejscie=wejscie).uruchom()
+            assert blad.value.kod == "dynamika.nastawa_nieobslugiwana"
+            assert blad.value.szczegoly["urzadzenie"] == ref
+            return
+        wynik = SilnikDynamiki(wejscie=wejscie).uruchom()
+        (zdarzenie,) = wynik.zdarzenia_wykonane
+        (przypisanie,) = zdarzenie.przypisania
+        assert przypisanie.adres == f"{ref}.{stan}"
+        (wielkosc, wartosc) = next(iter(nastawa.items()))
+        oczekiwana = wartosc if wielkosc == "u_pu" else wartosc / punkt_g16.base_mva
+        assert przypisanie.po == oczekiwana
+        assert zdarzenie.delta_x_nieprzypisane_max == 0.0
+        assert wynik.probki[f"{stan}@{ref}"][_indeks(wynik, 0.1, "P")] == oczekiwana
+
+    def test_czesciowa_utrata_pv_skaluje_prad_udzialem(
+        self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
+    ) -> None:
+        scenariusz = _scenariusz(
+            [
+                {
+                    "rodzaj": "utrata_czesciowa_zrodla",
+                    "t_s": 0.1,
+                    "ref_id": "gen-pv",
+                    "udzial_pozostaly": 0.6,
+                }
+            ]
+        )
+        wynik = SilnikDynamiki(
+            wejscie=zloz(snapshot_g16, opcje(dynamika=scenariusz), punkt_g16)
+        ).uruchom()
+
+        def prad(i: int) -> float:
+            moc = complex(wynik.probki["p_pu@gen-pv"][i], wynik.probki["q_pu@gen-pv"][i])
+            return abs(moc) / wynik.probki["u_pu@b-oze"][i]
+
+        i_l, i_p = _indeks(wynik, 0.1, "L"), _indeks(wynik, 0.1, "P")
+        assert prad(i_p) / prad(i_l) == pytest.approx(0.6, rel=1e-12)
+        (zdarzenie,) = wynik.zdarzenia_wykonane
+        assert zdarzenie.rodzaj == "utrata_czesciowa_zrodla"
+        assert zdarzenie.delta_x_nieprzypisane_max == 0.0
+        assert any(zdanie.startswith("Czesciowa utrata zrodla") for zdanie in wynik.zalozenia)
+
+    def test_czesciowa_utrata_zrodla_sieciowego_to_odmowa_rdzenia(
+        self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
+    ) -> None:
+        scenariusz = _scenariusz(
+            [
+                {
+                    "rodzaj": "utrata_czesciowa_zrodla",
+                    "t_s": 0.1,
+                    "ref_id": "zrodlo-110",
+                    "udzial_pozostaly": 0.5,
+                }
+            ]
+        )
+        with pytest.raises(OdmowaDynamiki) as blad:
+            SilnikDynamiki(
+                wejscie=zloz(snapshot_g16, opcje(dynamika=scenariusz), punkt_g16)
+            ).uruchom()
+        assert blad.value.kod == "dynamika.udzial_zrodla_niedozwolony"
+
+
+class TestStanowiskoBadawcze:
+    """Iloczyn: impedancja {z_modelu, idealna} x modul {za transformatorem, na szynie
+    zrodla (regula reszty)}; tryb stanowiska wyprowadzony, punkt pracy rownowaga."""
+
+    @pytest.mark.parametrize("impedancja", ["z_modelu", "idealna"])
+    @pytest.mark.parametrize("modul_na_szynie_zrodla", [False, True], ids=["za_trafo", "na_szynie"])
+    def test_profil_stanowiska_przez_adapter(
+        self,
+        snapshot_g16: dict[str, Any],
+        impedancja: str,
+        modul_na_szynie_zrodla: bool,
+    ) -> None:
+        snapshot = copy.deepcopy(snapshot_g16)
+        if modul_na_szynie_zrodla:
+            snapshot["generators"][1]["bus_ref"] = "b-110"
+        punkt = punkt_pracy(snapshot, _bieg_rozplywu(snapshot))
+        scenariusz = _scenariusz(
+            [],
+            stanowisko={
+                "zrodlo_ref": "zrodlo-110",
+                "impedancja": impedancja,
+                "profil": [{"rodzaj": "skok_napiecia", "t_s": 0.1, "u_pu": 0.95}],
+            },
+        )
+        wynik = SilnikDynamiki(wejscie=zloz(snapshot, opcje(dynamika=scenariusz), punkt)).uruchom()
+        assert wynik.tryb_scenariusza == "stanowisko"
+        assert any(zdanie.startswith("Tryb stanowiska") for zdanie in wynik.zalozenia)
+        i_p = _indeks(wynik, 0.1, "P")
+        assert wynik.probki["sem_modul_pu@zrodlo-110"][i_p] == 0.95
+        if impedancja == "idealna":
+            # Zrodlo idealne narzuca napiecie szyny: |V| = |E| w kazdej probce po skoku.
+            for i in range(i_p, len(wynik.os_czasu_s)):
+                assert wynik.probki["u_pu@b-110"][i] == pytest.approx(0.95, abs=1e-12)
+        if modul_na_szynie_zrodla:
+            assert any("resztą bilansu" in zdanie for zdanie in zalozenia_wejscia(snapshot))
+
+    def test_bez_stanowiska_tryb_sieci(
+        self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
+    ) -> None:
+        wynik = SilnikDynamiki(
+            wejscie=zloz(snapshot_g16, opcje(dynamika=_scenariusz([])), punkt_g16)
+        ).uruchom()
+        assert wynik.tryb_scenariusza == "siec"
+        assert wynik.przekroczenia == ()
+
+
+class TestDetektory:
+    """Iloczyn: przejscie {skokowe w chwili zdarzenia, ciagle z lokalizacja} x kierunek
+    {w_dol, w_gore} x wielkosc {|V| szyny, stan maszyny, |I| JAWNEGO zacisku}."""
+
+    def _detektory(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "ident": "u<",
+                "wielkosc": {"rodzaj": "modul_napiecia", "bus_ref": "b-sn-b"},
+                "prog": 0.8,
+                "kierunek": "w_dol",
+                "jednorazowy": False,
+            },
+            {
+                # Niejednorazowy: warunek spelniony w t = 0+ pobudza w 0, zapad go kasuje,
+                # powrot po zdjeciu zwarcia uzbraja i pobudza drugi raz.
+                "ident": "u>",
+                "wielkosc": {"rodzaj": "modul_napiecia", "bus_ref": "b-sn-b"},
+                "prog": 0.8,
+                "kierunek": "w_gore",
+                "jednorazowy": False,
+            },
+            {
+                "ident": "omega>",
+                "wielkosc": {
+                    "rodzaj": "stan_urzadzenia",
+                    "ref_id": "gen-synchroniczny",
+                    "stan": "omega_pu",
+                },
+                "prog": 1.0005,
+                "kierunek": "w_gore",
+                "jednorazowy": True,
+            },
+            {
+                "ident": "i>",
+                "wielkosc": {
+                    "rodzaj": "modul_pradu_zacisku",
+                    "element_ref": "kab-odplyw",
+                    "zacisk": "do",
+                },
+                "prog": 1.0e3,
+                "kierunek": "w_gore",
+                "jednorazowy": True,
+            },
+        ]
+
+    def test_przekroczenia_przez_adapter(
+        self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
+    ) -> None:
+        tolerancja = 1e-7
+        scenariusz = {**copy.deepcopy(SCENARIUSZ), "detektory": self._detektory()}
+        wynik = SilnikDynamiki(
+            wejscie=zloz(
+                snapshot_g16,
+                opcje(
+                    dynamika=scenariusz,
+                    nastawy_solvera={**NASTAWY, "tolerancja_lokalizacji_zdarzen_s": tolerancja},
+                ),
+                punkt_g16,
+            )
+        ).uruchom()
+        po_dozorach = {p.dozor: p for p in wynik.przekroczenia}
+        chwile = {
+            dozor: [
+                (p.t_s, p.szerokosc_przedzialu_s) for p in wynik.przekroczenia if p.dozor == dozor
+            ]
+            for dozor in ("u<", "u>")
+        }
+        # Skokowe: zwarcie w 0,1 s i zdjecie w 0,2 s — pobudzenie DOKLADNIE w chwili zdarzenia;
+        # warunek spelniony od poczatku (|V| > 0,8) pobudza w t = 0.
+        assert chwile["u<"] == [(0.1, 0.0)]
+        assert chwile["u>"] == [(0.0, 0.0), (0.2, 0.0)]
+        assert po_dozorach["u<"].wielkosc == "u_pu@b-sn-b"
+        # Ciagle: predkosc maszyny rosnie w trakcie zwarcia — lokalizacja w kroku.
+        omega = po_dozorach["omega>"]
+        assert 0.1 < omega.t_s < 0.3 and omega.iteracje > 0
+        assert omega.szerokosc_przedzialu_s <= tolerancja
+        # Prog pradu nieosiagalny — detektor bez pobudzenia (brak rekordu, nie zero).
+        assert "i>" not in po_dozorach
+        # Detektory bez akcji nie zmieniaja przebiegu: ten sam bieg bez detektorow.
+        bez = SilnikDynamiki(wejscie=zloz(snapshot_g16, opcje(), punkt_g16)).uruchom()
+        assert [(z.rodzaj, z.t_wykonany_s) for z in bez.zdarzenia_wykonane] == [
+            (z.rodzaj, z.t_wykonany_s) for z in wynik.zdarzenia_wykonane
+        ]
+        assert bez.os_czasu_s == wynik.os_czasu_s
+        assert bez.probki == wynik.probki, "detektor bez akcji zmienil trajektorie"
+
+    def test_detektory_bez_tolerancji_lokalizacji_to_odmowa_rdzenia(
+        self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
+    ) -> None:
+        scenariusz = {**copy.deepcopy(SCENARIUSZ), "detektory": self._detektory()[:1]}
+        with pytest.raises(OdmowaDynamiki) as blad:
+            SilnikDynamiki(
+                wejscie=zloz(snapshot_g16, opcje(dynamika=scenariusz), punkt_g16)
+            ).uruchom()
+        assert blad.value.kod == "dynamika.nastawy_sprzeczne"
+
+
+# ---------------------------------------------------------------------------
 # Odmowy: punkt pracy
 # ---------------------------------------------------------------------------
 
@@ -1151,41 +1407,41 @@ class TestOdmowyOpcjiBiegu:
             zloz(snapshot_g16, options, punkt_g16)
         assert blad.value.kod == KOD_SCENARIUSZ_BRAK
 
-    @pytest.mark.parametrize(
-        "zdarzenie",
-        [
-            {
-                "rodzaj": "komenda_regulacji",
-                "t_s": 0.2,
-                "ref_id": "gen-synchroniczny",
-                "nastawa": {"p_mw": 4.0},
-            },
-            {
-                "rodzaj": "synchronizacja",
-                "t_s": 0.2,
-                "ref_id": "gen-pv",
-                "bus_ref": "b-oze",
-            },
-        ],
-        ids=["komenda_regulacji", "synchronizacja"],
-    )
-    def test_rodzaj_zdarzenia_spoza_zbioru_rdzenia(
-        self,
-        snapshot_g16: dict[str, Any],
-        punkt_g16: PunktPracyRozplywu,
-        zdarzenie: dict[str, Any],
+    def test_synchronizacja_spoza_zbioru_rdzenia(
+        self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
     ) -> None:
         """Rodzaj z kontraktu danych, którego rdzeń nie wykonuje — NAZWANA odmowa.
 
         Ciche pominięcie zamieniłoby scenariusz projektanta w inny scenariusz bez
         jednego śladu; to jest dokładnie ta klasa defektu, którą zakazuje karta.
+        (Komenda regulacji i częściowa utrata źródła są od karty AB-1b.1 wykonywane —
+        `TestKomendaIUtrataCzesciowa`.)
         """
+        zdarzenie = {"rodzaj": "synchronizacja", "t_s": 0.2, "ref_id": "gen-pv", "bus_ref": "b-oze"}
         scenariusz = copy.deepcopy(SCENARIUSZ)
         scenariusz["zdarzenia"] = [zdarzenie]
         with pytest.raises(OdmowaWejsciaDynamiki) as blad:
             zloz(snapshot_g16, opcje(dynamika=scenariusz), punkt_g16)
         assert blad.value.kod == KOD_ZDARZENIE_NIEOBSLUGIWANE
-        assert zdarzenie["rodzaj"] in blad.value.elementy
+        assert "synchronizacja" in blad.value.elementy
+
+    def test_tolerancja_lokalizacji_null_dozwolona_brak_klucza_nie(
+        self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
+    ) -> None:
+        """`null` jest decyzja wolajacego (bieg bez detektorow), brak KLUCZA — brakiem pola;
+        `null` innej nastawy — takze brakiem pola."""
+        assert (
+            zloz(snapshot_g16, opcje(), punkt_g16).nastawy.tolerancja_lokalizacji_zdarzen_s is None
+        )
+        z_wartoscia = opcje(nastawy_solvera={**NASTAWY, "tolerancja_lokalizacji_zdarzen_s": 1e-6})
+        assert (
+            zloz(snapshot_g16, z_wartoscia, punkt_g16).nastawy.tolerancja_lokalizacji_zdarzen_s
+            == 1e-6
+        )
+        with pytest.raises(OdmowaWejsciaDynamiki) as blad:
+            zloz(snapshot_g16, opcje(nastawy_solvera={**NASTAWY, "dt_s": None}), punkt_g16)
+        assert blad.value.kod == KOD_NASTAWY_BRAK
+        assert blad.value.elementy == ("dt_s",)
 
     def test_skok_obciazenia_na_wytworcy(
         self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
@@ -1318,23 +1574,54 @@ class TestBrakiModelu:
         assert [brak.kod for brak in braki] == [KOD_ODBIOR_ZIP]
         assert braki[0].elementy == ("odb-odplyw",)
 
-    def test_zrodlo_sieciowe_razem_z_wytworca_na_jednej_szynie(
+    def test_zrodlo_sieciowe_razem_z_wytworca_na_jednej_szynie_regula_reszty(
         self, snapshot_g16: dict[str, Any]
     ) -> None:
-        """Szyna sztywna + wytworca = podzial mocy wezla NIEWYZNACZALNY.
+        """Szyna sztywna + wytworca = REGULA RESZTY (karta AB-1b.1 §0 pkt 11), nie odmowa.
 
-        Zrodlo sieciowe wchodzi do biegu jako warunek brzegowy BEZ zadeklarowanej
-        mocy (`zbuduj_szyne_sztywna` nie przyjmuje punktu pracy), wiec brakuje
-        jednego z dwoch skladnikow podzialu. Tego nie da sie uzgodnic zadna dana
-        wejsciowa — i dlatego to zostaje odmowa MODELOWA, w odroznieniu od kilku
-        wytworcow na jednej szynie (patrz `TestPodzialMocyWezla`).
+        Przepisane 2026-09-24 z intencja: dawniej odmowa MODELOWA („podzialu nie da sie
+        wyprowadzic"); podzial jest jednak rachunkiem rozplywu — wytworca jest wstrzykiem z
+        modelu, szyna bilansujaca domyka bilans — wiec wytworca dostaje moc z modelu, a
+        zrodlo sieciowe reszte. Punkt pracy jest wtedy rownowaga (bramka rdzenia przechodzi),
+        a wynik niesie zalozenie reguly reszty.
         """
         snapshot = copy.deepcopy(snapshot_g16)
         snapshot["generators"][1]["bus_ref"] = "b-110"
+        assert braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot)) == ()
+        punkt = punkt_pracy(snapshot, _bieg_rozplywu(snapshot))
+        wejscie = zloz(snapshot, opcje(), punkt)
+        moce = wejscie.punkt_pracy.moce_zrodel_pu
+        baza = punkt.base_mva
+        assert moce["gen-pv"] == pytest.approx(complex(1.6 / baza, 0.0), abs=1e-15)
+        odbiory_szyny = sum(
+            complex(odbior.p_pu, odbior.q_pu)
+            for odbior in wejscie.odbiory
+            if odbior.wezel == "b-110"
+        )
+        assert moce["zrodlo-110"] == pytest.approx(
+            punkt.wstrzyki_pu["b-110"] + odbiory_szyny - moce["gen-pv"], abs=1e-15
+        )
+        wynik = SilnikDynamiki(
+            wejscie=dataclasses.replace(
+                wejscie,
+                harmonogram=HarmonogramDynamiki(()),
+                nastawy=dataclasses.replace(wejscie.nastawy, horyzont_s=0.02, krok_wyjscia_s=0.02),
+            )
+        ).uruchom()
+        assert wynik.os_czasu_s[-1] == 0.02
+        assert any("resztą bilansu" in zdanie for zdanie in zalozenia_wejscia(snapshot))
+
+    def test_dwa_zrodla_sieciowe_na_jednej_szynie(self, snapshot_g16: dict[str, Any]) -> None:
+        """Reszty bilansu nie da sie podzielic miedzy dwa warunki brzegowe — odmowa MODELOWA."""
+        snapshot = copy.deepcopy(snapshot_g16)
+        drugie = copy.deepcopy(snapshot["sources"][0])
+        drugie["id"] = "6a1d0000-0000-4000-8000-0000000000fd"
+        drugie["ref_id"] = "zrodlo-110-b"
+        drugie["name"] = "Drugie zrodlo 110 kV"
+        snapshot["sources"].append(drugie)
         braki = braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot))
         assert [brak.kod for brak in braki] == [KOD_WIELE_URZADZEN_W_WEZLE]
-        assert "b-110" in braki[0].elementy[0]
-        assert "gen-pv" in braki[0].elementy[0] and "zrodlo-110" in braki[0].elementy[0]
+        assert braki[0].elementy == ("b-110: zrodlo-110, zrodlo-110-b",)
 
     def test_kilku_wytworcow_na_jednej_szynie_nie_jest_brakiem_modelu(
         self, snapshot_g16: dict[str, Any]
@@ -1433,7 +1720,10 @@ class TestBrakiModelu:
         uszkodzenia.append((KOD_ODBIOR_ZIP, zip_odbior))
 
         kolizja = copy.deepcopy(snapshot_g16)
-        kolizja["generators"][1]["bus_ref"] = "b-110"
+        drugie_zrodlo = copy.deepcopy(kolizja["sources"][0])
+        drugie_zrodlo["id"] = "6a1d0000-0000-4000-8000-0000000000fd"
+        drugie_zrodlo["ref_id"] = "zrodlo-110-b"
+        kolizja["sources"].append(drugie_zrodlo)
         uszkodzenia.append((KOD_WIELE_URZADZEN_W_WEZLE, kolizja))
 
         wiszaca = copy.deepcopy(snapshot_g16)

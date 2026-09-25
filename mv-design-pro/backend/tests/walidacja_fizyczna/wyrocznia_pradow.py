@@ -41,12 +41,15 @@ def rozwiaz_siec_liniowa(
     boczniki: tuple[tuple[str, complex], ...],
     zrodla: tuple[ZrodloNortona, ...],
     uziemione: tuple[str, ...] = (),
+    zrodla_pradowe: tuple[tuple[str, complex], ...] = (),
 ) -> dict[str, complex]:
-    """Napiecia wezlow sieci liniowej: `Y V = sum(E y)` (gesto, bez redukcji).
+    """Napiecia wezlow sieci liniowej: `Y V = sum(E y) + sum(I)` (gesto, bez redukcji).
 
     Wezly `uziemione` (zwarcie metaliczne) maja `V = 0` WPROST: ich wiersze i kolumny
     sa usuwane z ukladu, zanim zostanie rozwiazany — wyrocznia nie zna „bardzo duzej
-    admitancji" ani zadnej postaci zredukowanej.
+    admitancji" ani zadnej postaci zredukowanej. `zrodla_pradowe` — idealne zrodla pradu
+    wstrzykiwanego do wezla (przeksztaltnik nadazny w chwili zdarzenia: prad z petli
+    pradowej nie zalezy od napiecia wezla, D-20).
     """
     indeks = {wezel: i for i, wezel in enumerate(wezly)}
     macierz = np.zeros((len(wezly), len(wezly)), dtype=complex)
@@ -63,6 +66,8 @@ def rozwiaz_siec_liniowa(
     for zrodlo in zrodla:
         macierz[indeks[zrodlo.wezel], indeks[zrodlo.wezel]] += zrodlo.y
         wymuszenie[indeks[zrodlo.wezel]] += zrodlo.sem * zrodlo.y
+    for wezel, prad in zrodla_pradowe:
+        wymuszenie[indeks[wezel]] += prad
     wolne = [indeks[wezel] for wezel in wezly if wezel not in uziemione]
     rozwiazanie = np.zeros(len(wezly), dtype=complex)
     rozwiazanie[wolne] = np.linalg.solve(macierz[np.ix_(wolne, wolne)], wymuszenie[wolne])

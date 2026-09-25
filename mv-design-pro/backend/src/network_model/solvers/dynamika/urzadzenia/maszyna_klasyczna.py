@@ -42,7 +42,7 @@ from typing import ClassVar
 
 import numpy as np
 
-from ..kontrakty import SprzezenieUrzadzenia
+from ..kontrakty import NastawaRegulacji, SprzezenieUrzadzenia
 from ..konwencje import (
     pulsacja_bazowa_rad_s,
     sprawdz_stala_bezwladnosci,
@@ -91,6 +91,49 @@ class MaszynaKlasyczna:
     def sprzezenie(self) -> SprzezenieUrzadzenia:
         """Zrodlo SEM za reaktancja przejsciowa — prad wstrzykiwany do wezla."""
         return "pradowe"
+
+    @property
+    def stany_przypisywalne(self) -> tuple[str, ...]:
+        """Wylacznie moc mechaniczna — nastawa napedu. Kat i predkosc sa calkami, a modul
+        SEM jest strumieniem; ich skok wymagalby nieskonczonego momentu albo napiecia."""
+        return ("p_mechaniczna_pu",)
+
+    @property
+    def nastawy_regulacji(self) -> tuple[NastawaRegulacji, ...]:
+        """P -> moc mechaniczna napedu (bez regulatora obrotow — brak ogranicznika mocy);
+        Q i U: model klasyczny nie ma regulatora mocy biernej ani napiecia."""
+        return (
+            NastawaRegulacji(
+                wielkosc="p",
+                stan="p_mechaniczna_pu",
+                powod_pl="moc mechaniczna napedu (moc w szczelinie; moc zacisków mniejsza o "
+                "straty w uzwojeniu stojana)",
+                zakres=None,
+                mnoznik=1.0,
+            ),
+            NastawaRegulacji(
+                wielkosc="q",
+                stan=None,
+                powod_pl="model klasyczny nie ma regulatora mocy biernej — moc bierna wynika "
+                "z SEM stalej za reaktancja przejściowa",
+                zakres=None,
+                mnoznik=1.0,
+            ),
+            NastawaRegulacji(
+                wielkosc="u",
+                stan=None,
+                powod_pl="model klasyczny nie ma regulatora napięcia — moduł SEM jest "
+                "strumieniem, nie nastawa",
+                zakres=None,
+                mnoznik=1.0,
+            ),
+        )
+
+    @property
+    def agregat_jednostek(self) -> bool:
+        """Maszyna o parametrach w bazie znamionowej moze byc agregatem identycznych
+        maszyn rownoleglych (moc i bezwladnosc skaluja sie liczba jednostek)."""
+        return True
 
     def parametry_tozsamosci(self) -> dict[str, object]:
         """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""

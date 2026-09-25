@@ -119,6 +119,7 @@ from .siec import (
     czwornik_galezi,
     jakobian_algebry,
     ograniczenia_napiecia,
+    prad_wezla_ograniczonego,
     residuum_algebry,
     zwarcia_galezi_modelu,
 )
@@ -452,6 +453,68 @@ def czestotliwosc_wezla(
     return CzestotliwoscWezla(f_hz=f_hz, niepewnosc_hz=niepewnosc_hz, jakosc=jakosc)
 
 
+def czestotliwosci_wezlow(
+    model: ModelSieci,
+    odbiory: tuple[OdbiorDynamiki, ...],
+    urzadzenia: tuple[Urzadzenie, ...],
+    stany: tuple[np.ndarray, ...],
+    napiecia: np.ndarray,
+    *,
+    f_bazowa_hz: float,
+) -> list[CzestotliwoscWezla]:
+    """Czestotliwosc KAZDEGO wezla w punkcie poza chwila zdarzenia — JEDNA funkcja dla kanalow
+    `f_hz@` (probka `C`) i dla dozorow czestotliwosci (karta AB-1b.1 par. 0 pkt 12).
+
+    Pochodna napiec i obie jej niepewnosci licza sie RAZ, z rozniczkowania rownania
+    algebraicznego; jakobian osobliwy daje NIEDOSTEPNA w kazdym wezle, wezel o napieciu
+    narzuconym zerem — BEZ_NAPIECIA. W chwili zdarzenia (probki `L`, `P`) czestotliwosci
+    nie ma w ogole (kod CHWILA_ZDARZENIA) — tej funkcji sie wtedy nie wola.
+    """
+    try:
+        pomiar = pochodna_napiec_z_niepewnoscia(model, odbiory, urzadzenia, stany, napiecia)
+    except OdmowaDynamiki:
+        return [czestotliwosc_niedostepna(JAKOSC_NIEDOSTEPNA) for _ in model.identy_wezlow]
+    zerowe = set(model.pozycje_zerowe)
+    return [
+        (
+            czestotliwosc_niedostepna(JAKOSC_BEZ_NAPIECIA)
+            if pozycja in zerowe
+            else czestotliwosc_wezla(
+                complex(napiecia[pozycja]),
+                complex(pomiar.pochodna_pu_s[pozycja]),
+                f_bazowa_hz=f_bazowa_hz,
+                niepewnosc_napiecia_pu=float(pomiar.niepewnosc_napiecia_pu[pozycja]),
+                niepewnosc_pochodnej_pu_s=float(pomiar.niepewnosc_pochodnej_pu_s[pozycja]),
+            )
+        )
+        for pozycja in range(model.liczba_wezlow)
+    ]
+
+
+def moc_urzadzenia_pu(
+    model: ModelSieci,
+    odbiory: tuple[OdbiorDynamiki, ...],
+    urzadzenia: tuple[Urzadzenie, ...],
+    stany: tuple[np.ndarray, ...],
+    napiecia: np.ndarray,
+    indeks: int,
+) -> complex:
+    """Moc oddawana do sieci przez urzadzenie `indeks` (konwencja generacji) — JEDNA funkcja
+    dla kanalow `p_pu@`/`q_pu@` i dla dozorow mocy urzadzenia.
+
+    Urzadzenie o sprzezeniu napieciowym nie ma lokalnego wzoru na prad — jego prad jest
+    domknieciem bilansu wezla (`siec.prad_wezla_ograniczonego`).
+    """
+    urzadzenie = urzadzenia[indeks]
+    napiecie = complex(napiecia[model.indeks_wezla[urzadzenie.wezel]])
+    prad = (
+        prad_wezla_ograniczonego(model, odbiory, urzadzenia, stany, napiecia, urzadzenie.wezel)
+        if urzadzenie.sprzezenie == "napieciowe"
+        else urzadzenie.prad_pu(stany[indeks], napiecie)
+    )
+    return napiecie * prad.conjugate()
+
+
 def wielkosci_galezi(
     model: ModelSieci, galaz: GalazDynamiki, napiecia: np.ndarray
 ) -> WielkosciGalezi:
@@ -514,6 +577,8 @@ __all__ = [
     "WielkosciGalezi",
     "czestotliwosc_niedostepna",
     "czestotliwosc_wezla",
+    "czestotliwosci_wezlow",
+    "moc_urzadzenia_pu",
     "pochodna_napiec",
     "pochodna_napiec_z_niepewnoscia",
     "wielkosci_galezi",

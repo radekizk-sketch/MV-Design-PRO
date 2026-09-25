@@ -233,6 +233,22 @@ pomiaru odbiorczego — z zacisku rozstrzygniętego przez model albo wskazanego 
 nazwana); wyjątki: N-1 V12.6 (§12.2 (g), B-01) i reguła ważności ustaleń interpretacji rozpływu
 (§8, WW-1).
 
+**Stan wierszy po karcie AB-1b.1b, pakiety P6–P8 i P10 (2026-09-24; dowody: manifest D-12, D-13,
+D-14, D-20 na L5 — komplet siedmiu elementów, bramki G14, G15, G18, G21, mutacje M22–M25, M31, M33
+w harnessie M10–M37).** Wiersz **5** (część AB-1b.1) — stymulus częstotliwości istnieje: źródło
+testowe U/f/θ (skok i rampa częstotliwości, skok fazy, skok i rampa amplitudy SEM; źródło idealne
+albo za impedancją modelu) w trybie `stanowisko` rozdzielonym od zakłóceń sieci (O-18); ocena
+LFSM-O jako symulacja — AB-2. Wiersz **6** (część D13) — komendy regulacji P/Q/U wykonywane jako
+przypisanie stanu-odniesienia z deklaracji klasy urządzenia (odmowy nazwane dla wielkości, której
+rodzina nie zadaje); tryby cos φ(P), ograniczenia tempa — AB-3. Wiersz **8** — częściowa utrata
+źródła (agregat identycznych jednostek, udział malejąco): EXECUTABLE. Wiersz **9** — skok generacji
+= komenda P; skoki nastaw: EXECUTABLE. Wiersz **27** — emulator U/f/θ i zdarzenia przypisania
+stanu: EXECUTABLE. Wiersz **7** (część) — zdarzenia warunkowe jako prymityw rdzenia (lokalizacja z
+zadeklarowaną tolerancją, akcja w `t*`, zwłoka i kasowanie) z konsumentem produktowym = detektory
+przekroczeń bez akcji (wynik `przekroczenia`); BMS i zabezpieczenia w pętli z nastawami z modelu —
+AB-4a/AB-5 (OD-34). Wiersze **12–14** — bez zmian (AB-5), prymityw jest gotowy. Wiersz **28** — bez
+zmian (AB-1b.2); dokładne chwile przekroczeń z detektorów są wejściem metryk AB-1b.2.
+
 ### 3b. Macierz luk harmonicznych i supraharmonicznych (audyt Opus 5.5, ETAP 5, 2026-09-23)
 
 Pełny raport z sondami P1–P14 i dowodami wykonanymi:
@@ -496,6 +512,7 @@ emisji w punkcie przyłączenia (AB-H1, O-40), T15 (AB-1c), turbiny wiatrowe typ
 | 2026-09-25 | AB-1a Pakiet E2 — sprawdzenie 6 strażnika werdyktu | `7c41ac51`, `73d435c2` | werdykt poza rekordem w trzech kształtach (6a ładunek słownikowy, 6b tekst składany, 6c mapa warunkowa) w Pythonie i TypeScripcie; pola statusu API otypowane słownikami zamkniętymi; plan §8: stan F10–F19, wiersze F21–F24 z tożsamościami z listy dozwolonej | `plan_ab_zaleznosci_guard`, `docs_guard` kod 0; łańcuch partii 2 |
 | 2026-09-25 | karta #142 — komunikaty operacji bez nazw pól kontraktu, kodów wartości i identyfikatorów | `06bfa2f9`, `76f4a676` | `enm/slownik_komunikatow.py` — jedna mapa polskich nazw pól formularza i wartości; treść komunikatu z nazwą elementu z modelu, `error_code` bez zmian; strażnik klasy AST; fikstury harnessu i projekcji nN z generatorów, odcisk widoku N-1 gn01 z dowodem (różnica wyłącznie w odciskach migawki) | łańcuch partii 2 |
 | 2026-09-25 | partia integracji 2 — strażniki po złożeniu kart | `08052491`, `d5f66b6a`, `96a86029`, `8897c082` | mapa etykiet pól w strażniku proweniencji (imienna lista z samotestem zamiast obejścia kształtem), słownik kodów gotowości przegenerowany, piny `test_solver_input_substitute_guard` zmierzone (pola 4033 → 4042, pliki 540 → 542), fikstura `sldNetwork53.ts` z generatora (zmienia się wyłącznie `source_hash`) | łańcuch partii na czubku `8897c082`: `guardy_z_ci.py` KOMPLET ZIELONY (samotesty 2411 passed), fikstury harnessu + OpenAPI 238 passed, `tsc` i lint kod 0, regresja backendu 24 612 passed (1 realny defekt — fikstura `sldNetwork53.ts`, naprawiony w `d5f66b6a`; 90 błędów infrastruktury katalogu tymczasowego powtórzone z prywatnym `--basetemp`: 139 passed), vitest 12 517 passed (868 plików), e2e na realnym backendzie 106 passed (7 speków); zrzuty dowodowe odświeżone (`96a86029`, `8897c082`) — materiał B-02 |
+| 2026-09-24 | AB-1b.1b (P6–P8 + P10: reszta rdzenia zdarzeń dynamiki) | (ten commit) | przypisanie stanu i komenda regulacji P/Q/U (deklaracja `nastawy_regulacji` w każdej klasie urządzenia, `delta_x_nieprzypisane_max` wobec stanów sprzed całej chwili — S19), częściowa utrata źródła (agregat jednostek), źródło testowe U/f/θ i tryb `stanowisko` (reguła reszty mocy na szynie źródła z wytwórcą), zdarzenia warunkowe (dozory) z detektorami przekroczeń w scenariuszu; kontrakt danych (`NastawaDynamiczna`, `UtrataCzesciowaZrodla`, `StanowiskoBadawcze`, `Detektor`), kontrakt wyniku v2 (`przyczyna`, `przypisania`, pomiar lokalizacji, `przekroczenia`, `tryb_scenariusza`) ze schematem; manifest D-12…D-14, D-20 na L5, bramki G14, G15, G18, G21, mutacje M22–M25, M31, M33; strażnik zera domyślek na całym pakiecie rdzenia | meldunek karty AB-1b.1b, `scratchpad/ab1b1b/*.log` |
 
 ## 8. Inwentarz powierzchni z lakonicznym werdyktem i klasyfikacja migracji
 

@@ -89,6 +89,9 @@ NASTAWY_SOLVERA: dict[str, Any] = {
     "max_iteracji_newtona": 40,
     "max_nawrotow": 30,
     "integrator": "trapez_niejawny",
+    # Klucz WYMAGANY, wartosc `None` dozwolona wylacznie dla biegu bez detektorow
+    # (karta AB-1b.1 par. 0 pkt 13) — decyzja wolajacego, nie domysl adaptera.
+    "tolerancja_lokalizacji_zdarzen_s": None,
 }
 
 #: SCENARIUSZ POPRAWIONY (karta AB-1b.1 §0 pkt 4, decyzja zarzadcy — pytanie 4). Dawny
@@ -336,9 +339,13 @@ def test_wszystkie_zdarzenia_wykonane_w_zamrozonych_chwilach(bieg_so1a: WynikDyn
         ("zalaczenie_galezi", "kab-magistrala", T_ZALACZENIA_S, T_ZALACZENIA_S),
     ]
     # Zdarzenie zmienia WYLACZNIE zmienne algebraiczne: stany rozniczkowe sa
-    # ciagle (uklad DAE indeksu 1), wiec kazda niezerowa `delta_x_max` bylaby
-    # skokiem stanu urzadzenia, ktorego zadne rownanie nie przewiduje.
-    assert [z.delta_x_max for z in bieg_so1a.zdarzenia_wykonane] == [0.0] * 6
+    # ciagle (uklad DAE indeksu 1), wiec kazda niezerowa delta bylaby skokiem stanu
+    # urzadzenia, ktorego zadne rownanie nie przewiduje. PRZEPISANY SWIADOMIE (karta
+    # AB-1b.1 S19): dawne `delta_x_max` mierzylo wylacznie brak mutacji kopii stanow w
+    # algebrze; `delta_x_nieprzypisane_max` porownuje stany ze stanami sprzed CALEJ chwili
+    # (zdarzenia, re-inicjalizacja) — deklaracja ciaglosci ma teraz pomiar z trescia.
+    assert [z.delta_x_nieprzypisane_max for z in bieg_so1a.zdarzenia_wykonane] == [0.0] * 6
+    assert {z.przyczyna for z in bieg_so1a.zdarzenia_wykonane} == {"harmonogram"}
     usuniecie = [z for z in bieg_so1a.zdarzenia_wykonane if z.t_wykonany_s == T_USUNIECIA_S]
     spz = [z for z in bieg_so1a.zdarzenia_wykonane if z.t_wykonany_s == T_ZALACZENIA_S]
     assert {z.obszary_odciete for z in usuniecie} == {("b-pole",)}

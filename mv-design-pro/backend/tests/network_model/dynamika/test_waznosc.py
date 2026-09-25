@@ -112,6 +112,7 @@ def test_margines_skaluje_sie_z_liczba_krokow_i_z_granica() -> None:
         horyzont_s=1.0,
         krok_wyjscia_s=0.01,
         integrator="trapez_niejawny",
+        tolerancja_lokalizacji_zdarzen_s=None,
     )
     gesty = NastawySolvera(
         dt_s=0.01,
@@ -125,6 +126,7 @@ def test_margines_skaluje_sie_z_liczba_krokow_i_z_granica() -> None:
         horyzont_s=1.0,
         krok_wyjscia_s=0.01,
         integrator="trapez_niejawny",
+        tolerancja_lokalizacji_zdarzen_s=None,
     )
     assert float(margines_arytmetyczny(dolne, gesty)[0]) == pytest.approx(
         1000.0 * float(margines_arytmetyczny(dolne, rzadki)[0]), rel=1e-12

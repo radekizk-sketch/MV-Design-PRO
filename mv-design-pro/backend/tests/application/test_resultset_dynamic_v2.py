@@ -36,6 +36,7 @@ def _ladunek(**zmiany: Any) -> dict[str, Any]:
     ladunek: dict[str, Any] = {
         "run_id": "bieg-1",
         "dziedzina_fizyki": list(dziedzina_fizyki_dynamiki()),
+        "tryb_scenariusza": "siec",
         "kanaly": [
             {
                 "klucz": "f_hz@b1",
@@ -90,6 +91,32 @@ def test_probka_None_przechodzi_nietknieta_do_serializacji() -> None:
     assert zserializowany["kontrakt"] == "resultset_dynamic_v2"
 
 
+def test_ladunek_bazowy_jest_poprawny() -> None:
+    """Warunek sensu testow odrzucenia nizej: ladunek BEZ zmian przechodzi walidacje —
+    inaczej kazde „odrzucenie" przechodziloby z niewlasciwego powodu."""
+    ResultSetDynamicV2.model_validate(_ladunek())
+
+
+_PRZEKROCZENIE = {
+    "dozor": "u<",
+    "wielkosc": "u_pu@b1",
+    "prog": 0.85,
+    "kierunek": "w_dol",
+    "t_s": 0.1,
+    "szerokosc_przedzialu_s": 0.0,
+    "iteracje": 0,
+}
+
+
+def test_przekroczenia_i_tryb_stanowiska_przechodza_przez_zrzut() -> None:
+    wynik = ResultSetDynamicV2.model_validate(
+        _ladunek(tryb_scenariusza="stanowisko", przekroczenia=[_PRZEKROCZENIE])
+    )
+    zserializowany = zbuduj_resultset_dynamiczny_v2(wynik, z_probkami=False)
+    assert zserializowany["tryb_scenariusza"] == "stanowisko"
+    assert zserializowany["przekroczenia"] == [_PRZEKROCZENIE]
+
+
 @pytest.mark.parametrize(
     "zmiany",
     [
@@ -99,6 +126,11 @@ def test_probka_None_przechodzi_nietknieta_do_serializacji() -> None:
         {"pole_nieznane": 1},
         {"dziedzina_fizyki": ["POWER_FLOW"]},
         {"dziedzina_fizyki": ["RMS_DYNAMICS", "POWER_FLOW"]},
+        {"tryb_scenariusza": "badanie"},
+        {"tryb_scenariusza": None},
+        {"przekroczenia": [{**_PRZEKROCZENIE, "kierunek": "spadek"}]},
+        {"przekroczenia": [{**_PRZEKROCZENIE, "szerokosc_przedzialu_s": -1e-9}]},
+        {"przekroczenia": [{**_PRZEKROCZENIE, "akcje": []}]},
     ],
     ids=[
         "strona_krotsza",
@@ -107,6 +139,11 @@ def test_probka_None_przechodzi_nietknieta_do_serializacji() -> None:
         "pole_nieznane",
         "dziedzina_inna",
         "dziedzina_nadmiarowa",
+        "tryb_spoza_zbioru",
+        "tryb_brak",
+        "kierunek_spoza_slownika_detektora",
+        "szerokosc_ujemna",
+        "przekroczenie_z_polem_nieznanym",
     ],
 )
 def test_kontrakt_odrzuca_niespojnosc(zmiany: dict[str, Any]) -> None:

@@ -162,6 +162,7 @@ class UkladSMIB:
         skok_p_m: tuple[float, float] | None = None,
         okno_zaklocenia: tuple[float, float, complex] | None = None,
         okno_linii: tuple[float, float, float] | None = None,
+        skoki_p_m: tuple[tuple[float, float], ...] = (),
     ) -> dict[str, np.ndarray]:
         """Trajektoria `(delta, omega)` wlasnym integratorem o zmiennym kroku.
 
@@ -169,7 +170,15 @@ class UkladSMIB:
         calkowania na odcinki — nigdy przez zgadywanie kroku ani przez wygladzanie
         nieciaglosci. `metoda` przyjmuje kazda metode `solve_ivp`; drugi
         niezalezny integrator (`Radau`) sluzy do sprawdzenia samego siebie.
+
+        `skoki_p_m` — KILKA skokow mocy mechanicznej (chwila, NOWA wartosc bezwzgledna P_m)
+        w trakcie wahan (twierdzenie D-13: przypisanie stanu w chwili, w ktorej uklad NIE
+        jest w rownowadze); stan `(delta, omega)` przechodzi przez kazdy skok bez zmiany.
         """
+        if skoki_p_m:
+            return self._calkuj_skoki(
+                horyzont_s, skoki_p_m, czasy_wyjscia, rtol=rtol, atol=atol, metoda=metoda
+            )
         pp = self.punkt_pracy()
         e_sys = complex(pp["e_sys"])
         sem = float(pp["sem_modul"])
@@ -280,6 +289,60 @@ class UkladSMIB:
             "t": np.concatenate((r1.t, r2.t)),
             "delta": np.concatenate((r1.y[0], r2.y[0])),
             "omega": np.concatenate((r1.y[1], r2.y[1])),
+        }
+
+    def _calkuj_skoki(
+        self,
+        horyzont_s: float,
+        skoki_p_m: tuple[tuple[float, float], ...],
+        czasy_wyjscia: np.ndarray | None,
+        *,
+        rtol: float,
+        atol: float,
+        metoda: str,
+    ) -> dict[str, np.ndarray]:
+        pp = self.punkt_pracy()
+        e_sys = complex(pp["e_sys"])
+        sem = float(pp["sem_modul"])
+        if czasy_wyjscia is None:
+            czasy_wyjscia = np.linspace(0.0, horyzont_s, 1001)
+
+        def prawa_strona(_t: float, stan: np.ndarray, moc_mech: float) -> list[float]:
+            delta, omega = float(stan[0]), float(stan[1])
+            p_e = self.moc_elektryczna(delta, sem, e_sys)
+            return [
+                self.omega_b * (omega - 1.0),
+                (moc_mech - p_e - self.d_pu * (omega - 1.0)) / (2.0 * self.h_s),
+            ]
+
+        granice = [0.0, *(t for t, _ in skoki_p_m), horyzont_s]
+        moce = [float(pp["p_m"]), *(p for _, p in skoki_p_m)]
+        stan = [float(pp["delta0"]), 1.0]
+        czasy, deltas, omegi = [], [], []
+        for (t0, t1), moc in zip(zip(granice[:-1], granice[1:], strict=True), moce, strict=True):
+            maska = (czasy_wyjscia >= t0) & (czasy_wyjscia < t1)
+            if t1 == horyzont_s:
+                maska |= czasy_wyjscia == t1
+            r = solve_ivp(
+                prawa_strona,
+                (t0, t1),
+                stan,
+                t_eval=czasy_wyjscia[maska],
+                method=metoda,
+                rtol=rtol,
+                atol=atol,
+                args=(moc,),
+                dense_output=True,
+            )
+            assert r.success, r.message
+            czasy.append(r.t)
+            deltas.append(r.y[0])
+            omegi.append(r.y[1])
+            stan = list(r.sol(t1))
+        return {
+            "t": np.concatenate(czasy),
+            "delta": np.concatenate(deltas),
+            "omega": np.concatenate(omegi),
         }
 
     # ---------------------------------------------------- czas krytyczny (R10 par. 17)

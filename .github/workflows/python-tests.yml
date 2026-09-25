@@ -376,8 +376,11 @@ jobs:
     name: Walidacja fizyczna dynamiki — pelny zestaw mutacji
     runs-on: ubuntu-latest
     # Kazda mutacja uruchamia bramki w OSOBNYM procesie na lustrze zrodel; zestaw
-    # jest zawezony do bramek, ktore deklaruje dana mutacja, wiec komplet miesci sie
-    # w kilkunastu minutach. Job jest ODDZIELNY od `pytest`, zeby nie wydluzac bramki
+    # jest zawezony do bramek, ktore deklaruje dana mutacja. POMIAR 2026-09-24 (karta
+    # AB-1b.1b, M10-M37 = 28 mutacji, bramki G1-G21): harness 630 s CPU, aparat z jednego
+    # wejscia (`uruchom`) 823 s CPU — razem ~24 min obliczen + instalacja; prognoza < 35 min,
+    # wiec jeden job (podzial na dwa — parzyste/nieparzyste numery mutacji — dopiero, gdy
+    # pomiar przekroczy 35 min). Job jest ODDZIELNY od `pytest`, zeby nie wydluzac bramki
     # obowiazkowej kazdego PR — ale jest bramka, a nie „przebiegiem na zyczenie":
     # samokontrola harnessu i trzy szybkie zabicia biegna RAZEM z reszta suity
     # (`tests/walidacja_fizyczna/test_mutacje.py`), wiec regresja harnessu jest

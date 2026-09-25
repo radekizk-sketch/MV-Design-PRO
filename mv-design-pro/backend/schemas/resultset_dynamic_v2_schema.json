@@ -136,6 +136,94 @@
       "title": "OdbiorOdcietyV2",
       "type": "object"
     },
+    "PrzekroczenieV2": {
+      "additionalProperties": false,
+      "description": "Chwila przekroczenia progu przez wielkosc DETEKTORA scenariusza (bez akcji).",
+      "properties": {
+        "dozor": {
+          "description": "Identyfikator detektora ze scenariusza.",
+          "minLength": 1,
+          "title": "Dozor",
+          "type": "string"
+        },
+        "iteracje": {
+          "description": "Liczba prób kroku lokalizacji.",
+          "minimum": 0,
+          "title": "Iteracje",
+          "type": "integer"
+        },
+        "kierunek": {
+          "enum": [
+            "w_dol",
+            "w_gore"
+          ],
+          "title": "Kierunek",
+          "type": "string"
+        },
+        "prog": {
+          "description": "Próg w jednostce kanału.",
+          "title": "Prog",
+          "type": "number"
+        },
+        "szerokosc_przedzialu_s": {
+          "description": "Szerokosc przedziału lokalizacji (0 dla chwili zdarzenia).",
+          "minimum": 0.0,
+          "title": "Szerokosc Przedzialu S",
+          "type": "number"
+        },
+        "t_s": {
+          "description": "Chwila przekroczenia (strona po przekroczeniu). Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
+          "title": "T S",
+          "type": "number"
+        },
+        "wielkosc": {
+          "description": "Klucz kanału wyniku, który detektor czyta (ta sama funkcja).",
+          "minLength": 1,
+          "title": "Wielkosc",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dozor",
+        "wielkosc",
+        "prog",
+        "kierunek",
+        "t_s",
+        "szerokosc_przedzialu_s",
+        "iteracje"
+      ],
+      "title": "PrzekroczenieV2",
+      "type": "object"
+    },
+    "PrzypisanieWykonaneV2": {
+      "additionalProperties": false,
+      "description": "Przypisanie stanu wykonane w chwili zdarzenia (przypisanie, komenda regulacji).",
+      "properties": {
+        "adres": {
+          "description": "Adres stanu `urzadzenie.stan`.",
+          "minLength": 1,
+          "title": "Adres",
+          "type": "string"
+        },
+        "po": {
+          "description": "Wartość zadana, przypisana dokładnie.",
+          "title": "Po",
+          "type": "number"
+        },
+        "przed": {
+          "description": "Wartość stanu tuz przed przypisaniem.",
+          "title": "Przed",
+          "type": "number"
+        }
+      },
+      "required": [
+        "adres",
+        "przed",
+        "po"
+      ],
+      "title": "PrzypisanieWykonaneV2",
+      "type": "object"
+    },
     "StopienDowodowyV2": {
       "additionalProperties": false,
       "description": "Mirror JSON `solver_input.provenance.CapabilityEvidence` (rejestr A-2).",
@@ -306,17 +394,53 @@
     },
     "ZdarzenieWykonaneV2": {
       "additionalProperties": false,
-      "description": "Zdarzenie harmonogramu FAKTYCZNIE wykonane przez solver (nie zaplanowane).\n\nSkutki topologiczne CHWILI (wspolne dla zdarzen rownoczesnych, jak pomiar\nre-inicjalizacji): wezly, ktore w tej chwili staly sie beznapieciowe, odbiory,\nktore stracily obwod, i wezly zasilone ponownie.",
+      "description": "Zdarzenie harmonogramu FAKTYCZNIE wykonane przez solver (nie zaplanowane).\n\nSkutki topologiczne CHWILI (wspolne dla zdarzen rownoczesnych, jak pomiar\nre-inicjalizacji): wezly, ktore w tej chwili staly sie beznapieciowe, odbiory,\nktore stracily obwod, i wezly zasilone ponownie. Przypisania stanu (komendy\nregulacji, przypisania) z pomiarem ciaglosci stanow NIEprzypisanych. Zdarzenie\nWARUNKOWE (akcja dozoru) niesie przyczyne `dozor:<ident>` i pomiar lokalizacji.",
       "properties": {
-        "delta_x_max": {
-          "description": "Maks. skok stanu różniczkowego przy re-inicjalizacji.",
-          "title": "Delta X Max",
+        "delta_x_nieprzypisane_max": {
+          "description": "Maks. skok stanu różniczkowego NIEprzypisanego w tej chwili, wobec stanow sprzed całej chwili — 0,0 dokładnie (ciągłość stanow mierzona, nie deklarowana).",
+          "title": "Delta X Nieprzypisane Max",
           "type": "number"
         },
         "delta_y_max": {
           "description": "Maks. skok stanu algebraicznego przy re-inicjalizacji.",
           "title": "Delta Y Max",
           "type": "number"
+        },
+        "g_po": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Wielkość minus próg na prawym koncu przedziału lokalizacji.",
+          "title": "G Po"
+        },
+        "g_przed": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Wielkość minus próg na lewym koncu przedziału lokalizacji.",
+          "title": "G Przed"
+        },
+        "iteracje_lokalizacji": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Liczba prób kroku lokalizacji pobudzenia; None dla planowanego.",
+          "title": "Iteracje Lokalizacji"
         },
         "obszary_odciete": {
           "description": "Węzły, które w tej chwili stały się beznapięciowe.",
@@ -342,6 +466,20 @@
           "title": "Odbiory Odciete",
           "type": "array"
         },
+        "przyczyna": {
+          "description": "`harmonogram` albo `dozor:<ident>` (zdarzenie warunkowe).",
+          "minLength": 1,
+          "title": "Przyczyna",
+          "type": "string"
+        },
+        "przypisania": {
+          "description": "Przypisania stanu wykonane przez ten wpis (adres, przed, po).",
+          "items": {
+            "$ref": "#/$defs/PrzypisanieWykonaneV2"
+          },
+          "title": "Przypisania",
+          "type": "array"
+        },
         "ref": {
           "anyOf": [
             {
@@ -364,25 +502,58 @@
           "title": "Rodzaj",
           "type": "string"
         },
+        "szerokosc_przedzialu_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Szerokosc przedziału lokalizacji pobudzenia; None dla planowanego.",
+          "title": "Szerokosc Przedzialu S"
+        },
         "t_wykonany_s": {
+          "description": "Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
           "title": "T Wykonany S",
           "type": "number"
         },
         "t_zaplanowany_s": {
+          "description": "Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
           "title": "T Zaplanowany S",
           "type": "number"
+        },
+        "t_zlokalizowany_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Chwila pobudzenia dozoru (zdarzenie warunkowe); None dla planowanego. Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
+          "title": "T Zlokalizowany S"
         }
       },
       "required": [
         "t_zaplanowany_s",
         "t_wykonany_s",
         "rodzaj",
-        "delta_x_max",
+        "przyczyna",
+        "delta_x_nieprzypisane_max",
         "delta_y_max",
         "residuum_kcl_max",
         "obszary_odciete",
         "odbiory_odciete",
-        "obszary_zasilone_ponownie"
+        "obszary_zasilone_ponownie",
+        "przypisania",
+        "t_zlokalizowany_s",
+        "szerokosc_przedzialu_s",
+        "iteracje_lokalizacji",
+        "g_przed",
+        "g_po"
       ],
       "title": "ZdarzenieWykonaneV2",
       "type": "object"
@@ -436,6 +607,7 @@
     },
     "os_czasu_s": {
       "default": [],
+      "description": "Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
       "items": {
         "type": "number"
       },
@@ -458,6 +630,14 @@
       },
       "title": "Probki",
       "type": "object"
+    },
+    "przekroczenia": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/PrzekroczenieV2"
+      },
+      "title": "Przekroczenia",
+      "type": "array"
     },
     "run_id": {
       "minLength": 1,
@@ -488,6 +668,14 @@
     "tozsamosc": {
       "$ref": "#/$defs/TozsamoscBieguDynamicznegoV2"
     },
+    "tryb_scenariusza": {
+      "enum": [
+        "siec",
+        "stanowisko"
+      ],
+      "title": "Tryb Scenariusza",
+      "type": "string"
+    },
     "wlasnosci_biegu": {
       "$ref": "#/$defs/WlasnosciBieguV2"
     },
@@ -511,6 +699,7 @@
   "required": [
     "run_id",
     "dziedzina_fizyki",
+    "tryb_scenariusza",
     "wlasnosci_biegu",
     "tozsamosc"
   ],

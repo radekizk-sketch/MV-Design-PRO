@@ -159,6 +159,55 @@ PROGI: dict[str, float] = {
     # Uporzadkowanie osi: `L` bezposrednio przed `P` tej samej chwili, os niemalejaca,
     # czestotliwosc `None` z kodem 3 w obu probkach. Prog 0,0 (predykat, liczba naruszen).
     "G20_naruszenia_osi_i_czestotliwosci": 0.0,
+    # G14 — LOKALIZACJA ZDARZEN WARUNKOWYCH (D-12). Kontrakt: |t* - t_prawdziwe| <=
+    # tolerancja_lokalizacji + ulp(t) (prawy koniec przedzialu po przekroczeniu). Pomiar jest
+    # STOSUNKIEM do tej granicy, bo bieg sprawdza dwie tolerancje (1e-6 i 1e-9 s) naraz —
+    # prog 1,0 to dokladnie kontrakt, bez zapasu, bo trajektoria dyskretna rampy jest
+    # dokladna (D-14), a pierwiastek czlonu inercyjnego ma postac zamknieta. Akcja
+    # wykonana na koncu kroku zamiast w t* daje stosunek rzedu dt/(2 tolerancja) >= 5e3.
+    # Zmierzone 2026-09-24: 0,5 — t* lezy pol tolerancji za pierwiastkiem (krok tolerancji
+    # metody Brenta zamyka przedzial po jednej siecznej trafiajacej w pierwiastek dokladnie).
+    "G14_blad_lokalizacji_wzgl_tolerancji": 1.0,
+    # Kierunek (predykat): dozor `w_dol` pobudza sie wylacznie na zboczu opadajacym,
+    # akcja jednorazowa wykonuje sie raz — liczba niezgodnosci z oczekiwana lista.
+    "G14_pobudzenia_niezgodne_z_kierunkiem": 0.0,
+    # Kasowanie (predykat): zapad 0,25 s krotszy niz zwloka 0,3 s — akcja z kasowaniem nie
+    # wykonuje sie, bez kasowania wykonuje sie raz; liczba niezgodnosci.
+    "G14_akcje_niezgodne_z_kasowaniem": 0.0,
+    # G15 — ZRODLO TESTOWE (D-14). Rownania liniowe, przebiegi odcinkami wielomianowe
+    # stopnia <= 2: trapez i RK4 sa DOKLADNE, zostaje zaokraglenie akumulowane przez ~350
+    # krokow (zmierzone 2026-09-24: 1,6e-15). 1e-12 wzglednie to zapas ~600x; kat bez czlonu
+    # odchylki pulsacji albo rampa bez zerowania tempa daja bledy rzedu 1e-1.
+    "G15_blad_postaci_zamknietej_wzgl": 1.0e-12,
+    # Zrodlo idealne narzuca napiecie wezla wierszem ograniczenia: |V| = |E| co do
+    # kwantyzacji kontraktu (9 cyfr) — liczba probek niezgodnych (predykat).
+    "G15_napiecie_wezla_rozne_od_sem": 0.0,
+    # f wezla zrodla idealnego w probkach C = f_n (1 + dw): ten sam prog co G7 (1e-12 Hz
+    # = ~140 ulp(50 Hz)); zmierzone 7,1e-15 Hz = ulp(50 Hz).
+    "G15_blad_czestotliwosci_zrodla_idealnego_hz": 1.0e-12,
+    # G18 — PRZYPISANIE STANU (D-13). Stany nieprzypisane przez chwile przypisania bitowo
+    # bez zmiany i wartosc przypisana DOKLADNIE zadana: predykaty (0,0). Residuum algebry
+    # po przypisaniu: 1e-9 jak G9 (tolerancja Newtona 1e-11, zapas 100x).
+    "G18_skok_stanow_nieprzypisanych": 0.0,
+    "G18_blad_wartosci_przypisanej": 0.0,
+    "G18_residuum_algebry_po_przypisaniu": 1.0e-9,
+    # Trajektoria kata po dwoch skokach P_m (0,2 s w rownowadze, 0,7 s w trakcie wahan)
+    # wobec `solve_ivp` DOP853 wyroczni: trapez rzedu 2, h = 5e-4 s, horyzont 1,5 s, mod
+    # ~1,3 Hz o amplitudzie ~0,1 rad => blad globalny ~ T h^2/12 max|d3 delta/dt3| ~ 2e-6
+    # rad (zmierzone 2026-09-24: 1,44e-6 rad). Prog 1e-5 rad (zapas ~7x); ponowne wyznaczenie
+    # stanu maszyny z punktu pracy w chwili przypisania (zerowanie odchylki predkosci w
+    # trakcie wahan) daje bledy rzedu 1e-1 rad.
+    "G18_blad_trajektorii_po_przypisaniu_rad": 1.0e-5,
+    # G21 — CZESCIOWA UTRATA (D-20). (a) Agregat z udzialem 0,5 wobec dwoch polow z
+    # odlaczeniem jednej: mnozenie przez 0,5 i dzielenie przez 2 sa dokladne w arytmetyce
+    # dwojkowej — zostaje rozklad LU macierzy o innym wymiarze (rzad 1e-15; zmierzone
+    # 2026-09-24: 0,0 bitowo dla przeksztaltnika nadaznego i maszyny klasycznej); 1e-12 to zapas.
+    "G21_blad_rownowaznosci_agregatu_wzgl": 1.0e-12,
+    # (b) Przyspieszenie maszyn w t = 0+ po utracie 40 % pradu PV wobec algebry wyroczni
+    # (siec liniowa w chwili zdarzenia) — ta sama wielkosc dwiema drogami, jak G3: 1e-9
+    # (zmierzone 2026-09-24: 5,9e-15 dla maszyn, 5,2e-15 dla srodka bezwladnosci).
+    "G21_blad_rocof_maszyn_po_utracie_wzgl": 1.0e-9,
+    "G21_blad_rocof_srodka_bezwladnosci_wzgl": 1.0e-9,
 }
 
 
@@ -1266,6 +1315,590 @@ def g20_probki_obustronne() -> dict[str, float]:
     }
 
 
+# --------------------------------------------------------------------------- AB-1b.1 P6-P8
+#: Czestotliwosc i baza ukladu wzorcow P6-P8 (te same, co w `stanowisko`).
+F_N_HZ = stanowisko.F_BAZOWA_HZ
+
+
+def siec_zrodla_testowego(impedancja_pu: complex | None) -> dict:
+    """Zrodlo testowe w SRC -> linia -> odbior stalej mocy w ODB; punkt pracy dokladny.
+
+    Napiecie SRC = 1,0 pu (dla zrodla idealnego rowne SEM); napiecie ODB z rownania wezla
+    rozwiazanego iteracja punktu stalego do zbieznosci w arytmetyce (odbior stalej mocy).
+    """
+    from network_model.solvers.dynamika.urzadzenia import zbuduj_zrodlo_testowe
+
+    wezly = (WezelDynamiki("SRC", stanowisko.U_N_KV), WezelDynamiki("ODB", stanowisko.U_N_KV))
+    y_linii = 1.0 / complex(0.01, 0.05)
+    galezie = (GalazDynamiki("L", "SRC", "ODB", y_linii, 0.0, 1 + 0j, True, "linia"),)
+    odbior = complex(0.3, 0.1)
+    v_src = complex(1.0, 0.0)
+    v_odb = complex(1.0, 0.0)
+    for _ in range(200):
+        v_odb = (-odbior.conjugate() / v_odb.conjugate() + y_linii * v_src) / y_linii
+    prad_src = (v_src - v_odb) * y_linii
+    zrodlo = zbuduj_zrodlo_testowe(
+        ident="ZT", wezel="SRC", impedancja_pu=impedancja_pu, f_bazowa_hz=F_N_HZ
+    )
+    return {
+        "wezly": wezly,
+        "galezie": galezie,
+        "odbiory": (OdbiorDynamiki("O1", "ODB", odbior.real, odbior.imag),),
+        "urzadzenia": (zrodlo,),
+        "punkt_pracy": PunktPracy(
+            {"SRC": v_src, "ODB": v_odb}, {"ZT": v_src * prad_src.conjugate()}
+        ),
+        "sem_0": v_src if impedancja_pu is None else v_src + impedancja_pu * prad_src,
+    }
+
+
+def _stosunek_do_tolerancji(blad_s: float, tolerancja_s: float, t_s: float) -> float:
+    """|blad| / (tolerancja + ulp(t)) — prog lokalizacji kontraktu D-12 jako stosunek."""
+    return abs(blad_s) / (tolerancja_s + math.ulp(t_s))
+
+
+def g14_lokalizacja_zdarzen_warunkowych() -> dict[str, float]:
+    """Lokalizacja i wykonanie zdarzen warunkowych (D-12) wobec postaci zamknietych.
+
+    (a) Rampa amplitudy zrodla idealnego (1,0 -> tempo -0,4 pu/s od 0,2 s) przez prog
+        0,85: `t_true` z postaci zamknietej, trajektoria dyskretna bez bledu (D-14), wiec
+        |t* - t_true| <= tolerancja + ulp — dla detektora i dla chwili WYKONANIA akcji
+        (zatrzymanie rampy), tolerancje 1e-6 i 1e-9 s, trapez i RK4.
+    (b) Czlon inercyjny `dx/dt = (1 - x)/T` przez prog 0,6: pierwiastek TRAJEKTORII
+        DYSKRETNEJ trapezu w postaci zamknietej; |t* - t_dyskretne| <= tolerancja + ulp.
+    (c) Kierunek: dozor `w_dol` pobudza sie wylacznie na zboczu opadajacym (liczba pobudzen
+        niezgodnych z oczekiwanymi — predykat).
+    (d) Zwloka 0,3 s przy zapadzie 0,25 s: z kasowaniem akcja NIE wykonuje sie, bez
+        kasowania — wykonuje sie w t* + 0,3 s (liczba niezgodnosci — predykat).
+    """
+    from network_model.solvers.dynamika import PrzypisanieStanu
+    from network_model.solvers.dynamika.dozory import Dozor, ModulNapieciaWezla, StanUrzadzenia
+    from network_model.solvers.dynamika.urzadzenia import RampaNapiecia, rozwin_profil
+
+    from .wyrocznia_zdarzen import (
+        chwila_przeciecia_rampy,
+        pierwiastek_kroku_trapezu,
+        wezel_trajektorii_trapezu,
+    )
+
+    stosunek = 0.0
+    niezgodne_kierunki = 0
+    niezgodne_kasowania = 0
+    uklad = siec_zrodla_testowego(None)
+    zatrzymaj = (
+        PrzypisanieStanu(t_s=0.0, urzadzenie="ZT", stan="sem_modul_tempo_pu_na_s", wartosc=0.0),
+    )
+    # Rampa 0,2-0,7 s (1,0 -> 0,8 pu) przecina prog 0,85 w 0,575 s i konczy sie PRZED
+    # horyzontem 1 s (segment profilu poza horyzontem to odmowa rozwiniecia harmonogramu).
+    rampa = rozwin_profil("ZT", (RampaNapiecia(0.2, -0.4, 0.5),), f_bazowa_hz=F_N_HZ)
+    t_true = chwila_przeciecia_rampy(1.0, 0.2, -0.4, 0.85)
+    for tolerancja in (1e-6, 1e-9):
+        for integrator in ("trapez_niejawny", "rk4_jawny"):
+            dozory = (
+                Dozor("detektor", ModulNapieciaWezla("SRC"), 0.85, "w_dol", 0.0, False, (), False),
+                Dozor(
+                    "akcja", ModulNapieciaWezla("SRC"), 0.85, "w_dol", 0.0, False, zatrzymaj, True
+                ),
+            )
+            wynik = stanowisko.uruchom(
+                uklad,
+                rampa,
+                dozory,
+                horyzont_s=1.0,
+                dt_s=0.01,
+                krok_wyjscia_s=0.05,
+                integrator=integrator,
+                tolerancja_lokalizacji_zdarzen_s=tolerancja,
+            )
+            przekroczenia = [(p.dozor, p.kierunek) for p in wynik.przekroczenia]
+            niezgodne_kierunki += int(przekroczenia != [("detektor", "w_dol")])
+            for przekroczenie in wynik.przekroczenia:
+                stosunek = max(
+                    stosunek,
+                    _stosunek_do_tolerancji(przekroczenie.t_s - t_true, tolerancja, t_true),
+                )
+            akcje = [z for z in wynik.zdarzenia_wykonane if z.przyczyna == "dozor:akcja"]
+            niezgodne_kierunki += int(len(akcje) != 1)
+            for akcja in akcje:
+                stosunek = max(
+                    stosunek,
+                    _stosunek_do_tolerancji(akcja.t_wykonany_s - t_true, tolerancja, t_true),
+                )
+    # (b) czlon inercyjny: trapez, krok staly 0,01 s, T = 0,05 s.
+    stala, krok, prog = 0.05, 0.01, 0.6
+    for tolerancja in (1e-6, 1e-9):
+        wynik = _bieg_czlonu_inercyjnego(stala, krok, prog, tolerancja)
+        (przekroczenie,) = wynik.przekroczenia
+        n = int(przekroczenie.t_s // krok)
+        x_n = wezel_trajektorii_trapezu(0.0, 1.0, stala, krok, n)
+        t_dyskretne = n * krok + pierwiastek_kroku_trapezu(x_n, 1.0, stala, prog)
+        stosunek = max(
+            stosunek,
+            _stosunek_do_tolerancji(przekroczenie.t_s - t_dyskretne, tolerancja, t_dyskretne),
+        )
+    # (d) zapad krotszy niz zwloka.
+    zapad = rozwin_profil(
+        "ZT", (RampaNapiecia(0.2, -0.4, 0.5), RampaNapiecia(0.7, 0.4, 0.5)), f_bazowa_hz=F_N_HZ
+    )
+    for kasowanie, oczekiwane in ((True, 0), (False, 1)):
+        wynik = stanowisko.uruchom(
+            uklad,
+            zapad,
+            (
+                Dozor(
+                    "zwloka",
+                    ModulNapieciaWezla("SRC"),
+                    0.85,
+                    "w_dol",
+                    0.3,
+                    kasowanie,
+                    zatrzymaj,
+                    True,
+                ),
+            ),
+            horyzont_s=1.3,
+            dt_s=0.01,
+            krok_wyjscia_s=0.05,
+            tolerancja_lokalizacji_zdarzen_s=1e-9,
+        )
+        akcje = [z for z in wynik.zdarzenia_wykonane if z.przyczyna == "dozor:zwloka"]
+        niezgodne_kasowania += int(len(akcje) != oczekiwane)
+        for akcja in akcje:
+            stosunek = max(
+                stosunek,
+                _stosunek_do_tolerancji(akcja.t_wykonany_s - (t_true + 0.3), 1e-9, t_true + 0.3),
+            )
+    _ = StanUrzadzenia  # wielkosc stanu uzyta w (b) przez `_bieg_czlonu_inercyjnego`
+    return {
+        "G14_blad_lokalizacji_wzgl_tolerancji": float(stosunek),
+        "G14_pobudzenia_niezgodne_z_kierunkiem": float(niezgodne_kierunki),
+        "G14_akcje_niezgodne_z_kasowaniem": float(niezgodne_kasowania),
+    }
+
+
+class CzlonInercyjny:
+    """Atrapa urzadzenia `dx/dt = (x_inf - x)/T` bez sprzezenia z siecia (prad zerowy).
+
+    Stan `x_pu` jest zadeklarowany jako bez rownowagi (startuje z x_0 != x_inf), wiec bramka
+    rownowagi go nie wymaga. Rownanie liniowe: jeden krok trapezu dlugosci `tau` ma postac
+    zamknieta (`wyrocznia_zdarzen.pierwiastek_kroku_trapezu`).
+    """
+
+    POLA_POZA_ODCISKIEM: tuple = ()
+
+    def __init__(self, stala_czasowa_s: float) -> None:
+        self.ident = "LAG"
+        self.wezel = "SYS"
+        self.stala_czasowa_s = stala_czasowa_s
+
+    sprzezenie = "pradowe"
+    nazwy_stanow = ("x_pu",)
+    granice_stanow = (None,)
+    zakresy_waznosci = (None,)
+    stany_bez_rownowagi = ("x_pu",)
+    stany_przypisywalne: tuple[str, ...] = ()
+    agregat_jednostek = False
+
+    @property
+    def nastawy_regulacji(self) -> tuple:
+        from network_model.solvers.dynamika.kontrakty import WIELKOSCI_NASTAW, NastawaRegulacji
+
+        return tuple(
+            NastawaRegulacji(wielkosc, None, "atrapa bez regulatora", None, 1.0)
+            for wielkosc in WIELKOSCI_NASTAW
+        )
+
+    def parametry_tozsamosci(self) -> dict:
+        return {"stala_czasowa_s": self.stala_czasowa_s}
+
+    def stan_poczatkowy(self, napiecie_pu: complex, moc_pu: complex) -> np.ndarray:
+        return np.array([0.0])
+
+    def pochodne(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return np.array([(1.0 - float(stan[0])) / self.stala_czasowa_s])
+
+    def jakobian_stan_stan(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return np.array([[-1.0 / self.stala_czasowa_s]])
+
+    def jakobian_stan_napiecie(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return np.zeros((1, 2))
+
+    def prad_pu(self, stan: np.ndarray, napiecie_pu: complex) -> complex:
+        return 0j
+
+    def jakobian_prad_napiecie(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return np.zeros((2, 2))
+
+    def jakobian_prad_stan(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return np.zeros((2, 1))
+
+    def napiecie_bez_obciazenia(self, stan: np.ndarray) -> complex:
+        return 0j
+
+    def jakobian_napiecia_bez_obciazenia(self, stan: np.ndarray) -> np.ndarray:
+        return np.zeros((2, 1))
+
+
+def _bieg_czlonu_inercyjnego(stala: float, krok: float, prog: float, tolerancja: float):
+    from network_model.solvers.dynamika.dozory import Dozor, StanUrzadzenia
+
+    uklad = stanowisko.zbuduj()
+    wejscie = WejscieDynamiki(
+        wezly=uklad["wezly"],
+        galezie=uklad["galezie"],
+        odsprzegi=(),
+        odbiory=(),
+        urzadzenia=(*uklad["urzadzenia"], CzlonInercyjny(stala)),
+        punkt_pracy=PunktPracy(
+            dict(uklad["punkt_pracy"].napiecia_pu),
+            {**uklad["punkt_pracy"].moce_zrodel_pu, "LAG": 0j},
+        ),
+        harmonogram=HarmonogramDynamiki(
+            (),
+            (Dozor("lag", StanUrzadzenia("LAG", "x_pu"), prog, "w_gore", 0.0, False, (), True),),
+        ),
+        nastawy=stanowisko.nastawy(
+            dt_s=krok,
+            horyzont_s=0.2,
+            krok_wyjscia_s=krok,
+            tolerancja_lokalizacji_zdarzen_s=tolerancja,
+        ),
+        s_bazowa_mva=stanowisko.S_BAZOWA_MVA,
+        f_bazowa_hz=F_N_HZ,
+    )
+    return SilnikDynamiki(wejscie).uruchom()
+
+
+#: Profil sondy 7 karty: skok U 1,0 -> 0,5 pu w 0,2 s; rampa 0,5 -> 0,9 pu od 1,0 s z tempem
+#: 0,4 pu/s; skok fazy 30 st. w 1,5 s; rampa f 0,5 Hz/s przez 1 s od 2,0 s.
+def _profil_sondy_7():
+    from network_model.solvers.dynamika.urzadzenia import (
+        RampaCzestotliwosci,
+        RampaNapiecia,
+        SkokFazy,
+        SkokNapiecia,
+    )
+
+    return (
+        SkokNapiecia(0.2, 0.5),
+        RampaNapiecia(1.0, 0.4, 1.0),
+        SkokFazy(1.5, 30.0),
+        RampaCzestotliwosci(2.0, 0.5, 1.0),
+    )
+
+
+#: Te same segmenty w zapisie wyroczni (rodzaj, t, wartosc, czas trwania) — wpisane jawnie.
+PROFIL_SONDY_7_WYROCZNIA = (
+    ("skok_u", 0.2, 0.5, 0.0),
+    ("rampa_u", 1.0, 0.4, 1.0),
+    ("skok_fazy", 1.5, 30.0, 0.0),
+    ("rampa_f", 2.0, 0.5, 1.0),
+)
+
+
+def g15_zrodlo_testowe() -> dict[str, float]:
+    """Zrodlo testowe (D-14): |E|, theta + phi, dw wobec postaci zamknietej odcinkami
+    wielomianowej (zrodlo idealne i za impedancja, trapez i RK4); dla Z = 0 napiecie wezla
+    = |E| po kwantyzacji do 9 cyfr, a `f_hz` probek C = f_n (1 + dw)."""
+    from network_model.solvers.dynamika.urzadzenia import rozwin_profil
+
+    from .wyrocznia_zdarzen import profil_zamkniety
+
+    blad = 0.0
+    niezgodne_napiecia = 0
+    blad_f = 0.0
+    for impedancja in (None, complex(0.001, 0.02)):
+        uklad = siec_zrodla_testowego(impedancja)
+        sem_0 = complex(uklad["sem_0"])
+        for integrator in ("trapez_niejawny", "rk4_jawny"):
+            wynik = stanowisko.uruchom(
+                uklad,
+                rozwin_profil("ZT", _profil_sondy_7(), f_bazowa_hz=F_N_HZ),
+                horyzont_s=3.5,
+                dt_s=0.01,
+                krok_wyjscia_s=0.05,
+                integrator=integrator,
+            )
+            probki = wynik.probki
+            for i, (t, strona) in enumerate(
+                zip(wynik.os_czasu_s, wynik.strona_probki, strict=True)
+            ):
+                m, kat, odchylka = profil_zamkniety(
+                    PROFIL_SONDY_7_WYROCZNIA,
+                    m_0=abs(sem_0),
+                    kat_0_rad=cmath.phase(sem_0),
+                    f_n_hz=F_N_HZ,
+                    t_s=t,
+                    strona=strona,
+                )
+                kat_produktu = (
+                    probki["sem_kat_rad@ZT"][i] + probki["sem_przesuniecie_fazy_rad@ZT"][i]
+                )
+                blad = max(
+                    blad,
+                    abs(probki["sem_modul_pu@ZT"][i] - m) / abs(m),
+                    abs(kat_produktu - kat) / max(abs(kat), 1.0),
+                    abs(probki["odchylka_pulsacji_pu@ZT"][i] - odchylka),
+                )
+                if impedancja is None:
+                    niezgodne_napiecia += int(
+                        f"{probki['u_pu@SRC'][i]:.9g}" != f"{probki['sem_modul_pu@ZT'][i]:.9g}"
+                    )
+                    if strona == "C":
+                        blad_f = max(
+                            blad_f,
+                            abs(
+                                probki["f_hz@SRC"][i]
+                                - F_N_HZ * (1.0 + probki["odchylka_pulsacji_pu@ZT"][i])
+                            ),
+                        )
+    return {
+        "G15_blad_postaci_zamknietej_wzgl": float(blad),
+        "G15_napiecie_wezla_rozne_od_sem": float(niezgodne_napiecia),
+        "G15_blad_czestotliwosci_zrodla_idealnego_hz": float(blad_f),
+    }
+
+
+#: Skoki P_m wzorca D-13: w 0,2 s (uklad w rownowadze) i w 0,7 s (w trakcie wahan).
+SKOKI_P_M_D13 = ((0.2, 0.9), (0.7, 0.75))
+
+
+def g18_przypisanie_stanu() -> dict[str, float]:
+    """Przypisanie stanu (D-13): stany nieprzypisane BITOWO ciagle, przypisany = zadany,
+    algebra po przypisaniu rozwiazana, trajektoria kata wobec niezaleznego `solve_ivp`."""
+    from network_model.solvers.dynamika import PrzypisanieStanu
+
+    zdarzenia = tuple(
+        PrzypisanieStanu(t_s=t, urzadzenie="G1", stan="p_mechaniczna_pu", wartosc=p)
+        for t, p in SKOKI_P_M_D13
+    )
+    wynik = stanowisko.uruchom(
+        stanowisko.zbuduj(), zdarzenia, horyzont_s=1.5, dt_s=5e-4, krok_wyjscia_s=5e-3
+    )
+    skok = max(z.delta_x_nieprzypisane_max for z in wynik.zdarzenia_wykonane)
+    blad_wartosci = max(
+        abs(z.przypisania[0].po - p)
+        for z, (_, p) in zip(wynik.zdarzenia_wykonane, SKOKI_P_M_D13, strict=True)
+    )
+    residuum = max(z.residuum_kcl_max for z in wynik.zdarzenia_wykonane)
+    t = stanowisko.czas(wynik, strony=stanowisko.SIATKA_PRAWOSTRONNA)
+    delta = stanowisko.szereg(wynik, "delta_rad@G1", strony=stanowisko.SIATKA_PRAWOSTRONNA)
+    wyrocznia = UkladSMIB().calkuj(horyzont_s=1.5, czasy_wyjscia=t, skoki_p_m=SKOKI_P_M_D13)
+    return {
+        "G18_skok_stanow_nieprzypisanych": float(skok),
+        "G18_blad_wartosci_przypisanej": float(blad_wartosci),
+        "G18_residuum_algebry_po_przypisaniu": float(residuum),
+        "G18_blad_trajektorii_po_przypisaniu_rad": float(
+            np.max(np.abs(delta - wyrocznia["delta"]))
+        ),
+    }
+
+
+def _uklad_agregatu(dwie_polowy: bool, rodzina: str):
+    """GFL (statyzmy zerowe) albo maszyna klasyczna na szynie GEN z szyna sztywna w SYS:
+    jeden agregat albo dwie identyczne polowy (baza znamionowa polowy)."""
+    from tests.network_model.dynamika import biblioteka_urzadzen as b
+
+    if rodzina == "gfl":
+
+        def urzadzenie(ident: str, s_n: float):
+            return b.przeksztaltnik_gfl(
+                ident=ident, s_n_mva=s_n, droop_p_f_pu=0.0, droop_q_u_pu=0.0
+            )
+
+        s_n, p_pu = 30.0, 0.25
+    else:
+
+        def urzadzenie(ident: str, s_n: float):
+            return zbuduj_maszyne_klasyczna(
+                ident=ident,
+                wezel="GEN",
+                s_n_mva=s_n,
+                h_s=3.5,
+                d_pu=0.0,
+                x_prim_pu=0.3,
+                ra_pu=0.0,
+                s_bazowa_mva=stanowisko.S_BAZOWA_MVA,
+                f_bazowa_hz=F_N_HZ,
+            )
+
+        s_n, p_pu = 100.0, 0.8
+    podstawa = b.zloz_uklad(urzadzenie("A", s_n), p_pu=p_pu)
+    moc = podstawa.moc_gen_pu
+    if not dwie_polowy:
+        urzadzenia = (podstawa.urzadzenie, podstawa.szyna)
+        moce = {"A": moc}
+    else:
+        urzadzenia = (urzadzenie("B1", s_n / 2.0), urzadzenie("B2", s_n / 2.0), podstawa.szyna)
+        moce = {"B1": moc / 2.0, "B2": moc / 2.0}
+    return WejscieDynamiki(
+        wezly=podstawa.wezly,
+        galezie=podstawa.galezie,
+        odsprzegi=(),
+        odbiory=(),
+        urzadzenia=urzadzenia,
+        punkt_pracy=PunktPracy(
+            dict(podstawa.punkt_pracy.napiecia_pu),
+            {**moce, "SYS1": podstawa.punkt_pracy.moce_zrodel_pu["SYS1"]},
+        ),
+        harmonogram=HarmonogramDynamiki(()),
+        nastawy=stanowisko.nastawy(dt_s=1e-3, horyzont_s=0.6, krok_wyjscia_s=5e-3),
+        s_bazowa_mva=stanowisko.S_BAZOWA_MVA,
+        f_bazowa_hz=F_N_HZ,
+    )
+
+
+def zmierz_rownowaznosc_agregatu(rodzina: str) -> float:
+    """D-20 (a): agregat z udzialem 0,5 == dwie identyczne polowy z odlaczeniem jednej."""
+    import dataclasses
+
+    from network_model.solvers.dynamika import OdlaczenieZrodla, UtrataCzesciowaZrodla
+
+    agregat = dataclasses.replace(
+        _uklad_agregatu(False, rodzina),
+        harmonogram=HarmonogramDynamiki(
+            (UtrataCzesciowaZrodla(t_s=0.2, zrodlo="A", udzial_pozostaly=0.5),)
+        ),
+    )
+    polowy = dataclasses.replace(
+        _uklad_agregatu(True, rodzina),
+        harmonogram=HarmonogramDynamiki((OdlaczenieZrodla(t_s=0.2, zrodlo="B2"),)),
+    )
+    a = SilnikDynamiki(agregat).uruchom()
+    p = SilnikDynamiki(polowy).uruchom()
+    assert a.os_czasu_s == p.os_czasu_s and a.strona_probki == p.strona_probki
+    blad = 0.0
+    for i, t in enumerate(a.os_czasu_s):
+        for wezel in ("GEN", "SYS"):
+            va = cmath.rect(
+                a.probki[f"u_pu@{wezel}"][i], math.radians(a.probki[f"kat_deg@{wezel}"][i])
+            )
+            vp = cmath.rect(
+                p.probki[f"u_pu@{wezel}"][i], math.radians(p.probki[f"kat_deg@{wezel}"][i])
+            )
+            blad = max(blad, abs(va - vp) / abs(va))
+        po_utracie = t > 0.2 or (t == 0.2 and a.strona_probki[i] == "P")
+        moc_p = p.probki["p_pu@B1"][i] + (0.0 if po_utracie else p.probki["p_pu@B2"][i])
+        moc_q = p.probki["q_pu@B1"][i] + (0.0 if po_utracie else p.probki["q_pu@B2"][i])
+        blad = max(
+            blad,
+            abs(complex(a.probki["p_pu@A"][i], a.probki["q_pu@A"][i]) - complex(moc_p, moc_q))
+            / abs(complex(a.probki["p_pu@A"][i], a.probki["q_pu@A"][i])),
+        )
+    return blad
+
+
+#: Wyspa D-20 (b): dwie maszyny klasyczne (A, B), przeksztaltnik nadazny (C), odbiory jako
+#: admitancje. Parametry wpisane jawnie po stronie wzorca i wyroczni.
+WYSPA_D20 = {
+    "maszyny": (
+        ("GA", "A", 3.0, 0.3, cmath.rect(1.05, 0.2)),
+        ("GB", "B", 5.0, 0.25, cmath.rect(1.03, 0.1)),
+    ),
+    "linie": (("AC", "A", "C", 0.02, 0.2), ("BC", "B", "C", 0.015, 0.15)),
+    "odbiory": (("OC", "C", 0.9, -0.2), ("OA", "A", 0.3, -0.05)),
+    "prad_pv": complex(0.2, -0.05),
+    "udzial": 0.6,
+}
+
+
+def g21_utrata_czesciowa() -> dict[str, float]:
+    """Czesciowa utrata zrodla (D-20): (a) rownowaznosc agregatu (GFL i maszyna klasyczna);
+    (b) przyspieszenie kazdej maszyny wyspy w t = 0+ po utracie 40 % pradu PV wobec algebry
+    wyroczni (siec liniowa: maszyny jako SEM za X', PV jako zrodlo pradu, odbiory jako
+    admitancje) oraz przyspieszenie srodka bezwladnosci `-dP / (2 sum H)`."""
+    from network_model.solvers.dynamika import UtrataCzesciowaZrodla
+
+    from tests.network_model.dynamika import biblioteka_urzadzen as b
+
+    rownowaznosc = max(zmierz_rownowaznosc_agregatu(r) for r in ("gfl", "maszyna_klasyczna"))
+
+    wezly = ("A", "B", "C")
+    galezie = tuple(
+        GalazPi(od, do, 1.0 / complex(r, x), 0.0) for _, od, do, r, x in WYSPA_D20["linie"]
+    )
+    boczniki = tuple((wezel, complex(g, b_)) for _, wezel, g, b_ in WYSPA_D20["odbiory"])
+    nortony = tuple(
+        ZrodloNortona(wezel, sem, 1.0 / complex(0.0, x))
+        for _, wezel, _, x, sem in WYSPA_D20["maszyny"]
+    )
+    prad_pv = complex(WYSPA_D20["prad_pv"])
+    przed = rozwiaz_siec_liniowa(
+        wezly, galezie, boczniki, nortony, zrodla_pradowe=(("C", prad_pv),)
+    )
+    po = rozwiaz_siec_liniowa(
+        wezly, galezie, boczniki, nortony, zrodla_pradowe=(("C", WYSPA_D20["udzial"] * prad_pv),)
+    )
+
+    def moc_maszyny(napiecia: dict[str, complex], wezel: str, sem: complex, x: float) -> float:
+        return float((sem * ((sem - napiecia[wezel]) / complex(0.0, x)).conjugate()).real)
+
+    urzadzenia = []
+    moce = {}
+    for ident, wezel, h, x, sem in WYSPA_D20["maszyny"]:
+        urzadzenia.append(
+            zbuduj_maszyne_klasyczna(
+                ident=ident,
+                wezel=wezel,
+                s_n_mva=stanowisko.S_BAZOWA_MVA,
+                h_s=h,
+                d_pu=0.0,
+                x_prim_pu=x,
+                ra_pu=0.0,
+                s_bazowa_mva=stanowisko.S_BAZOWA_MVA,
+                f_bazowa_hz=F_N_HZ,
+            )
+        )
+        prad = (sem - przed[wezel]) / complex(0.0, x)
+        moce[ident] = przed[wezel] * prad.conjugate()
+    urzadzenia.append(b.przeksztaltnik_gfl(ident="PV", wezel="C"))
+    moce["PV"] = przed["C"] * prad_pv.conjugate()
+    wejscie = WejscieDynamiki(
+        wezly=tuple(WezelDynamiki(w, stanowisko.U_N_KV) for w in wezly),
+        galezie=tuple(
+            GalazDynamiki(ident, od, do, 1.0 / complex(r, x), 0.0, 1 + 0j, True, "linia")
+            for ident, od, do, r, x in WYSPA_D20["linie"]
+        ),
+        odsprzegi=tuple(
+            OdsprzegDynamiki(ident, wezel, g, b_, True)
+            for ident, wezel, g, b_ in WYSPA_D20["odbiory"]
+        ),
+        odbiory=(),
+        urzadzenia=tuple(urzadzenia),
+        punkt_pracy=PunktPracy(dict(przed), moce),
+        harmonogram=HarmonogramDynamiki(
+            (UtrataCzesciowaZrodla(t_s=0.0, zrodlo="PV", udzial_pozostaly=WYSPA_D20["udzial"]),)
+        ),
+        nastawy=stanowisko.nastawy(dt_s=1e-3, horyzont_s=0.01, krok_wyjscia_s=1e-3),
+        s_bazowa_mva=stanowisko.S_BAZOWA_MVA,
+        f_bazowa_hz=F_N_HZ,
+    )
+    wynik = SilnikDynamiki(wejscie).uruchom()
+    i_p = stanowisko.indeks_probki(wynik, 0.0, "P")
+    blad = 0.0
+    suma_2h_rocof_produkt = 0.0
+    dp = 0.0
+    suma_h = 0.0
+    for ident, wezel, h, x, sem in WYSPA_D20["maszyny"]:
+        p_m = moc_maszyny(przed, wezel, sem, x)
+        p_e = moc_maszyny(po, wezel, sem, x)
+        wyrocznia = (p_m - p_e) / (2.0 * h)
+        produkt = (
+            wynik.probki[f"p_mechaniczna_pu@{ident}"][i_p] - wynik.probki[f"p_pu@{ident}"][i_p]
+        ) / (2.0 * h)
+        blad = max(blad, abs(produkt - wyrocznia) / abs(wyrocznia))
+        suma_2h_rocof_produkt += 2.0 * h * produkt
+        dp += p_e - p_m
+        suma_h += h
+    rocof_srodka = suma_2h_rocof_produkt / (2.0 * suma_h)
+    blad_srodka = abs(rocof_srodka - (-dp / (2.0 * suma_h))) / abs(dp / (2.0 * suma_h))
+    return {
+        "G21_blad_rownowaznosci_agregatu_wzgl": float(rownowaznosc),
+        "G21_blad_rocof_maszyn_po_utracie_wzgl": float(blad),
+        "G21_blad_rocof_srodka_bezwladnosci_wzgl": float(blad_srodka),
+    }
+
+
 BRAMKI = (
     g1_dryf_stanu_ustalonego,
     g2_g4_mod_elektromechaniczny,
@@ -1284,6 +1917,10 @@ BRAMKI = (
     g17_obszar_beznapieciowy,
     g19_predykat_izolacji,
     g20_probki_obustronne,
+    g14_lokalizacja_zdarzen_warunkowych,
+    g15_zrodlo_testowe,
+    g18_przypisanie_stanu,
+    g21_utrata_czesciowa,
 )
 
 

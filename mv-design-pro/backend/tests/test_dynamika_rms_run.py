@@ -269,6 +269,7 @@ class TestBudowaWidokowOdczytu:
         wynik = ResultSetDynamicV2(
             run_id=str(run_id),
             dziedzina_fizyki=dziedzina_fizyki_dynamiki(),
+            tryb_scenariusza="siec",
             wlasnosci_biegu=WlasnosciBieguV2(
                 zbiegl=True,
                 kroki=10,
@@ -311,6 +312,8 @@ class TestBudowaWidokowOdczytu:
             KanalDynamicznyV2,
             MetrykaDynamicznaV2,
             OdbiorOdcietyV2,
+            PrzekroczenieV2,
+            PrzypisanieWykonaneV2,
             ResultSetDynamicV2,
             StopienDowodowyV2,
             TozsamoscBieguDynamicznegoV2,
@@ -323,6 +326,7 @@ class TestBudowaWidokowOdczytu:
         wynik = ResultSetDynamicV2(
             run_id=str(uuid4()),
             dziedzina_fizyki=dziedzina_fizyki_dynamiki(),
+            tryb_scenariusza="siec",
             kanaly=(
                 KanalDynamicznyV2(
                     klucz="u_pu@b1",
@@ -341,12 +345,53 @@ class TestBudowaWidokowOdczytu:
                     t_wykonany_s=0.001,
                     rodzaj="zwarcie",
                     ref="b1",
-                    delta_x_max=1e-6,
+                    przyczyna="harmonogram",
+                    delta_x_nieprzypisane_max=0.0,
                     delta_y_max=1e-6,
                     residuum_kcl_max=1e-9,
                     obszary_odciete=("b2",),
                     odbiory_odciete=(OdbiorOdcietyV2(ref="odb-1", p_pu=0.03, q_pu=0.008),),
                     obszary_zasilone_ponownie=(),
+                    przypisania=(),
+                    t_zlokalizowany_s=None,
+                    szerokosc_przedzialu_s=None,
+                    iteracje_lokalizacji=None,
+                    g_przed=None,
+                    g_po=None,
+                ),
+                # Akcja zdarzenia WARUNKOWEGO z przypisaniem stanu (karta AB-1b.1 P6/P8):
+                # pomiar lokalizacji i przypisanie (adres, przed, po) przez ten sam zrzut.
+                ZdarzenieWykonaneV2(
+                    t_zaplanowany_s=0.0015234567891,
+                    t_wykonany_s=0.0015234567891,
+                    rodzaj="przypisanie_stanu",
+                    ref="gen-1",
+                    przyczyna="dozor:u-min",
+                    delta_x_nieprzypisane_max=0.0,
+                    delta_y_max=2e-6,
+                    residuum_kcl_max=1e-10,
+                    obszary_odciete=(),
+                    odbiory_odciete=(),
+                    obszary_zasilone_ponownie=("b2",),
+                    przypisania=(
+                        PrzypisanieWykonaneV2(adres="gen-1.p_zadane_pu", przed=0.3, po=0.25),
+                    ),
+                    t_zlokalizowany_s=0.0015234567891,
+                    szerokosc_przedzialu_s=8.5e-10,
+                    iteracje_lokalizacji=7,
+                    g_przed=-1.25e-7,
+                    g_po=3.5e-8,
+                ),
+            ),
+            przekroczenia=(
+                PrzekroczenieV2(
+                    dozor="u-min",
+                    wielkosc="u_pu@b1",
+                    prog=0.85,
+                    kierunek="w_dol",
+                    t_s=0.0015234567891,
+                    szerokosc_przedzialu_s=8.5e-10,
+                    iteracje=7,
                 ),
             ),
             wlasnosci_biegu=WlasnosciBieguV2(
@@ -397,6 +442,19 @@ class TestBudowaWidokowOdczytu:
         assert pierwszy["probki"]["u_pu@b1"][1] == pytest.approx(0.999999999, rel=0, abs=1e-9)
         assert pierwszy["probki"]["u_pu@b1"][2] is None
         assert pierwszy["strona_probki"] == ["C", "L", "P", "C"]
+        # Pola karty AB-1b.1 P6-P8 przechodza przez zrzut: chwila zdarzenia warunkowego i
+        # przekroczenia skwantyzowane (rozdzielczosc publikacji), przypisanie z adresem,
+        # przekroczenie z kierunkiem slownika detektora, tryb scenariusza.
+        warunkowe = pierwszy["zdarzenia_wykonane"][1]
+        assert warunkowe["przyczyna"] == "dozor:u-min"
+        assert warunkowe["t_zlokalizowany_s"] == pytest.approx(0.00152345679, rel=0, abs=1e-14)
+        assert warunkowe["przypisania"] == [
+            {"adres": "gen-1.p_zadane_pu", "przed": 0.3, "po": 0.25}
+        ]
+        assert pierwszy["zdarzenia_wykonane"][0]["t_zlokalizowany_s"] is None
+        assert pierwszy["przekroczenia"][0]["kierunek"] == "w_dol"
+        assert pierwszy["przekroczenia"][0]["t_s"] == warunkowe["t_zlokalizowany_s"]
+        assert pierwszy["tryb_scenariusza"] == "siec"
 
     def test_brak_szeregow_key_error(self) -> None:
         from enm.canonical_analysis import build_dynamika_time_series
@@ -580,6 +638,7 @@ class TestHttpEndpointyWynikow:
         wynik = ResultSetDynamicV2(
             run_id=str(run_id),
             dziedzina_fizyki=dziedzina_fizyki_dynamiki(),
+            tryb_scenariusza="siec",
             kanaly=(
                 KanalDynamicznyV2(
                     klucz="u_pu@bus-1",
@@ -670,6 +729,9 @@ NASTAWY_SOLVERA = {
     "max_iteracji_newtona": 40,
     "max_nawrotow": 30,
     "integrator": "trapez_niejawny",
+    # Klucz WYMAGANY, wartosc `None` dozwolona wylacznie dla biegu bez detektorow
+    # (karta AB-1b.1 par. 0 pkt 13) — decyzja wolajacego, nie domysl adaptera.
+    "tolerancja_lokalizacji_zdarzen_s": None,
 }
 
 #: Scenariusz czasowy: zwarcie 3F na sekcji B z wyłączeniem po 100 ms.
@@ -895,7 +957,13 @@ class TestSciezkaUzytkownika:
         assert "dynamika.punkt_pracy_nie_jest_rozplywem" in bieg["error_message"]
 
     def test_odmowa_gdy_rodzaj_zdarzenia_spoza_zbioru_rdzenia(self, client: TestClient) -> None:
-        """Komenda regulacji jest w kontrakcie danych, rdzeń jej nie wykonuje."""
+        """Synchronizacja zrodla jest w kontrakcie danych, rdzen jej nie wykonuje.
+
+        PRZEPISANY SWIADOMIE (karta AB-1b.1 par. 0 pkt 9): dawniej ta odmowa dotyczyla
+        komendy regulacji, ktora od tej karty rdzen WYKONUJE (test ponizej); intencja —
+        rodzaj spoza zbioru rdzenia konczy sie NAZWANA odmowa, nie cichym pominieciem —
+        zostaje przypieta na jedynym takim rodzaju: synchronizacji.
+        """
         case_id = _nowy_przypadek(client)
         _seed_siec_wzorcowa(client, case_id)
         pf_run_id = _uruchom_rozplyw(client, case_id)
@@ -904,10 +972,10 @@ class TestSciezkaUzytkownika:
             "krok_wyjscia_s": 0.02,
             "zdarzenia": [
                 {
-                    "rodzaj": "komenda_regulacji",
+                    "rodzaj": "synchronizacja",
                     "t_s": 0.2,
-                    "ref_id": "gen-synchroniczny",
-                    "nastawa": {"p_mw": 4.0},
+                    "ref_id": "gen-pv",
+                    "bus_ref": "b-oze",
                 }
             ],
         }
@@ -922,3 +990,137 @@ class TestSciezkaUzytkownika:
         )
         assert bieg["status"] == "FAILED"
         assert "dynamika.rodzaj_zdarzenia_nieobslugiwany" in bieg["error_message"]
+
+    def test_komenda_nieobslugiwana_przez_rodzine_konczy_bieg_odmowa_rdzenia(
+        self, client: TestClient
+    ) -> None:
+        """Maszyna synchroniczna bez regulatora mocy biernej: komenda Q = odmowa rdzenia z
+        powodem przez cala sciezke HTTP (nie cicha podmiana na inny stan)."""
+        case_id = _nowy_przypadek(client)
+        _seed_siec_wzorcowa(client, case_id)
+        pf_run_id = _uruchom_rozplyw(client, case_id)
+        scenariusz = {
+            "horyzont_s": 0.4,
+            "krok_wyjscia_s": 0.02,
+            "zdarzenia": [
+                {
+                    "rodzaj": "komenda_regulacji",
+                    "t_s": 0.2,
+                    "ref_id": "gen-synchroniczny",
+                    "nastawa": {"q_mvar": 2.0},
+                }
+            ],
+        }
+        bieg = _uruchom_dynamike(
+            client,
+            case_id,
+            {"pf_run_id": pf_run_id, "dynamika": scenariusz, "nastawy_solvera": NASTAWY_SOLVERA},
+        )
+        assert bieg["status"] == "FAILED"
+        assert "dynamika.nastawa_nieobslugiwana" in bieg["error_message"]
+
+    def test_zdarzenia_rdzenia_P6_P8_przez_cala_sciezke(self, client: TestClient) -> None:
+        """Komenda regulacji, czesciowa utrata i detektor przekroczenia: solver -> baza ->
+        HTTP. Wynik niesie przypisanie (adres, przed, po), przyczyne wpisu, dokladna chwile
+        przekroczenia (skokowe w chwili utraty: szerokosc 0) i tryb scenariusza."""
+        case_id = _nowy_przypadek(client)
+        _seed_siec_wzorcowa(client, case_id)
+        pf_run_id = _uruchom_rozplyw(client, case_id)
+        scenariusz = {
+            "horyzont_s": 0.3,
+            "krok_wyjscia_s": 0.02,
+            "zdarzenia": [
+                {
+                    "rodzaj": "komenda_regulacji",
+                    "t_s": 0.1,
+                    "ref_id": "gen-synchroniczny",
+                    "nastawa": {"p_mw": 4.0},
+                },
+                {
+                    "rodzaj": "utrata_czesciowa_zrodla",
+                    "t_s": 0.2,
+                    "ref_id": "gen-pv",
+                    "udzial_pozostaly": 0.5,
+                },
+            ],
+            "detektory": [
+                {
+                    "ident": "p-pv<",
+                    "wielkosc": {"rodzaj": "moc_urzadzenia", "ref_id": "gen-pv", "skladowa": "p"},
+                    "prog": 0.012,
+                    "kierunek": "w_dol",
+                    "jednorazowy": True,
+                }
+            ],
+        }
+        bieg = _uruchom_dynamike(
+            client,
+            case_id,
+            {
+                "pf_run_id": pf_run_id,
+                "dynamika": scenariusz,
+                "nastawy_solvera": {**NASTAWY_SOLVERA, "tolerancja_lokalizacji_zdarzen_s": 1e-7},
+            },
+        )
+        assert bieg["status"] == "DONE", bieg["error_message"]
+        ladunek = client.get(f"/api/analysis-runs/{bieg['run_id']}/results/dynamika").json()
+        assert ladunek["tryb_scenariusza"] == "siec"
+        komenda, utrata = ladunek["zdarzenia_wykonane"]
+        assert (komenda["rodzaj"], komenda["przyczyna"]) == ("komenda_regulacji", "harmonogram")
+        (przypisanie,) = komenda["przypisania"]
+        assert przypisanie["adres"] == "gen-synchroniczny.p_mechaniczna_pu"
+        assert przypisanie["po"] == pytest.approx(0.04, rel=0, abs=1e-12)
+        assert komenda["delta_x_nieprzypisane_max"] == 0.0
+        assert (utrata["rodzaj"], utrata["t_wykonany_s"]) == ("utrata_czesciowa_zrodla", 0.2)
+        assert utrata["t_zlokalizowany_s"] is None
+        (przekroczenie,) = ladunek["przekroczenia"]
+        assert przekroczenie == {
+            "dozor": "p-pv<",
+            "wielkosc": "p_pu@gen-pv",
+            "prog": 0.012,
+            "kierunek": "w_dol",
+            "t_s": 0.2,
+            "szerokosc_przedzialu_s": 0.0,
+            "iteracje": 0,
+        }
+        zalozenia = " ".join(ladunek["zalozenia"])
+        assert "Przypisanie stanu i komenda regulacji" in zalozenia
+        assert "Czesciowa utrata zrodla" in zalozenia
+
+    def test_stanowisko_badawcze_przez_cala_sciezke(self, client: TestClient) -> None:
+        """Zrodlo testowe idealne zastepuje zrodlo sieciowe: tryb `stanowisko` w wyniku,
+        napiecie szyny zrodla rowne profilowi w szeregach zwroconych przez HTTP."""
+        case_id = _nowy_przypadek(client)
+        _seed_siec_wzorcowa(client, case_id)
+        pf_run_id = _uruchom_rozplyw(client, case_id)
+        scenariusz = {
+            "horyzont_s": 0.3,
+            "krok_wyjscia_s": 0.02,
+            "zdarzenia": [],
+            "stanowisko": {
+                "zrodlo_ref": "zrodlo-110",
+                "impedancja": "idealna",
+                "profil": [{"rodzaj": "skok_napiecia", "t_s": 0.1, "u_pu": 0.9}],
+            },
+        }
+        bieg = _uruchom_dynamike(
+            client,
+            case_id,
+            {"pf_run_id": pf_run_id, "dynamika": scenariusz, "nastawy_solvera": NASTAWY_SOLVERA},
+        )
+        assert bieg["status"] == "DONE", bieg["error_message"]
+        ladunek = client.get(f"/api/analysis-runs/{bieg['run_id']}/results/dynamika").json()
+        assert ladunek["tryb_scenariusza"] == "stanowisko"
+        assert any(zdanie.startswith("Tryb stanowiska") for zdanie in ladunek["zalozenia"])
+        szeregi = client.get(
+            f"/api/analysis-runs/{bieg['run_id']}/results/dynamika/time-series",
+            params={"kanaly": "u_pu@b-110"},
+        ).json()
+        for t, strona, u in zip(
+            szeregi["os_czasu_s"],
+            szeregi["strona_probki"],
+            szeregi["probki"]["u_pu@b-110"],
+            strict=True,
+        ):
+            if t > 0.1 or (t == 0.1 and strona == "P"):
+                assert u == pytest.approx(0.9, abs=1e-9)

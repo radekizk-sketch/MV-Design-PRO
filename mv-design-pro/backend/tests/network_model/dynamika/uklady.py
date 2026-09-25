@@ -206,6 +206,7 @@ def nastawy(
     dt_max_s: float | None = None,
     tolerancja_kroku: float = 1.0e-6,
     eps_init: float = 1.0e-8,
+    tolerancja_lokalizacji_zdarzen_s: float | None = None,
 ) -> NastawySolvera:
     """Nastawy testowe — krok STALY, dopoki wolajacy nie poda granic adaptacji."""
     return NastawySolvera(
@@ -220,6 +221,7 @@ def nastawy(
         horyzont_s=horyzont_s,
         krok_wyjscia_s=krok_wyjscia_s,
         integrator=integrator,  # type: ignore[arg-type]
+        tolerancja_lokalizacji_zdarzen_s=tolerancja_lokalizacji_zdarzen_s,
     )
 
 

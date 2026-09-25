@@ -204,29 +204,34 @@ def odcisk_nastaw(nastawy: NastawySolvera) -> str:
             "horyzont_s": kwantyzuj(nastawy.horyzont_s),
             "krok_wyjscia_s": kwantyzuj(nastawy.krok_wyjscia_s),
             "integrator": nastawy.integrator,
+            "tolerancja_lokalizacji_zdarzen_s": _normalizuj(
+                nastawy.tolerancja_lokalizacji_zdarzen_s
+            ),
         }
     )
 
 
 def odcisk_harmonogramu(harmonogram: HarmonogramDynamiki) -> str:
-    """Odcisk harmonogramu w KOLEJNOSCI ZAPISU.
+    """Odcisk harmonogramu w KOLEJNOSCI ZAPISU: zdarzenia planowane, potem dozory.
 
     Kolejnosc zapisu jest czescia tresci (remis czasowy rozstrzyga indeks
-    wstawienia), wiec dwa harmonogramy o tych samych zdarzeniach zapisanych w
-    innej kolejnosci maja ROZNE odciski — ten sam kontrakt, co w warstwie danych.
-    Pola zagniezdzone (krotki, dataklasy) przechodza REKURENCYJNIE przez
-    `_normalizuj` — jedna regula postaci kanonicznej dla calego modulu.
+    wstawienia, remis dozorow — indeks dozoru), wiec dwa harmonogramy o tych samych
+    pozycjach zapisanych w innej kolejnosci maja ROZNE odciski — ten sam kontrakt, co
+    w warstwie danych. Pola zagniezdzone (krotki, dataklasy: wielkosc dozoru, akcje)
+    przechodza REKURENCYJNIE przez `_normalizuj` — jedna regula postaci kanonicznej
+    dla calego modulu. Dozor jest pozycja rodzaju `Dozor` na tej samej liscie, wiec
+    harmonogram bez dozorow ma odcisk taki jak przed ich wprowadzeniem, a lista z
+    dozorem nie moze sie z nim pomylic (inna nazwa rodzaju).
     """
     return skrot_kanoniczny(
         [
             {
-                "rodzaj": type(zdarzenie).__name__,
+                "rodzaj": type(pozycja).__name__,
                 "pola": {
-                    pole.name: _normalizuj(getattr(zdarzenie, pole.name))
-                    for pole in fields(zdarzenie)
+                    pole.name: _normalizuj(getattr(pozycja, pole.name)) for pole in fields(pozycja)
                 },
             }
-            for zdarzenie in harmonogram.zdarzenia
+            for pozycja in (*harmonogram.zdarzenia, *harmonogram.dozory)
         ]
     )
 

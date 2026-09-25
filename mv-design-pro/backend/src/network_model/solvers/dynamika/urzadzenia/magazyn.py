@@ -54,12 +54,17 @@ from typing import ClassVar
 import numpy as np
 from network_model.pochodne import kw_na_mw, mw_na_kw
 
-from ..kontrakty import KOD_PUNKT_PRACY_POZA_OGRANICZENIEM, OdmowaDynamiki, SprzezenieUrzadzenia
+from ..kontrakty import (
+    KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
+    NastawaRegulacji,
+    OdmowaDynamiki,
+    SprzezenieUrzadzenia,
+)
 from ..konwencje import moc_pu, zmiana_bazy_mocy_wzglednej
 from .bazowe import parametry_bloku
 from .okno_mocy import OknoMocy
 from .pochodne_kierunkowe import Dual, Zespolona
-from .przeksztaltnik_gfl import RdzenGFL
+from .przeksztaltnik_gfl import STANY_NASTAW_PRZEKSZTALTNIKA, RdzenGFL, nastawy_przeksztaltnika
 from .przeksztaltnik_gfm import RdzenGFM
 from .uklad_stanow import UkladStanow
 
@@ -200,6 +205,25 @@ class Magazyn:
     def sprzezenie(self) -> SprzezenieUrzadzenia:
         """Magazyn: rdzen przeksztaltnika (nadazny albo tworzacy) — prad do wezla."""
         return "pradowe"
+
+    @property
+    def stany_przypisywalne(self) -> tuple[str, ...]:
+        """Odniesienia rdzenia przeksztaltnika. Stan naladowania NIGDY — jest calka mocy
+        stalopradowej; jego skok bylby energia wzieta znikad."""
+        return STANY_NASTAW_PRZEKSZTALTNIKA
+
+    @property
+    def nastawy_regulacji(self) -> tuple[NastawaRegulacji, ...]:
+        """P w granicach OKNA MOCY ZASOBNIKA (`Zasobnik.okno_mocy` — granice ladowania i
+        rozladowania pomniejszone o rezerwe regulacyjna): ten sam predykat, ktorym
+        `stan_poczatkowy` sprawdza punkt pracy. Nastawa zajmujaca rezerwe konczy sie
+        odmowa, nie cichym przycieciem."""
+        return nastawy_przeksztaltnika(self.zasobnik.okno_mocy(), powod_p=None)
+
+    @property
+    def agregat_jednostek(self) -> bool:
+        """Magazyn jest agregatem identycznych modulow (zasobnik + przeksztaltnik)."""
+        return True
 
     def parametry_tozsamosci(self) -> dict[str, object]:
         """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""

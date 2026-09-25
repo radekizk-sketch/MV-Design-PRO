@@ -84,6 +84,7 @@ from ..kontrakty import (
     KOD_PARAMETRY_SPRZECZNE,
     KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
     KOD_WARIANT_BEZ_PARAMETROW,
+    NastawaRegulacji,
     OdmowaDynamiki,
     SprzezenieUrzadzenia,
 )
@@ -92,9 +93,12 @@ from .bazowe import parametry_bloku
 from .okno_mocy import OknoMocy
 from .pochodne_kierunkowe import Dual, Zespolona, kwadrat, maksimum, ogranicz, pierwiastek
 from .przeksztaltnik_gfl import (
+    STAN_ODNIESIENIA_NAPIECIA,
     STAN_PRADU_BIERNEGO,
     STAN_PRADU_CZYNNEGO,
+    STAN_ZADANIA_BIERNEGO,
     RdzenGFL,
+    nastawy_przeksztaltnika,
 )
 from .uklad_stanow import UkladStanow
 
@@ -331,6 +335,27 @@ class TurbinaWiatrowa:
     def sprzezenie(self) -> SprzezenieUrzadzenia:
         """Turbina typu 3/4: przeksztaltnik nadazny — prad wstrzykiwany do wezla."""
         return "pradowe"
+
+    @property
+    def stany_przypisywalne(self) -> tuple[str, ...]:
+        """Zadanie mocy biernej i odniesienie napiecia przeksztaltnika. Zadanie mocy
+        czynnej NIE — moc czynna turbiny wynika z mocy aerodynamicznej, a jej nastawa
+        wymaga modelu mocy dostepnej z wiatru, ktorego biblioteka nie ma."""
+        return (STAN_ZADANIA_BIERNEGO, STAN_ODNIESIENIA_NAPIECIA)
+
+    @property
+    def nastawy_regulacji(self) -> tuple[NastawaRegulacji, ...]:
+        return nastawy_przeksztaltnika(
+            self.okno_mocy,
+            powod_p="moc czynna turbiny wiatrowej zależy od mocy dostepnej z wiatru — nastawa "
+            "P wymaga modelu mocy dostepnej (ograniczenie mocy czynnej poniżej dostepnej), "
+            "którego biblioteka urządzeń nie ma",
+        )
+
+    @property
+    def agregat_jednostek(self) -> bool:
+        """Farma wiatrowa jest agregatem identycznych turbin."""
+        return True
 
     def parametry_tozsamosci(self) -> dict[str, object]:
         """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""

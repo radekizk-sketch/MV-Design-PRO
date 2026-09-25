@@ -216,10 +216,10 @@ MUTACJE: tuple[Mutacja, ...] = (
         "                napiecia,\n"
         "            )\n"
         "        chwila = self._nanies_chwile(\n"
-        "            t_s, wpisy, poprzednia, stany, napiecia, wykonane, kroki_szczegolne\n"
+        "            t_s, wpisy, akcje, poprzednia, stany, napiecia, wykonane, kroki_szczegolne\n"
         "        )\n",
         "        chwila = self._nanies_chwile(\n"
-        "            t_s, wpisy, poprzednia, stany, napiecia, wykonane, kroki_szczegolne\n"
+        "            t_s, wpisy, akcje, poprzednia, stany, napiecia, wykonane, kroki_szczegolne\n"
         "        )\n"
         "        if zdarzenia_chwili:\n"
         "            self._probkuj(\n"
@@ -324,6 +324,71 @@ MUTACJE: tuple[Mutacja, ...] = (
             "tests/network_model/dynamika/test_obszary_beznapieciowe.py"
             "::test_jakobian_sprzezony_wiersza_ograniczenia_zgodny_z_roznica_skonczona",
         ),
+    ),
+    Mutacja(
+        "M22",
+        "Akcja zdarzenia warunkowego wykonana na KONCU kroku zamiast w zlokalizowanej chwili "
+        "przekroczenia t*: krok nie jest skracany do t*, blad chwili wykonania rzedu dt/2.",
+        "network_model/solvers/dynamika/dozory.py",
+        "            if najwczesniej is not None and najwczesniej < t_lad - eps:",
+        "            if False:",
+        "G14 (chwila wykonania akcji wobec postaci zamknietej rampy, D-12)",
+        bramki=("g14_lokalizacja_zdarzen_warunkowych",),
+    ),
+    Mutacja(
+        "M23",
+        "Odwrocony kierunek dozoru: `w_dol` pobudza sie na zboczu narastajacym (albo w t = 0+, "
+        "bo warunek odwrocony jest spelniony od poczatku) — brak pobudzenia albo zle zbocze.",
+        "network_model/solvers/dynamika/dozory.py",
+        '        return 1.0 if self.kierunek == "w_gore" else -1.0',
+        '        return -1.0 if self.kierunek == "w_gore" else 1.0',
+        "G14 (pobudzenia niezgodne z kierunkiem i chwila lokalizacji, D-12)",
+        bramki=("g14_lokalizacja_zdarzen_warunkowych",),
+    ),
+    Mutacja(
+        "M24",
+        "Brak kasowania akcji opoznionej przy przejsciu powrotnym: zapad krotszy niz zwloka "
+        "i tak wywoluje akcje (np. wylaczenie po powrocie napiecia).",
+        "network_model/solvers/dynamika/dozory.py",
+        "                if not dozor.kasowanie_przy_powrocie:\n                    continue",
+        "                if True:\n                    continue",
+        "G14 (akcje niezgodne z kasowaniem przy zapadzie 0,25 s i zwloce 0,3 s, D-12)",
+        bramki=("g14_lokalizacja_zdarzen_warunkowych",),
+    ),
+    Mutacja(
+        "M25",
+        "Przypisanie stanu realizowane ponownym wyznaczeniem stanu urzadzenia z punktu pracy: "
+        "kat i predkosc maszyny w trakcie wahan wracaja do rownowagi — ciaglosc stanow "
+        "nieprzypisanych zniszczona.",
+        "network_model/solvers/dynamika/silnik.py",
+        "                nowe[indeks][pozycja_stanu] = wartosc_stanu\n",
+        "                nowe[indeks] = urzadzenie.stan_poczatkowy(\n"
+        "                    urzadzenie.napiecie_bez_obciazenia(nowe[indeks]),\n"
+        "                    complex(wartosc_stanu, 0.0),\n"
+        "                )\n"
+        "                nowe[indeks][pozycja_stanu] = wartosc_stanu\n",
+        "G18 (skok stanow nieprzypisanych i trajektoria kata wobec solve_ivp, D-13)",
+        bramki=("g18_przypisanie_stanu",),
+    ),
+    Mutacja(
+        "M31",
+        "Kat SEM zrodla testowego calkowany bez czlonu odchylki pulsacji: rampa i skok "
+        "czestotliwosci nie przesuwaja fazy — profil czestotliwosci nie istnieje w przebiegu.",
+        "network_model/solvers/dynamika/urzadzenia/zrodlo_testowe.py",
+        "        pochodne[_TH] = self.omega_bazowa_rad_s * float(stan[_DW])",
+        "        pochodne[_TH] = 0.0 * float(stan[_DW])",
+        "G15 (postac zamknieta profilu zrodla testowego, D-14)",
+        bramki=("g15_zrodlo_testowe",),
+    ),
+    Mutacja(
+        "M33",
+        "Udzial pozostaly zastosowany takze do pochodnych stanu agregatu: pozostale jednostki "
+        "zwalniaja swoja dynamike — rownowaznosc agregatu z jednostkami pada.",
+        "network_model/solvers/dynamika/urzadzenia/czesciowe.py",
+        "        return self.bazowe.pochodne(stan, napiecie_pu)",
+        "        return self.udzial * self.bazowe.pochodne(stan, napiecie_pu)",
+        "G21 (rownowaznosc agregatu z udzialem 0,5 i dwoch polow, D-20)",
+        bramki=("g21_utrata_czesciowa",),
     ),
     Mutacja(
         "M21",

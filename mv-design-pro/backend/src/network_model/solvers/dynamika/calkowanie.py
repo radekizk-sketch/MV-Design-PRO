@@ -122,31 +122,39 @@ class KontekstKroku:
 
     @property
     def zakresy_waznosci(self) -> tuple[np.ndarray, np.ndarray]:
-        """Dolne i gorne ZAKRESY WAZNOSCI zlaczonego wektora stanow.
+        """Dolne i gorne ZAKRESY WAZNOSCI zlaczonego wektora stanow (`zakresy_waznosci_urzadzen`)."""
+        return zakresy_waznosci_urzadzen(self.urzadzenia)
 
-        Sklada sie tak samo, jak `granice_stanow` — z deklaracji urzadzen, w
-        kolejnosci `spakuj_stany` — i z tego samego powodu wymaga deklaracji
-        KOMPLETNEJ. Czym zakres waznosci rozni sie od ogranicznika, mowi
-        `kontrakty.Urzadzenie.zakresy_waznosci`; tu jest tylko zlozenie.
-        """
-        dolne: list[float] = []
-        gorne: list[float] = []
-        for urzadzenie in self.urzadzenia:
-            zakresy = urzadzenie.zakresy_waznosci
-            if len(zakresy) != len(urzadzenie.nazwy_stanow):
-                raise AssertionError(
-                    f"Urzadzenie {urzadzenie.ident!r} podalo {len(zakresy)} zakresow waznosci "
-                    f"wobec {len(urzadzenie.nazwy_stanow)} stanow — deklaracja musi byc "
-                    "kompletna"
-                )
-            for zakres in zakresy:
-                if zakres is None:
-                    dolne.append(-np.inf)
-                    gorne.append(np.inf)
-                else:
-                    dolne.append(zakres[0])
-                    gorne.append(zakres[1])
-        return np.array(dolne, dtype=float), np.array(gorne, dtype=float)
+
+def zakresy_waznosci_urzadzen(
+    urzadzenia: tuple[Urzadzenie, ...],
+) -> tuple[np.ndarray, np.ndarray]:
+    """Dolne i gorne ZAKRESY WAZNOSCI zlaczonego wektora stanow urzadzen.
+
+    Sklada sie tak samo, jak `granice_stanow` — z deklaracji urzadzen, w
+    kolejnosci `spakuj_stany` — i z tego samego powodu wymaga deklaracji
+    KOMPLETNEJ. Czym zakres waznosci rozni sie od ogranicznika, mowi
+    `kontrakty.Urzadzenie.zakresy_waznosci`; tu jest tylko zlozenie. Jedna funkcja dla
+    kontroli po kazdym kroku i dla kontroli stanow po przypisaniu w chwili zdarzenia.
+    """
+    dolne: list[float] = []
+    gorne: list[float] = []
+    for urzadzenie in urzadzenia:
+        zakresy = urzadzenie.zakresy_waznosci
+        if len(zakresy) != len(urzadzenie.nazwy_stanow):
+            raise AssertionError(
+                f"Urządzenie {urzadzenie.ident!r} podalo {len(zakresy)} zakresów ważności "
+                f"wobec {len(urzadzenie.nazwy_stanow)} stanow — deklaracja musi być "
+                "kompletna"
+            )
+        for zakres in zakresy:
+            if zakres is None:
+                dolne.append(-np.inf)
+                gorne.append(np.inf)
+            else:
+                dolne.append(zakres[0])
+                gorne.append(zakres[1])
+    return np.array(dolne, dtype=float), np.array(gorne, dtype=float)
 
 
 def spakuj_stany(stany: tuple[np.ndarray, ...]) -> np.ndarray:
@@ -751,4 +759,5 @@ __all__ = [
     "rozpakuj_stany",
     "rzutuj_stany",
     "spakuj_stany",
+    "zakresy_waznosci_urzadzen",
 ]

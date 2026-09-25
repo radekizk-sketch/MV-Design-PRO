@@ -89,7 +89,8 @@ MANIFEST: tuple[Twierdzenie, ...] = (
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
             "fazor skladowej zgodnej w stanie quasi-ustalonym RMS; przy |V| <= u_V "
-            "wielkosc jest NIEDOSTEPNA, a nie przyblizona"
+            "wielkosc jest NIEDOSTEPNA, a nie przyblizona; poza chwilami zdarzen — w probkach "
+            "L i P chwili zdarzenia czestotliwosc jest NIEDOSTEPNA (kod 3, D-18)"
         ),
         poziom="L5",
         uwagi="Zmierzony blad wobec pochodnej analitycznej: 7,105427357601002e-15 Hz = ulp(50 Hz).",
@@ -138,7 +139,10 @@ MANIFEST: tuple[Twierdzenie, ...] = (
         ),
         mutacje=("M20",),
         bramka_ci="Walidacja fizyczna dynamiki",
-        zakres_waznosci="zdarzenia zmieniajace Ybus albo wstrzykniecia; zero zmian stanu wirnika",
+        zakres_waznosci=(
+            "zdarzenia zmieniajace Ybus albo wstrzykniecia; zero zmian stanu wirnika; poza "
+            "stanami przypisanymi (przypisanie stanu i komenda regulacji — D-13)"
+        ),
         poziom="L5",
     ),
     Twierdzenie(
@@ -303,13 +307,18 @@ MANIFEST = MANIFEST + (
             "tests/walidacja_fizyczna/test_probki_obustronne.py::test_os_czasu_i_strony_probek",
             "tests/network_model/dynamika/test_wynik.py"
             "::test_czestotliwosc_w_chwili_zdarzenia_jest_None_z_kodem_3_w_obu_probkach",
+            "tests/network_model/dynamika/test_dozory.py"
+            "::test_akcja_wykonana_dokladnie_w_chwili_pobudzenia",
+            "tests/network_model/dynamika/test_przypisania_stanu.py"
+            "::test_komenda_wykonana_na_kazdej_rodzinie",
         ),
         mutacje=("M28", "M29"),
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
-            "zdarzenia planowane (topologia, zwarcia, odsprzegi, odbiory) na siatce, poza nia, "
-            "w t = 0 i w t = horyzont, pojedyncze i rownoczesne; zdarzenia warunkowe, "
-            "przypisania stanu i profile (pakiety P6-P8) poza tym twierdzeniem"
+            "zdarzenia planowane (topologia, zwarcia, odsprzegi, odbiory, przypisania stanu, "
+            "komendy regulacji, segmenty profilu zrodla testowego) i akcje zdarzen "
+            "warunkowych (para L/P w chwili t*, takze kilka rund w jednej chwili) na siatce, "
+            "poza nia, w t = 0 i w t = horyzont, pojedyncze i rownoczesne"
         ),
         poziom="L5",
     ),
@@ -352,8 +361,9 @@ MANIFEST = MANIFEST + (
             "nadaznymi (wnosza prad, wiec wyspa jest zywa — klasyfikacja tworzace/nadazne i "
             "bilans P/Q przed Newtonem to zakres D11 pelnego, karta AB-5); pierwiastek wyzszy "
             "jest dowodzony dla odbioru stalej mocy za impedancja od SEM stalej; blok -dE/dx "
-            "wiersza ograniczenia dowodzony testem roznicowym na atrapie zrodla napieciowego "
-            "(wyrocznia fizyczna zrodla testowego idealnego U/f/theta — pakiet P7 karty)"
+            "wiersza ograniczenia dowodzony testem roznicowym na atrapie zrodla napieciowego i "
+            "na zrodle testowym (jakobiany wobec roznicy skonczonej); przebieg zrodla "
+            "testowego idealnego wobec postaci zamknietej — D-14"
         ),
         poziom="L5",
     ),
@@ -454,6 +464,173 @@ MANIFEST = MANIFEST + (
             "linie i kable (przekladnia 1) w skladowej zgodnej, zwarcie 3F; transformator i "
             "lacznik koncza sie odmowa `dynamika.zwarcie_galezi_nieobslugiwane`; model pi "
             "odcinkow (bez linii dlugiej o parametrach rozlozonych)"
+        ),
+        poziom="L5",
+    ),
+)
+
+#: Twierdzenia karty AB-1b.1 (rdzen zdarzen): D-12, D-13, D-14, D-20 — pakiety P6-P8.
+MANIFEST = MANIFEST + (
+    Twierdzenie(
+        ident="D-12",
+        zdolnosc=(
+            "Zdarzenia warunkowe (dozory): chwila przekroczenia progu lokalizowana z "
+            "zadeklarowana tolerancja, akcja wykonana DOKLADNIE w t* (ze zwloka i kasowaniem), "
+            "detektory przekroczen w wyniku"
+        ),
+        rownanie=(
+            "h(t) = s (w(t) - prog), s = +1 (w_gore) / -1 (w_dol); t* = prawy koniec [a, b], "
+            "h(a) <= 0 < h(b), b - a <= tolerancja; (a) rampa: t = t_0 + (prog - m_0)/tempo; "
+            "(b) jeden krok trapezu czlonu dx/dt = (x_inf - x)/T: "
+            "tau = 2T (1 - d)/(1 + d), d = (prog - x_inf)/(x_n - x_inf)"
+        ),
+        wyrocznia=(
+            "wyrocznia_zdarzen.chwila_przeciecia_rampy, pierwiastek_kroku_trapezu, "
+            "wezel_trajektorii_trapezu — postacie zamkniete (zero importow z rdzenia)"
+        ),
+        wzorzec=(
+            "bramki.g14_lokalizacja_zdarzen_warunkowych: zrodlo idealne + linia + odbior, "
+            "rampa -0,4 pu/s od 0,2 s przez prog 0,85 (detektor i akcja zatrzymania rampy), "
+            "tolerancje 1e-6 i 1e-9 s, trapez i RK4; czlon inercyjny T = 0,05 s, h = 0,01 s; "
+            "zapad 0,25 s wobec zwloki 0,3 s z kasowaniem i bez"
+        ),
+        testy=(
+            "tests/walidacja_fizyczna/test_zdarzenia_rdzenia.py"
+            "::test_d12_lokalizacja_zdarzen_warunkowych_wobec_postaci_zamknietych",
+            "tests/walidacja_fizyczna/test_bramki.py::test_g14_lokalizacja_zdarzen_warunkowych",
+            "tests/network_model/dynamika/test_dozory.py"
+            "::test_przejscie_ciagle_obu_kierunkow_zgodne_z_siatka",
+            "tests/network_model/dynamika/test_dozory.py"
+            "::test_zwloka_i_kasowanie_przy_zapadzie_krotszym_niz_zwloka",
+            "tests/network_model/dynamika/test_dozory.py"
+            "::test_wynik_z_dozorami_nie_zalezy_od_pythonhashseed",
+        ),
+        mutacje=("M22", "M23", "M24"),
+        bramka_ci="Walidacja fizyczna dynamiki",
+        zakres_waznosci=(
+            "wielkosci: modul napiecia wezla, czestotliwosc wezla (poza chwilami zdarzen i "
+            "jakoscia NIEDOSTEPNA — tam przedzial nielokalizowany, z uczciwa szerokoscia od "
+            "ostatniej oceny), modul pradu JAWNIE nazwanego zacisku galezi, stan i moc "
+            "urzadzenia; jedno przejscie w kroku (dwa przejscia w jednym kroku, niewidoczne na "
+            "jego koncu, nie sa wykrywane); tolerancja wzgledem trajektorii dyskretnej, "
+            "wykonanie w t* co do bitu; akcje chwilowe (bez zwarc); w scenariuszu wylacznie "
+            "detektory — akcje przychodza z modelu (automatyka, przekazniki)"
+        ),
+        poziom="L5",
+    ),
+    Twierdzenie(
+        ident="D-13",
+        zdolnosc=(
+            "Przypisanie stanu i komenda regulacji P/Q/U: stany nieprzypisane bitowo ciagle, "
+            "stan przypisany = wartosc zadana, algebra rozwiazana od nowa"
+        ),
+        rownanie=(
+            "x+_j = x-_j (j nieprzypisane), x+_k = w_k, 0 = g(x+, y+); maszyna klasyczna: "
+            "d(delta)/dt = w_0 (w - 1), d(w)/dt = (P_m(t) - P_e)/(2H) z P_m skokowym"
+        ),
+        wyrocznia=(
+            "wyrocznia.UkladSMIB.calkuj(skoki_p_m=...) — solve_ivp DOP853 z podzialem na "
+            "odcinki w chwilach skokow (zero importow z rdzenia)"
+        ),
+        wzorzec=(
+            "bramki.g18_przypisanie_stanu: SMIB, P_m 0,8 -> 0,9 w 0,2 s (rownowaga) i -> 0,75 "
+            "w 0,7 s (w trakcie wahan), trapez h = 5e-4 s, horyzont 1,5 s"
+        ),
+        testy=(
+            "tests/walidacja_fizyczna/test_zdarzenia_rdzenia.py"
+            "::test_d13_przypisanie_stanu_wobec_wyroczni_rownania_wahan",
+            "tests/walidacja_fizyczna/test_bramki.py::test_g18_przypisanie_stanu",
+            "tests/network_model/dynamika/test_przypisania_stanu.py"
+            "::test_komenda_wykonana_na_kazdej_rodzinie",
+            "tests/network_model/dynamika/test_przypisania_stanu.py"
+            "::test_przypisanie_i_zdarzenie_topologiczne_w_tej_samej_chwili",
+        ),
+        mutacje=("M25",),
+        bramka_ci="Walidacja fizyczna dynamiki",
+        zakres_waznosci=(
+            "stany zadeklarowane przez klase jako przypisywalne (nastawy i odniesienia "
+            "regulatorow, stany profilu zrodla testowego); trajektoria wobec wyroczni "
+            "dowodzona dla maszyny klasycznej bez regulatorow; tablica komend P/Q/U rodzin "
+            "biblioteki i zakres nastawy (okno mocy, granice turbiny) — testy iloczynu cech bez "
+            "wyroczni fizycznej rodzin (poziom modeli rodzin: UNVALIDATED_MODEL)"
+        ),
+        poziom="L5",
+    ),
+    Twierdzenie(
+        ident="D-14",
+        zdolnosc=(
+            "Zrodlo testowe stanowiska: SEM o profilu amplitudy, czestotliwosci i fazy "
+            "calkowana bez bledu dyskretyzacji; przy Z = 0 napiecie wezla i czestotliwosc "
+            "narzucone"
+        ),
+        rownanie=(
+            "dm/dt = r_m, d(theta)/dt = w_0 dw, d(dw)/dt = r_w, E = m e^{j(theta + phi)}; "
+            "Z = 0: V = E, f = f_n (1 + dw)"
+        ),
+        wyrocznia=(
+            "wyrocznia_zdarzen.profil_zamkniety — postac zamknieta odcinkami wielomianowa "
+            "liczona wprost z listy segmentow (zero importow z rdzenia)"
+        ),
+        wzorzec=(
+            "bramki.g15_zrodlo_testowe: skok U 1,0 -> 0,5 pu w 0,2 s, rampa 0,4 pu/s od 1,0 s "
+            "przez 1 s, skok fazy 30 st. w 1,5 s, rampa f 0,5 Hz/s od 2,0 s przez 1 s; Z = 0 "
+            "i Z = 0,001 + j0,02 pu; trapez i RK4"
+        ),
+        testy=(
+            "tests/walidacja_fizyczna/test_zdarzenia_rdzenia.py"
+            "::test_d14_zrodlo_testowe_wobec_postaci_zamknietej",
+            "tests/walidacja_fizyczna/test_bramki.py::test_g15_zrodlo_testowe",
+            "tests/network_model/dynamika/test_zrodlo_testowe.py"
+            "::test_profil_wobec_postaci_zamknietej",
+            "tests/network_model/dynamika/test_zrodlo_testowe.py"
+            "::test_zrodlo_idealne_narzuca_napiecie_i_czestotliwosc_wezla",
+        ),
+        mutacje=("M31",),
+        bramka_ci="Walidacja fizyczna dynamiki",
+        zakres_waznosci=(
+            "skladowa zgodna; profil opisuje SEM (przy Z = 0 napiecie punktu przylaczenia); "
+            "amplituda nieujemna (ogranicznik amplitudy); impedancja Z_Q modelu albo zerowa; "
+            "tryb stanowiska wylacznie z komendami regulacji badanego urzadzenia (bez zaklocen "
+            "sieci w tym samym biegu)"
+        ),
+        poziom="L5",
+    ),
+    Twierdzenie(
+        ident="D-20",
+        zdolnosc="Czesciowa utrata zrodla: agregat identycznych jednostek z ubytkiem udzialu",
+        rownanie=(
+            "I_agregatu = u I(x, V), dx/dt = f(x, V) bez skalowania; (a) agregat u = 0,5 == "
+            "dwie polowy z odlaczeniem jednej; (b) d(w_i)/dt(0+) = (P_m,i - P_e,i(0+))/(2H_i), "
+            "srodek bezwladnosci: -dP/(2 sum H)"
+        ),
+        wyrocznia=(
+            "(b) wyrocznia_pradow.rozwiaz_siec_liniowa — maszyny jako SEM za X', PV jako zrodlo "
+            "pradu, odbiory jako admitancje (zero importow z rdzenia); (a) jest relacja "
+            "metamorficzna dwoch konfiguracji produktu, nie wyrocznia niezalezna"
+        ),
+        wzorzec=(
+            "bramki.g21_utrata_czesciowa: (a) GFL 30 MVA ze statyzmami zerowymi i maszyna "
+            "klasyczna 100 MVA z szyna sztywna, udzial 0,5 w 0,2 s; (b) wyspa GA (H = 3 s), "
+            "GB (H = 5 s), PV, odbiory-admitancje, udzial 0,6 w t = 0"
+        ),
+        testy=(
+            "tests/walidacja_fizyczna/test_zdarzenia_rdzenia.py"
+            "::test_d20_agregat_z_udzialem_polowy_rowny_dwom_polowom_z_odlaczeniem",
+            "tests/walidacja_fizyczna/test_zdarzenia_rdzenia.py"
+            "::test_d20_przyspieszenie_wyspy_po_czesciowej_utracie_wobec_algebry_wyroczni",
+            "tests/walidacja_fizyczna/test_bramki.py::test_g21_utrata_czesciowa",
+            "tests/network_model/dynamika/test_przypisania_stanu.py"
+            "::test_czesciowa_utrata_malejaco_skaluje_prad_i_zachowuje_stany",
+        ),
+        mutacje=("M33",),
+        bramka_ci="Walidacja fizyczna dynamiki",
+        zakres_waznosci=(
+            "agregat identycznych jednostek rownoleglych o sprzezeniu pradowym; ubytek nie "
+            "zmienia stanu na jednostke; rownowaznosc (a) dowodzona dla przeksztaltnika "
+            "nadaznego ze statyzmami ZEROWYMI i maszyny klasycznej — statyzmy P/f i Q/U "
+            "przeksztaltnika nie sa dzis przeliczane na baze ukladu (defekt nazwany w "
+            "`zbuduj_rdzen_gfl`, poprawka fizyki w karcie AB-1b.2), wiec agregat ze statyzmem "
+            "nie jest rownowazny swoim jednostkom; szyna sztywna i zrodlo testowe — odmowa"
         ),
         poziom="L5",
     ),
