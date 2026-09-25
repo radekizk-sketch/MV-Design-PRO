@@ -68,6 +68,36 @@ ZAKAZANE_STALE: frozenset[str] = frozenset(
 )
 
 
+#: Mapy ETYKIET pól (nazwa pola → polski napis dla projektanta), których klucze są nazwami pól
+#: proweniencji jako DANĄ do opisania, a nie polami rekordu proweniencji. Imiennie: plik
+#: (względem `backend/src`) → nazwy zmiennych modułu, których wartością jest taka mapa. Słownik
+#: pod inną nazwą albo w innym pliku nadal jest sprawdzany — wyjątek nie działa po kształcie.
+MAPY_ETYKIET_POL: dict[str, frozenset[str]] = {
+    # Porównanie archiwów: etykiety pól zmienionych między wersjami (metadane nagłówka
+    # modelu i przebiegów trafiają do informacji audytowych z polskim opisem pola).
+    "domain/archive_diff.py": frozenset({"_ETYKIETY_POL_PL"}),
+}
+
+
+def _slowniki_map_etykiet(tree: ast.AST, nazwy: frozenset[str]) -> set[int]:
+    """Identyfikatory węzłów `ast.Dict` przypisanych do imiennie dozwolonych map etykiet."""
+    wynik: set[int] = set()
+    if not nazwy:
+        return wynik
+    for wezel in ast.walk(tree):
+        if isinstance(wezel, ast.Assign):
+            cele = [c.id for c in wezel.targets if isinstance(c, ast.Name)]
+            wartosc = wezel.value
+        elif isinstance(wezel, ast.AnnAssign) and isinstance(wezel.target, ast.Name):
+            cele = [wezel.target.id]
+            wartosc = wezel.value
+        else:
+            continue
+        if isinstance(wartosc, ast.Dict) and any(cel in nazwy for cel in cele):
+            wynik.add(id(wartosc))
+    return wynik
+
+
 def _literal_lancuchowy(wezel: ast.AST) -> bool:
     return isinstance(wezel, ast.Constant) and isinstance(wezel.value, str)
 
@@ -81,10 +111,13 @@ def _konczy_sie_literalem(wezel: ast.AST) -> bool:
     )
 
 
-def zbierz_naruszenia(tree: ast.AST) -> list[tuple[int, str]]:
+def zbierz_naruszenia(
+    tree: ast.AST, mapy_etykiet: frozenset[str] = frozenset()
+) -> list[tuple[int, str]]:
     naruszenia: list[tuple[int, str]] = []
+    zwolnione = _slowniki_map_etykiet(tree, mapy_etykiet)
     for wezel in ast.walk(tree):
-        if isinstance(wezel, ast.Dict):
+        if isinstance(wezel, ast.Dict) and id(wezel) not in zwolnione:
             for klucz, wartosc in zip(wezel.keys, wezel.values, strict=True):
                 if not (isinstance(klucz, ast.Constant) and isinstance(klucz.value, str)):
                     continue
@@ -131,8 +164,10 @@ def skanuj(korzen: Path) -> tuple[int, list[str]]:
             except SyntaxError as exc:
                 komunikaty.append(f"{sciezka.relative_to(korzen)}: blad skladni: {exc}")
                 continue
-            for linia, opis in zbierz_naruszenia(tree):
-                komunikaty.append(f"{sciezka.relative_to(korzen).as_posix()}:{linia}: {opis}")
+            wzgledna = sciezka.relative_to(korzen).as_posix()
+            mapy = MAPY_ETYKIET_POL.get(wzgledna, frozenset())
+            for linia, opis in zbierz_naruszenia(tree, mapy):
+                komunikaty.append(f"{wzgledna}:{linia}: {opis}")
     return przeskanowano, komunikaty
 
 

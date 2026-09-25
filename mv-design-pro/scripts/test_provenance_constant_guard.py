@@ -75,3 +75,47 @@ def test_biezacy_stan_repozytorium_jest_zielony(capsys) -> None:
     """Bramka na PRAWDZIWYM drzewie repo — po CV-2 zero literalow proweniencji."""
     assert guard.main() == 0
     assert "PASS" in capsys.readouterr().out
+
+
+MAPA_ETYKIET = """
+_ETYKIETY_POL_PL: dict[str, str] = {
+    "enm_hash": "Odcisk modelu sieci",
+    "solver_version": "Wersja solvera",
+}
+"""
+
+
+def test_imiennie_dozwolona_mapa_etykiet_nie_jest_naruszeniem() -> None:
+    drzewo = ast.parse(MAPA_ETYKIET)
+    assert guard.zbierz_naruszenia(drzewo, frozenset({"_ETYKIETY_POL_PL"})) == []
+
+
+def test_ta_sama_mapa_bez_zwolnienia_jest_naruszeniem() -> None:
+    assert len(_naruszenia(MAPA_ETYKIET)) == 2
+
+
+def test_mapa_pod_inna_nazwa_nie_korzysta_ze_zwolnienia() -> None:
+    kod = MAPA_ETYKIET.replace("_ETYKIETY_POL_PL", "_INNA_MAPA")
+    assert len(guard.zbierz_naruszenia(ast.parse(kod), frozenset({"_ETYKIETY_POL_PL"}))) == 2
+
+
+def test_rekord_proweniencji_obok_mapy_etykiet_nadal_jest_naruszeniem() -> None:
+    kod = MAPA_ETYKIET + 'proweniencja = {"solver_version": "1.0"}\n'
+    opisy = [o for _, o in guard.zbierz_naruszenia(ast.parse(kod), frozenset({"_ETYKIETY_POL_PL"}))]
+    assert opisy == ["pole proweniencji 'solver_version' = literal '1.0'"]
+
+
+def test_zwolnienie_dotyczy_wylacznie_wskazanego_pliku(tmp_path: Path) -> None:
+    for plik in ("domain/archive_diff.py", "domain/inny.py"):
+        sciezka = tmp_path / plik
+        sciezka.parent.mkdir(parents=True, exist_ok=True)
+        sciezka.write_text(MAPA_ETYKIET, encoding="utf-8")
+    _, komunikaty = guard.skanuj(tmp_path)
+    assert komunikaty and all(k.startswith("domain/inny.py:") for k in komunikaty)
+
+
+def test_kazda_imienna_mapa_etykiet_istnieje_w_repozytorium() -> None:
+    """Wyjątek, który niczego nie dotyczy, to martwy wpis — zdejmij go z listy."""
+    for plik, nazwy in guard.MAPY_ETYKIET_POL.items():
+        drzewo = ast.parse((guard.BACKEND_SRC / plik).read_text(encoding="utf-8"))
+        assert len(guard._slowniki_map_etykiet(drzewo, nazwy)) == len(nazwy), plik

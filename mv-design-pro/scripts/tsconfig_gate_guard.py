@@ -377,7 +377,9 @@ POMIJANE_KATALOGI = {
 #: w przepisanym `ui/network-build/forms/__tests__/InsertStationFormHelpers.test.ts`; piec
 #: bledow TS2353 (`bayTypePl` w wierszu pola konfiguratora stacji, zastapiony przez `bayRole`)
 #: naprawione u zrodla w tych samych testach; zero nowych bledow.
-BUDZET_BLEDOW_POZA_BRAMKA = 94
+#: Partia integracji 2 (2026-09-25, pomiar guardem na `73d435c2`): 94 -> 93 — oba zejscia
+#: opisane wyzej (scalenie main i karta #141) policzone razem na jednym drzewie.
+BUDZET_BLEDOW_POZA_BRAMKA = 93
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

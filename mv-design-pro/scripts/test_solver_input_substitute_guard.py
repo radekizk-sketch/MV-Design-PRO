@@ -1637,7 +1637,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `7b05931e` i na drzewie karty, roznica zbiorow: -1 (`deterministic_id`, jedyne wystapienie
     # w martwym modelu `api/power_flow_runs.py::PowerFlowRunResponse` — 0 uzyc, skasowany razem
     # z `PowerFlowExecuteResponse`), +0. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4032." in wyjscie, wyjscie
+    # Partia integracji 2 (2026-09-25: archiwum, PL-ZNAKI, #141, E2, #142): 4033 -> 4042 —
+    # POMIAR `contract_fields()` na `4d3bb589` i na czubku partii, roznica zbiorow:
+    # +11 (karta archiwum: `audytowe`, `identyfikator_audytowy`, `old_value_pl`,
+    # `new_value_pl`, `element_type_label_pl`, `section_label_pl` w `api/archive_diff.py`,
+    # `paczka`, `bajty`, `sekcje_zastosowane` w `application/project_archive/service.py`;
+    # karta #141: `okreslenie_pl` w `station_templates/schema.py`; karta #142:
+    # `transformer_name` w `enm/pole_transformatorowe.py`), -2 (`deterministic_id` — E2,
+    # `new_archive_hash` — archiwum). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4042." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1767,7 +1775,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # run_index.py` — `AnalysisRunIndexEntry` bez wolajacego, skasowany razem z
         # repozytorium `infrastructure/persistence/...`, ktore lezy poza zakresem skanu;
         # zero nowych plikow). POMIAR guardem na drzewie karty.
-        "Przeskanowano 540 plikow w zakresie: network_model, solver_input, enm, "
+        # Partia integracji 2 (2026-09-25): 540 -> 542 (+1 `enm/rola_pola_sn.py` — kanon
+        # rol pol SN, karta #141; +1 `enm/slownik_komunikatow.py` — slownik nazw pol
+        # formularza w komunikatach, karta #142). POMIAR guardem na czubku partii.
+        "Przeskanowano 542 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1892,7 +1903,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `enm/deklaracje_modulu.py`); dlug/wykluczenia BEZ ZMIANY.
         # Karta AB-1a Pakiet 0 (2026-09-23): enm dlug 7/73 -> 7/72 (wpis `row.event_seq`
         # w `enm/canonical_analysis.py` zdjety razem z narracja zdarzen toru T1).
-        "  enm: pliki_skanowane=52, dlug=7 plikow/suma 71, wykluczenia=0 plikow/suma 0",
+        # Partia integracji 2 (2026-09-25): enm 52 -> 54 (`rola_pola_sn.py` — #141,
+        # `slownik_komunikatow.py` — #142); dlug/wykluczenia BEZ ZMIANY.
+        "  enm: pliki_skanowane=54, dlug=7 plikow/suma 71, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
