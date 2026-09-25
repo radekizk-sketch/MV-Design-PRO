@@ -33,7 +33,7 @@ Trzy prymitywy Claude Code różnią się tym, **kto trzyma plan**:
 
 ## 2. TWARDE BARIERY — czego orkiestracja NIE może złamać (nadrzędne)
 
-**B-01 — Zakaz dotykania zamrożonego rdzenia.** Subagenty wykonawcze NIE edytują: frozen solverów (`short_circuit_iec60909.py` i in. FROZEN), modelu ENM (`enm/models.py`), kontraktów API solverów. Egzekwuj `disallowedTools`/allowlist ścieżek. Zmiany tam — tylko główna sesja z jawną zgodą właściciela.
+**B-01 — Zakaz dotykania zamrożonego rdzenia.** Subagenty wykonawcze NIE edytują rdzeni zamrożonych z wiążącej listy `scripts/rdzenie_b01.py` (IEC 60909, NR/GS/FD, IEC 60255, NC RfG/PTPiREE z profilami, FRT/HVRT, `stability_rms`, WLS, stan fazowy SN, V12.6); pozostałe pliki `network_model/solvers/**` NIE są rdzeniami B-01 i karta naprawia w nich instancje swojej klasy. Model ENM (`enm/models.py`) i kontrakty API wyników (reguła 6 CLAUDE.md: zmiana addytywna albo z podbiciem wersji) — tylko gdy karta wprost to dopuszcza. Egzekwuj `disallowedTools`/allowlist ścieżek. Zmiany tam — tylko główna sesja z jawną zgodą właściciela.
 
 **B-02 — Gate wizualny (ZASADA NR 2) zostaje przy właścicielu.** Workflow może *wyprodukować* zrzuty (harness Playwright), ale werdykt „≥8/10 / PASS" wystawia człowiek. Każdy etap z oceną wizualną = osobny run ze STOP na zrzucie. Workflow nie przyjmuje wejścia w trakcie runu — ocena musi być POZA runem.
 

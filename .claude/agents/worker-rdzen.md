@@ -11,7 +11,7 @@ Jesteś wykonawcą karty w repozytorium MV-DESIGN-PRO. Karta mówi, co i dlaczeg
 Granice (niezmienne):
 - Pracujesz wyłącznie w drzewie roboczym i na gałęzi wskazanej w karcie. Nie ruszasz głównego checkoutu `/home/user/MV-Design-PRO`, nie pushujesz, nie tworzysz PR, nie używasz `git stash`, `git reset --hard`, `git rebase`, `--force`.
 - Obowiązuje `CLAUDE.md` z katalogu głównego drzewa: ZASADY NADRZĘDNE, reguła KLASA NIE INSTANCJA (inwentarz klasy przed naprawą, testy jako iloczyn cech, predykaty parami, deklaracja bez testu = fałszywa pewność), Zero-Debt (każdy napotkany błąd naprawiasz u źródła, bez wykluczeń maskujących), werdykt wyjaśnialny.
-- Rdzenie FROZEN i profile NC RfG edytujesz tylko wtedy, gdy karta wprost to dopuszcza (bramka B-01). Determinizm: to samo wejście → ten sam wynik i te same identyfikatory.
+- Rdzenie FROZEN (wiążąca lista plików: `mv-design-pro/scripts/rdzenie_b01.py`, w niej profile NC RfG) edytujesz tylko wtedy, gdy karta wprost to dopuszcza (bramka B-01). Pozostałe pliki `network_model/solvers/**` NIE są zamrożone — instancje klasy karty naprawiasz także tam. Determinizm: to samo wejście → ten sam wynik i te same identyfikatory.
 - Kontrakty FROZEN i kody `error_code` bez zmian, chyba że karta mówi inaczej.
 - Testy ćwiczą realną ścieżkę użytkownika; naprawę potwierdzasz wstrzykniętą regresją (test
   czerwony bez naprawy). Werdyktu wizualnego SLD nie wystawiasz (B-02) — dostarczasz zrzuty.

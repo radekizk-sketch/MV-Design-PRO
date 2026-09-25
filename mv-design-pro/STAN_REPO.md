@@ -51,6 +51,9 @@ Pełna klasyfikacja per zdolność i domenę: `docs/plan/MAPA_DOMKNIECIA_PRODUKT
   obszar → analiza — werdykt właściciela 8,5/10.
 - **Rdzenie FROZEN** (B-01): IEC 60909 (3F/2F/1F, MAX/MIN, wkłady), NR/GS/FD, protection IEC 60255, NC RfG/PTPiREE
   (T01–T20), FRT/HVRT, `stability_rms`, WLS, phase state SN, V12.6 — nietknięte; zmiany wyłącznie przez OD-14/15/18/19/20.
+  Wiążąca lista plików: `scripts/rdzenie_b01.py` (samotest `scripts/test_rdzenie_b01.py`); POZOSTAŁE pliki
+  `network_model/solvers/**` NIE są rdzeniami B-01 (m.in. `dynamika/**`, `cable_ampacity_derating.py`,
+  `fault_loop_builder.py`, `equipment_checks/**`) — edycja jak każdego solvera: WHITE BOX, testy, determinizm.
 
 ---
 
