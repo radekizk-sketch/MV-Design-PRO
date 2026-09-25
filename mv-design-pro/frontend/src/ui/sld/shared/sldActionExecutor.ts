@@ -55,6 +55,7 @@ import {
 import { useShellStore } from '../../../ui2/shell/useShellStore';
 import { powyzejPasmaNn } from '../../../ui2/model/pasmaNapieciowe';
 import { maStartOperacjiCiagu } from '../../../ui2/kreatory/magistrala/magistralaModel';
+import { poleLinioweWolne } from '../../network-build/zajetoscPol';
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
@@ -380,9 +381,9 @@ function operationOpenMessage(op: NetworkBuildOperationName, actionId: string): 
  * operacji `add_grid_source_sn` (znacznik `gpz_line_field` w `tags` albo
  * `meta.gpz_line_field_index`) — nie po kształcie referencji.
  *
- * Zajętość liczymy PER POLE (`Branch.meta.origin_bay_ref`, ustawiane przez
- * `continue_trunk_segment_sn`), a nie per szyna: na jednej szynie sekcyjnej GPZ
- * stoi wiele pól liniowych i pierwszy ciąg nie może blokować pozostałych.
+ * Zajętość jest PER POLE i pochodzi z modelu odczytu backendu (`logical_views.line_fields`,
+ * karta POLE-ZAJĘTE — jedna funkcja `enm/zajetosc_pol.py` dla operacji i frontu), a nie per
+ * szyna: na jednej szynie sekcyjnej GPZ stoi wiele pól liniowych.
  *
  * `null` = brak wolnego pola liniowego ⇒ menu BLOKUJE pozycję z uczciwym
  * powodem, zamiast otwierać kreator, którego nie da się zapisać.
@@ -444,6 +445,7 @@ export function resolveGpzSourceRefForSectionBus(
 export function resolveGpzTrunkStartFieldRef(
   snapshot: EnergyNetworkModel | null,
   stationRef: string | null,
+  logicalViews: LogicalViewsV1 | null,
 ): string | null {
   if (!snapshot || !stationRef) return null;
   const station = (snapshot.substations ?? []).find(
@@ -453,18 +455,6 @@ export function resolveGpzTrunkStartFieldRef(
     ? (station.meta as Record<string, unknown>)
     : null;
   const specs = Array.isArray(meta?.field_specs) ? (meta!.field_specs as unknown[]) : [];
-  const zajete = new Set(
-    (snapshot.branches ?? [])
-      .filter((branch) => branch.type === 'cable' || branch.type === 'line_overhead')
-      .map((branch) => {
-        const branchMeta = (branch as { meta?: unknown }).meta;
-        const origin = branchMeta && typeof branchMeta === 'object'
-          ? (branchMeta as Record<string, unknown>).origin_bay_ref
-          : undefined;
-        return typeof origin === 'string' ? origin.trim() : '';
-      })
-      .filter(Boolean),
-  );
   const wolne: string[] = [];
   for (const raw of specs) {
     if (!raw || typeof raw !== 'object') continue;
@@ -477,7 +467,9 @@ export function resolveGpzTrunkStartFieldRef(
     if (!jestPolemGpz) continue;
     if (!['OUT', 'FEEDER'].includes(String(spec.bay_role ?? '').toUpperCase())) continue;
     const ref = typeof spec.field_ref === 'string' ? spec.field_ref.trim() : '';
-    if (!ref || zajete.has(ref)) continue;
+    // Karta POLE-ZAJĘTE: zajętość pola z modelu odczytu backendu (`line_fields`) — ta sama
+    // funkcja bramkuje operację; dawniej front liczył ją sam po `origin_bay_ref`.
+    if (!ref || !poleLinioweWolne(logicalViews, ref)) continue;
     wolne.push(ref);
   }
   // Wybór deterministyczny: pierwsze wolne pole w porządku leksykalnym
@@ -503,13 +495,15 @@ export function resolveGpzTrunkStartFieldRef(
  */
 export function resolveBranchStartAvailability(
   snapshot: EnergyNetworkModel | null,
+  logicalViews: LogicalViewsV1 | null,
   kind: SldElementKindForMenu,
   elementId: string | null,
 ): boolean | undefined {
   if (!snapshot || !elementId) return undefined;
   const elementType = elementTypeForSldKind(kind);
   if (!elementType) return undefined;
-  return resolveBranchStartOperationContext(snapshot, elementId, elementType).fromRef.trim().length > 0;
+  return resolveBranchStartOperationContext(snapshot, logicalViews, elementId, elementType)
+    .fromRef.trim().length > 0;
 }
 
 /** Akcje menu/szuflady SLD → operacja domenowa formularza. */
@@ -614,6 +608,7 @@ export function buildSldOperationContext(
     const fieldRef = resolveGpzTrunkStartFieldRef(
       snapshot,
       stationRefOfBusOrSource(snapshot, operationElementId),
+      logicalViews,
     );
     // Brak wolnego pola liniowego = brak operacji (menu blokuje pozycję z
     // uczciwym powodem, patrz `getMenuActions`), nigdy kreator bez startu.
@@ -628,7 +623,7 @@ export function buildSldOperationContext(
   // Zmierzone: bez tej gałęzi GPZ sieci referencyjnej na LOD 0 otwierał kreator
   // magistrali bez punktu startu (ta sama klasa co stacja).
   if (actionId === 'continue-trunk' && kind === 'station') {
-    const fieldRef = resolveGpzTrunkStartFieldRef(snapshot, operationElementId);
+    const fieldRef = resolveGpzTrunkStartFieldRef(snapshot, operationElementId, logicalViews);
     if (fieldRef) extraContext.field_ref = fieldRef;
   }
 

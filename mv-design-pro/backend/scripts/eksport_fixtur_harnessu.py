@@ -4797,6 +4797,73 @@ def porownanie_scena_slad_zabezpieczen() -> dict[str, Any]:
 
 
 #: Nazwa pliku → funkcja licząca odpowiedź (kolejność = kolejność eksportu).
+# ---------------------------------------------------------------------------
+# Karta POLE-ZAJĘTE — sceny punktu startu ciągu (migawka + widoki logiczne z `line_fields`)
+# ---------------------------------------------------------------------------
+
+#: Fikstury frontu z migawką ENM bez widoków logicznych — generator dokłada ich widoki
+#: (`_compute_logical_views` tej samej migawki), bo front czyta zajętość pól wyłącznie
+#: z `logical_views.line_fields` i nie liczy jej sam.
+_FIKSTURY_ENM_FRONTU: dict[str, Path] = {
+    "widoki_logiczne_sld_substrate_52s": BACKEND_DIR.parent
+    / "frontend/src/ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json",
+    "widoki_logiczne_s95_gpz_swiezy": BACKEND_DIR.parent
+    / "frontend/src/ui/sld/v3/canvas/__tests__/fixtures/s95GpzSwiezy.enm.json",
+    "widoki_logiczne_b2_stacja_na_odcinku": BACKEND_DIR.parent
+    / "frontend/src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-insert_station_on_segment_sn.enm.json",
+}
+
+
+def _widoki_logiczne_fikstury_frontu(nazwa: str) -> dict[str, Any]:
+    """Widoki logiczne (w tym zajętość pól `line_fields`) migawki zapisanej w fiksturze frontu
+    — liczone tą samą funkcją, którą operacje domenowe zwracają w `logical_views`."""
+    from enm.domain_operations import _compute_logical_views
+
+    surowe = json.loads(_FIKSTURY_ENM_FRONTU[nazwa].read_text(encoding="utf-8"))
+    migawka = surowe.get("enm", surowe)
+    return canonicalize_json(_compute_logical_views(migawka))
+
+
+def _scena_punktu_startu(rodzaj: str, stan: str) -> dict[str, Any]:
+    """Scena `tests/reference_networks/sceny_zajetosci_pol.py` (ten sam budowniczy co testy
+    backendu) jako odpowiedź operacji: migawka + widoki logiczne. Pola `id` i zegar nagłówka
+    przypięte (`_fiksuj_niedeterminizm_sceny_zwarcia`), widoki liczone z przypiętej migawki."""
+    from enm.domain_operations import execute_domain_operation
+
+    from tests.reference_networks.sceny_zajetosci_pol import zbuduj_scene
+
+    scena = zbuduj_scene(rodzaj, stan)
+    model = EnergyNetworkModel.model_validate(scena.enm)
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    migawka = model.model_dump(mode="json")
+    odpowiedz = execute_domain_operation(enm_dict=migawka, op_name="refresh_snapshot", payload={})
+    return canonicalize_json(
+        {
+            "pola_liniowe_elementu": scena.pola,
+            "snapshot": odpowiedz["snapshot"],
+            "logical_views": odpowiedz["logical_views"],
+        }
+    )
+
+
+def _fabryka_sceny_punktu_startu(rodzaj: str, stan: str) -> Any:
+    return lambda: _scena_punktu_startu(rodzaj, stan)
+
+
+def _fabryka_widokow_fikstury(nazwa: str) -> Any:
+    return lambda: _widoki_logiczne_fikstury_frontu(nazwa)
+
+
+FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
+    **{
+        f"punkt_startu_{rodzaj}_{stan}": _fabryka_sceny_punktu_startu(rodzaj, stan)
+        for rodzaj in ("stacja_na_odcinku", "gpz_z_zaciskami")
+        for stan in ("wolne_kilka", "wolne_jedno", "zajete_wszystkie", "brak_pol")
+    },
+    **{nazwa: _fabryka_widokow_fikstury(nazwa) for nazwa in _FIKSTURY_ENM_FRONTU},
+}
+
+
 FIXTURY: dict[str, Any] = {
     "ncrfg_zgodnosc_przekrojowa_scena_macierz": zgodnosc_przekrojowa_sceny_macierz,
     "macierz_scena_migawka": macierz_scena_migawka,
@@ -4907,6 +4974,7 @@ FIXTURY: dict[str, Any] = {
     "diagnoza_scena_preflight": diagnoza_scena_preflight,
     "diagnoza_scena_przebieg": diagnoza_scena_przebieg,
     "diagnoza_scena_bieg": diagnoza_scena_bieg,
+    **FIXTURY_PUNKTU_STARTU,
 }
 
 

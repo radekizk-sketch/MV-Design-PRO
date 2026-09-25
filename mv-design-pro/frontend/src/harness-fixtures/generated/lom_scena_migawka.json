@@ -82,10 +82,7 @@
         "x_ohm_per_km": 0.1
       },
       "meta": {
-        "catalog_item_version": "legacy",
-        "origin_apparatus_kind": "cable_head",
-        "origin_bay_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
-        "origin_port_role": "OUTGOING_HEAD"
+        "catalog_item_version": "legacy"
       },
       "n_parallel": null,
       "name": "Magistrala wytwórcy (2)",
