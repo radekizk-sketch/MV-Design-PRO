@@ -35,6 +35,11 @@ export interface AuditProofPackStatus {
   readonly className: string;
 }
 
+/**
+ * Status pakietu dowodów stacji. BRAK DANYCH NIE JEST ZGODNOŚCIĄ (karta PROOFPACK-KONTRAKT):
+ * pakiet, w którym część rodzajów jest jawnym brakiem, nie dostaje „Weryfikacja pozytywna",
+ * nawet gdy wszystkie wygenerowane dowody są zaliczone.
+ */
 export function auditProofPackStatus(data: Audit2ProofPackResponse): AuditProofPackStatus {
   if (data.proof_count <= 0) {
     return {
@@ -42,9 +47,12 @@ export function auditProofPackStatus(data: Audit2ProofPackResponse): AuditProofP
       className: 'text-amber-700',
     };
   }
-  return data.all_pass
-    ? { label: 'Weryfikacja pozytywna', className: 'text-emerald-700' }
-    : { label: 'Wymaga sprawdzenia', className: 'text-rose-700' };
+  if (!data.all_pass) {
+    return { label: 'Wymaga sprawdzenia', className: 'text-rose-700' };
+  }
+  return data.braki_danych.length !== 0
+    ? { label: 'Niekompletny — część rodzajów bez danych', className: 'text-amber-700' }
+    : { label: 'Weryfikacja pozytywna', className: 'text-emerald-700' };
 }
 
 export function resolveLatestCompletedRun(runs: ExecutionRun[]): ExecutionRun | null {

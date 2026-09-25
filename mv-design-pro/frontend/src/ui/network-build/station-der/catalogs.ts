@@ -90,6 +90,7 @@ import type {
   BlockTransformerItem,
   TapChangerItem,
 } from './audit2-api';
+import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 /**
  * Wersja katalogów = DATA PRZEGLĄDU PROWENIENCJI (ISO-8601), nie wymyślony numer.
@@ -294,11 +295,39 @@ export function selectBessModesForPcs(
  * (`useAudit2CatalogSnapshot`, `audit2-api.ts::TapChangerItem`) — funkcja
  * przyjmuje go jako parametr, zero statyku modułowego.
  */
+export type KlasaTransformatoraPrzelacznika =
+  | 'transformer_110_15'
+  | 'transformer_110_20'
+  | 'transformer_15_04'
+  | 'block_transformer';
+
 export function selectTapChangersForTransformer(
   tapChangers: readonly TapChangerItem[],
-  type: 'transformer_110_15' | 'transformer_110_20' | 'transformer_15_04' | 'block_transformer',
+  type: KlasaTransformatoraPrzelacznika,
 ): readonly TapChangerItem[] {
   return tapChangers.filter((tc) => tc.applicable_to.includes(type));
+}
+
+/**
+ * Klasa transformatora (napięcia z modelu) dla pola `applicable_to` przełącznika zaczepów.
+ *
+ * JEDNA REGUŁA NA DWIE STRONY (karta PROOFPACK-KONTRAKT): ta sama klasyfikacja wybiera tu
+ * przełączniki OFEROWANE transformatorowi, a w backendzie
+ * (`audit2_catalogs.klasa_transformatora_przelacznika`) przełącznik SPRAWDZANY w pakiecie
+ * dowodów. Obie strony czytają jedną tabelę przypadków
+ * (`__tests__/klasy_transformatora_przelacznika.json`) — oferta i dowód nie mogą się
+ * rozjechać. Transformator spoza klas daje `null` (brak oferty), a nie domysł „blokowy",
+ * który oferował przełącznik dowolnemu transformatorowi.
+ */
+export function klasaTransformatoraPrzelacznika(
+  hvKv: number | null | undefined,
+  lvKv: number | null | undefined,
+): KlasaTransformatoraPrzelacznika | null {
+  if (typeof hvKv !== 'number' || typeof lvKv !== 'number') return null;
+  if (hvKv >= 100 && hvKv < 130 && Math.abs(lvKv - 15) < 1) return 'transformer_110_15';
+  if (hvKv >= 100 && hvKv < 130 && Math.abs(lvKv - 20) < 1) return 'transformer_110_20';
+  if (powyzejPasmaNn(hvKv) && wPasmieNn(lvKv)) return 'transformer_15_04';
+  return null;
 }
 
 /** Pobiera szczegóły przełącznika zaczepów z katalogu podanego przez wołającego. */
@@ -311,71 +340,10 @@ export function getTapChanger(
 }
 
 // =============================================================================
-// 12. Hosting capacity export check (Naprawa eng.15 — audyt OZE)
+// 12. Hosting capacity export check — USUNIĘTY z frontu (karta PROOFPACK-KONTRAKT)
 // =============================================================================
 //
-// Eksport mocy DER do sieci OSD vs. import obciążenia. Reguła operatora:
-// jeśli moc eksportowana ≥ 1.5 × moc importowana, wymagana studium NC RfG
-// "ramp-down" + ograniczenie eksportu (curtailment).
-
-export interface HostingCapacityExportResult {
-  readonly station_id: string;
-  readonly p_export_kw: number; // suma mocy DER
-  readonly p_import_kw: number; // suma mocy odbiorów
-  readonly p_net_export_kw: number; // P_export - P_import (>0 = export do OSD)
-  readonly export_to_import_ratio: number;
-  readonly status: 'no_export' | 'normal_export' | 'high_export_warning' | 'requires_ramp_down';
-  readonly message_pl: string;
-}
-
-/**
- * Naprawa eng.15: walidacja kierunku przepływu mocy (export vs import) w stacji.
- * Reguła operatora:
- *   - Σ P_DER ≤ 0.8 × Σ P_load → "no_export" (lokalna autokonsumpcja)
- *   - 0.8 × Σ P_load < Σ P_DER ≤ 1.5 × Σ P_load → "normal_export"
- *   - Σ P_DER > 1.5 × Σ P_load → "high_export_warning" (wymagane curtailment)
- *   - Σ P_DER > 3 × Σ P_load → "requires_ramp_down" (NC RfG study + curtailment)
- */
-export function validateHostingCapacityExport(args: {
-  readonly station_id: string;
-  readonly p_export_kw: number;
-  readonly p_import_kw: number;
-}): HostingCapacityExportResult {
-  const net = args.p_export_kw - args.p_import_kw;
-  const ratio = args.p_import_kw > 0 ? args.p_export_kw / args.p_import_kw : Infinity;
-
-  let status: HostingCapacityExportResult['status'];
-  let message_pl: string;
-
-  if (net < 0 || ratio < 0.8) {
-    status = 'no_export';
-    message_pl =
-      `Lokalna autokonsumpcja: ${args.p_export_kw.toFixed(0)} kW DER vs `
-      + `${args.p_import_kw.toFixed(0)} kW odbiorów. Brak eksportu netto do OSD.`;
-  } else if (ratio <= 1.5) {
-    status = 'normal_export';
-    message_pl =
-      `Eksport normalny: ${net.toFixed(0)} kW eksportowanych do OSD `
-      + `(stosunek ${ratio.toFixed(2)}× — w granicach standardowej hosting capacity).`;
-  } else if (ratio <= 3.0) {
-    status = 'high_export_warning';
-    message_pl =
-      `Wysoki eksport: ${net.toFixed(0)} kW (stosunek ${ratio.toFixed(2)}×). `
-      + `Zalecane curtailment 70% w godzinach południowych. Sprawdź profil P(t).`;
-  } else {
-    status = 'requires_ramp_down';
-    message_pl =
-      `Krytyczny eksport: ${net.toFixed(0)} kW (stosunek ${ratio.toFixed(2)}×). `
-      + `WYMAGANE: studium NC RfG ramp-down + curtailment + uzgodnienie z OSD.`;
-  }
-
-  return {
-    station_id: args.station_id,
-    p_export_kw: args.p_export_kw,
-    p_import_kw: args.p_import_kw,
-    p_net_export_kw: net,
-    export_to_import_ratio: ratio,
-    status,
-    message_pl,
-  };
-}
+// Ta funkcja była drugą kopią reguły backendu (`validate_hosting_capacity_export`):
+// sumy mocy i werdykt progami 0,8/1,5/3,0 liczone w warstwie prezentacji. Bilans
+// eksportu wobec importu składa i ocenia wyłącznie backend w pakiecie dowodów
+// (`POST /api/v1/projects/{id}/audit2-station-config/_validate-all`).

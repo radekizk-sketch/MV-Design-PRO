@@ -16,14 +16,13 @@ import type { RunStatus } from '../../study-cases/types';
 import {
   deleteStationAudit2Config,
   fetchAudit2CatalogSnapshot,
-  generateAudit2ProofPack,
   generateAudit2Report,
+  generateProjectAudit2ProofPack,
   listStationAudit2Configs,
   putStationAudit2Config,
   type AuditCatalogSnapshot,
-  type Audit2ProofPackRequest,
+  type Audit2ProjectProofPackResponse,
   type Audit2ProofPackResponse,
-  type Audit2ReportRequest,
   type Audit2ReportResponse,
   type StationAudit2ConfigBody,
   type StationAudit2ConfigResponse,
@@ -127,6 +126,11 @@ export function useUpdateStationAudit2Config() {
       qc.invalidateQueries({
         queryKey: audit2QueryKeys.stationConfigList(args.projectId),
       });
+      // Pakiet dowodów składa backend z zapisanych konfiguracji — zmiana konfiguracji
+      // unieważnia pakiet projektu (bez tego ekran pokazywałby pakiet sprzed zmiany).
+      qc.invalidateQueries({
+        queryKey: audit2QueryKeys.projectProofPack(args.projectId),
+      });
     },
   });
 }
@@ -147,6 +151,9 @@ export function useDeleteStationAudit2Config() {
       qc.invalidateQueries({
         queryKey: audit2QueryKeys.stationConfigList(args.projectId),
       });
+      qc.invalidateQueries({
+        queryKey: audit2QueryKeys.projectProofPack(args.projectId),
+      });
     },
   });
 }
@@ -155,15 +162,78 @@ export function useDeleteStationAudit2Config() {
 // Phase 10/11: Proof Pack + Report mutations (server-side actions, brak cache).
 // =============================================================================
 
-export function useGenerateAudit2ProofPack() {
-  return useMutation<Audit2ProofPackResponse, Error, Audit2ProofPackRequest>({
-    mutationFn: generateAudit2ProofPack,
+/**
+ * Generowanie pakietu dowodów walidacji rozszerzeń projektu na żądanie (przycisk) —
+ * pakiet składa backend z zapisanych konfiguracji stacji i z modelu sieci. Wynik trafia
+ * też do pamięci zapytania `projectProofPack`, z której czytają pozostałe ekrany.
+ */
+export function useGenerateProjectAudit2ProofPack() {
+  const qc = useQueryClient();
+  return useMutation<Audit2ProjectProofPackResponse, Error, string>({
+    mutationFn: generateProjectAudit2ProofPack,
+    onSuccess: (data, projectId) => {
+      qc.setQueryData(audit2QueryKeys.projectProofPack(projectId), data);
+    },
   });
 }
 
-export function useGenerateAudit2Report() {
-  return useMutation<Audit2ReportResponse, Error, Audit2ReportRequest>({
-    mutationFn: generateAudit2Report,
+/**
+ * Pakiet dowodów projektu jako zapytanie (ekrany, które pokazują jego część bez przycisku,
+ * np. bilans eksportu stacji w kontroli modelu). Operacja backendu jest bez skutków
+ * ubocznych i deterministyczna, więc wolno ją wykonać przy wejściu na ekran.
+ */
+export function useAudit2ProjectProofPack(
+  projectId: string | null,
+): UseQueryResult<Audit2ProjectProofPackResponse, Error> {
+  return useQuery({
+    queryKey: audit2QueryKeys.projectProofPack(projectId ?? ''),
+    queryFn: () => generateProjectAudit2ProofPack(projectId!),
+    enabled: Boolean(projectId),
+    // Pakiet zależy też od MODELU (odbiory, transformatory, źródła), którego zmiany nie
+    // unieważniają tego klucza — odczyt przy każdym wejściu na ekran, bez pamięci 30 s.
+    staleTime: 0,
+  });
+}
+
+export interface Audit2ProjectReportArgs {
+  readonly projectName: string;
+  readonly pakiety: readonly Audit2ProofPackResponse[];
+}
+
+export interface Audit2StationReport {
+  readonly stationId: string;
+  readonly stationNazwa: string;
+  readonly textPl: string;
+  readonly report: Audit2ReportResponse;
+}
+
+/**
+ * Raport walidacji rozszerzeń dla KAŻDEJ stacji pakietu projektu (jeden raport na stację).
+ * Nazwa stacji w dokumencie pochodzi z pakietu backendu (`station_nazwa`, nazwa z modelu),
+ * nie z wyszukiwania w interfejsie; operatora raport nie zmyśla (pole zostaje puste).
+ */
+export function useGenerateAudit2ProjectReport() {
+  return useMutation<readonly Audit2StationReport[], Error, Audit2ProjectReportArgs>({
+    mutationFn: async ({ projectName, pakiety }) => {
+      const raporty: Audit2StationReport[] = [];
+      for (const pakiet of pakiety) {
+        const report = await generateAudit2Report({
+          project_name: projectName,
+          station_id: pakiet.station_id,
+          station_name: pakiet.station_nazwa,
+          proof_pack: pakiet,
+          generated_at_iso: '1970-01-01T00:00:00Z',
+          formats: ['json', 'text_pl', 'latex'],
+        });
+        raporty.push({
+          stationId: pakiet.station_id,
+          stationNazwa: pakiet.station_nazwa,
+          textPl: report.text_pl ?? '',
+          report,
+        });
+      }
+      return raporty;
+    },
   });
 }
 

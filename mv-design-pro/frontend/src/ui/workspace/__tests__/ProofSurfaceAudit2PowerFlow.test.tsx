@@ -168,6 +168,21 @@ describe('ProofSurface — przycisk rozpływu mocy rozszerzonego (CV-4.2)', () =
             ],
           } as never);
         }
+        if (urlStr.endsWith('/audit2-station-config/_validate-all')) {
+          // Nazwy stacji do wyboru — z pakietu backendu (nigdy identyfikator na ekranie).
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              project_id: 'proj-1',
+              all_pass: true,
+              station_count: 2,
+              per_station: [
+                { station_id: 'station-A', station_nazwa: 'Stacja Łąkowa', all_pass: true, fail_count: 0, proof_count: 0, proofs: [], braki_danych: [], generated_at: '1970-01-01T00:00:00Z' },
+                { station_id: 'station-B', station_nazwa: 'Stacja bez konfiguracji', all_pass: true, fail_count: 0, proof_count: 0, proofs: [], braki_danych: [], generated_at: '1970-01-01T00:00:00Z' },
+              ],
+            }),
+          } as never);
+        }
         if (urlStr === '/api/execution/study-cases/case-1/runs') {
           createRunBody = init?.body ? JSON.parse(init.body as string) : null;
           return Promise.resolve({
@@ -216,7 +231,18 @@ describe('ProofSurface — przycisk rozpływu mocy rozszerzonego (CV-4.2)', () =
       },
     );
 
-    // Czekaj az lista konfigów się zaladuje (przycisk staje się enabled).
+    // Karta PROOFPACK-KONTRAKT: przycisk czeka na WSKAZANIE stacji (dawniej brał
+    // pierwszą konfigurację z listy bez pytania). Lista zawiera wyłącznie stacje
+    // z zapisaną konfiguracją, nazwane nazwą z modelu.
+    const wybor = screen.getByTestId('audit2-power-flow-station') as HTMLSelectElement;
+    expect((screen.getByTestId('audit2-power-flow-run') as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(() => {
+      expect(Array.from(wybor.options).map((o) => o.textContent)).toEqual([
+        'Wybierz stację',
+        'Stacja Łąkowa',
+      ]);
+    });
+    fireEvent.change(wybor, { target: { value: 'station-A' } });
     await waitFor(() => {
       const btn = screen.getByTestId('audit2-power-flow-run') as HTMLButtonElement;
       expect(btn.disabled).toBe(false);

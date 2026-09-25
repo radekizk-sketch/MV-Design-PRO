@@ -209,6 +209,8 @@ def test_brak_aparatu_w_katalogu_daje_uczciwy_brak_a_nie_zgodnosc() -> None:
     )
     assert result["ok"] is False
     assert "Brak aparatury w katalogu" in result["message_pl"]
+    # Karta PROOFPACK-KONTRAKT: zdanie dla człowieka nie powtarza identyfikatora pozycji.
+    assert "wstd_nie_istnieje" not in result["message_pl"]
 
 
 def test_komunikat_jest_po_polsku_z_diakrytykami() -> None:

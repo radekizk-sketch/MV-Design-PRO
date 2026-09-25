@@ -570,53 +570,10 @@ export function emptyReadinessMatrix(): DerReadinessMatrix {
 // Import mocy stacji — dana wejściowa oceny kierunku przepływu (V12K-226)
 // =============================================================================
 
-/**
- * Suma mocy czynnej ODBIORÓW przypisanych do stacji [kW], albo `null`, gdy
- * przypisania nie da się ustalić.
- *
- * DLACZEGO TA FUNKCJA ISTNIEJE (defekt, który ją wymusił). Ekran liczył import
- * stacji w miejscu wywołania, dwoma ZGADNIĘTYMI nazwami pól pod rzutowaniem
- * `as`, które wyłączyło kontrolę typów: filtrował odbiory po `station_ref`
- * (tego pola `Load` nie ma — należy do źródła z wariantem `nn_side`) i sumował
- * `nominal_power_kw ?? 0` (tego pola `Load` też nie ma — niesie `p_mw`).
- * Oba rzutowania dawały `undefined`, więc lista odbiorów była ZAWSZE pusta,
- * a import ZAWSZE zerowy. Ocena kierunku przepływu dzieli eksport przez import,
- * a przy imporcie zerowym stosunek jest nieskończony — więc KAŻDA stacja z DER
- * dostawała werdykt „krytyczny eksport" z żądaniem studium NC RfG ramp-down
- * i uzgodnienia z OSD, niezależnie od rzeczywistych odbiorów.
- *
- * PRZYPISANIE ODBIORU DO STACJI idzie prawdziwą drogą modelu: `Substation`
- * niesie `bus_refs`, a `Load` niesie `bus_ref` — odbiór należy do stacji, gdy
- * jego szyna jest jedną z szyn tej stacji.
- *
- * `null` ZNACZY „NIE WIEM", NIE „ZERO". Brak snapshotu albo stacja nieobecna w
- * modelu daje `null`, a wtedy oceny kierunku przepływu NIE WOLNO policzyć:
- * zero importu jest twierdzeniem o sieci (stacja bez odbiorów, cała generacja
- * idzie na eksport), a nie zapisem braku wiedzy.
- */
-export function sumStationLoadImportKw(
-  snapshot: {
-    readonly substations?: ReadonlyArray<{ readonly ref_id?: string; readonly bus_refs?: readonly string[] }>;
-    readonly loads?: ReadonlyArray<{ readonly bus_ref?: string; readonly p_mw?: number }>;
-  } | null,
-  stationId: string,
-): number | null {
-  if (!snapshot) return null;
-  const stacja = (snapshot.substations ?? []).find((s) => s.ref_id === stationId);
-  if (!stacja) return null;
-  const szyny = new Set(stacja.bus_refs ?? []);
-  if (szyny.size === 0) return null;
-
-  let sumaMw = 0;
-  for (const odbior of snapshot.loads ?? []) {
-    if (odbior.bus_ref === undefined || !szyny.has(odbior.bus_ref)) continue;
-    // `p_mw` jest w kontrakcie wymagane; brak wartości oznacza model niezgodny z
-    // kontraktem, więc nie zgadujemy zera — cały import staje się nieznany.
-    if (typeof odbior.p_mw !== 'number' || !Number.isFinite(odbior.p_mw)) return null;
-    sumaMw += odbior.p_mw;
-  }
-  return sumaMw * 1000;
-}
+// `sumStationLoadImportKw` USUNIĘTE kartą PROOFPACK-KONTRAKT: import mocy
+// stacji sumuje backend (`audit2_skladanie.moce_odbiorow_stacji_kw`) — ta sama reguła
+// (odbiór należy do stacji przez szyny `Substation.bus_refs`; stacja spoza modelu albo bez
+// szyn = import NIEZNANY, nie zero), przypięta testami backendu.
 
 // =============================================================================
 // Złożenie oceny DER z bramką MODELU (V12K-231, karta F-K8 faza 1)

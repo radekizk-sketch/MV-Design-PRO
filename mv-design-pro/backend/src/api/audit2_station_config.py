@@ -20,14 +20,16 @@ from typing import Any
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
+from application.proof_engine.packs.audit2_skladanie import (
+    StationAudit2ConfigBody,
+    zloz_pakiety_projektu,
+)
 from application.twin_key import klucz_twin_dla_projektu
-from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
+from enm.models import EnergyNetworkModel
 from enm.store import get_enm, has_enm
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.models import StationAudit2ConfigORM
 from infrastructure.persistence.unit_of_work import UnitOfWork
-from network_model.pochodne import mw_na_kw
-from pydantic import BaseModel, Field
 
 router = APIRouter(
     prefix="/api/v1/projects/{project_id}/audit2-station-config",
@@ -35,74 +37,16 @@ router = APIRouter(
 )
 
 
-class DerAudit2SpecPayload(BaseModel):
-    der_id: str
-    der_kind: str  # "PV" | "BESS" | "FW"
-    bess_operation_mode_refs: list[str] | None = None
-    block_transformer_catalog_ref: str | None = None
-    pf_curve_ref: str | None = None
-    # Phase 23: real device + power persisted (nie wiecej median fallback).
-    device_catalog_ref: str | None = None
-    nominal_power_kw: float | None = None
-
-
-class BayDeviceWithstandSpec(BaseModel):
-    device_id: str
-    i_peak_calculated_ka: float
-    i_thermal_calculated_ka: float
-    t_clearing_s: float
-
-
-class StationAudit2ConfigBody(BaseModel):
-    mv_neutral_grounding_ref: str | None = None
-    tap_changer_refs: list[str] = Field(default_factory=list)
-    der_specs: list[DerAudit2SpecPayload] = Field(default_factory=list)
-    # Phase 8: per-transformer/bay mappings.
-    transformer_tap_changers: dict[str, str] = Field(default_factory=dict)
-    bay_hv_fuses: dict[str, str] = Field(default_factory=dict)
-    bay_vts: dict[str, str] = Field(default_factory=dict)
-    bay_device_withstand: dict[str, BayDeviceWithstandSpec] = Field(default_factory=dict)
-
-
-def _indeks_nazw_projektu(project_id: UUID, uow_factory: Callable[[], object]) -> dict[str, str]:
-    """Indeks `ref_id -> nazwa` modelu ENM projektu (pusty, gdy projekt nie ma modelu)."""
-    klucz = klucz_twin_dla_projektu(project_id, uow_factory)
-    if not has_enm(klucz):
-        return {}
-    return zbuduj_indeks_nazw(get_enm(klucz))
-
-
-def _aggregate_loads_per_station_for_project(
+def _model_projektu(
     project_id: UUID, uow_factory: Callable[[], object]
-) -> dict[str, float]:
-    """Moce czynne odbiorów [kW] zsumowane per stacja z MODELU ENM projektu.
+) -> EnergyNetworkModel | None:
+    """Model ENM projektu albo `None`, gdy projekt nie ma modelu.
 
-    W1: dawna agregacja czytała `project.active_network_snapshot_id` → migawkę legacy
-    (`uow.snapshots`), której żaden tor użytkownika nie zapisywał — zwracała pusty
-    słownik dla każdego projektu z kreatora. Teraz źródłem jest jedyna prawda sieci:
-    `Load.bus_ref` → stacja przez `Substation.bus_refs`. Odbiór na szynie spoza
-    stacji nie należy do żadnej stacji (nie jest doliczany nigdzie, nie jest
-    zgadywany). Przeliczenie MW→kW to zamiana jednostki, nie wielkość elektryczna.
-    Projekt bez modelu ⇒ pusty słownik. Klucz magazynu WYŁĄCZNIE przez tłumacza
-    `application/twin_key.py` (migracja zastanych plików per przypadek przed odczytem).
+    Klucz magazynu WYŁĄCZNIE przez tłumacza `application/twin_key.py` (migracja zastanych
+    plików per przypadek przed odczytem).
     """
     klucz = klucz_twin_dla_projektu(project_id, uow_factory)
-    if not has_enm(klucz):
-        return {}
-    enm = get_enm(klucz)
-    stacja_szyny: dict[str, str] = {}
-    for stacja in enm.substations:
-        for bus_ref in stacja.bus_refs:
-            stacja_szyny[bus_ref] = stacja.ref_id
-    loads_per_station: dict[str, float] = {}
-    for load in enm.loads:
-        stacja_ref = stacja_szyny.get(load.bus_ref)
-        if stacja_ref is None:
-            continue
-        loads_per_station[stacja_ref] = loads_per_station.get(stacja_ref, 0.0) + mw_na_kw(
-            float(load.p_mw)
-        )
-    return loads_per_station
+    return get_enm(klucz) if has_enm(klucz) else None
 
 
 def _to_dict(orm: StationAudit2ConfigORM) -> dict[str, Any]:
@@ -261,151 +205,23 @@ def validate_all_audit2(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """
-    Phase 13: walidacja audytu 2 dla wszystkich stacji projektu (parallel to physics).
+    Pakiet dowodów walidacji rozszerzeń dla KAŻDEJ stacji z zapisaną konfiguracją.
 
-    Wywoluje walidatory + proof packs dla kazdej zapisanej stacji w projekcie.
-    Zwraca agregat: per-station + global pass/fail.
+    Jedyna droga produktu do pakietu (karta PROOFPACK-KONTRAKT): pakiet składa backend
+    z utrwalonych konfiguracji stacji i z modelu sieci projektu
+    (`application.proof_engine.packs.audit2_skladanie`) — nazwy z modelu, bilans mocy
+    w backendzie, rodzaj bez danych jawnie oznaczony z przyczyną. Dawna końcówka
+    `POST /api/v1/catalog/audit2/generate-proof-pack` (nietypowane specyfikacje
+    składane przez interfejs) została usunięta.
 
-    Bezpieczne: nie modyfikuje physics solvers, dziala obok istniejacego pipeline'u.
+    Bezpieczne: nie modyfikuje modelu ani konfiguracji; te same dane dają te same bajty.
     """
-    from application.proof_engine.packs.audit2_validation import (
-        generate_device_withstand_proof,
-        generate_hosting_capacity_export_proof,
-        generate_station_audit2_proof_pack,
-        generate_tap_changer_plan_proof,
-        generate_vt_grounding_validation_proof,
-    )
-    from network_model.catalog.audit2_catalogs import (
-        estimate_der_power_kw,
-        get_tap_changer,
-    )
-
     with uow_factory() as uow:
-        configs = uow.audit2_station_configs.list_for_project(project_id)
-        # Phase 49: pobierz aktywny snapshot projektu, aby obliczyc real
-        # p_import_kw (loady) dla hosting capacity validation.
-        loads_per_station = _aggregate_loads_per_station_for_project(project_id, uow_factory)
-        # Nazwy elementów modelu projektu — teksty dowodów nazywają transformatory nazwą,
-        # nie identyfikatorem (karta #144).
-        nazwy_modelu = _indeks_nazw_projektu(project_id, uow_factory)
-
-        per_station_results: list[dict[str, Any]] = []
-        all_pass = True
-
-        for cfg in configs:
-            proofs = []
-            # Phase 23: hosting capacity z realnych mocy DER. Priorytet:
-            # 1. spec["nominal_power_kw"] (jesli zapisane przy attach DER)
-            # 2. block_transformer.sn_kva (z catalogu)
-            # 3. estimate (median per kind) — ostatnia deska ratunku.
-            if cfg.der_specs:
-                p_export_real = 0.0
-                for spec in cfg.der_specs:
-                    if not isinstance(spec, dict):
-                        continue
-                    real_p = spec.get("nominal_power_kw")
-                    if real_p is not None:
-                        p_export_real += float(real_p)
-                    else:
-                        p_export_real += estimate_der_power_kw(
-                            der_kind=str(spec.get("der_kind", "")),
-                            block_transformer_catalog_ref=spec.get("block_transformer_catalog_ref"),
-                        )
-                # Phase 49: real p_import_kw z snapshotu (nie zero placeholder).
-                p_import_real = float(loads_per_station.get(cfg.station_id, 0.0))
-                proofs.append(
-                    generate_hosting_capacity_export_proof(
-                        station_id=cfg.station_id,
-                        p_export_kw=p_export_real,
-                        p_import_kw=p_import_real,
-                    )
-                )
-            # Phase 20: tap-changer z realnym typem transformatora (ekstrakcja z catalog applicable_to).
-            for tr_id, tc_ref in (cfg.transformer_tap_changers or {}).items():
-                if not tc_ref:
-                    continue
-                tc = get_tap_changer(str(tc_ref))
-                # Wybor typu transformatora: pierwszy applicable z katalogu (deterministyczne).
-                tr_type = tc.applicable_to[0] if tc and tc.applicable_to else "transformer_15_04"
-                proofs.append(
-                    generate_tap_changer_plan_proof(
-                        transformer_id=str(tr_id),
-                        transformer_nazwa=nazwa_po_identyfikatorze(tr_id, indeks=nazwy_modelu),
-                        transformer_type=tr_type,
-                        tap_changer_ref=str(tc_ref),
-                        # AVR wymagany gdy tap-changer go obsluguje (real-data)
-                        requires_avr=tc.supports_avr if tc else False,
-                    )
-                )
-            # Phase 20: VT grounding z realnym voltage_factor z VT catalogu (nie hardcoded 1.9).
-            grounding = cfg.mv_neutral_grounding_ref
-            if grounding:
-                grounding_type = (
-                    "isolated"
-                    if grounding == "mng_isolated"
-                    else (
-                        "petersen_coil"
-                        if grounding == "mng_petersen"
-                        else (
-                            "resistor_grounded"
-                            if grounding.startswith("mng_resistor")
-                            else "directly_grounded" if grounding == "mng_directly" else "isolated"
-                        )
-                    )
-                )
-                for bay_id, vt_ref in (cfg.bay_vts or {}).items():
-                    # Wspolczynnik z REALNEGO katalogu VT (V12K-258). Poprzednio lookup
-                    # szedl do czteroelementowej mapy odwzorowujacej syntetyczne
-                    # identyfikatory frontu, a KAZDY nieznany typ dostawal 1,9 jako
-                    # wartosc domyslna — czyli brak danej stawal sie liczba, na ktorej
-                    # pakiet dowodowy oglaszal zgodnosc. `None` zostaje `None`.
-                    vt_factor = _wspolczynnik_napieciowy_typu(str(vt_ref))
-                    proofs.append(
-                        generate_vt_grounding_validation_proof(
-                            bay_designation=str(bay_id),
-                            vt_voltage_factor=vt_factor,
-                            grounding_type=grounding_type,
-                        )
-                    )
-            # Device withstand (per bay).
-            for spec in (cfg.bay_device_withstand or {}).values():
-                if isinstance(spec, dict):
-                    proofs.append(
-                        generate_device_withstand_proof(
-                            device_id=str(spec.get("device_id", "")),
-                            i_peak_calculated_ka=float(spec.get("i_peak_calculated_ka", 0)),
-                            i_thermal_calculated_ka=float(spec.get("i_thermal_calculated_ka", 0)),
-                            t_clearing_s=float(spec.get("t_clearing_s", 1.0)),
-                        )
-                    )
-
-            pack = generate_station_audit2_proof_pack(
-                station_id=cfg.station_id,
-                proofs=proofs,
-                generated_at_iso="1970-01-01T00:00:00Z",
-            )
-            per_station_results.append(pack.to_dict())
-            if not pack.all_pass:
-                all_pass = False
-
-        return {
-            "project_id": str(project_id),
-            "all_pass": all_pass,
-            "station_count": len(per_station_results),
-            "per_station": per_station_results,
-        }
-
-
-def _wspolczynnik_napieciowy_typu(vt_ref: str) -> float | None:
-    """Wspolczynnik napieciowy typu VT z KATALOGU — bez wartosci domyslnej.
-
-    Brak typu w katalogu albo brak danej w karcie daje `None`; generator dowodu
-    zamienia to w dowod NIEZALICZONY z nazwanym powodem, zamiast liczby z powietrza.
-    """
-    from network_model.catalog import get_default_mv_catalog
-
-    typ = get_default_mv_catalog().get_vt_type(vt_ref)
-    if typ is None:
-        return None
-    wartosc = typ.to_dict().get("rated_voltage_factor")
-    return float(wartosc) if isinstance(wartosc, int | float) else None
+        wiersze = [_to_dict(row) for row in uow.audit2_station_configs.list_for_project(project_id)]
+    pakiety = zloz_pakiety_projektu(wiersze, _model_projektu(project_id, uow_factory))
+    return {
+        "project_id": str(project_id),
+        "all_pass": all(pakiet.all_pass for pakiet in pakiety),
+        "station_count": len(pakiety),
+        "per_station": [pakiet.to_dict() for pakiet in pakiety],
+    }

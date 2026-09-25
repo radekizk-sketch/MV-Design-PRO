@@ -42,7 +42,7 @@ from typing import Literal
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
 from network_model.core.uziemienie import TypPunktuNeutralnego
 from network_model.pochodne import mva_na_kva
-from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
+from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn, w_pasmie_nn
 
 #: Wersja katalogow audytu 2 = DATA PRZEGLADU PROWENIENCJI (ISO-8601).
 #:
@@ -370,6 +370,45 @@ TAP_CHANGER_CATALOG: tuple[TapChangerItem, ...] = (
 
 def get_tap_changer(tc_id: str) -> TapChangerItem | None:
     return next((tc for tc in TAP_CHANGER_CATALOG if tc.id == tc_id), None)
+
+
+#: Klasa transformatora w rozumieniu pola `applicable_to` przelacznika zaczepow.
+KlasaTransformatoraPrzelacznika = Literal[
+    "transformer_110_15", "transformer_110_20", "transformer_15_04", "block_transformer"
+]
+
+#: Polska nazwa klasy transformatora — tekst dowodu nazywa klase, nigdy jej kod.
+ETYKIETY_KLAS_TRANSFORMATORA: dict[str, str] = {
+    "transformer_110_15": "110/15 kV",
+    "transformer_110_20": "110/20 kV",
+    "transformer_15_04": "SN/nN",
+    "block_transformer": "blokowy",
+}
+
+
+def klasa_transformatora_przelacznika(
+    uhv_kv: float | None, ulv_kv: float | None
+) -> KlasaTransformatoraPrzelacznika | None:
+    """Klasa transformatora (napiecia z modelu) dla pola `applicable_to` przelacznika zaczepow.
+
+    JEDNA REGULA NA DWIE STRONY (karta PROOFPACK-KONTRAKT). Ta sama klasyfikacja wybiera we
+    froncie przelaczniki OFEROWANE transformatorowi (`klasaTransformatoraPrzelacznika`
+    w `StationConfigTransformerCard.tsx`) i tutaj — przelacznik SPRAWDZANY w pakiecie dowodow.
+    Obie strony czytaja jedna tabele przypadkow (`klasy_transformatora_przelacznika.json`,
+    test parytetu po obu stronach): oferta i dowod nie moga sie rozjechac.
+
+    Transformator spoza czterech klas daje `None` — jawny brak klasy, a nie domysl
+    („blokowy") wybierajacy dowolny przelacznik.
+    """
+    if uhv_kv is None or ulv_kv is None:
+        return None
+    if 100 <= uhv_kv < 130 and abs(ulv_kv - 15) < 1:
+        return "transformer_110_15"
+    if 100 <= uhv_kv < 130 and abs(ulv_kv - 20) < 1:
+        return "transformer_110_20"
+    if powyzej_pasma_nn(uhv_kv) and w_pasmie_nn(ulv_kv):
+        return "transformer_15_04"
+    return None
 
 
 def tap_changer_fields_from_catalog(
@@ -1441,7 +1480,8 @@ def validate_device_withstand(
             "ok": False,
             "i_dyn_ok": False,
             "i_th_ok": False,
-            "message_pl": f"Brak aparatury w katalogu (id={device_id}).",
+            # Identyfikator zostaje w żądaniu — zdanie dla człowieka go nie powtarza.
+            "message_pl": "Brak aparatury w katalogu wytrzymałości zwarciowej.",
             "utilization_dyn_percent": 0,
             "utilization_th_percent": 0,
         }
@@ -1471,43 +1511,40 @@ def validate_device_withstand(
 # w dowod NIEZALICZONY z nazwanym powodem.
 
 
-def estimate_der_power_kw(
-    *, der_kind: str, block_transformer_catalog_ref: str | None = None
-) -> float:
-    """
-    Estymuje moc DER na podstawie block-trafo (gdy dedicated_transformer)
-    lub typowych wartosci dla der_kind.
-
-    Phase 15: zastepuje hardcoded 1MW placeholder.
-
-    Logika:
-    1. Jesli block_transformer wskazany, uzywamy sn_kva (deterministic, real catalog).
-    2. W przeciwnym wypadku typowe wartosci per kind (PV: 500 kW, BESS: 1000, FW: 2300).
-
-    Te typowe wartosci bazuja na medianie z PV_INVERTER_CATALOG / BESS_PCS_CATALOG /
-    WIND_TURBINE_CATALOG (frontendowe staticki). Brak mozliwosci znania konkretnego
-    device_catalog z poziomu audit2 (DER specs nie ma device_ref) — uzywamy median.
-    """
-    if block_transformer_catalog_ref:
-        btr = get_block_transformer(block_transformer_catalog_ref)
-        if btr is not None:
-            return float(btr.sn_kva)
-    # Median per kind based on typowe katalogowe wartosci.
-    if der_kind == "PV":
-        return 500.0
-    if der_kind == "BESS":
-        return 1000.0
-    if der_kind == "FW":
-        return 2300.0
-    return 0.0
-
-
 def validate_hosting_capacity_export(
     *, station_id: str, p_export_kw: float, p_import_kw: float
 ) -> dict:
-    """Naprawa eng.15: walidacja kierunku przeplywu mocy w stacji."""
+    """Naprawa eng.15: walidacja kierunku przeplywu mocy w stacji.
+
+    STACJA BEZ ODBIOROW (karta PROOFPACK-KONTRAKT). Przy `p_import_kw <= 0` stosunek
+    eksportu do importu NIE ISTNIEJE: dawniej liczony jako `inf`, dawal w tekscie
+    „stosunek infx", a stacja bez zrodel i bez odbiorow (0/0) dostawala werdykt
+    „krytyczny eksport 0 kW". Teraz: brak mocy zrodel to brak eksportu; zrodla bez
+    odbiorow w stacji to eksport calej mocy (najwyzsza klasa) ze stosunkiem `None`
+    i zdaniem, ktore mowi, dlaczego stosunku nie ma.
+    """
     net = p_export_kw - p_import_kw
-    ratio = (p_export_kw / p_import_kw) if p_import_kw > 0 else float("inf")
+    if p_import_kw <= 0:
+        if p_export_kw <= 0:
+            status = "no_export"
+            message = "Brak mocy źródeł i odbiorów w stacji — nie ma eksportu do OSD."
+        else:
+            status = "requires_ramp_down"
+            message = (
+                f"Krytyczny eksport: {net:.0f} kW przy braku odbiorów w stacji — cała moc "
+                "źródeł trafia do sieci OSD (stosunek eksportu do importu nieokreślony). "
+                "WYMAGANE: studium NC RfG ramp-down + curtailment + uzgodnienie z OSD."
+            )
+        return {
+            "station_id": station_id,
+            "p_export_kw": p_export_kw,
+            "p_import_kw": p_import_kw,
+            "p_net_export_kw": net,
+            "export_to_import_ratio": None,
+            "status": status,
+            "message_pl": message,
+        }
+    ratio = p_export_kw / p_import_kw
 
     if net < 0 or ratio < 0.8:
         status = "no_export"

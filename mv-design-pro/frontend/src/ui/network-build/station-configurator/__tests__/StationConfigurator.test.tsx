@@ -105,6 +105,33 @@ describe('StationConfigurator — 17 kroków', () => {
     fireEvent.click(button);
     expect(onOpenCalculations).toHaveBeenCalledOnce();
   });
+
+  it('jakość energii: brak mocy źródła albo odbioru nie jest zerem w sumie (karta PROOFPACK-KONTRAKT)', () => {
+    const der = (id: string, moc: number | null) =>
+      ({
+        id,
+        der_kind: 'PV',
+        name: id,
+        nominal_power_kw: moc,
+        profiles: { nc_rfg_profile_ref: null },
+      }) as never;
+    render(
+      <StationConfigurator
+        {...minimalProps}
+        derSources={{ stationId: 'station_test', ders: [der('PV 1', 400), der('PV 2', null)] }}
+        loads={{
+          loads: [
+            { loadId: 'o1', name: 'O1', attachmentPointPl: 'szyna nN', pMw: 0.2, qMvar: 0, statusForPf: 'gotowe', statusForVoltage: 'gotowe' },
+            { loadId: 'o2', name: 'O2', attachmentPointPl: 'szyna nN', pMw: null, qMvar: null, statusForPf: 'brak danych', statusForVoltage: 'brak danych' },
+          ],
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('station-config-tab-power-quality'));
+    const tresc = screen.getByTestId('station-config-content-power-quality').textContent ?? '';
+    expect(tresc).toContain('400 kW + 1 bez mocy z katalogu');
+    expect(tresc).toContain('0.200 MW + 1 bez mocy');
+  });
 });
 
 describe('StationConfigBasicCard', () => {

@@ -7,7 +7,6 @@ import { describe, it, expect } from 'vitest';
 import {
   buildAggregatedReadiness,
   computeDerReadinessMatrix,
-  sumStationLoadImportKw,
   zlozZBramkaModelu,
   type AggregatedReadinessAxis,
   emptyReadinessMatrix,
@@ -276,64 +275,12 @@ describe('READINESS_AXIS_LABELS_PL', () => {
 // V12K-226: import mocy stacji — dana wejściowa oceny kierunku przepływu
 // =============================================================================
 
-describe('sumStationLoadImportKw (V12K-226)', () => {
-  const snapshot = {
-    substations: [
-      { ref_id: 'ST-1', bus_refs: ['BUS-1A', 'BUS-1B'] },
-      { ref_id: 'ST-2', bus_refs: ['BUS-2'] },
-      { ref_id: 'ST-BEZ-SZYN', bus_refs: [] },
-    ],
-    loads: [
-      { bus_ref: 'BUS-1A', p_mw: 0.25 },
-      { bus_ref: 'BUS-1B', p_mw: 0.15 },
-      { bus_ref: 'BUS-2', p_mw: 1.5 },
-    ],
-  };
+// `sumStationLoadImportKw` usunięte (karta PROOFPACK-KONTRAKT): intencję V12K-226 —
+// import z `p_mw` odbiorów na szynach stacji, stacja spoza modelu / bez szyn = NIEZNANE,
+// stacja bez odbiorów = 0 — przypinają testy backendu `test_audit2_skladanie.py`
+// (`test_moce_odbiorow_*`, `test_stacja_bez_odbiorow_*`) i
+// `test_audit2_station_config_api.py::test_validate_all_bilans_*`.
 
-  it('sumuje odbiory z szyn stacji i przelicza MW na kW', () => {
-    // RACHUNEK RĘCZNY: (0,25 + 0,15) MW = 0,4 MW = 400 kW.
-    expect(sumStationLoadImportKw(snapshot, 'ST-1')).toBe(400);
-    // Druga stacja: 1,5 MW = 1500 kW (dowód, że filtr po szynach działa rozdzielnie).
-    expect(sumStationLoadImportKw(snapshot, 'ST-2')).toBe(1500);
-  });
-
-  it('czyta moc z p_mw, a NIE z nominal_power_kw (kontrola odwrotna do defektu)', () => {
-    // Odbiór niesie WYŁĄCZNIE zgadnięte pole z wersji sprzed naprawy. Gdyby kod nadal
-    // czytał `nominal_power_kw`, wynik byłby 900 kW; poprawny odczyt `p_mw` daje brak
-    // danej kontraktowej, czyli import NIEZNANY.
-    const zeZgadnietymPolem = {
-      substations: [{ ref_id: 'ST-1', bus_refs: ['BUS-1A'] }],
-      loads: [{ bus_ref: 'BUS-1A', nominal_power_kw: 900 } as { bus_ref: string; p_mw?: number }],
-    };
-    expect(sumStationLoadImportKw(zeZgadnietymPolem, 'ST-1')).toBeNull();
-  });
-
-  it('nie wiąże odbioru ze stacją przez station_ref (pola, którego Load nie ma)', () => {
-    // Odbiór wskazuje stację polem ze źródła `nn_side`, ale jego szyna nie należy do
-    // stacji. Powiązanie idzie WYŁĄCZNIE przez szyny — inaczej wróciłby stary defekt.
-    const zeStationRef = {
-      substations: [{ ref_id: 'ST-1', bus_refs: ['BUS-1A'] }],
-      loads: [{ bus_ref: 'BUS-OBCA', p_mw: 2.0, station_ref: 'ST-1' }],
-    };
-    expect(sumStationLoadImportKw(zeStationRef, 'ST-1')).toBe(0);
-  });
-
-  it('brak snapshotu i stacja nieobecna w modelu daja NIEZNANE, nie zero', () => {
-    // To jest sedno naprawy: zero importu jest TWIERDZENIEM o sieci (stacja bez
-    // odbiorow, cala generacja na eksport), a nie zapisem braku wiedzy.
-    expect(sumStationLoadImportKw(null, 'ST-1')).toBeNull();
-    expect(sumStationLoadImportKw(snapshot, 'ST-NIEZNANA')).toBeNull();
-    expect(sumStationLoadImportKw(snapshot, 'ST-BEZ-SZYN')).toBeNull();
-  });
-
-  it('stacja z szynami bez odbiorow daje ZERO, bo to jest wiedza o sieci', () => {
-    const bezOdbiorow = {
-      substations: [{ ref_id: 'ST-1', bus_refs: ['BUS-1A'] }],
-      loads: [{ bus_ref: 'BUS-INNA', p_mw: 1.0 }],
-    };
-    expect(sumStationLoadImportKw(bezOdbiorow, 'ST-1')).toBe(0);
-  });
-});
 
 describe('osie niesymetryczne: SC1F/SC2FG pokrywają się z SC3F/SC2F (karta FAB-L)', () => {
   // Karta FAB-L (inwentarz solvera IEC 60909, `enm/mapping.py`): dawny

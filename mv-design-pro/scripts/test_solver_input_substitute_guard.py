@@ -1704,7 +1704,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `enm/dynamika_z_katalogu.py::StanDynamikiGeneratora`: `odmowa_kod`, `odmowa_komunikat`,
     # `odniesienie_proweniencji`, `profil_typu`, `profile_zgodne`, `zrodlo_proweniencji`).
     # PASS bramki niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4097." in wyjscie, wyjscie
+    # Karta PROOFPACK-KONTRAKT (2026-09-25): 4108 -> 4115 — POMIAR guardem (roznica zbiorow
+    # nazw baza `4199d528` vs drzewo karty): +12 (`bay_designation`, `braki_danych`,
+    # `pcs_four_quadrant`, `pcs_grid_forming`, `requires_avr`, `selected_mode_refs`,
+    # `station_nazwa`, `tap_changer_ref`, `transformer_id`, `transformer_nazwa`,
+    # `transformer_type`, `vt_voltage_factor` — typowane specyfikacje dowodow audytu 2 i pakiet
+    # stacji), -5 (`bess_modes_specs`, `device_withstand_specs`, `hosting_capacity_specs`,
+    # `tap_changer_specs`, `vt_grounding_specs` — usunieta koncowka surowych specyfikacji).
+    # Partia integracji 5 (AB-P1 + PROOFPACK-KONTRAKT na jednym drzewie): 4108 - 11 + 7 = 4104 —
+    # zbiory zmian obu kart rozlaczne; POMIAR guardem na drzewie partii.
+    assert "Pol kontraktow wejsciowych: 4104." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1864,7 +1873,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/dynamika/**`, -3 skasowane `application/stability/{dynamic_stability,
         # voltage_trajectory}.py` i `application/automation/trace.py`, +1 `api/dynamika.py`).
         # POMIAR guardem na drzewie karty.
-        "Przeskanowano 555 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta PROOFPACK-KONTRAKT (2026-09-25): 552 -> 553 (+1 `application/proof_engine/
+        # packs/audit2_skladanie.py` — skladanie pakietu dowodow audytu 2). POMIAR guardem.
+        # Partia integracji 5: 552 + 3 (AB-P1) + 1 (PROOFPACK) = 556. POMIAR guardem.
+        "Przeskanowano 556 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1916,7 +1928,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Karta AB-P1 na partii 4: 54/244 -> 53/243 — wpis `network_model/catalog/der_dynamic/
     # models.py` ("A:or:self.virtual_inertia_h_s": 1, `or 0.0` w rzucie profilu na slownik
     # `to_stability_parameters` bez wolajacego produkcyjnego) zdjety RAZEM z rzutem. Pomiar.
-    assert "Zapadka dlugu (fizyczne): 53 plikow, suma 243." in wyjscie, wyjscie
+    # Karta PROOFPACK-KONTRAKT (2026-09-25): 54/244 -> 53/241 (POMIAR guardem): wpis
+    # `api/audit2_station_config.py` (3 x `spec.get(...)` z zerem/sekunda za brak pradu
+    # zwarciowego i czasu wylaczenia w dowodzie wytrzymalosci) zdjety razem z petla — pakiet
+    # sklada `application/proof_engine/packs/audit2_skladanie.py` z typowanej konfiguracji.
+    # Partia integracji 5: oba wpisy zdjete — 54/244 -> 52/240. POMIAR guardem.
+    assert "Zapadka dlugu (fizyczne): 52 plikow, suma 240." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 13 plikow, suma 31." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -2067,9 +2084,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta AB-P1 na partii 4: application 242 -> 243 (+4 `application/dynamika/**`,
         # -3 skasowane pliki toru T1); api 63 -> 64 (+1 `api/dynamika.py`). Dlug i wykluczenia
         # BEZ ZMIANY — pomiar guardem na drzewie karty.
-        "  application: pliki_skanowane=243, dlug=30 plikow/suma 91, "
+        # Karta PROOFPACK-KONTRAKT (2026-09-25): application 242 -> 243 (+1
+        # `application/proof_engine/packs/audit2_skladanie.py`, zero wpisow); api dlug
+        # 3/6 -> 2/3 (wpis `api/audit2_station_config.py` zdjety). POMIAR guardem.
+        # Partia integracji 5: application 242 + 1 (AB-P1) + 1 (PROOFPACK) = 244; api pliki 64
+        # (AB-P1), dlug 2/3 (PROOFPACK). POMIAR guardem na drzewie partii.
+        "  application: pliki_skanowane=244, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=64, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
+        "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=6 plikow/suma 15",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

@@ -643,14 +643,33 @@ function StationPowerQualityPanel({
   readonly ders: StationConfigDerSourcesCardProps['ders'];
   readonly loads: readonly LoadRow[];
 }): JSX.Element {
+  // Brak mocy NIE jest zerem (karta PROOFPACK-KONTRAKT): suma z pominiętym brakiem
+  // zaniżałaby wartość bez ostrzeżenia, więc wartość niesie liczbę pozycji bez danej.
+  // Bilans eksportu wobec importu (ocena) liczy wyłącznie backend w pakiecie dowodów.
+  const derBezMocy = ders.filter((der) => der.nominal_power_kw === null).length;
   const totalDerKw = ders.reduce((sum, der) => sum + (der.nominal_power_kw ?? 0), 0);
+  const odbioryBezMocy = loads.filter((load) => load.pMw === null).length;
   const totalLoadMw = loads.reduce((sum, load) => sum + (load.pMw ?? 0), 0);
   const profiles = new Set(ders.map((der) => der.profiles.nc_rfg_profile_ref).filter(Boolean));
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-3">
-        <MetricCard label="Moc DER" value={`${totalDerKw.toFixed(0)} kW`} />
-        <MetricCard label="Odbiory" value={`${totalLoadMw.toFixed(3)} MW`} />
+        <MetricCard
+          label="Moc DER"
+          value={
+            derBezMocy === 0
+              ? `${totalDerKw.toFixed(0)} kW`
+              : `${totalDerKw.toFixed(0)} kW + ${derBezMocy} bez mocy z katalogu`
+          }
+        />
+        <MetricCard
+          label="Odbiory"
+          value={
+            odbioryBezMocy === 0
+              ? `${totalLoadMw.toFixed(3)} MW`
+              : `${totalLoadMw.toFixed(3)} MW + ${odbioryBezMocy} bez mocy`
+          }
+        />
         <MetricCard label="Profile NC RfG" value={String(profiles.size)} />
       </div>
       <TechnicalPanel title="Bilans i jakość energii" subtitle="Dane wejściowe do oceny napięcia, cosφ, profili Q(U) i wpływu źródeł.">

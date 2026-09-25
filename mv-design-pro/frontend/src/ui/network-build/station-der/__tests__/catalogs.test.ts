@@ -16,8 +16,10 @@ import {
   getTapChanger,
   selectBessModesForPcs,
   selectConnectionLevelsForKind,
+  klasaTransformatoraPrzelacznika,
   selectTapChangersForTransformer,
 } from '../catalogs';
+import klasyTransformatora from './klasy_transformatora_przelacznika.json';
 
 // USUNIĘTE (karta FAB-J, 2026-09-05) — `NC_RFG_PROFILE_CATALOG`, `LVRT_CURVE_CATALOG`,
 // `HVRT_CURVE_CATALOG`, `PV_INVERTER_CATALOG`, `BESS_PCS_CATALOG`, `BESS_BATTERY_CATALOG`,
@@ -198,4 +200,15 @@ describe('Selektory snapshotu audytu 2 (parametryzowane, karta FAB-L)', () => {
     expect(getTapChanger(tapChangers, null)).toBeNull();
     expect(getTapChanger(tapChangers, 'tc_nieznany')).toBeNull();
   });
+});
+
+
+describe('klasaTransformatoraPrzelacznika — jedna reguła z backendem (karta PROOFPACK-KONTRAKT)', () => {
+  // Tabela wspólna z testem backendu `test_klasa_transformatora_przelacznika.py`: oferta
+  // przełączników (tu) i dowód planu zaczepów (backend) klasyfikują transformator tak samo.
+  for (const przypadek of klasyTransformatora.przypadki) {
+    it(`${przypadek.uhv_kv}/${przypadek.ulv_kv} kV → ${przypadek.klasa ?? 'brak klasy'}`, () => {
+      expect(klasaTransformatoraPrzelacznika(przypadek.uhv_kv, przypadek.ulv_kv)).toBe(przypadek.klasa);
+    });
+  }
 });

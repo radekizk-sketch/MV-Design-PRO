@@ -267,3 +267,89 @@ def test_validate_hosting_capacity_requires_ramp_down(app_client):
     body = res.json()
     assert body["status"] == "requires_ramp_down"
     assert "ramp-down" in body["message_pl"].lower()
+
+
+@pytest.mark.parametrize(
+    ("p_export_kw", "status", "fragment"),
+    [
+        (0, "no_export", "Brak mocy źródeł i odbiorów"),
+        (100, "requires_ramp_down", "przy braku odbiorów w stacji"),
+    ],
+    ids=["bez_zrodel_i_odbiorow", "zrodla_bez_odbiorow"],
+)
+def test_validate_hosting_capacity_bez_odbiorow_stosunek_nieokreslony(
+    app_client, p_export_kw, status, fragment
+):
+    """Karta PROOFPACK-KONTRAKT: import zerowy nie daje stosunku `inf` — dawniej tekst
+    „stosunek infx", a 0/0 dostawalo werdykt „krytyczny eksport 0 kW"."""
+    res = app_client.post(
+        "/api/v1/catalog/audit2/validate-hosting-capacity-export",
+        json={"station_id": "stacja-004", "p_export_kw": p_export_kw, "p_import_kw": 0},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == status
+    assert body["export_to_import_ratio"] is None
+    assert fragment in body["message_pl"]
+    assert "inf" not in body["message_pl"]
+
+
+@pytest.mark.parametrize(
+    ("sciezka", "cialo"),
+    [
+        ("validate-vt-grounding", {"voltage_factor": 1.9}),
+        ("validate-device-withstand", {"device_id": "wstd_breaker_vacuum_15_25"}),
+        ("validate-hosting-capacity-export", {"station_id": "s", "p_export_kw": "duzo"}),
+        ("build-station-payload", {"der_specs": []}),
+        ("generate-report", {"project_name": "P"}),
+    ],
+)
+def test_koncowki_post_odrzucaja_niepelne_cialo_422_nigdy_500(app_client, sciezka, cialo):
+    """Kazda koncowka POST routera ma typowany kontrakt: niepelne cialo to 422."""
+    res = app_client.post(f"/api/v1/catalog/audit2/{sciezka}", json=cialo)
+    assert res.status_code == 422
+
+
+def test_build_station_payload_deterministyczny(app_client):
+    payload = {
+        "station_id": "station_api_001",
+        "mv_neutral_grounding_ref": "mng_petersen",
+        "tap_changer_refs": ["tc_oltc_110sn_19_125"],
+        "der_specs": [
+            {"der_id": "der_pv_001", "der_kind": "PV", "pf_curve_ref": "pf_droop_5"},
+            {
+                "der_id": "der_bess_001",
+                "der_kind": "BESS",
+                "bess_operation_mode_refs": ["mode_fcr_n", "mode_voltage_support"],
+            },
+        ],
+    }
+    pierwszy = app_client.post("/api/v1/catalog/audit2/build-station-payload", json=payload)
+    drugi = app_client.post("/api/v1/catalog/audit2/build-station-payload", json=payload)
+    assert pierwszy.status_code == drugi.status_code == 200
+    assert pierwszy.content == drugi.content
+    body = pierwszy.json()
+    assert len(body["payload"]["der_payloads"]) == 2
+    assert "power_flow_extensions" in body["solver_extensions"]
+
+
+@pytest.mark.parametrize(
+    "pakiet",
+    [{}, {"proofs": [{"proof_type": "OBCY", "pass_status": True}]}, {"braki_danych": ["x"]}],
+    ids=["pusty", "rodzaj_obcy", "brak_w_zlym_ksztalcie"],
+)
+def test_generate_report_pakiet_dowolnego_ksztaltu_nie_daje_500(app_client, pakiet):
+    """Raport tylko renderuje pakiet (odczyt `.get` z wartosciami domyslnymi) — pakiet
+    w nieoczekiwanym ksztalcie nie moze skonczyc sie bledem serwera."""
+    res = app_client.post(
+        "/api/v1/catalog/audit2/generate-report",
+        json={
+            "project_name": "P",
+            "station_id": "s",
+            "station_name": "Stacja S",
+            "proof_pack": pakiet,
+            "formats": ["json", "text_pl", "latex"],
+        },
+    )
+    assert res.status_code == 200
+    assert "Stacja S" in res.json()["text_pl"]

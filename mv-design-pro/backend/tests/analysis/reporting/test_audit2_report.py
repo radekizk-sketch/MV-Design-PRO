@@ -88,7 +88,10 @@ def test_text_report_renders_polish_summary():
     assert "station_001" not in text
     assert "Operator: PSE" in text
     assert "1 walidacji" in text
-    assert "AUDIT2_BESS_OPERATION_MODES" in text
+    # Karta PROOFPACK-KONTRAKT: sekcja nazywa RODZAJ po polsku, nie jego kod (intencja
+    # dawnej asercji na kodzie: sekcja rodzaju dowodu jest w dokumencie).
+    assert "Tryby pracy magazynu energii" in text
+    assert "AUDIT2_BESS_OPERATION_MODES" not in text
     assert "OK: BESS modes zgodne" in text
 
 
@@ -199,3 +202,43 @@ def test_docx_export_is_byte_deterministic_across_repeated_calls():
     assert hash_1 == hash_2, (
         f"DOCX export audit2_report nie deterministyczny\n" f"Hash 1: {hash_1}\nHash 2: {hash_2}"
     )
+
+
+def test_braki_danych_pakietu_sa_w_kazdym_formacie_a_wynik_nie_jest_ok() -> None:
+    """Brak danych nie jest zgodnoscia (karta PROOFPACK-KONTRAKT): dokument wymienia kazdy
+    brak z przyczyna, a podsumowanie nie oglasza „OK" bez zastrzezen."""
+    proofs = [
+        {
+            "proof_id": "00000000-0000-0000-0000-000000000001",
+            "proof_type": "AUDIT2_HOSTING_CAPACITY_EXPORT",
+            "pass_status": True,
+            "summary_pl": "Eksport normalny",
+            "details": {},
+            "formulas_latex": [],
+            "generated_at": "2026-04-01T00:00:00Z",
+        }
+    ]
+    ctx = _make_ctx(proofs)
+    ctx.proof_pack_dict["braki_danych"] = [
+        {
+            "proof_type": "AUDIT2_VT_GROUNDING_VALIDATION",
+            "rodzaj_pl": "Przekładniki napięciowe wobec uziemienia sieci",
+            "przyczyna_pl": "Nie wybrano sposobu uziemienia punktu neutralnego sieci SN.",
+        }
+    ]
+    tekst = render_audit2_report_text(ctx)
+    assert "Braki danych: 1" in tekst
+    assert "Przekładniki napięciowe wobec uziemienia sieci: Nie wybrano sposobu" in tekst
+    assert render_audit2_report_json(ctx)["braki_danych"][0]["proof_type"] == (
+        "AUDIT2_VT_GROUNDING_VALIDATION"
+    )
+    assert "Nie wybrano sposobu uziemienia" in render_audit2_report_latex(ctx)
+    docx = render_audit2_report_docx(ctx)
+    assert docx == render_audit2_report_docx(ctx)
+    import io
+    import zipfile
+
+    with zipfile.ZipFile(io.BytesIO(docx)) as archiwum:
+        dokument = archiwum.read("word/document.xml").decode("utf-8")
+    assert "NIEKOMPLETNY — BRAKI DANYCH" in dokument
+    assert "Nie wybrano sposobu uziemienia" in dokument

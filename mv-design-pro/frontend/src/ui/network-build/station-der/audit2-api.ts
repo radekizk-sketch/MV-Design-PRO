@@ -268,7 +268,8 @@ export interface HostingCapacityExportResponse {
   readonly p_export_kw: number;
   readonly p_import_kw: number;
   readonly p_net_export_kw: number;
-  readonly export_to_import_ratio: number;
+  /** `null` przy imporcie zerowym — stosunek nie istnieje (karta PROOFPACK-KONTRAKT). */
+  readonly export_to_import_ratio: number | null;
   readonly status: 'no_export' | 'normal_export' | 'high_export_warning' | 'requires_ramp_down';
   readonly message_pl: string;
 }
@@ -390,37 +391,67 @@ export async function deleteStationAudit2Config(args: {
 // Phase 10/11: ProofPack + Report API clients
 // =============================================================================
 
-export interface Audit2ProofPackRequest {
-  readonly station_id: string;
-  readonly bess_modes_specs?: readonly Record<string, unknown>[];
-  readonly tap_changer_specs?: readonly Record<string, unknown>[];
-  readonly hosting_capacity_specs?: readonly Record<string, unknown>[];
-  readonly device_withstand_specs?: readonly Record<string, unknown>[];
-  readonly vt_grounding_specs?: readonly Record<string, unknown>[];
-  readonly generated_at_iso?: string;
-}
+/** Rodzaj dowodu walidacji rozszerzeń (kod maszynowy — ekran pokazuje `rodzaj_pl`). */
+export type Audit2ProofType =
+  | 'AUDIT2_BESS_OPERATION_MODES'
+  | 'AUDIT2_TAP_CHANGER_PLAN'
+  | 'AUDIT2_HOSTING_CAPACITY_EXPORT'
+  | 'AUDIT2_DEVICE_WITHSTAND'
+  | 'AUDIT2_VT_GROUNDING_VALIDATION';
 
-export interface Audit2ProofPackResponse {
-  readonly station_id: string;
-  readonly all_pass: boolean;
-  readonly fail_count: number;
-  readonly proof_count: number;
-  readonly proofs: ReadonlyArray<{
-    readonly proof_id: string;
-    readonly proof_type: string;
-    readonly pass_status: boolean;
-    readonly summary_pl: string;
-    readonly details: Record<string, unknown>;
-    readonly formulas_latex: readonly string[];
-    readonly generated_at: string;
-  }>;
+export interface Audit2Proof {
+  readonly proof_id: string;
+  readonly proof_type: Audit2ProofType;
+  /** Polska nazwa rodzaju dowodu (backend, jedno źródło etykiet). */
+  readonly rodzaj_pl: string;
+  readonly pass_status: boolean;
+  readonly summary_pl: string;
+  readonly details: Record<string, unknown>;
+  readonly formulas_latex: readonly string[];
   readonly generated_at: string;
 }
 
-export async function generateAudit2ProofPack(
-  req: Audit2ProofPackRequest,
-): Promise<Audit2ProofPackResponse> {
-  return postJson<Audit2ProofPackResponse>(`${BASE}/generate-proof-pack`, req);
+/** Rodzaj (albo pozycja) dowodu, którego nie da się wygenerować — brak danych ≠ spełnia. */
+export interface Audit2BrakDanych {
+  readonly proof_type: Audit2ProofType;
+  readonly rodzaj_pl: string;
+  readonly przyczyna_pl: string;
+}
+
+/** Pakiet dowodów jednej stacji — kształt 1:1 z `StationAudit2ProofPack.to_dict`. */
+export interface Audit2ProofPackResponse {
+  readonly station_id: string;
+  /** Nazwa stacji z modelu (albo „Stacja spoza modelu") — ekran nigdy nie pokazuje id. */
+  readonly station_nazwa: string;
+  readonly all_pass: boolean;
+  readonly fail_count: number;
+  readonly proof_count: number;
+  readonly proofs: readonly Audit2Proof[];
+  readonly braki_danych: readonly Audit2BrakDanych[];
+  readonly generated_at: string;
+}
+
+/** Pakiety dowodów KAŻDEJ stacji z zapisaną konfiguracją projektu. */
+export interface Audit2ProjectProofPackResponse {
+  readonly project_id: string;
+  readonly all_pass: boolean;
+  readonly station_count: number;
+  readonly per_station: readonly Audit2ProofPackResponse[];
+}
+
+/**
+ * Pakiet dowodów walidacji rozszerzeń projektu — składa go BACKEND z utrwalonych
+ * konfiguracji stacji i z modelu sieci (karta PROOFPACK-KONTRAKT). Dawny klient
+ * `generateAudit2ProofPack` (specyfikacje składane w interfejsie, suma mocy w UI,
+ * identyfikator stacji `configs[0] ?? 'aggregate'`) usunięty razem z końcówką.
+ */
+export async function generateProjectAudit2ProofPack(
+  projectId: string,
+): Promise<Audit2ProjectProofPackResponse> {
+  return postJson<Audit2ProjectProofPackResponse>(
+    `${stationAudit2ConfigUrl(projectId)}/_validate-all`,
+    {},
+  );
 }
 
 export interface Audit2ReportRequest {

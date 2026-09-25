@@ -166,63 +166,14 @@ class StationAudit2BuildRequest(BaseModel):
 
 
 # =============================================================================
-# Phase 4: Proof Pack endpoint
+# Phase 4: Proof Pack — USUNIETY z tego routera (karta PROOFPACK-KONTRAKT)
 # =============================================================================
-
-
-class GenerateAudit2ProofPackRequest(BaseModel):
-    station_id: str
-    bess_modes_specs: list[dict[str, Any]] = []
-    tap_changer_specs: list[dict[str, Any]] = []
-    hosting_capacity_specs: list[dict[str, Any]] = []
-    device_withstand_specs: list[dict[str, Any]] = []
-    vt_grounding_specs: list[dict[str, Any]] = []
-    generated_at_iso: str = "1970-01-01T00:00:00Z"
-
-
-@router.post("/generate-proof-pack")
-def generate_audit2_proof_pack_endpoint(
-    req: GenerateAudit2ProofPackRequest,
-) -> dict[str, Any]:
-    """
-    Naprawy Phase 4: generuje ProofPack audytu 2 dla stacji.
-    Zwraca all_pass + lista dowodow (5 typow walidacji).
-    """
-    from application.proof_engine.packs.audit2_validation import (
-        generate_bess_modes_proof,
-        generate_device_withstand_proof,
-        generate_hosting_capacity_export_proof,
-        generate_station_audit2_proof_pack,
-        generate_tap_changer_plan_proof,
-        generate_vt_grounding_validation_proof,
-    )
-
-    proofs = []
-    for spec in req.bess_modes_specs:
-        proofs.append(generate_bess_modes_proof(generated_at_iso=req.generated_at_iso, **spec))
-    for spec in req.tap_changer_specs:
-        proofs.append(
-            generate_tap_changer_plan_proof(generated_at_iso=req.generated_at_iso, **spec)
-        )
-    for spec in req.hosting_capacity_specs:
-        proofs.append(
-            generate_hosting_capacity_export_proof(generated_at_iso=req.generated_at_iso, **spec)
-        )
-    for spec in req.device_withstand_specs:
-        proofs.append(
-            generate_device_withstand_proof(generated_at_iso=req.generated_at_iso, **spec)
-        )
-    for spec in req.vt_grounding_specs:
-        proofs.append(
-            generate_vt_grounding_validation_proof(generated_at_iso=req.generated_at_iso, **spec)
-        )
-
-    pack = generate_station_audit2_proof_pack(
-        station_id=req.station_id,
-        proofs=proofs,
-        generated_at_iso=req.generated_at_iso,
-    )
-    return pack.to_dict()
+#
+# `POST /generate-proof-pack` przyjmowal nietypowane specyfikacje (`list[dict]`)
+# i rozpakowywal je `**spec` do generatorow: zmiana sygnatury generatora (karta #144,
+# wymagane nazwy) byla niewidoczna dla kontraktu i konczyla sie HTTP 500. Pakiet dowodow
+# sklada teraz backend z utrwalonych konfiguracji stacji i z modelu sieci:
+# `POST /api/v1/projects/{project_id}/audit2-station-config/_validate-all`.
 
 
 # =============================================================================

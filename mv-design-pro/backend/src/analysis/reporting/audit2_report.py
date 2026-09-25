@@ -21,7 +21,34 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
 
+from application.proof_engine.packs.audit2_validation import ETYKIETY_RODZAJOW_DOWODU
 from network_model.reporting.czcionki import ustaw_czcionki_stylow, zarejestruj_czcionki
+
+#: Naglowek sekcji rodzaju spoza pieciu rodzajow audytu 2 (pakiet dostarcza wolajacy).
+RODZAJ_SPOZA_AUDYTU = "Rodzaj dowodu spoza pakietu walidacji rozszerzeń"
+
+
+def _etykieta_rodzaju(proof_type: str) -> str:
+    """Polska nazwa rodzaju dowodu — dokument nazywa rodzaj, nigdy jego kod."""
+    return ETYKIETY_RODZAJOW_DOWODU.get(proof_type, RODZAJ_SPOZA_AUDYTU)
+
+
+def _braki_danych(ctx: Audit2ReportContext) -> list[dict[str, Any]]:
+    """Rodzaje dowodu bez danych (`braki_danych` pakietu) w kolejnosci pakietu.
+
+    Brak danych NIE jest zgodnoscia (karta PROOFPACK-KONTRAKT): dokument wymienia kazdy
+    brak z przyczyna, a podsumowanie nie oglasza wyniku bez zastrzezen, gdy braki sa.
+    """
+    braki = ctx.proof_pack_dict.get("braki_danych", [])
+    return [b for b in braki if isinstance(b, dict)]
+
+
+def _wynik_calosciowy(fail_count: int, braki_count: int) -> str:
+    if fail_count:
+        return "BLOKERY OBECNE"
+    if braki_count:
+        return "NIEKOMPLETNY — BRAKI DANYCH"
+    return "OK"
 
 
 @dataclass(frozen=True)
@@ -59,6 +86,7 @@ def render_audit2_report_json(ctx: Audit2ReportContext) -> dict[str, Any]:
         },
         "proofs_by_type": _group_proofs_by_type(proofs),
         "all_proofs": proofs,
+        "braki_danych": _braki_danych(ctx),
     }
 
 
@@ -74,12 +102,14 @@ def _group_proofs_by_type(proofs: list[dict[str, Any]]) -> dict[str, list[dict[s
 def render_audit2_report_text(ctx: Audit2ReportContext) -> str:
     """Plain text PL (dla audytora / inzyniera)."""
     proofs = ctx.proof_pack_dict.get("proofs", [])
+    braki = _braki_danych(ctx)
     if not proofs:
-        return (
+        naglowek = (
             f"Raport walidacji rozszerzeń audytu 2 — brak dowodów do uwzględnienia.\n"
             f"Stacja: {ctx.station_name}\n"
             f"Projekt: {ctx.project_name}\n"
         )
+        return naglowek + "".join(_linie_brakow(braki))
 
     lines: list[str] = []
     lines.append("RAPORT WALIDACJI ROZSZERZEŃ AUDYTU 2")
@@ -94,17 +124,32 @@ def render_audit2_report_text(ctx: Audit2ReportContext) -> str:
     pass_count = sum(1 for p in proofs if p.get("pass_status"))
     fail_count = len(proofs) - pass_count
     lines.append(f"PODSUMOWANIE: {len(proofs)} walidacji, {pass_count} OK, {fail_count} blokerów.")
+    if braki:
+        lines.append(f"Braki danych: {len(braki)} — rodzaje albo pozycje bez dowodu (niżej).")
     lines.append("")
 
     grouped = _group_proofs_by_type(proofs)
     for proof_type, group in grouped.items():
-        lines.append(f"--- {proof_type} ({len(group)} dowodów) ---")
+        lines.append(f"--- {_etykieta_rodzaju(proof_type)} ({len(group)} dowodów) ---")
         for p in group:
             status = "OK" if p.get("pass_status") else "BLOKER"
             lines.append(f"  [{status}] {p.get('summary_pl', '')}")
         lines.append("")
 
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines) + "\n" + "".join(_linie_brakow(braki))
+
+
+def _linie_brakow(braki: list[dict[str, Any]]) -> list[str]:
+    """Sekcja brakow danych w tekscie raportu (pusta, gdy brakow nie ma)."""
+    if not braki:
+        return []
+    linie = ["--- Braki danych (rodzaje albo pozycje bez dowodu) ---\n"]
+    for brak in braki:
+        linie.append(
+            f"  [BRAK DANYCH] {_etykieta_rodzaju(str(brak.get('proof_type', '')))}: "
+            f"{brak.get('przyczyna_pl', '')}\n"
+        )
+    return linie
 
 
 def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
@@ -162,12 +207,14 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
     proofs = ctx.proof_pack_dict.get("proofs", [])
     pass_count = sum(1 for p in proofs if p.get("pass_status"))
     fail_count = len(proofs) - pass_count
+    braki = _braki_danych(ctx)
     elements.append(Paragraph("Podsumowanie", styles["Heading1"]))
     summary_data = [
         ["Total walidacji", str(len(proofs))],
         ["OK", str(pass_count)],
         ["Blokery", str(fail_count)],
-        ["Wynik całościowy", "OK" if fail_count == 0 else "BLOKERY OBECNE"],
+        ["Braki danych", str(len(braki))],
+        ["Wynik całościowy", _wynik_calosciowy(fail_count, len(braki))],
     ]
     summary_table = Table(summary_data, colWidths=[6 * cm, 4 * cm])
     summary_table.setStyle(
@@ -186,7 +233,7 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
     # Sekcje per proof_type.
     grouped = _group_proofs_by_type(proofs)
     for proof_type, group in grouped.items():
-        elements.append(Paragraph(proof_type, styles["Heading2"]))
+        elements.append(Paragraph(_etykieta_rodzaju(proof_type), styles["Heading2"]))
         rows: list[list[str]] = [["Status", "Podsumowanie"]]
         for p in group:
             status = "OK" if p.get("pass_status") else "BLOKER"
@@ -205,6 +252,17 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
         )
         elements.append(tbl)
         elements.append(Spacer(1, 0.4 * cm))
+
+    if braki:
+        elements.append(Paragraph("Braki danych", styles["Heading2"]))
+        for brak in braki:
+            elements.append(
+                Paragraph(
+                    f"{_etykieta_rodzaju(str(brak.get('proof_type', '')))}: "
+                    f"{brak.get('przyczyna_pl', '')}",
+                    styles["Normal"],
+                )
+            )
 
     doc.build(elements)
     return buffer.getvalue()
@@ -245,14 +303,16 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
     proofs = ctx.proof_pack_dict.get("proofs", [])
     pass_count = sum(1 for p in proofs if p.get("pass_status"))
     fail_count = len(proofs) - pass_count
-    summary_table = doc.add_table(rows=4, cols=2)
-    summary_table.style = "Light Shading"
+    braki = _braki_danych(ctx)
     rows_data = [
         ("Total walidacji", str(len(proofs))),
         ("OK", str(pass_count)),
         ("Blokery", str(fail_count)),
-        ("Wynik całościowy", "OK" if fail_count == 0 else "BLOKERY OBECNE"),
+        ("Braki danych", str(len(braki))),
+        ("Wynik całościowy", _wynik_calosciowy(fail_count, len(braki))),
     ]
+    summary_table = doc.add_table(rows=len(rows_data), cols=2)
+    summary_table.style = "Light Shading"
     for i, (label, value) in enumerate(rows_data):
         summary_table.rows[i].cells[0].text = label
         summary_table.rows[i].cells[1].text = value
@@ -260,7 +320,7 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
     # Sekcje per proof_type.
     grouped = _group_proofs_by_type(proofs)
     for proof_type, group in grouped.items():
-        doc.add_heading(proof_type, level=2)
+        doc.add_heading(_etykieta_rodzaju(proof_type), level=2)
         tbl = doc.add_table(rows=1 + len(group), cols=2)
         tbl.style = "Light Grid"
         tbl.rows[0].cells[0].text = "Status"
@@ -269,6 +329,14 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
             status = "OK" if p.get("pass_status") else "BLOKER"
             tbl.rows[i].cells[0].text = status
             tbl.rows[i].cells[1].text = str(p.get("summary_pl", ""))[:300]
+
+    if braki:
+        doc.add_heading("Braki danych", level=2)
+        for brak in braki:
+            doc.add_paragraph(
+                f"{_etykieta_rodzaju(str(brak.get('proof_type', '')))}: "
+                f"{brak.get('przyczyna_pl', '')}"
+            )
 
     # Style: domyślny font akapitów (Calibri) 10pt — DOCX obsługuje Unicode natywnie.
     for _section in doc.sections:
@@ -309,13 +377,22 @@ def render_audit2_report_latex(ctx: Audit2ReportContext) -> str:
 
     grouped = _group_proofs_by_type(proofs)
     for proof_type, group in grouped.items():
-        lines.append(rf"\subsection{{{proof_type}}}")
+        lines.append(rf"\subsection{{{_etykieta_rodzaju(proof_type)}}}")
         for p in group:
             status = "OK" if p.get("pass_status") else "BLOKER"
             summary = str(p.get("summary_pl", "")).replace("&", r"\&").replace("_", r"\_")
             lines.append(rf"\textbf{{[{status}]}} {summary}\par")
             for formula in p.get("formulas_latex", []):
                 lines.append(formula)
+
+    braki = _braki_danych(ctx)
+    if braki:
+        lines.append(r"\subsection{Braki danych}")
+        for brak in braki:
+            przyczyna = str(brak.get("przyczyna_pl", "")).replace("&", r"\&").replace("_", r"\_")
+            lines.append(
+                rf"\textbf{{{_etykieta_rodzaju(str(brak.get('proof_type', '')))}:}} {przyczyna}\par"
+            )
 
     lines.append(r"\end{document}")
     return "\n".join(lines)
