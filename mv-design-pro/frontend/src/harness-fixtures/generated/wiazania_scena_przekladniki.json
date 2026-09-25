@@ -3,9 +3,9 @@
   "bay_ref": null,
   "wejscia": {
     "napiecie_sieci_v": 15000.0,
-    "prad_roboczy_a": 38.490017945975055,
-    "ik_ka": 9.669077408208393,
-    "ip_ka": 23.875074532311423,
+    "prad_roboczy_a": 38.490017946,
+    "ik_ka": 9.66907740821,
+    "ip_ka": 23.8750745323,
     "run_ref_zwarciowy": "run-sc-scena-pole-oze",
     "tryb_uziemienia": null,
     "zrodlo_napiecia_zerowego": "brak",

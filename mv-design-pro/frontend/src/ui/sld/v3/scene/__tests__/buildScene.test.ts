@@ -1193,9 +1193,19 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // odrzucone próby rozmiaru bloku — stała mała=10, stała duża=1000 —
     // łamały te niezmienniki, patrz docstring w adapterze; ta, przyjęta,
     // nie).
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(21040);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(44016);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(44016);
+    // SLD-SUBSTRAT (2026-09-25): PODNIESIONY 21040/44016/44016 → 22752/45728/45728
+    // (+1712 jednolicie na L0/L1/L2) — REGENERACJA fikstury z budowniczego, nie zmiana
+    // układu. Od CV-4.3 K1 (11aebfaa) ziarno odcinka SN obejmuje typ katalogowy i nazwę,
+    // więc identyfikatory WSZYSTKICH odcinków, szyn i stacji są nowe; remis
+    // `id.localeCompare` w `compareLineRunsForLayout` ustawia ciągi odgałęzień w innej
+    // kolejności, a z niej płyną kody fallback stacji (SLD-LOC) i pakowanie pasm. DOWÓD
+    // (fikstury etapowe, meldunek karty): stara treść z SAMYMI nowymi identyfikatorami
+    // daje dokładnie 22752/45728/45728, a nazwy/komunikaty/pola addytywne nie ruszają
+    // sceny. Ta sama topologia, inna kolejność remisu — wzrost „nie-rosnącej" miary
+    // §15.1 nie jest regresją kodu układu.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22752);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45728);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45728);
   });
 });
 

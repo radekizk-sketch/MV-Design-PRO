@@ -52,10 +52,13 @@ function derSymbolOf(scene: SceneV3, genRef: string) {
 describe('DER-MENU-V3 A — meta.derKind płynie adapter→compose→scene (REALNA wartość, zero re-derywacji)', () => {
   it('DER rozpoznane z fixtury (pv_inverter/bess/wind_inverter) niosą meta.derKind = pv/bess/wind', () => {
     const scene = buildSceneV3(enm, 2);
+    // Identyfikatory przepięte przy regeneracji fikstury (karta SLD-SUBSTRAT): ziarno źródła nN
+    // dziedziczy identyfikator stacji, a ten identyfikator odcinka, którego ziarno obejmuje od
+    // CV-4.3 K1 (11aebfaa) typ katalogowy i nazwę — te same trzy źródła (pozycje 1:1 w zrzucie ENM).
     const expected: ReadonlyArray<readonly [string, DerSourceKind]> = [
-      ['pv/16df25ef21e0c57696e64bf105487a69/converter', 'pv'],
-      ['bess/b6262301437365a904bcf1ffaba1a041/converter', 'bess'],
-      ['fw/81710acf62c709cee051a12063dc78ee/converter', 'wind'],
+      ['pv/1a97d7da678ce5c05a1154434dde1f0b/converter', 'pv'],
+      ['bess/fb4d74b660f1f6827d3e753898e94881/converter', 'bess'],
+      ['fw/57995ab5097afda9976c9f5bddaed9ba/converter', 'wind'],
     ];
     for (const [genRef, kind] of expected) {
       expect(derSymbolOf(scene, genRef)?.meta?.derKind).toBe(kind);

@@ -170,54 +170,48 @@ def _zbuduj(klient: TestClient) -> dict[str, Any]:
     # OSTATNIM odcinku — napowietrznym, za ostatnią stacją (słup rozgałęźny).
     migawka = klient.get(f"/api/cases/{case_id}/enm").json()
     odcinki_magistrali = migawka["corridors"][0]["ordered_segment_refs"]
-    for template_id, cel in zip(KLIENCI, [odcinki_magistrali[1], odcinki_magistrali[-1]]):
+    for template_id, cel in zip(
+        KLIENCI, [odcinki_magistrali[1], odcinki_magistrali[-1]], strict=True
+    ):
         zastosuj(template_id, cel)
 
     return klient.get(f"/api/cases/{case_id}/enm").json()
 
 
-def _ustabilizuj_identyfikatory_techniczne(enm: dict[str, Any]) -> None:
-    """`ENMElement.id` (UUID4 z `default_factory`) → UUID5 wyprowadzony z `ref_id`.
+def render_fikstury() -> str:
+    """PEŁNA treść fixtury — jeden tor dla zapisu i dla testu świeżości
+    (``backend/tests/application/test_fikstury_enm_generowane.py``)."""
+    from enm.hash import compute_enm_hash  # noqa: PLC0415
+    from enm.models import EnergyNetworkModel  # noqa: PLC0415
 
-    Tożsamością elementu w modelu i na rysunku jest `ref_id` (deterministyczny,
-    wyprowadzony z ziarna operacji domenowej); `id` to techniczny identyfikator
-    nadawany losowo przy walidacji modelu. Bez tej normalizacji fixtura zmieniałaby
-    się co regenerację w kilkudziesięciu miejscach, więc żaden przegląd różnic nie
-    pokazałby zmiany MERYTORYCZNEJ. Odwzorowanie `ref_id` → `id` jest wzajemnie
-    jednoznaczne, więc unikalność identyfikatorów zostaje zachowana.
-    """
-    from uuid import NAMESPACE_URL, uuid5
+    from tests.golden.zapis_fikstur import (  # noqa: PLC0415
+        json_fikstury,
+        przypnij_identyfikatory_zrzutu,
+        zaokraglij_liczby,
+    )
 
-    for kolekcja in enm.values():
-        if not isinstance(kolekcja, list):
-            continue
-        for element in kolekcja:
-            if isinstance(element, dict) and "id" in element and element.get("ref_id"):
-                element["id"] = str(uuid5(NAMESPACE_URL, str(element["ref_id"])))
-
-
-def main() -> None:
     with TestClient(app) as klient:
-        enm = _zbuduj(klient)
+        enm = zaokraglij_liczby(_zbuduj(klient))
 
     naglowek = enm.setdefault("header", {})
     naglowek["created_at"] = _STALY_CZAS
     naglowek["updated_at"] = _STALY_CZAS
     naglowek["name"] = "Sieć pokazowa — pomiar w odgałęzieniu"
-    _ustabilizuj_identyfikatory_techniczne(enm)
+    # `ENMElement.id` (UUID4 z `default_factory`) → identyfikator z `ref_id` — reguła
+    # `tests/golden/zapis_fikstur` wspólna dla wszystkich fikstur ENM.
+    przypnij_identyfikatory_zrzutu(enm)
     # Odcisk migawki PO normalizacji — inaczej fixtura niosłaby hash policzony z
-    # modelu sprzed przypięcia czasów i identyfikatorów, czyli deklarowałaby
-    # odcisk, którego jej własna treść nie potwierdza.
-    from enm.hash import compute_enm_hash  # noqa: PLC0415
-    from enm.models import EnergyNetworkModel  # noqa: PLC0415
-
+    # modelu sprzed przypięcia czasów, identyfikatorów i reguły liczb, czyli
+    # deklarowałaby odcisk, którego jej własna treść nie potwierdza.
     naglowek["hash_sha256"] = compute_enm_hash(EnergyNetworkModel.model_validate(enm))
+    return json_fikstury({"enm": enm}, indent=1)
 
+
+def main() -> None:
+    tresc = render_fikstury()
     _WYJSCIE.parent.mkdir(parents=True, exist_ok=True)
-    _WYJSCIE.write_text(
-        json.dumps({"enm": enm}, ensure_ascii=False, indent=1, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    _WYJSCIE.write_text(tresc, encoding="utf-8")
+    enm = json.loads(tresc)["enm"]
     stacje = [s for s in enm["substations"] if s.get("station_type") != "gpz"]
     print(f"zapisano: {_WYJSCIE}")
     print(f"stacje: {len(stacje)}, odgałęzienia: {len(enm.get('branch_points', []))}")

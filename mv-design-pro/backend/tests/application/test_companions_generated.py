@@ -97,11 +97,12 @@ def test_fixtura_sld_network_53_jest_bajtowo_rowna_generatorowi() -> None:
         distill_sld_network,
         render_sld_network_fixture,
     )
-    from tests.reference_networks.sld_substrate_52s import build_sld_substrate_52s
+    from tests.reference_networks.sld_substrate_fixtures import enm_fikstury_substratu
 
-    env = build_sld_substrate_52s()
-    model = distill_sld_network(env["enm"])
-    model["source_hash"] = env.get("snapshot_hash", "")
+    # TEN SAM model i odcisk co fikstura sldSubstrate52s.enm.json (karta SLD-SUBSTRAT).
+    _wynik, enm, odcisk = enm_fikstury_substratu()
+    model = distill_sld_network(enm)
+    model["source_hash"] = odcisk
 
     plik = Path(_companions_dir()).parent / "autolayout" / "network" / "sldNetwork53.ts"
     assert plik.exists()

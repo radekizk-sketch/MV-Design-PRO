@@ -349,87 +349,113 @@ interface OdciskiLod {
  * PASS (sufit `VERTICAL_LENGTH_BASELINE`/`VERTICAL_LENGTH_BY_CAUSE_BASELINE`,
  * ery LV DOMAIN PROJECTION, nigdy nie obniżony przy SUB-52s, pochłania
  * deltę bez zmiany progu).
+ *
+ * AKTUALIZACJA ŚWIADOMA (SLD-SUBSTRAT, 2026-09-25) — WSZYSTKIE odciski
+ * przeliczone (sceny, declutter, plany; obie sieci × L0/L1/L2). Dwie przyczyny,
+ * rozdzielone pomiarem na fiksturach etapowych (ta sama sieć, zmiany wejścia
+ * dokładane KLASAMI, zrzuty sceny w meldunku karty):
+ *   (14) REGENERACJA FIKSTURY z budowniczego (pierwsza od 2024fb4b, 2026-09-05):
+ *        ziarno odcinka SN obejmuje od CV-4.3 K1 (11aebfaa) typ katalogowy i nazwę
+ *        odcinka, więc WSZYSTKIE identyfikatory odcinków, szyn, stacji i źródeł nN
+ *        są nowe (922 ziarna, odwzorowanie 1:1 po pozycji w zrzucie ENM, zero
+ *        konfliktów). Sama zmiana identyfikatorów (etap S1: stara treść, nowe
+ *        identyfikatory) daje DOKŁADNIE odciski końcowe — nazwy (PL-ZNAKI, #140/#141,
+ *        8d17613c), komunikaty katalogowe (#142), pola addytywne modelu i zaokrąglenie
+ *        susceptancji (reguła zapisu liczb fikstur) NIE zmieniają sceny (etapy S2–S4 =
+ *        S1 co do bajtu). Mechanizm: kolejność ciągów odgałęzień w układzie rozstrzyga
+ *        remis `id.localeCompare` (`compareLineRunsForLayout`), a z niej płyną kody
+ *        fallback stacji odgałęzień (SLD-LOC) i kolejność pakowania pasm —
+ *        `totalVerticalSegmentLength` 21040/44016/44016 → 22752/45728/45728 (+1712
+ *        jednolicie na L0/L1/L2, `buildScene.test.ts` F9.7).
+ *   (15) NAPRAWA predykatu prześwitu kanału (`layout/columns.ts` `naruszaPrzeswit`):
+ *        odstęp RÓWNY prześwitowi przestał być kolizją, więc znikają FAŁSZYWE notatki
+ *        STOP „kanał zejścia lateralu przecina slot etykiety przęsła" — na starej
+ *        fiksturze sieci podwojonej 4 na każdym LOD (6/30/30 → 2/26/26), na nowej
+ *        fiksturze referencyjnej 1 na każdym LOD. DOWÓD, ŻE TO JEDYNA ZMIANA NAPRAWY:
+ *        scena z `meta.stopNotes` zastąpionym pustą listą jest CO DO BAJTU identyczna
+ *        przed i po naprawie (obie sieci, obie fikstury, L0/L1/L2), a declutter i plan
+ *        etykiet są identyczne — geometria rysunku nietknięta.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: 'a701991c79abcc0306239b4cb80fd513',
-      declutter: '00eb03eda1bc39c491cc280d6f6a9c3a',
+      scena: '8aee4da7b92b82657620ee06c0c12411',
+      declutter: '7b3f5739b2b54790f4ec28cb4df70cd0',
       plany: [
-        'c65fb4356ef44da5307ed55358ebf1b4',
-        '2ed95578f5f403ab6227bc9ee59f505f',
-        '1973b6089ddb8e818df4d64ae7ca6991',
-        '0e60d57d6c3e1e94e6c205377be042d9',
-        '08211a61c49b1f5b7171458039376022',
-        '88bb8ac8cbf89618b5ef8df6bec4d668',
-        '88bb8ac8cbf89618b5ef8df6bec4d668',
+        'e75f905bdb8cdcd336de41517bafb8d0',
+        'ab5d3ecd6aff7fa745be87346277a28f',
+        '52d9edbdb5f37d51e4db84b3654bbaab',
+        '3724c877d3aa82984dd02abe720aeed5',
+        '705da8f691981e8aa4d96c3762b0a0ab',
+        '362503944508f558874b1e412d402f34',
+        '362503944508f558874b1e412d402f34',
       ],
     },
     {
-      scena: 'bdc075cb55899e7b1f1b9b2decf2084f',
-      declutter: 'a0dc919370db047c3f81222f8dd9311a',
+      scena: '07eb97d1467c7fc106f93bec52ab6243',
+      declutter: '93f20abddd52c1160a4760deff6616e0',
       plany: [
-        '76c8b7d64f0cdcc1a49067f7b005bedb',
-        '0567de88219b44faae550b95c0a64ab8',
-        'edca883a0c9722fa821df7043cc61b3d',
-        'd82559dec4bcb649fd831f35a4d0e511',
-        '99ac527d93a6dc8d3cb4b6215eb6f47c',
-        '28c505637eab0a69ca9fe20f1b5e6276',
-        '28c505637eab0a69ca9fe20f1b5e6276',
+        '14dcd0db3ec7fb6dda440c0afe5ebf0e',
+        'a9bf199022bd475402d5f7815f09467e',
+        'f1c1b8b61ba4afb6ca24e567d8c47bf7',
+        '319f63a5ecf077a8cd126e69871ac7e6',
+        '99a5ed72adc8421edc73ec3e61f3e122',
+        '3a2a6236361936fc89724b74ca95f5ba',
+        '3a2a6236361936fc89724b74ca95f5ba',
       ],
     },
     {
-      scena: '365814fa0978d7130b930040690824ea',
-      declutter: 'ffc8d354abd8d2c2f01a0a32d9298c58',
+      scena: 'f6d785399676ee8ac36ca744a7327ec4',
+      declutter: '84903db8cd433250d7d9eef11386a2fa',
       plany: [
-        'af5b1cc0f94952e5313e8b903070d56f',
-        '8c84b4497a1de90b2e6de3d9c0076f8a',
-        '417ae859ca0e6f33823441b1f3b186b6',
-        'b22911c6444e88bd4012788595ee162b',
-        '0ce4f6d8bbb6659b8038722e421c2ae5',
-        '146506e476133ffe0ed75e4a4fa8de56',
-        '146506e476133ffe0ed75e4a4fa8de56',
+        '31240d2b9c2cd15437ea70303e2d9119',
+        '46153c23caeff88b1ac3582fea08225a',
+        '2cef16e380ba3190acd4b2ba265c1d5b',
+        'cfef095c34c86806d7281b19cbbe976f',
+        'd79e9eabd15ff4dee109d012c1d8c0e4',
+        '2c33c2714c357711ca1fc256b2c5e19d',
+        '2c33c2714c357711ca1fc256b2c5e19d',
       ],
     },
   ],
   podwojona: [
     {
-      scena: 'c362feda72f652e3e91a55c3704f59ee',
-      declutter: '96a6141a779dc70afefc853a7480be12',
+      scena: '852968b38e371900061927d793dfad53',
+      declutter: '4f488776de89329b8735c9fd2989656a',
       plany: [
-        '26be52c61f133278c997f834d8c05fc2',
-        '7b5a5fcf4b26999c3ce9e76d22917233',
-        'f71bd00477056245ff42b60e11ec632a',
-        '0b17ea8fbf77c8f7abf2edde6dd9bb01',
-        '2dc4641839d0666d6b722129486b91bd',
-        '29d42d24bfbdb273fdef233a499f09a0',
-        '29d42d24bfbdb273fdef233a499f09a0',
+        '06b04c6ddf7dcf58f8433e9ea72ff59c',
+        '816dcab274b4c36af0b2264b87fca542',
+        '5faec5858458cf42d55ebb5a69d8194f',
+        '70e68abcd4b7e7306502b0dc9cbd34cd',
+        'be7b774628b9a60f91eb95ebd3907f24',
+        'c22b0771b57969780944dfbe92c5c429',
+        'c22b0771b57969780944dfbe92c5c429',
       ],
     },
     {
-      scena: 'e81cc97b7eac93312ab9548c562d85dd',
-      declutter: '235de096da9cb53dffe633ed6381bbb4',
+      scena: 'e553467470096b0f054af5b491dc11d8',
+      declutter: 'fba14097c9b8695bb87cdd6f57ea0e09',
       plany: [
-        '27582e5dd94d1f5b124cdb394e125476',
-        '85f568dbdeb499f41084651a84993181',
-        '2bfa11a60f2cfcbf6158aa812410412d',
-        'de79ade39ca2d2bd9543514ae4d43739',
-        '77794d2d858a8129a9ae8ea0e922a7c8',
-        'e9bc15dbccc8ac3507b8d72777cee808',
-        'e9bc15dbccc8ac3507b8d72777cee808',
+        '73005a70d650b68d7553a116ed3e33d0',
+        'ffac6811241766052d42db03d084e49e',
+        '64397379cfef83433b2880f4190f4761',
+        '27c26ac63a2a7e55ac683d408abd1f99',
+        '132886361767e73bebe32ea89565b13e',
+        '8e464e9a418fff4ebb140f4f02b0c645',
+        '8e464e9a418fff4ebb140f4f02b0c645',
       ],
     },
     {
-      scena: 'c26590fb30a25dd2a6f19ee4766d6bf5',
-      declutter: 'd3554a0688a066a1801642379018678f',
+      scena: '013b276419f2b126dc266bab3ef614af',
+      declutter: 'cb9f0b5703cd72865160fc73c310d882',
       plany: [
-        '5355b948dca2bbcea54ac9bd7ce3c413',
-        '70b25ad61cb96c731597c0c50bdc1270',
-        '43d8f6bf85f609086df7e7078027ff93',
-        'bc7a771c792915639fd90d5848a1d964',
-        '561a9ce4dad19abcb71d5d3d27d99a54',
-        '572958f56d57bb2efb36ebb016b9f9cc',
-        '572958f56d57bb2efb36ebb016b9f9cc',
+        '584243afd858d9b5916293e76e8ba4d9',
+        '17f6d9f14f6dbcebcd8d799b7c9ff54f',
+        '8ec4ed13c1650de87cd27b32246ce12f',
+        'e36f4c98fb282510c717e9a8ea81017f',
+        '949b06e238f3e348d7634f5da0340012',
+        'e0f4406e392611672fad5aed718bed79',
+        'e0f4406e392611672fad5aed718bed79',
       ],
     },
   ],

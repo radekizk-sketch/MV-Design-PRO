@@ -3293,17 +3293,17 @@ def render_companions() -> dict[str, str]:
     bo zaden test nie porownywal artefaktu z wyjsciem generatora. Solvery FROZEN
     sa deterministyczne, serializacja sortuje klucze — rownosc jest BAJTOWA.
     """
+    from tests.golden.zapis_fikstur import zaokraglij_liczby
+
+    def _ts(dane: object) -> str:
+        # Regula zapisu liczb wspolna dla fikstur (``tests/golden/zapis_fikstur``).
+        return json.dumps(zaokraglij_liczby(dane), indent=2, sort_keys=True) + ";\n"
+
     return {
-        "index.ts": _TS_HEADER + json.dumps(build_all(), indent=2, sort_keys=True) + ";\n",
-        "shortCircuit.ts": (
-            _TS_SC_HEADER + json.dumps(build_all_sc(), indent=2, sort_keys=True) + ";\n"
-        ),
-        "voltageFlow.ts": (
-            _TS_VF_HEADER + json.dumps(build_all_vf(), indent=2, sort_keys=True) + ";\n"
-        ),
-        "ozeArchetypes2a.ts": (
-            _TS_OZE_HEADER + json.dumps(build_all_oze_2a(), indent=2, sort_keys=True) + ";\n"
-        ),
+        "index.ts": _TS_HEADER + _ts(build_all()),
+        "shortCircuit.ts": _TS_SC_HEADER + _ts(build_all_sc()),
+        "voltageFlow.ts": _TS_VF_HEADER + _ts(build_all_vf()),
+        "ozeArchetypes2a.ts": _TS_OZE_HEADER + _ts(build_all_oze_2a()),
     }
 
 

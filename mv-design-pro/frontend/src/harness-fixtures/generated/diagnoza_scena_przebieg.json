@@ -9,7 +9,7 @@
   "iterations_count": 1,
   "max_iterations": 1,
   "tolerance": 1e-08,
-  "final_mismatch_pu": 0.07599999999999998,
+  "final_mismatch_pu": 0.076,
   "cause_if_failed": "max_iter",
   "unsolved_node_ids": [],
   "reporting_limitations": [
@@ -20,8 +20,8 @@
   "iteration_history": [
     {
       "iteracja": 1,
-      "niedopasowanie_pu": 0.07599999999999998,
-      "norma_niedopasowania_pu": 0.08728975733195751,
+      "niedopasowanie_pu": 0.076,
+      "norma_niedopasowania_pu": 0.087289757332,
       "przyczyna_przerwania": "max_iter"
     }
   ]

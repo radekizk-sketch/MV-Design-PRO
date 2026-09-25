@@ -1,1 +1,579 @@
-{"enm":{"header":{"enm_version":"1.0","name":"Model sieci - be41cdfc","description":null,"created_at":"2026-08-07T12:48:29.804146Z","updated_at":"2026-08-07T12:48:29.829643Z","revision":5,"hash_sha256":"4fa629f1f7cdf66cc9ff5c47e5bc21cc818dc7134bbf0cb27c1a0173ff9433dc","defaults":{"frequency_hz":50,"unit_system":"SI","sn_nominal_kv":null},"semantic_hash":null,"input_hash":null,"case_hash":null,"variant_hash":null,"switching_snapshot_hash":null,"connection_conditions":null},"buses":[{"id":"541f093d-0987-454c-9f50-c73e2065c6e1","ref_id":"gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn","name":"Szyna GPZ S1 15 kV","tags":[],"meta":{"gpz_section_id":"gpz/860003b4514aa388b39561d5005ce584/section/001","gpz_section_order":0,"gpz_substation_ref":"gpz/860003b4514aa388b39561d5005ce584/substation"},"voltage_kv":15,"frequency_hz":null,"phase_system":"3ph","zone":"GPZ","grounding":null,"nominal_limits":null},{"id":"67507a61-150f-48fd-9d99-027b4b9f25cb","ref_id":"gpz/860003b4514aa388b39561d5005ce584/transformer/001/bus_110","name":"Szyna 110 kV TR1","tags":["gpz_hv_bus","helper_bus"],"meta":{"visual_role":"GPZ_HV_BUS","gpz_substation_ref":"gpz/860003b4514aa388b39561d5005ce584/substation","gpz_transformer_ref":"gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn","render_on_sld":true,"show_in_project_tree":false},"voltage_kv":110,"frequency_hz":null,"phase_system":"3ph","zone":null,"grounding":null,"nominal_limits":null},{"id":"fdfc431e-098c-4787-aff3-f6144817ed8b","ref_id":"bus/e051e31364ca8863a7bcccd01d2f5e60/downstream","name":"Zacisk końcowy odcinka SN","tags":["helper_bus","topology_terminal"],"meta":{"visual_role":"INLINE_TERMINAL","render_on_sld":false,"show_in_project_tree":false},"voltage_kv":15,"frequency_hz":null,"phase_system":"3ph","zone":null,"grounding":null,"nominal_limits":null},{"id":"29fe65e8-8c00-4ced-8332-d972439be0c9","ref_id":"bus/fb461a74eb9353b70dd12ceeb7335793/downstream","name":"Zacisk końcowy odcinka SN","tags":["helper_bus","topology_terminal"],"meta":{"visual_role":"INLINE_TERMINAL","render_on_sld":false,"show_in_project_tree":false},"voltage_kv":15,"frequency_hz":null,"phase_system":"3ph","zone":null,"grounding":null,"nominal_limits":null},{"id":"79acc21d-d500-4b5c-abc7-da8bf436fb29","ref_id":"bus/f302cb3a0057c6512af6cb0993f7085a/downstream","name":"Zacisk końcowy odcinka SN","tags":["helper_bus","topology_terminal"],"meta":{"visual_role":"INLINE_TERMINAL","render_on_sld":false,"show_in_project_tree":false},"voltage_kv":15,"frequency_hz":null,"phase_system":"3ph","zone":null,"grounding":null,"nominal_limits":null}],"branches":[{"id":"a73e0b74-169b-4a73-88bc-7028483e13d6","ref_id":"seg/e051e31364ca8863a7bcccd01d2f5e60/segment","name":"Odcinek /segment","tags":[],"meta":{"origin_bay_ref":"gpz/860003b4514aa388b39561d5005ce584/bay/001/001","origin_apparatus_kind":"cable_head","origin_port_role":"OUTGOING_HEAD","catalog_item_version":"2024.1"},"from_bus_ref":"gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn","to_bus_ref":"bus/e051e31364ca8863a7bcccd01d2f5e60/downstream","status":"closed","catalog_ref":"cable-tfk-yakxs-3x120","catalog_namespace":"KABEL_SN","parameter_source":"CATALOG","source_mode":"KATALOG","materialized_params":{"catalog_item_id":"cable-tfk-yakxs-3x120","catalog_item_version":"2024.1","r_ohm_per_km":0.253,"x_ohm_per_km":0.1,"rated_current_a":230,"c_nf_per_km":390,"voltage_rating_kv":20,"conductor_material":"AL","cross_section_mm2":120,"number_of_cores":3,"trade_name":"YAKXS 3x120/16","return_conductor_cross_section_mm2":16,"return_conductor_material":"CU","return_conductor_r_ohm_per_km_20c":1.077562,"return_conductor_jth_1s_a_per_mm2":143,"return_conductor_ith_1s_a":2288,"jth_1s_a_per_mm2":94,"ith_1s_a":null,"insulation_type":"XLPE","max_temperature_c":90,"short_circuit_temperature_c":250,"source_reference":"IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN","r0_ohm_per_km":1.330562,"x0_ohm_per_km":0.3,"b0_siemens_per_km":null},"overrides":[],"type":"cable","length_km":0.3,"r_ohm_per_km":0.253,"x_ohm_per_km":0.1,"b_siemens_per_km":0.00012252211349000195,"r0_ohm_per_km":1.330562,"x0_ohm_per_km":0.3,"b0_siemens_per_km":null,"conductor_material":"AL","cross_section_mm2":120,"number_of_cores":3,"return_conductor_cross_section_mm2":16,"return_conductor_material":"CU","return_conductor_r_ohm_per_km_20c":1.077562,"return_conductor_jth_1s_a_per_mm2":143,"return_conductor_ith_1s_a":2288,"jth_1s_a_per_mm2":94,"ith_1s_a":null,"rating":{"in_a":230,"ith_ka":null,"idyn_ka":null},"insulation":"XLPE","operating_temperature_c":90,"short_circuit_temperature_c":250,"thermal_source_ref":"IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN","endpoint_a_port":null,"endpoint_b_port":null,"cable_joints":[]},{"id":"4f3f60d2-ade4-482a-9cd9-49f8219cb9a7","ref_id":"seg/fb461a74eb9353b70dd12ceeb7335793/segment","name":"Odcinek /segment","tags":[],"meta":{"catalog_item_version":"2024.1"},"from_bus_ref":"bus/e051e31364ca8863a7bcccd01d2f5e60/downstream","to_bus_ref":"bus/fb461a74eb9353b70dd12ceeb7335793/downstream","status":"closed","catalog_ref":"cable-tfk-yakxs-3x120","catalog_namespace":"KABEL_SN","parameter_source":"CATALOG","source_mode":"KATALOG","materialized_params":{"catalog_item_id":"cable-tfk-yakxs-3x120","catalog_item_version":"2024.1","r_ohm_per_km":0.253,"x_ohm_per_km":0.1,"rated_current_a":230,"c_nf_per_km":390,"voltage_rating_kv":20,"conductor_material":"AL","cross_section_mm2":120,"number_of_cores":3,"trade_name":"YAKXS 3x120/16","return_conductor_cross_section_mm2":16,"return_conductor_material":"CU","return_conductor_r_ohm_per_km_20c":1.077562,"return_conductor_jth_1s_a_per_mm2":143,"return_conductor_ith_1s_a":2288,"jth_1s_a_per_mm2":94,"ith_1s_a":null,"insulation_type":"XLPE","max_temperature_c":90,"short_circuit_temperature_c":250,"source_reference":"IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN","r0_ohm_per_km":1.330562,"x0_ohm_per_km":0.3,"b0_siemens_per_km":null},"overrides":[],"type":"cable","length_km":0.3,"r_ohm_per_km":0.253,"x_ohm_per_km":0.1,"b_siemens_per_km":0.00012252211349000195,"r0_ohm_per_km":1.330562,"x0_ohm_per_km":0.3,"b0_siemens_per_km":null,"conductor_material":"AL","cross_section_mm2":120,"number_of_cores":3,"return_conductor_cross_section_mm2":16,"return_conductor_material":"CU","return_conductor_r_ohm_per_km_20c":1.077562,"return_conductor_jth_1s_a_per_mm2":143,"return_conductor_ith_1s_a":2288,"jth_1s_a_per_mm2":94,"ith_1s_a":null,"rating":{"in_a":230,"ith_ka":null,"idyn_ka":null},"insulation":"XLPE","operating_temperature_c":90,"short_circuit_temperature_c":250,"thermal_source_ref":"IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN","endpoint_a_port":null,"endpoint_b_port":null,"cable_joints":[]},{"id":"52421efc-fcaa-4ad8-9b3b-3b3d9ffe0fee","ref_id":"seg/f302cb3a0057c6512af6cb0993f7085a/segment","name":"Odcinek /segment","tags":[],"meta":{"catalog_item_version":"2024.1"},"from_bus_ref":"bus/fb461a74eb9353b70dd12ceeb7335793/downstream","to_bus_ref":"bus/f302cb3a0057c6512af6cb0993f7085a/downstream","status":"closed","catalog_ref":"cable-tfk-yakxs-3x120","catalog_namespace":"KABEL_SN","parameter_source":"CATALOG","source_mode":"KATALOG","materialized_params":{"catalog_item_id":"cable-tfk-yakxs-3x120","catalog_item_version":"2024.1","r_ohm_per_km":0.253,"x_ohm_per_km":0.1,"rated_current_a":230,"c_nf_per_km":390,"voltage_rating_kv":20,"conductor_material":"AL","cross_section_mm2":120,"number_of_cores":3,"trade_name":"YAKXS 3x120/16","return_conductor_cross_section_mm2":16,"return_conductor_material":"CU","return_conductor_r_ohm_per_km_20c":1.077562,"return_conductor_jth_1s_a_per_mm2":143,"return_conductor_ith_1s_a":2288,"jth_1s_a_per_mm2":94,"ith_1s_a":null,"insulation_type":"XLPE","max_temperature_c":90,"short_circuit_temperature_c":250,"source_reference":"IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN","r0_ohm_per_km":1.330562,"x0_ohm_per_km":0.3,"b0_siemens_per_km":null},"overrides":[],"type":"cable","length_km":0.3,"r_ohm_per_km":0.253,"x_ohm_per_km":0.1,"b_siemens_per_km":0.00012252211349000195,"r0_ohm_per_km":1.330562,"x0_ohm_per_km":0.3,"b0_siemens_per_km":null,"conductor_material":"AL","cross_section_mm2":120,"number_of_cores":3,"return_conductor_cross_section_mm2":16,"return_conductor_material":"CU","return_conductor_r_ohm_per_km_20c":1.077562,"return_conductor_jth_1s_a_per_mm2":143,"return_conductor_ith_1s_a":2288,"jth_1s_a_per_mm2":94,"ith_1s_a":null,"rating":{"in_a":230,"ith_ka":null,"idyn_ka":null},"insulation":"XLPE","operating_temperature_c":90,"short_circuit_temperature_c":250,"thermal_source_ref":"IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN","endpoint_a_port":null,"endpoint_b_port":null,"cable_joints":[]}],"transformers":[{"id":"0941afe3-2eaa-457b-a3e7-9363c2d18bf7","ref_id":"gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn","name":"TR1 110/15 kV","tags":["gpz_wn_sn_transformer"],"meta":{"gpz_substation_ref":"gpz/860003b4514aa388b39561d5005ce584/substation","gpz_section_id":"gpz/860003b4514aa388b39561d5005ce584/section/001","gpz_section_order":0,"visual_role":"GPZ_WN_SN_TRANSFORMER","catalog_item_version":"legacy","catalog_role":"TRANSFORMATOR_WN_SN"},"hv_bus_ref":"gpz/860003b4514aa388b39561d5005ce584/transformer/001/bus_110","lv_bus_ref":"gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn","sn_mva":25,"uhv_kv":110,"ulv_kv":15,"uk_percent":11,"pk_kw":120,"p0_kw":25,"i0_percent":0.35,"vector_group":"Yd11","hv_neutral":null,"lv_neutral":null,"n_parallel":null,"tap_position":null,"tap_min":null,"tap_max":null,"tap_step_percent":null,"tap_changer":null,"catalog_ref":"tr-wn-sn-110-15-25mva-yd11","catalog_namespace":"TRAFO_SN_NN","parameter_source":"CATALOG","source_mode":"KATALOG","materialized_params":{"catalog_item_id":"tr-wn-sn-110-15-25mva-yd11","catalog_item_version":"legacy","rated_power_mva":25,"voltage_hv_kv":110,"voltage_lv_kv":15,"uk_percent":11,"p0_kw":25,"pk_kw":120,"i0_percent":0.35,"vector_group":"Yd11"},"overrides":[]}],"sources":[{"id":"e368d3fa-be6f-40c2-b071-77a41ce26ddb","ref_id":"gpz/860003b4514aa388b39561d5005ce584/source/main","name":"Źródło GPZ 15 kV","tags":[],"meta":{"source_id":null,"solution_ref":null,"catalog_role":"GPZ_110_SN","catalog_item_version":"2024.1"},"bus_ref":"gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn","model":"short_circuit_power","substation_ref":"gpz/860003b4514aa388b39561d5005ce584/substation","gpz_section_id":"gpz/860003b4514aa388b39561d5005ce584/section/001","catalog_ref":"src-gpz-15kv-250mva-rx010","catalog_namespace":"ZRODLO_SN","parameter_source":"CATALOG","source_mode":"KATALOG","materialized_params":{"catalog_item_id":"src-gpz-15kv-250mva-rx010","catalog_item_version":"2024.1","voltage_rating_kv":15,"sk3_mva":250,"ik3_ka":9.62,"rx_ratio":0.1,"short_circuit_model":"short_circuit_power","short_circuit_mode":"SHORT_CIRCUIT_POWER"},"overrides":[],"source_side":"SN","sn_voltage_kv":null,"voltage_hv_kv":null,"sk3_hv_mva":null,"sk3_mva":250,"ik3_ka":9.62,"r_ohm":null,"x_ohm":null,"rx_ratio":0.1,"r0_ohm":null,"x0_ohm":null,"z0_z1_ratio":null,"c_max":null,"c_min":null}],"loads":[],"generators":[],"shunt_capacitors":[],"substations":[{"id":"06d7bec9-ffec-4031-926f-b8df015a6078","ref_id":"gpz/860003b4514aa388b39561d5005ce584/substation","name":"GPZ 15 kV","tags":[],"meta":{"gpz_section_count":1,"wn_sn_transformer_count":1,"grounding":null,"zero_sequence":null,"short_circuit_mode":"SHORT_CIRCUIT_POWER","short_circuit_input_side":"SN","gpz_hv_bus_refs":["gpz/860003b4514aa388b39561d5005ce584/transformer/001/bus_110"],"field_specs":[{"field_ref":"gpz/860003b4514aa388b39561d5005ce584/bay/001/001","name":"Pole liniowe GPZ","bay_role":"FEEDER","bus_ref":"gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn","equipment_refs":[],"protection_ref":null,"tags":["gpz_line_field"],"meta":{"gpz_section_id":"gpz/860003b4514aa388b39561d5005ce584/section/001","gpz_section_order":0,"gpz_line_field_index":0,"gpz_line_fields_count":1,"source_field_kind":"FEEDER","field_status":"READY_FOR_TRUNK"},"gpz_section_id":"gpz/860003b4514aa388b39561d5005ce584/section/001"}]},"station_type":"gpz","bus_refs":["gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn","gpz/860003b4514aa388b39561d5005ce584/transformer/001/bus_110"],"transformer_refs":["gpz/860003b4514aa388b39561d5005ce584/transformer/001/wn_sn"],"entry_point_ref":"gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn","gpz_sections":[{"section_id":"gpz/860003b4514aa388b39561d5005ce584/section/001","order":0,"name":"Sekcja 1","line_field_name":"Pole liniowe GPZ","bus_ref":"gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn","incoming_source_ref":"gpz/860003b4514aa388b39561d5005ce584/source/main","left_coupler_ref":null,"right_coupler_ref":null}],"gpz_hv_sections":[],"external_ports":[],"nn_voltage_levels":[],"construction_type":null,"designation":null}],"bays":[],"junctions":[],"corridors":[{"id":"889aa0b4-cbbe-4c2c-a6d9-37ad0faa7dd8","ref_id":"gpz/860003b4514aa388b39561d5005ce584/corridor_01","name":"Magistrala 01","tags":[],"meta":{},"corridor_type":"radial","ordered_segment_refs":["seg/e051e31364ca8863a7bcccd01d2f5e60/segment","seg/fb461a74eb9353b70dd12ceeb7335793/segment","seg/f302cb3a0057c6512af6cb0993f7085a/segment"],"no_point_ref":null}],"measurements":[],"protection_assignments":[],"branch_points":[],"line_runs":[{"id":"gpz/860003b4514aa388b39561d5005ce584/corridor_01","name":"Magistrala 01","run_kind":"main_trunk","starting_bay_ref":"gpz/860003b4514aa388b39561d5005ce584/bay/001/001","starting_port_ref":"gpz/860003b4514aa388b39561d5005ce584/bay/001/001","segments":[{"segment_ref":"seg/e051e31364ca8863a7bcccd01d2f5e60/segment","order":1},{"segment_ref":"seg/fb461a74eb9353b70dd12ceeb7335793/segment","order":2},{"segment_ref":"seg/f302cb3a0057c6512af6cb0993f7085a/segment","order":3}],"stations":[],"nop_station_ref":null,"parent_run_ref":null,"branch_origin_station_ref":null}],"connection_nodes":[]}}
+{
+  "enm": {
+    "bays": [],
+    "branch_points": [],
+    "branches": [
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 0.00012252211349,
+        "cable_joints": [],
+        "catalog_namespace": "KABEL_SN",
+        "catalog_ref": "cable-tfk-yakxs-3x120",
+        "conductor_material": "AL",
+        "cross_section_mm2": 120.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "id": "323184ba-8f9d-517c-b958-f511c175f2d3",
+        "insulation": "XLPE",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 94.0,
+        "length_km": 0.3,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "c_nf_per_km": 390.0,
+          "catalog_item_id": "cable-tfk-yakxs-3x120",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL",
+          "cross_section_mm2": 120.0,
+          "frequency_hz": 50.0,
+          "insulation_type": "XLPE",
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 94.0,
+          "max_temperature_c": 90.0,
+          "number_of_cores": 3,
+          "r0_ohm_per_km": 1.330562,
+          "r_ohm_per_km": 0.253,
+          "rated_current_a": 230.0,
+          "return_conductor_cross_section_mm2": 16.0,
+          "return_conductor_ith_1s_a": 2288.0,
+          "return_conductor_jth_1s_a_per_mm2": 143.0,
+          "return_conductor_material": "CU",
+          "return_conductor_r_ohm_per_km_20c": 1.077562,
+          "short_circuit_temperature_c": 250.0,
+          "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+          "trade_name": "YAKXS 3x120/16",
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 0.3,
+          "x_ohm_per_km": 0.1
+        },
+        "meta": {
+          "catalog_item_version": "2024.1",
+          "origin_apparatus_kind": "cable_head",
+          "origin_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+          "origin_port_role": "OUTGOING_HEAD"
+        },
+        "n_parallel": null,
+        "name": "Magistrala 01 — odcinek 01",
+        "number_of_cores": 3,
+        "operating_temperature_c": 90.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.330562,
+        "r_ohm_per_km": 0.253,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/ee557b308d55bd55bbc81d4776c4ba5b/segment",
+        "return_conductor_cross_section_mm2": 16.0,
+        "return_conductor_ith_1s_a": 2288.0,
+        "return_conductor_jth_1s_a_per_mm2": 143.0,
+        "return_conductor_material": "CU",
+        "return_conductor_r_ohm_per_km_20c": 1.077562,
+        "return_conductor_x_ohm_per_km": null,
+        "screen_bonding": null,
+        "short_circuit_temperature_c": 250.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+        "to_bus_ref": "bus/ee557b308d55bd55bbc81d4776c4ba5b/downstream",
+        "type": "cable",
+        "x0_ohm_per_km": 0.3,
+        "x_ohm_per_km": 0.1
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 0.00012252211349,
+        "cable_joints": [],
+        "catalog_namespace": "KABEL_SN",
+        "catalog_ref": "cable-tfk-yakxs-3x120",
+        "conductor_material": "AL",
+        "cross_section_mm2": 120.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "bus/ee557b308d55bd55bbc81d4776c4ba5b/downstream",
+        "id": "c5baea5f-f627-5c07-a489-07091a040f0a",
+        "insulation": "XLPE",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 94.0,
+        "length_km": 0.3,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "c_nf_per_km": 390.0,
+          "catalog_item_id": "cable-tfk-yakxs-3x120",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL",
+          "cross_section_mm2": 120.0,
+          "frequency_hz": 50.0,
+          "insulation_type": "XLPE",
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 94.0,
+          "max_temperature_c": 90.0,
+          "number_of_cores": 3,
+          "r0_ohm_per_km": 1.330562,
+          "r_ohm_per_km": 0.253,
+          "rated_current_a": 230.0,
+          "return_conductor_cross_section_mm2": 16.0,
+          "return_conductor_ith_1s_a": 2288.0,
+          "return_conductor_jth_1s_a_per_mm2": 143.0,
+          "return_conductor_material": "CU",
+          "return_conductor_r_ohm_per_km_20c": 1.077562,
+          "short_circuit_temperature_c": 250.0,
+          "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+          "trade_name": "YAKXS 3x120/16",
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 0.3,
+          "x_ohm_per_km": 0.1
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "n_parallel": null,
+        "name": "Magistrala 01 — odcinek 02",
+        "number_of_cores": 3,
+        "operating_temperature_c": 90.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.330562,
+        "r_ohm_per_km": 0.253,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/628c3045f7504084cacf6921ccb4d391/segment",
+        "return_conductor_cross_section_mm2": 16.0,
+        "return_conductor_ith_1s_a": 2288.0,
+        "return_conductor_jth_1s_a_per_mm2": 143.0,
+        "return_conductor_material": "CU",
+        "return_conductor_r_ohm_per_km_20c": 1.077562,
+        "return_conductor_x_ohm_per_km": null,
+        "screen_bonding": null,
+        "short_circuit_temperature_c": 250.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+        "to_bus_ref": "bus/628c3045f7504084cacf6921ccb4d391/downstream",
+        "type": "cable",
+        "x0_ohm_per_km": 0.3,
+        "x_ohm_per_km": 0.1
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 0.00012252211349,
+        "cable_joints": [],
+        "catalog_namespace": "KABEL_SN",
+        "catalog_ref": "cable-tfk-yakxs-3x120",
+        "conductor_material": "AL",
+        "cross_section_mm2": 120.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "bus/628c3045f7504084cacf6921ccb4d391/downstream",
+        "id": "6906b1b3-760c-57fc-91f5-696973113dc7",
+        "insulation": "XLPE",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 94.0,
+        "length_km": 0.3,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "c_nf_per_km": 390.0,
+          "catalog_item_id": "cable-tfk-yakxs-3x120",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL",
+          "cross_section_mm2": 120.0,
+          "frequency_hz": 50.0,
+          "insulation_type": "XLPE",
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 94.0,
+          "max_temperature_c": 90.0,
+          "number_of_cores": 3,
+          "r0_ohm_per_km": 1.330562,
+          "r_ohm_per_km": 0.253,
+          "rated_current_a": 230.0,
+          "return_conductor_cross_section_mm2": 16.0,
+          "return_conductor_ith_1s_a": 2288.0,
+          "return_conductor_jth_1s_a_per_mm2": 143.0,
+          "return_conductor_material": "CU",
+          "return_conductor_r_ohm_per_km_20c": 1.077562,
+          "short_circuit_temperature_c": 250.0,
+          "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+          "trade_name": "YAKXS 3x120/16",
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 0.3,
+          "x_ohm_per_km": 0.1
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "n_parallel": null,
+        "name": "Magistrala 01 — odcinek 03",
+        "number_of_cores": 3,
+        "operating_temperature_c": 90.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.330562,
+        "r_ohm_per_km": 0.253,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/62de912696c2e53c65d4ed4c0636b47f/segment",
+        "return_conductor_cross_section_mm2": 16.0,
+        "return_conductor_ith_1s_a": 2288.0,
+        "return_conductor_jth_1s_a_per_mm2": 143.0,
+        "return_conductor_material": "CU",
+        "return_conductor_r_ohm_per_km_20c": 1.077562,
+        "return_conductor_x_ohm_per_km": null,
+        "screen_bonding": null,
+        "short_circuit_temperature_c": 250.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+        "to_bus_ref": "bus/62de912696c2e53c65d4ed4c0636b47f/downstream",
+        "type": "cable",
+        "x0_ohm_per_km": 0.3,
+        "x_ohm_per_km": 0.1
+      }
+    ],
+    "buses": [
+      {
+        "frequency_hz": null,
+        "id": "b834b608-11e1-569f-9a17-3d392c8658db",
+        "meta": {
+          "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
+          "gpz_section_order": 0,
+          "gpz_substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation"
+        },
+        "name": "Szyna GPZ S1 15 kV",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": "GPZ"
+      },
+      {
+        "frequency_hz": null,
+        "id": "c7b17dae-26f6-5cdf-8c4c-7a04492ef450",
+        "meta": {
+          "gpz_substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+          "gpz_transformer_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
+          "render_on_sld": true,
+          "show_in_project_tree": false,
+          "visual_role": "GPZ_HV_BUS"
+        },
+        "name": "Szyna 110 kV TR1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
+        "tags": [
+          "gpz_hv_bus",
+          "helper_bus"
+        ],
+        "voltage_kv": 110.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "c3d14898-d0b3-5a21-a395-8cf747d60a9c",
+        "meta": {
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "visual_role": "INLINE_TERMINAL"
+        },
+        "name": "Zacisk końcowy odcinka SN",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bus/ee557b308d55bd55bbc81d4776c4ba5b/downstream",
+        "tags": [
+          "helper_bus",
+          "topology_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "bf558d96-d9fb-519e-adce-e3f512c1f060",
+        "meta": {
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "visual_role": "INLINE_TERMINAL"
+        },
+        "name": "Zacisk końcowy odcinka SN",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bus/628c3045f7504084cacf6921ccb4d391/downstream",
+        "tags": [
+          "helper_bus",
+          "topology_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "7ab40858-a3fb-55ff-a9dd-d6f3f5435f2b",
+        "meta": {
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "visual_role": "INLINE_TERMINAL"
+        },
+        "name": "Zacisk końcowy odcinka SN",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bus/62de912696c2e53c65d4ed4c0636b47f/downstream",
+        "tags": [
+          "helper_bus",
+          "topology_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      }
+    ],
+    "connection_nodes": [],
+    "corridors": [
+      {
+        "corridor_type": "radial",
+        "id": "cc476396-6e72-5e20-9ede-764f215ad46c",
+        "meta": {},
+        "name": "Magistrala 01",
+        "no_point_ref": null,
+        "ordered_segment_refs": [
+          "seg/ee557b308d55bd55bbc81d4776c4ba5b/segment",
+          "seg/628c3045f7504084cacf6921ccb4d391/segment",
+          "seg/62de912696c2e53c65d4ed4c0636b47f/segment"
+        ],
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
+        "tags": []
+      }
+    ],
+    "generators": [],
+    "header": {
+      "connection_conditions": null,
+      "created_at": "2026-09-25T00:00:00Z",
+      "defaults": {
+        "frequency_hz": 50.0,
+        "sn_nominal_kv": null,
+        "unit_system": "SI"
+      },
+      "description": null,
+      "enm_version": "1.0",
+      "hash_sha256": "109abe6559c6ea08ca5f3e8cd53023522e7ebdb855507846584cadf524219ca3",
+      "name": "Drogi operacji budowy",
+      "revision": 5,
+      "updated_at": "2026-09-25T00:00:00Z"
+    },
+    "junctions": [],
+    "katalog_projektu": null,
+    "line_runs": [
+      {
+        "branch_origin_station_ref": null,
+        "id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
+        "name": "Magistrala 01",
+        "nop_station_ref": null,
+        "parent_run_ref": null,
+        "run_kind": "main_trunk",
+        "segments": [
+          {
+            "order": 1,
+            "segment_ref": "seg/ee557b308d55bd55bbc81d4776c4ba5b/segment"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/628c3045f7504084cacf6921ccb4d391/segment"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/62de912696c2e53c65d4ed4c0636b47f/segment"
+          }
+        ],
+        "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+        "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+        "stations": []
+      }
+    ],
+    "loads": [],
+    "measurements": [],
+    "protection_assignments": [],
+    "shunt_capacitors": [],
+    "sources": [
+      {
+        "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "c_max": null,
+        "c_min": null,
+        "catalog_namespace": "ZRODLO_SN",
+        "catalog_ref": "src-gpz-15kv-250mva-rx010",
+        "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
+        "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
+        "ik3_ka": 9.62,
+        "ik3_min_ka": null,
+        "materialized_params": {
+          "catalog_item_id": "src-gpz-15kv-250mva-rx010",
+          "catalog_item_version": "2024.1",
+          "ik3_ka": 9.62,
+          "rx_ratio": 0.1,
+          "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+          "short_circuit_model": "short_circuit_power",
+          "sk3_mva": 250.0,
+          "voltage_rating_kv": 15.0
+        },
+        "meta": {
+          "catalog_item_version": "2024.1",
+          "catalog_role": "GPZ_110_SN",
+          "solution_ref": null,
+          "source_id": null
+        },
+        "model": "short_circuit_power",
+        "name": "Źródło GPZ 15 kV",
+        "neutral_grounding": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm": null,
+        "r_ohm": null,
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/source/main",
+        "rx_ratio": 0.1,
+        "rx_ratio_min": null,
+        "sk3_hv_mva": null,
+        "sk3_min_mva": null,
+        "sk3_mva": 250.0,
+        "sn_voltage_kv": null,
+        "source_mode": "KATALOG",
+        "source_side": "SN",
+        "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+        "tags": [],
+        "u_set_pu": null,
+        "voltage_hv_kv": null,
+        "x0_ohm": null,
+        "x_ohm": null,
+        "z0_z1_ratio": null
+      }
+    ],
+    "substations": [
+      {
+        "bus_refs": [
+          "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+          "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110"
+        ],
+        "construction_type": null,
+        "designation": null,
+        "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "external_ports": [],
+        "gpz_hv_sections": [],
+        "gpz_sections": [
+          {
+            "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+            "incoming_source_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/source/main",
+            "left_coupler_ref": null,
+            "line_field_name": "Pole liniowe GPZ",
+            "name": "Sekcja 1",
+            "order": 0,
+            "right_coupler_ref": null,
+            "section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001"
+          }
+        ],
+        "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
+        "meta": {
+          "field_specs": [
+            {
+              "bay_role": "FEEDER",
+              "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+              "equipment_refs": [],
+              "field_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+              "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
+              "meta": {
+                "field_status": "READY_FOR_TRUNK",
+                "gpz_line_field_index": 0,
+                "gpz_line_fields_count": 1,
+                "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
+                "gpz_section_order": 0,
+                "source_field_kind": "FEEDER"
+              },
+              "name": "Pole liniowe GPZ",
+              "protection_ref": null,
+              "tags": [
+                "gpz_line_field"
+              ]
+            }
+          ],
+          "gpz_hv_bus_refs": [
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110"
+          ],
+          "gpz_section_count": 1,
+          "short_circuit_input_side": "SN",
+          "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+          "wn_sn_transformer_count": 1
+        },
+        "name": "GPZ 15 kV",
+        "nn_sections": [],
+        "nn_voltage_levels": [],
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+        "station_type": "gpz",
+        "tags": [],
+        "transformer_refs": [
+          "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn"
+        ]
+      }
+    ],
+    "transformers": [
+      {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
+        "hv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
+        "hv_neutral": null,
+        "i0_percent": 0.35,
+        "id": "2c172532-51cf-5085-87c5-d96adf265d7a",
+        "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "lv_earthing_system": null,
+        "lv_neutral": null,
+        "materialized_params": {
+          "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+          "catalog_item_version": "legacy",
+          "i0_percent": 0.35,
+          "p0_kw": 25.0,
+          "pk_kw": 120.0,
+          "rated_power_mva": 25.0,
+          "uk_percent": 11.0,
+          "vector_group": "Yd11",
+          "voltage_hv_kv": 110.0,
+          "voltage_lv_kv": 15.0
+        },
+        "meta": {
+          "catalog_item_version": "legacy",
+          "catalog_role": "TRANSFORMATOR_WN_SN",
+          "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
+          "gpz_section_order": 0,
+          "gpz_substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+          "visual_role": "GPZ_WN_SN_TRANSFORMER"
+        },
+        "n_parallel": null,
+        "name": "TR1 110/15 kV",
+        "overrides": [],
+        "p0_kw": 25.0,
+        "parameter_source": "CATALOG",
+        "pk_kw": 120.0,
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
+        "sn_mva": 25.0,
+        "source_mode": "KATALOG",
+        "tags": [
+          "gpz_wn_sn_transformer"
+        ],
+        "tap_changer": null,
+        "tap_max": null,
+        "tap_min": null,
+        "tap_position": null,
+        "tap_step_percent": null,
+        "uhv_kv": 110.0,
+        "uk_percent": 11.0,
+        "ulv_kv": 15.0,
+        "vector_group": "Yd11"
+      }
+    ]
+  }
+}

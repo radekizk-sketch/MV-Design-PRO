@@ -41,6 +41,11 @@ const readFixture = <T,>(name: string): T =>
 const enm = readFixture<EnergyNetworkModel>('s92Bieg.enm.json');
 const zwarcie = readFixture<RawOverlayPayload>('s92Zwarcie.overlay.json');
 const rozplyw = readFixture<RawOverlayPayload>('s92Rozplyw.overlay.json');
+// Szyna SN stacji wyprowadzona z modelu (fikstura regenerowana z API — ziarna refów
+// nie są stałe między wersjami operacji domenowych).
+const SZYNA_SN_STACJI = (enm.substations ?? [])
+  .find((s) => s.station_type === 'inline')!
+  .bus_refs.find((ref) => ref.endsWith('/sn_bus'))!;
 
 const CANVAS_W = 1024;
 const CANVAS_H = 640;
@@ -127,9 +132,14 @@ describe('S9-2 — bieg ZWARCIOWY na kanwie (ścieżka natywna)', () => {
     const uzytkownik = userEvent.setup();
     const container = renderKanwe(2);
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
+    // 3 z 9: trzy szyny schematu SN mają etykietę, sześć punktów to szyny odpływów nN
+    // stacji (promocja pól nN do modelu) — panel NAZYWA ten powód, nie „gubi" punktów.
     expect(screen.getByTestId('sld-v3-result-coverage-liczby').textContent).toBe(
-      'Etykiety: 3 z 3 punktów wyniku',
+      'Etykiety: 3 z 9 punktów wyniku',
     );
+    const braki = screen.getByTestId('sld-v3-result-coverage-braki').textContent;
+    expect(braki).toContain('6 w rozdzielnicach nN stacji (poza schematem SN)');
+    expect(braki).toContain('0 bez elementu na schemacie');
     expect(container.textContent).toContain(zwarcie.run_id);
   });
 
@@ -158,14 +168,17 @@ describe('S9-2 — bieg ROZPŁYWOWY na kanwie (ścieżka natywna)', () => {
     expect(container.querySelectorAll('[data-testid^="sld-v3-flow-arrow-"]').length).toBeGreaterThan(0);
   });
 
-  it('POKRYCIE w panelu: 10 z 16 punktów + jawny powód braku pozostałych (model ich nie rysuje)', async () => {
+  it('POKRYCIE w panelu: 10 z 23 punktów + jawny powód braku pozostałych (model ich nie rysuje / rozdzielnica nN)', async () => {
     const uzytkownik = userEvent.setup();
     renderKanwe(2);
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     expect(screen.getByTestId('sld-v3-result-coverage-liczby').textContent).toBe(
-      'Etykiety: 10 z 16 punktów wyniku',
+      'Etykiety: 10 z 23 punktów wyniku',
     );
-    expect(screen.getByTestId('sld-v3-result-coverage-braki').textContent).toContain('6 nierysowanych w modelu');
+    const braki = screen.getByTestId('sld-v3-result-coverage-braki').textContent;
+    expect(braki).toContain('7 nierysowanych w modelu');
+    expect(braki).toContain('6 w rozdzielnicach nN stacji (poza schematem SN)');
+    expect(braki).toContain('0 bez elementu na schemacie');
   });
 
   it('FILTR PRZEKROCZEŃ: bez przekroczeń w wyniku kontrolka jest wyłączona (progi z danych backendu, nie z UI)', async () => {
@@ -181,8 +194,8 @@ describe('S9-2 — bieg ROZPŁYWOWY na kanwie (ścieżka natywna)', () => {
       ...rozplyw,
       elements: {
         ...rozplyw.elements,
-        'stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_bus': {
-          ...rozplyw.elements['stn/6db7ec2086af7dc462ff4bbb91f42b90/sn_bus'],
+        [SZYNA_SN_STACJI]: {
+          ...rozplyw.elements[SZYNA_SN_STACJI],
           severity: 'CRITICAL',
         },
       },

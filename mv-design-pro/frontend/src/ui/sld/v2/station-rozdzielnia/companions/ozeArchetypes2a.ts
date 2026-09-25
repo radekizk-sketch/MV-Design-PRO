@@ -5854,10 +5854,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       },
       "nc_rfg_class": "C",
       "power_hierarchy": {
-        "p_osiagalna_kw": 999.5999999999999,
-        "p_przylacz_kw": 999.5999999999999,
-        "p_zainst_kw": 999.5999999999999,
-        "pn_ac_kw": 999.5999999999999,
+        "p_osiagalna_kw": 999.6,
+        "p_przylacz_kw": 999.6,
+        "p_zainst_kw": 999.6,
+        "pn_ac_kw": 999.6,
         "valid": true
       },
       "protection_codes": [

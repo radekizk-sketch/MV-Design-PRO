@@ -550,7 +550,24 @@ const EXPECTED_STATION_COUNT = 53;
 // (S7-P1 „piony PROPORCJONALNE do footprintu, nie do skumulowanej pozycji")
 // poprawnie odpowiada na WYŻSZY footprint stacji (nowy portal pod zaciskiem
 // nN) — to zaprojektowane zachowanie packera, nie błąd trasowania.
-const VERTICAL_LENGTH_BASELINE = { 0: 22672, 1: 45656, 2: 45656 };
+// SLD-SUBSTRAT (2026-09-25): baseline 22672/45656/45656 → 22752/45728/45728. Wartość
+// ZMIERZONA na czubku przed kartą (stara fikstura): 21040/44016/44016; po regeneracji
+// fikstury z budowniczego (pierwsza od 2026-09-05): 22752/45728/45728 — przyrost
+// +1712 na KAŻDYM LOD, w całości w przyczynie „rezerwacja-kanalu" (20632 → 22344 na L0,
+// 42040 → 43752 na L1/L2); „footprint", „jog-trasy" i „slupek-terminalny" bez zmian.
+// Stary baseline miał luz 1632/1640/1640, więc bramka podnosi się tylko o 80/72/72, ale
+// realny przyrost miary to 1712. Przyczyna: od CV-4.3 K1 (11aebfaa) ziarno odcinka SN
+// obejmuje typ katalogowy i nazwę, więc WSZYSTKIE identyfikatory odcinków/szyn/stacji są
+// nowe (922 ziarna, odwzorowanie 1:1 po pozycji w zrzucie ENM). Remis `id.localeCompare`
+// w `compareLineRunsForLayout` ustawia 12 ciągów odgałęzień w innej kolejności; z niej
+// płyną kody fallback stacji odgałęzień (SLD-LOC) i pakowanie pasm lateralnych.
+// DOWÓD BEZ REZYDUUM (fikstury etapowe, meldunek karty): STARA treść fikstury z SAMYMI
+// nowymi identyfikatorami daje dokładnie te wartości; nazwy (PL-ZNAKI, #140/#141),
+// komunikaty (#142), pola addytywne modelu i reguła zapisu liczb nie zmieniają sceny co
+// do bajtu. Ta sama topologia, ten sam kod układu — inna kolejność remisu, nie regresja
+// trasowania. Pozostałe sondy (kolizje, przecięcia, światła, proporcja arkusza) zielone
+// bez zmian progów.
+const VERTICAL_LENGTH_BASELINE = { 0: 22752, 1: 45728, 2: 45728 };
 
 /**
  * WZMOCNIENIE SONDY (karta CI-C — „ślepe podniesienie progu jest zakazane"):
@@ -584,10 +601,14 @@ const VERTICAL_LENGTH_BASELINE = { 0: 22672, 1: 45656, 2: 45656 };
  * inwentarz klasy „bramka tylko na sumie" w tym pliku, z uzasadnieniem, czemu
  * pozostałe dwie instancje zostają nietknięte).
  */
+// SLD-SUBSTRAT (2026-09-25): „rezerwacja-kanalu" baseline 22264/43672/43672 →
+// 22344/43752/43752 (zmierzone 20632/42040/42040 → 22344/43752/43752, +1712);
+// „footprint" L1/L2 baseline 1688 → 1680 = wartość zmierzona już na czubku przed kartą
+// (luz 8 odebrany, nie skutek regeneracji) — atrybucja przy `VERTICAL_LENGTH_BASELINE`.
 const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
-  0: { footprint: 80, 'rezerwacja-kanalu': 22264, 'jog-trasy': 120, 'slupek-terminalny': 208 },
-  1: { footprint: 1688, 'rezerwacja-kanalu': 43672, 'jog-trasy': 88, 'slupek-terminalny': 208 },
-  2: { footprint: 1688, 'rezerwacja-kanalu': 43672, 'jog-trasy': 88, 'slupek-terminalny': 208 },
+  0: { footprint: 80, 'rezerwacja-kanalu': 22344, 'jog-trasy': 120, 'slupek-terminalny': 208 },
+  1: { footprint: 1680, 'rezerwacja-kanalu': 43752, 'jog-trasy': 88, 'slupek-terminalny': 208 },
+  2: { footprint: 1680, 'rezerwacja-kanalu': 43752, 'jog-trasy': 88, 'slupek-terminalny': 208 },
 };
 
 /**
@@ -648,8 +669,15 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
 // ODRZUCONY POMIAREM: kosztuje CALY dodatkowy wiersz arkusza (bbox
 // 8280x5259 -> 7808x6851) i obniza skale dopasowania 0,168 -> 0,131.
 // PIONY w tym samym bilansie SPADAJA o 960/LOD (`VERTICAL_LENGTH_BASELINE`).
-const HORIZONTAL_LENGTH_BASELINE = { 0: 57848, 1: 78568, 2: 82096 };
-const BEND_COUNT_BASELINE = { 0: 43, 1: 172, 2: 172 };
+// SLD-SUBSTRAT (2026-09-25): OBNIŻONE do pomiaru — poziomy 57848/78568/82096 →
+// 55368/75848/79472, załamania L1/L2 172 → 171. Pomiar na czubku PRZED kartą
+// (stara fikstura): poziomy 55648/76128/79760, załamania 43/171/171 — bramka
+// miała luz ~2,2 tys. j.św. nigdy nie odebrany po wcześniejszych spadkach.
+// Regeneracja fikstury (nowa kolejność remisu ciągów odgałęzień, atrybucja przy
+// `VERTICAL_LENGTH_BASELINE`) obniżyła poziomy o dalsze 280/280/288; załamania
+// bez zmian. Bramka „nie-rosnąca" trzyma teraz wartość zmierzoną, nie historyczną.
+const HORIZONTAL_LENGTH_BASELINE = { 0: 55368, 1: 75848, 2: 79472 };
+const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
 
 /**
  * S6 pkt 10 (eliminacja pustych przestrzeni) — PODŁOGA wykorzystania arkusza

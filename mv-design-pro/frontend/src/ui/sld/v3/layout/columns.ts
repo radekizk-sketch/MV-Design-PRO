@@ -276,6 +276,29 @@ function computeContentBounds(columns: readonly ColumnResult[]): ContentBounds[]
 }
 
 /**
+ * JEDEN predykat prześwitu kanału zejścia względem treści rozciągniętej na
+ * `[left, right]`: punkt kanału NARUSZA prześwit, gdy odstęp od treści jest
+ * MNIEJSZY niż `CHANNEL_MIN_CLEARANCE` z którejkolwiek strony. Odstęp RÓWNY
+ * prześwitowi jest dozwolony (spec F6d: „szerokość kanału całkowita >= 2×GRID";
+ * ta sama reguła co wolna przestrzeń poddrzew lateralnych w `buildScene.ts`:
+ * `right + LATERAL_SUBTREE_CLEARANCE <= iv.left`).
+ *
+ * KARTA SLD-SUBSTRAT (defekt ujawniony przez aktualne dane): dwa miejsca tego
+ * pliku (`koliduje` w `przesunSlotyPozaKanaly` i `pointInDangerZone`) liczyły
+ * odstęp równy prześwitowi jako kolizję (nierówności nieostre), a generator
+ * kandydatów slotu stawiał kandydata „tuż przed"/„tuż za" kanałem DOKŁADNIE w
+ * odstępie równym prześwitowi — przy geometrii w siatce (szerokości slotów i
+ * punkty kanałów są wielokrotnościami GRID) oba kandydaty były zawsze
+ * odrzucane. Na zregenerowanym substracie 52 stacji dało to fałszywą notatkę
+ * STOP „kanał zejścia lateralu przecina slot etykiety przęsła" dla slotu
+ * odległego od kanału o dokładnie prześwit. Predykaty wejścia (kolizja) i
+ * wyjścia (położenie kandydata) pochodzą teraz z tej jednej funkcji.
+ */
+function naruszaPrzeswit(point: number, left: number, right: number): boolean {
+  return point > left - CHANNEL_MIN_CLEARANCE && point < right + CHANNEL_MIN_CLEARANCE;
+}
+
+/**
  * SLOT-DRYF-PRZĘSŁA: przesuwa sloty etykiet przęseł WZDŁUŻ ich własnych
  * kabli, tak by żaden punkt kanału nie wypadł w slocie (z prześwitem
  * `CHANNEL_MIN_CLEARANCE` z każdej strony).
@@ -304,7 +327,7 @@ function przesunSlotyPozaKanaly(
 ): SegmentLabelSlotResult[] {
   const wynik = slots.map((s) => ({ ...s, rect: { ...s.rect } }));
   const koliduje = (x: number, width: number): boolean =>
-    channelPointsX.some((p) => p >= x - CHANNEL_MIN_CLEARANCE && p <= x + width + CHANNEL_MIN_CLEARANCE);
+    channelPointsX.some((p) => naruszaPrzeswit(p, x, x + width));
 
   wynik.forEach((slot, idx) => {
     if (!koliduje(slot.rect.x, slot.rect.width)) return;
@@ -354,7 +377,7 @@ function przesunSlotyPozaKanaly(
 /** Czy `point` leży (z prześwitem `CHANNEL_MIN_CLEARANCE` z każdej strony)
  *  w obrębie zasięgu treści `bounds`. */
 function pointInDangerZone(point: number, bounds: ContentBounds): boolean {
-  return point >= bounds.left - CHANNEL_MIN_CLEARANCE && point <= bounds.right + CHANNEL_MIN_CLEARANCE;
+  return naruszaPrzeswit(point, bounds.left, bounds.right);
 }
 
 /**
