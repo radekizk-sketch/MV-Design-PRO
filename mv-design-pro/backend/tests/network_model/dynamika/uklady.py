@@ -29,12 +29,17 @@ from network_model.solvers.dynamika import (
     WejscieDynamiki,
     WezelDynamiki,
 )
+from network_model.solvers.dynamika.odbiory import charakterystyka_stalej_mocy
 from network_model.solvers.dynamika.urzadzenia import (
     MaszynaKlasyczna,
     SzynaSztywna,
     zbuduj_maszyne_klasyczna,
     zbuduj_szyne_sztywna,
 )
+
+#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
+#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
 
 S_BAZOWA_MVA = 100.0
 F_BAZOWA_HZ = 50.0
@@ -183,7 +188,11 @@ def zbuduj_smib_z_odbiorem(*, p_odbioru_pu: float = 0.2, d_pu: float = 0.0) -> U
     return UkladSmib(
         wezly=podstawa.wezly,
         galezie=podstawa.galezie,
-        odbiory=(OdbiorDynamiki(ident="ODB1", wezel="GEN", p_pu=p_odbioru_pu, q_pu=0.0),),
+        odbiory=(
+            OdbiorDynamiki(
+                ident="ODB1", wezel="GEN", p_pu=p_odbioru_pu, q_pu=0.0, charakterystyka=STALA_MOC
+            ),
+        ),
         maszyna=podstawa.maszyna,
         szyna=podstawa.szyna,
         punkt_pracy=PunktPracy(

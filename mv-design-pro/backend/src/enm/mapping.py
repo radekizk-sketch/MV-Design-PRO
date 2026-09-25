@@ -961,6 +961,15 @@ def build_grid_source_trace(
     return slad
 
 
+def generator_reguluje_napiecie(gen: Generator) -> bool:
+    """Generator w trybie regulacji napięcia (`meta.control_mode == "REGULACJA_NAPIECIA"`) —
+    jego szyna jest węzłem PV rozpływu (karta CV-4.1b, A3-04). JEDEN predykat dla mapowania
+    grafu i dla kontroli reprezentowalności modelu odbiorów ZIP szyny
+    (`enm/load_zip_model.py::odmowy_agregatu_zip`)."""
+    meta = gen.meta or {}
+    return str(meta.get("control_mode") or "").strip() == "REGULACJA_NAPIECIA"
+
+
 def map_enm_to_network_graph(
     enm: EnergyNetworkModel, *, scenario: Scenario = "MAX"
 ) -> NetworkGraph:
@@ -986,6 +995,9 @@ def map_enm_to_network_graph(
     # polynomial is built from the loads, so it may only be applied to the loads.
     bus_load_p: dict[str, float] = {}
     bus_load_q: dict[str, float] = {}
+    # O-49 pkt 6: odniesienie częstotliwościowe odbioru bez `f0_hz` = częstotliwość
+    # STUDIUM (to samo pole nagłówka, które czyta `assembler.czestotliwosc_studium_hz`).
+    f_studium_hz = float(enm.header.defaults.frequency_hz)
     for load in enm.loads:
         bus_p[load.bus_ref] = bus_p.get(load.bus_ref, 0.0) - load.p_mw
         bus_q[load.bus_ref] = bus_q.get(load.bus_ref, 0.0) - load.q_mvar
@@ -995,7 +1007,7 @@ def map_enm_to_network_graph(
             (
                 load.p_mw,
                 load.q_mvar,
-                zip_coeffs_from_materialized_params(load.materialized_params),
+                zip_coeffs_from_materialized_params(load.materialized_params, f_studium_hz),
             )
         )
     # Karta FAB-H (H2, KLASA NIE INSTANCJA): moc bierna wytwórcy rozstrzygana przez
@@ -1029,7 +1041,7 @@ def map_enm_to_network_graph(
     bus_voltage_control_gen_ref: dict[str, str] = {}
     for gen in sorted(enm.generators, key=lambda g: g.ref_id):
         meta = gen.meta or {}
-        if str(meta.get("control_mode") or "").strip() != "REGULACJA_NAPIECIA":
+        if not generator_reguluje_napiecie(gen):
             continue
         if gen.bus_ref in bus_voltage_control_gen_ref:
             raise ValueError(

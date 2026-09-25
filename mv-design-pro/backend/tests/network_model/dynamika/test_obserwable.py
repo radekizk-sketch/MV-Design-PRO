@@ -35,6 +35,7 @@ from network_model.solvers.dynamika.obserwable import (
     rozdzielczosc_porownania_hz,
     wielkosci_galezi,
 )
+from network_model.solvers.dynamika.odbiory import charakterystyka_stalej_mocy
 from network_model.solvers.dynamika.siec import zloz_model_sieci
 
 from tests.network_model.dynamika.uklady import (
@@ -45,6 +46,10 @@ from tests.network_model.dynamika.uklady import (
     nastawy,
     zbuduj_smib,
 )
+
+#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
+#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
 
 #: Niepewnosc napiecia uzywana w testach jednostkowych czestotliwosci — WEJSCIE
 #: funkcji, nie nastawa solvera (od korekty par. 5 niepewnosc jest mierzona).
@@ -439,7 +444,15 @@ def _wyspa_maszyna_odbior(delta_p_pu: float) -> WejscieDynamiki:
             ),
         ),
         odsprzegi=(),
-        odbiory=(OdbiorDynamiki(ident="ODB1", wezel="ODB", p_pu=p_odbioru_pu, q_pu=q_odbioru_pu),),
+        odbiory=(
+            OdbiorDynamiki(
+                ident="ODB1",
+                wezel="ODB",
+                p_pu=p_odbioru_pu,
+                q_pu=q_odbioru_pu,
+                charakterystyka=STALA_MOC,
+            ),
+        ),
         urzadzenia=(zbuduj_smib().maszyna,),
         punkt_pracy=PunktPracy(
             napiecia_pu={"GEN": napiecie_gen, "ODB": napiecie_odb},
@@ -657,7 +670,11 @@ def _uklad_z_odbiorem(p_odbioru_pu: float) -> tuple[object, ...]:
         ),
         (),
     )
-    odbiory = (OdbiorDynamiki(ident="O1", wezel="B", p_pu=p_odbioru_pu, q_pu=0.0),)
+    odbiory = (
+        OdbiorDynamiki(
+            ident="O1", wezel="B", p_pu=p_odbioru_pu, q_pu=0.0, charakterystyka=STALA_MOC
+        ),
+    )
     maszyna = MaszynaKlasyczna(
         ident="G1",
         wezel="A",
@@ -765,7 +782,11 @@ def test_niepewnosc_rosnie_gdy_jakobian_algebry_staje_sie_gorzej_uwarunkowany() 
             ),
             (),
         )
-        odbiory = (OdbiorDynamiki(ident="O1", wezel="B", p_pu=p_odbioru_pu, q_pu=0.0),)
+        odbiory = (
+            OdbiorDynamiki(
+                ident="O1", wezel="B", p_pu=p_odbioru_pu, q_pu=0.0, charakterystyka=STALA_MOC
+            ),
+        )
         urzadzenia = (
             MaszynaKlasyczna(
                 ident="G1",
@@ -853,7 +874,15 @@ def _wyspa_z_druga_galezia(t_otwarcia_s: float) -> WejscieDynamiki:
             ),
         ),
         odsprzegi=(),
-        odbiory=(OdbiorDynamiki(ident="ODB1", wezel="ODB", p_pu=p_odbioru_pu, q_pu=q_odbioru_pu),),
+        odbiory=(
+            OdbiorDynamiki(
+                ident="ODB1",
+                wezel="ODB",
+                p_pu=p_odbioru_pu,
+                q_pu=q_odbioru_pu,
+                charakterystyka=STALA_MOC,
+            ),
+        ),
         urzadzenia=(zbuduj_smib().maszyna,),
         punkt_pracy=PunktPracy(
             napiecia_pu={"GEN": napiecie_gen, "ODB": napiecie_odb},

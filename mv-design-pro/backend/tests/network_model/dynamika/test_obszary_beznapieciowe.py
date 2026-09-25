@@ -53,6 +53,7 @@ from network_model.solvers.dynamika.kontrakty import (
     KOD_WARTOSC_NIESKONCZONA,
 )
 from network_model.solvers.dynamika.obserwable import JAKOSC_NIEDOSTEPNA
+from network_model.solvers.dynamika.odbiory import charakterystyka_stalej_mocy
 from network_model.solvers.dynamika.siec import (
     prad_wezla_ograniczonego,
     residuum_algebry,
@@ -64,6 +65,10 @@ from network_model.solvers.dynamika.urzadzenia import zbuduj_maszyne_klasyczna
 
 from tests.network_model.dynamika import biblioteka_urzadzen as biblioteka
 from tests.network_model.dynamika import uklady
+
+#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
+#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
 
 
 def _indeks_probki_p(wynik, t_s: float) -> int:
@@ -108,7 +113,9 @@ def _uklad(*, odbior: bool, urzadzenie: bool, odsprzeg: bool, b_linii: float) ->
         GalazDynamiki("LB", "GEN", "B", Y_LINII_B, b_linii, 1 + 0j, True, "linia"),
     )
     odsprzegi = (OdsprzegDynamiki("BAT_B", "B", 0.0, 0.01, True),) if odsprzeg else ()
-    odbiory = (OdbiorDynamiki("ODB_B", "B", 0.1, 0.02),) if odbior else ()
+    odbiory = (
+        (OdbiorDynamiki("ODB_B", "B", 0.1, 0.02, charakterystyka=STALA_MOC),) if odbior else ()
+    )
     model = zloz_model_sieci(wezly, galezie, odsprzegi)
     y = model.ybus.toarray()
     ig, is_, ib = (model.indeks_wezla[w] for w in ("GEN", "SYS", "B"))
@@ -447,7 +454,7 @@ def _uklad_zrodla(tempo: complex) -> WejscieDynamiki:
     galezie = (
         GalazDynamiki("L", "SRC", "ODB", 1.0 / complex(0.01, 0.05), 0.0, 1 + 0j, True, "linia"),
     )
-    odbiory = (OdbiorDynamiki("O1", "ODB", 0.3, 0.1),)
+    odbiory = (OdbiorDynamiki("O1", "ODB", 0.3, 0.1, charakterystyka=STALA_MOC),)
     model = zloz_model_sieci(wezly, galezie, ())
     y = model.ybus.toarray()
     v_src = complex(1.0, 0.0)
@@ -580,7 +587,7 @@ def test_predykaty_parami_klasyfikacja_silnika_i_odmowa_algebry(wariant: str) ->
         )
         for urzadzenie in urzadzenia
     )
-    odbiory = (OdbiorDynamiki("O", "A", 0.05, 0.01),)
+    odbiory = (OdbiorDynamiki("O", "A", 0.05, 0.01, charakterystyka=STALA_MOC),)
     napiecia = np.array([napiecie])
     zywe, martwe = klasyfikuj_wyspy((0,), {"A": 0}, urzadzenia, stany, napiecia)
     assert zywe | martwe == frozenset({0}) and not zywe & martwe
@@ -642,7 +649,11 @@ def test_wezel_bez_sasiada_zywego_startuje_od_sem_urzadzenia(z_odbiorem_zerowej_
         wezly=(WezelDynamiki("GEN", 15.0),),
         galezie=(),
         odsprzegi=(),
-        odbiory=(OdbiorDynamiki("O0", "GEN", 0.0, 0.0),) if z_odbiorem_zerowej_mocy else (),
+        odbiory=(
+            (OdbiorDynamiki("O0", "GEN", 0.0, 0.0, charakterystyka=STALA_MOC),)
+            if z_odbiorem_zerowej_mocy
+            else ()
+        ),
         urzadzenia=(maszyna,),
         punkt_pracy=PunktPracy({"GEN": napiecie}, {"G": 0j}),
         harmonogram=HarmonogramDynamiki(
@@ -673,19 +684,31 @@ def test_zerowy_start_w_wezle_odbioru_to_odmowa_nazwana_a_nie_dzielenie_przez_ze
 
     wejscie = _uklad_zrodla(complex(0.0, 0.0))
     model = _zloz(wejscie.wezly, wejscie.galezie, ())
-    for moc in ((0.3, 0.1), (0.0, 0.0)):
-        odbiory = (OdbiorDynamiki("O1", "ODB", *moc),)
-        with pytest.raises(OdmowaDynamiki) as blad:
-            rozwiaz_algebre(
-                model,
-                odbiory,
-                wejscie.urzadzenia,
-                (np.array([1.0, 0.0]),),
-                np.array([1.0 + 0.0j, 0.0j]),
-                tolerancja=1e-11,
-                max_iteracji=20,
-                max_nawrotow=10,
-                t_s=0.3,
-            )
-        assert blad.value.kod == KOD_ALGEBRA_NIEZBIEZNA
-        assert blad.value.szczegoly["wezly"] == ("ODB",)
+
+    def rozwiaz(odbior: OdbiorDynamiki):
+        return rozwiaz_algebre(
+            model,
+            (odbior,),
+            wejscie.urzadzenia,
+            (np.array([1.0, 0.0]),),
+            np.array([1.0 + 0.0j, 0.0j]),
+            tolerancja=1e-11,
+            max_iteracji=20,
+            max_nawrotow=10,
+            t_s=0.3,
+        )
+
+    with pytest.raises(OdmowaDynamiki) as blad:
+        rozwiaz(OdbiorDynamiki("O1", "ODB", 0.3, 0.1, charakterystyka=STALA_MOC))
+    assert blad.value.kod == KOD_ALGEBRA_NIEZBIEZNA
+    assert blad.value.szczegoly["wezly"] == ("ODB",)
+    # Przepisane z intencja (karta modeli odbiorow): odmowa dotyczy WYLACZNIE odbioru, ktorego
+    # prad w V = 0 nie istnieje (`odbiory.wymaga_napiecia_niezerowego`). Odbior o mocy
+    # zerowej ma prad zero dokladnie, a odbior z zadeklarowanym U_min jest w V = 0 w galezi
+    # impedancyjnej (prad zero, jakobian skonczony) — oba startuja Newtona bez odmowy.
+    for odbior in (
+        OdbiorDynamiki("O1", "ODB", 0.0, 0.0, charakterystyka=STALA_MOC),
+        OdbiorDynamiki("O1", "ODB", 0.3, 0.1, charakterystyka_stalej_mocy(u_min_pu=0.7)),
+    ):
+        wynik = rozwiaz(odbior)
+        assert wynik.residuum <= 1e-11

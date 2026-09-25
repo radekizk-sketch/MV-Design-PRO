@@ -52,7 +52,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **143** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **144** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -183,6 +183,7 @@ Wszystkie **143** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `study_case.missing_base_snapshot` | ANALYSIS | 1 | BLOCKER | Przypadek obliczeniowy nie ma bazowego zrzutu stanu | panel: `case_manager` |
 | `analysis.dynamic_stability_scenario_incomplete` | ANALYSIS | 2 | BLOCKER | Ocena progowa stabilności dynamicznej wymaga jawnego scenariusza wyłączenia zwarcia (element zwarty, czas wyłączenia, elementy wyłączające, kąty mocy przed/w czasie/po zwarciu, napięcie i częstotliwość po zwarciu, stała czasowa odbudowy) — podaj komplet pól w opcjach biegu, solver nie ma dla nich wartości domyślnych | panel: `analizy`, tab: `stabilnosc` |
 | `fault.location_on_branch_requires_assembler` | ANALYSIS | 2 | BLOCKER | Zwarcie w punkcie na gałęzi wymaga rozdzielenia modelu w miejscu zwarcia (adapter obliczeniowy) — nieobsługiwane; wybierz lokalizację na węźle | panel: `analizy`, tab: `zwarciowa` |
+| `load.zip_agregat_niereprezentowalny` | ANALYSIS | 2 | BLOCKER | Odbiorów ZIP tej szyny nie da się odwzorować w rozpływie dokładnie (różne charakterystyki na jednej szynie albo szyna regulacji napięcia) — rozdziel odbiory na osobne szyny albo ujednolić ich charakterystyki | panel: `inspector`, tab: `parametry` |
 | `oltc.deadband_missing` | ANALYSIS | 2 | WARNING | Przełącznik zaczepów nie ma pasma nieczułości regulatora — bez niego nie wiadomo, jaka odchyłka napięcia jest jeszcze dopuszczalna | panel: `inspector`, tab: `regulacja`, focus: `deadband_kv` |
 | `oltc.target_voltage_missing` | ANALYSIS | 2 | WARNING | Badanie doboru zaczepów nie ma napięcia docelowego — podaj napięcie, które ma być utrzymywane na szynie regulowanej | panel: `analizy`, tab: `oltc`, focus: `napiecie_cel` |
 | `power_flow.unbalanced_element_unsupported` | ANALYSIS | 2 | BLOCKER | Element modelu nie ma reprezentacji w rozpływie niesymetrycznym (BFS): węzeł regulacji napięcia, bateria kondensatorów, zaczep poza znamionowym, odbiór ZIP albo regulacja falownika | panel: `inspector`, tab: `parametry` |
@@ -204,10 +205,10 @@ Wszystkie **143** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 92 |
+| BLOCKER | 93 |
 | WARNING | 50 |
 | INFO | 1 |
-| **Razem** | **143** |
+| **Razem** | **144** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
@@ -217,8 +218,8 @@ Wszystkie **143** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | STATIONS | 13 |
 | GENERATORS | 25 |
 | PROTECTION | 14 |
-| ANALYSIS | 21 |
-| **Razem** | **143** |
+| ANALYSIS | 22 |
+| **Razem** | **144** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

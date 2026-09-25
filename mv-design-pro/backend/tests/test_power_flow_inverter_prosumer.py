@@ -54,7 +54,9 @@ X_OHM_KM = 0.8
 
 TAN_095 = math.tan(math.acos(0.95))
 # Constant-impedance load: the polynomial that makes the ZIP branch bite.
-ZIP_Z = ZipCoeffs(a_p=1.0, b_p=0.0, c_p=0.0, a_q=1.0, b_q=0.0, c_q=0.0)
+ZIP_Z = ZipCoeffs(
+    a_p=1.0, b_p=0.0, c_p=0.0, a_q=1.0, b_q=0.0, c_q=0.0, v0_pu=1.0, k_pf=0.0, k_qf=0.0, f0_hz=50.0
+)
 
 
 def _net() -> NetworkGraph:

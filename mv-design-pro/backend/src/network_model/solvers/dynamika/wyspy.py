@@ -10,7 +10,8 @@ uklad `Ybus = 0` + odbior o stalej mocy `S = 1,0 + j0,2` konczy sie na DWA sposo
 zaleznie wylacznie od nastaw, i zaden z nich nie jest uczciwy:
 
 * `tolerancja = 1e-100, max_iteracji = 400` -> surowy `OverflowError` z
-  `siec.jakobian_pradu_odbioru` (`mianownik**2` przy `|V| ~ 1e154`),
+  jakobianu pradu odbioru (`odbiory.jakobian_pradu_mocy`: `mianownik**2` przy
+  `|V| ~ 1e154`),
 * `tolerancja = 1e-11, max_iteracji = 60` (nastawy ROBOCZE) -> „ZBIEZNOSC" po 37
   iteracjach z `|V| = 137 438 953 472 pu` i residuum `7,42e-12`.
 
@@ -46,6 +47,13 @@ ktorym odbior o stalej mocy ZADA mocy, ktorej w wyspie nie ma z czego wziac:
   rozwiazania IZOLOWANEGO nadal nie ma.
 
 W obu przypadkach nie istnieje punkt pracy, wokol ktorego mozna calkowac.
+
+PRZEJSCIE PQ -> Z NIE ZNOSI TEJ SIATKI (karta modeli odbiorow). Odbior z zadeklarowanym
+`U_min` ma pod nim galaz impedancyjna, a jego FIZYCZNE rozwiazanie w wyspie bez zrodla
+to `V = 0` — ale to rozwiazanie daje wczesniej klasyfikacja obszaru beznapieciowego
+(odbiory odciete). Na poziomie ALGEBRY Newton startujacy z `|V| >= U_min` liczy galaz
+charakterystyki, w ktorej residuum dla `Ybus = 0` nadal wynosi `|S|/|V|` i nadal maleje
+przy `|V| -> nieskonczonosc`, wiec odmowa zostaje w tym samym ksztalcie.
 
 DWA POZIOMY, JEDEN PREDYKAT (karta AB-1b.1 par. 0 pkt 2). `klasyfikuj_wyspy` dzieli
 wyspy na ZYWE (co najmniej jedno urzadzenie wnosi do algebry) i BEZNAPIECIOWE (zadne
@@ -225,8 +233,9 @@ def sprawdz_zasilanie_wysp(
                 if bezczynne
                 else " (w wyspie nie ma zadnego urzadzenia)"
             )
-            + ". Punkt pracy nie istnieje: odbior o stalej mocy zada mocy, ktorej w wyspie "
-            "nie ma z czego wziac.",
+            + ". Punkt pracy nie istnieje: charakterystyka odbioru żąda mocy, której w wyspie "
+            "nie ma z czego wziąć (fizyczne napięcie zerowe takiej wyspy wyznacza wcześniej "
+            "klasyfikacja obszaru beznapięciowego).",
             t_s=t_s,
             wyspa=wyspa,
             wezly=wezly_wyspy,

@@ -18,11 +18,21 @@ wybor binariow — czyli te czesc, ktorej zaden bieg nie pokazuje wprost.
 
 from __future__ import annotations
 
+import os
+import shutil
+import tempfile
 from pathlib import Path
 
 import pytest
 
-from tests.conftest import _NARZEDZIA_KLASTRA, _katalog_binariow_postgresa, klaster_postgres
+from tests.conftest import (
+    _LIMIT_SCIEZKI_GNIAZDA_B,
+    _NAJDLUZSZE_GNIAZDO,
+    _NARZEDZIA_KLASTRA,
+    _katalog_binariow_postgresa,
+    _katalog_gniazd,
+    klaster_postgres,
+)
 
 
 def _zbuduj_wersje(korzen: Path, wersja: str, narzedzia: tuple[str, ...]) -> Path:
@@ -110,3 +120,105 @@ def test_klaster_nie_mieszka_w_katalogu_tymczasowym_pytest() -> None:
     )
     assert "tmp_path_factory" not in inspect.signature(klaster_postgres).parameters
     assert "shutil.rmtree" in zrodlo, "katalog spoza pytest musi byc kasowany przez fiksture"
+
+
+def test_gniazdo_zostaje_w_katalogu_klastra_gdy_sciezka_miesci_sie_w_limicie() -> None:
+    katalog = Path(tempfile.mkdtemp(prefix="k-", dir="/tmp"))
+    try:
+        gniazda = _katalog_gniazd(katalog)
+        assert gniazda == katalog / "gniazda"
+        assert gniazda.is_dir()
+        assert len(os.fsencode(gniazda / _NAJDLUZSZE_GNIAZDO)) <= _LIMIT_SCIEZKI_GNIAZDA_B
+    finally:
+        shutil.rmtree(katalog, ignore_errors=True)
+
+
+def test_gniazdo_idzie_do_krotkiego_korzenia_gdy_katalog_klastra_jest_dlugi(
+    tmp_path: Path,
+) -> None:
+    """Pomiar 2026-09-25: prywatny `TMPDIR` o dlugiej sciezce dawal 12 bledow dialektu
+    produkcyjnego (sciezka gniazda > 107 bajtow, serwer nie wstawal). Gniazdo idzie wtedy
+    do krotkiego korzenia — sciezka gniazda nigdy nie przekracza limitu `sun_path`."""
+    katalog = tmp_path / ("k" * 120)
+    katalog.mkdir()
+    krotki = Path(tempfile.mkdtemp(prefix="t-", dir="/tmp"))
+    try:
+        gniazda = _katalog_gniazd(katalog, krotki_korzen=krotki)
+        assert gniazda.parent == krotki
+        assert gniazda.is_dir()
+        assert not (katalog / "gniazda").exists()
+        assert len(os.fsencode(gniazda / _NAJDLUZSZE_GNIAZDO)) <= _LIMIT_SCIEZKI_GNIAZDA_B
+    finally:
+        shutil.rmtree(krotki, ignore_errors=True)
+
+
+@pytest.mark.parametrize("zawodzi", ["initdb", "pg_ctl"])
+def test_nieudany_start_klastra_nie_zostawia_katalogu_klastra_ani_gniazd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, zawodzi: str
+) -> None:
+    """Pomiar 2026-09-25: nieudany start (initdb albo `pg_ctl start`) zostawial
+    `klaster-postgres-*` i katalog gniazd w katalogu tymczasowym — teardown fikstury
+    obejmowal wylacznie klaster, ktory wstal. Narzedzia zastapione skryptami: to, ktore
+    ma zawiesc, konczy sie kodem 1, reszta 0."""
+    import tests.conftest as conftest
+
+    binaria = tmp_path / "bin"
+    binaria.mkdir()
+    for nazwa in _NARZEDZIA_KLASTRA:
+        skrypt = binaria / nazwa
+        skrypt.write_text(f"#!/bin/sh\nexit {1 if nazwa == zawodzi else 0}\n", encoding="utf-8")
+        skrypt.chmod(0o755)
+    katalog_tymczasowy = tmp_path / "tymczasowy"
+    katalog_tymczasowy.mkdir()
+    krotki = tmp_path / "krotki"
+    krotki.mkdir()
+    katalog_gniazd = conftest._katalog_gniazd
+    monkeypatch.delenv("MV_TEST_POSTGRES_URL", raising=False)
+    monkeypatch.setattr(conftest, "_katalog_binariow_postgresa", lambda *_a, **_k: binaria)
+    monkeypatch.setattr(conftest, "_konto_bez_uprawnien", lambda: None)
+    monkeypatch.setattr(
+        conftest, "_katalog_gniazd", lambda katalog: katalog_gniazd(katalog, krotki_korzen=krotki)
+    )
+    monkeypatch.setattr(tempfile, "tempdir", str(katalog_tymczasowy))
+
+    generator = klaster_postgres.__pytest_wrapped__.obj()
+    opis = "initdb klastra testowego" if zawodzi == "initdb" else "start klastra testowego"
+    with pytest.raises(RuntimeError, match=opis):
+        next(generator)
+
+    assert list(katalog_tymczasowy.iterdir()) == []
+    assert list(krotki.iterdir()) == []
+
+
+def test_katalogi_sesji_testow_znikaja_przy_wyjsciu_procesu(tmp_path: Path) -> None:
+    """Pomiar 2026-09-25: kazda sesja pytest zostawiala w katalogu tymczasowym magazyn
+    `enm-store-pytest-*` i `szablony-pytest-*`. Import conftest w osobnym procesie z
+    prywatnym katalogiem tymczasowym — po wyjsciu procesu katalog jest pusty."""
+    import subprocess
+    import sys
+
+    backend = Path(__file__).resolve().parents[2]
+    katalog_tymczasowy = tmp_path / "tymczasowy"
+    katalog_tymczasowy.mkdir()
+    srodowisko = {
+        klucz: wartosc
+        for klucz, wartosc in os.environ.items()
+        if klucz not in ("ENM_STORE_DIR", "STATION_USER_TEMPLATES_DIR")
+    }
+    srodowisko.update({"TMPDIR": str(katalog_tymczasowy), "PYTHONPATH": "src:."})
+    wynik = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import os, tests.conftest; "
+            "assert os.path.isdir(os.environ['ENM_STORE_DIR']); "
+            "assert os.path.isdir(os.environ['STATION_USER_TEMPLATES_DIR'])",
+        ],
+        cwd=backend,
+        env=srodowisko,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert wynik.returncode == 0, wynik.stderr
+    assert sorted(p.name for p in katalog_tymczasowy.iterdir()) == []

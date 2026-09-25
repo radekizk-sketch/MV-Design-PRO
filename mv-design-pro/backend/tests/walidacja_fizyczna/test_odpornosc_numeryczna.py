@@ -30,10 +30,15 @@ from network_model.solvers.dynamika.kontrakty import (
     WezelDynamiki,
 )
 from network_model.solvers.dynamika.konwencje import sprawdz_stala_bezwladnosci
+from network_model.solvers.dynamika.odbiory import charakterystyka_stalej_mocy
 from network_model.solvers.dynamika.siec import rozwiaz_algebre, zloz_model_sieci
 from network_model.solvers.dynamika.urzadzenia import zbuduj_maszyne_klasyczna
 
 from . import stanowisko
+
+#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
+#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
 
 
 def _ocena_biegu(wywolanie) -> tuple[str, str]:
@@ -113,7 +118,7 @@ def _wyspa_bez_zrodla(tolerancja: float, max_iteracji: int):
     )
     return lambda: rozwiaz_algebre(
         model,
-        (OdbiorDynamiki("L1", "ODB", 1.0, 0.2),),
+        (OdbiorDynamiki("L1", "ODB", 1.0, 0.2, charakterystyka=STALA_MOC),),
         (),
         (),
         np.array([1.0 + 0.0j]),

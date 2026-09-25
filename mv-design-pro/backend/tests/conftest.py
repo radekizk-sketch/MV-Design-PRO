@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import contextlib
 import importlib.util
 import inspect
@@ -35,10 +36,21 @@ sys.path.insert(0, str(backend_src))
 # testami (i jawne resety) zostaje DOKLADNIE ta sama, zmienia sie tylko katalog.
 # Testy ustawiajace te zmienne wlasnym ``monkeypatch`` nadal wygrywaja.
 # Warunek ``not in os.environ`` honoruje katalog wskazany jawnie z zewnatrz.
+# Katalog utworzony TUTAJ znika przy wyjsciu procesu (pomiar 2026-09-25: kazda sesja
+# zostawiala w katalogu tymczasowym dwa katalogi `enm-store-pytest-*`/`szablony-pytest-*`);
+# katalogu wskazanego z zewnatrz nie ruszamy.
+
+
+def _katalog_sesji(prefiks: str) -> str:
+    katalog = tempfile.mkdtemp(prefix=prefiks)
+    atexit.register(shutil.rmtree, katalog, True)
+    return katalog
+
+
 if "ENM_STORE_DIR" not in os.environ:
-    os.environ["ENM_STORE_DIR"] = tempfile.mkdtemp(prefix="enm-store-pytest-")
+    os.environ["ENM_STORE_DIR"] = _katalog_sesji("enm-store-pytest-")
 if "STATION_USER_TEMPLATES_DIR" not in os.environ:
-    os.environ["STATION_USER_TEMPLATES_DIR"] = tempfile.mkdtemp(prefix="szablony-pytest-")
+    os.environ["STATION_USER_TEMPLATES_DIR"] = _katalog_sesji("szablony-pytest-")
 
 # Korzen backendu na sciezce — WYMAGANY przez tryb importu `importlib`
 # (pyproject: `[tool.pytest.ini_options] addopts = "--import-mode=importlib"`;
@@ -291,6 +303,30 @@ def _udostepnij_przejscie(katalog: Path) -> None:
             przodek.chmod(tryb | 0o001)
 
 
+#: Limit dlugosci sciezki gniazda Unix (`sockaddr_un.sun_path` = 108 bajtow z zerem
+#: konczacym) — PostgreSQL odmawia startu, gdy `<katalog gniazd>/.s.PGSQL.<port>` jest
+#: dluzsza: „Unix-domain socket path ... is too long (maximum 107 bytes)".
+_LIMIT_SCIEZKI_GNIAZDA_B = 107
+#: Najdluzsza nazwa pliku gniazda (port pieciocyfrowy).
+_NAJDLUZSZE_GNIAZDO = ".s.PGSQL.65535"
+
+
+def _katalog_gniazd(katalog: Path, krotki_korzen: Path = Path("/tmp")) -> Path:
+    """Katalog gniazda Unix klastra: `<katalog>/gniazda`, a gdy sciezka gniazda nie miesci
+    sie w limicie `sun_path` — nowy katalog w krotkim korzeniu (`/tmp`).
+
+    POMIAR 2026-09-25: pelna regresja z prywatnym `TMPDIR` w katalogu roboczym agenta
+    (sciezka ~110 znakow) dala 12 bledow testow dialektu produkcyjnego — serwer nie
+    wstal, bo sciezka gniazda miala ponad 107 bajtow. Dane i dziennik zostaja w
+    `katalog` (brak limitu); przenosi sie WYLACZNIE gniazdo. Wolajacy sprzata oba.
+    """
+    gniazda = katalog / "gniazda"
+    if len(os.fsencode(gniazda / _NAJDLUZSZE_GNIAZDO)) <= _LIMIT_SCIEZKI_GNIAZDA_B:
+        gniazda.mkdir()
+        return gniazda
+    return Path(tempfile.mkdtemp(prefix="pg-gniazda-", dir=krotki_korzen))
+
+
 def _zatrzymaj_postmastera(dane: Path) -> None:
     """Awaryjne domkniecie serwera, gdy `pg_ctl stop` zawiodl — ZERO sierot.
 
@@ -351,8 +387,7 @@ def klaster_postgres() -> Iterator[str]:
 
     katalog = Path(tempfile.mkdtemp(prefix="klaster-postgres-"))
     dane = katalog / "dane"
-    gniazda = katalog / "gniazda"
-    gniazda.mkdir()
+    gniazda = _katalog_gniazd(katalog)
     dziennik = katalog / "postgres.log"
     dziennik.touch()
 
@@ -407,43 +442,54 @@ def klaster_postgres() -> Iterator[str]:
     plik_hasla.chmod(0o600)
     if konto is not None:
         os.chown(plik_hasla, konto.pw_uid, konto.pw_gid)
+    # Awaria startu (initdb, start serwera) nie moze zostawic katalogu klastra ani
+    # katalogu gniazd: sprzatamy je tu, bo teardown ponizej obejmuje dopiero klaster,
+    # ktory wstal (pomiar 2026-09-25: nieudany start zostawial `klaster-postgres-*`
+    # i katalog gniazd w katalogu tymczasowym). `pg_ctl -w` przy przekroczeniu czasu
+    # moze zostawic startujacy serwer — domykamy go po `postmaster.pid`.
     try:
+        try:
+            uruchom(
+                [
+                    str(binaria / "initdb"),
+                    "-D",
+                    str(dane),
+                    "-U",
+                    _UZYTKOWNIK_EFEMERYCZNY,
+                    "-A",
+                    "scram-sha-256",
+                    "--pwfile",
+                    str(plik_hasla),
+                    "--encoding=UTF8",
+                    "--locale=C",
+                ],
+                "initdb klastra testowego",
+            )
+        finally:
+            plik_hasla.unlink(missing_ok=True)
+        port = _wolny_port()
+        # `-F` = bez fsync. To baza TESTOWA, ktora ginie razem z katalogiem — trwalosc
+        # po awarii zasilania nie jest tu niczyim wymaganiem, a koszt zapisu spada.
+        # `trust` na loopbacku: klaster slucha wylacznie 127.0.0.1 i zyje minuty.
         uruchom(
             [
-                str(binaria / "initdb"),
+                str(binaria / "pg_ctl"),
                 "-D",
                 str(dane),
-                "-U",
-                _UZYTKOWNIK_EFEMERYCZNY,
-                "-A",
-                "scram-sha-256",
-                "--pwfile",
-                str(plik_hasla),
-                "--encoding=UTF8",
-                "--locale=C",
+                "-l",
+                str(dziennik),
+                "-w",
+                "-o",
+                f"-p {port} -k {gniazda} -h 127.0.0.1 -F",
+                "start",
             ],
-            "initdb klastra testowego",
+            "start klastra testowego",
         )
-    finally:
-        plik_hasla.unlink(missing_ok=True)
-    port = _wolny_port()
-    # `-F` = bez fsync. To baza TESTOWA, ktora ginie razem z katalogiem — trwalosc
-    # po awarii zasilania nie jest tu niczyim wymaganiem, a koszt zapisu spada.
-    # `trust` na loopbacku: klaster slucha wylacznie 127.0.0.1 i zyje minuty.
-    uruchom(
-        [
-            str(binaria / "pg_ctl"),
-            "-D",
-            str(dane),
-            "-l",
-            str(dziennik),
-            "-w",
-            "-o",
-            f"-p {port} -k {gniazda} -h 127.0.0.1 -F",
-            "start",
-        ],
-        "start klastra testowego",
-    )
+    except BaseException:
+        _zatrzymaj_postmastera(dane)
+        shutil.rmtree(katalog, ignore_errors=True)
+        shutil.rmtree(gniazda, ignore_errors=True)
+        raise
     try:
         uruchom(
             [
@@ -492,6 +538,7 @@ def klaster_postgres() -> Iterator[str]:
         if stan.returncode == 0:
             awaria = (awaria or "") + " | klaster nadal dziala: " + stan.stdout.strip()
         shutil.rmtree(katalog, ignore_errors=True)
+        shutil.rmtree(gniazda, ignore_errors=True)
         if awaria is not None:
             raise RuntimeError("zatrzymanie klastra testowego: " + awaria)
 

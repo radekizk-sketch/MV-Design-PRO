@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from enm.load_zip_model import zip_odbioru_z_parametrow_materializacji
 from enm.nazwy_elementow import nazwa_elementu
 from enm.zrodlo_zwarcie import dane_zerowe, tryb_danych
 from network_model.nazwy import jest_nazwa
@@ -237,6 +238,21 @@ def _eval_k6(enm: dict[str, Any]) -> StepState:
                     code="K6_LOAD_DANGLING",
                     severity=IssueSeverity.BLOCKER,
                     message_pl=f"Odbiór {nazwa_elementu(ld, 'loads')}: szyna nie istnieje",
+                    element_ref=ld.get("ref_id"),
+                    wizard_step_hint="K6",
+                )
+            )
+        # Kreator sieci jest piątym pisarzem odbioru (obok `add_nn_load`, `add_load_sn`,
+        # `create_device`, `update_element_parameters`): ten sam kontrakt ZIP — tabliczka,
+        # której rozpływ nie policzy, nie wchodzi do modelu (wycofanie kroku). Pole `model`
+        # kreator wyprowadza ze współczynników (`step_controller._apply_k6`).
+        blad_zip = zip_odbioru_z_parametrow_materializacji(ld.get("materialized_params"))
+        if blad_zip is not None:
+            issues.append(
+                WizardIssue(
+                    code="K6_LOAD_ZIP_INVALID",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=f"Odbiór {nazwa_elementu(ld, 'loads')}: {blad_zip}",
                     element_ref=ld.get("ref_id"),
                     wizard_step_hint="K6",
                 )

@@ -28,10 +28,15 @@ from network_model.solvers.dynamika import (
     WejscieDynamiki,
     WezelDynamiki,
 )
+from network_model.solvers.dynamika.odbiory import charakterystyka_stalej_mocy
 from network_model.solvers.dynamika.urzadzenia import (
     zbuduj_maszyne_klasyczna,
     zbuduj_szyne_sztywna,
 )
+
+#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
+#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
 
 S_BAZOWA_MVA = 100.0
 F_BAZOWA_HZ = 50.0
@@ -124,7 +129,7 @@ def zbuduj(
         odbiory: tuple[OdbiorDynamiki, ...] = ()
         moc_gen = v_gen * i_linii.conjugate()
     else:
-        odbiory = (OdbiorDynamiki("ODB1", "GEN", odbior_p_pu, 0.0),)
+        odbiory = (OdbiorDynamiki("ODB1", "GEN", odbior_p_pu, 0.0, charakterystyka=STALA_MOC),)
         prad_odb = complex(odbior_p_pu, 0.0).conjugate() / v_gen.conjugate()
         moc_gen = v_gen * (i_linii + prad_odb).conjugate()
     return {

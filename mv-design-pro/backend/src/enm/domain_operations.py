@@ -65,7 +65,11 @@ from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna
 from .katalog_projektu import BladKataloguProjektu, katalog_biezacy, kontekst_katalogu
 from .katalog_projektu_karty import BladKartWidmowych, materializuj_karty_generatora
 from .kopia_graniczna import kopia_graniczna_enm
-from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
+from .load_zip_model import (
+    KOD_BLEDU_ZIP,
+    model_odbioru,
+    zip_odbioru_z_parametrow_materializacji,
+)
 from .migrations.nn_field_specs_promocja import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
 from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, UKLADY_SIECI_NN, EnergyNetworkModel
 from .nazwy_elementow import ODCINEK_BEZ_NAZWY, nazwa_pola_ze_specyfikacji
@@ -9394,6 +9398,25 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         blad_zip = zip_odbioru_z_parametrow_materializacji(parameters["materialized_params"])
         if blad_zip is not None:
             return _error_response(blad_zip, KOD_BLEDU_ZIP)
+    # `Load.model` jest WYPROWADZANY ze współczynników ZIP stanu końcowego (jeden predykat
+    # modelu odbioru, O-49 pkt 2): zmiana tabliczki przelicza pole, a deklaracja sprzeczna
+    # ze współczynnikami jest odmową — dawniej `model` i `materialized_params` zmieniały się
+    # niezależnie, a adapter dynamiki czytał pole, rozpływ — współczynniki.
+    model_wyprowadzony: str | None = None
+    tabliczka_koncowa = parameters.get(
+        "materialized_params", current_element.get("materialized_params")
+    )
+    if coll == "loads" and zip_odbioru_z_parametrow_materializacji(tabliczka_koncowa) is None:
+        # Tabliczka zastana niepoprawna (sprzed kontroli pisarzy) zostaje bez przeliczenia
+        # pola — jej naprawą jest korekta `materialized_params` (kontrola wyżej).
+        model_wyprowadzony = model_odbioru(tabliczka_koncowa, czestotliwosc_studium_hz(enm))
+        if "model" in parameters and parameters["model"] != model_wyprowadzony:
+            return _error_response(
+                f"Model odbioru „{parameters['model']}” jest sprzeczny z jego współczynnikami "
+                f"ZIP (tabliczka opisuje model „{model_wyprowadzony}”) — model odbioru wynika "
+                "ze współczynników, które liczy rozpływ.",
+                "load.model_sprzeczny",
+            )
     # Karta W5-D (F-1): korekta faz przyłączenia odbioru przez TEN SAM walidator co
     # kreator odbioru (`enm/fazy_odbioru.py`) — trzeci pisarz `Load.phases`, jeden
     # predykat. `None` zdejmuje deklarację (odbiór wraca do trójfazowego symetrycznego).
@@ -9432,6 +9455,8 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         if key in ("ref_id", "id", "type") or (zmiana_typu_zrodla and key == "catalog_ref"):
             continue
         new_enm[coll][idx][key] = value
+    if model_wyprowadzony is not None:
+        new_enm[coll][idx]["model"] = model_wyprowadzony
 
     if zmiana_typu_zrodla:
         return assign_catalog_to_element(

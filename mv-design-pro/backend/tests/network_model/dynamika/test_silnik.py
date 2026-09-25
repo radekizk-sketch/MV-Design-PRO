@@ -225,7 +225,11 @@ def test_slad_white_box_niesie_siec_nastawy_i_kroki_szczegolne() -> None:
         # idealizacja — slad niesie jej zdanie obok zalozen wyniku.
         "idealizacje_harmonogramu",
         "podsumowanie_krokow",
+        # Karta modeli odbiorow (AB-1b.3a): charakterystyka kazdego odbioru, moc w punkcie
+        # pracy i tryb w t = 0 — dopisane ZA dotychczasowymi sekcjami.
+        "odbiory",
     }
+    assert slad["odbiory"] == []  # uklad SMIB bez odbiorow — sekcja pusta, nie nieobecna
     assert len(slad["idealizacje_harmonogramu"]) == 1
     assert "samoczynnie" in slad["idealizacje_harmonogramu"][0]
     assert len(slad["siec"]["odcisk_ybus"]) == 64

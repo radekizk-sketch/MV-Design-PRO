@@ -604,7 +604,16 @@ SUKCES: list[tuple[str, Callable[[dict], Any]]] = [
     (
         "create_device/load",
         lambda e: topology_ops.create_device(
-            e, {"device_type": "load", "ref_id": "load_2", "bus_ref": "bus_nn", "p_mw": 0.02}
+            # Moc bierna podana jawnie: brak Q to od karty modeli odbiorow odmowa (O-49 —
+            # dawne 0 bylo fabrykacja), a ten wiersz sprawdza kontrakt kopii, nie odmowe.
+            e,
+            {
+                "device_type": "load",
+                "ref_id": "load_2",
+                "bus_ref": "bus_nn",
+                "p_mw": 0.02,
+                "q_mvar": 0.005,
+            },
         ),
     ),
     (
@@ -697,7 +706,14 @@ BLOKADA: list[tuple[str, Callable[[dict], Any]]] = [
     (
         "create_device/load",
         lambda e: topology_ops.create_device(
-            e, {"device_type": "load", "ref_id": "load_x", "bus_ref": "nie-ma", "p_mw": 0.02}
+            e,
+            {
+                "device_type": "load",
+                "ref_id": "load_x",
+                "bus_ref": "nie-ma",
+                "p_mw": 0.02,
+                "q_mvar": 0.005,
+            },
         ),
     ),
     (

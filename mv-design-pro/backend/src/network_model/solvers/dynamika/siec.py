@@ -30,8 +30,9 @@ wewnetrznym, wezel zwarty metalicznie uziemiony (V = 0 — w postaci zredukowane
 skonczony, bez wiersza ograniczenia). Galaz zdrowa idzie dotychczasowym wzorem pi.
 
 POSTAC RZECZYWISTA. Niewiadoma jest wektor `[Re V; Im V]` (2n), a nie fazor
-zespolony, bo residuum odbioru o stalej mocy zalezy od `conj(V)` i NIE jest
-funkcja holomorficzna — jakobian zespolony dla niej nie istnieje. Wklad `Y*V`
+zespolony, bo residuum odbioru w galezi charakterystyki zalezy od `conj(V)` i od `|V|`
+(`odbiory.py`), wiec NIE jest funkcja holomorficzna — jakobian zespolony dla niej nie
+istnieje. Wklad `Y*V`
 w postaci rzeczywistej to blok `[[G, -B], [B, G]]`, wklad kazdego urzadzenia i
 odbioru to blok 2x2 w wierszu/kolumnie jego wezla.
 """
@@ -56,6 +57,7 @@ from .kontrakty import (
     Urzadzenie,
     WezelDynamiki,
 )
+from .odbiory import jakobian_pradu_pu, prad_wstrzykiwany_pu, wymaga_napiecia_niezerowego
 from .skonczonosc import sprawdz_napiecia
 from .wyspy import przydzial_wysp, sprawdz_zasilanie_wysp
 
@@ -470,42 +472,6 @@ def przezloz(
 # ---------------------------------------------------------------------------
 
 
-def prad_odbioru_pu(odbior_p_pu: float, odbior_q_pu: float, napiecie_pu: complex) -> complex:
-    """Prad WSTRZYKIWANY do wezla przez odbior o stalej mocy (konwencja generacji).
-
-    Odbior pobiera `S = P + jQ`, wiec do wezla wstrzykuje `-conj(S)/conj(V)`.
-    """
-    return -complex(odbior_p_pu, odbior_q_pu).conjugate() / napiecie_pu.conjugate()
-
-
-def jakobian_pradu_odbioru(
-    odbior_p_pu: float, odbior_q_pu: float, napiecie_pu: complex
-) -> np.ndarray:
-    """∂(Re I, Im I)/∂(Re V, Im V) odbioru o stalej mocy — postac analityczna.
-
-    Z `I = -(P - jQ)(a + jb)/(a^2 + b^2)` dla `V = a + jb` wychodzi wprost
-    (rozniczkowanie ilorazu; zadnej roznicy skonczonej w torze gorącym).
-    """
-    a = napiecie_pu.real
-    b = napiecie_pu.imag
-    mianownik = a * a + b * b
-    licznik_re = odbior_p_pu * a + odbior_q_pu * b
-    licznik_im = odbior_p_pu * b - odbior_q_pu * a
-    return np.array(
-        [
-            [
-                -odbior_p_pu / mianownik + 2.0 * a * licznik_re / mianownik**2,
-                -odbior_q_pu / mianownik + 2.0 * b * licznik_re / mianownik**2,
-            ],
-            [
-                odbior_q_pu / mianownik + 2.0 * a * licznik_im / mianownik**2,
-                -odbior_p_pu / mianownik + 2.0 * b * licznik_im / mianownik**2,
-            ],
-        ],
-        dtype=float,
-    )
-
-
 def ograniczenia_napiecia(
     model: ModelSieci, urzadzenia: tuple[Urzadzenie, ...]
 ) -> tuple[tuple[int, int | None], ...]:
@@ -579,7 +545,7 @@ def wstrzykniecia(
         pozycja = model.indeks_wezla[odbior.wezel]
         if pozycja in ograniczone:
             continue
-        prady[pozycja] += prad_odbioru_pu(odbior.p_pu, odbior.q_pu, complex(napiecia[pozycja]))
+        prady[pozycja] += prad_wstrzykiwany_pu(odbior, complex(napiecia[pozycja]))
     for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
         pozycja = model.indeks_wezla[urzadzenie.wezel]
         if pozycja in ograniczone:
@@ -644,10 +610,7 @@ def jakobian_algebry(
         pozycja = model.indeks_wezla[odbior.wezel]
         if pozycja in ograniczone:
             continue
-        dopisz_blok(
-            pozycja,
-            jakobian_pradu_odbioru(odbior.p_pu, odbior.q_pu, complex(napiecia[pozycja])),
-        )
+        dopisz_blok(pozycja, jakobian_pradu_pu(odbior, complex(napiecia[pozycja])))
     for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
         pozycja = model.indeks_wezla[urzadzenie.wezel]
         if pozycja in ograniczone:
@@ -692,13 +655,15 @@ def prad_wezla_ograniczonego(
     prad = complex((wiersz @ napiecia)[0])
     napiecie = complex(napiecia[pozycja])
     # W wezle o napieciu narzuconym ZEREM odbior nie pobiera pradu: w obszarze
-    # beznapieciowym jest odciety (silnik nie podaje go wcale), a w wezle zwartym
-    # metalicznie odbior o niezerowej mocy stalej jest odmowa nazwana — zostaje
-    # wylacznie odbior o mocy zerowej, ktorego „prad" 0/0 nie jest liczba.
+    # beznapieciowym jest odciety (silnik nie podaje go wcale), w wezle zwartym
+    # metalicznie odbior z zadeklarowanym `U_min` (i czysto impedancyjny) jest w galezi
+    # impedancyjnej, gdzie `I = -Y*0 = 0` dokladnie, a odbior bez `U_min` z moca niezerowa
+    # jest odmowa nazwana (`silnik._sprawdz_wezly_zerowe`). Pominiecie jest wiec DOKLADNE,
+    # a nie przyblizeniem (i nie dzieli 0/0 dla odbioru bez `U_min` o mocy zerowej).
     zerowy = pozycja in model.pozycje_zerowe
     for odbior in odbiory:
         if odbior.wezel == wezel and not zerowy:
-            prad -= prad_odbioru_pu(odbior.p_pu, odbior.q_pu, napiecie)
+            prad -= prad_wstrzykiwany_pu(odbior, napiecie)
     for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
         if urzadzenie.wezel == wezel and urzadzenie.sprzezenie != "napieciowe":
             prad -= urzadzenie.prad_pu(stan, napiecie)
@@ -712,9 +677,12 @@ def _sprawdz_start_odbiorow(
     napiecia: np.ndarray,
     t_s: float,
 ) -> None:
-    """Zerowy punkt startowy w wezle odbioru o stalej mocy — odmowa NAZWANA, nie dzielenie przez 0.
+    """Zerowy punkt startowy w wezle odbioru BEZ napiecia przejscia — odmowa NAZWANA, nie 0/0.
 
-    Prad odbioru `-conj(S)/conj(V)` nie istnieje przy `V = 0` (takze dla `S = 0`: 0/0).
+    Prad odbioru w galezi charakterystyki `-conj(S)/conj(V)` nie istnieje przy `V = 0`, gdy
+    odbior nie ma zadeklarowanego `U_min` (`odbiory.wymaga_napiecia_niezerowego` — TEN SAM
+    predykat, co odmowa w wezle zwartym metalicznie). Odbior z `U_min` (albo czysto
+    impedancyjny) ma w `V = 0` prad zerowy i skonczony jakobian — startuje bez odmowy.
     Silnik nie podaje takiego punktu (wezel ponownie zasilony startuje od sasiada albo od
     SEM urzadzenia), ale warunek jest sprawdzany TU, na wejsciu jedynej funkcji, ktora
     liczy prad odbioru w Newtonie — zeby kazda inna sciezka wywolania konczyla sie kodem,
@@ -727,14 +695,15 @@ def _sprawdz_start_odbiorow(
             for odbior in odbiory
             if model.indeks_wezla[odbior.wezel] not in ograniczone
             and complex(napiecia[model.indeks_wezla[odbior.wezel]]) == 0
+            and wymaga_napiecia_niezerowego(odbior)
         }
     )
     if zerowe:
         raise OdmowaDynamiki(
             KOD_ALGEBRA_NIEZBIEZNA,
-            f"Punkt startowy algebry przy t={t_s} s ma napiecie zerowe w wezlach odbiorow o "
-            f"stalej mocy {tuple(zerowe)} — prad odbioru -conj(S)/conj(V) nie istnieje przy "
-            "V = 0, wiec Newton nie ma od czego wystartowac",
+            f"Punkt startowy algebry przy t={t_s} s ma napięcie zerowe w węzłach {tuple(zerowe)} "
+            "odbiorów bez zadeklarowanego napięcia przejścia U_min — prąd charakterystyki "
+            "-conj(S)/conj(V) nie istnieje przy V = 0, więc Newton nie ma od czego wystartować",
             t_s=t_s,
             wezly=tuple(zerowe),
         )
@@ -919,7 +888,7 @@ def residuum_kcl_niezalezne(
         pozycja = model.indeks_wezla[odbior.wezel]
         if pozycja in ograniczone:
             continue
-        bilans[pozycja] -= prad_odbioru_pu(odbior.p_pu, odbior.q_pu, complex(napiecia[pozycja]))
+        bilans[pozycja] -= prad_wstrzykiwany_pu(odbior, complex(napiecia[pozycja]))
     for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
         pozycja = model.indeks_wezla[urzadzenie.wezel]
         if pozycja in ograniczone:
@@ -971,10 +940,8 @@ __all__ = [
     "czwornik_galezi",
     "galezie_laczace",
     "jakobian_algebry",
-    "jakobian_pradu_odbioru",
     "miejsca_zwarcia_galezi",
     "ograniczenia_napiecia",
-    "prad_odbioru_pu",
     "prad_wezla_ograniczonego",
     "przezloz",
     "residuum_algebry",

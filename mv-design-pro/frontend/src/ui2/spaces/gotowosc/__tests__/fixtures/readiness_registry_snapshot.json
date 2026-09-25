@@ -261,6 +261,10 @@
       "code": "load.power_zero"
     },
     {
+      "area": "ANALYSIS",
+      "code": "load.zip_agregat_niereprezentowalny"
+    },
+    {
       "area": "STATIONS",
       "code": "nn.bus_missing"
     },
@@ -573,5 +577,5 @@
       "code": "vt.winding_category_missing"
     }
   ],
-  "count": 143
+  "count": 144
 }

@@ -33,6 +33,7 @@ from network_model.solvers.dynamika import (
 )
 from network_model.solvers.dynamika.kontrakty import KOD_ZWARCIE_NIEODIZOLOWANE
 from network_model.solvers.dynamika.obserwable import JAKOSC_CHWILA_ZDARZENIA
+from network_model.solvers.dynamika.odbiory import charakterystyka_stalej_mocy
 from network_model.solvers.dynamika.urzadzenia import (
     zbuduj_maszyne_klasyczna,
     zbuduj_szyne_sztywna,
@@ -53,6 +54,10 @@ from .wyrocznia_pradow import (
     rozwiaz_siec_liniowa,
 )
 from .wyrocznia_zdarzen import miejsce_odizolowane, napiecie_odbioru_stalej_mocy
+
+#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
+#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
 
 Z_B = stanowisko.Z_BAZOWA_OM
 
@@ -85,7 +90,8 @@ PROGI: dict[str, float] = {
     # jest liczba: pochodna fazy przez nieciaglosc nie istnieje. Prog 0,0 (predykat):
     # liczba probek `L`/`P`, w ktorych `f_hz` jest liczba albo kod jakosci inny niz 3.
     "G7_czestotliwosc_w_chwili_zdarzenia_jako_liczba": 0.0,
-    # G8 — granica fail-closed na REALNYM biegu (odbior o stalej mocy + zapad).
+    # G8 — granica fail-closed na REALNYM biegu (odbior stalej mocy BEZ zadeklarowanego
+    # napiecia przejscia U_min + zapad).
     # Prog 0,0, bo to PREDYKAT (granica zachowana / zlamana), nie pomiar.
     "G8_granica_odmowy_zlamana": 0.0,
     # G9 — residuum algebry PO zdarzeniu. Pominiecie reinicjalizacji zostawia punkt
@@ -426,10 +432,19 @@ ZAPADY_G8_PU: tuple[float, ...] = (0.5, 0.2, 0.1, 0.05, 0.03, 0.0222, 0.01, 0.00
 
 
 def g8_granica_odmowy() -> dict[str, float | dict[str, str]]:
-    """Granica FAIL-CLOSED odbioru o stalej mocy — jako ZAMIATANIE, nie dwa punkty.
+    """Granica FAIL-CLOSED odbioru stalej mocy BEZ napiecia przejscia — ZAMIATANIE, nie dwa punkty.
 
-    Model odbioru o stalej mocy ma FIZYCZNA granice waznosci: przy zapadzie napiecia
-    do zera zada pradu bez granicy, wiec algebra przestaje miec rozwiazanie. Bramka
+    ZAKRES PO KARCIE MODELI ODBIOROW (AB-1b.3a). Bramka dotyczy odbioru, ktorego
+    charakterystyka NIE ma zadeklarowanego napiecia przejscia `U_min` (tak przychodzi dzis
+    kazdy odbior z modelu sieci — blok danych dynamicznych odbioru z `U_min` wchodzi w
+    AB-1b.3b, wtedy ta bramka znika razem z tym stanem). Odbior z zadeklarowanym `U_min`
+    przechodzi w stala impedancje i liczy sie przy KAZDEJ glebokosci zapadu, takze przy
+    zwarciu metalicznym — przypina to
+    `tests/network_model/dynamika/test_odbiory_bieg.py::
+    test_dawna_granica_odmowy_odbioru_stalej_mocy_znika_z_napieciem_przejscia`.
+
+    Model odbioru o stalej mocy bez przejscia ma FIZYCZNA granice waznosci: przy zapadzie
+    napiecia do zera zada pradu bez granicy, wiec algebra przestaje miec rozwiazanie. Bramka
     nie pyta „gdzie dokladnie lezy ta granica" — to zalezy od ukladu — tylko czy
     rdzen zachowuje sie po niej UCZCIWIE:
 
@@ -635,7 +650,7 @@ def g13_wyspa_bez_zrodla() -> dict[str, float | dict[str, str]]:
     model = zloz_model_sieci(
         (WezelDynamiki("ODB", 15.0),), (), (), galezie_aktywne=frozenset(), admitancje_zwarc=()
     )
-    odbiory = (OdbiorDynamiki("L1", "ODB", 1.0, 0.2),)
+    odbiory = (OdbiorDynamiki("L1", "ODB", 1.0, 0.2, charakterystyka=STALA_MOC),)
 
     def probuj(tol: float, maxit: int, urzadzenia=(), stany=()) -> str:
         try:
@@ -825,7 +840,15 @@ def g17_obszar_beznapieciowy() -> dict[str, float]:
                 GalazDynamiki("LSL", "S", "L", 1.0 / Z_LINII_G17, 0.0, 1 + 0j, False, "linia"),
             ),
             odsprzegi=(),
-            odbiory=(OdbiorDynamiki("ODB", "L", MOC_ODBIORU_G17.real, MOC_ODBIORU_G17.imag),),
+            odbiory=(
+                OdbiorDynamiki(
+                    "ODB",
+                    "L",
+                    MOC_ODBIORU_G17.real,
+                    MOC_ODBIORU_G17.imag,
+                    charakterystyka=STALA_MOC,
+                ),
+            ),
             urzadzenia=(szyna,),
             punkt_pracy=PunktPracy({"S": 1.0 + 0j}, {"SYS": 0j}),
             harmonogram=HarmonogramDynamiki((ZmianaGalezi(T_ZASILENIA_G17_S, "LSL", True),)),
@@ -1343,7 +1366,9 @@ def siec_zrodla_testowego(impedancja_pu: complex | None) -> dict:
     return {
         "wezly": wezly,
         "galezie": galezie,
-        "odbiory": (OdbiorDynamiki("O1", "ODB", odbior.real, odbior.imag),),
+        "odbiory": (
+            OdbiorDynamiki("O1", "ODB", odbior.real, odbior.imag, charakterystyka=STALA_MOC),
+        ),
         "urzadzenia": (zrodlo,),
         "punkt_pracy": PunktPracy(
             {"SRC": v_src, "ODB": v_odb}, {"ZT": v_src * prad_src.conjugate()}

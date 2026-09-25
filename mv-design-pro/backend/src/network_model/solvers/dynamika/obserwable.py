@@ -209,8 +209,8 @@ def _prawa_strona_dae(
 ) -> np.ndarray:
     """`(dI/dx) xdot` — wklady urzadzen do prawej strony zroznikowanej algebry.
 
-    Odbiory o stalej mocy nie maja stanow, wiec nie wnosza tu nic — wnosza wylacznie
-    do jakobianu po lewej stronie.
+    Odbiory (charakterystyka statyczna, `odbiory.py`) nie maja stanow, wiec nie wnosza tu
+    nic — wnosza wylacznie do jakobianu po lewej stronie.
 
     Wiersz OGRANICZENIA `V_k - E_k(x) = 0` zrozniczkowany po czasie daje
     `Vdot_k = (dE/dx) xdot` — prawa strona tego wiersza to wklad urzadzenia o

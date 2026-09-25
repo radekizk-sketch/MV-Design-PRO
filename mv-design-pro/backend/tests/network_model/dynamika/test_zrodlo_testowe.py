@@ -31,6 +31,7 @@ from network_model.solvers.dynamika.kontrakty import (
     KOD_PARAMETRY_SPRZECZNE,
     KOD_ZDARZENIE_SPRZECZNE,
 )
+from network_model.solvers.dynamika.odbiory import charakterystyka_stalej_mocy
 from network_model.solvers.dynamika.silnik import TRYB_SIEC, TRYB_STANOWISKO
 from network_model.solvers.dynamika.urzadzenia import (
     RampaCzestotliwosci,
@@ -45,6 +46,10 @@ from network_model.solvers.dynamika.urzadzenia import (
 
 from tests.network_model.dynamika import uklady
 from tests.walidacja_fizyczna.wyrocznia_zdarzen import profil_zamkniety
+
+#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
+#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
 
 F_N_HZ = 50.0
 Z_NORTONA_PU = complex(0.001, 0.02)
@@ -86,7 +91,7 @@ def _wejscie(impedancja: complex | None, zdarzenia: tuple, *, horyzont_s: float 
     galezie = (
         GalazDynamiki("L", "SRC", "ODB", 1.0 / complex(0.01, 0.05), 0.0, 1 + 0j, True, "linia"),
     )
-    odbiory = (OdbiorDynamiki("O1", "ODB", 0.3, 0.1),)
+    odbiory = (OdbiorDynamiki("O1", "ODB", 0.3, 0.1, charakterystyka=STALA_MOC),)
     y = zloz_model_sieci(wezly, galezie, ()).ybus.toarray()
     v_src = complex(1.0, 0.0)
     v_odb = complex(1.0, 0.0)

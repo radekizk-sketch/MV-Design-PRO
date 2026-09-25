@@ -273,6 +273,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'catalog.gate_result_mismatch': 'wspolne',
   'load.catalog_missing': 'wspolne',
   'load.power_zero': 'wspolne',
+  // O-49 (model odbiorów): odbiory ZIP szyny, których rozpływ nie odwzorowuje dokładnie —
+  // blokuje wyłącznie rozpływ mocy (i wszystko, co z niego startuje).
+  'load.zip_agregat_niereprezentowalny': 'rozplyw',
   'nn.cable_catalog_missing': 'wspolne',
   // STATIONS (:564-599, :610-618, :620-637, :822-847)
   'station.type_invalid': 'stacje',

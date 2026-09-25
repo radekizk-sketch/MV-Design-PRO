@@ -28,7 +28,7 @@ import pytest
 from enm.adapter_dynamiki import (
     KOD_ELEMENT_BEZ_SZYNY,
     KOD_NASTAWY_BRAK,
-    KOD_ODBIOR_ZIP,
+    KOD_ODBIOR_NIEODWZOROWANY,
     KOD_PODZIAL_MOCY_NIESPOJNY,
     KOD_PUNKT_PRACY_INNA_MIGAWKA,
     KOD_PUNKT_PRACY_NIE_ROZPLYW,
@@ -1569,12 +1569,41 @@ class TestBrakiModelu:
         assert [brak.kod for brak in braki] == [KOD_RODZINA_BEZ_MODELU]
         assert "wiatr_typ_1" in braki[0].elementy[0]
 
-    def test_odbior_zip(self, snapshot_g16: dict[str, Any]) -> None:
+    def test_pole_model_odbioru_nie_jest_czytane(self, snapshot_g16: dict[str, Any]) -> None:
+        """Przepisane z intencją (karta modeli odbiorów, O-49 pkt 2): dawniej `model == "zip"`
+        było odmową `dynamika.odbior_zip_nieobslugiwany` — rdzeń liczy dziś charakterystykę
+        ZIP, a model odbioru rozstrzygają WSPÓŁCZYNNIKI (ten sam odczyt co rozpływ), nie pole.
+        Odbiór `model="zip"` bez współczynników jest stałą mocą — bez odmowy."""
         snapshot = copy.deepcopy(snapshot_g16)
         snapshot["loads"][0]["model"] = "zip"
+        assert braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot)) == ()
+
+    @pytest.mark.parametrize(
+        ("parametry", "p_mw"),
+        [
+            ({"a_p": 0.5, "b_p": 0.2, "c_p": 0.3, "k_pf": 1.5}, 3.0),
+            ({"k_qf": -1.0}, 3.0),
+            (None, -0.5),
+            ({"a_p": 0.6, "c_p": 0.4}, -0.5),
+        ],
+    )
+    def test_odbior_nieodwzorowany_ten_sam_predykat_co_rdzen(
+        self, snapshot_g16: dict[str, Any], parametry: dict[str, float] | None, p_mw: float
+    ) -> None:
+        """Czułość częstotliwościowa i ujemna moc czynna bazowa: odmowa ADAPTERA niesie powód
+        z kontraktu RDZENIA (jeden predykat dla bramki gotowości i biegu)."""
+        snapshot = copy.deepcopy(snapshot_g16)
+        snapshot["loads"][0]["materialized_params"] = parametry
+        snapshot["loads"][0]["p_mw"] = p_mw
         braki = braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot))
-        assert [brak.kod for brak in braki] == [KOD_ODBIOR_ZIP]
+        assert [brak.kod for brak in braki] == [KOD_ODBIOR_NIEODWZOROWANY]
         assert braki[0].elementy == ("odb-odplyw",)
+        kod_rdzenia = (
+            "dynamika.parametry_odbioru_sprzeczne"
+            if p_mw < 0
+            else "dynamika.odbior_czuly_czestotliwosciowo_nieobslugiwany"
+        )
+        assert kod_rdzenia in braki[0].komunikat_pl
 
     def test_zrodlo_sieciowe_razem_z_wytworca_na_jednej_szynie_regula_reszty(
         self, snapshot_g16: dict[str, Any]
@@ -1717,9 +1746,13 @@ class TestBrakiModelu:
         bez_bloku["generators"][0]["dynamika"] = None
         uszkodzenia.append((KOD_ZRODLO_BEZ_DYNAMIKI, bez_bloku))
 
-        zip_odbior = copy.deepcopy(snapshot_g16)
-        zip_odbior["loads"][0]["model"] = "zip"
-        uszkodzenia.append((KOD_ODBIOR_ZIP, zip_odbior))
+        czuly = copy.deepcopy(snapshot_g16)
+        czuly["loads"][0]["materialized_params"] = {"k_pf": 1.0}
+        uszkodzenia.append((KOD_ODBIOR_NIEODWZOROWANY, czuly))
+
+        ujemny = copy.deepcopy(snapshot_g16)
+        ujemny["loads"][1]["p_mw"] = -0.1
+        uszkodzenia.append((KOD_ODBIOR_NIEODWZOROWANY, ujemny))
 
         kolizja = copy.deepcopy(snapshot_g16)
         drugie_zrodlo = copy.deepcopy(kolizja["sources"][0])
@@ -1908,3 +1941,102 @@ def test_f14_probka_L_chwili_zerowej_z_fazorami_pradow_zgodna_z_rozplywem(
     # Trzy galezie wyniku rozplywu G16 (jak w B-8: sprzeglo szyn zwijane przez tor
     # rozplywu nie ma wiersza) x dwa zaciski.
     assert porownane == 6, f"porownano {porownane} fazorow zamiast 6 — zmienil sie zakres G16"
+
+
+# ---------------------------------------------------------------------------
+# Model odbioru ZIP: JEDEN predykat (współczynniki), parytet t = 0 z rozpływem (O-49)
+# ---------------------------------------------------------------------------
+
+#: Współczynniki ZIP odbioru — dana testowa (mieszany Z/I/P dla P i Q, bez czułości f).
+ZIP_TESTOWY: dict[str, float] = {
+    "a_p": 0.6,
+    "b_p": 0.0,
+    "c_p": 0.4,
+    "a_q": 1.0,
+    "b_q": 0.0,
+    "c_q": 0.0,
+}
+
+
+def _moc_zip_wyroczni(p_mw: float, q_mvar: float, modul: float) -> complex:
+    """Moc pobierana wg wielomianu (v0 = 1 pu), zapisana od nowa — bez importu z rdzenia."""
+    w_p = ZIP_TESTOWY["a_p"] * modul**2 + ZIP_TESTOWY["b_p"] * modul + ZIP_TESTOWY["c_p"]
+    w_q = ZIP_TESTOWY["a_q"] * modul**2 + ZIP_TESTOWY["b_q"] * modul + ZIP_TESTOWY["c_q"]
+    return complex(p_mw * w_p, q_mvar * w_q)
+
+
+class TestModelOdbioruZip:
+    """Sonda S1 karty modeli odbiorów po naprawie — iloczyn cech: pole `model` {pq, zip} x
+    szyna {z wytwórcą (`odb-potrzeby`), samych odbiorów (`odb-odplyw`)}.
+
+    Przed kartą: `model="pq"` + współczynniki ZIP — rozpływ liczył ZIP, dynamika stałą moc,
+    moc wytwórcy 0,049598 zamiast 0,05 pu (0,9 %) po cichu, a na szynie samych odbiorów
+    myląca odmowa `inicjalizacja_niezbiezna`; `model="zip"` — odmowa ZIP.
+    """
+
+    @pytest.mark.parametrize("model", ["pq", "zip"])
+    @pytest.mark.parametrize("odbior", ["odb-potrzeby", "odb-odplyw"])
+    def test_parytet_chwili_zerowej_z_rozplywem(
+        self, snapshot_g16: dict[str, Any], model: str, odbior: str
+    ) -> None:
+        snapshot = copy.deepcopy(snapshot_g16)
+        (wpis,) = (load for load in snapshot["loads"] if load["ref_id"] == odbior)
+        wpis["model"] = model
+        wpis["materialized_params"] = dict(ZIP_TESTOWY)
+        assert braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot)) == ()
+        punkt = punkt_pracy(snapshot, _bieg_rozplywu(snapshot))
+        wejscie = zloz(snapshot, opcje(), punkt)
+        szyna = wpis["bus_ref"]
+        modul = abs(punkt.napiecia_pu[szyna])
+        moc_odbioru = _moc_zip_wyroczni(wpis["p_mw"], wpis["q_mvar"], modul) / 100.0
+        moce_odbiorow_szyny = moc_odbioru + sum(
+            (
+                complex(load["p_mw"], load["q_mvar"]) / 100.0
+                for load in snapshot["loads"]
+                if load["bus_ref"] == szyna and load["ref_id"] != odbior
+            ),
+            0j,
+        )
+        if szyna == "b-sn-b":
+            # Wytwórca szyny dostaje S_net + S_ZIP(V_pf) — nie moc bazową odbioru.
+            moc_wytworcy = wejscie.punkt_pracy.moce_zrodel_pu["gen-synchroniczny"]
+            assert abs(moc_wytworcy - (punkt.wstrzyki_pu[szyna] + moce_odbiorow_szyny)) <= 1e-12
+            # I to jest DOKŁADNIE moc wytwórcy z modelu (0,05 + j0,01 pu), jak w rozpływie.
+            assert abs(moc_wytworcy - complex(0.05, 0.01)) <= 1e-7
+        wynik = SilnikDynamiki(
+            dataclasses.replace(
+                wejscie,
+                harmonogram=HarmonogramDynamiki(()),
+                nastawy=dataclasses.replace(wejscie.nastawy, horyzont_s=0.1),
+            )
+        ).uruchom()
+        inicjalizacja = wynik.slad_white_box["inicjalizacja"]
+        assert inicjalizacja["residuum_g"] < NASTAWY["eps_init"]
+        (slad,) = (o for o in wynik.slad_white_box["odbiory"] if o["ident"] == odbior)
+        assert slad["wielomian_p"] == [0.6, 0.0, 0.4]
+        assert slad["moc_w_punkcie_pracy_pu"] == pytest.approx(
+            [moc_odbioru.real, moc_odbioru.imag], rel=1e-8
+        )
+        assert wynik.probki[f"p_pobor_pu@{odbior}"][0] == pytest.approx(moc_odbioru.real, rel=1e-12)
+
+    def test_czestotliwosc_studium_jest_odniesieniem_odbioru_bez_f0(
+        self, snapshot_g16: dict[str, Any]
+    ) -> None:
+        """O-49 pkt 6: odbiór z czułością `k` bez `f0` w studium 60 Hz ma odniesienie 60 Hz
+        (dawniej literał 50 Hz) — ten sam odczyt dla rozpływu i dynamiki."""
+        from enm.load_zip_model import jest_odbiorem_zip
+        from network_model.solvers.power_flow_zip import (
+            frequency_factor,
+            zip_coeffs_from_materialized_params,
+        )
+
+        parametry = {"k_pf": 1.0}
+        wspolczynniki = zip_coeffs_from_materialized_params(parametry, 60.0)
+        assert wspolczynniki is not None and wspolczynniki.f0_hz == 60.0
+        assert frequency_factor(wspolczynniki.k_pf, 60.0, wspolczynniki.f0_hz) == 1.0
+        assert jest_odbiorem_zip(parametry, 60.0) and not jest_odbiorem_zip({}, 60.0)
+        snapshot = copy.deepcopy(snapshot_g16)
+        snapshot["header"]["defaults"]["frequency_hz"] = 60.0
+        snapshot["loads"][0]["materialized_params"] = dict(parametry)
+        (brak,) = braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot))
+        assert brak.kod == KOD_ODBIOR_NIEODWZOROWANY

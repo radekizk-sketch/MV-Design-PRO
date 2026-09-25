@@ -985,13 +985,19 @@ def _przelacz(zbior: frozenset[str], ident: str, zalacz: bool) -> frozenset[str]
 
 
 def odbiory_po_zdarzeniach(
-    odbiory: tuple[OdbiorDynamiki, ...], stan: StanScenariusza
+    odbiory: tuple[OdbiorDynamiki, ...], stan: StanScenariusza, *, t_s: float
 ) -> tuple[OdbiorDynamiki, ...]:
-    """Odbiory PRZYLACZONE z naniesionymi skokami mocy (konwencja poboru).
+    """Odbiory PRZYLACZONE z naniesionymi skokami MOCY BAZOWEJ (konwencja poboru).
 
     Odbior odlaczony zdarzeniem nie ma obwodu — nie wchodzi do bilansu wezla wcale
     (nie „z moca zero"); jego skoki mocy zostaja w stanie scenariusza i wracaja z nim
     przy ponownym zalaczeniu.
+
+    Skok zmienia MOC BAZOWA `(P0, Q0)` i zostawia TE SAMA charakterystyke — admitancja
+    galezi impedancyjnej przelicza sie z nowej bazy w `odbiory.py`. Dla stalej mocy to
+    jest dokladnie dotychczasowa suma `P + dP`. Ujemna moc czynna bazowa po skoku (odbior
+    stalby sie wytworca) jest odmowa `dynamika.parametry_odbioru_sprzeczne` z chwila `t_s`
+    (kontrakt `OdbiorDynamiki` sprawdza ja przy konstrukcji).
     """
     wynik: list[OdbiorDynamiki] = []
     for odbior in odbiory:
@@ -1001,14 +1007,24 @@ def odbiory_po_zdarzeniach(
         if delta == 0:
             wynik.append(odbior)
             continue
-        wynik.append(
-            OdbiorDynamiki(
-                ident=odbior.ident,
-                wezel=odbior.wezel,
-                p_pu=odbior.p_pu + delta.real,
-                q_pu=odbior.q_pu + delta.imag,
+        try:
+            wynik.append(
+                replace(
+                    odbior,
+                    p_pu=odbior.p_pu + delta.real,
+                    q_pu=odbior.q_pu + delta.imag,
+                )
             )
-        )
+        except OdmowaDynamiki as odmowa:
+            szczegoly = dict(odmowa.szczegoly)
+            szczegoly.update({"t_s": t_s, "delta_p_pu": delta.real, "delta_q_pu": delta.imag})
+            raise OdmowaDynamiki(
+                odmowa.kod,
+                f"Skok obciążenia odbioru {odbior.ident!r} w chwili t = {t_s} s (ΔP0 = "
+                f"{delta.real} pu, ΔQ0 = {delta.imag} pu względem P0 = {odbior.p_pu} pu) "
+                f"daje odbiór sprzeczny z kontraktem: {odmowa}",
+                **szczegoly,
+            ) from odmowa
     return tuple(wynik)
 
 

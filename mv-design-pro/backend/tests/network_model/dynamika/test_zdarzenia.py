@@ -206,7 +206,7 @@ def test_skoki_obciazenia_sumuja_sie() -> None:
     stan = stan_poczatkowy_scenariusza(uklad.galezie, (), uklad.odbiory)
     for wpis in wpisy:
         stan = zastosuj(wpis, stan)
-    odbiory = odbiory_po_zdarzeniach(uklad.odbiory, stan)
+    odbiory = odbiory_po_zdarzeniach(uklad.odbiory, stan, t_s=0.2)
     assert odbiory[0].p_pu == pytest.approx(0.0)
     assert odbiory[0].q_pu == pytest.approx(0.05)
 

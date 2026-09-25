@@ -30,6 +30,12 @@ from uuid import NAMESPACE_DNS, uuid5
 
 from application.solvers.lv_temperature_correction import build_min_scenario_graph
 from domain.canonical_operations import READINESS_CODES
+from enm.load_zip_model import (
+    KOD_ZIP_AGREGAT_NIEREPREZENTOWALNY,
+    jest_odbiorem_zip,
+    odmowy_agregatu_zip,
+    opis_odmowy_agregatu_zip,
+)
 from enm.mapping import (
     build_grid_source_trace,
     build_zero_sequence_zbus,
@@ -84,7 +90,6 @@ from network_model.solvers.power_flow_unbalanced import (
     UnbalancedLoadSpec,
     UnbalancedNetworkInput,
 )
-from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.whitebox.tracer import WhiteBoxStep, WhiteBoxTracer
 
@@ -638,6 +643,24 @@ def _wyspy_zasilone(snapshot: dict[str, Any], graph: NetworkGraph) -> list[tuple
     return wynik
 
 
+def _odmow_gdy_agregat_zip_niereprezentowalny(snapshot: dict[str, Any]) -> None:
+    enm = EnergyNetworkModel.model_validate(snapshot)
+    odmowy = odmowy_agregatu_zip(enm)
+    if not odmowy:
+        return
+    indeks = zbuduj_indeks_nazw(enm)
+    raise OdmowaWejsciaRozplywu(
+        KOD_ZIP_AGREGAT_NIEREPREZENTOWALNY,
+        " ".join(
+            opis_odmowy_agregatu_zip(
+                odmowa, lambda ref: nazwa_po_identyfikatorze(ref, indeks=indeks)
+            )
+            for odmowa in odmowy
+        ),
+        elementy=tuple(ref for odmowa in odmowy for ref in odmowa.odbiory),
+    )
+
+
 def zbuduj_graf(snapshot: dict[str, Any] | None) -> NetworkGraph:
     """IR obliczeniowy z migawki ENM — jedyna droga ENM → ``NetworkGraph`` w torze kanonicznym."""
     enm = EnergyNetworkModel.model_validate(snapshot or {})
@@ -679,6 +702,12 @@ def zloz_wejscie_rozplywu(
     wyspy_zasilone = _wyspy_zasilone(snapshot, graph)
     if not wyspy_zasilone:
         raise ValueError("Brak węzła bilansującego SLACK w kanonicznym snapshotcie ENM")
+    # O-49 pkt 5: szyna, której odbiorów ZIP rozpływ nie odwzorowuje dokładnie (jeden
+    # wielomian na szynę), jest odmową NAZWANĄ — nigdy cichym złym wynikiem. Ten sam
+    # predykat czyta bramka gotowości (`_check_power_flow`). Dokładne odwzorowanie wielu
+    # odbiorów ZIP na szynie wymaga rdzenia FROZEN NR (pozycja B-01 (e), plan §12.2).
+    # Rozpływ niesymetryczny odmawia każdego odbioru ZIP osobno (`bez_reprezentacji`).
+    _odmow_gdy_agregat_zip_niereprezentowalny(snapshot)
     slack_node_id = wyspy_zasilone[0][2]
     nastawa_u_zrodla = _nastawy_u_zrodel(snapshot)
 
@@ -1456,7 +1485,7 @@ def diagnoza_niesymetrii(enm: EnergyNetworkModel) -> DiagnozaNiesymetrii:
     for ld in sorted(enm.loads, key=lambda ld: ld.ref_id):
         if ld.bus_ref not in szyny_zasilone:
             continue
-        if zip_coeffs_from_materialized_params(ld.materialized_params) is not None:
+        if jest_odbiorem_zip(ld.materialized_params, float(enm.header.defaults.frequency_hz)):
             bez_reprezentacji.append((ld.ref_id, "odbiór ZIP (zależny od napięcia/częstotliwości)"))
     for trafo in transformatory_wysp:
         if _zaczep_poza_znamionowym(trafo):

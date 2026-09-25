@@ -27,6 +27,7 @@ from .calkowanie import (
 )
 from .kontrakty import (
     KODY_ODMOW,
+    CharakterystykaOdbioru,
     GalazDynamiki,
     HarmonogramDynamiki,
     KomendaRegulacji,
@@ -65,6 +66,7 @@ __all__ = [
     "INTEGRATORY",
     "KODY_ODMOW",
     "WERSJA_SOLVERA",
+    "CharakterystykaOdbioru",
     "GalazDynamiki",
     "HarmonogramDynamiki",
     "Integrator",

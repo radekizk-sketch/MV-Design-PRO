@@ -46,9 +46,11 @@ i wartości znamionowe jako punkt pracy są fabrykacją — brak biegu rozpływu
 się nazwaną odmową, nie startem „skądkolwiek".
 
 PODZIAŁ MOCY WĘZŁA — JEDEN PREDYKAT. Rozpływ daje moc WYPADKOWĄ węzła
-(`S_net = Σ generacja − Σ odbiór`, konwencja generacji). Odbiory dynamiki biorą moc
-z modelu (`Load.p_mw/q_mvar`), a moc urządzenia jest WYPROWADZONA z tej samej
-liczby: `S_urz = S_net + Σ S_odbiorów węzła`. Dzięki temu prąd wstrzykiwany przez
+(`S_net = Σ generacja − Σ odbiór`, konwencja generacji). Odbiory dynamiki pobierają
+moc ze SWOJEJ charakterystyki w napięciu punktu pracy (funkcja rdzenia
+`odbiory.moc_poboru_w_punkcie_pracy` — dla odbioru ZIP inna niż moc bazowa
+`Load.p_mw/q_mvar`), a moc urządzenia jest WYPROWADZONA z tej samej liczby:
+`S_urz = S_net + Σ S_odb(V_pf)`. Dzięki temu prąd wstrzykiwany przez
 urządzenie i prąd pobierany przez odbiory sumują się DOKŁADNIE do wstrzyku
 węzłowego rozpływu, niezależnie od tego, czy moc bierna źródła jest nastawą
 (węzeł PQ), wynikiem regulacji napięcia (węzeł PV), wynikiem kształtowania
@@ -71,6 +73,7 @@ from enm.models import (
     EnergyNetworkModel,
     FuseBranch,
     Generator,
+    Load,
     OverheadLine,
     ShuntCapacitor,
     Source,
@@ -139,8 +142,18 @@ from network_model.solvers.dynamika.dozory import (
     StanUrzadzenia,
     WielkoscDozoru,
 )
-from network_model.solvers.dynamika.kontrakty import ZdarzenieDynamiki
+from network_model.solvers.dynamika.kontrakty import (
+    CharakterystykaOdbioru,
+    OdmowaDynamiki,
+    ZdarzenieDynamiki,
+)
 from network_model.solvers.dynamika.konwencje import moc_pu
+from network_model.solvers.dynamika.odbiory import (
+    charakterystyka_stalej_mocy,
+    charakterystyka_z_wielomianu,
+    moc_poboru_w_punkcie_pracy,
+    sprawdz_odbior_biegu,
+)
 from network_model.solvers.dynamika.urzadzenia import (
     PunktPracyUrzadzenia,
     RampaCzestotliwosci,
@@ -156,6 +169,7 @@ from network_model.solvers.dynamika.urzadzenia import (
 )
 from network_model.solvers.dynamika.urzadzenia.fabryka import RODZINY_OBSLUGIWANE
 from network_model.solvers.power_flow_newton_internal import transformer_phase_shift_rad
+from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 
 # ---------------------------------------------------------------------------
 # Kody odmów adaptera — rejestr ZAMKNIĘTY, przypięty testem
@@ -194,8 +208,11 @@ KOD_WIELE_URZADZEN_W_WEZLE = "dynamika.wiele_urzadzen_w_wezle"
 #: Kilku wytwórców na jednej szynie, ale suma ich mocy z modelu NIE uzgadnia się
 #: z wypadkową szyny z rozpływu — podział byłby domysłem.
 KOD_PODZIAL_MOCY_NIESPOJNY = "dynamika.podzial_mocy_wezla_niespojny"
-#: Odbiór ZIP — rdzeń zna wyłącznie odbiór o stałej mocy.
-KOD_ODBIOR_ZIP = "dynamika.odbior_zip_nieobslugiwany"
+#: Odbiór, którego modelu danych (moc bazowa, współczynniki ZIP rozpływu) rdzeń nie
+#: przyjmuje: odbiór czuły częstotliwościowo (rdzeń nie ma modelu częstotliwości widzianej
+#: przez odbiór), ujemna moc czynna bazowa, charakterystyka sprzeczna. Komunikat niesie
+#: powód z kontraktu rdzenia (ten sam predykat, którym rdzeń odmówiłby biegu).
+KOD_ODBIOR_NIEODWZOROWANY = "dynamika.odbior_nieodwzorowany"
 #: Źródło sieciowe bez impedancji zastępczej — szyna sztywna jej wymaga.
 KOD_ZRODLO_BEZ_IMPEDANCJI = "dynamika.zrodlo_bez_impedancji"
 #: Gałąź modelu, której rdzeń nie umie odwzorować w modelu pi.
@@ -210,7 +227,7 @@ KODY_ODMOW_ADAPTERA: tuple[str, ...] = (
     KOD_ELEMENT_BEZ_SZYNY,
     KOD_GALAZ_NIEOBSLUGIWANA,
     KOD_NASTAWY_BRAK,
-    KOD_ODBIOR_ZIP,
+    KOD_ODBIOR_NIEODWZOROWANY,
     KOD_PUNKT_PRACY_BRAK,
     KOD_PUNKT_PRACY_INNA_MIGAWKA,
     KOD_PUNKT_PRACY_NIEPELNY,
@@ -347,18 +364,36 @@ def braki_modelu_dynamiki(enm: EnergyNetworkModel) -> tuple[BrakDynamiki, ...]:
             )
         )
 
-    zip_odbiory = tuple(sorted(load.ref_id for load in enm.loads if load.model == "zip"))
-    if zip_odbiory:
+    # Model odbioru z JEDNEGO źródła prawdy (O-49 pkt 2): współczynniki, które czyta
+    # rozpływ (`zip_coeffs_from_materialized_params`), a nie pole `Load.model`. Kontrakt
+    # odbioru sprawdza RDZEŃ (`OdbiorDynamiki`, `sprawdz_odbior_biegu`) — adapter nie ma
+    # własnego predykatu. Sprawdzenia kontraktu są niezmiennicze względem bazy mocy (znak
+    # mocy czynnej, kształt charakterystyki), więc bramka gotowości buduje odbiór w bazie
+    # 1 MVA — ten sam konstruktor, co bieg.
+    f_studium_hz = float(enm.header.defaults.frequency_hz)
+    nieodwzorowane: list[tuple[str, str]] = []
+    for load in sorted(enm.loads, key=lambda odbior: odbior.ref_id):
+        try:
+            sprawdz_odbior_biegu(_odbior_dynamiki(load, base_mva=1.0, f_studium_hz=f_studium_hz))
+        except OdmowaDynamiki as odmowa:
+            nieodwzorowane.append((load.ref_id, f"{load.ref_id}: {odmowa}"))
+        except ValueError as blad:
+            # Współczynniki ZIP odrzucone przez regułę rozpływu (`validate_zip_coeffs`) —
+            # pisarze modelu nie wpuszczają takiej tabliczki, a gdyby jednak trafiła do
+            # migawki, rozpływ i tak by jej nie policzył.
+            nieodwzorowane.append(
+                (load.ref_id, f"{load.ref_id}: współczynniki ZIP odrzucone przez rozpływ ({blad})")
+            )
+    if nieodwzorowane:
         braki.append(
             BrakDynamiki(
-                kod=KOD_ODBIOR_ZIP,
+                kod=KOD_ODBIOR_NIEODWZOROWANY,
                 komunikat_pl=(
-                    "Rdzeń dynamiki czasowej modeluje wyłącznie odbiór o stałej mocy; odbiór "
-                    "o charakterystyce napięciowej (ZIP) pobierałby w biegu inną moc niż w "
-                    f"rozpływie, z którego pochodzi punkt pracy. Odbiory ZIP: "
-                    f"{', '.join(zip_odbiory)}."
+                    "Model odbioru nie daje się odwzorować w rdzeniu dynamiki czasowej: "
+                    + "; ".join(opis for _ref, opis in nieodwzorowane)
+                    + "."
                 ),
-                elementy=zip_odbiory,
+                elementy=tuple(ref for ref, _opis in nieodwzorowane),
             )
         )
 
@@ -1059,17 +1094,52 @@ def zloz_widok_sieci(
         for bateria in sorted(enm.shunt_capacitors, key=lambda s: s.ref_id)
     )
 
+    f_studium_hz = float(enm.header.defaults.frequency_hz)
     odbiory = tuple(
-        OdbiorDynamiki(
-            ident=odbior.ref_id,
-            wezel=odbior.bus_ref,
-            p_pu=moc_pu(float(odbior.p_mw), base_mva),
-            q_pu=moc_pu(float(odbior.q_mvar), base_mva),
-        )
+        _odbior_dynamiki(odbior, base_mva=base_mva, f_studium_hz=f_studium_hz)
         for odbior in sorted(enm.loads, key=lambda load: load.ref_id)
     )
     return WidokSieciDynamiki(
         wezly=wezly, galezie=tuple(galezie), odsprzegi=odsprzegi, odbiory=odbiory
+    )
+
+
+def _charakterystyka_odbioru(load: Load, f_studium_hz: float) -> CharakterystykaOdbioru:
+    """Charakterystyka rdzenia z TYCH SAMYCH współczynników, które czyta rozpływ.
+
+    `zip_coeffs_from_materialized_params` rozstrzyga odniesienia tak jak rozpływ (brak
+    `v0` = 1,0 pu, brak `f0` = częstotliwość studium); regułę „pole bez znaczenia = None"
+    stosuje rdzeń (`charakterystyka_z_wielomianu`). Napięcie przejścia do stałej
+    impedancji NIE jest zadeklarowane: model sieci nie niesie jeszcze bloku danych
+    dynamicznych odbioru, a wartość domyślna byłaby fabrykacją decyzji inżynierskiej
+    (O-49 pkt 2) — odbiór liczy się charakterystyką przy każdym napięciu dodatnim.
+    """
+    wspolczynniki = zip_coeffs_from_materialized_params(load.materialized_params, f_studium_hz)
+    if wspolczynniki is None:
+        return charakterystyka_stalej_mocy(u_min_pu=None)
+    return charakterystyka_z_wielomianu(
+        a_p=wspolczynniki.a_p,
+        b_p=wspolczynniki.b_p,
+        c_p=wspolczynniki.c_p,
+        a_q=wspolczynniki.a_q,
+        b_q=wspolczynniki.b_q,
+        c_q=wspolczynniki.c_q,
+        v0_pu=wspolczynniki.v0_pu,
+        k_pf=wspolczynniki.k_pf,
+        k_qf=wspolczynniki.k_qf,
+        f0_hz=wspolczynniki.f0_hz,
+        u_min_pu=None,
+    )
+
+
+def _odbior_dynamiki(load: Load, *, base_mva: float, f_studium_hz: float) -> OdbiorDynamiki:
+    """Odbiór rdzenia z odbioru ENM — JEDEN konstruktor dla bramki gotowości i biegu."""
+    return OdbiorDynamiki(
+        ident=load.ref_id,
+        wezel=load.bus_ref,
+        p_pu=moc_pu(float(load.p_mw), base_mva),
+        q_pu=moc_pu(float(load.q_mvar), base_mva),
+        charakterystyka=_charakterystyka_odbioru(load, f_studium_hz),
     )
 
 
@@ -1105,16 +1175,23 @@ def _moc_wypadkowa_urzadzen_pu(
     punkt: PunktPracyRozplywu,
     odbiory: tuple[OdbiorDynamiki, ...],
 ) -> complex:
-    """Moc WSZYSTKICH urządzeń szyny = wstrzyk wypadkowy + moc odbiorów szyny.
+    """Moc WSZYSTKICH urządzeń szyny = wstrzyk wypadkowy + moc POBIERANA przez odbiory szyny.
 
     JEDEN predykat podziału mocy węzła (patrz docstring modułu): prądy urządzeń i
     prądy odbiorów sumują się dokładnie do wstrzyku węzłowego rozpływu, więc punkt
     pracy JEST równowagą układu DAE niezależnie od tego, czy moc bierna źródła
     pochodzi z nastawy, z regulacji napięcia, z kształtowania falownika, czy z
-    bilansu szyny zasilającej.
+    bilansu szyny zasilającej. Moc odbioru to moc jego charakterystyki w napięciu
+    punktu pracy (fizyka w rdzeniu, adapter składa) — moc BAZOWA `P0 + jQ0` była tu
+    błędem dla odbioru ZIP (sonda S1 karty odbiorów: moc wytwórcy 0,9 % obok punktu
+    pracy). Dla odbioru stałej mocy wynik jest bitowo ten sam.
     """
     moc_odbiorow = sum(
-        (complex(odbior.p_pu, odbior.q_pu) for odbior in odbiory if odbior.wezel == szyna),
+        (
+            moc_poboru_w_punkcie_pracy(odbior, punkt.napiecia_pu[szyna])
+            for odbior in odbiory
+            if odbior.wezel == szyna
+        ),
         complex(0.0, 0.0),
     )
     return punkt.wstrzyki_pu[szyna] + moc_odbiorow
@@ -1503,7 +1580,7 @@ __all__ = [
     "KOD_ELEMENT_BEZ_SZYNY",
     "KOD_GALAZ_NIEOBSLUGIWANA",
     "KOD_NASTAWY_BRAK",
-    "KOD_ODBIOR_ZIP",
+    "KOD_ODBIOR_NIEODWZOROWANY",
     "KOD_PUNKT_PRACY_BRAK",
     "KOD_PUNKT_PRACY_INNA_MIGAWKA",
     "KOD_PUNKT_PRACY_NIEPELNY",

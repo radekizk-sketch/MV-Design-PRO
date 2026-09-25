@@ -104,14 +104,16 @@ def charakterystyka_mocy(
 ) -> CharakterystykaMocy:
     """Zreduguj siec do dwoch wezlow wewnetrznych i zwroc charakterystyke mocy.
 
-    Odbior o stalej mocy ODRZUCA wyrocznie: redukcja Krona jest dokladna wylacznie
-    dla elementow o stalej admitancji, a udawanie, ze odbior PQ ma stala
-    admitancje, byloby cichym przyblizeniem w narzedziu, ktore ma sluzyc za miare.
+    KAZDY odbior ODRZUCA wyrocznie: redukcja Krona jest dokladna wylacznie dla
+    elementow o stalej admitancji; odbior o charakterystyce innej niz stala impedancja
+    jej nie ma, a odbioru czysto impedancyjnego ta wyrocznia nie redukuje (nie ma go w
+    macierzy, ktora sklada). Udawanie stalej admitancji byloby cichym przyblizeniem w
+    narzedziu, ktore ma sluzyc za miare.
     """
     if odbiory:
         raise UkladNieprzystajeDoWyroczni(
             "Kryterium rownych pol wymaga sieci o stalych admitancjach; uklad ma "
-            f"{len(odbiory)} odbior(ow) o stalej mocy "
+            f"{len(odbiory)} odbiór(ów) — wyrocznia nie redukuje odbiorów "
             f"({', '.join(odbior.ident for odbior in odbiory)})."
         )
     rozszerzona, pozycja_maszyny, pozycja_szyny = _wezly_wewnetrzne(model, maszyna, szyna)

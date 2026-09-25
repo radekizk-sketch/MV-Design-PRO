@@ -2359,6 +2359,26 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
         },
     ),
+    # O-49 pkt 5 (karta modeli odbiorów): rozpływ niesie JEDEN wielomian ZIP na szynę; gdy
+    # suma odbiorów szyny nie jest dokładnie tym wielomianem (różne v0/f0, różne czułości
+    # częstotliwościowe przy f_studium != f0, suma Q0 = 0 przy różnych wielomianach,
+    # udziały poza [0, 1]) albo szyna jest węzłem PV (wielomian nie wchodzi wcale) —
+    # odmowa nazwana zamiast cichego złego wyniku. Emiter: `enm/load_zip_model.py::
+    # odmowy_agregatu_zip`, czytany przez bramkę gotowości (`_check_power_flow`) i przez
+    # assembler rozpływu (`OdmowaWejsciaRozplywu`). Dokładne odwzorowanie wielu odbiorów ZIP
+    # na szynie wymaga rdzenia FROZEN NR (B-01 (e)).
+    "load.zip_agregat_niereprezentowalny": ReadinessCodeSpec(
+        code="load.zip_agregat_niereprezentowalny",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Odbiorów ZIP tej szyny nie da się odwzorować w rozpływie dokładnie (różne "
+            "charakterystyki na jednej szynie albo szyna regulacji napięcia) — rozdziel "
+            "odbiory na osobne szyny albo ujednolić ich charakterystyki"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry"},
+    ),
     "load.power_zero": ReadinessCodeSpec(
         code="load.power_zero",
         area=ReadinessArea.CATALOGS,

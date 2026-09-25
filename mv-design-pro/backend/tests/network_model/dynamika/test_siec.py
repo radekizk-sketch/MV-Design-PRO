@@ -14,10 +14,14 @@ from network_model.solvers.dynamika import (
     zloz_model_sieci,
 )
 from network_model.solvers.dynamika.kontrakty import KOD_ALGEBRA_NIEZBIEZNA, KOD_SIEC_NIESPOJNA
+from network_model.solvers.dynamika.odbiory import (
+    jakobian_pradu_mocy as jakobian_pradu_odbioru,
+)
+from network_model.solvers.dynamika.odbiory import (
+    prad_mocy_pu as prad_odbioru_pu,
+)
 from network_model.solvers.dynamika.siec import (
     jakobian_algebry,
-    jakobian_pradu_odbioru,
-    prad_odbioru_pu,
     przezloz,
     residuum_algebry,
 )

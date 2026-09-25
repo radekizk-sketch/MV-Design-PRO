@@ -17,7 +17,7 @@ Rdzen dynamiki musi byc liczony na TYM SAMYM widoku sieci, ktorym liczony jest
 rozplyw (jedna prawda punktu pracy — SS0 p.2), ale NIE MOZE importowac warstwy,
 ktora ten widok sklada (`enm/assembler.py` siedzi w `enm/`). Dlatego wejsciem jest
 `WejscieDynamiki` — struktura o ksztalcie IR assemblera (wezly, galezie w modelu
-pi z przekladnia zespolona, odsprzegi, odbiory o stalej mocy, zrodla), ktora
+pi z przekladnia zespolona, odsprzegi, odbiory z charakterystyka statyczna, zrodla), ktora
 adapter warstwy aplikacyjnej wypelnia z IR. Adapter jest zakresem pozniejszego
 wycinka; ten pakiet definiuje kontrakt, ktorego adapter ma dotrzymac.
 
@@ -114,9 +114,27 @@ KOD_ZWARCIE_NIEODIZOLOWANE = "dynamika.zwarcie_nieodizolowane"
 #: Zwarcie w miejscu x*L galezi, ktora nie jest linia ani kablem (transformator,
 #: lacznik) — dlugosc elektryczna takiej galezi nie istnieje.
 KOD_ZWARCIE_GALEZI_NIEOBSLUGIWANE = "dynamika.zwarcie_galezi_nieobslugiwane"
-#: Odbior o STALEJ MOCY w wezle, ktoremu wiersz ograniczenia narzuca napiecie zerowe
-#: (zwarcie metaliczne w wezle) — model `P = const` nie ma rozwiazania przy U = 0.
+#: Odbior BEZ ZADEKLAROWANEGO napiecia przejscia `U_min` (skladowa stalopradowa albo
+#: stalomocowa bez galezi impedancyjnej — `odbiory.wymaga_napiecia_niezerowego`) w wezle,
+#: ktoremu wiersz ograniczenia narzuca napiecie zerowe (zwarcie metaliczne w wezle): prad
+#: charakterystyki `-conj(S)/conj(V)` nie istnieje przy U = 0. Odbior z zadeklarowanym
+#: `U_min` (i odbior czysto impedancyjny) liczy sie w takim wezle bez odmowy — prad zero.
 KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU = "dynamika.odbior_stalej_mocy_przy_zerowym_napieciu"
+#: Charakterystyka odbioru albo jego moc bazowa sprzeczne z kontraktem: pole bez znaczenia
+#: w danym ksztalcie wielomianu podane (fantom) albo pole potrzebne nieobecne, udzial spoza
+#: [0, 1], suma udzialow rozna od 1, moc czynna bazowa ujemna (odbior pasywny — ujemny pobor
+#: to wytworca, nie odbior), liczba nieskonczona.
+KOD_PARAMETRY_ODBIORU_SPRZECZNE = "dynamika.parametry_odbioru_sprzeczne"
+#: Napiecie punktu pracy w wezle odbioru ponizej zadeklarowanego napiecia przejscia `U_min`:
+#: rozplyw liczyl charakterystyke BEZ przejscia, a model dynamiczny jest tam w galezi
+#: impedancyjnej — punkt pracy nie jest rownowaga modelu, wiec odmowa pada PRZED bramka
+#: rownowagi (z wezlem, |V_pf| i U_min), a nie jako „inicjalizacja niezbiezna".
+KOD_ODBIOR_PONIZEJ_NAPIECIA_PRZEJSCIA = "dynamika.odbior_ponizej_napiecia_przejscia"
+#: Odbior czuly czestotliwosciowo (`k_pf`/`k_qf` rozne od zera): rdzen nie ma modelu
+#: czestotliwosci widzianej przez odbior (estymatora), a bieg z czestotliwoscia zamrozona
+#: na znamionowej dalby zly pobor przy kazdej odchylce czestotliwosci — odmowa nazwana
+#: zamiast cichego zlego wyniku.
+KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO = "dynamika.odbior_czuly_czestotliwosciowo_nieobslugiwany"
 #: Dwa rozne warunki narzucajace napiecie w JEDNYM wezle (zwarcie metaliczne na
 #: zaciskach idealnego zrodla napieciowego, dwa zrodla napieciowe w jednym wezle):
 #: uklad jest sprzeczny — pierwsze prawo Kirchhoffa zadaloby nieskonczonego pradu.
@@ -155,7 +173,10 @@ KODY_ODMOW: tuple[str, ...] = (
     KOD_NAPIECIE_NARZUCONE_SPRZECZNE,
     KOD_NASTAWA_NIEOBSLUGIWANA,
     KOD_NASTAWY_SPRZECZNE,
+    KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO,
+    KOD_ODBIOR_PONIZEJ_NAPIECIA_PRZEJSCIA,
     KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU,
+    KOD_PARAMETRY_ODBIORU_SPRZECZNE,
     KOD_PARAMETRY_SPRZECZNE,
     KOD_PETLA_ZDARZEN_WARUNKOWYCH,
     KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
@@ -261,21 +282,187 @@ class OdsprzegDynamiki:
     aktywna_na_starcie: bool
 
 
+#: Tolerancja sumy udzialow wielomianu (a + b + c = 1). Ta sama wartosc, z ktora warstwa
+#: danych przyjmuje wielomian do modelu (`power_flow_zip.validate_zip_coeffs`, `_SUM_TOL`):
+#: odbior przyjety przez rozplyw jest przyjmowany tutaj — parytet obu regul pilnuje test
+#: (`test_odbiory.py`), a nie wspolny kod (rdzen nie importuje rozplywu, granica B-01).
+TOLERANCJA_SUMY_UDZIALOW = 1.0e-6
+
+
+def _odmowa_charakterystyki(komunikat: str, **szczegoly: object) -> OdmowaDynamiki:
+    return OdmowaDynamiki(KOD_PARAMETRY_ODBIORU_SPRZECZNE, komunikat, **szczegoly)
+
+
+@dataclass(frozen=True)
+class CharakterystykaOdbioru:
+    """Charakterystyka STATYCZNA odbioru: wielomian ZIP x liniowy czynnik czestotliwosciowy,
+    z przejsciem skladowych nieimpedancyjnych w stala impedancje ponizej `u_min_pu`.
+
+    Wzory (te same, ktorymi liczy rozplyw — `power_flow_zip.py`), `r = |V|/v0`:
+
+        P(V, f) = P0 * F_P(f) * [a_p r^2 + b_p r + c_p] ,  F_P = 1 + k_pf (f - f0)/f0
+        Q(V, f) = Q0 * F_Q(f) * [a_q r^2 + b_q r + c_q] ,  F_Q = 1 + k_qf (f - f0)/f0
+
+    a ponizej `u_min_pu` (galaz impedancyjna): `S(V) = S(U_min) * (|V|/U_min)^2`, czyli
+    stala admitancja `Y = conj(S(U_min))/U_min^2` — prad `-Y V` nie dzieli przez napiecie,
+    wiec w `V = 0` jest zerem. Fizyka tych wzorow zyje w `odbiory.py`; tu jest wylacznie
+    ksztalt danych i jego spojnosc.
+
+    ZERO FANTOMOW (pole bez znaczenia w danym ksztalcie jest `None`, nie liczba):
+      * `v0_pu is None` <=> `a_p = b_p = a_q = b_q = 0` (brak zaleznosci od napiecia),
+      * `f0_hz is None` <=> `k_pf = k_qf = 0` (brak zaleznosci od czestotliwosci),
+      * `u_min_pu` podane przy odbiorze CZYSTO IMPEDANCYJNYM (`b = c = 0` dla P i Q) jest
+        fantomem — przejscie nie ma tam tresci (charakterystyka juz jest impedancja).
+    `u_min_pu is None` przy skladowej stalopradowej albo stalomocowej znaczy „przejscie
+    NIEZADEKLAROWANE": charakterystyka obowiazuje przy kazdym |V| > 0, a napiecie narzucone
+    zerem w wezle takiego odbioru jest odmowa nazwana (`odbiory.wymaga_napiecia_niezerowego`).
+    ZERO DOMYSLEK: kazde pole wymagane (straz `dynamika_zero_default_guard`).
+    """
+
+    a_p: float
+    b_p: float
+    c_p: float
+    a_q: float
+    b_q: float
+    c_q: float
+    v0_pu: float | None
+    k_pf: float
+    k_qf: float
+    f0_hz: float | None
+    u_min_pu: float | None
+
+    def __post_init__(self) -> None:
+        liczby = {
+            "a_p": self.a_p,
+            "b_p": self.b_p,
+            "c_p": self.c_p,
+            "a_q": self.a_q,
+            "b_q": self.b_q,
+            "c_q": self.c_q,
+            "k_pf": self.k_pf,
+            "k_qf": self.k_qf,
+        }
+        for opcjonalne in ("v0_pu", "f0_hz", "u_min_pu"):
+            wartosc = getattr(self, opcjonalne)
+            if wartosc is not None:
+                liczby[opcjonalne] = wartosc
+        for nazwa, wartosc in liczby.items():
+            if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+                raise _odmowa_charakterystyki(
+                    f"Pole {nazwa} charakterystyki odbioru musi być liczbą, otrzymano {wartosc!r}.",
+                    pole=nazwa,
+                )
+            if not np.isfinite(wartosc):
+                raise _odmowa_charakterystyki(
+                    f"Pole {nazwa} charakterystyki odbioru nie jest liczbą skończoną ({wartosc}).",
+                    pole=nazwa,
+                )
+        for os, udzialy in (
+            ("P", (self.a_p, self.b_p, self.c_p)),
+            ("Q", (self.a_q, self.b_q, self.c_q)),
+        ):
+            if any(udzial < 0.0 or udzial > 1.0 for udzial in udzialy):
+                raise _odmowa_charakterystyki(
+                    f"Udziały wielomianu {os} odbioru (a, b, c) = {udzialy} — każdy udział musi "
+                    "leżeć w przedziale [0, 1].",
+                    os=os,
+                )
+            if abs(sum(udzialy) - 1.0) > TOLERANCJA_SUMY_UDZIALOW:
+                raise _odmowa_charakterystyki(
+                    f"Udziały wielomianu {os} odbioru (a, b, c) = {udzialy} sumują się do "
+                    f"{sum(udzialy)!r}, a suma musi wynosić 1.",
+                    os=os,
+                )
+        zalezny_od_napiecia = any(
+            udzial != 0.0 for udzial in (self.a_p, self.b_p, self.a_q, self.b_q)
+        )
+        if zalezny_od_napiecia != (self.v0_pu is not None):
+            raise _odmowa_charakterystyki(
+                "Napięcie odniesienia wielomianu v0 "
+                + (
+                    "jest wymagane, bo odbiór ma składową impedancyjną albo prądową."
+                    if zalezny_od_napiecia
+                    else "podane przy odbiorze o stałej mocy — pole bez znaczenia (fantom)."
+                ),
+                pole="v0_pu",
+            )
+        if self.v0_pu is not None and self.v0_pu <= 0.0:
+            raise _odmowa_charakterystyki(
+                f"Napięcie odniesienia wielomianu v0 = {self.v0_pu} pu musi być dodatnie.",
+                pole="v0_pu",
+            )
+        zalezny_od_czestotliwosci = self.k_pf != 0.0 or self.k_qf != 0.0
+        if zalezny_od_czestotliwosci != (self.f0_hz is not None):
+            raise _odmowa_charakterystyki(
+                "Częstotliwość odniesienia f0 "
+                + (
+                    "jest wymagana, bo odbiór ma czułość częstotliwościową k_pf/k_qf."
+                    if zalezny_od_czestotliwosci
+                    else "podana przy odbiorze bez czułości częstotliwościowej — pole bez "
+                    "znaczenia (fantom)."
+                ),
+                pole="f0_hz",
+            )
+        if self.f0_hz is not None and self.f0_hz <= 0.0:
+            raise _odmowa_charakterystyki(
+                f"Częstotliwość odniesienia f0 = {self.f0_hz} Hz musi być dodatnia.",
+                pole="f0_hz",
+            )
+        czysta_impedancja = all(
+            udzial == 0.0 for udzial in (self.b_p, self.c_p, self.b_q, self.c_q)
+        )
+        if self.u_min_pu is not None:
+            if czysta_impedancja:
+                raise _odmowa_charakterystyki(
+                    f"Napięcie przejścia U_min = {self.u_min_pu} pu podane przy odbiorze czysto "
+                    "impedancyjnym — przejście do stałej impedancji nie ma treści (fantom).",
+                    pole="u_min_pu",
+                )
+            if not 0.0 < self.u_min_pu < 1.0:
+                raise _odmowa_charakterystyki(
+                    f"Napięcie przejścia U_min = {self.u_min_pu} pu musi leżeć w przedziale "
+                    "otwartym (0, 1).",
+                    pole="u_min_pu",
+                )
+
+
 @dataclass(frozen=True)
 class OdbiorDynamiki:
-    """Odbior o STALEJ MOCY w konwencji poboru (P>0 = pobor z sieci).
+    """Odbior w konwencji POBORU (P > 0 = pobor z sieci) z charakterystyka statyczna.
 
-    Postac stalej mocy jest ta sama, ktora niesie rozplyw (`PQSpec` bez ZIP) —
-    jedna prawda punktu pracy. Granica waznosci jest FIZYCZNA i nazwana: przy
-    zapadzie napiecia do zera model stalej mocy zada pradu bez granicy, wiec
-    algebra nie ma rozwiazania; rdzen melduje wtedy `dynamika.algebra_niezbiezna`
-    z residuum, a nie „rozjazd Newtona".
+    `p_pu`, `q_pu` sa MOCA BAZOWA (P0, Q0) — moca przy napieciu i czestotliwosci
+    odniesienia charakterystyki, dokladnie ta, ktora niesie rozplyw (`PQSpec` z ZIP).
+    Moc pobierana w danym napieciu liczy `odbiory.moc_poboru_pu`. Odbior stalej mocy to
+    szczegolny ksztalt charakterystyki (`odbiory.charakterystyka_stalej_mocy`) — nie osobny
+    model (jeden model odbioru, jedne wzory).
+
+    `P0 >= 0`: odbior jest PASYWNY (galaz impedancyjna ma konduktancje nieujemna); ujemny
+    pobor czynny to wytworca (`Generator`), nie odbior — odmowa nazwana przy konstrukcji,
+    takze po skoku obciazenia (`zdarzenia.odbiory_po_zdarzeniach`). `Q0` dowolnego znaku.
     """
 
     ident: str
     wezel: str
     p_pu: float
     q_pu: float
+    charakterystyka: CharakterystykaOdbioru
+
+    def __post_init__(self) -> None:
+        for nazwa, wartosc in (("p_pu", self.p_pu), ("q_pu", self.q_pu)):
+            if not np.isfinite(wartosc):
+                raise _odmowa_charakterystyki(
+                    f"Moc bazowa {nazwa} odbioru {self.ident!r} nie jest liczbą skończoną "
+                    f"({wartosc}).",
+                    odbior=self.ident,
+                    pole=nazwa,
+                )
+        if self.p_pu < 0.0:
+            raise _odmowa_charakterystyki(
+                f"Odbiór {self.ident!r} ma ujemną moc czynną bazową P0 = {self.p_pu} pu — "
+                "odbiór jest pasywny; ujemny pobór mocy czynnej to wytwórca, nie odbiór.",
+                odbior=self.ident,
+                p_pu=self.p_pu,
+            )
 
 
 @dataclass(frozen=True)
@@ -462,7 +649,13 @@ class OdlaczenieZrodla:
 
 @dataclass(frozen=True)
 class SkokObciazenia:
-    """Skokowa zmiana mocy odbioru (delta wzgledem punktu pracy), konwencja poboru."""
+    """Skokowa zmiana MOCY BAZOWEJ odbioru (P0, Q0), konwencja poboru.
+
+    Delta dotyczy mocy przy napieciu i czestotliwosci ODNIESIENIA charakterystyki odbioru
+    (`OdbiorDynamiki.p_pu`, `q_pu`): charakterystyka zostaje ta sama, zmienia sie jej skala
+    (takze admitancja galezi impedancyjnej). Dla odbioru stalej mocy to jest dokladnie
+    dotychczasowa „zmiana mocy odbioru".
+    """
 
     t_s: float
     odbior: str
@@ -964,7 +1157,10 @@ __all__ = [
     "KOD_NAPIECIE_NARZUCONE_SPRZECZNE",
     "KOD_NASTAWA_NIEOBSLUGIWANA",
     "KOD_NASTAWY_SPRZECZNE",
+    "KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO",
+    "KOD_ODBIOR_PONIZEJ_NAPIECIA_PRZEJSCIA",
     "KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU",
+    "KOD_PARAMETRY_ODBIORU_SPRZECZNE",
     "KOD_PARAMETRY_SPRZECZNE",
     "KOD_PETLA_ZDARZEN_WARUNKOWYCH",
     "KOD_PUNKT_PRACY_POZA_OGRANICZENIEM",
@@ -984,6 +1180,7 @@ __all__ = [
     "KOD_ZWARCIE_NIESYMETRYCZNE",
     "WIELKOSCI_NASTAW",
     "GalazDynamiki",
+    "CharakterystykaOdbioru",
     "HarmonogramDynamiki",
     "KomendaRegulacji",
     "NastawaRegulacji",
@@ -999,6 +1196,7 @@ __all__ = [
     "SkokObciazenia",
     "SposobUsuniecia",
     "SprzezenieUrzadzenia",
+    "TOLERANCJA_SUMY_UDZIALOW",
     "Urzadzenie",
     "UtrataCzesciowaZrodla",
     "WejscieDynamiki",

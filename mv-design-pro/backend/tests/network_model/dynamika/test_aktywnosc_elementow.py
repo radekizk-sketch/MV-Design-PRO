@@ -46,10 +46,15 @@ from network_model.solvers.dynamika import (
     zloz_model_sieci,
 )
 from network_model.solvers.dynamika.kontrakty import KOD_ZDARZENIE_BEZ_ELEMENTU
+from network_model.solvers.dynamika.odbiory import charakterystyka_stalej_mocy
 from network_model.solvers.dynamika.siec import rozwiaz_algebre
 from network_model.solvers.dynamika.tozsamosc import kwantyzuj, skrot_kanoniczny
 
 from tests.network_model.dynamika import uklady
+
+#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
+#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
 
 
 def _indeks_probki_p(wynik, t_s: float) -> int:
@@ -101,7 +106,9 @@ def _uklad(
         y, b, a = RODZAJE_GALEZI[galaz]
         galezie.append(GalazDynamiki("BADANA", "GEN", "AUX", y, b, a, aktywna, galaz))  # type: ignore[arg-type]
     odsprzegi = (OdsprzegDynamiki("BAT", "GEN", 0.0, 0.02, aktywna),) if odsprzeg else ()
-    odbiory = (OdbiorDynamiki("ODB", "GEN", 0.2, 0.05),) if odbior else ()
+    odbiory = (
+        (OdbiorDynamiki("ODB", "GEN", 0.2, 0.05, charakterystyka=STALA_MOC),) if odbior else ()
+    )
     model = zloz_model_sieci(wezly, tuple(galezie), odsprzegi)
     y_bus = model.ybus.toarray()
     v_gen = smib.punkt_pracy.napiecia_pu["GEN"]

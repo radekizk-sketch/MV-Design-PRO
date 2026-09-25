@@ -148,8 +148,17 @@ def odcisk_migawki(
                 ]
                 for odsprzeg in _posortowane_odsprzegi(odsprzegi)
             ],
+            # Odbior z KOMPLETEM charakterystyki (karta modeli odbiorow, O-49): dawniej odcisk
+            # znal wylacznie P i Q, wiec dwa biegi rozniace sie wielomianem ZIP albo napieciem
+            # przejscia mialy te sama piatke odciskow przy roznych przebiegach.
             "odbiory": [
-                [odbior.ident, odbior.wezel, kwantyzuj(odbior.p_pu), kwantyzuj(odbior.q_pu)]
+                [
+                    odbior.ident,
+                    odbior.wezel,
+                    kwantyzuj(odbior.p_pu),
+                    kwantyzuj(odbior.q_pu),
+                    _normalizuj(odbior.charakterystyka),
+                ]
                 for odbior in odbiory
             ],
             "urzadzenia": [

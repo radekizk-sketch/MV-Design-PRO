@@ -39,7 +39,7 @@ from typing import Any, Literal
 from network_model.core.topologia import ma_cykl, polaczone, poziomy, przeglad_wszerz
 from network_model.nazwy import jest_nazwa
 
-from .load_zip_model import zip_odbioru_z_parametrow_materializacji
+from .load_zip_model import model_odbioru, zip_odbioru_z_parametrow_materializacji
 from .nazwy_elementow import nazwa_galezi_bez_nazwy, opis_bez_nazwy
 from .slownik_komunikatow import (
     NAZWY_KOLEKCJI_PL,
@@ -637,6 +637,41 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         blad_zip = zip_odbioru_z_parametrow_materializacji(data.get("materialized_params"))
         if blad_zip is not None:
             issues.append(OpIssue("OP_LOAD_ZIP_INVALID", "BLOCKER", blad_zip))
+        # Moc odbioru jest DANĄ, nie domyślką (O-49): brak P albo Q to odmowa — ta sama
+        # reguła co kreatory odbioru (`add_load_sn`, `add_nn_load`). Dawne `0` zapisywało
+        # odbiór zerowej mocy, którego nikt nie zadeklarował (fabrykacja).
+        for klucz, opis in (("p_mw", "moc czynna P"), ("q_mvar", "moc bierna Q")):
+            wartosc = data.get(klucz)
+            if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+                issues.append(
+                    OpIssue(
+                        "OP_LOAD_POWER_MISSING",
+                        "BLOCKER",
+                        f"Odbiór wymaga podanej wartości: {opis} (pole {klucz}) — model nie "
+                        "przyjmuje odbioru, którego moc byłaby domyślnym zerem.",
+                    )
+                )
+        # `Load.model` jest WYPROWADZANY ze współczynników ZIP, które czyta rozpływ (jeden
+        # predykat modelu odbioru, O-49 pkt 2). Deklaracja w payloadzie sprzeczna z
+        # tabliczką byłaby drugą prawdą o tym samym odbiorze — odmowa, nie ciche nadpisanie.
+        from .assembler import czestotliwosc_studium_hz
+
+        wyprowadzony = (
+            None
+            if blad_zip is not None
+            else model_odbioru(data.get("materialized_params"), czestotliwosc_studium_hz(enm))
+        )
+        zadeklarowany = data.get("model")
+        if wyprowadzony is not None and zadeklarowany not in (None, wyprowadzony):
+            issues.append(
+                OpIssue(
+                    "OP_LOAD_MODEL_SPRZECZNY",
+                    "BLOCKER",
+                    f"Model odbioru „{zadeklarowany}” jest sprzeczny z jego współczynnikami ZIP "
+                    f"(tabliczka opisuje model „{wyprowadzony}”) — model odbioru wynika ze "
+                    "współczynników, które liczy rozpływ.",
+                )
+            )
         if any(i.severity == "BLOCKER" for i in issues):
             return TopologyOpResult(False, enm, "create_device", issues)
 
@@ -644,9 +679,9 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "ref_id": ref_id,
             "name": _nazwa_z_ladunku(data, opis_bez_nazwy("loads")),
             "bus_ref": bus_ref,
-            "p_mw": data.get("p_mw", 0),
-            "q_mvar": data.get("q_mvar", 0),
-            "model": data.get("model", "pq"),
+            "p_mw": data["p_mw"],
+            "q_mvar": data["q_mvar"],
+            "model": wyprowadzony,
             "catalog_ref": data.get("catalog_ref"),
             "catalog_namespace": data.get("catalog_namespace"),
             "source_mode": data.get("source_mode"),

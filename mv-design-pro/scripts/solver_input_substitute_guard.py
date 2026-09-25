@@ -780,13 +780,16 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # (P=P0·(a·V²+b·V+c), c=1 przy a=b=0 daje P=P0 — model stalej mocy),
         # nie zmyslona wielkosc fizyczna. SOLVER — ZAKAZ zmian w tej karcie
         # (§0.4 ZAKAZY); pozycja zostaje zamrozona z uzasadnieniem merytorycznym.
+        # Karta modeli odbiorow AB-1b.3a (O-49 pkt 6, 2026-09-25): `f0_hz` nieobecne =
+        # czestotliwosc STUDIUM (argument `f_studium_hz`), nie literal 50 Hz — wpis
+        # `params.f0_hz` zdjety (dawny zastepnik fabrykowal odniesienie sieci 60 Hz).
+        # POMIAR guardem na drzewie karty.
         "F:dictget:params.a_p": 1,
         "F:dictget:params.a_q": 1,
         "F:dictget:params.b_p": 1,
         "F:dictget:params.b_q": 1,
         "F:dictget:params.c_p": 1,
         "F:dictget:params.c_q": 1,
-        "F:dictget:params.f0_hz": 1,
         "F:dictget:params.k_pf": 1,
         "F:dictget:params.k_qf": 1,
         "F:dictget:params.v0_pu": 1,
@@ -1151,8 +1154,10 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # mocy jest elementem NIE WSTRZYKUJACYM, a nie brakiem pomiaru.
     "enm/topology_ops.py": {
         "F:dictget:data.length_km": 1,
-        "F:dictget:data.p_mw": 2,
-        "F:dictget:data.q_mvar": 1,
+        # Karta modeli odbiorow AB-1b.3a (O-49, 2026-09-25): `create_device` odbioru nie
+        # podstawia juz 0 za brak P/Q (odmowa `OP_LOAD_POWER_MISSING`) — p_mw 2 -> 1
+        # (zostaje generator), q_mvar 1 -> 0 (wpis zdjety). POMIAR guardem.
+        "F:dictget:data.p_mw": 1,
         "F:dictget:data.sn_mva": 1,
         "F:dictget:data.uhv_kv": 1,
         "F:dictget:data.uk_percent": 1,

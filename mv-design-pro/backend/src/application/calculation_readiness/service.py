@@ -31,6 +31,11 @@ from enm.assembler import (
     KOD_NIESYMETRIA_NIERADIALNA,
     diagnoza_niesymetrii,
 )
+from enm.load_zip_model import (
+    KOD_ZIP_AGREGAT_NIEREPREZENTOWALNY,
+    odmowy_agregatu_zip,
+    opis_odmowy_agregatu_zip,
+)
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu, nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 from enm.topology import derive
@@ -193,6 +198,20 @@ def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
         if ld.p_mw is None:
             missing.append(f"P odbioru '{nazwa_elementu(ld, 'loads')}'")
             blockers.append(ld.ref_id)
+    # O-49 pkt 5: szyna, której odbiorów ZIP rozpływ nie odwzorowuje dokładnie — BLOCKER
+    # `load.zip_agregat_niereprezentowalny`; TEN SAM predykat, którym assembler odmawia
+    # złożenia wejścia (`enm/assembler.py::zloz_wejscie_rozplywu`).
+    odmowy_zip = odmowy_agregatu_zip(enm)
+    if odmowy_zip:
+        nazwy_zip = zbuduj_indeks_nazw(enm)
+        for odmowa in odmowy_zip:
+            missing.append(
+                opis_odmowy_agregatu_zip(
+                    odmowa, lambda ref: nazwa_po_identyfikatorze(ref, indeks=nazwy_zip)
+                )
+                + f" (kod '{KOD_ZIP_AGREGAT_NIEREPREZENTOWALNY}')"
+            )
+            blockers.extend(odmowa.odbiory)
     for branch in enm.branches:
         if branch.type in ("line_overhead", "cable"):
             if (

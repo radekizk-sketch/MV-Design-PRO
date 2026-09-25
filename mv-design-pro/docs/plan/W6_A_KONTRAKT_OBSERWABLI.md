@@ -817,8 +817,17 @@ Wykonanie: `tests/e2e/test_so1a_scenariusz_odniesienia.py` (10 testów).
    to dobór pod zbieżność): bieg wykonuje się dla 5,0 / 2,0 / 1,0 / 0,5 / 0,2 Ω, a zapad na
    przyłączu sięga odpowiednio 0,93 / 0,72 / 0,49 / 0,29 / 0,14 pu. Przy `R_f ≤ 0,1 Ω`
    (napięcie resztkowe < 0,05 pu) re-inicjalizacja algebry nie zbiega — to **granica modelu
-   odbioru o stałej mocy**, którą rdzeń deklaruje wprost (`dynamika.odbior_zip_nieobslugiwany`),
-   a nie defekt wykryty w tej rundzie.
+   odbioru o stałej mocy**, którą rdzeń melduje kodem `dynamika.reinicjalizacja_niezbiezna`
+   (głębiej) albo `dynamika.krok_niezbiezny`, a nie defekt wykryty w tej rundzie.
+   *Korekta 2026-09-25 (karta modeli odbiorów AB-1b.3a, decyzja O-49):* wcześniejsze brzmienie
+   cytowało tu kod `dynamika.odbior_zip_nieobslugiwany` — to był kod odmowy odbioru ZIP w
+   adapterze, niezwiązany z granicą głębokiego zapadu (kod skasowany w AB-1b.3a). Stan po
+   kartach AB-1b.1 i AB-1b.3a: zwarcie metaliczne jest wierszem ograniczenia `V = 0`
+   (nie odmową), a odbiór z zadeklarowanym napięciem przejścia `U_min` przechodzi w stałą
+   impedancję i liczy się przy każdej głębokości zapadu; granica opisana w tym punkcie
+   dotyczy odbioru BEZ zadeklarowanego `U_min` (tak przychodzą dziś odbiory z modelu sieci
+   — blok danych dynamicznych odbioru wchodzi w AB-1b.3b). Wartość `R_f` zostaje zamrożona
+   scenariuszem; jej przesłankę przepisuje AB-1b.3b razem z nową bazą SO-1A.
 2. **Topologia pierścieniowa.** Wariant promieniowy (stacja zasilana wyłącznie przez
    wyłącznik) po jego otwarciu zostawia podsieć bez źródła albo — gdy OZE jest za
    wyłącznikiem — **wyspę**. Jedno i drugie to zdolność **D11, przypisana w zamrożeniu do

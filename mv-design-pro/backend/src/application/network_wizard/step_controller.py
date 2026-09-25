@@ -20,7 +20,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from enm.assembler import czestotliwosc_studium_hz
 from enm.kopia_graniczna import kopia_graniczna_enm
+from enm.load_zip_model import model_odbioru, zip_odbioru_z_parametrow_materializacji
 from network_model.nazwy import jest_nazwa, nazwa_nadana
 
 from .schema import (
@@ -372,6 +374,24 @@ def _apply_k6(enm: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
         )
         if idx is not None:
             loads[idx] = {**loads[idx], **upd}
+    # `Load.model` jest polem WYPROWADZANYM ze współczynników ZIP (jeden predykat modelu
+    # odbioru, O-49 pkt 2): kreator zapisuje surowe rekordy odbiorów, więc pole przelicza
+    # się dla każdego odbioru z tego kroku (jak odcisk — z danych, nie z deklaracji).
+    # Tabliczka niepoprawna zostaje bez przeliczenia i blokuje krok w walidatorze K6
+    # (`K6_LOAD_ZIP_INVALID` — wycofanie kroku).
+    zmienione = {
+        wpis.get("ref_id") for wpis in (*data.get("add_loads", []), *data.get("update_loads", []))
+    }
+    for pozycja, odbior in enumerate(loads):
+        if odbior.get("ref_id") not in zmienione:
+            continue
+        if zip_odbioru_z_parametrow_materializacji(odbior.get("materialized_params")) is None:
+            loads[pozycja] = {
+                **odbior,
+                "model": model_odbioru(
+                    odbior.get("materialized_params"), czestotliwosc_studium_hz(enm)
+                ),
+            }
     remove_load_refs = set(data.get("remove_load_refs", []))
     if remove_load_refs:
         loads = [

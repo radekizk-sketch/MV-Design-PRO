@@ -1683,7 +1683,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Karta #145 na partii 4 (2026-09-25): 4103 -> 4104 — POMIAR guardem na drzewie partii
     # (PASMO-1KV i NAZWY-JEDNO-ZRODLO bez zmiany zbioru): +1 `wynik_pl` (wynik kroku po polsku
     # w `application/analyses/v126_wzory.py`), -0. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4104." in wyjscie, wyjscie
+    # Karta AB-1b.3a na partii 4 (2026-09-25): 4104 -> 4108 — POMIAR guardem na drzewie partii:
+    # +4 (`charakterystyka` — pole `OdbiorDynamiki`; `rozbieznosc_p_mw`, `rozbieznosc_q_mvar`,
+    # `szyna` — kontrakt `NiereprezentowalnyAgregatZip`), -0. PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4108." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1837,7 +1840,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # stdlib-only); zbiór pól kontraktów bez zmian (4103). POMIAR guardem na drzewie partii.
         # Karta #145 na partii 4 (2026-09-25): 550 -> 551 (+1 `application/opis_przebiegu.py`
         # — rodzaj i stan przebiegu po polsku w bramkach widoków analiz). POMIAR guardem.
-        "Przeskanowano 551 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta AB-1b.3a na partii 4 (2026-09-25): 551 -> 552 (+1 `solvers/dynamika/odbiory.py`
+        # — jeden model odbioru rdzenia). POMIAR guardem na drzewie partii.
+        "Przeskanowano 552 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1882,7 +1887,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # automatyki) zdjety RAZEM z narracja zdarzen toru T1. Pomiar guardem.
     # Pakiet 0 (zlozenie na `1b422cdd`): 248 -> 247 — budzet `F:dictget:row.event_seq`
     # (`enm/canonical_analysis.py`) zdjety razem z narracja zdarzen toru T1.
-    assert "Zapadka dlugu (fizyczne): 54 plikow, suma 247." in wyjscie, wyjscie
+    # Karta AB-1b.3a (2026-09-25): suma 247 -> 244 (POMIAR guardem): -1 `power_flow_zip.py`
+    # (`params.f0_hz` — brak f0 = czestotliwosc studium, nie literal 50 Hz), -2
+    # `enm/topology_ops.py` (`data.p_mw` 2 -> 1, `data.q_mvar` zdjety — create_device odbioru
+    # wymaga P i Q zamiast podstawiac 0). Liczba plikow bez zmian (inne wpisy zostaja).
+    assert "Zapadka dlugu (fizyczne): 54 plikow, suma 244." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 13 plikow, suma 31." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -1938,7 +1947,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta PASMO-1KV (2026-09-25): network_model 178 -> 179 (+1
         # `pochodne/pasma_napieciowe.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Karta NAZWY-JEDNO-ZRODLO (2026-09-25): network_model 179 -> 180 (+1 `nazwy.py`).
-        "  network_model: pliki_skanowane=180, dlug=12 plikow/suma 71, "
+        # Karta AB-1b.3a (2026-09-25): network_model 180 -> 181 (+1 `solvers/dynamika/
+        # odbiory.py`), dlug 12/71 -> 12/70 (`params.f0_hz` w `power_flow_zip.py`). POMIAR.
+        "  network_model: pliki_skanowane=181, dlug=12 plikow/suma 70, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -1973,7 +1984,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na `103963a2`.
         # MAGISTRALA-OCENA (pomiar na drzewie karty): enm 52 -> 54 (`enm/rola_pola_sn.py`
         # karta #141, `enm/slownik_komunikatow.py` karta #142 — scalone przed baza bez pinu).
-        "  enm: pliki_skanowane=55, dlug=7 plikow/suma 71, wykluczenia=0 plikow/suma 0",
+        # Karta AB-1b.3a (2026-09-25): enm dlug 7/71 -> 7/69 (`topology_ops.py`: `data.p_mw`
+        # 2 -> 1, `data.q_mvar` zdjety). POMIAR guardem na drzewie partii.
+        "  enm: pliki_skanowane=55, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

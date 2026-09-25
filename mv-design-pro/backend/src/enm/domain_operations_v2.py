@@ -102,7 +102,7 @@ from .katalog_projektu_karty import (
     nieznane_karty,
 )
 from .kopia_graniczna import kopia_graniczna_enm
-from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
+from .load_zip_model import KOD_BLEDU_ZIP, model_odbioru, zip_odbioru_z_payloadu
 from .migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
 from .models import liczba_torow
 from .nazwy_elementow import (
@@ -2974,8 +2974,8 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         "bus_ref": feeder_bus_ref,
         "p_mw": kw_na_mw(active_power_kw),
         "q_mvar": kvar_na_mvar(reactive_power_kvar),
-        # Load.model akceptuje 'pq' | 'zip' — 'pq' = constant power (klasyczny PQ).
-        "model": "zip" if zip_odbioru else "pq",
+        # `Load.model` wyprowadzony ze współczynników (jeden predykat modelu odbioru, O-49).
+        "model": model_odbioru(zip_odbioru, czestotliwosc_studium_hz(enm)),
         "catalog_ref": catalog_ref,
         # Odbiór ekspercki (bez pozycji) nie deklaruje kategorii katalogu —
         # inaczej kontekst katalogowy raportu pokazywałby „OBCIAZENIE" przy
@@ -6845,7 +6845,8 @@ def add_load_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         "bus_ref": bus_ref,
         "p_mw": kw_na_mw(active_power_kw),
         "q_mvar": kvar_na_mvar(float(reactive_power_kvar)),
-        "model": "zip" if zip_odbioru else "pq",
+        # `Load.model` wyprowadzony ze współczynników (jeden predykat modelu odbioru, O-49).
+        "model": model_odbioru(zip_odbioru, czestotliwosc_studium_hz(enm)),
         "catalog_ref": catalog_ref,
         "catalog_namespace": przestrzen_katalogu if catalog_ref else None,
         "source_mode": "KATALOG" if catalog_ref else "EKSPERCKI_RECZNY",

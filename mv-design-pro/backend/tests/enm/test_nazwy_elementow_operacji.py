@@ -475,7 +475,13 @@ PRYMITYWY = [
     pytest.param(
         create_device,
         "loads",
-        {"device_type": "load", "ref_id": "nowy_odbior", "bus_ref": "bus_3", "p_mw": 0.1},
+        {
+            "device_type": "load",
+            "ref_id": "nowy_odbior",
+            "bus_ref": "bus_3",
+            "p_mw": 0.1,
+            "q_mvar": 0.02,
+        },
         "Odbiór bez nazwy",
         id="odbior",
     ),

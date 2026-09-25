@@ -34,14 +34,14 @@ from network_model.solvers.power_flow_zip import (
     zip_factor_derivative,
 )
 
-CONST_Z = ZipCoeffs(1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
-CONST_I = ZipCoeffs(0.0, 1.0, 0.0, 0.0, 1.0, 0.0)
-CONST_P = ZipCoeffs(0.0, 0.0, 1.0, 0.0, 0.0, 1.0)
+CONST_Z = ZipCoeffs(1.0, 0.0, 0.0, 1.0, 0.0, 0.0, v0_pu=1.0, k_pf=0.0, k_qf=0.0, f0_hz=50.0)
+CONST_I = ZipCoeffs(0.0, 1.0, 0.0, 0.0, 1.0, 0.0, v0_pu=1.0, k_pf=0.0, k_qf=0.0, f0_hz=50.0)
+CONST_P = ZipCoeffs(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, v0_pu=1.0, k_pf=0.0, k_qf=0.0, f0_hz=50.0)
 # Wielomian napieciowy TRYWIALNY (a=b=0, c=1), ale czulosc czestotliwosciowa
 # niezerowa — defekt A1 (przeglad fali 2026-08-01) siedzial dokladnie tutaj.
-FREQ_ONLY = ZipCoeffs(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, k_pf=2.0, k_qf=1.0, f0_hz=50.0)
+FREQ_ONLY = ZipCoeffs(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, k_pf=2.0, k_qf=1.0, f0_hz=50.0, v0_pu=1.0)
 # Udzialy dokladne binarnie, zeby a+b+c == 1.0 co do bitu przy V = V0.
-MIXED = ZipCoeffs(0.5, 0.25, 0.25, 0.5, 0.25, 0.25)
+MIXED = ZipCoeffs(0.5, 0.25, 0.25, 0.5, 0.25, 0.25, v0_pu=1.0, k_pf=0.0, k_qf=0.0, f0_hz=50.0)
 
 
 def _two_bus() -> NetworkGraph:
@@ -232,7 +232,7 @@ def test_const_z_drawn_power_matches_v_squared() -> None:
 def test_frequency_dependence_reduces_load_below_nominal() -> None:
     """P(f): f<f0 with k_pf>0 lowers the load (factor 1+k*(f-f0)/f0)."""
     cp = _solve(CONST_P)
-    fdep = _solve(ZipCoeffs(0, 0, 1, 0, 0, 1, k_pf=2.0, k_qf=1.0, f0_hz=50.0), f_hz=49.0)
+    fdep = _solve(ZipCoeffs(0, 0, 1, 0, 0, 1, k_pf=2.0, k_qf=1.0, f0_hz=50.0, v0_pu=1.0), f_hz=49.0)
     assert fdep.converged
     assert complex(fdep.slack_power).real < complex(cp.slack_power).real
 
@@ -240,7 +240,7 @@ def test_frequency_dependence_reduces_load_below_nominal() -> None:
 def test_frequency_at_nominal_is_noop() -> None:
     """k!=0 but f==f0 => factor 1 => identical to constant power."""
     base = _solve(None)
-    fnom = _solve(ZipCoeffs(0, 0, 1, 0, 0, 1, k_pf=2.0, k_qf=1.0, f0_hz=50.0), f_hz=50.0)
+    fnom = _solve(ZipCoeffs(0, 0, 1, 0, 0, 1, k_pf=2.0, k_qf=1.0, f0_hz=50.0, v0_pu=1.0), f_hz=50.0)
     assert fnom.node_u_mag["B"] == base.node_u_mag["B"]
 
 
@@ -305,11 +305,13 @@ def test_frequency_factor() -> None:
 
 def test_validate_rejects_bad_coefficients() -> None:
     with pytest.raises(ValueError):
-        validate_zip_coeffs(ZipCoeffs(0.4, 0.3, 0.4, 0, 0, 1))  # P sums to 1.1
+        validate_zip_coeffs(
+            ZipCoeffs(0.4, 0.3, 0.4, 0, 0, 1, v0_pu=1.0, k_pf=0.0, k_qf=0.0, f0_hz=50.0)
+        )  # P sums to 1.1
     with pytest.raises(ValueError):
-        validate_zip_coeffs(ZipCoeffs(0, 0, 1, 0, 0, 1, v0_pu=0.0))
+        validate_zip_coeffs(ZipCoeffs(0, 0, 1, 0, 0, 1, v0_pu=0.0, k_pf=0.0, k_qf=0.0, f0_hz=50.0))
     with pytest.raises(ValueError):
-        validate_zip_coeffs(ZipCoeffs(0, 0, 1, 0, 0, 1, f0_hz=0.0))
+        validate_zip_coeffs(ZipCoeffs(0, 0, 1, 0, 0, 1, f0_hz=0.0, v0_pu=1.0, k_pf=0.0, k_qf=0.0))
 
 
 def test_aggregate_zip_is_power_weighted() -> None:
@@ -353,7 +355,9 @@ def test_aggregate_zero_p_total_is_constant_power_symmetrically() -> None:
 
 def test_aggregate_zero_total_keeps_frequency_sensitivity_neutral() -> None:
     """The (0,0,1) fallback is per coefficient: k_pf/k_qf default to 0, not 1."""
-    agg = aggregate_zip([(1.0, 0.0, ZipCoeffs(0, 0, 1, 0, 0, 1, k_pf=2.0, k_qf=1.0))])
+    agg = aggregate_zip(
+        [(1.0, 0.0, ZipCoeffs(0, 0, 1, 0, 0, 1, k_pf=2.0, k_qf=1.0, v0_pu=1.0, f0_hz=50.0))]
+    )
     assert agg is not None
     assert agg.k_pf == 2.0
     assert agg.k_qf == 0.0  # no Q weight on the bus => no Q frequency sensitivity
@@ -386,7 +390,7 @@ def test_aggregate_out_of_range_is_rejected_by_the_load_flow_layer_not_by_mappin
 def test_per_component_coefficients_are_still_validated_at_construction() -> None:
     """Input validation stays: one load's own catalog params are checked on build."""
     with pytest.raises(ValueError, match="ZIP"):
-        zip_coeffs_from_materialized_params({"a_p": 2.0, "b_p": 0.0, "c_p": -1.0})
+        zip_coeffs_from_materialized_params({"a_p": 2.0, "b_p": 0.0, "c_p": -1.0}, 50.0)
 
 
 # ---- defect D1: the polynomial scales the LOAD, generation stays constant ----

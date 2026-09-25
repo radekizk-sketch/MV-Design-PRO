@@ -165,7 +165,9 @@ MANIFEST: tuple[Twierdzenie, ...] = (
         mutacje=("M18", "M19"),
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
-            "odbior o stalej mocy i wyspy bez zrodla NA POZIOMIE ALGEBRY (`rozwiaz_algebre` "
+            "odbior o stalej mocy BEZ zadeklarowanego napiecia przejscia U_min (granica G8 — "
+            "odbior z U_min przechodzi w stala impedancje i liczy sie przy kazdym zapadzie) "
+            "i wyspy bez zrodla NA POZIOMIE ALGEBRY (`rozwiaz_algebre` "
             "bez wierszy ograniczenia); tam wyspa martwa BEZ odbioru i bez bocznika nadal "
             "konczy sie osobliwym jakobianem i odmowa `dynamika.algebra_niezbiezna`. Na "
             "poziomie BIEGU silnik odcina wyspe bez urzadzenia wnoszacego do algebry "

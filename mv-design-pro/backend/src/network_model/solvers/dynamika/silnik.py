@@ -92,6 +92,16 @@ from .obserwable import (
     moc_urzadzenia_pu,
     wielkosci_galezi,
 )
+from .odbiory import (
+    TRYB_ODCIETY,
+    TRYB_ODLACZONY,
+    moc_poboru_pu,
+    opis_odbioru_sladu,
+    sprawdz_odbior_biegu,
+    sprawdz_punkt_pracy_odbioru,
+    tryb_odbioru,
+    wymaga_napiecia_niezerowego,
+)
 from .reinicjalizacja import reinicjalizuj
 from .siec import (
     ModelSieci,
@@ -198,6 +208,10 @@ class SilnikDynamiki:
             horyzont_s=nastawy.horyzont_s,
         )
 
+        # Warunek biegu odbiorow (czulosc czestotliwosciowa bez modelu czestotliwosci
+        # widzianej przez odbior) — JEDEN predykat z bramka gotowosci adaptera.
+        for odbior in wejscie.odbiory:
+            sprawdz_odbior_biegu(odbior)
         urzadzenia = tuple(wejscie.urzadzenia)
         stany = self._stany_poczatkowe(urzadzenia)
         stan_scenariusza = stan_poczatkowy_scenariusza(
@@ -206,11 +220,27 @@ class SilnikDynamiki:
         napiecia, beznapieciowe = self._napiecia_poczatkowe(stan_scenariusza, urzadzenia, stany)
         model = self._model_dla(stan_scenariusza, beznapieciowe)
         odbiory, odciete = _rozdziel_odbiory(
-            odbiory_po_zdarzeniach(wejscie.odbiory, stan_scenariusza), beznapieciowe
+            odbiory_po_zdarzeniach(wejscie.odbiory, stan_scenariusza, t_s=0.0), beznapieciowe
         )
         self._sprawdz_wezly_zerowe(0.0, model, odbiory, urzadzenia, stany)
+        # Punkt pracy ponizej napiecia przejscia nie jest rownowaga modelu odbioru — odmowa
+        # NAZWANA przed bramka rownowagi (inaczej wyszlaby jako „inicjalizacja niezbiezna").
+        for odbior in odbiory:
+            sprawdz_punkt_pracy_odbioru(odbior, complex(napiecia[model.indeks_wezla[odbior.wezel]]))
         kontekst = KontekstKroku(model, odbiory, urzadzenia, nastawy)
         slad_inicjalizacji = self._bramka_rownowagi(kontekst, stany, napiecia)
+        zasilane_t0 = {odbior.ident for odbior in odbiory}
+        slad_odbiorow = [
+            opis_odbioru_sladu(
+                odbior,
+                (
+                    complex(napiecia[model.indeks_wezla[odbior.wezel]])
+                    if odbior.ident in zasilane_t0
+                    else None
+                ),
+            )
+            for odbior in wejscie.odbiory
+        ]
         slad_inicjalizacji["wezly_beznapieciowe"] = [
             ident for ident in model.identy_wezlow if ident in beznapieciowe
         ]
@@ -219,7 +249,7 @@ class SilnikDynamiki:
         starty_od_sasiada = False
 
         miejsca_zwarc = _miejsca_zwarc(wpisy)
-        kanaly = self._kanaly(model, urzadzenia, miejsca_zwarc)
+        kanaly = self._kanaly(model, urzadzenia, miejsca_zwarc, wejscie.odbiory)
         probki: dict[str, list[float | None]] = {kanal.klucz: [] for kanal in kanaly}
         os_czasu: list[float] = []
         strony: list[str] = []
@@ -504,6 +534,7 @@ class SilnikDynamiki:
                 kroki_odrzucone,
                 iteracje_max,
                 zalozenia_biegu,
+                slad_odbiorow,
             ),
         )
 
@@ -573,9 +604,12 @@ class SilnikDynamiki:
     ) -> None:
         """NAZWANE odmowy modeli, ktore nie maja rozwiazania przy napieciu narzuconym zerem.
 
-        * Odbior o STALEJ MOCY w wezle zwartym metalicznie: `P = const` przy `U = 0`
-          nie ma rozwiazania (zniesie to przejscie PQ -> Z, karta AB-1b.3). Odbiory
-          obszaru beznapieciowego sa ODCIETE wczesniej (brak obwodu), wiec tu nie trafiaja.
+        * Odbior BEZ zadeklarowanego napiecia przejscia `U_min` (skladowa stalopradowa albo
+          stalomocowa, moc niezerowa — `odbiory.wymaga_napiecia_niezerowego`) w wezle zwartym
+          metalicznie: prad charakterystyki nie istnieje przy `U = 0`. Odbior z `U_min`
+          (i czysto impedancyjny) liczy sie tu bez odmowy — galaz impedancyjna, prad zero.
+          Odbiory obszaru beznapieciowego sa ODCIETE wczesniej (brak obwodu), wiec tu nie
+          trafiaja.
         * Urzadzenie, ktorego rownania nie maja okreslonej wartosci przy `U = 0`
           (regulacja czytajaca modul napiecia, petla synchronizacji fazowej) — odmowa
           urzadzenia przenoszona z KONTEKSTEM: wezel, urzadzenie, chwila.
@@ -593,20 +627,22 @@ class SilnikDynamiki:
         for wezel in model.identy_wezlow:
             if wezel not in model.zwarcia_metaliczne or wezel in model.wezly_beznapieciowe:
                 continue
-            stalej_mocy = tuple(
+            bez_przejscia = tuple(
                 odbior.ident
                 for odbior in odbiory
-                if odbior.wezel == wezel and complex(odbior.p_pu, odbior.q_pu) != 0
+                if odbior.wezel == wezel and wymaga_napiecia_niezerowego(odbior)
             )
-            if stalej_mocy:
+            if bez_przejscia:
                 raise OdmowaDynamiki(
                     KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU,
-                    f"Zwarcie metaliczne w wezle {wezel!r} (t={t_s} s) narzuca U = 0, a wezel "
-                    f"zasila odbiory o stalej mocy {stalej_mocy} — model P = const nie ma "
-                    "rozwiazania przy zerowym napieciu. Podaj impedancje zwarcia (R_f, X_f) "
-                    "albo odlacz odbior przed zwarciem.",
+                    f"Zwarcie metaliczne w węźle {wezel!r} (t = {t_s} s) narzuca U = 0, a węzeł "
+                    f"zasila odbiory {bez_przejscia} bez zadeklarowanego napięcia przejścia U_min "
+                    "— prąd charakterystyki stałoprądowej albo stałomocowej nie istnieje przy "
+                    "zerowym napięciu (odbiór z zadeklarowanym napięciem przejścia przechodzi w "
+                    "stałą impedancję i liczy się w takim węźle bez odmowy). Podaj impedancję "
+                    "zwarcia (R_f, X_f) albo odłącz odbiór przed zwarciem.",
                     wezel=wezel,
-                    odbiory=stalej_mocy,
+                    odbiory=bez_przejscia,
                     t_s=t_s,
                 )
         for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
@@ -975,7 +1011,7 @@ class SilnikDynamiki:
         )
         model = self._model_dla(nowy_stan, beznapieciowe)
         odbiory, odciete = _rozdziel_odbiory(
-            odbiory_po_zdarzeniach(wejscie.odbiory, nowy_stan), beznapieciowe
+            odbiory_po_zdarzeniach(wejscie.odbiory, nowy_stan, t_s=t_s), beznapieciowe
         )
         self._sprawdz_wezly_zerowe(t_s, model, odbiory, urzadzenia_po, stany_po)
         napiecia_startowe, start_od_sasiada, start_od_sem = self._napiecia_startowe(
@@ -1006,8 +1042,22 @@ class SilnikDynamiki:
             for ident in model.identy_wezlow
             if ident in przed_martwe and ident not in beznapieciowe
         )
+        # „Moc sprzed odciecia" = moc POBIERANA tuz przed chwila (probka L) wg modelu odbioru
+        # sprzed chwili (`odbiory.moc_poboru_pu` przy napieciu L); odbior, ktory przed chwila
+        # nie pobieral (byl odlaczony zdarzeniem), nie mial czego stracic — zero dokladne.
+        pobierajace_przed = {odbior.ident: odbior for odbior in poprzednia.odbiory}
         odbiory_odciete = tuple(
-            (odbior.ident, complex(odbior.p_pu, odbior.q_pu))
+            (
+                odbior.ident,
+                (
+                    moc_poboru_pu(
+                        pobierajace_przed[odbior.ident],
+                        complex(napiecia[poprzednia.model.indeks_wezla[odbior.wezel]]),
+                    )
+                    if odbior.ident in pobierajace_przed
+                    else 0j
+                ),
+            )
             for odbior in odciete
             if odbior.ident not in poprzednia.odbiory_odciete
         )
@@ -1399,6 +1449,7 @@ class SilnikDynamiki:
         model: ModelSieci,
         urzadzenia: tuple[Urzadzenie, ...],
         miejsca_zwarc: tuple[_MiejsceZwarcia, ...],
+        odbiory: tuple[OdbiorDynamiki, ...],
     ) -> tuple[KanalWyniku, ...]:
         kanaly: list[KanalWyniku] = []
         for ident in model.identy_wezlow:
@@ -1482,6 +1533,7 @@ class SilnikDynamiki:
                 )
             )
         kanaly.extend(self._kanaly_stanow_i_katow(model))
+        kanaly.extend(_kanaly_odbiorow(odbiory))
         return tuple(kanaly)
 
     def _kanaly_stanow_i_katow(self, model: ModelSieci) -> tuple[KanalWyniku, ...]:
@@ -1625,6 +1677,7 @@ class SilnikDynamiki:
             probki, model, odbiory, urzadzenia, stany, napiecia, probkowanie.miejsca_zwarc
         )
         self._probkuj_stany_i_katy(probki, model, urzadzenia, napiecia)
+        _probkuj_odbiory(probki, model, odbiory, self.wejscie.odbiory, napiecia)
 
     def _probkuj_stany_i_katy(
         self,
@@ -1822,8 +1875,13 @@ class SilnikDynamiki:
         kroki_odrzucone: int,
         iteracje_max: int,
         idealizacje: tuple[str, ...],
+        odbiory: list[dict[str, object]],
     ) -> dict[str, Any]:
         """Slad WHITE BOX biegu — BEZ szeregow czasowych.
+
+        Sekcja `odbiory` (karta modeli odbiorow): dla kazdego odbioru wejscia charakterystyka
+        (wielomian P i Q, v0, czulosc czestotliwosciowa, U_min), moc pobierana w punkcie
+        pracy i kod trybu w t = 0 — dopisana ZA dotychczasowymi sekcjami.
 
         `kroki_szczegolne` niesie KAZDY krok odrzucony i KAZDA chwile ze
         zdarzeniem w pelnym opisie; kroki rutynowe wchodza jako podsumowanie
@@ -1878,6 +1936,7 @@ class SilnikDynamiki:
                 "kroki_odrzucone": kroki_odrzucone,
                 "max_iteracji_newtona_w_kroku": iteracje_max,
             },
+            "odbiory": odbiory,
         }
 
 
@@ -1893,8 +1952,15 @@ class SilnikDynamiki:
 #: `test_zalozenia_wymieniaja_dokladnie_rodziny_fabryki`.
 ZALOZENIA_RDZENIA: tuple[str, ...] = (
     "Model RMS skladowej zgodnej: os czasu niesie obwiednie fazorow, nie przebiegi chwilowe.",
-    "Odbiory o stalej mocy — przy glebokiej zapadzie napiecia uklad algebraiczny moze nie "
-    "miec rozwiazania (odmowa nazwana, nie ekstrapolacja).",
+    "Odbiory: charakterystyka statyczna z rozpływu (wielomian ZIP: składowe stałej "
+    "impedancji, stałego prądu i stałej mocy) liczona przy częstotliwości znamionowej; "
+    "poniżej zadeklarowanego napięcia przejścia U_min składowe prądowa i mocowa przechodzą "
+    "w stałą impedancję (moc i prąd ciągłe w U_min, pochodna mocy po napięciu ma tam "
+    "załamanie), więc przy zapadzie do zera prąd odbioru maleje do zera. Odbiór bez "
+    "zadeklarowanego U_min liczy się charakterystyką przy każdym napięciu dodatnim — przy "
+    "głębokim zapadzie układ algebraiczny może nie mieć rozwiązania (odmowa nazwana), a "
+    "zwarcie metaliczne w jego węźle jest odmową. Odbiory jednofazowe wchodzą jako "
+    "symetryczne, jak w rozpływie symetrycznym; odbiór czuły częstotliwościowo jest odmową.",
     "Zwarcia wylacznie trojfazowe; niesymetria wymaga skladowych symetrycznych.",
     "Rodziny urzadzen skladane przez rdzen: " + ", ".join(RODZINY_OBSLUGIWANE) + ".",
     "W chwili kazdego zdarzenia wynik niesie dwie probki: L (stan przed naniesieniem "
@@ -2117,11 +2183,94 @@ def _rozdziel_odbiory(
 
 
 def _opis_odbiorow(odbiory: tuple[OdbiorDynamiki, ...]) -> list[list[Any]]:
-    """Opis odbiorow do sladu White Box: [ident, wezel, P, Q] (pu, skwantyzowane)."""
+    """Opis odbiorow do sladu White Box: [ident, wezel, P0, Q0] (pu, skwantyzowane).
+
+    P0, Q0 to MOC BAZOWA odbioru (skala charakterystyki); charakterystyke i moc pobierana
+    w punkcie pracy niesie sekcja `odbiory` sladu.
+    """
     return [
         [odbior.ident, odbior.wezel, kwantyzuj(odbior.p_pu), kwantyzuj(odbior.q_pu)]
         for odbior in odbiory
     ]
+
+
+def _kanaly_odbiorow(odbiory: tuple[OdbiorDynamiki, ...]) -> tuple[KanalWyniku, ...]:
+    """Kanaly odbiorow (karta modeli odbiorow): moc POBIERANA i tryb modelu, dla kazdego
+    odbioru WEJSCIA (zestaw kanalow znany w t = 0, niezalezny od przebiegu).
+
+    Dopisane ZA wszystkimi dotychczasowymi kanalami — dawna lista jest bitowo prefiksem nowej.
+    Przedrostek `p_pobor_`/`q_pobor_` (nie `p_pu@`), bo identyfikatory odbiorow i urzadzen
+    nie sa rozlaczne z konstrukcji, a znak jest konwencja POBORU (urzadzenia: moc oddawana).
+    """
+    kanaly: list[KanalWyniku] = []
+    for odbior in odbiory:
+        kanaly.append(
+            KanalWyniku(
+                klucz=f"p_pobor_pu@{odbior.ident}",
+                przestrzen="obserwabla",
+                jednostka="pu",
+                element_ref=odbior.ident,
+                opis_pl=(
+                    f"Moc czynna pobierana przez odbiór {odbior.ident} (0 dla odbioru "
+                    "odłączonego albo odciętego)"
+                ),
+            )
+        )
+        kanaly.append(
+            KanalWyniku(
+                klucz=f"q_pobor_pu@{odbior.ident}",
+                przestrzen="obserwabla",
+                jednostka="pu",
+                element_ref=odbior.ident,
+                opis_pl=(
+                    f"Moc bierna pobierana przez odbiór {odbior.ident} (0 dla odbioru "
+                    "odłączonego albo odciętego)"
+                ),
+            )
+        )
+        kanaly.append(
+            KanalWyniku(
+                klucz=f"tryb_odbioru@{odbior.ident}",
+                przestrzen="obserwabla",
+                jednostka="kod",
+                element_ref=odbior.ident,
+                opis_pl=(
+                    f"Tryb modelu odbioru {odbior.ident}: 0 charakterystyka, 1 stała impedancja "
+                    "(napięcie poniżej napięcia przejścia), 2 odłączony zdarzeniem, 3 odcięty "
+                    "(obszar beznapięciowy)"
+                ),
+            )
+        )
+    return tuple(kanaly)
+
+
+def _probkuj_odbiory(
+    probki: dict[str, list[float | None]],
+    model: ModelSieci,
+    zasilane: tuple[OdbiorDynamiki, ...],
+    wszystkie: tuple[OdbiorDynamiki, ...],
+    napiecia: np.ndarray,
+) -> None:
+    """Probka kanalow odbiorow. `zasilane` = odbiory tej chwili (przylaczone, poza obszarem
+    beznapieciowym, z naniesionymi skokami mocy bazowej); `wszystkie` = odbiory wejscia.
+
+    Kod 3 (odciety) <=> wezel odbioru jest beznapieciowy — TEN SAM predykat, co
+    `stan_zasilania@ = 0`; kod 2 — odbior poza chwila, a wezel zywy (odlaczony zdarzeniem).
+    Moc odbioru bez obwodu jest zerem DOKLADNIE (fakt, nie wartosc niedostepna).
+    """
+    biezace = {odbior.ident: odbior for odbior in zasilane}
+    for odbior in wszystkie:
+        if odbior.wezel in model.wezly_beznapieciowe:
+            moc, tryb = 0j, TRYB_ODCIETY
+        elif odbior.ident not in biezace:
+            moc, tryb = 0j, TRYB_ODLACZONY
+        else:
+            napiecie = complex(napiecia[model.indeks_wezla[odbior.wezel]])
+            moc = moc_poboru_pu(biezace[odbior.ident], napiecie)
+            tryb = tryb_odbioru(biezace[odbior.ident], napiecie)
+        probki[f"p_pobor_pu@{odbior.ident}"].append(float(moc.real))
+        probki[f"q_pobor_pu@{odbior.ident}"].append(float(moc.imag))
+        probki[f"tryb_odbioru@{odbior.ident}"].append(tryb)
 
 
 def zalozenia_harmonogramu(harmonogram: HarmonogramDynamiki) -> tuple[str, ...]:

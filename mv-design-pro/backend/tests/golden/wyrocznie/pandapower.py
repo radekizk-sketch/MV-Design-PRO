@@ -222,7 +222,12 @@ def zbuduj_siec(
     for load in sorted(enm.loads, key=lambda ld: ld.ref_id):
         if load.bus_ref not in szyny:
             continue
-        if zip_coeffs_from_materialized_params(load.materialized_params) is not None:
+        if (
+            zip_coeffs_from_materialized_params(
+                load.materialized_params, float(enm.header.defaults.frequency_hz)
+            )
+            is not None
+        ):
             raise ValueError(f"Most pandapower nie modeluje odbioru ZIP ({load.ref_id})")
         pp.create_load(
             net, szyny[load.bus_ref], p_mw=load.p_mw, q_mvar=load.q_mvar, name=load.ref_id

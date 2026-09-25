@@ -7,6 +7,7 @@ import json
 from typing import Any, Literal
 
 from enm.hash import compute_enm_hash
+from enm.load_zip_model import jest_odbiorem_zip
 from enm.models import (
     BranchPointSN,
     Cable,
@@ -406,13 +407,16 @@ def _build_load_profiles(enm: EnergyNetworkModel) -> list[dict]:
     profiles: list[dict] = []
     for load in sorted(enm.loads, key=lambda item: item.ref_id):
         load_profile = _materialized_section(load, "load_profile")
-        if load_profile is None and load.model != "zip":
+        zip_odbior = jest_odbiorem_zip(
+            load.materialized_params, float(enm.header.defaults.frequency_hz)
+        )
+        if load_profile is None and not zip_odbior:
             continue
         profiles.append(
             {
                 "ref_id": f"load_profile.{load.ref_id}",
                 "load_ref": load.ref_id,
-                "model": load.model,
+                "model": "zip" if zip_odbior else "pq",
                 "quality_status": "pelna" if load_profile else "czesciowa",
                 "profile_source": _profile_source(load),
                 "profile": load_profile or {},
@@ -491,7 +495,7 @@ def _build_migration_warnings(enm: EnergyNetworkModel) -> list[V2MigrationWarnin
                 )
 
     for load in sorted(enm.loads, key=lambda item: item.ref_id):
-        if load.model == "zip":
+        if jest_odbiorem_zip(load.materialized_params, float(enm.header.defaults.frequency_hz)):
             warnings.append(
                 V2MigrationWarning(
                     code="V12-MIG-LOAD-001",
