@@ -44,6 +44,7 @@ from application.analyses.kontyngencje_n1 import (
 )
 from application.analyses.pokrycie_analiz import build_pokrycie_view
 from application.analyses.wrazliwosc_rozplywu import build_wrazliwosc_view
+from application.nazwy_biegu import nazwa_przypadku_z_bazy
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -63,10 +64,15 @@ def _require_run(run_id: UUID) -> CanonicalRun:
 
 
 @router.get("/api/insights/sensitivity")
-def get_sensitivity(run_id: UUID = Query(...)) -> dict[str, Any]:
+def get_sensitivity(
+    run_id: UUID = Query(...),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
-        return build_wrazliwosc_view(run)
+        return build_wrazliwosc_view(
+            run, nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory)
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -75,9 +81,14 @@ def get_sensitivity(run_id: UUID = Query(...)) -> dict[str, Any]:
 
 
 @router.get("/api/insights/analysis-coverage")
-def get_analysis_coverage(case_id: str = Query(...)) -> dict[str, Any]:
+def get_analysis_coverage(
+    case_id: str = Query(...),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
     try:
-        return build_pokrycie_view(case_id)
+        return build_pokrycie_view(
+            case_id, nazwa_przypadku=nazwa_przypadku_z_bazy(case_id, uow_factory)
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

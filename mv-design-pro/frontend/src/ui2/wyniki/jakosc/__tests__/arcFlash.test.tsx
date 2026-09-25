@@ -35,6 +35,7 @@ const AF_FIXTURE: ArcFlashResponse = {
   results: [
     {
       bus_ref: 'bus-1',
+      bus_name: 'Szyna SN stacji S01',
       status: 'COMPUTED_IEEE_1584_OPEN_SOURCE',
       status_label_pl: 'obliczony (IEEE 1584 open-source)',
       method: 'IEEE_1584_2018',
@@ -113,13 +114,17 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
       enclosure_type: 'Typical',
     });
     const tabela = screen.getByTestId('mvd-wyn-tabela');
-    expect(tabela).toHaveTextContent('bus-1');
+    // Karta #144: wiersz nazywa szynę nazwą z modelu; identyfikator węzła nie jest
+    // pokazywany w trybie podstawowym (kolumna ekspercka).
+    expect(tabela).toHaveTextContent('Szyna SN stacji S01');
+    expect(tabela).not.toHaveTextContent('bus-1');
     expect(tabela).toHaveTextContent('8,42'); // energia cal/cm² z przecinkiem PL
     expect(tabela).toHaveTextContent('1320'); // granica łuku mm
     // Nagłówek ryzyka: najgorszy przypadek (max energia + szyna) z policzonych wartości.
     const podsum = screen.getByTestId('mvd-jakosc-af-podsum');
     expect(within(podsum).getByTestId('mvd-jakosc-af-podsum-max')).toHaveTextContent('8,42');
-    expect(podsum).toHaveTextContent('bus-1');
+    expect(podsum).toHaveTextContent('Szyna SN stacji S01');
+    expect(podsum).not.toHaveTextContent('bus-1');
     // Rozkład kategorii ŚOI z policzonych wyników (kat. 2: 1).
     expect(within(podsum).getByTestId('mvd-jakosc-af-podsum-soi')).toHaveTextContent('kat. 2: 1');
   });
@@ -185,7 +190,7 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
     const { unmount } = render(<SekcjaArcFlash {...props()} />);
     fireEvent.click(screen.getByTestId('mvd-jakosc-af-licz'));
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-arcflash')).toBeTruthy());
-    fireEvent.click(screen.getByText('bus-1').closest('tr')!);
+    fireEvent.click(screen.getByText('Szyna SN stacji S01').closest('tr')!);
     const szczegol = screen.getByTestId('mvd-jakosc-af-szczegol');
     expect(within(szczegol).getByTestId('mvd-jakosc-af-proweniencja')).toBeTruthy();
     // Tryb podstawowy: brak przycisku śladu.
@@ -196,7 +201,7 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
     render(<SekcjaArcFlash {...props({ trybZaawansowania: 'expert' })} />);
     fireEvent.click(screen.getByTestId('mvd-jakosc-af-licz'));
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-arcflash')).toBeTruthy());
-    fireEvent.click(screen.getByText('bus-1').closest('tr')!);
+    fireEvent.click(screen.getByText('Szyna SN stacji S01').closest('tr')!);
     fireEvent.click(screen.getByTestId('mvd-jakosc-af-slad-otworz'));
     const slad = screen.getByTestId('mvd-jakosc-af-slad');
     // Zasada KaTeX (2026-07-22): wzor renderowany matematycznie, nie surowy LaTeX.

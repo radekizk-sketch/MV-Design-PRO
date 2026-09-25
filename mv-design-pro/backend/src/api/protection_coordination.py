@@ -53,6 +53,7 @@ from domain.protection_device import (
     ProtectionDevice,
     ProtectionDeviceType,
 )
+from enm.nazwy_elementow import zbuduj_indeks_nazw
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import Response
 from network_model.core.autorytet_wyniku_zwarciowego import BrakAutorytetuWyniku, wymagaj_autorytetu
@@ -506,6 +507,7 @@ def run_coordination_analysis(
         pf_run_id=request.pf_run_id,
         sc_run_id=request.sc_run_id,
         project_id=str(project_id),
+        nazwy_lokalizacji=zbuduj_indeks_nazw(dict(wejscie.migawka)),
     )
 
     # Run analysis

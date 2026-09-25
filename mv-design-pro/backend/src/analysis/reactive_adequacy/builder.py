@@ -24,7 +24,7 @@ ZAKRES (D-06d) celowo NIE obejmuje (odroczone):
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 
 from analysis.reactive_adequacy.models import (
     DEFAULT_SATURATION_TOL_MVAR,
@@ -48,6 +48,7 @@ from analysis.reactive_adequacy.models import (
     compute_reactive_adequacy_id,
     worst_field_quality,
 )
+from enm.nazwy_elementow import nazwa_po_identyfikatorze
 
 
 def _round(value: float, digits: int = 4) -> float:
@@ -78,6 +79,7 @@ class ReactiveAdequacyBuilder:
         loads: Iterable[LoadReactiveInput] | None = None,
         context: ReactiveAdequacyContext | None = None,
         *,
+        nazwy: Mapping[str, str],
         power_flow_converged: bool = True,
     ) -> ReactiveAdequacyView:
         """Buduje widok adekwatnosci.
@@ -87,6 +89,9 @@ class ReactiveAdequacyBuilder:
             sources: regulowalne zrodla mocy biernej (Q_actual, Q_min, Q_max).
             loads: pobor mocy biernej odbiorow (do bilansu); opcjonalny.
             context: kontekst raportu (deterministyczny identyfikator).
+            nazwy: indeks ``ref_id -> nazwa`` modelu biegu (``enm.nazwy_elementow``) —
+                uzasadnienia werdyktu i naruszen nazywaja wezly i zrodla nazwami z modelu,
+                identyfikatory zostaja w polach ``bus_ref``/``ref`` (karta #144).
             power_flow_converged: gdy False — brak wiarygodnych |V|, werdykt
                 "dane niekompletne" (brak fabrykowania na rozbieznym wyniku).
         """
@@ -98,7 +103,7 @@ class ReactiveAdequacyBuilder:
         top_missing = self._top_level_missing(ordered_buses, ordered_sources, power_flow_converged)
 
         source_entries = tuple(self._build_source(s) for s in ordered_sources)
-        violations = self._build_violations(ordered_buses)
+        violations = self._build_violations(ordered_buses, nazwy)
         balance = self._build_balance(ordered_sources, ordered_loads)
         provenance = self._build_provenance(ordered_sources)
 
@@ -124,8 +129,10 @@ class ReactiveAdequacyBuilder:
 
         verdict, is_adequate, why = self._classify(
             top_missing=top_missing,
-            saturated=saturated,
-            violations=violations,
+            nasycone_nazwy=tuple(nazwa_po_identyfikatorze(ref, indeks=nazwy) for ref in saturated),
+            wezly_z_naruszeniem=tuple(
+                nazwa_po_identyfikatorze(v.bus_ref, indeks=nazwy) for v in violations
+            ),
             net_up=net_up,
             net_down=net_down,
             provenance=provenance,
@@ -317,9 +324,12 @@ class ReactiveAdequacyBuilder:
 
     # --- naruszenia napiecia --------------------------------------------
 
-    def _build_violations(self, buses: list[BusVoltageInput]) -> tuple[VoltageViolationEntry, ...]:
+    def _build_violations(
+        self, buses: list[BusVoltageInput], nazwy: Mapping[str, str]
+    ) -> tuple[VoltageViolationEntry, ...]:
         out: list[VoltageViolationEntry] = []
         for b in buses:
+            nazwa_wezla = nazwa_po_identyfikatorze(b.bus_ref, indeks=nazwy)
             if b.v_pu is None:
                 continue  # wezel nierozwiazany — brak |V| do oceny
             v = float(b.v_pu)
@@ -330,7 +340,7 @@ class ReactiveAdequacyBuilder:
                 kind = "przekroczenie U_max"
                 why = (
                     f"|V| = {_round(v)} p.u. > U_max = {_round(u_max)} p.u. w węźle "
-                    f"{b.bus_ref}; przekroczenie o {dev} p.u. Wskazuje na nadmiar "
+                    f"{nazwa_wezla}; przekroczenie o {dev} p.u. Wskazuje na nadmiar "
                     "mocy biernej / potrzebę absorpcji Q."
                 )
             elif v < u_min:
@@ -338,7 +348,7 @@ class ReactiveAdequacyBuilder:
                 kind = "poniżej U_min"
                 why = (
                     f"|V| = {_round(v)} p.u. < U_min = {_round(u_min)} p.u. w węźle "
-                    f"{b.bus_ref}; niedobór {dev} p.u. Wskazuje na niedobór mocy "
+                    f"{nazwa_wezla}; niedobór {dev} p.u. Wskazuje na niedobór mocy "
                     "biernej / potrzebę wstrzykiwania Q (podtrzymania napięcia)."
                 )
             else:
@@ -472,8 +482,8 @@ class ReactiveAdequacyBuilder:
         self,
         *,
         top_missing: tuple[str, ...],
-        saturated: tuple[str, ...],
-        violations: tuple[VoltageViolationEntry, ...],
+        nasycone_nazwy: tuple[str, ...],
+        wezly_z_naruszeniem: tuple[str, ...],
         net_up: float | None,
         net_down: float | None,
         provenance: ProvenanceTag | None,
@@ -488,14 +498,13 @@ class ReactiveAdequacyBuilder:
             )
             return VERDICT_NO_DATA, False, why
 
-        if saturated or violations:
+        # Uzasadnienie nazywa zrodla i wezly nazwami z modelu (karta #144).
+        if nasycone_nazwy or wezly_z_naruszeniem:
             parts: list[str] = []
-            if saturated:
-                parts.append("źródła nasycone: " + ", ".join(saturated))
-            if violations:
-                parts.append(
-                    "węzły z naruszeniem napięcia: " + ", ".join(v.bus_ref for v in violations)
-                )
+            if nasycone_nazwy:
+                parts.append("źródła nasycone: " + ", ".join(nasycone_nazwy))
+            if wezly_z_naruszeniem:
+                parts.append("węzły z naruszeniem napięcia: " + ", ".join(wezly_z_naruszeniem))
             why = (
                 "Rezerwa Q wyczerpana — "
                 + "; ".join(parts)

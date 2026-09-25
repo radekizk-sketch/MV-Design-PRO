@@ -147,7 +147,7 @@
     ],
     "przedmiot": {
       "element_ref": "INV1",
-      "nazwa_pl": "Przekształtnik INV1",
+      "nazwa_pl": "Przekształtnik Falownik PV 1",
       "opis_pl": "Interakcja podsynchroniczna przekształtnika z siecią"
     },
     "slad": [],
@@ -176,7 +176,7 @@
         "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
         "Zakres ważności: Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
       ],
-      "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik INV1) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+      "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Falownik PV 1) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
     },
     "wynik": null,
     "zakres_waznosci": {

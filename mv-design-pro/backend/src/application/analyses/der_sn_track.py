@@ -17,6 +17,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from enm.nazwy_elementow import nazwa_elementu
+
 
 def _as_float(value: Any) -> float | None:
     try:
@@ -51,7 +53,7 @@ class DerSnTrack:
 
     @property
     def source_name(self) -> str:
-        return str(self.generator.get("name") or self.source_ref)
+        return nazwa_elementu(self.generator, "generators")
 
 
 def _index_by_ref(items: list[Any]) -> dict[str, dict[str, Any]]:

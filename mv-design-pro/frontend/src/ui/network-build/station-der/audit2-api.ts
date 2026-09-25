@@ -426,6 +426,8 @@ export async function generateAudit2ProofPack(
 export interface Audit2ReportRequest {
   readonly project_name: string;
   readonly station_id: string;
+  /** Nazwa stacji z modelu — raport pokazuje ją projektantowi zamiast identyfikatora. */
+  readonly station_name: string;
   readonly proof_pack: Audit2ProofPackResponse;
   readonly operator_pl?: string;
   readonly generated_at_iso?: string;

@@ -15,12 +15,14 @@
  * z `operation.name = "refresh_snapshot"` na świeżo utworzonym, pustym case).
  */
 
-export function pustaOdpowiedzDomainOps(caseId: string) {
+export function pustaOdpowiedzDomainOps() {
   return {
     snapshot: {
       header: {
         enm_version: '1.0',
-        name: `Model sieci - ${caseId}`,
+        // Model domyślny backendu nazywa się opisem rodzaju, nie fragmentem klucza
+        // magazynu (`enm/nazwy_elementow.py::NAZWA_MODELU_BEZ_NAZWY`, karta #144).
+        name: 'Model sieci bez nazwy',
         description: null,
         created_at: '2026-01-01T00:00:01Z',
         updated_at: '2026-01-01T00:00:01Z',

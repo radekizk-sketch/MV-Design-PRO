@@ -266,8 +266,8 @@ class EquipmentProofGenerator:
         checks: tuple[EquipmentProofCheckResult, ...],
     ) -> ProofDocument:
         header = ProofHeader(
-            project_name=proof_input.project_id,
-            case_name=proof_input.case_id,
+            project_name=proof_input.project_name,
+            case_name=proof_input.case_name,
             run_timestamp=_P12_TIMESTAMP,
             solver_version="dobor-aparatury-1.0",
         )

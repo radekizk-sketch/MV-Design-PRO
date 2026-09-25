@@ -78,6 +78,8 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from enm.nazwy_elementow import jest_nazwa, nazwa_elementu
+
 #: Rodzaj wyniku, jaki zapisuje tor rozpływu (``enm.canonical_analysis``).
 RODZAJ_WYNIKU_ROZPLYWU = "load_flow"
 
@@ -219,7 +221,7 @@ def _zloz_odcinek(
 
     return OdcinekSpadku(
         id_galezi=id_galezi,
-        nazwa=_nazwa_odcinka(opis, ref_enm),
+        nazwa=_nazwa_odcinka(opis, dane_enm),
         od_szyny=_ref_wezla(wezel_poczatku, od_wezla),
         do_szyny=_ref_wezla(wezel_konca, do_wezla),
         r_ohm_per_km=dane_enm["r_ohm_per_km"],
@@ -257,7 +259,14 @@ def _odcinki_ze_snapshotu(snapshot: dict[str, Any] | None) -> dict[str, dict[str
         # dowód „ΔU = 0, bo L = 0" jest prawdziwy, ale nie jest dowodem odcinka.
         if dlugosc <= 0.0:
             continue
-        wynik[ref_id] = {"r_ohm_per_km": r, "x_ohm_per_km": x, "length_km": dlugosc}
+        wynik[ref_id] = {
+            "r_ohm_per_km": r,
+            "x_ohm_per_km": x,
+            "length_km": dlugosc,
+            # Nazwa odcinka z modelu albo opis rodzaju gałęzi — nigdy identyfikator
+            # (karta #144).
+            "nazwa": nazwa_elementu(surowa, "branches"),
+        }
     return wynik
 
 
@@ -289,9 +298,11 @@ def _slownik(wartosc: Any, nazwa: str) -> dict[str, Any]:
     return wartosc
 
 
-def _nazwa_odcinka(opis: dict[str, Any], ref_enm: str) -> str:
+def _nazwa_odcinka(opis: dict[str, Any], dane_enm: dict[str, Any]) -> str:
+    """Nazwa odcinka z grafu biegu (nazwa gałęzi modelu zamrożona z biegiem), a gdy jej brak —
+    nazwa z migawki albo opis rodzaju gałęzi. Nigdy identyfikator gałęzi (karta #144)."""
     nazwa = opis.get("name")
-    return nazwa if isinstance(nazwa, str) and nazwa.strip() else ref_enm
+    return str(nazwa).strip() if jest_nazwa(nazwa) else str(dane_enm["nazwa"])
 
 
 def _ref_wezla(wezel: dict[str, Any], id_wezla: str) -> str:

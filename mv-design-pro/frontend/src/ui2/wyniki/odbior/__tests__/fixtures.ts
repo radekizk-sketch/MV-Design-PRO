@@ -96,7 +96,7 @@ export function widokZgodnosciFixture(): WidokZgodnosci {
         zacisk: null,
         miejsce_pomiaru_pl: null,
         kod_odmowy: null,
-        slad_pl: ['Element „NIEZNANY-3" nie występuje jako węzeł w wyniku rozpływu.'],
+        slad_pl: ['Pomiar wskazuje element spoza modelu sieci biegu — nie występuje on jako węzeł w wyniku rozpływu.'],
       },
       {
         element_ref: 'TRAFO-4',

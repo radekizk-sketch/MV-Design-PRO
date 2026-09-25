@@ -53,6 +53,7 @@ from application.ncrfg_compliance import NcRfgCertyfikatOdrzucony
 from catalog.profiles.nc_rfg import klasyfikacja_modulu
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from enm.canonical_analysis import CanonicalRun
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from network_model.catalog.types import ConverterType
 from network_model.pochodne import mw_na_kw
 from network_model.reporting.czcionki import zarejestruj_czcionki
@@ -173,9 +174,10 @@ def _bus_voltage_index(snapshot: dict[str, Any]) -> dict[str, float]:
     return index
 
 
-def _bus_name_index(snapshot: dict[str, Any]) -> dict[str, str | None]:
+def _bus_name_index(snapshot: dict[str, Any]) -> dict[str, str]:
+    """Mapa ref_id → nazwa szyny z modelu (szyna bez nazwy → opis rodzaju, karta #144)."""
     return {
-        str(bus["ref_id"]): bus.get("name")
+        str(bus["ref_id"]): nazwa_elementu(bus, "buses")
         for bus in (snapshot.get("buses") or [])
         if bus.get("ref_id")
     }
@@ -188,7 +190,7 @@ def _ograniczenie_pl(binding: dict[str, Any]) -> str:
         return "Brak ograniczenia w zakresie przeglądu."
     if kind == "non_convergence":
         return "Rozpływ mocy nie osiągnął zbieżności."
-    element = binding.get("element_name") or binding.get("element_id") or "—"
+    element = binding.get("element_name") or "—"
     if kind == "voltage":
         return f"Kryterium napięciowe — węzeł „{element}”."
     if kind == "loading":
@@ -271,7 +273,7 @@ def _wariant_sekcja(
     profile: NcRfgProfile,
     bus_ref: str,
     *,
-    bus_names: dict[str, str | None],
+    bus_names: dict[str, str],
     bus_voltages: dict[str, float],
 ) -> dict[str, Any]:
     """Zbuduj sekcję jednego wariantu (trzy fazy odporne na błąd pojedynczej fazy)."""
@@ -324,7 +326,7 @@ def _wariant_sekcja(
 
     sekcja = {
         "bus_ref": bus_ref,
-        "nazwa_wezla": bus_names.get(bus_ref) or bus_ref,
+        "nazwa_wezla": bus_names.get(bus_ref) or ELEMENT_SPOZA_MODELU,
         "napiecie_kv": napiecie_kv,
         "zdolnosc": zdolnosc,
         "obszar_pq": obszar,

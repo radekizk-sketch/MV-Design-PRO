@@ -34,7 +34,8 @@
               "substitution_pl": "P_st_i = 0.3 · 0.215 / 37.9713 MVA",
               "result_pl": "P_st_i = 0.001699"
             }
-          ]
+          ],
+          "gen_name": "Farma PV"
         }
       ],
       "pst": 0.001699,
@@ -69,7 +70,8 @@
           "substitution_pl": "d = 1 · 0.215 / 37.9713 · 100 %",
           "result_pl": "d = 0.566217 %"
         }
-      ]
+      ],
+      "bus_name": "Pole PV nN"
     }
   ],
   "summary": {

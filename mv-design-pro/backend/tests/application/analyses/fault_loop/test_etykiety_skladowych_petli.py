@@ -59,6 +59,10 @@ _NAZWA_DOMYSLNA = "Transformator SN/nN"
 _NAZWA_WLASNA = "TR-7 Kowalskiego"
 
 _NAZWY = [_NAZWA_DOMYSLNA, _NAZWA_WLASNA, ""]
+#: Pusta nazwa → opis rodzaju z jednej reguły nazw elementów (`enm.nazwy_elementow`, karta
+#: #144), nigdy identyfikator transformatora — intencja testu (etykieta = nazwa z modelu, bez
+#: klasy i bez stałej) bez zmian.
+_TR_BEZ_NAZWY = "Transformator bez nazwy"
 #: (napięcie GN, napięcie DN, oczekiwana etykieta sieci zasilającej).
 _RODZAJE = [
     (15.0, 0.4, "Sieć SN (upstream Thevenin, sprowadzone do nN)"),
@@ -189,7 +193,7 @@ def test_etykiety_skladowych_na_wejsciu_solvera(
     assert wejscia, f"ścieżka {sciezka} nie policzyła pętli zwarcia"
     for dane in wejscia:
         etykieta_tr = dane.transformer_impedance.label
-        assert etykieta_tr == (nazwa or "tr")
+        assert etykieta_tr == (nazwa or _TR_BEZ_NAZWY)
         assert "SN/nN SN/nN" not in etykieta_tr
         assert not etykieta_tr.startswith("Transformator SN/nN Transformator")
         assert dane.upstream_impedance is not None
@@ -203,7 +207,7 @@ def test_etykiety_w_wyniku_widokow_i_swz(
 ) -> None:
     """Ta sama etykieta dociera do wyniku (`components`) widoku pętli i SWZ."""
     enm = _enm(nazwa, napiecie_gorne_kv, napiecie_dolne_kv)
-    oczekiwane = {nazwa or "tr", siec}
+    oczekiwane = {nazwa or _TR_BEZ_NAZWY, siec}
     for wynik, klucz in (
         (build_station_fault_loop_view(enm, "stn"), "fault_loop"),
         (build_fault_loop_view_at_point(enm, "stn", "b1"), "fault_loop"),

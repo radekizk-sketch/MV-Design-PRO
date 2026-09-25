@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
+from enm.nazwy_elementow import nazwa_elementu
 from network_model.core.branch import LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.pochodne import rezystancja_w_temperaturze
@@ -109,7 +110,7 @@ def build_min_scenario_graph(graph: NetworkGraph) -> MinScenarioGraphResult:
                 notes.append(
                     TemperatureCorrectionNote(
                         branch_id=branch.id,
-                        branch_name=branch.name,
+                        branch_name=nazwa_elementu(branch, "branches"),
                         corrected=True,
                         r20_ohm_per_km=branch.r_ohm_per_km,
                         theta_k_c=theta_k,
@@ -125,7 +126,7 @@ def build_min_scenario_graph(graph: NetworkGraph) -> MinScenarioGraphResult:
                 notes.append(
                     TemperatureCorrectionNote(
                         branch_id=branch.id,
-                        branch_name=branch.name,
+                        branch_name=nazwa_elementu(branch, "branches"),
                         corrected=False,
                         r20_ohm_per_km=branch.r_ohm_per_km,
                         theta_k_c=None,

@@ -62,6 +62,7 @@ from application.ncrfg_compliance import (
     brak_pl,
 )
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
+from enm.nazwy_elementow import opis_bez_nazwy
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from pydantic import BaseModel, Field
@@ -246,9 +247,7 @@ def _bilans_mocy_sekcja(pf_run: CanonicalRun, bus_ref: str) -> dict[str, Any]:
         ),
         "liczba_wezlow_ze_zrodlami": len(installed_by_bus),
         "obciazenie_najwyzsze_pct": (round(najwyzsze["observed_value"], 4) if najwyzsze else None),
-        "obciazenie_element": (
-            (najwyzsze.get("target_name") or najwyzsze.get("target_id")) if najwyzsze else None
-        ),
+        "obciazenie_element": (najwyzsze.get("target_name") if najwyzsze else None),
         "wspolczynnik_mocy_slack": (
             round(reactive["observed_value"], 4)
             if reactive and reactive.get("observed_value") is not None
@@ -276,7 +275,7 @@ def _zwarcia_sekcja(sc_run: CanonicalRun, bus_ref: str) -> dict[str, Any]:
     assert row is not None  # gwarantowane przez bramkę braków
     return {
         "bus_ref": bus_ref,
-        "nazwa_wezla": row.get("target_name") or bus_ref,
+        "nazwa_wezla": row.get("target_name") or opis_bez_nazwy("buses"),
         "ik_ss_ka": row.get("ikss_ka"),
         "sk_mva": row.get("sk_mva"),
         "ip_ka": row.get("ip_ka"),
@@ -618,7 +617,7 @@ def render_wniosek_pdf(view: dict[str, Any]) -> bytes:
     para("3. Zgodność z wymaganiami NC RfG", size=12, bold=True)
     para(f"Procedura testowania: {zgodnosc['procedura']['tytul']}")
     for sekcja in zgodnosc["moduly"]:
-        para(f"{TYTUL_SEKCJI_MODULU}: {sekcja['der_name'] or sekcja['der_ref']}", bold=True)
+        para(f"{TYTUL_SEKCJI_MODULU}: {sekcja['der_name']}", bold=True)
         for etykieta, tresc, poziom in wiersze_sekcji(sekcja):
             para(f"{etykieta}: {tresc}", size=9, indent=poziom * 4 * mm)
     para(str(zgodnosc["odeslanie_pl"]))

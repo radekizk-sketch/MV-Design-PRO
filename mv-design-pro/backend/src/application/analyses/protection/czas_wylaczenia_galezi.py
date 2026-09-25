@@ -38,6 +38,7 @@ from application.analyses.prad_zwarciowy_galezi import (
 )
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_elementu
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.switch import SwitchState, SwitchType
@@ -397,11 +398,11 @@ def wyznacz_czasy_wylaczenia(
                 tk_s=None,
                 zrodlo=ZRODLO_BRAK_NASTAW,
                 powod_pl=(
-                    f"Aparat {aparat.name or aparat_id} nie ma przypisanego czynnego "
+                    f"Aparat {nazwa_elementu(aparat, 'branches')} nie ma przypisanego czynnego "
                     "zabezpieczenia, więc czas zadziałania jest niewyznaczalny."
                 ),
                 urzadzenie_ref=aparat_id,
-                urzadzenie_nazwa=aparat.name,
+                urzadzenie_nazwa=nazwa_elementu(aparat, "branches"),
                 prad_galezi_a=prad,
             )
             continue
@@ -413,11 +414,11 @@ def wyznacz_czasy_wylaczenia(
                 tk_s=None,
                 zrodlo=ZRODLO_BRAK_NASTAW,
                 powod_pl=(
-                    f"Zabezpieczenie {wpis.get('name') or wpis.get('ref_id')} nie ma nastawy "
+                    f"Zabezpieczenie {nazwa_elementu(wpis, 'protection_assignments')} nie ma nastawy "
                     "funkcji nadprądowej zwarciowej (50/51) z progiem rozruchowym."
                 ),
                 urzadzenie_ref=aparat_id,
-                urzadzenie_nazwa=aparat.name,
+                urzadzenie_nazwa=nazwa_elementu(aparat, "branches"),
                 prad_galezi_a=prad,
             )
             continue
@@ -442,7 +443,7 @@ def wyznacz_czasy_wylaczenia(
                 zrodlo=powod_braku or ZRODLO_BRAK_NASTAW,
                 powod_pl=powody.get(powod_braku or "", "Czas zadziałania niewyznaczalny."),
                 urzadzenie_ref=aparat_id,
-                urzadzenie_nazwa=aparat.name,
+                urzadzenie_nazwa=nazwa_elementu(aparat, "branches"),
                 funkcja=funkcja,
                 prad_galezi_a=prad,
                 prad_rozruchowy_a=prog,
@@ -457,10 +458,10 @@ def wyznacz_czasy_wylaczenia(
             zrodlo=ZRODLO_NASTAWA,
             powod_pl=(
                 f"Czas z charakterystyki {krzywa_txt} zabezpieczenia "
-                f"{wpis.get('name') or wpis.get('ref_id')} przy prądzie gałęzi {prad:.1f} A."
+                f"{nazwa_elementu(wpis, 'protection_assignments')} przy prądzie gałęzi {prad:.1f} A."
             ),
             urzadzenie_ref=aparat_id,
-            urzadzenie_nazwa=aparat.name,
+            urzadzenie_nazwa=nazwa_elementu(aparat, "branches"),
             funkcja=funkcja,
             prad_galezi_a=prad,
             prad_rozruchowy_a=prog,

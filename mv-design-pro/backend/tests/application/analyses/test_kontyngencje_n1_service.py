@@ -851,8 +851,14 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # `snapshot_hash` i `input_hash`; jedyna różnica modeli wejściowych obu sieci to nazwa
     # szyny sekcji GPZ „Szyna GPZ S1 15.0 kV" → „Szyna GPZ S1 15 kV" (napięcie przez `:g`).
     # Wynik kontyngencji identyczny.
+    # 2026-09-25 (karta #144 na czubku z ETYKIETY-TR): gn01 bez zmiany (9a2933f5…), gn03
+    # 70f8393a… → a19dcb6d…. Pełne widoki przed i po liść po liściu: w gn03 różnią się
+    # WYŁĄCZNIE `snapshot_hash`, `input_hash` i 22 pola `element_name` odcinków magistrali
+    # („Odcinek /segment" → „Magistrala 01 — odcinek 0N", połówki „… (1)"/„… (2)"); jedyna
+    # różnica modelu to nazwy tych 4 odcinków (nazwa ciągu + numer z istniejącej numeracji,
+    # karta #144). Wynik kontyngencji identyczny.
     "gn01_promieniowa": "9a2933f595b709eafedc6d81654218259ad5df7c564bc976c79eb341846cc822",
-    "gn03_pierscien": "70f8393a3d08d0b16df492a31ddfd09620fba574fe2e60ccd0e8be39d6b429e7",
+    "gn03_pierscien": "a19dcb6d6bdce7b3e5efd580ba70c6fb9c648ca7fb2d86ded961690b59fe5229",
 }
 
 

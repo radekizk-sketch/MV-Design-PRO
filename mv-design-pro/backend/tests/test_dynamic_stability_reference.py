@@ -27,6 +27,9 @@ from enm.canonical_analysis import (
     build_dynamic_stability_time_series,
 )
 
+#: Nazwy elementów migawki biegu (w ścieżce API indeks z `run.snapshot`, karta #144).
+_NAZWY = {"pv-01": "Farma PV 1", "bay-05": "Pole liniowe 5"}
+
 
 def _scenariusz(
     scenario_id: str,
@@ -68,7 +71,9 @@ def _stub_run_with_time_series() -> SimpleNamespace:
         analysis_type="dynamic_stability",
         raw_result={
             "analysis_type": "dynamic_stability",
-            "result": echo_scenariusza_stabilnosci(_scenariusz("dyn-przebieg")).to_dict(),
+            "result": echo_scenariusza_stabilnosci(
+                _scenariusz("dyn-przebieg"), nazwy=_NAZWY
+            ).to_dict(),
             "time_series": {
                 "time_unit": "s",
                 "contract_version": WERSJA_KONTRAKTU_ECHA,
@@ -113,7 +118,9 @@ def test_time_series_builder_empty_for_legacy_run_without_series() -> None:
         analysis_type="dynamic_stability",
         raw_result={
             "analysis_type": "dynamic_stability",
-            "result": echo_scenariusza_stabilnosci(_scenariusz("dyn-bez-przebiegu")).to_dict(),
+            "result": echo_scenariusza_stabilnosci(
+                _scenariusz("dyn-bez-przebiegu"), nazwy=_NAZWY
+            ).to_dict(),
         },
     )
     payload = build_dynamic_stability_time_series(legacy)
@@ -161,7 +168,7 @@ def test_results_row_has_no_verdict_for_any_entered_values(scenario: FaultClearS
         analysis_type="dynamic_stability",
         raw_result={
             "analysis_type": "dynamic_stability",
-            "result": echo_scenariusza_stabilnosci(scenario).to_dict(),
+            "result": echo_scenariusza_stabilnosci(scenario, nazwy=_NAZWY).to_dict(),
         },
     )
     wiersz = build_dynamic_stability_results(run)["rows"][0]

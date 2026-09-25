@@ -306,6 +306,11 @@ def test_pq_widmo_reczne_dla_gen_pv2_zostawia_gen_pv_bez_karty_jako_uwage() -> N
     assert po_kodzie["zrodla.odksztalcajace"].spelniony is True
     assert po_kodzie["zrodla.pominiete"].blokujacy is False
     assert po_kodzie["zrodla.pominiete"].elementy == ("gen_pv",)
+    # Opis nazywa pominięty generator nazwą z modelu; identyfikator zostaje w `elementy`
+    # (karta #144).
+    nazwa_gen_pv = next(g.name for g in enm.generators if g.ref_id == "gen_pv")
+    assert nazwa_gen_pv and nazwa_gen_pv in po_kodzie["zrodla.pominiete"].opis_pl
+    assert "gen_pv" not in po_kodzie["zrodla.pominiete"].opis_pl
     assert wynik.gotowosc == GOTOWOSC_POTWIERDZONA
     assert [w.kod for w in wynik.uwagi] == ["zrodla.pominiete"]
 

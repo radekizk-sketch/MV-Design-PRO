@@ -21,6 +21,7 @@ from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from application.twin_key import klucz_twin_dla_projektu
+from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 from enm.store import get_enm, has_enm
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.models import StationAudit2ConfigORM
@@ -61,6 +62,14 @@ class StationAudit2ConfigBody(BaseModel):
     bay_hv_fuses: dict[str, str] = Field(default_factory=dict)
     bay_vts: dict[str, str] = Field(default_factory=dict)
     bay_device_withstand: dict[str, BayDeviceWithstandSpec] = Field(default_factory=dict)
+
+
+def _indeks_nazw_projektu(project_id: UUID, uow_factory: Callable[[], object]) -> dict[str, str]:
+    """Indeks `ref_id -> nazwa` modelu ENM projektu (pusty, gdy projekt nie ma modelu)."""
+    klucz = klucz_twin_dla_projektu(project_id, uow_factory)
+    if not has_enm(klucz):
+        return {}
+    return zbuduj_indeks_nazw(get_enm(klucz))
 
 
 def _aggregate_loads_per_station_for_project(
@@ -276,6 +285,9 @@ def validate_all_audit2(
         # Phase 49: pobierz aktywny snapshot projektu, aby obliczyc real
         # p_import_kw (loady) dla hosting capacity validation.
         loads_per_station = _aggregate_loads_per_station_for_project(project_id, uow_factory)
+        # Nazwy elementów modelu projektu — teksty dowodów nazywają transformatory nazwą,
+        # nie identyfikatorem (karta #144).
+        nazwy_modelu = _indeks_nazw_projektu(project_id, uow_factory)
 
         per_station_results: list[dict[str, Any]] = []
         all_pass = True
@@ -318,6 +330,7 @@ def validate_all_audit2(
                 proofs.append(
                     generate_tap_changer_plan_proof(
                         transformer_id=str(tr_id),
+                        transformer_nazwa=nazwa_po_identyfikatorze(tr_id, indeks=nazwy_modelu),
                         transformer_type=tr_type,
                         tap_changer_ref=str(tc_ref),
                         # AVR wymagany gdy tap-changer go obsluguje (real-data)

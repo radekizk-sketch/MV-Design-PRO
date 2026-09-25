@@ -52,6 +52,7 @@ from application.solvers.voltage_drop_binding import (
     _ref_wezla,
     odcinki_spadku_napiecia,
 )
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwy_wezlow_grafu, opis_bez_nazwy
 from network_model.core.branch import BranchType
 from network_model.core.graph import NetworkGraph
 from network_model.solvers.power_flow_result import PowerFlowResultV1
@@ -80,6 +81,8 @@ class OdcinekLancucha:
     """
 
     segment_id: str
+    #: Nazwa odcinka/transformatora z modelu (tytuły kroków dowodu, karta #144).
+    nazwa: str
     from_bus: str
     to_bus: str
     jest_transformatorem: bool
@@ -116,6 +119,9 @@ class LancuchSpadkuNapiecia:
 
     source_id: str
     target_id: str
+    #: Nazwy szyn początku i końca łańcucha z modelu (nagłówek dowodu, karta #144).
+    source_nazwa: str
+    target_nazwa: str
     u_source_kv: float
     u_node_kv: float
     kroki: tuple[OdcinekLancucha, ...]
@@ -175,6 +181,10 @@ def lancuch_spadku_napiecia(
         wezel = wezly_grafu.get(node_id)
         return _ref_wezla(wezel if isinstance(wezel, dict) else {}, node_id)
 
+    # Nazwy szyn z grafu biegu (nazwa z modelu albo opis rodzaju) — nagłówek dowodu
+    # nazywa szynę źródłową i docelową nazwą, nie identyfikatorem (karta #144).
+    nazwy_wezlow = nazwy_wezlow_grafu(raw_result)
+
     kroki: list[OdcinekLancucha] = []
     for segment in path.segments:
         branch = graph.branches.get(segment.branch_id)
@@ -188,6 +198,7 @@ def lancuch_spadku_napiecia(
             kroki.append(
                 OdcinekLancucha(
                     segment_id=segment.branch_id,
+                    nazwa=branch.name or opis_bez_nazwy("transformers"),
                     from_bus=_pretty(segment.from_bus),
                     to_bus=_pretty(segment.to_bus),
                     jest_transformatorem=True,
@@ -209,6 +220,7 @@ def lancuch_spadku_napiecia(
         kroki.append(
             OdcinekLancucha(
                 segment_id=segment.branch_id,
+                nazwa=fizyka.nazwa,
                 # ``fizyka.od_szyny``/``do_szyny`` (z ``OdcinekSpadku``) już są
                 # rozstrzygnięte tą samą funkcją — powtórzenie tutaj utrzymuje
                 # ``OdcinekLancucha.from_bus``/``to_bus`` spójne z ``odcinek_fizyczny``
@@ -225,6 +237,8 @@ def lancuch_spadku_napiecia(
     return LancuchSpadkuNapiecia(
         source_id=_pretty(path.source_id),
         target_id=_pretty(path.node_id),
+        source_nazwa=nazwy_wezlow.get(path.source_id) or ELEMENT_SPOZA_MODELU,
+        target_nazwa=nazwy_wezlow.get(path.node_id) or ELEMENT_SPOZA_MODELU,
         u_source_kv=path.u_source_kv,
         u_node_kv=path.u_node_kv,
         kroki=tuple(kroki),

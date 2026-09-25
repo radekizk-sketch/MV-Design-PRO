@@ -46,6 +46,32 @@ def _ctx() -> ReactiveAdequacyContext:
     )
 
 
+#: Nazwy elementów modelu testowego (w ścieżce API indeks `enm.nazwy_elementow` z migawki
+#: biegu, karta #144). Żadna nazwa nie zawiera identyfikatora — asercje „identyfikator nie
+#: trafia do uzasadnienia" są wtedy rozstrzygające.
+_NAZWY = {
+    "B": "Szyna SN stacji",
+    "B1": "Szyna SN pierwsza",
+    "B2": "Szyna SN druga",
+    "BUS_A": "Szyna A stacji",
+    "BUS_B": "Szyna B stacji",
+    "DEAD": "Szyna odłączona",
+    "HOT": "Szyna SN Zachód",
+    "LOW": "Szyna SN Wschód",
+    "OK": "Szyna SN Północ",
+    "INV1": "Falownik PV pierwszy",
+    "INV2": "Falownik PV drugi",
+    "ABS": "Magazyn energii",
+    "BAD": "Falownik o błędnej karcie",
+    "GEN": "Generator synchroniczny",
+    "NA": "Falownik bez pomiaru",
+    "S": "Falownik stacji",
+    "S1": "Falownik pierwszej szyny",
+    "S2": "Falownik drugiej szyny",
+    "SAT": "Falownik nasycony",
+}
+
+
 # ---------------------------------------------------------------------------
 # Adekwatna rezerwa
 # ---------------------------------------------------------------------------
@@ -65,7 +91,7 @@ class TestAdequate:
                 "INV2", "BUS_B", q_actual_mvar=-0.5, q_min_mvar=-1.0, q_max_mvar=1.0
             ),
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
 
         assert v.verdict == VERDICT_ADEQUATE
         assert v.is_adequate is True
@@ -83,7 +109,7 @@ class TestAdequate:
             SourceReactiveInput("INV1", "B", q_actual_mvar=0.5, q_min_mvar=-2.0, q_max_mvar=2.0),
         ]
         buses = [BusVoltageInput("B", 1.0, 0.95, 1.05)]
-        s = ReactiveAdequacyBuilder().build(buses, sources).sources[0]
+        s = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY).sources[0]
         assert s.headroom_up_mvar == 1.5  # 2.0 − 0.5
         assert s.headroom_down_mvar == 2.5  # 0.5 − (−2.0)
         assert s.is_saturated is False
@@ -95,7 +121,7 @@ class TestAdequate:
         sources = [
             SourceReactiveInput("INV1", "B", q_actual_mvar=0.0, q_min_mvar=-1.0, q_max_mvar=1.0)
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
         assert v.verdict == VERDICT_ADEQUATE
         assert v.default_u_min_pu == DEFAULT_U_MIN_PU
         assert v.default_u_max_pu == DEFAULT_U_MAX_PU
@@ -113,7 +139,7 @@ class TestSaturated:
             # Przy Q_max = 2.0; rezerwa w gore = 0 -> nasycenie.
             SourceReactiveInput("INV1", "B", q_actual_mvar=2.0, q_min_mvar=-2.0, q_max_mvar=2.0),
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
 
         assert v.verdict == VERDICT_EXHAUSTED
         assert v.is_adequate is False
@@ -123,8 +149,9 @@ class TestSaturated:
         assert s.headroom_up_mvar == 0.0
         assert s.headroom_down_mvar == 4.0
         assert v.summary.saturated_source_refs == ("INV1",)
-        # Werdykt raportuje wiazace zrodlo.
-        assert "INV1" in v.why_pl
+        # Werdykt raportuje wiazace zrodlo — nazwa z modelu, nie identyfikator (karta #144).
+        assert "Falownik PV pierwszy" in v.why_pl
+        assert "INV1" not in v.why_pl
         # Rezerwa systemowa w gore = brak (jedyne zrodlo nasycone w gore).
         assert v.summary.network_headroom_up_mvar is None
 
@@ -133,7 +160,7 @@ class TestSaturated:
         sources = [
             SourceReactiveInput("INV1", "B", q_actual_mvar=-1.0, q_min_mvar=-1.0, q_max_mvar=1.0),
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
         s = v.sources[0]
         assert s.is_saturated is True
         assert s.at_limit_pl == "Q_min"
@@ -146,7 +173,7 @@ class TestSaturated:
             SourceReactiveInput("SAT", "B", q_actual_mvar=2.0, q_min_mvar=-2.0, q_max_mvar=2.0),
             SourceReactiveInput("OK", "B", q_actual_mvar=0.0, q_min_mvar=-1.0, q_max_mvar=1.0),
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
         assert v.verdict == VERDICT_EXHAUSTED
         assert v.summary.saturated_source_refs == ("SAT",)
         # Rezerwa systemowa liczona tylko z nienasyconego "OK": up=1.0, down=1.0.
@@ -168,7 +195,7 @@ class TestVoltageViolation:
         sources = [
             SourceReactiveInput("INV1", "HOT", q_actual_mvar=0.0, q_min_mvar=-2.0, q_max_mvar=2.0),
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
         assert v.verdict == VERDICT_EXHAUSTED
         assert v.summary.voltage_violation_count == 1
         viol = v.voltage_violations[0]
@@ -176,14 +203,18 @@ class TestVoltageViolation:
         assert viol.kind_pl == "przekroczenie U_max"
         assert viol.deviation_pu == pytest.approx(0.03)
         assert v.summary.violated_bus_refs == ("HOT",)
-        assert "HOT" in v.why_pl
+        # Uzasadnienia (werdykt i naruszenie) nazywaja wezel nazwa z modelu (karta #144).
+        assert "Szyna SN Zachód" in v.why_pl
+        assert "HOT" not in v.why_pl
+        assert "Szyna SN Zachód" in viol.why_pl
+        assert "HOT" not in viol.why_pl
 
     def test_bus_below_umin_is_flagged_negative_deviation(self) -> None:
         buses = [BusVoltageInput("LOW", 0.90, 0.95, 1.05)]
         sources = [
             SourceReactiveInput("INV1", "LOW", q_actual_mvar=0.0, q_min_mvar=-2.0, q_max_mvar=2.0),
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
         viol = v.voltage_violations[0]
         assert viol.kind_pl == "poniżej U_min"
         assert viol.deviation_pu == pytest.approx(-0.05)
@@ -198,7 +229,7 @@ class TestVoltageViolation:
         sources = [
             SourceReactiveInput("INV1", "OK", q_actual_mvar=0.0, q_min_mvar=-1.0, q_max_mvar=1.0),
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
         assert v.summary.voltage_violation_count == 0
         assert v.verdict == VERDICT_ADEQUATE
 
@@ -216,7 +247,7 @@ class TestReactiveBalance:
             SourceReactiveInput("ABS", "B", q_actual_mvar=-0.5, q_min_mvar=-1.0, q_max_mvar=1.0),
         ]
         loads = [LoadReactiveInput("LOAD1", 0.8), LoadReactiveInput("LOAD2", 0.2)]
-        b = ReactiveAdequacyBuilder().build(buses, sources, loads).balance
+        b = ReactiveAdequacyBuilder().build(buses, sources, loads, nazwy=_NAZWY).balance
         assert b.q_generated_mvar == 1.5  # tylko dodatnie Q_actual
         assert b.q_absorbed_by_sources_mvar == 0.5  # |−0.5|
         assert b.net_source_q_mvar == 1.0  # 1.5 + (−0.5)
@@ -230,12 +261,12 @@ class TestReactiveBalance:
             # Zrodlo bez Q_actual nie wnosi wpisu do rozbicia.
             SourceReactiveInput("NA", "B", q_actual_mvar=None, q_min_mvar=-1.0, q_max_mvar=1.0),
         ]
-        b = ReactiveAdequacyBuilder().build(buses, sources).balance
+        b = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY).balance
         # Kolejnosc jak posortowane zrodla (po ref); zrodlo bez Q_actual pominiete.
         assert [c.ref for c in b.source_q_actuals] == ["ABS", "GEN"]
         assert sum(c.q_mvar for c in b.source_q_actuals) == pytest.approx(b.net_source_q_mvar)
         # Serializacja: pole obecne i spojne z suma netto.
-        d = ReactiveAdequacyBuilder().build(buses, sources).to_dict()["balance"]
+        d = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY).to_dict()["balance"]
         assert d["source_q_actuals"] == [
             {"ref": "ABS", "q_mvar": -0.5},
             {"ref": "GEN", "q_mvar": 1.5},
@@ -250,7 +281,7 @@ class TestReactiveBalance:
         sources = [
             SourceReactiveInput("S", "B", q_actual_mvar=None, q_min_mvar=-1.0, q_max_mvar=1.0)
         ]
-        b = ReactiveAdequacyBuilder().build(buses, sources).balance
+        b = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY).balance
         assert b.q_generated_mvar is None
         assert b.net_source_q_mvar is None
 
@@ -267,7 +298,7 @@ class TestMissingData:
         sources = [
             SourceReactiveInput("INV1", "B", q_actual_mvar=0.0, q_min_mvar=-1.0, q_max_mvar=1.0)
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
         assert v.verdict == VERDICT_NO_DATA
         assert v.is_adequate is False
         assert "bus_voltages" in v.missing_data
@@ -277,13 +308,15 @@ class TestMissingData:
         sources = [
             SourceReactiveInput("INV1", "B", q_actual_mvar=0.0, q_min_mvar=-1.0, q_max_mvar=1.0)
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources, power_flow_converged=False)
+        v = ReactiveAdequacyBuilder().build(
+            buses, sources, power_flow_converged=False, nazwy=_NAZWY
+        )
         assert v.verdict == VERDICT_NO_DATA
         assert "power_flow_not_converged" in v.missing_data
 
     def test_no_controllable_sources_is_no_data(self) -> None:
         buses = [BusVoltageInput("B", 1.0, 0.95, 1.05)]
-        v = ReactiveAdequacyBuilder().build(buses, [])
+        v = ReactiveAdequacyBuilder().build(buses, [], nazwy=_NAZWY)
         assert v.verdict == VERDICT_NO_DATA
         assert "controllable_sources" in v.missing_data
 
@@ -293,7 +326,7 @@ class TestMissingData:
             SourceReactiveInput("BAD", "B", q_actual_mvar=0.5, q_min_mvar=None, q_max_mvar=2.0),
             SourceReactiveInput("OK", "B", q_actual_mvar=0.0, q_min_mvar=-1.0, q_max_mvar=1.0),
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
         bad = next(s for s in v.sources if s.ref == "BAD")
         assert bad.missing_data == ("q_min_mvar",)
         assert bad.headroom_up_mvar is None
@@ -308,7 +341,7 @@ class TestMissingData:
         sources = [
             SourceReactiveInput("BAD", "B", q_actual_mvar=0.0, q_min_mvar=2.0, q_max_mvar=-2.0),
         ]
-        s = ReactiveAdequacyBuilder().build(buses, sources).sources[0]
+        s = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY).sources[0]
         assert s.missing_data == ("q_limits_inconsistent",)
         assert s.is_saturated is False
 
@@ -332,23 +365,23 @@ class TestDeterminism:
 
     def test_identical_id_on_repeat(self) -> None:
         buses, sources = self._inputs()
-        a = ReactiveAdequacyBuilder().build(buses, sources, context=_ctx())
-        b = ReactiveAdequacyBuilder().build(buses, sources, context=_ctx())
+        a = ReactiveAdequacyBuilder().build(buses, sources, context=_ctx(), nazwy=_NAZWY)
+        b = ReactiveAdequacyBuilder().build(buses, sources, context=_ctx(), nazwy=_NAZWY)
         assert a.analysis_id == b.analysis_id
         assert len(a.analysis_id) == 64
         assert a.to_dict() == b.to_dict()
 
     def test_id_independent_of_input_order(self) -> None:
         buses, sources = self._inputs()
-        a = ReactiveAdequacyBuilder().build(buses, sources, context=_ctx())
+        a = ReactiveAdequacyBuilder().build(buses, sources, context=_ctx(), nazwy=_NAZWY)
         b = ReactiveAdequacyBuilder().build(
-            list(reversed(buses)), list(reversed(sources)), context=_ctx()
+            list(reversed(buses)), list(reversed(sources)), context=_ctx(), nazwy=_NAZWY
         )
         assert a.analysis_id == b.analysis_id
 
     def test_id_changes_with_verdict(self) -> None:
         buses, sources = self._inputs()
-        saturated = ReactiveAdequacyBuilder().build(buses, sources, context=_ctx())
+        saturated = ReactiveAdequacyBuilder().build(buses, sources, context=_ctx(), nazwy=_NAZWY)
         # Rozluznij granice tak, by zadne zrodlo nie bylo nasycone, a napiecia w band.
         relaxed_buses = [
             BusVoltageInput("B1", 1.0, 0.95, 1.05),
@@ -358,7 +391,9 @@ class TestDeterminism:
             SourceReactiveInput("S1", "B1", q_actual_mvar=0.0, q_min_mvar=-1.0, q_max_mvar=1.0),
             SourceReactiveInput("S2", "B2", q_actual_mvar=0.0, q_min_mvar=-2.0, q_max_mvar=2.0),
         ]
-        adequate = ReactiveAdequacyBuilder().build(relaxed_buses, relaxed_sources, context=_ctx())
+        adequate = ReactiveAdequacyBuilder().build(
+            relaxed_buses, relaxed_sources, context=_ctx(), nazwy=_NAZWY
+        )
         assert saturated.verdict == VERDICT_EXHAUSTED
         assert adequate.verdict == VERDICT_ADEQUATE
         assert saturated.analysis_id != adequate.analysis_id
@@ -375,7 +410,7 @@ class TestWhiteBoxAndSerialization:
         sources = [
             SourceReactiveInput("INV1", "B", q_actual_mvar=0.5, q_min_mvar=-2.0, q_max_mvar=2.0)
         ]
-        s = ReactiveAdequacyBuilder().build(buses, sources).sources[0]
+        s = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY).sources[0]
         symbols = [step.symbol for step in s.white_box]
         assert symbols == ["ΔQ↑", "ΔQ↓", "nasycenie"]
         for step in s.white_box:
@@ -386,7 +421,7 @@ class TestWhiteBoxAndSerialization:
         sources = [
             SourceReactiveInput("INV1", "HOT", q_actual_mvar=0.0, q_min_mvar=-2.0, q_max_mvar=2.0)
         ]
-        viol = ReactiveAdequacyBuilder().build(buses, sources).voltage_violations[0]
+        viol = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY).voltage_violations[0]
         assert viol.white_box
         assert viol.white_box[0].formula_latex and viol.white_box[0].unit_check_pl
 
@@ -395,7 +430,7 @@ class TestWhiteBoxAndSerialization:
         sources = [
             SourceReactiveInput("INV1", "B", q_actual_mvar=0.5, q_min_mvar=-2.0, q_max_mvar=2.0)
         ]
-        d = ReactiveAdequacyBuilder().build(buses, sources, context=_ctx()).to_dict()
+        d = ReactiveAdequacyBuilder().build(buses, sources, context=_ctx(), nazwy=_NAZWY).to_dict()
         assert set(d.keys()) == {
             "analysis_id",
             "context",
@@ -458,7 +493,7 @@ class TestProvenance:
                 limits_field_quality=quality,
             )
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
         assert v.provenance is not None
         assert v.provenance.worst_quality == FieldQuality.DATASHEET.value
         assert v.provenance.is_estimated is False
@@ -487,7 +522,7 @@ class TestProvenance:
                 limits_field_quality=quality,
             )
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
         assert v.provenance is not None
         assert v.provenance.worst_quality == FieldQuality.ESTIMATED.value
         assert v.provenance.is_estimated is True
@@ -517,7 +552,7 @@ class TestProvenance:
                 limits_field_quality=FieldQuality.ESTIMATED,
             ),
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
         assert v.provenance is not None
         assert v.provenance.worst_quality == FieldQuality.ESTIMATED.value
 
@@ -526,7 +561,7 @@ class TestProvenance:
         sources = [
             SourceReactiveInput("INV1", "B", q_actual_mvar=0.0, q_min_mvar=-1.0, q_max_mvar=1.0)
         ]
-        v = ReactiveAdequacyBuilder().build(buses, sources)
+        v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
         assert v.provenance is None
 
 
@@ -545,7 +580,7 @@ class TestValidation:
             ReactiveAdequacyBuilder(saturation_tol_mvar=-0.1)
 
     def test_empty_voltages_and_sources_is_no_data(self) -> None:
-        v = ReactiveAdequacyBuilder().build([], [])
+        v = ReactiveAdequacyBuilder().build([], [], nazwy=_NAZWY)
         assert v.verdict == VERDICT_NO_DATA
         assert "bus_voltages" in v.missing_data
         assert "controllable_sources" in v.missing_data

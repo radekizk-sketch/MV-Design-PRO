@@ -760,7 +760,9 @@ def _resolve_device_name(assignment: ProtectionAssignment) -> str:
         "differential": "Przekaźnik różnicowy",
         "custom": "Zabezpieczenie niestandardowe",
     }.get(assignment.device_type, "Zabezpieczenie")
-    return f"{label} ({assignment.ref_id})"
+    # Zabezpieczenie bez nazwy: polski opis rodzaju, nigdy identyfikator przypisania
+    # (karta #144) — tożsamość niesie `device_id` rekordu.
+    return f"{label} bez nazwy"
 
 
 def _derive_curve_type(functions: list[dict[str, Any]]) -> str | None:

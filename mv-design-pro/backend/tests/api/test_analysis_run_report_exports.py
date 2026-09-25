@@ -20,6 +20,7 @@ from application.stability.dynamic_stability import (
     echo_scenariusza_stabilnosci,
 )
 from enm.canonical_analysis import CanonicalRun
+from enm.nazwy_elementow import zbuduj_indeks_nazw
 
 
 def _build_pf_run() -> CanonicalRun:
@@ -392,6 +393,10 @@ def _build_dynamic_stability_run() -> CanonicalRun:
     """Bieg `dynamic_stability` w kształcie z `_execute_dynamic_stability` po uczciwości
     natychmiastowej (2026-09-23): echo scenariusza z rekordem oceny NIE_OCENIONO, ślad
     automatyki bez zdarzeń, stopień dowodowy UNVALIDATED_MODEL (niepełny, nieraportowalny)."""
+    snapshot = {
+        "sources": [{"ref_id": "src-main", "name": "Sieć zasilająca GPZ"}],
+        "branches": [{"ref_id": "line-1", "name": "Linia L1", "type": "cable"}],
+    }
     echo = echo_scenariusza_stabilnosci(
         FaultClearScenario(
             scenario_id="dyn-1",
@@ -406,7 +411,8 @@ def _build_dynamic_stability_run() -> CanonicalRun:
                 post_fault_voltage_pu=0.97,
                 post_fault_frequency_pu=0.99,
             ),
-        )
+        ),
+        nazwy=zbuduj_indeks_nazw(snapshot),
     )
     return CanonicalRun(
         id=uuid4(),
@@ -417,7 +423,7 @@ def _build_dynamic_stability_run() -> CanonicalRun:
         created_at=datetime.now(UTC),
         snapshot_hash="snapshot-dyn",
         input_hash="hash-dyn",
-        snapshot={"sources": [{"ref_id": "src-main"}]},
+        snapshot=snapshot,
         validation={},
         readiness={},
         result_status="VALID",

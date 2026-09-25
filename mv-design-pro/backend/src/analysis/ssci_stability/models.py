@@ -39,13 +39,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from analysis.odcisk_kontekstu import odcisk_kontekstu
 from application.ocena_niewykonana import ocena_niewykonana, rekord_json
+from enm.nazwy_elementow import SPOZA_MODELU, nazwa_po_identyfikatorze
 from werdykt import (
     ClaimKind,
     EvidenceTier,
@@ -208,10 +209,14 @@ def ocena_ssci_niewykonana(
     *,
     converter_ref: str | None,
     bus_ref: str | None,
+    nazwy: Mapping[str, str],
     tablice_obecne: bool,
     braki_danych: Sequence[str] = (),
 ) -> dict[str, Any]:
     """Rekord ``NIE_OCENIONO`` (``werdykt.OcenaKryterium``) analizy SSCI.
+
+    ``nazwy`` — indeks ``ref_id -> nazwa`` modelu biegu: przedmiot nazywa przekształtnik
+    i szynę nazwami z modelu; identyfikator zostaje w ``element_ref`` (karta #144).
 
     Gdy solver nie zwrócił tablic impedancji (``tablice_obecne=False``), brak tablic i braki
     danych nazwane przez solver (``missing_fields``: przekształtnik w modelu, szyna
@@ -230,12 +235,16 @@ def ocena_ssci_niewykonana(
             przedmiot=Przedmiot(
                 element_ref=converter_ref,
                 nazwa_pl=(
-                    f"Przekształtnik {converter_ref}"
+                    "Przekształtnik "
+                    + nazwa_po_identyfikatorze(
+                        converter_ref, indeks=nazwy, spoza_modelu=SPOZA_MODELU
+                    )
                     if converter_ref
                     else "Przekształtnik (nie wskazano)"
                 ),
                 opis_pl=(
-                    f"Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny {bus_ref}"
+                    "Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny "
+                    + nazwa_po_identyfikatorze(bus_ref, indeks=nazwy, spoza_modelu=SPOZA_MODELU)
                     if bus_ref
                     else "Interakcja podsynchroniczna przekształtnika z siecią"
                 ),

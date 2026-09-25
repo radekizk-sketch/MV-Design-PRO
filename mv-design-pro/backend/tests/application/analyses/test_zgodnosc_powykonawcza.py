@@ -279,6 +279,76 @@ def test_p_dla_wezla_daje_brak_odpowiednika() -> None:
     assert view["wiersze"][0]["werdykt"] == "brak odpowiednika w modelu"
 
 
+_SPOZA_MODELU_WEZEL = (
+    "Pomiar wskazuje element spoza modelu sieci biegu — nie występuje on jako węzeł "
+    "w wyniku rozpływu."
+)
+_SPOZA_MODELU_GALAZ = (
+    "Pomiar wskazuje element spoza modelu sieci biegu — nie występuje on jako gałąź "
+    "w wyniku rozpływu."
+)
+
+
+@pytest.mark.parametrize(
+    ("element_ref", "wielkosc", "jednostka", "slad"),
+    [
+        # element spoza modelu × (węzeł, gałąź) — jawny brak, nigdy identyfikator z pomiaru
+        ("nieznany", "U", "kV", _SPOZA_MODELU_WEZEL),
+        ("nieznany", "P", "MW", _SPOZA_MODELU_GALAZ),
+        # element modelu w złej roli × (szyna z nazwą, linia bez nazwy) — nazwa z modelu
+        # albo opis rodzaju
+        ("bus_a", "P", "MW", "Element 'Stacja A' nie występuje jako gałąź w wyniku rozpływu."),
+        (
+            "line_1",
+            "U",
+            "kV",
+            "Element 'Linia napowietrzna bez nazwy' nie występuje jako węzeł w wyniku rozpływu.",
+        ),
+    ],
+)
+def test_slad_braku_odpowiednika_nazywa_element_z_modelu(
+    element_ref: str, wielkosc: str, jednostka: str, slad: str
+) -> None:
+    """Karta #144: ślad wiersza bez odpowiednika nazywa element nazwą z migawki biegu
+    (albo polskim opisem rodzaju), a element spoza modelu — jawnym brakiem; identyfikator
+    z pomiaru zostaje wyłącznie w polu `element_ref` wiersza."""
+    view = build_zgodnosc_powykonawcza_view(
+        _standardowy_run(),
+        [_pomiar(element_ref, wielkosc, 1.0, jednostka)],
+        {"napiecie_pct": 1.0, "moc_pct": 1.0},
+    )
+    wiersz = view["wiersze"][0]
+    assert wiersz["werdykt"] == "brak odpowiednika w modelu"
+    assert wiersz["element_ref"] == element_ref
+    assert wiersz["slad_pl"] == [slad]
+    assert element_ref not in slad
+
+
+def test_slad_galezi_bez_zacisku_i_wezla_bez_wyniku_nazywa_element_z_modelu() -> None:
+    """Pozostałe ślady z nazwą elementu: gałąź bez zacisku pomiaru (transformator bez nazwy
+    w migawce → opis rodzaju) i węzeł bez wyniku napięcia (szyna bez nazwy → opis rodzaju)."""
+    bez_zacisku = build_zgodnosc_powykonawcza_view(
+        _standardowy_run(), [_pomiar("tr_1", "P", 10.0, "MW")], {"moc_pct": 1.0}
+    )["wiersze"][0]
+    assert bez_zacisku["werdykt"] == "brak miejsca pomiaru"
+    assert "(gałąź 'Transformator bez nazwy', wielkość P)." in bez_zacisku["slad_pl"][0]
+    assert "tr_1" not in bez_zacisku["slad_pl"][0]
+
+    run = _pf_run(
+        buses=[{"ref_id": "bus_a", "voltage_kv": 15.0}],
+        bus_results=[{"bus_id": "n1", "v_pu": None, "angle_deg": 0.0}],
+        graph_nodes={"n1": {"element_id": "bus_a", "name": "Bus A", "voltage_level": 15.0}},
+        node_voltage_kv={},
+    )
+    bez_wyniku = build_zgodnosc_powykonawcza_view(
+        run, [_pomiar("bus_a", "U", 15.0, "kV")], {"napiecie_pct": 1.0}
+    )["wiersze"][0]
+    assert bez_wyniku["slad_pl"] == [
+        "Brak kompletu danych modelowych dla węzła 'Szyna bez nazwy' "
+        "(u_pu lub napięcie znamionowe)."
+    ]
+
+
 # --------------------------------------------------------------------------
 # Walidacja wejścia (422 PL)
 # --------------------------------------------------------------------------

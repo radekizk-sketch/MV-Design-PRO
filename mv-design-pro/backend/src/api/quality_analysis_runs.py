@@ -68,6 +68,7 @@ from application.analyses.zgodnosc_powykonawcza import (
 )
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
+from enm.nazwy_elementow import nazwa_po_identyfikatorze
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel
 
@@ -390,6 +391,10 @@ class ArcFlashReportZadanie(ArcFlashZadanie):
     formats: list[str] = ["json", "text_pl", "latex"]
 
 
+#: Zakres raportu arc flash bez wskazanej stacji — wszystkie szyny przebiegu.
+ZAKRES_RAPORTU_ARC_FLASH_CALA_SIEC = "wszystkie szyny przebiegu"
+
+
 def _arc_flash_report_context(zadanie: ArcFlashReportZadanie) -> ArcFlashReportContext:
     from analysis.reporting.arc_flash_report import ArcFlashReportContext
 
@@ -402,10 +407,20 @@ def _arc_flash_report_context(zadanie: ArcFlashReportZadanie) -> ArcFlashReportC
         electrode_config=zadanie.electrode_config,
         enclosure_type=zadanie.enclosure_type,
     )
+    # Nagłówek dokumentu nazywa projekt i stację nazwami z modelu przebiegu — nigdy
+    # identyfikatorem przebiegu ani stacji (karta #144). Raport bez wskazanej stacji
+    # obejmuje wszystkie szyny przebiegu i tak go nazywa.
+    migawka = run.snapshot or {}
+    nazwa_modelu = str((migawka.get("header") or {}).get("name") or "").strip()
     station_id = zadanie.station_id or str(view.get("analysis_id") or zadanie.run_id)
     return ArcFlashReportContext(
-        project_name=zadanie.project_name or str(zadanie.run_id),
+        project_name=zadanie.project_name or nazwa_modelu or "Projekt bez nazwy",
         station_id=station_id,
+        station_name=(
+            nazwa_po_identyfikatorze(zadanie.station_id, migawka)
+            if zadanie.station_id
+            else ZAKRES_RAPORTU_ARC_FLASH_CALA_SIEC
+        ),
         arc_flash_view_dict=view,
         operator_pl=zadanie.operator_pl,
         generated_at_iso=zadanie.generated_at_iso,

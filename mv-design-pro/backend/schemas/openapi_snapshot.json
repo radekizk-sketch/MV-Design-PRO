@@ -5929,11 +5929,16 @@
      "station_id": {
       "title": "Station Id",
       "type": "string"
+     },
+     "station_name": {
+      "title": "Station Name",
+      "type": "string"
      }
     },
     "required": [
      "project_name",
      "station_id",
+     "station_name",
      "proof_pack"
     ],
     "title": "GenerateAudit2ReportRequest",
@@ -17615,7 +17620,7 @@
   },
   "/api/analysis-runs/{run_id}/pakiet-dowodowy": {
    "get": {
-    "description": "Pakiet dowodowy przebiegu (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).\n\nCała fizyka po stronie serwera — klient podaje wyłącznie przebieg i punkt\nzwarcia. ``punkt`` pominięty ⇒ pierwszy punkt biegu (deterministycznie).",
+    "description": "Pakiet dowodowy przebiegu (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).\n\nCała fizyka po stronie serwera — klient podaje wyłącznie przebieg i punkt\nzwarcia. ``punkt`` pominięty ⇒ pierwszy punkt biegu (deterministycznie).\nNagłówek dowodu nazywa przypadek nazwą z bazy, nie identyfikatorem (karta #144).",
     "operationId": "get_pakiet_dowodowy_api_analysis_runs__run_id__pakiet_dowodowy_get",
     "parameters": [
      {

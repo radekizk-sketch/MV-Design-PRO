@@ -72,6 +72,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from application.nazwy_biegu import nazwa_projektu_z_migawki
 from application.protection_settings.engine import (
     ProtectionSettingsEngine,
     ProtectionSettingsInput,
@@ -91,6 +92,7 @@ from enm.canonical_analysis import (
 )
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_elementu
 from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
 
 #: Rodzaje gałęzi ENM kwalifikowane jako "linia chroniona" — mają impedancję
@@ -133,11 +135,15 @@ class DaneLinii:
 
 @dataclass(frozen=True)
 class WejscieNastawZBiegow:
-    """Kompletne wejście silnika nastaw + nagłówek dowodu, zebrane z trzech biegów."""
+    """Kompletne wejście silnika nastaw + nagłówek dowodu, zebrane z trzech biegów.
+
+    Nazwy przypadku obliczeniowego tu NIE MA (karta #144): biegi jej nie niosą — pole
+    `case_name` niosło dawniej identyfikator przypadku. Nagłówek dokumentu dostaje nazwę
+    przypadku od wołającego (`application.nazwy_biegu.nazwa_przypadku_z_bazy`).
+    """
 
     engine_input: ProtectionSettingsInput
     project_name: str
-    case_name: str
     line_name: str
     run_timestamp: datetime
     solver_version: str
@@ -185,10 +191,11 @@ def _dane_linii_z_galezi(surowa: Any) -> DaneLinii | None:
         return None
     if i_n is None or i_n <= 0.0:
         return None
-    nazwa = surowa.get("name")
     return DaneLinii(
         ref_id=ref_id,
-        nazwa=nazwa if isinstance(nazwa, str) and nazwa.strip() else ref_id,
+        # Nazwa z modelu albo opis rodzaju gałęzi („Kabel bez nazwy"), nigdy
+        # identyfikator (karta #144).
+        nazwa=nazwa_elementu(surowa, "branches"),
         from_bus_ref=from_bus_ref,
         to_bus_ref=to_bus_ref,
         cross_section_mm2=cross,
@@ -517,13 +524,11 @@ def zbuduj_wejscie_nastaw(
         spz_pause_s=spz_pause_s,
     )
 
-    header = (kotwica.snapshot or {}).get("header") or {}
-    project_name = str(header.get("name")) if header.get("name") else str(kotwica.project_id or "")
-
     return WejscieNastawZBiegow(
         engine_input=engine_input,
-        project_name=project_name,
-        case_name=str(kotwica.case_id),
+        # Nazwa modelu z nagłówka migawki kotwicy albo opis braku — nigdy identyfikator
+        # projektu (karta #144).
+        project_name=nazwa_projektu_z_migawki(kotwica.snapshot),
         line_name=linia.nazwa,
         run_timestamp=_znacznik_czasu(kotwica),
         solver_version=solver_version,

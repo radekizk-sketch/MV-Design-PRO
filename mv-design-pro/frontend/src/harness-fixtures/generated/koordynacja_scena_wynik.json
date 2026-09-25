@@ -83,28 +83,28 @@
       "current_a": 9621.459235920445,
       "fault_type": "3F",
       "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L_ik_max_3f",
-      "label_pl": "Ik\"max 3F (seg/9704d44d1ae3394b377910d77a80b97c/segment_L)",
+      "label_pl": "Ik\"max 3F (Magistrala GPZ (1))",
       "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L"
     },
     {
       "current_a": 8746.781124267436,
       "fault_type": "3F",
       "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L_ik_min_3f",
-      "label_pl": "Ik\"min 3F (seg/9704d44d1ae3394b377910d77a80b97c/segment_L)",
+      "label_pl": "Ik\"min 3F (Magistrala GPZ (1))",
       "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L"
     },
     {
       "current_a": 9056.559147375221,
       "fault_type": "3F",
       "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L_ik_max_3f",
-      "label_pl": "Ik\"max 3F (seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L)",
+      "label_pl": "Ik\"max 3F (Magistrala GPZ (2) (1))",
       "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L"
     },
     {
       "current_a": 8034.309745271616,
       "fault_type": "3F",
       "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L_ik_min_3f",
-      "label_pl": "Ik\"min 3F (seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L)",
+      "label_pl": "Ik\"min 3F (Magistrala GPZ (2) (1))",
       "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L"
     }
   ],

@@ -201,11 +201,13 @@ export const MIGOTANIE_FIXTURE: MigotanieResponse = {
   buses: [
     {
       bus_ref: 'bus-oze-1',
+      bus_name: 'Szyna OZE 1',
       nominal_kv: 15.0,
       sk_mva: 325.0,
       modules: [
         {
           gen_ref: 'gen-pv-1',
+          gen_name: 'Falownik PV 1',
           sn_mva: 1.0,
           flicker_c: 0.05,
           pst_i: 0.4,
@@ -222,6 +224,7 @@ export const MIGOTANIE_FIXTURE: MigotanieResponse = {
         },
         {
           gen_ref: 'gen-pv-2',
+          gen_name: 'Falownik PV 2',
           sn_mva: 0.5,
           flicker_c: null,
           pst_i: null,
@@ -252,11 +255,13 @@ export const MIGOTANIE_FIXTURE: MigotanieResponse = {
     },
     {
       bus_ref: 'bus-oze-2',
+      bus_name: 'Szyna OZE 2',
       nominal_kv: 15.0,
       sk_mva: 45.0,
       modules: [
         {
           gen_ref: 'gen-fw-1',
+          gen_name: 'Turbina FW 1',
           sn_mva: 8.0,
           flicker_c: 0.06,
           pst_i: 1.2,

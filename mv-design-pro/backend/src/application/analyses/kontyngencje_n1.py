@@ -156,6 +156,7 @@ from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from enm.canonical_analysis import CanonicalRun, bieg_wariantu, wykonaj_bieg_w_pamieci
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_elementu
 from enm.scenariusze import (
     SCENARIUSZ_NORMALNY,
     OperatingScenario,
@@ -199,7 +200,8 @@ class _Element:
 
     ref: str
     kind: str
-    name: str | None
+    #: Nazwa z modelu albo opis rodzaju (`enm.nazwy_elementow`) — nigdy identyfikator.
+    name: str
     kolekcja: str
     wylaczony_w_bazie: bool
 
@@ -227,7 +229,7 @@ def _inwentarz_elementow(snapshot: dict[str, Any]) -> list[_Element]:
             _Element(
                 ref=str(galaz["ref_id"]),
                 kind=str(galaz["type"]),
-                name=galaz.get("name"),
+                name=nazwa_elementu(galaz, "branches"),
                 kolekcja="branches",
                 # PREDYKAT PARZYSTY z regułą ruchu mostu ENM→graf: gałąź pracuje
                 # wtedy i tylko wtedy, gdy jej stan to „closed" (most ustawia
@@ -244,7 +246,7 @@ def _inwentarz_elementow(snapshot: dict[str, Any]) -> list[_Element]:
             _Element(
                 ref=str(trafo["ref_id"]),
                 kind="transformer",
-                name=trafo.get("name"),
+                name=nazwa_elementu(trafo, "transformers"),
                 kolekcja="transformers",
                 # Model ENM nie zna stanu wyłączenia transformatora (klasa
                 # ``Transformer`` nie ma pola ``status``), więc transformator
@@ -515,7 +517,7 @@ def _kontyngencja(
     snapshot_bazowy = bazowy.snapshot or {}
     scenariusz = OperatingScenario(
         scenario_id=f"__n1__{element.ref}",
-        name=f"Kontyngencja N-1: {element.ref}",
+        name=f"Kontyngencja N-1: {element.name}",
         kind=RodzajScenariusza.N_1,
         out_of_service=(element.ref,),
     )

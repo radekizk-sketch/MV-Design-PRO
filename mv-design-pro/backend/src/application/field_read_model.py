@@ -39,6 +39,7 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from enm.nazwy_elementow import nazwa_pola_ze_specyfikacji
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
 from network_model.core.uziemienie import TypPunktuNeutralnego
 
@@ -274,6 +275,7 @@ def collect_bays(enm: EnergyNetworkModel) -> list[Bay]:
     kreatora stacji.
     """
     bays_by_ref = {bay.ref_id: bay for bay in enm.bays}
+    nazwy_elementow_pol: dict[object, object] = {bay.ref_id: bay.name for bay in enm.bays}
 
     for substation in enm.substations:
         for spec in _iter_field_specs(substation):
@@ -310,7 +312,9 @@ def collect_bays(enm: EnergyNetworkModel) -> list[Bay]:
             bays_by_ref[field_ref] = Bay(
                 id=uuid5(NAMESPACE_URL, field_ref),
                 ref_id=field_ref,
-                name=spec.get("name") or field_ref,
+                # Nazwa specyfikacji, elementu pola `bay_ref` albo roli — jedna reguła
+                # operacji i odczytów, nigdy identyfikator pola (karta #144).
+                name=nazwa_pola_ze_specyfikacji(spec, nazwy_elementow_pol),
                 tags=list(spec.get("tags") or []),
                 meta=spec_meta,
                 bay_role=bay_role,

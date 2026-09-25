@@ -39,6 +39,7 @@ from typing import Any, Literal
 from network_model.core.topologia import ma_cykl, polaczone, poziomy, przeglad_wszerz
 
 from .load_zip_model import zip_odbioru_z_parametrow_materializacji
+from .nazwy_elementow import jest_nazwa, nazwa_galezi_bez_nazwy, opis_bez_nazwy
 from .slownik_komunikatow import (
     NAZWY_KOLEKCJI_PL,
     NAZWY_RODZAJOW_ZABEZPIECZENIA_PL,
@@ -154,6 +155,19 @@ def _check_cycle_on_add(enm: dict[str, Any], from_ref: str, to_ref: str) -> bool
     return polaczone(sorted(wezly), krawedzie, to_ref, from_ref)
 
 
+def _nazwa_z_ladunku(data: dict[str, Any], bez_nazwy: str) -> str:
+    """Nazwa z ładunku operacji albo polski opis rodzaju, gdy nazwy brak lub jest pusta.
+
+    Karta #144 §0.1: nigdy identyfikator ani jego fragment. Nazwę z kontekstu domeny (ciąg,
+    stacja, pole) nadaje operacja domenowa — prymityw topologii tego kontekstu nie zna, więc
+    bierze opis rodzaju z jednego źródła (`enm/nazwy_elementow.py`).
+    """
+    nazwa = data.get("name")
+    if jest_nazwa(nazwa):
+        return str(nazwa)
+    return bez_nazwy
+
+
 def _find_breaker_refs(enm: dict[str, Any]) -> set[str]:
     """Zbierz ref_id wyłączników (type=breaker)."""
     result: set[str] = set()
@@ -198,7 +212,7 @@ def create_node(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
 
     bus_data = {
         "ref_id": ref_id,
-        "name": data.get("name", ref_id),
+        "name": _nazwa_z_ladunku(data, opis_bez_nazwy("buses")),
         "voltage_kv": voltage,
         "phase_system": data.get("phase_system", "3ph"),
         "tags": data.get("tags", []),
@@ -346,7 +360,7 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
 
     branch_data: dict[str, Any] = {
         "ref_id": ref_id,
-        "name": data.get("name", ref_id),
+        "name": _nazwa_z_ladunku(data, nazwa_galezi_bez_nazwy(branch_type)),
         "type": branch_type,
         "from_bus_ref": from_ref,
         "to_bus_ref": to_ref,
@@ -571,7 +585,7 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
 
         trafo_data = {
             "ref_id": ref_id,
-            "name": data.get("name", ref_id),
+            "name": _nazwa_z_ladunku(data, opis_bez_nazwy("transformers")),
             "hv_bus_ref": hv,
             "lv_bus_ref": lv,
             "sn_mva": data["sn_mva"],
@@ -627,7 +641,7 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
 
         load_data = {
             "ref_id": ref_id,
-            "name": data.get("name", ref_id),
+            "name": _nazwa_z_ladunku(data, opis_bez_nazwy("loads")),
             "bus_ref": bus_ref,
             "p_mw": data.get("p_mw", 0),
             "q_mvar": data.get("q_mvar", 0),
@@ -657,7 +671,7 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
 
         gen_data = {
             "ref_id": ref_id,
-            "name": data.get("name", ref_id),
+            "name": _nazwa_z_ladunku(data, opis_bez_nazwy("generators")),
             "bus_ref": bus_ref,
             "p_mw": data.get("p_mw", 0),
             "q_mvar": data.get("q_mvar"),
@@ -699,7 +713,7 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
 
         src_data = {
             "ref_id": ref_id,
-            "name": data.get("name", ref_id),
+            "name": _nazwa_z_ladunku(data, opis_bez_nazwy("sources")),
             "bus_ref": bus_ref,
             "model": data.get("model", "short_circuit_power"),
             "catalog_ref": data.get("catalog_ref"),
@@ -882,7 +896,7 @@ def create_measurement(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpR
 
     m_data = {
         "ref_id": ref_id,
-        "name": data.get("name", ref_id),
+        "name": _nazwa_z_ladunku(data, opis_bez_nazwy("measurements", {"measurement_type": mtype})),
         "measurement_type": mtype,
         "bus_ref": bus_ref,
         "bay_ref": data.get("bay_ref"),
@@ -1005,7 +1019,7 @@ def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
 
     pa_data = {
         "ref_id": ref_id,
-        "name": data.get("name", ref_id),
+        "name": _nazwa_z_ladunku(data, opis_bez_nazwy("protection_assignments")),
         "breaker_ref": breaker_ref,
         "ct_ref": ct_ref,
         "vt_ref": data.get("vt_ref"),

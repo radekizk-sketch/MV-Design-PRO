@@ -72,6 +72,7 @@ from .models import (
     liczba_torow,
 )
 from .models import TapChanger as EnmTapChanger
+from .nazwy_elementow import nazwa_elementu
 from .zrodlo_zwarcie import KOD_SK_MIN_BRAK, TrybDanych, dodatnia, tryb_danych
 
 
@@ -408,6 +409,8 @@ def _assemble_zero_sequence_y0(
 
     ref_to_node_id = {bus.ref_id: _ref_to_uuid(bus.ref_id) for bus in enm.buses}
     bus_voltage = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
+    # Teksty śladu nazywają szyny nazwą z modelu (karta #144), nie identyfikatorem węzła grafu.
+    nazwa_szyny = {bus.ref_id: nazwa_elementu(bus, "buses") for bus in enm.buses}
 
     for branch in sorted(enm.branches, key=lambda b: b.ref_id):
         if not isinstance(branch, OverheadLine | Cable):
@@ -437,7 +440,7 @@ def _assemble_zero_sequence_y0(
         )
         tracer.add(
             key=f"z0_line[{branch.ref_id}]",
-            title=f"Gałąź {branch.name or branch.ref_id}: impedancja zerowa (szeregowa)",
+            title=f"Gałąź {nazwa_elementu(branch, 'branches')}: impedancja zerowa (szeregowa)",
             formula_latex=r"Z_{0,line} = (r_0 + jx_0)\cdot \ell",
             inputs={
                 "ref_id": branch.ref_id,
@@ -445,7 +448,10 @@ def _assemble_zero_sequence_y0(
                 "x0_ohm_per_km": branch.x0_ohm_per_km,
                 "length_km": branch.length_km,
             },
-            substitution=f"Z0 = {z0_ohm.real:.6g} + j{z0_ohm.imag:.6g} Ω (szereg {from_id}↔{to_id})",
+            substitution=(
+                f"Z0 = {z0_ohm.real:.6g} + j{z0_ohm.imag:.6g} Ω "
+                f"(szereg {nazwa_szyny[branch.from_bus_ref]}↔{nazwa_szyny[branch.to_bus_ref]})"
+            ),
             result={"z0_ohm": z0_ohm},
         )
 
@@ -472,7 +478,7 @@ def _assemble_zero_sequence_y0(
             tracer.add(
                 key=f"z0_line_shunt[{branch.ref_id}]",
                 title=(
-                    f"Gałąź {branch.name or branch.ref_id}: pojemność doziemna "
+                    f"Gałąź {nazwa_elementu(branch, 'branches')}: pojemność doziemna "
                     "(bocznik B0, model π)"
                 ),
                 formula_latex=r"Y_{0,sh} = j B_0 \cdot \ell;\quad Y_{0,sh,end} = Y_{0,sh}/2",
@@ -485,7 +491,8 @@ def _assemble_zero_sequence_y0(
                 substitution=(
                     f"B0={branch.b0_siemens_per_km:.6g} S/km · {branch.length_km:.6g} km = "
                     f"{y0_shunt_total_s:.6g} S; Y0_sh,end(pu) = "
-                    f"j{y0_shunt_per_end_pu.imag:.6g} (na {from_id} i {to_id})"
+                    f"j{y0_shunt_per_end_pu.imag:.6g} (na {nazwa_szyny[branch.from_bus_ref]} "
+                    f"i {nazwa_szyny[branch.to_bus_ref]})"
                 ),
                 result={"y0_shunt_per_end_pu": y0_shunt_per_end_pu},
             )
@@ -504,7 +511,7 @@ def _assemble_zero_sequence_y0(
             tracer.add(
                 key=f"z0_source_bus_voltage_missing[{source.ref_id}]",
                 title=(
-                    f"Źródło {source.name or source.ref_id}: pominięte w Y0 "
+                    f"Źródło {nazwa_elementu(source, 'sources')}: pominięte w Y0 "
                     "(brak napięcia szyny)"
                 ),
                 formula_latex=r"\text{brak } U_n(\mathrm{bus})",
@@ -534,12 +541,14 @@ def _assemble_zero_sequence_y0(
         y0_bus[idx, idx] += 1.0 / (z0_source_ohm / builder.get_zbase_ohm(bus_id))
         tracer.add(
             key=f"z0_source[{source.ref_id}]",
-            title=f"Źródło {source.name or source.ref_id}: impedancja zerowa (bocznik do ziemi)",
+            title=(
+                f"Źródło {nazwa_elementu(source, 'sources')}: impedancja zerowa (bocznik do ziemi)"
+            ),
             formula_latex=r"Y_{0,src} = 1 / (Z_{0,src}/Z_{base})",
             inputs={"ref_id": source.ref_id, "z0_ohm": z0_source_ohm},
             substitution=(
                 f"Z0(src) = {z0_source_ohm.real:.6g} + j{z0_source_ohm.imag:.6g} Ω "
-                f"(bocznik {bus_id})"
+                f"(bocznik {nazwa_szyny[source.bus_ref]})"
             ),
             result={"z0_ohm": z0_source_ohm},
         )
@@ -780,7 +789,7 @@ def _add_generator_sc_sources(
             # (reguła KLASA NIE INSTANCJA, CLAUDE.md pkt „predykaty parami").
             zrodlo_sc = InverterSource(
                 id=gen.ref_id,
-                name=gen.name,
+                name=nazwa_elementu(gen, "generators"),
                 node_id=node_id,
                 type_ref=gen.catalog_ref,
                 converter_kind=FULL_CONVERTER_SC_GEN_TYPES[gen_type],
@@ -1071,7 +1080,7 @@ def map_enm_to_network_graph(
                 )
             node = Node(
                 id=node_id,
-                name=bus.name,
+                name=nazwa_elementu(bus, "buses"),
                 node_type=NodeType.SLACK,
                 voltage_level=bus.voltage_kv,
                 voltage_magnitude=1.0,
@@ -1092,7 +1101,7 @@ def map_enm_to_network_graph(
             # nastawy 1,0 pu za brakującą.
             node = Node(
                 id=node_id,
-                name=bus.name,
+                name=nazwa_elementu(bus, "buses"),
                 node_type=NodeType.PV,
                 voltage_level=bus.voltage_kv,
                 voltage_magnitude=bus_voltage_control[bus.ref_id],
@@ -1102,7 +1111,7 @@ def map_enm_to_network_graph(
         else:
             node = Node(
                 id=node_id,
-                name=bus.name,
+                name=nazwa_elementu(bus, "buses"),
                 node_type=NodeType.PQ,
                 voltage_level=bus.voltage_kv,
                 active_power=p,
@@ -1151,7 +1160,7 @@ def map_enm_to_network_graph(
             bt = BranchType.CABLE if isinstance(branch, Cable) else BranchType.LINE
             lb = LineBranch(
                 id=branch_id,
-                name=branch.name,
+                name=nazwa_elementu(branch, "branches"),
                 branch_type=bt,
                 from_node_id=from_id,
                 to_node_id=to_id,
@@ -1213,7 +1222,7 @@ def map_enm_to_network_graph(
             }
             sw = Switch(
                 id=branch_id,
-                name=branch.name,
+                name=nazwa_elementu(branch, "branches"),
                 from_node_id=from_id,
                 to_node_id=to_id,
                 switch_type=sw_type_map.get(branch.type, SwitchType.LOAD_SWITCH),
@@ -1225,7 +1234,7 @@ def map_enm_to_network_graph(
         elif isinstance(branch, FuseBranch):
             sw = Switch(
                 id=branch_id,
-                name=branch.name,
+                name=nazwa_elementu(branch, "branches"),
                 from_node_id=from_id,
                 to_node_id=to_id,
                 switch_type=SwitchType.FUSE,
@@ -1262,7 +1271,7 @@ def map_enm_to_network_graph(
         n_parallel = liczba_torow(trafo)
         tb = TransformerBranch(
             id=_ref_to_uuid(trafo.ref_id),
-            name=trafo.name,
+            name=nazwa_elementu(trafo, "transformers"),
             branch_type=BranchType.TRANSFORMER,
             from_node_id=hv_id,
             to_node_id=lv_id,
@@ -1326,7 +1335,7 @@ def map_enm_to_network_graph(
         graph.add_grid_sc_source(
             GridShortCircuitSource(
                 id=_ref_to_uuid(f"_zsrc_{source.ref_id}"),
-                name=source.name or source.ref_id,
+                name=nazwa_elementu(source, "sources"),
                 node_id=bus_node_id,
                 z_ohm=z_ohm,
             )

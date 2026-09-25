@@ -608,3 +608,44 @@ class TestWywod:
             ).to_dict()["wywod"]
 
         assert _run() == _run()
+
+
+class TestNazwyWWywodzie:
+    """Karta #144: wywód badań OLTC nazywa transformator i szynę regulowaną nazwami z modelu
+    (graf z mapowania ENM), a bez nazwy opisem rodzaju — nigdy identyfikatorem gałęzi/węzła.
+    Iloczyn: {przegląd pozycji, profil roczny} × {nazwy z modelu, nazwy puste}."""
+
+    @staticmethod
+    def _wejscie(nazwa_trafo: str, nazwa_szyny: str):
+        pf_input = _build_input(_oltc())
+        graf = pf_input.typed_graph()
+        trafo = graf.branches[_trafo_id(pf_input)]
+        trafo.name = nazwa_trafo
+        graf.nodes[trafo.to_node_id].name = nazwa_szyny
+        assert pf_input.typed_graph() is graf, "wywód czyta ten sam graf co test"
+        return pf_input, trafo.id
+
+    @pytest.mark.parametrize(
+        ("nazwa_trafo", "nazwa_szyny", "oczekiwany_trafo", "oczekiwana_szyna"),
+        [
+            ("Transformator GPZ T1", "Szyny SN GPZ", "Transformator GPZ T1", "Szyny SN GPZ"),
+            ("", " ", "Transformator bez nazwy", "Szyna bez nazwy"),
+        ],
+        ids=["z-nazwami", "bez-nazw"],
+    )
+    def test_przeglad_i_profil_nazywaja_elementy(
+        self, nazwa_trafo, nazwa_szyny, oczekiwany_trafo, oczekiwana_szyna
+    ):
+        pf_input, trafo_id = self._wejscie(nazwa_trafo, nazwa_szyny)
+        przeglad = sweep_tap_positions(pf_input, _solve_once, branch_id=trafo_id, positions=[0])
+        teksty = " | ".join(k["tekst"] for k in przeglad.to_dict()["wywod"])
+        assert f"transformator {oczekiwany_trafo}, szyna regulowana: {oczekiwana_szyna}." in teksty
+        pf_input, trafo_id = self._wejscie(nazwa_trafo, nazwa_szyny)
+        profil = run_annual_oltc_profile(
+            pf_input, _solve_once, [ProfilePoint(label="szczyt", load_scale=1.0)]
+        )
+        teksty_profilu = " | ".join(k["tekst"] for k in profil.to_dict()["wywod"])
+        assert f"transformator {oczekiwany_trafo}:" in teksty_profilu
+        for identyfikator in (trafo_id, "LV"):
+            assert f"transformator {identyfikator}" not in teksty + teksty_profilu
+            assert f"regulowana: {identyfikator}" not in teksty

@@ -85,7 +85,7 @@ function buildSnapshot(endpointBusy = false): EnergyNetworkModel {
       {
         id: 'seg-1',
         ref_id: 'seg-1',
-        name: 'Odcinek /segment',
+        name: 'Odcinek bez nazwy',
         tags: [],
         meta: {},
         type: 'cable',
@@ -221,7 +221,7 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     const snapshot = buildSnapshot(false);
     snapshot.branches[0] = {
       ...snapshot.branches[0],
-      name: 'Odcinek /segment - za punktem rozgałęzienia',
+      name: 'Odcinek bez nazwy - za punktem rozgałęzienia',
       type: 'line_overhead',
       catalog_ref: 'line-base-al-150',
       cross_section_mm2: 150,
@@ -237,7 +237,7 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     expect(summary).toHaveTextContent('Linia napowietrzna Al 150 mm²');
     expect(summary).toHaveTextContent('Al 150 mm²');
     expect(summary).not.toHaveTextContent('line-base-al-150');
-    expect(screen.queryByText('Odcinek /segment - za punktem rozgałęzienia')).not.toBeInTheDocument();
+    expect(screen.queryByText('Odcinek bez nazwy - za punktem rozgałęzienia')).not.toBeInTheDocument();
   });
 
   it('SnSegmentSurface pokazuje tylko standardowe zakończenia dla kabla i linii napowietrznej', () => {

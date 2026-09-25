@@ -25,7 +25,7 @@
       "odchylka_bezwzgledna": null,
       "odchylka_pct": null,
       "slad_pl": [
-        "Element 'POLE-REZERWOWE-12' nie występuje jako węzeł w wyniku rozpływu."
+        "Pomiar wskazuje element spoza modelu sieci biegu — nie występuje on jako węzeł w wyniku rozpływu."
       ],
       "tolerancja_pct": null,
       "wartosc_model": null,
@@ -84,7 +84,7 @@
       "odchylka_bezwzgledna": null,
       "odchylka_pct": null,
       "slad_pl": [
-        "Pomiar mocy gałęzi bez miejsca pomiaru — wskaż zacisk gałęzi (początkowy albo końcowy), na którym wykonano pomiar; gałąź z przekładnią albo susceptancją ma na obu końcach inne moce (gałąź 'line_b_c', wielkość Q)."
+        "Pomiar mocy gałęzi bez miejsca pomiaru — wskaż zacisk gałęzi (początkowy albo końcowy), na którym wykonano pomiar; gałąź z przekładnią albo susceptancją ma na obu końcach inne moce (gałąź 'Linia SN 1', wielkość Q)."
       ],
       "tolerancja_pct": null,
       "wartosc_model": null,

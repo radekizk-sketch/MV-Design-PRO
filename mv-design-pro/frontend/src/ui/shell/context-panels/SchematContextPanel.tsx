@@ -762,7 +762,9 @@ function getRef(item: SnapshotRecord): string {
 
 function getDisplayName(item: SnapshotRecord, fallbackLabel: string, ordinal: number): string {
   const name = typeof item.name === 'string' && item.name.trim() ? item.name.trim() : null;
-  if (name && !containsTechnicalReference(name)) return name;
+  // Opis braku nazwy nadany przez backend („Odcinek bez nazwy", „Szyna bez nazwy (2)")
+  // w drzewie zastępuje numer porządkowy — tak jak brak nazwy.
+  if (name && !containsTechnicalReference(name) && !/\bbez\s+nazwy\b/i.test(name)) return name;
   return `${fallbackLabel} ${String(ordinal).padStart(2, '0')}`;
 }
 

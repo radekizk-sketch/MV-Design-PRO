@@ -631,7 +631,7 @@ function SzczegolMigotania({
   return (
     <section className="mvd-jakosc-szczegol" data-testid="mvd-jakosc-migotanie-szczegol">
       <header className="mvd-jakosc-szczegol-head">
-        <h3 className="mvd-jakosc-szczegol-tytul">{wezel.bus_ref}</h3>
+        <h3 className="mvd-jakosc-szczegol-tytul">{wezel.bus_name}</h3>
         <TagStatusu tekst={wezel.verdict_pl} istotnosc={istotnoscMigotania(wezel.verdict_pl)} />
       </header>
       <dl className="mvd-jakosc-szczegol-dane">
@@ -665,7 +665,7 @@ function SzczegolMigotania({
           {wezel.modules.map((modul) => (
             <li key={modul.gen_ref} className="mvd-jakosc-mig-modul">
               <div className="mvd-jakosc-mig-modul-head">
-                <span className="mvd-num">{modul.gen_ref}</span>
+                <span>{modul.gen_name}</span>
                 <TagStatusu
                   tekst={modul.included ? JAKOSC_STRINGS.modulWliczony : JAKOSC_STRINGS.modulPominiety}
                   istotnosc={modul.included ? 'ok' : 'neutral'}
@@ -859,7 +859,7 @@ function SzczegolArcFlash({
   return (
     <section className="mvd-jakosc-szczegol" data-testid="mvd-jakosc-af-szczegol">
       <header className="mvd-jakosc-szczegol-head">
-        <h3 className="mvd-jakosc-szczegol-tytul">{wynik.bus_ref}</h3>
+        <h3 className="mvd-jakosc-szczegol-tytul">{wynik.bus_name}</h3>
         <TagStatusu tekst={wynik.status_label_pl} istotnosc={istotnoscArcFlash(wynik.status)} />
       </header>
       <dl className="mvd-jakosc-szczegol-dane">
@@ -946,7 +946,7 @@ function podsumowanieArcFlash(
     soiMap.set(kat, (soiMap.get(kat) ?? 0) + 1);
     if (typeof w.incident_energy_cal_cm2 === 'number' && w.incident_energy_cal_cm2 > najwyzsza) {
       najwyzsza = w.incident_energy_cal_cm2;
-      szyna = w.bus_ref;
+      szyna = w.bus_name;
     }
   }
   if (najwyzsza === -Infinity) return null;
@@ -1202,7 +1202,7 @@ export function SekcjaArcFlash({
             kluczWiersza={KLUCZ_WIERSZA_ARC_FLASH}
             onWybierzWiersz={setWybrany}
             wybranyWiersz={wybrany}
-            // Karta UI2 p.6: wiersz = `bus_ref` (arc flash liczony per węzeł).
+            // Karta UI2 p.6: klucz wiersza = `bus_ref` (arc flash liczony per węzeł).
             typElementuWiersza={() => 'Bus'}
           />
           <SzczegolArcFlash wynik={wybranyWynik} trybZaawansowania={trybZaawansowania} />

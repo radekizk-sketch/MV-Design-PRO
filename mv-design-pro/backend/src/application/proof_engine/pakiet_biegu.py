@@ -49,6 +49,7 @@ from typing import Any
 
 from application.analyses.power_flow_reconstruction import graf_z_biegu
 from application.analyses.voltage_profile_view import _power_flow_result_v1
+from application.nazwy_biegu import nazwa_projektu_z_migawki
 from application.proof_engine.packs.p14_power_flow import P14PowerFlowInput, P14PowerFlowProof
 from application.proof_engine.packs.p16_losses import P16LossesInput, P16LossesProof
 from application.proof_engine.packs.sc_asymmetrical import (
@@ -77,6 +78,7 @@ from application.solvers.voltage_drop_binding import (
     odcinki_spadku_napiecia,
 )
 from enm.canonical_analysis import CanonicalRun
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwy_galezi_grafu, nazwy_wezlow_grafu
 
 #: Rodzaje pakietów dowodowych osiągalne dla biegu kanonicznego.
 RODZAJ_SC3F = "SC3F"
@@ -192,15 +194,20 @@ def punkty_pakietu(run: CanonicalRun) -> list[PunktPakietu]:
         return _odcinki_jako_punkty(run)
     if rodzaj not in _RODZAJE_Z_PUNKTEM:
         return []
-    graph_nodes = ((run.raw_result or {}).get("graph") or {}).get("nodes", {})
+    # Nazwa punktu = nazwa węzła grafu z modelu albo opis rodzaju, nigdy identyfikator
+    # węzła ani elementu (karta #144) — ta sama reguła co tabela wyników zwarć.
+    nazwy_wezlow = nazwy_wezlow_grafu(run.raw_result)
     punkty: list[PunktPakietu] = []
     for item in (run.raw_result or {}).get("results", []):
         target_id = item.get("fault_node_id")
         if not target_id:
             continue
-        node = graph_nodes.get(target_id, {})
-        nazwa = node.get("name") or node.get("element_id") or str(target_id)
-        punkty.append(PunktPakietu(target_id=str(target_id), nazwa=str(nazwa)))
+        punkty.append(
+            PunktPakietu(
+                target_id=str(target_id),
+                nazwa=nazwy_wezlow.get(str(target_id)) or ELEMENT_SPOZA_MODELU,
+            )
+        )
     punkty.sort(key=lambda p: p.target_id)
     return punkty
 
@@ -340,8 +347,14 @@ def _niedostepny(run: CanonicalRun, powod_pl: str, *, rodzaj: str | None = None)
     }
 
 
-def zbuduj_pakiet_biegu(run: CanonicalRun, *, punkt: str | None = None) -> tuple[str, bytes]:
+def zbuduj_pakiet_biegu(
+    run: CanonicalRun, *, punkt: str | None = None, nazwa_przypadku: str
+) -> tuple[str, bytes]:
     """Zbuduj pakiet dowodowy przebiegu: ``(nazwa_pliku, zawartość ZIP)``.
+
+    ``nazwa_przypadku`` — nazwa przypadku obliczeniowego do nagłówka dowodu; czyta ją
+    wołający z bazy (``application.nazwy_biegu.nazwa_przypadku_z_bazy``), bo migawka biegu nie
+    niesie przypadku (karta #144 — dawniej nagłówek niósł identyfikator przypadku).
 
     ``punkt`` = identyfikator wyboru właściwego rodzajowi: punkt zwarcia dla
     pakietów zwarciowych, ODCINEK linii/kabla dla pakietu rozpływu. ``None`` =
@@ -368,8 +381,9 @@ def zbuduj_pakiet_biegu(run: CanonicalRun, *, punkt: str | None = None) -> tuple
     # zapali się i wymusi ŚWIADOMĄ decyzję: albo punkt, albo jawna odmowa dla
     # podanego parametru. Ciche pominięcie parametru byłoby kłamstwem o tym, co
     # dokumentuje pobrany plik, i dlatego nie może powstać przez przeoczenie.
+    naglowek = _Naglowek(projekt=nazwa_projektu_z_migawki(run.snapshot), przypadek=nazwa_przypadku)
     if rodzaj in _RODZAJE_Z_ODCINKIEM:
-        zawartosc = _zbuduj_rozplyw_zbiorczy(run, context, punkt=punkt)
+        zawartosc = _zbuduj_rozplyw_zbiorczy(run, context, naglowek, punkt=punkt)
         return f"pakiet_dowodowy_rozplyw_mocy__{run.id}.zip", zawartosc
 
     punkty = punkty_pakietu(run)
@@ -385,12 +399,12 @@ def zbuduj_pakiet_biegu(run: CanonicalRun, *, punkt: str | None = None) -> tuple
         wybrany = znaleziony
 
     if rodzaj == RODZAJ_SC3F:
-        zawartosc = _zbuduj_sc3f(run, wybrany, context)
-        nazwa = f"pakiet_dowodowy_zwarcie_3f__{run.id}__{wybrany.target_id}.zip"
+        zawartosc = _zbuduj_sc3f(run, wybrany, context, naglowek)
+        nazwa_pliku = f"pakiet_dowodowy_zwarcie_3f__{run.id}__{wybrany.target_id}.zip"
     else:
-        zawartosc = _zbuduj_sc_niesymetryczne(run, wybrany, context)
-        nazwa = f"pakiet_dowodowy_zwarcia_niesymetryczne__{run.id}__{wybrany.target_id}.zip"
-    return nazwa, zawartosc
+        zawartosc = _zbuduj_sc_niesymetryczne(run, wybrany, context, naglowek)
+        nazwa_pliku = f"pakiet_dowodowy_zwarcia_niesymetryczne__{run.id}__{wybrany.target_id}.zip"
+    return nazwa_pliku, zawartosc
 
 
 def _znacznik_czasu(run: CanonicalRun) -> datetime:
@@ -418,14 +432,12 @@ def _tk_s(run: CanonicalRun) -> float:
     return float(run.options.get("thermal_time_seconds", 1.0))
 
 
-def _nazwa_przypadku(run: CanonicalRun) -> str:
-    return str(run.case_id)
+@dataclass(frozen=True)
+class _Naglowek:
+    """Nazwy projektu i przypadku do nagłówka każdego dowodu pakietu (karta #144)."""
 
-
-def _nazwa_projektu(run: CanonicalRun) -> str:
-    naglowek = (run.snapshot or {}).get("header") or {}
-    nazwa = naglowek.get("name")
-    return str(nazwa) if nazwa else str(run.project_id or "")
+    projekt: str
+    przypadek: str
 
 
 def _rozplyw_biegu(run: CanonicalRun) -> RozplywZBiegu:
@@ -444,6 +456,7 @@ def _rozplyw_biegu(run: CanonicalRun) -> RozplywZBiegu:
 def _zbuduj_rozplyw_zbiorczy(
     run: CanonicalRun,
     context: ProofPackContext,
+    naglowek: _Naglowek,
     *,
     punkt: str | None,
 ) -> bytes:
@@ -456,12 +469,12 @@ def _zbuduj_rozplyw_zbiorczy(
     """
     rozplyw = _rozplyw_biegu(run)
     pakiety = {
-        "rozplyw": _zbuduj_dowod_rozplywu(run, context, rozplyw),
-        "straty": _zbuduj_dowod_strat(run, context, rozplyw),
+        "rozplyw": _zbuduj_dowod_rozplywu(run, context, rozplyw, naglowek),
+        "straty": _zbuduj_dowod_strat(run, context, rozplyw, naglowek),
     }
     odcinek = _wybierz_odcinek(run, punkt)
     if odcinek is not None:
-        pakiety["spadek_napiecia"] = _zbuduj_dowod_spadku(run, context, rozplyw, odcinek)
+        pakiety["spadek_napiecia"] = _zbuduj_dowod_spadku(run, context, rozplyw, odcinek, naglowek)
     return zbuduj_zip_zbiorczy(pakiety)
 
 
@@ -489,11 +502,12 @@ def _zbuduj_dowod_rozplywu(
     run: CanonicalRun,
     context: ProofPackContext,
     rozplyw: RozplywZBiegu,
+    naglowek: _Naglowek,
 ) -> bytes:
     pack_input = P14PowerFlowInput.from_power_flow_result(
         rozplyw.wynik,
-        project_name=_nazwa_projektu(run),
-        case_name=_nazwa_przypadku(run),
+        project_name=naglowek.projekt,
+        case_name=naglowek.przypadek,
         run_timestamp=_znacznik_czasu(run),
         # Wersja solvera z ARTEFAKTU biegu (`load-flow-<metoda>-v1`), nie z
         # `_wersja_solvera` — tam etykieta zapasowa „nieznana" jest uczciwa dla
@@ -511,13 +525,15 @@ def _zbuduj_dowod_strat(
     run: CanonicalRun,
     context: ProofPackContext,
     rozplyw: RozplywZBiegu,
+    naglowek: _Naglowek,
 ) -> bytes:
     pack_input = P16LossesInput.from_power_flow_result(
         rozplyw.wynik,
-        project_name=_nazwa_projektu(run),
-        case_name=_nazwa_przypadku(run),
+        project_name=naglowek.projekt,
+        case_name=naglowek.przypadek,
         run_timestamp=_znacznik_czasu(run),
         solver_version=rozplyw.solver_version,
+        nazwy_galezi=nazwy_galezi_grafu(run.raw_result),
     )
     try:
         return P16LossesProof.generate_zip(pack_input, context)
@@ -530,6 +546,7 @@ def _zbuduj_dowod_spadku(
     context: ProofPackContext,
     rozplyw: RozplywZBiegu,
     odcinek: OdcinekSpadku,
+    naglowek: _Naglowek,
 ) -> bytes:
     """Dowód spadku napięcia dla ŁAŃCUCHA od źródła do końca ``odcinek`` (P0.5b).
 
@@ -556,8 +573,8 @@ def _zbuduj_dowod_spadku(
 
     pack_input = VDROPPackInput.z_lancucha_biegu(
         lancuch,
-        project_name=_nazwa_projektu(run),
-        case_name=_nazwa_przypadku(run),
+        project_name=naglowek.projekt,
+        case_name=naglowek.przypadek,
         run_timestamp=_znacznik_czasu(run),
         # Wersja solvera z ARTEFAKTU biegu — ta sama, którą podpisano dowód
         # rozpływu w tym samym pakiecie. Odczyt raz, przekazany dalej: dwa
@@ -576,10 +593,11 @@ def _zbuduj_sc3f(
     run: CanonicalRun,
     punkt: PunktPakietu,
     context: ProofPackContext,
+    naglowek: _Naglowek,
 ) -> bytes:
     pack_input = SC3FPackInput(
-        project_name=_nazwa_projektu(run),
-        case_name=_nazwa_przypadku(run),
+        project_name=naglowek.projekt,
+        case_name=naglowek.przypadek,
         snapshot=run.snapshot,
         fault_node_id=punkt.target_id,
         run_timestamp=_znacznik_czasu(run),
@@ -597,13 +615,14 @@ def _zbuduj_sc_niesymetryczne(
     run: CanonicalRun,
     punkt: PunktPakietu,
     context: ProofPackContext,
+    naglowek: _Naglowek,
 ) -> bytes:
     try:
         pack_input = SCAsymmetricalProofPack.wejscie_ze_snapshotu(
             snapshot=run.snapshot,
             fault_node_id=punkt.target_id,
-            project_name=_nazwa_projektu(run),
-            case_name=_nazwa_przypadku(run),
+            project_name=naglowek.projekt,
+            case_name=naglowek.przypadek,
             run_timestamp=_znacznik_czasu(run),
             solver_version=_wersja_solvera(run),
             c_factor=_c_factor(run),

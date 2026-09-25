@@ -108,6 +108,7 @@ from application.analyses.warunki_przylaczenia import (
 from application.analyses.wytrzymalosc_cieplna_przewodow import build_wytrzymalosc_cieplna_view
 from enm.canonical_analysis import CanonicalRun, list_runs_for_case
 from enm.hash import compute_enm_hash
+from enm.nazwy_elementow import opis_bez_nazwy
 from enm.store import get_enm
 
 # --- Stany kryterium ---------------------------------------------------------
@@ -1299,7 +1300,7 @@ def _opis_galezi(wiersz: Mapping[str, Any] | None) -> str | None:
     zastosowany = wiersz.get("applied_cross_section_mm2")
     if wymagany is not None and zastosowany is not None:
         return (
-            f"Gałąź {wiersz.get('branch_name') or wiersz.get('branch_id')}: wymagany przekrój "
+            f"Gałąź {wiersz.get('branch_name') or opis_bez_nazwy('branches')}: wymagany przekrój "
             f"{float(wymagany):.1f} mm2 wobec zastosowanego {float(zastosowany):.1f} mm2."
         )
     kody = [str(kod) for kod in (wiersz.get("missing_codes") or [])]
@@ -1409,9 +1410,8 @@ def _pozycja_der_sn(raport: Mapping[str, Any] | None) -> PozycjaWerdyktu:
                 definicja,
                 element_id=zrodlo_ref,
                 element_nazwa=(
-                    f"{zrodlo_nazwa or zrodlo_ref or ''} — {_nazwa_kontroli_der(pozycja)}".strip(
-                        " —"
-                    )
+                    f"{zrodlo_nazwa or opis_bez_nazwy('generators')} — "
+                    f"{_nazwa_kontroli_der(pozycja)}"
                 ),
                 wynik=wynik,
                 uzasadnienie_pl=uzasadnienie,
@@ -1455,10 +1455,16 @@ def _nazwa_kontroli_der(pozycja: Mapping[str, Any]) -> str:
     if check_id in nazwy:
         return nazwy[check_id]
     if check_id.startswith("d2."):
-        return f"zgodność doboru „{pozycja.get('parametr') or check_id[3:]}” z propozycją"
+        parametr = pozycja.get("parametr")
+        return (
+            f"zgodność doboru „{parametr}” z propozycją"
+            if parametr
+            else "zgodność doboru z propozycją"
+        )
     if "kaskada" in check_id:
         return "kaskada prądowa toru"
-    return check_id.replace("_", " ")
+    # Kontrola spoza słownika nazw — opis rodzaju, nie identyfikator kontroli (karta #144).
+    return "kontrola doboru toru przyłączenia"
 
 
 def _komunikat_der(pozycja: Mapping[str, Any]) -> str | None:

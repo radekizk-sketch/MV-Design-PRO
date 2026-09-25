@@ -242,6 +242,12 @@ jobs:
       - name: Brak surowych identyfikatorow w UI
         run: $GUARD_PY scripts/no_raw_ids_in_ui_guard.py
 
+      # Karta #144: nazwa elementu i tekst rekordu/wyniku/sladu dla projektanta nigdy
+      # z identyfikatora maszynowego (backend/src/**, lista dozwolona z uzasadnieniem,
+      # zapadka w obie strony).
+      - name: Nazwa elementu nigdy z identyfikatora (backend)
+        run: $GUARD_PY scripts/nazwa_bez_identyfikatora_guard.py
+
       - name: Falszywe zero (brak danej pokazany jako 0,00)
         run: $GUARD_PY scripts/false_zero_guard.py --strict
 

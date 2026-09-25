@@ -25,6 +25,8 @@ from network_model.reporting.docx_determinism import make_docx_bytes_determinist
 from network_model.reporting.protection_tcc_presentation import (
     etykieta_tms,
     etykieta_typu_krzywej_pl,
+    nazwa_urzadzenia,
+    nazwy_urzadzen,
     powod_braku_pl,
 )
 
@@ -177,6 +179,8 @@ def export_protection_coordination_to_docx(
     doc.add_heading("Tabela urządzeń i nastaw", level=1)
 
     devices = result.get("devices", [])
+    # Tabele sprawdzeń nazywają urządzenie nazwą z listy urządzeń wyniku (karta #144).
+    nazwy = nazwy_urzadzen(result)
     if devices:
         # Sort by device name for deterministic order
         sorted_devices = sorted(devices, key=lambda d: d.get("name", d.get("id", "")))
@@ -231,7 +235,7 @@ def export_protection_coordination_to_docx(
         # Data
         for check in sorted_sens_checks:
             row = sens_table.add_row().cells
-            row[0].text = check.get("device_id", "—")[:12]
+            row[0].text = nazwa_urzadzenia(nazwy, check.get("device_id"))
             row[1].text = _format_value(check.get("i_fault_min_a"))
             row[2].text = _format_value(check.get("i_pickup_a"))
             row[3].text = _format_value(check.get("margin_percent"))
@@ -273,8 +277,8 @@ def export_protection_coordination_to_docx(
         # Data
         for check in sorted_sel_checks:
             row = sel_table.add_row().cells
-            row[0].text = check.get("downstream_device_id", "—")[:12]
-            row[1].text = check.get("upstream_device_id", "—")[:12]
+            row[0].text = nazwa_urzadzenia(nazwy, check.get("downstream_device_id"))
+            row[1].text = nazwa_urzadzenia(nazwy, check.get("upstream_device_id"))
             row[2].text = _format_value(check.get("t_downstream_s"))
             row[3].text = _format_value(check.get("t_upstream_s"))
             row[4].text = _format_value(check.get("margin_s"))
@@ -313,7 +317,7 @@ def export_protection_coordination_to_docx(
         # Data
         for check in sorted_ovl_checks:
             row = ovl_table.add_row().cells
-            row[0].text = check.get("device_id", "—")[:12]
+            row[0].text = nazwa_urzadzenia(nazwy, check.get("device_id"))
             row[1].text = _format_value(check.get("i_operating_a"))
             row[2].text = _format_value(check.get("i_pickup_a"))
             row[3].text = _format_value(check.get("margin_percent"))

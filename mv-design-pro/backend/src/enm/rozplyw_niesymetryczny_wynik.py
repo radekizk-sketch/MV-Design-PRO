@@ -21,6 +21,7 @@ from domain.result_contract_power_flow_unbalanced_v1 import (
     WyspaWynikuUnbalancedV1,
 )
 from enm.assembler import WejscieRozplywuNiesymetrycznego, WyspaRozplywuNiesymetrycznego
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from network_model.pochodne import napiecie_fazowe_v, prad_fazy_z_mocy_i_napiecia_a
 from network_model.solvers.power_flow_unbalanced import (
     UnbalancedPowerFlowBranchResult,
@@ -103,7 +104,7 @@ def zbuduj_wynik_rozplywu_niesymetrycznego(
                 BusResultUnbalancedV1(
                     bus_id=node_id,
                     element_id=element_id,
-                    name=node.name,
+                    name=nazwa_elementu(node, "buses"),
                     un_kv=un_kv,
                     faza_a=None,
                     faza_b=None,
@@ -120,7 +121,7 @@ def zbuduj_wynik_rozplywu_niesymetrycznego(
             BusResultUnbalancedV1(
                 bus_id=node_id,
                 element_id=element_id,
-                name=node.name,
+                name=nazwa_elementu(node, "buses"),
                 un_kv=un_kv,
                 faza_a=_faza_szyny(
                     wynik_szyny.voltage_pu_magnitude_a, wynik_szyny.angle_deg_a, un_kv
@@ -145,11 +146,19 @@ def zbuduj_wynik_rozplywu_niesymetrycznego(
         obiekt = graph.branches.get(branch_id)
         if obiekt is None:
             obiekt_lacznika = graph.switches.get(branch_id)
-            nazwa = obiekt_lacznika.name if obiekt_lacznika is not None else branch_id
+            # Nazwa z modelu (węzeł grafu niesie nazwę elementu ENM); brak obiektu w grafie
+            # = jawny brak elementu, nigdy klucz grafu jako nazwa (karta #144).
+            nazwa = (
+                nazwa_elementu(obiekt_lacznika, "branches")
+                if obiekt_lacznika is not None
+                else ELEMENT_SPOZA_MODELU
+            )
             rated: float | None = None
             element_type = "SWITCH" if obiekt_lacznika is not None else element_type
         else:
-            nazwa = obiekt.name
+            nazwa = nazwa_elementu(
+                obiekt, "transformers" if element_type == "TRANSFORMER" else "branches"
+            )
             # IR: `LineBranch.rated_current_a` = 0.0 oznacza brak danej katalogowej
             # (kontrakt `core/branch.py`), transformator jej nie niesie → jawny brak.
             rated_ir = getattr(obiekt, "rated_current_a", None)

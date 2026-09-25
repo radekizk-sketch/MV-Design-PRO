@@ -252,7 +252,7 @@ def render_certyfikat_pdf(view: dict[str, Any]) -> bytes:
 
     for sekcja in view["moduly"]:
         para(
-            f"{TYTUL_SEKCJI_MODULU}: {sekcja['der_name'] or sekcja['der_ref']}",
+            f"{TYTUL_SEKCJI_MODULU}: {sekcja['der_name']}",
             size=12,
             bold=True,
         )

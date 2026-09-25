@@ -44,6 +44,12 @@ from enm.models import (
     Transformer,
     liczba_torow,
 )
+from enm.nazwy_elementow import (
+    SPOZA_MODELU,
+    nazwa_elementu,
+    nazwa_po_identyfikatorze,
+    zbuduj_indeks_nazw,
+)
 from enm.topology import Wyspa, derive
 from enm.zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
 from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
@@ -1565,6 +1571,7 @@ def _spec_galezi_z_sekwencji(
     tracer: WhiteBoxTracer,
     branch_id: str,
     ref_id: str,
+    nazwa: str,
     from_id: str,
     to_id: str,
     z1_ohm: complex,
@@ -1597,7 +1604,7 @@ def _spec_galezi_z_sekwencji(
         )
     tracer.add(
         key=f"pf_unbalanced_branch[{ref_id}]",
-        title=f"Gałąź {ref_id}: impedancja własna i wzajemna ze składowych symetrycznych",
+        title=f"Gałąź {nazwa}: impedancja własna i wzajemna ze składowych symetrycznych",
         formula_latex=(
             r"Z' = Z\cdot\left(\frac{U_{odn}}{U_{wl}}\right)^2,\quad "
             r"Z_s = \frac{Z_0 + 2 Z_1}{3},\quad Z_m = \frac{Z_0 - Z_1}{3}"
@@ -1683,13 +1690,17 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
     droga_zerowa = diagnoza.droga_zerowa
     zamkniecia_tr = dict(droga_zerowa.zamkniecia_w_transformatorach)
     zamkniecia_zr = dict(droga_zerowa.zamkniecia_w_zrodlach)
+    # Teksty śladu White Box nazywają elementy nazwą z modelu (karta #144) — identyfikator
+    # zostaje w kluczu kroku i w polach wyniku, z których czyta interfejs.
+    nazwy = zbuduj_indeks_nazw(enm)
 
     def _powod_bez_z0(ref_id: str) -> str:
         if ref_id in droga_zerowa.artefakt:
             zamykajace = sorted({tr for ld, tr in droga_zerowa.zamkniecia_w_transformatorach})
             return (
                 "I0 tej krawędzi jest artefaktem modelu szeregowego: droga I0 odbiorów "
-                f"faza–N zamknięta poniżej, w transformatorze {', '.join(zamykajace)}"
+                "faza–N zamknięta poniżej, w transformatorze "
+                + ", ".join(nazwa_po_identyfikatorze(tr, indeks=nazwy) for tr in zamykajace)
             )
         return "I_a+I_b+I_c ≡ 0 z topologii: tą krawędzią nie płynie I0 żadnego odbioru faza–N"
 
@@ -1712,15 +1723,22 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
             punkt = zamkniecia_tr.get(ld.ref_id)
             tracer.add(
                 key=f"pf_unbalanced_zero_sequence_path[{ld.ref_id}]",
-                title=f"Odbiór {ld.ref_id} (faza {ld.phases}): droga prądu powrotnego I0",
+                title=(
+                    f"Odbiór {nazwa_elementu(ld, 'loads')} (faza {ld.phases}): "
+                    "droga prądu powrotnego I0"
+                ),
                 formula_latex=r"I_0 = \tfrac{1}{3}(I_a + I_b + I_c)",
                 inputs={"phases": ld.phases, "bus_ref": ld.bus_ref},
                 substitution=(
-                    f"droga I0 zamknięta w uziemionym uzwojeniu transformatora {punkt}"
+                    "droga I0 zamknięta w uziemionym uzwojeniu transformatora "
+                    + nazwa_po_identyfikatorze(punkt, indeks=nazwy, spoza_modelu=SPOZA_MODELU)
                     if punkt is not None
                     else (
                         "droga I0 zamknięta w punkcie neutralnym źródła sieciowego "
-                        f"{zamkniecia_zr[ld.ref_id]} (źródło idealne uziemione w modelu BFS)"
+                        + nazwa_po_identyfikatorze(
+                            zamkniecia_zr[ld.ref_id], indeks=nazwy, spoza_modelu=SPOZA_MODELU
+                        )
+                        + " (źródło idealne uziemione w modelu BFS)"
                     )
                 ),
                 result={
@@ -1770,6 +1788,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                         tracer=tracer,
                         branch_id=branch_id,
                         ref_id=galaz.ref_id,
+                        nazwa=nazwa_elementu(galaz, "branches"),
                         from_id=branch.from_node_id,
                         to_id=branch.to_node_id,
                         z1_ohm=z1_ohm,
@@ -1829,6 +1848,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                         tracer=tracer,
                         branch_id=branch_id,
                         ref_id=trafo.ref_id,
+                        nazwa=nazwa_elementu(trafo, "transformers"),
                         from_id=branch.from_node_id,
                         to_id=branch.to_node_id,
                         z1_ohm=z1_ohm,
@@ -1897,7 +1917,10 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
             suma[1] += float(ld.q_mvar)
             tracer.add(
                 key=f"pf_unbalanced_load[{ld.ref_id}]",
-                title=f"Odbiór {ld.ref_id}: rozdział mocy na fazy ({ld.phases or 'ABC'})",
+                title=(
+                    f"Odbiór {nazwa_elementu(ld, 'loads')}: rozdział mocy na fazy "
+                    f"({ld.phases or 'ABC'})"
+                ),
                 formula_latex=(
                     r"S_{\varphi} = S/3\ (\text{ABC});\quad S_{\varphi} = S\ (\text{A|B|C})"
                 ),
@@ -1929,8 +1952,13 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                     tracer.add(
                         key=f"pf_unbalanced_generation[{node_id}]",
                         title=(
-                            f"Węzeł {graph_nodes.get(node_id, {}).get('element_id', node_id)}: "
-                            "generacja PQ jako wstrzyk symetryczny"
+                            "Węzeł "
+                            + nazwa_po_identyfikatorze(
+                                graph_nodes.get(node_id, {}).get("element_id"),
+                                indeks=nazwy,
+                                spoza_modelu=SPOZA_MODELU,
+                            )
+                            + ": generacja PQ jako wstrzyk symetryczny"
                         ),
                         formula_latex=r"S_{\varphi,gen} = -S_{gen}/3",
                         inputs={"p_gen_mw": gen_p, "q_gen_mvar": gen_q},
@@ -1955,7 +1983,11 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
         base_kv_fazy = napiecie_fazowe_v(base_kv_ll)
         tracer.add(
             key=f"pf_unbalanced_base[{zrodlo_ref}]",
-            title=f"Wyspa źródła {zrodlo_ref}: baza jednej fazy solvera BFS",
+            title=(
+                "Wyspa źródła "
+                + nazwa_po_identyfikatorze(zrodlo_ref, indeks=nazwy, spoza_modelu=SPOZA_MODELU)
+                + ": baza jednej fazy solvera BFS"
+            ),
             formula_latex=r"S_{b,\varphi} = S_b/3,\quad U_{b,\varphi} = U_{LL}/\sqrt{3}",
             inputs={"base_mva": base_mva, "base_kv_ll": base_kv_ll},
             substitution=(

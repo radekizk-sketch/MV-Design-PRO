@@ -789,6 +789,18 @@ def _dowod_z_pakietu_zbiorczego(content: bytes, nazwa: str) -> dict:
     return _dowod_z_pakietu(_podpakiet(content, nazwa))
 
 
+def _wezel_id_po_nazwie(wezly: dict, nazwa: str) -> str:
+    """ID węzła GRAFU po NAZWIE szyny z nagłówka dowodu.
+
+    Karta #144: nagłówek dowodu (``source_bus``/``target_bus``) nazywa szyny nazwą z modelu,
+    nie identyfikatorem. Wyszukanie wymaga JEDNOZNACZNOŚCI nazwy w grafie biegu — dwie szyny
+    o tej samej nazwie czyniłyby porównanie z biegiem niejednoznacznym, więc test to zgłasza.
+    """
+    trafienia = [id_wezla for id_wezla, opis in wezly.items() if opis.get("name") == nazwa]
+    assert len(trafienia) == 1, f"Szyna o nazwie '{nazwa}' w grafie biegu: {trafienia}"
+    return trafienia[0]
+
+
 def _wezel_id_po_element_id(wezly: dict, element_id: str) -> str:
     """ID węzła GRAFU (klucz ``node_voltage_kv``) po referencji ``element_id``.
 
@@ -1139,8 +1151,8 @@ def test_spadek_z_dowodu_zgadza_sie_ze_spadkiem_policzonym_przez_solver(
 
     surowy = _artefakt_biegu(run_id)
     wezly = surowy["graph"]["nodes"]
-    source_id = _wezel_id_po_element_id(wezly, dowod["header"]["source_bus"])
-    target_id = _wezel_id_po_element_id(wezly, dowod["header"]["target_bus"])
+    source_id = _wezel_id_po_nazwie(wezly, dowod["header"]["source_bus"])
+    target_id = _wezel_id_po_nazwie(wezly, dowod["header"]["target_bus"])
     spadek_biegu_kv = surowy["node_voltage_kv"][source_id] - surowy["node_voltage_kv"][target_id]
 
     # Uwaga: ``delta_u_total_percent`` NIE MA tu sensownej granicy sanity —
@@ -1197,8 +1209,8 @@ def test_napiecie_konca_z_dowodu_zgadza_sie_z_napieciem_biegu_karta_podstawa_vdr
 
     surowy = _artefakt_biegu(run_id)
     wezly = surowy["graph"]["nodes"]
-    source_id = _wezel_id_po_element_id(wezly, dowod["header"]["source_bus"])
-    target_id = _wezel_id_po_element_id(wezly, dowod["header"]["target_bus"])
+    source_id = _wezel_id_po_nazwie(wezly, dowod["header"]["source_bus"])
+    target_id = _wezel_id_po_nazwie(wezly, dowod["header"]["target_bus"])
     u_poczatku_biegu = surowy["node_voltage_kv"][source_id]
     u_konca_biegu = surowy["node_voltage_kv"][target_id]
 
@@ -1258,8 +1270,9 @@ def test_wskazany_odcinek_daje_inny_dowod_spadku_niz_domyslny(client: TestClient
     assert domyslny.content == wskazany.content
 
     dowod = _dowod_z_pakietu_zbiorczego(wskazany.content, "spadek_napiecia")
-    assert dowod["header"]["source_bus"] == "bus-main"
-    assert dowod["header"]["target_bus"] == "bus-odbior"
+    # Nagłówek nazywa szyny nazwami z modelu, nigdy identyfikatorami (karta #144).
+    assert dowod["header"]["source_bus"] == "Szyna glowna"
+    assert dowod["header"]["target_bus"] == "Szyna odbioru"
 
 
 def test_rozplyw_bez_odcinkow_ma_pakiet_ale_bez_dowodu_spadku(client: TestClient) -> None:

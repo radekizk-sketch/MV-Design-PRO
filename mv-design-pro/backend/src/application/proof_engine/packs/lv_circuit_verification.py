@@ -221,6 +221,9 @@ class LVCircuitVerificationInput:
     bus_ref: str
     breaker_ref: str
     segment_ref: str
+    #: Nazwa odcinka nN z modelu — tytuł dowodu; identyfikator zostaje w `segment_ref`
+    #: (karta #144). Aparat nazywa `urzadzenie.nazwa`.
+    nazwa_odcinka: str
 
     # Krok 1-2: S, Ib
     p_mw: float
@@ -1000,7 +1003,9 @@ class LVCircuitVerificationProofPack:
         return ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=ProofType.LV_CIRCUIT_VERIFICATION,
-            title_pl=f"Dowód: weryfikacja obwodu nN — {data.segment_ref} / {data.breaker_ref}",
+            title_pl=(
+                f"Dowód: weryfikacja obwodu nN — {data.nazwa_odcinka} / {data.urzadzenie.nazwa}"
+            ),
             header=header,
             steps=steps,
             summary=summary,

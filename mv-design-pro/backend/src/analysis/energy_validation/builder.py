@@ -25,6 +25,7 @@ from analysis.obciazenie_galezi import (
     prad_zacisku_od_a,
 )
 from analysis.power_flow.result import PowerFlowResult
+from enm.nazwy_elementow import nazwa_elementu
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.pochodne import a_na_ka
@@ -149,7 +150,10 @@ class EnergyValidationBuilder:
             return EnergyValidationItem(
                 check_type=check_type,
                 target_id=branch_id,
-                target_name=branch.name,
+                target_name=nazwa_elementu(
+                    branch,
+                    "transformers" if isinstance(branch, TransformerBranch) else "branches",
+                ),
                 observed_value=None,
                 unit="%",
                 limit_warn=config.loading_warn_pct,
@@ -180,7 +184,10 @@ class EnergyValidationBuilder:
         return EnergyValidationItem(
             check_type=check_type,
             target_id=branch_id,
-            target_name=branch.name,
+            target_name=nazwa_elementu(
+                branch,
+                "transformers" if isinstance(branch, TransformerBranch) else "branches",
+            ),
             observed_value=loading_pct,
             unit="%",
             limit_warn=config.loading_warn_pct,
@@ -223,7 +230,7 @@ class EnergyValidationBuilder:
                     EnergyValidationItem(
                         check_type=EnergyCheckType.VOLTAGE_DEVIATION,
                         target_id=node_id,
-                        target_name=node.name,
+                        target_name=nazwa_elementu(node, "buses"),
                         observed_value=None,
                         unit="%",
                         limit_warn=config.voltage_warn_pct,
@@ -249,7 +256,7 @@ class EnergyValidationBuilder:
                 EnergyValidationItem(
                     check_type=EnergyCheckType.VOLTAGE_DEVIATION,
                     target_id=node_id,
-                    target_name=node.name,
+                    target_name=nazwa_elementu(node, "buses"),
                     observed_value=delta_pct,
                     unit="%",
                     limit_warn=config.voltage_warn_pct,

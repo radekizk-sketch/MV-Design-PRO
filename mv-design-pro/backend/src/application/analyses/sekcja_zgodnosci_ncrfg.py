@@ -87,6 +87,12 @@ def wiersze_dowodu(
     return [PozycjaBloku(etykieta_pl=POZYCJA_DOWOD_CERTYFIKATU, tresc_pl=BRAK_CERTYFIKATU_PL)]
 
 
+def _nazwa_modulu(der_name: str | None) -> str:
+    """Nazwa źródła DER w dokumencie: nazwa z modelu albo opis rodzaju — identyfikator
+    modułu (`der_ref`) nie jest nazwą pokazywaną projektantowi (karta #144)."""
+    return der_name.strip() if der_name and der_name.strip() else "Źródło DER bez nazwy"
+
+
 def _wiersze_modulu(
     modul: NcRfgPtpireeModuleResult, odrzucony: NcRfgCertyfikatOdrzucony | None
 ) -> list[PozycjaBloku]:
@@ -94,7 +100,7 @@ def _wiersze_modulu(
         PozycjaBloku(
             etykieta_pl=POZYCJA_MODUL,
             tresc_pl=(
-                f"{modul.der_name or modul.der_ref} (element {modul.der_ref}); operator: "
+                f"{_nazwa_modulu(modul.der_name)}; operator: "
                 f"{modul.operator_name_pl}; moc maksymalna {format_liczba(modul.p_max_kw)} kW; "
                 f"napięcie przyłączenia {format_liczba(modul.voltage_kv)} kV"
             ),
@@ -121,7 +127,7 @@ def sekcja_modulu(
         raise ValueError(f"Wynik modułu {modul.der_ref} i ocena {ocena.der_ref} rozjechane.")
     return {
         "der_ref": modul.der_ref,
-        "der_name": modul.der_name,
+        "der_name": _nazwa_modulu(modul.der_name),
         "operator_pl": modul.operator_name_pl,
         "p_max_kw": modul.p_max_kw,
         "voltage_kv": modul.voltage_kv,
@@ -160,7 +166,7 @@ def sekcje_modulow(zgodnosc: NcRfgCaseComplianceResponse) -> list[dict[str, Any]
 
 def opis_pominietego(pominiety: NcRfgDerPominiety) -> str:
     """Źródło modelu nieobjęte oceną — nazwa i powód (stan zerowy per urządzenie)."""
-    return f"{pominiety.der_name or pominiety.der_ref} (element {pominiety.der_ref}): {pominiety.powod_pl}"
+    return f"{_nazwa_modulu(pominiety.der_name)}: {pominiety.powod_pl}"
 
 
 def wiersze_sekcji(sekcja: dict[str, Any]) -> list[tuple[str, str, int]]:
@@ -190,7 +196,7 @@ def dopisz_sekcje_docx(doc: Any, sekcje: list[dict[str, Any]], *, poziom_naglowk
 
     for sekcja in sekcje:
         doc.add_heading(
-            f"{TYTUL_SEKCJI_MODULU}: {sekcja['der_name'] or sekcja['der_ref']}",
+            f"{TYTUL_SEKCJI_MODULU}: {sekcja['der_name']}",
             level=poziom_naglowka,
         )
         for etykieta, tresc, poziom in wiersze_sekcji(sekcja):

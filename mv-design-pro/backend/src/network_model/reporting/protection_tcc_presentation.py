@@ -36,6 +36,33 @@ _ETYKIETA_OGOLNA_PL = "Brak charakterystyki"
 NIE_DOTYCZY = "—"
 
 
+#: Urządzenie wyniku bez nazwy — opis braku, nigdy identyfikator (karta #144).
+URZADZENIE_BEZ_NAZWY = "Urządzenie bez nazwy"
+#: Sprawdzenie wskazuje urządzenie, którego lista urządzeń wyniku nie zawiera.
+URZADZENIE_SPOZA_WYNIKU = "Urządzenie spoza wyniku"
+
+
+def nazwy_urzadzen(result: dict[str, Any]) -> dict[str, str]:
+    """Nazwa każdego urządzenia wyniku koordynacji po jego identyfikatorze.
+
+    Tabele sprawdzeń raportu (czułość, selektywność, przeciążalność) nazywały urządzenie
+    FRAGMENTEM identyfikatora (`device_id[:8] + "..."`) — projektant nie mógł go odnaleźć
+    w modelu. Nazwa pochodzi z listy urządzeń tego samego wyniku (`result["devices"]`).
+    """
+    nazwy: dict[str, str] = {}
+    for urzadzenie in result.get("devices", []) or []:
+        if not isinstance(urzadzenie, dict) or urzadzenie.get("id") is None:
+            continue
+        nazwa = str(urzadzenie.get("name") or "").strip()
+        nazwy[str(urzadzenie["id"])] = nazwa or URZADZENIE_BEZ_NAZWY
+    return nazwy
+
+
+def nazwa_urzadzenia(nazwy: dict[str, str], device_id: object) -> str:
+    """Nazwa urządzenia sprawdzenia albo jawny brak — nigdy identyfikator."""
+    return nazwy.get(str(device_id), URZADZENIE_SPOZA_WYNIKU)
+
+
 def ma_podstawe_przekaznikowa(curve: dict[str, Any]) -> bool:
     """Czy pozycja niesie krzywa policzona ze wzoru przekaznikowego."""
     return str(curve.get("podstawa_kod", KOD_KRZYWA_PRZEKAZNIKOWA)) == KOD_KRZYWA_PRZEKAZNIKOWA

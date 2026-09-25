@@ -26,6 +26,8 @@ from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.protection_tcc_presentation import (
     etykieta_tms,
     etykieta_typu_krzywej_pl,
+    nazwa_urzadzenia,
+    nazwy_urzadzen,
     powod_braku_pl,
 )
 
@@ -258,6 +260,8 @@ def export_protection_coordination_to_pdf(
     y -= 3 * mm
 
     devices = result.get("devices", [])
+    # Tabele sprawdzeń nazywają urządzenie nazwą z listy urządzeń wyniku (karta #144).
+    nazwy = nazwy_urzadzen(result)
     if devices:
         # Sort by device name for deterministic order
         sorted_devices = sorted(devices, key=lambda d: d.get("name", d.get("id", "")))
@@ -317,7 +321,9 @@ def export_protection_coordination_to_pdf(
 
             draw_table_row(
                 [
-                    check.get("device_id", "—")[:8] + "...",
+                    textwrap.shorten(
+                        nazwa_urzadzenia(nazwy, check.get("device_id")), 20, placeholder="…"
+                    ),
                     _format_value(check.get("i_fault_min_a")),
                     _format_value(check.get("i_pickup_a")),
                     _format_value(check.get("margin_percent")),
@@ -360,8 +366,16 @@ def export_protection_coordination_to_pdf(
 
             draw_table_row(
                 [
-                    check.get("downstream_device_id", "—")[:8] + "...",
-                    check.get("upstream_device_id", "—")[:8] + "...",
+                    textwrap.shorten(
+                        nazwa_urzadzenia(nazwy, check.get("downstream_device_id")),
+                        20,
+                        placeholder="…",
+                    ),
+                    textwrap.shorten(
+                        nazwa_urzadzenia(nazwy, check.get("upstream_device_id")),
+                        20,
+                        placeholder="…",
+                    ),
                     _format_value(check.get("t_downstream_s")),
                     _format_value(check.get("t_upstream_s")),
                     _format_value(check.get("margin_s")),
@@ -406,7 +420,9 @@ def export_protection_coordination_to_pdf(
 
             draw_table_row(
                 [
-                    check.get("device_id", "—")[:8] + "...",
+                    textwrap.shorten(
+                        nazwa_urzadzenia(nazwy, check.get("device_id")), 20, placeholder="…"
+                    ),
                     _format_value(check.get("i_operating_a")),
                     _format_value(check.get("i_pickup_a")),
                     _format_value(check.get("margin_percent")),

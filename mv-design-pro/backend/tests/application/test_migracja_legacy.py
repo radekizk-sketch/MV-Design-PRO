@@ -104,7 +104,9 @@ def test_parametry_wprost_staja_sie_typami_projektu_z_proweniencja():
     [linia] = graf.katalog_projektu["line_types"]
     assert linia["params"]["rated_current_a"] == 315.0
     assert linia["params"]["voltage_rating_kv"] == 15.0  # z napięcia węzła, nazwane
-    assert "napięcia węzła 'n1'" in linia["params"]["verification_note"]
+    # Węzeł nazwany nazwą z modelu zastanego, nigdy kluczem rekordu bazy (karta #144).
+    assert "napięcia węzła 'GPZ'" in linia["params"]["verification_note"]
+    assert "'n1'" not in linia["params"]["verification_note"]
     assert linia["params"]["source_reference"] == "legacy:test:b1"
     assert linia["params"]["verification_status"] == "NIEWERYFIKOWANY"
     [trafo] = graf.katalog_projektu["transformer_types"]
@@ -119,7 +121,8 @@ def test_parametry_wprost_staja_sie_typami_projektu_z_proweniencja():
 def test_model_zastany_kompiluje_sie_do_enm_bez_blokad():
     model = EnergyNetworkModel.model_validate(kompiluj_graf(_graf()).enm)
     assert [b.name for b in model.buses] == ["GPZ", "Stacja", "Stacja nN"]
-    assert [b.name for b in model.branches] == ["b1"]
+    # Nazwa gałęzi z kolumny `name` modelu zastanego, nie klucz rekordu `b1` (karta #144).
+    assert [b.name for b in model.branches] == ["AFL-6 120"]
     assert [t.name for t in model.transformers] == ["T1"]
     assert [s.name for s in model.sources] == ["Z1"]
     assert [o.name for o in model.loads] == ["O1"]
@@ -195,3 +198,39 @@ def test_dane_min_i_u_set_przechodza_bez_zmian():
     [zrodlo] = graf.zrodla
     assert (zrodlo.sk3_mva, zrodlo.ik3_ka, zrodlo.sk3_min_mva) == (500.0, 19.2, 150.0)
     assert (zrodlo.ik3_min_ka, zrodlo.rx_ratio_min, zrodlo.u_set_pu) == (6.0, 0.2, 1.02)
+
+
+@pytest.mark.parametrize("linia_z_typem", [False, True], ids=["linia-wprost", "linia-z-typem"])
+def test_rekordy_zastane_bez_nazw_dostaja_opis_rodzaju_nigdy_klucz_rekordu(linia_z_typem):
+    """Karta #144: klucz rekordu bazy zastanej (`n1`, `b1`, `s1`) jest identyfikatorem
+    maszynowym — rekord bez nazwy dostaje polski opis rodzaju. Iloczyn: {węzeł, linia
+    wprost / z typem katalogowym, transformator, źródło, odbiór} × {bez nazwy}."""
+    wezly = [{**w, "name": None} for w in _wezly()]
+    linia = _linia(params={"type_ref": KABEL} if linia_z_typem else {})
+    linia.pop("name")
+    trafo = _trafo()
+    trafo["name"] = "  "
+    zrodlo = _zrodlo()
+    zrodlo["payload_jsonb"].pop("name")
+    odbior = _odbior()
+    odbior["payload_jsonb"]["name"] = ""
+    graf = graf_z_modelu_legacy(
+        nazwa="legacy",
+        wezly=wezly,
+        galezie=[linia, trafo],
+        zrodla=[zrodlo],
+        odbiory=[odbior],
+        proweniencja="legacy:test",
+    )
+    model = EnergyNetworkModel.model_validate(kompiluj_graf(graf).enm)
+    assert [b.name for b in model.buses] == ["Szyna bez nazwy"] * 3
+    assert [b.name for b in model.branches] == [
+        "Kabel bez nazwy" if linia_z_typem else "Linia napowietrzna bez nazwy"
+    ]
+    assert [t.name for t in model.transformers] == ["Transformator bez nazwy"]
+    assert [s.name for s in model.sources] == ["Źródło zasilania bez nazwy"]
+    assert [o.name for o in model.loads] == ["Odbiór bez nazwy"]
+    nazwy = [e.name for kol in (model.buses, model.branches, model.transformers) for e in kol]
+    nazwy += [model.sources[0].name, model.loads[0].name]
+    for klucz in ("n1", "n2", "n3", "b1", "b2", "s1", "l1"):
+        assert all(klucz not in nazwa for nazwa in nazwy), (klucz, nazwy)

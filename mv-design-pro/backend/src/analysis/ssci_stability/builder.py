@@ -14,6 +14,7 @@ do proweniencji — NIE importuje solvera.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from analysis.ssci_stability.models import (
@@ -55,6 +56,8 @@ class SsciStabilityBuilder:
         solver_payload: dict[str, Any],
         converter: Any | None = None,
         context: SsciStabilityContext | None = None,
+        *,
+        nazwy: Mapping[str, str],
     ) -> SsciStabilityView:
         """Buduje widok werdyktu z gotowego payloadu solvera.
 
@@ -63,8 +66,10 @@ class SsciStabilityBuilder:
             converter: karta przekształtnika (``ConverterType``) do proweniencji;
                 opcjonalna — przy braku werdykt nie nosi etykiety jakości.
             context: kontekst raportu (deterministyczny identyfikator).
+            nazwy: indeks ``ref_id -> nazwa`` modelu biegu (``enm.nazwy_elementow``) —
+                przedmiot oceny nazywa przekształtnik i szynę nazwami z modelu.
         """
-        verdict = self._build_verdict(solver_payload, converter)
+        verdict = self._build_verdict(solver_payload, converter, nazwy)
         analysis_id = compute_ssci_stability_id(context, self.gain_crossover_mag, verdict)
         return SsciStabilityView(
             analysis_id=analysis_id,
@@ -116,7 +121,7 @@ class SsciStabilityBuilder:
         )
 
     def _no_data_verdict(
-        self, solver_payload: dict[str, Any], converter: Any | None
+        self, solver_payload: dict[str, Any], converter: Any | None, nazwy: Mapping[str, str]
     ) -> SsciStabilityVerdict:
         missing = list(solver_payload.get("missing_fields") or ())
         # Brak tablic impedancji: ocena niewykonana z brakiem tablic i brakami danych
@@ -124,6 +129,7 @@ class SsciStabilityBuilder:
         ocena = ocena_ssci_niewykonana(
             converter_ref=solver_payload.get("converter_ref"),
             bus_ref=solver_payload.get("bus_ref"),
+            nazwy=nazwy,
             tablice_obecne=False,
             braki_danych=missing,
         )
@@ -151,15 +157,15 @@ class SsciStabilityBuilder:
         )
 
     def _build_verdict(
-        self, solver_payload: dict[str, Any], converter: Any | None
+        self, solver_payload: dict[str, Any], converter: Any | None, nazwy: Mapping[str, str]
     ) -> SsciStabilityVerdict:
         # Przepływ „brak danych”: solver zwrócił niekompletne dane.
         if solver_payload.get("status") == SOLVER_INCOMPLETE_STATUS:
-            return self._no_data_verdict(solver_payload, converter)
+            return self._no_data_verdict(solver_payload, converter, nazwy)
         rows = solver_payload.get("minor_loop_gain")
         if not rows:
             return self._no_data_verdict(
-                {**solver_payload, "status": SOLVER_INCOMPLETE_STATUS}, converter
+                {**solver_payload, "status": SOLVER_INCOMPLETE_STATUS}, converter, nazwy
             )
 
         provenance = self._build_provenance(converter)
@@ -186,6 +192,7 @@ class SsciStabilityBuilder:
         ocena = ocena_ssci_niewykonana(
             converter_ref=solver_payload.get("converter_ref"),
             bus_ref=solver_payload.get("bus_ref"),
+            nazwy=nazwy,
             tablice_obecne=True,
         )
 

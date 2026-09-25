@@ -55,6 +55,25 @@ def _find_transformer(graph: Any, branch_id: str) -> TransformerBranch:
     return branch
 
 
+#: Opisy braku nazwy w wywodzie badań OLTC — nazwa elementu z modelu (graf z mapowania ENM
+#: niesie ją zawsze), a gdy jej brak, polski opis rodzaju; nigdy identyfikator (karta #144).
+_TRANSFORMATOR_BEZ_NAZWY = "Transformator bez nazwy"
+_SZYNA_BEZ_NAZWY = "Szyna bez nazwy"
+
+
+def _nazwa_transformatora(trafo: TransformerBranch) -> str:
+    return trafo.name.strip() if trafo.name and trafo.name.strip() else _TRANSFORMATOR_BEZ_NAZWY
+
+
+def _nazwa_szyny(graph: Any, node_id: str | None) -> str | None:
+    """Nazwa szyny regulowanej z grafu; `None` = brak szyny regulowanej."""
+    if node_id is None:
+        return None
+    wezel = graph.nodes.get(node_id)
+    nazwa = getattr(wezel, "name", None)
+    return nazwa.strip() if isinstance(nazwa, str) and nazwa.strip() else _SZYNA_BEZ_NAZWY
+
+
 def _losses_mw(solution: Any, base_mva: float) -> float:
     losses = getattr(solution, "losses_total", 0.0 + 0.0j)
     return float(getattr(losses, "real", 0.0)) * base_mva
@@ -176,13 +195,15 @@ def sweep_tap_positions(
         branch_id=branch_id,
         controlled_bus_id=controlled,
         points=points,
-        wywod=_wywod_sweep(branch_id, controlled, du, n0, points),
+        wywod=_wywod_sweep(
+            _nazwa_transformatora(trafo), _nazwa_szyny(graph, controlled), du, n0, points
+        ),
     )
 
 
 def _wywod_sweep(
-    branch_id: str,
-    controlled: str | None,
+    nazwa_transformatora: str,
+    nazwa_szyny_regulowanej: str | None,
     du: float,
     n0: int,
     points: list[TapSweepPoint],
@@ -196,11 +217,12 @@ def _wywod_sweep(
     if points:
         zakres = (
             f"Zakres pozycji: n = {points[0].position}..{points[-1].position} "
-            f"(liczba punktow: {len(points)}); transformator {branch_id}, "
-            f"szyna regulowana: {controlled if controlled is not None else 'brak'}."
+            f"(liczba punktow: {len(points)}); transformator {nazwa_transformatora}, "
+            "szyna regulowana: "
+            f"{nazwa_szyny_regulowanej if nazwa_szyny_regulowanej is not None else 'brak'}."
         )
     else:
-        zakres = f"Zakres pozycji: pusty; transformator {branch_id}."
+        zakres = f"Zakres pozycji: pusty; transformator {nazwa_transformatora}."
     kroki = [
         _krok(
             "Badanie: przeglad pozycji zaczepow (sweep) — rozplyw liczony solverem "
@@ -428,7 +450,14 @@ def run_annual_oltc_profile(
         steps=steps,
         total_switch_count=total_switches,
         steps_outside_deadband=outside,
-        wywod=_wywod_profilu(steps, total_switches, outside, nastawy, kody),
+        wywod=_wywod_profilu(
+            steps,
+            total_switches,
+            outside,
+            nastawy,
+            kody,
+            {reg.id: _nazwa_transformatora(reg) for reg in regulators},
+        ),
         readiness_codes=kody,
     )
 
@@ -439,6 +468,7 @@ def _wywod_profilu(
     outside: int | None,
     nastawy: dict[str, tuple[float | None, float | None]],
     kody: tuple[str, ...],
+    nazwy_transformatorow: dict[str, str],
 ) -> list[dict[str, Any]]:
     """Wywod dyplomowy profilu rocznego: skalowanie -> warunek pasma -> suma.
 
@@ -472,7 +502,8 @@ def _wywod_profilu(
             setpoint, deadband = nastawy.get(reg_id, (None, None))
             laczenia = "nieustalone" if step.switch_count is None else str(step.switch_count)
             tekst = (
-                f"Krok '{step.label}' (s = {step.load_scale:.2f}), transformator {reg_id}: "
+                f"Krok '{step.label}' (s = {step.load_scale:.2f}), "
+                f"transformator {nazwy_transformatorow[reg_id]}: "
                 f"pozycja koncowa n = {pos}, przelaczenia w kroku = {laczenia}."
             )
             latex: str | None = None

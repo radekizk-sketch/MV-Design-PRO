@@ -96,6 +96,7 @@ from typing import Any, Literal, get_args
 from catalog.profiles.nc_rfg import NcRfgProfile, TypModulu, load_nc_rfg_profile
 from enm.deklaracje_modulu import POLA_DEKLARACJI, DeklaracjeModulu
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel, Generator
+from enm.nazwy_elementow import nazwa_elementu
 from network_model.catalog.mv_ptpiree_catalog import get_all_ptpiree_generator_certificates
 from network_model.pochodne import mw_na_kw, udzial_mocy_biernej_pu
 from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeModuleInput
@@ -280,11 +281,14 @@ def weryfikacja_certyfikatu(
             der_ref=der_ref,
             rekord_ref=referencja,
             powod_pl=(
-                f"referencja rekordu wykazu „{referencja}” z tabliczki nie istnieje w rejestrze "
+                "referencja rekordu wykazu z tabliczki nie istnieje w rejestrze "
                 f"{profile.wipwc.rejestr.plik} — brak dowodu certyfikatu"
             ),
         )
     parametry = _slownik(rekord.get("params"))
+    # Rekord wykazu nazywa jego nazwa z rejestru (producent, rodzaj, typ), nie klucz rekordu —
+    # klucz zostaje w `rekord_ref` odmowy (karta #144).
+    nazwa_rekordu = str(rekord.get("name") or "").strip() or "rekord wykazu bez nazwy"
     rozjazdy = [
         f"{nazwa}: tabliczka „{tabliczka[pole_tabliczki]}”, rejestr „{parametry.get(pole_rekordu)}”"
         for pole_tabliczki, pole_rekordu, nazwa in _POLA_SPOJNOSCI
@@ -296,7 +300,7 @@ def weryfikacja_certyfikatu(
             der_ref=der_ref,
             rekord_ref=referencja,
             powod_pl=(
-                f"tabliczka urządzenia przeczy rekordowi wykazu „{referencja}” ("
+                f"tabliczka urządzenia przeczy rekordowi wykazu „{nazwa_rekordu}” ("
                 + "; ".join(rozjazdy)
                 + ") — brak dowodu certyfikatu"
             ),
@@ -316,7 +320,7 @@ def weryfikacja_certyfikatu(
             der_ref=der_ref,
             rekord_ref=referencja,
             powod_pl=(
-                f"rekord wykazu „{referencja}” bez pól: {', '.join(niepelny)} — brak dowodu "
+                f"rekord wykazu „{nazwa_rekordu}” bez pól: {', '.join(niepelny)} — brak dowodu "
                 "certyfikatu"
             ),
         )
@@ -326,7 +330,7 @@ def weryfikacja_certyfikatu(
             der_ref=der_ref,
             rekord_ref=referencja,
             powod_pl=(
-                f"zakres typów rekordu wykazu „{referencja}” zawiera oznaczenia spoza typów "
+                f"zakres typów rekordu wykazu „{nazwa_rekordu}” zawiera oznaczenia spoza typów "
                 f"modułów A–D ({', '.join(nieznane)}) — brak dowodu certyfikatu"
             ),
         )
@@ -337,7 +341,7 @@ def weryfikacja_certyfikatu(
             der_ref=der_ref,
             rekord_ref=referencja,
             powod_pl=(
-                f"wersja wykazu rekordu „{referencja}” (WiPWC {wersja or 'nieznana'}) spoza "
+                f"wersja wykazu rekordu „{nazwa_rekordu}” (WiPWC {wersja or 'nieznana'}) spoza "
                 "wersji warstwy WiPWC profilu — brak dowodu certyfikatu"
             ),
         )
@@ -402,7 +406,7 @@ def build_ncrfg_module_input_from_generator(
 
     return NcRfgPtpireeModuleInput(
         der_ref=generator.ref_id,
-        der_name=generator.name,
+        der_name=nazwa_elementu(generator, "generators"),
         der_kind=_DER_KIND_Z_GEN_TYPE.get(generator.gen_type or "", "OTHER"),
         module_family="PPM",
         operator_id=operator_id,
@@ -522,7 +526,7 @@ def build_ncrfg_module_inputs_from_enm(
         pominiete.append(
             NcRfgDerPominiety(
                 der_ref=generator.ref_id,
-                der_name=generator.name,
+                der_name=nazwa_elementu(generator, "generators"),
                 powod=powod,
                 powod_pl=_POWOD_POMINIECIA_PL[powod],
             )

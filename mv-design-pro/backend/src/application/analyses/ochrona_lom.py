@@ -44,6 +44,7 @@ from typing import Any
 
 from application.ocena_niewykonana import ocena_niewykonana, rekord_json
 from enm.models import Bay, EnergyNetworkModel, ProtectionAssignment, ProtectionSetting
+from enm.nazwy_elementow import nazwa_pola_ze_specyfikacji
 from werdykt import (
     ClaimKind,
     EvidenceTier,
@@ -560,7 +561,9 @@ _ROLE_POLA: frozenset[str] = frozenset(
 )
 
 
-def _pole_ze_specyfikacji(spec: dict[str, Any], substation_ref: str) -> Bay | None:
+def _pole_ze_specyfikacji(
+    spec: dict[str, Any], substation_ref: str, nazwy_elementow_pol: dict[object, object]
+) -> Bay | None:
     """Pole przyłączeniowe z kanonicznej specyfikacji stacji (`meta.field_specs`).
 
     Zwraca `None`, gdy specyfikacja nie niesie kompletu tożsamości pola
@@ -577,7 +580,9 @@ def _pole_ze_specyfikacji(spec: dict[str, Any], substation_ref: str) -> Bay | No
     meta = spec.get("meta")
     return Bay(
         ref_id=field_ref,
-        name=str(spec.get("name") or field_ref),
+        # Jedna reguła nazwy pola ze specyfikacji (operacje, read-model pola, LoM): nazwa
+        # specyfikacji, elementu pola `bay_ref` albo roli — nigdy identyfikator (karta #144).
+        name=nazwa_pola_ze_specyfikacji(spec, nazwy_elementow_pol),
         bay_role=bay_role,
         substation_ref=substation_ref,
         bus_ref=bus_ref,
@@ -610,13 +615,14 @@ def _pola_przylaczeniowe(enm: EnergyNetworkModel) -> list[Bay]:
     """
     pola: list[Bay] = list(enm.bays)
     znane: set[str] = {bay.ref_id for bay in pola}
+    nazwy_elementow_pol: dict[object, object] = {bay.ref_id: bay.name for bay in pola}
     for stacja in enm.substations:
         meta = stacja.meta if isinstance(stacja.meta, dict) else {}
         for klucz in _KLUCZE_SPECYFIKACJI_POL:
             for spec in meta.get(klucz) or []:
                 if not isinstance(spec, dict):
                     continue
-                pole = _pole_ze_specyfikacji(spec, stacja.ref_id)
+                pole = _pole_ze_specyfikacji(spec, stacja.ref_id, nazwy_elementow_pol)
                 if pole is None or pole.ref_id in znane:
                     continue
                 znane.add(pole.ref_id)

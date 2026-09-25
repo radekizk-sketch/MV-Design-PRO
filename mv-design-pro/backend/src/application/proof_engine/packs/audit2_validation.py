@@ -61,6 +61,7 @@ class Audit2ProofResult:
 def generate_bess_modes_proof(
     *,
     der_id: str,
+    der_nazwa: str,
     pcs_four_quadrant: bool,
     pcs_grid_forming: bool,
     nc_rfg_module: str,  # "A" | "B" | "C" | "D"
@@ -74,6 +75,9 @@ def generate_bess_modes_proof(
     Naprawa eng.10:
       - Sprawdza ze PCS obsluguje wymagane tryby (4Q, grid-forming).
       - Sprawdza ze tryby wymagane dla danego modulu NC RfG sa wybrane.
+
+    ``der_nazwa`` — nazwa zrodla z modelu do tekstow dowodu; ``der_id`` zostaje
+    wylacznie w ``details`` (karta #144: tekst nigdy z identyfikatora).
     """
     proof_id = proof_id or uuid4()
     issues: list[str] = []
@@ -87,11 +91,13 @@ def generate_bess_modes_proof(
         # PCS capability check.
         if mode.requires_four_quadrant and not pcs_four_quadrant:
             issues.append(
-                f"Tryb '{mode.label_pl}' wymaga PCS 4-quadrant (PCS DER {der_id} nie obsługuje)."
+                f"Tryb '{mode.label_pl}' wymaga PCS 4-quadrant "
+                f"(PCS DER {der_nazwa} nie obsługuje)."
             )
         if mode.requires_grid_forming and not pcs_grid_forming:
             issues.append(
-                f"Tryb '{mode.label_pl}' wymaga PCS grid-forming (PCS DER {der_id} nie obsługuje)."
+                f"Tryb '{mode.label_pl}' wymaga PCS grid-forming "
+                f"(PCS DER {der_nazwa} nie obsługuje)."
             )
         selected_modes.append(mode.to_dict())
 
@@ -107,9 +113,9 @@ def generate_bess_modes_proof(
 
     pass_status = len(issues) == 0
     summary = (
-        f"OK: DER {der_id} ma {len(selected_modes)} trybów zgodnych ze zdolnościami PCS."
+        f"OK: DER {der_nazwa} ma {len(selected_modes)} trybów zgodnych ze zdolnościami PCS."
         if pass_status
-        else f"BLOKER: DER {der_id} — {len(issues)} problemów z trybami BESS."
+        else f"BLOKER: DER {der_nazwa} — {len(issues)} problemów z trybami BESS."
     )
 
     return Audit2ProofResult(
@@ -141,6 +147,7 @@ def generate_bess_modes_proof(
 def generate_tap_changer_plan_proof(
     *,
     transformer_id: str,
+    transformer_nazwa: str,
     transformer_type: str,  # "transformer_110_15" | "transformer_15_04" | etc.
     tap_changer_ref: str,
     requires_avr: bool,
@@ -153,6 +160,9 @@ def generate_tap_changer_plan_proof(
     Naprawa eng.13:
       - Sprawdza ze tap-changer pasuje do typu transformatora.
       - Sprawdza ze AVR jest dostepny gdy wymagany.
+
+    ``transformer_nazwa`` — nazwa transformatora z modelu do tekstow dowodu;
+    ``transformer_id`` zostaje wylacznie w ``details`` (karta #144).
     """
     proof_id = proof_id or uuid4()
     tc = get_tap_changer(tap_changer_ref)
@@ -174,9 +184,9 @@ def generate_tap_changer_plan_proof(
 
     pass_status = len(issues) == 0
     summary = (
-        f"OK: Tap-changer dla transformatora {transformer_id} jest zgodny z wymaganiami."
+        f"OK: Tap-changer dla transformatora {transformer_nazwa} jest zgodny z wymaganiami."
         if pass_status
-        else f"BLOKER: {len(issues)} problemów z planem zaczepów dla {transformer_id}."
+        else f"BLOKER: {len(issues)} problemów z planem zaczepów dla {transformer_nazwa}."
     )
 
     return Audit2ProofResult(

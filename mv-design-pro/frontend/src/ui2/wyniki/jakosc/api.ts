@@ -294,6 +294,8 @@ export interface KrokMigotania {
  */
 export interface ModulMigotania {
   readonly gen_ref: string;
+  /** Nazwa modułu z modelu albo opis rodzaju — to widzi projektant (nigdy `gen_ref`). */
+  readonly gen_name: string;
   readonly sn_mva: number | null;
   readonly flicker_c: number | null;
   readonly pst_i: number | null;
@@ -305,6 +307,8 @@ export interface ModulMigotania {
 /** Ocena migotania i szybkiej zmiany napięcia w pojedynczym węźle przyłączenia. */
 export interface WezelMigotania {
   readonly bus_ref: string;
+  /** Nazwa węzła przyłączenia z modelu albo opis rodzaju (nigdy `bus_ref`). */
+  readonly bus_name: string;
   readonly nominal_kv: number | null;
   readonly sk_mva: number | null;
   readonly modules: readonly ModulMigotania[];
@@ -388,6 +392,8 @@ export interface KrokArcFlash {
 /** Wynik Arc Flash dla jednego punktu (szyny/rozdzielnicy). */
 export interface WynikArcFlash {
   readonly bus_ref: string;
+  /** Nazwa szyny z modelu albo opis rodzaju (nigdy identyfikator węzła `bus_ref`). */
+  readonly bus_name: string;
   /** Kod statusu (COMPUTED_IEEE_1584_OPEN_SOURCE / INCOMPLETE_INPUT / …). */
   readonly status: string;
   /** Gotowa polska etykieta statusu wprost z backendu. */

@@ -159,7 +159,12 @@ def test_nastawy_json_parytet_z_pakietem_zip(client: TestClient) -> None:
     import zipfile
 
     _, zawartosc = zbuduj_pakiet_nastaw(
-        run, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+        run,
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.0,
+        zacisk_zabezpieczenia="od",
+        nazwa_przypadku="Przypadek bazowy — szczyt zimowy",
     )
     with zipfile.ZipFile(io.BytesIO(zawartosc)) as zf:
         dowod = json.loads(zf.read("proof_pack/proof.json"))

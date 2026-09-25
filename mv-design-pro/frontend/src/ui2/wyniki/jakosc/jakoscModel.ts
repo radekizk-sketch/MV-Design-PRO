@@ -311,7 +311,9 @@ export function naZalozeniaWalidacji(config: WalidacjaConfig): WierszZalozenia[]
 // Sekcja 3 — Migotanie i szybkie zmiany napięcia (P37)
 // ---------------------------------------------------------------------------
 
-export const KLUCZ_WIERSZA_MIGOTANIE = 'wezel';
+/** Klucz wiersza = identyfikator węzła (unikalny, wiąże wybór); kolumna „Węzeł" pokazuje
+ * nazwę z modelu (karta #144), identyfikator — kolumna trybu eksperckiego. */
+export const KLUCZ_WIERSZA_MIGOTANIE = 'identyfikator';
 
 export const KOLUMNY_MIGOTANIE: DefinicjaKolumny[] = [
   { klucz: 'wezel', etykieta: JAKOSC_STRINGS.kolWezelMig, wyrownanie: 'lewo' },
@@ -320,6 +322,13 @@ export const KOLUMNY_MIGOTANIE: DefinicjaKolumny[] = [
   { klucz: 'plt', etykieta: JAKOSC_STRINGS.kolPlt, mono: true },
   { klucz: 'd', etykieta: JAKOSC_STRINGS.kolDpercent, jednostka: JAKOSC_STRINGS.jednProcent, mono: true },
   { klucz: 'werdykt', etykieta: JAKOSC_STRINGS.kolWerdyktMig, wyrownanie: 'lewo', sortowalna: false },
+  {
+    klucz: KLUCZ_WIERSZA_MIGOTANIE,
+    etykieta: JAKOSC_STRINGS.kolIdentyfikatorWezla,
+    mono: true,
+    wyrownanie: 'lewo',
+    tylkoEkspercki: true,
+  },
 ];
 
 /** Adapter: węzeł migotania → wiersz tabeli wzorca (limity/werdykt z backendu).
@@ -328,7 +337,7 @@ export const KOLUMNY_MIGOTANIE: DefinicjaKolumny[] = [
  * ekranu (`SladMigotania`), nie zakładka dowodu przebiegu (bez ref). */
 export function mapujWierszMigotania(wezel: WezelMigotania): WierszTabeli {
   return {
-    wezel: { wartosc: wezel.bus_ref },
+    wezel: { wartosc: wezel.bus_name },
     sk: komorkaLiczba(wezel.sk_mva, fmtMva, { dowodRef: wezel.bus_ref }),
     pst: komorkaLiczba(wezel.pst, fmtPst, {
       ostrzezenie: wezel.pst !== null && wezel.pst > wezel.pst_limit,
@@ -338,6 +347,7 @@ export function mapujWierszMigotania(wezel: WezelMigotania): WierszTabeli {
     }),
     d: komorkaLiczba(wezel.d_percent, fmtProcent),
     werdykt: { wartosc: wezel.verdict_pl },
+    [KLUCZ_WIERSZA_MIGOTANIE]: { wartosc: wezel.bus_ref },
   };
 }
 
@@ -368,7 +378,9 @@ export function naZalozeniaMigotania(config: KonfiguracjaMigotania): WierszZaloz
 // Sekcja 4 — Arc Flash (IEEE 1584-2018), audyt V12K-059 poz. A
 // ---------------------------------------------------------------------------
 
-export const KLUCZ_WIERSZA_ARC_FLASH = 'punkt';
+/** Klucz wiersza = identyfikator węzła (unikalny, wiąże wybór); kolumna „Punkt (szyna)"
+ * pokazuje nazwę z modelu (karta #144), identyfikator — kolumna trybu eksperckiego. */
+export const KLUCZ_WIERSZA_ARC_FLASH = 'identyfikator';
 
 export const KOLUMNY_ARC_FLASH: DefinicjaKolumny[] = [
   { klucz: 'punkt', etykieta: JAKOSC_STRINGS.kolWezelAf, wyrownanie: 'lewo' },
@@ -387,6 +399,13 @@ export const KOLUMNY_ARC_FLASH: DefinicjaKolumny[] = [
   },
   { klucz: 'ppe', etykieta: JAKOSC_STRINGS.kolPpe, wyrownanie: 'lewo', sortowalna: false },
   { klucz: 'status', etykieta: JAKOSC_STRINGS.kolStatusAf, wyrownanie: 'lewo', sortowalna: false },
+  {
+    klucz: KLUCZ_WIERSZA_ARC_FLASH,
+    etykieta: JAKOSC_STRINGS.kolIdentyfikatorWezla,
+    mono: true,
+    wyrownanie: 'lewo',
+    tylkoEkspercki: true,
+  },
 ];
 
 /** Adapter: wynik Arc Flash → wiersz tabeli wzorca (wartości WYŁĄCZNIE z backendu).
@@ -395,12 +414,13 @@ export const KOLUMNY_ARC_FLASH: DefinicjaKolumny[] = [
  * buildera IEEE 1584 — ich ślad WHITE BOX renderuje sekcja ekranu (bez ref). */
 export function mapujWierszArcFlash(wynik: WynikArcFlash): WierszTabeli {
   return {
-    punkt: { wartosc: wynik.bus_ref },
+    punkt: { wartosc: wynik.bus_name },
     ibf: komorkaLiczba(wynik.i_bf_ka, fmtKA, { dowodRef: wynik.bus_ref }),
     energia: komorkaLiczba(wynik.incident_energy_cal_cm2, fmtCal),
     granica: komorkaLiczba(wynik.arc_flash_boundary_mm, fmtMm),
     ppe: { wartosc: wynik.ppe_category ?? JAKOSC_STRINGS.kreska },
     status: { wartosc: wynik.status_label_pl },
+    [KLUCZ_WIERSZA_ARC_FLASH]: { wartosc: wynik.bus_ref },
   };
 }
 

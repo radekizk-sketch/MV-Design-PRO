@@ -35,6 +35,7 @@ from typing import Any
 from application.analyses.v126_katalog import karta_analizy, nazwa_parametru_pl
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 from solver_input.v126_contracts import (
     V126AcademicInput,
@@ -451,12 +452,18 @@ def _warunki_harmoniczne(
             )
         )
     if pominiete and model.harmonic_sources:
+        # Opis nazywa generatory nazwami z modelu; identyfikatory zostają w `elementy`
+        # (karta #144).
+        nazwy = zbuduj_indeks_nazw(enm)
         warunki.append(
             Warunek(
                 kod="zrodla.pominiete",
                 opis_pl=(
                     "Część przekształtników pominięta w wejściu (brak karty albo widma): "
-                    + ", ".join(f"{p['ref']} ({p['kod']})" for p in pominiete)
+                    + ", ".join(
+                        f"{nazwa_po_identyfikatorze(p['ref'], indeks=nazwy)} ({p['kod']})"
+                        for p in pominiete
+                    )
                 ),
                 spelniony=False,
                 elementy=tuple(p["ref"] for p in pominiete),
@@ -508,7 +515,10 @@ def _warunki_ssci(
         warunki.append(
             Warunek(
                 kod="parametr.ssci_converter_ref",
-                opis_pl=f"Wskazany przekształtnik „{ref}” nie występuje w modelu",
+                # Parametr wskazuje przekształtnik, którego model nie zna — nazwy nie ma skąd
+                # wziąć, a identyfikator nie jest nazwą (karta #144); pole parametru niesie
+                # `klucz_parametru`.
+                opis_pl="Wskazany w parametrach przekształtnik nie występuje w modelu",
                 spelniony=False,
                 klucz_parametru="ssci_converter_ref",
             )
@@ -793,11 +803,13 @@ def _warunki_silnikow(parametry: dict[str, Any]) -> list[Warunek]:
             # projektant nie podał. Pozycja listy jest ETYKIETĄ WYŁĄCZNIE gdy
             # `ref` jest naprawdę nieobecny, i mówi to wprost po polsku (bez
             # surowego klucza Pythona — `nazwa_parametru_pl`, jak niżej).
-            nazwa_ref_pl = nazwa_parametru_pl(V126AnalysisType.MOTOR_STARTING.value, "motors[].ref")
+            nazwa_pola_oznaczenia_pl = nazwa_parametru_pl(
+                V126AnalysisType.MOTOR_STARTING.value, "motors[].ref"
+            )
             etykieta = (
                 silnik.get("ref")
                 if _obecna(silnik.get("ref"))
-                else f"pozycja {indeks + 1} (brak pola „{nazwa_ref_pl}”)"
+                else f"pozycja {indeks + 1} (brak pola „{nazwa_pola_oznaczenia_pl}”)"
             )
             nazwy_brakujacych_pl = [
                 nazwa_parametru_pl(V126AnalysisType.MOTOR_STARTING.value, f"motors[].{k}")

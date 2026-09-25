@@ -167,7 +167,7 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(pustaOdpowiedzDomainOps('case-001')),
+        body: JSON.stringify(pustaOdpowiedzDomainOps()),
       });
       return;
     }

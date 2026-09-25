@@ -127,7 +127,7 @@
       },
       "siec": "promieniowa"
     },
-    "sha256": "c45a5898236712cf4a87e2abc625d0353e62c89dbb0412625576442a53d45b57"
+    "sha256": "8bfab35d1ab7a7a1aad3d83de5c8fc27333d068cae4ee73dcf2c6349d0db17b2"
   },
   "nastawy/promieniowa/ln1_bb_cmin1_0": {
     "parametry": {
@@ -140,7 +140,7 @@
       },
       "siec": "promieniowa"
     },
-    "sha256": "7cbb0c10e109d487011617e909208ccaa2462d72d5074887cde67528e27561f0"
+    "sha256": "13b31430a473ce43365116baba74569e2a719f9fa537e138591c269695c6bd68"
   },
   "nastawy/rozgalezienie/ln1_bb_cmin1_0": {
     "parametry": {
@@ -153,7 +153,7 @@
       },
       "siec": "rozgalezienie"
     },
-    "sha256": "31b79a1c52319f20c90b5c436171f69ca740dc45c50dec6bbeb352364807e028"
+    "sha256": "76dc76ad5be153c9ad0cbf8c46689b09ff0158cd2bff473406ad885ddd832deb"
   },
   "nastawy/rozgalezienie/ln1_bc_cmin1_0": {
     "parametry": {
@@ -166,7 +166,7 @@
       },
       "siec": "rozgalezienie"
     },
-    "sha256": "43659e4a1b5c5a9b84045380e395bab6e53d44bc642f59705bcc7c5c3a97da4e"
+    "sha256": "6af0790baa661f4a269bca0aecf8e2a111bc86abc5f88b341762b5bd95a80721"
   },
   "odpowiedz_osd/golden/cosfi": {
     "parametry": {

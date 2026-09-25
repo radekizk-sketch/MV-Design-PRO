@@ -40,6 +40,7 @@ from enm.deklaracje_modulu import (
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.nastawy_modulu import NastawyZabezpieczenModulu
+from enm.nazwy_elementow import nazwa_elementu
 from enm.store import blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
@@ -586,8 +587,11 @@ def _build_domain_payload(
         },
         "power_setpoint_mw": req.power_mw,
         "quantity": req.quantity,
-        "source_name": req.source_name or f"{req.der_kind} {req.station_ref}",
     }
+    # Nazwa źródła wyłącznie od projektanta; bez niej nazwę nadaje operacja domenowa
+    # (opis rodzaju, np. „Blok PV") — nigdy rodzaj DER z identyfikatorem stacji (karta #144).
+    if req.source_name:
+        payload["source_name"] = req.source_name
 
     if req.nc_rfg_module is not None:
         payload["nc_rfg_module"] = req.nc_rfg_module
@@ -820,7 +824,7 @@ def _fakty_pola_wytworcy(
     sciezka = sciezka_zwarcia or {}
     return FaktyPolaWytworcy(
         der_id=str(generator.get("ref_id") or ""),
-        der_nazwa=(str(generator.get("name")).strip() or None if generator.get("name") else None),
+        der_nazwa=nazwa_elementu(generator, "generators"),
         der_kind=rodzaj,  # type: ignore[arg-type]
         connection_side=strona,
         nominal_power_kw=(mw_na_kw(p_mw) if isinstance(p_mw, int | float) else None),
@@ -861,8 +865,10 @@ def _funkcje_urzadzenia(protection_ref: str | None) -> tuple[tuple[str, ...] | N
             if urzadzenie.model:
                 czesci_nazwy.append(str(urzadzenie.model))
             nazwa = " ".join(czesci_nazwy).strip()
-            return tuple(urzadzenie.functions_supported), nazwa or protection_ref
-    return None, protection_ref
+            # Nazwa urządzenia z katalogu (producent + model); identyfikator pozycji
+            # katalogu nie jest nazwą (karta #144).
+            return tuple(urzadzenie.functions_supported), nazwa or "urządzenie bez oznaczenia"
+    return None, "urządzenie spoza katalogu"
 
 
 @router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/protection-functions")

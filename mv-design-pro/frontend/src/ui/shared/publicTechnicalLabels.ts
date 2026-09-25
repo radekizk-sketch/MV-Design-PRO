@@ -42,14 +42,20 @@ export function stationPublicIdentity(
   return { code, typeLabel, displayName };
 }
 
+/**
+ * Nazwa odcinka, którą ekran zastępuje numerem porządkowym („Odcinek 01"): brak nazwy,
+ * nazwa ogólna („Odcinek", „Odcinek SN"), opis braku nadany przez backend („Odcinek bez
+ * nazwy", także połówka dzielonego odcinka „Odcinek bez nazwy (2)") i połówki przy
+ * punkcie rozgałęzienia. Dawne wzorce „Odcinek /segment" i „…/segment_L" zniknęły razem
+ * z przyczyną — backend nie nadaje już nazwy z identyfikatora (karta #144).
+ */
 export function isGenericSegmentName(value: string | null | undefined): boolean {
   if (!value) return true;
   const normalized = value.trim();
-  return /^odcinek\s+(?:\/?segment|sn)?$/i.test(normalized)
-    || /^odcinek\s+\/?segment(?:\b|[\s-])/i.test(normalized)
+  return /^odcinek(?:\s+sn)?$/i.test(normalized)
+    || /^odcinek\s+bez\s+nazwy(?:\s+\(\d+\))?$/i.test(normalized)
     || /\b(?:do\s+punktu|za\s+punktem)\s+rozga/i.test(normalized)
     || /^segment(?:_[a-z0-9]+)*$/i.test(normalized)
-    || /\/segment(?:_[lr])?$/i.test(normalized)
     || isRawTechnicalIdentifier(normalized);
 }
 

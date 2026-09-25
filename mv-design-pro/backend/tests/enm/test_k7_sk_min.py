@@ -354,9 +354,11 @@ def test_gotowosc_nazywa_brak_danych_min_bez_obnizania_statusu() -> None:
     raport = _check_short_circuit(_enm(15.0, sk3_mva=250.0, rx_ratio=0.1))
     assert raport.status == "ready"
     assert raport.recommended_action_pl is not None
+    # Źródło nazwane nazwą z modelu („Grid"), nie identyfikatorem „s1" (karta #144).
     assert (
         "source.sk_min_missing" in raport.recommended_action_pl
-        and "s1" in raport.recommended_action_pl
+        and "(Grid)" in raport.recommended_action_pl
+        and "s1" not in raport.recommended_action_pl
     )
     raport = _check_short_circuit(_enm(15.0, sk3_mva=250.0, rx_ratio=0.1, sk3_min_mva=150.0))
     assert raport.status == "ready" and raport.recommended_action_pl is None

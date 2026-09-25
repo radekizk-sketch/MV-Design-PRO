@@ -39,6 +39,8 @@ def _base_input() -> EquipmentProofInput:
         connection_node_id="BoundaryNode-1",
         device=device,
         required_fault_results=required,
+        project_name="Projekt testowy — sieć SN",
+        case_name="Przypadek bazowy",
     )
 
 
@@ -74,6 +76,8 @@ def test_equipment_proof_fail_missing_field():
             meta=device.meta,
         ),
         required_fault_results=proof_input.required_fault_results,
+        project_name="Projekt testowy — sieć SN",
+        case_name="Przypadek bazowy",
     )
     bundle = EquipmentProofGenerator.generate(proof_input)
     check = _find_check(bundle, "Icu")
@@ -94,6 +98,8 @@ def test_equipment_proof_idyn_uses_ip_proxy_when_missing_idyn():
         connection_node_id=proof_input.connection_node_id,
         device=proof_input.device,
         required_fault_results=required,
+        project_name="Projekt testowy — sieć SN",
+        case_name="Przypadek bazowy",
     )
     bundle = EquipmentProofGenerator.generate(proof_input)
     check = _find_check(bundle, "Idyn")
@@ -124,6 +130,8 @@ def _input_with_device(base: EquipmentProofInput, **device_over) -> EquipmentPro
         connection_node_id=base.connection_node_id,
         device=DeviceRating(**fields),
         required_fault_results=base.required_fault_results,
+        project_name="Projekt testowy — sieć SN",
+        case_name="Przypadek bazowy",
     )
 
 
@@ -287,3 +295,15 @@ def test_equipment_proof_pack_deterministic_zip():
 
     assert first_filename == second_filename
     assert first_pack == second_pack
+
+
+def test_naglowek_dowodu_nazywa_projekt_i_przypadek_nazwami_nie_identyfikatorami():
+    """Karta #144: nagłówek dowodu doboru aparatury niesie nazwy projektu i przypadku;
+    identyfikatory `project_id`/`case_id` zostają w danych wejścia (dawniej nagłówek
+    pokazywał „proj-1" i „case-1")."""
+    bundle = EquipmentProofGenerator.generate(_base_input())
+    naglowek = bundle.proof_document.header
+    assert naglowek.project_name == "Projekt testowy — sieć SN"
+    assert naglowek.case_name == "Przypadek bazowy"
+    assert "proj-1" not in naglowek.project_name + naglowek.case_name
+    assert "case-1" not in naglowek.project_name + naglowek.case_name

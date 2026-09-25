@@ -23,6 +23,7 @@ NOT SUPPORTED (P15b+):
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -34,6 +35,7 @@ from domain.protection_analysis import (
     TripState,
     compute_result_summary,
 )
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU
 from network_model.catalog.types import (
     ProtectionCurve,
     ProtectionDeviceType,
@@ -168,6 +170,14 @@ class ProtectionEvaluationInput:
     faults: tuple[FaultPoint, ...]
     snapshot_id: str | None = None
     overrides: dict[str, Any] = field(default_factory=dict)
+    #: Nazwy miejsc (element chroniony, punkt zwarcia) po identyfikatorze węzła grafu —
+    #: opisy kroków śladu nazywają miejsca nazwami z modelu, nigdy identyfikatorami
+    #: (karta #144). Dane prezentacji, nie wejście obliczenia: poza `to_dict`.
+    nazwy_lokalizacji: Mapping[str, str] = field(kw_only=True)
+
+    def nazwa_lokalizacji(self, identyfikator: str) -> str:
+        """Nazwa miejsca z modelu; identyfikator spoza indeksu to jawny brak."""
+        return self.nazwy_lokalizacji.get(identyfikator) or ELEMENT_SPOZA_MODELU
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -341,7 +351,7 @@ class ProtectionEvaluationEngine:
 
         for device in evaluation_input.devices:
             for fault in evaluation_input.faults:
-                evaluation, step = self._evaluate_single(device, fault)
+                evaluation, step = self._evaluate_single(device, fault, evaluation_input)
                 evaluations.append(evaluation)
                 trace_steps.append(step)
 
@@ -386,6 +396,7 @@ class ProtectionEvaluationEngine:
         self,
         device: ProtectionDevice,
         fault: FaultPoint,
+        evaluation_input: ProtectionEvaluationInput,
     ) -> tuple[ProtectionEvaluation, ProtectionTraceStep]:
         """
         Evaluate a single device against a single fault point.
@@ -403,6 +414,7 @@ class ProtectionEvaluationEngine:
                 device=device,
                 fault=fault,
                 notes_pl="Brak definicji krzywej (curve_kind is None)",
+                evaluation_input=evaluation_input,
             )
 
         if curve_kind not in self.SUPPORTED_CURVE_KINDS:
@@ -410,6 +422,7 @@ class ProtectionEvaluationEngine:
                 device=device,
                 fault=fault,
                 notes_pl=f"Nieobsługiwany typ krzywej: {curve_kind}",
+                evaluation_input=evaluation_input,
             )
 
         # Compute trip time based on curve type
@@ -473,7 +486,11 @@ class ProtectionEvaluationEngine:
 
         trace_step = ProtectionTraceStep(
             step="device_evaluation",
-            description_pl=f"Ocena urządzenia {device.device_id} dla zwarcia w {fault.fault_id}",
+            description_pl=(
+                "Ocena urządzenia zabezpieczeniowego — element chroniony: "
+                f"{evaluation_input.nazwa_lokalizacji(device.protected_element_ref)}, "
+                f"miejsce zwarcia: {evaluation_input.nazwa_lokalizacji(fault.fault_id)}"
+            ),
             inputs=trace_inputs,
             outputs={
                 "trip_state": trip_state.value,
@@ -530,6 +547,7 @@ class ProtectionEvaluationEngine:
         device: ProtectionDevice,
         fault: FaultPoint,
         notes_pl: str,
+        evaluation_input: ProtectionEvaluationInput,
     ) -> tuple[ProtectionEvaluation, ProtectionTraceStep]:
         """
         Create an INVALID evaluation with appropriate trace step.
@@ -551,7 +569,10 @@ class ProtectionEvaluationEngine:
 
         trace_step = ProtectionTraceStep(
             step="device_evaluation_invalid",
-            description_pl=f"Błąd oceny urządzenia {device.device_id}",
+            description_pl=(
+                "Błąd oceny urządzenia zabezpieczeniowego — element chroniony: "
+                f"{evaluation_input.nazwa_lokalizacji(device.protected_element_ref)}"
+            ),
             inputs={
                 "device_id": device.device_id,
                 "fault_id": fault.fault_id,

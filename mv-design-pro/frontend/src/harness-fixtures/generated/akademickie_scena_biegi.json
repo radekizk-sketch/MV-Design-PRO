@@ -468,8 +468,8 @@
           ],
           "przedmiot": {
             "element_ref": "pv/9d008ed355939bef762652554f56b2e4/converter",
-            "nazwa_pl": "Przekształtnik pv/9d008ed355939bef762652554f56b2e4/converter",
-            "opis_pl": "Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus"
+            "nazwa_pl": "Przekształtnik Farma PV",
+            "opis_pl": "Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny Szyna nN producenta Farma PV"
           },
           "slad": [],
           "status_maszynowy": "NIE_OCENIONO",
@@ -497,7 +497,7 @@
               "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
               "Zakres ważności: Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
             ],
-            "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik pv/9d008ed355939bef762652554f56b2e4/converter) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+            "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
           },
           "wynik": null,
           "zakres_waznosci": {
@@ -583,8 +583,8 @@
             ],
             "przedmiot": {
               "element_ref": "pv/9d008ed355939bef762652554f56b2e4/converter",
-              "nazwa_pl": "Przekształtnik pv/9d008ed355939bef762652554f56b2e4/converter",
-              "opis_pl": "Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus"
+              "nazwa_pl": "Przekształtnik Farma PV",
+              "opis_pl": "Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny Szyna nN producenta Farma PV"
             },
             "slad": [],
             "status_maszynowy": "NIE_OCENIONO",
@@ -612,7 +612,7 @@
                 "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
                 "Zakres ważności: Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
               ],
-              "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik pv/9d008ed355939bef762652554f56b2e4/converter) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+              "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
             },
             "wynik": null,
             "zakres_waznosci": {
@@ -675,7 +675,7 @@
               "unit_check_pl": "liczba całkowita; N ≥ 1 ⟺ okrążenie −1 ⟺ niestabilność."
             }
           ],
-          "why_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik pv/9d008ed355939bef762652554f56b2e4/converter) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar.",
+          "why_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar.",
           "worst_phase_margin_deg": 0.583,
           "worst_phase_margin_f_hz": 47.7044
         }
@@ -1237,8 +1237,8 @@
               ],
               "przedmiot": {
                 "element_ref": "pv/9d008ed355939bef762652554f56b2e4/converter",
-                "nazwa_pl": "Przekształtnik pv/9d008ed355939bef762652554f56b2e4/converter",
-                "opis_pl": "Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus"
+                "nazwa_pl": "Przekształtnik Farma PV",
+                "opis_pl": "Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny Szyna nN producenta Farma PV"
               },
               "slad": [],
               "status_maszynowy": "NIE_OCENIONO",
@@ -1266,7 +1266,7 @@
                   "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
                   "Zakres ważności: Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
                 ],
-                "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik pv/9d008ed355939bef762652554f56b2e4/converter) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+                "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
               },
               "wynik": null,
               "zakres_waznosci": {

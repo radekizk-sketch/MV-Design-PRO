@@ -40,6 +40,7 @@ from enm.models import (
     SwitchBranch,
     liczba_torow,
 )
+from enm.nazwy_elementow import nazwa_elementu
 from network_model.core.topologia import przeglad_wszerz, sciezka_do
 from network_model.solvers.fault_loop_builder import RouteSegmentImpedance
 
@@ -156,10 +157,9 @@ def route_segments(path: LvBusPath) -> list[RouteSegmentImpedance]:
                 or branch.return_conductor_x_ohm_per_km is None
             ):
                 raise RouteExtractionError(
-                    f"Kabel '{branch.ref_id}' ({branch.name or 'bez nazwy'}): brak danych "
-                    "żyły powrotnej PE/PEN (return_conductor_r_ohm_per_km_20c / "
-                    "return_conductor_x_ohm_per_km). Pętla zwarcia wymaga R I X żyły "
-                    "powrotnej z KABEL_NN — fail-closed, zero fabrykacji (§0.1 karty P0.6)."
+                    f"Kabel {nazwa_elementu(branch, 'branches')}: brak danych żyły powrotnej "
+                    "PE/PEN (rezystancji w 20 °C i reaktancji na kilometr) — pętla zwarcia "
+                    "wymaga obu wartości z typu kabla nN w katalogu; uzupełnij typ kabla."
                 )
             # Karta CI-A (2026-09-04): JEDYNA definicja tej reguly (KLASA NIE
             # INSTANCJA) — patrz `enm.models.liczba_torow` (ten sam wzorzec,
@@ -167,7 +167,7 @@ def route_segments(path: LvBusPath) -> list[RouteSegmentImpedance]:
             n_parallel = liczba_torow(branch)
             segments.append(
                 RouteSegmentImpedance(
-                    label=f"Kabel {branch.name or branch.ref_id}",
+                    label=f"Kabel {nazwa_elementu(branch, 'branches')}",
                     branch_ref=branch.ref_id,
                     phase_total_r_ohm=branch.r_ohm_per_km * branch.length_km,
                     phase_total_x_ohm=branch.x_ohm_per_km * branch.length_km,
@@ -183,7 +183,7 @@ def route_segments(path: LvBusPath) -> list[RouteSegmentImpedance]:
                 continue
             segments.append(
                 RouteSegmentImpedance(
-                    label=f"Łącznik {branch.name or branch.ref_id}",
+                    label=f"Łącznik {nazwa_elementu(branch, 'branches')}",
                     branch_ref=branch.ref_id,
                     phase_total_r_ohm=r_ohm,
                     phase_total_x_ohm=x_ohm,
@@ -196,11 +196,9 @@ def route_segments(path: LvBusPath) -> list[RouteSegmentImpedance]:
             continue
         elif isinstance(branch, OverheadLine):
             raise RouteExtractionError(
-                f"Linia napowietrzna nN '{branch.ref_id}' ({branch.name or 'bez nazwy'}): "
-                "model nie niesie danych żyły powrotnej PE/PEN dla linii napowietrznych "
-                "(poza zakresem karty P0.6 — P1 wg "
-                "docs/nn/C_PLAN_ROZSZERZENIA_MODELU_NN.md §1 „LINIA_NN w P1»). "
-                "Pętla zwarcia dla trasy z linią napowietrzną nie jest liczona."
+                f"Linia napowietrzna nN {nazwa_elementu(branch, 'branches')}: model sieci nie "
+                "niesie danych przewodu powrotnego PE/PEN linii napowietrznej nN, więc pętla "
+                "zwarcia dla trasy z tą linią nie jest liczona."
             )
         else:  # pragma: no cover - Odcinek wyczerpuje wszystkie typy gałęzi
             raise RouteExtractionError(

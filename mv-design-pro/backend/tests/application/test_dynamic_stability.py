@@ -21,6 +21,9 @@ from application.stability.dynamic_stability import (
     echo_scenariusza_stabilnosci,
 )
 
+#: Nazwy elementów migawki biegu (w ścieżce API indeks `enm.nazwy_elementow.zbuduj_indeks_nazw`).
+_NAZWY = {"src-main": "Generator synchroniczny G1", "line-01": "Linia B–C"}
+
 #: Pola dawnego werdyktu progowego — echo nie niesie żadnego z nich.
 _POLA_WERDYKTU = (
     "stable",
@@ -84,7 +87,7 @@ _DANE_NIESTABILNE = _scenario(
     "scenario", [_DANE_STABILNE, _DANE_NIESTABILNE], ids=["stabilne", "niestabilne"]
 )
 def test_echo_has_no_verdict_for_any_entered_values(scenario: FaultClearScenario) -> None:
-    echo = echo_scenariusza_stabilnosci(scenario).to_dict()
+    echo = echo_scenariusza_stabilnosci(scenario, nazwy=_NAZWY).to_dict()
 
     assert echo["status"] == "NIE_OCENIONO"
     assert echo["contract_version"] == WERSJA_KONTRAKTU_ECHA
@@ -112,14 +115,41 @@ def test_echo_has_no_verdict_for_any_entered_values(scenario: FaultClearScenario
 
 
 def test_echo_canonicalizes_clearing_elements() -> None:
-    echo = echo_scenariusza_stabilnosci(_DANE_STABILNE)
+    echo = echo_scenariusza_stabilnosci(_DANE_STABILNE, nazwy=_NAZWY)
     assert echo.cleared_by_element_ids == ("cb-a", "cb-b")
 
 
 def test_echo_is_deterministic() -> None:
-    first = echo_scenariusza_stabilnosci(_DANE_STABILNE).to_dict()
-    second = echo_scenariusza_stabilnosci(_DANE_STABILNE).to_dict()
+    first = echo_scenariusza_stabilnosci(_DANE_STABILNE, nazwy=_NAZWY).to_dict()
+    second = echo_scenariusza_stabilnosci(_DANE_STABILNE, nazwy=_NAZWY).to_dict()
     assert first == second
+
+
+@pytest.mark.parametrize(
+    ("nazwy", "nazwa_zrodla", "nazwa_elementu"),
+    [
+        (_NAZWY, "Generator synchroniczny G1", "Linia B–C"),
+        ({}, "spoza modelu", "spoza modelu"),
+    ],
+    ids=["elementy_w_modelu", "elementy_spoza_modelu"],
+)
+def test_przedmiot_oceny_nazywa_elementy_nazwami_z_modelu_nigdy_identyfikatorem(
+    nazwy: dict[str, str], nazwa_zrodla: str, nazwa_elementu: str
+) -> None:
+    """Karta #144: przedmiot rekordu („Źródło …", „… na elemencie …") niesie nazwy z migawki
+    biegu; identyfikator zostaje wyłącznie w `element_ref`. Element nieobecny w migawce to
+    jawny brak („spoza modelu"), nigdy jego identyfikator — w obu kombinacjach cech."""
+    przedmiot = echo_scenariusza_stabilnosci(_DANE_STABILNE, nazwy=nazwy).to_dict()["ocena"][
+        "przedmiot"
+    ]
+    assert przedmiot["element_ref"] == "src-main"
+    assert przedmiot["nazwa_pl"] == f"Źródło {nazwa_zrodla}"
+    assert przedmiot["opis_pl"] == (
+        f"Źródło w scenariuszu wyłączenia zwarcia na elemencie {nazwa_elementu}"
+    )
+    for identyfikator in ("src-main", "line-01"):
+        assert identyfikator not in przedmiot["nazwa_pl"]
+        assert identyfikator not in przedmiot["opis_pl"]
 
 
 def test_module_has_no_threshold_evaluator() -> None:

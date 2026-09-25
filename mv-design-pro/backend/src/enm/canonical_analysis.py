@@ -68,6 +68,16 @@ from enm.element_kind import rodzaj_elementu, zbuduj_indeks_rodzajow
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from enm.models import EnergyNetworkModel
+from enm.nazwy_elementow import (
+    ELEMENT_SPOZA_MODELU,
+    SPOZA_MODELU,
+    nazwa_elementu,
+    nazwa_po_identyfikatorze,
+    nazwy_wezlow_grafu,
+    opis_bez_nazwy,
+    opis_galezi_grafu_bez_nazwy,
+    zbuduj_indeks_nazw,
+)
 from enm.rozplyw_niesymetryczny_wynik import (
     json_bezpieczny,
     slad_iteracji,
@@ -1488,11 +1498,12 @@ def _execute_phase_state_sn(run: CanonicalRun) -> None:
         "dopuszczalnosc_raportowa": True,
         "reporting_limitations": [],
     }
+    nazwa_szyny_celu = nazwa_elementu(target_bus, "buses")
     run.white_box_trace = [
         {
             "step": 1,
             "key": "PHASE_STATE_INPUT",
-            "title": f"Stan fazowy SN: wejście {target_bus_ref}",
+            "title": f"Stan fazowy SN: wejście {nazwa_szyny_celu}",
             "target_id": target_bus_id,
             "element_id": target_bus_ref,
             "phase_state_target_ref": target_bus_ref,
@@ -1505,7 +1516,7 @@ def _execute_phase_state_sn(run: CanonicalRun) -> None:
         {
             "step": 2,
             "key": "PHASE_STATE_OUTPUT",
-            "title": f"Stan fazowy SN: wynik {target_bus_ref}",
+            "title": f"Stan fazowy SN: wynik {nazwa_szyny_celu}",
             "target_id": target_bus_id,
             "element_id": target_bus_ref,
             "phase_state_target_ref": target_bus_ref,
@@ -1633,7 +1644,7 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
             post_fault_frequency_pu=float(run.options["post_fault_frequency_pu"]),
         ),
     )
-    echo = echo_scenariusza_stabilnosci(scenario)
+    echo = echo_scenariusza_stabilnosci(scenario, nazwy=zbuduj_indeks_nazw(snapshot))
     ocena = echo.ocena
     topology_effect = build_post_fault_topology_effect(
         source_id=echo.source_id,
@@ -1938,7 +1949,11 @@ def _execute_v126(run: CanonicalRun) -> None:
     # (karta W3-E), ocena niewykonana dla jakości energii (liczby tylko w sekcji
     # audytowej) i SSCI (uczciwość natychmiastowa 2026-09-23). Solver FROZEN (B-01)
     # NIETKNIĘTY — odcisk `deterministic_hash` liczony przez solver przed granicą.
-    result = wynik_v126_dla_powierzchni(analysis_type.value, solver.run(analysis_type, model))
+    result = wynik_v126_dla_powierzchni(
+        analysis_type.value,
+        solver.run(analysis_type, model),
+        nazwy=zbuduj_indeks_nazw(run.snapshot),
+    )
     run_record: dict[str, Any] = {
         "run_id": str(run.id),
         "case_id": run.case_id,
@@ -2093,6 +2108,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
         faults=(fault,),
         snapshot_id=snapshot_id,
         overrides=overrides,
+        nazwy_lokalizacji=nazwy_wezlow_grafu(sc_run.raw_result),
     )
     result, trace = ProtectionEvaluationEngine().evaluate(evaluation_input)
 
@@ -2366,7 +2382,10 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
                     "element_type": node_context.get("element_type"),
                     "graph_role": node_context.get("graph_role"),
                     "title": step.get("title")
-                    or f"Zwarcie {short_circuit_type.value}: {node_id} / krok {step_index}",
+                    or (
+                        f"Zwarcie {short_circuit_type.value}: "
+                        f"{nazwa_elementu(graph.nodes[node_id], 'buses')} / krok {step_index}"
+                    ),
                 }
             )
         reportability = _short_circuit_reportability(
@@ -2842,7 +2861,7 @@ def _execute_power_flow(
         if study_result is not None:
             run.raw_result[study_result[0]] = study_result[1]
 
-    run.white_box_trace = _build_power_flow_trace_steps(solution)
+    run.white_box_trace = _build_power_flow_trace_steps(solution, graph)
     run.power_flow_trace = {
         "solver_version": f"load-flow-{solver_method}-v1",
         "solver_method": solver_method,
@@ -2912,6 +2931,7 @@ def _execute_power_flow_unbalanced(run: CanonicalRun) -> None:
     podstawienie, wynik; odbiory per faza; baza jednej fazy; iteracje BFS).
     """
     wejscie = zloz_wejscie_rozplywu_niesymetrycznego(run.snapshot or {}, run.options)
+    nazwy = zbuduj_indeks_nazw(run.snapshot or {})
     rozwiazania: list[tuple[WyspaRozplywuNiesymetrycznego, UnbalancedPowerFlowResult]] = []
     for wyspa in wejscie.wyspy:
         rozwiazania.append(
@@ -2997,7 +3017,11 @@ def _execute_power_flow_unbalanced(run: CanonicalRun) -> None:
                 "step": len(kroki) + 1,
                 "key": f"pf_unbalanced_iterations[{wpis['zrodlo_ref']}]",
                 "title": (
-                    f"Wyspa źródła {wpis['zrodlo_ref']}: iteracje BFS "
+                    "Wyspa źródła "
+                    + nazwa_po_identyfikatorze(
+                        wpis["zrodlo_ref"], indeks=nazwy, spoza_modelu=SPOZA_MODELU
+                    )
+                    + ": iteracje BFS "
                     f"({'zbieżny' if wpis['converged'] else 'niezbieżny'}, {wpis['iterations']})"
                 ),
                 "method_basis": "PF_UNBALANCED_BFS_V1",
@@ -3052,7 +3076,10 @@ def _wejscie_studium_oltc(wejscie: WejscieRozplywu, run_options: dict[str, Any])
 
 def _build_power_flow_trace_steps(
     solution: PowerFlowNewtonSolution,
+    graph: NetworkGraph,
 ) -> list[dict[str, Any]]:
+    """Kroki śladu rozpływu; szynę bilansującą wyspy nazywa nazwą węzła grafu (nazwa szyny
+    z modelu), nie identyfikatorem węzła (karta #144)."""
     steps: list[dict[str, Any]] = []
     solver_method = str(getattr(solution, "solver_method", "newton-raphson"))
     title_by_method = {
@@ -3078,11 +3105,22 @@ def _build_power_flow_trace_steps(
         )
     for index, iteration in enumerate(solution.nr_trace, start=len(steps) + 1):
         wyspa = iteration.get("slack_bus_id")
+        wezel_bilansujacy = graph.nodes.get(str(wyspa)) if wyspa else None
         steps.append(
             {
                 "step": index,
                 "title": f"Iteracja {title_method} {iteration.get('iter', index)}"
-                + (f" (wyspa szyny bilansującej {wyspa})" if wyspa else ""),
+                + (
+                    " (wyspa szyny bilansującej "
+                    + (
+                        nazwa_elementu(wezel_bilansujacy, "buses")
+                        if wezel_bilansujacy is not None
+                        else ELEMENT_SPOZA_MODELU
+                    )
+                    + ")"
+                    if wyspa
+                    else ""
+                ),
                 "phase": phase,
                 "inputs": {
                     "max_mismatch_pu": {
@@ -3348,7 +3386,7 @@ def build_bus_results(run: CanonicalRun) -> dict[str, Any]:
             {
                 "element_id": node.get("element_id") or bus_id,
                 "bus_id": bus_id,
-                "name": node.get("name", bus_id),
+                "name": node.get("name") or opis_bez_nazwy("buses"),
                 "un_kv": node.get("voltage_level"),
                 "u_kv": node_voltage_kv.get(bus_id),
                 "u_pu": item.get("v_pu"),
@@ -3457,7 +3495,7 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
             {
                 "element_id": branch.get("element_id") or branch_id,
                 "branch_id": branch_id,
-                "name": branch.get("name", branch_id),
+                "name": branch.get("name") or opis_galezi_grafu_bez_nazwy(branch),
                 "from_bus": branch.get("from_node_id", ""),
                 "to_bus": branch.get("to_node_id", ""),
                 "i_a": i_a,
@@ -3614,12 +3652,12 @@ def _sc_rozplyw_galeziowy(
                 # fizyki. Brak wpisu grafu (starszy zapis) → uczciwy fallback na klucz
                 # wewnętrzny (zachowanie sprzed naprawy, nie regresja pustego pola).
                 "branch_id": branch.get("element_id") or branch_key,
-                "branch_name": branch.get("name") or branch_key,
+                "branch_name": branch.get("name") or opis_galezi_grafu_bez_nazwy(branch),
                 "source_id": entry.get("source_id"),
                 "from_node_id": from_wpis.get("element_id") or from_key,
-                "from_node_name": from_wpis.get("name") or from_key,
+                "from_node_name": from_wpis.get("name") or opis_bez_nazwy("buses"),
                 "to_node_id": to_wpis.get("element_id") or to_key,
-                "to_node_name": to_wpis.get("name") or to_key,
+                "to_node_name": to_wpis.get("name") or opis_bez_nazwy("buses"),
                 "i_ka": i_ka,
                 "direction": (
                     "brak"
@@ -3657,7 +3695,7 @@ def build_short_circuit_results(
             {
                 "target_id": target_id,
                 "element_id": node.get("element_id") or target_id,
-                "target_name": node.get("name") or node.get("element_id") or target_id,
+                "target_name": node.get("name") or opis_bez_nazwy("buses"),
                 "ikss_ka": _amps_to_ka(item.get("ikss_a")),
                 "ip_ka": _amps_to_ka(item.get("ip_a")),
                 "ith_ka": _amps_to_ka(item.get("ith_a")),
@@ -4037,7 +4075,7 @@ def build_phase_state_results(run: CanonicalRun) -> dict[str, Any]:
         {
             "target_id": str(raw_result.get("target_id") or target_ref),
             "element_id": target_ref,
-            "target_name": target_ref,
+            "target_name": nazwa_po_identyfikatorze(target_ref, run.snapshot),
             "ua_kv": result.get("ua_kv"),
             "ub_kv": result.get("ub_kv"),
             "uc_kv": result.get("uc_kv"),
@@ -4081,6 +4119,9 @@ def build_dynamic_stability_results(run: CanonicalRun) -> dict[str, Any]:
     # `getattr`, bo widok jest wolany takze na atrapach biegu w testach kontraktu
     # (SimpleNamespace bez snapshotu) — brak snapshotu daje pusty indeks, czyli None.
     indeks_rodzajow = zbuduj_indeks_rodzajow(getattr(run, "snapshot", None))
+    # Karta #144: ta sama droga dla NAZW — wiersz niesie nazwę źródła i elementu objętego
+    # zwarciem z modelu biegu, identyfikatory zostają w `source_id`/`faulted_element_id`.
+    indeks_nazw = zbuduj_indeks_nazw(getattr(run, "snapshot", None))
     return {
         "run_id": str(run.id),
         "rows": [
@@ -4089,6 +4130,12 @@ def build_dynamic_stability_results(run: CanonicalRun) -> dict[str, Any]:
                 "source_kind": rodzaj_elementu(result.get("source_id"), indeks=indeks_rodzajow),
                 "faulted_element_kind": rodzaj_elementu(
                     result.get("faulted_element_id"), indeks=indeks_rodzajow
+                ),
+                "source_name": nazwa_po_identyfikatorze(
+                    result.get("source_id"), indeks=indeks_nazw
+                ),
+                "faulted_element_name": nazwa_po_identyfikatorze(
+                    result.get("faulted_element_id"), indeks=indeks_nazw
                 ),
                 "proof_ref": (run.raw_result or {}).get("proof_ref"),
                 "proof_status": (run.raw_result or {}).get("proof_status"),

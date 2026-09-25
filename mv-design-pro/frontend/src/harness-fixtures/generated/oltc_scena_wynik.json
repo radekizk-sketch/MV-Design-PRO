@@ -1,6 +1,6 @@
 {
   "analysis_type": "LOAD_FLOW",
-  "deterministic_signature": "1030a81839d4621e1b5cab24a0a0bc35a9070474a93e6dbc300f017d9ffbd981",
+  "deterministic_signature": "e1002fd5e4836ef0b8e07a4c05816ee8880a82890cd8e5fb4d9b2a3f54c9a86f",
   "element_results": [
     {
       "element_ref": "bus_hv",
@@ -554,7 +554,7 @@
         },
         {
           "latex": null,
-          "tekst": "Zakres pozycji: n = -9..9 (liczba punktow: 19); transformator 7bf296a0-8f1c-5c72-9760-6987d84d6a4a, szyna regulowana: 63203cbc-ac91-5100-a0ee-a275d24514ff."
+          "tekst": "Zakres pozycji: n = -9..9 (liczba punktow: 19); transformator TR 110/15, szyna regulowana: Szyna SN."
         },
         {
           "latex": "t(n) = 1 + \\frac{(n - n_{0}) \\cdot \\Delta u}{100}",

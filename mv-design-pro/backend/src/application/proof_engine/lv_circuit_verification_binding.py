@@ -73,6 +73,7 @@ from application.proof_engine.packs.lv_circuit_verification import (
     UrzadzenieOchronneNn,
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
 from network_model.pochodne import kv_na_v, napiecie_fazowe_v
 from network_model.solvers.cable_ampacity_derating import WspolczynnikiObciazalnosciNN
@@ -128,7 +129,7 @@ def resolve_urzadzenie_ochronne(
             UrzadzenieOchronneNn(
                 kind=KIND_MCB,
                 id=breaker.ref_id,
-                nazwa=breaker.name,
+                nazwa=nazwa_elementu(breaker, "branches"),
                 in_a=float(in_a),
                 klasa_mcb=str(klasa),
                 wlasna_zdolnosc_ka=(
@@ -155,7 +156,7 @@ def resolve_urzadzenie_ochronne(
             UrzadzenieOchronneNn(
                 kind=KIND_FUSE_SWITCH,
                 id=breaker.ref_id,
-                nazwa=breaker.name,
+                nazwa=nazwa_elementu(breaker, "branches"),
                 in_a=float(in_a),
                 conditional_sc_current_ka=conditional_ka,
             ),
@@ -172,7 +173,7 @@ def resolve_urzadzenie_ochronne(
                 UrzadzenieOchronneNn(
                     kind=KIND_FUSE_SWITCH,
                     id=breaker.ref_id,
-                    nazwa=breaker.name,
+                    nazwa=nazwa_elementu(breaker, "branches"),
                     in_a=float(in_a),
                     conditional_sc_current_ka=(
                         float(params["conditional_sc_current_ka"])
@@ -207,7 +208,7 @@ def resolve_urzadzenie_ochronne(
             UrzadzenieOchronneNn(
                 kind=KIND_MCCB,
                 id=breaker.ref_id,
-                nazwa=breaker.name,
+                nazwa=nazwa_elementu(breaker, "branches"),
                 in_a=float(in_a),
                 wlasna_zdolnosc_ka=(
                     float(params["i_cu_ka"]) if params.get("i_cu_ka") is not None else None
@@ -355,6 +356,7 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
     )
     swz = ocen_swz(ik1_min_a=petla.fault_loop.ik_min_a, u0_v=petla.u0_v, aparat=aparat_swz)
 
+    odcinek = _find_branch(enm, segment_ref)
     wejscie = LVCircuitVerificationInput(
         project_name=project_name,
         case_name=case_name,
@@ -364,6 +366,11 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
         bus_ref=bus_ref,
         breaker_ref=breaker_ref,
         segment_ref=segment_ref,
+        # Tytuł dowodu nazywa odcinek nazwą z modelu (karta #144); odcinek spoza modelu
+        # to jawny brak, nie jego identyfikator.
+        nazwa_odcinka=(
+            nazwa_elementu(odcinek, "branches") if odcinek is not None else ELEMENT_SPOZA_MODELU
+        ),
         p_mw=p_mw,
         q_mvar=q_mvar,
         u_ll_kv=u_ll_kv,

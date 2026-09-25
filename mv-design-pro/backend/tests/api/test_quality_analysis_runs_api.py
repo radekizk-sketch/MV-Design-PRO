@@ -329,6 +329,12 @@ def test_arc_flash_endpoint_returns_view_with_complete_inputs(app_client) -> Non
     # Przy kompletnych wejściach wynik nie jest „dane niekompletne (wejście)".
     statuses = {row["status"] for row in data["results"]}
     assert statuses != {"INCOMPLETE_INPUT"}
+    # Karta #144: każdy wiersz nazywa szynę nazwą z modelu (albo opisem rodzaju) — nigdy
+    # identyfikatorem węzła grafu, który zostaje w `bus_ref` do wiązania.
+    nazwy_modelu = {bus.name for bus in build_golden_enm().buses}
+    for row in data["results"]:
+        assert row["bus_name"] in nazwy_modelu | {"Szyna bez nazwy"}, row["bus_name"]
+        assert row["bus_ref"] not in row["bus_name"]
 
 
 def test_arc_flash_incomplete_inputs_are_honest_not_fabricated(app_client) -> None:
@@ -396,6 +402,10 @@ def test_arc_flash_report_json_returns_summary_and_results(app_client) -> None:
     assert report["summary"]["bus_count"] >= 5
     assert "text_pl" in data
     assert "RAPORT ZAGROŻENIA ŁUKIEM ELEKTRYCZNYM" in data["text_pl"]
+    # Tekst dokumentu nie niesie identyfikatora żadnej szyny (karta #144).
+    for row in report["results"]:
+        assert row["bus_ref"] not in data["text_pl"]
+        assert f"{row['bus_name']} —" in data["text_pl"]
 
 
 def test_arc_flash_report_pdf_returns_pdf_bytes(app_client) -> None:

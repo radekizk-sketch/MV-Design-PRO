@@ -78,7 +78,7 @@
         "wiersze": [
           {
             "etykieta_pl": "Moduł",
-            "tresc_pl": "Magazyn energii 1,5 MW (element bess/5bd678b5dbce96516c72492e40298e5f/converter); operator: Enea Operator; moc maksymalna 1500 kW; napięcie przyłączenia 0,4 kV"
+            "tresc_pl": "Magazyn energii 1,5 MW; operator: Enea Operator; moc maksymalna 1500 kW; napięcie przyłączenia 0,4 kV"
           },
           {
             "etykieta_pl": "Klasyfikacja modułu",
@@ -2243,7 +2243,7 @@
   "odciski_sekcji_sha256": {
     "bilans_mocy": "e42162195984c0ca37ac9acebe0a058c1105568308094b589d1113d5102a0431",
     "zwarcia_punkt_przylaczenia": "e3acf60acec186540437e897e9dccf1340a7d02ac9a8c6ff1e09e915ef88da58",
-    "zgodnosc_nc_rfg": "500574a176bd1644760c187b3bc99ba1de56bd74bdc3fb6cbba546782dac2802"
+    "zgodnosc_nc_rfg": "7ddc7a0326a7c287a53ffe4de1f515d6544834e912ee58f87d18252f633edcad"
   },
   "zrodla": {
     "pf_run_id": "bea90c9a-33e0-543b-b4e3-9514eca3921a",

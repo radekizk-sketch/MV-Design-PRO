@@ -32,6 +32,14 @@ from domain.protection_analysis import (
     compute_result_summary,
 )
 
+#: Nazwy miejsc (węzłów grafu biegu) — w ścieżce biegu `enm.canonical_analysis.
+#: nazwy_wezlow_grafu` (karta #144). Żadna nazwa nie zawiera identyfikatora.
+_NAZWY_LOKALIZACJI = {
+    "bus-001": "Szyny SN GPZ Północ",
+    "bus-002": "Szyny SN stacji Łąkowa",
+    "bus-003": "Szyny SN stacji Polna",
+}
+
 # =============================================================================
 # CURVE EVALUATION TESTS
 # =============================================================================
@@ -258,6 +266,7 @@ class TestProtectionEvaluationEngine:
             library_manifest_ref=None,
             devices=(sample_device,),
             faults=(sample_fault_trips,),
+            nazwy_lokalizacji=_NAZWY_LOKALIZACJI,
         )
 
         result, trace = engine.evaluate(input_data)
@@ -280,6 +289,7 @@ class TestProtectionEvaluationEngine:
             library_manifest_ref=None,
             devices=(sample_device,),
             faults=(sample_fault_no_trip,),
+            nazwy_lokalizacji=_NAZWY_LOKALIZACJI,
         )
 
         result, trace = engine.evaluate(input_data)
@@ -312,6 +322,7 @@ class TestProtectionEvaluationEngine:
             library_manifest_ref=None,
             devices=(device,),
             faults=(sample_fault_trips,),
+            nazwy_lokalizacji=_NAZWY_LOKALIZACJI,
         )
 
         result, trace = engine.evaluate(input_data)
@@ -363,6 +374,7 @@ class TestDeterminism:
             library_manifest_ref=None,
             devices=(device,),
             faults=(fault,),
+            nazwy_lokalizacji=_NAZWY_LOKALIZACJI,
         )
 
         # Execute twice
@@ -417,6 +429,7 @@ class TestDeterminism:
             library_manifest_ref=None,
             devices=(device,),
             faults=(fault,),
+            nazwy_lokalizacji=_NAZWY_LOKALIZACJI,
         )
 
         # Execute multiple times
@@ -641,6 +654,7 @@ class TestDefiniteTimeCurve:
             library_manifest_ref=None,
             devices=(device,),
             faults=(fault,),
+            nazwy_lokalizacji=_NAZWY_LOKALIZACJI,
         )
 
         result, trace = engine.evaluate(input_data)
@@ -702,6 +716,7 @@ class TestMultipleDevicesAndFaults:
             library_manifest_ref=None,
             devices=devices,
             faults=(fault,),
+            nazwy_lokalizacji=_NAZWY_LOKALIZACJI,
         )
 
         result, trace = engine.evaluate(input_data)
@@ -741,6 +756,7 @@ class TestMultipleDevicesAndFaults:
             library_manifest_ref=None,
             devices=(device,),
             faults=faults,
+            nazwy_lokalizacji=_NAZWY_LOKALIZACJI,
         )
 
         result, trace = engine.evaluate(input_data)
@@ -1160,6 +1176,7 @@ class TestProtectionTraceAudit:
             library_manifest_ref=None,
             devices=(device,),
             faults=(fault,),
+            nazwy_lokalizacji=_NAZWY_LOKALIZACJI,
         )
 
         result, trace = engine.evaluate(input_data)
@@ -1215,6 +1232,7 @@ class TestProtectionTraceAudit:
             library_manifest_ref=None,
             devices=(device,),
             faults=(fault,),
+            nazwy_lokalizacji=_NAZWY_LOKALIZACJI,
         )
 
         # Execute twice
@@ -1504,6 +1522,7 @@ class TestVendorCurveDeterminism:
             library_manifest_ref=None,
             devices=(device,),
             faults=(fault,),
+            nazwy_lokalizacji=_NAZWY_LOKALIZACJI,
         )
 
         # Execute twice
@@ -1555,6 +1574,7 @@ class TestVendorTraceAudit:
             library_manifest_ref=None,
             devices=(device,),
             faults=(fault,),
+            nazwy_lokalizacji=_NAZWY_LOKALIZACJI,
         )
 
         _, trace = engine.evaluate(input_data)
@@ -1722,6 +1742,7 @@ class TestOverridesAffectRunResult:
             devices=(device,),
             faults=(FaultPoint(fault_id="bus-001", i_fault_a=150.0, fault_type="3F"),),
             overrides=overrides,
+            nazwy_lokalizacji=_NAZWY_LOKALIZACJI,
         )
         result, _trace = ProtectionEvaluationEngine().evaluate(input_data)
         return result
@@ -1760,3 +1781,63 @@ class TestOverridesAffectRunResult:
 
         z_nadpisaniem = self._evaluate({**wpis_koordynacji, "I>": {"value": 100.0, "unit": "A"}})
         assert z_nadpisaniem.evaluations[0].trip_state == TripState.TRIPS
+
+
+# =============================================================================
+# NAZWY MIEJSC W OPISACH ŚLADU (karta #144)
+# =============================================================================
+
+
+@pytest.mark.parametrize(
+    ("curve_kind", "krok"),
+    [("definite_time", "device_evaluation"), (None, "device_evaluation_invalid")],
+    ids=["ocena", "ocena_niewazna"],
+)
+@pytest.mark.parametrize(
+    ("nazwy", "nazwa_chronionego", "nazwa_zwarcia"),
+    [
+        (_NAZWY_LOKALIZACJI, "Szyny SN GPZ Północ", "Szyny SN stacji Łąkowa"),
+        ({}, "Element spoza modelu", "Element spoza modelu"),
+    ],
+    ids=["miejsca_w_modelu", "miejsca_spoza_modelu"],
+)
+def test_opis_kroku_sladu_nazywa_miejsca_nigdy_identyfikatorem(
+    curve_kind: str | None,
+    krok: str,
+    nazwy: dict[str, str],
+    nazwa_chronionego: str,
+    nazwa_zwarcia: str,
+) -> None:
+    """Iloczyn cech: ocena ważna / nieważna × miejsca w indeksie / spoza indeksu. Opis
+    kroku śladu nazywa element chroniony (i miejsce zwarcia) nazwami z modelu albo jawnym
+    brakiem; identyfikatory urządzenia i węzłów zostają w `inputs` kroku (audyt)."""
+    device = ProtectionDevice(
+        device_id="relay-001",
+        device_type_ref="sepam-20",
+        protected_element_ref="bus-001",
+        i_pickup_a=100.0,
+        tms=0.3,
+        curve_ref="curve-dt",
+        curve_kind=curve_kind,
+        curve_parameters={"delay_s": 0.5},
+    )
+    fault = FaultPoint(fault_id="bus-002", i_fault_a=500.0, fault_type="3F")
+    _, trace = ProtectionEvaluationEngine().evaluate(
+        ProtectionEvaluationInput(
+            run_id="run-001",
+            sc_run_id="sc-001",
+            protection_case_id="case-001",
+            template_ref="template-001",
+            template_fingerprint="abc123",
+            library_manifest_ref=None,
+            devices=(device,),
+            faults=(fault,),
+            nazwy_lokalizacji=nazwy,
+        )
+    )
+    opis = next(step.description_pl for step in trace.steps if step.step == krok)
+    assert f"element chroniony: {nazwa_chronionego}" in opis
+    if krok == "device_evaluation":
+        assert f"miejsce zwarcia: {nazwa_zwarcia}" in opis
+    for identyfikator in ("relay-001", "bus-001", "bus-002"):
+        assert identyfikator not in opis

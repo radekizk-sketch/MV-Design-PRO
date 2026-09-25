@@ -29,6 +29,7 @@ from analysis.reactive_adequacy.models import (
     worst_field_quality,
 )
 from enm.canonical_analysis import CanonicalRun, build_bus_results
+from enm.nazwy_elementow import zbuduj_indeks_nazw
 
 # Pola Q-granic karty przekształtnika (proweniencja werdyktu).
 _Q_LIMIT_CARD_FIELDS = ("qmin_mvar", "qmax_mvar")
@@ -168,6 +169,7 @@ def build_reactive_adequacy_view(run: CanonicalRun) -> dict[str, Any]:
         sources=_source_inputs(snapshot),
         loads=_load_inputs(snapshot),
         context=_context(run),
+        nazwy=zbuduj_indeks_nazw(snapshot),
         power_flow_converged=converged,
     )
     return view.to_dict()

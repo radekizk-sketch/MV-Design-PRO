@@ -141,7 +141,9 @@ def migruj_i_usun_tabele_legacy(engine: Engine) -> RaportMigracjiLegacy:
             wezly_per_projekt.setdefault(_uuid_str(wezel["project_id"]), []).append(wezel)
         for project_id, wezly in sorted(wezly_per_projekt.items()):
             projekt = projekty.get(project_id)
-            nazwa = str(projekt["name"]) if projekt else project_id
+            # Nazwa modelu (nagłówek ENM) z projektu; wiersze bez projektu dostają opis
+            # rodzaju — identyfikator projektu zostaje kluczem manifestu (karta #144).
+            nazwa = str(projekt["name"]) if projekt and projekt.get("name") else "Projekt bez nazwy"
             klucz = klucz_twin_projektu(UUID(project_id))
             if has_enm(klucz):
                 raport.pominiete[project_id] = (

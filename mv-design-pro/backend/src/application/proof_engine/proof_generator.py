@@ -13,7 +13,7 @@ Generuje ProofDocument na podstawie:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
@@ -222,6 +222,9 @@ class VDROPSegmentInput:
     """Dane wejściowe dla pojedynczego odcinka VDROP (linia/kabel)."""
 
     segment_id: str
+    #: Nazwa odcinka z modelu — tytuły kroków dowodu; identyfikator zostaje w
+    #: `segment_id` (karta #144).
+    nazwa_odcinka: str
     from_bus_id: str
     to_bus_id: str
     r_ohm_per_km: float
@@ -246,6 +249,8 @@ class VDROPTransformerBoundaryInput:
     """
 
     segment_id: str
+    #: Nazwa transformatora z modelu — tytuł kroku dowodu (karta #144).
+    nazwa_odcinka: str
     from_bus_id: str
     to_bus_id: str
     u_primary_kv: float
@@ -271,6 +276,10 @@ class VDROPInput:
     solver_version: str
     segments: list[VDROPSegmentInput | VDROPTransformerBoundaryInput]
     u_source_kv: float
+    #: Nazwy szyn źródłowej i docelowej z modelu — nagłówek dowodu („Szyna źródłowa",
+    #: „Szyna docelowa"); identyfikatory zostają w `*_bus_id` (karta #144).
+    source_bus_name: str
+    target_bus_name: str
 
 
 @dataclass
@@ -280,6 +289,9 @@ class LoadFlowBusInput:
     bus_id: str
     u_ll_kv: float | None
     u_nom_kv: float | None
+    #: Nazwa szyny z modelu — tytuły kroków dowodu; identyfikator zostaje w `bus_id`
+    #: (karta #144).
+    nazwa: str = field(kw_only=True)
 
 
 @dataclass
@@ -298,6 +310,9 @@ class LoadFlowElementInput:
     q_mvar: float | None = None
     u_nom_kv: float | None = None
     u_ll_kv: float | None = None
+    #: Nazwa elementu z modelu — tytuły kroków dowodu; identyfikator zostaje w
+    #: `element_id` (karta #144).
+    nazwa: str = field(kw_only=True)
 
 
 @dataclass
@@ -2197,13 +2212,21 @@ class ProofGenerator:
             step_number += 1
             steps.append(
                 cls._create_vdrop_step_r(
-                    step_number, segment.r_ohm_per_km, segment.length_km, r_ohm, segment.segment_id
+                    step_number,
+                    segment.r_ohm_per_km,
+                    segment.length_km,
+                    r_ohm,
+                    segment.nazwa_odcinka,
                 )
             )
             step_number += 1
             steps.append(
                 cls._create_vdrop_step_x(
-                    step_number, segment.x_ohm_per_km, segment.length_km, x_ohm, segment.segment_id
+                    step_number,
+                    segment.x_ohm_per_km,
+                    segment.length_km,
+                    x_ohm,
+                    segment.nazwa_odcinka,
                 )
             )
             step_number += 1
@@ -2214,7 +2237,7 @@ class ProofGenerator:
                     segment.p_mw,
                     segment.u_n_kv,
                     delta_u_r,
-                    segment.segment_id,
+                    segment.nazwa_odcinka,
                 )
             )
             step_number += 1
@@ -2225,13 +2248,13 @@ class ProofGenerator:
                     segment.q_mvar,
                     segment.u_n_kv,
                     delta_u_x,
-                    segment.segment_id,
+                    segment.nazwa_odcinka,
                 )
             )
             step_number += 1
             steps.append(
                 cls._create_vdrop_step_du(
-                    step_number, delta_u_r, delta_u_x, delta_u, segment.segment_id
+                    step_number, delta_u_r, delta_u_x, delta_u, segment.nazwa_odcinka
                 )
             )
 
@@ -2285,8 +2308,8 @@ class ProofGenerator:
             case_name=data.case_name,
             run_timestamp=data.run_timestamp,
             solver_version=data.solver_version,
-            source_bus=data.source_bus_id,
-            target_bus=data.target_bus_id,
+            source_bus=data.source_bus_name,
+            target_bus=data.target_bus_name,
         )
 
         return ProofDocument.create(
@@ -2309,7 +2332,7 @@ class ProofGenerator:
         r_per_km: float,
         length_km: float,
         r_ohm: float,
-        segment_id: str,
+        nazwa_odcinka: str,
     ) -> ProofStep:
         """Rezystancja odcinka R."""
         equation = EQ_VDROP_001
@@ -2332,7 +2355,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id("VDROP", step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (odcinek {segment_id})",
+            title_pl=f"{equation.name_pl} (odcinek {nazwa_odcinka})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -2348,7 +2371,7 @@ class ProofGenerator:
         x_per_km: float,
         length_km: float,
         x_ohm: float,
-        segment_id: str,
+        nazwa_odcinka: str,
     ) -> ProofStep:
         """Reaktancja odcinka X."""
         equation = EQ_VDROP_002
@@ -2371,7 +2394,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id("VDROP", step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (odcinek {segment_id})",
+            title_pl=f"{equation.name_pl} (odcinek {nazwa_odcinka})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -2388,7 +2411,7 @@ class ProofGenerator:
         p_mw: float,
         u_n_kv: float,
         delta_u_r: float,
-        segment_id: str,
+        nazwa_odcinka: str,
     ) -> ProofStep:
         """Składowa czynna spadku ΔU_R."""
         equation = EQ_VDROP_003
@@ -2415,7 +2438,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id("VDROP", step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (odcinek {segment_id})",
+            title_pl=f"{equation.name_pl} (odcinek {nazwa_odcinka})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -2437,7 +2460,7 @@ class ProofGenerator:
         q_mvar: float,
         u_n_kv: float,
         delta_u_x: float,
-        segment_id: str,
+        nazwa_odcinka: str,
     ) -> ProofStep:
         """Składowa bierna spadku ΔU_X."""
         equation = EQ_VDROP_004
@@ -2464,7 +2487,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id("VDROP", step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (odcinek {segment_id})",
+            title_pl=f"{equation.name_pl} (odcinek {nazwa_odcinka})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -2485,7 +2508,7 @@ class ProofGenerator:
         delta_u_r: float,
         delta_u_x: float,
         delta_u: float,
-        segment_id: str,
+        nazwa_odcinka: str,
     ) -> ProofStep:
         """Spadek na odcinku ΔU."""
         equation = EQ_VDROP_005
@@ -2508,7 +2531,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id("VDROP", step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (odcinek {segment_id})",
+            title_pl=f"{equation.name_pl} (odcinek {nazwa_odcinka})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -2673,7 +2696,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id("VDROP", step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (odcinek {boundary.segment_id})",
+            title_pl=f"{equation.name_pl} (odcinek {boundary.nazwa_odcinka})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -3849,6 +3872,7 @@ class ProofGenerator:
             q_mvar=element.q_mvar,
             u_nom_kv=element.u_nom_kv,
             u_ll_kv=element.u_ll_kv,
+            nazwa=element.nazwa,
         )
 
     @classmethod
@@ -3884,7 +3908,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (element {element.element_id})",
+            title_pl=f"{equation.name_pl} (element {element.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -3936,7 +3960,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (element {element.element_id})",
+            title_pl=f"{equation.name_pl} (element {element.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -3987,7 +4011,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (element {element.element_id})",
+            title_pl=f"{equation.name_pl} (element {element.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -4039,7 +4063,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (element {element.element_id})",
+            title_pl=f"{equation.name_pl} (element {element.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -4091,7 +4115,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (element {element.element_id})",
+            title_pl=f"{equation.name_pl} (element {element.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -4141,7 +4165,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (BUS {bus.bus_id})",
+            title_pl=f"{equation.name_pl} (szyna {bus.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -4188,7 +4212,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (BUS {bus.bus_id})",
+            title_pl=f"{equation.name_pl} (szyna {bus.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,

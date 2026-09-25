@@ -80,9 +80,11 @@ class FaktyPolaWytworcy:
     #: inżynierowi. Bez niej opis funkcji sklejał się z REFERENCJĄ modelu
     #: („pole wytwórcy pv/cf52e8ef.../converter"), czyli identyfikator maszynowy
     #: wychodził na pierwszy plan ekranu doboru zabezpieczeń (zmierzone na
-    #: modelu zbudowanym operacjami domenowymi). Brak nazwy = zostaje
-    #: referencja: uczciwiej pokazać identyfikator niż wymyślić etykietę.
-    der_nazwa: str | None = None
+    #: modelu zbudowanym operacjami domenowymi). Pole WYMAGANE (karta #144):
+    #: wytwórca bez nazwy w modelu dostaje od wołającego polski opis rodzaju
+    #: (`enm.nazwy_elementow.nazwa_elementu` — „Generator bez nazwy"), nigdy
+    #: identyfikator — `der_id` zostaje wyłącznie tożsamością rekordu.
+    der_nazwa: str
     nominal_power_kw: float | None = None
     block_transformer_catalog_ref: str | None = None
     neutral_grounding_mode: TrybUziemienia = None
@@ -142,7 +144,7 @@ def dobierz_funkcje(fakty: FaktyPolaWytworcy) -> WynikDoboru:
 
     wymagane: list[FunkcjaWymagana] = []
     otwarte: list[KwestiaOtwarta] = []
-    obiekt = f"pole wytwórcy {fakty.der_nazwa or fakty.der_id}"
+    obiekt = f"pole wytwórcy {fakty.der_nazwa}"
 
     # --- Zwarcia miedzyfazowe: podstawa kazdego pola, niezalezna od uziemienia --------
     wymagane.append(

@@ -436,7 +436,12 @@ class TestCalculationReadinessService:
         svc = CalculationReadinessService()
         stab = svc.evaluate_single(enm, "stability")
         assert stab.status == "ready"
-        assert "default_pv_gfm" in (stab.recommended_action_pl or "")
+        # Źródło i profil nazwane nazwami (model, rejestr profili), identyfikatory
+        # `pv_1`/`default_pv_gfm` zostają w polach rekordów (karta #144).
+        zalecenie = stab.recommended_action_pl or ""
+        assert "PV-01 — profil „Typowy PV grid-forming (IEEE 1547, inercja wirtualna)”" in zalecenie
+        assert "default_pv_gfm" not in zalecenie
+        assert "pv_1" not in zalecenie
 
     def test_resolve_der_dynamic_returns_none_for_unknown_gen_type(self) -> None:
         """Karta FAB-D2 (D8): rodzaj DER spoza mapowania => `None`, NIGDY

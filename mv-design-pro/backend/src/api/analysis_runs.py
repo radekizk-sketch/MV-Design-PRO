@@ -36,6 +36,7 @@ from api.canonical_run_views import (
 from api.dependencies import get_uow_factory
 from api.document_store import store_generated_document_from_response
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
+from application.nazwy_biegu import nazwa_przypadku_z_bazy
 from application.proof_engine.pakiet_biegu import (
     PakietBieguError,
     dostepnosc_pakietu,
@@ -235,9 +236,7 @@ def _proof_latex_response(run: CanonicalRun) -> Response:
             lines.append(
                 " & ".join(
                     [
-                        _latex_escape(
-                            row.get("target_name") or row.get("target_id") or "brak danych"
-                        ),
+                        _latex_escape(row.get("target_name") or "brak danych"),
                         _latex_escape(
                             f"{i_dyn:.4g}" if isinstance(i_dyn, int | float) else "brak danych"
                         ),
@@ -525,15 +524,24 @@ def get_pakiet_dowodowy_dostepnosc(run_id: UUID) -> dict[str, Any]:
 
 
 @router.get("/analysis-runs/{run_id}/pakiet-dowodowy")
-def get_pakiet_dowodowy(run_id: UUID, punkt: str | None = Query(default=None)) -> Response:
+def get_pakiet_dowodowy(
+    run_id: UUID,
+    punkt: str | None = Query(default=None),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> Response:
     """Pakiet dowodowy przebiegu (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).
 
     Cała fizyka po stronie serwera — klient podaje wyłącznie przebieg i punkt
     zwarcia. ``punkt`` pominięty ⇒ pierwszy punkt biegu (deterministycznie).
+    Nagłówek dowodu nazywa przypadek nazwą z bazy, nie identyfikatorem (karta #144).
     """
     run = _require_canonical_run(run_id)
     try:
-        filename, content = zbuduj_pakiet_biegu(run, punkt=punkt)
+        filename, content = zbuduj_pakiet_biegu(
+            run,
+            punkt=punkt,
+            nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
+        )
     except PakietBieguError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
@@ -618,6 +626,7 @@ def get_pakiet_dowodowy_nastaw(
             k_b=k_b,
             k_bth=k_bth,
             uow_factory=uow_factory,
+            nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
         )
     except PakietNastawError as exc:
         raise _odmowa_nastaw(exc) from exc
@@ -669,6 +678,7 @@ def get_nastawy(
             k_b=k_b,
             k_bth=k_bth,
             uow_factory=uow_factory,
+            nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
         )
     except PakietNastawError as exc:
         raise _odmowa_nastaw(exc) from exc
@@ -715,6 +725,7 @@ def get_nastawy_dopasowanie(
             k_b=k_b,
             k_bth=k_bth,
             uow_factory=uow_factory,
+            nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
         )
     except PakietNastawError as exc:
         raise _odmowa_nastaw(exc) from exc

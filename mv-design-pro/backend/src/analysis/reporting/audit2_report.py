@@ -30,6 +30,9 @@ class Audit2ReportContext:
 
     project_name: str
     station_id: str
+    #: Nazwa stacji (albo zakresu raportu) pokazywana w dokumencie — identyfikator
+    #: `station_id` zostaje wyłącznie w strukturze JSON (karta #144).
+    station_name: str
     proof_pack_dict: dict[str, Any]
     operator_pl: str = ""
     generated_at_iso: str = "1970-01-01T00:00:00Z"
@@ -45,6 +48,7 @@ def render_audit2_report_json(ctx: Audit2ReportContext) -> dict[str, Any]:
         "format_version": "1.0",
         "project_name": ctx.project_name,
         "station_id": ctx.station_id,
+        "station_name": ctx.station_name,
         "operator_pl": ctx.operator_pl,
         "generated_at": ctx.generated_at_iso,
         "summary": {
@@ -73,7 +77,7 @@ def render_audit2_report_text(ctx: Audit2ReportContext) -> str:
     if not proofs:
         return (
             f"Raport walidacji rozszerzeń audytu 2 — brak dowodów do uwzględnienia.\n"
-            f"Stacja: {ctx.station_id}\n"
+            f"Stacja: {ctx.station_name}\n"
             f"Projekt: {ctx.project_name}\n"
         )
 
@@ -81,7 +85,7 @@ def render_audit2_report_text(ctx: Audit2ReportContext) -> str:
     lines.append("RAPORT WALIDACJI ROZSZERZEŃ AUDYTU 2")
     lines.append("=" * 50)
     lines.append(f"Projekt: {ctx.project_name}")
-    lines.append(f"Stacja: {ctx.station_id}")
+    lines.append(f"Stacja: {ctx.station_name}")
     if ctx.operator_pl:
         lines.append(f"Operator: {ctx.operator_pl}")
     lines.append(f"Wygenerowano: {ctx.generated_at_iso}")
@@ -135,7 +139,7 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
         bottomMargin=2 * cm,
         leftMargin=2 * cm,
         rightMargin=2 * cm,
-        title=f"Raport walidacji audytu 2 — {ctx.station_id}",
+        title=f"Raport walidacji audytu 2 — {ctx.station_name}",
         author="MV-DESIGN-PRO",
         invariant=1,
         pageCompression=0,
@@ -148,7 +152,7 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
     elements.append(Paragraph("Raport walidacji rozszerzeń audytu 2", styles["Title"]))
     elements.append(Spacer(1, 0.5 * cm))
     elements.append(Paragraph(f"Projekt: {ctx.project_name}", styles["Normal"]))
-    elements.append(Paragraph(f"Stacja: {ctx.station_id}", styles["Normal"]))
+    elements.append(Paragraph(f"Stacja: {ctx.station_name}", styles["Normal"]))
     if ctx.operator_pl:
         elements.append(Paragraph(f"Operator: {ctx.operator_pl}", styles["Normal"]))
     elements.append(Paragraph(f"Wygenerowano: {ctx.generated_at_iso}", styles["Normal"]))
@@ -231,7 +235,7 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
 
     # Metadata.
     doc.add_paragraph(f"Projekt: {ctx.project_name}")
-    doc.add_paragraph(f"Stacja: {ctx.station_id}")
+    doc.add_paragraph(f"Stacja: {ctx.station_name}")
     if ctx.operator_pl:
         doc.add_paragraph(f"Operator: {ctx.operator_pl}")
     doc.add_paragraph(f"Wygenerowano: {ctx.generated_at_iso}")
@@ -289,7 +293,7 @@ def render_audit2_report_latex(ctx: Audit2ReportContext) -> str:
     lines.append(r"\usepackage[polish]{babel}")
     lines.append(r"\usepackage{amsmath,amssymb}")
     lines.append(r"\title{Raport walidacji audytu 2}")
-    lines.append(rf"\author{{Stacja {ctx.station_id}}}")
+    lines.append(rf"\author{{Stacja {ctx.station_name}}}")
     lines.append(rf"\date{{{ctx.generated_at_iso}}}")
     lines.append(r"\begin{document}")
     lines.append(r"\maketitle")

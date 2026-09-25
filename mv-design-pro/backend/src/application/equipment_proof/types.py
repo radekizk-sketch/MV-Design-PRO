@@ -49,6 +49,10 @@ class EquipmentProofInput:
     connection_node_id: str
     device: DeviceRating
     required_fault_results: dict[str, Any]
+    #: Nazwy projektu i przypadku do nagłówka dowodu (karta #144 — dawniej nagłówek
+    #: niósł `project_id`/`case_id`). Poza `to_dict`: dane prezentacji, nie obliczenia.
+    project_name: str = field(kw_only=True)
+    case_name: str = field(kw_only=True)
     #: Karta S-2 AUTORYTET — granica autorytetu wyniku zwarciowego. Domyślnie
     #: `bez_sladu()` (FAIL-CLOSED): wejście skonstruowane wprost w kodzie
     #: wywołującym, bez przejścia przez `application.autorytet_biegu_

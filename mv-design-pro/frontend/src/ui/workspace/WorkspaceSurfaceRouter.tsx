@@ -1728,9 +1728,14 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             disabled={!audit2ProofPack.data || audit2Report.isPending}
             onClick={() => {
               if (!audit2ProofPack.data) return;
+              const stationId = audit2ProofPack.data.station_id;
               audit2Report.mutate({
                 project_name: activeProjectName ?? 'project',
-                station_id: audit2ProofPack.data.station_id,
+                station_id: stationId,
+                // Raport nazywa stację nazwą z modelu, nigdy identyfikatorem.
+                station_name:
+                  snapshot?.substations?.find((stacja) => stacja.ref_id === stationId)?.name
+                  || 'Stacja bez nazwy',
                 proof_pack: audit2ProofPack.data,
                 operator_pl: 'PSE',
                 generated_at_iso: '1970-01-01T00:00:00Z',

@@ -21,6 +21,7 @@ def _make_ctx(proofs: list[dict]) -> Audit2ReportContext:
     return Audit2ReportContext(
         project_name="Projekt Test",
         station_id="station_001",
+        station_name="Stacja S01",
         proof_pack_dict={
             "station_id": "station_001",
             "all_pass": all(p["pass_status"] for p in proofs),
@@ -82,7 +83,9 @@ def test_text_report_renders_polish_summary():
     text = render_audit2_report_text(ctx)
     assert "RAPORT WALIDACJI" in text
     assert "Projekt: Projekt Test" in text
-    assert "Stacja: station_001" in text
+    # Dokument nazywa stację nazwą z modelu, identyfikator zostaje w JSON (karta #144).
+    assert "Stacja: Stacja S01" in text
+    assert "station_001" not in text
     assert "Operator: PSE" in text
     assert "1 walidacji" in text
     assert "AUDIT2_BESS_OPERATION_MODES" in text

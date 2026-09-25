@@ -29,6 +29,7 @@ from domain.readiness import (
     ReadinessPriority,
 )
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, liczba_jednostek_zrodla
+from enm.nazwy_elementow import nazwa_elementu
 from network_model.pochodne import kw_na_mw, moc_pozorna_z_czynnej_mva, mva_na_kva
 
 # Generator types that REQUIRE connection_variant — kanoniczny zbiór przekształtnikowy
@@ -67,7 +68,9 @@ def validate_generator_connections(
 
     for gen in sorted(generators, key=lambda g: g.get("ref_id", "")):
         ref_id = gen.get("ref_id", "")
-        name = gen.get("name", ref_id)
+        # Nazwa z modelu albo opis rodzaju („Generator bez nazwy"), nigdy identyfikator
+        # (karta #144).
+        name = nazwa_elementu(gen, "generators")
         gen_type = gen.get("gen_type")
         catalog_ref = gen.get("catalog_ref")
         connection_variant = gen.get("connection_variant")

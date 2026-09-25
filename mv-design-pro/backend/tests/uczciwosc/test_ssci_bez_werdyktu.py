@@ -86,6 +86,7 @@ def test_zaden_przebieg_L_nie_daje_werdyktu(mag: float, faza: float) -> None:
             },
             converter=None,
             context=None,
+            nazwy={"conv-1": "Falownik PV 1", "bus-nn": "Szyna nN stacji"},
         )
         .to_dict()
     )
@@ -93,6 +94,14 @@ def test_zaden_przebieg_L_nie_daje_werdyktu(mag: float, faza: float) -> None:
     assert werdykt["verdict"] == "nie oceniono"
     assert werdykt["is_risk"] is None
     _sprawdz_powod(werdykt["ocena"])
+    # Przedmiot nazywa przekształtnik i szynę nazwami z modelu; identyfikator zostaje
+    # w `element_ref` (karta #144).
+    przedmiot = werdykt["ocena"]["przedmiot"]
+    assert przedmiot["element_ref"] == "conv-1"
+    assert przedmiot["nazwa_pl"] == "Przekształtnik Falownik PV 1"
+    assert przedmiot["opis_pl"].endswith("widzianą z szyny Szyna nN stacji")
+    assert "conv-1" not in przedmiot["nazwa_pl"] + przedmiot["opis_pl"]
+    assert "bus-nn" not in przedmiot["nazwa_pl"] + przedmiot["opis_pl"]
     assert werdykt["negative_resistance_present"] is True
     assert werdykt["negative_resistance_re_min_ohm"] == -0.4
     assert werdykt["negative_resistance_f_hz"] == 22.0
@@ -105,6 +114,7 @@ def test_brak_danych_solvera_to_nadal_ocena_niewykonana_z_brakami() -> None:
             {"status": "dane niekompletne", "missing_fields": ["pll_bandwidth_hz"]},
             converter=None,
             context=None,
+            nazwy={},
         )
         .to_dict()
     )

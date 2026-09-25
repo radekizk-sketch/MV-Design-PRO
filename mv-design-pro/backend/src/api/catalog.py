@@ -25,6 +25,7 @@ from application.analyses.protection.catalog.catalog_store import (
 from application.catalog_governance import CatalogGovernanceService
 from enm.grupa_polaczen import GRUPY_POLACZEN_IEC60076, GrupaPolaczenIEC60076
 from enm.models import UKLADY_SIECI_NN, UkladSieciNn
+from enm.nazwy_elementow import nazwa_pozycji_katalogu
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
@@ -125,9 +126,7 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
     # tu literalny tekst "None", wiec galaz jest odrebna, nie fallbackiem.
     is_referencyjny = device.vendor is None
     if is_referencyjny:
-        name_pl = (
-            f"Profil referencyjny (nie produkt producenta) - {device.model or device.device_id}"
-        )
+        name_pl = f"Profil referencyjny (nie produkt producenta) - {device.model}"
         verification_status = "REFERENCYJNY"
         catalog_status = "REFERENCYJNY_V1"
         series_value: str | None = None
@@ -1072,7 +1071,7 @@ def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateRespons
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=entry["id"],
-                label_pl=entry.get("name", entry["id"]),
+                label_pl=nazwa_pozycji_katalogu(entry),
                 manufacturer=manufacturer or None,
                 dopasowanie=dopasowanie,
                 certyfikat_ptpiree=is_ptpire,
@@ -1122,7 +1121,7 @@ def _auto_populate_cables(req: AutoPopulateRequest) -> AutoPopulateResponse:
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=entry["id"],
-                label_pl=entry.get("name", entry["id"]),
+                label_pl=nazwa_pozycji_katalogu(entry),
                 manufacturer=manufacturer or None,
                 dopasowanie=dopasowanie,
                 certyfikat_ptpiree=is_ptpire,
@@ -1175,7 +1174,7 @@ def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoP
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=entry["id"],
-                label_pl=entry.get("name", entry["id"]),
+                label_pl=nazwa_pozycji_katalogu(entry),
                 manufacturer=manufacturer or None,
                 dopasowanie=dopasowanie,
                 certyfikat_ptpiree=is_ptpire,
@@ -1219,7 +1218,7 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
         label_pl = (
             f"{manufacturer} {d.model}"
             if manufacturer
-            else f"Profil referencyjny (nie produkt producenta) - {d.model or d.device_id}"
+            else f"Profil referencyjny (nie produkt producenta) - {d.model}"
         )
         suggestions.append(
             AutoPopulateSuggestion(

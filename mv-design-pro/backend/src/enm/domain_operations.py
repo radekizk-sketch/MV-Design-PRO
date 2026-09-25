@@ -61,6 +61,7 @@ from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
 from .migrations.nn_field_specs_promocja import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
 from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, UKLADY_SIECI_NN, EnergyNetworkModel
+from .nazwy_elementow import ODCINEK_BEZ_NAZWY, jest_nazwa, nazwa_pola_ze_specyfikacji
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     NiezgodnoscKonfiguracjiError,
@@ -3838,12 +3839,17 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         if isinstance(source_identity_raw, str) and source_identity_raw.strip()
         else None
     )
-    display_name = (
-        payload.get("source_name")
-        or payload.get("name_pl")
-        or (f"GPZ {source_identity}" if source_identity else None)
-        or f"GPZ {voltage_kv:g} kV"
+    # Nazwa jawna z ładunku (ten sam predykat braku co tożsamość wyżej i indeks nazw —
+    # `jest_nazwa`), inaczej nazwa domyślna z rodzaju, napięcia i numeru porządkowego.
+    nazwa_jawna = next(
+        (
+            str(wartosc)
+            for wartosc in (payload.get("source_name"), payload.get("name_pl"))
+            if jest_nazwa(wartosc)
+        ),
+        None,
     )
+    display_name = nazwa_jawna or _domyslna_nazwa_gpz(enm, voltage_kv)
 
     existing_sources = [source for source in enm.get("sources", []) if isinstance(source, dict)]
     if existing_sources and not source_identity:
@@ -4704,6 +4710,10 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     if isinstance(catalog_ref, dict):
         return catalog_ref
     segment_name = segment.get("name")
+    # Nazwa jawna z ładunku (predykat braku z jednego źródła, `nazwy_elementow.jest_nazwa`);
+    # bez niej odcinek dostaje nazwę z ciągu. Seed niżej czyta surowe pole — ten sam ładunek
+    # daje ten sam identyfikator co przed kartą #144.
+    ma_nazwe_odcinka = jest_nazwa(segment_name)
     # CV-4.3 K1 (KLASA NIE INSTANCJA — ta sama naprawa w start_branch_segment_sn
     # niżej): `segment.bus_name` OPCJONALNE — bez niego zero zmiany zachowania
     # (nowa szyna zostaje anonimowym, ukrytym punktem technicznym `helper_bus`,
@@ -4767,7 +4777,11 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         {
             "ref_id": new_bus_ref,
             "name": bus_name
-            or (f"Zacisk końcowy {segment_name}" if segment_name else "Zacisk końcowy odcinka SN"),
+            or (
+                f"Zacisk końcowy {segment_name}"
+                if ma_nazwe_odcinka
+                else "Zacisk końcowy odcinka SN"
+            ),
             "voltage_kv": voltage_kv,
             "tags": ["topology_terminal"] if is_named_bus else ["helper_bus", "topology_terminal"],
             "meta": {
@@ -4810,7 +4824,9 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         )
     branch_data: dict[str, Any] = {
         "ref_id": branch_ref,
-        "name": segment_name or f"Odcinek {branch_ref[-8:]}",
+        # Bez nazwy w ładunku nazwę nadaje ciąg (niżej, po dopisaniu odcinka do ciągu):
+        # nazwa ciągu + numer odcinka w ciągu — nigdy fragment identyfikatora (karta #144).
+        "name": segment_name if ma_nazwe_odcinka else ODCINEK_BEZ_NAZWY,
         "type": branch_type,
         "from_bus_ref": from_terminal_id,
         "to_bus_ref": new_bus_ref,
@@ -4884,6 +4900,12 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             starting_port_ref=from_terminal_id,
         )
         _append_line_run_segment(line_run, branch_ref)
+        if not ma_nazwe_odcinka:
+            nowy_odcinek = _find_branch(new_enm, branch_ref)
+            if nowy_odcinek is not None:
+                nowy_odcinek["name"] = _nazwa_odcinka_w_ciagu(
+                    new_enm, effective_trunk_id, line_run, branch_ref
+                )
     ev_seq += 1
     events.append(
         {
@@ -4906,6 +4928,65 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
 # ---------------------------------------------------------------------------
 # 3. insert_station_on_segment_sn (CRITICAL OPERATION)
 # ---------------------------------------------------------------------------
+
+
+def _nazwa_odcinka_w_ciagu(
+    enm: dict[str, Any],
+    corridor_ref: str,
+    line_run: dict[str, Any] | None,
+    segment_ref: str,
+) -> str:
+    """Nazwa odcinka dodanego do ciągu BEZ nazwy w ładunku: nazwa ciągu + numer odcinka.
+
+    Numer to ten sam porządek, który model już nadaje odcinkom ciągu — `order` wpisu ciągu
+    liniowego (`_append_line_run_segment`), a gdy ciągu liniowego nie ma, pozycja w
+    `ordered_segment_refs` magistrali. Jedna numeracja modelu, nie druga wymyślona tutaj;
+    deterministycznie (ten sam model i ładunek → ta sama nazwa). Identyfikator odcinka ani
+    jego fragment nigdy nie jest nazwą (karta #144; dawniej `f"Odcinek {ref[-8:]}"`, czyli
+    dosłownie „Odcinek /segment")."""
+    if isinstance(line_run, dict):
+        for wpis in line_run.get("segments") or []:
+            if isinstance(wpis, dict) and wpis.get("segment_ref") == segment_ref:
+                numer = wpis.get("order")
+                # Wpis bez numeru porządkowego nie dostaje zmyślonego „00" — numer bierze
+                # wtedy kolejność magistrali niżej (albo nazwa zostaje opisem braku).
+                if isinstance(numer, int) and not isinstance(numer, bool) and numer > 0:
+                    return f"{_nazwa_ciagu(line_run)} — odcinek {numer:02d}"
+                break
+    magistrala = _find_corridor_by_ref(enm, corridor_ref)
+    if isinstance(magistrala, dict):
+        kolejnosc = [
+            ref for ref in magistrala.get("ordered_segment_refs") or [] if isinstance(ref, str)
+        ]
+        if segment_ref in kolejnosc:
+            return f"{_nazwa_ciagu(magistrala)} — odcinek {kolejnosc.index(segment_ref) + 1:02d}"
+    return ODCINEK_BEZ_NAZWY
+
+
+def _nazwa_ciagu(ciag: dict[str, Any]) -> str:
+    """Nazwa ciągu liniowego albo magistrali; bez nazwy — ta sama nazwa domyślna ciągu, którą
+    nadaje `_ensure_line_run_for_corridor` („Ciąg SN")."""
+    nazwa = ciag.get("name")
+    return str(nazwa).strip() if jest_nazwa(nazwa) else "Ciąg SN"
+
+
+def _domyslna_nazwa_gpz(enm: dict[str, Any], voltage_kv: object) -> str:
+    """Nazwa GPZ dodanego BEZ nazwy w ładunku: rodzaj + napięcie, a dla kolejnego GPZ o tym
+    samym napięciu pierwszy wolny numer porządkowy (deterministycznie, bez kolizji z nazwami
+    już nadanymi). Identyfikator źródła (`source_id`/`solution_ref`) służy wyłącznie
+    rozróżnieniu GPZ w modelu — nie jest nazwą pokazywaną projektantowi (karta #144)."""
+    bazowa = f"GPZ {voltage_kv:g} kV"
+    zajete = {
+        str(stacja.get("name") or "")
+        for stacja in enm.get("substations", [])
+        if isinstance(stacja, dict)
+    }
+    if bazowa not in zajete:
+        return bazowa
+    numer = 2
+    while f"{bazowa} ({numer})" in zajete:
+        numer += 1
+    return f"{bazowa} ({numer})"
 
 
 def _unique_default_station_name(enm: dict[str, Any], station_type_label: str) -> str:
@@ -5978,22 +6059,24 @@ _SN_FIELD_ROLE_TO_BAY_ROLE: dict[str, str] = {
 
 
 def _nazwa_pola_w_modelu(enm: dict[str, Any], field_ref: str, field_role: str) -> str:
-    """Nazwa pola do komunikatu dla projektanta: nazwa z modelu (pole albo specyfikacja pola
-    stacji, która je opisuje), a bez niej nazwa roli — nigdy surowy identyfikator pola."""
-    kandydaci: list[tuple[object, object]] = [
-        (bay.get("ref_id"), bay.get("name"))
+    """Nazwa pola do komunikatu dla projektanta: nazwa elementu pola z modelu, a dla pola
+    opisanego specyfikacją stacji — `nazwa_pola_ze_specyfikacji`; pole nieznane — nazwa roli.
+    Nigdy surowy identyfikator pola."""
+    nazwy_elementow_pol: dict[object, object] = {
+        bay.get("ref_id"): bay.get("name")
         for bay in enm.get("bays", []) or []
         if isinstance(bay, dict)
-    ]
+    }
+    if jest_nazwa(nazwy_elementow_pol.get(field_ref)):
+        return str(nazwy_elementow_pol[field_ref]).strip()
     for substation in enm.get("substations", []) or []:
         if isinstance(substation, dict):
-            kandydaci.extend(
-                (spec.get("field_ref"), spec.get("name"))
-                for spec in _field_specs_for_substation(substation)
-            )
-    for ref, nazwa in kandydaci:
-        if ref == field_ref and isinstance(nazwa, str) and nazwa.strip():
-            return nazwa.strip()
+            for spec in _field_specs_for_substation(substation):
+                if spec.get("field_ref") == field_ref:
+                    return nazwa_pola_ze_specyfikacji(
+                        {**spec, "field_role": spec.get("field_role") or field_role},
+                        nazwy_elementow_pol,
+                    )
     return nazwa_roli_pola_sn(field_role)
 
 
@@ -6323,7 +6406,7 @@ def blad_pomiaru_w_torze_tranzytu(
     return None
 
 
-def _nazwa_polowki_odcinka(segment: dict[str, Any], ref_id: str, numer: int) -> str:
+def _nazwa_polowki_odcinka(segment: dict[str, Any], numer: int) -> str:
     """Nazwa połówki dzielonego odcinka DZIEDZICZY nazwę rodzica.
 
     Defekt zmierzony na żywym ekranie kontyngencji N-1 (2026-08-14): połówki
@@ -6331,12 +6414,11 @@ def _nazwa_polowki_odcinka(segment: dict[str, Any], ref_id: str, numer: int) -> 
     sklejana z ref-u, a nie z nazwy rodzica — inżynier dostawał w tabelach
     wyników identyfikator techniczny zamiast nazwy z projektu. Ta sama klasa
     dotyczyła obu operacji tnących odcinek (wstawienie stacji i wstawienie
-    łącznika sekcyjnego). Rodzic bez nazwy zachowuje wariant zapasowy z ref-em
-    (jawny brak, nie zmyślona nazwa).
+    łącznika sekcyjnego). Rodzic bez nazwy daje polski opis rodzaju z numerem
+    połówki — jawny brak nazwy, nigdy identyfikator (karta #144 §0.1).
     """
-    nazwa_rodzica = str(segment.get("name") or "").strip()
-    if not nazwa_rodzica:
-        return f"Odcinek {ref_id}"
+    nazwa = segment.get("name")
+    nazwa_rodzica = str(nazwa).strip() if jest_nazwa(nazwa) else ODCINEK_BEZ_NAZWY
     return f"{nazwa_rodzica} ({numer})"
 
 
@@ -6695,7 +6777,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     # Create left segment
     left_data: dict[str, Any] = {
         "ref_id": seg_left_id,
-        "name": _nazwa_polowki_odcinka(segment, seg_left_id, 1),
+        "name": _nazwa_polowki_odcinka(segment, 1),
         "type": seg_type,
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": sn_bus_id,
@@ -6735,7 +6817,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     # Create right segment
     right_data: dict[str, Any] = {
         "ref_id": seg_right_id,
-        "name": _nazwa_polowki_odcinka(segment, seg_right_id, 2),
+        "name": _nazwa_polowki_odcinka(segment, 2),
         "type": seg_type,
         "from_bus_ref": right_from_bus_id,
         "to_bus_ref": to_bus_ref,
@@ -7514,15 +7596,15 @@ def _insert_branch_point_on_segment_sn(
     seg_left_id = f"{segment_id}_L_{branch_point_type}"
     seg_right_id = f"{segment_id}_R_{branch_point_type}"
     source_run_ref = _line_run_ref_for_segments(enm, [segment_id])
+    # Nazwy połówek: nazwa rodzica + strona punktu. Rodzic, który sam jest połówką
+    # poprzedniego punktu rozgałęzienia, nie doklejałby drugiego sufiksu strony — dostaje
+    # opis rodzaju. Dawny filtr nazw z „seg/", „/segment" i „branch" zniknął razem
+    # z przyczyną: żadna operacja nie nadaje już odcinkowi nazwy z identyfikatora
+    # (karta #144; `continue_trunk_segment_sn` nazywa odcinek z ciągu).
     raw_segment_name = str(segment.get("name") or "").strip()
     base_segment_name = (
         raw_segment_name
         if raw_segment_name
-        and "seg/" not in raw_segment_name
-        and "/segment" not in raw_segment_name
-        and "branch" not in raw_segment_name
-        and "punktu rozgałęzienia" not in raw_segment_name.lower()
-        and "punktem rozgałęzienia" not in raw_segment_name.lower()
         and "punktu rozgałęzienia" not in raw_segment_name.lower()
         and "punktem rozgałęzienia" not in raw_segment_name.lower()
         else "Odcinek SN"
@@ -8181,7 +8263,7 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
         new_enm,
         {
             "ref_id": seg_left_id,
-            "name": _nazwa_polowki_odcinka(segment, seg_left_id, 1),
+            "name": _nazwa_polowki_odcinka(segment, 1),
             "type": seg_type,
             "from_bus_ref": from_bus_ref,
             "to_bus_ref": switch_bus_ref,
@@ -8254,7 +8336,7 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
         new_enm,
         {
             "ref_id": seg_right_id,
-            "name": _nazwa_polowki_odcinka(segment, seg_right_id, 2),
+            "name": _nazwa_polowki_odcinka(segment, 2),
             "type": seg_type,
             "from_bus_ref": switch_bus2_ref,
             "to_bus_ref": to_bus_ref,

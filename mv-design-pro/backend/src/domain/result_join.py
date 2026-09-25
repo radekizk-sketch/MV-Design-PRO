@@ -185,7 +185,9 @@ def join_results(
                     element_id=element_ref,
                     element_type=ElementTypeV1.NODE,
                     token_kind=OverlayTokenKindV1.ORPHAN_RESULT,
-                    label_pl=f"Wynik bez elementu w modelu: {element_ref}",
+                    # Elementu nie ma w modelu, więc nie ma nazwy; identyfikator wyniku
+                    # zostaje w `element_id` żetonu (karta #144).
+                    label_pl="Wynik bez elementu w modelu",
                     severity="WARNING",
                 )
             )

@@ -75,8 +75,11 @@ def create_test_vdrop_input() -> VDROPInput:
                 p_mw=2.0,
                 q_mvar=1.0,
                 u_n_kv=15.0,
+                nazwa_odcinka="Kabel SN odcinek testowy",
             ),
         ],
+        source_bus_name="Szyny SN GPZ",
+        target_bus_name="Szyny nN stacji",
     )
 
 

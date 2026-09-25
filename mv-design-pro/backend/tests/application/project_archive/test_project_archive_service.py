@@ -728,14 +728,14 @@ class TestImport2xLegacyNetworkModelCompilation:
         assert imported_cases[0].name == "Przypadek legacy"
 
         # Model skompilowany z sekcji `network_model` (§0.2) — GPZ + linia + odbiorca.
-        # `graf_z_modelu_legacy` nazywa krawędź swoim `id` legacy (`b1`), nie
-        # kolumną `name` legacy — dokładnie jak `tests/application/
+        # `graf_z_modelu_legacy` nazywa krawędź kolumną `name` modelu zastanego, nigdy
+        # kluczem rekordu bazy (`b1`, karta #144) — dokładnie jak `tests/application/
         # test_migracja_legacy.py::test_model_zastany_kompiluje_sie_do_enm_bez_blokad`.
         klucz = klucz_twin_projektu(result.project_id)
         assert has_enm(klucz)
         model = get_enm(klucz)
         assert {b.name for b in model.buses} == {"GPZ", "Stacja"}
-        assert [b.name for b in model.branches] == ["b1"]
+        assert [b.name for b in model.branches] == ["AFL-6 120"]
         assert model.branches[0].catalog_ref is not None  # parametry wprost -> katalog projektu
         assert model.katalog_projektu is not None
 

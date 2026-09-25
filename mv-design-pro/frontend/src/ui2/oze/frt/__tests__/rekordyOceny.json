@@ -642,7 +642,7 @@
         "przedmiot": {
           "element_ref": "conv-pv-1mw-15kv",
           "nazwa_pl": "Farma PV 1 MW / 15 kV",
-          "opis_pl": "Moduł DER Farma PV 1 MW / 15 kV w scenariuszu hvrt_conv-pv-1mw-15kv testu HVRT profilu operatora PSE — Polskie Sieci Elektroenergetyczne"
+          "opis_pl": "Moduł DER Farma PV 1 MW / 15 kV w scenariuszu nr 1 testu HVRT profilu operatora PSE — Polskie Sieci Elektroenergetyczne"
         },
         "slad": [],
         "status_maszynowy": "NIE_OCENIONO",
@@ -840,7 +840,7 @@
         "przedmiot": {
           "element_ref": "conv-pv-1mw-15kv",
           "nazwa_pl": "Farma PV 1 MW / 15 kV",
-          "opis_pl": "Moduł DER Farma PV 1 MW / 15 kV w scenariuszu lvrt_conv-pv-1mw-15kv testu LVRT profilu operatora PSE — Polskie Sieci Elektroenergetyczne"
+          "opis_pl": "Moduł DER Farma PV 1 MW / 15 kV w scenariuszu nr 1 testu LVRT profilu operatora PSE — Polskie Sieci Elektroenergetyczne"
         },
         "slad": [],
         "status_maszynowy": "NIE_OCENIONO",

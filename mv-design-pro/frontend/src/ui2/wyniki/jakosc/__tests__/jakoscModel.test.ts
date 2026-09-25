@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   KLUCZ_WIARYGODNOSCI_WEZEL,
+  KLUCZ_WIERSZA_ARC_FLASH,
+  KLUCZ_WIERSZA_MIGOTANIE,
   KLUCZ_WIERSZA_WALIDACJI,
+  KOLUMNY_ARC_FLASH,
+  KOLUMNY_MIGOTANIE,
   KOLUMNY_WALIDACJI,
   KOLUMNY_WIARYGODNOSCI,
   jestPrzebiegiemZwarciowym,
@@ -213,6 +217,7 @@ describe('K3/C1 — dowodRef adapterów migotania i Arc Flash', () => {
   it('Arc Flash: I_bf (wprost z przebiegu zwarciowego) niesie dowodRef = bus_ref; energia/granica bez ref (ślad IEEE 1584 na miejscu)', () => {
     const wynik: WynikArcFlash = {
       bus_ref: 'bus-af-1',
+      bus_name: 'Szyna AF 1',
       status: 'COMPUTED_IEEE_1584_OPEN_SOURCE',
       status_label_pl: 'obliczony (IEEE 1584 open-source)',
       method: 'IEEE_1584_2018',
@@ -267,5 +272,47 @@ describe('rodzajPrzekroczeniaWalidacji — mapowanie check_type na rodzaj akcji 
 
   it('bilans strat → null (agregat systemowy — spójnie z typElementuWalidacji)', () => {
     expect(rodzajPrzekroczeniaWalidacji('LOSS_BUDGET')).toBeNull();
+  });
+});
+
+describe('Karta #144 — wiersz nazywa węzeł nazwą z modelu, identyfikator tylko wiąże', () => {
+  it('migotanie: kolumna „Węzeł" = bus_name, klucz wiersza = bus_ref (kolumna ekspercka)', () => {
+    const [wiersz] = naWierszeMigotania(MIGOTANIE_FIXTURE.buses);
+    expect(wiersz.wezel.wartosc).toBe('Szyna OZE 1');
+    expect(wiersz[KLUCZ_WIERSZA_MIGOTANIE].wartosc).toBe('bus-oze-1');
+    const kolumna = KOLUMNY_MIGOTANIE.find((k) => k.klucz === KLUCZ_WIERSZA_MIGOTANIE);
+    expect(kolumna?.tylkoEkspercki).toBe(true);
+  });
+
+  it('Arc Flash: kolumna „Punkt (szyna)" = bus_name, klucz wiersza = bus_ref (kolumna ekspercka)', () => {
+    const wynik: WynikArcFlash = {
+      bus_ref: 'wezel/7f3a',
+      bus_name: 'Szyna SN S02',
+      status: 'COMPUTED_IEEE_1584_OPEN_SOURCE',
+      status_label_pl: 'obliczony (IEEE 1584 open-source)',
+      method: 'IEEE_1584_2018',
+      electrode_config: 'VCB',
+      i_bf_ka: 12.5,
+      voltage_kv: 15.0,
+      arc_time_s: 0.2,
+      conductor_gap_mm: 152,
+      working_distance_mm: 455,
+      i_arc_ka: 11.8,
+      incident_energy_cal_cm2: 8.42,
+      incident_energy_joule_cm2: 35.2,
+      arc_flash_boundary_mm: 1320,
+      ppe_category: '2',
+      ppe_table_provenance: null,
+      provenance: null,
+      provenance_caveat_pl: null,
+      why_pl: 'Energia incydentu wyznaczona wg IEEE 1584-2018.',
+      missing_data: [],
+      white_box: [],
+    };
+    const [wiersz] = naWierszeArcFlash([wynik]);
+    expect(wiersz.punkt.wartosc).toBe('Szyna SN S02');
+    expect(wiersz[KLUCZ_WIERSZA_ARC_FLASH].wartosc).toBe('wezel/7f3a');
+    const kolumna = KOLUMNY_ARC_FLASH.find((k) => k.klucz === KLUCZ_WIERSZA_ARC_FLASH);
+    expect(kolumna?.tylkoEkspercki).toBe(true);
   });
 });

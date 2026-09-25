@@ -743,7 +743,9 @@ def dowod_certyfikatu_ptpiree(pola: Mapping[str, Any]) -> DowodModelu | None:
         rodzaj="CERTYFIKAT_ZGODNOSCI",
         pokrywa=("POWER_FLOW", "RMS_DYNAMICS"),
         podstawa=podstawa,
-        odniesienie_pl=f"certyfikat {numer or pola['ptpiree_certificate_ref']}",
+        # Certyfikat nazywa numer dokumentu z wykazu; klucz rekordu wykazu nie jest nazwą
+        # pokazywaną projektantowi (karta #144).
+        odniesienie_pl=f"certyfikat {numer}" if numer else "certyfikat bez numeru dokumentu",
     )
 
 

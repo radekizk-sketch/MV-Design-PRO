@@ -314,7 +314,7 @@ def build_frt_trajectories_view(
     scenarios_by_id = {sc.scenario_id: sc for sc in solver_input.scenarios}
 
     scenariusze: list[dict[str, Any]] = []
-    for sc in result.scenario_results:
+    for numer_scenariusza, sc in enumerate(result.scenario_results, start=1):
         trajektoria = [
             {
                 "czas_s": _round(pt.time_s),
@@ -347,7 +347,9 @@ def build_frt_trajectories_view(
                     rodzaj=kind,
                     kryterium_id=f"frt_hvrt.{kind}.{converter.id}.{sc.scenario_id}",
                     opis_przedmiotu_pl=(
-                        f"Moduł DER {converter.name} w scenariuszu {sc.scenario_id} testu "
+                        # Scenariusz nazywa numer porządkowy w teście, nie identyfikator
+                        # scenariusza solvera (ten zostaje w `scenario_id`, karta #144).
+                        f"Moduł DER {converter.name} w scenariuszu nr {numer_scenariusza} testu "
                         f"{kind.upper()} profilu operatora {profile.operator_name_pl}"
                     ),
                 ),

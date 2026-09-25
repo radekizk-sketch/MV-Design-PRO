@@ -146,6 +146,7 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from enm.nazwy_elementow import nazwa_elementu
 from enm.uklad_sieci_nn import uklad_nn_stacji
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
 from network_model.pochodne import ka_na_a, km_na_m, prad_roboczy_a
@@ -266,7 +267,7 @@ def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
             "rozklad": None,
             "status": "brak danych",
             "reason_pl": (
-                f"Kabel '{cable.ref_id}' bez zmaterializowanej obciążalności katalogowej "
+                f"Kabel '{nazwa_elementu(cable, 'branches')}' bez zmaterializowanej obciążalności katalogowej "
                 "(obciążalność długotrwała z karty typu) — brak wiązania z katalogiem kabli nN."
             ),
         }
@@ -308,7 +309,10 @@ def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
             "iz_prime_a": None,
             "rozklad": None,
             "status": "nierozstrzygalne",
-            "reason_pl": f"Warunki ułożenia kabla '{cable.ref_id}' niekompletne/niepoprawne: {exc}",
+            "reason_pl": (
+                f"Warunki ułożenia kabla '{nazwa_elementu(cable, 'branches')}' "
+                f"niekompletne/niepoprawne: {exc}"
+            ),
         }
     iz_prime = obciazalnosc_skorygowana(iz_katalogowe, wspolczynniki)
     return {

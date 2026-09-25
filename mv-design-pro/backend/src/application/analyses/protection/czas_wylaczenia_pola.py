@@ -43,6 +43,7 @@ from application.analyses.protection.czas_wylaczenia_galezi import (
 )
 from application.field_read_model import collect_bays
 from enm.models import EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_elementu
 from network_model.catalog import get_default_mv_catalog
 from network_model.pochodne import ka_na_a
 
@@ -157,7 +158,7 @@ def czasy_wylaczenia_pol_stacji(
         if nastawa is None:
             wynik[bay.ref_id] = _bez_czasu(
                 READINESS_BRAK_NASTAW,
-                f"Zabezpieczenie {wpis.get('name') or wpis.get('ref_id')} nie ma nastawy "
+                f"Zabezpieczenie {nazwa_elementu(wpis, 'protection_assignments')} nie ma nastawy "
                 "funkcji nadprądowej zwarciowej (50/51) z progiem rozruchowym.",
                 urzadzenie_ref=wpis.get("ref_id"),
             )
@@ -220,7 +221,7 @@ def czasy_wylaczenia_pol_stacji(
             "zrodlo": ZRODLO_NASTAWY_POLA,
             "powod_pl": (
                 f"Czas z charakterystyki {krzywa_txt} zabezpieczenia "
-                f"{wpis.get('name') or wpis.get('ref_id')} przy prądzie {prad_a:.1f} A"
+                f"{nazwa_elementu(wpis, 'protection_assignments')} przy prądzie {prad_a:.1f} A"
                 + (" powiększony o czas własny aparatu." if czas_wlasny is not None else ".")
             ),
             "czlon_nastawczy_s": czas_nastawy,

@@ -17,8 +17,8 @@
     "kryterium_id": "dynamic_stability.fault_clear.dyn-scena-stabilnosc",
     "przedmiot": {
       "element_ref": "gen_sync",
-      "nazwa_pl": "Źródło gen_sync",
-      "opis_pl": "Źródło w scenariuszu wyłączenia zwarcia na elemencie line_b_c"
+      "nazwa_pl": "Źródło Generator synchroniczny",
+      "opis_pl": "Źródło w scenariuszu wyłączenia zwarcia na elemencie Linia SN 1"
     },
     "kryterium": {
       "opis_pl": "Stabilność kątowa źródła po wyłączeniu zwarcia",
@@ -70,7 +70,7 @@
       "semantyka": "neutralna"
     },
     "wyjasnienie": {
-      "zdanie_pl": "Stabilność kątowa źródła po wyłączeniu zwarcia (Źródło gen_sync) — ocena niewykonana: brak metody dowodu, która wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.",
+      "zdanie_pl": "Stabilność kątowa źródła po wyłączeniu zwarcia (Źródło Generator synchroniczny) — ocena niewykonana: brak metody dowodu, która wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar.",
       "przyczyna_pl": "brak metody dowodu, która wykazuje zachowania dynamicznego",
       "czego_brakuje": [
         "Metoda dowodu właściwa dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
@@ -225,7 +225,7 @@
       "formula_set_version": "dynamic_stability_fault_clear_echo_v2",
       "standard_basis_ref": "DYNAMIC_STABILITY_FAULT_CLEAR_ECHO_V2",
       "input_hash": "ac5986b30b64c28c1c371fe2132b9dd4dae3ce7f174fa4a0bd556e648921ffe7",
-      "result_hash": "1315f06150b28875fb263cb6dc082285c2dc2422ec3a1d06d4adee333604cbfb",
+      "result_hash": "a9d819270d7dce7725bb3fb2546ee1c81a2588b05499710f150b29e6948b370d",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

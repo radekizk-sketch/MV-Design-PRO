@@ -233,6 +233,9 @@ def generate_audit2_proof_pack_endpoint(
 class GenerateAudit2ReportRequest(BaseModel):
     project_name: str
     station_id: str
+    #: Nazwa stacji z modelu — raport pokazuje ją projektantowi; `station_id` zostaje
+    #: wyłącznie w strukturze JSON raportu (karta #144: nazwa nigdy z identyfikatora).
+    station_name: str
     proof_pack: dict[str, Any]
     operator_pl: str = ""
     generated_at_iso: str = "1970-01-01T00:00:00Z"
@@ -258,6 +261,7 @@ def generate_audit2_report_endpoint(
     ctx = Audit2ReportContext(
         project_name=req.project_name,
         station_id=req.station_id,
+        station_name=req.station_name,
         proof_pack_dict=req.proof_pack,
         operator_pl=req.operator_pl,
         generated_at_iso=req.generated_at_iso,

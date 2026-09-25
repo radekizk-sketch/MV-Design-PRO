@@ -47,6 +47,7 @@ from application.analyses.grid_strength import resolve_n_parallel
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
+from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 
 # --- Stałe normatywne (KAŻDA ze źródłem powyżej w docstringu modułu) -----------
 
@@ -404,6 +405,13 @@ def build_migotanie_view(run: CanonicalRun) -> dict[str, Any]:
         _bus_entry(bus_ref, kv_by_bus.get(bus_ref), sk_by_bus.get(bus_ref), modules)
         for bus_ref, modules in sorted(ibg_by_bus.items(), key=lambda item: item[0])
     ]
+    # Nazwy węzła przyłączenia i modułu z modelu biegu (albo opis rodzaju) — ekran nazywa
+    # nimi wiersze; identyfikatory zostają w `bus_ref`/`gen_ref` do wiązania (karta #144).
+    nazwy = zbuduj_indeks_nazw(snapshot)
+    for entry in entries:
+        entry["bus_name"] = nazwa_po_identyfikatorze(entry["bus_ref"], indeks=nazwy)
+        for module in entry["modules"]:
+            module["gen_name"] = nazwa_po_identyfikatorze(module["gen_ref"], indeks=nazwy)
 
     config = {
         "flicker_summation_exponent_m": FLICKER_SUMMATION_EXPONENT_M,

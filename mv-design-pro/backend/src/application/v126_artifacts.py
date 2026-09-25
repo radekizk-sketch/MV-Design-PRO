@@ -283,7 +283,9 @@ def _tekst_lub_brak(wartosc: Any) -> str | None:
     return str(wartosc) if wartosc not in (None, "") else None
 
 
-def wynik_v126_dla_powierzchni(analysis_type: str, envelope: Mapping[str, Any]) -> JsonDict:
+def wynik_v126_dla_powierzchni(
+    analysis_type: str, envelope: Mapping[str, Any], *, nazwy: Mapping[str, str]
+) -> JsonDict:
     """JEDYNA granica „wynik solvera V12.6 → wynik powierzchni" (API, raport, fixtury).
 
     Solver FROZEN (B-01) zostaje nietknięty: koperta, ślad White Box i odcisk
@@ -297,7 +299,9 @@ def wynik_v126_dla_powierzchni(analysis_type: str, envelope: Mapping[str, Any]) 
         sam rekord co widok stabilności SSCI.
     Wołana w `enm/canonical_analysis.py::_execute_v126` (ścieżka API) i w generatorze fixtury
     strażnika prezentacji (`tests/ci/generuj_odpowiedzi_v126.py`) — fixtura jest odciskiem
-    ODPOWIEDZI API, nie surowego solvera.
+    ODPOWIEDZI API, nie surowego solvera. `nazwy` — indeks `ref_id -> nazwa` migawki modelu
+    biegu (`enm.nazwy_elementow.zbuduj_indeks_nazw`): przedmiot oceny SSCI nazywa
+    przekształtnik i szynę nazwami z modelu (karta #144).
     """
     ladunek_solvera = envelope.get("result")
     if not isinstance(ladunek_solvera, Mapping):
@@ -313,6 +317,7 @@ def wynik_v126_dla_powierzchni(analysis_type: str, envelope: Mapping[str, Any]) 
         ladunek["ocena"] = ocena_ssci_niewykonana(
             converter_ref=_tekst_lub_brak(ladunek.get("converter_ref")),
             bus_ref=_tekst_lub_brak(ladunek.get("bus_ref")),
+            nazwy=nazwy,
             tablice_obecne=ladunek.get("status") != SOLVER_INCOMPLETE_STATUS,
             braki_danych=[str(pole) for pole in ladunek.get("missing_fields") or []],
         )

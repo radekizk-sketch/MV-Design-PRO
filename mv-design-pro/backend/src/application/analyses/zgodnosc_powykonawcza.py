@@ -51,6 +51,7 @@ from enm.canonical_analysis import (
     build_branch_results,
     build_bus_results,
 )
+from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 
 # Dozwolone wielkości pomiarowe i ich jednostki kanoniczne.
 _WIELKOSCI: tuple[str, ...] = ("U", "P", "Q")
@@ -293,6 +294,21 @@ def _werdykt(
     return pct, werdykt
 
 
+def _slad_braku_w_wyniku(element_ref: object, nazwy: dict[str, str], rola: str) -> str:
+    """Ślad pomiaru bez odpowiednika w wyniku rozpływu (`rola`: „węzeł" albo „gałąź").
+
+    Element modelu nazywa nazwą z migawki biegu; identyfikator spoza modelu (pomiar wskazał
+    miejsce, którego model nie zna) to jawny brak elementu w modelu — nigdy sam identyfikator
+    ani zdanie „Element 'Element spoza modelu'" (karta #144)."""
+    klucz = str(element_ref)
+    if klucz in nazwy:
+        return f"Element '{nazwy[klucz]}' nie występuje jako {rola} w wyniku rozpływu."
+    return (
+        "Pomiar wskazuje element spoza modelu sieci biegu — nie występuje on jako "
+        f"{rola} w wyniku rozpływu."
+    )
+
+
 def _porownaj_punkt(
     pomiar: dict[str, Any],
     *,
@@ -300,10 +316,14 @@ def _porownaj_punkt(
     nominal_kv: dict[str, float | None],
     branch_pq: dict[str, dict[str, tuple[float | None, float | None]]],
     snapshot: dict[str, Any],
+    nazwy: dict[str, str],
     napiecie_pct: float | None,
     moc_pct: float | None,
 ) -> dict[str, Any]:
     element_ref = pomiar["element_ref"]
+    # Ślad nazywa element nazwą z modelu biegu; identyfikator z pomiaru zostaje w polu
+    # `element_ref` wiersza (karta #144).
+    nazwa = nazwa_po_identyfikatorze(element_ref, indeks=nazwy)
     wielkosc = pomiar["wielkosc"]
     jednostka = pomiar["jednostka"]
     wartosc_pomiar = float(pomiar["wartosc"])
@@ -331,16 +351,14 @@ def _porownaj_punkt(
     if wielkosc == "U":
         tolerancja = napiecie_pct
         if element_ref not in bus_upu:
-            wiersz["slad_pl"] = [
-                f"Element '{element_ref}' nie występuje jako węzeł w wyniku rozpływu."
-            ]
+            wiersz["slad_pl"] = [_slad_braku_w_wyniku(element_ref, nazwy, "węzeł")]
             return wiersz
         u_pu = bus_upu.get(element_ref)
         u_n = nominal_kv.get(element_ref)
         if u_pu is None or u_n is None:
             wiersz["werdykt"] = _BRAK_WYNIKU
             wiersz["slad_pl"] = [
-                f"Brak kompletu danych modelowych dla węzła '{element_ref}' "
+                f"Brak kompletu danych modelowych dla węzła '{nazwa}' "
                 "(u_pu lub napięcie znamionowe)."
             ]
             return wiersz
@@ -355,9 +373,7 @@ def _porownaj_punkt(
     else:
         tolerancja = moc_pct
         if element_ref not in branch_pq:
-            wiersz["slad_pl"] = [
-                f"Element '{element_ref}' nie występuje jako gałąź w wyniku rozpływu."
-            ]
+            wiersz["slad_pl"] = [_slad_braku_w_wyniku(element_ref, nazwy, "gałąź")]
             return wiersz
         zacisk = pomiar.get("zacisk")
         if zacisk is None:
@@ -365,7 +381,7 @@ def _porownaj_punkt(
             wiersz["kod_odmowy"] = KOD_BRAK_ZACISKU_POMIARU
             wiersz["slad_pl"] = [
                 f"{READINESS_CODES[KOD_BRAK_ZACISKU_POMIARU].message_pl} (gałąź "
-                f"'{element_ref}', wielkość {wielkosc})."
+                f"'{nazwa}', wielkość {wielkosc})."
             ]
             return wiersz
         p_mw, q_mvar = branch_pq[element_ref][zacisk]
@@ -380,8 +396,7 @@ def _porownaj_punkt(
         if surowa is None:
             wiersz["werdykt"] = _BRAK_WYNIKU
             wiersz["slad_pl"] = [
-                f"Brak wyniku {wielkosc} na zacisku {zacisk} ({miejsce}) gałęzi "
-                f"'{element_ref}'."
+                f"Brak wyniku {wielkosc} na zacisku {zacisk} ({miejsce}) gałęzi '{nazwa}'."
             ]
             return wiersz
         if wielkosc == "P":
@@ -512,6 +527,7 @@ def build_zgodnosc_powykonawcza_view(
     bus_upu = _bus_upu_by_element(run)
     nominal_kv = _nominal_kv_by_bus(run.snapshot or {})
     branch_pq = _branch_pq_by_element(run)
+    nazwy = zbuduj_indeks_nazw(run.snapshot or {})
 
     wiersze = [
         _porownaj_punkt(
@@ -520,6 +536,7 @@ def build_zgodnosc_powykonawcza_view(
             nominal_kv=nominal_kv,
             branch_pq=branch_pq,
             snapshot=run.snapshot or {},
+            nazwy=nazwy,
             napiecie_pct=napiecie_pct,
             moc_pct=moc_pct,
         )

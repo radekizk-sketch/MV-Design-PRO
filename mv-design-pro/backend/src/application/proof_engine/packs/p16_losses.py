@@ -31,6 +31,7 @@ INVARIANTS:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -58,6 +59,7 @@ from application.proof_engine.types import (
     ProofValue,
     UnitCheckResult,
 )
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU
 
 if TYPE_CHECKING:
     from network_model.solvers.power_flow_result import PowerFlowResultV1
@@ -90,6 +92,9 @@ class P16BranchLossInput:
     q_to_mvar: float
     p_loss_mw: float
     q_loss_mvar: float
+    #: Nazwa gałęzi z modelu — tytuł kroku dowodu; identyfikator zostaje w `branch_id`
+    #: (karta #144).
+    nazwa: str
 
 
 @dataclass
@@ -126,6 +131,7 @@ class P16LossesInput:
         case_name: str,
         run_timestamp: datetime,
         solver_version: str,
+        nazwy_galezi: Mapping[str, str],
     ) -> P16LossesInput:
         """Sklada wejscie dowodu strat z zamrozonego wyniku rozplywu.
 
@@ -145,6 +151,8 @@ class P16LossesInput:
             case_name: Nazwa przypadku obliczeniowego.
             run_timestamp: Znacznik czasu PRZEBIEGU (nie „teraz").
             solver_version: Wersja solvera z artefaktu biegu.
+            nazwy_galezi: Nazwy gałęzi po identyfikatorze gałęzi grafu
+                (``enm.nazwy_elementow.nazwy_galezi_grafu``) — tytuły kroków (karta #144).
         """
         branches: list[P16BranchLossInput] = []
 
@@ -158,6 +166,7 @@ class P16LossesInput:
                     q_to_mvar=branch.q_to_mvar,
                     p_loss_mw=branch.losses_p_mw,
                     q_loss_mvar=branch.losses_q_mvar,
+                    nazwa=nazwy_galezi.get(branch.branch_id) or ELEMENT_SPOZA_MODELU,
                 )
             )
 
@@ -265,12 +274,16 @@ class P16LossesProof:
             reverse=True,
         )[:max_branch_steps]
 
+        # Symbol straty gałęzi niesie NUMER gałęzi w wejściu (ten sam, którym krok sumy
+        # oznacza składniki `P_{loss,i}`), a tytuł kroku — jej nazwę z modelu; identyfikator
+        # gałęzi nie trafia ani do symbolu, ani do tytułu (karta #144).
+        numery = {id(galaz): numer for numer, galaz in enumerate(data.branches, start=1)}
         for branch in branches_to_show:
             step_number += 1
-            steps.append(cls._create_branch_p_loss_step(step_number, branch))
+            steps.append(cls._create_branch_p_loss_step(step_number, branch, numery[id(branch)]))
 
             step_number += 1
-            steps.append(cls._create_branch_q_loss_step(step_number, branch))
+            steps.append(cls._create_branch_q_loss_step(step_number, branch, numery[id(branch)]))
 
         if len(data.branches) > max_branch_steps:
             warnings.append(
@@ -378,6 +391,7 @@ class P16LossesProof:
         cls,
         step_number: int,
         branch: P16BranchLossInput,
+        numer: int,
     ) -> ProofStep:
         """Krok: Straty mocy czynnej na galezi."""
         equation = EQ_LOSS_001
@@ -398,13 +412,13 @@ class P16LossesProof:
         )
 
         substitution = (
-            f"P_{{loss,{branch.branch_id}}} = "
+            f"P_{{loss,{numer}}} = "
             f"{branch.p_from_mw:.4f} + ({branch.p_to_mw:.4f}) = "
             f"{branch.p_loss_mw:.4f} \\text{{ MW}}"
         )
 
         result = ProofValue.create(
-            f"P_{{loss,{branch.branch_id}}}",
+            f"P_{{loss,{numer}}}",
             branch.p_loss_mw,
             "MW",
             "p_loss_mw",
@@ -424,7 +438,7 @@ class P16LossesProof:
         return ProofStep(
             step_id=ProofStep.generate_step_id(cls.PACK_ID, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} ({branch.branch_id})",
+            title_pl=f"{equation.name_pl} ({branch.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -443,6 +457,7 @@ class P16LossesProof:
         cls,
         step_number: int,
         branch: P16BranchLossInput,
+        numer: int,
     ) -> ProofStep:
         """Krok: Straty mocy biernej na galezi."""
         equation = EQ_LOSS_002
@@ -463,13 +478,13 @@ class P16LossesProof:
         )
 
         substitution = (
-            f"Q_{{loss,{branch.branch_id}}} = "
+            f"Q_{{loss,{numer}}} = "
             f"{branch.q_from_mvar:.4f} + ({branch.q_to_mvar:.4f}) = "
             f"{branch.q_loss_mvar:.4f} \\text{{ Mvar}}"
         )
 
         result = ProofValue.create(
-            f"Q_{{loss,{branch.branch_id}}}",
+            f"Q_{{loss,{numer}}}",
             branch.q_loss_mvar,
             "Mvar",
             "q_loss_mvar",
@@ -489,7 +504,7 @@ class P16LossesProof:
         return ProofStep(
             step_id=ProofStep.generate_step_id(cls.PACK_ID, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} ({branch.branch_id})",
+            title_pl=f"{equation.name_pl} ({branch.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,

@@ -43,6 +43,7 @@ from enm.kompilator_grafu import (
     TransformatorSpec,
     ZrodloSpec,
 )
+from enm.nazwy_elementow import nazwa_elementu
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.pochodne import km_na_m
 
@@ -70,6 +71,24 @@ def _slug(tekst: str) -> str:
     return slug or "element"
 
 
+#: Rodzaj gałęzi zastanej → typ gałęzi ENM (opis rodzaju gałęzi bez nazwy, karta #144).
+_TYP_ENM_GALEZI_ZASTANEJ: dict[str, str] = {
+    "line": "line_overhead",
+    "line_overhead": "line_overhead",
+    "cable": "cable",
+}
+
+
+def _nazwa_galezi_zastanej(galaz: Mapping[str, Any], rodzaj: str) -> str:
+    """Nazwa gałęzi zastanej z jej kolumny `name` albo polski opis rodzaju — nigdy klucz
+    rekordu bazy (karta #144)."""
+    if rodzaj == "transformer":
+        return nazwa_elementu(galaz, "transformers")
+    return nazwa_elementu(
+        {"name": galaz.get("name"), "type": _TYP_ENM_GALEZI_ZASTANEJ.get(rodzaj)}, "branches"
+    )
+
+
 def graf_z_modelu_legacy(
     *,
     nazwa: str,
@@ -83,11 +102,14 @@ def graf_z_modelu_legacy(
     katalog = get_default_mv_catalog()
     szyny: list[SzynaSpec] = []
     napiecia: dict[str, float] = {}
+    nazwy_wezlow: dict[str, str] = {}
     for wezel in wezly:
         lit = str(wezel["id"])
-        napiecie = _liczba(wezel, "base_kv", element=f"węzeł '{wezel.get('name', lit)}'")
+        nazwa_wezla = nazwa_elementu(wezel, "buses")
+        napiecie = _liczba(wezel, "base_kv", element=f"węzeł '{nazwa_wezla}'")
         napiecia[lit] = napiecie
-        szyny.append(SzynaSpec(lit=lit, name=str(wezel.get("name") or lit), voltage_kv=napiecie))
+        nazwy_wezlow[lit] = nazwa_wezla
+        szyny.append(SzynaSpec(lit=lit, name=nazwa_wezla, voltage_kv=napiecie))
 
     typy_projektu: dict[str, dict[str, dict[str, Any]]] = {
         "line_types": {},
@@ -98,13 +120,16 @@ def graf_z_modelu_legacy(
     transformatory: list[TransformatorSpec] = []
     for galaz in galezie:
         identyfikator = str(galaz["id"])
-        nazwa_galezi = str(galaz.get("name") or identyfikator)
+        rodzaj = str(galaz.get("branch_type") or "").lower()
+        # Klucz rekordu bazy zastanej jest identyfikatorem maszynowym — nazwą gałęzi jest
+        # jej nazwa z modelu zastanego albo opis rodzaju (karta #144), nigdy ten klucz.
+        # Rodzaj opisu wg rodzaju gałęzi zastanej; linia z typem kabla — niżej, po typie.
+        nazwa_galezi = _nazwa_galezi_zastanej(galaz, rodzaj)
         element = f"gałąź '{nazwa_galezi}'"
         if galaz.get("in_service", True) is False:
             raise OdmowaMigracji(
                 f"{element}: wyłączona z ruchu — migracja nie odwzorowuje stanów łączeniowych"
             )
-        rodzaj = str(galaz.get("branch_type") or "").lower()
         od, do = str(galaz["from_node_id"]), str(galaz["to_node_id"])
         for koniec in (od, do):
             if koniec not in napiecia:
@@ -115,13 +140,18 @@ def graf_z_modelu_legacy(
             dlugosc_m = km_na_m(_liczba(params, "length_km", element=element))
             if type_ref:
                 if type_ref in katalog.cable_types:
+                    nazwa_kabla = _nazwa_galezi_zastanej(galaz, "cable")
                     odcinki.append(
-                        EdgeSpec(identyfikator, od, do, str(type_ref), dlugosc_m, "KABEL")
+                        EdgeSpec(
+                            identyfikator, od, do, str(type_ref), dlugosc_m, "KABEL", nazwa_kabla
+                        )
                     )
                     continue
                 if type_ref in katalog.line_types:
                     odcinki.append(
-                        EdgeSpec(identyfikator, od, do, str(type_ref), dlugosc_m, "LINIA")
+                        EdgeSpec(
+                            identyfikator, od, do, str(type_ref), dlugosc_m, "LINIA", nazwa_galezi
+                        )
                     )
                     continue
                 raise OdmowaMigracji(
@@ -154,12 +184,15 @@ def graf_z_modelu_legacy(
                     "verification_status": STATUS_WERYFIKACJI_ARKUSZA,
                     "catalog_status": STATUS_KATALOGU_PROJEKTU,
                     "verification_note": (
-                        f"Napięcie znamionowe przewodu przyjęte z napięcia węzła '{od}' "
+                        f"Napięcie znamionowe przewodu przyjęte z napięcia węzła "
+                        f"'{nazwy_wezlow[od]}' "
                         f"({napiecia[od]:g} kV) — model zastany go nie niósł."
                     ),
                 },
             }
-            odcinki.append(EdgeSpec(identyfikator, od, do, catalog_ref, dlugosc_m, "LINIA"))
+            odcinki.append(
+                EdgeSpec(identyfikator, od, do, catalog_ref, dlugosc_m, "LINIA", nazwa_galezi)
+            )
         elif rodzaj == "transformer":
             type_ref = params.get("type_ref")
             if type_ref:
@@ -206,9 +239,9 @@ def graf_z_modelu_legacy(
 
     rekordy_zrodel: list[ZrodloSpec] = []
     for zrodlo in zrodla:
-        identyfikator = str(zrodlo["id"])
         payload: Mapping[str, Any] = zrodlo.get("payload_jsonb") or zrodlo.get("payload") or {}
-        element = f"źródło '{payload.get('name') or identyfikator}'"
+        nazwa_zrodla = nazwa_elementu(payload, "sources")
+        element = f"źródło '{nazwa_zrodla}'"
         if str(payload.get("model") or "") != MODEL_ZRODLA_SYSTEMOWEGO:
             raise OdmowaMigracji(
                 f"{element}: model źródła '{payload.get('model')}' — migracja odwzorowuje "
@@ -222,7 +255,7 @@ def graf_z_modelu_legacy(
         rekordy_zrodel.append(
             ZrodloSpec(
                 lit=wezel_id,
-                name=str(payload.get("name") or identyfikator),
+                name=nazwa_zrodla,
                 rx_ratio=_liczba(payload, "rx_ratio", element=element),
                 sk3_mva=None if payload.get("sk3_mva") is None else float(payload["sk3_mva"]),
                 ik3_ka=None if payload.get("ik3_ka") is None else float(payload["ik3_ka"]),
@@ -241,16 +274,16 @@ def graf_z_modelu_legacy(
 
     rekordy_odbiorow: list[OdbiorSpec] = []
     for odbior in odbiory:
-        identyfikator = str(odbior["id"])
         payload = odbior.get("payload_jsonb") or odbior.get("payload") or {}
-        element = f"odbiór '{payload.get('name') or identyfikator}'"
+        nazwa_odbioru = nazwa_elementu(payload, "loads")
+        element = f"odbiór '{nazwa_odbioru}'"
         wezel_id = str(odbior["node_id"])
         if wezel_id not in napiecia:
             raise OdmowaMigracji(f"{element}: węzeł '{wezel_id}' nie istnieje w modelu zastanym")
         rekordy_odbiorow.append(
             OdbiorSpec(
                 lit=wezel_id,
-                name=str(payload.get("name") or identyfikator),
+                name=nazwa_odbioru,
                 p_mw=_liczba(payload, "p_mw", element=element),
                 q_mvar=_liczba(payload, "q_mvar", element=element),
             )

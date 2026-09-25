@@ -257,7 +257,7 @@ class _OcenaModulu:
                     wartosc=float(dowod.pokrywa(self.klasyfikacja.modul)), jednostka="1"
                 ),
                 punkt_krytyczny_pl=(
-                    f"rekord wykazu {dowod.rekord_id}: {dowod.producent} {dowod.model}, "
+                    f"rekord wykazu: {dowod.producent} {dowod.model}, "
                     f"dokument {dowod.numer_dokumentu}, zakres typów "
                     f"{', '.join(dowod.zakres_typow) or 'pusty'}, WiPWC {dowod.wersja_wipwc}"
                 ),

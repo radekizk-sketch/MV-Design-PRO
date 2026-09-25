@@ -82,6 +82,7 @@ from enm.hash import compute_enm_hash
 from enm.klucz_twin import PrzypadekBezProjektuError
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_elementu
 from enm.store import get_enm
 from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.resolver import resolve_thermal_params
@@ -317,7 +318,7 @@ def build_conductor_thermal_withstand_view(
             items.append(
                 ConductorThermalWithstandItem(
                     branch_id=branch_id,
-                    branch_name=branch.name,
+                    branch_name=nazwa_elementu(branch, "branches"),
                     status="PASS",
                     i_fault_a=0.0,
                     i_permissible_a=None,
@@ -348,7 +349,7 @@ def build_conductor_thermal_withstand_view(
         items.append(
             ConductorThermalWithstandItem(
                 branch_id=branch_id,
-                branch_name=branch.name,
+                branch_name=nazwa_elementu(branch, "branches"),
                 status=result.status,
                 i_fault_a=i_fault_a,
                 i_permissible_a=result.admissible_current_a,

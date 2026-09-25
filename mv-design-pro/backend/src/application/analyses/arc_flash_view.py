@@ -97,10 +97,14 @@ def build_arc_flash_view(
 
     voltage_by_target = _voltage_by_target(run)
     inputs: list[ArcFlashInput] = []
+    # Nazwa szyny z tabeli wyników zwarć (nazwa z modelu albo opis rodzaju) — wiersz
+    # widoku i raportu nazywa szynę nią, nie identyfikatorem węzła (karta #144).
+    nazwy_szyn: dict[str, str] = {}
     for row in build_short_circuit_results(run).get("rows", []):
         target_id = row.get("target_id")
         if not target_id:
             continue
+        nazwy_szyn[str(target_id)] = str(row.get("target_name"))
         inputs.append(
             ArcFlashInput(
                 bus_ref=str(target_id),
@@ -114,5 +118,7 @@ def build_arc_flash_view(
             )
         )
 
-    view = ArcFlashBuilder().build(inputs, context=_context(run))
-    return view.to_dict()
+    view = ArcFlashBuilder().build(inputs, context=_context(run)).to_dict()
+    for wynik in view.get("results") or []:
+        wynik["bus_name"] = nazwy_szyn[str(wynik["bus_ref"])]
+    return view

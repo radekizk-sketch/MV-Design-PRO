@@ -239,9 +239,12 @@ def zbuduj_odpowiedzi() -> dict[str, Any]:
     audytową, etykietę „zweryfikowany"), i odwrotnie."""
     solver = V126AcademicSolver()
     model = model_wejsciowy()
+    # Indeks nazw modelu — w ścieżce API buduje go `enm.nazwy_elementow.zbuduj_indeks_nazw`
+    # z migawki biegu; tu źródłem nazw są szyny modelu wejściowego (karta #144).
+    nazwy = {szyna.ref: szyna.name for szyna in model.buses}
     return {
         analysis_type.value: wynik_v126_dla_powierzchni(
-            analysis_type.value, solver.run(analysis_type, model)
+            analysis_type.value, solver.run(analysis_type, model), nazwy=nazwy
         )["result"]
         for analysis_type in V126AnalysisType
     }

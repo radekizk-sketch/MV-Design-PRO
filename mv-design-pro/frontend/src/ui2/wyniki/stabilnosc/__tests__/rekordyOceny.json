@@ -109,8 +109,8 @@
     ],
     "przedmiot": {
       "element_ref": "src/pv/1",
-      "nazwa_pl": "Źródło src/pv/1",
-      "opis_pl": "Źródło w scenariuszu wyłączenia zwarcia na elemencie line/gpz/1"
+      "nazwa_pl": "Źródło Farma PV Zachód",
+      "opis_pl": "Źródło w scenariuszu wyłączenia zwarcia na elemencie Linia GPZ — Stacja Łąkowa"
     },
     "slad": [],
     "status_maszynowy": "NIE_OCENIONO",
@@ -144,7 +144,7 @@
         "Dana przyjęta bez walidacji: częstotliwość po zwarciu = 0,99 p.u. (f_n), jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
         "Zakres ważności: Echo scenariusza wyłączenia zwarcia wpisanego przez użytkownika — wynik nie obejmuje: przebieg kątów mocy wyznaczony z rozwiązania sieci; zadziałanie zabezpieczeń wyznaczone z nastaw."
       ],
-      "zdanie_pl": "Stabilność kątowa źródła po wyłączeniu zwarcia (Źródło src/pv/1) — ocena niewykonana: brak metody dowodu, która wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar."
+      "zdanie_pl": "Stabilność kątowa źródła po wyłączeniu zwarcia (Źródło Farma PV Zachód) — ocena niewykonana: brak metody dowodu, która wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar."
     },
     "wynik": null,
     "zakres_waznosci": {

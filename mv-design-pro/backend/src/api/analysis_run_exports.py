@@ -28,6 +28,7 @@ from application.dokumentacja_wykonawcza import (
     ocen_gotowosc_dokumentacji_wykonawczej,
 )
 from enm.canonical_analysis import CanonicalRun
+from enm.nazwy_elementow import opis_bez_nazwy
 from fastapi import HTTPException
 from fastapi.responses import Response
 from network_model.pochodne import a_na_ka
@@ -406,7 +407,7 @@ def _catalog_context_lines(bundle: dict[str, Any], *, max_items: int = 20) -> li
         lines.append(
             " | ".join(
                 [
-                    str(entry.get("element_id") or "-"),
+                    str(entry.get("name") or "-"),
                     str(entry.get("element_type") or "-"),
                     _format_catalog_binding(entry),
                     str(entry.get("parameter_source") or entry.get("parameter_origin") or "-"),
@@ -571,7 +572,7 @@ def _sc_row_glowne_linia(row_data: dict[str, Any]) -> str:
     """Glowna linia wiersza zwarciowego: prady i moc zwarciowa (kanoniczne kA/MVA)."""
     return " | ".join(
         [
-            str(row_data.get("target_name") or row_data.get("target_id") or "—"),
+            str(row_data.get("target_name") or "—"),
             f"Ik''={_fmt_liczba(row_data.get('ikss_ka'))} kA",
             f"ip={_fmt_liczba(row_data.get('ip_ka'))} kA",
             f"Ith={_fmt_liczba(row_data.get('ith_ka'))} kA",
@@ -618,7 +619,7 @@ def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | N
             {
                 "target_id": target_id,
                 "element_id": node.get("element_id") or target_id,
-                "target_name": node.get("name") or node.get("element_id") or target_id,
+                "target_name": node.get("name") or opis_bez_nazwy("buses"),
                 "fault_type": item.get("short_circuit_type")
                 or raw_result.get("short_circuit_type"),
                 "I_dyn": {
@@ -1147,7 +1148,7 @@ def export_run_report_docx_response(
         doc.add_heading("Wyniki tabelaryczne", level=1)
         for table in results_section.get("index", {}).get("tables", []):
             table_id = table.get("table_id")
-            label = table.get("label_pl") or table_id or "Tabela"
+            label = table.get("label_pl") or "Tabela"
             doc.add_heading(str(label), level=2)
             if table_id == "buses":
                 rows = (results_section.get("buses", {}) or {}).get("rows", [])[: limits["rows"]]
@@ -1155,7 +1156,7 @@ def export_run_report_docx_response(
                     doc.add_paragraph(
                         " | ".join(
                             [
-                                str(row_data.get("name") or row_data.get("bus_id") or "—"),
+                                str(row_data.get("name") or "—"),
                                 f"U={_fmt_liczba(row_data.get('u_pu'))} pu",
                                 f"kąt={_fmt_liczba(row_data.get('angle_deg'))} deg",
                             ]
@@ -1167,7 +1168,7 @@ def export_run_report_docx_response(
                     doc.add_paragraph(
                         " | ".join(
                             [
-                                str(row_data.get("name") or row_data.get("branch_id") or "—"),
+                                str(row_data.get("name") or "—"),
                                 f"I={row_data.get('i_a') or '—'} A",
                                 f"P={row_data.get('p_mw') or '—'} MW",
                                 f"Q={row_data.get('q_mvar') or '—'} Mvar",
@@ -1193,9 +1194,7 @@ def export_run_report_docx_response(
                     doc.add_paragraph(
                         " | ".join(
                             [
-                                str(
-                                    row_data.get("target_name") or row_data.get("element_id") or "—"
-                                ),
+                                str(row_data.get("target_name") or "—"),
                                 f"UA={row_data.get('ua_kv') or '—'} kV",
                                 f"UB={row_data.get('ub_kv') or '—'} kV",
                                 f"UC={row_data.get('uc_kv') or '—'} kV",
@@ -1211,7 +1210,7 @@ def export_run_report_docx_response(
                     doc.add_paragraph(
                         " | ".join(
                             [
-                                str(row_data.get("source_id") or "—"),
+                                str(row_data.get("source_name") or "—"),
                                 f"Status oceny={row_data.get('status') or '—'}",
                                 f"t_wyl={row_data.get('clearing_time_ms') or '—'} ms",
                                 str(
@@ -1250,7 +1249,7 @@ def export_run_report_docx_response(
                 doc.add_paragraph(
                     " | ".join(
                         [
-                            str(entry.get("element_id") or "—"),
+                            str(entry.get("name") or "—"),
                             str(entry.get("element_type") or "—"),
                             _format_catalog_binding(entry),
                             str(
@@ -1358,7 +1357,7 @@ def export_run_report_pdf_response(
         y -= line_height
         for table in results_section.get("index", {}).get("tables", []):
             draw_line(
-                str(table.get("label_pl") or table.get("table_id") or "Tabela"),
+                str(table.get("label_pl") or "Tabela"),
                 font="DejaVuSans-Bold",
                 size=10,
             )
@@ -1367,14 +1366,14 @@ def export_run_report_pdf_response(
                     : limits["rows"]
                 ]:
                     draw_line(
-                        f"{row_data.get('name') or row_data.get('bus_id')}: U={_fmt_liczba(row_data.get('u_pu'))} pu, kąt={_fmt_liczba(row_data.get('angle_deg'))} deg"
+                        f"{row_data.get('name') or '—'}: U={_fmt_liczba(row_data.get('u_pu'))} pu, kąt={_fmt_liczba(row_data.get('angle_deg'))} deg"
                     )
             elif table.get("table_id") == "branches":
                 for row_data in (results_section.get("branches", {}) or {}).get("rows", [])[
                     : limits["rows"]
                 ]:
                     draw_line(
-                        f"{row_data.get('name') or row_data.get('branch_id')}: I={row_data.get('i_a') or '—'} A, P={row_data.get('p_mw') or '—'} MW"
+                        f"{row_data.get('name') or '—'}: I={row_data.get('i_a') or '—'} A, P={row_data.get('p_mw') or '—'} MW"
                     )
             elif table.get("table_id") == "short_circuit":
                 for row_data in (results_section.get("short_circuit", {}) or {}).get("rows", [])[
@@ -1391,14 +1390,14 @@ def export_run_report_pdf_response(
                     : limits["rows"]
                 ]:
                     draw_line(
-                        f"{row_data.get('target_name') or row_data.get('element_id')}: UA={row_data.get('ua_kv') or '—'} kV, UB={row_data.get('ub_kv') or '—'} kV, UC={row_data.get('uc_kv') or '—'} kV"
+                        f"{row_data.get('target_name') or '—'}: UA={row_data.get('ua_kv') or '—'} kV, UB={row_data.get('ub_kv') or '—'} kV, UC={row_data.get('uc_kv') or '—'} kV"
                     )
             elif table.get("table_id") == "dynamic_stability":
                 for row_data in (results_section.get("dynamic_stability", {}) or {}).get(
                     "rows", []
                 )[: limits["rows"]]:
                     draw_line(
-                        f"{row_data.get('source_id')}: status oceny={row_data.get('status') or '—'}, t_wyl={row_data.get('clearing_time_ms') or '—'} ms — {((row_data.get('ocena') or {}).get('wyjasnienie') or {}).get('zdanie_pl') or '—'}"
+                        f"{row_data.get('source_name') or '—'}: status oceny={row_data.get('status') or '—'}, t_wyl={row_data.get('clearing_time_ms') or '—'} ms — {((row_data.get('ocena') or {}).get('wyjasnienie') or {}).get('zdanie_pl') or '—'}"
                     )
             elif table.get("table_id") == "automation_trace":
                 for row_data in (results_section.get("automation_trace", {}) or {}).get("rows", [])[
@@ -1419,7 +1418,7 @@ def export_run_report_pdf_response(
                 draw_line(
                     " | ".join(
                         [
-                            str(entry.get("element_id") or "—"),
+                            str(entry.get("name") or "—"),
                             str(entry.get("element_type") or "—"),
                             _format_catalog_binding(entry),
                         ]

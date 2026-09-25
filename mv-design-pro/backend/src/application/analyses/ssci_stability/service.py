@@ -80,13 +80,18 @@ def _converter_for_provenance(run_record: Mapping[str, Any], converter_ref: Any)
     return V126ConverterInput.model_validate(dict(match))
 
 
-def build_ssci_stability_view(run_record: Mapping[str, Any]) -> dict[str, Any]:
+def build_ssci_stability_view(
+    run_record: Mapping[str, Any], *, nazwy: Mapping[str, str]
+) -> dict[str, Any]:
     """Zbuduj widok stabilności SSCI (ocena niewykonana + metryki) z gotowego przebiegu V12.6.
 
     Args:
         run_record: rekord uruchomienia V12.6 (``api.v126_academic._runs``) rodzaju
             ``ssci_impedance`` (klucze: ``result``, ``input``, ``case_id``,
             ``run_id``, ``created_at``).
+        nazwy: indeks ``ref_id -> nazwa`` migawki modelu biegu
+            (``enm.nazwy_elementow.zbuduj_indeks_nazw``) — przedmiot oceny nazywa
+            przekształtnik i szynę nazwami z modelu, nie identyfikatorami.
 
     Raises:
         ValueError: gdy przebieg nie jest rodzaju ``ssci_impedance`` albo nie
@@ -109,5 +114,6 @@ def build_ssci_stability_view(run_record: Mapping[str, Any]) -> dict[str, Any]:
         dict(payload),
         converter=converter,
         context=_context(run_record, solver_result),
+        nazwy=nazwy,
     )
     return view.to_dict()

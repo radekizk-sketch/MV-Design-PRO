@@ -14,10 +14,12 @@ wpisane przez użytkownika jako dane przyjęte bez walidacji (``UNVALIDATED_INPU
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
 from application.ocena_niewykonana import ocena_niewykonana, rekord_json
+from enm.nazwy_elementow import SPOZA_MODELU, nazwa_po_identyfikatorze
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
     ClaimKind,
@@ -75,8 +77,15 @@ def _dane_wpisane(scenario: FaultClearScenario) -> tuple[DanaPrzyjeta, ...]:
     )
 
 
-def ocena_stabilnosci_niewykonana(scenario: FaultClearScenario) -> dict[str, Any]:
-    """Rekord ``NIE_OCENIONO`` (``werdykt.OcenaKryterium``) toru z kątów wpisanych ręcznie."""
+def ocena_stabilnosci_niewykonana(
+    scenario: FaultClearScenario, *, nazwy: Mapping[str, str]
+) -> dict[str, Any]:
+    """Rekord ``NIE_OCENIONO`` (``werdykt.OcenaKryterium``) toru z kątów wpisanych ręcznie.
+
+    ``nazwy`` — indeks ``ref_id -> nazwa`` migawki biegu (``enm.nazwy_elementow``): przedmiot
+    oceny nazywa źródło i element objęty zwarciem nazwą z modelu; identyfikator zostaje
+    w ``element_ref`` (karta #144 — dawniej „Źródło gen_sync … na elemencie line_b_c").
+    """
     ewidencja = classify_dynamic_capability(_ZDOLNOSC_TORU)
     zrodlo = scenario.source_state
     return rekord_json(
@@ -84,10 +93,13 @@ def ocena_stabilnosci_niewykonana(scenario: FaultClearScenario) -> dict[str, Any
             kryterium_id=f"dynamic_stability.fault_clear.{scenario.scenario_id}",
             przedmiot=Przedmiot(
                 element_ref=zrodlo.source_id,
-                nazwa_pl=f"Źródło {zrodlo.source_id}",
-                opis_pl=(
-                    f"Źródło w scenariuszu wyłączenia zwarcia na elemencie "
-                    f"{scenario.faulted_element_id}"
+                nazwa_pl="Źródło "
+                + nazwa_po_identyfikatorze(
+                    zrodlo.source_id, indeks=nazwy, spoza_modelu=SPOZA_MODELU
+                ),
+                opis_pl="Źródło w scenariuszu wyłączenia zwarcia na elemencie "
+                + nazwa_po_identyfikatorze(
+                    scenario.faulted_element_id, indeks=nazwy, spoza_modelu=SPOZA_MODELU
                 ),
             ),
             opis_kryterium_pl="Stabilność kątowa źródła po wyłączeniu zwarcia",
@@ -221,8 +233,12 @@ class EchoScenariuszaStabilnosci:
         }
 
 
-def echo_scenariusza_stabilnosci(scenario: FaultClearScenario) -> EchoScenariuszaStabilnosci:
-    """Echo scenariusza wyłączenia zwarcia z oceną niewykonaną — ZERO porównań z progami."""
+def echo_scenariusza_stabilnosci(
+    scenario: FaultClearScenario, *, nazwy: Mapping[str, str]
+) -> EchoScenariuszaStabilnosci:
+    """Echo scenariusza wyłączenia zwarcia z oceną niewykonaną — ZERO porównań z progami.
+
+    ``nazwy`` — indeks nazw migawki biegu (patrz ``ocena_stabilnosci_niewykonana``)."""
     zrodlo = scenario.source_state
     return EchoScenariuszaStabilnosci(
         scenario_id=scenario.scenario_id,
@@ -236,5 +252,5 @@ def echo_scenariusza_stabilnosci(scenario: FaultClearScenario) -> EchoScenariusz
         post_fault_angle_deg=zrodlo.post_fault_angle_deg,
         post_fault_voltage_pu=zrodlo.post_fault_voltage_pu,
         post_fault_frequency_pu=zrodlo.post_fault_frequency_pu,
-        ocena=ocena_stabilnosci_niewykonana(scenario),
+        ocena=ocena_stabilnosci_niewykonana(scenario, nazwy=nazwy),
     )

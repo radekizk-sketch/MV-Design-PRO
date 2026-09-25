@@ -44,6 +44,7 @@ from enm.hash import compute_enm_hash
 from enm.migrations.nn_field_specs_promocja import migruj as promuj_nn_field_specs
 from enm.migrations.punkt_przylaczenia_der import migruj as migruj_punkt_przylaczenia
 from enm.models import UKLADY_SIECI_NN, EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.nazwy_elementow import NAZWA_MODELU_BEZ_NAZWY
 from enm.rewizje import (
     PrzygotowanaRewizja,
     dostepne_rewizje,
@@ -260,9 +261,12 @@ def _get_enm_pod_blokada(klucz: str) -> EnergyNetworkModel:
             _enm_store[klucz] = persisted
             _uzgodnij_po_wczytaniu(klucz, persisted)
         else:
+            # Model domyślny bez nazwy dostaje opis rodzaju, nie fragment klucza magazynu
+            # (dawniej `f"Model sieci - {klucz[:8]}"` = dosłownie „Model sieci - projekt:"
+            # dla KAŻDEGO projektu — karta #144). Nazwę nadaje projektant albo import.
             enm = EnergyNetworkModel(
                 header=ENMHeader(
-                    name=f"Model sieci - {klucz[:8]}",
+                    name=NAZWA_MODELU_BEZ_NAZWY,
                     defaults=ENMDefaults(),
                 ),
             )

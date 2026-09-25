@@ -3,7 +3,7 @@
   "wejscie": {
     "c_max": null,
     "c_min": 1.0,
-    "case_name": "case-demo",
+    "case_name": "Wariant zimowy",
     "engine_input": {
       "conductor_material": "AL",
       "cross_section_mm2": 120.0,

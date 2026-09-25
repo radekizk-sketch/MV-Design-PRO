@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from uuid import UUID
+
+from api.dependencies import get_uow_factory
 from api.schemas.equipment_proof import DeviceRatingPayload, EquipmentProofRequest
 from application.autorytet_biegu_zwarciowego import (
     BiegNiemiarodajnyError,
@@ -9,7 +13,10 @@ from application.autorytet_biegu_zwarciowego import (
 from application.equipment_proof.catalog_bridge import resolve_um_icu_from_catalog
 from application.equipment_proof.proof_pack import build_equipment_proof_pack
 from application.equipment_proof.types import DeviceRating, EquipmentProofInput
-from fastapi import APIRouter, HTTPException, Response, status
+from application.nazwy_biegu import nazwa_projektu_z_migawki, nazwa_przypadku_z_bazy
+from enm.canonical_analysis import get_run
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.core.autorytet_wyniku_zwarciowego import BrakAutorytetuWyniku
 
 router = APIRouter(prefix="/api/equipment-proof", tags=["equipment-proof"])
@@ -52,7 +59,10 @@ def _device_rating_from_payload(payload_device: DeviceRatingPayload) -> DeviceRa
 
 
 @router.post("/pack")
-def download_equipment_proof_pack(payload: EquipmentProofRequest) -> Response:
+def download_equipment_proof_pack(
+    payload: EquipmentProofRequest,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> Response:
     """Pakiet dowodowy doboru aparatury — WYŁĄCZNIE z liczb ZAPISANEGO BIEGU.
 
     OBEJŚCIE, KTÓRE TO ZAMYKA (karta S-2 AUTORYTET, odtworzone na HEAD
@@ -96,6 +106,9 @@ def download_equipment_proof_pack(payload: EquipmentProofRequest) -> Response:
             },
         )
 
+    # Nagłówek dowodu: nazwa modelu z migawki biegu i nazwa przypadku z bazy — nigdy
+    # identyfikatory z żądania (karta #144). Bieg istnieje: bramka wyżej go wczytała.
+    bieg = get_run(UUID(str(payload.run_id)))
     proof_input = EquipmentProofInput(
         project_id=payload.project_id,
         case_id=payload.case_id,
@@ -104,6 +117,8 @@ def download_equipment_proof_pack(payload: EquipmentProofRequest) -> Response:
         device=_device_rating_from_payload(payload.device),
         required_fault_results=wielkosci_kontraktu_klienta(wejscie.wielkosci),
         proweniencja=wejscie.proweniencja,
+        project_name=nazwa_projektu_z_migawki(bieg.snapshot if bieg is not None else None),
+        case_name=nazwa_przypadku_z_bazy(payload.case_id, uow_factory),
     )
     try:
         filename, pack_bytes = build_equipment_proof_pack(proof_input)

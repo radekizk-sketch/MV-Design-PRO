@@ -275,7 +275,7 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<MockS
       }
       const response = opName === 'add_grid_source_sn'
         ? (snapshotWithGpz() as Record<string, unknown>)
-        : pustaOdpowiedzDomainOps('case-ux');
+        : pustaOdpowiedzDomainOps();
       if (options.withSemanticIssues) {
         response.semantic_issues = [
           {

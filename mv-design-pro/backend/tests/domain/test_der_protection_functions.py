@@ -18,6 +18,7 @@ from domain.der_protection_functions import (
 def fakty(**nadpisania) -> FaktyPolaWytworcy:
     baza = {
         "der_id": "DER-1",
+        "der_nazwa": "Farma PV Łąkowa",
         "der_kind": "PV",
         "connection_side": "SN",
         "nominal_power_kw": 1000.0,
@@ -224,8 +225,13 @@ class TestEtykietaChronionegoObiektu:
             assert "Farma PV 1 MW" in funkcja.chroniony_obiekt_pl
             assert "DER-1" not in funkcja.chroniony_obiekt_pl
 
-    def test_bez_nazwy_zostaje_referencja_zamiast_wymyslonej_etykiety(self) -> None:
-        wynik = dobierz_funkcje(fakty(der_nazwa=None))
+    def test_bez_nazwy_opis_rodzaju_nigdy_referencja(self) -> None:
+        """Karta #144 (zmiana kanonu): dawniej wytwórca bez nazwy dawał etykietę
+        z REFERENCJĄ („uczciwiej pokazać identyfikator"). Rozstrzygnięcie karty: brak
+        nazwy to polski opis rodzaju od wołającego (`nazwa_elementu` — „Generator bez
+        nazwy"), identyfikator nigdy nie trafia do opisu chronionego obiektu."""
+        wynik = dobierz_funkcje(fakty(der_nazwa="Generator bez nazwy"))
         assert wynik.wymagane
         for funkcja in wynik.wymagane:
-            assert "DER-1" in funkcja.chroniony_obiekt_pl
+            assert funkcja.chroniony_obiekt_pl == "pole wytwórcy Generator bez nazwy"
+            assert "DER-1" not in funkcja.chroniony_obiekt_pl

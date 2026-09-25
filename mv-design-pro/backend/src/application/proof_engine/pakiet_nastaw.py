@@ -241,11 +241,14 @@ def zbuduj_pakiet_nastaw(
     k_b: float = 1.2,
     k_bth: float = 1.1,
     uow_factory: Callable[[], Any] | None = None,
+    nazwa_przypadku: str,
 ) -> tuple[str, bytes]:
     """Zbuduj pakiet dowodowy nastaw: ``(nazwa_pliku, zawartość ZIP)``.
 
     Cała fizyka (dwa warianty zwarciowe + wariant rozpływu) po stronie serwera —
     wołający podaje wyłącznie tożsamość kotwicy i trzy wybory inżynierskie.
+    ``nazwa_przypadku`` — nazwa przypadku do nagłówka dowodu, z bazy u wołającego
+    (karta #144; biegi nie niosą nazwy przypadku).
     """
     try:
         nastawy = oblicz_nastawy(
@@ -268,7 +271,7 @@ def zbuduj_pakiet_nastaw(
 
     pack_input = ProtectionSettingsProofInput(
         project_name=wejscie.project_name,
-        case_name=wejscie.case_name,
+        case_name=nazwa_przypadku,
         line_id=ei.line_id,
         line_name=wejscie.line_name,
         run_timestamp=wejscie.run_timestamp,
@@ -305,8 +308,8 @@ def zbuduj_pakiet_nastaw(
         zawartosc = ProtectionSettingsProofPack.generate_zip(pack_input, context)
     except (KeyError, ValueError) as exc:
         raise PakietNastawError(f"Nie udało się złożyć pakietu dowodowego nastaw: {exc}") from exc
-    nazwa = f"pakiet_dowodowy_nastawy__{run.id}__{line_id}.zip"
-    return nazwa, zawartosc
+    nazwa_pliku = f"pakiet_dowodowy_nastawy__{run.id}__{line_id}.zip"
+    return nazwa_pliku, zawartosc
 
 
 def zbuduj_odpowiedz_nastaw_json(
@@ -320,6 +323,7 @@ def zbuduj_odpowiedz_nastaw_json(
     k_b: float = 1.2,
     k_bth: float = 1.1,
     uow_factory: Callable[[], Any] | None = None,
+    nazwa_przypadku: str,
 ) -> dict[str, Any]:
     """Nastawy I>/I>> w postaci JSON — TA SAMA fizyka co pakiet dowodowy ZIP
     (karta W3-C1, reguła KLASA-NIE-INSTANCJA: jeden rachunek — `oblicz_nastawy`
@@ -349,7 +353,12 @@ def zbuduj_odpowiedz_nastaw_json(
     return {
         "wynik": nastawy.wynik.to_dict(),
         "wejscie": _proweniencja_wejscia(
-            run, nastawy=nastawy, line_id=line_id, next_bus_id=next_bus_id, c_min=c_min
+            run,
+            nastawy=nastawy,
+            line_id=line_id,
+            next_bus_id=next_bus_id,
+            c_min=c_min,
+            nazwa_przypadku=nazwa_przypadku,
         ),
         "dostepnosc_pakietu": True,
     }
@@ -367,6 +376,7 @@ def zbuduj_odpowiedz_dopasowania(
     k_b: float = 1.2,
     k_bth: float = 1.1,
     uow_factory: Callable[[], Any] | None = None,
+    nazwa_przypadku: str,
 ) -> dict[str, Any]:
     """Dopasowanie nastaw Hoppela do aparatu (karta W3-C1, decyzja §0.4).
 
@@ -395,7 +405,12 @@ def zbuduj_odpowiedz_dopasowania(
     return {
         **dopasowanie,
         "proweniencja_nastaw": _proweniencja_wejscia(
-            run, nastawy=nastawy, line_id=line_id, next_bus_id=next_bus_id, c_min=c_min
+            run,
+            nastawy=nastawy,
+            line_id=line_id,
+            next_bus_id=next_bus_id,
+            c_min=c_min,
+            nazwa_przypadku=nazwa_przypadku,
         ),
     }
 
@@ -407,6 +422,7 @@ def _proweniencja_wejscia(
     line_id: str,
     next_bus_id: str,
     c_min: float,
+    nazwa_przypadku: str,
 ) -> dict[str, Any]:
     """Proweniencja WHITE BOX wspólna dla trasy JSON i doboru aparatu: skąd
     dokładnie wzięły się liczby — kotwica, gałąź c_max/c_min, wybory inżyniera.
@@ -431,7 +447,7 @@ def _proweniencja_wejscia(
         "zacisk_zabezpieczenia": wejscie.zacisk_zabezpieczenia,
         "zrodlo_zacisku": wejscie.zrodlo_zacisku,
         "project_name": wejscie.project_name,
-        "case_name": wejscie.case_name,
+        "case_name": nazwa_przypadku,
         "line_name": wejscie.line_name,
         "run_timestamp": wejscie.run_timestamp.isoformat(),
         "solver_version": wejscie.solver_version,

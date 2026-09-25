@@ -14,9 +14,11 @@ from application.analyses.v126_gotowosc import (
 from application.analyses.v126_katalog import katalog_do_dict
 from application.analyses.v126_wzory import wzbogac_kroki_latex
 from domain.execution import StanBiegu
+from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as _create_canonical_run
 from enm.canonical_analysis import execute_run as _execute_canonical_run
 from enm.canonical_analysis import get_run as _get_canonical_run
+from enm.nazwy_elementow import zbuduj_indeks_nazw
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
@@ -132,12 +134,20 @@ def _wycofanie_v126(analysis_type: V126AnalysisType) -> dict[str, Any] | None:
 
 
 def _require_run(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any]:
+    """Rekord biegu V12.6 (`CanonicalRun.raw_result`) — patrz `_require_canonical_run`."""
+    return _require_canonical_run(run_id, analysis_type)[1]
+
+
+def _require_canonical_run(
+    run_id: UUID, analysis_type: V126AnalysisType
+) -> tuple[CanonicalRun, dict[str, Any]]:
     """Bieg V12.6 z rejestru kanonicznego R1 (CV-4.3-A4, K5.2).
 
     Odtąd WSZYSTKIE typy analiz dzielą JEDEN rejestr biegów (`CanonicalRun`) —
     `run_id` obcy tej rodzinie (np. bieg PF/SC) jest odróżniony po prefiksie
     `analysis_type` ("v126:"), a nie tylko po nieobecności w słowniku, który do
-    tej karty istniał WYŁĄCZNIE dla V12.6.
+    tej karty istniał WYŁĄCZNIE dla V12.6. Obok rekordu (`raw_result`) oddaje sam bieg:
+    jego migawka modelu (`snapshot`) jest źródłem nazw elementów widoków (karta #144).
     """
     canonical_run = _get_canonical_run(run_id)
     if (
@@ -154,7 +164,7 @@ def _require_run(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any
             status_code=status.HTTP_409_CONFLICT,
             detail="Typ analizy w ścieżce nie zgadza się z zapisanym uruchomieniem.",
         )
-    return run
+    return canonical_run, run
 
 
 #: Surowe nadpisania wejścia solvera z `parameters` SKASOWANE (uczciwość natychmiastowa,
@@ -390,9 +400,9 @@ def get_v126_ssci_stability(run_id: UUID) -> dict[str, Any]:
     404 gdy przebieg nie istnieje; 409 gdy rodzaj przebiegu to nie ``ssci_impedance``;
     422 gdy przebieg nie niesie payloadu solvera SSCI.
     """
-    run = _require_run(run_id, V126AnalysisType.SSCI_IMPEDANCE)
+    canonical_run, run = _require_canonical_run(run_id, V126AnalysisType.SSCI_IMPEDANCE)
     try:
-        return build_ssci_stability_view(run)
+        return build_ssci_stability_view(run, nazwy=zbuduj_indeks_nazw(canonical_run.snapshot))
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

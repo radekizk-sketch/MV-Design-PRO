@@ -409,3 +409,31 @@ def test_catalog_reference_card_exposes_flicker_c() -> None:
     assert converter is not None
     assert converter.flicker_c == 0.30
     assert ConverterType.from_dict(converter.to_dict()) == converter
+
+
+@pytest.mark.parametrize(
+    ("nazwa_szyny", "nazwa_modulu", "oczekiwana_szyna", "oczekiwany_modul"),
+    [
+        pytest.param("Szyna PV", "Falownik PV 1", "Szyna PV", "Falownik PV 1", id="z-nazwami"),
+        pytest.param(None, " ", "Szyna bez nazwy", "Generator bez nazwy", id="bez-nazw"),
+    ],
+)
+def test_wezel_i_modul_nazwane_z_modelu_nigdy_identyfikatorem(
+    nazwa_szyny, nazwa_modulu, oczekiwana_szyna, oczekiwany_modul
+) -> None:
+    """Karta #144: ekran migotania nazywa węzeł przyłączenia i moduł nazwą z modelu albo
+    opisem rodzaju; `bus_ref`/`gen_ref` zostają wyłącznie do wiązania.
+    Iloczyn: {węzeł, moduł} × {z nazwą, bez nazwy}."""
+    szyna = {**_bus("bus/7c1e/szyna"), "name": nazwa_szyny}
+    modul = {**_ibg("gen/9a4d/pv", "bus/7c1e/szyna", sn_mva=2.0, flicker_c=0.3)}
+    modul["name"] = nazwa_modulu
+    run = _sc_run(
+        generators=[modul],
+        buses=[szyna],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "bus/7c1e/szyna"}},
+    )
+    [wezel] = build_migotanie_view(run)["buses"]
+    assert wezel["bus_name"] == oczekiwana_szyna
+    assert wezel["modules"][0]["gen_name"] == oczekiwany_modul
+    assert "7c1e" not in wezel["bus_name"] and "9a4d" not in wezel["modules"][0]["gen_name"]

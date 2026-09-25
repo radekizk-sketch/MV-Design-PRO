@@ -40,6 +40,7 @@ from typing import Any
 
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel, Substation, Transformer
+from enm.nazwy_elementow import nazwa_elementu
 from enm.pole_transformatorowe import pasmo_napieciowe
 from enm.zero_sequence_transformer import (
     ZeroSeqConnection,
@@ -471,9 +472,10 @@ def etykieta_transformatora_petli(trafo: Transformer) -> str:
     etykieta jej nie powtarza: sklejanie „Transformator SN/nN {nazwa}” dawało
     „Transformator SN/nN Transformator SN/nN” dla nazwy domyślnej stacji i przypisywało
     klasę SN/nN transformatorowi, którego napięcia jej nie potwierdzały. Pusta nazwa →
-    identyfikator (jak etykiety odcinków trasy w `route.py`), nigdy stała.
+    opis rodzaju z jednej reguły nazw elementów (`enm.nazwy_elementow`, karta #144), nigdy
+    identyfikator.
     """
-    return trafo.name or trafo.ref_id
+    return nazwa_elementu(trafo, "transformers")
 
 
 def etykieta_sieci_zasilajacej_petli(trafo: Transformer) -> str:

@@ -59,7 +59,9 @@ describe('SekcjaMigotania — stany', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-migotanie')).toBeTruthy());
     expect(mockedMigotanie).toHaveBeenCalledWith('sc-1');
     const tabela = screen.getByTestId('mvd-wyn-tabela');
-    expect(tabela).toHaveTextContent('bus-oze-1');
+    // Karta #144: wiersz nazywa węzeł nazwą z modelu, identyfikator tylko w trybie eksperckim.
+    expect(tabela).toHaveTextContent('Szyna OZE 1');
+    expect(tabela).not.toHaveTextContent('bus-oze-1');
     expect(tabela).toHaveTextContent('przekroczenie poziomu planowania');
     // Wartości z przecinkiem PL (Pst 3 miejsca).
     expect(tabela).toHaveTextContent('0,400');
@@ -94,9 +96,10 @@ describe('SekcjaMigotania — stany', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-migotanie')).toBeTruthy());
     // Przed wyborem: panel pusty.
     expect(screen.getByTestId('mvd-jakosc-migotanie-szczegol-pusty')).toBeTruthy();
-    fireEvent.click(screen.getByText('bus-oze-1').closest('tr')!);
+    fireEvent.click(screen.getByText('Szyna OZE 1').closest('tr')!);
     const szczegol = screen.getByTestId('mvd-jakosc-migotanie-szczegol');
-    expect(within(szczegol).getByText('gen-pv-2')).toBeTruthy();
+    expect(within(szczegol).getByText('Falownik PV 2')).toBeTruthy();
+    expect(within(szczegol).queryByText('gen-pv-2')).toBeNull();
     expect(screen.getByTestId('mvd-jakosc-mig-modul-info')).toHaveTextContent(
       'brak współczynnika emisji migotania',
     );
@@ -106,14 +109,14 @@ describe('SekcjaMigotania — stany', () => {
     mockedMigotanie.mockResolvedValue(MIGOTANIE_FIXTURE);
     const { unmount } = render(<SekcjaMigotania {...propsMigotanie()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-migotanie')).toBeTruthy());
-    fireEvent.click(screen.getByText('bus-oze-1').closest('tr')!);
+    fireEvent.click(screen.getByText('Szyna OZE 1').closest('tr')!);
     expect(screen.queryByTestId('mvd-jakosc-mig-slad-otworz')).toBeNull();
     unmount();
 
     mockedMigotanie.mockResolvedValue(MIGOTANIE_FIXTURE);
     render(<SekcjaMigotania {...propsMigotanie({ trybZaawansowania: 'expert' })} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-migotanie')).toBeTruthy());
-    fireEvent.click(screen.getByText('bus-oze-1').closest('tr')!);
+    fireEvent.click(screen.getByText('Szyna OZE 1').closest('tr')!);
     fireEvent.click(screen.getByTestId('mvd-jakosc-mig-slad-otworz'));
     const slad = screen.getByTestId('mvd-jakosc-mig-slad');
     // Zasada KaTeX (2026-07-22): wzor renderowany matematycznie, nie surowy LaTeX.
@@ -129,7 +132,7 @@ describe('SekcjaMigotania — stany', () => {
     render(<SekcjaMigotania {...propsMigotanie()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-migotanie')).toBeTruthy());
     // Fixtura: bus-oze-2 przekracza poziom planowania (pst/plt) → jedyny wiersz z przyciskiem.
-    const wiersz = screen.getByText('bus-oze-2').closest('tr')!;
+    const wiersz = screen.getByText('Szyna OZE 2').closest('tr')!;
     fireEvent.click(within(wiersz).getByTestId('mvd-wyn-popraw'));
     const sel = useSelectionStore.getState();
     expect(sel.selectedElement).toMatchObject({ id: 'bus-oze-2', type: 'Bus' });

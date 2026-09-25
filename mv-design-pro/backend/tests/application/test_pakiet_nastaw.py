@@ -130,6 +130,7 @@ def test_zbuduj_pakiet_nastaw_zawiera_dowod_zrodlo_wykaz_odcisk() -> None:
         next_bus_id="b_b",
         c_min=1.0,
         zacisk_zabezpieczenia="od",
+        nazwa_przypadku="Przypadek bazowy — szczyt zimowy",
     )
     assert nazwa.endswith(".zip")
     pliki = _rozpakuj(zawartosc)
@@ -151,7 +152,12 @@ def test_zbuduj_pakiet_nastaw_pieciu_pol_nastaw_pochodzi_z_silnika_nie_z_zaszyte
 
     kotwica = _kotwica()
     _, zawartosc = zbuduj_pakiet_nastaw(
-        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+        kotwica,
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.0,
+        zacisk_zabezpieczenia="od",
+        nazwa_przypadku="Przypadek bazowy — szczyt zimowy",
     )
     proof = json.loads(_rozpakuj(zawartosc)["proof_pack/proof.json"])
 
@@ -176,6 +182,7 @@ def test_dwa_pobrania_tego_samego_biegu_sa_bajt_w_bajt_identyczne() -> None:
         next_bus_id="b_b",
         c_min=1.0,
         zacisk_zabezpieczenia="od",
+        nazwa_przypadku="Przypadek bazowy — szczyt zimowy",
     )
     _, zawartosc2 = zbuduj_pakiet_nastaw(
         _kotwica(run_id),
@@ -183,6 +190,7 @@ def test_dwa_pobrania_tego_samego_biegu_sa_bajt_w_bajt_identyczne() -> None:
         next_bus_id="b_b",
         c_min=1.0,
         zacisk_zabezpieczenia="od",
+        nazwa_przypadku="Przypadek bazowy — szczyt zimowy",
     )
     assert zawartosc1 == zawartosc2
 
@@ -195,6 +203,7 @@ def test_linia_nieznana_konczy_sie_pakiet_nastaw_error() -> None:
             next_bus_id="b_b",
             c_min=1.0,
             zacisk_zabezpieczenia="od",
+            nazwa_przypadku="Przypadek bazowy — szczyt zimowy",
         )
 
 
@@ -322,6 +331,7 @@ def test_kazda_reklamowana_para_dostepnosci_daje_nastawy_na_kazdej_sieci_rejestr
                         zacisk_zabezpieczenia=(
                             zacisk if pozycja["wymaga_wskazania_zacisku"] else None
                         ),
+                        nazwa_przypadku="Przypadek bazowy — szczyt zimowy",
                     )
                     assert odpowiedz["dostepnosc_pakietu"] is True, (
                         nazwa_sieci,

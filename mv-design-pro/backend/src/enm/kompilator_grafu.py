@@ -58,7 +58,12 @@ class BenchmarkBuildError(RuntimeError):
 
 @dataclass(frozen=True)
 class EdgeSpec:
-    """Jedna krawędź (linia/kabel) sieci referencyjnej — literaturowe ID węzłów."""
+    """Jedna krawędź (linia/kabel) sieci referencyjnej — literaturowe ID węzłów.
+
+    `name` — nazwa odcinka pokazywana projektantowi; `None` = nazwą jest oznaczenie krawędzi
+    `edge_id` (patrz `_nazwa_krawedzi`). Producent grafu, którego klucz krawędzi jest
+    identyfikatorem maszynowym (migracja modelu zastanego), podaje `name` zawsze.
+    """
 
     edge_id: str
     from_lit: str
@@ -66,6 +71,20 @@ class EdgeSpec:
     catalog_ref: str
     dlugosc_m: float = 1000.0
     rodzaj: str = "LINIA"
+    name: str | None = None
+
+
+def _nazwa_krawedzi(krawedz: EdgeSpec) -> str:
+    """Nazwa odcinka tworzonego z krawędzi grafu wejściowego (karta #144).
+
+    Jawna `name` producenta grafu albo — gdy jej nie podał — oznaczenie krawędzi `edge_id`.
+    W grafie wejściowym tego kompilatora `edge_id` jest OZNACZENIEM nadanym przez człowieka:
+    literaturowym w sieciach benchmarkowych (np. „650-632" z publikacji IEEE) albo wpisanym
+    przez projektanta w kolumnie `id` arkusza XLSX — nie identyfikatorem maszynowym modelu
+    (ten nadaje operacja domenowa z ziarna). Migracja modelu zastanego, której klucz krawędzi
+    jest kluczem rekordu bazy, podaje `name` jawnie (`application/migracja_legacy.py`).
+    """
+    return krawedz.name if krawedz.name is not None else krawedz.edge_id
 
 
 @dataclass
@@ -512,7 +531,7 @@ def zbuduj_topologie(
                     field_ref=gpz_fields[gpz_field_index]["field_ref"],
                     catalog_ref=edge.catalog_ref,
                     dlugosc_m=edge.dlugosc_m,
-                    name=edge.edge_id,
+                    name=_nazwa_krawedzi(edge),
                     rodzaj=edge.rodzaj,
                     bus_name=other_lit,
                 )
@@ -524,7 +543,7 @@ def zbuduj_topologie(
                     field_ref=gpz_fields[gpz_field_index]["field_ref"],
                     catalog_ref=edge.catalog_ref,
                     dlugosc_m=edge.dlugosc_m,
-                    name=edge.edge_id,
+                    name=_nazwa_krawedzi(edge),
                     rodzaj=edge.rodzaj,
                     bus_name=other_lit,
                 )
@@ -534,12 +553,12 @@ def zbuduj_topologie(
                 from_bus_ref=current_ref,
                 catalog_ref=edge.catalog_ref,
                 dlugosc_m=edge.dlugosc_m,
-                name=edge.edge_id,
+                name=_nazwa_krawedzi(edge),
                 rodzaj=edge.rodzaj,
                 bus_name=other_lit,
             )
         bus_map[other_lit] = new_ref
-        branch_map[edge.edge_id] = _ostatnia_dodana_galaz(enm, edge.edge_id)["ref_id"]
+        branch_map[edge.edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(edge))["ref_id"]
 
     # Krawędzie ZAMYKAJĄCE (oba końce odkryte, żadna z nich nie była krawędzią
     # drzewa) — `zamknij_pierscien` jest funkcją CZYSTĄ swoich jawnych
@@ -566,10 +585,10 @@ def zbuduj_topologie(
             to_bus_ref=bus_map[edge.to_lit],
             catalog_ref=edge.catalog_ref,
             dlugosc_m=edge.dlugosc_m,
-            name=edge.edge_id,
+            name=_nazwa_krawedzi(edge),
             rodzaj=edge.rodzaj,
         )
-        branch_map[edge.edge_id] = _ostatnia_dodana_galaz(enm, edge.edge_id)["ref_id"]
+        branch_map[edge.edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(edge))["ref_id"]
 
     return enm, bus_map, branch_map
 
@@ -625,12 +644,12 @@ def rozbuduj_z_dowolnej_szyny(
             from_bus_ref=bus_map[current_lit],
             catalog_ref=edge.catalog_ref,
             dlugosc_m=edge.dlugosc_m,
-            name=edge.edge_id,
+            name=_nazwa_krawedzi(edge),
             rodzaj=edge.rodzaj,
             bus_name=other_lit,
         )
         bus_map[other_lit] = new_ref
-        branch_map[edge.edge_id] = _ostatnia_dodana_galaz(enm, edge.edge_id)["ref_id"]
+        branch_map[edge.edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(edge))["ref_id"]
 
     unreachable = sorted(
         e.edge_id
@@ -652,10 +671,10 @@ def rozbuduj_z_dowolnej_szyny(
             to_bus_ref=bus_map[edge.to_lit],
             catalog_ref=edge.catalog_ref,
             dlugosc_m=edge.dlugosc_m,
-            name=edge.edge_id,
+            name=_nazwa_krawedzi(edge),
             rodzaj=edge.rodzaj,
         )
-        branch_map[edge.edge_id] = _ostatnia_dodana_galaz(enm, edge.edge_id)["ref_id"]
+        branch_map[edge.edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(edge))["ref_id"]
 
     return enm, branch_map
 
@@ -937,7 +956,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                         field_ref=pola[0]["field_ref"],
                         catalog_ref=odcinek.catalog_ref,
                         dlugosc_m=odcinek.dlugosc_m,
-                        name=odcinek.edge_id,
+                        name=_nazwa_krawedzi(odcinek),
                         rodzaj=odcinek.rodzaj,
                         bus_name=szyny[lit_nowej].name,
                     )
@@ -948,7 +967,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                         field_ref=pola[indeks_pola_gpz[lit_biezacej]]["field_ref"],
                         catalog_ref=odcinek.catalog_ref,
                         dlugosc_m=odcinek.dlugosc_m,
-                        name=odcinek.edge_id,
+                        name=_nazwa_krawedzi(odcinek),
                         rodzaj=odcinek.rodzaj,
                         bus_name=szyny[lit_nowej].name,
                     )
@@ -958,11 +977,13 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                     from_bus_ref=ref_biezacej,
                     catalog_ref=odcinek.catalog_ref,
                     dlugosc_m=odcinek.dlugosc_m,
-                    name=odcinek.edge_id,
+                    name=_nazwa_krawedzi(odcinek),
                     rodzaj=odcinek.rodzaj,
                     bus_name=szyny[lit_nowej].name,
                 )
-            wynik.branch_map[edge_id] = _ostatnia_dodana_galaz(enm, edge_id)["ref_id"]
+            wynik.branch_map[edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(odcinek))[
+                "ref_id"
+            ]
         else:
             trafo = trafo_wg_id[edge_id]
             if lit_biezacej == trafo.hv_lit:
@@ -1010,10 +1031,12 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                 to_bus_ref=wynik.bus_map[b],
                 catalog_ref=odcinek.catalog_ref,
                 dlugosc_m=odcinek.dlugosc_m,
-                name=odcinek.edge_id,
+                name=_nazwa_krawedzi(odcinek),
                 rodzaj=odcinek.rodzaj,
             )
-            wynik.branch_map[edge_id] = _ostatnia_dodana_galaz(enm, edge_id)["ref_id"]
+            wynik.branch_map[edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(odcinek))[
+                "ref_id"
+            ]
         else:
             trafo = trafo_wg_id[edge_id]
             enm, _ = dodaj_transformator(

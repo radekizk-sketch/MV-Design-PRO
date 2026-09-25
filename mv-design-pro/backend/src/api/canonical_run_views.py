@@ -414,9 +414,15 @@ def build_power_flow_interpretation(run: CanonicalRun) -> dict[str, Any]:
         },
     )
 
+    # Kontekst nazywa projekt nazwą modelu z migawki biegu; nazwy przypadku bieg nie niesie,
+    # więc zostaje jawnym „nieznana" (`None`, jak koperta `kontekst_widoku`, V12K-267) —
+    # dawniej `f"Projekt {project_id}"`/`f"Przypadek {case_id}"`, nazwy z identyfikatorów
+    # (karta #144).
+    naglowek = (run.snapshot or {}).get("header") or {}
+    nazwa_modelu = naglowek.get("name") if isinstance(naglowek, dict) else None
     context = InterpretationContext(
-        project_name=f"Projekt {run.project_id}" if run.project_id else None,
-        case_name=f"Przypadek {run.case_id}",
+        project_name=str(nazwa_modelu) if nazwa_modelu else None,
+        case_name=None,
         run_timestamp=run.created_at,
         snapshot_id=run.snapshot_hash,
     )

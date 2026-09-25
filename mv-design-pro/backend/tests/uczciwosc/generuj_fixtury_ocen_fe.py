@@ -110,16 +110,25 @@ def _stabilnosc() -> dict[str, Any]:
             post_fault_frequency_pu=0.99,
         ),
     )
-    return {"scenariusz_dyn_1": ocena_stabilnosci_niewykonana(scenariusz)}
+    nazwy = {"src/pv/1": "Farma PV Zachód", "line/gpz/1": "Linia GPZ — Stacja Łąkowa"}
+    return {"scenariusz_dyn_1": ocena_stabilnosci_niewykonana(scenariusz, nazwy=nazwy)}
+
+
+#: Nazwy elementów modelu przedmiotu oceny SSCI (w ścieżce API indeks z migawki biegu).
+_NAZWY_SSCI = {"INV1": "Falownik PV 1", "CONV": "Szyna SN farmy PV"}
 
 
 def _ssci() -> dict[str, Any]:
     return {
         "komplet_tablic": ocena_ssci_niewykonana(
-            converter_ref="INV1", bus_ref="CONV", tablice_obecne=True
+            converter_ref="INV1", bus_ref="CONV", nazwy=_NAZWY_SSCI, tablice_obecne=True
         ),
         "brak_danych": ocena_ssci_niewykonana(
-            converter_ref=None, bus_ref=None, tablice_obecne=False, braki_danych=["converter"]
+            converter_ref=None,
+            bus_ref=None,
+            nazwy=_NAZWY_SSCI,
+            tablice_obecne=False,
+            braki_danych=["converter"],
         ),
     }
 
@@ -323,7 +332,7 @@ def _akademickie() -> dict[str, Any]:
     return {
         "jakosc_energii": ocena_jakosci_energii_niewykonana(),
         "ssci_impedance": ocena_ssci_niewykonana(
-            converter_ref="INV1", bus_ref=None, tablice_obecne=True
+            converter_ref="INV1", bus_ref=None, nazwy=_NAZWY_SSCI, tablice_obecne=True
         ),
     }
 

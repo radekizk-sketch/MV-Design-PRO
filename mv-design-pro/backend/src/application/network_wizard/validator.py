@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from enm.nazwy_elementow import nazwa_elementu
 from enm.zrodlo_zwarcie import dane_zerowe, tryb_danych
 
 from .schema import (
@@ -99,7 +100,7 @@ def _eval_k2(enm: dict[str, Any]) -> StepState:
                         code="K2_SOURCE_NO_SHORT_CIRCUIT_PARAMS",
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
-                            f"Źródło '{source.get('name') or source.get('ref_id') or '?'}' "
+                            f"Źródło '{nazwa_elementu(source, 'sources')}' "
                             "nie ma parametrów zwarciowych (brak Sk'', Ik'' lub R/X)."
                         ),
                         element_ref=source.get("ref_id"),
@@ -165,7 +166,7 @@ def _eval_k4(enm: dict[str, Any]) -> StepState:
                 WizardIssue(
                     code="K4_DANGLING_FROM",
                     severity=IssueSeverity.BLOCKER,
-                    message_pl=f"Gałąź {ln.get('name', '?')}: szyna źródłowa nie istnieje",
+                    message_pl=f"Gałąź {nazwa_elementu(ln, 'branches')}: szyna źródłowa nie istnieje",
                     element_ref=ln.get("ref_id"),
                     wizard_step_hint="K4",
                 )
@@ -175,7 +176,7 @@ def _eval_k4(enm: dict[str, Any]) -> StepState:
                 WizardIssue(
                     code="K4_DANGLING_TO",
                     severity=IssueSeverity.BLOCKER,
-                    message_pl=f"Gałąź {ln.get('name', '?')}: szyna docelowa nie istnieje",
+                    message_pl=f"Gałąź {nazwa_elementu(ln, 'branches')}: szyna docelowa nie istnieje",
                     element_ref=ln.get("ref_id"),
                     wizard_step_hint="K4",
                 )
@@ -198,7 +199,7 @@ def _eval_k5(enm: dict[str, Any]) -> StepState:
                 WizardIssue(
                     code="K5_UK_ZERO",
                     severity=IssueSeverity.BLOCKER,
-                    message_pl=f"Trafo {t.get('name', '?')}: uk% = 0",
+                    message_pl=f"Trafo {nazwa_elementu(t, 'transformers')}: uk% = 0",
                     element_ref=t.get("ref_id"),
                     wizard_step_hint="K5",
                 )
@@ -208,7 +209,7 @@ def _eval_k5(enm: dict[str, Any]) -> StepState:
                 WizardIssue(
                     code="K5_SN_ZERO",
                     severity=IssueSeverity.BLOCKER,
-                    message_pl=f"Trafo {t.get('name', '?')}: Sn = 0",
+                    message_pl=f"Trafo {nazwa_elementu(t, 'transformers')}: Sn = 0",
                     element_ref=t.get("ref_id"),
                     wizard_step_hint="K5",
                 )
@@ -235,7 +236,7 @@ def _eval_k6(enm: dict[str, Any]) -> StepState:
                 WizardIssue(
                     code="K6_LOAD_DANGLING",
                     severity=IssueSeverity.BLOCKER,
-                    message_pl=f"Odbiór {ld.get('name', '?')}: szyna nie istnieje",
+                    message_pl=f"Odbiór {nazwa_elementu(ld, 'loads')}: szyna nie istnieje",
                     element_ref=ld.get("ref_id"),
                     wizard_step_hint="K6",
                 )

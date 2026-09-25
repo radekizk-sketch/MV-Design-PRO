@@ -32,6 +32,7 @@ from enm.assembler import (
     diagnoza_niesymetrii,
 )
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_elementu, nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 from enm.topology import derive
 from enm.zrodlo_zwarcie import TrybDanych, dane_zwarciowe_zrodla
 from network_model.catalog.governance import Poziom, wymagalnosc_katalogu
@@ -168,19 +169,29 @@ def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     # (`enm/assembler.py::OdmowaWejsciaRozplywu`): bramka i wykonawca czytają jeden
     # predykat. Źródła w OSOBNYCH wyspach nie blokują (rozpływ per wyspa).
     if enm.sources and enm.buses:
+        # Teksty dla projektanta nazywają szyny i źródła nazwami z modelu, identyfikatory
+        # zostają w `blocking_object_refs` (karta #144).
+        nazwy = zbuduj_indeks_nazw(enm)
         for wyspa in derive(enm).wyspy:
             if len(wyspa.zrodla_sieciowe) > 1:
+                szyny = ", ".join(
+                    nazwa_po_identyfikatorze(szyna, indeks=nazwy) for szyna in wyspa.szyny[:5]
+                )
+                zrodla = ", ".join(
+                    nazwa_po_identyfikatorze(zrodlo, indeks=nazwy)
+                    for zrodlo in wyspa.zrodla_sieciowe
+                )
                 missing.append(
                     "jedno źródło sieciowe na wyspę — w wyspie szyn "
-                    f"{', '.join(wyspa.szyny[:5])}{', …' if len(wyspa.szyny) > 5 else ''} "
-                    f"są źródła {', '.join(wyspa.zrodla_sieciowe)} "
+                    f"{szyny}{', …' if len(wyspa.szyny) > 5 else ''} "
+                    f"są źródła {zrodla} "
                     "(kod 'source.multiple_grid_sources_in_island')"
                 )
                 blockers.extend(wyspa.zrodla_sieciowe)
                 has_critical_blocker = True
     for ld in enm.loads:
         if ld.p_mw is None:
-            missing.append(f"P odbioru '{ld.name}'")
+            missing.append(f"P odbioru '{nazwa_elementu(ld, 'loads')}'")
             blockers.append(ld.ref_id)
     for branch in enm.branches:
         if branch.type in ("line_overhead", "cable"):
@@ -188,14 +199,16 @@ def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
                 getattr(branch, "r_ohm_per_km", None) is None
                 or getattr(branch, "x_ohm_per_km", None) is None
             ):
-                missing.append(f"impedancja '{branch.name}'")
+                missing.append(f"impedancja '{nazwa_elementu(branch, 'branches')}'")
                 blockers.append(branch.ref_id)
     # D3: Q generatora nieznany i niewyprowadzalny z jawnego Q-set-pointu karty
     # katalogowej => BLOCKER `generator.q_missing` — 0 Mvar podstawione za brak
     # byłoby WYNIKIEM (generator bezbiernościowy), nie brakiem danej.
     for gen in enm.generators:
         if _generator_q_mvar_jawne(gen) is None:
-            missing.append(f"Q generatora '{gen.ref_id}' (kod 'generator.q_missing')")
+            missing.append(
+                f"Q generatora '{nazwa_elementu(gen, 'generators')}' (kod 'generator.q_missing')"
+            )
             blockers.append(gen.ref_id)
     # D6: falownik PV bez trybu sterowania (control_mode) => BLOCKER
     # `pv.control_mode_missing`. Kod kanonu JUŻ istniał w READINESS_CODES,
@@ -211,7 +224,8 @@ def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             card = getattr(gen, "materialized_params", None) or {}
             if card.get("control_mode") is None:
                 missing.append(
-                    f"tryb sterowania falownika '{gen.ref_id}' (kod 'pv.control_mode_missing')"
+                    f"tryb sterowania falownika '{nazwa_elementu(gen, 'generators')}' "
+                    "(kod 'pv.control_mode_missing')"
                 )
                 blockers.append(gen.ref_id)
 
@@ -266,12 +280,15 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     # samym I''kQ (oba policzalne) było fałszywie zgłaszane jako brak danych.
     for src in enm.sources:
         if not dane_zwarciowe_zrodla(src).policzalne:
-            missing.append(f"parametry zwarciowe (S_k\", I_k\" albo R+jX) źródła '{src.ref_id}'")
+            missing.append(
+                'parametry zwarciowe (S_k", I_k" albo R+jX) źródła '
+                f"'{nazwa_elementu(src, 'sources')}'"
+            )
             blockers.append(src.ref_id)
 
     for tr in enm.transformers:
         if tr.uk_percent is None or tr.uk_percent <= 0:
-            missing.append(f"u_k transformatora '{tr.name}'")
+            missing.append(f"u_k transformatora '{nazwa_elementu(tr, 'transformers')}'")
             blockers.append(tr.ref_id)
 
     # Karta S-2 AUTORYTET (dawniej FAB-H/W3-I; dyrektywa właściciela 2026-09-16:
@@ -307,7 +324,10 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
         if wspolczynnik_wkladu_zwarciowego(mp.get("k_sc"))[1] == K_SC_ZRODLO_DEKLARACJA:
             continue
         if gen.catalog_ref is None:
-            missing.append(f"katalog konwertera '{gen.ref_id}' (kod 'inverter.k_sc_missing')")
+            missing.append(
+                f"katalog konwertera '{nazwa_elementu(gen, 'generators')}' "
+                "(kod 'inverter.k_sc_missing')"
+            )
             blockers.append(gen.ref_id)
         else:
             zalozone_k_sc_refs.append(gen.ref_id)
@@ -326,7 +346,7 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     # (kod 'source.sk_min_missing', ślad `zrodla_sieciowe`, `raw_result.zalozenia`).
     # Impedancja jawna jest fizyczna i wariantu MIN nie ma, więc nie jest brakiem.
     bez_danych_min = [
-        src.ref_id
+        nazwa_elementu(src, "sources")
         for src in enm.sources
         if (dane := dane_zwarciowe_zrodla(src)).tryb_max is not None
         and dane.tryb_max is not TrybDanych.IMPEDANCJA_JAWNA
@@ -418,7 +438,7 @@ def _check_loadability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
         if branch.type in ("line_overhead", "cable"):
             rating = getattr(branch, "rating", None)
             if rating is None or getattr(rating, "in_a", None) is None:
-                missing.append(f"prąd znamionowy '{branch.name}'")
+                missing.append(f"prąd znamionowy '{nazwa_elementu(branch, 'branches')}'")
                 blockers.append(branch.ref_id)
 
     if blockers and len(blockers) > len(enm.branches) // 2:
@@ -583,12 +603,15 @@ def _check_stability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
         if not _synchroniczny_ma_dynamike(g)
     ]
     brakujace = brakujace_der + brakujace_sync
+    nazwy = zbuduj_indeks_nazw(enm)
     if brakujace:
         opisy = [
-            f"profil dynamiczny DER '{ref}' (kod 'der.dynamic_profile_missing')"
+            f"profil dynamiczny DER '{nazwa_po_identyfikatorze(ref, indeks=nazwy)}' "
+            "(kod 'der.dynamic_profile_missing')"
             for ref in brakujace_der
         ] + [
-            f"blok dynamiki maszyny synchronicznej '{ref}' (kod 'der.dynamika_missing')"
+            "blok dynamiki maszyny synchronicznej "
+            f"'{nazwa_po_identyfikatorze(ref, indeks=nazwy)}' (kod 'der.dynamika_missing')"
             for ref in brakujace_sync
         ]
         return ReadinessTypeReport(
@@ -604,7 +627,10 @@ def _check_stability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
                 "synchronicznych (kod 'der.dynamika_missing')."
             ),
         )
-    zrodla_opis = [f"{ref}={res.profile_id}" for ref, res in sorted(resolved.items())[:3]]
+    zrodla_opis = [
+        f"{nazwa_po_identyfikatorze(ref, indeks=nazwy)} — profil „{res.profile.profile_name_pl}”"
+        for ref, res in sorted(resolved.items())[:3]
+    ]
     if sync_generators:
         zrodla_opis.append(f"{len(sync_generators)} maszyna(y) synchroniczna(e) z blokiem dynamiki")
     return ReadinessTypeReport(
@@ -635,12 +661,14 @@ def _check_frt_hvrt(enm: EnergyNetworkModel) -> ReadinessTypeReport:
         )
     resolved, brakujace_refs = _rozstrzygnij_profile_der(der_generators)
     if brakujace_refs:
+        nazwy = zbuduj_indeks_nazw(enm)
         return ReadinessTypeReport(
             calculation_type="frt_hvrt",
             label_pl=CALCULATION_LABEL_PL["frt_hvrt"],
             status="blocked",
             missing_fields_pl=[
-                f"profil FRT/HVRT DER '{ref}' (kod 'der.dynamic_profile_missing')"
+                f"profil FRT/HVRT DER '{nazwa_po_identyfikatorze(ref, indeks=nazwy)}' "
+                "(kod 'der.dynamic_profile_missing')"
                 for ref in brakujace_refs
             ],
             blocking_object_refs=brakujace_refs,

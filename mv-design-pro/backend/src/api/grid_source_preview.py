@@ -14,6 +14,7 @@ from enm.der_sn_validation import (
     SN_VOLTAGE_TOLERANCE_KV,
     rated_current_a,
 )
+from enm.nazwy_elementow import nazwa_pozycji_katalogu
 from fastapi import APIRouter, HTTPException
 from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
 from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
@@ -712,7 +713,7 @@ def _block_transformer_candidates() -> tuple[BlockTransformerCandidate, ...]:
         candidates.append(
             BlockTransformerCandidate(
                 catalog_ref=str(record["id"]),
-                name=str(record.get("name", record["id"])),
+                name=nazwa_pozycji_katalogu(record),
                 sn_mva=float(sn_mva),
                 primary_kv=float(primary_kv),
                 secondary_kv=float(secondary_kv),
@@ -744,7 +745,7 @@ def _cable_candidates() -> tuple[CableCandidate, ...]:
         candidates.append(
             CableCandidate(
                 catalog_ref=str(record["id"]),
-                name=str(record.get("name", record["id"])),
+                name=nazwa_pozycji_katalogu(record),
                 cross_section_mm2=float(cross),
                 rated_current_a=float(ampacity),
                 r_ohm_per_km=float(r_km),
@@ -789,7 +790,7 @@ def _field_apparatus_candidates() -> tuple[FieldApparatusCandidate, ...]:
         candidates.append(
             FieldApparatusCandidate(
                 catalog_ref=str(record["id"]),
-                name=str(record.get("name", record["id"])),
+                name=nazwa_pozycji_katalogu(record),
                 equipment_kind=str(kind),
                 un_kv=float(un_kv),
                 in_a=float(in_a),

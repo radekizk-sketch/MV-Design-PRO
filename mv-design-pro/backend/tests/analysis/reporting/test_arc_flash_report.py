@@ -27,8 +27,9 @@ def _result(
     ppe: str | None,
     *,
     missing: list[str] | None = None,
+    bus_name: str | None = None,
 ) -> dict:
-    return {
+    wynik = {
         "bus_ref": bus_ref,
         "status": "COMPUTED_IEEE_1584_OPEN_SOURCE",
         "status_label_pl": "Policzono (IEEE 1584)",
@@ -39,12 +40,18 @@ def _result(
         "ppe_category": ppe,
         "missing_data": missing or [],
     }
+    # Widok arc flash niesie nazwę szyny (`bus_name`, karta #144); wiersz bez nazwy raport
+    # opisuje opisem rodzaju, nigdy identyfikatorem węzła.
+    if bus_name is not None:
+        wynik["bus_name"] = bus_name
+    return wynik
 
 
 def _make_ctx(results: list[dict]) -> ArcFlashReportContext:
     return ArcFlashReportContext(
         project_name="Projekt Test",
         station_id="station_001",
+        station_name="Stacja S01",
         arc_flash_view_dict={
             "analysis_id": "af-001",
             "status": "COMPUTED_IEEE_1584_OPEN_SOURCE",
@@ -59,8 +66,8 @@ def _make_ctx(results: list[dict]) -> ArcFlashReportContext:
 def test_json_report_summary_worst_case_and_ppe_distribution():
     ctx = _make_ctx(
         [
-            _result("bus-b", 8.0, 900.0, "2"),
-            _result("bus-a", 12.5, 1400.0, "3"),
+            _result("bus-b", 8.0, 900.0, "2", bus_name="Szyna B"),
+            _result("bus-a", 12.5, 1400.0, "3", bus_name="Szyna A"),
             _result("bus-c", None, None, None, missing=["I_arc"]),
         ]
     )
@@ -70,6 +77,8 @@ def test_json_report_summary_worst_case_and_ppe_distribution():
     assert report["summary"]["bus_count"] == 3
     # Najgorszy przypadek = maksymalna energia incydentu.
     assert report["summary"]["worst_bus_ref"] == "bus-a"
+    assert report["summary"]["worst_bus_name"] == "Szyna A"
+    assert report["station_name"] == "Stacja S01"
     assert report["summary"]["worst_incident_energy_cal_cm2"] == 12.5
     assert report["summary"]["buses_with_missing_data"] == 1
     assert report["summary"]["ppe_distribution"] == {"2": 1, "3": 1, "—": 1}
@@ -78,14 +87,18 @@ def test_json_report_summary_worst_case_and_ppe_distribution():
 
 
 def test_text_report_renders_polish_summary():
-    ctx = _make_ctx([_result("bus-a", 5.0, 700.0, "1")])
+    ctx = _make_ctx([_result("bus-a", 5.0, 700.0, "1", bus_name="Szyna A")])
     text = render_arc_flash_report_text(ctx)
     assert "RAPORT ZAGROŻENIA ŁUKIEM ELEKTRYCZNYM" in text
     assert "Projekt: Projekt Test" in text
-    assert "Stacja: station_001" in text
+    # Dokument nazywa stację i szyny nazwami z modelu, nigdy identyfikatorami (karta #144).
+    assert "Stacja: Stacja S01" in text
+    assert "station_001" not in text
     assert "Operator: PSE" in text
     assert "1 szyn" in text
-    assert "bus-a" in text
+    assert "Szyna A —" in text
+    assert "(szyna Szyna A)" in text
+    assert "bus-a" not in text
     assert "cal/cm²" in text
 
 
@@ -96,13 +109,14 @@ def test_text_report_for_empty_results():
 
 
 def test_latex_report_includes_table_and_escapes():
-    ctx = _make_ctx([_result("bus_a&1", 9.9, 1000.0, "2")])
+    ctx = _make_ctx([_result("bus_a&1", 9.9, 1000.0, "2", bus_name="Szyna_A&1")])
     latex = render_arc_flash_report_latex(ctx)
     assert r"\documentclass" in latex
     assert "Raport zagrożenia" in latex
     assert r"\begin{longtable}" in latex
-    # Escaping znaków specjalnych LaTeX.
-    assert r"bus\_a\&1" in latex
+    # Escaping znaków specjalnych LaTeX w NAZWIE szyny (identyfikator nie trafia do tabeli).
+    assert r"Szyna\_A\&1" in latex
+    assert r"bus\_a\&1" not in latex
 
 
 def test_all_formats_render_without_errors():
@@ -144,3 +158,16 @@ def test_docx_export_is_byte_deterministic_across_repeated_calls():
     assert hash_1 == hash_2, (
         f"DOCX export arc_flash_report nie deterministyczny\n" f"Hash 1: {hash_1}\nHash 2: {hash_2}"
     )
+
+
+def test_wiersz_bez_nazwy_szyny_opisany_rodzajem_nigdy_identyfikatorem():
+    """Karta #144: wynik bez `bus_name` — każdy format opisuje szynę „Szyna bez nazwy",
+    identyfikator węzła nie trafia do tekstu, LaTeX-u ani podsumowania."""
+    ctx = _make_ctx([_result("wezel-grafu-7f3a", 4.0, 600.0, "1")])
+    text = render_arc_flash_report_text(ctx)
+    latex = render_arc_flash_report_latex(ctx)
+    raport = render_arc_flash_report_json(ctx)
+    assert "Szyna bez nazwy —" in text
+    assert "wezel-grafu-7f3a" not in text
+    assert "wezel-grafu-7f3a" not in latex
+    assert raport["summary"]["worst_bus_name"] == "Szyna bez nazwy"

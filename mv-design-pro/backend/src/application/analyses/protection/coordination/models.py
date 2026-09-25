@@ -127,6 +127,9 @@ class CoordinationInput:
     pf_run_id: str | None = None
     sc_run_id: str | None = None
     project_id: str | None = None
+    #: Nazwy lokalizacji (`location_id` → nazwa elementu z modelu biegu) — teksty wyniku
+    #: i etykiety znaczników nazywają miejsce nazwą, nie identyfikatorem (karta #144).
+    nazwy_lokalizacji: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""

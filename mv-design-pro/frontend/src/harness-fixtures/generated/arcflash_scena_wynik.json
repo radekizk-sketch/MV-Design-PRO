@@ -786,7 +786,8 @@
           "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
-      ]
+      ],
+      "bus_name": "Szyna SN"
     },
     {
       "bus_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
@@ -841,7 +842,8 @@
           "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
-      ]
+      ],
+      "bus_name": "GPZ 110 kV"
     },
     {
       "bus_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
@@ -924,7 +926,8 @@
           "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
-      ]
+      ],
+      "bus_name": "Szyna nN"
     },
     {
       "bus_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
@@ -1009,7 +1012,8 @@
           "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
-      ]
+      ],
+      "bus_name": "Stacja B SN"
     },
     {
       "bus_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
@@ -1094,7 +1098,8 @@
           "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
-      ]
+      ],
+      "bus_name": "Stacja C SN"
     }
   ]
 }

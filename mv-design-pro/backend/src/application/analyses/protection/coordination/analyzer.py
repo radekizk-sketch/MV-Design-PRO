@@ -44,6 +44,7 @@ from domain.protection_device import (
     SelectivityCheck,
     SensitivityCheck,
 )
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU
 from protection.curves.curve_calculator import (
     CurveDefinition,
     calculate_curve_points,
@@ -206,6 +207,12 @@ class OvercurrentCoordinationAnalyzer:
     """
 
     config: CoordinationConfig = field(default_factory=CoordinationConfig)
+    #: Nazwy lokalizacji bieżącej analizy (z `CoordinationInput.nazwy_lokalizacji`).
+    _nazwy_lokalizacji: dict[str, str] = field(default_factory=dict, init=False, repr=False)
+
+    def _nazwa_lokalizacji(self, location_id: str | None) -> str:
+        """Nazwa lokalizacji z modelu biegu; nieznana = jawny brak, nigdy identyfikator."""
+        return self._nazwy_lokalizacji.get(str(location_id)) or ELEMENT_SPOZA_MODELU
 
     def analyze(
         self,
@@ -223,6 +230,7 @@ class OvercurrentCoordinationAnalyzer:
         run_id = str(uuid4())
         project_id = input_data.project_id or ""
         trace_steps: list[dict[str, Any]] = []
+        self._nazwy_lokalizacji = dict(input_data.nazwy_lokalizacji)
 
         # Step 1: Index currents by location
         trace_steps.append(
@@ -356,7 +364,10 @@ class OvercurrentCoordinationAnalyzer:
                         i_pickup_a=device.settings.stage_51.pickup_current_a,
                         margin_percent=0.0,
                         verdict=CoordinationVerdict.ERROR,
-                        notes_pl=f"Brak danych o prądzie zwarciowym dla lokalizacji {location_id}",
+                        notes_pl=(
+                            "Brak danych o prądzie zwarciowym dla lokalizacji "
+                            f"{self._nazwa_lokalizacji(location_id)}"
+                        ),
                     )
                 )
                 continue
@@ -449,7 +460,10 @@ class OvercurrentCoordinationAnalyzer:
                         i_pickup_a=device.settings.stage_51.pickup_current_a,
                         margin_percent=0.0,
                         verdict=CoordinationVerdict.ERROR,
-                        notes_pl=f"Brak danych o prądzie roboczym dla lokalizacji {location_id}",
+                        notes_pl=(
+                            "Brak danych o prądzie roboczym dla lokalizacji "
+                            f"{self._nazwa_lokalizacji(location_id)}"
+                        ),
                     )
                 )
                 continue
@@ -565,7 +579,10 @@ class OvercurrentCoordinationAnalyzer:
                         margin_s=0.0,
                         required_margin_s=min_cti,
                         verdict=CoordinationVerdict.ERROR,
-                        notes_pl=f"Brak danych o prądzie zwarciowym dla lokalizacji {downstream_location}",
+                        notes_pl=(
+                            "Brak danych o prądzie zwarciowym dla lokalizacji "
+                            f"{self._nazwa_lokalizacji(downstream_location)}"
+                        ),
                     )
                 )
                 continue
@@ -828,7 +845,7 @@ class OvercurrentCoordinationAnalyzer:
             markers.append(
                 FaultMarker(
                     id=f"{fault_data.location_id}_ik_max_3f",
-                    label_pl=f'Ik"max 3F ({fault_data.location_id})',
+                    label_pl=f'Ik"max 3F ({self._nazwa_lokalizacji(fault_data.location_id)})',
                     current_a=fault_data.ik_max_3f_a,
                     fault_type="3F",
                     location=fault_data.location_id,
@@ -839,7 +856,7 @@ class OvercurrentCoordinationAnalyzer:
             markers.append(
                 FaultMarker(
                     id=f"{fault_data.location_id}_ik_min_3f",
-                    label_pl=f'Ik"min 3F ({fault_data.location_id})',
+                    label_pl=f'Ik"min 3F ({self._nazwa_lokalizacji(fault_data.location_id)})',
                     current_a=fault_data.ik_min_3f_a,
                     fault_type="3F",
                     location=fault_data.location_id,
@@ -851,7 +868,7 @@ class OvercurrentCoordinationAnalyzer:
                 markers.append(
                     FaultMarker(
                         id=f"{fault_data.location_id}_ik_min_1f",
-                        label_pl=f'Ik"min 1F ({fault_data.location_id})',
+                        label_pl=f'Ik"min 1F ({self._nazwa_lokalizacji(fault_data.location_id)})',
                         current_a=fault_data.ik_min_1f_a,
                         fault_type="1F",
                         location=fault_data.location_id,

@@ -63,17 +63,21 @@ def _resolve_inverter(
     catalog_dynamic_profile_id: str | None,
 ) -> DerDynamicResolution:
     """Resolve dla PV / BESS."""
+    # Uzasadnienie nazywa profil jego nazwą z rejestru (`profile_name_pl`), identyfikator
+    # profilu zostaje w `profile.profile_id` (karta #144).
     if explicit_profile_id and explicit_profile_id in INVERTER_DYNAMIC_PROFILES:
+        profil = INVERTER_DYNAMIC_PROFILES[explicit_profile_id]
         return DerDynamicResolution(
-            profile=INVERTER_DYNAMIC_PROFILES[explicit_profile_id],
+            profile=profil,
             source="explicit_profile_id",
-            rationale_pl=(f"Wskazany profil '{explicit_profile_id}' znaleziony w rejestrze."),
+            rationale_pl=f"Wskazany profil „{profil.profile_name_pl}” znaleziony w rejestrze.",
         )
     if catalog_dynamic_profile_id and catalog_dynamic_profile_id in INVERTER_DYNAMIC_PROFILES:
+        profil = INVERTER_DYNAMIC_PROFILES[catalog_dynamic_profile_id]
         return DerDynamicResolution(
-            profile=INVERTER_DYNAMIC_PROFILES[catalog_dynamic_profile_id],
+            profile=profil,
             source="catalog_entry_dynamic_profile_id",
-            rationale_pl=(f"Wpis katalogu wskazuje profil '{catalog_dynamic_profile_id}'."),
+            rationale_pl=f"Wpis katalogu wskazuje profil „{profil.profile_name_pl}”.",
         )
     return DerDynamicResolution(
         profile=None,
@@ -94,16 +98,20 @@ def _resolve_wind(
 ) -> DerDynamicResolution:
     """Resolve dla turbin wiatrowych."""
     if explicit_profile_id and explicit_profile_id in WIND_DYNAMIC_PROFILES:
+        profil_turbiny = WIND_DYNAMIC_PROFILES[explicit_profile_id]
         return DerDynamicResolution(
-            profile=WIND_DYNAMIC_PROFILES[explicit_profile_id],
+            profile=profil_turbiny,
             source="explicit_profile_id",
-            rationale_pl=(f"Wskazany profil turbiny '{explicit_profile_id}'."),
+            rationale_pl=f"Wskazany profil turbiny „{profil_turbiny.profile_name_pl}”.",
         )
     if catalog_dynamic_profile_id and catalog_dynamic_profile_id in WIND_DYNAMIC_PROFILES:
+        profil_turbiny = WIND_DYNAMIC_PROFILES[catalog_dynamic_profile_id]
         return DerDynamicResolution(
-            profile=WIND_DYNAMIC_PROFILES[catalog_dynamic_profile_id],
+            profile=profil_turbiny,
             source="catalog_entry_dynamic_profile_id",
-            rationale_pl=(f"Wpis katalogu turbiny wskazuje profil '{catalog_dynamic_profile_id}'."),
+            rationale_pl=(
+                f"Wpis katalogu turbiny wskazuje profil „{profil_turbiny.profile_name_pl}”."
+            ),
         )
     return DerDynamicResolution(
         profile=None,

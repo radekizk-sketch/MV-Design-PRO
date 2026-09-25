@@ -103,6 +103,7 @@ from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
 from .migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
 from .models import liczba_torow
+from .nazwy_elementow import jest_nazwa, nazwa_elementu, nazwa_pola_ze_specyfikacji
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     PlanPolaKatalogowego,
@@ -245,14 +246,30 @@ def _nazwa_pola(enm: dict[str, Any], field_ref: str) -> str:
     pola („Zabezpieczenie pola stn/08489…/sn_field/000"), więc identyfikator
     maszynowy wychodził na strefę pierwszoplanową — widać go było w uzasadnieniu
     czasu wyłączenia na ekranie wyników zwarciowych. Nazwa pola jest w modelu;
-    referencja zostaje wyłącznie awaryjnym opisem, gdy pole nazwy nie ma.
+    referencja nigdy nie jest nazwą (karta #144 §0.1).
+
+    Kolejność źródeł (ta sama dla CT, VT i zabezpieczenia pola): nazwa rekordu pola
+    (element `bays` albo specyfikacja pola stacji); dla specyfikacji bez nazwy — nazwa
+    elementu pola, które opisuje (`bay_ref`; operacje stacji nadają nazwę elementowi,
+    a specyfikacja jej nie powiela); pole SN bez nazwy — nazwa roli z jednej mapy ról
+    (`nazwa_roli_pola_sn`, karta #140); pole nN bez nazwy — polski opis braku.
     """
+    nazwy_elementow_pol: dict[object, object] = {
+        bay.get("ref_id"): bay.get("name") for bay in enm.get("bays", []) if isinstance(bay, dict)
+    }
     record = _field_record(enm, field_ref)
-    if isinstance(record, dict):
+    if not isinstance(record, dict):
+        return "Pole bez nazwy"
+    pole_nn = any(
+        spec is record
+        for sub in enm.get("substations", [])
+        if isinstance(sub, dict)
+        for spec in _substation_meta_specs(sub, "nn_field_specs")
+    )
+    if pole_nn:
         nazwa = record.get("name")
-        if isinstance(nazwa, str) and nazwa.strip():
-            return nazwa.strip()
-    return field_ref
+        return str(nazwa).strip() if jest_nazwa(nazwa) else "Pole nN bez nazwy"
+    return nazwa_pola_ze_specyfikacji(record, nazwy_elementow_pol)
 
 
 def _field_station_bus_ref(enm: dict[str, Any], field_ref: str) -> str | None:
@@ -810,7 +827,7 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         roboczy,
         {
             "ref_id": measurement_ref,
-            "name": payload.get("name") or f"CT pola {field_ref}",
+            "name": payload.get("name") or f"CT pola {_nazwa_pola(enm, field_ref)}",
             "measurement_type": "CT",
             "bus_ref": bus_ref,
             "bay_ref": field_ref,
@@ -969,7 +986,7 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         roboczy,
         {
             "ref_id": measurement_ref,
-            "name": payload.get("name") or f"VT pola {field_ref}",
+            "name": payload.get("name") or f"VT pola {_nazwa_pola(enm, field_ref)}",
             "measurement_type": "VT",
             "bus_ref": bus_ref,
             "bay_ref": field_ref,
@@ -3548,7 +3565,7 @@ def add_nn_section_coupler(enm: dict[str, Any], payload: dict[str, Any]) -> dict
         {
             "ref_id": new_bus_ref,
             "name": payload.get("name")
-            or f"Sekcja {last_order + 1} — {station.get('name') or station_ref}",
+            or f"Sekcja {last_order + 1} — {station.get('name') or 'Stacja bez nazwy'}",
             "voltage_kv": voltage_kv,
             "meta": {"visual_role": "NN_SECTION_BUS"},
         },
@@ -4262,7 +4279,7 @@ def copy_nn_feeder(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
             continue
         kopia_bus = copy.deepcopy(oryginal)
         kopia_bus["ref_id"] = mapa_szyn[stary_bus]
-        kopia_bus["name"] = f"{nazwa_prefix} — {oryginal.get('name') or stary_bus}"
+        kopia_bus["name"] = f"{nazwa_prefix} — {nazwa_elementu(oryginal, 'buses')}"
         new_enm.setdefault("buses", []).append(kopia_bus)
         created.append(kopia_bus["ref_id"])
         ev_seq += 1
@@ -4286,7 +4303,7 @@ def copy_nn_feeder(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
             continue
         kopia_galaz = copy.deepcopy(oryginal)
         kopia_galaz["ref_id"] = mapa_galezi[stara_galaz]
-        kopia_galaz["name"] = f"{nazwa_prefix} — {oryginal.get('name') or stara_galaz}"
+        kopia_galaz["name"] = f"{nazwa_prefix} — {nazwa_elementu(oryginal, 'branches')}"
         kopia_galaz["from_bus_ref"] = _przemapuj_bus(oryginal.get("from_bus_ref"))
         kopia_galaz["to_bus_ref"] = _przemapuj_bus(oryginal.get("to_bus_ref"))
         new_enm.setdefault("branches", []).append(kopia_galaz)
@@ -4309,7 +4326,7 @@ def copy_nn_feeder(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
         for i, oryginal in enumerate(oryginalne):
             kopia = copy.deepcopy(oryginal)
             kopia["ref_id"] = _make_id("nn", seed, f"copy_{kolekcja_klucz}_{i}")
-            kopia["name"] = f"{nazwa_prefix} — {oryginal.get('name') or oryginal.get('ref_id')}"
+            kopia["name"] = f"{nazwa_prefix} — {nazwa_elementu(oryginal, kolekcja_klucz)}"
             kopia["bus_ref"] = _przemapuj_bus(oryginal.get("bus_ref"))
             meta = kopia.get("meta")
             if (
@@ -4481,7 +4498,9 @@ def _certyfikat_ptpiree_z_katalogu(namespace: str, catalog_ref: str) -> dict[str
             **annotate_with_ptpiree_status(
                 {
                     "id": str(dane.get("id") or catalog_ref),
-                    "name": str(dane.get("model") or dane.get("name") or catalog_ref),
+                    # Nazwa rekordu przechodzi przez adnotację bez użycia (wołający bierze
+                    # wyłącznie `params`) — nie zastępuje się jej identyfikatorem pozycji.
+                    "name": str(dane.get("model") or dane.get("name") or ""),
                     "params": {
                         "manufacturer": dane.get("manufacturer"),
                         "model": dane.get("model"),

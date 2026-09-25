@@ -2565,6 +2565,11 @@ def koordynacja_scena_pakiet_dostepnosc_min() -> dict[str, Any]:
 #: zabezpieczeń do wyłączników (model milczy), więc ekran wymaga wskazania — scena
 #: wskazuje zacisk początkowy (strona Stacji S01), tak jak klika go spec e2e.
 ZACISK_ZABEZPIECZENIA_SCENY_KOORD = "od"
+#: Nazwa przypadku sceny koordynacji — TA SAMA, którą harness zasiewa dla sceny
+#: `koordynacja` (`setActiveCase('case-demo', 'Wariant zimowy', …)`). Końcówki nastaw
+#: czytają ją z bazy (`nazwa_przypadku_z_bazy`); nagłówek proweniencji nigdy nie niesie
+#: identyfikatora przypadku (karta #144).
+NAZWA_PRZYPADKU_SCENY_KOORD = "Wariant zimowy"
 
 
 def _pozycja_nastaw_sceny_koordynacja(bieg_max: Any, linia: str) -> dict[str, Any]:
@@ -2594,6 +2599,7 @@ def koordynacja_scena_nastawy() -> dict[str, Any]:
             next_bus_id=pozycja["nastepne_szyny_wg_zacisku"][ZACISK_ZABEZPIECZENIA_SCENY_KOORD][0],
             c_min=1.0,
             zacisk_zabezpieczenia=ZACISK_ZABEZPIECZENIA_SCENY_KOORD,
+            nazwa_przypadku=NAZWA_PRZYPADKU_SCENY_KOORD,
         )
         return _ustabilizuj_identyfikatory(
             canonicalize_json(widok), _mapa_identyfikatorow_koordynacji(bieg_max, bieg_min, bieg_pf)
@@ -2613,6 +2619,7 @@ def koordynacja_scena_nastawy_dopasowanie() -> dict[str, Any]:
             next_bus_id=pozycja["nastepne_szyny_wg_zacisku"][ZACISK_ZABEZPIECZENIA_SCENY_KOORD][0],
             c_min=1.0,
             zacisk_zabezpieczenia=ZACISK_ZABEZPIECZENIA_SCENY_KOORD,
+            nazwa_przypadku=NAZWA_PRZYPADKU_SCENY_KOORD,
         )
         return _ustabilizuj_identyfikatory(
             canonicalize_json(widok), _mapa_identyfikatorow_koordynacji(bieg_max, bieg_min, bieg_pf)
