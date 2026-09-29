@@ -242,7 +242,7 @@ def test_dowod_pokazuje_wzor_normy_a_nie_odczyt_z_karty() -> None:
     assert "ln" in krok["formula_latex"]
     assert "rho" in krok["formula_latex"]
     # Podstawienie niesie liczby, nie sam wzor — inaczej nie da sie sprawdzic rachunku.
-    assert "228" in krok["substitution"]
+    assert "228" in krok["substitution_latex"]
     assert "WYPROWADZONE" in krok["notes"] or "wyprowadzone" in krok["notes"]
 
 

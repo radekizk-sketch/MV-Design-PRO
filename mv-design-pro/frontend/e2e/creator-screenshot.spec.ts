@@ -11,6 +11,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { zbierajNieudaneZadaniaApi } from './nieudaneZadaniaApi';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -85,6 +86,7 @@ test.describe('kreatory:screenshot', () => {
         expect(consoleErrors, `no console/page errors for ${creator}/${theme}`).toEqual([]);
 
         const outPath = path.join(OUTPUT_DIR, `kreator_${creator}_${theme}.png`);
+        await bramkaTresciMatematycznej(page);
         await root.screenshot({ path: outPath });
         expect(fs.existsSync(outPath)).toBe(true);
       });
@@ -117,6 +119,7 @@ test.describe('kreatory:screenshot', () => {
 
       const shot = async (krok: number) => {
         await page.waitForTimeout(300);
+        await bramkaTresciMatematycznej(page);
         await root.screenshot({ path: path.join(OUTPUT_DIR, `kreator_oze_krok${krok}_${theme}.png`) });
       };
 
@@ -219,6 +222,7 @@ test.describe('kreatory:screenshot', () => {
       await page.getByTestId('mvd-kreator-transformator-deadband').fill('0.3');
       await page.getByTestId('mvd-kreator-transformator-teoria').locator('summary').click();
       await page.waitForTimeout(300);
+      await bramkaTresciMatematycznej(page);
       await root.screenshot({
         path: path.join(OUTPUT_DIR, `kreator_transformator_regulacja_${theme}.png`),
       });
@@ -265,6 +269,7 @@ test.describe('kreatory:screenshot', () => {
 
         await page.getByTestId(`mvd-kreator-${c}-teoria`).locator('summary').click();
         await page.waitForTimeout(300);
+        await bramkaTresciMatematycznej(page);
         await root.screenshot({ path: path.join(OUTPUT_DIR, `kreator_${c}_teoria_${theme}.png`) });
 
         if (errs.length > 0) console.log(`[${c}/${theme}] errors:\n${errs.join('\n')}`);
@@ -388,6 +393,7 @@ test.describe('kreatory:screenshot', () => {
 
     await page.waitForTimeout(300);
     const root = page.locator('[data-testid="creator-harness-root"]').first();
+    await bramkaTresciMatematycznej(page);
     await root.screenshot({ path: path.join(OUTPUT_DIR, 'wiazania_oze.png') });
 
     // Picker otwiera się realnym klikiem i pokazuje typy z REALNEGO katalogu.
@@ -403,6 +409,7 @@ test.describe('kreatory:screenshot', () => {
     expect(vtAbb, 'katalog VT backendu musi nieść pozycję vt_10kv_100v_05_abb').toBeDefined();
     await page.getByTestId('der-wiazanie-wybierz-vt_catalog_ref').click();
     await expect(page.getByText(vtAbb!.name)).toBeVisible({ timeout: 15000 });
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({ path: path.join(OUTPUT_DIR, 'wiazania_oze_picker.png') });
 
     if (errs.length > 0) console.log(`[wiazania] errors:\n${errs.join('\n')}`);
@@ -530,6 +537,7 @@ test.describe('kreatory:screenshot', () => {
       }
 
       await page.waitForTimeout(300);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `wiazania_oze_${widok.wariant}.png`),
         fullPage: true,
@@ -582,6 +590,7 @@ test.describe('kreatory:screenshot', () => {
           `scena ${c}/${theme} pokazuje komunikat o niepowodzeniu`,
         ).toBe(false);
 
+        await bramkaTresciMatematycznej(page);
         await root.screenshot({ path: path.join(OUTPUT_DIR, `kreator_${c}_teoria_${theme}.png`) });
 
         if (errs.length > 0) console.log(`[${c}/${theme}] errors:\n${errs.join('\n')}`);

@@ -24,6 +24,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -79,6 +80,7 @@ test.describe('zwarcia-f2:screenshot', () => {
         szczegol.locator('[data-testid="math-rendered"]').first(),
       ).toBeVisible();
       await page.waitForTimeout(300);
+      await bramkaTresciMatematycznej(page);
       await wklady.screenshot({
         path: path.join(OUTPUT_DIR, `flow_zwarcia_f2_szczegol_${theme}.png`),
       });
@@ -91,6 +93,7 @@ test.describe('zwarcia-f2:screenshot', () => {
       await wklady.getByTestId('mvd-wyn-th-prad').click();
       await expect(wklady.getByTestId('mvd-wyn-tabela')).toContainText('Generator synchroniczny');
       await page.waitForTimeout(200);
+      await bramkaTresciMatematycznej(page);
       await wklady.screenshot({
         path: path.join(OUTPUT_DIR, `flow_zwarcia_f2_sort_${theme}.png`),
       });
@@ -102,6 +105,7 @@ test.describe('zwarcia-f2:screenshot', () => {
       await expect(wklady.getByTestId('mvd-zwarcia-wklady-filtr-brak')).toBeVisible();
       await expect(wklady.getByTestId('mvd-wyn-tabela')).toHaveCount(0);
       await page.waitForTimeout(200);
+      await bramkaTresciMatematycznej(page);
       await wklady.screenshot({
         path: path.join(OUTPUT_DIR, `flow_zwarcia_f2_filtr_${theme}.png`),
       });
@@ -113,6 +117,7 @@ test.describe('zwarcia-f2:screenshot', () => {
       await wykres.getByTestId('mvd-zwarcia-wykres-btn-ip').click();
       await expect(wykres).toContainText('Prądy udarowe ip');
       await page.waitForTimeout(200);
+      await bramkaTresciMatematycznej(page);
       await wykres.screenshot({
         path: path.join(OUTPUT_DIR, `flow_zwarcia_f2_wykres_ip_${theme}.png`),
       });
@@ -123,6 +128,7 @@ test.describe('zwarcia-f2:screenshot', () => {
         'true',
       );
       await page.waitForTimeout(200);
+      await bramkaTresciMatematycznej(page);
       await wykres.screenshot({
         path: path.join(OUTPUT_DIR, `flow_zwarcia_f2_wykres_i2t_${theme}.png`),
       });

@@ -204,12 +204,10 @@ export function skladoweZeSladu(
     z2: naZespolona(inputs['z2_ohm']),
     z0: naZespolona(inputs['z0_ohm']),
     formulaLatex: typeof krok.formula_latex === 'string' ? krok.formula_latex : null,
+    // Kontrakt pól kroku (karta DOWOD-CIEPLNY): LaTeX WYŁĄCZNIE z `substitution_latex`;
+    // `substitution` jest prozą i nie trafia do KaTeX-a.
     substitutionLatex:
-      typeof krok.substitution === 'string'
-        ? krok.substitution
-        : typeof (krok as Record<string, unknown>)['substitution_latex'] === 'string'
-          ? String((krok as Record<string, unknown>)['substitution_latex'])
-          : null,
+      typeof krok.substitution_latex === 'string' ? krok.substitution_latex : null,
   };
 }
 

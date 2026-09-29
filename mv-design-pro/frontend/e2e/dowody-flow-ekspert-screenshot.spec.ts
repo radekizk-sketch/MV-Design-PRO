@@ -23,6 +23,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { nazwaElementu } from './nazwyModelu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -265,6 +266,7 @@ test.describe('dowody-flow-ekspert:screenshot', () => {
         expect(errs, `no console/page errors for ${scena.plik}/${theme}`).toEqual([]);
 
         const outPath = path.join(OUTPUT_DIR, `${scena.plik}-${theme}.png`);
+        await bramkaTresciMatematycznej(page);
         await root.screenshot({ path: outPath });
         expect(fs.existsSync(outPath)).toBe(true);
       });

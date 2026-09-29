@@ -55,6 +55,7 @@ from analysis.obciazenie_galezi import (
     prad_zacisku_do_a,
     prad_zacisku_od_a,
 )
+from application.slad_kroku import kroki_zwarcia_w_kontrakcie
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
@@ -446,7 +447,9 @@ def _ibg_referred_a(graph: NetworkGraph, un_kv: float) -> float:
 
 def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float) -> dict[str, Any]:
     """Ik''max/min + ip/ib/ith/kappa + Sk + Icw verification at one busbar, with the solver's
-    White Box trace carried verbatim. Audit F-1: the FROZEN solver adds IBG current UN-REFERRED
+    White Box trace carried verbatim except the prose copy of LaTeX the FROZEN core writes into
+    `substitution` (removed by step key at the application boundary — karta DOWOD-CIEPLNY,
+    `application/slad_kroku.py`; the LaTeX stays in `substitution_latex`). Audit F-1: the FROZEN solver adds IBG current UN-REFERRED
     to every bus (raw §6.7 ik_sc_a, ignoring the transformer between the IBG and the fault),
     which inflates remote-bus (collector) Ik''. The reported scalars use the CONSISTENT metric:
     grid Thévenin (solver Ik'' minus its raw IBG sum) + the IBG REFERRED via the turns ratio.
@@ -482,7 +485,7 @@ def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float)
             "kappa": round(rmax.kappa, 3),
             "sk_mva": round(rmax.sk_mva * f_max, 2),
             "rx_ratio": round(rmax.rx_ratio, 4),
-            "white_box_trace": _json_safe(rmax.white_box_trace),
+            "white_box_trace": _json_safe(kroki_zwarcia_w_kontrakcie(rmax.white_box_trace)),
         },
         # Ik''min branch (c=0.95): protection-sensitivity reference.
         "min": {
@@ -492,7 +495,7 @@ def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float)
             "ith_ka": round(rmin.ith_a * f_min / 1000.0, 3),
             "kappa": round(rmin.kappa, 3),
             "sk_mva": round(rmin.sk_mva * f_min, 2),
-            "white_box_trace": _json_safe(rmin.white_box_trace),
+            "white_box_trace": _json_safe(kroki_zwarcia_w_kontrakcie(rmin.white_box_trace)),
         },
         # Verification: Ik''max ≤ Icw (thermal withstand). The dynamic check (ip ≤ Idyn) is the
         # paired per-bus nameplate above; both are shown at L2 with their own verdict.

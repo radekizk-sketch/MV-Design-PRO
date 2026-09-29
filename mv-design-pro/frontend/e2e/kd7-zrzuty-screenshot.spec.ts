@@ -14,6 +14,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
@@ -202,6 +203,7 @@ test.describe('kd7:zrzuty', () => {
       });
       expect(pozaKanwa).toEqual([]);
 
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd7-kadr-${id}.png`) });
     });
   }

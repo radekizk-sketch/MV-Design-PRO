@@ -57,7 +57,7 @@ const SLAD: ExtendedTrace = {
       target_id: 'node-1',
       title: 'Impedancja zastępcza w punkcie zwarcia',
       formula_latex: 'Z_k = Z_1 + Z_2 + Z_0',
-      substitution: '\\left(0.1 + j 0.4\\right) + \\left(0.1 + j 0.4\\right) + \\left(0.3 + j 0.9\\right)',
+      substitution_latex: '\\left(0.1 + j 0.4\\right) + \\left(0.1 + j 0.4\\right) + \\left(0.3 + j 0.9\\right)',
       inputs: {
         z1_ohm: { re: 0.1, im: 0.4 },
         z2_ohm: { re: 0.1, im: 0.4 },
@@ -138,6 +138,17 @@ describe('skladoweZeSladu — krok "Zk" śladu WHITE BOX (read-only)', () => {
     expect(skladowe?.z0).toEqual({ re: 0.3, im: -0.9 });
     expect(skladowe?.formulaLatex).toBe('Z_k = Z_1 + Z_2 + Z_0');
     expect(skladowe?.substitutionLatex).toContain('0.3');
+  });
+
+  it('proza `substitution` nie jest brana za LaTeX (kontrakt pól kroku, karta DOWOD-CIEPLNY)', () => {
+    const krok = SLAD.white_box_trace[0];
+    const bezLatex = {
+      ...SLAD,
+      white_box_trace: [
+        { ...krok, substitution_latex: undefined, substitution: 'Opis metody prozą.' },
+      ],
+    };
+    expect(skladoweZeSladu(bezLatex, 'node-1')?.substitutionLatex).toBeNull();
   });
 
   it('brak kroku dla punktu / brak śladu → null (zero fabrykacji)', () => {

@@ -22,6 +22,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -79,6 +80,7 @@ test.describe('kreator stacji — podgląd pól rozdzielnicy SN', () => {
 
       // (1) Układ domyślny stacji odgałęźnej — cztery pola.
       await podglad.scrollIntoViewIfNeeded();
+      await bramkaTresciMatematycznej(page);
       await podglad.screenshot({
         path: path.join(OUTPUT_DIR, `kreator_stacja_podglad_domyslny_${theme}.png`),
       });
@@ -90,6 +92,7 @@ test.describe('kreator stacji — podgląd pól rozdzielnicy SN', () => {
       await page.getByTestId('mvd-kreator-stacja-aparat-4').selectOption(ROZLACZNIK_BEZPIECZNIKOWY);
       await page.waitForTimeout(300);
       await podglad.scrollIntoViewIfNeeded();
+      await bramkaTresciMatematycznej(page);
       await podglad.screenshot({
         path: path.join(OUTPUT_DIR, `kreator_stacja_podglad_warianty_${theme}.png`),
       });
@@ -102,6 +105,7 @@ test.describe('kreator stacji — podgląd pól rozdzielnicy SN', () => {
       await expect(page.getByTestId('mvd-kreator-stacja-pola')).toBeVisible();
       await page.waitForTimeout(400);
       await podglad.scrollIntoViewIfNeeded();
+      await bramkaTresciMatematycznej(page);
       await podglad.screenshot({
         path: path.join(OUTPUT_DIR, `kreator_stacja_podglad_sprzeglo_${theme}.png`),
       });
@@ -115,6 +119,7 @@ test.describe('kreator stacji — podgląd pól rozdzielnicy SN', () => {
       await page.getByTestId('mvd-kreator-stacja-blok').selectOption(BLOK_RMU);
       await expect(page.getByTestId('mvd-kreator-stacja-blok-jednostka-3')).toBeVisible();
       await page.waitForTimeout(600);
+      await bramkaTresciMatematycznej(page);
       await page.getByTestId('mvd-kreator-stacja-pola').screenshot({
         path: path.join(OUTPUT_DIR, `kreator_stacja_tor_blok_rmu_${theme}.png`),
       });
@@ -139,6 +144,7 @@ test.describe('kreator stacji — podgląd pól rozdzielnicy SN', () => {
       // ekranem, a kadr dowodziłby czegoś odwrotnego niż jego nazwa.
       await expect(page.getByTestId('mvd-kreator-stacja-blok')).toHaveCount(0);
       await page.waitForTimeout(300);
+      await bramkaTresciMatematycznej(page);
       await page.getByTestId('mvd-kreator-stacja-pola').screenshot({
         path: path.join(OUTPUT_DIR, `kreator_stacja_blok_brak_danych_${theme}.png`),
       });

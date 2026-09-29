@@ -16,7 +16,6 @@
         "x_t_ohm_hv": 15.643305654845538,
         "c_max": 1.05
       },
-      "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
       "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
       "result": {
         "k_t": 0.9719562571918224,
@@ -71,7 +70,6 @@
         "x_t_ohm_hv": 58.03351739951663,
         "c_max": 1.1
       },
-      "substitution": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
       "substitution_latex": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
       "result": {
         "k_t": 0.9748658346557572,
@@ -133,7 +131,6 @@
           "im": -10162.601626014506
         }
       },
-      "substitution": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
       "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
       "result": {
         "z_equiv_ohm": {
@@ -182,7 +179,6 @@
         "voltage_factor": 1.7320508075688772,
         "z_equiv_abs_ohm": 10160.476333567425
       },
-      "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 1.73205}{10160.5}",
       "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 1.73205}{10160.5}",
       "result": {
         "ikss_a": 2.8127459172824247
@@ -224,7 +220,6 @@
         "x_ohm": -10160.476332990464,
         "rx_ratio": -1.0656907191844057e-05
       },
-      "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
       "result": {
         "kappa": 2.0000313318079916
@@ -265,7 +260,6 @@
         "kappa": 2.0000313318079916,
         "ikss_a": 2.8127459172824247
       },
-      "substitution": "2.00003 \\cdot \\sqrt{2} \\cdot 2.81275",
       "substitution_latex": "2.00003 \\cdot \\sqrt{2} \\cdot 2.81275",
       "result": {
         "ip_a": 7.955771479860451
@@ -309,7 +303,6 @@
         "ta_s": 0.0,
         "exp_factor": 0.0
       },
-      "substitution": "2.81275 \\cdot \\sqrt{1 + \\left((2.00003 - 1) \\cdot 0\\right)^2}",
       "substitution_latex": "2.81275 \\cdot \\sqrt{1 + \\left((2.00003 - 1) \\cdot 0\\right)^2}",
       "result": {
         "ib_a": 2.8127459172824247
@@ -351,7 +344,6 @@
         "m_factor": 2.0062793726479917,
         "n_factor": 1.0
       },
-      "substitution": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
       "substitution_latex": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
       "result": {
         "ith_a": 4.876914833263379
@@ -392,7 +384,6 @@
         "un_v": 15000.0,
         "ikss_a": 2.8127459172824247
       },
-      "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 2.81275 / 10^6",
       "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 2.81275 / 10^6",
       "result": {
         "sk_mva": 0.07307728256272629
@@ -438,7 +429,6 @@
         "x_t_ohm_hv": 15.643305654845538,
         "c_max": 1.05
       },
-      "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
       "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
       "result": {
         "k_t": 0.9719562571918224,
@@ -493,7 +483,6 @@
         "x_t_ohm_hv": 58.03351739951663,
         "c_max": 1.1
       },
-      "substitution": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
       "substitution_latex": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
       "result": {
         "k_t": 0.9748658346557572,
@@ -555,7 +544,6 @@
           "im": 5.439451623635524
         }
       },
-      "substitution": "\\left(0.49775 + j 4.97064\\right) + \\left(0.49775 + j 4.97064\\right) + \\left(0.513149 + j 5.43945\\right)",
       "substitution_latex": "\\left(0.49775 + j 4.97064\\right) + \\left(0.49775 + j 4.97064\\right) + \\left(0.513149 + j 5.43945\\right)",
       "result": {
         "z_equiv_ohm": {
@@ -604,7 +592,6 @@
         "voltage_factor": 1.7320508075688772,
         "z_equiv_abs_ohm": 15.454542529590503
       },
-      "substitution": "\\frac{1.1 \\cdot 110000 \\cdot 1.73205}{15.4545}",
       "substitution_latex": "\\frac{1.1 \\cdot 110000 \\cdot 1.73205}{15.4545}",
       "result": {
         "ikss_a": 13560.941536416176
@@ -646,7 +633,6 @@
         "x_ohm": 15.38073025863208,
         "rx_ratio": 0.0980869488532408
       },
-      "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0980869}",
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0980869}",
       "result": {
         "kappa": 1.7501804717071632
@@ -687,7 +673,6 @@
         "kappa": 1.7501804717071632,
         "ikss_a": 13560.941536416176
       },
-      "substitution": "1.75018 \\cdot \\sqrt{2} \\cdot 13560.9",
       "substitution_latex": "1.75018 \\cdot \\sqrt{2} \\cdot 13560.9",
       "result": {
         "ip_a": 33565.07911743056
@@ -731,7 +716,6 @@
         "ta_s": 0.03245180830938586,
         "exp_factor": 0.04589071916028893
       },
-      "substitution": "13560.9 \\cdot \\sqrt{1 + \\left((1.75018 - 1) \\cdot 0.0458907\\right)^2}",
       "substitution_latex": "13560.9 \\cdot \\sqrt{1 + \\left((1.75018 - 1) \\cdot 0.0458907\\right)^2}",
       "result": {
         "ib_a": 13568.975178209026
@@ -773,7 +757,6 @@
         "m_factor": 0.03478969097457471,
         "n_factor": 1.0
       },
-      "substitution": "13560.9 \\cdot \\sqrt{0.0347897 + 1}",
       "substitution_latex": "13560.9 \\cdot \\sqrt{0.0347897 + 1}",
       "result": {
         "ith_a": 13794.815310237324
@@ -814,7 +797,6 @@
         "un_v": 110000.0,
         "ikss_a": 13560.941536416176
       },
-      "substitution": "\\sqrt{3} \\cdot 110000 \\cdot 13560.9 / 10^6",
       "substitution_latex": "\\sqrt{3} \\cdot 110000 \\cdot 13560.9 / 10^6",
       "result": {
         "sk_mva": 2583.7063713498364
@@ -860,7 +842,6 @@
         "x_t_ohm_hv": 15.643305654845538,
         "c_max": 1.05
       },
-      "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
       "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
       "result": {
         "k_t": 0.9719562571918224,
@@ -915,7 +896,6 @@
         "x_t_ohm_hv": 58.03351739951663,
         "c_max": 1.1
       },
-      "substitution": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
       "substitution_latex": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
       "result": {
         "k_t": 0.9748658346557572,
@@ -977,7 +957,6 @@
           "im": 0.01112412846566794
         }
       },
-      "substitution": "\\left(0.00258532 + j 0.0115678\\right) + \\left(0.00258532 + j 0.0115678\\right) + \\left(0.00262031 + j 0.0111241\\right)",
       "substitution_latex": "\\left(0.00258532 + j 0.0115678\\right) + \\left(0.00258532 + j 0.0115678\\right) + \\left(0.00262031 + j 0.0111241\\right)",
       "result": {
         "z_equiv_ohm": {
@@ -1026,7 +1005,6 @@
         "voltage_factor": 1.7320508075688772,
         "z_equiv_abs_ohm": 0.035134477759024584
       },
-      "substitution": "\\frac{1.05 \\cdot 400 \\cdot 1.73205}{0.0351345}",
       "substitution_latex": "\\frac{1.05 \\cdot 400 \\cdot 1.73205}{0.0351345}",
       "result": {
         "ikss_a": 20705.056274589817
@@ -1068,7 +1046,6 @@
         "x_ohm": 0.03425978048545477,
         "rx_ratio": 0.2274081784194729
       },
-      "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.227408}",
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.227408}",
       "result": {
         "kappa": 1.51538143243442
@@ -1109,7 +1086,6 @@
         "kappa": 1.51538143243442,
         "ikss_a": 20705.056274589817
       },
-      "substitution": "1.51538 \\cdot \\sqrt{2} \\cdot 20705.1",
       "substitution_latex": "1.51538 \\cdot \\sqrt{2} \\cdot 20705.1",
       "result": {
         "ip_a": 44372.446525506624
@@ -1153,7 +1129,6 @@
         "ta_s": 0.013997292814889102,
         "exp_factor": 0.0007893990273390189
       },
-      "substitution": "20705.1 \\cdot \\sqrt{1 + \\left((1.51538 - 1) \\cdot 0.000789399\\right)^2}",
       "substitution_latex": "20705.1 \\cdot \\sqrt{1 + \\left((1.51538 - 1) \\cdot 0.000789399\\right)^2}",
       "result": {
         "ib_a": 20705.057988141125
@@ -1195,7 +1170,6 @@
         "m_factor": 0.015086414826688448,
         "n_factor": 1.0
       },
-      "substitution": "20705.1 \\cdot \\sqrt{0.0150864 + 1}",
       "substitution_latex": "20705.1 \\cdot \\sqrt{0.0150864 + 1}",
       "result": {
         "ith_a": 20860.654151882027
@@ -1236,7 +1210,6 @@
         "un_v": 400.0,
         "ikss_a": 20705.056274589817
       },
-      "substitution": "\\sqrt{3} \\cdot 400 \\cdot 20705.1 / 10^6",
       "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 20705.1 / 10^6",
       "result": {
         "sk_mva": 14.344883776464938
@@ -1282,7 +1255,6 @@
         "x_t_ohm_hv": 15.643305654845538,
         "c_max": 1.05
       },
-      "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
       "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
       "result": {
         "k_t": 0.9719562571918224,
@@ -1337,7 +1309,6 @@
         "x_t_ohm_hv": 58.03351739951663,
         "c_max": 1.1
       },
-      "substitution": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
       "substitution_latex": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
       "result": {
         "k_t": 0.9748658346557572,
@@ -1399,7 +1370,6 @@
           "im": -10162.601626014506
         }
       },
-      "substitution": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
       "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
       "result": {
         "z_equiv_ohm": {
@@ -1448,7 +1418,6 @@
         "voltage_factor": 1.7320508075688772,
         "z_equiv_abs_ohm": 10160.476333567425
       },
-      "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 1.73205}{10160.5}",
       "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 1.73205}{10160.5}",
       "result": {
         "ikss_a": 2.8127459172824247
@@ -1490,7 +1459,6 @@
         "x_ohm": -10160.476332990464,
         "rx_ratio": -1.0656907191844057e-05
       },
-      "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
       "result": {
         "kappa": 2.0000313318079916
@@ -1531,7 +1499,6 @@
         "kappa": 2.0000313318079916,
         "ikss_a": 2.8127459172824247
       },
-      "substitution": "2.00003 \\cdot \\sqrt{2} \\cdot 2.81275",
       "substitution_latex": "2.00003 \\cdot \\sqrt{2} \\cdot 2.81275",
       "result": {
         "ip_a": 7.955771479860451
@@ -1575,7 +1542,6 @@
         "ta_s": 0.0,
         "exp_factor": 0.0
       },
-      "substitution": "2.81275 \\cdot \\sqrt{1 + \\left((2.00003 - 1) \\cdot 0\\right)^2}",
       "substitution_latex": "2.81275 \\cdot \\sqrt{1 + \\left((2.00003 - 1) \\cdot 0\\right)^2}",
       "result": {
         "ib_a": 2.8127459172824247
@@ -1617,7 +1583,6 @@
         "m_factor": 2.0062793726479917,
         "n_factor": 1.0
       },
-      "substitution": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
       "substitution_latex": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
       "result": {
         "ith_a": 4.876914833263379
@@ -1658,7 +1623,6 @@
         "un_v": 15000.0,
         "ikss_a": 2.8127459172824247
       },
-      "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 2.81275 / 10^6",
       "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 2.81275 / 10^6",
       "result": {
         "sk_mva": 0.07307728256272629
@@ -1704,7 +1668,6 @@
         "x_t_ohm_hv": 15.643305654845538,
         "c_max": 1.05
       },
-      "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
       "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0438013}",
       "result": {
         "k_t": 0.9719562571918224,
@@ -1759,7 +1722,6 @@
         "x_t_ohm_hv": 58.03351739951663,
         "c_max": 1.1
       },
-      "substitution": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
       "substitution_latex": "0.95 \\cdot \\frac{1.1}{1 + 0.6 \\cdot 0.119904}",
       "result": {
         "k_t": 0.9748658346557572,
@@ -1821,7 +1783,6 @@
           "im": -10158.881626014505
         }
       },
-      "substitution": "\\left(0.755726 + j 1.92644\\right) + \\left(0.755726 + j 1.92644\\right) + \\left(1.426 - j 10158.9\\right)",
       "substitution_latex": "\\left(0.755726 + j 1.92644\\right) + \\left(0.755726 + j 1.92644\\right) + \\left(1.426 - j 10158.9\\right)",
       "result": {
         "z_equiv_ohm": {
@@ -1870,7 +1831,6 @@
         "voltage_factor": 1.7320508075688772,
         "z_equiv_abs_ohm": 10155.029174211839
       },
-      "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 1.73205}{10155}",
       "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 1.73205}{10155}",
       "result": {
         "ikss_a": 2.814254674665133
@@ -1912,7 +1872,6 @@
         "x_ohm": -10155.028749367237,
         "rx_ratio": -0.0002892607288420213
       },
-      "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot -0.000289261}",
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -0.000289261}",
       "result": {
         "kappa": 2.000850795642056
@@ -1953,7 +1912,6 @@
         "kappa": 2.000850795642056,
         "ikss_a": 2.814254674665133
       },
-      "substitution": "2.00085 \\cdot \\sqrt{2} \\cdot 2.81425",
       "substitution_latex": "2.00085 \\cdot \\sqrt{2} \\cdot 2.81425",
       "result": {
         "ip_a": 7.963300387947451
@@ -1997,7 +1955,6 @@
         "ta_s": 0.0,
         "exp_factor": 0.0
       },
-      "substitution": "2.81425 \\cdot \\sqrt{1 + \\left((2.00085 - 1) \\cdot 0\\right)^2}",
       "substitution_latex": "2.81425 \\cdot \\sqrt{1 + \\left((2.00085 - 1) \\cdot 0\\right)^2}",
       "result": {
         "ib_a": 2.814254674665133
@@ -2039,7 +1996,6 @@
         "m_factor": 2.1801543533403005,
         "n_factor": 1.0
       },
-      "substitution": "2.81425 \\cdot \\sqrt{2.18015 + 1}",
       "substitution_latex": "2.81425 \\cdot \\sqrt{2.18015 + 1}",
       "result": {
         "ith_a": 5.018656781640902
@@ -2080,7 +2036,6 @@
         "un_v": 15000.0,
         "ikss_a": 2.814254674665133
       },
-      "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 2.81425 / 10^6",
       "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 2.81425 / 10^6",
       "result": {
         "sk_mva": 0.07311648122937348
@@ -2483,7 +2438,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "4024336d9eb7c0bc845d7318534d02b1748c75ba5ff7d02b240b5a03ce392d0b",
-      "result_hash": "6bf3ce15e59dd502f7800066414ee27f672efbe0ed9befa66b98d447dceb6a7c",
+      "result_hash": "5a7ca4166e93e459b648481c159a810f0a6e51abf63790707b20b7694f1a498b",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

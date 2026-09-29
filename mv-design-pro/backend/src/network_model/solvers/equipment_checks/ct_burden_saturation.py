@@ -347,14 +347,14 @@ def _slad_ct(
             "step": 1,
             "key": "ct_rezystancja_przewodow",
             "title": "Rezystancja przewodów obwodu wtórnego",
-            "formula_latex": r"$$R_p = \frac{2\,\rho\,L}{s}$$",
+            "formula_latex": r"R_p = \frac{2\,\rho\,L}{s}",
             "inputs": {
                 "rho": wartosc(rho, "Ω·mm²/m", "Rezystywność żyły (miedź, 20 °C)"),
                 "dlugosc_m": wartosc(dlugosc_m, "m", "Długość obwodu w jedną stronę"),
                 "przekroj_mm2": wartosc(przekroj_mm2, "mm²", "Przekrój żyły"),
             },
-            "substitution": (
-                r"$$R_p = \frac{2 \cdot "
+            "substitution_latex": (
+                r"R_p = \frac{2 \cdot "
                 + liczba_tex(rho)
                 + r" \cdot "
                 + liczba_tex(dlugosc_m)
@@ -362,7 +362,7 @@ def _slad_ct(
                 + liczba_tex(przekroj_mm2)
                 + r"} = "
                 + liczba_tex(rp_ohm)
-                + r"\ \Omega$$"
+                + r"\ \Omega"
             ),
             "result": {"rp_ohm": wartosc(rp_ohm, "Ω", "Rezystancja przewodów")},
             "notes": (
@@ -374,15 +374,15 @@ def _slad_ct(
             "step": 2,
             "key": "ct_bilans_mocy",
             "title": "Bilans mocy obwodu wtórnego",
-            "formula_latex": r"$$S_{2obl} = S_{aparatow} + I_{2n}^2 R_p + S_{stykow}$$",
+            "formula_latex": r"S_{2obl} = S_{aparatow} + I_{2n}^2 R_p + S_{stykow}",
             "inputs": {
                 "i2n_a": wartosc(i2n_a, "A", "Prąd znamionowy wtórny"),
                 "rp_ohm": wartosc(rp_ohm, "Ω", "Rezystancja przewodów"),
                 "moc_aparatow_va": wartosc(moc_aparatow_va, "VA", "Suma mocy aparatów"),
                 "moc_stykow_va": wartosc(moc_stykow_va, "VA", "Moc styków i zacisków"),
             },
-            "substitution": (
-                r"$$S_{2obl} = "
+            "substitution_latex": (
+                r"S_{2obl} = "
                 + liczba_tex(moc_aparatow_va)
                 + r" + "
                 + liczba_tex(i2n_a)
@@ -392,7 +392,7 @@ def _slad_ct(
                 + liczba_tex(moc_stykow_va)
                 + r" = "
                 + liczba_tex(s2obl_va)
-                + r"\ \mathrm{VA}$$"
+                + r"\ \mathrm{VA}"
             ),
             "result": {
                 "moc_przewodow_va": wartosc(moc_przewodow_va, "VA", "Moc tracona w przewodach"),
@@ -404,19 +404,18 @@ def _slad_ct(
             "step": 3,
             "key": "ct_wykorzystanie_mocy",
             "title": "Wykorzystanie mocy znamionowej przekładnika",
-            "formula_latex": r"$$\frac{S_{2obl}}{S_n} \le 1$$",
+            "formula_latex": r"\frac{S_{2obl}}{S_n} \le 1",
             "inputs": {
                 "s2obl_va": wartosc(s2obl_va, "VA", "Moc obliczeniowa"),
                 "sn_va": wartosc(sn_va, "VA", "Moc znamionowa uzwojenia"),
             },
-            "substitution": (
-                r"$$\frac{"
+            "substitution_latex": (
+                r"\frac{"
                 + liczba_tex(s2obl_va)
                 + r"}{"
                 + liczba_tex(sn_va)
                 + r"} = "
                 + liczba_tex(wykorzystanie)
-                + r"$$"
             ),
             "result": {
                 "wykorzystanie": wartosc(wykorzystanie, "", "Wykorzystanie mocy znamionowej"),
@@ -431,13 +430,13 @@ def _slad_ct(
 
     if alf is not None and alf_eff is not None:
         if wariant == WARIANT_ALF_PELNY:
-            wzor = r"$$ALF_{eff} = ALF \cdot \frac{S_n + S_w}{S_{2obl} + S_w}$$"
+            wzor = r"ALF_{eff} = ALF \cdot \frac{S_n + S_w}{S_{2obl} + S_w}"
             uwaga = (
                 "Wariant PEŁNY (normatywny): moc tracona w uzwojeniu wtórnym "
                 "Sw = I2n²·Rct wchodzi po obu stronach ilorazu."
             )
         else:
-            wzor = r"$$ALF_{eff} = ALF \cdot \frac{S_n}{S_{2obl}} \quad (S_w = 0)$$"
+            wzor = r"ALF_{eff} = ALF \cdot \frac{S_n}{S_{2obl}} \quad (S_w = 0)"
             uwaga = (
                 "Wariant UPROSZCZONY — katalog nie niesie rezystancji uzwojenia wtórnego. "
                 "Przy S2obl < Sn wynik jest WIĘKSZY niż w wariancie pełnym, czyli "
@@ -455,8 +454,8 @@ def _slad_ct(
                     "sw_va": wartosc(sw_va, "VA", "Moc tracona w uzwojeniu wtórnym"),
                     "s2obl_va": wartosc(s2obl_va, "VA", "Moc obliczeniowa"),
                 },
-                "substitution": (
-                    r"$$ALF_{eff} = "
+                "substitution_latex": (
+                    r"ALF_{eff} = "
                     + liczba_tex(alf)
                     + r" \cdot \frac{"
                     + liczba_tex(sn_va + sw_va)
@@ -464,7 +463,6 @@ def _slad_ct(
                     + liczba_tex(s2obl_va + sw_va)
                     + r"} = "
                     + liczba_tex(alf_eff)
-                    + r"$$"
                 ),
                 "result": {
                     "alf_efektywny": wartosc(alf_eff, "", "Efektywny współczynnik graniczny"),
@@ -480,19 +478,17 @@ def _slad_ct(
                 "step": 5,
                 "key": "ct_werdykt_nasycenia",
                 "title": "Kryterium nasycenia przekładnika",
-                "formula_latex": r"$$ALF_{eff} \ge ALF_{wym}$$",
+                "formula_latex": r"ALF_{eff} \ge ALF_{wym}",
                 "inputs": {
                     "alf_efektywny": wartosc(alf_eff, "", "Efektywny współczynnik graniczny"),
                     "alf_wymagany": wartosc(
                         alf_wymagany, "", "Wymaganie funkcji zabezpieczeniowych pola"
                     ),
                 },
-                "substitution": (
-                    r"$$"
-                    + liczba_tex(alf_eff)
+                "substitution_latex": (
+                    liczba_tex(alf_eff)
                     + (r" \ge " if alf_eff >= alf_wymagany else r" < ")
                     + liczba_tex(alf_wymagany)
-                    + r"$$"
                 ),
                 "result": {
                     "zapas": wartosc(alf_eff - alf_wymagany, "", "Zapas współczynnika"),

@@ -2005,14 +2005,14 @@
   },
   {
    "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "network_model.solvers.conductor_thermal_withstand:_build_white_box_trace.kroki.substitution",
+   "tozsamosc": "network_model.solvers.conductor_thermal_withstand:_build_white_box_trace.kroki.substitution_latex",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A5 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "A5 (dopasowanie po pliku)"
   },
   {
    "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "network_model.solvers.conductor_thermal_withstand:_build_white_box_trace.substitution",
+   "tozsamosc": "network_model.solvers.conductor_thermal_withstand:_build_white_box_trace.substitution_latex",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A5 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "A5 (dopasowanie po pliku)"

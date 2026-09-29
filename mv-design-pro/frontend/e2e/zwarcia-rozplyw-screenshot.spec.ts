@@ -36,6 +36,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { nazwaElementu } from './nazwyModelu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -114,6 +115,7 @@ test.describe('zwarcia-rozplyw:screenshot', () => {
       await page.waitForTimeout(200);
       expect(consoleErrors, `konsola bez błędów (${theme}): ${consoleErrors.join('; ')}`).toEqual([]);
 
+      await bramkaTresciMatematycznej(page);
       await sekcja.screenshot({
         path: path.join(OUTPUT_DIR, `zwarcia-rozplyw-${theme}.png`),
       });
@@ -204,6 +206,7 @@ test.describe('zwarcia-schemat:screenshot', () => {
       const clipTop = Math.max(canvasBox.y, unionTop - padding);
       const clipRight = Math.min(canvasBox.x + canvasBox.width, unionRight + padding);
       const clipBottom = Math.min(canvasBox.y + canvasBox.height, unionBottom + padding);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `zwarcia-schemat-${theme}.png`),
         clip: { x: clipLeft, y: clipTop, width: clipRight - clipLeft, height: clipBottom - clipTop },

@@ -159,8 +159,13 @@ def test_dowod_zaczyna_sie_od_zrodla_czasu_i_niesie_kroki_kryterium() -> None:
     # Numeracja krokow jest ciagla (spis krokow okna dowodu opiera sie na niej).
     assert [krok["step"] for krok in kroki] == list(range(1, len(kroki) + 1))
     # Kazdy krok niesie komplet pol kanonu (puste pole jest dopuszczalne, brak — nie).
+    # Karta DOWOD-CIEPLNY: pole „Podstawienie" ma DWIE postacie kontraktu — LaTeX w
+    # `substitution_latex` albo proza w `substitution`; krok niesie co najmniej jedna,
+    # a LaTeX nigdy nie siedzi w polu prozy.
     for krok in kroki:
-        assert set(krok) >= {"step", "title", "inputs", "substitution", "result", "notes"}
+        assert set(krok) >= {"step", "title", "inputs", "result", "notes"}
+        assert "substitution" in krok or "substitution_latex" in krok, krok["key"]
+        assert "$" not in str(krok.get("substitution", "")), krok["key"]
 
 
 def test_dowod_nieznanej_galezi_jest_bledem_z_komunikatem_po_polsku() -> None:

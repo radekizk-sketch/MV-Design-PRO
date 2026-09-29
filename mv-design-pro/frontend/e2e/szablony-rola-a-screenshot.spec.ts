@@ -21,6 +21,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { zbierajNieudaneZadaniaApi } from './nieudaneZadaniaApi';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -92,6 +93,7 @@ test.describe('sceny:szablony-rola-a:screenshot', () => {
       expect(errs, 'no console/page errors').toEqual([]);
 
       const outPath = path.join(OUTPUT_DIR, `szablony-rola-a-${theme}.png`);
+      await bramkaTresciMatematycznej(page);
       await page.locator('[data-testid="mvd-szablony"]').screenshot({ path: outPath });
       console.log(`Saved: ${outPath}`);
       expect(fs.existsSync(outPath)).toBe(true);

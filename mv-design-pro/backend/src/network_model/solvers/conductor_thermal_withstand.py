@@ -411,7 +411,7 @@ def _liczba_pl(value: float, miejsca: int = 1) -> str:
 def _liczba_tex(value: float) -> str:
     """Liczba w zapisie polskim dla LaTeX-a.
 
-    Pole „Podstawienie" okna dowodu renderuje sie przez KaTeX (``KrokDowodu.tsx``),
+    Pole ``substitution_latex`` (okno dowodu, ``KrokDowodu.tsx``) renderuje sie przez KaTeX,
     wiec przecinek dziesietny musi byc grupa ``{,}`` — inaczej KaTeX traktuje go
     jako separator i wstawia spacje (``0, 421``).
 
@@ -462,9 +462,9 @@ def _build_white_box_trace(
     # katalogowej — inaczej audytor nie odtworzy rachunku (karta F-K1 faza 8).
     wyprowadzenie_k = k_justification.get("wyprowadzenie_k")
     if wyprowadzenie_k:
-        k_formula_latex = "$$" + _K_FORMULA_TEX + "$$"
+        k_formula_latex = _K_FORMULA_TEX
         k_substitution = (
-            r"$$k = \sqrt{\frac{"
+            r"k = \sqrt{\frac{"
             + _liczba_tex(wyprowadzenie_k["qc_j_per_c_mm3"] * 1e3)
             + r"\cdot 10^{-3}\,("
             + _liczba_tex(wyprowadzenie_k["beta_c"])
@@ -476,16 +476,16 @@ def _build_white_box_trace(
             + _liczba_tex(wyprowadzenie_k["beta_c"] + wyprowadzenie_k["temp_poczatkowa_c"])
             + r"}\right)} = "
             + _liczba_tex(jth_1s_a_per_mm2 if jth_1s_a_per_mm2 is not None else 0.0)
-            + r"\ \frac{\mathrm{A}\sqrt{\mathrm{s}}}{\mathrm{mm^2}}$$"
+            + r"\ \frac{\mathrm{A}\sqrt{\mathrm{s}}}{\mathrm{mm^2}}"
         )
     else:
         k_formula_latex = (
-            r"$$k = J_{th(1s)} \quad \left[\frac{\mathrm{A}\sqrt{\mathrm{s}}}"
-            r"{\mathrm{mm^2}}\right]$$"
+            r"k = J_{th(1s)} \quad \left[\frac{\mathrm{A}\sqrt{\mathrm{s}}}"
+            r"{\mathrm{mm^2}}\right]"
         )
         k_substitution = (
-            r"$$k = " + _liczba_tex(jth_1s_a_per_mm2) + r"\ \frac{\mathrm{A}\sqrt{\mathrm{s}}}"
-            r"{\mathrm{mm^2}}$$"
+            r"k = " + _liczba_tex(jth_1s_a_per_mm2) + r"\ \frac{\mathrm{A}\sqrt{\mathrm{s}}}"
+            r"{\mathrm{mm^2}}"
             if jth_1s_a_per_mm2 is not None
             else ""
         )
@@ -514,7 +514,7 @@ def _build_white_box_trace(
                     "label": "Temperatura końcowa (zwarciowa)",
                 },
             },
-            "substitution": k_substitution,
+            "substitution_latex": k_substitution,
             "result": {
                 "k_a_s05_per_mm2": {
                     "value": k_justification.get("k_a_s05_per_mm2"),
@@ -538,19 +538,19 @@ def _build_white_box_trace(
             "step": 2,
             "key": "conductor_thermal_admissible",
             "title": "Prąd dopuszczalny przewodu przy czasie trwania zwarcia",
-            "formula_latex": r"$$I_{dop}(t) = I_{th(1s)} \cdot \sqrt{\frac{1\,\mathrm{s}}{t}}$$",
+            "formula_latex": r"I_{dop}(t) = I_{th(1s)} \cdot \sqrt{\frac{1\,\mathrm{s}}{t}}",
             "inputs": {
                 "ith_1s_a": _wartosc(ith_1s_a, "A", "Wytrzymałość cieplna żyły dla 1 s"),
                 "tk_s": _wartosc(duration_s, "s", "Czas trwania zwarcia"),
             },
-            "substitution": (
-                r"$$I_{dop} = \frac{"
+            "substitution_latex": (
+                r"I_{dop} = \frac{"
                 + _liczba_tex(ith_1s_a)
                 + r"}{\sqrt{"
                 + _liczba_tex(duration_s)
                 + r"}} = "
                 + _liczba_tex(admissible_a)
-                + r"\ \mathrm{A}$$"
+                + r"\ \mathrm{A}"
             ),
             "result": {
                 "i_dop_a": _wartosc(admissible_a, "A", "Prąd dopuszczalny przy czasie t"),
@@ -564,20 +564,19 @@ def _build_white_box_trace(
             "step": 3,
             "key": "conductor_thermal_criterion",
             "title": "Sprawdzenie kryterium cieplnego (zapis prądowy)",
-            "formula_latex": r"$$I_{th} \le I_{dop}(t)$$",
+            "formula_latex": r"I_{th} \le I_{dop}(t)",
             "inputs": {
                 "ith_a": _wartosc(ith_a, "A", "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"),
                 "i_dop_a": _wartosc(admissible_a, "A", "Prąd dopuszczalny przy czasie t"),
             },
-            "substitution": (
-                r"$$"
-                + _liczba_tex(ith_a)
+            "substitution_latex": (
+                _liczba_tex(ith_a)
                 + r"\ \mathrm{A} "
                 + (r"\le " if status == STATUS_PASS else r"> ")
                 + _liczba_tex(admissible_a)
                 + r"\ \mathrm{A} \quad\Rightarrow\quad "
                 + _liczba_tex(utilization * 100.0)
-                + r"\ \%$$"
+                + r"\ \%"
             ),
             "result": {
                 "utilization": _wartosc(utilization, "-", "Wykorzystanie wytrzymałości cieplnej"),
@@ -591,6 +590,10 @@ def _build_white_box_trace(
         },
     ]
 
+    if not k_substitution:
+        # Bez Jth nie ma czego podstawic — brak pola, nie pusty zapis LaTeX.
+        del kroki[0]["substitution_latex"]
+
     # Krok energetyczny — ta sama nierownosc w jednostkach calki Joule'a. To on
     # jest fizyczna trescia kryterium (energia, ktora zyla przyjmie bez przekroczenia
     # temperatury granicznej), a zapis pradowy jest jego przeliczeniem na czas t.
@@ -599,15 +602,14 @@ def _build_white_box_trace(
             "step": len(kroki) + 1,
             "key": "conductor_thermal_energy",
             "title": "Bilans energii cieplnej zwarcia",
-            "formula_latex": r"$$I^2 t \le k^2 S^2$$",
+            "formula_latex": r"I^2 t \le k^2 S^2",
             "inputs": {
                 "ith_a": _wartosc(ith_a, "A", "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"),
                 "tk_s": _wartosc(duration_s, "s", "Czas trwania zwarcia"),
                 "ith_1s_a": _wartosc(ith_1s_a, "A", "Wytrzymałość cieplna żyły dla 1 s"),
             },
-            "substitution": (
-                r"$$"
-                + _liczba_tex(ith_a)
+            "substitution_latex": (
+                _liczba_tex(ith_a)
                 + r"^2 \cdot "
                 + _liczba_tex(duration_s)
                 + r" = "
@@ -615,7 +617,7 @@ def _build_white_box_trace(
                 + r"\ \mathrm{A^2s} "
                 + (r"\le " if status == STATUS_PASS else r"> ")
                 + _liczba_tex(i2t_admissible)
-                + r"\ \mathrm{A^2s}$$"
+                + r"\ \mathrm{A^2s}"
             ),
             "result": {
                 "i2t_a2s": _wartosc(i2t, "A²·s", "Energia cieplna zwarcia I²t"),
@@ -632,7 +634,7 @@ def _build_white_box_trace(
 
     if jth_1s_a_per_mm2 is not None and required_section_mm2 is not None:
         podstawienie = (
-            r"$$S_{min} = \frac{"
+            r"S_{min} = \frac{"
             + _liczba_tex(ith_a)
             + r" \cdot \sqrt{"
             + _liczba_tex(duration_s)
@@ -651,7 +653,6 @@ def _build_white_box_trace(
                 + znak
                 + r" S_{min}"
             )
-        podstawienie += "$$"
         wejscia = {
             "ith_a": _wartosc(ith_a, "A", "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"),
             "tk_s": _wartosc(duration_s, "s", "Czas trwania zwarcia"),
@@ -671,9 +672,9 @@ def _build_white_box_trace(
                 "step": len(kroki) + 1,
                 "key": "conductor_thermal_min_section",
                 "title": "Minimalny przekrój żyły z warunku cieplnego",
-                "formula_latex": r"$$S_{min} = \frac{I_{th} \cdot \sqrt{t}}{J_{th(1s)}}$$",
+                "formula_latex": r"S_{min} = \frac{I_{th} \cdot \sqrt{t}}{J_{th(1s)}}",
                 "inputs": wejscia,
-                "substitution": podstawienie,
+                "substitution_latex": podstawienie,
                 "result": wyniki,
                 "notes": (
                     "Zapis równoważny kryterium prądowemu — mówi wprost, jaki przekrój "
