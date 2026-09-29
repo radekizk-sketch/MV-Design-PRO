@@ -308,20 +308,20 @@ def _slad_vt(
             "step": 1,
             "key": "vt_bilans_mocy",
             "title": "Bilans mocy uzwojenia wtórnego",
-            "formula_latex": r"$$S_{2obl} = S_{aparatow} + S_{stykow} \le S_n$$",
+            "formula_latex": r"S_{2obl} = S_{aparatow} + S_{stykow} \le S_n",
             "inputs": {
                 "moc_aparatow_va": wartosc(moc_aparatow_va, "VA", "Suma mocy odbiorników"),
                 "moc_stykow_va": wartosc(moc_stykow_va, "VA", "Moc styków i zacisków"),
                 "sn_va": wartosc(sn_va, "VA", "Moc znamionowa uzwojenia"),
             },
-            "substitution": (
-                r"$$S_{2obl} = "
+            "substitution_latex": (
+                r"S_{2obl} = "
                 + liczba_tex(moc_aparatow_va)
                 + r" + "
                 + liczba_tex(moc_stykow_va)
                 + r" = "
                 + liczba_tex(s2obl_va)
-                + r"\ \mathrm{VA}$$"
+                + r"\ \mathrm{VA}"
             ),
             "result": {
                 "s2obl_va": wartosc(s2obl_va, "VA", "Moc obliczeniowa uzwojenia"),
@@ -334,14 +334,14 @@ def _slad_vt(
             "step": 2,
             "key": "vt_rezystancja_przewodow",
             "title": "Rezystancja przewodów obwodu wtórnego",
-            "formula_latex": r"$$R_p = \frac{2\,\rho\,L}{s}$$",
+            "formula_latex": r"R_p = \frac{2\,\rho\,L}{s}",
             "inputs": {
                 "rho": wartosc(rho, "Ω·mm²/m", "Rezystywność żyły (miedź, 20 °C)"),
                 "dlugosc_m": wartosc(dlugosc_m, "m", "Długość obwodu w jedną stronę"),
                 "przekroj_mm2": wartosc(przekroj_mm2, "mm²", "Przekrój żyły"),
             },
-            "substitution": (
-                r"$$R_p = \frac{2 \cdot "
+            "substitution_latex": (
+                r"R_p = \frac{2 \cdot "
                 + liczba_tex(rho)
                 + r" \cdot "
                 + liczba_tex(dlugosc_m)
@@ -349,7 +349,7 @@ def _slad_vt(
                 + liczba_tex(przekroj_mm2)
                 + r"} = "
                 + liczba_tex(rp_ohm)
-                + r"\ \Omega$$"
+                + r"\ \Omega"
             ),
             "result": {"rp_ohm": wartosc(rp_ohm, "Ω", "Rezystancja przewodów")},
             "notes": "Współczynnik 2 wynika z dwuprzewodowego obwodu wtórnego.",
@@ -358,19 +358,19 @@ def _slad_vt(
             "step": 3,
             "key": "vt_prad_obwodu",
             "title": "Prąd obwodu wtórnego",
-            "formula_latex": r"$$I_2 = \frac{S_{2obl}}{U_{2n}}$$",
+            "formula_latex": r"I_2 = \frac{S_{2obl}}{U_{2n}}",
             "inputs": {
                 "s2obl_va": wartosc(s2obl_va, "VA", "Moc obliczeniowa uzwojenia"),
                 "u2n_v": wartosc(u2n_v, "V", "Napięcie znamionowe wtórne"),
             },
-            "substitution": (
-                r"$$I_2 = \frac{"
+            "substitution_latex": (
+                r"I_2 = \frac{"
                 + liczba_tex(s2obl_va)
                 + r"}{"
                 + liczba_tex(u2n_v)
                 + r"} = "
                 + liczba_tex(prad_a)
-                + r"\ \mathrm{A}$$"
+                + r"\ \mathrm{A}"
             ),
             "result": {"prad_a": wartosc(prad_a, "A", "Prąd obwodu wtórnego")},
             "notes": (
@@ -382,14 +382,14 @@ def _slad_vt(
             "step": 4,
             "key": "vt_zmiana_napiecia",
             "title": "Zmiana napięcia na przewodach obwodu",
-            "formula_latex": r"$$\Delta U = I_2 R_p,\quad \Delta U\% = \frac{\Delta U}{U_{2n}}\cdot 100$$",
+            "formula_latex": r"\Delta U = I_2 R_p,\quad \Delta U\% = \frac{\Delta U}{U_{2n}}\cdot 100",
             "inputs": {
                 "prad_a": wartosc(prad_a, "A", "Prąd obwodu wtórnego"),
                 "rp_ohm": wartosc(rp_ohm, "Ω", "Rezystancja przewodów"),
                 "u2n_v": wartosc(u2n_v, "V", "Napięcie znamionowe wtórne"),
             },
-            "substitution": (
-                r"$$\Delta U = "
+            "substitution_latex": (
+                r"\Delta U = "
                 + liczba_tex(prad_a)
                 + r" \cdot "
                 + liczba_tex(rp_ohm)
@@ -397,7 +397,7 @@ def _slad_vt(
                 + liczba_tex(delta_u_v)
                 + r"\ \mathrm{V} \Rightarrow "
                 + liczba_tex(delta_u_procent)
-                + r"\ \%$$"
+                + r"\ \%"
             ),
             "result": {
                 "delta_u_v": wartosc(delta_u_v, "V", "Zmiana napięcia"),
@@ -416,7 +416,7 @@ def _slad_vt(
                 "step": 5,
                 "key": "vt_werdykt_spadku",
                 "title": "Kryterium zmiany napięcia obwodu wtórnego",
-                "formula_latex": r"$$\Delta U\% \le \Delta U_{dop}$$",
+                "formula_latex": r"\Delta U\% \le \Delta U_{dop}",
                 "inputs": {
                     "delta_u_procent": wartosc(delta_u_procent, "%", "Zmiana napięcia względna"),
                     "limit": wartosc(limit, "%", "Limit dla kategorii uzwojenia"),
@@ -426,12 +426,11 @@ def _slad_vt(
                         "label": "Kategoria uzwojenia",
                     },
                 },
-                "substitution": (
-                    r"$$"
-                    + liczba_tex(delta_u_procent)
+                "substitution_latex": (
+                    liczba_tex(delta_u_procent)
                     + (r" \le " if delta_u_procent <= limit else r" > ")
                     + liczba_tex(limit)
-                    + r"\ \%$$"
+                    + r"\ \%"
                 ),
                 "result": {
                     "zapas_procent": wartosc(limit - delta_u_procent, "%", "Zapas do limitu"),

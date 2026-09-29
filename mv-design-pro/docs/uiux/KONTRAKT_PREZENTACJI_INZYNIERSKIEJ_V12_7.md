@@ -53,6 +53,19 @@ Front NIE konwertuje tekstu na LaTeX żadnym parserem/regexem — czyta pole
 `norma_pl`) zostają w kontrakcie dla audytu/eksportu, NIE są renderowane jako
 matematyka.
 
+Kontrakt pól KROKU ŚLADU (karta DOWOD-CIEPLNY, 2026-09-25): zapis matematyczny
+kroku idzie WYŁĄCZNIE do pól `*_latex` (`formula_latex`, `substitution_latex`)
+jako LaTeX GOŁY, bez ograniczników `$$`/`$` (pomiar: 1384 pola `*_latex` kroków w
+fiksturach, 0 z ogranicznikami; eksport LaTeX biegu wstawia pole w `\[ … \]`, w
+którym `$$` łamie dokument). Pola prozy kroku (`substitution`, `notes`, `title`,
+`unit_check`, `symbol`, każde `*_pl`) nie niosą znaczników LaTeX. Rdzeń IEC 60909
+(B-01) kopiuje LaTeX do `substitution` — granica aplikacji zdejmuje tę kopię po
+kluczu kroku (`application/slad_kroku.py`). Pilnują: strażnik
+`scripts/slad_proza_bez_latex_guard.py` (korpus fikstur, lista dozwolona pusta),
+`backend/tests/ci/test_slad_proza_bez_latex.py` (przebieg producentów) i bramka
+treści specy zrzutowych `frontend/e2e/trescMatematyczna.ts` (wzór przez KaTeX,
+zero `math-fallback` i surowego LaTeX-u na pierwszym planie).
+
 ## 2. Metadane produkcyjne poza pierwszym planem
 
 `run_id`, `deterministic_hash`, `input_hash`, `solver_version`, `model_hash`,

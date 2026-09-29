@@ -165,20 +165,20 @@ def _slad_starzenia(
             "step": 1,
             "key": "kabel_roznica_temperatur",
             "title": "Różnica temperatury pracy i temperatury znamionowej izolacji",
-            "formula_latex": r"$$\Delta T = \theta_{pracy} - \theta_{zn}$$",
+            "formula_latex": r"\Delta T = \theta_{pracy} - \theta_{zn}",
             "inputs": {
                 "theta_pracy_c": wartosc(theta_pracy_c, "°C", "Temperatura pracy żyły"),
                 "theta_zn_c": wartosc(theta_zn_c, "°C", "Temperatura znamionowa izolacji"),
                 "izolacja": {"value": izolacja, "unit": "", "label": "Typ izolacji (katalog)"},
             },
-            "substitution": (
-                r"$$\Delta T = "
+            "substitution_latex": (
+                r"\Delta T = "
                 + liczba_tex(theta_pracy_c)
                 + r" - "
                 + liczba_tex(theta_zn_c)
                 + r" = "
                 + liczba_tex(delta_t_c)
-                + r"\ ^\circ\mathrm{C}$$"
+                + r"\ ^\circ\mathrm{C}"
             ),
             "result": {"delta_t_c": wartosc(delta_t_c, "°C", "Różnica temperatur")},
             "notes": (
@@ -190,17 +190,13 @@ def _slad_starzenia(
             "step": 2,
             "key": "kabel_wspolczynnik_starzenia",
             "title": "Względny współczynnik starzenia (reguła Montsingera)",
-            "formula_latex": r"$$V = 2^{\frac{\Delta T}{10}}$$",
+            "formula_latex": r"V = 2^{\frac{\Delta T}{10}}",
             "inputs": {
                 "delta_t_c": wartosc(delta_t_c, "°C", "Różnica temperatur"),
                 "krok_c": wartosc(KROK_MONTSINGERA_C, "°C", "Krok podwojenia"),
             },
-            "substitution": (
-                r"$$V = 2^{\frac{"
-                + liczba_tex(delta_t_c)
-                + r"}{10}} = "
-                + liczba_tex(wspolczynnik)
-                + r"$$"
+            "substitution_latex": (
+                r"V = 2^{\frac{" + liczba_tex(delta_t_c) + r"}{10}} = " + liczba_tex(wspolczynnik)
             ),
             "result": {
                 "wspolczynnik": wartosc(wspolczynnik, "", "Współczynnik starzenia"),
@@ -215,14 +211,10 @@ def _slad_starzenia(
             "step": 3,
             "key": "kabel_wzgledna_zywotnosc",
             "title": "Względna żywotność izolacji",
-            "formula_latex": r"$$L_{wzgl} = \frac{1}{V}$$",
+            "formula_latex": r"L_{wzgl} = \frac{1}{V}",
             "inputs": {"wspolczynnik": wartosc(wspolczynnik, "", "Współczynnik starzenia")},
-            "substitution": (
-                r"$$L_{wzgl} = \frac{1}{"
-                + liczba_tex(wspolczynnik)
-                + r"} = "
-                + liczba_tex(zywotnosc)
-                + r"$$"
+            "substitution_latex": (
+                r"L_{wzgl} = \frac{1}{" + liczba_tex(wspolczynnik) + r"} = " + liczba_tex(zywotnosc)
             ),
             "result": {"zywotnosc": wartosc(zywotnosc, "", "Względna żywotność")},
             "notes": (

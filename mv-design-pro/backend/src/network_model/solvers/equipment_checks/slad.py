@@ -6,6 +6,12 @@ przewodu (`conductor_thermal_withstand`). Tu sa wyniesione do jednego miejsca,
 zeby cztery moduly tego pakietu nie powtarzaly wlasnych kopii i nie rozjechaly
 sie w formacie sladu.
 
+KONTRAKT POL KROKU (karta DOWOD-CIEPLNY): zapis matematyczny idzie WYLACZNIE do
+pol ``formula_latex``/``substitution_latex``, jako LaTeX GOLY (bez ``$$``); pole
+``substitution`` jest proza i ten pakiet go nie wypelnia. Pilnuje
+``scripts/slad_proza_bez_latex_guard.py`` (predykat) i
+``tests/ci/test_slad_proza_bez_latex.py`` (przebieg producentow).
+
 Z tego samego powodu mieszka tu REGULA SKLADANIA WERDYKTOW (`werdykt_zbiorczy`)
 obok stalych `STATUS_*`: kryteria wieloczlonowe (CT, VT) skladaja werdykt zbiorczy
 jedna funkcja, a nie wlasnymi kopiami warunku.
@@ -62,7 +68,7 @@ def wartosc(value: float | None, unit: str, label: str) -> dict[str, Any]:
 def liczba_tex(value: float | None) -> str:
     """Liczba w zapisie polskim dla LaTeX-a (przecinek jako grupa ``{,}``).
 
-    Pole „Podstawienie" renderuje KaTeX — zwykly przecinek traktuje jak separator
+    Pole ``substitution_latex`` renderuje KaTeX — zwykly przecinek traktuje jak separator
     i wstawia spacje (``0, 421``). Wartosci o rzedzie ≥ 10^5 ida w notacji
     potegowej, bo domyslny zapis Pythona (``8.464e+07``) jest w dowodzie
     nieczytelny.

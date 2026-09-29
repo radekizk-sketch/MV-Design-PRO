@@ -22,6 +22,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { MathInline } from '../../proof/MathRenderer';
+
 import {
   komunikatyKodow,
   pobierzRejestrGotowosci,
@@ -37,7 +39,10 @@ export interface KrokSladuDoboru {
   readonly key: string;
   readonly title: string;
   readonly formula_latex: string;
-  readonly substitution: string;
+  /** Proza podstawienia (kontrakt pól kroku, karta DOWOD-CIEPLNY) — tekst. */
+  readonly substitution?: string;
+  /** Podstawienie jako LaTeX goły — renderowane przez `MathRenderer`. */
+  readonly substitution_latex?: string | null;
   readonly notes: string;
 }
 
@@ -283,7 +288,12 @@ function Gniazdo({
                 <ol className="mt-1 space-y-1 pl-4 text-xs text-scada-muted">
                   {kryterium.slad.map((krok) => (
                     <li key={krok.key}>
-                      <span className="text-scada-text">{krok.title}.</span> {krok.substitution}
+                      <span className="text-scada-text">{krok.title}.</span>{' '}
+                      {krok.substitution_latex ? (
+                        <MathInline latex={krok.substitution_latex} />
+                      ) : (
+                        krok.substitution
+                      )}
                       {krok.notes ? <span className="block text-[11px]">{krok.notes}</span> : null}
                     </li>
                   ))}

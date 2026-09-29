@@ -20,6 +20,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('screenshot-harness.html');
@@ -69,6 +70,7 @@ test.describe('lv-portal:screenshot — projekcja SN z portalem domeny nN', () =
         await expect(page.locator('[data-symbol-canon="nnFuseSwitch"]')).toHaveCount(0);
 
         const outPath = path.join(OUTPUT_DIR, `lv_portal_sn_lod${lod}_${theme}.png`);
+        await bramkaTresciMatematycznej(page);
         await page.screenshot({ path: outPath, fullPage: false });
         console.log(`Saved: ${outPath}`);
         expect(fs.existsSync(outPath)).toBe(true);
@@ -84,6 +86,7 @@ test.describe('lv-portal:screenshot — projekcja SN z portalem domeny nN', () =
           height: 260,
         };
         const detailPath = path.join(OUTPUT_DIR, `lv_portal_sn_lod${lod}_${theme}_detail.png`);
+        await bramkaTresciMatematycznej(page);
         await page.screenshot({ path: detailPath, clip });
         console.log(`Saved: ${detailPath}`);
         expect(fs.existsSync(detailPath)).toBe(true);
@@ -98,6 +101,7 @@ test.describe('lv-portal:screenshot — projekcja SN z portalem domeny nN', () =
       await expect(page.locator('[data-symbol-canon="lvPortal"]')).toHaveCount(0);
       await expect(page.locator('[data-symbol-canon="stationCollapsed"]').first()).toBeVisible();
       const outPath = path.join(OUTPUT_DIR, `lv_portal_sn_lod0_${theme}.png`);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: outPath, fullPage: false });
       console.log(`Saved: ${outPath}`);
       expect(fs.existsSync(outPath)).toBe(true);

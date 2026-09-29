@@ -107,7 +107,7 @@
     {
       "key": "thevenin_flow_9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
       "title": "Prąd zwarciowy Thevenina w gałęzi 9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
-      "formula_latex": "I_{ga\\l} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
+      "formula_latex": "I_{\\text{gał}} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
       "inputs": {
         "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
         "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
@@ -138,7 +138,7 @@
     {
       "key": "thevenin_flow_7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
       "title": "Prąd zwarciowy Thevenina w gałęzi 7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
-      "formula_latex": "I_{ga\\l} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
+      "formula_latex": "I_{\\text{gał}} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
       "inputs": {
         "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
         "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
@@ -169,7 +169,7 @@
     {
       "key": "thevenin_flow_158eec95-939b-5b35-97ad-9433334b5506",
       "title": "Prąd zwarciowy Thevenina w gałęzi 158eec95-939b-5b35-97ad-9433334b5506",
-      "formula_latex": "I_{ga\\l} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
+      "formula_latex": "I_{\\text{gał}} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
       "inputs": {
         "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
         "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
@@ -200,7 +200,7 @@
     {
       "key": "thevenin_flow_balance",
       "title": "Suma kontrolna bilansu prądu w węźle zwarcia (KCL)",
-      "formula_latex": "\\sum_{ga\\l \\to k} I_{ga\\l} = I_k''^{(Th)}",
+      "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
       "inputs": {
         "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
         "ik_thevenin_a": 8953.06173406898
@@ -262,7 +262,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-      "result_hash": "773ff05e06f7fb98f23a73538604954a146ed12eec95e76caa509f6261be19d3",
+      "result_hash": "6ee07f871043f7dfab1a09cd3b3d5911bd03b3753438afff408d07495ee6959a",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

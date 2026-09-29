@@ -13,6 +13,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
@@ -301,6 +302,7 @@ test.describe('kd4:zrzuty', () => {
         timeout: 30000,
       });
 
+      await bramkaTresciMatematycznej(page);
       await sekcja.screenshot({ path: path.join(OUTPUT_DIR, `ogniwo-aparatura-${id}.png`) });
     });
 
@@ -322,6 +324,7 @@ test.describe('kd4:zrzuty', () => {
       await page.getByTestId('mvd-generator-sekcja-summary').check();
       await page.getByTestId('mvd-generator-sekcja-results').check();
 
+      await bramkaTresciMatematycznej(page);
       await okno.screenshot({ path: path.join(OUTPUT_DIR, `parytet-raport-${id}.png`) });
     });
   }

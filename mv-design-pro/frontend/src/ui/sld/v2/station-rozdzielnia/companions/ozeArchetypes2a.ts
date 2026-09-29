@@ -107,7 +107,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0183011983138
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.056921}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.056921}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -136,7 +135,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00496792498129
                   }
                 },
-                "substitution": "\\left(0.00496792 + j 0.0145838\\right)",
                 "substitution_latex": "\\left(0.00496792 + j 0.0145838\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -153,7 +151,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 16575.1431015
                 },
-                "substitution": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.0154067}",
                 "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.0154067}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -169,7 +166,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.37269725085
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.340648}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.340648}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -184,7 +180,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 32177.1109727
                 },
-                "substitution": "1.3727 \\cdot \\sqrt{2} \\cdot 16575.1",
                 "substitution_latex": "1.3727 \\cdot \\sqrt{2} \\cdot 16575.1",
                 "title": "Pr\u0105d udarowy"
               },
@@ -202,7 +197,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 16575.1431021
                 },
-                "substitution": "16575.1 \\cdot \\sqrt{1 + \\left((1.3727 - 1) \\cdot 2.25054e-05\\right)^2}",
                 "substitution_latex": "16575.1 \\cdot \\sqrt{1 + \\left((1.3727 - 1) \\cdot 2.25054e-05\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -218,7 +212,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 16658.8997232
                 },
-                "substitution": "16575.1 \\cdot \\sqrt{0.0101318 + 1}",
                 "substitution_latex": "16575.1 \\cdot \\sqrt{0.0101318 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -233,7 +226,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 11.4835959978
                 },
-                "substitution": "\\sqrt{3} \\cdot 400 \\cdot 16575.1 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 16575.1 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -272,7 +264,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0183011983138
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.056921}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.056921}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -301,7 +292,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00496792498129
                   }
                 },
-                "substitution": "\\left(0.00496792 + j 0.0145838\\right)",
                 "substitution_latex": "\\left(0.00496792 + j 0.0145838\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -318,7 +308,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 14326.7057522
                 },
-                "substitution": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.0154067}",
                 "substitution_latex": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.0154067}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -334,7 +323,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.37269725085
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.340648}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.340648}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -349,7 +337,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 27812.2486207
                 },
-                "substitution": "1.3727 \\cdot \\sqrt{2} \\cdot 14326.7",
                 "substitution_latex": "1.3727 \\cdot \\sqrt{2} \\cdot 14326.7",
                 "title": "Pr\u0105d udarowy"
               },
@@ -367,7 +354,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 14326.7057527
                 },
-                "substitution": "14326.7 \\cdot \\sqrt{1 + \\left((1.3727 - 1) \\cdot 2.25054e-05\\right)^2}",
                 "substitution_latex": "14326.7 \\cdot \\sqrt{1 + \\left((1.3727 - 1) \\cdot 2.25054e-05\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -383,7 +369,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 14399.1006913
                 },
-                "substitution": "14326.7 \\cdot \\sqrt{0.0101318 + 1}",
                 "substitution_latex": "14326.7 \\cdot \\sqrt{0.0101318 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -398,7 +383,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 9.92583290718
                 },
-                "substitution": "\\sqrt{3} \\cdot 400 \\cdot 14326.7 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 14326.7 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -458,7 +442,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0183011983138
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.056921}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.056921}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -487,7 +470,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.45000225
                   }
                 },
-                "substitution": "\\left(0.450002 + j 0.9\\right)",
                 "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -504,7 +486,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 9469.59255784
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -520,7 +501,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.23866591694
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -535,7 +515,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 16588.2464443
                 },
-                "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9469.59",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9469.59",
                 "title": "Pr\u0105d udarowy"
               },
@@ -553,7 +532,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 9469.59255784
                 },
-                "substitution": "9469.59 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "substitution_latex": "9469.59 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -569,7 +547,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 9502.58337322
                 },
-                "substitution": "9469.59 \\cdot \\sqrt{0.00697987 + 1}",
                 "substitution_latex": "9469.59 \\cdot \\sqrt{0.00697987 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -584,7 +561,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 246.027231557
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9469.59 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9469.59 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -623,7 +599,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0183011983138
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.056921}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.056921}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -652,7 +627,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.45000225
                   }
                 },
-                "substitution": "\\left(0.450002 + j 0.9\\right)",
                 "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -669,7 +643,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 8178.5994001
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -685,7 +658,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.23866591694
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -700,7 +672,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 14326.7644927
                 },
-                "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8178.6",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8178.6",
                 "title": "Pr\u0105d udarowy"
               },
@@ -718,7 +689,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 8178.5994001
                 },
-                "substitution": "8178.6 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "substitution_latex": "8178.6 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -734,7 +704,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 8207.09256506
                 },
-                "substitution": "8178.6 \\cdot \\sqrt{0.00697987 + 1}",
                 "substitution_latex": "8178.6 \\cdot \\sqrt{0.00697987 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -749,7 +718,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 212.486245436
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8178.6 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8178.6 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -947,7 +915,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -976,7 +943,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0003200016
                   }
                 },
-                "substitution": "\\left(0.000320002 + j 0.00988324\\right)",
                 "substitution_latex": "\\left(0.000320002 + j 0.00988324\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -993,7 +959,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 27404.7855539
                 },
-                "substitution": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00988842}",
                 "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00988842}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -1009,7 +974,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.90928518729
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0323782}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0323782}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -1024,7 +988,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 73996.6756239
                 },
-                "substitution": "1.90929 \\cdot \\sqrt{2} \\cdot 27404.8",
                 "substitution_latex": "1.90929 \\cdot \\sqrt{2} \\cdot 27404.8",
                 "title": "Pr\u0105d udarowy"
               },
@@ -1042,7 +1005,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 28848.1853781
                 },
-                "substitution": "27404.8 \\cdot \\sqrt{1 + \\left((1.90929 - 1) \\cdot 0.361609\\right)^2}",
                 "substitution_latex": "27404.8 \\cdot \\sqrt{1 + \\left((1.90929 - 1) \\cdot 0.361609\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -1058,7 +1020,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 28809.668999
                 },
-                "substitution": "27404.8 \\cdot \\sqrt{0.105156 + 1}",
                 "substitution_latex": "27404.8 \\cdot \\sqrt{0.105156 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -1073,7 +1034,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 18.98659238
                 },
-                "substitution": "\\sqrt{3} \\cdot 400 \\cdot 27404.8 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 27404.8 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -1112,7 +1072,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -1141,7 +1100,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0003200016
                   }
                 },
-                "substitution": "\\left(0.000320002 + j 0.00988324\\right)",
                 "substitution_latex": "\\left(0.000320002 + j 0.00988324\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -1158,7 +1116,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 23901.596201
                 },
-                "substitution": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.00988842}",
                 "substitution_latex": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.00988842}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -1174,7 +1131,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.90928518729
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0323782}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.0323782}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -1189,7 +1145,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 64537.5844122
                 },
-                "substitution": "1.90929 \\cdot \\sqrt{2} \\cdot 23901.6",
                 "substitution_latex": "1.90929 \\cdot \\sqrt{2} \\cdot 23901.6",
                 "title": "Pr\u0105d udarowy"
               },
@@ -1207,7 +1162,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 25160.4843499
                 },
-                "substitution": "23901.6 \\cdot \\sqrt{1 + \\left((1.90929 - 1) \\cdot 0.361609\\right)^2}",
                 "substitution_latex": "23901.6 \\cdot \\sqrt{1 + \\left((1.90929 - 1) \\cdot 0.361609\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -1223,7 +1177,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 25126.8915695
                 },
-                "substitution": "23901.6 \\cdot \\sqrt{0.105156 + 1}",
                 "substitution_latex": "23901.6 \\cdot \\sqrt{0.105156 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -1238,7 +1191,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 16.5595116009
                 },
-                "substitution": "\\sqrt{3} \\cdot 400 \\cdot 23901.6 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 23901.6 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -1298,7 +1250,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -1327,7 +1278,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.45000225
                   }
                 },
-                "substitution": "\\left(0.450002 + j 0.9\\right)",
                 "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -1344,7 +1294,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 9513.00929808
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -1360,7 +1309,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.23866591694
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -1375,7 +1323,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 16664.301204
                 },
-                "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9513.01",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9513.01",
                 "title": "Pr\u0105d udarowy"
               },
@@ -1393,7 +1340,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 9513.00929808
                 },
-                "substitution": "9513.01 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "substitution_latex": "9513.01 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -1409,7 +1355,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 9546.15137168
                 },
-                "substitution": "9513.01 \\cdot \\sqrt{0.00697987 + 1}",
                 "substitution_latex": "9513.01 \\cdot \\sqrt{0.00697987 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -1424,7 +1369,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 247.155231557
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9513.01 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9513.01 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -1463,7 +1407,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -1492,7 +1435,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.45000225
                   }
                 },
-                "substitution": "\\left(0.450002 + j 0.9\\right)",
                 "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -1509,7 +1451,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 8222.01614034
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -1525,7 +1466,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.23866591694
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -1540,7 +1480,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 14402.8192524
                 },
-                "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8222.02",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8222.02",
                 "title": "Pr\u0105d udarowy"
               },
@@ -1558,7 +1497,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 8222.01614034
                 },
-                "substitution": "8222.02 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "substitution_latex": "8222.02 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -1574,7 +1512,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 8250.66056352
                 },
-                "substitution": "8222.02 \\cdot \\sqrt{0.00697987 + 1}",
                 "substitution_latex": "8222.02 \\cdot \\sqrt{0.00697987 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -1589,7 +1526,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 213.614245436
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8222.02 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8222.02 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -1768,7 +1704,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.45000225
                   }
                 },
-                "substitution": "\\left(0.450002 + j 0.9\\right)",
                 "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -1785,7 +1720,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 9536.56518906
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -1801,7 +1735,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.23866591694
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -1816,7 +1749,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 16705.5649567
                 },
-                "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9536.57",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9536.57",
                 "title": "Pr\u0105d udarowy"
               },
@@ -1834,7 +1766,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 9536.56518906
                 },
-                "substitution": "9536.57 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "substitution_latex": "9536.57 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -1850,7 +1781,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 9569.78932829
                 },
-                "substitution": "9536.57 \\cdot \\sqrt{0.00697987 + 1}",
                 "substitution_latex": "9536.57 \\cdot \\sqrt{0.00697987 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -1865,7 +1795,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 247.767231557
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9536.57 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9536.57 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -1904,7 +1833,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.45000225
                   }
                 },
-                "substitution": "\\left(0.450002 + j 0.9\\right)",
                 "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -1921,7 +1849,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 8245.57203132
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -1937,7 +1864,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.23866591694
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -1952,7 +1878,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 14444.0830051
                 },
-                "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8245.57",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8245.57",
                 "title": "Pr\u0105d udarowy"
               },
@@ -1970,7 +1895,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 8245.57203132
                 },
-                "substitution": "8245.57 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "substitution_latex": "8245.57 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -1986,7 +1910,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 8274.29852013
                 },
-                "substitution": "8245.57 \\cdot \\sqrt{0.00697987 + 1}",
                 "substitution_latex": "8245.57 \\cdot \\sqrt{0.00697987 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -2001,7 +1924,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 214.226245436
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8245.57 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8245.57 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -2061,7 +1983,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.58500225
                   }
                 },
-                "substitution": "\\left(0.585002 + j 1.17\\right)",
                 "substitution_latex": "\\left(0.585002 + j 1.17\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -2078,7 +1999,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 7351.80921809
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.3081}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.3081}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -2094,7 +2014,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.23866629541
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -2109,7 +2028,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 12878.4485328
                 },
-                "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 7351.81",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 7351.81",
                 "title": "Pr\u0105d udarowy"
               },
@@ -2127,7 +2045,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 7351.80921809
                 },
-                "substitution": "7351.81 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.50693e-07\\right)^2}",
                 "substitution_latex": "7351.81 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.50693e-07\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -2143,7 +2060,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 7377.42198307
                 },
-                "substitution": "7351.81 \\cdot \\sqrt{0.00697988 + 1}",
                 "substitution_latex": "7351.81 \\cdot \\sqrt{0.00697988 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -2158,7 +2074,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 191.005606399
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 7351.81 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 7351.81 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -2197,7 +2112,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.58500225
                   }
                 },
-                "substitution": "\\left(0.585002 + j 1.17\\right)",
                 "substitution_latex": "\\left(0.585002 + j 1.17\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -2214,7 +2128,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 6358.73732912
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.3081}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.3081}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -2230,7 +2143,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.23866629541
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -2245,7 +2157,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 11138.8460986
                 },
-                "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 6358.74",
                 "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 6358.74",
                 "title": "Pr\u0105d udarowy"
               },
@@ -2263,7 +2174,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 6358.73732912
                 },
-                "substitution": "6358.74 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.50693e-07\\right)^2}",
                 "substitution_latex": "6358.74 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.50693e-07\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -2279,7 +2189,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 6380.89035839
                 },
-                "substitution": "6358.74 \\cdot \\sqrt{0.00697988 + 1}",
                 "substitution_latex": "6358.74 \\cdot \\sqrt{0.00697988 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -2294,7 +2203,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 165.20484189
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 6358.74 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 6358.74 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -2598,7 +2506,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -2627,7 +2534,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00361480002307
                   }
                 },
-                "substitution": "\\left(0.0036148 + j 0.017282\\right)",
                 "substitution_latex": "\\left(0.0036148 + j 0.017282\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -2644,7 +2550,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 30507.0793291
                 },
-                "substitution": "\\frac{1.1 \\cdot 800 \\cdot 0.57735}{0.017656}",
                 "substitution_latex": "\\frac{1.1 \\cdot 800 \\cdot 0.57735}{0.017656}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -2660,7 +2565,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.54324883185
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.209165}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.209165}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -2675,7 +2579,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 66581.1950762
                 },
-                "substitution": "1.54325 \\cdot \\sqrt{2} \\cdot 30507.1",
                 "substitution_latex": "1.54325 \\cdot \\sqrt{2} \\cdot 30507.1",
                 "title": "Pr\u0105d udarowy"
               },
@@ -2693,7 +2596,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 30507.0881552
                 },
-                "substitution": "30507.1 \\cdot \\sqrt{1 + \\left((1.54325 - 1) \\cdot 0.00140023\\right)^2}",
                 "substitution_latex": "30507.1 \\cdot \\sqrt{1 + \\left((1.54325 - 1) \\cdot 0.00140023\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -2709,7 +2611,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 30756.0445011
                 },
-                "substitution": "30507.1 \\cdot \\sqrt{0.0163884 + 1}",
                 "substitution_latex": "30507.1 \\cdot \\sqrt{0.0163884 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -2724,7 +2625,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 42.2718491108
                 },
-                "substitution": "\\sqrt{3} \\cdot 800 \\cdot 30507.1 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 800 \\cdot 30507.1 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -2763,7 +2663,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -2792,7 +2691,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00361480002307
                   }
                 },
-                "substitution": "\\left(0.0036148 + j 0.017282\\right)",
                 "substitution_latex": "\\left(0.0036148 + j 0.017282\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -2809,7 +2707,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 26583.0937091
                 },
-                "substitution": "\\frac{0.95 \\cdot 800 \\cdot 0.57735}{0.017656}",
                 "substitution_latex": "\\frac{0.95 \\cdot 800 \\cdot 0.57735}{0.017656}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -2825,7 +2722,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.54324883185
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.209165}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.209165}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -2840,7 +2736,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 58017.1614883
                 },
-                "substitution": "1.54325 \\cdot \\sqrt{2} \\cdot 26583.1",
                 "substitution_latex": "1.54325 \\cdot \\sqrt{2} \\cdot 26583.1",
                 "title": "Pr\u0105d udarowy"
               },
@@ -2858,7 +2753,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 26583.1013999
                 },
-                "substitution": "26583.1 \\cdot \\sqrt{1 + \\left((1.54325 - 1) \\cdot 0.00140023\\right)^2}",
                 "substitution_latex": "26583.1 \\cdot \\sqrt{1 + \\left((1.54325 - 1) \\cdot 0.00140023\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -2874,7 +2768,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 26800.0356335
                 },
-                "substitution": "26583.1 \\cdot \\sqrt{0.0163884 + 1}",
                 "substitution_latex": "26583.1 \\cdot \\sqrt{0.0163884 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -2889,7 +2782,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 36.8346151412
                 },
-                "substitution": "\\sqrt{3} \\cdot 800 \\cdot 26583.1 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 800 \\cdot 26583.1 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -2949,7 +2841,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -2978,7 +2869,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.14200225
                   }
                 },
-                "substitution": "\\left(0.142002 + j 0.996\\right)",
                 "substitution_latex": "\\left(0.142002 + j 0.996\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -2995,7 +2885,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 9561.11591093
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -3011,7 +2900,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.658955589
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -3026,7 +2914,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 22431.5012945
                 },
-                "substitution": "1.65896 \\cdot \\sqrt{2} \\cdot 9561.12",
                 "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 9561.12",
                 "title": "Pr\u0105d udarowy"
               },
@@ -3044,7 +2931,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 9561.38304714
                 },
-                "substitution": "9561.12 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "substitution_latex": "9561.12 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -3060,7 +2946,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 9675.05148013
                 },
-                "substitution": "9561.12 \\cdot \\sqrt{0.0239751 + 1}",
                 "substitution_latex": "9561.12 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -3075,7 +2960,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 248.405078022
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9561.12 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9561.12 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -3114,7 +2998,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -3143,7 +3026,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.14200225
                   }
                 },
-                "substitution": "\\left(0.142002 + j 0.996\\right)",
                 "substitution_latex": "\\left(0.142002 + j 0.996\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -3160,7 +3042,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 8269.9178124
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -3176,7 +3057,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.658955589
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -3191,7 +3071,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 19402.1988482
                 },
-                "substitution": "1.65896 \\cdot \\sqrt{2} \\cdot 8269.92",
                 "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 8269.92",
                 "title": "Pr\u0105d udarowy"
               },
@@ -3209,7 +3088,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 8270.14887272
                 },
-                "substitution": "8269.92 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "substitution_latex": "8269.92 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -3225,7 +3103,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 8368.46674769
                 },
-                "substitution": "8269.92 \\cdot \\sqrt{0.0239751 + 1}",
                 "substitution_latex": "8269.92 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -3240,7 +3117,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 214.858767382
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8269.92 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8269.92 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -3642,7 +3518,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-bess"
               },
@@ -3671,7 +3546,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-pv"
               },
@@ -3700,7 +3574,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00170642063376
                   }
                 },
-                "substitution": "\\left(0.00170642 + j 0.00793275\\right)",
                 "substitution_latex": "\\left(0.00170642 + j 0.00793275\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -3717,7 +3590,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 33191.920163
                 },
-                "substitution": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00811421}",
                 "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00811421}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -3733,7 +3605,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.53399842218
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.215111}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.215111}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -3748,7 +3619,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 72006.5971841
                 },
-                "substitution": "1.534 \\cdot \\sqrt{2} \\cdot 33191.9",
                 "substitution_latex": "1.534 \\cdot \\sqrt{2} \\cdot 33191.9",
                 "title": "Pr\u0105d udarowy"
               },
@@ -3766,7 +3636,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 33191.9265492
                 },
-                "substitution": "33191.9 \\cdot \\sqrt{1 + \\left((1.534 - 1) \\cdot 0.00116166\\right)^2}",
                 "substitution_latex": "33191.9 \\cdot \\sqrt{1 + \\left((1.534 - 1) \\cdot 0.00116166\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -3782,7 +3651,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 33455.4097862
                 },
-                "substitution": "33191.9 \\cdot \\sqrt{0.0159398 + 1}",
                 "substitution_latex": "33191.9 \\cdot \\sqrt{0.0159398 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -3797,7 +3665,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 22.9960368493
                 },
-                "substitution": "\\sqrt{3} \\cdot 400 \\cdot 33191.9 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 33191.9 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -3836,7 +3703,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-bess"
               },
@@ -3865,7 +3731,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-pv"
               },
@@ -3894,7 +3759,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00170642063376
                   }
                 },
-                "substitution": "\\left(0.00170642 + j 0.00793275\\right)",
                 "substitution_latex": "\\left(0.00170642 + j 0.00793275\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -3911,7 +3775,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 28922.7418819
                 },
-                "substitution": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.00811421}",
                 "substitution_latex": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.00811421}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -3927,7 +3790,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.53399842218
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.215111}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.215111}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -3942,7 +3804,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 62745.0359582
                 },
-                "substitution": "1.534 \\cdot \\sqrt{2} \\cdot 28922.7",
                 "substitution_latex": "1.534 \\cdot \\sqrt{2} \\cdot 28922.7",
                 "title": "Pr\u0105d udarowy"
               },
@@ -3960,7 +3821,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 28922.7474467
                 },
-                "substitution": "28922.7 \\cdot \\sqrt{1 + \\left((1.534 - 1) \\cdot 0.00116166\\right)^2}",
                 "substitution_latex": "28922.7 \\cdot \\sqrt{1 + \\left((1.534 - 1) \\cdot 0.00116166\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -3976,7 +3836,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 29152.3412038
                 },
-                "substitution": "28922.7 \\cdot \\sqrt{0.0159398 + 1}",
                 "substitution_latex": "28922.7 \\cdot \\sqrt{0.0159398 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -3991,7 +3850,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 20.0382633735
                 },
-                "substitution": "\\sqrt{3} \\cdot 400 \\cdot 28922.7 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 28922.7 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -4051,7 +3909,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-bess"
               },
@@ -4080,7 +3937,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-pv"
               },
@@ -4109,7 +3965,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.008431123791
                   }
                 },
-                "substitution": "\\left(0.00843112 + j 0.0389555\\right)",
                 "substitution_latex": "\\left(0.00843112 + j 0.0389555\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -4126,7 +3981,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 13674.4800583
                 },
-                "substitution": "\\frac{1.1 \\cdot 800 \\cdot 0.57735}{0.0398574}",
                 "substitution_latex": "\\frac{1.1 \\cdot 800 \\cdot 0.57735}{0.0398574}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -4142,7 +3996,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.53196878069
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.21643}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.21643}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -4157,7 +4010,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 29626.1853213
                 },
-                "substitution": "1.53197 \\cdot \\sqrt{2} \\cdot 13674.5",
                 "substitution_latex": "1.53197 \\cdot \\sqrt{2} \\cdot 13674.5",
                 "title": "Pr\u0105d udarowy"
               },
@@ -4175,7 +4027,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 13674.4824616
                 },
-                "substitution": "13674.5 \\cdot \\sqrt{1 + \\left((1.53197 - 1) \\cdot 0.00111451\\right)^2}",
                 "substitution_latex": "13674.5 \\cdot \\sqrt{1 + \\left((1.53197 - 1) \\cdot 0.00111451\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -4191,7 +4042,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 13782.3807151
                 },
-                "substitution": "13674.5 \\cdot \\sqrt{0.0158436 + 1}",
                 "substitution_latex": "13674.5 \\cdot \\sqrt{0.0158436 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -4206,7 +4056,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 18.9479153824
                 },
-                "substitution": "\\sqrt{3} \\cdot 800 \\cdot 13674.5 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 800 \\cdot 13674.5 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -4245,7 +4094,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-bess"
               },
@@ -4274,7 +4122,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-pv"
               },
@@ -4303,7 +4150,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.008431123791
                   }
                 },
-                "substitution": "\\left(0.00843112 + j 0.0389555\\right)",
                 "substitution_latex": "\\left(0.00843112 + j 0.0389555\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -4320,7 +4166,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 11936.2335459
                 },
-                "substitution": "\\frac{0.95 \\cdot 800 \\cdot 0.57735}{0.0398574}",
                 "substitution_latex": "\\frac{0.95 \\cdot 800 \\cdot 0.57735}{0.0398574}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -4336,7 +4181,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.53196878069
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.21643}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.21643}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -4351,7 +4195,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 25860.2203201
                 },
-                "substitution": "1.53197 \\cdot \\sqrt{2} \\cdot 11936.2",
                 "substitution_latex": "1.53197 \\cdot \\sqrt{2} \\cdot 11936.2",
                 "title": "Pr\u0105d udarowy"
               },
@@ -4369,7 +4212,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 11936.2356438
                 },
-                "substitution": "11936.2 \\cdot \\sqrt{1 + \\left((1.53197 - 1) \\cdot 0.00111451\\right)^2}",
                 "substitution_latex": "11936.2 \\cdot \\sqrt{1 + \\left((1.53197 - 1) \\cdot 0.00111451\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -4385,7 +4227,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 12030.4182925
                 },
-                "substitution": "11936.2 \\cdot \\sqrt{0.0158436 + 1}",
                 "substitution_latex": "11936.2 \\cdot \\sqrt{0.0158436 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -4400,7 +4241,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 16.539330362
                 },
-                "substitution": "\\sqrt{3} \\cdot 800 \\cdot 11936.2 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 800 \\cdot 11936.2 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -4460,7 +4300,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-bess"
               },
@@ -4489,7 +4328,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-pv"
               },
@@ -4518,7 +4356,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.14200225
                   }
                 },
-                "substitution": "\\left(0.142002 + j 0.996\\right)",
                 "substitution_latex": "\\left(0.142002 + j 0.996\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -4535,7 +4372,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 9561.11591093
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -4551,7 +4387,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.658955589
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -4566,7 +4401,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 22431.5012945
                 },
-                "substitution": "1.65896 \\cdot \\sqrt{2} \\cdot 9561.12",
                 "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 9561.12",
                 "title": "Pr\u0105d udarowy"
               },
@@ -4584,7 +4418,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 9561.38304714
                 },
-                "substitution": "9561.12 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "substitution_latex": "9561.12 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -4600,7 +4433,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 9675.05148013
                 },
-                "substitution": "9561.12 \\cdot \\sqrt{0.0239751 + 1}",
                 "substitution_latex": "9561.12 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -4615,7 +4447,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 248.405078022
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9561.12 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9561.12 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -4654,7 +4485,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-bess"
               },
@@ -4683,7 +4513,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-pv"
               },
@@ -4712,7 +4541,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.14200225
                   }
                 },
-                "substitution": "\\left(0.142002 + j 0.996\\right)",
                 "substitution_latex": "\\left(0.142002 + j 0.996\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -4729,7 +4557,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 8269.9178124
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -4745,7 +4572,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.658955589
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -4760,7 +4586,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 19402.1988482
                 },
-                "substitution": "1.65896 \\cdot \\sqrt{2} \\cdot 8269.92",
                 "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 8269.92",
                 "title": "Pr\u0105d udarowy"
               },
@@ -4778,7 +4603,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 8270.14887272
                 },
-                "substitution": "8269.92 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "substitution_latex": "8269.92 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -4794,7 +4618,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 8368.46674769
                 },
-                "substitution": "8269.92 \\cdot \\sqrt{0.0239751 + 1}",
                 "substitution_latex": "8269.92 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -4809,7 +4632,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 214.858767382
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8269.92 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8269.92 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -5244,7 +5066,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -5273,7 +5094,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.008431123791
                   }
                 },
-                "substitution": "\\left(0.00843112 + j 0.0389555\\right)",
                 "substitution_latex": "\\left(0.00843112 + j 0.0389555\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -5290,7 +5110,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 13612.8200843
                 },
-                "substitution": "\\frac{1.1 \\cdot 800 \\cdot 0.57735}{0.0398574}",
                 "substitution_latex": "\\frac{1.1 \\cdot 800 \\cdot 0.57735}{0.0398574}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -5306,7 +5125,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.53196878069
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.21643}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.21643}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -5321,7 +5139,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 29492.5970746
                 },
-                "substitution": "1.53197 \\cdot \\sqrt{2} \\cdot 13612.8",
                 "substitution_latex": "1.53197 \\cdot \\sqrt{2} \\cdot 13612.8",
                 "title": "Pr\u0105d udarowy"
               },
@@ -5339,7 +5156,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 13612.8224768
                 },
-                "substitution": "13612.8 \\cdot \\sqrt{1 + \\left((1.53197 - 1) \\cdot 0.00111451\\right)^2}",
                 "substitution_latex": "13612.8 \\cdot \\sqrt{1 + \\left((1.53197 - 1) \\cdot 0.00111451\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -5355,7 +5171,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 13720.2342033
                 },
-                "substitution": "13612.8 \\cdot \\sqrt{0.0158436 + 1}",
                 "substitution_latex": "13612.8 \\cdot \\sqrt{0.0158436 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -5370,7 +5185,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 18.8624768162
                 },
-                "substitution": "\\sqrt{3} \\cdot 800 \\cdot 13612.8 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 800 \\cdot 13612.8 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -5409,7 +5223,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -5438,7 +5251,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.008431123791
                   }
                 },
-                "substitution": "\\left(0.00843112 + j 0.0389555\\right)",
                 "substitution_latex": "\\left(0.00843112 + j 0.0389555\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -5455,7 +5267,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 11874.5735719
                 },
-                "substitution": "\\frac{0.95 \\cdot 800 \\cdot 0.57735}{0.0398574}",
                 "substitution_latex": "\\frac{0.95 \\cdot 800 \\cdot 0.57735}{0.0398574}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -5471,7 +5282,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.53196878069
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.21643}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.21643}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -5486,7 +5296,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 25726.6320734
                 },
-                "substitution": "1.53197 \\cdot \\sqrt{2} \\cdot 11874.6",
                 "substitution_latex": "1.53197 \\cdot \\sqrt{2} \\cdot 11874.6",
                 "title": "Pr\u0105d udarowy"
               },
@@ -5504,7 +5313,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 11874.575659
                 },
-                "substitution": "11874.6 \\cdot \\sqrt{1 + \\left((1.53197 - 1) \\cdot 0.00111451\\right)^2}",
                 "substitution_latex": "11874.6 \\cdot \\sqrt{1 + \\left((1.53197 - 1) \\cdot 0.00111451\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -5520,7 +5328,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 11968.2717807
                 },
-                "substitution": "11874.6 \\cdot \\sqrt{0.0158436 + 1}",
                 "substitution_latex": "11874.6 \\cdot \\sqrt{0.0158436 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -5535,7 +5342,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 16.4538917958
                 },
-                "substitution": "\\sqrt{3} \\cdot 800 \\cdot 11874.6 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 800 \\cdot 11874.6 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -5595,7 +5401,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -5624,7 +5429,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.156557480625
                   }
                 },
-                "substitution": "\\left(0.156557 + j 1.09809\\right)",
                 "substitution_latex": "\\left(0.156557 + j 1.09809\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -5641,7 +5445,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 9061.86247829
                 },
-                "substitution": "\\frac{1.1 \\cdot 15750 \\cdot 0.57735}{1.10919}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15750 \\cdot 0.57735}{1.10919}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -5657,7 +5460,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.658955589
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -5672,7 +5474,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 21260.1940826
                 },
-                "substitution": "1.65896 \\cdot \\sqrt{2} \\cdot 9061.86",
                 "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 9061.86",
                 "title": "Pr\u0105d udarowy"
               },
@@ -5690,7 +5491,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 9062.11566543
                 },
-                "substitution": "9061.86 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "substitution_latex": "9061.86 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -5706,7 +5506,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 9169.84866621
                 },
-                "substitution": "9061.86 \\cdot \\sqrt{0.0239751 + 1}",
                 "substitution_latex": "9061.86 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -5721,7 +5520,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 247.205798022
                 },
-                "substitution": "\\sqrt{3} \\cdot 15750 \\cdot 9061.86 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15750 \\cdot 9061.86 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -5760,7 +5558,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -5789,7 +5586,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.156557480625
                   }
                 },
-                "substitution": "\\left(0.156557 + j 1.09809\\right)",
                 "substitution_latex": "\\left(0.156557 + j 1.09809\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -5806,7 +5602,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 7832.1500035
                 },
-                "substitution": "\\frac{0.95 \\cdot 15750 \\cdot 0.57735}{1.10919}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15750 \\cdot 0.57735}{1.10919}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -5822,7 +5617,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.658955589
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -5837,7 +5631,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 18375.1441337
                 },
-                "substitution": "1.65896 \\cdot \\sqrt{2} \\cdot 7832.15",
                 "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 7832.15",
                 "title": "Pr\u0105d udarowy"
               },
@@ -5855,7 +5648,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 7832.36883265
                 },
-                "substitution": "7832.15 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "substitution_latex": "7832.15 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -5871,7 +5663,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 7925.48225436
                 },
-                "substitution": "7832.15 \\cdot \\sqrt{0.0239751 + 1}",
                 "substitution_latex": "7832.15 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -5886,7 +5677,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 213.659487382
                 },
-                "substitution": "\\sqrt{3} \\cdot 15750 \\cdot 7832.15 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15750 \\cdot 7832.15 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -6413,7 +6203,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -6442,7 +6231,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00170642063376
                   }
                 },
-                "substitution": "\\left(0.00170642 + j 0.00793275\\right)",
                 "substitution_latex": "\\left(0.00170642 + j 0.00793275\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -6459,7 +6247,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 33039.3582024
                 },
-                "substitution": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00811421}",
                 "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00811421}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -6475,7 +6262,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.53399842218
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.215111}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.215111}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -6490,7 +6276,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 71675.6290572
                 },
-                "substitution": "1.534 \\cdot \\sqrt{2} \\cdot 33039.4",
                 "substitution_latex": "1.534 \\cdot \\sqrt{2} \\cdot 33039.4",
                 "title": "Pr\u0105d udarowy"
               },
@@ -6508,7 +6293,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 33039.3645592
                 },
-                "substitution": "33039.4 \\cdot \\sqrt{1 + \\left((1.534 - 1) \\cdot 0.00116166\\right)^2}",
                 "substitution_latex": "33039.4 \\cdot \\sqrt{1 + \\left((1.534 - 1) \\cdot 0.00116166\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -6524,7 +6308,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 33301.6367329
                 },
-                "substitution": "33039.4 \\cdot \\sqrt{0.0159398 + 1}",
                 "substitution_latex": "33039.4 \\cdot \\sqrt{0.0159398 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -6539,7 +6322,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 22.8903388224
                 },
-                "substitution": "\\sqrt{3} \\cdot 400 \\cdot 33039.4 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 33039.4 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -6578,7 +6360,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -6607,7 +6388,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00170642063376
                   }
                 },
-                "substitution": "\\left(0.00170642 + j 0.00793275\\right)",
                 "substitution_latex": "\\left(0.00170642 + j 0.00793275\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -6624,7 +6404,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 28770.1799213
                 },
-                "substitution": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.00811421}",
                 "substitution_latex": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.00811421}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -6640,7 +6419,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.53399842218
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.215111}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.215111}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -6655,7 +6433,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 62414.0678313
                 },
-                "substitution": "1.534 \\cdot \\sqrt{2} \\cdot 28770.2",
                 "substitution_latex": "1.534 \\cdot \\sqrt{2} \\cdot 28770.2",
                 "title": "Pr\u0105d udarowy"
               },
@@ -6673,7 +6450,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 28770.1854567
                 },
-                "substitution": "28770.2 \\cdot \\sqrt{1 + \\left((1.534 - 1) \\cdot 0.00116166\\right)^2}",
                 "substitution_latex": "28770.2 \\cdot \\sqrt{1 + \\left((1.534 - 1) \\cdot 0.00116166\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -6689,7 +6465,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 28998.5681504
                 },
-                "substitution": "28770.2 \\cdot \\sqrt{0.0159398 + 1}",
                 "substitution_latex": "28770.2 \\cdot \\sqrt{0.0159398 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -6704,7 +6479,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 19.9325653466
                 },
-                "substitution": "\\sqrt{3} \\cdot 400 \\cdot 28770.2 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 28770.2 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -6764,7 +6538,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -6793,7 +6566,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.14200225
                   }
                 },
-                "substitution": "\\left(0.142002 + j 0.996\\right)",
                 "substitution_latex": "\\left(0.142002 + j 0.996\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -6810,7 +6582,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 9514.97407741
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -6826,7 +6597,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.658955589
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -6841,7 +6611,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 22323.2471317
                 },
-                "substitution": "1.65896 \\cdot \\sqrt{2} \\cdot 9514.97",
                 "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 9514.97",
                 "title": "Pr\u0105d udarowy"
               },
@@ -6859,7 +6628,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 9515.23992443
                 },
-                "substitution": "9514.97 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "substitution_latex": "9514.97 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -6875,7 +6643,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 9628.35979489
                 },
-                "substitution": "9514.97 \\cdot \\sqrt{0.0239751 + 1}",
                 "substitution_latex": "9514.97 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -6890,7 +6657,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 247.206278022
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9514.97 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9514.97 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -6929,7 +6695,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
               },
@@ -6958,7 +6723,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.14200225
                   }
                 },
-                "substitution": "\\left(0.142002 + j 0.996\\right)",
                 "substitution_latex": "\\left(0.142002 + j 0.996\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -6975,7 +6739,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 8223.77597888
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -6991,7 +6754,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.658955589
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -7006,7 +6768,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 19293.9446854
                 },
-                "substitution": "1.65896 \\cdot \\sqrt{2} \\cdot 8223.78",
                 "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 8223.78",
                 "title": "Pr\u0105d udarowy"
               },
@@ -7024,7 +6785,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 8224.00575001
                 },
-                "substitution": "8223.78 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "substitution_latex": "8223.78 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -7040,7 +6800,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 8321.77506245
                 },
-                "substitution": "8223.78 \\cdot \\sqrt{0.0239751 + 1}",
                 "substitution_latex": "8223.78 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -7055,7 +6814,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 213.659967382
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8223.78 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8223.78 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -7372,7 +7130,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr1"
               },
@@ -7401,7 +7158,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr2"
               },
@@ -7430,7 +7186,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr3"
               },
@@ -7459,7 +7214,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.14200225
                   }
                 },
-                "substitution": "\\left(0.142002 + j 0.996\\right)",
                 "substitution_latex": "\\left(0.142002 + j 0.996\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -7476,7 +7230,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 9745.91418509
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -7492,7 +7245,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.658955589
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -7507,7 +7259,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 22865.0597582
                 },
-                "substitution": "1.65896 \\cdot \\sqrt{2} \\cdot 9745.91",
                 "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 9745.91",
                 "title": "Pr\u0105d udarowy"
               },
@@ -7525,7 +7276,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 9746.18648454
                 },
-                "substitution": "9745.91 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "substitution_latex": "9745.91 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -7541,7 +7291,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 9862.05191319
                 },
-                "substitution": "9745.91 \\cdot \\sqrt{0.0239751 + 1}",
                 "substitution_latex": "9745.91 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -7556,7 +7305,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 253.206278022
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9745.91 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9745.91 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -7595,7 +7343,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr1"
               },
@@ -7624,7 +7371,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr2"
               },
@@ -7653,7 +7399,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr3"
               },
@@ -7682,7 +7427,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.14200225
                   }
                 },
-                "substitution": "\\left(0.142002 + j 0.996\\right)",
                 "substitution_latex": "\\left(0.142002 + j 0.996\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -7699,7 +7443,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 8454.71608656
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -7715,7 +7458,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.658955589
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.142573}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -7730,7 +7472,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 19835.7573119
                 },
-                "substitution": "1.65896 \\cdot \\sqrt{2} \\cdot 8454.72",
                 "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 8454.72",
                 "title": "Pr\u0105d udarowy"
               },
@@ -7748,7 +7489,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 8454.95231012
                 },
-                "substitution": "8454.72 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "substitution_latex": "8454.72 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -7764,7 +7504,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 8555.46718075
                 },
-                "substitution": "8454.72 \\cdot \\sqrt{0.0239751 + 1}",
                 "substitution_latex": "8454.72 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -7779,7 +7518,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 219.659967382
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8454.72 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8454.72 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -7839,7 +7577,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr1"
               },
@@ -7868,7 +7605,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr2"
               },
@@ -7897,7 +7633,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr3"
               },
@@ -7926,7 +7661,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00268907232966
                   }
                 },
-                "substitution": "\\left(0.00268907 + j 0.0128562\\right)",
                 "substitution_latex": "\\left(0.00268907 + j 0.0128562\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -7943,7 +7677,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 36022.5065448
                 },
-                "substitution": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0131344}",
                 "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0131344}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -7959,7 +7692,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.54324883185
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.209165}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.209165}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -7974,7 +7706,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 78618.5235734
                 },
-                "substitution": "1.54325 \\cdot \\sqrt{2} \\cdot 36022.5",
                 "substitution_latex": "1.54325 \\cdot \\sqrt{2} \\cdot 36022.5",
                 "title": "Pr\u0105d udarowy"
               },
@@ -7992,7 +7723,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 36022.5169665
                 },
-                "substitution": "36022.5 \\cdot \\sqrt{1 + \\left((1.54325 - 1) \\cdot 0.00140023\\right)^2}",
                 "substitution_latex": "36022.5 \\cdot \\sqrt{1 + \\left((1.54325 - 1) \\cdot 0.00140023\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -8008,7 +7738,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 36316.4825574
                 },
-                "substitution": "36022.5 \\cdot \\sqrt{0.0163884 + 1}",
                 "substitution_latex": "36022.5 \\cdot \\sqrt{0.0163884 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -8023,7 +7752,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 43.0510399705
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 36022.5 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 36022.5 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -8062,7 +7790,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr1"
               },
@@ -8091,7 +7818,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr2"
               },
@@ -8120,7 +7846,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr3"
               },
@@ -8149,7 +7874,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00268907232966
                   }
                 },
-                "substitution": "\\left(0.00268907 + j 0.0128562\\right)",
                 "substitution_latex": "\\left(0.00268907 + j 0.0128562\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -8166,7 +7890,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 31472.9579998
                 },
-                "substitution": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0131344}",
                 "substitution_latex": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0131344}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -8182,7 +7905,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.54324883185
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.209165}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.209165}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -8197,7 +7919,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 68689.2092685
                 },
-                "substitution": "1.54325 \\cdot \\sqrt{2} \\cdot 31473",
                 "substitution_latex": "1.54325 \\cdot \\sqrt{2} \\cdot 31473",
                 "title": "Pr\u0105d udarowy"
               },
@@ -8215,7 +7936,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 31472.9671053
                 },
-                "substitution": "31473 \\cdot \\sqrt{1 + \\left((1.54325 - 1) \\cdot 0.00140023\\right)^2}",
                 "substitution_latex": "31473 \\cdot \\sqrt{1 + \\left((1.54325 - 1) \\cdot 0.00140023\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -8231,7 +7951,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 31729.8056094
                 },
-                "substitution": "31473 \\cdot \\sqrt{0.0163884 + 1}",
                 "substitution_latex": "31473 \\cdot \\sqrt{0.0163884 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -8246,7 +7965,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 37.6138060009
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 31473 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 31473 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -8559,7 +8277,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr1"
               },
@@ -8588,7 +8305,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr2"
               },
@@ -8617,7 +8333,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr3"
               },
@@ -8646,7 +8361,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.147594190762
                   }
                 },
-                "substitution": "\\left(0.147594 + j 0.871161\\right)",
                 "substitution_latex": "\\left(0.147594 + j 0.871161\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -8663,7 +8377,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 10781.5154016
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.883575}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.883575}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -8679,7 +8392,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.60950618762
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.169422}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.169422}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -8694,7 +8406,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 24540.7288015
                 },
-                "substitution": "1.60951 \\cdot \\sqrt{2} \\cdot 10781.5",
                 "substitution_latex": "1.60951 \\cdot \\sqrt{2} \\cdot 10781.5",
                 "title": "Pr\u0105d udarowy"
               },
@@ -8712,7 +8423,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 10781.563098
                 },
-                "substitution": "10781.5 \\cdot \\sqrt{1 + \\left((1.60951 - 1) \\cdot 0.00488023\\right)^2}",
                 "substitution_latex": "10781.5 \\cdot \\sqrt{1 + \\left((1.60951 - 1) \\cdot 0.00488023\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -8728,7 +8438,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 10889.8519403
                 },
-                "substitution": "10781.5 \\cdot \\sqrt{0.0201977 + 1}",
                 "substitution_latex": "10781.5 \\cdot \\sqrt{0.0201977 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -8743,7 +8452,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 280.111986873
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 10781.5 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 10781.5 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -8782,7 +8490,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr1"
               },
@@ -8811,7 +8518,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr2"
               },
@@ -8840,7 +8546,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr3"
               },
@@ -8869,7 +8574,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.147594190762
                   }
                 },
-                "substitution": "\\left(0.147594 + j 0.871161\\right)",
                 "substitution_latex": "\\left(0.147594 + j 0.871161\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -8886,7 +8590,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 9311.30875595
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.883575}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.883575}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -8902,7 +8605,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.60950618762
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.169422}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.169422}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -8917,7 +8619,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 21194.2657831
                 },
-                "substitution": "1.60951 \\cdot \\sqrt{2} \\cdot 9311.31",
                 "substitution_latex": "1.60951 \\cdot \\sqrt{2} \\cdot 9311.31",
                 "title": "Pr\u0105d udarowy"
               },
@@ -8935,7 +8636,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 9311.34994827
                 },
-                "substitution": "9311.31 \\cdot \\sqrt{1 + \\left((1.60951 - 1) \\cdot 0.00488023\\right)^2}",
                 "substitution_latex": "9311.31 \\cdot \\sqrt{1 + \\left((1.60951 - 1) \\cdot 0.00488023\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -8951,7 +8651,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 9404.87213025
                 },
-                "substitution": "9311.31 \\cdot \\sqrt{0.0201977 + 1}",
                 "substitution_latex": "9311.31 \\cdot \\sqrt{0.0201977 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -8966,7 +8665,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 241.914897754
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9311.31 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9311.31 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -9058,7 +8756,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr1"
               },
@@ -9087,7 +8784,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr2"
               },
@@ -9116,7 +8812,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr3"
               },
@@ -9145,7 +8840,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00243708420263
                   }
                 },
-                "substitution": "\\left(0.00243708 + j 0.00911574\\right)",
                 "substitution_latex": "\\left(0.00243708 + j 0.00911574\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -9162,7 +8856,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 46440.6300907
                 },
-                "substitution": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.00943589}",
                 "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.00943589}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -9178,7 +8871,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.45944188629
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.267349}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.267349}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -9193,7 +8885,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 95851.7194057
                 },
-                "substitution": "1.45944 \\cdot \\sqrt{2} \\cdot 46440.6",
                 "substitution_latex": "1.45944 \\cdot \\sqrt{2} \\cdot 46440.6",
                 "title": "Pr\u0105d udarowy"
               },
@@ -9211,7 +8902,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 46440.630339
                 },
-                "substitution": "46440.6 \\cdot \\sqrt{1 + \\left((1.45944 - 1) \\cdot 0.000225088\\right)^2}",
                 "substitution_latex": "46440.6 \\cdot \\sqrt{1 + \\left((1.45944 - 1) \\cdot 0.000225088\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -9227,7 +8917,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 46738.236838
                 },
-                "substitution": "46440.6 \\cdot \\sqrt{0.0128577 + 1}",
                 "substitution_latex": "46440.6 \\cdot \\sqrt{0.0128577 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -9242,7 +8931,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 55.5018962883
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 46440.6 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 46440.6 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -9281,7 +8969,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr1"
               },
@@ -9310,7 +8997,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr2"
               },
@@ -9339,7 +9025,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr3"
               },
@@ -9368,7 +9053,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00243708420263
                   }
                 },
-                "substitution": "\\left(0.00243708 + j 0.00911574\\right)",
                 "substitution_latex": "\\left(0.00243708 + j 0.00911574\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -9385,7 +9069,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 40107.8168965
                 },
-                "substitution": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.00943589}",
                 "substitution_latex": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.00943589}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -9401,7 +9084,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.45944188629
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.267349}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.267349}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -9416,7 +9098,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 82781.0303958
                 },
-                "substitution": "1.45944 \\cdot \\sqrt{2} \\cdot 40107.8",
                 "substitution_latex": "1.45944 \\cdot \\sqrt{2} \\cdot 40107.8",
                 "title": "Pr\u0105d udarowy"
               },
@@ -9434,7 +9115,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 40107.817111
                 },
-                "substitution": "40107.8 \\cdot \\sqrt{1 + \\left((1.45944 - 1) \\cdot 0.000225088\\right)^2}",
                 "substitution_latex": "40107.8 \\cdot \\sqrt{1 + \\left((1.45944 - 1) \\cdot 0.000225088\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -9450,7 +9130,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 40364.8409055
                 },
-                "substitution": "40107.8 \\cdot \\sqrt{0.0128577 + 1}",
                 "substitution_latex": "40107.8 \\cdot \\sqrt{0.0128577 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -9465,7 +9144,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 47.9334558854
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 40107.8 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 40107.8 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -9823,7 +9501,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr1"
               },
@@ -9852,7 +9529,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr2"
               },
@@ -9881,7 +9557,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr3"
               },
@@ -9910,7 +9585,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.145216703467
                   }
                 },
-                "substitution": "\\left(0.145217 + j 0.937055\\right)",
                 "substitution_latex": "\\left(0.145217 + j 0.937055\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -9927,7 +9601,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 10046.2692167
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.948241}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.948241}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -9943,7 +9616,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.63562528066
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.154971}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.154971}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -9958,7 +9630,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 23238.2609591
                 },
-                "substitution": "1.63563 \\cdot \\sqrt{2} \\cdot 10046.3",
                 "substitution_latex": "1.63563 \\cdot \\sqrt{2} \\cdot 10046.3",
                 "title": "Pr\u0105d udarowy"
               },
@@ -9976,7 +9647,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 10046.3890532
                 },
-                "substitution": "10046.3 \\cdot \\sqrt{1 + \\left((1.63563 - 1) \\cdot 0.00768435\\right)^2}",
                 "substitution_latex": "10046.3 \\cdot \\sqrt{1 + \\left((1.63563 - 1) \\cdot 0.00768435\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -9992,7 +9662,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 10156.5145438
                 },
-                "substitution": "10046.3 \\cdot \\sqrt{0.0220679 + 1}",
                 "substitution_latex": "10046.3 \\cdot \\sqrt{0.0220679 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -10007,7 +9676,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 261.009730648
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 10046.3 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 10046.3 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -10046,7 +9714,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr1"
               },
@@ -10075,7 +9742,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr2"
               },
@@ -10104,7 +9770,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr3"
               },
@@ -10133,7 +9798,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.145216703467
                   }
                 },
-                "substitution": "\\left(0.145217 + j 0.937055\\right)",
                 "substitution_latex": "\\left(0.145217 + j 0.937055\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -10150,7 +9814,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 8676.32341443
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.948241}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.948241}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -10166,7 +9829,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.63562528066
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.154971}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.154971}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -10181,7 +9843,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 20069.4071919
                 },
-                "substitution": "1.63563 \\cdot \\sqrt{2} \\cdot 8676.32",
                 "substitution_latex": "1.63563 \\cdot \\sqrt{2} \\cdot 8676.32",
                 "title": "Pr\u0105d udarowy"
               },
@@ -10199,7 +9860,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 8676.4269096
                 },
-                "substitution": "8676.32 \\cdot \\sqrt{1 + \\left((1.63563 - 1) \\cdot 0.00768435\\right)^2}",
                 "substitution_latex": "8676.32 \\cdot \\sqrt{1 + \\left((1.63563 - 1) \\cdot 0.00768435\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -10215,7 +9875,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 8771.53528781
                 },
-                "substitution": "8676.32 \\cdot \\sqrt{0.0220679 + 1}",
                 "substitution_latex": "8676.32 \\cdot \\sqrt{0.0220679 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -10230,7 +9889,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 225.41749465
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8676.32 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8676.32 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -10322,7 +9980,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr1"
               },
@@ -10351,7 +10008,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr2"
               },
@@ -10380,7 +10036,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr3"
               },
@@ -10409,7 +10064,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00559337938841
                   }
                 },
-                "substitution": "\\left(0.00559338 + j 0.0205635\\right)",
                 "substitution_latex": "\\left(0.00559338 + j 0.0205635\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -10426,7 +10080,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 20562.9258785
                 },
-                "substitution": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0213106}",
                 "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0213106}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -10442,7 +10095,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.45334593956
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.272005}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.272005}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -10457,7 +10109,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 42263.8357119
                 },
-                "substitution": "1.45335 \\cdot \\sqrt{2} \\cdot 20562.9",
                 "substitution_latex": "1.45335 \\cdot \\sqrt{2} \\cdot 20562.9",
                 "title": "Pr\u0105d udarowy"
               },
@@ -10475,7 +10126,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 20562.9259584
                 },
-                "substitution": "20562.9 \\cdot \\sqrt{1 + \\left((1.45335 - 1) \\cdot 0.000194457\\right)^2}",
                 "substitution_latex": "20562.9 \\cdot \\sqrt{1 + \\left((1.45335 - 1) \\cdot 0.000194457\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -10491,7 +10141,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 20692.4819203
                 },
-                "substitution": "20562.9 \\cdot \\sqrt{0.0126406 + 1}",
                 "substitution_latex": "20562.9 \\cdot \\sqrt{0.0126406 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -10506,7 +10155,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 24.5750623379
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 20562.9 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 20562.9 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -10545,7 +10193,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr1"
               },
@@ -10574,7 +10221,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr2"
               },
@@ -10603,7 +10249,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/wtg-tr3"
               },
@@ -10632,7 +10277,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00559337938841
                   }
                 },
-                "substitution": "\\left(0.00559338 + j 0.0205635\\right)",
                 "substitution_latex": "\\left(0.00559338 + j 0.0205635\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -10649,7 +10293,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 17758.8905314
                 },
-                "substitution": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0213106}",
                 "substitution_latex": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.0213106}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -10665,7 +10308,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.45334593956
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.272005}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.272005}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -10680,7 +10322,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 36500.5853876
                 },
-                "substitution": "1.45335 \\cdot \\sqrt{2} \\cdot 17758.9",
                 "substitution_latex": "1.45335 \\cdot \\sqrt{2} \\cdot 17758.9",
                 "title": "Pr\u0105d udarowy"
               },
@@ -10698,7 +10339,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 17758.8906004
                 },
-                "substitution": "17758.9 \\cdot \\sqrt{1 + \\left((1.45335 - 1) \\cdot 0.000194457\\right)^2}",
                 "substitution_latex": "17758.9 \\cdot \\sqrt{1 + \\left((1.45335 - 1) \\cdot 0.000194457\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -10714,7 +10354,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 17870.7798403
                 },
-                "substitution": "17758.9 \\cdot \\sqrt{0.0126406 + 1}",
                 "substitution_latex": "17758.9 \\cdot \\sqrt{0.0126406 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -10729,7 +10368,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 21.2239174736
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 17758.9 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 17758.9 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -11073,7 +10711,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.127716138797
                   }
                 },
-                "substitution": "\\left(0.127716 + j 0.928455\\right)",
                 "substitution_latex": "\\left(0.127716 + j 0.928455\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -11090,7 +10727,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 10164.6436671
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.937198}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.937198}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -11106,7 +10742,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.66864091037
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.137558}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.137558}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -11121,7 +10756,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 23986.6745922
                 },
-                "substitution": "1.66864 \\cdot \\sqrt{2} \\cdot 10164.6",
                 "substitution_latex": "1.66864 \\cdot \\sqrt{2} \\cdot 10164.6",
                 "title": "Pr\u0105d udarowy"
               },
@@ -11139,7 +10773,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 10165.0443753
                 },
-                "substitution": "10164.6 \\cdot \\sqrt{1 + \\left((1.66864 - 1) \\cdot 0.0132799\\right)^2}",
                 "substitution_latex": "10164.6 \\cdot \\sqrt{1 + \\left((1.66864 - 1) \\cdot 0.0132799\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -11155,7 +10788,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 10290.135332
                 },
-                "substitution": "10164.6 \\cdot \\sqrt{0.0248442 + 1}",
                 "substitution_latex": "10164.6 \\cdot \\sqrt{0.0248442 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -11170,7 +10802,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 264.085189085
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 10164.6 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 10164.6 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -11209,7 +10840,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.127716138797
                   }
                 },
-                "substitution": "\\left(0.127716 + j 0.928455\\right)",
                 "substitution_latex": "\\left(0.127716 + j 0.928455\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -11226,7 +10856,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 8778.55589435
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.937198}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.937198}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -11242,7 +10871,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.66864091037
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.137558}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.137558}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -11257,7 +10885,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 20715.7644206
                 },
-                "substitution": "1.66864 \\cdot \\sqrt{2} \\cdot 8778.56",
                 "substitution_latex": "1.66864 \\cdot \\sqrt{2} \\cdot 8778.56",
                 "title": "Pr\u0105d udarowy"
               },
@@ -11275,7 +10902,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 8778.90196047
                 },
-                "substitution": "8778.56 \\cdot \\sqrt{1 + \\left((1.66864 - 1) \\cdot 0.0132799\\right)^2}",
                 "substitution_latex": "8778.56 \\cdot \\sqrt{1 + \\left((1.66864 - 1) \\cdot 0.0132799\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -11291,7 +10917,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 8886.93505942
                 },
-                "substitution": "8778.56 \\cdot \\sqrt{0.0248442 + 1}",
                 "substitution_latex": "8778.56 \\cdot \\sqrt{0.0248442 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -11306,7 +10931,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 228.073572391
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8778.56 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8778.56 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -11650,7 +11274,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-pv"
               },
@@ -11679,7 +11302,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-wind"
               },
@@ -11708,7 +11330,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.000895204046042
                   }
                 },
-                "substitution": "\\left(0.000895204 + j 0.00424985\\right)",
                 "substitution_latex": "\\left(0.000895204 + j 0.00424985\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -11725,7 +11346,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 61955.3811649
                 },
-                "substitution": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00434311}",
                 "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00434311}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -11741,7 +11361,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.54093302843
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.210644}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.210644}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -11756,7 +11375,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 135013.686286
                 },
-                "substitution": "1.54093 \\cdot \\sqrt{2} \\cdot 61955.4",
                 "substitution_latex": "1.54093 \\cdot \\sqrt{2} \\cdot 61955.4",
                 "title": "Pr\u0105d udarowy"
               },
@@ -11774,7 +11392,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 61955.3973603
                 },
-                "substitution": "61955.4 \\cdot \\sqrt{1 + \\left((1.54093 - 1) \\cdot 0.00133668\\right)^2}",
                 "substitution_latex": "61955.4 \\cdot \\sqrt{1 + \\left((1.54093 - 1) \\cdot 0.00133668\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -11790,7 +11407,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 62457.4916297
                 },
-                "substitution": "61955.4 \\cdot \\sqrt{0.0162745 + 1}",
                 "substitution_latex": "61955.4 \\cdot \\sqrt{0.0162745 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -11805,7 +11421,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 42.923947192
                 },
-                "substitution": "\\sqrt{3} \\cdot 400 \\cdot 61955.4 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 61955.4 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -11844,7 +11459,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-pv"
               },
@@ -11873,7 +11487,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-wind"
               },
@@ -11902,7 +11515,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.000895204046042
                   }
                 },
-                "substitution": "\\left(0.000895204 + j 0.00424985\\right)",
                 "substitution_latex": "\\left(0.000895204 + j 0.00424985\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -11919,7 +11531,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 53979.29759
                 },
-                "substitution": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.00434311}",
                 "substitution_latex": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.00434311}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -11935,7 +11546,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.54093302843
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.210644}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.210644}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -11950,7 +11560,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 117632.13806
                 },
-                "substitution": "1.54093 \\cdot \\sqrt{2} \\cdot 53979.3",
                 "substitution_latex": "1.54093 \\cdot \\sqrt{2} \\cdot 53979.3",
                 "title": "Pr\u0105d udarowy"
               },
@@ -11968,7 +11577,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 53979.3117003
                 },
-                "substitution": "53979.3 \\cdot \\sqrt{1 + \\left((1.54093 - 1) \\cdot 0.00133668\\right)^2}",
                 "substitution_latex": "53979.3 \\cdot \\sqrt{1 + \\left((1.54093 - 1) \\cdot 0.00133668\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -11984,7 +11592,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 54416.7667765
                 },
-                "substitution": "53979.3 \\cdot \\sqrt{0.0162745 + 1}",
                 "substitution_latex": "53979.3 \\cdot \\sqrt{0.0162745 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -11999,7 +11606,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 37.3979543931
                 },
-                "substitution": "\\sqrt{3} \\cdot 400 \\cdot 53979.3 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 53979.3 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -12082,7 +11688,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-pv"
               },
@@ -12111,7 +11716,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-wind"
               },
@@ -12140,7 +11744,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.130054806637
                   }
                 },
-                "substitution": "\\left(0.130055 + j 0.896635\\right)",
                 "substitution_latex": "\\left(0.130055 + j 0.896635\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -12157,7 +11760,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 10606.8280222
                 },
-                "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.906018}",
                 "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{0.906018}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -12173,7 +11775,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.65422859843
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.145048}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.145048}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -12188,7 +11789,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 24813.9584003
                 },
-                "substitution": "1.65423 \\cdot \\sqrt{2} \\cdot 10606.8",
                 "substitution_latex": "1.65423 \\cdot \\sqrt{2} \\cdot 10606.8",
                 "title": "Pr\u0105d udarowy"
               },
@@ -12206,7 +11806,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 10607.0780661
                 },
-                "substitution": "10606.8 \\cdot \\sqrt{1 + \\left((1.65423 - 1) \\cdot 0.0104955\\right)^2}",
                 "substitution_latex": "10606.8 \\cdot \\sqrt{1 + \\left((1.65423 - 1) \\cdot 0.0104955\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -12222,7 +11821,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 10731.0926472
                 },
-                "substitution": "10606.8 \\cdot \\sqrt{0.0235683 + 1}",
                 "substitution_latex": "10606.8 \\cdot \\sqrt{0.0235683 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -12237,7 +11835,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 275.573475624
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 10606.8 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 10606.8 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -12276,7 +11873,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-pv"
               },
@@ -12305,7 +11901,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-wind"
               },
@@ -12334,7 +11929,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.130054806637
                   }
                 },
-                "substitution": "\\left(0.130055 + j 0.896635\\right)",
                 "substitution_latex": "\\left(0.130055 + j 0.896635\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -12351,7 +11945,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 9173.03911595
                 },
-                "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.906018}",
                 "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.906018}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -12367,7 +11960,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.65422859843
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.145048}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.145048}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -12382,7 +11974,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 21459.7060074
                 },
-                "substitution": "1.65423 \\cdot \\sqrt{2} \\cdot 9173.04",
                 "substitution_latex": "1.65423 \\cdot \\sqrt{2} \\cdot 9173.04",
                 "title": "Pr\u0105d udarowy"
               },
@@ -12400,7 +11991,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 9173.25535991
                 },
-                "substitution": "9173.04 \\cdot \\sqrt{1 + \\left((1.65423 - 1) \\cdot 0.0104955\\right)^2}",
                 "substitution_latex": "9173.04 \\cdot \\sqrt{1 + \\left((1.65423 - 1) \\cdot 0.0104955\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -12416,7 +12006,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 9280.50614222
                 },
-                "substitution": "9173.04 \\cdot \\sqrt{0.0235683 + 1}",
                 "substitution_latex": "9173.04 \\cdot \\sqrt{0.0235683 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -12431,7 +12020,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 238.32254713
                 },
-                "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9173.04 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9173.04 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -12514,7 +12102,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-pv"
               },
@@ -12543,7 +12130,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-wind"
               },
@@ -12572,7 +12158,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00295873412127
                   }
                 },
-                "substitution": "\\left(0.00295873 + j 0.0111573\\right)",
                 "substitution_latex": "\\left(0.00295873 + j 0.0111573\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -12589,7 +12174,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 38216.252132
                 },
-                "substitution": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.011543}",
                 "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.011543}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -12605,7 +12189,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.46230692329
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.265183}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.265183}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -12620,7 +12203,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 79031.7552617
                 },
-                "substitution": "1.46231 \\cdot \\sqrt{2} \\cdot 38216.3",
                 "substitution_latex": "1.46231 \\cdot \\sqrt{2} \\cdot 38216.3",
                 "title": "Pr\u0105d udarowy"
               },
@@ -12638,7 +12220,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 38216.252369
                 },
-                "substitution": "38216.3 \\cdot \\sqrt{1 + \\left((1.46231 - 1) \\cdot 0.000240939\\right)^2}",
                 "substitution_latex": "38216.3 \\cdot \\sqrt{1 + \\left((1.46231 - 1) \\cdot 0.000240939\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -12654,7 +12235,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 38463.1213333
                 },
-                "substitution": "38216.3 \\cdot \\sqrt{0.0129613 + 1}",
                 "substitution_latex": "38216.3 \\cdot \\sqrt{0.0129613 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -12669,7 +12249,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 45.6728183535
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 38216.3 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 38216.3 / 10^6",
                 "title": "Moc zwarciowa"
               }
@@ -12708,7 +12287,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-pv"
               },
@@ -12737,7 +12315,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.0125425098123
                   }
                 },
-                "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.0585712}",
                 "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr-wind"
               },
@@ -12766,7 +12343,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                     "re": 0.00295873412127
                   }
                 },
-                "substitution": "\\left(0.00295873 + j 0.0111573\\right)",
                 "substitution_latex": "\\left(0.00295873 + j 0.0111573\\right)",
                 "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
               },
@@ -12783,7 +12359,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ikss_a": 33039.4449049
                 },
-                "substitution": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.011543}",
                 "substitution_latex": "\\frac{0.95 \\cdot 690 \\cdot 0.57735}{0.011543}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
@@ -12799,7 +12374,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "kappa": 1.46230692329
                 },
-                "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.265183}",
                 "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.265183}",
                 "title": "Wsp\u00f3\u0142czynnik udaru"
               },
@@ -12814,7 +12388,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ip_a": 68326.0439744
                 },
-                "substitution": "1.46231 \\cdot \\sqrt{2} \\cdot 33039.4",
                 "substitution_latex": "1.46231 \\cdot \\sqrt{2} \\cdot 33039.4",
                 "title": "Pr\u0105d udarowy"
               },
@@ -12832,7 +12405,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ib_a": 33039.4451099
                 },
-                "substitution": "33039.4 \\cdot \\sqrt{1 + \\left((1.46231 - 1) \\cdot 0.000240939\\right)^2}",
                 "substitution_latex": "33039.4 \\cdot \\sqrt{1 + \\left((1.46231 - 1) \\cdot 0.000240939\\right)^2}",
                 "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
               },
@@ -12848,7 +12420,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "ith_a": 33252.8729864
                 },
-                "substitution": "33039.4 \\cdot \\sqrt{0.0129613 + 1}",
                 "substitution_latex": "33039.4 \\cdot \\sqrt{0.0129613 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
@@ -12863,7 +12434,6 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "result": {
                   "sk_mva": 39.4859380881
                 },
-                "substitution": "\\sqrt{3} \\cdot 690 \\cdot 33039.4 / 10^6",
                 "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 33039.4 / 10^6",
                 "title": "Moc zwarciowa"
               }

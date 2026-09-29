@@ -58,7 +58,11 @@ class ObciazenieAparatu(BaseModel):
 
 
 class SladKroku(BaseModel):
-    """Krok sladu WHITE BOX (kanon pieciu pol)."""
+    """Krok sladu WHITE BOX (kanon pieciu pol).
+
+    Kontrakt pol (karta DOWOD-CIEPLNY): zapis matematyczny WYLACZNIE w polach
+    ``*_latex`` (LaTeX goly, bez ``$$``); ``substitution`` i ``notes`` sa proza.
+    """
 
     step: int
     key: str
@@ -66,6 +70,7 @@ class SladKroku(BaseModel):
     formula_latex: str
     inputs: dict[str, Any]
     substitution: str = ""
+    substitution_latex: str | None = None
     result: dict[str, Any]
     notes: str = ""
 

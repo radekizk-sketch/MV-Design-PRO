@@ -182,19 +182,19 @@ def _slad_strat(
                 "step": 1,
                 "key": "trafo_moc_obciazenia",
                 "title": "Moc obciążenia przy zadanym współczynniku",
-                "formula_latex": r"$$S = \beta \cdot S_n$$",
+                "formula_latex": r"S = \beta \cdot S_n",
                 "inputs": {
                     "beta": wartosc(beta, "", "Współczynnik obciążenia"),
                     "sn_mva": wartosc(sn_mva, "MVA", "Moc znamionowa transformatora"),
                 },
-                "substitution": (
-                    r"$$S = "
+                "substitution_latex": (
+                    r"S = "
                     + liczba_tex(beta)
                     + r" \cdot "
                     + liczba_tex(sn_mva)
                     + r" = "
                     + liczba_tex(moc_obciazenia_mva)
-                    + r"\ \mathrm{MVA}$$"
+                    + r"\ \mathrm{MVA}"
                 ),
                 "result": {"moc_mva": wartosc(moc_obciazenia_mva, "MVA", "Moc obciążenia")},
                 "notes": "Krok informacyjny — nie wchodzi do rachunku strat.",
@@ -207,14 +207,14 @@ def _slad_strat(
             "step": numer,
             "key": "trafo_straty_calkowite",
             "title": "Straty transformatora przy zadanym obciążeniu",
-            "formula_latex": r"$$\Delta P(\beta) = P_0 + \beta^2 P_k$$",
+            "formula_latex": r"\Delta P(\beta) = P_0 + \beta^2 P_k",
             "inputs": {
                 "p0_kw": wartosc(p0_kw, "kW", "Straty jałowe (katalog)"),
                 "pk_kw": wartosc(pk_kw, "kW", "Straty obciążeniowe znamionowe (katalog)"),
                 "beta": wartosc(beta, "", "Współczynnik obciążenia"),
             },
-            "substitution": (
-                r"$$\Delta P = "
+            "substitution_latex": (
+                r"\Delta P = "
                 + liczba_tex(p0_kw)
                 + r" + "
                 + liczba_tex(beta)
@@ -222,7 +222,7 @@ def _slad_strat(
                 + liczba_tex(pk_kw)
                 + r" = "
                 + liczba_tex(straty_calkowite_kw)
-                + r"\ \mathrm{kW}$$"
+                + r"\ \mathrm{kW}"
             ),
             "result": {
                 "straty_obciazeniowe_kw": wartosc(
@@ -242,19 +242,18 @@ def _slad_strat(
             "step": numer + 1,
             "key": "trafo_beta_optymalne",
             "title": "Optymalny współczynnik obciążenia",
-            "formula_latex": r"$$\beta_{opt} = \sqrt{\frac{P_0}{P_k}}$$",
+            "formula_latex": r"\beta_{opt} = \sqrt{\frac{P_0}{P_k}}",
             "inputs": {
                 "p0_kw": wartosc(p0_kw, "kW", "Straty jałowe"),
                 "pk_kw": wartosc(pk_kw, "kW", "Straty obciążeniowe znamionowe"),
             },
-            "substitution": (
-                r"$$\beta_{opt} = \sqrt{\frac{"
+            "substitution_latex": (
+                r"\beta_{opt} = \sqrt{\frac{"
                 + liczba_tex(p0_kw)
                 + r"}{"
                 + liczba_tex(pk_kw)
                 + r"}} = "
                 + liczba_tex(beta_opt)
-                + r"$$"
             ),
             "result": {
                 "beta_opt": wartosc(beta_opt, "", "Optymalny współczynnik obciążenia"),

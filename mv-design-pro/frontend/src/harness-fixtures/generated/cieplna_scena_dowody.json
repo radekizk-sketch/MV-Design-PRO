@@ -17,7 +17,6 @@
               "label": "Prąd zwarciowy gałęzi"
             }
           },
-          "substitution": "$$t_k = 1\\ \\mathrm{s}$$",
           "result": {
             "tk_s": {
               "value": 1.0,
@@ -25,7 +24,8 @@
               "label": "Czas trwania zwarcia"
             }
           },
-          "notes": "Aparat Sprzęgło Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s."
+          "notes": "Aparat Sprzęgło Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s.",
+          "substitution_latex": "t_k = 1\\ \\mathrm{s}"
         },
         {
           "step": 2,
@@ -56,7 +56,6 @@
               "label": "Prąd zwarciowy gałęzi"
             }
           },
-          "substitution": "$$t_k = 1\\ \\mathrm{s}$$",
           "result": {
             "tk_s": {
               "value": 1.0,
@@ -64,7 +63,8 @@
               "label": "Czas trwania zwarcia"
             }
           },
-          "notes": "Aparat Sprzęgło Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s."
+          "notes": "Aparat Sprzęgło Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s.",
+          "substitution_latex": "t_k = 1\\ \\mathrm{s}"
         },
         {
           "step": 2,

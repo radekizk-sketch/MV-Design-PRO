@@ -230,7 +230,7 @@ def _module_view(
     pst_i = _r(flicker_c * sn_mva / sk_mva)
     white_box = [
         _step(
-            "P_{st,i}",
+            "P_st,i",
             r"P_{st,i} = c_i \cdot \dfrac{S_{n,i}}{S_{k}''}",
             f"P_st_i = {flicker_c:g} · {sn_mva:g} / {sk_mva:g} MVA",
             f"P_st_i = {pst_i}",
@@ -306,7 +306,7 @@ def _bus_entry(
         terms = " + ".join(f"{value:g}^{m}" for value in pst_contribs)
         white_box.append(
             _step(
-                "P_{st}",
+                "P_st",
                 r"P_{st} = \left( \sum_i P_{st,i}^{\,m} \right)^{1/m}, \quad m = 3",
                 f"P_st = ({terms})^(1/{m})",
                 f"P_st = {pst}",
@@ -314,7 +314,7 @@ def _bus_entry(
         )
         white_box.append(
             _step(
-                "P_{lt}",
+                "P_lt",
                 r"P_{lt} = P_{st}",
                 f"P_lt = P_st = {pst} (emisja ciągła, założenie konserwatywne)",
                 f"P_lt = {plt}",

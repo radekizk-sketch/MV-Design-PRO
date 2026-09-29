@@ -23,6 +23,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { otworzAnalize, uruchomAnalize, wypelnijUziomIPotwierdz } from './formularzV126';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const BAZA = adresHarnessu('creator-harness.html');
@@ -66,6 +67,7 @@ test.describe('V126-JEZYK — zrzuty okna analiz specjalistycznych', () => {
         }
 
         fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+        await bramkaTresciMatematycznej(page);
         await page.screenshot({
           path: path.join(OUTPUT_DIR, `v126-jezyk-${widok.nazwa}-${motyw}.png`),
           fullPage: true,

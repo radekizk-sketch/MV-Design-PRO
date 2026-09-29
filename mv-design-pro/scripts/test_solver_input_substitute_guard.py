@@ -1876,7 +1876,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta PROOFPACK-KONTRAKT (2026-09-25): 552 -> 553 (+1 `application/proof_engine/
         # packs/audit2_skladanie.py` — skladanie pakietu dowodow audytu 2). POMIAR guardem.
         # Partia integracji 5: 552 + 3 (AB-P1) + 1 (PROOFPACK) = 556. POMIAR guardem.
-        "Przeskanowano 556 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta DOWOD-CIEPLNY: 556 + 1 (`application/slad_kroku.py`, zero wpisow) = 557.
+        "Przeskanowano 557 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2089,7 +2090,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # 3/6 -> 2/3 (wpis `api/audit2_station_config.py` zdjety). POMIAR guardem.
         # Partia integracji 5: application 242 + 1 (AB-P1) + 1 (PROOFPACK) = 244; api pliki 64
         # (AB-P1), dlug 2/3 (PROOFPACK). POMIAR guardem na drzewie partii.
-        "  application: pliki_skanowane=244, dlug=30 plikow/suma 91, "
+        # Karta DOWOD-CIEPLNY: application 244 -> 245 (+1 `application/slad_kroku.py`);
+        # dlug i wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        "  application: pliki_skanowane=245, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=6 plikow/suma 15",
     ]

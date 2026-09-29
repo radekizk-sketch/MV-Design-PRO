@@ -229,9 +229,12 @@ def test_kroki_dowodowe_niosa_te_same_liczby_co_pozycja_wyniku() -> None:
     )
     # Kanon pieciu pol: wzor, dane, podstawienie, wynik, uwagi.
     for krok in pozycja.kroki_dowodu:
-        assert krok["formula_latex"].startswith("$$")
+        # Kontrakt pól kroku (karta DOWOD-CIEPLNY): podstawienie to LaTeX goły w
+        # `substitution_latex`; pole prozy `substitution` nie niesie zapisu LaTeX.
+        assert krok["formula_latex"] and "$" not in krok["formula_latex"]
         assert krok["inputs"] and krok["result"]
-        assert krok["substitution"] and krok["notes"]
+        assert krok["substitution_latex"] and "$" not in krok["substitution_latex"]
+        assert "substitution" not in krok and krok["notes"]
 
     # Bilans energii: I²t = 15000² * 0,25 = 5,625e7 A²s; k²S² = 8000² = 6,4e7 A²s.
     assert pozycja.i2t_a2s == pytest.approx(56_250_000.0)

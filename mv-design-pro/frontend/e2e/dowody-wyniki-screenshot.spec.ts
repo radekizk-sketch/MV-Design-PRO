@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { nazwaElementu } from './nazwyModelu';
 import { wybierzElementOdbioru } from './odbiorPomiary';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -459,6 +460,7 @@ test.describe('dowody-wyniki:screenshot', () => {
         expect(errs, `no console/page errors for ${scena}/${theme}`).toEqual([]);
 
         const outPath = path.join(OUTPUT_DIR, `dowod_${scena}_${theme}.png`);
+        await bramkaTresciMatematycznej(page);
         await root.screenshot({ path: outPath });
         expect(fs.existsSync(outPath)).toBe(true);
       });

@@ -28,7 +28,8 @@ const tracePayload: ExtendedTrace = {
         r_ohm: { value: 0.12, unit: 'Ω' },
         x_ohm: { value: 0.08, unit: 'Ω' },
       },
-      substitution: 'Z_k = 0.12 + j0.08\\,\\Omega',
+      // Kontrakt pól kroku (karta DOWOD-CIEPLNY): LaTeX podstawienia w `substitution_latex`.
+      substitution_latex: 'Z_k = 0.12 + j0.08\\,\\Omega',
       result: {
         z_equiv_ohm: { re: 0.07577657110710738, im: 0.029949123506463678 },
         z_equiv_abs_ohm: { value: 0.081478, unit: 'Ω' },
@@ -128,6 +129,48 @@ describe('ElementCalculationProofPanel', () => {
     expect(renderedText).not.toContain('"im"');
     expect(renderedText).not.toContain('"re"');
     expect(renderedText).not.toContain('white-box');
+  });
+
+  it('kontrakt pól kroku: LaTeX tylko z substitution_latex, proza substitution tekstem', async () => {
+    // Iloczyn cech (karta DOWOD-CIEPLNY): krok z LaTeX-em podstawienia × krok z samą prozą.
+    // Proza NIGDY nie idzie przez KaTeX (inaczej zdanie zlepia się w ciąg matematyczny),
+    // a LaTeX nigdy nie jest pokazywany jako surowy tekst.
+    mockAnalysisFetch({
+      ...tracePayload,
+      white_box_trace: [
+        {
+          key: 'krok-latex',
+          title: 'Krok z zapisem matematycznym',
+          target_id: 'bus-sn-1',
+          substitution_latex: '\\frac{1{,}1 \\cdot 15}{2}',
+        },
+        {
+          key: 'krok-proza',
+          title: 'Krok z opisem metody',
+          target_id: 'bus-sn-1',
+          substitution: 'Brak drogi prądu zerowego — wartość nie wyznaczona.',
+        },
+      ],
+      selection_index: { 'bus-sn-1': 0 },
+    });
+
+    render(
+      <ElementCalculationProofPanel
+        runId="run-1"
+        selectedElement={{ id: 'bus-sn-1', name: 'Szyna SN 1', type: 'Bus' }}
+      />,
+    );
+
+    const kroki = await screen.findAllByTestId('element-proof-trace-step');
+    expect(kroki).toHaveLength(2);
+    const latexy = Array.from(kroki[0].querySelectorAll('[data-latex]')).map((el) =>
+      el.getAttribute('data-latex'),
+    );
+    expect(latexy).toContain('\\frac{1{,}1 \\cdot 15}{2}');
+    expect(kroki[0].querySelector('[data-testid="element-proof-substitution-text"]')).toBeNull();
+    const proza = kroki[1].querySelector('[data-testid="element-proof-substitution-text"]');
+    expect(proza?.textContent).toContain('Brak drogi prądu zerowego');
+    expect(kroki[1].querySelector('[data-latex]')).toBeNull();
   });
 
   it('nie zastępuje braku wyniku zwarciowego fałszywym zerem', async () => {

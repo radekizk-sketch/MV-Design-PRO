@@ -815,6 +815,9 @@ def _trace_jsonl_lines(trace_payload: dict[str, Any]) -> list[str]:
                         "formula_latex": step.get("formula_latex"),
                         "inputs": step.get("inputs"),
                         "substitution": step.get("substitution"),
+                        # Kontrakt pol kroku (karta DOWOD-CIEPLNY): zapis LaTeX
+                        # podstawienia zyje w `substitution_latex` — eksport go niesie.
+                        "substitution_latex": step.get("substitution_latex"),
                         "result": step.get("result"),
                         "proof_ref": step.get("proof_ref"),
                         "proof_status": step.get("proof_status"),
@@ -1604,9 +1607,12 @@ def export_run_trace_pdf_response(
                 max_chars=110,
                 line_height=4 * mm,
             )
-        if step.get("substitution"):
+        # Ta sama regula co `_krok_wywodu_linie`: zapis LaTeX podstawienia
+        # (`substitution_latex`) ma pierwszenstwo przed proza (`substitution`).
+        podstawienie = step.get("substitution_latex") or step.get("substitution")
+        if podstawienie:
             draw_wrapped(
-                f"Podstawienie: {step.get('substitution')}",
+                f"Podstawienie: {podstawienie}",
                 font_name="DejaVuSans",
                 font_size=8,
                 max_chars=110,

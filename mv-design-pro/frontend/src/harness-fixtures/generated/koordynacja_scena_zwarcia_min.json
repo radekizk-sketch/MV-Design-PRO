@@ -754,7 +754,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "f38174868bb63879a2b18f8f03f6180a4cee4a1c8469cabe86b60c3508509fb0",
-      "result_hash": "b05c82011ca38810362cfb32a4f4b858eb681120530a9795d5a69efaa56aec93",
+      "result_hash": "603585d6d0430e6389ec9565588057169fab5bdbc0c51218639ed531bd10b5e4",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
