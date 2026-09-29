@@ -367,6 +367,9 @@ def _zastosuj_szablon_pod_blokada(
     # rozdzielnicę. Stacja dystrybucyjna (A) i złącze z pętlą OSD (C) zostają
     # przy wcięciu w odcinek.
     klasa = _klasa_przylaczenia(sn_bay_roles)
+    wspolny_aparat_pol = _wspolny_aparat_pol_sn(
+        template, overrides=overrides, catalog_profile=catalog_profile
+    )
     if klasa == "B":
         enm_dict, station_ref, nn_bus_ref, new_ids = _zabuduj_stacje_w_odgalezieniu(
             enm_dict=enm_dict,
@@ -379,6 +382,7 @@ def _zastosuj_szablon_pod_blokada(
             sn_field_specs=sn_field_specs,
             nn_block_spec=nn_block_spec,
             operations_log=operations_log,
+            wspolny_aparat_pol=wspolny_aparat_pol,
         )
     else:
         station_payload = {
@@ -388,6 +392,7 @@ def _zastosuj_szablon_pod_blokada(
             "transformer": transformer_spec,
             "sn_fields": sn_field_specs,
             "nn_block": nn_block_spec,
+            **({"field_apparatus_catalog_ref": wspolny_aparat_pol} if wspolny_aparat_pol else {}),
         }
 
         insert_result = execute_domain_operation(
@@ -778,6 +783,7 @@ def _zabuduj_stacje_w_odgalezieniu(
     sn_field_specs: list[dict[str, Any]],
     nn_block_spec: dict[str, Any],
     operations_log: list[dict[str, Any]],
+    wspolny_aparat_pol: str | None,
 ) -> tuple[dict[str, Any], str | None, str | None, list[str]]:
     """Stacja abonencka (klasa B) jako ODGAŁĘZIENIE od wskazanego odcinka.
 
@@ -930,6 +936,7 @@ def _zabuduj_stacje_w_odgalezieniu(
             "transformer": transformer_spec,
             "sn_fields": sn_field_specs,
             "nn_block": nn_block_spec,
+            **({"field_apparatus_catalog_ref": wspolny_aparat_pol} if wspolny_aparat_pol else {}),
         },
         kod_bledu="template.branch_station_failed",
         komunikat="Utworzenie stacji abonenckiej na końcu odgałęzienia nie powiodło się.",
@@ -1266,8 +1273,8 @@ def _resolve_sn_field_specs(
             role_options = getattr(role_spec, "apparatus_options", ()) if role_spec else ()
             apparatus_ref = _cascade_manufacturer_choice(
                 role_options, catalog_profile
-            ) or _cascade_manufacturer_choice(
-                template.schema.sn_bay_apparatus_options, catalog_profile
+            ) or _wspolny_aparat_pol_sn(
+                template, overrides=overrides, catalog_profile=catalog_profile
             )
         if not apparatus_ref:
             raise TemplateApplyError(
@@ -1298,6 +1305,20 @@ def _resolve_sn_field_specs(
             spec["rodzaj_pomiaru"] = "PODSTAWOWY"
         specs.append(spec)
     return specs
+
+
+def _wspolny_aparat_pol_sn(
+    template: StationTemplate, *, overrides: dict[str, Any], catalog_profile: str | None
+) -> str | None:
+    """Wspólny aparat pól SN szablonu: wskazanie projektanta (`sn_bay_apparatus_ref`) albo
+    wspólne opcje szablonu (kaskada producenta). Ten sam aparat jedzie w ładunku operacji
+    stacyjnej jako `field_apparatus_catalog_ref` — dostaje go pole, które operacja DOMYKA
+    (POLA-W-TORZE: pole transformatorowe dla transformatora szablonu, którego skład pól nie
+    deklaruje, np. blok transformatorowy magazynu energii)."""
+    override_ref = overrides.get("sn_bay_apparatus_ref")
+    if isinstance(override_ref, str) and override_ref.strip():
+        return override_ref.strip()
+    return _cascade_manufacturer_choice(template.schema.sn_bay_apparatus_options, catalog_profile)
 
 
 def _resolve_sn_bay_roles(template: StationTemplate, count: int) -> list[str]:

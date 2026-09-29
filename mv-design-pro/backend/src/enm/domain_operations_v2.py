@@ -85,7 +85,6 @@ from .domain_operations import (
     _require_transformer_fields,
     _response,
     _rodzaj_aparatu_sn_z_katalogu,
-    _station_has_transformer,
     blad_pomiaru_w_torze_tranzytu,
     rozstrzygnij_pomiar_pola,
     szyna_prowadzi_tranzyt_sn,
@@ -1478,35 +1477,6 @@ def _find_station_for_bus(enm: dict[str, Any], bus_ref: str) -> dict[str, Any] |
     return None
 
 
-def _has_transformer_in_path(enm: dict[str, Any], station: dict[str, Any]) -> bool:
-    """Sprawdź, czy stacja ma transformator w ścieżce zasilania."""
-    station_ref = station.get("ref_id") or station.get("id")
-    if _station_has_transformer(enm, station_ref):
-        return True
-
-    transformer_refs = {
-        ref for ref in station.get("transformer_refs", []) if isinstance(ref, str) and ref.strip()
-    }
-    station_bus_refs = {
-        ref for ref in station.get("bus_refs", []) if isinstance(ref, str) and ref.strip()
-    }
-    if not transformer_refs and not station_bus_refs:
-        return False
-
-    for transformer in enm.get("transformers", []):
-        if not isinstance(transformer, dict):
-            continue
-        transformer_ref = transformer.get("ref_id") or transformer.get("id")
-        if isinstance(transformer_ref, str) and transformer_ref in transformer_refs:
-            return True
-        if station_bus_refs and (
-            transformer.get("hv_bus_ref") in station_bus_refs
-            or transformer.get("lv_bus_ref") in station_bus_refs
-        ):
-            return True
-    return False
-
-
 def _indeks_transformatorow_wysp(enm: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     """Szyna → transformatory, których strona nN (`lv_bus_ref`) leży w tej samej WYSPIE
     galwanicznej co szyna: składowa spójna grafu gałęzi ENM (linie, kable, aparaty
@@ -1550,6 +1520,27 @@ def _indeks_transformatorow_wysp(enm: dict[str, Any]) -> dict[str, list[dict[str
     return indeks
 
 
+def transformatory_sciezki_zasilania(
+    enm: dict[str, Any],
+    bus_ref: str,
+    indeks: dict[str, list[dict[str, Any]]] | None = None,
+) -> list[dict[str, Any]]:
+    """JEDEN predykat ścieżki zasilania (karta POLA-W-TORZE §0 pkt 4): transformatory, których
+    strona dolna leży w tej samej WYSPIE galwanicznej co szyna (`_indeks_transformatorow_wysp`).
+
+    Zastąpił predykat przynależności („transformator należy do stacji, w której leży szyna"),
+    który (1) nie widział ścieżki przez podrozdzielnię nN zasilaną kablem nN i (2) przestałby
+    widzieć transformator przyłączony na zacisku pola transformatorowego. Graf jest
+    STRUKTURALNY — stan łącznika nie jest brany pod uwagę: brama pyta o projekt (czy źródło
+    leży po stronie dolnej transformatora), nie o stan łączeniowy studium; wyspę odciętą
+    otwartym łącznikiem pokazuje rozpływ (węzły nierozwiązane). Ta sama wyspa decyduje
+    o kontroli mocy transformatora O-53 (`_transformatory_zasilajace`).
+    """
+    if indeks is None:
+        indeks = _indeks_transformatorow_wysp(enm)
+    return list(indeks.get(bus_ref, ()))
+
+
 def _transformatory_zasilajace(
     enm: dict[str, Any],
     generator: dict[str, Any],
@@ -1578,9 +1569,7 @@ def _transformatory_zasilajace(
     szyna = generator.get("bus_ref")
     if wariant not in WARIANTY_PRZYLACZENIA_NN or not isinstance(szyna, str) or not szyna:
         return []
-    if indeks is None:
-        indeks = _indeks_transformatorow_wysp(enm)
-    return list(indeks.get(szyna, ()))
+    return transformatory_sciezki_zasilania(enm, szyna, indeks)
 
 
 def _moc_transformatorow_mva(transformatory: list[dict[str, Any]]) -> float | None:
@@ -6296,7 +6285,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         )
         if odmowa_pasma is not None:
             return odmowa_pasma
-    if connection_variant == "nn_side" and not _has_transformer_in_path(enm, station):
+    if connection_variant == "nn_side" and not transformatory_sciezki_zasilania(enm, bus_nn_ref):
         return _error_response(
             f"Źródło {technology} wymaga transformatora w ścieżce zasilania stacji.",
             f"{technology.lower()}.transformer_required",

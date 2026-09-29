@@ -36,7 +36,7 @@ from tests.reference_networks.sceny_zajetosci_pol import (
     OPERACJE,
     RODZAJE,
     STANY,
-    koniec_ciagu,
+    drugi_koniec_pierscienia,
     odcinek,
     ok,
     op,
@@ -46,7 +46,6 @@ from tests.reference_networks.sceny_zajetosci_pol import (
 _op = op
 _ok = ok
 _odcinek = odcinek
-_koniec_ciagu = koniec_ciagu
 _scena = zbuduj_scene
 
 #: Identyfikator w zdaniu dla projektanta = defekt (karta #144).
@@ -86,7 +85,11 @@ def _wykonaj(enm: dict[str, Any], operacja: str, field_ref: str) -> dict[str, An
     return _op(
         enm,
         "connect_secondary_ring_sn",
-        {"from_bus_ref": _koniec_ciagu(enm), "to_bus_ref": zacisk, "segment": _odcinek(400)},
+        {
+            "from_bus_ref": drugi_koniec_pierscienia(enm),
+            "to_bus_ref": zacisk,
+            "segment": _odcinek(400),
+        },
     )
 
 
@@ -106,8 +109,12 @@ def test_iloczyn_rodzaj_stan_operacja(rodzaj: str, stan: str, operacja: str) -> 
     scena = _scena(rodzaj, stan)
     _bez_dwoch_odcinkow_na_polu(scena.enm)
     if stan == "brak_pol":
-        assert scena.pola == [], "stan „brak pól” nie ma pola liniowego"
-        return
+        # Intencja: „brak pól” = żadnego WOLNEGO pola liniowego. GPZ i stacja końcowa nie mają
+        # wtedy pól liniowych wcale; stacja wstawiona w odcinek ma pole wyjściowe, ale zajęte
+        # dalszą połówką odcinka (POLA-W-TORZE) — każda operacja przyłączenia z niego = odmowa.
+        assert all(zajetosc_pola(scena.enm, p).zajete for p in scena.pola), scena.pola
+        if rodzaj != "stacja_na_odcinku":
+            assert scena.pola == [], "stan „brak pól” nie ma pola liniowego"
 
     for field_ref in scena.pola:
         przed = zajetosc_pola(scena.enm, field_ref)
@@ -141,9 +148,19 @@ def test_iloczyn_rodzaj_stan_operacja(rodzaj: str, stan: str, operacja: str) -> 
 
 def test_dowod_s95start_dwa_kable_z_jednego_pola_stacji_odrzucone() -> None:
     """Dowód z karty S95-START jako test: drugi odcinek z tego samego pola wyjściowego stacji
-    kończył się sukcesem (czerwony na bazie `9215e42c`), teraz nazwana odmowa."""
+    kończył się sukcesem (czerwony na bazie `9215e42c`), teraz nazwana odmowa.
+
+    POLA-W-TORZE: pole wyjściowe stacji wstawionej w odcinek niesie dalszą połówkę odcinka od
+    chwili powstania stacji (już pierwszy kabel z niego to drugi kabel na polu) — dowód
+    prowadzimy na WOLNYM polu liniowym stacji, a zajętość pola wyjściowego przypinamy wprost."""
     scena = _scena("stacja_na_odcinku", "wolne_kilka")
-    pole_wy = next(p for p in scena.pola if zajetosc_pola(scena.enm, p).bay_role == "OUT")
+    wyjsciowe = next(p for p in scena.pola if zajetosc_pola(scena.enm, p).bay_role == "OUT")
+    assert zajetosc_pola(scena.enm, wyjsciowe).odcinki_fizyczne
+    odmowa = _op(
+        scena.enm, "continue_trunk_segment_sn", {"field_ref": wyjsciowe, "segment": _odcinek()}
+    )
+    assert odmowa.get("error_code") == KOD_POLE_ZAJETE
+    pole_wy = scena.wolne_na_starcie[0]
     pierwszy = _ok(
         _op(scena.enm, "continue_trunk_segment_sn", {"field_ref": pole_wy, "segment": _odcinek()})
     )
@@ -189,7 +206,8 @@ def test_walidator_e022_stan_zastany_dwa_odcinki_na_polu() -> None:
     from domain.readiness_bridge import ODWZOROWANIE_WALIDATOR_NA_KANON
 
     scena = _scena("stacja_na_odcinku", "wolne_kilka")
-    pole_wy = next(p for p in scena.pola if zajetosc_pola(scena.enm, p).bay_role == "OUT")
+    # POLA-W-TORZE: pierwsze WOLNE pole liniowe (pole wyjściowe niesie połówkę odcinka).
+    pole_wy = scena.wolne_na_starcie[0]
     enm = _ok(
         _op(scena.enm, "continue_trunk_segment_sn", {"field_ref": pole_wy, "segment": _odcinek()})
     )
@@ -231,8 +249,11 @@ def test_model_odczytu_line_fields_to_ta_sama_funkcja(rodzaj: str, stan: str) ->
         assert widok[ref]["segment_refs"] == list(z.odcinki_fizyczne)
         assert widok[ref]["station_ref"] == z.station_ref
     for field_ref in scena.pola:
-        oczekiwane = stan == "zajete_wszystkie" or (
-            stan == "wolne_jedno" and field_ref != scena.pola[-1]
+        # Pole zajęte od początku (pole wyjściowe stacji wstawionej w odcinek) zostaje zajęte;
+        # z pól wolnych stan zajmuje wszystkie albo wszystkie poza ostatnim.
+        oczekiwane = field_ref not in scena.wolne_na_starcie or (
+            stan == "zajete_wszystkie"
+            or (stan == "wolne_jedno" and field_ref != scena.wolne_na_starcie[-1])
         )
         assert widok[field_ref]["occupied"] is oczekiwane
 

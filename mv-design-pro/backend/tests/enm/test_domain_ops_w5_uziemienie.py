@@ -161,9 +161,12 @@ def _stacja(snap: dict[str, Any], nn_earthing: dict[str, Any] | None) -> dict[st
             "sn_voltage_kv": 15.0,
             "nn_voltage_kv": 0.4,
         },
+        # POLA-W-TORZE: pole wyjściowe niesie dalszą połówkę odcinka (zajęte) — odgałęzienie
+        # ze stacji (test ekranu kabla odgałęzienia) wychodzi z wolnego pola odgałęźnego.
         "sn_fields": [
             {"field_role": "LINIA_IN"},
             {"field_role": "LINIA_OUT"},
+            {"field_role": "LINIA_ODG"},
             {"field_role": "TRANSFORMATOROWE"},
         ],
         "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO_630},
