@@ -104,3 +104,10 @@ jobs:
       - name: Werdykt Wyjasnialny Guard
         working-directory: mv-design-pro
         run: python scripts/werdykt_wyjasnialny_guard.py
+      # Karta DOWOD-CIEPLNY: kontrakt kroku sladu WHITE BOX — pole prozy (`substitution`,
+      # `notes`, `title`, `symbol`, `*_pl`) bez zapisu LaTeX, pola `*_latex` bez `$$`.
+      # Korpus: wyjscie generatorow fikstur frontu (JSON + moduly GENERATED TS); lista
+      # dozwolona pusta. Przebieg producentow: backend/tests/ci/test_slad_proza_bez_latex.py.
+      - name: Slad Proza Bez LaTeX Guard
+        working-directory: mv-design-pro
+        run: python scripts/slad_proza_bez_latex_guard.py

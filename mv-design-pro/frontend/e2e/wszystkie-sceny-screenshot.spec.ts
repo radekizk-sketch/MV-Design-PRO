@@ -20,6 +20,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { zbierajNieudaneZadaniaApi } from './nieudaneZadaniaApi';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -173,6 +174,7 @@ test.describe('sceny:screenshot', () => {
         }
 
         await page.waitForTimeout(250);
+        await bramkaTresciMatematycznej(page);
         await root.screenshot({ path: path.join(OUTPUT_DIR, `scena_${scena}_${theme}.png`) });
 
         if (errs.length > 0) console.log(`[${scena}/${theme}] errors:\n${errs.join('\n')}`);
@@ -270,6 +272,7 @@ test.describe('koordynacja:screenshot', () => {
       await expect(page.locator('svg').first()).toBeVisible({ timeout: 15000 });
       await page.waitForTimeout(400);
 
+      await bramkaTresciMatematycznej(page);
       await root.screenshot({ path: path.join(OUTPUT_DIR, `scena_koordynacja_${theme}.png`) });
 
       if (errs.length > 0) console.log(`[koordynacja/${theme}] errors:\n${errs.join('\n')}`);

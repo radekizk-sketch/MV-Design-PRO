@@ -437,7 +437,17 @@ function TraceStepCard({ step, index }: { step: TraceStep; index: number }) {
       <EquivalentImpedanceProof step={step} />
       <FormulaBlock label="Wzór" latex={step.formula_latex} />
       <TraceValuesTable title="Dane wejściowe" values={step.inputs} />
-      <FormulaBlock label="Podstawienie" latex={step.substitution} />
+      {/* Kontrakt pól kroku (karta DOWOD-CIEPLNY): LaTeX wyłącznie z
+          `substitution_latex`; `substitution` jest prozą i idzie tekstem. */}
+      <FormulaBlock label="Podstawienie" latex={step.substitution_latex} />
+      {!step.substitution_latex && step.substitution && (
+        <div className="space-y-1" data-testid="element-proof-substitution-text">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Podstawienie
+          </div>
+          <p className="text-[11px] text-slate-800">{step.substitution}</p>
+        </div>
+      )}
       <TraceValuesTable title="Wynik kroku" values={step.result} />
 
       {step.notes && (

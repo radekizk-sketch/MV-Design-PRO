@@ -25,6 +25,7 @@ from application.proof_engine.packs.phase_state_sn import (
     PhaseStateSNProofPack,
     PhaseStateSNProofPackInput,
 )
+from application.slad_kroku import kroki_zwarcia_w_kontrakcie
 from application.v126_artifacts import (
     build_v126_proof_artifact,
     build_v126_report_artifact,
@@ -2123,7 +2124,8 @@ def _policz_rozplyw_punktu_na_zadanie(
         )
     wklady = list(odtworzony.get(KLUCZ_ROZPLYWU) or [])
     slad_surowy = odtworzony.get(KLUCZ_SLADU_ROZPLYWU)
-    slad = list(slad_surowy) if slad_surowy is not None else None
+    # Kontrakt pol kroku sladu (karta DOWOD-CIEPLNY) — ta sama granica co bieg.
+    slad = kroki_zwarcia_w_kontrakcie(slad_surowy) if slad_surowy is not None else None
     with canonical_run_repository_scope() as repository:
         repository.zapisz_rozplyw_punktu(run.id, fault_node_id, wklady, slad)
     return wklady, slad
@@ -2211,6 +2213,12 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
             payload.pop(KLUCZ_ROZPLYWU, None)
             payload.pop(KLUCZ_SLADU_ROZPLYWU, None)
             payload[KLUCZ_DOSTEPNOSCI_ROZPLYWU] = True
+        # Kontrakt pol kroku sladu (karta DOWOD-CIEPLNY): granica aplikacji zdejmuje
+        # kopie LaTeX-u rdzenia B-01 z pola prozy `substitution` PO KLUCZU KROKU —
+        # wiersz wyniku i slad biegu dostaja te same kroki.
+        for klucz_sladu in ("white_box_trace", KLUCZ_SLADU_ROZPLYWU):
+            if payload.get(klucz_sladu) is not None:
+                payload[klucz_sladu] = kroki_zwarcia_w_kontrakcie(payload[klucz_sladu])
         node_trace_step_refs: list[int] = []
         for step_index, step in enumerate(payload.get("white_box_trace", []), start=1):
             node_context = graph_nodes.get(node_id, {})

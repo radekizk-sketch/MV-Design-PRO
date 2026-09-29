@@ -24,6 +24,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { zbierajNieudaneZadaniaApi } from './nieudaneZadaniaApi';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -193,6 +194,7 @@ test.describe('dowody-oze:screenshot', () => {
       await page.waitForTimeout(300);
       expect(errs, `zero błędów konsoli (lom/${theme})`).toEqual([]);
       const out = path.join(OUTPUT_DIR, `dowody_lom_${theme}.png`);
+      await bramkaTresciMatematycznej(page);
       await page.locator('[data-testid="creator-harness-root"]').screenshot({ path: out });
       expect(fs.existsSync(out)).toBe(true);
     });
@@ -230,6 +232,7 @@ test.describe('dowody-oze:screenshot', () => {
 
       await page.waitForTimeout(300);
       const outTraj = path.join(OUTPUT_DIR, `dowody_frt_trajektorie_${theme}.png`);
+      await bramkaTresciMatematycznej(page);
       await page.getByTestId('mvd-frt-wynik').screenshot({ path: outTraj });
       expect(fs.existsSync(outTraj)).toBe(true);
 
@@ -267,6 +270,7 @@ test.describe('dowody-oze:screenshot', () => {
       await page.waitForTimeout(300);
       expect(errs, `zero błędów konsoli (frt/${theme})`).toEqual([]);
       const outSekw = path.join(OUTPUT_DIR, `dowody_frt_sekwencja_${theme}.png`);
+      await bramkaTresciMatematycznej(page);
       await page.getByTestId('mvd-frt-sekwencja').screenshot({ path: outSekw });
       expect(fs.existsSync(outSekw)).toBe(true);
     });
@@ -294,6 +298,7 @@ test.describe('dowody-oze:screenshot', () => {
       await page.waitForTimeout(300);
       expect(errs, `zero błędów konsoli (oltc/${theme})`).toEqual([]);
       const out = path.join(OUTPUT_DIR, `dowody_oltc_sweep_${theme}.png`);
+      await bramkaTresciMatematycznej(page);
       await page.locator('[data-testid="creator-harness-root"]').screenshot({ path: out });
       expect(fs.existsSync(out)).toBe(true);
     });

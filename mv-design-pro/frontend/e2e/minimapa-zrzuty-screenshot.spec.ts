@@ -19,6 +19,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
@@ -201,6 +202,7 @@ test.describe('minimapa:zrzuty dokumentacyjne', () => {
       await expect(page.getByTestId('sld-v3-minimap-panel')).toBeVisible();
       await expect(page.getByTestId('sld-v3-minimap-frame')).toBeVisible();
       await page.waitForTimeout(300);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `sld-minimapa-${plik}.png`) });
 
       // Kadr 2: przybliżenie kamery + wskazanie w nawigatorze — kadr przenosi
@@ -217,6 +219,7 @@ test.describe('minimapa:zrzuty dokumentacyjne', () => {
       expect(panelBox).not.toBeNull();
       await page.mouse.click(panelBox!.x + panelBox!.width * 0.75, panelBox!.y + panelBox!.height * 0.5);
       await page.waitForTimeout(400);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `sld-minimapa-kadr-${plik}.png`) });
     });
   }

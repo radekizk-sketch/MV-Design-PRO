@@ -14,6 +14,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -65,11 +66,13 @@ test.describe('sld:substrate:screenshot', () => {
 
     // Capture full-page PNG
     const overviewPath = path.join(OUTPUT_DIR, 'sld_substrate_53_overview.png');
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({ path: overviewPath, fullPage: false });
     console.log(`Saved: ${overviewPath}`);
 
     // Also capture just the SVG canvas element
     const canvasPath = path.join(OUTPUT_DIR, 'sld_substrate_53_canvas_only.png');
+    await bramkaTresciMatematycznej(page);
     await canvas.screenshot({ path: canvasPath });
     console.log(`Saved: ${canvasPath}`);
 
@@ -93,6 +96,7 @@ test.describe('sld:substrate:screenshot', () => {
     await page.waitForTimeout(800);
 
     const widePath = path.join(OUTPUT_DIR, 'sld_substrate_53_1920x1080.png');
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({ path: widePath, fullPage: false });
     console.log(`Saved: ${widePath}`);
     expect(fs.existsSync(widePath)).toBe(true);
@@ -153,6 +157,7 @@ test.describe('sld:substrate:screenshot', () => {
     console.log(`L0: blocks=${blocks} aparatura=${detail} data-scene-lod=${lodAttr}`);
 
     const l0Path = path.join(OUTPUT_DIR, 'sld_substrate_53_L0.png');
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({ path: l0Path, fullPage: false });
     console.log(`Saved: ${l0Path}`);
 
@@ -182,12 +187,14 @@ test.describe('sld:substrate:screenshot', () => {
     console.log(`L2: blocks=${blocks} aparatura=${detail} data-scene-lod=${lodAttr}`);
 
     const l2Path = path.join(OUTPUT_DIR, 'sld_substrate_53_L2.png');
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({ path: l2Path, fullPage: false });
     console.log(`Saved: ${l2Path}`);
 
     // Also capture a clipped region centered on the content so individual
     // apparatus (fields WE/WY/TR, cable heads, results) is legible (zoomed detail).
     const l2DetailPath = path.join(OUTPUT_DIR, 'sld_substrate_53_L2_detail.png');
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({
       path: l2DetailPath,
       clip: { x: 560, y: 280, width: 800, height: 540 },

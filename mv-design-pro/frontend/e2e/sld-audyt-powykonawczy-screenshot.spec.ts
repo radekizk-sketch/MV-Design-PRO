@@ -26,6 +26,7 @@ import * as fs from 'node:fs';
 import * as zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('screenshot-harness.html');
@@ -164,6 +165,7 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
         await page.setViewportSize({ width: 1920, height: 1080 });
         const bledy = await otworzKanwe(page, lod, motyw);
 
+        await bramkaTresciMatematycznej(page);
         await page.screenshot({
           path: path.join(OUTPUT_DIR, `sld_L${lod}_${motyw}.png`),
           fullPage: false,
@@ -336,6 +338,7 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
         ).toBe(true);
       }
 
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `sld_szczegol_${obszar.plik}.png`),
         clip: kadr,

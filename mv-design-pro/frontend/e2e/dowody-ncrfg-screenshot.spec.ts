@@ -20,6 +20,7 @@ import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { zbierajNieudaneZadaniaApi } from './nieudaneZadaniaApi';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -106,6 +107,7 @@ async function zrzut(page: Page, errs: string[], nazwa: string): Promise<void> {
   const tresc = (await page.locator('[data-testid="creator-harness-root"]').textContent()) ?? '';
   expect(/Nie udało się/i.test(tresc), `${nazwa}: komunikat o niepowodzeniu na ekranie`).toBe(false);
   const out = path.join(OUTPUT_DIR, `${nazwa}.png`);
+  await bramkaTresciMatematycznej(page);
   await page.locator('[data-testid="creator-harness-root"]').screenshot({ path: out });
   expect(fs.existsSync(out)).toBe(true);
 }

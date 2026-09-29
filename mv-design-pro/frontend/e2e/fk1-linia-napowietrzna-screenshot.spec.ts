@@ -18,10 +18,14 @@
  * `conductor.thermal_data_missing`, DOKŁADNIE zgodnie z fixem tej karty
  * (jawny, nazwany powód zamiast milczącego domysłu) — ale bez PEŁNEGO dowodu
  * (materiał/rodzaj/granica temperatury), bo rachunku nie da się przeprowadzić
- * bez tego pola. Naprawa `golden_enm.py` NIE jest bezpieczna tu i teraz:
- * `tests/api/test_quality_analysis_runs_api.py:488` asertuje wprost
- * `status_ogolny == "UNAVAILABLE"` dla tej samej sieci — zmiana wymaga
- * osobnej, skoordynowanej karty (nazwana w meldunku). Mechanizm „przewód
+ * bez tego pola. Karta DOWOD-CIEPLNY (2026-09-25) zmierzyła przyczynę: pozycja
+ * `line-afl-70` NIE ISTNIEJE w katalogu (tak samo pozostałe sześć `catalog_ref`
+ * sieci złotej), a parametry elektryczne linii w budowniczym (0,306 Ω/km) nie
+ * odpowiadają żadnej pozycji katalogu. Wiązanie przez produkcyjną materializację
+ * (`line-base-al-st-70`, AFL 6 70/11) daje pełny dowód przewodu gołego, ale zmienia
+ * liczby rozpływu i zwarć sieci złotej (38 fikstur harnessu) — decyzja sesji
+ * głównej, nazwana w meldunku karty. Do tej decyzji spec przypina UCZCIWY stan
+ * „brak danych" i treść dowodu (wzór przez KaTeX, zero surowego LaTeX-u). Mechanizm „przewód
  * goły → pełny dowód z kompletnymi danymi" sam w sobie pozostaje pokryty
  * `backend/tests/network_model/solvers/test_line_thermal_chain.py` (zielony,
  * niezależny od tej sceny).
@@ -38,6 +42,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -79,6 +84,7 @@ test.describe('F-K1 faza 7 — linia napowietrzna w kryterium cieplnym', () => {
       // Kadr 1 — linia napowietrzna widoczna w tabeli oceny (uczciwy werdykt,
       // nie biały ekran, nie cichy pomin gałęzi napowietrznej).
       await expect(page.getByText(LINIA).first()).toBeVisible();
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `fk1_linia_ocena_${theme}.png`),
         fullPage: true,
@@ -97,6 +103,17 @@ test.describe('F-K1 faza 7 — linia napowietrzna w kryterium cieplnym', () => {
         page.getByText('Rachunku cieplnego nie przeprowadzono').first(),
       ).toBeVisible();
       await expect(page.getByTestId('mvd-jakosc-cieplna-material')).toHaveCount(0);
+      // Karta DOWOD-CIEPLNY: podstawienie kroku czasu idzie przez KaTeX (pole
+      // `substitution_latex`), nie jako surowy tekst `$$t_k = 1\ \mathrm{s}$$`.
+      const podstawienie = page.getByTestId('mvd-dowod-pole-podstawienie').first();
+      await expect(podstawienie).toBeVisible();
+      await expect(podstawienie.locator('[data-testid="math-rendered"]')).toHaveCount(1);
+      await expect(podstawienie.locator('[data-testid="math-rendered"]')).toHaveAttribute(
+        'data-latex',
+        't_k = 1\\ \\mathrm{s}',
+      );
+      await expect(page.getByTestId('mvd-dowod-pole-podstawienie-tekst')).toHaveCount(0);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `fk1_linia_dowod_${theme}.png`),
         fullPage: true,
