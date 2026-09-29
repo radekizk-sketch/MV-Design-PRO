@@ -46,6 +46,7 @@ from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     K_SC_ZRODLO_PRAD_NIEPOPRAWNY,
 )
 from network_model.core.ybus import AdmittanceMatrixBuilder
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
     impedancja_z_napiecia_i_mocy_ohm,
     ka_na_a,
@@ -425,7 +426,7 @@ def _assemble_zero_sequence_y0(
         to_id = ref_to_node_id.get(branch.to_bus_ref)
         if from_id is None or to_id is None:
             brakujaca = branch.from_bus_ref if from_id is None else branch.to_bus_ref
-            raise ValueError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
         if from_id not in node_index or to_id not in node_index:
             continue
         from_idx = node_index[from_id]
@@ -501,7 +502,7 @@ def _assemble_zero_sequence_y0(
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_id = ref_to_node_id.get(source.bus_ref)
         if bus_id not in node_index:
-            raise ValueError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
+            raise OdmowaDanychError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
         # Karta FAB-D1 (D7): `bus_voltage`/`ref_to_node_id` powstają z TEGO SAMEGO
         # `enm.buses` (w. 198-199), więc szyna, która przeszła kontrolę `bus_id
         # not in node_index` wyżej, ma zawsze wpis w `bus_voltage` — sentinel
@@ -564,7 +565,9 @@ def _assemble_zero_sequence_y0(
         lv_id = ref_to_node_id.get(trafo.lv_bus_ref)
         if hv_id is None or lv_id is None:
             brakujaca = trafo.hv_bus_ref if hv_id is None else trafo.lv_bus_ref
-            raise ValueError(_odmowa_elementu_bez_szyny("Transformator", trafo.ref_id, brakujaca))
+            raise OdmowaDanychError(
+                _odmowa_elementu_bez_szyny("Transformator", trafo.ref_id, brakujaca)
+            )
         if hv_id not in node_index or lv_id not in node_index:
             continue
         model = build_transformer_zero_seq_model(trafo)
@@ -622,7 +625,7 @@ def build_zero_sequence_zbus(
     """
     _, _, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph, scenario)
     if np.linalg.matrix_rank(y0_bus) < size:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Zero-sequence Y-bus is singular; cannot compute Z0-bus "
             "(sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia "
             "punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; "
@@ -632,7 +635,7 @@ def build_zero_sequence_zbus(
     try:
         return np.linalg.inv(y0_bus)
     except np.linalg.LinAlgError as exc:
-        raise ValueError("Zero-sequence Y-bus is singular; cannot compute Z0-bus") from exc
+        raise OdmowaDanychError("Zero-sequence Y-bus is singular; cannot compute Z0-bus") from exc
 
 
 def build_zero_sequence_trace(enm: EnergyNetworkModel, graph: NetworkGraph) -> list[dict]:
@@ -769,7 +772,7 @@ def _add_generator_sc_sources(
             continue
         node_id = ref_to_node_id.get(gen.bus_ref)
         if node_id is None:
-            raise ValueError(_odmowa_elementu_bez_szyny("Wytworca", gen.ref_id, gen.bus_ref))
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Wytworca", gen.ref_id, gen.bus_ref))
         mp = gen.materialized_params or {}
         un_kv = _gen_rated_voltage_kv(gen, mp, bus_voltage_by_ref)
         if un_kv is None:
@@ -1044,7 +1047,7 @@ def map_enm_to_network_graph(
         if not generator_reguluje_napiecie(gen):
             continue
         if gen.bus_ref in bus_voltage_control_gen_ref:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Szyna '{gen.bus_ref}' ma więcej niż jeden generator w trybie "
                 f"regulacji napięcia ('{bus_voltage_control_gen_ref[gen.bus_ref]}' i "
                 f"'{gen.ref_id}') — kontrakt rozpływu dopuszcza jedną nastawę "
@@ -1085,7 +1088,7 @@ def map_enm_to_network_graph(
             # (moduł I kąt) — nie może JEDNOCZEŚNIE być węzłem PV regulowanym przez
             # generator (dwie sprzeczne nastawy modułu napięcia tej samej szyny).
             if has_voltage_control:
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Szyna bilansująca '{bus.ref_id}' nie może być jednocześnie "
                     f"węzłem regulacji napięcia generatora "
                     f"'{bus_voltage_control_gen_ref[bus.ref_id]}' — szyna SLACK ma "
@@ -1141,7 +1144,7 @@ def map_enm_to_network_graph(
         to_id = ref_to_node_id.get(branch.to_bus_ref)
         if from_id is None or to_id is None:
             brakujaca = branch.from_bus_ref if from_id is None else branch.to_bus_ref
-            raise ValueError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
 
         branch_id = _ref_to_uuid(branch.ref_id)
 
@@ -1273,7 +1276,9 @@ def map_enm_to_network_graph(
         lv_id = ref_to_node_id.get(trafo.lv_bus_ref)
         if hv_id is None or lv_id is None:
             brakujaca = trafo.hv_bus_ref if hv_id is None else trafo.lv_bus_ref
-            raise ValueError(_odmowa_elementu_bez_szyny("Transformator", trafo.ref_id, brakujaca))
+            raise OdmowaDanychError(
+                _odmowa_elementu_bez_szyny("Transformator", trafo.ref_id, brakujaca)
+            )
 
         tap_changer = _map_tap_changer(trafo.tap_changer, ref_to_node_id)
         # G-STK-6: n identycznych jednostek równoległych → impedancja zastępcza
@@ -1325,7 +1330,7 @@ def map_enm_to_network_graph(
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_node_id = ref_to_node_id.get(source.bus_ref)
         if bus_node_id is None:
-            raise ValueError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
+            raise OdmowaDanychError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
 
         # Find bus voltage
         bus_voltage_kv = 0.0

@@ -49,6 +49,7 @@ from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.odmowa_danych import OdmowaDanychError
 
 router = APIRouter(tags=["analysis-insights"])
 
@@ -73,7 +74,7 @@ def get_sensitivity(
         return build_wrazliwosc_view(
             run, nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory)
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -89,7 +90,7 @@ def get_analysis_coverage(
         return build_pokrycie_view(
             case_id, nazwa_przypadku=nazwa_przypadku_z_bazy(case_id, uow_factory)
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -100,7 +101,7 @@ def get_analysis_coverage(
 def get_network_boundary(klucz: KluczTwin, case_id: str = Query(...)) -> dict[str, Any]:
     try:
         return build_granice_view(case_id, klucz)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -112,7 +113,7 @@ def get_n_1_contingency_scope(run_id: UUID = Query(...)) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
         return build_kontyngencje_n1_zakres_view(run)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -128,7 +129,7 @@ def get_n_1_contingency(
     run = _require_run(run_id)
     try:
         return build_kontyngencje_n1_view(run, element_refs=element_refs, uow_factory=uow_factory)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),

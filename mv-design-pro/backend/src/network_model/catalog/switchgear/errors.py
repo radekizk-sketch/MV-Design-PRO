@@ -6,8 +6,10 @@ i walidator rodziny — a te dwa moduły nie mogą importować się nawzajem.
 
 from __future__ import annotations
 
+from network_model.odmowa_danych import OdmowaDanychError
 
-class NiezgodnoscKonfiguracjiError(ValueError):
+
+class NiezgodnoscKonfiguracjiError(OdmowaDanychError):
     """Kombinacja spoza katalogu producenta — twardy błąd z polskim zdaniem.
 
     Reguła (`docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §4): zgodność

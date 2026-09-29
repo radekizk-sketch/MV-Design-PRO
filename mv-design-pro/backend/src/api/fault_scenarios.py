@@ -48,6 +48,7 @@ from domain.fault_scenario import (
 )
 from enm.scenariusze import znajdz_klucz_scenariusza
 from fastapi import APIRouter, HTTPException, Request, status
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["fault-scenarios"])
@@ -614,7 +615,7 @@ def create_run_from_scenario(
             "scenario_id": str(scenario.scenario_id),
         }
 
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),

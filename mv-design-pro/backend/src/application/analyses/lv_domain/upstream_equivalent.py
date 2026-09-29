@@ -52,6 +52,7 @@ from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from network_model.core.voltage_factor import c_for_node
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka, kv_na_v, moc_zwarciowa_z_pradu_mva
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
@@ -87,7 +88,7 @@ def _hv_zero_sequence_ohm(
     """
     try:
         graph = map_enm_to_network_graph(enm)
-    except ValueError:
+    except OdmowaDanychError:
         return None, "Topologia sieci SN niepoprawna — Z0 nieobliczalne."
     # Ta sama wyspa zasilania co dla Z1 (`compute_upstream_hv_thevenin`) —
     # węzły odcięte otwartym łącznikiem nie mogą czynić sieci osobliwą.
@@ -102,7 +103,7 @@ def _hv_zero_sequence_ohm(
         return None, "Szyna HV poza rozwiązywalną siecią — Z0 nieobliczalne."
     try:
         z0_bus = build_zero_sequence_zbus(enm, graph)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         return None, str(exc)
     z_base_ohm = builder.get_zbase_ohm(hv_node_id)
     z0_ohm = complex(z0_bus[node_index, node_index]) * z_base_ohm

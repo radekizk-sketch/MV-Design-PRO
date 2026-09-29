@@ -49,6 +49,7 @@ from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebi
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
 from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
+from network_model.odmowa_danych import OdmowaDanychError
 
 # --- Stałe normatywne (KAŻDA ze źródłem powyżej w docstringu modułu) -----------
 
@@ -387,12 +388,12 @@ def build_migotanie_view(run: CanonicalRun) -> dict[str, Any]:
             nie został zakończony — komunikat w języku polskim.
     """
     if run.analysis_type != "short_circuit_sn":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Ocena migotania (Pst/Plt) wymaga przebiegu zwarciowego; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )

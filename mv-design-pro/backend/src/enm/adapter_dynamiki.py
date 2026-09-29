@@ -113,6 +113,7 @@ from enm.scenariusze import UtrataCzesciowaZrodla as UtrataCzesciowaZrodlaScenar
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.switch import SwitchState
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import impedancja_z_napiecia_i_mocy_ohm
 from network_model.solvers.dynamika import (
     GalazDynamiki,
@@ -244,7 +245,7 @@ KODY_ODMOW_ADAPTERA: tuple[str, ...] = (
 )
 
 
-class OdmowaWejsciaDynamiki(ValueError):
+class OdmowaWejsciaDynamiki(OdmowaDanychError):
     """Nazwana odmowa złożenia wejścia biegu dynamiki (kod + elementy blokujące).
 
     Ta sama droga odmowy, co `OdmowaWejsciaRozplywu` w assemblerze rozpływu:

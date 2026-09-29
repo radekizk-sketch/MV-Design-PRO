@@ -96,6 +96,7 @@ from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu
 from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
+from network_model.odmowa_danych import OdmowaDanychError
 
 #: Rodzaje gałęzi ENM kwalifikowane jako "linia chroniona" — mają impedancję
 #: jednostkową, długość i mogą nieść dane katalogowe cieplne (F-K1). Aparat
@@ -108,7 +109,7 @@ RODZAJE_LINII: frozenset[str] = frozenset({"line_overhead", "cable"})
 C_MAX_MIN_DOPUSZCZALNY = 1.0
 
 
-class BrakDanychNastawError(ValueError):
+class BrakDanychNastawError(OdmowaDanychError):
     """Zbiorczego biegu nastaw nie da się złożyć dla podanych parametrów (powód PL).
 
     Brama pakietu dowodowego (`pakiet_nastaw.py`) tłumaczy ten wyjątek na odpowiedź

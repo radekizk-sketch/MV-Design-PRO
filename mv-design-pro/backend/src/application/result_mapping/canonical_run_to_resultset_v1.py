@@ -12,12 +12,13 @@ from application.analyses.opis_przebiegu import stan_przebiegu_pl
 from domain.result_builder_v1 import build_resultset_v1
 from domain.result_contract_v1 import ResultSetV1
 from enm.canonical_analysis import CanonicalRun, build_execution_result_set
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 def build_resultset_v1_from_canonical_run(run: CanonicalRun) -> ResultSetV1:
     """Zbuduj zamrożony ``ResultSetV1`` dla zakończonego przebiegu."""
     if run.status != "FINISHED":
-        raise ValueError(f"Wyniki niedostępne — przebieg {stan_przebiegu_pl(run.status)}.")
+        raise OdmowaDanychError(f"Wyniki niedostępne — przebieg {stan_przebiegu_pl(run.status)}.")
 
     result_set = build_execution_result_set(run)
     element_results_raw = [

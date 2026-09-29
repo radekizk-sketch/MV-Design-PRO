@@ -42,12 +42,13 @@ from enm.models import (
 )
 from enm.nazwy_elementow import nazwa_elementu
 from network_model.core.topologia import przeglad_wszerz, sciezka_do
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_builder import RouteSegmentImpedance
 
 Odcinek: TypeAlias = Cable | FuseBranch | OverheadLine | SwitchBranch
 
 
-class RouteExtractionError(ValueError):
+class RouteExtractionError(OdmowaDanychError):
     """Trasa do punktu zwarcia niedostępna albo dane pętli niekompletne."""
 
 

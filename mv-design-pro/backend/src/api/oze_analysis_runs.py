@@ -98,6 +98,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.repository import get_default_mv_catalog
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, ConfigDict, Field
 
 router = APIRouter(tags=["oze-analysis"])
@@ -171,7 +172,7 @@ def get_grid_strength(run_id: UUID = Query(...)) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
         return build_grid_strength_view(run)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -183,7 +184,7 @@ def get_reactive_adequacy(run_id: UUID = Query(...)) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
         return build_reactive_adequacy_view(run)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -207,7 +208,7 @@ def get_hosting_capacity(
             max_steps=max_steps,
             uow_factory=uow_factory,
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -235,7 +236,7 @@ def get_pq_area(
             max_steps_q=max_steps_q,
             uow_factory=uow_factory,
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -257,7 +258,7 @@ def get_compensation_sizing(
             cos_phi_min=cos_phi_min,
             uwzglednij_noc=uwzglednij_noc,
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -285,7 +286,7 @@ def get_frt_trajectories(
         ) from exc
     try:
         return build_frt_trajectories_view(converter, profile, test_kind)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -305,7 +306,7 @@ def _parse_sekwencja(raw: str) -> list[tuple[float, float]]:
         segment = segment.strip()
         parts = segment.split(":")
         if len(parts) != 2:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Zły format sekwencji: segment '{segment}' — oczekiwano pary "
                 "'głębokość:czas' (np. 0.05:0.15)."
             )
@@ -313,7 +314,7 @@ def _parse_sekwencja(raw: str) -> list[tuple[float, float]]:
             depth = float(parts[0])
             czas = float(parts[1])
         except ValueError as exc:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Zły format sekwencji: segment '{segment}' zawiera niepoprawną liczbę "
                 "(oczekiwano wartości dziesiętnych z kropką, np. 0.30:0.20)."
             ) from exc
@@ -337,7 +338,7 @@ def _resolve_grid_strength_row(run_id: UUID | None, bus_ref: str | None) -> dict
     run = _require_run(run_id)
     try:
         view = build_grid_strength_view(run)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -374,7 +375,7 @@ def get_frt_sequence(
         ) from exc
     try:
         zapady = _parse_sekwencja(sekwencja)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -384,7 +385,7 @@ def get_frt_sequence(
         return build_frt_sekwencja_view(
             converter, profile, zapady, grid_strength_row=grid_strength_row
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -597,7 +598,7 @@ def get_osd_response(
             deadband_hz=deadband_hz,
             f0_hz=f0_hz,
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),

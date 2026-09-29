@@ -56,10 +56,11 @@ from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwy_wezlow_grafu, opis_b
 from network_model.core.branch import BranchType
 from network_model.core.graph import NetworkGraph
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.power_flow_result import PowerFlowResultV1
 
 
-class BrakLancuchaSpadkuError(ValueError):
+class BrakLancuchaSpadkuError(OdmowaDanychError):
     """Łańcuch odcinków od źródła do punktu nie da się złożyć uczciwie.
 
     Powody: gałąź docelowa nieznana w grafie, ścieżka nieosiągalna w aktywnej

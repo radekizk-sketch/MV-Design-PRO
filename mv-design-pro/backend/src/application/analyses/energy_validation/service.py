@@ -30,6 +30,7 @@ from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebi
 from application.analyses.power_flow_reconstruction import graf_z_biegu, wynik_rozplywu_z_biegu
 from enm.canonical_analysis import CanonicalRun
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 def _context(run: CanonicalRun) -> EnergyValidationContext:
@@ -52,12 +53,12 @@ def build_energy_validation_view(run: CanonicalRun) -> dict[str, Any]:
             zakończony — komunikat w języku polskim.
     """
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Walidacja energetyczna wymaga przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )

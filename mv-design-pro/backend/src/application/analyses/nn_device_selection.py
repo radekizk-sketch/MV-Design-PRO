@@ -79,6 +79,7 @@ from network_model.catalog.lv_mccb_settings_iec60947_2 import (
 )
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import LVApparatusType
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import kv_na_v, napiecie_fazowe_v
 from network_model.solvers.fault_loop_builder import (
     sum_phase_and_return_route,
@@ -167,20 +168,20 @@ class KandydatAparatuNn:
 
     def __post_init__(self) -> None:
         if self.kind not in _KINDY_DOZWOLONE:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Nieznany rodzaj kandydata '{self.kind}' — dozwolone: {_KINDY_DOZWOLONE}."
             )
         if self.in_a <= 0:
-            raise ValueError(f"in_a musi być dodatnie, otrzymano {self.in_a}.")
+            raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {self.in_a}.")
         if self.kind == KIND_MCB and not self.klasa_mcb:
-            raise ValueError("Kandydat MCB wymaga klasa_mcb (B/C/D).")
+            raise OdmowaDanychError("Kandydat MCB wymaga klasa_mcb (B/C/D).")
         if (
             self.kind == KIND_FUSE_SWITCH
             and self.zdolnosc_wylaczania_ka is not None
             and self.fuse_breaking_capacity_ka is not None
             and self.zdolnosc_wylaczania_ka > self.fuse_breaking_capacity_ka
         ):
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Dane katalogowe niespójne: warunkowy prąd kombinacji "
                 f"({self.zdolnosc_wylaczania_ka:g} kA) przekracza własną zdolność "
                 f"wyłączania wkładki ({self.fuse_breaking_capacity_ka:g} kA) — kombinacja "

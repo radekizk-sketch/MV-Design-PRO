@@ -56,6 +56,7 @@ from network_model.catalog.der_dynamic import (
     get_profile,
     list_all_profile_ids,
 )
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import TypeAdapter, ValidationError
 
 from .dynamika_modele import ParametryDynamiczne
@@ -108,7 +109,7 @@ def _nazwa_profilu(profile_id: str) -> str:
     return f"„{get_profile(profile_id).profile_name_pl}”"
 
 
-class BladMaterializacjiDynamiki(ValueError):
+class BladMaterializacjiDynamiki(OdmowaDanychError):
     """Nazwana odmowa materializacji profilu (``kod`` = kod błędu operacji/gotowości)."""
 
     def __init__(self, kod: str, komunikat: str) -> None:
@@ -117,7 +118,7 @@ class BladMaterializacjiDynamiki(ValueError):
         self.komunikat = komunikat
 
 
-class OdmowaKopiiDynamiki(ValueError):
+class OdmowaKopiiDynamiki(OdmowaDanychError):
     """Odmowa biegu `dynamika_rms`: kopia z katalogu w migawce nie jest aktualna."""
 
     def __init__(self, komunikat: str, *, elementy: tuple[str, ...]) -> None:

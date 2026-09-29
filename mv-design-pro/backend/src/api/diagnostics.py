@@ -39,6 +39,7 @@ from enm.mapping import map_enm_to_network_graph
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException
 from network_model.core.graph import NetworkGraph
+from network_model.odmowa_danych import OdmowaDanychError
 
 router = APIRouter(prefix="/api", tags=["diagnostics"])
 
@@ -103,5 +104,5 @@ def get_run_diagnostics(run_id: UUID) -> dict[str, Any]:
     """
     try:
         return zbuduj_diagnoze_dla_biegu(run_id)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

@@ -27,6 +27,7 @@ from application.reference_patterns import (
     run_pattern_a,
 )
 from fastapi import APIRouter, HTTPException, Response
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from pydantic import BaseModel
 
@@ -229,7 +230,7 @@ def run_pattern(request: PatternRunRequest) -> PatternRunResponse:
 
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    except ValueError as e:
+    except OdmowaDanychError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
@@ -251,7 +252,7 @@ def run_pattern_with_fixture(fixture_file: str) -> PatternRunResponse:
         return result_to_response(result, run_id)
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    except ValueError as e:
+    except OdmowaDanychError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
@@ -290,7 +291,7 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
         data = result.to_dict()
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    except ValueError as e:
+    except OdmowaDanychError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     # Create PDF in memory
@@ -451,7 +452,7 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
         data = result.to_dict()
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    except ValueError as e:
+    except OdmowaDanychError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     # Create DOCX document

@@ -23,6 +23,7 @@ from fastapi import APIRouter, HTTPException
 from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
 from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
 from network_model.catalog.mv_transformer_catalog import get_sn_nn_transformer_types
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, kv_na_v, moc_zwarciowa_z_pradu_mva
 from network_model.solvers.cable_ampacity_derating import (
     NAZWA_WARUNKI_KATALOGOWE,
@@ -128,13 +129,13 @@ class GridSourcePreviewResponse(BaseModel):
 def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinResponse | None:
     if request.sk3_min_mva is None and request.ik3_min_ka is None:
         if request.rx_ratio_min is not None:
-            raise ValueError(
+            raise OdmowaDanychError(
                 "rx_ratio_min bez sk3_min_mva/ik3_min_ka nie ma zastosowania — scenariusz MIN "
                 "bez własnej mocy zwarciowej liczy się z danych MAX."
             )
         return None
     if request.short_circuit_mode == "IMPEDANCE":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Tryb impedancyjny (R+jX) nie ma wariantu MIN: dane sk3_min_mva/ik3_min_ka/"
             "rx_ratio_min podaj w trybie mocy zwarciowej albo je usuń."
         )
@@ -148,7 +149,7 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
         )
         tryb = "PRAD_ZWARCIOWY"
     if request.sk3_mva is not None and sk_min_mva > request.sk3_mva:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Sk3 min ({sk_min_mva:g} MVA) przekracza Sk3 max ({request.sk3_mva:g} MVA) — dane "
             "scenariusza minimalnego muszą być nie większe niż maksymalnego."
         )
@@ -212,7 +213,7 @@ def preview_grid_source_short_circuit(
             )
         )
         blok_min = _podglad_min(request)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return GridSourcePreviewResponse(
@@ -285,7 +286,7 @@ def preview_cable_voltage_drop(
                 reactive_character=request.reactive_character,
             )
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return CableVoltageDropResponse(
@@ -331,7 +332,7 @@ def preview_cable_rated_current(
                 line_voltage_v=request.line_voltage_v,
             )
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return CableRatedCurrentResponse(
@@ -433,7 +434,7 @@ def assess_trunk_sizing(request: OcenaDoboruMagistraliRequest) -> OcenaDoboruMag
             odcinek=_odcinek_magistrali(request.odcinek),
             odcinki_zbudowane=[_odcinek_magistrali(o) for o in request.odcinki_zbudowane],
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     spadek = ocena.spadek_odcinka
@@ -500,7 +501,7 @@ class CableLayingConditionsRequest(BaseModel):
             if wartosc is not None
         ]
         if podane and self.set_name != NAZWA_WLASNE:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Współczynniki {', '.join(podane)} można podać tylko dla "
                 f"set_name = {NAZWA_WLASNE}; zestaw {self.set_name} ma własne wartości."
             )
@@ -577,7 +578,7 @@ def preview_cable_ampacity_derating(
             opis_pl=laying.opis_pl if laying is not None else None,
         )
         effective = obciazalnosc_skorygowana(request.rated_ampacity_a, derating)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return CableAmpacityDeratingResponse(
@@ -621,7 +622,7 @@ def preview_transformer_rated_currents(
                 secondary_voltage_kv=request.secondary_voltage_kv,
             )
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return TransformerRatedCurrentsResponse(
@@ -660,7 +661,7 @@ def preview_shunt_compensator(
                 rated_kv=request.rated_kv,
             )
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return ShuntCompensatorPreviewResponse(
@@ -996,7 +997,7 @@ def preview_der_selection(
                 nn_tolerance_kv=NN_VOLTAGE_TOLERANCE_KV,
             )
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     transformer_response = BlockTransformerSelectionResponse(
@@ -1073,7 +1074,7 @@ def preview_der_selection(
                 reserve_pu=request.field_reserve_pu,
             )
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     cable_response = CableSelectionResponse(

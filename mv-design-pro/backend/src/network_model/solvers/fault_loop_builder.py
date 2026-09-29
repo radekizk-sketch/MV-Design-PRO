@@ -32,6 +32,7 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopInput,
     LoopImpedanceComponent,
@@ -198,7 +199,7 @@ class RouteSegmentImpedance:
 
     def __post_init__(self) -> None:
         if self.n_parallel < 1:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Odcinek '{self.branch_ref}': n_parallel musi być ≥ 1, "
                 f"otrzymano {self.n_parallel}."
             )
@@ -209,7 +210,7 @@ class RouteSegmentImpedance:
             ("return_total_x_ohm", self.return_total_x_ohm),
         ):
             if value < 0:
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Odcinek '{self.branch_ref}': {name} musi być ≥ 0, otrzymano {value}."
                 )
 
@@ -261,7 +262,7 @@ def zero_sequence_transformer_loop_impedance_ohm(
     ``application/analyses/fault_loop/route.py``).
     """
     if ulv_kv <= 0 or s_base_mva <= 0:
-        raise ValueError("ulv_kv i s_base_mva muszą być dodatnie do konwersji Z0 pu→Ω.")
+        raise OdmowaDanychError("ulv_kv i s_base_mva muszą być dodatnie do konwersji Z0 pu→Ω.")
     z_base = (ulv_kv**2) / s_base_mva
     z0_ohm = z0_pu * z_base
     return TransformerLoopImpedance(r_ohm=z0_ohm.real, x_ohm=z0_ohm.imag)
@@ -284,7 +285,7 @@ def refer_upstream_impedance_to_lv_ohm(
     własnej redukcji sieci).
     """
     if uhv_kv <= 0 or ulv_kv <= 0:
-        raise ValueError("uhv_kv i ulv_kv muszą być dodatnie do przeliczenia przekładni.")
+        raise OdmowaDanychError("uhv_kv i ulv_kv muszą być dodatnie do przeliczenia przekładni.")
     ratio_squared = (ulv_kv / uhv_kv) ** 2
     z_lv = z_hv_ohm * ratio_squared
     return LoopImpedanceComponent(label=label, r_ohm=z_lv.real, x_ohm=z_lv.imag)

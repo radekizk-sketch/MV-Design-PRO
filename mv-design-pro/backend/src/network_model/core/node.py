@@ -14,6 +14,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from network_model.ir_fields import wymagany_float
+from network_model.odmowa_danych import OdmowaDanychError
 
 if TYPE_CHECKING:
     from network_model.solvers.power_flow_zip import ZipCoeffs
@@ -105,34 +106,34 @@ class Node:
         """
         if self.node_type == NodeType.SLACK:
             if self.voltage_magnitude is None:
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Węzeł SLACK '{self.name}' wymaga zdefiniowanej "
                     f"amplitudy napięcia (voltage_magnitude)."
                 )
             if self.voltage_angle is None:
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Węzeł SLACK '{self.name}' wymaga zdefiniowanego "
                     f"kąta napięcia (voltage_angle)."
                 )
 
         elif self.node_type == NodeType.PQ:
             if self.active_power is None:
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Węzeł PQ '{self.name}' wymaga zdefiniowanej " f"mocy czynnej (active_power)."
                 )
             if self.reactive_power is None:
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Węzeł PQ '{self.name}' wymaga zdefiniowanej "
                     f"mocy biernej (reactive_power)."
                 )
 
         elif self.node_type == NodeType.PV:
             if self.active_power is None:
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Węzeł PV '{self.name}' wymaga zdefiniowanej " f"mocy czynnej (active_power)."
                 )
             if self.voltage_magnitude is None:
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Węzeł PV '{self.name}' wymaga zdefiniowanej "
                     f"amplitudy napięcia (voltage_magnitude)."
                 )

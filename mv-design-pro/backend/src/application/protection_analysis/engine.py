@@ -42,6 +42,7 @@ from network_model.catalog.types import (
     ProtectionSettingTemplate,
 )
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.protection_iec60255 import compute_idmt_generic
 
 if TYPE_CHECKING:
@@ -747,7 +748,7 @@ def build_device_from_vendor_curve(
         ProtectionDevice with vendor curve parameters
 
     Raises:
-        ValueError: If vendor curve code is not found in registry
+        OdmowaDanychError: If vendor curve code is not found in registry
     """
     from domain.protection_vendors import (
         VENDOR_CURVE_REGISTRY,
@@ -756,7 +757,7 @@ def build_device_from_vendor_curve(
 
     vendor_curve = VENDOR_CURVE_REGISTRY.get(vendor_curve_code)
     if vendor_curve is None:
-        raise ValueError(f"Vendor curve not found: {vendor_curve_code}")
+        raise OdmowaDanychError(f"Vendor curve not found: {vendor_curve_code}")
 
     # Resolve curve parameters (IEC or vendor-native)
     params = resolve_vendor_to_iec_params(vendor_curve)

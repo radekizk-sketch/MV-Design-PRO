@@ -284,8 +284,8 @@ AS-IS: `backend/src/api/exception_handlers.py`
 | Exception | HTTP Status | Response |
 |-----------|-------------|----------|
 | `Exception` (unhandled) | 500 | `{"detail": "Wewnętrzny błąd serwera", "request_id": rid, "error_type": type}` |
-| `ValueError` | 422 | Validation error details |
-| `KeyError` | 404 | Resource not found |
+| `OdmowaDanychError` (`network_model/odmowa_danych.py`, karta ODMOWA-DANYCH-422) | 422 | `{"detail": komunikat PL odmowy, "request_id": rid, "error_type": "ValueError"}` — zwykły `ValueError` to błąd programu: 500 |
+| `BrakZasobuError` (`network_model/brak_zasobu.py`, karta #151) | 404 | `{"detail": "Nie znaleziono zasobu: …", "request_id": rid, "error_type": "KeyError"}` — zwykły `KeyError` to błąd programu: 500 |
 
 **Logging:** Full traceback logged at ERROR level z `rid=` correlation.
 

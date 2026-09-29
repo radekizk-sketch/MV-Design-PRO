@@ -9,6 +9,7 @@ spójności i znajdowania wysp.
 from collections.abc import Iterable
 
 import networkx as nx
+from network_model.odmowa_danych import OdmowaDanychError
 
 from .branch import Branch
 from .grid_source import GridShortCircuitSource
@@ -98,7 +99,7 @@ class NetworkGraph:
             ValueError: Gdy węzeł o podanym ID już istnieje.
         """
         if node.id in self.nodes:
-            raise ValueError(f"Węzeł o ID '{node.id}' już istnieje w grafie.")
+            raise OdmowaDanychError(f"Węzeł o ID '{node.id}' już istnieje w grafie.")
 
         self.nodes[node.id] = node
         self._graph.add_node(node.id)
@@ -124,16 +125,20 @@ class NetworkGraph:
             ValueError: Gdy gałąź łączy węzeł sam ze sobą.
         """
         if branch.id in self.branches:
-            raise ValueError(f"Gałąź o ID '{branch.id}' już istnieje w grafie.")
+            raise OdmowaDanychError(f"Gałąź o ID '{branch.id}' już istnieje w grafie.")
 
         if branch.from_node_id not in self.nodes:
-            raise ValueError(f"Węzeł początkowy '{branch.from_node_id}' nie istnieje w grafie.")
+            raise OdmowaDanychError(
+                f"Węzeł początkowy '{branch.from_node_id}' nie istnieje w grafie."
+            )
 
         if branch.to_node_id not in self.nodes:
-            raise ValueError(f"Węzeł końcowy '{branch.to_node_id}' nie istnieje w grafie.")
+            raise OdmowaDanychError(f"Węzeł końcowy '{branch.to_node_id}' nie istnieje w grafie.")
 
         if branch.from_node_id == branch.to_node_id:
-            raise ValueError(f"Gałąź nie może łączyć węzła '{branch.from_node_id}' samego ze sobą.")
+            raise OdmowaDanychError(
+                f"Gałąź nie może łączyć węzła '{branch.from_node_id}' samego ze sobą."
+            )
 
         # Dodaj gałąź do słownika
         self.branches[branch.id] = branch
@@ -171,16 +176,18 @@ class NetworkGraph:
             ValueError: Gdy łącznik łączy węzeł sam ze sobą.
         """
         if switch.id in self.switches:
-            raise ValueError(f"Łącznik o ID '{switch.id}' już istnieje w grafie.")
+            raise OdmowaDanychError(f"Łącznik o ID '{switch.id}' już istnieje w grafie.")
 
         if switch.from_node_id not in self.nodes:
-            raise ValueError(f"Węzeł początkowy '{switch.from_node_id}' nie istnieje w grafie.")
+            raise OdmowaDanychError(
+                f"Węzeł początkowy '{switch.from_node_id}' nie istnieje w grafie."
+            )
 
         if switch.to_node_id not in self.nodes:
-            raise ValueError(f"Węzeł końcowy '{switch.to_node_id}' nie istnieje w grafie.")
+            raise OdmowaDanychError(f"Węzeł końcowy '{switch.to_node_id}' nie istnieje w grafie.")
 
         if switch.from_node_id == switch.to_node_id:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Łącznik nie może łączyć węzła '{switch.from_node_id}' samego ze sobą."
             )
 
@@ -210,9 +217,9 @@ class NetworkGraph:
             ValueError: Gdy węzeł docelowy nie istnieje.
         """
         if source.id in self.inverter_sources:
-            raise ValueError(f"Źródło falownikowe o ID '{source.id}' już istnieje w grafie.")
+            raise OdmowaDanychError(f"Źródło falownikowe o ID '{source.id}' już istnieje w grafie.")
         if source.node_id not in self.nodes:
-            raise ValueError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
+            raise OdmowaDanychError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
         self.inverter_sources[source.id] = source
 
     def remove_inverter_source(self, source_id: str) -> None:
@@ -273,9 +280,11 @@ class NetworkGraph:
     def add_synchronous_machine_source(self, source: SynchronousMachineSource) -> None:
         """Register a synchronous-machine SC source (voltage behind Z″_G)."""
         if source.id in self.synchronous_machine_sources:
-            raise ValueError(f"Maszyna synchroniczna o ID '{source.id}' już istnieje w grafie.")
+            raise OdmowaDanychError(
+                f"Maszyna synchroniczna o ID '{source.id}' już istnieje w grafie."
+            )
         if source.node_id not in self.nodes:
-            raise ValueError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
+            raise OdmowaDanychError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
         self.synchronous_machine_sources[source.id] = source
 
     def get_synchronous_machine_sources(self) -> list[SynchronousMachineSource]:
@@ -289,9 +298,11 @@ class NetworkGraph:
     def add_asynchronous_machine_source(self, source: AsynchronousMachineSource) -> None:
         """Register an asynchronous-machine SC source (voltage behind Z_M)."""
         if source.id in self.asynchronous_machine_sources:
-            raise ValueError(f"Maszyna asynchroniczna o ID '{source.id}' już istnieje w grafie.")
+            raise OdmowaDanychError(
+                f"Maszyna asynchroniczna o ID '{source.id}' już istnieje w grafie."
+            )
         if source.node_id not in self.nodes:
-            raise ValueError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
+            raise OdmowaDanychError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
         self.asynchronous_machine_sources[source.id] = source
 
     def get_asynchronous_machine_sources(self) -> list[AsynchronousMachineSource]:
@@ -307,9 +318,9 @@ class NetworkGraph:
     def add_grid_sc_source(self, source: GridShortCircuitSource) -> None:
         """Rejestruje zasilanie systemowe (SEM za Z_Q) w węźle przyłączenia."""
         if source.id in self.grid_sc_sources:
-            raise ValueError(f"Źródło sieciowe o ID '{source.id}' już istnieje w grafie.")
+            raise OdmowaDanychError(f"Źródło sieciowe o ID '{source.id}' już istnieje w grafie.")
         if source.node_id not in self.nodes:
-            raise ValueError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
+            raise OdmowaDanychError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
         self.grid_sc_sources[source.id] = source
 
     def get_grid_sc_sources(self) -> list[GridShortCircuitSource]:
@@ -331,7 +342,7 @@ class NetworkGraph:
             ValueError: Gdy węzeł o podanym ID nie istnieje.
         """
         if node_id not in self.nodes:
-            raise ValueError(f"Węzeł o ID '{node_id}' nie istnieje w grafie.")
+            raise OdmowaDanychError(f"Węzeł o ID '{node_id}' nie istnieje w grafie.")
 
         # Znajdź i usuń wszystkie gałęzie połączone z tym węzłem
         branches_to_remove = [
@@ -484,7 +495,7 @@ class NetworkGraph:
             ValueError: Gdy stacja o podanym ID już istnieje.
         """
         if station.id in self.stations:
-            raise ValueError(f"Stacja o ID '{station.id}' już istnieje w grafie.")
+            raise OdmowaDanychError(f"Stacja o ID '{station.id}' już istnieje w grafie.")
         self.stations[station.id] = station
 
     def remove_station(self, station_id: str) -> None:
@@ -600,10 +611,10 @@ class NetworkGraph:
         slack_ids = self.get_slack_node_ids()
 
         if len(slack_ids) == 0:
-            raise ValueError("Brak węzła SLACK w sieci.")
+            raise OdmowaDanychError("Brak węzła SLACK w sieci.")
 
         if len(slack_ids) > 1:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"W sieci znajduje się {len(slack_ids)} węzłów SLACK ({', '.join(slack_ids)}) — "
                 "wskaż szynę bilansującą jawnie (po jednej na wyspę)."
             )

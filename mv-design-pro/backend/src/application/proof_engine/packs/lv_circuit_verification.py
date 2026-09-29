@@ -86,6 +86,7 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, prad_z_mocy_pozornej_ka
 from network_model.solvers.cable_ampacity_derating import (
     WspolczynnikiObciazalnosciNN,
@@ -172,13 +173,13 @@ class UrzadzenieOchronneNn:
 
     def __post_init__(self) -> None:
         if self.kind not in _KINDY_DOZWOLONE:
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Nieznany rodzaj urządzenia '{self.kind}' — dozwolone: {_KINDY_DOZWOLONE}."
             )
         if self.in_a <= 0:
-            raise ValueError(f"in_a musi być dodatnie, otrzymano {self.in_a}.")
+            raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {self.in_a}.")
         if self.kind == KIND_MCB and not self.klasa_mcb:
-            raise ValueError("Urządzenie MCB wymaga klasa_mcb (B/C/D).")
+            raise OdmowaDanychError("Urządzenie MCB wymaga klasa_mcb (B/C/D).")
 
     def to_dict(self) -> dict[str, Any]:
         return {

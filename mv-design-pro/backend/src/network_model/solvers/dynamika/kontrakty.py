@@ -34,6 +34,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 import numpy as np
+from network_model.odmowa_danych import OdmowaDanychError
 
 if TYPE_CHECKING:  # pragma: no cover — wylacznie adnotacja (brak cyklu importow w biegu)
     from .dozory import Dozor
@@ -197,7 +198,7 @@ KODY_ODMOW: tuple[str, ...] = (
 )
 
 
-class OdmowaDynamiki(ValueError):
+class OdmowaDynamiki(OdmowaDanychError):
     """Nazwana odmowa rdzenia dynamiki — kod z `KODY_ODMOW` + dane pomiarowe.
 
     Odmowa NIGDY nie zamienia sie w wynik zerowy, pusty ani „artefakt rozruchu":

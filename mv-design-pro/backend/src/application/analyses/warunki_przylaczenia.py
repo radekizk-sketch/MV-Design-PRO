@@ -50,6 +50,7 @@ from typing import Any
 
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun
+from network_model.odmowa_danych import OdmowaDanychError
 from werdykt import format_liczba
 
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
@@ -342,12 +343,12 @@ def build_warunki_przylaczenia_view(run: CanonicalRun) -> dict[str, Any]:
             zakonczony — komunikat w jezyku polskim (jak pozostale widoki).
     """
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Ocena warunków przyłączenia wymaga przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Przebieg rozpływu mocy nie jest zakończony — wynik rozpływu nie jest " "dostępny."
         )
 

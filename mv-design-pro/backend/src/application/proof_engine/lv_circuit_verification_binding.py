@@ -75,6 +75,7 @@ from application.proof_engine.packs.lv_circuit_verification import (
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import kv_na_v, napiecie_fazowe_v
 from network_model.solvers.cable_ampacity_derating import WspolczynnikiObciazalnosciNN
 from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
@@ -84,7 +85,7 @@ from network_model.solvers.fault_loop_builder import (
 from solver_input.uklad_sieci_nn import typ_sieci_solvera
 
 
-class LVCircuitVerificationInputError(ValueError):
+class LVCircuitVerificationInputError(OdmowaDanychError):
     """Wejście pakietu nie daje się złożyć uczciwie — powód po polsku, zero fabrykacji."""
 
 
