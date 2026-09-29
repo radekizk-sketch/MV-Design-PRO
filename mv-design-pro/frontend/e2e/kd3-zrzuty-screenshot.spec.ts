@@ -14,6 +14,7 @@
 import { test, expect, type APIRequestContext, type Page, type Response } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 /** Odpowiedź bilansu wtórnego dla obwodu KOMPLETNEGO (przekrój + moc aparatów). */
 function bilansZKompletem(
@@ -225,6 +226,7 @@ for (const motyw of MOTYWY) {
     await expect(page.getByText('Prąd znamionowy pierwotny')).toBeVisible({ timeout: 20000 });
     await page.waitForTimeout(300);
     const sciezkaKatalog = path.join(OUTPUT_DIR, `kd3-katalog-nn-${motyw.nazwa}.png`);
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({ path: sciezkaKatalog });
     expect(fs.existsSync(sciezkaKatalog)).toBe(true);
 
@@ -252,6 +254,7 @@ for (const motyw of MOTYWY) {
     await expect(page.getByTestId('mvd-kreator-stacja-zaczepy')).toBeVisible();
     await page.waitForTimeout(300);
     const sciezkaZaczepy = path.join(OUTPUT_DIR, `kd3-zaczepy-${motyw.nazwa}.png`);
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({ path: sciezkaZaczepy });
     expect(fs.existsSync(sciezkaZaczepy)).toBe(true);
 
@@ -307,6 +310,7 @@ for (const motyw of MOTYWY) {
     await page.getByTestId('mvd-kryteria-ct-1').scrollIntoViewIfNeeded();
     await page.waitForTimeout(400);
     const sciezkaBilans = path.join(OUTPUT_DIR, `kd3-bilans-${motyw.nazwa}.png`);
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({ path: sciezkaBilans });
     expect(fs.existsSync(sciezkaBilans)).toBe(true);
   });

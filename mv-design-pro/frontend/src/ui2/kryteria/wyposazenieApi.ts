@@ -26,7 +26,10 @@ export interface KrokSladu {
   readonly title: string;
   readonly formula_latex: string;
   readonly inputs: Record<string, unknown>;
+  /** Proza podstawienia (kontrakt pól kroku, karta DOWOD-CIEPLNY). */
   readonly substitution: string;
+  /** Podstawienie jako LaTeX goły (`SladKroku.substitution_latex` backendu). */
+  readonly substitution_latex: string | null;
   readonly result: Record<string, unknown>;
   readonly notes: string;
 }

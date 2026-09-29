@@ -16,6 +16,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -156,6 +157,7 @@ test('S9-5 — zrzuty menu kontekstowego na klasach obiektów kanwy (oba motywy)
     // Menu TŁA — jedyna kategoria bez obiektu modelu.
     await page.getByTestId('sld-canvas-v3').click({ button: 'right', position: { x: 60, y: 60 } });
     await expect(page.getByRole('menu')).toBeVisible({ timeout: 15000 });
+    await bramkaTresciMatematycznej(page);
     await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `s9-5-tlo-${motyw.klucz}.png`) });
     await page.keyboard.press('Escape');
 
@@ -175,9 +177,11 @@ test('S9-5 — zrzuty menu kontekstowego na klasach obiektów kanwy (oba motywy)
       if (!(await menu.isVisible({ timeout: 5000 }).catch(() => false))) {
         // Obiekt świadomie bez menu (rysunek bez odpowiednika w modelu) —
         // zrzut i tak powstaje, żeby brak menu był widoczny w dowodach.
+        await bramkaTresciMatematycznej(page);
         await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `s9-5-${wpis.plik}-${motyw.klucz}.png`) });
         continue;
       }
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `s9-5-${wpis.plik}-${motyw.klucz}.png`) });
       await page.keyboard.press('Escape');
     }

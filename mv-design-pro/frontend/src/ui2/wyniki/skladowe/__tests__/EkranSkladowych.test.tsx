@@ -74,7 +74,7 @@ const SLAD = {
       target_id: 'node-1',
       title: 'Impedancja zastępcza w punkcie zwarcia',
       formula_latex: 'Z_k = Z_1 + Z_2 + Z_0',
-      substitution: '\\left(0.1 + j 0.4\\right)',
+      substitution_latex: '\\left(0.1 + j 0.4\\right)',
       inputs: {
         z1_ohm: { re: 0.1, im: 0.4 },
         z2_ohm: { re: 0.1, im: 0.4 },

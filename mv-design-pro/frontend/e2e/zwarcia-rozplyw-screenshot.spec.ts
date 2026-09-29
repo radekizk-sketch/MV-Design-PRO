@@ -35,6 +35,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -92,9 +93,12 @@ test.describe('zwarcia-rozplyw:screenshot', () => {
       await expect(sekcja.getByTestId('mvd-wyn-th-zrodlo')).toBeVisible();
       // Wiersz sieci nadrzędnej (Thevenin, `source_id="THEVENIN_GRID"` -> PL).
       await expect(tabela).toContainText('sieć nadrzędna');
-      // Wiersz maszyny (identyfikator falownika `gen_pv`, jak w kontrakcie backendu
-      // — `zrodloRozplywuPL` pokazuje surowy `source_id`, gdy nie jest THEVENIN_GRID).
-      await expect(tabela).toContainText('gen_pv');
+      // Wiersz maszyny: NAZWA falownika z modelu („Farma PV", `gen_pv` w sieci złotej),
+      // nie surowy `source_id` — karta #145 (język inżyniera) przestawiła kolumnę źródła
+      // na nazwy; asercja na identyfikator była nieaktualna wobec kanonu (napotkane przy
+      // karcie DOWOD-CIEPLNY; mapowanie nazw w `zwarciaModel.ts` jest starsze od tej karty).
+      await expect(tabela).toContainText('Farma PV');
+      await expect(tabela).not.toContainText('gen_pv');
       // Prąd sieci nadrzędnej [kA] w torze dominującym (gałąź TR 110/15) — format PL.
       await expect(tabela).toContainText(kaPl(pradToru('TR 110/15')));
       // Prąd falownika [kA] w torze TR 15/0.4.
@@ -107,6 +111,7 @@ test.describe('zwarcia-rozplyw:screenshot', () => {
       await page.waitForTimeout(200);
       expect(consoleErrors, `konsola bez błędów (${theme}): ${consoleErrors.join('; ')}`).toEqual([]);
 
+      await bramkaTresciMatematycznej(page);
       await sekcja.screenshot({
         path: path.join(OUTPUT_DIR, `zwarcia-rozplyw-${theme}.png`),
       });
@@ -197,6 +202,7 @@ test.describe('zwarcia-schemat:screenshot', () => {
       const clipTop = Math.max(canvasBox.y, unionTop - padding);
       const clipRight = Math.min(canvasBox.x + canvasBox.width, unionRight + padding);
       const clipBottom = Math.min(canvasBox.y + canvasBox.height, unionBottom + padding);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `zwarcia-schemat-${theme}.png`),
         clip: { x: clipLeft, y: clipTop, width: clipRight - clipLeft, height: clipBottom - clipTop },

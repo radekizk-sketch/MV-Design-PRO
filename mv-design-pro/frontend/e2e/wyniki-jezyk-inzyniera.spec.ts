@@ -32,6 +32,10 @@
  *  - odsyłacze procesu (karty, audyty, sondy, daty prac) — lista fraz niżej,
  *  - słowa polskie zapisane bez polskich znaków — lista słów niżej (zdanie dla
  *    inżyniera jest po polsku, nie w transliteracji z kodu).
+ *  - treść matematyczna (karta DOWOD-CIEPLNY): wzór spadły do postaci awaryjnej
+ *    `MathRenderer` (`math-fallback`) i surowy zapis LaTeX w widocznym tekście
+ *    (`$$`, `\nazwa`, `_{`, `^{`) — ta sama reguła co bramka specy zrzutowych
+ *    (`trescMatematyczna.ts`) i strażnik kontraktu kroku śladu backendu.
  *
  * Prawdziwy backend nie jest potrzebny scenom liczonym z fikstur; bieg „co-jeśli"
  * macierzy NC RfG idzie do backendu biegu (tak jak w `dowody-ncrfg-screenshot`).
@@ -43,6 +47,7 @@ import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { parametrySceny, wypelnijUziomIPotwierdz } from './formularzV126';
 import { wybierzElementOdbioru } from './odbiorPomiary';
+import { naruszeniaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -469,11 +474,18 @@ async function rozwinWszystko(page: Page): Promise<void> {
 
 interface Pomiar {
   readonly teksty: { etap: string; tekst: string }[];
+  /** Naruszenia treści matematycznej (wzór niewyrenderowany, surowy LaTeX) per etap. */
+  tresc?: Naruszenie[];
 }
 
 async function zbierz(page: Page, pomiar: Pomiar, etap: string): Promise<void> {
   await rozwinWszystko(page);
   pomiar.teksty.push({ etap, tekst: await tekstPierwszegoPlanu(page) });
+  const tresc = await naruszeniaTresciMatematycznej(page, '[data-testid="creator-harness-root"]');
+  if (tresc.length > 0) {
+    const lista = (pomiar.tresc ??= []);
+    tresc.forEach((n) => lista.push({ etap, wzorzec: n.rodzaj, trafienie: n.tresc, linia: n.tresc }));
+  }
 }
 
 /**
@@ -832,7 +844,10 @@ function zbierajWyjatki(page: Page): string[] {
 }
 
 function wynikScen(scena: string, pomiar: Pomiar): Naruszenie[] {
-  const naruszenia = pomiar.teksty.flatMap(({ etap, tekst }) => naruszeniaTekstu(etap, tekst));
+  const naruszenia = [
+    ...pomiar.teksty.flatMap(({ etap, tekst }) => naruszeniaTekstu(etap, tekst)),
+    ...(pomiar.tresc ?? []),
+  ];
   if (KATALOG_ZRZUTU) {
     fs.mkdirSync(KATALOG_ZRZUTU, { recursive: true });
     fs.writeFileSync(

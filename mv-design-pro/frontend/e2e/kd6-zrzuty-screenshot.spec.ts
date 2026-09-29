@@ -15,6 +15,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
@@ -342,10 +343,12 @@ test.describe('kd6:zrzuty', () => {
       // Werdykt MUSI pochodzić z modelu — inaczej zrzut dokumentowałby co innego.
       await expect(wiersz).toHaveAttribute('data-zrodlo', 'model');
 
+      await bramkaTresciMatematycznej(page);
       await sekcja.screenshot({ path: path.join(OUTPUT_DIR, `kd6-ogniwo-model-${id}.png`) });
 
       const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-${pierwszePole}`);
       await expect(czas).toBeVisible();
+      await bramkaTresciMatematycznej(page);
       await czas.screenshot({ path: path.join(OUTPUT_DIR, `kd6-tclearing-${id}.png`) });
     });
   }

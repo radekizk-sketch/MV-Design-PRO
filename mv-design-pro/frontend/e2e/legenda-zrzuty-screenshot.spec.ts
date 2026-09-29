@@ -21,6 +21,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
@@ -195,12 +196,14 @@ test.describe('legenda:zrzuty dokumentacyjne', () => {
       await expect(page.getByTestId('sld-sheet-legend')).toHaveCount(0);
       await expect(page.getByTestId('sld-v3-view-dock')).toBeVisible();
       await page.waitForTimeout(300);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kanwa-bez-legendy-${plik}.png`) });
 
       // Kadr 2: panel legendy otwarty z doku (klik natywny).
       await page.getByTestId('sld-v3-legend-toggle').click();
       await expect(page.getByTestId('sld-v3-legend-panel')).toBeVisible();
       await page.waitForTimeout(300);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `legenda-panel-${plik}.png`) });
     });
   }

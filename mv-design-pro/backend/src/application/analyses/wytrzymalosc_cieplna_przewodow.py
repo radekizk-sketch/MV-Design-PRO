@@ -728,13 +728,21 @@ def _krok_czasu(wpis: Mapping[str, Any]) -> dict[str, Any]:
             "label": "Mnożnik czasowy nastawy",
         }
 
-    # Pole „Podstawienie" okna dowodu renderuje sie przez KaTeX, wiec musi byc
-    # LaTeX-em (zdanie zostaloby zlepione w jeden ciag matematyczny).
-    czas_tex = _liczba_tex(float(wpis["tk_s"])) if wpis.get("tk_s") is not None else "?"
-    if z_nastawy and wpis.get("stala_a") is not None and wpis.get("stala_b") is not None:
-        wzor = r"$$t_k = \mathrm{TMS} \cdot \frac{A}{(I/I_s)^{B} - 1}$$"
+    # Kontrakt pol kroku (karta DOWOD-CIEPLNY): zapis matematyczny idzie WYLACZNIE
+    # do `formula_latex`/`substitution_latex`, jako LaTeX GOLY (bez `$$`). Pole
+    # `substitution` jest proza — okno dowodu pokazuje je tekstem, wiec LaTeX w nim
+    # wychodzil na ekran jako surowy zapis `$$t_k = 1\ \mathrm{s}$$`. Ten krok nie
+    # ma opisu prozą ponad uwagi (`notes`), wiec pola prozy podstawienia nie niesie.
+    czas_tex = _liczba_tex(float(wpis["tk_s"])) if wpis.get("tk_s") is not None else None
+    wzor: str | None = None
+    podstawienie: str | None = None
+    if czas_tex is None:
+        # Czas nierozstrzygniety: nie ma liczby do podstawienia — brak pola, nie „?".
+        pass
+    elif z_nastawy and wpis.get("stala_a") is not None and wpis.get("stala_b") is not None:
+        wzor = r"t_k = \mathrm{TMS} \cdot \frac{A}{(I/I_s)^{B} - 1}"
         podstawienie = (
-            r"$$t_k = "
+            r"t_k = "
             + _liczba_tex(float(wpis["tms"]))
             + r" \cdot \frac{"
             + _liczba_tex(float(wpis["stala_a"]))
@@ -746,16 +754,13 @@ def _krok_czasu(wpis: Mapping[str, Any]) -> dict[str, Any]:
             + _liczba_tex(float(wpis["stala_b"]))
             + r"} - 1} = "
             + czas_tex
-            + r"\ \mathrm{s}$$"
+            + r"\ \mathrm{s}"
         )
-    elif z_nastawy:
-        # Charakterystyka niezalezna (DT): czas to wprost nastawiona zwloka —
-        # nie ma wzoru do podstawienia, jest sama wartosc.
-        wzor = None
-        podstawienie = r"$$t_k = " + czas_tex + r"\ \mathrm{s}$$"
     else:
-        wzor = None
-        podstawienie = r"$$t_k = " + czas_tex + r"\ \mathrm{s}$$"
+        # Charakterystyka niezalezna (DT) albo zalozenie przypadku: czas to wprost
+        # nastawiona zwloka lub wartosc przypadku — nie ma wzoru do podstawienia,
+        # jest sama wartosc.
+        podstawienie = r"t_k = " + czas_tex + r"\ \mathrm{s}"
 
     krok: dict[str, Any] = {
         "step": 1,
@@ -766,7 +771,6 @@ def _krok_czasu(wpis: Mapping[str, Any]) -> dict[str, Any]:
             else "Czas trwania zwarcia z założenia przypadku"
         ),
         "inputs": dane,
-        "substitution": podstawienie,
         "result": {
             "tk_s": {
                 "value": wpis.get("tk_s"),
@@ -778,4 +782,6 @@ def _krok_czasu(wpis: Mapping[str, Any]) -> dict[str, Any]:
     }
     if wzor is not None:
         krok["formula_latex"] = wzor
+    if podstawienie is not None:
+        krok["substitution_latex"] = podstawienie
     return krok

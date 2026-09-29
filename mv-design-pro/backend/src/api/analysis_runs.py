@@ -262,7 +262,14 @@ def _proof_latex_response(run: CanonicalRun) -> Response:
             lines.append(r"\[")
             lines.append(str(step["formula_latex"]))
             lines.append(r"\]")
-        if step.get("substitution"):
+        # Kontrakt pol kroku (karta DOWOD-CIEPLNY): `substitution_latex` jest LaTeX-em
+        # (srodowisko matematyczne jak wzor), `substitution` — proza (tekst z ucieczka).
+        if step.get("substitution_latex"):
+            lines.append(r"\textbf{Podstawienie:}")
+            lines.append(r"\[")
+            lines.append(str(step["substitution_latex"]))
+            lines.append(r"\]")
+        elif step.get("substitution"):
             lines.append(rf"\textbf{{Podstawienie:}} {_latex_escape(step['substitution'])}\\")
         if step.get("result") is not None:
             lines.append(rf"\textbf{{Wynik:}} {_latex_escape(canonicalize_json(step['result']))}\\")

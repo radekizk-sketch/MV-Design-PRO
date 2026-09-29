@@ -19,6 +19,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
@@ -226,6 +227,7 @@ test.describe('kd8:zrzuty', () => {
       await expect(canvas).toHaveAttribute('data-scene-lod', '0');
       await expect(wezelBloku).toHaveCount(1);
       await page.waitForTimeout(300);
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd8-motyw-l0-${id}.png`) });
 
       // (2) Klik NATYWNY w blok ⇒ rozwinięcie + selekcja (panele elementu).
@@ -241,12 +243,14 @@ test.describe('kd8:zrzuty', () => {
       if (await blokada.count() > 0) {
         await expect(blokada).toBeVisible();
       }
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd8-motyw-konfigurator-${id}.png`) });
 
       // (4) Sam SCHEMAT po rozwinięciu (selekcja zdjęta realną ścieżką).
       await page.keyboard.press('Escape');
       await page.waitForTimeout(1200);
       await expect(symbole.locator('[data-symbol-canon="transformer2W"]').first()).toBeVisible();
+      await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd8-motyw-gpz-${id}.png`) });
     });
   }

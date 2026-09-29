@@ -62,7 +62,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.0
                 }
               },
-              "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
             },
@@ -91,7 +90,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.0003200016
                 }
               },
-              "substitution": "\\left(0.000320002 + j 0.0153118\\right)",
               "substitution_latex": "\\left(0.000320002 + j 0.0153118\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -108,7 +106,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 16587.1038179
               },
-              "substitution": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.0153152}",
               "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.0153152}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -124,7 +121,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.94044345901
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.020899}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.020899}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -139,7 +135,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 45518.3544604
               },
-              "substitution": "1.94044 \\cdot \\sqrt{2} \\cdot 16587.1",
               "substitution_latex": "1.94044 \\cdot \\sqrt{2} \\cdot 16587.1",
               "title": "Pr\u0105d udarowy"
             },
@@ -157,7 +152,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 18454.9248593
               },
-              "substitution": "16587.1 \\cdot \\sqrt{1 + \\left((1.94044 - 1) \\cdot 0.518632\\right)^2}",
               "substitution_latex": "16587.1 \\cdot \\sqrt{1 + \\left((1.94044 - 1) \\cdot 0.518632\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -173,7 +167,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 17886.834338
               },
-              "substitution": "16587.1 \\cdot \\sqrt{0.162856 + 1}",
               "substitution_latex": "16587.1 \\cdot \\sqrt{0.162856 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -188,7 +181,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 11.4918826252
               },
-              "substitution": "\\sqrt{3} \\cdot 400 \\cdot 16587.1 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 16587.1 / 10^6",
               "title": "Moc zwarciowa"
             }
@@ -227,7 +219,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.0
                 }
               },
-              "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
             },
@@ -256,7 +247,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.0003200016
                 }
               },
-              "substitution": "\\left(0.000320002 + j 0.0153118\\right)",
               "substitution_latex": "\\left(0.000320002 + j 0.0153118\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -273,7 +263,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 14325.2260246
               },
-              "substitution": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.0153152}",
               "substitution_latex": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.0153152}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -289,7 +278,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.94044345901
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.020899}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.020899}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -304,7 +292,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 39311.3061249
               },
-              "substitution": "1.94044 \\cdot \\sqrt{2} \\cdot 14325.2",
               "substitution_latex": "1.94044 \\cdot \\sqrt{2} \\cdot 14325.2",
               "title": "Pr\u0105d udarowy"
             },
@@ -322,7 +309,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 15938.3441966
               },
-              "substitution": "14325.2 \\cdot \\sqrt{1 + \\left((1.94044 - 1) \\cdot 0.518632\\right)^2}",
               "substitution_latex": "14325.2 \\cdot \\sqrt{1 + \\left((1.94044 - 1) \\cdot 0.518632\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -338,7 +324,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 15447.7205647
               },
-              "substitution": "14325.2 \\cdot \\sqrt{0.162856 + 1}",
               "substitution_latex": "14325.2 \\cdot \\sqrt{0.162856 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -353,7 +338,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 9.9248077218
               },
-              "substitution": "\\sqrt{3} \\cdot 400 \\cdot 14325.2 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 14325.2 / 10^6",
               "title": "Moc zwarciowa"
             }
@@ -407,7 +391,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.0
                 }
               },
-              "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
             },
@@ -436,7 +419,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.45000225
                 }
               },
-              "substitution": "\\left(0.450002 + j 0.9\\right)",
               "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -453,7 +435,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 9467.28315676
               },
-              "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -469,7 +450,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -484,7 +464,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 16584.2009783
               },
-              "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "title": "Pr\u0105d udarowy"
             },
@@ -502,7 +481,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 9467.28315676
               },
-              "substitution": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -518,7 +496,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 9500.26592649
               },
-              "substitution": "9467.28 \\cdot \\sqrt{0.00697987 + 1}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{0.00697987 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -533,7 +510,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 245.967231557
               },
-              "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "title": "Moc zwarciowa"
             }
@@ -572,7 +548,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.0
                 }
               },
-              "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
             },
@@ -601,7 +576,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.45000225
                 }
               },
-              "substitution": "\\left(0.450002 + j 0.9\\right)",
               "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -618,7 +592,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 8176.28999902
               },
-              "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -634,7 +607,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -649,7 +621,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 14322.7190267
               },
-              "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "title": "Pr\u0105d udarowy"
             },
@@ -667,7 +638,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 8176.28999902
               },
-              "substitution": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -683,7 +653,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 8204.77511833
               },
-              "substitution": "8176.29 \\cdot \\sqrt{0.00697987 + 1}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{0.00697987 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -698,7 +667,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 212.426245436
               },
-              "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "title": "Moc zwarciowa"
             }
@@ -761,7 +729,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.0
                 }
               },
-              "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
             },
@@ -790,7 +757,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.0003200016
                 }
               },
-              "substitution": "\\left(0.000320002 + j 0.0153118\\right)",
               "substitution_latex": "\\left(0.000320002 + j 0.0153118\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -807,7 +773,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 16587.1038179
               },
-              "substitution": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.0153152}",
               "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.0153152}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -823,7 +788,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.94044345901
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.020899}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.020899}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -838,7 +802,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 45518.3544604
               },
-              "substitution": "1.94044 \\cdot \\sqrt{2} \\cdot 16587.1",
               "substitution_latex": "1.94044 \\cdot \\sqrt{2} \\cdot 16587.1",
               "title": "Pr\u0105d udarowy"
             },
@@ -856,7 +819,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 18454.9248593
               },
-              "substitution": "16587.1 \\cdot \\sqrt{1 + \\left((1.94044 - 1) \\cdot 0.518632\\right)^2}",
               "substitution_latex": "16587.1 \\cdot \\sqrt{1 + \\left((1.94044 - 1) \\cdot 0.518632\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -872,7 +834,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 17886.834338
               },
-              "substitution": "16587.1 \\cdot \\sqrt{0.162856 + 1}",
               "substitution_latex": "16587.1 \\cdot \\sqrt{0.162856 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -887,7 +848,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 11.4918826252
               },
-              "substitution": "\\sqrt{3} \\cdot 400 \\cdot 16587.1 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 16587.1 / 10^6",
               "title": "Moc zwarciowa"
             }
@@ -926,7 +886,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.0
                 }
               },
-              "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
             },
@@ -955,7 +914,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.0003200016
                 }
               },
-              "substitution": "\\left(0.000320002 + j 0.0153118\\right)",
               "substitution_latex": "\\left(0.000320002 + j 0.0153118\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -972,7 +930,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 14325.2260246
               },
-              "substitution": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.0153152}",
               "substitution_latex": "\\frac{0.95 \\cdot 400 \\cdot 0.57735}{0.0153152}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -988,7 +945,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.94044345901
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.020899}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.020899}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -1003,7 +959,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 39311.3061249
               },
-              "substitution": "1.94044 \\cdot \\sqrt{2} \\cdot 14325.2",
               "substitution_latex": "1.94044 \\cdot \\sqrt{2} \\cdot 14325.2",
               "title": "Pr\u0105d udarowy"
             },
@@ -1021,7 +976,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 15938.3441966
               },
-              "substitution": "14325.2 \\cdot \\sqrt{1 + \\left((1.94044 - 1) \\cdot 0.518632\\right)^2}",
               "substitution_latex": "14325.2 \\cdot \\sqrt{1 + \\left((1.94044 - 1) \\cdot 0.518632\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -1037,7 +991,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 15447.7205647
               },
-              "substitution": "14325.2 \\cdot \\sqrt{0.162856 + 1}",
               "substitution_latex": "14325.2 \\cdot \\sqrt{0.162856 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -1052,7 +1005,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 9.9248077218
               },
-              "substitution": "\\sqrt{3} \\cdot 400 \\cdot 14325.2 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 14325.2 / 10^6",
               "title": "Moc zwarciowa"
             }
@@ -1106,7 +1058,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.0
                 }
               },
-              "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
             },
@@ -1135,7 +1086,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.45000225
                 }
               },
-              "substitution": "\\left(0.450002 + j 0.9\\right)",
               "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -1152,7 +1102,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 9467.28315676
               },
-              "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -1168,7 +1117,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -1183,7 +1131,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 16584.2009783
               },
-              "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "title": "Pr\u0105d udarowy"
             },
@@ -1201,7 +1148,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 9467.28315676
               },
-              "substitution": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -1217,7 +1163,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 9500.26592649
               },
-              "substitution": "9467.28 \\cdot \\sqrt{0.00697987 + 1}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{0.00697987 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -1232,7 +1177,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 245.967231557
               },
-              "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "title": "Moc zwarciowa"
             }
@@ -1271,7 +1215,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.0
                 }
               },
-              "substitution": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "substitution_latex": "0.95 \\cdot \\frac{1.05}{1 + 0.6 \\cdot 0.06}",
               "title": "Korekcja impedancji transformatora sieciowego sr/branch/tr"
             },
@@ -1300,7 +1243,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.45000225
                 }
               },
-              "substitution": "\\left(0.450002 + j 0.9\\right)",
               "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -1317,7 +1259,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 8176.28999902
               },
-              "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -1333,7 +1274,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -1348,7 +1288,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 14322.7190267
               },
-              "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "title": "Pr\u0105d udarowy"
             },
@@ -1366,7 +1305,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 8176.28999902
               },
-              "substitution": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -1382,7 +1320,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 8204.77511833
               },
-              "substitution": "8176.29 \\cdot \\sqrt{0.00697987 + 1}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{0.00697987 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -1397,7 +1334,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 212.426245436
               },
-              "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "title": "Moc zwarciowa"
             }
@@ -1460,7 +1396,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.45000225
                 }
               },
-              "substitution": "\\left(0.450002 + j 0.9\\right)",
               "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -1477,7 +1412,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 9467.28315676
               },
-              "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -1493,7 +1427,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -1508,7 +1441,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 16584.2009783
               },
-              "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "title": "Pr\u0105d udarowy"
             },
@@ -1526,7 +1458,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 9467.28315676
               },
-              "substitution": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -1542,7 +1473,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 9500.26592649
               },
-              "substitution": "9467.28 \\cdot \\sqrt{0.00697987 + 1}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{0.00697987 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -1557,7 +1487,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 245.967231557
               },
-              "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "title": "Moc zwarciowa"
             }
@@ -1596,7 +1525,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.45000225
                 }
               },
-              "substitution": "\\left(0.450002 + j 0.9\\right)",
               "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -1613,7 +1541,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 8176.28999902
               },
-              "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -1629,7 +1556,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -1644,7 +1570,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 14322.7190267
               },
-              "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "title": "Pr\u0105d udarowy"
             },
@@ -1662,7 +1587,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 8176.28999902
               },
-              "substitution": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -1678,7 +1602,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 8204.77511833
               },
-              "substitution": "8176.29 \\cdot \\sqrt{0.00697987 + 1}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{0.00697987 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -1693,7 +1616,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 212.426245436
               },
-              "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "title": "Moc zwarciowa"
             }
@@ -1756,7 +1678,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.45000225
                 }
               },
-              "substitution": "\\left(0.450002 + j 0.9\\right)",
               "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -1773,7 +1694,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 9467.28315676
               },
-              "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -1789,7 +1709,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -1804,7 +1723,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 16584.2009783
               },
-              "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "title": "Pr\u0105d udarowy"
             },
@@ -1822,7 +1740,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 9467.28315676
               },
-              "substitution": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -1838,7 +1755,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 9500.26592649
               },
-              "substitution": "9467.28 \\cdot \\sqrt{0.00697987 + 1}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{0.00697987 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -1853,7 +1769,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 245.967231557
               },
-              "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "title": "Moc zwarciowa"
             }
@@ -1892,7 +1807,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.45000225
                 }
               },
-              "substitution": "\\left(0.450002 + j 0.9\\right)",
               "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -1909,7 +1823,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 8176.28999902
               },
-              "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -1925,7 +1838,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -1940,7 +1852,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 14322.7190267
               },
-              "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "title": "Pr\u0105d udarowy"
             },
@@ -1958,7 +1869,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 8176.28999902
               },
-              "substitution": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -1974,7 +1884,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 8204.77511833
               },
-              "substitution": "8176.29 \\cdot \\sqrt{0.00697987 + 1}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{0.00697987 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -1989,7 +1898,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 212.426245436
               },
-              "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "title": "Moc zwarciowa"
             }
@@ -2043,7 +1951,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.45000225
                 }
               },
-              "substitution": "\\left(0.450002 + j 0.9\\right)",
               "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -2060,7 +1967,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 9467.28315676
               },
-              "substitution": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{1.1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -2076,7 +1982,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -2091,7 +1996,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 16584.2009783
               },
-              "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 9467.28",
               "title": "Pr\u0105d udarowy"
             },
@@ -2109,7 +2013,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 9467.28315676
               },
-              "substitution": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -2125,7 +2028,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 9500.26592649
               },
-              "substitution": "9467.28 \\cdot \\sqrt{0.00697987 + 1}",
               "substitution_latex": "9467.28 \\cdot \\sqrt{0.00697987 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -2140,7 +2042,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 245.967231557
               },
-              "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9467.28 / 10^6",
               "title": "Moc zwarciowa"
             }
@@ -2179,7 +2080,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                   "re": 0.45000225
                 }
               },
-              "substitution": "\\left(0.450002 + j 0.9\\right)",
               "substitution_latex": "\\left(0.450002 + j 0.9\\right)",
               "title": "Impedancja zast\u0119pcza w punkcie zwarcia"
             },
@@ -2196,7 +2096,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ikss_a": 8176.28999902
               },
-              "substitution": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
               "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
             },
@@ -2212,7 +2111,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
@@ -2227,7 +2125,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ip_a": 14322.7190267
               },
-              "substitution": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8176.29",
               "title": "Pr\u0105d udarowy"
             },
@@ -2245,7 +2142,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ib_a": 8176.28999902
               },
-              "substitution": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
               "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
             },
@@ -2261,7 +2157,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "ith_a": 8204.77511833
               },
-              "substitution": "8176.29 \\cdot \\sqrt{0.00697987 + 1}",
               "substitution_latex": "8176.29 \\cdot \\sqrt{0.00697987 + 1}",
               "title": "Pr\u0105d zast\u0119pczy cieplny"
             },
@@ -2276,7 +2171,6 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "sk_mva": 212.426245436
               },
-              "substitution": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8176.29 / 10^6",
               "title": "Moc zwarciowa"
             }

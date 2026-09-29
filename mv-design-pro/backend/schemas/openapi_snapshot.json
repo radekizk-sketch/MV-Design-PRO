@@ -13933,7 +13933,7 @@
     "type": "object"
    },
    "SladKroku": {
-    "description": "Krok sladu WHITE BOX (kanon pieciu pol).",
+    "description": "Krok sladu WHITE BOX (kanon pieciu pol).\n\nKontrakt pol (karta DOWOD-CIEPLNY): zapis matematyczny WYLACZNIE w polach\n``*_latex`` (LaTeX goly, bez ``$$``); ``substitution`` i ``notes`` sa proza.",
     "properties": {
      "formula_latex": {
       "title": "Formula Latex",
@@ -13966,6 +13966,17 @@
       "default": "",
       "title": "Substitution",
       "type": "string"
+     },
+     "substitution_latex": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Substitution Latex"
      },
      "title": {
       "title": "Title",

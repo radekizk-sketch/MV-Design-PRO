@@ -11,6 +11,7 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
@@ -120,6 +121,7 @@ test.describe('most-wygaszony:screenshot', () => {
         );
         await expect(strona.locator('html')).toHaveAttribute('data-theme', motyw.tryb);
 
+        await bramkaTresciMatematycznej(strona);
         await strona.screenshot({
           path: path.join(OUTPUT_DIR, `most-wygaszony-${motyw.plik}.png`),
         });

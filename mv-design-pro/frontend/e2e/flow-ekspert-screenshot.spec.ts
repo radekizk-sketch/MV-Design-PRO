@@ -17,6 +17,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -316,6 +317,7 @@ test.describe('flow-ekspert:screenshot', () => {
           );
           await page.waitForTimeout(200);
           const qPath = path.join(OUTPUT_DIR, `porownanie-q-${theme}.png`);
+          await bramkaTresciMatematycznej(page);
           await root.screenshot({ path: qPath });
           expect(fs.existsSync(qPath)).toBe(true);
           await page.getByTestId('mvd-por-filtr-roznice').uncheck();
@@ -345,6 +347,7 @@ test.describe('flow-ekspert:screenshot', () => {
             POROWNANIE_WYNIK_ZAB.ranking[0].element_ref,
           );
           const zrzutZab = path.join(OUTPUT_DIR, `porownanie-zabezpieczenia-${theme}.png`);
+          await bramkaTresciMatematycznej(page);
           await root.screenshot({ path: zrzutZab });
           expect(fs.existsSync(zrzutZab)).toBe(true);
 
@@ -362,6 +365,7 @@ test.describe('flow-ekspert:screenshot', () => {
         expect(errs, `no console/page errors for ${scena}/${theme}`).toEqual([]);
 
         const outPath = path.join(OUTPUT_DIR, `flow_${scena}_${theme}.png`);
+        await bramkaTresciMatematycznej(page);
         await root.screenshot({ path: outPath });
         expect(fs.existsSync(outPath)).toBe(true);
       });
