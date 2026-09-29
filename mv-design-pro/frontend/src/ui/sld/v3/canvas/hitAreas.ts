@@ -241,6 +241,7 @@ function klasaOdcinka(segment: PreviewSegment): HitObjectClass {
   const kind = segment.meta?.kind ?? 'sn';
   if (kind === 'bus' || kind === 'busGpz') return 'szyna';
   if (kind === 'sheetContinuation') return 'lacznik-wiersza';
+  // Znak powiązania należy do ODCINKA powiązania (ref właściciela) — trafienie jak tor.
   return 'tor';
 }
 

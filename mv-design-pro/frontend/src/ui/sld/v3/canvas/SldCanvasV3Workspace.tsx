@@ -989,8 +989,8 @@ function LegendPanelGlyph(props: { readonly id: SymbolId }): JSX.Element {
 function LegendPanelLineSample(props: { readonly id: string }): JSX.Element {
   return (
     <svg width={24} height={24} viewBox="0 0 28 16" className="shrink-0 text-scada-text" aria-hidden="true">
-      <line x1={0} y1={8} x2={props.id === 'openTerminal' ? 22 : 28} y2={8} stroke="currentColor" strokeWidth={1.6} />
-      {props.id === 'openTerminal' && (
+      <line x1={0} y1={8} x2={props.id === 'openTerminal' || props.id === 'tieMarker' ? 22 : 28} y2={8} stroke="currentColor" strokeWidth={1.6} />
+      {(props.id === 'openTerminal' || props.id === 'tieMarker') && (
         <line x1={22} y1={2} x2={22} y2={14} stroke="currentColor" strokeWidth={1.6} />
       )}
     </svg>

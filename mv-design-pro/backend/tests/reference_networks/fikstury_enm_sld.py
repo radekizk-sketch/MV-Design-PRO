@@ -19,12 +19,16 @@ Sieci (nazwy plików jak w repo, ścieżki względem ``frontend``):
 * ``stacjaPolePomiarowe`` — stacja B z polem pomiarowym (przekładnik napięciowy);
 * ``s95GpzSwiezy`` — sam GPZ zaraz po ``add_grid_source_sn``;
 * ``s92Bieg`` + nakładki ``s92Zwarcie``/``s92Rozplyw`` — dwa odcinki + szablon stacji
-  przelotowej 1250 kVA, biegi kanoniczne zwarcia i rozpływu
+  1000 kVA z pomiarem (ZKSN za GPZ, stacja w odgałęzieniu), biegi kanoniczne zwarcia i
+  rozpływu
   (``GET /api/execution/runs/{id}/results/v1``);
 * ``b2Droga-<operacja>`` + ``b2DrogiOperacji`` — pięć dróg operacji budowy i ich wskazania;
 * ``b2Mala``/``b2Duza`` ``Przed``/``Po`` + ``Operacja`` — wstawienie stacji w środek odcinka
   w sieci małej (3 → 4 stacje) i dużej (14 → 15 stacji);
-* ``nnBoardDemo`` (``public``) — ``openBranch`` + rozdzielnica nN z sekcją 2 i odpływami.
+* ``nnBoardDemo`` (``public``) — ``openBranch`` + rozdzielnica nN z sekcją 2 i odpływami;
+* ``elementyCiagu-<rodzaj>`` — macierz kompletności rysunku: GPZ, pięć odcinków, stacje na
+  odcinkach 1 i 3, element rodzaju ZKSN / słup rozgałęźny / łącznik sekcyjny / węzeł nazwany
+  na odcinkach 0 (za GPZ), 2 (między stacjami) i 4 (za ostatnią stacją).
 
 Regeneracja (z katalogu ``backend``):
     poetry run python -m tests.reference_networks.fikstury_enm_sld --write
@@ -89,7 +93,6 @@ def _open_branch(b: KlientBudowy) -> dict[str, Any]:
     b.odcinek_magistrali(1200, "F1")
     b.stacja_b(segmenty_korytarza(b.migawka())[0], "Stacja B", nn_odplywy=1)
     b.odgalezienie(pole_gpz(b.migawka(), 0) + ".BRANCH", 140)
-    b.domknij_aparaty_nn(glowny="cb_nn_1000a")
     return b.migawka()
 
 
@@ -98,7 +101,6 @@ def _open_trunk_chain(b: KlientBudowy) -> dict[str, Any]:
     b.odcinek_magistrali(205, "F2")
     b.odcinek_magistrali(210, "F3")
     b.stacja_b(segmenty_korytarza(b.migawka())[1], "Stacja B", ratio=0.45, nn_odplywy=1)
-    b.domknij_aparaty_nn(glowny="cb_nn_1000a")
     return b.migawka()
 
 
@@ -108,7 +110,6 @@ def _gpz_feeder(b: KlientBudowy) -> dict[str, Any]:
     b.stacja_b(segmenty_korytarza(b.migawka())[0], "Stacja S01 (typ B)", nn_odplywy=1)
     b.odgalezienie(pole_gpz(b.migawka(), 0) + ".BRANCH", 600)
     b.stacja_b(segmenty_korytarza(b.migawka(), 1)[0], "Stacja S02 (typ B)", nn_odplywy=1)
-    b.domknij_aparaty_nn(glowny="cb_nn_1000a")
     return b.migawka()
 
 
@@ -352,7 +353,6 @@ def _stacja_pole_pomiarowe(b: KlientBudowy) -> dict[str, Any]:
             # rekordów Load"; z odpływami magazyn modelu dokłada odbiory katalogowe).
         },
     )
-    b.domknij_aparaty_nn(glowny="cb_nn_1000a")
     return b.migawka()
 
 
@@ -433,7 +433,6 @@ def _nn_board_demo(b: KlientBudowy) -> dict[str, Any]:
             "source_name": "PV stacji B",
         },
     )
-    b.domknij_aparaty_nn(glowny="cb_nn_1000a")
     return b.migawka()
 
 
@@ -518,7 +517,6 @@ def _b2_para(
     ziarna = _b2_magistrala(b, odcinki)
     for numer, (odcinek, polowa) in enumerate(stacje, start=1):
         _stacja_b2(b, f"seg/{ziarna[odcinek - 1]}/{polowa}", f"Stacja S{numer:02d} (typ B)")
-    b.domknij_aparaty_nn(glowny="cb_nn_1000a")
     przed = b.migawka()
     srodkowy = f"seg/{ziarna[operacja[0] - 1]}/{operacja[1]}"
     wynik = _stacja_b2(b, srodkowy, f"Stacja S{len(stacje) + 1:02d} (typ B)")
@@ -580,15 +578,11 @@ def _s92(klient: TestClient) -> tuple[dict[str, Any], dict[str, Any], dict[str, 
     b.gpz()
     b.odcinek_magistrali(120, "Odcinek 0")
     b.odcinek_magistrali(121, "Odcinek 1")
-    # Szablon stacji PRZELOTOWEJ (wcinanej w odcinek magistrali). Dawny zrzut użył
-    # „tpl_sn_nn_1000kva" (RMU + pomiary): od POMIAR-ODG (a2487d16) stacja z pomiarem
-    # rozliczeniowym idzie do ODGAŁĘZIENIA przez ZKSN, a ZKSN przed pierwszą stacją ciągu
-    # (poprzednikiem jest GPZ) nie ma dziś kanału zejścia na rysunku („punkt poza
-    # rysunkiem" — znalezisko karty SLD-SUBSTRAT, zgłoszone w meldunku). Kontrakt S9-2
-    # (wyniki biegu na kanwie) potrzebuje stacji NA rysunku, więc sieć niesie stację
-    # przelotową najbliższej mocy z typoszeregu.
-    b.szablon("tpl_sn_nn_1250kva", segmenty_korytarza(b.migawka())[1])
-    b.domknij_aparaty_nn(glowny="cb_nn_2000a")
+    # Szablon stacji 1000 kVA z pomiarem rozliczeniowym (jak dawny zrzut): od POMIAR-ODG
+    # (a2487d16) taka stacja idzie do ODGAŁĘZIENIA przez ZKSN wstawiony na odcinek, więc
+    # ZKSN stoi na ciągu zaraz za GPZ. Do karty SLD-SUBSTRAT (kontynuacja) rysunek go
+    # gubił razem ze stacją („punkt poza rysunkiem", kanał w szczelinie GPZ).
+    b.szablon("tpl_sn_nn_1000kva", segmenty_korytarza(b.migawka())[1])
     nakladki = []
     for rodzaj in ("SC_3F", "LOAD_FLOW"):
         bieg = klient.post(
@@ -614,6 +608,61 @@ def _s92(klient: TestClient) -> tuple[dict[str, Any], dict[str, Any], dict[str, 
             }
         )
     return b.migawka(), nakladki[0], nakladki[1]
+
+
+#: Rodzaje elementów, które mogą stać NA CIĄGU GŁÓWNYM między węzłami ze stacją
+#: (inwentarz klasy karty SLD-SUBSTRAT, kontynuacja): punkt odgałęźny ZKSN (odcinek
+#: kablowy), słup rozgałęźny (odcinek napowietrzny), łącznik sekcyjny (punkt podziału),
+#: węzeł nazwany (NAMED_TERMINAL — `continue_trunk_segment_sn` z `bus_name`). Mufa
+#: (INLINE_TERMINAL) powstaje między KAŻDYMI dwoma odcinkami ciągu w każdej z sieci.
+RODZAJE_ELEMENTOW_CIAGU: tuple[str, ...] = ("zksn", "slup", "lacznik", "wezel")
+
+#: Położenia elementu na ciągu: bezpośrednio za GPZ (przed pierwszą stacją), między
+#: dwiema stacjami, za ostatnią stacją — odcinki 0, 2 i 4 z pięciu; stacje na 1 i 3.
+POLOZENIA_NA_CIAGU: tuple[tuple[int, str], ...] = (
+    (0, "za GPZ"),
+    (2, "między stacjami"),
+    (4, "za ostatnią stacją"),
+)
+
+
+def _elementy_ciagu(b: KlientBudowy, rodzaj: str) -> dict[str, Any]:
+    """Sieć macierzy kompletności rysunku: GPZ, pięć odcinków ciągu, stacje B na
+    odcinkach 1 i 3, element `rodzaj` na odcinkach 0, 2 i 4 (z odgałęzieniem ze stacją
+    dla punktów odgałęźnych — przypadek stacji klienta za ZKSN)."""
+    napowietrzny = rodzaj == "slup"
+    b.gpz()
+    for indeks in range(5):
+        b.odcinek_magistrali(
+            300,
+            f"Odcinek {indeks}",
+            napowietrzny=napowietrzny,
+            nazwa_wezla=(
+                f"Węzeł {indeks}"
+                if rodzaj == "wezel" and indeks in dict(POLOZENIA_NA_CIAGU)
+                else None
+            ),
+        )
+    odcinki = segmenty_korytarza(b.migawka())
+    if rodzaj in ("zksn", "slup"):
+        for indeks, opis in POLOZENIA_NA_CIAGU:
+            nazwa = f"{'ZKSN' if rodzaj == 'zksn' else 'Słup rozgałęźny'} {opis}"
+            punkt = b.punkt_odgalezny(odcinki[indeks], rodzaj, nazwa)
+            port = "BRANCH_1" if rodzaj == "zksn" else "BRANCH"
+            b.odgalezienie(f"{punkt}.{port}", 150, napowietrzny=napowietrzny)
+            odgalezienie = [
+                g
+                for g in b.migawka()["branches"]
+                if g.get("type") in ("cable", "line_overhead")
+                and str(g.get("from_bus_ref", "")).startswith(punkt.rsplit("/", 1)[0])
+            ]
+            b.stacja_b(odgalezienie[-1]["ref_id"], f"Stacja klienta {opis}", nn_odplywy=1)
+    elif rodzaj == "lacznik":
+        for indeks, opis in POLOZENIA_NA_CIAGU:
+            b.lacznik_sekcyjny(odcinki[indeks], f"Łącznik sekcyjny {opis}")
+    b.stacja_b(odcinki[1], "Stacja S01", nn_odplywy=1)
+    b.stacja_b(odcinki[3], "Stacja S02", nn_odplywy=1)
+    return b.migawka()
 
 
 # --- rejestr plików ---------------------------------------------------------------
@@ -664,6 +713,12 @@ def render_fikstur_enm_sld() -> dict[str, str]:
             _nn_board_demo(KlientBudowy(klient, "Stacja z rozdzielnicą nN")),
             "Stacja z rozdzielnicą nN",
         )
+
+        for rodzaj in RODZAJE_ELEMENTOW_CIAGU:
+            nazwa = f"Elementy ciągu — {rodzaj}"
+            tresci[f"{SCENA}/elementyCiagu-{rodzaj}.enm.json"] = _plik_enm(
+                _elementy_ciagu(KlientBudowy(klient, nazwa), rodzaj), nazwa
+            )
 
         bieg, zwarcie, rozplyw = _s92(klient)
         tresci[f"{KANWA}/s92Bieg.enm.json"] = _plik_enm(bieg, "Bieg na schemacie", opakuj=False)

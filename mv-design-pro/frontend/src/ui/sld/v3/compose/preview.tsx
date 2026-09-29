@@ -55,7 +55,7 @@ import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
  *  SN GPZ, grubsza niż szyna stacji (`'bus'`, 4) — dominanta kompozycyjna GPZ
  *  jako WN/SN. Szyna WN (`#hv-bus`) i szyny stacji ZOSTAJĄ `'bus'` (spec
  *  §21.2 różnicuje WYŁĄCZNIE szynę sekcji SN GPZ, nie szynę WN ani stacje). */
-export type PreviewSegmentKind = 'bus' | 'busGpz' | 'sn' | 'snTrunk' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink' | 'openTerminal' | 'sheetContinuation';
+export type PreviewSegmentKind = 'bus' | 'busGpz' | 'sn' | 'snTrunk' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink' | 'openTerminal' | 'sheetContinuation' | 'tieMarker';
 
 /** Eksportowane (F6b): `SldCanvasV3` reużywa TĘ SAMĄ hierarchię grubości
  *  (spec §6), zero duplikacji stałych między harnessem debug i kanwą docelową. */
@@ -88,6 +88,11 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
   // (sam tor zachowuje klasę `snTrunk`, ciągłość elektryczna NIETKNIĘTA).
   // Grubość jak marker końca otwartego: to znak na torze mocy, nie adnotacja.
   sheetContinuation: 1.6,
+  // Karta SLD-SUBSTRAT (kontynuacja): ZNAK POWIĄZANIA w końcu odcinka zamkniętego
+  // odcinkiem powiązania spoza korytarzy (np. rezerwa pierścieniowa między końcami
+  // dwóch odgałęzień, `scene/elementyToru.ts`) — kreska poprzeczna na torze jak
+  // słupek końca, z odsyłaczem; sam odcinek powiązania nie ma trasy przez arkusz.
+  tieMarker: 1.6,
 };
 
 /**

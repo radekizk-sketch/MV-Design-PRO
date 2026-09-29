@@ -461,6 +461,45 @@ export function NoPointGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/** Karta SLD-SUBSTRAT (kontynuacja): łącznik na torze POZIOMYM — geometria
+ *  `DisconnectorGlyph` obrócona o 90° (nóż w osi toru = zamknięty, odchylony =
+ *  otwarty, przerywany = stan nieznany; poprzeczka styku stałego). */
+export function LineSwitchGlyph(props: GlyphProps): JSX.Element {
+  const state = props.state ?? 'unknown';
+  const bladeEnd = state === 'open' ? { x: 18, y: 1 } : { x: 22, y: 8 };
+  return (
+    <g {...glyphGroupProps('lineSwitch', props)}>
+      <line x1={0} y1={8} x2={10} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line
+        x1={10} y1={8} x2={bladeEnd.x} y2={bladeEnd.y}
+        stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
+        strokeDasharray={state === 'unknown' ? '3 2' : undefined}
+      />
+      <line x1={22} y1={4} x2={22} y2={12} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={22} y1={8} x2={32} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+    </g>
+  );
+}
+
+/** Karta SLD-SUBSTRAT (kontynuacja): wyłącznik na torze POZIOMYM — korpus
+ *  `BreakerGlyph` (wypełniony = zamknięty, pusty = otwarty) z wyprowadzeniami W/E. */
+export function LineBreakerGlyph(props: GlyphProps): JSX.Element {
+  const state = props.state ?? 'unknown';
+  return (
+    <g {...glyphGroupProps('lineBreaker', props)}>
+      <rect
+        x={2} y={2} width={12} height={12}
+        fill={state === 'closed' ? stroke(props) : 'none'}
+        fillOpacity={state === 'unknown' ? 0.35 : 1}
+        stroke={stroke(props)}
+        strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
+      />
+      <line x1={0} y1={8} x2={2} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={14} y1={8} x2={16} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+    </g>
+  );
+}
+
 export function JunctionGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('junction', props)}>
@@ -1018,6 +1057,8 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   cableHead: CableHeadGlyph,
   jointSleeve: JointSleeveGlyph,
   noPoint: NoPointGlyph,
+  lineSwitch: LineSwitchGlyph,
+  lineBreaker: LineBreakerGlyph,
   junction: JunctionGlyph,
   branchJunction: BranchJunctionGlyph,
   branchCabinet: BranchCabinetGlyph,

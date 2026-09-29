@@ -260,7 +260,7 @@ function crossVoltageConductorViolations(graph: TerminalGraph): InvariantViolati
 // jest AKTYWNA (`status==='closed'` — w torze), to HARD ERROR (plan: „nigdy
 // element w aktywnym torze").
 // ---------------------------------------------------------------------------
-export type NnApparatusResolution = 'MCB' | 'FUSE_SWITCH' | 'UNRESOLVED' | null;
+export type NnApparatusResolution = 'MCB' | 'FUSE_SWITCH' | 'CATALOG_MISSING' | 'UNRESOLVED' | null;
 
 /**
  * T1 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.3): EXPORTOWANA (T0 była
@@ -278,6 +278,14 @@ export function resolveNnApparatusKind(edge: ConductingEdge): NnApparatusResolut
   const deviceKind = readMaterializedString(edge, 'device_kind');
   if (deviceKind === 'WYLACZNIK_GLOWNY' || deviceKind === 'WYLACZNIK_ODPLYWOWY') return 'MCB';
   if (deviceKind === 'ROZLACZNIK_BEZPIECZNIKOWY') return 'FUSE_SWITCH';
+  // Karta SLD-SUBSTRAT (kontynuacja): aparat BEZ wiązania katalogowego nie jest
+  // „nierozpoznany" — model jawnie deklaruje brak katalogu, a backend nazywa go
+  // pozycją gotowości (E061, a dla aparatu z automigracji pól nN — W061) z akcją
+  // naprawczą wskazującą aparat i pole. Brak katalogu blokuje analizy czytające
+  // dane aparatu, nie rysunek: to nie jest naruszenie grafu elektrycznego.
+  // UNRESOLVED zostaje dla aparatu, który MA wiązanie, a katalog nie pozwala
+  // rozstrzygnąć jego rodzaju (sprzeczność danych, nie brak).
+  if (edge.catalogRef == null) return 'CATALOG_MISSING';
   return 'UNRESOLVED';
 }
 
@@ -292,9 +300,9 @@ function unresolvedActiveApparatusViolations(graph: TerminalGraph): InvariantVio
       violations.push({
         code: 'UNRESOLVED_ACTIVE_APPARATUS',
         messagePl:
-          `Gałąź „${edge.name}" (${edge.ref}) w aktywnym torze nN niesie aparat (switch/breaker), ` +
-          'którego rodzaju katalog nie rozpoznaje (brak kategorii katalogu/device_kind rozpoznawalnego) — ' +
-          'model niekompletny, SLD INVALID.',
+          `Gałąź „${edge.name}" (${edge.ref}) w aktywnym torze nN niesie aparat (switch/breaker) ` +
+          `z wiązaniem katalogowym „${edge.catalogRef}", którego rodzaju katalog nie rozpoznaje ` +
+          '(brak kategorii katalogu/device_kind rozpoznawalnego) — dane sprzeczne, SLD INVALID.',
         elementRefs: [edge.ref],
       });
     }

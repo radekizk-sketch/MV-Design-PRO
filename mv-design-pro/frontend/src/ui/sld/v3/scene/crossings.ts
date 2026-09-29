@@ -42,6 +42,8 @@ const NON_POWER_KINDS: ReadonlySet<string> = new Set([
   'measurementLink',
   'leader',
   'sheetContinuation',
+  // Znak powiązania (`scene/elementyToru.ts`) — marker na końcu toru, nie tor.
+  'tieMarker',
 ]);
 
 /** Rodzaje segmentów będące SZYNĄ (mostek zakazany — §22.1). */
@@ -266,7 +268,8 @@ export function externalBranchNodes(segments: readonly PreviewSegment[]): readon
       s.meta?.kind !== 'openTerminal' &&
       // S9-1: kreski znaku ciągu dalszego (złamanie arkusza) leżą NA torze, ale
       // nie są torem — nie tworzą węzła T (jak słupek terminalny wyżej).
-      s.meta?.kind !== 'sheetContinuation',
+      s.meta?.kind !== 'sheetContinuation' &&
+      s.meta?.kind !== 'tieMarker',
   );
   const nodes: RouteVertex[] = [];
   const seen = new Set<string>();
