@@ -15,8 +15,12 @@ w kreatorach, każdy element z wiązaniem katalogowym (zero referencji spoza kat
 * odbiór 0,5 MW / 0,1 Mvar na końcu magistrali (`add_load_sn`).
 
 Zwarcie w „Odcinek 2" w x = 0,5 usunięte izolacją odcina koniec magistrali z odbiorem
-(skutek topologiczny osi zdarzeń), a PV zostaje zasilone od GPZ. Wariant z modelem wiąże
-profil `default_pv_gfl` kanoniczną operacją `set_der_catalog_bindings`.
+(skutek topologiczny osi zdarzeń), a PV zostaje zasilone od GPZ. `z_modelem_pv` wiąże profil
+`default_pv_gfl` kanoniczną operacją `set_der_catalog_bindings`, `z_modelem_odbioru` — profil
+modelu dynamicznego odbioru `load_dyn_zagregowany_sn` operacją `set_load_dynamic_binding`
+(karta modeli odbiorów: model wymagany dla KAŻDEGO odbioru). Wariant bez modeli to stan
+wejścia ekranu dynamiki z dwiema akcjami naprawczymi (`der.dynamika_missing`,
+`load.dynamika_missing`).
 """
 
 from __future__ import annotations
@@ -28,10 +32,13 @@ from typing import Any
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 
-#: Profil katalogowy modelu dynamicznego PV wiązany w wariancie „z modelem".
+#: Profil katalogowy modelu dynamicznego PV wiązany w wariancie „z modelami".
 PROFIL_PV = "default_pv_gfl"
+#: Profil katalogowy modelu dynamicznego odbioru wiązany w wariancie „z modelami".
+PROFIL_ODBIORU = "load_dyn_zagregowany_sn"
 #: Nazwy nadawane przez operacje (kreatory) — asercje po NAZWACH, nie identyfikatorach.
 NAZWA_PV = "Blok PV"
+NAZWA_ODBIORU = "Odbiór"
 NAZWA_ODCINKA_ZWARCIA = "Odcinek 2"
 NAZWA_KONCA_MAGISTRALI = "Zacisk końcowy Odcinek 2"
 #: Detektor zapadu napięcia szyny, do której przyłączone jest PV (bez działania na sieć).
@@ -104,11 +111,13 @@ class RefySieci:
     szyna_pv: str
     odcinek_zwarcia: str
     koniec_magistrali: str
+    odbior: str
 
 
 def refy_sieci(enm: dict[str, Any]) -> RefySieci:
     pv = next(g for g in enm["generators"] if g.get("name") == NAZWA_PV)
     return RefySieci(
+        odbior=next(o["ref_id"] for o in enm["loads"] if o.get("name") == NAZWA_ODBIORU),
         pv=pv["ref_id"],
         szyna_pv=pv["bus_ref"],
         odcinek_zwarcia=next(
@@ -120,7 +129,7 @@ def refy_sieci(enm: dict[str, Any]) -> RefySieci:
     )
 
 
-def build_dynamika_projektanta_enm(*, z_modelem_pv: bool) -> dict[str, Any]:
+def build_dynamika_projektanta_enm(*, z_modelem_pv: bool, z_modelem_odbioru: bool) -> dict[str, Any]:
     """Sieć toku pracy dynamiki (patrz docstring modułu) jako słownik ENM."""
     enm = _op(
         _pusty_model(),
@@ -194,6 +203,12 @@ def build_dynamika_projektanta_enm(*, z_modelem_pv: bool) -> dict[str, Any]:
             "set_der_catalog_bindings",
             {"generator_ref": refy_sieci(enm).pv, "dynamic_model_ref": PROFIL_PV},
         )
+    if z_modelem_odbioru:
+        enm = _op(
+            enm,
+            "set_load_dynamic_binding",
+            {"load_ref": refy_sieci(enm).odbior, "dynamic_model_ref": PROFIL_ODBIORU},
+        )
     return _ustal_tozsamosc(enm)
 
 
@@ -241,8 +256,10 @@ def scenariusz_zwarcia_w_odcinku(
 __all__ = [
     "NAZWA_DETEKTORA_ZAPADU",
     "NAZWA_KONCA_MAGISTRALI",
+    "NAZWA_ODBIORU",
     "NAZWA_ODCINKA_ZWARCIA",
     "NAZWA_PV",
+    "PROFIL_ODBIORU",
     "PROFIL_PV",
     "PROG_DETEKTORA_ZAPADU_PU",
     "RefySieci",

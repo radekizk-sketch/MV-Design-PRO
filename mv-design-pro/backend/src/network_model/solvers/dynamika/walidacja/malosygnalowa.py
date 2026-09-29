@@ -16,8 +16,9 @@ punkcie, bez ani jednego kroku calkowania). Rozjazd tych dwoch liczb oznacza
 blad w jakobianie albo w calkowaniu — i nie da sie go schowac, bo zadna z nich
 nie korzysta z kodu tej drugiej.
 
-BLOKI JAKOBIANU pochodza z tych samych metod urzadzen, ktorych uzywa krok
-calkowania (`jakobian_stan_stan`, `jakobian_stan_napiecie`, `jakobian_prad_stan`)
+BLOKI JAKOBIANU pochodza z tych samych metod elementow stanowych (urzadzen i odbiorow
+ze stanem estymatora czestotliwosci), ktorych uzywa krok calkowania
+(`jakobian_stan_stan`, `jakobian_stan_napiecie`, `jakobian_prad_stan`)
 oraz z `siec.jakobian_algebry`. To jest zamierzone: gdyby analiza malosygnalowa
 miala wlasna kopie pochodnych, zgodnosc dowodzilaby zgodnosci dwoch kopii, a nie
 poprawnosci jednej.
@@ -58,16 +59,16 @@ def macierz_stanu(
     g_x = np.zeros((2 * liczba_wezlow, liczba_stanow), dtype=float)
 
     przesuniecie = 0
-    for urzadzenie, stan, wymiar in zip(kontekst.urzadzenia, stany, wymiary, strict=True):
-        pozycja = kontekst.model.indeks_wezla[urzadzenie.wezel]
+    for element, stan, wymiar in zip(kontekst.elementy, stany, wymiary, strict=True):
+        pozycja = kontekst.model.indeks_wezla[element.wezel]
         napiecie = complex(napiecia[pozycja])
         f_x[przesuniecie : przesuniecie + wymiar, przesuniecie : przesuniecie + wymiar] = (
-            urzadzenie.jakobian_stan_stan(stan, napiecie)
+            element.jakobian_stan_stan(stan, napiecie)
         )
-        blok_fy = urzadzenie.jakobian_stan_napiecie(stan, napiecie)
+        blok_fy = element.jakobian_stan_napiecie(stan, napiecie)
         f_y[przesuniecie : przesuniecie + wymiar, pozycja] = blok_fy[:, 0]
         f_y[przesuniecie : przesuniecie + wymiar, pozycja + liczba_wezlow] = blok_fy[:, 1]
-        blok_ix = urzadzenie.jakobian_prad_stan(stan, napiecie)
+        blok_ix = element.jakobian_prad_stan(stan, napiecie)
         g_x[pozycja, przesuniecie : przesuniecie + wymiar] = -blok_ix[0, :]
         g_x[pozycja + liczba_wezlow, przesuniecie : przesuniecie + wymiar] = -blok_ix[1, :]
         przesuniecie += wymiar

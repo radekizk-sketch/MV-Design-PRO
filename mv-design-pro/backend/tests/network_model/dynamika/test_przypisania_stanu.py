@@ -44,7 +44,6 @@ from network_model.solvers.dynamika.kontrakty import (
     KOD_ZDARZENIE_SPRZECZNE,
     WIELKOSCI_NASTAW,
 )
-from network_model.solvers.dynamika.silnik import ZALOZENIE_PRZYPISANIA_STANU
 from network_model.solvers.dynamika.urzadzenia import (
     UrzadzenieCzesciowe,
     UrzadzenieOdlaczone,
@@ -197,7 +196,7 @@ def test_komenda_wykonana_na_kazdej_rodzinie(rodzina: str, wielkosc: str) -> Non
     assert przypisanie.przed == pytest.approx(przed, rel=1e-9, abs=1e-12)
     assert zdarzenie.delta_x_nieprzypisane_max == 0.0
     assert zdarzenie.residuum_kcl_max < 1e-9
-    assert ZALOZENIE_PRZYPISANIA_STANU in wynik.zalozenia
+    assert "przypisanie_stanu" in {zalozenie.kod for zalozenie in wynik.zalozenia}
     i_p = wynik.os_czasu_s.index(T_KOMENDY_S) + 1
     assert wynik.strona_probki[i_p] == "P"
     assert wynik.probki[f"{stan}@{urzadzenie.ident}"][i_p] == przypisanie.po
@@ -383,9 +382,7 @@ def test_czesciowa_utrata_malejaco_skaluje_prad_i_zachowuje_stany(rodzina: str) 
     wynik = _bieg(urzadzenie, p_pu, zdarzenia)
     assert [z.rodzaj for z in wynik.zdarzenia_wykonane] == ["utrata_czesciowa_zrodla"] * 2
     assert {z.delta_x_nieprzypisane_max for z in wynik.zdarzenia_wykonane} == {0.0}
-    from network_model.solvers.dynamika.silnik import ZALOZENIE_UTRATY_CZESCIOWEJ
-
-    assert ZALOZENIE_UTRATY_CZESCIOWEJ in wynik.zalozenia
+    assert "utrata_czesciowa_zrodla" in {zalozenie.kod for zalozenie in wynik.zalozenia}
     for t_s in (0.1, 0.15):
         lewa = [
             i

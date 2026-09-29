@@ -76,7 +76,10 @@ HORYZONT_S = 10.0
 #: Zwarcie metaliczne jest od karty AB-1b.1 obliczalne (wiersz ograniczenia `V = 0`),
 #: ale scenariusz opisuje zwarcie lukowe. Dawne pomiary wrazliwosci na R_f (0,2-5,0 om)
 #: dotyczyly zwarcia na szynie stacji magistralnej — po przeniesieniu zwarcia na szyne
-#: pola (karta AB-1b.1 §0 pkt 4, pytanie 4) nie sa przenoszone.
+#: pola (karta AB-1b.1 §0 pkt 4, pytanie 4) nie sa przenoszone. Od karty modeli odbiorow
+#: (AB-1b.3b) kazdy odbior sieci ma napiecie przejscia `U_min` z katalogu profili odbiorow
+#: (0,7 pu) i przy glebokim zapadzie przechodzi w stala impedancje — R_f nie jest warunkiem
+#: zbieznosci przy zadnej glebokosci zapadu, zostaje wylacznie dana scenariusza.
 R_LUKU_OHM = 0.5
 
 NASTAWY_SOLVERA: dict[str, Any] = {

@@ -36,9 +36,7 @@ from network_model.solvers.dynamika import (
     ZwarcieWezla,
 )
 from network_model.solvers.dynamika.kontrakty import (
-    KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO,
     KOD_ODBIOR_PONIZEJ_NAPIECIA_PRZEJSCIA,
-    KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU,
     KOD_PARAMETRY_ODBIORU_SPRZECZNE,
     CharakterystykaOdbioru,
     OdbiorDynamiki,
@@ -49,7 +47,6 @@ from network_model.solvers.dynamika.odbiory import (
     charakterystyka_z_wielomianu,
 )
 from network_model.solvers.dynamika.siec import rozwiaz_algebre, zloz_model_sieci
-from network_model.solvers.dynamika.silnik import ZALOZENIA_RDZENIA
 from network_model.solvers.dynamika.tozsamosc import odcisk_migawki
 from network_model.solvers.dynamika.urzadzenia import zbuduj_szyne_sztywna
 from scipy.optimize import brentq
@@ -135,10 +132,8 @@ def _admitancja_zwarcia(x_f_ohm: float) -> complex:
 # ---------------------------------------------------------------------------
 
 
-def _charakterystyka(ksztalt: str, u_min: float | None = U_MIN) -> CharakterystykaOdbioru:
+def _charakterystyka(ksztalt: str, u_min: float = U_MIN) -> CharakterystykaOdbioru:
     a, b, c = KSZTALTY[ksztalt]
-    if ksztalt not in Z_PRZEJSCIEM:
-        u_min = None
     return charakterystyka_z_wielomianu(
         a_p=a,
         b_p=b,
@@ -150,7 +145,8 @@ def _charakterystyka(ksztalt: str, u_min: float | None = U_MIN) -> Charakterysty
         k_pf=0.0,
         k_qf=0.0,
         f0_hz=F_B,
-        u_min_pu=u_min,
+        u_min_pu=u_min if ksztalt in Z_PRZEJSCIEM else None,
+        t_pomiaru_czestotliwosci_s=None,
     )
 
 
@@ -304,11 +300,14 @@ def test_newton_zbiega_w_punkcie_dokladnie_u_min_z_obu_stron(ksztalt: str, start
         (),
         admitancje_zwarc=(("L", y_f),),
     )
+    odbiory = stanowisko.modele_odbiorow(
+        (OdbiorDynamiki("O", "L", P0, Q0, _charakterystyka(ksztalt)),), F_B
+    )
     wynik = rozwiaz_algebre(
         model,
-        (OdbiorDynamiki("O", "L", P0, Q0, _charakterystyka(ksztalt)),),
+        odbiory,
         (szyna,),
-        (stan,),
+        stanowisko.stany_z_odbiorami(odbiory, (stan,)),
         np.array([punkt.napiecia_pu["S"], complex(start, 0.0)], dtype=complex),
         tolerancja=1e-13,
         max_iteracji=60,
@@ -320,11 +319,13 @@ def test_newton_zbiega_w_punkcie_dokladnie_u_min_z_obu_stron(ksztalt: str, start
 
 
 def test_dawna_granica_odmowy_odbioru_stalej_mocy_znika_z_napieciem_przejscia() -> None:
-    """Dawna bramka G8 z ZADEKLAROWANYM U_min: kazda glebokosc zapadu — takze metaliczna — to
-    BIEG, a pobor odbioru w galezi impedancyjnej jest dokladnie S(U_min)(|V|/U_min)^2.
+    """Dawna bramka G8 (skasowana — karta modeli odbiorow, O-55): kazda glebokosc zapadu
+    — takze metaliczna — to BIEG, a pobor odbioru w galezi impedancyjnej jest dokladnie
+    S(U_min)(|V|/U_min)^2.
 
-    Odbior BEZ U_min zachowuje dawna granice (bramka G8 przypina jej ksztalt): to jest ten
-    sam model z niezadeklarowanym przejsciem, nie osobna fizyka.
+    Odbior BEZ U_min nie istnieje: kontrakt charakterystyki odmawia go przed biegiem
+    (`test_odbiory.test_prad_w_zerze_napiecia_istnieje_dla_kazdego_odbioru_zgodnego_z_kontraktem`),
+    wiec granica odmowy, ktora G8 przypinala, nie ma juz danych, na ktorych moglaby wystapic.
     """
     zadeklarowany = OdbiorDynamiki(
         "ODB1", "GEN", 0.4, 0.0, charakterystyka_stalej_mocy(u_min_pu=0.7)
@@ -407,7 +408,7 @@ def test_kanaly_odbiorow_sa_dopisane_za_dawnymi_w_kolejnosci_wejscia() -> None:
     przechodzi w obu biegach), wiec roznica list kanalow wynika wylacznie z odbiorow.
     """
     odbiory = (
-        OdbiorDynamiki("B2", "L", 0.0, 0.0, charakterystyka_stalej_mocy(u_min_pu=None)),
+        OdbiorDynamiki("B2", "L", 0.0, 0.0, charakterystyka_stalej_mocy(u_min_pu=U_MIN)),
         OdbiorDynamiki("A1", "L", 0.0, 0.0, _charakterystyka("czysty_i")),
     )
     bez = dataclasses.replace(
@@ -481,44 +482,45 @@ def test_punkt_pracy_ponizej_napiecia_przejscia_jest_odmowa_przed_bramka_rownowa
     assert blad.value.szczegoly["modul_v_pu"] == pytest.approx(v_l, rel=1e-12)
 
 
-def test_odbior_czuly_czestotliwosciowo_jest_odmowa_biegu() -> None:
-    charakterystyka = dataclasses.replace(_charakterystyka("stala_moc"), k_pf=1.0, f0_hz=F_B)
-    odbior = OdbiorDynamiki("O", "L", P0, Q0, charakterystyka)
-    with pytest.raises(OdmowaDynamiki) as blad:
-        SilnikDynamiki(_wejscie("stala_moc", odbior=odbior)).uruchom()
-    assert blad.value.kod == KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO
-
-
-@pytest.mark.parametrize(
-    ("ksztalt", "zadeklarowane"),
-    [
-        ("stala_moc", False),
-        ("stala_moc", True),
-        ("czysty_i", False),
-        ("czysty_i", True),
-        ("mieszany_zip", False),
-        ("mieszany_zip", True),
-        # Czysta impedancja nie ma napiecia przejscia (fantom), a w V = 0 ma prad zero.
-        ("czysty_z", False),
-    ],
-)
-def test_zwarcie_metaliczne_w_wezle_odbioru_odmowa_tylko_bez_napiecia_przejscia(
-    ksztalt: str, zadeklarowane: bool
-) -> None:
-    """Odmowa w wezle zwartym metalicznie <=> prad odbioru nie istnieje w V = 0: skladowa
-    stalopradowa albo stalomocowa BEZ zadeklarowanego U_min. Odbior z U_min i odbior czysto
-    impedancyjny licza sie bez odmowy z poborem dokladnie zero."""
-    odbior = OdbiorDynamiki(
-        "O", "L", P0, Q0, _charakterystyka(ksztalt, u_min=U_MIN if zadeklarowane else None)
+def test_odbior_czuly_czestotliwosciowo_w_punkcie_pracy_stoi_na_czestotliwosci_studium() -> None:
+    """Przepisane z intencja (kasacja odmowy
+    `dynamika.odbior_czuly_czestotliwosciowo_nieobslugiwany`): odbior z `k != 0` ma teraz
+    estymator czestotliwosci widzianej. Intencja dawnego testu — bieg NIE liczy cicho zlego
+    wyniku dla odbioru czulego — przechodzi w parytet t = 0: estymator startuje na
+    czestotliwosci studium (`x(0) = arg V_pf`), bramka rownowagi przechodzi, a bez
+    zaklocenia czestotliwosc widziana i pobor stoja na wartosciach punktu pracy.
+    """
+    charakterystyka = dataclasses.replace(
+        _charakterystyka("stala_moc"), k_pf=1.0, f0_hz=F_B, t_pomiaru_czestotliwosci_s=0.1
     )
-    wejscie = _wejscie(ksztalt, (_zwarcie(None),), odbior=odbior)
-    if zadeklarowane or ksztalt not in Z_PRZEJSCIEM:
-        wynik = SilnikDynamiki(wejscie).uruchom()
-        assert {wynik.probki["p_pobor_pu@O"][i] for i in _okno_zwarcia(wynik)} == {0.0}
-    else:
-        with pytest.raises(OdmowaDynamiki) as blad:
-            SilnikDynamiki(wejscie).uruchom()
-        assert blad.value.kod == KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU
+    odbior = OdbiorDynamiki("O", "L", P0, Q0, charakterystyka)
+    wynik = SilnikDynamiki(_wejscie("stala_moc", odbior=odbior, horyzont_s=0.05)).uruchom()
+    assert set(wynik.probki["f_odbioru_hz@O"]) == {F_B}
+    assert np.allclose(wynik.probki["p_pobor_pu@O"], P0, rtol=0.0, atol=1e-12)
+    assert wynik.probki["kat_pomiaru_rad@O"][0] == pytest.approx(
+        math.atan2(
+            _napiecie_wyroczni("stala_moc", 0j).imag, _napiecie_wyroczni("stala_moc", 0j).real
+        ),
+        abs=1e-12,
+    )
+
+
+@pytest.mark.parametrize("ksztalt", sorted(KSZTALTY))
+@pytest.mark.parametrize("integrator", ["trapez_niejawny", "rk4_jawny"])
+def test_zwarcie_metaliczne_w_wezle_odbioru_liczy_sie_z_poborem_zero(
+    ksztalt: str, integrator: str
+) -> None:
+    """Przepisane z intencja (kasacja odmowy
+    `dynamika.odbior_stalej_mocy_przy_zerowym_napieciu`): dawniej odbior bez `U_min` byl
+    odmowa biegu w wezle zwartym metalicznie. Kontrakt wymaga teraz `U_min` od kazdego
+    odbioru ze skladowa I albo P, wiec KAZDY ksztalt liczy sie w `V = 0` bez odmowy, z
+    poborem dokladnie zero, i wraca do punktu pracy po zdjeciu zwarcia.
+    """
+    wynik = SilnikDynamiki(_wejscie(ksztalt, (_zwarcie(None),), integrator=integrator)).uruchom()
+    okno = _okno_zwarcia(wynik)
+    assert okno
+    assert {wynik.probki["p_pobor_pu@O"][i] for i in okno} == {0.0}
+    assert {wynik.probki["q_pobor_pu@O"][i] for i in okno} == {0.0}
 
 
 # ---------------------------------------------------------------------------
@@ -545,6 +547,7 @@ def test_odcisk_migawki_obejmuje_kazde_pole_charakterystyki(pole: str) -> None:
         k_qf=0.5,
         f0_hz=50.0,
         u_min_pu=0.7,
+        t_pomiaru_czestotliwosci_s=0.1,
     )
     zmiany = {
         "a_p": {"a_p": 0.25, "c_p": 0.5},
@@ -558,6 +561,7 @@ def test_odcisk_migawki_obejmuje_kazde_pole_charakterystyki(pole: str) -> None:
         "k_qf": {"k_qf": 1.5},
         "f0_hz": {"f0_hz": 60.0},
         "u_min_pu": {"u_min_pu": 0.6},
+        "t_pomiaru_czestotliwosci_s": {"t_pomiaru_czestotliwosci_s": 0.2},
     }
     inna = dataclasses.replace(bazowa, **zmiany[pole])
 
@@ -582,5 +586,14 @@ def test_slad_niesie_sekcje_odbiorow_i_zalozenia_opisuja_model() -> None:
     assert wpis["wielomian_p"] == [0.5, 0.25, 0.25]
     assert wpis["tryb_t0"] == 0.0
     assert wpis["moc_w_punkcie_pracy_pu"] == pytest.approx([moc.real, moc.imag], rel=1e-8)
-    assert wynik.zalozenia[: len(ZALOZENIA_RDZENIA)] == ZALOZENIA_RDZENIA
-    assert any("napięcia przejścia U_min" in zdanie for zdanie in ZALOZENIA_RDZENIA)
+    kody = [zalozenie.kod for zalozenie in wynik.zalozenia]
+    assert kody[:5] == [
+        "model_rms_skladowej_zgodnej",
+        "model_odbiorow",
+        "zwarcia_trojfazowe",
+        "rodziny_urzadzen",
+        "probki_obustronne",
+    ]
+    # Odbior bez czulosci czestotliwosciowej: bez rekordu estymatora i bez klucza T_f w sladzie.
+    assert "estymator_czestotliwosci_odbiorow" not in kody
+    assert "t_pomiaru_czestotliwosci_s" not in wpis

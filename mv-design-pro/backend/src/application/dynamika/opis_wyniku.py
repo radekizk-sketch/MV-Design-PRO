@@ -27,8 +27,7 @@ from typing import Any
 from application.contracts.resultset_dynamic_v2 import TrybScenariusza
 from application.dynamika.opis_scenariusza import ETYKIETY_WARTOSCI
 from application.ocena_niewykonana import ocena_niewykonana, rekord_json
-from enm.adapter_dynamiki import zalozenia_wejscia
-from enm.dynamika_z_katalogu import stan_dynamiki_generatorow
+from enm.dynamika_z_katalogu import stan_dynamiki_generatorow, stan_dynamiki_odbiorow
 from enm.nazwy_elementow import nazwa_elementu
 from network_model.solvers.dynamika.zdarzenia import PRZYCZYNA_HARMONOGRAM
 from solver_input.provenance import classify_dynamic_capability
@@ -46,7 +45,7 @@ from werdykt import (
 ZDOLNOSC_DYNAMIKI_RMS = "dynamika_rms.przebieg_czasowy"
 
 #: Przedrostek klucza kanału -> (wielkość po polsku, zacisk gałęzi albo None, grupa).
-#: Grupa: `szyna`, `urzadzenie`, `galaz`, `miejsce_zwarcia`.
+#: Grupa: `szyna`, `urzadzenie`, `odbior`, `galaz`, `miejsce_zwarcia`.
 _KANALY: dict[str, tuple[str, str | None, str]] = {
     "u_pu": ("Moduł napięcia", None, "szyna"),
     "kat_deg": ("Kąt napięcia", None, "szyna"),
@@ -72,6 +71,17 @@ _KANALY: dict[str, tuple[str, str | None, str]] = {
     "i_zwarcia_pu": ("Moduł prądu do ziemi w miejscu zwarcia", None, "miejsce_zwarcia"),
     "u_zwarcia_pu": ("Moduł napięcia w miejscu zwarcia", None, "miejsce_zwarcia"),
     "i_zwarcia_kat_deg": ("Kąt fazora prądu w miejscu zwarcia", None, "miejsce_zwarcia"),
+    # Kanały odbiorów (karta modeli odbiorów): moc POBIERANA (konwencja poboru), tryb modelu
+    # i — dla odbioru czułego częstotliwościowo — częstotliwość widziana i stan estymatora.
+    "p_pobor_pu": ("Moc czynna pobierana przez odbiór", None, "odbior"),
+    "q_pobor_pu": ("Moc bierna pobierana przez odbiór", None, "odbior"),
+    "tryb_odbioru": (
+        "Tryb modelu odbioru (0 charakterystyka, 1 stała impedancja, 2 odłączony, 3 odcięty)",
+        None,
+        "odbior",
+    ),
+    "f_odbioru_hz": ("Częstotliwość widziana przez odbiór", None, "odbior"),
+    "kat_pomiaru_rad": ("Kąt pomiaru częstotliwości odbioru (stan estymatora)", None, "odbior"),
 }
 
 #: Zmienne stanu urządzeń (przestrzeń `urzadzenie`) — nazwa stanu rdzenia -> opis.
@@ -116,6 +126,10 @@ _STANY_URZADZEN: dict[str, str] = {
     "sem_przesuniecie_fazy_rad": "Skok fazy siły elektromotorycznej źródła testowego",
     "odchylka_pulsacji_pu": "Odchyłka pulsacji źródła testowego",
     "odchylka_pulsacji_tempo_pu_na_s": "Tempo zmiany odchyłki pulsacji źródła testowego",
+    # Stan modelu odbioru (adres przypisania i odmowy zakresu ważności `<odbiór>.<stan>`).
+    "kat_pomiaru_rad": "Kąt pomiaru częstotliwości odbioru (stan estymatora)",
+    "czynnik_czestotliwosci_P": "Czynnik częstotliwościowy mocy czynnej odbioru",
+    "czynnik_czestotliwosci_Q": "Czynnik częstotliwościowy mocy biernej odbioru",
 }
 
 #: Przedrostek klucza metryki -> opis po polsku.
@@ -165,6 +179,11 @@ def _przyczyna_pl(przyczyna: object) -> str:
     if tekst.startswith(_PRZEDROSTEK_PRZYCZYNY_DOZORU):
         return f"zdarzenie warunkowe detektora „{tekst[len(_PRZEDROSTEK_PRZYCZYNY_DOZORU):]}”"
     return f"przyczyna rdzenia „{tekst}”"
+
+
+#: Opisy stanów (i wielkości adresowanych `<element>.<stan>`) — publiczny słownik dla
+#: komunikatów odmów biegu (`application.dynamika.odmowy`).
+OPISY_STANOW_PL: Mapping[str, str] = _STANY_URZADZEN
 
 
 def _opis_stanu(nazwa_stanu: str) -> str:
@@ -414,29 +433,12 @@ def opis_wyniku_dynamiki(
         ],
         "elementy": dict(sorted(elementy.items())),
         "baza_mocy_mva": baza_mocy_mva,
-        **_podzial_zalozen(ladunek.get("zalozenia") or [], snapshot),
+        # Założenia biegu — zdania po polsku z nazwami elementów modelu, złożone przez
+        # wykonawcę biegu z rekordów rdzenia (`application.dynamika.zalozenia`) i z założeń
+        # wejścia adaptera. Jedna lista na pierwszym planie (karta modeli odbiorów, §0 pkt 6:
+        # zapis techniczny rdzenia dynamiki znika z ekranu — rdzeń nie pisze zdań).
+        "zalozenia_modelu": [str(z) for z in ladunek.get("zalozenia") or []],
     }
-
-
-def _podzial_zalozen(zalozenia: list[str], snapshot: Mapping[str, Any]) -> dict[str, list[str]]:
-    """Założenia wyniku rozdzielone na część MODELU (adapter wejścia — zdania po polsku
-    z nazwami elementów, `enm.adapter_dynamiki.zalozenia_wejscia`) i ZAPIS RDZENIA (zdania
-    silnika, który nie zna nazw elementów modelu, z identyfikatorami węzłów).
-
-    Wykonawca biegu zapisuje `zalozenia = [*rdzeń, *zalozenia_wejscia(migawka)]`; ten sam
-    predykat — ta sama funkcja na tej samej migawce biegu — rozpoznaje część modelu jako
-    SUFIKS listy. Bieg, którego sufiks się nie zgadza (zapis sprzed zmiany treści założeń),
-    ma całą listę w zapisie rdzenia: nic nie ginie i nic nie trafia na pierwszy plan
-    bez sprawdzenia (karta #145: zapis rdzenia wyłącznie w widoku technicznym).
-    """
-    if not snapshot:
-        # Bieg bez zapisanej migawki modelu: części modelu nie da się rozpoznać tą samą
-        # funkcją, więc cała lista zostaje w zapisie rdzenia (brak danej = brak podziału).
-        return {"zalozenia_modelu": [], "zalozenia_rdzenia": list(zalozenia)}
-    modelu = list(zalozenia_wejscia(dict(snapshot)))
-    if modelu and list(zalozenia[-len(modelu) :]) == modelu:
-        return {"zalozenia_modelu": modelu, "zalozenia_rdzenia": list(zalozenia[: -len(modelu)])}
-    return {"zalozenia_modelu": [], "zalozenia_rdzenia": list(zalozenia)}
 
 
 #: Czego brakuje do oceny ZGODNOŚCI FRT modułów wytwórczych na tym biegu.
@@ -473,21 +475,28 @@ _ZRODLA_PRZYJETE: dict[str, str] = {
 
 
 def dane_przyjete_biegu(migawka: Mapping[str, Any]) -> tuple[DanaPrzyjeta, ...]:
-    """Bloki parametrów dynamicznych wytwórców migawki BIEGU, przyjęte bez walidacji
-    (kolejność: `ref_id`). Źródło i odniesienie z proweniencji bloku — nie z tej warstwy."""
+    """Bloki parametrów dynamicznych wytwórców i ODBIORÓW migawki BIEGU, przyjęte bez
+    walidacji (kolejność: wytwórcy, potem odbiory, każda rodzina po `ref_id`). Źródło i
+    odniesienie z proweniencji bloku — nie z tej warstwy. Model dynamiczny odbioru z profilu
+    typowego katalogu (napięcie przejścia, stała pomiaru częstotliwości — karta modeli
+    odbiorów) jest daną przyjętą tak samo jak profil typowy wytwórcy."""
     wynik: list[DanaPrzyjeta] = []
-    for stan in stan_dynamiki_generatorow(migawka):
-        powod = _ZRODLA_PRZYJETE.get(stan.zrodlo_proweniencji or "")
-        if powod is None:
-            continue
-        wynik.append(
-            DanaPrzyjeta(
-                nazwa_pl=f"Parametry dynamiczne źródła {stan.nazwa}",
-                wartosc=None,
-                powod_pl=f"{powod} ({stan.odniesienie_proweniencji})",
-                jakosc=FieldQuality.ESTIMATED,
+    for rodzaj, stany in (
+        ("źródła", stan_dynamiki_generatorow(migawka)),
+        ("odbioru", stan_dynamiki_odbiorow(migawka)),
+    ):
+        for stan in stany:
+            powod = _ZRODLA_PRZYJETE.get(stan.zrodlo_proweniencji or "")
+            if powod is None:
+                continue
+            wynik.append(
+                DanaPrzyjeta(
+                    nazwa_pl=f"Parametry dynamiczne {rodzaj} {stan.nazwa}",
+                    wartosc=None,
+                    powod_pl=f"{powod} ({stan.odniesienie_proweniencji})",
+                    jakosc=FieldQuality.ESTIMATED,
+                )
             )
-        )
     return tuple(wynik)
 
 
@@ -582,6 +591,7 @@ __all__ = [
     "BRAKI_OCENY_FRT",
     "BRAKI_OCENY_STABILNOSCI",
     "OPISY_TRYBU_SCENARIUSZA",
+    "OPISY_STANOW_PL",
     "ZDOLNOSC_DYNAMIKI_RMS",
     "dane_przyjete_biegu",
     "komunikat_z_nazwami",

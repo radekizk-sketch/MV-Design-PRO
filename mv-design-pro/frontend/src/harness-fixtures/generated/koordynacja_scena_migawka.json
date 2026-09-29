@@ -747,6 +747,7 @@
       "bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_bus",
       "catalog_namespace": null,
       "catalog_ref": null,
+      "dynamika": null,
       "id": "223ae712-296b-523d-9b60-458068ed0c89",
       "materialized_params": null,
       "meta": {
@@ -771,6 +772,7 @@
       "bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_bus",
       "catalog_namespace": null,
       "catalog_ref": null,
+      "dynamika": null,
       "id": "b64d623d-0101-5b36-9b88-d38c1bd326e0",
       "materialized_params": null,
       "meta": {

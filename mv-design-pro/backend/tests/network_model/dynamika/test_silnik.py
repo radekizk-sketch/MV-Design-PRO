@@ -22,7 +22,7 @@ from network_model.solvers.dynamika.kontrakty import (
     KOD_WARTOSC_NIESKONCZONA,
     Urzadzenie,
 )
-from network_model.solvers.dynamika.silnik import ZALOZENIA_RDZENIA, jednostka_stanu
+from network_model.solvers.dynamika.silnik import jednostka_stanu, zalozenia_modelu
 from network_model.solvers.dynamika.urzadzenia.fabryka import RODZINY_OBSLUGIWANE
 
 from tests.network_model.dynamika.uklady import (
@@ -231,7 +231,8 @@ def test_slad_white_box_niesie_siec_nastawy_i_kroki_szczegolne() -> None:
     }
     assert slad["odbiory"] == []  # uklad SMIB bez odbiorow — sekcja pusta, nie nieobecna
     assert len(slad["idealizacje_harmonogramu"]) == 1
-    assert "samoczynnie" in slad["idealizacje_harmonogramu"][0]
+    (idealizacja,) = slad["idealizacje_harmonogramu"]
+    assert idealizacja["kod"] == "zwarcie_usuniete_samoczynnie"
     assert len(slad["siec"]["odcisk_ybus"]) == 64
     assert slad["siec"]["liczba_wezlow"] == 2
     assert slad["nastawy"]["integrator"] == "trapez_niejawny"
@@ -303,8 +304,16 @@ def test_zalozenia_sa_dolaczone_do_wyniku() -> None:
     wynik = SilnikDynamiki(
         uklad.wejscie(BEZ_ZDARZEN, nastawy(dt_s=0.002, horyzont_s=0.1, krok_wyjscia_s=0.05))
     ).uruchom()
-    assert wynik.zalozenia == ZALOZENIA_RDZENIA
-    assert any("skladowej zgodnej" in zalozenie for zalozenie in wynik.zalozenia)
+    # Bieg bez zdarzen i bez odbiorow: DOKLADNIE zalozenia stale modelu (rekordy
+    # strukturalne — zdanie dla projektanta sklada warstwa aplikacji).
+    assert wynik.zalozenia == zalozenia_modelu(())
+    assert [zalozenie.kod for zalozenie in wynik.zalozenia] == [
+        "model_rms_skladowej_zgodnej",
+        "model_odbiorow",
+        "zwarcia_trojfazowe",
+        "rodziny_urzadzen",
+        "probki_obustronne",
+    ]
 
 
 def test_skok_obciazenia_zmienia_punkt_pracy_sieci() -> None:
@@ -353,14 +362,10 @@ def test_zalozenia_wymieniaja_dokladnie_rodziny_fabryki() -> None:
     czujnosc. Test sprawdza OBA kierunki (zadna rodzina nie ginie, zadna nie jest
     dopisana z palca), wiec kolejne rozszerzenie fabryki nie moze przejsc po cichu.
     """
-    wiersze = [w for w in ZALOZENIA_RDZENIA if w.startswith("Rodziny urzadzen skladane")]
-    assert len(wiersze) == 1, ZALOZENIA_RDZENIA
-    wymienione = {
-        nazwa.strip()
-        for nazwa in wiersze[0].split(":", 1)[1].rstrip(".").split(",")
-        if nazwa.strip()
-    }
-    assert wymienione == set(RODZINY_OBSLUGIWANE)
+    (rekord,) = (z for z in zalozenia_modelu(()) if z.kod == "rodziny_urzadzen")
+    # Rekord niesie KODY rodzin (zdanie z nazwami sklada warstwa aplikacji — jej test
+    # przypina, ze zdanie wymienia kazda pozycje rekordu).
+    assert rekord.pozycje == tuple(RODZINY_OBSLUGIWANE)
     # Rejestr nie moze zostac pusty — pusty zbior spelnilby rownosc wyzej trywialnie.
     assert len(RODZINY_OBSLUGIWANE) >= 5
 

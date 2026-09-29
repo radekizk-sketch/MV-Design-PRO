@@ -13,7 +13,7 @@ from network_model.solvers.dynamika import (
     rozwiaz_algebre,
     zloz_model_sieci,
 )
-from network_model.solvers.dynamika.kontrakty import KOD_ALGEBRA_NIEZBIEZNA, KOD_SIEC_NIESPOJNA
+from network_model.solvers.dynamika.kontrakty import KOD_SIEC_NIESPOJNA
 from network_model.solvers.dynamika.odbiory import (
     jakobian_pradu_mocy as jakobian_pradu_odbioru,
 )
@@ -31,6 +31,7 @@ from tests.network_model.dynamika.uklady import (
     zbuduj_smib,
     zbuduj_smib_z_odbiorem,
 )
+from tests.walidacja_fizyczna.stanowisko import modele_odbiorow, stany_z_odbiorami
 
 WEZLY = (WezelDynamiki("A", 15.0), WezelDynamiki("B", 15.0))
 
@@ -161,8 +162,10 @@ def test_jakobian_algebry_zgodny_z_roznica_skonczona() -> None:
         )
         for urzadzenie in urzadzenia
     )
+    odbiory = modele_odbiorow(uklad.odbiory)
+    stany = stany_z_odbiorami(odbiory, stany)
     napiecia = np.array([complex(1.01, 0.08), complex(0.99, -0.02)], dtype=complex)
-    analityczny = jakobian_algebry(model, uklad.odbiory, urzadzenia, stany, napiecia).toarray()
+    analityczny = jakobian_algebry(model, odbiory, urzadzenia, stany, napiecia).toarray()
 
     krok = 1.0e-7
     numeryczny = np.zeros_like(analityczny)
@@ -172,8 +175,8 @@ def test_jakobian_algebry_zgodny_z_roznica_skonczona() -> None:
             przesuniecie[kolumna] = complex(krok, 0.0)
         else:
             przesuniecie[kolumna - 2] = complex(0.0, krok)
-        w_gore = residuum_algebry(model, uklad.odbiory, urzadzenia, stany, napiecia + przesuniecie)
-        w_dol = residuum_algebry(model, uklad.odbiory, urzadzenia, stany, napiecia - przesuniecie)
+        w_gore = residuum_algebry(model, odbiory, urzadzenia, stany, napiecia + przesuniecie)
+        w_dol = residuum_algebry(model, odbiory, urzadzenia, stany, napiecia - przesuniecie)
         numeryczny[:, kolumna] = (w_gore - w_dol) / (2.0 * krok)
     assert np.allclose(analityczny, numeryczny, atol=1e-5)
 
@@ -225,22 +228,27 @@ def test_residuum_kcl_jest_liczone_niezaleznie_od_ybus() -> None:
         )
         for urzadzenie in urzadzenia
     )
+    odbiory = modele_odbiorow(uklad.odbiory)
+    stany = stany_z_odbiorami(odbiory, stany)
     napiecia = np.array([complex(1.03, 0.05), complex(0.98, -0.01)], dtype=complex)
-    przez_ybus = residuum_algebry(model, uklad.odbiory, urzadzenia, stany, napiecia)
+    przez_ybus = residuum_algebry(model, odbiory, urzadzenia, stany, napiecia)
     element_po_elemencie = residuum_kcl_niezalezne(
-        model, uklad.odbiory, urzadzenia, stany, napiecia
+        model, odbiory, urzadzenia, stany, napiecia
     )
     assert element_po_elemencie == pytest.approx(
         float(np.max(np.abs(przez_ybus[:2] + 1j * przez_ybus[2:]))), rel=1e-9
     )
 
 
-def test_glebokie_zwarcie_z_odbiorem_stalej_mocy_konczy_sie_odmowa() -> None:
-    """Granica waznosci modelu PQ jest NAZWANA, nie ukryta.
-
-    Odbior o stalej mocy zada pradu `I = conj(S)/conj(V)`, wiec przy zapadzie
-    napiecia do zera uklad algebraiczny nie ma rozwiazania. Rdzen ma to
-    zameldowac kodem, a nie zwrocic ostatnie przyblizenie.
+def test_glebokie_zwarcie_z_odbiorem_stalej_mocy_zbiega_w_galezi_impedancyjnej() -> None:
+    """Przepisane z intencja (karta modeli odbiorow, kasacja odmowy odbioru stalej mocy
+    przy zerowym napieciu). Dawniej odbior stalej mocy BEZ napiecia przejscia zadal pradu
+    `conj(S)/conj(V)` i przy zapadzie do zera algebra nie miala rozwiazania (odmowa
+    `dynamika.algebra_niezbiezna`). Kontrakt wymaga teraz `U_min`, wiec ponizej niego odbior
+    jest stala impedancja i algebra MA rozwiazanie. Intencja — rdzen nie zwraca ostatniego
+    przyblizenia jako wyniku — zostaje: rozwiazanie spelnia bilans do tolerancji, a prad
+    odbioru jest DOKLADNIE pradem galezi impedancyjnej `-Y V`, `Y = conj(S)/U_min^2`
+    (niezalezna wyrocznia, bez funkcji rdzenia).
     """
     uklad = zbuduj_smib_z_odbiorem(p_odbioru_pu=0.5)
     model = zloz_model_sieci(
@@ -257,20 +265,30 @@ def test_glebokie_zwarcie_z_odbiorem_stalej_mocy_konczy_sie_odmowa() -> None:
         )
         for urzadzenie in urzadzenia
     )
+    odbiory = modele_odbiorow(uklad.odbiory)
+    stany = stany_z_odbiorami(odbiory, stany)
     napiecia = np.array(
         [uklad.punkt_pracy.napiecia_pu[ident] for ident in model.identy_wezlow], dtype=complex
     )
-    with pytest.raises(OdmowaDynamiki) as blad:
-        rozwiaz_algebre(
-            model,
-            uklad.odbiory,
-            urzadzenia,
-            stany,
-            napiecia,
-            tolerancja=1e-12,
-            max_iteracji=nastawy().max_iteracji_newtona,
-            max_nawrotow=nastawy().max_nawrotow,
-            t_s=0.5,
-        )
-    assert blad.value.kod == KOD_ALGEBRA_NIEZBIEZNA
-    assert "residuum" in blad.value.szczegoly
+    wynik = rozwiaz_algebre(
+        model,
+        odbiory,
+        urzadzenia,
+        stany,
+        napiecia,
+        tolerancja=1e-12,
+        max_iteracji=nastawy().max_iteracji_newtona,
+        max_nawrotow=nastawy().max_nawrotow,
+        t_s=0.5,
+    )
+    assert wynik.residuum < 1e-12
+    assert residuum_kcl_niezalezne(model, odbiory, urzadzenia, stany, wynik.napiecia) < 1e-10
+    (odbior,) = uklad.odbiory
+    u_min = odbior.charakterystyka.u_min_pu
+    napiecie = complex(wynik.napiecia[model.identy_wezlow.index(odbior.wezel)])
+    assert abs(napiecie) < u_min
+    admitancja = complex(odbior.p_pu, odbior.q_pu).conjugate() / u_min**2
+    (model_odbioru,) = odbiory
+    prad = model_odbioru.prad_pu(stany[0], napiecie)
+    assert abs(prad - (-admitancja * napiecie)) <= 1e-15
+    assert model_odbioru.tryb(napiecie) == 1.0

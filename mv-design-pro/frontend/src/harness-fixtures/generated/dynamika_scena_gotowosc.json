@@ -43,6 +43,36 @@
       "akcja_naprawcza": null
     }
   ],
+  "odbiory": [
+    {
+      "ref_id": "load/d274343dd8d90e4fc15e2f65933f1325/sn",
+      "nazwa": "Odbiór",
+      "wiazanie": "load_dyn_zagregowany_sn",
+      "stan": "z_katalogu",
+      "u_min_pu": 0.7,
+      "t_pomiaru_czestotliwosci_s": null,
+      "czuly_czestotliwosciowo": false,
+      "zrodlo_proweniencji": "profil_typowy_normy",
+      "odniesienie_proweniencji": "IEEE Std 2781-2022 (modelowanie obciążeń w symulacjach systemu elektroenergetycznego); wartości typowe — jakość ESTIMATED",
+      "odmowa_kod": null,
+      "odmowa_komunikat": null,
+      "akcja_naprawcza": null
+    }
+  ],
+  "profile_odbiorow": [
+    {
+      "profile_id": "load_dyn_zagregowany_sn",
+      "nazwa": "Odbiór zagregowany sieci SN — profil typowy",
+      "opis_pl": "Odbiór zastępczy stacji albo ciągu odbiorów (mieszanka napędów, oświetlenia, odbiorników elektronicznych) — przejście do stałej impedancji przy głębokim zapadzie, pomiar częstotliwości z opóźnieniem kilku okresów sieci.",
+      "jakosc": "ESTIMATED",
+      "u_min_pu": 0.7,
+      "podstawa_u_min_pl": "Próg 0,7 pu przejścia odbioru stałej mocy i stałego prądu w stałą impedancję to wartość typowa programów symulacji RMS (PSS/E: próg charakterystyki stałej mocy PQBRAK, wartość domyślna 0,7 pu). Poniżej progu odbiorniki elektroniczne i napędy nie utrzymują mocy — przyjęcie stałej mocy dawałoby prąd rosnący bez granic.",
+      "t_pomiaru_czestotliwosci_s": 0.1,
+      "podstawa_t_pomiaru_pl": "Stała 0,1 s (pięć okresów sieci 50 Hz) — rząd stałych czasowych filtrów pomiaru częstotliwości szyny w modelach RMS obciążeń; odbiorniki reagują na częstotliwość przez prędkość napędów, nie natychmiast. Żadna norma nie podaje jednej wartości — dana szacowana, do zastąpienia pomiarem odbioru.",
+      "zrodlo_proweniencji": "profil_typowy_normy",
+      "odniesienie_proweniencji": "IEEE Std 2781-2022 (modelowanie obciążeń w symulacjach systemu elektroenergetycznego); wartości typowe — jakość ESTIMATED"
+    }
+  ],
   "biegi_rozplywu": [
     {
       "run_id": "run-pf-scena-dynamika",

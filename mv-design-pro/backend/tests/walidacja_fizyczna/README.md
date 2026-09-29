@@ -23,6 +23,7 @@ Kod `1` = walidacja wykonana i **czerwona**.
 | `wyrocznia.py` | **Niezależna** wyrocznia SMIB. Zero importów z `network_model.solvers.dynamika`. Własna algebra 2×2, własny integrator (`solve_ivp`, także z podziałem na odcinki w chwilach skoków `P_m` — D-13), własna kwadratura czasu krytycznego. |
 | `wyrocznia_zdarzen.py` | **Niezależna** wyrocznia zdarzeń: postać zamknięta napięcia odbioru stałej mocy po ponownym zasileniu (pierwiastek wyższy i niższy), spójność grafu stanu t⁺ w `networkx` (predykat izolacji), chwila przecięcia progu przez rampę, pierwiastek JEDNEGO kroku trapezu członu inercyjnego i węzeł jego trajektorii dyskretnej (lokalizacja zdarzeń warunkowych, D-12) oraz postać zamknięta profilu źródła testowego odcinkami wielomianowa (D-14). Zero importów z rdzenia (przypięte w `test_manifest.py`). |
 | `wyrocznia_pradow.py` | **Niezależna** gęsta algebra sieci liniowej: gałęzie pi, boczniki, źródła Nortona, węzły uziemione wprost; zwarcie w linii x·L z JAWNYM węzłem wewnętrznym (bez redukcji Krona). Zero importów z rdzenia. |
+| `wyrocznia_odbiorow.py` | **Niezależna** wyrocznia modelu odbioru: charakterystyka ZIP × F(f) z przejściem PQ → Z zapisana od nowa, układ dwuwęzłowy w postaci zamkniętej (obie gałęzie, admitancja zwarcia dająca \|V\| = U_min — D-23) i wyspa samoregulacji (układ zredukowany dokładny, wartości własne, skok w chwili zdarzenia, DOP853 — D-24). Zero importów z rdzenia (przypięte w `test_manifest.py`). |
 | `wyrocznia_fazorow.py` | **Niezależna** superpozycja Thevenina: stan po zwarciu z KOLUMNY macierzy impedancyjnej sieci zdrowej (bez składania sieci zwartej), gałęzie pi z przekładnią zespoloną po stronie `od` (konwencja W6-A §7.2). Zero importów z rdzenia. |
 | `stanowisko.py` | Ten sam układ liczony **produktem**. `szereg`/`czas` wymagają JAWNEJ strony próbek (`C`/`L`/`P`; `SIATKA_PRAWOSTRONNA = "CP"` odtwarza dawną siatkę) i odmawiają zamiany `None` na NaN. Parametry podane jawnie po obu stronach — nic nie jest importowane z wyroczni do stanowiska ani odwrotnie. |
 | `bramki.py` | Bramki fizyczne G1–G13 oraz bramki G14–G21 karty AB-1b.1 (G14 zdarzenia warunkowe, G15 źródło testowe, G16 zwarcie w linii x·L, fazory prądów gałęzi i parytet IEC 60909, G17 obszar beznapięciowy, G18 przypisanie stanu, G19 predykat izolacji, G20 próbki obustronne, G21 częściowa utrata) z progami **wyprowadzonymi**, nie dobranymi. Uzasadnienie każdego progu stoi przy nim. |
@@ -41,7 +42,6 @@ Kod `1` = walidacja wykonana i **czerwona**.
 | G5 | zdarzenie wykonane w chwili **zadanej**, nie w najbliższym węźle siatki |
 | G6 | kierunek zmiany bazy urządzenia (ta sama maszyna w bazie 50 MVA) |
 | G7 | częstotliwość węzłowa wobec **dokładnej** pochodnej analitycznej (próbki siatki `C`); w chwilach zdarzeń `f = None` z kodem 3 w próbkach `L` i `P` |
-| G8 | granica fail-closed odbioru o stałej mocy (zamiatanie głębokości zapadu, monotoniczność) |
 | G9 | reinicjalizacja po zdarzeniu (`g(x⁺,y⁺) = 0`) |
 | G10 | czas krytyczny wobec **dwóch** niezależnych dróg wyroczni |
 | G11 / G12 | całka pierwsza przy `D = 0` i monotoniczny spadek energii przy `D > 0` |
@@ -56,9 +56,16 @@ Kod `1` = walidacja wykonana i **czerwona**.
 | bramka G15 (D-14) | źródło testowe: amplituda, faza i odchyłka pulsacji SEM wobec postaci zamkniętej profilu (skok U, rampa U, skok fazy, rampa f; źródło idealne i za impedancją; trapez i RK4); przy `Z = 0` napięcie węzła = amplituda SEM i `f = f_n (1 + Δω)` w próbkach `C` |
 | bramka G18 (D-13) | przypisanie stanu: stany nieprzypisane BITOWO ciągłe (`delta_x_nieprzypisane_max = 0`), wartość przypisana dokładnie zadana, residuum algebry po przypisaniu, trajektoria kąta SMIB po dwóch skokach `P_m` (w równowadze i w trakcie wahań) wobec `solve_ivp` wyroczni |
 | bramka G21 (D-20) | częściowa utrata: agregat z udziałem 0,5 ≡ dwie identyczne połówki z odłączeniem jednej (przekształtnik nadążny i maszyna klasyczna); przyspieszenie każdej maszyny wyspy i środka bezwładności w `t = 0⁺` po utracie 40 % prądu PV wobec algebry sieci liniowej wyroczni |
+| bramka G22 (D-22) | parytet t = 0 rozpływ ↔ dynamika na torze rozpływ → adapter → rdzeń: moc każdego odbioru ZIP × F(f) wobec wielomianu rozpływu, moc urządzenia szyny = wstrzyk + Σ S_odb(V_pf), residuum startu ≤ tol_PF/min\|V\|; iloczyn: szyna {z wytwórcą, same odbiory, ze źródłem sieciowym} × kształt {stała moc, Z, I, mieszany} × czułość {brak, k przy f0 studium, k przy f0 = 49 Hz} × {1, 2} odbiory × pole `model` {pq, zip}; agregat niereprezentowalny → odmowa nazwana rozpływu |
+| bramka G23 (D-23) | przejście PQ → Z: napięcie węzła odbioru układu dwuwęzłowego w oknie zwarcia wobec postaci zamkniętej (`wyrocznia_odbiorow`), kształt × zwarcie {płytkie, dokładnie `Y_f*` z \|V\| = U_min, głębokie, metaliczne}; tożsamość poboru w każdej próbce; ciągłość mocy w U_min; zwarcie metaliczne liczy się (V = 0, pobór 0) |
+| bramka G24 (D-24) | odbiór czuły częstotliwościowo: trajektoria wyspy samoregulacji (20 s) wobec DOP853 układu zredukowanego, rząd metody z dwóch kroków, skok w chwili zdarzenia z równania skalarnego, przejścia kąta szyny przez ±π; wartości własne rdzenia wobec postaci zamkniętej; tożsamości estymatora i poboru przy przejściu przez U_min; `f_hz@` szyny wobec `f_n(1 + Δω − ψ̇/ω_n)`; ponowne zasilenie — `f_odb = f_n` dokładnie |
+| bramka G25 (D-25) | fail-closed modelu odbioru: ta sama odmowa w gotowości i w biegu (odbiór bez bloku, U_min / T_f brak albo zbędny, P0 < 0), punkt pracy poniżej U_min i F ≤ 0 jako odmowy biegu, tablica użycia pól wobec rdzenia i materializacji katalogu |
 
-Numery bramek G14–G21 (karta AB-1b.1) piszemy zawsze z przedrostkiem „bramka", żeby nie
-mylić ich z sieciami wzorcowymi G16/G17 rejestru `tests/golden/registry.py`.
+Numery bramek G14–G25 (karty AB-1b.1 i modeli odbiorów) piszemy zawsze z przedrostkiem
+„bramka", żeby nie mylić ich z sieciami wzorcowymi G16/G17 rejestru `tests/golden/registry.py`.
+Bramka G8 (granica odmowy odbioru stałej mocy bez napięcia przejścia) jest skasowana razem z
+takim odbiorem: model dynamiczny każdego odbioru ma `U_min` z katalogu profili, a zapad
+dowolnej głębokości liczy się w gałęzi stałej impedancji (bramka G23).
 
 ## Pełny zestaw mutacji
 

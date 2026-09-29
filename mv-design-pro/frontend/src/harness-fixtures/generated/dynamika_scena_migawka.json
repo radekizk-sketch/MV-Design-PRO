@@ -863,8 +863,19 @@
       "bus_ref": "bus/fab0e40bf1455775b1286ab17b598f58/downstream",
       "catalog_namespace": null,
       "catalog_ref": null,
+      "dynamika": {
+        "proweniencja": {
+          "data": null,
+          "odniesienie": "IEEE Std 2781-2022 (modelowanie obciążeń w symulacjach systemu elektroenergetycznego); wartości typowe — jakość ESTIMATED",
+          "zrodlo": "profil_typowy_normy"
+        },
+        "t_pomiaru_czestotliwosci_s": null,
+        "u_min_pu": 0.7
+      },
       "id": "c6172cb4-020a-5895-8109-aa447ea5ca01",
-      "materialized_params": null,
+      "materialized_params": {
+        "dynamic_model_ref": "load_dyn_zagregowany_sn"
+      },
       "meta": {
         "catalog_binding": null,
         "connection_type": "TROJFAZOWY",

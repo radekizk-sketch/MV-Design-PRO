@@ -34,6 +34,23 @@ def _empty_enm() -> EnergyNetworkModel:
     return EnergyNetworkModel(header=_header())
 
 
+def _z_modelem_odbiorow(enm: EnergyNetworkModel) -> EnergyNetworkModel:
+    """Odbiory związane z profilem modelu dynamicznego z katalogu tą samą operacją domenową,
+    którą wykonuje projektant (karta modeli odbiorów: blok wymagany dla KAŻDEGO odbioru)."""
+    from enm.domain_operations import execute_domain_operation
+
+    migawka = enm.model_dump(mode="json")
+    for odbior in enm.loads:
+        wynik = execute_domain_operation(
+            migawka,
+            "set_load_dynamic_binding",
+            {"load_ref": odbior.ref_id, "dynamic_model_ref": "load_dyn_zagregowany_sn"},
+        )
+        assert not wynik.get("error"), wynik.get("error")
+        migawka = wynik["snapshot"]
+    return EnergyNetworkModel.model_validate(migawka)
+
+
 def _minimal_enm_with_pf_data() -> EnergyNetworkModel:
     return EnergyNetworkModel(
         header=_header(),
@@ -502,7 +519,7 @@ class TestCalculationReadinessService:
             nasycenie_s12=0.3,
             ra_pu=0.003,
         )
-        enm = _minimal_enm_with_pf_data()
+        enm = _z_modelem_odbiorow(_minimal_enm_with_pf_data())
         enm.generators.append(
             Generator(
                 ref_id="sm_1",
@@ -593,10 +610,30 @@ class TestCalculationReadinessService:
         assert "report_technical" in types
         assert "dynamika_rms" in types
 
-    def test_dynamika_rms_n_a_without_dynamic_sources(self) -> None:
+    def test_dynamika_rms_n_a_tylko_bez_wytworcow_i_bez_odbiorow(self) -> None:
+        """O-49 pkt 7: `n_a` WYŁĄCZNIE bez wytwórców i bez odbiorów.
+
+        Przepisane z intencją: dawniej sieć z odbiorami i bez wytwórców dostawała `n_a`, choć
+        adapter bieg wykonywał (rozjazd gotowości z biegiem). Odbiory mają dziś model
+        dynamiczny, więc sieć samych odbiorów jest przedmiotem biegu: bez modelu odbioru —
+        `blocked` z kodem per odbiór i jego nazwą, po związaniu z katalogiem — gotowość jak
+        dla każdej innej sieci (tu `ready` przy punkcie pracy).
+        """
         svc = CalculationReadinessService()
-        wynik = svc.evaluate_single(_minimal_enm_with_pf_data(), "dynamika_rms")
-        assert wynik.status == "n_a"
+        bez_odbiorow = _minimal_enm_with_pf_data()
+        bez_odbiorow.loads.clear()
+        assert svc.evaluate_single(bez_odbiorow, "dynamika_rms").status == "n_a"
+        z_odbiorami = _minimal_enm_with_pf_data()
+        brak = svc.evaluate_single(z_odbiorami, "dynamika_rms", punkt_pracy_rozplywu=True)
+        assert brak.status == "blocked"
+        braki = " ".join(brak.missing_fields_pl)
+        assert "odbiór „Odbiór 1”" in braki and "load.dynamika_missing" in braki
+        assert "dynamika.odbior_bez_bloku_dynamiki" in braki
+        assert "load_1" in brak.blocking_object_refs
+        zwiazane = svc.evaluate_single(
+            _z_modelem_odbiorow(z_odbiorami), "dynamika_rms", punkt_pracy_rozplywu=True
+        )
+        assert zwiazane.status == "ready", zwiazane.missing_fields_pl
 
     def test_dynamika_rms_blocked_without_dynamika_block(self) -> None:
         enm = _minimal_enm_with_pf_data()
@@ -644,7 +681,7 @@ class TestCalculationReadinessService:
             u_min_ciagle_pu=0.85,
             u_max_ciagle_pu=1.1,
         )
-        enm = _minimal_enm_with_pf_data()
+        enm = _z_modelem_odbiorow(_minimal_enm_with_pf_data())
         enm.generators.append(
             Generator(
                 ref_id="pv_1",

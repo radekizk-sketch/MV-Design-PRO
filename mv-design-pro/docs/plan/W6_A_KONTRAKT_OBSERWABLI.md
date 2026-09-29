@@ -828,6 +828,13 @@ Wykonanie: `tests/e2e/test_so1a_scenariusz_odniesienia.py` (10 testów).
    dotyczy odbioru BEZ zadeklarowanego `U_min` (tak przychodzą dziś odbiory z modelu sieci
    — blok danych dynamicznych odbioru wchodzi w AB-1b.3b). Wartość `R_f` zostaje zamrożona
    scenariuszem; jej przesłankę przepisuje AB-1b.3b razem z nową bazą SO-1A.
+   *Stan po AB-1b.3b (2026-09-25):* każdy odbiór biegu ma model dynamiczny z katalogu
+   profili odbiorów (napięcie przejścia `U_min`, w sieciach wzorcowych 0,7 pu), więc
+   granica opisana wyżej nie istnieje dla żadnego odbioru — zapad dowolnej głębokości, także
+   zwarcie metaliczne, liczy się w gałęzi stałej impedancji. `R_f = 0,5 Ω` NIE jest już
+   warunkiem zbieżności: zostaje wyłącznie jako dana scenariusza SO-1A (łuk ~0,3 m przy
+   prądzie kilku kA), zamrożona razem z bazą przypadku; odbiory SO-1A przy tym zapadzie
+   wchodzą w gałąź stałej impedancji (nowa baza SO-1A — tabela przed/po w meldunku karty).
 2. **Topologia pierścieniowa.** Wariant promieniowy (stacja zasilana wyłącznie przez
    wyłącznik) po jego otwarciu zostawia podsieć bez źródła albo — gdy OZE jest za
    wyłącznikiem — **wyspę**. Jedno i drugie to zdolność **D11, przypisana w zamrożeniu do

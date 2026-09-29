@@ -139,9 +139,14 @@ MUTACJE: tuple[Mutacja, ...] = (
         "network_model/solvers/dynamika/obserwable.py",
         "    if not math.isfinite(niepewnosc_napiecia_pu) or modul <= niepewnosc_napiecia_pu:",
         "    if False:",
-        "test jednostkowy obserwabli — granica |V| <= u_V jest NIEOSIAGALNA z poziomu "
-        "biegu (rdzen odmawia wczesniej przy zapadzie), wiec ZADNA bramka fizyczna jej "
-        "nie zlapie; jedyna obrona tego kontraktu jest test jednostkowy",
+        "test jednostkowy obserwabli — pasmo 0 < |V| <= u_V jest NIEOSIAGALNE z poziomu "
+        "biegu: zapad dowolnej glebokosci sie liczy (odbior przechodzi w stala impedancje), "
+        "ale wezel o V = 0 dokladnie (zwarcie metaliczne, obszar beznapieciowy) jest "
+        "wierszem ograniczenia z czestotliwoscia niedostepna bez wolania tego wzoru, a |V| "
+        "rzedu u_V wymagaloby zwarcia o impedancji rzedu tolerancji Newtona. Zmierzone "
+        "2026-09-25: bramki G23 (zwarcie metaliczne w wezle odbioru) i G17 (obszar "
+        "beznapieciowy) nie zabijaja tej mutacji — jedyna obrona kontraktu jest test "
+        "jednostkowy",
         bramki=(),
         testy=(
             "tests/walidacja_fizyczna/test_czestotliwosc_wezlowa.py"
@@ -389,6 +394,158 @@ MUTACJE: tuple[Mutacja, ...] = (
         "        return self.udzial * self.bazowe.pochodne(stan, napiecie_pu)",
         "G21 (rownowaznosc agregatu z udzialem 0,5 i dwoch polow, D-20)",
         bramki=("g21_utrata_czesciowa",),
+    ),
+    # --- Model odbioru (karta modeli odbiorow, twierdzenia D-22...D-25) -------------------
+    Mutacja(
+        "M38",
+        "Predykat modelu odbioru z pola `Load.model` zamiast wspolczynnikow: odbior z "
+        "`model = pq` i wielomianem ZIP liczony w dynamice stala moca, a w rozplywie ZIP.",
+        "enm/adapter_dynamiki.py",
+        "    if wspolczynniki is None:\n        if blok.u_min_pu is None",
+        '    if wspolczynniki is None or load.model != "zip":\n        if blok.u_min_pu is None',
+        "G22 (parytet t = 0, przypadki `model = pq` + ZIP — sonda S1)",
+        bramki=("g22_parytet_chwili_zerowej",),
+    ),
+    Mutacja(
+        "M39",
+        "Podzial mocy wezla moca BAZOWA odbioru `P0 + jQ0` zamiast mocy charakterystyki w "
+        "napieciu punktu pracy: urzadzenie szyny z odbiorem ZIP dostaje moc obok rozplywu.",
+        "enm/adapter_dynamiki.py",
+        "            moc_poboru_w_punkcie_pracy(odbior, punkt.napiecia_pu[szyna], f_bazowa_hz)",
+        "            complex(odbior.p_pu, odbior.q_pu)",
+        "G22 (moc urzadzenia szyny z wytworca i ze zrodlem sieciowym przy odbiorze ZIP)",
+        bramki=("g22_parytet_chwili_zerowej",),
+    ),
+    Mutacja(
+        "M40",
+        "Galaz impedancyjna bez sprzezenia: `Y_eq = S(U_min)/U_min^2` — moc bierna odbioru "
+        "ponizej U_min ze zlym znakiem.",
+        "network_model/solvers/dynamika/odbiory.py",
+        "    return moc.conjugate() / (odniesienie * odniesienie)",
+        "    return moc / (odniesienie * odniesienie)",
+        "G23 (napiecie wezla odbioru Q0 != 0 ponizej U_min wobec postaci zamknietej)",
+        bramki=("g23_przejscie_pq_z",),
+    ),
+    Mutacja(
+        "M41",
+        "Galaz impedancyjna skalowana moca przy `v0` zamiast przy `U_min`: skok mocy i pradu "
+        "w napieciu przejscia dla skladowej Z albo I.",
+        "network_model/solvers/dynamika/odbiory.py",
+        "    moc = moc_charakterystyki_pu(odbior, odniesienie, f_hz)\n",
+        "    moc = moc_charakterystyki_pu(odbior, odbior.charakterystyka.v0_pu or 1.0, f_hz)\n",
+        "G23 (ciaglosc mocy w U_min przy a != 0 albo b != 0)",
+        bramki=("g23_przejscie_pq_z",),
+    ),
+    Mutacja(
+        "M42",
+        "Przejscie w stala impedancje wylacznie skladowej stalomocowej: skladowa stalopradowa "
+        "w V = 0 dzieli przez zero (kierunek V/|V| nie istnieje).",
+        "network_model/solvers/dynamika/odbiory.py",
+        "    return charakterystyka.u_min_pu is not None and modul_v < charakterystyka.u_min_pu",
+        "    return (\n        charakterystyka.u_min_pu is not None\n"
+        "        and modul_v < charakterystyka.u_min_pu\n"
+        "        and charakterystyka.b_p == 0.0\n        and charakterystyka.b_q == 0.0\n    )",
+        "G23 (zwarcie metaliczne w wezle odbioru ze skladowa I — bieg zamiast odmowy)",
+        bramki=("g23_przejscie_pq_z",),
+    ),
+    Mutacja(
+        "M43",
+        "Czynnik czestotliwosciowy wylacznie w galezi charakterystyki: ponizej U_min odbior "
+        "czuly liczy moc przy f0 zamiast przy czestotliwosci widzianej.",
+        "network_model/solvers/dynamika/odbiory.py",
+        "    moc = moc_charakterystyki_pu(odbior, odniesienie, f_hz)\n",
+        "    moc = moc_charakterystyki_pu(odbior, odniesienie, odbior.charakterystyka.f0_hz)\n",
+        "G23 (F != 1 przez f0 != f_n ponizej U_min) i G24 (przejscie przez U_min przy "
+        "dw_hat != 0 — tozsamosc poboru)",
+        bramki=("g23_przejscie_pq_z", "g24_estymator_w_zdarzeniach"),
+    ),
+    Mutacja(
+        "M44",
+        "Estymator z roznicy katow `angle(V) - x` bez `arg(V e^{-jx})`: przejscie "
+        "absolutnego kata szyny przez +-pi daje skok 2 pi bledu fazy.",
+        "network_model/solvers/dynamika/odbiory.py",
+        "        return cmath.phase(napiecie_pu * cmath.exp(-1j * float(stan[0])))",
+        "        return cmath.phase(napiecie_pu) - float(stan[0])",
+        "G24 (samoregulacja wyspy — kat szyny przechodzi przez +-pi)",
+        bramki=("g24_samoregulacja_wyspy",),
+    ),
+    Mutacja(
+        "M45",
+        "Odchylka czestotliwosci widzianej `dw_hat = e/T_f` bez pulsacji znamionowej: "
+        "odbior widzi czestotliwosc zawyzona 314 razy.",
+        "network_model/solvers/dynamika/odbiory.py",
+        "        odchylka = self.blad_fazy_rad(stan, napiecie_pu) / (\n"
+        "            2.0 * math.pi * self.f_bazowa_hz * self._t_f()\n        )",
+        "        odchylka = self.blad_fazy_rad(stan, napiecie_pu) / self._t_f()",
+        "G24 (tozsamosc estymatora f_odb = f_n (1 + e/(w_n T_f)) w probkach biegu)",
+        bramki=("g24_estymator_w_zdarzeniach",),
+    ),
+    Mutacja(
+        "M46",
+        "Jakobian pradu odbioru bez czlonu dS/d|V| skladowych Z i I: Newton traci zbieznosc "
+        "kwadratowa (wynik ten sam, bo residuum jest dokladne).",
+        "network_model/solvers/dynamika/odbiory.py",
+        "    if ch.v0_pu is None:\n        return jakobian",
+        "    if True:\n        return jakobian",
+        "test jakobianu analitycznego wobec roznicy centralnej (bledny jakobian przy "
+        "dokladnym residuum nie zmienia rozwiazania Newtona, wiec zadna bramka fizyczna go "
+        "nie widzi — obrona jest test jednostkowy, jak M18)",
+        testy=(
+            "tests/network_model/dynamika/test_odbiory.py"
+            "::test_jakobian_analityczny_wobec_roznicy_centralnej",
+        ),
+    ),
+    Mutacja(
+        "M47",
+        "Brak `x := arg V+` przy ponownym zasileniu szyny odbioru: estymator po przerwie "
+        "beznapieciowej startuje z faza sprzed odciecia (skok czestotliwosci widzianej).",
+        "network_model/solvers/dynamika/silnik.py",
+        "        if not (odbior.estymator_wyzerowany and odbior.nazwy_stanow):\n"
+        "            nowe.append(stan)\n            continue",
+        "        if True:\n            nowe.append(stan)\n            continue",
+        "G24 (obszar beznapieciowy — f_odb = f_n dokladnie w probce P ponownego zasilenia)",
+        bramki=("g24_estymator_w_zdarzeniach",),
+    ),
+    Mutacja(
+        "M48",
+        "Brak sprawdzenia |V_pf| >= U_min: punkt pracy ponizej przejscia konczy sie odmowa "
+        "bramki rownowagi zamiast odmowy nazwanej modelu odbioru.",
+        "network_model/solvers/dynamika/silnik.py",
+        "                sprawdz_punkt_pracy_odbioru(",
+        "                (lambda *_argumenty: None)(",
+        "G25 (oczekiwany kod `dynamika.odbior_ponizej_napiecia_przejscia`)",
+        bramki=("g25_odmowy_modelu_odbioru",),
+    ),
+    Mutacja(
+        "M49",
+        "Warunek bloku `Load.dynamika` wyciety z bramki modelu: gotowosc mowi `ready`, a bieg "
+        "odmawia przy skladaniu wejscia (rozjazd gotowosc - bieg).",
+        "enm/adapter_dynamiki.py",
+        "    bez_bloku_odbioru = tuple(sorted(load.ref_id for load in enm.loads if load.dynamika "
+        "is None))",
+        "    bez_bloku_odbioru: tuple[str, ...] = ()",
+        "G25 (para gotowosc - bieg dla odbioru bez bloku)",
+        bramki=("g25_odmowy_modelu_odbioru",),
+    ),
+    Mutacja(
+        "M50",
+        "Prawa strona zrozniczkowanej algebry bez elementow stanowych odbiorow: `f_hz@` szyny "
+        "z odbiorem czulym liczona z niepelnej pochodnej napiec.",
+        "network_model/solvers/dynamika/obserwable.py",
+        "        if not odbior.nazwy_stanow or not odbior.przylaczony:\n            continue",
+        "        if True:\n            continue",
+        "G24 (f_hz@B wobec f_n (1 + dw - psi'(e) e'/w_n) na stanie z biegu)",
+        bramki=("g24_estymator_w_zdarzeniach",),
+    ),
+    Mutacja(
+        "M51",
+        "Predykat reprezentowalnosci agregatu ZIP szyny wylaczony: rozplyw liczy cicho "
+        "agregat niedokladny zamiast odmowy nazwanej.",
+        "enm/load_zip_model.py",
+        "    if powod is None:\n        return None\n    return powod, moc_p, moc_q",
+        "    return None",
+        "G22 (dwa odbiory szyny o roznych k przy f0 != f_studium — odmowa rozplywu)",
+        bramki=("g22_parytet_chwili_zerowej",),
     ),
     Mutacja(
         "M21",

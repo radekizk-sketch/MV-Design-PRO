@@ -43,6 +43,7 @@ const NAGLOWKI_GRUP: Record<GrupaKanalu, string> = {
   galaz: T.grupaGalaz,
   miejsce_zwarcia: T.grupaMiejsce,
   urzadzenie: T.grupaUrzadzenie,
+  odbior: T.grupaOdbior,
 };
 
 export interface PrzegladarkaPrzebiegowProps {
@@ -341,7 +342,7 @@ export function PrzegladarkaPrzebiegow({
               value={filtr}
               onChange={(e) => setFiltr(e.target.value)}
             />
-            {(['szyna', 'galaz', 'miejsce_zwarcia', 'urzadzenie'] as const).map((rodzajGrupy) => {
+            {(['szyna', 'galaz', 'miejsce_zwarcia', 'urzadzenie', 'odbior'] as const).map((rodzajGrupy) => {
               const grupyRodzaju = grupy.filter((g) => g.grupa === rodzajGrupy);
               if (grupyRodzaju.length === 0) return null;
               return (

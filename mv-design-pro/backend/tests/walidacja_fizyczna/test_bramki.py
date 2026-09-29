@@ -55,12 +55,6 @@ def test_g7_czestotliwosc_wezlowa() -> None:
     assert pomiary["_probki_zdarzen"] == 4.0
 
 
-def test_g8_granica_odmowy() -> None:
-    pomiary = bramki.g8_granica_odmowy()
-    _sprawdz(pomiary, ("G8_granica_odmowy_zlamana",))
-    assert len(pomiary["_granica_odmowy"]) == len(bramki.ZAPADY_G8_PU)
-
-
 def test_g9_residuum_po_zdarzeniu() -> None:
     _sprawdz(bramki.g9_residuum_po_zdarzeniu(), ("G9_residuum_algebry_po_zdarzeniu",))
 
@@ -171,6 +165,76 @@ def test_g21_utrata_czesciowa() -> None:
             "G21_blad_rocof_srodka_bezwladnosci_wzgl",
         ),
     )
+
+
+def test_g22_parytet_chwili_zerowej() -> None:
+    pomiary = bramki.g22_parytet_chwili_zerowej()
+    _sprawdz(
+        pomiary,
+        (
+            "G22_blad_mocy_odbioru_wzgl",
+            "G22_blad_mocy_urzadzenia_wzgl",
+            "G22_residuum_rownowagi_wzgl_granicy",
+            "G22_przypadki_z_odmowa",
+            "G22_niereprezentowalne_bez_odmowy",
+        ),
+    )
+    # Iloczyn cech: 3 rodzaje szyny x 4 ksztalty x 3 czulosci — pomiar ma miec co sprawdzac.
+    assert pomiary["_przypadki_g22"] == 36.0
+
+
+def test_g23_przejscie_pq_z() -> None:
+    _sprawdz(
+        bramki.g23_przejscie_pq_z(),
+        (
+            "G23_blad_napiecia_pu",
+            "G23_tozsamosc_mocy_wzgl",
+            "G23_ciaglosc_mocy_w_napieciu_przejscia_pu",
+            "G23_niezgodnosci_trybu",
+            "G23_biegi_z_odmowa",
+        ),
+    )
+
+
+def test_g24_estymator_w_zdarzeniach() -> None:
+    pomiary = bramki.g24_estymator_w_zdarzeniach()
+    _sprawdz(
+        pomiary,
+        (
+            "G24_blad_wartosci_wlasnych_wzgl",
+            "G24_tozsamosc_estymatora_hz",
+            "G24_tozsamosc_poboru_wzgl",
+            "G24_brak_przejscia_przez_u_min_z_odchylka",
+            "G24_blad_czestotliwosci_szyny_hz",
+            "G24_estymator_po_ponownym_zasileniu_hz",
+        ),
+    )
+    # Macierz stanu wyspy: dwa mody odbioru-maszyny i trzy zera (sztywny obrot kata maszyny
+    # i estymatora, stany stale maszyny klasycznej).
+    assert len(pomiary["_wartosci_wlasne_rdzenia"]) == 5
+
+
+def test_g24_samoregulacja_wyspy() -> None:
+    pomiary = bramki.g24_samoregulacja_wyspy()
+    _sprawdz(
+        pomiary,
+        (
+            "G24_blad_trajektorii_wzgl",
+            "G24_odchylka_rzedu_metody",
+            "G24_blad_skoku_w_chwili_zdarzenia_pu",
+            "G24_brak_przejscia_kata_przez_pi",
+        ),
+    )
+
+
+def test_g25_odmowy_modelu_odbioru() -> None:
+    pomiary = bramki.g25_odmowy_modelu_odbioru()
+    _sprawdz(
+        pomiary,
+        ("G25_niezgodnosci_gotowosci_i_biegu", "G25_niezgodnosci_tablicy_uzycia_pol"),
+    )
+    # Macierz ma komplet przypadkow karty (8 migawek ENM + 2 odmowy zalezne od biegu).
+    assert len(pomiary["_macierz_g25"]) == 10
 
 
 def test_rejestr_progow_pokrywa_wszystkie_bramki() -> None:
