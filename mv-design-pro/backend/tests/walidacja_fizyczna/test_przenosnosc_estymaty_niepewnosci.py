@@ -18,12 +18,19 @@ obie tej samej KLASY — estymata niepewnosci niosla realizacje szumu zaokraglen
    wzglednym ~1e-10 — w czesci szumem obliczenia pochodnej (rozrzut miedzy jadrami do
    4,4e-5). Naprawa: krok wydluzony do `sqrt(u)` wzglednie
    (`obserwable.skala_kroku_pochodnej`).
+3. Ta sama klasa na progu czesci pewnej residuum: dawna regula brala `J^-1 r`, gdy choc
+   jedna skladowa wyszla ponad granice zaokraglen, a tuz nad progiem spadala gleboko pod
+   propagacje granicy (SO-1a, probka 372: 4,6e-15 Hz wobec 1,1e-10 Hz); strona progu zalezala
+   od jadra BLAS. Naprawa: estymata `|J^-1 psi(r)| + |J^-1 rho|` i `u_Vdot` jako suma dwoch
+   roznic skonczonych (`obserwable.pochodna_napiec_z_niepewnoscia`; testy progu w
+   `test_niepewnosc_na_granicy_zaokraglen.py`).
 
 ILOCZYN CECH: {siec: SMIB z odbiorem i zwarciem, galaz slepa za przekladnia zespolona} x
 {punkt pracy: dokladny (na dnie zaokraglen), zaburzony w granicy `eps_init`} x {harmonogram:
 bez zdarzenia w `t = 0` (probka C), ze zdarzeniem w `t = 0` (probki L i P)} dla probki zero;
-{wywolania estymatora z RZECZYWISTEJ sciezki biegu} x {szum obliczenia pochodnej: +1 u, -1 u}
-dla kroku roznicy. Os jadra BLAS x liczby watkow na calej scenie harnessu —
+{wywolania estymatora z RZECZYWISTEJ sciezki biegu} x {rezim residuum: na dnie (jedna roznica
+skonczona), z czescia pewna (dwie)} x {szum obliczenia pochodnej: +1 u, -1 u} dla kroku
+roznicy. Os jadra BLAS x liczby watkow na calej scenie harnessu —
 `test_niepewnosc_na_granicy_zaokraglen.py::test_scena_dynamiki_nie_zalezy_od_jadra_i_liczby_watkow_blas`.
 """
 
@@ -47,11 +54,13 @@ from network_model.solvers.dynamika.obserwable import JAKOSC_ROZROZNIALNA
 from network_model.solvers.dynamika.siec import (
     JEDNOSTKA_ZAOKRAGLENIA,
     granica_zaokraglen_residuum,
+    jakobian_algebry,
     residuum_algebry,
     residuum_ponad_granica_zaokraglen,
 )
 from network_model.solvers.dynamika.silnik import SilnikDynamiki as KlasaSilnika
 from network_model.solvers.dynamika.tozsamosc import CYFRY_KWANTYZACJI
+from scipy.sparse import linalg as sparse_linalg
 
 from tests.ci.test_fixtury_harnessu import RTOL_FIXTUR
 from tests.network_model.dynamika.uklady import (
@@ -164,8 +173,9 @@ def test_probka_zero_lezy_na_algebrze_rdzenia(
     """Probka `t = 0` spelnia tolerancje algebry biegu jak kazda inna — takze gdy punkt pracy
     przychodzi z residuum ponad dnem zaokraglen; punkt juz na dnie zostaje BITOWO bez zmian.
 
-    Korekta zalezy od TEGO SAMEGO predykatu, ktorym estymator wybiera droge `J^-1 r`
-    (`siec.residuum_ponad_granica_zaokraglen`) — slad biegu mowi, czy sie wykonala.
+    Korekta zalezy od predykatu `siec.residuum_ponad_granica_zaokraglen`, wyprowadzonego z tej
+    samej czesci pewnej residuum `psi(r)`, z ktorej estymator liczy skladnik `|J^-1 psi|` —
+    slad biegu mowi, czy sie wykonala.
 
     Stan `t = 0` jest ROWNOWAGA ukladu, nie tylko punktem algebry: `max |f|` stanow rownowagi
     (liczone tu niezaleznie) nie przekracza dziesieciokrotnosci tej samej normy w punkcie
@@ -359,14 +369,37 @@ def test_skala_kroku_pochodnej_przy_estymacie_nieskonczonej_jest_jednoscia(
     assert obserwable.skala_kroku_pochodnej(napiecia, niepewnosc, np.array([True, True])) == 1.0
 
 
+def _skladniki_bledu(w: Any) -> list[np.ndarray]:
+    """Niezerowe skladniki estymaty bledu w kolejnosci produkcji: `J^-1 psi(r)`, `J^-1 rho`.
+
+    Liczone wprost ze wzoru (`splu` jakobianu), bez kodu estymatora."""
+    liczba = w.model.liczba_wezlow
+    reszta = residuum_algebry(w.model, w.odbiory, w.urzadzenia, w.stany, w.napiecia)
+    granica = np.concatenate(
+        (granica_zaokraglen_residuum(w.model, w.odbiory, w.urzadzenia, w.stany, w.napiecia),) * 2
+    )
+    czesc_pewna = np.sign(reszta) * np.maximum(np.abs(reszta) - granica, 0.0)
+    rozklad = sparse_linalg.splu(
+        jakobian_algebry(w.model, w.odbiory, w.urzadzenia, w.stany, w.napiecia)
+    )
+    skladniki = []
+    for wektor in (czesc_pewna, granica):
+        if not np.any(wektor != 0.0):
+            continue
+        rozwiazanie = rozklad.solve(wektor)
+        skladniki.append(rozwiazanie[:liczba] + 1j * rozwiazanie[liczba:])
+    return skladniki
+
+
 @pytest.mark.parametrize("siec", sorted(SIECI))
 def test_krok_roznicy_pochodnej_nigdy_ponizej_pierwiastka_u(
     siec: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Na RZECZYWISTEJ sciezce biegu punkt, w ktorym liczona jest druga pochodna, lezy wzglednie
-    co najmniej `sqrt(u)` od punktu obliczonego (w najbardziej przesunietym wezle zywym) —
-    albo dokladnie w estymacie bledu, gdy ta jest wieksza. Bez tego roznica skonczona na dnie
-    zaokraglen jest szumem obliczenia pochodnej.
+    """Na RZECZYWISTEJ sciezce biegu kazdy punkt, w ktorym liczona jest druga pochodna, lezy
+    wzglednie co najmniej `sqrt(u)` od punktu obliczonego (w najbardziej przesunietym wezle
+    zywym) — albo dokladnie w swoim skladniku estymaty bledu, gdy ten jest wiekszy. Punktow
+    jest tyle, ile niezerowych skladnikow (`J^-1 psi(r)`, `J^-1 rho`): jeden na dnie
+    zaokraglen, dwa przy residuum z czescia pewna — i oba rezimy musza wystapic w biegu.
     """
     wywolania = _wywolania(SIECI[siec](), monkeypatch)
     monkeypatch.undo()
@@ -378,7 +411,7 @@ def test_krok_roznicy_pochodnej_nigdy_ponizej_pierwiastka_u(
         return oryginal(model, odbiory, urzadzenia, stany, napiecia)
 
     monkeypatch.setattr(obserwable, "pochodna_napiec", podsluch)
-    sprawdzone = 0
+    sprawdzone_wg_liczby_skladnikow = {1: 0, 2: 0}
     for w in wywolania:
         przesuniete.clear()
         pomiar = obserwable.pochodna_napiec_z_niepewnoscia(
@@ -386,15 +419,21 @@ def test_krok_roznicy_pochodnej_nigdy_ponizej_pierwiastka_u(
         )
         if not np.all(np.isfinite(pomiar.niepewnosc_pochodnej_pu_s)):
             continue
-        (punkt,) = przesuniete
+        skladniki = _skladniki_bledu(w)
+        assert len(przesuniete) == len(
+            skladniki
+        ), "liczba roznic skonczonych rozna od liczby niezerowych skladnikow estymaty"
         badane = np.ones(w.model.liczba_wezlow, dtype=bool)
         badane[list(w.model.pozycje_zerowe)] = False
         zywe = badane & (np.abs(w.napiecia) > 0.0)
-        krok = float(np.max(np.abs(w.napiecia[zywe] - punkt[zywe]) / np.abs(w.napiecia[zywe])))
-        estymata = float(np.max(pomiar.niepewnosc_napiecia_pu[zywe] / np.abs(w.napiecia[zywe])))
-        assert krok == pytest.approx(max(estymata, SQRT_U), rel=1.0e-6)
-        sprawdzone += 1
-    assert sprawdzone > 0, "zadne wywolanie nie mialo skonczonej niepewnosci pochodnej"
+        for punkt, skladnik in zip(przesuniete, skladniki, strict=True):
+            krok = float(np.max(np.abs(w.napiecia[zywe] - punkt[zywe]) / np.abs(w.napiecia[zywe])))
+            wlasny = float(np.max(np.abs(skladnik[zywe]) / np.abs(w.napiecia[zywe])))
+            assert krok == pytest.approx(max(wlasny, SQRT_U), rel=1.0e-6)
+        sprawdzone_wg_liczby_skladnikow[len(skladniki)] += 1
+    assert all(
+        sprawdzone_wg_liczby_skladnikow.values()
+    ), f"bieg nie pokryl obu rezimow residuum: {sprawdzone_wg_liczby_skladnikow}"
 
 
 @pytest.mark.parametrize("siec", sorted(SIECI))

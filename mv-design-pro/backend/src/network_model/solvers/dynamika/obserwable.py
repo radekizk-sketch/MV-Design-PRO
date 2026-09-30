@@ -98,9 +98,13 @@ DETERMINIZM-KATA-FAZORA). Newton moze zakonczyc sie residuum, ktore jest juz tyl
 formowania `Y V - I` (np. gdy punkt startowy kroku lezy w tolerancji i iteracja w ogole sie
 nie wykonuje). `J^-1 r` jest wtedy realizacja szumu, a nie estymata bledu: w tej samej
 probce sceny harnessu dawalo 16x rozne `u_f` zaleznie od liczby watkow BLAS i przelaczalo
-kod jakosci. Gdy KAZDA skladowa `|r|` miesci sie w granicy `rho = gamma_m (|Y||V| + sum|I|)`
-(`siec.granica_zaokraglen_residuum`), estymata bledu rozwiazania to `J^-1 rho` — wektor
-deterministyczny; residuum znaczace idzie droga `J^-1 r` jak dotad (Higham 2002, par. 7.2).
+kod jakosci. Residuum rozklada sie na czesc PEWNIE obecna ponad granica
+`rho = gamma_m (|Y||V| + sum|I|)` (`siec.granica_zaokraglen_residuum`),
+`psi(r) = sign(r) max(|r| - rho, 0)`, i reszte mieszczaca sie w `rho`; estymata bledu
+rozwiazania to `|J^-1 psi(r)| + |J^-1 rho|` (Higham 2002, par. 7.2; korekta 2026-09-30,
+karta PRZENOSNOSC-NIEPEWNOSCI — dawne rozgalezienie `J^-1 r` / `J^-1 rho` bylo nieciagle
+na progu i tuz nad nim schodzilo ponizej dna zaokraglen). Na dnie (`psi = 0`) estymata jest
+wektorem deterministycznym `|J^-1 rho|`.
 
 ZBIEZNOSC NIE JEST WIARYGODNOSCIA (par. 6). Jesli jakobian algebry jest osobliwy, albo
 punkt skorygowany lezy tam, gdzie model odbioru o stalej mocy przestaje byc obliczalny,
@@ -126,13 +130,13 @@ from .kontrakty import (
 from .siec import (
     JEDNOSTKA_ZAOKRAGLENIA,
     ModelSieci,
+    czesc_pewna_residuum,
     czwornik_galezi,
     granica_zaokraglen_residuum,
     jakobian_algebry,
     ograniczenia_napiecia,
     prad_wezla_ograniczonego,
     residuum_algebry,
-    residuum_ponad_granica_zaokraglen,
     zwarcia_galezi_modelu,
 )
 
@@ -305,7 +309,10 @@ KROK_WZGLEDNY_POCHODNEJ = math.sqrt(JEDNOSTKA_ZAOKRAGLENIA)
 def skala_kroku_pochodnej(
     napiecia: np.ndarray, niepewnosc_napiecia: np.ndarray, badane: np.ndarray
 ) -> float:
-    """Mnoznik `s >= 1` kroku roznicy skonczonej `Vdot(y - s d) - Vdot(y)` (d — estymata bledu).
+    """Mnoznik `s >= 1` kroku roznicy skonczonej `Vdot(y - s d) - Vdot(y)`.
+
+    `d` to JEDEN skladnik estymaty bledu rozwiazania — `J^-1 psi(r)` albo `J^-1 rho`
+    (`pochodna_napiec_z_niepewnoscia`); mnoznik liczony jest dla kazdego skladnika osobno.
 
     DEFEKT, KTORY TO USUWA (pomiar 2026-09-30, scena dynamiki harnessu, 12 wariantow jadra
     OpenBLAS x liczba watkow). Na dnie zaokraglen estymata bledu `d = J^-1 rho` ma wzgledny
@@ -338,6 +345,43 @@ def skala_kroku_pochodnej(
     return 1.0
 
 
+def _zmiana_pochodnej(
+    model: ModelSieci,
+    odbiory: tuple[OdbiorDynamiki, ...],
+    urzadzenia: tuple[Urzadzenie, ...],
+    stany: tuple[np.ndarray, ...],
+    napiecia: np.ndarray,
+    pochodna: np.ndarray,
+    blad_napiecia: np.ndarray,
+    badane: np.ndarray,
+) -> np.ndarray | None:
+    """Pierwszorzedowa zmiana pochodnej napiec przy przesunieciu punktu o `-blad_napiecia`.
+
+    `|Vdot(y - s d) - Vdot(y)| / s` z mnoznikiem `s` z `skala_kroku_pochodnej` (jedno
+    zrodlo). Kierunek `y - d` jest krokiem W STRONE rozwiazania (przypina to
+    `test_obserwable.py::test_a01_znak_korekty_newtona_jest_przypiety_w_zrodle`). `None`,
+    gdy punktu przesunietego nie da sie obliczyc (wspolrzedna nieskonczona, wezel zywy na
+    zerze fazora, odmowa rozkladu, zmiana nieskonczona) — wolajacy czyni wtedy KAZDA
+    niepewnosc pochodnej nieskonczona, bo faktoryzacja jest wspolna dla wszystkich wezlow.
+    """
+    skala_kroku = skala_kroku_pochodnej(napiecia, np.abs(blad_napiecia), badane)
+    napiecia_skorygowane = napiecia - skala_kroku * blad_napiecia
+    if not bool(
+        np.all(np.isfinite(napiecia_skorygowane.real))
+        and np.all(np.isfinite(napiecia_skorygowane.imag))
+        and np.all(np.abs(napiecia_skorygowane[badane]) > 0.0)
+    ):
+        return None
+    try:
+        pochodna_skorygowana = pochodna_napiec(
+            model, odbiory, urzadzenia, stany, napiecia_skorygowane
+        )
+    except OdmowaDynamiki:
+        return None
+    zmiana = np.abs(pochodna_skorygowana - pochodna) / skala_kroku
+    return zmiana if bool(np.all(np.isfinite(zmiana))) else None
+
+
 def pochodna_napiec_z_niepewnoscia(
     model: ModelSieci,
     odbiory: tuple[OdbiorDynamiki, ...],
@@ -347,43 +391,57 @@ def pochodna_napiec_z_niepewnoscia(
 ) -> PochodnaZNiepewnoscia:
     """Pochodna napiec i obie ESTYMATY bledu — kazda mierzona, zadna zalozona.
 
-    `u_V` to pierwszorzedowa poprawka Newtona `|J^-1 r|` na wezle. Rozklad LU jest TEN SAM,
-    ktorym liczymy pochodna, wiec kosztuje to jedno dodatkowe podstawienie.
+    `u_V` to pierwszorzedowa poprawka Newtona na wezle. Rozklad LU jest TEN SAM, ktorym
+    liczymy pochodna, wiec kazdy skladnik estymaty kosztuje jedno podstawienie.
 
-    RESIDUUM NA POZIOMIE WLASNEGO BLEDU ZAOKRAGLEN (korekta 2026-09-29, karta
-    DETERMINIZM-KATA-FAZORA). Gdy KAZDA skladowa residuum miesci sie w granicy bledu, z jakim
-    residuum jest obliczalne (`siec.granica_zaokraglen_residuum`, rho), rozwiazanie zbieglo
-    do precyzji arytmetyki, a obliczone `r` jest realizacja szumu zaokraglen — nie niesie
-    informacji o bledzie rozwiazania. `J^-1 r` jest wtedy losowe: pomiar na scenie dynamiki
-    harnessu dal w tej samej probce estymate pochodnej 1,9e-9 i 1,2e-10 pu/s zaleznie od
-    liczby watkow BLAS (1/4 wobec 2), a kod jakosci czestotliwosci przelaczal sie miedzy
-    „rozroznialna" i „nierozroznialna". Estymata bledu jest wtedy PROPAGACJA SAMEJ GRANICY,
-    `J^-1 rho` (Higham 2002, par. 7.2: blad rozwiazania z residuum obarczonym bledem
-    zaokraglen) — wektor deterministyczny, bo rho jest suma wyrazow nieujemnych. Residuum
-    znaczace (choc jedna skladowa ponad granica, np. Newton zatrzymany na luznej tolerancji)
-    idzie drogą jak dotad, bitowo.
+    RESIDUUM ROZLOZONE NA CZESC PEWNA I DNO ZAOKRAGLEN (korekta 2026-09-30, karta
+    PRZENOSNOSC-NIEPEWNOSCI; zastepuje rozgalezienie „residuum znaczace / na granicy" z karty
+    DETERMINIZM-KATA-FAZORA). Obliczone residuum `r` rozni sie od prawdziwego o co najwyzej
+    `rho` (`siec.granica_zaokraglen_residuum`), wiec rozklada sie na czesc PEWNIE obecna
+    `psi(r) = sign(r) max(|r| - rho, 0)` (`siec.czesc_pewna_residuum`) i reszte, o ktorej
+    wiadomo tylko, ze miesci sie w `rho` (Higham 2002, par. 7.2: blad rozwiazania z residuum
+    obarczonym bledem zaokraglen). Estymata bledu rozwiazania jest suma modulow OBU
+    propagacji:
 
-    `u_Vdot` to zmiana pochodnej miedzy punktem obliczonym a przesunietym o estymate bledu:
-    `y - J^-1 r` (krok Newtona) przy residuum znaczacym, `y - J^-1 rho` (przesuniecie o skale
-    bledu zaokraglen) przy residuum na granicy zaokraglen. Druga faktoryzacja jest
-    konieczna: pomiar obalil zalozenie, ze blad pochodnej jest proporcjonalny do bledu
-    napiecia. Przesuniecie wzglednie mniejsze od `KROK_WZGLEDNY_POCHODNEJ` (`sqrt(u)`) jest
+        u_V = |J^-1 psi(r)| + |J^-1 rho| .
+
+    DLACZEGO NIE ROZGALEZIENIE. Dawna regula brala `J^-1 r`, gdy choc jedna skladowa `r`
+    wychodzila poza `rho`, a `J^-1 rho` w przeciwnym razie. Estymata byla wtedy NIECIAGLA
+    na progu, a tuz nad nim potrafila lezec GLEBOKO pod dnem, ktore arytmetyka w ogole umie
+    rozstrzygnac: pomiar SO-1a (probka 372, 2026-09-30) dal `u_f` 4,6e-15 Hz z galezi
+    znaczacej wobec 1,1e-10 Hz propagacji granicy — skladowa ledwie nad progiem, reszta
+    residuum szumem, `J^-1 r` przypadkowo male. Ktora galaz wykonala sie w danej probce,
+    zalezalo od jadra BLAS, wiec kod jakosci czestotliwosci byl nieprzenosny. Suma jest
+    ciagla w `r` (`psi` jest 1-lipschitzowska), NIGDY nie schodzi ponizej `|J^-1 rho|`
+    (przypina `test_niepewnosc_na_granicy_zaokraglen.py::test_estymata_tuz_nad_progiem_
+    czesci_pewnej_nie_spada_pod_dno`), a na dnie zaokraglen (`psi = 0`) jest dokladnie
+    propagacja granicy — skladnik czesci pewnej jest zerem i nie jest liczony (przypina
+    `test_estymata_przy_residuum_szumu_jest_propagacja_granicy`).
+
+    `u_Vdot` to suma zmian pochodnej przy przesunieciu punktu o KAZDA z obu estymat bledu
+    osobno (`_zmiana_pochodnej`): `|Vdot(y - J^-1 psi) - Vdot(y)| + |Vdot(y - J^-1 rho) -
+    Vdot(y)|` — ta sama nierownosc trojkata, co w `u_V`, bo znak czesci ponizej `rho` jest
+    nieznany i suma jednego przesuniecia moglaby sie znosic. Skladnik o zerowym wektorze
+    bledu nie wnosi nic i nie jest liczony. Druga faktoryzacja na skladnik jest konieczna:
+    pomiar obalil zalozenie, ze blad pochodnej jest proporcjonalny do bledu napiecia.
+    Przesuniecie wzglednie mniejsze od `KROK_WZGLEDNY_POCHODNEJ` (`sqrt(u)`) jest
     wydluzane wzdluz tego samego kierunku, a roznica dzielona przez ten sam mnoznik
-    (`skala_kroku_pochodnej`, korekta 2026-09-30): inaczej `u_Vdot` na dnie zaokraglen bylo
-    w czesci realizacja szumu obliczenia pochodnej i zalezalo od jadra BLAS.
+    (`skala_kroku_pochodnej`): inaczej `u_Vdot` na dnie zaokraglen bylo w czesci realizacja
+    szumu obliczenia pochodnej i zalezalo od jadra BLAS.
 
-    KOLEJNOSC JEST CZESCIA KONTRAKTU (korekta par. 7 rundy kwalifikacyjnej). Punkt
-    skorygowany liczymy DOPIERO po sprawdzeniu, czy w ogole wolno go dotknac. Gdy
-    ktorykolwiek wezel spelnia `|V| <= u_V`, punkt skorygowany lezy na zerze fazora albo za
-    nim, a odbior o stalej mocy ma tam `1/|V|^2` i `1/|V|^4` — jakobian w takim punkcie jest
-    smieciem, ktory zanieczyscilby `u_Vdot` WSZYSTKICH wezlow (faktoryzacja jest wspolna).
-    Wtedy niepewnosci pochodnej sa NIESKONCZONE, co przez nierownosc propagacji czyni kazdy
-    wezel NIEDOSTEPNYM — bez zadnego progu i bez podstawionej liczby.
+    KOLEJNOSC JEST CZESCIA KONTRAKTU (korekta par. 7 rundy kwalifikacyjnej). Punkty
+    przesuniete liczymy DOPIERO po sprawdzeniu, czy w ogole wolno je dotknac. Gdy
+    ktorykolwiek wezel spelnia `|V| <= u_V`, przesuniecie o estymate bledu siega zera
+    fazora albo za nie, a odbior o stalej mocy ma tam `1/|V|^2` i `1/|V|^4` — jakobian
+    w takim punkcie jest smieciem, ktory zanieczyscilby `u_Vdot` WSZYSTKICH wezlow
+    (faktoryzacja jest wspolna). Wtedy niepewnosci pochodnej sa NIESKONCZONE, co przez
+    nierownosc propagacji czyni kazdy wezel NIEDOSTEPNYM — bez zadnego progu i bez
+    podstawionej liczby. Residuum nieokreslone (NaN) daje `u_V` nieokreslone i ten sam skutek.
 
     WEZEL O NAPIECIU NARZUCONYM ZEREM (obszar beznapieciowy, zwarcie metaliczne — karta
     AB-1b.1 par. 0 pkt 2-3) jest z tego warunku WYLACZONY: jego napiecie jest zerem
     DOKLADNYM z definicji wiersza ograniczenia, a nie wynikiem Newtona bliskim zera, wiec
-    jakobian w punkcie skorygowanym nie ma tam osobliwosci odbioru (odbiory takiego wezla
+    jakobian w punkcie przesunietym nie ma tam osobliwosci odbioru (odbiory takiego wezla
     nie wchodza do rownan). Sam wezel dostaje czestotliwosc NIEDOSTEPNA z
     `czestotliwosc_wezla` (`|V| = 0 <= u_V`), a wezly zywe nie sa zatruwane.
     """
@@ -395,48 +453,38 @@ def pochodna_napiec_z_niepewnoscia(
     )
     residuum = residuum_algebry(model, odbiory, urzadzenia, stany, napiecia)
     granica = granica_zaokraglen_residuum(model, odbiory, urzadzenia, stany, napiecia)
-    blad_napiecia = _zespolone(
-        rozklad.solve(
-            residuum
-            if residuum_ponad_granica_zaokraglen(residuum, granica)
-            else np.concatenate((granica, granica))
-        ),
-        liczba,
+    czesc_pewna = czesc_pewna_residuum(residuum, granica)
+    blad_czesci_pewnej = (
+        _zespolone(rozklad.solve(czesc_pewna), liczba)
+        if bool(np.any(czesc_pewna != 0.0))
+        else np.zeros(liczba, dtype=complex)
     )
-    niepewnosc_napiecia = np.abs(blad_napiecia)
+    blad_dna = _zespolone(rozklad.solve(np.concatenate((granica, granica))), liczba)
+    niepewnosc_napiecia = np.abs(blad_czesci_pewnej) + np.abs(blad_dna)
 
     badane = np.ones(liczba, dtype=bool)
     badane[list(model.pozycje_zerowe)] = False
-    skala_kroku = skala_kroku_pochodnej(napiecia, niepewnosc_napiecia, badane)
-    napiecia_skorygowane = napiecia - skala_kroku * blad_napiecia
-    punkt_skorygowany_obliczalny = bool(
+    niedostepna = PochodnaZNiepewnoscia(
+        pochodna_pu_s=pochodna,
+        niepewnosc_napiecia_pu=niepewnosc_napiecia,
+        niepewnosc_pochodnej_pu_s=np.full(liczba, np.inf, dtype=float),
+    )
+    if not bool(
         np.all(np.abs(napiecia[badane]) > niepewnosc_napiecia[badane])
         and np.all(np.isfinite(niepewnosc_napiecia))
-        and np.all(np.isfinite(napiecia_skorygowane.real))
-        and np.all(np.isfinite(napiecia_skorygowane.imag))
-        and np.all(np.abs(napiecia_skorygowane[badane]) > 0.0)
-    )
-    if not punkt_skorygowany_obliczalny:
-        return PochodnaZNiepewnoscia(
-            pochodna_pu_s=pochodna,
-            niepewnosc_napiecia_pu=niepewnosc_napiecia,
-            niepewnosc_pochodnej_pu_s=np.full(liczba, np.inf, dtype=float),
-        )
+    ):
+        return niedostepna
 
-    try:
-        pochodna_skorygowana = pochodna_napiec(
-            model, odbiory, urzadzenia, stany, napiecia_skorygowane
+    niepewnosc_pochodnej = np.zeros(liczba, dtype=float)
+    for blad_napiecia in (blad_czesci_pewnej, blad_dna):
+        if not bool(np.any(blad_napiecia != 0.0)):
+            continue
+        zmiana = _zmiana_pochodnej(
+            model, odbiory, urzadzenia, stany, napiecia, pochodna, blad_napiecia, badane
         )
-    except OdmowaDynamiki:
-        return PochodnaZNiepewnoscia(
-            pochodna_pu_s=pochodna,
-            niepewnosc_napiecia_pu=niepewnosc_napiecia,
-            niepewnosc_pochodnej_pu_s=np.full(liczba, np.inf, dtype=float),
-        )
-
-    niepewnosc_pochodnej = np.abs(pochodna_skorygowana - pochodna) / skala_kroku
-    if not bool(np.all(np.isfinite(niepewnosc_pochodnej))):
-        niepewnosc_pochodnej = np.full(liczba, np.inf, dtype=float)
+        if zmiana is None:
+            return niedostepna
+        niepewnosc_pochodnej = niepewnosc_pochodnej + zmiana
     return PochodnaZNiepewnoscia(
         pochodna_pu_s=pochodna,
         niepewnosc_napiecia_pu=niepewnosc_napiecia,
