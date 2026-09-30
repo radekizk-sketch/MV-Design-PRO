@@ -7,6 +7,11 @@ Mapping (EQ unless noted; TP = ConnectivityNode/TopologicalNode + Terminals):
   OverheadLine     -> ACLineSegment (R/X/B total) + 2 Terminals                 [EQ/TP]
   Cable            -> ACLineSegment (R/X/B total) + 2 Terminals                  [EQ/TP]
   Transformer      -> PowerTransformer + 2 PowerTransformerEnd (+ RatioTapChanger) [EQ]
+  Transformer.tap_changer (V12K-045, regulacja DETC/OLTC)
+                   -> RatioTapChanger na końcu uzwojenia regulowanego
+                      (+ TapChangerControl, gdy model niesie sterowanie)          [EQ/SSH]
+                      — tabela pól i znane utraty: ``_emit_canonical_tap_changer``,
+                      ``_emit_tap_changer_control``, ``REGULATOR_ZACZEPOW_UTRATA_TORU_OBCEGO``
   SwitchBranch     -> Breaker / Disconnector / LoadBreakSwitch (+ normalOpen)    [EQ]
   FuseBranch       -> Fuse                                                       [EQ]
   Source           -> ExternalNetworkInjection                                  [EQ]
@@ -354,7 +359,12 @@ def _emit_transformer(eq: ET.Element, tp: ET.Element, trafo: Transformer) -> Non
         _ref(end, "TransformerEnd.Terminal", t_mrid)
         _connect_terminal_tp(tp, t_mrid, bus_ref)
 
-    # RatioTapChanger (HV end) if tap data present.
+    if regulator_kanoniczny(trafo):
+        _emit_canonical_tap_changer(eq, trafo)
+        return
+
+    # RatioTapChanger (HV end) if tap data present — pola legacy `tap_*` dla
+    # transformatora BEZ aktywnego regulatora kanonicznego (bajty bez zmian).
     if trafo.tap_min is not None and trafo.tap_max is not None:
         rtc_mrid = mrid_for("RatioTapChanger", trafo.ref_id)
         rtc = _obj(eq, "RatioTapChanger", rtc_mrid)
@@ -370,6 +380,182 @@ def _emit_transformer(eq: ET.Element, tp: ET.Element, trafo: Transformer) -> Non
             _prop(rtc, "TapChanger.normalStep", str(trafo.tap_position))
         if trafo.tap_step_percent is not None:
             _prop(rtc, "RatioTapChanger.stepVoltageIncrement", fmt_float(trafo.tap_step_percent))
+
+
+# ---------------------------------------------------------------------------
+# Kanoniczny regulator zaczepów (V12K-045) -> RatioTapChanger + TapChangerControl
+# ---------------------------------------------------------------------------
+
+#: Rodzaje regulacji, które mają odwzorowanie w CIM (``TapChanger.ltcFlag``).
+#: ``NONE`` oznacza „regulatora nie ma" — ``TransformerBranch.get_tap_ratio`` traktuje
+#: go identycznie jak brak ``tap_changer`` (fizyka z pól legacy ``tap_*``), a CIM nie
+#: zna „przełącznika zaczepów obecnego, lecz bez regulacji" odrębnego od braku obiektu.
+_LTC_FLAG: dict[str, str] = {"OLTC": "true", "DETC": "false"}
+
+#: Pola kanonicznego regulatora, których profil CGMES 3.0 (EQ/SSH, CIM100) NIE niesie.
+#: Wiązanie z pomiarem: RDFS CGMES 3.0 (pakiet ``pycgmes`` 2.0.6 generowany cimgen z plików
+#: ENTSO-E) — klasy ``TapChanger``/``RatioTapChanger``/``TapChangerControl``/
+#: ``RegulatingControl`` NIE mają w żadnym profilu atrybutów ``initialDelay``,
+#: ``subsequentDelay``, ``lineDropCompensation``, ``lineDropR``, ``lineDropX`` (istnieją
+#: w bazowym CIM IEC 61970-301, ale profil ich nie przewiduje, więc eksporter ich nie
+#: emituje — zakaz rozszerzeń poza profilem), a ``RegulatingControlModeKind`` nie ma
+#: literałów odpowiadających trybom ``PROFILE``/``REMOTE``. Te dane przeżywają WYŁĄCZNIE
+#: side-car (tor wewnętrzny, bezstratny); tor obcy EQ+TP je traci — każda pozycja jest
+#: przypięta testem ``tests/cgmes/test_cgmes_regulator_zaczepow.py``.
+REGULATOR_ZACZEPOW_UTRATA_TORU_OBCEGO: tuple[str, ...] = (
+    "tap_changer.delay_seconds — CGMES 3.0 nie ma TapChanger.initialDelay",
+    "tap_changer.line_drop_compensation — CGMES 3.0 nie ma TapChangerControl.lineDrop*",
+    "tap_changer.control_mode PROFILE/REMOTE — CIM zna tylko regulację włączoną/wyłączoną "
+    "(TapChanger.controlEnabled, RegulatingControl.enabled); import odtwarza AUTOMATIC, "
+    "fizyka (TapChanger.is_automatic) identyczna",
+    "tap_changer.catalog_ref — CIM nie niesie referencji katalogowej",
+    "tap_changer z regulation_type=NONE — brak odrębnej semantyki CIM, import daje "
+    "tap_changer=None (fizyka identyczna: get_tap_ratio i tak czyta pola legacy)",
+    "pola legacy tap_* obok AKTYWNEGO regulatora kanonicznego — jeden RatioTapChanger "
+    "na transformator niesie jedno źródło prawdy (kanoniczne, V12K-045)",
+    "tap_changer.controlled_bus_ref wskazujący szynę bez żadnego zacisku (Terminal) — "
+    "RegulatingControl.Terminal musi wskazać zacisk urządzenia; szyna izolowana go nie ma",
+)
+
+
+def regulator_kanoniczny(trafo: Transformer) -> bool:
+    """Czy transformator eksportuje KANONICZNY regulator zaczepów (V12K-045).
+
+    Jedyny predykat wejścia toru kanonicznego eksportu. Jego para po stronie importu to
+    obecność ``TapChanger.ltcFlag`` na ``RatioTapChanger`` — eksporter emituje ten
+    atrybut WYŁĄCZNIE w torze kanonicznym, tor legacy go nie pisze (bajty modeli bez
+    regulatora bez zmian). Zgodność pary przypina test rundy (iloczyn cech).
+    """
+    tc = trafo.tap_changer
+    return tc is not None and tc.regulation_type in _LTC_FLAG
+
+
+def _sterowanie_regulatora(trafo: Transformer) -> bool:
+    """Czy regulator ma obiekt ``TapChangerControl`` — tylko gdy model niesie choć jedno
+    pole sterowania: tryb inny niż ręczny, nastawę, pasmo albo szynę regulowaną."""
+    tc = trafo.tap_changer
+    assert tc is not None
+    return (
+        tc.control_mode != "MANUAL"
+        or tc.voltage_setpoint_kv is not None
+        or tc.deadband_kv is not None
+        or tc.controlled_bus_ref is not None
+    )
+
+
+def _emit_canonical_tap_changer(eq: ET.Element, trafo: Transformer) -> None:
+    """``RatioTapChanger`` na końcu uzwojenia regulowanego — pola kanoniczne 1:1.
+
+    Odwzorowanie (CGMES 3.0; [EQ] profil wyposażenia, [SSH] profil stanu ustalonego):
+
+      regulated_winding HV/LV  -> RatioTapChanger.TransformerEnd = koniec 1 / 2   [EQ]
+      regulation_type OLTC/DETC -> TapChanger.ltcFlag true / false               [EQ]
+      min/max_position          -> TapChanger.lowStep / highStep                 [EQ]
+      neutral_position          -> TapChanger.neutralStep                        [EQ]
+      current_position          -> TapChanger.normalStep [EQ] + TapChanger.step  [SSH]
+      step_percent              -> RatioTapChanger.stepVoltageIncrement (% U_r)  [EQ]
+      control_mode != MANUAL    -> TapChanger.controlEnabled                     [SSH]
+      (napięcie znamionowe uzwojenia regulowanego) -> TapChanger.neutralU [V]    [EQ]
+
+    Atrybuty profilu SSH trafiają do członu EQ — ten sam, zastany w repozytorium wzorzec co
+    ``EnergyConsumer.p/q`` i ``PowerElectronicsConnection.p/q``: pakiet emituje jeden
+    człon wyposażenia (EQ) i topologii (TP), a SSH jest odroczony (``profiles.py``).
+    Konwencja znaku zgodna: CIM ``stepVoltageIncrement`` i model ``step_percent`` to
+    przyrost napięcia uzwojenia regulowanego na pozycję względem ``neutralStep``.
+    """
+    tc = trafo.tap_changer
+    assert tc is not None
+    koniec = "1" if tc.regulated_winding == "HV" else "2"
+    rtc = _obj(eq, "RatioTapChanger", mrid_for("RatioTapChanger", trafo.ref_id))
+    _prop(rtc, "IdentifiedObject.name", f"{trafo.name}_tap")
+    _ref(
+        rtc,
+        "RatioTapChanger.TransformerEnd",
+        mrid_for("PowerTransformerEnd", trafo.ref_id, suffix=koniec),
+    )
+    _prop(rtc, "TapChanger.ltcFlag", _LTC_FLAG[tc.regulation_type])
+    _prop(rtc, "TapChanger.lowStep", str(tc.min_position))
+    _prop(rtc, "TapChanger.highStep", str(tc.max_position))
+    _prop(rtc, "TapChanger.neutralStep", str(tc.neutral_position))
+    _prop(rtc, "TapChanger.normalStep", str(tc.current_position))
+    _prop(rtc, "TapChanger.step", str(tc.current_position))
+    u_uzwojenia_kv = trafo.uhv_kv if tc.regulated_winding == "HV" else trafo.ulv_kv
+    _prop(rtc, "TapChanger.neutralU", fmt_float(kv_to_v(u_uzwojenia_kv)))
+    _prop(rtc, "RatioTapChanger.stepVoltageIncrement", fmt_float(tc.step_percent))
+    _prop(rtc, "TapChanger.controlEnabled", "false" if tc.control_mode == "MANUAL" else "true")
+    if _sterowanie_regulatora(trafo):
+        _ref(rtc, "TapChanger.TapChangerControl", mrid_for("TapChangerControl", trafo.ref_id))
+
+
+def _zaciski_wg_wezla_topologicznego(tp: ET.Element) -> dict[str, list[str]]:
+    """TopologicalNode mRID -> posortowane mRID-y zacisków (z powiązań profilu TP)."""
+    indeks: dict[str, list[str]] = {}
+    prefiks = "urn:uuid:"
+    for wiazanie in tp:
+        if wiazanie.tag != f"{_CIM}Terminal":
+            continue
+        zacisk = wiazanie.get(RDF_ABOUT, "").removeprefix(prefiks)
+        wezel = wiazanie.find(f"{_CIM}Terminal.TopologicalNode")
+        if not zacisk or wezel is None:
+            continue
+        indeks.setdefault(wezel.get(RDF_RESOURCE, "").removeprefix(prefiks), []).append(zacisk)
+    return {wezel: sorted(zaciski) for wezel, zaciski in indeks.items()}
+
+
+def _zacisk_szyny_regulowanej(
+    trafo: Transformer, bus_ref: str, zaciski: dict[str, list[str]]
+) -> str | None:
+    """Zacisk wskazujący szynę regulowaną w ``RegulatingControl.Terminal``.
+
+    CIM wiąże regulację z ZACISKIEM urządzenia przyłączonego do węzła (nie z węzłem).
+    Deterministycznie: szyna własna transformatora -> jego zacisk (1 = GN, 2 = DN);
+    szyna zdalna -> najmniejszy mRID zacisku przyłączonego do tej szyny. Szyna bez
+    zacisku -> ``None`` (atrybut pominięty, znana utrata — patrz
+    ``REGULATOR_ZACZEPOW_UTRATA_TORU_OBCEGO``).
+    """
+    if bus_ref == trafo.hv_bus_ref:
+        return mrid_for("Terminal", trafo.ref_id, suffix="1")
+    if bus_ref == trafo.lv_bus_ref:
+        return mrid_for("Terminal", trafo.ref_id, suffix="2")
+    kandydaci = zaciski.get(mrid_for("TopologicalNode", bus_ref), [])
+    return kandydaci[0] if kandydaci else None
+
+
+def _emit_tap_changer_control(
+    eq: ET.Element, trafo: Transformer, zaciski: dict[str, list[str]]
+) -> None:
+    """``TapChangerControl`` (RegulatingControl) — sterowanie napięciowe regulatora.
+
+      (regulator napięciowy)    -> RegulatingControl.mode = voltage              [EQ]
+      controlled_bus_ref        -> RegulatingControl.Terminal                    [EQ]
+      control_mode != MANUAL    -> RegulatingControl.enabled                     [SSH]
+      (pozycje całkowite)       -> RegulatingControl.discrete = true             [SSH]
+      voltage_setpoint_kv       -> RegulatingControl.targetValue [kV]            [SSH]
+      deadband_kv (całe pasmo)  -> RegulatingControl.targetDeadband [kV]         [SSH]
+      (jednostka nastawy)       -> RegulatingControl.targetValueUnitMultiplier=k [SSH]
+
+    Pole puste w modelu = atrybut POMINIĘTY (nigdy liczba zastępcza). ``targetDeadband``
+    w CIM to CAŁE pasmo (100 kV ± 2 kV/2 -> 99…101 kV), tak samo jak ``deadband_kv``
+    (``power_flow_oltc_studies``: |U − U_zad| ≤ pasmo/2). Mnożnik ``k`` jest pisany
+    tylko wtedy, gdy jest czego dotyczyć (nastawa albo pasmo).
+    """
+    tc = trafo.tap_changer
+    assert tc is not None
+    ctrl = _obj(eq, "TapChangerControl", mrid_for("TapChangerControl", trafo.ref_id))
+    _prop(ctrl, "IdentifiedObject.name", f"{trafo.name}_regulator")
+    _enum(ctrl, "RegulatingControl.mode", "RegulatingControlModeKind", "voltage")
+    if tc.controlled_bus_ref is not None:
+        zacisk = _zacisk_szyny_regulowanej(trafo, tc.controlled_bus_ref, zaciski)
+        if zacisk is not None:
+            _ref(ctrl, "RegulatingControl.Terminal", zacisk)
+    _prop(ctrl, "RegulatingControl.enabled", "false" if tc.control_mode == "MANUAL" else "true")
+    _prop(ctrl, "RegulatingControl.discrete", "true")
+    if tc.voltage_setpoint_kv is not None:
+        _prop(ctrl, "RegulatingControl.targetValue", fmt_float(tc.voltage_setpoint_kv))
+    if tc.deadband_kv is not None:
+        _prop(ctrl, "RegulatingControl.targetDeadband", fmt_float(tc.deadband_kv))
+    if tc.voltage_setpoint_kv is not None or tc.deadband_kv is not None:
+        _enum(ctrl, "RegulatingControl.targetValueUnitMultiplier", "UnitMultiplier", "k")
 
 
 # ---------------------------------------------------------------------------
@@ -590,6 +776,19 @@ def build_eq_tp_trees(enm: EnergyNetworkModel) -> tuple[ET.Element, ET.Element]:
 
     for sub in sorted(enm.substations, key=lambda s: s.ref_id):
         _emit_substation(eq, sub, bus_kv)
+
+    # Sterowanie regulatorów zaczepów na końcu — ``RegulatingControl.Terminal`` może
+    # wskazać zacisk DOWOLNEGO urządzenia (szyna zdalna), więc indeks zacisków budujemy
+    # z kompletnego profilu TP. Modele bez regulatora kanonicznego: nic nie dochodzi.
+    regulatory = [
+        t
+        for t in sorted(enm.transformers, key=lambda t: t.ref_id)
+        if regulator_kanoniczny(t) and _sterowanie_regulatora(t)
+    ]
+    if regulatory:
+        zaciski = _zaciski_wg_wezla_topologicznego(tp)
+        for trafo in regulatory:
+            _emit_tap_changer_control(eq, trafo, zaciski)
 
     return eq, tp
 
