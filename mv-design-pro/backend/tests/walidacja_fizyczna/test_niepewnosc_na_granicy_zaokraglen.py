@@ -44,6 +44,7 @@ from network_model.solvers.dynamika import (
     HarmonogramDynamiki,
     SilnikDynamiki,
     WejscieDynamiki,
+    ZmianaOdbioru,
     ZwarcieWezla,
     obserwable,
 )
@@ -60,6 +61,7 @@ from scipy.sparse import linalg as sparse_linalg
 from tests.ci.test_fixtury_harnessu import RTOL_FIXTUR, roznice_z_tolerancja
 from tests.network_model.dynamika.uklady import (
     X_ZWARCIA_PLYTKIEGO_OHM,
+    charakterystyka_czula,
     nastawy,
     zbuduj_smib_z_odbiorem,
 )
@@ -103,9 +105,40 @@ def _wejscie_smib_ze_zwarciem() -> WejscieDynamiki:
     )
 
 
+def _wejscie_smib_z_odbiorem_czulym(*, odlaczany: bool) -> WejscieDynamiki:
+    """SMIB z odbiorem CZULYM czestotliwosciowo (stan estymatora): zwarcie plytkie w wezle
+    odbioru — w zapadzie i po nim estymator zostaje za faza szyny (`e != 0`), wiec prad
+    odbioru przy jego stanie rozni sie od pradu charakterystyki przy `f_n`; wariant
+    `odlaczany` — odbior odlaczony zdarzeniem na zywej szynie i przylaczony z powrotem (probki
+    z odbiorem BEZ obwodu, ktorego prad nie wchodzi do wiersza)."""
+    uklad = zbuduj_smib_z_odbiorem(q_odbioru_pu=0.05, charakterystyka=charakterystyka_czula())
+    zdarzenia: tuple[Any, ...] = (
+        ZwarcieWezla(
+            t_s=0.1,
+            wezel="GEN",
+            typ="3F",
+            r_f_ohm=0.0,
+            x_f_ohm=X_ZWARCIA_PLYTKIEGO_OHM,
+            t_usuniecia_s=0.2,
+            sposob_usuniecia="samoczynne",
+        ),
+    )
+    if odlaczany:
+        zdarzenia = (
+            ZmianaOdbioru(0.05, "ODB1", False),
+            *zdarzenia,
+            ZmianaOdbioru(0.3, "ODB1", True),
+        )
+    return uklad.wejscie(
+        HarmonogramDynamiki(zdarzenia), nastawy(horyzont_s=0.5, krok_wyjscia_s=0.02)
+    )
+
+
 SIECI = {
     "smib_z_odbiorem_i_zwarciem": _wejscie_smib_ze_zwarciem,
     "galaz_slepa_za_przekladnia_zespolona": wejscie_z_galezia_slepa,
+    "smib_z_odbiorem_czulym_i_zwarciem": lambda: _wejscie_smib_z_odbiorem_czulym(odlaczany=False),
+    "smib_z_odbiorem_czulym_odlaczanym": lambda: _wejscie_smib_z_odbiorem_czulym(odlaczany=True),
 }
 
 
@@ -130,10 +163,17 @@ def _wywolania(wejscie: WejscieDynamiki, monkeypatch: pytest.MonkeyPatch) -> lis
 
 
 def _granica_niezalezna(w: _Wywolanie) -> np.ndarray:
-    """Ta sama granica liczona wprost z gestej Ybus — petla po wierszach, bez kodu produkcji."""
+    """Ta sama granica liczona wprost z gestej Ybus — petla po wierszach, bez kodu produkcji.
+
+    Skladniki wiersza to prady elementow, ktore wiersz NAPRAWDE sumuje: odbiory Z OBWODEM przy
+    SWOIM stanie estymatora (`prad_pu(x, V)`, nie charakterystyka przy `f_n`) i urzadzenia;
+    krotka stanow jest wyrownana z `(*odbiory, *urzadzenia)`.
+    """
     ybus = w.model.ybus.toarray()
     liczba = w.model.liczba_wezlow
     ograniczone = dict(ograniczenia_napiecia(w.model, w.urzadzenia))
+    stany_odbiorow = w.stany[: len(w.odbiory)]
+    stany_urzadzen = w.stany[len(w.odbiory) :]
     wynik = np.zeros(liczba)
     for k in range(liczba):
         if k in ograniczone:
@@ -141,7 +181,7 @@ def _granica_niezalezna(w: _Wywolanie) -> np.ndarray:
             narzucone = (
                 0j
                 if indeks is None
-                else w.urzadzenia[indeks].napiecie_bez_obciazenia(w.stany[indeks])
+                else w.urzadzenia[indeks].napiecie_bez_obciazenia(stany_urzadzen[indeks])
             )
             m = 2
             wynik[k] = (m * JEDNOSTKA_ZAOKRAGLENIA / (1 - m * JEDNOSTKA_ZAOKRAGLENIA)) * (
@@ -152,12 +192,12 @@ def _granica_niezalezna(w: _Wywolanie) -> np.ndarray:
             abs(ybus[k, j]) * abs(complex(w.napiecia[j])) for j in range(liczba) if ybus[k, j] != 0
         ]
         prady = [
-            abs(prad_wstrzykiwany_pu(o, complex(w.napiecia[k])))
-            for o in w.odbiory
-            if w.model.indeks_wezla[o.wezel] == k
+            abs(o.prad_pu(s, complex(w.napiecia[k])))
+            for o, s in zip(w.odbiory, stany_odbiorow, strict=True)
+            if w.model.indeks_wezla[o.wezel] == k and o.przylaczony
         ] + [
             abs(u.prad_pu(s, complex(w.napiecia[k])))
-            for u, s in zip(w.urzadzenia, w.stany, strict=True)
+            for u, s in zip(w.urzadzenia, stany_urzadzen, strict=True)
             if w.model.indeks_wezla[u.wezel] == k
         ]
         m = len(skladniki_y) + len(prady) + 3
@@ -180,12 +220,36 @@ def _estymata_z_wektora(w: _Wywolanie, wektor: np.ndarray) -> np.ndarray:
 def test_granica_zaokraglen_to_suma_modulow_skladnikow_wiersza(
     siec: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Granica = suma modulow skladnikow wiersza, ktore residuum NAPRAWDE sumuje.
+
+    Iloczyn {odbior: bez stanu, ze stanem przylaczony, ze stanem odlaczony zdarzeniem} x
+    {stan estymatora: w rownowadze, za faza szyny} — asercje niepustosci na koncu mowia, ze
+    siec czula ma probki, w ktorych prad odbioru przy jego stanie rozni sie od pradu
+    charakterystyki przy `f_n` (granica liczona z charakterystyki by sie rozjechala), a siec
+    z odlaczaniem — probki z odbiorem bez obwodu (granica sumujaca go by sie rozjechala).
+    """
+    za_faza = 0
+    bez_obwodu = 0
     for w in _wywolania(SIECI[siec](), monkeypatch):
         produkcja = granica_zaokraglen_residuum(
             w.model, w.odbiory, w.urzadzenia, w.stany, w.napiecia
         )
         assert np.all(np.isfinite(produkcja)) and np.all(produkcja >= 0.0)
         np.testing.assert_allclose(produkcja, _granica_niezalezna(w), rtol=1e-12, atol=0.0)
+        for odbior, stan in zip(w.odbiory, w.stany[: len(w.odbiory)], strict=True):
+            napiecie = complex(w.napiecia[w.model.indeks_wezla[odbior.wezel]])
+            if not odbior.przylaczony:
+                bez_obwodu += int(
+                    prad_wstrzykiwany_pu(odbior.odbior, napiecie, odbior.f_bazowa_hz) != 0
+                )
+            elif odbior.nazwy_stanow and abs(odbior.prad_pu(stan, napiecie)) != abs(
+                prad_wstrzykiwany_pu(odbior.odbior, napiecie, odbior.f_bazowa_hz)
+            ):
+                za_faza += 1
+    if siec.startswith("smib_z_odbiorem_czulym"):
+        assert za_faza > 0, "brak probek z estymatorem za faza szyny — cecha niepokryta"
+    if siec == "smib_z_odbiorem_czulym_odlaczanym":
+        assert bez_obwodu > 0, "brak probek z odbiorem bez obwodu — cecha niepokryta"
 
 
 @pytest.mark.parametrize("siec", sorted(SIECI))
@@ -396,7 +460,22 @@ spec = importlib.util.spec_from_file_location(
 )
 eksport = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(eksport)
-json.dump(eksport.FIXTURY["dynamika_scena_przebiegi"](), sys.stdout, sort_keys=True)
+from network_model.solvers.dynamika import SilnikDynamiki
+from tests.walidacja_fizyczna.test_niepewnosc_na_granicy_zaokraglen import (
+    _wejscie_smib_z_odbiorem_czulym,
+)
+bieg = SilnikDynamiki(_wejscie_smib_z_odbiorem_czulym(odlaczany=True)).uruchom()
+json.dump(
+    {
+        "scena_harnessu": eksport.FIXTURY["dynamika_scena_przebiegi"](),
+        "odbior_czuly": {
+            "os_czasu_s": list(bieg.os_czasu_s),
+            "probki": {klucz: list(szereg) for klucz, szereg in bieg.probki.items()},
+        },
+    },
+    sys.stdout,
+    sort_keys=True,
+)
 """
 
 
@@ -443,6 +522,12 @@ def test_scena_dynamiki_nie_zalezy_od_jadra_i_liczby_watkow_blas() -> None:
     """Ta sama scena w iloczynie {jadro OpenBLAS} x {1, 2 watki}: komparator fikstur harnessu
     nie widzi ZADNEJ roznicy miedzy zadna para wariantow.
 
+    Druga siec w tym samym procesie — SMIB z odbiorem CZULYM czestotliwosciowo, zwarciem
+    i odlaczeniem odbioru (karta AB-1b.3b-NA-CZUBKU): kanaly odbioru ze stanem
+    (`f_odbioru_hz@`, `kat_pomiaru_rad@`) i czestotliwosc szyny z pochodna niosaca wklad
+    stanu odbioru sa niezalezne od jadra i liczby watkow tak samo jak scena harnessu, ktora
+    odbiorow ze stanem nie ma.
+
     Obejmuje wszystkie kanaly naraz: katy pradow (rozdzielczosc rozwiazania), czestotliwosc,
     jej estymate niepewnosci i kod jakosci (granica zaokraglen residuum, spojna inicjalizacja
     algebry w `t = 0`, krok roznicy pochodnej), moduly i moce. Przed karta
@@ -453,6 +538,9 @@ def test_scena_dynamiki_nie_zalezy_od_jadra_i_liczby_watkow_blas() -> None:
         (jadro, watki): _scena(watki, jadro) for jadro in JADRA_OPENBLAS for watki in (1, 2)
     }
     (wzorzec_klucz, wzorzec), *reszta = warianty.items()
+    assert any(
+        klucz.startswith("f_odbioru_hz@") for klucz in wzorzec["odbior_czuly"]["probki"]
+    ), "siec z odbiorem czulym bez kanalu czestotliwosci odbioru — cecha niepokryta"
     for klucz, wariant in reszta:
         roznice = roznice_z_tolerancja(wzorzec, wariant)
         assert roznice == [], f"{wzorzec_klucz} wobec {klucz}:\n" + "\n".join(roznice[:20])

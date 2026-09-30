@@ -72,9 +72,10 @@ import numpy as np
 from .kontrakty import (
     KOD_WYSPA_BEZ_ZRODLA,
     GalazDynamiki,
-    OdbiorDynamiki,
+    ModelOdbioru,
     OdmowaDynamiki,
     Urzadzenie,
+    rozdziel_stany,
 )
 
 
@@ -176,7 +177,7 @@ def sprawdz_zasilanie_wysp(
     identy_wezlow: tuple[str, ...],
     indeks_wezla: dict[str, int],
     przydzial: tuple[int, ...],
-    odbiory: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
@@ -187,26 +188,31 @@ def sprawdz_zasilanie_wysp(
     Odmowa niesie PELNY KONTEKST wymagany kontraktem R10 par. 9: numer i sklad
     wyspy, wezly i identyfikatory odbiorow wraz z zadana moca, identyfikatory
     urzadzen stojacych w wyspie mimo braku wkladu (zero cichego pominiecia
-    urzadzenia odlaczonego), chwile biegu oraz powod nazwany wprost.
+    urzadzenia odlaczonego), chwile biegu oraz powod nazwany wprost. `stany` sa wyrownane
+    z `(*odbiory, *urzadzenia)`; odbior bez obwodu nie zada mocy. Odbior NIE zasila wyspy
+    z definicji (takze odbior ze stanem estymatora) — zywosc wyspy rozstrzygaja wylacznie
+    urzadzenia.
     """
     if not identy_wezlow:
         return
+    _, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
 
     liczba_wysp = max(przydzial) + 1
     zapotrzebowanie: list[float] = [0.0] * liczba_wysp
     odbiory_wyspy: list[list[tuple[str, str, float, float]]] = [[] for _ in range(liczba_wysp)]
     for odbior in odbiory:
-        moc = abs(complex(odbior.p_pu, odbior.q_pu))
-        if moc == 0.0:
+        moc_bazowa = odbior.moc_bazowa_pu
+        moc = abs(moc_bazowa)
+        if moc == 0.0 or not odbior.przylaczony:
             continue
         wyspa = przydzial[indeks_wezla[odbior.wezel]]
         zapotrzebowanie[wyspa] += moc
-        odbiory_wyspy[wyspa].append((odbior.ident, odbior.wezel, odbior.p_pu, odbior.q_pu))
+        odbiory_wyspy[wyspa].append((odbior.ident, odbior.wezel, moc_bazowa.real, moc_bazowa.imag))
 
     if not any(zapotrzebowanie):
         return
 
-    zywe, _ = klasyfikuj_wyspy(przydzial, indeks_wezla, urzadzenia, stany, napiecia)
+    zywe, _ = klasyfikuj_wyspy(przydzial, indeks_wezla, urzadzenia, stany_urzadzen, napiecia)
     for wyspa in range(liczba_wysp):
         if zapotrzebowanie[wyspa] == 0.0 or wyspa in zywe:
             continue
@@ -226,12 +232,12 @@ def sprawdz_zasilanie_wysp(
         )
         raise OdmowaDynamiki(
             KOD_WYSPA_BEZ_ZRODLA,
-            f"Wyspa {wezly_wyspy} niesie odbior ({opis_odbiorow}) przy t={t_s} s, a zadne "
-            f"przylaczone do niej urzadzenie nie wnosi pradu ani pochodnej pradu po napieciu"
+            f"Wyspa {wezly_wyspy} niesie odbiór ({opis_odbiorow}) przy t = {t_s} s, a żadne "
+            f"przyłączone do niej urządzenie nie wnosi prądu ani pochodnej prądu po napięciu"
             + (
-                f" (urzadzenia bez wkladu: {bezczynne})"
+                f" (urządzenia bez wkładu: {bezczynne})"
                 if bezczynne
-                else " (w wyspie nie ma zadnego urzadzenia)"
+                else " (w wyspie nie ma żadnego urządzenia)"
             )
             + ". Punkt pracy nie istnieje: charakterystyka odbioru żąda mocy, której w wyspie "
             "nie ma z czego wziąć (fizyczne napięcie zerowe takiej wyspy wyznacza wcześniej "

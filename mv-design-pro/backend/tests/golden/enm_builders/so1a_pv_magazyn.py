@@ -72,6 +72,7 @@ from __future__ import annotations
 from typing import Any
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.golden.enm_builders.odbiory_dynamiki import zwiaz_odbiory_z_profilem
 
 #: Proweniencja parametrow dynamicznych: obie instalacje z profilu typowego normy
 #: (kontrakt wymaga proweniencji jawnie — brak pola jest brakiem danej, nie skrotem).
@@ -165,6 +166,14 @@ MAGAZYN_GFM_1000_KW: dict[str, Any] = {
 
 def build_so1a_pv_magazyn_enm() -> dict[str, Any]:
     """Migawka ENM sieci G17 — slownik walidujacy sie jako `EnergyNetworkModel`."""
+    # Karta modeli odbiorów (O-56): odbiory związane z profilem modelu dynamicznego
+    # katalogu tą samą operacją domenową, którą wykonuje projektant (dana testowa
+    # `U_min = 0,7 pu` — `odbiory_dynamiki.py`).
+    return zwiaz_odbiory_z_profilem(_migawka_bez_modeli_odbiorow())
+
+
+def _migawka_bez_modeli_odbiorow() -> dict[str, Any]:
+    """Migawka sieci przed związaniem odbiorów z profilem modelu dynamicznego."""
     return {
         "header": {
             "name": "G17 — scenariusz odniesienia SO-1A (PV 2,75 MW + magazyn energii)",

@@ -51,7 +51,7 @@ from .kontrakty import (
     KOD_PETLA_ZDARZEN_WARUNKOWYCH,
     KOD_ZDARZENIE_SPRZECZNE,
     KomendaRegulacji,
-    OdbiorDynamiki,
+    ModelOdbioru,
     OdlaczenieZrodla,
     OdmowaDynamiki,
     PrzypisanieStanu,
@@ -62,6 +62,7 @@ from .kontrakty import (
     ZmianaGalezi,
     ZmianaOdbioru,
     ZmianaOdsprzegu,
+    rozdziel_stany,
 )
 from .obserwable import czestotliwosci_wezlow, moc_urzadzenia_pu, wielkosci_galezi
 from .siec import ModelSieci
@@ -240,10 +241,13 @@ def _odmowa(dozor: Dozor, komunikat: str) -> OdmowaDynamiki:
 
 @dataclass(frozen=True)
 class StanUkladu:
-    """Punkt, w ktorym ocenia sie dozory: model, odbiory, urzadzenia, stany, napiecia, strona."""
+    """Punkt, w ktorym ocenia sie dozory: model, odbiory, urzadzenia, stany, napiecia, strona.
+
+    `stany` sa wyrownane z `(*odbiory, *urzadzenia)` (`kontrakty.rozdziel_stany`).
+    """
 
     model: ModelSieci
-    odbiory: tuple[OdbiorDynamiki, ...]
+    odbiory: tuple[ModelOdbioru, ...]
     urzadzenia: tuple[Urzadzenie, ...]
     stany: tuple[np.ndarray, ...]
     napiecia: np.ndarray
@@ -283,7 +287,8 @@ def wartosc_wielkosci(
     )
     if isinstance(wielkosc, StanUrzadzenia):
         pozycja_stanu = uklad.urzadzenia[indeks].nazwy_stanow.index(wielkosc.stan)
-        return float(uklad.stany[indeks][pozycja_stanu])
+        _, stany_urzadzen = rozdziel_stany(uklad.odbiory, uklad.urzadzenia, uklad.stany)
+        return float(stany_urzadzen[indeks][pozycja_stanu])
     moc = moc_urzadzenia_pu(
         model, uklad.odbiory, uklad.urzadzenia, uklad.stany, uklad.napiecia, indeks
     )

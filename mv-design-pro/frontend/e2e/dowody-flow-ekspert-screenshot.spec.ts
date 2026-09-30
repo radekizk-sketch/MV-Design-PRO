@@ -14,7 +14,12 @@
  *  - e32-dynamika    — bieg kanoniczny dynamiki czasowej RMS (karta AB-P1): rekordy
  *                      oceny NIE_OCENIONO, poziom dowodowy „model niezwalidowany",
  *                      oś zdarzeń z nazwami elementów, wielkości z jednostkami
- *                      i przebiegi napięć szyn na wspólnej osi czasu.
+ *                      i przebiegi napięć szyn na wspólnej osi czasu; model dynamiczny
+ *                      odbioru z katalogu profili odbiorów w sekcji modeli, założenia
+ *                      modelu jako zdania z nazwami (karta modeli odbiorów),
+ *  - e32-dynamika-odbior-brak — odbiór BEZ modelu dynamicznego: odmowa przed biegiem
+ *                      z nazwą odbioru i akcja naprawcza (wybór profilu katalogu odbiorów
+ *                      z podstawą wartości typowych) w tej samej sekcji co modele źródeł.
  * Wyjście: docs/audit/visual/flow-ekspert/e29..e32-<scena>-<motyw>.png (oba motywy).
  */
 import { test, expect, type Page } from '@playwright/test';
@@ -39,6 +44,7 @@ const SCENY: readonly Scena[] = [
   { creator: 'wyniki-zbieznosc', plik: 'e30-zbieznosc' },
   { creator: 'wyniki-stan-fazowy', plik: 'e31-stan-fazowy' },
   { creator: 'wyniki-dynamika', plik: 'e32-dynamika' },
+  { creator: 'wyniki-dynamika-odbior-brak', plik: 'e32-dynamika-odbior-brak' },
 ];
 
 const FIXTURY_DIR = path.resolve(_dirname, '../src/harness-fixtures/generated');
@@ -211,6 +217,21 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     const asymetrie = page.getByTestId('mvd-fazowy-asymetrie');
     await expect(asymetrie).toContainText(pl(wierszFaz.current_unbalance_percent, 2));
     await expect(asymetrie).toContainText('przekroczenie');
+  } else if (creator === 'wyniki-dynamika-odbior-brak') {
+    // Karta modeli odbiorów: odbiór bez modelu dynamicznego — stan „brak", odmowa przed
+    // biegiem z NAZWĄ odbioru (bez identyfikatora), akcja naprawcza: wybór profilu katalogu
+    // odbiorów (lista z odpowiedzi gotowości) i przycisk wiązania; uruchomienie zablokowane.
+    const gotowosc = fixtura('dynamika_scena_gotowosc_odbior_brak');
+    const odbior = gotowosc.odbiory[0];
+    const wiersz = page.getByTestId(`mvd-dynamika-odbior-${odbior.ref_id}`);
+    await expect(wiersz).toHaveAttribute('data-stan', 'brak');
+    await expect(wiersz).toContainText(odbior.nazwa);
+    await expect(page.getByTestId(`mvd-dynamika-odbior-${odbior.ref_id}-profil`)).toBeVisible();
+    await expect(page.getByTestId(`mvd-dynamika-odbior-${odbior.ref_id}-powiaz`)).toBeVisible();
+    const braki = page.getByTestId('mvd-dynamika-braki');
+    await expect(braki).toContainText(`„${odbior.nazwa}”`);
+    await expect(braki).not.toContainText(odbior.ref_id);
+    await expect(page.getByTestId('mvd-dynamika-uruchom')).toBeDisabled();
   } else {
     // wyniki-dynamika (karta AB-P1): wynik REALNEGO biegu `dynamika_rms` sceny —
     // rekordy NIE_OCENIONO (bieg w trybie sieci nie wydaje werdyktu), poziom dowodowy
@@ -230,6 +251,17 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     );
     await expect(page.getByTestId('mvd-dynamika-wykres-pu')).toBeVisible();
     await expect(page.getByTestId('mvd-dynamika-wynik')).not.toContainText('SPEŁNIA');
+    // Karta modeli odbiorów: odbiór z modelem z katalogu w sekcji modeli, założenia modelu
+    // jako zdania po polsku (te same, które niesie wynik) — bez kluczy kodu.
+    const gotowosc = fixtura('dynamika_scena_gotowosc');
+    const odbior = gotowosc.odbiory[0];
+    await expect(page.getByTestId(`mvd-dynamika-odbior-${odbior.ref_id}`)).toHaveAttribute(
+      'data-stan',
+      'z_katalogu',
+    );
+    const zalozenia = page.getByTestId('mvd-dynamika-zalozenia');
+    await expect(zalozenia).toContainText(wynik.zalozenia[1]);
+    await expect(zalozenia).not.toContainText('model_odbiorow');
   }
 }
 

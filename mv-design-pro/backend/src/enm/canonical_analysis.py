@@ -20,6 +20,8 @@ from application.contracts.resultset_dynamic_v2 import (
     dziedzina_fizyki_dynamiki,
     zbuduj_resultset_dynamiczny_v2,
 )
+from application.dynamika.odmowy import komunikat_dla_projektanta
+from application.dynamika.zalozenia import zdania_zalozen_rdzenia
 from application.nazwy_biegu import nazwa_projektu_z_migawki
 from application.proof_engine.packs.phase_state_sn import (
     PhaseStateSNProofPack,
@@ -107,6 +109,7 @@ from network_model.pochodne import (
 )
 from network_model.solvers.dynamika import (
     WERSJA_SOLVERA,
+    OdmowaDynamiki,
     SilnikDynamiki,
     ladunek_resultset_dynamic_v2,
 )
@@ -1639,28 +1642,44 @@ def _execute_dynamika_rms(run: CanonicalRun) -> None:
     na żądanie).
 
     Każda odmowa — adaptera (`OdmowaWejsciaDynamiki`) i rdzenia (`OdmowaDynamiki`) —
-    idzie w górę nietknięta: `execute_run` zapisuje status FAILED z komunikatem PL
-    i kodem. Bieg, który nie ma punktu pracy albo nie zbiega, NIE oddaje wyniku
+    idzie w górę z tym samym kodem i polami maszynowymi, a komunikatem z nazwami elementów
+    zamiast identyfikatorów (`application.dynamika.odmowy`): `execute_run` zapisuje status
+    FAILED z komunikatem PL i kodem. Bieg, który nie ma punktu pracy albo nie zbiega, NIE oddaje wyniku
     pustego ani „rozgrzewkowego".
     """
-    punkt = _bieg_rozplywu_punktu_pracy(run)
     snapshot = run.snapshot or {}
-    # Bramka warunków MODELOWYCH przed budową grafu IR: mapowanie ENM→graf ma
-    # własne, węższe odmowy dla części tych samych stanów, więc bez tego
-    # wyprzedzenia projektant dostałby komunikat mapowania zamiast kodu biegu
-    # czasowego. Ten sam predykat, co bramka gotowości.
-    odmow_gdy_braki_modelu(EnergyNetworkModel.model_validate(snapshot))
-    # Karta AB-P1: kopia `Generator.dynamika` z wiązania katalogowego musi być równa
-    # materializacji tego wiązania — ten sam predykat, co bramka gotowości `dynamika_rms`.
-    odmow_gdy_kopia_nieaktualna(snapshot)
-    wejscie = zloz_wejscie_dynamiki(
-        snapshot,
-        run.options or {},
-        punkt=punkt,
-        graph=zbuduj_graf(snapshot),
-        f_bazowa_hz=czestotliwosc_studium_hz(snapshot),
-    )
-    wynik = SilnikDynamiki(wejscie=wejscie).uruchom()
+    try:
+        punkt = _bieg_rozplywu_punktu_pracy(run)
+        # Bramka warunków MODELOWYCH przed budową grafu IR: mapowanie ENM→graf ma
+        # własne, węższe odmowy dla części tych samych stanów, więc bez tego
+        # wyprzedzenia projektant dostałby komunikat mapowania zamiast kodu biegu
+        # czasowego. Ten sam predykat, co bramka gotowości.
+        odmow_gdy_braki_modelu(EnergyNetworkModel.model_validate(snapshot))
+        # Karta AB-P1: kopia `Generator.dynamika` (i `Load.dynamika`) z wiązania
+        # katalogowego musi być równa materializacji tego wiązania — ten sam predykat, co
+        # bramka gotowości `dynamika_rms`.
+        odmow_gdy_kopia_nieaktualna(snapshot)
+        wejscie = zloz_wejscie_dynamiki(
+            snapshot,
+            run.options or {},
+            punkt=punkt,
+            graph=zbuduj_graf(snapshot),
+            f_bazowa_hz=czestotliwosc_studium_hz(snapshot),
+        )
+        wynik = SilnikDynamiki(wejscie=wejscie).uruchom()
+    except OdmowaDynamiki as odmowa:
+        # Karta modeli odbiorów (§0 pkt 6): komunikat odmowy rdzenia czyta projektant —
+        # identyfikatory i adresy stanów zamienione na nazwy z migawki biegu; kod i pola
+        # maszynowe bez zmian.
+        raise OdmowaDynamiki(
+            odmowa.kod, komunikat_dla_projektanta(odmowa.komunikat, snapshot), **odmowa.szczegoly
+        ) from odmowa
+    except OdmowaWejsciaDynamiki as odmowa:
+        raise OdmowaWejsciaDynamiki(
+            odmowa.kod,
+            komunikat_dla_projektanta(odmowa.komunikat, snapshot),
+            elementy=odmowa.elementy,
+        ) from odmowa
     ladunek = ladunek_resultset_dynamic_v2(wynik, run_id=str(run.id))
     ewidencja = classify_dynamic_capability(ZDOLNOSC_DYNAMIKI_RMS)
     kontrakt = ResultSetDynamicV2.model_validate(
@@ -1668,7 +1687,13 @@ def _execute_dynamika_rms(run: CanonicalRun) -> None:
             **ladunek,
             "dziedzina_fizyki": list(dziedzina_fizyki_dynamiki()),
             "stopien_dowodowy": [ewidencja.to_dict()],
-            "zalozenia": [*ladunek["zalozenia"], *zalozenia_wejscia(snapshot)],
+            # Zdania dla projektanta składa warstwa aplikacji z REKORDÓW rdzenia i nazw
+            # migawki biegu (rdzeń nie zna nazw — karta modeli odbiorów, §0 pkt 6); rekordy
+            # zostają obok w `zalozenia_rdzenia` jako dana maszynowa.
+            "zalozenia": [
+                *zdania_zalozen_rdzenia(ladunek["zalozenia_rdzenia"], snapshot),
+                *zalozenia_wejscia(snapshot),
+            ],
         }
     )
     run.raw_result = {
@@ -3155,6 +3180,14 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                         {"key": "jednostka", "label_pl": "Jednostka"},
                         {"key": "element_ref", "label_pl": "Element"},
                     ],
+                },
+                {
+                    # Karta modeli odbiorów (§0 pkt 6): założenia modelu po polsku z nazwami
+                    # elementów — ta sama lista, co na ekranie dynamiki.
+                    "table_id": "dynamika_zalozenia",
+                    "label_pl": "Założenia modelu biegu czasowego",
+                    "row_count": len(raw_result.get("zalozenia") or []),
+                    "columns": [{"key": "zalozenie", "label_pl": "Założenie"}],
                 },
             ]
         )

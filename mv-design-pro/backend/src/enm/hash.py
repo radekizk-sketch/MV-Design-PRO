@@ -65,7 +65,11 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # Karta W5-D (F-1): fazy przylaczenia odbioru. `None` = odbior trojfazowy
     # symetryczny (jedyne znaczenie, jakie `Load` mial przed karta) — poza odciskiem;
     # wskazana faza zmienia wynik rozplywu niesymetrycznego, wiec zmienia odcisk.
-    "loads": ("phases",),
+    # + karta modeli odbiorow (O-56): blok modelu dynamicznego odbioru `Load.dynamika` —
+    # kopia profilu katalogu `load_dynamic`. `None` = odbior bez modelu dynamicznego
+    # (dzisiejsze biegi SC/PF go nie czytaja); podany blok zmienia wejscie biegu
+    # `dynamika_rms`, wiec zmienia odcisk.
+    "loads": ("phases", "dynamika"),
     # W5-A: układ sieci nN typowany na transformatorze (w miejsce
     # dawnego klucza meta stacji) i układ uziemienia ekranu kabla.
     "transformers": ("lv_earthing_system",),

@@ -29,11 +29,17 @@ docstringa bylaby obietnica bez pokrycia.
 
 PUNKT STARTOWY NEWTONA A NAPIECIA PRZED ZDARZENIEM (karta AB-1b.1 par. 0 pkt 2).
 Wezel, ktory w tej chwili PRZESTAJE miec napiecie narzucone zerem (ponowne zasilenie
-obszaru odcietego, zdjecie zwarcia metalicznego), startowalby Newtona z `V = 0` — a
-odbior o stalej mocy ma tam `1/|V|^2`. Silnik podaje wtedy osobny `napiecia_startowe`
-(napiecie najblizszego wezla zywego); to jest WYBOR PUNKTU STARTOWEGO, nie korekta
-rozwiazania. Skok `delta_y` jest nadal mierzony wzgledem napiec PRZED zdarzeniem —
-migawki, nie punktu startowego.
+obszaru odcietego, zdjecie zwarcia metalicznego), startowalby Newtona z `V = 0` — a tam
+odbior jest w galezi impedancyjnej, wiec Newton z zera trafilby w rozwiazanie galezi
+impedancyjnej zamiast w pierwiastek wyzszy charakterystyki. Silnik podaje wtedy osobny
+`napiecia_startowe` (napiecie najblizszego wezla zywego); to jest WYBOR PUNKTU
+STARTOWEGO, nie korekta rozwiazania. Skok `delta_y` jest nadal mierzony wzgledem napiec
+PRZED zdarzeniem — migawki, nie punktu startowego.
+
+STANY ODBIOROW. `stany_przed` sa wyrownane z `(*odbiory, *urzadzenia)`; stan estymatora
+czestotliwosci odbioru jest trzymany tak samo jak stany urzadzen (odbior w wezle ponownie
+zasilonym dostaje od silnika model z estymatorem wyzerowanym, a stan `arg V+` dopiero po
+tej algebrze).
 """
 
 from __future__ import annotations
@@ -44,8 +50,8 @@ import numpy as np
 
 from .kontrakty import (
     KOD_REINICJALIZACJA_NIEZBIEZNA,
+    ModelOdbioru,
     NastawySolvera,
-    OdbiorDynamiki,
     OdmowaDynamiki,
     Urzadzenie,
 )
@@ -79,7 +85,7 @@ class RaportReinicjalizacji:
 
 def reinicjalizuj(
     model: ModelSieci,
-    odbiory: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany_przed: tuple[np.ndarray, ...],
     napiecia_przed: np.ndarray,
