@@ -25,12 +25,12 @@ const enm = (
 ).enm;
 
 describe('wiązania końcówek odcinków — punkt ze ścieżki ciągu, który niesie odcinek', () => {
-  const dane = buildSldDataFromSnapshot(enm);
+  const dane = buildSldDataFromSnapshot(enm, null);
   const ciagi = dane.cableRuns;
   const wiazania = dane.terminalBindings.filter((b) => b.id.endsWith(':A') || b.id.endsWith(':B'));
 
   it('sieć referencyjna ma odcinki w pierwszym i w dalszych ciągach (iloczyn niepusty)', () => {
-    const wPierwszym = new Set((ciagi[0].segmentPaths ?? []).map((p) => p.segmentRef));
+    const wPierwszym = new Set((ciagi[0]?.segmentPaths ?? []).map((p) => p.segmentRef));
     expect(wiazania.some((b) => wPierwszym.has(b.elementRef))).toBe(true);
     expect(wiazania.some((b) => !wPierwszym.has(b.elementRef))).toBe(true);
     expect(ciagi.length).toBeGreaterThan(1);

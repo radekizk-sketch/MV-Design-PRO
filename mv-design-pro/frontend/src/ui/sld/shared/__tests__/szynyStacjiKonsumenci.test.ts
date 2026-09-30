@@ -211,8 +211,8 @@ describe('cel pola liniowego GPZ — przynależność końca odcinka z lustra, b
     ) as { readonly enm: EnergyNetworkModel }
   ).enm;
   const polaLiniowe = (model: EnergyNetworkModel) =>
-    buildSldDataFromSnapshot(model, model.logical_views ?? null, null)
-      .gpzs[0].sections.flatMap((s) => s.bays)
+    (buildSldDataFromSnapshot(model, model.logical_views ?? null, null).gpzs[0]?.sections ?? [])
+      .flatMap((s) => s.bays)
       .filter((b) => b.fieldRole === 'LINE_OUT');
 
   it('dwa odcinki z tej samej szyny sekcji do DWÓCH stacji ⇒ żadne pole nie dostaje celu', () => {

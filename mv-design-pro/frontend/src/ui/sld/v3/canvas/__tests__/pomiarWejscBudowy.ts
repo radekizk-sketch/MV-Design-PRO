@@ -30,7 +30,7 @@ export function stacjeWgRoli(
   const stacjaZacisku = new Map<string, string>();
   const zajetePola = new Map<string, number>();
   for (const pole of widoki.line_fields ?? []) {
-    stacjaZacisku.set(pole.attachment_bus_ref, pole.station_ref);
+    if (pole.attachment_bus_ref) stacjaZacisku.set(pole.attachment_bus_ref, pole.station_ref);
     if (pole.occupied) zajetePola.set(pole.station_ref, (zajetePola.get(pole.station_ref) ?? 0) + 1);
   }
   const galezie = new Map((model.branches ?? []).map((galaz) => [galaz.ref_id, galaz]));
