@@ -47,6 +47,7 @@ from enm.canonical_analysis import (
     galezie_modelu_biegu,
 )
 from enm.canonical_analysis import get_run as get_canonical_run
+from network_model.core.voltage_factor import nadpisanie_c_z_danych, opis_c_biegu
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka
@@ -531,16 +532,13 @@ def build_branch_results_response(run: CanonicalRun) -> dict[str, Any]:
 
 
 def _c_factor_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
-    """Współczynnik napięciowy c ZAPISANY na biegu — jawny override ALBO
-    auto-per-węzeł (`enm/assembler.zloz_wejscie_zwarcia`: `options.get("c_factor")`
-    `None` -> AUTO z pasma napięciowego węzła, wartość -> OVERRIDE płaski).
-    Karta UI2 p.7: bez tego pola front nie ma jak odróżnić "policzono z c
-    z konfiguracji tego biegu" od domysłu — `EkranZwarc` czytał c z AKTYWNEGO
-    przypadku, nie z biegu, którego wynik ogląda (dwie różne rzeczy)."""
-    jawny = run.options.get("c_factor")
-    if jawny is not None:
-        return {"tryb": "jawny", "wartosc": float(jawny)}
-    return {"tryb": "auto_per_wezel", "wartosc": None}
+    """Współczynnik napięciowy c ZAPISANY na biegu — nadpisanie z uzasadnieniem ALBO
+    dobór per węzeł z tabeli 1 IEC 60909-0 (`enm/assembler.zloz_wejscie_zwarcia`:
+    `options["nadpisanie_c"]` → nadpisanie; brak → `voltage_factor.dobierz_c` per węzeł).
+    Karta UI2 p.7: front czyta c z KONFIGURACJI TEGO biegu, nie z aktywnego przypadku.
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): dawny tryb „jawny" (płaska liczba bez
+    uzasadnienia) nie istnieje; podstawa c każdego węzła leży w wierszu (`c_zrodlo`)."""
+    return opis_c_biegu(nadpisanie_c_z_danych(run.options.get("nadpisanie_c")))
 
 
 def _thermal_time_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
@@ -612,9 +610,9 @@ def build_short_circuit_rozplyw_response(
 #: wyjątku dołączony w `dobierz_pasmo_min_max_zwarcia`) obsłużony osobno niżej.
 _POWOD_NIEDOSTEPNOSCI_PASMA_PL: dict[str, str] = {
     "wspolczynnik_c_recznie_ustawiony": (
-        "Bieg kotwicy ma ręcznie ustawiony współczynnik c (niezależny od pasma "
-        "MAX/MIN) — jednoznaczny bieg przeciwnego scenariusza nie jest policzalny "
-        "automatycznie. Uruchom osobny bieg zwarciowy z automatycznym doborem c."
+        "Bieg kotwicy ma ręczne nadpisanie współczynnika c (z uzasadnieniem, niezależne "
+        "od tabeli 1 IEC 60909-0) — jednoznaczny bieg przeciwnego scenariusza nie jest "
+        "policzalny automatycznie. Uruchom osobny bieg zwarciowy bez nadpisania c."
     ),
     "kotwica_jest_wariantem_scenariusza": (
         "Bieg kotwicy sam jest wariantem scenariusza roboczego (nadpisania modelu) "

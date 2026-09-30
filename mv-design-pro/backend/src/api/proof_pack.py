@@ -16,11 +16,30 @@ from application.proof_engine.packs.sc_symmetrical import SC3FPackInput, SC3FPro
 from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.core.voltage_factor import (
+    NadpisanieC,
+    Scenario,
+    dobierz_c,
+    nadpisanie_c_z_danych,
+)
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 router = APIRouter(prefix="/api/proof", tags=["proof-pack"])
+
+
+class NadpisanieCZadanie(BaseModel):
+    """Ręczne nadpisanie c z uzasadnieniem — walidacja w `voltage_factor.NadpisanieC`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    wartosc: float
+    uzasadnienie: str
+
+
+def _nadpisanie(zadanie: NadpisanieCZadanie | None) -> NadpisanieC | None:
+    return nadpisanie_c_z_danych(zadanie.model_dump() if zadanie is not None else None)
 
 
 class SCAsymmetricalPackRequest(BaseModel):
@@ -33,8 +52,13 @@ class SCAsymmetricalPackRequest(BaseModel):
     fault_node_id: str
     run_timestamp: datetime
     solver_version: str
+    model_config = ConfigDict(extra="forbid")
+
     u_n_kv: float
-    c_factor: float
+    #: Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): c nie przychodzi liczbą — dobiera go
+    #: `voltage_factor.dobierz_c` dla U_n i scenariusza albo z nadpisania z uzasadnieniem.
+    scenariusz: Scenario
+    nadpisanie_c: NadpisanieCZadanie | None = None
     u_prefault_kv: float
     z1_re_ohm: float
     z1_im_ohm: float
@@ -85,6 +109,7 @@ def download_sc_asymmetrical_pack(payload: SCAsymmetricalPackRequest) -> Respons
         snapshot_id=payload.snapshot_id,
         mv_design_pro_version=resolve_mv_design_pro_version(),
     )
+    dobor_c = dobierz_c(payload.u_n_kv, payload.scenariusz, _nadpisanie(payload.nadpisanie_c))
     pack_input = SCAsymmetricalPackInput(
         project_name=payload.project_name,
         case_name=payload.case_name,
@@ -92,7 +117,8 @@ def download_sc_asymmetrical_pack(payload: SCAsymmetricalPackRequest) -> Respons
         run_timestamp=payload.run_timestamp,
         solver_version=payload.solver_version,
         u_n_kv=payload.u_n_kv,
-        c_factor=payload.c_factor,
+        c_factor=dobor_c.wartosc,
+        c_zrodlo=dobor_c.zrodlo,
         u_prefault_kv=payload.u_prefault_kv,
         z1_ohm=complex(payload.z1_re_ohm, payload.z1_im_ohm),
         z2_ohm=complex(payload.z2_re_ohm, payload.z2_im_ohm),
@@ -125,8 +151,11 @@ class SC3FPackRequest(BaseModel):
     # Kanoniczny snapshot ENM — fizyka (I″k + rozbicie maszynowe μ/q/i_b) liczona
     # po stronie serwera, ZERO fizyki w UI (G-SCM F2, V12K-054).
     snapshot: dict[str, Any]
-    c_factor: float = 1.10
-    tk_s: float = 1.0
+    model_config = ConfigDict(extra="forbid")
+
+    scenariusz: Scenario
+    nadpisanie_c: NadpisanieCZadanie | None = None
+    tk_s: float = Field(1.0, description="Czas trwania zwarcia t_k [s]")
 
 
 class SCContributionsRequest(BaseModel):
@@ -138,9 +167,14 @@ class SCContributionsRequest(BaseModel):
     ZERO fizyki w UI; odpowiedz JSON zawiera slad WHITE BOX solvera.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     snapshot: dict[str, Any]
     fault_node_id: str
-    c_factor: float = 1.10
+    #: Scenariusz OGLĄDANEGO biegu (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — c z tabeli 1
+    #: IEC 60909-0 dla pasma węzła zwarcia; dawne `c_factor: 1.10` dawało c SN w węźle nN.
+    scenariusz: Scenario
+    nadpisanie_c: NadpisanieCZadanie | None = None
     t_min_s: float = 0.10
 
 
@@ -347,7 +381,10 @@ def _input_hash_wkladow(payload: SCContributionsRequest) -> str:
         {
             "snapshot": payload.snapshot,
             "fault_node_id": payload.fault_node_id,
-            "c_factor": payload.c_factor,
+            "scenariusz": payload.scenariusz,
+            "nadpisanie_c": (
+                payload.nadpisanie_c.model_dump() if payload.nadpisanie_c is not None else None
+            ),
             "t_min_s": payload.t_min_s,
         },
         sort_keys=True,
@@ -364,7 +401,7 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
     Dostawca danych sekcji „Wklady" ekranu zwarc (dotad pass-through bez
     dostawcy). Deterministyczny: siec bez maszyn → pusta lista wkladow.
     """
-    from enm.mapping import _ref_to_uuid, map_enm_to_network_graph
+    from application.solvers.short_circuit_binding import graf_i_dobor_c_punktu
     from enm.models import EnergyNetworkModel
     from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
 
@@ -372,23 +409,25 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
     # walidowana osobno, żeby `ValidationError` z głębi obliczeń (model budowany przez
     # program) nie był przebierany za błąd danych (karta ODMOWA-DANYCH-422).
     try:
-        enm = EnergyNetworkModel.model_validate(payload.snapshot)
+        EnergyNetworkModel.model_validate(payload.snapshot)
     except ValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Nie udało się wyznaczyć wkładów zwarciowych: {exc}",
         ) from exc
     try:
-        graph = map_enm_to_network_graph(enm)
-        # Tozsamosc punktu: UI zna ref ENM szyny (target_id wyniku SC), solver
-        # id wezla grafu (= deterministyczny UUID z ref). Przyjmujemy oba.
-        fault_node_id = payload.fault_node_id
-        if fault_node_id not in graph.nodes:
-            fault_node_id = _ref_to_uuid(payload.fault_node_id)
+        # Graf solvera i c punktu z assemblera biegu (tożsamość punktu: ref ENM szyny
+        # albo id węzła grafu — rozstrzyga warstwa wiązania).
+        punkt = graf_i_dobor_c_punktu(
+            snapshot=payload.snapshot,
+            fault_ref=payload.fault_node_id,
+            scenariusz=payload.scenariusz,
+            nadpisanie_c=_nadpisanie(payload.nadpisanie_c),
+        )
         result = compute_machine_contributions(
-            graph,
-            fault_node_id,
-            c_factor=payload.c_factor,
+            punkt.graf,
+            punkt.fault_node_id,
+            c_factor=punkt.dobor_c.wartosc,
             t_min_s=payload.t_min_s,
         )
     # Karta ODMOWA-DANYCH-422: 422 wyłącznie dla nazwanej odmowy danych (brak węzła
@@ -411,6 +450,9 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
         "wywod_sekcje": sekcje,
         "walidacja_iec": _walidacja_iec(result, input_hash),
         "input_hash": input_hash,
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c punktu i jego podstawa (White Box).
+        "c_factor": punkt.dobor_c.wartosc,
+        "c_zrodlo": punkt.dobor_c.zrodlo,
     }
 
 
@@ -435,7 +477,8 @@ def download_sc3f_pack(payload: SC3FPackRequest) -> Response:
         fault_node_id=payload.fault_node_id,
         run_timestamp=payload.run_timestamp,
         solver_version=payload.solver_version,
-        c_factor=payload.c_factor,
+        scenariusz=payload.scenariusz,
+        nadpisanie_c=_nadpisanie(payload.nadpisanie_c),
         tk_s=payload.tk_s,
     )
     from enm.models import EnergyNetworkModel

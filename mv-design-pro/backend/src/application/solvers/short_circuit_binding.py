@@ -15,25 +15,27 @@ Karta TORY-TYLKO-W-TESTACH (2026-09-30): dawny punkt wejścia ``execute_short_ci
 (``_resolve_c_factor`` — override liczony względem domyślnej klasy ``StudyCaseConfig``)
 skasowany: nie miał konsumenta w produkcie. Zwarcia liczy bieg kanoniczny
 (``enm/canonical_analysis.py::_execute_short_circuit`` → ``enm/assembler.py::
-zloz_wejscie_zwarcia``: c per pasmo z ``c_for_node``, override jawnym ``c_factor`` w
-opcjach, scenariusz MIN z ``build_min_scenario_graph``). Bramka wskrzeszenia:
+zloz_wejscie_zwarcia``: c per pasmo z ``voltage_factor.dobierz_c``, nadpisanie wyłącznie
+``nadpisanie_c`` z uzasadnieniem, scenariusz MIN z ``build_min_scenario_graph``). Bramka wskrzeszenia:
 ``scripts/legacy_public_path_guard.py``.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any
 
 from domain.execution import ExecutionAnalysisType
 from network_model.core.graph import NetworkGraph
-from network_model.odmowa_danych import odmowa_rdzenia_b01
+from network_model.core.voltage_factor import DoborC, NadpisanieC, Scenario, dobierz_c
+from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
 from network_model.solvers.short_circuit_iec60909 import (
     ShortCircuitIEC60909Solver,
     ShortCircuitResult,
 )
 
-Scenario = Literal["MAX", "MIN"]
+if TYPE_CHECKING:
+    from enm.assembler import WejscieZwarcia
 
 
 @dataclass(frozen=True)
@@ -52,97 +54,184 @@ class ShortCircuitBindingResult:
     temperature_correction_notes: tuple[dict[str, object], ...] = ()
 
 
+def _wejscie_pakietu(
+    *,
+    snapshot: dict[str, Any],
+    fault_type: str,
+    scenariusz: Scenario,
+    nadpisanie_c: NadpisanieC | None,
+    tk_s: float,
+    rozszerzenia_audit2: dict[str, Any] | None,
+) -> WejscieZwarcia:
+    """Wejście zwarciowe pakietu dowodowego — TEN SAM assembler co bieg kanoniczny.
+
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: pakiet dowodowy dotąd mapował snapshot sam
+    (zawsze graf MAX, c podane liczbą przez wołającego, domyślnie 1,10). Dla biegu MIN
+    liczył więc INNĄ fizykę niż bieg (bez korekty R_θ i Z_Qmin), a dla węzła nN c z SN.
+    Teraz graf solvera, Z0 i dobór c pochodzą z ``enm.assembler.zloz_wejscie_zwarcia``
+    — jedna ścieżka fizyki dla biegu i dla jego dowodu.
+    """
+    from enm.assembler import zloz_wejscie_zwarcia
+
+    opcje: dict[str, Any] = {
+        "fault_type": fault_type,
+        "scenario": scenariusz.lower(),
+        "thermal_time_seconds": tk_s,
+    }
+    if nadpisanie_c is not None:
+        opcje["nadpisanie_c"] = nadpisanie_c.to_dict()
+    return zloz_wejscie_zwarcia(snapshot, opcje, rozszerzenia_audit2=rozszerzenia_audit2)
+
+
+def _dobor_c_wezla(wejscie: WejscieZwarcia, fault_node_id: str) -> DoborC:
+    """c węzła zwarcia pakietu — ``voltage_factor.dobierz_c``, jak w biegu."""
+    if fault_node_id not in wejscie.graph.nodes:
+        raise OdmowaDanychError(
+            f"Węzeł zwarcia {fault_node_id!r} nie istnieje w modelu sieci — pakietu "
+            "dowodowego nie da się złożyć."
+        )
+    return dobierz_c(
+        wejscie.graph.nodes[fault_node_id].voltage_level,
+        wejscie.scenario_c,
+        wejscie.nadpisanie_c,
+    )
+
+
+@dataclass(frozen=True)
+class Zwarcie1FZeSnapshotu:
+    """FROZEN wynik zwarcia 1F z doborem c (wartość i podstawa) dla dowodu."""
+
+    wynik: ShortCircuitResult
+    dobor_c: DoborC
+
+
 def wynik_zwarcia_1f_ze_snapshotu(
     *,
     snapshot: dict[str, Any],
     fault_node_id: str,
-    c_factor: float,
+    scenariusz: Scenario,
+    nadpisanie_c: NadpisanieC | None,
     tk_s: float,
-) -> ShortCircuitResult:
+    rozszerzenia_audit2: dict[str, Any] | None = None,
+) -> Zwarcie1FZeSnapshotu:
     """FROZEN wynik zwarcia 1F ze snapshotu ENM — impedancje składowe Z1/Z2/Z0.
 
     PO CO TA FUNKCJA (2026-08-07, naprawa czerwonej bramki po karcie PACK-DOWODY).
     Pakiet dowodowy zwarć niesymetrycznych potrzebuje Z1/Z2/Z0, a sieć zerową
-    liczy WYŁĄCZNIE wariant jednofazowy — przebieg 3F ich nie produkuje, więc
-    pakiet musi je wyznaczyć. Dotąd robił to SAM: budował graf, składał macierz
-    zerową i wołał solver z własnego modułu. Łamało to naraz dwie reguły:
+    liczy WYŁĄCZNIE wariant jednofazowy — przebieg 3F ich nie produkuje. Fizyka
+    (mapowanie snapshotu, macierz zerowa, wejście w solver) stoi w warstwie wiązania,
+    pakiet dostaje gotowy FROZEN wynik i tylko go opisuje (`no_direct_fault_params_guard`,
+    „Proof Engine reads results READ-ONLY").
 
-    1. `no_direct_fault_params_guard` — parametry zwarcia wchodziły do warstwy
-       solvera spoza warstwy wiązania (CI czerwone: `sc_asymmetrical.py:252`).
-       Dopisanie pliku do zapadki `LEGACY_DIRECT_SOLVER_CALLERS` byłoby
-       POSZERZENIEM wyjątku, nie naprawą: zapadka trzyma stan ZAMROŻONY
-       2026-08-01, a ten plik powstał w sierpniu 2026 i legacy nie jest.
-    2. Proof Engine liczył FIZYKĘ. Kanon (`CLAUDE.md`, „Proof Engine reads
-       results READ-ONLY", „pure interpretation") stawia pakiety dowodowe w roli
-       INTERPRETACJI wyniku, nie jego producenta.
-
-    Tu fizyka wraca na swoje miejsce: mapowanie snapshotu, macierz zerowa i
-    wejście w solver dzieją się w warstwie wiązania, a pakiet dostaje gotowy
-    FROZEN wynik i tylko go opisuje.
-
-    DETERMINIZM: `tb_s` zostaje domyślne solvera (0,1 s) — ta sama wartość, z którą
-    pakiet wołał solver przed przeniesieniem, więc przeniesienie wywołania nie zmienia
-    ani jednej cyfry wyniku.
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: graf, Z0 i c z assemblera biegu
+    (``_wejscie_pakietu``); ``tb_s`` domyślne solvera (0,1 s) jak w biegu.
     """
-    from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
-    from enm.models import EnergyNetworkModel
-
-    enm = EnergyNetworkModel.model_validate(snapshot)
-    graph = map_enm_to_network_graph(enm)
-    z0_bus = build_zero_sequence_zbus(enm, graph)
+    wejscie = _wejscie_pakietu(
+        snapshot=snapshot,
+        fault_type="1F",
+        scenariusz=scenariusz,
+        nadpisanie_c=nadpisanie_c,
+        tk_s=tk_s,
+        rozszerzenia_audit2=rozszerzenia_audit2,
+    )
+    dobor_c = _dobor_c_wezla(wejscie, fault_node_id)
     # Solver IEC 60909 jest rdzeniem B-01: odmowa wejścia (węzeł zwarcia spoza grafu) to
     # goły `ValueError` — granica tłumaczy ją na odmowę danych (karta ODMOWA-DANYCH-422).
     with odmowa_rdzenia_b01():
-        return ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=graph,
+        wynik = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
+            graph=wejscie.solve_graph,
             fault_node_id=fault_node_id,
-            c_factor=c_factor,
-            tk_s=tk_s,
-            z0_bus=z0_bus,
+            c_factor=dobor_c.wartosc,
+            tk_s=wejscie.tk_s,
+            z0_bus=wejscie.z0_bus,
         )
+    return Zwarcie1FZeSnapshotu(wynik=wynik, dobor_c=dobor_c)
 
 
 @dataclass(frozen=True)
 class ZwarcieZeSnapshotu:
-    """FROZEN wynik zwarcia razem z grafem, na którym powstał.
+    """FROZEN wynik zwarcia razem z grafem, na którym powstał, i doborem c.
 
     Graf wraca do wołającego CELOWO: rozbicie per-maszyna (`compute_machine_contributions`)
     musi liczyć się na TYM SAMYM grafie co zwarcie. Zbudowanie drugiego z tego samego
-    snapshotu dałoby dziś ten sam obiekt, ale byłyby to DWA źródła prawdy, które
-    rozjadą się przy pierwszej zmianie mapowania (reguła KLASA §3 — predykaty parami
-    z jednego źródła).
+    snapshotu dałoby dwa źródła prawdy (reguła KLASA §3 — predykaty parami z jednego
+    źródła). ``dobor_c`` niesie wartość c i jej podstawę (White Box) do dowodu.
     """
 
     wynik: ShortCircuitResult
     graf: NetworkGraph
+    dobor_c: DoborC
 
 
 def zwarcie_3f_ze_snapshotu(
     *,
     snapshot: dict[str, Any],
     fault_node_id: str,
-    c_factor: float,
+    scenariusz: Scenario,
+    nadpisanie_c: NadpisanieC | None,
     tk_s: float,
+    rozszerzenia_audit2: dict[str, Any] | None = None,
 ) -> ZwarcieZeSnapshotu:
-    """FROZEN wynik zwarcia 3F ze snapshotu ENM — dla pakietu dowodowego SC3F.
+    """FROZEN wynik zwarcia 3F ze snapshotu ENM — dla pakietu dowodowego SC3F i wkładów.
 
-    Bliźniak `wynik_zwarcia_1f_ze_snapshotu`, domykający KLASĘ (dług
-    PACK-SC3F-WIAZANIE, nazwany przy naprawie pakietu niesymetrycznego 2026-08-07).
-    Powód ten sam: pakiet dowodowy ma OPISYWAĆ wynik, nie produkować go — mapowanie
-    snapshotu i wejście w solver należą do warstwy wiązania.
-
-    DETERMINIZM: `tb_s` zostaje domyślne solvera, dokładnie jak w wywołaniu, które ta
-    funkcja zastąpiła — ani jedna cyfra dowodu SC3F się nie zmienia.
+    Bliźniak `wynik_zwarcia_1f_ze_snapshotu` (dług PACK-SC3F-WIAZANIE): pakiet ma
+    OPISYWAĆ wynik, nie produkować go. Graf solvera i c z assemblera biegu
+    (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK); ``tb_s`` domyślne solvera jak w biegu.
     """
-    from enm.mapping import map_enm_to_network_graph
-    from enm.models import EnergyNetworkModel
-
-    graph = map_enm_to_network_graph(EnergyNetworkModel.model_validate(snapshot))
+    wejscie = _wejscie_pakietu(
+        snapshot=snapshot,
+        fault_type="3F",
+        scenariusz=scenariusz,
+        nadpisanie_c=nadpisanie_c,
+        tk_s=tk_s,
+        rozszerzenia_audit2=rozszerzenia_audit2,
+    )
+    dobor_c = _dobor_c_wezla(wejscie, fault_node_id)
     with odmowa_rdzenia_b01():  # rdzeń B-01 — jak w `wynik_zwarcia_1f_ze_snapshotu`
         wynik = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-            graph=graph,
+            graph=wejscie.solve_graph,
             fault_node_id=fault_node_id,
-            c_factor=c_factor,
-            tk_s=tk_s,
+            c_factor=dobor_c.wartosc,
+            tk_s=wejscie.tk_s,
         )
-    return ZwarcieZeSnapshotu(wynik=wynik, graf=graph)
+    return ZwarcieZeSnapshotu(wynik=wynik, graf=wejscie.solve_graph, dobor_c=dobor_c)
+
+
+@dataclass(frozen=True)
+class GrafIDoborC:
+    """Graf solvera biegu i dobór c punktu — wejście rozbicia maszynowego (wkłady)."""
+
+    graf: NetworkGraph
+    fault_node_id: str
+    dobor_c: DoborC
+
+
+def graf_i_dobor_c_punktu(
+    *,
+    snapshot: dict[str, Any],
+    fault_ref: str,
+    scenariusz: Scenario,
+    nadpisanie_c: NadpisanieC | None,
+) -> GrafIDoborC:
+    """Graf solvera (assembler biegu) i c punktu dla wkładów zwarciowych na żądanie.
+
+    ``fault_ref`` = id węzła grafu albo ref ENM szyny (UI zna ref z wyniku, solver
+    deterministyczny UUID z ref). Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c z tabeli 1 dla
+    pasma TEGO węzła i scenariusza oglądanego biegu (dawniej zawsze 1,10).
+    """
+    from enm.mapping import _ref_to_uuid
+
+    wejscie = _wejscie_pakietu(
+        snapshot=snapshot,
+        fault_type="3F",
+        scenariusz=scenariusz,
+        nadpisanie_c=nadpisanie_c,
+        tk_s=1.0,
+        rozszerzenia_audit2=None,
+    )
+    fault_node_id = fault_ref if fault_ref in wejscie.graph.nodes else _ref_to_uuid(fault_ref)
+    return GrafIDoborC(
+        graf=wejscie.solve_graph,
+        fault_node_id=fault_node_id,
+        dobor_c=_dobor_c_wezla(wejscie, fault_node_id),
+    )

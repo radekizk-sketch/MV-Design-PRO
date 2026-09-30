@@ -74,6 +74,42 @@ def init_db(engine: Engine) -> None:
     from .migracja_legacy_db import migruj_i_usun_tabele_legacy
 
     migruj_i_usun_tabele_legacy(engine)
+    usun_skasowane_klucze_przypadku(engine)
+
+
+#: Klucze konfiguracji przypadku skasowane kartą WSPOLCZYNNIK-C-JEDEN-NOSNIK (decyzja
+#: O-59): c i t_k niesie wyłącznie scenariusz zwarciowy. Baza sprzed karty ma je w
+#: `study_cases.study_jsonb` — bez tego kroku surowy JSON przypadku (np. archiwum
+#: projektu) dalej nosiłby fantomowe pola, których żaden kod nie czyta.
+KLUCZE_PRZYPADKU_SKASOWANE: tuple[str, ...] = (
+    "c_factor_max",
+    "c_factor_min",
+    "thermal_time_seconds",
+)
+
+
+def usun_skasowane_klucze_przypadku(engine: Engine) -> int:
+    """Zdejmij skasowane klucze z `study_cases.study_jsonb`; zwraca liczbę zmienionych wierszy.
+
+    Idempotentne (drugi przebieg nic nie zmienia), bez fallbacku: klucz jest usuwany, nie
+    przepisywany gdzie indziej — wartości c przypadku nigdy nie trafiały do obliczeń.
+    """
+    if "study_cases" not in inspect(engine).get_table_names():
+        return 0
+    from .models import StudyCaseORM
+
+    zmienione = 0
+    with Session(engine) as sesja:
+        for wiersz in sesja.query(StudyCaseORM).all():
+            dane = wiersz.study_jsonb
+            if not isinstance(dane, dict) or not any(k in dane for k in KLUCZE_PRZYPADKU_SKASOWANE):
+                continue
+            wiersz.study_jsonb = {
+                k: v for k, v in dane.items() if k not in KLUCZE_PRZYPADKU_SKASOWANE
+            }
+            zmienione += 1
+        sesja.commit()
+    return zmienione
 
 
 def _dolacz_kolumny_addytywne(engine: Engine) -> None:

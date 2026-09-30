@@ -93,7 +93,8 @@ from network_model.solvers.cable_ampacity_derating import (
     obciazalnosc_skorygowana,
 )
 from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
-from network_model.solvers.fault_loop_iec60364 import C_MIN_LV, FaultLoopResult
+from network_model.core.voltage_factor import LV_C_MIN
+from network_model.solvers.fault_loop_iec60364 import FaultLoopResult
 from network_model.solvers.protection_lv_curves import FUSE_GG_IF_MULTIPLIER
 
 # =============================================================================
@@ -859,12 +860,12 @@ class LVCircuitVerificationProofPack:
                 title_pl="Prąd zwarcia minimalnego z pętli (scenariusz MIN)",
                 equation=eq9,
                 input_values=(
-                    _pv("c_{min}", C_MIN_LV, "—", "c_min"),
+                    _pv("c_{min}", LV_C_MIN, "—", "c_min"),
                     _pv("U_0", fl.u_nom_v, "V", "u0_v"),
                     _pv("Z_{loop}", fl.z_loop_magnitude_ohm, "Ω", "z_loop_magnitude_ohm"),
                 ),
                 substitution_latex=(
-                    f"$$I_{{k1,min}} = \\frac{{{C_MIN_LV:g} \\cdot {fl.u_nom_v:.2f}}}"
+                    f"$$I_{{k1,min}} = \\frac{{{LV_C_MIN:g} \\cdot {fl.u_nom_v:.2f}}}"
                     f"{{{fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}\\;\\mathrm{{A}}$$"
                 ),
                 result=_pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),

@@ -40,6 +40,7 @@ from application.proof_engine.proof_pack import (
 )
 from application.proof_engine.types import ProofDocument
 from application.solvers.short_circuit_binding import zwarcie_3f_ze_snapshotu
+from network_model.core.voltage_factor import NadpisanieC, Scenario
 from network_model.pochodne import a_na_ka, v_na_kv
 from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
 
@@ -58,8 +59,12 @@ class SC3FPackInput:
     fault_node_id: str
     run_timestamp: datetime
     solver_version: str
-    c_factor: float = 1.10
-    tk_s: float = 1.0
+    #: Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): nośnikiem c jest scenariusz (MAX/MIN →
+    #: tabela 1 IEC 60909-0 dla pasma węzła) albo nadpisanie z uzasadnieniem — nie liczba.
+    scenariusz: Scenario
+    nadpisanie_c: NadpisanieC | None
+    tk_s: float
+    rozszerzenia_audit2: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -99,8 +104,10 @@ class SC3FProofPack:
         zwarcie = zwarcie_3f_ze_snapshotu(
             snapshot=data.snapshot,
             fault_node_id=data.fault_node_id,
-            c_factor=data.c_factor,
+            scenariusz=data.scenariusz,
+            nadpisanie_c=data.nadpisanie_c,
             tk_s=data.tk_s,
+            rozszerzenia_audit2=data.rozszerzenia_audit2,
         )
         result = zwarcie.wynik
         graph = zwarcie.graf
@@ -124,6 +131,7 @@ class SC3FProofPack:
             run_timestamp=data.run_timestamp,
             solver_version=data.solver_version,
             c_factor=result.c_factor,
+            c_zrodlo=zwarcie.dobor_c.zrodlo,
             u_n_kv=v_na_kv(result.un_v),
             z_thevenin_ohm=result.zkk_ohm,
             ikss_ka=a_na_ka(result.ikss_a),

@@ -250,8 +250,6 @@ class ShortCircuitPayload(BaseModel):
     transformers: list[TransformerPayload] = Field(default_factory=list)
     inverter_sources: list[InverterSourcePayload] = Field(default_factory=list)
     switches: list[SwitchPayload] = Field(default_factory=list)
-    c_factor: float = 1.10
-    thermal_time_seconds: float = 1.0
     include_inverter_contribution: bool = True
     # P0.9 V12K: simplified grid source (used when sc_input_mode == 'simplified').
     # Optional — None means solver uses full 110 kV + TR model from buses/branches.

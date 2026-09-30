@@ -1,13 +1,15 @@
 """Testy biegu zbiorczego nastaw (karta PACK-NASTAWY, domkniecie PACK-DLUG-NASTAWY).
 
 Pokrycie jako ILOCZYN CECH (nie jeden przyklad z karty):
-- kotwica {zakonczona 3F c_max, niezakonczona, zlego rodzaju (PF), zly typ zwarcia
-  (2F), c_factor ponizej progu} x wynik (wejscie zbudowane / BrakDanychNastawError),
+- kotwica {zakonczona 3F scenariusza MAX, niezakonczona, zlego rodzaju (PF), zly typ
+  zwarcia (2F), scenariusz MIN} x wynik (wejscie zbudowane / BrakDanychNastawError),
 - linia {komplet danych katalogowych, brak przekroju, brak pradu znamionowego}
   x dostepnosc kandydata,
 - topologia nastepnej szyny {rozgalezienie, slepy koniec, szyna spoza migawki}
   x wynik kandydatow/bledu,
-- c_min {mniejszy od c_max, rowny c_max, wiekszy od c_max, ujemny} x wynik,
+- galaz minimalna {scenariusz MIN wariantu} x {wezel SN} — c z tabeli 1 IEC 60909-0
+  (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: rozdzial MAX/MIN po przelaczniku, nie po liczbie;
+  iloczyn z pasmem nN — `tests/enm/test_wspolczynnik_c_jeden_nosnik.py`),
 - determinizm {dwa wywolania na tej samej migawce} — identyczne bajty liczb.
 
 ZERO nowej fizyki w tescie: zwarcie i rozplyw licza istniejace solvery przez
@@ -46,7 +48,9 @@ from enm.models import (
     Load,
     OverheadLine,
     Source,
+    Transformer,
 )
+from enm.mapping import ref_to_graph_id
 from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
 
 
@@ -92,6 +96,31 @@ def _siec_promieniowa() -> EnergyNetworkModel:
             _linia("ln1", od="b_src", do="b_a"),
             _linia("ln2", od="b_a", do="b_b"),
         ],
+    )
+
+
+def _siec_promieniowa_z_nn() -> EnergyNetworkModel:
+    """Siec promieniowa + stacja SN/nN na b_b (szyna nN 0,4 kV) — bieg MAX i warianty MIN
+    licza zwarcie w DWOCH pasmach naraz (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK)."""
+    siec = _siec_promieniowa()
+    return siec.model_copy(
+        update={
+            "buses": [*siec.buses, Bus(ref_id="b_nn", name="Szyna nN", voltage_kv=0.4)],
+            "transformers": [
+                Transformer(
+                    ref_id="tr_nn",
+                    name="TR 15/0,4 kV 630 kVA",
+                    hv_bus_ref="b_b",
+                    lv_bus_ref="b_nn",
+                    sn_mva=0.63,
+                    uhv_kv=15.0,
+                    ulv_kv=0.4,
+                    uk_percent=6.0,
+                    pk_kw=8.0,
+                    vector_group="Dyn11",
+                )
+            ],
+        }
     )
 
 
@@ -141,7 +170,7 @@ def _linia_bez_danych_katalogowych() -> OverheadLine:
 def _kotwica(
     enm: EnergyNetworkModel,
     *,
-    c_factor: float = 1.10,
+    scenariusz: str = "max",
     fault_type: str = "3F",
     analysis_type: str = "short_circuit_sn",
     status_: str = "FINISHED",
@@ -162,7 +191,7 @@ def _kotwica(
         readiness={},
         options={
             "fault_type": fault_type,
-            "c_factor": c_factor,
+            "scenario": scenariusz,
             "thermal_time_seconds": 1.0,
         },
     )
@@ -215,11 +244,12 @@ def test_kandydaci_nastepnej_szyny_slepy_koniec_jest_pusty() -> None:
 def test_zbuduj_wejscie_nastaw_wypelnia_wszystkie_dziewiec_wczesniej_brakujacych_pol() -> None:
     kotwica = _kotwica(_siec_promieniowa())
     wejscie = zbuduj_wejscie_nastaw(
-        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+        kotwica, line_id="ln1", next_bus_id="b_b", zacisk_zabezpieczenia="od"
     )
     ei = wejscie.engine_input
 
-    # Galaz c_min (3 pola) — inna niz c_max, bo c=1.0 != c=1.10 na TEJ SAMEJ sieci.
+    # Galaz minimalna (3 pola) — scenariusz MIN: c_min=1,00 zamiast c_max=1,10 dla SN
+    # (tabela 1) i korekta R_theta — inna niz galaz maksymalna na TEJ SAMEJ sieci.
     assert ei.ik3_min_beginning_a > 0
     assert ei.ik3_min_end_a > 0
     assert ei.ik2_min_end_a > 0
@@ -249,14 +279,12 @@ def test_zbuduj_wejscie_nastaw_deterministyczny_dla_tych_samych_wejsc() -> None:
         kotwica1,
         line_id="ln1",
         next_bus_id="b_b",
-        c_min=1.0,
         zacisk_zabezpieczenia="od",
     )
     w2 = zbuduj_wejscie_nastaw(
         kotwica2,
         line_id="ln1",
         next_bus_id="b_b",
-        c_min=1.0,
         zacisk_zabezpieczenia="od",
     )
     assert w1.engine_input == w2.engine_input
@@ -264,7 +292,7 @@ def test_zbuduj_wejscie_nastaw_deterministyczny_dla_tych_samych_wejsc() -> None:
 
 def test_k_b_k_bth_delta_t_s_pochodza_z_parametrow_wywolania_nie_z_opcji_kotwicy() -> None:
     """Zrodlo konfiguracji (k_b/k_bth/delta_t_s) to PARAMETRY WYWOLANIA, nigdy
-    `kotwica.options` (ktore niesie wylacznie fault_type/c_factor/thermal_time_seconds
+    `kotwica.options` (ktore niesie wylacznie fault_type/scenario/thermal_time_seconds
     — SC nie zna k_b/k_bth). Jesli kod kiedys zaczalby czytac je z opcji kotwicy,
     wartosci nieobecne w options dalyby CICHO domyslne 1.2/1.1/0.3 zamiast
     jawnie przekazanych — ten test lapie taki rozjazd zrodla."""
@@ -274,7 +302,6 @@ def test_k_b_k_bth_delta_t_s_pochodza_z_parametrow_wywolania_nie_z_opcji_kotwicy
         kotwica,
         line_id="ln1",
         next_bus_id="b_b",
-        c_min=1.0,
         delta_t_s=0.45,
         k_b=1.35,
         k_bth=1.18,
@@ -297,7 +324,6 @@ def test_kotwica_niezakonczona_odmawia() -> None:
             kotwica,
             line_id="ln1",
             next_bus_id="b_b",
-            c_min=1.0,
             zacisk_zabezpieczenia="od",
         )
 
@@ -310,7 +336,6 @@ def test_kotwica_rodzaju_rozplyw_odmawia() -> None:
             kotwica,
             line_id="ln1",
             next_bus_id="b_b",
-            c_min=1.0,
             zacisk_zabezpieczenia="od",
         )
 
@@ -322,48 +347,85 @@ def test_kotwica_zwarcia_dwufazowego_odmawia_bo_to_nie_galaz_maksymalna() -> Non
             kotwica,
             line_id="ln1",
             next_bus_id="b_b",
-            c_min=1.0,
             zacisk_zabezpieczenia="od",
         )
 
 
-def test_kotwica_c_factor_ponizej_progu_odmawia() -> None:
-    kotwica = _kotwica(_siec_promieniowa(), c_factor=0.95)
-    with pytest.raises(BrakDanychNastawError, match="galezi maksymalnej|maksymalnej"):
+def test_kotwica_scenariusza_min_odmawia() -> None:
+    kotwica = _kotwica(_siec_promieniowa(), scenariusz="min")
+    with pytest.raises(BrakDanychNastawError, match="MAKSYMALNEGO"):
         zbuduj_wejscie_nastaw(
             kotwica,
             line_id="ln1",
             next_bus_id="b_b",
-            c_min=1.0,
             zacisk_zabezpieczenia="od",
         )
 
 
-@pytest.mark.parametrize("c_min", [0.0, -1.0, 1.20])
-def test_c_min_poza_dopuszczalnym_zakresem_odmawia(c_min: float) -> None:
-    kotwica = _kotwica(_siec_promieniowa(), c_factor=1.10)
-    with pytest.raises(BrakDanychNastawError, match="c_min"):
-        zbuduj_wejscie_nastaw(
-            kotwica,
-            line_id="ln1",
-            next_bus_id="b_b",
-            c_min=c_min,
-            zacisk_zabezpieczenia="od",
-        )
+#: Tabela 1 IEC 60909-0 wpisana recznie (wyrocznia niezalezna od `voltage_factor.py`).
+_C_TABELI = {("SN", "MAX"): 1.10, ("SN", "MIN"): 1.00, ("nN", "MAX"): 1.05, ("nN", "MIN"): 0.95}
 
 
-def test_c_min_rowny_c_max_jest_dopuszczalny_brzeg() -> None:
-    kotwica = _kotwica(_siec_promieniowa(), c_factor=1.10)
-    wejscie = zbuduj_wejscie_nastaw(
-        kotwica,
-        line_id="ln1",
-        next_bus_id="b_b",
-        c_min=1.10,
-        zacisk_zabezpieczenia="od",
-    )
-    assert wejscie.engine_input.ik3_min_beginning_a == pytest.approx(
-        wejscie.engine_input.ik3_max_beginning_a
-    )
+@pytest.mark.parametrize(
+    ("siec", "pasma_szyn"),
+    [
+        (_siec_promieniowa, {"b_src": "SN", "b_a": "SN", "b_b": "SN"}),
+        (_siec_promieniowa_z_nn, {"b_src": "SN", "b_a": "SN", "b_b": "SN", "b_nn": "nN"}),
+    ],
+    ids=["siec_SN", "siec_mieszana_SN_nN"],
+)
+def test_warianty_minimalne_licza_scenariuszem_min_z_c_tabeli(
+    monkeypatch: pytest.MonkeyPatch,
+    siec: object,
+    pasma_szyn: dict[str, str],
+) -> None:
+    """Rozdzial MAX/MIN po PRZELACZNIKU: warianty 3F i 2F galezi minimalnej niosa
+    `scenario: min`, ZADNEJ liczby c w opcjach, a ich wiersze niosa c z tabeli 1 IEC
+    60909-0 dla pasma KAZDEJ szyny (SN 1,00 / nN 0,95) z podstawa `c_zrodlo`; kotwica MAX
+    ma c_max pasma (SN 1,10 / nN 1,05). Iloczyn: {kotwica, wariant 3F, wariant 2F} x
+    {szyna SN, szyna nN}."""
+    from application.protection_settings import batch_run as modul
+
+    przechwycone: list[CanonicalRun] = []
+    oryginal = modul.wykonaj_bieg_w_pamieci
+
+    def _szpieg(run: CanonicalRun, *args: object, **kwargs: object) -> object:
+        przechwycone.append(run)
+        return oryginal(run, *args, **kwargs)
+
+    monkeypatch.setattr(modul, "wykonaj_bieg_w_pamieci", _szpieg)
+    kotwica = _kotwica(siec())  # type: ignore[operator]
+    zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", zacisk_zabezpieczenia="od")
+
+    def _sprawdz(run: CanonicalRun, scenariusz: str) -> None:
+        wiersze = {w["fault_node_id"]: w for w in run.raw_result["results"]}
+        assert set(wiersze) == {ref_to_graph_id(ref) for ref in pasma_szyn}
+        for ref, pasmo in pasma_szyn.items():
+            wiersz = wiersze[ref_to_graph_id(ref)]
+            assert wiersz["c_factor"] == pytest.approx(_C_TABELI[(pasmo, scenariusz)]), ref
+            assert wiersz["c_zrodlo"] == f"IEC 60909-0 tab. 1, pasmo {pasmo}, {scenariusz}"
+
+    _sprawdz(kotwica, "MAX")
+    warianty_sc = [run for run in przechwycone if run.analysis_type == "short_circuit_sn"]
+    assert sorted(run.options["fault_type"] for run in warianty_sc) == ["2F", "3F"]
+    for wariant in warianty_sc:
+        assert wariant.options["scenario"] == "min"
+        assert "c_factor" not in wariant.options and "nadpisanie_c" not in wariant.options
+        assert wariant.raw_result["scenario"] == "MIN"
+        _sprawdz(wariant, "MIN")
+
+
+def test_nadpisanie_c_kotwicy_nie_przechodzi_na_wariant_minimalny() -> None:
+    from application.protection_settings.batch_run import _opcje_wariantu_minimalnego
+
+    kotwica = _kotwica(_siec_promieniowa(), wykonaj=False)
+    kotwica.options = {
+        **kotwica.options,
+        "nadpisanie_c": {"wartosc": 1.05, "uzasadnienie": "uzgodnienie z OSD"},
+    }
+    opcje = _opcje_wariantu_minimalnego(kotwica, fault_type="3F")
+    assert opcje["scenario"] == "min"
+    assert "nadpisanie_c" not in opcje and "c_factor" not in opcje
 
 
 def test_linia_nieznana_odmawia() -> None:
@@ -373,7 +435,6 @@ def test_linia_nieznana_odmawia() -> None:
             kotwica,
             line_id="ln_nieznana",
             next_bus_id="b_b",
-            c_min=1.0,
             zacisk_zabezpieczenia="od",
         )
 
@@ -387,7 +448,6 @@ def test_linia_bez_danych_katalogowych_odmawia() -> None:
             kotwica,
             line_id="ln_bez_katalogu",
             next_bus_id="b_b",
-            c_min=1.0,
             zacisk_zabezpieczenia="od",
         )
 
@@ -399,7 +459,6 @@ def test_nastepna_szyna_spoza_migawki_odmawia() -> None:
             kotwica,
             line_id="ln1",
             next_bus_id="b_nieznana",
-            c_min=1.0,
             zacisk_zabezpieczenia="od",
         )
 
@@ -420,7 +479,6 @@ def test_nastepna_szyna_bez_zwarcia_odmawia() -> None:
             kotwica,
             line_id="ln1",
             next_bus_id="b_b",
-            c_min=1.0,
             zacisk_zabezpieczenia="od",
         )
 
@@ -436,7 +494,7 @@ def test_zbuduj_wejscie_nastaw_nie_mutuje_migawki_kotwicy_pin_spojnosci() -> Non
     na obca nie czerwienila ZADNEGO z 25 testow. Ten pin przypinal spojnosc WPROST
     na konstruktorach wariantow `_wariant_zwarciowy`/`_wariant_rozplywu`
     (rekonstruowanych bezposrednio w tescie) — CV-3-W USUNELA te prywatne
-    konstruktory: trzy warianty (SC 3F@c_min, SC 2F@c_min, PF) powstaja dzis
+    konstruktory: trzy warianty (SC 3F@MIN, SC 2F@MIN, PF) powstaja dzis
     WYLACZNIE przez fabryke rdzenia CV-3.1 `enm.canonical_analysis.bieg_wariantu`
     na migawce `enm.scenariusze.apply_scenario(model_kotwicy, SCENARIUSZ_NORMALNY)`.
 
@@ -446,7 +504,7 @@ def test_zbuduj_wejscie_nastaw_nie_mutuje_migawki_kotwicy_pin_spojnosci() -> Non
     Immutability). Literalna rownosc `snapshot_hash`/`input_hash` wariantu z
     kotwica PRZESTAJE byc kontraktem po migracji: `bieg_wariantu` liczy OBA
     hashe uczciwie z migawki i WLASNYCH opcji wariantu (inny `fault_type`/
-    `c_factor` per wariant daje inny, poprawny `input_hash` — to POPRAWA
+    scenariusz per wariant daje inny, poprawny `input_hash` — to POPRAWA
     architektoniczna, nie regresja), wiec ten pin sprawdza TRESC migawki, nie
     bookkeeping biegu.
     """
@@ -462,7 +520,7 @@ def test_zbuduj_wejscie_nastaw_nie_mutuje_migawki_kotwicy_pin_spojnosci() -> Non
     assert migawka.snapshot is not kotwica.snapshot, "migawka wariantu to KOPIA, nie referencja"
 
     wejscie = zbuduj_wejscie_nastaw(
-        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+        kotwica, line_id="ln1", next_bus_id="b_b", zacisk_zabezpieczenia="od"
     )
 
     assert wejscie.engine_input.ik3_min_beginning_a > 0  # dowod, ze warianty faktycznie policzono
@@ -488,7 +546,7 @@ def test_wariant_rozplywu_nastaw_zawsze_metoda_nr_niezaleznie_od_opcji_kotwicy(
     {wariant PF} — przechwycony wariant ma NR w opcjach, w kopercie wyniku
     (`raw_result.solver_method`) i w sladzie (`power_flow_trace.solver_method`),
     a warianty zwarciowe nie dziedzicza obcej metody (klucze jawne w
-    `_opcje_wariantu_zwarciowego`)."""
+    `_opcje_wariantu_minimalnego`)."""
     from application.protection_settings import batch_run as modul
 
     przechwycone: list[CanonicalRun] = []
@@ -503,7 +561,7 @@ def test_wariant_rozplywu_nastaw_zawsze_metoda_nr_niezaleznie_od_opcji_kotwicy(
     kotwica.options = {**kotwica.options, "solver_method": "gauss-seidel"}
 
     wejscie = zbuduj_wejscie_nastaw(
-        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+        kotwica, line_id="ln1", next_bus_id="b_b", zacisk_zabezpieczenia="od"
     )
 
     assert wejscie.engine_input.i_load_max_a > 0
@@ -530,20 +588,20 @@ def test_wariant_rozplywu_nastaw_zawsze_metoda_nr_niezaleznie_od_opcji_kotwicy(
 def test_warianty_nastaw_dziedzicza_pare_audit2_kotwicy() -> None:
     from application.protection_settings.batch_run import (
         _opcje_audit2_kotwicy,
-        _opcje_wariantu_zwarciowego,
+        _opcje_wariantu_minimalnego,
     )
 
     kotwica = _kotwica(_siec_promieniowa(), wykonaj=False)
     assert _opcje_audit2_kotwicy(kotwica) == {}
-    bez_pary = _opcje_wariantu_zwarciowego(kotwica, fault_type="3F", c_factor=1.0)
+    bez_pary = _opcje_wariantu_minimalnego(kotwica, fault_type="3F")
     assert "audit2_project_id" not in bez_pary and "audit2_station_id" not in bez_pary
 
     para = {"audit2_project_id": str(uuid4()), "audit2_station_id": "stacja-nastaw"}
     kotwica.options = {**kotwica.options, **para}
     assert _opcje_audit2_kotwicy(kotwica) == para
-    z_para = _opcje_wariantu_zwarciowego(kotwica, fault_type="2F", c_factor=1.0)
+    z_para = _opcje_wariantu_minimalnego(kotwica, fault_type="2F")
     assert {k: z_para[k] for k in para} == para
-    assert z_para["fault_type"] == "2F" and z_para["c_factor"] == 1.0
+    assert z_para["fault_type"] == "2F" and z_para["scenario"] == "min"
 
 
 def test_kotwica_z_para_audit2_bez_fabryki_odmawia_jawnie() -> None:
@@ -559,7 +617,6 @@ def test_kotwica_z_para_audit2_bez_fabryki_odmawia_jawnie() -> None:
             kotwica,
             line_id="ln1",
             next_bus_id="b_b",
-            c_min=1.0,
             zacisk_zabezpieczenia="od",
         )
 
@@ -576,7 +633,6 @@ def test_kotwica_z_para_audit2_i_fabryka_liczy_komplet_wariantow(uow_factory) ->
         kotwica,
         line_id="ln1",
         next_bus_id="b_b",
-        c_min=1.0,
         uow_factory=uow_factory,
         zacisk_zabezpieczenia="od",
     )

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
+from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import KluczTwin
@@ -77,9 +78,29 @@ def _graph_for_analysis(
     return zbuduj_graf(snapshot)
 
 
-def _get_config_for_case(case_id: str) -> StudyCaseConfig:
-    """Stub: retrieve StudyCaseConfig for a given case."""
-    return StudyCaseConfig()
+def _konfiguracja_przypadku(
+    case_id: str, uow_factory: Callable[[], UnitOfWork]
+) -> StudyCaseConfig:
+    """Konfiguracja ZAPISANEGO przypadku obliczeniowego (baza), nie zaślepka.
+
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: dotąd koperta budowała się z domyślnego
+    `StudyCaseConfig()` niezależnie od przypadku — pola przypadku (moc bazowa,
+    tolerancja, tryb danych zwarciowych) nie docierały do koperty. Przypadek, którego
+    nie ma w bazie, to 404 — nie cicha konfiguracja domyślna.
+    """
+    try:
+        identyfikator = UUID(case_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail=f"Identyfikator przypadku {case_id!r} nie jest UUID"
+        ) from exc
+    with uow_factory() as uow:
+        przypadek = uow.cases.get_study_case(identyfikator)
+    if przypadek is None:
+        raise HTTPException(
+            status_code=404, detail=f"Przypadek obliczeniowy {case_id} nie istnieje"
+        )
+    return przypadek.config
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +195,6 @@ def get_solver_input(
     audit2_payload: dict[str, Any] | None = None
     rozszerzenia_audit2: dict[str, Any] | None = None
     if project_id and station_id:
-        from uuid import UUID
 
         from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
 
@@ -211,7 +231,7 @@ def get_solver_input(
         )
     except OdmowaDanychError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    config = _get_config_for_case(case_id)
+    config = _konfiguracja_przypadku(case_id, uow_factory)
     catalog = get_default_mv_catalog()
 
     envelope = build_solver_input(

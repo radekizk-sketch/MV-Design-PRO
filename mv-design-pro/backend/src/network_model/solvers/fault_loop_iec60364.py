@@ -43,6 +43,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from network_model.core.voltage_factor import LV_C_MAX, LV_C_MIN
 from network_model.odmowa_danych import OdmowaDanychError
 
 logger = logging.getLogger(__name__)
@@ -150,9 +151,8 @@ class FaultLoopResult:
 # ---------------------------------------------------------------------------
 
 
-# c_factor per IEC 60909-0 § 5.3.2 — Table 1, low-voltage (≤ 1 kV) systems.
-C_MIN_LV = 0.95
-C_MAX_LV = 1.05
+# c per IEC 60909-0 Table 1, low-voltage (≤ 1 kV) systems — values from the ONE place
+# of the table (`network_model.core.voltage_factor`, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK).
 
 
 @dataclass(frozen=True)
@@ -291,15 +291,15 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
         )
 
     # Krok 2: oblicz Ik z c_factor MIN/MAX
-    ik_min = (C_MIN_LV * data.u_nom_v) / z_magnitude
-    ik_max = (C_MAX_LV * data.u_nom_v) / z_magnitude
+    ik_min = (LV_C_MIN * data.u_nom_v) / z_magnitude
+    ik_max = (LV_C_MAX * data.u_nom_v) / z_magnitude
 
     trace.append(
         {
             "step": "compute_ik",
             "method": "I_k = c * U_n / |Z_loop|",
-            "c_min": C_MIN_LV,
-            "c_max": C_MAX_LV,
+            "c_min": LV_C_MIN,
+            "c_max": LV_C_MAX,
             "u_nom_v": data.u_nom_v,
             "z_magnitude_ohm": z_magnitude,
             "ik_min_a": ik_min,

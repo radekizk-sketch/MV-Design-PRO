@@ -36,10 +36,10 @@ from application.proof_engine.packs.protection_settings import (
 )
 from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
 from application.protection_settings.batch_run import (
-    C_MAX_MIN_DOPUSZCZALNY,
     BrakDanychNastawError,
     DaneLinii,
     kandydaci_nastepnej_szyny,
+    kotwica_jest_scenariuszem_max,
     linie_kandydujace,
     oblicz_nastawy,
     szyna_ma_prad_zwarciowy,
@@ -53,6 +53,7 @@ from application.protection_settings.zacisk_zabezpieczenia import (
     zaciski_galezi,
 )
 from enm.canonical_analysis import CanonicalRun
+from network_model.core.voltage_factor import nadpisanie_c_z_danych, opis_c_biegu
 from network_model.odmowa_danych import OdmowaDanychError
 
 _POWOD_KOTWICA_NIEZAKONCZONA = (
@@ -60,13 +61,14 @@ _POWOD_KOTWICA_NIEZAKONCZONA = (
     "zakończonego zwarcia trójfazowego. Uruchom obliczenie ponownie."
 )
 _POWOD_KOTWICA_ZLY_RODZAJ = (
-    "Pakiet nastaw wymaga jako kotwicy przebiegu zwarcia trójfazowego (gałąź "
-    "maksymalna c_max) — ten przebieg jest innego rodzaju."
+    "Pakiet nastaw wymaga jako kotwicy przebiegu zwarcia trójfazowego (scenariusz "
+    "maksymalny) — ten przebieg jest innego rodzaju."
 )
 _POWOD_KOTWICA_NIE_JEST_MAX = (
-    "Ten przebieg jest wariantem MINIMALNYM (współczynnik napięciowy c < 1,0) — "
-    "pakiet nastaw wymaga kotwicy z gałęzi MAKSYMALNEJ (c_max ≥ 1,0, IEC 60909-0 "
-    "Tabela 1). Uruchom zwarcie trójfazowe z wariantem maksymalnym."
+    "Ten przebieg nie jest biegiem scenariusza MAKSYMALNEGO — pakiet nastaw wymaga "
+    "kotwicy z gałęzi maksymalnej (c_max per węzeł, IEC 60909-0 tabela 1); gałąź "
+    "minimalną serwer dolicza sam scenariuszem MIN. Uruchom zwarcie trójfazowe "
+    "scenariusza MAX."
 )
 _POWOD_BRAK_LINII = (
     "Migawka tego przebiegu nie zawiera żadnej linii ani kabla z kompletem danych "
@@ -111,15 +113,11 @@ def dostepnosc_pakietu_nastaw(run: CanonicalRun) -> dict[str, Any]:
         return _niedostepny(run, _POWOD_KOTWICA_ZLY_RODZAJ)
     if (run.raw_result or {}).get("short_circuit_type") != "3F":
         return _niedostepny(run, _POWOD_KOTWICA_ZLY_RODZAJ)
-    # Predykaty parami (karta W3-C1): `zbuduj_wejscie_nastaw` odmawia kotwicy
-    # spoza gałęzi maksymalnej (`c_factor < C_MAX_MIN_DOPUSZCZALNY`) PO stronie
-    # budowy — bez tego samego warunku TU, dostępność mówiłaby „tak", a budowa
-    # zaraz potem 422 z tym samym powodem, którego dostępność mogła nazwać od razu.
-    # Domyślne 1.10 jest TĄ SAMĄ wartością domyślną, której używa
-    # `zbuduj_wejscie_nastaw` przy braku `c_factor` w opcjach kotwicy — inaczej
-    # dwa niezależne domysły „co, gdy brak danej" mogłyby się rozjechać.
-    c_factor = run.options.get("c_factor", 1.10)
-    if not isinstance(c_factor, int | float) or c_factor < C_MAX_MIN_DOPUSZCZALNY:
+    # Predykaty parami (karta W3-C1): `zbuduj_wejscie_nastaw` odmawia kotwicy spoza
+    # gałęzi maksymalnej TYM SAMYM predykatem (`kotwica_jest_scenariuszem_max` —
+    # przełącznik scenariusza zapisany na wyniku, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK),
+    # więc dostępność i budowa nie mogą się rozjechać.
+    if not kotwica_jest_scenariuszem_max(run):
         return _niedostepny(run, _POWOD_KOTWICA_NIE_JEST_MAX)
 
     linie = linie_kandydujace(run.snapshot)
@@ -236,7 +234,6 @@ def zbuduj_pakiet_nastaw(
     *,
     line_id: str,
     next_bus_id: str,
-    c_min: float,
     zacisk_zabezpieczenia: Zacisk | None,
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
@@ -256,7 +253,6 @@ def zbuduj_pakiet_nastaw(
             run,
             line_id=line_id,
             next_bus_id=next_bus_id,
-            c_min=c_min,
             zacisk_zabezpieczenia=zacisk_zabezpieczenia,
             delta_t_s=delta_t_s,
             k_b=k_b,
@@ -318,7 +314,6 @@ def zbuduj_odpowiedz_nastaw_json(
     *,
     line_id: str,
     next_bus_id: str,
-    c_min: float,
     zacisk_zabezpieczenia: Zacisk | None,
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
@@ -341,7 +336,6 @@ def zbuduj_odpowiedz_nastaw_json(
             run,
             line_id=line_id,
             next_bus_id=next_bus_id,
-            c_min=c_min,
             zacisk_zabezpieczenia=zacisk_zabezpieczenia,
             delta_t_s=delta_t_s,
             k_b=k_b,
@@ -358,7 +352,6 @@ def zbuduj_odpowiedz_nastaw_json(
             nastawy=nastawy,
             line_id=line_id,
             next_bus_id=next_bus_id,
-            c_min=c_min,
             nazwa_przypadku=nazwa_przypadku,
         ),
         "dostepnosc_pakietu": True,
@@ -371,7 +364,6 @@ def zbuduj_odpowiedz_dopasowania(
     device_id: str,
     line_id: str,
     next_bus_id: str,
-    c_min: float,
     zacisk_zabezpieczenia: Zacisk | None,
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
@@ -391,7 +383,6 @@ def zbuduj_odpowiedz_dopasowania(
             run,
             line_id=line_id,
             next_bus_id=next_bus_id,
-            c_min=c_min,
             zacisk_zabezpieczenia=zacisk_zabezpieczenia,
             delta_t_s=delta_t_s,
             k_b=k_b,
@@ -410,10 +401,14 @@ def zbuduj_odpowiedz_dopasowania(
             nastawy=nastawy,
             line_id=line_id,
             next_bus_id=next_bus_id,
-            c_min=c_min,
             nazwa_przypadku=nazwa_przypadku,
         ),
     }
+
+
+def _c_kotwicy(run: CanonicalRun) -> dict[str, Any]:
+    """c kotwicy w kształcie `konfiguracja_biegu.c_factor` — ta sama projekcja opcji."""
+    return opis_c_biegu(nadpisanie_c_z_danych(run.options.get("nadpisanie_c")))
 
 
 def _proweniencja_wejscia(
@@ -422,13 +417,13 @@ def _proweniencja_wejscia(
     nastawy: Any,
     line_id: str,
     next_bus_id: str,
-    c_min: float,
     nazwa_przypadku: str,
 ) -> dict[str, Any]:
     """Proweniencja WHITE BOX wspólna dla trasy JSON i doboru aparatu: skąd
-    dokładnie wzięły się liczby — kotwica, gałąź c_max/c_min, wybory inżyniera.
+    dokładnie wzięły się liczby — kotwica (scenariusz MAX), wariant scenariusza MIN,
+    wybory inżyniera.
 
-    Warianty c_min/2F/PF policzone przez `batch_run.zbuduj_wejscie_nastaw` NIE
+    Warianty MIN/2F/PF policzone przez `batch_run.zbuduj_wejscie_nastaw` NIE
     są tu identyfikowane osobno (ta funkcja jest FROZEN przez harness złotych
     hashy `tests/golden/parytet_scenariuszy/` — nowe pole na jej wyniku
     zmieniłoby zawartość hashowaną, patrz `KLUCZE_WYKLUCZONE` w harnessie).
@@ -441,8 +436,10 @@ def _proweniencja_wejscia(
     ei = wejscie.engine_input
     return {
         "kotwica_run_id": str(run.id),
-        "c_max": run.options.get("c_factor"),
-        "c_min": c_min,
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: gałęzie rozstrzyga scenariusz, nie liczba c.
+        "scenariusz_kotwicy": (run.raw_result or {}).get("scenario"),
+        "c_kotwicy": _c_kotwicy(run),
+        "c_wariantu_min": "IEC 60909-0 tab. 1, scenariusz MIN (per węzeł)",
         "line_id": line_id,
         "next_bus_id": next_bus_id,
         "zacisk_zabezpieczenia": wejscie.zacisk_zabezpieczenia,

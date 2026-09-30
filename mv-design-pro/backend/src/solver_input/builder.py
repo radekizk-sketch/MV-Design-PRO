@@ -432,7 +432,7 @@ def build_solver_input(
         config: Study case calculation config (optional, defaults used if None).
         scenario: "MAX" (Ik''max, default) or "MIN" (Ik''min) — karta P0.3.
             Only affects SHORT_CIRCUIT_* payloads (per-bus c_factor_iec60909 +
-            ShortCircuitPayload.scenario/c_factor); ignored otherwise.
+            ShortCircuitPayload.scenario); ignored otherwise.
         czestotliwosc_hz: Częstotliwość studium [Hz] (karta W3-F §0.6) — wołający
             PRODUKCYJNY (`api/solver_input.py`) przekazuje JAWNIE
             `enm.header.defaults.frequency_hz`; domyślne 50,0 tutaj lustrzy
@@ -487,11 +487,10 @@ def build_solver_input(
                 transformers=transformers,
                 inverter_sources=inverters,
                 switches=switches,
-                # Karta P0.3: single study-wide fallback for callers reading
-                # `c_factor` directly (backward compatible for scenario="MAX").
-                # Per-bus, per-band c is in BusPayload.c_factor_iec60909.
-                c_factor=cfg.c_factor_max if scenario == "MAX" else cfg.c_factor_min,
-                thermal_time_seconds=cfg.thermal_time_seconds,
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): payload nie niesie płaskiej
+                # liczby c ani t_k przypadku — c jest PER SZYNA (BusPayload.
+                # c_factor_iec60909, tabela 1 dla pasma i scenariusza), a nośnikiem
+                # c/t_k biegu jest scenariusz zwarciowy.
                 include_inverter_contribution=cfg.include_inverter_contribution,
                 simplified_grid_source=simplified_source,
                 scenario=scenario,

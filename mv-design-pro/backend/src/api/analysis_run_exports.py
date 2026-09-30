@@ -662,8 +662,8 @@ def _sc_row_glowne_linia(row_data: dict[str, Any]) -> str:
     )
 
 
-def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, str]:
-    """Dwie linie pelnego bilansu IEC 60909 wiersza zwarciowego (kolumny addytywne).
+def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, ...]:
+    """Linie pelnego bilansu IEC 60909 wiersza zwarciowego (kolumny addytywne).
 
     Podzial staly (impedancje / wielkosci normowe), zeby linia PDF nie przekraczala
     limitu szerokosci strony — format deterministyczny.
@@ -676,10 +676,14 @@ def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, str]:
             parts.append(f"{label}={value} {unit}".rstrip())
         return " | ".join(parts)
 
-    return (
+    linie = (
         "Bilans IEC 60909: " + _czesc(_SC_BILANS_POLA[:5]),
         _czesc(_SC_BILANS_POLA[5:]),
     )
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: podstawa c punktu (tabela 1 IEC 60909-0 dla
+    # pasma/scenariusza albo nadpisanie z uzasadnieniem) — osobna linia (szerokość PDF).
+    zrodlo_c = row_data.get("c_zrodlo")
+    return (*linie, f"Podstawa c: {zrodlo_c}") if zrodlo_c else linie
 
 
 def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | None:
@@ -1268,9 +1272,8 @@ def export_run_report_docx_response(
                     # ZWARCIA-PRO F5: pelny bilans IEC 60909 1:1 z wierszy
                     # kanonicznych (TEN SAM zakres co UI) — trzy linie na punkt.
                     doc.add_paragraph(_sc_row_glowne_linia(row_data))
-                    bilans_1, bilans_2 = _sc_row_bilans_linie(row_data)
-                    doc.add_paragraph(bilans_1)
-                    doc.add_paragraph(bilans_2)
+                    for linia_bilansu in _sc_row_bilans_linie(row_data):
+                        doc.add_paragraph(linia_bilansu)
             elif table_id == "phase_state":
                 rows = (results_section.get("phase_state", {}) or {}).get("rows", [])[
                     : limits["rows"]
@@ -1438,9 +1441,8 @@ def export_run_report_pdf_response(
                     # ZWARCIA-PRO F5: pelny bilans IEC 60909 1:1 z wierszy
                     # kanonicznych (TEN SAM zakres co UI) — trzy linie na punkt.
                     draw_line(_sc_row_glowne_linia(row_data))
-                    bilans_1, bilans_2 = _sc_row_bilans_linie(row_data)
-                    draw_line(bilans_1, size=8)
-                    draw_line(bilans_2, size=8)
+                    for linia_bilansu in _sc_row_bilans_linie(row_data):
+                        draw_line(linia_bilansu, size=8)
             elif table.get("table_id") == "phase_state":
                 for row_data in (results_section.get("phase_state", {}) or {}).get("rows", [])[
                     : limits["rows"]

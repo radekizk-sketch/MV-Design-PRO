@@ -163,7 +163,7 @@ def compute_machine_contributions(
     graph: NetworkGraph,
     fault_node_id: str,
     *,
-    c_factor: float = 1.1,
+    c_factor: float,
     t_min_s: float = 0.10,
 ) -> MachineShortCircuitResult:
     """Per-machine partial I″k + breaking current i_b (μ/q) for a 3-phase fault.

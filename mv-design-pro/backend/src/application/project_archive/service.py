@@ -83,6 +83,7 @@ from sqlalchemy.orm import Session
 if TYPE_CHECKING:
     pass
 
+from infrastructure.persistence.db import KLUCZE_PRZYPADKU_SKASOWANE
 from infrastructure.persistence.models import (
     AnalysisRunIndexORM,
     CanonicalRunORM,
@@ -634,7 +635,13 @@ class ProjectArchiveService:
                 project_id=new_project_id,
                 name=sc_data["name"],
                 description=sc_data["description"],
-                study_jsonb=sc_data["study_jsonb"],
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: archiwum sprzed karty niesie
+                # skasowane klucze c/t_k przypadku — ta sama lista co migracja bazy.
+                study_jsonb={
+                    k: v
+                    for k, v in sc_data["study_jsonb"].items()
+                    if k not in KLUCZE_PRZYPADKU_SKASOWANE
+                },
                 is_active=sc_data["is_active"],
                 result_status=sc_data["result_status"],
                 result_refs_jsonb=sc_data["result_refs_jsonb"],

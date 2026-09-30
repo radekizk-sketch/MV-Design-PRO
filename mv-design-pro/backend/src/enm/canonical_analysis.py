@@ -97,7 +97,7 @@ from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
 from network_model.core.branch import Branch
 from network_model.core.graph import NetworkGraph
-from network_model.core.voltage_factor import c_for_node
+from network_model.core.voltage_factor import DoborC, dobierz_c
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
@@ -2028,11 +2028,16 @@ def rozszerzenia_audit2_dla_opcji(
         return rozszerzenia_audit2_z_konfiguracji(cfg)
 
 
-def _c_factor_punktu(wejscie: WejscieZwarcia, node_id: str) -> float:
-    """c punktu zwarcia: OVERRIDE z opcji (płasko) albo AUTO z pasma napięcia węzła (IEC 60909 Tab. 1)."""
-    if wejscie.c_factor_override:
-        return float(wejscie.c_factor_explicit)
-    return c_for_node(wejscie.graph.nodes[node_id].voltage_level, wejscie.scenario_c)
+def _dobor_c_punktu(wejscie: WejscieZwarcia, node_id: str) -> DoborC:
+    """c punktu zwarcia i jego podstawa — JEDYNA reguła ``voltage_factor.dobierz_c``.
+
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): tabela 1 IEC 60909-0 dla pasma napięcia
+    WŁASNEGO węzła i scenariusza biegu albo nadpisanie z uzasadnieniem. Wołana przez
+    bieg i przez wkłady na żądanie — c i ``c_zrodlo`` wiersza mają jedno źródło.
+    """
+    return dobierz_c(
+        wejscie.graph.nodes[node_id].voltage_level, wejscie.scenario_c, wejscie.nadpisanie_c
+    )
 
 
 def _wynik_solvera_punktu(
@@ -2110,7 +2115,10 @@ def _policz_rozplyw_punktu_na_zadanie(
     if fault_node_id not in wejscie.reportable_fault_node_ids:
         return None
     result = _wynik_solvera_punktu(
-        wejscie, fault_node_id, c_factor=_c_factor_punktu(wejscie, fault_node_id), wklady=True
+        wejscie,
+        fault_node_id,
+        c_factor=_dobor_c_punktu(wejscie, fault_node_id).wartosc,
+        wklady=True,
     )
     if result is None:
         return None
@@ -2184,7 +2192,7 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
     graph_branches = wejscie.graph_branches
     short_circuit_type = wejscie.short_circuit_type
     scenario_c = wejscie.scenario_c
-    c_factor_override = wejscie.c_factor_override
+    c_factor_override = wejscie.nadpisanie_c is not None
     tk_s = wejscie.tk_s
     temperature_correction_notes = wejscie.temperature_correction_notes
     reportable_fault_node_ids = wejscie.reportable_fault_node_ids
@@ -2196,9 +2204,10 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
     # NIE są w ``solve_graph`` — wiersz powstaje bez solvera (jawny brak, nie szum).
     wezly_bez_odniesienia = wejscie.wezly_bez_odniesienia
     for node_id in reportable_fault_node_ids:
-        # AUTO: c z pasma napięciowego WŁASNEGO węzła zwarcia (IEC 60909 Tab. 1);
-        # OVERRIDE: wartość jawna z options, płasko dla wszystkich węzłów.
-        c_factor = _c_factor_punktu(wejscie, node_id)
+        # Tabela 1 IEC 60909-0 dla pasma WŁASNEGO węzła zwarcia i scenariusza biegu albo
+        # nadpisanie z uzasadnieniem — podstawa idzie do wiersza jako `c_zrodlo`.
+        dobor_c = _dobor_c_punktu(wejscie, node_id)
+        c_factor = dobor_c.wartosc
         # ZWARCIA-PRO F4 (karta W-C): wkłady gałęziowe FROZEN solvera (opcja addytywna —
         # nie zmienia żadnej istniejącej wielkości ani śladu White Box). PERF-SC-50:
         # liczone W BIEGU tylko w trybie `in_run`; domyślnie NA ŻĄDANIE punktu
@@ -2285,6 +2294,9 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
                 # sam solver już raportuje wyżej w `payload` — nie duplikujemy).
                 "scenario": scenario_c,
                 "c_factor_override": c_factor_override,
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: podstawa c TEGO węzła (White Box) —
+                # „IEC 60909-0 tab. 1, pasmo SN, MAX" albo „nadpisanie ręczne: <powód>".
+                "c_zrodlo": dobor_c.zrodlo,
             }
         )
         if node_id in wezly_bez_odniesienia:
@@ -2329,6 +2341,11 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
         # application/result_mapping/sc_binding_meta.py dla ścieżki execution engine).
         "scenario": scenario_c,
         "c_factor_override": c_factor_override,
+        **(
+            {"nadpisanie_c": wejscie.nadpisanie_c.to_dict()}
+            if wejscie.nadpisanie_c is not None
+            else {}
+        ),
         **(
             {"temperature_correction_notes": list(temperature_correction_notes)}
             if temperature_correction_notes
@@ -3126,6 +3143,7 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                     {"key": "xr_ratio", "label_pl": "X/R"},
                     {"key": "kappa", "label_pl": "kappa"},
                     {"key": "c_factor", "label_pl": "c"},
+                    {"key": "c_zrodlo", "label_pl": "Podstawa c"},
                     {"key": "un_kv", "label_pl": "Un", "unit": "kV"},
                     {"key": "tk_s", "label_pl": "tk", "unit": "s"},
                     {"key": "i2t_ka2s", "label_pl": "I2t", "unit": "kA2s"},
@@ -3411,6 +3429,7 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
         "xr_ratio": xr,
         "kappa": item.get("kappa"),
         "c_factor": item.get("c_factor"),
+        "c_zrodlo": item.get("c_zrodlo"),
         "un_kv": (v_na_kv(un_v)) if un_v is not None else None,
         "tk_s": tk_s,
         "tb_s": item.get("tb_s"),
@@ -3775,7 +3794,7 @@ def dobierz_pasmo_min_max_zwarcia(
             zrodla[scenariusz_brakujacy] = "biegu_zapisanego"
 
     if strony[scenariusz_brakujacy] is None:
-        if run.options.get("c_factor") is not None:
+        if run.options.get("nadpisanie_c") is not None:
             powod_niedostepnosci = "wspolczynnik_c_recznie_ustawiony"
         elif run.koperta is not None and run.koperta.scenario_ref is not None:
             powod_niedostepnosci = "kotwica_jest_wariantem_scenariusza"

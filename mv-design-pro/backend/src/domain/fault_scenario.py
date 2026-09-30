@@ -31,6 +31,7 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from domain.execution import ExecutionAnalysisType
+from network_model.core.voltage_factor import NadpisanieC, Scenario, nadpisanie_c_z_danych
 from network_model.nazwy import jest_nazwa
 
 # ---------------------------------------------------------------------------
@@ -74,6 +75,14 @@ FAULT_TYPE_TO_ANALYSIS: dict[FaultType, ExecutionAnalysisType] = {
 # ---------------------------------------------------------------------------
 # Value Objects
 # ---------------------------------------------------------------------------
+
+
+class FaultScenarioValidationError(Exception):
+    """Raised when FaultScenario invariants are violated."""
+
+    pass
+
+
 
 
 @dataclass(frozen=True)
@@ -134,28 +143,54 @@ class FaultLocation:
 
 @dataclass(frozen=True)
 class ShortCircuitConfig:
-    """
-    Short-circuit calculation configuration.
+    """Konfiguracja obliczeń zwarciowych scenariusza — JEDYNY nośnik c i t_k.
 
-    Extracted from StudyCaseConfig — only SC-relevant parameters.
-    Immutable, deterministic.
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (decyzja O-59): współczynnik napięciowy c nie jest
+    liczbą scenariusza. ``scenariusz`` (MAX/MIN) wybiera kolumnę tabeli 1 IEC 60909-0,
+    a wartość c dobiera assembler PER WĘZEŁ z pasma jego napięcia
+    (``network_model.core.voltage_factor.dobierz_c``). ``nadpisanie_c`` — wyłącznie
+    z uzasadnieniem (``NadpisanieC`` odmawia bez niego). ``thermal_time_seconds`` = t_k [s].
     """
 
-    c_factor: float = 1.10
+    scenariusz: Scenario
+    nadpisanie_c: NadpisanieC | None = None
     thermal_time_seconds: float = 1.0
     include_branch_contributions: bool = False
 
+    def __post_init__(self) -> None:
+        if self.scenariusz not in ("MAX", "MIN"):
+            raise FaultScenarioValidationError(
+                f"Scenariusz współczynnika c musi być MAX albo MIN, otrzymano: {self.scenariusz!r}"
+            )
+
     def to_dict(self) -> dict[str, Any]:
         return {
-            "c_factor": self.c_factor,
+            "scenariusz": self.scenariusz,
+            "nadpisanie_c": self.nadpisanie_c.to_dict() if self.nadpisanie_c else None,
             "thermal_time_seconds": self.thermal_time_seconds,
             "include_branch_contributions": self.include_branch_contributions,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ShortCircuitConfig:
+        """Konfiguracja z kontraktu — bez wartości zgadywanych.
+
+        ``scenariusz`` jest wymagany. Klucz ``c_factor`` (dawna płaska liczba c) jest
+        ODMOWĄ: nie ma warstwy zgodności, która przepisałaby liczbę na przełącznik.
+        """
+        if "c_factor" in data:
+            raise FaultScenarioValidationError(
+                "Klucz c_factor scenariusza został usunięty — współczynnik c wynika ze "
+                "scenariusza MAX/MIN (IEC 60909-0 tab. 1 per węzeł) albo z nadpisania "
+                "z uzasadnieniem (nadpisanie_c)."
+            )
+        if "scenariusz" not in data:
+            raise FaultScenarioValidationError(
+                "Konfiguracja scenariusza zwarciowego wymaga przełącznika scenariusz (MAX/MIN)."
+            )
         return cls(
-            c_factor=data.get("c_factor", 1.10),
+            scenariusz=data["scenariusz"],
+            nadpisanie_c=nadpisanie_c_z_danych(data.get("nadpisanie_c")),
             thermal_time_seconds=data.get("thermal_time_seconds", 1.0),
             include_branch_contributions=data.get("include_branch_contributions", False),
         )
@@ -319,12 +354,6 @@ class FaultScenario:
 # ---------------------------------------------------------------------------
 
 
-class FaultScenarioValidationError(Exception):
-    """Raised when FaultScenario invariants are violated."""
-
-    pass
-
-
 def validate_fault_scenario(scenario: FaultScenario) -> None:
     """
     Validate FaultScenario invariants. Raises on violation.
@@ -334,7 +363,8 @@ def validate_fault_scenario(scenario: FaultScenario) -> None:
     - SC_1F requires z0_bus_data
     - location_type="BRANCH" requires position in (0,1)
     - location_type="BUS" requires position = None
-    - c_factor > 0
+    - config.scenariusz in (MAX, MIN), nadpisanie_c only with justification
+      (enforced at construction: ShortCircuitConfig / NadpisanieC)
     - thermal_time_seconds > 0
 
     v2 Rules (PR-25):
@@ -406,9 +436,6 @@ def validate_fault_scenario(scenario: FaultScenario) -> None:
             "Zwarcie jednofazowe (SC_1F) wymaga danych impedancji zerowej (z0_bus_data)"
         )
 
-    if scenario.config.c_factor <= 0:
-        raise FaultScenarioValidationError("Współczynnik napięciowy c_factor musi być > 0")
-
     if scenario.config.thermal_time_seconds <= 0:
         raise FaultScenarioValidationError("Czas cieplny thermal_time_seconds musi być > 0")
 
@@ -455,7 +482,7 @@ def new_fault_scenario(
     name: str,
     fault_type: FaultType,
     location: FaultLocation,
-    config: ShortCircuitConfig | None = None,
+    config: ShortCircuitConfig,
     fault_impedance_type: FaultImpedanceType = FaultImpedanceType.METALLIC,
     fault_mode: FaultMode = FaultMode.METALLIC,
     fault_impedance: FaultImpedance | None = None,
@@ -472,7 +499,7 @@ def new_fault_scenario(
         name: User-facing Polish name (required).
         fault_type: SC_3F, SC_2F, or SC_1F.
         location: Fault location (bus/branch/node/branch_point).
-        config: Short-circuit config (defaults to standard).
+        config: Short-circuit config (scenariusz MAX/MIN required — no default c).
         fault_impedance_type: METALLIC (v1 default, backward-compat).
         fault_mode: METALLIC or IMPEDANCE (v2).
         fault_impedance: Explicit Zf (required for IMPEDANCE, forbidden for METALLIC).
@@ -485,7 +512,7 @@ def new_fault_scenario(
     Raises:
         FaultScenarioValidationError: If invariants are violated.
     """
-    cfg = config if config is not None else ShortCircuitConfig()
+    cfg = config
     now = _now_utc_iso()
 
     # Build scenario without hash first

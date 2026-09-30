@@ -117,6 +117,8 @@ class LaTeXRenderer:
         if h.voltage_factor is not None:
             lines.append(r"  \item Współczynnik napięciowy:")
             lines.append(cls._math_block(f"c = {h.voltage_factor:.4f}"))
+        if h.voltage_factor_zrodlo:
+            lines.append(rf"  \item Podstawa współczynnika c: {cls._escape(h.voltage_factor_zrodlo)}")
         if h.source_bus:
             lines.append(rf"  \item Szyna źródłowa: {cls._escape(h.source_bus)}")
         if h.target_bus:

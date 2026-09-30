@@ -12,9 +12,8 @@ Verifies:
 import math
 
 import pytest
+from network_model.core.voltage_factor import LV_C_MAX, LV_C_MIN
 from network_model.solvers.fault_loop_iec60364 import (
-    C_MAX_LV,
-    C_MIN_LV,
     FaultLoopInput,
     FaultLoopResult,
     LoopImpedanceComponent,
@@ -109,8 +108,8 @@ class TestComputeFaultLoopTNS:
 
     def test_c_factors_match_iec_60909_lv(self) -> None:
         """Per IEC 60909-0 § 5.3.2: c_min=0.95, c_max=1.05 dla LV."""
-        assert C_MIN_LV == 0.95
-        assert C_MAX_LV == 1.05
+        assert LV_C_MIN == 0.95
+        assert LV_C_MAX == 1.05
 
     def test_ik_max_greater_than_ik_min(self) -> None:
         result = compute_fault_loop(_make_typical_tn_s_input())

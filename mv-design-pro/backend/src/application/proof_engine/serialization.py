@@ -46,6 +46,7 @@ def _proof_header_from_dict(payload: dict[str, Any]) -> ProofHeader:
         voltage_factor=_optional_float(payload.get("voltage_factor")),
         source_bus=payload.get("source_bus"),
         target_bus=payload.get("target_bus"),
+        voltage_factor_zrodlo=payload.get("voltage_factor_zrodlo"),
     )
 
 

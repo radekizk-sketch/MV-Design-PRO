@@ -29,7 +29,7 @@ osobnego) do utrzymania w zgodzie z rzeczywistymi plikami.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from api.klucz_twin_dep import klucz_twin_z_sciezki
@@ -49,7 +49,7 @@ from domain.fault_scenario import (
 from enm.scenariusze import znajdz_klucz_scenariusza
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.odmowa_danych import OdmowaDanychError
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 router = APIRouter(tags=["fault-scenarios"])
 
@@ -114,12 +114,46 @@ class FaultImpedanceRequest(BaseModel):
     x_ohm: float = Field(..., description="Reaktancja zwarcia [Ω]")
 
 
-class ShortCircuitConfigRequest(BaseModel):
-    """Short-circuit calculation configuration."""
+class NadpisanieCRequest(BaseModel):
+    """Ręczne nadpisanie współczynnika c — wyłącznie z uzasadnieniem (decyzja O-59).
 
-    c_factor: float = Field(1.10, description="Współczynnik napięciowy c (IEC 60909)")
-    thermal_time_seconds: float = Field(1.0, description="Czas cieplny [s]")
+    Pustego uzasadnienia nie odrzuca tu schemat, tylko domena
+    (`network_model.core.voltage_factor.NadpisanieC`) — jedno miejsce walidacji i jeden
+    kod odmowy (`fault.c_nadpisanie_bez_uzasadnienia`) dla API, opcji biegu i magazynu.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    wartosc: float = Field(..., description="Wartość współczynnika napięciowego c")
+    uzasadnienie: str = Field(..., description="Uzasadnienie inżyniera (wymagane)")
+
+
+class ShortCircuitConfigRequest(BaseModel):
+    """Konfiguracja obliczeń zwarciowych scenariusza — jedyny nośnik c i t_k.
+
+    `scenariusz` (MAX/MIN) wybiera kolumnę tabeli 1 IEC 60909-0; wartość c dobiera
+    backend PER WĘZEŁ z pasma jego napięcia. Klucz `c_factor` nie istnieje (extra=forbid).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    scenariusz: Literal["MAX", "MIN"] = Field(
+        ..., description="Scenariusz zwarciowy: MAX (Ik''max) albo MIN (Ik''min)"
+    )
+    nadpisanie_c: NadpisanieCRequest | None = Field(
+        None, description="Ręczne nadpisanie c z uzasadnieniem (opcjonalne)"
+    )
+    thermal_time_seconds: float = Field(1.0, description="Czas trwania zwarcia t_k [s]")
     include_branch_contributions: bool = Field(False, description="Dołącz wkłady gałęziowe")
+
+    def do_domeny(self) -> dict[str, Any]:
+        """Słownik konfiguracji w kształcie `ShortCircuitConfig.from_dict` — jedno mapowanie."""
+        return {
+            "scenariusz": self.scenariusz,
+            "nadpisanie_c": self.nadpisanie_c.model_dump() if self.nadpisanie_c else None,
+            "thermal_time_seconds": self.thermal_time_seconds,
+            "include_branch_contributions": self.include_branch_contributions,
+        }
 
 
 class CreateFaultScenarioRequest(BaseModel):
@@ -128,8 +162,8 @@ class CreateFaultScenarioRequest(BaseModel):
     name: str = Field(..., description="Nazwa scenariusza zwarcia (PL)")
     fault_type: str = Field(..., description="Typ zwarcia: SC_3F, SC_2F, SC_1F")
     location: FaultLocationRequest = Field(..., description="Lokalizacja zwarcia")
-    config: ShortCircuitConfigRequest | None = Field(
-        None, description="Konfiguracja obliczeń (opcjonalna)"
+    config: ShortCircuitConfigRequest = Field(
+        ..., description="Konfiguracja obliczeń (scenariusz MAX/MIN wymagany)"
     )
     fault_mode: str | None = Field(
         None, description="Tryb zwarcia: METALLIC lub IMPEDANCE (v2, domyślnie METALLIC)"
@@ -295,13 +329,7 @@ def create_fault_scenario(
         "position": request.location.position,
     }
 
-    config_dict = None
-    if request.config is not None:
-        config_dict = {
-            "c_factor": request.config.c_factor,
-            "thermal_time_seconds": request.config.thermal_time_seconds,
-            "include_branch_contributions": request.config.include_branch_contributions,
-        }
+    config_dict = request.config.do_domeny()
 
     fault_impedance_dict = None
     if request.fault_impedance is not None:
@@ -402,13 +430,7 @@ def update_fault_scenario(
             "position": request.location.position,
         }
 
-    config_dict = None
-    if request.config is not None:
-        config_dict = {
-            "c_factor": request.config.c_factor,
-            "thermal_time_seconds": request.config.thermal_time_seconds,
-            "include_branch_contributions": request.config.include_branch_contributions,
-        }
+    config_dict = request.config.do_domeny() if request.config is not None else None
 
     fault_type_str = None
     if request.fault_type is not None:

@@ -196,7 +196,7 @@ class FaultScenarioService:
         name: str,
         fault_type: str,
         location: dict[str, Any],
-        config: dict[str, Any] | None = None,
+        config: dict[str, Any],
         fault_mode: str | None = None,
         fault_impedance: dict[str, Any] | None = None,
         arc_params: dict[str, Any] | None = None,
@@ -212,7 +212,8 @@ class FaultScenarioService:
             name: User-facing Polish name (required).
             fault_type: "SC_3F", "SC_2F", or "SC_1F".
             location: {"element_ref": str, "location_type": ..., "position": float|None}
-            config: Optional short-circuit config overrides.
+            config: Short-circuit config — `scenariusz` (MAX/MIN) wymagany, opcjonalne
+                `nadpisanie_c` {wartosc, uzasadnienie}, `thermal_time_seconds`.
             fault_mode: "METALLIC" or "IMPEDANCE" (v2, default METALLIC).
             fault_impedance: {"r_ohm": float, "x_ohm": float} (v2, required for IMPEDANCE).
             arc_params: Reserved — unsupported in v2.
@@ -227,7 +228,7 @@ class FaultScenarioService:
         """
         ft = FaultType(fault_type)
         loc = FaultLocation.from_dict(location)
-        cfg = ShortCircuitConfig.from_dict(config) if config else ShortCircuitConfig()
+        cfg = ShortCircuitConfig.from_dict(config)
         fm = FaultMode(fault_mode) if fault_mode else FaultMode.METALLIC
         fi = FaultImpedance.from_dict(fault_impedance) if fault_impedance else None
 

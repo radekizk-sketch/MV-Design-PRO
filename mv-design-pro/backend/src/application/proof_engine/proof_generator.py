@@ -157,6 +157,10 @@ class SC3FInput:
     m_factor: float = 1.0
     n_factor: float = 0.0
 
+    # Podstawa c (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — `voltage_factor.DoborC.zrodlo`;
+    # None tylko dla wejść bez doboru c (dowód bez linii podstawy w nagłówku).
+    c_zrodlo: str | None = None
+
     # Opcjonalny rozkład maszynowy (IEC 60909 §6.6) — gdy sieć zawiera maszyny wirujące,
     # generator dołącza per-maszyna kroki μ / q / i_b. None ⇒ brak sekcji maszynowej.
     machine_result: MachineShortCircuitResult | None = None
@@ -357,6 +361,9 @@ class SC1Input:
     tk_s: float = 1.0
     m_factor: float = 1.0
     n_factor: float = 0.0
+
+    # Podstawa c (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — jak w SC3FInput.
+    c_zrodlo: str | None = None
 
     # Wielkości POLICZONE w warstwie solverów (V12K-118, NOT-A-SOLVER):
     # komplet Z_ekw / prądów składowych i fazowych / I″k / κ / i_p / I_dyn / I_th
@@ -794,6 +801,7 @@ class ProofGenerator:
             fault_location=data.fault_node_id,
             fault_type=data.fault_type,
             voltage_factor=data.c_factor,
+            voltage_factor_zrodlo=data.c_zrodlo,
         )
 
         return ProofDocument.create(
@@ -962,6 +970,7 @@ class ProofGenerator:
             fault_location=data.fault_node_id,
             fault_type=fault_type,
             voltage_factor=data.c_factor,
+            voltage_factor_zrodlo=data.c_zrodlo,
         )
 
         unit_checks_passed = all(s.unit_check.passed for s in steps)

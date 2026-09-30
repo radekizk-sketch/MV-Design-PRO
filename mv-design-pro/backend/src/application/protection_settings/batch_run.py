@@ -15,12 +15,10 @@ POWÓD ARCHITEKTONICZNY (dlaczego istniejąca brama pakietu przebiegu nie wystar
 pakiet — a dobór nastaw metodą Hoppela z definicji potrzebuje TRZECH: zwarcia
 trójfazowego przy c_max (wytrzymałość aparatury, selektywność), zwarcia trójfazowego
 PRZY c_min (czułość I>>) i zwarcia dwufazowego przy c_min (czułość I>), oraz rozpływu
-(prąd obciążenia maksymalnego). Jeden bieg kanoniczny niesie JEDEN `c_factor`
-— sam kontrakt wejścia zwarciowego (`enm/canonical_analysis.py::_c_factor_punktu`,
-klucz `c_factor` w `_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA`) niesie WYŁĄCZNIE tę
-jedną wartość na bieg (klucz gałęzi min ALBO max, drugi zostaje `None`; przed
-kasacją V12K-189 — karta W3-C1, 2026-09 — tę samą konwencję dokumentował też
-skasowany `overcurrent/input_adapter.py::_build_fault_levels`).
+(prąd obciążenia maksymalnego). Jeden bieg kanoniczny niesie JEDEN scenariusz
+(MAX albo MIN — `enm/canonical_analysis.py::_dobor_c_punktu`, c per węzeł z tabeli 1
+IEC 60909-0, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK), więc gałąź minimalna to osobny
+wariant scenariusza MIN (c_min per pasmo, korekta R_θ, Z_Qmin źródeł).
 
 MECHANIZM WARIANTOWANIA (CV-3-W: JEDYNA fabryka kopii migawki z nadpisaniami
 `enm.scenariusze.apply_scenario` + JEDYNA fabryka biegu wariantu w pamięci
@@ -104,10 +102,15 @@ from network_model.odmowa_danych import OdmowaDanychError
 #: łączeniowy i transformator NIE są liniami: wzory Hoppela dotyczą przewodu.
 RODZAJE_LINII: frozenset[str] = frozenset({"line_overhead", "cable"})
 
-#: c_factor rozdzielający gałąź maksymalną (kotwica) od minimalnej. IEC 60909-0
-#: Tabela 1: dla SN c_max >= 1,0. Kotwica MUSI być gałęzią maksymalną — bieg
-#: minimalny liczymy sami jako wariant, nigdy z osobnej kotwicy.
-C_MAX_MIN_DOPUSZCZALNY = 1.0
+def kotwica_jest_scenariuszem_max(kotwica: CanonicalRun) -> bool:
+    """Czy bieg jest gałęzią MAKSYMALNĄ — JEDEN predykat dla dostępności i budowy.
+
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): gałąź rozstrzyga PRZEŁĄCZNIK scenariusza
+    zapisany na wyniku biegu (`raw_result["scenario"]`), nie liczba c. Dawny próg
+    `c_factor >= 1,0` był na sieci SN fałszywy w obie strony: c_min SN = 1,00 (tabela 1)
+    przechodził jako „maksymalny", a brak `c_factor` w opcjach zgadywano jako 1,10.
+    """
+    return (kotwica.raw_result or {}).get("scenario") == "MAX"
 
 
 class BrakDanychNastawError(OdmowaDanychError):
@@ -307,15 +310,17 @@ def _opcje_audit2_kotwicy(kotwica: CanonicalRun) -> dict[str, Any]:
     }
 
 
-def _opcje_wariantu_zwarciowego(
-    kotwica: CanonicalRun, *, fault_type: str, c_factor: float
-) -> dict[str, Any]:
-    """Opcje wariantu zwarciowego (CV-3-W): `fault_type`/`c_factor` WŁASNE wariantu,
-    `thermal_time_seconds` i para audytu 2 przejęte z opcji kotwicy (SC nie zna
-    innej wartości; ten sam model stacji co kotwica)."""
+def _opcje_wariantu_minimalnego(kotwica: CanonicalRun, *, fault_type: str) -> dict[str, Any]:
+    """Opcje wariantu gałęzi minimalnej (CV-3-W): `fault_type` WŁASNY wariantu i
+    scenariusz MIN — c dobiera assembler per węzeł z tabeli 1 IEC 60909-0 (nN 0,95,
+    SN 1,00) razem z korektą R_θ i Z_Qmin źródeł (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK:
+    rozdział MAX/MIN po przełączniku, nie po liczbie). `thermal_time_seconds` i para
+    audytu 2 przejęte z opcji kotwicy (ten sam model stacji co kotwica). Nadpisanie c
+    kotwicy NIE przechodzi na wariant: dotyczy gałęzi maksymalnej, dla której je
+    uzasadniono."""
     return {
         "fault_type": fault_type,
-        "c_factor": c_factor,
+        "scenario": "min",
         "thermal_time_seconds": float(kotwica.options.get("thermal_time_seconds", 1.0)),
         **_opcje_audit2_kotwicy(kotwica),
     }
@@ -337,7 +342,6 @@ def zbuduj_wejscie_nastaw(
     *,
     line_id: str,
     next_bus_id: str,
-    c_min: float,
     zacisk_zabezpieczenia: Zacisk | None,
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
@@ -378,19 +382,14 @@ def zbuduj_wejscie_nastaw(
     if kotwica_wynik.get("short_circuit_type") != "3F":
         raise BrakDanychNastawError(
             "Kotwica biegu zbiorczego nastaw musi być zwarciem TRÓJFAZOWYM (gałąź "
-            "maksymalna c_max) — otrzymano typ: "
+            "maksymalna) — otrzymano typ: "
             f"{kotwica_wynik.get('short_circuit_type')!r}."
         )
-    c_max = _opcjonalna_liczba(kotwica.options.get("c_factor", 1.10))
-    if c_max is None or c_max < C_MAX_MIN_DOPUSZCZALNY:
+    if not kotwica_jest_scenariuszem_max(kotwica):
         raise BrakDanychNastawError(
-            f"Współczynnik napięciowy kotwicy c={kotwica.options.get('c_factor')!r} "
-            f"nie jest wartością gałęzi maksymalnej (wymagane c >= {C_MAX_MIN_DOPUSZCZALNY})."
-        )
-    if not (0.0 < c_min <= c_max):
-        raise BrakDanychNastawError(
-            f"Współczynnik napięciowy gałęzi minimalnej c_min={c_min!r} musi być "
-            f"dodatni i nie większy niż c_max={c_max!r} kotwicy."
+            "Kotwica biegu zbiorczego nastaw musi być biegiem scenariusza MAKSYMALNEGO "
+            "(IEC 60909-0, tabela 1: c_max per węzeł) — wskazany bieg zapisał scenariusz "
+            f"{kotwica_wynik.get('scenario')!r}."
         )
 
     linia = next(
@@ -441,20 +440,20 @@ def zbuduj_wejscie_nastaw(
         kotwica,
         migawka_kotwicy,
         analysis_type="short_circuit_sn",
-        options=_opcje_wariantu_zwarciowego(kotwica, fault_type="3F", c_factor=c_min),
+        options=_opcje_wariantu_minimalnego(kotwica, fault_type="3F"),
     )
     try:
         wykonaj_bieg_w_pamieci(wariant_3f_cmin, uow_factory=uow_factory)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # nazwana odmowa obliczenia = odmowa z powodem
         raise BrakDanychNastawError(
-            f"Wariant zwarcia trójfazowego przy c_min={c_min} przerwany błędem "
+            "Wariant zwarcia trójfazowego scenariusza MIN przerwany błędem "
             f"solvera: {type(exc).__name__}: {exc}"
         ) from exc
     ik3_min_beginning_a = _prad_zwarciowy_w_wezle(wariant_3f_cmin.raw_result, graf_poczatku)
     ik3_min_end_a = _prad_zwarciowy_w_wezle(wariant_3f_cmin.raw_result, graf_konca)
     if ik3_min_beginning_a is None or ik3_min_end_a is None:
         raise BrakDanychNastawError(
-            f"Wariant zwarcia trójfazowego przy c_min={c_min} nie policzył prądu "
+            "Wariant zwarcia trójfazowego scenariusza MIN nie policzył prądu "
             "na początku albo końcu chronionego odcinka."
         )
 
@@ -462,19 +461,19 @@ def zbuduj_wejscie_nastaw(
         kotwica,
         migawka_kotwicy,
         analysis_type="short_circuit_sn",
-        options=_opcje_wariantu_zwarciowego(kotwica, fault_type="2F", c_factor=c_min),
+        options=_opcje_wariantu_minimalnego(kotwica, fault_type="2F"),
     )
     try:
         wykonaj_bieg_w_pamieci(wariant_2f_cmin, uow_factory=uow_factory)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # jak wyzej
         raise BrakDanychNastawError(
-            f"Wariant zwarcia dwufazowego przy c_min={c_min} przerwany błędem "
+            "Wariant zwarcia dwufazowego scenariusza MIN przerwany błędem "
             f"solvera: {type(exc).__name__}: {exc}"
         ) from exc
     ik2_min_end_a = _prad_zwarciowy_w_wezle(wariant_2f_cmin.raw_result, graf_konca)
     if ik2_min_end_a is None:
         raise BrakDanychNastawError(
-            f"Wariant zwarcia dwufazowego przy c_min={c_min} nie policzył prądu "
+            "Wariant zwarcia dwufazowego scenariusza MIN nie policzył prądu "
             "na końcu chronionego odcinka."
         )
 
@@ -600,7 +599,6 @@ def oblicz_nastawy(
     *,
     line_id: str,
     next_bus_id: str,
-    c_min: float,
     zacisk_zabezpieczenia: Zacisk | None,
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
@@ -618,7 +616,6 @@ def oblicz_nastawy(
         run,
         line_id=line_id,
         next_bus_id=next_bus_id,
-        c_min=c_min,
         zacisk_zabezpieczenia=zacisk_zabezpieczenia,
         delta_t_s=delta_t_s,
         k_b=k_b,

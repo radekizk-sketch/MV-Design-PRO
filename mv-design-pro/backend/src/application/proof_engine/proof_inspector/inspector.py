@@ -300,6 +300,7 @@ class ProofInspector:
             voltage_factor=h.voltage_factor,
             source_bus=h.source_bus,
             target_bus=h.target_bus,
+            voltage_factor_zrodlo=h.voltage_factor_zrodlo,
         )
 
     def _build_step_view(self, step: ProofStep) -> StepView:

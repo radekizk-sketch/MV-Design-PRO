@@ -63,7 +63,7 @@ from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
 from network_model.core.topologia import przeglad_wszerz
-from network_model.core.voltage_factor import Scenario
+from network_model.core.voltage_factor import NadpisanieC, Scenario, nadpisanie_c_z_danych
 from network_model.core.ybus import S_BASE_MVA
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
@@ -519,8 +519,9 @@ class WejscieZwarcia:
     z0_bus: Any
     short_circuit_type: ShortCircuitType
     scenario_c: Scenario
-    c_factor_explicit: Any
-    c_factor_override: bool
+    #: Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): ręczne nadpisanie c z uzasadnieniem albo
+    #: ``None`` — wtedy c dobiera ``voltage_factor.dobierz_c`` per węzeł (tabela 1).
+    nadpisanie_c: NadpisanieC | None
     tk_s: float
     reportable_fault_node_ids: list[str]
     temperature_correction_notes: tuple[dict[str, Any], ...]
@@ -979,11 +980,17 @@ def zloz_wejscie_zwarcia(
         )
     scenario_c: Scenario = "MAX" if scenario_raw == "max" else "MIN"
 
-    # Jawny c_factor w options = OVERRIDE płaski dla wszystkich węzłów (zachowanie
-    # wsteczne dla istniejących payloadów). Brak c_factor = AUTO per węzeł z jego
-    # własnego pasma napięciowego (patrz c_for_node w pętli poniżej).
-    c_factor_explicit: Any = options.get("c_factor")
-    c_factor_override = c_factor_explicit is not None
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (decyzja O-59): jedynym nośnikiem c jest scenariusz
+    # (``scenario`` MAX/MIN → tabela 1 IEC 60909-0 per węzeł). Dawny klucz ``c_factor``
+    # (płaskie nadpisanie dla WSZYSTKICH węzłów, bez uzasadnienia) jest ODMOWĄ — bez
+    # warstwy zgodności. Nadpisanie wyłącznie ``nadpisanie_c`` {wartosc, uzasadnienie}.
+    if "c_factor" in options:
+        raise OdmowaDanychError(
+            "Opcja biegu c_factor została usunięta — współczynnik napięciowy c wynika ze "
+            "scenariusza (scenario: max/min, IEC 60909-0 tab. 1 per węzeł) albo z nadpisania "
+            "z uzasadnieniem (nadpisanie_c: {wartosc, uzasadnienie})."
+        )
+    nadpisanie_c = nadpisanie_c_z_danych(options.get("nadpisanie_c"))
 
     tk_s = float(options.get("thermal_time_seconds", 1.0))
 
@@ -1060,7 +1067,7 @@ def zloz_wejscie_zwarcia(
     # `location` w opcjach = zachowanie bez zmian (wszystkie węzły raportowalne,
     # parytet z biegiem bez scenariusza). `location_type` BUS/NODE zawęża zbiór
     # do JEDNEGO wskazanego węzła (parytet fizyki z biegiem bez lokalizacji —
-    # ten sam solver, ten sam c_factor/tk_s, tylko inny podzbiór węzłów).
+    # ten sam solver, ten sam dobór c/tk_s, tylko inny podzbiór węzłów).
     # BRANCH/BRANCH_POINT to JAWNA ODMOWA: adapter obliczeniowy liczy zwarcie
     # wyłącznie w węźle grafu, a punkt pośredni na gałęzi wymagałby rozdzielenia
     # jej na dwie impedancje w miejscu zwarcia (assembler), którego solver
@@ -1140,8 +1147,7 @@ def zloz_wejscie_zwarcia(
         z0_bus=z0_bus,
         short_circuit_type=short_circuit_type,
         scenario_c=scenario_c,
-        c_factor_explicit=c_factor_explicit,
-        c_factor_override=c_factor_override,
+        nadpisanie_c=nadpisanie_c,
         tk_s=tk_s,
         reportable_fault_node_ids=reportable_fault_node_ids,
         temperature_correction_notes=temperature_correction_notes,

@@ -163,6 +163,7 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
         GridSourcePreviewInput(
             voltage_kv=request.voltage_kv,
             short_circuit_mode="SHORT_CIRCUIT_POWER",
+            scenariusz="MIN",
             sk3_mva=sk_min_mva,
             rx_ratio=rx_min,
             zero_sequence_enabled=request.zero_sequence_enabled,
@@ -200,6 +201,7 @@ def preview_grid_source_short_circuit(
             GridSourcePreviewInput(
                 voltage_kv=request.voltage_kv,
                 short_circuit_mode=request.short_circuit_mode,
+                scenariusz="MAX",
                 sk3_mva=request.sk3_mva,
                 rx_ratio=request.rx_ratio,
                 r_ohm=request.r_ohm,

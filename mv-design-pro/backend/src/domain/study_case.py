@@ -39,9 +39,11 @@ class StudyCaseConfig:
     Immutable — changes create new config instances.
     """
 
-    # Short-circuit analysis parameters
-    c_factor_max: float = 1.10  # Voltage factor for max short-circuit (IEC 60909)
-    c_factor_min: float = 0.95  # Voltage factor for min short-circuit
+    # Współczynnik napięciowy c i czas t_k NIE są parametrami przypadku (karta
+    # WSPOLCZYNNIK-C-JEDEN-NOSNIK, decyzja O-59): jedynym ich nośnikiem jest scenariusz
+    # zwarciowy (`domain.fault_scenario.ShortCircuitConfig`). Dawne pola c max/min
+    # i czasu cieplnego przypadku nie miały konsumenta obliczeniowego, a UI
+    # pokazywał je jako założenia obliczeń (fantom) — skasowane bez zgodności.
 
     # Power flow parameters
     base_mva: float = 100.0  # Base MVA for per-unit calculations
@@ -51,7 +53,6 @@ class StudyCaseConfig:
     # Analysis options
     include_motor_contribution: bool = True
     include_inverter_contribution: bool = True
-    thermal_time_seconds: float = 1.0  # Time for thermal current calculation
 
     # Operator profile (NC RfG / IRiESD per OSD)
     # Determines: FRT curves, Q-U envelope, cos φ(P) profile, ramp rate, dead band,
@@ -75,14 +76,11 @@ class StudyCaseConfig:
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary for storage."""
         return {
-            "c_factor_max": self.c_factor_max,
-            "c_factor_min": self.c_factor_min,
             "base_mva": self.base_mva,
             "max_iterations": self.max_iterations,
             "tolerance": self.tolerance,
             "include_motor_contribution": self.include_motor_contribution,
             "include_inverter_contribution": self.include_inverter_contribution,
-            "thermal_time_seconds": self.thermal_time_seconds,
             "operator_profile_id": self.operator_profile_id,
             "sc_input_mode": self.sc_input_mode,
             "sc_simplified_sk_mva": self.sc_simplified_sk_mva,
@@ -93,14 +91,11 @@ class StudyCaseConfig:
     def from_dict(cls, data: dict[str, Any]) -> StudyCaseConfig:
         """Deserialize from dictionary."""
         return cls(
-            c_factor_max=data.get("c_factor_max", 1.10),
-            c_factor_min=data.get("c_factor_min", 0.95),
             base_mva=data.get("base_mva", 100.0),
             max_iterations=data.get("max_iterations", 50),
             tolerance=data.get("tolerance", 1e-6),
             include_motor_contribution=data.get("include_motor_contribution", True),
             include_inverter_contribution=data.get("include_inverter_contribution", True),
-            thermal_time_seconds=data.get("thermal_time_seconds", 1.0),
             operator_profile_id=data.get("operator_profile_id", "enea"),
             sc_input_mode=data.get("sc_input_mode", "simplified"),
             sc_simplified_sk_mva=data.get("sc_simplified_sk_mva"),

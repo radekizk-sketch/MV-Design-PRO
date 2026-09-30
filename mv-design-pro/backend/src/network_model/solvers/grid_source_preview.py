@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from network_model.core.voltage_factor import Scenario, c_for_node
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
@@ -15,6 +16,9 @@ from network_model.solvers.short_circuit_core import (
 class GridSourcePreviewInput:
     voltage_kv: float
     short_circuit_mode: str
+    #: Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: scenariusz podglądu (MAX dla danych Sk3max,
+    #: MIN dla Sk3min) — c z tabeli 1 IEC 60909-0 dla U_nQ, jak w biegu (`enm.mapping`).
+    scenariusz: Scenario
     sk3_mva: float | None = None
     rx_ratio: float | None = None
     r_ohm: float | None = None
@@ -41,13 +45,20 @@ class GridSourcePreviewResult:
 
 
 def compute_grid_source_preview(data: GridSourcePreviewInput) -> GridSourcePreviewResult:
-    """Compute a GPZ short-circuit source preview with the same core formulas as IEC 60909."""
+    """Compute a GPZ short-circuit source preview with the same core formulas as IEC 60909.
 
-    z1 = _build_positive_sequence_impedance(data)
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c = tabela 1 IEC 60909-0 dla U_nQ i scenariusza
+    (dotąd stałe 1,0). Tryb mocy zwarciowej: Z_Q = c·U²/S″kQ (IEC 60909-0 eq. 6 — ta sama
+    impedancja, którą bieg składa w `enm.mapping`), więc I″k = S″kQ/(√3·U) bez zmian, a
+    Z_Q zgadza się z grafem biegu. Tryb impedancji jawnej: I″k = c·U/(√3·|Z|) — dotąd
+    zaniżone o czynnik c względem biegu.
+    """
+    c = c_for_node(data.voltage_kv, data.scenariusz)
+    z1 = _build_positive_sequence_impedance(data, c)
     un_v = data.voltage_kv * 1000.0
     ik3_a = compute_ikss(
         un_v=un_v,
-        c_factor=1.0,
+        c_factor=c,
         short_circuit_type=ShortCircuitType.THREE_PHASE,
         z_equiv=z1,
     )
@@ -62,7 +73,7 @@ def compute_grid_source_preview(data: GridSourcePreviewInput) -> GridSourcePrevi
     ik1_a = (
         compute_ikss(
             un_v=un_v,
-            c_factor=1.0,
+            c_factor=c,
             short_circuit_type=ShortCircuitType.SINGLE_PHASE_GROUND,
             z_equiv=z1 + z1 + z0,
         )
@@ -82,7 +93,7 @@ def compute_grid_source_preview(data: GridSourcePreviewInput) -> GridSourcePrevi
     )
 
 
-def _build_positive_sequence_impedance(data: GridSourcePreviewInput) -> complex:
+def _build_positive_sequence_impedance(data: GridSourcePreviewInput, c: float) -> complex:
     if data.voltage_kv <= 0:
         raise OdmowaDanychError("voltage_kv must be positive")
 
@@ -99,7 +110,7 @@ def _build_positive_sequence_impedance(data: GridSourcePreviewInput) -> complex:
     if data.rx_ratio is None or data.rx_ratio < 0:
         raise OdmowaDanychError("rx_ratio must be non-negative in short-circuit-power mode")
 
-    z_magnitude_ohm = (data.voltage_kv**2) / data.sk3_mva
+    z_magnitude_ohm = c * (data.voltage_kv**2) / data.sk3_mva
     x_ohm = z_magnitude_ohm / math.sqrt(1.0 + data.rx_ratio**2)
     r_ohm = data.rx_ratio * x_ohm
     return complex(r_ohm, x_ohm)

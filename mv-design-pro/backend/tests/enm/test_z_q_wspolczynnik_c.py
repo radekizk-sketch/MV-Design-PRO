@@ -92,11 +92,16 @@ def test_bieg_w_pcc_odtwarza_prad_deklarowany_osd(u_kv: float, sk_mva: float, pa
 
 @pytest.mark.parametrize(("u_kv", "sk_mva", "pasmo"), PASMA)
 def test_podglad_frozen_i_bieg_zgadzaja_sie_w_pcc(u_kv: float, sk_mva: float, pasmo: str) -> None:
-    """Podgląd źródła (solver FROZEN, c=1 przy Z=U²/Sk) i bieg kanoniczny dają TEN SAM Ik3
-    w węźle przyłączenia — dwie ścieżki, jedna liczba (przed K6 różniły się o c)."""
+    """Podgląd źródła i bieg kanoniczny dają TEN SAM Ik3 i TĘ SAMĄ Z_Q w węźle
+    przyłączenia — dwie ścieżki, jedna liczba (przed K6 różniły się o c w Ik3; przed
+    kartą WSPOLCZYNNIK-C-JEDEN-NOSNIK podgląd liczył Z=U²/Sk z c=1, a bieg Z_Q=c·U²/Sk)."""
     podglad = compute_grid_source_preview(
         GridSourcePreviewInput(
-            voltage_kv=u_kv, short_circuit_mode="SHORT_CIRCUIT_POWER", sk3_mva=sk_mva, rx_ratio=0.1
+            voltage_kv=u_kv,
+            short_circuit_mode="SHORT_CIRCUIT_POWER",
+            scenariusz="MAX",
+            sk3_mva=sk_mva,
+            rx_ratio=0.1,
         )
     )
     graph = map_enm_to_network_graph(_enm_pcc(u_kv, sk_mva))
@@ -105,6 +110,30 @@ def test_podglad_frozen_i_bieg_zgadzaja_sie_w_pcc(u_kv: float, sk_mva: float, pa
         graph, node_id, c_for_node(u_kv, "MAX"), 1.0
     )
     assert bieg.ikss_a / 1000.0 == pytest.approx(podglad.ik3_ka, rel=1e-9)
+    z_q_biegu = impedancja_zrodla_sieciowego(_enm_pcc(u_kv, sk_mva).sources[0], u_kv)
+    assert z_q_biegu is not None
+    assert abs(podglad.z1_ohm - z_q_biegu[0]) == pytest.approx(0.0, abs=1e-12)
+
+
+@pytest.mark.parametrize(("u_kv", "sk_mva", "pasmo"), PASMA)
+@pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
+def test_podglad_impedancji_jawnej_uzywa_c_tabeli(
+    u_kv: float, sk_mva: float, pasmo: str, scenariusz: str
+) -> None:
+    """Tryb impedancji jawnej: I″k = c·U/(√3·|Z|) z c tabeli 1 dla U_nQ i scenariusza
+    (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK — podgląd liczył dotąd c=1, zaniżając I″k o c)."""
+    z = complex(0.05 * u_kv, 0.5 * u_kv)
+    podglad = compute_grid_source_preview(
+        GridSourcePreviewInput(
+            voltage_kv=u_kv,
+            short_circuit_mode="IMPEDANCE",
+            scenariusz=scenariusz,  # type: ignore[arg-type]
+            r_ohm=z.real,
+            x_ohm=z.imag,
+        )
+    )
+    c = c_for_node(u_kv, scenariusz)  # type: ignore[arg-type]
+    assert podglad.ik3_ka * 1000.0 == pytest.approx(c * u_kv * 1000.0 / (3**0.5 * abs(z)))
 
 
 def test_impedancja_jawna_bez_c_i_bez_zmian() -> None:

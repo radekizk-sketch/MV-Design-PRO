@@ -41,6 +41,7 @@ from application.proof_engine.proof_pack import (
     zbuduj_zip_zbiorczy,
 )
 from application.proof_engine.types import ProofDocument
+from network_model.core.voltage_factor import NadpisanieC, Scenario
 from network_model.pochodne import v_na_kv
 from network_model.solvers.short_circuit_asymmetrical_quantities import (
     compute_sc1_asymmetrical_quantities,
@@ -66,6 +67,9 @@ class SCAsymmetricalPackInput:
     u_n_kv: float
     c_factor: float
     u_prefault_kv: float
+    #: Podstawa c (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): `voltage_factor.DoborC.zrodlo` —
+    #: tabela 1 IEC 60909-0 dla pasma węzła i scenariusza albo nadpisanie z uzasadnieniem.
+    c_zrodlo: str
 
     # Impedancje składowe (wymagane dla wszystkich typów)
     z1_ohm: complex
@@ -161,6 +165,7 @@ class SCAsymmetricalProofPack:
                 solver_version=data.solver_version,
                 u_n_kv=data.u_n_kv,
                 c_factor=data.c_factor,
+                c_zrodlo=data.c_zrodlo,
                 u_prefault_kv=data.u_prefault_kv,
                 z1_ohm=data.z1_ohm,
                 z2_ohm=data.z2_ohm,
@@ -220,8 +225,10 @@ class SCAsymmetricalProofPack:
         case_name: str,
         run_timestamp: datetime,
         solver_version: str,
-        c_factor: float = 1.10,
-        tk_s: float = 1.0,
+        scenariusz: Scenario,
+        nadpisanie_c: NadpisanieC | None,
+        tk_s: float,
+        rozszerzenia_audit2: dict[str, Any] | None = None,
     ) -> SCAsymmetricalPackInput:
         """Zbuduj wejście pakietu z KANONICZNEGO SNAPSHOTU ENM (ZERO fizyki u klienta).
 
@@ -250,12 +257,15 @@ class SCAsymmetricalProofPack:
             napiecie_fazowe_przedzwarciowe_kv,
         )
 
-        result = wynik_zwarcia_1f_ze_snapshotu(
+        zwarcie = wynik_zwarcia_1f_ze_snapshotu(
             snapshot=snapshot,
             fault_node_id=fault_node_id,
-            c_factor=c_factor,
+            scenariusz=scenariusz,
+            nadpisanie_c=nadpisanie_c,
             tk_s=tk_s,
+            rozszerzenia_audit2=rozszerzenia_audit2,
         )
+        result = zwarcie.wynik
         if result.z1_ohm is None or result.z2_ohm is None or result.z0_ohm is None:
             raise ValueError(
                 "Wynik zwarcia nie niesie impedancji składowych Z1/Z2/Z0 — "
@@ -270,6 +280,7 @@ class SCAsymmetricalProofPack:
             solver_version=solver_version,
             u_n_kv=u_n_kv,
             c_factor=result.c_factor,
+            c_zrodlo=zwarcie.dobor_c.zrodlo,
             u_prefault_kv=napiecie_fazowe_przedzwarciowe_kv(
                 u_n_kv=u_n_kv, c_factor=result.c_factor
             ),
