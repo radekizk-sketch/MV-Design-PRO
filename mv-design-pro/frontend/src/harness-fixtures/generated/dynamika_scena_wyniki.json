@@ -1005,7 +1005,7 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "seg/fab0e40bf1455775b1286ab17b598f58/segment",
-      "opis_pl": "Kat fazora pradu do ziemi w miejscu zwarcia w galezi seg/fab0e40bf1455775b1286ab17b598f58/segment (x = 0.5 dlugosci od zacisku poczatkowego) (brak wartosci przy pradzie zerowym)"
+      "opis_pl": "Kat fazora pradu do ziemi w miejscu zwarcia w galezi seg/fab0e40bf1455775b1286ab17b598f58/segment (x = 0.5 dlugosci od zacisku poczatkowego) (brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci — fazor nierozroznialny od zera)"
     },
     {
       "klucz": "stan_zasilania@bus/51282a49a0ce98c68ae691a5b2120ce6/downstream",
@@ -1103,14 +1103,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_device",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_device (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus -> nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_bus); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_device (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus -> nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_device",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_device",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_device (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus -> nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_bus); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_device (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus -> nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "stan_galezi@nn/e920fa05978ce828b25a0ced83c45e0b/feeder_device",
@@ -1124,14 +1124,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "nn/e920fa05978ce828b25a0ced83c45e0b/feeder_device",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi nn/e920fa05978ce828b25a0ced83c45e0b/feeder_device (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus -> nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi nn/e920fa05978ce828b25a0ced83c45e0b/feeder_device (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus -> nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@nn/e920fa05978ce828b25a0ced83c45e0b/feeder_device",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "nn/e920fa05978ce828b25a0ced83c45e0b/feeder_device",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi nn/e920fa05978ce828b25a0ced83c45e0b/feeder_device (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus -> nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi nn/e920fa05978ce828b25a0ced83c45e0b/feeder_device (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus -> nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "stan_galezi@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
@@ -1145,14 +1145,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "stan_galezi@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
@@ -1166,14 +1166,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "stan_galezi@seg/fab0e40bf1455775b1286ab17b598f58/segment",
@@ -1187,14 +1187,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "seg/fab0e40bf1455775b1286ab17b598f58/segment",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi seg/fab0e40bf1455775b1286ab17b598f58/segment (bus/51282a49a0ce98c68ae691a5b2120ce6/downstream -> bus/fab0e40bf1455775b1286ab17b598f58/downstream); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi seg/fab0e40bf1455775b1286ab17b598f58/segment (bus/51282a49a0ce98c68ae691a5b2120ce6/downstream -> bus/fab0e40bf1455775b1286ab17b598f58/downstream); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@seg/fab0e40bf1455775b1286ab17b598f58/segment",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "seg/fab0e40bf1455775b1286ab17b598f58/segment",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi seg/fab0e40bf1455775b1286ab17b598f58/segment (bus/51282a49a0ce98c68ae691a5b2120ce6/downstream -> bus/fab0e40bf1455775b1286ab17b598f58/downstream); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi seg/fab0e40bf1455775b1286ab17b598f58/segment (bus/51282a49a0ce98c68ae691a5b2120ce6/downstream -> bus/fab0e40bf1455775b1286ab17b598f58/downstream); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "stan_galezi@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/000",
@@ -1208,14 +1208,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/000",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/000 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/000 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/000",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/000",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/000 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/000 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "stan_galezi@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/001",
@@ -1229,14 +1229,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/001",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/001 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/001 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/001",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/001",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/001 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/001 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "stan_galezi@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/002",
@@ -1250,14 +1250,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/002",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/002 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/002); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/002 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/002); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/002",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/002",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/002 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/002); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/002 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/002); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "stan_galezi@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/003",
@@ -1271,14 +1271,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/003",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/003 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/003 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/003",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/003",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/003 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_breaker/003 (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "stan_galezi@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
@@ -1292,14 +1292,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110 -> gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110 -> gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110 -> gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110 -> gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "stan_galezi@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
@@ -1313,14 +1313,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus); brak wartosci przy pradzie zerowym"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "p_pobor_pu@load/d274343dd8d90e4fc15e2f65933f1325/sn",
@@ -1450,7 +1450,7 @@
     "odcisk_punktu_pracy": "cabd492042063c0fb8be14d5bcf92f004f0d8b3b8828e22b222bc7cbdf9f973d",
     "odcisk_nastaw_solvera": "5417f3cf221bb32560f5d4a24f219b51c34d164c0a19a361def9278ecf1c22b0",
     "odcisk_harmonogramu": "93073c2cedca75803fbe0f96e8e654615a5370492e7d5d583eb249ff34267b69",
-    "odcisk_implementacji": "41aa0af5fb37d791a19339c17c9c4313570ac3876251cff0e79816c469abb9cf",
+    "odcisk_implementacji": "1eb7359bdfb7ac2ef50fb87e096eda9601d09e5a830516efb013dcaa3ec57611",
     "wersja_solvera": "DYNAMIKA_RMS_DAE_V1"
   },
   "metryki": [
@@ -3993,7 +3993,7 @@
       "formula_set_version": "resultset_dynamic_v2",
       "standard_basis_ref": "DYNAMIKA_RMS_DAE_V1",
       "input_hash": "781a724617539e4740363d16c797b202a7f0917e4a707aef3f923c8acad6175c",
-      "result_hash": "f31393401121b0ff34c3a6f9eaee18ecf14d39bfad315cf6d0811a7a5a239b53",
+      "result_hash": "74881a08c0914c9921376c6657eea93bc6282b20d85c2de6888df6956d44b2d9",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

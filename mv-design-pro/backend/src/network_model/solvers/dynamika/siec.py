@@ -573,6 +573,77 @@ def residuum_algebry(
     return np.concatenate((niezbilansowanie.real, niezbilansowanie.imag))
 
 
+#: Jednostka zaokraglenia arytmetyki podwojnej precyzji (`u = eps/2`, Higham 2002, par. 2.1).
+JEDNOSTKA_ZAOKRAGLENIA = float(np.finfo(float).eps) / 2.0
+
+
+def _gamma(liczba_dzialan: int) -> float:
+    """`gamma_m = m u / (1 - m u)` — ograniczenie bledu wzglednego `m` dzialan (Higham, lemat 3.1)."""
+    return liczba_dzialan * JEDNOSTKA_ZAOKRAGLENIA / (1.0 - liczba_dzialan * JEDNOSTKA_ZAOKRAGLENIA)
+
+
+def granica_zaokraglen_residuum(
+    model: ModelSieci,
+    odbiory: tuple[OdbiorDynamiki, ...],
+    urzadzenia: tuple[Urzadzenie, ...],
+    stany: tuple[np.ndarray, ...],
+    napiecia: np.ndarray,
+) -> np.ndarray:
+    """Granica bledu zaokraglen, z jakim `residuum_algebry` jest w ogole OBLICZALNE (pu, n wezlow).
+
+    Residuum wiersza bilansu `r_k = sum_j Y_kj V_j - sum_t I_t` liczone w arytmetyce
+    zmiennoprzecinkowej niesie wlasny blad, ograniczony przez sume MODULOW skladnikow:
+
+        |fl(r_k) - r_k| <= gamma_m (sum_j |Y_kj| |V_j| + sum_t |I_t|),
+
+    gdzie `m` to liczba dzialan wiersza: iloczyny zespolone (po dwa mnozenia i jedno
+    dodawanie na czesc), sumowanie skladnikow i odejmowanie wstrzykniec — bierzemy
+    `m = nnz(Y_k) + T_k + 3` (Higham, Accuracy and Stability of Numerical Algorithms,
+    2 wyd., lemat 3.1 i par. 3.1 — iloczyn skalarny; par. 3.6 — arytmetyka zespolona).
+    Wiersz ograniczenia `V_k - E_k` ma dwa skladniki: `gamma_2 (|V_k| + |E_k|)`.
+
+    Granica NIE obejmuje bledu obliczenia samych pradow urzadzen i odbiorow wewnatrz ich
+    wzorow (traktowane jako dane wiersza) — to ESTYMATA skali szumu residuum, spojna
+    z polityka modulu obserwabli („estymata, nie certyfikat"). Jest DETERMINISTYCZNA:
+    to sumy wyrazow nieujemnych, wiec kolejnosc sumowania zmienia ja co najwyzej o ULP,
+    podczas gdy samo `fl(r_k)` w zbieznosci jest realizacja szumu (jego wartosc zalezy
+    od kolejnosci dzialan, np. od liczby watkow BLAS).
+    """
+    liczba = model.liczba_wezlow
+    modul_ybus = abs(model.ybus).tocsr()
+    suma_ybus = np.asarray(modul_ybus @ np.abs(napiecia), dtype=float)
+    niezerowe = np.diff(modul_ybus.indptr)
+    suma_wstrzykniec = np.zeros(liczba, dtype=float)
+    liczba_wstrzykniec = np.zeros(liczba, dtype=int)
+    ograniczone = dict(ograniczenia_napiecia(model, urzadzenia))
+    for odbior in odbiory:
+        pozycja = model.indeks_wezla[odbior.wezel]
+        if pozycja in ograniczone:
+            continue
+        suma_wstrzykniec[pozycja] += abs(prad_wstrzykiwany_pu(odbior, complex(napiecia[pozycja])))
+        liczba_wstrzykniec[pozycja] += 1
+    for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
+        pozycja = model.indeks_wezla[urzadzenie.wezel]
+        if pozycja in ograniczone:
+            continue
+        suma_wstrzykniec[pozycja] += abs(urzadzenie.prad_pu(stan, complex(napiecia[pozycja])))
+        liczba_wstrzykniec[pozycja] += 1
+    granica = np.array(
+        [
+            _gamma(int(niezerowe[pozycja]) + int(liczba_wstrzykniec[pozycja]) + 3)
+            * (float(suma_ybus[pozycja]) + float(suma_wstrzykniec[pozycja]))
+            for pozycja in range(liczba)
+        ],
+        dtype=float,
+    )
+    for pozycja, indeks in ograniczone.items():
+        narzucone = (
+            0j if indeks is None else urzadzenia[indeks].napiecie_bez_obciazenia(stany[indeks])
+        )
+        granica[pozycja] = _gamma(2) * (abs(complex(napiecia[pozycja])) + abs(narzucone))
+    return granica
+
+
 def jakobian_algebry(
     model: ModelSieci,
     odbiory: tuple[OdbiorDynamiki, ...],
@@ -939,6 +1010,7 @@ __all__ = [
     "ZwarcieWGalezi",
     "czwornik_galezi",
     "galezie_laczace",
+    "granica_zaokraglen_residuum",
     "jakobian_algebry",
     "miejsca_zwarcia_galezi",
     "ograniczenia_napiecia",

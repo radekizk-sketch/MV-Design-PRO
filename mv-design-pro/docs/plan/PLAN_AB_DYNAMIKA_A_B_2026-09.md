@@ -857,6 +857,17 @@ jednej szyny przy napięciu znamionowym, bez rozpływu i bez prądów obu zacisk
 („szacunek bez rozpływu"), w rdzeniu FROZEN. Naprawa = rozpływ per kontyngencja i obciążenie z
 `analysis/obciazenie_galezi.py` — wymaga zgody właściciela; do tego czasu karta AB-H0b nadaje
 prezentacji etykietę „szacunek bez rozpływu" (uczciwość V12.6).
+(h) **Kąt fazora zerowego w `v126_academic.py`** (klasa DETERMINIZM-KATA-FAZORA, inwentarz
+2026-09-29): trzy miejsca publikują kąt 0° dla fazora o module zero — napięcie harmonicznej węzła
+(`network_model/solvers/v126_academic.py:441-443`, `phase_deg` przy `magnitude_kv == 0`), skan
+impedancji (`:482`, przy `z_abs == 0`) i serializacja fazora SSCI `_phasor` (`:532`, przy
+`mag == 0`). Faza zera jest nieokreślona, a faza fazora na poziomie szumu zaokrągleń zależy od
+kolejności sumowania (liczby wątków BLAS); rdzeń dynamiki od karty determinizmu publikuje w obu
+przypadkach brak wartości (`_kat_deg` dla zera dokładnego napięcia, `_kat_pradu_deg` dla prądu
+nieprzekraczającego tolerancji rozwiązania sieci). Naprawa = `phase_deg` bez wartości z
+kryterium rozdzielczości rozwiązania liniowego i opisem pola (zmiana kontraktu wyjścia V12.6 i
+złotych fikstur E-40/SSCI) — wymaga zgody właściciela; do tego czasu E-40 nie orzeka (O-21,
+`NIE_OCENIONO`), a liczby są wyłącznie w widoku audytowym z etykietą „niezwalidowane".
 
 ## 13. Strażnik zależności planu (O-35)
 

@@ -11,6 +11,19 @@ Obie niepewności są **mierzone**, a propagacja jest **skończona**:
 $$u_V = \left| J_y^{-1} r \right|, \qquad
 u_{\dot V} = \left| \dot V(y - J_y^{-1} r) - \dot V(y) \right|$$
 
+> **KOREKTA 2026-09-29 (karta DETERMINIZM-KATA-FAZORA).** Gdy każda składowa residuum mieści się
+> w granicy błędu, z jakim residuum jest w ogóle obliczalne,
+> $\rho_k = \gamma_m \left(\sum_j |Y_{kj}|\,|V_j| + \sum_t |I_t|\right)$
+> (`siec.granica_zaokraglen_residuum`, Higham 2002, lemat 3.1 i §7.2), obliczone `r` jest
+> realizacją szumu zaokrągleń, a `J⁻¹r` — losową liczbą. Pomiar na scenie dynamiki harnessu: ta
+> sama próbka dawała `u_V̇` 1,9·10⁻⁹ i 1,2·10⁻¹⁰ pu/s zależnie od liczby wątków OpenBLAS, a kod
+> jakości częstotliwości przełączał się między „rozróżnialna" i „nierozróżnialna". Estymatą jest
+> wtedy propagacja samej granicy: $u_V = |J_y^{-1}\rho|$,
+> $u_{\dot V} = |\dot V(y - J_y^{-1}\rho) - \dot V(y)|$ — wielkości deterministyczne (suma
+> wyrazów nieujemnych). Residuum znaczące (choć jedna składowa ponad granicą) idzie drogą
+> `J⁻¹r` bez zmian. Test: `tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py`
+> (w tym cała scena przy 1 i 2 wątkach BLAS), mutacja M69.
+
 $$\boxed{\;u_{\dot\theta} \;\le\; \frac{u_{\dot V}}{|V| - u_V}
 \;+\; \frac{|\dot V|\,u_V}{|V|\,(|V| - u_V)}\;}, \qquad u_V < |V|$$
 
@@ -310,7 +323,19 @@ właściciela — patrz §10.)
 > z `network_model/pochodne`), etykietę kolumny `i_a` „I (zacisk poczatkowy)", a `loading_pct`
 > liczy z WIĘKSZEGO z dwóch prądów zacisków. Zmiana nazwy `i_a` → `i_od_a` w interfejsie — fala
 > WW-1. Twierdzenie D-15 (bramka G16: superpozycja Thevenina i parytet z FROZEN IEC 60909;
-> mutacje M30, M32); testy `tests/enm/test_prad_obu_zaciskow_galezi.py`.
+> mutacje M30, M32, M67, M68); testy `tests/enm/test_prad_obu_zaciskow_galezi.py`.
+>
+> Kąt fazora PRĄDU (zaciski gałęzi i miejsce zwarcia) istnieje tylko dla |I| > `NastawySolvera.tolerancja`
+> (karta DETERMINIZM-KATA-FAZORA, 2026-09-29): Newton kończy przy normie residuum bilansu prądów
+> węzłów ≤ tolerancja, więc prąd nie większy niż tolerancja jest nierozróżnialny od niezbilansowania,
+> które rozwiązanie dopuszcza. Prąd zacisku gałęzi, za którą fizycznie nic nie płynie (transformator
+> bez obciążenia strony dolnej, otwarty koniec odcinka, pole bez odbioru), jest różnicą składników
+> rzędu |y|·|V| i daje szum 1e-16…1e-12 pu; jego „kąt" zależał od liczby wątków BLAS (pomiar na
+> scenie harnessu: 1, 2 i 4 wątki — trzy różne zestawy kątów). Moduł prądu zostaje bez zmian. Kąt
+> NAPIĘCIA — `None` wyłącznie dla zera dokładnego (węzeł z ograniczeniem V = 0). Testy
+> `tests/walidacja_fizyczna/test_kat_pradu_rozdzielczosc.py` (mutacje M67, M68); niezależność
+> całej sceny od liczby wątków BLAS —
+> `tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py::test_scena_dynamiki_nie_zalezy_od_liczby_watkow_blas`.
 
 ### 7.2 Wzory — te same, którymi liczy rozpływ
 
