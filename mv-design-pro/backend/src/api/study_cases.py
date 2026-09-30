@@ -31,7 +31,6 @@ from application.study_case import (
 from application.study_case.status_wynikow import pola_statusu_przypadku
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
-from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/study-cases", tags=["study-cases"])
@@ -142,27 +141,6 @@ class ErrorResponse(BaseModel):
 
     detail: str
     code: str | None = None
-
-
-class ProtectionConfigRequest(BaseModel):
-    """Request to update protection configuration (P14c)."""
-
-    template_ref: str | None = Field(None, description="ID szablonu nastaw zabezpieczeń")
-    template_fingerprint: str | None = Field(None, description="Fingerprint szablonu (dla audytu)")
-    library_manifest_ref: dict[str, Any] | None = Field(
-        None, description="Referencja do manifestu biblioteki"
-    )
-    overrides: dict[str, Any] = Field(default_factory=dict, description="Nadpisane wartości nastaw")
-
-
-class ProtectionConfigResponse(BaseModel):
-    """Protection configuration response (P14c)."""
-
-    template_ref: str | None
-    template_fingerprint: str | None
-    library_manifest_ref: dict[str, Any] | None
-    overrides: dict[str, Any]
-    bound_at: str | None
 
 
 # =============================================================================
@@ -473,71 +451,3 @@ def count_cases(
 
     count = service.count_cases(parsed_id)
     return {"count": count}
-
-
-# =============================================================================
-# Protection Configuration Endpoints (P14c)
-# =============================================================================
-
-
-@router.get("/{case_id}/protection-config", response_model=ProtectionConfigResponse)
-def get_protection_config(
-    case_id: str,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
-    """
-    Pobierz konfigurację zabezpieczeń dla przypadku (P14c).
-
-    GET /api/study-cases/{case_id}/protection-config
-    """
-    parsed_id = _parse_uuid(case_id, "case_id")
-    service = _build_service(uow_factory)
-
-    try:
-        case = service.get_case(parsed_id)
-        return case.protection_config.to_dict()
-    except StudyCaseNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
-
-
-@router.put("/{case_id}/protection-config", response_model=ProtectionConfigResponse)
-def update_protection_config(
-    case_id: str,
-    request: ProtectionConfigRequest,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
-    """
-    Aktualizuj konfigurację zabezpieczeń dla przypadku (P14c).
-
-    Walidacje:
-    - template_ref musi istnieć w katalogu (jeśli podane)
-    - template_fingerprint powinien być zgodny z aktualnym eksportem (ostrzeżenie, nie błąd)
-
-    PUT /api/study-cases/{case_id}/protection-config
-    """
-    parsed_id = _parse_uuid(case_id, "case_id")
-    service = _build_service(uow_factory)
-
-    try:
-        case = service.update_protection_config(
-            case_id=parsed_id,
-            template_ref=request.template_ref,
-            template_fingerprint=request.template_fingerprint,
-            library_manifest_ref=request.library_manifest_ref,
-            overrides=request.overrides,
-        )
-        return case.protection_config.to_dict()
-    except StudyCaseNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
-    except OdmowaDanychError as exc:
-        # Validation error (e.g., template_ref doesn't exist)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc

@@ -7,5 +7,4 @@
  * - READ-ONLY presentation layer
  */
 
-export * from './verdict-messages';
 export * from './formatPolishValue';

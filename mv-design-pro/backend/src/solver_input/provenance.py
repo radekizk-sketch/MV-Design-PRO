@@ -282,6 +282,21 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4)",
         ),
         CapabilityEvidence(
+            capability_id="zabezpieczenia.ocena_nadpradowa",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Ocena zadziałania zabezpieczeń nadprądowych z modelu: prąd przekaźnika z "
+                "bilansu wkładów gałęziowych biegu zwarciowego IEC 60909 (wkłady źródeł "
+                "sumowane netto wg kierunku jako moduły, bez fazorów), czas z charakterystyki "
+                "normowej rdzenia IEC 60255 (application/analyses/protection/"
+                "ocena_nadpradowa.py). Sumowanie modułów wkładów kilku źródeł jest "
+                "przybliżeniem, którego zgodności z rozpływem fazorowym nie wykazano na sieci "
+                "referencyjnej — wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta BIEG-ZABEZPIECZEN-Z-MODELU (P0, 2026-09)",
+        ),
+        CapabilityEvidence(
             capability_id="dynamika_rms.przebieg_czasowy",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             rationale_pl=(

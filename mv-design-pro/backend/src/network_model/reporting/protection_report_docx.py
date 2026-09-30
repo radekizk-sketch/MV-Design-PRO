@@ -2,7 +2,7 @@
 FIX-12: Protection Coordination DOCX Report Generator
 
 Creates Word document report with:
-- Summary with overall verdict
+- Summary numbers (smallest grading margin and ratios — no verdict, P-06)
 - Device settings table
 - Sensitivity/selectivity/overload check tables
 - TCC data reference
@@ -16,6 +16,7 @@ CANONICAL ALIGNMENT:
 
 from __future__ import annotations
 
+import math
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -25,42 +26,27 @@ from network_model.nazwy import jest_nazwa
 # Import shared determinism module
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from network_model.reporting.protection_tcc_presentation import (
+    NAGLOWKI_NASTAW_PL,
     etykieta_tms,
     etykieta_typu_krzywej_pl,
     nazwa_urzadzenia,
     nazwa_wpisu_urzadzenia,
     nazwy_urzadzen,
     powod_braku_pl,
+    uzasadnienia_sprawdzen,
+    wiersze_nastaw_urzadzenia,
+    wiersze_podsumowania_pl,
 )
 
 # Check for python-docx availability
 try:
     from docx import Document
     from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.shared import Pt, RGBColor
+    from docx.shared import Pt
 
     _DOCX_AVAILABLE = True
 except ImportError:
     _DOCX_AVAILABLE = False
-
-
-# =============================================================================
-# POLISH LABELS
-# =============================================================================
-
-VERDICT_COLORS_RGB = {
-    "PASS": RGBColor(22, 163, 74) if _DOCX_AVAILABLE else None,  # green
-    "MARGINAL": RGBColor(217, 119, 6) if _DOCX_AVAILABLE else None,  # amber
-    "FAIL": RGBColor(220, 38, 38) if _DOCX_AVAILABLE else None,  # red
-    "ERROR": RGBColor(107, 114, 128) if _DOCX_AVAILABLE else None,  # gray
-}
-
-VERDICT_LABELS_PL = {
-    "PASS": "Prawidłowa",
-    "MARGINAL": "Margines niski",
-    "FAIL": "Nieskoordynowane",
-    "ERROR": "Błąd analizy",
-}
 
 
 def _format_value(value: Any) -> str:
@@ -68,7 +54,8 @@ def _format_value(value: Any) -> str:
     if value is None:
         return "—"
     if isinstance(value, float):
-        if value == float("inf") or value > 900:
+        # Wynik nie niesie liczb zastępczych (brak = ``None``); ∞ wyłącznie dla nieskończoności.
+        if math.isinf(value):
             return "∞"
         return f"{value:.3f}"
     if isinstance(value, bool):
@@ -116,21 +103,7 @@ def export_protection_coordination_to_docx(
     title_para = doc.add_heading(report_title, level=0)
     title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    # ==========================================================================
-    # OVERALL VERDICT
-    # ==========================================================================
-    overall_verdict = result.get("overall_verdict", "ERROR")
-    verdict_pl = VERDICT_LABELS_PL.get(overall_verdict, overall_verdict)
-    verdict_color = VERDICT_COLORS_RGB.get(overall_verdict)
-
-    verdict_para = doc.add_paragraph()
-    verdict_para.add_run("Wynik analizy: ").bold = True
-    verdict_run = verdict_para.add_run(verdict_pl)
-    verdict_run.bold = True
-    if verdict_color:
-        verdict_run.font.color.rgb = verdict_color
-
-    # Metadata
+    # Metadata — koordynacja nie wydaje werdyktu ogólnego (P-06), tylko liczby niżej.
     if metadata:
         meta_para = doc.add_paragraph()
         if jest_nazwa(metadata.get("project_name")):
@@ -146,7 +119,6 @@ def export_protection_coordination_to_docx(
     # ==========================================================================
     doc.add_heading("Podsumowanie", level=1)
 
-    summary = result.get("summary", {})
     summary_table = doc.add_table(rows=1, cols=2)
     summary_table.style = "Table Grid"
 
@@ -158,20 +130,9 @@ def export_protection_coordination_to_docx(
         cell.paragraphs[0].runs[0].bold = True
 
     # Data rows
-    summary_data = [
-        ("Liczba urządzeń", str(summary.get("total_devices", 0))),
-        ("Łączna liczba sprawdzeń", str(summary.get("total_checks", 0))),
-        ("Czułość - prawidłowe", str(summary.get("sensitivity", {}).get("pass", 0))),
-        ("Czułość - nieprawidłowe", str(summary.get("sensitivity", {}).get("fail", 0))),
-        ("Selektywność - prawidłowe", str(summary.get("selectivity", {}).get("pass", 0))),
-        ("Selektywność - nieprawidłowe", str(summary.get("selectivity", {}).get("fail", 0))),
-        ("Przeciążalność - prawidłowe", str(summary.get("overload", {}).get("pass", 0))),
-        ("Przeciążalność - nieprawidłowe", str(summary.get("overload", {}).get("fail", 0))),
-    ]
-
-    for label, value in summary_data:
+    for label, value in wiersze_podsumowania_pl(result["summary"], _format_value):
         row = summary_table.add_row().cells
-        row[0].text = label
+        row[0].text = label.rstrip(":")
         row[1].text = value
 
     doc.add_paragraph()
@@ -190,28 +151,20 @@ def export_protection_coordination_to_docx(
             devices, key=lambda d: (nazwa_wpisu_urzadzenia(d), str(d.get("id", "")))
         )
 
-        dev_table = doc.add_table(rows=1, cols=5)
+        dev_table = doc.add_table(rows=1, cols=len(NAGLOWKI_NASTAW_PL))
         dev_table.style = "Table Grid"
 
-        # Header
-        dev_headers = ["Nazwa", "Typ", "I_pickup [A]", "TMS", "Krzywa"]
         hdr_cells = dev_table.rows[0].cells
-        for i, h in enumerate(dev_headers):
+        for i, h in enumerate(NAGLOWKI_NASTAW_PL):
             hdr_cells[i].text = h
             hdr_cells[i].paragraphs[0].runs[0].bold = True
 
-        # Data rows
         for dev in sorted_devices:
-            row = dev_table.add_row().cells
-            settings = dev.get("settings", {})
-            stage_51 = settings.get("stage_51", {})
-            curve_settings = stage_51.get("curve_settings", {})
-
-            row[0].text = nazwa_wpisu_urzadzenia(dev)[:20]
-            row[1].text = dev.get("device_type", "—")[:15]
-            row[2].text = _format_value(stage_51.get("pickup_current_a"))
-            row[3].text = _format_value(curve_settings.get("time_multiplier"))
-            row[4].text = curve_settings.get("variant", "—")
+            for wiersz in wiersze_nastaw_urzadzenia(dev):
+                row = dev_table.add_row().cells
+                row[0].text = wiersz[0]
+                for i, wartosc in enumerate(wiersz[1:], start=1):
+                    row[i].text = wartosc
     else:
         doc.add_paragraph("Brak urządzeń", style="No Spacing")
 
@@ -220,7 +173,7 @@ def export_protection_coordination_to_docx(
     # ==========================================================================
     # SENSITIVITY CHECKS
     # ==========================================================================
-    doc.add_heading("Sprawdzenie czułości (I_min / I_pickup)", level=1)
+    doc.add_heading("Czułość — iloraz I_min / I_s", level=1)
 
     sensitivity_checks = result.get("sensitivity_checks", [])
     if sensitivity_checks:
@@ -231,7 +184,7 @@ def export_protection_coordination_to_docx(
         sens_table.style = "Table Grid"
 
         # Header
-        headers = ["Urządzenie", "I_min [A]", "I_pickup [A]", "Margines [%]", "Werdykt"]
+        headers = ["Urządzenie", "I_min [A]", "I_s [A]", "Iloraz", "Wymagany"]
         hdr_cells = sens_table.rows[0].cells
         for i, h in enumerate(headers):
             hdr_cells[i].text = h
@@ -240,17 +193,13 @@ def export_protection_coordination_to_docx(
         # Data
         for check in sorted_sens_checks:
             row = sens_table.add_row().cells
-            row[0].text = nazwa_urzadzenia(nazwy, check.get("device_id"))
-            row[1].text = _format_value(check.get("i_fault_min_a"))
-            row[2].text = _format_value(check.get("i_pickup_a"))
-            row[3].text = _format_value(check.get("margin_percent"))
-
-            verdict = check.get("verdict", "ERROR")
-            verdict_text = VERDICT_LABELS_PL.get(verdict, verdict)
-            row[4].text = verdict_text
-            verdict_color = VERDICT_COLORS_RGB.get(verdict)
-            if verdict_color and row[4].paragraphs[0].runs:
-                row[4].paragraphs[0].runs[0].font.color.rgb = verdict_color
+            row[0].text = nazwa_urzadzenia(nazwy, check["device_id"])
+            row[1].text = _format_value(check["i_fault_min_a"])
+            row[2].text = _format_value(check["i_pickup_a"])
+            row[3].text = _format_value(check["ratio"])
+            row[4].text = _format_value(check["required_ratio"])
+        for zdanie in uzasadnienia_sprawdzen(sorted_sens_checks, nazwy):
+            doc.add_paragraph(zdanie, style="No Spacing")
     else:
         doc.add_paragraph("Brak danych", style="No Spacing")
 
@@ -259,7 +208,7 @@ def export_protection_coordination_to_docx(
     # ==========================================================================
     # SELECTIVITY CHECKS
     # ==========================================================================
-    doc.add_heading("Sprawdzenie selektywności czasowej (Δt)", level=1)
+    doc.add_heading("Selektywność czasowa — odstęp t_nad − t_pod", level=1)
 
     selectivity_checks = result.get("selectivity_checks", [])
     if selectivity_checks:
@@ -273,7 +222,7 @@ def export_protection_coordination_to_docx(
         sel_table.style = "Table Grid"
 
         # Header
-        headers = ["Podrzędne", "Nadrzędne", "t_pod [s]", "t_nad [s]", "Δt [s]", "Werdykt"]
+        headers = ["Podrzędne", "Nadrzędne", "t_pod [s]", "t_nad [s]", "Odstęp [s]", "Wymagany [s]"]
         hdr_cells = sel_table.rows[0].cells
         for i, h in enumerate(headers):
             hdr_cells[i].text = h
@@ -282,27 +231,26 @@ def export_protection_coordination_to_docx(
         # Data
         for check in sorted_sel_checks:
             row = sel_table.add_row().cells
-            row[0].text = nazwa_urzadzenia(nazwy, check.get("downstream_device_id"))
-            row[1].text = nazwa_urzadzenia(nazwy, check.get("upstream_device_id"))
-            row[2].text = _format_value(check.get("t_downstream_s"))
-            row[3].text = _format_value(check.get("t_upstream_s"))
-            row[4].text = _format_value(check.get("margin_s"))
-
-            verdict = check.get("verdict", "ERROR")
-            verdict_text = VERDICT_LABELS_PL.get(verdict, verdict)
-            row[5].text = verdict_text
-            verdict_color = VERDICT_COLORS_RGB.get(verdict)
-            if verdict_color and row[5].paragraphs[0].runs:
-                row[5].paragraphs[0].runs[0].font.color.rgb = verdict_color
+            row[0].text = nazwa_urzadzenia(nazwy, check["downstream_device_id"])
+            row[1].text = nazwa_urzadzenia(nazwy, check["upstream_device_id"])
+            row[2].text = _format_value(check["t_downstream_s"])
+            row[3].text = _format_value(check["t_upstream_s"])
+            row[4].text = _format_value(check["margin_s"])
+            row[5].text = _format_value(check["required_margin_s"])
+        for zdanie in uzasadnienia_sprawdzen(sorted_sel_checks, nazwy):
+            doc.add_paragraph(zdanie, style="No Spacing")
     else:
-        doc.add_paragraph("Brak danych (wymaga min. 2 urządzeń)", style="No Spacing")
+        doc.add_paragraph(
+            "Brak par stopniowania (strefy urządzeń nie są zagnieżdżone albo para jest nierozstrzygalna)",
+            style="No Spacing",
+        )
 
     doc.add_paragraph()
 
     # ==========================================================================
     # OVERLOAD CHECKS
     # ==========================================================================
-    doc.add_heading("Sprawdzenie przeciążalności (I_pickup / I_rob)", level=1)
+    doc.add_heading("Przeciążalność — iloraz I_s / I_rob", level=1)
 
     overload_checks = result.get("overload_checks", [])
     if overload_checks:
@@ -313,7 +261,7 @@ def export_protection_coordination_to_docx(
         ovl_table.style = "Table Grid"
 
         # Header
-        headers = ["Urządzenie", "I_rob [A]", "I_pickup [A]", "Margines [%]", "Werdykt"]
+        headers = ["Urządzenie", "I_rob [A]", "I_s [A]", "Iloraz", "Wymagany"]
         hdr_cells = ovl_table.rows[0].cells
         for i, h in enumerate(headers):
             hdr_cells[i].text = h
@@ -322,17 +270,13 @@ def export_protection_coordination_to_docx(
         # Data
         for check in sorted_ovl_checks:
             row = ovl_table.add_row().cells
-            row[0].text = nazwa_urzadzenia(nazwy, check.get("device_id"))
-            row[1].text = _format_value(check.get("i_operating_a"))
-            row[2].text = _format_value(check.get("i_pickup_a"))
-            row[3].text = _format_value(check.get("margin_percent"))
-
-            verdict = check.get("verdict", "ERROR")
-            verdict_text = VERDICT_LABELS_PL.get(verdict, verdict)
-            row[4].text = verdict_text
-            verdict_color = VERDICT_COLORS_RGB.get(verdict)
-            if verdict_color and row[4].paragraphs[0].runs:
-                row[4].paragraphs[0].runs[0].font.color.rgb = verdict_color
+            row[0].text = nazwa_urzadzenia(nazwy, check["device_id"])
+            row[1].text = _format_value(check["i_operating_a"])
+            row[2].text = _format_value(check["i_pickup_a"])
+            row[3].text = _format_value(check["ratio"])
+            row[4].text = _format_value(check["required_ratio"])
+        for zdanie in uzasadnienia_sprawdzen(sorted_ovl_checks, nazwy):
+            doc.add_paragraph(zdanie, style="No Spacing")
     else:
         doc.add_paragraph("Brak danych", style="No Spacing")
 
@@ -353,7 +297,7 @@ def export_protection_coordination_to_docx(
         tcc_table.style = "Table Grid"
 
         # Header
-        headers = ["Urządzenie", "Typ krzywej", "I_pickup [A]", "TMS"]
+        headers = ["Urządzenie", "Typ krzywej", "I_s [A]", "TMS"]
         hdr_cells = tcc_table.rows[0].cells
         for i, h in enumerate(headers):
             hdr_cells[i].text = h
@@ -362,7 +306,7 @@ def export_protection_coordination_to_docx(
         # Data
         for curve in sorted_tcc_curves:
             row = tcc_table.add_row().cells
-            row[0].text = nazwa_wpisu_urzadzenia(curve, "device_name")[:20]
+            row[0].text = nazwa_wpisu_urzadzenia(curve, "device_name")
             row[1].text = etykieta_typu_krzywej_pl(curve)
             row[2].text = _format_value(curve.get("pickup_current_a"))
             row[3].text = etykieta_tms(curve, _format_value(curve.get("time_multiplier")))
@@ -391,7 +335,7 @@ def export_protection_coordination_to_docx(
     # ==========================================================================
     doc.add_paragraph()
     footer = doc.add_paragraph()
-    footer.add_run(f"Run ID: {result.get('run_id', '—')}").font.size = Pt(8)
+    footer.add_run(f"Identyfikator obliczenia: {result['run_id']}").font.size = Pt(8)
     footer.add_run(f"  |  Wygenerowano: {result.get('created_at', '—')[:19]}").font.size = Pt(8)
 
     # Save to bytes

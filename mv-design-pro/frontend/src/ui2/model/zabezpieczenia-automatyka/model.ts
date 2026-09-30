@@ -7,10 +7,8 @@
  * z ENM (`enm/models.py`); pokazujemy DOKŁADNIE to, co niesie model — brak danych
  * to uczciwe „nie skonfigurowano", nie zmyślona wartość.
  *
- * Świadomie NIE reużywamy `protection-coordination/AutomationPanel`: wymaga on
- * typów `AutomationConfig` (SPZ/SZR/SCO/FDIR z polami cykli/stopni), których ENM
- * `BayProtectionControlUnit`/`SpzState` NIE niesie — mapowanie wymagałoby
- * fabrykacji brakujących pól. Zamiast tego własna tabela w tokenach --mvd-*.
+ * Automatyka (SPZ) pokazywana wyłącznie z pól, które niesie ENM
+ * (`BayProtectionControlUnit`/`SpzState`) — bez pól cykli i stopni, których model nie ma.
  */
 
 import type { FieldReadModelItem } from '../../../ui/field/useFieldReadModel';

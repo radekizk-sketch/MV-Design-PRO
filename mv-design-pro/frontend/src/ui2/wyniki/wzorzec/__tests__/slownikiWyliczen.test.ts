@@ -113,7 +113,7 @@ describe('słowniki = zbiory kodów backendu (parytet z kodem źródłowym)', ()
       ...wartosciEnumu(zrodlo('domain', 'protection_analysis.py'), 'TripState'),
       ...[
         ...zrodlo('application', 'protection_comparison', 'service.py').matchAll(
-          /trip_state_[ab]=.*else "([A-Z_]+)"/g,
+          /trip_[ab] = .*else "([A-Z_]+)"/g,
         ),
       ].map((m) => m[1]),
     ]);

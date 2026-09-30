@@ -1,22 +1,17 @@
 /**
- * FIX-12B — TCC Chart Component for Coordination Analysis
+ * Wykres TCC koordynacji zabezpieczeń (E-28) — krzywe złożone urządzeń z modelu.
  *
- * Wrapper around TimeCurrentChart with coordination-specific features:
- * - Log-log visualization of protection curves
- * - Fault current markers
- * - Operating current markers
- * - Selectivity margin visualization
- *
- * CANONICAL ALIGNMENT:
- * - 100% Polish labels
- * - READ-ONLY (no physics calculations)
- * - Data from backend only
+ * Każda krzywa to czas najszybszego pobudzonego stopnia urządzenia policzony w backendzie
+ * (rdzeń IEC 60255) w siatce prądów; ekran rysuje punkty, legendę z nazwą charakterystyki
+ * i opisem stopni oraz znaczniki prądów zwarciowych. Odstępy czasowe par pokazuje panel
+ * interpretacji obok wykresu (liczby backendu, bez werdyktu — P-06); dawny baner
+ * „SELEKTYWNOŚĆ ZAPEWNIONA / BRAK SELEKTYWNOŚCI" skasowany. ZERO fizyki w UI.
  */
 
 import { useMemo, useState, useCallback } from 'react';
 import { TimeCurrentChart } from '../protection-curves/TimeCurrentChart';
 import type {
-  ProtectionCurve,
+  KrzywaWykresuTcc,
   FaultMarker as ChartFaultMarker,
   TimeCurrentChartConfig,
 } from '../protection-curves/types';
@@ -24,10 +19,9 @@ import type {
   TCCCurve,
   FaultMarker,
   CoordinationResult,
-  ProtectionDevice,
-  SelectivityCheck,
+  CoordinationDevice,
 } from './types';
-import { LABELS, VERDICT_STYLES, maPodstawePrzekaznikowa } from './types';
+import { LABELS, maPodstawePrzekaznikowa } from './types';
 import { useNazwaObiektu, type NazwaObiektu } from '../../ui2/wyniki/wzorzec/useNazwaObiektu';
 
 /**
@@ -46,9 +40,6 @@ export function etykietaZnacznikaZwarcia(marker: FaultMarker, nazwa: NazwaObiekt
 // Types
 // =============================================================================
 
-/** Globalny werdykt selektywności dla widoku TCC */
-export type TccSelectivityVerdict = 'OK' | 'NA_GRANICY' | 'NIE_OK';
-
 interface TccChartProps {
   /** TCC curves from backend */
   curves: TCCCurve[];
@@ -64,10 +55,8 @@ interface TccChartProps {
   height?: number;
   /** Show legend */
   showLegend?: boolean;
-  /** Available devices for name lookup */
-  devices?: ProtectionDevice[];
-  /** Selectivity checks for assessment (UI-04) */
-  selectivityChecks?: SelectivityCheck[];
+  /** Urządzenia wyniku (nazwy z modelu) */
+  devices?: CoordinationDevice[];
 }
 
 interface ChartControlsProps {
@@ -76,164 +65,18 @@ interface ChartControlsProps {
 }
 
 // =============================================================================
-// Selectivity Assessment Logic (UI-04)
+// Nazwy charakterystyk
 // =============================================================================
 
 /**
- * Agreguje werdykty z SelectivityCheck[] do jednego globalnego werdyktu dla TCC.
- *
- * Logika:
- * - OK: wszystkie sprawdzenia PASS
- * - NIE_OK: przynajmniej jedno sprawdzenie FAIL
- * - NA_GRANICY: przynajmniej jedno MARGINAL (i żadne FAIL), lub ERROR
+ * Polska nazwa charakterystyki czasowo-prądowej z PEŁNEGO kodu nastawy modelu
+ * (`DT`, `IEC_SI` … `IEEE_EI` — słownik = `KrzywaNastawy` backendu). Karta #145: kod krzywej
+ * nie jest tekstem legendy; kod spoza słownika nazwany jawnie jako nierozpoznany.
  */
-function aggregateSelectivityVerdict(checks: SelectivityCheck[]): TccSelectivityVerdict {
-  if (checks.length === 0) {
-    return 'OK'; // Brak sprawdzeń = brak problemów
-  }
-
-  let hasError = false;
-  let hasFail = false;
-  let hasMarginal = false;
-
-  for (const check of checks) {
-    if (check.verdict === 'FAIL') {
-      hasFail = true;
-    } else if (check.verdict === 'MARGINAL') {
-      hasMarginal = true;
-    } else if (check.verdict === 'ERROR') {
-      hasError = true;
-    }
-  }
-
-  if (hasFail) {
-    return 'NIE_OK';
-  }
-
-  if (hasMarginal || hasError) {
-    return 'NA_GRANICY';
-  }
-
-  return 'OK';
-}
-
-/**
- * Zwraca teksty interpretacji dla werdyktu selektywności TCC (UI-04).
- * Nazewnictwo normowe: "pole odpływowe", "pole zasilające", "selektywność czasowa".
- */
-function getSelectivityAssessmentTexts(verdict: TccSelectivityVerdict): {
-  status: string;
-  dlaczego: string;
-  coDalej: string;
-} {
-  switch (verdict) {
-    case 'OK':
-      return {
-        status: 'SELEKTYWNOŚĆ ZAPEWNIONA',
-        dlaczego:
-          'Selektywność zapewniona: zabezpieczenie w polu odpływowym działa wcześniej niż zabezpieczenie w polu zasilającym w całym analizowanym zakresie.',
-        coDalej: 'Brak wymaganych działań.',
-      };
-    case 'NA_GRANICY':
-      return {
-        status: 'REZERWA NA GRANICY',
-        dlaczego:
-          'Rezerwa selektywności jest niewielka: krzywe czasowo-prądowe są zbliżone w części analizowanego zakresu.',
-        coDalej:
-          'Zwiększ rezerwę selektywności: skoryguj nastawy czasowe (Δt) i/lub charakterystykę zabezpieczenia w polu zasilającym, zachowując wymagania ochrony odpływu.',
-      };
-    case 'NIE_OK':
-      return {
-        status: 'BRAK SELEKTYWNOŚCI',
-        dlaczego:
-          'Brak selektywności: w analizowanym zakresie możliwe jest zadziałanie zabezpieczenia w polu zasilającym przed zabezpieczeniem w polu odpływowym (przecięcie lub brak jednoznacznej separacji krzywych).',
-        coDalej:
-          'Przywróć selektywność: skoryguj nastawy prądowe/czasowe lub zmień charakterystykę zabezpieczenia w polu zasilającym; w obecnym stanie możliwe jest niepożądane wyłączenie zasilania.',
-      };
-  }
-}
-
-// =============================================================================
-// Selectivity Assessment Component (UI-04)
-// =============================================================================
-
-interface SelectivityAssessmentProps {
-  selectivityChecks: SelectivityCheck[];
-}
-
-/**
- * Polska nazwa charakterystyki czasowo-prądowej z kodu krzywej backendu
- * (`IEC_SI`, `IEEE_MI` — norma + wariant). Karta #145: kod krzywej nie jest tekstem
- * legendy; wariant spoza słownika `LABELS.curveTypes` nazwany jawnie jako nierozpoznany.
- */
-function nazwaCharakterystykiPL(kod: string): string {
-  const [norma, wariant] = kod.split('_');
-  const nazwa = LABELS.curveTypes[wariant as keyof typeof LABELS.curveTypes];
-  return nazwa === undefined
-    ? LABELS.charakterystykaNierozpoznana
-    : `${nazwa}${norma ? `, ${norma}` : ''}`;
-}
-
-/**
- * SelectivityAssessment — Ocena selektywności zabezpieczeń dla wykresu TCC
- *
- * Wyświetla blok tekstowy pod wykresem z:
- * - WERDYKT (SELEKTYWNOŚĆ ZAPEWNIONA / REZERWA NA GRANICY / BRAK SELEKTYWNOŚCI — karta
- *   #145: werdykt słowami inżyniera, nie skrótem „OK")
- * - DLACZEGO (1-2 zdania, inżyniersko)
- * - CO DALEJ (konkretne zalecenie operacyjne)
- *
- * UI-only, deterministyczne, bez nowych obliczeń.
- */
-function SelectivityAssessment({ selectivityChecks }: SelectivityAssessmentProps) {
-  const verdict = aggregateSelectivityVerdict(selectivityChecks);
-  const texts = getSelectivityAssessmentTexts(verdict);
-
-  // Mapowanie werdyktu TCC na style badge
-  const badgeStyle = (() => {
-    switch (verdict) {
-      case 'OK':
-        return VERDICT_STYLES.PASS;
-      case 'NA_GRANICY':
-        return VERDICT_STYLES.MARGINAL;
-      case 'NIE_OK':
-        return VERDICT_STYLES.FAIL;
-    }
-  })();
-
-  return (
-    <div
-      className="border-t border-slate-200 bg-slate-50 p-4"
-      data-testid="selectivity-assessment"
-    >
-      <div className="space-y-3">
-        {/* Nagłówek z werdyktem */}
-        <div className="flex items-center gap-3">
-          <h4 className="font-semibold text-slate-900">
-            Ocena selektywności zabezpieczeń
-          </h4>
-          <span
-            className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${badgeStyle.bg} ${badgeStyle.text}`}
-            data-testid={`tcc-verdict-${verdict.toLowerCase().replace(/ /g, '-')}`}
-          >
-            {texts.status}
-          </span>
-        </div>
-
-        {/* DLACZEGO */}
-        <div>
-          <p className="text-sm font-medium text-slate-700">Dlaczego:</p>
-          <p className="text-sm text-slate-600">{texts.dlaczego}</p>
-        </div>
-
-        {/* CO DALEJ */}
-        <div>
-          <p className="text-sm font-medium text-slate-700">Co dalej:</p>
-          <p className="text-sm text-slate-600">{texts.coDalej}</p>
-        </div>
-      </div>
-    </div>
-  );
+export function nazwaCharakterystykiPL(kod: string): string {
+  return Object.prototype.hasOwnProperty.call(LABELS.curveTypes, kod)
+    ? LABELS.curveTypes[kod as keyof typeof LABELS.curveTypes]
+    : LABELS.charakterystykaNierozpoznana;
 }
 
 // =============================================================================
@@ -335,7 +178,7 @@ interface LegendProps {
   curves: TCCCurve[];
   selectedDeviceId?: string | null;
   onDeviceClick?: (deviceId: string) => void;
-  devices?: ProtectionDevice[];
+  devices?: CoordinationDevice[];
 }
 
 function Legend({ curves, selectedDeviceId, onDeviceClick, devices }: LegendProps) {
@@ -350,7 +193,7 @@ function Legend({ curves, selectedDeviceId, onDeviceClick, devices }: LegendProp
         <button
           key={curve.device_id}
           onClick={() => onDeviceClick?.(curve.device_id)}
-          title={curve.powod_pl ?? undefined}
+          title={curve.powod_pl ?? curve.opis_pl ?? undefined}
           className={`flex items-center gap-2 rounded px-2 py-1 text-sm transition-colors ${
             selectedDeviceId === curve.device_id
               ? 'bg-slate-100 ring-2 ring-blue-500'
@@ -448,7 +291,6 @@ export function TccChart({
   height = 500,
   showLegend = true,
   devices,
-  selectivityChecks = [],
 }: TccChartProps) {
   const labels = LABELS.tcc;
   const nazwaObiektu = useNazwaObiektu();
@@ -462,20 +304,14 @@ export function TccChart({
     height,
   });
 
-  // Convert TCC curves to chart format.
-  // Karta N-D5-FUSE: pozycja BEZ podstawy przekaznikowej (bezpiecznik topikowy
-  // bez pasma z karty katalogowej) nie trafia na wykres — nie ma czego rysowac.
-  // Wczesniej `curve_type.startsWith('IEC') ? 'IEC' : 'IEEE'` przypisalby jej
-  // po cichu norme IEEE. Pozycja nie znika jednak z ekranu: legenda pokazuje ja
+  // Krzywe na wykres: wyłącznie punkty z backendu, nazwa i kolor.
+  // Karta N-D5-FUSE: pozycja BEZ podstawy przekaźnikowej (bezpiecznik topikowy bez pasma
+  // z karty katalogowej) nie trafia na wykres — nie ma czego rysować; legenda pokazuje ją
   // jawnie z powodem braku (patrz `Legend`).
-  const chartCurves: ProtectionCurve[] = useMemo(() => {
+  const chartCurves: KrzywaWykresuTcc[] = useMemo(() => {
     return curves.filter(maPodstawePrzekaznikowa).map((curve) => ({
       id: curve.device_id,
       name_pl: devices?.find((d) => d.id === curve.device_id)?.name ?? curve.device_name,
-      standard: (curve.curve_type.startsWith('IEC') ? 'IEC' : 'IEEE') as 'IEC' | 'IEEE',
-      curve_type: (curve.curve_type.split('_')[1] || 'SI') as ProtectionCurve['curve_type'],
-      pickup_current_a: curve.pickup_current_a,
-      time_multiplier: curve.time_multiplier,
       color: curve.color,
       enabled: true,
       points: curve.points.map((p) => ({
@@ -567,11 +403,6 @@ export function TccChart({
 
       {/* Marker list */}
       <MarkerList faultMarkers={faultMarkers} operatingCurrents={operatingCurrents} />
-
-      {/* Selectivity Assessment (UI-04) */}
-      {selectivityChecks.length > 0 && (
-        <SelectivityAssessment selectivityChecks={selectivityChecks} />
-      )}
     </div>
   );
 }
@@ -582,7 +413,7 @@ export function TccChart({
 
 interface TccChartFromResultProps {
   result: CoordinationResult;
-  devices: ProtectionDevice[];
+  devices: CoordinationDevice[];
   selectedDeviceId?: string | null;
   onDeviceClick?: (deviceId: string) => void;
   height?: number;
@@ -604,7 +435,6 @@ export function TccChartFromResult({
       onDeviceClick={onDeviceClick}
       height={height}
       showLegend={true}
-      selectivityChecks={result.selectivity_checks}
     />
   );
 }

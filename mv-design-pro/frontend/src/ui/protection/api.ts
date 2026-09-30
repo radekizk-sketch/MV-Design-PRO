@@ -160,6 +160,10 @@ function normalizeProtectionTemplate(item: Record<string, unknown>): ProtectionS
             typeof (field as Record<string, unknown>).unit === 'string'
               ? String((field as Record<string, unknown>).unit)
               : undefined,
+          jednostka_status:
+            (field as Record<string, unknown>).jednostka_status === 'NIEUSTALONA'
+              ? ('NIEUSTALONA' as const)
+              : undefined,
           min:
             typeof (field as Record<string, unknown>).min === 'number'
               ? Number((field as Record<string, unknown>).min)

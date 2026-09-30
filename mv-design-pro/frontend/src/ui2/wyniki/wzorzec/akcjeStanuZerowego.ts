@@ -49,9 +49,10 @@ export const AKCJE_STANU_ZEROWEGO_STRINGS = {
   otworzDokumentacjeOpis: 'Otwiera przestrzeń „Dokumentacja" — raport i dowód obliczeń.',
   porownajWarianty: 'Porównaj warianty',
   porownajWariantyOpis: 'Otwiera okno porównania A/B przebiegów tego projektu.',
-  przejdzDoSchematu: 'Przejdź do schematu',
-  przejdzDoSchematuOpis:
-    'Otwiera schemat (SLD) — stąd uruchomisz obliczenie zwarciowe i bieg zabezpieczeń.',
+  przejdzDoOcenyZabezpieczen: 'Przejdź do oceny zabezpieczeń',
+  przejdzDoOcenyZabezpieczenOpis:
+    'Otwiera ekran „Koordynacja zabezpieczeń" — stąd uruchomisz ocenę zabezpieczeń z modelu '
+    + 'na zakończonym biegu zwarciowym.',
   // W3-G1: bieg rozpływu ŚWIADOMIE inną metodą (walidacja krzyżowa NR↔GS↔FD).
   uruchomMetodaNr: 'Uruchom rozpływ metodą Newtona–Raphsona',
   uruchomMetodaNrOpis:
@@ -165,21 +166,18 @@ export function useAkcjaPorownajWarianty(): AkcjaStanuZerowego {
 }
 
 /**
- * Akcja „Przejdź do schematu" (karta CV-3.3-B2) — zero-state porównania
- * zabezpieczeń: bieg zabezpieczeń NIE rusza jednym kliknięciem „Oblicz"
- * (`useAkcjaUruchomObliczenie` obsługuje `ExecutionAnalysisType`, unię BEZ
- * `protection_sn` — wymaga uprzedniego biegu zwarciowego i `protection_case_id`,
- * dwuetapowo). Uczciwa akcja tego stanu zerowego to NAWIGACJA do miejsca,
- * gdzie operator faktycznie może uruchomić bieg — schemat (SLD), gdzie żyje
- * obliczenie zwarciowe i przycisk „Uruchom Protection"
- * (`ui/sld/v2/protection/ProtectionRunButton.tsx`) — zero fabrykacji akcji
- * bez pokrycia w backendzie.
+ * Akcja „Przejdź do oceny zabezpieczeń" — zero-state porównania zabezpieczeń. Bieg oceny
+ * zabezpieczeń (`protection_sn`) interpretuje zakończony bieg zwarciowy na urządzeniach
+ * i nastawach z modelu, więc nie rusza jednym kliknięciem „Oblicz" (`ExecutionAnalysisType`
+ * go nie obejmuje). Uruchamia go ekran „Koordynacja zabezpieczeń" (E-28, sekcja oceny
+ * zabezpieczeń na biegu zwarciowym) — akcja nawiguje tam, zero fabrykacji.
  */
-export function useAkcjaPrzejdzDoSchematu(): AkcjaStanuZerowego {
-  const onKlik = useCallback(() => przejdzDoPrzestrzeni('schemat'), []);
+export function useAkcjaPrzejdzDoOcenyZabezpieczen(): AkcjaStanuZerowego {
+  const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
+  const onKlik = useCallback(() => openRouteSurface('E-28'), [openRouteSurface]);
   return {
-    etykieta: AKCJE_STANU_ZEROWEGO_STRINGS.przejdzDoSchematu,
-    opis: AKCJE_STANU_ZEROWEGO_STRINGS.przejdzDoSchematuOpis,
+    etykieta: AKCJE_STANU_ZEROWEGO_STRINGS.przejdzDoOcenyZabezpieczen,
+    opis: AKCJE_STANU_ZEROWEGO_STRINGS.przejdzDoOcenyZabezpieczenOpis,
     onKlik,
   };
 }

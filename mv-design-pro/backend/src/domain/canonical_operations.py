@@ -338,7 +338,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("karta",),
         creates_elements=False,
     ),
-    # --- Protection (6 operations) ---
+    # --- Protection (5 operations) ---
     # W3-A (2026-09): "calculate_tcc_curve" skasowana razem z zaslepka w
     # enm/domain_operations_v2.py (zwracala wylacznie blad
     # "tcc.legacy_write_disabled", bez fizyki) — rodzina IDMT KLASA-NIE-
@@ -356,6 +356,8 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "catalog_binding",
             # W3-B (mapa 4 #3): obwód wtórny — koniec liczenia „na kartce".
             "obwod_wtorny",
+            # Karta BIEG-ZABEZPIECZEN-Z-MODELU: kotwica przy wyłączniku liniowym bez pola.
+            "breaker_ref",
         ),
     ),
     "add_vt": OperationSpec(
@@ -391,31 +393,23 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Dodanie przekaźnika zabezpieczeniowego",
         target_layer="Domain / NetworkModel",
         required_fields=("target_ct_ref",),
-        optional_fields=("relay_type", "manufacturer", "catalog_binding"),
+        optional_fields=(
+            "relay_type",
+            "manufacturer",
+            "catalog_binding",
+            "settings",
+            # Karta BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik liniowy bez pola jako kotwica.
+            "breaker_ref",
+        ),
     ),
-    "update_relay_settings": OperationSpec(
-        canonical_name="update_relay_settings",
+    "update_protection_settings": OperationSpec(
+        canonical_name="update_protection_settings",
         category=OperationCategory.PROTECTION,
-        description_pl="Aktualizacja nastaw przekaźnika",
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): pisarz nastaw zabezpieczenia w modelu —
+        # następca skasowanej zaślepki `update_relay_settings`.
+        description_pl="Zapis nastaw zabezpieczenia w modelu sieci",
         target_layer="Domain / NetworkModel",
-        required_fields=("relay_ref", "settings"),
-        creates_elements=False,
-    ),
-    "link_relay_to_field": OperationSpec(
-        canonical_name="link_relay_to_field",
-        category=OperationCategory.PROTECTION,
-        description_pl="Powiązanie przekaźnika z polem rozdzielczym",
-        target_layer="Domain / NetworkModel",
-        required_fields=("relay_ref", "field_ref"),
-        creates_elements=False,
-    ),
-    "validate_selectivity": OperationSpec(
-        canonical_name="validate_selectivity",
-        category=OperationCategory.PROTECTION,
-        description_pl="Walidacja selektywności między urządzeniami",
-        target_layer="Analysis / Protection",
-        required_fields=("upstream_ref", "downstream_ref"),
-        mutates_model=False,
+        required_fields=("protection_ref", "settings"),
         creates_elements=False,
     ),
     # --- Universal (4 operations) ---
@@ -1454,18 +1448,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Wskazany zacisk nie odpowiada żadnemu zabezpieczeniu z modelu — wyłącznik z "
             "przypiętym zabezpieczeniem stoi w szeregu z drugim zaciskiem gałęzi"
-        ),
-        fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
-    ),
-    "protection.device_breaker_not_in_series": ReadinessCodeSpec(
-        code="protection.device_breaker_not_in_series",
-        area=ReadinessArea.PROTECTION,
-        priority=3,
-        level=ReadinessLevel.BLOCKER,
-        message_pl=(
-            "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej "
-            "gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej "
-            "zacisk jako miejsce urządzenia"
         ),
         fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
     ),

@@ -1,11 +1,12 @@
 /**
- * K5-B — pętle decyzji: wykonawca nastaw E-28 + akcje wyjściowe strumienia OZE.
+ * K5-B — pętla decyzji: akcja wyjściowa strumienia OZE.
  *
- * Bramka (a): E-28 „Koordynacja zabezpieczeń" — zmiana nastawy urządzenia
- * zapisuje się do KONFIGURACJI PRZYPADKU (PUT /api/study-cases/{id}/
- * protection-config, overrides per urządzenie), a po pełnym przeładowaniu
- * przeglądarki (stan React wyzerowany) nastawa WRACA Z SERWERA. Przed K5-B
- * urządzenia żyły w `useState` i ginęły przy wyjściu ze strony.
+ * Dawna bramka (a) tego pliku (nastawa urządzenia E-28 zapisana w KONFIGURACJI
+ * PRZYPADKU, `PUT .../protection-config`) jest skasowana razem z tą konfiguracją
+ * (karta BIEG-ZABEZPIECZEN-Z-MODELU, D-21: urządzenia i nastawy żyją WYŁĄCZNIE w
+ * modelu). Jej intencję — nastawa wpisana przez projektanta przeżywa pełne
+ * przeładowanie, bo wraca z serwera — pilnuje teraz natywna ścieżka nastaw w
+ * `e2e/porownanie-zwarc-delty.spec.ts` (edytor nastaw → przeładowanie → wartość z modelu).
  *
  * Bramka (b): akcja wyjściowa OZE — „Przyłącz źródło w tym węźle" na oknie
  * „Zdolność przyłączeniowa" otwiera formularz operacji `add_converter_source`
@@ -196,7 +197,7 @@ async function dolozOdbiorNn(
 async function zbudujSiecGotowaDoObliczen(
   request: APIRequestContext,
   caseId: string,
-): Promise<{ stationSnBusRefs: string[]; kabelRefs: string[] }> {
+): Promise<{ stationSnBusRefs: string[] }> {
   let op = await executeDomainOp(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
@@ -323,7 +324,7 @@ async function zbudujSiecGotowaDoObliczen(
     }
   }
   expect(readiness?.ready).toBe(true);
-  return { stationSnBusRefs, kabelRefs: odcinkiLiniowe.map((branch) => branch.ref_id) };
+  return { stationSnBusRefs };
 }
 
 /** Bieg przez API execution — zwraca id przebiegu DONE (wzorzec deep-link). */
@@ -362,105 +363,6 @@ async function przeladujPowloke(page: Page): Promise<void> {
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
   await refreshResponsePromise;
 }
-
-/** Realna droga do E-28: Wyniki → „Pozostałe analizy" → karta koordynacji → Otwórz. */
-async function otworzKoordynacje(page: Page): Promise<void> {
-  await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
-  await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 20000 });
-  await otworzZakladkeWynikow(page, 'pozostale');
-  const karta = page.getByTestId('mvd-analizy-karta-koordynacja');
-  await expect(karta).toBeVisible({ timeout: 20000 });
-  await karta.getByRole('button', { name: 'Otwórz' }).click();
-  await expect(page.getByTestId('protection-coordination-page')).toBeVisible({ timeout: 20000 });
-}
-
-test('E-28: nastawa urządzenia zapisana do konfiguracji przypadku TRWA po pełnym przeładowaniu (bramka K5-B a)', async ({ page, request }) => {
-  test.setTimeout(240000);
-
-  const caseId = await createCaseFromUi(page, request);
-  const { kabelRefs } = await zbudujSiecGotowaDoObliczen(request, caseId);
-  expect(kabelRefs.length).toBeGreaterThan(0);
-  await uruchomBiegPrzezApi(request, caseId, 'SC_3F');
-
-  await przeladujPowloke(page);
-  await otworzKoordynacje(page);
-
-  // Realna ścieżka projektanta: dodaj urządzenie → wskaż odcinek kabla z modelu →
-  // wskaż zacisk (decyzja O-51 pkt 7: prąd roboczy = prąd ZACISKU gałęzi; etykiety
-  // zacisków z nazwami szyn przychodzą z backendu, brak zacisku domyślnego) →
-  // zmień nastawę I> → zapisz.
-  await page.getByRole('button', { name: 'Dodaj urządzenie' }).click();
-  const lokalizacja = page.getByTestId('device-location-select');
-  await expect(lokalizacja).toBeVisible({ timeout: 20000 });
-  const kabelRef = kabelRefs[0];
-  await lokalizacja.selectOption(kabelRef);
-  const zaciskOd = page.getByTestId('device-terminal-od');
-  await expect(zaciskOd).toBeVisible({ timeout: 20000 });
-  await expect(zaciskOd).not.toBeChecked();
-  await expect(page.getByTestId('device-terminal')).toContainText('Zacisk początkowy — szyna');
-  await expect(page.getByTestId('device-terminal')).toContainText('Zacisk końcowy — szyna');
-  // Bez wskazania backend nazywa brak (kod kanonu), zamiast przyjąć „od".
-  await expect(page.getByTestId('device-terminal-missing')).toBeVisible();
-  await zaciskOd.click();
-  await expect(zaciskOd).toBeChecked();
-  await expect(page.getByTestId('device-terminal-missing')).toHaveCount(0);
-
-  const stopien51 = page.locator('[data-testid="stage-editor-Stopień I> (51)"]');
-  const pradRozruchowy = stopien51.locator('input[type="number"]').first();
-  await pradRozruchowy.fill('175');
-  await page.getByRole('button', { name: 'Zapisz konfigurację' }).click();
-
-  // Komunikat o zapisie (istniejący system notyfikacji) z CTA przeliczenia.
-  await expect(
-    page
-      .getByTestId('notification-toast')
-      .filter({ hasText: 'Nastawy zabezpieczeń zapisane w konfiguracji przypadku' })
-      .first(),
-  ).toBeVisible({ timeout: 20000 });
-
-  // Nastawa trafiła do konfiguracji przypadku (kontrakt overrides per urządzenie).
-  const konfiguracja = await request.get(
-    `${BACKEND_BASE}/api/study-cases/${caseId}/protection-config`,
-  );
-  expect(konfiguracja.ok()).toBeTruthy();
-  const overrides = ((await konfiguracja.json()) as {
-    overrides: Record<
-      string,
-      {
-        location_element_id?: string;
-        zacisk?: string;
-        settings?: { stage_51?: { pickup_current_a?: number } };
-      }
-    >;
-  }).overrides;
-  const kluczeUrzadzen = Object.keys(overrides).filter((k) => k.startsWith('coordination_device:'));
-  expect(kluczeUrzadzen).toHaveLength(1);
-  expect(overrides[kluczeUrzadzen[0]].settings?.stage_51?.pickup_current_a).toBe(175);
-  expect(overrides[kluczeUrzadzen[0]].location_element_id).toBe(kabelRef);
-  expect(overrides[kluczeUrzadzen[0]].zacisk).toBe('od');
-
-  // WYJŚCIE I POWRÓT z pełnym przeładowaniem: stan React wyzerowany, więc
-  // jedynym źródłem urządzenia jest serwer (hydratacja z GET protection-config).
-  await przeladujPowloke(page);
-  await otworzKoordynacje(page);
-
-  // Wiersz urządzenia na liście (nazwa może też paść w panelu braków prądów —
-  // celujemy w PRZYCISK wyboru urządzenia).
-  const wierszUrzadzenia = page.getByRole('button', { name: /^Zabezpieczenie 1/ });
-  await expect(wierszUrzadzenia).toBeVisible({ timeout: 20000 });
-  // Lokalizacja z serwera — wiersz urządzenia nie mówi „lokalizacja niewskazana".
-  await expect(page.getByText('lokalizacja niewskazana')).toHaveCount(0);
-
-  // Nastawa wraca w edytorze (realny klik w urządzenie na liście).
-  await wierszUrzadzenia.click();
-  const pradPoPowrocie = page
-    .locator('[data-testid="stage-editor-Stopień I> (51)"]')
-    .locator('input[type="number"]')
-    .first();
-  await expect(pradPoPowrocie).toHaveValue('175', { timeout: 20000 });
-  // Zacisk wraca z serwera — wskazanie projektanta, nie domyślka.
-  await expect(page.getByTestId('device-terminal-od')).toBeChecked({ timeout: 20000 });
-});
 
 test('OZE: „Przyłącz źródło w tym węźle" otwiera formularz źródła z preselekcją węzła (bramka K5-B b)', async ({ page, request }) => {
   test.setTimeout(240000);

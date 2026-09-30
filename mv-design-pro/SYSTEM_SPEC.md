@@ -131,7 +131,7 @@ There is exactly ONE NetworkModel per project. It contains only physical electri
 - Types are **immutable** once created
 - Types are **shared** across projects
 - Catalog manages PASSIVE elements only (Line, Cable, Transformer, Switch types)
-- Source, Load, Protection parameters are Case-dependent, NOT cataloged
+- Source and Load parameters are Case-dependent, NOT cataloged; protection devices reference catalog positions (ranges with basis) and carry their settings in the model (D-21)
 - Centralized resolver: `network_model.catalog.resolver`
 
 > **Detail:** see [`docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md`](docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md), [`docs/system/SPEC_TYPOSZEREGI_I_KLASY_ELEMENTOW_TECHNICZNYCH.md`](docs/system/SPEC_TYPOSZEREGI_I_KLASY_ELEMENTOW_TECHNICZNYCH.md), [`docs/catalog/`](docs/catalog/).
@@ -198,9 +198,9 @@ Implemented analyses: Protection, Voltage, Thermal/Overload, Normative Evaluator
 
 Protection is a separate AnalysisType in the execution pipeline. It does NOT reside in the Solver layer — it is purely interpretive.
 
-- **Engine**: Protection Engine v1 (ANSI 50/51, IEC IDMT curves) — `domain/protection_engine_v1.py`
-- **Current source**: Explicit selection — `TEST_POINTS` (user-defined) or `SC_RESULT` (read-only from SC ResultSet)
-- **Coordination**: Explicit relay pairs (upstream/downstream), numerical margins only, no verdicts
+- **Devices and settings**: from the MODEL (`ProtectionAssignment.settings`, decision D-21); written by the domain operation `update_protection_settings` (editor in the designer path). No settings in study cases, no templates, no defaults — a missing datum is a named readiness item that blocks only the affected device.
+- **One evaluation path**: `application/analyses/protection/ocena_nadpradowa.py` (bieg `protection_sn`, coordination E-28, branch/bay clearing time, A/B comparison, report). Relay current = balance of SC branch flows at the device zone boundary; stage times only from the B-01 core `network_model/solvers/protection_iec60255.py`; plausibility against the CT accuracy limit (ALF); explainable verdict record per (device, fault point).
+- **Coordination (E-28)**: run ids only (MAX, MIN, PF); pairs from zone nesting (explicit pairs checked by the same predicate); numerical margins and ratios next to the required values, with trace per point of the downstream zone — no PASS/FAIL verdict and no overall verdict (P-06).
 - **Boundary**: Protection READS SC results. Protection NEVER modifies SC solver or SC ResultSet v1.
 - **Contracts**: See [`docs/analysis/PROTECTION_CONTRACTS.md`](docs/analysis/PROTECTION_CONTRACTS.md)
 - **Architecture**: See [`docs/analysis/PROTECTION_CANONICAL_ARCHITECTURE.md`](docs/analysis/PROTECTION_CANONICAL_ARCHITECTURE.md)

@@ -84,6 +84,9 @@ describe('buildTechCardSubject', () => {
     expect(insertZksn).toBeTruthy();
     const insertPole = subject!.actions?.find((action) => action.id.endsWith('insert_branch_pole_on_segment_sn'));
     expect(insertPole).toBeUndefined();
+    // Wstawienie łącznika (także wyłącznika z zabezpieczeniem w torze) dostępne z karty odcinka.
+    const lacznik = subject!.actions?.find((action) => action.id === 'open_operation:insert_section_switch_sn');
+    expect(lacznik?.label).toBe('Wstaw łącznik sekcyjny');
   });
 
   it('na odcinku napowietrznym blokuje akcję wstawienia ZKSN', () => {
@@ -105,6 +108,8 @@ describe('buildTechCardSubject', () => {
     expect(insertZksn).toBeUndefined();
     const insertPole = subject!.actions?.find((action) => action.id.endsWith('insert_branch_pole_on_segment_sn'));
     expect(insertPole).toBeTruthy();
+    const lacznik = subject!.actions?.find((action) => action.id === 'open_operation:insert_section_switch_sn');
+    expect(lacznik?.label).toBe('Wstaw łącznik sekcyjny');
   });
 
   it('buduje subject dla ZKSN bez transformatora i prezentuje porty', () => {

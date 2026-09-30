@@ -68,6 +68,8 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_ct',
   'add_vt',
   'add_relay',
+  // Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): pisarz nastaw zabezpieczenia w modelu.
+  'update_protection_settings',
   // Warunki przyłączenia OSD (nagłówek modelu, krok E1 flow projektanta)
   'set_connection_conditions',
   // Karta modeli odbiorów: wiązanie odbioru z profilem modelu dynamicznego (ekran dynamiki,

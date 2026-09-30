@@ -1,51 +1,35 @@
 /**
- * FIX-12B — Protection Coordination Page
+ * Koordynacja zabezpieczeń nadprądowych (E-28) — urządzenia i nastawy Z MODELU.
  *
- * Main page for protection coordination analysis with Canonical parity UX.
+ * Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): urządzenia i nastawy żyją w modelu sieci
+ * (edycja: ekran „Zabezpieczenia i automatyka" albo karta elementu). Ten ekran:
+ * - wskazuje biegi wejściowe (zwarcie MAX i MIN — scenariusz zapisany na biegu — oraz
+ *   rozpływ) z zakończonych biegów przypadku,
+ * - uruchamia koordynację backendu (`POST /api/protection-coordination/projects/{id}/run`
+ *   z samymi identyfikatorami biegów),
+ * - pokazuje wynik: urządzenia z nastawami, odmowy z akcją naprawczą, pary stopniowania
+ *   z topologii, czułość/selektywność/przeciążalność ze zdaniem uzasadnienia, TCC, ślad
+ *   White Box i eksport PDF/DOCX.
  *
- * FEATURES:
- * - Device management (add, remove, clone, apply template)
- * - Context selector (StudyCase/Snapshot/Run)
- * - Run coordination analysis
- * - View results (sensitivity, selectivity, overload)
- * - TCC chart visualization (log-log)
- * - WHITE BOX trace
- *
- * CANONICAL ALIGNMENT:
- * - 100% Polish labels
- * - READ-ONLY relative to solver results
- * - No physics calculations in frontend
+ * Dawny ekran (szablony urządzeń, nastawy w konfiguracji przypadku, lokalizacje wskazywane
+ * ręcznie, prądy budowane w przeglądarce) skasowany. ZERO fizyki w UI.
  */
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import type {
-  ProtectionDevice,
-  CoordinationResult,
-  FaultCurrentData,
-  OperatingCurrentData,
-  AnalysisStatus,
-  DeviceTemplate,
-} from './types';
+import { useCallback, useMemo, useState } from 'react';
+
+import type { AnalysisStatus, CoordinationResult } from './types';
+import { LABELS } from './types';
 import {
-  LABELS,
-  DEFAULT_STAGE_51,
-  DEFAULT_CONFIG,
-  DEVICE_TEMPLATES,
-} from './types';
-import { runCoordinationAnalysis, getCoordinationResult } from './api';
-import {
-  wczytajUrzadzeniaKoordynacji,
-  zapiszUrzadzeniaKoordynacji,
-} from './nastawyPrzypadku';
-import type { ProtectionConfig } from '../study-cases/api';
-import { notify } from '../notifications/store';
-import { useNazwaObiektu } from '../../ui2/wyniki/wzorzec/useNazwaObiektu';
+  getCoordinationResult,
+  getExportDocxUrl,
+  getExportPdfUrl,
+  runCoordinationAnalysis,
+} from './api';
 import { InformacjeAudytowe } from '../../ui2/wyniki/wzorzec/InformacjeAudytowe';
 import { useShellStore } from '../../ui2/shell/useShellStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
-import { ProtectionSettingsEditor } from './ProtectionSettingsEditor';
+import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import {
-  VerdictBadge,
   SensitivityTable,
   SelectivityTable,
   OverloadTable,
@@ -55,64 +39,20 @@ import { TccChartFromResult } from './TccChart';
 import { TracePanel } from './TracePanel';
 import { TccInterpretationPanel } from './TccInterpretationPanel';
 import { useAppStateStore } from '../app-state/store';
-import { useExecutionRunsStore } from '../study-cases/runStore';
-import {
-  fetchBranchResults,
-  fetchCurrentCaseSnapshot,
-  fetchShortCircuitResults,
-} from '../results-inspector/api';
-import {
-  podzielWierszeNaPrzypadki,
-  zbudujPradyKoordynacji,
-  type BiegZwarciowyDoPodzialu,
-} from './pradyZBiegow';
-import type { BrakDanejPradowej } from './pradyZBiegow';
-import { fetchMiejsceUrzadzenia, type MiejsceUrzadzenia } from './miejsceUrzadzenia';
-import { lokalizacjeKoordynacji } from './lokalizacjeZModelu';
-import type { LokalizacjaModelu } from './lokalizacjeZModelu';
-
-// =============================================================================
-// Types
-// =============================================================================
+import { useBiegiKoordynacji, type BiegiKoordynacji } from './biegiKoordynacji';
 
 type TabId = 'summary' | 'sensitivity' | 'selectivity' | 'overload' | 'tcc' | 'trace';
 
-interface PageState {
-  devices: ProtectionDevice[];
-  faultCurrents: FaultCurrentData[];
-  operatingCurrents: OperatingCurrentData[];
-  result: CoordinationResult | null;
-  status: AnalysisStatus;
-  error: string | null;
-  activeTab: TabId;
-  editingDeviceId: string | null;
-  showTemplates: boolean;
-}
-
 // =============================================================================
-// Context Selector Component
+// Kontekst
 // =============================================================================
 
-interface ContextSelectorProps {
-  projectId: string | null;
-  projectName: string | null;
-  caseId: string | null;
-  caseName: string | null;
-  snapshotId: string | null;
-}
-
-/**
- * Kontekst analizy (karta #145): na pierwszym planie NAZWY projektu i wariantu pracy
- * oraz rewizja modelu — identyfikatory (projektu, wariantu, stanu modelu) wyłącznie
- * w „Informacjach audytowych" trybu eksperckiego.
- */
-function ContextSelector({
-  projectId,
-  projectName,
-  caseId,
-  caseName,
-  snapshotId,
-}: ContextSelectorProps) {
+function ContextSelector() {
+  const projectId = useAppStateStore((state) => state.activeProjectId);
+  const caseId = useAppStateStore((state) => state.activeCaseId);
+  const snapshotId = useAppStateStore((state) => state.activeSnapshotId);
+  const projectName = useAppStateStore((state) => state.activeProjectName);
+  const caseName = useAppStateStore((state) => state.activeCaseName);
   const labels = LABELS.context;
   const rewizja = useSnapshotStore((stan) => stan.snapshot?.header?.revision ?? null);
   const trybEkspercki = useShellStore((stan) => stan.advancementMode) === 'expert';
@@ -126,7 +66,6 @@ function ContextSelector({
     ...(caseId ? [{ etykieta: labels.identyfikatorWariantu, wartosc: caseId }] : []),
     ...(snapshotId ? [{ etykieta: labels.identyfikatorStanuModelu, wartosc: snapshotId }] : []),
   ];
-
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-4 py-2">
       <div className="flex items-center gap-4">
@@ -159,232 +98,143 @@ function ContextSelector({
 }
 
 // =============================================================================
-// Device List Panel Component
+// Biegi wejściowe
 // =============================================================================
 
-interface DeviceListPanelProps {
-  devices: ProtectionDevice[];
-  editingDeviceId: string | null;
-  onAddDevice: () => void;
-  onRemoveDevice: (id: string) => void;
-  onCloneDevice: (id: string) => void;
-  onSelectDevice: (id: string | null) => void;
-  onShowTemplates: () => void;
+function PanelBiegow({ biegi }: { biegi: BiegiKoordynacji }) {
+  const L = LABELS.biegi;
+  const wiersz = (etykieta: string, id: string | null, testid: string) => (
+    <div className="flex justify-between gap-4 text-sm" data-testid={testid}>
+      <span className="text-slate-600">{etykieta}</span>
+      <span className={id ? 'text-emerald-700' : 'text-amber-700'}>
+        {id ? '✓' : L.brak}
+      </span>
+    </div>
+  );
+  return (
+    <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4" data-testid="coordination-runs">
+      <h3 className="font-semibold text-slate-900">{L.tytul}</h3>
+      {wiersz(L.max, biegi.max, 'coordination-run-max')}
+      {wiersz(L.min, biegi.min, 'coordination-run-min')}
+      {wiersz(L.pf, biegi.pf, 'coordination-run-pf')}
+      {!biegi.max || !biegi.min ? (
+        <p className="text-sm text-amber-800" data-testid="coordination-runs-missing">
+          {L.brakMaxMin}
+        </p>
+      ) : !biegi.pf ? (
+        <p className="text-sm text-slate-500">{L.brakPf}</p>
+      ) : null}
+    </div>
+  );
 }
 
-function DeviceListPanel({
-  devices,
-  editingDeviceId,
-  onAddDevice,
-  onRemoveDevice,
-  onCloneDevice,
-  onSelectDevice,
-  onShowTemplates,
-}: DeviceListPanelProps) {
-  const labels = LABELS.devices;
-  // Karta #145: miejsce urządzenia nazwane mostem nazw wyników (nazwa z modelu), nie
-  // referencją elementu.
-  const nazwaObiektu = useNazwaObiektu();
+// =============================================================================
+// Urządzenia wyniku
+// =============================================================================
 
+function PanelUrzadzen({ result }: { result: CoordinationResult }) {
+  const L = LABELS.devices;
+  const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
+  const nazwa = (ref: string) =>
+    result.devices.find((d) => d.id === ref)?.name ?? L.nieznaneUrzadzenie;
   return (
-    <div className="rounded-lg border border-slate-200 bg-white">
-      {/* Header. K5-B (defekt zastany, naprawa u źródła): bez `flex-wrap`
-          wiersz tytuł+przyciski NIE ZAWIJAŁ się w wąskiej kolumnie — przycisk
-          „Dodaj urządzenie" wystawał poza panel i wjeżdżał POD panel wyników
-          (dalszy w DOM), który przechwytywał kliknięcia. Martwy klik widoczny
-          dopiero na realnej ścieżce e2e (kliki syntetyczne go nie łapały). */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
-        <h2 className="font-semibold text-slate-900">{labels.title}</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={onShowTemplates}
-            className="rounded border border-slate-300 px-2 py-1 text-sm text-slate-600 hover:bg-slate-50"
-            title={labels.applyTemplate}
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-              />
-            </svg>
-          </button>
-          <button
-            onClick={onAddDevice}
-            className="rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            {labels.add}
-          </button>
-        </div>
+    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4" data-testid="coordination-devices">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-semibold text-slate-900">{L.title}</h3>
+        <button
+          type="button"
+          className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
+          data-testid="coordination-edit-settings"
+          onClick={() => openRouteSurface('E-27')}
+        >
+          {L.zmienNastawy}
+        </button>
       </div>
-
-      {/* Device list */}
-      <div className="max-h-[400px] overflow-y-auto p-2">
-        {devices.length === 0 ? (
-          <div className="py-8 text-center text-sm text-slate-500">
-            {labels.noDevices}
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {devices.map((device) => (
-              <div
-                key={device.id}
-                className={`group flex items-center justify-between rounded p-2 transition-colors ${
-                  editingDeviceId === device.id
-                    ? 'bg-blue-50 ring-1 ring-blue-200'
-                    : 'hover:bg-slate-50'
-                }`}
-              >
-                <button
-                  className="flex-1 text-left"
-                  onClick={() => onSelectDevice(device.id)}
-                >
-                  <p className="font-medium text-slate-900">{device.name}</p>
-                  <p
-                    className={
-                      device.location_element_id === ''
-                        ? 'text-xs text-amber-700'
-                        : 'text-xs text-slate-500'
-                    }
-                    data-testid={`device-location-${device.id}`}
-                  >
-                    {LABELS.deviceTypes[device.device_type]}
-                    {' | '}
-                    {/* V12K-262: pusta lokalizacja jest NAZWANA, nie przemilczana — inaczej
-                        wiersz wyglądałby jak związany z elementem o pustej nazwie. */}
-                    {device.location_element_id === ''
-                      ? LABELS.validation.lokalizacjaNieWskazana
-                      : nazwaObiektu(device.location_element_id)}
-                  </p>
-                </button>
-                <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCloneDevice(device.id);
-                    }}
-                    className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-blue-600"
-                    title={labels.clone}
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemoveDevice(device.id);
-                    }}
-                    className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-600"
-                    title={labels.remove}
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
+      <p className="text-xs text-slate-500">{L.opis}</p>
+      <ul className="space-y-2">
+        {result.devices.map((d) => (
+          <li key={d.id} className="rounded border border-slate-200 p-2 text-sm" data-testid={`coordination-device-${d.id}`}>
+            <div className="font-medium text-slate-900">{d.name}</div>
+            <div className="text-xs text-slate-500">
+              {d.device_type === 'FUSE' ? L.bezpiecznik : L.przekaznik}
+            </div>
+            {d.nastawy?.stopnie.map((s) => (
+              <div key={s.funkcja} className="text-xs text-slate-700">
+                {s.etykieta_pl}: {s.prog_pierwotny_a.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} A,{' '}
+                {s.krzywa_pl}
+                {s.tms !== null ? `, TMS ${s.tms.toLocaleString('pl-PL')}` : ''}
+                {s.zwloka_s !== null ? `, ${s.zwloka_s.toLocaleString('pl-PL')} s` : ''}
               </div>
             ))}
-          </div>
-        )}
-      </div>
+          </li>
+        ))}
+      </ul>
+      {result.pary.length > 0 ? (
+        <div data-testid="coordination-pairs">
+          <h4 className="text-sm font-medium text-slate-800">{L.paryTytul}</h4>
+          <ul className="text-xs text-slate-700">
+            {result.pary.map((p) => (
+              <li key={`${p.nadrzedne_ref}-${p.podrzedne_ref}`}>
+                {nazwa(p.podrzedne_ref)} ({L.podrzedne}) → {nazwa(p.nadrzedne_ref)} ({L.nadrzedne})
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {result.odmowy_urzadzen.length > 0 ? (
+        <div className="rounded border border-amber-300 bg-amber-50 p-2" data-testid="coordination-refusals">
+          <h4 className="text-sm font-medium text-amber-900">{L.odmowyTytul}</h4>
+          <ul className="space-y-1 text-xs text-amber-900">
+            {result.odmowy_urzadzen.map((o) => (
+              <li key={o.urzadzenie_ref}>
+                <span className="font-medium">{o.nazwa_pl}:</span>{' '}
+                {o.braki.map((b) => `${b.komunikat_pl} ${b.akcja_naprawcza_pl}`).join(' ')}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {result.odmowy_par.length > 0 ? (
+        <div className="rounded border border-amber-300 bg-amber-50 p-2" data-testid="coordination-pair-refusals">
+          <h4 className="text-sm font-medium text-amber-900">{L.odmowyParTytul}</h4>
+          <ul className="space-y-1 text-xs text-amber-900">
+            {result.odmowy_par.map((o) => (
+              <li key={`${o.podrzedne_ref}-${o.kod}`}>
+                {nazwa(o.podrzedne_ref)}: {o.powod_pl}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {result.pominiete.length > 0 ? (
+        <div data-testid="coordination-skipped">
+          <h4 className="text-sm font-medium text-slate-800">{L.pominieteTytul}</h4>
+          <ul className="text-xs text-slate-600">
+            {result.pominiete.map((p) => (
+              <li key={p.urzadzenie_ref}>
+                {p.nazwa_pl}: {p.powod_pl}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }
 
 // =============================================================================
-// Template Selector Modal
+// Podsumowanie i zakładki
 // =============================================================================
 
-interface TemplateSelectorProps {
-  templates: DeviceTemplate[];
-  onSelect: (template: DeviceTemplate) => void;
-  onClose: () => void;
-}
-
-function TemplateSelector({ templates, onSelect, onClose }: TemplateSelectorProps) {
-  const labels = LABELS.templates;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-          <h3 className="font-semibold text-slate-900">{labels.title}</h3>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-        <div className="max-h-[400px] overflow-y-auto p-4">
-          {templates.length === 0 ? (
-            <p className="text-center text-slate-500">{labels.noTemplates}</p>
-          ) : (
-            <div className="space-y-2">
-              {templates.map((template) => (
-                <button
-                  key={template.id}
-                  onClick={() => onSelect(template)}
-                  className="w-full rounded-lg border border-slate-200 p-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
-                >
-                  <p className="font-medium text-slate-900">{template.name}</p>
-                  <p className="text-sm text-slate-500">{template.description_pl}</p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    {LABELS.deviceTypes[template.device_type]}
-                  </p>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =============================================================================
-// Summary Tab Component
-// =============================================================================
-
-interface SummaryTabProps {
-  result: CoordinationResult;
-}
-
-function SummaryTab({ result }: SummaryTabProps) {
+function SummaryTab({ result }: { result: CoordinationResult }) {
   const { summary } = result;
   const labels = LABELS.summary;
-
   return (
     <div className="space-y-6">
-      {/* Overall Verdict */}
-      <div className="rounded-lg border border-slate-200 bg-white p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900">{labels.title}</h3>
-            <p className="mt-1 text-sm text-slate-600">
-              {LABELS.verdictVerbose[result.overall_verdict]}
-            </p>
-          </div>
-          <VerdictBadge verdict={result.overall_verdict} size="md" />
+      <div className="rounded-lg border border-slate-200 bg-white p-6" data-testid="coordination-summary">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">{labels.title}</h3>
+          <p className="mt-1 text-sm text-slate-600">{labels.opis}</p>
         </div>
         <div className="mt-4 grid gap-4 text-sm md:grid-cols-2">
           <div className="flex justify-between rounded bg-slate-50 px-3 py-2">
@@ -396,65 +246,70 @@ function SummaryTab({ result }: SummaryTabProps) {
             <span className="font-medium text-slate-900">{summary.total_checks}</span>
           </div>
         </div>
+        <div className="mt-4 flex gap-2">
+          <a
+            href={getExportPdfUrl(result.run_id)}
+            className="rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
+            data-testid="coordination-export-pdf"
+          >
+            {LABELS.actions.exportPdf}
+          </a>
+          <a
+            href={getExportDocxUrl(result.run_id)}
+            className="rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
+            data-testid="coordination-export-docx"
+          >
+            {LABELS.actions.exportDocx}
+          </a>
+        </div>
       </div>
-
-      {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <SummaryCard
-          title={LABELS.checks.sensitivity.title}
-          passCount={summary.sensitivity.pass}
-          marginalCount={summary.sensitivity.marginal}
-          failCount={summary.sensitivity.fail}
+          title={labels.najmniejszyIlorazCzulosci}
+          wartosc={summary.sensitivity.najmniejszy_iloraz}
+          wymagana={summary.kryteria.sensitivity_ratio_required}
+          miejsca={2}
+          bezWartosci={summary.sensitivity.bez_wartosci}
+          testid="summary-card-czulosc"
         />
         <SummaryCard
-          title={LABELS.checks.selectivity.title}
-          passCount={summary.selectivity.pass}
-          marginalCount={summary.selectivity.marginal}
-          failCount={summary.selectivity.fail}
+          title={labels.najmniejszyOdstep}
+          wartosc={summary.selectivity.najmniejszy_odstep_s}
+          wymagana={summary.kryteria.minimum_grading_margin_s}
+          miejsca={3}
+          bezWartosci={summary.selectivity.bez_odstepu}
+          testid="summary-card-selektywnosc"
         />
         <SummaryCard
-          title={LABELS.checks.overload.title}
-          passCount={summary.overload.pass}
-          marginalCount={summary.overload.marginal}
-          failCount={summary.overload.fail}
+          title={labels.najmniejszyIlorazPrzeciazalnosci}
+          wartosc={summary.overload.najmniejszy_iloraz}
+          wymagana={summary.kryteria.overload_ratio_required}
+          miejsca={2}
+          bezWartosci={summary.overload.bez_wartosci}
+          testid="summary-card-przeciazalnosc"
         />
       </div>
     </div>
   );
 }
 
-// =============================================================================
-// Tab Navigation Component
-// =============================================================================
-
-interface TabNavigationProps {
+function TabNavigation({
+  activeTab,
+  onTabChange,
+  result,
+}: {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
-  result: CoordinationResult | null;
-}
-
-function TabNavigation({ activeTab, onTabChange, result }: TabNavigationProps) {
+  result: CoordinationResult;
+}) {
   const tabs: { id: TabId; label: string; count?: number }[] = [
     { id: 'summary', label: LABELS.tabs.summary },
-    {
-      id: 'sensitivity',
-      label: LABELS.tabs.sensitivity,
-      count: result?.sensitivity_checks.length,
-    },
-    {
-      id: 'selectivity',
-      label: LABELS.tabs.selectivity,
-      count: result?.selectivity_checks.length,
-    },
-    {
-      id: 'overload',
-      label: LABELS.tabs.overload,
-      count: result?.overload_checks.length,
-    },
+    { id: 'sensitivity', label: LABELS.tabs.sensitivity, count: result.sensitivity_checks.length },
+    { id: 'selectivity', label: LABELS.tabs.selectivity, count: result.selectivity_checks.length },
+    { id: 'overload', label: LABELS.tabs.overload, count: result.overload_checks.length },
     { id: 'tcc', label: LABELS.tabs.tcc },
-    { id: 'trace', label: LABELS.tabs.trace, count: result?.trace_steps.length },
+    { id: 'trace', label: LABELS.tabs.trace, count: result.trace_steps.length },
   ];
-
   return (
     <div className="flex gap-1 rounded-lg bg-slate-100 p-1" data-testid="tab-navigation">
       {tabs.map((tab) => (
@@ -470,9 +325,7 @@ function TabNavigation({ activeTab, onTabChange, result }: TabNavigationProps) {
         >
           {tab.label}
           {tab.count !== undefined && tab.count > 0 && (
-            <span className="rounded-full bg-slate-200 px-1.5 text-xs">
-              {tab.count}
-            </span>
+            <span className="rounded-full bg-slate-200 px-1.5 text-xs">{tab.count}</span>
           )}
         </button>
       ))}
@@ -481,687 +334,150 @@ function TabNavigation({ activeTab, onTabChange, result }: TabNavigationProps) {
 }
 
 // =============================================================================
-// Main Page Component
+// Ekran
 // =============================================================================
-
-type BranchRowLite = Awaited<ReturnType<typeof fetchBranchResults>>['rows'][number];
 
 export function ProtectionCoordinationPage() {
   const projectId = useAppStateStore((state) => state.activeProjectId);
-  const caseId = useAppStateStore((state) => state.activeCaseId);
-  const snapshotId = useAppStateStore((state) => state.activeSnapshotId);
-  const projectName = useAppStateStore((state) => state.activeProjectName);
-  const caseName = useAppStateStore((state) => state.activeCaseName);
+  const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
 
-  const [state, setState] = useState<PageState>({
-    devices: [],
-    faultCurrents: [],
-    operatingCurrents: [],
-    result: null,
-    status: 'IDLE',
-    error: null,
-    activeTab: 'summary',
-    editingDeviceId: null,
-    showTemplates: false,
-  });
-  // F-K4 faza 3b: braki danych prądowych z biegów (uczciwy stan zamiast atrapy).
-  const [brakiPradowe, setBrakiPradowe] = useState<readonly BrakDanejPradowej[]>([]);
-  // Biegi, z których zbudowano prądy — ich identyfikatory idą w żądaniu analizy.
-  const [biegiKoordynacji, setBiegiKoordynacji] = useState<{
-    readonly sc_run_id: string | null;
-    readonly sc_run_id_min: string | null;
-    readonly pf_run_id: string | null;
-  }>({ sc_run_id: null, sc_run_id_min: null, pf_run_id: null });
-  // K5-B (H-2): wykonawca nastaw E-28 — urządzenia i nastawy żyją w konfiguracji
-  // PRZYPADKU (`ProtectionConfig.overrides`, klucz per urządzenie), nie w useState.
-  // `ostatniaKonfiguracja` trzyma pełny ProtectionConfig z ostatniego GET/PUT —
-  // PUT nadpisuje całość, więc bez tego zapis kasowałby szablon P14c i obce
-  // nadpisania pól. Zapis do ENM protection_assignments pozostaje ZABLOKOWANY.
-  const ostatniaKonfiguracja = useRef<ProtectionConfig | null>(null);
-  // Wynik koordynacji liczony przed zmianą nastaw jest NIEAKTUALNY — stan jawny
-  // z CTA „Przelicz koordynację" (result_status przypadku bez zmian: to config).
-  const [wynikNieaktualny, setWynikNieaktualny] = useState(false);
-  // Lustro `state.result !== null` dla callbacku zapisu (bez zależności od
-  // całego stanu i bez efektów ubocznych w updaterze setState).
-  const maWynik = useRef(false);
-  maWynik.current = state.result !== null;
-  // CTA toastu „Przelicz koordynację" woła bieżącą analizę — ref, bo callback
-  // zapisu powstaje przed definicją `handleRunAnalysis` (lustro bieżącej wersji).
-  const uruchomAnalize = useRef<() => void>(() => undefined);
-  // V12K-262: lista elementów, w których wolno umieścić zabezpieczenie — z MIGAWKI
-  // MODELU przypadku, nie z wyobraźni ekranu. `null` = migawki jeszcze nie ma
-  // (albo nie da się jej pobrać) i wtedy pole lokalizacji uczciwie o tym mówi.
-  const [lokalizacje, setLokalizacje] = useState<readonly LokalizacjaModelu[] | null>(null);
-  const [bladLokalizacji, setBladLokalizacji] = useState<string | null>(null);
+  const biegi = useBiegiKoordynacji();
+  const [result, setResult] = useState<CoordinationResult | null>(null);
+  const [status, setStatus] = useState<AnalysisStatus>('IDLE');
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId>('summary');
 
-  useEffect(() => {
-    if (!caseId) {
-      setLokalizacje(null);
-      setBladLokalizacji(null);
-      return;
-    }
-    let anulowane = false;
-    void (async () => {
-      try {
-        const model = await fetchCurrentCaseSnapshot(caseId);
-        if (anulowane) return;
-        setLokalizacje(lokalizacjeKoordynacji(model));
-        setBladLokalizacji(null);
-      } catch (err) {
-        if (anulowane) return;
-        setLokalizacje(null);
-        setBladLokalizacji(
-          err instanceof Error ? err.message : LABELS.validation.brakModeluLokalizacji,
-        );
-      }
-    })();
-    return () => {
-      anulowane = true;
-    };
-  }, [caseId]);
-
-  // K5-B (H-2): hydratacja urządzeń z konfiguracji przypadku przy wejściu —
-  // koniec `devices: []` w useState. Błąd pobrania jest NAZWANY (notyfikacja),
-  // a lista zostaje pusta zamiast udawać świeży start.
-  useEffect(() => {
-    ostatniaKonfiguracja.current = null;
-    if (!caseId) return;
-    let anulowane = false;
-    void (async () => {
-      try {
-        const { konfiguracja, urzadzenia } = await wczytajUrzadzeniaKoordynacji(caseId);
-        if (anulowane) return;
-        ostatniaKonfiguracja.current = konfiguracja;
-        if (urzadzenia.length > 0) {
-          setState((prev) => ({ ...prev, devices: urzadzenia }));
-        }
-      } catch (err) {
-        if (anulowane) return;
-        notify(
-          `${LABELS.persistence.bladOdczytu}: ${err instanceof Error ? err.message : String(err)}`,
-          'error',
-        );
-      }
-    })();
-    return () => {
-      anulowane = true;
-    };
-  }, [caseId]);
-
-  // Zapis pełnego zestawu urządzeń do konfiguracji przypadku (PUT). Sukces
-  // odświeża `ostatniaKonfiguracja` (kolejny zapis scala na aktualnej bazie)
-  // i oznacza istniejący wynik jako nieaktualny. Porażka jest NAZWANA — stan
-  // lokalny zostaje, żeby projektant nie stracił edycji, ale nic nie udaje
-  // zapisu.
-  const utrwalUrzadzenia = useCallback(
-    async (urzadzenia: readonly ProtectionDevice[]) => {
-      if (!caseId) {
-        notify(LABELS.persistence.brakPrzypadku, 'warning');
-        return;
-      }
-      try {
-        const konfiguracja = await zapiszUrzadzeniaKoordynacji(
-          caseId,
-          urzadzenia,
-          ostatniaKonfiguracja.current,
-        );
-        ostatniaKonfiguracja.current = konfiguracja;
-        if (maWynik.current) setWynikNieaktualny(true);
-        notify(LABELS.persistence.zapisano, {
-          type: 'success',
-          actions: [
-            {
-              label: LABELS.persistence.przelicz,
-              onClick: () => uruchomAnalize.current(),
-            },
-          ],
-        });
-      } catch (err) {
-        notify(
-          `${LABELS.persistence.bladZapisu}: ${err instanceof Error ? err.message : String(err)}`,
-          'error',
-        );
-      }
-    },
-    [caseId],
-  );
-
-  // F-K4 faza 3b: prądy wejściowe koordynacji pochodzą WYŁĄCZNIE z zakończonych
-  // biegów obliczeniowych. Klasyfikacja przypadku (maksymalny / minimalny) idzie po
-  // SCENARIUSZU zapisanym na biegu (`konfiguracja_biegu.scenariusz`, patrz
-  // `podzielWierszeNaPrzypadki`) — kanoniczny bieg liczy jeden scenariusz, więc pełna
-  // koordynacja wymaga dwóch biegów. Braki są raportowane jawnie, nigdy uzupełniane liczbą.
-  const przebiegi = useExecutionRunsStore((s) => s.runs);
-  // Klucz zależności: lokalizacja I zacisk urządzenia (decyzja O-51 pkt 7) — zmiana
-  // zacisku zmienia prąd roboczy (inny wiersz/kolumna tabeli gałęzi).
-  const urzadzeniaKlucz = state.devices
-    .map((d) => `${d.location_element_id}:${d.zacisk ?? ''}`)
-    .join('|');
-  useEffect(() => {
-    if (state.devices.length === 0) {
-      setBrakiPradowe([]);
-      return;
-    }
-    const zakonczone = przebiegi.filter((r) => r.status === 'DONE');
-    // Od NAJNOWSZEGO — `podzielWierszeNaPrzypadki` bierze jeden (najnowszy) bieg na
-    // scenariusz, a jego identyfikator idzie w żądaniu analizy (`sc_run_id[_min]`).
-    const biegiZwarciowe = zakonczone
-      .filter((r) => ['SC_3F', 'SC_1F', 'SC_2F', 'SC_2F_G'].includes(r.analysis_type))
-      .sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''));
-    const biegRozplywu = zakonczone.find((r) => r.analysis_type === 'LOAD_FLOW') ?? null;
-    let anulowane = false;
-
-    void (async () => {
-      const wynikiZwarciowe: BiegZwarciowyDoPodzialu[] = [];
-      for (const bieg of biegiZwarciowe) {
-        try {
-          wynikiZwarciowe.push(await fetchShortCircuitResults(bieg.id));
-        } catch {
-          // Brak wyniku biegu = brak danych; nie zastępujemy go niczym.
-        }
-      }
-      let wierszeGalezi: BranchRowLite[] = [];
-      if (biegRozplywu) {
-        try {
-          wierszeGalezi = (await fetchBranchResults(biegRozplywu.id)).rows;
-        } catch {
-          wierszeGalezi = [];
-        }
-      }
-      // Decyzja O-51 (pkt 7): miejsce prądu każdego urządzenia rozstrzyga backend (ten
-      // sam resolver co pakiet nastaw) — gałąź i zacisk albo odmowa nazwana.
-      const miejsca = new Map<string, MiejsceUrzadzenia>();
-      if (caseId) {
-        for (const urzadzenie of state.devices) {
-          if (urzadzenie.location_element_id.trim() === '') continue;
-          try {
-            miejsca.set(
-              urzadzenie.id,
-              await fetchMiejsceUrzadzenia(
-                caseId,
-                urzadzenie.location_element_id,
-                urzadzenie.zacisk ?? null,
-              ),
-            );
-          } catch {
-            // Brak rozstrzygnięcia = brak prądu roboczego (jawny), nie wartość zastępcza.
-          }
-        }
-      }
-      if (anulowane) return;
-      const { max, min, runIdMax, runIdMin } = podzielWierszeNaPrzypadki(wynikiZwarciowe);
-      const prady = zbudujPradyKoordynacji({
-        // V12K-262: urządzenie bez wskazanego elementu pomijamy TUTAJ, żeby nie
-        // raportować mu „braku prądu zwarciowego" — prawdziwym brakiem jest
-        // lokalizacja, i to mówi osobna bramka. Dwa różne braki, dwa komunikaty.
-        urzadzenia: state.devices.filter((d) => d.location_element_id.trim() !== ''),
-        wierszeMax: max,
-        wierszeMin: min,
-        wierszeGalezi,
-        miejsca,
-      });
-      setState((prev) => ({
-        ...prev,
-        faultCurrents: [...prady.faultCurrents],
-        operatingCurrents: [...prady.operatingCurrents],
-      }));
-      setBrakiPradowe(prady.braki);
-      setBiegiKoordynacji({
-        sc_run_id: runIdMax,
-        sc_run_id_min: runIdMin,
-        pf_run_id: biegRozplywu?.id ?? null,
-      });
-    })();
-
-    return () => {
-      anulowane = true;
-    };
-    // Zależność po identyfikatorach lokalizacji (`urzadzeniaKlucz`): zmiana nastaw
-    // urządzenia nie wymaga ponownego pobierania wyników biegów.
-  }, [urzadzeniaKlucz, przebiegi, caseId]);
-
-  // Add new device
-  const handleAddDevice = useCallback(() => {
-    const newDevice: ProtectionDevice = {
-      id: crypto.randomUUID(),
-      name: `Zabezpieczenie ${state.devices.length + 1}`,
-      device_type: 'RELAY',
-      // V12K-262: lokalizacja PUSTA, nie wymyślona. Wcześniej powstawało tu
-      // `bus_${n+1}` — identyfikator, którego w modelu nie ma (patrz nagłówek
-      // `lokalizacjeZModelu.ts`). Element wskazuje projektant z listy modelu.
-      location_element_id: '',
-      settings: {
-        stage_51: { ...DEFAULT_STAGE_51 },
-      },
-    };
-
-    // F-K4 faza 3b (naprawa fabrykacji): urządzenie NIE dostaje prądów.
-    // Wcześniej powstawały tu wartości z `Math.random()` (komentarz „Demo
-    // fault/operating currents"), czyli marginesy selektywności liczyły się na
-    // LOSOWYCH danych i wyglądały jak wynik obliczeń. Prądy zwarciowe pochodzą
-    // wyłącznie z zakończonego biegu zwarciowego, prąd roboczy z rozpływu —
-    // patrz `useWczytajPradyZBiegow`. Brak biegu = brak prądów i jawny stan,
-    // nigdy liczba zastępcza.
-    setState((prev) => ({
-      ...prev,
-      devices: [...prev.devices, newDevice],
-      editingDeviceId: newDevice.id,
-    }));
-  }, [state.devices.length]);
-
-  // Clone device
-  const handleCloneDevice = useCallback((deviceId: string) => {
-    setState((prev) => {
-      const sourceDevice = prev.devices.find((d) => d.id === deviceId);
-      if (!sourceDevice) return prev;
-
-      // V12K-262: klon kopiuje NASTAWY, nigdy lokalizację ani prądy.
-      // Wcześniej powstawał tu element `${ref}_copy` (nieistniejący w modelu),
-      // a na tę zmyśloną lokalizację PRZEPISYWANE były prądy zwarciowy i roboczy
-      // elementu źródłowego — czyli fabrykacja danych wejściowych analizy tym
-      // samym skutkiem, który F-K4 usunął z losowania prądów. Klon wymaga
-      // wskazania własnego elementu; prądy dociągnie efekt z biegów.
-      const clonedDevice: ProtectionDevice = {
-        ...sourceDevice,
-        id: crypto.randomUUID(),
-        name: `${sourceDevice.name} (kopia)`,
-        location_element_id: '',
-      };
-
-      return {
-        ...prev,
-        devices: [...prev.devices, clonedDevice],
-        editingDeviceId: clonedDevice.id,
-      };
-    });
-  }, []);
-
-  // Apply template
-  const handleApplyTemplate = useCallback((template: DeviceTemplate) => {
-    const newDevice: ProtectionDevice = {
-      id: crypto.randomUUID(),
-      name: template.name,
-      device_type: template.device_type,
-      // V12K-262: jak w `handleAddDevice` — zero wymyślonych identyfikatorów.
-      location_element_id: '',
-      settings: JSON.parse(JSON.stringify(template.settings)),
-    };
-
-    // Jak w `handleAddDevice`: zero fabrykacji prądów (patrz komentarz tam).
-    setState((prev) => ({
-      ...prev,
-      devices: [...prev.devices, newDevice],
-      editingDeviceId: newDevice.id,
-      showTemplates: false,
-    }));
-  }, []);
-
-  // Remove device. K5-B: usunięcie też idzie do konfiguracji przypadku —
-  // inaczej urządzenie „wracałoby" po powrocie na stronę (fantom z serwera).
-  const handleRemoveDevice = useCallback((deviceId: string) => {
-    const device = state.devices.find((d) => d.id === deviceId);
-    if (!device) return;
-    const noweUrzadzenia = state.devices.filter((d) => d.id !== deviceId);
-
-    setState((prev) => ({
-      ...prev,
-      devices: prev.devices.filter((d) => d.id !== deviceId),
-      faultCurrents: prev.faultCurrents.filter(
-        (f) => f.location_id !== device.location_element_id
-      ),
-      operatingCurrents: prev.operatingCurrents.filter(
-        (o) => o.location_id !== device.location_element_id
-      ),
-      editingDeviceId: prev.editingDeviceId === deviceId ? null : prev.editingDeviceId,
-    }));
-    void utrwalUrzadzenia(noweUrzadzenia);
-  }, [state.devices, utrwalUrzadzenia]);
-
-  // Update device — „Zapisz konfigurację" w edytorze. K5-B (H-2): to jest
-  // wykonawca nastaw E-28 — zmiana idzie PUT-em do konfiguracji przypadku
-  // (wcześniej żyła w useState i ginęła przy wyjściu ze strony).
-  const handleDeviceChange = useCallback((device: ProtectionDevice) => {
-    const noweUrzadzenia = state.devices.map((d) => (d.id === device.id ? device : d));
-    setState((prev) => ({
-      ...prev,
-      devices: prev.devices.map((d) => (d.id === device.id ? device : d)),
-      editingDeviceId: null,
-    }));
-    void utrwalUrzadzenia(noweUrzadzenia);
-  }, [state.devices, utrwalUrzadzenia]);
-
-  // Run analysis
-  const handleRunAnalysis = useCallback(async () => {
-    // MARTWY KLIK — NAPRAWA (V12K-262). Wszystkie bramki poniżej ustawiały
-    // `error`, ale zostawiały `status: 'IDLE'`, a blok komunikatu renderuje się
-    // TYLKO gdy status ≠ IDLE. Projektant klikał „Wykonaj analizę koordynacji"
-    // i nie działo się NIC — ani wynik, ani powód odmowy. Odmowa uruchomienia
-    // jest stanem błędu i musi być widoczna (precedens: martwy lewy klik w SLD).
-    const odmow = (powod: string): void => {
-      setState((prev) => ({ ...prev, status: 'ERROR', error: powod }));
-    };
-
+  const handleRun = useCallback(async () => {
     if (!projectId) {
-      odmow('Wybierz aktywny projekt przed uruchomieniem koordynacji zabezpieczeń');
+      setStatus('ERROR');
+      setError('Wybierz aktywny projekt przed uruchomieniem koordynacji zabezpieczeń.');
       return;
     }
-
-    if (state.devices.length === 0) {
-      odmow(LABELS.validation.minOneDevice);
+    if (!biegi.max || !biegi.min) {
+      setStatus('ERROR');
+      setError(LABELS.biegi.brakMaxMin);
       return;
     }
-
-    // V12K-262: urządzenie bez wskazanego elementu modelu nie ma jak dostać prądów
-    // (dopasowanie idzie po `element_id` wiersza biegu). Wysłanie go do analizy
-    // dałoby werdykt policzony dla pustej lokalizacji — dlatego bramka jest tutaj,
-    // a komunikat mówi wprost, czego brakuje.
-    if (state.devices.some((d) => d.location_element_id.trim() === '')) {
-      odmow(LABELS.validation.brakLokalizacji);
-      return;
-    }
-
-    // F-K4 faza 3b: bez prądów z biegu analiza policzyłaby marginesy na niczym.
-    // Wcześniej ten warunek nie mógł zaistnieć, bo prądy były losowane.
-    if (state.faultCurrents.length === 0) {
-      odmow(LABELS.validation.brakPradowZwarciowych);
-      return;
-    }
-
-    setState((prev) => ({ ...prev, status: 'RUNNING', error: null }));
-
+    setStatus('RUNNING');
+    setError(null);
     try {
-      // Karta S-2 AUTORYTET: backend potwierdza prądy żądania wobec DWÓCH zapisanych
-      // biegów — bez ich identyfikatorów każde żądanie kończyło się odmową 422 (ekran
-      // nigdy ich nie wysyłał; atrapa harnessu przechwytywała `/run`, więc defekt był
-      // niewidoczny). Identyfikatory = biegi, z których ekran zbudował prądy.
       const summary = await runCoordinationAnalysis(projectId, {
-        devices: state.devices,
-        fault_currents: state.faultCurrents,
-        operating_currents: state.operatingCurrents,
-        config: DEFAULT_CONFIG,
-        sc_run_id: biegiKoordynacji.sc_run_id ?? undefined,
-        sc_run_id_min: biegiKoordynacji.sc_run_id_min ?? undefined,
-        pf_run_id: biegiKoordynacji.pf_run_id ?? undefined,
+        sc_run_id: biegi.max,
+        sc_run_id_min: biegi.min,
+        ...(biegi.pf ? { pf_run_id: biegi.pf } : {}),
       });
-
-      const result = await getCoordinationResult(summary.run_id);
-
-      setState((prev) => ({
-        ...prev,
-        result,
-        status: 'SUCCESS',
-        activeTab: 'summary',
-      }));
-      // Świeży bieg liczy na bieżących nastawach — wynik znów aktualny.
-      setWynikNieaktualny(false);
+      setResult(await getCoordinationResult(summary.run_id));
+      setStatus('SUCCESS');
+      setActiveTab('summary');
     } catch (err) {
-      setState((prev) => ({
-        ...prev,
-        status: 'ERROR',
-        error: err instanceof Error ? err.message : LABELS.status.error,
-      }));
+      setStatus('ERROR');
+      setError(err instanceof Error ? err.message : LABELS.status.error);
     }
-  }, [projectId, state.devices, state.faultCurrents, state.operatingCurrents, biegiKoordynacji]);
-  uruchomAnalize.current = () => void handleRunAnalysis();
+  }, [biegi, projectId]);
 
-  // Get editing device
-  const editingDevice = useMemo(
-    () =>
-      state.editingDeviceId
-        ? state.devices.find((d) => d.id === state.editingDeviceId)
-        : null,
-    [state.editingDeviceId, state.devices]
-  );
-
-  // Status indicator
   const statusText = useMemo(() => {
-    switch (state.status) {
-      case 'IDLE':
-        return LABELS.status.idle;
-      case 'RUNNING':
-        return LABELS.status.running;
-      case 'SUCCESS':
-        return LABELS.status.success;
-      case 'ERROR':
-        return LABELS.status.error;
-      default:
-        return '';
-    }
-  }, [state.status]);
+    if (status === 'RUNNING') return LABELS.status.running;
+    if (status === 'SUCCESS') return LABELS.status.success;
+    if (status === 'ERROR') return LABELS.status.error;
+    return LABELS.status.idle;
+  }, [status]);
+
+  const doEdycjiNastaw = () => openRouteSurface('E-27');
 
   return (
     <div className="min-h-screen bg-slate-50 p-6" data-testid="protection-coordination-page">
       <div className="mx-auto max-w-7xl">
-        {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-900">{LABELS.title}</h1>
           <p className="text-slate-600">{LABELS.subtitle}</p>
         </div>
-
-        {/* Context Selector */}
         <div className="mb-6">
-          <ContextSelector
-            projectId={projectId}
-            projectName={projectName}
-            caseId={caseId}
-            caseName={caseName}
-            snapshotId={snapshotId}
-          />
+          <ContextSelector />
         </div>
-
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Panel - Devices */}
           <div className="space-y-4">
-            <DeviceListPanel
-              devices={state.devices}
-              editingDeviceId={state.editingDeviceId}
-              onAddDevice={handleAddDevice}
-              onRemoveDevice={handleRemoveDevice}
-              onCloneDevice={handleCloneDevice}
-              onSelectDevice={(id) =>
-                setState((prev) => ({ ...prev, editingDeviceId: id }))
-              }
-              onShowTemplates={() =>
-                setState((prev) => ({ ...prev, showTemplates: true }))
-              }
-            />
-
-            {/* F-K4 faza 3b: uczciwy stan braków danych prądowych. Wcześniej prądy
-                powstawały z Math.random(), więc panelu nie było — analiza zawsze
-                „miała" dane. Teraz projektant widzi, czego brakuje i skąd to wziąć. */}
-            {brakiPradowe.length > 0 && (
-              <div
-                className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
-                data-testid="coordination-missing-currents"
-              >
-                <p className="font-medium">{LABELS.validation.brakPradowZwarciowych}</p>
-                <ul className="mt-2 list-disc space-y-1 pl-5">
-                  {brakiPradowe.map((brak) => (
-                    <li key={`${brak.deviceId}-${brak.czegoBrakuje}`}>
-                      {brak.deviceName} ({brak.locationElementId}):{' '}
-                      {brak.czegoBrakuje === 'prad_zwarciowy_min'
-                        ? LABELS.validation.brakPraduMinimalnego
-                        : brak.czegoBrakuje === 'prad_roboczy'
-                          ? (brak.powod ?? LABELS.validation.brakPraduRoboczego)
-                          : LABELS.validation.brakPradowZwarciowych}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Run Analysis Button */}
+            <PanelBiegow biegi={biegi} />
             <button
-              onClick={handleRunAnalysis}
-              disabled={state.status === 'RUNNING' || state.devices.length === 0}
+              onClick={() => void handleRun()}
+              disabled={status === 'RUNNING'}
               className="w-full rounded bg-emerald-600 px-4 py-3 font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
               data-testid="run-analysis-button"
             >
-              {state.status === 'RUNNING' ? LABELS.status.running : LABELS.actions.runAnalysis}
+              {status === 'RUNNING' ? LABELS.status.running : LABELS.actions.runAnalysis}
             </button>
-
-            {/* Status */}
-            {state.status !== 'IDLE' && (
+            {status !== 'IDLE' && (
               <div
                 data-testid="coordination-status"
+                role={status === 'ERROR' ? 'alert' : undefined}
                 className={`rounded p-3 text-sm ${
-                  state.status === 'ERROR'
+                  status === 'ERROR'
                     ? 'border border-rose-200 bg-rose-50 text-rose-700'
-                    : state.status === 'SUCCESS'
-                    ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
-                    : 'border border-blue-200 bg-blue-50 text-blue-700'
+                    : status === 'SUCCESS'
+                      ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+                      : 'border border-blue-200 bg-blue-50 text-blue-700'
                 }`}
               >
-                {state.error || statusText}
+                {error || statusText}
               </div>
             )}
+            {result ? <PanelUrzadzen result={result} /> : null}
           </div>
-
-          {/* Right Panel - Editor or Results */}
           <div className="lg:col-span-2">
-            {editingDevice ? (
-              <ProtectionSettingsEditor
-                device={editingDevice}
-                onChange={handleDeviceChange}
-                onCancel={() =>
-                  setState((prev) => ({ ...prev, editingDeviceId: null }))
-                }
-                lokalizacje={lokalizacje}
-                bladLokalizacji={bladLokalizacji}
-                caseId={caseId}
-              />
-            ) : state.result ? (
+            {result ? (
               <div className="space-y-4">
-                {/* K5-B: wynik policzony przed zapisem nowych nastaw jest
-                    nieaktualny — jawny stan z CTA zamiast cichej prezentacji
-                    starych marginesów jako obowiązujących. */}
-                {wynikNieaktualny && (
-                  <div
-                    className="flex items-center justify-between gap-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
-                    data-testid="coordination-result-stale"
-                  >
-                    <p>{LABELS.persistence.wynikNieaktualny}</p>
-                    <button
-                      onClick={handleRunAnalysis}
-                      disabled={state.status === 'RUNNING'}
-                      className="shrink-0 rounded bg-emerald-600 px-3 py-2 font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      data-testid="coordination-recompute-button"
-                    >
-                      {LABELS.persistence.przelicz}
-                    </button>
-                  </div>
-                )}
-                {/* Tabs */}
-                <TabNavigation
-                  activeTab={state.activeTab}
-                  onTabChange={(tab) =>
-                    setState((prev) => ({ ...prev, activeTab: tab }))
-                  }
-                  result={state.result}
-                />
-
-                {/* Tab Content */}
-                {state.activeTab === 'summary' && (
-                  <SummaryTab result={state.result} />
-                )}
-                {state.activeTab === 'sensitivity' && (
+                <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} result={result} />
+                {activeTab === 'summary' && <SummaryTab result={result} />}
+                {activeTab === 'sensitivity' && (
                   <SensitivityTable
-                    checks={state.result.sensitivity_checks}
-                    devices={state.devices}
-                    onRowClick={(deviceId) =>
-                      setState((prev) => ({ ...prev, editingDeviceId: deviceId }))
-                    }
+                    checks={result.sensitivity_checks}
+                    devices={result.devices}
+                    onRowClick={doEdycjiNastaw}
                   />
                 )}
-                {state.activeTab === 'selectivity' && (
+                {activeTab === 'selectivity' && (
                   <SelectivityTable
-                    checks={state.result.selectivity_checks}
-                    devices={state.devices}
-                    // F-K4 faza 3b (znalezisko Z4): werdykt miskoordynacji prowadzi do
-                    // edytora nastaw urządzenia NADRZĘDNEGO. Tabela miała już `onRowClick`,
-                    // ale nikt go nie przekazywał — klik w wiersz nie prowadził nigdzie,
-                    // choć tabela przeciążeń obok prowadziła do edytora. Nadrzędne, bo przy
-                    // braku selektywności koryguje się czas zabezpieczenia rezerwowego:
-                    // podrzędne ma zadziałać pierwsze i szybko (stopniowanie CTI).
-                    onRowClick={(upstreamId) =>
-                      setState((prev) => ({ ...prev, editingDeviceId: upstreamId }))
-                    }
+                    checks={result.selectivity_checks}
+                    devices={result.devices}
+                    onRowClick={doEdycjiNastaw}
                   />
                 )}
-                {state.activeTab === 'overload' && (
+                {activeTab === 'overload' && (
                   <OverloadTable
-                    checks={state.result.overload_checks}
-                    devices={state.devices}
-                    onRowClick={(deviceId) =>
-                      setState((prev) => ({ ...prev, editingDeviceId: deviceId }))
-                    }
+                    checks={result.overload_checks}
+                    devices={result.devices}
+                    onRowClick={doEdycjiNastaw}
                   />
                 )}
-                {state.activeTab === 'tcc' && (
-                  <div className="space-y-4">
-                    {/* UI-04: TCC Interpretation Panel (obok wykresu) */}
-                    <div className="flex flex-col xl:flex-row gap-4">
-                      <div className="flex-1 min-w-0">
-                        <TccChartFromResult
-                          result={state.result}
-                          devices={state.devices}
-                          onDeviceClick={(deviceId) =>
-                            setState((prev) => ({ ...prev, editingDeviceId: deviceId }))
-                          }
-                          height={500}
-                        />
-                      </div>
-                      <div className="xl:w-96 flex-shrink-0">
-                        <TccInterpretationPanel
-                          selectivityChecks={state.result.selectivity_checks}
-                          devices={state.devices}
-                        />
-                      </div>
+                {activeTab === 'tcc' && (
+                  <div className="flex flex-col gap-4 xl:flex-row">
+                    <div className="min-w-0 flex-1">
+                      <TccChartFromResult result={result} devices={result.devices} height={500} />
+                    </div>
+                    <div className="flex-shrink-0 xl:w-96">
+                      <TccInterpretationPanel
+                        selectivityChecks={result.selectivity_checks}
+                        devices={result.devices}
+                      />
                     </div>
                   </div>
                 )}
-                {state.activeTab === 'trace' && (
+                {activeTab === 'trace' && (
                   <TracePanel
-                    traceSteps={state.result.trace_steps}
-                    runId={state.result.run_id}
-                    createdAt={state.result.created_at}
+                    traceSteps={result.trace_steps}
+                    runId={result.run_id}
+                    createdAt={result.created_at}
                   />
                 )}
               </div>
             ) : (
               <div className="flex h-96 items-center justify-center rounded-lg border border-slate-200 bg-white">
-                <div className="text-center">
-                  <svg
-                    className="mx-auto h-12 w-12 text-slate-300"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                  <p className="mt-2 text-slate-500">{LABELS.devices.selectToEdit}</p>
-                  <p className="text-sm text-slate-400">
-                    {LABELS.validation.minOneDevice}
-                  </p>
-                </div>
+                <p className="text-slate-500" data-testid="coordination-empty">
+                  {LABELS.devices.brak}
+                </p>
               </div>
             )}
           </div>
         </div>
-
-        {/* Template Selector Modal */}
-        {state.showTemplates && (
-          <TemplateSelector
-            templates={DEVICE_TEMPLATES}
-            onSelect={handleApplyTemplate}
-            onClose={() => setState((prev) => ({ ...prev, showTemplates: false }))}
-          />
-        )}
       </div>
     </div>
   );

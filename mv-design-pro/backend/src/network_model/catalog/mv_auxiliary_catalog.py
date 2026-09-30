@@ -2205,6 +2205,21 @@ def get_all_protection_curves() -> list[dict]:
 
 
 def get_all_protection_setting_templates() -> list[dict]:
+    def _prad_bez_jednostki(nazwa: str, minimum: float, maksimum: float) -> dict:
+        """Pole prądowe szablonu z zakresem BEZ ustalonej jednostki (PZ-09, karta
+        BIEG-ZABEZPIECZEN-Z-MODELU). Zakres liczbowy pochodzi z szablonu referencyjnego, ale
+        nie ma podstawy, czy są to ampery wtórne, krotność prądu znamionowego wejścia
+        przekaźnika, czy ampery pierwotne (brak karty producenta) — dawna jednostka „A”
+        sugerowała prąd pierwotny i dawała marginesy rzędu 10⁷ %. Szablon nie jest źródłem
+        nastaw oceny (nastawy żyją w modelu, D-21); jednostka jest nazwanym stanem."""
+        return {
+            "name": nazwa,
+            "unit": None,
+            "jednostka_status": "NIEUSTALONA",
+            "min": minimum,
+            "max": maksimum,
+        }
+
     def _template_meta(*, name: str) -> dict:
         return {
             "verification_status": "REFERENCYJNY",
@@ -2224,7 +2239,7 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "REF-OC-EF-500",
                 "curve_ref": "curve_iec_normal_inverse",
                 "setting_fields": [
-                    {"name": "I>", "unit": "A", "min": 0.1, "max": 10.0},
+                    _prad_bez_jednostki("I>", 0.1, 10.0),
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 5.0},
                 ],
                 **_template_meta(name="profilu referencyjnego OC/EF 500 - nadprądowy"),
@@ -2237,9 +2252,9 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "REF-OC-EF-300",
                 "curve_ref": "curve_iec_very_inverse",
                 "setting_fields": [
-                    {"name": "I>", "unit": "A", "min": 0.1, "max": 12.0},
+                    _prad_bez_jednostki("I>", 0.1, 12.0),
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 6.0},
-                    {"name": "I>>", "unit": "A", "min": 1.0, "max": 80.0},
+                    _prad_bez_jednostki("I>>", 1.0, 80.0),
                 ],
                 **_template_meta(name="profilu referencyjnego OC/EF 300 - nadprądowy"),
             },
@@ -2251,7 +2266,7 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "REF-OC-100",
                 "curve_ref": "curve_iec_normal_inverse",
                 "setting_fields": [
-                    {"name": "I>", "unit": "A", "min": 0.1, "max": 8.0},
+                    _prad_bez_jednostki("I>", 0.1, 8.0),
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 5.0},
                 ],
                 **_template_meta(name="profilu referencyjnego OC 100 - nadprądowy"),
@@ -2264,7 +2279,7 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "EM_ETANGO_400_V0",
                 "curve_ref": "curve_iec_very_inverse",
                 "setting_fields": [
-                    {"name": "I0>", "unit": "A", "min": 0.1, "max": 10.0},
+                    _prad_bez_jednostki("I0>", 0.1, 10.0),
                     {"name": "t0>", "unit": "s", "min": 0.0, "max": 5.0},
                 ],
                 **_template_meta(name="e2TANGO-400 - ziemnozwarciowy"),
@@ -2277,9 +2292,9 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "EM_ETANGO_800_V0",
                 "curve_ref": "curve_ieee_very_inverse",
                 "setting_fields": [
-                    {"name": "I0>", "unit": "A", "min": 0.1, "max": 12.0},
+                    _prad_bez_jednostki("I0>", 0.1, 12.0),
                     {"name": "t0>", "unit": "s", "min": 0.0, "max": 6.0},
-                    {"name": "I0>>", "unit": "A", "min": 1.0, "max": 50.0},
+                    _prad_bez_jednostki("I0>>", 1.0, 50.0),
                 ],
                 **_template_meta(name="e2TANGO-800 - ziemnozwarciowy"),
             },
@@ -2291,9 +2306,9 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "EM_ETANGO_1250_V0",
                 "curve_ref": "curve_iec_extremely_inverse",
                 "setting_fields": [
-                    {"name": "I>", "unit": "A", "min": 0.1, "max": 20.0},
+                    _prad_bez_jednostki("I>", 0.1, 20.0),
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 6.0},
-                    {"name": "I>>", "unit": "A", "min": 1.0, "max": 120.0},
+                    _prad_bez_jednostki("I>>", 1.0, 120.0),
                 ],
                 **_template_meta(name="e2TANGO-1250 - nadprądowy"),
             },
@@ -2305,9 +2320,9 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "EM_ETANGO_1600_V0",
                 "curve_ref": "curve_iec_long_time_inverse",
                 "setting_fields": [
-                    {"name": "I0>", "unit": "A", "min": 0.1, "max": 20.0},
+                    _prad_bez_jednostki("I0>", 0.1, 20.0),
                     {"name": "t0>", "unit": "s", "min": 0.0, "max": 8.0},
-                    {"name": "I0>>", "unit": "A", "min": 1.0, "max": 150.0},
+                    _prad_bez_jednostki("I0>>", 1.0, 150.0),
                 ],
                 **_template_meta(name="e2TANGO-1600 - ziemnozwarciowy"),
             },
@@ -2319,9 +2334,9 @@ def get_all_protection_setting_templates() -> list[dict]:
                 "device_type_ref": "EM_ETANGO_2000_V0",
                 "curve_ref": "curve_ansi_inverse",
                 "setting_fields": [
-                    {"name": "I>", "unit": "A", "min": 0.1, "max": 30.0},
+                    _prad_bez_jednostki("I>", 0.1, 30.0),
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 8.0},
-                    {"name": "I>>", "unit": "A", "min": 1.0, "max": 200.0},
+                    _prad_bez_jednostki("I>>", 1.0, 200.0),
                 ],
                 **_template_meta(name="e2TANGO-2000 - nadprądowy"),
             },

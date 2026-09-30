@@ -9,8 +9,8 @@ SKASOWANA razem z tymi tabelami: typy producenta żyją w katalogu statycznym
 (`enm/katalog_projektu.py`). Trzecia prawda katalogu w bazie nie ma już żadnego konsumenta
 (0 wołań z frontendu, 0 elementów modelu wiązanych `type_ref` z bazy).
 
-Biblioteka zabezpieczeń zostaje: jej rekordy (`{id, name_pl, params}`) czyta tor biegu
-zabezpieczeń (`protection_analysis/catalog_lookup`) i `/api/catalog/protection/*`.
+Biblioteka zabezpieczeń zostaje: jej rekordy (`{id, name_pl, params}`) czyta
+`/api/catalog/protection/*`.
 """
 
 from __future__ import annotations

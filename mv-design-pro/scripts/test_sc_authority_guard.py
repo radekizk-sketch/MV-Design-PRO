@@ -25,8 +25,8 @@ from sc_authority_guard import (  # noqa: E402
     MODUL_BRAMKI_AUTORYTETU,
     MODUL_MOSTU_AUTORYTETU,
     MOST_AUTORYTETU_NAZWY,
-    PLIKI_TRASY_HTTP,
     PLIKI_Z_BRAMKA_AUTORYTETU,
+    PLIKI_Z_MOSTEM_BIEGU,
     _konstruowane_typy,
     _wywoluje_z_modulu,
     main,
@@ -160,11 +160,11 @@ def test_konstruowane_typy_pusty_dla_komentarza() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_liste_tras_http_i_konstruktorow_sa_tym_samym_zbiorem() -> None:
+def test_lista_plikow_z_mostem_i_konstruktorow_to_ten_sam_zbior() -> None:
     """`KONSTRUKTORZY_WEJSCIA_ZDOLNOSCI_ZALEZNEJ` MUSI być dokładnie tym samym
-    zbiorem co `PLIKI_TRASY_HTTP` — dwie niezależne listy tych samych plików są
+    zbiorem co `PLIKI_Z_MOSTEM_BIEGU` — dwie niezależne listy tych samych plików są
     defektem czekającym na dane brzegowe (reguła KLASA NIE INSTANCJA)."""
-    assert KONSTRUKTORZY_WEJSCIA_ZDOLNOSCI_ZALEZNEJ == frozenset(PLIKI_TRASY_HTTP)
+    assert KONSTRUKTORZY_WEJSCIA_ZDOLNOSCI_ZALEZNEJ == frozenset(PLIKI_Z_MOSTEM_BIEGU)
 
 
 # ---------------------------------------------------------------------------
@@ -181,7 +181,8 @@ def _zbuduj_drzewo_ok(tmp_path: Path) -> Path:
         "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
         "def build():\n    wymagaj_autorytetu((), None)\n"
     )
-    (src / "api" / "protection_coordination.py").write_text(
+    (src / "application" / "analyses" / "protection" / "coordination").mkdir(parents=True)
+    (src / "application" / "analyses" / "protection" / "coordination" / "z_biegow.py").write_text(
         "from application.autorytet_biegu_zwarciowego import wejscie_koordynacji_z_biegow\n"
         "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
         "def run():\n"
@@ -221,7 +222,7 @@ def test_main_zielony_na_poprawnym_drzewie(_guard_na_tmp, capsys: pytest.Capture
             "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
             "def build():\n    wymagaj_autorytetu((), None)\n"
         ),
-        "api/protection_coordination.py": (
+        "application/analyses/protection/coordination/z_biegow.py": (
             "from application.autorytet_biegu_zwarciowego import wejscie_koordynacji_z_biegow\n"
             "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
             "def run():\n"
@@ -249,7 +250,7 @@ def test_main_czerwony_gdy_bramka_niewywolana(_guard_na_tmp, capsys: pytest.Capt
             "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
             "def build():\n    pass\n"
         ),
-        "api/protection_coordination.py": (
+        "application/analyses/protection/coordination/z_biegow.py": (
             "from application.autorytet_biegu_zwarciowego import wejscie_koordynacji_z_biegow\n"
             "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
             "def run():\n    wymagaj_autorytetu((), None)\n"
@@ -276,7 +277,7 @@ def test_main_czerwony_gdy_trasa_http_nie_czyta_z_biegu(
             "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
             "def build():\n    wymagaj_autorytetu((), None)\n"
         ),
-        "api/protection_coordination.py": (
+        "application/analyses/protection/coordination/z_biegow.py": (
             "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
             "def run():\n    wymagaj_autorytetu((), None)\n"
         ),
@@ -294,7 +295,7 @@ def _drzewo_poprawne() -> dict[str, str]:
             "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
             "def build():\n    wymagaj_autorytetu((), None)\n"
         ),
-        "api/protection_coordination.py": (
+        "application/analyses/protection/coordination/z_biegow.py": (
             "from application.autorytet_biegu_zwarciowego import wejscie_koordynacji_z_biegow\n"
             "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
             "def run():\n"
@@ -360,7 +361,7 @@ def test_main_czerwony_gdy_nowy_konsument_poza_lista(
             "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
             "def build():\n    wymagaj_autorytetu((), None)\n"
         ),
-        "api/protection_coordination.py": (
+        "application/analyses/protection/coordination/z_biegow.py": (
             "from application.autorytet_biegu_zwarciowego import wejscie_koordynacji_z_biegow\n"
             "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
             "def run():\n    wymagaj_autorytetu((), None)\n"
@@ -399,6 +400,6 @@ def test_guard_zielony_na_rzeczywistym_drzewie(capsys: pytest.CaptureFixture) ->
     """Ten sam guard, BEZ monkeypatch — na rzeczywistym `backend/src` karty S-2.
     Zielony dowodzi, że wpięcie (nie tylko logika guarda) faktycznie działa."""
     assert PLIKI_Z_BRAMKA_AUTORYTETU  # zamknięta lista niepusta
-    assert PLIKI_TRASY_HTTP
+    assert PLIKI_Z_MOSTEM_BIEGU
     assert main() == 0
     assert "OK [ScAuthorityGuard]" in capsys.readouterr().out

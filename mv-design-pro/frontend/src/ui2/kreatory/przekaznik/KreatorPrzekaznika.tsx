@@ -3,8 +3,11 @@
  *
  * Przypisuje zabezpieczenie do pola SN: rodzina ochrony + typ katalogowy przekaźnika,
  * wiązany z wyłącznikiem wykonawczym i przekładnikami pola. Katalog-first (ZABEZPIECZENIE).
- * Zapis = operacja domenowa `add_relay`. Charakterystykę czasowo-prądową (IEC 60255) i
- * nastawy liczy backend — ZERO fizyki w UI (wykres to poglądowy kształt prawa normy).
+ * Zapis = operacja domenowa `add_relay`. Kotwica: pole SN albo wyłącznik liniowy bez pola
+ * (kontekst `{kotwica: 'wylacznik', breaker_ref}`, karta BIEG-ZABEZPIECZEN-Z-MODELU).
+ * Zabezpieczenie powstaje BEZ nastaw (nazwany brak) — nastawy wpisuje się w edytorze nastaw
+ * (`EdytorNastawZabezpieczenia`, operacja `update_protection_settings`). ZERO fizyki w UI:
+ * dawny poglądowy wykres IDMT liczony w przeglądarce (trzecia kopia wzoru IEC 60255) skasowany.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -41,7 +44,6 @@ import {
   type KrokKreatora,
   type WierszGotowosci,
 } from '../rama';
-import { WykresIdmt } from './WykresIdmt';
 import { PRZEKAZNIK_STRINGS as T } from './strings';
 
 const KROKI: readonly KrokKreatora[] = [
@@ -78,6 +80,23 @@ export function KreatorPrzekaznika() {
   const initialBayRef = useMemo(
     () => resolveFieldReadModelItem(fieldReadModel.data.fields, context)?.bay_ref ?? '',
     [context, fieldReadModel.data.fields],
+  );
+
+  const wylacznikLiniowyRef =
+    readString(context?.kotwica) === 'wylacznik' ? readString(context?.breaker_ref) : '';
+  const wylacznikLiniowy = useMemo(
+    () => snapshot?.branches?.find((b) => b.ref_id === wylacznikLiniowyRef) ?? null,
+    [snapshot, wylacznikLiniowyRef],
+  );
+  const kotwicaWylacznik = Boolean(wylacznikLiniowyRef);
+  const przekladnikiWylacznika = useMemo(
+    () =>
+      (snapshot?.measurements ?? []).filter(
+        (m) =>
+          m.measurement_type === 'CT' &&
+          (m.meta as Record<string, unknown> | undefined)?.breaker_ref === wylacznikLiniowyRef,
+      ).length,
+    [snapshot, wylacznikLiniowyRef],
   );
 
   const [bayRef, setBayRef] = useState(initialBayRef);
@@ -171,19 +190,22 @@ export function KreatorPrzekaznika() {
     () => bayOptions.find((o) => o.ref_id === bayRef) ?? null,
     [bayOptions, bayRef],
   );
-  const pomiar = useMemo(() => measurementCountsForField(selectedFieldItem), [selectedFieldItem]);
+  const pomiarPola = useMemo(() => measurementCountsForField(selectedFieldItem), [selectedFieldItem]);
+  const pomiar = kotwicaWylacznik ? { ct: przekladnikiWylacznika, vt: 0 } : pomiarPola;
   const wymagaCt = RODZINY_WYMAGAJACE_CT.has(relayType);
-  const brakCt = wymagaCt && pomiar.ct === 0 && Boolean(selectedFieldItem);
+  const brakCt =
+    wymagaCt && pomiar.ct === 0 && (kotwicaWylacznik ? Boolean(wylacznikLiniowy) : Boolean(selectedFieldItem));
 
-  const brakPol = bayOptions.length === 0;
-  const kompletne = Boolean(bayRef && catalogItemId.trim());
+  const brakPol = !kotwicaWylacznik && bayOptions.length === 0;
+  const kotwicaOk = kotwicaWylacznik ? Boolean(wylacznikLiniowy) : Boolean(bayRef);
+  const kompletne = Boolean(kotwicaOk && catalogItemId.trim());
 
   const onZapisz = useCallback(async () => {
     if (!activeCaseId) {
       setBladGlobalny(T.brakZakresu);
       return;
     }
-    if (!bayRef) {
+    if (!kotwicaOk) {
       setBladGlobalny(T.brakPolaWalid);
       return;
     }
@@ -192,8 +214,9 @@ export function KreatorPrzekaznika() {
       return;
     }
     const payload = {
-      bay_ref: bayRef,
-      breaker_ref: breakerRef || undefined,
+      ...(kotwicaWylacznik
+        ? { breaker_ref: wylacznikLiniowyRef }
+        : { bay_ref: bayRef, breaker_ref: breakerRef || undefined }),
       relay_type: relayType,
       catalog_ref: catalogItemId.trim(),
       catalog_binding: buildCatalogBinding('ZABEZPIECZENIE', catalogItemId.trim()),
@@ -223,7 +246,7 @@ export function KreatorPrzekaznika() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, bayRef, breakerRef, catalogItemId, closeForm, executeDomainOperation, nazwa, relayType, selekcjaPoOperacji]);
+  }, [activeCaseId, bayRef, breakerRef, catalogItemId, closeForm, executeDomainOperation, kotwicaOk, kotwicaWylacznik, nazwa, relayType, selekcjaPoOperacji, wylacznikLiniowyRef]);
 
   const rodzinaEtykieta = useMemo(
     () => T.rodzinaOpcje.find((o) => o.id === relayType)?.etykieta ?? relayType,
@@ -231,7 +254,9 @@ export function KreatorPrzekaznika() {
   );
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszPole, stan: bayRef ? 'kompletne' : 'brak', wartosc: selectedBayInfo?.name || (bayRef ? 'Wskazane' : 'Brak') },
+    kotwicaWylacznik
+      ? { etykieta: T.wierszWylacznik, stan: wylacznikLiniowy ? 'kompletne' : 'brak', wartosc: wylacznikLiniowy?.name || 'Brak' }
+      : { etykieta: T.wierszPole, stan: bayRef ? 'kompletne' : 'brak', wartosc: selectedBayInfo?.name || (bayRef ? 'Wskazane' : 'Brak') },
     { etykieta: T.wierszRodzina, stan: 'kompletne', wartosc: rodzinaEtykieta },
     { etykieta: T.wierszKatalog, stan: catalogItemId ? 'kompletne' : 'brak', wartosc: catalogItemId ? 'Kompletne' : 'Do wyboru' },
     { etykieta: T.wierszCt, stan: brakCt ? 'ostrzezenie' : 'kompletne', wartosc: brakCt ? 'Brak CT' : `CT: ${pomiar.ct} / VT: ${pomiar.vt}` },
@@ -274,24 +299,33 @@ export function KreatorPrzekaznika() {
 
       {krok === 'pole' ? (
         <KreatorSekcja tytul={T.poleTytul} testid="mvd-kreator-przekaznik-pole">
-          <KreatorInfo>{T.polePomoc}</KreatorInfo>
+          <KreatorInfo>{kotwicaWylacznik ? T.wylacznikPomoc : T.polePomoc}</KreatorInfo>
           <KreatorSiatka kolumny={2}>
-            <PoleWyboru
-              etykieta={T.poleSn}
-              wartosc={bayRef}
-              onZmiana={setBayRef}
-              opcje={[{ id: '', etykieta: T.poleSnPlaceholder }, ...opcjeBay]}
-              wymagane
-              testid="mvd-kreator-przekaznik-bay"
-            />
-            <PoleWyboru
-              etykieta={T.aparat}
-              wartosc={breakerRef}
-              onZmiana={setBreakerRef}
-              opcje={[{ id: '', etykieta: T.aparatPlaceholder }, ...opcjeBreaker]}
-              pomoc={T.aparatPomoc}
-              testid="mvd-kreator-przekaznik-breaker"
-            />
+            {kotwicaWylacznik ? (
+              <RzadWartosci
+                etykieta={T.wierszWylacznik}
+                wartosc={wylacznikLiniowy?.name || T.wylacznikBrak}
+              />
+            ) : (
+              <>
+                <PoleWyboru
+                  etykieta={T.poleSn}
+                  wartosc={bayRef}
+                  onZmiana={setBayRef}
+                  opcje={[{ id: '', etykieta: T.poleSnPlaceholder }, ...opcjeBay]}
+                  wymagane
+                  testid="mvd-kreator-przekaznik-bay"
+                />
+                <PoleWyboru
+                  etykieta={T.aparat}
+                  wartosc={breakerRef}
+                  onZmiana={setBreakerRef}
+                  opcje={[{ id: '', etykieta: T.aparatPlaceholder }, ...opcjeBreaker]}
+                  pomoc={T.aparatPomoc}
+                  testid="mvd-kreator-przekaznik-breaker"
+                />
+              </>
+            )}
             <PoleWyboru
               etykieta={T.rodzina}
               wartosc={relayType}
@@ -338,9 +372,7 @@ export function KreatorPrzekaznika() {
             wymog={T.teoriaWymog}
             podstawa={T.teoriaPodstawa}
             testid="mvd-kreator-przekaznik-teoria"
-          >
-            <WykresIdmt />
-          </PanelTeorii>
+          />
         </KreatorSekcja>
       ) : null}
 
@@ -348,7 +380,11 @@ export function KreatorPrzekaznika() {
         <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-przekaznik-zapis">
           <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
           <KreatorSiatka kolumny={2}>
-            <RzadWartosci etykieta={T.wierszPole} wartosc={selectedBayInfo?.name || '—'} />
+            {kotwicaWylacznik ? (
+              <RzadWartosci etykieta={T.wierszWylacznik} wartosc={wylacznikLiniowy?.name || '—'} />
+            ) : (
+              <RzadWartosci etykieta={T.wierszPole} wartosc={selectedBayInfo?.name || '—'} />
+            )}
             <RzadWartosci etykieta={T.wierszRodzina} wartosc={rodzinaEtykieta} />
             <RzadWartosci etykieta={T.wierszKatalog} wartosc={catalogItemId || '—'} />
             <RzadWartosci etykieta={T.wierszCt} wartosc={`CT: ${pomiar.ct} / VT: ${pomiar.vt}`} ton={brakCt ? 'warn' : undefined} />

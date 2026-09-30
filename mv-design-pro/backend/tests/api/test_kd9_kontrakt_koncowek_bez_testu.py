@@ -194,17 +194,6 @@ def test_nieznany_bieg_zabezpieczen_konczy_sie_404(app_client, method: str, scie
     assert str(run_id) in response.json()["detail"]
 
 
-def test_nakladka_zabezpieczen_na_sld_wymaga_istniejacego_biegu(app_client) -> None:
-    run_id = uuid4()
-    response = app_client.get(
-        f"/api/projects/{uuid4()}/sld/{uuid4()}/protection-overlay",
-        params={"run_id": str(run_id)},
-    )
-
-    assert response.status_code == 404
-    assert str(run_id) in response.json()["detail"]
-
-
 def test_utworzenie_biegu_zabezpieczen_wymaga_kompletu_wejsc(app_client) -> None:
     """Bez `sc_run_id` i `protection_case_id` bieg nie powstaje (422, nie 500)."""
     response = app_client.post(f"/api/projects/{uuid4()}/protection-runs", json={})

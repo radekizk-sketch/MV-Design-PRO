@@ -1,19 +1,12 @@
 /**
- * FIX-12 — Protection Coordination API Client
- *
- * API client for protection coordination analysis endpoints.
+ * Klient API koordynacji zabezpieczeń (E-28): uruchomienie na biegach, odczyt wyniku
+ * (jeden odczyt — dawne podtrasy `/tcc`, `/trace`, `/checks/*` skasowane) i eksport.
  */
 
 import type {
   RunCoordinationRequest,
   CoordinationSummaryResponse,
   CoordinationResult,
-  TCCCurve,
-  FaultMarker,
-  TraceStep,
-  SensitivityCheck,
-  SelectivityCheck,
-  OverloadCheck,
 } from './types';
 
 const API_BASE = '/api/protection-coordination';
@@ -43,7 +36,8 @@ export async function runCoordinationAnalysis(
 
 /**
  * Treść odmowy `POST …/run` — backend zwraca `detail` jako tekst (bramka 400) albo
- * rekord: `{powod, komunikat_pl, niezgodnosci?}` (autorytet biegów, 422) lub
+ * rekord: `{powod, komunikat_pl, niezgodnosci?}` (autorytet biegów i odmowy koordynacji:
+ * sieć zmieniona od biegu, rodzaj zwarcia, model bez zabezpieczeń, bieg rozpływu — 422) lub
  * `{powod, blokady: [{komunikat_pl}]}` (wejście niemiarodajne, 422). Rekord
  * przekazany wprost do `new Error` dawał komunikat „[object Object]".
  */
@@ -79,6 +73,11 @@ export function komunikatOdmowyAnalizy(detail: unknown, status: number): string 
  * w `nastawyApi`). Lepiej nazwać rozjazd wersji API niż stracić ekran.
  */
 const KOLEKCJE_WYNIKU: readonly string[] = [
+  'devices',
+  'odmowy_urzadzen',
+  'pominiete',
+  'pary',
+  'odmowy_par',
   'sensitivity_checks',
   'selectivity_checks',
   'overload_checks',
@@ -117,86 +116,6 @@ export async function getCoordinationResult(
     );
   }
   return payload;
-}
-
-/**
- * Get TCC data for visualization.
- */
-export async function getTCCData(
-  runId: string
-): Promise<{ curves: TCCCurve[]; fault_markers: FaultMarker[] }> {
-  const response = await fetch(`${API_BASE}/${runId}/tcc`);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Not found' }));
-    throw new Error(error.detail || `HTTP ${response.status}`);
-  }
-
-  return response.json();
-}
-
-/**
- * Get WHITE BOX trace.
- */
-export async function getCoordinationTrace(
-  runId: string
-): Promise<{ run_id: string; trace_steps: TraceStep[]; created_at: string }> {
-  const response = await fetch(`${API_BASE}/${runId}/trace`);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Not found' }));
-    throw new Error(error.detail || `HTTP ${response.status}`);
-  }
-
-  return response.json();
-}
-
-/**
- * Get sensitivity checks.
- */
-export async function getSensitivityChecks(
-  runId: string
-): Promise<SensitivityCheck[]> {
-  const response = await fetch(`${API_BASE}/${runId}/checks/sensitivity`);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Not found' }));
-    throw new Error(error.detail || `HTTP ${response.status}`);
-  }
-
-  return response.json();
-}
-
-/**
- * Get selectivity checks.
- */
-export async function getSelectivityChecks(
-  runId: string
-): Promise<SelectivityCheck[]> {
-  const response = await fetch(`${API_BASE}/${runId}/checks/selectivity`);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Not found' }));
-    throw new Error(error.detail || `HTTP ${response.status}`);
-  }
-
-  return response.json();
-}
-
-/**
- * Get overload checks.
- */
-export async function getOverloadChecks(
-  runId: string
-): Promise<OverloadCheck[]> {
-  const response = await fetch(`${API_BASE}/${runId}/checks/overload`);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Not found' }));
-    throw new Error(error.detail || `HTTP ${response.status}`);
-  }
-
-  return response.json();
 }
 
 /**

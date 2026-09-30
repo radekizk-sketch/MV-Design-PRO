@@ -181,48 +181,6 @@ export async function countStudyCases(projectId: string): Promise<{ count: numbe
 }
 
 // =============================================================================
-// Protection Configuration (P14c)
-// =============================================================================
-
-export interface ProtectionConfig {
-  template_ref: string | null;
-  template_fingerprint: string | null;
-  library_manifest_ref: Record<string, any> | null;
-  overrides: Record<string, any>;
-  bound_at: string | null;
-}
-
-export interface UpdateProtectionConfigRequest {
-  template_ref: string | null;
-  template_fingerprint: string | null;
-  library_manifest_ref: Record<string, any> | null;
-  overrides: Record<string, any>;
-}
-
-/**
- * Get protection configuration for a study case.
- */
-export async function getProtectionConfig(caseId: string): Promise<ProtectionConfig> {
-  const response = await fetch(`${API_BASE}/${caseId}/protection-config`);
-  return handleResponse<ProtectionConfig>(response);
-}
-
-/**
- * Update protection configuration for a study case.
- */
-export async function updateProtectionConfig(
-  caseId: string,
-  request: UpdateProtectionConfigRequest
-): Promise<ProtectionConfig> {
-  const response = await fetch(`${API_BASE}/${caseId}/protection-config`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-  return handleResponse<ProtectionConfig>(response);
-}
-
-// =============================================================================
 // PR-14: Execution Runs API
 // =============================================================================
 

@@ -77,9 +77,9 @@ from api.proof_pack import SCContributionsRequest, sc3f_contributions  # noqa: E
 from api.protection_coordination import (  # noqa: E402
     RunCoordinationRequest,
     get_coordination_result,
-    run_coordination_analysis,
+    wykonaj_koordynacje,
 )
-from api.protection_runs import list_protection_runs  # noqa: E402
+from api.protection_runs import get_protection_run_results, list_protection_runs  # noqa: E402
 from api.v126_academic import (  # noqa: E402
     _with_parameter_payloads,
     _wycofanie_v126,
@@ -143,9 +143,6 @@ from application.analyses.zgodnosc_powykonawcza import (  # noqa: E402
     build_zgodnosc_powykonawcza_view,
 )
 from application.analysis_run.read_model import canonicalize_json  # noqa: E402
-from application.autorytet_biegu_zwarciowego import (  # noqa: E402
-    wejscie_koordynacji_z_biegow,
-)
 from application.dynamika.gotowosc import gotowosc_dynamiki  # noqa: E402
 from application.dynamika.opis_scenariusza import opis_scenariusza_dynamicznego  # noqa: E402
 from application.ncrfg_compliance import (  # noqa: E402
@@ -166,12 +163,8 @@ from application.proof_engine.pakiet_nastaw import (  # noqa: E402
 from application.protection_comparison.service import (  # noqa: E402
     ProtectionComparisonService,
 )
+from application.protection_read_model import build_protection_read_model  # noqa: E402
 from application.protection_settings.zacisk_zabezpieczenia import (  # noqa: E402
-    ZACISKI,
-    Zacisk,
-    opis_miejsca_urzadzenia,
-    rodzaj_lokalizacji,
-    szyny_zwarcia_lokalizacji,
     zaciski_galezi_migawki,
 )
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile  # noqa: E402
@@ -179,7 +172,7 @@ from diagnostics.engine import DiagnosticEngine  # noqa: E402
 from diagnostics.preflight import (  # noqa: E402
     build_preflight_from_diagnostic_report,
 )
-from domain.study_case import ProtectionConfig, StudyCase  # noqa: E402
+from domain.study_case import StudyCase  # noqa: E402
 from enm.canonical_analysis import (  # noqa: E402
     build_execution_result_set,
     build_short_circuit_results,
@@ -192,6 +185,7 @@ from enm.canonical_analysis import (  # noqa: E402
 )
 from enm.domain_operations import execute_domain_operation  # noqa: E402
 from enm.hash import compute_enm_hash  # noqa: E402
+from enm.klucz_twin import klucz_twin_projektu  # noqa: E402
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id  # noqa: E402
 from enm.models import (  # noqa: E402
     ConnectionConditions,
@@ -232,6 +226,10 @@ from tests.golden.enm_builders.dynamika_projektanta import (  # noqa: E402
     build_dynamika_projektanta_enm,
     refy_sieci,
     scenariusz_zwarcia_w_odcinku,
+)
+from tests.golden.enm_builders.zabezpieczenia_magistrali import (  # noqa: E402
+    NAZWA_Q1,
+    build_zabezpieczenia_magistrali_enm,
 )
 from tests.golden.zapis_fikstur import (  # noqa: E402
     json_fikstury,
@@ -2498,47 +2496,10 @@ _KATALOG_APARATU_KOORD = "sw-cb-abb-vd4-17kv-630a"
 #: katalogu analitycznego (`GET /api/catalog/protection/device-types`).
 _APARAT_DOPASOWANIA_KOORD = "ABB_REF601"
 
-#: Nazwa szablonu zabezpieczenia — 1:1 z `DEVICE_TEMPLATES[relay-50-51].name`
-#: (to tę nazwę klika spec zrzutów w oknie szablonów).
-NAZWA_SZABLONU_ZABEZPIECZENIA_KOORD = "Przekaźnik 50/51 (typowy)"
-
 #: Identyfikator projektu w WYNIKU koordynacji: końcówka wymaga UUID, ale w
 #: harnessie nie ma rejestru projektów, więc w fixturze zostaje stabilna
 #: etykieta zamiast losowego identyfikatora (metadana, nie fizyka).
 PROJEKT_SCENY_KOORDYNACJA_PL = "projekt-scena-koordynacja"
-
-#: Szablon zabezpieczenia sceny — 1:1 z `DEVICE_TEMPLATES[relay-50-51]`
-#: (`frontend/src/ui/protection-coordination/types.ts`), czyli DOKŁADNIE to, co
-#: wysyła ekran po kliknięciu „Zastosuj szablon" w spec `wszystkie-sceny-
-#: screenshot.spec.ts`. Rozjazd tego szablonu z szablonem UI wykrywa atrapa
-#: harnessu (odmowa 409, jak scena `macierz`), nie cicha podmiana liczb.
-_SZABLON_ZABEZPIECZENIA_KOORD: dict[str, Any] = {
-    "stage_51": {
-        "enabled": True,
-        "pickup_current_a": 400,
-        "curve_settings": {
-            "standard": "IEC",
-            "variant": "SI",
-            "pickup_current_a": 400,
-            "time_multiplier": 0.3,
-        },
-        "directional": False,
-    },
-    "stage_50": {
-        "enabled": True,
-        "pickup_current_a": 2000,
-        "time_s": 0.1,
-        "directional": False,
-    },
-}
-
-#: Odbiory stacji sceny — DANE WEJŚCIOWE projektu (moc przyłączeniowa stacji
-#: SN/nN, typowa dla stacji miejskiej 630 kVA obciążonej w ~40%), nie wynik.
-#: Bez nich magistrala jest praktycznie nieobciążona (prąd rzędu 2 A zmierzony
-#: na modelu bez odbiorów), a nastawa I> = k_b·I_obc wychodziła 2,8 A — liczba
-#: prawdziwa, ale nieczytelna jako demonstracja ekranu.
-_MOC_ODBIORU_STACJI_KW = 250.0
-_COS_PHI_ODBIORU_STACJI = 0.95
 
 
 def _operacja_domenowa_sceny(
@@ -2558,110 +2519,36 @@ def _operacja_domenowa_sceny(
     return snapshot
 
 
-def _enm_sceny_koordynacja() -> tuple[EnergyNetworkModel, str, str]:
-    """Sieć sceny E-28 + `(ref chronionego odcinka, ref kolejnej szyny)`.
+#: Stacje sieci sceny E-28: sieć złota G08 (S01, S02 z zabezpieczeniami Q1, Q2) przedłużona o
+#: S03 i S04 — odcinek S02 → S03 łączy dwie szyny stacyjne z kolejną strefą (S04), czyli jest
+#: wejściem doboru nastaw metodą Hoppela (sekcja nastaw ekranu); zabezpieczenia bez zmian.
+STACJE_SCENY_KOORD: tuple[str, ...] = ("Stacja S01", "Stacja S02", "Stacja S03", "Stacja S04")
 
-    Kształt: GPZ 110/15 kV → magistrala kablowa → Stacja S01 (SN/nN) →
-    magistrala → Stacja S02 (SN/nN). Obie szyny SN stacji są RAPORTOWALNYMI
-    punktami zwarcia, więc odcinek S01→S02 ma komplet trzech szyn z prądem
-    zwarciowym (warunek nastaw I>/I>>), a obie nadają się na lokalizację
-    zabezpieczenia. ZERO źródeł wytwórczych — sieć bez falownika nie niesie
-    znacznika `DOMYSLNE_SYSTEMOWE` proweniencji `k_sc`, więc brama autorytetu
-    koordynacji przepuszcza wynik (na sieci złotej odmawiała: kod SI-110,
-    zmierzone).
 
-    Układ sieci nN (`lv_earthing_system`) deklarowany JAWNIE dla każdego
-    transformatora SN/nN — walidator odmawia biegu bez tej deklaracji (E063),
-    a operacja wstawienia stacji jej nie zgaduje. To dana wejściowa sceny,
-    jak w `_gpz_feeder_enm_z_falownikiem` obok."""
-    enm = EnergyNetworkModel(header=ENMHeader(name="Magistrala SN — scena koordynacji")).model_dump(
-        mode="json"
-    )
-    enm = _operacja_domenowa_sceny(
-        enm,
-        "add_grid_source_sn",
-        {
-            "voltage_kv": 15.0,
-            "source_name": "GPZ Wschód",
-            "sk3_mva": 250.0,
-            "rx_ratio": 0.1,
-            "catalog_ref": _KATALOG_ZRODLA_KOORD,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
-        },
-    )
-    enm = _operacja_domenowa_sceny(
-        enm,
-        "continue_trunk_segment_sn",
-        {
-            "segment": {
-                "rodzaj": "KABEL",
-                "dlugosc_m": 900,
-                "name": "Magistrala GPZ",
-                "catalog_ref": _KATALOG_KABLA_KOORD,
-            }
-        },
-    )
-    segment_zrodlowy = [
-        galaz["ref_id"]
-        for galaz in enm["branches"]
-        if galaz.get("type") in ("cable", "line_overhead")
-    ][-1]
+def _enm_sceny_koordynacja() -> tuple[EnergyNetworkModel, str]:
+    """Sieć sceny E-28 + ref odcinka S02 → S03.
 
-    stacja_wspolna: dict[str, Any] = {
-        "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
-        "insert_at": {"mode": "RATIO", "value": 0.5},
-        "sn_fields": [
-            {"field_role": "LINIA_IN"},
-            {"field_role": "LINIA_OUT"},
-            {"field_role": "TRANSFORMATOROWE"},
-        ],
-        "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_KOORD},
-        "nn_block": {"outgoing_feeders_nn_count": 1},
-    }
-    for segment, nazwa_stacji in (
-        (segment_zrodlowy, "Stacja S01"),
-        (f"{segment_zrodlowy}_R", "Stacja S02"),
-    ):
-        enm = _operacja_domenowa_sceny(
-            enm,
-            "insert_station_on_segment_sn",
-            {
-                **stacja_wspolna,
-                "segment_id": segment,
-                "station": {
-                    "station_type": "B",
-                    "station_name": nazwa_stacji,
-                    "sn_voltage_kv": 15.0,
-                    "nn_voltage_kv": 0.4,
-                },
-            },
-        )
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU: budowniczy sieci złotej G08
+    (`tests/golden/enm_builders/zabezpieczenia_magistrali`) z czterema stacjami — GPZ → Q1 →
+    S01 → Q2 → S02 → S03 → S04; dwa wyłączniki liniowe z przekładnikami 600/5 A 5P20
+    i przekaźnikami `REF-OC-200` z nastawami zapisanymi operacjami domenowymi (jeden
+    budowniczy dla sieci złotej i sceny). ZERO źródeł wytwórczych — brama autorytetu
+    koordynacji przepuszcza wynik (bez znacznika `DOMYSLNE_SYSTEMOWE` proweniencji `k_sc`).
 
-    for szyna_nn in sorted(
-        szyna["ref_id"] for szyna in enm["buses"] if szyna["ref_id"].endswith("/nn_bus")
-    ):
-        enm = _operacja_domenowa_sceny(
-            enm,
-            "add_load_sn",
-            {
-                "bus_ref": szyna_nn,
-                "name": "Odbiór stacji",
-                "active_power_kw": _MOC_ODBIORU_STACJI_KW,
-                "cos_phi": _COS_PHI_ODBIORU_STACJI,
-            },
-        )
-
-    model = EnergyNetworkModel.model_validate(enm)
-    for transformator in model.transformers:
-        if transformator.ulv_kv < 1.0 and transformator.lv_earthing_system is None:
-            transformator.lv_earthing_system = "TN-C-S"
+    Karta POLA-W-TORZE: odcinek między stacjami łączy ZACISKI pól (pole odpływowe S02, pole
+    wejściowe S03), nie szyny główne — przynależność końców odcinka do stacji z jednego
+    źródła (`enm.tor_pola.szyny_stacji`)."""
+    model = build_zabezpieczenia_magistrali_enm(STACJE_SCENY_KOORD)
     _fiksuj_niedeterminizm_sceny_zwarcia(model)
-    # Chroniony odcinek = `segment_R_L` (S01 → S02): JEDYNY odcinek magistrali
-    # między dwiema szynami stacyjnymi, więc jedyny z kompletem trzech szyn
-    # raportowalnych. Kolejna szyna = szyna SN Stacji S02 (koniec tego odcinka
-    # ma dalej `segment_R_R`, którego drugi koniec jest zaciskiem technicznym).
-    return model, f"{segment_zrodlowy}_L", f"{segment_zrodlowy}_R_L"
+    stacje = {stacja.name: szyny_stacji(stacja, model.branches) for stacja in model.substations}
+    (odcinek,) = (
+        g
+        for g in model.branches
+        if g.type == "cable"
+        and g.from_bus_ref in stacje["Stacja S02"]
+        and g.to_bus_ref in stacje["Stacja S03"]
+    )
+    return model, odcinek.ref_id
 
 
 @contextmanager
@@ -2670,11 +2557,11 @@ def _biegi_sceny_koordynacja() -> Iterator[tuple[Any, Any, Any, EnergyNetworkMod
     zwarcie 3F w wariancie MAKSYMALNYM (selektywność, nastawy), zwarcie 3F w
     wariancie MINIMALNYM (czułość — `options={"scenario": "min"}`, TEN SAM
     klucz, który czyta `_scenariusz_z_opcji`) i rozpływ mocy (prądy robocze
-    gałęzi). Oba biegi zwarciowe stoją na TEJ SAMEJ migawce modelu —
-    `wejscie_koordynacji_z_biegow` odmawia pary z dwóch różnych modeli.
+    gałęzi). Oba biegi zwarciowe stoją na TEJ SAMEJ migawce modelu — koordynacja
+    (`koordynacja_z_biegow`) odmawia biegu policzonego dla innej sieci niż model.
 
-    MENEDŻER KONTEKSTU, nie zwykła funkcja: `run_coordination_analysis` i
-    `wejscie_koordynacji_z_biegow` czytają biegi Z REJESTRU po identyfikatorze,
+    MENEDŻER KONTEKSTU, nie zwykła funkcja: `wykonaj_koordynacje` i końcówki nastaw
+    czytają biegi Z REJESTRU po identyfikatorze,
     więc rejestr musi ŻYĆ przez cały czas liczenia fixtury (zmierzone: zwrócenie
     biegów po `reset_canonical_runs()` kończyło się `BiegNiemiarodajnyError`
     „bieg nie istnieje"). `reset_*` po wyjściu — jak każda kotwica tego
@@ -2682,7 +2569,7 @@ def _biegi_sceny_koordynacja() -> Iterator[tuple[Any, Any, Any, EnergyNetworkMod
     reset_canonical_runs()
     reset_enm_store()
     try:
-        model, linia, _szyna = _enm_sceny_koordynacja()
+        model, linia = _enm_sceny_koordynacja()
         with _zamrozona_tozsamosc_biegu(_UUID_SCENY_KOORD_MAX):
             set_enm(CASE_ID_HARNESSU, model)
             bieg_max = execute_run(
@@ -2735,8 +2622,8 @@ def koordynacja_scena_zwarcia_max() -> dict[str, Any]:
 
 def koordynacja_scena_zwarcia_min() -> dict[str, Any]:
     """Odpowiedź `GET …/results/short-circuit` biegu MINIMALNEGO (c_min) —
-    bez niego czułość zabezpieczeń jest niesprawdzalna (`zbudujPradyKoordynacji`
-    w ogóle nie tworzy pozycji prądowej)."""
+    bez niego czułość zabezpieczeń jest niesprawdzalna (koordynacja odmawia bez biegu
+    minimalnego, a ekran wybiera go po scenariuszu zapisanym na biegu)."""
     with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, _model, _linia):
         return _ustabilizuj_identyfikatory(
             build_short_circuit_results_response(bieg_min),
@@ -2744,19 +2631,9 @@ def koordynacja_scena_zwarcia_min() -> dict[str, Any]:
         )
 
 
-def koordynacja_scena_galezie() -> dict[str, Any]:
-    """Odpowiedź `GET …/results/branches` biegu rozpływu
-    (`build_branch_results_response`) — prądy robocze gałęzi magistrali."""
-    with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, _model, _linia):
-        return _ustabilizuj_identyfikatory(
-            build_branch_results_response(bieg_pf),
-            _mapa_identyfikatorow_koordynacji(bieg_max, bieg_min, bieg_pf),
-        )
-
-
 def koordynacja_scena_migawka() -> dict[str, Any]:
-    """Migawka modelu przypadku (`GET /api/cases/{id}/enm`) — źródło LISTY
-    WYBORU lokalizacji zabezpieczenia na ekranie (`lokalizacjeZModelu.ts`).
+    """Migawka modelu przypadku (`GET /api/cases/{id}/enm`) — źródło nazw obiektów
+    ekranów sceny (miejsca zwarć, wyłączniki, urządzenia zabezpieczeniowe z modelu).
 
     Model SERWOWANY przez magazyn (`_model_serwowany`), nie zrzut sprzed zapisu: biegi
     sceny liczą się na odczycie magazynu, który promuje pola nN do realnych szyn
@@ -2790,9 +2667,9 @@ def koordynacja_scena_pakiet_dostepnosc_min() -> dict[str, Any]:
         )
 
 
-#: Zacisk zabezpieczenia odcinka sceny (decyzja O-51): sieć sceny nie przypina
-#: zabezpieczeń do wyłączników (model milczy), więc ekran wymaga wskazania — scena
-#: wskazuje zacisk początkowy (strona Stacji S01), tak jak klika go spec e2e.
+#: Zacisk zabezpieczenia odcinka sceny dla doboru nastaw metodą Hoppela (decyzja O-51):
+#: scena wskazuje zacisk początkowy odcinka (strona wyłącznika liniowego przed Stacją S01),
+#: tak jak klika go spec e2e.
 ZACISK_ZABEZPIECZENIA_SCENY_KOORD = "od"
 #: Nazwa przypadku sceny koordynacji — TA SAMA, którą harness zasiewa dla sceny
 #: `koordynacja` (`setActiveCase('case-demo', 'Wariant zimowy', …)`). Końcówki nastaw
@@ -2855,147 +2732,26 @@ def koordynacja_scena_nastawy_dopasowanie() -> dict[str, Any]:
         )
 
 
-#: Zacisk zabezpieczeń odcinków magistrali w scenie E-28: początkowy (strona zasilania),
-#: klikany przez spec zrzutów (`wszystkie-sceny-screenshot.spec.ts`).
-ZACISK_ZABEZPIECZEN_SCENY_KOORD = "od"
-
-
-def _lokalizacje_zabezpieczen_koordynacji(
-    model: EnergyNetworkModel,
-) -> list[tuple[str, str]]:
-    """Lokalizacje dwóch zabezpieczeń sceny (decyzja O-51 pkt 7): odcinki magistrali
-    zasilające szyny SN obu stacji (GPZ → S01, S01 → S02), każde przy zacisku
-    POCZĄTKOWYM — przekaźnik w polu liniowym strony zasilania. Posortowane —
-    kolejność deterministyczna, niezależna od kolejności budowy."""
-    # Karta POLA-W-TORZE: odcinek dochodzi do ZACISKU pola wejściowego stacji, nie do jej szyny
-    # głównej — przynależność szyn do stacji z jednego źródła (`enm.tor_pola.szyny_stacji`).
-    szyny_stacji_sn = {
-        szyna
-        for stacja in model.substations
-        if stacja.station_type != "gpz"
-        for szyna in szyny_stacji(stacja, model.branches)
-    }
-    return sorted(
-        (galaz.ref_id, ZACISK_ZABEZPIECZEN_SCENY_KOORD)
-        for galaz in model.branches
-        if galaz.type == "cable" and galaz.to_bus_ref in szyny_stacji_sn
-    )
-
-
-def koordynacja_scena_miejsca() -> dict[str, Any]:
-    """Odpowiedzi `GET /api/cases/{id}/enm/zacisk-lokalizacji` (`opis_miejsca_urzadzenia` —
-    TA SAMA funkcja, którą woła końcówka) dla KAŻDEJ lokalizacji z listy wyboru ekranu
-    (szyny, gałęzie, transformatory migawki) i każdego wskazania, które ekran może
-    wysłać (brak; dla gałęzi i łączników także `od` i `do`). Klucz: `lokalizacja|zacisk`
-    (pusty zacisk = brak wskazania). `urzadzenia_sceny` — lokalizacje i zaciski dwóch
-    zabezpieczeń sceny (spec zrzutów wskazuje je natywnymi klikami)."""
-    with _biegi_sceny_koordynacja() as (bieg_max, _bieg_min, _bieg_pf, model, _linia):
-        migawka = bieg_max.snapshot
-        refy = sorted(
-            {b.ref_id for b in model.buses}
-            | {g.ref_id for g in model.branches}
-            | {t.ref_id for t in model.transformers}
-        )
-        rozstrzygniecia: dict[str, Any] = {}
-        for ref in refy:
-            wskazania: tuple[Zacisk | None, ...] = (
-                (None,)
-                if rodzaj_lokalizacji(migawka, ref) in ("szyna", "brak")
-                else (None, *ZACISKI)
-            )
-            for wskazanie in wskazania:
-                rozstrzygniecia[f"{ref}|{wskazanie or ''}"] = opis_miejsca_urzadzenia(
-                    migawka, ref, wskazanie
-                )
-        return canonicalize_json(
-            {
-                "rozstrzygniecia": rozstrzygniecia,
-                "urzadzenia_sceny": [
-                    {"lokalizacja": lokalizacja, "zacisk": zacisk}
-                    for lokalizacja, zacisk in _lokalizacje_zabezpieczen_koordynacji(model)
-                ],
-            }
-        )
-
-
 def koordynacja_scena_wynik() -> dict[str, Any]:
-    """Pełny wynik analizy koordynacji (`POST /api/protection-coordination/
-    projects/{id}/run` + `GET /{run_id}`) policzony REALNYM analizatorem
-    (`OvercurrentCoordinationAnalyzer` przez końcówkę `run_coordination_
-    analysis` — z kompletem jej bramek: autorytet wkładu zwarciowego, zgodność
-    prądów żądania z prądami biegów, gotowość payloadu).
+    """Pełny wynik koordynacji (`POST /api/protection-coordination/projects/{id}/run` +
+    `GET /{run_id}`) — TA SAMA funkcja wykonania co końcówka (`wykonaj_koordynacje`).
 
-    IDENTYFIKATORY ZABEZPIECZEŃ. Ekran generuje je `crypto.randomUUID()` przy
-    kliknięciu „Zastosuj szablon", więc fixtura NIE MOŻE ich znać. Fixtura
-    używa `uuid5` z refu lokalizacji (deterministyczne), a atrapa harnessu
-    podmienia je na identyfikatory z ŻĄDANIA, dopasowując po
-    `location_element_id` — tożsamość, nie fizyka.
-
-    ŻĄDANIE = TO, KTÓRE WYSYŁA EKRAN (decyzja O-51 pkt 7). Zabezpieczenia stoją
-    na odcinkach magistrali przy wskazanym zacisku (`_lokalizacje_zabezpieczen_
-    koordynacji`); prąd zwarciowy lokalizacji to prąd SZYNY zacisku
-    (`szyny_zwarcia_lokalizacji` — ten sam resolver co końcówka i ekran), prąd
-    roboczy to prąd TEGO zacisku z wiersza gałęzi rozpływu (`i_a` dla `od`,
-    `i_do_a` dla `do` — `pradyZBiegow.ts::pradRoboczyZWiersza`). Do tej karty
-    zabezpieczenia stały na SZYNACH, żądanie niosło prądy robocze wszystkich
-    gałęzi z samego zacisku `od`, a analizator zwracał dla obu zabezpieczeń
-    `ERROR` braku prądu roboczego — relacji „zabezpieczenie → chroniona gałąź"
-    wtedy nie było."""
-    with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, model, _linia):
-        wejscie = wejscie_koordynacji_z_biegow(
-            run_id_max=str(bieg_max.id), run_id_min=str(bieg_min.id)
-        )
-        galezie = {
-            wiersz["element_id"]: wiersz
-            for wiersz in build_branch_results_response(bieg_pf)["rows"]
-        }
-        miejsca = _lokalizacje_zabezpieczen_koordynacji(model)
-        szyny, odmowy = szyny_zwarcia_lokalizacji(bieg_max.snapshot, list(miejsca))
-        assert not odmowy, odmowy
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU: żądanie niesie wyłącznie identyfikatory biegów MAX, MIN i
+    rozpływu. Urządzenia (Q1, Q2), nastawy, pary stopniowania (strefa Q2 zawiera się w strefie
+    Q1), prądy przekaźników i prądy robocze pochodzą z modelu i biegów — dawny szablon
+    urządzenia ekranu i prądy z żądania skasowane."""
+    with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, _model, _linia):
+        # Model SERWOWANY przez magazyn — ten sam, na którego migawce policzono biegi (końcówka
+        # czyta go przez `get_enm(klucz)`); zrzut budowniczego przed zapisem ma inną sieć
+        # (magazyn promuje pola), więc bramka sieci słusznie by go odrzuciła.
+        model = get_enm(CASE_ID_HARNESSU)
         zadanie = RunCoordinationRequest(
-            devices=[
-                {
-                    "id": str(
-                        uuid5(NAMESPACE_URL, "mv-design-pro:harness:koordynacja:" + lokalizacja)
-                    ),
-                    "name": NAZWA_SZABLONU_ZABEZPIECZENIA_KOORD,
-                    "device_type": "RELAY",
-                    "location_element_id": lokalizacja,
-                    "zacisk": zacisk,
-                    "settings": _SZABLON_ZABEZPIECZENIA_KOORD,
-                }
-                for lokalizacja, zacisk in miejsca
-            ],
-            fault_currents=[
-                {
-                    "location_id": lokalizacja,
-                    "ik_max_3f_a": wejscie.prady_max_a[szyny[lokalizacja]],
-                    "ik_min_3f_a": wejscie.prady_min_a[szyny[lokalizacja]],
-                }
-                for lokalizacja, _zacisk in miejsca
-            ],
-            operating_currents=[
-                {
-                    "location_id": lokalizacja,
-                    "i_operating_a": galezie[lokalizacja]["i_a" if zacisk == "od" else "i_do_a"],
-                }
-                for lokalizacja, zacisk in miejsca
-            ],
-            pf_run_id=str(bieg_pf.id),
             sc_run_id=str(bieg_max.id),
             sc_run_id_min=str(bieg_min.id),
+            pf_run_id=str(bieg_pf.id),
         )
-        # Zegar zamrożony na czas analizy: `ProtectionDevice.created_at`
-        # (`domain/protection_device.py`, `default_factory` z `datetime.now(UTC)`)
-        # i `CoordinationResult.created_at` (`…/coordination/models.py`) znakują
-        # się przy KAŻDYM wywołaniu — bez tego dwa wywołania fixtury różniły się
-        # znacznikami obu urządzeń (zmierzone bezpośrednio). Tu `default_factory`
-        # jest LAMBDĄ czytającą nazwę `datetime` z przestrzeni modułu przy
-        # wywołaniu, więc podmiana nazwy DZIAŁA (inaczej niż `Field(
-        # default_factory=uuid4)` Pydantica — patrz `_fiksuj_niedeterminizm_
-        # sceny_zwarcia`).
+        # Zegar zamrożony: `CoordinationAnalysisResult.created_at` znakuje się przy wywołaniu.
         with (
-            patch("domain.protection_device.datetime", _ZegarStalyBiegu),
             patch(
                 "application.analyses.protection.coordination.models.datetime",
                 _ZegarStalyBiegu,
@@ -3005,7 +2761,9 @@ def koordynacja_scena_wynik() -> dict[str, Any]:
                 _ZegarStalyBiegu,
             ),
         ):
-            podsumowanie = run_coordination_analysis(_PROJEKT_SCENY_KOORDYNACJA, zadanie)
+            podsumowanie = wykonaj_koordynacje(
+                model=model, project_id=_PROJEKT_SCENY_KOORDYNACJA, request=zadanie
+            )
         widok = get_coordination_result(podsumowanie["run_id"])
         return _ustabilizuj_identyfikatory(
             canonicalize_json(widok),
@@ -3016,6 +2774,87 @@ def koordynacja_scena_wynik() -> dict[str, Any]:
                 str(_PROJEKT_SCENY_KOORDYNACJA): PROJEKT_SCENY_KOORDYNACJA_PL,
             },
         )
+
+
+#: Przypadek sceny koordynacji w bazie w pamięci (odczyt świeżości wyniku oceny zabezpieczeń
+#: wymaga przypadku przypisanego do projektu). W fixturze — identyfikator przypadku harnessu.
+_PRZYPADEK_SCENY_KOORD = uuid5(NAMESPACE_URL, "mv-design-pro:harness:przypadek-koordynacja")
+RUN_ID_SCENY_KOORD_OCENA = "run-zab-scena-koordynacja"
+_UUID_SCENY_KOORD_OCENA = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_KOORD_OCENA)
+_CZAS_PRZYPADKU_SCENY_KOORD = datetime(2026, 9, 17, 8, 0, 0, tzinfo=UTC)
+
+
+def koordynacja_scena_widok_zabezpieczen() -> dict[str, Any]:
+    """Odpowiedź `GET /api/cases/{id}/enm/protection-view` (`build_protection_read_model` — TA
+    SAMA funkcja co końcówka) dla modelu sceny E-28 (sieć złota G08): przypisania zabezpieczeń
+    z nastawami rozwiązanymi jedną ścieżką oceny (przekładnia, próg pierwotny, zakresy katalogu
+    z podstawą, braki), słownik edytora nastaw i wyłączniki liniowe — wejście edytora nastaw."""
+    model, _linia = _enm_sceny_koordynacja()
+    widok = build_protection_read_model(CASE_ID_HARNESSU, _model_serwowany(model))
+    return canonicalize_json(widok)
+
+
+def koordynacja_scena_ocena() -> dict[str, Any]:
+    """Odpowiedź `GET /api/protection-runs/{id}/results` dla biegu oceny zabezpieczeń sceny E-28
+    (`get_protection_run_results` — TA SAMA funkcja co końcówka): urządzenia i nastawy z modelu
+    sceny (sieć złota G08), prąd przekaźników z rozpływu biegu zwarciowego MAKSYMALNEGO sceny
+    (ta sama tożsamość biegu co `koordynacja_scena_zwarcia_max`).
+
+    Model trzymany pod kluczem PROJEKTU przypadku z bazy w pamięci (jeden model projektu), bo
+    odczyt świeżości porównuje koperty biegów z bieżącym modelem projektu przypadku — wynik jest
+    aktualny, tak jak zobaczy go projektant zaraz po ocenie."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        silnik = create_engine_from_url("sqlite+pysqlite:///:memory:")
+        init_db(silnik)
+        uow_factory = build_uow_factory(create_session_factory(silnik))
+        with uow_factory() as uow:
+            uow.cases.add_study_case(
+                StudyCase(
+                    id=_PRZYPADEK_SCENY_KOORD,
+                    project_id=_PROJEKT_SCENY_KOORDYNACJA,
+                    name=NAZWA_PRZYPADKU_SCENY_KOORD,
+                    description="",
+                    created_at=_CZAS_PRZYPADKU_SCENY_KOORD,
+                    updated_at=_CZAS_PRZYPADKU_SCENY_KOORD,
+                )
+            )
+        klucz = klucz_twin_projektu(_PROJEKT_SCENY_KOORDYNACJA)
+        model, _linia = _enm_sceny_koordynacja()
+        set_enm(klucz, model)
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_KOORD_MAX):
+            bieg_max = execute_run(
+                create_run(
+                    case_id=str(_PRZYPADEK_SCENY_KOORD),
+                    klucz_twin=klucz,
+                    analysis_type="short_circuit_sn",
+                    project_id=str(_PROJEKT_SCENY_KOORDYNACJA),
+                ).id
+            )
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_KOORD_OCENA):
+            bieg = execute_run(
+                create_run(
+                    case_id=str(_PRZYPADEK_SCENY_KOORD),
+                    klucz_twin=klucz,
+                    analysis_type="protection_sn",
+                    project_id=str(_PROJEKT_SCENY_KOORDYNACJA),
+                    options={"sc_run_id": str(bieg_max.id)},
+                ).id,
+                uow_factory=uow_factory,
+            )
+        widok = get_protection_run_results(bieg.id, uow_factory=uow_factory)
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(widok),
+            {
+                str(bieg_max.id): RUN_ID_SCENY_KOORD_MAX,
+                str(bieg.id): RUN_ID_SCENY_KOORD_OCENA,
+                str(_PRZYPADEK_SCENY_KOORD): CASE_ID_HARNESSU,
+            },
+        )
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
 
 
 # ---------------------------------------------------------------------------
@@ -4644,9 +4483,9 @@ def diagnoza_scena_bieg() -> dict[str, Any]:
 # wobec prądu zwarciowego biegu źródłowego) policzone na DWÓCH wariantach tej
 # samej sieci i porównane serwisem `ProtectionComparisonService`.
 #
-# DLACZEGO WARIANT B TO DŁUŻSZY ODCINEK: bieg zabezpieczeń czyta konfigurację
-# nastaw przypadku Z BAZY, więc scena zakłada bazę w pamięci (SQLite) z dwoma
-# przypadkami tego samego projektu. Różnica między wariantami jest MODELOWA
+# DLACZEGO WARIANT B TO DŁUŻSZY ODCINEK (karta BIEG-ZABEZPIECZEN-Z-MODELU): urządzenia i
+# nastawy są w MODELU (sieć złota G08), baza w pamięci niesie wyłącznie przypadki projektu
+# (nazwy w liście biegów i proweniencji). Różnica między wariantami jest MODELOWA
 # (dłuższa magistrala → większa impedancja → mniejszy prąd zwarciowy → inny
 # czas zadziałania), a nie „inne liczby w atrapie" — dokładnie ta sama recepta,
 # którą sprawdza e2e na żywym backendzie (`porownanie-zwarc-delty.spec.ts`).
@@ -4665,11 +4504,6 @@ _UUID_SCENY_ZAB_SC_B = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SC
 _UUID_SCENY_ZAB_A = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZAB_A)
 _UUID_SCENY_ZAB_B = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZAB_B)
 
-#: Szablon nastaw przypadku — REALNA pozycja katalogu zabezpieczeń
-#: (`get_protection_setting_template`), ta sama dla obu wariantów: porównanie
-#: ma pokazać skutek zmiany MODELU, nie zmiany szablonu.
-_SZABLON_NASTAW_SCENY_ZAB = "template_ref_oc_100"
-
 #: Długość magistrali w wariancie B [km] — DANA WEJŚCIOWA wariantu (operacja
 #: `update_element_parameters`). Dłuższy odcinek to większa impedancja pętli,
 #: więc mniejszy prąd zwarciowy i dłuższy czas zadziałania: różnica, którą
@@ -4680,18 +4514,12 @@ _CZAS_PRZYPADKU_SCENY_ZAB = datetime(2026, 9, 16, 8, 0, 0, tzinfo=UTC)
 
 
 def _baza_w_pamieci_sceny_zabezpieczen() -> Any:
-    """Fabryka `UnitOfWork` na bazie W PAMIĘCI z dwoma przypadkami projektu,
-    każdy z konfiguracją nastaw wskazującą REALNY szablon katalogu. Bieg
-    zabezpieczeń czyta tę konfigurację z bazy (`_execute_protection`), więc bez
-    niej scena nie ma z czego policzyć oceny — atrapa wyniku byłaby fabrykacją."""
+    """Fabryka `UnitOfWork` na bazie W PAMIĘCI z dwoma przypadkami projektu — nazwy przypadków
+    w liście biegów i proweniencji porównania. Nastawy NIE są w bazie (D-21): urządzenia i
+    nastawy obu wariantów niesie model sieci złotej G08."""
     silnik = create_engine_from_url("sqlite+pysqlite:///:memory:")
     init_db(silnik)
     uow_factory = build_uow_factory(create_session_factory(silnik))
-    konfiguracja = ProtectionConfig(
-        template_ref=_SZABLON_NASTAW_SCENY_ZAB,
-        template_fingerprint=f"{_SZABLON_NASTAW_SCENY_ZAB}@1",
-        bound_at=_CZAS_PRZYPADKU_SCENY_ZAB,
-    )
     for przypadek, nazwa in (
         (_PRZYPADEK_SCENY_ZAB_A, "Stan normalny"),
         (_PRZYPADEK_SCENY_ZAB_B, "Magistrala wydłużona"),
@@ -4703,7 +4531,6 @@ def _baza_w_pamieci_sceny_zabezpieczen() -> Any:
                     project_id=_PROJEKT_SCENY_ZABEZPIECZEN,
                     name=nazwa,
                     description="",
-                    protection_config=konfiguracja,
                     created_at=_CZAS_PRZYPADKU_SCENY_ZAB,
                     updated_at=_CZAS_PRZYPADKU_SCENY_ZAB,
                 )
@@ -4712,14 +4539,16 @@ def _baza_w_pamieci_sceny_zabezpieczen() -> Any:
 
 
 def _enm_wariantu_b_sceny_zabezpieczen(enm: EnergyNetworkModel) -> EnergyNetworkModel:
-    """Wariant B: magistrala GPZ wydłużona operacją `update_element_parameters`
-    (ta sama, którą woła projektant), więc różnica wariantów jest zapisana w
-    MODELU i policzona przez solver."""
+    """Wariant B: odcinek magistrali za wyłącznikiem pola liniowego GPZ (Q1 → Stacja S01)
+    wydłużony operacją `update_element_parameters` (ta sama, którą woła projektant), więc
+    różnica wariantów jest zapisana w MODELU i policzona przez solver; urządzenia i nastawy
+    obu wariantów są te same."""
     dane = enm.model_dump(mode="json")
+    q1 = next(g for g in dane["branches"] if g.get("name") == NAZWA_Q1)
     magistrala = next(
         galaz["ref_id"]
         for galaz in dane["branches"]
-        if galaz.get("type") in ("cable", "line_overhead")
+        if galaz.get("type") == "cable" and galaz["from_bus_ref"] == q1["to_bus_ref"]
     )
     dane = _operacja_domenowa_sceny(
         dane,
@@ -4741,57 +4570,51 @@ def _enm_wariantu_b_sceny_zabezpieczen(enm: EnergyNetworkModel) -> EnergyNetwork
 def _biegi_sceny_zabezpieczen() -> Iterator[tuple[Any, Any, Any]]:
     """Dwa biegi `protection_sn` (warianty A i B) w JEDNYM rejestrze — wołający
     dostaje `(bieg A, bieg B, fabryka UnitOfWork)`. Rejestr żyje do końca bloku,
-    bo serwis porównania czyta biegi po identyfikatorze."""
+    bo serwis porównania czyta biegi po identyfikatorze.
+
+    JEDEN model projektu (zasada jednego modelu): wariant A liczony na modelu projektu, potem
+    projektant wydłuża odcinek magistrali (wariant B) w TYM SAMYM modelu i liczy ponownie.
+    Świeżość wynika więc z historii modelu: wynik wariantu A jest nieaktualny (model zmienił
+    się po nim), wynik wariantu B aktualny — tak, jak zobaczy to projektant."""
     reset_canonical_runs()
     reset_enm_store()
     try:
         uow_factory = _baza_w_pamieci_sceny_zabezpieczen()
-        enm_a, _odcinek, _szyna = _enm_sceny_koordynacja()
+        klucz = klucz_twin_projektu(_PROJEKT_SCENY_ZABEZPIECZEN)
+        enm_a, _odcinek = _enm_sceny_koordynacja()
         enm_b = _enm_wariantu_b_sceny_zabezpieczen(enm_a)
 
-        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_ZAB_SC_A):
-            set_enm(str(_PRZYPADEK_SCENY_ZAB_A), enm_a)
-            sc_a = execute_run(
-                create_run(
-                    case_id=str(_PRZYPADEK_SCENY_ZAB_A),
-                    klucz_twin=str(_PRZYPADEK_SCENY_ZAB_A),
-                    analysis_type="short_circuit_sn",
-                    project_id=str(_PROJEKT_SCENY_ZABEZPIECZEN),
-                ).id
-            )
-        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_ZAB_A):
-            bieg_a = execute_run(
-                create_run(
-                    case_id=str(_PRZYPADEK_SCENY_ZAB_A),
-                    klucz_twin=str(_PRZYPADEK_SCENY_ZAB_A),
-                    analysis_type="protection_sn",
-                    project_id=str(_PROJEKT_SCENY_ZABEZPIECZEN),
-                    options={"sc_run_id": str(sc_a.id)},
-                ).id,
-                uow_factory=uow_factory,
-            )
+        def _biegi_wariantu(
+            przypadek: UUID, enm: EnergyNetworkModel, uuid_sc: UUID, uuid_zab: UUID
+        ) -> Any:
+            set_enm(klucz, enm)
+            with _zamrozona_tozsamosc_biegu(uuid_sc):
+                sc = execute_run(
+                    create_run(
+                        case_id=str(przypadek),
+                        klucz_twin=klucz,
+                        analysis_type="short_circuit_sn",
+                        project_id=str(_PROJEKT_SCENY_ZABEZPIECZEN),
+                    ).id
+                )
+            with _zamrozona_tozsamosc_biegu(uuid_zab):
+                return execute_run(
+                    create_run(
+                        case_id=str(przypadek),
+                        klucz_twin=klucz,
+                        analysis_type="protection_sn",
+                        project_id=str(_PROJEKT_SCENY_ZABEZPIECZEN),
+                        options={"sc_run_id": str(sc.id)},
+                    ).id,
+                    uow_factory=uow_factory,
+                )
 
-        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_ZAB_SC_B):
-            set_enm(str(_PRZYPADEK_SCENY_ZAB_B), enm_b)
-            sc_b = execute_run(
-                create_run(
-                    case_id=str(_PRZYPADEK_SCENY_ZAB_B),
-                    klucz_twin=str(_PRZYPADEK_SCENY_ZAB_B),
-                    analysis_type="short_circuit_sn",
-                    project_id=str(_PROJEKT_SCENY_ZABEZPIECZEN),
-                ).id
-            )
-        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_ZAB_B):
-            bieg_b = execute_run(
-                create_run(
-                    case_id=str(_PRZYPADEK_SCENY_ZAB_B),
-                    klucz_twin=str(_PRZYPADEK_SCENY_ZAB_B),
-                    analysis_type="protection_sn",
-                    project_id=str(_PROJEKT_SCENY_ZABEZPIECZEN),
-                    options={"sc_run_id": str(sc_b.id)},
-                ).id,
-                uow_factory=uow_factory,
-            )
+        bieg_a = _biegi_wariantu(
+            _PRZYPADEK_SCENY_ZAB_A, enm_a, _UUID_SCENY_ZAB_SC_A, _UUID_SCENY_ZAB_A
+        )
+        bieg_b = _biegi_wariantu(
+            _PRZYPADEK_SCENY_ZAB_B, enm_b, _UUID_SCENY_ZAB_SC_B, _UUID_SCENY_ZAB_B
+        )
         yield bieg_a, bieg_b, uow_factory
     finally:
         reset_canonical_runs()
@@ -5023,13 +4846,13 @@ FIXTURY: dict[str, Any] = {
     "koordynacja_scena_migawka": koordynacja_scena_migawka,
     "koordynacja_scena_zwarcia_max": koordynacja_scena_zwarcia_max,
     "koordynacja_scena_zwarcia_min": koordynacja_scena_zwarcia_min,
-    "koordynacja_scena_galezie": koordynacja_scena_galezie,
     "koordynacja_scena_pakiet_dostepnosc_max": koordynacja_scena_pakiet_dostepnosc_max,
     "koordynacja_scena_pakiet_dostepnosc_min": koordynacja_scena_pakiet_dostepnosc_min,
     "koordynacja_scena_nastawy": koordynacja_scena_nastawy,
     "koordynacja_scena_nastawy_dopasowanie": koordynacja_scena_nastawy_dopasowanie,
     "koordynacja_scena_wynik": koordynacja_scena_wynik,
-    "koordynacja_scena_miejsca": koordynacja_scena_miejsca,
+    "koordynacja_scena_ocena": koordynacja_scena_ocena,
+    "koordynacja_scena_widok_zabezpieczen": koordynacja_scena_widok_zabezpieczen,
     "porownanie_scena_biegi_pf": porownanie_scena_biegi_pf,
     "porownanie_scena_wynik_pf": porownanie_scena_wynik_pf,
     "porownanie_scena_slad_pf": porownanie_scena_slad_pf,

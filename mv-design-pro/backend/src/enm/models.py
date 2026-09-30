@@ -102,8 +102,31 @@ class MeasurementRating(BaseModel):
     burden_va: float | None = None
 
 
+#: Strona przekładnika, po której podana jest nastawa prądowa (``threshold_a``) — decyzja
+#: właściciela PZ-09 (D-34): nastawa przechowywana w jednostce JAWNIE zadeklarowanej w polu.
+#: ``A_WTORNY`` — ampery strony wtórnej przekładnika pola (tak nastawia się przekaźnik);
+#: ``A_PIERWOTNY`` — ampery strony pierwotnej. Prąd rozruchowy po stronie pierwotnej jest
+#: wielkością wyprowadzoną z przekładni przekładnika pola
+#: (``application/analyses/protection/ocena_nadpradowa.py``), nigdy domyślną.
+JednostkaProguPradowego = Literal["A_WTORNY", "A_PIERWOTNY"]
+
+#: Charakterystyki czasowo-prądowe nastawy. IEC 60255-151 (SI/VI/EI/LI) i czas niezależny
+#: (DT) liczy rdzeń ``protection_iec60255.compute_curve_trip_time``; IEEE C37.112 (MI/VI/EI)
+#: — ``protection_iec60255.compute_ieee_c37112_generic`` ze stałymi normy
+#: (``protection.curves.ieee_curves.IEEECurveParams``).
+KrzywaNastawy = Literal[
+    "DT", "IEC_SI", "IEC_VI", "IEC_EI", "IEC_LI", "IEEE_MI", "IEEE_VI", "IEEE_EI"
+]
+
+
 class ProtectionSetting(BaseModel):
-    """Nastawa zabezpieczenia (stub — bez pełnego solvera ochrony)."""
+    """Nastawa jednego stopnia (funkcji) zabezpieczenia zapisana w modelu (decyzja D-21).
+
+    Nastawy bazowe żyją przy urządzeniu zabezpieczeniowym w modelu; przypadek obliczeniowy
+    ich nie przechowuje. Ocena nadprądowa (``ocena_nadpradowa``) czyta je wprost stąd i
+    każdy brak (progu, jednostki progu, charakterystyki, zwłoki, mnożnika) nazywa kodem
+    gotowości — nie ma wartości domyślnych.
+    """
 
     function_type: Literal[
         "overcurrent_50",
@@ -121,8 +144,11 @@ class ProtectionSetting(BaseModel):
         "overfrequency_81O",
     ]
     threshold_a: float | None = None
+    threshold_unit: JednostkaProguPradowego | None = None
+    """Strona przekładnika, po której podano ``threshold_a`` (PZ-09). Addytywne; ``None`` =
+    jednostka niezadeklarowana — ocena urządzenia jest wstrzymana nazwanym kodem gotowości."""
     time_delay_s: float | None = None
-    curve_type: Literal["DT", "IEC_SI", "IEC_VI", "IEC_EI", "IEC_LI"] | None = None
+    curve_type: KrzywaNastawy | None = None
     time_multiplier: float | None = None
     """Mnożnik czasowy (TMS) dla charakterystyk odwrotnych IEC 60255 (SI/VI/EI/LTI).
 

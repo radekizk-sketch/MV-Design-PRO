@@ -13,6 +13,11 @@ from application.analyses.protection.base_values.models import (
     TransformerSide,
 )
 from application.analyses.protection.base_values.resolver import resolve_base_values
+from application.analyses.protection.ocena_nadpradowa import (
+    progi_stopnia,
+    rozwiaz_nastawy,
+    slownik_nastaw,
+)
 from application.analyses.protection.sanity_checks import (
     ElementContext,
     run_sanity_checks,
@@ -36,13 +41,19 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from enm.wylaczniki_liniowe import wylaczniki_liniowe
 from network_model.nazwy import nazwa_nadana
 from protection.curves.iec_curves import (
     IEC_CURVE_LABELS_PL,
-    MIN_TRIPPING_TIME_S,
     IECCurveParams,
     IECCurveType,
     generate_iec_curve_points,
+)
+from protection.curves.ieee_curves import (
+    IEEE_CURVE_LABELS_PL,
+    IEEECurveParams,
+    IEEECurveType,
+    generate_ieee_curve_points,
 )
 
 DEVICE_KIND_MAP = {
@@ -54,12 +65,18 @@ DEVICE_KIND_MAP = {
     "custom": "OTHER",
 }
 
-CURVE_TYPE_MAP = {
-    "DT": "DT",
-    "IEC_SI": "SI",
-    "IEC_VI": "VI",
-    "IEC_EI": "EI",
-    "IEC_LI": "LTI",
+#: Krzywa nastawy z modelu → (norma, kod generatora punktów I-t). Mapa ZAMKNIĘTA — zbiór
+#: kluczy = literał ``KrzywaNastawy`` modelu (test przypina); krzywa spoza mapy to błąd
+#: kontraktu, nie cichy zapas na DT.
+CURVE_TYPE_MAP: dict[str, tuple[str, str]] = {
+    "DT": ("IEC_60255", "DT"),
+    "IEC_SI": ("IEC_60255", "SI"),
+    "IEC_VI": ("IEC_60255", "VI"),
+    "IEC_EI": ("IEC_60255", "EI"),
+    "IEC_LI": ("IEC_60255", "LTI"),
+    "IEEE_MI": ("IEEE_C37_112", "MI"),
+    "IEEE_VI": ("IEEE_C37_112", "VI"),
+    "IEEE_EI": ("IEEE_C37_112", "EI"),
 }
 
 # Próbkowanie krzywej I-t dla charakterystyki niezależnej (DT):
@@ -138,6 +155,11 @@ class ProtectedTarget:
     transformer_ref: str | None = None
 
 
+#: Kolejność wag diagnostyk read modelu — zbiór ZAMKNIĘTY (waga spoza niego to defekt
+#: budowy diagnostyki, który ma się ujawnić, nie trafić na koniec listy).
+_KOLEJNOSC_WAGI_DIAGNOSTYKI: dict[str, int] = {"ERROR": 0, "WARN": 1, "INFO": 2}
+
+
 def build_protection_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, Any]:
     buses = {bus.ref_id: bus for bus in enm.buses}
     branches = {branch.ref_id: branch for branch in enm.branches}
@@ -196,6 +218,7 @@ def build_protection_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[s
             frontend_functions, sanity_functions = _build_functions(
                 assignment.settings,
                 base_values,
+                ct,
             )
 
             assignment_key = (target.element_id, assignment.ref_id, target.element_type)
@@ -213,6 +236,10 @@ def build_protection_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[s
                             "curve_type": _derive_curve_type(frontend_functions),
                             "base_values": _build_base_values_payload(base_values),
                         },
+                        # Nastawy rozwiązane JEDNĄ ścieżką oceny (jednostka progu, przekładnia,
+                        # zakresy katalogu z podstawą, nazwane braki z akcją naprawczą) —
+                        # edytor nastaw pola czyta je stąd, nie liczy przeliczeń sam.
+                        "nastawy": rozwiaz_nastawy(enm, assignment).to_dict(),
                     }
                 )
                 seen_assignment_keys.add(assignment_key)
@@ -265,7 +292,7 @@ def build_protection_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[s
     diagnostics_out.sort(
         key=lambda item: (
             item["element_id"],
-            {"ERROR": 0, "WARN": 1, "INFO": 2}.get(item["severity"], 9),
+            _KOLEJNOSC_WAGI_DIAGNOSTYKI[item["severity"]],
             item["code"],
         )
     )
@@ -285,6 +312,12 @@ def build_protection_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[s
         "assignments": assignments_out,
         "diagnostics": diagnostics_out,
         "summaries": summaries_out,
+        # Karta BIEG-ZABEZPIECZEN-Z-MODELU: listy wyboru edytora nastaw (funkcje,
+        # charakterystyki, jednostki progu) z backendu — edytor niczego nie wymyśla.
+        "slownik_nastaw": slownik_nastaw(),
+        # Wyłączniki liniowe (bez pola) z przekładnikami i zabezpieczeniami przy nich — ekran
+        # „Zabezpieczenia i automatyka" prowadzi z nich do kreatorów CT i zabezpieczenia.
+        "wylaczniki_liniowe": wylaczniki_liniowe(enm.model_dump(mode="json")),
     }
 
 
@@ -495,7 +528,15 @@ def _build_base_context(
 def _build_functions(
     settings: list[ProtectionSetting],
     base_values: Any,
+    ct: Measurement | None,
 ) -> tuple[list[dict[str, Any]], list[SanityProtectionFunctionSummary]]:
+    """Funkcje nastaw do prezentacji — próg w AMPERACH PIERWOTNYCH z jednego przeliczenia.
+
+    Próg bez jednostki albo bez przekładni przekładnika nie ma wartości pierwotnej: funkcja
+    trafia do widoku z nazwanym brakiem (``it_curve_missing_data``), bez nastawy liczbowej —
+    wcześniej ``threshold_a`` był czytany jako prąd pierwotny niezależnie od strony
+    przekładnika, a brak progu dawał próg 0 A.
+    """
     frontend_functions: list[dict[str, Any]] = []
     sanity_functions: list[SanityProtectionFunctionSummary] = []
 
@@ -503,13 +544,30 @@ def _build_functions(
         meta = FUNCTION_META.get(setting.function_type)
         if meta is None or setting.threshold_a is None:
             continue
+        progi = progi_stopnia(setting, ct)
+        prog_pierwotny_a = progi[1] if progi is not None else None
+        if prog_pierwotny_a is None:
+            frontend_functions.append(
+                {
+                    "code": meta["code"],
+                    "ansi": list(meta["ansi"]),
+                    "label_pl": meta["label_pl"],
+                    "setpoint": None,
+                    "computed": None,
+                    "time_delay_s": setting.time_delay_s,
+                    "curve_type": setting.curve_type,
+                    "it_curve": None,
+                    "it_curve_missing_data": [
+                        "threshold_unit" if setting.threshold_unit is None else "ct_ratio"
+                    ],
+                    "notes_pl": "Funkcja kierunkowa" if setting.is_directional else None,
+                }
+            )
+            continue
 
-        setpoint = _build_setpoint(setting, base_values)
+        setpoint = _build_setpoint(prog_pierwotny_a, base_values)
         computed = compute_from_setpoint(setpoint, base_values)
-        # Funkcje bezzwłoczne (I>>/Io>>) rozpoznajemy po kodzie meta — dla nich
-        # brak zwłoki jest cechą, nie brakiem danych (S-1).
-        instantaneous = meta["code"] in {"OVERCURRENT_INST", "EARTH_FAULT_INST"}
-        it_curve, it_curve_missing = _build_it_curve(setting, instantaneous=instantaneous)
+        it_curve, it_curve_missing = _build_it_curve(setting, prog_pierwotny_a)
         function_payload: dict[str, Any] = {
             "code": meta["code"],
             "ansi": list(meta["ansi"]),
@@ -541,61 +599,38 @@ def _build_functions(
 
 def _build_it_curve(
     setting: ProtectionSetting,
-    *,
-    instantaneous: bool = False,
+    pickup_a: float,
 ) -> tuple[dict[str, Any] | None, list[str]]:
-    """Zbuduj krzywą czasowo-prądową (I-t) dla nastawy z solvera IEC 60255.
+    """Krzywa czasowo-prądowa (I-t) nastawy — punkty WYŁĄCZNIE z generatorów rdzenia.
 
-    Wartości czasu (t_s) pochodzą WYŁĄCZNIE z solvera
-    (``protection.curves.iec_curves``) — read model niczego nie liczy sam.
-
-    - Charakterystyka niezależna (DT) jest w pełni wyznaczona przez próg (In>)
-      i zwłokę czasową → zwracamy płaską krzywą (TMS nie dotyczy).
-    - Funkcja bezzwłoczna (I>>/Io>>, ANSI 50/50N) z natury NIE ma zwłoki
-      zamierzonej: działa w minimalnym czasie własnym przekaźnika. Brak
-      ``time_delay_s`` NIE jest wtedy „brakiem danych" — używamy podłogi
-      czasowej solvera (``MIN_TRIPPING_TIME_S``), by krzywa była płaska przy
-      t≈0, a nie przy literalnym t_s=0 (nieprzedstawialnym na osi log-log).
-    - Charakterystyki odwrotne (SI/VI/EI/LTI) wymagają nastawy TMS
-      (``ProtectionSetting.time_multiplier``): gdy jest podana → liczymy krzywą
-      solverem z tym mnożnikiem; gdy jej brak → zwracamy brak danych
-      (``time_multiplier``) zamiast fabrykować mnożnik czasowy.
-
-    Zwraca krotkę ``(krzywa | None, lista_brakujących_danych)``.
+    ``pickup_a`` to próg PIERWOTNY z jednego przeliczenia (``progi_stopnia``).
+    - Charakterystyka niezależna (DT) jest wyznaczona progiem i zwłoką → krzywa płaska.
+      Zwłoka jest nastawą także stopnia bezzwłocznego (I>>, 50) — brak albo wartość
+      niedodatnia to nazwany brak ``definite_time``, tak samo jak w jednej ścieżce oceny
+      (``ocena_nadpradowa``: kod braku zwłoki). Dawna podłoga czasowa solvera (0,001 s)
+      podstawiana zamiast brakującej zwłoki skasowana (karta BIEG-ZABEZPIECZEN-Z-MODELU:
+      „DT bez zwłoki = 0 s" to cichy zapas).
+    - Charakterystyki zależne IEC 60255 i IEEE C37.112 wymagają mnożnika czasowego
+      (``time_multiplier``: TMS albo TD) — brak → brak danych, bez fabrykowania mnożnika.
+    - Brak charakterystyki → brak danych (``curve_type``), NIE cichy zapas na DT.
     """
     missing: list[str] = []
-
-    pickup_a = setting.threshold_a
-    if pickup_a is None or pickup_a <= 0:
-        missing.append("pickup_current")
-
-    curve_type = setting.curve_type
-    if curve_type:
-        solver_code = CURVE_TYPE_MAP.get(str(curve_type), "DT")
-    else:
-        solver_code = "DT"
+    if setting.curve_type is None:
+        return None, ["curve_type"]
+    norma, kod = CURVE_TYPE_MAP[setting.curve_type]
 
     time_multiplier: float | None = None
-    # Zwłoka niezależna przekazywana do solvera (DT). Dla funkcji bezzwłocznej
-    # bez skonfigurowanej zwłoki = minimalny czas własny (podłoga solvera).
     definite_time_s = setting.time_delay_s
-    if solver_code == "DT":
+    if kod == "DT":
         curve_kind = "DEFINITE"
         num_points = _IT_CURVE_DEFINITE_NUM_POINTS
-        if setting.time_delay_s is None:
-            if instantaneous:
-                definite_time_s = MIN_TRIPPING_TIME_S
-            else:
-                missing.append("definite_time")
-        elif instantaneous and setting.time_delay_s <= 0:
-            # Bezzwłoczna z zerową zwłoką → podłoga (nie generujemy t_s=0).
-            definite_time_s = MIN_TRIPPING_TIME_S
+        if setting.time_delay_s is None or setting.time_delay_s <= 0:
+            missing.append("definite_time")
     else:
         curve_kind = "INVERSE"
         num_points = _IT_CURVE_INVERSE_NUM_POINTS
         tms = setting.time_multiplier
         if tms is None or tms <= 0:
-            # TMS wymagany dla charakterystyki odwrotnej — brak danych, nie fabrykujemy.
             missing.append("time_multiplier")
         else:
             time_multiplier = tms
@@ -603,29 +638,37 @@ def _build_it_curve(
     if missing:
         return None, missing
 
-    assert pickup_a is not None  # zapewnione przez powyższą walidację missing
-
-    params = IECCurveParams.get_standard_params(IECCurveType(solver_code))
-    raw_points = generate_iec_curve_points(
-        curve_params=params,
-        pickup_current_a=pickup_a,
-        # TMS (mnożnik czasowy) tylko dla krzywych odwrotnych; DT ignoruje ten
-        # parametr, więc przekazujemy neutralne 1.0 dla spójności wywołania.
-        time_multiplier=time_multiplier if time_multiplier is not None else 1.0,
-        current_range=_IT_CURVE_CURRENT_RANGE,
-        num_points=num_points,
-        definite_time_s=definite_time_s,
-    )
+    if norma == "IEEE_C37_112":
+        assert time_multiplier is not None
+        raw_points = generate_ieee_curve_points(
+            curve_params=IEEECurveParams.get_standard_params(IEEECurveType(kod)),
+            pickup_current_a=pickup_a,
+            time_dial=time_multiplier,
+            current_range=_IT_CURVE_CURRENT_RANGE,
+            num_points=num_points,
+        )
+        etykieta = IEEE_CURVE_LABELS_PL[kod]
+    else:
+        raw_points = generate_iec_curve_points(
+            curve_params=IECCurveParams.get_standard_params(IECCurveType(kod)),
+            pickup_current_a=pickup_a,
+            # TMS tylko dla krzywych odwrotnych; DT ignoruje ten parametr (neutralne 1.0).
+            time_multiplier=time_multiplier if time_multiplier is not None else 1.0,
+            current_range=_IT_CURVE_CURRENT_RANGE,
+            num_points=num_points,
+            definite_time_s=definite_time_s,
+        )
+        etykieta = IEC_CURVE_LABELS_PL[kod]
     points = [{"i_a": point["current_a"], "t_s": point["time_s"]} for point in raw_points]
     if not points:
         return None, ["it_curve_points"]
 
     return (
         {
-            "standard": "IEC_60255",
+            "standard": norma,
             "curve_kind": curve_kind,
-            "curve_code": solver_code,
-            "curve_label_pl": IEC_CURVE_LABELS_PL.get(solver_code, solver_code),
+            "curve_code": kod,
+            "curve_label_pl": etykieta,
             "pickup_a": pickup_a,
             "time_multiplier": time_multiplier,
             "points": points,
@@ -634,9 +677,10 @@ def _build_it_curve(
     )
 
 
-def _build_setpoint(setting: ProtectionSetting, base_values: Any) -> ProtectionSetpoint:
-    if base_values.has_in and setting.threshold_a is not None and base_values.in_a not in (None, 0):
-        multiplier = setting.threshold_a / base_values.in_a
+def _build_setpoint(pickup_a: float, base_values: Any) -> ProtectionSetpoint:
+    """Nastawa w krotności In chronionego elementu (gdy In znane) albo w amperach PIERWOTNYCH."""
+    if base_values.has_in and base_values.in_a not in (None, 0):
+        multiplier = pickup_a / base_values.in_a
         return ProtectionSetpoint(
             basis=ProtectionSetpointBasis.IN,
             operator=ProtectionSetpointOperator.GT,
@@ -648,9 +692,9 @@ def _build_setpoint(setting: ProtectionSetting, base_values: Any) -> ProtectionS
     return ProtectionSetpoint(
         basis=ProtectionSetpointBasis.ABS,
         operator=ProtectionSetpointOperator.GT,
-        abs_value=setting.threshold_a or 0.0,
+        abs_value=pickup_a,
         unit="A",
-        display_pl=f"{_format_number(setting.threshold_a or 0.0)} A",
+        display_pl=f"{_format_number(pickup_a)} A",
     )
 
 
@@ -684,11 +728,19 @@ def _build_summary(entry: dict[str, Any]) -> dict[str, Any]:
     severity_set = {diagnostic.severity.value for diagnostic in diagnostics}
     has_only_info = severity_set == {"INFO"}
     has_warn_or_error = bool({"WARN", "ERROR"} & severity_set)
-    has_complete_data = bool(functions) and not has_only_info
+    # Funkcja bez progu pierwotnego (brak jednostki progu albo przekładni) to dane niepełne.
+    bez_progu = any(item.get("setpoint") is None for item in functions)
+    has_complete_data = bool(functions) and not has_only_info and not bez_progu
 
     if not functions:
         verification_status = "BRAK_DANYCH"
         verification_reason = "Brak skonfigurowanych funkcji zabezpieczeniowych"
+    elif bez_progu:
+        verification_status = "BRAK_DANYCH"
+        verification_reason = (
+            "Próg funkcji nie ma jednostki (strona wtórna albo pierwotna) albo przekładnika "
+            "prądowego — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny"
+        )
     elif has_warn_or_error:
         verification_status = "NIESPELNIONE"
         verification_reason = (
@@ -731,7 +783,9 @@ def _build_overcurrent_setting(
     if function is None:
         return None
 
-    setpoint = function["setpoint"]
+    # Funkcja bez progu pierwotnego (brak jednostki progu albo przekładni) nie ma nastawy
+    # liczbowej — `setpoint` jest None, a brak niesie `it_curve_missing_data`.
+    setpoint = function["setpoint"] or {}
     computed = function.get("computed")
     pickup_a = None
     if isinstance(computed, dict) and computed.get("unit") == "A":
@@ -740,7 +794,8 @@ def _build_overcurrent_setting(
         pickup_a = setpoint.get("abs_value")
 
     curve_type = function.get("curve_type")
-    characteristic = CURVE_TYPE_MAP.get(str(curve_type), "DT") if curve_type else "DT"
+    # Brak charakterystyki zostaje brakiem (None) — nie cichy zapas na DT.
+    characteristic = CURVE_TYPE_MAP[str(curve_type)][1] if curve_type else None
 
     return {
         "pickup_a": pickup_a,

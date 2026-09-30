@@ -422,3 +422,37 @@ def udzial_mocy_biernej_pu(moc_bierna_mvar: float, moc_bazowa_mw: float) -> floa
     wołającego (brak mocy = brak wejścia, nie dzielenie przez zero).
     """
     return moc_bierna_mvar / moc_bazowa_mw
+
+
+# =============================================================================
+# Rodzina J — przekładnia przekładnika prądowego (karta BIEG-ZABEZPIECZEN-Z-MODELU)
+# =============================================================================
+
+
+def prad_pierwotny_z_wtornego_a(
+    prad_wtorny_a: float,
+    prad_znamionowy_pierwotny_a: float,
+    prad_znamionowy_wtorny_a: float,
+) -> float:
+    """Prąd strony pierwotnej przekładnika z prądu strony wtórnej:
+    I₁ = I₂ · I₁n / I₂n (przekładnia znamionowa, IEC 61869-2 §3.4.3).
+
+    Decyzja PZ-09 (D-34): nastawa przekaźnika jest podawana po stronie wtórnej,
+    a prąd rozruchowy po stronie pierwotnej jest wielkością wyprowadzoną z
+    przekładni przekładnika pola z modelu. Brak przekładni i walidacja
+    (``I₂n > 0``) zostają u wołającego (``ocena_nadpradowa``).
+    """
+    return prad_wtorny_a * prad_znamionowy_pierwotny_a / prad_znamionowy_wtorny_a
+
+
+def prad_wtorny_z_pierwotnego_a(
+    prad_pierwotny_a: float,
+    prad_znamionowy_pierwotny_a: float,
+    prad_znamionowy_wtorny_a: float,
+) -> float:
+    """Prąd strony wtórnej przekładnika z prądu strony pierwotnej:
+    I₂ = I₁ · I₂n / I₁n — odwrotność ``prad_pierwotny_z_wtornego_a`` (nastawa podana
+    po stronie pierwotnej porównywana z zakresem katalogu przekaźnika, który jest
+    cechą strony wtórnej). Walidacja ``I₁n > 0`` u wołającego.
+    """
+    return prad_pierwotny_a * prad_znamionowy_wtorny_a / prad_znamionowy_pierwotny_a

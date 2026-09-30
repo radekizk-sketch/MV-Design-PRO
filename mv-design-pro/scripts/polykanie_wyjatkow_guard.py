@@ -280,7 +280,13 @@ def ocen(
 #: Liczba `raise ValueError` w `application/**` (pomiar po karcie ODMOWA-DANYCH-422,
 #: 2026-09-25). Zapadka w obie strony: wzrost = nowy goły `ValueError` bez decyzji
 #: (odmowa → `OdmowaDanychError`, błąd programu → asercja); spadek = obniż pin z pomiarem.
-PIN_RAISE_VALUEERROR_APLIKACJA = 82
+#: Karta BIEG-ZABEZPIECZEN-NA-PARTII-6 (2026-09-30): 82 -> 81 — POMIAR guardem na drzewie
+#: przeniesienia (porównanie per plik z czubkiem partii 6): -1 `coordination/analyzer.py`
+#: (przepisany analizator koordynacji bez `ValueError`); trzy nowe `raise` karty przetypowane
+#: na asercję (kierunek wkładu spoza słownika w `prad_zwarciowy_galezi.py`, warunek wstępny
+#: w `catalog/zakresy.py`, defekt pliku katalogu produktu w `catalog/catalog_store.py`), więc
+#: nie wchodzą do pinu.
+PIN_RAISE_VALUEERROR_APLIKACJA = 81
 
 #: Wywołania dozwolone w bloku `try` parsowania wejścia trasy (poza konstruktorami typów).
 PARSERY_WBUDOWANE = frozenset({"int", "float", "str", "Decimal"})
