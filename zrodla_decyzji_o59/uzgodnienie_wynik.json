@@ -1,0 +1,2088 @@
+{
+ "klastry": [
+  {
+   "klaster": "A_solvery_b01",
+   "pozycje": [
+    {
+     "id": "ADR-021",
+     "decyzja_ostateczna": "ACCEPTED z korektą zakresu. K1 (ABCN, nowy plik solvers/lv_four_wire_abcn.py, kasacja P10/BFS) — bez zmian, P0. K3 (szyny PV) SKREŚLONA: przełączanie PV→PQ z granicami Q z PVSpec już jest w rdzeniu (power_flow_newton_internal.py:813-828 „active_pv.remove(idx); active_pq.append(idx)”, ślad pv_to_pq_switches :791); powrotu PQ→PV nie ma (grep active_pv.append/histerez: 0) i wg O-9 (PLAN_AB:91) jest zakresem AB-3 — nie dublować. K2 (Ith, n) BEZ domyślki: n=1 jest regułą normy dla zwarć daleko od generatora (short_circuit_core.py:142) — stosowana z konstrukcji, gdy model nie ma maszyn synchronicznych (provenance `ith_n_podstawa`); model z maszyną synchroniczną → I_th ROBOCZY z kodem `sc.ith_n_blisko_generatora_brak_krzywych` i blokadą autorytetu (wzorzec SI-11x), bo krzywych n i kryterium bliskości nie ma w repo (dane właściciela). K4 (slack rozproszony): udziały wyłącznie jawne z case config, brak → odmowa; identyfikatory bez wzorców NH-05 guarda. K5 (algebra rzadka) opt-in; parytet bitowy dotyczy ścieżki domyślnej, ścieżka rzadka ma własne goldeny z zadeklarowaną tolerancją.",
+     "zmiana_wzgledem_rundy1": "K3 skreślona (mechanizm istnieje, O-9 przypisuje histerezę do AB-3 — krytyk ma rację). K2: skasowana domyślka `ith_n_assumed=1`, zastąpiona regułą strukturalną + blokadą autorytetu (spójność z OD-22/OD-36). K4: dopisane ograniczenie guarda NH-05 (scripts/load_flow_no_heuristics_guard.py:43).",
+     "typ": "wykonawcza",
+     "b01": true,
+     "b02": false,
+     "karta": "K1 ABCN | nowy solver 4-przewodowy, WATCHED_PATHS, ieee_13/34 PLANNED→BUILT, kasacja P10 | po PF-OD19 | goldeny SC/PF bit w bit; IEEE 13/34 w 0,1 % |U|, 0,5 % |I| per faza; White Box Y_abcn, I_N, U_N-E. K2 | short_circuit_core.py: `ith_n_podstawa` w provenance, klasyfikacja strukturalna (obecność maszyny synchronicznej w modelu), kod ROBOCZY + blokada autorytetu w zdolnosci_wkladu_zwarciowego.py | po OD-14 | test iloczynu: {bez maszyn, z maszyną} × {3F,2F,1F,2FE} × {konsument autorytetu}; goldeny bit w bit. K4 | udziały z case config, odmowa przy braku/sumie≠1 | po PF-OD19 | jeden slack bit w bit; guard NH-01/NH-05 zielony. K5 | opt-in sparse | ostatnia | tolerancja 1e-9 wzgl. gęstej, pomiar n∈{50,500,2000}.",
+     "specyfikacja_danych": "Dla K2 (zwarcia blisko generatora): tekst IEC 60909-0 (wydanie, numer punktu) z kryterium klasyfikacji zwarcia jako bliskiego generatora oraz krzywe współczynnika n (numer rysunku, wydanie) w postaci zdigitalizowanej tabeli (κ, t_k·f, n) albo wzoru; bez tych danych I_th przy maszynach synchronicznych pozostaje ROBOCZY.",
+     "dokumenty_do_zmiany": [
+      "docs/adr/ADR-021 (status ACCEPTED, K3 skreślona, K2 reguła strukturalna)",
+      "docs/audit/CAPABILITY_ARCHITECTURE_MATRIX (C04)",
+      "docs/plan/CANONICAL_TWIN_ARCHITECTURE.md:299",
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md:166 (PV: ISTNIEJE, bez nowej karty)"
+     ]
+    },
+    {
+     "id": "OD-3",
+     "decyzja_ostateczna": "Bez zmian merytorycznych: wyrocznia pierwsza = wzory zamknięte `_ANALITYCZNA_G01` (klasa ANALYTICAL, przypięta testem do budowniczego G01); wyrocznia PUBLISHED wyłącznie po dostarczeniu treści przykładu IEC 60909-3 przez właściciela (norma nieobecna w repo — żadnych liczb z pamięci); pandapower jako wyrocznia dopiero po zielonym teście bramkowym (odtworzenie I_C pojedynczej linii z cewką w 1 % wzoru). Do czasu danych rejestr G01 ma tylko klasę ANALYTICAL, luka D1 mapy oznaczona „częściowa — brak danych właściciela”. Zależność: po W5 (uziemienie w solverze) i W4 (budowniczy G01). Nie dotyka rdzeni FROZEN.",
+     "zmiana_wzgledem_rundy1": "bez zmian",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "W8-OD3 | tests/golden: `_ANALITYCZNA_G01`, test przypinający (I_C, I_L, I_res, U0, rozdział I0 per odpływ, tol. 0,5 %), test bramkowy pandapower, wpis rejestru tylko dla wyroczni z testem | po W4 i W5 | test iloczynu: {izolowana, kompensowana dostrojona, rozstrojona ±v} × {1F w GPZ, 1F na końcu odpływu}; bez wpisu-zaślepki PUBLISHED.",
+     "specyfikacja_danych": "IEC 60909-3: identyfikator przykładu (wydanie, rozdział, numer), U_n, C0 per odcinek [nF/km] i długości, L cewki [H] albo stopień rozstrojenia v, rezystancja tłumienia [Ω], R_f zwarcia [Ω], oczekiwane I_C, I_L, I_res [A], U0 [V], I0 per odpływ [A], tolerancja podana w normie. Dla przykładu literaturowego: źródło, wydanie, strona, komplet danych wejściowych i wyników.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md:444 (D1 → częściowa, brak danych właściciela)",
+      "tests/golden rejestr wyroczni G01"
+     ]
+    },
+    {
+     "id": "OD-14",
+     "decyzja_ostateczna": "Zgoda B-01 (O-59) na addytywny parametr impedancji zwarcia w short_circuit_core (compute_equivalent_impedance + 4 metody compute_*), z korektami: (1) jedno nazewnictwo z istniejącym nośnikiem w dynamice — pola `r_f_ohm`, `x_f_ohm` (dynamika/kontrakty.py:571-572, :605-606), żadnej drugiej nazwy tej samej wielkości; (2) walidacja R_f ≥ 0 i X_f ≥ 0 — impedancja pojemnościowa odrzucana nazwaną odmową (`sc.impedancja_zwarcia_pojemnosciowa`); przy tym ograniczeniu i Z_1 w pierwszej ćwiartce |Z_1+Z_f| ≥ |Z_1| zachodzi algebraicznie (|a+b|² = |a|²+|b|²+2Re(a·b̄), Re ≥ 0), więc sanity-bound |I_k(Z_f)| ≤ |I_k(0)| jest twierdzeniem, nie nadzieją; (3) i_p (κ) i I_th dla Z_f ≠ 0 liczone jawnym wzorem z R/X pełnej pętli, ale wynik dostaje provenance `poza_zakresem_iec60909=true` i warstwa autorytetu (zdolnosci_wkladu_zwarciowego.py, nowy kod w serii SI-11x) blokuje jego użycie w doborze wytrzymałości zwarciowej i pakiecie Equipment; dozwolony konsument: nastawy zabezpieczeń doziemnych (prądy minimalne). Reszta warunków rundy 1 (wzory 3F/2F/1F/2FE z 3Z_f w Z_0, parytet 336/168 bit w bit, zdjęcie blokady :547-553, kasacja ELIG_BINDING_UNSUPPORTED_FAULT_IMPEDANCE, e2e) bez zmian.",
+     "zmiana_wzgledem_rundy1": "Dodane: nazwy pól z dynamiki (zakaz drugiej nazwy), walidacja X_f ≥ 0 (zamyka ryzyko krytyka o pojemnościowym Z_f), blokada autorytetu dla i_p/I_th przy Z_f ≠ 0 (wynik poza normą nie trafia do doboru aparatury).",
+     "typ": "wykonawcza",
+     "b01": true,
+     "b02": false,
+     "karta": "OD-14 | short_circuit_core.py + short_circuit_iec60909.py (pola addytywne, exclude_none) → fault_scenario_service (kasacja BLOCKER :547-553) → zdolnosci_wkladu_zwarciowego.py (kod blokady) → proof SC3F (krok Z_f, EquationRegistry LaTeX) → ui2/wyniki/zwarcia (Z_f w InformacjeAudytowe i tabeli) → e2e kreator→bieg IMPEDANCE→ekran | niezależna; równolegle z R3-V126 | test iloczynu: {3F,2F,1F,2FE} × {Z_f=0, R_f>0, X_f>0, X_f<0→odmowa} × {konsument: dobór, Equipment, nastawy doziemne}; wyrocznia analityczna promieniowa; z_f=0 → 336/168 goldenów bit w bit; solver_diff_guard SANCTIONED.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/domain kontrakt scenariuszy zwarciowych (tryb IMPEDANCE: pola r_f_ohm/x_f_ohm, zakres ważności)",
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md (OD-14)"
+     ]
+    },
+    {
+     "id": "OD-15",
+     "decyzja_ostateczna": "Pakiet utrzymany z dwiema korektami. (e) Nazwa krzywej: repo ma już trzy nazwy tej samej krzywej K=120/α=1 — rdzeń „RI” (protection_iec60255.py:41), ENM „LTI” (domain_operations_v2.py:165-169), protection/curves/iec_curves.py:58 `LONG_TIME_INVERSE = \"LTI\"`, protection_vendors.py:68. Ujednolicenie na ISTNIEJĄCY literał: w rdzeniu członek `LONG_TIME_INVERSE` o wartości „LTI” (nie „LONG_TIME_INVERSE”), kasacja aliasu ENM→RI bez warstwy zgodności. Migawka OpenAPI nie zawiera „RI” (grep 0), frontend 0 plików, fikstury 1 plik testowy; zapisane konfiguracje przypadków NIEZMIERZONE → karta zawiera jednorazową migrację ładunków przez repozytoria persystencji z testem odtworzenia biegu historycznego (hash wejścia liczony po migracji, zapis w rejestrze proweniencji). (a), (c), (d) bez zmian. Kolejność: karta R3-V126 ((a),(d) + OD-24) NIE czeka na (b) — (b) jest związana z commitem AB-H1 (O-59, PLAN_AB:154) i dotyczy innych funkcji tego samego pliku; kolizje rozwiązuje rebase, nie kolejka.",
+     "zmiana_wzgledem_rundy1": "(e) wartość literału „LTI” zamiast „LONG_TIME_INVERSE” (istniejący literał ENM/protection — zero czwartej nazwy), migracja persystencji nazwana. Kolejność: R3-V126 odblokowana od (b) — krytyk słusznie wskazał praktyczną blokadę.",
+     "typ": "wykonawcza",
+     "b01": true,
+     "b02": false,
+     "karta": "R3-V126 | v126_academic.py: (a) nastawy doziemne z case config albo NIE_OCENIONO `v126.earth_fault_settings_missing`; (d) kasacja _hosting_capacity, _opf_loss_lcc, _branch_current_a, wzorów rankingu; enum V126AnalysisType zachowany (410 dla wycofanych) | niezależna od AB-H1 | grep-zero na skasowane funkcje, hashe aktywnych rodzajów bit w bit, guardy no_heuristics zielone. PROT-LTI | protection_iec60255.py enum, enm alias, API, front etykieta „Odwrotna długoczasowa (LTI, 120)”, fikstura test_protection_idmt_w3a_merge.py, migracja persystencji | niezależna | t(M) dla M∈{2,5,10,20} identyczne przed/po; grep-zero „RI” jako krzywa. (c) VUF | po ABCN (K1) | VUF ze składowych vs Fortescue ręcznie, tol. 1e-9; sieć symetryczna → 0 z obliczenia.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md:206, :710 (OD-15(e): literał LTI)",
+      "docs/protection kontrakt krzywych IDMT (jedna nazwa krzywej)"
+     ]
+    },
+    {
+     "id": "OD-19",
+     "decyzja_ostateczna": "Opcja zmieniona na (1): wyłącznie korekta rdzenia NR; A-1 (walidator ENM odrzucający U_n > 36 kV, kasacja szyny HV z kompilator_grafu.py) ODRZUCONA. Fakt: 9 budowniczych złotych deklaruje szyny > 36 kV (ieee_4bus 132 kV, ieee_14bus 135 kV, ieee_9bus/ieee_39bus 345 kV, iec60909_example/oze_pv_bess/pp_simple_four_bus/so1a_pv_magazyn/dynamika_rms 110 kV), a `hv_voltage_kv` w kompilatorze jest używane przez ieee_39bus.py:177,:204 — reguła A-1 zniszczyłaby wyrocznie IEEE i parytet goldenów (przypuszczenie krytyka potwierdzone). Jawna szyna WN jest legalna. Próg `u_min_pu_akceptacji` SKASOWANY (próg z góry, sprzeczny z OD-36 i duchem NH-guarda). Kryterium akceptacji rozwiązania bez stałej: po zbieżności rdzeń liczy zredukowany jakobian J_R = J_QV − J_Qθ·J_Pθ⁻¹·J_PV; rozwiązanie jest gałęzią roboczą, gdy wszystkie wartości własne J_R są dodatnie (czułość V-Q dodatnia); w przeciwnym razie converged=false, kod `PF_GALAZ_NISKONAPIECIOWA`, wartości własne w trace. Start płaski odniesiony do U_n każdej szyny — bez zmiany goldenów. Karta zaczyna się od diagnozy zmierzonego przypadku W3-G2: jeśli J_R NIE ma ujemnej wartości własnej, karta STOP i meldunek (nie wolno dosztukować progu).",
+     "zmiana_wzgledem_rundy1": "A-1 odrzucona (9 goldenów > 36 kV — sprzeczność wewnętrzna wskazana przez krytyka potwierdzona pomiarem). Próg z domyślką zastąpiony kryterium spektralnym jakobianu bez stałej liczbowej.",
+     "typ": "wykonawcza",
+     "b01": true,
+     "b02": false,
+     "karta": "PF-OD19 | power_flow_newton.py / power_flow_newton_internal.py: diagnoza W3-G2 w White Box, start płaski w bazie własnej szyny, J_R po zbieżności, kod `PF_GALAZ_NISKONAPIECIOWA` addytywnie (exclude_none), wyprowadzenie J_R w docstringu i EquationRegistry (LaTeX) | przed K1/K4 ADR-021 | pełny rejestr goldenów bit w bit; wyrocznia pandapower dla topologii W3-G2 |ΔU| ≤ 1e-6 p.u.; test iloczynu: {gałąź robocza, gałąź niskonapięciowa} × {slack, PV z limitem, ZIP}; load_flow_no_heuristics_guard i solver_diff_guard (SANCTIONED) zielone; sekcja pasm W3-G2 z „poza zakresem” na potwierdzone; e2e pasma-rozplywu-jakosc.spec.ts bez migracji fikstur.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs (sekcja pasm W3-G2)",
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md (OD-19: opcja 1, A-1 odrzucona z pomiarem)"
+     ]
+    },
+    {
+     "id": "OD-24",
+     "decyzja_ostateczna": "Bez zmian merytorycznych: kasacja trzech fallbacków `neutral_earthing_type`/`neutral_grounding` (v126_academic.py:1306, :1732, :1820) i stałej `voltage_unbalance_u2_u1=0.0` (:412); brak wartości → OdmowaDanychError z jednym kodem `v126.neutral_earthing_missing` (API 422); VUF ze składowych (OD-15c) albo NIE_OCENIONO `vuf.components_unavailable`. Korekta kolejności: karta R3-V126 wykonywana teraz, niezależnie od (b) harmonicznych (commit AB-H1) i od (l); parytet bitowy biegów z modelu przez solver_input (W5 pinuje obecność wartości) pozostaje warunkiem.",
+     "zmiana_wzgledem_rundy1": "Tylko kolejność: R3-V126 nie czeka na (b)/(l) — zależność była pozorna (inne funkcje tego samego pliku), a wiązała kasację fabrykacji z odległym commitem.",
+     "typ": "wykonawcza",
+     "b01": true,
+     "b02": false,
+     "karta": "R3-V126 (wspólna z OD-15 a/d) | v126_academic.py :412, :1306, :1732, :1820; fikstury v126 wywołujące solver bez uziemienia poprawione u źródła (wartość jawna) | niezależna | test iloczynu: {3 funkcje} × {brak uziemienia → odmowa z jednym kodem, wartość jawna → bit w bit}; grep-zero literału 0.0 dla voltage_unbalance; solver_diff_guard SANCTIONED; CANONICAL_TWIN_ARCHITECTURE.md:89 i INWENTARZ_W5:181 bez „świadomych pozostałości”.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/plan/CANONICAL_TWIN_ARCHITECTURE.md:89",
+      "docs/audit/INWENTARZ_W5_2026-09-16.md:181"
+     ]
+    },
+    {
+     "id": "OD-25",
+     "decyzja_ostateczna": "Zgoda na nowy moduł solvers/petla_zwarcia_tt_it.py z korektą uczciwości danych. Czasy wyłączenia TT NIE są przepisywane z pamięci: pochodzą WYŁĄCZNIE z repo — `TABLICA_TT_ODBIORCZE` i `CZAS_TT_ROZDZIELCZY` (lv_disconnection_times_iec60364_4_41.py, status „REFERENCYJNY — do potwierdzenia właściciela”, dwa źródła publiczne, pełny tekst normy niedostępny); wartości z rundy 1 w treści decyzji są unieważnione (krytyk ma rację, że tabela repo mówi 230<U0≤400 V, nie „U0>230 V”). Granica napięcia dotykowego (R_A·I_Δn ≤ limit) i reguły IT (§411.6: I_d pierwszego zwarcia, warunki drugiego zwarcia) NIE są w repo → dane właściciela. Solver liczy fizykę jawnie (U_dotyk = R_A·I_Δn, I_d z 3ωC_e·U_f per odpływ, Z_s drugiego zwarcia, White Box + LaTeX), porównuje t_a RCD z tabelą repo (z jej stanem źródła w wyjaśnieniu werdyktu), a kryterium limitu napięcia i IT zwraca BRAK_PODSTAWY z kodem `swz.limit_tt_it_brak_tekstu_normy` do czasu danych — żadnej liczby z pamięci. NotImplementedError (fault_loop_iec60364.py:199) skasowany; goldeny TN bit w bit.",
+     "zmiana_wzgledem_rundy1": "Liczby normowe z treści decyzji unieważnione; źródło czasów = moduł repo z jego stanem proweniencji; limit napięcia dotykowego i reguły IT jako dane właściciela (BRAK_PODSTAWY do czasu dostarczenia) zamiast „do potwierdzenia przy wdrożeniu”.",
+     "typ": "wykonawcza",
+     "b01": true,
+     "b02": false,
+     "karta": "W5-E-TTIT | katalog RCD (I_Δn, typ, t_a) → pole R_A stacji/odbiorcy → solver petla_zwarcia_tt_it.py (WATCHED_PATHS, SANCTIONED) → readiness → werdykt SWZ (application/analyses/swz) czytający TABLICA_TT_* → proof → ekran nN → e2e test_nn_full_chain | po W5-A (uziemienie w modelu) | test iloczynu: {TT, IT} × {R_A, RCD, C_e obecne/brak → nazwana odmowa} × {obwód odbiorczy/rozdzielczy} × {limit dostarczony/brak → BRAK_PODSTAWY}; goldeny TN bit w bit; sanity U_dotyk ≥ 0; kasacja komentarzy „TT/IT deferred” (:16, :23, :61-62).",
+     "specyfikacja_danych": "IEC 60364-4-41 (wydanie, numer punktu, cytat): (1) dopuszczalne napięcie dotykowe dla TT/IT (§411.5.3/§411.6) z jednostką; (2) warunek pierwszego zwarcia IT (wielkości, wzór); (3) warunki drugiego zwarcia IT z i bez rozprowadzonego N (wzory, współczynniki); (4) potwierdzenie Tab. 41.1 TT/TN z tekstu normy (flip-to-verified modułu lv_disconnection_times_iec60364_4_41.py).",
+     "dokumenty_do_zmiany": [
+      "docs/nn/G_MACIERZ_LUK_BACKENDU_NN.md (G-12)",
+      "docs/nn/C_PLAN_ROZSZERZENIA_MODELU_NN (R_A)",
+      "docs/audit/A_AUDYT_STANU_NN:85"
+     ]
+    },
+    {
+     "id": "D-11-fault_loop-TT-IT",
+     "decyzja_ostateczna": "Bez zmian: część TT/IT tożsama z OD-25 (jedna karta W5-E-TTIT, w tym korekta źródła danych z OD-25); część DOCX: kasacja czterech gałęzi `except ImportError → 501` (power_flow_runs.py:490, :628; power_flow_comparisons.py:508, :648) jako kodu obronnego na niemożliwy scenariusz (python-docx twardą zależnością, pyproject.toml:62), import na poziomie modułu, grep-zero „501” w obu plikach, aktualizacja trzech dokumentów. Bez kontraktów FROZEN.",
+     "zmiana_wzgledem_rundy1": "bez zmian",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "API-DOCX-501 | api/power_flow_runs.py, api/power_flow_comparisons.py, 3 dokumenty | niezależna, natychmiast | testy API eksportu DOCX zielone; grep-zero „501” i „ImportError” w obu plikach; dokumenty D-11/G-12 wskazują W5-E-TTIT.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/audit/AUDYT_PROMPT_PRZEBUDOWA_2026-05-28.md:135",
+      "docs/nn/G_MACIERZ_LUK_BACKENDU_NN.md:21",
+      "docs/nn/A_AUDYT_STANU_NN:85"
+     ]
+    },
+    {
+     "id": "OD-22",
+     "decyzja_ostateczna": "Bez zmian: `k_sc` pozostaje DEFAULT_FORBIDDEN (dyrektywa właściciela 2026-09-16, MISJA §29, nieuchylona — poza delegacją O-59). Wynik z domyślką IEC liczony jako ROBOCZY (WARNING `inverter.k_sc_default_forbidden`), warstwa autorytetu (zdolnosci_wkladu_zwarciowego.py, kody SI-110…SI-115) blokuje konsumpcję przez dobór, nastawy, koordynację i dowody. Okres przejściowy ze znacznikiem odrzucony. Ten sam wzorzec (ROBOCZY + blokada autorytetu) jest teraz wzorcem klastra: ADR-021 K2 (n przy maszynach synchronicznych) i OD-14 (i_p/I_th przy Z_f ≠ 0) rozszerzają listę kodów SI-11x, więc test klasy konsumentów autorytetu musi objąć wszystkie trzy przyczyny blokady.",
+     "zmiana_wzgledem_rundy1": "Bez zmian merytorycznych; dopisane, że test klasy konsumentów autorytetu obejmuje nowe kody z ADR-021 K2 i OD-14 (jedno źródło prawdy dla blokad).",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "OD-22-DOC-TEST | wpisy MAPA:717, SYNTEZA:567, CONVERGENCE_EVIDENCE; test klasy: każdy konsument autorytetu × każdy kod blokady (SI-110…115 + kody z K2/OD-14 po ich scaleniu) → BLOCKED; bieg SC → WARNING, ślad założeń; akcja naprawcza „uzupełnij k_sc w karcie katalogowej” bez martwego kliku; fikstury GN04–GN06b bez dopisanego k_sc | natychmiast | lista konsumentów zamknięta testem (grep po `autorytet_wyniku_zwarciowego`), dead_click_guard zielony.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md:717",
+      "SYNTEZA:567",
+      "CONVERGENCE_EVIDENCE"
+     ]
+    },
+    {
+     "id": "OD-36",
+     "decyzja_ostateczna": "Utrzymane (A) z korektą wersjonowania. Δθ_dop = wymagane pole `dokladnosc_kata_dop_rad` (rad, > 0) w `NastawySolvera` (dynamika/kontrakty.py:810, docstring „WSZYSTKIE wymagane, zero domyslek”) i w `POLA_NASTAW` (enm/adapter_dynamiki.py:604) — to istniejący nośnik nastaw w opcjach biegu (`nastawy_solvera`, solver_capability_registry.py:236). Zmiana jest NIEKOMPATYBILNA (nie „minor” — krytyk ma rację): opcje biegu nie mają dziś numeru wersji (grep wersja/version w kontrakty.py: 0), więc karta wprowadza `WERSJA_NASTAW_SOLVERA = 2` obok POLA_NASTAW, zapisuje ją w ładunku resultset_dynamic_v2 (pole addytywne `nastawy_wersja`) i w rejestrze proweniencji; stare ładunki bez pola → istniejąca odmowa KOD_NASTAWY_BRAK z komunikatem PL nazywającym pole (adapter :650-655), bez warstwy zgodności. Migracja fikstur: adapter_dynamiki, 5 plików testowych z NastawySolvera(), enm_builders/dynamika_rms.py, fikstury e2e — wartość jawna z komentarzem „parametr testu, nie domyślka produktu”. Granica fizyczna f_i z u_θ(|V|) = arcsin(min(1, u_V/|V|)) w obserwable.py — bez zmian; bez wartości domyślnej w kodzie ani profilu.",
+     "zmiana_wzgledem_rundy1": "„Minor” zastąpione jawnym podniesieniem wersji głównej nowego nośnika (WERSJA_NASTAW_SOLVERA = 2), wskazany istniejący mechanizm odmowy dla starych ładunków i pełna lista fikstur do migracji.",
+     "typ": "wykonawcza",
+     "b01": true,
+     "b02": false,
+     "karta": "W6-A-OD36 | kontrakty.py (pole), adapter_dynamiki.py (POLA_NASTAW, WERSJA_NASTAW_SOLVERA), opis_scenariusza.py (etykieta PL), obserwable.py (u_θ, LaTeX), wynik.py (nastawy_wersja addytywnie), fikstury, UI nastaw biegu (pole wymagane, jednostka, podpowiedź) | po OD-32(a), razem z f_i wg OD-30 | test iloczynu: {pole brak → KOD_NASTAWY_BRAK, ≤0 → odmowa, duże, małe} × {zapad płytki, głęboki} × {granica numeryczna, fizyczna} — powód rozróżnia granice; NIEDOSTEPNA nigdy nie zastępowana f_n; guard grep: brak literalnej domyślki pola w backend/src; solver_diff_guard rdzenia DAE nietknięty.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/plan/FINAL_DYNAMICS_CAPABILITY_FREEZE.md:378 (OD-36 ROZSTRZYGNIĘTE)",
+      "W6_A:544, :640-644 (kasacja „jawna luka”)",
+      "rejestr proweniencji kontraktów (WERSJA_NASTAW_SOLVERA = 2)"
+     ]
+    }
+   ],
+   "sprzecznosci": [
+    {
+     "sprzecznosc": "OD-21/OD-15/OD-24 ↔ O-59 §12.2(b): runda R3+ ustawiona „po (l) i (b)”, a (b) związane z commitem AB-H1 — R3+ praktycznie zablokowane; OD-21 mówi „po odbiorze AB-H2”.",
+     "rozstrzygniecie": "Krytyk ma rację co do blokady, myli się co do odległości: AB-H1 jest trzecie w sekwencji (PLAN_AB:374-375 „AB-1b.1 → AB-P1 → AB-H1 → …”), a AB-P1 jest scalony. Rozstrzygnięcie: (b) kasacja harmonicznych v126 WYŁĄCZNIE w commicie AB-H1 (O-59, PLAN_AB:154) — sformułowanie „po odbiorze AB-H2” unieważnione. Karta R3-V126 (OD-15 a/d + OD-24) idzie teraz, niezależnie od (b) i (l): dotyczy innych funkcji tego samego pliku, kolizje rozwiązuje rebase. „R3 rundy B-01” nie istnieje w PLAN_AB — nazwa karty to R3-V126, bez odwołań do nieistniejącego pojęcia."
+    },
+    {
+     "sprzecznosc": "ADR-021 K3 (szyny PV, PV→PQ) ↔ istniejący kod (power_flow_newton_internal.py:813-828) i O-9 (histereza w AB-3).",
+     "rozstrzygniecie": "Krytyk ma rację. Mechanizm istnieje (:813-828, granice z PVSpec :523-525, ślad :791), powrotu PQ→PV nie ma (grep active_pv.append/histerez: 0) i wg O-9 należy do AB-3. K3 skreślona z ADR-021; D-09 „szyny PV” oznaczone ISTNIEJE; histereza pozostaje w AB-3 — jedna ścieżka."
+    },
+    {
+     "sprzecznosc": "ADR-021 K2 (`ith_n_assumed=1` do czasu danych) ↔ wzorzec OD-22 (DEFAULT_FORBIDDEN) i OD-36 (brak domyślki).",
+     "rozstrzygniecie": "Krytyk ma rację. Domyślka skasowana. n=1 jest regułą normy dla zwarć daleko od generatora (short_circuit_core.py:142) i stosuje się z konstrukcji, gdy model nie ma maszyn synchronicznych (provenance `ith_n_podstawa`). Model z maszyną synchroniczną: krzywych n i kryterium bliskości nie ma w repo → I_th ROBOCZY z kodem i blokadą autorytetu (ten sam mechanizm co k_sc, SI-11x), do czasu danych właściciela. Trzy przyczyny blokady (k_sc, n, Z_f) — jedna lista kodów, jeden test klasy konsumentów."
+    },
+    {
+     "sprzecznosc": "OD-19 `u_min_pu_akceptacji` z domyślką w warstwie aplikacji ↔ OD-36 (zakaz progów z góry) i load_flow_no_heuristics_guard.",
+     "rozstrzygniecie": "Krytyk ma rację co do progu (guard NH-01/02/05 nie łapie tej nazwy, ale zasada jest ta sama). Próg skasowany. Kryterium gałęzi rozwiązania bez stałej: dodatniość wartości własnych zredukowanego jakobianu J_R = J_QV − J_Qθ·J_Pθ⁻¹·J_PV po zbieżności (czułość V-Q), ujemna → converged=false z kodem i wartościami własnymi w trace. Karta zaczyna od diagnozy przypadku W3-G2; jeśli J_R nie ma ujemnej wartości własnej — STOP i meldunek, żadnego progu zastępczego."
+    },
+    {
+     "sprzecznosc": "OD-19 wewnętrznie: „parytet bit w bit całego rejestru goldenów” ↔ kasacja szyny 110 kV / reguła ENM U_n > 36 kV.",
+     "rozstrzygniecie": "Przypuszczenie krytyka potwierdzone pomiarem: 9 budowniczych złotych deklaruje szyny > 36 kV (ieee_4bus.py:32 132 kV, ieee_14bus.py:107 135 kV, ieee_9bus.py:38 i ieee_39bus.py:161 345 kV, iec60909_example.py:30, oze_pv_bess.py:28, pp_simple_four_bus.py:34, so1a_pv_magazyn.py:323, dynamika_rms.py:276 110 kV), a `hv_voltage_kv` jest używane przez ieee_39bus.py:177,:204. A-1 odrzucona; jawna szyna WN jest legalna; kompilator_grafu bez zmian; OD-19 = wyłącznie korekta rdzenia NR."
+    },
+    {
+     "sprzecznosc": "OD-36 wewnętrznie: pole wymagane bez domyślki = zmiana niekompatybilna, a decyzja mówi o wersji „minor”.",
+     "rozstrzygniecie": "Krytyk ma rację. Zmiana jest niekompatybilna. Nośnik nastaw (`nastawy_solvera` w opcjach biegu, POLA_NASTAW adapter_dynamiki.py:604) nie ma numeru wersji (grep 0), więc karta wprowadza WERSJA_NASTAW_SOLVERA = 2, zapisuje ją addytywnie w ładunku wyniku i w rejestrze proweniencji; stare ładunki → istniejąca odmowa KOD_NASTAWY_BRAK z komunikatem PL; wszystkie fikstury (adapter, 5 plików testowych, dynamika_rms.py, e2e) migrowane jawnie. Precedens: `tolerancja_lokalizacji_zdarzen_s` dodana jako wymagana w AB-1b.1 tym samym mechanizmem."
+    },
+    {
+     "sprzecznosc": "OD-14: κ z R/X pętli z Z_f poza zakresem IEC 60909-0 trafia do tego samego ShortCircuitResult; sanity-bound |I_k(Z_f)| ≤ |I_k(0)| może nie zachodzić dla X_f < 0.",
+     "rozstrzygniecie": "Ryzyko zamknięte konstrukcyjnie: walidacja R_f ≥ 0, X_f ≥ 0 (pojemnościowa impedancja zwarcia → nazwana odmowa), przy której nierówność wynika z |a+b|² = |a|²+|b|²+2Re(a·b̄) ≥ |a|². Wynik z Z_f ≠ 0 nosi provenance `poza_zakresem_iec60909=true`, a warstwa autorytetu blokuje i_p/I_th w doborze aparatury i pakiecie Equipment; dozwolony konsument: nastawy zabezpieczeń doziemnych. Pola nazwane jak w dynamice (`r_f_ohm`, `x_f_ohm`, kontrakty.py:571-572) — bez drugiej nazwy tej samej wielkości."
+    },
+    {
+     "sprzecznosc": "OD-15(e): zmiana literału RI → LONG_TIME_INVERSE bez aliasu zmienia OpenAPI, zapisane konfiguracje i hashe wejścia biegów historycznych.",
+     "rozstrzygniecie": "Częściowo słuszne. Migawka OpenAPI nie zawiera „RI” (grep 0), frontend 0 plików, fikstury 1 plik testowy. Repo ma już literał „LTI” (ENM :169, iec_curves.py:58, protection_vendors.py:68) — ujednolicenie idzie na TEN literał (członek LONG_TIME_INVERSE = \"LTI\"), nie na czwartą nazwę. Zapisane konfiguracje NIEZMIERZONE → karta zawiera migrację ładunków przez repozytoria persystencji z testem odtworzenia biegu historycznego i zapisem zmiany hasha wejścia w rejestrze proweniencji."
+    },
+    {
+     "sprzecznosc": "OD-25: tabela 41.1 podana z pamięci i częściowo błędnie („0,07 s dla U0 > 230 V”), wbrew O-17.",
+     "rozstrzygniecie": "Krytyk ma rację: moduł repo mówi 230<U0≤400 V: 0,07 s, >400 V: 0,04 s (lv_disconnection_times_iec60364_4_41.py, TABLICA_TT_ODBIORCZE, status REFERENCYJNY). Liczby z treści decyzji unieważnione; jedynym źródłem czasów jest moduł repo z jego stanem proweniencji w wyjaśnieniu werdyktu. Limit napięcia dotykowego i reguły IT (§411.5.3/§411.6) nie są w repo → dane właściciela; do czasu dostarczenia werdykt BRAK_PODSTAWY z kodem, fizyka (U_dotyk, I_d, Z_s) liczona jawnie."
+    }
+   ],
+   "kolejnosc": [
+    "OD-22 (karta dokumentacyjno-testowa, natychmiast)",
+    "D-11 część DOCX (API-DOCX-501, natychmiast)",
+    "R3-V126: OD-15(a)(d) + OD-24 (niezależnie od AB-H1)",
+    "PROT-LTI: OD-15(e)",
+    "PF-OD19 (rdzeń NR, kryterium J_R)",
+    "ADR-021 K1 ABCN (+ kasacja P10, odblokowuje OD-15(c))",
+    "OD-14 (impedancja zwarcia, równolegle z K1)",
+    "ADR-021 K2 (reguła strukturalna n + blokada autorytetu; po OD-14)",
+    "ADR-021 K4 slack rozproszony (po PF-OD19)",
+    "ADR-021 K5 algebra rzadka",
+    "OD-15(c) VUF (po K1)",
+    "OD-25 + D-11 TT/IT: W5-E-TTIT (po W5-A; limity po danych właściciela)",
+    "OD-3: W8-OD3 (po W4 i W5; wyrocznia PUBLISHED po danych właściciela)",
+    "OD-36: W6-A-OD36 (po OD-32(a), razem z f_i wg OD-30)"
+   ]
+  },
+  {
+   "klaster": "B_architektura",
+   "pozycje": [
+    {
+     "id": "ADR-022",
+     "decyzja_ostateczna": "ACCEPT w wariancie D-34: domena zabezpieczeń (ProtectionDevice/IED, ProtectionFunction, SettingGroup 1–4, TripMatrix, CtCore) jako warstwa ASSET modelu ENM, addytywnie; przypadek wybiera grupę nastaw albo nakłada override jako deltę scenariusza rozwiązywaną w EffectiveNetworkSnapshot (ADR-017) — Core Rule #4 doprecyzowana, nie złamana. Cała klasa blokad V11 (relay.* w enm/domain_operations_v2.py:758,1335–1354; field.* w enm/domain_operations.py:979; kody w domain/canonical_operations.py; wpisy w legacy_public_path_guard + self-test) zdjęta w jednej karcie. Pierwszy artefakt: ProtectionCapabilityRegistry (SUPPORTED/PARTIAL/PLANNED/NOT_IMPLEMENTED) z testem tożsamości wyników dla każdej funkcji liczonej dziś przez solvers/protection_iec60255.py i protection_lv_curves.py. Rozszerzenia solverów (67/67N, 87T, admitancyjne) NIE wchodzą do v1 — w rejestrze jako PLANNED z werdyktem wyjaśnialnym; osobna prośba B-01 wg D-09 po W4-3. Duplikaty fizyki IDMT poza solverami kasowane (OD-18 pierwszym krokiem W4-4). Edycja CLAUDE.md (Core Rule #4) i ARCHITECTURE.md z dowodem spójności: docs_guard + claude_md_struktura_guard RC=0.",
+     "zmiana_wzgledem_rundy1": "Doprecyzowane: kolejność W5-B → W4-1 utrzymana; dopisany dowód spójności po edycji CLAUDE.md (uwaga krytyka o plikach instrukcji); K-08 zamknięte tą decyzją; brak zmian merytorycznych.",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "W4-0…W4-4 NASTAWY-JEDNA-PRAWDA | zakres: ADR-022 status ACCEPTED (korekta D-34), ProtectionCapabilityRegistry + testy tożsamości SUPPORTED; model ASSET w ENM addytywnie; realny zapis update_relay_settings; zdjęcie klasy blokad relay.*/field.* + aktualizacja guardów i self-testów; klasa PROTECTION_SETTINGS w grafie zależności; szuflada SLD/TCC/raport/koordynacja czytają EffectiveNetworkSnapshot; kasacja fantomu nastaw w szufladzie | zależności: W4-0 natychmiast; W4-1 po W5-B (typowany Bay) i po OD-18; W4-2 po W5-C (ADR-017) | ukończenie: test iloczynu cech (funkcja ANSI × źródło nastawy grupa/override/brak → wynik tożsamy/odmowa nazwana; zmiana nastawy × bieg PF nie unieważnia / × koordynacja unieważnia; jedna zmiana widoczna w 4 konsumentach); golden SC/PF bit w bit; pełna regresja + komplet guardów RC=0.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/adr/ADR-022-*.md (Status ACCEPTED, korekta D-34)",
+      "CLAUDE.md Core Rule #4 (doprecyzowanie: nastawy bazowe = dane assetu; przypadek wybiera grupę/deltę)",
+      "mv-design-pro/ARCHITECTURE.md (sekcja Case/nastawy)",
+      "docs/twin/OWNER_REVIEW_PACKAGE.md (K-08 rozstrzygnięty, D-34 wykonane)",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md (wpis zdjęcia blokad V11)",
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md:750 (W4 podział)"
+     ]
+    },
+    {
+     "id": "OD-18",
+     "decyzja_ostateczna": "A — KASACJA na amen: backend/src/domain/protection_engine_v1.py, backend/src/application/result_mapping/protection_to_resultset_v1.py, backend/tests/test_protection_engine_v1.py; w tej samej karcie inwentarz klasy „drugi silnik” z scripts/legacy_public_path_guard.py:403–441 (domain/protection_current_source — istnienie NIEZMIERZONE; kasacja, jeśli istnieje i ma 0 importerów kodu). Fakty: protection_to_resultset_v1.py:25 jest jedynym importerem protection_engine_v1 w src, mapera nie importuje nikt (grep 0); api/execution_runs.py:137 nazywa silnik martwym. Sankcja: wpis do dict SANCTIONED_CHANGES w scripts/solver_boundary_guard.py:42 (klucz = ścieżka, wartość = uzasadnienie z NOWYM numerem V12K-xxx wpisanym do REJESTR_KONFLIKTOW — format istniejących wpisów, np. :97), zdjęcie z WATCHED_PATHS (:37) i z PROTECTED_FILES scripts/resultset_v1_schema_guard.py:20. Guardy protection_no_heuristics/backend_no_physics/solver_input_substitute/legacy_public_path/v12xx_canon tracą wyjątki, a ich self-testy dostają test negatywny z iniekcją fizyki IDMT poza solverami. Zero warstwy zgodności dla ProtectionResultSetV1. Zgoda B-01 formalna w ramach O-59, rdzenie solvers/** nietknięte.",
+     "zmiana_wzgledem_rundy1": "Bez zmian merytorycznych; doprecyzowany format sankcji (SANCTIONED_CHANGES to dict z uzasadnieniem V12K-* — wpis rejestru jest warunkiem, nie opcją) i oznaczenie NIEZMIERZONE dla protection_current_source.",
+     "typ": "wykonawcza",
+     "b01": true,
+     "b02": false,
+     "karta": "W3-A-DOMKNIĘCIE | zakres: inwentarz grep -rn po backend/src i backend/tests dla protection_engine_v1, protection_to_resultset_v1, ProtectionResultSetV1, map_protection_to_resultset_v1, protection_current_source (0 importerów kodu zapisane w meldunku); kasacja 3–4 plików; SANCTIONED_CHANGES + WATCHED_PATHS + PROTECTED_FILES + 5 guardów i self-testów; komentarze eligibility.py:267, execution_runs.py:137, test_pr18_sc_integration.py:493 | zależności: żadne; przed W4-1 | ukończenie: test negatywny z iniekcją (pętla IDMT poza solvers/** → czerwony) w każdym z 5 guardów; golden hashe SC/PF i resultset_v1 bit w bit; pełna regresja backend `-m \"not pandapower and not andes\"` RC=0 łapany bezpośrednio; verification_phantom_paths_guard RC=0.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "scripts/solver_boundary_guard.py (SANCTIONED_CHANGES, WATCHED_PATHS)",
+      "scripts/resultset_v1_schema_guard.py (PROTECTED_FILES)",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md (nowy V12K-xxx: sankcja kasacji OD-18)",
+      "docs/plan/KARTA_W3_KONWERGENCJA_FIZYKI*.md (:100, :143–147, :433)",
+      "docs/plan/KARTY_OTWARTE*.md (:562–563)"
+     ]
+    },
+    {
+     "id": "ADR-012",
+     "decyzja_ostateczna": "ACCEPT (opcja C): ENM jest Canonical Project Twin (DT-1), bez drugiej klasy TwinModel; network_model/core pozostaje pochodnym IR produkowanym wyłącznie przez enm/assembler.py. Status ADR: ACCEPTED 2026-09-30 (O-59); wpis DT-1 w DECISION_FREEZE_REGISTER: EVIDENCE-GATED, FROZEN dopiero po CV-5 i przeglądzie adwersaryjnym. Rozstrzygnięcie bramki M0/M1: werdykt właściciela 2026-09-02 (OWNER_REVIEW_PACKAGE.md:185 „M1–M7: STOP do odbioru M0”) dotyczy planu migracji z docs/twin, który wg K-20 jest materiałem wejściowym, nie kanonem; program wiążący to misja 2026-09-09 z wycinkami W1–W12 (CLAUDE.md „Mapa domknięcia”; MISJA_DOMKNIECIA nie zawiera faz M — grep „M0|M1–M7” = 0). Decyzje tego klastra nie „odblokowują M1+”, lecz działają w wycinkach W; wpis konfliktu do rejestru. Czy M0 formalnie odebrano — NIEZMIERZONE i nieistotne dla wycinków W. Zmiana wyłącznie dokumentowa: zero kodu, guardy_z_ci RC=0, golden bit w bit.",
+     "zmiana_wzgledem_rundy1": "Uzasadnienie bramki M0/M1 przepisane na fakty (K-20: docs/twin nie jest kanonem; misja bez faz M) zamiast twierdzenia „plan M1–M7 zastąpiony” bez cytatu; spójne z K-16 i odsianymi ADR (uwaga krytyka).",
+     "typ": "status_dokumentu",
+     "b01": false,
+     "b02": false,
+     "karta": "DOKUMENTY-ADR-012 | zakres: ADR-012 status + linia 29 (FROZEN po CV-5), DECISION_FREEZE_REGISTER (DT-1 EVIDENCE-GATED), docs/INDEX.md:49, OWNER_REVIEW_PACKAGE adnotacja O-59 + §6 (bramka M0 dotyczy planu docs/twin), REJESTR_KONFLIKTOW (ADR-012 vs werdykt M1–M7), CONVERGENCE_EVIDENCE | zależności: żadne; pierwsza w kolejności | ukończenie: docs_guard + docs_archive_guard RC=0; testy tests/invariants/test_wlasnosc_modelu_projektu_adwersaryjne.py i enm_store_key_guard zielone (deklaracja „ENM jedynym źródłem prawdy” ma przypięty test).",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/adr/ADR-012-*.md",
+      "docs/architecture/DECISION_FREEZE_REGISTER.md",
+      "docs/INDEX.md:49",
+      "docs/twin/OWNER_REVIEW_PACKAGE.md (§4a, §6)",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md",
+      "docs/architecture/CONVERGENCE_EVIDENCE*.md"
+     ]
+    },
+    {
+     "id": "ADR-014",
+     "decyzja_ostateczna": "ACCEPT z korektą nazewniczą: jedynym dostawcą topologii jest istniejąca enm/topology.py::derive(snapshot) -> TopologyView (topology.py:96, :133) rozszerzona o wejście EffectiveNetworkSnapshot z ADR-017 (łączność = terminale T-2 + łączniki; bez nowej klasy TopologyService i bez encji ConnectivityNode — ADR-013 tym samym SUPERSEDED). Każdy konsument, także frontend (scena SLD v3, lv-domain, sld-overlay, sheet/Frame.tsx), czyta topologię z backendu przez projekcję TopologyView; własne liczenie energizacji/NOP w frontendzie skasowane po inwentarzu klasy. Zmiana źródła energizacji sceny SLD zmienia to, co widzi inżynier → karta kończy się na CLAIMED DONE ze stroną oceny (oba motywy); ACCEPTED DONE nadaje wyłącznie właściciel werdyktem B-02. Agent nie zamyka tej karty.",
+     "zmiana_wzgledem_rundy1": "Dopisane wprost: karta nie może być zamknięta przez agenta (B-02 poza delegacją); ADR-013 oznaczony SUPERSEDED; wariant zapasowy z ADR-024 K2 skasowany (jedna implementacja grafu).",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": true,
+     "karta": "TOPOLOGIA-JEDNA-PRAWDA | zakres: derive(EffectiveNetworkSnapshot), endpoint projekcji GET …/topologia (per rewizja × scenariusz), adapter ui2, kasacja lokalnej energizacji w ui/sld/v3/lv-domain/composeLvDomainScene.ts, sheet/Frame.tsx, sld-overlay (inwentarz klasy grepem w tym samym commicie), guard ui_no_physics rozszerzony (BFS po łącznikach, lokalne energized) | zależności: W5-B → W5-C (ADR-017) → W5-T → ta karta | ukończenie: test równości zbiór krawędzi + energizacja sceny == TopologyView na wszystkich fixturach (iloczyn: stan łącznika × NOP × wyspa × scenariusz); topology_single_impl_guard zapadka 0; hash TopologyView bit w bit między procesami; strona oceny z renderami → B-02 właściciela.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/adr/ADR-014-*.md (ACCEPTED z korektą)",
+      "docs/adr/ADR-013-*.md (SUPERSEDED by ADR-014)",
+      "docs/INDEX.md:49",
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md (wiersze A2-01/A2-07/A2-08)"
+     ]
+    },
+    {
+     "id": "ADR-015",
+     "decyzja_ostateczna": "ACCEPT jako wdrożone z korektą nazw do stanu kodu: Load.phases: PhaseSet (enm/models.py:512), Transformer.lv_earthing_system: UkladSieciNn, GroundingConfig na Transformer.hv/lv_neutral i Source.neutral_grounding; status ACCEPTED-AS-IMPLEMENTED. Dokończenie: W5-C, W5-E (TT/IT/RCD — gotowość „nieokreślone” bez solvera do OD-25, nigdy domysł), jedna fizyka Ik1 nN (jedyna ścieżka = FROZEN fault_loop_iec60364 przez assembler/solver_input; druga ścieżka kasowana po teście tożsamości liczb), kasacja martwego Bus.phase_system po pomiarze czytelników (0 → kasacja; >0 → zastąpienie PhaseSet). r0/x0 tylko z katalogu albo wyprowadzone z proweniencją; brak = kod gotowości. ADR-021 (rdzeń 4-przewodowy) poza tą decyzją — osobna bramka B-01 z reduce-to-NR.",
+     "zmiana_wzgledem_rundy1": "bez zmian",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "IK1-NN-JEDNA-FIZYKA (+ karta dokumentowa razem z ADR-012) | zakres: przepisanie ADR-015 na nazwy kodu; inwentarz klasy „dwie fizyki Ik1 nN” (A1-04, A11-02…05) z pomiarem wołających; kasacja drugiej ścieżki; pomiar czytelników Bus.phase_system i kasacja/zastąpienie | zależności: po W5-B (eligibility_service, readiness); W5-E po OD-25 | ukończenie: test tożsamości liczb Ik1 na fixturach nN przed/po kasacji; solver_input_substitute_guard RC=0 (brak r0/x0 = odmowa nazwana); golden SC/PF bit w bit; mapa domknięcia :120 i :252 zaktualizowane.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/adr/ADR-015-*.md",
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md:120, :252",
+      "docs/INDEX.md:49"
+     ]
+    },
+    {
+     "id": "ADR-016",
+     "decyzja_ostateczna": "ACCEPT w formie wdrożonej CV-3.1: OperatingScenario (enm/scenariusze.py) jako typowana delta na rewizji bazowej, apply_scenario (scenariusze.py:1100) -> EffectiveNetworkSnapshot, baza nigdy nie mutowana, bieg_wariantu jedyną fabryką wariantu. Rejestr rodzajów delt otwarty: pole delty wchodzi wyłącznie z konsumentem (assembler/solver); następne switch_states/normal_state (W5-C), tap_position, catalog_rebind, contingency. VariantBranch = rewizja z rodzicem, wprowadzana z pierwszym konsumentem (porównanie wariantów/N-1). Kasacje po pomiarze: domain/models.py:90 class Scenario, 7 fantomów STUDY_CASE, kopie migawek ad hoc. ADR-008 (per-case switching, Accepted; tabela network_switching_states istnieje tylko w legacy SQL: migrations/003_network_wizard_assets.sql:43 i migracja_legacy_db.py:38) oznaczony SUPERSEDED by ADR-016/017 — tabela odchodzi z legacy SQL procedurą kasacji W1.",
+     "zmiana_wzgledem_rundy1": "Dopisane zastąpienie ADR-008 (brakujące źródło wskazane przez krytyka) z pomiarem, gdzie żyje network_switching_states.",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "WARIANTY-PORÓWNANIE (po W5-C, przed W10) | zakres: ADR-016 przepisany na nazwy kodu; ADR-008 SUPERSEDED; VariantBranch + ekran ui2/wyniki/porownanie; kasacja Scenario z domain/models.py:90, fantomów STUDY_CASE (canonical_ops_guard), tabeli network_switching_states w legacy SQL | zależności: ADR-017 (W5-C), ADR-028 w zakresie ModelRevision (istnieje) | ukończenie: test klasy izolacji: KAŻDY rodzaj delty × KAŻDA kolekcja ENM → hash bazy przed/po apply_scenario identyczny; bieg bez scenariusza == koperta v1 (golden parytet_scenariuszy bit w bit); scenario_copy_guard zapadka 0; bieg_wariantu odmawia składania scenariuszy (test).",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/adr/ADR-016-*.md",
+      "docs/adr/ADR-008-per-case-switching-state.md (SUPERSEDED)",
+      "docs/INDEX.md:49",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md"
+     ]
+    },
+    {
+     "id": "ADR-017",
+     "decyzja_ostateczna": "ACCEPT z korektą: jeden resolver stanu efektywnego = istniejące apply_scenario -> EffectiveNetworkSnapshot rozszerzone o precedencję SCENARIO > NORMAL > DESIGN dla warstw z nośnikiem, proweniencję per atrybut i stan UNKNOWN z kodem gotowości; pozostałe warstwy z 11 wchodzą tylko z nośnikiem i konsumentem. Konsumenci (assembler, projekcje SLD/TopologyView, gotowość) czytają wyłącznie EffectiveNetworkSnapshot; własna precedencja i domyślne `??` skasowane po inwentarzu klasy (BaySwitchState models.py:1252, switch_state :1698, status :242/:542, cadSymbolRegistry.ts:64). Determinizm koperty — twardy test PRZED zmianą: fakt B7 — harness parytet_scenariuszy hashuje widok rodzin D1–D6 „PRZED migracją na apply_scenario”, a czy którykolwiek test hashuje kopertę stanu efektywnego, NIEZMIERZONE; karta zaczyna od pomiaru i dopisania golden testu koperty v2 dla biegów bez scenariusza i bez normal_state. Jeśli bit w bit nie da się utrzymać → koperta v3 z podniesieniem wersji głównej, migracja fikstur narzędziami repo backend/tests/golden/*/regeneruj.py (parytet_scenariuszy, parytet_assemblera, parytet_p11), uzasadnienie w commicie i REJESTR — nigdy cicha zmiana.",
+     "zmiana_wzgledem_rundy1": "Ryzyko krytyka przyjęte: golden test koperty dopisany jako warunek wejścia (nie wyjścia) karty; nazwane narzędzia migracji fikstur (regeneruj.py) i wymóg podniesienia wersji głównej koperty.",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "W5-C STAN-EFEKTYWNY-LACZNIKOW | zakres: (0) pomiar hashowania koperty + golden test koperty v2; (1) apply_scenario: normal_state, switch_states, precedencja, proweniencja, UNKNOWN; (2) konsument w assemblerze; (3) SLD zmienia stan łącznika naprawdę (C8); (4) inwentarz i kasacja 8–9 reprezentacji stanu łącznika jedną kartą; (5) guard effective_state_single_resolver (zapadka w obie strony) dla assembler/**, api/**, application/**, frontend/src | zależności: po W5-B | ukończenie: test precedencji warstwa × atrybut (NO × scenariusz zamyka; brak normal_state × brak scenariusza → UNKNOWN z kodem; NOP zamyka poprzedni); hash przełączeń z pełnego stanu efektywnego; golden koperty bez scenariusza bit w bit albo jawna v3 z regeneruj.py; proweniencja w śladzie White Box.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/adr/ADR-017-*.md (forma wdrożona; „assembler dostaje EffectiveState”, nie solvery)",
+      "docs/adr/ADR-008-per-case-switching-state.md (SUPERSEDED)",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md (wpis wersji koperty, jeśli v3)",
+      "docs/INDEX.md:49"
+     ]
+    },
+    {
+     "id": "ADR-025",
+     "decyzja_ostateczna": "ACCEPT na istniejących nośnikach: (1) jedyny walidator modelu = enm/validator.py; pakiet network_model/validation (validator.py, semantic_validator.py, semantic_rules.py, oze_validators.py) kasowany po teście tożsamości kodów reguł — fakt B4: NetworkValidator/validate_network mają 0 konsumentów produkcyjnych, jedyny import spoza pakietu to enm/domain_operations.py:11959 validate_semantic_as_dicts (reguły semantyczne migrują do enm/validator z tożsamością kodów, konsument przepięty; konsumenci oze_validators NIEZMIERZONE → pomiar w karcie); rdzenie B-01 nie importują validation (grep 0). (2) Reguła CLAUDE.md:870 „NEVER bypass NetworkValidator” i ARCHITECTURE.md:149/:412/:440 są dziś nieprawdziwe wobec kodu — przepisane na „NEVER bypass walidatora ENM + CalculationReadiness przed biegiem (przez enm/canonical_analysis)”; klasa NIE INSTANCJA: także docs/system/SPEC_* i SYSTEM_SPEC.md przeszukane po „NetworkValidator”. (3) Gotowość = CalculationReadinessService jedynym rejestrem kodów z akcją naprawczą (readiness_codes_guard + fix_action_completeness_guard); 4 słowniki skasowane po tożsamości kodów. (4) Ograniczenia = werdykt_projektowy z klasą kryterium PHYSICS/NORMATIVE/POLICY/CONTRACT/PROJECT/DESIGN i dostawcą albo NIE_DO_USTALENIA; bez ConstraintEngine.",
+     "zmiana_wzgledem_rundy1": "Dopisana zmiana reguły w CLAUDE.md:870 i ARCHITECTURE.md (sprzeczność krytyka) z faktem, że reguła jest już martwa w kodzie; wskazany jedyny realny konsument pakietu validation i wymóg jego migracji.",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "GOTOWOSC-JEDEN-REJESTR | zakres: pomiar konsumentów każdego pliku network_model/validation (w tym oze_validators); migracja reguł semantycznych do enm/validator; kasacja pakietu; CalculationReadinessService jako jedyny rejestr; typowanie kryteriów werdyktu; przepięcie report_readiness/adapter.py, dynamika/gotowosc.py, validation_problem/service.py + kontrakt gotowości ui2; przepisanie reguły w CLAUDE.md/ARCHITECTURE.md/SPEC_* | zależności: po W5-B i po partii 6 (ODMOWA-DANYCH-422) | ukończenie: zbiór kodów walidacji+gotowości przed/po identyczny (test tożsamości), każdy kod z jednym emiterem i jedną akcją; guard: kryterium bez klasy = czerwony; predykat „brak układu nN / Z0 / katalogu” w jednym miejscu (wzór enm/uziemienie.py); OpenAPI addytywne, snapshot przeliczony; claude_md_struktura_guard + docs_guard RC=0.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "CLAUDE.md:870 (Important Warnings 5)",
+      "mv-design-pro/ARCHITECTURE.md:149, :412, :440",
+      "docs/system/SPEC_GOTOWOSC*.md / SPEC_* (wzmianki NetworkValidator — po grep)",
+      "mv-design-pro/SYSTEM_SPEC.md (po grep)",
+      "docs/adr/ADR-025-*.md",
+      "docs/INDEX.md:49"
+     ]
+    },
+    {
+     "id": "K-05",
+     "decyzja_ostateczna": "Opcja A: jeden kanoniczny zestaw jednostek inżynierskich (kV, MVA, Ω, A, kA, s, pu — dzisiejsza konwencja solverów i ENM z sufiksami _kv/_mva/_ohm) zadeklarowany RAZ w rejestrze; Quantity(value, unit) z własnym UnitDimension wyłącznie na granicy: OpenAPI x-unit z rejestru, jeden formatter ui2, ten sam formatter dla PDF/DOCX/LaTeX. Nośnik rejestru: istniejący backend/src/domain/units.py z ADR-002 (BaseQuantities, „engineering units: Ubase kV, Sbase MVA” — units.py:13–19), nie nowy moduł; pomiar: units.py ma 0 importerów poza domain/ (grep = 0), więc BaseQuantities albo staje się jedynym konwerterem pu na granicy w tej karcie, albo jest kasowana w niej (bez martwego kodu). ADR-002 status: EXTENDED by K-05 (rejestr jednostek), nie nowa prawda obok. Opcja B odrzucona: zmiana sygnatur ShortCircuitResult/PowerFlowResult = podniesienie wersji głównej kontraktów FROZEN i edycja rdzeni B-01 bez zysku.",
+     "zmiana_wzgledem_rundy1": "Rejestr osadzony w istniejącym domain/units.py (ADR-002) zamiast nowego modułu — brakujące źródło wskazane przez krytyka, reguła „nie duplikuj”; nakaz rozstrzygnięcia losu BaseQuantities (0 importerów).",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "JEDNOSTKI-GRANICA | zakres: rejestr jednostek + UnitDimension w domain/units.py; x-unit w OpenAPI dla każdego pola liczbowego; formatter ui2 i formatter dokumentów; inwentarz klasy G-24 (wszystkie konwersje w UI/eksportach/raportach) przepięty w jednej karcie; guard: nowe pole liczbowe w api/** bez sufiksu/wpisu w rejestrze = czerwony (zapadka w obie strony na zastanych); los BaseQuantities | zależności: po partii 6; niezależna od W5 | ukończenie: test „każdy sufiks pola w modelach API i ENM ma wpis w rejestrze”; golden hashe wyników i eksportów bit w bit; snapshot OpenAPI przeliczony (tylko metadata); grep rozproszonych konwersji w ui2 = 0.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/adr/ADR-002-unit-system-base-quantities.md (EXTENDED by K-05)",
+      "docs/twin/OWNER_REVIEW_PACKAGE.md:109 (K-05 rozstrzygnięty, wiersz D-xx w §4a)",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md"
+     ]
+    },
+    {
+     "id": "OD-13",
+     "decyzja_ostateczna": "Opcja A: MCP jako lokalna płaszczyzna sterowania (stdio/localhost, bez uwierzytelniania sieciowego) nad TYMI SAMYMI serwisami aplikacyjnymi co REST (operacje domenowe z walidatorem, dziennik, rewizje/checkout, scenariusze, biegi kanoniczne, gotowość); zakresy narzędzi read/propose/apply; apply przez dziennik z CAS na rewizji. Korekty: (1) OD-27 NIE jest otwarta — właściciel 2026-08-05 rozstrzygnął „nie wychodzimy poza localhost… NIE wchodzi do realizacji” (PLAN_PRZEBUDOWY_10X:217–220); tożsamość = jedno stanowisko lokalne; pole autora typowane Autor{rodzaj: uzytkownik|agent, id} z id stałym „local” dla użytkownika — bez kont, bez ról, bez pytania do właściciela. (2) Spójność z K-16: narzędzia MCP NIE są APIRouterami (grep mcp w backend/src = 0, nic do montowania), więc router_mount_guard i reguła K-16 pozostają bez klasy wyjątku; konsumentem narzędzia MCP jest ścieżka użytkownika wykonywana przez agenta w jego imieniu (misja §15), pilnowana per narzędzie nowym guardem mcp_tool_consumer (narzędzie → serwis aplikacyjny + test równoważności z REST), nie klasą. Zero fizyki i zero mutacji poza operacjami domenowymi.",
+     "zmiana_wzgledem_rundy1": "OD-27 uznana za rozstrzygniętą 2026-08-05 (sprzeczność krytyka); dopisana relacja do K-16 i router_mount_guard (MCP nie jest APIRouterem; guard per narzędzie, nie klasa).",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "W12-MCP | zakres: (1) read + propose po ADR-016/017 (propozycja = OperatingScenario/komendy z deltą i dowodem, bez zapisu bazy); (2) apply po W5-C (CAS: rewizja bazowa == HEAD, inaczej odmowa nazwana; rollback jako operacja dziennika); guard importów mcp/** (bez solvers/**, bez zapisu do store poza dziennikiem); ADR-029 MCP z odwołaniem do 2026-08-05 | zależności: ADR-016, ADR-017, W5-C | ukończenie: test klasy narzędzie × zakres (apply niedostępne w sesji read; propose nie zmienia hasha bazy); test równoważności: te same wywołania MCP i REST → identyczne hashe rewizji i biegów; router_mount_guard i jego self-test bez zmian; mcp_tool_consumer_guard z testem czysty/naruszający.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/adr/ADR-029-mcp-lokalna-plaszczyzna-sterowania.md (nowy)",
+      "docs/plan/KARTY_OTWARTE*.md:1403 (przesłanka karty wykonawcy biegów bez zmian)",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md (OD-13 vs K-16, OD-27 zamknięta 2026-08-05)",
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md (W12, W9: zależność od OD-13 zdjęta)"
+     ]
+    },
+    {
+     "id": "ADR-024",
+     "decyzja_ostateczna": "ACCEPT: projekcje SN i nN z JEDNEJ migawki ENM i jednego grafu topologii — SnDomainProjectionV1 i LvDomainProjection 3.0.0 emitują SceneSemanticsV1 (ta sama tożsamość ref_id + terminale, jeden rejestr symboli), każdy widok ma własny LayoutDocument, przejście SN↔nN przez portal na terminalu transformatora. Korekta: wariant zapasowy „przeniesienie grafu terminalowego z frontend/v3/electrical do backendu, jeśli TopologyView nie przyjęty” SKASOWANY — TopologyView jest przyjęty (ADR-014), derive istnieje (topology.py:133), a ADR-024 nie zawiera takiego wariantu (grep K2|zapas|fallback = 0 — określenie pochodziło z mojej rundy 1, nie z ADR). Graf w frontend/v3/electrical jest kasowany, nie przenoszony. Gramatyka klienta (buildScene.ts, compose/*), fikstury sldNetwork53 i równoległe *.enm.json kasowane po parytecie. ADR-005-sld-enm-canonical-projection (Zaakceptowane 2026-02-07) → SUPERSEDED by ADR-024. Testy kontraktowe sceny z sld-determinism.yml przepisywane atomowo z workflowem i listą w CLAUDE.md. Werdykt wyglądu nowych scen = B-02 właściciela; agent nie certyfikuje.",
+     "zmiana_wzgledem_rundy1": "Skasowany wariant zapasowy K2 (druga implementacja grafu — sprzeczność z ADR-014); dopisane zastąpienie ADR-005 (brakujące źródło); podkreślona atomowość zmian testów CI z CLAUDE.md.",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": true,
+     "karta": "ADR-024-K1…K3 | zakres: K1 kontrakt SceneSemanticsV1 + LayoutDocument (schemat JSON, wersja, hash) + rejestr symboli; K2 backend SnDomainProjectionV1 na TopologyView (enm/topology.py::derive) + endpoint + test parytetu z buildSceneV3; K3 klient v3 layout/route/measure konsumuje SceneSemanticsV1, kasacja buildScene.ts, compose/*, v3/electrical, sldNetwork53, *.enm.json; przepisanie testów sheetRows/gpzCollapsed/lodContinuity/busbarLabelClearance na kontrakt razem ze sld-determinism.yml i CLAUDE.md w jednym commicie | zależności: SESJA-SLD-V2-GEOMETRIA, ADR-014 | ukończenie: test iloczynu: każde urządzenie ENM dokładnie raz w sumie scen SN+nN (transformator raz jako portal), krawędzie sceny == graf TopologyView na wszystkich fixturach; hash SceneSemanticsV1 stabilny; payloady LvDomainProjection addytywne (exclude_none); grep buildSceneV3/sldNetwork53 = 0 + guard wskrzeszenia; verification_phantom_paths_guard RC=0; strona oceny → B-02.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/adr/ADR-024-sn-nn-projections-from-one-model.md (ACCEPTED)",
+      "docs/adr/ADR-005-sld-enm-canonical-projection.md (SUPERSEDED by ADR-024)",
+      "docs/twin/OWNER_REVIEW_PACKAGE.md:110 (K-06 rozstrzygnięty)",
+      "docs/sld/SLD_SYMBOL_SYSTEM_PLAN.md:66",
+      "CLAUDE.md (lista testów SLD Determinism)",
+      ".github/workflows/sld-determinism.yml"
+     ]
+    },
+    {
+     "id": "K-12",
+     "decyzja_ostateczna": "Opcja A: akcja naprawcza jest wykonawcą jednym kliknięciem — przejdzDoPrzestrzeni('schemat') → selekcja → openOperationForm(focus) przez jedną, ponownie użytą funkcję wykonajAkcjeNaprawcza; D1 „jedna nawigacja” pozostaje jedyną ścieżką przejścia, wykonawca dokłada krok po przejściu. Istniejący ui/shared/fixActionSurfaceExecutor.ts (dziś wyspa: jedyny konsument legacy ReadinessBar.tsx) przeniesiony do ui2, nie przepisany. Identyfikator C-12 w REJESTR_KONFLIKTOW obok NAWIGACJA-JEDEN-KANON; EF-046 i pkt 31 OWNER_REVIEW_PACKAGE przyjęte do wykonania. Tabela kodów fix_navigation → formularz operacji KOMPLETNA: każdy kod ma dostawcę formularza albo jawnie nazwaną odmowę w UI (nie phantom).",
+     "zmiana_wzgledem_rundy1": "bez zmian",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "C-12 | zakres: przeniesienie fixActionSurfaceExecutor do ui2/spaces/gotowosc/ i wpięcie w AppRoot.tsx:321–326; komplet mapy kodów → formularze; kasacja ReadinessBar + eksportu barrela network-build/index.ts po pomiarze 0 konsumentów; WierszProblemu i NBA (nastepnaAkcja.ts/procesAdapter.ts, gotowoscAdapter.ts/grupowanieCelow.ts, wzorzec akcjaNaprawcza) wołają wyłącznie wspólną funkcję | zależności: żadne | ukończenie: test klasy: każdy kod readiness z surface × implemented=true w rejestrze powierzchni (czerwony dla kodu bez dostawcy); grep fixActionSurfaceExecutor w ui/ = 0; nawigacja_jeden_kanon_guard (nowy pin: wykonawca nie woła gołego setActiveSpace); e2e natywnym klikiem w wiersz problemu → formularz z fokusem; vitest, type-check, lint, dead_click_guard RC=0.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/v12xx/REJESTR_KONFLIKTOW.md:414 (C-12)",
+      "docs/twin/OWNER_REVIEW_PACKAGE.md:116",
+      "docs/uiux/ENGINEERING_FRICTION_REGISTER.md:68 (EF-046 zamknięte)",
+      "frontend/src/ui2/AppRoot.tsx (komentarz „kanon D1” → C-12)"
+     ]
+    },
+    {
+     "id": "K-19",
+     "decyzja_ostateczna": "Opcja A z przepisaniem: docs/ui/SLD_SCADA_CAD_CONTRACT.md:37 („BoundaryNode | Węzeł przyłączenia (Point of Common Coupling) … ZAWSZE używaj terminu BoundaryNode”) i :599 poprawione tak, że: (1) BoundaryNode jest WYŁĄCZNIE pojęciem warstwy analizy (BoundaryIdentifier), nigdy elementem modelu ani symbolem SLD; (2) etykieta prezentacyjna „punkt przyłączenia” oznacza obiekt umowny GridConnectionPoint z ADR-027 (warstwa kontraktowa, wskazuje terminal przez terminal_ref) — do czasu jego wdrożenia etykieta opisuje terminal/szynę, do której przyłączony jest Source; (3) zakaz dotyczy wyłącznie modelu fizyki (network_model/core, solvers, migawka). Krytyk ma rację: runda 1 nazywała GridConnectionPoint fantomem, bo w kodzie ma 0 trafień — ale ten sam pakiet przyjmuje ADR-027, więc termin ma źródło w przyjętej decyzji i staje się realny w karcie G-15; K-19 nie może go zakazywać. Klasa: te same sformułowania w SLD_UI_CONTRACT.md, SLD_SHORT_CIRCUIT_BUS_CENTRIC.md, SHORT_CIRCUIT_PANELS_AND_PRINTING.md, FAZA_0_AUDYT_REPOZYTORIUM.md; archiwum nietknięte. Pin: docs_guard z zakazem wzorców „Point of Common Coupling” i „ZAWSZE używaj terminu BoundaryNode” w docs/ui/SLD_*.md i SHORT_CIRCUIT_*.md.",
+     "zmiana_wzgledem_rundy1": "Zdjęty zakaz terminu GridConnectionPoint (sprzeczność z ADR-027); etykieta „punkt przyłączenia” zdefiniowana jako prezentacja obiektu ADR-027, zakaz ograniczony do modelu fizyki.",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "K-19 DOKUMENTY-PUNKT-PRZYLACZENIA | zakres: edycja kontraktu (:37, :599, słownik), przegląd 4 dokumentów docs/ui, pomiar ciągów UI „BoundaryNode” w frontend/src poza analysis/boundary i testami (trafienie w etykiecie → „punkt przyłączenia”; brak = zapisany pomiar), rozszerzenie docs_guard z testem czysty/naruszający, wpis K-19 w REJESTR_KONFLIKTOW z odwołaniem do Core Rule 5 i ADR-027 | zależności: dokumentowo razem z ADR-027 (część a) | ukończenie: docs_guard, pcc_zero_guard, forbidden_ui_terms_guard, ui_terminology_guard RC=0; test guardu czerwony na wstrzykniętym „Point of Common Coupling”.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/ui/SLD_SCADA_CAD_CONTRACT.md:37, :599",
+      "docs/ui/SLD_UI_CONTRACT.md",
+      "docs/ui/SLD_SHORT_CIRCUIT_BUS_CENTRIC.md",
+      "docs/ui/SHORT_CIRCUIT_PANELS_AND_PRINTING.md",
+      "docs/audit/FAZA_0_AUDYT_REPOZYTORIUM.md",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md",
+      "docs/twin/OWNER_REVIEW_PACKAGE.md:123",
+      "docs/twin/MV_DESIGN_PRO_DIGITAL_TWIN_AUDIT.md:135",
+      "scripts/docs_guard.py + self-test"
+     ]
+    },
+    {
+     "id": "SESJA-SLD-V2-GEOMETRIA",
+     "decyzja_ostateczna": "Opcja A: kasacja geometrii układu v2 z bramką wskrzeszenia: frontend/src/engine/sld-layout/** (layoutEngine, topologyTree, lodController + testy), re-eksporty w ui/sld/v2/geometry/index.ts:27–30, sldGeometryFromLayout.ts, blok buildSldLayoutGeometry/applyLayoutToStations/applyLayoutToGpzs w enmToSldAdapter.ts:1036–1057, pola SldDataPayload bez odczytów produkcyjnych po pomiarze. Inwentarz klasy skorygowany faktami B6: konsumenci v2/geometry poza testami to sldGeometryFromLayout.ts oraz station-rozdzielnia/{StationRozdzielniaSN.tsx, OzeSourceArchetype.tsx, abbFieldLibrary.ts}; pomiar: OzeSourceArchetype.tsx:40 i abbFieldLibrary.ts:20 importują wyłącznie `type StationDetailLevel` z lokalnego './geometry' (nie z layoutEngine) — zostają; import w StationRozdzielniaSN.tsx NIEZMIERZONY → karta mierzy. Testy CI layoutEngine.substrate i portAnchoredGeometry.substrate zależą od engine/sld-layout przez v2/geometry/index (B6) i odchodzą atomowo ze sld-determinism.yml i listą w CLAUDE.md; pozostałe testy z workflowa leżą w v2/v3 poza engine/sld-layout. B-02: zrzuty screenshot-harness (oba motywy) bajt w bajt identyczne = bez werdyktu; jakakolwiek różnica = STOP, defekt założenia, B-02 właściciela.",
+     "zmiana_wzgledem_rundy1": "Inwentarz klasy uzupełniony o station-rozdzielnia (pomiar: import tylko typu, poza cięciem) i o jawny wykaz testów CI zależnych od engine/sld-layout; atomowość z yml + CLAUDE.md i warunkowa bramka B-02 zapisane wprost.",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": true,
+     "karta": "SLD-V2-GEOMETRIA-KASACJA (przed ADR-024) | zakres: pomiar konsumentów każdego pola SldDataPayload (v3, screenshot-harness-main.tsx, v3/export, druk, DerSurfaces.tsx, detailDrawerData.ts, stationBusResolution.ts, ui2) i importów StationRozdzielniaSN.tsx; kasacja engine/sld-layout, hooka w adapterze, pól bez odbiorcy; sld-determinism.yml + CLAUDE.md w tym samym commicie; guard wskrzeszenia (ścieżki engine/sld-layout, symbole buildSldLayoutGeometry/buildTopologyTree/applyLayoutToStations); mapa domknięcia :279 | zależności: rebase na karty SLD dotykające enmToSldAdapter | ukończenie: hash SceneV3 na wszystkich fixturach identyczny przed/po; accept:sld-v3 bez zmian; zrzuty bajt w bajt (oba motywy); tsconfig_gate_guard zapadka w dół; verification_phantom_paths_guard, sld_determinism_guards, vitest, type-check, lint RC=0.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      ".github/workflows/sld-determinism.yml",
+      "CLAUDE.md (lista testów SLD Determinism)",
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md:279",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md"
+     ]
+    },
+    {
+     "id": "ADR-027",
+     "decyzja_ostateczna": "ACCEPT z korektą nośnika S_k: GridConnectionPoint jest obiektem warstwy kontraktowej (CONTRACT/DESIGN) wskazującym terminal fizyki przez terminal_ref, nigdy węzłem/gałęzią/parametrem solvera; pola: terminal_ref, connection_conditions_ref, agreed_power, agreed_cos_phi, compliance_profile. Pola sk_max/min z ADR-027:11 USUNIĘTE z ADR przy przyjęciu: nośnikiem S_k,min i X/R pozostaje Generator.deklaracje_modulu zgodnie z rozstrzygnięciem właściciela O-57 pkt 9 (decyzja właściciela wiąże delegata; treść O-57 znam z pakietu rundy 1, pliku decyzji nie czytałem) — moduł wskazuje punkt przez punkt_przylaczenia_ref, S_k nie jest kopiowane. Jeden nośnik, zero sprzeczności z OD-21/PTPiREE, magazyny, jakość energii. Core Rule 5 i pcc_zero_guard utrzymane co do ducha (zero punktu przyłączenia w NetworkModel i migawce solvera), redakcja dopuszcza obiekt umowny poza modelem fizyki; guard zaostrzony strukturalnie (iniekcja: GridConnectionPoint w network_model/core/**, solvers/**, NetworkGraph/Snapshot = czerwony). ADR-003 i ADR-006 (PCC w persystencji, Accepted) → SUPERSEDED by ADR-027. Kod po W5-T (terminale T-2 są warunkiem terminal_ref); część dokumentowa natychmiast.",
+     "zmiana_wzgledem_rundy1": "S_k,min/X/R zostają w Generator.deklaracje_modulu (O-57 pkt 9) — sk_max/min usunięte z GridConnectionPoint (sprzeczność krytyka); kod przesunięty za W5-T; dopisane zastąpienie ADR-003/006.",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "G-15 PUNKT-PRZYLACZENIA | zakres: (a) redakcja Core Rule 5 + pcc_zero_guard z testami strukturalnymi; (b) GridConnectionPoint w domain/ + sekcja umowna w ENM poza NetworkModel + API addytywne; (c) inwentarz 12 ról (A5-06, A1-08, A12 §8) — każda zastąpiona albo zostawiona z uzasadnieniem; kasacja tekstowego punktu przyłączenia we wniosku OSD; Generator.deklaracje_modulu.punkt_przylaczenia_ref; (d) konsumenci RfG/hosting capacity/wniosek/werdykt/UI kreator przyłącza (wybór terminalu) | zależności: (a) i dokumenty natychmiast z K-19; (b)–(d) po W5-T | ukończenie: test iloczynu: wiele modułów × jeden punkt; jeden projekt × wiele punktów; punkt bez warunków → BRAK_PODSTAWY; usunięcie terminalu → sierota wykryta; S_k odczytywane z jednego nośnika (grep drugiego = 0); pcc_zero, arch, domain_no_guessing, catalog_binding RC=0; golden bit w bit.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/adr/ADR-027-grid-connection-point-contractual-object.md (ACCEPTED, bez sk_max/min)",
+      "docs/adr/ADR-003-pcc-and-sources-persistence.md (SUPERSEDED)",
+      "docs/adr/ADR-006-persistence-pcc-sources-loads-grounding-limits.md (SUPERSEDED)",
+      "CLAUDE.md Core Rule 5",
+      "docs/system/SPEC_* (wzmianki PCC/punkt przyłączenia — po grep)",
+      "docs/architecture/PRODUCT_CAPABILITY_CONSTITUTION.md:74",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md (§44 vs Core Rule 5)"
+     ]
+    },
+    {
+     "id": "OD-32",
+     "decyzja_ostateczna": "Rozstrzygnięcie (a) — wyrocznie przed nowymi wielkościami — NIE jest moją decyzją, lecz już podjętą decyzją właściciela: W6_3C_DYNAMICS_PRODUCT_FREEZE.md:369 „(a) — dopóki nie ma wyroczni…”, potwierdzoną w FINAL_DYNAMICS_CAPABILITY_FREEZE.md:352 „Decyzje OD-28…OD-32 … pozostają w mocy” i §7.1 (OD-30 PRZYJĘTE CO DO ZASADY, OD-33, OD-34 PRZYJĘTE). Runda 1 błędnie przedstawiła ją jako własną i błędnie zostawiła W6-3C „wstrzymaną do zamknięcia OD-28…OD-31” — warunek pusty: OD-28…OD-34 są rozstrzygnięte 2026-09-18. Jedyny nieaktualny nośnik to REJESTR_KONFLIKTOW.md:446 (wiersz W6-3C-KONFLIKT wymienia OD-28…OD-34 jako otwarte z OD-30 jako warunkiem wejścia). Karta statusowa: wiersz :446 przepisany na ROZSTRZYGNIĘTE z odsyłaczem do FINAL_DYNAMICS §7.1/:352 i W6_3C:369; warunek wejścia fal W6-A…E = „minimalna wyrocznia rodziny obecna (L5 w zadeklarowanej domenie wg O-7) i UNVALIDATED_MODEL zdjęte w macierzy zdolności” + OD-30 (a)+(b) wykonane. Dane spoza repo (modele referencyjne, benchmark) — brak obu dróg = rodzina zostaje UNVALIDATED, nowe wielkości nie wchodzą.",
+     "zmiana_wzgledem_rundy1": "Typ zmieniony na status_dokumentu: (a) jest decyzją właściciela (W6_3C:369), nie delegata; warunek wstrzymania W6-3C uznany za pusty (OD-28…34 rozstrzygnięte 2026-09-18); do zmiany tylko REJESTR:446.",
+     "typ": "status_dokumentu",
+     "b01": false,
+     "b02": false,
+     "karta": "REJESTR-OD-28-34 | zakres: REJESTR_KONFLIKTOW.md:446 → ROZSTRZYGNIĘTE z odsyłaczami; FINAL_DYNAMICS_CAPABILITY_FREEZE.md §5 warunek wejścia fal W6-A…E (wyrocznia rodziny) | zależności: żadne | ukończenie: docs_guard RC=0; grep „OD-28…OD-34” jako otwarte w docs = 0.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/v12xx/REJESTR_KONFLIKTOW.md:446",
+      "docs/plan/FINAL_DYNAMICS_CAPABILITY_FREEZE.md §5"
+     ]
+    },
+    {
+     "id": "K-16",
+     "decyzja_ostateczna": "Opcja B utrzymana: bez klasy „API integracyjne twin” w macierzy kompatybilności i w scripts/router_mount_guard.py (reguła :27–34: każdy APIRouter zamontowany albo na SWIADOMIE_ODSTAWIONE z uzasadnieniem, FAIL-CLOSED). Konsument trasy = wywołanie w ścieżce użytkownika: ekran/akcja UI ALBO narzędzie MCP działające w imieniu użytkownika (OD-13) — narzędzia MCP nie są APIRouterami (grep mcp w backend/src = 0), więc nie podlegają temu guardowi, a ich konsument pilnowany jest per narzędzie osobnym guardem; żadnej klasy wyjątku. Uzasadnienie „M1+ zablokowane” z rundy 1 zastąpione faktem: tras twin dziś nie ma, a program biegnie wycinkami W (ADR-012). Decyzja właściciela 2026-08-05 (localhost, bez ekspozycji sieciowej — PLAN_PRZEBUDOWY_10X:217–220) wyklucza zewnętrznego klienta HTTP. Eksport SCL/SSD (K-14) — konsument = akcja eksportu + test golden pliku wynikowego, inaczej wpis odstawiony per trasa.",
+     "zmiana_wzgledem_rundy1": "Definicja konsumenta rozszerzona o narzędzie MCP (spójność z OD-13) bez klasy wyjątku w guardzie; usunięte uzasadnienie „M1+ zablokowane”.",
+     "typ": "status_dokumentu",
+     "b01": false,
+     "b02": false,
+     "karta": "K-16 DOKUMENT | zakres: wiersz D-xx w OWNER_REVIEW_PACKAGE.md §4a i tabeli D-01..D-19 (:134–152); wpis zamykający w REJESTR_KONFLIKTOW z odwołaniem do K-13, K-14, OD-13; jednozdaniowy komentarz nagłówka SWIADOMIE_ODSTAWIONE (router_mount_guard.py:133): „konsument = wywołanie w ścieżce użytkownika (UI albo narzędzie MCP); wyjątki wyłącznie per trasa” | zależności: żadne | ukończenie: router_mount_guard i test_router_mount_guard bez zmian logiki RC=0; docs_guard RC=0.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/twin/OWNER_REVIEW_PACKAGE.md:120 i §4a",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md",
+      "scripts/router_mount_guard.py:133 (komentarz)"
+     ]
+    },
+    {
+     "id": "K-20",
+     "decyzja_ostateczna": "Opcja C: kanonem pozostaje obecna hierarchia (CLAUDE.md „Document Hierarchy” = docs/INDEX.md „Hierarchia kanonu”), uzupełniona o jawny poziom 1b: docs/architecture/{PRODUCT_CAPABILITY_CONSTITUTION, CAPABILITY_ARCHITECTURE_MATRIX, CANONICAL_TWIN_ARCHITECTURE, CONVERGENCE_ROADMAP, DECISION_FREEZE_REGISTER}.md jako prawo programu konwergencji (konstytucja 2026-09-04); docs/twin/ = materiał wejściowy i dowodowy, NIE kanon (docs/INDEX.md:20, :33). Plik PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md nie powstaje; martwe odwołania usuwane. Reguła kolizji: KANON_V12_XX = prawo produktu, konstytucja = prawo programu; sprzeczność → REJESTR_KONFLIKTOW, rozstrzyga późniejszy dokument właściciela. Konsekwencja spójna z ADR-012: bramka M0/M1 z docs/twin nie wiąże wycinków W. Edycja CLAUDE.md = plik instrukcji agentów: po edycji obowiązkowy dowód spójności (docs_guard rozszerzony o istnienie każdej ścieżki z obu list i o identyczność list; claude_md_struktura_guard RC=0).",
+     "zmiana_wzgledem_rundy1": "Dopisany dowód spójności po edycji pliku instrukcji (uwaga krytyka) i jawna relacja do bramki M0 (spójność z ADR-012/K-16).",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "K-20 HIERARCHIA | zakres: CLAUDE.md „Document Hierarchy” (wiersz 1b + „docs/twin — materiał wejściowy”), docs/INDEX.md:8–14 ta sama lista, OWNER_REVIEW_PACKAGE.md:124 K-20 ROZSTRZYGNIĘTA, wpis REJESTR (nowy V12K-xxx), STAN_REPO.md jedno zdanie poza sekcją J, docs_guard.py: identyczność list + istnienie ścieżek (test czysty/naruszający) | zależności: żadne; przed każdą kartą powołującą się na docs/twin | ukończenie: grep -rn PRZEBUDOWA CLAUDE.md STAN_REPO.md docs = 0 poza wpisem archiwalnym; docs_guard, docs_archive_guard, claude_md_struktura_guard RC=0.",
+     "specyfikacja_danych": "Nie blokuje: wskazanie miejsca, z którego harness wstrzykuje sekcję „ZASADY NADRZĘDNE” z odwołaniem do PROMPT_ (poza plikiem na dysku), by zastąpić je odsyłaczem do docs/architecture/PRODUCT_CAPABILITY_CONSTITUTION.md; do tego czasu odwołanie traktowane jako martwe.",
+     "dokumenty_do_zmiany": [
+      "CLAUDE.md (Document Hierarchy)",
+      "docs/INDEX.md:8–14",
+      "docs/twin/OWNER_REVIEW_PACKAGE.md:124",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md",
+      "mv-design-pro/STAN_REPO.md (poza §J)",
+      "scripts/docs_guard.py + self-test"
+     ]
+    },
+    {
+     "id": "STATUSY-ADR",
+     "decyzja_ostateczna": "Jedna karta statusowa domyka wszystkie 17 ADR-012…028 (dziś każdy ma linia 3 „Status: PROPOSED (program Digital Twin 2026-09 …)”, docs/INDEX.md:49 wymienia cały zakres jako PROPOSED): ACCEPTED (z korektą) — 012, 014, 015, 016, 017, 022, 024, 025, 027 (decyzje tego klastra); SUPERSEDED — 013 (by ADR-014: łączność = terminale + łączniki, bez ConnectivityNode); PROPOSED z adnotacją „decyzja przy wycinku W-x; warunek: konsument w kodzie” — 018, 019, 020, 026, 028 (odsiane; ich brak wdrożenia uzasadniany odtąd brakiem konsumenta, nie „M1–M7 STOP”); 021 — PROPOSED, wymaga zgody B-01 z reduce-to-NR i wyrocznią (poza tym klastrem); 023 — PROPOSED, zależy od B-02 (poza delegacją). Starsze ADR: 002 EXTENDED by K-05; 003/006 SUPERSEDED by ADR-027; 005-sld-enm-canonical-projection SUPERSEDED by ADR-024; 008 SUPERSEDED by ADR-016/017. docs/INDEX.md:49 przepisany na listę per ADR ze statusem. Werdykty właściciela D-38…D-46 z §4a (D-39 ZMIENIĆ, pozostałe TAK) pozostają w mocy bez ponownej decyzji.",
+     "zmiana_wzgledem_rundy1": "Nowa pozycja: krytyk wykazał ADR bez właściciela karty (013, 014, 018, 019, 020, 023, 026, 028) i starsze ADR zastępowane bez zapisu (002, 003, 005, 006, 008).",
+     "typ": "status_dokumentu",
+     "b01": false,
+     "b02": false,
+     "karta": "STATUSY-ADR | zakres: linia 3 każdego ADR-012…028 wg powyższej listy; ADR-002/003/005/006/008 status + odsyłacz; docs/INDEX.md:49 lista per ADR | zależności: po kartach dokumentowych ADR-012/015/016/017/024/027 (albo w jednym commicie z nimi) | ukończenie: grep „Status: PROPOSED (program Digital Twin” w docs/adr = tylko 018, 019, 020, 021, 023, 026, 028 z adnotacją; docs_guard RC=0.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/adr/ADR-012…ADR-028 (linia 3)",
+      "docs/adr/ADR-002, ADR-003, ADR-005-sld-enm-canonical-projection, ADR-006, ADR-008",
+      "docs/INDEX.md:49"
+     ]
+    },
+    {
+     "id": "K-07",
+     "decyzja_ostateczna": "Wyspy i praca wyspowa DER (§43) vs rdzeń NR z jednym slackiem: partycjonowanie per wyspa wykonuje assembler (warstwa aplikacji) na TopologyView.wyspy (ADR-014), każda wyspa idzie do FROZEN rdzenia jako osobny bieg z własnym węzłem referencyjnym; wyspa bez sieci zewnętrznej i bez źródła zdolnego trzymać napięcie (GFM z jawną deklaracją w modelu) = odmowa nazwana kodem gotowości z werdyktem wyjaśnialnym, nigdy domyślny slack. Rozszerzenie rdzenia (ADR-021 K4) NIE wchodzi tą decyzją — osobna bramka B-01 z reduce-to-NR i wyrocznią. Czy assembler dziś partycjonuje per wyspa — NIEZMIERZONE; karta zaczyna od pomiaru (assembler.py:431–609 czyta TopologyView) i nie duplikuje istniejącego mechanizmu, jeśli jest.",
+     "zmiana_wzgledem_rundy1": "Nowa pozycja (brak w rundzie 1; wskazana przez krytyka jako nierozstrzygnięta).",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "WYSPY-ASSEMBLER | zakres: pomiar obecnego zachowania assemblera dla >1 wyspy; partycja per wyspa na TopologyView; wybór referencji wyspy (sieć zewnętrzna > GFM z deklaracją); kod gotowości dla wyspy bez referencji; ślad White Box per wyspa; wynik FROZEN składany addytywnie | zależności: ADR-014 (TopologyView z effective_state), ADR-017 | ukończenie: test iloczynu: liczba wysp {1,2,3} × referencja {sieć, GFM, brak} → bieg/odmowa nazwana; golden 1-wyspowe bit w bit; rdzenie solvers/** nietknięte (solver_boundary_guard, rdzenie_b01 bez zmian).",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/twin/OWNER_REVIEW_PACKAGE.md:111 (K-07 rozstrzygnięty, wiersz D-xx)",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md"
+     ]
+    },
+    {
+     "id": "K-13-15-17-21-22",
+     "decyzja_ostateczna": "K-13 (twin wielostanowiskowy vs 2026-08-05): ZAMKNIĘTE — jedno stanowisko lokalne bez auth; komendy niosą typowanego autora Autor{rodzaj, id} i If-Match/CAS na rewizji (OD-13), bez kont i ról; pokrywa się z ADR-028 (PROPOSED do wycinka W). K-15 (GIS vs D-12): ZAMKNIĘTE na NIE dla „pól geo addytywnych w wersji 1” — pole bez konsumenta to fantom (phantom rule); geo wchodzi razem z trybem geo i konsumentem, D-12 pozostaje. K-17 (Zero-Debt vs mandat audytu): ZAMKNIĘTE historycznie — sesja audytu minęła, obowiązuje Zero-Debt; wszystkie defekty audytu żyją w mapie domknięcia. K-21 (liczby w briefach): ZAMKNIĘTE regułą — każda liczba w dokumencie ma komendę pomiaru obok (wzór CLAUDE.md, pin claude_md_struktura_guard); nowe liczby bez komendy = defekt docs_guard. K-22 (KLASA NIE INSTANCJA vs deklaracje „jedna fizyka”): ZAMKNIĘTE — reguła jest już w CLAUDE.md, a deklaracje „jedna fizyka IDMT / nN DoD” dostają przypięte testy w kartach OD-18 i IK1-NN-JEDNA-FIZYKA.",
+     "zmiana_wzgledem_rundy1": "Nowa pozycja zbiorcza (pozycje wskazane przez krytyka jako nieujęte; fakt B10: nie ma ich w tabeli werdyktów §4a).",
+     "typ": "status_dokumentu",
+     "b01": false,
+     "b02": false,
+     "karta": "OWNER_REVIEW-K-DOMKNIECIE | zakres: wiersze D-xx w §4a OWNER_REVIEW_PACKAGE.md dla K-13, K-15, K-17, K-21, K-22 z powyższym brzmieniem; wpis zbiorczy w REJESTR_KONFLIKTOW | zależności: żadne | ukończenie: docs_guard RC=0; każdy K ma wiersz w §4a.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/twin/OWNER_REVIEW_PACKAGE.md:117, :119, :121, :125, :126 i §4a",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md"
+     ]
+    },
+    {
+     "id": "V12K-135-059",
+     "decyzja_ostateczna": "Rejestr konfliktów kłamie o stanie: V12K-135 (:278) „OTWARTY→W REALIZACJI … Program SCHEMAT-10” mimo że V12K-142 (:271) dokumentuje S5-FINAL jako dowód domknięcia programu; V12K-136 (:277) „S4/S5 w toku pod V12K-135”; V12K-059 (:351) „W REALIZACJI (2026-07-20…) Audyt globalny” bez wpisu zamykającego. Decyzja: karta statusowa mierzy S4 (osobnego zamknięcia NIE ZMIERZYŁEM) i albo zamyka V12K-135/136 z odsyłaczem do dowodu, albo wpisuje nazwany brak (co z S4 nie jest domknięte, z plikiem:linią) — nigdy „w toku” bez daty i dowodu. V12K-059: audyt globalny zastąpiony mapą domknięcia 2026-09-09 (misja nadrzędna) — wpis zamykający z odsyłaczem do MAPA_DOMKNIECIA, pozostałe otwarte pozycje audytu żyją w mapie, nie w rejestrze.",
+     "zmiana_wzgledem_rundy1": "Nowa pozycja (krytyk: pozycje odsiane, a z dowodu wynika, że rejestr ich nie zamyka).",
+     "typ": "status_dokumentu",
+     "b01": false,
+     "b02": false,
+     "karta": "REJESTR-STALE-WIERSZE | zakres: pomiar stanu S4 programu SCHEMAT-10 (grep S4 w REJESTR i docs/plan), wiersze :271/:277/:278/:351 przepisane na stan zmierzony z dowodem | zależności: żadne | ukończenie: grep „W REALIZACJI” w REJESTR_KONFLIKTOW bez daty zamknięcia = tylko wiersze z nazwanym brakiem; docs_guard RC=0.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/v12xx/REJESTR_KONFLIKTOW.md:271, :277, :278, :351"
+     ]
+    },
+    {
+     "id": "OD-15-KOMENTARZ",
+     "decyzja_ostateczna": "frontend/src/ui2/wyniki/rozplyw/RegulacjaOze.tsx:26–31 („DECYZJA (wariant B karty W3-H): ZERO FABRYKACJI … odesłaniem do decyzji właściciela OD-15”) to jedyne TODO decyzyjne w kodzie (grep = 1). Sam wariant B jest zgodny z kanonem (uczciwy stan zerowy zamiast fizyki w UI) i zostaje. Treść decyzji OD-15 nie należy do tego klastra i NIE jest mi znana (nie mierzyłem poza faktem B13; mapa :170 wiersz 10 opisuje W3-H). Decyzja: komentarz przepisany z „odesłanie do decyzji właściciela” na „stan po OD-15: <rozstrzygnięcie> — ślad trybu/limitu Q w wyniku wchodzi addytywnie z solvera, nie z UI” w karcie, która wykonuje OD-15; do tego czasu komentarz pozostaje, ale bez słowa „do decyzji” (rozstrzygnięta → zapis, nie odesłanie).",
+     "zmiana_wzgledem_rundy1": "Nowa pozycja (TODO decyzyjne wskazane przez krytyka).",
+     "typ": "status_dokumentu",
+     "b01": false,
+     "b02": false,
+     "karta": "OD-15-KOMENTARZ | zakres: RegulacjaOze.tsx:26–31 komentarz zaktualizowany do rozstrzygnięcia OD-15 w karcie wykonującej OD-15 (klaster rozpływ/OZE); test istniejący uczciwego stanu zerowego bez zmian | zależności: karta OD-15 | ukończenie: grep -rnE „do decyzji właściciela|odesłaniem do decyzji” w frontend/src backend/src = 0.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "frontend/src/ui2/wyniki/rozplyw/RegulacjaOze.tsx:26–31 (komentarz)",
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md:170"
+     ]
+    },
+    {
+     "id": "OLTC-NAPIECIE-DOCELOWE",
+     "decyzja_ostateczna": "Wymagalność pola „napięcie docelowe” OLTC (pytanie „DO WLASCICIELA (2)” — lokalizacja przez krytyka podana jako REJESTR:123/:132, w tym drzewie linie 120–134 to V12K-302…316, więc wiersz NIEZMIERZONY; karta odnajduje go grepem „DO WLASCICIELA (2)”). Rozstrzygnięcie z kanonu, bez danych właściciela: w modelu pole jest opcjonalne (transformator bez regulacji automatycznej istnieje), a dla biegu z regulacją OLTC jest WYMAGANE — brak = odmowa nazwana kodem gotowości z akcją naprawczą (fix_navigation do formularza transformatora), nigdy wartość domyślna ani pasmo zaszyte (precedens V12K-314: zaszyte ±5% było defektem). Wartość napięcia docelowego pochodzi wyłącznie z modelu (nastawa regulatora) — brak wartości normowej z pamięci.",
+     "zmiana_wzgledem_rundy1": "Nowa pozycja (otwarte pytanie wskazane przez krytyka; rozstrzygnięte regułą „brak danej = nazwana odmowa”).",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "OLTC-U-DOCELOWE | zakres: odnalezienie wiersza pytania; kod gotowości dla biegu z regulacją bez napięcia docelowego (CalculationReadinessService, akcja naprawcza); walidator ENM nie wymaga pola dla transformatora bez regulacji; UI: pole w formularzu transformatora z jawnym stanem pustym | zależności: ADR-025 (rejestr kodów) — może iść wcześniej addytywnie | ukończenie: test iloczynu: regulacja {włączona, wyłączona} × pole {puste, ustawione} → {odmowa nazwana, bieg, bieg, bieg}; readiness_codes_guard + fix_action_completeness_guard RC=0; grep literałów pasma/napięcia domyślnego w solvers i application = 0.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/v12xx/REJESTR_KONFLIKTOW.md (wiersz „DO WLASCICIELA (2)” → ROZSTRZYGNIĘTY O-59)"
+     ]
+    },
+    {
+     "id": "OD-5c",
+     "decyzja_ostateczna": "OD-5c (korekta LFSM-O w rodzinie GFL, rdzeń B-01) — powołują się na nią decyzje OD-21/LFSM-O, ale w docs/ nie ma ani jednego trafienia „OD-5c” (grep -rn docs = 0); treść jest mi nieznana i nie wolno mi jej czytać ze scratchpadu decyzji. Nie wydaję decyzji o korekcie rdzenia dynamiki bez opisu defektu, przypadku referencyjnego i wyroczni: zmiana rdzenia solvers/dynamika/** to bramka B-01 z reduce-to-NR i testem tożsamości starej fizyki poza korygowanym zakresem. Typ: dane właściciela — potrzebny jest zapis OD-5c w repo (nie w scratchpadzie), po czym rozstrzygam w klastrze dynamiki.",
+     "zmiana_wzgledem_rundy1": "Nowa pozycja (brak decyzji wskazany przez krytyka); odmowa nazwana z powodu braku źródła w repo.",
+     "typ": "dane_wlasciciela",
+     "b01": true,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "Dokument: docs/plan/FINAL_DYNAMICS_CAPABILITY_FREEZE.md §7.1 (albo W6_3C_DYNAMICS_PRODUCT_FREEZE.md §J) — nowy punkt „OD-5c”: (1) opis defektu LFSM-O w GFL z plikiem:linią w solvers/dynamika/**, (2) przypadek referencyjny (skok f, oczekiwana odpowiedź P(f) z podstawą: NC RfG art./PTPiREE punkt i wydanie obecne w repo), (3) czy korekta ma wejść przed czy po wyroczni GFL (O-7). Format: wiersz tabeli §7.1 jak OD-30/OD-33.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/FINAL_DYNAMICS_CAPABILITY_FREEZE.md §7.1 (wpis OD-5c po dostarczeniu)"
+     ]
+    },
+    {
+     "id": "OD-23",
+     "decyzja_ostateczna": "OD-23 = zamknięcie PR #471 przez właściciela. Scalenie do main jest wprost poza delegacją O-59 — nie wydaję decyzji; pozycja pozostaje u właściciela. Warunkiem przedłożenia jest wyłącznie komplet dowodów w opisie PR (regresja, guardy, golden) — bez nowych wymagań z mojej strony.",
+     "zmiana_wzgledem_rundy1": "Nowa pozycja porządkowa (krytyk: otwarta w innych plikach); jawnie poza delegacją.",
+     "typ": "poza_delegacja",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": []
+    }
+   ],
+   "sprzecznosci": [
+    {
+     "sprzecznosc": "K-19 ↔ ADR-027: K-19 zakazywał terminu GridConnectionPoint jako fantomu (0 trafień w backend/src i frontend/src), ADR-027 w tym samym pakiecie go przyjmuje.",
+     "rozstrzygniecie": "Krytyk ma rację. ADR-027 ACCEPT (obiekt kontraktowy poza modelem fizyki; ADR-027:3 PROPOSED → ACCEPTED). K-19 przepisane: etykieta „punkt przyłączenia” = prezentacja GridConnectionPoint po jego wdrożeniu (do tego czasu terminal Source); zakaz dotyczy tylko network_model/core, solvers i migawki. 24 trafienia w docs (adr, architecture, twin) to źródło terminu, nie fantom — fantomem byłby dopiero termin bez karty wdrożeniowej."
+    },
+    {
+     "sprzecznosc": "OD-13 ↔ K-16: K-16 zamyka klasę „API bez konsumenta UI”, OD-13 wprowadza MCP — klienta bez ekranu.",
+     "rozstrzygniecie": "Brak realnej kolizji po doprecyzowaniu: router_mount_guard.py:27–34 dotyczy APIRouterów; narzędzia MCP nie są trasami HTTP (grep mcp w backend/src = 0, .mcp.json brak) i wołają serwisy aplikacyjne bezpośrednio. Konsument w K-16 = wywołanie w ścieżce użytkownika: ekran UI ALBO narzędzie MCP działające w imieniu użytkownika; pilnowane per narzędzie (mcp_tool_consumer_guard + test równoważności z REST), bez klasy wyjątku w router_mount_guard."
+    },
+    {
+     "sprzecznosc": "OD-13 ↔ OD-27: OD-13 zostawiał OD-27 otwartą, a lista odsianych i PLAN_PRZEBUDOWY_10X:217–221 uznają ją za rozstrzygniętą 2026-08-05.",
+     "rozstrzygniecie": "Krytyk ma rację: PLAN_PRZEBUDOWY_10X:219 „DECYZJA WŁAŚCICIELA (2026-08-05): NIE — nie wychodzimy poza localhost”, :220 „NIE wchodzi do realizacji”. OD-27 zamknięta: jedno stanowisko, bez kont/ról; autor komend typowany Autor{rodzaj: uzytkownik|agent, id} z id „local” — żadnego pytania do właściciela."
+    },
+    {
+     "sprzecznosc": "ADR-027 ↔ O-57 pkt 9 / OD-21: ADR-027 przenosił S_k,min/max i X/R do GridConnectionPoint, OD-21 (PTPiREE, magazyny, jakość energii) wskazują Generator.deklaracje_modulu — dwa nośniki.",
+     "rozstrzygniecie": "Krytyk ma rację. Decyzja właściciela O-57 pkt 9 wiąże delegata: jedyny nośnik S_k,min i X/R = Generator.deklaracje_modulu; pola sk_max/min usunięte z ADR-027 (:11) przy przyjęciu; moduł wskazuje punkt przez punkt_przylaczenia_ref. Test w karcie G-15: grep drugiego nośnika S_k = 0."
+    },
+    {
+     "sprzecznosc": "ADR-012 ↔ odsiane ADR-018/019/020/026/028 i K-16: status bramki M0/M1 opisany niespójnie („M1–M7 zastąpione W1–W12” vs „M1–M7 STOP do odbioru M0”).",
+     "rozstrzygniecie": "Fakty: OWNER_REVIEW_PACKAGE.md:185 i MIGRATION_PLAN:32 blokują M1–M7 do odbioru M0; wpisu odbioru M0 brak (NIEZMIERZONE, czy odebrano); MISJA_DOMKNIECIA nie zawiera faz M (grep M0|M1–M7 = 0); CLAUDE.md nazywa misję 2026-09-09 nadrzędną z wycinkami W1–W12; K-20: docs/twin nie jest kanonem. Rozstrzygnięcie jednolite: bramka M0/M1 wiąże plan migracji docs/twin, nie wycinki W; odsiane ADR pozostają PROPOSED z powodu braku konsumenta, nie „STOP M1”; K-16 i ADR-012 przepisane na to brzmienie; wpis w REJESTR_KONFLIKTOW."
+    },
+    {
+     "sprzecznosc": "OD-32 ↔ odsiane OD-28/29/31: OD-32 zostawiał W6-3C wstrzymaną do zamknięcia OD-28…OD-31, które są rozstrzygnięte.",
+     "rozstrzygniecie": "Krytyk ma rację, a ponadto OD-32 (a) jest decyzją właściciela, nie moją (W6_3C:369 „(a) — dopóki nie ma wyroczni”; FINAL_DYNAMICS:352 „OD-28…OD-32 pozostają w mocy”; §7.1 OD-30/33/34 PRZYJĘTE). Warunek wstrzymania pusty; jedyna zmiana to REJESTR_KONFLIKTOW.md:446 (nieaktualny wiersz) i warunek wejścia fal W6-A…E = wyrocznia rodziny."
+    },
+    {
+     "sprzecznosc": "ADR-024 ↔ ADR-014: wariant zapasowy K2 (przeniesienie grafu terminalowego z frontend/v3/electrical do backendu) tworzy drugą implementację obok TopologyView.",
+     "rozstrzygniecie": "Krytyk ma rację. derive → TopologyView istnieje (enm/topology.py:96, :133), ADR-024 nie zawiera żadnego wariantu zapasowego (grep K2|zapas|fallback = 0 — sformułowanie było moje). Wariant skasowany: SnDomainProjectionV1 stoi wyłącznie na TopologyView; graf w frontend/v3/electrical kasowany, nie przenoszony."
+    },
+    {
+     "sprzecznosc": "ADR-025 ↔ CLAUDE.md:870 „NEVER bypass NetworkValidator” i ARCHITECTURE.md:149/:412/:440.",
+     "rozstrzygniecie": "Krytyk ma rację, że decyzja musi nazwać zmianę reguły. Fakt B4: NetworkValidator/validate_network mają 0 konsumentów produkcyjnych, jedyny import pakietu spoza niego to enm/domain_operations.py:11959 (validate_semantic_as_dicts), rdzenie B-01 nie importują validation — reguła jest już martwa w kodzie. Przepisana na „walidator ENM + CalculationReadiness przed biegiem (enm/canonical_analysis)”; reguły semantyczne migrują do enm/validator z testem tożsamości kodów; klasa: SPEC_* i SYSTEM_SPEC przeszukane po „NetworkValidator”."
+    },
+    {
+     "sprzecznosc": "ADR-017 (ryzyko): zamierzona zmiana hasha koperty bez twardego testu golden = cicha zmiana determinizmu.",
+     "rozstrzygniecie": "Przyjęte. Fakt B7: harness parytet_scenariuszy hashuje widok rodzin „PRZED migracją na apply_scenario”; czy koperta stanu efektywnego jest hashowana — NIEZMIERZONE. Golden test koperty v2 (bieg bez scenariusza, bez normal_state) jest warunkiem WEJŚCIA karty W5-C; jeśli bit w bit nie do utrzymania → koperta v3 z podniesieniem wersji głównej i migracją fikstur przez backend/tests/golden/*/regeneruj.py z uzasadnieniem w commicie i REJESTR."
+    },
+    {
+     "sprzecznosc": "OD-18 i ADR-022 W4-4 (ryzyko): pliki chronione solver_boundary_guard i resultset_v1_schema_guard.",
+     "rozstrzygniecie": "Sankcja audytowalna: wpis do dict SANCTIONED_CHANGES (solver_boundary_guard.py:42; format „ścieżka: uzasadnienie z V12K-*”, np. :97) z nowym numerem V12K w REJESTR, zdjęcie z WATCHED_PATHS (:37) i PROTECTED_FILES (resultset_v1_schema_guard.py:20); B-01 formalnie TAK w ramach O-59; rdzenie solvers/** i kontrakty FROZEN nietknięte (0 importerów, golden bit w bit)."
+    },
+    {
+     "sprzecznosc": "SESJA-SLD-V2-GEOMETRIA, ADR-024 K3, ADR-014 (ryzyko): kasacja testów z listy CLAUDE.md/sld-determinism.yml; zmiana źródła sceny/energizacji wymaga B-02 poza delegacją.",
+     "rozstrzygniecie": "Przyjęte. Fakt B6: zależność testów substrate od engine/sld-layout biegnie przez v2/geometry/index.ts:27–30; zmiany testów, workflowa i listy w CLAUDE.md są atomowe (jeden commit, verification_phantom_paths_guard). SESJA: zrzuty bajt w bajt = bez B-02, różnica = STOP. ADR-014 i ADR-024: karty kończą się na CLAIMED DONE ze stroną oceny; ACCEPTED DONE nadaje właściciel (B-02) — agent nie zamyka."
+    },
+    {
+     "sprzecznosc": "K-20 i ADR-022/025/027 (ryzyko): edycje CLAUDE.md (hierarchia, Core Rule #4, #5, Important Warnings 5) — plik instrukcji agentów.",
+     "rozstrzygniecie": "Każda karta edytująca CLAUDE.md kończy się dowodem spójności: docs_guard (rozszerzony o identyczność list hierarchii i istnienie ścieżek) + claude_md_struktura_guard RC=0 oraz przegląd sprzeczności między CLAUDE.md, docs/INDEX.md i ARCHITECTURE.md zapisany w meldunku. Nie są to zmiany B-01."
+    },
+    {
+     "sprzecznosc": "Brakujące źródła krytyka: ADR-002/003/005/006/008, K-07/13/15/17/21/22, D-38…D-46, OD-23/30/33/34, OLTC „napięcie docelowe”, V12K-135/059, OD-5c, TODO OD-15, statusy 17 ADR.",
+     "rozstrzygniecie": "Ujęte jako nowe pozycje: STATUSY-ADR (starsze ADR zastąpione/rozszerzone z zapisem; 17 statusów), K-07 (wykonawcza), K-13-15-17-21-22 (statusowa), V12K-135-059 (statusowa), OD-15-KOMENTARZ, OLTC-NAPIECIE-DOCELOWE (reguła „brak danej = odmowa nazwana”, bez danych właściciela), OD-5c (dane właściciela — grep w docs = 0), OD-23 (poza delegacją). D-38…D-46 to werdykty właściciela z §4a (fakt B10) — obowiązują bez ponownej decyzji. OD-30/33/34 objęte rozstrzygnięciem OD-32 (REJESTR:446)."
+    }
+   ],
+   "kolejnosc": [
+    "K-20",
+    "ADR-012",
+    "STATUSY-ADR",
+    "K-16",
+    "OD-32",
+    "K-13-15-17-21-22",
+    "V12K-135-059",
+    "K-19",
+    "OD-18",
+    "SESJA-SLD-V2-GEOMETRIA",
+    "K-12",
+    "OLTC-NAPIECIE-DOCELOWE",
+    "ADR-017",
+    "ADR-016",
+    "ADR-015",
+    "ADR-025",
+    "K-05",
+    "ADR-027",
+    "ADR-014",
+    "K-07",
+    "ADR-022",
+    "ADR-024",
+    "OD-13",
+    "OD-15-KOMENTARZ",
+    "OD-5c",
+    "OD-23"
+   ]
+  },
+  {
+   "klaster": "C_dane_od21",
+   "kolejnosc": [
+    "OD-21-KOD (jedyna karta kodowa klastra OD-21)",
+    "K-14/D-41-SCL",
+    "OD-16",
+    "OD-17",
+    "OD-21 / §12.1: czasy pracy w pasmach f (13.1a)",
+    "OD-21 / §12.1: wytrzymałość RoCoF (13.1b)",
+    "OD-21 / §12.1: program badań PTPiREE (scenariusze)",
+    "OD-21",
+    "OD-21 / §12.1: progi klas modułów (punkt WOS)",
+    "OD-21 / §12.1 wiersz: WOS LFSM-O",
+    "OD-21 / §12.1: obwiednie LVRT/HVRT (typ B, PPM i SPGM)",
+    "OD-21 / §12.1: odbudowa P po zwarciu",
+    "OD-21 / §12.1: kryteria akceptacji T01–T20",
+    "OD-21 / §12.1: WiPWC — pokrycie certyfikatem",
+    "OD-21 / tabela generowana: dokumenty warstw OSD i warstwa NIEUSTALONA",
+    "OD-21 / §12.1: Bank Nastaw OSD",
+    "OD-21 / §12.1: zakres Q, cosφ_min, tryby regulacji U",
+    "OD-21 / §12.1: wymagania dla magazynów energii",
+    "OD-21 / §12.1: limity jakości energii (AB-H0)"
+   ],
+   "pozycje": [
+    {
+     "id": "OD-21-KOD (jedyna karta kodowa klastra OD-21)",
+     "decyzja_ostateczna": "Jeden rejestr zmian kodu dla OD-21: cały kod klastra wchodzi w JEDNĄ kartę wykonawczą, wykonalną bez danych właściciela; żadna inna pozycja OD-21 nie zmienia kodu (rozstrzyga sprzeczność „bez kodu”/„z kodem”). Zakres: (1) klucze `parametry.pasma_czestotliwosci` i `parametry.rocof` w `warstwy/zastane.yaml` (dziś tylko grupy frequency_response, reactive_power, lvrt, hvrt, p_recovery_after_fault — zastane.yaml:31-65) ze stanem NIEUSTALONE i wartościami `null`; loader dopuszcza `null` wyłącznie przy NIEUSTALONE; (2) metoda 13.1a w `ocena_wymagan.py` (per pasmo czas modułu ≥ czas wymagany; limit NIEUSTALONE → BRAK_PODSTAWY, brak deklaracji → BRAK_DOWODU); (3) `_koordynacja_rocof` czyta limit z profilu efektywnego OSD > WOS > zastane; (4) reguła pokrycia WiPWC trójwartościowa (dziś binarna `dict[str, list[TypModulu]]`, loader.py:1017); (5) nośnik S_k,min/max i X/R punktu przyłączenia = addytywne pola istniejącego `ConnectionConditions` (enm/models.py:177: moc_przylaczeniowa_mw, wymagany_cos_phi, tryb_pracy) + kod gotowości `connection_conditions.s_k_missing` (wzorzec: `connection_conditions.fields_missing`, domain_operations_v2.py:7567); (6) regeneracja tabeli §12.1. Zero liczb z pamięci.",
+     "zmiana_wzgledem_rundy1": "Nowa pozycja scalająca: runda 1 rozsypała kod po pięciu wpisach obok deklaracji „bez kodu”. Nośnik S_k zmieniony z Generator.deklaracje_modulu (0 pól S_k, deklaracje_modulu.py:114-132) na istniejący ConnectionConditions — zakaz drugiej ścieżki tej samej informacji.",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "OD-21-KOD | zakres: zastane.yaml (nowe klucze null), loader.py (:81-93, :159-175, :1016-1018, walidacja null↔NIEUSTALONE), ocena_wymagan.py (:389-420 + metoda 13.1a), enm/models.py:177-188 + domain_operations_v2.py:7551-7599 + warunki_przylaczenia.py (konsument S_k: porównanie S_k,min z warunków z S_k obliczonym w punkcie przyłączenia jako werdykt wyjaśnialny), plan AB §12.1 regeneracja | zależności: brak (przed AB-1c; AB-1c konsumuje S_k z ConnectionConditions) | kryterium: testy iloczynu cech {limit NIEUSTALONE, WSKAZANE(tylko_testy)} × {deklaracja obecna, krótsza, brak} dla 13.1a; {null×NIEUSTALONE ok, null×WSKAZANE błąd}; {reguła pokrycia: całość/częściowo/nie} × typ B PPM/SPGM; {s_k obecne, brak} × {PTPiREE, warunki_przylaczenia}; hashe FROZEN SC/PF bez zmian; pełna regresja backend + guardy; tabela §12.1 wykazuje rocof i pasma.",
+     "specyfikacja_danych": "",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md (§12.1 wiersze :788-:790, korekta O-57 pkt 9 :152: nośnik = ConnectionConditions)",
+      "docs/adr/ADR-027-grid-connection-point-contractual-object.md (adnotacja: PROPOSED; S_k w ConnectionConditions, GridConnectionPoint jedynie referencja)",
+      "mv-design-pro/STAN_REPO.md (poza §J)"
+     ]
+    },
+    {
+     "id": "K-14/D-41-SCL",
+     "decyzja_ostateczna": "Nazwana odmowa budowy modułu IEC 61850/SCL bez konsumenta (D-05a/D-41) — bez zmian. Kasacja klientowego szkieletu `exportIec61850.ts` z menu eksportu potwierdzona. KLASA zmierzona: {iec61850, cim} — oba liczone w kliencie (formats.ts:24 `'svg'|'pdf'|'dxf'|'iec61850'|'cim'`; exportCim.ts:8 „minimalny CIM 17v36”), a backend MA już pełny eksporter CGMES EQ+TP (`infrastructure/cgmes/cgmes_exporter.py:2`, pomija atrybut zamiast zgadywać :30) bez końcówki API (grep cgmes w backend/src/api = 0) i bez klienta. To dwie ścieżki jednego eksportu = defekt. Decyzja: klientowy CIM SKASOWANY razem z SCL; pozycja `cim` w menu zostaje i zostaje przepięta na eksporter backendowy przez nową końcówkę (wejście ENM, wynik deterministyczny, etykieta „CGMES — model sieci (IEC 61970 EQ+TP)”). Menu: svg, pdf, dxf, cgmes. Moduł SCL powstaje wyłącznie po dostarczeniu danych D1–D8 (jak w rundzie 1), jako adapter backendowy.",
+     "zmiana_wzgledem_rundy1": "Inwentarz klasy domknięty faktem: CIM w kliencie duplikuje istniejący backendowy eksporter CGMES bez konsumenta UI; zamiast osobnego rozstrzygnięcia „jeśli CIM ma ten sam profil” — kasacja klientowego CIM i wpięcie backendu w tej samej karcie.",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "KASACJA-SCL-I-CIM-KLIENT | zakres: kasacja ui/sld/v2/export/exportIec61850.ts i exportCim.ts, gałęzi iec61850/cim w v3/export/{formats.ts,sldExport.ts:60-74,exportModelData.ts}; nowa końcówka API eksportu CGMES na cgmes_exporter.py (ENM read-only) + klient w downloadSldExport; testy exportFormats/eksportDokumentu/formatyEksportu przepisane (intencja w komentarzu); MAPA:205 → „BRAK — świadomie, D-41”; OWNER_REVIEW K-14/D-41; REJESTR S9-6 dopisek | zależności: brak | kryterium: grep 61850|exportCim we frontend/src = 0; determinizm CGMES (SHA-256 dwóch biegów na sieci złotej); type-check, lint, vitest, dialog_completeness, dead_click, forbidden_ui_terms, api_lifecycle zielone; zrzut menu eksportu w meldunku.",
+     "specyfikacja_danych": "SCL (moduł po danych): D1 konsument i narzędzie (nazwa, wersja); D2 typ pliku SSD/SCD/ICD; D3 edycja normy i namespace; D4 plik referencyjny wczytywany przez narzędzie konsumenta (golden); D5 wymagane sekcje (ConnectivityNode/Terminal/LNode, klasy LN); D6 konwencja oznaczeń; D7 mapowanie zabezpieczenie→IED/LDevice/LN; D8 źródło i licencja XSD.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md:205",
+      "docs/twin/OWNER_REVIEW_PACKAGE.md:118, :174",
+      "docs/v12xx/REJESTR_KONFLIKTOW.md (S9-6 :367 + nowy wpis)",
+      "docs/uiux/INWENTARZ_FUNKCJI_2026-07.md (eksporty SLD)",
+      "docs/plan/SYNTEZA_DOMKNIECIA_PRODUKTU_2026-09.md (wpisy 61850)"
+     ]
+    },
+    {
+     "id": "OD-16",
+     "decyzja_ostateczna": "Bez zmian merytorycznych: osobny, wersjonowany cennik powiązany z typem katalogowym po `type_id` (nie pole typu niemutowalnego), stan źródła per wartość (ZWERYFIKOWANE/WSKAZANE/NIEUSTALONE — ten sam mechanizm co profil NC RfG), aktualizacja wyłącznie nową wersją pliku, zero przeliczania inflacją. Fakt: brak jakiejkolwiek struktury ceny w backend/src (grep price|cena_pln|cennik|unit_cost = 0 poza tekstem audit2_catalogs.py:146) — karta szkieletu W10-2a jest realna, nie duplikuje niczego. Każda funkcja kosztowa bez cennika zwraca nazwaną odmowę `BRAK_CENNIKA` z listą `type_id`; nigdy ciche zero. Algebra kosztu strat (energia × cena) wyłącznie w `network_model/pochodne/` (guard backend_no_physics). Kasacja `_opf_loss_lcc` pozostaje w OD-15(d) — nie łączyć.",
+     "zmiana_wzgledem_rundy1": "bez zmian (dopisany fakt pomiaru: zero struktur ceny w repo → karta nie duplikuje istniejącego mechanizmu).",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "W10-2a szkielet cennika | zakres: kontrakt `Cennik` (frozen dataclass, nowy, poza wynikami FROZEN), loader YAML `catalog/cenniki/cennik_RRRR-MM.yaml` z walidacją stanu źródła (wartość bez daty/źródła → obniżona do NIEUSTALONE z uwagą), odmowa `BRAK_CENNIKA` w gotowości W10-2, strażnik `type_id`∈katalog + waluta+data+stan, LCC w pochodne/ | zależności: równolegle z W10-1 | kryterium: testy {typ z ceną, bez ceny, OPEX bez CAPEX} × {BOM, LCC, porównanie wariantów}; hash katalogu i złote hashe GN0x NIEZMIENIONE; hash cennika stabilny; guardy catalog_* i backend_no_physics zielone.",
+     "specyfikacja_danych": "Plik `cennik_RRRR-MM.yaml`: nagłówek wersja, data_wydania, waluta_domyslna, zrodlo_domyslne; per `type_id`: capex, jednostka_capex (PLN/szt.|PLN/km|PLN/kVA jawnie), opex_rok, zywotnosc_lat, waluta ISO 4217, data_notowania ISO 8601, zrodlo (cennik producenta / stawki OSD z wydaniem / oświadczenie), stan_zrodla.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/SYNTEZA_DOMKNIECIA_PRODUKTU_2026-09.md (OD-16)",
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md (W10)"
+     ]
+    },
+    {
+     "id": "OD-17",
+     "decyzja_ostateczna": "Bez zmian: dane dostarcza właściciel w trzech rozłącznych pakietach P1 (wykaz PTPiREE WiPWC), P2 (karty producentów), P3 (IRiESD Energa/Tauron/PGE); praca redakcyjna agenta wyłącznie na pliku dostarczonym, każda wartość WSKAZANE z cytatem jednostki redakcyjnej. Fakty: wejście P1 istnieje (`scripts/generate_ptpiree_inverter_catalog.py`: „PDFs are source-of-truth certificate lists… Electrical parameters must still come from catalog cards”; `ptpiree_certificate_no_guess_guard.py` istnieje); pakiet wzorcowy `reference_engine/packs/osd_enea` istnieje (lista packs). Kody odmów `BRAK_PAKIETU_OSD`/`BRAK_KARTY_PRODUCENTA`/`BRAK_CERTYFIKATU_WIPWC` = 0 trafień w backend/src → karta OD-17a (ujednolicenie nazwanych odmów) jest realną pracą. P2 dla magazynu: dane tabliczki elementu bez domyślki (O-57 pkt 3).",
+     "zmiana_wzgledem_rundy1": "bez zmian (pomiar: kody odmów nie istnieją → OD-17a to nowa, nieduplikująca praca; wejście P1 i guard już są — wpięcie, nie nowa implementacja).",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "OD-17a nazwane odmowy braku pakietów | zakres: inwentarz klasy konsumentów P1/P2/P3 (reference_engine/compliance.py, most certyfikatu ptpiree, harmoniczne falownika, koordynacja izolacji W6-8, model magazynu AB-4a) → jeden typ odmowy z kodem `BRAK_PAKIETU_OSD:<osd>` / `BRAK_KARTY_PRODUCENTA:<pole>` / `BRAK_CERTYFIKATU_WIPWC:<model>` przez istniejący mechanizm odmowy dziedziny (ODMOWA-DANYCH-422) | zależności: brak | kryterium: test iloczynu {brak pakietu} × {każdy konsument} → odmowa nazwana, nigdy pusty wynik; werdykt_wyjasnialny_guard zielony; pełna regresja backend.",
+     "specyfikacja_danych": "P1: CSV/XLSX wykazu (URL, data pobrania): producent, model, PPM/SPGM, Sn, Un, nr certyfikatu, ważność, jednostka certyfikująca, tryby; k_sc jeśli w wykazie. P2: `karty_producentow/<type_id>.yaml`: BIL/LIWL z Um, tolerancje uk/Pk/P0, magazyn: η_ch, η_dis, okno SOC, degradacja; falownik: widmo h→I_h/I_1 z punktem pracy i normą; nr dokumentu, data, stan. P3: PDF IRiESD + wydanie + daty; pack.json wg osd_enea z jednostką redakcyjną per wartość.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/SYNTEZA_DOMKNIECIA_PRODUKTU_2026-09.md (OD-17)",
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md (:527/:546/:561/:567/:596)"
+     ]
+    },
+    {
+     "id": "OD-21 / §12.1: czasy pracy w pasmach f (13.1a)",
+     "decyzja_ostateczna": "Metoda oceny 13.1a powstaje TERAZ — jako pozycja (2) karty OD-21-KOD, nie osobna karta AB-1a′. Werdykt przechodzi uczciwie z BRAK_DOWODU (brak metody) na BRAK_PODSTAWY (brak dokumentu WOS z punktem), dokładnie jak wiersz planu :788 przewiduje. Wartości czasów nie są wpisywane; klucz `parametry.pasma_czestotliwosci` w zastane.yaml ma wartości `null` przy stanie NIEUSTALONE. Nośnik zdolności modułu: deklaracja katalogowa/certyfikat (pasmo → czas); brak = BRAK_DOWODU po stronie modułu, nazwany. Certyfikat typu A bez certyfikatu nadal odmawiany.",
+     "zmiana_wzgledem_rundy1": "Kod przeniesiony do OD-21-KOD (jeden rejestr); nazwa „AB-1a′” skasowana (0 trafień w docs).",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "część OD-21-KOD (2) | zakres: ocena_wymagan.py metoda 13.1a, zastane.yaml klucz pasma, sondy test_ncrfg_ocena_wymagan.py:145 i test_certyfikat_zgodnosci.py:151 przepisane z intencją | zależności: brak | kryterium: {NIEUSTALONE×deklaracja} → BRAK_PODSTAWY; {WSKAZANE tylko_testy × deklaracja krótsza} → NARUSZA; {WSKAZANE × brak deklaracji} → BRAK_DOWODU.",
+     "specyfikacja_danych": "W dostawie DANE-OD21-WOS: punkt WOS z tabelą pasm (f_od, f_do, czas minimalny lub „nieograniczony” — kształt tabeli; liczby wyłącznie z dokumentu), wydanie, data obowiązywania; zakres stosowania (PPM/SPGM, typ).",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md:788 (skutek → BRAK_PODSTAWY, metoda jest)"
+     ]
+    },
+    {
+     "id": "OD-21 / §12.1: wytrzymałość RoCoF (13.1b)",
+     "decyzja_ostateczna": "Wartość wytrzymałości RoCoF NIE jest wpisywana (O-17; „2 Hz/s” to wartość z wytycznych, nie krajowa decyzja — odrzucona). Klucz `parametry.rocof` (rocof_hz_s, okno_ms, czas_s; status NIEUSTALONE, `null`) trafia do zastane.yaml jako pozycja (1)/(3) karty OD-21-KOD, by tabela generowana `bramka_danych_profilu.py` widziała brak (predykaty z jednego źródła: luka niewidoczna w bramce = luka nieistniejąca). `_koordynacja_rocof` (ocena_wymagan.py:409-416 dziś buduje brak z Banku Nastaw) czyta limit z profilu efektywnego; RFG_13_1B pozostaje BRAK_DOWODU jako kryterium informacyjne.",
+     "zmiana_wzgledem_rundy1": "Kod przeniesiony do OD-21-KOD; poza tym bez zmian.",
+     "typ": "wykonawcza",
+     "b01": false,
+     "b02": false,
+     "karta": "część OD-21-KOD (1)(3) | zakres: zastane.yaml klucz rocof, loader null↔NIEUSTALONE, `_koordynacja_rocof` | kryterium: profil tylko_testy z RoCoF WSKAZANE × nastawa LoM poniżej → SPEŁNIA, powyżej → NARUSZA; profil produkcyjny → BRAK_PODSTAWY z parametrem, warstwą, dokumentem; loader odrzuca null bez NIEUSTALONE; tabela §12.1 ma wiersz rocof.",
+     "specyfikacja_danych": "W DANE-OD21-WOS: punkt WOS (wydanie, jednostka redakcyjna) z wytrzymałością RoCoF [Hz/s], oknem pomiaru [ms], czasem [s]; opcjonalnie per OSD z IRiESD do banku nastaw (rocof_hz_s, rocof_czas_s).",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md:789"
+     ]
+    },
+    {
+     "id": "OD-21 / §12.1: program badań PTPiREE (scenariusze)",
+     "decyzja_ostateczna": "Opcja A: pełna treść scenariuszy programu ramowego testów PTPiREE do `procedura_ptpiree.yaml::program_badan.scenariusze` (dziś `[]`, status NIEUSTALONE :58-62); jedna dostawa z kryteriami T01–T20 (ten sam dokument) = DANE-OD21-PTPIREE. Do dostawy: `pokrycie_programu = CZESCIOWE` → BRAK_DOWODU; odbiór AB-1c na profilu `tylko_testy` (O-57 pkt 10). ROZSTRZYGNIĘCIE NOŚNIKA S_k,min/X/R: nie deklaracje_modulu (O-57 pkt 9 skorygowane), nie GridConnectionPoint (ADR-027 PROPOSED, 0 trafień w kodzie), lecz addytywne pola istniejącego `ConnectionConditions` (header.connection_conditions — już „dane WEJŚCIOWE projektu z dokumentu OSD”, models.py:178; procedura_ptpiree.yaml:55 „S_k,min NIE jest parametrem profilu”). Jeden punkt przyłączenia na projekt → dana per projekt, nie per generator (dwa generatory nie mogą nieść dwóch S_k). ENM Source.sk3_min_mva (models.py:479) to fizyka równoważnika GPZ — inna semantyka, nie duplikat.",
+     "zmiana_wzgledem_rundy1": "Nośnik S_k,min/X/R: Generator.deklaracje_modulu → ConnectionConditions (istniejący mechanizm; zakaz drugiej ścieżki); sprzeczność ADR-027 ↔ O-57(9) rozstrzygnięta.",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "DANE-OD21-PTPIREE: nazwa, wersja, data programu ramowego; zakres PPM/SPGM; per scenariusz: identyfikator, punkt dokumentu, głębokość U/Un, czas [s], kształt i czasy narastania, poziomy P [%Pn], Q/cosφ, U przed zakłóceniem [pu], rodzaj zwarcia, miejsce zadania zapadu, obsługiwane testy T01–T20. S_k,min/X/R: per projekt z warunków przyłączenia (dokument OSD, sygnatura) — do ConnectionConditions, nie do profilu.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md:791, :152 (O-57 pkt 9)",
+      "docs/adr/ADR-027-grid-connection-point-contractual-object.md"
+     ]
+    },
+    {
+     "id": "OD-21",
+     "decyzja_ostateczna": "Nazwana odmowa fabrykacji podtrzymana: żadna wartość WOS/IRiESD/IRiESP/PTPiREE/WiPWC nie wchodzi z pamięci; produkt liczy zawsze, werdykt wobec limitu NIEUSTALONE = BRAK_PODSTAWY z nazwanym parametrem, warstwą, stanem i dokumentem (O-2′). Porządek dostaw = PER DOKUMENT, nie per wiersz tabeli (jedno źródło prawdy dla jednej podstawy): DANE-OD21-WOS (progi klas, pasma f, LFSM-O, RoCoF, LVRT/HVRT systemowe, zakres Q systemowy, odbudowa P), DANE-OD21-PTPIREE (scenariusze + T01–T20), DANE-OD21-WIPWC, DANE-OD21-OSD-<enea|energa|pge|tauron|pse> (dokument warstwy, bank nastaw, nadpisania HVRT/Q/odbudowy, wykonanie prawa, magazyny), DANE-OD21-JAKOSC (rejestr AB-H0). Kolejność przyjmowania: WOS → PTPiREE → WiPWC → OSD. Każda dostawa to YAML + `bramka_danych_profilu.py --zapisz` + przeliczenie przypiętych `skrot_profilu` (5 trafień w backend/tests) + fikstura `harness-fixtures/generated/ncrfg_katalog.json` przegenerowana z backendu. Pobranie ze stron OSD wyłącznie po wyraźnej zgodzie właściciela ze wskazaniem wydania.",
+     "zmiana_wzgledem_rundy1": "Karty danych scalone per dokument (WOS/PTPiREE/WiPWC/OSD×5/JAKOSC) zamiast per wiersz; jedyny kod w OD-21-KOD.",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "Format przyjęcia każdej dostawy: plik w repo (PDF/MD w docs/evidence z SHA-256) LUB tabela „parametr | dokument | wydanie | data obowiązywania | jednostka redakcyjna | wartość | jednostka | stan”; sam odsyłacz = WSKAZANE, treść w repo = ZWERYFIKOWANE. Wartość bez jednostki redakcyjnej jest odrzucana na wejściu, nie uzupełniana.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/SYNTEZA_DOMKNIECIA_PRODUKTU_2026-09.md:566 (OD-21)",
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md §12.1 (:786-:800 i tabela generowana)"
+     ]
+    },
+    {
+     "id": "OD-21 / §12.1: progi klas modułów (punkt WOS)",
+     "decyzja_ostateczna": "Bez zmian merytorycznych: jednostki redakcyjnej WOS nie wpisuje się z pamięci; wos.yaml::progi_klas status NIEUSTALONE, jednostka_redakcyjna null (wos.yaml:31-33), wartości O-1 bez zmian (b_od_kw 200, c_od_kw 10000, d_od_kw 75000), klasyfikacja ważna z zastrzeżeniem. Doprecyzowanie po uwadze krytyka: „brak jakiejkolwiek karty” = brak karty KODOWEJ; dane wchodzą w DANE-OD21-WOS razem z pozostałymi grupami tego samego dokumentu (właściciel dostarcza WOS raz). Rozbieżność wartości dokumentu z O-1 = STOP i wpis do REJESTR_KONFLIKTOW.",
+     "zmiana_wzgledem_rundy1": "Doprecyzowanie: brak karty kodowej, dane w jednej dostawie WOS.",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "W DANE-OD21-WOS: decyzja Prezesa URE (sygnatura, data), data obowiązywania (→ dokument.obowiazuje_od), jednostka redakcyjna progów B/C/D, progu 0,8 kW i reguły ≥110 kV → D; potwierdzenie identyczności z O-1.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md:799 i wiersz 15 tabeli generowanej"
+     ]
+    },
+    {
+     "id": "OD-21 / §12.1 wiersz: WOS LFSM-O",
+     "decyzja_ostateczna": "Bez zmian: próg, statyzm, strefa martwa i rampa LFSM-O nie dostają wartości z pamięci; stan NIEUSTALONE (zastane.yaml `frequency_response`, :31), werdykt LFSM-O = BRAK_PODSTAWY z nazwanym dokumentem. Karta AB-2 (jedna definicja LFSM-O) idzie na wartościach zastanych z jawnym stanem w śladzie — liczenie nigdy nie blokowane, werdykt regulacyjny po danych. Dane w DANE-OD21-WOS; korekta modelu LFSM-O w GFL (O-5c) = osobna zgoda B-01, niezależna.",
+     "zmiana_wzgledem_rundy1": "bez zmian",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "W DANE-OD21-WOS: jednostka redakcyjna LFSM-O; próg aktywacji f [Hz], statyzm [%], strefa martwa [Hz] lub jawne „nie zdefiniowana”, rampa/czas odpowiedzi, zakres stosowalności (PPM/SPGM, typ A–D).",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md:787"
+     ]
+    },
+    {
+     "id": "OD-21 / §12.1: obwiednie LVRT/HVRT (typ B, PPM i SPGM)",
+     "decyzja_ostateczna": "Opcja A przyrostowo: WOS (LVRT PPM-B, LVRT SPGM-B, HVRT systemowe) w DANE-OD21-WOS, nadpisania HVRT per operator w DANE-OD21-OSD-<op>. Do dostawy 14(3) = NIE_OCENIONO, po AB-1c BRAK_PODSTAWY, z nazwą brakującego dokumentu. Zakaz obwiedni „typowych” i kopiowania PPM→SPGM. PSE ujednolicone z pozostałymi: warstwa OSD z `rodzaj_operatora: OSP` (pse.yaml:23, loader.py:71 `Literal[\"OSP\",\"OSD\"]`), dokument IRiESP (pse.yaml:27). Osobny wariant „PSE nie dotyczy SN” SKASOWANY — to ten sam schemat co dla OSD: właściciel podaje punkt IRiESP albo oświadcza „dokument milczy” (dokument WSKAZANE, wartość NIEUSTALONE z uwagą nazywającą sprawdzenie). Bez zmian kodu.",
+     "zmiana_wzgledem_rundy1": "Wariant PSE „nie dotyczy SN” skasowany na rzecz jednego schematu (OSP + IRiESP + „dokument milczy”); rozstrzyga sprzeczność trzech założeń o warstwie PSE.",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "WOS: decyzja URE, załącznik, punkt osobno dla LVRT PPM-B, LVRT SPGM-B, HVRT; obwiednia jako lista (t [s], U/Un) z warunkami odniesienia i miejscem pomiaru. Per operator (4×IRiESD, PSE: IRiESP): wydanie, data, punkt HVRT, punkty nadpisania ALBO „dokument milczy”.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md:790, tabela generowana :830-:835"
+     ]
+    },
+    {
+     "id": "OD-21 / §12.1: odbudowa P po zwarciu",
+     "decyzja_ostateczna": "Bez zmian: dokument (WOS systemowo w DANE-OD21-WOS; IRiESD/IRiESP per operator w DANE-OD21-OSD-<op>), stan WSKAZANE po odsyłaczu, ZWERYFIKOWANE po treści. Do dostawy 20(3)(a)/17(3) = BRAK_PODSTAWY; metryki z AB-1b.2 informacyjne. Wymaganie do kart w toku (nie nowy kod tej pozycji): AB-1b.2 parametryzuje metrykę definicją z profilu (moment startu, miara czas-do-X% i/lub tempo %Pn/s; pole addytywne wyniku RMS), AB-1c czyta definicję z profilu (`p_recovery_after_fault`, zastane.yaml:65).",
+     "zmiana_wzgledem_rundy1": "bez zmian (uściślenie: kod należy do AB-1b.2/AB-1c, nie do OD-21).",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "Dokument, typ modułu, definicja momentu startu (próg U/Un, miejsce pomiaru), wymagany czas [s] do poziomu [%P_pre] i/lub tempo [%Pn/s], tolerancja, zależność od klasy mocy/głębokości zapadu, zachowanie przy ograniczeniach — z jednostką redakcyjną.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md:796"
+     ]
+    },
+    {
+     "id": "OD-21 / §12.1: kryteria akceptacji T01–T20",
+     "decyzja_ostateczna": "Bez zmian: tolerancje, krotności i K_FRT per test do `procedura_ptpiree.yaml::kryteria_akceptacji` (dziś NIEUSTALONE, wartości „przeniesione z kodu solvera” :19-25) w jednej dostawie DANE-OD21-PTPIREE ze scenariuszami. Do dostawy testy T01–T20 = BRAK_PODSTAWY w produkcji; AB-1c odbierany na `tylko_testy`. Zakaz wartości „branżowych”. Bez zmian kodu.",
+     "zmiana_wzgledem_rundy1": "bez zmian (nazwa dostawy ujednolicona: DANE-OD21-PTPIREE).",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "Per test T01–T20: identyfikator w dokumencie, punkt, wielkość oceniana, tolerancja (z jednostką), krotność, K_FRT (wartość/przedział + wzór definicyjny, okno pomiaru), czas oceny, statystyka, zależność PPM/SPGM i klasy mocy; „nie dotyczy” tylko z punktem.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md:792, wiersz 16 tabeli generowanej"
+     ]
+    },
+    {
+     "id": "OD-21 / §12.1: WiPWC — pokrycie certyfikatem",
+     "decyzja_ostateczna": "Opcja A podtrzymana: punkt WiPWC per wymaganie × typ w `wipwc.yaml::pokrycie_certyfikatem` (dziś NIEUSTALONE, :55-60). Reguła trójwartościowa (POKRYWA_W_CALOSCI / POKRYWA_CZESCIOWO z listą testów / NIE_POKRYWA) — potwierdzone faktem, że dzisiejszy schemat jest binarny (loader.py:1017 `dict[str, list[TypModulu]]`), więc rozszerzenie loadera jest konieczne i wchodzi do OD-21-KOD (4), nie do karty danych. Do dostawy: sam certyfikat = BRAK_DOWODU z wyjaśnieniem. Dane = DANE-OD21-WIPWC, niezależna od pozostałych dostaw.",
+     "zmiana_wzgledem_rundy1": "Kod (schemat trójwartościowy) przeniesiony do OD-21-KOD; warunkowe „jeśli binarny” zastąpione faktem: jest binarny.",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "Wydanie i data WiPWC; dla 6 wymagań (RFG_17_2, 17_3, 20_2A, 20_2B, 20_3, ZASTANE_HVRT) × typ B PPM/SPGM: punkt, wartość reguły, lista testów uzupełniających, warunki ważności certyfikatu.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md:793"
+     ]
+    },
+    {
+     "id": "OD-21 / tabela generowana: dokumenty warstw OSD i warstwa NIEUSTALONA",
+     "decyzja_ostateczna": "Opcja A dla warstw operatorów; PSE = jeden schemat z pozostałymi: wpis w warstwie OSD z `rodzaj_operatora: OSP` i dokumentem IRiESP (pse.yaml:23,27; loader.py:71) — tabela generowana już tak go opisuje (wiersze 7 i 12). Warstwa NIEUSTALONA (`zastane.yaml`): wariant PRZEPIĘCIA per wartość po wskazaniu dokumentu; kasacja całej warstwy tylko na oświadczenie właściciela „brak dokumentu” i wyłącznie po OD-21a; korekta stałych loader.py:63/105/128 i kontrakt.py:64 nie jest zmianą kodu OD-21, lecz warunkową kartą OD-21c po całkowitym opróżnieniu warstwy. Dostawy: DANE-OD21-OSD-<op> ×5 (dokument warstwy, wydanie, daty, jednostki redakcyjne per wartość, bank nastaw).",
+     "zmiana_wzgledem_rundy1": "PSE ujednolicone (OSP + IRiESP); korekta stałych loadera jawnie wyłączona z rejestru kodu OD-21 (warunkowa OD-21c).",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "Per operator (enea, energa, pge, tauron, pse): dokument (IRiESD / IRiESP), wydanie, data zatwierdzenia URE, data obowiązywania, plik lub trwały URL z datą pobrania; per wartość warstwy jednostka redakcyjna; zastane.yaml: per wartość dokument+punkt ALBO oświadczenie „brak dokumentu”.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md tabela generowana (:826-:845)",
+      "docs/plan/SYNTEZA_DOMKNIECIA_PRODUKTU_2026-09.md:501 (W6-5)"
+     ]
+    },
+    {
+     "id": "OD-21 / §12.1: Bank Nastaw OSD",
+     "decyzja_ostateczna": "Bez zmian merytorycznych: bank_nastaw NIEUSTALONE u pięciu operatorów, werdykt koordynacji nastaw NIE_OCENIONO/BRAK_PODSTAWY jako nazwana odmowa; zakaz wartości „typowych” i przenoszenia między operatorami; uzupełnianie per operator bez czekania. „Żadnych zmian kodu” dotyczy tej pozycji — jedyny kod OD-21 (klucz rocof, limit z profilu efektywnego w `_koordynacja_rocof`) jest w OD-21-KOD i nie zależy od tej dostawy. Dane wchodzą w DANE-OD21-OSD-<op> (słownik NastawaBanku 11 pozycji, loader.py:81-93; `_stan_zbioru` :159-175 egzekwuje pusty zbiór = NIEUSTALONE).",
+     "zmiana_wzgledem_rundy1": "Doprecyzowanie zakresu „bez kodu” względem OD-21-KOD; dane w dostawie per operator.",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "Per operator: dokument i wydanie; dla każdej z 11 pozycji NastawaBanku: wartość, jednostka (pu/s/Hz/Hz/s/deg), jednostka redakcyjna, stopień (dla wielostopniowych); zakres stosowania (typ A/B, napięcie, bezwzględne czy „nie mniej/więcej niż”); pozycji nieokreślonych nie wpisuje się.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md:797, wiersze 9–13 tabeli generowanej"
+     ]
+    },
+    {
+     "id": "OD-21 / §12.1: zakres Q, cosφ_min, tryby regulacji U",
+     "decyzja_ostateczna": "Opcja A z etapem B (WSKAZANE po wydaniu i punkcie) — bez zmian; dostawa per operator w DANE-OD21-OSD-<op> (5 operatorów, PSE jako OSP z IRiESP — nie „jak OSD z IRiESD”), część systemowa w DANE-OD21-WOS. Do dostawy RFG_17_2/20_2A/20_2B = BRAK_PODSTAWY; flaga wykonania prawa NIEUSTALONE → BRAK_PODSTAWY (ocena_wymagan.py:499-501 nazywa brak „IRiESD albo warunki przyłączenia operatora”). Zastane cos_phi_min i tryby (zastane.yaml `reactive_power`, :39) pozostają informacyjne. Bez zmian kodu.",
+     "zmiana_wzgledem_rundy1": "PSE: IRiESP/OSP zamiast „jak OSD z IRiESD” (spójność z pozostałymi wpisami).",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "Per operator: wydanie, data, punkt dla (a) zakresu Q jako profil U-Q/P-Q (punkty, przedziały, PPM/SPGM), (b) cosφ_min ind./poj. z odniesieniem Pn/P, (c) trybów regulacji U (nazwy, domyślny, czasy), (d) flag wykonania prawa 17(2), 20(2)(a), 20(2)(b): WYKONAŁ/NIE_WYKONAŁ z punktem albo „dokument milczy”.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md:794, wiersze 37–55 tabeli generowanej"
+     ]
+    },
+    {
+     "id": "OD-21 / §12.1: wymagania dla magazynów energii",
+     "decyzja_ostateczna": "Opcje A+B (IRiESD per operator + ustawa/rozporządzenie z przepisami) jako zasilanie `magazyny.yaml` (dziś `wymagania: []`, status NIEUSTALONE, :20-30) — bez zmian. Korekta nośnika: nadpisania per projekt z warunków przyłączenia NIE trafiają do Generator.deklaracje_modulu, lecz do istniejącego `ConnectionConditions` (ta sama decyzja co dla S_k; deklaracje_modulu/tabliczka niosą wyłącznie zdolności modułu — OD-17 P2). Do dostawy: BESS → NC RfG NIE_DOTYCZY (art. 3 ust. 2 lit. d, O-28), warstwa magazynów BRAK_PODSTAWY; hybryda PV+BESS = PPM. Dane w DANE-OD21-OSD-<op> (część magazynowa) + akt prawny.",
+     "zmiana_wzgledem_rundy1": "Nośnik nadpisań per projekt: deklaracje_modulu → ConnectionConditions (spójnie z rozstrzygnięciem ADR-027/O-57(9)).",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "Per operator: punkty IRiESD o magazynach; per wymaganie: identyfikator, opis, technologie [MAGAZYN], wielkość, wartość/jednostka lub obwiednia, warunek (ładowanie/rozładowanie/oba), punkt. Ustawa: Dz.U. rok/poz., artykuł/ustęp; rozporządzenie: paragraf; wskazanie wymagań NC RfG stosowanych „odpowiednio” z punktem.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md:798, wiersz 1 tabeli generowanej"
+     ]
+    },
+    {
+     "id": "OD-21 / §12.1: limity jakości energii (AB-H0)",
+     "decyzja_ostateczna": "Rejestr limitów warstwowy (kompatybilność PN-EN 50160 / IEC 61000-2-2, 2-12; alokacja IEC/TR 61000-3-6 z S_k i mocą przyłączeniową z ConnectionConditions; nadpisania operatora) z osobnym stanem źródła per poziom — bez zmian. KOREKTA NAZW wg planu: rejestr = element istniejącej karty AB-H0 (PLAN_AB:395 „wymagania jakości energii w profilu regulacyjnym z dokładnym dokumentem/wersją…”); nowy solver harmoniczny = AB-H1 (:407 „Solver dziedziny częstotliwości: Y(f)…”), NIE „AB-H2” (AB-H2 = supraharmoniczne, :410). KOREKTA KASACJI: solver harmoniczny v126 (`_power_quality`, v126_academic.py:393; zaszyty limit „PN-EN 50160 THDU > 8%” :456) kasowany w commicie, w którym AB-H1 przełącza E-40 (O-59 §12.2(b)), nie „po odbiorze AB-H2”. Do tego czasu E-40 = NIE_OCENIONO z listą braków `BRAKI_OCENY_JAKOSCI_ENERGII` (v126_artifacts.py:160). Sam rejestr nie zmienia E-40 (test pilnujący).",
+     "zmiana_wzgledem_rundy1": "Nazwy kart poprawione (rejestr → AB-H0, solver → AB-H1, nie AB-H2); kasacja v126 związana z commitem AB-H1/E-40 wg O-59(b); usunięta sprzeczność z O-59 §12.2(b).",
+     "typ": "dane_wlasciciela",
+     "b01": false,
+     "b02": false,
+     "karta": "",
+     "specyfikacja_danych": "Per limit: dokument, wydanie/rok, tabela/punkt, poziom napięcia, wielkość (h, pasmo, THD_U, Pst, Plt), wartość i jednostka, punkt oceny, statystyka, okres agregacji; dla 61000-3-6: metoda alokacji (α per rząd, S_i/S_t). Poziom bez dokumentu = NIEUSTALONE.",
+     "dokumenty_do_zmiany": [
+      "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md:800 (nazwa karty solvera AB-H1)",
+      "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md (E-40)"
+     ]
+    }
+   ],
+   "sprzecznosci": [
+    {
+     "sprzecznosc": "K-19 ↔ ADR-027: krytyk twierdzi, że K-19 zakazuje terminu GridConnectionPoint, a ADR-027 go przyjmuje.",
+     "rozstrzygniecie": "Krytyk częściowo się myli: K-19 (OWNER_REVIEW_PACKAGE.md:123) dotyczy „BoundaryNode ZAWSZE” w SLD_SCADA_CAD_CONTRACT vs Core Rule 5 i sam wskazuje „terminologia prezentacyjna «punkt przyłączenia» z GridConnectionPoint”. Zakaz obejmuje wyłącznie NetworkModel/fizykę (warunki_przylaczenia.py:24-27: punkt przyłączenia żyje w warstwie interpretacji). ADR-027 ma status PROPOSED (ADR-027:3), 0 trafień w kodzie; klaster C nie używa GridConnectionPoint jako nośnika — nośnik = istniejący ConnectionConditions, który ADR-027 i tak referencjonuje (`connection_conditions_ref`). Status ADR-027 rozstrzyga klaster ADR, bez wpływu na te decyzje."
+    },
+    {
+     "sprzecznosc": "ADR-027 ↔ O-57 pkt 9 ↔ decyzje OD-21 (PTPiREE, magazyny, jakość energii): dwa nośniki S_k,min/X/R (GridConnectionPoint vs Generator.deklaracje_modulu).",
+     "rozstrzygniecie": "Inwentarz klasy: 4 nośniki — 2 istniejące (ENM Source.sk3_min_mva/rx_ratio_min = fizyka równoważnika GPZ, models.py:479-481; header.connection_conditions = dane OSD projektu, models.py:177-188) i 2 planowane bez kodu (deklaracje_modulu: 0 pól S_k; GridConnectionPoint: 0 trafień). Rozstrzygnięcie: JEDEN nośnik umowny = addytywne pola istniejącego ConnectionConditions (per projekt/punkt przyłączenia, nie per generator — dwa generatory nie mogą nieść dwóch S_k). O-57 pkt 9 skorygowany w PLAN_AB:152; ADR-027 bez zmian statusu; Source.sk3_min pozostaje fizyką (inna semantyka, nie duplikat); kod w OD-21-KOD (5)."
+    },
+    {
+     "sprzecznosc": "OD-21/jakość energii ↔ O-59 §12.2(b): kasacja v126 „po odbiorze AB-H2” vs „w commicie, w którym AB-H1 przełącza E-40”; rzekome zablokowanie rundy R3+.",
+     "rozstrzygniecie": "Runda 1 pomyliła nazwy: solver harmoniczny to AB-H1 (PLAN_AB:407), AB-H2 to supraharmoniczne (:410). Ostatecznie: kasacja harmonicznych v126 w commicie AB-H1 przełączającym E-40 (O-59(b), PLAN_AB:154) — spójne. R3+ NIE jest zablokowane: O-59 ustala kolejność „R3 (d,k,m,l) → R4 → R5 → (f),(a),(g),(b),(c)”, więc (b) następuje PO R5, a nie warunkuje R3; (l) zostawia 6 literałów v126_academic.py pod B-01 do (b). Jeśli wpisy OD-15/OD-24 mówią „R3+ po (b)”, ich klaster koryguje je na „R3+ nie czeka na (b); (b) czeka na AB-H1”."
+    },
+    {
+     "sprzecznosc": "OD-21, kilka wpisów jednej warstwy: „żadnych zmian kodu” (Bank Nastaw, progi klas) współistnieje z kodem (klucz rocof + loader, metoda 13.1a, korekta loader.py:63/105/128).",
+     "rozstrzygniecie": "Jeden rejestr zmian kodu = karta OD-21-KOD (pozycje 1–6). Wpisy „bez kodu” dotyczą swoich dostaw danych; korekta stałych loader.py:63/105/128 i kontrakt.py:64 NIE jest kodem OD-21, lecz warunkową kartą OD-21c po oświadczeniu właściciela „brak dokumentu” i opróżnieniu warstwy NIEUSTALONA. Dostawy danych scalone per dokument (WOS, PTPiREE, WiPWC, OSD×5, JAKOSC) — jedno źródło prawdy dla jednej podstawy (KLASA pkt 3)."
+    },
+    {
+     "sprzecznosc": "Warstwa PSE: IRiESP (tabela generowana) vs „jak OSD z IRiESD” (zakres Q) vs wariant „PSE nie dotyczy SN” (HVRT).",
+     "rozstrzygniecie": "Fakt: pse.yaml:20 `warstwa: OSD`, :23 `rodzaj_operatora: OSP`, :27 dokument IRiESP; loader.py:71 `RodzajOperatora = Literal[\"OSP\",\"OSD\"]`; brak osobnej warstwy PSE (loader.py:63). Jeden schemat dla pięciu operatorów: PSE = OSP w warstwie OSD z dokumentem IRiESP; wariant „nie dotyczy SN” skasowany — jest to przypadek „dokument milczy” (dokument WSKAZANE, wartość NIEUSTALONE z uwagą), obsługiwany już przez mechanizm wykonanie_prawa (pse.yaml:16-19)."
+    },
+    {
+     "sprzecznosc": "K-14: klasa eksportów liczonych w kliencie {iec61850, cim} — runda 1 zostawiła CIM warunkowo („jeśli ten sam profil”).",
+     "rozstrzygniecie": "Zmierzone: exportCim.ts:8 „minimalny CIM 17v36” w kliencie ORAZ backendowy `infrastructure/cgmes/cgmes_exporter.py` (EQ+TP, pomija zamiast zgadywać) bez końcówki API (0 trafień w backend/src/api) i bez klienta — dwie ścieżki jednego eksportu. Kasacja klientowego CIM i SCL w jednej karcie; pozycja `cim` przepięta na eksporter backendowy przez nową końcówkę; SCL nie wraca bez danych D1–D8."
+    },
+    {
+     "sprzecznosc": "Decyzja ryzykowna krytyka: SESJA-SLD-V2-GEOMETRIA / ADR-024 K3 kasują testy kontraktowe SLD Determinism i zmieniają źródło sceny (B-02).",
+     "rozstrzygniecie": "Poza klastrem C_dane_od21 — nie rozstrzygam tu; potwierdzam tylko regułę: zmiana listy testów w sld-determinism.yml i CLAUDE.md musi być atomowa z kasacją, a werdykt wizualny należy do właściciela (B-02, poza delegacją O-59)."
+    }
+   ]
+  }
+ ],
+ "koncowe": {
+  "sprzecznosci_miedzyklastrowe": [
+   {
+    "opis": "Nośnik S_k,min i X/R punktu przyłączenia: klaster B (ADR-027) — `Generator.deklaracje_modulu` „bo decyzja właściciela O-57 pkt 9 wiąże delegata”; klaster C (OD-21-KOD, PTPiREE, magazyny) — addytywne pola `ConnectionConditions`. Klaster C dodatkowo pisze „ADR-027 bez zmian statusu (PROPOSED)”, klaster B — ACCEPTED.",
+    "rozstrzygniecie": "ConnectionConditions (enm/models.py:177 „Warunki przyłączenia z dokumentu OSD (dane WEJŚCIOWE projektu, nie wynik)”). PLAN_AB:152 nazywa O-57 „synteza strategiczna architekta 2026-09-30” — to nie decyzja właściciela, więc klaster B mylnie uznał ją za wiążącą; podlega korekcie O-59. deklaracje_modulu.py:114-132 nie ma pól S_k; `GridConnectionPoint` 0 trafień w backend/src i frontend/src; procedura_ptpiree.yaml:55 „S_k,min punktu przyłączenia NIE jest parametrem profilu”. Status ADR-027 = ACCEPTED (klaster B rozstrzyga statusy), treść S_k wg klastra C; z ADR-027 usunięte też `agreed_power`/`agreed_cos_phi` (duplikat models.py:186-187). Krotność: `header.connection_conditions` pojedyncze (models.py:209) → v1 jeden punkt na projekt, wielopunktowość w G-15(b) jako lista per GridConnectionPoint (wpis O-60).",
+    "pozycje": [
+     "ADR-027",
+     "OD-21-KOD",
+     "OD-21 / §12.1: program badań PTPiREE",
+     "OD-21 / §12.1: wymagania dla magazynów energii"
+    ]
+   },
+   {
+    "opis": "Sekwencja rund B-01: klaster A twierdzi „R3 rundy B-01 nie istnieje w PLAN_AB” i nazywa kartę R3-V126; klaster C twierdzi „(l) zostawia 6 literałów v126_academic.py pod B-01 do (b)” i że R3 to runda z O-59; obie pozycje ustawiają OD-15(a)(d)+OD-24 „teraz”.",
+    "rozstrzygniecie": "PLAN_AB:154: „R3 runda tekstowa per plik rdzenia z parytetem bitowym (d, k, m, l)” — R3 istnieje (zadanie #198 B01-RUNDA-3). (l) wg PLAN_AB:930 to „Literały tekstu dla projektanta bez polskich znaków w plikach rdzeni” — nie stałe liczbowe, więc OD-24 (:412 `voltage_unbalance_u2_u1: 0.0`, fallbacki) nie jest w (l) i nie czeka na (b). Karta OD-15(a)(d)+OD-24 zmienia zachowanie (nie parytet bitowy) → nazwa R3-V126 skasowana, nowa nazwa V126-UCZCIWOSC (B-01 z O-59), idzie natychmiast; `v126_academic.py` jako plik gorący (O-57 pkt 12) serializuje V126-UCZCIWOSC, B01-RUNDA-3 i R4(h). (b) kasacja harmonicznych wyłącznie w commicie AB-H1 przełączającym E-40 (O-59), AB-H1 w sekwencji za AB-P1 (PLAN_AB:374).",
+    "pozycje": [
+     "OD-15",
+     "OD-24",
+     "OD-21 / §12.1: limity jakości energii (AB-H0)"
+    ]
+   },
+   {
+    "opis": "OD-21-KOD (klaster C) oznaczona `b01=false`, a dotyka `catalog/profiles/nc_rfg/**` (zastane.yaml, loader.py).",
+    "rozstrzygniecie": "scripts/rdzenie_b01.py:36-38: „NC RfG / PTPiREE (T01–T20) z profilami regulacyjnymi”: (`network_model/solvers/ncrfg_ptpiree/`, `catalog/profiles/nc_rfg/`) — to rdzeń B-01; §12.2(c) obejmuje te edycje z delegacji O-5. OD-21-KOD = B-01 ze zgodą wydaną w ramach O-59 (warunki: parytet `skrot_profilu` na profilach bez nowych kluczy, loader odrzuca `null` bez NIEUSTALONE).",
+    "pozycje": [
+     "OD-21-KOD"
+    ]
+   },
+   {
+    "opis": "Bramka M0/M1: klaster B (ADR-012, K-16, K-20) rozstrzyga, że werdykt „M1–M7 STOP” wiąże tylko plan docs/twin; klastry A i C nie odnoszą się do faz M, ale klaster A przyjmuje statusy ADR (ADR-021 ACCEPTED) niezależnie od karty STATUSY-ADR klastra B.",
+    "rozstrzygniecie": "Jedno brzmienie: OWNER_REVIEW_PACKAGE.md:185 „M1–M7: STOP do odbioru M0” i MIGRATION_PLAN:32 dotyczą planu docs/twin (docs/INDEX.md:20 „materiał wejściowy i dowodowy”); MISJA bez faz M (grep = 0). Wszystkie statusy ADR (w tym ADR-021 ACCEPTED z klastra A i ADR-027 z O-60) wchodzą JEDNĄ kartą STATUSY-ADR klastra B — dziś wszystkie ADR-012…028 mają linię 3 „PROPOSED (program Digital Twin 2026-09…)”.",
+    "pozycje": [
+     "ADR-012",
+     "K-16",
+     "K-20",
+     "STATUSY-ADR",
+     "ADR-021"
+    ]
+   },
+   {
+    "opis": "TopologyView vs grafy we froncie i w rdzeniu: ADR-014/ADR-024 (B) — jedyny graf = TopologyView, front kasowany; K-07 (B) — „czy assembler partycjonuje per wyspa NIEZMIERZONE”; ADR-021 K1 (A) — „kasacja P10/BFS”; K4 (A) — slack rozproszony.",
+    "rozstrzygniecie": "Zmierzone: assembler.py:441-446 „Wyspa zasilona JEDNYM źródłem sieciowym — własne wejście solvera (CV-4.3 K3b)”, scalanie w enm/rozplyw_wysp.py — partycja per wyspa ISTNIEJE; WYSPY-ASSEMBLER redukuje się do referencji wyspy (GFM) i kodu gotowości. K4 działa wewnątrz wyspy. BFS = power_flow_unbalanced.py:2 („Backward/Forward Sweep”) jest dziś ścieżką produkcyjną (canonical_analysis.py:536 `ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY`, W5-D wykonane wg O-57 pkt 1) → K1 migruje konsumentów z parytetem per faza przed kasacją; „P10” z CANONICAL_TWIN_ARCHITECTURE.md:299 wskazuje `application/reference_networks/**`, którego w backend/src nie ma — NIEZMIERZONE.",
+    "pozycje": [
+     "ADR-014",
+     "ADR-024",
+     "K-07",
+     "ADR-021"
+    ]
+   },
+   {
+    "opis": "Walidator vs CLAUDE.md: ADR-025 (B) przepisuje „NEVER bypass NetworkValidator” tylko w CLAUDE.md:870; OD-19 (A) odrzuca regułę walidatora ENM U_n > 36 kV; klastry A/C wprowadzają nowe kody odmów (OD-14, OD-24, OD-25, OD-36, OLTC, OD-17a, OD-16) bez wskazania rejestru.",
+    "rozstrzygniecie": "Klasa nie instancja: CLAUDE.md ma trzy wzmianki NetworkValidator (:174, :780, :870), ARCHITECTURE.md trzy (:149, :412, :440), SPEC_*/SYSTEM_SPEC 0 — wszystkie na „walidator ENM + CalculationReadiness”. Reguła martwa w kodzie: validation/validator.py:155, jedyny import spoza pakietu enm/domain_operations.py:11959. OD-19 spójne. Każdy nowy kod odmowy wszystkich klastrów przez `OdmowaDanychError` (network_model/odmowa_danych.py:27; ODMOWA-DANYCH-422 wykonane) i jeden rejestr CalculationReadinessService z akcją naprawczą (wpis O-65).",
+    "pozycje": [
+     "ADR-025",
+     "OD-19",
+     "OLTC-NAPIECIE-DOCELOWE",
+     "OD-14",
+     "OD-24",
+     "OD-25",
+     "OD-36",
+     "OD-17",
+     "OD-16"
+    ]
+   },
+   {
+    "opis": "Warstwa autorytetu: OD-22 (A) zamyka listę „SI-110…SI-115” i klasę konsumentów; ADR-022 W4 (B) dodaje nowych konsumentów nastaw/koordynacji z EffectiveNetworkSnapshot.",
+    "rozstrzygniecie": "network_model/core/zdolnosci_wkladu_zwarciowego.py:83-103 ma SI-110…SI-116 (SI-116 `KOD_BLOKADY_ZNACZNIK_NIEZNANY` pominięty w liście klastra A); K2 i OD-14 dostają SI-117+; test klasy konsumentów obejmuje konsumentów W4-1…W4-4 i pakiet Equipment — W4-1 rozszerza istniejący test, nie tworzy drugiego (wpis O-66).",
+    "pozycje": [
+     "OD-22",
+     "ADR-022",
+     "ADR-021",
+     "OD-14"
+    ]
+   },
+   {
+    "opis": "OD-15(g): klaster B (OD-15-KOMENTARZ) czeka na „rozstrzygnięcie OD-15” dla RegulacjaOze.tsx; klaster A rozstrzygnął tylko (a)(b)(c)(d)(e) — (g) nierozstrzygnięte przez nikogo.",
+    "rozstrzygniecie": "MAPA:170 „brak śladu trybu/limitu Q w wyniku FROZEN … OD-15(g)”; MAPA:710 zawiera nieprzetworzony literał `\" + W3H_OD15_G + \"` (defekt dokumentu). Decyzja: addytywne pole `regulacja_q` w wyniku rozpływu, wchodzące w tym samym podniesieniu wersji `PowerFlowResult` co §12.2(f) (jedno podniesienie); RegulacjaOze.tsx:26-31 przepisany w tej karcie (wpis O-67).",
+    "pozycje": [
+     "OD-15",
+     "OD-15-KOMENTARZ"
+    ]
+   },
+   {
+    "opis": "TT/IT: ADR-015 (B) „jedna fizyka Ik1 nN = FROZEN fault_loop_iec60364” vs OD-25 (A) „nowy moduł solvers/petla_zwarcia_tt_it.py”; KARTA_W5:115-116 zawiera limity „≤ 50 V” z pamięci, które OD-25 uznaje za dane właściciela.",
+    "rozstrzygniecie": "Jedno wejście: fault_loop_iec60364.py (kasacja NotImplementedError :199 = dyspozycja po `network_type`), jądro pętli wspólne dla Z_s drugiego zwarcia IT; KARTA_W5:115-116 przepisana bez wartości limitu (BRAK_PODSTAWY do danych właściciela); kody `fault_loop.tt_it_not_supported` (brak solvera, znika) i `swz.limit_tt_it_brak_tekstu_normy` (brak limitu, zostaje) to dwa stany (wpis O-68).",
+    "pozycje": [
+     "OD-25",
+     "ADR-015",
+     "D-11-fault_loop-TT-IT"
+    ]
+   },
+   {
+    "opis": "PROT-LTI (A) zmienia literał krzywej w protection_iec60255.py; ADR-022 W4-0 (B) przypina testy tożsamości do dzisiejszych funkcji tego pliku; OD-18 (B) kasuje protection_engine_v1 — trzy karty na jednym pliku B-01/jego guardach.",
+    "rozstrzygniecie": "W4-0 po PROT-LTI albo od razu na literale „LTI”; inwentarz PROT-LTI rozszerzony o application/protection_read_model.py:62 (`\"IEC_LI\": \"LTI\"`) i MAPA:206; jeden integrator, karta po karcie (O-57 pkt 12) (wpis O-69).",
+    "pozycje": [
+     "OD-15",
+     "ADR-022",
+     "OD-18"
+    ]
+   },
+   {
+    "opis": "Dynamika: OD-36 (A) „po OD-32(a)” vs OD-32 (B) „(a) to decyzja właściciela, warunek wejścia fal W6 = wyrocznia rodziny”; klaster B uznaje „OD-5c” za brak źródła (dane właściciela), klaster C nazywa ją „O-5c” jako osobną zgodę B-01.",
+    "rozstrzygniecie": "Warunek wejścia W6-A-OD36 = FINAL_DYNAMICS §5 + OD-30 (a)(b). „OD-5c” = O-5 lit. (c) z PLAN_AB:89 „(c) korektę LFSM-O w GFL (jednostronność dla źródeł bez magazynu, moc dostępna, Pref…)”, O-59 §12.2 „(c) zgoda (O-5 w toku)”, KARTA_AB_1B2:357 „AB-2 (O-5c…)” — źródło w repo istnieje, pozycja wykonawcza w AB-2 pod B-01 (O-5/O-59(c)), nie dane właściciela (wpis O-70).",
+    "pozycje": [
+     "OD-36",
+     "OD-32",
+     "OD-5c",
+     "OD-21 / §12.1 wiersz: WOS LFSM-O"
+    ]
+   },
+   {
+    "opis": "K-14 (C) dodaje nową końcówkę API eksportu CGMES; K-16 (B) zakazuje tras bez konsumenta; K-14 i SESJA-SLD-V2/ADR-024 (B) edytują te same katalogi v2/v3 export.",
+    "rozstrzygniecie": "Konsument = akcja menu eksportu `cgmes` + test golden pliku (K-16 spełnione bez wyjątku w router_mount_guard; grep „cgmes” w backend/src/api = 0 potwierdza brak trasy). K-14 przed SESJA i ADR-024 K3 (rebase); listy testów sld-determinism.yml (:50-152) i CLAUDE.md atomowo z kasacjami; B-02 poza delegacją (wpis O-71).",
+    "pozycje": [
+     "K-14/D-41-SCL",
+     "K-16",
+     "SESJA-SLD-V2-GEOMETRIA",
+     "ADR-024",
+     "ADR-014"
+    ]
+   },
+   {
+    "opis": "OD-3 (A) zależność „po W4 (budowniczy G01)” vs ADR-022 (B), gdzie W4 = zabezpieczenia.",
+    "rozstrzygniecie": "MAPA:754 „W8 | Sieć kompensowana G01 end-to-end (= CV-6) | budowa G01 komendami”; MAPA:750 „W4 | Zabezpieczenia jako część modelu”. OD-3/W8-OD3 zależy od W8 i W5, nie od W4 (wpis O-72).",
+    "pozycje": [
+     "OD-3",
+     "ADR-022"
+    ]
+   },
+   {
+    "opis": "Ścieżki dokumentów i plików podane rozbieżnie: klaster A „docs/plan/CANONICAL_TWIN_ARCHITECTURE.md”; klaster C „v126_artifacts.py:160” (jak plik solvera), „MAPA (E-40)”; klaster A „zdolnosci_wkladu_zwarciowego.py” bez ścieżki (sugerowana application/analyses).",
+    "rozstrzygniecie": "Zmierzone: docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md; backend/src/application/v126_artifacts.py:160; grep „E-40” w MAPA i SYNTEZA = 0 (NIEZMIERZONE); backend/src/network_model/core/zdolnosci_wkladu_zwarciowego.py (wpisy O-66, O-72).",
+    "pozycje": [
+     "ADR-021",
+     "OD-24",
+     "OD-21 / §12.1: limity jakości energii (AB-H0)",
+     "OD-22"
+    ]
+   }
+  ],
+  "rejestr": [
+   {
+    "nr": "O-60",
+    "tytul": "Jeden nośnik S_k,min i X/R punktu przyłączenia (ADR-027 ↔ O-57 pkt 9 ↔ OD-21)",
+    "pozycje": [
+     "ADR-027",
+     "OD-21-KOD",
+     "OD-21 / §12.1: program badań PTPiREE",
+     "OD-21 / §12.1: wymagania dla magazynów energii",
+     "K-19"
+    ],
+    "tresc": "Nośnik = addytywne pola istniejącego `ConnectionConditions` (enm/models.py:177 „Warunki przyłączenia z dokumentu OSD (dane WEJŚCIOWE projektu, nie wynik)”). O-57 pkt 9 (PLAN_AB:152) wskazywał `Generator.deklaracje_modulu`, lecz O-57 to „synteza strategiczna architekta”, nie decyzja właściciela — klaster B błędnie uznał ją za wiążącą; korekta w ramach O-59. Fakty: deklaracje_modulu.py:114-132 bez pól S_k; `GridConnectionPoint` 0 trafień; `Source.sk3_min_mva` (models.py:479) = fizyka równoważnika GPZ, zostaje. Krotność: `header.connection_conditions` pojedyncze (models.py:209) → v1 jeden punkt na projekt; GridConnectionPoint (G-15b, po W5-T) wskazuje warunki przez `connection_conditions_ref`; wielopunktowość = lista warunków per punkt w G-15(b). Z ADR-027 usunięte `agreed_power`/`agreed_cos_phi` (duplikat :186-187). Przepisać: procedura_ptpiree.yaml:55, PLAN_AB:152, :814-818."
+   },
+   {
+    "nr": "O-61",
+    "tytul": "OD-21-KOD jest pozycją B-01; jedna konwencja nowych pól liczbowych (K-05)",
+    "pozycje": [
+     "OD-21-KOD",
+     "K-05",
+     "OD-14",
+     "OD-36",
+     "OD-16"
+    ],
+    "tresc": "Klaster C oznaczył OD-21-KOD `b01=false`, a `catalog/profiles/nc_rfg/` jest na wiążącej liście rdzeni (scripts/rdzenie_b01.py:36-38 „NC RfG / PTPiREE … catalog/profiles/nc_rfg/”); §12.2(c) obejmuje `ncrfg_ptpiree/**` z delegacji O-5. Korekta: OD-21-KOD = B-01 ze zgodą wydaną w ramach O-59; warunki: parytet bitowy `skrot_profilu` na profilach bez nowych kluczy, loader odrzuca `null` bez NIEUSTALONE, `werdykt_wyjasnialny_guard` zielony. Klasa: każde nowe pole liczbowe z tej fali (OD-14 `r_f_ohm`/`x_f_ohm`; OD-21 `s_k_min_mva`, `x_r`; OD-36 `dokladnosc_kata_dop_rad`; OD-16 `capex`, `opex_rok`) wchodzi z sufiksem jednostki wg rejestru K-05 (domain/units.py) i wpisem `x-unit` w OpenAPI — karta JEDNOSTKI-GRANICA dopina je, jeśli wejdą wcześniej (zapadka guarda w dół dopuszcza zastane, nie nowe bez wpisu)."
+   },
+   {
+    "nr": "O-62",
+    "tytul": "Sekwencja rund B-01 (O-59 §12.2) a karty V126: nazwa, kolejność, gorące pliki",
+    "pozycje": [
+     "OD-15",
+     "OD-24",
+     "OD-21 / §12.1: limity jakości energii (AB-H0)",
+     "OD-15-KOMENTARZ"
+    ],
+    "tresc": "Runda R3 ISTNIEJE (PLAN_AB:154 „R3 runda tekstowa per plik rdzenia z parytetem bitowym (d, k, m, l)”) — zdanie klastra A „R3 nie istnieje w PLAN_AB” jest fałszywe. (l) to literały tekstu bez polskich znaków (PLAN_AB:930), nie stałe liczbowe — zdanie klastra C „(l) zostawia 6 literałów pod (b)” to błędne odczytanie; OD-24 (:412, :1306, :1732, :1820) nie należy do (l). Karta OD-15(a)(d)+OD-24 zmienia zachowanie, więc nie jest rundą tekstową: nazwa R3-V126 skasowana → V126-UCZCIWOSC (B-01, zgoda O-59), natychmiast, niezależnie od (b). `v126_academic.py` = plik gorący (O-57 pkt 12): V126-UCZCIWOSC, B01-RUNDA-3 (d,k,m,l) i R4 (h) serializowane per plik, każda zmiana liczbowa osobnym commitem z regeneracją golden nazwanych pól. (b) kasacja harmonicznych v126 wyłącznie w commicie AB-H1 przełączającym E-40; AB-H1 w sekwencji za AB-P1 (PLAN_AB:374, O-57 pkt 4)."
+   },
+   {
+    "nr": "O-63",
+    "tytul": "Bramka M0/M1, statusy ADR i hierarchia dokumentów — jedno brzmienie dla trzech klastrów",
+    "pozycje": [
+     "ADR-012",
+     "K-20",
+     "K-16",
+     "STATUSY-ADR",
+     "ADR-027",
+     "OD-21-KOD"
+    ],
+    "tresc": "Fakty: OWNER_REVIEW_PACKAGE.md:185 „M1–M7: STOP do odbioru M0” i MIGRATION_PLAN:32 „M1–M7 zablokowane do odbioru M0” dotyczą planu docs/twin; docs/INDEX.md:20 nazywa pakiet Digital Twin „materiał wejściowy i dowodowy”; MISJA_DOMKNIECIA bez faz M (grep M0|M1–M7 = 0). Brzmienie wspólne: bramka M0 wiąże wyłącznie plan docs/twin; karty trzech klastrów nie powołują się na „STOP M1”. Statusy: dziś WSZYSTKIE ADR-012…028 mają w linii 3 „PROPOSED (program Digital Twin 2026-09…)”, docs/INDEX.md:49 „ADR-012…ADR-028 (PROPOSED)”; starsze: ADR-008 „Accepted”, ADR-005-sld „Zaakceptowane — 2026-02-07”, ADR-002/003/006 „Accepted”. STATUSY-ADR wykonuje listę klastra B; ADR-027 ACCEPTED (klaster C pisał „adnotacja: PROPOSED” — nadpisane: status z klastra B, nośnik S_k z O-60). Kolejność: K-20 → ADR-012 → STATUSY-ADR w jednej fali dokumentowej, przed kartami kodowymi powołującymi się na ADR."
+   },
+   {
+    "nr": "O-64",
+    "tytul": "Topologia jedna prawda: TopologyView, wyspy w assemblerze, grafy frontu, BFS nN",
+    "pozycje": [
+     "ADR-014",
+     "ADR-024",
+     "SESJA-SLD-V2-GEOMETRIA",
+     "K-07",
+     "ADR-021",
+     "OD-19"
+    ],
+    "tresc": "Jedyny dostawca topologii = enm/topology.py::derive → TopologyView (:96, :133). K-07 zmierzone: assembler JUŻ partycjonuje per wyspa — assembler.py:441-446 „Wyspa zasilona JEDNYM źródłem sieciowym — własne wejście solvera (CV-4.3 K3b)”, scalanie w enm/rozplyw_wysp.py; WYSPY-ASSEMBLER = tylko: referencja wyspy (sieć zewnętrzna > GFM), kod gotowości dla wyspy bez referencji, ślad per wyspa. ADR-021 K4 działa WEWNĄTRZ wyspy. ADR-021 K1 „kasacja P10/BFS”: BFS = power_flow_unbalanced.py:2, dziś ścieżka PRODUKCYJNA (canonical_analysis.py:536 `ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY`; W5-D wykonane, O-57 pkt 1) → K1 migruje konsumentów na ABCN z parytetem per faza PRZED kasacją; „P10” z CANONICAL_TWIN_ARCHITECTURE.md:299 wskazuje `application/reference_networks/**`, nieobecne w backend/src — NIEZMIERZONE. Front: v3/electrical, engine/sld-layout, lokalna energizacja — kasowane, nie przenoszone."
+   },
+   {
+    "nr": "O-65",
+    "tytul": "Walidator ENM i jeden rejestr gotowości dla kodów odmów wszystkich klastrów",
+    "pozycje": [
+     "ADR-025",
+     "OD-19",
+     "OLTC-NAPIECIE-DOCELOWE",
+     "OD-21-KOD",
+     "OD-24",
+     "OD-14",
+     "OD-25",
+     "OD-36",
+     "K-07",
+     "OD-17",
+     "OD-16"
+    ],
+    "tresc": "Reguła „NEVER bypass NetworkValidator” jest martwa w kodzie (validator.py:155; jedyny import spoza pakietu: domain_operations.py:11959). Klasa NIE instancja: CLAUDE.md ma TRZY wzmianki (:174, :780, :870) — wszystkie na „walidator ENM (enm/validator.py) + CalculationReadiness przed biegiem”; ARCHITECTURE.md:149/:412/:440 tak samo. OD-19 A-1 odrzucona → walidator ENM bez reguły U_n > 36 kV. Jeden rejestr: KAŻDY nowy kod tej fali (`connection_conditions.s_k_missing`, `v126.neutral_earthing_missing`, `sc.impedancja_zwarcia_pojemnosciowa`, `swz.limit_tt_it_brak_tekstu_normy`, `KOD_NASTAWY_BRAK`, OLTC bez U docelowego, wyspa bez referencji, `BRAK_PAKIETU_OSD:*`, `BRAK_CENNIKA`) przez `OdmowaDanychError` (odmowa_danych.py:27; ODMOWA-DANYCH-422 wykonane) i CalculationReadinessService z akcją naprawczą; readiness_codes_guard + fix_action_completeness_guard RC=0. „Po partii 6” = tylko kasacja 4 słowników."
+   },
+   {
+    "nr": "O-66",
+    "tytul": "Warstwa autorytetu: jedna lista kodów SI-11x i zamknięta klasa konsumentów (w tym W4)",
+    "pozycje": [
+     "OD-22",
+     "ADR-021",
+     "OD-14",
+     "ADR-022",
+     "OD-18"
+    ],
+    "tresc": "Nośnik kodów: network_model/core/zdolnosci_wkladu_zwarciowego.py (klaster A pisał bez ścieżki; plik jest w core, nie w application/analyses): SI-110…SI-116 (:83-103, w tym SI-116 `KOD_BLOKADY_ZNACZNIK_NIEZNANY`, którego lista klastra A „SI-110…115” nie obejmuje). Nowe przyczyny blokady — ADR-021 K2 (n przy maszynie synchronicznej) i OD-14 (i_p/I_th przy Z_f ≠ 0) — dostają kolejne numery SI-117+, w tym samym pliku. Klasa konsumentów autorytetu (test OD-22-DOC-TEST, grep `autorytet_wyniku_zwarciowego`) musi objąć także konsumentów wprowadzanych przez ADR-022 W4-1…W4-4 (koordynacja, TCC, raport, szuflada SLD czytające EffectiveNetworkSnapshot) i pakiet Equipment — karta W4-1 rozszerza test klasy, nie tworzy drugiego. Dozwolony konsument wyniku poza zakresem IEC 60909 (OD-14): nastawy zabezpieczeń doziemnych — wpisany jawnie w tej samej liście, nie jako wyjątek w konsumencie."
+   },
+   {
+    "nr": "O-67",
+    "tytul": "OD-15(g) — ślad trybu/limitu Q w wyniku rozpływu (luka nierozstrzygnięta przez żaden klaster)",
+    "pozycje": [
+     "OD-15",
+     "OD-15-KOMENTARZ"
+    ],
+    "tresc": "Klaster B: „treść OD-15 nie jest mi znana”; klaster A rozstrzygnął tylko (a)(b)(c)(d)(e). MAPA:170 „brak śladu trybu/limitu Q w wyniku FROZEN … W3-H … OD-15(g)”, a MAPA:710 zawiera literał `\" + W3H_OD15_G + \"` (nieprzetworzony szablon — defekt dokumentu, treść (g) nieobecna). Decyzja O-59: (g) = addytywne pole `regulacja_q` w wyniku rozpływu (tryb, Q_zad, Q_lim min/max, aktywna granica, per źródło) emitowane przez `power_flow_inverter.py`/tor kanoniczny; ponieważ `PowerFlowResult` jest FROZEN, pole wchodzi w TYM SAMYM podniesieniu wersji głównej co §12.2(f) (`violations` → `WynikWymagania`, O-59) — jedno podniesienie, nie dwa; `exclude_none`, goldeny bez zmian dla biegów bez źródeł regulowanych. RegulacjaOze.tsx:26-31 przepisany w tej karcie na wykres z pola (zero fizyki w UI). MAPA:710 naprawiona (treść (g) wpisana, literał szablonu usunięty)."
+   },
+   {
+    "nr": "O-68",
+    "tytul": "TT/IT: jedno wejście fizyki Ik1 nN, dane z pamięci w KARTA_W5 unieważnione",
+    "pozycje": [
+     "OD-25",
+     "D-11-fault_loop-TT-IT",
+     "ADR-015"
+    ],
+    "tresc": "ADR-015 „jedna fizyka Ik1 nN = fault_loop_iec60364 przez assembler” a OD-25 „nowy moduł petla_zwarcia_tt_it.py” — bez kolizji pod warunkiem: jedyne wejście pozostaje `fault_loop_iec60364.py` (kasacja `NotImplementedError` :199 = dyspozycja po `network_type` do nowego modułu), Z_s drugiego zwarcia IT tym samym jądrem pętli co TN; test tożsamości TN bit w bit. KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md:115-116 zawiera „R_A · I_Δn ≤ 50 V … tab. 41.1; IT: … R_A · I_d ≤ 50 V 411.6.2” — liczby z pamięci, sprzeczne z OD-25 (limit = dane właściciela, BRAK_PODSTAWY): wiersz przepisany bez wartości. Kody: KARTA_W5:116 `fault_loop.tt_it_not_supported` (brak solvera) znika z solverem w W5-E-TTIT; `swz.limit_tt_it_brak_tekstu_normy` (brak limitu) zostaje do danych — dwa stany, nie dwie nazwy. Czasy wyłącznie z lv_disconnection_times_iec60364_4_41.py:119-120 (status REFERENCYJNY :77)."
+   },
+   {
+    "nr": "O-69",
+    "tytul": "Krzywa LTI: inwentarz klasy i kolejność względem rejestru zdolności zabezpieczeń (W4-0)",
+    "pozycje": [
+     "OD-15",
+     "ADR-022",
+     "OD-18"
+    ],
+    "tresc": "Do inwentarza PROT-LTI klastra A dochodzą zmierzone miejsca: application/protection_read_model.py:62 (`\"IEC_LI\": \"LTI\"` — mapa nazw krzywych), enm/domain_operations_v2.py:165 („LTI … = RI w jadrze”), MAPA:206 (wiersz 22 „Etykieta krzywej RI … DO-PRZEPROJEKTOWANIA”). Kolejność międzyklastrowa: ADR-022 W4-0 (ProtectionCapabilityRegistry z testami tożsamości wyników protection_iec60255) idzie PO PROT-LTI albo od razu na literale „LTI” — inaczej rejestr przypina test do nazwy, która znika. OD-18 (kasacja protection_engine_v1, jedyny importer protection_to_resultset_v1.py:25; execution_runs.py:137 „drugi, MARTWY”) niezależna od obu. Wszystkie trzy dotykają `protection_iec60255.py` (B-01) albo jego guardów → jeden integrator, karta po karcie (O-57 pkt 12)."
+   },
+   {
+    "nr": "O-70",
+    "tytul": "Dynamika: warunek wejścia W6-A-OD36, precedens wersji nastaw, tożsamość OD-5c = O-5(c)",
+    "pozycje": [
+     "OD-36",
+     "OD-32",
+     "OD-5c",
+     "OD-21 / §12.1 wiersz: WOS LFSM-O"
+    ],
+    "tresc": "(1) Warunek wejścia W6-A-OD36 = warunek FINAL_DYNAMICS_CAPABILITY_FREEZE.md §5 (wyrocznia rodziny obecna, UNVALIDATED_MODEL zdjęte) + OD-30 (a)(b), nie „po OD-32(a)” — OD-32(a) to decyzja właściciela (W6_3C:369 „(a) — dopóki nie ma wyroczni”). (2) Precedens klastra A „tolerancja_lokalizacji_zdarzen_s dodana jako wymagana” NIEPOTWIERDZONY: kontrakty.py:836 `tolerancja_lokalizacji_zdarzen_s: float | None`; decyzja OD-36 (pole wymagane, WERSJA_NASTAW_SOLWERA = 2) bez zmian. (3) „OD-5c” klastra B (grep = 0, „dane właściciela”) to O-5 lit. (c): PLAN_AB:89 „(c) korektę LFSM-O w GFL (jednostronność dla źródeł bez magazynu, moc dostępna, Pref…)”, O-59 §12.2 „(c) zgoda (O-5 w toku)”, KARTA_AB_1B2:357 „AB-2 (O-5c, §5 :342)”. Źródło jest w repo: pozycja przechodzi z „dane właściciela” na wykonawczą w AB-2 (B-01 pod O-5/O-59(c)), z wyrocznią wg O-7. Klaster C nazywa ją poprawnie „O-5c”."
+   },
+   {
+    "nr": "O-71",
+    "tytul": "Eksporty, testy CI SLD i bramki B-02 — spójność K-14, SESJA-SLD-V2, ADR-024, ADR-014",
+    "pozycje": [
+     "K-14/D-41-SCL",
+     "K-16",
+     "SESJA-SLD-V2-GEOMETRIA",
+     "ADR-024",
+     "ADR-014"
+    ],
+    "tresc": "K-14 (klaster C) dodaje końcówkę CGMES na `infrastructure/cgmes/cgmes_exporter.py` (0 trafień „cgmes” w backend/src/api) — konsument wg K-16 = akcja menu eksportu `cgmes` + test golden (SHA-256), więc router_mount_guard bez wyjątku. K-14 edytuje v3/export/{formats.ts:24, sldExport.ts, exportModelData.ts} i kasuje v2/export/{exportIec61850,exportCim}.ts — wykonana PRZED SESJA-SLD-V2-GEOMETRIA i ADR-024 K3 (rebase, nie kolejka). Lista testów sld-determinism.yml (:50-152, 17 kroków) i lista w CLAUDE.md zmieniane atomowo z każdą kasacją (SESJA: layoutEngine.substrate :50, portAnchoredGeometry.substrate :66; ADR-024 K3: sheetRows/gpzCollapsed/lodContinuity/busbarLabelClearance). B-02 poza delegacją: ADR-014 i ADR-024 kończą się na CLAIMED DONE ze stroną oceny; SESJA — zrzuty bajt w bajt = bez werdyktu, różnica = STOP; żaden klaster nie certyfikuje wyglądu."
+   },
+   {
+    "nr": "O-72",
+    "tytul": "Korekty ścieżek i faktów w treściach klastrów (bez zmiany decyzji)",
+    "pozycje": [
+     "ADR-021",
+     "OD-24",
+     "OD-3",
+     "OD-21 / §12.1: limity jakości energii (AB-H0)",
+     "K-19",
+     "D-11-fault_loop-TT-IT",
+     "ADR-027"
+    ],
+    "tresc": "(1) `CANONICAL_TWIN_ARCHITECTURE.md` leży w docs/architecture, nie docs/plan (klaster A: ADR-021 „:299”, OD-24 „:89”). (2) OD-3 „W4 (budowniczy G01)” → W8: MAPA:754 „W8 | Sieć kompensowana G01 end-to-end (= CV-6)”; W4 = zabezpieczenia (MAPA:750). (3) `v126_artifacts.py:160` jest w application/, nie w solvers. (4) „MAPA (E-40)”: grep w MAPA i SYNTEZA = 0 — NIEZMIERZONE, karta AB-H0 odnajduje wiersz po treści. (5) K-19 zmierzone: „BoundaryNode” poza analysis/boundary i testami w 3 plikach frontu (ui/protection/element-assignment.ts, ui/protection/useSanityChecks.ts, ui/results-inspector/types.ts). (6) D-11 DOCX potwierdzone: power_flow_runs.py:490,:628, power_flow_comparisons.py:508,:648. (7) hosting_capacity poza v126 istnieje (application/analyses/hosting_capacity.py:303, api/oze_analysis_runs.py:61), lecz nie czyta S_k (grep = 0) — G-15(d) nie wpisuje go jako konsumenta S_k bez pomiaru."
+   },
+   {
+    "nr": "O-73",
+    "tytul": "Fale wykonawcze i pliki gorące — jedna kolejność dla trzech klastrów",
+    "pozycje": [
+     "OD-22",
+     "D-11-fault_loop-TT-IT",
+     "OD-18",
+     "OD-21-KOD",
+     "K-14/D-41-SCL",
+     "OD-17",
+     "OD-16",
+     "K-12",
+     "OLTC-NAPIECIE-DOCELOWE",
+     "OD-14",
+     "OD-19",
+     "ADR-021",
+     "ADR-017",
+     "ADR-025",
+     "ADR-016",
+     "ADR-015",
+     "ADR-022",
+     "K-05",
+     "ADR-014",
+     "K-07",
+     "ADR-024",
+     "OD-13",
+     "OD-3",
+     "OD-36",
+     "OD-25"
+    ],
+    "tresc": "Fala 0 (dokumenty): K-20 → ADR-012 → STATUSY-ADR → K-16, REJESTR-OD-28-34, REJESTR-STALE-WIERSZE, K-19 + ADR-027(a), OD-22-DOC-TEST. Fala 1 (niezależne): API-DOCX-501, W3-A-DOMKNIĘCIE, OD-21-KOD, KASACJA-SCL-I-CIM-KLIENT, OD-17a, W10-2a, C-12, OLTC-U-DOCELOWE, V126-UCZCIWOSC, PROT-LTI, OD-14, SLD-V2-GEOMETRIA-KASACJA, W4-0. Fala 2: PF-OD19, K2 (po OD-14), W5-E-TTIT, JEDNOSTKI-GRANICA (po partii 6), OD-15(g)+KOMENTARZ (z §12.2(f)). Fala 3 (po W5-B): K1 ABCN i K4 (po PF-OD19), W5-C, IK1-NN-JEDNA-FIZYKA, GOTOWOSC-JEDEN-REJESTR, W4-1. Fala 4 (po W5-C/W5-T): OD-15(c), WARIANTY-PORÓWNANIE, TOPOLOGIA-JEDNA-PRAWDA (B-02), W4-2, K5. Fala 5: G-15(b–d), WYSPY-ASSEMBLER, ADR-024 K1–K3 (B-02), W12-MCP, W8-OD3 (po W8), W6-A-OD36 (warunek §5). Pliki gorące (O-57 pkt 12: v126_academic.py, protection_iec60255.py, canonical_analysis.py, OpenAPI, sld-determinism.yml + CLAUDE.md) — jeden integrator."
+   }
+  ],
+  "fale_kart": [
+   {
+    "fala": 0,
+    "karta": "K-20 HIERARCHIA",
+    "pozycje": [
+     "K-20"
+    ],
+    "b01": false,
+    "zaleznosci": []
+   },
+   {
+    "fala": 0,
+    "karta": "DOKUMENTY-ADR-012",
+    "pozycje": [
+     "ADR-012"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "K-20 HIERARCHIA"
+    ]
+   },
+   {
+    "fala": 0,
+    "karta": "STATUSY-ADR (w tym ADR-021 ACCEPTED z korektą, ADR-027 ACCEPTED bez sk_max/min i bez agreed_*, ADR-013/005/008/003/006 SUPERSEDED, ADR-002 EXTENDED)",
+    "pozycje": [
+     "STATUSY-ADR",
+     "ADR-021",
+     "ADR-027",
+     "ADR-015",
+     "ADR-016",
+     "ADR-017",
+     "ADR-022",
+     "ADR-024",
+     "ADR-025",
+     "ADR-014",
+     "K-05"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "DOKUMENTY-ADR-012"
+    ]
+   },
+   {
+    "fala": 0,
+    "karta": "K-16 DOKUMENT",
+    "pozycje": [
+     "K-16"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "DOKUMENTY-ADR-012"
+    ]
+   },
+   {
+    "fala": 0,
+    "karta": "REJESTR-OD-28-34",
+    "pozycje": [
+     "OD-32"
+    ],
+    "b01": false,
+    "zaleznosci": []
+   },
+   {
+    "fala": 0,
+    "karta": "OWNER_REVIEW-K-DOMKNIECIE",
+    "pozycje": [
+     "K-13-15-17-21-22"
+    ],
+    "b01": false,
+    "zaleznosci": []
+   },
+   {
+    "fala": 0,
+    "karta": "REJESTR-STALE-WIERSZE",
+    "pozycje": [
+     "V12K-135-059"
+    ],
+    "b01": false,
+    "zaleznosci": []
+   },
+   {
+    "fala": 0,
+    "karta": "K-19 DOKUMENTY-PUNKT-PRZYLACZENIA + G-15(a) redakcja Core Rule 5 i pcc_zero_guard",
+    "pozycje": [
+     "K-19",
+     "ADR-027"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "STATUSY-ADR (w tym ADR-021 ACCEPTED z korektą, ADR-027 ACCEPTED bez sk_max/min i bez agreed_*, ADR-013/005/008/003/006 SUPERSEDED, ADR-002 EXTENDED)"
+    ]
+   },
+   {
+    "fala": 0,
+    "karta": "OD-22-DOC-TEST (test klasy konsumentów autorytetu, lista SI-110…SI-116 + rezerwacja SI-117+)",
+    "pozycje": [
+     "OD-22"
+    ],
+    "b01": false,
+    "zaleznosci": []
+   },
+   {
+    "fala": 0,
+    "karta": "REJESTR-O-60-O-73 (wpisy rejestru decyzji planu, korekta PLAN_AB:152 pkt 9 i :814-818, procedura_ptpiree.yaml:55, MAPA:710 literał szablonu, KARTA_W5:115-116)",
+    "pozycje": [
+     "OD-21-KOD",
+     "ADR-027",
+     "OD-15",
+     "OD-25"
+    ],
+    "b01": false,
+    "zaleznosci": []
+   },
+   {
+    "fala": 1,
+    "karta": "API-DOCX-501",
+    "pozycje": [
+     "D-11-fault_loop-TT-IT"
+    ],
+    "b01": false,
+    "zaleznosci": []
+   },
+   {
+    "fala": 1,
+    "karta": "W3-A-DOMKNIĘCIE (OD-18: kasacja protection_engine_v1 + sankcja SANCTIONED_CHANGES z nowym V12K)",
+    "pozycje": [
+     "OD-18"
+    ],
+    "b01": true,
+    "zaleznosci": []
+   },
+   {
+    "fala": 1,
+    "karta": "OD-21-KOD (zastane.yaml klucze null, loader, 13.1a, _koordynacja_rocof, WiPWC trójwartościowe, S_k w ConnectionConditions + kod gotowości, tabela §12.1)",
+    "pozycje": [
+     "OD-21-KOD",
+     "OD-21 / §12.1: czasy pracy w pasmach f (13.1a)",
+     "OD-21 / §12.1: wytrzymałość RoCoF (13.1b)",
+     "OD-21 / §12.1: WiPWC — pokrycie certyfikatem"
+    ],
+    "b01": true,
+    "zaleznosci": [
+     "REJESTR-O-60-O-73 (wpisy rejestru decyzji planu, korekta PLAN_AB:152 pkt 9 i :814-818, procedura_ptpiree.yaml:55, MAPA:710 literał szablonu, KARTA_W5:115-116)"
+    ]
+   },
+   {
+    "fala": 1,
+    "karta": "KASACJA-SCL-I-CIM-KLIENT (K-14/D-41: kasacja exportIec61850/exportCim, końcówka CGMES na cgmes_exporter.py, menu svg/pdf/dxf/cgmes)",
+    "pozycje": [
+     "K-14/D-41-SCL",
+     "K-16"
+    ],
+    "b01": false,
+    "zaleznosci": []
+   },
+   {
+    "fala": 1,
+    "karta": "OD-17a nazwane odmowy braku pakietów",
+    "pozycje": [
+     "OD-17"
+    ],
+    "b01": false,
+    "zaleznosci": []
+   },
+   {
+    "fala": 1,
+    "karta": "W10-2a szkielet cennika",
+    "pozycje": [
+     "OD-16"
+    ],
+    "b01": false,
+    "zaleznosci": []
+   },
+   {
+    "fala": 1,
+    "karta": "C-12 (wykonawca akcji naprawczej w ui2)",
+    "pozycje": [
+     "K-12"
+    ],
+    "b01": false,
+    "zaleznosci": []
+   },
+   {
+    "fala": 1,
+    "karta": "OLTC-U-DOCELOWE",
+    "pozycje": [
+     "OLTC-NAPIECIE-DOCELOWE"
+    ],
+    "b01": false,
+    "zaleznosci": []
+   },
+   {
+    "fala": 1,
+    "karta": "V126-UCZCIWOSC (dawniej R3-V126: OD-15(a)(d) + OD-24; plik gorący v126_academic.py — serializacja z B01-RUNDA-3 i R4(h))",
+    "pozycje": [
+     "OD-15",
+     "OD-24"
+    ],
+    "b01": true,
+    "zaleznosci": []
+   },
+   {
+    "fala": 1,
+    "karta": "PROT-LTI (OD-15(e): członek LONG_TIME_INVERSE = \"LTI\", alias ENM, protection_read_model.py:62, migracja persystencji)",
+    "pozycje": [
+     "OD-15"
+    ],
+    "b01": true,
+    "zaleznosci": []
+   },
+   {
+    "fala": 1,
+    "karta": "OD-14 impedancja zwarcia (r_f_ohm/x_f_ohm, R_f ≥ 0 ∧ X_f ≥ 0, kod SI-117 blokady i_p/I_th)",
+    "pozycje": [
+     "OD-14",
+     "OD-22"
+    ],
+    "b01": true,
+    "zaleznosci": [
+     "OD-22-DOC-TEST (test klasy konsumentów autorytetu, lista SI-110…SI-116 + rezerwacja SI-117+)"
+    ]
+   },
+   {
+    "fala": 1,
+    "karta": "SLD-V2-GEOMETRIA-KASACJA (B-02 warunkowo: zrzuty bajt w bajt = bez werdyktu)",
+    "pozycje": [
+     "SESJA-SLD-V2-GEOMETRIA"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "KASACJA-SCL-I-CIM-KLIENT (K-14/D-41: kasacja exportIec61850/exportCim, końcówka CGMES na cgmes_exporter.py, menu svg/pdf/dxf/cgmes)"
+    ]
+   },
+   {
+    "fala": 1,
+    "karta": "W4-0 ProtectionCapabilityRegistry (na literale LTI)",
+    "pozycje": [
+     "ADR-022"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "PROT-LTI (OD-15(e): członek LONG_TIME_INVERSE = \"LTI\", alias ENM, protection_read_model.py:62, migracja persystencji)"
+    ]
+   },
+   {
+    "fala": 2,
+    "karta": "PF-OD19 (kryterium spektralne J_R, start płaski w bazie własnej szyny; STOP jeśli J_R bez ujemnej wartości własnej na W3-G2)",
+    "pozycje": [
+     "OD-19"
+    ],
+    "b01": true,
+    "zaleznosci": []
+   },
+   {
+    "fala": 2,
+    "karta": "ADR-021 K2 (reguła strukturalna n, provenance ith_n_podstawa, kod SI-118 blokady I_th przy maszynie synchronicznej)",
+    "pozycje": [
+     "ADR-021",
+     "OD-22"
+    ],
+    "b01": true,
+    "zaleznosci": [
+     "OD-14 impedancja zwarcia (r_f_ohm/x_f_ohm, R_f ≥ 0 ∧ X_f ≥ 0, kod SI-117 blokady i_p/I_th)"
+    ]
+   },
+   {
+    "fala": 2,
+    "karta": "W5-E-TTIT (OD-25 + D-11 TT/IT; jedno wejście fault_loop_iec60364 → petla_zwarcia_tt_it; limity BRAK_PODSTAWY do danych właściciela)",
+    "pozycje": [
+     "OD-25",
+     "D-11-fault_loop-TT-IT",
+     "ADR-015"
+    ],
+    "b01": true,
+    "zaleznosci": [
+     "REJESTR-O-60-O-73 (wpisy rejestru decyzji planu, korekta PLAN_AB:152 pkt 9 i :814-818, procedura_ptpiree.yaml:55, MAPA:710 literał szablonu, KARTA_W5:115-116)"
+    ]
+   },
+   {
+    "fala": 2,
+    "karta": "JEDNOSTKI-GRANICA (K-05; rejestr w domain/units.py, x-unit OpenAPI, los BaseQuantities)",
+    "pozycje": [
+     "K-05"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "partia integracji 6 (zadanie #185, poza klastrami)"
+    ]
+   },
+   {
+    "fala": 2,
+    "karta": "OD-15(g)+KOMENTARZ (pole regulacja_q w wyniku rozpływu w jednym podniesieniu wersji z §12.2(f); RegulacjaOze.tsx:26-31)",
+    "pozycje": [
+     "OD-15",
+     "OD-15-KOMENTARZ"
+    ],
+    "b01": true,
+    "zaleznosci": [
+     "V126-UCZCIWOSC (dawniej R3-V126: OD-15(a)(d) + OD-24; plik gorący v126_academic.py — serializacja z B01-RUNDA-3 i R4(h))"
+    ]
+   },
+   {
+    "fala": 3,
+    "karta": "ADR-021 K1 ABCN (nowy solver 4-przewodowy, migracja konsumentów power_flow_unbalanced z parytetem per faza, potem kasacja BFS; pomiar „P10”)",
+    "pozycje": [
+     "ADR-021",
+     "ADR-015"
+    ],
+    "b01": true,
+    "zaleznosci": [
+     "PF-OD19 (kryterium spektralne J_R, start płaski w bazie własnej szyny; STOP jeśli J_R bez ujemnej wartości własnej na W3-G2)",
+     "W5-B typowany Bay (program W, poza klastrami)"
+    ]
+   },
+   {
+    "fala": 3,
+    "karta": "ADR-021 K4 slack rozproszony (wewnątrz wyspy; udziały z case config)",
+    "pozycje": [
+     "ADR-021",
+     "K-07"
+    ],
+    "b01": true,
+    "zaleznosci": [
+     "PF-OD19 (kryterium spektralne J_R, start płaski w bazie własnej szyny; STOP jeśli J_R bez ujemnej wartości własnej na W3-G2)"
+    ]
+   },
+   {
+    "fala": 3,
+    "karta": "W5-C STAN-EFEKTYWNY-LACZNIKOW (ADR-017; golden koperty v2 jako warunek wejścia)",
+    "pozycje": [
+     "ADR-017"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "W5-B typowany Bay (program W, poza klastrami)"
+    ]
+   },
+   {
+    "fala": 3,
+    "karta": "IK1-NN-JEDNA-FIZYKA (ADR-015)",
+    "pozycje": [
+     "ADR-015"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "W5-B typowany Bay (program W, poza klastrami)",
+     "W5-E-TTIT (OD-25 + D-11 TT/IT; jedno wejście fault_loop_iec60364 → petla_zwarcia_tt_it; limity BRAK_PODSTAWY do danych właściciela)"
+    ]
+   },
+   {
+    "fala": 3,
+    "karta": "GOTOWOSC-JEDEN-REJESTR (ADR-025; kasacja network_model/validation po tożsamości kodów, przepisanie CLAUDE.md :174/:780/:870 i ARCHITECTURE.md)",
+    "pozycje": [
+     "ADR-025"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "W5-B typowany Bay (program W, poza klastrami)",
+     "partia integracji 6 (zadanie #185, poza klastrami)"
+    ]
+   },
+   {
+    "fala": 3,
+    "karta": "W4-1 NASTAWY-JEDNA-PRAWDA (ADR-022; rozszerzenie testu klasy konsumentów autorytetu)",
+    "pozycje": [
+     "ADR-022",
+     "OD-22"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "W5-B typowany Bay (program W, poza klastrami)",
+     "W3-A-DOMKNIĘCIE (OD-18: kasacja protection_engine_v1 + sankcja SANCTIONED_CHANGES z nowym V12K)",
+     "W4-0 ProtectionCapabilityRegistry (na literale LTI)"
+    ]
+   },
+   {
+    "fala": 4,
+    "karta": "OD-15(c) VUF ze składowych",
+    "pozycje": [
+     "OD-15",
+     "OD-24"
+    ],
+    "b01": true,
+    "zaleznosci": [
+     "ADR-021 K1 ABCN (nowy solver 4-przewodowy, migracja konsumentów power_flow_unbalanced z parytetem per faza, potem kasacja BFS; pomiar „P10”)"
+    ]
+   },
+   {
+    "fala": 4,
+    "karta": "WARIANTY-PORÓWNANIE (ADR-016; ADR-008 SUPERSEDED; kasacja network_switching_states z legacy SQL)",
+    "pozycje": [
+     "ADR-016"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "W5-C STAN-EFEKTYWNY-LACZNIKOW (ADR-017; golden koperty v2 jako warunek wejścia)"
+    ]
+   },
+   {
+    "fala": 4,
+    "karta": "TOPOLOGIA-JEDNA-PRAWDA (ADR-014; B-02 właściciela — agent nie zamyka)",
+    "pozycje": [
+     "ADR-014"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "W5-C STAN-EFEKTYWNY-LACZNIKOW (ADR-017; golden koperty v2 jako warunek wejścia)",
+     "W5-T terminale (program W, poza klastrami)"
+    ]
+   },
+   {
+    "fala": 4,
+    "karta": "W4-2 (ADR-022: 67/67N, 21, 87T, 25, 50BF, grupy nastaw, TRIP — PLANNED w rejestrze, osobna prośba B-01)",
+    "pozycje": [
+     "ADR-022"
+    ],
+    "b01": true,
+    "zaleznosci": [
+     "W5-C STAN-EFEKTYWNY-LACZNIKOW (ADR-017; golden koperty v2 jako warunek wejścia)",
+     "W4-1 NASTAWY-JEDNA-PRAWDA (ADR-022; rozszerzenie testu klasy konsumentów autorytetu)"
+    ]
+   },
+   {
+    "fala": 4,
+    "karta": "ADR-021 K5 algebra rzadka (opt-in)",
+    "pozycje": [
+     "ADR-021"
+    ],
+    "b01": true,
+    "zaleznosci": [
+     "ADR-021 K1 ABCN (nowy solver 4-przewodowy, migracja konsumentów power_flow_unbalanced z parytetem per faza, potem kasacja BFS; pomiar „P10”)",
+     "ADR-021 K4 slack rozproszony (wewnątrz wyspy; udziały z case config)"
+    ]
+   },
+   {
+    "fala": 5,
+    "karta": "G-15(b)–(d) PUNKT-PRZYLACZENIA (GridConnectionPoint z connection_conditions_ref; lista ConnectionConditions per punkt; konsumenci S_k tylko zmierzeni)",
+    "pozycje": [
+     "ADR-027",
+     "OD-21-KOD"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "W5-T terminale (program W, poza klastrami)",
+     "OD-21-KOD (zastane.yaml klucze null, loader, 13.1a, _koordynacja_rocof, WiPWC trójwartościowe, S_k w ConnectionConditions + kod gotowości, tabela §12.1)"
+    ]
+   },
+   {
+    "fala": 5,
+    "karta": "WYSPY-ASSEMBLER (K-07 zredukowane: referencja wyspy GFM, kod gotowości; partycja istnieje assembler.py:441)",
+    "pozycje": [
+     "K-07"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "TOPOLOGIA-JEDNA-PRAWDA (ADR-014; B-02 właściciela — agent nie zamyka)",
+     "W5-C STAN-EFEKTYWNY-LACZNIKOW (ADR-017; golden koperty v2 jako warunek wejścia)"
+    ]
+   },
+   {
+    "fala": 5,
+    "karta": "ADR-024 K1–K3 (SceneSemanticsV1, SnDomainProjectionV1, kasacja buildScene/compose/v3/electrical/sldNetwork53; B-02 właściciela)",
+    "pozycje": [
+     "ADR-024"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "SLD-V2-GEOMETRIA-KASACJA (B-02 warunkowo: zrzuty bajt w bajt = bez werdyktu)",
+     "TOPOLOGIA-JEDNA-PRAWDA (ADR-014; B-02 właściciela — agent nie zamyka)"
+    ]
+   },
+   {
+    "fala": 5,
+    "karta": "W12-MCP (OD-13; read/propose po ADR-016/017, apply po W5-C; mcp_tool_consumer_guard)",
+    "pozycje": [
+     "OD-13",
+     "K-16"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "WARIANTY-PORÓWNANIE (ADR-016; ADR-008 SUPERSEDED; kasacja network_switching_states z legacy SQL)",
+     "W5-C STAN-EFEKTYWNY-LACZNIKOW (ADR-017; golden koperty v2 jako warunek wejścia)"
+    ]
+   },
+   {
+    "fala": 5,
+    "karta": "W8-OD3 (wyrocznia analityczna G01; PUBLISHED po danych właściciela)",
+    "pozycje": [
+     "OD-3"
+    ],
+    "b01": false,
+    "zaleznosci": [
+     "W8 budowniczy G01 (program W, poza klastrami)",
+     "W5-E-TTIT (OD-25 + D-11 TT/IT; jedno wejście fault_loop_iec60364 → petla_zwarcia_tt_it; limity BRAK_PODSTAWY do danych właściciela)"
+    ]
+   },
+   {
+    "fala": 5,
+    "karta": "W6-A-OD36 (pole dokladnosc_kata_dop_rad, WERSJA_NASTAW_SOLVERA = 2)",
+    "pozycje": [
+     "OD-36",
+     "OD-32"
+    ],
+    "b01": true,
+    "zaleznosci": [
+     "warunek FINAL_DYNAMICS_CAPABILITY_FREEZE.md §5 (wyrocznia rodziny obecna) + OD-30 (a)(b)"
+    ]
+   },
+   {
+    "fala": 5,
+    "karta": "AB-2 z korektą O-5(c) LFSM-O w GFL (dawne „OD-5c”; B-01 pod O-5/O-59(c), wyrocznia wg O-7)",
+    "pozycje": [
+     "OD-5c",
+     "OD-21 / §12.1 wiersz: WOS LFSM-O"
+    ],
+    "b01": true,
+    "zaleznosci": [
+     "sekwencja PLAN_AB:374 (AB-1c → AB-1d → AB-2)"
+    ]
+   }
+  ],
+  "korekty_pozycji": [
+   {
+    "id": "ADR-027",
+    "korekta": "Nośnik S_k,min/X/R: NIE `Generator.deklaracje_modulu`, lecz addytywne pola istniejącego `ConnectionConditions` (enm/models.py:177). Uzasadnienie: PLAN_AB:152 nazywa O-57 „synteza strategiczna architekta 2026-09-30” — to nie decyzja właściciela, więc nie wiąże delegata O-59; deklaracje_modulu.py:114-132 bez pól S_k; klaster C zmierzył 4 nośniki i wskazał jeden istniejący. Z pól GridConnectionPoint usunięte także `agreed_power`/`agreed_cos_phi` (duplikat `moc_przylaczeniowa_mw`/`wymagany_cos_phi`, models.py:186-187) — zostają `terminal_ref`, `connection_conditions_ref`, `compliance_profile`. Test G-15 „jeden projekt × wiele punktów” wymaga listy ConnectionConditions per punkt (dziś `header.connection_conditions` pojedyncze, models.py:209) — wchodzi addytywnie w G-15(b), nie w v1. Konsument „hosting capacity” wpisany dopiero po pomiarze (application/analyses/hosting_capacity.py nie czyta S_k, grep = 0)."
+   },
+   {
+    "id": "OD-21-KOD (jedyna karta kodowa klastra OD-21)",
+    "korekta": "`b01` z false na TRUE: `catalog/profiles/nc_rfg/` jest na liście rdzeni B-01 (scripts/rdzenie_b01.py:36-38); zgoda wydana w ramach O-59. Adnotacja „ADR-027: PROPOSED” zastąpiona: status ADR-027 = ACCEPTED (karta STATUSY-ADR klastra B), treść S_k wg tej pozycji. Dopisać do zakresu korektę procedura_ptpiree.yaml:55 („S_k,min … to dana modelu sieci (O-8)” → „dana warunków przyłączenia (ConnectionConditions); równoważnik sieci w Source.sk3_min_mva to inna wielkość”). Nowe pola liczbowe z sufiksem jednostki wg rejestru K-05."
+   },
+   {
+    "id": "OD-15",
+    "korekta": "Nazwa karty R3-V126 skasowana (kolizja z rundą R3 z PLAN_AB:154 „R3 runda tekstowa per plik rdzenia … (d, k, m, l)”, której istnienie klaster A błędnie zaprzeczył) → V126-UCZCIWOSC; `v126_academic.py` = plik gorący (O-57 pkt 12), serializacja z B01-RUNDA-3 (#198) i R4(h). Inwentarz PROT-LTI rozszerzony o application/protection_read_model.py:62 (`\"IEC_LI\": \"LTI\"`) i MAPA:206. Pozycja (g) (ślad trybu/limitu Q) rozstrzygnięta w O-67: pole addytywne w jednym podniesieniu wersji z §12.2(f)."
+   },
+   {
+    "id": "OD-24",
+    "korekta": "Ścieżka dokumentu: `docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md:89` (nie docs/plan). Przynależność do rundy: OD-24 nie należy do §12.2(l) — (l) to literały bez polskich znaków (PLAN_AB:930); wykonanie w V126-UCZCIWOSC natychmiast."
+   },
+   {
+    "id": "ADR-021",
+    "korekta": "K1: „kasacja P10/BFS” doprecyzowana — BFS = `power_flow_unbalanced.py:2` (Backward/Forward Sweep), dziś ścieżka produkcyjna (`canonical_analysis.py:536 ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY`, W5-D wykonane wg O-57 pkt 1): K1 najpierw migruje konsumentów (canonical_analysis, api/analysis_runs, api/canonical_run_views, api/analysis_run_exports, enm/rozplyw_niesymetryczny_wynik) na ABCN z parytetem per faza, potem kasuje; „P10” z CANONICAL_TWIN_ARCHITECTURE.md:299 wskazuje `application/reference_networks/**`, którego w backend/src nie ma — NIEZMIERZONE, karta mierzy. Ścieżka dokumentu: docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md:299. K2/OD-14: kody blokady SI-117/SI-118 w network_model/core/zdolnosci_wkladu_zwarciowego.py (lista dziś SI-110…SI-116, :83-103). K4 działa wewnątrz wyspy zasilonej (partycja per wyspa istnieje: assembler.py:441-446)."
+   },
+   {
+    "id": "OD-3",
+    "korekta": "Zależność „po W4 (budowniczy G01)” → „po W8 (Sieć kompensowana G01 end-to-end, MAPA:754) i W5”; W4 to zabezpieczenia (MAPA:750). Karta W8-OD3 idzie w fali 5."
+   },
+   {
+    "id": "OD-22",
+    "korekta": "Ścieżka nośnika: `backend/src/network_model/core/zdolnosci_wkladu_zwarciowego.py` (nie application/analyses); lista kodów to SI-110…SI-116 (:83-103; SI-116 `KOD_BLOKADY_ZNACZNIK_NIEZNANY` pominięty w decyzji). Test klasy konsumentów obejmuje także konsumentów W4-1…W4-4 (ADR-022) i pakiet Equipment; nowe kody K2/OD-14 = SI-117+."
+   },
+   {
+    "id": "OD-25",
+    "korekta": "Dopisać edycję KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md:115-116 („R_A · I_Δn ≤ 50 V … R_A · I_d ≤ 50 V 411.6.2” — wartości z pamięci, unieważnione tak samo jak liczby rundy 1). Jedyne wejście fizyki = fault_loop_iec60364.py (dyspozycja po `network_type` do petla_zwarcia_tt_it.py), jądro pętli wspólne z TN (spójność z ADR-015 „jedna fizyka Ik1 nN”). Kod KARTA_W5:116 `fault_loop.tt_it_not_supported` znika z solverem; `swz.limit_tt_it_brak_tekstu_normy` zostaje do danych."
+   },
+   {
+    "id": "OD-36",
+    "korekta": "Precedens „`tolerancja_lokalizacji_zdarzen_s` dodana jako wymagana w AB-1b.1 tym samym mechanizmem” NIEPOTWIERDZONY: kontrakty.py:836 `tolerancja_lokalizacji_zdarzen_s: float | None` (pole opcjonalne). Decyzja bez zmian, uzasadnienie bez tego precedensu. Zależność „po OD-32(a)” → warunek FINAL_DYNAMICS_CAPABILITY_FREEZE.md §5 (wyrocznia rodziny obecna) + OD-30 (a)(b) (spójność z klastrem B)."
+   },
+   {
+    "id": "OD-5c",
+    "korekta": "Typ z „dane właściciela” na wykonawczą: „OD-5c” to O-5 lit. (c) — PLAN_AB:89 „(c) korektę LFSM-O w GFL (jednostronność dla źródeł bez magazynu, moc dostępna, Pref…)”, O-59 §12.2 „(c) zgoda (O-5 w toku)”, KARTA_AB_1B2:357 „AB-2 (O-5c, §5 :342)”. Źródło w repo istnieje (grep klastra B szukał literału „OD-5c”, a zapis brzmi „O-5c”/„O-5 (c)”). Realizacja w AB-2 jako B-01 pod O-5/O-59(c), z wyrocznią wg O-7; specyfikacja danych z tej pozycji skasowana."
+   },
+   {
+    "id": "K-07",
+    "korekta": "Pomiar wykonany: assembler JUŻ partycjonuje per wyspa (assembler.py:441-446 „Wyspa zasilona JEDNYM źródłem sieciowym — własne wejście solvera (CV-4.3 K3b)”, scalanie w enm/rozplyw_wysp.py). Karta WYSPY-ASSEMBLER zredukowana do: wybór referencji wyspy (sieć zewnętrzna > GFM z jawną rodziną), kod gotowości dla wyspy bez referencji, ślad per wyspa; test iloczynu {1,2,3 wysp} × {sieć, GFM, brak} bez zmian."
+   },
+   {
+    "id": "OD-15-KOMENTARZ",
+    "korekta": "Rozstrzygnięcie treści (g) dostarczone w O-67 (pole `regulacja_q` w wyniku rozpływu, wersja `PowerFlowResult` podniesiona razem z §12.2(f)); komentarz RegulacjaOze.tsx:26-31 przepisany w karcie OD-15(g)+KOMENTARZ (fala 2), nie w karcie „OD-15” bez litery. MAPA:710 zawiera nieprzetworzony literał `\" + W3H_OD15_G + \"` — naprawa w karcie dokumentowej."
+   },
+   {
+    "id": "ADR-014",
+    "korekta": "Bez zmiany decyzji; dopisać, że K-07 i ADR-021 K4 nie tworzą drugiej partycji (istniejąca w assembler.py:441-446) i że frontend K-19 ma zmierzone 3 pliki z „BoundaryNode” (ui/protection/element-assignment.ts, ui/protection/useSanityChecks.ts, ui/results-inspector/types.ts)."
+   },
+   {
+    "id": "K-14/D-41-SCL",
+    "korekta": "Bez zmiany decyzji; kolejność: karta wykonana PRZED SESJA-SLD-V2-GEOMETRIA i ADR-024 K3 (wspólne katalogi v2/export i v3/export; rebase). Konsument K-16 = akcja menu eksportu `cgmes` + test golden pliku."
+   },
+   {
+    "id": "OD-21 / §12.1: limity jakości energii (AB-H0)",
+    "korekta": "Ścieżka: `backend/src/application/v126_artifacts.py:160` (nie plik solvera). „MAPA (E-40)”: grep „E-40” w MAPA i SYNTEZA = 0 — wiersz NIEZMIERZONY, karta AB-H0 odnajduje po treści. Zdanie „(l) zostawia 6 literałów v126_academic.py pod B-01 do (b)” skreślone: (l) to literały bez polskich znaków (PLAN_AB:930), niezwiązane z (b)."
+   },
+   {
+    "id": "OD-21 / §12.1: program badań PTPiREE (scenariusze)",
+    "korekta": "Bez zmiany nośnika (ConnectionConditions); adnotacja „ADR-027 PROPOSED, 0 trafień” zastąpiona: status ADR-027 = ACCEPTED (STATUSY-ADR), GridConnectionPoint wchodzi po W5-T z `connection_conditions_ref`, bez pól S_k i bez agreed_*."
+   },
+   {
+    "id": "ADR-022",
+    "korekta": "W4-0 (ProtectionCapabilityRegistry z testami tożsamości wyników protection_iec60255) wykonywany PO PROT-LTI albo od razu na literale „LTI”; test klasy konsumentów autorytetu (OD-22) rozszerzany w W4-1, nie tworzony na nowo."
+   },
+   {
+    "id": "D-11-fault_loop-TT-IT",
+    "korekta": "Fakty potwierdzone: 501 w power_flow_runs.py:490,:628 i power_flow_comparisons.py:508,:648 (+ komentarz :46). Część TT/IT wg korekty OD-25 (jedno wejście fizyki; KARTA_W5:115-116 bez wartości limitu)."
+   }
+  ],
+  "edycje_dokumentow": [
+   "docs/adr/ADR-012…ADR-028 linia 3 (dziś wszystkie „PROPOSED (program Digital Twin 2026-09…)”): ACCEPTED (z korektą) — 012, 014, 015, 016, 017, 021, 022, 024, 025, 027; SUPERSEDED — 013 (by ADR-014); PROPOSED z adnotacją „decyzja przy wycinku W-x; warunek: konsument w kodzie” — 018, 019, 020, 026, 028; PROPOSED zależny od B-02 — 023",
+   "docs/adr/ADR-027-grid-connection-point-contractual-object.md: status ACCEPTED; z pól usunięte `sk_max/min` ORAZ `agreed_power`/`agreed_cos_phi`; S_k w ConnectionConditions (O-60); wielopunktowość jako lista warunków per punkt w G-15(b)",
+   "docs/adr/ADR-021-frozen-core-extensions-and-lv-four-wire-solver.md: ACCEPTED z korektą (K3 skreślona; K2 reguła strukturalna; K1 migracja konsumentów power_flow_unbalanced przed kasacją; „BFS-wyspa kasowana” :15 doprecyzowane)",
+   "docs/adr/ADR-002-unit-system-base-quantities.md: „Accepted” → EXTENDED by K-05; docs/adr/ADR-003-pcc-and-sources-persistence.md i ADR-006-persistence-pcc-sources-loads-grounding-limits.md: „Accepted” → SUPERSEDED by ADR-027; docs/adr/ADR-005-sld-enm-canonical-projection.md: „Zaakceptowane — 2026-02-07” → SUPERSEDED by ADR-024; docs/adr/ADR-008-per-case-switching-state.md: „Accepted” → SUPERSEDED by ADR-016/017",
+   "docs/adr/ADR-029-mcp-lokalna-plaszczyzna-sterowania.md (nowy, OD-13; odwołanie do decyzji 2026-08-05 PLAN_PRZEBUDOWY_10X:217-221)",
+   "docs/INDEX.md:8-14 (hierarchia: poziom 1b docs/architecture/{PRODUCT_CAPABILITY_CONSTITUTION, CAPABILITY_ARCHITECTURE_MATRIX, CANONICAL_TWIN_ARCHITECTURE, CONVERGENCE_ROADMAP, DECISION_FREEZE_REGISTER}.md; docs/twin = materiał wejściowy), :49 (lista per ADR ze statusem zamiast „ADR-012…ADR-028 (PROPOSED)”)",
+   "CLAUDE.md: „Document Hierarchy” (wiersz 1b, docs/twin jako materiał wejściowy — K-20); Core Rule #4 (nastawy bazowe = dane assetu, przypadek wybiera grupę/deltę — ADR-022); Core Rule 5 (obiekt umowny GridConnectionPoint poza modelem fizyki — ADR-027/K-19); NetworkValidator w TRZECH miejscach :174, :780, :870 → walidator ENM + CalculationReadiness (ADR-025); lista testów SLD Determinism (atomowo z sld-determinism.yml — SESJA, ADR-024 K3); po edycji docs_guard + claude_md_struktura_guard RC=0",
+   "mv-design-pro/ARCHITECTURE.md:149, :412, :440 (NetworkValidator → walidator ENM + CalculationReadiness) oraz sekcja Case/nastawy (ADR-022)",
+   "docs/v12xx/REJESTR_KONFLIKTOW.md: nowe wpisy V12K-339+ (kolejne po V12K-338): sankcja kasacji OD-18 (SANCTIONED_CHANGES), zdjęcie blokad V11 relay.*/field.* (ADR-022), ADR-012 vs werdykt M1–M7 (bramka M0 = plan docs/twin), K-20 hierarchia, K-05 jednostki, K-07, K-13/15/17/21/22 (wpis zbiorczy), OD-13 vs K-16 i OD-27 zamknięta 2026-08-05, K-19 (Core Rule 5 + ADR-027), C-12 przy NAWIGACJA-JEDEN-KANON (:414), wersja koperty ADR-017 (jeśli v3), S9-6 (:367) dopisek K-14/CGMES, O-60 nośnik S_k (ADR-027 vs O-57 pkt 9 vs OD-21); wiersze :271/:277/:278/:351 (V12K-142/136/135/059) przepisane na stan zmierzony; :446 (W6-3C-KONFLIKT) → ROZSTRZYGNIĘTE z odsyłaczem do FINAL_DYNAMICS §7.1/:352 i W6_3C:369; wiersz pytania OLTC „napięcie docelowe” odnaleziony grepem → ROZSTRZYGNIĘTY O-59",
+   "docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md: nowe wiersze rejestru O-60…O-73 w §2.3; :152 O-57 pkt 9 (nośnik → ConnectionConditions, z adnotacją korekty O-59); :814-818 (rozstrzygnięcie S_k → ConnectionConditions); §12.1 wiersze :788 (13.1a: skutek BRAK_PODSTAWY, metoda jest), :789 (rocof), :790-:800 i tabela generowana (:826-:845; regeneracja `bramka_danych_profilu.py --zapisz` po OD-21-KOD); :800 nazwa solvera harmonicznego AB-H1 (nie AB-H2); §7.1 wpis o tożsamości „OD-5c” = O-5(c)",
+   "docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md: :710 (kasacja literału `\" + W3H_OD15_G + \"`, wpisana treść OD-15(g) z O-67; (e) literał „LTI”); :166 (PV: ISTNIEJE, bez nowej karty); :170 (W3-H → OD-15(g) rozstrzygnięte); :120, :252 (ADR-015); :205 (SCL → BRAK — świadomie, D-41; CIM → CGMES backend); :206 (LTI); :279 (auto-layout kasowany); :444 (D1 → częściowa, brak danych właściciela); :717 (OD-22); :750 (W4 podział W4-0…W4-4); OD-14, OD-19 (opcja 1, A-1 odrzucona z pomiarem 9 budowniczych > 36 kV), OD-16/OD-17 (W10; :527/:546/:561/:567/:596), W12/W9 (OD-13 zdjęta zależność), wiersze A2-01/A2-07/A2-08 (ADR-014), E-40 (wiersz NIEZMIERZONY — odnaleźć po treści)",
+   "docs/plan/SYNTEZA_DOMKNIECIA_PRODUKTU_2026-09.md: :501 (W6-5), :566 (OD-21 dostawy per dokument), :567 (OD-22), wpisy OD-16, OD-17, 61850",
+   "docs/plan/KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md:115-116 (usunięcie wartości „≤ 50 V” i numerów punktów z pamięci; jedyne wejście fault_loop_iec60364 → petla_zwarcia_tt_it; kod `fault_loop.tt_it_not_supported` znika z solverem)",
+   "docs/plan/FINAL_DYNAMICS_CAPABILITY_FREEZE.md: §5 warunek wejścia fal W6-A…E (wyrocznia rodziny), :378 (OD-36 ROZSTRZYGNIĘTE, WERSJA_NASTAW_SOLVERA = 2), §7.1 (odsyłacz „OD-5c” = O-5(c), realizacja w AB-2); docs/plan/W6_A_KONTRAKT_OBSERWABLI.md:544, :640-644 (kasacja „jawna luka”)",
+   "docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md:89 (bez „świadomych pozostałości” po OD-24), :299 (P10 BFS: ścieżka application/reference_networks nieobecna — stan zmierzony po K1); docs/architecture/DECISION_FREEZE_REGISTER.md (DT-1 EVIDENCE-GATED, FROZEN po CV-5); docs/architecture/CAPABILITY_ARCHITECTURE_MATRIX.md:15 (C04 ABCN — ADR-021 K1); docs/architecture/CONVERGENCE_EVIDENCE*.md (ADR-012, OD-22); docs/architecture/PRODUCT_CAPABILITY_CONSTITUTION.md:74 (ADR-027)",
+   "docs/audit/INWENTARZ_W5_2026-09-16.md:181 (bez „świadomych pozostałości”); docs/audit/AUDYT_PROMPT_PRZEBUDOWA_2026-05-28.md:135 (D-11 → W5-E-TTIT); docs/audit/FAZA_0_AUDYT_REPOZYTORIUM.md (K-19)",
+   "docs/nn/G_MACIERZ_LUK_BACKENDU_NN.md:21 (G-12 → W5-E-TTIT), docs/nn/C_PLAN_ROZSZERZENIA_MODELU_NN.md (R_A), docs/nn/A_AUDYT_STANU_NN_2026-08.md:85",
+   "docs/twin/OWNER_REVIEW_PACKAGE.md: §4a wiersze D-xx dla K-05 (:109), K-06 (:110), K-07 (:111), K-08 (K-08 rozstrzygnięty D-34), K-12 (:116), K-13 (:117), K-14/D-41 (:118, :174), K-15 (:119), K-16 (:120, tabela :134-152), K-17 (:121), K-19 (:123), K-20 (:124), K-21 (:125), K-22 (:126); adnotacja O-59 przy werdykcie :185 i §6 (bramka M0 dotyczy planu docs/twin); docs/twin/MV_DESIGN_PRO_DIGITAL_TWIN_AUDIT.md:135",
+   "docs/ui/SLD_SCADA_CAD_CONTRACT.md:37 („BoundaryNode | Węzeł przyłączenia (Point of Common Coupling) … ZAWSZE używaj terminu BoundaryNode”) i :599; docs/ui/SLD_UI_CONTRACT.md, SLD_SHORT_CIRCUIT_BUS_CENTRIC.md, SHORT_CIRCUIT_PANELS_AND_PRINTING.md (K-19); docs/sld/SLD_SYMBOL_SYSTEM_PLAN.md:66 (ADR-024)",
+   "docs/domain: kontrakt scenariuszy zwarciowych (tryb IMPEDANCE: pola r_f_ohm/x_f_ohm, zakres ważności, provenance poza_zakresem_iec60909 — OD-14; plik do wskazania grepem, ls docs/domain bez trafień „zwar|scenar” — NIEZMIERZONE); docs/protection kontrakt krzywych IDMT (jedna nazwa „LTI” — OD-15e)",
+   "docs/uiux/INWENTARZ_FUNKCJI_2026-07.md (eksporty SLD: svg, pdf, dxf, cgmes); docs/uiux/ENGINEERING_FRICTION_REGISTER.md:68 (EF-046 zamknięte, C-12)",
+   "docs/plan/KARTA_W3_KONWERGENCJA_FIZYKI_2026-09.md (:100, :143-147, :433) i docs/plan/KARTY_OTWARTE_2026-09.md (:562-563 OD-18; :1403 OD-13)",
+   "backend/src/catalog/profiles/nc_rfg/warstwy/procedura_ptpiree.yaml:55 (komentarz: S_k,min = dana warunków przyłączenia ConnectionConditions, nie „dana modelu sieci (O-8)”) — edycja w karcie OD-21-KOD (B-01)",
+   "mv-design-pro/STAN_REPO.md (poza §J): jedno zdanie o hierarchii K-20 i wpis O-60…O-73 w §7 — bez czytania i bez edycji sekcji J",
+   "scripts: docs_guard.py + self-test (K-19 wzorce „Point of Common Coupling”/„ZAWSZE używaj terminu BoundaryNode”; K-20 identyczność list hierarchii i istnienie ścieżek); solver_boundary_guard.py:37-45 (WATCHED_PATHS, SANCTIONED_CHANGES — OD-18, OD-25 nowy moduł); resultset_v1_schema_guard.py:20 (PROTECTED_FILES); router_mount_guard.py:133 (komentarz K-16); pcc_zero_guard (iniekcja strukturalna GridConnectionPoint); rdzenie_b01.py (nowe moduły solverów K1/OD-25 dopisane do listy przy scaleniu); .github/workflows/sld-determinism.yml (:50/:66 SESJA; ADR-024 K3) atomowo z CLAUDE.md",
+   "frontend/src/ui2/wyniki/rozplyw/RegulacjaOze.tsx:26-31 (komentarz → „stan po OD-15(g): pole regulacja_q z solvera”), frontend/src/ui2/AppRoot.tsx:321-326 (komentarz „kanon D1” → C-12)"
+  ],
+  "dane_wlasciciela": [
+   {
+    "pakiet": "P-A IEC 60909-0 — zwarcia blisko generatora (ADR-021 K2)",
+    "pozycje": [
+     "ADR-021",
+     "OD-22"
+    ],
+    "specyfikacja": "Tekst IEC 60909-0 (wydanie, numer punktu) z kryterium klasyfikacji zwarcia jako bliskiego generatora oraz krzywe współczynnika n (numer rysunku, wydanie) jako zdigitalizowana tabela (κ, t_k·f, n) albo wzór. Do dostarczenia: I_th przy maszynach synchronicznych pozostaje ROBOCZY z kodem blokady SI-118 (short_circuit_core.py:142 „n=1 dla zwarc DALEKO OD GENERATORA”)."
+   },
+   {
+    "pakiet": "P-B IEC 60909-3 — wyrocznia PUBLISHED sieci kompensowanej G01 (OD-3, W8-OD3)",
+    "pozycje": [
+     "OD-3"
+    ],
+    "specyfikacja": "Identyfikator przykładu (wydanie, rozdział, numer), U_n, C0 per odcinek [nF/km] i długości, L cewki [H] albo stopień rozstrojenia v, rezystancja tłumienia [Ω], R_f [Ω], oczekiwane I_C, I_L, I_res [A], U0 [V], I0 per odpływ [A], tolerancja z normy; dla przykładu literaturowego: źródło, wydanie, strona, komplet wejść i wyników. Do dostarczenia rejestr G01 (tests/golden/registry.py:103 `_ANALITYCZNA_G01`) ma tylko klasę ANALYTICAL."
+   },
+   {
+    "pakiet": "P-C IEC 60364-4-41 — TT/IT (OD-25, D-11, W5-E-TTIT)",
+    "pozycje": [
+     "OD-25",
+     "D-11-fault_loop-TT-IT",
+     "ADR-015"
+    ],
+    "specyfikacja": "(1) dopuszczalne napięcie dotykowe dla TT/IT (§411.5.3/§411.6) z jednostką i cytatem; (2) warunek pierwszego zwarcia IT (wielkości, wzór); (3) warunki drugiego zwarcia IT z i bez rozprowadzonego N (wzory, współczynniki); (4) potwierdzenie Tab. 41.1 TT/TN z tekstu normy (flip-to-verified lv_disconnection_times_iec60364_4_41.py, status REFERENCYJNY :77). Do dostarczenia werdykt limitu = BRAK_PODSTAWY `swz.limit_tt_it_brak_tekstu_normy`; wartości „50 V” z KARTA_W5:115-116 unieważnione."
+   },
+   {
+    "pakiet": "P-D DANE-OD21-WOS (jeden dokument: decyzja Prezesa URE)",
+    "pozycje": [
+     "OD-21",
+     "OD-21 / §12.1: progi klas modułów (punkt WOS)",
+     "OD-21 / §12.1: czasy pracy w pasmach f (13.1a)",
+     "OD-21 / §12.1: wytrzymałość RoCoF (13.1b)",
+     "OD-21 / §12.1 wiersz: WOS LFSM-O",
+     "OD-21 / §12.1: obwiednie LVRT/HVRT (typ B, PPM i SPGM)",
+     "OD-21 / §12.1: zakres Q, cosφ_min, tryby regulacji U",
+     "OD-21 / §12.1: odbudowa P po zwarciu"
+    ],
+    "specyfikacja": "Sygnatura i data decyzji URE, data obowiązywania; jednostki redakcyjne: progów klas B/C/D, 0,8 kW i reguły ≥110 kV → D (potwierdzenie identyczności z O-1: 200/10000/75000 kW — rozbieżność = STOP i wpis do REJESTR); tabela pasm f (f_od, f_do, czas minimalny lub „nieograniczony”; zakres PPM/SPGM, typ); wytrzymałość RoCoF [Hz/s], okno [ms], czas [s]; LFSM-O: próg [Hz], statyzm [%], strefa martwa [Hz] lub „nie zdefiniowana”, rampa/czas odpowiedzi, zakres A–D; obwiednie LVRT PPM-B, LVRT SPGM-B, HVRT jako listy (t [s], U/Un) z warunkami odniesienia i miejscem pomiaru; systemowy zakres Q/cosφ_min/tryby U; odbudowa P (moment startu, czas do %P_pre i/lub tempo %Pn/s, tolerancja). Format: plik w docs/evidence z SHA-256 (ZWERYFIKOWANE) albo tabela „parametr | dokument | wydanie | data | jednostka redakcyjna | wartość | jednostka | stan” (WSKAZANE); wartość bez jednostki redakcyjnej odrzucana."
+   },
+   {
+    "pakiet": "P-E DANE-OD21-PTPIREE (program ramowy testów + kryteria T01–T20)",
+    "pozycje": [
+     "OD-21 / §12.1: program badań PTPiREE (scenariusze)",
+     "OD-21 / §12.1: kryteria akceptacji T01–T20"
+    ],
+    "specyfikacja": "Nazwa, wersja, data programu ramowego; zakres PPM/SPGM; per scenariusz: identyfikator, punkt dokumentu, głębokość U/Un, czas [s], kształt i czasy narastania, poziomy P [%Pn], Q/cosφ, U przed zakłóceniem [pu], rodzaj zwarcia, miejsce zadania zapadu, obsługiwane testy; per test T01–T20: punkt, wielkość oceniana, tolerancja z jednostką, krotność, K_FRT (wartość/przedział, wzór, okno), czas oceny, statystyka, zależność PPM/SPGM i klasy mocy; „nie dotyczy” tylko z punktem. S_k,min/X/R NIE w tym pakiecie — per projekt z warunków przyłączenia do ConnectionConditions (O-60)."
+   },
+   {
+    "pakiet": "P-F DANE-OD21-WIPWC",
+    "pozycje": [
+     "OD-21 / §12.1: WiPWC — pokrycie certyfikatem"
+    ],
+    "specyfikacja": "Wydanie i data WiPWC; dla 6 wymagań (RFG_17_2, 17_3, 20_2A, 20_2B, 20_3, ZASTANE_HVRT) × typ B PPM/SPGM: punkt, wartość reguły (POKRYWA_W_CALOSCI / POKRYWA_CZESCIOWO z listą testów / NIE_POKRYWA), warunki ważności certyfikatu. Schemat trójwartościowy wchodzi kodem w OD-21-KOD (4); dane niezależne od pozostałych dostaw."
+   },
+   {
+    "pakiet": "P-G DANE-OD21-OSD-<enea|energa|pge|tauron|pse> (×5, PSE = OSP z IRiESP w tej samej warstwie)",
+    "pozycje": [
+     "OD-21 / tabela generowana: dokumenty warstw OSD i warstwa NIEUSTALONA",
+     "OD-21 / §12.1: Bank Nastaw OSD",
+     "OD-21 / §12.1: zakres Q, cosφ_min, tryby regulacji U",
+     "OD-21 / §12.1: obwiednie LVRT/HVRT (typ B, PPM i SPGM)",
+     "OD-21 / §12.1: odbudowa P po zwarciu",
+     "OD-21 / §12.1: wymagania dla magazynów energii"
+    ],
+    "specyfikacja": "Per operator: dokument (IRiESD / IRiESP), wydanie, data zatwierdzenia URE, data obowiązywania, plik lub trwały URL z datą pobrania; per wartość warstwy jednostka redakcyjna; Bank Nastaw: dla każdej z 11 pozycji NastawaBanku (loader.py:81-93) wartość, jednostka (pu/s/Hz/Hz/s/deg), punkt, stopień, zakres stosowania; zakres Q jako profil U-Q/P-Q, cosφ_min ind./poj., tryby regulacji U (nazwy, domyślny, czasy), flagi wykonania prawa 17(2), 20(2)(a), 20(2)(b) WYKONAŁ/NIE_WYKONAŁ z punktem albo „dokument milczy”; nadpisania HVRT i odbudowy P albo „dokument milczy”; magazyny: punkty IRiESD, per wymaganie identyfikator, technologie, wielkość, wartość/obwiednia, warunek, punkt + akt prawny (Dz.U. rok/poz., artykuł/ustęp; rozporządzenie: paragraf); zastane.yaml: per wartość dokument+punkt ALBO oświadczenie „brak dokumentu” (kasacja warstwy tylko na oświadczenie, po opróżnieniu — warunkowa karta OD-21c). Pobranie ze stron OSD wyłącznie po wyraźnej zgodzie właściciela ze wskazaniem wydania."
+   },
+   {
+    "pakiet": "P-H DANE-OD21-JAKOSC (rejestr limitów jakości energii, AB-H0)",
+    "pozycje": [
+     "OD-21 / §12.1: limity jakości energii (AB-H0)"
+    ],
+    "specyfikacja": "Per limit: dokument (PN-EN 50160 / IEC 61000-2-2, 2-12 / IEC/TR 61000-3-6 / IRiESD / rozporządzenie systemowe), wydanie/rok, tabela/punkt, poziom napięcia, wielkość (h, pasmo, THD_U, Pst, Plt), wartość i jednostka, punkt oceny, statystyka, okres agregacji; dla 61000-3-6 metoda alokacji (α per rząd, S_i/S_t) z S_k i mocą przyłączeniową czytanymi z ConnectionConditions. Poziom bez dokumentu = NIEUSTALONE; E-40 pozostaje NIE_OCENIONO (application/v126_artifacts.py:160) do AB-H1."
+   },
+   {
+    "pakiet": "P-I SCL/IEC 61850 (K-14/D-41) — moduł wyłącznie po danych",
+    "pozycje": [
+     "K-14/D-41-SCL"
+    ],
+    "specyfikacja": "D1 konsument i narzędzie (nazwa, wersja); D2 typ pliku SSD/SCD/ICD; D3 edycja normy i namespace; D4 plik referencyjny wczytywany przez narzędzie konsumenta (golden); D5 wymagane sekcje (ConnectivityNode/Terminal/LNode, klasy LN); D6 konwencja oznaczeń; D7 mapowanie zabezpieczenie→IED/LDevice/LN; D8 źródło i licencja XSD. Bez tych danych: brak modułu (świadomie, D-41); eksport CGMES z backendu pozostaje jedynym eksportem modelu."
+   },
+   {
+    "pakiet": "P-J OD-16 — cennik `catalog/cenniki/cennik_RRRR-MM.yaml`",
+    "pozycje": [
+     "OD-16"
+    ],
+    "specyfikacja": "Nagłówek: wersja, data_wydania, waluta_domyslna, zrodlo_domyslne; per `type_id` z katalogu: capex, jednostka_capex (PLN/szt.|PLN/km|PLN/kVA jawnie), opex_rok, zywotnosc_lat, waluta ISO 4217, data_notowania ISO 8601, zrodlo (cennik producenta / stawki OSD z wydaniem / oświadczenie), stan_zrodla (ZWERYFIKOWANE/WSKAZANE/NIEUSTALONE). Brak cennika = odmowa `BRAK_CENNIKA` z listą type_id; zero przeliczania inflacją (backend/src bez struktur ceny — pomiar grep = 0)."
+   },
+   {
+    "pakiet": "P-K OD-17 — pakiety P1 (wykaz PTPiREE WiPWC), P2 (karty producentów), P3 (IRiESD Energa/Tauron/PGE)",
+    "pozycje": [
+     "OD-17",
+     "OD-22"
+    ],
+    "specyfikacja": "P1: CSV/XLSX wykazu (URL, data pobrania): producent, model, PPM/SPGM, Sn, Un, nr certyfikatu, ważność, jednostka certyfikująca, tryby; k_sc jeśli w wykazie (wejście istnieje: scripts/generate_ptpiree_inverter_catalog.py, ptpiree_certificate_no_guess_guard.py). P2: `karty_producentow/<type_id>.yaml`: BIL/LIWL z Um, tolerancje uk/Pk/P0, magazyn: η_ch, η_dis, okno SOC, degradacja; falownik: widmo h→I_h/I_1 z punktem pracy i normą, k_sc (zdejmuje blokadę SI-110); nr dokumentu, data, stan. P3: PDF IRiESD + wydanie + daty; pack.json wg reference_engine/packs/osd_enea z jednostką redakcyjną per wartość. Praca redakcyjna agenta wyłącznie na pliku dostarczonym."
+   },
+   {
+    "pakiet": "P-L K-20 — miejsce wstrzyknięcia sekcji „ZASADY NADRZĘDNE” (nie blokuje)",
+    "pozycje": [
+     "K-20"
+    ],
+    "specyfikacja": "Wskazanie, skąd harness wstrzykuje odwołanie do PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md (poza plikiem na dysku; grep w repo = 0 poza wpisem archiwalnym), by zastąpić je odsyłaczem do docs/architecture/PRODUCT_CAPABILITY_CONSTITUTION.md; do tego czasu odwołanie traktowane jako martwe."
+   },
+   {
+    "pakiet": "P-M Decyzje poza delegacją O-59 (działania właściciela, nie dane)",
+    "pozycje": [
+     "OD-23",
+     "ADR-014",
+     "ADR-024",
+     "SESJA-SLD-V2-GEOMETRIA"
+    ],
+    "specyfikacja": "(1) OD-23: scalenie PR #471 do main — wyłącznie właściciel (PLAN_AB:154 „scalenie do main … wymaga przeglądu człowieka”); warunek przedłożenia = komplet dowodów w opisie PR. (2) Werdykty B-02 na stronach oceny (oba motywy): TOPOLOGIA-JEDNA-PRAWDA (ADR-014), ADR-024 K1–K3, SLD-V2-GEOMETRIA-KASACJA tylko przy różnicy zrzutów; agent kończy na CLAIMED DONE. (3) Potwierdzenie „O-5c” = O-5(c) jako zapisu wystarczającego do AB-2 (PLAN_AB:89) — jeśli właściciel chce osobnego opisu defektu LFSM-O w GFL z przypadkiem referencyjnym, dostarcza go jako wiersz §7.1 FINAL_DYNAMICS jak OD-30/OD-33."
+   }
+  ]
+ }
+}
