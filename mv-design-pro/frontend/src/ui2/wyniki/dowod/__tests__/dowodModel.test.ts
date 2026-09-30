@@ -164,19 +164,6 @@ describe('dowodModel — mapujKroki na REALNYM (nieopakowanym) kształcie kroku 
     expect(rodzaj?.etykieta).toBeNull();
   });
 
-  it('tytuł solvera z identyfikatorem gałęzi z danych kroku → odnośnik do złożenia tytułu z nazwą', () => {
-    const [krok] = mapujKroki([
-      {
-        step: 2,
-        key: 'thevenin_flow_b1',
-        title: 'Prąd zwarciowy Thevenina w gałęzi b1-uuid',
-        inputs: { branch_id: 'b1-uuid', from_node_id: 'n1', to_node_id: 'n2' },
-        result: {},
-      },
-    ] as never);
-    expect(krok.odnosnikiTytulu).toEqual(['b1-uuid']);
-  });
-
   it('liczba zespolona {re, im} wprost (serialize_complex solvera) → „R znak jIm" (przecinek PL), NIE „[object Object]"', () => {
     const model = mapujKroki(realnyKsztalt());
     const z1 = model[0].wynik.find((w) => w.klucz === 'z1_ohm');

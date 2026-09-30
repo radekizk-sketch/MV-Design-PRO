@@ -86,6 +86,7 @@ from enm.scenariusze import (
 from enm.store import get_enm
 from enm.validator import ENMValidator
 from enm.wartosci_niefinitowe import podmien_niefinitowe
+from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_rdzenia, sprawdz_wejscie_rozplywu
 from infrastructure.persistence.repositories.canonical_run_repository import (
     KLUCZ_DOSTEPNOSCI_ROZPLYWU,
     KLUCZ_ROZPLYWU,
@@ -2047,6 +2048,15 @@ def _wynik_solvera_punktu(
     """
     if node_id in wejscie.wezly_bez_odniesienia:
         return None
+    # Odmowa wejścia rdzenia (rekord strukturalny, decyzja O-59) ze zdaniem z nazwami z grafu.
+    with nazwy_w_odmowach_rdzenia(wejscie.solve_graph):
+        return _wynik_solvera_rodzaju(wejscie, node_id, c_factor=c_factor, wklady=wklady)
+
+
+def _wynik_solvera_rodzaju(
+    wejscie: WejscieZwarcia, node_id: str, *, c_factor: float, wklady: bool
+) -> ShortCircuitResult:
+    """Dyspozycja rodzaju zwarcia do FROZEN solvera IEC 60909 (bez granicy odmów)."""
     typ = wejscie.short_circuit_type
     if typ == ShortCircuitType.THREE_PHASE:
         return ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
@@ -2380,6 +2390,19 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
 
 
 def _solve_power_flow_with_method(
+    pf_input: PowerFlowInput,
+    options: PowerFlowOptions,
+    run_options: dict[str, Any],
+    solver_method: str,
+) -> PowerFlowNewtonSolution:
+    # Odmowy wejścia rozpływu (rdzenie B-01, decyzja O-59): rekordy strukturalne i zdanie
+    # z nazwami z modelu — przed solverem (walidator strukturalny) i z solvera (przekładnia).
+    sprawdz_wejscie_rozplywu(pf_input)
+    with nazwy_w_odmowach_rdzenia(pf_input.typed_graph()):
+        return _solve_power_flow_by_method(pf_input, options, run_options, solver_method)
+
+
+def _solve_power_flow_by_method(
     pf_input: PowerFlowInput,
     options: PowerFlowOptions,
     run_options: dict[str, Any],

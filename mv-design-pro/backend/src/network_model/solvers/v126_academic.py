@@ -157,7 +157,7 @@ class V126AcademicSolver:
         elif analysis_type == V126AnalysisType.UNCERTAINTY_SENSITIVITY:
             result = self._uncertainty(model, trace)
         else:
-            raise ValueError(f"Nieobslugiwany typ analizy V12.6: {analysis_type}")
+            raise ValueError(f"Nieobsługiwany typ analizy V12.6: {analysis_type}")
 
         envelope = {
             "contract": "AcademicAnalysisResultV1",
@@ -620,7 +620,7 @@ class V126AcademicSolver:
         ]
         if missing:
             raise ValueError(
-                "Brak obowiazkowych pol karty falownika dla Z_conv(f): " + ", ".join(missing)
+                "Brak obowiązkowych pól karty falownika dla Z_conv(f): " + ", ".join(missing)
             )
         r_f = converter.filter_r_pu if converter.filter_r_pu is not None else 0.0
         t_d = converter.control_delay_ms * 1e-3 if converter.control_delay_ms is not None else 0.0
@@ -698,8 +698,8 @@ class V126AcademicSolver:
             return {
                 "status": "dane niekompletne",
                 "message_pl": (
-                    "Analiza SSCI (Z_grid/Z_conv) wymaga przeksztaltnika (falownika) "
-                    "w modelu. Brak przeksztaltnika — analiza niewykonana."
+                    "Analiza SSCI (Z_grid/Z_conv) wymaga przekształtnika (falownika) "
+                    "w modelu. Brak przekształtnika — analiza niewykonana."
                 ),
                 "missing_fields": ["converter"],
                 "sanity": _sanity_block([], has_inputs=False),
@@ -710,10 +710,9 @@ class V126AcademicSolver:
         if bus_idx is None:
             return {
                 "status": "dane niekompletne",
-                "message_pl": (
-                    f"Przeksztaltnik '{converter.ref}' wskazuje na nieistniejacy wezel "
-                    f"'{converter.bus_ref}'."
-                ),
+                "converter_ref": converter.ref,
+                "bus_ref": converter.bus_ref,
+                "message_pl": "Przekształtnik wskazuje węzeł przyłączenia, którego nie ma w modelu.",
                 "missing_fields": ["converter.bus_ref"],
                 "sanity": _sanity_block([], has_inputs=False),
             }
@@ -750,8 +749,8 @@ class V126AcademicSolver:
                 "converter_ref": converter.ref,
                 "bus_ref": converter.bus_ref,
                 "message_pl": (
-                    "Analiza SSCI wymaga pol karty falownika (pasmo petli pradowej, "
-                    "pasmo PLL, indukcyjnosc filtra). Brakuje: " + ", ".join(missing)
+                    "Analiza SSCI wymaga pól karty falownika (pasmo pętli prądowej, "
+                    "pasmo PLL, indukcyjność filtra). Brakuje: " + ", ".join(missing)
                 ),
                 "missing_fields": missing,
                 "sanity": _sanity_block([], has_inputs=False),
@@ -872,13 +871,13 @@ class V126AcademicSolver:
         l_finite = all(_finite(row["re"], row["im"]) for row in l_rows)
         sanity = _sanity_block(
             [
-                ("z_grid_finite", z_grid_finite, "Z_grid nieskonczone/NaN"),
-                ("z_conv_finite", z_conv_finite, "Z_conv nieskonczone/NaN"),
-                ("minor_loop_finite", l_finite, "L(f) nieskonczone/NaN"),
+                ("z_grid_finite", z_grid_finite, "Z_grid nieskończone/NaN"),
+                ("z_conv_finite", z_conv_finite, "Z_conv nieskończone/NaN"),
+                ("minor_loop_finite", l_finite, "L(f) nieskończone/NaN"),
                 (
                     "negative_resistance_present",
                     re_zconv_min < 0.0,
-                    "Brak strefy Re(Z_conv)<0 ponizej pasma PLL — mechanizm SSCI nieobecny",
+                    "Brak strefy Re(Z_conv)<0 poniżej pasma PLL — mechanizm SSCI nieobecny",
                 ),
             ],
             has_inputs=True,

@@ -33,6 +33,7 @@ from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebi
 from enm.canonical_analysis import CanonicalRun
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
+from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_rdzenia
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
 from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
@@ -156,7 +157,9 @@ def _prepare(
     # Estymator WLS jest rdzeniem B-01 — jego odmowy wejścia (przekładnia zaczepu ≤ 0,
     # nieobserwowalność, pomiar spoza sieci) to goły `ValueError`; granica tłumaczy je na
     # odmowę danych (karta ODMOWA-DANYCH-422). Tak samo niżej przy każdym wywołaniu rdzenia.
-    with odmowa_rdzenia_b01():
+    # Macierz admitancji buduje rozpływ NR (rdzeń B-01): jego odmowa strukturalna (przekładnia
+    # zaczepu ≤ 0, decyzja O-59) wychodzi ze zdaniem z nazwami z grafu.
+    with nazwy_w_odmowach_rdzenia(graph), odmowa_rdzenia_b01():
         ybus_pu, node_id_to_index = ybus_from_network_graph(graph, base_mva, slack_node_id)
     index_to_node = {index: node_id for node_id, index in node_id_to_index.items()}
     return graph, base_mva, slack_node_id, ybus_pu, node_id_to_index, index_to_node

@@ -69,7 +69,13 @@ SANCTIONED_CHANGES = {
         "zamiast (V_from - V_to)*y; dla a = 1 (szyny zgodne z tabliczka, brak "
         "zaczepu) wynik bit-identyczny. Zmiana sygnatury _series_admittance_pu "
         "na (y, a) — bez niej rozpakowanie lapaloby ValueError i CICHO gasilo "
-        "wklady galeziowe. Wpis do usuniecia po scaleniu do main."
+        "wklady galeziowe. Wpis do usuniecia po scaleniu do main. "
+        "O-59 (plan A/B par. 12.2 (d)(k)(m), karta B01-RUNDA-3): runda tekstowa, "
+        "zero zmian liczbowych - adnotacje typow parametrow _inverter_transfer_factors "
+        "(mypy), odmowa wejscia jako rekord strukturalny (kod + odwolanie do wezla/"
+        "galezi, tresc PL bez identyfikatora), wymog niepustej nazwy galezi w "
+        "eksploatacji przed biegiem (nazwana odmowa), tytuly krokow sladu z nazwa "
+        "galezi z modelu (klucze krokow bez zmian). Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/power_flow_newton_internal.py": (
         "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "
@@ -86,7 +92,13 @@ SANCTIONED_CHANGES = {
         "na WZORCU BITOW oraz pelny artefakt biegu (wynik + slad WHITE BOX) "
         "bit-w-bit na 4 sieciach (promieniowa, pierscien, SN/nN z OZE, substrat "
         "53 stacji); dodatkowo sha256 pelnego widoku N-1 dla 142 kontyngencji "
-        "identyczny przed i po. Wpis do usuniecia po scaleniu do main."
+        "identyczny przed i po. Wpis do usuniecia po scaleniu do main. "
+        "O-59 (plan A/B par. 12.2 (d)(k), karta B01-RUNDA-3): runda tekstowa, zero "
+        "zmian liczbowych - nazwy zmiennych petli walidatora i budowy wektora mocy "
+        "(mypy: jedna zmienna dla roznych typow), odmowy walidatora wejscia i "
+        "przekladni <= 0 jako rekordy strukturalne (kod + odwolanie, tresc PL bez "
+        "identyfikatora; te same predykaty w tej samej kolejnosci). Wpis do usuniecia "
+        "po scaleniu do main."
     ),
     "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py": (
         "PACK-DOWODY: ADDYTYWNE 18 linii — stala definicyjna OPERATOR_FORTESCUE_A "

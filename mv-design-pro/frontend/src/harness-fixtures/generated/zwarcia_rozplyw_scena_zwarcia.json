@@ -106,7 +106,7 @@
     },
     {
       "key": "thevenin_flow_9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
-      "title": "Prąd zwarciowy Thevenina w gałęzi 9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+      "title": "Prąd zwarciowy Thevenina w gałęzi Linia SN 1",
       "formula_latex": "I_{\\text{gał}} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
       "inputs": {
         "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
@@ -137,7 +137,7 @@
     },
     {
       "key": "thevenin_flow_7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
-      "title": "Prąd zwarciowy Thevenina w gałęzi 7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+      "title": "Prąd zwarciowy Thevenina w gałęzi TR 110/15",
       "formula_latex": "I_{\\text{gał}} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
       "inputs": {
         "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
@@ -168,7 +168,7 @@
     },
     {
       "key": "thevenin_flow_158eec95-939b-5b35-97ad-9433334b5506",
-      "title": "Prąd zwarciowy Thevenina w gałęzi 158eec95-939b-5b35-97ad-9433334b5506",
+      "title": "Prąd zwarciowy Thevenina w gałęzi TR 15/0.4",
       "formula_latex": "I_{\\text{gał}} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
       "inputs": {
         "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",

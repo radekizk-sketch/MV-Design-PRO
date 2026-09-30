@@ -95,8 +95,10 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # `CatalogRepository(uow.session)`, które zawsze kończyło się połkniętym `TypeError`
     # (3 błędy `call-arg`) ⇒ 226/35 → 223/34; pomiar na scalonym drzewie partii 5 (AB-P1,
     # PROOFPACK-KONTRAKT, S95-START, #151): 223/34.
-    assert modul.BASELINE_ERRORS == 223
-    assert modul.BASELINE_FILES == 34
+    # Karta B01-RUNDA-3 (2026-09-30, decyzja O-59, plan A/B §12.2 (d)): 20 błędów w rdzeniach
+    # B-01 (`power_flow_newton_internal.py` 19, `short_circuit_iec60909.py` 1) ⇒ 203/32.
+    assert modul.BASELINE_ERRORS == 203
+    assert modul.BASELINE_FILES == 32
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

@@ -9,9 +9,11 @@ from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
 from network_model.core.node import Node, NodeType
 from network_model.core.ybus import AdmittanceMatrixBuilder
+from network_model.odmowa_danych import RODZAJ_WEZEL, OdmowaWejsciaRdzenia, OdwolanieElementu
 from network_model.solvers.short_circuit_iec60909 import (
     C_MAX,
     C_MIN,
+    KOD_WEZEL_ZWARCIA_SPOZA_GRAFU,
     ShortCircuitIEC60909Solver,
     ShortCircuitType,
 )
@@ -238,15 +240,22 @@ def test_ikss_max_matches_wrapper_formula():
 
 
 def test_invalid_fault_node_raises():
+    """Węzeł zwarcia spoza grafu: nazwana odmowa z rekordem (kod + odwołanie do węzła);
+    treść po polsku bez identyfikatora (O-59, plan A/B §12.2 (k))."""
     graph = build_transformer_only_graph()
 
-    with pytest.raises(ValueError, match="Fault node"):
+    with pytest.raises(OdmowaWejsciaRdzenia) as odmowa:
         ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
             graph=graph,
             fault_node_id="missing",
             c_factor=1.0,
             tk_s=1.0,
         )
+    (rekord,) = odmowa.value.rekordy
+    assert rekord.kod == KOD_WEZEL_ZWARCIA_SPOZA_GRAFU
+    assert rekord.odwolania == (OdwolanieElementu(RODZAJ_WEZEL, "missing"),)
+    assert "missing" not in str(odmowa.value)
+    assert str(odmowa.value) == "Wskazany węzeł zwarcia nie istnieje w grafie sieci."
 
 
 @pytest.mark.parametrize("c_factor", [0.0, -0.5])

@@ -62,6 +62,9 @@ CYTATY_PRODUCENTA = ("network_model/catalog/",)
 #: `machine_sc_iec60909.py` (7 -> 0) i `power_flow_oltc_studies.py` (27 -> 0) — pliki
 #: spoza listy B-01 (`scripts/rdzenie_b01.py`), teksty trafiające na ekrany wyników
 #: naprawione u źródła (pomiar skanem tego testu po zmianie).
+#: Karta B01-RUNDA-3 (2026-09-30, decyzja O-59, plan A/B §12.2 (l)): zdjęte `v126_academic.py`
+#: (6 -> 0) — rdzeń B-01, dziewięć literałów poprawionych przeglądem ręcznym (sześć ze skanu
+#: i trzy „nieskonczone/NaN", których słownik nie znał — formy dopisane do słownika).
 ZAMROZONE_TRAFIENIA: dict[str, int] = {
     "network_model/solvers/cable_voltage_drop.py": 15,
     "network_model/solvers/der_selection_preview.py": 2,
@@ -94,7 +97,6 @@ ZAMROZONE_TRAFIENIA: dict[str, int] = {
     "network_model/solvers/equipment_checks/transformer_losses.py": 3,
     "network_model/solvers/equipment_checks/vt_burden_voltage_drop.py": 8,
     "network_model/solvers/transformer_rated_currents.py": 6,
-    "network_model/solvers/v126_academic.py": 6,
 }
 
 _IDENTYFIKATOR = re.compile(r"[A-Za-z0-9_.:/\-{}\[\]*|]*")

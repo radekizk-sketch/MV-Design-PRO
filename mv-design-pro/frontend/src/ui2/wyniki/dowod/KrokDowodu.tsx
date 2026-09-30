@@ -68,20 +68,9 @@ function ListaWielkosci({
   );
 }
 
-/** Tytuł kroku z nazwami elementów w miejscu identyfikatorów wpisanych przez solver. */
-function tytulZNazwami(krok: KrokDowoduModel, nazwaObiektu: (ref: string) => string): string {
-  return krok.odnosnikiTytulu.reduce(
-    (tytul, odnosnik) => tytul.split(odnosnik).join(nazwaObiektu(odnosnik)),
-    krok.tytul,
-  );
-}
-
 /** Wiersze „Informacji audytowych" kroku — zapis techniczny solvera poza pierwszym planem. */
 function wierszeAudytuKroku(krok: KrokDowoduModel): WierszInformacjiAudytowych[] {
   const wiersze: WierszInformacjiAudytowych[] = [];
-  if (krok.odnosnikiTytulu.length > 0) {
-    wiersze.push({ etykieta: DOWOD_STRINGS.audytTytulSolvera, wartosc: krok.tytul });
-  }
   [...krok.dane, ...krok.wynik].forEach((w) => {
     if (w.etykieta === null) {
       const jednostka = w.jednostka ? ` ${w.jednostka}` : '';
@@ -120,7 +109,7 @@ export function KrokDowodu({ krok, trybZaawansowania }: KrokDowoduProps) {
         <span className="mvd-dowod-krok-numer mvd-num" aria-hidden="true">
           {krok.numer}
         </span>
-        <h3 className="mvd-dowod-krok-tytul">{tytulZNazwami(krok, nazwa)}</h3>
+        <h3 className="mvd-dowod-krok-tytul">{krok.tytul}</h3>
         {krok.elementId && (
           <button
             type="button"

@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
+from network_model.nazwy import jest_nazwa
+from network_model.odmowa_danych import (
+    RODZAJ_GALAZ,
+    RODZAJ_WEZEL,
+    OdmowaWejsciaRdzenia,
+    OdwolanieElementu,
+    RekordOdmowy,
+)
 from network_model.solvers.short_circuit_contributions import (
     ShortCircuitBranchContribution,
     ShortCircuitSourceContribution,
@@ -22,12 +30,20 @@ from network_model.solvers.short_circuit_core import (
 )
 from network_model.whitebox.tracer import WhiteBoxTracer
 
+if TYPE_CHECKING:
+    from network_model.core.ybus import AdmittanceMatrixBuilder
+
 C_MIN: float = 0.95
 C_MAX: float = 1.10
 
 # Identyfikator źródła zastępczego (Thevenin / sieć nadrzędna) w wkładach.
 # LUSTRO konwencji `_build_source_contributions` (source_id="THEVENIN_GRID").
 THEVENIN_GRID_SOURCE_ID: str = "THEVENIN_GRID"
+
+# Kody odmów wejścia (rekord strukturalny `RekordOdmowy`, decyzja O-59, plan A/B §12.2 (k)(m)):
+# identyfikator elementu stoi w odwołaniu rekordu, nie w treści komunikatu.
+KOD_WEZEL_ZWARCIA_SPOZA_GRAFU: str = "zwarcie.wezel_zwarcia_spoza_grafu"
+KOD_GALAZ_BEZ_NAZWY: str = "zwarcie.galaz_bez_nazwy"
 
 
 # -----------------------------------------------------------------------------
@@ -278,6 +294,43 @@ class ShortCircuitResult:
 
 class ShortCircuitIEC60909Solver:
     @staticmethod
+    def _sprawdz_wejscie(graph: NetworkGraph, fault_node_id: str) -> None:
+        """Walidacja wejścia wspólna czterech rodzajów zwarcia — przed biegiem.
+
+        Węzeł zwarcia musi istnieć w grafie, a każda gałąź w eksploatacji mieć nazwę: tytuły
+        kroków śladu White Box (korekcja K_T transformatora, prąd Thevenina w gałęzi) nazywają
+        gałąź nazwą z modelu, nigdy identyfikatorem (O-59, §12.2 (m)). Mapowanie ENM → graf
+        nadaje każdej gałęzi nazwę (`enm/mapping.py`, `nazwa_elementu`), więc odmowa dotyczy
+        grafów budowanych poza modelem (np. z migawki bez pola nazwy).
+        """
+        if fault_node_id not in graph.nodes:
+            raise OdmowaWejsciaRdzenia(
+                [
+                    RekordOdmowy(
+                        KOD_WEZEL_ZWARCIA_SPOZA_GRAFU,
+                        "Wskazany węzeł zwarcia nie istnieje w grafie sieci.",
+                        (OdwolanieElementu(RODZAJ_WEZEL, fault_node_id),),
+                    )
+                ]
+            )
+        bez_nazwy = sorted(
+            branch_id
+            for branch_id, branch in graph.branches.items()
+            if getattr(branch, "in_service", True) and not jest_nazwa(branch.name)
+        )
+        if bez_nazwy:
+            raise OdmowaWejsciaRdzenia(
+                [
+                    RekordOdmowy(
+                        KOD_GALAZ_BEZ_NAZWY,
+                        "Ślad obliczeń zwarciowych nazywa każdą gałąź w eksploatacji nazwą "
+                        f"z modelu; gałęzi bez nazwy: {len(bez_nazwy)}.",
+                        tuple(OdwolanieElementu(RODZAJ_GALAZ, ref) for ref in bez_nazwy),
+                    )
+                ]
+            )
+
+    @staticmethod
     def _compute_fault_result(
         *,
         short_circuit_type: ShortCircuitType,
@@ -383,7 +436,7 @@ class ShortCircuitIEC60909Solver:
             x_t_ohm_hv = x_t * z_base_hv_ohm
             tracer.add(
                 key=f"KT[{branch_id}]",
-                title=f"Korekcja impedancji transformatora sieciowego {branch.name or branch_id}",
+                title=f"Korekcja impedancji transformatora sieciowego {branch.name}",
                 formula_latex=r"K_T = 0.95 \cdot \frac{c_{max}}{1 + 0.6 \cdot x_T}",
                 inputs={
                     "branch_id": branch_id,
@@ -609,8 +662,8 @@ class ShortCircuitIEC60909Solver:
         graph: NetworkGraph,
         fault_node_id: str,
         *,
-        builder: object | None = None,
-        z_bus: object | None = None,
+        builder: AdmittanceMatrixBuilder | None = None,
+        z_bus: np.ndarray | None = None,
     ) -> dict[str, float]:
         """
         Współczynniki przeniesienia wkładu falowników do węzła zwarcia.
@@ -643,11 +696,11 @@ class ShortCircuitIEC60909Solver:
         if builder is None or z_bus is None:
             builder, z_bus = build_zbus(graph)
 
-        index_map = builder.node_id_to_index  # type: ignore[union-attr]
+        index_map = builder.node_id_to_index
         fault_index = index_map.get(fault_node_id)
         if fault_index is None:
             return {}
-        z_kk = z_bus[fault_index, fault_index]  # type: ignore[index]
+        z_kk = z_bus[fault_index, fault_index]
         un_k = graph.nodes[fault_node_id].voltage_level
         if z_kk == 0 or un_k <= 0:
             return {}
@@ -658,7 +711,7 @@ class ShortCircuitIEC60909Solver:
             node = graph.nodes.get(source.node_id)
             if source_index is None or node is None or node.voltage_level <= 0:
                 continue
-            z_kj = z_bus[fault_index, source_index]  # type: ignore[index]
+            z_kj = z_bus[fault_index, source_index]
             factors[source.id] = abs(z_kj / z_kk) * (node.voltage_level / un_k)
         return factors
 
@@ -982,7 +1035,7 @@ class ShortCircuitIEC60909Solver:
             )
             tracer.add(
                 key=f"thevenin_flow_{branch_id}",
-                title=f"Prąd zwarciowy Thevenina w gałęzi {branch_id}",
+                title=f"Prąd zwarciowy Thevenina w gałęzi {branch.name}",
                 formula_latex=(
                     r"I_{ga\l} = \left| (\underline{V}_i - \underline{V}_j)\,"
                     r"\underline{y}_{ij} \right| \cdot I_k''^{(Th)}"
@@ -1086,8 +1139,7 @@ class ShortCircuitIEC60909Solver:
         Ith = Ik'' * sqrt(tk)
         Sk'' = sqrt(3) * Un * Ik''
         """
-        if fault_node_id not in graph.nodes:
-            raise ValueError(f"Fault node '{fault_node_id}' does not exist in graph")
+        ShortCircuitIEC60909Solver._sprawdz_wejscie(graph, fault_node_id)
         if c_factor <= 0:
             raise ValueError("c_factor must be > 0")
         if tk_s <= 0:
@@ -1225,8 +1277,7 @@ class ShortCircuitIEC60909Solver:
         """
         if z0_bus is None:
             raise ValueError("Z0 bus matrix is required for 1F fault computation")
-        if fault_node_id not in graph.nodes:
-            raise ValueError(f"Fault node '{fault_node_id}' does not exist in graph")
+        ShortCircuitIEC60909Solver._sprawdz_wejscie(graph, fault_node_id)
         if c_factor <= 0:
             raise ValueError("c_factor must be > 0")
         if tk_s <= 0:
@@ -1325,8 +1376,7 @@ class ShortCircuitIEC60909Solver:
 
         Ik'' = (c * Un) / |Z1 + Z2|
         """
-        if fault_node_id not in graph.nodes:
-            raise ValueError(f"Fault node '{fault_node_id}' does not exist in graph")
+        ShortCircuitIEC60909Solver._sprawdz_wejscie(graph, fault_node_id)
         if c_factor <= 0:
             raise ValueError("c_factor must be > 0")
         if tk_s <= 0:
@@ -1427,8 +1477,7 @@ class ShortCircuitIEC60909Solver:
         """
         if z0_bus is None:
             raise ValueError("Z0 bus matrix is required for 2F+G fault computation")
-        if fault_node_id not in graph.nodes:
-            raise ValueError(f"Fault node '{fault_node_id}' does not exist in graph")
+        ShortCircuitIEC60909Solver._sprawdz_wejscie(graph, fault_node_id)
         if c_factor <= 0:
             raise ValueError("c_factor must be > 0")
         if tk_s <= 0:

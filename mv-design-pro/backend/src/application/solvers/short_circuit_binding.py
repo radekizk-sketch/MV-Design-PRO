@@ -23,6 +23,7 @@ import numpy as np
 from application.solvers.lv_temperature_correction import build_min_scenario_graph
 from domain.execution import ExecutionAnalysisType
 from domain.study_case import StudyCaseConfig
+from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_rdzenia
 from network_model.core.graph import NetworkGraph
 from network_model.core.voltage_factor import c_for_node
 from network_model.odmowa_danych import odmowa_rdzenia_b01
@@ -189,40 +190,42 @@ def execute_short_circuit(
     )
 
     try:
-        if analysis_type == ExecutionAnalysisType.SC_3F:
-            solver_result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-                graph=solve_graph,
-                fault_node_id=fault_node_id,
-                c_factor=c_factor,
-                tk_s=tk_s,
-                tb_s=tb_s,
-            )
-
-        elif analysis_type == ExecutionAnalysisType.SC_1F:
-            if z0_bus is None:
-                raise ShortCircuitBindingError(
-                    "Macierz impedancji zerowej (Z₀) jest wymagana dla zwarcia 1F"
+        # Odmowa wejścia rdzenia B-01 (rekord strukturalny, decyzja O-59) ze zdaniem z nazwami.
+        with nazwy_w_odmowach_rdzenia(solve_graph):
+            if analysis_type == ExecutionAnalysisType.SC_3F:
+                solver_result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+                    graph=solve_graph,
+                    fault_node_id=fault_node_id,
+                    c_factor=c_factor,
+                    tk_s=tk_s,
+                    tb_s=tb_s,
                 )
-            solver_result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-                graph=solve_graph,
-                fault_node_id=fault_node_id,
-                c_factor=c_factor,
-                tk_s=tk_s,
-                tb_s=tb_s,
-                z0_bus=z0_bus,
-            )
 
-        elif analysis_type == ExecutionAnalysisType.SC_2F:
-            solver_result = ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
-                graph=solve_graph,
-                fault_node_id=fault_node_id,
-                c_factor=c_factor,
-                tk_s=tk_s,
-                tb_s=tb_s,
-            )
+            elif analysis_type == ExecutionAnalysisType.SC_1F:
+                if z0_bus is None:
+                    raise ShortCircuitBindingError(
+                        "Macierz impedancji zerowej (Z₀) jest wymagana dla zwarcia 1F"
+                    )
+                solver_result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
+                    graph=solve_graph,
+                    fault_node_id=fault_node_id,
+                    c_factor=c_factor,
+                    tk_s=tk_s,
+                    tb_s=tb_s,
+                    z0_bus=z0_bus,
+                )
 
-        else:
-            raise ShortCircuitBindingError(f"Nieobsługiwany typ analizy: {analysis_type.value}")
+            elif analysis_type == ExecutionAnalysisType.SC_2F:
+                solver_result = ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
+                    graph=solve_graph,
+                    fault_node_id=fault_node_id,
+                    c_factor=c_factor,
+                    tk_s=tk_s,
+                    tb_s=tb_s,
+                )
+
+            else:
+                raise ShortCircuitBindingError(f"Nieobsługiwany typ analizy: {analysis_type.value}")
 
     except (ValueError, ZeroDivisionError, np.linalg.LinAlgError) as exc:
         raise ShortCircuitBindingError(
@@ -285,9 +288,11 @@ def wynik_zwarcia_1f_ze_snapshotu(
     enm = EnergyNetworkModel.model_validate(snapshot)
     graph = map_enm_to_network_graph(enm)
     z0_bus = build_zero_sequence_zbus(enm, graph)
-    # Solver IEC 60909 jest rdzeniem B-01: odmowa wejścia (węzeł zwarcia spoza grafu) to
-    # goły `ValueError` — granica tłumaczy ją na odmowę danych (karta ODMOWA-DANYCH-422).
-    with odmowa_rdzenia_b01():
+    # Solver IEC 60909 jest rdzeniem B-01: odmowę wejścia (węzeł zwarcia spoza grafu, gałąź
+    # bez nazwy) podnosi rekordem strukturalnym (decyzja O-59) — pierwsza granica składa zdanie
+    # z nazwami z grafu, druga tłumaczy inne `ValueError` rdzenia na odmowę danych (karta
+    # ODMOWA-DANYCH-422).
+    with nazwy_w_odmowach_rdzenia(graph), odmowa_rdzenia_b01():
         return ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
             graph=graph,
             fault_node_id=fault_node_id,
@@ -333,7 +338,8 @@ def zwarcie_3f_ze_snapshotu(
     from enm.models import EnergyNetworkModel
 
     graph = map_enm_to_network_graph(EnergyNetworkModel.model_validate(snapshot))
-    with odmowa_rdzenia_b01():  # rdzeń B-01 — jak w `wynik_zwarcia_1f_ze_snapshotu`
+    # rdzeń B-01 — jak w `wynik_zwarcia_1f_ze_snapshotu`
+    with nazwy_w_odmowach_rdzenia(graph), odmowa_rdzenia_b01():
         wynik = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
             graph=graph,
             fault_node_id=fault_node_id,
