@@ -2788,3 +2788,129 @@ def test_guard_rejects_solver_in_phase_state_pack(tmp_path, monkeypatch, tresc) 
 
 def test_guard_accepts_current_repo_state_tory() -> None:
     assert guard.check_tory_testowe_resurrection() == []
+
+
+# --- Karta AB-1b.3b (2026-09-25): kasacje O-55 w modelu odbioru dynamiki ------------------
+
+
+def _patch_ab1b3b_tree(monkeypatch, tmp_path: Path) -> tuple[Path, Path, Path]:
+    src, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    testy = tmp_path / "backend" / "tests"
+    testy.mkdir(parents=True)
+    monkeypatch.setattr(guard, "BACKEND_TESTS_DIR", testy)
+    return src, testy, fe
+
+
+@pytest.mark.parametrize("kod", guard.AB1B3B_KODY)
+@pytest.mark.parametrize("gdzie", ["src", "testy"])
+def test_guard_rejects_ab1b3b_refusal_code_in_backend_code(tmp_path, monkeypatch, kod, gdzie):
+    """Skasowana odmowa wraca jako literal kodu (rejestr kodow, asercja testu)."""
+    src, testy, _ = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    katalog = src / "network_model" / "solvers" / "dynamika" if gdzie == "src" else testy
+    _zapisz(katalog / "kody.py", f'KODY = ("{kod}",)\n')
+
+    naruszenia = guard.check_ab1b3b_odbiory_resurrection()
+    assert any("[resurrected-string]" in n and repr(kod) in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize(
+    "kod",
+    [
+        'KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU = "x"\n',
+        "from kontrakty import KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO\n",
+        "def f(k):\n    return k.KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO\n",
+        "def g8_granica_odmowy():\n    return {}\n",
+        "ZAPADY_G8_PU = (0.5, 0.2)\n",
+    ],
+)
+def test_guard_rejects_ab1b3b_identifier(tmp_path, monkeypatch, kod) -> None:
+    """Stala kodu, import, atrybut, bramka G8 i jej zamiatanie — w kazdej postaci."""
+    _src, testy, _ = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    _zapisz(testy / "walidacja_fizyczna" / "bramki.py", kod)
+
+    naruszenia = guard.check_ab1b3b_odbiory_resurrection()
+    assert any("[resurrected-name]" in n for n in naruszenia), naruszenia
+
+
+def test_guard_rejects_ab1b3b_g8_measurement_key(tmp_path, monkeypatch) -> None:
+    _src, testy, _ = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    _zapisz(
+        testy / "walidacja_fizyczna" / "bramki.py", 'PROGI = {"G8_granica_odmowy_zlamana": 0.0}\n'
+    )
+
+    naruszenia = guard.check_ab1b3b_odbiory_resurrection()
+    assert any("G8_granica_odmowy_zlamana" in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize(
+    "kod",
+    [
+        "STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)\n",
+        "STALA_MOC = odbiory.charakterystyka_stalej_mocy(u_min_pu=None)\n",
+        "def charakterystyka_stalej_mocy(*, u_min_pu: float | None):\n    return u_min_pu\n",
+        "def charakterystyka_stalej_mocy(u_min_pu: Optional[float]):\n    return u_min_pu\n",
+    ],
+)
+def test_guard_rejects_ab1b3b_u_min_none_variant(tmp_path, monkeypatch, kod) -> None:
+    """Odbior stalej mocy bez napiecia przejscia: wywolanie z `None` albo sygnatura z `None`."""
+    src, _testy, _ = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    _zapisz(src / "network_model" / "solvers" / "dynamika" / "odbiory.py", kod)
+
+    naruszenia = guard.check_ab1b3b_odbiory_resurrection()
+    assert any("u_min_pu=None" in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize("kod", guard.AB1B3B_KODY)
+def test_guard_rejects_ab1b3b_refusal_code_in_frontend(tmp_path, monkeypatch, kod) -> None:
+    _src, _testy, fe = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    _zapisz(fe / "ui2" / "wyniki" / "dynamika" / "strings.ts", f"export const K = '{kod}';\n")
+
+    naruszenia = guard.check_ab1b3b_odbiory_resurrection()
+    assert any("[resurrected-pattern]" in n and repr(kod) in n for n in naruszenia), naruszenia
+
+
+def test_guard_does_not_fire_on_ab1b3b_names_in_comments_or_docstrings(tmp_path, monkeypatch):
+    """Dokstring/komentarz OPISUJACY kasacje (test przepisany z intencja) nie jest naruszeniem."""
+    src, testy, fe = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    wszystko = " ".join(
+        [*guard.AB1B3B_KODY, *sorted(guard.AB1B3B_IDENTYFIKATORY), *guard.AB1B3B_NAPISY_BRAMKI]
+    )
+    tresc = (
+        f'"""Skasowane w AB-1b.3b: {wszystko}, u_min_pu=None."""\n# {wszystko}\n'
+        f'def test_x():\n    """{wszystko}"""\n'
+    )
+    _zapisz(testy / "network_model" / "dynamika" / "test_odbiory.py", tresc)
+    _zapisz(src / "network_model" / "solvers" / "dynamika" / "kontrakty.py", tresc)
+    _zapisz(
+        fe / "ui2" / "wyniki" / "dynamika" / "model.ts", f"// {wszystko}\nexport const x = 1;\n"
+    )
+
+    assert guard.check_ab1b3b_odbiory_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_ab1b3b_resurrection(tmp_path, monkeypatch) -> None:
+    """Zywe sasiedztwo: odbior stalej mocy Z napieciem przejscia, czysta impedancja bez
+    `U_min` (u_min_pu=None w kontrakcie charakterystyki — to nie jest wywolanie
+    `charakterystyka_stalej_mocy`), kody odbiorow dzisiejszego rejestru."""
+    src, testy, fe = _patch_ab1b3b_tree(monkeypatch, tmp_path)
+    _zapisz(
+        src / "network_model" / "solvers" / "dynamika" / "odbiory.py",
+        "def charakterystyka_stalej_mocy(*, u_min_pu: float):\n    return u_min_pu\n",
+    )
+    _zapisz(
+        testy / "walidacja_fizyczna" / "stanowisko.py",
+        "STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=0.25)\n"
+        "CZYSTY_Z = CharakterystykaOdbioru(u_min_pu=None)\n"
+        'KOD = "dynamika.odbior_ponizej_napiecia_przejscia"\n',
+    )
+    _zapisz(
+        fe / "ui2" / "wyniki" / "dynamika" / "strings.ts",
+        "export const K = 'load.dynamika_missing';\n",
+    )
+
+    assert guard.check_ab1b3b_odbiory_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_ab1b3b() -> None:
+    """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo musi byc czysta po karcie."""
+    assert guard.check_ab1b3b_odbiory_resurrection() == []

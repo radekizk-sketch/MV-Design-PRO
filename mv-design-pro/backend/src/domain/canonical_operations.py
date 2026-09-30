@@ -317,6 +317,17 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         ),
         creates_elements=False,
     ),
+    # Karta modeli odbiorów (O-56): wiązanie odbioru z profilem modelu dynamicznego katalogu
+    # `load_dynamic` — kopię `Load.dynamika` buduje `enm.dynamika_z_katalogu`. Akcja
+    # naprawcza kodu gotowości `load.dynamika_missing` (ekran dynamiki).
+    "set_load_dynamic_binding": OperationSpec(
+        canonical_name="set_load_dynamic_binding",
+        category=OperationCategory.OZE_NN,
+        description_pl="Wiązanie odbioru z profilem modelu dynamicznego z katalogu",
+        target_layer="Domain / NetworkModel",
+        required_fields=("load_ref", "dynamic_model_ref"),
+        creates_elements=False,
+    ),
     # Karta AB-H0 §0.7.3: karta widmowa PROJEKTU (dane inżyniera — widmo ręczne albo
     # import raportu badań dla projektu) w sekcji `katalog_projektu.karty_widmowe`.
     "dodaj_karte_widmowa_projektu": OperationSpec(
@@ -1127,6 +1138,24 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego "
             "źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "dynamika", "focus": "dynamic_model_ref"},
+    ),
+    # Karta modeli odbiorów (O-49 pkt 2 i 11, O-56): odbiór bez kopii `Load.dynamika`
+    # (profil modelu dynamicznego z katalogu `load_dynamic`) — bieg `dynamika_rms` odmawia
+    # (`dynamika.odbior_bez_bloku_dynamiki`). Nawigacja prowadzi do WIĄZANIA profilu na
+    # ekranie dynamiki, w tej samej sekcji co modele źródeł (`der.dynamika_missing`);
+    # akcja wykonuje `set_load_dynamic_binding`. Edytora pól ręcznych nie ma (reguła 10
+    # katalogu) — to zastępuje „edytor w AB-1c" z O-49 pkt 11.
+    "load.dynamika_missing": ReadinessCodeSpec(
+        code="load.dynamika_missing",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Brak modelu dynamicznego odbioru (napięcie przejścia do stałej impedancji, "
+            "pomiar częstotliwości) — obliczenia czasowe nie mogą zbudować modelu odbioru; "
+            "zwiąż odbiór z profilem z katalogu"
         ),
         fix_navigation={"panel": "analizy", "tab": "dynamika", "focus": "dynamic_model_ref"},
     ),

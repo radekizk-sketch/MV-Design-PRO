@@ -82,6 +82,7 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   // wiązania katalogowe wytwórcy — a obie zmieniają wynik analiz.
   set_connection_conditions: 'Zapisano warunki przyłączenia OSD',
   set_der_catalog_bindings: 'Zapisano wiązania katalogowe wytwórcy',
+  set_load_dynamic_binding: 'Zapisano wiązanie modelu dynamicznego odbioru',
   dodaj_karte_widmowa_projektu: 'Dodano kartę widmową do katalogu projektu',
   // DER variants (nN bus/feeder/source-field)
   bus_nn_add_converter_source_pv: 'Dodano PV na szynie nN',

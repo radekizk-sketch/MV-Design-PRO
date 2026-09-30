@@ -1725,7 +1725,19 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # i na drzewie bazowym (`git archive HEAD`), roznica zbiorow: +3 (`rodzaj_elementu`,
     # `szyna_ref`, `zacisk_ref` — `NaruszenieToru` w `enm/tor_pola.py`, opis naruszenia zasady
     # toru dla walidatora W042), -0. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4116." in wyjscie, wyjscie
+    # Karta modeli odbiorow AB-1b.3b (2026-09-29): 4097 -> 4105 — POMIAR `contract_fields()` na
+    # `509c4776` i na drzewie karty, roznica zbiorow: -0, +8 (katalog profili modelu
+    # dynamicznego odbiorow `network_model/catalog/load_dynamic`: `podstawa_t_pomiaru_pl`,
+    # `podstawa_u_min_pl`, `t_pomiaru_czestotliwosci_s`; stan kopii odbioru
+    # `enm/dynamika_z_katalogu.py`: `czuly_czestotliwosciowo`; stan modelu odbioru w rdzeniu
+    # `dynamika/odbiory.py`: `estymator_wyzerowany`, `tryb_poza_obwodem`; `dynamika/silnik.py`:
+    # `reset_estymatorow`; kontrakt wyniku `resultset_dynamic_v2`: `zalozenia_rdzenia`). PASS
+    # bramki niezmieniony (zero podstawien).
+    # Przeniesienie AB-1b.3b na czubek partii 5 z poprawkami chwili zero (karta
+    # AB-1b.3b-NA-CZUBKU, 2026-09-30): 4104 + 8 = 4112 — zbiory zmian rozlaczne; POMIAR guardem.
+    # Przeniesienie AB-1b.3b na czubek partii 6 (karta AB-1b.3b-NA-PARTII-6, 2026-09-30):
+    # 4116 + 8 = 4124 — zbiory zmian rozlaczne; POMIAR guardem na drzewie karty.
+    assert "Pol kontraktow wejsciowych: 4124." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1903,10 +1915,20 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta ODMOWA-DANYCH-422 (2026-09-30): 557 -> 558 (+1 `network_model/odmowa_danych.py`
         # — nazwana odmowa danych dla 422, lisc stdlib-only). POMIAR guardem na drzewie karty.
         # Partia integracji 6 po DOWOD-CIEPLNY: 560 + 1 = 561. POMIAR guardem na drzewie partii.
+        # Karta modeli odbiorow AB-1b.3b (2026-09-29): 555 -> 558 (+1 `network_model/catalog/
+        # load_dynamic/__init__.py` — katalog profili modelu dynamicznego odbiorow, +2
+        # `application/dynamika/{zalozenia,odmowy}.py` — zdania zalozen z rekordow rdzenia
+        # i komunikaty odmow z nazwami); zero plikow skasowanych, zapadka dlugu i
+        # wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Przeniesienie AB-1b.3b na czubek partii 5: 557 + 3 = 560. POMIAR guardem.
+        # Przeniesienie AB-1b.3b na czubek partii 6 (karta AB-1b.3b-NA-PARTII-6): 561 + 3 = 564.
+        # POMIAR guardem na drzewie karty.
         # Karta B01-RUNDA-1 (2026-09-30, decyzja B-01 pozycja (i)): 561 -> 558 (-3 skasowany
         # solver `network_model/solvers/stability_rms/{__init__,contracts,engine}.py`).
         # POMIAR guardem na drzewie karty.
-        "Przeskanowano 558 plikow w zakresie: network_model, solver_input, enm, "
+        # Partia integracji 7 (B01-RUNDA-1 + AB-1b.3b-NA-PARTII-6 na partii 6): 561 - 3 + 3 =
+        # 561. POMIAR guardem na drzewie partii.
+        "Przeskanowano 561 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2030,9 +2052,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # POMIAR guardem na drzewie partii.
         # Karta ODMOWA-DANYCH-422: network_model 182 -> 183 (+1 `odmowa_danych.py`); dlug
         # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Karta modeli odbiorow AB-1b.3b (2026-09-29): network_model 181 -> 182 (+1
+        # `catalog/load_dynamic/__init__.py`); dlug i wykluczenia BEZ ZMIANY. POMIAR guardem.
+        # Przeniesienie AB-1b.3b na czubek partii 5: network_model 182 + 1 = 183. POMIAR guardem.
+        # Przeniesienie AB-1b.3b na czubek partii 6 (karta AB-1b.3b-NA-PARTII-6): network_model
+        # 183 (z `odmowa_danych.py`) + 1 (`catalog/load_dynamic/__init__.py`) = 184 — literal 183
+        # obu stron scalil sie bez konfliktu, ale blednie. POMIAR guardem na drzewie karty.
         # Karta B01-RUNDA-1 (decyzja B-01 pozycja (i)): network_model 183 -> 180 (-3 skasowany
         # `stability_rms/**`); dlug i wykluczenia BEZ ZMIAN (pakiet nie mial wpisow). POMIAR.
-        "  network_model: pliki_skanowane=180, dlug=11 plikow/suma 69, "
+        # Partia integracji 7 (B01-RUNDA-1 + AB-1b.3b-NA-PARTII-6): network_model 183 - 3 + 1 =
+        # 181. POMIAR guardem na drzewie partii.
+        "  network_model: pliki_skanowane=181, dlug=11 plikow/suma 69, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2135,7 +2165,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (AB-P1), dlug 2/3 (PROOFPACK). POMIAR guardem na drzewie partii.
         # Karta DOWOD-CIEPLNY: application 244 -> 245 (+1 `application/slad_kroku.py`);
         # dlug i wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  application: pliki_skanowane=245, dlug=30 plikow/suma 91, "
+        # Karta modeli odbiorow AB-1b.3b (2026-09-29): application 243 -> 245 (+2
+        # `application/dynamika/{zalozenia,odmowy}.py`); dlug i wykluczenia BEZ ZMIANY. POMIAR.
+        # Przeniesienie AB-1b.3b na czubek partii 5: application 244 + 2 = 246. POMIAR guardem.
+        # Przeniesienie AB-1b.3b na czubek partii 6 (karta AB-1b.3b-NA-PARTII-6): application
+        # 245 + 2 = 247. POMIAR guardem na drzewie karty.
+        "  application: pliki_skanowane=247, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=6 plikow/suma 15",
     ]

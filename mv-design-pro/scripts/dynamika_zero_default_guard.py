@@ -11,6 +11,8 @@ SCAN FILES (KLASA, nie jeden plik — ten sam kontrakt żyje w trzech miejscach)
   backend/src/enm/dynamika_modele.py                          (ParametryDynamiczne)
   backend/src/network_model/catalog/der_dynamic/models.py     (profile DER — mapują
                                                                  się 1:1 na powyższe)
+  backend/src/network_model/catalog/load_dynamic/**           (profile modelu dynamicznego
+                                                                 odbiorów — kopia `Load.dynamika`)
   backend/src/network_model/solvers/dynamika/**               (CAŁY pakiet rdzenia DAE:
                                                                  nastawy, elementy sieci,
                                                                  dozory, profil źródła
@@ -69,7 +71,12 @@ SCAN_FILES: tuple[str, ...] = (
 #: Pakiety skanowane W CAŁOŚCI (każdy moduł, także dopisany w przyszłości): rdzeń
 #: dynamiki niesie kontrakty liczbowe w kilku modułach (karta AB-1b.1), więc lista plików
 #: nie może rosnąć wolniej niż pakiet. Kolejność posortowana — wynik deterministyczny.
-KATALOGI_SKANU: tuple[str, ...] = ("backend/src/network_model/solvers/dynamika",)
+#: Karta modeli odbiorow (O-56): katalog profili modelu dynamicznego ODBIOROW (`U_min`, `T_f`)
+#: jest czwartym miejscem danych dynamiki — profil bez domyslek, wartosci jako dane profilu.
+KATALOGI_SKANU: tuple[str, ...] = (
+    "backend/src/network_model/catalog/load_dynamic",
+    "backend/src/network_model/solvers/dynamika",
+)
 
 SCAN_FILES = SCAN_FILES + tuple(
     sorted(

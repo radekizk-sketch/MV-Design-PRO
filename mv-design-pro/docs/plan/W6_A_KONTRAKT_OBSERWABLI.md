@@ -93,6 +93,63 @@ u_{\dot V} = \left| \dot V(y - J_y^{-1} r) - \dot V(y) \right|$$
 > przy residuum znaczącym) i `test_przenosnosc_estymaty_niepewnosci.py` (krok każdej z różnic
 > w obu reżimach residuum); mutacje M73 (estymata napięcia bez propagacji dna nad progiem)
 > i M74 (niepewność pochodnej bez różnicy wzdłuż dna nad progiem).
+>
+> **KOREKTA 2026-09-30, cz. 3 (karta AB-1b.3b-NA-CZUBKU — odbiory ze stanem).** Obie poprawki
+> chwili zero powstały na zbiorze elementów bez odbiorów stanowych; odbiór czuły
+> częstotliwościowo (AB-1b.3b) ma stan — kąt estymatora częstotliwości widzianej
+> $x' = e/T_f$, $e = \arg(V e^{-jx})$ — i zasięg niezmienników rozszerzono na tę klasę:
+>
+> 1. **Granica $\rho$ i residuum z jednego źródła.** Składniki wiersza KCL (odbiory Z OBWODEM
+>    przy SWOIM stanie estymatora, urządzenia o sprzężeniu prądowym, bez wierszy ograniczenia)
+>    daje jedna funkcja `siec.skladniki_wstrzykniec`, z której liczy się zarówno
+>    `residuum_algebry`, jak i `granica_zaokraglen_residuum` (wiersze ograniczenia —
+>    `siec.napiecia_narzucone`). Po scaleniu obu kart granica liczyła prąd odbioru
+>    z charakterystyki bez częstotliwości widzianej i sumowała odbiory bez obwodu, których
+>    w residuum nie ma — dwa warunki „dziś zgodne” (reguła predykatów parami). Test:
+>    `test_niepewnosc_na_granicy_zaokraglen.py::test_granica_zaokraglen_to_suma_modulow_skladnikow_wiersza`
+>    w iloczynie {odbiór bez stanu, ze stanem przyłączony, ze stanem odłączony zdarzeniem} ×
+>    {estymator w równowadze, za fazą szyny}; mutacje M77 (granica z prądu odbioru przy $f_n$
+>    zamiast przy stanie estymatora) i M78 (granica sumująca odbiory bez obwodu).
+> 2. **Spójna inicjalizacja algebry `t = 0` z odbiorami ze stanem.** Równowagą estymatora jest
+>    $x = \arg V$ ($e = 0$), więc stan $x(0) = \arg V_{pf}$ przestaje nią być w punkcie
+>    skorygowanym, a prąd odbioru przy trzymanym $x$ zależy od przesunięcia fazy. Algebra
+>    korekty liczy odbiory na ROZMAITOŚCI RÓWNOWAGI estymatora
+>    (`ModelOdbioru.w_rownowadze_estymatora`: $\hat f = f_n$ niezależnie od napięcia — ten sam
+>    mechanizm, co algebra chwili ponownego zasilenia szyny), a stan odbioru dostaje
+>    $x := \arg V_0$ tym samym konstruktorem `stan_poczatkowy_odbioru`, co w `t = 0` z rozpływu:
+>    prąd odbioru jest tym, przy którym algebra zbiegła, pochodna stanu zerowa, a
+>    częstotliwość widziana w próbce zero — dokładnie $f_n$. Reinicjalizacja odbiorów i urządzeń
+>    ma JEDEN predykat: korekta się wykonała (`residuum_ponad_granica_zaokraglen`) i napięcie
+>    węzła elementu się zmieniło — odbiór w obszarze beznapięciowym ($V = 0$ z wiersza
+>    ograniczenia) zachowuje stan bitowo. Ślad `korekta_algebry` niesie
+>    `max_zmiana_kata_estymatorow_rad` (klucz wyłącznie przy odbiorach ze stanem — ślad biegu
+>    bez nich jest bitowo dawny). Bramka równowagi na stanie `t = 0` obejmuje stany odbiorów
+>    (norma `max |f|`, adresy `odbiór.kat_pomiaru_rad`, skończoność — `KontekstKroku.adresy_stanow`).
+>    Testy: `test_przenosnosc_estymaty_niepewnosci.py::test_probka_zero_lezy_na_algebrze_rdzenia`
+>    w iloczynie {sieć: SMIB z odbiorem stałej mocy, gałąź ślepa, SMIB z odbiorem czułym, ten
+>    sam z szyną odciętą i odbiorem czułym w obszarze beznapięciowym} × {punkt dokładny,
+>    zaburzony} × {próbka C, para L/P}; `test_chwila_zero_rodziny_urzadzen.py` — ten sam
+>    niezmiennik dla KAŻDEJ rodziny urządzeń (maszyna klasyczna i synchroniczna w siedmiu
+>    konfiguracjach regulacji, GFL ×4, GFM ×4, magazyn ×5, turbina ×3) × {bez odbioru, z odbiorem
+>    czułym na szynie urządzenia}, równowaga mierzona względem odchyłki, którą korekta
+>    wywołałaby bez reinicjalizacji (pętla synchronizacji ma w obu punktach szum pochodnej
+>    rzędu 1e-14…1e-13 1/s); `test_silnik.py` — stan odbioru nieskończony w punkcie
+>    rozpływu i po reinicjalizacji, prąd odbioru nieskończony (odbiór bez stanu, ze stanem);
+>    mutacje M75 (stan `t = 0` odbioru bez reinicjalizacji), M76 (algebra korekty przy
+>    trzymanym stanie estymatora) i M79 (bramka równowagi sprawdza skończoność wyłącznie stanów
+>    urządzeń).
+> 3. **`f_odbioru_hz@` i `kat_pomiaru_rad@` nie mają estymaty niepewności ani kodu jakości —
+>    i to jest kontrakt, nie luka.** To wyjścia MODELU odbioru (stan całkowany i faza napięcia
+>    szyny), tak jak stany urządzeń (`x(t)`, §2), a nie obserwabla `f_hz@` szyny: rdzeń nie
+>    publikuje dla nich `u_f_est_hz@` ani `jakosc_f@`, a konsument nie może traktować braku
+>    kodu jakości jako „rozróżnialna”. Błąd rozwiązania algebry przenosi się na nie przez fazę
+>    napięcia: $|\delta e| \le \arcsin(u_V/|V|)$, czyli
+>    $|\delta \hat f| \le \arcsin(u_V/|V|)/(2\pi T_f)$ — w próbce zero po korekcie
+>    $\hat f = f_n$ dokładnie; błąd całkowania stanu nie jest estymowany (jak dla każdego stanu,
+>    §„CZEGO `u_f_est_hz` NIE OBEJMUJE”). Gdyby rdzeń kiedyś publikował estymatę dla tych
+>    kanałów, liczy ją tą samą częścią pewną residuum (`siec.czesc_pewna_residuum`). Zamknięty
+>    zestaw kanałów odbioru przypina
+>    `test_estymator_odbioru.py::test_kanaly_odbioru_bez_estymaty_niepewnosci_ani_kodu_jakosci`.
 
 $$\boxed{\;u_{\dot\theta} \;\le\; \frac{u_{\dot V}}{|V| - u_V}
 \;+\; \frac{|\dot V|\,u_V}{|V|\,(|V| - u_V)}\;}, \qquad u_V < |V|$$
@@ -934,6 +991,13 @@ Wykonanie: `tests/e2e/test_so1a_scenariusz_odniesienia.py` (10 testów).
    dotyczy odbioru BEZ zadeklarowanego `U_min` (tak przychodzą dziś odbiory z modelu sieci
    — blok danych dynamicznych odbioru wchodzi w AB-1b.3b). Wartość `R_f` zostaje zamrożona
    scenariuszem; jej przesłankę przepisuje AB-1b.3b razem z nową bazą SO-1A.
+   *Stan po AB-1b.3b (2026-09-25):* każdy odbiór biegu ma model dynamiczny z katalogu
+   profili odbiorów (napięcie przejścia `U_min`, w sieciach wzorcowych 0,7 pu), więc
+   granica opisana wyżej nie istnieje dla żadnego odbioru — zapad dowolnej głębokości, także
+   zwarcie metaliczne, liczy się w gałęzi stałej impedancji. `R_f = 0,5 Ω` NIE jest już
+   warunkiem zbieżności: zostaje wyłącznie jako dana scenariusza SO-1A (łuk ~0,3 m przy
+   prądzie kilku kA), zamrożona razem z bazą przypadku; odbiory SO-1A przy tym zapadzie
+   wchodzą w gałąź stałej impedancji (nowa baza SO-1A — tabela przed/po w meldunku karty).
 2. **Topologia pierścieniowa.** Wariant promieniowy (stacja zasilana wyłącznie przez
    wyłącznik) po jego otwarciu zostawia podsieć bez źródła albo — gdy OZE jest za
    wyłącznikiem — **wyspę**. Jedno i drugie to zdolność **D11, przypisana w zamrożeniu do

@@ -92,6 +92,10 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   // jeszcze formularza — typy istnieją dla wywołań programowych.
   set_source_operating_mode: null,
   set_dynamic_profile: null,
+  // Karta modeli odbiorów: wiązanie modelu dynamicznego odbioru z profilem katalogu jest
+  // akcją naprawczą INLINE w sekcji modeli ekranu dynamiki (`ui2/wyniki/dynamika/
+  // SekcjaModeliZrodel.tsx`, kod gotowości `load.dynamika_missing`) — bez okna kreatora.
+  set_load_dynamic_binding: null,
 };
 
 /**

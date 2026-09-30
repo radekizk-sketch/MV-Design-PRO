@@ -20,7 +20,6 @@ import random
 import numpy as np
 import pytest
 from network_model.solvers.dynamika.kontrakty import (
-    KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO,
     KOD_PARAMETRY_ODBIORU_SPRZECZNE,
     TOLERANCJA_SUMY_UDZIALOW,
     CharakterystykaOdbioru,
@@ -43,14 +42,14 @@ from network_model.solvers.dynamika.odbiory import (
     moc_poboru_pu,
     prad_mocy_pu,
     prad_wstrzykiwany_pu,
-    sprawdz_odbior_biegu,
     tryb_odbioru,
     w_galezi_impedancyjnej,
-    wymaga_napiecia_niezerowego,
 )
 from network_model.solvers.power_flow_zip import ZipCoeffs, validate_zip_coeffs
 
 U_MIN = 0.7
+#: Stala czasowa pomiaru czestotliwosci — dana testowa odbioru czulego czestotliwosciowo.
+T_F = 0.1
 P0 = 0.3
 Q0 = 0.1
 F_N = 50.0
@@ -70,7 +69,7 @@ CZYNNIKI: dict[str, tuple[float, float | None, float | None]] = {
 V0 = 1.02
 
 
-def _charakterystyka(ksztalt: str, czynnik: str, *, u_min: float | None = U_MIN):
+def _charakterystyka(ksztalt: str, czynnik: str, *, u_min: float = U_MIN):
     a, b, c = KSZTALTY[ksztalt]
     k, f0, _ = CZYNNIKI[czynnik]
     czysty_z = b == 0.0 and c == 0.0
@@ -86,6 +85,7 @@ def _charakterystyka(ksztalt: str, czynnik: str, *, u_min: float | None = U_MIN)
         k_qf=k / 2.0,
         f0_hz=F_N if f0 is None else f0,
         u_min_pu=None if czysty_z else u_min,
+        t_pomiaru_czestotliwosci_s=None if k == 0.0 else T_F,
     )
 
 
@@ -161,7 +161,8 @@ def _pola(**nadpisania):
         "k_pf": 0.0,
         "k_qf": 0.0,
         "f0_hz": None,
-        "u_min_pu": None,
+        "u_min_pu": 0.7,
+        "t_pomiaru_czestotliwosci_s": None,
     }
     pola.update(nadpisania)
     return pola
@@ -177,14 +178,39 @@ PRZYPADKI_KONTRAKTU = {
     "f0_brak_przy_k_pf": (_pola(k_pf=1.0), "f0_hz"),
     "f0_brak_przy_k_qf": (_pola(k_qf=-1.0), "f0_hz"),
     "f0_fantom_bez_k": (_pola(f0_hz=50.0), "f0_hz"),
-    "f0_niedodatnie": (_pola(k_pf=1.0, f0_hz=0.0), "f0_hz"),
-    # u_min: fantom przy czystej impedancji, zakres (0, 1)
+    "f0_niedodatnie": (
+        _pola(k_pf=1.0, f0_hz=0.0, t_pomiaru_czestotliwosci_s=0.1),
+        "f0_hz",
+    ),
+    # u_min: fantom przy czystej impedancji, BRAK przy skladowej I albo P (kasacja wariantu
+    # `u_min_pu = None` dla odbiorow nie-impedancyjnych — dawniej dozwolonego), zakres (0, 1)
     "u_min_fantom_przy_czystym_z": (
         _pola(a_p=1.0, c_p=0.0, a_q=1.0, c_q=0.0, v0_pu=1.0, u_min_pu=0.7),
         "u_min_pu",
     ),
+    "u_min_brak_przy_stalej_mocy": (_pola(u_min_pu=None), "u_min_pu"),
+    "u_min_brak_przy_skladowej_i_q": (
+        _pola(a_p=1.0, c_p=0.0, b_q=1.0, c_q=0.0, v0_pu=1.0, u_min_pu=None),
+        "u_min_pu",
+    ),
     "u_min_zero": (_pola(u_min_pu=0.0), "u_min_pu"),
     "u_min_jeden": (_pola(u_min_pu=1.0), "u_min_pu"),
+    # T_f: potrzebna <=> k != 0 (estymator czestotliwosci widzianej przez odbior)
+    "t_f_brak_przy_k_pf": (_pola(k_pf=1.0, f0_hz=50.0), "t_pomiaru_czestotliwosci_s"),
+    "t_f_brak_przy_k_qf": (_pola(k_qf=-2.0, f0_hz=50.0), "t_pomiaru_czestotliwosci_s"),
+    "t_f_fantom_bez_k": (_pola(t_pomiaru_czestotliwosci_s=0.1), "t_pomiaru_czestotliwosci_s"),
+    "t_f_zero": (
+        _pola(k_pf=1.0, f0_hz=50.0, t_pomiaru_czestotliwosci_s=0.0),
+        "t_pomiaru_czestotliwosci_s",
+    ),
+    "t_f_ujemna": (
+        _pola(k_qf=1.0, f0_hz=50.0, t_pomiaru_czestotliwosci_s=-0.1),
+        "t_pomiaru_czestotliwosci_s",
+    ),
+    "t_f_nieskonczona": (
+        _pola(k_pf=1.0, f0_hz=50.0, t_pomiaru_czestotliwosci_s=math.inf),
+        "t_pomiaru_czestotliwosci_s",
+    ),
     # udzialy
     "udzial_ujemny": (_pola(a_p=-0.1, c_p=1.1, v0_pu=1.0), None),
     "udzial_ponad_jeden": (_pola(c_q=1.5, b_q=-0.5, v0_pu=1.0), None),
@@ -209,10 +235,22 @@ def test_kontrakt_charakterystyki_odmawia_fantomu_braku_i_sprzecznosci(nazwa: st
     "pola",
     [
         _pola(),
-        _pola(u_min_pu=0.7),
-        _pola(a_p=1.0, c_p=0.0, a_q=1.0, c_q=0.0, v0_pu=1.05),
+        _pola(u_min_pu=0.3),
+        _pola(a_p=1.0, c_p=0.0, a_q=1.0, c_q=0.0, v0_pu=1.05, u_min_pu=None),
         _pola(a_p=0.2, b_p=0.3, c_p=0.5, v0_pu=1.0, u_min_pu=0.5),
-        _pola(k_pf=2.0, k_qf=-1.0, f0_hz=60.0, u_min_pu=0.6),
+        _pola(k_pf=2.0, k_qf=-1.0, f0_hz=60.0, u_min_pu=0.6, t_pomiaru_czestotliwosci_s=0.05),
+        _pola(k_qf=0.5, f0_hz=50.0, t_pomiaru_czestotliwosci_s=2.0),
+        _pola(
+            a_p=1.0,
+            c_p=0.0,
+            a_q=1.0,
+            c_q=0.0,
+            v0_pu=1.0,
+            u_min_pu=None,
+            k_pf=1.0,
+            f0_hz=50.0,
+            t_pomiaru_czestotliwosci_s=0.1,
+        ),
         _pola(a_q=1.0, c_q=0.0, v0_pu=1.0, u_min_pu=0.8),
     ],
 )
@@ -233,7 +271,7 @@ def test_kontrakt_bez_zadnej_domyslki() -> None:
     [(-1e-9, True), (-0.3, True), (math.nan, True), (math.inf, True), (0.0, False), (0.4, False)],
 )
 def test_moc_czynna_bazowa_ujemna_albo_nieskonczona_jest_odmowa(p_pu: float, odmowa: bool) -> None:
-    charakterystyka = charakterystyka_stalej_mocy(u_min_pu=None)
+    charakterystyka = charakterystyka_stalej_mocy(u_min_pu=U_MIN)
     if odmowa:
         with pytest.raises(OdmowaDynamiki) as blad:
             OdbiorDynamiki("O", "B", p_pu, 0.1, charakterystyka)
@@ -270,7 +308,7 @@ def test_regula_wielomianu_rdzenia_jest_regula_rozplywu(udzialy: tuple) -> None:
         rozplyw = False
     try:
         v0 = None if a == 0.0 and b == 0.0 else 1.0
-        CharakterystykaOdbioru(a, b, c, 0.0, 0.0, 1.0, v0, 0.0, 0.0, None, 0.5)
+        CharakterystykaOdbioru(a, b, c, 0.0, 0.0, 1.0, v0, 0.0, 0.0, None, 0.5, None)
         rdzen = True
     except OdmowaDynamiki:
         rdzen = False
@@ -286,6 +324,7 @@ def test_budowa_z_wielomianu_zeruje_pola_bez_znaczenia(ksztalt: str, czynnik: st
     a, b, _c = KSZTALTY[ksztalt]
     assert (charakterystyka.v0_pu is None) == (a == 0.0 and b == 0.0)
     assert (charakterystyka.f0_hz is None) == (czynnik == "F_1")
+    assert (charakterystyka.t_pomiaru_czestotliwosci_s is None) == (czynnik == "F_1")
 
 
 # ---------------------------------------------------------------------------
@@ -384,7 +423,6 @@ def test_zero_napiecia_bez_odmowy_przy_skladowej_stalopradowej(ksztalt: str) -> 
     assert prad_wstrzykiwany_pu(odbior, 0j) == 0j
     jakobian = jakobian_pradu_pu(odbior, 0j)
     assert np.all(np.isfinite(jakobian))
-    assert not wymaga_napiecia_niezerowego(odbior)
 
 
 def test_czysta_impedancja_rowna_odsprzegowi() -> None:
@@ -407,7 +445,7 @@ def test_stala_moc_przez_wzor_ogolny_jest_bitowo_dawnym_wzorem() -> None:
         q = los.uniform(-2.0, 2.0)
         modul = los.uniform(0.3, 1.4)
         napiecie = cmath.rect(modul, los.uniform(-math.pi, math.pi))
-        u_min = los.choice((None, los.uniform(0.01, 0.29)))
+        u_min = los.uniform(0.01, 0.29)
         odbior = OdbiorDynamiki("O", "B", p, q, charakterystyka_stalej_mocy(u_min_pu=u_min))
         dawny_prad = -complex(p, q).conjugate() / napiecie.conjugate()
         assert prad_wstrzykiwany_pu(odbior, napiecie) == dawny_prad
@@ -437,30 +475,47 @@ def test_jeden_predykat_galezi_dla_pradu_mocy_i_trybu() -> None:
 @pytest.mark.parametrize("zadeklarowane", [True, False])
 @pytest.mark.parametrize("ksztalt", sorted(KSZTALTY))
 @pytest.mark.parametrize("moc_zerowa", [True, False])
-def test_wymaga_napiecia_niezerowego_iloczyn(
+def test_prad_w_zerze_napiecia_istnieje_dla_kazdego_odbioru_zgodnego_z_kontraktem(
     zadeklarowane: bool, ksztalt: str, moc_zerowa: bool
 ) -> None:
-    """Prad nie istnieje w V = 0 WYLACZNIE dla odbioru bez U_min, nie-impedancyjnego, z moca."""
-    charakterystyka = _charakterystyka(ksztalt, "F_1", u_min=U_MIN if zadeklarowane else None)
+    """Przepisane z intencja (karta modeli odbiorow, kasacja odmowy
+    `dynamika.odbior_stalej_mocy_przy_zerowym_napieciu` i wariantu `u_min_pu = None`).
+
+    Dawniej odbior nie-impedancyjny BEZ `U_min` byl dopuszczony i dopiero bieg odmawial przy
+    `V = 0`. Teraz brak `U_min` jest brakiem danych w KONTRAKCIE (przed biegiem, z adresem
+    pola), a kazdy odbior, ktory kontrakt przyjal, ma prad i moc dokladnie zero w `V = 0`
+    — iloczyn {deklaracja U_min} x {ksztalt} x {moc zerowa}.
+    """
+    czysty_z = ksztalt == "czysty_z"
+    if not zadeklarowane and not czysty_z:
+        a, b, c = KSZTALTY[ksztalt]
+        with pytest.raises(OdmowaDynamiki) as blad:
+            v0 = None if a == 0.0 and b == 0.0 else V0
+            CharakterystykaOdbioru(a, b, c, a, b, c, v0, 0.0, 0.0, None, None, None)
+        assert blad.value.kod == KOD_PARAMETRY_ODBIORU_SPRZECZNE
+        assert blad.value.szczegoly == {"pole": "u_min_pu", "rodzaj": "brak"}
+        return
+    charakterystyka = _charakterystyka(ksztalt, "F_1")
     p, q = (0.0, 0.0) if moc_zerowa else (P0, Q0)
     odbior = OdbiorDynamiki("O", "B", p, q, charakterystyka)
-    oczekiwane = (not zadeklarowane) and ksztalt != "czysty_z" and not moc_zerowa
-    assert wymaga_napiecia_niezerowego(odbior) == oczekiwane
-    if not oczekiwane:
-        assert prad_wstrzykiwany_pu(odbior, 0j) == 0j
-        assert moc_poboru_pu(odbior, 0j) == 0j
+    assert prad_wstrzykiwany_pu(odbior, 0j) == 0j
+    assert moc_poboru_pu(odbior, 0j) == 0j
+    assert np.all(np.isfinite(jakobian_pradu_pu(odbior, 0j)))
 
 
-def test_odbior_czuly_czestotliwosciowo_jest_odmowa_biegu() -> None:
-    """Bez modelu czestotliwosci widzianej przez odbior bieg z k != 0 bylby zly — odmowa."""
-    sprawdz_odbior_biegu(_odbior("mieszany_zip", "F_1"))
-    with pytest.raises(OdmowaDynamiki) as blad:
-        sprawdz_odbior_biegu(_odbior("mieszany_zip", "F_rozny"))
-    assert blad.value.kod == KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO
-    # Funkcja biegu (f = None) tez nie liczy po cichu czynnika dla k != 0.
-    with pytest.raises(OdmowaDynamiki) as blad_czynnika:
+def test_czynnik_czestotliwosci_bez_estymaty_jest_bledem_programu() -> None:
+    """Przepisane z intencja (kasacja odmowy
+    `dynamika.odbior_czuly_czestotliwosciowo_nieobslugiwany`): odbior czuly
+    czestotliwosciowo ma teraz estymator (`OdbiorCharakterystyczny`), wiec bieg go liczy.
+    Intencja dawnego testu — funkcja biegu NIE liczy po cichu czynnika `F = 1` dla `k != 0`
+    — zostaje: brak czestotliwosci widzianej jest bledem programu (asercja), nie cichym
+    `F = 1`.
+    """
+    moc_charakterystyki_pu(_odbior("mieszany_zip", "F_1"), 1.0, None)
+    with pytest.raises(AssertionError):
         moc_charakterystyki_pu(_odbior("mieszany_zip", "F_rozny"), 1.0, None)
-    assert blad_czynnika.value.kod == KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO
+    with pytest.raises(AssertionError):
+        czynnik_czestotliwosci(2.0, 50.0, None)
 
 
 def test_czynnik_czestotliwosci_jest_dokladnie_jeden_bez_czulosci() -> None:

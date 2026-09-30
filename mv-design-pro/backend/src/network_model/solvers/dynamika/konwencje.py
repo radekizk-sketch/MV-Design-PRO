@@ -66,8 +66,8 @@ def zmiana_bazy_impedancji(
     if s_bazowa_urzadzenia_mva <= 0.0 or s_bazowa_ukladu_mva <= 0.0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            "Bazy mocy musza byc dodatnie "
-            f"(urzadzenie={s_bazowa_urzadzenia_mva}, uklad={s_bazowa_ukladu_mva})",
+            "Bazy mocy muszą być dodatnie "
+            f"(urządzenie={s_bazowa_urzadzenia_mva}, układ={s_bazowa_ukladu_mva})",
             s_bazowa_urzadzenia_mva=s_bazowa_urzadzenia_mva,
             s_bazowa_ukladu_mva=s_bazowa_ukladu_mva,
         )
@@ -87,8 +87,8 @@ def zmiana_bazy_stalej_bezwladnosci(
     if s_bazowa_urzadzenia_mva <= 0.0 or s_bazowa_ukladu_mva <= 0.0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            "Bazy mocy musza byc dodatnie "
-            f"(urzadzenie={s_bazowa_urzadzenia_mva}, uklad={s_bazowa_ukladu_mva})",
+            "Bazy mocy muszą być dodatnie "
+            f"(urządzenie={s_bazowa_urzadzenia_mva}, układ={s_bazowa_ukladu_mva})",
             s_bazowa_urzadzenia_mva=s_bazowa_urzadzenia_mva,
             s_bazowa_ukladu_mva=s_bazowa_ukladu_mva,
         )
@@ -121,10 +121,10 @@ def sprawdz_stala_bezwladnosci(h_s: float, *, urzadzenie: str, rodzina: str) -> 
     if not math.isfinite(h_s) or h_s <= 0.0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Stala bezwladnosci urzadzenia {urzadzenie!r} (rodzina {rodzina}) wynosi {h_s} — "
-            "rownanie wahan wymaga H > 0 i skonczonego. Dla H = 0 rownanie ruchu nie "
-            "istnieje (dzielenie przez zero), dla H < 0 nadwyzka mocy mechanicznej "
-            "hamowalaby wirnik. To warunek istnienia rownania, nie prog wiarygodnosci.",
+            f"Stała bezwładności urządzenia {urzadzenie!r} (rodzina {rodzina}) wynosi {h_s} — "
+            "równanie wahań wymaga H > 0 i skończonego. Dla H = 0 równanie ruchu nie "
+            "istnieje (dzielenie przez zero), dla H < 0 nadwyżka mocy mechanicznej "
+            "hamowałaby wirnik. To warunek istnienia równania, nie próg wiarygodności.",
             urzadzenie=urzadzenie,
             rodzina=rodzina,
             h_s=h_s,
@@ -152,7 +152,7 @@ def moc_pu(moc_mva: float, s_bazowa_mva: float) -> float:
     if s_bazowa_mva <= 0.0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Baza mocy musi byc dodatnia (otrzymano {s_bazowa_mva})",
+            f"Baza mocy musi być dodatnia (otrzymano {s_bazowa_mva})",
             s_bazowa_mva=s_bazowa_mva,
         )
     return moc_mva / s_bazowa_mva
@@ -183,8 +183,8 @@ def admitancja_zwarcia_pu(
     z_zwarcia_pu = complex(r_f_ohm, x_f_ohm) / z_bazowa_ohm
     if z_zwarcia_pu == 0:
         raise ZeroDivisionError(
-            "Zwarcie metaliczne (R_f = X_f = 0) nie ma skonczonej admitancji — "
-            "impedancja zwarcia musi byc niezerowa."
+            "Zwarcie metaliczne (R_f = X_f = 0) nie ma skończonej admitancji — "
+            "impedancja zwarcia musi być niezerowa."
         )
     return 1.0 / z_zwarcia_pu
 
