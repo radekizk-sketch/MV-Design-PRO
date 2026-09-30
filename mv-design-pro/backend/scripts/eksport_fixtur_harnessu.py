@@ -1759,7 +1759,9 @@ def _enm_sceny_dynamika(*, z_modelem_pv: bool, z_modelem_odbioru: bool) -> Energ
     operacjami `set_der_catalog_bindings` i `set_load_dynamic_binding`, materializacja
     `enm/dynamika_z_katalogu.py`)."""
     return EnergyNetworkModel.model_validate(
-        build_dynamika_projektanta_enm(z_modelem_pv=z_modelem_pv, z_modelem_odbioru=z_modelem_odbioru)
+        build_dynamika_projektanta_enm(
+            z_modelem_pv=z_modelem_pv, z_modelem_odbioru=z_modelem_odbioru
+        )
     )
 
 

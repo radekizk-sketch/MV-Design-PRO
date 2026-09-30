@@ -90,7 +90,7 @@
       "t_pomiaru_czestotliwosci_s": 0.1,
       "podstawa_t_pomiaru_pl": "Stała 0,1 s (pięć okresów sieci 50 Hz) — rząd stałych czasowych filtrów pomiaru częstotliwości szyny w modelach RMS obciążeń; odbiorniki reagują na częstotliwość przez prędkość napędów, nie natychmiast. Żadna norma nie podaje jednej wartości — dana szacowana, do zastąpienia pomiarem odbioru.",
       "zrodlo_proweniencji": "profil_typowy_normy",
-      "odniesienie_proweniencji": "IEEE Std 2781-2022 (modelowanie obciążeń w symulacjach systemu elektroenergetycznego); wartości typowe — jakość ESTIMATED"
+      "odniesienie_proweniencji": "IEEE Std 2781-2022 (modelowanie obciążeń w symulacjach systemu elektroenergetycznego)"
     }
   ],
   "biegi_rozplywu": []

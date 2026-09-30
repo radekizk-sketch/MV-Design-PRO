@@ -232,9 +232,7 @@ def test_residuum_kcl_jest_liczone_niezaleznie_od_ybus() -> None:
     stany = stany_z_odbiorami(odbiory, stany)
     napiecia = np.array([complex(1.03, 0.05), complex(0.98, -0.01)], dtype=complex)
     przez_ybus = residuum_algebry(model, odbiory, urzadzenia, stany, napiecia)
-    element_po_elemencie = residuum_kcl_niezalezne(
-        model, odbiory, urzadzenia, stany, napiecia
-    )
+    element_po_elemencie = residuum_kcl_niezalezne(model, odbiory, urzadzenia, stany, napiecia)
     assert element_po_elemencie == pytest.approx(
         float(np.max(np.abs(przez_ybus[:2] + 1j * przez_ybus[2:]))), rel=1e-9
     )

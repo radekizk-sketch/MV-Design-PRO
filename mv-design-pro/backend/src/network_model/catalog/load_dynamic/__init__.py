@@ -73,9 +73,10 @@ class LoadDynamicProfile(BaseModel):
 
 #: Odniesienie profilu typowego: przewodnik modelowania obciążeń w symulacjach RMS (postać
 #: modelu: ZIP × czynnik częstotliwościowy, przejście do stałej impedancji przy zapadzie).
+#: Tekst trafia do zdań dla projektanta (dana przyjęta, zastrzeżenie oceny), więc nie niesie
+#: kodu jakości — jakość jest polem rekordu (`jakosc`), a zdanie mówi „oszacowane" po polsku.
 _ODNIESIENIE_ODBIORU = (
-    "IEEE Std 2781-2022 (modelowanie obciążeń w symulacjach systemu elektroenergetycznego); "
-    "wartości typowe — jakość ESTIMATED"
+    "IEEE Std 2781-2022 (modelowanie obciążeń w symulacjach systemu elektroenergetycznego)"
 )
 
 PROFIL_ODBIORU_ZAGREGOWANEGO_SN = LoadDynamicProfile(

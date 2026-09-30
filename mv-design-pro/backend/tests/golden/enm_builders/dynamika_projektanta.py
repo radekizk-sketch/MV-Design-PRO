@@ -129,7 +129,9 @@ def refy_sieci(enm: dict[str, Any]) -> RefySieci:
     )
 
 
-def build_dynamika_projektanta_enm(*, z_modelem_pv: bool, z_modelem_odbioru: bool) -> dict[str, Any]:
+def build_dynamika_projektanta_enm(
+    *, z_modelem_pv: bool, z_modelem_odbioru: bool
+) -> dict[str, Any]:
     """Sieć toku pracy dynamiki (patrz docstring modułu) jako słownik ENM."""
     enm = _op(
         _pusty_model(),

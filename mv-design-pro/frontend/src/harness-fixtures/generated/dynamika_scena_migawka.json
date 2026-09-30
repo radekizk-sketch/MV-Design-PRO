@@ -866,7 +866,7 @@
       "dynamika": {
         "proweniencja": {
           "data": null,
-          "odniesienie": "IEEE Std 2781-2022 (modelowanie obciążeń w symulacjach systemu elektroenergetycznego); wartości typowe — jakość ESTIMATED",
+          "odniesienie": "IEEE Std 2781-2022 (modelowanie obciążeń w symulacjach systemu elektroenergetycznego)",
           "zrodlo": "profil_typowy_normy"
         },
         "t_pomiaru_czestotliwosci_s": null,
