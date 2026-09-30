@@ -197,7 +197,7 @@ Cross-layer violations are architectural regressions requiring immediate fix.
 - Create black-box calculations
 - Modify frozen Result APIs without version bump
 - Create shadow/duplicate data models
-- Bypass NetworkValidator before solver execution
+- Bypass the ENM validator (`enm/validator.py`) + `CalculationReadiness` before a run (ADR-025, O-65; the former `NetworkValidator` rule was dead in code)
 - Use project codenames (P7, P11, P14, etc.) in UI-visible strings
 - Create "basic UI" and "advanced UI" as separate interfaces
 

@@ -1,6 +1,6 @@
 # ADR-014: Łączność a topologia — jeden `TopologyService`
 
-**Status:** PROPOSED (program Digital Twin 2026-09; do decyzji właściciela)
+**Status:** ACCEPTED (2026-09-30, decyzja doradcy z delegacją właściciela O-59 — rejestr O-63 w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3; z korektą nazewniczą O-64: jedynym dostawcą topologii jest istniejące `enm/topology.py::derive(snapshot) -> TopologyView` rozszerzone o wejście `EffectiveNetworkSnapshot` (ADR-017), bez nowej klasy `TopologyService`; ADR-013 SUPERSEDED; własne liczenie energizacji/NOP we froncie kasowane; werdykt wyglądu = B-02 właściciela (karta TOPOLOGIA-JEDNA-PRAWDA kończy się na CLAIMED DONE))
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` §9
 

@@ -1,7 +1,7 @@
 # ADR-003: Persistence of BoundaryNode and Sources
 
 ## Status
-Accepted
+**SUPERSEDED by ADR-027** (2026-09-30, O-60/O-63, V12K-347): punkt przyłączenia nie jest kolumną persystencji ani węzłem — jest obiektem umownym `GridConnectionPoint` wskazującym terminal; legacy SQL `projects.connection_node_id` odchodzi procedurą kasacji W1. Treść poniżej historyczna.
 
 ## Context
 PR3 requires persistence of BoundaryNode – węzeł przyłączenia and source definitions.

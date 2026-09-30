@@ -8,6 +8,14 @@ Checks:
 3. Required catalog-first binding documents exist.
 4. Canonical index points to binding docs and does not mark docs/spec as source of truth.
 5. Explicit file inventories in binding docs do not reference non-existent repo files.
+6. K-19 (V12K-347, O-60): the active SLD / short-circuit UI contracts never carry the
+   patterns "Point of Common Coupling" and "ZAWSZE używaj terminu BoundaryNode" —
+   the connection point is the contractual object GridConnectionPoint (ADR-027),
+   BoundaryNode belongs to the analysis layer only.
+7. K-20 (V12K-339, O-63): the "Document Hierarchy" table in CLAUDE.md (repo root) and
+   the "Hierarchia kanonu" list in docs/INDEX.md are ONE list — same priority tokens,
+   same set of paths per priority, and every listed path (file, directory or glob)
+   exists in the repository.
 """
 
 from __future__ import annotations
@@ -347,6 +355,156 @@ def check_sld_audit_row_status(project_root: Path | None = None) -> list[str]:
     return violations
 
 
+#: K-19 (V12K-347): dokumenty, w których termin „Point of Common Coupling" i nakaz
+#: „ZAWSZE używaj terminu BoundaryNode" były sprzeczne z Core Rule 5 i ADR-027.
+#: Klasa, nie instancja: wszystkie aktywne kontrakty SLD i zwarciowe w docs/ui
+#: oraz docelowe obrazy SLD w docs/sld (archiwum nietknięte).
+K19_DOC_GLOBS = (
+    "docs/ui/SLD_*.md",
+    "docs/ui/SHORT_CIRCUIT_*.md",
+    "docs/sld/SLD_*.md",
+)
+K19_FORBIDDEN_PATTERNS = (
+    "Point of Common Coupling",
+    "ZAWSZE używaj terminu BoundaryNode",
+)
+
+
+def check_k19_connection_point_terms(project_root: Path | None = None) -> list[str]:
+    """K-19: kontrakty SLD/zwarciowe bez zakazanych wzorców punktu przyłączenia."""
+    root = project_root or PROJECT_ROOT
+    violations: list[str] = []
+    for pattern in K19_DOC_GLOBS:
+        for path in sorted(root.glob(pattern)):
+            content = _read_text(path)
+            if content is None:
+                continue
+            display = path.relative_to(root).as_posix()
+            for line_number, line in enumerate(content.splitlines(), start=1):
+                for forbidden in K19_FORBIDDEN_PATTERNS:
+                    if forbidden in line:
+                        violations.append(
+                            f"  {display}:{line_number}: zakazany wzorzec K-19 -> {forbidden!r}"
+                        )
+    return violations
+
+
+#: K-20 (V12K-339): jedna hierarchia dokumentów w dwóch plikach. Do 2026-09-30 obie
+#: listy istniały niezależnie (6 vs 10 pozycji o różnej treści) i nic ich nie
+#: porównywało — deklaracja „hierarchia wiążąca" bez strażnika (reguła KLASA §4).
+HIERARCHY_CLAUDE_HEADING = "## Document Hierarchy (BINDING)"
+HIERARCHY_INDEX_HEADING = "> **Hierarchia kanonu**"
+HIERARCHY_PATH_PREFIX = "mv-design-pro/"
+HIERARCHY_PRIORITY_TOKEN = re.compile(r"^[0-9]+b?$|^—$")
+INDEX_HIERARCHY_ROW = re.compile(r"^>\s*([0-9]+b?|—)\.\s+(.*)$")
+
+
+def _normalize_hierarchy_path(token: str) -> str:
+    token = token.strip()
+    if token.startswith(HIERARCHY_PATH_PREFIX):
+        token = token[len(HIERARCHY_PATH_PREFIX) :]
+    return token
+
+
+def hierarchy_from_claude(text: str) -> dict[str, set[str]] | None:
+    """Tabela „Document Hierarchy" z CLAUDE.md -> {priorytet: {ścieżki}}; None = brak sekcji."""
+    lines = text.splitlines()
+    try:
+        start = next(i for i, line in enumerate(lines) if line.strip() == HIERARCHY_CLAUDE_HEADING)
+    except StopIteration:
+        return None
+    result: dict[str, set[str]] = {}
+    for line in lines[start + 1 :]:
+        if line.startswith("## "):
+            break
+        if not line.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) < 2 or not HIERARCHY_PRIORITY_TOKEN.match(cells[0]):
+            continue
+        result[cells[0]] = {
+            _normalize_hierarchy_path(m.group(1)) for m in INLINE_CODE_PATTERN.finditer(cells[1])
+        }
+    return result
+
+
+def hierarchy_from_index(text: str) -> dict[str, set[str]] | None:
+    """Lista „Hierarchia kanonu" z docs/INDEX.md -> {priorytet: {ścieżki}}; None = brak sekcji."""
+    lines = text.splitlines()
+    try:
+        start = next(i for i, line in enumerate(lines) if line.startswith(HIERARCHY_INDEX_HEADING))
+    except StopIteration:
+        return None
+    result: dict[str, set[str]] = {}
+    for line in lines[start + 1 :]:
+        if not line.startswith(">"):
+            break
+        match = INDEX_HIERARCHY_ROW.match(line)
+        if not match:
+            continue
+        # Ścieżki stoją PRZED opisem (separator „ — "); backticki w opisie to odsyłacze, nie hierarchia.
+        head = match.group(2).split(" — ", 1)[0]
+        result[match.group(1)] = {
+            _normalize_hierarchy_path(m.group(1)) for m in INLINE_CODE_PATTERN.finditer(head)
+        }
+    return result
+
+
+def _hierarchy_path_exists(project_root: Path, token: str) -> bool:
+    if "*" in token:
+        return any(project_root.glob(token))
+    target = project_root / token
+    if token.endswith("/"):
+        return target.is_dir()
+    return target.exists()
+
+
+def check_k20_hierarchy(
+    project_root: Path | None = None, claude_md: Path | None = None
+) -> list[str]:
+    """K-20: CLAUDE.md i docs/INDEX.md niosą tę samą hierarchię, a każda ścieżka istnieje."""
+    root = project_root or PROJECT_ROOT
+    claude_path = claude_md or (root.parent / "CLAUDE.md")
+    index_path = root / "docs/INDEX.md"
+    claude_text = _read_text(claude_path)
+    index_text = _read_text(index_path)
+    if claude_text is None:
+        return [f"  brak pliku hierarchii -> {claude_path}"]
+    if index_text is None:
+        return [f"  brak pliku hierarchii -> {index_path}"]
+    claude_rows = hierarchy_from_claude(claude_text)
+    index_rows = hierarchy_from_index(index_text)
+    violations: list[str] = []
+    if claude_rows is None:
+        return [f"  CLAUDE.md bez sekcji {HIERARCHY_CLAUDE_HEADING!r}"]
+    if index_rows is None:
+        return [f"  docs/INDEX.md bez bloku {HIERARCHY_INDEX_HEADING!r}"]
+    if not claude_rows or not index_rows:
+        violations.append(
+            f"  pusty skan hierarchii (CLAUDE.md: {len(claude_rows)} wierszy, "
+            f"docs/INDEX.md: {len(index_rows)} wierszy) — format się zmienił, strażnik nic nie sprawdza"
+        )
+        return violations
+    for priority in sorted(set(claude_rows) | set(index_rows)):
+        left = claude_rows.get(priority)
+        right = index_rows.get(priority)
+        if left is None:
+            violations.append(f"  poziom {priority}: jest w docs/INDEX.md, brak w CLAUDE.md")
+            continue
+        if right is None:
+            violations.append(f"  poziom {priority}: jest w CLAUDE.md, brak w docs/INDEX.md")
+            continue
+        if left != right:
+            violations.append(
+                f"  poziom {priority}: różne ścieżki — tylko CLAUDE.md: {sorted(left - right)}, "
+                f"tylko docs/INDEX.md: {sorted(right - left)}"
+            )
+        for token in sorted(left | right):
+            if not _hierarchy_path_exists(root, token):
+                violations.append(f"  poziom {priority}: ścieżka nie istnieje -> {token}")
+    return violations
+
+
 def _print_block(title: str, violations: list[str]) -> None:
     if not violations:
         return
@@ -399,6 +557,22 @@ def main() -> int:
         _print_block(
             "DOCS GUARD: WIERSZE AUDYTU SLD BEZ STATUSU",
             sld_audit_violations,
+        )
+        all_ok = False
+
+    k19_violations = check_k19_connection_point_terms()
+    if k19_violations:
+        _print_block(
+            "DOCS GUARD: K-19 — ZAKAZANE WZORCE PUNKTU PRZYLACZENIA W KONTRAKTACH SLD",
+            k19_violations,
+        )
+        all_ok = False
+
+    k20_violations = check_k20_hierarchy()
+    if k20_violations:
+        _print_block(
+            "DOCS GUARD: K-20 — HIERARCHIA CLAUDE.md I docs/INDEX.md NIE JEST JEDNA LISTA",
+            k20_violations,
         )
         all_ok = False
 

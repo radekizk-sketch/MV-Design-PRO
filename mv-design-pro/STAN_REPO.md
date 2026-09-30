@@ -115,6 +115,15 @@ CI. Szczegóły, kolejność i pierwsze uruchomienie wykonawców: §7 E i K.
 > z części E. Każda liczba poniżej pochodzi z pomiaru z datą i drzewem; rozjazd z repo = defekt tego rejestru
 > (§6 pkt 3), naprawiany w tej samej kolejce.
 
+> **Decyzje O-60…O-75 (2026-09-30, karta ZAPIS-DECYZJI).** Ostateczne decyzje doradcy z delegacją właściciela O-59
+> (uzgodnienie trzech klastrów: solvery B-01, architektura, dane OD-21; pozycje TORY i współczynnik c) są zapisane
+> WYŁĄCZNIE w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3 (wiersze O-60…O-75); statusy ADR-012…029 w `docs/adr/`
+> i `docs/INDEX.md`; konflikty V12K-339…V12K-349 w `docs/v12xx/REJESTR_KONFLIKTOW.md`; specyfikacje danych właściciela
+> P-A…P-M w `docs/plan/DANE_WLASCICIELA_O59_2026-09.md`; fale kart 0–5 w wierszu O-73. Hierarchia dokumentów (K-20,
+> O-63): `CLAUDE.md` „Document Hierarchy” i `docs/INDEX.md` „Hierarchia kanonu” są JEDNĄ listą z poziomem 1b
+> (`docs/architecture/*` — prawo programu) i wierszem `docs/twin` (materiał wejściowy, nie kanon), pilnowaną przez
+> `scripts/docs_guard.py`. Meldunek karty: `MELDUNEK_ZAPIS_DECYZJI.md` (katalog główny repo).
+
 ### A. Stan Git
 
 **A.1 Repozytorium i gałęzie.** `radekizk-sketch/MV-Design-PRO`. `main` = `8f7ed3c2` — PR #474 scalony

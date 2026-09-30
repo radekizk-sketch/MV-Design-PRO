@@ -1,6 +1,6 @@
 # ADR-028: Magazyn rewizji, jeden rejestr biegów, persystencja docelowa i aktor komend
 
-**Status:** PROPOSED (program Digital Twin 2026-09; do decyzji właściciela — zależy od topologii wdrożenia W-D1)
+**Status:** PROPOSED (2026-09-30, O-63: decyzja przy wycinku W-x; warunek wejścia = konsument w kodzie, nie „M1–M7 STOP” — bramka M0 wiąże tylko plan docs/twin, V12K-340; K-13 zamknięta: jedno stanowisko lokalne, `Autor{rodzaj, id}` i If-Match/CAS bez kont i ról — V12K-345)
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_DATA_VERSIONING_PROVENANCE.md` §2, §6, §10; `../twin/MV_DESIGN_PRO_PERFORMANCE_PLAN.md` §2.1
 

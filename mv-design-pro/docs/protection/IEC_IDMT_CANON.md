@@ -205,7 +205,7 @@ Where $t_{delay}$ is the fixed delay time [s].
 The following are OUT OF SCOPE for P15a but may be added later:
 
 - Custom manufacturer curves (ABB, Siemens, Schneider)
-- Long-Time Inverse (LTI) curve
+- Long-Time Inverse (LTI) curve — **jedna nazwa krzywej K=120/α=1 w całym repo = literał „LTI” (OD-15(e), O-69, 2026-09-30):** rdzeń `protection_iec60255.py` dostaje członek `LONG_TIME_INVERSE` o wartości „LTI” (dawne „RI”), alias ENM „LTI → RI” kasowany bez warstwy zgodności, zapisane konfiguracje migrowane jednorazowo z testem odtworzenia biegu (karta PROT-LTI); ten dokument, `PROTECTION_SYSTEM_CANONICAL.md` i `VENDOR_CURVES.md` już używają wyłącznie „LTI” (pomiar 2026-09-30: `\bRI\b` = 0)
 - Reset time characteristics
 - Thermal memory
 - Coordination/selectivity analysis

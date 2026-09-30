@@ -541,7 +541,7 @@ z punktem pracy, od którego bieg wystartował, to cała reszta przebiegu opisuj
 |---|---|---|
 | **OD-35** | Tor statyczny rozpływu wystawia `branch_current_pu` = prąd JEDNEJ strony pod nazwą sugerującą wielkość gałęzi (`power_flow_newton_internal.py:1116`). Kontrakt dynamiczny tego nie powtarza, więc powstaną dwa różne znaczenia tej samej nazwy w produkcie | plik jest w zbiorze FROZEN (`scripts/solver_diff_guard.py:39-47`) — korekta wymaga bramki B-01. Warianty: (a) rozszerzyć wynik statyczny o drugą stronę pod bramką B-01; (b) zostawić i nazwać różnicę w prezentacji; (c) wystawić drugą stronę w warstwie odczytu bez zmiany rdzenia. Rekomendacja: **(c)** — pełna informacja bez ruszania zamrożonego rdzenia |
 | | **Rozstrzygnięcie OD-35 (2026-09-23, decyzja O-46, karta AB-1b.1 P9): wariant (c)** — `build_branch_results` wystawia `i_do_a` (prąd zacisku końcowego z mocy strony `to` i napięcia węzła `to`), etykietę strony dla `i_a` i obciążenie z większego zacisku; rdzeń FROZEN nietknięty. | — |
-| **OD-36** | Żądana dokładność kąta `Δθ_dop`, z której wynika granica domeny ważności `f_i` (§4) | to wielkość inżynierska, nie numeryczna: określa, od jakiego zapadu przestajemy orzekać o częstotliwości. Rekomendacja: podać ją jako jawne pole nastaw biegu z wartością wymaganą, nie domyślną |
+| **OD-36** | Żądana dokładność kąta `Δθ_dop`, z której wynika granica domeny ważności `f_i` (§4) | to wielkość inżynierska, nie numeryczna: określa, od jakiego zapadu przestajemy orzekać o częstotliwości. Rekomendacja: podać ją jako jawne pole nastaw biegu z wartością wymaganą, nie domyślną. **ROZSTRZYGNIĘTE 2026-09-30 (O-70):** wymagane pole `dokladnosc_kata_dop_rad` w `NastawySolvera`, `WERSJA_NASTAW_SOLVERA = 2`, karta W6-A-OD36 — szczegóły `FINAL_DYNAMICS_CAPABILITY_FREEZE.md` §7.2 |
 | **OD-37** | Silnik indukcyjny jako rodzina dynamiczna — patrz `docs/audit/DYSPOZYCJA_STABILITY_RMS.md` | duże silniki SN decydują o stabilności napięciowej po zwarciu (zapad, zatrzymanie, prąd rozruchowy przy odbudowie). Rodzina jest wymieniona w martwym module, **nie ma jej** w bibliotece W6-3A i nie ma jej w zamrożonej macierzy. To rozszerzenie celu, więc decyzja właściciela |
 
 ---
@@ -639,9 +639,12 @@ gdzie `u_V` jest **zmierzoną** estymatą błędu napięcia.
 
 **Co to znaczy:** polityka chroni przed **numeryczną** bezsensownością kąta i nic ponad to.
 **Nie orzeka**, od jak głębokiego zapadu inżynier ma przestać mówić o częstotliwości węzła.
-Ta druga, **fizyczna** granica wymaga polityki wyprowadzonej i **zwalidowanej** — i pozostaje
-jawną luką przypisaną do fali walidacyjnej. Nie zastępujemy jej progiem przyjętym z góry, bo
-to jest dokładnie to, co OD-36 odrzuca.
+Ta druga, **fizyczna** granica jest wyprowadzona z żądanej dokładności kąta: u_θ(|V|) =
+arcsin(min(1, u_V/|V|)) w `obserwable.py`, porównana z wymaganym polem nastaw
+`dokladnosc_kata_dop_rad` (OD-36 ROZSTRZYGNIĘTE 2026-09-30, O-70; karta W6-A-OD36 po
+spełnieniu warunku wejścia §5 FINAL_DYNAMICS). Powód domeny rozróżnia granicę numeryczną od
+fizycznej; `NIEDOSTEPNA` nigdy nie jest zastępowana f_n. Nie zastępujemy jej progiem przyjętym
+z góry, bo to jest dokładnie to, co OD-36 odrzuca.
 
 Wartość przy stanie `NIEDOSTEPNA` niesie niepewność równą **całej częstotliwości znamionowej** —
 konsument ignorujący kod jakości widzi wtedy, że liczba nie niesie treści.

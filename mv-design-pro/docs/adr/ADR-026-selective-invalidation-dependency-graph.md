@@ -1,6 +1,6 @@
 # ADR-026: Selektywna inwalidacja przez graf klas atrybutów
 
-**Status:** PROPOSED (program Digital Twin 2026-09; do decyzji właściciela)
+**Status:** PROPOSED (2026-09-30, O-63: decyzja przy wycinku W-x; warunek wejścia = konsument w kodzie, nie „M1–M7 STOP” — bramka M0 wiąże tylko plan docs/twin, V12K-340)
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` §22; `docs/v12xx/MACIERZ_INVALIDACJI.md` jako specyfikacja
 

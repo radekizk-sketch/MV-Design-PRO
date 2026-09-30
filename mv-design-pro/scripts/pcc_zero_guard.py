@@ -10,6 +10,13 @@ analysis/interpretation layer's documentation or in test files.
 Scans:
   backend/src/**/*.py  (production code only — tests are excluded)
 
+Structural check (G-15(a), ADR-027 ACCEPTED 2026-09-30, O-60, V12K-347):
+  the PHYSICS model — backend/src/network_model/** (core, solvers, NetworkGraph,
+  NetworkSnapshot) and backend/src/solver_input/** — must never carry the
+  identifiers ``GridConnectionPoint`` or ``BoundaryNode``.  The connection point is a
+  CONTRACTUAL object of the contract layer (domain/, enm/, application/) pointing at
+  a terminal; BoundaryNode belongs to analysis/boundary only.
+
 Allowed exceptions on a per-line basis:
   - Comments or docstrings that explicitly document the prohibition rule
     (e.g. "# PCC is NOT in NetworkModel", "PCC Prohibition", etc.)
@@ -72,23 +79,53 @@ PCC_ALLOWED_CONTEXTS = [
 ]
 
 
+#: Katalogi MODELU FIZYKI względem backend/src (G-15(a)): tu punkt przyłączenia nie
+#: istnieje pod żadną nazwą. Warstwa kontraktowa (domain/, enm/, application/)
+#: celowo POZA listą — tam obiekt umowny `GridConnectionPoint` jest dozwolony.
+PHYSICS_MODEL_DIRS = ("network_model", "solver_input")
+PHYSICS_FORBIDDEN_PATTERN = re.compile(r"\b(GridConnectionPoint|BoundaryNode)\b")
+
+
 # ---------------------------------------------------------------------------
 # Scanner
 # ---------------------------------------------------------------------------
 
 
-def scan_backend_src() -> list[str]:
+def scan_physics_model(backend_src: Path = BACKEND_SRC) -> list[str]:
+    """Iniekcja strukturalna: identyfikatory punktu przyłączenia w modelu fizyki = czerwony."""
+    violations: list[str] = []
+    for rel_dir in PHYSICS_MODEL_DIRS:
+        base = backend_src / rel_dir
+        if not base.exists():
+            continue
+        for py_file in sorted(base.rglob("*.py")):
+            try:
+                content = py_file.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            display_path = py_file.relative_to(backend_src).as_posix()
+            for line_num, line in enumerate(content.split("\n"), start=1):
+                if PHYSICS_FORBIDDEN_PATTERN.search(line):
+                    if any(ctx in line for ctx in PCC_ALLOWED_CONTEXTS):
+                        continue
+                    violations.append(
+                        f"  backend/src/{display_path}:{line_num}: {line.strip()[:120]}"
+                    )
+    return violations
+
+
+def scan_backend_src(backend_src: Path = BACKEND_SRC) -> list[str]:
     """Scan all .py files under backend/src/ for prohibited PCC references."""
     violations: list[str] = []
 
-    if not BACKEND_SRC.exists():
+    if not backend_src.exists():
         print(
-            f"WARNING: {BACKEND_SRC} does not exist — nothing to scan.",
+            f"WARNING: {backend_src} does not exist — nothing to scan.",
             file=sys.stderr,
         )
         return violations
 
-    for py_file in sorted(BACKEND_SRC.rglob("*.py")):
+    for py_file in sorted(backend_src.rglob("*.py")):
         # Skip this guard script if it somehow ends up inside backend/src/
         if py_file.name == SELF_NAME:
             continue
@@ -98,7 +135,7 @@ def scan_backend_src() -> list[str]:
         except (UnicodeDecodeError, OSError):
             continue
 
-        display_path = str(py_file.relative_to(PROJECT_ROOT))
+        display_path = "backend/src/" + py_file.relative_to(backend_src).as_posix()
 
         for line_num, line in enumerate(content.split("\n"), start=1):
             if PCC_PATTERN.search(line):
@@ -116,6 +153,27 @@ def scan_backend_src() -> list[str]:
 
 
 def main() -> int:
+    physics_violations = scan_physics_model()
+    if physics_violations:
+        print("=" * 70, file=sys.stderr)
+        print(
+            "PCC ZERO GUARD: GridConnectionPoint/BoundaryNode W MODELU FIZYKI (G-15(a), ADR-027)",
+            file=sys.stderr,
+        )
+        print("=" * 70, file=sys.stderr)
+        print(
+            "Punkt przylaczenia to obiekt UMOWNY warstwy kontraktowej (domain/enm/application),",
+            file=sys.stderr,
+        )
+        print(
+            "a BoundaryNode nalezy wylacznie do analysis/boundary — zaden z nich nie wchodzi do",
+            file=sys.stderr,
+        )
+        print("network_model/** ani solver_input/**.", file=sys.stderr)
+        for v in physics_violations:
+            print(v, file=sys.stderr)
+        return 1
+
     violations = scan_backend_src()
 
     if violations:
@@ -157,7 +215,10 @@ def main() -> int:
         )
         return 1
 
-    print("pcc-zero-guard: OK (no PCC violations in backend/src/)")
+    print(
+        "pcc-zero-guard: OK (no PCC violations in backend/src/; "
+        "no GridConnectionPoint/BoundaryNode in network_model/ and solver_input/)"
+    )
     return 0
 
 

@@ -240,7 +240,7 @@ SC3F (IEC 60909), VDROP, Equipment, Power Flow, Losses & Energy, Protection Over
 
 ## 8. Validation Layer
 
-NetworkValidator runs BEFORE any solver execution (13 industrial-grade rules).
+The ENM validator (`enm/validator.py`) and `CalculationReadinessService` run BEFORE any solver execution (through `enm/canonical_analysis`); readiness codes carry a fix action (ADR-025 ACCEPTED 2026-09-30, O-65). The legacy `NetworkValidator` (`network_model/validation`) has 0 production consumers and is removed by card GOTOWOSC-JEDEN-REJESTR after a rule-code identity test.
 
 > **Detail:** see [`docs/system/SPEC_GOTOWOSC_I_DZIALANIA_NAPRAWCZE.md`](docs/system/SPEC_GOTOWOSC_I_DZIALANIA_NAPRAWCZE.md), [`docs/domain/READINESS_FIXACTIONS_CANONICAL_PL.md`](docs/domain/READINESS_FIXACTIONS_CANONICAL_PL.md), [`docs/qa/MACIERZ_TESTOW_GLOBALNYCH.md`](docs/qa/MACIERZ_TESTOW_GLOBALNYCH.md).
 

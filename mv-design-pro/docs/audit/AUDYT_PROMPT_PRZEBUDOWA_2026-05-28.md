@@ -132,7 +132,7 @@ istnieje** (zostały domknięte w pracach V12.3–V12.6).
 | # | Pozycja | Uwaga |
 |---|---|---|
 | D-10 | `ncrfg_compliance/checker.py` — `DYNAMIC_TEST_IDS` (T8/T10/T11/T16/T17/T18) zwracają `no_module` | Ścieżka **nie podpięta do API**; zastąpiona przez kompletny `solvers/ncrfg_ptpiree` (podpięty do `/api/ncrfg-tests`). Do scalenia/wygaszenia, niski priorytet |
-| D-11 | API 501 `NOT_IMPLEMENTED`: `power_flow_comparisons`, `power_flow_runs`, `fault_loop` (TT/IT) | Częściowo by-design (TT/IT poza MVP IEC 60364). Do decyzji zakresowej |
+| D-11 | API 501 `NOT_IMPLEMENTED`: `power_flow_comparisons`, `power_flow_runs`, `fault_loop` (TT/IT) | Częściowo by-design (TT/IT poza MVP IEC 60364). Do decyzji zakresowej **Rozstrzygnięte 2026-09-30 (O-68):** DOCX 501 — kasacja czterech gałęzi `except ImportError → 501` (`power_flow_runs.py:490, :628`; `power_flow_comparisons.py:508, :648`; python-docx twardą zależnością) w karcie API-DOCX-501; TT/IT → karta W5-E-TTIT (jedno wejście `fault_loop_iec60364`, limity = dane właściciela P-C) |
 
 ---
 
