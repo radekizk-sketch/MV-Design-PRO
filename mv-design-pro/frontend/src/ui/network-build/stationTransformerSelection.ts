@@ -1,6 +1,6 @@
 import type { EnergyNetworkModel, Substation, Transformer } from '../../types/enm';
 import { extractTransformerDesignation } from '../sld/v2/canvas/enmToCanonicalGpzAdapter';
-import { szynyStacji } from '../shared/szynyStacji';
+import { indeksGaleziPolNn, szynyStacji, type IndeksGaleziPolNn } from '../shared/szynyStacji';
 
 const BLOCK_TRANSFORMER_TOKEN_RE = /(^|[\s_/.-])(block|blokowy|blok|dedicated|dedykowany)([\s_/.-]|$)/u;
 
@@ -58,18 +58,68 @@ export function isStationDistributionTransformer(
   return !BLOCK_TRANSFORMER_TOKEN_RE.test(tokens);
 }
 
+/**
+ * Dane wyboru transformatorów stacji, które zależą WYŁĄCZNIE od migawki (nie od stacji):
+ * indeks gałęzi pól nN (szyny stacji), refy transformatorów blokowych DER, napięcia szyn.
+ * Wołający, który wybiera transformatory dla wielu stacji tej samej migawki (adapter SLD),
+ * liczy go RAZ — bez tego każda stacja przeglądała wszystkie gałęzie, generatory i szyny
+ * (koszt O(stacje × migawka)). Wynik wyboru z kontekstem i bez jest identyczny.
+ */
+export interface KontekstWyboruTransformatorow {
+  readonly snapshot: EnergyNetworkModel;
+  readonly indeksPolNn: IndeksGaleziPolNn;
+  readonly blockTransformerRefs: ReadonlySet<string>;
+  readonly voltageByBusRef: ReadonlyMap<string, number>;
+  /** Transformatory migawki spełniające `isStationDistributionTransformer` (reguła niżej). */
+  readonly rozdzielcze: ReadonlySet<Transformer>;
+}
+
+export function kontekstWyboruTransformatorow(snapshot: EnergyNetworkModel): KontekstWyboruTransformatorow {
+  const voltageByBusRef = new Map<string, number>();
+  for (const bus of snapshot.buses ?? []) {
+    if (typeof bus.voltage_kv !== 'number') continue;
+    for (const ref of [bus.ref_id, bus.id]) {
+      if (nonEmptyRef(ref)) voltageByBusRef.set(ref, bus.voltage_kv);
+    }
+  }
+  const blockTransformerRefs = collectDerBlockTransformerRefs(snapshot);
+  return {
+    snapshot,
+    indeksPolNn: indeksGaleziPolNn(snapshot.branches ?? []),
+    blockTransformerRefs,
+    voltageByBusRef,
+    rozdzielcze: new Set(
+      (snapshot.transformers ?? []).filter((transformer) =>
+        isStationDistributionTransformer(transformer, blockTransformerRefs),
+      ),
+    ),
+  };
+}
+
+function kontekstDla(
+  snapshot: EnergyNetworkModel,
+  kontekst: KontekstWyboruTransformatorow | undefined,
+): KontekstWyboruTransformatorow {
+  if (!kontekst) return kontekstWyboruTransformatorow(snapshot);
+  if (kontekst.snapshot !== snapshot) {
+    throw new Error('Kontekst wyboru transformatorów zbudowany dla innej migawki');
+  }
+  return kontekst;
+}
+
 export function selectStationDistributionTransformers(
   snapshot: EnergyNetworkModel | null | undefined,
   station: Substation | null | undefined,
+  kontekst?: KontekstWyboruTransformatorow,
 ): Transformer[] {
   if (!snapshot || !station) return [];
+  const { indeksPolNn, rozdzielcze } = kontekstDla(snapshot, kontekst);
 
   const explicitRefs = new Set((station.transformer_refs ?? []).filter(nonEmptyRef));
   // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra `szynyStacji` (strona górna
   // transformatora leży na zacisku pola TR). `Bus` nie ma pola `substation_ref` (F10.3),
   // więc dawna gałąź „szyna deklaruje stację" była martwa — usunięta.
-  const busRefs = szynyStacji(station, snapshot.branches ?? []);
-  const blockTransformerRefs = collectDerBlockTransformerRefs(snapshot);
+  const busRefs = szynyStacji(station, snapshot.branches ?? [], indeksPolNn);
 
   return (snapshot.transformers ?? []).filter((transformer) => {
     // KOMPLETNOSC-POLA-TR — GRANICA TEJ REGUŁY, ZMIERZONA I NAZWANA.
@@ -95,7 +145,7 @@ export function selectStationDistributionTransformers(
     // źródła, NIE dostaje ani markera, ani ostrzeżenia — brak pola TR pozostaje
     // wtedy niewykryty. To jest ZNANA GRANICA, nie cichy wyjątek; jej zniesienie
     // wymaga jawnej roli transformatora w modelu (osobna karta).
-    if (!isStationDistributionTransformer(transformer, blockTransformerRefs)) {
+    if (!rozdzielcze.has(transformer)) {
       return false;
     }
 
@@ -180,16 +230,12 @@ export interface StationTransformerUnit {
 export function selectStationTransformerUnits(
   snapshot: EnergyNetworkModel | null | undefined,
   station: Substation | null | undefined,
+  kontekst?: KontekstWyboruTransformatorow,
 ): StationTransformerUnit[] {
-  const voltageByBusRef = new Map<string, number>();
-  for (const bus of snapshot?.buses ?? []) {
-    if (typeof bus.voltage_kv !== 'number') continue;
-    for (const ref of [bus.ref_id, bus.id]) {
-      if (nonEmptyRef(ref)) voltageByBusRef.set(ref, bus.voltage_kv);
-    }
-  }
+  const pelnyKontekst = snapshot ? kontekstDla(snapshot, kontekst) : null;
+  const voltageByBusRef: ReadonlyMap<string, number> = pelnyKontekst?.voltageByBusRef ?? new Map();
 
-  const distributionTransformers = selectStationDistributionTransformers(snapshot, station);
+  const distributionTransformers = selectStationDistributionTransformers(snapshot, station, pelnyKontekst ?? undefined);
   const selected = distributionTransformers
     .map((transformer, idx): StationTransformerUnit | null => {
       const ref = transformer.ref_id ?? transformer.id;

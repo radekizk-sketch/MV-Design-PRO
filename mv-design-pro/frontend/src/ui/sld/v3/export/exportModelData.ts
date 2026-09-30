@@ -21,7 +21,7 @@
  */
 import type { Bay, Branch, EnergyNetworkModel, Substation } from '../../../../types/enm';
 import { fieldRoleLabelPl } from '../../v2/station-rozdzielnia/contract';
-import { szynyStacji } from '../../../shared/szynyStacji';
+import { indeksGaleziPolNn, szynyStacji } from '../../../shared/szynyStacji';
 import type { Iec61850Bay, Iec61850Equipment, Iec61850ExportInput, Iec61850VoltageLevel } from '../../v2/export/exportIec61850';
 import type {
   CimAcLineSegment,
@@ -69,13 +69,14 @@ function bayName(bay: Bay): string {
 export function buildIec61850Input(snapshot: EnergyNetworkModel, projectId?: string | null): Iec61850ExportInput {
   const busVoltage = new Map(snapshot.buses.map((bus) => [bus.ref_id, bus.voltage_kv]));
   const branchByRef = new Map(snapshot.branches.map((branch) => [branch.ref_id, branch]));
+  const indeksPolNn = indeksGaleziPolNn(snapshot.branches);
 
   const substations = snapshot.substations.map((substation) => {
     const baysOfStation = snapshot.bays.filter((bay) => bay.substation_ref === substation.ref_id);
     // SZYNY-STACJI-LUSTRO: poziomy napięcia z szyn stacji z jednego lustra `szynyStacji`.
     const voltages = Array.from(
       new Set(
-        [...szynyStacji(substation, snapshot.branches)]
+        [...szynyStacji(substation, snapshot.branches, indeksPolNn)]
           .map((ref) => busVoltage.get(ref))
           .filter((kv): kv is number => typeof kv === 'number'),
       ),
@@ -126,11 +127,12 @@ export function buildCimInput(snapshot: EnergyNetworkModel): CimExportInput {
 
   const voltageLevels: CimVoltageLevel[] = [];
   const voltageLevelMridByBus = new Map<string, string>();
+  const indeksPolNnPoziomow = indeksGaleziPolNn(snapshot.branches);
   for (const substation of snapshot.substations) {
     // SZYNY-STACJI-LUSTRO: kontener poziomu napięcia obejmuje KAŻDĄ szynę stacji z lustra
     // `szynyStacji` (pole na zacisku pola trafia do poziomu swojej stacji); szyna wspólna
     // dwóch stacji należy do pierwszej w kolejności modelu (jak `stacjaSzyn`).
-    const szyny = [...szynyStacji(substation, snapshot.branches)].sort();
+    const szyny = [...szynyStacji(substation, snapshot.branches, indeksPolNnPoziomow)].sort();
     const voltages = Array.from(
       new Set(
         szyny

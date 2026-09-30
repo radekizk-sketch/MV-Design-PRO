@@ -55,10 +55,37 @@ function lista(value: unknown): readonly unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-/** Szyny NALEŻĄCE do stacji — lustro `enm.tor_pola.szyny_stacji` (opis reguły: nagłówek). */
+/**
+ * Indeks gałęzi aparatów pól nN: `field_ref` pola nN (wartość `meta.nn_field_migrowany_z`)
+ * → indeksy gałęzi w kolejności tablicy `galezie`. Budowany RAZ na tablicę gałęzi, żeby
+ * pytanie o szyny wielu stacji nie przeglądało wszystkich gałęzi dla każdej stacji (koszt
+ * O(stacje × gałęzie) → O(stacje × pola + gałęzie)). Wołający, który pyta o wiele stacji
+ * tej samej migawki, buduje indeks raz i podaje go do `szynyStacji`.
+ */
+export interface IndeksGaleziPolNn {
+  readonly galezie: readonly GalazDlaSzyn[];
+  readonly wgPola: ReadonlyMap<string, readonly number[]>;
+}
+
+export function indeksGaleziPolNn(galezie: readonly GalazDlaSzyn[]): IndeksGaleziPolNn {
+  const wgPola = new Map<string, number[]>();
+  galezie.forEach((galaz, indeks) => {
+    const pole = rekord(galaz.meta)?.[META_POLE_NN_ZRODLOWE];
+    if (typeof pole !== 'string') return;
+    const lista = wgPola.get(pole);
+    if (lista) lista.push(indeks);
+    else wgPola.set(pole, [indeks]);
+  });
+  return { galezie, wgPola };
+}
+
+/** Szyny NALEŻĄCE do stacji — lustro `enm.tor_pola.szyny_stacji` (opis reguły: nagłówek).
+ *  `indeks` — indeks gałęzi pól nN TEJ SAMEJ tablicy `galezie` (wołający pytający o wiele
+ *  stacji buduje go raz); bez niego budowany tutaj. Wynik (także kolejność) identyczny. */
 export function szynyStacji(
   stacja: StacjaDlaSzyn,
   galezie: readonly GalazDlaSzyn[],
+  indeks?: IndeksGaleziPolNn,
 ): ReadonlySet<string> {
   const wynik = new Set<string>();
   for (const szyna of lista(stacja.bus_refs)) {
@@ -78,9 +105,15 @@ export function szynyStacji(
     if (spec && napis(spec.field_ref)) polaNn.add(String(spec.field_ref));
   }
   if (polaNn.size === 0) return wynik;
-  for (const galaz of galezie) {
-    const pole = rekord(galaz.meta)?.[META_POLE_NN_ZRODLOWE];
-    if (typeof pole !== 'string' || !polaNn.has(pole)) continue;
+  if (indeks && indeks.galezie !== galezie) {
+    throw new Error('szynyStacji: indeks gałęzi pól nN zbudowany dla innej tablicy gałęzi');
+  }
+  const { wgPola } = indeks ?? indeksGaleziPolNn(galezie);
+  // Gałęzie pól tej stacji w KOLEJNOŚCI TABLICY (jak pełny przegląd) — kolejność szyn
+  // w zbiorze wyniku nie zależy od tego, czy indeks był podany.
+  const indeksy = [...new Set([...polaNn].flatMap((pole) => wgPola.get(pole) ?? []))].sort((a, b) => a - b);
+  for (const i of indeksy) {
+    const galaz = galezie[i];
     for (const koniec of [galaz.from_bus_ref, galaz.to_bus_ref]) {
       const szyna = napis(koniec);
       if (szyna) wynik.add(szyna);
@@ -99,10 +132,11 @@ export function stacjaSzyn(
   galezie: readonly GalazDlaSzyn[],
 ): ReadonlyMap<string, string> {
   const wynik = new Map<string, string>();
+  const indeks = indeksGaleziPolNn(galezie);
   for (const stacja of stacje) {
     const ref = napis(stacja.ref_id);
     if (!ref) continue;
-    for (const szyna of szynyStacji(stacja, galezie)) {
+    for (const szyna of szynyStacji(stacja, galezie, indeks)) {
       if (!wynik.has(szyna)) wynik.set(szyna, stacja.ref_id as string);
     }
   }

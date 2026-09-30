@@ -90,9 +90,20 @@ export function elementyToru(
   };
   /** Punkt szyny = koniec narysowanego odcinka, który się w niej kończy (orientacja
    *  kawałków od zasilania: `to_bus_ref` ↔ ostatni wierzchołek) albo zaczyna. */
+  // Odcinki przy szynie w porządku `galezie` (po `ref_id`) — indeks zamiast przeglądu
+  // wszystkich gałęzi dla każdego łącznika i węzła (koszt O(łączniki × gałęzie)).
+  const odcinkiPrzySzynie = new Map<string, Galaz[]>();
+  for (const galaz of galezie) {
+    if (!TYPY_ODCINKA.has(galaz.type)) continue;
+    for (const szyna of new Set([galaz.from_bus_ref, galaz.to_bus_ref])) {
+      const lista = odcinkiPrzySzynie.get(szyna);
+      if (lista) lista.push(galaz);
+      else odcinkiPrzySzynie.set(szyna, [galaz]);
+    }
+  }
   const punktSzyny = (busRef: string, bezOdcinka?: string): RouteVertex | null => {
-    for (const galaz of galezie) {
-      if (!TYPY_ODCINKA.has(galaz.type) || galaz.ref_id === bezOdcinka) continue;
+    for (const galaz of odcinkiPrzySzynie.get(busRef) ?? []) {
+      if (galaz.ref_id === bezOdcinka) continue;
       const k = konce(galaz.ref_id);
       if (!k) continue;
       if (galaz.to_bus_ref === busRef) return k[1];
@@ -170,10 +181,10 @@ export function elementyToru(
   }
 
   function odcinkiWchodzace(busRef: string): string[] {
-    return galezie.filter((g) => TYPY_ODCINKA.has(g.type) && g.to_bus_ref === busRef).map((g) => g.ref_id);
+    return (odcinkiPrzySzynie.get(busRef) ?? []).filter((g) => g.to_bus_ref === busRef).map((g) => g.ref_id);
   }
   function odcinkiWychodzace(busRef: string): string[] {
-    return galezie.filter((g) => TYPY_ODCINKA.has(g.type) && g.from_bus_ref === busRef).map((g) => g.ref_id);
+    return (odcinkiPrzySzynie.get(busRef) ?? []).filter((g) => g.from_bus_ref === busRef).map((g) => g.ref_id);
   }
   function przytnij(ref: string, stary: RouteVertex, nowy: RouteVertex): void {
     for (const indeks of kawalkiOdcinka.get(ref) ?? []) {

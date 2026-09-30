@@ -44,7 +44,7 @@ import type {
 import type { UkladSieciNn } from '../../../../types/uziemienie';
 import { buildOltcAnnotation } from './oltcGlyph';
 import { pickStationBus, stationSideBusRefs } from '../../shared/stationBusResolution';
-import { stacjaSzyn, szynyStacji } from '../../../shared/szynyStacji';
+import { indeksGaleziPolNn, stacjaSzyn, szynyStacji, type IndeksGaleziPolNn } from '../../../shared/szynyStacji';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import {
@@ -96,7 +96,9 @@ import type {
   SldTopologyRun,
 } from './SldTopologyContracts';
 import {
+  kontekstWyboruTransformatorow,
   selectStationTransformerUnits,
+  type KontekstWyboruTransformatorow,
   type StationTransformerUnit,
 } from '../../../network-build/stationTransformerSelection';
 import { powyzejPasmaNn } from '../../../../ui2/model/pasmaNapieciowe';
@@ -424,7 +426,30 @@ function isCableLikeBranch(b: Branch): boolean {
   return b.type === 'cable' || b.type === 'line_overhead';
 }
 
-function isMediumVoltageNetworkBranch(snapshot: EnergyNetworkModel, branch: Branch): boolean {
+/**
+ * Szyny migawki po refie — `ref_id` ALBO `id`, pierwsza w kolejności `snapshot.buses` (ta sama
+ * semantyka co `buses.find((b) => b.ref_id === ref || b.id === ref)`), liczone RAZ na budowę.
+ * Dotąd każde pytanie o napięcie albo istnienie szyny przeglądało wszystkie szyny, a pytań
+ * jest tyle, ile końców gałęzi — koszt O(gałęzie × szyny), nadliniowy w rodzinie H.
+ */
+interface IndeksSzynMigawki {
+  readonly wgRefu: ReadonlyMap<string, Bus>;
+  /** Wyłącznie `ref_id` (klasyfikacja końcówki pyta tylko o tożsamość domenową). */
+  readonly refIdy: ReadonlySet<string>;
+}
+
+function indeksSzynMigawki(snapshot: EnergyNetworkModel): IndeksSzynMigawki {
+  const wgRefu = new Map<string, Bus>();
+  const refIdy = new Set<string>();
+  for (const bus of snapshot.buses ?? []) {
+    refIdy.add(bus.ref_id);
+    if (!wgRefu.has(bus.ref_id)) wgRefu.set(bus.ref_id, bus);
+    if (!wgRefu.has(bus.id)) wgRefu.set(bus.id, bus);
+  }
+  return { wgRefu, refIdy };
+}
+
+function isMediumVoltageNetworkBranch(szyny: IndeksSzynMigawki, branch: Branch): boolean {
   // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): gałęzie WEWNĘTRZNE toru DER-SN
   // (kabel SN od TR blokowego, `meta.der_role` obecny — W2b) NIE należą do
   // magistrali sieci: tor DER rysuje `compose/station.ts` POD polem źródłowym
@@ -433,15 +458,15 @@ function isMediumVoltageNetworkBranch(snapshot: EnergyNetworkModel, branch: Bran
   // odcinek magistrali (zaśmiecenie topologii, reguła 4). Poprawka end-to-end —
   // dotyczy TAKŻE realnych snapshotów W2b, nie tylko fixtur testowych.
   if (typeof (branch.meta as { der_role?: unknown } | undefined)?.der_role === 'string') return false;
-  const voltages = [readBusVoltageKv(snapshot, branch.from_bus_ref), readBusVoltageKv(snapshot, branch.to_bus_ref)]
+  const voltages = [readBusVoltageKv(szyny, branch.from_bus_ref), readBusVoltageKv(szyny, branch.to_bus_ref)]
     .filter((value): value is number => value !== null);
   if (voltages.length === 0) return true;
   return voltages.some((value) => powyzejPasmaNn(value));
 }
 
-function readBusVoltageKv(snapshot: EnergyNetworkModel, busRef: string | null | undefined): number | null {
+function readBusVoltageKv(szyny: IndeksSzynMigawki, busRef: string | null | undefined): number | null {
   if (!busRef) return null;
-  const bus = (snapshot.buses ?? []).find((candidate) => candidate.ref_id === busRef || candidate.id === busRef);
+  const bus = szyny.wgRefu.get(busRef);
   return typeof bus?.voltage_kv === 'number' ? bus.voltage_kv : null;
 }
 
@@ -1137,10 +1162,15 @@ export function buildSldDataFromSnapshot(
   });
 
   // Per-station energization from the solver (SN bus in the slack island).
+  const indeksPolNn = indeksGaleziPolNn(snapshot.branches ?? []);
+  const stacjaWgRefu = new Map<string, Substation>();
+  for (const candidate of snapshot.substations ?? []) {
+    if (!stacjaWgRefu.has(candidate.ref_id)) stacjaWgRefu.set(candidate.ref_id, candidate);
+  }
   const stationsAnnotated = pfIndex
     ? stations.map((station) => ({
         ...station,
-        energized: stationEnergizedFromSolver(snapshot, station.id, pfIndex),
+        energized: stationEnergizedFromSolver(snapshot, stacjaWgRefu.get(station.id), pfIndex, indeksPolNn),
       }))
     : stations;
 
@@ -1176,12 +1206,12 @@ export function buildSldDataFromSnapshot(
  *  `stn/<hash>/sn_bus`, który pomijał stacje o innej gramatyce refów i zaciski pól. */
 function stationEnergizedFromSolver(
   snapshot: EnergyNetworkModel,
-  stationId: string,
+  station: Substation | undefined,
   pfIndex: ReturnType<typeof buildPowerFlowIndex>,
+  indeksPolNn: IndeksGaleziPolNn,
 ): boolean {
   if (!pfIndex) return true;
-  const station = (snapshot.substations ?? []).find((candidate) => candidate.ref_id === stationId);
-  const szyny = station ? [...szynyStacji(station, snapshot.branches ?? [])] : [];
+  const szyny = station ? [...szynyStacji(station, snapshot.branches ?? [], indeksPolNn)] : [];
   return szyny.some((busRef) => pfIndex.isBusEnergized(busRef));
 }
 
@@ -1338,8 +1368,9 @@ function buildTerminalBindings(
   },
 ): readonly SldTerminalBinding[] {
   const branchByRef = new Map((snapshot.branches ?? []).map((branch) => [branch.ref_id, branch]));
-  // SZYNY-STACJI-LUSTRO: szyna → stacja z jednego lustra, policzone raz dla wszystkich końcówek.
-  const stacjaSzyny = stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []);
+  // SZYNY-STACJI-LUSTRO: szyna → stacja z jednego lustra; wszystkie wyszukiwania końcówek
+  // policzone raz dla wszystkich końcówek (`indeksKoncowek`).
+  const koncowki = indeksKoncowek(snapshot);
   const runBySegmentRef = new Map<string, SldTopologyRun>();
   for (const run of topologyRuns) {
     for (const segmentRef of run.segmentRefs) {
@@ -1358,10 +1389,10 @@ function buildTerminalBindings(
       bindings.push({
         id: `${segmentRef}:A`,
         elementRef: segmentRef,
-        elementType: classifyBranchEndpointElementType(snapshot, stacjaSzyny, branch, 'A'),
+        elementType: classifyBranchEndpointElementType(koncowki, branch, 'A'),
         terminalRef: `${segmentRef}:A`,
-        busRef: resolveBranchEndpointBusRef(snapshot, branch, 'A'),
-        portRef: resolveBranchEndpointPortRef(snapshot, branch, 'A'),
+        busRef: resolveBranchEndpointBusRef(koncowki, branch, 'A'),
+        portRef: resolveBranchEndpointPortRef(koncowki, branch, 'A'),
         runRef: topologyRun?.id ?? null,
         laneIndex: topologyRun?.laneIndex ?? null,
         orderInRun: topologyRun?.segmentRefs.indexOf(segmentRef) ?? null,
@@ -1372,10 +1403,10 @@ function buildTerminalBindings(
       bindings.push({
         id: `${segmentRef}:B`,
         elementRef: segmentRef,
-        elementType: classifyBranchEndpointElementType(snapshot, stacjaSzyny, branch, 'B'),
+        elementType: classifyBranchEndpointElementType(koncowki, branch, 'B'),
         terminalRef: `${segmentRef}:B`,
-        busRef: resolveBranchEndpointBusRef(snapshot, branch, 'B'),
-        portRef: resolveBranchEndpointPortRef(snapshot, branch, 'B'),
+        busRef: resolveBranchEndpointBusRef(koncowki, branch, 'B'),
+        portRef: resolveBranchEndpointPortRef(koncowki, branch, 'B'),
         runRef: topologyRun?.id ?? null,
         laneIndex: topologyRun?.laneIndex ?? null,
         orderInRun: topologyRun?.segmentRefs.indexOf(segmentRef) ?? null,
@@ -1538,8 +1569,9 @@ function buildOrphanSegmentRefs(
   topologyRuns: readonly SldTopologyRun[],
 ): readonly string[] {
   const coveredSegments = new Set(topologyRuns.flatMap((run) => run.segmentRefs));
+  const szyny = indeksSzynMigawki(snapshot);
   return (snapshot.branches ?? [])
-    .filter((branch) => isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(snapshot, branch))
+    .filter((branch) => isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(szyny, branch))
     .map((branch) => branch.ref_id)
     .filter((segmentRef) => !coveredSegments.has(segmentRef))
     .sort((a, b) => a.localeCompare(b));
@@ -1760,8 +1792,9 @@ function buildBranchPointMarkers(
 ): readonly SldBranchPointMarker[] {
   const branchPoints = snapshot.branch_points ?? [];
   if (branchPoints.length === 0) return [];
+  const szyny = indeksSzynMigawki(snapshot);
   const cableLikeBranches = (snapshot.branches ?? []).filter((branch) =>
-    isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(snapshot, branch),
+    isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(szyny, branch),
   );
   const markers = branchPoints
     .map((branchPoint) => buildBranchPointMarker(snapshot, branchPoint, cableLikeBranches, cableRuns))
@@ -2206,25 +2239,97 @@ function branchPointSwitchgearFieldCount(branchPoint: BranchPointSN): number {
 }
 
 function classifyTerminalElementType(
-  snapshot: EnergyNetworkModel,
-  stacjaSzyny: ReadonlyMap<string, string>,
+  koncowki: IndeksKoncowek,
   busRef: string | null | undefined,
 ): SldTerminalElementType {
   if (!busRef) return 'unknown';
-  const branchPoint = (snapshot.branch_points ?? []).find((candidate) => candidate.bus_ref === busRef);
+  const branchPoint = koncowki.punktRozgalezieniaWgSzyny.get(busRef);
   if (branchPoint?.branch_point_type === 'branch_pole') return 'branch_pole';
   if (branchPoint?.branch_point_type === 'zksn') return 'zksn';
   // SZYNY-STACJI-LUSTRO: przynależność szyny do stacji z jednego lustra `szynyStacji`
   // (szyny główne, zaciski pól SN, końce aparatów pól nN).
-  const stationRef = stacjaSzyny.get(busRef);
+  const stationRef = koncowki.stacjaSzyny.get(busRef);
   if (stationRef) {
-    const station = (snapshot.substations ?? []).find((candidate) => candidate.ref_id === stationRef);
+    const station = koncowki.stacjaWgRefu.get(stationRef);
     if (station?.station_type === 'gpz') return 'bay';
     if (station?.station_type === 'branch') return 'branch_pole';
     if (station?.station_type === 'switching') return 'zksn';
     return 'station';
   }
-  return (snapshot.buses ?? []).some((bus) => bus.ref_id === busRef) ? 'bus' : 'unknown';
+  return koncowki.szyny.refIdy.has(busRef) ? 'bus' : 'unknown';
+}
+
+/**
+ * Wyszukiwania końcówek gałęzi migawki, liczone RAZ na budowę (wiązania końcówek, końce
+ * ciągów): szyny po refie, stacja szyny (lustro `stacjaSzyn`), stacja po refie, punkt
+ * rozgałęzienia po szynie, szyny i gałęzie pod prefiksem refu pola (zacisk pola
+ * `origin_bay_ref/…`) oraz odcinki SN przy szynie. Każde pole zachowuje semantykę
+ * dawnego przeglądu tablicy (pierwszy element w kolejności migawki); dotąd każda końcówka
+ * przeglądała całe tablice — koszt O(gałęzie × migawka).
+ */
+interface IndeksKoncowek {
+  readonly szyny: IndeksSzynMigawki;
+  readonly stacjaSzyny: ReadonlyMap<string, string>;
+  readonly stacjaWgRefu: ReadonlyMap<string, Substation>;
+  readonly punktRozgalezieniaWgSzyny: ReadonlyMap<string, BranchPointSN>;
+  /** `X` → szyny, których `ref_id` albo `id` zaczyna się od `X/` (kolejność migawki). */
+  readonly szynyPodPrefiksem: ReadonlyMap<string, readonly Bus[]>;
+  /** `X` → gałęzie, których `ref_id` albo `id` zaczyna się od `X/` (kolejność migawki). */
+  readonly galeziePodPrefiksem: ReadonlyMap<string, readonly Branch[]>;
+  /** Szyna → odcinki kablowe/napowietrzne sieci SN dotykające jej (kolejność migawki). */
+  readonly odcinkiSnPrzySzynie: ReadonlyMap<string, readonly Branch[]>;
+}
+
+/** Prefiksy `X` napisu `s`, dla których `s.startsWith(X + '/')`. */
+function prefiksyPrzedUkosnikiem(s: string, wynik: Set<string>): void {
+  for (let i = s.indexOf('/'); i >= 0; i = s.indexOf('/', i + 1)) wynik.add(s.slice(0, i));
+}
+
+function indeksPodPrefiksem<T extends { readonly ref_id: string; readonly id: string }>(
+  elementy: readonly T[],
+): Map<string, T[]> {
+  const wynik = new Map<string, T[]>();
+  for (const element of elementy) {
+    const prefiksy = new Set<string>();
+    prefiksyPrzedUkosnikiem(element.ref_id, prefiksy);
+    prefiksyPrzedUkosnikiem(element.id, prefiksy);
+    for (const prefiks of prefiksy) {
+      const lista = wynik.get(prefiks);
+      if (lista) lista.push(element);
+      else wynik.set(prefiks, [element]);
+    }
+  }
+  return wynik;
+}
+
+function indeksKoncowek(snapshot: EnergyNetworkModel): IndeksKoncowek {
+  const szyny = indeksSzynMigawki(snapshot);
+  const stacjaWgRefu = new Map<string, Substation>();
+  for (const stacja of snapshot.substations ?? []) {
+    if (!stacjaWgRefu.has(stacja.ref_id)) stacjaWgRefu.set(stacja.ref_id, stacja);
+  }
+  const punktRozgalezieniaWgSzyny = new Map<string, BranchPointSN>();
+  for (const punkt of snapshot.branch_points ?? []) {
+    if (!punktRozgalezieniaWgSzyny.has(punkt.bus_ref)) punktRozgalezieniaWgSzyny.set(punkt.bus_ref, punkt);
+  }
+  const odcinkiSnPrzySzynie = new Map<string, Branch[]>();
+  for (const galaz of snapshot.branches ?? []) {
+    if (!isCableLikeBranch(galaz) || !isMediumVoltageNetworkBranch(szyny, galaz)) continue;
+    for (const szyna of new Set([galaz.from_bus_ref, galaz.to_bus_ref])) {
+      const lista = odcinkiSnPrzySzynie.get(szyna);
+      if (lista) lista.push(galaz);
+      else odcinkiSnPrzySzynie.set(szyna, [galaz]);
+    }
+  }
+  return {
+    szyny,
+    stacjaSzyny: stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []),
+    stacjaWgRefu,
+    punktRozgalezieniaWgSzyny,
+    szynyPodPrefiksem: indeksPodPrefiksem(snapshot.buses ?? []),
+    galeziePodPrefiksem: indeksPodPrefiksem(snapshot.branches ?? []),
+    odcinkiSnPrzySzynie,
+  };
 }
 
 function readBranchEndpointPort(branch: Branch, side: 'A' | 'B'): string | null {
@@ -2235,20 +2340,20 @@ function readBranchEndpointPort(branch: Branch, side: 'A' | 'B'): string | null 
 }
 
 function resolveBranchEndpointBusRef(
-  snapshot: EnergyNetworkModel,
+  koncowki: IndeksKoncowek,
   branch: Branch,
   side: 'A' | 'B',
 ): string | null {
   const busRef = side === 'A' ? branch.from_bus_ref : branch.to_bus_ref;
   if (side === 'A') {
-    const bayTerminalBusRef = resolveOriginBayTerminalBusRef(snapshot, branch);
+    const bayTerminalBusRef = resolveOriginBayTerminalBusRef(koncowki, branch);
     if (bayTerminalBusRef) return bayTerminalBusRef;
   }
-  return busExists(snapshot, busRef) ? busRef : null;
+  return busExists(koncowki.szyny, busRef) ? busRef : null;
 }
 
 function resolveBranchEndpointPortRef(
-  snapshot: EnergyNetworkModel,
+  koncowki: IndeksKoncowek,
   branch: Branch,
   side: 'A' | 'B',
 ): string | null {
@@ -2256,7 +2361,7 @@ function resolveBranchEndpointPortRef(
   if (explicitPort) return explicitPort;
 
   if (side === 'A') {
-    const bayTerminalBusRef = resolveOriginBayTerminalBusRef(snapshot, branch);
+    const bayTerminalBusRef = resolveOriginBayTerminalBusRef(koncowki, branch);
     if (bayTerminalBusRef) return `${bayTerminalBusRef}:terminal`;
 
     const originBayRef = readBranchMetaString(branch, 'origin_bay_ref');
@@ -2265,34 +2370,28 @@ function resolveBranchEndpointPortRef(
   }
 
   const busRef = side === 'A' ? branch.from_bus_ref : branch.to_bus_ref;
-  return busExists(snapshot, busRef) ? `${busRef}:terminal` : null;
+  return busExists(koncowki.szyny, busRef) ? `${busRef}:terminal` : null;
 }
 
 function classifyBranchEndpointElementType(
-  snapshot: EnergyNetworkModel,
-  stacjaSzyny: ReadonlyMap<string, string>,
+  koncowki: IndeksKoncowek,
   branch: Branch,
   side: 'A' | 'B',
 ): SldTerminalElementType {
   if (side === 'A' && readBranchMetaString(branch, 'origin_bay_ref')) return 'bay';
-  return classifyTerminalElementType(snapshot, stacjaSzyny, resolveBranchEndpointBusRef(snapshot, branch, side));
+  return classifyTerminalElementType(koncowki, resolveBranchEndpointBusRef(koncowki, branch, side));
 }
 
 function hasResolvedRunEndpoint(
-  snapshot: EnergyNetworkModel,
+  koncowki: IndeksKoncowek,
   segments: readonly Branch[],
   stationsOnRun: readonly unknown[],
 ): boolean {
   if (stationsOnRun.length > 0) return true;
   const lastSegment = segments[segments.length - 1];
   if (!lastSegment) return false;
-  if (hasConnectedContinuationAtEndpoint(snapshot, lastSegment, 'B')) return true;
-  const endpointType = classifyBranchEndpointElementType(
-    snapshot,
-    stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []),
-    lastSegment,
-    'B',
-  );
+  if (hasConnectedContinuationAtEndpoint(koncowki, lastSegment, 'B')) return true;
+  const endpointType = classifyBranchEndpointElementType(koncowki, lastSegment, 'B');
   return (
     endpointType === 'station'
     || endpointType === 'zksn'
@@ -2302,41 +2401,31 @@ function hasResolvedRunEndpoint(
 }
 
 function hasConnectedContinuationAtEndpoint(
-  snapshot: EnergyNetworkModel,
+  koncowki: IndeksKoncowek,
   segment: Branch,
   side: 'A' | 'B',
 ): boolean {
-  const busRef = resolveBranchEndpointBusRef(snapshot, segment, side);
+  const busRef = resolveBranchEndpointBusRef(koncowki, segment, side);
   if (!busRef) return false;
-  const connectedSegments = (snapshot.branches ?? []).filter(
-    (candidate) =>
-      candidate.ref_id !== segment.ref_id
-      && isCableLikeBranch(candidate)
-      && isMediumVoltageNetworkBranch(snapshot, candidate)
-      && (candidate.from_bus_ref === busRef || candidate.to_bus_ref === busRef),
+  return (koncowki.odcinkiSnPrzySzynie.get(busRef) ?? []).some(
+    (candidate) => candidate.ref_id !== segment.ref_id,
   );
-  return connectedSegments.length > 0;
 }
 
 function resolveOriginBayTerminalBusRef(
-  snapshot: EnergyNetworkModel,
+  koncowki: IndeksKoncowek,
   branch: Branch,
 ): string | null {
   const originBayRef = readBranchMetaString(branch, 'origin_bay_ref');
   if (!originBayRef) return null;
 
-  const directBus = (snapshot.buses ?? [])
-    .filter((bus) => bus.ref_id.startsWith(`${originBayRef}/`) || bus.id.startsWith(`${originBayRef}/`))
+  const directBus = [...(koncowki.szynyPodPrefiksem.get(originBayRef) ?? [])]
     .sort((a, b) => terminalBusRank(b) - terminalBusRank(a) || a.ref_id.localeCompare(b.ref_id))[0];
   if (directBus) return directBus.ref_id;
 
-  const bayBranchTerminal = (snapshot.branches ?? [])
-    .filter((candidate) =>
-      candidate.ref_id.startsWith(`${originBayRef}/`)
-      || candidate.id.startsWith(`${originBayRef}/`),
-    )
+  const bayBranchTerminal = (koncowki.galeziePodPrefiksem.get(originBayRef) ?? [])
     .flatMap((candidate) => [candidate.to_bus_ref, candidate.from_bus_ref])
-    .find((busRef) => busRef.startsWith(`${originBayRef}/`) && busExists(snapshot, busRef));
+    .find((busRef) => busRef.startsWith(`${originBayRef}/`) && busExists(koncowki.szyny, busRef));
 
   return bayBranchTerminal ?? null;
 }
@@ -2349,9 +2438,9 @@ function terminalBusRank(bus: Bus): number {
   return 0;
 }
 
-function busExists(snapshot: EnergyNetworkModel, busRef: string | null | undefined): busRef is string {
+function busExists(szyny: IndeksSzynMigawki, busRef: string | null | undefined): busRef is string {
   if (!busRef) return false;
-  return (snapshot.buses ?? []).some((bus) => bus.ref_id === busRef || bus.id === busRef);
+  return szyny.wgRefu.has(busRef);
 }
 
 function readBranchMetaString(branch: Branch, key: string): string | null {
@@ -3426,8 +3515,9 @@ function buildSldLineRunsForLayout(
   snapshot: EnergyNetworkModel,
   fieldStationByRef: ReadonlyMap<string, Substation>,
 ): SldLineRunForLayout[] {
+  const szyny = indeksSzynMigawki(snapshot);
   const cables = (snapshot.branches ?? [])
-    .filter((branch) => isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(snapshot, branch));
+    .filter((branch) => isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(szyny, branch));
   const branchByRef = new Map(cables.map((branch) => [branch.ref_id, branch]));
   const fieldStationByBus = fieldStationByBusRef(snapshot, fieldStationByRef);
   const splitSegmentRefsByParent = splitSegmentRefsByParentFromBranchPoints(snapshot, branchByRef);
@@ -3583,6 +3673,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
   const stations: StationOnRunRendererProps[] = [];
 
   const fieldStationByRef = collectFieldStationByRef(snapshot);
+  const kontekstStacji = kontekstStacjiMigawki(snapshot);
 
   // K30 audit loop: jeśli ENM nie ma jawnych line_runs ALE branches tworzą
   // łańcuch GPZ→S→S→..., zsynchronizuj line_runs z buildCableRuns. Bez tego
@@ -3684,7 +3775,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
       const sub = fieldStationByRef.get(sref.substation_ref);
       if (!sub) return;
       placed.add(sref.substation_ref);
-      const stationSldDetails = buildStationMiniBlockDetails(snapshot, sub);
+      const stationSldDetails = buildStationMiniBlockDetails(snapshot, sub, kontekstStacji);
       const isNop = lr.nop_station_ref === sub.ref_id || lr.nop_station_ref === sub.id;
       const cumKm = sortedSegments
         .filter((seg) => seg.order <= sref.order)
@@ -3752,7 +3843,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
       const sub = fieldStationByRef.get(substationRef);
       if (!sub) return;
       placed.add(substationRef);
-      const stationSldDetails = buildStationMiniBlockDetails(snapshot, sub);
+      const stationSldDetails = buildStationMiniBlockDetails(snapshot, sub, kontekstStacji);
       stations.push({
         id: sub.ref_id,
         x: X_STATIONS_START + posInRun * STATION_PITCH,
@@ -3850,12 +3941,34 @@ function countNnFeedersFromMeta(station: Substation): number {
   return 0;
 }
 
+/**
+ * Dane migawki wspólne dla bloków WSZYSTKICH stacji jednej budowy rysunku, liczone RAZ:
+ * indeksy szyn i gałęzi, indeks gałęzi pól nN (szyny stacji) i kontekst wyboru
+ * transformatorów. Dotąd każda stacja budowała je od nowa z całej migawki — koszt
+ * O(stacje × migawka), nadliniowy w rodzinie H (530 stacji). Wynik bloku stacji z kontekstem
+ * jest identyczny jak bez niego (te same mapy, te same reguły).
+ */
+interface KontekstStacjiMigawki {
+  readonly busByRef: ReadonlyMap<string, Bus>;
+  readonly branchByRef: ReadonlyMap<string, Branch>;
+  readonly transformatory: KontekstWyboruTransformatorow;
+}
+
+function kontekstStacjiMigawki(snapshot: EnergyNetworkModel): KontekstStacjiMigawki {
+  return {
+    busByRef: new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus])),
+    branchByRef: new Map((snapshot.branches ?? []).map((b) => [b.ref_id, b])),
+    transformatory: kontekstWyboruTransformatorow(snapshot),
+  };
+}
+
 function buildStationMiniBlockDetails(
   snapshot: EnergyNetworkModel,
   station: Substation,
+  kontekst: KontekstStacjiMigawki,
 ): StationMiniBlockDetails {
   const derBadges = buildStationDerBadges(snapshot, station.ref_id);
-  const explicitBays = buildExplicitStationMiniBays(snapshot, station);
+  const explicitBays = buildExplicitStationMiniBays(snapshot, station, kontekst.branchByRef);
   const derSourceBays = buildDedicatedDerStationMiniBays(snapshot, station, explicitBays);
   const snBays = [...explicitBays, ...derSourceBays];
   const explicitRoles = snBays.map((bay) => bay.fieldRole);
@@ -3863,7 +3976,7 @@ function buildStationMiniBlockDetails(
     derSourceBays.length > 0 ||
     derBadges.some((badge) => badge.connectionSide !== 'nn');
   const footprintType = deriveFootprintType(station.station_type, explicitRoles, hasMvSideDer);
-  const transformerUnits = collectStationTransformerUnits(snapshot, station);
+  const transformerUnits = collectStationTransformerUnits(snapshot, station, kontekst.transformatory);
   const transformerRefs = transformerUnits.map((unit) => unit.ref);
   const transformerRatedKva = inferTransformerRatedKva(snapshot, transformerRefs);
 
@@ -3880,7 +3993,7 @@ function buildStationMiniBlockDetails(
   // `voltage_kv`). Klucz złączenia = szyny stacji z lustra `szynyStacji`
   // (`Substation.bus_refs` ∪ zaciski pól SN ∪ końce aparatów pól nN) → `Bus.ref_id`.
   const stationBusRefs = new Set<string>();
-  const busByRef = new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus]));
+  const busByRef = kontekst.busByRef;
   // K30-37: główna szyna SN stacji (najwyższe voltage_kv powyżej granicy stron)
   // i szyna nN — WYBÓR wg JEDNEJ reguły `shared/stationBusResolution.ts`
   // (S9-2). Reguła była tu zapisana wprost, a warstwa wynikowa potrzebuje TEJ
@@ -3898,10 +4011,11 @@ function buildStationMiniBlockDetails(
   // główne, zaciski pól SN, oba końce aparatów pól nN) — jedno źródło dla agregatu
   // odbioru, mocy odbioru, szuflady szczegółów i reguły kompletności rysunku; strona nN
   // z tej samej złożonej reguły co szuflada (`stationSideBusRefs`).
-  for (const busRef of szynyStacji(station, snapshot.branches ?? [])) {
+  const indeksPolNn = kontekst.transformatory.indeksPolNn;
+  for (const busRef of szynyStacji(station, snapshot.branches ?? [], indeksPolNn)) {
     if (busByRef.has(busRef)) stationBusRefs.add(busRef);
   }
-  for (const busRef of stationSideBusRefs(station, snapshot.branches ?? [], busByRef, 'nn')) {
+  for (const busRef of stationSideBusRefs(station, snapshot.branches ?? [], busByRef, 'nn', indeksPolNn)) {
     nnBusRefs.add(busRef);
   }
   const totalLoadKw = Math.round(
@@ -4023,18 +4137,17 @@ function inferTransformerRatedKva(
 function collectStationTransformerUnits(
   snapshot: EnergyNetworkModel,
   station: Substation,
+  kontekst: KontekstWyboruTransformatorow,
 ): StationTransformerUnit[] {
-  return selectStationTransformerUnits(snapshot, station);
+  return selectStationTransformerUnits(snapshot, station, kontekst);
 }
 
 function buildExplicitStationMiniBays(
   snapshot: EnergyNetworkModel,
   station: Substation,
+  // K30-65: gałęzie migawki po ref_id (O(1) wyszukiwanie aparatów) — mapa liczona raz na budowę.
+  branchByRef: ReadonlyMap<string, Branch>,
 ): MiniBlockBayDescriptor[] {
-  // K30-65: cache snapshot.branches by ref_id for O(1) equipment lookup
-  const branchByRef = new Map(
-    (snapshot.branches ?? []).map((b) => [b.ref_id, b]),
-  );
   const fieldSpecBays = buildStationMiniBaysFromFieldSpecs(station, branchByRef);
   const stationRefs = new Set([station.ref_id, station.id].filter(Boolean));
   const legacyBays = [...(snapshot.bays ?? [])]
@@ -4175,7 +4288,7 @@ export interface StationFieldSpec {
 
 function buildStationMiniBaysFromFieldSpecs(
   station: Substation,
-  branchByRef: Map<string, Branch>,
+  branchByRef: ReadonlyMap<string, Branch>,
 ): MiniBlockBayDescriptor[] {
   // V12K-330 (dyrektywa właściciela 2026-08-06 — „pole pomiarowe musi być
   // pierwsze patrząc od kierunku zasilania"): kolejność pól na rysunku =
@@ -4464,14 +4577,14 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
  */
 function deriveBayStatesFromEquipment(
   bay: Bay,
-  branchByRef: Map<string, Branch>,
+  branchByRef: ReadonlyMap<string, Branch>,
 ): { cb: 'closed' | 'open' | 'unknown'; ds: 'closed' | 'open' | 'unknown'; es: 'closed' | 'open' | 'unknown' } {
   return deriveSwitchStatesFromEquipmentRefs(bay.equipment_refs, branchByRef);
 }
 
 function deriveSwitchStatesFromEquipmentRefs(
   equipmentRefs: readonly string[],
-  branchByRef: Map<string, Branch>,
+  branchByRef: ReadonlyMap<string, Branch>,
 ): { cb: 'closed' | 'open' | 'unknown'; ds: 'closed' | 'open' | 'unknown'; es: 'closed' | 'open' | 'unknown' } {
   let cb: 'closed' | 'open' | 'unknown' = 'closed';
   let ds: 'closed' | 'open' | 'unknown' = 'closed';
@@ -4898,9 +5011,10 @@ function inferLineRunsFromBranchChain(
   // szyny główne GPZ i zaciski jego pól (odcinek wychodzi z zacisku pola GPZ), bez
   // rozpoznawania szyn po wzorcu nazwy.
   const gpzBusRefs = new Set<string>();
+  const indeksPolNnGpz = indeksGaleziPolNn(snapshot.branches ?? []);
   for (const s of snapshot.substations ?? []) {
     if (s.station_type === 'gpz') {
-      for (const ref of szynyStacji(s, snapshot.branches ?? [])) gpzBusRefs.add(ref);
+      for (const ref of szynyStacji(s, snapshot.branches ?? [], indeksPolNnGpz)) gpzBusRefs.add(ref);
     }
   }
 
@@ -5127,9 +5241,10 @@ function resolveBranchPointRouteAnchor(
   branchPoint: BranchPointSN,
   cableRuns: readonly CableRunRendererPropsLight[],
 ): RunPoint | null {
+  const szyny = indeksSzynMigawki(snapshot);
   const branchByRef = new Map(
     (snapshot.branches ?? [])
-      .filter((branch) => isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(snapshot, branch))
+      .filter((branch) => isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(szyny, branch))
       .map((branch) => [branch.ref_id, branch]),
   );
   const mainSegmentRefs = branchPointMainSegmentRefs(branchPoint, branchByRef);
@@ -5679,8 +5794,9 @@ function buildCableRuns(
   stations: readonly StationOnRunRendererProps[],
   trunkOriginByOwner?: ReadonlyMap<string, RunPoint>,
 ): CableRunRendererPropsLight[] {
+  const koncowki = indeksKoncowek(snapshot);
   const branches = (snapshot.branches ?? [])
-    .filter((branch) => isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(snapshot, branch));
+    .filter((branch) => isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(koncowki.szyny, branch));
   const fieldStationByRef = collectFieldStationByRef(snapshot);
   const lineRuns = buildSldLineRunsForLayout(snapshot, fieldStationByRef);
   const szyny = przynaleznoscSzyn(snapshot, fieldStationByRef);
@@ -5798,7 +5914,7 @@ function buildCableRuns(
         segmentPaths,
         label: buildCableRunLabel(runSegments.length > 0 ? runSegments : firstSegment ? [firstSegment] : [], segmentKind),
         segmentLabels: effectiveSegmentLabels,
-        pendingEndpoint: !hasResolvedRunEndpoint(snapshot, runSegments, runStations),
+        pendingEndpoint: !hasResolvedRunEndpoint(koncowki, runSegments, runStations),
         missingEndpointPort: portStatus.missing,
         missingPortSegmentRefs: portStatus.missingSegmentRefs,
         pathPoints: runPathPoints,
@@ -5915,7 +6031,7 @@ function buildCableRuns(
         segmentPaths,
         label: buildCableRunLabel(segments, segmentKind),
         segmentLabels,
-        pendingEndpoint: !hasResolvedRunEndpoint(snapshot, segments, stationsOnRun),
+        pendingEndpoint: !hasResolvedRunEndpoint(koncowki, segments, stationsOnRun),
         missingEndpointPort: portStatus.missing,
         missingPortSegmentRefs: portStatus.missingSegmentRefs,
         pathPoints: [
@@ -5983,7 +6099,7 @@ function buildCableRuns(
       segmentPaths,
       label: buildCableRunLabel([b], segmentKind),
       segmentLabels,
-      pendingEndpoint: !hasResolvedRunEndpoint(snapshot, [b], stationsOnRun),
+      pendingEndpoint: !hasResolvedRunEndpoint(koncowki, [b], stationsOnRun),
       missingEndpointPort: portStatus.missing,
       missingPortSegmentRefs: portStatus.missingSegmentRefs,
       pathPoints: [
