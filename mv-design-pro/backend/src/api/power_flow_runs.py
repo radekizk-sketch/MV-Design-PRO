@@ -25,6 +25,9 @@ from api.canonical_run_views import (
 from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import klucz_twin_z_uow
 from application.analysis_run.read_model import canonicalize_json
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt
 from domain.execution import StanBiegu
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as create_canonical_run
@@ -37,6 +40,9 @@ from network_model.odmowa_danych import OdmowaDanychError
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.missing_value import format_wynik
 from pydantic import BaseModel, Field
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
 
 router = APIRouter(tags=["power-flow"])
 
@@ -481,16 +487,6 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
     from fastapi.responses import Response
     from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
-    try:
-        from docx import Document
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        from docx.shared import Pt
-    except ImportError:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Eksport DOCX wymaga python-docx. Zainstaluj: pip install python-docx",
-        )
-
     bundle = _build_export_bundle(run_id)
     result = bundle["result"]
     metadata = bundle["metadata"]
@@ -618,16 +614,6 @@ def export_power_flow_run_pdf(run_id: UUID) -> Response:
     import json
 
     from fastapi.responses import Response
-
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm
-        from reportlab.pdfgen import canvas
-    except ImportError:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab",
-        )
 
     bundle = _build_export_bundle(run_id)
     result = bundle["result"]

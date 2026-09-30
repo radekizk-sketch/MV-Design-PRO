@@ -26,9 +26,22 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
 
+from docx import Document
+from docx.shared import Pt
 from enm.nazwy_elementow import opis_bez_nazwy
 from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.reporting.czcionki import ustaw_czcionki_stylow, zarejestruj_czcionki
+from reportlab.lib import colors as rl_colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import (
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 # Publiczny próg granicy łuku (definicja fizyczna IEEE 1584): E = 1,2 cal/cm².
 _AFB_THRESHOLD_CAL_CM2 = 1.2
@@ -170,22 +183,7 @@ def render_arc_flash_report_text(ctx: ArcFlashReportContext) -> str:
 
 
 def render_arc_flash_report_pdf(ctx: ArcFlashReportContext) -> bytes:
-    """PDF z reportlab (deterministyczny). Fallback: tekst, gdy reportlab niedostępny."""
-    try:
-        from reportlab.lib import colors as rl_colors
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.lib.units import cm
-        from reportlab.platypus import (
-            Paragraph,
-            SimpleDocTemplate,
-            Spacer,
-            Table,
-            TableStyle,
-        )
-    except ImportError:
-        return render_arc_flash_report_text(ctx).encode("utf-8")
-
+    """PDF z reportlab (deterministyczny)."""
     results = _results(ctx)
     summary = _summary(results)
     buffer = BytesIO()
@@ -283,18 +281,12 @@ def render_arc_flash_report_pdf(ctx: ArcFlashReportContext) -> bytes:
 
 
 def render_arc_flash_report_docx(ctx: ArcFlashReportContext) -> bytes:
-    """DOCX z python-docx (deterministyczny). Fallback: tekst, gdy docx niedostępny.
+    """DOCX z python-docx (deterministyczny).
 
     Determinizm binarny wymaga normalizacji `docx_determinism` — sam python-docx
     NIE zeruje znacznikow czasu wpisow ZIP ani docProps/core.xml (dwa kolejne
     `Document().save()` roznia sie bajtowo, gdy wywolania przetna granice sekundy).
     """
-    try:
-        from docx import Document
-        from docx.shared import Pt
-    except ImportError:
-        return render_arc_flash_report_text(ctx).encode("utf-8")
-
     from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
     results = _results(ctx)

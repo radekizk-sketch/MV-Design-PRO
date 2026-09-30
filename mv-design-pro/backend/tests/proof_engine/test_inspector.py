@@ -464,13 +464,6 @@ class TestInspectorExports:
 
     def test_export_docx_convenience_function(self, sc3f_proof: ProofDocument):
         """export_to_docx() convenience function działa i zwraca bytes."""
-        try:
-            import docx  # noqa: F401
-        except ImportError:
-            import pytest
-
-            pytest.skip("python-docx not installed")
-
         docx_bytes = export_to_docx(sc3f_proof)
         assert isinstance(docx_bytes, bytes)
         assert len(docx_bytes) > 0
@@ -491,11 +484,6 @@ class TestInspectorExports:
         DOCX-DETERMINIZM-RESZTA doprecyzowala granulacje na 2s empirycznym
         pomiarem — 1.1s dawal falszywa zielen w ok. 30% powtorzen).
         """
-        try:
-            import docx  # noqa: F401
-        except ImportError:
-            pytest.skip("python-docx not installed")
-
         exporter = InspectorExporter(sc3f_proof)
         first = exporter.export_docx()
         time.sleep(2.1)
@@ -1023,7 +1011,6 @@ class TestEksportBezPolykaniaWyjatkow:
     def test_blad_programu_przy_budowie_docx_wybucha(
         self, sc3f_proof: ProofDocument, monkeypatch
     ) -> None:
-        pytest.importorskip("docx")
         import network_model.reporting.docx_determinism as determinizm
 
         def _zepsuty(dane: bytes) -> bytes:

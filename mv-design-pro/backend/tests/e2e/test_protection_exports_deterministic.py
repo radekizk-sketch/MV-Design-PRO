@@ -27,27 +27,8 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-import pytest
-
-# Check for optional dependencies
-try:
-    from network_model.reporting.protection_report_pdf import (
-        _PDF_AVAILABLE,
-        export_protection_coordination_to_pdf,
-    )
-except ImportError:
-    _PDF_AVAILABLE = False
-    export_protection_coordination_to_pdf = None  # type: ignore
-
-try:
-    from network_model.reporting.protection_report_docx import (
-        _DOCX_AVAILABLE,
-        export_protection_coordination_to_docx,
-    )
-except ImportError:
-    _DOCX_AVAILABLE = False
-    export_protection_coordination_to_docx = None  # type: ignore
-
+from network_model.reporting.protection_report_docx import export_protection_coordination_to_docx
+from network_model.reporting.protection_report_pdf import export_protection_coordination_to_pdf
 
 # =============================================================================
 # Test Fixtures - Deterministic Protection Coordination Result
@@ -234,7 +215,6 @@ def _compute_file_hash(file_path: Path) -> str:
 # =============================================================================
 
 
-@pytest.mark.skipif(not _DOCX_AVAILABLE, reason="python-docx not installed")
 class TestProtectionDOCXExportDeterminism:
     """E2E: Deterministyczność eksportu DOCX dla koordynacji zabezpieczeń."""
 
@@ -318,7 +298,6 @@ class TestProtectionDOCXExportDeterminism:
 # =============================================================================
 
 
-@pytest.mark.skipif(not _PDF_AVAILABLE, reason="reportlab not installed")
 class TestProtectionPDFExportDeterminism:
     """E2E: Deterministyczność eksportu PDF dla koordynacji zabezpieczeń.
 
@@ -403,7 +382,6 @@ class TestProtectionPDFExportDeterminism:
 # =============================================================================
 
 
-@pytest.mark.skipif(not _DOCX_AVAILABLE, reason="python-docx not installed")
 class TestProtectionDOCXContentValidation:
     """E2E: Walidacja zawartości sekcji w raporcie DOCX."""
 
@@ -485,7 +463,6 @@ class TestProtectionDOCXContentValidation:
                 ), f"Znaleziono niedozwoloną nazwę kodową '{codename}' w raporcie"
 
 
-@pytest.mark.skipif(not _PDF_AVAILABLE, reason="reportlab not installed")
 class TestProtectionPDFContentValidation:
     """E2E: Walidacja zawartości PDF."""
 
@@ -515,9 +492,6 @@ class TestProtectionPDFContentValidation:
 class TestProtectionExportFullWorkflow:
     """E2E: Pełny workflow eksportu obu formatów."""
 
-    @pytest.mark.skipif(
-        not (_PDF_AVAILABLE and _DOCX_AVAILABLE), reason="reportlab or python-docx not installed"
-    )
     def test_both_exports_from_same_result(self) -> None:
         """PDF i DOCX z tego samego wyniku są deterministyczne."""
         result = _create_deterministic_protection_result()
@@ -548,7 +522,6 @@ class TestProtectionExportFullWorkflow:
                 docx_1
             ), "PDF i DOCX mają ten sam hash - to niemożliwe"
 
-    @pytest.mark.skipif(not _DOCX_AVAILABLE, reason="python-docx not installed")
     def test_sorted_order_in_checks(self) -> None:
         """Sprawdzenia są sortowane deterministycznie po device_id."""
 

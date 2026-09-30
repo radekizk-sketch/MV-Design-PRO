@@ -32,20 +32,11 @@ from network_model.reporting.protection_tcc_presentation import (
     nazwy_urzadzen,
     powod_braku_pl,
 )
-
-# Check for reportlab availability at import time
-try:
-    from reportlab import rl_config
-    from reportlab.lib.colors import HexColor
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
-    from reportlab.pdfgen import canvas
-
-    _PDF_AVAILABLE = True
-except ImportError:
-    _PDF_AVAILABLE = False
-    rl_config = None
-
+from reportlab import rl_config
+from reportlab.lib.colors import HexColor
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
 
 # =============================================================================
 # POLISH LABELS
@@ -97,13 +88,7 @@ def export_protection_coordination_to_pdf(
 
     Returns:
         Path to the written PDF file
-
-    Raises:
-        ImportError: If reportlab is not installed
     """
-    if not _PDF_AVAILABLE:
-        raise ImportError("PDF export requires reportlab. Install with: pip install reportlab")
-
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 

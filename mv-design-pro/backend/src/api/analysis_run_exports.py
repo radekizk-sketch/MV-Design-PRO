@@ -26,15 +26,21 @@ from application.dokumentacja_wykonawcza import (
     komunikat_odmowy,
     ocen_gotowosc_dokumentacji_wykonawczej,
 )
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt
 from enm.canonical_analysis import CanonicalRun
 from enm.nazwy_elementow import opis_bez_nazwy
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from fastapi.responses import Response
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.missing_value import format_wynik
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
 
 ReportProfile = Literal["osd", "wykonawczy", "audytowy"]
 ReportDetailLevel = Literal["minimalny", "standardowy", "pelny"]
@@ -871,15 +877,6 @@ def export_run_docx_response(
     NIE zeruje znacznikow czasu wpisow ZIP ani docProps/core.xml, dwa kolejne
     `Document().save()` roznia sie bajtowo, gdy wywolania przetna granice sekundy).
     """
-    try:
-        from docx import Document
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        from docx.shared import Pt
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Eksport DOCX wymaga python-docx. Zainstaluj: pip install python-docx",
-        ) from exc
 
     from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
@@ -999,15 +996,6 @@ def export_run_pdf_response(
     *,
     filename_stem: str,
 ) -> Response:
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm
-        from reportlab.pdfgen import canvas
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab",
-        ) from exc
 
     bundle = _require_power_flow_bundle(run)
     result = bundle["result"]
@@ -1152,15 +1140,6 @@ def export_run_report_docx_response(
     NIE zeruje znacznikow czasu wpisow ZIP ani docProps/core.xml, dwa kolejne
     `Document().save()` roznia sie bajtowo, gdy wywolania przetna granice sekundy).
     """
-    try:
-        from docx import Document
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        from docx.shared import Pt
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Eksport DOCX wymaga python-docx. Zainstaluj: pip install python-docx",
-        ) from exc
 
     from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
@@ -1347,15 +1326,6 @@ def export_run_report_pdf_response(
     filename_stem: str,
     report_options: dict[str, Any] | None = None,
 ) -> Response:
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm
-        from reportlab.pdfgen import canvas
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab",
-        ) from exc
 
     payload = build_analysis_run_report_payload(run, report_options=report_options)
     options = payload["report_options"]
@@ -1521,15 +1491,6 @@ def export_run_trace_pdf_response(
     *,
     filename_stem: str,
 ) -> Response:
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm
-        from reportlab.pdfgen import canvas
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab",
-        ) from exc
 
     trace_payload = build_analysis_run_trace_export_payload(run)
     summary = build_trace_summary(trace_payload.get("white_box_trace") or [])

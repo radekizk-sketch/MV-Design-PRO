@@ -58,6 +58,8 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import Response
 from network_model.core.autorytet_wyniku_zwarciowego import BrakAutorytetuWyniku, wymagaj_autorytetu
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
+from network_model.reporting.protection_report_docx import export_protection_coordination_to_docx
+from network_model.reporting.protection_report_pdf import export_protection_coordination_to_pdf
 from protection.curves.iec_curves import IECCurveType
 from protection.curves.ieee_curves import IEEECurveType
 from pydantic import BaseModel, Field
@@ -676,10 +678,8 @@ def get_overload_checks(run_id: str) -> list[dict[str, Any]]:
 #       NIE zeruje: dwa kolejne Document().save() roznia sie bajtowo, gdy wywolania
 #       przetna granice sekundy, bo zipfile znakuje kazdy wpis biezacym czasem
 #       lokalnym — ta sama klasa niedeterminizmu jak w karcie 10x „czas scienny").
-#       Zamierzenie: NIE kopiowac inline wzorca `power_flow_comparisons.py`
-#       `doc.save(buffer)` bez normalizacji — ten wzorzec ma ten sam defekt
-#       (zweryfikowane empirycznie w audycie tras tej karty), poza zakresem tej
-#       karty (inny modul API), ale odnotowane w meldunku koncowym.
+#       Kazdy eksport DOCX w API (takze `power_flow_comparisons.py`) normalizuje
+#       bajty tym samym `make_docx_bytes_deterministic`.
 #
 # Oba moduly pracuja na Path (nie na strumieniu w pamieci), wiec eksport API
 # pisze do pliku tymczasowego i odczytuje bajty z powrotem — plik znika wraz
@@ -702,19 +702,6 @@ def export_coordination_pdf(run_id: str) -> Response:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Coordination result not found: {run_id}",
-        )
-
-    # Brak reportlab rozstrzyga sam moduł raportu (`_PDF_AVAILABLE`); `ImportError` modułu
-    # pakietu byłby defektem wydania, nie „eksport niedostępny" (karta #151).
-    from network_model.reporting.protection_report_pdf import (
-        _PDF_AVAILABLE,
-        export_protection_coordination_to_pdf,
-    )
-
-    if not _PDF_AVAILABLE:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="PDF export requires reportlab. Install with: pip install reportlab",
         )
 
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -751,18 +738,6 @@ def export_coordination_docx(run_id: str) -> Response:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Coordination result not found: {run_id}",
-        )
-
-    # Jak wyżej dla PDF: brak python-docx rozstrzyga `_DOCX_AVAILABLE` (karta #151).
-    from network_model.reporting.protection_report_docx import (
-        _DOCX_AVAILABLE,
-        export_protection_coordination_to_docx,
-    )
-
-    if not _DOCX_AVAILABLE:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="DOCX export requires python-docx. Install with: pip install python-docx",
         )
 
     with tempfile.TemporaryDirectory() as tmp_dir:

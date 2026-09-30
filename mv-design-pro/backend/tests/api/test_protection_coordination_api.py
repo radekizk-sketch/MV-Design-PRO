@@ -564,8 +564,9 @@ def test_export_docx_is_byte_deterministic_across_repeated_calls(app_client: Any
 def test_export_docx_renders_real_device_names_not_brak_urzadzen(app_client: Any) -> None:
     """Regresja audytu: bez pola `devices` w to_dict() raport ZAWSZE pokazywal
     "Brak urzadzen", mimo ze 2 urzadzenia byly analizowane."""
-    docx = pytest.importorskip("docx")
     import io
+
+    import docx
 
     run_id = _run(app_client).json()["run_id"]
     response = app_client.get(f"/api/protection-coordination/{run_id}/export/docx")

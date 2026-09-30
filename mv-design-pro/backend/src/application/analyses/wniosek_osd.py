@@ -62,31 +62,19 @@ from application.ncrfg_compliance import (
     brak_json,
     brak_pl,
 )
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.nazwy_elementow import opis_bez_nazwy
 from network_model.nazwy import nazwa_nadana
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from pydantic import BaseModel, Field
-
-try:  # pragma: no cover - zależy od środowiska
-    from docx import Document
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.shared import Pt
-
-    _DOCX_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    _DOCX_AVAILABLE = False
-
-try:  # pragma: no cover - zależy od środowiska
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
-    from reportlab.lib.utils import simpleSplit
-    from reportlab.pdfgen import canvas
-
-    _PDF_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    _PDF_AVAILABLE = False
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.lib.utils import simpleSplit
+from reportlab.pdfgen import canvas
 
 WNIOSEK_OSD_CONTRACT = "WniosekOkresleniaWarunkowPrzylaczeniaV2"
 WNIOSEK_OSD_TYTUL = "Wniosek o określenie warunków przyłączenia do sieci OSD"
@@ -420,9 +408,6 @@ def render_wniosek_osd_docx(view: dict[str, Any]) -> bytes:
     Zwraca bajty znormalizowane przez ``make_docx_bytes_deterministic`` — dwa
     wywołania na tym samym widoku dają identyczne bajty.
     """
-    if not _DOCX_AVAILABLE:  # pragma: no cover
-        raise ImportError("Eksport DOCX wymaga python-docx. Zainstaluj: pip install python-docx")
-
     doc = Document()
 
     tytul = doc.add_heading(view["tytul"], level=0)
@@ -531,9 +516,6 @@ def render_wniosek_pdf(view: dict[str, Any]) -> bytes:
     identyczne bajty. Czcionki DejaVu Sans (polskie diakrytyki) rejestrowane wspólnym
     modułem ``network_model.reporting.czcionki`` (subset TTF jest deterministyczny).
     """
-    if not _PDF_AVAILABLE:  # pragma: no cover
-        raise ImportError("Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab")
-
     buffer = BytesIO()
     zarejestruj_czcionki()
     c = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)

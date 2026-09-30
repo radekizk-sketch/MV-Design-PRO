@@ -394,9 +394,6 @@ def test_raport_pdf_i_docx_pokazuja_ten_sam_brak(tmp_path) -> None:
     Dwa eksporty tego samego wyniku nie moga sie roznic werdyktem — inaczej
     czytelnik dostaje dwie prawdy w zaleznosci od formatu.
     """
-    reportlab = pytest.importorskip("reportlab", reason="eksport PDF wymaga reportlab")
-    docx = pytest.importorskip("docx", reason="eksport DOCX wymaga python-docx")
-    assert reportlab and docx
 
     from network_model.reporting.protection_report_docx import (
         export_protection_coordination_to_docx,

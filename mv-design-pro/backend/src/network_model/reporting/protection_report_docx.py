@@ -20,6 +20,9 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt, RGBColor
 from network_model.nazwy import jest_nazwa
 
 # Import shared determinism module
@@ -33,26 +36,15 @@ from network_model.reporting.protection_tcc_presentation import (
     powod_braku_pl,
 )
 
-# Check for python-docx availability
-try:
-    from docx import Document
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.shared import Pt, RGBColor
-
-    _DOCX_AVAILABLE = True
-except ImportError:
-    _DOCX_AVAILABLE = False
-
-
 # =============================================================================
 # POLISH LABELS
 # =============================================================================
 
 VERDICT_COLORS_RGB = {
-    "PASS": RGBColor(22, 163, 74) if _DOCX_AVAILABLE else None,  # green
-    "MARGINAL": RGBColor(217, 119, 6) if _DOCX_AVAILABLE else None,  # amber
-    "FAIL": RGBColor(220, 38, 38) if _DOCX_AVAILABLE else None,  # red
-    "ERROR": RGBColor(107, 114, 128) if _DOCX_AVAILABLE else None,  # gray
+    "PASS": RGBColor(22, 163, 74),  # green
+    "MARGINAL": RGBColor(217, 119, 6),  # amber
+    "FAIL": RGBColor(220, 38, 38),  # red
+    "ERROR": RGBColor(107, 114, 128),  # gray
 }
 
 VERDICT_LABELS_PL = {
@@ -96,13 +88,7 @@ def export_protection_coordination_to_docx(
 
     Returns:
         Path to the written DOCX file
-
-    Raises:
-        ImportError: If python-docx is not installed
     """
-    if not _DOCX_AVAILABLE:
-        raise ImportError("DOCX export requires python-docx. Install with: pip install python-docx")
-
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 

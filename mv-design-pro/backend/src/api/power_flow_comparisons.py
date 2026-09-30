@@ -23,10 +23,14 @@ CANONICAL ALIGNMENT:
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from api.dependencies import get_uow_factory
 from application.power_flow_comparison import PowerFlowComparisonService
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt
+from docx.table import Table
 from domain.execution import StanBiegu
 from domain.power_flow_comparison import (
     PowerFlowComparisonError,
@@ -41,11 +45,9 @@ from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.missing_value import format_wynik
 from pydantic import BaseModel, Field
-
-if TYPE_CHECKING:
-    # python-docx jest importowany LENIWIE w ciele eksportu (brak paczki => 501),
-    # wiec typ tabeli sprowadzamy wylacznie na potrzeby analizy statycznej.
-    from docx.table import Table
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
 
 router = APIRouter(prefix="/power-flow-comparisons", tags=["power-flow-comparison"])
 
@@ -499,16 +501,6 @@ def export_power_flow_comparison_docx(
     from fastapi.responses import Response
     from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
-    try:
-        from docx import Document
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        from docx.shared import Pt
-    except ImportError:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="DOCX export requires python-docx. Install with: pip install python-docx",
-        )
-
     service = _build_service(uow_factory)
 
     try:
@@ -638,16 +630,6 @@ def export_power_flow_comparison_pdf(
     import io
 
     from fastapi.responses import Response
-
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm
-        from reportlab.pdfgen import canvas
-    except ImportError:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="PDF export requires reportlab. Install with: pip install reportlab",
-        )
 
     service = _build_service(uow_factory)
 

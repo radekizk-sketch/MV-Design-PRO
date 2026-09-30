@@ -84,11 +84,6 @@ def test_earthing_pack_supports_docx_export(
     earthing_pack_input: EarthingGroundFaultPackInput,
 ) -> None:
     """Pack Earthing eksportowalny do DOCX (V12K-007 light_technical)."""
-    try:
-        import docx  # noqa: F401
-    except ImportError:
-        pytest.skip("python-docx not installed in this environment")
-
     document = generate_earthing_ground_fault_pack(earthing_pack_input)
     result = InspectorExporter(document).export_docx()
     assert result.success

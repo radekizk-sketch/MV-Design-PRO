@@ -16,7 +16,7 @@ NO CODENAMES IN UI.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from uuid import uuid4
 
 from application.reference_patterns import (
@@ -26,15 +26,17 @@ from application.reference_patterns import (
     get_pattern_a_fixtures_dir,
     run_pattern_a,
 )
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt
+from docx.table import Table
 from fastapi import APIRouter, HTTPException, Response
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from pydantic import BaseModel
-
-if TYPE_CHECKING:
-    # python-docx jest importowany LENIWIE w ciele eksportu (brak paczki => 501),
-    # wiec typ tabeli sprowadzamy wylacznie na potrzeby analizy statycznej.
-    from docx.table import Table
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
 
 router = APIRouter(
     prefix="/api/reference-patterns",
@@ -277,16 +279,6 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
     from fastapi.responses import Response
 
     try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm
-        from reportlab.pdfgen import canvas
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=501,
-            detail="Eksport PDF wymaga biblioteki reportlab. Zainstaluj: pip install reportlab",
-        ) from exc
-
-    try:
         result = run_pattern_a(fixture_file=fixture_file)
         data = result.to_dict()
     except FileNotFoundError as e:
@@ -436,16 +428,6 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
 
     from fastapi.responses import Response
     from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
-
-    try:
-        from docx import Document
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        from docx.shared import Pt
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=501,
-            detail="Eksport DOCX wymaga biblioteki python-docx. Zainstaluj: pip install python-docx",
-        ) from exc
 
     try:
         result = run_pattern_a(fixture_file=fixture_file)

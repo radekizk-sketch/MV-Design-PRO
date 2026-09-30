@@ -48,6 +48,15 @@ pandas = "^2.1.4"
 # „Brak biblioteki openpyxl" dla KAZDEGO wejscia, a testy tego nie wykrywaly, bo
 # chodzily obok realnej sciezki (`import_from_dict`).
 openpyxl = "^3.1.5"
+# Eksport raportow PDF/DOCX (rozplyw, porownania, wzorce odniesienia, biegi analiz,
+# koordynacja zabezpieczen, certyfikat NC RfG, studium, wniosek OSD, luk
+# elektryczny, audyt 2, inspektor dowodow). Zaleznosci GLOWNE, nie dev (karta
+# API-DOCX-501, decyzja D-11): koncowki eksportu wolaja je na produkcji. Do
+# 2026-09-30 obie siedzialy w grupie dev, a kod eksportu nosil martwe galezie
+# `except ImportError -> HTTP 501/503` albo ciche podmiany PDF na tekst — kod
+# obronny na scenariusz, ktory deklaracja zaleznosci glownej wyklucza.
+reportlab = "^4.0"
+python-docx = "^1.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"
@@ -58,8 +67,6 @@ black = "^24.1.0"
 ruff = "^0.1.13"
 mypy = "^1.8.0"
 pre-commit = "^3.6.0"
-reportlab = "^4.0"
-python-docx = "^1.2.0"
 # Ekstrakcja tekstu z wygenerowanego PDF w testach WHITE BOX (test_export_reports.py
 # test_white_box_contains_latex_trace) - jedyny sposob zweryfikowania, ze slad LaTeX
 # faktycznie znajduje sie w renderowanym dokumencie, a nie tylko w kodzie generujacym.

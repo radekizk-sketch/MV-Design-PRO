@@ -93,11 +93,6 @@ def test_vdrop_pack_serializer_has_pack_type(vdrop_pack_input: VDROPPackInput) -
 
 def test_vdrop_pack_supports_docx_export(vdrop_pack_input: VDROPPackInput) -> None:
     """Pack VDROP eksportowalny do DOCX (V12K-007 light_technical)."""
-    try:
-        import docx  # noqa: F401
-    except ImportError:
-        pytest.skip("python-docx not installed in this environment")
-
     document = generate_vdrop_pack(vdrop_pack_input)
     result = InspectorExporter(document).export_docx()
     assert result.success

@@ -21,6 +21,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from docx import Document
+from docx.shared import Pt
+
 if TYPE_CHECKING:
     from application.proof_engine.types import ProofDocument
 
@@ -206,22 +209,8 @@ class InspectorExporter:
         przetna granice sekundy).
 
         Returns:
-            ExportResult z zawartością DOCX (bytes) lub błędem
+            ExportResult z zawartością DOCX (bytes)
         """
-        try:
-            from docx import Document
-            from docx.shared import Pt
-        except ImportError as exc:
-            return ExportResult(
-                format="docx",
-                content=b"",
-                success=False,
-                error_message=(
-                    f"python-docx not available ({exc}). "
-                    "Install via 'poetry install --with dev'."
-                ),
-            )
-
         # Budowa dokumentu nie ma odmowy danych — wyjątek = błąd programu (karta #151).
         from io import BytesIO
 

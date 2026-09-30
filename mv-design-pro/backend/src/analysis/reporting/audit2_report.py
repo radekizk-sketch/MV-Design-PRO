@@ -22,7 +22,20 @@ from io import BytesIO
 from typing import Any
 
 from application.proof_engine.packs.audit2_validation import ETYKIETY_RODZAJOW_DOWODU
+from docx import Document
+from docx.shared import Pt
 from network_model.reporting.czcionki import ustaw_czcionki_stylow, zarejestruj_czcionki
+from reportlab.lib import colors as rl_colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import (
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 #: Naglowek sekcji rodzaju spoza pieciu rodzajow audytu 2 (pakiet dostarcza wolajacy).
 RODZAJ_SPOZA_AUDYTU = "Rodzaj dowodu spoza pakietu walidacji rozszerzeń"
@@ -155,26 +168,7 @@ def _linie_brakow(braki: list[dict[str, Any]]) -> list[str]:
 def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
     """
     PDF z reportlab (deterministyczny — identyczny ProofPack -> identyczny PDF).
-
-    Gdy reportlab nie jest dostepny w srodowisku: zwraca placeholder
-    'PDF rendering unavailable' z metadata jako tekst.
     """
-    try:
-        from reportlab.lib import colors as rl_colors
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.lib.units import cm
-        from reportlab.platypus import (
-            Paragraph,
-            SimpleDocTemplate,
-            Spacer,
-            Table,
-            TableStyle,
-        )
-    except ImportError:
-        # Placeholder gdy reportlab niedostepny.
-        return render_audit2_report_text(ctx).encode("utf-8")
-
     buffer = BytesIO()
     zarejestruj_czcionki()
     doc = SimpleDocTemplate(
@@ -272,18 +266,10 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
     """
     DOCX z python-docx (deterministyczny).
 
-    Gdy docx niedostepny: zwraca tekst jako bytes z extension .txt fallback.
-
     Determinizm binarny wymaga normalizacji `docx_determinism` — sam python-docx
     NIE zeruje znacznikow czasu wpisow ZIP ani docProps/core.xml (dwa kolejne
     `Document().save()` roznia sie bajtowo, gdy wywolania przetna granice sekundy).
     """
-    try:
-        from docx import Document
-        from docx.shared import Pt
-    except ImportError:
-        return render_audit2_report_text(ctx).encode("utf-8")
-
     from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
     doc = Document()

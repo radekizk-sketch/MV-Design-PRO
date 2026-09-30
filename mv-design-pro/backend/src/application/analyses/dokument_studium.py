@@ -53,6 +53,9 @@ from application.analyses.sekcja_zgodnosci_ncrfg import wiersze_dowodu
 from application.ncrfg_compliance import NcRfgCertyfikatOdrzucony
 from catalog.profiles.nc_rfg import klasyfikacja_modulu
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt
 from enm.canonical_analysis import ODMOWY_OBLICZENIA_BIEGU, CanonicalRun
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from network_model.catalog.types import ConverterType
@@ -63,26 +66,11 @@ from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from network_model.solvers.ncrfg_ptpiree.contracts import DowodCertyfikatu
 from pydantic import BaseModel, Field
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.lib.utils import simpleSplit
+from reportlab.pdfgen import canvas
 from werdykt import opis_podstawy
-
-try:  # pragma: no cover - zależy od środowiska
-    from docx import Document
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.shared import Pt
-
-    _DOCX_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    _DOCX_AVAILABLE = False
-
-try:  # pragma: no cover - zależy od środowiska
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
-    from reportlab.lib.utils import simpleSplit
-    from reportlab.pdfgen import canvas
-
-    _PDF_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    _PDF_AVAILABLE = False
 
 DOKUMENT_STUDIUM_CONTRACT = "DokumentStudiumPrzylaczeniowegoV2"
 DOKUMENT_STUDIUM_TYTUL = "Dokument studium przyłączeniowego OZE"
@@ -525,9 +513,6 @@ def render_dokument_studium_docx(view: dict[str, Any]) -> bytes:
     Zwraca bajty znormalizowane przez ``make_docx_bytes_deterministic`` — dwa
     wywołania na tym samym widoku dają identyczne bajty.
     """
-    if not _DOCX_AVAILABLE:  # pragma: no cover
-        raise ImportError("Eksport DOCX wymaga python-docx. Zainstaluj: pip install python-docx")
-
     doc = Document()
 
     tytul = doc.add_heading(view["tytul"], level=0)
@@ -640,9 +625,6 @@ def render_dokument_studium_pdf(view: dict[str, Any]) -> bytes:
     identyczne bajty. Czcionki DejaVu Sans (polskie diakrytyki) rejestrowane wspólnym
     modułem ``network_model.reporting.czcionki`` (subset TTF jest deterministyczny).
     """
-    if not _PDF_AVAILABLE:  # pragma: no cover
-        raise ImportError("Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab")
-
     buffer = BytesIO()
     zarejestruj_czcionki()
     c = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)

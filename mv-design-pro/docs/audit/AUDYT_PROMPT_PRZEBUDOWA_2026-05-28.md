@@ -132,7 +132,7 @@ istnieje** (zostały domknięte w pracach V12.3–V12.6).
 | # | Pozycja | Uwaga |
 |---|---|---|
 | D-10 | `ncrfg_compliance/checker.py` — `DYNAMIC_TEST_IDS` (T8/T10/T11/T16/T17/T18) zwracają `no_module` | Ścieżka **nie podpięta do API**; zastąpiona przez kompletny `solvers/ncrfg_ptpiree` (podpięty do `/api/ncrfg-tests`). Do scalenia/wygaszenia, niski priorytet |
-| D-11 | API 501 `NOT_IMPLEMENTED`: `power_flow_comparisons`, `power_flow_runs`, `fault_loop` (TT/IT) | Częściowo by-design (TT/IT poza MVP IEC 60364). Do decyzji zakresowej |
+| D-11 | API 501 `NOT_IMPLEMENTED`: `power_flow_comparisons`, `power_flow_runs`, `fault_loop` (TT/IT) | **Rozstrzygnięte (decyzja D-11, O-59, 2026-09-30).** Część DOCX/PDF **domknięta** kartą API-DOCX-501: cztery gałęzie `except ImportError → 501` w `power_flow_runs`/`power_flow_comparisons` były kodem obronnym na scenariusz niemożliwy — skasowane wraz z całą klasą (501/503/flagi `_DOCX_AVAILABLE`/`_PDF_AVAILABLE`/ciche podmiany PDF→tekst w `reference_patterns`, `analysis_run_exports`, `protection_coordination`, raportach koordynacji, certyfikacie NC RfG, studium, wniosku OSD, audycie 2, łuku elektrycznym, inspektorze dowodów); `python-docx` i `reportlab` przeniesione do zależności głównych; klasę przypina `tests/api/test_eksport_zaleznosci_twarde.py`. Część TT/IT (`fault_loop` → 501) należy do karty **W5-E-TTIT** (fizyka TT: R_A, RCD I_Δn; IT: pierwsze zwarcie). |
 
 ---
 
