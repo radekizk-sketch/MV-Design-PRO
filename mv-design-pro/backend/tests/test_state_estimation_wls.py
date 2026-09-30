@@ -84,6 +84,66 @@ def test_clean_case_chi_square_does_not_flag() -> None:
     assert res.bad_data.chi_square_value < res.bad_data.chi_square_threshold
 
 
+@pytest.mark.parametrize(
+    ("dof", "alpha", "oczekiwany"),
+    [
+        # Wartości tablicowe kwantyla χ²_{dof, 1−α} (dokładne scipy, 1e-12 względnie).
+        (1, 0.01, 6.6348966010212145),
+        (6, 0.01, 16.811893829770927),  # benchmark syntetyczny WLS: m − n = 6
+        (6, 0.05, 12.591587243743977),
+        (10, 0.01, 23.209251158954356),
+        (20, 0.05, 31.410432844230918),
+        (60, 0.001, 99.60723306984946),
+    ],
+)
+def test_chi_square_threshold_rowny_dokladnemu_kwantylowi_scipy(
+    dof: int, alpha: float, oczekiwany: float
+) -> None:
+    """Pozycja (j) planu A/B §12.2: próg wyłącznie z ``scipy.stats.chi2.ppf``.
+
+    Bez ścieżki awaryjnej Wilsona-Hilferty'ego — wynik musi być równy funkcji
+    kwantyla scipy bit w bit (nie „w przybliżeniu"), bo tylko ta metoda jest opisana
+    w śladzie obliczeń.
+    """
+    from scipy.stats import chi2
+
+    from network_model.solvers.state_estimation_wls import _chi_square_threshold
+
+    wynik = _chi_square_threshold(dof, alpha)
+    assert wynik == float(chi2.ppf(1.0 - alpha, dof))
+    assert wynik == pytest.approx(oczekiwany, rel=1e-12)
+
+
+def test_chi_square_threshold_bez_stopni_swobody_zero() -> None:
+    from network_model.solvers.state_estimation_wls import _chi_square_threshold
+
+    assert _chi_square_threshold(0, 0.01) == 0.0
+    assert _chi_square_threshold(-3, 0.01) == 0.0
+
+
+def test_chi_square_threshold_bez_sciezki_awaryjnej(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Błąd scipy przerywa estymację — nie przełącza po cichu metody progu."""
+    import network_model.solvers.state_estimation_wls as wls
+
+    class _Awaria:
+        @staticmethod
+        def ppf(*_args: object) -> float:
+            raise RuntimeError("awaria kwantyla")
+
+    monkeypatch.setattr(wls, "chi2", _Awaria)
+    assert not hasattr(wls, "_normal_ppf")
+    with pytest.raises(RuntimeError, match="awaria kwantyla"):
+        wls._chi_square_threshold(6, 0.01)
+
+
+def test_benchmark_prog_chi_kwadrat_przypiety() -> None:
+    """Golden benchmarku: próg dla m − n = 6 i α = 0,01 bez zmiany po decyzji (j)."""
+    bm = build_synthetic_benchmark()
+    res = estimate_wls(bm.ybus_pu, bm.measurements, bm.slack_index)
+    assert res.bad_data.chi_square_threshold == 16.811893829770927
+    assert res.estimate_id.startswith("1ed78d1be5c17ee4")
+
+
 # --------------------------------------------------------------------------- #
 # Detekcja złych danych
 # --------------------------------------------------------------------------- #
