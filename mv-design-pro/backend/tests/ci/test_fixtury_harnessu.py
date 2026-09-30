@@ -1385,3 +1385,34 @@ def test_zapis_na_brakujacym_katalogu_tworzy_go_i_zapisuje(
     assert eksport.main([]) == 0
     assert json.loads((katalog / "probka.json").read_text(encoding="utf-8")) == {"wartosc": 1}
     assert eksport.main(["--sprawdz"]) == 0
+
+
+# ---------------------------------------------------------------------------
+# Scena koordynacji: szyna zwarcia zabezpieczenia sceny ma wiersz w OBU biegach.
+# Atrapa harnessu (`creator-harness-main.tsx::szynaZwarciaZadania`), ekran
+# (`ui/protection-coordination/pradyZBiegow.ts`) i końcówka koordynacji
+# (`szyny_zwarcia_lokalizacji`) czytają prąd zwarciowy lokalizacji-gałęzi spod
+# `szyna_zwarcia_ref` rozstrzygnięcia (karta POLA-W-TORZE: zacisk na zacisku pola
+# stacji → szyna pola, `enm.tor_pola.szyna_raportowa`). Atrapa czytała surową szynę
+# zacisku (`zaciski[zacisk].szyna_ref` — szyna techniczna pola), której biegi nie
+# raportują, i odmawiała żądania ekranu; ten test przypina daną, na której stoi
+# reguła, a e2e `koordynacja z wynikiem` — samą atrapę.
+# ---------------------------------------------------------------------------
+
+
+def _fikstura_repo(nazwa: str) -> dict[str, Any]:
+    return json.loads((eksport.FIXTURES_DIR / f"{nazwa}.json").read_text(encoding="utf-8"))
+
+
+def test_koordynacja_szyna_zwarcia_zabezpieczen_sceny_ma_wiersz_w_obu_biegach() -> None:
+    miejsca = _fikstura_repo("koordynacja_scena_miejsca")
+    urzadzenia = miejsca["urzadzenia_sceny"]
+    assert len(urzadzenia) == 2
+    for nazwa_biegu in ("koordynacja_scena_zwarcia_max", "koordynacja_scena_zwarcia_min"):
+        wiersze = {w.get("element_id") for w in _fikstura_repo(nazwa_biegu)["rows"]}
+        for urzadzenie in urzadzenia:
+            klucz = f"{urzadzenie['lokalizacja']}|{urzadzenie['zacisk']}"
+            rekord = miejsca["rozstrzygniecia"][klucz]
+            assert rekord["odmowa_zacisku"] is None, klucz
+            szyna = rekord["szyna_zwarcia_ref"]
+            assert szyna in wiersze, (nazwa_biegu, klucz, szyna)

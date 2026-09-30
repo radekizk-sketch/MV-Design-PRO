@@ -1052,6 +1052,7 @@
       "bus_ref": "nn/645e3e417d01b7a4f513227bd8c26415/feeder_bus",
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
+      "dynamika": null,
       "id": "5f6ed90d-87d3-5378-838b-666b97924028",
       "materialized_params": null,
       "meta": {
@@ -1083,6 +1084,7 @@
       "bus_ref": "nn/c3254201c6da3d0d58c69441b6c3acf7/feeder_bus",
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
+      "dynamika": null,
       "id": "5013f15a-46b4-5a64-b5c1-a3a9730c9371",
       "materialized_params": null,
       "meta": {
@@ -1114,6 +1116,7 @@
       "bus_ref": "nn/ea174ad4d75fc1b2597990b7f003de57/feeder_bus",
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
+      "dynamika": null,
       "id": "0736dcdf-4285-5aca-9761-e9b50a8696a0",
       "materialized_params": null,
       "meta": {
@@ -1145,6 +1148,7 @@
       "bus_ref": "nn/a57c926adca5ddbbdf87403b58190e49/feeder_bus",
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
+      "dynamika": null,
       "id": "c1aeb7f0-e761-51d3-a9d0-e451b1e48236",
       "materialized_params": null,
       "meta": {
@@ -1176,6 +1180,7 @@
       "bus_ref": "nn/a24891ce027efbafd92397f238e3552c/feeder_bus",
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
+      "dynamika": null,
       "id": "986aa437-923e-5d9f-8875-e8818be39b35",
       "materialized_params": null,
       "meta": {

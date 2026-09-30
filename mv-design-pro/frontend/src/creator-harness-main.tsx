@@ -429,8 +429,8 @@ function pradAZFixtury(
 
 type RozstrzygniecieMiejsca = {
   readonly zacisk: 'od' | 'do' | null;
-  readonly zaciski: Record<'od' | 'do', { readonly szyna_ref: string }> | null;
   readonly odmowa_zacisku: { readonly powod_pl: string } | null;
+  readonly szyna_zwarcia_ref: string | null;
 };
 
 const ROZSTRZYGNIECIA_MIEJSC = koordynacjaScenyMiejsca.rozstrzygniecia as unknown as Record<
@@ -467,7 +467,13 @@ function szynaZwarciaZadania(
   const rekord = ROZSTRZYGNIECIA_MIEJSC[`${lokalizacja}|${zacisk ?? ''}`];
   if (rekord === undefined) return { powod: `lokalizacja ${lokalizacja} spoza migawki sceny` };
   if (rekord.odmowa_zacisku) return { powod: rekord.odmowa_zacisku.powod_pl };
-  if (rekord.zacisk && rekord.zaciski) return { szyna: rekord.zaciski[rekord.zacisk].szyna_ref };
+  // Szyna zwarcia rozstrzygnięta przez backend (`szyna_zwarcia_ref`, `enm.tor_pola.
+  // szyna_raportowa`): dla zacisku na zacisku pola stacji to szyna pola — ten sam węzeł
+  // elektryczny, pod którym bieg raportuje prąd. TA SAMA reguła co ekran
+  // (`ui/protection-coordination/pradyZBiegow.ts`) i końcówka koordynacji
+  // (`szyny_zwarcia_lokalizacji`); surowa szyna zacisku (`zaciski[…].szyna_ref`) po karcie
+  // POLA-W-TORZE bywa szyną techniczną pola, której wierszy bieg nie ma.
+  if (rekord.zacisk && rekord.szyna_zwarcia_ref) return { szyna: rekord.szyna_zwarcia_ref };
   return { szyna: lokalizacja };
 }
 
