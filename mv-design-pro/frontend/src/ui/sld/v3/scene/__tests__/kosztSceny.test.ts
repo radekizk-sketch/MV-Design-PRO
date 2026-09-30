@@ -375,11 +375,31 @@ interface OdciskiLod {
  *        scena z `meta.stopNotes` zastąpionym pustą listą jest CO DO BAJTU identyczna
  *        przed i po naprawie (obie sieci, obie fikstury, L0/L1/L2), a declutter i plan
  *        etykiet są identyczne — geometria rysunku nietknięta.
+ *
+ * AKTUALIZACJA ŚWIADOMA (SLD-SUBSTRAT, kontynuacja, 2026-09-30) — przeliczone odciski;
+ * z 54 wpisów tablicy 16 bez zmian. Zmiana DANYCH rusza scenę i etykiety na KAŻDYM LOD
+ * (wiersz 4 pasma nazw stacji), zmiana KODU — scenę na każdym LOD, a etykiety WYŁĄCZNIE
+ * na L2 (sonda: kod HEAD i kod nowy na nowej fiksturze dają identyczne odciski
+ * declutteru i 7 z 7 planów na L0 i L1, 0 z 7 na L2). Atrybucja liść po liściu (sonda
+ * 2×2 kod HEAD/nowy × fikstura stara/nowa, meldunek karty):
+ *  · DANE (substrat budowany ścieżką produktu — magazyn modelu z promocją pól nN i
+ *    uzupełnieniem katalogowym): 33 stacje dostają odbiór katalogowy odpływów nN
+ *    (`#lv-load-drop` + `loadArrow` + wydłużona `#lv-bus`, wiersz 4 pasma nazw
+ *    „granica modelu — bez odbiorów nN" → „Odbiór ΣP…"), 20 stacji — wyższą sumę
+ *    odbioru, 4 wiersze DER przesunięte przez strzałkę odbioru; 199 aparatów pól nN
+ *    bez wiązania (53 wyłączniki główne, 126 odpływów, 20 pól źródłowych).
+ *  · KOD: aparat nN BEZ wiązania katalogowego nie jest już UNRESOLVED (199 notatek STOP
+ *    grafu elektrycznego znika, status SLD_VALID); łącznik sekcyjny „Łącznik sekcyjny
+ *    NO (rezerwa)" dostaje symbol (dwa półodcinki przycięte do jego portów) i nazwę na
+ *    L2; odcinek powiązania „Rezerwa pierścieniowa (odcinek NOP)" zamyka dwa końce
+ *    ogonów — dwa słupki „koniec otwarty" i ich etykiety zastępują dwa znaki
+ *    powiązania i dwa odsyłacze „powiązanie" (L2). Etykiety zmieniają się WYŁĄCZNIE na
+ *    L2, stąd declutter/plany L0/L1 bez zmian — i tak wychodzi w odciskach.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: '8aee4da7b92b82657620ee06c0c12411',
+      scena: '448a6eedc5d4cc8621a76a67c15ab5be',
       declutter: '7b3f5739b2b54790f4ec28cb4df70cd0',
       plany: [
         'e75f905bdb8cdcd336de41517bafb8d0',
@@ -392,35 +412,35 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '07eb97d1467c7fc106f93bec52ab6243',
-      declutter: '93f20abddd52c1160a4760deff6616e0',
+      scena: '57944da12f5e42fa892dab78a896496c',
+      declutter: '5efb86a74e37f1f46520803329d87b65',
       plany: [
-        '14dcd0db3ec7fb6dda440c0afe5ebf0e',
-        'a9bf199022bd475402d5f7815f09467e',
-        'f1c1b8b61ba4afb6ca24e567d8c47bf7',
-        '319f63a5ecf077a8cd126e69871ac7e6',
-        '99a5ed72adc8421edc73ec3e61f3e122',
-        '3a2a6236361936fc89724b74ca95f5ba',
-        '3a2a6236361936fc89724b74ca95f5ba',
+        'f6b9fccddd26b56d6145c78fb11e7086',
+        '9b24c1690ae8fe4a2844723fb2b9f1d8',
+        '46d78be91891ee92639f1d681e0be9ba',
+        '6fadc8107cfcd0f03b3f8db259e49471',
+        'e3e504e7629d76e814b2964d36d5d046',
+        'b582ca17e7af1b50beb7d9646633a7d7',
+        'b582ca17e7af1b50beb7d9646633a7d7',
       ],
     },
     {
-      scena: 'f6d785399676ee8ac36ca744a7327ec4',
-      declutter: '84903db8cd433250d7d9eef11386a2fa',
+      scena: 'cbf20b5a358815ddecaa1c9a80cb1884',
+      declutter: 'afa36cf19585808f81e545f8c9cb5727',
       plany: [
-        '31240d2b9c2cd15437ea70303e2d9119',
-        '46153c23caeff88b1ac3582fea08225a',
-        '2cef16e380ba3190acd4b2ba265c1d5b',
-        'cfef095c34c86806d7281b19cbbe976f',
-        'd79e9eabd15ff4dee109d012c1d8c0e4',
-        '2c33c2714c357711ca1fc256b2c5e19d',
-        '2c33c2714c357711ca1fc256b2c5e19d',
+        '8691b8cd95e6f651f8c3520084be52db',
+        '17115a3d22dc580d6526dd9fc9ebfc47',
+        '197a64add7a1faaf46fb456d5b5fa327',
+        '0451075c8e7f8835aa1b8fe3621b5bca',
+        '5f27d5e32d89ff608452d770b3355fe1',
+        '1d2b0d11738277f5a72ff434c3625a81',
+        '1d2b0d11738277f5a72ff434c3625a81',
       ],
     },
   ],
   podwojona: [
     {
-      scena: '852968b38e371900061927d793dfad53',
+      scena: '202df32833c3ee0f239d8bcb971efce5',
       declutter: '4f488776de89329b8735c9fd2989656a',
       plany: [
         '06b04c6ddf7dcf58f8433e9ea72ff59c',
@@ -433,29 +453,29 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: 'e553467470096b0f054af5b491dc11d8',
-      declutter: 'fba14097c9b8695bb87cdd6f57ea0e09',
+      scena: '727d334b289562d032ba56a75c52e610',
+      declutter: '9ec09ea7c46483b3acfbbd3959370421',
       plany: [
-        '73005a70d650b68d7553a116ed3e33d0',
-        'ffac6811241766052d42db03d084e49e',
-        '64397379cfef83433b2880f4190f4761',
-        '27c26ac63a2a7e55ac683d408abd1f99',
-        '132886361767e73bebe32ea89565b13e',
-        '8e464e9a418fff4ebb140f4f02b0c645',
-        '8e464e9a418fff4ebb140f4f02b0c645',
+        '8d85f79f29c1510ec5e8aced91ee6c0f',
+        '2291428a1a3909c355df0be532f0dcc6',
+        '2a49c54a2386958dedd4398d9d9a0064',
+        'fee024f8ec196c5c56be654bfa54e14c',
+        'eb5a4f29fc201bd3aa5f33969adbb930',
+        '8160befe6e75fef96d910f898f50078c',
+        '8160befe6e75fef96d910f898f50078c',
       ],
     },
     {
-      scena: '013b276419f2b126dc266bab3ef614af',
-      declutter: 'cb9f0b5703cd72865160fc73c310d882',
+      scena: '7c534b961f9913316d74a28f1b9dd6af',
+      declutter: 'def50f0cb46d9c71aeca92331b9923b5',
       plany: [
-        '584243afd858d9b5916293e76e8ba4d9',
-        '17f6d9f14f6dbcebcd8d799b7c9ff54f',
-        '8ec4ed13c1650de87cd27b32246ce12f',
-        'e36f4c98fb282510c717e9a8ea81017f',
-        '949b06e238f3e348d7634f5da0340012',
-        'e0f4406e392611672fad5aed718bed79',
-        'e0f4406e392611672fad5aed718bed79',
+        '7ad848c93b45a110b21e33b9ef84996d',
+        'b9411a44292e0865bc34ac5ff6e66647',
+        '76a7ba2605f2f2a9cfe4871f5637715a',
+        '0743fd87922f27d3634c3c371d413d18',
+        '40877a42ae8ebd9c4a3b03e562d8e075',
+        'b82da1192552488938af23e40a8780b1',
+        'b82da1192552488938af23e40a8780b1',
       ],
     },
   ],

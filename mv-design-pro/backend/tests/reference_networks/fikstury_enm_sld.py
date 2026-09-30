@@ -19,13 +19,14 @@ Sieci (nazwy plików jak w repo, ścieżki względem ``frontend``):
 * ``stacjaPolePomiarowe`` — stacja B z polem pomiarowym (przekładnik napięciowy);
 * ``s95GpzSwiezy`` — sam GPZ zaraz po ``add_grid_source_sn``;
 * ``s92Bieg`` + nakładki ``s92Zwarcie``/``s92Rozplyw`` — dwa odcinki + szablon stacji
-  1000 kVA z pomiarem (ZKSN za GPZ, stacja w odgałęzieniu), biegi kanoniczne zwarcia i
-  rozpływu
+  przelotowej 1250 kVA, biegi kanoniczne zwarcia i rozpływu
   (``GET /api/execution/runs/{id}/results/v1``);
 * ``b2Droga-<operacja>`` + ``b2DrogiOperacji`` — pięć dróg operacji budowy i ich wskazania;
 * ``b2Mala``/``b2Duza`` ``Przed``/``Po`` + ``Operacja`` — wstawienie stacji w środek odcinka
   w sieci małej (3 → 4 stacje) i dużej (14 → 15 stacji);
 * ``nnBoardDemo`` (``public``) — ``openBranch`` + rozdzielnica nN z sekcją 2 i odpływami;
+* ``stacjaPomiar1000`` — dwa odcinki + szablon stacji 1000 kVA z pomiarem rozliczeniowym
+  (ZKSN na odcinku zaraz za GPZ, stacja w odgałęzieniu);
 * ``elementyCiagu-<rodzaj>`` — macierz kompletności rysunku: GPZ, pięć odcinków, stacje na
   odcinkach 1 i 3, element rodzaju ZKSN / słup rozgałęźny / łącznik sekcyjny / węzeł nazwany
   na odcinkach 0 (za GPZ), 2 (między stacjami) i 4 (za ostatnią stacją).
@@ -45,7 +46,7 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from tests.golden.zapis_fikstur import json_fikstury, zaokraglij_liczby
+from tests.golden.zapis_fikstur import json_fikstury, tresc_z_kotwica, zaokraglij_liczby
 from tests.reference_networks.budowa_przez_api import (
     APARAT_POLA_SN,
     TRANSFORMATOR_630,
@@ -578,11 +579,13 @@ def _s92(klient: TestClient) -> tuple[dict[str, Any], dict[str, Any], dict[str, 
     b.gpz()
     b.odcinek_magistrali(120, "Odcinek 0")
     b.odcinek_magistrali(121, "Odcinek 1")
-    # Szablon stacji 1000 kVA z pomiarem rozliczeniowym (jak dawny zrzut): od POMIAR-ODG
-    # (a2487d16) taka stacja idzie do ODGAŁĘZIENIA przez ZKSN wstawiony na odcinek, więc
-    # ZKSN stoi na ciągu zaraz za GPZ. Do karty SLD-SUBSTRAT (kontynuacja) rysunek go
-    # gubił razem ze stacją („punkt poza rysunkiem", kanał w szczelinie GPZ).
-    b.szablon("tpl_sn_nn_1000kva", segmenty_korytarza(b.migawka())[1])
+    # Szablon stacji PRZELOTOWEJ (wcinanej w odcinek magistrali): kontrakt S9-2 (wyniki
+    # biegu na kanwie) opisuje stację NA CIĄGU głównym (szyna SN stacji, pola RMU, mufy
+    # ciągu). Stacja z pomiarem rozliczeniowym z szablonu „tpl_sn_nn_1000kva" od
+    # POMIAR-ODG (a2487d16) idzie do ODGAŁĘZIENIA przez ZKSN — ten przypadek ma własną
+    # sieć `stacjaPomiar1000` (ZKSN zaraz za GPZ, kanał w szczelinie GPZ; karta
+    # SLD-SUBSTRAT, kontynuacja), a nie podmienia topologii kontraktu S9-2.
+    b.szablon("tpl_sn_nn_1250kva", segmenty_korytarza(b.migawka())[1])
     nakladki = []
     for rodzaj in ("SC_3F", "LOAD_FLOW"):
         bieg = klient.post(
@@ -608,6 +611,19 @@ def _s92(klient: TestClient) -> tuple[dict[str, Any], dict[str, Any], dict[str, 
             }
         )
     return b.migawka(), nakladki[0], nakladki[1]
+
+
+def _stacja_pomiar_1000(b: KlientBudowy) -> dict[str, Any]:
+    """Stacja z pomiarem rozliczeniowym z szablonu 1000 kVA na drugim odcinku ciągu: od
+    POMIAR-ODG (a2487d16) szablon wstawia ZKSN na odcinek i stację w ODGAŁĘZIENIU za nim,
+    więc ZKSN stoi na ciągu zaraz za GPZ (poprzednikiem punktu jest GPZ). Do karty
+    SLD-SUBSTRAT (kontynuacja) kanwa gubiła punkt RAZEM ze stacją („punkt poza
+    rysunkiem" — brak kanału zejścia w szczelinie GPZ)."""
+    b.gpz()
+    b.odcinek_magistrali(120, "Odcinek 0")
+    b.odcinek_magistrali(121, "Odcinek 1")
+    b.szablon("tpl_sn_nn_1000kva", segmenty_korytarza(b.migawka())[1])
+    return b.migawka()
 
 
 #: Rodzaje elementów, które mogą stać NA CIĄGU GŁÓWNYM między węzłami ze stacją
@@ -687,6 +703,11 @@ _SIECI: tuple[tuple[tuple[str, ...], str, Callable[[KlientBudowy], dict[str, Any
         "Stacja z polem pomiarowym",
         _stacja_pole_pomiarowe,
     ),
+    (
+        (f"{SCENA}/stacjaPomiar1000.enm.json",),
+        "Stacja z pomiarem za ZKSN",
+        _stacja_pomiar_1000,
+    ),
 )
 
 
@@ -750,6 +771,9 @@ def main(argv: list[str] | None = None) -> int:
     rozjazdy = 0
     for sciezka, tresc in render_fikstur_enm_sld().items():
         plik = FRONTEND / sciezka
+        # Kotwica w szumie (`tests/golden/zapis_fikstur.tresc_z_kotwica`): szum numeryki
+        # między maszynami nie trafia do repozytorium; test świeżości — ten sam predykat.
+        tresc = tresc_z_kotwica(plik, tresc)
         if args.write:
             plik.write_text(tresc, encoding="utf-8")
             print(f"[zapisano] {plik}")

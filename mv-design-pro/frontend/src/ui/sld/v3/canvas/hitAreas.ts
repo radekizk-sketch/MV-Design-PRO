@@ -302,6 +302,8 @@ export const LABEL_OWNER_ELEMENT_KIND = {
   der: 'der',
   'busbar-voltage': 'bus',
   'no-point': 'apparatus',
+  // Łącznik sekcyjny na torze jest w modelu GAŁĘZIĄ — kotwica `galaz` ↔ 'segment'.
+  'lacznik-toru': 'segment',
   'branch-point': 'branchPoint',
   protection: 'protectionAnnotation',
   'lv-load': 'bus',

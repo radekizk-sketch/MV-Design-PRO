@@ -47,6 +47,7 @@ import argparse
 import json
 import math
 import os
+import re
 from typing import Any, Literal
 
 from analysis.obciazenie_galezi import (
@@ -3304,12 +3305,34 @@ def render_companions() -> dict[str, str]:
     }
 
 
+_ULAMEK_SZUMU = re.compile(r"(\d\.\d{5})\d+")
+
+
+def kanonizuj_artefakt(tekst: str) -> str:
+    """Obcina ułamki do 5 znaków — JEDNO źródło predykatu „różni się wyłącznie szumem
+    ostatniej cyfry" dla testu świeżości (`tests/application/test_companions_generated.py`)
+    i zapisu `--write` (kotwica w szumie niżej). Powód: solvery FROZEN są deterministyczne
+    na jednej maszynie, ale nie co do bitu między maszynami — R/X = 0,5000025 w podstawieniu
+    współczynnika udaru przerzuca zapis 0,500003 ↔ 0,500002 w `substitution_latex`."""
+    return _ULAMEK_SZUMU.sub(r"\1", tekst)
+
+
 def _zapisz_artefakt(nazwa: str) -> str:
+    """Zapis artefaktu z KOTWICĄ W SZUMIE (karta SLD-SUBSTRAT, kontynuacja): gdy plik na
+    dysku różni się od świeżego renderu wyłącznie szumem ostatniej cyfry
+    (`kanonizuj_artefakt`), zostaje bez zmian — regeneracja na innej maszynie nie wnosi do
+    repozytorium różnicy, której nie przypisuje żadna zmiana danych wejściowych
+    (zmierzone 2026-09-29: `shortCircuit.ts` 0.500003 → 0.500002 po restarcie maszyny)."""
     out_dir = _companions_dir()
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, nazwa)
+    tresc = render_companions()[nazwa]
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:
+            if kanonizuj_artefakt(fh.read()) == kanonizuj_artefakt(tresc):
+                return path
     with open(path, "w", encoding="utf-8") as fh:
-        fh.write(render_companions()[nazwa])
+        fh.write(tresc)
     return path
 
 

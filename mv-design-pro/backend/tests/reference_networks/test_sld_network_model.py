@@ -74,3 +74,12 @@ def test_deterministic(model: dict) -> None:
     bieg B liczymy tutaj od zera — porownanie nadal zestawia dwa rozlaczne wywolania.
     """
     assert json.dumps(model, sort_keys=True) == json.dumps(_model(), sort_keys=True)
+
+
+def test_der_na_szynach_odplywow_nn_nalezy_do_stacji(model: dict) -> None:
+    """Karta SLD-SUBSTRAT (kontynuacja): substrat budowany ścieżką produktu ma generatory
+    DER na szynach odpływów nN utworzonych promocją pól nN (poza `Substation.bus_refs`).
+    Przynależność szyny odpływu do stacji czyta ten sam predykat co frontendowe
+    `stationLoadBusRefs`; bez niego destylat gubił DER KAŻDEJ stacji (`der: []` na
+    wszystkich 16). POMIAR: 20 generatorów (8 PV, 8 BESS, 4 wiatr) na 16 stacjach."""
+    assert sum(1 for s in model["stations"] if s["der"]) == 16

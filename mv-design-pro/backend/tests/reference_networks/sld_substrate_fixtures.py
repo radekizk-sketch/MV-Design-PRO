@@ -41,6 +41,7 @@ from tests.golden.sld_substrate_power_flow import (
 from tests.golden.zapis_fikstur import (
     json_fikstury,
     przypnij_identyfikatory_modelu,
+    tresc_z_kotwica,
     zaokraglij_liczby,
 )
 from tests.reference_networks.sld_substrate_52s import build_sld_substrate_52s
@@ -157,6 +158,9 @@ def main(argv: list[str] | None = None) -> int:
     rozjazdy = 0
     for sciezka, tresc in render_fikstur_substratu().items():
         plik = FRONTEND / sciezka
+        # Kotwica w szumie (`tests/golden/zapis_fikstur.tresc_z_kotwica`): szum numeryki
+        # między maszynami nie trafia do repozytorium; test świeżości — ten sam predykat.
+        tresc = tresc_z_kotwica(plik, tresc)
         if args.write:
             plik.parent.mkdir(parents=True, exist_ok=True)
             plik.write_text(tresc, encoding="utf-8")

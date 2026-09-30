@@ -161,3 +161,23 @@ describe('iniekcje: wyrocznia kompletności gryzie', () => {
     expect(raport.niewyjasnione.map((p) => p.ref)).toContain(ref);
   });
 });
+
+describe('stacja z pomiarem z szablonu 1000 kVA za ZKSN zaraz za GPZ (znalezisko integratora)', () => {
+  // Sieć z generatora (`_stacja_pomiar_1000`): szablon wstawia ZKSN na odcinek, a stację
+  // w odgałęzieniu za nim — poprzednikiem punktu na ciągu jest GPZ. Przed naprawą kanwa
+  // gubiła punkt RAZEM ze stacją na każdym LOD.
+  const enm = wczytaj(resolve(FRONTEND, 'src/ui/sld/v3/scene/__tests__/fixtures/stacjaPomiar1000.enm.json'))!;
+  for (const lod of LODY) {
+    it(`L${lod}: ZKSN i stacja z pomiarem narysowane, zero niewyjaśnionych`, () => {
+      const scena = buildSceneV3(enm, lod);
+      const punkty = enm.branch_points ?? [];
+      expect(punkty.length).toBe(1);
+      expect(scena.meta.drawnBranchPointRefs).toContain(punkty[0].ref_id);
+      const stacje = (enm.substations ?? []).filter((s) => s.station_type !== 'gpz');
+      expect(stacje.length).toBeGreaterThan(0);
+      for (const stacja of stacje) expect(scena.meta.drawnStationIds).toContain(stacja.ref_id);
+      expect(branchPointCoverageGaps(scena, enm)).toEqual([]);
+      expect(kompletnoscRysunku(scena, enm).niewyjasnione).toEqual([]);
+    });
+  }
+});

@@ -153,7 +153,7 @@ export function elementyToru(
     if (lod === 2) {
       labels.push({
         ownerRef: `${galaz.ref_id}#name`,
-        ownerKind: 'apparatus',
+        ownerKind: 'lacznik-toru',
         text: galaz.name,
         labelClass: 't3',
         anchor: poziomy
