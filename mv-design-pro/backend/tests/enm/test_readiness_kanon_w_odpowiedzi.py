@@ -167,3 +167,41 @@ def test_zrodlo_bez_szyny_ma_droge_do_kanonu() -> None:
     assert zgloszenia[0]["canonical_code"] == "source.connection_missing"
     assert zgloszenia[0]["canonical_priority"] == spec.priority
     assert zgloszenia[0]["canonical_fix_navigation"] == spec.fix_navigation
+
+
+# ---------------------------------------------------------------------------
+# Karta C-12: kształt akcji naprawczej w odpowiedzi operacji domenowej
+# ---------------------------------------------------------------------------
+
+
+def test_akcja_walidatora_niesie_typ_okna_i_podpowiedz_wlasnymi_polami() -> None:
+    """`modal_type` walidatora NIE ląduje w `panel`, a `payload_hint` nie ginie.
+
+    Dawniej `panel` niósł typ okna ('SourceModal'), więc wykonawca akcji naprawczej
+    frontu (który czyta `panel` jako słownik paneli 'catalog'/'transformer_panel') nie
+    rozpoznawał formularza — akcja kończyła się „nie przypisano karty konfiguracyjnej".
+    """
+    _, fix_actions = _build_readiness(_enm_pusty())
+    akcja_e001 = next(a for a in fix_actions if a["code"] == "E001")
+    assert akcja_e001["modal_type"] == "SourceModal"
+    assert akcja_e001["payload_hint"] == {"required": "source"}
+    assert akcja_e001["panel"] is None
+
+
+def test_kazda_akcja_ma_jeden_ksztalt_niezaleznie_od_emitera() -> None:
+    """Walidator i bloki domenowe `_build_readiness` dają TEN SAM zestaw kluczy."""
+    _, fix_actions = _build_readiness(_enm_pusty())
+    assert fix_actions
+    klucze = {
+        "code",
+        "action_type",
+        "element_ref",
+        "modal_type",
+        "payload_hint",
+        "panel",
+        "step",
+        "focus",
+        "message_pl",
+    }
+    for akcja in fix_actions:
+        assert set(akcja) == klucze, akcja

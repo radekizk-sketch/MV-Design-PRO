@@ -81,7 +81,7 @@ Format: **wymaganie** · powód (dowód) · priorytet · wpływ na architekturę
 28. **Definicja gotowego per cel projektu i plan analiz jako jedna akcja** · 2 z 8 biegów; NBA kończy się na E5 (EF-029/045) · P0 · `WorkflowEngine` · wszystkie · FAZA C §2.
 29. **Remedia dla każdego FAIL z podglądem skutków** · EF-047 · P0 · `Remedy`, `ImpactPreview` · W13 · —.
 30. **Dobór z kandydatami dla 8 klas (nie tylko DER)** · EF-037 i in. · P0 · FAZA D cz. 2 · W3–W10 · —.
-31. **Akcja naprawcza wykonuje naprawę (executor), nie nawiguje** · 100 % nawigacja (EF-046) · P0 · reuse `fixActionSurfaceExecutor` · W13 · —.
+31. **Akcja naprawcza wykonuje naprawę (executor), nie nawiguje** · 100 % nawigacja (EF-046) · P0 · reuse `fixActionSurfaceExecutor` · W13 · **PRZYJĘTE I WYKONANE (2026-09-30, karta C-12, decyzja K-12 opcja A):** wykonawca przeniesiony do `ui2/spaces/gotowosc/`, jedna funkcja `wykonajAkcjeNaprawcza`, e2e natywnym klikiem na realnym backendzie.
 32. **Jeden inspektor z akcjami obiektowymi (TRACE/SIZE/REPLACE/COMPARE/FAULT/SWZ)** · 7 inspektorów; akcje kończą się toastem (A8-05/08) · P1 · FAZA C §5 · — · —.
 33. **Stacja typowa / powielanie / wstaw N stacji wzdłuż ciągu; metryka projektu** · EF-059, EF-009 · P1 · `StationTypical`, `ProjectMetadata` · W4/W14 · —.
 34. **Profile ról ortogonalne do trybów** · 3 tryby, 0 ról (EF-053) · P2 · FAZA C §6 · — · decyzja C-06.
@@ -113,7 +113,7 @@ Format: **wymaganie** · powód (dowód) · priorytet · wpływ na architekturę
 | K-09 | Propagacja automatyczna (§175) vs all-or-nothing + koszt N-1 + determinizm | recalc po każdej zmianie | dziś niewykonalne | selektywna inwalidacja (ADR-026) + jawna polityka przeliczeń (decyzja C-01) |
 | K-10 | Auto-dobór (§55) vs „No Heuristics in Solvers"/„zero fizyki w UI" | ranking i rekomendacje | zakaz heurystyk | dobór w warstwie interpretacji z jawnymi kryteriami normatywnymi, deterministyczny, bez fizyki (FAZA D cz. 2, O-01/O-02); „optymalny" wymaga kryterium (decyzja C-05) |
 | K-11 | Role §168 vs kanon 3 trybów zaawansowania | role | tryby | role jako profile ortogonalne (decyzja C-06) |
-| K-12 | Fix-action = 1 klik naprawy (§174) vs decyzja integracyjna D1 nawigacji ui2 | executor | nawigacja | executor (istnieje legacy) — zmiana decyzji D1 (C-… w FAZIE C) |
+| K-12 | Fix-action = 1 klik naprawy (§174) vs decyzja integracyjna D1 nawigacji ui2 | executor | nawigacja | **ROZSTRZYGNIĘTY decyzją C-12 (opcja A, 2026-09-30; wiersz C-12 w `docs/v12xx/REJESTR_KONFLIKTOW.md`):** D1 zostaje jedyną drogą przejścia, wykonawca (przeniesiony z legacy do `ui2/spaces/gotowosc/`) dokłada selekcję i formularz operacji z fokusem pola PO przejściu |
 | K-13 | Twin wielostanowiskowy (role, ślad „kto") vs decyzja właściciela 2026-08-05 (jednostanowiskowo, bez auth) | multi-user | single-user | zaprojektować pod serwer (aktor w komendach, `If-Match`), uruchamiać lokalnie; decyzja W-D1 |
 | K-14 | IEC 61850/SCL (§123) vs D-05a „nie budować bez konsumenta" | SCL | brak konsumenta | zdefiniować konsumenta (eksport SSD projektu stacji) lub potwierdzić wyłączenie (decyzja) |
 | K-15 | GIS (§122) vs D-12 odłożone | geo | brak | pola geo addytywne w wersji 1, tryb geo później (wymaganie 14) |

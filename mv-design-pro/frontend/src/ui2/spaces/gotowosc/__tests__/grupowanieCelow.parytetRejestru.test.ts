@@ -5,18 +5,12 @@
  * `GET /api/readiness/registry` — `backend/src/api/readiness_registry.py`).
  *
  * Fixture `fixtures/readiness_registry_snapshot.json` jest SNAPSHOTEM
- * odpowiedzi tego endpointu (para `code`+`area`, ten sam wzorzec co
- * `backend/schemas/openapi_snapshot.json`). Regeneracja (po zmianie
- * kanonicznego rejestru backendu — wywołać z `backend/`, `PY` = brief
- * wykonawcy):
+ * rejestru (kod, obszar, nawigacja naprawcza; od karty C-12 także odwzorowanie
+ * kodów walidatora i emitery akcji naprawczych). Równość z backendem pilnuje
+ * `backend/tests/domain/test_fikstura_rejestru_gotowosci_frontu.py`; regeneracja
+ * (z katalogu `backend/`):
  *
- *   PYTHONPATH=$PWD:$PWD/src $PY -c "
- *   import json
- *   from domain.readiness_bridge import widok_rejestru
- *   w = widok_rejestru()
- *   kody = [{'code': k['code'], 'area': k['area']} for k in w['codes']]
- *   print(json.dumps({'codes': kody, 'count': len(kody)}, ensure_ascii=False, indent=2, sort_keys=True))
- *   " > frontend/src/ui2/spaces/gotowosc/__tests__/fixtures/readiness_registry_snapshot.json
+ *   PYTHONPATH=$PWD:$PWD/src python tests/domain/test_fikstura_rejestru_gotowosci_frontu.py
  *
  * Kryterium (karta §1 p. 13): KAŻDY kod kanonicznego rejestru ma grupę —
  * `celDlaKodu(code) !== 'pozostale'`. „Pozostałe" jest zarezerwowane dla

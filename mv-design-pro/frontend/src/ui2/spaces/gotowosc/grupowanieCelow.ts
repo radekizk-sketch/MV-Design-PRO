@@ -187,6 +187,13 @@ export interface ProblemGotowosci {
    * jawną zasadę: brak priorytetu nie wyprzedza kodu uszeregowanego przez kanon).
    */
   priorytetKanoniczny: number | null;
+  /**
+   * Kod kanonicznego rejestru gotowości (`canonical_code` kontraktu) — klucz tabeli akcji
+   * naprawczych (`akcjeNaprawcze.ts`). `null` = zgłoszenie bez odpowiednika w kanonie.
+   */
+  kodKanoniczny: string | null;
+  /** Nawigacja naprawcza kanonu (`canonical_fix_navigation`) — m.in. pole do fokusu. */
+  nawigacjaKanoniczna: Readonly<Record<string, string>> | null;
 }
 
 /** Grupa celu — problemy + liczniki + postęp (karta §1: „postęp per cel"). */
@@ -501,6 +508,8 @@ export function naProblemGotowosci(issue: ReadinessIssue): ProblemGotowosci {
     cel: celDlaKodu(issue.code),
     fixAction: issue.fix_action,
     priorytetKanoniczny: issue.canonical_priority ?? null,
+    kodKanoniczny: issue.canonical_code ?? null,
+    nawigacjaKanoniczna: issue.canonical_fix_navigation ?? null,
   };
 }
 

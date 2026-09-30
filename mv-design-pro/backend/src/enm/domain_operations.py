@@ -2167,11 +2167,18 @@ def _build_readiness(
         }
         fa = None
         if issue.fix_action:
+            # Karta C-12: `modal_type` i `payload_hint` walidatora płyną WŁASNYMI polami.
+            # Dawniej `modal_type` lądował w `panel`, a `payload_hint` ginął — wykonawca
+            # akcji naprawczej nie rozpoznawał formularza (`panel` to słownik paneli
+            # 'catalog'/'transformer_panel', nie typów okien) i ~wszystkie akcje
+            # OPEN_MODAL walidatora kończyły się „nie przypisano karty konfiguracyjnej".
             fa = {
                 "code": issue.code,
                 "action_type": issue.fix_action.action_type,
                 "element_ref": issue.fix_action.element_ref,
-                "panel": issue.fix_action.modal_type,
+                "modal_type": issue.fix_action.modal_type,
+                "payload_hint": issue.fix_action.payload_hint,
+                "panel": None,
                 "step": issue.wizard_step_hint or None,
                 "focus": issue.fix_action.element_ref,
                 "message_pl": issue.suggested_fix or issue.message_pl,
@@ -2220,7 +2227,9 @@ def _build_readiness(
                 fix_actions.append(
                     {
                         "code": "pv_bess.transformer_required",
-                        "action_type": "add_transformer_sn_nn",
+                        # Słownik kontraktu `FixActionItem.action_type` (C-12): formularz
+                        # dodania transformatora wskazuje panel, nie nazwa operacji.
+                        "action_type": "OPEN_MODAL",
                         "element_ref": gen.get("ref_id"),
                         "panel": "transformer_panel",
                         "step": None,
@@ -2444,6 +2453,11 @@ def _build_readiness(
     # emiter cicho wypadalby z kanonu.
     _wzbogac_o_kanon(blockers)
     _wzbogac_o_kanon(warnings)
+    # Karta C-12: JEDEN kształt akcji naprawczej dla WSZYSTKICH emiterów (walidator i
+    # bloki domenowe wyżej) — ten sam powód co jedno wzbogacenie kanonem na końcu.
+    for akcja in fix_actions:
+        akcja.setdefault("modal_type", None)
+        akcja.setdefault("payload_hint", None)
 
     has_any_blocker = len(blockers) > 0
     return {

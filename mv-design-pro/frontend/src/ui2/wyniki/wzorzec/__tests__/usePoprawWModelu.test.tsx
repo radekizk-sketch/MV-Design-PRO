@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
+import { ROUTES } from '../../../../ui/navigation/routes';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { useShellStore } from '../../../shell/useShellStore';
 import { usePoprawWModelu } from '../usePoprawWModelu';
@@ -59,5 +60,14 @@ describe('usePoprawWModelu — od wyniku do decyzji', () => {
     // R2-B: deep-link niesie ref węzła przekroczenia → pre-selekcja w oknie
     // „Dobór kompensacji" (inżynier nie wybiera węzła ponownie ręcznie).
     expect(useShellStore.getState().wynikiTabElement).toBe('slack');
+  });
+
+  it('C-12: przejście idzie mostem tras (D1) — trasa przebiegu nie przykrywa „Schematu"', () => {
+    window.location.hash = `${ROUTES.ANALYSIS.hash}?run=bieg-1`;
+    const { result } = renderHook(() => usePoprawWModelu());
+    act(() => result.current('szyna-1', 'Bus', 'Szyna GPZ'));
+
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+    expect(window.location.hash.startsWith(ROUTES.SLD.hash)).toBe(true);
   });
 });

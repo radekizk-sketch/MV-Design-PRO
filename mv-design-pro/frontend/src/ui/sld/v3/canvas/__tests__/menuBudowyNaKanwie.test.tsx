@@ -420,25 +420,55 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
     180000,
   );
 
-  it('stacja na kanwie prowadzi ciąg dalej i rozpoczyna odgałęzienie (ogniwo powtarzalne 15×)', async () => {
-    const openOperationForm = vi.fn();
-    useNetworkBuildStore.setState({ openOperationForm } as never);
+  /*
+   * Przepisane do kanonu POLE-ZAJĘTE (karta C-12 — czerwień zastana na bazie od 3c246c08,
+   * zmierzona bisekcją 3c246c08 / 1c7cadc4 / 615f3b24 / d6c26c3f). INTENCJA bez zmian:
+   * stacja na kanwie jest ogniwem budowy ciągu — prawy klik daje „Kontynuuj ciąg", a klik
+   * otwiera kreator magistrali z refem tej stacji. Zmienił się STAN DANYCH, nie produkt:
+   * zajętość pól liniowych front czyta z `logical_views.line_fields` backendu, a w sieci
+   * referencyjnej 52 stacji KAŻDE pole liniowe stacji jest zajęte (54 stacje, 0 wolnych —
+   * fikstury świeże wg `eksport_fixtur_harnessu.py --sprawdz`). Pozycja jest tam więc
+   * uczciwie zablokowana (bez punktu startu kreator nie zapisze). Ścieżkę pozytywną
+   * ćwiczy scena generatora backendu ze stacją z wolnymi polami.
+   */
+  it('stacja na kanwie: „Kontynuuj ciąg" sparowane z resolverem kreatora; wolne pole ⇒ klik otwiera kreator', async () => {
     const kanwa = renderKanwe(0);
     const stacja = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef?.startsWith('stn/'))!;
-
     const menu = await prawyKlik(kanwa, stacja.testId);
-    expect(pozycjaAktywna(menu!, 'continue-trunk')).toBe(true);
-    // S9-10: aktywność „Rozpocznij odgałęzienie" jest SPAROWANA z resolverem
-    // kreatora (jedno źródło prawdy) — na tej sieci stacja nie ma wolnego
-    // pola FEEDER, więc pozycja jest OBECNA, ale uczciwie zablokowana
-    // (kreator nie miałby punktu startu; przed S9-10 otwierał się martwy).
+    expect(within(menu!).queryByTestId('sld-menu-continue-trunk')).toBeTruthy();
+    expect(pozycjaAktywna(menu!, 'continue-trunk')).toBe(
+      resolveTrunkStartAvailability(enm, widokiEnm, 'station', stacja.ownerRef ?? null)?.['continue-trunk'] === true,
+    );
     expect(within(menu!).queryByTestId('sld-menu-start-branch')).toBeTruthy();
     expect(pozycjaAktywna(menu!, 'start-branch')).toBe(
       resolveBranchStartAvailability(enm, widokiEnm, 'station', stacja.ownerRef ?? null),
     );
-    await userEvent.click(within(menu!).getByTestId('sld-menu-continue-trunk'));
+    await zamknijMenu();
+    cleanup();
+
+    // Ścieżka pozytywna — stacja wstawiona operacjami domenowymi, z wolnymi polami.
+    const scena = wczytajScene('punkt_startu_stacja_na_odcinku_wolne_kilka');
+    const stationRef = (scena.snapshot.substations ?? []).find(
+      (st) => String(st.station_type).toLowerCase() !== 'gpz',
+    )!.ref_id;
+    expect(
+      resolveTrunkStartAvailability(scena.snapshot, scena.logical_views, 'station', stationRef)?.['continue-trunk'],
+    ).toBe(true);
+    const openOperationForm = vi.fn();
+    useNetworkBuildStore.setState({ openOperationForm } as never);
+    useSnapshotStore.setState({ snapshot: scena.snapshot, logicalViews: scena.logical_views });
+    const { container } = render(<SldCanvasV3Workspace width={W} height={H} lodOverride={2} />);
+    const etykieta = container.querySelector(
+      `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}^="${CSS.escape(stationRef)}#name-row"]`,
+    );
+    expect(etykieta, `etykieta stacji ${stationRef} ma uchwyt`).toBeTruthy();
+    await userEvent.pointer({ keys: '[MouseRight]', target: etykieta! });
+    const menuZPolem = screen.queryByRole('menu');
+    expect(menuZPolem, 'menu stacji otwarte').toBeTruthy();
+    expect(pozycjaAktywna(menuZPolem!, 'continue-trunk')).toBe(true);
+    await userEvent.click(within(menuZPolem!).getByTestId('sld-menu-continue-trunk'));
     expect(openOperationForm.mock.calls[0][0]).toBe('continue_trunk_segment_sn');
-    expect(openOperationForm.mock.calls[0][1]).toMatchObject({ station_ref: stacja.ownerRef });
+    expect(openOperationForm.mock.calls[0][1]).toMatchObject({ station_ref: stationRef });
   }, 120000);
 
   /**
@@ -450,16 +480,14 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
    */
   it('pokrycie łańcucha na sieci referencyjnej: ≥ 15 stacji i ≥ 15 odcinków z realnym wejściem budowy', async () => {
     const kanwa = renderKanwe(0);
-    // S95-START: „realne wejście" = temat menu stacji ORAZ punkt startu ciągu z
-    // TEGO SAMEGO rozstrzygnięcia, którego użyje kreator (predykaty parami).
-    // Rozdzielnia GPZ rysowana na LOD 0 symbolem stacji ma tu jedyne pole
-    // liniowe zajęte — nie jest wejściem, a jej pozycja jest uczciwie zablokowana.
-    const stacjeZWejsciem = kanwa.obszary.filter((a) => {
+    // Przepisane do kanonu POLE-ZAJĘTE (C-12, patrz test wyżej). „Realne wejście" stacji =
+    // menu stacji z pozycją „Kontynuuj ciąg", której aktywność pochodzi z TEGO SAMEGO
+    // rozstrzygnięcia co kreator (predykaty parami), a blokada jest zgodna z DANYMI
+    // `line_fields` (brak wolnego pola liniowego ⇔ brak punktu startu).
+    const stacjeZMenu = kanwa.obszary.filter((a) => {
       if (a.klasa !== 'stacja') return false;
       const wynik = resolveCanvasMenuSubject(wejscieTematu(kanwa, a), indexModelu);
-      return wynik.stan === 'temat'
-        && wynik.temat.menuKind === 'station'
-        && resolveTrunkStartAvailability(enm, widokiEnm, 'station', wynik.temat.modelRef)?.['continue-trunk'] === true;
+      return wynik.stan === 'temat' && wynik.temat.menuKind === 'station';
     });
     const gpzJakoStacja = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef?.startsWith('gpz/'));
     if (gpzJakoStacja) {
@@ -472,19 +500,28 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
       const wynik = resolveCanvasMenuSubject(wejscieTematu(kanwa, a), indexModelu);
       return wynik.stan === 'temat' && wynik.temat.kotwica === 'galaz';
     });
-    expect(stacjeZWejsciem.length).toBeGreaterThanOrEqual(15);
+    expect(stacjeZMenu.length).toBeGreaterThanOrEqual(15);
     expect(odcinkiZWejsciem.length).toBeGreaterThanOrEqual(15);
 
-    // Dowód, że pokrycie nie jest deklaracją: pierwsze 15 stacji faktycznie
-    // otwiera menu z aktywnymi pozycjami budowy przy natywnym prawym kliku.
-    for (const stacja of stacjeZWejsciem.slice(0, 15)) {
+    const wolnePoleLiniowe = (stationRef: string) =>
+      (widokiEnm.line_fields ?? []).some(
+        (w) => w.station_ref === stationRef && w.bay_role !== 'TR' && !w.occupied,
+      );
+    // Dowód, że pokrycie nie jest deklaracją: pierwsze 15 stacji otwiera menu natywnym
+    // prawym klikiem, a stan pozycji budowy zgadza się z resolverem i z danymi.
+    for (const stacja of stacjeZMenu.slice(0, 15)) {
+      const wynik = resolveCanvasMenuSubject(wejscieTematu(kanwa, stacja), indexModelu);
+      const modelRef = wynik.stan === 'temat' ? wynik.temat.modelRef : '';
+      const dostepna =
+        resolveTrunkStartAvailability(enm, widokiEnm, 'station', modelRef)?.['continue-trunk'] === true;
+      expect(dostepna, `stacja ${modelRef}: dostępność = wolne pole liniowe w danych`).toBe(
+        wolnePoleLiniowe(modelRef),
+      );
       const menu = await prawyKlik(kanwa, stacja.testId);
       expect(menu, `stacja ${stacja.ownerRef} otwiera menu`).toBeTruthy();
-      expect(pozycjaAktywna(menu!, 'continue-trunk'), `stacja ${stacja.ownerRef}: kontynuuj ciąg`).toBe(true);
-      // S9-10: „Rozpocznij odgałęzienie" jest OBECNE, a jego aktywność
-      // SPAROWANA z resolverem kreatora (jedno źródło prawdy; na tej sieci
-      // żadna stacja nie ma wolnego pola FEEDER, więc pozycja jest uczciwie
-      // zablokowana — martwy kreator to nie jest „wejście budowy").
+      const pozycja = within(menu!).getByTestId('sld-menu-continue-trunk') as HTMLButtonElement;
+      expect(!pozycja.disabled, `stacja ${modelRef}: kontynuuj ciąg`).toBe(dostepna);
+      if (!dostepna) expect(pozycja.title ?? '').toContain('wolnego pola liniowego');
       expect(within(menu!).queryByTestId('sld-menu-start-branch')).toBeTruthy();
       expect(pozycjaAktywna(menu!, 'start-branch')).toBe(
         resolveBranchStartAvailability(enm, widokiEnm, 'station', stacja.ownerRef ?? null),

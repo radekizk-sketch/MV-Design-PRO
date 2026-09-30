@@ -106,6 +106,32 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
+  // C-12: pole wskazane przez akcję naprawczą gotowości (`context.field`) — klucz
+  // pierwszego wiersza i kursor w polu jego wartości. jsdom nie liczy układu, więc
+  // widoczność pola (`getClientRects`) podstawiamy jawnie; w przeglądarce ten sam
+  // hook czeka, aż panel inspektora się rozwinie (e2e `akcja-naprawcza-jednym-klikiem`).
+  describe('fokus pola wskazanego przez akcję naprawczą', () => {
+    beforeEach(() => {
+      vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
+    });
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('kontekst z polem → klucz wypełniony, kursor w polu wartości', async () => {
+      context = { element_ref: 'src-1', field: 'sk3_min_mva' };
+      render(<KreatorEdycjiParametrow />);
+      expect(screen.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('sk3_min_mva');
+      await waitFor(() => expect(screen.getByTestId('mvd-kreator-edycja-wartosc-0')).toHaveFocus());
+    });
+
+    it('kontekst bez pola → formularz nie przejmuje fokusu', () => {
+      context = { element_ref: 'src-1' };
+      render(<KreatorEdycjiParametrow />);
+      expect(screen.getByTestId('mvd-kreator-edycja-wartosc-0')).not.toHaveFocus();
+    });
+  });
+
   // Dane modułu NC RfG generatora (plan AB O-50 pkt 5–6): ten sam formularz co kreator źródła
   // OZE, wypełniony z MODELU; zapis wyłącznie pól zmienionych (niezmienione nie nadpisują).
   describe('dane modułu NC RfG generatora', () => {

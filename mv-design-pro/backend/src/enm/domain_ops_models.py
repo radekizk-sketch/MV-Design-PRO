@@ -138,14 +138,23 @@ class FixActionItem(_FrozenBase):
     element_ref: str | None = None
     """Opcjonalna referencja do elementu docelowego."""
 
+    modal_type: str | None = None
+    """Typ okna naprawczego zgłoszony przez walidator (np. 'SourceModal')."""
+
+    payload_hint: dict[str, Any] | None = None
+    """Podpowiedź treści formularza (np. wymagane pole, przestrzeń katalogu)."""
+
     panel: str | None = None
-    """Panel UI, który należy otworzyć."""
+    """Panel UI, który należy otworzyć ('catalog', 'transformer_panel')."""
 
     step: str | None = None
     """Krok kreatora, do którego należy przejść."""
 
     focus: str | None = None
-    """Pole formularza, na które należy ustawić fokus."""
+    """Element, na którym ustawić fokus nawigacji (identyfikator elementu modelu).
+
+    Pole formularza do fokusu niesie kanon (`canonical_fix_navigation.focus` zgłoszenia).
+    """
 
     message_pl: str = ""
     """Komunikat dla użytkownika w języku polskim."""

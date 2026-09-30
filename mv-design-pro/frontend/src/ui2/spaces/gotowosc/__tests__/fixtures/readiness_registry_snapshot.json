@@ -2,576 +2,1382 @@
   "codes": [
     {
       "area": "ANALYSIS",
-      "code": "analysis.as_built_measurement_terminal_missing"
+      "code": "analysis.as_built_measurement_terminal_missing",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "odbior"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "analysis.blocked_by_readiness"
+      "code": "analysis.blocked_by_readiness",
+      "fix_navigation": {
+        "panel": "readiness"
+      }
     },
     {
       "area": "STATIONS",
-      "code": "apparatus.nn_catalog_missing"
+      "code": "apparatus.nn_catalog_missing",
+      "fix_navigation": {
+        "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "STATIONS",
-      "code": "apparatus.sn_catalog_missing"
+      "code": "apparatus.sn_catalog_missing",
+      "fix_navigation": {
+        "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "bess.energy_module_missing"
+      "code": "bess.energy_module_missing",
+      "fix_navigation": {
+        "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "bess.soc_limits_invalid"
+      "code": "bess.soc_limits_invalid",
+      "fix_navigation": {
+        "focus": "soc_min_percent",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "branch.zero_sequence_missing"
+      "code": "branch.zero_sequence_missing",
+      "fix_navigation": {
+        "focus": "r0_ohm_per_km",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "cable.insulation_data_missing"
+      "code": "cable.insulation_data_missing",
+      "fix_navigation": {
+        "focus": "insulation_type",
+        "panel": "katalog",
+        "tab": "kable"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "cable.operating_temperature_missing"
+      "code": "cable.operating_temperature_missing",
+      "fix_navigation": {
+        "focus": "temperatura_pracy_c",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "cable.screen_bonding_reference_mismatch"
+      "code": "cable.screen_bonding_reference_mismatch",
+      "fix_navigation": {
+        "focus": "screen_bonding",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.binding_invalid"
+      "code": "catalog.binding_invalid",
+      "fix_navigation": {
+        "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.binding_missing"
+      "code": "catalog.binding_missing",
+      "fix_navigation": {
+        "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.binding_required"
+      "code": "catalog.binding_required",
+      "fix_navigation": {
+        "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.binding_version_missing"
+      "code": "catalog.binding_version_missing",
+      "fix_navigation": {
+        "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.clear_forbidden"
+      "code": "catalog.clear_forbidden",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.element_missing"
+      "code": "catalog.element_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.element_not_found"
+      "code": "catalog.element_not_found",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.gate_result_mismatch"
+      "code": "catalog.gate_result_mismatch",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.item_id_missing"
+      "code": "catalog.item_id_missing",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.item_missing"
+      "code": "catalog.item_missing",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.item_not_found"
+      "code": "catalog.item_not_found",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.materialization_failed"
+      "code": "catalog.materialization_failed",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.materialization_incomplete"
+      "code": "catalog.materialization_incomplete",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.materialization_required"
+      "code": "catalog.materialization_required",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.nameplate_mismatch"
+      "code": "catalog.nameplate_mismatch",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.namespace_mismatch"
+      "code": "catalog.namespace_mismatch",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.namespace_missing"
+      "code": "catalog.namespace_missing",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.namespace_required"
+      "code": "catalog.namespace_required",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.ref_missing"
+      "code": "catalog.ref_missing",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.ref_required"
+      "code": "catalog.ref_required",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "catalog.unknown_namespace"
+      "code": "catalog.unknown_namespace",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "conductor.fault_current_missing"
+      "code": "conductor.fault_current_missing",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zwarciowa"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "conductor.fault_duration_missing"
+      "code": "conductor.fault_duration_missing",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zabezpieczenia"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "conductor.thermal_data_missing"
+      "code": "conductor.thermal_data_missing",
+      "fix_navigation": {
+        "focus": "ith_1s_a",
+        "panel": "katalog",
+        "tab": "kable"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "connection.cos_phi_required_missing"
+      "code": "connection.cos_phi_required_missing",
+      "fix_navigation": {
+        "focus": "wymagany_cos_phi",
+        "panel": "projekt",
+        "tab": "przylaczenie"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "connection.power_flow_missing"
+      "code": "connection.power_flow_missing",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "rozplyw"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "connection.power_limit_missing"
+      "code": "connection.power_limit_missing",
+      "fix_navigation": {
+        "focus": "moc_przylaczeniowa_mw",
+        "panel": "projekt",
+        "tab": "przylaczenie"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "converter.power_check_input_invalid"
+      "code": "converter.power_check_input_invalid",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "converter.setpoint_above_rating"
+      "code": "converter.setpoint_above_rating",
+      "fix_navigation": {
+        "focus": "p_mw",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "converter.transformer_capacity_exceeded"
+      "code": "converter.transformer_capacity_exceeded",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "ct.accuracy_limit_missing"
+      "code": "ct.accuracy_limit_missing",
+      "fix_navigation": {
+        "focus": "accuracy_class",
+        "panel": "katalog",
+        "tab": "ct"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "ct.rated_burden_missing"
+      "code": "ct.rated_burden_missing",
+      "fix_navigation": {
+        "focus": "burden_va",
+        "panel": "katalog",
+        "tab": "ct"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "ct.required_alf_missing"
+      "code": "ct.required_alf_missing",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zabezpieczenia"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "ct.secondary_circuit_missing"
+      "code": "ct.secondary_circuit_missing",
+      "fix_navigation": {
+        "focus": "ct_obwod_wtorny",
+        "panel": "wizard",
+        "tab": "pomiary"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "ct.winding_resistance_missing"
+      "code": "ct.winding_resistance_missing",
+      "fix_navigation": {
+        "focus": "rct_ohm",
+        "panel": "katalog",
+        "tab": "ct"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "der.dynamic_profile_missing"
+      "code": "der.dynamic_profile_missing",
+      "fix_navigation": {
+        "focus": "gen_type",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "der.dynamika_missing"
+      "code": "der.dynamika_missing",
+      "fix_navigation": {
+        "focus": "dynamic_model_ref",
+        "panel": "analizy",
+        "tab": "dynamika"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "der.inverter_certificate_conditional"
+      "code": "der.inverter_certificate_conditional",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "der.inverter_certificate_unlinked"
+      "code": "der.inverter_certificate_unlinked",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "STATIONS",
-      "code": "earthing.electrode_data_missing"
+      "code": "earthing.electrode_data_missing",
+      "fix_navigation": {
+        "focus": "earth_electrode",
+        "panel": "inspector",
+        "tab": "uziemienie"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "earthing.neutral_grounding_inconsistent"
+      "code": "earthing.neutral_grounding_inconsistent",
+      "fix_navigation": {
+        "focus": "neutral_grounding",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "fault.location_on_branch_requires_assembler"
+      "code": "fault.location_on_branch_requires_assembler",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zwarciowa"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "generator.converter_card_missing"
+      "code": "generator.converter_card_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "generator.harmonic_spectrum_missing"
+      "code": "generator.harmonic_spectrum_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "generator.q_missing"
+      "code": "generator.q_missing",
+      "fix_navigation": {
+        "focus": "q_mvar",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "generator.voltage_control_not_permitted"
+      "code": "generator.voltage_control_not_permitted",
+      "fix_navigation": {
+        "focus": "control_mode",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "generator.voltage_control_profile_missing"
+      "code": "generator.voltage_control_profile_missing",
+      "fix_navigation": {
+        "focus": "nc_rfg_profile_ref",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "generator.voltage_setpoint_missing"
+      "code": "generator.voltage_setpoint_missing",
+      "fix_navigation": {
+        "focus": "u_set_pu",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "genset.fuel_type_missing"
+      "code": "genset.fuel_type_missing",
+      "fix_navigation": {
+        "focus": "fuel_type",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "import.catalog_mapping_required"
+      "code": "import.catalog_mapping_required",
+      "fix_navigation": {
+        "modal": "IMPORT_CATALOG_MAPPING",
+        "panel": "catalog_mapper"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "inverter.k_sc_default_forbidden"
+      "code": "inverter.k_sc_default_forbidden",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "inverter.k_sc_missing"
+      "code": "inverter.k_sc_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "load.catalog_missing"
+      "code": "load.catalog_missing",
+      "fix_navigation": {
+        "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "load.power_zero"
+      "code": "load.power_zero",
+      "fix_navigation": {
+        "focus": "p_kw",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "load.zip_agregat_niereprezentowalny"
+      "code": "load.zip_agregat_niereprezentowalny",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "STATIONS",
-      "code": "nn.bus_missing"
+      "code": "nn.bus_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "nn"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "nn.cable_catalog_missing"
+      "code": "nn.cable_catalog_missing",
+      "fix_navigation": {
+        "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "STATIONS",
-      "code": "nn.main_breaker_missing"
+      "code": "nn.main_breaker_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "nn"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "nn.measurement.required_missing"
+      "code": "nn.measurement.required_missing",
+      "fix_navigation": {
+        "focus": "measurement_point",
+        "panel": "inspector",
+        "tab": "pomiary"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "nn.source.catalog_missing"
+      "code": "nn.source.catalog_missing",
+      "fix_navigation": {
+        "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "nn.source.field_missing"
+      "code": "nn.source.field_missing",
+      "fix_navigation": {
+        "focus": "field_ref",
+        "panel": "inspector",
+        "tab": "pole"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "nn.source.parameters_missing"
+      "code": "nn.source.parameters_missing",
+      "fix_navigation": {
+        "focus": "rated_power",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "nn.source.switch_missing"
+      "code": "nn.source.switch_missing",
+      "fix_navigation": {
+        "focus": "switch_kind",
+        "panel": "inspector",
+        "tab": "pole"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "nn.switch.catalog_ref_missing"
+      "code": "nn.switch.catalog_ref_missing",
+      "fix_navigation": {
+        "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "STATIONS",
-      "code": "nn.voltage_missing"
+      "code": "nn.voltage_missing",
+      "fix_navigation": {
+        "focus": "voltage_nn_kv",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "oltc.deadband_missing"
+      "code": "oltc.deadband_missing",
+      "fix_navigation": {
+        "focus": "deadband_kv",
+        "panel": "inspector",
+        "tab": "regulacja"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "oltc.target_voltage_missing"
+      "code": "oltc.target_voltage_missing",
+      "fix_navigation": {
+        "focus": "napiecie_cel",
+        "panel": "analizy",
+        "tab": "oltc"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "oze.bess_no_transformer"
+      "code": "oze.bess_no_transformer",
+      "fix_navigation": {
+        "modal": "MODAL_WSTAW_STACJE_SN_NN_WARIANT_2",
+        "panel": "inspector",
+        "tab": "transformator"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "oze.card_field_not_accepted"
+      "code": "oze.card_field_not_accepted",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "karta_falownika"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "oze.nn_bus_required"
+      "code": "oze.nn_bus_required",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "nn"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "oze.pv_no_transformer"
+      "code": "oze.pv_no_transformer",
+      "fix_navigation": {
+        "modal": "MODAL_WSTAW_STACJE_SN_NN_WARIANT_2",
+        "panel": "inspector",
+        "tab": "transformator"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "oze.transformer_required"
+      "code": "oze.transformer_required",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "transformator"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "power_flow.unbalanced_element_unsupported"
+      "code": "power_flow.unbalanced_element_unsupported",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "power_flow.unbalanced_load_phases_unsupported"
+      "code": "power_flow.unbalanced_load_phases_unsupported",
+      "fix_navigation": {
+        "focus": "phases",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "power_flow.unbalanced_losses_self_impedance"
+      "code": "power_flow.unbalanced_losses_self_impedance",
+      "fix_navigation": {
+        "focus": "r0_ohm_per_km",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "power_flow.unbalanced_magnetising_branch_omitted"
+      "code": "power_flow.unbalanced_magnetising_branch_omitted",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "transformator"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "power_flow.unbalanced_no_zero_sequence_path"
+      "code": "power_flow.unbalanced_no_zero_sequence_path",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "transformator"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "power_flow.unbalanced_requires_radial"
+      "code": "power_flow.unbalanced_requires_radial",
+      "fix_navigation": {
+        "panel": "sld"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "power_flow.unbalanced_shunt_admittance_omitted"
+      "code": "power_flow.unbalanced_shunt_admittance_omitted",
+      "fix_navigation": {
+        "focus": "b_siemens_per_km",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "power_flow.unbalanced_transformer_series_model"
+      "code": "power_flow.unbalanced_transformer_series_model",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "transformator"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "power_flow.unbalanced_zero_sequence_confined"
+      "code": "power_flow.unbalanced_zero_sequence_confined",
+      "fix_navigation": {
+        "focus": "vector_group",
+        "panel": "inspector",
+        "tab": "transformator"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "power_flow.unbalanced_zero_sequence_via_source"
+      "code": "power_flow.unbalanced_zero_sequence_via_source",
+      "fix_navigation": {
+        "focus": "grounding",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "protection.ct_required"
+      "code": "protection.ct_required",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "zabezpieczenia"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "protection.curve_library_missing"
+      "code": "protection.curve_library_missing",
+      "fix_navigation": {
+        "panel": "katalog",
+        "tab": "zabezpieczenia"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "protection.curve_library_ref_broken"
+      "code": "protection.curve_library_ref_broken",
+      "fix_navigation": {
+        "panel": "katalog",
+        "tab": "zabezpieczenia"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "protection.device_breaker_not_in_series"
+      "code": "protection.device_breaker_not_in_series",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zabezpieczenia"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "protection.fault_current_missing"
+      "code": "protection.fault_current_missing",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zwarciowa"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "protection.nominal_current_missing"
+      "code": "protection.nominal_current_missing",
+      "fix_navigation": {
+        "focus": "in_a",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "protection.relay_terminal_breaker_loop"
+      "code": "protection.relay_terminal_breaker_loop",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "zabezpieczenia"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "protection.relay_terminal_choice_missing"
+      "code": "protection.relay_terminal_choice_missing",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zabezpieczenia"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "protection.relay_terminal_contradicts_model"
+      "code": "protection.relay_terminal_contradicts_model",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zabezpieczenia"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "protection.relay_terminal_indication_missing"
+      "code": "protection.relay_terminal_indication_missing",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zabezpieczenia"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "protection.settings_incomplete"
+      "code": "protection.settings_incomplete",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "nastawy"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "protection.vt_required"
+      "code": "protection.vt_required",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "zabezpieczenia"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "pv.control_mode_missing"
+      "code": "pv.control_mode_missing",
+      "fix_navigation": {
+        "focus": "control_mode",
+        "panel": "inspector",
+        "tab": "regulacja"
+      }
     },
     {
       "area": "TOPOLOGY",
-      "code": "ring.endpoints_missing"
+      "code": "ring.endpoints_missing",
+      "fix_navigation": {
+        "panel": "sld"
+      }
     },
     {
       "area": "TOPOLOGY",
-      "code": "ring.nop_required"
+      "code": "ring.nop_required",
+      "fix_navigation": {
+        "modal": "set_normal_open_point",
+        "panel": "sld"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "source.connection_missing"
+      "code": "source.connection_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "polaczenia"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "source.grid_supply_missing"
+      "code": "source.grid_supply_missing",
+      "fix_navigation": {
+        "modal": "add_grid_source",
+        "panel": "wizard"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "source.multiple_grid_sources_in_island"
+      "code": "source.multiple_grid_sources_in_island",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "polaczenia"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "source.sk3_invalid"
+      "code": "source.sk3_invalid",
+      "fix_navigation": {
+        "focus": "sk3_mva",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "source.sk_min_inconsistent"
+      "code": "source.sk_min_inconsistent",
+      "fix_navigation": {
+        "focus": "sk3_min_mva",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "source.sk_min_missing"
+      "code": "source.sk_min_missing",
+      "fix_navigation": {
+        "focus": "sk3_min_mva",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "source.u_set_pu_out_of_range"
+      "code": "source.u_set_pu_out_of_range",
+      "fix_navigation": {
+        "focus": "u_set_pu",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "SOURCES",
-      "code": "source.voltage_invalid"
+      "code": "source.voltage_invalid",
+      "fix_navigation": {
+        "focus": "voltage_kv",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "STATIONS",
-      "code": "station.nn_outgoing_min_1"
+      "code": "station.element_bypasses_field",
+      "fix_navigation": {
+        "modal": "przepnij_element_na_pole",
+        "panel": "sld"
+      }
     },
     {
       "area": "STATIONS",
-      "code": "station.required_field_missing"
+      "code": "station.line_field_multiple_segments",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
     },
     {
       "area": "STATIONS",
-      "code": "station.type_invalid"
+      "code": "station.nn_outgoing_min_1",
+      "fix_navigation": {
+        "modal": "add_nn_outgoing",
+        "panel": "inspector",
+        "tab": "nn"
+      }
     },
     {
       "area": "STATIONS",
-      "code": "station.voltage_missing"
+      "code": "station.required_field_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.type_invalid",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.voltage_missing",
+      "fix_navigation": {
+        "focus": "voltage_kv",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "study_case.missing_base_snapshot"
+      "code": "study_case.missing_base_snapshot",
+      "fix_navigation": {
+        "panel": "case_manager"
+      }
     },
     {
       "area": "STATIONS",
-      "code": "transformer.bay_missing"
+      "code": "transformer.bay_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "transformer.catalog_missing"
+      "code": "transformer.catalog_missing",
+      "fix_navigation": {
+        "modal": "select_catalog",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "STATIONS",
-      "code": "transformer.connection_missing"
+      "code": "transformer.connection_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "polaczenia"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "transformer.loading_factor_missing"
+      "code": "transformer.loading_factor_missing",
+      "fix_navigation": {
+        "focus": "beta",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "transformer.loss_data_missing"
+      "code": "transformer.loss_data_missing",
+      "fix_navigation": {
+        "focus": "p0_kw",
+        "panel": "katalog",
+        "tab": "transformatory"
+      }
     },
     {
       "area": "STATIONS",
-      "code": "transformer.lv_earthing_system_missing"
+      "code": "transformer.lv_earthing_system_missing",
+      "fix_navigation": {
+        "focus": "lv_earthing_system",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "transformer.neutral_grounding_not_accessible"
+      "code": "transformer.neutral_grounding_not_accessible",
+      "fix_navigation": {
+        "focus": "lv_neutral",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "transformer.no_load_params_missing"
+      "code": "transformer.no_load_params_missing",
+      "fix_navigation": {
+        "focus": "i0_percent",
+        "panel": "katalog",
+        "tab": "transformatory"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "transformer.vector_group_invalid"
+      "code": "transformer.vector_group_invalid",
+      "fix_navigation": {
+        "focus": "vector_group",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "transformer.vector_group_missing"
+      "code": "transformer.vector_group_missing",
+      "fix_navigation": {
+        "focus": "vector_group",
+        "panel": "katalog",
+        "tab": "transformatory"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "trunk.catalog_missing"
+      "code": "trunk.catalog_missing",
+      "fix_navigation": {
+        "modal": "select_catalog",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
     },
     {
       "area": "TOPOLOGY",
-      "code": "trunk.segment_length_invalid"
+      "code": "trunk.segment_length_invalid",
+      "fix_navigation": {
+        "focus": "length_m",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "TOPOLOGY",
-      "code": "trunk.segment_length_missing"
+      "code": "trunk.segment_length_missing",
+      "fix_navigation": {
+        "focus": "length_m",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "TOPOLOGY",
-      "code": "trunk.segment_missing"
+      "code": "trunk.segment_missing",
+      "fix_navigation": {
+        "panel": "sld"
+      }
     },
     {
       "area": "TOPOLOGY",
-      "code": "trunk.terminal_missing"
+      "code": "trunk.terminal_missing",
+      "fix_navigation": {
+        "panel": "sld"
+      }
     },
     {
       "area": "GENERATORS",
-      "code": "ups.backup_time_invalid"
+      "code": "ups.backup_time_invalid",
+      "fix_navigation": {
+        "focus": "backup_time_min",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "verdict.input_data_missing"
+      "code": "verdict.input_data_missing",
+      "fix_navigation": {
+        "panel": "gotowosc"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "verdict.run_failed"
+      "code": "verdict.run_failed",
+      "fix_navigation": {
+        "panel": "analizy"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "verdict.run_missing"
+      "code": "verdict.run_missing",
+      "fix_navigation": {
+        "panel": "analizy"
+      }
     },
     {
       "area": "ANALYSIS",
-      "code": "verdict.run_stale"
+      "code": "verdict.run_stale",
+      "fix_navigation": {
+        "panel": "analizy"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "vt.rated_burden_missing"
+      "code": "vt.rated_burden_missing",
+      "fix_navigation": {
+        "focus": "burden_va",
+        "panel": "katalog",
+        "tab": "vt"
+      }
     },
     {
       "area": "PROTECTION",
-      "code": "vt.secondary_circuit_missing"
+      "code": "vt.secondary_circuit_missing",
+      "fix_navigation": {
+        "focus": "vt_obwod_wtorny",
+        "panel": "wizard",
+        "tab": "pomiary"
+      }
     },
     {
       "area": "CATALOGS",
-      "code": "vt.winding_category_missing"
+      "code": "vt.winding_category_missing",
+      "fix_navigation": {
+        "focus": "accuracy_class",
+        "panel": "katalog",
+        "tab": "vt"
+      }
     }
   ],
-  "count": 143
+  "count": 145,
+  "emitery_akcji": [
+    {
+      "action_type": "ADD_MISSING_DEVICE",
+      "modal_type": "LoadModal",
+      "panel": null
+    },
+    {
+      "action_type": "ADD_MISSING_DEVICE",
+      "modal_type": "NodeModal",
+      "panel": null
+    },
+    {
+      "action_type": "ADD_MISSING_DEVICE",
+      "modal_type": "SourceModal",
+      "panel": null
+    },
+    {
+      "action_type": "NAVIGATE_TO_ELEMENT",
+      "modal_type": "GeneratorModal",
+      "panel": null
+    },
+    {
+      "action_type": "NAVIGATE_TO_ELEMENT",
+      "modal_type": "LoadModal",
+      "panel": null
+    },
+    {
+      "action_type": "NAVIGATE_TO_ELEMENT",
+      "modal_type": null,
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": "BayModal",
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": "BranchModal",
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": "GeneratorModal",
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": "NodeModal",
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": null,
+      "panel": "transformer_panel"
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": "ProtectionModal",
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": "SegmentSnModal",
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": "ShuntCapacitorModal",
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": "SourceModal",
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": "SubstationModal",
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": "TransformerModal",
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": "add_sn_bay",
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": "przepnij_element_na_pole",
+      "panel": null
+    },
+    {
+      "action_type": "SELECT_CATALOG",
+      "modal_type": "BranchModal",
+      "panel": null
+    },
+    {
+      "action_type": "SELECT_CATALOG",
+      "modal_type": "GeneratorModal",
+      "panel": null
+    },
+    {
+      "action_type": "SELECT_CATALOG",
+      "modal_type": null,
+      "panel": "catalog"
+    },
+    {
+      "action_type": "SELECT_CATALOG",
+      "modal_type": "SourceModal",
+      "panel": null
+    },
+    {
+      "action_type": "SELECT_CATALOG",
+      "modal_type": "TransformerModal",
+      "panel": null
+    }
+  ],
+  "validator_mapping": {
+    "E-W5-01": "earthing.neutral_grounding_inconsistent",
+    "E-W5-02": "transformer.vector_group_invalid",
+    "E-W5-03": "transformer.neutral_grounding_not_accessible",
+    "E001": "source.grid_supply_missing",
+    "E009": "catalog.binding_missing",
+    "E021": "station.required_field_missing",
+    "E022": "station.line_field_multiple_segments",
+    "E063": "transformer.lv_earthing_system_missing",
+    "I004": "trunk.segment_missing",
+    "I005": "ring.nop_required",
+    "W-W5-01": "cable.screen_bonding_reference_mismatch",
+    "W001": "branch.zero_sequence_missing",
+    "W010": "inverter.k_sc_missing",
+    "W041": "transformer.bay_missing",
+    "W042": "station.element_bypasses_field",
+    "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
+    "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
+    "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",
+    "sources.bus_missing": "source.connection_missing",
+    "sources.sk_min_exceeds_max": "source.sk_min_inconsistent",
+    "sources.u_set_pu_out_of_range": "source.u_set_pu_out_of_range"
+  }
 }

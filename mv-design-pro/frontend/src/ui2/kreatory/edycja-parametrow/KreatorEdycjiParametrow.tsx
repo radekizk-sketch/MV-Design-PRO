@@ -88,6 +88,8 @@ export function KreatorEdycjiParametrow() {
   const zrodloParametrow = readString(context?.parameter_source) || readString(context?.source_mode);
   const fallbackType = (readString(context?.element_type) || 'LineBranch') as ElementType;
 
+  // Pole wskazane przez kontekst (akcja naprawcza gotowości, C-12): klucz pierwszego
+  // wiersza i kursor w polu jego wartości — projektant wpisuje od razu brakującą daną.
   const initialKey = readString(context?.field);
   const [wiersze, setWiersze] = useState<WierszParametru[]>(() => [
     { klucz: initialKey, wartosc: readString(context?.value) },
@@ -269,6 +271,7 @@ export function KreatorEdycjiParametrow() {
                 wartosc={w.wartosc}
                 onZmiana={(v) => zmienWiersz(i, 'wartosc', v)}
                 opcje={[{ id: '', etykieta: T.wartoscZeSlownika }, ...(slownikDlaKlucza(w.klucz) ?? [])]}
+                fokus={i === 0 && initialKey !== ''}
                 testid={`mvd-kreator-edycja-wartosc-${i}`}
               />
             ) : (
@@ -277,6 +280,7 @@ export function KreatorEdycjiParametrow() {
                 wartosc={w.wartosc}
                 onZmiana={(v) => zmienWiersz(i, 'wartosc', v)}
                 placeholder={T.wartoscPlaceholder}
+                fokus={i === 0 && initialKey !== ''}
                 testid={`mvd-kreator-edycja-wartosc-${i}`}
               />
             )}

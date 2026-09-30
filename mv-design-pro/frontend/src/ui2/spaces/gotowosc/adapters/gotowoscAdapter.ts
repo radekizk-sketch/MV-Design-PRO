@@ -139,6 +139,9 @@ function naReadinessIssue(
   if (wpis.canonical_level !== undefined) issue.canonical_level = wpis.canonical_level;
   if (wpis.canonical_priority !== undefined) issue.canonical_priority = wpis.canonical_priority;
   if (wpis.canonical_area !== undefined) issue.canonical_area = wpis.canonical_area;
+  if (wpis.canonical_fix_navigation !== undefined) {
+    issue.canonical_fix_navigation = wpis.canonical_fix_navigation;
+  }
   return issue;
 }
 

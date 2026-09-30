@@ -130,6 +130,15 @@ export const GOTOWOSC_STRINGS = {
   // Wiersz problemu
   napraw: 'Napraw…',
   wymagaInterwencji: 'Wymaga interwencji projektanta',
+  /** Akcja kierująca do innej przestrzeni (brak formularza operacji dla tej pozycji). */
+  przejdzDo: (przestrzen: string): string => `Przejdź: ${przestrzen}`,
+  // Odmowy wykonawcy akcji naprawczej (C-12) — bez identyfikatorów maszynowych.
+  akcjaBezElementu: 'Wybierz element układu przed otwarciem formularza naprawy.',
+  akcjaBezFormularza: (operacja: string | null): string =>
+    operacja
+      ? `Operacja „${operacja}” wykonuje się bez formularza — użyj menu kontekstowego elementu na schemacie.`
+      : 'Wskazana operacja wykonuje się bez formularza — użyj menu kontekstowego elementu na schemacie.',
+  akcjaNierozpoznana: 'Tej pozycji kontroli nie przypisano formularza naprawy.',
   kodTechniczny: 'Kod techniczny',
   element: 'Element',
 

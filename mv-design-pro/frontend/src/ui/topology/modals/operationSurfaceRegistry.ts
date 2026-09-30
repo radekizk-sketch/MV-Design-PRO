@@ -314,6 +314,65 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
     true,
     'przekladniki',
   ),
+  // C-12: operacje z formularzem w `OPERATION_FORM_REGISTRY` bez wpisu powierzchni —
+  // panel dostawał tytuł z surowej nazwy operacji, a wykonawca akcji naprawczej
+  // odmawiał („brak formularza"). Parytet obu rejestrów przypina
+  // `modalRegistryCompleteness.test.ts`.
+  entry(
+    'append_station_on_endpoint',
+    'KreatorStacjiSnNn',
+    'Dołącz stację SN/nN na końcu odcinka',
+    'E-13',
+    'B',
+    'manual',
+    'expand_workspace',
+    true,
+    'typ-topologiczny',
+  ),
+  entry(
+    'add_nn_cable_segment',
+    'KreatorOdcinkaNn',
+    'Dodaj odcinek nN',
+    'E-19',
+    'A',
+    'manual',
+    'replace_right_panel',
+    false,
+    null,
+  ),
+  entry(
+    'add_nn_distribution_board',
+    'KreatorRozdzielnicyNn',
+    'Dodaj rozdzielnicę nN',
+    'E-19',
+    'A',
+    'manual',
+    'replace_right_panel',
+    false,
+    null,
+  ),
+  entry(
+    'add_nn_section_coupler',
+    'KreatorRozdzielnicyNn',
+    'Dodaj sekcję rozdzielnicy nN',
+    'E-19',
+    'A',
+    'manual',
+    'replace_right_panel',
+    false,
+    null,
+  ),
+  entry(
+    'add_nn_switch_device',
+    'KreatorAparatuNn',
+    'Dodaj aparat nN',
+    'E-19',
+    'A',
+    'manual',
+    'replace_right_panel',
+    false,
+    null,
+  ),
 ] as const;
 
 export function getOperationSurfaceByOp(canonicalOp: string): OperationSurfaceEntry | undefined {

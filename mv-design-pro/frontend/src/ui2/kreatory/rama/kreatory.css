@@ -11,6 +11,11 @@
  */
 
 .mvd-kreator {
+  /* C-12: układ „pełny" przełącza się wg szerokości KREATORA, nie okna — kreator
+     w wąskim prawym panelu (np. formularz akcji naprawczej) przy oknie ≥ 1000 px
+     dostawał dwie kolumny i kolumna pól spadała do kilku pikseli. */
+  container-type: inline-size;
+  container-name: kreator;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -147,7 +152,7 @@
   gap: 16px;
   align-items: start;
 }
-@media (min-width: 1000px) {
+@container kreator (min-width: 1000px) {
   .mvd-kreator-plansza-wnetrze { grid-template-columns: minmax(0, 1fr) 320px; }
 }
 .mvd-kreator-glowna { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -156,7 +161,7 @@
   flex-direction: column;
   gap: 14px;
 }
-@media (min-width: 1000px) {
+@container kreator (min-width: 1000px) {
   .mvd-kreator-aside { position: sticky; top: 0; }
 }
 
@@ -221,10 +226,11 @@
   grid-template-columns: 1fr;
   gap: 12px;
 }
-@media (min-width: 560px) {
+/* Ta sama zasada co układ „pełny": kolumny wg szerokości kreatora, nie okna. */
+@container kreator (min-width: 560px) {
   .mvd-kreator-siatka.mvd-kol-2 { grid-template-columns: 1fr 1fr; }
 }
-@media (min-width: 780px) {
+@container kreator (min-width: 780px) {
   .mvd-kreator-siatka.mvd-kol-3 { grid-template-columns: 1fr 1fr 1fr; }
 }
 

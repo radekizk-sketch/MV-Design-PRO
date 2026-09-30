@@ -1,17 +1,27 @@
-import type { CanonicalOpName } from '../../types/domainOps';
-import type { EnergyNetworkModel } from '../../types/enm';
+/*
+ * Wykonawca akcji naprawczej (karta C-12, decyzja K-12 opcja A) — PRZENIESIONY z
+ * `ui/shared/fixActionSurfaceExecutor.ts`, gdzie był wyspą z jednym konsumentem
+ * (skasowany pasek `ReadinessBar` warstwy legacy). Logika bez zmian: rozwiązanie
+ * powierzchni akcji → selekcja i wyśrodkowanie elementu → formularz operacji
+ * domenowej. Jedynym wołającym jest `wykonajAkcjeNaprawcza` (`akcjeNaprawcze.ts`),
+ * który wcześniej wykonuje JEDNĄ nawigację powłoki (D1). Komunikaty odmowy bez
+ * identyfikatorów maszynowych (nazwa operacji po polsku z rejestru powierzchni).
+ */
+import type { CanonicalOpName } from '../../../types/domainOps';
+import type { EnergyNetworkModel } from '../../../types/enm';
 import {
   resolveFixActionSurface,
   type FixActionSurfaceDescriptor,
-} from '../../types/fixActionSurface';
-import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
-import type { SelectedElement } from '../types';
+} from '../../../types/fixActionSurface';
+import { getOperationSurfaceByOp } from '../../../ui/topology/modals/operationSurfaceRegistry';
+import type { SelectedElement } from '../../../ui/types';
 import {
   buildFixActionOperationContext,
   resolveFixActionElementType,
   surfaceOpSupportsForm,
-} from './fixActionSurfaceRuntime';
-import { resolveSelectedElementFromSnapshot } from './selectionResolution';
+} from '../../../ui/shared/fixActionSurfaceRuntime';
+import { resolveSelectedElementFromSnapshot } from '../../../ui/shared/selectionResolution';
+import { GOTOWOSC_STRINGS } from './strings';
 
 type NotificationLevel = 'success' | 'info' | 'warning' | 'error';
 
@@ -100,7 +110,7 @@ export function executeFixActionSurface(
 
   if (surface.kind === 'navigate_to_element') {
     if (!navigated) {
-      deps.notify('Wybierz element układu przed otwarciem karty konfiguracyjnej.', 'warning');
+      deps.notify(GOTOWOSC_STRINGS.akcjaBezElementu, 'warning');
       return false;
     }
     return true;
@@ -109,10 +119,7 @@ export function executeFixActionSurface(
   if (surfaceOpSupportsForm(surface)) {
     const entry = getOperationSurfaceByOp(surface.operation);
     if (!entry?.implemented) {
-      deps.notify(
-        `Operacja ${surface.operation} nie ma aktywnej karty konfiguracyjnej.`,
-        'warning',
-      );
+      deps.notify(GOTOWOSC_STRINGS.akcjaBezFormularza(entry?.labelPl ?? null), 'warning');
       return false;
     }
 
@@ -123,11 +130,6 @@ export function executeFixActionSurface(
     return true;
   }
 
-  deps.notify(
-    action.code
-      ? `Nie przypisano karty konfiguracyjnej do pozycji kontroli ${action.code}.`
-      : `Nie przypisano karty konfiguracyjnej do akcji (${surface.unresolved_reason_code ?? 'nieznane'}).`,
-    'warning',
-  );
+  deps.notify(GOTOWOSC_STRINGS.akcjaNierozpoznana, 'warning');
   return false;
 }
