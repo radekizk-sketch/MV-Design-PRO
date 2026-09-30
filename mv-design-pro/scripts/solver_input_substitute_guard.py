@@ -261,6 +261,10 @@ from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from importy_ast import moduly_dotkniete, pakiet_pliku  # noqa: E402
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 
@@ -1783,6 +1787,15 @@ def model_roots_read_by_scope() -> dict[str, set[str]]:
     Zwraca {sciezka modulu wzgledem BACKEND_SRC -> zbior plikow, ktore go importuja}.
     Wyrocznia mapy pol jest wyprowadzana Z KODU (z importow), a nie z listy pisanej
     recznie — inaczej nastepny solver na nowym kontrakcie powtorzylby luke rundy 3.
+
+    Importy sa rozwiazywane wg semantyki interpretera (`scripts/importy_ast.py`):
+    forma wzgledna i nazwa sprowadzona z pakietu (`from . import siec`) licza sie jak
+    import modulu. Do 2026-09-30 wyrocznia czytala wylacznie `ImportFrom.module`
+    importow bezwzglednych — pomiar: 278 korzeni zamiast 318, 40 modeli czytanych
+    wylacznie importem wzglednym (m.in. caly rdzen dynamiki) bylo dla niej
+    niewidocznych (wszystkie mialy juz decyzje w mapie albo poza nia). Import wzgledny
+    ponad korzen drzewa (interpreter: `ImportError`) konczy sie wyjatkiem
+    `ImportPonadKorzen` — wyrocznia nie zgaduje jego celu (fail-closed).
     """
     found: dict[str, set[str]] = {}
     for root_name in SCAN_ROOTS:
@@ -1794,12 +1807,11 @@ def model_roots_read_by_scope() -> dict[str, set[str]]:
                 tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             except (OSError, SyntaxError, UnicodeDecodeError):
                 continue
+            pakiet = pakiet_pliku(path, BACKEND_SRC)
             modules: set[str] = set()
             for node in ast.walk(tree):
-                if isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
-                    modules.add(node.module)
-                elif isinstance(node, ast.Import):
-                    modules.update(alias.name for alias in node.names)
+                if isinstance(node, ast.Import | ast.ImportFrom):
+                    modules.update(moduly_dotkniete(pakiet, node))
             for module in modules:
                 target = _module_to_path(module)
                 if target is None or not declares_model_fields(target):

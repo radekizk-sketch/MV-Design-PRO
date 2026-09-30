@@ -28,8 +28,13 @@ drzewie pracują równolegle inni wykonawcy).
 from __future__ import annotations
 
 import ast
+import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from importy_ast import ImportPonadKorzen, cele_importu, pakiet_pliku, pod_prefiksem  # noqa: E402
 
 KORZEN = Path(__file__).resolve().parents[1]
 KATALOG_PAKIETU = KORZEN / "backend" / "src" / "dziedziny"
@@ -118,17 +123,10 @@ def _powod_odrzucenia(modul: str) -> str | None:
     return "moduł spoza ZAMKNIĘTEJ allowlisty liścia `dziedziny`"
 
 
-def _modul_wzgledny(katalog: Path, plik: Path, poziom: int, modul: str | None) -> str:
-    """Rozwiąż import względny wg semantyki Pythona: poziom 1 = pakiet zawierający moduł,
-    każdy kolejny poziom = pakiet nadrzędny. Wyjście ponad korzeń drzewa importów daje
-    nazwę modułu najwyższego poziomu (np. ``from ..enm import x`` w ``dziedziny/a.py``
-    → ``enm``)."""
-    # Dla `pakiet/__init__.py` ostatni człon to `__init__`, dla `pakiet/modul.py` — nazwa
-    # modułu; w obu przypadkach pakietem zawierającym jest ścieżka bez ostatniego członu.
-    czesci = list(plik.relative_to(katalog).with_suffix("").parts)
-    pakiet = [MODUL_PAKIETU, *czesci[:-1]]
-    baza = pakiet[: max(len(pakiet) - (poziom - 1), 0)]
-    return ".".join([*baza, modul] if modul else baza) or "(poza korzeniem)"
+def _pakiet(katalog: Path, plik: Path) -> str:
+    """`__package__` pliku pakietu (katalog skanu odpowiada modułowi `MODUL_PAKIETU`)."""
+    wzgledny = pakiet_pliku(plik, katalog)
+    return f"{MODUL_PAKIETU}.{wzgledny}" if wzgledny else MODUL_PAKIETU
 
 
 def pliki_pakietu(katalog: Path = KATALOG_PAKIETU) -> list[Path]:
@@ -153,16 +151,30 @@ def znajdz_naruszenia(katalog: Path = KATALOG_PAKIETU) -> list[Naruszenie]:
                         naruszenia.append(Naruszenie(wzgledna, wezel.lineno, alias.name, powod))
             elif isinstance(wezel, ast.ImportFrom):
                 if wezel.level:
-                    modul = _modul_wzgledny(katalog, plik, wezel.level, wezel.module)
-                    if not (modul == MODUL_PAKIETU or modul.startswith(f"{MODUL_PAKIETU}.")):
+                    # Rozwiązanie wg semantyki interpretera — jedno źródło prawdy dla
+                    # wszystkich bramek (`scripts/importy_ast.py`).
+                    try:
+                        cele = cele_importu(_pakiet(katalog, plik), wezel)
+                    except ImportPonadKorzen as blad:
                         naruszenia.append(
                             Naruszenie(
                                 wzgledna,
                                 wezel.lineno,
-                                modul,
-                                "import względny wychodzi poza pakiet `dziedziny`",
+                                "." * wezel.level + (wezel.module or ""),
+                                f"import względny wychodzi poza pakiet `dziedziny` — {blad}",
                             )
                         )
+                        continue
+                    for cel in cele:
+                        if not pod_prefiksem(cel, (MODUL_PAKIETU,)):
+                            naruszenia.append(
+                                Naruszenie(
+                                    wzgledna,
+                                    wezel.lineno,
+                                    cel,
+                                    "import względny wychodzi poza pakiet `dziedziny`",
+                                )
+                            )
                     continue
                 modul = wezel.module or ""
                 if modul == "werdykt":

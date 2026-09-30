@@ -2,8 +2,9 @@
 """Dziedziny Import Boundary Guard (karta AB-H0 §0.1, decyzja O-45).
 
 Bramka CI granicy importów pakietu-liścia `backend/src/dziedziny/**`. Cała logika
-(allowlista, rozstrzyganie importów względnych) żyje w `scripts/dziedziny_granica_importow.py`
-— ten plik jest wyłącznie powłoką wywołania.
+(allowlista i jej zastosowanie) żyje w `scripts/dziedziny_granica_importow.py`, a
+rozwiązywanie importów względnych — w `scripts/importy_ast.py` (jedno źródło prawdy
+wszystkich bramek importów). Ten plik jest wyłącznie powłoką wywołania.
 
 Self-test z czerwonymi iniekcjami: `scripts/test_dziedziny_granica_importow_guard.py`.
 

@@ -77,6 +77,14 @@ GRANICE BRAMKI — czego ta detekcja NIE wykrywa (jawnie, zamiast cicho):
 Dozwolone lokalizacje: warstwa wiązania (WHITELISTED_PATHS), warstwa solvera
 (SOLVER_LAYER_PREFIXES), testy i skrypty.
 
+IMPORTY są rozwiązywane wg semantyki interpretera (`scripts/importy_ast.py`, jedno źródło
+prawdy bramek): `from ..solvers.short_circuit_iec60909 import …` w `network_model/core/**`
+i `from .machine_short_circuit import …` w `analysis/**` to te same wejścia w solver co
+formy bezwzględne (do 2026-09-30 bramka czytała samo `module`). Nazwa sprowadzona
+z pakietu (`from network_model import solvers`) liczy się jako moduł `pakiet.nazwa`.
+Import względny ponad korzeń drzewa importów (interpreter: `ImportError`) jest
+naruszeniem `K:` — bramka nie zgaduje jego celu (fail-closed).
+
 ZAPADKA (LEGACY_DIRECT_SOLVER_CALLERS) wiąże KONKRETNE zastane WYWOŁANIA, nie
 pliki: dla każdego pliku trzyma budżet w postaci `{"<reguła>:<adresat>": liczba}`
 zmierzoną na stanie zamrożenia.  Plik z zapadki jest normalnie parsowany i
@@ -100,6 +108,10 @@ import sys
 from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from importy_ast import ImportPonadKorzen, modul_bazowy, pakiet_pliku, pod_prefiksem  # noqa: E402
 
 # Korzeń źródeł backendu.
 # UWAGA (V12K-306 / audyt 2026-08-01, defekt D3): ten plik leży w
@@ -294,26 +306,46 @@ def solver_signature_index() -> dict[str, int]:
     return signatures
 
 
-def solver_aliases(tree: ast.AST) -> set[str]:
+def pakiet_zrodla(filepath: Path) -> str:
+    """`__package__` pliku względem `BACKEND_SRC` (plik spoza korzenia: pakiet pusty —
+    każdy jego import względny jest wtedy wyjściem ponad korzeń, czyli naruszeniem)."""
+    try:
+        return pakiet_pliku(filepath, BACKEND_SRC)
+    except ValueError:
+        return ""
+
+
+def solver_aliases(tree: ast.AST, pakiet: str = "") -> set[str]:
     """Nazwy lokalne (funkcje, klasy, moduły) zaimportowane z warstwy solvera."""
     aliases: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
-            module = node.module or ""
-            if any(
-                module == prefix or module.startswith(prefix + ".")
-                for prefix in SOLVER_MODULE_PREFIXES
-            ):
-                for alias in node.names:
+            try:
+                modul = modul_bazowy(pakiet, node)
+            except ImportPonadKorzen:
+                continue  # naruszenie `K:` zgłasza `imports_beyond_root`
+            for alias in node.names:
+                if pod_prefiksem(modul, SOLVER_MODULE_PREFIXES) or pod_prefiksem(
+                    f"{modul}.{alias.name}", SOLVER_MODULE_PREFIXES
+                ):
                     aliases.add(alias.asname or alias.name)
         elif isinstance(node, ast.Import):
             for alias in node.names:
-                if any(
-                    alias.name == prefix or alias.name.startswith(prefix + ".")
-                    for prefix in SOLVER_MODULE_PREFIXES
-                ):
+                if pod_prefiksem(alias.name, SOLVER_MODULE_PREFIXES):
                     aliases.add(alias.asname or alias.name.split(".")[0])
     return aliases
+
+
+def imports_beyond_root(tree: ast.AST, pakiet: str) -> list[ast.ImportFrom]:
+    """Importy względne wychodzące ponad korzeń drzewa importów (fail-closed)."""
+    wynik: list[ast.ImportFrom] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            try:
+                modul_bazowy(pakiet, node)
+            except ImportPonadKorzen:
+                wynik.append(node)
+    return wynik
 
 
 def callee_name(call: ast.Call) -> str:
@@ -444,9 +476,9 @@ def propagate_refs(tree: ast.AST, names: set[str], attrs: set[str]) -> None:
                 changed = True
 
 
-def solver_reference_sets(tree: ast.AST) -> tuple[set[str], set[str]]:
+def solver_reference_sets(tree: ast.AST, pakiet: str = "") -> tuple[set[str], set[str]]:
     """Nośniki referencji do warstwy solvera: (nazwy, atrybuty)."""
-    names = solver_aliases(tree)
+    names = solver_aliases(tree, pakiet)
     attrs: set[str] = set()
     if names:
         propagate_refs(tree, names, attrs)
@@ -463,11 +495,23 @@ def binding_reference_sets(tree: ast.AST) -> tuple[set[str], set[str]]:
 
 def collect_findings(tree: ast.AST, filepath: Path) -> list[tuple[str, int, str]]:
     """Znaleziska w jednym drzewie: (sygnatura, wiersz, komunikat)."""
-    solver_names, solver_attrs = solver_reference_sets(tree)
+    pakiet = pakiet_zrodla(filepath)
+    solver_names, solver_attrs = solver_reference_sets(tree, pakiet)
     binding_names, binding_attrs = binding_reference_sets(tree)
     signatures = solver_signature_index()
 
     findings: list[tuple[str, int, str]] = []
+    for node in imports_beyond_root(tree, pakiet):
+        cel = "." * node.level + (node.module or "")
+        findings.append(
+            (
+                f"K:{cel}",
+                node.lineno,
+                f"  {filepath}:{node.lineno}: import względny '{cel}' wychodzi ponad korzeń "
+                "drzewa importów (interpreter: ImportError) — bramka nie rozstrzyga, czy to "
+                "wejście w warstwę solvera (fail-closed)",
+            )
+        )
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue

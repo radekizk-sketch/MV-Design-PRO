@@ -2,10 +2,11 @@
 """Dynamika Import Boundary Guard (karta W6-2 SS0 p.1).
 
 Bramka CI dla granicy importow pakietu `network_model/solvers/dynamika/**`.
-Cala logika (allowlista, rozstrzyganie importow wzglednych) zyje w
-`scripts/dynamika_granica_importow.py` — ten plik jest wylacznie powloka
-wywolania, zeby ta sama regula obowiazywala tu i w `solver_boundary_guard.py`
-bez drugiej kopii listy.
+Cala logika (allowlista i jej zastosowanie) zyje w
+`scripts/dynamika_granica_importow.py`, a rozwiazywanie importow wzglednych — w
+`scripts/importy_ast.py` (jedno zrodlo prawdy wszystkich bramek importow). Ten plik
+jest wylacznie powloka wywolania, zeby ta sama regula obowiazywala tu i w
+`solver_boundary_guard.py` bez drugiej kopii listy.
 
 Self-test z czerwona iniekcja: `scripts/test_dynamika_granica_importow_guard.py` (na KOPII
 pakietu w katalogu tymczasowym — katalog skanu jest pierwszym argumentem wywolania).

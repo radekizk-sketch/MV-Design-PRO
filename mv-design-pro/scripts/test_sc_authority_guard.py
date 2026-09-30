@@ -20,13 +20,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import sc_authority_guard  # noqa: E402
 from sc_authority_guard import (  # noqa: E402
+    BRAMKA_AUTORYTETU_NAZWY,
     KONSTRUKTORZY_WEJSCIA_ZDOLNOSCI_ZALEZNEJ,
+    MODUL_BRAMKI_AUTORYTETU,
+    MODUL_MOSTU_AUTORYTETU,
     MOST_AUTORYTETU_NAZWY,
     PLIKI_TRASY_HTTP,
     PLIKI_Z_BRAMKA_AUTORYTETU,
-    _importuje_ktoras,
     _konstruowane_typy,
-    _wywoluje_funkcje,
+    _wywoluje_z_modulu,
     main,
 )
 
@@ -35,59 +37,97 @@ def _ast(kod: str) -> ast.Module:
     return ast.parse(kod)
 
 
+def _bramka(kod: str, pakiet: str = "application.equipment_proof") -> bool:
+    return _wywoluje_z_modulu(_ast(kod), pakiet, MODUL_BRAMKI_AUTORYTETU, BRAMKA_AUTORYTETU_NAZWY)
+
+
+def _most(kod: str, pakiet: str = "api") -> bool:
+    return _wywoluje_z_modulu(_ast(kod), pakiet, MODUL_MOSTU_AUTORYTETU, MOST_AUTORYTETU_NAZWY)
+
+
 # ---------------------------------------------------------------------------
-# Kontrola 1: _wywoluje_funkcje — WYWOŁANIE, nie tylko import/komentarz/docstring.
+# Kontrole 1 i 2: `_wywoluje_z_modulu` — WYWOŁANIE funkcji z WŁAŚCIWEGO modułu.
+# Iloczyn: {import nazwy, import nazwy z aliasem, import modułu z aliasem, import modułu
+# bez aliasu, nazwa modułu z pakietu, import względny} × {wywołanie, sam import} oraz
+# drogi fałszywe: ta sama nazwa z innego modułu, atrapa w pliku, komentarz, napis.
 # ---------------------------------------------------------------------------
 
-
-def test_wywoluje_funkcje_wykrywa_wywolanie_bezposrednie() -> None:
-    kod = "from x import wymagaj_autorytetu\nwymagaj_autorytetu((), None)\n"
-    assert _wywoluje_funkcje(_ast(kod), "wymagaj_autorytetu") is True
+_IMPORT_BRAMKI = "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
 
 
-def test_wywoluje_funkcje_wykrywa_wywolanie_jako_atrybut() -> None:
-    kod = "import x\nx.wymagaj_autorytetu((), None)\n"
-    assert _wywoluje_funkcje(_ast(kod), "wymagaj_autorytetu") is True
+@pytest.mark.parametrize(
+    "kod",
+    [
+        _IMPORT_BRAMKI + "wymagaj_autorytetu((), None)\n",
+        "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu as w\n"
+        "w((), None)\n",
+        "import network_model.core.autorytet_wyniku_zwarciowego as a\na.wymagaj_autorytetu((), None)\n",
+        "import network_model.core.autorytet_wyniku_zwarciowego\n"
+        "network_model.core.autorytet_wyniku_zwarciowego.wymagaj_autorytetu((), None)\n",
+        "from network_model.core import autorytet_wyniku_zwarciowego as a\n"
+        "a.wymagaj_autorytetu((), None)\n",
+    ],
+)
+def test_bramka_wywolana_z_wlasciwego_modulu(kod: str) -> None:
+    assert _bramka(kod) is True
 
 
-def test_wywoluje_funkcje_odrzuca_sam_import_bez_wywolania() -> None:
-    kod = "from x import wymagaj_autorytetu\n"
-    assert _wywoluje_funkcje(_ast(kod), "wymagaj_autorytetu") is False
+def test_bramka_wywolana_przez_import_wzgledny_w_tym_samym_pakiecie() -> None:
+    kod = "from .autorytet_wyniku_zwarciowego import wymagaj_autorytetu\nwymagaj_autorytetu(())\n"
+    assert _bramka(kod, pakiet="network_model.core") is True
+    kod2 = "from . import autorytet_wyniku_zwarciowego as a\na.wymagaj_autorytetu(())\n"
+    assert _bramka(kod2, pakiet="network_model.core") is True
 
 
-def test_wywoluje_funkcje_odrzuca_komentarz_i_docstring() -> None:
-    kod = (
+@pytest.mark.parametrize(
+    "kod",
+    [
+        _IMPORT_BRAMKI,  # sam import, bez wywołania
+        "from x import wymagaj_autorytetu\nwymagaj_autorytetu((), None)\n",  # inny moduł
+        "def wymagaj_autorytetu(*a):\n    pass\nwymagaj_autorytetu((), None)\n",  # atrapa
+        "import x\nx.wymagaj_autorytetu((), None)\n",  # atrybut innego modułu
         "# wywoluje wymagaj_autorytetu\n"
         "def f():\n"
         '    """Ten kod wola wymagaj_autorytetu."""\n'
-        "    return 1\n"
-    )
-    assert _wywoluje_funkcje(_ast(kod), "wymagaj_autorytetu") is False
+        "    return 1\n",
+        'x = "wymagaj_autorytetu"\n',
+        "from .autorytet_wyniku_zwarciowego import wymagaj_autorytetu\nwymagaj_autorytetu(())\n",
+    ],
+    ids=[
+        "sam-import",
+        "inny-modul",
+        "atrapa-w-pliku",
+        "atrybut-innego-modulu",
+        "komentarz-docstring",
+        "napis",
+        "wzgledny-z-innego-pakietu",
+    ],
+)
+def test_bramka_niewywolana_albo_z_innego_zrodla(kod: str) -> None:
+    assert _bramka(kod) is False
 
 
-def test_wywoluje_funkcje_odrzuca_napis_z_ta_sama_nazwa() -> None:
-    kod = 'x = "wymagaj_autorytetu"\n'
-    assert _wywoluje_funkcje(_ast(kod), "wymagaj_autorytetu") is False
+def test_import_ponad_korzen_nie_wiaze_nazwy() -> None:
+    kod = "from .... import autorytet_wyniku_zwarciowego as a\na.wymagaj_autorytetu(())\n"
+    assert _bramka(kod, pakiet="api") is False
 
 
-# ---------------------------------------------------------------------------
-# Kontrola 2: _importuje_ktoras — most autorytetu zaimportowany.
-# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("nazwa", sorted(MOST_AUTORYTETU_NAZWY))
+def test_most_wywolany_z_modulu_mostu(nazwa: str) -> None:
+    assert _most(f"from application.autorytet_biegu_zwarciowego import {nazwa}\n{nazwa}(1)\n")
+    assert _most(f"import application.autorytet_biegu_zwarciowego as m\nm.{nazwa}(1)\n")
+    assert _most(f"from application import autorytet_biegu_zwarciowego as m\nm.{nazwa}(1)\n")
 
 
-def test_importuje_ktoras_wykrywa_import_from() -> None:
-    kod = "from application.autorytet_biegu_zwarciowego import wejscie_zwarciowe_z_biegu\n"
-    assert _importuje_ktoras(_ast(kod), MOST_AUTORYTETU_NAZWY) is True
+@pytest.mark.parametrize("nazwa", sorted(MOST_AUTORYTETU_NAZWY))
+def test_most_sam_import_albo_z_innego_modulu_nie_wystarcza(nazwa: str) -> None:
+    assert not _most(f"from application.autorytet_biegu_zwarciowego import {nazwa}\n")
+    assert not _most(f"from application.atrapa import {nazwa}\n{nazwa}(1)\n")
+    assert not _most(f"import application.autorytet_biegu_zwarciowego as {nazwa}\n")
 
 
-def test_importuje_ktoras_wykrywa_import_modulu() -> None:
-    kod = "import application.autorytet_biegu_zwarciowego as most\n"
-    assert _importuje_ktoras(_ast(kod), frozenset({"autorytet_biegu_zwarciowego"})) is True
-
-
-def test_importuje_ktoras_odrzuca_brak_importu() -> None:
-    kod = "x = 1\n"
-    assert _importuje_ktoras(_ast(kod), MOST_AUTORYTETU_NAZWY) is False
+def test_most_brak_importu() -> None:
+    assert _most("x = 1\n") is False
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +256,7 @@ def test_main_czerwony_gdy_bramka_niewywolana(_guard_na_tmp, capsys: pytest.Capt
         ),
         "api/equipment_proof_pack.py": (
             "from application.autorytet_biegu_zwarciowego import wejscie_zwarciowe_z_biegu\n"
-            "def download():\n    pass\n"
+            "def download():\n    wejscie_zwarciowe_z_biegu(run_id=None, punkt_zwarcia='x')\n"
         ),
     }
     assert _guard_na_tmp(pliki) == 1
@@ -248,6 +288,68 @@ def test_main_czerwony_gdy_trasa_http_nie_czyta_z_biegu(
     assert "most" in wyjscie.lower()
 
 
+def _drzewo_poprawne() -> dict[str, str]:
+    return {
+        "application/equipment_proof/proof_pack.py": (
+            "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
+            "def build():\n    wymagaj_autorytetu((), None)\n"
+        ),
+        "api/protection_coordination.py": (
+            "from application.autorytet_biegu_zwarciowego import wejscie_koordynacji_z_biegow\n"
+            "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu\n"
+            "def run():\n"
+            "    wejscie = wejscie_koordynacji_z_biegow(run_id_max=None, run_id_min=None)\n"
+            "    wymagaj_autorytetu((), wejscie.proweniencja)\n"
+        ),
+        "api/equipment_proof_pack.py": (
+            "from application.autorytet_biegu_zwarciowego import wejscie_zwarciowe_z_biegu\n"
+            "def download():\n    wejscie_zwarciowe_z_biegu(run_id=None, punkt_zwarcia='x')\n"
+        ),
+    }
+
+
+def test_main_czerwony_gdy_bramka_to_atrapa_w_pliku(
+    _guard_na_tmp, capsys: pytest.CaptureFixture
+) -> None:
+    """Kontrola 1: plik z listy definiuje WŁASNĄ funkcję o nazwie bramki i ją woła —
+    wywołanie istnieje, ale nie przechodzi przez `wymagaj_autorytetu` z modułu autorytetu
+    (do 2026-09-30 to spełniało warunek)."""
+    pliki = _drzewo_poprawne()
+    pliki["application/equipment_proof/proof_pack.py"] = (
+        "def wymagaj_autorytetu(*a):\n    pass\n" "def build():\n    wymagaj_autorytetu((), None)\n"
+    )
+    assert _guard_na_tmp(pliki) == 1
+    wyjscie = capsys.readouterr().out
+    assert "proof_pack.py: nie wywołuje `wymagaj_autorytetu`" in wyjscie
+
+
+def test_main_czerwony_gdy_trasa_importuje_most_bez_wywolania(
+    _guard_na_tmp, capsys: pytest.CaptureFixture
+) -> None:
+    """Kontrola 2: import mostu bez wywołania nie jest dowodem czytania z biegu (do
+    2026-09-30 sam import spełniał warunek — także import nazwy z dowolnego modułu)."""
+    pliki = _drzewo_poprawne()
+    pliki["api/equipment_proof_pack.py"] = (
+        "from application.autorytet_biegu_zwarciowego import wejscie_zwarciowe_z_biegu\n"
+        "def download():\n    pass\n"
+    )
+    assert _guard_na_tmp(pliki) == 1
+    assert "api/equipment_proof_pack.py: nie wywołuje mostu" in capsys.readouterr().out
+
+
+def test_main_zielony_z_mostem_przez_modul_z_pakietu(
+    _guard_na_tmp, capsys: pytest.CaptureFixture
+) -> None:
+    """Para: most wywołany przez moduł sprowadzony z pakietu (`from application import
+    autorytet_biegu_zwarciowego as most`) — ta sama droga co import nazwy."""
+    pliki = _drzewo_poprawne()
+    pliki["api/equipment_proof_pack.py"] = (
+        "from application import autorytet_biegu_zwarciowego as most\n"
+        "def download():\n    most.wejscie_zwarciowe_z_biegu(run_id=None, punkt_zwarcia='x')\n"
+    )
+    assert _guard_na_tmp(pliki) == 0, capsys.readouterr().out
+
+
 def test_main_czerwony_gdy_nowy_konsument_poza_lista(
     _guard_na_tmp, capsys: pytest.CaptureFixture
 ) -> None:
@@ -265,7 +367,7 @@ def test_main_czerwony_gdy_nowy_konsument_poza_lista(
         ),
         "api/equipment_proof_pack.py": (
             "from application.autorytet_biegu_zwarciowego import wejscie_zwarciowe_z_biegu\n"
-            "def download():\n    pass\n"
+            "def download():\n    wejscie_zwarciowe_z_biegu(run_id=None, punkt_zwarcia='x')\n"
         ),
         "application/rogue/bypass.py": (
             "def skrot(run_id, required_fault_results):\n"

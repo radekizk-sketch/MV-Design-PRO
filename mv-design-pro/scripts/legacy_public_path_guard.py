@@ -14,6 +14,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import api_lifecycle_guard  # noqa: E402
 import canonical_ops_guard  # noqa: E402
+from importy_ast import (  # noqa: E402
+    ImportPonadKorzen,
+    moduly_dotkniete,
+    pakiet_pliku,
+    pod_prefiksem,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 API_DIR = ROOT / "backend" / "src" / "api"
@@ -728,14 +734,60 @@ def active_api_module_paths() -> list[Path]:
     return sorted(module_paths)
 
 
+def importy_zakazanych_modulow(
+    tree: ast.AST, path: Path, prefiksy: tuple[str, ...] | frozenset[str] | set[str]
+) -> list[tuple[int, str, bool]]:
+    """(wiersz, moduł, ponad_korzeniem) dla każdej instrukcji importu, która ładuje moduł
+    z `prefiksy` (moduł albo jego podmoduł) — JEDEN predykat dla wszystkich trzech
+    sprawdzeń importów zastanych (publiczne trasy, K2, TRACE-V2).
+
+    Rozwiązanie wg semantyki interpretera (`scripts/importy_ast.py`): import względny
+    (`from .unified_runs import router` w `api/*.py`), `import api.unified_runs` i nazwa
+    sprowadzona z pakietu (`from application import reference_networks`) to te same
+    wejścia co `from api.unified_runs import …`. Do 2026-09-30 sprawdzenia czytały samo
+    `ImportFrom.module` i pomijały `ast.Import`. Import względny ponad korzeń drzewa
+    (interpreter: `ImportError`) jest zgłaszany jako naruszenie — bramka nie zgaduje celu.
+    """
+    try:
+        pakiet = pakiet_pliku(path, BACKEND_SRC_DIR)
+    except ValueError:
+        pakiet = ""
+    trafienia: list[tuple[int, str, bool]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Import | ast.ImportFrom):
+            continue
+        try:
+            moduly = moduly_dotkniete(pakiet, node)
+        except ImportPonadKorzen:
+            assert isinstance(node, ast.ImportFrom)
+            trafienia.append((node.lineno, "." * node.level + (node.module or ""), True))
+            continue
+        for modul in moduly:
+            if pod_prefiksem(modul, prefiksy):
+                trafienia.append((node.lineno, modul, False))
+                break
+    return trafienia
+
+
+def _opis_importu(rel_path: str, lineno: int, modul: str, ponad_korzeniem: bool) -> str:
+    if ponad_korzeniem:
+        return (
+            f"[legacy-public-import] {rel_path}:{lineno}: {modul} — import względny ponad "
+            "korzeń drzewa importów (interpreter: ImportError); bramka nie rozstrzyga celu"
+        )
+    return f"[legacy-public-import] {rel_path}:{lineno}: {modul}"
+
+
 def check_legacy_public_paths() -> list[str]:
     violations: list[str] = []
     for module_path in active_api_module_paths():
         tree = ast.parse(read_text(module_path), filename=str(module_path))
         rel_path = module_path.relative_to(ROOT).as_posix()
+        for lineno, modul, ponad in importy_zakazanych_modulow(
+            tree, module_path, FORBIDDEN_IMPORTS
+        ):
+            violations.append(_opis_importu(rel_path, lineno, modul, ponad))
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module in FORBIDDEN_IMPORTS:
-                violations.append(f"[legacy-public-import] {rel_path}:{node.lineno}: {node.module}")
             if isinstance(node, ast.Name) and node.id in FORBIDDEN_NAMES:
                 violations.append(f"[legacy-public-name] {rel_path}:{node.lineno}: {node.id}")
             if isinstance(node, ast.Attribute) and node.attr in FORBIDDEN_NAMES:
@@ -1081,19 +1133,14 @@ def check_k2_reference_networks_resurrection() -> list[str]:
         for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
             tree = ast.parse(read_text(py_file), filename=str(py_file))
             rel_path = py_file.relative_to(ROOT).as_posix()
+            for lineno, modul, ponad in importy_zakazanych_modulow(
+                tree, py_file, FORBIDDEN_K2_MODULE_PREFIXES
+            ):
+                violations.append(
+                    _opis_importu(rel_path, lineno, modul, ponad)
+                    + ("" if ponad else " (dawny dialekt benchmarków, usunięty kartą K2)")
+                )
             for node in ast.walk(tree):
-                if (
-                    isinstance(node, ast.ImportFrom)
-                    and node.module is not None
-                    and any(
-                        node.module == prefix or node.module.startswith(prefix + ".")
-                        for prefix in FORBIDDEN_K2_MODULE_PREFIXES
-                    )
-                ):
-                    violations.append(
-                        f"[legacy-public-import] {rel_path}:{node.lineno}: {node.module} "
-                        "(dawny dialekt benchmarków, usunięty kartą K2)"
-                    )
                 if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_K2_CLASS_NAMES:
                     violations.append(
                         f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
@@ -1377,18 +1424,13 @@ def check_trace_v2_resurrection() -> list[str]:
                         f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
                         '(klaster "slad v2", skasowany karta TRACE-V2) nie moze wrocic'
                     )
-                if (
-                    isinstance(node, ast.ImportFrom)
-                    and node.module is not None
-                    and any(
-                        node.module == prefix or node.module.startswith(prefix + ".")
-                        for prefix in FORBIDDEN_TRACE_V2_MODULE_PREFIXES
-                    )
-                ):
-                    violations.append(
-                        f"[legacy-public-import] {rel_path}:{node.lineno}: {node.module} "
-                        '(klaster "slad v2", skasowany karta TRACE-V2)'
-                    )
+            for lineno, modul, ponad in importy_zakazanych_modulow(
+                tree, py_file, FORBIDDEN_TRACE_V2_MODULE_PREFIXES
+            ):
+                violations.append(
+                    _opis_importu(rel_path, lineno, modul, ponad)
+                    + ("" if ponad else ' (klaster "slad v2", skasowany karta TRACE-V2)')
+                )
     if FRONTEND_SRC_DIR.exists():
         for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
             for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):

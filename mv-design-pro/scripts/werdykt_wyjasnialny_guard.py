@@ -162,6 +162,10 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from importy_ast import ImportPonadKorzen, modul_bazowy, nazwa_modulu, pakiet_pliku  # noqa: E402
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 FRONTEND_SRC = PROJECT_ROOT / "frontend" / "src"
@@ -357,22 +361,18 @@ class _Modul:
 
 
 def _nazwa_modulu(sciezka: Path, korzen: Path) -> tuple[str, str]:
-    czesci = list(sciezka.relative_to(korzen).with_suffix("").parts)
-    if czesci[-1] == "__init__":
-        czesci = czesci[:-1]
-        return ".".join(czesci), ".".join(czesci)
-    return ".".join(czesci), ".".join(czesci[:-1])
+    """(nazwa modułu, pakiet) — jedno źródło prawdy bramek (`scripts/importy_ast.py`)."""
+    return nazwa_modulu(sciezka, korzen), pakiet_pliku(sciezka, korzen)
 
 
-def _cel_importu(pakiet: str, wezel: ast.ImportFrom) -> str:
-    if wezel.level == 0:
-        return wezel.module or ""
-    baza = pakiet.split(".") if pakiet else []
-    if wezel.level > 1:
-        baza = baza[: len(baza) - (wezel.level - 1)]
-    if wezel.module:
-        baza = [*baza, *wezel.module.split(".")]
-    return ".".join(baza)
+def _cel_importu(pakiet: str, wezel: ast.ImportFrom, sciezka: Path) -> str:
+    """Moduł, z którego `from … import …` sprowadza nazwy. Import względny ponad korzeń
+    drzewa (interpreter: `ImportError`) to błąd środowiska, nie cichy cel — dawna
+    arytmetyka obcinała wtedy pakiet do pustej listy i zwracała samo `module`."""
+    try:
+        return modul_bazowy(pakiet, wezel)
+    except ImportPonadKorzen as blad:
+        raise BladSrodowiska(f"{sciezka}:{wezel.lineno}: {blad}") from blad
 
 
 def _czy_alias_typu(wartosc: ast.expr) -> bool:
@@ -403,7 +403,7 @@ def _wczytaj_modul(sciezka: Path, korzen: Path) -> _Modul | None:
                 else:
                     importy[alias.name.split(".")[0]] = alias.name.split(".")[0]
         elif isinstance(wezel, ast.ImportFrom):
-            cel = _cel_importu(pakiet, wezel)
+            cel = _cel_importu(pakiet, wezel, sciezka)
             if wezel.level == 0 and cel:
                 biblioteki.add(cel.split(".")[0])
             for alias in wezel.names:

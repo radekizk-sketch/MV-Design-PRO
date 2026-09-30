@@ -16,12 +16,23 @@ TRZY KONTROLE, AST (nie regex tekstowy — komentarz albo docstring z nazwą
 funkcji przechodziłby regex, nic by nie chronił):
 
 1. Pliki z ZAMKNIĘTEJ listy `PLIKI_Z_BRAMKA_AUTORYTETU` MUSZĄ faktycznie
-   WYWOŁYWAĆ `wymagaj_autorytetu` (`ast.Call`, nie tylko import).
-2. Pliki z ZAMKNIĘTEJ listy `PLIKI_TRASY_HTTP` MUSZĄ importować most
+   WYWOŁYWAĆ `wymagaj_autorytetu` (`ast.Call`, nie tylko import) zaimportowaną
+   z `network_model.core.autorytet_wyniku_zwarciowego`.
+2. Pliki z ZAMKNIĘTEJ listy `PLIKI_TRASY_HTTP` MUSZĄ WYWOŁYWAĆ most
    `wejscie_zwarciowe_z_biegu` albo `wejscie_koordynacji_z_biegow`
-   (`application.autorytet_biegu_zwarciowego`) — dowód, że wielkości
-   zwarciowe wchodzące do żądania są czytane z ZAPISANEGO BIEGU, nie z
-   żądania wprost.
+   zaimportowany z `application.autorytet_biegu_zwarciowego` — dowód, że
+   wielkości zwarciowe wchodzące do żądania są czytane z ZAPISANEGO BIEGU,
+   nie z żądania wprost.
+
+   ŹRÓDŁO FUNKCJI JEST CZĘŚCIĄ WARUNKU (poprawka 2026-09-30, karta
+   GRANICE-IMPORTOW-WZGLEDNE). Do tej pory kontrola 1 przyjmowała wywołanie
+   funkcji o tej nazwie z DOWOLNEGO miejsca (także własnej atrapy
+   `def wymagaj_autorytetu(*a): pass` w pliku), a kontrola 2 — sam import
+   nazwy z dowolnego modułu, bez wywołania. Obie formy spełniały warunek bez
+   przejścia przez bramkę. Import jest rozwiązywany wg semantyki interpretera
+   (`scripts/importy_ast.py`), więc forma względna i dostęp przez moduł
+   (`import application.autorytet_biegu_zwarciowego as most` + `most.f(...)`)
+   liczą się tak samo jak `from … import f`.
 3. ŻADEN plik w `backend/src` POZA `KONSTRUKTORZY_WEJSCIA_ZDOLNOSCI_ZALEZNEJ`
    (zamknięta lista, dokładnie te same dwa pliki co (2)) nie konstruuje
    `EquipmentProofInput(...)` ani `CoordinationInput(...)` — oba typy niosą
@@ -40,6 +51,10 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from importy_ast import ImportPonadKorzen, modul_bazowy, pakiet_pliku  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_SRC = REPO_ROOT / "backend" / "src"
@@ -78,6 +93,12 @@ MOST_AUTORYTETU_NAZWY: frozenset[str] = frozenset(
     {"wejscie_zwarciowe_z_biegu", "wejscie_koordynacji_z_biegow"}
 )
 
+#: Moduł mostu autorytetu (kontrola 2) i moduł bramki autorytetu (kontrola 1) — źródło
+#: wywoływanej funkcji jest częścią warunku, nie tylko jej nazwa.
+MODUL_MOSTU_AUTORYTETU = "application.autorytet_biegu_zwarciowego"
+MODUL_BRAMKI_AUTORYTETU = "network_model.core.autorytet_wyniku_zwarciowego"
+BRAMKA_AUTORYTETU_NAZWY: frozenset[str] = frozenset({"wymagaj_autorytetu"})
+
 
 def _wczytaj_ast(sciezka: Path) -> ast.Module | None:
     try:
@@ -86,29 +107,53 @@ def _wczytaj_ast(sciezka: Path) -> ast.Module | None:
         return None
 
 
-def _wywoluje_funkcje(drzewo: ast.Module, nazwa: str) -> bool:
-    """Czy drzewo AST zawiera WYWOŁANIE funkcji o tej nazwie (nie tylko import)."""
+def _sciezka_kropkowana(wyrazenie: ast.expr) -> str:
+    if isinstance(wyrazenie, ast.Name):
+        return wyrazenie.id
+    if isinstance(wyrazenie, ast.Attribute):
+        return f"{_sciezka_kropkowana(wyrazenie.value)}.{wyrazenie.attr}"
+    return ""
+
+
+def _wywoluje_z_modulu(drzewo: ast.Module, pakiet: str, modul: str, nazwy: frozenset[str]) -> bool:
+    """Czy drzewo WYWOŁUJE którąś z `nazwy` zaimportowaną z `modul`.
+
+    Rozpoznane drogi: `from <modul> import f [as g]` + `g(...)` (także forma względna,
+    rozwiązana wg semantyki interpretera dla `pakiet`), `import <modul> [as m]` +
+    `m.f(...)` / `<modul>.f(...)`, `from <pakiet_modulu> import <nazwa_modulu> [as m]` +
+    `m.f(...)`. Sam import bez wywołania, wywołanie funkcji o tej nazwie z innego modułu
+    albo zdefiniowanej w pliku, komentarz i napis — NIE spełniają warunku. Import względny
+    ponad korzeń drzewa (interpreter: `ImportError`) nie wiąże żadnej nazwy (fail-closed).
+    """
+    funkcje: set[str] = set()
+    moduly: set[str] = set()
+    for wezel in ast.walk(drzewo):
+        if isinstance(wezel, ast.ImportFrom):
+            try:
+                baza = modul_bazowy(pakiet, wezel)
+            except ImportPonadKorzen:
+                continue
+            for alias in wezel.names:
+                if baza == modul and alias.name in nazwy:
+                    funkcje.add(alias.asname or alias.name)
+                elif f"{baza}.{alias.name}" == modul:
+                    moduly.add(alias.asname or alias.name)
+        elif isinstance(wezel, ast.Import):
+            for alias in wezel.names:
+                if alias.name == modul:
+                    moduly.add(alias.asname or alias.name)
     for wezel in ast.walk(drzewo):
         if not isinstance(wezel, ast.Call):
             continue
         func = wezel.func
-        if isinstance(func, ast.Name) and func.id == nazwa:
+        if isinstance(func, ast.Name) and func.id in funkcje:
             return True
-        if isinstance(func, ast.Attribute) and func.attr == nazwa:
+        if (
+            isinstance(func, ast.Attribute)
+            and func.attr in nazwy
+            and _sciezka_kropkowana(func.value) in moduly
+        ):
             return True
-    return False
-
-
-def _importuje_ktoras(drzewo: ast.Module, nazwy: frozenset[str]) -> bool:
-    for wezel in ast.walk(drzewo):
-        if isinstance(wezel, ast.ImportFrom):
-            for alias in wezel.names:
-                if alias.name in nazwy:
-                    return True
-        if isinstance(wezel, ast.Import):
-            for alias in wezel.names:
-                if alias.name.split(".")[-1] in nazwy:
-                    return True
     return False
 
 
@@ -143,10 +188,16 @@ def main() -> int:
         if drzewo is None:
             naruszenia.append(f"{wzgledna}: nie udało się sparsować AST")
             continue
-        if not _wywoluje_funkcje(drzewo, "wymagaj_autorytetu"):
+        if not _wywoluje_z_modulu(
+            drzewo,
+            pakiet_pliku(sciezka, BACKEND_SRC),
+            MODUL_BRAMKI_AUTORYTETU,
+            BRAMKA_AUTORYTETU_NAZWY,
+        ):
             naruszenia.append(
-                f"{wzgledna}: nie wywołuje `wymagaj_autorytetu` — wejście zdolności "
-                "zależnej od wkładu zwarciowego może przejść bez sprawdzenia proweniencji"
+                f"{wzgledna}: nie wywołuje `wymagaj_autorytetu` z `{MODUL_BRAMKI_AUTORYTETU}` "
+                "— wejście zdolności zależnej od wkładu zwarciowego może przejść bez "
+                "sprawdzenia proweniencji"
             )
 
     # Kontrola 2: trasy HTTP czytają wielkości zwarciowe z ZAPISANEGO BIEGU.
@@ -159,9 +210,14 @@ def main() -> int:
         if drzewo is None:
             naruszenia.append(f"{wzgledna}: nie udało się sparsować AST")
             continue
-        if not _importuje_ktoras(drzewo, MOST_AUTORYTETU_NAZWY):
+        if not _wywoluje_z_modulu(
+            drzewo,
+            pakiet_pliku(sciezka, BACKEND_SRC),
+            MODUL_MOSTU_AUTORYTETU,
+            MOST_AUTORYTETU_NAZWY,
+        ):
             naruszenia.append(
-                f"{wzgledna}: nie importuje mostu `application.autorytet_biegu_zwarciowego` "
+                f"{wzgledna}: nie wywołuje mostu `{MODUL_MOSTU_AUTORYTETU}` "
                 f"({'/'.join(sorted(MOST_AUTORYTETU_NAZWY))}) — wielkości zwarciowe mogą "
                 "wchodzić do decyzji miarodajnej wprost z żądania"
             )
