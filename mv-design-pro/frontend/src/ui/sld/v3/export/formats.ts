@@ -17,11 +17,29 @@
  * kompilacji, a test odbioru (`__tests__/exportFormaty.test.tsx`) sprawdza na
  * REALNEJ scenie goldenowej, że każda pozycja zwraca plik z geometrią.
  * Dołożenie pozycji do tej tablicy BEZ implementacji nie skompiluje się.
+ *
+ * KARTA KASACJA-SCL-I-CIM-KLIENT (decyzja K-14/D-41, 2026-09-30) — JEDEN eksport
+ * modelu sieci. Dawniej menu miało DWIE pozycje modelu liczone w KLIENCIE:
+ * „SCD" (opis stacji SCL) — szkielet bez żadnego konsumenta — oraz „CIM" —
+ * minimalny RDF z przeglądarki, podczas gdy backend miał pełny eksporter CGMES
+ * EQ+TP bez końcówki. Dwie ścieżki jednego eksportu = defekt. Oba klientowe
+ * eksportery SKASOWANE; pozycja modelu jest jedna (`cgmes`) i jej plik buduje
+ * WYŁĄCZNIE backend (`GET /api/cases/{case_id}/enm/eksport-cgmes`). Moduł SCL
+ * (opis stacji) nie istnieje świadomie: powstanie tylko po dostarczeniu danych
+ * właściciela D1–D8, jako adapter backendowy (bramka wskrzeszenia klientowych
+ * eksporterów: `scripts/legacy_public_path_guard.py`).
  */
 
 /** Formaty oferowane w menu eksportu schematu. Lista ZAMKNIĘTA — patrz
  *  nagłówek: każda pozycja MUSI mieć implementację (bramka typu + test). */
-export type SldExportFormat = 'svg' | 'pdf' | 'dxf' | 'iec61850' | 'cim';
+export type SldExportFormat = 'svg' | 'pdf' | 'dxf' | 'cgmes';
+
+/**
+ * Z czego powstaje plik — JEDNO źródło decyzji, czy eksport potrzebuje
+ * rysunku z kanwy (`rysunek`: arkusz SVG → SVG/PDF/DXF), czy modelu sieci po
+ * stronie serwera (`model`: ENM → CGMES). Wołający nie zgaduje tego z `id`.
+ */
+export type SldExportSource = 'rysunek' | 'model';
 
 export interface SldExportFormatDescriptor {
   readonly id: SldExportFormat;
@@ -30,6 +48,7 @@ export interface SldExportFormatDescriptor {
   /** Rozszerzenie pliku (bez kropki) — część konwencji nazw (`exportNames.ts`). */
   readonly extension: string;
   readonly mime: string;
+  readonly source: SldExportSource;
 }
 
 /**
@@ -54,6 +73,7 @@ export const SLD_EXPORT_FORMATS: readonly SldExportFormatDescriptor[] = [
     descriptionPl: 'Arkusz z tytułówką i legendą; paleta dokumentowa (jasna). Do dokumentacji i dalszej edycji.',
     extension: 'svg',
     mime: 'image/svg+xml',
+    source: 'rysunek',
   },
   {
     id: 'pdf',
@@ -61,6 +81,7 @@ export const SLD_EXPORT_FORMATS: readonly SldExportFormatDescriptor[] = [
     descriptionPl: 'Ten sam rysunek wpasowany w arkusz A3 poziomy, wektorowo (bez rastra).',
     extension: 'pdf',
     mime: 'application/pdf',
+    source: 'rysunek',
   },
   {
     id: 'dxf',
@@ -68,20 +89,16 @@ export const SLD_EXPORT_FORMATS: readonly SldExportFormatDescriptor[] = [
     descriptionPl: 'Geometria sceny jako encje LINE/CIRCLE/TEXT na warstwach. AutoCAD, BricsCAD, ZWCAD.',
     extension: 'dxf',
     mime: 'application/dxf',
+    source: 'rysunek',
   },
   {
-    id: 'iec61850',
-    labelPl: 'SCD — opis stacji (IEC 61850)',
-    descriptionPl: 'Struktura stacji z modelu: poziomy napięć, pola, aparatura. Do konfiguracji systemów nadzoru.',
-    extension: 'scd.xml',
-    mime: 'application/xml',
-  },
-  {
-    id: 'cim',
-    labelPl: 'CIM — model sieci (IEC 61970/61968)',
-    descriptionPl: 'Semantyczny model sieci z ENM: stacje, odcinki, transformatory, łączniki.',
-    extension: 'cim.xml',
-    mime: 'application/rdf+xml',
+    id: 'cgmes',
+    labelPl: 'CGMES — model sieci (IEC 61970 EQ+TP)',
+    descriptionPl:
+      'Model sieci do wymiany z innymi programami: węzły, odcinki, transformatory, łączniki, źródła, generatory i odbiory. Archiwum ZIP z profilami wyposażenia i topologii.',
+    extension: 'cgmes.zip',
+    mime: 'application/zip',
+    source: 'model',
   },
 ];
 

@@ -5,9 +5,10 @@
  * PRZED: pozycja „PDF (tytułowy blok)" istniała w menu i miała opis, ale klik
  * nie pobierał pliku, nie zgłaszał błędu i nie pokazywał komunikatu (kanał
  * kończył się gałęzią `else` z tekstem o „dedykowanym kanale", którego nie
- * było). Jedyny moduł PDF w repo (`v2/export/exportPdf.ts`) to od początku
- * SZKIELET: buduje obiekt-specyfikację (`PdfExportSpec`), świadomie NIE
- * generując bajtów („pełna generacja PDF binarna planowana w F4 sprint").
+ * było). Jedyny moduł PDF w repo (`v2/export/exportPdf.ts`) był od początku
+ * SZKIELETEM: budował obiekt-specyfikację (`PdfExportSpec`), świadomie NIE
+ * generując bajtów — bez konsumenta, skasowany w karcie
+ * KASACJA-SCL-I-CIM-KLIENT (2026-09-30).
  *
  * PO: pełny plik PDF budowany TUTAJ, z tego samego rysunku, co SVG i DXF
  * (`svgPrimitives.ts`), więc tytułówka i legenda są w PDF automatycznie —

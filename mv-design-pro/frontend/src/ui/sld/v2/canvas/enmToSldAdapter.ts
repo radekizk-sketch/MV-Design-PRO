@@ -671,7 +671,8 @@ function fallbackSequenceBaseByRunId(
 /**
  * K30-58: normalizacja station name z OSD-grade Polish terminology.
  * K30 seed używa ad-hoc nazw "Stacja inline" / "Stacja terminal" które są
- * non-IEC. Konwertujemy do canonical nazw per IEC 61850 / OSD convention.
+ * nieprzyjęte w praktyce OSD. Konwertujemy do nazw stosowanych przez OSD
+ * (rodzaj stacji po polsku: przelotowa, końcowa, odgałęźna, sekcyjna).
  */
 function normalizeStationName(rawName: string | null | undefined, fallback: string): string {
   const name = (rawName ?? '').trim();

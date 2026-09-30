@@ -191,7 +191,7 @@ import { toLightTechnicalExportSvg } from '../export/exportPalette';
 // i dla implementacji.
 import { buildSheetTitleBlockData, SheetTitleBlock } from '../export/sheetTitleBlock';
 import { buildSldExportFile } from '../export/sldExport';
-import type { SldExportFormat } from '../export/formats';
+import { sldExportFormatDescriptor, type SldExportFormat } from '../export/formats';
 // KD-8 poz. 1: eksport przepisuje kolory z palety EKRANU (motyw projektanta)
 // na paletę DOKUMENTOWĄ — arkusz do dokumentacji nie zależy od motywu.
 import { SldPaletteContext, sldPaletteForTheme } from '../theme/palette';
@@ -2215,7 +2215,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // SCHEMAT-10 S4 (V12K-135/136, D11/D12): dawniej — surowa serializacja
   // ekranu (dark, kadr kamery) BEZ normalizacji, mimo że `SldExportFormatMenu`
   // reklamuje ten sam kanał jako „SVG (light_technical)" (V12K-007 invariant
-  // v2 `exportSvg.ts` NIE obejmuje v3 — v3 koduje kolor jako hex konkretny,
+  // dawnego v2 `exportSvg.ts` NIE obejmował v3 — v3 koduje kolor jako hex konkretny,
   // nie `currentColor`, patrz `export/exportPalette.ts` nagłówek) — DWA
   // przyciski eksportu SVG (ten button + dropdown niżej) dawały DWA różne
   // (i oba niepełne) wyniki. Teraz: JEDNA funkcja, poprawna end-to-end —
@@ -2223,10 +2223,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // widoku użytkownika), (2) kadr fit-do-treści z bboxa sceny AKTUALNEGO LOD
   // (`applyContentFitFrame`, D12 „reszta" — ignoruje kamerę/aspekt
   // kontenera), (3) paleta jasna (`toLightTechnicalExportSvg`, D11) na
-  // zserializowanym markupie. Zwraca nazwę pliku (jak `downloadSldSvg`) albo
-  // `null`, gdy nie ma czego eksportować — ten sam kontrakt zwrotny co
-  // `SldExportFormatMenu.onExportSvgOverride`, więc JEDNA implementacja
-  // zasila OBA punkty wejścia (button + dropdown) bez duplikacji.
+  // zserializowanym markupie. JEDNA implementacja zasila OBA punkty wejścia
+  // (button + dropdown) bez duplikacji (dawny v2 `downloadSldSvg` skasowany
+  // bez konsumenta w karcie KASACJA-SCL-I-CIM-KLIENT).
   //
   // S9-6 (audyt E-1/E-2/E-3/E-6): funkcja rozdzielona na DWA kroki. Tu (niżej,
   // `buildExportSheetMarkup`) powstaje MARKUP ARKUSZA — jedno źródło rysunku
@@ -2324,20 +2323,32 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   /**
    * S9-6: jedno wyjście dla KAŻDEGO formatu z menu (`SLD_EXPORT_FORMATS`).
    * Zwraca nazwę zapisanego pliku albo `null`, gdy nie ma czego eksportować;
-   * błąd budowy (np. bramka „rysunek bez geometrii") leci wyjątkiem do
-   * wołającego, który pokazuje komunikat — nigdy pusty plik „na sukces".
+   * błąd budowy (np. bramka „rysunek bez geometrii" albo nazwana odmowa
+   * serwera dla modelu niekompletnego) leci wyjątkiem do wołającego, który
+   * pokazuje komunikat — nigdy pusty plik „na sukces".
+   *
+   * Karta KASACJA-SCL-I-CIM-KLIENT: rysunek budowany TYLKO dla formatów, których
+   * źródłem jest rysunek (`source` w `export/formats.ts`); model sieci (CGMES)
+   * pochodzi z serwera dla aktywnego przypadku i nie potrzebuje kanwy.
    */
   const handleExport = useCallback(
-    (format: SldExportFormat): string | null => {
-      const svgMarkup = buildExportSheetMarkup();
-      if (svgMarkup === null) return null;
-      const file = buildSldExportFile(format, {
+    async (format: SldExportFormat): Promise<string | null> => {
+      let svgMarkup: string | null = null;
+      if (sldExportFormatDescriptor(format).source === 'rysunek') {
+        svgMarkup = buildExportSheetMarkup();
+        if (svgMarkup === null) return null;
+      }
+      const file = await buildSldExportFile(format, {
         svgMarkup,
         snapshot,
+        caseId: activeCaseId,
         projectName: activeProjectName,
         caseName: activeCaseName,
       });
-      const blob = new Blob([file.content], { type: `${file.mime};charset=utf-8` });
+      const blob =
+        typeof file.content === 'string'
+          ? new Blob([file.content], { type: `${file.mime};charset=utf-8` })
+          : file.content;
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -2346,10 +2357,20 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       URL.revokeObjectURL(url);
       return file.filename;
     },
-    [activeCaseName, activeProjectName, buildExportSheetMarkup, snapshot],
+    [activeCaseId, activeCaseName, activeProjectName, buildExportSheetMarkup, snapshot],
   );
 
-  const handleExportSvg = useCallback((): string | null => handleExport('svg'), [handleExport]);
+  // Przycisk „↓ SVG" melduje brak rysunku i błąd budowy tak samo jak menu —
+  // bez tego klik bez rysunku byłby martwym klikiem (zero pliku, zero słowa).
+  const handleExportSvg = useCallback((): void => {
+    handleExport('svg')
+      .then((filename) => {
+        if (filename === null) notify('Eksport schematu: nie ma czego wyeksportować — najpierw wczytaj model sieci.', 'error');
+      })
+      .catch((exc: unknown) =>
+        notify(`Eksport schematu: ${exc instanceof Error ? exc.message : String(exc)}`, 'error'),
+      );
+  }, [handleExport]);
 
   // F12-B pkt 5: lasso — nakładka screen-space AKTYWNA (pointer-events: auto)
   // WYŁĄCZNIE gdy Shift wciśnięty (albo trwa przeciągnięcie rozpoczęte pod
@@ -2789,7 +2810,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         >
           ↓ SVG
         </button>
-        {/* S9-6: KAŻDA pozycja menu (SVG/PDF/DXF/SCD/CIM) idzie tą samą drogą
+        {/* S9-6: KAŻDA pozycja menu (SVG/PDF/DXF/CGMES) idzie tą samą drogą
             — `handleExport` → `export/sldExport.ts`. Błąd budowy pliku (np.
             bramka „rysunek bez geometrii") pokazujemy jako powiadomienie,
             zamiast milczeć albo zapisać pusty plik. */}

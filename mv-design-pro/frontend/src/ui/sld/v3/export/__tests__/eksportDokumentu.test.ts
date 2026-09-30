@@ -5,11 +5,19 @@
  *  · BRAMKI „eksport bez encji = błąd" (iniekcja: rysunek bez geometrii),
  *  · tabliczka rysunkowa (dane realne vs uczciwie puste pole),
  *  · konwencja nazw,
- *  · mapowanie modelu ENM na SCD/CIM, w tym ścieżka PÓL SN, której fixtura
- *    goldenowa nie ma (model syntetyczny z polami — inaczej ta gałąź byłaby
- *    kodem bez pokrycia).
+ *  · składanie pliku eksportu (`buildSldExportFile`) jako iloczyn
+ *    {format} × {źródło: rysunek | model} × {dane: są | brak} × {serwer: plik |
+ *    odmowa | brak nagłówków wersji}.
+ *
+ * Karta KASACJA-SCL-I-CIM-KLIENT (decyzja K-14/D-41): sekcje mapowania ENM na
+ * SCL/SCD i CIM w przeglądarce USUNIĘTE razem z tymi eksporterami.
+ * Intencja tamtych testów („plik modelu bez obiektów to pozorny sukces — bramka
+ * przerywa eksport") przechodzi na backend: nazwana odmowa 422 dla modelu
+ * niekompletnego (`backend/tests/cgmes/test_cgmes_kompletnosc.py`,
+ * `backend/tests/api/test_enm_eksport_cgmes.py`); tu sprawdzamy, że klient
+ * przekazuje ją słowo w słowo i nie zapisuje pliku.
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSldDxf, buildDxfInput, DXF_LAYER_OPISY, DXF_LAYER_RYSUNEK } from '../exportDxfV3';
@@ -19,10 +27,8 @@ import { buildSheetTitleBlockData, dataMetrykiPl, wersjaModeluPl, BRAK_DANEJ } f
 import { buildSldExportFileName } from '../exportNames';
 import { SLD_EXPORT_FORMATS, sldExportFormatDescriptor } from '../formats';
 import { svgMarkupToDrawing, parsePathData, geometryPrimitiveCount, type ExportDrawing } from '../svgPrimitives';
-import { buildCimInput, buildIec61850Input, cimObjectCount, iec61850ObjectCount } from '../exportModelData';
-import { generateIec61850Scd } from '../../../v2/export/exportIec61850';
-import { generateCimRdfXml } from '../../../v2/export/exportCim';
-import { FIELD_ROLE_LABEL_PL } from '../../../v2/station-rozdzielnia/contract';
+import { buildSldExportFile, type SldExportContext } from '../sldExport';
+import { adresEksportuCgmes, pobierzEksportCgmes } from '../eksportCgmesApi';
 
 // ---------------------------------------------------------------------------
 // Pomocnicze: markup arkusza „w miniaturze" — te same konstrukcje, które
@@ -379,7 +385,15 @@ describe('S9-6 · konwencja nazw plików', () => {
   });
 
   it('rejestr formatów zna każdą pozycję, PNG nie istnieje', () => {
-    expect(SLD_EXPORT_FORMATS.map((d) => d.id)).toEqual(['svg', 'pdf', 'dxf', 'iec61850', 'cim']);
+    expect(SLD_EXPORT_FORMATS.map((d) => d.id)).toEqual(['svg', 'pdf', 'dxf', 'cgmes']);
+    // Jeden eksport modelu sieci (K-14/D-41): lista wyżej jest DOKŁADNA, więc
+    // klientowe SCD i CIM nie mogą wrócić bez czerwieni tego testu.
+    expect(sldExportFormatDescriptor('cgmes')).toMatchObject({
+      labelPl: 'CGMES — model sieci (IEC 61970 EQ+TP)',
+      extension: 'cgmes.zip',
+      mime: 'application/zip',
+      source: 'model',
+    });
     expect(sldExportFormatDescriptor('dxf').extension).toBe('dxf');
     // @ts-expect-error — format spoza rejestru nie przechodzi typu ANI wykonania
     expect(() => sldExportFormatDescriptor('png')).toThrow(/nieznany format/);
@@ -387,154 +401,103 @@ describe('S9-6 · konwencja nazw plików', () => {
 });
 
 // ---------------------------------------------------------------------------
-// SCD / CIM — model syntetyczny Z POLAMI SN (fixtura goldenowa ich nie ma,
-// więc bez tego ścieżka pól/aparatów byłaby kodem bez pokrycia).
+// Składanie pliku eksportu — iloczyn cech (karta KASACJA-SCL-I-CIM-KLIENT).
 // ---------------------------------------------------------------------------
-function modelZPolami(): EnergyNetworkModel {
-  const element = (ref: string, name: string) => ({ id: ref, ref_id: ref, name, tags: [], meta: {} });
-  return {
-    header: {
-      enm_version: '1.0',
-      name: 'Sieć testowa',
-      created_at: '2026-08-01T00:00:00Z',
-      updated_at: '2026-08-02T00:00:00Z',
-      revision: 4,
-      hash_sha256: 'abc123def456',
-      defaults: { frequency_hz: 50, phase_system: '3ph' },
-    },
-    buses: [
-      { ...element('bus-sn', 'Szyna SN'), voltage_kv: 15, phase_system: '3ph' },
-      { ...element('bus-nn', 'Szyna nN'), voltage_kv: 0.4, phase_system: '3ph' },
-    ],
-    branches: [
-      { ...element('cb-1', 'Wyłącznik pola 1'), type: 'breaker', from_bus_ref: 'bus-sn', to_bus_ref: 'bus-nn', status: 'closed' },
-      { ...element('ds-1', 'Odłącznik pola 1'), type: 'disconnector', from_bus_ref: 'bus-sn', to_bus_ref: 'bus-nn', status: 'open' },
-      {
-        ...element('kabel-1', 'Kabel SN'),
-        type: 'cable',
-        from_bus_ref: 'bus-sn',
-        to_bus_ref: 'bus-nn',
-        status: 'closed',
-        length_km: 2,
-        r_ohm_per_km: 0.2,
-        x_ohm_per_km: 0.1,
-        b_siemens_per_km: 0.00005,
-      },
-    ],
-    transformers: [
-      {
-        ...element('tr-1', 'Transformator T1'),
-        hv_bus_ref: 'bus-sn',
-        lv_bus_ref: 'bus-nn',
-        sn_mva: 0.63,
-        uhv_kv: 15,
-        ulv_kv: 0.4,
-        uk_percent: 4.5,
-        pk_kw: 6.5,
-      },
-    ],
-    sources: [],
-    loads: [],
-    generators: [],
-    substations: [
-      {
-        ...element('st-1', 'Stacja ST-1'),
-        station_type: 'mv_lv',
-        bus_refs: ['bus-sn', 'bus-nn'],
-        transformer_refs: ['tr-1'],
-        designation: 'ST-15/0,4-01',
-      },
-    ],
-    bays: [
-      {
-        ...element('pole-1', 'Pole liniowe'),
-        bay_role: 'FEEDER',
-        substation_ref: 'st-1',
-        bus_ref: 'bus-sn',
-        equipment_refs: ['cb-1', 'ds-1'],
-        bay_number: '10',
-      },
-      {
-        ...element('pole-2', 'Pole transformatorowe'),
-        bay_role: 'TR',
-        substation_ref: 'st-1',
-        bus_ref: 'bus-sn',
-        equipment_refs: [],
-      },
-    ],
-    junctions: [],
-    corridors: [],
-    measurements: [],
-    protection_assignments: [],
-  } as unknown as EnergyNetworkModel;
+function migawka(revision: number, hash: string): EnergyNetworkModel {
+  return { header: { revision, hash_sha256: hash } } as unknown as EnergyNetworkModel;
 }
 
-describe('S9-6 · SCD (IEC 61850) z realnego modelu', () => {
-  it('stacja → poziomy napięć → pola → aparaty, z polskimi opisami ról', () => {
-    const input = buildIec61850Input(modelZPolami(), 'Projekt X');
-    expect(iec61850ObjectCount(input)).toBeGreaterThan(0);
+function kontekst(zmiany: Partial<SldExportContext> = {}): SldExportContext {
+  return {
+    svgMarkup: MARKUP_ARKUSZA,
+    snapshot: migawka(3, 'aaaabbbbcccc'),
+    caseId: 'przypadek-7',
+    projectName: 'Sieć Wschód',
+    caseName: 'Wariant A',
+    ...zmiany,
+  };
+}
 
-    const [stacja] = input.substations;
-    expect(stacja.name).toBe('ST-15/0,4-01'); // `designation` ma pierwszeństwo przed nazwą
-    expect(stacja.voltageLevels.map((v) => v.voltage_kv)).toEqual([15, 0.4]);
+function odpowiedzSerwera(status: number, cialo: string, naglowki: Record<string, string>): Response {
+  return new Response(cialo, { status, headers: naglowki });
+}
 
-    const sn = stacja.voltageLevels[0];
-    expect(sn.bays.map((b) => b.name)).toEqual(['Pole 10', 'Pole transformatorowe']);
-    // Opis roli z kanonu słownictwa ról pól (karta #141): rola modelu FEEDER to pole odgałęźne —
-    // to samo słowo, którym backend nazywa takie pole, i to samo na schemacie.
-    expect(sn.bays[0].desc).toBe(FIELD_ROLE_LABEL_PL.LINIA_ODG);
-    expect(sn.bays[1].desc).toBe(FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE);
-    expect(sn.bays[0].equipment.map((e) => e.type)).toEqual(['CBR', 'DIS']);
-    // Pole transformatorowe dostaje transformator stacji (inaczej wyszłoby puste).
-    expect(sn.bays[1].equipment.map((e) => e.type)).toEqual(['PTR']);
-
-    const xml = generateIec61850Scd(input);
-    expect(xml).toContain('<Bay name="Pole 10"');
-    expect(xml).toContain('ConductingEquipment');
+describe('buildSldExportFile — format × źródło × dane × serwer', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
-  it('BRAMKA: model bez stacji ⇒ zero obiektów (wołający przerywa eksport)', () => {
-    const pusty = { ...modelZPolami(), substations: [], bays: [] } as unknown as EnergyNetworkModel;
-    expect(iec61850ObjectCount(buildIec61850Input(pusty))).toBe(0);
+  for (const format of ['svg', 'pdf', 'dxf'] as const) {
+    it(`${format}: plik z RYSUNKU, nazwa z wersji migawki, zero wołania serwera`, async () => {
+      const fetchSpy = vi.fn();
+      vi.stubGlobal('fetch', fetchSpy);
+      const plik = await buildSldExportFile(format, kontekst());
+      expect(typeof plik.content).toBe('string');
+      expect((plik.content as string).length).toBeGreaterThan(0);
+      expect(plik.filename).toBe(`schemat-sld_Siec_Wschod_Wariant_A_rew3-aaaabbbb.${sldExportFormatDescriptor(format).extension}`);
+      expect(plik.mime).toBe(sldExportFormatDescriptor(format).mime);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it(`${format}: brak rysunku ⇒ nazwany wyjątek, nie pusty plik`, async () => {
+      await expect(buildSldExportFile(format, kontekst({ svgMarkup: null }))).rejects.toThrow(
+        new RegExp(`Eksport ${format.toUpperCase()}: brak rysunku schematu`),
+      );
+    });
+  }
+
+  it('cgmes: bajty z serwera BEZ ZMIAN, nazwa z wersji podanej przez serwer, rysunek niepotrzebny', async () => {
+    const fetchSpy = vi.fn(async () =>
+      odpowiedzSerwera(200, 'PK-archiwum', {
+        'content-type': 'application/zip',
+        'x-model-rewizja': '9',
+        'x-model-odcisk': '0123456789abcdef',
+      }),
+    );
+    vi.stubGlobal('fetch', fetchSpy);
+    const plik = await buildSldExportFile('cgmes', kontekst({ svgMarkup: null }));
+    expect(fetchSpy).toHaveBeenCalledWith('/api/cases/przypadek-7/enm/eksport-cgmes', {
+      method: 'GET',
+      headers: { Accept: 'application/zip' },
+    });
+    expect(plik.content).not.toBeTypeOf('string');
+    expect(await (plik.content as Blob).text()).toBe('PK-archiwum');
+    // Rewizja 9 z serwera, nie 3 z migawki przeglądarki.
+    expect(plik.filename).toBe('schemat-sld_Siec_Wschod_Wariant_A_rew9-01234567.cgmes.zip');
+    expect(plik.mime).toBe('application/zip');
   });
-});
 
-describe('S9-6 · CIM (IEC 61970/61968) z realnego modelu', () => {
-  it('stacje, poziomy napięć, pola, odcinki, transformatory i łączniki z parametrami modelu', () => {
-    const input = buildCimInput(modelZPolami());
-    expect(cimObjectCount(input)).toBe(1 + 2 + 2 + 1 + 1 + 2);
-
-    const [odcinek] = input.acLineSegments;
-    expect(odcinek).toMatchObject({ mrid: 'kabel-1', length_m: 2000 });
-    expect(odcinek.r_ohm).toBeCloseTo(0.4, 10);
-    expect(odcinek.x_ohm).toBeCloseTo(0.2, 10);
-
-    expect(input.powerTransformers[0]).toMatchObject({ mrid: 'tr-1', substation_mrid: 'st-1', ratedS_mva: 0.63 });
-    // Stan łącznika z modelu — nie domyślny „zamknięty".
-    expect(input.breakers.map((b) => b.normalOpen)).toEqual([false, true]);
-
-    const xml = generateCimRdfXml(input);
-    expect(xml).toContain('<cim:Substation rdf:ID="st-1">');
-    expect(xml).toContain('<cim:ACLineSegment rdf:ID="kabel-1">');
-    expect(xml).toContain('<cim:Switch.normalOpen>true</cim:Switch.normalOpen>');
+  it('cgmes: serwer bez nagłówków wersji ⇒ człon wersji POMINIĘTY (nie dosztukowany z migawki)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => odpowiedzSerwera(200, 'PK', { 'content-type': 'application/zip' })));
+    const plik = await buildSldExportFile('cgmes', kontekst());
+    expect(plik.filename).toBe('schemat-sld_Siec_Wschod_Wariant_A.cgmes.zip');
   });
 
-  it('łącznik spoza pola nie dostaje pustej referencji kontenera (wskaźnik donikąd)', () => {
-    const bezPol = { ...modelZPolami(), bays: [] } as unknown as EnergyNetworkModel;
-    const xml = generateCimRdfXml(buildCimInput(bezPol));
-    expect(xml).toContain('<cim:Breaker rdf:ID="cb-1">');
-    expect(xml).not.toContain('rdf:resource="#"');
+  it('cgmes: odmowa 422 ⇒ wyjątek z treścią serwera słowo w słowo', async () => {
+    const odmowa = 'Eksport CGMES wstrzymany — model sieci jest niekompletny: Odbiór „Odbiór C” jest przyłączony do szyny, której nie ma w modelu';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => odpowiedzSerwera(422, JSON.stringify({ detail: odmowa }), { 'content-type': 'application/json' })),
+    );
+    await expect(buildSldExportFile('cgmes', kontekst())).rejects.toThrow(odmowa);
   });
 
-  it('BRAMKA: model pusty ⇒ zero obiektów (wołający przerywa eksport)', () => {
-    const pusty = {
-      ...modelZPolami(),
-      substations: [],
-      bays: [],
-      branches: [],
-      transformers: [],
-    } as unknown as EnergyNetworkModel;
-    expect(cimObjectCount(buildCimInput(pusty))).toBe(0);
+  it('cgmes: błąd serwera bez treści JSON ⇒ nazwany kod HTTP, nie pusty komunikat', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => odpowiedzSerwera(500, 'Internal Server Error', {})));
+    await expect(pobierzEksportCgmes('p')).rejects.toThrow('Eksport CGMES: serwer odpowiedział kodem HTTP 500.');
+  });
+
+  it('cgmes: brak aktywnego przypadku ⇒ nazwany wyjątek, zero wołania serwera', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    await expect(buildSldExportFile('cgmes', kontekst({ caseId: null }))).rejects.toThrow(
+      /brak aktywnego przypadku obliczeniowego/,
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('adres końcówki koduje identyfikator przypadku', () => {
+    expect(adresEksportuCgmes('a b/c')).toBe('/api/cases/a%20b%2Fc/enm/eksport-cgmes');
   });
 });
 

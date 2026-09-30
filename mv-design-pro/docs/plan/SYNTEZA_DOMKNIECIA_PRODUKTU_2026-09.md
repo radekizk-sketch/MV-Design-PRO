@@ -119,7 +119,8 @@ naprawialny w miejscu; świeżość wyników z koperty rewizji; wynik zawsze pok
 `analysis/voltage_profile/*` + `GET /api/quality/voltage-profile` ↔ `ui/voltage-profile/*` (0 wywołań trasy, 0 importów
 komponentu; B6 — rozstrzygane w W3-J/W6); `stability_rms` (0 konsumentów); `power_flow_unbalanced` (bez projektu nN
 fazowego); `validate_selectivity` (operacja bez ekranu); `sld_overrides` (trzy magazyny, jeden konsument); CGMES
-(1 843 linie, 46 testów, 0 tras); `load_profile_ref` (zapis bez odczytu); `der_dynamic` katalog ↔ `frt_hvrt` (stałe
+(1 843 linie, 46 testów, 0 tras — stan pomiaru; od 2026-09-30 eksport ma trasę `…/enm/eksport-cgmes` i pozycję
+menu eksportu, karta KASACJA-SCL-I-CIM-KLIENT; import nadal bez trasy); `load_profile_ref` (zapis bez odczytu); `der_dynamic` katalog ↔ `frt_hvrt` (stałe
 `tp/tiq/K` zaszyte — OD-15(b)); `GET /api/oze-analysis/frt-trajectories` ↔ ocena NC RfG (ewaluator nie czyta
 trajektorii); `certificate_evidence` w biegu NC RfG ↔ dokumenty (dowód certyfikacji dopięty, ale bez stopnia
 dowodowego testów); readiness `stability`/`frt_hvrt` ↔ rzeczywista zdolność (deklaruje gotowość ścieżki bez fizyki).
@@ -283,8 +284,9 @@ Nastawy poza modelem (druga prawda) i brak zapisu z koordynacji do `BayProtectio
 polaryzacja), admitancyjnych, 21, 87T, 25, 50BF, grup nastaw, macierzy TRIP; brak relacji „zabezpieczenie → chroniona
 gałąź" (przestrzenie kluczy prądów zwarciowych i roboczych rozłączne — zmierzone przez wątek badawczy; blokuje
 związanie prądu roboczego z biegiem rozpływu w koordynacji — A-4 wprowadza relację w W4); selektywność SN↔nN;
-koordynacja LoM z SPZ; iniekcja wtórna i czas zadziałania vs nastawa (W11); IEC 61850/SCL (decyzja zakresu — poza
-kolejką do W11).
+koordynacja LoM z SPZ; iniekcja wtórna i czas zadziałania vs nastawa (W11); IEC 61850/SCL (ROZSTRZYGNIĘTE 2026-09-30,
+decyzja K-14/D-41: poza wersją 1 — klientowy szkielet SCD skasowany, moduł SCL wyłącznie po danych właściciela D1–D8
+jako adapter backendowy).
 
 ### 21. Jakie luki istnieją w raportach?
 
@@ -587,8 +589,8 @@ nie produkt), **ODRZUCIĆ**.
    jako dowód) → W6-1.
 4. **Klasy projektów akceptacyjnych A–F = DoD produktu** (§60): każda ma test e2e na realnym backendzie jako bramkę
    CI (dziś: A przez import — W1; E nazwana w W8; C zależy od W6-5; D od W5; B od W10; F od W10).
-5. **Poza kolejką (bez zmian):** D-11 (hasz kolekcji ENM), B-01-RI, G11 (trójuzwojeniowe), IEC 61850 (decyzja zakresu
-   przy W11).
+5. **Poza kolejką (bez zmian):** D-11 (hasz kolekcji ENM), B-01-RI, G11 (trójuzwojeniowe), IEC 61850/SCL — ROZSTRZYGNIĘTE
+   2026-09-30 (K-14/D-41: poza wersją 1, wznowienie wyłącznie po danych D1–D8, adapter backendowy).
 
 ---
 

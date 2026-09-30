@@ -1903,7 +1903,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta ODMOWA-DANYCH-422 (2026-09-30): 557 -> 558 (+1 `network_model/odmowa_danych.py`
         # — nazwana odmowa danych dla 422, lisc stdlib-only). POMIAR guardem na drzewie karty.
         # Partia integracji 6 po DOWOD-CIEPLNY: 560 + 1 = 561. POMIAR guardem na drzewie partii.
-        "Przeskanowano 561 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta KASACJA-SCL-I-CIM-KLIENT (2026-09-30): 561 -> 562 (+1
+        # `application/cgmes/kompletnosc.py` — bramka kompletnosci eksportu CGMES, zero
+        # wpisow dlugu; application 30 plikow/suma 91 bez zmian). POMIAR guardem na drzewie karty.
+        "Przeskanowano 562 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2130,7 +2133,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (AB-P1), dlug 2/3 (PROOFPACK). POMIAR guardem na drzewie partii.
         # Karta DOWOD-CIEPLNY: application 244 -> 245 (+1 `application/slad_kroku.py`);
         # dlug i wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  application: pliki_skanowane=245, dlug=30 plikow/suma 91, "
+        # Karta KASACJA-SCL-I-CIM-KLIENT: application 245 -> 246 (+1
+        # `application/cgmes/kompletnosc.py`); dlug i wykluczenia BEZ ZMIANY. POMIAR guardem.
+        "  application: pliki_skanowane=246, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=6 plikow/suma 15",
     ]

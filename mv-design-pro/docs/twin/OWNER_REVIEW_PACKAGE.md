@@ -93,7 +93,7 @@ Format: **wymaganie** · powód (dowód) · priorytet · wpływ na architekturę
 38. **Zadania długotrwałe (202/status/anulowanie/postęp)** · sync w żądaniu (A9-10) · P0 · ADR-020 · W8 · —.
 39. **Snapshot OpenAPI + generowany klient TS; guard trasa↔konsument dwukierunkowy** · ręczne lustro, ≈70 sierot (A8-10, A9-04) · P1 · — · — · M0/M1.
 40. **Retencja i GC artefaktów biegów; backup/harmonogram; limity uploadu; kontrakt błędów z `request_id`** · A9 §9 · P2 · — · — · —.
-41. **CGMES z API/UI (EQ/TP/SSH/SV), DXF z backendu z blokami, SCL jako eksport projektu stacji (jeśli decyzja)** · A9-15/17/18 · P2 · architektura §24 · W14 · decyzje.
+41. **CGMES z API/UI (EQ/TP/SSH/SV), DXF z backendu z blokami, SCL jako eksport projektu stacji (jeśli decyzja)** · A9-15/17/18 · P2 · architektura §24 · W14 · decyzje. *Stan 2026-09-30 (karta KASACJA-SCL-I-CIM-KLIENT):* eksport CGMES EQ+TP z API i menu eksportu — ISTNIEJE; profile SSH/SV i import CGMES — nadal otwarte; SCL — wyłączony decyzją K-14/D-41.
 42. **Granica SCADA: as-designed vs as-operated; bez `pending_command` w modelu projektowym** · A9-19 · P1 · warstwy OPERATIONAL/MEASUREMENT · eksploatacja · ADR-023.
 
 ---
@@ -115,7 +115,7 @@ Format: **wymaganie** · powód (dowód) · priorytet · wpływ na architekturę
 | K-11 | Role §168 vs kanon 3 trybów zaawansowania | role | tryby | role jako profile ortogonalne (decyzja C-06) |
 | K-12 | Fix-action = 1 klik naprawy (§174) vs decyzja integracyjna D1 nawigacji ui2 | executor | nawigacja | executor (istnieje legacy) — zmiana decyzji D1 (C-… w FAZIE C) |
 | K-13 | Twin wielostanowiskowy (role, ślad „kto") vs decyzja właściciela 2026-08-05 (jednostanowiskowo, bez auth) | multi-user | single-user | zaprojektować pod serwer (aktor w komendach, `If-Match`), uruchamiać lokalnie; decyzja W-D1 |
-| K-14 | IEC 61850/SCL (§123) vs D-05a „nie budować bez konsumenta" | SCL | brak konsumenta | zdefiniować konsumenta (eksport SSD projektu stacji) lub potwierdzić wyłączenie (decyzja) |
+| K-14 | IEC 61850/SCL (§123) vs D-05a „nie budować bez konsumenta" | SCL | brak konsumenta | **ROZSTRZYGNIĘTE 2026-09-30** (doradca architektoniczny z delegacją właściciela O-59; wykonanie: karta KASACJA-SCL-I-CIM-KLIENT): wyłączenie potwierdzone — klientowy szkielet SCD skasowany, bramka wskrzeszenia w `scripts/legacy_public_path_guard.py`; moduł SCL powstanie wyłącznie po dostarczeniu danych właściciela D1–D8, jako adapter backendowy. Eksport modelu sieci = jeden: CGMES z backendu (`GET /api/cases/{case_id}/enm/eksport-cgmes`) |
 | K-15 | GIS (§122) vs D-12 odłożone | geo | brak | pola geo addytywne w wersji 1, tryb geo później (wymaganie 14) |
 | K-16 | „Montować trasy tylko z konsumentem UI" vs API integracyjne twin | API bez UI | guard montowania | rozszerzyć regułę o klasę „API integracyjne" w macierzy kompatybilności |
 | K-17 | Zero-Debt CLAUDE.md („wykryte = naprawione natychmiast") vs mandat §2/§180 (audyt bez implementacji) | naprawiać | nie naprawiać | mandat wygrywa w tej sesji; wszystkie defekty zarejestrowane (audyt, rejestry), naprawa od M0 po decyzji |
@@ -171,7 +171,7 @@ Format: **wymaganie** · powód (dowód) · priorytet · wpływ na architekturę
 | D-38 | Kolejność migracji M0 → M1 → wycinki pionowe równolegle z M2–M5 → M6 → M7; bramki ≥ 9/10 jako warunek scalenia; orkiestracja wykonawców kartami | migracja F-D1/5/7 | tak |
 | D-39 | Kasacja 191 i archiwizacja 464 dokumentów; los 28 rozdziałów SPEC V11 (archiwum w repo czy poza) | migracja F-D3, A10 Q3/Q4 | kasacja + archiwum w repo (jeden katalog `docs/archive/<rok-miesiąc>/`) |
 | D-40 | Lista sieci wzorcowych G01–G17 + sieć L (G00) — potwierdzenie listy §146 | migracja F-D4, A10 Q1 | przyjąć propozycję z planu migracji §4 |
-| D-41 | Zakres wersji 1 poza mandatem: 61850/SCL (konsument?), GIS tryb geo, niezawodność bez danych | migracja F-D6, K-14/K-15 | SCL: tylko jeśli wskazany konsument; GIS pola tak/tryb później |
+| D-41 | Zakres wersji 1 poza mandatem: 61850/SCL (konsument?), GIS tryb geo, niezawodność bez danych | migracja F-D6, K-14/K-15 | SCL: tylko jeśli wskazany konsument; GIS pola tak/tryb później. **Część SCL ROZSTRZYGNIĘTA 2026-09-30** (O-59, karta KASACJA-SCL-I-CIM-KLIENT): brak konsumenta ⇒ SCL poza wersją 1 (nazwana odmowa, warunek wznowienia: dane D1–D8, adapter backendowy); klientowe SCD i CIM skasowane, jedyny eksport modelu to CGMES EQ+TP z backendu. GIS i niezawodność — bez zmian |
 | D-42 | Które zapadki przekroczone na HEAD naprawić przed przebudową (wszystkie w M0-3) | A10 Q6 | wszystkie w M0 |
 | D-43 | Zależności raportów (reportlab, python-docx) obowiązkowe w produkcji i CI (skip = fail) | A10 Q8, A9-13/26 | tak |
 | D-44 | `symphony/` (orkiestracja agentów kodujących w produkcie) — kasacja lub przeniesienie poza produkt | A9 Q10 | kasacja z `backend/src` |

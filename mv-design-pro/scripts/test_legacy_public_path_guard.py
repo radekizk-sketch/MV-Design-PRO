@@ -2631,3 +2631,114 @@ def test_guard_accepts_clean_tree_without_abp1_resurrection(tmp_path, monkeypatc
 def test_guard_accepts_current_repo_state_abp1() -> None:
     """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo musi byc czysta po karcie AB-P1."""
     assert guard.check_abp1_dynamika_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# Karta KASACJA-SCL-I-CIM-KLIENT (2026-09-30, decyzja K-14/D-41) — jeden eksport
+# modelu sieci (CGMES z backendu). Iniekcje: kazda forma wskrzeszenia osobno.
+# ---------------------------------------------------------------------------
+
+
+def _patch_scl_cim(monkeypatch, tmp_path):
+    frontend_src = tmp_path / "frontend" / "src"
+    backend_src = tmp_path / "backend" / "src"
+    frontend_src.mkdir(parents=True, exist_ok=True)
+    backend_src.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", frontend_src)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", backend_src)
+    return frontend_src, backend_src
+
+
+def test_scl_cim_czysty_stan_bez_naruszen(tmp_path, monkeypatch) -> None:
+    _patch_scl_cim(monkeypatch, tmp_path)
+    assert guard.check_kasacja_scl_cim_klient_resurrection() == []
+
+
+@pytest.mark.parametrize("sciezka", guard.KASACJA_SCL_CIM_SCIEZKI_FRONTEND)
+def test_scl_cim_odtworzony_plik_jest_naruszeniem(tmp_path, monkeypatch, sciezka) -> None:
+    frontend_src, _ = _patch_scl_cim(monkeypatch, tmp_path)
+    plik = frontend_src / sciezka
+    plik.parent.mkdir(parents=True, exist_ok=True)
+    plik.write_text("export {};\n", encoding="utf-8")
+
+    violations = guard.check_kasacja_scl_cim_klient_resurrection()
+
+    assert any("[resurrected-module]" in v and sciezka in v for v in violations)
+
+
+@pytest.mark.parametrize("nazwa", guard.KASACJA_SCL_CIM_DEFINICJE_FRONTEND)
+def test_scl_cim_definicja_pod_inna_sciezka_jest_naruszeniem(tmp_path, monkeypatch, nazwa) -> None:
+    """Definicja wraca pod INNYM plikiem — guard skanuje caly `frontend/src`."""
+    frontend_src, _ = _patch_scl_cim(monkeypatch, tmp_path)
+    (frontend_src / "gdzies").mkdir()
+    (frontend_src / "gdzies" / "nowy.ts").write_text(
+        f"export function {nazwa}() {{ return ''; }}\n", encoding="utf-8"
+    )
+
+    violations = guard.check_kasacja_scl_cim_klient_resurrection()
+
+    assert any("[resurrected-definition]" in v and nazwa in v for v in violations)
+
+
+def test_scl_cim_definicja_lokalna_const_tez_jest_naruszeniem(tmp_path, monkeypatch) -> None:
+    frontend_src, _ = _patch_scl_cim(monkeypatch, tmp_path)
+    (frontend_src / "a.tsx").write_text(
+        "const generateCimRdfXml = () => '<rdf:RDF/>';\n", encoding="utf-8"
+    )
+    violations = guard.check_kasacja_scl_cim_klient_resurrection()
+    assert any("generateCimRdfXml" in v for v in violations)
+
+
+def test_scl_cim_nazwa_w_komentarzu_i_wywolanie_nie_sa_definicja(tmp_path, monkeypatch) -> None:
+    """Komentarz cytujacy kasacje i sam napis nazwy to nie definicja — guard milczy."""
+    frontend_src, _ = _patch_scl_cim(monkeypatch, tmp_path)
+    (frontend_src / "b.ts").write_text(
+        "/** Dawne `generateIec61850Scd` skasowane w karcie. */\n"
+        "// const NAMING_PRESETS = {} — historia\n"
+        "export const opis = 'buildCimInput';\n",
+        encoding="utf-8",
+    )
+    assert guard.check_kasacja_scl_cim_klient_resurrection() == []
+
+
+@pytest.mark.parametrize("format_id", ["iec61850", "cim", "scd"])
+def test_scl_cim_format_modelu_w_rejestrze_menu_jest_naruszeniem(
+    tmp_path, monkeypatch, format_id
+) -> None:
+    frontend_src, _ = _patch_scl_cim(monkeypatch, tmp_path)
+    rejestr = frontend_src / guard.KASACJA_SCL_CIM_REJESTR_FORMATOW
+    rejestr.parent.mkdir(parents=True, exist_ok=True)
+    rejestr.write_text(
+        "// dawniej: 'iec61850' i 'cim' (komentarz — nie narusza)\n"
+        f"export type SldExportFormat = 'svg' | '{format_id}';\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_kasacja_scl_cim_klient_resurrection()
+
+    assert [v for v in violations if "[resurrected-format]" in v] == [
+        f"[resurrected-format] frontend/src/{guard.KASACJA_SCL_CIM_REJESTR_FORMATOW}: "
+        f"format {format_id!r} w rejestrze menu (karta KASACJA-SCL-I-CIM-KLIENT — jedynym "
+        "eksportem modelu sieci jest CGMES z backendu (decyzja K-14/D-41))"
+    ]
+
+
+def test_scl_cim_niebramkowana_droga_do_bajtow_cgmes_jest_naruszeniem(
+    tmp_path, monkeypatch
+) -> None:
+    _, backend_src = _patch_scl_cim(monkeypatch, tmp_path)
+    (backend_src / "eksport.py").write_text(
+        "def export_eq_tp_bytes(enm):\n    return b'', b''\n", encoding="utf-8"
+    )
+
+    violations = guard.check_kasacja_scl_cim_klient_resurrection()
+
+    assert any(
+        "[resurrected-definition]" in v and "export_eq_tp_bytes" in v and "eksport.py" in v
+        for v in violations
+    )
+
+
+def test_scl_cim_zywe_drzewo_repo_jest_czyste() -> None:
+    assert guard.check_kasacja_scl_cim_klient_resurrection() == []

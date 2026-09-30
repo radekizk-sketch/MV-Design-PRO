@@ -2654,6 +2654,124 @@ def check_abp1_dynamika_resurrection() -> list[str]:
     return violations
 
 
+# Karta KASACJA-SCL-I-CIM-KLIENT (2026-09-30, decyzja K-14/D-41 doradcy
+# architektonicznego z delegacja wlasciciela O-59) — JEDEN eksport modelu sieci:
+# CGMES (IEC 61970-552 EQ + TP) budowany WYLACZNIE w backendzie
+# (`application/cgmes/service.py::export_cgmes` za bramka kompletnosci
+# `application/cgmes/kompletnosc.py`, trasa `GET /api/cases/{case_id}/enm/
+# eksport-cgmes`). Skasowane, bo liczyly ten sam eksport drugi raz albo nie mialy
+# konsumenta (pomiar grepem PRZED i PO w meldunku karty):
+#   * klientowy szkielet SCL/SCD (`exportIec61850.ts`) — 0 konsumentow poza menu,
+#     brak IED/LDevice; modul SCL powstanie wylacznie po danych wlasciciela D1–D8
+#     jako adapter BACKENDOWY, nigdy w przegladarce;
+#   * klientowy „minimalny CIM" (`exportCim.ts`) + mapowanie ENM
+#     (`v3/export/exportModelData.ts`) — druga sciezka obok backendowego CGMES;
+#   * martwa sciezka eksportu v2 (`SldExportButton.tsx`, `downloadSldExport.ts`,
+#     `exportSvg.ts`, `exportPdf.ts` — ten ostatni jawny szkielet „NIE generuje
+#     bajtow") — 0 konsumentow produkcyjnych, jedyna sciezka rysunku to
+#     `v3/export/sldExport.ts`;
+#   * `ui/reports/osdOperatorPresets.ts` — 0 konsumentow, jedyne miejsce
+#     deklarujace „Plik SCD ... (dla SCADA)" jako zalacznik produktu;
+#   * `NAMING_PRESETS` (`ui/shared/fileNamingConvention.ts`) — 0 konsumentow,
+#     druga, zegarowa konwencja nazw eksportu schematu (preset `sld_export` z
+#     formatami 'scd'/'cim') obok jedynej `v3/export/exportNames.ts`;
+#   * backendowe `export_eq_tp_bytes` (`infrastructure/cgmes/cgmes_exporter.py`) —
+#     po wpieciu bramki kompletnosci druga, NIEBRAMKOWANA droga do bajtow CGMES
+#     bez konsumenta.
+# Formaty 'iec61850'/'cim'/'scd' nie wracaja do rejestru menu (`formats.ts`).
+KASACJA_SCL_CIM_SCIEZKI_FRONTEND: tuple[str, ...] = (
+    "ui/sld/v2/export/exportIec61850.ts",
+    "ui/sld/v2/export/exportCim.ts",
+    "ui/sld/v2/export/exportSvg.ts",
+    "ui/sld/v2/export/exportPdf.ts",
+    "ui/sld/v2/export/downloadSldExport.ts",
+    "ui/sld/v2/export/SldExportButton.tsx",
+    "ui/sld/v3/export/exportModelData.ts",
+    "ui/reports/osdOperatorPresets.ts",
+)
+KASACJA_SCL_CIM_DEFINICJE_FRONTEND: tuple[str, ...] = (
+    "generateIec61850Scd",
+    "downloadIec61850Scd",
+    "generateCimRdfXml",
+    "downloadCimRdfXml",
+    "buildIec61850Input",
+    "buildCimInput",
+    "iec61850ObjectCount",
+    "cimObjectCount",
+    "SldExportButton",
+    "downloadSldSvg",
+    "downloadSldSvgBySelector",
+    "exportSldSvg",
+    "buildPdfExportSpec",
+    "OSD_OPERATOR_PRESETS",
+    "NAMING_PRESETS",
+)
+KASACJA_SCL_CIM_DEFINICJE_BACKEND: frozenset[str] = frozenset({"export_eq_tp_bytes"})
+#: Rejestr formatow menu eksportu — jedyne miejsce, gdzie identyfikator formatu
+#: staje sie pozycja menu.
+KASACJA_SCL_CIM_REJESTR_FORMATOW = "ui/sld/v3/export/formats.ts"
+_TS_ZAKAZANY_FORMAT_MODELU = re.compile(r"""['"](iec61850|cim|scd)['"]""")
+
+
+def _ts_definicja(nazwa: str) -> re.Pattern[str]:
+    return re.compile(
+        r"^[ \t]*(?:export\s+(?:default\s+)?)?(?:declare\s+)?(?:async\s+)?"
+        rf"(?:function|const|let|var|class|interface|type|enum)\s+{re.escape(nazwa)}\b",
+        re.MULTILINE,
+    )
+
+
+def check_kasacja_scl_cim_klient_resurrection() -> list[str]:
+    """Karta KASACJA-SCL-I-CIM-KLIENT (2026-09-30): klientowe eksportery modelu
+    sieci (SCL/SCD, CIM), martwa sciezka eksportu v2, presety bez konsumenta i
+    niebramkowana droga do bajtow CGMES nie wracaja — patrz komentarz nad
+    `KASACJA_SCL_CIM_SCIEZKI_FRONTEND`."""
+    violations: list[str] = []
+    znak = (
+        "karta KASACJA-SCL-I-CIM-KLIENT — jedynym eksportem modelu sieci jest CGMES "
+        "z backendu (decyzja K-14/D-41)"
+    )
+    for sciezka in KASACJA_SCL_CIM_SCIEZKI_FRONTEND:
+        if (FRONTEND_SRC_DIR / sciezka).exists():
+            violations.append(
+                f"[resurrected-module] frontend/src/{sciezka}: usuniete ({znak}) — nie odtwarzaj"
+            )
+
+    if FRONTEND_SRC_DIR.exists():
+        wzorce = {n: _ts_definicja(n) for n in KASACJA_SCL_CIM_DEFINICJE_FRONTEND}
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                tekst = _bez_komentarzy_ts(read_text(ts_file))
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                for nazwa, wzorzec in wzorce.items():
+                    if wzorzec.search(tekst):
+                        violations.append(f"[resurrected-definition] {rel_path}: {nazwa} ({znak})")
+        rejestr = FRONTEND_SRC_DIR / KASACJA_SCL_CIM_REJESTR_FORMATOW
+        if rejestr.exists():
+            for trafienie in _TS_ZAKAZANY_FORMAT_MODELU.finditer(
+                _bez_komentarzy_ts(read_text(rejestr))
+            ):
+                violations.append(
+                    f"[resurrected-format] frontend/src/{KASACJA_SCL_CIM_REJESTR_FORMATOW}: "
+                    f"format {trafienie.group(1)!r} w rejestrze menu ({znak})"
+                )
+
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            rel_path = (
+                py_file.relative_to(ROOT).as_posix()
+                if py_file.is_relative_to(ROOT)
+                else str(py_file)
+            )
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            for nazwa, lineno in _definicje_py(tree):
+                if nazwa in KASACJA_SCL_CIM_DEFINICJE_BACKEND:
+                    violations.append(
+                        f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak})"
+                    )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -2676,6 +2794,7 @@ def main() -> int:
         + check_uniewazniacz_resurrection()
         + check_pakiet_l_resurrection()
         + check_abp1_dynamika_resurrection()
+        + check_kasacja_scl_cim_klient_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

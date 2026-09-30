@@ -3,6 +3,7 @@ ENM API — persistence + validation + run dispatch + topology operations.
 
 Routes:
   GET  /api/cases/{case_id}/enm              → current EnergyNetworkModel
+  GET  /api/cases/{case_id}/enm/eksport-cgmes → archiwum CGMES (IEC 61970 EQ + TP), ZIP
   PUT  /api/cases/{case_id}/enm              → autosave (revision++, hash recomputed)
   GET  /api/cases/{case_id}/enm/validate     → ValidationResult
   GET  /api/cases/{case_id}/enm/topology     → TopologyGraph (substations, bays, junctions, corridors)
@@ -65,6 +66,8 @@ from application.analyses.swz.service import build_swz_view
 from application.analyses.wytrzymalosc_aparatury_pol import (
     zbuduj_widok_wytrzymalosci_aparatury,
 )
+from application.cgmes.kompletnosc import ModelNiekompletnyDlaCgmesError
+from application.cgmes.service import export_cgmes
 from application.eligibility_service import EligibilityService
 from application.field_read_model import build_field_read_model
 from application.protection_read_model import build_protection_read_model
@@ -107,7 +110,7 @@ from enm.topology_ops import (
 )
 from enm.v2_projection import project_enm_v1_to_v2
 from enm.validator import ENMValidator
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from network_model.catalog.materialization import pozycja_w_katalogu
 from pydantic import BaseModel, Field
 
@@ -146,6 +149,33 @@ def get_enm(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Return current EnergyNetworkModel for case."""
     enm = _get_enm(klucz)
     return enm.model_dump(mode="json")
+
+
+@router.get("/{case_id}/enm/eksport-cgmes")
+def get_enm_eksport_cgmes(case_id: str, klucz: KluczTwin) -> Response:
+    """Eksport modelu sieci do CGMES (IEC 61970-552, profile EQ + TP) jako archiwum ZIP.
+
+    JEDYNA ścieżka eksportu modelu sieci (karta KASACJA-SCL-I-CIM-KLIENT, decyzja
+    K-14/D-41): klient nie buduje pliku modelu sam. Wejście: ENM tylko do odczytu
+    (``get_enm`` — żadnego zapisu, żadnej rewizji). Wynik deterministyczny bajt w
+    bajt (``application/cgmes/service.py`` — stały porządek członów, przypięty czas
+    ZIP, zero znaczników czasu). Model, z którego nie powstaje poprawny graf CGMES,
+    dostaje 422 z nazwanymi brakami (``application/cgmes/kompletnosc.py``), nie 500.
+    Nazwę pliku nadaje klient wg jednej konwencji nazw eksportu
+    (``ui/sld/v3/export/exportNames.ts``), więc nagłówek jej nie powtarza —
+    podaje natomiast rewizję i odcisk WYEKSPORTOWANEGO modelu
+    (``X-Model-Rewizja``/``X-Model-Odcisk``), żeby nazwa pliku niosła wersję,
+    którą plik faktycznie zawiera, a nie wersję migawki przeglądarki.
+    """
+    enm = _get_enm(klucz)
+    try:
+        archiwum = export_cgmes(enm)
+    except ModelNiekompletnyDlaCgmesError as exc:
+        raise HTTPException(status_code=422, detail=exc.komunikat_pl()) from exc
+    naglowki = {"Content-Disposition": "attachment", "X-Model-Rewizja": str(enm.header.revision)}
+    if enm.header.hash_sha256:
+        naglowki["X-Model-Odcisk"] = enm.header.hash_sha256
+    return Response(content=archiwum, media_type="application/zip", headers=naglowki)
 
 
 @router.get("/{case_id}/enm/v2-projection")

@@ -411,8 +411,7 @@ export function getDeviceStyle(state: DeviceState): DeviceStyle {
 // jasne tło (oszczędność tonera + zgodność z konwencją CAD).
 //
 // LIGHT_TECHNICAL_* stałe są używane przez:
-// - frontend/src/ui/sld/export/exportSvg.ts (planowany F4)
-// - frontend/src/ui/sld/export/exportPdf.ts (planowany F4)
+// - frontend/src/ui/sld/v2/theme/themeContext.tsx (tryb light_technical)
 // - print stylesheets dla SLD viewer
 //
 // Klucze są równoległe do dark_scada tokenów (parity), tylko z zamienioną paletą.

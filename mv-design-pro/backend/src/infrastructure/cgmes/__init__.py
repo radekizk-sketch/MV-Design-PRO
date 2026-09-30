@@ -11,7 +11,7 @@ This package contains ZERO physics and imports neither solvers nor analysis.
 
 from __future__ import annotations
 
-from .cgmes_exporter import build_eq_tp_trees, export_eq_tp_bytes
+from .cgmes_exporter import build_eq_tp_trees
 from .cgmes_importer import (
     CgmesImportResult,
     CgmesImportStatus,
@@ -24,7 +24,6 @@ from .units import fmt_float
 
 __all__ = [
     "build_eq_tp_trees",
-    "export_eq_tp_bytes",
     "import_from_eq_tp",
     "import_from_side_car",
     "CgmesImportResult",
