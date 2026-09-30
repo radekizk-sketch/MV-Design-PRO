@@ -171,9 +171,11 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // (+1712 jednolicie) — regeneracja fikstury: nowe identyfikatory (ziarno odcinka
     // SN od CV-4.3 K1) zmieniają remis kolejności ciągów odgałęzień; pełne
     // uzasadnienie i dowód etapowy w `buildScene.test.ts` (vertical_length_probe).
+    // SLD-SUBSTRAT (kontynuacja): L1/L2 +264 = 33 strzałki odbioru stacji (dane: magazyn
+    // modelu dokłada odbiory odpływom nN) — dowód w `buildScene.test.ts`.
     expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22752);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(45728);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(45728);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(45992);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(45992);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {

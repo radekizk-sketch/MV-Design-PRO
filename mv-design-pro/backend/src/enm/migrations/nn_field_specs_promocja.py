@@ -29,18 +29,21 @@ WŁASNOŚCI (jak pozostałe automigracje ENM):
   (pola źródłowe DER, `add_converter_source` wariant `nn_side`) — różne klucze
   meta, ten sam mechanizm relokacji.
 
-WIĄZANIE KATALOGOWE APARATU. Stare wpisy `nn_field_specs` w praktyce NIE
-niosą wiązania katalogowego (operacje `add_nn_outgoing_field` /
-`_append_nn_source_meta_field` go nigdy nie zapisywały — sprawdzone w kodzie
-źródłowym `enm/domain_operations_v2.py`). Migracja i tak SZUKA go
-(`meta.catalog_binding` — pojedyncza nazwa, konwencja pól SN; `meta.
-catalog_bindings` — alternatywna nazwa z karty) na wypadek danych zapisanych
-inną drogą (import, edycja ręczna). Gdy go nie ma — albo materializacja się
-nie powiedzie (nieistniejąca pozycja) — aparat wchodzi do modelu BEZ wiązania
-i ze znacznikiem `META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA`, który walidator
-(`enm/validator.py`, E061/W061) czyta jako wyjątek: BLOCKER (E061) staje się
-WARNING (W061) tylko dla gałęzi z TĄ migracją — ręcznie tworzona gałąź nN bez
-wiązania zostaje BLOCKER.
+WIĄZANIE KATALOGOWE APARATU. Wpis `nn_field_specs` niesie wiązanie wtedy, gdy
+zapisała je operacja tworząca (szablon stacji: `meta.catalog_bindings` odpływów;
+import, edycja ręczna: `meta.catalog_binding`). Migracja przenosi je TĄ SAMĄ
+operacją, którą projektant naprawia brak ręcznie — `assign_catalog_to_element`
+(karta SLD-SUBSTRAT, kontynuacja): dawniej migracja materializowała pozycję
+własną ścieżką i wynik różnił się od akcji naprawczej (brak
+`meta.catalog_item_version`), czyli dwie drogi tej samej zmiany modelu. Gdy
+wiązania nie ma — albo operacja je odrzuci (nieistniejąca pozycja, kategoria
+niepasująca do aparatu) — aparat wchodzi do modelu BEZ wiązania i ze znacznikiem
+`META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA` (odmowa operacji zapisana obok, w
+`META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA`). Walidator (`enm/validator.py`)
+czyta znacznik jako W061 — nazwana pozycja gotowości z akcją naprawczą
+wskazującą aparat i pole nN, z którego powstał; ręcznie tworzona gałąź nN bez
+wiązania zostaje E061. Brak katalogu blokuje analizy, które czytają dane
+aparatu nN (bramka kwalifikacji SWZ nN), a nie rysunek.
 
 ZASADA TORU (karta POLA-W-TORZE, §0 pkt 1). Aparat pola nN leży w torze prądowym
 elementu, któremu pole służy — promocja PRZEPINA ten element na zacisk pola (szynę za
@@ -71,9 +74,6 @@ import json
 from typing import Any
 
 from enm.models import Bus, EnergyNetworkModel, Substation, SwitchBranch
-from network_model.catalog.materialization import materialize_catalog_binding
-from network_model.catalog.repository import get_default_mv_catalog
-from network_model.catalog.types import CatalogBinding
 from network_model.nazwy import nazwa_nadana
 
 MIGRATION_VERSION = "nn_field_specs_promocja_001"
@@ -98,6 +98,11 @@ META_KLUCZ_GALAZ_ROLA_POLA = "nn_field_migrowana_rola"
 #: RĘCZNIE bez wiązania zostaje BLOCKER, ta z migracji (dane historyczne,
 #: których katalog nigdy nie widział) — WARNING.
 META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA = "nn_promocja_bez_wiazania_katalogowej"
+
+#: Klucz meta gałęzi: kod odmowy `assign_catalog_to_element`, gdy wpis NIÓSŁ
+#: wiązanie, ale operacja go nie przyjęła — brak katalogu ma nazwaną przyczynę,
+#: nie jest cichym zerem.
+META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA = "nn_promocja_odmowa_wiazania"
 
 _NAMESPACE_APARAT_NN = "APARAT_NN"
 
@@ -227,44 +232,55 @@ def wymaga_migracji(enm: EnergyNetworkModel) -> bool:
     return bool(_do_przepiecia(enm))
 
 
-def _materializuj_aparat(
-    catalog_binding_raw: object,
-) -> tuple[dict[str, Any] | None, str | None]:
-    """Zmaterializuj wiązanie katalogowe aparatu pola (APARAT_NN), gdy dane są.
-
-    Zwraca (materialized_params, catalog_item_id) albo (None, None), gdy
-    wiązania brak lub materializacja odmówiła (`wynik.success is False` — pozycji nie ma
-    w katalogu, wiązanie niekompletne). Odmowa danych nie przerywa migracji (przebiega
-    przy KAŻDYM odczycie modelu, `enm/store.py`); wyjątek materializacji jest błędem
-    programu i wybucha (karta #151 — dawne `except Exception` gubiło po cichu wiązanie
-    aparatu, a model szedł dalej bez jego parametrów).
-    """
-    if not isinstance(catalog_binding_raw, dict):
-        return None, None
-    item_id = (
-        catalog_binding_raw.get("catalog_item_id")
-        or catalog_binding_raw.get("catalog_ref")
-        or catalog_binding_raw.get("item_id")
-    )
+def _wiazanie_z_wpisu(spec: dict[str, Any]) -> dict[str, str] | None:
+    """Wiązanie aparatu zapisane we wpisie pola nN (``meta.catalog_binding`` albo
+    ``meta.catalog_bindings``) w kształcie payloadu ``assign_catalog_to_element``;
+    ``None``, gdy wpis nie wskazuje pozycji (np. wiązanie źródła przekształtnikowego
+    ``catalog_bindings.source_converter`` — to NIE jest aparat pola)."""
+    surowe_meta = spec.get("meta")
+    meta: dict[str, Any] = surowe_meta if isinstance(surowe_meta, dict) else {}
+    surowe = meta.get("catalog_binding")
+    if surowe is None:
+        surowe = meta.get("catalog_bindings")
+    if not isinstance(surowe, dict):
+        return None
+    item_id = surowe.get("catalog_item_id") or surowe.get("catalog_ref") or surowe.get("item_id")
     if not isinstance(item_id, str) or not item_id.strip():
-        return None, None
-    binding = CatalogBinding.from_dict(
-        {
-            "catalog_namespace": _NAMESPACE_APARAT_NN,
-            "catalog_item_id": item_id.strip(),
-            "catalog_item_version": catalog_binding_raw.get("catalog_item_version") or "2024.1",
-            "materialize": True,
-        }
-    )
-    wynik = materialize_catalog_binding(binding, get_default_mv_catalog())
-    if not wynik.success:
-        return None, None
-    parametry = {
-        "catalog_item_id": binding.catalog_item_id,
-        "catalog_item_version": binding.catalog_item_version or None,
-        **wynik.solver_fields,
+        return None
+    wersja = surowe.get("catalog_item_version")
+    return {
+        "catalog_namespace": _NAMESPACE_APARAT_NN,
+        "catalog_item_id": item_id.strip(),
+        "catalog_item_version": wersja if isinstance(wersja, str) and wersja else "2024.1",
     }
-    return parametry, binding.catalog_item_id
+
+
+def _przypisz_wiazania(
+    enm: EnergyNetworkModel, wiazania: list[tuple[str, dict[str, str]]]
+) -> EnergyNetworkModel:
+    """Przypisz wiązania aparatom operacją ``assign_catalog_to_element`` (ta sama
+    operacja co akcja naprawcza projektanta). Odmowa operacji (słownik z `error`)
+    zostawia aparat bez wiązania, z kodem odmowy w meta, i nie przerywa migracji
+    (przebiega przy KAŻDYM odczycie modelu, `enm/store.py`); wyjątek operacji jest
+    błędem programu i wybucha (karta #151 — dawne `except Exception` w materializacji
+    gubiło po cichu wiązanie aparatu, a model szedł dalej bez jego parametrów)."""
+    # Import leniwy: `enm.domain_operations` importuje ten moduł (klucze meta).
+    from enm.domain_operations import assign_catalog_to_element
+
+    dane = enm.model_dump(mode="json")
+    for aparat_ref, wiazanie in wiazania:
+        wynik = assign_catalog_to_element(
+            dane, {"element_ref": aparat_ref, "catalog_binding": wiazanie}
+        )
+        if wynik.get("error"):
+            for galaz in dane["branches"]:
+                if galaz["ref_id"] == aparat_ref:
+                    galaz["meta"][META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA] = str(
+                        wynik.get("error_code") or "catalog.assign_failed"
+                    )
+            continue
+        dane = wynik["snapshot"]
+    return EnergyNetworkModel.model_validate(dane)
 
 
 def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
@@ -281,6 +297,7 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
     bus_by_ref = {bus.ref_id: bus for bus in zmigrowany.buses}
     promowane = _already_promoted_field_refs(zmigrowany)
     zmieniono = False
+    do_przypisania: list[tuple[str, dict[str, str]]] = []
 
     for substation in zmigrowany.substations:
         specs = _promotable_specs(substation)
@@ -323,18 +340,9 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
             zmigrowany.buses.append(nowa_szyna)
             bus_by_ref[downstream_bus_ref] = nowa_szyna
 
-            catalog_binding_raw = (spec.get("meta") or {}).get("catalog_binding")
-            if catalog_binding_raw is None:
-                catalog_binding_raw = (spec.get("meta") or {}).get("catalog_bindings")
-            materialized_params, catalog_item_id = _materializuj_aparat(catalog_binding_raw)
-
-            branch_meta: dict[str, Any] = {
-                META_KLUCZ_GALAZ_ZRODLO_FIELD_REF: field_ref,
-                META_KLUCZ_GALAZ_ROLA_POLA: spec.get("bay_role"),
-            }
-            if catalog_item_id is None:
-                branch_meta[META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA] = True
-
+            # Aparat powstaje BEZ wiązania (stan identyczny z tym, który naprawia
+            # projektant); wiązanie zapisane we wpisie przypisuje niżej ta sama
+            # operacja, która znacznik braku zdejmuje.
             aparat = SwitchBranch(
                 ref_id=apparatus_ref,
                 name=nazwa_nadana(spec.get("name")) or "Aparat pola nN",
@@ -342,14 +350,17 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
                 from_bus_ref=station_bus.ref_id,
                 to_bus_ref=downstream_bus_ref,
                 status="closed",
-                catalog_ref=catalog_item_id,
-                catalog_namespace=_NAMESPACE_APARAT_NN if catalog_item_id else None,
-                source_mode="KATALOG" if catalog_item_id else "MIGRACJA",
-                parameter_source="CATALOG" if catalog_item_id else None,
-                materialized_params=materialized_params,
-                meta=branch_meta,
+                source_mode="MIGRACJA",
+                meta={
+                    META_KLUCZ_GALAZ_ZRODLO_FIELD_REF: field_ref,
+                    META_KLUCZ_GALAZ_ROLA_POLA: spec.get("bay_role"),
+                    META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA: True,
+                },
             )
             zmigrowany.branches.append(aparat)
+            wiazanie = _wiazanie_z_wpisu(spec)
+            if wiazanie is not None:
+                do_przypisania.append((apparatus_ref, wiazanie))
             promowane.add(field_ref)
             zmieniono = True
             stacja_zmieniona = True
@@ -373,4 +384,6 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
 
     if not zmieniono:
         return enm, False
+    if do_przypisania:
+        zmigrowany = _przypisz_wiazania(zmigrowany, do_przypisania)
     return zmigrowany, True

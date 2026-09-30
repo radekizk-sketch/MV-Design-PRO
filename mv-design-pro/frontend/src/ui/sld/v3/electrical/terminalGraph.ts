@@ -79,6 +79,9 @@ export interface ConductingEdge {
   readonly fromBusRef: string;
   readonly toBusRef: string;
   readonly status: 'closed' | 'open';
+  /** `Branch.catalog_ref` — wiązanie z pozycją katalogu (`null` = brak wiązania;
+   *  ten sam predykat co backendowe E061/W061 `not branch.catalog_ref`). */
+  readonly catalogRef: string | null;
   readonly catalogNamespace: string | null;
   readonly materializedParams: Readonly<Record<string, unknown>> | null;
 }
@@ -223,6 +226,7 @@ export function buildTerminalGraph(enm: EnergyNetworkModel): TerminalGraph {
       fromBusRef: branch.from_bus_ref,
       toBusRef: branch.to_bus_ref,
       status: branch.status,
+      catalogRef: (branch as { catalog_ref?: string | null }).catalog_ref || null,
       catalogNamespace: branch.catalog_namespace ?? null,
       materializedParams:
         (branch.materialized_params as Readonly<Record<string, unknown>> | null | undefined) ?? null,

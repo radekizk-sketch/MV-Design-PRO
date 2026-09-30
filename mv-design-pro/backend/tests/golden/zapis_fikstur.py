@@ -41,12 +41,24 @@ DOBÓR ``CYFRY_ZNACZACE = 12`` (dowód w meldunku karty):
   świeża odpowiedź różni się od niego wyłącznie w tolerancji zmierzonej testem tego
   generatora): ``eksport_fixtur_harnessu.tresc_do_zapisu`` i
   ``eksport_fixtur_projekcji_nn.tresc_do_zapisu``.
+
+KOTWICA W SZUMIE DLA WSZYSTKICH GENERATORÓW JSON (karta SLD-SUBSTRAT, kontynuacja,
+``tresc_z_kotwica`` niżej). Pomiar 2026-09-29 po zmianie maszyny wirtualnej: nakładka
+rozpływu ``s92Rozplyw`` różniła się od pliku zatwierdzonego o 2·10⁻⁹ względnie (cos φ
+źródła GPZ 0.953902502426 → 0.953902502736), przy czym ten sam kod karty z fazy
+pierwszej (``79869f91``) daje na tej maszynie DOKŁADNIE nową wartość — to szum zbieżności
+Newtona-Raphsona, nie zmiana danych. 12 cyfr znaczących go nie usuwa (siedzi w 10.), więc
+generatory fikstur sieci SLD, substratu 52 stacji, DEMO-OZE-SC i sieci pokazowej zapisują
+treść przez kotwicę, a ich testy świeżości porównują plik z treścią po kotwicy — ten sam
+predykat po obu stronach.
 """
 
 from __future__ import annotations
 
 import json
 import math
+import re
+from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -118,3 +130,35 @@ def przypnij_identyfikatory_zrzutu(enm: dict[str, Any]) -> None:
         for element in kolekcja:
             if isinstance(element, dict) and "id" in element and element.get("ref_id"):
                 element["id"] = str(identyfikator_elementu(str(element["ref_id"])))
+
+
+#: Liczba w tekście JSON (także w łańcuchu, np. podstawieniu wzoru śladu White Box).
+_LICZBA_JSON = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
+
+
+def tresc_z_kotwica(plik: Path, tresc: str) -> str:
+    """Treść, którą generator fikstury JSON zapisuje pod ``plik`` — KOTWICA W SZUMIE.
+
+    Plik na dysku zostaje BAJT W BAJT, gdy świeża treść różni się od niego WYŁĄCZNIE
+    wartościami liczb, i to w tolerancji przenośności między maszynami
+    (``tests.ci.tolerancja_fikstur.roznice_z_tolerancja`` — ten sam predykat co harness
+    scen i projekcje nN). Szkielet tekstu bez liczb (klucze, kolejność, wcięcia, łańcuchy)
+    musi być identyczny — zmiana formatu, nazwy albo struktury zawsze przechodzi do pliku.
+    Brak pliku albo treść nie-JSON = świeża treść. Test świeżości porównuje plik z
+    wynikiem tej funkcji, więc zapis i porównanie mają jedno źródło prawdy."""
+    if not plik.exists():
+        return tresc
+    na_dysku = plik.read_text(encoding="utf-8")
+    if na_dysku == tresc:
+        return tresc
+    if _LICZBA_JSON.sub("#", na_dysku) != _LICZBA_JSON.sub("#", tresc):
+        return tresc
+    try:
+        zapisane = json.loads(na_dysku)
+        swieze = json.loads(tresc)
+    except ValueError:
+        return tresc
+    # Import leniwy: moduł tolerancji żyje w ``tests/ci`` (współdzielony z harnessem).
+    from tests.ci.tolerancja_fikstur import roznice_z_tolerancja
+
+    return na_dysku if not roznice_z_tolerancja(zapisane, swieze) else tresc

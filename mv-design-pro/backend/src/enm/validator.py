@@ -31,6 +31,7 @@ from .fix_actions import FixAction
 from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna, parsuj_grupe_polaczen
 from .interlock_rules import earthing_interlock_violation
 from .migrations.nn_field_specs_promocja import (
+    META_KLUCZ_GALAZ_ZRODLO_FIELD_REF,
     META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA,
 )
 from .models import (
@@ -83,6 +84,21 @@ def _oznaczenia_aparatow(aparaty: Sequence[object]) -> str:
     return ", ".join(
         str(getattr(aparat, "designation", None) or "aparat bez oznaczenia") for aparat in aparaty
     )
+
+
+def _pole_nn_i_stacja(enm: EnergyNetworkModel, field_ref: object) -> tuple[str | None, str | None]:
+    """Nazwa pola nN (`Substation.meta.nn_field_specs`) o danym `field_ref` i nazwa
+    jego stacji — do pozycji gotowości aparatu z automigracji; ``(None, None)``,
+    gdy wpisu nie ma (ref osierocony)."""
+    if not isinstance(field_ref, str) or not field_ref:
+        return None, None
+    for stacja in enm.substations:
+        meta = stacja.meta if isinstance(stacja.meta, dict) else {}
+        for spec in meta.get("nn_field_specs") or []:
+            if isinstance(spec, dict) and spec.get("field_ref") == field_ref:
+                nazwa = spec.get("name")
+                return (str(nazwa) if nazwa else None), stacja.name
+    return None, None
 
 
 def _strict_port_binding_enabled() -> bool:
@@ -2416,23 +2432,39 @@ class ENMValidator:
                 continue
             branch_meta = branch.meta if isinstance(branch.meta, dict) else {}
             if branch_meta.get(META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA):
+                # Karta SLD-SUBSTRAT (kontynuacja): pozycja gotowości NAZYWA pole nN,
+                # z którego aparat powstał, i jego stację, a akcja naprawcza wskazuje
+                # TEN aparat i TO pole — projektant nie szuka, którego z odpływów
+                # dotyczy brak. Brak katalogu blokuje analizy czytające dane aparatu
+                # nN (bramka kwalifikacji SWZ nN), nie rysunek.
+                field_ref = branch_meta.get(META_KLUCZ_GALAZ_ZRODLO_FIELD_REF)
+                nazwa_pola, nazwa_stacji = _pole_nn_i_stacja(enm, field_ref)
+                opis_pola = (
+                    f" — pole „{nazwa_pola}” stacji „{nazwa_stacji}”"
+                    if nazwa_pola and nazwa_stacji
+                    else ""
+                )
                 issues.append(
                     ValidationIssue(
                         code="W061",
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
-                            f"{opis_obiektu(branch, 'Gałąź nN')} (z automigracji pól nN) nie ma "
-                            "wiązania z katalogiem kabli nN albo aparatów nN — dane "
-                            "katalogowe pola źródłowego nie były dostępne przy migracji."
+                            f"{opis_obiektu(branch, 'Gałąź nN')}{opis_pola} (z automigracji "
+                            "pól nN) nie ma wiązania z katalogiem aparatów nN — pole nie "
+                            "wskazywało pozycji katalogu."
                         ),
                         element_refs=[branch.ref_id],
                         wizard_step_hint="K6",
-                        suggested_fix="Przypisz element z katalogu kabli nN albo aparatów nN.",
+                        suggested_fix="Przypisz aparat z katalogu aparatów nN.",
                         fix_action=FixAction(
                             action_type="SELECT_CATALOG",
                             element_ref=branch.ref_id,
                             modal_type="BranchModal",
-                            payload_hint={"required": "catalog_ref"},
+                            payload_hint={
+                                "required": "catalog_ref",
+                                "catalog_namespace": "APARAT_NN",
+                                "field_ref": field_ref,
+                            },
                         ),
                     )
                 )

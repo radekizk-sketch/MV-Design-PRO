@@ -28,6 +28,10 @@ APARAT_POLA_SN = "sw-cb-abb-vd4-17kv-630a"
 KABEL_SN = "cable-tfk-yakxs-3x120"
 ZRODLO_GPZ = "src-gpz-15kv-250mva-rx010"
 TRANSFORMATOR_630 = "tr-sn-nn-15-04-630kva-dyn11"
+LINIA_SN = "line-base-al-st-70"
+ZKSN = "ZKSN-2P-630A"
+SLUP_ROZGALEZNY = "SLUP-ODG-12"
+LACZNIK_SEKCYJNY = "sw-ls-schneider-rm6-17kv-400a"
 
 
 class BladBudowy(RuntimeError):
@@ -109,25 +113,6 @@ class KlientBudowy:
         """Model tak, jak widzi go frontend (``GET /api/cases/{case}/enm``)."""
         return self._klient.get(f"/api/cases/{self.case_id}/enm").json()
 
-    def domknij_aparaty_nn(self, glowny: str, odplywowy: str = "cb_nn_250a") -> None:
-        """Wiąże z katalogiem aparaty pól nN, które automigracja promocji pól nN wprowadziła
-        do modelu BEZ wiązania (``meta.nn_promocja_bez_wiazania_katalogowej`` — ostrzeżenie
-        W061). To akcja naprawcza projektanta (``assign_catalog_to_element``): bez niej
-        graf elektryczny SLD uznaje aparat w aktywnym torze nN za nierozpoznany
-        (``UNRESOLVED_ACTIVE_APPARATUS`` → SLD_INVALID), a fikstury kontraktów SLD mają
-        opisywać model KOMPLETNY. Wyłącznik główny i odpływowe — pozycje ``APARAT_NN``
-        o rodzaju ``WYLACZNIK_GLOWNY``/``WYLACZNIK_ODPLYWOWY`` dobrane w budowniczym.
-        """
-        for galaz in self.migawka()["branches"]:
-            meta = galaz.get("meta") or {}
-            if not meta.get("nn_promocja_bez_wiazania_katalogowej"):
-                continue
-            pozycja = glowny if meta.get("nn_field_migrowana_rola") == "IN" else odplywowy
-            self.operacja(
-                "assign_catalog_to_element",
-                {"element_ref": galaz["ref_id"], "catalog_binding": wiazanie("APARAT_NN", pozycja)},
-            )
-
     # --- operacje sieci SN wspólne dla fikstur -------------------------------------
 
     def gpz(self) -> dict[str, Any]:
@@ -143,14 +128,20 @@ class KlientBudowy:
             },
         )
 
-    def odcinek_magistrali(self, dlugosc_m: float, nazwa: str | None = None) -> dict[str, Any]:
-        segment: dict[str, Any] = {
-            "rodzaj": "KABEL",
-            "dlugosc_m": dlugosc_m,
-            "catalog_binding": wiazanie("KABEL_SN", KABEL_SN),
-        }
+    def odcinek_magistrali(
+        self,
+        dlugosc_m: float,
+        nazwa: str | None = None,
+        *,
+        napowietrzny: bool = False,
+        nazwa_wezla: str | None = None,
+    ) -> dict[str, Any]:
+        segment: dict[str, Any] = _segment(dlugosc_m, napowietrzny=napowietrzny)
         if nazwa is not None:
             segment["name"] = nazwa
+        if nazwa_wezla is not None:
+            # Węzeł nazwany na końcu odcinka (NAMED_TERMINAL, rysowany na schemacie).
+            segment["bus_name"] = nazwa_wezla
         return self.operacja("continue_trunk_segment_sn", {"segment": segment})
 
     def stacja_b(
@@ -180,18 +171,61 @@ class KlientBudowy:
             },
         )
 
-    def odgalezienie(self, from_ref: str, dlugosc_m: float) -> dict[str, Any]:
+    def odgalezienie(
+        self, from_ref: str, dlugosc_m: float, *, napowietrzny: bool = False
+    ) -> dict[str, Any]:
         return self.operacja(
             "start_branch_segment_sn",
+            {"from_ref": from_ref, "segment": _segment(dlugosc_m, napowietrzny=napowietrzny)},
+        )
+
+    def punkt_odgalezny(self, segment_ref: str, rodzaj: str, nazwa: str) -> str:
+        """ZKSN (odcinek kablowy) albo słup rozgałęźny (odcinek napowietrzny) w połowie
+        odcinka; zwraca ``ref_id`` punktu."""
+        if rodzaj == "zksn":
+            operacja, katalog = "insert_zksn_on_segment_sn", ZKSN
+        else:
+            operacja, katalog = "insert_branch_pole_on_segment_sn", SLUP_ROZGALEZNY
+        wynik = self.operacja(
+            operacja,
             {
-                "from_ref": from_ref,
-                "segment": {
-                    "rodzaj": "KABEL",
-                    "dlugosc_m": dlugosc_m,
-                    "catalog_binding": wiazanie("KABEL_SN", KABEL_SN),
-                },
+                "segment_id": segment_ref,
+                "catalog_binding": wiazanie("mv_branch_points", katalog),
+                "insert_at": {"mode": "RATIO", "value": 0.5},
+                "switch_state": "closed",
+                "name": nazwa,
             },
         )
+        return str(wynik["selection_hint"]["element_id"])
+
+    def lacznik_sekcyjny(self, segment_ref: str, nazwa: str, stan: str = "closed") -> str:
+        wynik = self.operacja(
+            "insert_section_switch_sn",
+            {
+                "segment_id": segment_ref,
+                "insert_at": {"mode": "RATIO", "value": 0.5},
+                "switch_type": "ROZLACZNIK",
+                "normal_state": stan,
+                "switch_name": nazwa,
+                "catalog_ref": LACZNIK_SEKCYJNY,
+                "catalog_binding": wiazanie("APARAT_SN", LACZNIK_SEKCYJNY),
+            },
+        )
+        return str(wynik["selection_hint"]["element_id"])
+
+
+def _segment(dlugosc_m: float, *, napowietrzny: bool) -> dict[str, Any]:
+    if napowietrzny:
+        return {
+            "rodzaj": "LINIA_NAPOWIETRZNA",
+            "dlugosc_m": dlugosc_m,
+            "catalog_binding": wiazanie("LINIA_SN", LINIA_SN),
+        }
+    return {
+        "rodzaj": "KABEL",
+        "dlugosc_m": dlugosc_m,
+        "catalog_binding": wiazanie("KABEL_SN", KABEL_SN),
+    }
 
 
 def normalizuj_migawke(enm: dict[str, Any], *, czas: str) -> dict[str, Any]:

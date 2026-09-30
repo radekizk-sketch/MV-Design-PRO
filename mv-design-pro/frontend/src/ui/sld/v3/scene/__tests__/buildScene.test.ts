@@ -701,7 +701,8 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
       // elementKind celowo nieustawiony (klik nie otwiera inspektora).
       // S9-1: kreski znaku ciągu dalszego (złamanie arkusza) — TA SAMA klasa co
       // słupek terminalny: marker czytelności, nie element selekcji.
-      else if (s.meta?.kind === 'openTerminal' || s.meta?.kind === 'sheetContinuation')
+      // Znak powiązania (`tieMarker`, karta SLD-SUBSTRAT) — ta sama klasa markera końca.
+      else if (s.meta?.kind === 'openTerminal' || s.meta?.kind === 'sheetContinuation' || s.meta?.kind === 'tieMarker')
         expect(s.meta?.elementKind).toBeUndefined();
       else expect(s.meta?.elementKind).toBe('segment');
     }
@@ -1203,9 +1204,17 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // daje dokładnie 22752/45728/45728, a nazwy/komunikaty/pola addytywne nie ruszają
     // sceny. Ta sama topologia, inna kolejność remisu — wzrost „nie-rosnącej" miary
     // §15.1 nie jest regresją kodu układu.
+    // SLD-SUBSTRAT (kontynuacja, 2026-09-30): L1/L2 45728 → 45992 (+264), L0 bez zmian —
+    // WYŁĄCZNIE dane. Substrat budowany ścieżką produktu (magazyn modelu: promocja pól nN +
+    // uzupełnienie katalogowe) ma odbiory na 53 stacjach zamiast 20 (magazyn dokłada
+    // odbiór katalogowy każdemu odpływowi nN, jak w modelu z API), więc 33 stacje dostają
+    // strzałkę odbioru na zacisku nN: +8 px pionu `#lv-load-drop` × 33 = 264. DOWÓD 2×2
+    // (sonda karty, `k2/pion_sonda.txt`): kod HEAD + nowa fikstura = 22752/45992/45992,
+    // nowy kod + stara fikstura = 22752/45728/45728 (znaki powiązania zastępują dwa słupki
+    // końca otwartego 1:1, ±16 px); rozbicie liść po liściu = 33 × `#lv-load-drop`.
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22752);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45728);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45728);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45992);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45992);
   });
 });
 
@@ -1255,8 +1264,15 @@ describe('buildSceneV3 — F10.1: wyrocznie §18.1/§18.2/§18.6 (aparaty boczne
     const scene = buildSceneV3(enm, 2);
     expect(allPathTerminationsLabeled(scene)).toBe(true);
     expect(scene.labels.filter((l) => l.ownerRef.endsWith('#termination'))).toHaveLength(0);
+    // SLD-SUBSTRAT (kontynuacja): 13 → 11 — dwa końce ogonów zamyka odcinek powiązania
+    // „Rezerwa pierścieniowa (odcinek NOP)" (dotąd nierysowany, a jego końce nosiły
+    // „koniec otwarty" wbrew modelowi); ich etykieta to teraz odsyłacz „powiązanie".
     const openLabels = scene.labels.filter((l) => l.ownerRef.endsWith('#open-terminal-label'));
-    expect(openLabels.length).toBe(13);
+    expect(openLabels.length).toBe(11);
+    expect(scene.labels.filter((l) => l.ownerRef.includes('#powiazanie-label-')).map((l) => l.text)).toEqual([
+      'powiązanie',
+      'powiązanie',
+    ]);
     expect(openLabels.every((l) => l.text === 'koniec otwarty')).toBe(true);
     // Wyrocznia §18.6 MUSI dalej gryźć: scena z USUNIĘTYMI ogonami (i ich
     // etykietami) = 13 głowic znowu bez trasy i bez opisu → 13 luk.
@@ -1273,7 +1289,8 @@ describe('buildSceneV3 — F10.1: wyrocznie §18.1/§18.2/§18.6 (aparaty boczne
       labels: scene.labels.filter((l) => !isOpenRunPiece(l.ownerRef)),
     };
     expect(allPathTerminationsLabeled(stripped)).toBe(false);
-    expect(pathTerminationLabelGaps(stripped).length).toBe(13);
+    // 11, nie 13: dwa końce zamknięte powiązaniem nie są biegami otwartymi (patrz wyżej).
+    expect(pathTerminationLabelGaps(stripped).length).toBe(11);
   });
 
   it('§18.6: L0/L1 bez etykiet zakończeń (poziom szczegółowości L2 — spójnie z etykietami przęseł)', () => {
