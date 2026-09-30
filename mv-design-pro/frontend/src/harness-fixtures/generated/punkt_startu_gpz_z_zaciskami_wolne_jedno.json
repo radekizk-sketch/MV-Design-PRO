@@ -51,7 +51,7 @@
         "branch_id": null,
         "element_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/terminal",
         "port_id": "trunk_start",
-        "status": "OTWARTY",
+        "status": "ZAJETY",
         "trunk_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/corridor_01"
       },
       {
@@ -78,7 +78,7 @@
             "branch_id": null,
             "element_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/terminal",
             "port_id": "trunk_start",
-            "status": "OTWARTY",
+            "status": "ZAJETY",
             "trunk_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/corridor_01"
           },
           {

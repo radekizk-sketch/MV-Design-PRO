@@ -96,6 +96,7 @@ from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu
 from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
+from enm.tor_pola import szyna_raportowa, wezel_elektryczny
 
 #: Rodzaje gałęzi ENM kwalifikowane jako "linia chroniona" — mają impedancję
 #: jednostkową, długość i mogą nieść dane katalogowe cieplne (F-K1). Aparat
@@ -230,19 +231,25 @@ def kandydaci_nastepnej_szyny(
     if linia is None:
         return []
     koniec = linia.to_bus_ref if zacisk == "od" else linia.from_bus_ref
+    # POLA-W-TORZE: koniec odcinka leży na zacisku pola stacji, a dalsze odcinki wychodzą
+    # z zacisków INNYCH pól tej stacji — szyną końca jest cały WĘZEŁ ELEKTRYCZNY (szyny
+    # połączone zamkniętymi łącznikami, zero impedancji), nie sam zacisk.
+    wezel_konca = wezel_elektryczny(snapshot or {}, koniec)
     kandydaci: set[str] = set()
     for surowa in (snapshot or {}).get("branches") or []:
         inna = _dane_linii_z_galezi(surowa)
         if inna is None or inna.ref_id == line_id:
             continue
-        if inna.from_bus_ref == koniec:
+        if inna.from_bus_ref in wezel_konca and inna.to_bus_ref not in wezel_konca:
             kandydaci.add(inna.to_bus_ref)
-        elif inna.to_bus_ref == koniec:
+        elif inna.to_bus_ref in wezel_konca and inna.from_bus_ref not in wezel_konca:
             kandydaci.add(inna.from_bus_ref)
     return sorted(kandydaci)
 
 
-def szyna_ma_prad_zwarciowy(raw_result: dict[str, Any] | None, bus_ref: str) -> bool:
+def szyna_ma_prad_zwarciowy(
+    raw_result: dict[str, Any] | None, bus_ref: str, snapshot: dict[str, Any] | None
+) -> bool:
     """Czy WYNIK kotwicy niesie prąd zwarcia 3F dla tej szyny modelu.
 
     JEDEN predykat dla WEJŚCIA (lista kandydatów pokazywana projektantowi) i
@@ -267,7 +274,14 @@ def szyna_ma_prad_zwarciowy(raw_result: dict[str, Any] | None, bus_ref: str) -> 
     zwarcia biegu — szyny pomocnicze magistrali (`helper_bus`,
     `enm/assembler.py::skip_short_circuit_target`) punktami nie są.
     """
-    return _prad_zwarciowy_w_wezle(raw_result, ref_to_graph_id(bus_ref)) is not None
+    return _prad_zwarciowy_w_wezle(raw_result, _graf_punktu_zwarcia(snapshot, bus_ref)) is not None
+
+
+def _graf_punktu_zwarcia(snapshot: dict[str, Any] | None, bus_ref: str) -> str:
+    """Węzeł grafu, pod którym wynik raportuje zwarcie na szynie `bus_ref` — JEDNO miejsce dla
+    dostępności i budowy (predykaty parami). Zacisk pola (szyna pomocnicza) za zamkniętym
+    aparatem to ten sam węzeł co szyna pola (`enm.tor_pola.szyna_raportowa`)."""
+    return ref_to_graph_id(szyna_raportowa(snapshot or {}, bus_ref))
 
 
 def _opcjonalna_liczba(wartosc: Any) -> float | None:
@@ -401,9 +415,9 @@ def zbuduj_wejscie_nastaw(
             "listy kandydatów."
         )
 
-    graf_poczatku = ref_to_graph_id(rozstrzygniecie.szyna_zacisku_ref)
-    graf_konca = ref_to_graph_id(rozstrzygniecie.szyna_przeciwna_ref)
-    graf_nastepnej = ref_to_graph_id(next_bus_id)
+    graf_poczatku = _graf_punktu_zwarcia(kotwica.snapshot, rozstrzygniecie.szyna_zacisku_ref)
+    graf_konca = _graf_punktu_zwarcia(kotwica.snapshot, rozstrzygniecie.szyna_przeciwna_ref)
+    graf_nastepnej = _graf_punktu_zwarcia(kotwica.snapshot, next_bus_id)
 
     ik3_max_beginning_a = _prad_zwarciowy_w_wezle(kotwica_wynik, graf_poczatku)
     ik3_max_end_a = _prad_zwarciowy_w_wezle(kotwica_wynik, graf_konca)

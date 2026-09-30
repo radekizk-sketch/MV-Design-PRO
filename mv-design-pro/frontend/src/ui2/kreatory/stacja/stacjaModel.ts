@@ -52,6 +52,7 @@ import type {
 import type { Manufacturer } from '../../../ui/catalog/manufacturer';
 import type { TransformerType } from '../../../ui/catalog/types';
 import { OPIS_PASMA_NN, wPasmieNn } from '../../model/pasmaNapieciowe';
+import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 
 export type { SnFieldRole, StationSnFieldTemplate } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 
@@ -379,6 +380,7 @@ export function ogranicznikOdplywow(value: number): number {
 export function walidujFormularz(
   data: StacjaFormData,
   snFields?: readonly StationSnFieldTemplate[],
+  tryb?: TrybUmiejscowienia,
 ): BladPola[] {
   const errors: BladPola[] = [];
   if (!data.catalog_ref?.trim()) {
@@ -434,6 +436,18 @@ export function walidujFormularz(
       field: 'sn_field_apparatus_refs',
       message: 'Dobierz aparat z katalogu SN dla każdego pola rozdzielnicy.',
     });
+  }
+  // POLA-W-TORZE: pole toru nieobecne na liście = odmowa operacji (brak wspólnego aparatu).
+  if (snFields !== undefined && tryb !== undefined) {
+    const brak = brakujacePolaToru(snFields, tryb);
+    if (brak.length > 0) {
+      errors.push({
+        field: 'sn_fields_tor',
+        message:
+          `Stacja wymaga pól toru: ${brak.map((rola) => FIELD_ROLE_LABEL_PL[rola]).join(', ')}`
+          + ' — dodaj je w kroku „Pola rozdzielnicy SN”.',
+      });
+    }
   }
   return errors;
 }
@@ -686,23 +700,35 @@ export function domyslneWpisyPol(
 }
 
 /**
- * KOMPLETNOSC-POLA-TR §0 pkt 1 — czy stacja z transformatorem NIE MA pola
- * transformatorowego.
+ * Pola toru, których wymaga umiejscowienie stacji (zasada toru, karta POLA-W-TORZE):
+ * element, któremu pole służy, jest przyłączony do ZACISKU tego pola, a aparat pola leży
+ * w jego torze prądowym.
  *
- * Domyślnie kreator pole TR tworzy (`buildDefaultSnFields` niesie
- * `TRANSFORMATOROWE` dla KAŻDEGO rodzaju stacji), ale lista pól jest edytowalna
- * i projektant może je świadomie usunąć. To jest legalny STAN ROBOCZY — nie
- * blokujemy zapisu. Kreator ma jednak powiedzieć WPROST, co z tego wyniknie
- * (marker niekompletności na schemacie, ostrzeżenie gotowości, zamknięta droga
- * do dokumentacji wykonawczej), bo inaczej projektant dowiaduje się o skutku
- * dopiero z rysunku.
+ * - Stacja wstawiana w odcinek (`insert_station_on_segment_sn`): część odcinka od strony
+ *   zasilania kończy się na polu liniowym wejściowym, dalsza część wychodzi z pola liniowego
+ *   wyjściowego, transformator leży na polu transformatorowym.
+ * - Stacja zamykająca odcinek (`append_station_on_endpoint`): odcinek dochodzi do pola
+ *   liniowego wejściowego, transformator — do pola transformatorowego.
+ *
+ * Kreator ZAWSZE tworzy transformator (`transformer.create: true`), więc pole
+ * transformatorowe jest wymagane w obu trybach. To ten sam zbiór, który operacja domenowa
+ * domyka (`enm.tor_pola.pola_do_domkniecia`); kreator nie wysyła wspólnego aparatu pól, więc
+ * pole brakujące na liście kończyłoby zapis odmową operacji — kreator nazywa brak wcześniej
+ * i blokuje zapis (dawny „legalny stan roboczy" bez pola TR przestał istnieć: transformator
+ * bez pola omijałby aparat, który ma go odłączać).
  */
-export function brakujePolaTransformatorowego(
-  pola: readonly PoleSnWpis[],
-  transformatorTworzony: boolean,
-): boolean {
-  if (!transformatorTworzony) return false;
-  return !pola.some((pole) => pole.field_role === 'TRANSFORMATOROWE');
+export const POLA_TORU_WG_TRYBU: Readonly<Record<TrybUmiejscowienia, readonly SnFieldRole[]>> = {
+  SPLIT: ['LINIA_IN', 'LINIA_OUT', 'TRANSFORMATOROWE'],
+  ENDPOINT_APPEND: ['LINIA_IN', 'TRANSFORMATOROWE'],
+};
+
+/** Pola toru wymagane dla trybu umiejscowienia, których lista pól nie zawiera (w kolejności toru). */
+export function brakujacePolaToru(
+  pola: readonly { field_role: SnFieldRole }[],
+  tryb: TrybUmiejscowienia,
+): SnFieldRole[] {
+  const obecne = new Set(pola.map((pole) => pole.field_role));
+  return POLA_TORU_WG_TRYBU[tryb].filter((rola) => !obecne.has(rola));
 }
 
 /** Nowy wpis pola (dodanie pola w kroku 3). */

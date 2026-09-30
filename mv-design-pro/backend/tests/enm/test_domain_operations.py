@@ -420,7 +420,9 @@ class TestFullV1Sequence:
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
-                "sn_fields": ["IN", "OUT"],
+                # POLA-W-TORZE: pole wyjściowe niesie dalszą połówkę odcinka (zajęte), więc
+                # odgałęzienie z kroku 5 wychodzi z WOLNEGO pola odgałęźnego.
+                "sn_fields": ["IN", "OUT", "FEEDER"],
                 "transformer": {
                     "create": True,
                     "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
@@ -518,7 +520,9 @@ class TestInsertStationCreatesStructure:
         field_roles = [
             spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])
         ]
-        assert field_roles == ["IN", "OUT"]
+        # POLA-W-TORZE: transformator tworzony razem ze stacją leży na zacisku pola
+        # transformatorowego — skład pól bez niego operacja DOMYKA (na końcu składu).
+        assert field_roles == ["IN", "OUT", "TR"]
 
     def test_insert_station_preserves_catalog_display_name_pl(self):
         _, snapshot = _build_gpz_plus_segments(1)
@@ -2142,15 +2146,24 @@ class TestStationTypeDSectional:
         ]
         assert len(couplers) == 1, "Brak sprzęgła między sekcjami SN"
         assert couplers[0]["status"] == "closed", "Sprzęgło normalnie zamknięte (ciągłość)"
-        # Prawy odcinek magistrali wychodzi z sekcji B (nie z sekcji A).
+        # Prawy odcinek magistrali wychodzi z sekcji B (nie z sekcji A) — POLA-W-TORZE: przez
+        # pole wyjściowe stojące na sekcji B (odcinek na zacisku pola, aparat pola sekcja B →
+        # zacisk w torze).
         coupler = couplers[0]
         section_b = coupler["to_bus_ref"]
+        aparaty_z_sekcji_b = {
+            br["to_bus_ref"]: br
+            for br in s.get("branches", [])
+            if br.get("from_bus_ref") == section_b
+            and br.get("type") not in ("cable", "line_overhead")
+        }
         right_segments = [
             br
             for br in s.get("branches", [])
-            if br.get("from_bus_ref") == section_b and br.get("type") in ("cable", "line_overhead")
+            if br.get("from_bus_ref") in aparaty_z_sekcji_b
+            and br.get("type") in ("cable", "line_overhead")
         ]
-        assert right_segments, "Prawy odcinek musi wychodzić z sekcji B"
+        assert right_segments, "Prawy odcinek musi wychodzić z pola na sekcji B"
         # Pole SPRZEGLO powiązane z realnym sprzęgłem (nie zdublowany aparat).
         specs = station.get("meta", {}).get("field_specs", [])
         coupler_spec = next(

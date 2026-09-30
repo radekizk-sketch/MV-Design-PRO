@@ -87,21 +87,21 @@
       "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L"
     },
     {
-      "current_a": 8746.781124267436,
+      "current_a": 8746.781124267434,
       "fault_type": "3F",
       "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L_ik_min_3f",
       "label_pl": "Ik\"min 3F (Magistrala GPZ (1))",
       "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L"
     },
     {
-      "current_a": 9056.559147375221,
+      "current_a": 9056.55914737522,
       "fault_type": "3F",
       "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L_ik_max_3f",
       "label_pl": "Ik\"max 3F (Magistrala GPZ (2) (1))",
       "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L"
     },
     {
-      "current_a": 8034.309745271616,
+      "current_a": 8034.309745271612,
       "fault_type": "3F",
       "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L_ik_min_3f",
       "label_pl": "Ik\"min 3F (Magistrala GPZ (2) (1))",
@@ -112,18 +112,18 @@
   "overload_checks": [
     {
       "device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
-      "i_operating_a": 22.768781749828918,
+      "i_operating_a": 22.774378196830394,
       "i_pickup_a": 400.0,
-      "margin_percent": 1656.7914014679577,
-      "notes_pl": "Przeciążalność prawidłowa: I_pickup/I_rob = 17.57 >= 1.2",
+      "margin_percent": 1656.3596974764814,
+      "notes_pl": "Przeciążalność prawidłowa: I_pickup/I_rob = 17.56 >= 1.2",
       "verdict": "PASS",
       "verdict_pl": "Prawidłowa"
     },
     {
       "device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
-      "i_operating_a": 11.384885698880636,
+      "i_operating_a": 11.387686425985459,
       "i_pickup_a": 400.0,
-      "margin_percent": 3413.4300912597487,
+      "margin_percent": 3412.565986074604,
       "notes_pl": "Przeciążalność prawidłowa: I_pickup/I_rob = 35.13 >= 1.2",
       "verdict": "PASS",
       "verdict_pl": "Prawidłowa"
@@ -150,18 +150,18 @@
   "sensitivity_checks": [
     {
       "device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
-      "i_fault_min_a": 8746.781124267436,
+      "i_fault_min_a": 8746.781124267434,
       "i_pickup_a": 400.0,
-      "margin_percent": 2086.695281066859,
+      "margin_percent": 2086.6952810668586,
       "notes_pl": "Czułość wystarczająca: I_min/I_pickup = 21.87 >= 1.5",
       "verdict": "PASS",
       "verdict_pl": "Prawidłowa"
     },
     {
       "device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
-      "i_fault_min_a": 8034.309745271616,
+      "i_fault_min_a": 8034.309745271612,
       "i_pickup_a": 400.0,
-      "margin_percent": 1908.5774363179037,
+      "margin_percent": 1908.577436317903,
       "notes_pl": "Czułość wystarczająca: I_min/I_pickup = 20.09 >= 1.5",
       "verdict": "PASS",
       "verdict_pl": "Prawidłowa"
@@ -1238,12 +1238,12 @@
     {
       "description_pl": "Sprawdzenie czułości: Przekaźnik 50/51 (typowy)",
       "inputs": {
-        "i_fault_min_a": 8746.781124267436,
+        "i_fault_min_a": 8746.781124267434,
         "i_pickup_a": 400.0
       },
       "outputs": {
-        "margin_percent": 2086.695281066859,
-        "ratio": 21.86695281066859,
+        "margin_percent": 2086.6952810668586,
+        "ratio": 21.866952810668586,
         "verdict": "PASS"
       },
       "step": "sensitivity_a135c343"
@@ -1251,12 +1251,12 @@
     {
       "description_pl": "Sprawdzenie czułości: Przekaźnik 50/51 (typowy)",
       "inputs": {
-        "i_fault_min_a": 8034.309745271616,
+        "i_fault_min_a": 8034.309745271612,
         "i_pickup_a": 400.0
       },
       "outputs": {
-        "margin_percent": 1908.5774363179037,
-        "ratio": 20.085774363179038,
+        "margin_percent": 1908.577436317903,
+        "ratio": 20.08577436317903,
         "verdict": "PASS"
       },
       "step": "sensitivity_096dfd8c"
@@ -1272,12 +1272,12 @@
     {
       "description_pl": "Sprawdzenie przeciążalności: Przekaźnik 50/51 (typowy)",
       "inputs": {
-        "i_operating_a": 22.768781749828918,
+        "i_operating_a": 22.774378196830394,
         "i_pickup_a": 400.0
       },
       "outputs": {
-        "margin_percent": 1656.7914014679577,
-        "ratio": 17.567914014679577,
+        "margin_percent": 1656.3596974764814,
+        "ratio": 17.563596974764813,
         "verdict": "PASS"
       },
       "step": "overload_a135c343"
@@ -1285,12 +1285,12 @@
     {
       "description_pl": "Sprawdzenie przeciążalności: Przekaźnik 50/51 (typowy)",
       "inputs": {
-        "i_operating_a": 11.384885698880636,
+        "i_operating_a": 11.387686425985459,
         "i_pickup_a": 400.0
       },
       "outputs": {
-        "margin_percent": 3413.4300912597487,
-        "ratio": 35.13430091259749,
+        "margin_percent": 3412.565986074604,
+        "ratio": 35.12565986074604,
         "verdict": "PASS"
       },
       "step": "overload_096dfd8c"

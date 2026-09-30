@@ -126,7 +126,17 @@ _ROLA_A_C_E_TEMPLATES: tuple[tuple[str, float], ...] = (
 )
 
 
-def _zastosuj(tpl_id: str, voltage_kv: float, *, klucz_suffix: str = "") -> dict[str, Any]:
+#: Układ sieci nN — DANA PROJEKTANTA (kreator stacji / `params_override`), nie domysł szablonu.
+UKLAD_NN_PROJEKTANTA: dict[str, Any] = {"nn_earthing": {"lv_system": "TN-C-S"}}
+
+
+def _zastosuj(
+    tpl_id: str,
+    voltage_kv: float,
+    *,
+    klucz_suffix: str = "",
+    params_override: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Zastosuj szablon na świeżej fiksturze; zwraca wynik `apply_template_to_case`."""
     template = get_template(tpl_id)
     assert template is not None, tpl_id
@@ -144,11 +154,33 @@ def _zastosuj(tpl_id: str, voltage_kv: float, *, klucz_suffix: str = "") -> dict
             klucz_twin=klucz,
             target_segment_id=target_segment_id,
             insert_at_ratio=0.5,
-            params_override={},
+            params_override=dict(
+                UKLAD_NN_PROJEKTANTA if params_override is None else params_override
+            ),
             catalog_profile=None,
         ),
         klucz,
     )
+
+
+@pytest.mark.parametrize(
+    "tpl_id,voltage_kv", [t for t in _ROLA_A_C_E_TEMPLATES if "pomiar" in t[0]]
+)
+def test_szablon_przenosi_uklad_sieci_nn_projektanta_na_transformator(
+    tpl_id: str, voltage_kv: float
+) -> None:
+    """`params_override.nn_earthing` (blok kreatora stacji) trafia na
+    `Transformer.lv_earthing_system` stacji szablonu; bez niego szablon niczego nie zgaduje."""
+    for override, oczekiwany in ((UKLAD_NN_PROJEKTANTA, "TN-C-S"), ({}, None)):
+        result, klucz = _zastosuj(
+            tpl_id, voltage_kv, klucz_suffix=f":uklad-{oczekiwany}", params_override=override
+        )
+        model = get_enm(klucz)
+        stacja = next(s for s in model.substations if s.ref_id == result["station_ref"])
+        uklady = {
+            t.lv_earthing_system for t in model.transformers if t.ref_id in stacja.transformer_refs
+        }
+        assert uklady == {oczekiwany}, (tpl_id, uklady)
 
 
 @pytest.mark.parametrize("tpl_id,voltage_kv", _ROLA_A_C_E_TEMPLATES)

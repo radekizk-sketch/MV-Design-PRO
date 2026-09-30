@@ -152,7 +152,10 @@ function resolveOperationFromModalType(
       // dopóki nie powstanie osobna `assign_endpoint_port` op.
       return 'update_element_parameters';
     default:
-      return null;
+      // Akcja naprawcza wskazana NAZWĄ operacji kanonicznej (walidator: W041 → `add_sn_bay`,
+      // W042 → `przepnij_element_na_pole`) otwiera formularz tej operacji. Dawniej taka
+      // pozycja kończyła się „nie przypisano karty konfiguracyjnej" (akcja martwa).
+      return fallbackModalType && isCanonicalOpName(fallbackModalType) ? fallbackModalType : null;
   }
 }
 

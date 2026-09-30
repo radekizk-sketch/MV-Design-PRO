@@ -82,7 +82,7 @@
       "cross_section_mm2": 120.0,
       "endpoint_a_port": null,
       "endpoint_b_port": null,
-      "from_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_bus",
+      "from_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field_terminal/001",
       "id": "77b1add9-2ddb-5c6e-8d15-47d095cb3f6b",
       "insulation": "XLPE",
       "ith_1s_a": null,
@@ -261,7 +261,7 @@
       "status": "closed",
       "tags": [],
       "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-      "to_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_bus",
+      "to_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field_terminal/000",
       "type": "cable",
       "x0_ohm_per_km": 0.3,
       "x_ohm_per_km": 0.1
@@ -685,7 +685,9 @@
             "bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/nn_bus",
             "equipment_refs": [],
             "field_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/nn_main_breaker",
-            "meta": {},
+            "meta": {
+              "transformer_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/transformer"
+            },
             "name": "Wyłącznik główny nN",
             "protection_ref": null,
             "tags": [
@@ -775,7 +777,7 @@
     {
       "catalog_namespace": "TRAFO_SN_NN",
       "catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
-      "hv_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_bus",
+      "hv_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field_terminal/002",
       "hv_neutral": null,
       "i0_percent": 1.5,
       "id": "d1da8705-cc0e-5713-9bbb-161218d3f446",

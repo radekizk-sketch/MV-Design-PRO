@@ -162,8 +162,8 @@ def _pozycja_dostepnosci(run: CanonicalRun, linia: DaneLinii) -> dict[str, Any] 
     """
     wynik = run.raw_result
     if not (
-        szyna_ma_prad_zwarciowy(wynik, linia.from_bus_ref)
-        and szyna_ma_prad_zwarciowy(wynik, linia.to_bus_ref)
+        szyna_ma_prad_zwarciowy(wynik, linia.from_bus_ref, run.snapshot)
+        and szyna_ma_prad_zwarciowy(wynik, linia.to_bus_ref, run.snapshot)
     ):
         return None
     zaciski = zaciski_galezi(run.snapshot, linia.ref_id)
@@ -194,7 +194,7 @@ def _pozycja_dostepnosci(run: CanonicalRun, linia: DaneLinii) -> dict[str, Any] 
                 [
                     szyna
                     for szyna in kandydaci_nastepnej_szyny(run.snapshot, linia.ref_id, zacisk)
-                    if szyna_ma_prad_zwarciowy(wynik, szyna)
+                    if szyna_ma_prad_zwarciowy(wynik, szyna, run.snapshot)
                 ]
                 if zacisk in dozwolone
                 else []

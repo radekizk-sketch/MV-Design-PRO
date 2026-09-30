@@ -20,6 +20,7 @@ from application.analyses.protection.sanity_checks import (
 from application.analyses.protection.sanity_checks import (
     ProtectionFunctionSummary as SanityProtectionFunctionSummary,
 )
+from application.field_read_model import punkt_przylaczenia_pola
 from enm.models import (
     Bay,
     Branch,
@@ -386,9 +387,10 @@ def _resolve_targets(
 
         transformer = transformers.get(equipment_ref)
         if transformer is not None:
+            punkt_pola = punkt_przylaczenia_pola(bay)
             side_bus = (
-                bay.bus_ref
-                if bay.bus_ref in {transformer.hv_bus_ref, transformer.lv_bus_ref}
+                punkt_pola
+                if punkt_pola in {transformer.hv_bus_ref, transformer.lv_bus_ref}
                 else transformer.hv_bus_ref
             )
             targets[transformer.ref_id] = ProtectedTarget(
@@ -453,9 +455,12 @@ def _build_base_context(
     transformer = transformers.get(target.transformer_ref) if target.transformer_ref else None
     transformer_side = None
     if transformer is not None and bay is not None:
-        if bay.bus_ref == transformer.hv_bus_ref:
+        # POLA-W-TORZE: strona transformatora rozstrzyga punkt przyłączenia pola (własny
+        # zacisk pola transformatorowego), nie szyna główna, na której stoi aparat pola.
+        punkt_pola = punkt_przylaczenia_pola(bay)
+        if punkt_pola == transformer.hv_bus_ref:
             transformer_side = TransformerSide.HV
-        elif bay.bus_ref == transformer.lv_bus_ref:
+        elif punkt_pola == transformer.lv_bus_ref:
             transformer_side = TransformerSide.LV
 
     protected_type = {

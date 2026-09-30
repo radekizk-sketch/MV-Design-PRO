@@ -1589,7 +1589,7 @@
       "branch_id": null,
       "element_id": "stn/ddc097bcd071b9c255e09ef90508ed29/sn_field_terminal/002",
       "port_id": "trunk_start",
-      "status": "OTWARTY",
+      "status": "ZAJETY",
       "trunk_id": "corridor/00e4ab8adbac75170566429607e2822d/branch"
     },
     {
@@ -1603,7 +1603,7 @@
       "branch_id": null,
       "element_id": "stn/d618a861ba1547cb6b08a55cc1e6b1fb/sn_field_terminal/002",
       "port_id": "trunk_start",
-      "status": "OTWARTY",
+      "status": "ZAJETY",
       "trunk_id": "corridor/0dade2f84f84cd22e8a5a4d3289c25b9/branch"
     },
     {
@@ -1617,7 +1617,7 @@
       "branch_id": null,
       "element_id": "stn/9db5fd4c37bbd8dea1f3b5ecd6f5c8b5/sn_field_terminal/002",
       "port_id": "trunk_start",
-      "status": "OTWARTY",
+      "status": "ZAJETY",
       "trunk_id": "corridor/14ef9b9e15c189813df6c3d575dff314/branch"
     },
     {
@@ -1631,7 +1631,7 @@
       "branch_id": null,
       "element_id": "stn/faa7d680f43b242708f5e12c9c0a6e7e/sn_field_terminal/002",
       "port_id": "trunk_start",
-      "status": "OTWARTY",
+      "status": "ZAJETY",
       "trunk_id": "corridor/25de3a8fdb5f155d5b9b15a9bc489e8e/branch"
     },
     {
@@ -1645,7 +1645,7 @@
       "branch_id": null,
       "element_id": "stn/4c79886a98b1d48388a3ed40a4ba46f5/sn_field_terminal/002",
       "port_id": "trunk_start",
-      "status": "OTWARTY",
+      "status": "ZAJETY",
       "trunk_id": "corridor/2b1c3856bdc190d4c7dc6b152bfbd68f/branch"
     },
     {
@@ -1659,7 +1659,7 @@
       "branch_id": null,
       "element_id": "stn/e6a18d6f65bb20a9921cb725894a59c0/sn_field_terminal/002",
       "port_id": "trunk_start",
-      "status": "OTWARTY",
+      "status": "ZAJETY",
       "trunk_id": "corridor/400258493c3e1487d143a0401c116395/branch"
     },
     {
@@ -1673,7 +1673,7 @@
       "branch_id": null,
       "element_id": "stn/2f175e1390e4ee60df561868f596d1c1/sn_field_terminal/002",
       "port_id": "trunk_start",
-      "status": "OTWARTY",
+      "status": "ZAJETY",
       "trunk_id": "corridor/4460864d12359ce677549e711aacb8f1/branch"
     },
     {
@@ -1687,7 +1687,7 @@
       "branch_id": null,
       "element_id": "stn/576669a7f56ed1fbd34aa5fedb2f8b79/sn_field_terminal/002",
       "port_id": "trunk_start",
-      "status": "OTWARTY",
+      "status": "ZAJETY",
       "trunk_id": "corridor/9da58c6ee4f5a563de171d149a8f91d0/branch"
     },
     {
@@ -1701,7 +1701,7 @@
       "branch_id": null,
       "element_id": "stn/dff11bb9e2cd9fb89ea1c6da7099782c/sn_field_terminal/002",
       "port_id": "trunk_start",
-      "status": "OTWARTY",
+      "status": "ZAJETY",
       "trunk_id": "corridor/a65ff378ece6dfcf394163c3ba338102/branch"
     },
     {
@@ -1715,7 +1715,7 @@
       "branch_id": null,
       "element_id": "stn/0cbb22accf6682c74c740d72817a45cc/sn_field_terminal/002",
       "port_id": "trunk_start",
-      "status": "OTWARTY",
+      "status": "ZAJETY",
       "trunk_id": "corridor/bdccb28bf0109ce466380deee2d596da/branch"
     },
     {
@@ -1729,7 +1729,7 @@
       "branch_id": null,
       "element_id": "stn/6eb0d3f4b4744db6093e0de70e01f522/sn_field_terminal/002",
       "port_id": "trunk_start",
-      "status": "OTWARTY",
+      "status": "ZAJETY",
       "trunk_id": "corridor/d4bb8ce6e40409485c6b25b292ee4214/branch"
     },
     {
@@ -1743,7 +1743,7 @@
       "branch_id": null,
       "element_id": "stn/afb04a2f432567f8d0b41983557664a0/sn_field_terminal/002",
       "port_id": "trunk_start",
-      "status": "OTWARTY",
+      "status": "ZAJETY",
       "trunk_id": "corridor/f97b721e332da751699b2056fc7d65fa/branch"
     },
     {
@@ -1785,7 +1785,7 @@
           "branch_id": null,
           "element_id": "stn/ddc097bcd071b9c255e09ef90508ed29/sn_field_terminal/002",
           "port_id": "trunk_start",
-          "status": "OTWARTY",
+          "status": "ZAJETY",
           "trunk_id": "corridor/00e4ab8adbac75170566429607e2822d/branch"
         },
         {
@@ -1813,7 +1813,7 @@
           "branch_id": null,
           "element_id": "stn/d618a861ba1547cb6b08a55cc1e6b1fb/sn_field_terminal/002",
           "port_id": "trunk_start",
-          "status": "OTWARTY",
+          "status": "ZAJETY",
           "trunk_id": "corridor/0dade2f84f84cd22e8a5a4d3289c25b9/branch"
         },
         {
@@ -1842,7 +1842,7 @@
           "branch_id": null,
           "element_id": "stn/9db5fd4c37bbd8dea1f3b5ecd6f5c8b5/sn_field_terminal/002",
           "port_id": "trunk_start",
-          "status": "OTWARTY",
+          "status": "ZAJETY",
           "trunk_id": "corridor/14ef9b9e15c189813df6c3d575dff314/branch"
         },
         {
@@ -1871,7 +1871,7 @@
           "branch_id": null,
           "element_id": "stn/faa7d680f43b242708f5e12c9c0a6e7e/sn_field_terminal/002",
           "port_id": "trunk_start",
-          "status": "OTWARTY",
+          "status": "ZAJETY",
           "trunk_id": "corridor/25de3a8fdb5f155d5b9b15a9bc489e8e/branch"
         },
         {
@@ -1900,7 +1900,7 @@
           "branch_id": null,
           "element_id": "stn/4c79886a98b1d48388a3ed40a4ba46f5/sn_field_terminal/002",
           "port_id": "trunk_start",
-          "status": "OTWARTY",
+          "status": "ZAJETY",
           "trunk_id": "corridor/2b1c3856bdc190d4c7dc6b152bfbd68f/branch"
         },
         {
@@ -1930,7 +1930,7 @@
           "branch_id": null,
           "element_id": "stn/e6a18d6f65bb20a9921cb725894a59c0/sn_field_terminal/002",
           "port_id": "trunk_start",
-          "status": "OTWARTY",
+          "status": "ZAJETY",
           "trunk_id": "corridor/400258493c3e1487d143a0401c116395/branch"
         },
         {
@@ -1958,7 +1958,7 @@
           "branch_id": null,
           "element_id": "stn/2f175e1390e4ee60df561868f596d1c1/sn_field_terminal/002",
           "port_id": "trunk_start",
-          "status": "OTWARTY",
+          "status": "ZAJETY",
           "trunk_id": "corridor/4460864d12359ce677549e711aacb8f1/branch"
         },
         {
@@ -1986,7 +1986,7 @@
           "branch_id": null,
           "element_id": "stn/576669a7f56ed1fbd34aa5fedb2f8b79/sn_field_terminal/002",
           "port_id": "trunk_start",
-          "status": "OTWARTY",
+          "status": "ZAJETY",
           "trunk_id": "corridor/9da58c6ee4f5a563de171d149a8f91d0/branch"
         },
         {
@@ -2015,7 +2015,7 @@
           "branch_id": null,
           "element_id": "stn/dff11bb9e2cd9fb89ea1c6da7099782c/sn_field_terminal/002",
           "port_id": "trunk_start",
-          "status": "OTWARTY",
+          "status": "ZAJETY",
           "trunk_id": "corridor/a65ff378ece6dfcf394163c3ba338102/branch"
         },
         {
@@ -2043,7 +2043,7 @@
           "branch_id": null,
           "element_id": "stn/0cbb22accf6682c74c740d72817a45cc/sn_field_terminal/002",
           "port_id": "trunk_start",
-          "status": "OTWARTY",
+          "status": "ZAJETY",
           "trunk_id": "corridor/bdccb28bf0109ce466380deee2d596da/branch"
         },
         {
@@ -2071,7 +2071,7 @@
           "branch_id": null,
           "element_id": "stn/6eb0d3f4b4744db6093e0de70e01f522/sn_field_terminal/002",
           "port_id": "trunk_start",
-          "status": "OTWARTY",
+          "status": "ZAJETY",
           "trunk_id": "corridor/d4bb8ce6e40409485c6b25b292ee4214/branch"
         },
         {
@@ -2100,7 +2100,7 @@
           "branch_id": null,
           "element_id": "stn/afb04a2f432567f8d0b41983557664a0/sn_field_terminal/002",
           "port_id": "trunk_start",
-          "status": "OTWARTY",
+          "status": "ZAJETY",
           "trunk_id": "corridor/f97b721e332da751699b2056fc7d65fa/branch"
         },
         {

@@ -41,6 +41,7 @@ from enm.models import (
 )
 from enm.nazwy_elementow import nazwa_pola_ze_specyfikacji
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
+from enm.zajetosc_pol import zacisk_pola
 from network_model.core.uziemienie import TypPunktuNeutralnego
 from network_model.nazwy import nazwa_nadana
 
@@ -382,6 +383,19 @@ def _group_measurements_by_bay(measurements: list[Measurement]) -> dict[str, lis
     return grouped
 
 
+def punkt_przylaczenia_pola(bay: Bay) -> str:
+    """Punkt, w którym pole przyłącza element, któremu służy (POLA-W-TORZE): WŁASNY zacisk
+    pola (aparat pola w torze), a dla pola bez własnego zacisku — szyna pola. Zacisk z tej
+    samej funkcji, co zajętość pól (`enm.zajetosc_pol.zacisk_pola`)."""
+    meta = bay.meta or {}
+    szablon = meta.get("sn_field_template")
+    # Rekord pola (`bays`, stacja końca ciągu) niesie specyfikację pola w `sn_field_template`.
+    zacisk = zacisk_pola({"meta": meta}) or (
+        zacisk_pola(szablon) if isinstance(szablon, dict) else None
+    )
+    return zacisk or bay.bus_ref
+
+
 def _group_transformers_by_bus(transformers: list[Transformer]) -> dict[str, list[Transformer]]:
     grouped: dict[str, list[Transformer]] = {}
     for transformer in transformers:
@@ -453,7 +467,9 @@ def _build_primary_devices(
         devices.append(_measurement_to_primary_device(measurement))
 
     if canonical_role == "TRANSFORMATOROWE":
-        transformers = transformers_by_bus.get(bay.bus_ref, [])
+        # POLA-W-TORZE: transformator leży na ZACISKU pola transformatorowego (aparat pola
+        # w torze) — pole bez własnego zacisku (dane zastane) wskazuje szynę pola.
+        transformers = transformers_by_bus.get(punkt_przylaczenia_pola(bay), [])
         if transformers:
             transformer = transformers[0]
             devices.append(
@@ -1307,7 +1323,7 @@ def _build_earth_fault_path(
 ) -> BayEarthFaultPath | None:
     if measurement_chain is None and not sources_by_bus.get(bay.bus_ref):
         return None
-    transformers = transformers_by_bus.get(bay.bus_ref, [])
+    transformers = transformers_by_bus.get(punkt_przylaczenia_pola(bay), [])
     return BayEarthFaultPath(
         neutral_grounding_mode=_resolve_neutral_grounding_mode(
             sources=sources_by_bus.get(bay.bus_ref, []),

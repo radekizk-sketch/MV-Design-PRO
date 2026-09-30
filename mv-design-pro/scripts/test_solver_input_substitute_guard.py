@@ -1721,7 +1721,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # PASS niezmieniony (zero podstawien).
     # Partia integracji 6 (POLE-ZAJĘTE na partii 5): 4104 + 9 - 0 = 4113 — zbior zmian karty
     # rozlaczny z partia 5; POMIAR guardem na drzewie partii.
-    assert "Pol kontraktow wejsciowych: 4113." in wyjscie, wyjscie
+    # Karta POLA-W-TORZE (2026-09-30): 4113 -> 4116 — POMIAR `contract_fields()` na drzewie karty
+    # i na drzewie bazowym (`git archive HEAD`), roznica zbiorow: +3 (`rodzaj_elementu`,
+    # `szyna_ref`, `zacisk_ref` — `NaruszenieToru` w `enm/tor_pola.py`, opis naruszenia zasady
+    # toru dla walidatora W042), -0. PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4116." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1892,7 +1896,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # zajetosci pol liniowych SN). POMIAR guardem na drzewie karty.
         # Partia integracji 6: 557 + 1 (`enm/zajetosc_pol.py`) = 558. POMIAR guardem na drzewie
         # partii.
-        "Przeskanowano 558 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta POLA-W-TORZE (2026-09-30): 558 -> 559 (+1 `enm/tor_pola.py` — zasada toru pola
+        # stacji, przynaleznosc szyn do stacji, wezel elektryczny). POMIAR guardem na drzewie karty.
+        "Przeskanowano 559 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2056,7 +2062,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # BEZ ZMIANY. POMIAR guardem na drzewie karty.
         # Partia integracji 6: enm 56 + 1 (`zajetosc_pol.py`) = 57; dlug/wykluczenia BEZ ZMIANY.
         # POMIAR guardem na drzewie partii.
-        "  enm: pliki_skanowane=57, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
+        # Karta POLA-W-TORZE (2026-09-30): enm 57 -> 58 (+1 `enm/tor_pola.py`); dlug/wykluczenia
+        # BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        "  enm: pliki_skanowane=58, dlug=7 plikow/suma 69, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

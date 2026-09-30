@@ -31,6 +31,7 @@ import { KreatorZrodlaOze } from '../../ui2/kreatory/zrodlo-oze';
 import { KreatorEdycjiParametrow } from '../../ui2/kreatory/edycja-parametrow';
 import { KreatorPolaNn } from '../../ui2/kreatory/pole-nn';
 import { KreatorPomiaru } from '../../ui2/kreatory/pomiar';
+import { KreatorPrzepieciaNaPole } from '../../ui2/kreatory/przepiecie-na-pole';
 import { KreatorPrzekaznika } from '../../ui2/kreatory/przekaznik';
 import { KreatorPrzypisaniaKatalogu } from '../../ui2/kreatory/przypisanie-katalogu';
 import { KreatorOdcinkaNn } from '../../ui2/kreatory/odcinek-nn';
@@ -53,6 +54,7 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   insert_section_switch_sn: KreatorLacznikaSekcyjnego,
   connect_secondary_ring_sn: KreatorPierscienia,
   set_normal_open_point: KreatorPierscienia,
+  przepnij_element_na_pole: KreatorPrzepieciaNaPole,
   add_transformer_sn_nn: KreatorTransformatoraSnNn,
   assign_catalog_to_element: KreatorPrzypisaniaKatalogu,
   update_element_parameters: KreatorEdycjiParametrow,
