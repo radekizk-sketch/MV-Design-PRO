@@ -538,3 +538,141 @@ def test_NaN_w_pochodnej_konczy_bieg_odmowa_z_adresem_zamiast_wejsc_do_wyniku() 
     assert blad.value.kod == KOD_WARTOSC_NIESKONCZONA
     assert blad.value.szczegoly["adresy"] == (f"{uklad.maszyna.ident}.omega_pu",)
     assert blad.value.szczegoly["indeksy"] == (1,)
+
+
+@pytest.mark.parametrize(
+    ("pole", "wartosc"),
+    [
+        ("napiecia", complex(float("nan"), 0.0)),
+        ("napiecia", complex(0.0, float("inf"))),
+        ("moce", complex(float("nan"), float("nan"))),
+        ("moce", complex(float("-inf"), 0.0)),
+    ],
+)
+def test_nieskonczona_liczba_punktu_pracy_konczy_sie_odmowa_przy_konstrukcji(
+    pole: str, wartosc: complex
+) -> None:
+    """Liczby rozplywu wchodza do rdzenia przez `PunktPracy` — tam pada odmowa z adresem.
+
+    Napiecie wezla bez urzadzenia nie trafia do zadnej pochodnej, wiec straznik pochodnych
+    go nie widzi, a porownanie norm bramki rownowagi z `eps_init` przepuszcza NaN.
+    """
+    uklad = zbuduj_smib()
+    napiecia = dict(uklad.punkt_pracy.napiecia_pu)
+    moce = dict(uklad.punkt_pracy.moce_zrodel_pu)
+    if pole == "napiecia":
+        napiecia["SYS"] = wartosc
+        adres, kontekst = "SYS", "napiecia_punktu_pracy"
+    else:
+        moce["SYS1"] = wartosc
+        adres, kontekst = "SYS1", "moce_zrodel_punktu_pracy"
+    with pytest.raises(OdmowaDynamiki) as blad:
+        PunktPracy(napiecia_pu=napiecia, moce_zrodel_pu=moce)
+    assert blad.value.kod == KOD_WARTOSC_NIESKONCZONA
+    assert blad.value.szczegoly["adresy"] == (adres,)
+    assert blad.value.szczegoly["kontekst"] == kontekst
+
+
+@dataclass(frozen=True)
+class _UrzadzenieZeStanemPomocniczym(_UrzadzenieZeSkazonaPochodna):
+    """Atrapa z DODATKOWYM stanem, ktorego nie czyta ani pochodna, ani prad.
+
+    Stan pomocniczy jest NaN od chwili 0 i nie wplywa na zadna liczbe, ktora bramka
+    rownowagi porownuje z `eps_init` — bez kontroli skonczonosci STANU przeszedlby bramke
+    i dotarl do pierwszego kroku. `skazony_stan` bazy jest tu nieuzywany.
+    """
+
+    @property
+    def nazwy_stanow(self) -> tuple[str, ...]:
+        return (*self.bazowe.nazwy_stanow, "pomocniczy_pu")
+
+    @property
+    def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
+        return (*self.bazowe.granice_stanow, None)
+
+    @property
+    def zakresy_waznosci(self) -> tuple[tuple[float, float] | None, ...]:
+        return (*self.bazowe.zakresy_waznosci, None)
+
+    def stan_poczatkowy(self, napiecie_pu: complex, moc_pu: complex) -> np.ndarray:
+        return np.append(self.bazowe.stan_poczatkowy(napiecie_pu, moc_pu), float("nan"))
+
+    def pochodne(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return np.append(self.bazowe.pochodne(stan[:-1], napiecie_pu), 0.0)
+
+    def jakobian_stan_stan(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return np.pad(self.bazowe.jakobian_stan_stan(stan[:-1], napiecie_pu), ((0, 1), (0, 1)))
+
+    def jakobian_stan_napiecie(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return np.pad(self.bazowe.jakobian_stan_napiecie(stan[:-1], napiecie_pu), ((0, 1), (0, 0)))
+
+    def prad_pu(self, stan: np.ndarray, napiecie_pu: complex) -> complex:
+        return self.bazowe.prad_pu(stan[:-1], napiecie_pu)
+
+    def jakobian_prad_napiecie(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return self.bazowe.jakobian_prad_napiecie(stan[:-1], napiecie_pu)
+
+    def jakobian_prad_stan(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return np.pad(self.bazowe.jakobian_prad_stan(stan[:-1], napiecie_pu), ((0, 0), (0, 1)))
+
+    def napiecie_bez_obciazenia(self, stan: np.ndarray) -> complex:
+        return self.bazowe.napiecie_bez_obciazenia(stan[:-1])
+
+    def jakobian_napiecia_bez_obciazenia(self, stan: np.ndarray) -> np.ndarray:
+        return np.pad(self.bazowe.jakobian_napiecia_bez_obciazenia(stan[:-1]), ((0, 0), (0, 1)))
+
+
+@dataclass(frozen=True)
+class _UrzadzenieZeSkazonymPradem(_UrzadzenieZeSkazonaPochodna):
+    """Atrapa oddajaca prad NaN przy skonczonym stanie i napieciu — skazenie ALGEBRY.
+
+    Pochodne sa prawdziwe (bez skazenia), wiec straznik pochodnych milczy; NaN wchodzi
+    wylacznie do residuum algebry, ktorego norme bramka porownuje z `eps_init`.
+    """
+
+    def pochodne(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        return self.bazowe.pochodne(stan, napiecie_pu)
+
+    def prad_pu(self, stan: np.ndarray, napiecie_pu: complex) -> complex:
+        return complex(float("nan"), 0.0)
+
+
+def _wejscie_smib_z(urzadzenie: Urzadzenie) -> WejscieDynamiki:
+    uklad = zbuduj_smib()
+    return WejscieDynamiki(
+        wezly=uklad.wezly,
+        galezie=uklad.galezie,
+        odsprzegi=(),
+        odbiory=(),
+        urzadzenia=(urzadzenie, uklad.szyna),
+        punkt_pracy=uklad.punkt_pracy,
+        harmonogram=BEZ_ZDARZEN,
+        nastawy=nastawy(dt_s=0.002, horyzont_s=0.05),
+        s_bazowa_mva=S_BAZOWA_MVA,
+        f_bazowa_hz=F_BAZOWA_HZ,
+    )
+
+
+def test_nieskonczony_stan_poczatkowy_konczy_sie_odmowa_bramki_z_adresem_w_chwili_zero() -> None:
+    """Stan `t = 0` jest sprawdzany W CHWILI POWSTANIA, nie dopiero w pierwszym kroku."""
+    uklad = zbuduj_smib()
+    atrapa = _UrzadzenieZeStanemPomocniczym(bazowe=uklad.maszyna, skazony_stan=0)
+    with pytest.raises(OdmowaDynamiki) as blad:
+        SilnikDynamiki(_wejscie_smib_z(atrapa)).uruchom()
+    assert blad.value.kod == KOD_WARTOSC_NIESKONCZONA
+    assert blad.value.szczegoly["kontekst"] == "stany rownowagi"
+    assert blad.value.szczegoly["t_s"] == 0.0
+    assert blad.value.szczegoly["adresy"] == (f"{uklad.maszyna.ident}.pomocniczy_pu",)
+
+
+def test_nieskonczony_prad_urzadzenia_konczy_sie_odmowa_bramki_z_adresem_wezla() -> None:
+    """NaN w residuum algebry nie przechodzi bramki rownowagi (NaN nie jest > eps_init)."""
+    uklad = zbuduj_smib()
+    atrapa = _UrzadzenieZeSkazonymPradem(bazowe=uklad.maszyna, skazony_stan=0)
+    with pytest.raises(OdmowaDynamiki) as blad:
+        SilnikDynamiki(_wejscie_smib_z(atrapa)).uruchom()
+    assert blad.value.kod == KOD_WARTOSC_NIESKONCZONA
+    assert blad.value.szczegoly["kontekst"] == "residuum algebry"
+    assert blad.value.szczegoly["t_s"] == 0.0
+    adresy = set(blad.value.szczegoly["adresy"])
+    assert adresy and adresy <= {f"{uklad.maszyna.wezel}.Re", f"{uklad.maszyna.wezel}.Im"}

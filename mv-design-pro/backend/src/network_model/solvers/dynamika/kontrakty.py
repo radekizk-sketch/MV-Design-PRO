@@ -477,6 +477,28 @@ class PunktPracy:
     napiecia_pu: dict[str, complex]
     moce_zrodel_pu: dict[str, complex]
 
+    def __post_init__(self) -> None:
+        # Punkt pracy to PIERWSZE miejsce, w ktorym liczby rozplywu wchodza do rdzenia
+        # (karta SKONCZONOSC-CHWILI-ZERO): straznik skonczonosci biegu dziala od pierwszego
+        # kroku, a NaN w napieciu wezla bez urzadzenia przeszedlby porownanie bramki
+        # rownowagi z `eps_init`. Odmowa Z ADRESEM przy konstrukcji kontraktu.
+        for kontekst, wartosci in (
+            ("napiecia_punktu_pracy", self.napiecia_pu),
+            ("moce_zrodel_punktu_pracy", self.moce_zrodel_pu),
+        ):
+            zle = tuple(
+                ident for ident, wartosc in wartosci.items() if not np.isfinite(complex(wartosc))
+            )
+            if zle:
+                opis = ", ".join(f"{ident}={complex(wartosci[ident])}" for ident in zle)
+                raise OdmowaDynamiki(
+                    KOD_WARTOSC_NIESKONCZONA,
+                    f"Wartosc nieskonczona w punkcie pracy rozplywu ({kontekst}): {opis}",
+                    kontekst=kontekst,
+                    t_s=0.0,
+                    adresy=zle,
+                )
+
 
 # ---------------------------------------------------------------------------
 # Harmonogram zdarzen (SS0 p.5) — te same piec rodzajow, ktore rdzen umie wykonac
