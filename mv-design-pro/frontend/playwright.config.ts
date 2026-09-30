@@ -100,6 +100,17 @@ const backendServerEnv: Record<string, string> = useRealBackend
     CLOUD_BACKUP_BACKEND: 'LOCAL',
     CLOUD_BACKUP_BUCKET: process.env.PLAYWRIGHT_CLOUD_BACKUP_BUCKET
       ?? path.join(e2eTempDir(), 'cloud_backups'),
+    // KARTA WATKI-BLAS-E2E (2026-09-30, klasa: czas biegu backendu zależny od obcego
+    // obciążenia maszyny). numpy i scipy liczą przez OpenBLAS, który w KAŻDYM procesie
+    // startuje tyle wątków, ile rdzeni; przy obcym obciążeniu (równoległe biegi pytest
+    // i vitest, Chromium) wątki jednego wywołania czekają na siebie nawzajem. Zmierzone na
+    // maszynie 4-CPU: bieg zwarciowy sieci 50 stacji w specu `industrial-template-mass-flow`
+    // trwał 866 049 ms przy wątkach domyślnych i obcym obciążeniu (limit speku 240 s
+    // przekroczony), 19 553,4 ms przy jednym wątku i load average 9–12, 6 130,7 ms w innym
+    // biegu na tym samym `backend/src` (obciążenia wtedy nie mierzono). Wyniki od liczby
+    // wątków nie zależą (karta DETERMINIZM-KATA-FAZORA), więc jeden wątek zmienia tylko czas.
+    OPENBLAS_NUM_THREADS: '1',
+    OMP_NUM_THREADS: '1',
   }
   : {};
 const frontendServerCommand = process.env.PLAYWRIGHT_DISABLE_WEBSERVER

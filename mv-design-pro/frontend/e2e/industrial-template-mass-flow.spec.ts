@@ -445,19 +445,17 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   // 240 s = ~7× TAMTEGO pomiaru — zapas na współbieżne obciążenie własne
   // specu i wolniejszy przebieg CI (obliczenie solvera, nie tor eksportu K13).
   //
-  // PONOWNY POMIAR 2026-09-06 (karta CV-4.3-A4/K5, host bezczynny, zero
-  // procesów pytest sąsiadów, ta sama trasa PO przepięciu create→execute):
-  // 170 866,7 ms z logu backendu (`HTTP POST .../execute -> 200
-  // (170866.7ms)`) — margines do budżetu skurczył się z ~7× do ~1,4×
-  // (240 000 / 170 867). Solver i assembler są w tej karcie NIETKNIĘTE
-  // (FROZEN) — wzrost 32 s -> 171 s nie jest efektem przepięcia trasy (ten
-  // sam wywoływany kod fizyki), tylko skumulowanego wzrostu modelu/analiz
-  // sieci 50 stacji między 2026-07-29 a dziś. DŁUG NAZWANY, NIE naprawiony w
-  // tej karcie (poza jej mandatem — K5 nie dotyka solverów/assemblera):
-  // przyczyna 5-krotnego spowolnienia wymaga osobnego pomiaru profilującego,
-  // nie zgadywania tutaj. Timeout 240 000 ms CELOWO NIE podniesiony (Zero-Debt
-  // zakazuje ślepego podniesienia progu) — margines 1,4× wciąż dodatni, ale
-  // ciasny; kolejny wzrost kosztu modelu może go przekroczyć.
+  // Pomiar 2026-09-06 (karta CV-4.3-A4/K5): 170 866,7 ms — zapisany wtedy
+  // jako dług nazwany (wzrost 32 s -> 171 s bez pomiaru profilującego).
+  // POMIARY PARTII INTEGRACJI 5 (log backendu, `HTTP POST .../execute`):
+  // 6 130,7 ms (2026-09-25, łańcuch p5); 866 049 ms (2026-09-30, łańcuch p5b,
+  // wątki OpenBLAS domyślne przy obcym obciążeniu maszyny — limit przekroczony);
+  // 19 553,4 ms (2026-09-30, jeden wątek z `playwright.config.ts`, load
+  // average 9–12 na 4 CPU). Koszt obliczenia na obecnym drzewie to sekundy, a
+  // rozrzut o dwa rzędy wielkości dawały wątki BLAS czekające na siebie przy
+  // obcym obciążeniu (karta WATKI-BLAS-E2E). Wzrostu z pomiaru 2026-09-06 w
+  // obecnym stanie nie ma; jego przyczyny nie ustalono (wymagałoby to pomiaru
+  // na drzewie z tamtego dnia). Limit 240 000 ms bez zmian.
   const executeRunResponse = await request.post(
     `${BACKEND_BASE}/api/execution/runs/${scRun.id}/execute`,
     { timeout: 240000 },
