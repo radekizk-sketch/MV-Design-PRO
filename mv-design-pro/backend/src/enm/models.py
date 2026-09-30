@@ -1138,12 +1138,83 @@ class NnSection(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class MetadanePochodzeniaPola(BaseModel):
+    """Metadane POCHODZENIA pola (karta W5-B, dawne klucze `bay_kind`/`source_status`/
+    `source_refs` wpisu `meta.field_specs`): skąd pole wzięło się w modelu (kreator, szablon,
+    import) i z jakich źródeł danych. Dane inżynierskie o pochodzeniu, nie fizyka."""
+
+    bay_kind: str | None = None
+    source_status: str | None = None
+    source_refs: list[str] = []
+
+
+class WyborBlokuPola(BaseModel):
+    """Wybór BLOKU FABRYCZNEGO pola rodziny RMU (karta W5-B; dawne klucze
+    `factory_configuration_ref`/`factory_unit_index` wpisu). Pole rodziny blokowej jest
+    jednostką konkretnego wyrobu, nie luźną celką — numer jednostki bez bloku nie istnieje."""
+
+    factory_configuration_ref: str
+    factory_unit_index: int | None = None
+
+
+class OgranicznikPrzepiecPola(BaseModel):
+    """Ogranicznik przepięć zainstalowany w polu (`add_surge_arrester_sn`; dawny klucz
+    `surge_arresters[]` wpisu). Wejście koordynacji izolacji V12.6 czyta tę listę."""
+
+    device_ref: str
+    catalog_ref: str | None = None
+    catalog_namespace: str | None = None
+
+
 class Bay(ENMElement):
-    """Pole rozdzielcze SN (IN, OUT, TR, COUPLER, FEEDER, MEASUREMENT, OZE)."""
+    """Pole rozdzielnicy — JEDYNY nośnik pól SN, nN i ZKSN (karta W5-B, 2026-09-30).
+
+    Do karty W5-B pola żyły w trzech nietypowanych słownikach (`Substation.meta.field_specs`,
+    `Substation.meta.nn_field_specs`, `BranchPointSN.materialized_params.switchgear_field_specs`)
+    i w tej kolekcji naraz; każdy czytelnik składał je po swojemu. Teraz kolekcja `bays` jest
+    jedynym źródłem: pole stacji wskazuje `substation_ref`, pole rozdzielnicy odgałęźnej ZKSN
+    wskazuje `branch_point_ref` (dokładnie jedno z dwóch). Poziom pola (SN/nN) NIE jest polem
+    rekordu — wynika z napięcia szyny `bus_ref` (`enm.pola.czy_pole_nn`, pasmo z
+    `network_model.pochodne.pasma_napieciowe`).
+
+    `meta` (słownik `ENMElement`) niesie adnotacje inżynierskie bez typowanego odpowiednika
+    (np. `gpz_line_field_index`, `assigned_corridor_ref`, `feeder_role`, `transformer_ref`,
+    `catalog_binding`, `field_status`); klucze mające typowany odpowiednik (`field_role`,
+    `terminal_bus_ref`, `gpz_section_id`) w `meta` NIE występują — migracja
+    `enm/migrations/field_specs_promocja.py` je przenosi, a pisarz `enm.pola.dodaj_pole`
+    odmawia dubli.
+    """
 
     bay_role: Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"]
-    substation_ref: str
+    # Właściciel pola: stacja (pole SN/nN) ALBO punkt rozgałęzienia ZKSN — dokładnie jedno.
+    substation_ref: str | None = None
+    branch_point_ref: str | None = None
+    # Port punktu rozgałęzienia obsługiwany przez pole ZKSN (`MAIN_IN`/`MAIN_OUT`/`BRANCH[_n]`).
+    branch_point_port_id: str | None = None
     bus_ref: str
+    # Rola KANONICZNA pola (`enm.rola_pola_sn`: LINIA_IN/LINIA_OUT/LINIA_ODG/TRANSFORMATOROWE/
+    # SPRZEGLO/POMIAROWE/PV_SN/BESS_SN/FW_SN). `bay_role` jest aliasem modelu; rola kanoniczna
+    # rozróżnia np. pole odgałęźne (OUT + LINIA_ODG) od wyjściowego ciągu (OUT + LINIA_OUT).
+    field_role: str | None = None
+    # Własny ZACISK pola — szyna za aparatem pola (POLA-W-TORZE). JEDYNY nośnik zacisku
+    # (dawne `meta.terminal_bus_ref`/`meta.field_terminal_bus_ref` wpisu).
+    terminal_bus_ref: str | None = None
+    # Pomiar pola POMIAROWEGO (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5): układ energii vs pomiar
+    # napięcia szyn; rodzaj układu pomiarowego energii.
+    funkcja_pomiaru: str | None = None
+    rodzaj_pomiaru: str | None = None
+    # Powiązania producenckie pola (rodzina rozdzielnicy, producent, aparat wskazany na polu,
+    # identyfikator konfiguracji z szablonu).
+    switchgear_family_ref: str | None = None
+    manufacturer_ref: str | None = None
+    apparatus_catalog_ref: str | None = None
+    config_id: str | None = None
+    # Powiązania katalogowe wpisu pola (kształt payloadu kreatora; pole nN: wiązanie aparatu
+    # odpływowego czytane przez promocję aparatów nN).
+    catalog_bindings: dict[str, Any] | None = None
+    wybor_bloku: WyborBlokuPola | None = None
+    metadane_pochodzenia: MetadanePochodzeniaPola | None = None
+    surge_arresters: list[OgranicznikPrzepiecPola] = []
     gpz_section_id: str | None = None
     equipment_refs: list[str] = []
     protection_ref: str | None = None
@@ -1183,6 +1254,23 @@ class Bay(ENMElement):
     # wymagają tych danych na snapshotcie. Puste = dana niedostarczona
     # (ścieżka konwencji rysunku, zero domysłu).
     primary_devices: list[BayPrimaryDevice] = []
+
+    @model_validator(mode="after")
+    def _wlasciciel_pola(self) -> Bay:
+        """Pole ma DOKŁADNIE jednego właściciela: stację albo punkt rozgałęzienia ZKSN.
+        Port punktu rozgałęzienia ma sens wyłącznie dla pola ZKSN."""
+        ma_stacje = isinstance(self.substation_ref, str) and bool(self.substation_ref.strip())
+        ma_punkt = isinstance(self.branch_point_ref, str) and bool(self.branch_point_ref.strip())
+        if ma_stacje == ma_punkt:
+            raise ValueError(
+                f"pole {self.ref_id!r} musi wskazywać dokładnie jednego właściciela: "
+                "substation_ref (pole stacji) albo branch_point_ref (pole ZKSN)"
+            )
+        if self.branch_point_port_id is not None and not ma_punkt:
+            raise ValueError(
+                f"pole {self.ref_id!r}: branch_point_port_id dotyczy wyłącznie pola ZKSN"
+            )
+        return self
 
 
 # ---------------------------------------------------------------------------

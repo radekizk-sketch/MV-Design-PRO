@@ -30,7 +30,7 @@ from pydantic import BaseModel
 from .fix_actions import FixAction
 from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna, parsuj_grupe_polaczen
 from .interlock_rules import earthing_interlock_violation
-from .migrations.nn_field_specs_promocja import (
+from .migrations.promocja_aparatow_nn import (
     META_KLUCZ_GALAZ_ZRODLO_FIELD_REF,
     META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA,
 )

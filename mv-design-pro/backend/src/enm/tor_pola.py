@@ -44,7 +44,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from .migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
+from .migrations.promocja_aparatow_nn import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
 from .zajetosc_pol import TYPY_ODCINKA_TERENOWEGO, zacisk_pola
 
 #: Rola pola (`Bay.bay_role`), na którego zacisku kończy się połówka odcinka od strony zasilania.

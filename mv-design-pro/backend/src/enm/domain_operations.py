@@ -69,7 +69,7 @@ from .load_zip_model import (
     model_odbioru,
     zip_odbioru_z_parametrow_materializacji,
 )
-from .migrations.nn_field_specs_promocja import (
+from .migrations.promocja_aparatow_nn import (
     META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA,
     META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA,
     ROLA_POLA_ZRODLA_NA_RODZAJ_GENERATORA,

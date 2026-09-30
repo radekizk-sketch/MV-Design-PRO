@@ -70,6 +70,26 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # dawnego klucza meta stacji) i układ uziemienia ekranu kabla.
     "transformers": ("lv_earthing_system",),
     "branches": ("screen_bonding",),
+    # Karta W5-B: pola typowane rekordu pola rozdzielnicy (dawne klucze wpisu
+    # `meta.field_specs`). `None`/pusta lista = dana nienadana — poza odciskiem, zeby rekordy
+    # `bays` istniejace przed karta (stacja konca ciagu) haszowaly jak przed nia; wartosc
+    # (zacisk, rola kanoniczna, pomiar, powiazania producenckie) jest trescia modelu.
+    "bays": (
+        "branch_point_ref",
+        "branch_point_port_id",
+        "field_role",
+        "terminal_bus_ref",
+        "funkcja_pomiaru",
+        "rodzaj_pomiaru",
+        "switchgear_family_ref",
+        "manufacturer_ref",
+        "apparatus_catalog_ref",
+        "config_id",
+        "catalog_bindings",
+        "wybor_bloku",
+        "metadane_pochodzenia",
+        "surge_arresters",
+    ),
     # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
     # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego
     # dla przyszlego solvera W6-2 (jeszcze nie istnieje) — nie jest trescia modelu

@@ -109,7 +109,7 @@ from .katalog_projektu_karty import (
 )
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, model_odbioru, zip_odbioru_z_payloadu
-from .migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
+from .migrations.promocja_aparatow_nn import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
 from .models import liczba_torow
 from .nazwy_elementow import (
     nazwa_elementu,

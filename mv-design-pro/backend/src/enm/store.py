@@ -41,7 +41,9 @@ from enm.dziennik_zmian import (
 )
 from enm.dziennik_zmian import przygotuj_dopisanie as przygotuj_wpis_dziennika
 from enm.hash import compute_enm_hash
-from enm.migrations.nn_field_specs_promocja import migruj as promuj_nn_field_specs
+from enm.migrations.field_specs_promocja import migruj as promuj_pola_do_bays
+from enm.migrations.field_specs_promocja import wymaga_migracji as niesie_dawne_wpisy_pol
+from enm.migrations.promocja_aparatow_nn import migruj as promuj_aparaty_nn
 from enm.migrations.punkt_przylaczenia_der import migruj as migruj_punkt_przylaczenia
 from enm.models import UKLADY_SIECI_NN, EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.nazwy_elementow import NAZWA_MODELU_BEZ_NAZWY
@@ -66,6 +68,13 @@ from enm.uziemienie import RaportMigracjiUziemienia, raport_migracji_uziemienia
 from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
+
+
+class LegacyFieldSpecsError(ValueError):
+    """Zapis modelu z dawnymi kluczami pol (`meta.field_specs`, `meta.nn_field_specs`,
+    `materialized_params.switchgear_field_specs`) — od karty W5-B jedynym nosnikiem pol jest
+    kolekcja `bays`; brak trybu zgodnosci (zasady inzynierskie wlasciciela)."""
+
 
 #: Nazwane awarie ZAPISU modelu po operacji (karta #151) — jedno źródło dla każdego
 #: miejsca, które tłumaczy nieudany zapis na komunikat „model pozostał bez zmian"
@@ -271,12 +280,16 @@ def przygotuj_model_po_odczycie(enm: EnergyNetworkModel) -> tuple[EnergyNetworkM
     # V12K-268: automigracja nazwy klucza punktu przyłączenia wytwórcy. Idzie PRZED
     # uzupełnianiem katalogu, bo reguły katalogowe mają widzieć już kanoniczne nazwy.
     model, zmieniona_nazwa = migruj_punkt_przylaczenia(enm)
-    # P0.1 nN (karta P0.1, C §4.2, LV-INV-12): promocja `nn_field_specs` →
-    # realne elementy grafu. PO migracji punktu przyłączenia, PRZED uzupełnianiem
-    # katalogu — reguły katalogowe mają widzieć już realne gałęzie/szyny nN.
-    model, zmieniona_promocja_nn = promuj_nn_field_specs(model)
+    # Karta W5-B: dawne wpisy pol (`meta.field_specs`/`nn_field_specs`/
+    # `switchgear_field_specs`) → typowane rekordy `bays`. PRZED promocja aparatow nN,
+    # ktora czyta juz wylacznie `bays`.
+    model, zmienione_pola = promuj_pola_do_bays(model)
+    # P0.1 nN (karta P0.1, C §4.2, LV-INV-12): promocja pol nN → realne elementy grafu
+    # (aparat + szyna odplywu). PO migracji punktu przylaczenia, PRZED uzupelnianiem
+    # katalogu — reguly katalogowe maja widziec juz realne galezie/szyny nN.
+    model, zmieniona_promocja_nn = promuj_aparaty_nn(model)
     completed, changed = complete_catalog_defaults(model)
-    return completed, bool(changed or zmieniona_nazwa or zmieniona_promocja_nn)
+    return completed, bool(changed or zmieniona_nazwa or zmienione_pola or zmieniona_promocja_nn)
 
 
 def _get_enm_pod_blokada(klucz: str) -> EnergyNetworkModel:
@@ -363,6 +376,15 @@ def set_enm(
     CO DO BAJTU i tylko wtedy, gdy ta operacja go faktycznie podmienila. Zakres i
     granice tej gwarancji: `_wycofaj_nieudany_zapis` nizej.
     """
+    if niesie_dawne_wpisy_pol(enm):
+        # Karta W5-B: dawne klucze pol nie maja trybu zgodnosci — model wchodzi do
+        # magazynu wylacznie przez `przygotuj_model_po_odczycie` (migracja), a operacja,
+        # ktora je zapisala, jest bledem programu, nie danych.
+        raise LegacyFieldSpecsError(
+            "model niesie dawne wpisy pol (meta.field_specs / nn_field_specs / "
+            "switchgear_field_specs); jedynym nosnikiem pol jest kolekcja `bays` — "
+            "zmigruj model funkcja `przygotuj_model_po_odczycie` przed zapisem"
+        )
     with blokada_twin(klucz):
         return _set_enm_pod_blokada(klucz, enm, zrodlo_zmiany=zrodlo_zmiany)
 
