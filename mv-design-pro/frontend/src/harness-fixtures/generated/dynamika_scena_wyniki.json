@@ -613,84 +613,84 @@
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
-      "opis_pl": "Modul pradu zacisku poczatkowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus)"
+      "opis_pl": "Modul pradu zacisku poczatkowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000)"
     },
     {
       "klucz": "i_do_pu@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
-      "opis_pl": "Modul pradu zacisku koncowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus)"
+      "opis_pl": "Modul pradu zacisku koncowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000)"
     },
     {
       "klucz": "p_od_pu@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
-      "opis_pl": "Moc czynna wplywajaca do galezi zaciskiem poczatkowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus)"
+      "opis_pl": "Moc czynna wplywajaca do galezi zaciskiem poczatkowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000)"
     },
     {
       "klucz": "q_od_pu@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
-      "opis_pl": "Moc bierna wplywajaca do galezi zaciskiem poczatkowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus)"
+      "opis_pl": "Moc bierna wplywajaca do galezi zaciskiem poczatkowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000)"
     },
     {
       "klucz": "p_do_pu@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
-      "opis_pl": "Moc czynna wplywajaca do galezi zaciskiem koncowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus)"
+      "opis_pl": "Moc czynna wplywajaca do galezi zaciskiem koncowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000)"
     },
     {
       "klucz": "q_do_pu@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
-      "opis_pl": "Moc bierna wplywajaca do galezi zaciskiem koncowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus)"
+      "opis_pl": "Moc bierna wplywajaca do galezi zaciskiem koncowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000)"
     },
     {
       "klucz": "i_od_pu@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
-      "opis_pl": "Modul pradu zacisku poczatkowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream)"
+      "opis_pl": "Modul pradu zacisku poczatkowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001 -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream)"
     },
     {
       "klucz": "i_do_pu@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
-      "opis_pl": "Modul pradu zacisku koncowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream)"
+      "opis_pl": "Modul pradu zacisku koncowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001 -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream)"
     },
     {
       "klucz": "p_od_pu@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
-      "opis_pl": "Moc czynna wplywajaca do galezi zaciskiem poczatkowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream)"
+      "opis_pl": "Moc czynna wplywajaca do galezi zaciskiem poczatkowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001 -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream)"
     },
     {
       "klucz": "q_od_pu@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
-      "opis_pl": "Moc bierna wplywajaca do galezi zaciskiem poczatkowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream)"
+      "opis_pl": "Moc bierna wplywajaca do galezi zaciskiem poczatkowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001 -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream)"
     },
     {
       "klucz": "p_do_pu@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
-      "opis_pl": "Moc czynna wplywajaca do galezi zaciskiem koncowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream)"
+      "opis_pl": "Moc czynna wplywajaca do galezi zaciskiem koncowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001 -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream)"
     },
     {
       "klucz": "q_do_pu@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
-      "opis_pl": "Moc bierna wplywajaca do galezi zaciskiem koncowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream)"
+      "opis_pl": "Moc bierna wplywajaca do galezi zaciskiem koncowym galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001 -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream)"
     },
     {
       "klucz": "i_od_pu@seg/fab0e40bf1455775b1286ab17b598f58/segment",
@@ -949,42 +949,42 @@
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
-      "opis_pl": "Modul pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus)"
+      "opis_pl": "Modul pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003 -> nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus)"
     },
     {
       "klucz": "i_do_pu@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
-      "opis_pl": "Modul pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus)"
+      "opis_pl": "Modul pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003 -> nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus)"
     },
     {
       "klucz": "p_od_pu@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
-      "opis_pl": "Moc czynna wplywajaca do galezi zaciskiem poczatkowym galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus)"
+      "opis_pl": "Moc czynna wplywajaca do galezi zaciskiem poczatkowym galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003 -> nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus)"
     },
     {
       "klucz": "q_od_pu@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
-      "opis_pl": "Moc bierna wplywajaca do galezi zaciskiem poczatkowym galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus)"
+      "opis_pl": "Moc bierna wplywajaca do galezi zaciskiem poczatkowym galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003 -> nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus)"
     },
     {
       "klucz": "p_do_pu@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
-      "opis_pl": "Moc czynna wplywajaca do galezi zaciskiem koncowym galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus)"
+      "opis_pl": "Moc czynna wplywajaca do galezi zaciskiem koncowym galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003 -> nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus)"
     },
     {
       "klucz": "q_do_pu@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
-      "opis_pl": "Moc bierna wplywajaca do galezi zaciskiem koncowym galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus)"
+      "opis_pl": "Moc bierna wplywajaca do galezi zaciskiem koncowym galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003 -> nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus)"
     },
     {
       "klucz": "i_zwarcia_pu@seg/fab0e40bf1455775b1286ab17b598f58/segment:x=0.5",
@@ -1145,14 +1145,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L (gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "stan_galezi@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
@@ -1166,14 +1166,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001 -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001 -> bus/51282a49a0ce98c68ae691a5b2120ce6/downstream); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "stan_galezi@seg/fab0e40bf1455775b1286ab17b598f58/segment",
@@ -1313,14 +1313,14 @@
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
-      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
+      "opis_pl": "Kat fazora pradu zacisku poczatkowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003 -> nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "i_do_kat_deg@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
       "przestrzen": "obserwabla",
       "jednostka": "deg",
       "element_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
-      "opis_pl": "Kat fazora pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus -> stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
+      "opis_pl": "Kat fazora pradu zacisku koncowego galezi stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer (stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003 -> nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus); brak wartosci, gdy modul pradu nie przekracza tolerancji rozwiazania sieci (fazor nierozroznialny od zera)"
     },
     {
       "klucz": "p_pobor_pu@load/d274343dd8d90e4fc15e2f65933f1325/sn",
@@ -1355,8 +1355,8 @@
       "ref": "seg/fab0e40bf1455775b1286ab17b598f58/segment",
       "przyczyna": "harmonogram",
       "delta_x_nieprzypisane_max": 0.0,
-      "delta_y_max": 0.631891812,
-      "residuum_kcl_max": 4.19013416e-12,
+      "delta_y_max": 0.631938174,
+      "residuum_kcl_max": 3.04798972e-12,
       "obszary_odciete": [],
       "odbiory_odciete": [],
       "obszary_zasilone_ponownie": [],
@@ -1374,8 +1374,8 @@
       "ref": "seg/fab0e40bf1455775b1286ab17b598f58/segment",
       "przyczyna": "harmonogram",
       "delta_x_nieprzypisane_max": 0.0,
-      "delta_y_max": 0.545429614,
-      "residuum_kcl_max": 3.15383675e-12,
+      "delta_y_max": 0.545482264,
+      "residuum_kcl_max": 2.60920418e-12,
       "obszary_odciete": [
         "bus/fab0e40bf1455775b1286ab17b598f58/downstream"
       ],
@@ -1401,8 +1401,8 @@
       "ref": "seg/fab0e40bf1455775b1286ab17b598f58/segment",
       "przyczyna": "harmonogram",
       "delta_x_nieprzypisane_max": 0.0,
-      "delta_y_max": 0.545429614,
-      "residuum_kcl_max": 3.15383675e-12,
+      "delta_y_max": 0.545482264,
+      "residuum_kcl_max": 2.60920418e-12,
       "obszary_odciete": [
         "bus/fab0e40bf1455775b1286ab17b598f58/downstream"
       ],
@@ -1438,19 +1438,19 @@
     "zbiegl": true,
     "kroki": 150,
     "kroki_odrzucone": 0,
-    "max_residuum_f": 4.63009058e-11,
-    "max_residuum_g": 1.73110284e-09,
+    "max_residuum_f": 4.6478205e-11,
+    "max_residuum_g": 1.74164214e-09,
     "czas_obliczen_s": 0.0,
     "integrator": "trapez_niejawny",
     "dt_s": 0.002,
     "tolerancja": 1e-10
   },
   "tozsamosc": {
-    "odcisk_migawki": "28fb788d65cd16d45b2b7251e824e4ca43b571457b7f7165e9a74a31cb6789a9",
-    "odcisk_punktu_pracy": "cabd492042063c0fb8be14d5bcf92f004f0d8b3b8828e22b222bc7cbdf9f973d",
+    "odcisk_migawki": "0001f8030bc8716d8f94358c794941eb3a7b07bfddafad31d975f20d4606147b",
+    "odcisk_punktu_pracy": "c10d81540b2e008b61bc937e3ca4b3d943634bedf85945f7910fdb58939a5f95",
     "odcisk_nastaw_solvera": "5417f3cf221bb32560f5d4a24f219b51c34d164c0a19a361def9278ecf1c22b0",
     "odcisk_harmonogramu": "93073c2cedca75803fbe0f96e8e654615a5370492e7d5d583eb249ff34267b69",
-    "odcisk_implementacji": "b89bde3a8f6c8ff7d46ef711e3239c10bad6249720c19fb53c38cf20c2e7b461",
+    "odcisk_implementacji": "6acaac6da9e806f406dd4ade9b765f7b63e40e4d7e1f6c823b14b3f054d19965",
     "wersja_solvera": "DYNAMIKA_RMS_DAE_V1"
   },
   "metryki": [
@@ -3565,8 +3565,8 @@
           "szyna_nazwa": "Szyna GPZ S1 15 kV"
         },
         "zacisk_do": {
-          "szyna_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus",
-          "szyna_nazwa": "Stacja S01 (typ B)"
+          "szyna_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000",
+          "szyna_nazwa": "Zacisk techniczny pola SN 1"
         }
       },
       "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R": {
@@ -3576,8 +3576,8 @@
         "kolekcja": "branches",
         "typ": "cable",
         "zacisk_od": {
-          "szyna_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus",
-          "szyna_nazwa": "Stacja S01 (typ B)"
+          "szyna_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001",
+          "szyna_nazwa": "Zacisk techniczny pola SN 2"
         },
         "zacisk_do": {
           "szyna_ref": "bus/51282a49a0ce98c68ae691a5b2120ce6/downstream",
@@ -3708,12 +3708,12 @@
         "kolekcja": "transformers",
         "typ": null,
         "zacisk_od": {
-          "szyna_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_bus",
-          "szyna_nazwa": "Stacja S01 (typ B)"
+          "szyna_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003",
+          "szyna_nazwa": "Zacisk techniczny pola SN 4"
         },
         "zacisk_do": {
-          "szyna_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus",
-          "szyna_nazwa": "Szyna nN stacji"
+          "szyna_ref": "nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus",
+          "szyna_nazwa": "Wyłącznik główny nN"
         }
       }
     },
@@ -3950,7 +3950,7 @@
     "case_ref": "case-demo",
     "case_kind": "DYNAMIKA_CZASOWA",
     "rodzaj_przypadku": "DYNAMIKA_CZASOWA",
-    "snapshot_ref": "9f6163b5703359d6eedf55c3db3ea6ac14fac8ea7bc0db273f7325a3d559c2f5",
+    "snapshot_ref": "9d9077b1605e65d52a083b5580969462ce8f3ef7e5438bb91c00fa9f3de27519",
     "rewizja_modelu": 2,
     "variant_ref": null,
     "run_ref": "run-dyn-scena-dynamika",
@@ -3975,14 +3975,14 @@
       "project_ref": null,
       "run_ref": "run-dyn-scena-dynamika",
       "analysis_type": "dynamika_rms",
-      "snapshot_ref": "9f6163b5703359d6eedf55c3db3ea6ac14fac8ea7bc0db273f7325a3d559c2f5"
+      "snapshot_ref": "9d9077b1605e65d52a083b5580969462ce8f3ef7e5438bb91c00fa9f3de27519"
     },
     "reproducibility": {
       "case_ref": "case-demo",
       "analysis_case_ref": "case-demo",
-      "snapshot_ref": "9f6163b5703359d6eedf55c3db3ea6ac14fac8ea7bc0db273f7325a3d559c2f5",
-      "enm_hash": "9f6163b5703359d6eedf55c3db3ea6ac14fac8ea7bc0db273f7325a3d559c2f5",
-      "enm_snapshot_ref": "9f6163b5703359d6eedf55c3db3ea6ac14fac8ea7bc0db273f7325a3d559c2f5",
+      "snapshot_ref": "9d9077b1605e65d52a083b5580969462ce8f3ef7e5438bb91c00fa9f3de27519",
+      "enm_hash": "9d9077b1605e65d52a083b5580969462ce8f3ef7e5438bb91c00fa9f3de27519",
+      "enm_snapshot_ref": "9d9077b1605e65d52a083b5580969462ce8f3ef7e5438bb91c00fa9f3de27519",
       "enm_projection_version": "v12xx.m1.1",
       "variant_ref": null,
       "operating_variant_ref": null,
@@ -3992,13 +3992,13 @@
       "method_version": "canonical_run_v1",
       "formula_set_version": "resultset_dynamic_v2",
       "standard_basis_ref": "DYNAMIKA_RMS_DAE_V1",
-      "input_hash": "781a724617539e4740363d16c797b202a7f0917e4a707aef3f923c8acad6175c",
-      "result_hash": "f465b29f2d8cfc0bcf7620ec57e87b6dc2e23b1a21a15ca9a4f5084b3b022d18",
+      "input_hash": "9cd8e1c5c252e222bc3970526db22ac9a3cf5de8dc5c233fc67c6154f04e988e",
+      "result_hash": "ff73ae4da700b52a24a16adfcc141ef89a975aa635c27539a49b31df6da56832",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
       "proof_renderer_version": "white_box_trace_v1",
-      "catalog_snapshot_ref": "9f6163b5703359d6eedf55c3db3ea6ac14fac8ea7bc0db273f7325a3d559c2f5",
+      "catalog_snapshot_ref": "9d9077b1605e65d52a083b5580969462ce8f3ef7e5438bb91c00fa9f3de27519",
       "catalog_materialization_ref": "catalog-materialization:fa8fe2a0cc4f83e02af2692ba9a04199e8a8fd1f8df59684a771e293a9a3eb91",
       "catalog_materialization_hash": "fa8fe2a0cc4f83e02af2692ba9a04199e8a8fd1f8df59684a771e293a9a3eb91",
       "catalog_materialization_status": "partial",

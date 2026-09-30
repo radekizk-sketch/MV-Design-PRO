@@ -2,14 +2,16 @@
   "changes": {
     "created_element_ids": [
       "stn/2d97902632bbd3158d26406e61da6fb1/sn_bus",
-      "seg/36a62804c7ee9683773a1cc081919c8e/segment_R_L",
-      "seg/36a62804c7ee9683773a1cc081919c8e/segment_R_R",
       "stn/2d97902632bbd3158d26406e61da6fb1/sn_field_terminal/000",
       "stn/2d97902632bbd3158d26406e61da6fb1/sn_field_breaker/000",
       "stn/2d97902632bbd3158d26406e61da6fb1/sn_field_terminal/001",
       "stn/2d97902632bbd3158d26406e61da6fb1/sn_field_breaker/001",
       "stn/2d97902632bbd3158d26406e61da6fb1/sn_field_terminal/002",
       "stn/2d97902632bbd3158d26406e61da6fb1/sn_field_breaker/002",
+      "stn/2d97902632bbd3158d26406e61da6fb1/sn_field_terminal/003",
+      "stn/2d97902632bbd3158d26406e61da6fb1/sn_field_breaker/003",
+      "seg/36a62804c7ee9683773a1cc081919c8e/segment_R_L",
+      "seg/36a62804c7ee9683773a1cc081919c8e/segment_R_R",
       "stn/2d97902632bbd3158d26406e61da6fb1/station",
       "stn/2d97902632bbd3158d26406e61da6fb1/nn_bus",
       "stn/2d97902632bbd3158d26406e61da6fb1/transformer"

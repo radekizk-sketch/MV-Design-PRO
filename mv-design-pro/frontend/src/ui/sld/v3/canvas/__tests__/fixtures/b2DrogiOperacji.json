@@ -35,14 +35,16 @@
     "typ": "substation",
     "utworzone": [
       "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_bus",
-      "seg/628c3045f7504084cacf6921ccb4d391/segment_L",
-      "seg/628c3045f7504084cacf6921ccb4d391/segment_R",
       "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_terminal/000",
       "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_breaker/000",
       "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_terminal/001",
       "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_breaker/001",
       "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_terminal/002",
       "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_breaker/002",
+      "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_terminal/003",
+      "stn/c566217cd62b515686c7a6a4ab6ec4a9/sn_field_breaker/003",
+      "seg/628c3045f7504084cacf6921ccb4d391/segment_L",
+      "seg/628c3045f7504084cacf6921ccb4d391/segment_R",
       "stn/c566217cd62b515686c7a6a4ab6ec4a9/station",
       "stn/c566217cd62b515686c7a6a4ab6ec4a9/nn_bus",
       "stn/c566217cd62b515686c7a6a4ab6ec4a9/transformer"

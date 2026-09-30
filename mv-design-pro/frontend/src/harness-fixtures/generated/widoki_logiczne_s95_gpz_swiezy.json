@@ -2,30 +2,30 @@
   "branches": [],
   "line_fields": [
     {
-      "attachment_bus_ref": "gpz/a6b30c58f8be3a034fd29c5254ae4326/section/001/bus_sn",
+      "attachment_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "gpz/a6b30c58f8be3a034fd29c5254ae4326/bay/001/001",
+      "field_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "gpz/a6b30c58f8be3a034fd29c5254ae4326/substation"
+      "station_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation"
     }
   ],
   "secondary_connectors": [],
   "terminals": [
     {
       "branch_id": null,
-      "bus_ref": "gpz/a6b30c58f8be3a034fd29c5254ae4326/section/001/bus_sn",
-      "element_id": "gpz/a6b30c58f8be3a034fd29c5254ae4326/bay/001/001",
+      "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+      "element_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
       "port_id": "trunk_out",
-      "station_ref": "gpz/a6b30c58f8be3a034fd29c5254ae4326/substation",
+      "station_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
       "status": "OTWARTY",
-      "trunk_id": "gpz/a6b30c58f8be3a034fd29c5254ae4326/corridor_01"
+      "trunk_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01"
     }
   ],
   "trunks": [
     {
-      "corridor_ref": "gpz/a6b30c58f8be3a034fd29c5254ae4326/corridor_01",
+      "corridor_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
       "corridor_type": "radial",
       "embedded_objects": [],
       "no_point_ref": null,
@@ -33,12 +33,12 @@
       "terminals": [
         {
           "branch_id": null,
-          "bus_ref": "gpz/a6b30c58f8be3a034fd29c5254ae4326/section/001/bus_sn",
-          "element_id": "gpz/a6b30c58f8be3a034fd29c5254ae4326/bay/001/001",
+          "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+          "element_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
           "port_id": "trunk_out",
-          "station_ref": "gpz/a6b30c58f8be3a034fd29c5254ae4326/substation",
+          "station_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
           "status": "OTWARTY",
-          "trunk_id": "gpz/a6b30c58f8be3a034fd29c5254ae4326/corridor_01"
+          "trunk_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01"
         }
       ]
     }

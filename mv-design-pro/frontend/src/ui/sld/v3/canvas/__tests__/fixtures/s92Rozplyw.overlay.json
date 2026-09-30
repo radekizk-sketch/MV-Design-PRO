@@ -10,14 +10,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": -0.000143463261983
+          "value": -0.000143247942527
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9994283222
+          "value": 14.9994281965
         }
       },
       "ref_id": "bus/0aede0deeed18986f8463a0147379b6d/downstream",
@@ -32,14 +32,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": -0.000209349528046
+          "value": -0.000213315893853
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9991394342
+          "value": 14.999137026
         }
       },
       "ref_id": "bus/3cbe5bbbede700ad26175fad0e1613d1/downstream",
@@ -76,28 +76,28 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "",
-          "value": 0.953902502426
+          "value": 0.95386827697
         },
         "P_MW": {
           "code": "P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.250628673371
+          "value": 0.250672844739
         },
         "Q_Mvar": {
           "code": "Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.078852757775
+          "value": 0.0788980669459
         },
         "S_MVA": {
           "code": "S_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 0.262740345825
+          "value": 0.262796080749
         }
       },
       "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/source/main",
@@ -205,14 +205,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.3589019315
+          "value": 29.352707343
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397504229323
+          "value": 0.397419516295
         }
       },
       "ref_id": "nn/645e3e417d01b7a4f513227bd8c26415/feeder_bus",
@@ -227,14 +227,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.3589019315
+          "value": 29.352707343
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397504229323
+          "value": 0.397419516295
         }
       },
       "ref_id": "nn/a24891ce027efbafd92397f238e3552c/feeder_bus",
@@ -249,14 +249,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.3589019315
+          "value": 29.352707343
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397504229323
+          "value": 0.397419516295
         }
       },
       "ref_id": "nn/a57c926adca5ddbbdf87403b58190e49/feeder_bus",
@@ -271,14 +271,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.3589019315
+          "value": 29.352707343
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397504229323
+          "value": 0.397419516295
         }
       },
       "ref_id": "nn/c3254201c6da3d0d58c69441b6c3acf7/feeder_bus",
@@ -293,14 +293,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.3589019315
+          "value": 29.352707343
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397504229323
+          "value": 0.397419516295
         }
       },
       "ref_id": "nn/ea174ad4d75fc1b2597990b7f003de57/feeder_bus",
@@ -315,14 +315,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.3601190047
+          "value": 29.3600113587
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397520942232
+          "value": 0.39751981781
         }
       },
       "ref_id": "nn/f83d394f3b2e4248156b30fd3c5ee52e/feeder_bus",
@@ -337,70 +337,70 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "",
-          "value": 0.953902502425
+          "value": 0.953868276969
         },
         "DELTA_U_KV": {
           "code": "DELTA_U_KV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.000571677832932
+          "value": 0.000571803483258
         },
         "DELTA_U_PCT": {
           "code": "DELTA_U_PCT",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "%",
-          "value": 0.00381118555288
+          "value": 0.00381202322172
         },
         "I_A": {
           "code": "I_A",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "A",
-          "value": 10.112880626
+          "value": 10.1150258642
         },
         "LOADING_PCT": {
           "code": "LOADING_PCT",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "%",
-          "value": 4.41383469581
+          "value": 4.41477333925
         },
         "LOSSES_P_MW": {
           "code": "LOSSES_P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 9.35035076155e-06
+          "value": 9.35432328253e-06
         },
         "LOSSES_Q_Mvar": {
           "code": "LOSSES_Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": -0.0033042751981
+          "value": -0.00330427360022
         },
         "P_MW": {
           "code": "P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.250628673372
+          "value": 0.25067284474
         },
         "Q_Mvar": {
           "code": "Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.0788527577755
+          "value": 0.0788980669464
         },
         "S_MVA": {
           "code": "S_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 0.262740345827
+          "value": 0.262796080751
         }
       },
       "ref_id": "seg/0aede0deeed18986f8463a0147379b6d/segment",
@@ -415,70 +415,70 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "",
-          "value": 0.950244399261
+          "value": 0.950209800649
         },
         "DELTA_U_KV": {
           "code": "DELTA_U_KV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.000289224316587
+          "value": 0.000289287665405
         },
         "DELTA_U_PCT": {
           "code": "DELTA_U_PCT",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "%",
-          "value": 0.00192816211058
+          "value": 0.00192858443603
         },
         "I_A": {
           "code": "I_A",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "A",
-          "value": 10.1518198374
+          "value": 10.153978718
         },
         "LOADING_PCT": {
           "code": "LOADING_PCT",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "%",
-          "value": 4.42260817184
+          "value": 4.42354973789
         },
         "LOSSES_P_MW": {
           "code": "LOSSES_P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 4.7418071365e-06
+          "value": 4.7438252867e-06
         },
         "LOSSES_Q_Mvar": {
           "code": "LOSSES_Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": -0.0016657987549
+          "value": -0.00166579792222
         },
         "P_MW": {
           "code": "P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.25061932427
+          "value": 0.250663491695
         },
         "Q_Mvar": {
           "code": "Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.082157032253
+          "value": 0.0822023397901
         },
         "S_MVA": {
           "code": "S_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 0.263741964135
+          "value": 0.263798049151
         }
       },
       "ref_id": "seg/3cbe5bbbede700ad26175fad0e1613d1/segment_L",
@@ -493,70 +493,70 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "",
-          "value": 2.72542290898e-08
+          "value": 2.74075914927e-08
         },
         "DELTA_U_KV": {
           "code": "DELTA_U_KV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": -3.36326854367e-07
+          "value": -3.36326802852e-07
         },
         "DELTA_U_PCT": {
           "code": "DELTA_U_PCT",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "%",
-          "value": -2.24217903133e-06
+          "value": -2.24217867606e-06
         },
         "I_A": {
           "code": "I_A",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "A",
-          "value": 0.0641912103308
+          "value": 0.0641912000171
         },
         "LOADING_PCT": {
           "code": "LOADING_PCT",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "%",
-          "value": 0.027909221883
+          "value": 0.0279092173988
         },
         "LOSSES_P_MW": {
           "code": "LOSSES_P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 4.73029578015e-11
+          "value": 4.730294259e-11
         },
         "LOSSES_Q_Mvar": {
           "code": "LOSSES_Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": -0.00166764084869
+          "value": -0.00166764031319
         },
         "P_MW": {
           "code": "P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 4.5450265716e-11
+          "value": 4.57060044416e-11
         },
         "Q_Mvar": {
           "code": "Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": -0.00166764084819
+          "value": -0.00166764031249
         },
         "S_MVA": {
           "code": "S_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 0.00166764084819
+          "value": 0.00166764031249
         }
       },
       "ref_id": "seg/3cbe5bbbede700ad26175fad0e1613d1/segment_R",
@@ -571,14 +571,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.3601190047
+          "value": 29.3539249349
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397520942232
+          "value": 0.397436232766
         }
       },
       "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/nn_bus",
@@ -593,14 +593,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": -0.00020609911617
+          "value": -0.000210023010978
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9991390979
+          "value": 14.9991366785
         }
       },
       "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/sn_bus",
@@ -615,14 +615,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": -0.00020609911617
+          "value": -0.000205775234646
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9991390979
+          "value": 14.9991389089
         }
       },
       "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/000",
@@ -637,14 +637,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": -0.00020609911617
+          "value": -0.000210065481978
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9991390979
+          "value": 14.9991366897
         }
       },
       "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/001",
@@ -659,14 +659,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": -0.00020609911617
+          "value": -0.000214228317566
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9991390979
+          "value": 14.9991344371
         }
       },
       "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/002",
@@ -681,14 +681,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": -0.00020609911617
+          "value": -0.000210023010978
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9991390979
+          "value": 14.9991366785
         }
       },
       "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/003",
@@ -703,14 +703,14 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": -0.00020609911617
+          "value": -0.000210023010978
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9991390979
+          "value": 14.9991366785
         }
       },
       "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/sn_field_terminal/004",
@@ -725,70 +725,70 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "",
-          "value": 0.946448109801
+          "value": 0.946413256111
         },
         "DELTA_U_KV": {
           "code": "DELTA_U_KV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.6016181556
+          "value": 14.6016146193
         },
         "DELTA_U_PCT": {
           "code": "DELTA_U_PCT",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "%",
-          "value": 0.614025094265
+          "value": 0.614275128323
         },
         "I_A": {
           "code": "I_A",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "A",
-          "value": 10.1925378207
+          "value": 10.1947097984
         },
         "LOADING_PCT": {
           "code": "LOADING_PCT",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "%",
-          "value": 21.1847920363
+          "value": 21.189306407
         },
         "LOSSES_P_MW": {
           "code": "LOSSES_P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.000605873808391
+          "value": 0.000606132053113
         },
         "LOSSES_Q_Mvar": {
           "code": "LOSSES_Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.00331098797389
+          "value": 0.00331239923341
         },
         "P_MW": {
           "code": "P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.250614445281
+          "value": 0.250658541009
         },
         "Q_Mvar": {
           "code": "Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.0854905496116
+          "value": 0.0855357965247
         },
         "S_MVA": {
           "code": "S_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 0.264794702093
+          "value": 0.26485104619
         }
       },
       "ref_id": "stn/b18b63376532b6c69f111ebced4fb650/transformer",

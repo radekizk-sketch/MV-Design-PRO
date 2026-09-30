@@ -862,7 +862,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "085cdc45ea65f96bffa401345419f782917e5d8bef582dd13623cfdbc7b75620",
+    "hash_sha256": "467274709c07c928f411dec4cb73076dc80a7c450e0a09649aa9c61712d5aa77",
     "name": "Magistrala SN — scena koordynacji",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -947,7 +947,7 @@
         "cos_phi": 0.92,
         "cos_phi_mode": "IND",
         "p_kw": 30.0,
-        "q_kvar": 12.77994648408614,
+        "q_kvar": 12.7799464841,
         "q_source": "KATALOG_COS_PHI"
       },
       "meta": {
@@ -964,7 +964,7 @@
         "cos_phi_mode": "IND",
         "feeder_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_feeder/000",
         "load_kind": "SKUPIONY",
-        "q_kvar": 12.77994648408614,
+        "q_kvar": 12.7799464841,
         "q_source": "KATALOG_COS_PHI"
       },
       "model": "pq",
@@ -973,7 +973,7 @@
       "p_mw": 0.03,
       "parameter_source": "CATALOG",
       "phases": null,
-      "q_mvar": 0.012779946484086141,
+      "q_mvar": 0.0127799464841,
       "quantity": null,
       "ref_id": "load/781fa0eb4372125e87586a96bad1d7aa/nn",
       "source_mode": "KATALOG",
@@ -989,7 +989,7 @@
         "cos_phi": 0.92,
         "cos_phi_mode": "IND",
         "p_kw": 30.0,
-        "q_kvar": 12.77994648408614,
+        "q_kvar": 12.7799464841,
         "q_source": "KATALOG_COS_PHI"
       },
       "meta": {
@@ -1006,7 +1006,7 @@
         "cos_phi_mode": "IND",
         "feeder_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_feeder/000",
         "load_kind": "SKUPIONY",
-        "q_kvar": 12.77994648408614,
+        "q_kvar": 12.7799464841,
         "q_source": "KATALOG_COS_PHI"
       },
       "model": "pq",
@@ -1015,7 +1015,7 @@
       "p_mw": 0.03,
       "parameter_source": "CATALOG",
       "phases": null,
-      "q_mvar": 0.012779946484086141,
+      "q_mvar": 0.0127799464841,
       "quantity": null,
       "ref_id": "load/7c2b1f498466104b6083be21a206bf57/nn",
       "source_mode": "KATALOG",
@@ -1473,7 +1473,7 @@
       "hv_neutral": null,
       "i0_percent": 1.5,
       "id": "525ac357-c855-5140-bd37-07f3f15e47af",
-      "lv_bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_bus",
+      "lv_bus_ref": "nn/69c475718a63e9514b29e811faf73892/feeder_bus",
       "lv_earthing_system": "TN-C-S",
       "lv_neutral": null,
       "materialized_params": {
@@ -1518,7 +1518,7 @@
       "hv_neutral": null,
       "i0_percent": 1.5,
       "id": "09577d56-0464-5a85-9363-dd7dff809ff0",
-      "lv_bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_bus",
+      "lv_bus_ref": "nn/2f39a65f39de991048ec48520d37e059/feeder_bus",
       "lv_earthing_system": "TN-C-S",
       "lv_neutral": null,
       "materialized_params": {
