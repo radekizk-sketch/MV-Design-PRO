@@ -1,0 +1,10 @@
+⊙Źródło GPZ 15 kV●
+⊙Stacja Brzozowa · stacja końcowa●
+⊙Stacja Lipowa · stacja przelotowa●
+⊙Stacja Klonowa · stacja odgałęźna●
+⊙Odcinek 3 (1) · YAKXS 3×120/16 · 0,15 km●
+⊙Odcinek 3 (2) · YAKXS 3×120/16 · 0,15 km●
+⊙Odcinek 2 (1) · YAKXS 3×120/16 · 0,18 km●
+⊙Odcinek 2 (2) · YAKXS 3×120/16 · 0,18 km●
+⊙Odcinek 1 (1) · YAKXS 3×120/16 · 0,20 km●
+⊙Odcinek 1 (2) · YAKXS 3×120/16 · 0,20 km●

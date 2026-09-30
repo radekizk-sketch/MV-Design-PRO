@@ -27,10 +27,13 @@ vi.mock('../../../../ui/app-state', () => ({
   useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  // Pozostałe eksporty (selektory nazw używane przez most nazw `useNazwaObiektu`) z modułu
+  // oryginalnego; podmieniony wyłącznie magazyn.
+  const oryginal = await importOriginal<typeof import('../../../../ui/topology/snapshotStore')>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
-  return { useSnapshotStore };
+  return { ...oryginal, useSnapshotStore };
 });
 
 vi.mock('../../../../ui/network-build/networkBuildStore', () => ({

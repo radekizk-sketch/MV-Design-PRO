@@ -11,7 +11,7 @@ w dwoch procesach daje ten sam odcisk (test miedzyprocesowy w
 `tests/network_model/test_odcisk_katalogu.py`).
 
 Czego odcisk NIE obejmuje (uczciwie): rodzin rozdzielnic (`catalog/switchgear`),
-szablonow stacji (`station_templates.py`, `bay_templates.py`) i biblioteki
+szablonow pol (`bay_templates.py`) i biblioteki
 zabezpieczen analitycznych (`application/analyses/protection/catalog`) — to osobne
 katalogi z wlasnymi manifestami; ich konwergencja do jednej biblioteki typow jest
 karta architektoniczna (P1-5 w CONVERGENCE_EVIDENCE.md). Odcisk obejmuje dokladnie

@@ -45,6 +45,7 @@ import {
 import { SekcjaDanychModulu } from '../../oze/ncrfg/SekcjaDanychModulu';
 import { EDYCJA_PARAMETROW_STRINGS as T } from './strings';
 import { RODZAJE_STACJI, podpisRodzajuStacjiPl } from '../../../ui/shared/rodzajStacji';
+import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 
 interface WierszParametru {
   klucz: string;
@@ -93,6 +94,10 @@ export function KreatorEdycjiParametrow() {
   const selekcjaPoOperacji = useSelekcjaPoOperacji();
 
   const elementRef = readString(context?.element_ref);
+  // Element podpisany NAZWĄ z migawki (ten sam most nazw co lista gotowości) — nie
+  // identyfikatorem maszynowym (karta ETYKIETA-STACJI-PRZELOTOWEJ: naprawa W043).
+  const nazwaObiektu = useNazwaObiektu();
+  const nazwaElementu = elementRef ? nazwaObiektu(elementRef) : '';
   const zrodloParametrow = readString(context?.parameter_source) || readString(context?.source_mode);
   const fallbackType = (readString(context?.element_type) || 'LineBranch') as ElementType;
 
@@ -204,7 +209,7 @@ export function KreatorEdycjiParametrow() {
   }, [activeCaseId, closeForm, elementRef, executeDomainOperation, fallbackType, liczbaZmianNcRfg, powod, selekcjaPoOperacji, wynikDanychModulu, wypelnione, zmianyNcRfg]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszElement, stan: elementRef ? 'kompletne' : 'brak', wartosc: elementRef || 'Brak' },
+    { etykieta: T.wierszElement, stan: elementRef ? 'kompletne' : 'brak', wartosc: nazwaElementu || 'Brak' },
     {
       etykieta: T.wierszParametry,
       stan: wypelnione.length + liczbaZmianNcRfg > 0 ? 'kompletne' : 'brak',
@@ -243,7 +248,7 @@ export function KreatorEdycjiParametrow() {
       <KreatorSekcja tytul={T.elementTytul} testid="mvd-kreator-edycja-element">
         <KreatorInfo>{T.elementPomoc}</KreatorInfo>
         <KreatorSiatka kolumny={2}>
-          <RzadWartosci etykieta={T.element} wartosc={elementRef || '—'} />
+          <RzadWartosci etykieta={T.element} wartosc={nazwaElementu || '—'} />
           <RzadWartosci etykieta={T.zrodloParametrow} wartosc={zrodloParametrow || 'nieznane'} />
         </KreatorSiatka>
       </KreatorSekcja>

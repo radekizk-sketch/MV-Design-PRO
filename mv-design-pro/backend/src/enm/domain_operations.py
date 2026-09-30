@@ -2173,6 +2173,11 @@ def _build_readiness(
                 "action_type": issue.fix_action.action_type,
                 "element_ref": issue.fix_action.element_ref,
                 "panel": issue.fix_action.modal_type,
+                # Pola akcji walidatora przenoszone BEZ zmian (addytywnie): bez nich akcja
+                # OPEN_MODAL traciła podpowiedź ładunku (np. W043 → deklaracja rodzaju
+                # stacji do wpisania) i karta operacji otwierała się pusta.
+                "modal_type": issue.fix_action.modal_type,
+                "payload_hint": issue.fix_action.payload_hint,
                 "step": issue.wizard_step_hint or None,
                 "focus": issue.fix_action.element_ref,
                 "message_pl": issue.suggested_fix or issue.message_pl,
@@ -6006,7 +6011,7 @@ def _zastosuj_zaczepy_transformatora(
 
 
 #: Dozwolone typy konstrukcji stacji (B-5) — parytet z `enm.models.Substation`
-#: i katalogiem szablonów stacji (`network_model.catalog.station_templates`).
+#: i szablonami stacji (`application/station_templates`).
 _STATION_CONSTRUCTION_TYPES = (
     "wnetrzowa",
     "kontenerowa",
