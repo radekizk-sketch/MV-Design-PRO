@@ -170,6 +170,9 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
               {
                 function_type: 'overcurrent_51',
                 threshold_a: 400.0,
+                // Jednostka progu jest częścią nastawy (karta BIEG-ZABEZPIECZEN-Z-MODELU,
+                // PZ-09): 400 A po stronie pierwotnej przekładnika 400/5 A.
+                threshold_unit: 'A_PIERWOTNY',
                 curve_type: 'DT',
                 time_delay_s: 0.3,
               },
