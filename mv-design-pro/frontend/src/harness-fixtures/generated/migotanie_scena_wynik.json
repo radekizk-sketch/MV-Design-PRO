@@ -5,7 +5,7 @@
     "case_name": null,
     "case_id": "case-demo",
     "run_timestamp": "2026-09-16T09:00:00+00:00",
-    "snapshot_hash": "e778352b44573746709d4d247eb7c21092c3decfea788d3d621e25f5c6f45972",
+    "snapshot_hash": "3ad5ceef82e0114e4cd3ed9fc3accaf97bd9913a1b7331f30a9af2415cecdceb",
     "run_id": "run-sc-scena-oze-analiz"
   },
   "config": {
@@ -16,12 +16,12 @@
   },
   "buses": [
     {
-      "bus_ref": "nn/c4b0f7648d5d23031f9bac28ea7120a5/feeder_bus",
+      "bus_ref": "nn/32bc86f5af6bfdabfa42c7144f9cd89f/feeder_bus",
       "nominal_kv": 0.8,
       "sk_mva": 37.971307,
       "modules": [
         {
-          "gen_ref": "pv/e301ee69be096048e5a61a4d6dba4c14/converter",
+          "gen_ref": "pv/e59e90d4dcd7fcf42db8bba4cffa1783/converter",
           "sn_mva": 0.215,
           "flicker_c": 0.3,
           "pst_i": 0.001699,
@@ -80,5 +80,5 @@
     "exceeded_count": 0,
     "not_assessed_count": 0
   },
-  "input_hash": "0c652c0b77f76e2f90ba60eea125efa24ae74088862efbafc4f6be0f1d134cd4"
+  "input_hash": "824fb9a5cf2df3808d35efad9a01e9ab1d194c55274f769d119feaf991b432a6"
 }

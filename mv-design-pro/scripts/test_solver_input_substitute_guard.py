@@ -1757,7 +1757,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # 4124 (z AB-1b.3b) + 2 = 4126 (pole `punkt_wyniku_ref` jest juz w `9d7e4968`, wiec
     # `df8ac6dd` nie zmienia liczby) — POMIAR guardem na drzewie partii (zbiory zmian obu kart
     # rozlaczne).
-    assert "Pol kontraktow wejsciowych: 4126." in wyjscie, wyjscie
+    # Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30): 4116 -> 4122 — POMIAR `contract_fields()`
+    # na drzewie karty i na drzewie startowym `615f3b24`, roznica zbiorow: +6 (`deklaracja`,
+    # `pola_liniowe`, `pola_nierozpoznane`, `rola`, `sprzeglo`, `wyprowadzenia_polaczone` —
+    # `RodzajStacji`/`PoleNierozpoznane` w `enm/rodzaj_stacji.py`, jedna regula rodzaju stacji
+    # dla walidatora W043/W044), -0. PASS niezmieniony (zero podstawien).
+    # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): 4126 + 6 = 4132 — POMIAR
+    # guardem na drzewie partii.
+    assert "Pol kontraktow wejsciowych: 4132." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1954,7 +1961,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `enm/wylaczniki_liniowe.py`) = 563. POMIAR guardem na drzewie przeniesienia.
         # Partia integracji 7 (+ BIEG-ZABEZPIECZEN-NA-PARTII-6): 561 + 2 (`enm/nastawy_
         # zabezpieczen.py`, `enm/wylaczniki_liniowe.py`) = 563. POMIAR guardem na drzewie partii.
-        "Przeskanowano 563 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30): 561 -> 562 (+1 `enm/rodzaj_stacji.py` —
+        # jedna regula rodzaju stacji z topologii). POMIAR guardem na drzewie karty.
+        # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): 563 + 1 (`enm/rodzaj_
+        # stacji.py`) = 564. POMIAR guardem na drzewie partii.
+        "Przeskanowano 564 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2150,7 +2161,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # liniowego); dlug 7/69 -> 7/67 (`time_dial` w skasowanej `validate_selectivity`).
         # Karta BIEG-ZABEZPIECZEN-NA-PARTII-6: enm 58 (partia 6) + 2 (karta) = 60; dlug 7/67
         # (karta). POMIAR guardem na drzewie przeniesienia.
-        "  enm: pliki_skanowane=60, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta ETYKIETA-STACJI-PRZELOTOWEJ (2026-09-30): enm 58 -> 59 (+1 `enm/rodzaj_stacji.py`);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        # Partia integracji 7 (+ ETYKIETA-STACJI-PRZELOTOWEJ czesc 2): enm 60 + 1 = 61. POMIAR.
+        "  enm: pliki_skanowane=61, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

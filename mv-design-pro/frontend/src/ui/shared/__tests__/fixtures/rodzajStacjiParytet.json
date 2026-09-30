@@ -1392,8 +1392,8 @@
     },
     "src/harness-fixtures/generated/oze_analiz_scena_migawka.json": {
       "": {
-        "sub/44936bf0357b61ace2fcd8cd13ccbaac/substation": {
-          "deklaracja": null,
+        "sub/406ec9c7de80233f6ff070bc72972037/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 1,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 1 pole liniowe",
@@ -2444,15 +2444,15 @@
     },
     "src/ui/sld/v3/canvas/__tests__/fixtures/s92Bieg.enm.json": {
       "": {
-        "stn/b18b63376532b6c69f111ebced4fb650/station": {
-          "deklaracja": "inline",
+        "stn/00fb3dfeeddd7716ad2a042e99dd461c/station": {
+          "deklaracja": "branch",
           "pola_liniowe": 4,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 4 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": false
+          "zgodny_z_deklaracja": true
         }
       }
     },
@@ -2700,15 +2700,15 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/8f5e5d1ab872d3688159dc90e4246828/station": {
-          "deklaracja": "inline",
+        "stn/b90fe112224f1de151746da1e8b35949/station": {
+          "deklaracja": "branch",
           "pola_liniowe": 4,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 4 pola liniowe",
           "rodzaj": "branch",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": false
+          "zgodny_z_deklaracja": true
         },
         "stn/c16428a6c5b18ea62371d813e0a3d084/station": {
           "deklaracja": "inline",
@@ -2720,24 +2720,24 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "sub/a2dac1e21ec0f3b6c481c9f679d00a74/substation": {
-          "deklaracja": null,
-          "pola_liniowe": 1,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 1 pole liniowe",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "sub/f4f8335d49dcfcf911fa6e3ee8b89735/substation": {
-          "deklaracja": null,
+        "sub/ac04375d68166f4e570661e425317f57/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
           "rodzaj": "terminal",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": true
+        },
+        "sub/ed9391b0cd05c80ed6631c0043c6b682/substation": {
+          "deklaracja": "terminal",
+          "pola_liniowe": 1,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 1 pole liniowe",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         }
       }
@@ -2758,8 +2758,8 @@
     },
     "src/ui/sld/v3/scene/__tests__/fixtures/stacjaPomiar1000.enm.json": {
       "/enm": {
-        "sub/8e61dd2fa354691b85bb85078b4cbdf2/substation": {
-          "deklaracja": null,
+        "sub/a52682b095377b622b5590d712712e52/substation": {
+          "deklaracja": "terminal",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
           "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",

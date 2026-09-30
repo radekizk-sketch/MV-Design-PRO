@@ -374,6 +374,15 @@ describe('selectStationSummaries', () => {
           station_type: 'inline',
           bus_refs: [],
           transformer_refs: [],
+          // Karta ETYKIETA-STACJI-PRZELOTOWEJ: rodzaj z pól (3 liniowe ⇒ odgałęźna), nie
+          // z deklaracji „inline".
+          meta: {
+            field_specs: [
+              { field_ref: 'p-in', bay_role: 'IN' },
+              { field_ref: 'p-out', bay_role: 'OUT' },
+              { field_ref: 'p-odg', bay_role: 'FEEDER' },
+            ],
+          },
         },
         {
           id: 'station-a',
@@ -389,9 +398,11 @@ describe('selectStationSummaries', () => {
     const summaries = selectStationSummaries(snapshot, new Map());
 
     expect(summaries).toHaveLength(2);
-    expect(summaries[0]?.name).toBe('S01 · Stacja przelotowa');
+    expect(summaries[0]?.name).toBe('S01 · Stacja odgałęźna');
     expect(summaries[0]?.name).not.toContain('inline');
+    expect(summaries[0]?.rodzaj).toBe('branch');
     expect(summaries[1]?.name).toBe('S02 · Stacja końcowa');
+    expect(summaries[1]?.rodzaj).toBe('terminal');
   });
 });
 

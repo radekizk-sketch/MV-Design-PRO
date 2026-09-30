@@ -44,7 +44,7 @@ const rozplyw = readFixture<RawOverlayPayload>('s92Rozplyw.overlay.json');
 // Szyna SN stacji wyprowadzona z modelu (fikstura regenerowana z API — ziarna refów
 // nie są stałe między wersjami operacji domenowych).
 const SZYNA_SN_STACJI = (enm.substations ?? [])
-  .find((s) => s.station_type === 'inline')!
+  .find((s) => s.station_type !== 'gpz')!
   .bus_refs.find((ref) => ref.endsWith('/sn_bus'))!;
 
 const CANVAS_W = 1024;

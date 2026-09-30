@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "builder_snapshot_hash": "4780cf25125661d6adf6007aeaa07514611e7007d9317a32090cc8ab93c8f13c",
+    "builder_snapshot_hash": "686c0250af4cfd69684e43ce4c57123ce850c3eafbdf69ff5d7f4628e0f2a6c3",
     "config_count": 12,
     "der_count": 15,
     "der_types": [
@@ -9280,7 +9280,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "4780cf25125661d6adf6007aeaa07514611e7007d9317a32090cc8ab93c8f13c",
+      "hash_sha256": "686c0250af4cfd69684e43ce4c57123ce850c3eafbdf69ff5d7f4628e0f2a6c3",
       "name": "Sieć demonstracyjna OZE + zwarcia",
       "revision": 0,
       "updated_at": "2026-07-24T00:00:00Z"
@@ -11005,9 +11005,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S1",
         "nn_sections": [],
@@ -11204,9 +11202,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S2",
         "nn_sections": [],
@@ -11403,9 +11399,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S3",
         "nn_sections": [],
@@ -11616,9 +11610,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S4",
         "nn_sections": [],
@@ -11815,9 +11807,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S5",
         "nn_sections": [],
@@ -12014,9 +12004,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S6",
         "nn_sections": [],
@@ -12315,9 +12303,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S7",
         "nn_sections": [],
@@ -12616,9 +12602,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S8",
         "nn_sections": [],
@@ -12829,9 +12813,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S9",
         "nn_sections": [],
@@ -13028,9 +13010,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S10",
         "nn_sections": [],
@@ -13255,9 +13235,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S11",
         "nn_sections": [],
@@ -13440,9 +13418,7 @@
               "tags": []
             }
           ],
-          "nn_fields_promoted": true,
-          "station_type_semantic": "C",
-          "station_type_sn": "C"
+          "nn_fields_promoted": true
         },
         "name": "Stacja S12",
         "nn_sections": [],
