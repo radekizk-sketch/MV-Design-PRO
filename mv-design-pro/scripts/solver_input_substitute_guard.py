@@ -2654,14 +2654,17 @@ def main() -> int:
     # istniejace) — dwa wpisy-widma przezyly kasacje swoich plikow
     # (`domain/protection_current_source.py` od W3-A, `domain/protection_engine_v1.py`).
     martwe_zrodla = [rel for rel in CONTRACT_SOURCES if not (BACKEND_SRC / rel).exists()]
-    if martwe_dlug or martwe_wykl or martwe_zrodla:
-        print("FAIL: zapadka/wykluczenia/zrodla kontraktu wskazuja pliki, ktorych nie ma:")
+    if martwe_zrodla:
+        print("FAIL: zrodla kontraktu wskazuja pliki, ktorych nie ma:")
         for rel in sorted(martwe_zrodla):
             print(f"  {rel} — zdejmij wpis z CONTRACT_SOURCES.")
+    if martwe_dlug or martwe_wykl:
+        print("FAIL: zapadka/wykluczenia wskazuja pliki, ktorych nie ma:")
         for rel in sorted(martwe_dlug):
             print(f"  {rel} — zdejmij wpis z ZASTANE_ZASTEPNIKI.")
         for rel in sorted(martwe_wykl):
             print(f"  {rel} — zdejmij wpis z WYKLUCZENIA_SKANERA.")
+    if martwe_zrodla or martwe_dlug or martwe_wykl:
         return 1
 
     # Sumy per korzen — PRZYPIETE testem (`test_biezacy_stan_repozytorium_...`),

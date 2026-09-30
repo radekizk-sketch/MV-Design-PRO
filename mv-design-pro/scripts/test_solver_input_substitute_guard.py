@@ -745,6 +745,26 @@ def test_martwy_wpis_wykluczen_jest_naruszeniem(tmp_path, monkeypatch, capsys) -
     assert "WYKLUCZENIA_SKANERA" in wyjscie
 
 
+def test_martwe_zrodlo_kontraktu_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """Wpis CONTRACT_SOURCES wskazujacy plik, ktorego nie ma, byl po cichu pomijany (dwa
+    wpisy-widma przezyly kasacje swoich plikow — karta RESULTSET-MARTWE-MAPPERY)."""
+    root = _drzewo(tmp_path, {"solver_input/kontrakt.py": "class K:\n    x: float\n"})
+    monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("solver_input", "domain/zniknal.py"))
+    monkeypatch.setattr(guard, "ZASTANE_ZASTEPNIKI", {})
+    monkeypatch.setattr(guard, "WYKLUCZENIA_SKANERA", {})
+    kod = guard.main()
+    wyjscie = capsys.readouterr().out
+    assert kod == 1, wyjscie
+    assert "zrodla kontraktu wskazuja pliki, ktorych nie ma" in wyjscie
+    assert "domain/zniknal.py — zdejmij wpis z CONTRACT_SOURCES" in wyjscie
+
+
+def test_realne_zrodla_kontraktu_istnieja() -> None:
+    brak = [rel for rel in guard.CONTRACT_SOURCES if not (guard.BACKEND_SRC / rel).exists()]
+    assert brak == []
+
+
 def test_dlug_i_wykluczenie_razem_w_jednym_pliku_dzialaja_niezaleznie(
     tmp_path, monkeypatch, capsys
 ) -> None:
@@ -1725,7 +1745,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # i na drzewie bazowym (`git archive HEAD`), roznica zbiorow: +3 (`rodzaj_elementu`,
     # `szyna_ref`, `zacisk_ref` — `NaruszenieToru` w `enm/tor_pola.py`, opis naruszenia zasady
     # toru dla walidatora W042), -0. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4116." in wyjscie, wyjscie
+    # Karta RESULTSET-MARTWE-MAPPERY (2026-09-30): 4116 -> 4098 — POMIAR `contract_fields()`
+    # na drzewie karty i na bazie `f3c435b6`, roznica zbiorow: +0, -18 — wylacznie pola klas
+    # skasowanych w karcie: `domain/protection_engine_v1.py` (`attached_cb_id`, `f50`, `f51`,
+    # `function_results`, `i_a_primary`, `i_a_secondary`, `max_time_s`, `per_test_point`,
+    # `pickup_a_secondary`, `point_id`, `primary_a`, `relay_id`, `relay_results`, `relays`,
+    # `secondary_a`, `test_points`) i `ShortCircuitBindingResult` (`solver_result`,
+    # `c_factor_auto`). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4098." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1903,7 +1930,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta ODMOWA-DANYCH-422 (2026-09-30): 557 -> 558 (+1 `network_model/odmowa_danych.py`
         # — nazwana odmowa danych dla 422, lisc stdlib-only). POMIAR guardem na drzewie karty.
         # Partia integracji 6 po DOWOD-CIEPLNY: 560 + 1 = 561. POMIAR guardem na drzewie partii.
-        "Przeskanowano 561 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta RESULTSET-MARTWE-MAPPERY (2026-09-30): 561 -> 558 (-3 skasowane martwe mappery
+        # `application/result_mapping/{short_circuit,protection}_to_resultset_v1.py`,
+        # `sc_binding_meta.py`; zero wpisow). POMIAR guardem na drzewie karty.
+        "Przeskanowano 558 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2130,7 +2160,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (AB-P1), dlug 2/3 (PROOFPACK). POMIAR guardem na drzewie partii.
         # Karta DOWOD-CIEPLNY: application 244 -> 245 (+1 `application/slad_kroku.py`);
         # dlug i wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  application: pliki_skanowane=245, dlug=30 plikow/suma 91, "
+        # Karta RESULTSET-MARTWE-MAPPERY: application 245 -> 242 (-3 skasowane martwe mappery);
+        # dlug i wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        "  application: pliki_skanowane=242, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=64, dlug=2 plikow/suma 3, wykluczenia=6 plikow/suma 15",
     ]
