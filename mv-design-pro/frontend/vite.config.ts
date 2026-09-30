@@ -94,6 +94,14 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       globals: true,
+      // KARTA SZYBKIE-TESTY (2026-09-30): pliki testów biegną RÓWNOLEGLE w puli PROCESÓW,
+      // jeden plik na proces naraz. Pomiar przed zmianą (łańcuch p5, 2026-09-25): 879 plików
+      // sekwencyjnie (`--no-file-parallelism`) — 1 644,9 s, w tym 369,5 s tworzenia środowiska
+      // jsdom plik po pliku. Pula WĄTKÓW (domyślna w vitest 1.x) jest wykluczona: testy budżetu
+      // algorytmu mierzą `process.cpuUsage()` całego procesu (`src/test/czasProcesora.ts`), więc
+      // w puli wątków doliczałyby pracę plików wykonywanych obok — pomocnik odmawia pomiaru poza
+      // wątkiem głównym procesu, a `src/test/__tests__/pulaTestow.test.ts` przypina ten warunek.
+      pool: 'forks',
       setupFiles: ['./src/test/setup.ts'],
       include: ['src/**/*.{test,spec}.{ts,tsx}'],
       // 2026-07-17 (likwidacja długów): lista wykluczeń WYZEROWANA — 7 wpisów

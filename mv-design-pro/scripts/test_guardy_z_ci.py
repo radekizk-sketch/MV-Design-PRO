@@ -164,3 +164,92 @@ def test_realne_workflowy_wolaja_port_binding_guard_ze_strict() -> None:
     """Pin stanu repozytorium: P0 Extended wola `port_binding_guard.py --strict`
     — jesli ten wpis zniknie, zmienil sie workflow, nie ten test."""
     assert ("port_binding_guard", ("--strict",)) in runner.wywolania_z_workflowow()
+
+
+# --- Rownoleglosc (karta SZYBKIE-TESTY, 2026-09-30) -----------------------------------------
+# Deklaracje z docstringu runnera — "meldunek w stalej kolejnosci wywolan niezaleznie od
+# tego, ktore zadanie skonczylo sie pierwsze" i "co najwyzej `--rownoleglosc` procesow
+# naraz" — maja przypiete testy (regula KLASA pkt 4). Iloczyn cech: {kolejnosc konczenia:
+# odwrotna do kolejnosci zadan} x {rownoleglosc: 1, 2, 4} x {czesc kroku: lint, npm}.
+
+
+def _zadania_testowe(liczba: int) -> list[runner.Zadanie]:
+    return [runner.Zadanie(f"z{indeks}", ("x", str(indeks)), Path("/")) for indeks in range(liczba)]
+
+
+def test_wykonaj_zwraca_wyniki_w_kolejnosci_zadan_przy_odwrotnej_kolejnosci_konczenia(
+    monkeypatch,
+) -> None:
+    import threading
+    import time
+
+    liczba = 6
+    zakonczone: list[int] = []
+    blokada = threading.Lock()
+
+    def _run(polecenie, **_kwargs):
+        indeks = int(polecenie[1])
+        # Pierwsze zadanie konczy sie ostatnie: czas odwrotny do pozycji.
+        time.sleep(0.02 * (liczba - indeks))
+        with blokada:
+            zakonczone.append(indeks)
+        return subprocess.CompletedProcess(polecenie, indeks, f"wyjscie {indeks}", "")
+
+    monkeypatch.setattr(runner.subprocess, "run", _run)
+    for rownoleglosc in (1, 2, 4):
+        zakonczone.clear()
+        wyniki = runner._wykonaj(_zadania_testowe(liczba), rownoleglosc)
+        assert [w.returncode for w in wyniki] == list(range(liczba))
+        assert [w.stdout for w in wyniki] == [f"wyjscie {i}" for i in range(liczba)]
+    # Kontrola, ze przypadek jest nietrywialny: przy puli kolejnosc konczenia rozni sie
+    # od kolejnosci zadan (inaczej test nie sprawdzalby porzadkowania).
+    assert zakonczone != sorted(zakonczone)
+
+
+def test_wykonaj_nie_przekracza_rownoleglosci(monkeypatch) -> None:
+    import threading
+    import time
+
+    aktywne = 0
+    maksimum = 0
+    blokada = threading.Lock()
+
+    def _run(polecenie, **_kwargs):
+        nonlocal aktywne, maksimum
+        with blokada:
+            aktywne += 1
+            maksimum = max(maksimum, aktywne)
+        time.sleep(0.02)
+        with blokada:
+            aktywne -= 1
+        return subprocess.CompletedProcess(polecenie, 0, "", "")
+
+    monkeypatch.setattr(runner.subprocess, "run", _run)
+    for rownoleglosc in (1, 2, 3):
+        maksimum = 0
+        runner._wykonaj(_zadania_testowe(9), rownoleglosc)
+        assert maksimum == rownoleglosc
+
+
+def test_lint_i_npm_rownolegle_melduja_czerwone_w_kolejnosci_listy(monkeypatch, tmp_path) -> None:
+    import time
+
+    (tmp_path / "frontend" / "node_modules").mkdir(parents=True)
+    monkeypatch.setattr(runner, "PROJECT_ROOT", tmp_path)
+
+    def _run(polecenie, **_kwargs):
+        # Wczesniejsze pozycje koncza sie pozniej; wszystkie czerwone.
+        time.sleep(0.01 * (10 - len(polecenie)))
+        return subprocess.CompletedProcess(polecenie, 1, "", "blad")
+
+    monkeypatch.setattr(runner.subprocess, "run", _run)
+    assert runner._lint_jak_ci(rownoleglosc=4) == [n for n, _p in runner.LINT_JAK_CI]
+    assert runner._npm_jak_ci(rownoleglosc=4) == [f"npm run {s}" for s in runner.NPM_JAK_CI]
+
+
+def test_samotesty_przez_xdist_tylko_przy_rownoleglosci() -> None:
+    sekwencyjnie = runner._polecenie_samotestow(1)
+    rownolegle = runner._polecenie_samotestow(4)
+    assert "-n" not in sekwencyjnie
+    assert rownolegle[-2:] == ["-n", "4"]
+    assert rownolegle[:-2] == sekwencyjnie

@@ -50,9 +50,14 @@ jobs:
       # ktory NIE wchodzi do zaleznosci produkcyjnych. Testy z tym markerem biegna
       # wylacznie w jobie `andes-cross-validation` ponizej — tu sa jawnie
       # DESELEKCJONOWANE, nie pomijane warunkowo (zero skipow w glownym biegu).
+      # Karta SZYBKIE-TESTY (2026-09-30): suita rozdzielona na procesy runnera przez
+      # pytest-xdist (`-n auto`, pliki testow w calosci na jednym procesie — `--dist loadfile`
+      # zachowuje kolejnosc i fikstury modulowe pliku). Izolacja per test (baza przebiegow,
+      # magazyny) jest w `tests/conftest.py`; dowod — pelna regresja pod xdist w rejestrze
+      # planu A/B §7. Pomiar przed zmiana (lancuch p5, 1 proces): 26 608 testow w 1 h 45 min.
       - name: Run pytest
         working-directory: mv-design-pro/backend
-        run: poetry run pytest -q -m "not pandapower and not andes"
+        run: poetry run pytest -q -n auto --dist loadfile -m "not pandapower and not andes"
       # KD-9: testy WLASNE guardow leza w `mv-design-pro/scripts`, czyli POZA
       # `testpaths = ["tests"]` backendu — `poetry run pytest -q` powyzej nigdy
       # ich nie zbieral, a zaden workflow ich nie wolal. 10 plikow / 71 testow
@@ -77,7 +82,7 @@ jobs:
         run: npm ci
       - name: Testy guardow (mv-design-pro/scripts, poza testpaths backendu)
         working-directory: mv-design-pro/backend
-        run: poetry run python -m pytest -q ../scripts
+        run: poetry run python -m pytest -q -n auto ../scripts
       - name: Run audit2 backend integration tests (Phase 8-30)
         working-directory: mv-design-pro/backend
         run: |
