@@ -466,6 +466,14 @@
     },
     {
       "area": "STATIONS",
+      "code": "station.field_role_unknown"
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.kind_mismatch"
+    },
+    {
+      "area": "STATIONS",
       "code": "station.line_field_multiple_segments"
     },
     {
@@ -581,5 +589,5 @@
       "code": "vt.winding_category_missing"
     }
   ],
-  "count": 144
+  "count": 147
 }
