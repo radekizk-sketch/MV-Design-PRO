@@ -70,6 +70,7 @@ from application.analyses.power_flow_reconstruction import (
 )
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from network_model.core.branch import LineBranch, TransformerBranch
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 def _voltage_by_target(run: CanonicalRun) -> dict[str, float | None]:
@@ -96,12 +97,12 @@ def build_sanity_bounds_view(run: CanonicalRun) -> dict[str, Any]:
             nie został zakończony — komunikat w języku polskim.
     """
     if run.analysis_type != "short_circuit_sn":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Ocena wiarygodności Ik'' wymaga przebiegu zwarciowego; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )
@@ -229,12 +230,12 @@ def build_power_flow_sanity_bounds_view(run: CanonicalRun) -> dict[str, Any]:
             zakończony — komunikat w języku polskim.
     """
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Pasma zdrowego rozsądku rozpływu wymagają przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )

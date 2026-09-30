@@ -98,6 +98,7 @@ from network_model.core.branch import Branch
 from network_model.core.graph import NetworkGraph
 from network_model.core.voltage_factor import c_for_node
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
     a_na_ka,
     calka_joule_ka2s,
@@ -879,23 +880,23 @@ def _validate_protection_sc_reference(
     """
     sc_run_id_raw = normalized_options.get("sc_run_id")
     if not sc_run_id_raw:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Analiza zabezpieczeń wymaga options.sc_run_id (identyfikator "
             "zakończonego biegu zwarciowego, którego prąd Ik'' interpretuje ocena)"
         )
     try:
         sc_run_uuid = UUID(str(sc_run_id_raw))
     except ValueError as exc:
-        raise ValueError(f"sc_run_id nie jest poprawnym UUID: {sc_run_id_raw!r}") from exc
+        raise OdmowaDanychError(f"sc_run_id nie jest poprawnym UUID: {sc_run_id_raw!r}") from exc
     sc_run = get_run(sc_run_uuid)
     if sc_run is None:
-        raise ValueError(f"Bieg zwarciowy '{sc_run_id_raw}' nie istnieje")
+        raise OdmowaDanychError(f"Bieg zwarciowy '{sc_run_id_raw}' nie istnieje")
     if sc_run.analysis_type != "short_circuit_sn":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Bieg '{sc_run_id_raw}' nie jest biegiem zwarciowym (rodzaj: {sc_run.analysis_type})"
         )
     if sc_run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Bieg zwarciowy '{sc_run_id_raw}' nie jest zakończony (status: {sc_run.status})"
         )
     if (
@@ -903,7 +904,7 @@ def _validate_protection_sc_reference(
         and sc_run.project_id is not None
         and sc_run.project_id != project_id_koperty
     ):
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Bieg zwarciowy '{sc_run_id_raw}' należy do innego projektu — analiza "
             "zabezpieczeń nie może interpretować wyniku spoza własnego projektu"
         )
@@ -955,16 +956,18 @@ def create_run(
     # nazwany, i dotyczy WYLACZNIE `analysis_type` z prefiksem "v126:".
     if validation.status == "FAIL" and not analysis_type.startswith("v126:"):
         messages = [issue.message_pl for issue in validation.issues if issue.severity == "BLOCKER"]
-        raise ValueError("; ".join(messages) or "Model sieci nie przeszedł walidacji")
+        raise OdmowaDanychError("; ".join(messages) or "Model sieci nie przeszedł walidacji")
 
     availability = validation.analysis_available
     if analysis_type == "PF" and not availability.load_flow:
-        raise ValueError("Analiza rozpływu mocy nie jest dostępna dla bieżącego snapshotu ENM")
+        raise OdmowaDanychError(
+            "Analiza rozpływu mocy nie jest dostępna dla bieżącego snapshotu ENM"
+        )
     # W5-D: rozpływ niesymetryczny ma TĘ SAMĄ bramkę dostępności co rozpływ NR (model
     # z odbiorem/generacją); zdolności solvera BFS (radialność, Z0, fazy) sprawdza
     # assembler odmową nazwaną w biegu (`enm/assembler.py::diagnoza_niesymetrii`).
     if analysis_type == ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY and not availability.load_flow:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Rozpływ niesymetryczny nie jest dostępny dla bieżącego snapshotu ENM "
             "(model bez odbioru/generacji albo z blokadą walidacji)"
         )
@@ -979,7 +982,9 @@ def create_run(
     if analysis_type == "short_circuit_sn":
         fault_type = _short_circuit_type_from_options(normalized_options)
         if not availability.short_circuit_3f:
-            raise ValueError("Analiza zwarciowa nie jest dostępna dla bieżącego snapshotu ENM")
+            raise OdmowaDanychError(
+                "Analiza zwarciowa nie jest dostępna dla bieżącego snapshotu ENM"
+            )
         if (
             fault_type
             in {
@@ -988,9 +993,9 @@ def create_run(
             }
             and not availability.short_circuit_1f
         ):
-            raise ValueError("Zwarcie 1F/2F+Z wymaga kompletnej składowej zerowej Z0 w ENM")
+            raise OdmowaDanychError("Zwarcie 1F/2F+Z wymaga kompletnej składowej zerowej Z0 w ENM")
     if analysis_type == "phase_state_sn" and not enm_liczony.buses:
-        raise ValueError("Stan fazowy SN wymaga co najmniej jednej szyny w ENM")
+        raise OdmowaDanychError("Stan fazowy SN wymaga co najmniej jednej szyny w ENM")
     if analysis_type == "protection_sn":
         _validate_protection_sc_reference(
             normalized_options=normalized_options,
@@ -1103,6 +1108,12 @@ def _wykonaj_analize_biegu(
 #: INNY wyjątek (`AttributeError`, `TypeError`, `KeyError`...) jest błędem programu:
 #: wariant w pamięci po prostu wybucha, a bieg persystowany dostaje FAILED z nazwą
 #: błędu wewnętrznego i wyjątek leci dalej (500 + pełny ślad w dzienniku).
+#: Karta ODMOWA-DANYCH-422 ŚWIADOMIE zostawia tu `ValueError`, nie `OdmowaDanychError`:
+#: bieg woła rdzenie B-01 (IEC 60909, rozpływ NR/GS/FD, stan fazowy, PTPiREE, V12.6),
+#: które zgłaszają odmowę wejścia gołym `ValueError` i `LinAlgError` — zawężenie krotki
+#: zamieniłoby odmowy danych w awarie biegu, a rozróżnienie po tekście jest zakazane.
+#: Wynik biegu to status FAILED z komunikatem, nie odpowiedź 422. Zawężenie czeka na
+#: decyzję właściciela B-01 (rdzenie rzucają `OdmowaDanychError`).
 ODMOWY_OBLICZENIA_BIEGU: tuple[type[Exception], ...] = (ValueError, ArithmeticError)
 
 
@@ -1172,7 +1183,7 @@ def bieg_wariantu(
             # wariant wariantu (skladanie scenariuszy) nie jest modelowany
             # (koperta niesie JEDNA referencje scenariusza). Odmowa z nazwa,
             # nie koperta udajaca, ze baza byla stanem normalnym.
-            raise ValueError(
+            raise OdmowaDanychError(
                 "Bieg bazowy wariantu został policzony na scenariuszu z nadpisaniami "
                 f"modelu ({koperta_bazy.scenario_ref}); składanie scenariuszy nie jest "
                 "modelowane — wariant buduje się na biegu stanu normalnego."
@@ -1271,7 +1282,7 @@ def execute_run(run_id: UUID, uow_factory: Callable[[], Any] | None = None) -> C
     """
     run = get_run(run_id)
     if run is None:
-        raise ValueError(f"Run {run_id} not found")
+        raise OdmowaDanychError(f"Run {run_id} not found")
 
     # Przejecie biegu jest ATOMOWE (warunek + zapis w jednym UPDATE). Wczesniej
     # bylo: `if run.status in {"FINISHED", "FAILED"}: return` + osobny zapis
@@ -1991,14 +2002,14 @@ def rozszerzenia_audit2_dla_opcji(
     if not project_id_str and not station_id:
         return None
     if not project_id_str or not station_id:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Opcje biegu wskazują konfigurację audytu 2 połową pary: potrzebne są OBA "
             "`audit2_project_id` i `audit2_station_id`"
         )
     try:
         project_uuid = UUID(str(project_id_str))
     except ValueError as exc:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"`audit2_project_id` nie jest poprawnym UUID: {project_id_str!r}"
         ) from exc
     if uow_factory is None:
@@ -3715,13 +3726,13 @@ def dobierz_pasmo_min_max_zwarcia(
     wywołania.
     """
     if run.analysis_type != "short_circuit_sn":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg {run.id} nie jest obliczeniem zwarciowym "
             f"(analysis_type={run.analysis_type!r}) — pasmo MIN/MAX zwarcia "
             "dostępne wyłącznie dla zwarć."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg {run.id} nie jest zakończony (status={run.status}) — "
             "pasmo MIN/MAX zwarcia wymaga zakończonego obliczenia jako kotwicy."
         )
@@ -4188,7 +4199,7 @@ def build_extended_trace(run: CanonicalRun) -> dict[str, Any]:
 
 def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
     if run.status != "FINISHED":
-        raise ValueError("Wyniki są dostępne tylko dla zakończonego przebiegu")
+        raise OdmowaDanychError("Wyniki są dostępne tylko dla zakończonego przebiegu")
     element_results: list[dict[str, Any]] = []
     global_results: dict[str, Any] = {}
     if run.analysis_type == "short_circuit_sn":

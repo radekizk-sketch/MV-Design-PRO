@@ -6,6 +6,7 @@ from functools import lru_cache
 
 from dziedziny.karta_widmowa import KartaWidmowa
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import mva_na_kva, mw_na_kw
 
 from .karty_widmowe import karta_widmowa_z_rekordu
@@ -55,7 +56,7 @@ def _wymagana_moc_znamionowa(params: dict, field: str, *, type_id: object) -> fl
     """
     wartosc = params.get(field)
     if wartosc is None:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"catalog.type_incomplete: brak pola '{field}' w rekordzie konwertera "
             f"id={type_id!r} — derywacja typu falownika odrzucona (nie 0)."
         )
@@ -744,7 +745,7 @@ def _karty_bez_kolizji(karty: list[KartaWidmowa]) -> dict[str, KartaWidmowa]:
     wynik: dict[str, KartaWidmowa] = {}
     for karta in karty:
         if karta.id in wynik:
-            raise ValueError(f"catalog.duplicate_id: karta widmowa '{karta.id}' powtórzona.")
+            raise OdmowaDanychError(f"catalog.duplicate_id: karta widmowa '{karta.id}' powtórzona.")
         wynik[karta.id] = karta
     return wynik
 

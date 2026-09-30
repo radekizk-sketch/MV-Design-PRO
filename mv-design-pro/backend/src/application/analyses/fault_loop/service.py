@@ -48,6 +48,7 @@ from enm.zero_sequence_transformer import (
 )
 from network_model.core.graph import NetworkGraph
 from network_model.core.ybus import S_BASE_MVA
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import kv_na_v, napiecie_fazowe_v
 from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, pasmo_napieciowe, w_pasmie_nn
 from network_model.solvers.fault_loop_builder import (
@@ -321,7 +322,7 @@ def compute_upstream_hv_thevenin(
     """
     try:
         graph = map_enm_to_network_graph(enm)
-    except ValueError:
+    except OdmowaDanychError:
         return None, ["upstream_network_topology_invalid"]
 
     hv_node_id = ref_to_graph_id(trafo.hv_bus_ref)

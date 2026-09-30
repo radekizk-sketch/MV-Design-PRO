@@ -72,6 +72,7 @@ from enm.canonical_analysis import (
 )
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, Wstrzyk, apply_scenario
+from network_model.odmowa_danych import OdmowaDanychError
 
 logger = logging.getLogger(__name__)
 
@@ -349,28 +350,28 @@ def build_pq_area_view(
             nie istnieje w modelu — komunikaty w języku polskim.
     """
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Obszar pracy P–Q wymaga przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
     if step_p_mw <= 0.0:
-        raise ValueError("Krok mocy czynnej musi być dodatni [MW].")
+        raise OdmowaDanychError("Krok mocy czynnej musi być dodatni [MW].")
     if step_q_mvar <= 0.0:
-        raise ValueError("Krok mocy biernej musi być dodatni [Mvar].")
+        raise OdmowaDanychError("Krok mocy biernej musi być dodatni [Mvar].")
     if max_steps_p < 1:
-        raise ValueError("Limit kroków mocy czynnej musi wynosić co najmniej 1.")
+        raise OdmowaDanychError("Limit kroków mocy czynnej musi wynosić co najmniej 1.")
     if max_steps_q < 1:
-        raise ValueError("Limit kroków mocy biernej musi wynosić co najmniej 1.")
+        raise OdmowaDanychError("Limit kroków mocy biernej musi wynosić co najmniej 1.")
 
     snapshot = run.snapshot or {}
     bus_names = _bus_index(snapshot)
     if bus_ref not in bus_names:
-        raise ValueError(f"Wskazany węzeł nie istnieje w modelu: {bus_ref}.")
+        raise OdmowaDanychError(f"Wskazany węzeł nie istnieje w modelu: {bus_ref}.")
 
     # JEDNA walidacja modelu bazowego na CAŁY widok (nie na scenariusz) —
     # `apply_scenario` przyjmuje obiekt `EnergyNetworkModel`, nie słownik migawki.

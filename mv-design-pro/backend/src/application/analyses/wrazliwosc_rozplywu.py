@@ -68,16 +68,17 @@ from enm.nazwy_elementow import nazwa_galezi_bez_nazwy, opis_bez_nazwy
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 def _wymagaj_biegu_rozplywu(run: CanonicalRun) -> None:
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Analiza wrażliwości wymaga przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )

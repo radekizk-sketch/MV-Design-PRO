@@ -30,6 +30,7 @@ from enm.canonical_analysis import (
 )
 from enm.scenariusze import ScenariuszNieistniejeError, wczytaj_scenariusz
 from fastapi import APIRouter, HTTPException, Request, status
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["execution-runs"])
@@ -213,7 +214,7 @@ def create_run(
             scenariusz=scenariusz,
         )
         return run.to_execution_dict()
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
@@ -250,7 +251,7 @@ def execute_run(run_id: str, http_request: Request) -> dict[str, Any]:
             parsed_run_id,
             uow_factory=getattr(http_request.app.state, "uow_factory", None),
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),

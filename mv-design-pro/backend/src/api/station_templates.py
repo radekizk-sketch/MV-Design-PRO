@@ -38,6 +38,7 @@ from application.station_templates.user_store import (
     zapisz_szablon_uzytkownika as save_user_template,
 )
 from fastapi import APIRouter, Body, HTTPException, Query, Request
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/station-templates", tags=["station-templates"])
@@ -66,13 +67,17 @@ def klucz_przypadku(case_id: str) -> str:
     przekształceniem wejścia, postać niekanoniczna jest ODRZUCANA jawnym
     błędem, nigdy po cichu naprawiana.
 
-    Podnosi ``ValueError`` dla identyfikatora spoza kontraktu.
+    Podnosi ``OdmowaDanychError`` dla identyfikatora spoza kontraktu (także dla tekstu,
+    który nie jest UUID — komunikat parsera bez zmian).
     """
     # ŻADNEGO `strip()` ani innego oczyszczenia: każde przekształcenie wejścia jest
     # tym samym defektem co normalizacja UUID, tylko o jeden znak mniej widocznym.
-    kanoniczny = str(UUID(case_id))
+    try:
+        kanoniczny = str(UUID(case_id))
+    except ValueError as exc:
+        raise OdmowaDanychError(str(exc)) from exc
     if kanoniczny != case_id:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"identyfikator przypadku '{case_id}' nie jest w postaci kanonicznej "
             f"('{kanoniczny}'). Klucz magazynu modelu to DOKŁADNIE tekst z adresu, "
             "więc postać niekanoniczna wskazywałaby inny wpis niż operacje domenowe."
@@ -252,7 +257,7 @@ def apply_station_template(
     try:
         # Walidacja FORMATU (postac kanoniczna UUID) — patrz `klucz_przypadku`.
         case_id_kanoniczny = klucz_przypadku(request.case_id)
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid case_id: {exc}") from exc
 
     # JEDYNE miejsce tlumaczenia case_id -> klucz magazynu ENM (CV-1-W) — 404

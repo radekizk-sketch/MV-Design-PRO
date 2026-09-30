@@ -90,6 +90,7 @@ from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.resolver import resolve_thermal_params
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.conductor_thermal_withstand import (
     CONDUCTOR_KIND_BARE,
     CONDUCTOR_KIND_CABLE,
@@ -527,12 +528,12 @@ def _odtworz_wynik_zwarciowy(
             zawiera wiersza wyniku — komunikat po polsku, jak w innych widokach.
     """
     if run.analysis_type != "short_circuit_sn":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Ocena wytrzymałości cieplnej przewodów wymaga przebiegu zwarciowego; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )
@@ -540,7 +541,7 @@ def _odtworz_wynik_zwarciowy(
     # `raw_result["results"]` jest LISTA wierszy (canonical_analysis.py:1015), nie mapa.
     wiersze = (run.raw_result or {}).get("results") or []
     if not wiersze:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Przebieg nie zawiera wiersza wyniku zwarciowego, "
             "więc nie ma na czym oprzeć oceny cieplnej."
         )
@@ -657,7 +658,7 @@ def zbuduj_dowod_cieplny(
     _sc_result, widok, slad = _ocena_dla_przebiegu(run, uow_factory)
     pozycja = next((item for item in widok.items if item.branch_id == branch_id), None)
     if pozycja is None:
-        raise ValueError("Wskazana gałąź nie występuje w ocenie cieplnej tego przebiegu.")
+        raise OdmowaDanychError("Wskazana gałąź nie występuje w ocenie cieplnej tego przebiegu.")
 
     kroki: list[dict[str, Any]] = []
     wpis_czasu = slad.get(branch_id)

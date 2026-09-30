@@ -31,6 +31,7 @@ from application.ncrfg_compliance.frt_input import build_frt_hvrt_input
 from application.ocena_niewykonana import ocena_niewykonana, rekord_json
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from network_model.catalog.types import ConverterType
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.frt_hvrt import FrtHvrtSolverAdapter
 from network_model.solvers.frt_hvrt.contracts import FrtHvrtResult, FrtScenario
 from solver_input.provenance import classify_dynamic_capability
@@ -292,7 +293,7 @@ def build_frt_trajectories_view(
         ValueError: gdy ``test_kind`` nie jest ``lvrt``/``hvrt`` — komunikat w języku polskim.
     """
     if test_kind not in _VALID_TEST_KINDS:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Nieznany rodzaj testu '{test_kind}'. Dozwolone rodzaje: "
             + ", ".join(_VALID_TEST_KINDS)
             + "."

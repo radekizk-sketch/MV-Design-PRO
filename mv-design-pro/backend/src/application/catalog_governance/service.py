@@ -31,6 +31,7 @@ from network_model.catalog.governance import (
     compute_protection_fingerprint,
     sort_protection_types_deterministically,
 )
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 def _serialize_analytical_protection_device_for_export(device: Any) -> dict[str, Any]:
@@ -250,7 +251,7 @@ class CatalogGovernanceService:
         if validation_errors:
             report.conflicts.extend(validation_errors)
             report.success = False
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Validation failed: {len(validation_errors)} template(s) have missing references. "
                 "Import blocked."
             )
@@ -435,7 +436,7 @@ class CatalogGovernanceService:
             # Raise if conflicts
             if not report.success:
                 uow.rollback()
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Import failed: {len(report.conflicts)} conflict(s) detected. "
                     "See report for details."
                 )

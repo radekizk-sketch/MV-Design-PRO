@@ -50,6 +50,7 @@ from typing import Any
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from network_model.core.topologia import przeglad_wszerz_od
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 class BenchmarkBuildError(RuntimeError):
@@ -760,7 +761,7 @@ class WynikKompilacji:
     load_map: dict[str, str] = field(default_factory=dict)
 
 
-class BladGrafuWejsciowego(ValueError):
+class BladGrafuWejsciowego(OdmowaDanychError):
     """Graf wejściowy nie daje się skompilować — komunikat nazywa element i przyczynę."""
 
 

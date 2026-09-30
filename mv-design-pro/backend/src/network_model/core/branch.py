@@ -29,6 +29,7 @@ from network_model.catalog.types import TransformerType
 from network_model.core.voltage_factor import c_for_node
 from network_model.ir_fields import wymagany_float
 from network_model.nazwy import jest_nazwa
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
     a_na_ka,
     impedancja_z_napiecia_i_mocy_ohm,
@@ -633,7 +634,7 @@ class TapChanger:
         """Off-nominal ratio referred to the HV/from side (Y-bus convention)."""
         tau = self.tau(position)
         if tau == 0:
-            raise ValueError("Tap factor tau must be non-zero")
+            raise OdmowaDanychError("Tap factor tau must be non-zero")
         return tau if self.regulated_winding == "HV" else 1.0 / tau
 
     def clamp_position(self, position: int) -> int:
@@ -898,15 +899,15 @@ class TransformerBranch(Branch):
             ValueError: If any required input is out of range.
         """
         if self.rated_power_mva <= 0:
-            raise ValueError("rated_power_mva must be > 0")
+            raise OdmowaDanychError("rated_power_mva must be > 0")
         if self.uk_percent <= 0:
-            raise ValueError("uk_percent must be > 0")
+            raise OdmowaDanychError("uk_percent must be > 0")
         if self.pk_kw < 0:
-            raise ValueError("pk_kw must be >= 0")
+            raise OdmowaDanychError("pk_kw must be >= 0")
         if self.voltage_lv_kv <= 0:
-            raise ValueError("voltage_lv_kv must be > 0")
+            raise OdmowaDanychError("voltage_lv_kv must be > 0")
         if self.voltage_hv_kv <= 0:
-            raise ValueError("voltage_hv_kv must be > 0")
+            raise OdmowaDanychError("voltage_hv_kv must be > 0")
 
     def get_short_circuit_impedance_pu(self) -> complex:
         """

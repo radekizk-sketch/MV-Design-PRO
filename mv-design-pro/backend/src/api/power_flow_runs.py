@@ -33,6 +33,7 @@ from enm.canonical_analysis import get_run as get_canonical_run
 from enm.canonical_analysis import list_runs_for_project as list_canonical_runs_for_project
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.missing_value import format_wynik
 from pydantic import BaseModel, Field
@@ -72,7 +73,7 @@ def _resolve_case_id(
     with uow_factory() as uow:
         active_case = uow.cases.get_active_study_case(project_id)
     if active_case is None:
-        raise ValueError(f"Brak aktywnego przypadku dla projektu {project_id}")
+        raise OdmowaDanychError(f"Brak aktywnego przypadku dla projektu {project_id}")
     return str(active_case.id)
 
 
@@ -373,7 +374,7 @@ def create_power_flow_run(
             analysis_type="PF",
             options=options,
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
@@ -419,7 +420,7 @@ def execute_power_flow_run(
 def get_power_flow_run(run_id: UUID) -> dict[str, Any]:
     try:
         return canonicalize_json(build_power_flow_run_header(_require_canonical_run(run_id)))
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
@@ -430,7 +431,7 @@ def get_power_flow_run(run_id: UUID) -> dict[str, Any]:
 def get_power_flow_results(run_id: UUID) -> dict[str, Any]:
     try:
         return canonicalize_json(get_canonical_power_flow_result(_require_canonical_run(run_id)))
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
@@ -441,7 +442,7 @@ def get_power_flow_results(run_id: UUID) -> dict[str, Any]:
 def get_power_flow_trace(run_id: UUID) -> dict[str, Any]:
     try:
         return canonicalize_json(get_canonical_power_flow_trace(_require_canonical_run(run_id)))
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
@@ -457,7 +458,7 @@ def export_power_flow_run_json(run_id: UUID) -> Response:
         )
     except HTTPException:
         raise
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
@@ -805,7 +806,7 @@ def get_power_flow_interpretation(run_id: UUID) -> dict[str, Any]:
 
     try:
         result_dict = build_power_flow_interpretation(_require_canonical_run(run_id))
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),

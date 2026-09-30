@@ -31,6 +31,7 @@ from application.study_case import (
 from application.study_case.status_wynikow import pola_statusu_przypadku
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/study-cases", tags=["study-cases"])
@@ -534,7 +535,7 @@ def update_protection_config(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         # Validation error (e.g., template_ref doesn't exist)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

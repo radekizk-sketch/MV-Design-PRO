@@ -16,8 +16,9 @@ from application.proof_engine.packs.sc_symmetrical import SC3FPackInput, SC3FPro
 from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 router = APIRouter(prefix="/api/proof", tags=["proof-pack"])
 
@@ -367,8 +368,17 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
     from enm.models import EnergyNetworkModel
     from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
 
+    # Migawka pochodzi z żądania: niezgodność z kontraktem ENM to odmowa danych projektanta,
+    # walidowana osobno, żeby `ValidationError` z głębi obliczeń (model budowany przez
+    # program) nie był przebierany za błąd danych (karta ODMOWA-DANYCH-422).
     try:
         enm = EnergyNetworkModel.model_validate(payload.snapshot)
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Nie udało się wyznaczyć wkładów zwarciowych: {exc}",
+        ) from exc
+    try:
         graph = map_enm_to_network_graph(enm)
         # Tozsamosc punktu: UI zna ref ENM szyny (target_id wyniku SC), solver
         # id wezla grafu (= deterministyczny UUID z ref). Przyjmujemy oba.
@@ -381,10 +391,10 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
             c_factor=payload.c_factor,
             t_min_s=payload.t_min_s,
         )
-    # Karta #151: odmowa danych solvera/walidacji to `ValueError` (w tym brak węzła
-    # zwarcia w indeksie Z-bus); dawny `KeyError` w krotce przebierał błąd programu
-    # (odczyt słownika) za 422 „nie udało się wyznaczyć" — teraz wybucha (500).
-    except ValueError as exc:
+    # Karta ODMOWA-DANYCH-422: 422 wyłącznie dla nazwanej odmowy danych (brak węzła
+    # zwarcia w indeksie Z-bus, element bez szyny, osobliwa sieć); każdy inny `ValueError`
+    # i dawny `KeyError` (karta #151) to błąd programu — 500 i pełny ślad.
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Nie udało się wyznaczyć wkładów zwarciowych: {exc}",
@@ -428,9 +438,18 @@ def download_sc3f_pack(payload: SC3FPackRequest) -> Response:
         c_factor=payload.c_factor,
         tk_s=payload.tk_s,
     )
+    from enm.models import EnergyNetworkModel
+
+    try:
+        EnergyNetworkModel.model_validate(payload.snapshot)
+    except ValidationError as exc:  # migawka z żądania — jak wyżej
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Nie udało się zbudować pakietu dowodowego SC3F: {exc}",
+        ) from exc
     try:
         content = SC3FProofPack.generate_zip(pack_input, context)
-    except ValueError as exc:  # jak wyżej: `KeyError` = błąd programu (karta #151)
+    except OdmowaDanychError as exc:  # jak wyżej: inny wyjątek = błąd programu
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Nie udało się zbudować pakietu dowodowego SC3F: {exc}",

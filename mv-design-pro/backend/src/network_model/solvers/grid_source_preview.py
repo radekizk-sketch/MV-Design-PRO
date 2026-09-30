@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
     compute_ikss,
@@ -83,20 +84,20 @@ def compute_grid_source_preview(data: GridSourcePreviewInput) -> GridSourcePrevi
 
 def _build_positive_sequence_impedance(data: GridSourcePreviewInput) -> complex:
     if data.voltage_kv <= 0:
-        raise ValueError("voltage_kv must be positive")
+        raise OdmowaDanychError("voltage_kv must be positive")
 
     mode = data.short_circuit_mode.upper().strip()
     if mode == "IMPEDANCE":
         if data.r_ohm is None or data.r_ohm < 0:
-            raise ValueError("r_ohm must be non-negative in impedance mode")
+            raise OdmowaDanychError("r_ohm must be non-negative in impedance mode")
         if data.x_ohm is None or data.x_ohm <= 0:
-            raise ValueError("x_ohm must be positive in impedance mode")
+            raise OdmowaDanychError("x_ohm must be positive in impedance mode")
         return complex(data.r_ohm, data.x_ohm)
 
     if data.sk3_mva is None or data.sk3_mva <= 0:
-        raise ValueError("sk3_mva must be positive in short-circuit-power mode")
+        raise OdmowaDanychError("sk3_mva must be positive in short-circuit-power mode")
     if data.rx_ratio is None or data.rx_ratio < 0:
-        raise ValueError("rx_ratio must be non-negative in short-circuit-power mode")
+        raise OdmowaDanychError("rx_ratio must be non-negative in short-circuit-power mode")
 
     z_magnitude_ohm = (data.voltage_kv**2) / data.sk3_mva
     x_ohm = z_magnitude_ohm / math.sqrt(1.0 + data.rx_ratio**2)
@@ -113,14 +114,16 @@ def _build_zero_sequence_impedance(
 
     if data.r0_ohm is not None or data.x0_ohm is not None:
         if data.r0_ohm is None or data.r0_ohm < 0:
-            raise ValueError("r0_ohm must be non-negative when zero-sequence impedance is set")
+            raise OdmowaDanychError(
+                "r0_ohm must be non-negative when zero-sequence impedance is set"
+            )
         if data.x0_ohm is None or data.x0_ohm <= 0:
-            raise ValueError("x0_ohm must be positive when zero-sequence impedance is set")
+            raise OdmowaDanychError("x0_ohm must be positive when zero-sequence impedance is set")
         return complex(data.r0_ohm, data.x0_ohm)
 
     if data.z0_z1_ratio is not None:
         if data.z0_z1_ratio <= 0:
-            raise ValueError("z0_z1_ratio must be positive")
+            raise OdmowaDanychError("z0_z1_ratio must be positive")
         return z1_ohm * data.z0_z1_ratio
 
     return None

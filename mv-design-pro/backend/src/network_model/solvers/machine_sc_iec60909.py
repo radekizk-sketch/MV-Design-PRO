@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 
 from network_model.core.graph import NetworkGraph
 from network_model.core.ybus import S_BASE_MVA
+from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
 from network_model.solvers.short_circuit_core import build_zbus
 
 _SQRT3 = math.sqrt(3.0)
@@ -181,10 +182,13 @@ def compute_machine_contributions(
             white_box={"note": "Brak maszyn wirujących — udział zerowy (model §6.6 nieaktywny)."},
         )
 
-    builder, z_bus = build_zbus(graph)
+    # `build_zbus` jest rdzeniem B-01: osobliwa macierz Y (sieć bez drogi do odniesienia)
+    # to jego odmowa danych zgłaszana gołym `ValueError` (karta ODMOWA-DANYCH-422).
+    with odmowa_rdzenia_b01():
+        builder, z_bus = build_zbus(graph)
     index = builder.node_id_to_index
     if fault_node_id not in index:
-        raise ValueError(f"Fault node '{fault_node_id}' not in Z-bus index")
+        raise OdmowaDanychError(f"Fault node '{fault_node_id}' not in Z-bus index")
     k = index[fault_node_id]
     z_kk = z_bus[k, k]
     vn_k_kv = graph.nodes[fault_node_id].voltage_level

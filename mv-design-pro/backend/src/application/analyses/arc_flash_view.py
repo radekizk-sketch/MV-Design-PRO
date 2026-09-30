@@ -32,6 +32,7 @@ from analysis.arc_flash import (
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 def _voltage_by_target(run: CanonicalRun) -> dict[str, float | None]:
@@ -74,26 +75,26 @@ def build_arc_flash_view(
             komunikat w języku polskim.
     """
     if run.analysis_type != "short_circuit_sn":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Analiza Arc Flash wymaga przebiegu zwarciowego; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )
     try:
         cfg = ElectrodeConfig(electrode_config)
     except ValueError as exc:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Nieznana konfiguracja elektrod: {electrode_config!r} "
             "(dozwolone: VCB, VCBB, HCB, VOA, HOA)."
         ) from exc
     try:
         enc = EnclosureType(enclosure_type)
     except ValueError as exc:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Nieznany typ obudowy: {enclosure_type!r} (dozwolone: Typical, Shallow)."
         ) from exc
 

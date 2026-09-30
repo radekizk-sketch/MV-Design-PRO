@@ -43,6 +43,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from network_model.odmowa_danych import OdmowaDanychError
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -182,7 +184,7 @@ def _validate_input(data: FaultLoopInput) -> None:
             "fault_loop reject: u_nom_v <= 0",
             extra={"fault_node_id": data.fault_node_id, "u_nom_v": data.u_nom_v},
         )
-        raise ValueError(
+        raise OdmowaDanychError(
             f"u_nom_v MUSI być > 0 V, otrzymano {data.u_nom_v}. "
             "Sprawdź wejście — brak nominal voltage z NetworkGraph."
         )
@@ -213,7 +215,7 @@ def _validate_input(data: FaultLoopInput) -> None:
                     "x_ohm": comp.x_ohm,
                 },
             )
-            raise ValueError(
+            raise OdmowaDanychError(
                 f"Składowa '{label}' ma ujemną R lub X "
                 f"(R={comp.r_ohm}, X={comp.x_ohm}). "
                 "Impedancje fizyczne MUSZĄ być nieujemne."
@@ -282,7 +284,7 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
                 "z_min_ohm": Z_MIN_OHM,
             },
         )
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Z_loop = {z_magnitude:.3e} Ω < {Z_MIN_OHM:.0e} Ω — pętla zerowa lub "
             "fizycznie niemożliwa (degenerated case). Realna nN ma Z_loop "
             "≥ kilkudziesięciu mΩ. Sprawdź dane wejściowe."

@@ -47,6 +47,7 @@ from enm.slownik_komunikatow import NAZWY_STATUSOW_WERYFIKACJI_PL
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CableType, LineType
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import kv_na_v, m_na_km
 from network_model.solvers.cable_ampacity_derating import (
     WARUNKI_KATALOGOWE,
@@ -677,7 +678,7 @@ def ocen_dobor_magistrali(
             (cosφ poza (0, 1], długość albo prąd niedodatnie).
     """
     if napiecie_kv <= 0.0:
-        raise ValueError("Napięcie ciągu musi być dodatnie.")
+        raise OdmowaDanychError("Napięcie ciągu musi być dodatnie.")
     kat: KatalogTypowSn = katalog if katalog is not None else get_default_mv_catalog()
     wszystkie = [*odcinki_zbudowane, odcinek]
     rozwiazane = [_rozwiaz(i, o, napiecie_kv, kat) for i, o in enumerate(wszystkie, start=1)]

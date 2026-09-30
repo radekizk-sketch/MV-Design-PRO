@@ -151,6 +151,7 @@ from enm.models import (
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from enm.uklad_sieci_nn import uklad_nn_stacji
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, km_na_m, prad_roboczy_a
 from network_model.solvers.cable_ampacity_derating import (
     obciazalnosc_skorygowana,
@@ -434,7 +435,7 @@ def _delta_u_dla_trasy(
 ) -> dict[str, Any]:
     try:
         widok = build_voltage_profile_view(run, node_ref=ref_to_graph_id(worst_bus_ref))
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         return _brak(str(exc))
     segmenty_pelne = (widok.get("segmenty") or {}).get("segments") or []
     if not segmenty_pelne:
@@ -806,7 +807,7 @@ def _build_row(
             kandydat: KandydatAparatuNn | None
             try:
                 kandydat = _kandydat_z_urzadzenia(urzadzenie)
-            except ValueError as exc:
+            except OdmowaDanychError as exc:
                 kandydat = None
                 kandydat_blad = f"Dane katalogowe aparatu niespójne: {exc}"
 

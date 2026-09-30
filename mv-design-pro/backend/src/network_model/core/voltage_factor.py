@@ -28,6 +28,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 Scenario = Literal["MAX", "MIN"]
@@ -54,10 +55,12 @@ def c_for_node(voltage_kv: float, scenario: Scenario) -> float:
             nominal voltage (non-finite, zero or negative) — no row of Table 1 applies.
     """
     if scenario not in ("MAX", "MIN"):
-        raise ValueError(f"Nieznany scenariusz współczynnika c: {scenario!r} (oczekiwano MAX/MIN)")
+        raise OdmowaDanychError(
+            f"Nieznany scenariusz współczynnika c: {scenario!r} (oczekiwano MAX/MIN)"
+        )
     pasmo = pasmo_napieciowe(voltage_kv)
     if pasmo is None:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Napięcie znamionowe {voltage_kv!r} kV nie leży w żadnym paśmie napięć — "
             "współczynnika napięciowego c (IEC 60909-0, tabela 1) nie da się dobrać."
         )

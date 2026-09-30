@@ -38,6 +38,7 @@ from typing import Any, Final
 from uuid import UUID, uuid4
 
 from domain.execution import ExecutionAnalysisType, StanBiegu, stan_biegu
+from network_model.odmowa_danych import OdmowaDanychError
 
 #: Statusy POZYCJI serii — DOKLADNIE slownik `CanonicalRun.status`
 #: (`enm/canonical_analysis.py`, typ `domain.execution.StanBiegu`), zero nowego
@@ -293,7 +294,7 @@ def new_run_batch(
     if len(scenario_ids) != len(scenario_content_hashes):
         raise ValueError("scenario_ids i scenario_content_hashes muszą mieć tę samą długość")
     if len(set(scenario_ids)) != len(scenario_ids):
-        raise ValueError("scenario_ids zawiera duplikaty")
+        raise OdmowaDanychError("scenario_ids zawiera duplikaty")
 
     pary = sorted(
         zip(scenario_ids, scenario_content_hashes, strict=False),

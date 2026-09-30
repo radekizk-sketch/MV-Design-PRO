@@ -47,6 +47,7 @@ from network_model.catalog.niezmienniki_katalogu import OdmowaKatalogu
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.ir_fields import BrakujacePoleIRError
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 
 from .nazwy_elementow import nazwa_nadana_pozycji_katalogu
 from .slownik_komunikatow import etykieta_parametru
@@ -81,7 +82,7 @@ _KATALOG_OPERACJI: ContextVar[CatalogRepository | None] = ContextVar(
 )
 
 
-class BladKataloguProjektu(ValueError):
+class BladKataloguProjektu(OdmowaDanychError):
     """Sekcja `katalog_projektu` nie daje się złożyć w katalog (kolizja/niepełny rekord).
 
     ``kod_reguly`` — kod twardej reguły katalogu (``KAT-T-…``), gdy odmówiła brama rekordu

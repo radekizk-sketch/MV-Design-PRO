@@ -35,6 +35,7 @@ from dziedziny.karta_widmowa import (
 from network_model.catalog.karty_widmowe import karta_widmowa_z_rekordu
 from network_model.catalog.niezmienniki_katalogu import OdmowaKatalogu
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import ValidationError
 
 from .katalog_projektu import STATUS_KATALOGU_PROJEKTU, STATUS_WERYFIKACJI_ARKUSZA
@@ -52,7 +53,7 @@ logger = logging.getLogger(__name__)
 KLUCZ_KART_WIDMOWYCH = "karty_widmowe_ref"
 
 
-class BladKartWidmowych(ValueError):
+class BladKartWidmowych(OdmowaDanychError):
     """Nazwana odmowa operacji na kartach widmowych (``kod`` = kod błędu operacji).
 
     ``kod_reguly`` — kod twardej reguły katalogu (``KAT-T-…``), gdy odmówiła brama rekordu

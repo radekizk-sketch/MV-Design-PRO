@@ -55,9 +55,15 @@ STDLIB_DOZWOLONE: frozenset[str] = frozenset(
 #: Biblioteki obliczeniowe dozwolone w rdzeniu (SS0 p.1). ZAMKNIETE.
 OBCE_DOZWOLONE: frozenset[str] = frozenset({"numpy", "scipy.sparse", "scipy.sparse.linalg"})
 
-#: Jedyny dozwolony modul WLASNY repozytorium poza pakietem: warstwa wielkosci
-#: pochodnych (lisc grafu importow, importuje wylacznie `math`).
-WLASNE_DOZWOLONE: frozenset[str] = frozenset({"network_model.pochodne"})
+#: Dozwolone moduly WLASNE repozytorium poza pakietem — oba sa LISCMI grafu importow
+#: (wylacznie biblioteka standardowa, bez skutkow ubocznych): warstwa wielkosci pochodnych
+#: (importuje wylacznie `math`) oraz nazwana odmowa danych (karta ODMOWA-DANYCH-422:
+#: `OdmowaDynamiki` jest odmowa wejscia rdzenia z kodem, wiec dziedziczy po
+#: `network_model.odmowa_danych.OdmowaDanychError` — inaczej API przebieraloby ja za blad
+#: programu 500 albo musialoby rozrozniac odmowe po tekscie).
+WLASNE_DOZWOLONE: frozenset[str] = frozenset(
+    {"network_model.pochodne", "network_model.odmowa_danych"}
+)
 
 #: Nazwy, ktore wolno sprowadzic skladnia `from scipy import X` (modul `scipy`
 #: sam w sobie nie jest dozwolony — dozwolony jest jego podpakiet rzadkiej algebry).
