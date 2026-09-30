@@ -6,6 +6,10 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from importy_ast import ImportPonadKorzen, modul_bazowy  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 API_DIR = ROOT / "backend" / "src" / "api"
 MAIN_PATH = API_DIR / "main.py"
@@ -155,16 +159,40 @@ def _derived_router(
     return base_name, frozenset(excluded)
 
 
-def _reexport_target(tree: ast.Module, symbol: str) -> tuple[str, str] | None:
+def pakiet_modulu_api(module_name: str) -> str:
+    """`__package__` modułu `api.<module_name>` (`enm` -> `api`, `a.b` -> `api.a`)."""
+    return ".".join(["api", *module_name.split(".")[:-1]])
+
+
+def modul_api_importu(node: ast.ImportFrom, pakiet: str) -> str | None:
+    """Moduł pod `api` (bez przedrostka `api.`), z którego `from … import` sprowadza nazwy,
+    albo `None`, gdy import nie wskazuje modułu pod `api`.
+
+    Rozwiązanie wg semantyki interpretera (`scripts/importy_ast.py`, jedno źródło prawdy
+    bramek): `from .enm import production_router` w `api/main.py` to ten sam moduł co
+    `from api.enm import production_router` (do 2026-09-30 forma względna była pomijana
+    i kończyła się `UnresolvedRouter` na nierozpoznanym aliasie). Import względny ponad
+    korzeń drzewa (interpreter: `ImportError`) -> `UnresolvedRouter` (fail-closed)."""
+    try:
+        modul = modul_bazowy(pakiet, node)
+    except ImportPonadKorzen as blad:
+        raise UnresolvedRouter(f"wiersz {node.lineno}: {blad}") from blad
+    if not modul.startswith("api."):
+        return None
+    return modul.removeprefix("api.")
+
+
+def _reexport_target(tree: ast.Module, symbol: str, pakiet: str = "api") -> tuple[str, str] | None:
     """Reeksport `from api.<inny> import <nazwa> as <symbol>` -> (inny, nazwa)."""
     for node in tree.body:
-        if not isinstance(node, ast.ImportFrom) or not node.module:
+        if not isinstance(node, ast.ImportFrom):
             continue
-        if not node.module.startswith("api."):
+        module_name = modul_api_importu(node, pakiet)
+        if module_name is None:
             continue
         for alias in node.names:
             if (alias.asname or alias.name) == symbol:
-                return node.module.removeprefix("api."), alias.name
+                return module_name, alias.name
     return None
 
 
@@ -182,7 +210,7 @@ def resolve_router(module_name: str, symbol: str, _depth: int = 0) -> RouterSour
     if value is None:
         # Modul-alias nazwy trasy (np. `api/protection_analysis_runs.py` reeksportuje
         # router z `api/protection_runs.py`) — idziemy do modulu, ktory router TWORZY.
-        reexport = _reexport_target(tree, symbol)
+        reexport = _reexport_target(tree, symbol, pakiet_modulu_api(module_name))
         if reexport is not None:
             return resolve_router(reexport[0], reexport[1], _depth + 1)
         raise UnresolvedRouter(f"{module_name}.{symbol} nie jest przypisany na poziomie modulu")
@@ -251,9 +279,9 @@ def _main_router_imports() -> dict[str, tuple[str, str]]:
     for node in ast.walk(tree):
         if not isinstance(node, ast.ImportFrom):
             continue
-        if not node.module or not node.module.startswith("api."):
+        module_name = modul_api_importu(node, "api")
+        if module_name is None:
             continue
-        module_name = node.module.removeprefix("api.")
         for alias in node.names:
             imports[alias.asname or alias.name] = (module_name, alias.name)
     return imports

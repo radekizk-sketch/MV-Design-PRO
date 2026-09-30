@@ -34,8 +34,13 @@ w `scripts/conftest.py`.
 from __future__ import annotations
 
 import ast
+import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from importy_ast import ImportPonadKorzen, cele_importu, pakiet_pliku, pod_prefiksem  # noqa: E402
 
 KORZEN = Path(__file__).resolve().parents[1]
 KATALOG_PAKIETU = KORZEN / "backend" / "src" / "network_model" / "solvers" / "dynamika"
@@ -110,16 +115,10 @@ def _dozwolony_absolutny(modul: str) -> str | None:
     return "modul spoza ZAMKNIETEJ allowlisty rdzenia dynamiki"
 
 
-def _modul_wzgledny(katalog: Path, plik: Path, poziom: int, modul: str | None) -> str:
-    """Rozwiaz import wzgledny do pelnej nazwy modulu."""
-    czesci = plik.relative_to(katalog).with_suffix("").parts
-    if czesci and czesci[-1] == "__init__":
-        czesci = czesci[:-1]
-    pakiet = [MODUL_PAKIETU, *czesci]
-    if poziom > len(pakiet):
-        return "..(poza korzeniem)"
-    baza = pakiet[: len(pakiet) - poziom + 1]
-    return ".".join([*baza, modul] if modul else baza)
+def _pakiet(katalog: Path, plik: Path) -> str:
+    """`__package__` pliku pakietu (katalog skanu odpowiada modulowi `MODUL_PAKIETU`)."""
+    wzgledny = pakiet_pliku(plik, katalog)
+    return f"{MODUL_PAKIETU}.{wzgledny}" if wzgledny else MODUL_PAKIETU
 
 
 def pliki_pakietu(katalog: Path = KATALOG_PAKIETU) -> list[Path]:
@@ -144,14 +143,33 @@ def znajdz_naruszenia(katalog: Path = KATALOG_PAKIETU) -> list[Naruszenie]:
                         naruszenia.append(Naruszenie(wzgledna, wezel.lineno, alias.name, powod))
             elif isinstance(wezel, ast.ImportFrom):
                 if wezel.level:
-                    modul = _modul_wzgledny(katalog, plik, wezel.level, wezel.module)
-                    if not (modul == MODUL_PAKIETU or modul.startswith(f"{MODUL_PAKIETU}.")):
+                    # Rozwiazanie wg semantyki interpretera (`scripts/importy_ast.py`).
+                    # Wlasna arytmetyka poziomow liczyla o jeden poziom za gleboko:
+                    # `from ..power_flow_newton import X` w `dynamika/a.py` wychodzilo na
+                    # `network_model.solvers.dynamika.power_flow_newton` i przechodzilo.
+                    try:
+                        cele = cele_importu(_pakiet(katalog, plik), wezel)
+                    except ImportPonadKorzen as blad:
                         naruszenia.append(
                             Naruszenie(
                                 wzgledna,
                                 wezel.lineno,
-                                modul,
-                                "import wzgledny wychodzi poza pakiet dynamiki",
+                                "." * wezel.level + (wezel.module or ""),
+                                f"import wzgledny wychodzi poza pakiet dynamiki — {blad}",
+                            )
+                        )
+                        continue
+                    for cel in cele:
+                        if pod_prefiksem(cel, (MODUL_PAKIETU,)):
+                            continue
+                        powod = _dozwolony_absolutny(cel)
+                        naruszenia.append(
+                            Naruszenie(
+                                wzgledna,
+                                wezel.lineno,
+                                cel,
+                                "import wzgledny wychodzi poza pakiet dynamiki"
+                                + (f"; {powod}" if powod else ""),
                             )
                         )
                     continue

@@ -91,6 +91,8 @@ from api_lifecycle_guard import (  # noqa: E402
     _module_level_assignments,
     _reexport_target,
     _route_decorators,
+    modul_api_importu,
+    pakiet_modulu_api,
     read_text,
 )
 
@@ -242,11 +244,11 @@ def _main_aliases(tree: ast.Module) -> dict[str, tuple[str, str]]:
     """Alias w `main.py` -> (modul `api/*`, nazwa symbolu w tym module)."""
     aliases: dict[str, tuple[str, str]] = {}
     for node in ast.walk(tree):
-        if not isinstance(node, ast.ImportFrom) or not node.module:
+        if not isinstance(node, ast.ImportFrom):
             continue
-        if not node.module.startswith("api."):
+        module = modul_api_importu(node, "api")
+        if module is None:
             continue
-        module = node.module.removeprefix("api.")
         for alias in node.names:
             aliases[alias.asname or alias.name] = (module, alias.name)
     return aliases
@@ -271,7 +273,7 @@ def resolve_chain(
 
     value = assignments.get(symbol)
     if value is None:
-        reexport = _reexport_target(tree, symbol)
+        reexport = _reexport_target(tree, symbol, pakiet_modulu_api(module))
         if reexport is None:
             raise UnresolvedRouter(f"{module}.{symbol} nie jest przypisany na poziomie modulu")
         deeper, target = resolve_chain(reexport[0], reexport[1], api_dir, _depth + 1)

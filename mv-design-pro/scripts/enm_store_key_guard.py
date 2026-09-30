@@ -47,7 +47,14 @@ DROGI IMPORTU SA ROZPOZNAWANE TRANZYTYWNIE, NIE TYLKO WPROST (obie proste
 formy i jeden REEKSPORT zyja w repo - patrz `zbuduj_eksporty`):
   * `from enm.store import get_enm as _get_enm` - lokalna nazwa FUNKCJI,
     dowolny alias (`_get_enm`, `_set_enm`, `_has_enm`, ...);
-  * `from enm import store` + `store.get_enm(...)` - lokalna nazwa MODULU;
+  * `from enm import store` + `store.get_enm(...)` - lokalna nazwa MODULU
+    (takze `import enm.store` + `enm.store.get_enm(...)`);
+  * IMPORTY WZGLEDNE sa rozwiazywane wg semantyki interpretera
+    (`scripts/importy_ast.py`, jedno zrodlo prawdy bramek): `from .store import get_enm`
+    w `enm/**` to ta sama droga co `from enm.store import get_enm` (do 2026-09-30
+    importy wzgledne byly pomijane z komentarzem „nieobserwowany w repo", a 26 plikow
+    `enm/**` i 26 `application/**` ich uzywa). Import wzgledny ponad korzen drzewa
+    (interpreter: `ImportError`) jest naruszeniem - bramka nie zgaduje jego celu;
   * REEKSPORT PRZEZ TRZECI PLIK: `api/enm.py` importuje `get_enm`/`set_enm`
     z `enm.store` pod aliasem `_get_enm`/`_set_enm`, a
     `application/station_templates/apply.py` importuje TE ALIASY z
@@ -111,6 +118,10 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from importy_ast import ImportPonadKorzen, modul_bazowy, pakiet_pliku  # noqa: E402
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
@@ -276,6 +287,33 @@ def _moze_byc_mostem_reeksportu(dotted: str) -> bool:
     return any(dotted == root or dotted.startswith(f"{root}.") for root in SCAN_ROOTS)
 
 
+def _pakiet(plik: Path) -> str:
+    """`__package__` pliku skanu (plik spoza `BACKEND_SRC` ma pakiet pusty - kazdy jego
+    import wzgledny jest wtedy wyjsciem ponad korzen, czyli naruszeniem)."""
+    try:
+        return pakiet_pliku(plik, BACKEND_SRC)
+    except ValueError:
+        return ""
+
+
+def _modul_importu(pakiet: str, node: ast.ImportFrom) -> str | None:
+    """Pelna nazwa modulu `from ... import` albo `None` dla wyjscia ponad korzen
+    (zglaszanego osobno przez `importy_ponad_korzen`)."""
+    try:
+        return modul_bazowy(pakiet, node)
+    except ImportPonadKorzen:
+        return None
+
+
+def importy_ponad_korzen(tree: ast.AST, pakiet: str) -> list[tuple[str, int]]:
+    """Importy wzgledne wychodzace ponad korzen drzewa importow (fail-closed)."""
+    return [
+        (f"import-ponad-korzen:{'.' * node.level}{node.module or ''}", node.lineno)
+        for node in instrukcje_importu(tree)
+        if isinstance(node, ast.ImportFrom) and _modul_importu(pakiet, node) is None
+    ]
+
+
 def zbuduj_eksporty(pliki: list[Path], drzewa: dict[Path, ast.AST]) -> dict[Path, dict[str, str]]:
     """Eksport (lokalna_nazwa -> kanoniczna_funkcja_magazynu) DLA KAZDEGO pliku
     w `pliki`, liczony PUNKTEM STALYM po grafie mostow reeksportu WEWNATRZ
@@ -327,19 +365,21 @@ def zbuduj_eksporty(pliki: list[Path], drzewa: dict[Path, ast.AST]) -> dict[Path
         drzewo = drzewa.get(p)
         if drzewo is None:
             continue
+        pakiet = _pakiet(p)
         for node in instrukcje_importu(drzewo):
             if not isinstance(node, ast.ImportFrom):
                 continue
-            if node.level or node.module is None:
-                continue  # import wzgledny - nieobserwowany w repo, poza zakresem
-            if node.module == "enm.store":
+            modul = _modul_importu(pakiet, node)
+            if modul is None:
+                continue  # ponad korzen - naruszenie zglasza `importy_ponad_korzen`
+            if modul == "enm.store":
                 for alias in node.names:
                     if alias.name in FUNKCJE_MAGAZYNU:
                         eksport[p][alias.asname or alias.name] = alias.name
                 continue
-            if not _moze_byc_mostem_reeksportu(node.module):
+            if not _moze_byc_mostem_reeksportu(modul):
                 continue
-            zrodlo = _sciezka_modulu(node.module)
+            zrodlo = _sciezka_modulu(modul)
             if zrodlo is None or zrodlo == p or zrodlo not in zbior_plikow:
                 continue
             for alias in node.names:
@@ -358,24 +398,34 @@ def zbuduj_eksporty(pliki: list[Path], drzewa: dict[Path, ast.AST]) -> dict[Path
     return eksport
 
 
-def nazwy_modulu_magazynu(tree: ast.AST) -> set[str]:
-    """Lokalne nazwy, pod ktorymi PLIK widzi MODUL `enm.store` (droga `store.X`).
-
-    Celowo NIEtranzytywne (brak zmierzonej potrzeby - patrz naglowek modulu):
-    tylko `from enm import store [as X]` i `import enm.store as X` WPROST
-    w skanowanym pliku.
-    """
+def _nazwy_modulu(tree: ast.AST, pakiet: str, modul: str) -> set[str]:
+    """Lokalne sciezki (kropkowane), pod ktorymi PLIK widzi MODUL `modul` (`enm.X`):
+    `from enm import X [as Y]` i `from . import X` w `enm/**` -> `X`/`Y`;
+    `import enm.X as Y` -> `Y`; `import enm.X` -> `enm.X` (tak wiaze go interpreter:
+    lokalna nazwa to `enm`, dostep `enm.X.f`). Do 2026-09-30 ostatnia forma dawala
+    lokalna nazwe `X`, pod ktora plik modulu NIE widzi - `enm.store.get_enm(case_id)`
+    przechodzilo bez naruszenia."""
+    pakiet_modulu, _, nazwa = modul.rpartition(".")
     nazwy: set[str] = set()
     for node in instrukcje_importu(tree):
-        if isinstance(node, ast.ImportFrom) and node.module == "enm" and not node.level:
+        if isinstance(node, ast.ImportFrom) and _modul_importu(pakiet, node) == pakiet_modulu:
             for alias in node.names:
-                if alias.name == "store":
+                if alias.name == nazwa:
                     nazwy.add(alias.asname or alias.name)
         elif isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name == "enm.store":
-                    nazwy.add(alias.asname or "store")
+                if alias.name == modul:
+                    nazwy.add(alias.asname or alias.name)
     return nazwy
+
+
+def nazwy_modulu_magazynu(tree: ast.AST, pakiet: str = "") -> set[str]:
+    """Lokalne sciezki, pod ktorymi PLIK widzi MODUL `enm.store` (droga `store.X`).
+
+    Celowo NIEtranzytywne (brak zmierzonej potrzeby - patrz naglowek modulu):
+    tylko import modulu WPROST w skanowanym pliku (formy w `_nazwy_modulu`).
+    """
+    return _nazwy_modulu(tree, pakiet, "enm.store")
 
 
 def _kanoniczna_funkcja_wywolania(
@@ -385,13 +435,13 @@ def _kanoniczna_funkcja_wywolania(
     func = expr.func
     if isinstance(func, ast.Name):
         return nazwy_funkcji.get(func.id)
-    if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
-        if func.value.id in nazwy_modulu and func.attr in FUNKCJE_MAGAZYNU:
+    if isinstance(func, ast.Attribute) and func.attr in FUNKCJE_MAGAZYNU:
+        if sciezka_kropkowana(func.value) in nazwy_modulu:
             return func.attr
     return None
 
 
-def naruszenia_klucza_projektu(tree: ast.AST) -> list[tuple[str, int]]:
+def naruszenia_klucza_projektu(tree: ast.AST, pakiet: str = "") -> list[tuple[str, int]]:
     """Uzycia `enm.klucz_twin.klucz_twin_projektu` w skanowanym pliku (REGULA 2).
 
     PO CO TA REGULA (przeglad adwersaryjny CV-1, 2026-09-05). Regula 1 wyzej
@@ -422,33 +472,29 @@ def naruszenia_klucza_projektu(tree: ast.AST) -> list[tuple[str, int]]:
     tekscie.
     """
     naruszenia: list[tuple[str, int]] = []
-    nazwy_modulu: set[str] = set()
     for node in instrukcje_importu(tree):
-        if isinstance(node, ast.ImportFrom) and not node.level:
-            if node.module == MODUL_KLUCZA_PROJEKTU:
-                for alias in node.names:
-                    if alias.name == FUNKCJA_KLUCZA_PROJEKTU:
-                        naruszenia.append((f"import:{alias.asname or alias.name}", node.lineno))
-            elif node.module == "enm":
-                for alias in node.names:
-                    if alias.name == "klucz_twin":
-                        nazwy_modulu.add(alias.asname or alias.name)
-        elif isinstance(node, ast.Import):
+        if isinstance(node, ast.ImportFrom) and _modul_importu(pakiet, node) == (
+            MODUL_KLUCZA_PROJEKTU
+        ):
             for alias in node.names:
-                if alias.name == MODUL_KLUCZA_PROJEKTU:
-                    nazwy_modulu.add(alias.asname or "klucz_twin")
+                if alias.name == FUNKCJA_KLUCZA_PROJEKTU:
+                    naruszenia.append((f"import:{alias.asname or alias.name}", node.lineno))
+    nazwy_modulu = _nazwy_modulu(tree, pakiet, MODUL_KLUCZA_PROJEKTU)
     if nazwy_modulu:
         for node in ast.walk(tree):
             if not isinstance(node, ast.Attribute) or node.attr != FUNKCJA_KLUCZA_PROJEKTU:
                 continue
-            if isinstance(node.value, ast.Name) and node.value.id in nazwy_modulu:
-                naruszenia.append((f"modul:{node.value.id}.{node.attr}", node.lineno))
+            sciezka = sciezka_kropkowana(node.value)
+            if sciezka in nazwy_modulu:
+                naruszenia.append((f"modul:{sciezka}.{node.attr}", node.lineno))
     return naruszenia
 
 
-def zbierz_naruszenia(tree: ast.AST, nazwy_funkcji: dict[str, str]) -> list[tuple[str, int]]:
+def zbierz_naruszenia(
+    tree: ast.AST, nazwy_funkcji: dict[str, str], pakiet: str = ""
+) -> list[tuple[str, int]]:
     """Lista (`<funkcja>:<forma>:<cel>`, wiersz) dla jednego pliku."""
-    nazwy_modulu = nazwy_modulu_magazynu(tree)
+    nazwy_modulu = nazwy_modulu_magazynu(tree, pakiet)
     if not nazwy_funkcji and not nazwy_modulu:
         return []
 
@@ -502,9 +548,15 @@ def check_file(
     zewnatrz, zeby zaden plik nie byl parsowany wiecej niz raz na przebieg.
     """
     rel = path.relative_to(BACKEND_SRC).as_posix()
-    naruszenia = zbierz_naruszenia(tree, nazwy_funkcji)
+    pakiet = _pakiet(path)
+    naruszenia = zbierz_naruszenia(tree, nazwy_funkcji, pakiet)
     komunikaty = apply_ratchet(rel, naruszenia, budzet.get(rel, 0))
-    for sygnatura, linia in naruszenia_klucza_projektu(tree):
+    for sygnatura, linia in importy_ponad_korzen(tree, pakiet):
+        komunikaty.append(
+            f"  {rel}:{linia}: {sygnatura} - import wzgledny wychodzi ponad korzen drzewa "
+            "importow (interpreter: ImportError); bramka nie zgaduje jego celu (fail-closed)."
+        )
+    for sygnatura, linia in naruszenia_klucza_projektu(tree, pakiet):
         komunikaty.append(
             f"  {rel}:{linia}: {sygnatura} - `{FUNKCJA_KLUCZA_PROJEKTU}` jest czysta "
             "funkcja klucza i NIE uruchamia migracji zastanych plikow per przypadek. "

@@ -20,7 +20,9 @@ listy dozwolonych modułów „zgadzałyby się dziś" i rozjechały przy pierws
 nowym imporcie (reguła KLASA, NIE INSTANCJA).
 """
 import sys
+from pathlib import Path
 
+from dynamika_granica_importow import KATALOG_PAKIETU as KATALOG_PAKIETU_DYNAMIKI
 from dynamika_granica_importow import raport as raport_granicy_dynamiki
 from guard_diff_base import zmienione_pliki
 
@@ -103,9 +105,10 @@ SANCTIONED_CHANGES = {
 }
 
 
-def sprawdz_granice_dynamiki() -> int:
-    """Granica importów rdzenia dynamiki (karta W6-2 §0 p.1) — 0 = zielono."""
-    liczba_plikow, naruszenia = raport_granicy_dynamiki()
+def sprawdz_granice_dynamiki(katalog: Path = KATALOG_PAKIETU_DYNAMIKI) -> int:
+    """Granica importów rdzenia dynamiki (karta W6-2 §0 p.1) — 0 = zielono. Katalog skanu
+    parametrem, żeby test mógł sprawdzić wpięcie na kopii pakietu (nigdy w żywym drzewie)."""
+    liczba_plikow, naruszenia = raport_granicy_dynamiki(katalog)
     if liczba_plikow == 0:
         print(
             "BŁĄD [SolverBoundaryGuard]: pakiet `network_model/solvers/dynamika` nie ma "

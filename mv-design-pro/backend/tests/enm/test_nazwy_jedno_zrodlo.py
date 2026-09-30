@@ -38,6 +38,8 @@ from enm import nazwy_elementow as nazwy
 from enm import slownik_komunikatow as slownik
 from network_model import nazwy as predykat
 
+from tests.utils.importy_ast_skryptow import importy_ast
+
 SRC = Path(__file__).resolve().parents[2] / "src"
 
 # ---------------------------------------------------------------------------
@@ -383,42 +385,91 @@ def test_skaner_rozpoznaje_formy(kod: str, oczekiwane: list[str]) -> None:
     assert sorted(forma for _l, _k, forma, _s in skaner.trafienia) == sorted(oczekiwane)
 
 
+_MODUL_PREDYKATU = "network_model.nazwy"
+_PREDYKATY = frozenset({"jest_nazwa", "nazwa_nadana"})
+
+
+def _sciezka_kropkowana(wyrazenie: ast.expr) -> str:
+    if isinstance(wyrazenie, ast.Name):
+        return wyrazenie.id
+    if isinstance(wyrazenie, ast.Attribute):
+        rdzen = _sciezka_kropkowana(wyrazenie.value)
+        return f"{rdzen}.{wyrazenie.attr}" if rdzen else ""
+    return ""
+
+
+def _bledy_sciezki_predykatu(drzewo: ast.AST, pakiet: str, miejsce: str) -> list[str]:
+    """Użycia predykatu nazwy spoza `network_model.nazwy` w jednym pliku.
+
+    Importy rozwiązane wg semantyki interpretera (`scripts/importy_ast.py`, jedno źródło
+    prawdy bramek): `from .nazwy import jest_nazwa` w `network_model/**` i
+    `from . import nazwy` to ta sama, poprawna ścieżka (do 2026-09-30 skan czytał samo
+    `module`, więc pierwsza forma była fałszywie odrzucana, a druga nie rejestrowała
+    aliasu modułu). Dostęp przez moduł sprawdzany po pełnej ścieżce kropkowanej —
+    `import network_model.nazwy` + `network_model.nazwy.jest_nazwa(...)` jest poprawny,
+    a `enm.nazwy_elementow.jest_nazwa(...)` nie (wcześniej sprawdzano wyłącznie `Name`)."""
+    bledy: list[str] = []
+    aliasy_lisca: set[str] = set()
+    for wezel in ast.walk(drzewo):
+        if isinstance(wezel, ast.ImportFrom):
+            try:
+                modul = importy_ast.modul_bazowy(pakiet, wezel)
+            except importy_ast.ImportPonadKorzen as blad:
+                bledy.append(f"{miejsce}:{wezel.lineno} {blad}")
+                continue
+            zle = _PREDYKATY & {a.name for a in wezel.names}
+            if zle and modul != _MODUL_PREDYKATU:
+                bledy.append(f"{miejsce}:{wezel.lineno} {modul} {sorted(zle)}")
+            aliasy_lisca |= {
+                a.asname or a.name for a in wezel.names if f"{modul}.{a.name}" == _MODUL_PREDYKATU
+            }
+        elif isinstance(wezel, ast.Import):
+            aliasy_lisca |= {a.asname or a.name for a in wezel.names if a.name == _MODUL_PREDYKATU}
+    for wezel in ast.walk(drzewo):
+        if isinstance(wezel, ast.Attribute) and wezel.attr in _PREDYKATY:
+            sciezka = _sciezka_kropkowana(wezel.value)
+            if sciezka and sciezka not in aliasy_lisca:
+                bledy.append(f"{miejsce}:{wezel.lineno} {sciezka}.{wezel.attr}")
+    return bledy
+
+
+@pytest.mark.parametrize(
+    ("pakiet", "kod", "bledne"),
+    [
+        ("api", "from network_model.nazwy import jest_nazwa\n", False),
+        ("network_model", "from .nazwy import jest_nazwa\n", False),
+        ("network_model.core", "from ..nazwy import nazwa_nadana\n", False),
+        ("network_model", "from . import nazwy\nnazwy.jest_nazwa(x)\n", False),
+        ("api", "from network_model import nazwy as n\nn.jest_nazwa(x)\n", False),
+        ("api", "import network_model.nazwy\nnetwork_model.nazwy.jest_nazwa(x)\n", False),
+        ("api", "import network_model.nazwy as n\nn.nazwa_nadana(x)\n", False),
+        ("api", "from enm.nazwy_elementow import jest_nazwa\n", True),
+        ("enm", "from .nazwy_elementow import jest_nazwa\n", True),
+        ("api", "from enm import nazwy_elementow\nnazwy_elementow.jest_nazwa(x)\n", True),
+        ("api", "import enm.nazwy_elementow\nenm.nazwy_elementow.jest_nazwa(x)\n", True),
+        ("api", "from .. import nazwy\n", True),
+    ],
+)
+def test_skaner_sciezki_predykatu_rozwiazuje_importy(pakiet: str, kod: str, bledne: bool) -> None:
+    """Samotest skanu jednej ścieżki importu: iloczyn {import nazwy, import modułu, forma
+    względna, dostęp po ścieżce kropkowanej} × {z `network_model.nazwy`, z innego modułu}."""
+    assert bool(_bledy_sciezki_predykatu(ast.parse(kod), pakiet, "x.py")) is bledne
+
+
 def test_predykat_ma_jedna_sciezke_importu() -> None:
     """Każdy konsument — `backend/src/**`, `backend/tests/**` i `scripts/**` — bierze
     `jest_nazwa`/`nazwa_nadana` z `network_model.nazwy` (import z nazwy albo odwołanie przez
     alias modułu); moduł nazw elementów ich nie wystawia (bez re-eksportu — zasada: jedna
     ścieżka, zero warstw zgodności)."""
-    predykaty = {"jest_nazwa", "nazwa_nadana"}
     backend = SRC.parent
+    skrypty = backend.parent / "scripts"
     bledy: list[str] = []
-    for korzen in (SRC, backend / "tests", backend.parent / "scripts"):
+    for korzen, korzen_importow in ((SRC, SRC), (backend / "tests", backend), (skrypty, skrypty)):
         for plik in sorted(korzen.rglob("*.py")):
             miejsce = plik.relative_to(backend.parent).as_posix()
             drzewo = ast.parse(plik.read_text(encoding="utf-8"))
-            aliasy_lisca: set[str] = set()
-            for wezel in ast.walk(drzewo):
-                if isinstance(wezel, ast.ImportFrom) and wezel.module:
-                    zle = predykaty & {a.name for a in wezel.names}
-                    if zle and wezel.module != "network_model.nazwy":
-                        bledy.append(f"{miejsce}:{wezel.lineno} {wezel.module} {zle}")
-                    if wezel.module == "network_model":
-                        aliasy_lisca |= {
-                            a.asname or a.name for a in wezel.names if a.name == "nazwy"
-                        }
-                elif isinstance(wezel, ast.Import):
-                    aliasy_lisca |= {
-                        a.asname
-                        for a in wezel.names
-                        if a.name == "network_model.nazwy" and a.asname
-                    }
-            for wezel in ast.walk(drzewo):
-                if (
-                    isinstance(wezel, ast.Attribute)
-                    and wezel.attr in predykaty
-                    and isinstance(wezel.value, ast.Name)
-                    and wezel.value.id not in aliasy_lisca
-                ):
-                    bledy.append(f"{miejsce}:{wezel.lineno} {wezel.value.id}.{wezel.attr}")
+            pakiet = importy_ast.pakiet_pliku(plik, korzen_importow)
+            bledy.extend(_bledy_sciezki_predykatu(drzewo, pakiet, miejsce))
     assert not bledy, bledy
     assert not hasattr(nazwy, "jest_nazwa")
     zrodlo = (SRC / "enm" / "nazwy_elementow.py").read_text(encoding="utf-8")
