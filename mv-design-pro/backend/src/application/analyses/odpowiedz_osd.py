@@ -73,6 +73,7 @@ from enm.scenariusze import (
     RodzajScenariusza,
     apply_scenario,
 )
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import tan_phi_z_cos_phi
 from network_model.solvers.power_flow_inverter import InverterControl, lfsm_factor
 
@@ -131,20 +132,22 @@ def _resolve_setpoint(
     """
     if command == "ograniczenie_p":
         if p_limit_pct is None or p_limit_pct <= 0.0:
-            raise ValueError("Polecenie ograniczenia mocy wymaga dodatniego p_limit_pct [%].")
+            raise OdmowaDanychError(
+                "Polecenie ograniczenia mocy wymaga dodatniego p_limit_pct [%]."
+            )
         p_after = p_base_mw * (p_limit_pct / 100.0)
         return p_after, q_base_mvar, {"p_limit_pct": _round6(p_limit_pct)}
 
     if command == "moc_bierna":
         if q_mvar is None:
-            raise ValueError("Polecenie mocy biernej wymaga zadanej wartości q_mvar [Mvar].")
+            raise OdmowaDanychError("Polecenie mocy biernej wymaga zadanej wartości q_mvar [Mvar].")
         return p_base_mw, float(q_mvar), {"q_mvar": _round6(q_mvar)}
 
     if command == "cosfi":
         if cos_phi is None or not (0.0 < cos_phi <= 1.0):
-            raise ValueError("Polecenie cosφ wymaga cos_phi w przedziale (0, 1].")
+            raise OdmowaDanychError("Polecenie cosφ wymaga cos_phi w przedziale (0, 1].")
         if q_charakter not in {"nadwzbudny", "podwzbudny"}:
-            raise ValueError(
+            raise OdmowaDanychError(
                 "Polecenie cosφ wymaga q_charakter: 'nadwzbudny' (generacja Q) "
                 "lub 'podwzbudny' (pobór Q)."
             )
@@ -155,13 +158,13 @@ def _resolve_setpoint(
 
     # lfsm_o / lfsm_u
     if frequency_hz is None or frequency_hz <= 0.0:
-        raise ValueError("Polecenie LFSM wymaga dodatniej częstotliwości frequency_hz [Hz].")
+        raise OdmowaDanychError("Polecenie LFSM wymaga dodatniej częstotliwości frequency_hz [Hz].")
     if droop_pct is None or droop_pct <= 0.0:
-        raise ValueError("Polecenie LFSM wymaga dodatniego statyzmu droop_pct [%].")
+        raise OdmowaDanychError("Polecenie LFSM wymaga dodatniego statyzmu droop_pct [%].")
     if deadband_hz < 0.0:
-        raise ValueError("Strefa martwa LFSM deadband_hz nie może być ujemna [Hz].")
+        raise OdmowaDanychError("Strefa martwa LFSM deadband_hz nie może być ujemna [Hz].")
     if f0_hz <= 0.0:
-        raise ValueError("Częstotliwość odniesienia f0_hz musi być dodatnia [Hz].")
+        raise OdmowaDanychError("Częstotliwość odniesienia f0_hz musi być dodatnia [Hz].")
     control = InverterControl(
         lfsm_droop_pct=droop_pct,
         lfsm_deadband_hz=deadband_hz,
@@ -189,7 +192,9 @@ def _run_power_flow(run: CanonicalRun, label: str) -> dict[str, Any]:
     try:
         wykonaj_bieg_w_pamieci(run)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # nazwana odmowa obliczenia = twardy błąd wejścia
-        raise ValueError(f"Rozpływ mocy ({label}) nie mógł zostać policzony: {exc}.") from exc
+        raise OdmowaDanychError(
+            f"Rozpływ mocy ({label}) nie mógł zostać policzony: {exc}."
+        ) from exc
     return run.raw_result or {}
 
 
@@ -297,7 +302,7 @@ def _wymagana_moc_zrodla(source: dict[str, Any], klucz: str, source_ref: str) ->
     """
     wartosc = source.get(klucz)
     if wartosc is None:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Źródło {source_ref!r} nie ma pola {klucz!r} w migawce modelu — "
             "symulacja odpowiedzi na polecenie OSD nie może wyznaczyć punktu "
             "bazowego bez tej wartości."
@@ -344,17 +349,17 @@ def build_osd_response_view(
             w języku polskim.
     """
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Symulacja odpowiedzi OSD wymaga przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
     if command not in _COMMANDS:
-        raise ValueError(
+        raise OdmowaDanychError(
             "Nieznany rodzaj polecenia OSD: "
             f"{command}. Dozwolone: {', '.join(sorted(_COMMANDS))}."
         )
@@ -362,7 +367,7 @@ def build_osd_response_view(
     snapshot = run.snapshot or {}
     source = _find_source(snapshot, source_ref)
     if source is None:
-        raise ValueError(f"Wskazane źródło nie istnieje w modelu: {source_ref}.")
+        raise OdmowaDanychError(f"Wskazane źródło nie istnieje w modelu: {source_ref}.")
 
     p_base_mw = _wymagana_moc_zrodla(source, "p_mw", source_ref)
     q_base_mvar = _wymagana_moc_zrodla(source, "q_mvar", source_ref)

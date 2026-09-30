@@ -48,6 +48,7 @@ from enm.tor_pola import szyna_glowna_stacji, szyny_stacji
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
 from network_model.nazwy import jest_nazwa, nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
 from network_model.pochodne import kv_na_v, kva_na_mva, mw_na_kw, v_na_kv
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from network_model.solvers.equipment_checks.ct_burden_saturation import CtDeviceBurden
@@ -126,7 +127,7 @@ class DerGeneratorCreateRequest(BaseModel):
         """
         stripped = value.strip()
         if not stripped:
-            raise ValueError("pole wymagane nie może być puste")
+            raise OdmowaDanychError("pole wymagane nie może być puste")
         return stripped
 
     @field_validator(
@@ -545,7 +546,11 @@ def _weryfikuj_modul_ncrfg(
     napiecie_kv = _napiecie_przylaczenia_kv(enm_dict, req, payload, canonical_variant)
     if napiecie_kv is None:
         return
-    klasyfikacja = klasyfikacja_modulu(mw_na_kw(req.power_mw), napiecie_kv)
+    moc_kw = mw_na_kw(req.power_mw)
+    # Klasyfikacja NC RfG jest rdzeniem B-01: moc albo napięcie spoza dziedziny to jego
+    # odmowa gołym `ValueError` — granica tłumaczy ją na odmowę danych (422).
+    with odmowa_rdzenia_b01():
+        klasyfikacja = klasyfikacja_modulu(moc_kw, napiecie_kv)
     if klasyfikacja.modul == req.nc_rfg_module:
         return
     raise HTTPException(

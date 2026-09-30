@@ -22,7 +22,8 @@ from enm.nazwy_elementow import zbuduj_indeks_nazw
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from network_model.odmowa_danych import OdmowaDanychError
+from pydantic import BaseModel, ValidationError
 from solver_input.v126_contracts import (
     V126AcademicInput,
     V126AnalysisType,
@@ -193,27 +194,33 @@ def _with_parameter_payloads(
     """Dołóż do wejścia solvera dane PROJEKTANTA z `parameters` (uziom, izolacja, silniki).
 
     Raises:
-        ValueError: gdy `parameters` niesie skasowane nadpisanie wejścia solvera
-            (`harmonic_sources`, `converters`) — komunikat po polsku nazywa klucz.
+        OdmowaDanychError: gdy `parameters` niesie skasowane nadpisanie wejścia solvera
+            (`harmonic_sources`, `converters`) — komunikat po polsku nazywa klucz — albo
+            nadpisanie niezgodne z kontraktem wejścia (komunikat walidacji pydantic).
     """
     skasowane = [klucz for klucz in _SKASOWANE_NADPISANIA_WEJSCIA if klucz in parameters]
     if skasowane:
-        raise ValueError(" ".join(_SKASOWANE_NADPISANIA_WEJSCIA[k] for k in skasowane))
+        raise OdmowaDanychError(" ".join(_SKASOWANE_NADPISANIA_WEJSCIA[k] for k in skasowane))
     update: dict[str, Any] = {"parameters": parameters}
-    if isinstance(parameters.get("earthing"), dict):
-        update["earthing"] = V126EarthingInput.model_validate(parameters["earthing"])
-    if isinstance(parameters.get("insulation"), list):
-        update["insulation"] = [
-            V126InsulationInput.model_validate(item)
-            for item in parameters["insulation"]
-            if isinstance(item, dict)
-        ]
-    if isinstance(parameters.get("motors"), list):
-        update["motors"] = [
-            V126MotorInput.model_validate(item)
-            for item in parameters["motors"]
-            if isinstance(item, dict)
-        ]
+    # Parametry pochodzą z żądania projektanta: niezgodność z kontraktem wejścia to odmowa
+    # danych z tym samym komunikatem walidacji (karta ODMOWA-DANYCH-422).
+    try:
+        if isinstance(parameters.get("earthing"), dict):
+            update["earthing"] = V126EarthingInput.model_validate(parameters["earthing"])
+        if isinstance(parameters.get("insulation"), list):
+            update["insulation"] = [
+                V126InsulationInput.model_validate(item)
+                for item in parameters["insulation"]
+                if isinstance(item, dict)
+            ]
+        if isinstance(parameters.get("motors"), list):
+            update["motors"] = [
+                V126MotorInput.model_validate(item)
+                for item in parameters["motors"]
+                if isinstance(item, dict)
+            ]
+    except ValidationError as exc:
+        raise OdmowaDanychError(str(exc)) from exc
     return model.model_copy(update=update)
 
 
@@ -403,7 +410,7 @@ def get_v126_ssci_stability(run_id: UUID) -> dict[str, Any]:
     canonical_run, run = _require_canonical_run(run_id, V126AnalysisType.SSCI_IMPEDANCE)
     try:
         return build_ssci_stability_view(run, nazwy=zbuduj_indeks_nazw(canonical_run.snapshot))
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),

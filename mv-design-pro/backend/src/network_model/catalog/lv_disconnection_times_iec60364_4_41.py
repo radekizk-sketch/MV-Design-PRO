@@ -36,6 +36,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 @dataclass(frozen=True)
@@ -158,7 +159,7 @@ def pasmo_dla_u0(u0_v: float) -> str:
     """
     tol = _TOLERANCJA_GRANICY_PASMA_V
     if u0_v <= 50.0:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"U0={u0_v} V ≤ 50 V — poza zakresem Tab. 41.1 (reżim SELV/PELV, "
             "ochrona nie opiera się na samoczynnym wyłączeniu)."
         )

@@ -29,6 +29,7 @@ from application.analyses.raport_zgodnosci import build_compliance_report_from_t
 from domain.execution import RunStatus
 from enm.store import get_enm, has_enm
 from fastapi import APIRouter, HTTPException, Query, status
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import kv_na_v
 
 router = APIRouter(tags=["der-sn-documents"])
@@ -108,7 +109,7 @@ def _zastosowana_wartosc(payload: dict[str, Any], klucz: str, etykieta: str) -> 
     """
     wartosc = payload.get(klucz)
     if wartosc is None:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Brak pola {klucz!r} zastosowanego {etykieta} — brak danych do "
             "porównania z propozycją D2."
         )
@@ -230,7 +231,7 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
                     }
                 )
         return deviations or None
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         return [{"nieoceniono": True, "powod_pl": str(exc)}]
 
 

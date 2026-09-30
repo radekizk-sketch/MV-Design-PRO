@@ -60,6 +60,7 @@ from network_model.core.uziemienie import (
     TypPunktuNeutralnego,
     UziemienieEkranuKabla,
 )
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import mva_na_kva
 from pydantic import BaseModel
 
@@ -902,7 +903,7 @@ def import_protection_library(
             mode=import_mode,
         )
         return report
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         # Conflicts or validation errors detected
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

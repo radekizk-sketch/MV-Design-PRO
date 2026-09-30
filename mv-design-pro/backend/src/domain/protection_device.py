@@ -31,6 +31,8 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
+from network_model.odmowa_danych import OdmowaDanychError
+
 # =============================================================================
 # ENUMS
 # =============================================================================
@@ -100,13 +102,13 @@ class ProtectionCurveSettings:
     def __post_init__(self) -> None:
         """Validate settings ranges."""
         if self.pickup_current_a <= 0:
-            raise ValueError("Prąd rozruchowy musi być większy od zera")
+            raise OdmowaDanychError("Prąd rozruchowy musi być większy od zera")
         if self.time_multiplier < 0.05:
-            raise ValueError("Mnożnik czasowy TMS nie może być mniejszy niż 0.05")
+            raise OdmowaDanychError("Mnożnik czasowy TMS nie może być mniejszy niż 0.05")
         if self.time_multiplier > 10.0:
-            raise ValueError("Mnożnik czasowy TMS nie może być większy niż 10.0")
+            raise OdmowaDanychError("Mnożnik czasowy TMS nie może być większy niż 10.0")
         if self.definite_time_s is not None and self.definite_time_s < 0:
-            raise ValueError("Czas niezależny nie może być ujemny")
+            raise OdmowaDanychError("Czas niezależny nie może być ujemny")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""

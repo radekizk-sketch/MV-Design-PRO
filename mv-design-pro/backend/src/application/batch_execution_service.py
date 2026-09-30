@@ -83,6 +83,7 @@ from infrastructure.persistence.repositories.run_batch_repository import (
     run_batch_repository_scope,
 )
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
+from network_model.odmowa_danych import OdmowaDanychError
 
 logger = logging.getLogger(__name__)
 
@@ -196,13 +197,13 @@ class BatchExecutionService:
         `klucz_twin_dep.klucz_twin_z_sciezki`).
         """
         if not scenario_ids:
-            raise ValueError("Seria przebiegów wymaga co najmniej jednego scenariusza")
+            raise OdmowaDanychError("Seria przebiegów wymaga co najmniej jednego scenariusza")
 
         scenarios: list[FaultScenario] = []
         for scenario_id in scenario_ids:
             scenario = self._scenario_service.get_scenario(klucz, scenario_id)
             if scenario.study_case_id != study_case_id:
-                raise ValueError(
+                raise OdmowaDanychError(
                     f"Scenariusz {scenario_id} nie należy do przypadku {study_case_id}"
                 )
             scenarios.append(scenario)
@@ -210,7 +211,7 @@ class BatchExecutionService:
         analysis_types = {scenario.analysis_type for scenario in scenarios}
         if len(analysis_types) > 1:
             posortowane = ", ".join(sorted(t.value for t in analysis_types))
-            raise ValueError(
+            raise OdmowaDanychError(
                 "Wszystkie scenariusze serii muszą mieć ten sam typ analizy "
                 f"(otrzymano: {posortowane})"
             )

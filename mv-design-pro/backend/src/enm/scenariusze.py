@@ -70,6 +70,7 @@ from typing import Annotated, Any, Literal
 from uuid import NAMESPACE_URL, uuid5
 
 from domain.fault_scenario import FaultScenario
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from .dziennik_zmian import sciezka_tymczasowa
@@ -110,7 +111,7 @@ class RodzajScenariusza(StrEnum):
     CUSTOM = "CUSTOM"
 
 
-class ScenariuszNieprzystajeError(ValueError):
+class ScenariuszNieprzystajeError(OdmowaDanychError):
     """Scenariusz wskazuje element, ktorego model nie ma (albo ma w innej roli)."""
 
     def __init__(self, scenario_id: str, ref_id: str, powod: str) -> None:

@@ -37,6 +37,7 @@ from enm.canonical_analysis import list_runs_for_project as list_canonical_runs_
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel
 
 router = APIRouter(tags=["protection-analysis"])
@@ -249,7 +250,7 @@ def create_protection_run(
             analysis_type="protection_sn",
             options={"sc_run_id": request.sc_run_id},
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
@@ -443,9 +444,11 @@ def get_protection_sld_overlay(
     biegi_zrodlowe: tuple[CanonicalRun, ...] = ()
     if sc_run_id_raw:
         try:
-            sc_run = get_canonical_run(UUID(sc_run_id_raw))
+            sc_run_id = UUID(sc_run_id_raw)
         except ValueError:
             sc_run = None
+        else:
+            sc_run = get_canonical_run(sc_run_id)
         if sc_run is not None:
             biegi_zrodlowe = (sc_run,)
 

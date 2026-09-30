@@ -57,6 +57,7 @@ from enm.canonical_analysis import ODMOWY_OBLICZENIA_BIEGU, CanonicalRun
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from network_model.catalog.types import ConverterType
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import odmowa_rdzenia_b01
 from network_model.pochodne import mw_na_kw
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
@@ -260,7 +261,9 @@ def _klasa_nc_rfg(max_moc_mw: float | None, napiecie_kv: float | None) -> dict[s
             "podstawa": None,
             "podstawa_pl": None,
         }
-    klasyfikacja = klasyfikacja_modulu(mw_na_kw(max_moc_mw), napiecie_kv)
+    moc_kw = mw_na_kw(max_moc_mw)
+    with odmowa_rdzenia_b01():  # rdzeń B-01 (klasyfikacja NC RfG) — odmowa danych
+        klasyfikacja = klasyfikacja_modulu(moc_kw, napiecie_kv)
     return {
         "modul": klasyfikacja.modul,
         "powod_pl": klasyfikacja.powod_pl,

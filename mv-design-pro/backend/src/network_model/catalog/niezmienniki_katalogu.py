@@ -43,6 +43,7 @@ from enum import StrEnum
 from typing import Any, NoReturn
 
 from network_model.nazwy import jest_nazwa
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 class KlasaNiezmiennika(StrEnum):
@@ -121,7 +122,7 @@ class BladRejestruNiezmiennikow(ValueError):
     """
 
 
-class OdmowaKatalogu(ValueError):
+class OdmowaKatalogu(OdmowaDanychError):
     """Twarda odmowa rekordu katalogu z NAZWANA regula (`.kod`).
 
     Dziedziczy po `ValueError`, bo tym byla kazda z 33 bramek przed ta karta i

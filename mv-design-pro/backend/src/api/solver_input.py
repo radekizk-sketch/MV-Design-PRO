@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.core.graph import NetworkGraph
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel
 from solver_input.builder import build_solver_input
 from solver_input.contracts import (
@@ -208,7 +209,7 @@ def get_solver_input(
             solver_options={},
             rozszerzenia_audit2=rozszerzenia_audit2,
         )
-    except ValueError as exc:
+    except OdmowaDanychError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     config = _get_config_for_case(case_id)
     catalog = get_default_mv_catalog()

@@ -45,12 +45,13 @@ from enm.kompilator_grafu import (
 )
 from enm.nazwy_elementow import nazwa_elementu
 from network_model.catalog.repository import get_default_mv_catalog
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import km_na_m
 
 MODEL_ZRODLA_SYSTEMOWEGO = "short_circuit_power"
 
 
-class OdmowaMigracji(ValueError):
+class OdmowaMigracji(OdmowaDanychError):
     """Model legacy nie daje się odwzorować w ENM bez zgadywania — powód nazwany."""
 
 

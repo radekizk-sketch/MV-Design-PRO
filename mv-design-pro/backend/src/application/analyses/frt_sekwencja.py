@@ -47,6 +47,7 @@ from application.analyses.frt_trajektorie import (
 from application.ncrfg_compliance.frt_input import build_frt_sekwencja_input
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from network_model.catalog.types import ConverterType
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.frt_hvrt import FrtHvrtSolverAdapter
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import format_liczba
@@ -116,9 +117,9 @@ def build_frt_sekwencja_view(
             parametry (np. głębokość LVRT poza 0..1) — komunikat w języku polskim.
     """
     if not zapady:
-        raise ValueError("Sekwencja zapadów jest pusta; podaj co najmniej jeden zapad.")
+        raise OdmowaDanychError("Sekwencja zapadów jest pusta; podaj co najmniej jeden zapad.")
     if len(zapady) > _MAX_ZAPADY:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Sekwencja zawiera {len(zapady)} zapadów; dozwolone maksimum to {_MAX_ZAPADY}."
         )
 
@@ -128,7 +129,7 @@ def build_frt_sekwencja_view(
     adapter = FrtHvrtSolverAdapter()
     valid, errors = adapter.validate_input(solver_input)
     if not valid:
-        raise ValueError("Walidacja parametrów sekwencji: " + "; ".join(errors))
+        raise OdmowaDanychError("Walidacja parametrów sekwencji: " + "; ".join(errors))
     result = adapter.run(solver_input)
     if result.status == "no_module":
         # Karta S-4 (W6-0): status solvera FROZEN `no_module` NIGDY nie dociera

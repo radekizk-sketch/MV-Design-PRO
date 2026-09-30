@@ -61,6 +61,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from network_model.core.ybus import S_BASE_MVA
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
     impedancja_punktu_neutralnego_ohm,
     impedancja_rozproszenia_transformatora_pu,
@@ -138,7 +139,7 @@ def _neutral_grounded_and_zn(
     if grounding.type == "isolated":
         return False, 0j
     if uziemienie_grounded(grounding.type) and not neutral_letter_present:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Transformator {trafo_ref}: uzwojenie {side} nie ma wyprowadzonego punktu "
             f"neutralnego (litera grupy połączeń bez {'N' if side == 'HV' else 'n'}), "
             f"a konfiguracja deklaruje uziemienie '{grounding.type}'. Fizyka nie uziemia "
@@ -147,7 +148,7 @@ def _neutral_grounded_and_zn(
         )
     blad = blad_konfiguracji_uziemienia(grounding.type, grounding.r_ohm, grounding.x_ohm)
     if blad is not None:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Transformator {trafo_ref}: uziemienie punktu neutralnego ({side}) — {blad}."
         )
     if grounding.type == "directly_grounded":

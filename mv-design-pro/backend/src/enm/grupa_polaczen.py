@@ -26,6 +26,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, get_args
 
+from network_model.odmowa_danych import OdmowaDanychError
+
 GrupaPolaczenIEC60076 = Literal[
     "Yy0",
     "Yy6",
@@ -138,7 +140,7 @@ def parsuj_grupe_polaczen(wartosc: str) -> GrupaPolaczen:
     brak; 11); 'Yy0' → (Y, niedostępny; Y, niedostępny; 0).
     """
     if not grupa_polaczen_poprawna(wartosc):
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Grupa połączeń {wartosc!r} nie należy do słownika IEC 60076-1 "
             f"(dopuszczalne: {', '.join(GRUPY_POLACZEN_IEC60076)})."
         )

@@ -15,6 +15,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 from network_model.brak_zasobu import BrakZasobuError
+from network_model.odmowa_danych import OdmowaDanychError
 from sqlalchemy import exc as sa_exc
 
 
@@ -142,7 +143,9 @@ def _wolaj(klient: TestClient, metoda: str, sciezka: str, cialo: Any) -> Any:
     ("typ", "kod_http"),
     [
         (FileNotFoundError, 404),
-        (ValueError, 400),
+        (OdmowaDanychError, 400),
+        # Karta ODMOWA-DANYCH-422: obcy `ValueError` nie jest odmową danych — 500.
+        (ValueError, 500),
         (BrakZasobuError, 404),
         (AttributeError, 500),
         (KeyError, 500),
@@ -176,10 +179,10 @@ def test_uszkodzona_fikstura_wzorca_nie_znika_z_listy_po_cichu(
     """Fikstury są częścią produktu: niepoprawny JSON to defekt wydania, nie powód do
     cichego pominięcia pozycji (dawne `except (JSONDecodeError, OSError): continue`).
 
-    UWAGA (stan zmierzony, meldunek karty #151): przez trasę HTTP `JSONDecodeError` jest
-    `ValueError`, więc globalny handler `ValueError` → 422 zamienia go w odpowiedź
-    „błąd danych". Ten handler jest członkiem klasy zostawionym do decyzji architekta —
-    test przypina więc zachowanie USŁUGI (wyjątek, nie pominięcie)."""
+    Karta #151 zostawiła tu członka klasy do decyzji: przez trasę HTTP `JSONDecodeError`
+    (podklasa `ValueError`) globalny handler `ValueError` → 422 zamieniał w „błąd danych".
+    Karta ODMOWA-DANYCH-422 go zamknęła — test przypina OBIE warstwy: usługa wybucha
+    wyjątkiem, trasa odpowiada 500 (błąd programu), nie 422."""
     import json
 
     import api.reference_patterns as wzorce
@@ -189,6 +192,11 @@ def test_uszkodzona_fikstura_wzorca_nie_znika_z_listy_po_cichu(
     monkeypatch.setattr(wzorce, "get_pattern_a_fixtures_dir", lambda: tmp_path)
     with pytest.raises(json.JSONDecodeError):
         wzorce.list_pattern_a_fixtures()
+    odpowiedz = _surowy_klient().get(
+        "/api/reference-patterns/patterns/RP-LINE-I2-THERMAL-SPZ/fixtures"
+    )
+    assert odpowiedz.status_code == 500, odpowiedz.text
+    assert odpowiedz.json()["error_type"] == "JSONDecodeError"
 
 
 # ---------------------------------------------------------------------------
@@ -237,7 +245,9 @@ def test_blad_programu_keyerror_w_trasie_zdolnosci_to_500_nie_404(
     assert odpowiedz.json()["error_type"] == "KeyError"
 
 
-@pytest.mark.parametrize(("typ", "kod_http"), [(ValueError, 422), (KeyError, 500)])
+@pytest.mark.parametrize(
+    ("typ", "kod_http"), [(OdmowaDanychError, 422), (ValueError, 500), (KeyError, 500)]
+)
 def test_wklady_zwarciowe_odmowa_422_a_keyerror_programu_500(
     typ: type[Exception], kod_http: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:

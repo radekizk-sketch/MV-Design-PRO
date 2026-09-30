@@ -12,6 +12,7 @@ odmawia dla nich NAZWANIE, zamiast liczyć.
 from __future__ import annotations
 
 from enm.models import UkladSieciNn
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_iec60364 import NetworkType, ProtectionArrangement
 
 #: Układy, dla których metoda pętli zwarcia TN (IEC 60364-4-41 § 411.4) ma zastosowanie.
@@ -31,7 +32,7 @@ def typ_sieci_solvera(uklad: UkladSieciNn) -> tuple[NetworkType, ProtectionArran
     try:
         return _MAPA[uklad]
     except KeyError as exc:
-        raise ValueError(f"Układ sieci nN {uklad!r} spoza słownika UkladSieciNn.") from exc
+        raise OdmowaDanychError(f"Układ sieci nN {uklad!r} spoza słownika UkladSieciNn.") from exc
 
 
 def uklad_tn(uklad: str | None) -> bool:

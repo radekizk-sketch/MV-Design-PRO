@@ -106,6 +106,7 @@ from enm.canonical_analysis import (
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, SondaKondensatora, apply_scenario
 from network_model.catalog.mv_shunt_capacitor_catalog import get_all_shunt_capacitor_records
+from network_model.odmowa_danych import OdmowaDanychError
 
 _KV_TOLERANCE = 0.001
 
@@ -423,23 +424,25 @@ def build_compensation_sizing_view(
             szyna nie istnieje — komunikaty w języku polskim.
     """
     if run.analysis_type != "PF":
-        raise ValueError(
+        raise OdmowaDanychError(
             "Dobór kompensacji wymaga przebiegu rozpływu mocy; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
     if not (0.0 < cos_phi_min <= 1.0):
-        raise ValueError("Wymagany cosφ (cos_phi_min) musi być w przedziale (0, 1].")
+        raise OdmowaDanychError("Wymagany cosφ (cos_phi_min) musi być w przedziale (0, 1].")
 
     snapshot = run.snapshot or {}
     buses = _bus_index(snapshot)
     bus = buses.get(bus_ref)
     if bus is None:
-        raise ValueError(f"Wskazana szyna punktu przyłączenia nie istnieje w modelu: {bus_ref}.")
+        raise OdmowaDanychError(
+            f"Wskazana szyna punktu przyłączenia nie istnieje w modelu: {bus_ref}."
+        )
 
     # FAB-E (E1): voltage_kv jest polem WYMAGANYM na modelu szyny (enm/models.py)
     # — brak w snapshotcie oznacza uszkodzony zapis, nie szyne 0 kV. Fikcyjne
@@ -447,7 +450,7 @@ def build_compensation_sizing_view(
     # poziomu napiecia (_sorted_candidates), czyli fizycznie bezsensowny dobor.
     voltage_kv_raw = bus.get("voltage_kv")
     if voltage_kv_raw is None:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Szyna punktu przyłączenia {bus_ref!r} nie ma pola voltage_kv w snapshotcie "
             "— zapis modelu jest uszkodzony, dobór kompensacji nie może się na nim oprzeć."
         )

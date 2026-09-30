@@ -33,6 +33,7 @@ from application.ncrfg_compliance.ocena_wymagan import (
     ocen_wymagania_biegu,
 )
 from enm.models import EnergyNetworkModel
+from network_model.odmowa_danych import odmowa_rdzenia_b01
 from network_model.solvers.ncrfg_ptpiree import (
     NcRfgPtpireeModuleInput,
     NcRfgPtpireeRunRequest,
@@ -161,7 +162,11 @@ def bieg_ncrfg(
     ``ZADANIE_KLIENTA``. ``certyfikaty_odrzucone`` (``der_ref`` → powód) trafiają do braków
     wymagań bez metody wykazania.
     """
-    result = _solver.run(request, zrodlo_danych=zrodlo_danych, certyfikaty=certyfikaty)
+    # Solver PTPiREE jest rdzeniem B-01: jego odmowy wejścia (nieznane testy programu,
+    # certyfikat w biegu z żądania klienta) to goły `ValueError` — granica tłumaczy je na
+    # nazwaną odmowę danych (karta ODMOWA-DANYCH-422).
+    with odmowa_rdzenia_b01():
+        result = _solver.run(request, zrodlo_danych=zrodlo_danych, certyfikaty=certyfikaty)
     ocena = ocen_wymagania_biegu(request, result, certyfikaty_odrzucone=certyfikaty_odrzucone)
     return odpowiedz_biegu_ncrfg(result, ocena)
 

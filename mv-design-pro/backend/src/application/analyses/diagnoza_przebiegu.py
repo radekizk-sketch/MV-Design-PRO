@@ -30,6 +30,7 @@ from typing import Any
 from uuid import UUID
 
 from enm.canonical_analysis import STATUS_WYKONAWCZY, CanonicalRun
+from network_model.odmowa_danych import OdmowaDanychError
 
 # ---------------------------------------------------------------------------
 # Kody diagnozy przebiegu (stabilne, mapowane na zdania inżynierskie w UI)
@@ -227,5 +228,5 @@ def zbuduj_diagnoze_dla_biegu(run_id: UUID) -> dict[str, Any]:
 
     run = get_run(run_id)
     if run is None:
-        raise ValueError(f"Nie znaleziono obliczenia {run_id}")
+        raise OdmowaDanychError(f"Nie znaleziono obliczenia {run_id}")
     return zbuduj_diagnoze_przebiegu(run)

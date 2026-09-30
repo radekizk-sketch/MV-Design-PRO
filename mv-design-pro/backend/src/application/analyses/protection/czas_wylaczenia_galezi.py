@@ -43,6 +43,7 @@ from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.switch import SwitchState, SwitchType
 from network_model.core.topologia import przeglad_wszerz_od
+from network_model.odmowa_danych import odmowa_rdzenia_b01
 from network_model.solvers.protection_iec60255 import (
     IEC60255_CURVE_PARAMS,
     IEC60255CurveType,
@@ -312,17 +313,23 @@ def czas_z_nastawy(
         zwloka = nastawa.get("time_delay_s")
         if zwloka is None:
             return None, ZRODLO_BRAK_NASTAW, krzywa_txt, None
-        wynik = compute_curve_trip_time(
-            curve_type=krzywa, i_fault_a=prad_a, is_pickup_a=prog, tms=float(zwloka)
-        )
+        # Solver IEC 60255 jest rdzeniem B-01: nastawa spoza dziedziny (rozruch albo
+        # zwłoka ≤ 0) to jego odmowa gołym `ValueError` — tłumaczona na odmowę danych.
+        zwloka_s = float(zwloka)
+        with odmowa_rdzenia_b01():
+            wynik = compute_curve_trip_time(
+                curve_type=krzywa, i_fault_a=prad_a, is_pickup_a=prog, tms=zwloka_s
+            )
         return wynik.calculated_time_s, None, krzywa_txt, None
 
     tms = nastawa.get("time_multiplier")
     if tms is None or float(tms) <= 0.0:
         return None, ZRODLO_BRAK_NASTAW, krzywa_txt, None
-    wynik = compute_curve_trip_time(
-        curve_type=krzywa, i_fault_a=prad_a, is_pickup_a=prog, tms=float(tms)
-    )
+    tms_nastawy = float(tms)
+    with odmowa_rdzenia_b01():  # rdzeń B-01 — jak wyżej
+        wynik = compute_curve_trip_time(
+            curve_type=krzywa, i_fault_a=prad_a, is_pickup_a=prog, tms=tms_nastawy
+        )
     if wynik.calculated_time_s is None:
         # Solver nie wyznaczyl czasu (brak wyzwolenia) — nie zgadujemy wartosci.
         return None, ZRODLO_PONIZEJ_ROZRUCHU, krzywa_txt, None

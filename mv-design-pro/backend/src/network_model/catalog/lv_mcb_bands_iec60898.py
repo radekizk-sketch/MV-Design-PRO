@@ -25,6 +25,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from network_model.odmowa_danych import OdmowaDanychError
+
 _KLASY_DOZWOLONE = ("B", "C", "D")
 
 
@@ -62,10 +64,10 @@ def ia_gwarantowane_a(*, in_a: float, klasa: str) -> float:
     klasy (dozwolone wyłącznie B/C/D wg IEC 60898-1) albo In ≤ 0.
     """
     if klasa not in PASMA_MAGNETYCZNE:
-        raise ValueError(
+        raise OdmowaDanychError(
             f"Nieznana klasa wyzwolenia MCB '{klasa}' — dozwolone: "
             f"{', '.join(_KLASY_DOZWOLONE)} (IEC 60898-1)."
         )
     if in_a <= 0:
-        raise ValueError(f"in_a musi być dodatnie, otrzymano {in_a}.")
+        raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {in_a}.")
     return PASMA_MAGNETYCZNE[klasa].max_x_in * in_a

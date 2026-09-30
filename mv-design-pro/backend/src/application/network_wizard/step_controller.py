@@ -24,6 +24,7 @@ from enm.assembler import czestotliwosc_studium_hz
 from enm.kopia_graniczna import kopia_graniczna_enm
 from enm.load_zip_model import model_odbioru, zip_odbioru_z_parametrow_materializacji
 from network_model.nazwy import jest_nazwa, nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 
 from .schema import (
     IssueSeverity,
@@ -61,7 +62,7 @@ _STEP_LABELS_PL: dict[str, str] = {
 def _step_index(step_id: str) -> int:
     idx = _STEP_INDEX.get(step_id)
     if idx is None:
-        raise ValueError(f"Unknown step: {step_id}")
+        raise OdmowaDanychError(f"Unknown step: {step_id}")
     return idx
 
 
@@ -453,7 +454,7 @@ def preconditions(step_id: str, enm: dict[str, Any]) -> list[WizardIssue]:
     """
     fn = _PRECONDITIONS.get(step_id)
     if fn is None:
-        raise ValueError(f"Unknown step: {step_id}")
+        raise OdmowaDanychError(f"Unknown step: {step_id}")
     return fn(enm)
 
 

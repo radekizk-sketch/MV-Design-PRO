@@ -37,6 +37,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.power_flow_result import (
     PowerFlowBranchResult,
     PowerFlowBusResult,
@@ -54,7 +55,7 @@ RODZAJ_WYNIKU_ROZPLYWU = "load_flow"
 _FAZA_KROKU_KONCOWEGO = "final"
 
 
-class BrakDanychRozplywuError(ValueError):
+class BrakDanychRozplywuError(OdmowaDanychError):
     """Zapis biegu nie niesie danych, z których dowód mógłby powstać uczciwie.
 
     Komunikat jest po polsku i nazywa BRAKUJĄCĄ rzecz — brama pakietu pokazuje go

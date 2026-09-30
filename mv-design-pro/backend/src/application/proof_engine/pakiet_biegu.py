@@ -79,6 +79,7 @@ from application.solvers.voltage_drop_binding import (
 )
 from enm.canonical_analysis import CanonicalRun
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwy_galezi_grafu, nazwy_wezlow_grafu
+from network_model.odmowa_danych import OdmowaDanychError
 
 #: Rodzaje pakietów dowodowych osiągalne dla biegu kanonicznego.
 RODZAJ_SC3F = "SC3F"
@@ -147,7 +148,7 @@ _POWOD_BRAK_PUNKTOW = (
 )
 
 
-class PakietBieguError(ValueError):
+class PakietBieguError(OdmowaDanychError):
     """Pakietu nie da się zbudować dla tego biegu/punktu (powód po polsku)."""
 
 
@@ -169,11 +170,12 @@ def rodzaj_pakietu_biegu(run: CanonicalRun) -> str | None:
     bierze się z jego danych (``to_execution_dict``), nigdy z nazwy ekranu, który
     o pakiet prosi.
     """
-    try:
-        rodzaj_biegu = run.to_execution_dict()["analysis_type"]
-    except (KeyError, ValueError):
-        # Rodzaj analizy nieznany torowi wykonawczemu = na pewno bez pakietu.
-        return None
+    # Każdy rodzaj biegu kanonicznego ma nazwę w torze wykonawczym
+    # (`_execution_analysis_type_for_run`); wyjątek stamtąd to błąd programu (nieznany
+    # rodzaj zapisanego biegu, nieznany stan), nie „bieg bez pakietu" — dawne
+    # `except (KeyError, ValueError): return None` przebierało go za odmowę 422
+    # „ten rodzaj obliczenia nie ma pakietu" (karta ODMOWA-DANYCH-422).
+    rodzaj_biegu = run.to_execution_dict()["analysis_type"]
     return _RODZAJ_PAKIETU_PO_BIEGU.get(str(rodzaj_biegu))
 
 
@@ -517,7 +519,7 @@ def _zbuduj_dowod_rozplywu(
     )
     try:
         return P14PowerFlowProof.generate_zip(pack_input, context)
-    except (KeyError, ValueError) as exc:
+    except OdmowaDanychError as exc:
         raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego: {exc}") from exc
 
 
@@ -537,7 +539,7 @@ def _zbuduj_dowod_strat(
     )
     try:
         return P16LossesProof.generate_zip(pack_input, context)
-    except (KeyError, ValueError) as exc:
+    except OdmowaDanychError as exc:
         raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego strat: {exc}") from exc
 
 
@@ -583,7 +585,7 @@ def _zbuduj_dowod_spadku(
     )
     try:
         return zbuduj_zip_vdrop(pack_input, context)
-    except (KeyError, ValueError) as exc:
+    except OdmowaDanychError as exc:
         raise PakietBieguError(
             f"Nie udało się złożyć pakietu dowodowego spadku napięcia: {exc}"
         ) from exc
@@ -607,7 +609,7 @@ def _zbuduj_sc3f(
     )
     try:
         return SC3FProofPack.generate_zip(pack_input, context)
-    except (KeyError, ValueError) as exc:
+    except OdmowaDanychError as exc:
         raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego: {exc}") from exc
 
 
@@ -628,7 +630,7 @@ def _zbuduj_sc_niesymetryczne(
             c_factor=_c_factor(run),
             tk_s=_tk_s(run),
         )
-    except (KeyError, ValueError) as exc:
+    except OdmowaDanychError as exc:
         raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego: {exc}") from exc
     return _spakuj_niesymetryczne(pack_input, context)
 

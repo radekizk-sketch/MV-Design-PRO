@@ -58,14 +58,20 @@ def test_straznik_podprocesem_konczy_sie_zerem() -> None:
 
 
 def test_rejestr_importuje_z_projektu_wylacznie_lisc_predykatu_nazwy() -> None:
-    """Gołe `python3` CI udźwignie rejestr tylko wtedy, gdy jego jedynym importem projektu
-    jest liść `network_model/nazwy.py` (biblioteka standardowa) ładowany przez strażnika."""
+    """Gołe `python3` CI udźwignie rejestr tylko wtedy, gdy jego jedynymi importami projektu
+    są liście biblioteki standardowej ładowane przez strażnika: `network_model/nazwy.py`
+    i `network_model/odmowa_danych.py` (karta ODMOWA-DANYCH-422)."""
     import ast
 
-    from niezmienniki_katalogu_guard import MODUL_PREDYKATU_NAZWY, PLIK_PREDYKATU_NAZWY
+    from niezmienniki_katalogu_guard import (
+        LISCIE_REJESTRU,
+        MODUL_ODMOWY_DANYCH,
+        MODUL_PREDYKATU_NAZWY,
+    )
 
     importy_projektu = set()
-    for plik in (KATALOG_DIR / "niezmienniki_katalogu.py", PLIK_PREDYKATU_NAZWY):
+    pliki = (KATALOG_DIR / "niezmienniki_katalogu.py", *(plik for _, plik in LISCIE_REJESTRU))
+    for plik in pliki:
         for wezel in ast.walk(ast.parse(plik.read_text(encoding="utf-8"))):
             if isinstance(wezel, ast.ImportFrom) and wezel.module:
                 if wezel.level or wezel.module.split(".")[0] in {"network_model", "enm"}:
@@ -74,7 +80,10 @@ def test_rejestr_importuje_z_projektu_wylacznie_lisc_predykatu_nazwy() -> None:
                 for alias in wezel.names:
                     if alias.name.split(".")[0] in {"network_model", "enm"}:
                         importy_projektu.add((plik.name, alias.name))
-    assert importy_projektu == {("niezmienniki_katalogu.py", MODUL_PREDYKATU_NAZWY)}
+    assert importy_projektu == {
+        ("niezmienniki_katalogu.py", MODUL_PREDYKATU_NAZWY),
+        ("niezmienniki_katalogu.py", MODUL_ODMOWY_DANYCH),
+    }
 
 
 def test_straznik_dziala_bez_bibliotek_zewnetrznych() -> None:

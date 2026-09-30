@@ -26,6 +26,7 @@ from api.dependencies import get_uow_factory
 from domain.models import new_project
 from fastapi import APIRouter, Depends, HTTPException, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, Field, field_validator
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -56,14 +57,14 @@ class ProjectCreate(BaseModel):
     @classmethod
     def frequency_must_be_valid(cls, v: float) -> float:
         if v not in (50.0, 60.0):
-            raise ValueError("Częstotliwość musi wynosić 50.0 lub 60.0 Hz")
+            raise OdmowaDanychError("Częstotliwość musi wynosić 50.0 lub 60.0 Hz")
         return v
 
     @field_validator("name")
     @classmethod
     def name_not_blank(cls, v: str) -> str:
         if not v.strip():
-            raise ValueError("Nazwa projektu nie może być pusta")
+            raise OdmowaDanychError("Nazwa projektu nie może być pusta")
         return v.strip()
 
 
@@ -80,14 +81,14 @@ class ProjectUpdate(BaseModel):
     @classmethod
     def frequency_must_be_valid(cls, v: float | None) -> float | None:
         if v is not None and v not in (50.0, 60.0):
-            raise ValueError("Częstotliwość musi wynosić 50.0 lub 60.0 Hz")
+            raise OdmowaDanychError("Częstotliwość musi wynosić 50.0 lub 60.0 Hz")
         return v
 
     @field_validator("name")
     @classmethod
     def name_not_blank(cls, v: str | None) -> str | None:
         if v is not None and not v.strip():
-            raise ValueError("Nazwa projektu nie może być pusta")
+            raise OdmowaDanychError("Nazwa projektu nie może być pusta")
         return v.strip() if v is not None else None
 
 

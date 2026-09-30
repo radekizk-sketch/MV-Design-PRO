@@ -56,6 +56,15 @@ PLIK_REJESTRU = KATALOG_DIR / "niezmienniki_katalogu.py"
 #: `jest_nazwa` co każda nazwa w `src`).
 PLIK_PREDYKATU_NAZWY = PROJECT_ROOT / "backend" / "src" / "network_model" / "nazwy.py"
 MODUL_PREDYKATU_NAZWY = "network_model.nazwy"
+#: Drugi (i ostatni) import projektu w rejestrze (karta ODMOWA-DANYCH-422): `OdmowaKatalogu`
+#: dziedziczy po nazwanej odmowie danych — liść biblioteki standardowej, ładowany jak wyżej.
+PLIK_ODMOWY_DANYCH = PROJECT_ROOT / "backend" / "src" / "network_model" / "odmowa_danych.py"
+MODUL_ODMOWY_DANYCH = "network_model.odmowa_danych"
+#: Liście projektu, które rejestr importuje — (moduł, plik). ZAMKNIĘTE; przypina samotest.
+LISCIE_REJESTRU: tuple[tuple[str, Path], ...] = (
+    (MODUL_PREDYKATU_NAZWY, PLIK_PREDYKATU_NAZWY),
+    (MODUL_ODMOWY_DANYCH, PLIK_ODMOWY_DANYCH),
+)
 
 #: Funkcje, ktorych zadaniem jest ROZSTRZYGNIECIE o dopuszczalnosci rekordu
 #: katalogu. Prefiks `_validate`/`validate` obejmuje rowniez pomocnicze walidatory
@@ -72,14 +81,16 @@ def _zaladuj_lisc_predykatu_nazwy() -> None:
     pod gołym `python3` CI: import `network_model.nazwy` wykonuje `network_model/__init__.py`
     → `core` → `networkx` (`ModuleNotFoundError`, zmierzone w karcie NAZWY-JEDNO-ZRODLO).
     Liść ładowany jest więc JAWNIE z pliku pod swoją pełną nazwą modułu — mechanizm importu
-    zwraca go z `sys.modules` bez wykonywania pakietu nadrzędnego."""
-    if MODUL_PREDYKATU_NAZWY in sys.modules:
-        return
-    spec = importlib.util.spec_from_file_location(MODUL_PREDYKATU_NAZWY, PLIK_PREDYKATU_NAZWY)
-    assert spec and spec.loader
-    modul = importlib.util.module_from_spec(spec)
-    sys.modules[MODUL_PREDYKATU_NAZWY] = modul
-    spec.loader.exec_module(modul)
+    zwraca go z `sys.modules` bez wykonywania pakietu nadrzędnego. Ten sam mechanizm ładuje
+    liść nazwanej odmowy danych (`LISCIE_REJESTRU`)."""
+    for nazwa_modulu, plik in LISCIE_REJESTRU:
+        if nazwa_modulu in sys.modules:
+            continue
+        spec = importlib.util.spec_from_file_location(nazwa_modulu, plik)
+        assert spec and spec.loader
+        modul = importlib.util.module_from_spec(spec)
+        sys.modules[nazwa_modulu] = modul
+        spec.loader.exec_module(modul)
 
 
 def modul_rejestru() -> ModuleType:

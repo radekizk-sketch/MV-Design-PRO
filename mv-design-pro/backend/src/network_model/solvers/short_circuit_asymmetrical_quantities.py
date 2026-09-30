@@ -27,6 +27,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from network_model.odmowa_danych import OdmowaDanychError
+
 _FAULT_TYPE_MAPPING = {
     "ONE_PHASE_TO_GROUND": "SC1FZ",
     "TWO_PHASE": "SC2F",
@@ -101,7 +103,7 @@ def _compute_equiv_impedance(
     if fault_type == "SC2FZ":
         denominator = z2 + z0
         if denominator == 0:
-            raise ValueError("Z2 + Z0 = 0; cannot compute 2F–Z equivalent impedance")
+            raise OdmowaDanychError("Z2 + Z0 = 0; cannot compute 2F–Z equivalent impedance")
         return z1 + (z2 * z0) / denominator
     raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
 
@@ -115,7 +117,7 @@ def _compute_sequence_currents(
     z0: complex,
 ) -> tuple[complex, complex, complex]:
     if z_equiv == 0:
-        raise ValueError("Z_k = 0; cannot compute sequence currents")
+        raise OdmowaDanychError("Z_k = 0; cannot compute sequence currents")
     i1 = u_prefault_kv / z_equiv
     if fault_type == "SC1FZ":
         return i1, i1, i1
@@ -124,7 +126,7 @@ def _compute_sequence_currents(
     if fault_type == "SC2FZ":
         denominator = z2 + z0
         if denominator == 0:
-            raise ValueError("Z2 + Z0 = 0; cannot compute 2F–Z sequence currents")
+            raise OdmowaDanychError("Z2 + Z0 = 0; cannot compute 2F–Z sequence currents")
         i2 = -(z0 / denominator) * i1
         i0 = -(z2 / denominator) * i1
         return i1, i2, i0
@@ -162,7 +164,7 @@ def _compute_ikss(
     """
     z_abs = abs(z_equiv)
     if z_abs == 0:
-        raise ValueError("Z_k = 0; cannot compute I″k")
+        raise OdmowaDanychError("Z_k = 0; cannot compute I″k")
     if fault_type == "SC1FZ":
         return math.sqrt(3.0) * c_factor * u_n_kv / z_abs
     return c_factor * u_n_kv / z_abs
