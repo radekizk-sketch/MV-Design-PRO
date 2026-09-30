@@ -25,6 +25,12 @@ V126_REPORT_VERSION = "AcademicReportV2"
 #: kanonem rankingu; kanon = `application/analyses/kontyngencje_n1.py`.
 RANKING_N1_TRASA_KANONICZNA = "/api/insights/n-1-contingency"
 RANKING_N1_EKRAN_KANONICZNY = "Wyniki › Kontyngencje"
+#: Etykieta metody obciążenia N-1 V12.6 (pozycja (g) planu A/B §12.2, AB-H0b pkt 3):
+#: `max_loading_percent` solvera FROZEN liczony z obciążenia JEDNEJ szyny docelowej przy
+#: napięciu znamionowym, bez rozpływu i bez prądów obu zacisków (`v126_academic.py`
+#: `_branch_current_a`). Rekord backendu niesie ją jawnie; ekran pokazuje ją z rekordu,
+#: nigdy z własnego literału. Kasacja szacunku i N-1 z rozpływu — zmiana zakresu (g).
+RANKING_N1_METODA_V126 = "szacunek bez rozpływu"
 
 
 def _canonical_payload(payload: Any) -> str:
@@ -109,6 +115,7 @@ def bez_rankingu_n1(result: Mapping[str, Any]) -> JsonDict:
 
     wynik["ranking_n1"] = {
         "status": "NIEPREZENTOWANY",
+        "metoda_pl": RANKING_N1_METODA_V126,
         "powod_pl": (
             "ranking liczony z prądu gałęzi bez rozpływu (V12.6); ranking "
             "kanoniczny = pełny re-solve"

@@ -1382,6 +1382,10 @@ Zebrane z odbiorów 2026-09-23 (karta powstanie po scaleniu AB-H0 i Pakietu 0; b
    szyny `to` przy U_n bez rozpływu (pomiar wykonawcy AB-1b.1a, 2026-09-23). Rdzeń FROZEN → B-01: wiersz §12
    planu wpisuje AB-1b.1a; w AB-H0b: prezentacja tej liczby wyłącznie z etykietą „szacunek bez rozpływu" z
    rekordu backendu (proweniencja), naprawa właściwa = bieg PF per kontyngencja po zgodzie właściciela.
+   **Stan 2026-09-30 (karta B01-RUNDA-1, R0-g):** liczba nieprezentowana na żadnym ekranie ani w raporcie
+   (karta W3-E zdejmuje ranking); rekord `ranking_n1.metoda_pl` = „szacunek bez rozpływu” (stała
+   `RANKING_N1_METODA_V126`) i panel ekranu analiz akademickich pokazują metodę z rekordu. Kasacja szacunku i
+   N-1 z rozpływu — zmiana zakresu (g) wg decyzji B-01 z 2026-09-30.
 4. Import CSV/XLSX → Pakiet G (poza AB-H0b; tu tylko odsyłacz).
 5. Jakość energii — warstwa profili → AB-H1 (poza AB-H0b; odsyłacz).
 6. `enm_contract_parity` — SPRAWDZANE po scaleniu AB-H0 (wpis z karty integracji AB-H0).

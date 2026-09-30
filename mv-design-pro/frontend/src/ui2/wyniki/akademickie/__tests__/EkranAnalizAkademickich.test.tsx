@@ -417,6 +417,7 @@ describe('EkranAnalizAkademickich — ranking N-1 nieprezentowany (karta W3-E)',
         sanity: { status: 'w paśmie wiarygodności', checks_total: 4, checks_passed: 4, violations: [] },
         ranking_n1: {
           status: 'NIEPREZENTOWANY',
+          metoda_pl: 'szacunek bez rozpływu',
           powod_pl: 'ranking liczony z prądu gałęzi bez rozpływu (V12.6); ranking kanoniczny = pełny re-solve',
           ekran: 'Wyniki › Kontyngencje',
           trasa: '/api/insights/n-1-contingency',
@@ -428,6 +429,8 @@ describe('EkranAnalizAkademickich — ranking N-1 nieprezentowany (karta W3-E)',
     await uruchom();
     expect(screen.getByTestId('mvd-akad-ranking-n1')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-akad-ranking-n1-powod')).toHaveTextContent('ranking liczony z prądu gałęzi bez rozpływu');
+    // Pozycja (g) planu A/B §12.2: metoda obciążenia N-1 V12.6 jawnie, z rekordu backendu.
+    expect(screen.getByTestId('mvd-akad-ranking-n1-metoda')).toHaveTextContent('szacunek bez rozpływu');
     expect(screen.getByText(/Średni czas przerw na odbiorcę \(SAIDI\)/)).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-akad-obiekty-contingency_ranking')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-akad-ranking-n1-przejdz'));
@@ -440,6 +443,26 @@ describe('EkranAnalizAkademickich — ranking N-1 nieprezentowany (karta W3-E)',
     await otworzAnalize('earth_fault_detection');
     await uruchom();
     expect(screen.queryByTestId('mvd-akad-ranking-n1')).not.toBeInTheDocument();
+  });
+
+  it('ranking_n1 bez metoda_pl nie wymyśla etykiety metody na ekranie', async () => {
+    ustawFetchV126({
+      potwierdzone: ['reliability_contingency'],
+      wynik: {
+        indices: { saidi_min_per_year: 10.8, saifi_per_year: 0.015, caidi_min_per_interruption: 720.0, maifi_per_year: 0.0018 },
+        ranking_n1: {
+          status: 'NIEPREZENTOWANY',
+          powod_pl: 'ranking liczony z prądu gałęzi bez rozpływu (V12.6); ranking kanoniczny = pełny re-solve',
+          ekran: 'Wyniki › Kontyngencje',
+          trasa: '/api/insights/n-1-contingency',
+        },
+      },
+    });
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await otworzAnalize('reliability_contingency');
+    await uruchom();
+    expect(screen.getByTestId('mvd-akad-ranking-n1')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-akad-ranking-n1-metoda')).not.toBeInTheDocument();
   });
 });
 
