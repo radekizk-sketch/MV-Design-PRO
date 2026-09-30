@@ -19,6 +19,7 @@ CANONICAL ALIGNMENT:
 from __future__ import annotations
 
 import textwrap
+import math
 from pathlib import Path
 from typing import Any
 
@@ -28,8 +29,10 @@ from network_model.reporting.protection_tcc_presentation import (
     etykieta_tms,
     etykieta_typu_krzywej_pl,
     nazwa_urzadzenia,
+    NAGLOWKI_NASTAW_PL,
     nazwa_wpisu_urzadzenia,
     nazwy_urzadzen,
+    wiersze_nastaw_urzadzenia,
     powod_braku_pl,
 )
 
@@ -71,7 +74,8 @@ def _format_value(value: Any) -> str:
     if value is None:
         return "—"
     if isinstance(value, float):
-        if value == float("inf") or value > 900:
+        # Wynik nie niesie liczb zastępczych (brak = ``None``); ∞ wyłącznie dla nieskończoności.
+        if math.isinf(value):
             return "∞"
         return f"{value:.3f}"
     if isinstance(value, bool):
@@ -269,29 +273,18 @@ def export_protection_coordination_to_pdf(
         sorted_devices = sorted(
             devices, key=lambda d: (nazwa_wpisu_urzadzenia(d), str(d.get("id", "")))
         )
-        dev_cols = [35 * mm, 25 * mm, 25 * mm, 25 * mm, 25 * mm]
-        draw_table_row(
-            ["Nazwa", "Typ", "I_pickup [A]", "TMS", "Krzywa"], dev_cols, left_margin, bold=True
-        )
+        dev_cols = [35 * mm, 20 * mm, 30 * mm, 30 * mm, 25 * mm]
+        draw_table_row(list(NAGLOWKI_NASTAW_PL), dev_cols, left_margin, bold=True)
         y -= 2 * mm
 
         for dev in sorted_devices:
-            y = check_page_break(line_height)
-            settings = dev.get("settings", {})
-            stage_51 = settings.get("stage_51", {})
-            curve_settings = stage_51.get("curve_settings", {})
-
-            draw_table_row(
-                [
-                    nazwa_wpisu_urzadzenia(dev)[:12],
-                    dev.get("device_type", "—")[:10],
-                    _format_value(stage_51.get("pickup_current_a")),
-                    _format_value(curve_settings.get("time_multiplier")),
-                    curve_settings.get("variant", "—"),
-                ],
-                dev_cols,
-                left_margin,
-            )
+            for wiersz in wiersze_nastaw_urzadzenia(dev):
+                y = check_page_break(line_height)
+                draw_table_row(
+                    [wiersz[0][:14], *wiersz[1:]],
+                    dev_cols,
+                    left_margin,
+                )
     else:
         c.setFont("DejaVuSans-Oblique", 10)
         c.drawString(left_margin, y, "Brak urządzeń")

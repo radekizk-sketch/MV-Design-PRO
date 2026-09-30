@@ -400,6 +400,36 @@ def hash_migawki_enm(snapshot: dict[str, Any]) -> str:
     return _canonical_sha256(data)
 
 
+#: Kolekcje opisujące WYŁĄCZNIE zabezpieczenia i ich przekładniki — nie wchodzą do żadnego
+#: obliczenia rozpływu ani zwarcia (solver nie czyta ani nastaw, ani przekładni).
+_KOLEKCJE_ZABEZPIECZEN = ("protection_assignments", "measurements")
+#: Pola nagłówka zmieniane przez KAŻDĄ edycję (rewizja) albo będące etykietą (nazwa, opis) —
+#: nie są treścią sieci liczonej przez solver.
+_POLA_NAGLOWKA_POZA_SIECIA = ("revision", "name", "description")
+
+
+def hash_sieci_bez_zabezpieczen(snapshot: dict[str, Any]) -> str:
+    """Odcisk SIECI liczonej przez solver — migawka bez zabezpieczeń i przekładników.
+
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): nastawy żyją w modelu, więc ich edycja zmienia
+    migawkę i rewizję modelu, ale NIE zmienia sieci, którą policzył bieg zwarciowy. Ocena
+    zabezpieczeń czyta nastawy z BIEŻĄCEGO modelu, a topologię i rozpływ prądu zwarciowego z
+    biegu źródłowego — wolno jej to zrobić wyłącznie wtedy, gdy oba opisują TĘ SAMĄ sieć. Ten
+    odcisk jest jedynym kryterium tej równości (stany łączników WCHODZĄ do odcisku — zmieniają
+    rozpływ). Migawka wołającego nie jest modyfikowana.
+    """
+    data = _kopia_pod_hash(snapshot)
+    for klucz in _KOLEKCJE_ZABEZPIECZEN:
+        data.pop(klucz, None)
+    naglowek = data.get("header")
+    if isinstance(naglowek, dict):
+        data["header"] = {
+            k: v for k, v in naglowek.items() if k not in _POLA_NAGLOWKA_POZA_SIECIA
+        }
+    _strip_uuids(data)
+    return _canonical_sha256(data)
+
+
 def _kopia_pod_hash(snapshot: dict[str, Any]) -> dict[str, Any]:
     """Kopia migawki dokladnie tak gleboka, jak siegaja mutacje hashowania:
     naglowek bez pol zmiennych, elementy list skopiowane plytko (z nich znika

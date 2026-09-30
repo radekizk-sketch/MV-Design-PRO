@@ -517,7 +517,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "domain/protection_current_source.py",
     "domain/protection_device.py",
     "domain/protection_engine_v1.py",
-    "domain/protection_vendors.py",
     "domain/readiness.py",
     "domain/result_contract_v1.py",
     "domain/results.py",

@@ -48,8 +48,7 @@ from typing import Any, Literal
 
 from application.analyses.protection.catalog.catalog_store import load_device_capability
 from domain.canonical_operations import READINESS_CODES
-from enm.nazwy_elementow import SPOZA_MODELU, nazwa_po_identyfikatorze
-from enm.slownik_komunikatow import opis_nazwy
+from enm.nazwy_elementow import SPOZA_MODELU
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.nazwy import nazwa_nadana
 
@@ -632,53 +631,6 @@ def szyny_zwarcia_lokalizacji(
     return szyny, odmowy
 
 
-#: Prefiks kluczy urządzeń koordynacji w `ProtectionConfig.overrides` przypadku — ten sam,
-#: którym zapisuje je ekran koordynacji (`frontend/…/nastawyPrzypadku.ts`).
-PREFIKS_URZADZENIA_KOORDYNACJI = "coordination_device:"
-
-
-def odmowy_zaciskow_urzadzen(
-    snapshot: dict[str, Any] | None, overrides: dict[str, Any]
-) -> list[str]:
-    """Powody odrzucenia zapisu urządzeń koordynacji przypadku (walidacja ADDYTYWNA pola
-    `zacisk`, decyzja O-51 pkt 7): zacisk spoza {`od`, `do`}, zacisk przy lokalizacji bez
-    zacisków (szyna, element spoza modelu), zacisk sprzeczny z modelem, łącznik poza
-    łańcuchem szeregowym albo pętla. Urządzenie bez pola `zacisk` nie jest sprawdzane —
-    brak wskazania nie blokuje zapisu (prąd roboczy zostaje wtedy nazwanym brakiem).
-    `snapshot` = `None` (przypadek bez modelu) — sprawdzany jest wyłącznie literał."""
-    powody: list[str] = []
-    for klucz in sorted(overrides):
-        urzadzenie = overrides[klucz]
-        if not klucz.startswith(PREFIKS_URZADZENIA_KOORDYNACJI) or not isinstance(urzadzenie, dict):
-            continue
-        zacisk = urzadzenie.get("zacisk")
-        if zacisk is None:
-            continue
-        # Urządzenie nazywa jego nazwa z ekranu koordynacji albo opis braku — nigdy klucz
-        # urządzenia w nastawach przypadku (karta NAZWY-JEDNO-ZRODLO).
-        urzadzenie_pl = opis_nazwy(urzadzenie.get("name"), "Urządzenie")
-        if zacisk not in ZACISKI:
-            powody.append(f"{urzadzenie_pl}: zacisk {zacisk!r} — dozwolone 'od' albo 'do'.")
-            continue
-        if snapshot is None:
-            continue
-        lokalizacja = urzadzenie.get("location_element_id")
-        wynik = (
-            miejsce_urzadzenia(snapshot, lokalizacja, zacisk)
-            if isinstance(lokalizacja, str)
-            else None
-        )
-        if wynik is None:
-            powody.append(
-                f"{urzadzenie_pl}: zacisk podany dla lokalizacji bez zacisków "
-                f"({nazwa_po_identyfikatorze(lokalizacja, snapshot)}) — zacisk dotyczy gałęzi "
-                "albo łącznika."
-            )
-        elif isinstance(wynik, OdmowaZacisku):
-            powody.append(f"{urzadzenie_pl}: {wynik.powod_pl}")
-    return powody
-
-
 __all__ = [
     "FUNKCJE_PAKIETU_NASTAW",
     "KOD_BRAK_WSKAZANIA",
@@ -691,7 +643,6 @@ __all__ = [
     "KOLEKCJE_WEZLOWE_MOCY",
     "MiejsceUrzadzenia",
     "OdmowaZacisku",
-    "PREFIKS_URZADZENIA_KOORDYNACJI",
     "RODZAJE_LACZNIKOW",
     "RodzajLokalizacji",
     "ZACISKI",
@@ -701,7 +652,6 @@ __all__ = [
     "ZrodloZacisku",
     "funkcje_typu_zabezpieczenia",
     "miejsce_urzadzenia",
-    "odmowy_zaciskow_urzadzen",
     "opis_miejsca_urzadzenia",
     "rodzaj_lokalizacji",
     "rozstrzygnij_zacisk",

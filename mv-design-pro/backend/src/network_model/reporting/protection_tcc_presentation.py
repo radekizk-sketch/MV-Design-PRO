@@ -100,3 +100,48 @@ def powod_braku_pl(curve: dict[str, Any]) -> str | None:
         return None
     powod = curve.get("powod_pl")
     return str(powod) if powod else None
+
+
+#: Nagłówki tabeli nastaw urządzeń raportu koordynacji (PDF i DOCX — jedna definicja).
+NAGLOWKI_NASTAW_PL: tuple[str, ...] = (
+    "Nazwa",
+    "Stopień",
+    "Próg pierwotny [A]",
+    "TMS / zwłoka [s]",
+    "Charakterystyka",
+)
+
+_STOPNIE_PL: dict[str, str] = {"overcurrent_51": "I> (51)", "overcurrent_50": "I>> (50)"}
+
+
+def wiersze_nastaw_urzadzenia(urzadzenie: dict[str, Any]) -> list[tuple[str, str, str, str, str]]:
+    """Wiersze tabeli nastaw urządzenia wyniku koordynacji — po jednym na stopień.
+
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU: urządzenie wyniku niesie nastawy Z MODELU
+    (``nastawy.stopnie``: próg pierwotny z przekładni przekładnika, TMS albo zwłoka). Urządzenie
+    bez stopni (odmowa, bezpiecznik) daje jeden wiersz z nazwanym brakiem, nigdy liczbę.
+    """
+    nazwa = nazwa_wpisu_urzadzenia(urzadzenie)
+    stopnie = ((urzadzenie.get("nastawy") or {}).get("stopnie")) or []
+    if not stopnie:
+        return [(nazwa, NIE_DOTYCZY, NIE_DOTYCZY, NIE_DOTYCZY, "Brak nastaw gotowych do oceny")]
+    wiersze: list[tuple[str, str, str, str, str]] = []
+    for stopien in sorted(stopnie, key=lambda s: str(s.get("funkcja")), reverse=True):
+        tms = stopien.get("tms")
+        zwloka = stopien.get("zwloka_s")
+        czas = (
+            f"TMS {tms:.3f}"
+            if isinstance(tms, (int, float))
+            else (f"{zwloka:.3f} s" if isinstance(zwloka, (int, float)) else NIE_DOTYCZY)
+        )
+        prog = stopien.get("prog_pierwotny_a")
+        wiersze.append(
+            (
+                nazwa,
+                _STOPNIE_PL.get(str(stopien.get("funkcja")), str(stopien.get("funkcja"))),
+                f"{prog:.1f}" if isinstance(prog, (int, float)) else NIE_DOTYCZY,
+                czas,
+                str(stopien.get("krzywa") or NIE_DOTYCZY),
+            )
+        )
+    return wiersze

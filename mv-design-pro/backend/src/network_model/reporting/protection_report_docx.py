@@ -17,6 +17,7 @@ CANONICAL ALIGNMENT:
 from __future__ import annotations
 
 from io import BytesIO
+import math
 from pathlib import Path
 from typing import Any
 
@@ -28,8 +29,10 @@ from network_model.reporting.protection_tcc_presentation import (
     etykieta_tms,
     etykieta_typu_krzywej_pl,
     nazwa_urzadzenia,
+    NAGLOWKI_NASTAW_PL,
     nazwa_wpisu_urzadzenia,
     nazwy_urzadzen,
+    wiersze_nastaw_urzadzenia,
     powod_braku_pl,
 )
 
@@ -68,7 +71,8 @@ def _format_value(value: Any) -> str:
     if value is None:
         return "—"
     if isinstance(value, float):
-        if value == float("inf") or value > 900:
+        # Wynik nie niesie liczb zastępczych (brak = ``None``); ∞ wyłącznie dla nieskończoności.
+        if math.isinf(value):
             return "∞"
         return f"{value:.3f}"
     if isinstance(value, bool):
@@ -190,28 +194,20 @@ def export_protection_coordination_to_docx(
             devices, key=lambda d: (nazwa_wpisu_urzadzenia(d), str(d.get("id", "")))
         )
 
-        dev_table = doc.add_table(rows=1, cols=5)
+        dev_table = doc.add_table(rows=1, cols=len(NAGLOWKI_NASTAW_PL))
         dev_table.style = "Table Grid"
 
-        # Header
-        dev_headers = ["Nazwa", "Typ", "I_pickup [A]", "TMS", "Krzywa"]
         hdr_cells = dev_table.rows[0].cells
-        for i, h in enumerate(dev_headers):
+        for i, h in enumerate(NAGLOWKI_NASTAW_PL):
             hdr_cells[i].text = h
             hdr_cells[i].paragraphs[0].runs[0].bold = True
 
-        # Data rows
         for dev in sorted_devices:
-            row = dev_table.add_row().cells
-            settings = dev.get("settings", {})
-            stage_51 = settings.get("stage_51", {})
-            curve_settings = stage_51.get("curve_settings", {})
-
-            row[0].text = nazwa_wpisu_urzadzenia(dev)[:20]
-            row[1].text = dev.get("device_type", "—")[:15]
-            row[2].text = _format_value(stage_51.get("pickup_current_a"))
-            row[3].text = _format_value(curve_settings.get("time_multiplier"))
-            row[4].text = curve_settings.get("variant", "—")
+            for wiersz in wiersze_nastaw_urzadzenia(dev):
+                row = dev_table.add_row().cells
+                row[0].text = wiersz[0][:20]
+                for i, wartosc in enumerate(wiersz[1:], start=1):
+                    row[i].text = wartosc
     else:
         doc.add_paragraph("Brak urządzeń", style="No Spacing")
 

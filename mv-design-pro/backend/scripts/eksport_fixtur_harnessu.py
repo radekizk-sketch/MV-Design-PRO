@@ -77,7 +77,7 @@ from api.proof_pack import SCContributionsRequest, sc3f_contributions  # noqa: E
 from api.protection_coordination import (  # noqa: E402
     RunCoordinationRequest,
     get_coordination_result,
-    run_coordination_analysis,
+    wykonaj_koordynacje,
 )
 from api.protection_runs import list_protection_runs  # noqa: E402
 from api.v126_academic import (  # noqa: E402
@@ -143,9 +143,6 @@ from application.analyses.zgodnosc_powykonawcza import (  # noqa: E402
     build_zgodnosc_powykonawcza_view,
 )
 from application.analysis_run.read_model import canonicalize_json  # noqa: E402
-from application.autorytet_biegu_zwarciowego import (  # noqa: E402
-    wejscie_koordynacji_z_biegow,
-)
 from application.dynamika.gotowosc import gotowosc_dynamiki  # noqa: E402
 from application.dynamika.opis_scenariusza import opis_scenariusza_dynamicznego  # noqa: E402
 from application.ncrfg_compliance import (  # noqa: E402
@@ -167,11 +164,6 @@ from application.protection_comparison.service import (  # noqa: E402
     ProtectionComparisonService,
 )
 from application.protection_settings.zacisk_zabezpieczenia import (  # noqa: E402
-    ZACISKI,
-    Zacisk,
-    opis_miejsca_urzadzenia,
-    rodzaj_lokalizacji,
-    szyny_zwarcia_lokalizacji,
     zaciski_galezi_migawki,
 )
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile  # noqa: E402
@@ -179,7 +171,7 @@ from diagnostics.engine import DiagnosticEngine  # noqa: E402
 from diagnostics.preflight import (  # noqa: E402
     build_preflight_from_diagnostic_report,
 )
-from domain.study_case import ProtectionConfig, StudyCase  # noqa: E402
+from domain.study_case import StudyCase  # noqa: E402
 from enm.canonical_analysis import (  # noqa: E402
     build_execution_result_set,
     build_short_circuit_results,
@@ -230,6 +222,10 @@ from tests.golden.enm_builders.dynamika_projektanta import (  # noqa: E402
     build_dynamika_projektanta_enm,
     refy_sieci,
     scenariusz_zwarcia_w_odcinku,
+)
+from tests.golden.enm_builders.zabezpieczenia_magistrali import (  # noqa: E402
+    NAZWA_Q1,
+    build_zabezpieczenia_magistrali_enm,
 )
 
 FIXTURES_DIR = BACKEND_DIR.parent / "frontend" / "src" / "harness-fixtures" / "generated"
@@ -2463,47 +2459,11 @@ _KATALOG_APARATU_KOORD = "sw-cb-abb-vd4-17kv-630a"
 #: katalogu analitycznego (`GET /api/catalog/protection/device-types`).
 _APARAT_DOPASOWANIA_KOORD = "ABB_REF601"
 
-#: Nazwa szablonu zabezpieczenia — 1:1 z `DEVICE_TEMPLATES[relay-50-51].name`
-#: (to tę nazwę klika spec zrzutów w oknie szablonów).
-NAZWA_SZABLONU_ZABEZPIECZENIA_KOORD = "Przekaźnik 50/51 (typowy)"
-
 #: Identyfikator projektu w WYNIKU koordynacji: końcówka wymaga UUID, ale w
 #: harnessie nie ma rejestru projektów, więc w fixturze zostaje stabilna
 #: etykieta zamiast losowego identyfikatora (metadana, nie fizyka).
 PROJEKT_SCENY_KOORDYNACJA_PL = "projekt-scena-koordynacja"
 
-#: Szablon zabezpieczenia sceny — 1:1 z `DEVICE_TEMPLATES[relay-50-51]`
-#: (`frontend/src/ui/protection-coordination/types.ts`), czyli DOKŁADNIE to, co
-#: wysyła ekran po kliknięciu „Zastosuj szablon" w spec `wszystkie-sceny-
-#: screenshot.spec.ts`. Rozjazd tego szablonu z szablonem UI wykrywa atrapa
-#: harnessu (odmowa 409, jak scena `macierz`), nie cicha podmiana liczb.
-_SZABLON_ZABEZPIECZENIA_KOORD: dict[str, Any] = {
-    "stage_51": {
-        "enabled": True,
-        "pickup_current_a": 400,
-        "curve_settings": {
-            "standard": "IEC",
-            "variant": "SI",
-            "pickup_current_a": 400,
-            "time_multiplier": 0.3,
-        },
-        "directional": False,
-    },
-    "stage_50": {
-        "enabled": True,
-        "pickup_current_a": 2000,
-        "time_s": 0.1,
-        "directional": False,
-    },
-}
-
-#: Odbiory stacji sceny — DANE WEJŚCIOWE projektu (moc przyłączeniowa stacji
-#: SN/nN, typowa dla stacji miejskiej 630 kVA obciążonej w ~40%), nie wynik.
-#: Bez nich magistrala jest praktycznie nieobciążona (prąd rzędu 2 A zmierzony
-#: na modelu bez odbiorów), a nastawa I> = k_b·I_obc wychodziła 2,8 A — liczba
-#: prawdziwa, ale nieczytelna jako demonstracja ekranu.
-_MOC_ODBIORU_STACJI_KW = 250.0
-_COS_PHI_ODBIORU_STACJI = 0.95
 
 
 def _operacja_domenowa_sceny(
@@ -2524,109 +2484,28 @@ def _operacja_domenowa_sceny(
 
 
 def _enm_sceny_koordynacja() -> tuple[EnergyNetworkModel, str, str]:
-    """Sieć sceny E-28 + `(ref chronionego odcinka, ref kolejnej szyny)`.
+    """Sieć sceny E-28 = sieć złota G08 (`tests/golden/enm_builders/zabezpieczenia_magistrali`)
+    + `(ref odcinka Q1 → S01, ref odcinka Q2 → S02)`.
 
-    Kształt: GPZ 110/15 kV → magistrala kablowa → Stacja S01 (SN/nN) →
-    magistrala → Stacja S02 (SN/nN). Obie szyny SN stacji są RAPORTOWALNYMI
-    punktami zwarcia, więc odcinek S01→S02 ma komplet trzech szyn z prądem
-    zwarciowym (warunek nastaw I>/I>>), a obie nadają się na lokalizację
-    zabezpieczenia. ZERO źródeł wytwórczych — sieć bez falownika nie niesie
-    znacznika `DOMYSLNE_SYSTEMOWE` proweniencji `k_sc`, więc brama autorytetu
-    koordynacji przepuszcza wynik (na sieci złotej odmawiała: kod SI-110,
-    zmierzone).
-
-    Układ sieci nN (`lv_earthing_system`) deklarowany JAWNIE dla każdego
-    transformatora SN/nN — walidator odmawia biegu bez tej deklaracji (E063),
-    a operacja wstawienia stacji jej nie zgaduje. To dana wejściowa sceny,
-    jak w `_gpz_feeder_enm_z_falownikiem` obok."""
-    enm = EnergyNetworkModel(header=ENMHeader(name="Magistrala SN — scena koordynacji")).model_dump(
-        mode="json"
-    )
-    enm = _operacja_domenowa_sceny(
-        enm,
-        "add_grid_source_sn",
-        {
-            "voltage_kv": 15.0,
-            "source_name": "GPZ Wschód",
-            "sk3_mva": 250.0,
-            "rx_ratio": 0.1,
-            "catalog_ref": _KATALOG_ZRODLA_KOORD,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
-        },
-    )
-    enm = _operacja_domenowa_sceny(
-        enm,
-        "continue_trunk_segment_sn",
-        {
-            "segment": {
-                "rodzaj": "KABEL",
-                "dlugosc_m": 900,
-                "name": "Magistrala GPZ",
-                "catalog_ref": _KATALOG_KABLA_KOORD,
-            }
-        },
-    )
-    segment_zrodlowy = [
-        galaz["ref_id"]
-        for galaz in enm["branches"]
-        if galaz.get("type") in ("cable", "line_overhead")
-    ][-1]
-
-    stacja_wspolna: dict[str, Any] = {
-        "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
-        "insert_at": {"mode": "RATIO", "value": 0.5},
-        "sn_fields": [
-            {"field_role": "LINIA_IN"},
-            {"field_role": "LINIA_OUT"},
-            {"field_role": "TRANSFORMATOROWE"},
-        ],
-        "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_KOORD},
-        "nn_block": {"outgoing_feeders_nn_count": 1},
-    }
-    for segment, nazwa_stacji in (
-        (segment_zrodlowy, "Stacja S01"),
-        (f"{segment_zrodlowy}_R", "Stacja S02"),
-    ):
-        enm = _operacja_domenowa_sceny(
-            enm,
-            "insert_station_on_segment_sn",
-            {
-                **stacja_wspolna,
-                "segment_id": segment,
-                "station": {
-                    "station_type": "B",
-                    "station_name": nazwa_stacji,
-                    "sn_voltage_kv": 15.0,
-                    "nn_voltage_kv": 0.4,
-                },
-            },
-        )
-
-    for szyna_nn in sorted(
-        szyna["ref_id"] for szyna in enm["buses"] if szyna["ref_id"].endswith("/nn_bus")
-    ):
-        enm = _operacja_domenowa_sceny(
-            enm,
-            "add_load_sn",
-            {
-                "bus_ref": szyna_nn,
-                "name": "Odbiór stacji",
-                "active_power_kw": _MOC_ODBIORU_STACJI_KW,
-                "cos_phi": _COS_PHI_ODBIORU_STACJI,
-            },
-        )
-
-    model = EnergyNetworkModel.model_validate(enm)
-    for transformator in model.transformers:
-        if transformator.ulv_kv < 1.0 and transformator.lv_earthing_system is None:
-            transformator.lv_earthing_system = "TN-C-S"
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU: GPZ → Q1 → Stacja S01 → Q2 → Stacja S02, dwa wyłączniki
+    liniowe z przekładnikami 600/5 A 5P20 i przekaźnikami `REF-OC-200` z nastawami — zapisane
+    operacjami domenowymi budowniczego (jeden budowniczy dla sieci złotej i sceny). ZERO źródeł
+    wytwórczych — brama autorytetu koordynacji przepuszcza wynik (bez znacznika
+    `DOMYSLNE_SYSTEMOWE` proweniencji `k_sc`)."""
+    model = build_zabezpieczenia_magistrali_enm()
     _fiksuj_niedeterminizm_sceny_zwarcia(model)
-    # Chroniony odcinek = `segment_R_L` (S01 → S02): JEDYNY odcinek magistrali
-    # między dwiema szynami stacyjnymi, więc jedyny z kompletem trzech szyn
-    # raportowalnych. Kolejna szyna = szyna SN Stacji S02 (koniec tego odcinka
-    # ma dalej `segment_R_R`, którego drugi koniec jest zaciskiem technicznym).
-    return model, f"{segment_zrodlowy}_L", f"{segment_zrodlowy}_R_L"
+    kable = [g for g in model.branches if g.type == "cable"]
+    stacje_sn = sorted(
+        {g.to_bus_ref for g in kable if g.to_bus_ref.endswith("/sn_bus")},
+    )
+    # Odcinki za wyłącznikami liniowymi (od zacisku wyłącznika do szyny SN stacji) — jedyne
+    # odcinki magistrali z kompletem szyn raportowalnych po obu stronach strefy.
+    za_wylacznikami = sorted(
+        g.ref_id
+        for g in kable
+        if g.to_bus_ref in stacje_sn and g.from_bus_ref.endswith("/switch_node_2")
+    )
+    return model, za_wylacznikami[0], za_wylacznikami[1]
 
 
 @contextmanager
@@ -2820,139 +2699,22 @@ def koordynacja_scena_nastawy_dopasowanie() -> dict[str, Any]:
         )
 
 
-#: Zacisk zabezpieczeń odcinków magistrali w scenie E-28: początkowy (strona zasilania),
-#: klikany przez spec zrzutów (`wszystkie-sceny-screenshot.spec.ts`).
-ZACISK_ZABEZPIECZEN_SCENY_KOORD = "od"
-
-
-def _lokalizacje_zabezpieczen_koordynacji(
-    model: EnergyNetworkModel,
-) -> list[tuple[str, str]]:
-    """Lokalizacje dwóch zabezpieczeń sceny (decyzja O-51 pkt 7): odcinki magistrali
-    zasilające szyny SN obu stacji (GPZ → S01, S01 → S02), każde przy zacisku
-    POCZĄTKOWYM — przekaźnik w polu liniowym strony zasilania. Posortowane —
-    kolejność deterministyczna, niezależna od kolejności budowy."""
-    return sorted(
-        (galaz.ref_id, ZACISK_ZABEZPIECZEN_SCENY_KOORD)
-        for galaz in model.branches
-        if galaz.type == "cable" and galaz.to_bus_ref.endswith("/sn_bus")
-    )
-
-
-def koordynacja_scena_miejsca() -> dict[str, Any]:
-    """Odpowiedzi `GET /api/cases/{id}/enm/zacisk-lokalizacji` (`opis_miejsca_urzadzenia` —
-    TA SAMA funkcja, którą woła końcówka) dla KAŻDEJ lokalizacji z listy wyboru ekranu
-    (szyny, gałęzie, transformatory migawki) i każdego wskazania, które ekran może
-    wysłać (brak; dla gałęzi i łączników także `od` i `do`). Klucz: `lokalizacja|zacisk`
-    (pusty zacisk = brak wskazania). `urzadzenia_sceny` — lokalizacje i zaciski dwóch
-    zabezpieczeń sceny (spec zrzutów wskazuje je natywnymi klikami)."""
-    with _biegi_sceny_koordynacja() as (bieg_max, _bieg_min, _bieg_pf, model, _linia):
-        migawka = bieg_max.snapshot
-        refy = sorted(
-            {b.ref_id for b in model.buses}
-            | {g.ref_id for g in model.branches}
-            | {t.ref_id for t in model.transformers}
-        )
-        rozstrzygniecia: dict[str, Any] = {}
-        for ref in refy:
-            wskazania: tuple[Zacisk | None, ...] = (
-                (None,)
-                if rodzaj_lokalizacji(migawka, ref) in ("szyna", "brak")
-                else (None, *ZACISKI)
-            )
-            for wskazanie in wskazania:
-                rozstrzygniecia[f"{ref}|{wskazanie or ''}"] = opis_miejsca_urzadzenia(
-                    migawka, ref, wskazanie
-                )
-        return canonicalize_json(
-            {
-                "rozstrzygniecia": rozstrzygniecia,
-                "urzadzenia_sceny": [
-                    {"lokalizacja": lokalizacja, "zacisk": zacisk}
-                    for lokalizacja, zacisk in _lokalizacje_zabezpieczen_koordynacji(model)
-                ],
-            }
-        )
-
-
 def koordynacja_scena_wynik() -> dict[str, Any]:
-    """Pełny wynik analizy koordynacji (`POST /api/protection-coordination/
-    projects/{id}/run` + `GET /{run_id}`) policzony REALNYM analizatorem
-    (`OvercurrentCoordinationAnalyzer` przez końcówkę `run_coordination_
-    analysis` — z kompletem jej bramek: autorytet wkładu zwarciowego, zgodność
-    prądów żądania z prądami biegów, gotowość payloadu).
+    """Pełny wynik koordynacji (`POST /api/protection-coordination/projects/{id}/run` +
+    `GET /{run_id}`) — TA SAMA funkcja wykonania co końcówka (`wykonaj_koordynacje`).
 
-    IDENTYFIKATORY ZABEZPIECZEŃ. Ekran generuje je `crypto.randomUUID()` przy
-    kliknięciu „Zastosuj szablon", więc fixtura NIE MOŻE ich znać. Fixtura
-    używa `uuid5` z refu lokalizacji (deterministyczne), a atrapa harnessu
-    podmienia je na identyfikatory z ŻĄDANIA, dopasowując po
-    `location_element_id` — tożsamość, nie fizyka.
-
-    ŻĄDANIE = TO, KTÓRE WYSYŁA EKRAN (decyzja O-51 pkt 7). Zabezpieczenia stoją
-    na odcinkach magistrali przy wskazanym zacisku (`_lokalizacje_zabezpieczen_
-    koordynacji`); prąd zwarciowy lokalizacji to prąd SZYNY zacisku
-    (`szyny_zwarcia_lokalizacji` — ten sam resolver co końcówka i ekran), prąd
-    roboczy to prąd TEGO zacisku z wiersza gałęzi rozpływu (`i_a` dla `od`,
-    `i_do_a` dla `do` — `pradyZBiegow.ts::pradRoboczyZWiersza`). Do tej karty
-    zabezpieczenia stały na SZYNACH, żądanie niosło prądy robocze wszystkich
-    gałęzi z samego zacisku `od`, a analizator zwracał dla obu zabezpieczeń
-    `ERROR` braku prądu roboczego — relacji „zabezpieczenie → chroniona gałąź"
-    wtedy nie było."""
+    Karta BIEG-ZABEZPIECZEN-Z-MODELU: żądanie niesie wyłącznie identyfikatory biegów MAX, MIN i
+    rozpływu. Urządzenia (Q1, Q2), nastawy, pary stopniowania (strefa Q2 zawiera się w strefie
+    Q1), prądy przekaźników i prądy robocze pochodzą z modelu i biegów — dawny szablon
+    urządzenia ekranu i prądy z żądania skasowane."""
     with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, model, _linia):
-        wejscie = wejscie_koordynacji_z_biegow(
-            run_id_max=str(bieg_max.id), run_id_min=str(bieg_min.id)
-        )
-        galezie = {
-            wiersz["element_id"]: wiersz
-            for wiersz in build_branch_results_response(bieg_pf)["rows"]
-        }
-        miejsca = _lokalizacje_zabezpieczen_koordynacji(model)
-        szyny, odmowy = szyny_zwarcia_lokalizacji(bieg_max.snapshot, list(miejsca))
-        assert not odmowy, odmowy
         zadanie = RunCoordinationRequest(
-            devices=[
-                {
-                    "id": str(
-                        uuid5(NAMESPACE_URL, "mv-design-pro:harness:koordynacja:" + lokalizacja)
-                    ),
-                    "name": NAZWA_SZABLONU_ZABEZPIECZENIA_KOORD,
-                    "device_type": "RELAY",
-                    "location_element_id": lokalizacja,
-                    "zacisk": zacisk,
-                    "settings": _SZABLON_ZABEZPIECZENIA_KOORD,
-                }
-                for lokalizacja, zacisk in miejsca
-            ],
-            fault_currents=[
-                {
-                    "location_id": lokalizacja,
-                    "ik_max_3f_a": wejscie.prady_max_a[szyny[lokalizacja]],
-                    "ik_min_3f_a": wejscie.prady_min_a[szyny[lokalizacja]],
-                }
-                for lokalizacja, _zacisk in miejsca
-            ],
-            operating_currents=[
-                {
-                    "location_id": lokalizacja,
-                    "i_operating_a": galezie[lokalizacja]["i_a" if zacisk == "od" else "i_do_a"],
-                }
-                for lokalizacja, zacisk in miejsca
-            ],
-            pf_run_id=str(bieg_pf.id),
             sc_run_id=str(bieg_max.id),
             sc_run_id_min=str(bieg_min.id),
+            pf_run_id=str(bieg_pf.id),
         )
-        # Zegar zamrożony na czas analizy: `ProtectionDevice.created_at`
-        # (`domain/protection_device.py`, `default_factory` z `datetime.now(UTC)`)
-        # i `CoordinationResult.created_at` (`…/coordination/models.py`) znakują
-        # się przy KAŻDYM wywołaniu — bez tego dwa wywołania fixtury różniły się
-        # znacznikami obu urządzeń (zmierzone bezpośrednio). Tu `default_factory`
-        # jest LAMBDĄ czytającą nazwę `datetime` z przestrzeni modułu przy
-        # wywołaniu, więc podmiana nazwy DZIAŁA (inaczej niż `Field(
-        # default_factory=uuid4)` Pydantica — patrz `_fiksuj_niedeterminizm_
-        # sceny_zwarcia`).
+        # Zegar zamrożony: `CoordinationAnalysisResult.created_at` znakuje się przy wywołaniu.
         with (
-            patch("domain.protection_device.datetime", _ZegarStalyBiegu),
             patch(
                 "application.analyses.protection.coordination.models.datetime",
                 _ZegarStalyBiegu,
@@ -2962,7 +2724,9 @@ def koordynacja_scena_wynik() -> dict[str, Any]:
                 _ZegarStalyBiegu,
             ),
         ):
-            podsumowanie = run_coordination_analysis(_PROJEKT_SCENY_KOORDYNACJA, zadanie)
+            podsumowanie = wykonaj_koordynacje(
+                model=model, project_id=_PROJEKT_SCENY_KOORDYNACJA, request=zadanie
+            )
         widok = get_coordination_result(podsumowanie["run_id"])
         return _ustabilizuj_identyfikatory(
             canonicalize_json(widok),
@@ -4601,9 +4365,9 @@ def diagnoza_scena_bieg() -> dict[str, Any]:
 # wobec prądu zwarciowego biegu źródłowego) policzone na DWÓCH wariantach tej
 # samej sieci i porównane serwisem `ProtectionComparisonService`.
 #
-# DLACZEGO WARIANT B TO DŁUŻSZY ODCINEK: bieg zabezpieczeń czyta konfigurację
-# nastaw przypadku Z BAZY, więc scena zakłada bazę w pamięci (SQLite) z dwoma
-# przypadkami tego samego projektu. Różnica między wariantami jest MODELOWA
+# DLACZEGO WARIANT B TO DŁUŻSZY ODCINEK (karta BIEG-ZABEZPIECZEN-Z-MODELU): urządzenia i
+# nastawy są w MODELU (sieć złota G08), baza w pamięci niesie wyłącznie przypadki projektu
+# (nazwy w liście biegów i proweniencji). Różnica między wariantami jest MODELOWA
 # (dłuższa magistrala → większa impedancja → mniejszy prąd zwarciowy → inny
 # czas zadziałania), a nie „inne liczby w atrapie" — dokładnie ta sama recepta,
 # którą sprawdza e2e na żywym backendzie (`porownanie-zwarc-delty.spec.ts`).
@@ -4622,11 +4386,6 @@ _UUID_SCENY_ZAB_SC_B = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SC
 _UUID_SCENY_ZAB_A = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZAB_A)
 _UUID_SCENY_ZAB_B = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZAB_B)
 
-#: Szablon nastaw przypadku — REALNA pozycja katalogu zabezpieczeń
-#: (`get_protection_setting_template`), ta sama dla obu wariantów: porównanie
-#: ma pokazać skutek zmiany MODELU, nie zmiany szablonu.
-_SZABLON_NASTAW_SCENY_ZAB = "template_ref_oc_100"
-
 #: Długość magistrali w wariancie B [km] — DANA WEJŚCIOWA wariantu (operacja
 #: `update_element_parameters`). Dłuższy odcinek to większa impedancja pętli,
 #: więc mniejszy prąd zwarciowy i dłuższy czas zadziałania: różnica, którą
@@ -4637,18 +4396,12 @@ _CZAS_PRZYPADKU_SCENY_ZAB = datetime(2026, 9, 16, 8, 0, 0, tzinfo=UTC)
 
 
 def _baza_w_pamieci_sceny_zabezpieczen() -> Any:
-    """Fabryka `UnitOfWork` na bazie W PAMIĘCI z dwoma przypadkami projektu,
-    każdy z konfiguracją nastaw wskazującą REALNY szablon katalogu. Bieg
-    zabezpieczeń czyta tę konfigurację z bazy (`_execute_protection`), więc bez
-    niej scena nie ma z czego policzyć oceny — atrapa wyniku byłaby fabrykacją."""
+    """Fabryka `UnitOfWork` na bazie W PAMIĘCI z dwoma przypadkami projektu — nazwy przypadków
+    w liście biegów i proweniencji porównania. Nastawy NIE są w bazie (D-21): urządzenia i
+    nastawy obu wariantów niesie model sieci złotej G08."""
     silnik = create_engine_from_url("sqlite+pysqlite:///:memory:")
     init_db(silnik)
     uow_factory = build_uow_factory(create_session_factory(silnik))
-    konfiguracja = ProtectionConfig(
-        template_ref=_SZABLON_NASTAW_SCENY_ZAB,
-        template_fingerprint=f"{_SZABLON_NASTAW_SCENY_ZAB}@1",
-        bound_at=_CZAS_PRZYPADKU_SCENY_ZAB,
-    )
     for przypadek, nazwa in (
         (_PRZYPADEK_SCENY_ZAB_A, "Stan normalny"),
         (_PRZYPADEK_SCENY_ZAB_B, "Magistrala wydłużona"),
@@ -4660,7 +4413,6 @@ def _baza_w_pamieci_sceny_zabezpieczen() -> Any:
                     project_id=_PROJEKT_SCENY_ZABEZPIECZEN,
                     name=nazwa,
                     description="",
-                    protection_config=konfiguracja,
                     created_at=_CZAS_PRZYPADKU_SCENY_ZAB,
                     updated_at=_CZAS_PRZYPADKU_SCENY_ZAB,
                 )
@@ -4669,14 +4421,16 @@ def _baza_w_pamieci_sceny_zabezpieczen() -> Any:
 
 
 def _enm_wariantu_b_sceny_zabezpieczen(enm: EnergyNetworkModel) -> EnergyNetworkModel:
-    """Wariant B: magistrala GPZ wydłużona operacją `update_element_parameters`
-    (ta sama, którą woła projektant), więc różnica wariantów jest zapisana w
-    MODELU i policzona przez solver."""
+    """Wariant B: odcinek magistrali za wyłącznikiem pola liniowego GPZ (Q1 → Stacja S01)
+    wydłużony operacją `update_element_parameters` (ta sama, którą woła projektant), więc
+    różnica wariantów jest zapisana w MODELU i policzona przez solver; urządzenia i nastawy
+    obu wariantów są te same."""
     dane = enm.model_dump(mode="json")
+    q1 = next(g for g in dane["branches"] if g.get("name") == NAZWA_Q1)
     magistrala = next(
         galaz["ref_id"]
         for galaz in dane["branches"]
-        if galaz.get("type") in ("cable", "line_overhead")
+        if galaz.get("type") == "cable" and galaz["from_bus_ref"] == q1["to_bus_ref"]
     )
     dane = _operacja_domenowa_sceny(
         dane,
@@ -4887,7 +4641,6 @@ FIXTURY: dict[str, Any] = {
     "koordynacja_scena_nastawy": koordynacja_scena_nastawy,
     "koordynacja_scena_nastawy_dopasowanie": koordynacja_scena_nastawy_dopasowanie,
     "koordynacja_scena_wynik": koordynacja_scena_wynik,
-    "koordynacja_scena_miejsca": koordynacja_scena_miejsca,
     "porownanie_scena_biegi_pf": porownanie_scena_biegi_pf,
     "porownanie_scena_wynik_pf": porownanie_scena_wynik_pf,
     "porownanie_scena_slad_pf": porownanie_scena_slad_pf,

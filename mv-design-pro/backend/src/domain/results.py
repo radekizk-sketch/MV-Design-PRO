@@ -347,17 +347,19 @@ class ProtectionEvaluationComparison:
     P15c: Compares trip state, trip time, margin between two runs.
 
     CANONICAL FIELDS:
-    - element_id: Protected element identifier
-    - trip_state_a: Trip state from Run A (TRIPS/NO_TRIP/INVALID)
-    - trip_state_b: Trip state from Run B (TRIPS/NO_TRIP/INVALID)
+    - element_id: urządzenie zabezpieczeniowe MODELU (``ref_id`` przypisania)
+    - fault_target_id: punkt zwarcia strefy urządzenia (para z ``element_id`` = klucz)
+    - trip_state_a: Trip state from Run A (TRIPS/NO_TRIP; "BRAK OCENY" gdy brak w biegu)
+    - trip_state_b: Trip state from Run B (TRIPS/NO_TRIP; "BRAK OCENY" gdy brak w biegu)
     - state_change: State change description (PL)
     - t_trip_delta: Trip time delta (if both TRIPS)
-    - margin_delta: Margin delta (if available)
+    - margin_delta: Margin delta (gdy oba wyniki wiarygodne)
 
     INVARIANT: No normative interpretation, just state/value comparison.
     """
 
     element_id: str
+    fault_target_id: str
     trip_state_a: str
     trip_state_b: str
     state_change: str  # e.g., "TRIPS→NO_TRIP", "NO_TRIP→TRIPS", "BRAK ZMIANY"
@@ -368,6 +370,7 @@ class ProtectionEvaluationComparison:
         """Serialize to dictionary."""
         result: dict[str, Any] = {
             "element_id": self.element_id,
+            "fault_target_id": self.fault_target_id,
             "trip_state_a": self.trip_state_a,
             "trip_state_b": self.trip_state_b,
             "state_change": self.state_change,
@@ -390,7 +393,7 @@ class ProtectionComparison:
     - evaluations: Per-element comparison (deterministically sorted)
     - trip_count_delta: Change in number of trips
     - no_trip_count_delta: Change in number of no-trips
-    - invalid_count_delta: Change in number of invalid evaluations
+    - unreliable_count_delta: Change in number of unreliable evaluations (ALF przekładnika)
 
     FAB-E (E1): count-delty są ``None``, gdy payload run A LUB run B nie niesie
     klucza ``summary`` w ogóle — NIGDY fabrykowane 0 (co wyglądałoby jak "zero
@@ -402,7 +405,7 @@ class ProtectionComparison:
     evaluations: tuple[ProtectionEvaluationComparison, ...]
     trip_count_delta: NumericDelta | None
     no_trip_count_delta: NumericDelta | None
-    invalid_count_delta: NumericDelta | None
+    unreliable_count_delta: NumericDelta | None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -414,8 +417,10 @@ class ProtectionComparison:
             "no_trip_count_delta": (
                 self.no_trip_count_delta.to_dict() if self.no_trip_count_delta is not None else None
             ),
-            "invalid_count_delta": (
-                self.invalid_count_delta.to_dict() if self.invalid_count_delta is not None else None
+            "unreliable_count_delta": (
+                self.unreliable_count_delta.to_dict()
+                if self.unreliable_count_delta is not None
+                else None
             ),
         }
 
