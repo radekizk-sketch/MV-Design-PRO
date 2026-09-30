@@ -1528,7 +1528,8 @@ class SilnikDynamiki:
                     element_ref=miejsce.element,
                     opis_pl=(
                         f"Kat fazora pradu do ziemi w miejscu zwarcia {miejsce.opis_pl} "
-                        "(brak wartosci przy pradzie zerowym)"
+                        "(brak wartosci, gdy modul pradu nie przekracza tolerancji "
+                        "rozwiazania sieci — fazor nierozroznialny od zera)"
                     ),
                 )
             )
@@ -1540,9 +1541,12 @@ class SilnikDynamiki:
         """Kanaly karty AB-1b.1 (par. 0 pkt 8): stan zasilania wezla, stan galezi, katy fazorow.
 
         Dopisane ZA dawnymi kanalami, wiec dawna lista kanalow jest bitowo prefiksem nowej.
-        Katy fazorow pradu leza w tym samym ukladzie wirujacym, co `kat_deg@` wezlow; przy
-        pradzie DOKLADNIE zerowym (galaz otwarta, obszar beznapieciowy) kata nie ma —
-        probka niesie `None`, a jednoznacznosc zera modulu niesie `stan_galezi@`.
+        Katy fazorow pradu leza w tym samym ukladzie wirujacym, co `kat_deg@` wezlow. Kata
+        nie ma (probka `None`), gdy modul pradu nie przekracza rozdzielczosci rozwiazania
+        sieci (`NastawySolvera.tolerancja`, `_kat_pradu_deg`): prad DOKLADNIE zerowy (galaz
+        otwarta — jednoznacznosc zera niesie `stan_galezi@` — albo obszar beznapieciowy)
+        i prad nierozroznialny od niezbilansowania, ktore rozwiazanie dopuszcza (zacisk
+        galezi, za ktora fizycznie nic nie plynie).
         """
         kanaly: list[KanalWyniku] = []
         for ident in model.identy_wezlow:
@@ -1580,8 +1584,9 @@ class SilnikDynamiki:
                         element_ref=galaz.ident,
                         opis_pl=(
                             f"Kat fazora pradu zacisku {zacisk} galezi {galaz.ident} "
-                            f"({galaz.wezel_od} -> {galaz.wezel_do}); brak wartosci przy "
-                            "pradzie zerowym"
+                            f"({galaz.wezel_od} -> {galaz.wezel_do}); brak wartosci, gdy "
+                            "modul pradu nie przekracza tolerancji rozwiazania sieci (fazor "
+                            "nierozroznialny od zera)"
                         ),
                     )
                 )
@@ -1698,13 +1703,18 @@ class SilnikDynamiki:
             else:
                 kod = STAN_ZASILANIA_ZASILANY
             probki[f"stan_zasilania@{ident}"].append(kod)
+        rozdzielczosc = self.wejscie.nastawy.tolerancja
         for galaz in model.galezie:
             wielkosci = wielkosci_galezi(model, galaz, napiecia)
             probki[f"stan_galezi@{galaz.ident}"].append(
                 1.0 if galaz.ident in model.galezie_aktywne else 0.0
             )
-            probki[f"i_od_kat_deg@{galaz.ident}"].append(_kat_deg(wielkosci.i_od_pu))
-            probki[f"i_do_kat_deg@{galaz.ident}"].append(_kat_deg(wielkosci.i_do_pu))
+            probki[f"i_od_kat_deg@{galaz.ident}"].append(
+                _kat_pradu_deg(wielkosci.i_od_pu, rozdzielczosc)
+            )
+            probki[f"i_do_kat_deg@{galaz.ident}"].append(
+                _kat_pradu_deg(wielkosci.i_do_pu, rozdzielczosc)
+            )
 
     def _probkuj_zwarcia(
         self,
@@ -1743,7 +1753,9 @@ class SilnikDynamiki:
                 napiecie, prad = self._miejsce_w_galezi(model, napiecia, miejsce)
             probki[f"i_zwarcia_pu@{miejsce.klucz}"].append(abs(prad))
             probki[f"u_zwarcia_pu@{miejsce.klucz}"].append(abs(napiecie))
-            probki[f"i_zwarcia_kat_deg@{miejsce.klucz}"].append(_kat_deg(prad))
+            probki[f"i_zwarcia_kat_deg@{miejsce.klucz}"].append(
+                _kat_pradu_deg(prad, self.wejscie.nastawy.tolerancja)
+            )
 
     def _miejsce_w_galezi(
         self, model: ModelSieci, napiecia: np.ndarray, miejsce: _MiejsceZwarcia
@@ -1986,14 +1998,41 @@ class _Probkowanie:
 
 
 def _kat_deg(fazor: complex) -> float | None:
-    """Kat fazora w stopniach; `None` przy fazorze DOKLADNIE zerowym.
+    """Kat fazora NAPIECIA wezla w stopniach; `None` przy fazorze DOKLADNIE zerowym.
 
     `np.angle(0) = 0,0` byloby fabrykowanym katem (karta AB-1b.1 par. 0 pkt 7-8): fazor
     zerowy nie ma kierunku, a zero stopni jest poprawna, niezerowa informacja o fazie.
+    Napiecie jest zmienna rozwiazania, nie roznica skladnikow: wezel z ograniczeniem
+    `V = 0` (zwarcie metaliczne, obszar beznapieciowy) ma zero dokladne, a wezel zasilany
+    ma modul rzedu napiecia znamionowego — kryterium „dokladnie zero" jest tu pelne.
+    Prady sa wyprowadzane z roznicy napiec i maja wlasne kryterium (`_kat_pradu_deg`).
     """
     if fazor == 0:
         return None
     return float(np.degrees(np.angle(fazor)))
+
+
+def _kat_pradu_deg(prad: complex, rozdzielczosc_pu: float) -> float | None:
+    """Kat fazora PRADU w stopniach; `None`, gdy |I| nie przekracza rozdzielczosci rozwiazania.
+
+    Rozwiazanie czesci algebraicznej jest przyjmowane, gdy norma residuum bilansu pradow
+    wezlow nie przekracza `NastawySolvera.tolerancja` (`siec.rozwiaz_algebre`), wiec prad
+    o module nie wiekszym niz ta tolerancja jest NIEROZROZNIALNY od niezbilansowania,
+    ktore rozwiazanie dopuszcza. Prad zacisku galezi, za ktora fizycznie nic nie plynie
+    (transformator bez obciazenia strony dolnej, otwarty koniec odcinka, pole bez
+    odbioru), jest roznica dwoch skladnikow rzedu |y|*|V|, ktore sie znosza: zostaje
+    blad zaokraglen, a jego kierunek zalezy od kolejnosci sumowania zmiennoprzecinkowego.
+    Pomiar 2026-09-29 na scenie dynamiki harnessu: 1, 2 i 4 watki OpenBLAS daly trzy
+    rozne zestawy „katow" 45/-135/180 stopni dla pradow 1e-16...1e-12 pu. Liczba w
+    takim kanale bylaby fabrykowana, a wynik zalezalby od maszyny (regula determinizmu).
+
+    Modul pradu zostaje w swoim kanale (`i_*_pu@`) bez zmian — to wartosc policzona;
+    jej nierozroznialnosc od zera konsument czyta z tej samej tolerancji w nastawach
+    biegu. Prad DOKLADNIE zerowy (galaz otwarta) spelnia warunek z definicji.
+    """
+    if abs(prad) <= rozdzielczosc_pu:
+        return None
+    return float(np.degrees(np.angle(prad)))
 
 
 def _min_liczb(szereg: list[float | None]) -> float:

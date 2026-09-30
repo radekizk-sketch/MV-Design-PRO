@@ -84,13 +84,16 @@ MANIFEST: tuple[Twierdzenie, ...] = (
         testy=(
             "tests/walidacja_fizyczna/test_bramki.py::test_g7_czestotliwosc_wezlowa",
             "tests/walidacja_fizyczna/test_czestotliwosc_wezlowa.py",
+            "tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py",
         ),
-        mutacje=("M16", "M17"),
+        mutacje=("M16", "M17", "M69"),
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
             "fazor skladowej zgodnej w stanie quasi-ustalonym RMS; przy |V| <= u_V "
             "wielkosc jest NIEDOSTEPNA, a nie przyblizona; poza chwilami zdarzen — w probkach "
-            "L i P chwili zdarzenia czestotliwosc jest NIEDOSTEPNA (kod 3, D-18)"
+            "L i P chwili zdarzenia czestotliwosc jest NIEDOSTEPNA (kod 3, D-18); estymata "
+            "u_V przy residuum miesczacym sie w granicy bledu zaokraglen to |J^-1 rho| "
+            "(siec.granica_zaokraglen_residuum), nie realizacja szumu |J^-1 r|"
         ),
         poziom="L5",
         uwagi="Zmierzony blad wobec pochodnej analitycznej: 7,105427357601002e-15 Hz = ulp(50 Hz).",
@@ -220,18 +223,38 @@ MANIFEST: tuple[Twierdzenie, ...] = (
     ),
     Twierdzenie(
         ident="D-10",
-        zdolnosc="Determinizm biegu miedzy procesami",
+        zdolnosc=(
+            "Determinizm biegu miedzy procesami (PYTHONHASHSEED) i miedzy liczbami watkow "
+            "BLAS (katy pradow i kody jakosci czestotliwosci z kryteriow rozdzielczosci)"
+        ),
         rownanie="brak — wlasnosc implementacji, nie fizyki",
-        wyrocznia="powtorzenie biegu w osobnym procesie przy zmienionym PYTHONHASHSEED",
-        wzorzec="dwa zdarzenia w TEJ SAMEJ chwili na ukladzie dwutorowym",
+        wyrocznia=(
+            "powtorzenie biegu w osobnym procesie przy zmienionym PYTHONHASHSEED; ta sama "
+            "scena harnessu w osobnych procesach przy 1 i 2 watkach OpenBLAS"
+        ),
+        wzorzec=(
+            "dwa zdarzenia w TEJ SAMEJ chwili na ukladzie dwutorowym; scena "
+            "dynamika_scena_przebiegi (transformator bez obciazenia, wylaczniki pol, koniec "
+            "odcinka po wylaczeniu zwarcia)"
+        ),
         testy=(
             "tests/walidacja_fizyczna/test_zdarzenia.py::test_wynik_nie_zalezy_od_pythonhashseed",
+            "tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py"
+            "::test_scena_dynamiki_nie_zalezy_od_liczby_watkow_blas",
         ),
-        mutacje=(),
+        mutacje=("M67", "M69"),
         bramka_ci="Walidacja fizyczna dynamiki",
-        zakres_waznosci="ta sama platforma i ta sama wersja numpy/scipy",
+        zakres_waznosci=(
+            "ta sama platforma i ta sama wersja numpy/scipy/OpenBLAS; liczba watkow BLAS "
+            "dowolna — wynik rowny w tolerancji komparatora fikstur harnessu (ostatnie cyfry "
+            "wartosci zaleza od kolejnosci sumowania, wzorce None i kody jakosci nie)"
+        ),
         poziom="L4",
-        uwagi="L4: brak mutacji falsyfikujacej (iniekcja niedeterminizmu wymagalaby zmiany typu kolekcji).",
+        uwagi=(
+            "L4: os PYTHONHASHSEED nadal bez mutacji falsyfikujacej (iniekcja niedeterminizmu "
+            "wymagalaby zmiany typu kolekcji); os liczby watkow BLAS ma mutacje M67 (kat pradu) "
+            "i M69 (estymata niepewnosci czestotliwosci)."
+        ),
     ),
 )
 
@@ -271,16 +294,20 @@ MANIFEST = MANIFEST + (
             "tests/walidacja_fizyczna/test_bramki.py::test_g16_fazory_pradow_galezi",
             "tests/walidacja_fizyczna/test_bramki.py::test_g16_parytet_iec60909",
             "tests/walidacja_fizyczna/test_probki_obustronne.py::test_kanaly_galezi_modul_i_kat",
+            "tests/walidacja_fizyczna/test_kat_pradu_rozdzielczosc.py",
         ),
-        mutacje=("M30", "M32"),
+        mutacje=("M30", "M32", "M67", "M68"),
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
             "skladowa zgodna, zwarcie 3F w wezle (R_f >= 0), siec liniowa w chwili zwarcia "
             "(zrodla jako SEM za admitancja, odbiory jako admitancje); parytet IEC 60909 "
             "wylacznie dla sieci bez transformatorow (K_T), generatorow (K_G), odbiorow i "
             "susceptancji — tam metoda zrodla zastepczego i bieg od U = c_max sa ta sama "
-            "algebra; kat fazora numerycznie bliskiego zeru (szum zaokraglen) NIE jest "
-            "twierdzeniem — `None` wylacznie dla zera dokladnego"
+            "algebra; kat fazora PRADU o module nie wiekszym niz tolerancja rozwiazania sieci "
+            "(`NastawySolvera.tolerancja`) NIE jest twierdzeniem — `None` (fazor nierozroznialny "
+            "od niezbilansowania, ktore rozwiazanie dopuszcza; w tym zero dokladne galezi "
+            "otwartej); kat NAPIECIA — `None` wylacznie dla zera dokladnego (wezel z "
+            "ograniczeniem V = 0)"
         ),
         poziom="L5",
     ),

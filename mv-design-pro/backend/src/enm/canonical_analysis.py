@@ -1689,8 +1689,8 @@ def _execute_dynamika_rms(run: CanonicalRun) -> None:
     run.power_flow_trace = None
     with canonical_run_repository_scope() as repository:
         # `None` przechodzi NIETKNIĘTE: wartość niedostępna (częstotliwość w
-        # chwili zdarzenia, kąt fazora zerowego) nie jest liczbą i nie może się
-        # nią stać po drodze do bazy (karta AB-1b.1 §0 pkt 6).
+        # chwili zdarzenia, kąt fazora zerowego albo prądu nierozróżnialnego od zera)
+        # nie jest liczbą i nie może się nią stać po drodze do bazy (karta AB-1b.1 §0 pkt 6).
         repository.zapisz_szeregi_dynamiczne(
             run.id,
             [float(chwila) for chwila in kontrakt.os_czasu_s],

@@ -9,9 +9,9 @@ naprawde pasuje do kontraktu, nie jest tu deklaracja: testy pakietu wolaja
 kazdy rozjazd pol wywraca test, a nie dopiero produkcje.
 
 DLACZEGO V2 (karta AB-1b.1 par. 0 pkt 14). Zmiany nie sa addytywne: probki moga byc
-`None` (wartosc niedostepna, kat fazora zerowego), a powtorzone chwile osi czasu (probki
-obustronne `L`/`P`) rozroznia `strona_probki`. Kontrakt v1 zostal usuniety bez warstwy
-zgodnosci (konsumentow interfejsu: zero).
+`None` (wartosc niedostepna, kat fazora zerowego albo pradu nierozroznialnego od zera),
+a powtorzone chwile osi czasu (probki obustronne `L`/`P`) rozroznia `strona_probki`.
+Kontrakt v1 zostal usuniety bez warstwy zgodnosci (konsumentow interfejsu: zero).
 
 SZEREGI CZASOWE NIE WCHODZA DO `raw_result` biegu — `os_czasu_s` i `probki` sa
 w ladunku obecne, ale wolajacy zapisuje je do osobnej tabeli szeregow, a w

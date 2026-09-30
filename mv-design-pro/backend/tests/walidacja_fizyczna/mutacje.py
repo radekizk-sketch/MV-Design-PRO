@@ -258,8 +258,9 @@ MUTACJE: tuple[Mutacja, ...] = (
         "Kat pradu galezi otwartej publikowany jako 0,0 z `angle(0)`: fazor zerowy dostaje "
         "sfabrykowana faze.",
         "network_model/solvers/dynamika/silnik.py",
-        "    if fazor == 0:\n        return None\n    return float(np.degrees(np.angle(fazor)))",
-        "    return float(np.degrees(np.angle(fazor)))",
+        "    if abs(prad) <= rozdzielczosc_pu:\n        return None\n"
+        "    return float(np.degrees(np.angle(prad)))",
+        "    return float(np.degrees(np.angle(prad)))",
         "test kanalow galezi: galaz otwarta w probce P ma kat None (D-15)",
         bramki=(),
         testy=(
@@ -272,9 +273,8 @@ MUTACJE: tuple[Mutacja, ...] = (
         "Sprzezenie w kacie fazora pradu zacisku poczatkowego: kat pradu ma odwrocony znak, "
         "modul bez zmian — kierunek przeplywu bez sladu w module.",
         "network_model/solvers/dynamika/silnik.py",
-        '            probki[f"i_od_kat_deg@{galaz.ident}"].append(_kat_deg(wielkosci.i_od_pu))',
-        '            probki[f"i_od_kat_deg@{galaz.ident}"].append('
-        "_kat_deg(wielkosci.i_od_pu.conjugate()))",
+        "                _kat_pradu_deg(wielkosci.i_od_pu, rozdzielczosc)",
+        "                _kat_pradu_deg(wielkosci.i_od_pu.conjugate(), rozdzielczosc)",
         "G16 (fazory pradow galezi wobec superpozycji Thevenina wyroczni, D-15)",
         bramki=("g16_fazory_pradow_galezi",),
     ),
@@ -389,6 +389,50 @@ MUTACJE: tuple[Mutacja, ...] = (
         "        return self.udzial * self.bazowe.pochodne(stan, napiecie_pu)",
         "G21 (rownowaznosc agregatu z udzialem 0,5 i dwoch polow, D-20)",
         bramki=("g21_utrata_czesciowa",),
+    ),
+    Mutacja(
+        "M67",
+        "Kat pradu nierozroznialnego od zera publikowany: kryterium rozdzielczosci rozwiazania "
+        'zastapione dawnym „dokladnie zero" — szum zaokraglen galezi slepej dostaje kat, '
+        "zalezny od kolejnosci sumowania (liczby watkow BLAS).",
+        "network_model/solvers/dynamika/silnik.py",
+        "    if abs(prad) <= rozdzielczosc_pu:\n        return None",
+        "    if prad == 0:\n        return None",
+        "test galezi slepej z przekladnia zespolona: szum pradu bez kata (DETERMINIZM-KATA-FAZORA)",
+        bramki=(),
+        testy=(
+            "tests/walidacja_fizyczna/test_kat_pradu_rozdzielczosc.py"
+            "::test_galaz_slepa_z_przekladnia_zespolona_nie_ma_kata_mimo_niezerowego_szumu",
+        ),
+    ),
+    Mutacja(
+        "M68",
+        "Kat napiecia wezla bez napiecia publikowany jako 0,0 z `angle(0)`: wezel z "
+        "ograniczeniem V = 0 (zwarcie metaliczne) dostaje sfabrykowana faze.",
+        "network_model/solvers/dynamika/silnik.py",
+        "    if fazor == 0:\n        return None\n    return float(np.degrees(np.angle(fazor)))",
+        "    return float(np.degrees(np.angle(fazor)))",
+        "test napiecia wezlow za zwarciem metalicznym: zero dokladne bez kata",
+        bramki=(),
+        testy=(
+            "tests/walidacja_fizyczna/test_kat_pradu_rozdzielczosc.py"
+            "::test_napiecie_wezlow_za_zwarciem_metalicznym_jest_zerem_dokladnym_bez_kata",
+        ),
+    ),
+    Mutacja(
+        "M69",
+        "Estymata bledu rozwiazania z residuum-szumu: przy residuum miesczacym sie w granicy "
+        "wlasnego bledu zaokraglen `J^-1 r` zamiast `J^-1 rho` — estymata niepewnosci "
+        "czestotliwosci i jej kod jakosci zaleza od kolejnosci sumowania (liczby watkow BLAS).",
+        "network_model/solvers/dynamika/obserwable.py",
+        "        rozklad.solve(residuum if residuum_znaczace else granica_rzeczywista), liczba",
+        "        rozklad.solve(residuum), liczba",
+        "test estymaty przy residuum na granicy zaokraglen (DETERMINIZM-KATA-FAZORA)",
+        bramki=(),
+        testy=(
+            "tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py"
+            "::test_estymata_przy_residuum_szumu_jest_propagacja_granicy",
+        ),
     ),
     Mutacja(
         "M21",
