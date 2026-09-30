@@ -444,7 +444,7 @@ function indeksSzynMigawki(snapshot: EnergyNetworkModel): IndeksSzynMigawki {
   for (const bus of snapshot.buses ?? []) {
     refIdy.add(bus.ref_id);
     if (!wgRefu.has(bus.ref_id)) wgRefu.set(bus.ref_id, bus);
-    if (!wgRefu.has(bus.id)) wgRefu.set(bus.id, bus);
+    if (typeof bus.id === 'string' && !wgRefu.has(bus.id)) wgRefu.set(bus.id, bus);
   }
   return { wgRefu, refIdy };
 }
@@ -2313,12 +2313,14 @@ interface IndeksKoncowek {
   readonly odcinkiSnPrzySzynie: ReadonlyMap<string, readonly Branch[]>;
 }
 
-/** Prefiksy `X` napisu `s`, dla których `s.startsWith(X + '/')`. */
-function prefiksyPrzedUkosnikiem(s: string, wynik: Set<string>): void {
+/** Prefiksy `X` napisu `s`, dla których `s.startsWith(X + '/')`. Migawka bez `id` elementu
+ *  (modele zapisane bez identyfikatora technicznego) nie wnosi prefiksów z `id`. */
+function prefiksyPrzedUkosnikiem(s: string | null | undefined, wynik: Set<string>): void {
+  if (typeof s !== 'string') return;
   for (let i = s.indexOf('/'); i >= 0; i = s.indexOf('/', i + 1)) wynik.add(s.slice(0, i));
 }
 
-function indeksPodPrefiksem<T extends { readonly ref_id: string; readonly id: string }>(
+function indeksPodPrefiksem<T extends { readonly ref_id: string; readonly id?: string | null }>(
   elementy: readonly T[],
 ): Map<string, T[]> {
   const wynik = new Map<string, T[]>();
