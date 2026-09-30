@@ -70,7 +70,10 @@ from .load_zip_model import (
     model_odbioru,
     zip_odbioru_z_parametrow_materializacji,
 )
-from .migrations.nn_field_specs_promocja import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
+from .migrations.nn_field_specs_promocja import (
+    META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA,
+    META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA,
+)
 from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, UKLADY_SIECI_NN, EnergyNetworkModel
 from .nazwy_elementow import ODCINEK_BEZ_NAZWY, nazwa_pola_ze_specyfikacji
 from .pole_katalogowe import (
@@ -9123,6 +9126,13 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
             target_element.setdefault("meta", {})[
                 "catalog_item_version"
             ] = effective_catalog_version
+        # Znacznik „aparat z automigracji pól nN bez wiązania" (W061) opisuje BRAK
+        # katalogu — po udanym przypisaniu jest nieprawdą, a zostawiony obok
+        # `catalog_ref` byłby dwiema sprzecznymi deklaracjami tego samego faktu.
+        meta_elementu = target_element.get("meta")
+        if isinstance(meta_elementu, dict):
+            meta_elementu.pop(META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA, None)
+            meta_elementu.pop(META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA, None)
 
         # Karta AB-H0 §0.7.6: modele widmowe generatora należą do typu, który wskazują
         # karty (`urzadzenie_ref`). Przypisanie katalogu PRZEMATERIALIZOWUJE je z bieżących

@@ -14,6 +14,7 @@ from __future__ import annotations
 from collections import deque
 from typing import Any
 
+from enm.migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
 from enm.nazwy_elementow import nazwa_elementu
 
 from .wymagane import pole_wymagane
@@ -45,11 +46,27 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
     subs = enm.get("substations", [])
     transformers = {t["ref_id"]: t for t in enm.get("transformers", [])}
 
-    # bus_ref → owning substation ref
+    # bus_ref → owning substation ref: `Substation.bus_refs` ORAZ szyny odpływów nN
+    # utworzone przez promocję pól nN tej stacji (aparat z `meta.nn_field_migrowany_z`
+    # wskazującym pole z `nn_field_specs` tej stacji, wychodzący z jej szyny). Ten sam
+    # predykat co frontendowe `stationLoadBusRefs` (`ui/sld/shared/stationBusResolution.
+    # ts`) — karta SLD-SUBSTRAT (kontynuacja): substrat budowany ścieżką produktu ma
+    # generatory DER na szynach odpływów nN, a samo `bus_refs` gubiło je (`der: []`).
     bus_owner: dict[str, str] = {}
     for s in subs:
         for r in s.get("bus_refs", []):
             bus_owner[r] = s["ref_id"]
+    for s in subs:
+        szyny = set(s.get("bus_refs", []))
+        pola_nn = {
+            spec.get("field_ref")
+            for spec in (s.get("meta") or {}).get("nn_field_specs") or []
+            if isinstance(spec, dict) and spec.get("field_ref")
+        }
+        for br in enm.get("branches", []):
+            pole = (br.get("meta") or {}).get(META_KLUCZ_GALAZ_ZRODLO_FIELD_REF)
+            if pole in pola_nn and br.get("from_bus_ref") in szyny and br.get("to_bus_ref"):
+                bus_owner.setdefault(br["to_bus_ref"], s["ref_id"])
 
     # Undirected bus adjacency from cable/line/switch branches (structure ⇒ all, any status).
     adj: dict[str, list[str]] = {}

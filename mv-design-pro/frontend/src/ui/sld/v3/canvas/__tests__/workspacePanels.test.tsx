@@ -340,7 +340,8 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     expect(panel).toBeInTheDocument();
     const scene = buildSceneV3(enm, 2);
     const presentIds = new Set(scene.symbols.map((s) => s.symbolId));
-    // Fixtura `sldSubstrate52s` niesie 20 rekordów `Load` — agregat 0,4 kV
+    // Fixtura `sldSubstrate52s` niesie rekordy `Load` (126 — magazyn modelu dokłada
+    // odbiór katalogowy każdemu odpływowi nN) — agregat 0,4 kV
     // jest naprawdę na scenie, więc panel MUSI go objaśnić (zero fabrykacji
     // działa w OBIE strony: nie pokazuje NIEobecnych, ale też nie gubi
     // OBECNYCH).
@@ -349,7 +350,9 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     // Każdy wpis symbolu w panelu odpowiada symbolowi REALNIE obecnemu na scenie.
     for (const item of panel.querySelectorAll('[data-testid^="sld-v3-legend-panel-item-"]')) {
       const id = item.getAttribute('data-testid')!.replace('sld-v3-legend-panel-item-', '');
-      if (id === 'cable' || id === 'openTerminal' || id === 'sn-neutral-earthing') continue;
+      // Wpisy LINII (nie symboli): kabel, koniec otwarty, znak powiązania (karta
+      // SLD-SUBSTRAT — rezerwa pierścieniowa substratu) i nota o punkcie neutralnym.
+      if (id === 'cable' || id === 'openTerminal' || id === 'tieMarker' || id === 'sn-neutral-earthing') continue;
       expect(presentIds.has(id as never)).toBe(true);
     }
   });

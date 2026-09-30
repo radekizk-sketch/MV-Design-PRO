@@ -18,6 +18,7 @@ from enm.migrations.nn_field_specs_promocja import (
     META_KLUCZ_GALAZ_ROLA_POLA,
     META_KLUCZ_GALAZ_ZRODLO_FIELD_REF,
     META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA,
+    META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA,
     META_KLUCZ_STACJA_PROMOWANA,
     migruj,
     wymaga_migracji,
@@ -415,3 +416,124 @@ def test_po_promocji_ct_przylacza_sie_do_szyny_odplywu() -> None:
     assert len(pomiary) == 1
     # Sedno klasy: pomiar NA szynie odpływu (za aparatem), nie na szynie stacji.
     assert pomiary[0]["bus_ref"] == szyna_odplywu
+
+
+# ---------------------------------------------------------------------------
+# Karta SLD-SUBSTRAT (kontynuacja): migracja wiąże aparat TĄ SAMĄ operacją co
+# akcja naprawcza projektanta (`assign_catalog_to_element`). Iloczyn cech:
+# klucz wiązania we wpisie {catalog_binding, catalog_bindings} × stan pozycji
+# {istniejąca, nieistniejąca, wiązanie nie-aparatu (źródło przekształtnikowe)}.
+# ---------------------------------------------------------------------------
+
+_POLA_WIAZANIA = (
+    "catalog_ref",
+    "catalog_namespace",
+    "source_mode",
+    "parameter_source",
+    "materialized_params",
+)
+
+
+def _model_z_wiazaniem(klucz: str, wiazanie: dict[str, Any]) -> EnergyNetworkModel:
+    stary = _stary_model()
+    stary.substations[0].meta["nn_field_specs"][0]["meta"][klucz] = wiazanie
+    return stary
+
+
+@pytest.mark.parametrize("klucz", ["catalog_binding", "catalog_bindings"])
+def test_migracja_wiaze_tak_samo_jak_akcja_naprawcza(klucz: str) -> None:
+    zmigrowany, _ = migruj(
+        _model_z_wiazaniem(
+            klucz, {"catalog_item_id": REF_APARAT_NN, "catalog_item_version": "2024.1"}
+        )
+    )
+    z_migracji = zmigrowany.branches[0].model_dump(mode="json")
+
+    bez_wiazania, _ = migruj(_stary_model())
+    naprawa = execute_domain_operation(
+        enm_dict=bez_wiazania.model_dump(mode="json"),
+        op_name="assign_catalog_to_element",
+        payload={
+            "element_ref": bez_wiazania.branches[0].ref_id,
+            "catalog_binding": {
+                "catalog_namespace": "APARAT_NN",
+                "catalog_item_id": REF_APARAT_NN,
+                "catalog_item_version": "2024.1",
+            },
+        },
+    )
+    assert not naprawa.get("error"), naprawa
+    z_naprawy = next(
+        b for b in naprawa["snapshot"]["branches"] if b["ref_id"] == z_migracji["ref_id"]
+    )
+    for pole in _POLA_WIAZANIA:
+        assert z_migracji[pole] == z_naprawy[pole], pole
+    assert z_migracji["meta"] == z_naprawy["meta"]
+    assert META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA not in z_migracji["meta"]
+
+
+@pytest.mark.parametrize("klucz", ["catalog_binding", "catalog_bindings"])
+def test_odmowa_wiazania_zostawia_nazwany_brak(klucz: str) -> None:
+    zmigrowany, _ = migruj(_model_z_wiazaniem(klucz, {"catalog_item_id": "nieistnieje"}))
+    aparat = zmigrowany.branches[0]
+    assert aparat.catalog_ref is None
+    assert aparat.meta[META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA] is True
+    assert aparat.meta[META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA]
+
+
+def test_wiazanie_zrodla_przeksztaltnikowego_nie_jest_wiazaniem_aparatu() -> None:
+    zmigrowany, _ = migruj(
+        _model_z_wiazaniem(
+            "catalog_bindings",
+            {"source_converter": {"catalog_item_id": "conv-pv-nn-0p5mw-0p4kv"}},
+        )
+    )
+    aparat = zmigrowany.branches[0]
+    assert aparat.catalog_ref is None
+    assert aparat.meta[META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA] is True
+    assert META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA not in aparat.meta
+
+
+def test_akcja_naprawcza_zdejmuje_znacznik_braku_wiazania() -> None:
+    zmigrowany, _ = migruj(_stary_model())
+    wynik = execute_domain_operation(
+        enm_dict=zmigrowany.model_dump(mode="json"),
+        op_name="assign_catalog_to_element",
+        payload={
+            "element_ref": zmigrowany.branches[0].ref_id,
+            "catalog_binding": {
+                "catalog_namespace": "APARAT_NN",
+                "catalog_item_id": REF_APARAT_NN,
+                "catalog_item_version": "2024.1",
+            },
+        },
+    )
+    aparat = next(
+        b for b in wynik["snapshot"]["branches"] if b["ref_id"] == zmigrowany.branches[0].ref_id
+    )
+    assert aparat["catalog_ref"] == REF_APARAT_NN
+    assert META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA not in aparat["meta"]
+    kody = {
+        i.code
+        for i in ENMValidator()
+        .validate(EnergyNetworkModel.model_validate(wynik["snapshot"]))
+        .issues
+    }
+    assert "W061" not in kody and "E061" not in kody
+
+
+def test_w061_nazywa_pole_i_stacje_a_akcja_wskazuje_aparat_i_pole() -> None:
+    zmigrowany, _ = migruj(_stary_model())
+    aparat = zmigrowany.branches[0]
+    w061 = [i for i in ENMValidator().validate(zmigrowany).issues if i.code == "W061"]
+    assert len(w061) == 1
+    assert "„Odpływ 1”" in w061[0].message_pl and "„ST-1”" in w061[0].message_pl
+    assert w061[0].element_refs == [aparat.ref_id]
+    assert w061[0].fix_action is not None
+    assert w061[0].fix_action.action_type == "SELECT_CATALOG"
+    assert w061[0].fix_action.element_ref == aparat.ref_id
+    assert w061[0].fix_action.payload_hint == {
+        "required": "catalog_ref",
+        "catalog_namespace": "APARAT_NN",
+        "field_ref": "nn/legacy/outgoing-1",
+    }

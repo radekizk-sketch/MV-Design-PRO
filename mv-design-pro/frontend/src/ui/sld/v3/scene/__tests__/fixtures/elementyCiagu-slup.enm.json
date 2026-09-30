@@ -1,0 +1,4466 @@
+{
+  "enm": {
+    "bays": [],
+    "branch_points": [
+      {
+        "branch_occupied": {
+          "BRANCH": "seg/d1be490760e793d146d7501c4718af7e/branch_segment"
+        },
+        "branch_point_type": "branch_pole",
+        "bus_ref": "bp/0727ae9043987fc654b1b72b70869306/bus",
+        "catalog_namespace": "mv_branch_points",
+        "catalog_ref": "SLUP-ODG-12",
+        "catalog_version": null,
+        "completeness_status": "KOMPLETNY",
+        "id": "797a574f-89a9-54bf-b504-45db31bcd985",
+        "materialized_params": {
+          "apparatus_specs": [
+            {
+              "apparatus_role": "BRANCH_SWITCH",
+              "device_kind": "ROZLACZNIK",
+              "port_id": "BRANCH",
+              "rated_current_a": 630.0
+            }
+          ],
+          "branch_ports_count": 1,
+          "catalog_item_id": "SLUP-ODG-12",
+          "catalog_namespace": "mv_branch_points",
+          "catalog_status": "REFERENCYJNY_V1",
+          "contract_version": "2.0",
+          "has_switchgear": false,
+          "has_transformer": false,
+          "kind": "BRANCH_POLE",
+          "manufacturer": "MV-DESIGN-PRO",
+          "medium": "LINE_OVERHEAD",
+          "object_role": "OVERHEAD_BRANCH_POLE",
+          "route_ports": [
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "MAIN_IN",
+              "role": "ciag_wejscie"
+            },
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "MAIN_OUT",
+              "role": "ciag_wyjscie"
+            },
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "BRANCH",
+              "role": "odgalezienie"
+            }
+          ],
+          "series": "Słup rozgałęźny SN 12/20 kV",
+          "source_reference": "Matryca obiektów pośrednich SN MV-DESIGN-PRO / katalog branch point",
+          "standard_topology": "OVERHEAD_LINE_POLE_WITH_BRANCH_SWITCH",
+          "switch_device_kind": "ROZLACZNIK",
+          "switch_rated_current_a": 630.0,
+          "topology_role": "BRANCH_POINT",
+          "verification_note": "Referencyjny słup odgałęźny z rozłącznikiem dla sieci napowietrznej SN.",
+          "verification_status": "CZESCIOWO_ZWERYFIKOWANY"
+        },
+        "meta": {},
+        "name": "Słup rozgałęźny za GPZ",
+        "parent_segment_id": "seg/a40f7d9d113bd9b949e3827d322d116d/segment",
+        "ports": {
+          "BRANCH": [
+            "bp/0727ae9043987fc654b1b72b70869306/branch_bus_1"
+          ],
+          "MAIN_IN": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+          "MAIN_OUT": "bus/a40f7d9d113bd9b949e3827d322d116d/downstream"
+        },
+        "ref_id": "bp/0727ae9043987fc654b1b72b70869306/branch_pole",
+        "runtime_inputs": {
+          "apparatus_specs": [
+            {
+              "apparatus_role": "BRANCH_SWITCH",
+              "device_kind": "ROZLACZNIK",
+              "port_id": "BRANCH",
+              "rated_current_a": 630.0
+            }
+          ],
+          "branch_ports_count": 1,
+          "endpoint_mode": null,
+          "has_transformer": false,
+          "insert_at": {
+            "mode": "RATIO",
+            "value": 0.5
+          },
+          "main_segment_refs": [
+            "seg/a40f7d9d113bd9b949e3827d322d116d/segment_L_branch_pole",
+            "seg/a40f7d9d113bd9b949e3827d322d116d/segment_R_branch_pole"
+          ],
+          "name": "Słup rozgałęźny za GPZ",
+          "operation_semantics": "insert_point_in_run",
+          "route_ports": [
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "MAIN_IN",
+              "role": "ciag_wejscie"
+            },
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "MAIN_OUT",
+              "role": "ciag_wyjscie"
+            },
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "BRANCH",
+              "role": "odgalezienie"
+            }
+          ],
+          "source_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
+          "source_segment_id": "seg/a40f7d9d113bd9b949e3827d322d116d/segment",
+          "switch_state": "closed",
+          "switchgear_field_specs": null
+        },
+        "source_mode": "KATALOG",
+        "switch_state": "closed",
+        "tags": []
+      },
+      {
+        "branch_occupied": {
+          "BRANCH": "seg/63b2fac0113c73d57bdb8781f1125704/branch_segment"
+        },
+        "branch_point_type": "branch_pole",
+        "bus_ref": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/bus",
+        "catalog_namespace": "mv_branch_points",
+        "catalog_ref": "SLUP-ODG-12",
+        "catalog_version": null,
+        "completeness_status": "KOMPLETNY",
+        "id": "ce3bb082-3235-53ba-bfa5-3dfd60af50c6",
+        "materialized_params": {
+          "apparatus_specs": [
+            {
+              "apparatus_role": "BRANCH_SWITCH",
+              "device_kind": "ROZLACZNIK",
+              "port_id": "BRANCH",
+              "rated_current_a": 630.0
+            }
+          ],
+          "branch_ports_count": 1,
+          "catalog_item_id": "SLUP-ODG-12",
+          "catalog_namespace": "mv_branch_points",
+          "catalog_status": "REFERENCYJNY_V1",
+          "contract_version": "2.0",
+          "has_switchgear": false,
+          "has_transformer": false,
+          "kind": "BRANCH_POLE",
+          "manufacturer": "MV-DESIGN-PRO",
+          "medium": "LINE_OVERHEAD",
+          "object_role": "OVERHEAD_BRANCH_POLE",
+          "route_ports": [
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "MAIN_IN",
+              "role": "ciag_wejscie"
+            },
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "MAIN_OUT",
+              "role": "ciag_wyjscie"
+            },
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "BRANCH",
+              "role": "odgalezienie"
+            }
+          ],
+          "series": "Słup rozgałęźny SN 12/20 kV",
+          "source_reference": "Matryca obiektów pośrednich SN MV-DESIGN-PRO / katalog branch point",
+          "standard_topology": "OVERHEAD_LINE_POLE_WITH_BRANCH_SWITCH",
+          "switch_device_kind": "ROZLACZNIK",
+          "switch_rated_current_a": 630.0,
+          "topology_role": "BRANCH_POINT",
+          "verification_note": "Referencyjny słup odgałęźny z rozłącznikiem dla sieci napowietrznej SN.",
+          "verification_status": "CZESCIOWO_ZWERYFIKOWANY"
+        },
+        "meta": {},
+        "name": "Słup rozgałęźny między stacjami",
+        "parent_segment_id": "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment",
+        "ports": {
+          "BRANCH": [
+            "bp/d4b4ae7871bd138cd3772036ecc5eb3e/branch_bus_1"
+          ],
+          "MAIN_IN": "bus/e584c00c109354119ca46e2f9e8a6ca2/downstream",
+          "MAIN_OUT": "bus/0c0660d8b3d1adade718c1b5a9a8b2c4/downstream"
+        },
+        "ref_id": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/branch_pole",
+        "runtime_inputs": {
+          "apparatus_specs": [
+            {
+              "apparatus_role": "BRANCH_SWITCH",
+              "device_kind": "ROZLACZNIK",
+              "port_id": "BRANCH",
+              "rated_current_a": 630.0
+            }
+          ],
+          "branch_ports_count": 1,
+          "endpoint_mode": null,
+          "has_transformer": false,
+          "insert_at": {
+            "mode": "RATIO",
+            "value": 0.5
+          },
+          "main_segment_refs": [
+            "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment_L_branch_pole",
+            "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment_R_branch_pole"
+          ],
+          "name": "Słup rozgałęźny między stacjami",
+          "operation_semantics": "insert_point_in_run",
+          "route_ports": [
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "MAIN_IN",
+              "role": "ciag_wejscie"
+            },
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "MAIN_OUT",
+              "role": "ciag_wyjscie"
+            },
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "BRANCH",
+              "role": "odgalezienie"
+            }
+          ],
+          "source_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
+          "source_segment_id": "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment",
+          "switch_state": "closed",
+          "switchgear_field_specs": null
+        },
+        "source_mode": "KATALOG",
+        "switch_state": "closed",
+        "tags": []
+      },
+      {
+        "branch_occupied": {
+          "BRANCH": "seg/40937873034683b7a05c480c83b430fe/branch_segment"
+        },
+        "branch_point_type": "branch_pole",
+        "bus_ref": "bp/a48a94cd5aad8165f085ec3ae430351d/bus",
+        "catalog_namespace": "mv_branch_points",
+        "catalog_ref": "SLUP-ODG-12",
+        "catalog_version": null,
+        "completeness_status": "KOMPLETNY",
+        "id": "ee3e4acf-5e60-5730-800a-8db5bea6ce14",
+        "materialized_params": {
+          "apparatus_specs": [
+            {
+              "apparatus_role": "BRANCH_SWITCH",
+              "device_kind": "ROZLACZNIK",
+              "port_id": "BRANCH",
+              "rated_current_a": 630.0
+            }
+          ],
+          "branch_ports_count": 1,
+          "catalog_item_id": "SLUP-ODG-12",
+          "catalog_namespace": "mv_branch_points",
+          "catalog_status": "REFERENCYJNY_V1",
+          "contract_version": "2.0",
+          "has_switchgear": false,
+          "has_transformer": false,
+          "kind": "BRANCH_POLE",
+          "manufacturer": "MV-DESIGN-PRO",
+          "medium": "LINE_OVERHEAD",
+          "object_role": "OVERHEAD_BRANCH_POLE",
+          "route_ports": [
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "MAIN_IN",
+              "role": "ciag_wejscie"
+            },
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "MAIN_OUT",
+              "role": "ciag_wyjscie"
+            },
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "BRANCH",
+              "role": "odgalezienie"
+            }
+          ],
+          "series": "Słup rozgałęźny SN 12/20 kV",
+          "source_reference": "Matryca obiektów pośrednich SN MV-DESIGN-PRO / katalog branch point",
+          "standard_topology": "OVERHEAD_LINE_POLE_WITH_BRANCH_SWITCH",
+          "switch_device_kind": "ROZLACZNIK",
+          "switch_rated_current_a": 630.0,
+          "topology_role": "BRANCH_POINT",
+          "verification_note": "Referencyjny słup odgałęźny z rozłącznikiem dla sieci napowietrznej SN.",
+          "verification_status": "CZESCIOWO_ZWERYFIKOWANY"
+        },
+        "meta": {},
+        "name": "Słup rozgałęźny za ostatnią stacją",
+        "parent_segment_id": "seg/56308bdf19b2851578b9439b1ef591bc/segment",
+        "ports": {
+          "BRANCH": [
+            "bp/a48a94cd5aad8165f085ec3ae430351d/branch_bus_1"
+          ],
+          "MAIN_IN": "bus/cc38149498c267ebef0dd68d0c770271/downstream",
+          "MAIN_OUT": "bus/56308bdf19b2851578b9439b1ef591bc/downstream"
+        },
+        "ref_id": "bp/a48a94cd5aad8165f085ec3ae430351d/branch_pole",
+        "runtime_inputs": {
+          "apparatus_specs": [
+            {
+              "apparatus_role": "BRANCH_SWITCH",
+              "device_kind": "ROZLACZNIK",
+              "port_id": "BRANCH",
+              "rated_current_a": 630.0
+            }
+          ],
+          "branch_ports_count": 1,
+          "endpoint_mode": null,
+          "has_transformer": false,
+          "insert_at": {
+            "mode": "RATIO",
+            "value": 0.5
+          },
+          "main_segment_refs": [
+            "seg/56308bdf19b2851578b9439b1ef591bc/segment_L_branch_pole",
+            "seg/56308bdf19b2851578b9439b1ef591bc/segment_R_branch_pole"
+          ],
+          "name": "Słup rozgałęźny za ostatnią stacją",
+          "operation_semantics": "insert_point_in_run",
+          "route_ports": [
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "MAIN_IN",
+              "role": "ciag_wejscie"
+            },
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "MAIN_OUT",
+              "role": "ciag_wyjscie"
+            },
+            {
+              "medium": "LINE_OVERHEAD",
+              "port_id": "BRANCH",
+              "role": "odgalezienie"
+            }
+          ],
+          "source_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
+          "source_segment_id": "seg/56308bdf19b2851578b9439b1ef591bc/segment",
+          "switch_state": "closed",
+          "switchgear_field_specs": null
+        },
+        "source_mode": "KATALOG",
+        "switch_state": "closed",
+        "tags": []
+      }
+    ],
+    "branches": [
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "id": "6df811a8-91f3-50e1-ae52-8c7da68c570a",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.15,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1",
+          "origin_apparatus_kind": "cable_head",
+          "origin_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+          "origin_port_role": "OUTGOING_HEAD"
+        },
+        "name": "Odcinek 0 - do punktu rozgałęzienia",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/a40f7d9d113bd9b949e3827d322d116d/segment_L_branch_pole",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "bp/0727ae9043987fc654b1b72b70869306/bus",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "bp/0727ae9043987fc654b1b72b70869306/bus",
+        "id": "a0e758c2-f103-5c44-adef-6b10f2442553",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.15,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1",
+          "origin_apparatus_kind": "cable_head",
+          "origin_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+          "origin_port_role": "OUTGOING_HEAD"
+        },
+        "name": "Odcinek 0 - za punktem rozgałęzienia",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/a40f7d9d113bd9b949e3827d322d116d/segment_R_branch_pole",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "bus/a40f7d9d113bd9b949e3827d322d116d/downstream",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "bp/0727ae9043987fc654b1b72b70869306/bus",
+        "id": "c855b5b8-b45c-568d-bbab-f37abe1a0b09",
+        "materialized_params": null,
+        "meta": {
+          "branch_point_ref": "bp/0727ae9043987fc654b1b72b70869306/branch_pole",
+          "port_id": "BRANCH",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "visual_role": "BRANCH_POINT_INTERNAL_SWITCH"
+        },
+        "name": "Łącznik portu odgałęźnego 1",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": 0.0,
+        "ref_id": "bp/0727ae9043987fc654b1b72b70869306/branch_connector_1",
+        "source_mode": null,
+        "status": "closed",
+        "tags": [
+          "branch_point_internal_connector"
+        ],
+        "to_bus_ref": "bp/0727ae9043987fc654b1b72b70869306/branch_bus_1",
+        "type": "switch",
+        "x_ohm": 0.0
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "bp/0727ae9043987fc654b1b72b70869306/branch_bus_1",
+        "id": "21692a56-11e7-5cf9-8431-f1358a31a185",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.075,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odgałęzienie (1)",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/d1be490760e793d146d7501c4718af7e/branch_segment_L",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_bus",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_bus",
+        "id": "02635e55-208b-56fc-a03e-7997814ab715",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.075,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odgałęzienie (2)",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/d1be490760e793d146d7501c4718af7e/branch_segment_R",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "bus/d1be490760e793d146d7501c4718af7e/branch_end",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_bus",
+        "id": "b43c2310-f5c5-5c3f-b378-f92eff61742b",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "IN",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field/000",
+          "field_role": "LINIA_IN",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/48c4f82503a67d50f018c843c0bf9207/station"
+        },
+        "name": "Wyłącznik pola SN 1",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_breaker/000",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_terminal/000",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_bus",
+        "id": "d97f3407-886a-524a-9e3e-e7a90a56e6a7",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "OUT",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field/001",
+          "field_role": "LINIA_OUT",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/48c4f82503a67d50f018c843c0bf9207/station"
+        },
+        "name": "Wyłącznik pola SN 2",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_breaker/001",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_terminal/001",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_bus",
+        "id": "605f2e51-0296-5cb8-9c1f-70739415fa1e",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "TR",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field/002",
+          "field_role": "TRANSFORMATOROWE",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/48c4f82503a67d50f018c843c0bf9207/station"
+        },
+        "name": "Wyłącznik pola SN 3",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_breaker/002",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_terminal/002",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/nn_bus",
+        "id": "4571c6e2-b734-547d-b4b9-1364ebcdf63a",
+        "materialized_params": null,
+        "meta": {
+          "nn_field_migrowana_rola": "IN",
+          "nn_field_migrowany_z": "stn/48c4f82503a67d50f018c843c0bf9207/nn_main_breaker",
+          "nn_promocja_bez_wiazania_katalogowej": true
+        },
+        "name": "Wyłącznik główny nN",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "nn/84219547ce2de796803cb55423485773/feeder_device",
+        "source_mode": "MIGRACJA",
+        "status": "closed",
+        "tags": [],
+        "to_bus_ref": "nn/84219547ce2de796803cb55423485773/feeder_bus",
+        "type": "breaker",
+        "x_ohm": null
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/nn_bus",
+        "id": "eb9a5f56-fc30-5200-a546-92c4697818c1",
+        "materialized_params": null,
+        "meta": {
+          "nn_field_migrowana_rola": "FEEDER",
+          "nn_field_migrowany_z": "stn/48c4f82503a67d50f018c843c0bf9207/nn_feeder/000",
+          "nn_promocja_bez_wiazania_katalogowej": true
+        },
+        "name": "Odpływ nN 1",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "nn/643a4c4cd59c8dc82147e051a8a2eda0/feeder_device",
+        "source_mode": "MIGRACJA",
+        "status": "closed",
+        "tags": [],
+        "to_bus_ref": "nn/643a4c4cd59c8dc82147e051a8a2eda0/feeder_bus",
+        "type": "breaker",
+        "x_ohm": null
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "bus/e584c00c109354119ca46e2f9e8a6ca2/downstream",
+        "id": "35675918-2870-59ec-97fd-72d6b667d4d8",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.15,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odcinek 2 - do punktu rozgałęzienia",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment_L_branch_pole",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/bus",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/bus",
+        "id": "59c5455d-94dd-5e9c-9279-390cdadd0c76",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.15,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odcinek 2 - za punktem rozgałęzienia",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment_R_branch_pole",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "bus/0c0660d8b3d1adade718c1b5a9a8b2c4/downstream",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/bus",
+        "id": "c880b37b-180f-525d-a541-25ae576125df",
+        "materialized_params": null,
+        "meta": {
+          "branch_point_ref": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/branch_pole",
+          "port_id": "BRANCH",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "visual_role": "BRANCH_POINT_INTERNAL_SWITCH"
+        },
+        "name": "Łącznik portu odgałęźnego 1",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": 0.0,
+        "ref_id": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/branch_connector_1",
+        "source_mode": null,
+        "status": "closed",
+        "tags": [
+          "branch_point_internal_connector"
+        ],
+        "to_bus_ref": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/branch_bus_1",
+        "type": "switch",
+        "x_ohm": 0.0
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/branch_bus_1",
+        "id": "1617422c-b160-5805-8779-21db8be2d15a",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.075,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odgałęzienie (1)",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/63b2fac0113c73d57bdb8781f1125704/branch_segment_L",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_bus",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_bus",
+        "id": "b0ff8e6f-058d-55a3-9d18-f7f80676930b",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.075,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odgałęzienie (2)",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/63b2fac0113c73d57bdb8781f1125704/branch_segment_R",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "bus/63b2fac0113c73d57bdb8781f1125704/branch_end",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_bus",
+        "id": "84299169-9bef-54f4-a9e6-31e0454eceec",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "IN",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field/000",
+          "field_role": "LINIA_IN",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/station"
+        },
+        "name": "Wyłącznik pola SN 1",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_breaker/000",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_terminal/000",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_bus",
+        "id": "af033830-fa11-5488-8086-dcbe64ff77ce",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "OUT",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field/001",
+          "field_role": "LINIA_OUT",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/station"
+        },
+        "name": "Wyłącznik pola SN 2",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_breaker/001",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_terminal/001",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_bus",
+        "id": "f4c90f3f-e624-58aa-b81a-db768d19f467",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "TR",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field/002",
+          "field_role": "TRANSFORMATOROWE",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/station"
+        },
+        "name": "Wyłącznik pola SN 3",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_breaker/002",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_terminal/002",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_bus",
+        "id": "979988ef-f552-5744-871a-3730d0e2595c",
+        "materialized_params": null,
+        "meta": {
+          "nn_field_migrowana_rola": "IN",
+          "nn_field_migrowany_z": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_main_breaker",
+          "nn_promocja_bez_wiazania_katalogowej": true
+        },
+        "name": "Wyłącznik główny nN",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "nn/2d1eb6cf55f762dcc5f34c342fed4c67/feeder_device",
+        "source_mode": "MIGRACJA",
+        "status": "closed",
+        "tags": [],
+        "to_bus_ref": "nn/2d1eb6cf55f762dcc5f34c342fed4c67/feeder_bus",
+        "type": "breaker",
+        "x_ohm": null
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_bus",
+        "id": "def41db2-2727-5be8-a6e0-b48d6a30fdb1",
+        "materialized_params": null,
+        "meta": {
+          "nn_field_migrowana_rola": "FEEDER",
+          "nn_field_migrowany_z": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_feeder/000",
+          "nn_promocja_bez_wiazania_katalogowej": true
+        },
+        "name": "Odpływ nN 1",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "nn/2ac016ec94a8d80eec7af001a742178d/feeder_device",
+        "source_mode": "MIGRACJA",
+        "status": "closed",
+        "tags": [],
+        "to_bus_ref": "nn/2ac016ec94a8d80eec7af001a742178d/feeder_bus",
+        "type": "breaker",
+        "x_ohm": null
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "bus/cc38149498c267ebef0dd68d0c770271/downstream",
+        "id": "528cf293-155f-5c71-beb0-549102b3dafa",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.15,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odcinek 4 - do punktu rozgałęzienia",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/56308bdf19b2851578b9439b1ef591bc/segment_L_branch_pole",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "bp/a48a94cd5aad8165f085ec3ae430351d/bus",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "bp/a48a94cd5aad8165f085ec3ae430351d/bus",
+        "id": "7a5f7658-f39c-5bcf-bdb9-00f17a7dbd9a",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.15,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odcinek 4 - za punktem rozgałęzienia",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/56308bdf19b2851578b9439b1ef591bc/segment_R_branch_pole",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "bus/56308bdf19b2851578b9439b1ef591bc/downstream",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "bp/a48a94cd5aad8165f085ec3ae430351d/bus",
+        "id": "d638f7ab-62cf-5093-b69f-5b9298ea7d69",
+        "materialized_params": null,
+        "meta": {
+          "branch_point_ref": "bp/a48a94cd5aad8165f085ec3ae430351d/branch_pole",
+          "port_id": "BRANCH",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "visual_role": "BRANCH_POINT_INTERNAL_SWITCH"
+        },
+        "name": "Łącznik portu odgałęźnego 1",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": 0.0,
+        "ref_id": "bp/a48a94cd5aad8165f085ec3ae430351d/branch_connector_1",
+        "source_mode": null,
+        "status": "closed",
+        "tags": [
+          "branch_point_internal_connector"
+        ],
+        "to_bus_ref": "bp/a48a94cd5aad8165f085ec3ae430351d/branch_bus_1",
+        "type": "switch",
+        "x_ohm": 0.0
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "bp/a48a94cd5aad8165f085ec3ae430351d/branch_bus_1",
+        "id": "ee5e6285-d1ef-58b7-8783-94d2b4de6d74",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.075,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odgałęzienie (1)",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/40937873034683b7a05c480c83b430fe/branch_segment_L",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_bus",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_bus",
+        "id": "8d7cad20-22c8-5982-b7b0-a56c328ac3e9",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.075,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odgałęzienie (2)",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/40937873034683b7a05c480c83b430fe/branch_segment_R",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "bus/40937873034683b7a05c480c83b430fe/branch_end",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_bus",
+        "id": "56097451-0a07-550c-93f7-12dbde26cdf9",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "IN",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field/000",
+          "field_role": "LINIA_IN",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/station"
+        },
+        "name": "Wyłącznik pola SN 1",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_breaker/000",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_terminal/000",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_bus",
+        "id": "25f4886d-cc06-5191-890b-488d9dbd370d",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "OUT",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field/001",
+          "field_role": "LINIA_OUT",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/station"
+        },
+        "name": "Wyłącznik pola SN 2",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_breaker/001",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_terminal/001",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_bus",
+        "id": "5a3afb58-21bd-5c33-8ff1-23a2fa5a035c",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "TR",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field/002",
+          "field_role": "TRANSFORMATOROWE",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/station"
+        },
+        "name": "Wyłącznik pola SN 3",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_breaker/002",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_terminal/002",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/nn_bus",
+        "id": "08c19e9d-7719-531a-9a02-13a2c64c15c1",
+        "materialized_params": null,
+        "meta": {
+          "nn_field_migrowana_rola": "IN",
+          "nn_field_migrowany_z": "stn/0341b394f49e895d18e1d9125a5c5d60/nn_main_breaker",
+          "nn_promocja_bez_wiazania_katalogowej": true
+        },
+        "name": "Wyłącznik główny nN",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "nn/9bd1c9c5c7180985fe81554a679837e9/feeder_device",
+        "source_mode": "MIGRACJA",
+        "status": "closed",
+        "tags": [],
+        "to_bus_ref": "nn/9bd1c9c5c7180985fe81554a679837e9/feeder_bus",
+        "type": "breaker",
+        "x_ohm": null
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/nn_bus",
+        "id": "b9b6c9f1-d1ab-5abf-8d57-6d28b57ae862",
+        "materialized_params": null,
+        "meta": {
+          "nn_field_migrowana_rola": "FEEDER",
+          "nn_field_migrowany_z": "stn/0341b394f49e895d18e1d9125a5c5d60/nn_feeder/000",
+          "nn_promocja_bez_wiazania_katalogowej": true
+        },
+        "name": "Odpływ nN 1",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "nn/6139c703696e3101feeb1a00d93a8335/feeder_device",
+        "source_mode": "MIGRACJA",
+        "status": "closed",
+        "tags": [],
+        "to_bus_ref": "nn/6139c703696e3101feeb1a00d93a8335/feeder_bus",
+        "type": "breaker",
+        "x_ohm": null
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "bus/a40f7d9d113bd9b949e3827d322d116d/downstream",
+        "id": "79800706-da44-5c07-a2d7-50f0a7d3ca6f",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.15,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odcinek 1 (1)",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/e584c00c109354119ca46e2f9e8a6ca2/segment_L",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_bus",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_bus",
+        "id": "049a56cb-1391-5013-bbed-b327479baa70",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.15,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odcinek 1 (2)",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/e584c00c109354119ca46e2f9e8a6ca2/segment_R",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "bus/e584c00c109354119ca46e2f9e8a6ca2/downstream",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_bus",
+        "id": "64a7de4c-0f92-59b8-b8ac-9df386fc1132",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "IN",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field/000",
+          "field_role": "LINIA_IN",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/station"
+        },
+        "name": "Wyłącznik pola SN 1",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_breaker/000",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_terminal/000",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_bus",
+        "id": "7ab034ff-adc8-5f42-856b-52bb4dad321b",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "OUT",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field/001",
+          "field_role": "LINIA_OUT",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/station"
+        },
+        "name": "Wyłącznik pola SN 2",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_breaker/001",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_terminal/001",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_bus",
+        "id": "66ede94a-0314-5193-8885-c45d855087d7",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "TR",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field/002",
+          "field_role": "TRANSFORMATOROWE",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/station"
+        },
+        "name": "Wyłącznik pola SN 3",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_breaker/002",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_terminal/002",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/nn_bus",
+        "id": "1d249097-70b3-50bc-96ba-fde2911dc6a4",
+        "materialized_params": null,
+        "meta": {
+          "nn_field_migrowana_rola": "IN",
+          "nn_field_migrowany_z": "stn/ae976efc2b84fd08302c86cf0b68a817/nn_main_breaker",
+          "nn_promocja_bez_wiazania_katalogowej": true
+        },
+        "name": "Wyłącznik główny nN",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "nn/354163438100229dcf9bb5adb538b8d8/feeder_device",
+        "source_mode": "MIGRACJA",
+        "status": "closed",
+        "tags": [],
+        "to_bus_ref": "nn/354163438100229dcf9bb5adb538b8d8/feeder_bus",
+        "type": "breaker",
+        "x_ohm": null
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/nn_bus",
+        "id": "d40b6226-389f-5568-91e5-29d17caa4db6",
+        "materialized_params": null,
+        "meta": {
+          "nn_field_migrowana_rola": "FEEDER",
+          "nn_field_migrowany_z": "stn/ae976efc2b84fd08302c86cf0b68a817/nn_feeder/000",
+          "nn_promocja_bez_wiazania_katalogowej": true
+        },
+        "name": "Odpływ nN 1",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "nn/c1f6aa4c9fa3f15e78b3cc47d19c4c1a/feeder_device",
+        "source_mode": "MIGRACJA",
+        "status": "closed",
+        "tags": [],
+        "to_bus_ref": "nn/c1f6aa4c9fa3f15e78b3cc47d19c4c1a/feeder_bus",
+        "type": "breaker",
+        "x_ohm": null
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "bus/0c0660d8b3d1adade718c1b5a9a8b2c4/downstream",
+        "id": "0613ef1c-8fb6-5290-9609-ef1d66111ea4",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.15,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odcinek 3 (1)",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/cc38149498c267ebef0dd68d0c770271/segment_L",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_bus",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 2.9e-06,
+        "catalog_namespace": "LINIA_SN",
+        "catalog_ref": "line-base-al-st-70",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_bus",
+        "id": "75589904-a158-5086-8874-4719661da363",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "length_km": 0.15,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "b_us_per_km": 2.9,
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL_ST",
+          "cross_section_mm2": 70.0,
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 88.0,
+          "max_temperature_c": 70.0,
+          "r0_ohm_per_km": 1.224,
+          "r_ohm_per_km": 0.408,
+          "rated_current_a": 230.0,
+          "short_circuit_temperature_c": 200.0,
+          "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+          "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+          "trade_name": null,
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 1.065,
+          "x_ohm_per_km": 0.355
+        },
+        "meta": {
+          "catalog_item_version": "2024.1"
+        },
+        "name": "Odcinek 3 (2)",
+        "operating_temperature_c": 70.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/cc38149498c267ebef0dd68d0c770271/segment_R",
+        "short_circuit_temperature_c": 200.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "to_bus_ref": "bus/cc38149498c267ebef0dd68d0c770271/downstream",
+        "type": "line_overhead",
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_bus",
+        "id": "aa7a53e3-586b-57c1-91e5-506a714b8762",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "IN",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field/000",
+          "field_role": "LINIA_IN",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/34444a4aba5f0e0e55e125241b16d477/station"
+        },
+        "name": "Wyłącznik pola SN 1",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_breaker/000",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_terminal/000",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_bus",
+        "id": "1e20912a-06fe-58a3-aa37-8b7779f4da0d",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "OUT",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field/001",
+          "field_role": "LINIA_OUT",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/34444a4aba5f0e0e55e125241b16d477/station"
+        },
+        "name": "Wyłącznik pola SN 2",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_breaker/001",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_terminal/001",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_bus",
+        "id": "3d2e8236-c4a9-5fcd-943e-9c5b680547d6",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "TR",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field/002",
+          "field_role": "TRANSFORMATOROWE",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/34444a4aba5f0e0e55e125241b16d477/station"
+        },
+        "name": "Wyłącznik pola SN 3",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_breaker/002",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_terminal/002",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/nn_bus",
+        "id": "d96c8e3e-3989-59e5-a19b-b437e931d415",
+        "materialized_params": null,
+        "meta": {
+          "nn_field_migrowana_rola": "IN",
+          "nn_field_migrowany_z": "stn/34444a4aba5f0e0e55e125241b16d477/nn_main_breaker",
+          "nn_promocja_bez_wiazania_katalogowej": true
+        },
+        "name": "Wyłącznik główny nN",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "nn/485a1f015f42a55e691bc586bc08cf2d/feeder_device",
+        "source_mode": "MIGRACJA",
+        "status": "closed",
+        "tags": [],
+        "to_bus_ref": "nn/485a1f015f42a55e691bc586bc08cf2d/feeder_bus",
+        "type": "breaker",
+        "x_ohm": null
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/nn_bus",
+        "id": "ddfc5385-2bb9-54ec-89f1-9cc4e1726640",
+        "materialized_params": null,
+        "meta": {
+          "nn_field_migrowana_rola": "FEEDER",
+          "nn_field_migrowany_z": "stn/34444a4aba5f0e0e55e125241b16d477/nn_feeder/000",
+          "nn_promocja_bez_wiazania_katalogowej": true
+        },
+        "name": "Odpływ nN 1",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "nn/c6fbabd977ce73e35e47220b16ec14f7/feeder_device",
+        "source_mode": "MIGRACJA",
+        "status": "closed",
+        "tags": [],
+        "to_bus_ref": "nn/c6fbabd977ce73e35e47220b16ec14f7/feeder_bus",
+        "type": "breaker",
+        "x_ohm": null
+      }
+    ],
+    "buses": [
+      {
+        "frequency_hz": null,
+        "id": "b834b608-11e1-569f-9a17-3d392c8658db",
+        "meta": {
+          "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
+          "gpz_section_order": 0,
+          "gpz_substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation"
+        },
+        "name": "Szyna GPZ S1 15 kV",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": "GPZ"
+      },
+      {
+        "frequency_hz": null,
+        "id": "c7b17dae-26f6-5cdf-8c4c-7a04492ef450",
+        "meta": {
+          "gpz_substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+          "gpz_transformer_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
+          "render_on_sld": true,
+          "show_in_project_tree": false,
+          "visual_role": "GPZ_HV_BUS"
+        },
+        "name": "Szyna 110 kV TR1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
+        "tags": [
+          "gpz_hv_bus",
+          "helper_bus"
+        ],
+        "voltage_kv": 110.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "a8fe24c5-cd4e-5904-b266-7acf180b4752",
+        "meta": {
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "visual_role": "INLINE_TERMINAL"
+        },
+        "name": "Zacisk końcowy Odcinek 0",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bus/a40f7d9d113bd9b949e3827d322d116d/downstream",
+        "tags": [
+          "helper_bus",
+          "topology_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "04270326-9322-5973-b67a-cb6afeb824f8",
+        "meta": {
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "visual_role": "INLINE_TERMINAL"
+        },
+        "name": "Zacisk końcowy Odcinek 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bus/e584c00c109354119ca46e2f9e8a6ca2/downstream",
+        "tags": [
+          "helper_bus",
+          "topology_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "d370a23a-6cd1-543f-bbe7-91493cba9c6b",
+        "meta": {
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "visual_role": "INLINE_TERMINAL"
+        },
+        "name": "Zacisk końcowy Odcinek 2",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bus/0c0660d8b3d1adade718c1b5a9a8b2c4/downstream",
+        "tags": [
+          "helper_bus",
+          "topology_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "91a95607-a70c-51e1-b696-904541e9deac",
+        "meta": {
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "visual_role": "INLINE_TERMINAL"
+        },
+        "name": "Zacisk końcowy Odcinek 3",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bus/cc38149498c267ebef0dd68d0c770271/downstream",
+        "tags": [
+          "helper_bus",
+          "topology_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "3ecd58ad-5edf-5f10-8f36-0a5021ccfd27",
+        "meta": {
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "visual_role": "INLINE_TERMINAL"
+        },
+        "name": "Zacisk końcowy Odcinek 4",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bus/56308bdf19b2851578b9439b1ef591bc/downstream",
+        "tags": [
+          "helper_bus",
+          "topology_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "e5672444-63b3-566b-b353-0e45dafee42f",
+        "meta": {},
+        "name": "Słup rozgałęźny za GPZ",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bp/0727ae9043987fc654b1b72b70869306/bus",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "15080506-d6e0-5170-b017-95dacadbf910",
+        "meta": {},
+        "name": "Port odgałęźny 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bp/0727ae9043987fc654b1b72b70869306/branch_bus_1",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "f2ba3649-c98c-5164-b6f1-9d76b17870e2",
+        "meta": {
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "visual_role": "INLINE_TERMINAL"
+        },
+        "name": "Szyna odgałęzienia",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bus/d1be490760e793d146d7501c4718af7e/branch_end",
+        "tags": [
+          "helper_bus",
+          "topology_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "21855106-c531-5cfe-b283-678d8e4b37ed",
+        "meta": {},
+        "name": "Stacja klienta za GPZ",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/48c4f82503a67d50f018c843c0bf9207/sn_bus",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "fa3ec410-a204-5895-ae6d-b3d4427fcea4",
+        "meta": {
+          "field_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field/000",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/48c4f82503a67d50f018c843c0bf9207/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_terminal/000",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "3912b1d4-8a95-5ddf-ae5d-f948599674aa",
+        "meta": {
+          "field_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field/001",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/48c4f82503a67d50f018c843c0bf9207/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 2",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_terminal/001",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "2c6261c6-63dd-5011-9a7e-ead4dac5c069",
+        "meta": {
+          "field_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field/002",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/48c4f82503a67d50f018c843c0bf9207/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 3",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_terminal/002",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "d88b6009-db4c-58e7-833b-f2efa5b0acbf",
+        "meta": {},
+        "name": "Szyna nN stacji",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/48c4f82503a67d50f018c843c0bf9207/nn_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "51f079a2-d323-5aac-bf74-f7e6a345a76e",
+        "meta": {
+          "nn_field_migrowany_z": "stn/48c4f82503a67d50f018c843c0bf9207/nn_main_breaker",
+          "visual_role": "NN_FEEDER_BUS"
+        },
+        "name": "Wyłącznik główny nN",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "nn/84219547ce2de796803cb55423485773/feeder_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "f529b281-c6fe-58bd-b170-f91d5012ca68",
+        "meta": {
+          "nn_field_migrowany_z": "stn/48c4f82503a67d50f018c843c0bf9207/nn_feeder/000",
+          "visual_role": "NN_FEEDER_BUS"
+        },
+        "name": "Odpływ nN 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "nn/643a4c4cd59c8dc82147e051a8a2eda0/feeder_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "7ef8d011-fa28-50c9-ac9c-8f1ec866c1c6",
+        "meta": {},
+        "name": "Słup rozgałęźny między stacjami",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/bus",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "e991420e-e52f-5ee3-a67c-292f8a09599a",
+        "meta": {},
+        "name": "Port odgałęźny 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/branch_bus_1",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "de2a1839-907e-5a42-abcc-2ee5b22e6419",
+        "meta": {
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "visual_role": "INLINE_TERMINAL"
+        },
+        "name": "Szyna odgałęzienia",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bus/63b2fac0113c73d57bdb8781f1125704/branch_end",
+        "tags": [
+          "helper_bus",
+          "topology_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "29294824-4cd6-54c3-ac01-73468ddd1fe7",
+        "meta": {},
+        "name": "Stacja klienta między stacjami",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_bus",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "fece676b-536c-54d0-8d01-351048d0f487",
+        "meta": {
+          "field_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field/000",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_terminal/000",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "cf084481-be48-55e2-abd3-dfee48f3914d",
+        "meta": {
+          "field_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field/001",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 2",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_terminal/001",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "5f25b99a-d2e6-5779-9346-ecac751e20e7",
+        "meta": {
+          "field_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field/002",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 3",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_terminal/002",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "35ab51fc-e165-50fb-9c21-3b24f0fd542b",
+        "meta": {},
+        "name": "Szyna nN stacji",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "56064e1a-47e3-5735-a0e1-2b0422f621db",
+        "meta": {
+          "nn_field_migrowany_z": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_main_breaker",
+          "visual_role": "NN_FEEDER_BUS"
+        },
+        "name": "Wyłącznik główny nN",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "nn/2d1eb6cf55f762dcc5f34c342fed4c67/feeder_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "8967e137-039f-5a92-840f-02f56ef45754",
+        "meta": {
+          "nn_field_migrowany_z": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_feeder/000",
+          "visual_role": "NN_FEEDER_BUS"
+        },
+        "name": "Odpływ nN 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "nn/2ac016ec94a8d80eec7af001a742178d/feeder_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "1314c418-4a93-5f9f-b094-245f7dec1255",
+        "meta": {},
+        "name": "Słup rozgałęźny za ostatnią stacją",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bp/a48a94cd5aad8165f085ec3ae430351d/bus",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "406f5bfe-5d93-5fe6-8eaf-3d028a08be52",
+        "meta": {},
+        "name": "Port odgałęźny 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bp/a48a94cd5aad8165f085ec3ae430351d/branch_bus_1",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "8c1940ba-cb40-55cb-a162-57c80fe0317e",
+        "meta": {
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "visual_role": "INLINE_TERMINAL"
+        },
+        "name": "Szyna odgałęzienia",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bus/40937873034683b7a05c480c83b430fe/branch_end",
+        "tags": [
+          "helper_bus",
+          "topology_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "e9451658-0c57-5b53-8c0f-7daf45b25f1e",
+        "meta": {},
+        "name": "Stacja klienta za ostatnią stacją",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_bus",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "d10badd3-b397-537e-a4a4-15f945426c4c",
+        "meta": {
+          "field_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field/000",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_terminal/000",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "98293027-d3ab-5c0e-8073-e86c3a0edfca",
+        "meta": {
+          "field_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field/001",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 2",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_terminal/001",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "31d8c5e0-28db-5611-ba39-a26f1bae6a1d",
+        "meta": {
+          "field_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field/002",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 3",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_terminal/002",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "f2cfd2bc-0a79-5690-9741-093a1d10301d",
+        "meta": {},
+        "name": "Szyna nN stacji",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/0341b394f49e895d18e1d9125a5c5d60/nn_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "8c5382d8-bb51-5dcc-ae0a-9f4e5deb21e7",
+        "meta": {
+          "nn_field_migrowany_z": "stn/0341b394f49e895d18e1d9125a5c5d60/nn_main_breaker",
+          "visual_role": "NN_FEEDER_BUS"
+        },
+        "name": "Wyłącznik główny nN",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "nn/9bd1c9c5c7180985fe81554a679837e9/feeder_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "b02fe866-2905-5e76-b7fb-0e4f06cc4052",
+        "meta": {
+          "nn_field_migrowany_z": "stn/0341b394f49e895d18e1d9125a5c5d60/nn_feeder/000",
+          "visual_role": "NN_FEEDER_BUS"
+        },
+        "name": "Odpływ nN 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "nn/6139c703696e3101feeb1a00d93a8335/feeder_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "87fce685-4a18-5ad2-8904-14fb3005451f",
+        "meta": {},
+        "name": "Stacja S01",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_bus",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "ac6abde2-ffed-553f-b64f-cd2ed93c51d7",
+        "meta": {
+          "field_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field/000",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_terminal/000",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "76b8b54a-5be2-55f3-a87a-730432f206b9",
+        "meta": {
+          "field_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field/001",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 2",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_terminal/001",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "99a58ea8-0fcd-5fd1-91f5-70cd22b3a4c4",
+        "meta": {
+          "field_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field/002",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 3",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_terminal/002",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "9c8c857d-f2fa-5124-ba18-cc9b734d4171",
+        "meta": {},
+        "name": "Szyna nN stacji",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/ae976efc2b84fd08302c86cf0b68a817/nn_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "95c5af6d-1bc1-56f4-99f9-3dbc4bd40df4",
+        "meta": {
+          "nn_field_migrowany_z": "stn/ae976efc2b84fd08302c86cf0b68a817/nn_main_breaker",
+          "visual_role": "NN_FEEDER_BUS"
+        },
+        "name": "Wyłącznik główny nN",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "nn/354163438100229dcf9bb5adb538b8d8/feeder_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "e5cfbf72-d720-50a9-8cb0-be21e8b26d32",
+        "meta": {
+          "nn_field_migrowany_z": "stn/ae976efc2b84fd08302c86cf0b68a817/nn_feeder/000",
+          "visual_role": "NN_FEEDER_BUS"
+        },
+        "name": "Odpływ nN 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "nn/c1f6aa4c9fa3f15e78b3cc47d19c4c1a/feeder_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "6070fe8e-b507-5c95-bf85-152b99bf913a",
+        "meta": {},
+        "name": "Stacja S02",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/34444a4aba5f0e0e55e125241b16d477/sn_bus",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "a7ed39a9-afba-5b61-af78-418c5e49e73e",
+        "meta": {
+          "field_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field/000",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/34444a4aba5f0e0e55e125241b16d477/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_terminal/000",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "308d99a7-a0cd-5c6a-8281-277a02ab5fc8",
+        "meta": {
+          "field_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field/001",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/34444a4aba5f0e0e55e125241b16d477/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 2",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_terminal/001",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "6d120df6-b14e-5193-88f9-eab98103e3d0",
+        "meta": {
+          "field_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field/002",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/34444a4aba5f0e0e55e125241b16d477/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 3",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_terminal/002",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "4393dfc4-0582-5bb5-8937-22eae779e2e9",
+        "meta": {},
+        "name": "Szyna nN stacji",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/34444a4aba5f0e0e55e125241b16d477/nn_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "62c38de5-2089-5536-99f8-b1cdb6b13897",
+        "meta": {
+          "nn_field_migrowany_z": "stn/34444a4aba5f0e0e55e125241b16d477/nn_main_breaker",
+          "visual_role": "NN_FEEDER_BUS"
+        },
+        "name": "Wyłącznik główny nN",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "nn/485a1f015f42a55e691bc586bc08cf2d/feeder_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "ebfbf316-f583-5fc2-aa83-300e7c10c96d",
+        "meta": {
+          "nn_field_migrowany_z": "stn/34444a4aba5f0e0e55e125241b16d477/nn_feeder/000",
+          "visual_role": "NN_FEEDER_BUS"
+        },
+        "name": "Odpływ nN 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "nn/c6fbabd977ce73e35e47220b16ec14f7/feeder_bus",
+        "tags": [],
+        "voltage_kv": 0.4,
+        "zone": null
+      }
+    ],
+    "connection_nodes": [],
+    "corridors": [
+      {
+        "corridor_type": "radial",
+        "id": "cc476396-6e72-5e20-9ede-764f215ad46c",
+        "meta": {},
+        "name": "Magistrala 01",
+        "no_point_ref": null,
+        "ordered_segment_refs": [
+          "seg/a40f7d9d113bd9b949e3827d322d116d/segment_L_branch_pole",
+          "seg/a40f7d9d113bd9b949e3827d322d116d/segment_R_branch_pole",
+          "seg/e584c00c109354119ca46e2f9e8a6ca2/segment_L",
+          "seg/e584c00c109354119ca46e2f9e8a6ca2/segment_R",
+          "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment_L_branch_pole",
+          "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment_R_branch_pole",
+          "seg/cc38149498c267ebef0dd68d0c770271/segment_L",
+          "seg/cc38149498c267ebef0dd68d0c770271/segment_R",
+          "seg/56308bdf19b2851578b9439b1ef591bc/segment_L_branch_pole",
+          "seg/56308bdf19b2851578b9439b1ef591bc/segment_R_branch_pole"
+        ],
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
+        "tags": []
+      },
+      {
+        "corridor_type": "radial",
+        "id": "d4791469-43e9-51f2-a930-f489cb849a89",
+        "meta": {},
+        "name": "Odgałęzienie SN napowietrzne",
+        "no_point_ref": null,
+        "ordered_segment_refs": [
+          "seg/d1be490760e793d146d7501c4718af7e/branch_segment_L",
+          "seg/d1be490760e793d146d7501c4718af7e/branch_segment_R"
+        ],
+        "ref_id": "corridor/e5f3645ad680ac1cc46e706659ddf8e5/branch",
+        "tags": []
+      },
+      {
+        "corridor_type": "radial",
+        "id": "3bd22fd5-8fa3-5bff-a0b9-906b633c9643",
+        "meta": {},
+        "name": "Odgałęzienie SN napowietrzne",
+        "no_point_ref": null,
+        "ordered_segment_refs": [
+          "seg/63b2fac0113c73d57bdb8781f1125704/branch_segment_L",
+          "seg/63b2fac0113c73d57bdb8781f1125704/branch_segment_R"
+        ],
+        "ref_id": "corridor/d9f7de0289215d6532a55d3f6c7b1e75/branch",
+        "tags": []
+      },
+      {
+        "corridor_type": "radial",
+        "id": "73b654ad-4dc7-5ea9-9b6e-cf6b3d0f7fd6",
+        "meta": {},
+        "name": "Odgałęzienie SN napowietrzne",
+        "no_point_ref": null,
+        "ordered_segment_refs": [
+          "seg/40937873034683b7a05c480c83b430fe/branch_segment_L",
+          "seg/40937873034683b7a05c480c83b430fe/branch_segment_R"
+        ],
+        "ref_id": "corridor/3cb0065e046f57abd59bf5e0fef9ed61/branch",
+        "tags": []
+      }
+    ],
+    "generators": [],
+    "header": {
+      "connection_conditions": null,
+      "created_at": "2026-09-25T00:00:00Z",
+      "defaults": {
+        "frequency_hz": 50.0,
+        "sn_nominal_kv": null,
+        "unit_system": "SI"
+      },
+      "description": null,
+      "enm_version": "1.0",
+      "hash_sha256": "d65ae37c2323aa4c3e1274b934fdff437639f9b5ea9f08db0b7550d4dfaf1e76",
+      "name": "Elementy ciągu — slup",
+      "revision": 23,
+      "updated_at": "2026-09-25T00:00:00Z"
+    },
+    "junctions": [],
+    "katalog_projektu": null,
+    "line_runs": [
+      {
+        "branch_origin_station_ref": null,
+        "id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
+        "name": "Magistrala 01",
+        "nop_station_ref": null,
+        "parent_run_ref": null,
+        "run_kind": "main_trunk",
+        "segments": [
+          {
+            "order": 1,
+            "segment_ref": "seg/a40f7d9d113bd9b949e3827d322d116d/segment_L_branch_pole"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/a40f7d9d113bd9b949e3827d322d116d/segment_R_branch_pole"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/e584c00c109354119ca46e2f9e8a6ca2/segment"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment_L_branch_pole"
+          },
+          {
+            "order": 5,
+            "segment_ref": "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment_R_branch_pole"
+          },
+          {
+            "order": 6,
+            "segment_ref": "seg/cc38149498c267ebef0dd68d0c770271/segment"
+          },
+          {
+            "order": 7,
+            "segment_ref": "seg/56308bdf19b2851578b9439b1ef591bc/segment_L_branch_pole"
+          },
+          {
+            "order": 8,
+            "segment_ref": "seg/56308bdf19b2851578b9439b1ef591bc/segment_R_branch_pole"
+          }
+        ],
+        "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+        "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+        "stations": []
+      },
+      {
+        "branch_origin_station_ref": "bp/0727ae9043987fc654b1b72b70869306/branch_pole",
+        "id": "corridor/e5f3645ad680ac1cc46e706659ddf8e5/branch",
+        "name": "Odgałęzienie SN napowietrzne",
+        "nop_station_ref": null,
+        "parent_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
+        "run_kind": "branch",
+        "segments": [
+          {
+            "order": 1,
+            "segment_ref": "seg/d1be490760e793d146d7501c4718af7e/branch_segment"
+          }
+        ],
+        "starting_bay_ref": "bp/0727ae9043987fc654b1b72b70869306/branch_pole",
+        "starting_port_ref": "bp/0727ae9043987fc654b1b72b70869306/branch_pole.BRANCH",
+        "stations": []
+      },
+      {
+        "branch_origin_station_ref": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/branch_pole",
+        "id": "corridor/d9f7de0289215d6532a55d3f6c7b1e75/branch",
+        "name": "Odgałęzienie SN napowietrzne",
+        "nop_station_ref": null,
+        "parent_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
+        "run_kind": "branch",
+        "segments": [
+          {
+            "order": 1,
+            "segment_ref": "seg/63b2fac0113c73d57bdb8781f1125704/branch_segment"
+          }
+        ],
+        "starting_bay_ref": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/branch_pole",
+        "starting_port_ref": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/branch_pole.BRANCH",
+        "stations": []
+      },
+      {
+        "branch_origin_station_ref": "bp/a48a94cd5aad8165f085ec3ae430351d/branch_pole",
+        "id": "corridor/3cb0065e046f57abd59bf5e0fef9ed61/branch",
+        "name": "Odgałęzienie SN napowietrzne",
+        "nop_station_ref": null,
+        "parent_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
+        "run_kind": "branch",
+        "segments": [
+          {
+            "order": 1,
+            "segment_ref": "seg/40937873034683b7a05c480c83b430fe/branch_segment"
+          }
+        ],
+        "starting_bay_ref": "bp/a48a94cd5aad8165f085ec3ae430351d/branch_pole",
+        "starting_port_ref": "bp/a48a94cd5aad8165f085ec3ae430351d/branch_pole.BRANCH",
+        "stations": []
+      }
+    ],
+    "loads": [
+      {
+        "bus_ref": "nn/643a4c4cd59c8dc82147e051a8a2eda0/feeder_bus",
+        "catalog_namespace": "OBCIAZENIE",
+        "catalog_ref": "load_uslugi_30kw",
+        "id": "871a9e12-08f0-5c58-9367-6bf78f98400a",
+        "materialized_params": {
+          "catalog_item_id": "load_uslugi_30kw",
+          "cos_phi": 0.92,
+          "cos_phi_mode": "IND",
+          "p_kw": 30.0,
+          "q_kvar": 12.7799464841,
+          "q_source": "KATALOG_COS_PHI"
+        },
+        "meta": {
+          "catalog_binding": {
+            "catalog_item_id": "load_uslugi_30kw",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "OBCIAZENIE",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "completion_source": "station_catalog_migration",
+          "connection_type": "TROJFAZOWY",
+          "cos_phi": 0.92,
+          "cos_phi_mode": "IND",
+          "feeder_ref": "stn/48c4f82503a67d50f018c843c0bf9207/nn_feeder/000",
+          "load_kind": "SKUPIONY",
+          "q_kvar": 12.7799464841,
+          "q_source": "KATALOG_COS_PHI"
+        },
+        "model": "pq",
+        "name": "Odbiór nN 1 - Stacja klienta za GPZ",
+        "overrides": [],
+        "p_mw": 0.03,
+        "parameter_source": "CATALOG",
+        "phases": null,
+        "q_mvar": 0.0127799464841,
+        "quantity": null,
+        "ref_id": "load/71dc21cef2c1ecc4ec932c82ed2e5cdb/nn",
+        "source_mode": "KATALOG",
+        "tags": []
+      },
+      {
+        "bus_ref": "nn/2ac016ec94a8d80eec7af001a742178d/feeder_bus",
+        "catalog_namespace": "OBCIAZENIE",
+        "catalog_ref": "load_uslugi_30kw",
+        "id": "2982e1e1-d9cc-5ed9-8738-19b6b8462b7d",
+        "materialized_params": {
+          "catalog_item_id": "load_uslugi_30kw",
+          "cos_phi": 0.92,
+          "cos_phi_mode": "IND",
+          "p_kw": 30.0,
+          "q_kvar": 12.7799464841,
+          "q_source": "KATALOG_COS_PHI"
+        },
+        "meta": {
+          "catalog_binding": {
+            "catalog_item_id": "load_uslugi_30kw",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "OBCIAZENIE",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "completion_source": "station_catalog_migration",
+          "connection_type": "TROJFAZOWY",
+          "cos_phi": 0.92,
+          "cos_phi_mode": "IND",
+          "feeder_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_feeder/000",
+          "load_kind": "SKUPIONY",
+          "q_kvar": 12.7799464841,
+          "q_source": "KATALOG_COS_PHI"
+        },
+        "model": "pq",
+        "name": "Odbiór nN 1 - Stacja klienta między stacjami",
+        "overrides": [],
+        "p_mw": 0.03,
+        "parameter_source": "CATALOG",
+        "phases": null,
+        "q_mvar": 0.0127799464841,
+        "quantity": null,
+        "ref_id": "load/a8691c6b9ffa2ba89f80202a188d40e7/nn",
+        "source_mode": "KATALOG",
+        "tags": []
+      },
+      {
+        "bus_ref": "nn/6139c703696e3101feeb1a00d93a8335/feeder_bus",
+        "catalog_namespace": "OBCIAZENIE",
+        "catalog_ref": "load_uslugi_30kw",
+        "id": "3a60846e-a896-53aa-ab70-06a38d43980b",
+        "materialized_params": {
+          "catalog_item_id": "load_uslugi_30kw",
+          "cos_phi": 0.92,
+          "cos_phi_mode": "IND",
+          "p_kw": 30.0,
+          "q_kvar": 12.7799464841,
+          "q_source": "KATALOG_COS_PHI"
+        },
+        "meta": {
+          "catalog_binding": {
+            "catalog_item_id": "load_uslugi_30kw",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "OBCIAZENIE",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "completion_source": "station_catalog_migration",
+          "connection_type": "TROJFAZOWY",
+          "cos_phi": 0.92,
+          "cos_phi_mode": "IND",
+          "feeder_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/nn_feeder/000",
+          "load_kind": "SKUPIONY",
+          "q_kvar": 12.7799464841,
+          "q_source": "KATALOG_COS_PHI"
+        },
+        "model": "pq",
+        "name": "Odbiór nN 1 - Stacja klienta za ostatnią stacją",
+        "overrides": [],
+        "p_mw": 0.03,
+        "parameter_source": "CATALOG",
+        "phases": null,
+        "q_mvar": 0.0127799464841,
+        "quantity": null,
+        "ref_id": "load/d988f5190b19775680115b9a35a6b9e6/nn",
+        "source_mode": "KATALOG",
+        "tags": []
+      },
+      {
+        "bus_ref": "nn/c1f6aa4c9fa3f15e78b3cc47d19c4c1a/feeder_bus",
+        "catalog_namespace": "OBCIAZENIE",
+        "catalog_ref": "load_uslugi_30kw",
+        "id": "60433c06-18be-5575-8c55-1d813defd99d",
+        "materialized_params": {
+          "catalog_item_id": "load_uslugi_30kw",
+          "cos_phi": 0.92,
+          "cos_phi_mode": "IND",
+          "p_kw": 30.0,
+          "q_kvar": 12.7799464841,
+          "q_source": "KATALOG_COS_PHI"
+        },
+        "meta": {
+          "catalog_binding": {
+            "catalog_item_id": "load_uslugi_30kw",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "OBCIAZENIE",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "completion_source": "station_catalog_migration",
+          "connection_type": "TROJFAZOWY",
+          "cos_phi": 0.92,
+          "cos_phi_mode": "IND",
+          "feeder_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/nn_feeder/000",
+          "load_kind": "SKUPIONY",
+          "q_kvar": 12.7799464841,
+          "q_source": "KATALOG_COS_PHI"
+        },
+        "model": "pq",
+        "name": "Odbiór nN 1 - Stacja S01",
+        "overrides": [],
+        "p_mw": 0.03,
+        "parameter_source": "CATALOG",
+        "phases": null,
+        "q_mvar": 0.0127799464841,
+        "quantity": null,
+        "ref_id": "load/66ab122bc5a2358508006cd7170b6340/nn",
+        "source_mode": "KATALOG",
+        "tags": []
+      },
+      {
+        "bus_ref": "nn/c6fbabd977ce73e35e47220b16ec14f7/feeder_bus",
+        "catalog_namespace": "OBCIAZENIE",
+        "catalog_ref": "load_uslugi_30kw",
+        "id": "36d8c1f1-6024-57b9-8bf7-900334c1fa1f",
+        "materialized_params": {
+          "catalog_item_id": "load_uslugi_30kw",
+          "cos_phi": 0.92,
+          "cos_phi_mode": "IND",
+          "p_kw": 30.0,
+          "q_kvar": 12.7799464841,
+          "q_source": "KATALOG_COS_PHI"
+        },
+        "meta": {
+          "catalog_binding": {
+            "catalog_item_id": "load_uslugi_30kw",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "OBCIAZENIE",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "completion_source": "station_catalog_migration",
+          "connection_type": "TROJFAZOWY",
+          "cos_phi": 0.92,
+          "cos_phi_mode": "IND",
+          "feeder_ref": "stn/34444a4aba5f0e0e55e125241b16d477/nn_feeder/000",
+          "load_kind": "SKUPIONY",
+          "q_kvar": 12.7799464841,
+          "q_source": "KATALOG_COS_PHI"
+        },
+        "model": "pq",
+        "name": "Odbiór nN 1 - Stacja S02",
+        "overrides": [],
+        "p_mw": 0.03,
+        "parameter_source": "CATALOG",
+        "phases": null,
+        "q_mvar": 0.0127799464841,
+        "quantity": null,
+        "ref_id": "load/f700b6e010be1c2fcbef8dc2d930d8c2/nn",
+        "source_mode": "KATALOG",
+        "tags": []
+      }
+    ],
+    "measurements": [],
+    "protection_assignments": [],
+    "shunt_capacitors": [],
+    "sources": [
+      {
+        "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "c_max": null,
+        "c_min": null,
+        "catalog_namespace": "ZRODLO_SN",
+        "catalog_ref": "src-gpz-15kv-250mva-rx010",
+        "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
+        "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
+        "ik3_ka": 9.62,
+        "ik3_min_ka": null,
+        "materialized_params": {
+          "catalog_item_id": "src-gpz-15kv-250mva-rx010",
+          "catalog_item_version": "2024.1",
+          "ik3_ka": 9.62,
+          "rx_ratio": 0.1,
+          "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+          "short_circuit_model": "short_circuit_power",
+          "sk3_mva": 250.0,
+          "voltage_rating_kv": 15.0
+        },
+        "meta": {
+          "catalog_item_version": "2024.1",
+          "catalog_role": "GPZ_110_SN",
+          "solution_ref": null,
+          "source_id": null
+        },
+        "model": "short_circuit_power",
+        "name": "Źródło GPZ 15 kV",
+        "neutral_grounding": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm": null,
+        "r_ohm": null,
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/source/main",
+        "rx_ratio": 0.1,
+        "rx_ratio_min": null,
+        "sk3_hv_mva": null,
+        "sk3_min_mva": null,
+        "sk3_mva": 250.0,
+        "sn_voltage_kv": null,
+        "source_mode": "KATALOG",
+        "source_side": "SN",
+        "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+        "tags": [],
+        "u_set_pu": null,
+        "voltage_hv_kv": null,
+        "x0_ohm": null,
+        "x_ohm": null,
+        "z0_z1_ratio": null
+      }
+    ],
+    "substations": [
+      {
+        "bus_refs": [
+          "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+          "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110"
+        ],
+        "construction_type": null,
+        "designation": null,
+        "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "external_ports": [],
+        "gpz_hv_sections": [],
+        "gpz_sections": [
+          {
+            "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+            "incoming_source_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/source/main",
+            "left_coupler_ref": null,
+            "line_field_name": "Pole liniowe GPZ",
+            "name": "Sekcja 1",
+            "order": 0,
+            "right_coupler_ref": null,
+            "section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001"
+          }
+        ],
+        "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
+        "meta": {
+          "field_specs": [
+            {
+              "bay_role": "FEEDER",
+              "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+              "equipment_refs": [],
+              "field_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+              "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
+              "meta": {
+                "field_status": "READY_FOR_TRUNK",
+                "gpz_line_field_index": 0,
+                "gpz_line_fields_count": 1,
+                "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
+                "gpz_section_order": 0,
+                "source_field_kind": "FEEDER"
+              },
+              "name": "Pole liniowe GPZ",
+              "protection_ref": null,
+              "tags": [
+                "gpz_line_field"
+              ]
+            }
+          ],
+          "gpz_hv_bus_refs": [
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110"
+          ],
+          "gpz_section_count": 1,
+          "short_circuit_input_side": "SN",
+          "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+          "wn_sn_transformer_count": 1
+        },
+        "name": "GPZ 15 kV",
+        "nn_sections": [],
+        "nn_voltage_levels": [],
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+        "station_type": "gpz",
+        "tags": [],
+        "transformer_refs": [
+          "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn"
+        ]
+      },
+      {
+        "bus_refs": [
+          "stn/48c4f82503a67d50f018c843c0bf9207/sn_bus",
+          "stn/48c4f82503a67d50f018c843c0bf9207/nn_bus"
+        ],
+        "construction_type": null,
+        "designation": null,
+        "entry_point_ref": null,
+        "external_ports": [],
+        "gpz_hv_sections": [],
+        "gpz_sections": [],
+        "id": "82dd5053-be98-51c4-b25a-ab2338ecade4",
+        "meta": {
+          "field_specs": [
+            {
+              "bay_role": "IN",
+              "bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_bus",
+              "equipment_refs": [
+                "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_breaker/000"
+              ],
+              "field_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field/000",
+              "meta": {
+                "default_device_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_breaker/000",
+                "field_role": "LINIA_IN",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_terminal/000"
+              },
+              "name": "Pole liniowe wejściowe 1",
+              "protection_codes": [
+                "51",
+                "50",
+                "51N"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            },
+            {
+              "bay_role": "OUT",
+              "bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_bus",
+              "equipment_refs": [
+                "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_breaker/001"
+              ],
+              "field_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field/001",
+              "meta": {
+                "default_device_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_breaker/001",
+                "field_role": "LINIA_OUT",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_terminal/001"
+              },
+              "name": "Pole liniowe wyjściowe 2",
+              "protection_codes": [
+                "51",
+                "50",
+                "51N",
+                "67N"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            },
+            {
+              "bay_role": "TR",
+              "bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_bus",
+              "equipment_refs": [
+                "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_breaker/002",
+                "stn/48c4f82503a67d50f018c843c0bf9207/transformer"
+              ],
+              "field_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field/002",
+              "meta": {
+                "default_device_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_breaker/002",
+                "field_role": "TRANSFORMATOROWE",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_terminal/002"
+              },
+              "name": "Pole transformatorowe 3",
+              "protection_codes": [
+                "87T",
+                "51",
+                "50",
+                "51N",
+                "Buchholz",
+                "temp",
+                "ciśnienie"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            }
+          ],
+          "nn_field_specs": [
+            {
+              "bay_role": "IN",
+              "bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/nn_bus",
+              "equipment_refs": [],
+              "field_ref": "stn/48c4f82503a67d50f018c843c0bf9207/nn_main_breaker",
+              "meta": {},
+              "name": "Wyłącznik główny nN",
+              "protection_ref": null,
+              "tags": [
+                "nn_main_breaker"
+              ]
+            },
+            {
+              "bay_role": "FEEDER",
+              "bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/nn_bus",
+              "equipment_refs": [],
+              "field_ref": "stn/48c4f82503a67d50f018c843c0bf9207/nn_feeder/000",
+              "meta": {
+                "feeder_role": "ODPLYW_NN"
+              },
+              "name": "Odpływ nN 1",
+              "protection_ref": null,
+              "tags": []
+            }
+          ],
+          "nn_fields_promoted": true,
+          "station_type_semantic": "B",
+          "station_type_sn": "B"
+        },
+        "name": "Stacja klienta za GPZ",
+        "nn_sections": [],
+        "nn_voltage_levels": [],
+        "ref_id": "stn/48c4f82503a67d50f018c843c0bf9207/station",
+        "station_type": "inline",
+        "tags": [],
+        "transformer_refs": [
+          "stn/48c4f82503a67d50f018c843c0bf9207/transformer"
+        ]
+      },
+      {
+        "bus_refs": [
+          "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_bus",
+          "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_bus"
+        ],
+        "construction_type": null,
+        "designation": null,
+        "entry_point_ref": null,
+        "external_ports": [],
+        "gpz_hv_sections": [],
+        "gpz_sections": [],
+        "id": "c8eaf24f-a9ef-5bbe-9441-eae7823f6a48",
+        "meta": {
+          "field_specs": [
+            {
+              "bay_role": "IN",
+              "bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_bus",
+              "equipment_refs": [
+                "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_breaker/000"
+              ],
+              "field_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field/000",
+              "meta": {
+                "default_device_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_breaker/000",
+                "field_role": "LINIA_IN",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_terminal/000"
+              },
+              "name": "Pole liniowe wejściowe 1",
+              "protection_codes": [
+                "51",
+                "50",
+                "51N"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            },
+            {
+              "bay_role": "OUT",
+              "bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_bus",
+              "equipment_refs": [
+                "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_breaker/001"
+              ],
+              "field_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field/001",
+              "meta": {
+                "default_device_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_breaker/001",
+                "field_role": "LINIA_OUT",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_terminal/001"
+              },
+              "name": "Pole liniowe wyjściowe 2",
+              "protection_codes": [
+                "51",
+                "50",
+                "51N",
+                "67N"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            },
+            {
+              "bay_role": "TR",
+              "bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_bus",
+              "equipment_refs": [
+                "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_breaker/002",
+                "stn/7f2408b7a5717b7f57d39a3f7f9e753b/transformer"
+              ],
+              "field_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field/002",
+              "meta": {
+                "default_device_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_breaker/002",
+                "field_role": "TRANSFORMATOROWE",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_terminal/002"
+              },
+              "name": "Pole transformatorowe 3",
+              "protection_codes": [
+                "87T",
+                "51",
+                "50",
+                "51N",
+                "Buchholz",
+                "temp",
+                "ciśnienie"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            }
+          ],
+          "nn_field_specs": [
+            {
+              "bay_role": "IN",
+              "bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_bus",
+              "equipment_refs": [],
+              "field_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_main_breaker",
+              "meta": {},
+              "name": "Wyłącznik główny nN",
+              "protection_ref": null,
+              "tags": [
+                "nn_main_breaker"
+              ]
+            },
+            {
+              "bay_role": "FEEDER",
+              "bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_bus",
+              "equipment_refs": [],
+              "field_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_feeder/000",
+              "meta": {
+                "feeder_role": "ODPLYW_NN"
+              },
+              "name": "Odpływ nN 1",
+              "protection_ref": null,
+              "tags": []
+            }
+          ],
+          "nn_fields_promoted": true,
+          "station_type_semantic": "B",
+          "station_type_sn": "B"
+        },
+        "name": "Stacja klienta między stacjami",
+        "nn_sections": [],
+        "nn_voltage_levels": [],
+        "ref_id": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/station",
+        "station_type": "inline",
+        "tags": [],
+        "transformer_refs": [
+          "stn/7f2408b7a5717b7f57d39a3f7f9e753b/transformer"
+        ]
+      },
+      {
+        "bus_refs": [
+          "stn/0341b394f49e895d18e1d9125a5c5d60/sn_bus",
+          "stn/0341b394f49e895d18e1d9125a5c5d60/nn_bus"
+        ],
+        "construction_type": null,
+        "designation": null,
+        "entry_point_ref": null,
+        "external_ports": [],
+        "gpz_hv_sections": [],
+        "gpz_sections": [],
+        "id": "82d3c637-3c84-5643-9f2c-3b3eae636f67",
+        "meta": {
+          "field_specs": [
+            {
+              "bay_role": "IN",
+              "bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_bus",
+              "equipment_refs": [
+                "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_breaker/000"
+              ],
+              "field_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field/000",
+              "meta": {
+                "default_device_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_breaker/000",
+                "field_role": "LINIA_IN",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_terminal/000"
+              },
+              "name": "Pole liniowe wejściowe 1",
+              "protection_codes": [
+                "51",
+                "50",
+                "51N"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            },
+            {
+              "bay_role": "OUT",
+              "bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_bus",
+              "equipment_refs": [
+                "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_breaker/001"
+              ],
+              "field_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field/001",
+              "meta": {
+                "default_device_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_breaker/001",
+                "field_role": "LINIA_OUT",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_terminal/001"
+              },
+              "name": "Pole liniowe wyjściowe 2",
+              "protection_codes": [
+                "51",
+                "50",
+                "51N",
+                "67N"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            },
+            {
+              "bay_role": "TR",
+              "bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_bus",
+              "equipment_refs": [
+                "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_breaker/002",
+                "stn/0341b394f49e895d18e1d9125a5c5d60/transformer"
+              ],
+              "field_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field/002",
+              "meta": {
+                "default_device_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_breaker/002",
+                "field_role": "TRANSFORMATOROWE",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_terminal/002"
+              },
+              "name": "Pole transformatorowe 3",
+              "protection_codes": [
+                "87T",
+                "51",
+                "50",
+                "51N",
+                "Buchholz",
+                "temp",
+                "ciśnienie"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            }
+          ],
+          "nn_field_specs": [
+            {
+              "bay_role": "IN",
+              "bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/nn_bus",
+              "equipment_refs": [],
+              "field_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/nn_main_breaker",
+              "meta": {},
+              "name": "Wyłącznik główny nN",
+              "protection_ref": null,
+              "tags": [
+                "nn_main_breaker"
+              ]
+            },
+            {
+              "bay_role": "FEEDER",
+              "bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/nn_bus",
+              "equipment_refs": [],
+              "field_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/nn_feeder/000",
+              "meta": {
+                "feeder_role": "ODPLYW_NN"
+              },
+              "name": "Odpływ nN 1",
+              "protection_ref": null,
+              "tags": []
+            }
+          ],
+          "nn_fields_promoted": true,
+          "station_type_semantic": "B",
+          "station_type_sn": "B"
+        },
+        "name": "Stacja klienta za ostatnią stacją",
+        "nn_sections": [],
+        "nn_voltage_levels": [],
+        "ref_id": "stn/0341b394f49e895d18e1d9125a5c5d60/station",
+        "station_type": "inline",
+        "tags": [],
+        "transformer_refs": [
+          "stn/0341b394f49e895d18e1d9125a5c5d60/transformer"
+        ]
+      },
+      {
+        "bus_refs": [
+          "stn/ae976efc2b84fd08302c86cf0b68a817/sn_bus",
+          "stn/ae976efc2b84fd08302c86cf0b68a817/nn_bus"
+        ],
+        "construction_type": null,
+        "designation": null,
+        "entry_point_ref": null,
+        "external_ports": [],
+        "gpz_hv_sections": [],
+        "gpz_sections": [],
+        "id": "180b7e61-7fe8-5805-bb88-2257a96fc8de",
+        "meta": {
+          "field_specs": [
+            {
+              "bay_role": "IN",
+              "bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_bus",
+              "equipment_refs": [
+                "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_breaker/000"
+              ],
+              "field_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field/000",
+              "meta": {
+                "default_device_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_breaker/000",
+                "field_role": "LINIA_IN",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_terminal/000"
+              },
+              "name": "Pole liniowe wejściowe 1",
+              "protection_codes": [
+                "51",
+                "50",
+                "51N"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            },
+            {
+              "bay_role": "OUT",
+              "bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_bus",
+              "equipment_refs": [
+                "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_breaker/001"
+              ],
+              "field_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field/001",
+              "meta": {
+                "default_device_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_breaker/001",
+                "field_role": "LINIA_OUT",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_terminal/001"
+              },
+              "name": "Pole liniowe wyjściowe 2",
+              "protection_codes": [
+                "51",
+                "50",
+                "51N",
+                "67N"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            },
+            {
+              "bay_role": "TR",
+              "bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_bus",
+              "equipment_refs": [
+                "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_breaker/002",
+                "stn/ae976efc2b84fd08302c86cf0b68a817/transformer"
+              ],
+              "field_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field/002",
+              "meta": {
+                "default_device_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_breaker/002",
+                "field_role": "TRANSFORMATOROWE",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_terminal/002"
+              },
+              "name": "Pole transformatorowe 3",
+              "protection_codes": [
+                "87T",
+                "51",
+                "50",
+                "51N",
+                "Buchholz",
+                "temp",
+                "ciśnienie"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            }
+          ],
+          "nn_field_specs": [
+            {
+              "bay_role": "IN",
+              "bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/nn_bus",
+              "equipment_refs": [],
+              "field_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/nn_main_breaker",
+              "meta": {},
+              "name": "Wyłącznik główny nN",
+              "protection_ref": null,
+              "tags": [
+                "nn_main_breaker"
+              ]
+            },
+            {
+              "bay_role": "FEEDER",
+              "bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/nn_bus",
+              "equipment_refs": [],
+              "field_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/nn_feeder/000",
+              "meta": {
+                "feeder_role": "ODPLYW_NN"
+              },
+              "name": "Odpływ nN 1",
+              "protection_ref": null,
+              "tags": []
+            }
+          ],
+          "nn_fields_promoted": true,
+          "station_type_semantic": "B",
+          "station_type_sn": "B"
+        },
+        "name": "Stacja S01",
+        "nn_sections": [],
+        "nn_voltage_levels": [],
+        "ref_id": "stn/ae976efc2b84fd08302c86cf0b68a817/station",
+        "station_type": "inline",
+        "tags": [],
+        "transformer_refs": [
+          "stn/ae976efc2b84fd08302c86cf0b68a817/transformer"
+        ]
+      },
+      {
+        "bus_refs": [
+          "stn/34444a4aba5f0e0e55e125241b16d477/sn_bus",
+          "stn/34444a4aba5f0e0e55e125241b16d477/nn_bus"
+        ],
+        "construction_type": null,
+        "designation": null,
+        "entry_point_ref": null,
+        "external_ports": [],
+        "gpz_hv_sections": [],
+        "gpz_sections": [],
+        "id": "f8b49fd0-e49f-54b5-b893-454daa4dee16",
+        "meta": {
+          "field_specs": [
+            {
+              "bay_role": "IN",
+              "bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_bus",
+              "equipment_refs": [
+                "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_breaker/000"
+              ],
+              "field_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field/000",
+              "meta": {
+                "default_device_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_breaker/000",
+                "field_role": "LINIA_IN",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_terminal/000"
+              },
+              "name": "Pole liniowe wejściowe 1",
+              "protection_codes": [
+                "51",
+                "50",
+                "51N"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            },
+            {
+              "bay_role": "OUT",
+              "bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_bus",
+              "equipment_refs": [
+                "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_breaker/001"
+              ],
+              "field_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field/001",
+              "meta": {
+                "default_device_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_breaker/001",
+                "field_role": "LINIA_OUT",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_terminal/001"
+              },
+              "name": "Pole liniowe wyjściowe 2",
+              "protection_codes": [
+                "51",
+                "50",
+                "51N",
+                "67N"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            },
+            {
+              "bay_role": "TR",
+              "bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_bus",
+              "equipment_refs": [
+                "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_breaker/002",
+                "stn/34444a4aba5f0e0e55e125241b16d477/transformer"
+              ],
+              "field_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field/002",
+              "meta": {
+                "default_device_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_breaker/002",
+                "field_role": "TRANSFORMATOROWE",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_terminal/002"
+              },
+              "name": "Pole transformatorowe 3",
+              "protection_codes": [
+                "87T",
+                "51",
+                "50",
+                "51N",
+                "Buchholz",
+                "temp",
+                "ciśnienie"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            }
+          ],
+          "nn_field_specs": [
+            {
+              "bay_role": "IN",
+              "bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/nn_bus",
+              "equipment_refs": [],
+              "field_ref": "stn/34444a4aba5f0e0e55e125241b16d477/nn_main_breaker",
+              "meta": {},
+              "name": "Wyłącznik główny nN",
+              "protection_ref": null,
+              "tags": [
+                "nn_main_breaker"
+              ]
+            },
+            {
+              "bay_role": "FEEDER",
+              "bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/nn_bus",
+              "equipment_refs": [],
+              "field_ref": "stn/34444a4aba5f0e0e55e125241b16d477/nn_feeder/000",
+              "meta": {
+                "feeder_role": "ODPLYW_NN"
+              },
+              "name": "Odpływ nN 1",
+              "protection_ref": null,
+              "tags": []
+            }
+          ],
+          "nn_fields_promoted": true,
+          "station_type_semantic": "B",
+          "station_type_sn": "B"
+        },
+        "name": "Stacja S02",
+        "nn_sections": [],
+        "nn_voltage_levels": [],
+        "ref_id": "stn/34444a4aba5f0e0e55e125241b16d477/station",
+        "station_type": "inline",
+        "tags": [],
+        "transformer_refs": [
+          "stn/34444a4aba5f0e0e55e125241b16d477/transformer"
+        ]
+      }
+    ],
+    "transformers": [
+      {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
+        "hv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
+        "hv_neutral": null,
+        "i0_percent": 0.35,
+        "id": "2c172532-51cf-5085-87c5-d96adf265d7a",
+        "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "lv_earthing_system": null,
+        "lv_neutral": null,
+        "materialized_params": {
+          "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+          "catalog_item_version": "legacy",
+          "i0_percent": 0.35,
+          "p0_kw": 25.0,
+          "pk_kw": 120.0,
+          "rated_power_mva": 25.0,
+          "uk_percent": 11.0,
+          "vector_group": "Yd11",
+          "voltage_hv_kv": 110.0,
+          "voltage_lv_kv": 15.0
+        },
+        "meta": {
+          "catalog_item_version": "legacy",
+          "catalog_role": "TRANSFORMATOR_WN_SN",
+          "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
+          "gpz_section_order": 0,
+          "gpz_substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+          "visual_role": "GPZ_WN_SN_TRANSFORMER"
+        },
+        "n_parallel": null,
+        "name": "TR1 110/15 kV",
+        "overrides": [],
+        "p0_kw": 25.0,
+        "parameter_source": "CATALOG",
+        "pk_kw": 120.0,
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
+        "sn_mva": 25.0,
+        "source_mode": "KATALOG",
+        "tags": [
+          "gpz_wn_sn_transformer"
+        ],
+        "tap_changer": null,
+        "tap_max": null,
+        "tap_min": null,
+        "tap_position": null,
+        "tap_step_percent": null,
+        "uhv_kv": 110.0,
+        "uk_percent": 11.0,
+        "ulv_kv": 15.0,
+        "vector_group": "Yd11"
+      },
+      {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+        "hv_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_bus",
+        "hv_neutral": null,
+        "i0_percent": 1.5,
+        "id": "b04e43ac-42ef-5c52-92e4-158af8251bff",
+        "lv_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/nn_bus",
+        "lv_earthing_system": "TN-C-S",
+        "lv_neutral": null,
+        "materialized_params": {
+          "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+          "catalog_item_version": "legacy",
+          "i0_percent": 1.5,
+          "p0_kw": 1.3,
+          "pk_kw": 8.0,
+          "rated_power_mva": 0.63,
+          "uk_percent": 5.0,
+          "vector_group": "Dyn11",
+          "voltage_hv_kv": 15.0,
+          "voltage_lv_kv": 0.4
+        },
+        "meta": {
+          "catalog_item_version": "legacy"
+        },
+        "n_parallel": null,
+        "name": "Transformator SN/nN",
+        "overrides": [],
+        "p0_kw": 1.3,
+        "parameter_source": "CATALOG",
+        "pk_kw": 8.0,
+        "ref_id": "stn/48c4f82503a67d50f018c843c0bf9207/transformer",
+        "sn_mva": 0.63,
+        "source_mode": "KATALOG",
+        "tags": [],
+        "tap_changer": null,
+        "tap_max": null,
+        "tap_min": null,
+        "tap_position": null,
+        "tap_step_percent": null,
+        "uhv_kv": 15.0,
+        "uk_percent": 5.0,
+        "ulv_kv": 0.4,
+        "vector_group": "Dyn11"
+      },
+      {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+        "hv_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_bus",
+        "hv_neutral": null,
+        "i0_percent": 1.5,
+        "id": "4ac5c8d6-7123-5542-9b54-9195d3b21f4e",
+        "lv_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/nn_bus",
+        "lv_earthing_system": "TN-C-S",
+        "lv_neutral": null,
+        "materialized_params": {
+          "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+          "catalog_item_version": "legacy",
+          "i0_percent": 1.5,
+          "p0_kw": 1.3,
+          "pk_kw": 8.0,
+          "rated_power_mva": 0.63,
+          "uk_percent": 5.0,
+          "vector_group": "Dyn11",
+          "voltage_hv_kv": 15.0,
+          "voltage_lv_kv": 0.4
+        },
+        "meta": {
+          "catalog_item_version": "legacy"
+        },
+        "n_parallel": null,
+        "name": "Transformator SN/nN",
+        "overrides": [],
+        "p0_kw": 1.3,
+        "parameter_source": "CATALOG",
+        "pk_kw": 8.0,
+        "ref_id": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/transformer",
+        "sn_mva": 0.63,
+        "source_mode": "KATALOG",
+        "tags": [],
+        "tap_changer": null,
+        "tap_max": null,
+        "tap_min": null,
+        "tap_position": null,
+        "tap_step_percent": null,
+        "uhv_kv": 15.0,
+        "uk_percent": 5.0,
+        "ulv_kv": 0.4,
+        "vector_group": "Dyn11"
+      },
+      {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+        "hv_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_bus",
+        "hv_neutral": null,
+        "i0_percent": 1.5,
+        "id": "8df66c46-0bda-5be0-966b-887c28a36989",
+        "lv_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/nn_bus",
+        "lv_earthing_system": "TN-C-S",
+        "lv_neutral": null,
+        "materialized_params": {
+          "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+          "catalog_item_version": "legacy",
+          "i0_percent": 1.5,
+          "p0_kw": 1.3,
+          "pk_kw": 8.0,
+          "rated_power_mva": 0.63,
+          "uk_percent": 5.0,
+          "vector_group": "Dyn11",
+          "voltage_hv_kv": 15.0,
+          "voltage_lv_kv": 0.4
+        },
+        "meta": {
+          "catalog_item_version": "legacy"
+        },
+        "n_parallel": null,
+        "name": "Transformator SN/nN",
+        "overrides": [],
+        "p0_kw": 1.3,
+        "parameter_source": "CATALOG",
+        "pk_kw": 8.0,
+        "ref_id": "stn/0341b394f49e895d18e1d9125a5c5d60/transformer",
+        "sn_mva": 0.63,
+        "source_mode": "KATALOG",
+        "tags": [],
+        "tap_changer": null,
+        "tap_max": null,
+        "tap_min": null,
+        "tap_position": null,
+        "tap_step_percent": null,
+        "uhv_kv": 15.0,
+        "uk_percent": 5.0,
+        "ulv_kv": 0.4,
+        "vector_group": "Dyn11"
+      },
+      {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+        "hv_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_bus",
+        "hv_neutral": null,
+        "i0_percent": 1.5,
+        "id": "69961f2c-3653-5cf2-beed-48e0cb1e72a3",
+        "lv_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/nn_bus",
+        "lv_earthing_system": "TN-C-S",
+        "lv_neutral": null,
+        "materialized_params": {
+          "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+          "catalog_item_version": "legacy",
+          "i0_percent": 1.5,
+          "p0_kw": 1.3,
+          "pk_kw": 8.0,
+          "rated_power_mva": 0.63,
+          "uk_percent": 5.0,
+          "vector_group": "Dyn11",
+          "voltage_hv_kv": 15.0,
+          "voltage_lv_kv": 0.4
+        },
+        "meta": {
+          "catalog_item_version": "legacy"
+        },
+        "n_parallel": null,
+        "name": "Transformator SN/nN",
+        "overrides": [],
+        "p0_kw": 1.3,
+        "parameter_source": "CATALOG",
+        "pk_kw": 8.0,
+        "ref_id": "stn/ae976efc2b84fd08302c86cf0b68a817/transformer",
+        "sn_mva": 0.63,
+        "source_mode": "KATALOG",
+        "tags": [],
+        "tap_changer": null,
+        "tap_max": null,
+        "tap_min": null,
+        "tap_position": null,
+        "tap_step_percent": null,
+        "uhv_kv": 15.0,
+        "uk_percent": 5.0,
+        "ulv_kv": 0.4,
+        "vector_group": "Dyn11"
+      },
+      {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+        "hv_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_bus",
+        "hv_neutral": null,
+        "i0_percent": 1.5,
+        "id": "f0eee74a-72d5-5ec3-92f5-ab862674fb48",
+        "lv_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/nn_bus",
+        "lv_earthing_system": "TN-C-S",
+        "lv_neutral": null,
+        "materialized_params": {
+          "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+          "catalog_item_version": "legacy",
+          "i0_percent": 1.5,
+          "p0_kw": 1.3,
+          "pk_kw": 8.0,
+          "rated_power_mva": 0.63,
+          "uk_percent": 5.0,
+          "vector_group": "Dyn11",
+          "voltage_hv_kv": 15.0,
+          "voltage_lv_kv": 0.4
+        },
+        "meta": {
+          "catalog_item_version": "legacy"
+        },
+        "n_parallel": null,
+        "name": "Transformator SN/nN",
+        "overrides": [],
+        "p0_kw": 1.3,
+        "parameter_source": "CATALOG",
+        "pk_kw": 8.0,
+        "ref_id": "stn/34444a4aba5f0e0e55e125241b16d477/transformer",
+        "sn_mva": 0.63,
+        "source_mode": "KATALOG",
+        "tags": [],
+        "tap_changer": null,
+        "tap_max": null,
+        "tap_min": null,
+        "tap_position": null,
+        "tap_step_percent": null,
+        "uhv_kv": 15.0,
+        "uk_percent": 5.0,
+        "ulv_kv": 0.4,
+        "vector_group": "Dyn11"
+      }
+    ]
+  }
+}

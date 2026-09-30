@@ -23,7 +23,7 @@ from types import ModuleType
 
 import pytest
 
-from tests.golden.zapis_fikstur import zaokraglij_liczby
+from tests.golden.zapis_fikstur import tresc_z_kotwica, zaokraglij_liczby
 from tests.reference_networks.fikstury_enm_sld import (
     FRONTEND,
     KOMENDA_REGENERACJI,
@@ -61,8 +61,11 @@ def _rozjechane(tresci: dict[str, str], katalog: Path) -> list[str]:
     return [
         sciezka
         for sciezka, tresc in sorted(tresci.items())
+        # Plik = treść generatora PO KOTWICY W SZUMIE (ten sam predykat co zapis,
+        # `tests/golden/zapis_fikstur.tresc_z_kotwica`).
         if not (katalog / sciezka).exists()
-        or (katalog / sciezka).read_text(encoding="utf-8") != tresc
+        or (katalog / sciezka).read_text(encoding="utf-8")
+        != tresc_z_kotwica(katalog / sciezka, tresc)
     ]
 
 
@@ -77,7 +80,9 @@ def test_generator_sieci_sld_jest_deterministyczny(sieci_sld: dict[str, str]) ->
 
 def test_siec_pokazowa_jest_bajtowo_rowna_generatorowi(siec_pokazowa: ModuleType) -> None:
     tresc = siec_pokazowa.render_fikstury()
-    assert siec_pokazowa._WYJSCIE.read_text(encoding="utf-8") == tresc, (
+    assert siec_pokazowa._WYJSCIE.read_text(encoding="utf-8") == tresc_z_kotwica(
+        siec_pokazowa._WYJSCIE, tresc
+    ), (
         "pomiarOdgalezienie.enm.json ROZJECHANA — zregeneruj: cd mv-design-pro/backend && "
         "poetry run python ../frontend/scripts/demo-siec-pokazowa/generate-fixture.py"
     )

@@ -553,7 +553,14 @@ const EXPECTED_STATION_COUNT = 53;
 // do bajtu. Ta sama topologia, ten sam kod układu — inna kolejność remisu, nie regresja
 // trasowania. Pozostałe sondy (kolizje, przecięcia, światła, proporcja arkusza) zielone
 // bez zmian progów.
-const VERTICAL_LENGTH_BASELINE = { 0: 22752, 1: 45728, 2: 45728 };
+// SLD-SUBSTRAT, kontynuacja (2026-09-30): 22752/45728/45728 → 22752/45992/45992 (+264 na
+// L1/L2, L0 bez zmian), W CAŁOŚCI przyczyna „footprint": substrat budowany ścieżką
+// produktu (magazyn modelu — promocja pól nN i uzupełnienie katalogowe) ma odbiory na 53
+// stacjach zamiast 20, więc 33 stacje dostają strzałkę odbioru na zacisku nN (+8 px pionu
+// `#lv-load-drop` × 33). DOWÓD 2×2 (kod HEAD/nowy × fikstura stara/nowa, liść po liściu,
+// meldunek karty): zmiana kodu tej karty daje ±0 pionów (dwa słupki końca otwartego
+// zastąpione dwoma znakami powiązania po 16 px — ta sama przyczyna „slupek-terminalny").
+const VERTICAL_LENGTH_BASELINE = { 0: 22752, 1: 45992, 2: 45992 };
 
 /**
  * WZMOCNIENIE SONDY (karta CI-C — „ślepe podniesienie progu jest zakazane"):
@@ -593,8 +600,10 @@ const VERTICAL_LENGTH_BASELINE = { 0: 22752, 1: 45728, 2: 45728 };
 // (luz 8 odebrany, nie skutek regeneracji) — atrybucja przy `VERTICAL_LENGTH_BASELINE`.
 const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
   0: { footprint: 80, 'rezerwacja-kanalu': 22344, 'jog-trasy': 120, 'slupek-terminalny': 208 },
-  1: { footprint: 1680, 'rezerwacja-kanalu': 43752, 'jog-trasy': 88, 'slupek-terminalny': 208 },
-  2: { footprint: 1680, 'rezerwacja-kanalu': 43752, 'jog-trasy': 88, 'slupek-terminalny': 208 },
+  // SLD-SUBSTRAT, kontynuacja: „footprint" L1/L2 1680 → 1944 (+264 = 33 × `#lv-load-drop`,
+  // atrybucja przy `VERTICAL_LENGTH_BASELINE`); pozostałe przyczyny bez zmian.
+  1: { footprint: 1944, 'rezerwacja-kanalu': 43752, 'jog-trasy': 88, 'slupek-terminalny': 208 },
+  2: { footprint: 1944, 'rezerwacja-kanalu': 43752, 'jog-trasy': 88, 'slupek-terminalny': 208 },
 };
 
 /**
@@ -662,7 +671,13 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
 // Regeneracja fikstury (nowa kolejność remisu ciągów odgałęzień, atrybucja przy
 // `VERTICAL_LENGTH_BASELINE`) obniżyła poziomy o dalsze 280/280/288; załamania
 // bez zmian. Bramka „nie-rosnąca" trzyma teraz wartość zmierzoną, nie historyczną.
-const HORIZONTAL_LENGTH_BASELINE = { 0: 55368, 1: 75848, 2: 79472 };
+// SLD-SUBSTRAT, kontynuacja (2026-09-30): 55368/75848/79472 → 55336/76512/80136 — pomiar,
+// atrybucja liść po liściu (sonda 2×2, meldunek karty): DANE +696 na L1/L2 (33 × +24 szyny
+// zacisku nN `#lv-bus` wydłużonej pod strzałkę odbioru, 4 × −24 wiersza DER `#der-row-bus`
+// przesuniętego przez tę strzałkę); KOD −32 na każdym LOD (dwa półodcinki odgałęzienia
+// przycięte do portów symbolu łącznika sekcyjnego „Łącznik sekcyjny NO (rezerwa)" — tor
+// nie przechodzi pod nożem łącznika). Załamania bez zmian.
+const HORIZONTAL_LENGTH_BASELINE = { 0: 55336, 1: 76512, 2: 80136 };
 const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
 
 /**

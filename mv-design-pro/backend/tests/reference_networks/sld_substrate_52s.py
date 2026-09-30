@@ -15,6 +15,12 @@ Builds a deterministic MV network:
   - Deterministic: same seed → same SHA-256 hash
   - Valid: passes ENMValidator (no fatal issues)
   - Loadable: can be served via GET /api/cases/{case_id}/enm
+  - Product path: every operation result passes through the model store's
+    read-time pipeline (`enm.store.przygotuj_model_po_odczycie` — attachment-point
+    key migration, promotion of nN fields to real apparatus/feeder buses, catalog
+    defaults), exactly as the next API operation would see it (karta SLD-SUBSTRAT:
+    the substrate built without this path lacked the nN field promotion that no
+    model served by the API ever skips).
 
 Root-cause notes (M-05 recon):
   Bug 1 — add_converter_source der=0 (STAN_REPO §2, line V-10):
@@ -143,6 +149,16 @@ def _empty_enm() -> dict[str, Any]:
     }
 
 
+def _jak_z_magazynu(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Model po operacji w postaci, w jakiej magazyn poda go następnej operacji
+    (`enm.store.przygotuj_model_po_odczycie`) — ta sama sekwencja co w produkcie."""
+    from enm.models import EnergyNetworkModel
+    from enm.store import przygotuj_model_po_odczycie
+
+    model, zmieniono = przygotuj_model_po_odczycie(EnergyNetworkModel.model_validate(snapshot))
+    return model.model_dump(mode="json") if zmieniono else snapshot
+
+
 def _op(enm: dict[str, Any], op_name: str, payload: dict[str, Any]) -> dict[str, Any]:
     """Execute domain op; raise AssertionError on failure."""
     from enm.domain_operations import execute_domain_operation
@@ -155,7 +171,7 @@ def _op(enm: dict[str, Any], op_name: str, payload: dict[str, Any]) -> dict[str,
     snapshot = result.get("snapshot")
     if snapshot is None:
         raise AssertionError(f"Domain op '{op_name}' returned no snapshot")
-    return snapshot
+    return _jak_z_magazynu(snapshot)
 
 
 def _try_op(
@@ -170,7 +186,7 @@ def _try_op(
     snapshot = result.get("snapshot")
     if snapshot is None:
         return enm, "no snapshot returned"
-    return snapshot, None
+    return _jak_z_magazynu(snapshot), None
 
 
 def _feeder_port_ref(enm: dict[str, Any], station_ref: str) -> str | None:
@@ -363,6 +379,7 @@ def _add_station_load(
     feeder_ref = (feeder_result.get("selection_hint") or {}).get("element_id")
     if enm_feeder is None or not feeder_ref:
         return enm, "feeder: no snapshot/selection_hint"
+    enm_feeder = _jak_z_magazynu(enm_feeder)
     return _try_op(
         enm_feeder,
         "add_nn_load",
@@ -669,7 +686,7 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
             },
         )
         if not nop_result.get("error") and nop_result.get("snapshot") is not None:
-            enm = nop_result["snapshot"]
+            enm = _jak_z_magazynu(nop_result["snapshot"])
             nop_switch_ref = (nop_result.get("selection_hint") or {}).get("element_id")
             if nop_switch_ref:
                 enm, _ = _try_op(enm, "set_normal_open_point", {"switch_ref": nop_switch_ref})
@@ -729,9 +746,15 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
     der_count = len(generators)
     der_types = {g.get("gen_type") for g in generators if g.get("gen_type")}
 
-    corridors = enm.get("corridors", [])
+    # Odgałęzienia liczone z CIĄGÓW (`line_runs`), a nie z korytarzy: operacja
+    # `start_branch_segment_sn` wpisuje `parent_run_ref`/`branch_origin_station_ref`
+    # także do słownika korytarza, ale model `Corridor` tych pól nie ma, więc magazyn
+    # modelu (ścieżka produktu, `_jak_z_magazynu`) je odrzuca — trwałym nośnikiem
+    # pochodzenia odgałęzienia jest `LineRun` (karta SLD-SUBSTRAT, kontynuacja).
     lateral_corridors = [
-        c for c in corridors if c.get("branch_origin_station_ref") or c.get("parent_run_ref")
+        r
+        for r in enm.get("line_runs", [])
+        if r.get("branch_origin_station_ref") or r.get("parent_run_ref")
     ]
 
     return {

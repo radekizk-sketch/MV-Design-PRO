@@ -172,6 +172,13 @@ describe('A — uchwyt nie awansuje do kontenera', () => {
 const DOZWOLONE_ROZJAZDY: ReadonlySet<string> = new Set([
   'station-name→transformator',
   'station-name→zrodlo',
+  // Karta SLD-SUBSTRAT (kontynuacja): nazwa łącznika sekcyjnego NA TORZE. Na rysunku
+  // to aparat (symbol z portami W/E, `elementKind: 'apparatus'` — jak jego etykieta),
+  // w modelu GAŁĄŹ switch/breaker, więc kotwica to `galaz`. Deklaracja 'segment'
+  // byłaby fałszywa w drugą stronę (pod refem łącznika nie ma odcinka — §6a
+  // `wlasnoscEtykiet`). Rozjazd OCZEKIWANY z tego samego powodu co wyżej: rodzaj
+  // obiektu bierze się z kotwicy.
+  'lacznik-toru→galaz',
 ]);
 
 describe('B — inwentarz rozjazdów deklaracja↔kotwica jest zamknięty', () => {

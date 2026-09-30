@@ -176,10 +176,14 @@ def render_fikstur() -> dict[str, str]:
 
 
 def main() -> int:
+    from tests.golden.zapis_fikstur import tresc_z_kotwica  # noqa: PLC0415
+
     tresci = render_fikstur()
     _OUT_DIR.mkdir(parents=True, exist_ok=True)
     for nazwa, tresc in tresci.items():
-        (_OUT_DIR / nazwa).write_text(tresc, encoding="utf-8")
+        # Kotwica w szumie: szum numeryki między maszynami nie trafia do repozytorium.
+        plik = _OUT_DIR / nazwa
+        plik.write_text(tresc_z_kotwica(plik, tresc), encoding="utf-8")
         print(f"WROTE {_OUT_DIR / nazwa}")
     enm = json.loads(tresci["demoOzeSc.enm.json"])["_meta"]
     sc = json.loads(tresci["demoOzeSc.sc.json"])

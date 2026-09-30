@@ -204,6 +204,22 @@ def _roznice_w_tekscie(zloty: str, teraz: str, sciezka: str, klucz: str | None =
     ]
 
 
+def _klucz_wielkosci(rodzic: dict[str, object], klucz: str) -> str:
+    """Nazwa WIELKOŚCI, którą niesie liść ``klucz`` słownika ``rodzic``.
+
+    Metryka nakładki wyników (``overlay_payload.elements.<ref>.metrics.<KOD>``) ma kształt
+    ``{"code": "COS_PHI", "value": …}`` — o klasie wielkości rozstrzyga KOD metryki, nie
+    nazwa pola ``value`` (karta SLD-SUBSTRAT, kontynuacja: cos φ odcinka niosącego
+    praktycznie samą moc bierną, 2,7254e-08 wobec 2,7369e-08 między maszynami —
+    bezwzględnie 1,2e-10, czyli w paśmie wielkości bezwymiarowych ograniczonych, a przy
+    kluczu ``value`` porównywany względnie). Kod metryki trafia do porównania małymi
+    literami (``COS_PHI`` → ``cos_phi``), więc lista klas pozostaje JEDNA."""
+    kod = rodzic.get("code")
+    if klucz == "value" and isinstance(kod, str) and kod.lower() in POLA_BEZWYMIAROWE_OGRANICZONE:
+        return kod.lower()
+    return klucz
+
+
 def roznice_z_tolerancja(
     zloty: object, teraz: object, sciezka: str = "$", klucz: str | None = None
 ) -> list[str]:
@@ -223,7 +239,11 @@ def roznice_z_tolerancja(
         if set(zloty) != set(teraz):
             return [f"{sciezka}: klucze {sorted(set(zloty) ^ set(teraz))}"]
         return [
-            r for k in zloty for r in roznice_z_tolerancja(zloty[k], teraz[k], f"{sciezka}.{k}", k)
+            r
+            for k in zloty
+            for r in roznice_z_tolerancja(
+                zloty[k], teraz[k], f"{sciezka}.{k}", _klucz_wielkosci(zloty, k)
+            )
         ]
     if isinstance(zloty, list) and isinstance(teraz, list):
         if len(zloty) != len(teraz):

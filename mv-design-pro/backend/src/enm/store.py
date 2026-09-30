@@ -248,6 +248,28 @@ def get_enm(klucz: str) -> EnergyNetworkModel:
         return _get_enm_pod_blokada(klucz)
 
 
+def przygotuj_model_po_odczycie(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
+    """Automigracje i uzupełnienia, które magazyn wykonuje przy KAŻDYM odczycie modelu
+    (a więc przed każdą operacją domenową z API): nazwa klucza punktu przyłączenia
+    wytwórcy, promocja pól nN do realnych elementów grafu, domyślne dane katalogowe.
+
+    JEDNO źródło tej sekwencji — czyta je magazyn (`_get_enm_pod_blokada`) i
+    budowniczowie sieci referencyjnych, których fikstury mają być DOKŁADNIE tym, co
+    produkt wytwarza przez API (karta SLD-SUBSTRAT: substrat 52 stacji budowany
+    bez tej ścieżki nie miał promocji pól nN, której model z API nigdy nie pomija).
+    Zwraca (model, czy_zmieniono); przy braku zmian — ten sam obiekt.
+    """
+    # V12K-268: automigracja nazwy klucza punktu przyłączenia wytwórcy. Idzie PRZED
+    # uzupełnianiem katalogu, bo reguły katalogowe mają widzieć już kanoniczne nazwy.
+    model, zmieniona_nazwa = migruj_punkt_przylaczenia(enm)
+    # P0.1 nN (karta P0.1, C §4.2, LV-INV-12): promocja `nn_field_specs` →
+    # realne elementy grafu. PO migracji punktu przyłączenia, PRZED uzupełnianiem
+    # katalogu — reguły katalogowe mają widzieć już realne gałęzie/szyny nN.
+    model, zmieniona_promocja_nn = promuj_nn_field_specs(model)
+    completed, changed = complete_catalog_defaults(model)
+    return completed, bool(changed or zmieniona_nazwa or zmieniona_promocja_nn)
+
+
 def _get_enm_pod_blokada(klucz: str) -> EnergyNetworkModel:
     # Odczyt bierze te sama blokade co zapis, bo NIE JEST czystym odczytem:
     # tworzy model domyslny, migruje format i uzupelnia dane katalogowe, a wynik
@@ -272,24 +294,17 @@ def _get_enm_pod_blokada(klucz: str) -> EnergyNetworkModel:
             )
             enm.header.hash_sha256 = compute_enm_hash(enm)
             _enm_store[klucz] = enm
-    # V12K-268: automigracja nazwy klucza punktu przyłączenia wytwórcy. Ta sama
-    # ścieżka co uzupełnianie domyślnych katalogowych poniżej — model naprawiony
-    # przy wczytaniu jest ZAPISYWANY, żeby migracja wykonała się RAZ, a nie przy
-    # każdym odczycie. Kolejność ma znaczenie: migracja idzie PRZED uzupełnianiem
-    # katalogu, bo reguły katalogowe mają widzieć już kanoniczne nazwy.
-    zmigrowany, zmieniona_nazwa = migruj_punkt_przylaczenia(_enm_store[klucz])
-    if zmieniona_nazwa:
-        _enm_store[klucz] = zmigrowany
-
-    # P0.1 nN (karta P0.1, C §4.2, LV-INV-12): promocja `nn_field_specs` →
-    # realne elementy grafu. PO migracji punktu przyłączenia (kolejność ma
-    # znaczenie tak samo jak wyżej), PRZED uzupełnianiem katalogu — reguły
-    # katalogowe mają widzieć już realne gałęzie/szyny nN, nie worek meta.
-    zmigrowany_nn, zmieniona_promocja_nn = promuj_nn_field_specs(_enm_store[klucz])
-    if zmieniona_promocja_nn:
-        _enm_store[klucz] = zmigrowany_nn
-
-    completed, changed = complete_catalog_defaults(_enm_store[klucz])
+    # Automigracje i uzupełnienia katalogowe przy odczycie — model naprawiony przy
+    # wczytaniu jest ZAPISYWANY, żeby migracja wykonała się RAZ, a nie przy każdym
+    # odczycie (kolejność kroków: `przygotuj_model_po_odczycie`).
+    completed, zmieniony_po_odczycie = przygotuj_model_po_odczycie(_enm_store[klucz])
+    if zmieniony_po_odczycie:
+        # Jak przed wydzieleniem sekwencji: model po automigracji leży w magazynie, a
+        # `set_enm` dostaje TEN SAM obiekt (alias) — wycofanie nieudanego zapisu w
+        # `set_enm` jest napisane właśnie dla tej ścieżki (kopia `poprzedni` sprzed
+        # podniesienia rewizji; pin `test_store_concurrency.py::
+        # test_automigracja_nie_zostawia_awansowanej_rewizji_po_nieudanym_zapisie`).
+        _enm_store[klucz] = completed
     # W5-A: migracja uziemienia do jednej reprezentacji wykonała się w walidatorze
     # modelu przy wczytaniu; tu jej skutek trafia do dziennika zmian jako rewizja z
     # nazwanym opisem (przeniesione / UTRACONE / usunięte klucze meta), a utrata
@@ -304,7 +319,7 @@ def _get_enm_pod_blokada(klucz: str) -> EnergyNetworkModel:
             completed,
             zrodlo_zmiany=ZrodloZmiany(operacja=None, opis_pl=raport_uziemienia.opis_pl()),
         )
-    if changed or zmieniona_nazwa or zmieniona_promocja_nn:
+    if zmieniony_po_odczycie:
         return set_enm(klucz, completed)
     return _enm_store[klucz]
 
