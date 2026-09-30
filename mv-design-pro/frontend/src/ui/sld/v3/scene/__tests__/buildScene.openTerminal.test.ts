@@ -206,7 +206,7 @@ describe('§16-v3 fixtura referencyjna (substrate) — ogony realne, zero fabryk
     for (const b of (st as { bus_refs?: readonly string[] }).bus_refs ?? []) busToStation.add(b);
   }
   const sldData = buildSldDataFromSnapshot(substrateEnm, substrateEnm.logical_views ?? null, null);
-  const expectedTailRuns = sldData.cableRuns.filter((cr) => {
+  const expectedTailRunsAll = sldData.cableRuns.filter((cr) => {
     const paths = cr.segmentPaths ?? [];
     if (paths.length === 0) return false;
     let lastOwned = -1;
@@ -215,10 +215,37 @@ describe('§16-v3 fixtura referencyjna (substrate) — ogony realne, zero fabryk
     });
     const tail = paths.slice(lastOwned + 1);
     return tail.length > 0 && tail.every((p) => (p.toTerminal?.ownerRef ?? null) == null);
-  }).length;
+  });
+  // Karta SLD-SUBSTRAT (kontynuacja): koniec ogona, w którym zaczyna się albo kończy
+  // ODCINEK POWIĄZANIA (odcinek SN spoza korytarzy — w substracie „Rezerwa pierścieniowa
+  // (odcinek NOP)" między końcami dwóch odgałęzień), NIE jest otwarty: model łączy go z
+  // drugim ogonem. Dotąd odcinek powiązania nie był rysowany, a oba jego końce nosiły
+  // słupek „koniec otwarty" (rysunek przeczył modelowi); teraz stoi tam znak powiązania
+  // (`tieMarker`, `scene/elementyToru.ts`). Oba zbiory liczone NIEZALEŻNIE z ENM.
+  const wKorytarzu = new Set((substrateEnm.corridors ?? []).flatMap((c) => c.ordered_segment_refs ?? []));
+  const galezie = (substrateEnm.branches ?? []) as unknown as readonly {
+    ref_id: string;
+    type: string;
+    from_bus_ref: string;
+    to_bus_ref: string;
+  }[];
+  const szynyPowiazan = new Set(
+    galezie
+      .filter((g) => (g.type === 'cable' || g.type === 'line_overhead') && !wKorytarzu.has(g.ref_id))
+      .flatMap((g) => [g.from_bus_ref, g.to_bus_ref]),
+  );
+  const koniecOgona = (cr: (typeof sldData.cableRuns)[number]): string | undefined => {
+    const paths = cr.segmentPaths ?? [];
+    const ostatni = paths[paths.length - 1];
+    return galezie.find((g) => g.ref_id === ostatni?.segmentRef)?.to_bus_ref;
+  };
+  const expectedTieEnds = expectedTailRunsAll.filter((cr) => szynyPowiazan.has(koniecOgona(cr) ?? '')).length;
+  const expectedTailRuns = expectedTailRunsAll.length - expectedTieEnds;
 
   it('kontrola pomiaru: substrate ma >0 realnych ogonów otwartych (inaczej ten test nic nie dowodzi)', () => {
     expect(expectedTailRuns).toBeGreaterThan(0);
+    // Pomiar: jedno powiązanie (rezerwa pierścieniowa) zamyka DWA końce ogonów.
+    expect(expectedTieEnds).toBe(2);
   });
 
   for (const lod of LODS) {
@@ -228,6 +255,7 @@ describe('§16-v3 fixtura referencyjna (substrate) — ogony realne, zero fabryk
       expect(scene.segments.filter((s) => s.meta?.openTerminal === true)).toHaveLength(expectedTailRuns);
       expect(openTerminalGaps(scene)).toHaveLength(0);
       expect(sceneSegmentEndpointGaps(scene)).toHaveLength(0);
+      expect(scene.segments.filter((s) => s.meta?.kind === 'tieMarker')).toHaveLength(expectedTieEnds);
     });
   }
 });

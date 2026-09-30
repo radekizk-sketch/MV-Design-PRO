@@ -63,6 +63,8 @@ export const CONTINUITY_APPARATUS_SYMBOL_IDS: readonly SymbolId[] = [
   'loadBreakSwitch',
   'fuseSwitch',
   'noPoint',
+  'lineSwitch',
+  'lineBreaker',
 ];
 
 export type LodContinuityGapReason =

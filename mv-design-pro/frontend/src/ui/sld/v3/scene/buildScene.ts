@@ -180,6 +180,7 @@ import {
 } from '../compose/directions';
 import { isSourceOperationalState, type DerConnectionSide, type DerSourceKind, type StationDerSourceInput } from '../compose/sourceKind';
 import { junctionDotGaps, interiorCrossings } from './crossings';
+import { elementyToru } from './elementyToru';
 import {
   bayHasProtectionAnnotation,
   protectionAnnotationDetailForLod,
@@ -607,17 +608,33 @@ function splitPolylineIntoPieces(
         // Cięcie musi leżeć WEWNĄTRZ biegu (nie na wierzchołku), poza
         // zakazanymi pionami i być ściśle za poprzednim cięciem — inaczej
         // degeneracja.
-        const withinRun =
-          (dirX !== 0 && (cut.x - a.x) * dirX > 0 && (b.x - cut.x) * dirX > 0) ||
-          (dirY !== 0 && (cut.y - a.y) * dirY > 0 && (b.y - cut.y) * dirY > 0);
-        const offForbidden = dirX === 0 || !forbiddenX?.has(cut.x);
         const prev = cuts[cuts.length - 1];
         const prevRun = cutRunIdx[cutRunIdx.length - 1];
-        const monotone =
-          prev == null ||
-          prevRun < i ||
-          (prevRun === i && ((dirX !== 0 && (cut.x - prev.x) * dirX > 0) || (dirY !== 0 && (cut.y - prev.y) * dirY > 0)));
-        if (!withinRun || !offForbidden || !monotone) return [points];
+        const poprawne = (c: RouteVertex): boolean => {
+          const withinRun =
+            (dirX !== 0 && (c.x - a.x) * dirX > 0 && (b.x - c.x) * dirX > 0) ||
+            (dirY !== 0 && (c.y - a.y) * dirY > 0 && (b.y - c.y) * dirY > 0);
+          const offForbidden = dirX === 0 || !forbiddenX?.has(c.x);
+          const monotone =
+            prev == null ||
+            prevRun < i ||
+            (prevRun === i && ((dirX !== 0 && (c.x - prev.x) * dirX > 0) || (dirY !== 0 && (c.y - prev.y) * dirY > 0)));
+          return withinRun && offForbidden && monotone;
+        };
+        // Karta SLD-SUBSTRAT (kontynuacja): cięcie równych długości trafiające
+        // DOKŁADNIE w wierzchołek (narożnik trasy) odsuwamy o ±GRID w obrębie
+        // biegu, zamiast rezygnować z podziału — dotąd taki przypadek zwracał
+        // jedno przęsło i wołający gubił tożsamość wszystkich członów poza
+        // ostatnim (pomiar: ogon trzech odcinków za stacją S02 sieci „b2Mala" na
+        // L1/L2 — dwa odcinki modelu bez prymitywu na kanwie). Kolejność prób
+        // stała: wstecz, potem naprzód (deterministycznie).
+        if (!poprawne(cut)) {
+          const wstecz: RouteVertex = { x: cut.x - dirX * GRID, y: cut.y - dirY * GRID };
+          const naprzod: RouteVertex = { x: cut.x + dirX * GRID, y: cut.y + dirY * GRID };
+          if (poprawne(wstecz)) cut = wstecz;
+          else if (poprawne(naprzod)) cut = naprzod;
+          else return [points];
+        }
         cuts.push(cut);
         cutRunIdx.push(i);
         placed = true;
@@ -1821,6 +1838,13 @@ function connectViaCorridor(
  * używana też w sekcji 6 (`stripTopY`, tam zostawiony jawny wzór z historycznych
  * powodów, wynik identyczny).
  */
+/** Poziom biegu otwartego ciągu głównego (wiersz 0 bez stacji): pod blokiem GPZ
+ *  z odstępem 2×GRID — JEDNO źródło dla trasy biegu i kotwic punktów
+ *  odgałęźnych na nim (karta SLD-SUBSTRAT, kontynuacja). */
+function openRunCorridorY(gpzGeometry: { readonly bbox: V3Rect }): number {
+  return snapUp(gpzGeometry.bbox.y + gpzGeometry.bbox.height) + 2 * GRID;
+}
+
 function stripTopYOf(layout: RowLayout): number {
   return layout.blockTopY + layout.bandsResult.bands.B4.height - DESCENT_STRIP_HEIGHT;
 }
@@ -1974,7 +1998,10 @@ interface ResolvedBranchOrigin {
    *  Dla `station-bay` == `originOwnerRef`; dla `branch-point` — stacja
    *  POPRZEDZAJĄCA punkt na ciągu (`TrunkBranchPoint.upstreamNodeRef`). */
   readonly channelOwnerRef: string;
-  readonly originRow: RowStation;
+  /** Wiersz stacji-origin. `null` WYŁĄCZNIE dla punktu odgałęźnego, którego
+   *  węzłem poprzedzającym jest GPZ (kanał w szczelinie GPZ → kolumna 0,
+   *  `GpzChannelSlot`) — punkt nie ma stacji, a trasa startuje w kotwicy toru. */
+  readonly originRow: RowStation | null;
   readonly branchPos: number;
   /** Port odgałęźny pola stacji. `null` dla punktu odgałęźnego — jego port leży
    *  NA TORZE magistrali (kanał × korytarz międzystacyjny), więc jest znany
@@ -1993,6 +2020,9 @@ function resolveBranchOrigin(
   // punkt NIE pobiera kolejnego `branchPos` — dostaje swoją, już ustaloną.
   branchPointByRef: ReadonlyMap<string, TrunkBranchPoint>,
   branchPointPos: ReadonlyMap<string, number>,
+  /** Karta SLD-SUBSTRAT (kontynuacja): węzeł poprzedzający punkt odgałęźny może
+   *  być GPZ — wtedy nie ma wiersza stacji, a kanał leży w szczelinie GPZ. */
+  gpzId: string | null,
 ): ResolvedBranchOrigin | null {
   const originOwnerRef = cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null;
   if (originOwnerRef != null) {
@@ -2018,9 +2048,9 @@ function resolveBranchOrigin(
   const bpRef = run.branchOriginStationRef ?? null;
   const bp = bpRef != null ? branchPointByRef.get(bpRef) : undefined;
   if (!bp) return null;
-  const originRow = mainRowById.get(bp.upstreamNodeRef);
+  const originRow = mainRowById.get(bp.upstreamNodeRef) ?? null;
   const branchPos = branchPointPos.get(bp.refId);
-  if (!originRow || branchPos == null) return null;
+  if ((originRow == null && bp.upstreamNodeRef !== gpzId) || branchPos == null) return null;
   return {
     kind: 'branch-point',
     originOwnerRef: bp.refId,
@@ -2049,7 +2079,15 @@ function computeLateralChannelX(
   mainColumns: readonly ColumnResult[],
   originOwnerRef: string,
   branchPos: number,
+  gpzSlot: GpzChannelSlot | null = null,
 ): number | null {
+  // Karta SLD-SUBSTRAT (kontynuacja): węzeł poprzedzający = GPZ. GPZ nie jest
+  // kolumną wiersza, więc kanał leży w ZAREZERWOWANEJ szczelinie między prawą
+  // krawędzią GPZ a kolumną 0 (`GpzChannelSlot`, sekcja 3) — ten sam krok
+  // `LATERAL_CHANNEL_STEP` dla kolejnych punktów/odgałęzień tej szczeliny.
+  if (gpzSlot != null && originOwnerRef === gpzSlot.gpzId) {
+    return snapToGrid(gpzSlot.baseX + branchPos * LATERAL_CHANNEL_STEP);
+  }
   const col = mainColumns.find((c) => c.stationId === originOwnerRef);
   if (!col) return null;
   return snapToGrid(col.x + col.width + GRID + branchPos * LATERAL_CHANNEL_STEP);
@@ -2081,6 +2119,16 @@ function computeLateralChannelX(
  * (katalogowe `branch_ports_count > 1`) dostaje WŁASNY kanał i dojeżdża do niego
  * sub-poziomem pod korytarzem (patrz trasa w sekcji 6).
  */
+/** Karta SLD-SUBSTRAT (kontynuacja): szczelina kanałów zejść punktów
+ *  odgałęźnych, których węzłem poprzedzającym jest GPZ — rezerwowana w sekcji 3
+ *  (przesunięcie magistrali `mainRowDx`) PRZED kolumną 0, bo kolumna 0 nie może
+ *  ustąpić kanałowi (`insertColumnChannels`, degeneracja c). */
+interface GpzChannelSlot {
+  readonly gpzId: string;
+  /** X pierwszego kanału szczeliny (kolejne: `+ branchPos × LATERAL_CHANNEL_STEP`). */
+  readonly baseX: number;
+}
+
 interface RowChannelPlan {
   /** Kanał zejścia per `topologyRun.id` (laterale pól i odgałęzienia punktów). */
   readonly byRunId: ReadonlyMap<string, number>;
@@ -2090,6 +2138,30 @@ interface RowChannelPlan {
   readonly branchPosByBranchPointRef: ReadonlyMap<string, number>;
 }
 
+/** Karta SLD-SUBSTRAT (kontynuacja): liczba kanałów zejść w szczelinie GPZ —
+ *  jeden na punkt odgałęźny z węzłem poprzedzającym GPZ, plus jeden na KAŻDE
+ *  kolejne odgałęzienie z tego samego punktu (pierwsze dziedziczy kanał punktu —
+ *  ta sama reguła co krok (3) `computeRowChannelPlan`). */
+function countGpzBranchPointChannels(
+  trunkBranchPoints: readonly TrunkBranchPoint[],
+  topologyRuns: readonly SldTopologyRun[],
+  cableRunById: ReadonlyMap<string, SldCableRun>,
+  gpzId: string,
+): number {
+  let count = 0;
+  for (const bp of trunkBranchPoints) {
+    if (bp.upstreamNodeRef !== gpzId) continue;
+    const runs = topologyRuns.filter(
+      (run) =>
+        run.kind === 'branch' &&
+        run.branchOriginStationRef === bp.refId &&
+        (cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) == null,
+    );
+    count += Math.max(1, runs.length);
+  }
+  return count;
+}
+
 function computeRowChannelPlan(
   branchRuns: readonly SldTopologyRun[],
   rowBranchPoints: readonly TrunkBranchPoint[],
@@ -2097,6 +2169,7 @@ function computeRowChannelPlan(
   mainRowById: ReadonlyMap<string, RowStation>,
   branchPointByRef: ReadonlyMap<string, TrunkBranchPoint>,
   mainColumns: readonly ColumnResult[],
+  gpzSlot: GpzChannelSlot | null,
 ): RowChannelPlan {
   const byRunId = new Map<string, number>();
   const byBranchPointRef = new Map<string, number>();
@@ -2105,7 +2178,7 @@ function computeRowChannelPlan(
 
   // (1) Laterale z PÓL stacji — zachowanie sprzed karty, bit w bit.
   for (const run of branchRuns) {
-    const origin = resolveBranchOrigin(run, cableRunById, mainRowById, usage, branchPointByRef, new Map());
+    const origin = resolveBranchOrigin(run, cableRunById, mainRowById, usage, branchPointByRef, new Map(), gpzSlot?.gpzId ?? null);
     if (!origin || origin.kind !== 'station-bay') continue;
     const channelX = computeLateralChannelX(mainColumns, origin.channelOwnerRef, origin.branchPos);
     if (channelX == null) continue;
@@ -2117,7 +2190,7 @@ function computeRowChannelPlan(
   for (const bp of rowBranchPoints) {
     const branchPos = usage.get(bp.upstreamNodeRef) ?? 0;
     usage.set(bp.upstreamNodeRef, branchPos + 1);
-    const channelX = computeLateralChannelX(mainColumns, bp.upstreamNodeRef, branchPos);
+    const channelX = computeLateralChannelX(mainColumns, bp.upstreamNodeRef, branchPos, gpzSlot);
     if (channelX == null) continue;
     byBranchPointRef.set(bp.refId, channelX);
     branchPosByBranchPointRef.set(bp.refId, branchPos);
@@ -2139,7 +2212,7 @@ function computeRowChannelPlan(
     }
     const branchPos = usage.get(bp.upstreamNodeRef) ?? 0;
     usage.set(bp.upstreamNodeRef, branchPos + 1);
-    const channelX = computeLateralChannelX(mainColumns, bp.upstreamNodeRef, branchPos);
+    const channelX = computeLateralChannelX(mainColumns, bp.upstreamNodeRef, branchPos, gpzSlot);
     if (channelX != null) byRunId.set(run.id, channelX);
   }
 
@@ -3335,6 +3408,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
    *  `spanStart` etykiety (BEZ zmiany geometrii trasy — trasa wciąż zaczyna
    *  się w prawdziwym `gpzPort.x`). */
   let gpzRightEdgeX = 0;
+  let gpzChannelSlot: GpzChannelSlot | null = null;
   if (gpzData) {
     // F9.4: pass1 (Y-alignment tylko) NIE potrzebuje `gridSources` — port
     // zaczepu magistrali (`findGpzTrunkPort`) jest niezależny od symbolu
@@ -3385,7 +3459,26 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       );
     }
     gpzRightEdgeX = gpzLayout.bbox.x + gpzLayout.bbox.width;
-    mainRowDx = snapUp(gpzRightEdgeX) + GPZ_TRUNK_GAP;
+    // Karta SLD-SUBSTRAT (kontynuacja): punkty odgałęźne, których węzłem
+    // poprzedzającym jest GPZ (np. ZKSN na pierwszym odcinku, stacja klienta w
+    // odgałęzieniu), mają kanał zejścia w szczelinie GPZ → kolumna 0. Kolumna 0
+    // nie ustępuje kanałom (`insertColumnChannels`, degeneracja c), więc szczelina
+    // jest rezerwowana TU, przesunięciem magistrali: jeden krok kanału na każde
+    // zejście (punkt + kolejne odgałęzienia z tego samego punktu) i drugi odstęp
+    // GPZ_TRUNK_GAP przed kolumną 0. Brak takich punktów ⇒ rezerwa 0, geometria
+    // bez zmian.
+    const gpzChannelCount = countGpzBranchPointChannels(
+      trunkBranchPoints,
+      sldData.topologyRuns,
+      cableRunById,
+      gpzData.id,
+    );
+    gpzChannelSlot =
+      gpzChannelCount > 0 ? { gpzId: gpzData.id, baseX: snapUp(gpzRightEdgeX) + GPZ_TRUNK_GAP } : null;
+    mainRowDx =
+      snapUp(gpzRightEdgeX) +
+      GPZ_TRUNK_GAP +
+      (gpzChannelCount > 0 ? gpzChannelCount * LATERAL_CHANNEL_STEP + GPZ_TRUNK_GAP : 0);
     // KD-5: kompozycja GEOMETRYCZNA (pełny szczegół) jest PRAWDĄ ŚWIATA na
     // każdym LOD — patrz deklaracja `gpzGeometry` wyżej.
     gpzGeometry = gpzLayout;
@@ -3620,6 +3713,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       mainRowById,
       branchPointByRef,
       rowLayout.columnsResult.columns,
+      sheetRowIndex === 0 ? gpzChannelSlot : null,
     );
     const lateralChannelXById = channelPlan.byRunId;
     const trunkForbiddenCutXs = new Set<number>([
@@ -3629,7 +3723,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     /** ODG-RYSUNEK: KOTWICE punktów odgałęźnych TEGO wiersza — kanał × korytarz
      *  międzystacyjny wiersza. Kluczem jest ref członu, który w punkcie się
      *  KOŃCZY (`upstreamSegmentRef`), bo dokładnie tam tnie się łańcuch przęsła. */
-    const branchPointCorridorY = interStationCorridorY(rowLayout, lod);
+    // Karta SLD-SUBSTRAT (kontynuacja): w wierszu 0 BEZ stacji ciąg główny jest
+    // biegiem otwartym pod GPZ (`openRunCorridorY`) — kotwica punktu leży na TYM
+    // poziomie, inaczej nie trafiłaby w tor i punkt zostałby bez symbolu.
+    const branchPointCorridorY =
+      sheetRowIndex === 0 && rowStations.length === 0 && gpzGeometry
+        ? openRunCorridorY(gpzGeometry)
+        : interStationCorridorY(rowLayout, lod);
     const rowAnchorBySegmentRef = new Map<string, RowBranchAnchor>();
     const rowAnchorByRef = new Map<string, RouteVertex>();
     for (const bp of rowBranchPoints) {
@@ -3913,22 +4013,48 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const gpzPort = gpzGeometry ? findGpzTrunkBottomPort(gpzGeometry, gpzData!, stopNotes) : null;
       if (gpzPort) {
         const paths = mainCableRun!.segmentPaths!;
-        const gpzBbox = gpzGeometry!.bbox;
-        const belowY = snapUp(gpzBbox.y + gpzBbox.height) + 2 * GRID;
-        const xEnd = Math.max(mainRowDx, snapUp(gpzPort.x) + paths.length * OPEN_RUN_PIECE_SPAN);
+        const belowY = openRunCorridorY(gpzGeometry!);
+        // Karta SLD-SUBSTRAT (kontynuacja): bieg otwarty sięga ZA ostatnią
+        // kotwicę punktu odgałęźnego, który na nim leży (np. ZKSN na pierwszym
+        // odcinku, stacja klienta w odgałęzieniu) — ta sama reguła co ogon ciągu.
+        const anchorXs = paths
+          .map((sp) => rowAnchorBySegmentRef.get(sp.segmentRef)?.point.x)
+          .filter((x): x is number => x != null);
+        const xEnd = Math.max(
+          mainRowDx,
+          snapUp(gpzPort.x) + paths.length * OPEN_RUN_PIECE_SPAN,
+          ...anchorXs.map((x) => snapUp(x) + OPEN_RUN_PIECE_SPAN),
+        );
+        const segmentRefs = paths.map((sp) => sp.segmentRef);
+        const pieces =
+          anchorXs.length > 0
+            ? trunkChainPieces(
+                [
+                  { x: gpzPort.x, y: gpzPort.y },
+                  { x: gpzPort.x, y: belowY },
+                  { x: xEnd, y: belowY },
+                ],
+                segmentRefs,
+                rowTrunkChainContext,
+                consumedBranchAnchors,
+                stopNotes,
+              )
+            : [];
         paths.forEach((sp, i) => {
           const to = xEnd - (paths.length - 1 - i) * OPEN_RUN_PIECE_SPAN;
           const points: RouteVertex[] =
-            i === 0
-              ? [
-                  { x: gpzPort.x, y: gpzPort.y },
-                  { x: gpzPort.x, y: belowY },
-                  { x: to, y: belowY },
-                ]
-              : [
-                  { x: xEnd - (paths.length - i) * OPEN_RUN_PIECE_SPAN, y: belowY },
-                  { x: to, y: belowY },
-                ];
+            pieces.length === paths.length
+              ? [...pieces[i]]
+              : i === 0
+                ? [
+                    { x: gpzPort.x, y: gpzPort.y },
+                    { x: gpzPort.x, y: belowY },
+                    { x: to, y: belowY },
+                  ]
+                : [
+                    { x: xEnd - (paths.length - i) * OPEN_RUN_PIECE_SPAN, y: belowY },
+                    { x: to, y: belowY },
+                  ];
           const isLast = i === paths.length - 1;
           allSegments.push({
             points,
@@ -4060,6 +4186,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       if (isFeeder) continue; // feeder ma etykietę POZIOMĄ (segmentSpans), nie zejściową
       const origin = resolveBranchOrigin(
         run, cableRunById, mainRowById, usage, branchPointByRef, channelPlan.branchPosByBranchPointRef,
+        gpzData?.id ?? null,
       );
       if (!origin) continue;
       if (lateralChannelXById.get(run.id) == null) continue;
@@ -4320,6 +4447,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
 
     const origin = resolveBranchOrigin(
       run, cableRunById, mainRowById, branchOriginUsage, branchPointByRef, channelPlan.branchPosByBranchPointRef,
+      gpzData?.id ?? null,
     );
     if (!origin) {
       stopNotes.push(
@@ -4819,6 +4947,34 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         placement: 'below',
         clearance: 2 * GRID,
       });
+    }
+  }
+
+  // -- 6c. ELEMENTY NA TORZE (karta SLD-SUBSTRAT, kontynuacja): łączniki
+  // sekcyjne, węzły nazwane i powiązania pierścieniowe — położenie z geometrii
+  // odcinków już narysowanych (`scene/elementyToru.ts`), więc PO wszystkich
+  // wierszach i odgałęzieniach.
+  {
+    const toru = elementyToru(snapshot, allSegments, lod);
+    allSegments.splice(0, allSegments.length, ...toru.segments);
+    allSymbols.push(...toru.symbols);
+    simpleAnchored.push(...toru.labels);
+    stopNotes.push(...toru.stopNotes);
+    // Koniec zamknięty powiązaniem: etykieta „koniec otwarty" staje się odsyłaczem
+    // powiązania (ten sam slot, krótszy tekst — zero nowych kolizji), z refem
+    // POWIĄZANIA (klik prowadzi do odcinka, który ten koniec zamyka).
+    for (let i = 0; i < openTerminalLabels.length; i++) {
+      const etykieta = openTerminalLabels[i];
+      const ref = etykieta.ownerRef.replace(/#open-terminal-label$/, '');
+      const powiazanie = toru.zamknieteKonceOdcinkow.get(ref);
+      if (powiazanie == null || ref === etykieta.ownerRef) continue;
+      const text = 'powiązanie';
+      openTerminalLabels[i] = {
+        ...etykieta,
+        ownerRef: `${powiazanie}#powiazanie-label-${ref}`,
+        text,
+        rect: { ...etykieta.rect, width: measureLabelWidth(text, etykieta.labelClass) },
+      };
     }
   }
 
@@ -6120,6 +6276,8 @@ function isBusbarLikeSegment(seg: PreviewSegment): boolean {
   // S9-1: kreski znaku ciągu dalszego (złamanie arkusza) — jak słupek
   // terminalny: ich WŁASNE końce są krańcami rysowanej kreski, nie portami.
   if (seg.meta?.kind === 'sheetContinuation') return true;
+  // Znak powiązania (`scene/elementyToru.ts`) — kreska jak słupek końca.
+  if (seg.meta?.kind === 'tieMarker') return true;
   const ref = seg.meta?.ownerRef;
   return ref != null && (ref.endsWith('#lv-bus') || ref.endsWith('#source-bus-extension') || ref.endsWith('#hv-bus-source-extension'));
 }
@@ -6393,6 +6551,9 @@ function verticalCauseOfRole(
   // S9-1: kreski znaku ciągu dalszego są POZIOME (zero pionów) — klasyfikacja
   // dla kompletności audytu, gdyby marker kiedyś zmienił orientację.
   if (kind === 'sheetContinuation') return 'slupek-terminalny';
+  // Znak powiązania stoi DOKŁADNIE tam, gdzie stałby słupek końca otwartego —
+  // ta sama przyczyna pionu (kreska poprzeczna do biegu poziomego).
+  if (kind === 'tieMarker') return 'slupek-terminalny';
   // Dołączenia nN / DER / źródło sieci — obrys pola nN pod stacją.
   if (kind === 'lv' || r.includes('#lv-') || r.includes('#der-row') || r.endsWith('#grid-source-drop')) return 'footprint';
   // Kolumna GPZ (pola WN-SN, transformator, kotwica pola, mostki WN).
@@ -8305,7 +8466,7 @@ export function trunkThicknessGaps(scene: SceneV3): readonly string[] {
     // §16-v3: słupek terminalny (`kind==='openTerminal'`) to MARKER końca
     // biegu, nie trasa — nosi ownerRef biegu (sufiks `#open-terminal`) dla
     // tożsamości, ale nie podlega hierarchii grubości tras §22.4.
-    if (s.meta?.kind === 'openTerminal' || s.meta?.kind === 'sheetContinuation') continue;
+    if (s.meta?.kind === 'openTerminal' || s.meta?.kind === 'sheetContinuation' || s.meta?.kind === 'tieMarker') continue;
     if (owner.includes('branch_segment') && s.meta?.kind !== 'sn') {
       gaps.push(`Trasa odgałęźna z klasą inną niż sn: ownerRef=${owner} kind=${String(s.meta?.kind)}`);
     }

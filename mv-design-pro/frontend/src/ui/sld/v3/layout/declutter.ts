@@ -50,6 +50,7 @@ export const LABEL_PRIORITY: Readonly<Record<OwnerKind, number>> = {
   protection: 85, // numer urządzenia zabezpieczeniowego (ANSI 52)
   der: 70, // MOC źródła (audyt §3 „moc")
   apparatus: 60, // identyfikator aparatu (Q/QE/T)
+  'lacznik-toru': 60, // nazwa łącznika sekcyjnego na torze — ta sama waga co identyfikator aparatu
   'field-role': 55, // rola pola (pole liniowe/…)
   'port-caption': 40, // podpis kierunku (kier./odg.)
   // BLOK-LATERAL-WLASNOSC: TA SAMA waga co `port-caption`, którą ten rodzaj

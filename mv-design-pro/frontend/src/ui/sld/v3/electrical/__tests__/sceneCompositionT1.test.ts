@@ -129,10 +129,25 @@ describe('Stacja B — UNRESOLVED aparatu nN: walidacja grafu obejmuje domenę n
   function withUnresolvedQf01(): EnergyNetworkModel {
     const enm = buildStacjaBFixture();
     const branch = branchByRef(enm, STACJA_B_REFS.qf01Ref);
+    // Karta SLD-SUBSTRAT (kontynuacja): „nierozpoznany" = aparat Z wiązaniem
+    // katalogowym, którego rodzaju dane nie rozstrzygają; brak wiązania to brak
+    // katalogu (pozycja gotowości), nie naruszenie grafu — przypadek niżej.
+    (branch as { catalog_ref: string | null }).catalog_ref = 'pozycja-nierozpoznana';
     (branch as { catalog_namespace: string | null }).catalog_namespace = null;
     (branch as { materialized_params: Record<string, unknown> }).materialized_params = {};
     return enm;
   }
+
+  it('aparat BEZ wiązania katalogowego w torze aktywnym: scena SLD_VALID, bez ostrzeżenia grafu — brak katalogu blokuje analizy, nie rysunek', () => {
+    const enm = buildStacjaBFixture();
+    const branch = branchByRef(enm, STACJA_B_REFS.qf01Ref);
+    (branch as { catalog_ref: string | null }).catalog_ref = null;
+    (branch as { catalog_namespace: string | null }).catalog_namespace = null;
+    (branch as { materialized_params: Record<string, unknown> | null }).materialized_params = null;
+    const scene = buildSceneV3(enm, 2);
+    expect(scene.meta.electricalGraphStatus).toBe('SLD_VALID');
+    expect(scene.meta.stopNotes.some((n) => n.includes(STACJA_B_REFS.qf01Ref))).toBe(false);
+  });
 
   it('status sceny SLD_INVALID z kodem UNRESOLVED_ACTIVE_APPARATUS (graf elektryczny CAŁEJ sieci)', () => {
     const scene = buildSceneV3(withUnresolvedQf01(), 2);

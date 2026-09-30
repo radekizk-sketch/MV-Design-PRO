@@ -471,51 +471,22 @@
         "x_ohm": 0.0
       },
       {
-        "catalog_namespace": "APARAT_NN",
-        "catalog_ref": "cb_nn_1000a",
+        "catalog_namespace": null,
+        "catalog_ref": null,
         "from_bus_ref": "stn/8dac76614b18fa3885ba3c3b51efa636/nn_bus",
         "id": "79a51719-d38e-5a18-babc-ad3e6b659088",
-        "materialized_params": {
-          "catalog_item_id": "cb_nn_1000a",
-          "catalog_item_version": "2024.1",
-          "conditional_sc_current_ka": null,
-          "device_kind": "WYLACZNIK_GLOWNY",
-          "i_cu_ka": 50.0,
-          "i_n_a": 1000.0,
-          "ii_range": [
-            1.5,
-            15.0
-          ],
-          "ir_range": [
-            0.4,
-            1.0
-          ],
-          "isd_range": [
-            1.5,
-            10.0
-          ],
-          "tr_range": [
-            3.0,
-            144.0
-          ],
-          "tsd_range": [
-            0.05,
-            0.8
-          ],
-          "u_n_kv": 0.4
-        },
+        "materialized_params": null,
         "meta": {
-          "catalog_item_version": "2024.1",
           "nn_field_migrowana_rola": "IN",
           "nn_field_migrowany_z": "stn/8dac76614b18fa3885ba3c3b51efa636/nn_main_breaker",
           "nn_promocja_bez_wiazania_katalogowej": true
         },
         "name": "Wyłącznik główny nN",
         "overrides": [],
-        "parameter_source": "CATALOG",
+        "parameter_source": null,
         "r_ohm": null,
         "ref_id": "nn/607377d2652b13644a669759b61aeb9b/feeder_device",
-        "source_mode": "KATALOG",
+        "source_mode": "MIGRACJA",
         "status": "closed",
         "tags": [],
         "to_bus_ref": "nn/607377d2652b13644a669759b61aeb9b/feeder_bus",
@@ -523,51 +494,22 @@
         "x_ohm": null
       },
       {
-        "catalog_namespace": "APARAT_NN",
-        "catalog_ref": "cb_nn_250a",
+        "catalog_namespace": null,
+        "catalog_ref": null,
         "from_bus_ref": "stn/8dac76614b18fa3885ba3c3b51efa636/nn_bus",
         "id": "85fb2d94-f029-5809-94e5-a0583690d426",
-        "materialized_params": {
-          "catalog_item_id": "cb_nn_250a",
-          "catalog_item_version": "2024.1",
-          "conditional_sc_current_ka": null,
-          "device_kind": "WYLACZNIK_ODPLYWOWY",
-          "i_cu_ka": 25.0,
-          "i_n_a": 250.0,
-          "ii_range": [
-            1.5,
-            15.0
-          ],
-          "ir_range": [
-            0.4,
-            1.0
-          ],
-          "isd_range": [
-            1.5,
-            10.0
-          ],
-          "tr_range": [
-            3.0,
-            144.0
-          ],
-          "tsd_range": [
-            0.05,
-            0.8
-          ],
-          "u_n_kv": 0.4
-        },
+        "materialized_params": null,
         "meta": {
-          "catalog_item_version": "2024.1",
           "nn_field_migrowana_rola": "FEEDER",
           "nn_field_migrowany_z": "stn/8dac76614b18fa3885ba3c3b51efa636/nn_feeder/000",
           "nn_promocja_bez_wiazania_katalogowej": true
         },
         "name": "Odpływ nN 1",
         "overrides": [],
-        "parameter_source": "CATALOG",
+        "parameter_source": null,
         "r_ohm": null,
         "ref_id": "nn/fb17b6a09eaf19fd343a37a30e125cec/feeder_device",
-        "source_mode": "KATALOG",
+        "source_mode": "MIGRACJA",
         "status": "closed",
         "tags": [],
         "to_bus_ref": "nn/fb17b6a09eaf19fd343a37a30e125cec/feeder_bus",
@@ -836,51 +778,22 @@
         "x_ohm": 0.0
       },
       {
-        "catalog_namespace": "APARAT_NN",
-        "catalog_ref": "cb_nn_1000a",
+        "catalog_namespace": null,
+        "catalog_ref": null,
         "from_bus_ref": "stn/07997c7ce0ead873cd92305f1c9b8302/nn_bus",
         "id": "d22d6990-3ab6-5d70-9fce-54636075978a",
-        "materialized_params": {
-          "catalog_item_id": "cb_nn_1000a",
-          "catalog_item_version": "2024.1",
-          "conditional_sc_current_ka": null,
-          "device_kind": "WYLACZNIK_GLOWNY",
-          "i_cu_ka": 50.0,
-          "i_n_a": 1000.0,
-          "ii_range": [
-            1.5,
-            15.0
-          ],
-          "ir_range": [
-            0.4,
-            1.0
-          ],
-          "isd_range": [
-            1.5,
-            10.0
-          ],
-          "tr_range": [
-            3.0,
-            144.0
-          ],
-          "tsd_range": [
-            0.05,
-            0.8
-          ],
-          "u_n_kv": 0.4
-        },
+        "materialized_params": null,
         "meta": {
-          "catalog_item_version": "2024.1",
           "nn_field_migrowana_rola": "IN",
           "nn_field_migrowany_z": "stn/07997c7ce0ead873cd92305f1c9b8302/nn_main_breaker",
           "nn_promocja_bez_wiazania_katalogowej": true
         },
         "name": "Wyłącznik główny nN",
         "overrides": [],
-        "parameter_source": "CATALOG",
+        "parameter_source": null,
         "r_ohm": null,
         "ref_id": "nn/cdbe409baca46daff81f94962a2a700a/feeder_device",
-        "source_mode": "KATALOG",
+        "source_mode": "MIGRACJA",
         "status": "closed",
         "tags": [],
         "to_bus_ref": "nn/cdbe409baca46daff81f94962a2a700a/feeder_bus",
@@ -888,51 +801,22 @@
         "x_ohm": null
       },
       {
-        "catalog_namespace": "APARAT_NN",
-        "catalog_ref": "cb_nn_250a",
+        "catalog_namespace": null,
+        "catalog_ref": null,
         "from_bus_ref": "stn/07997c7ce0ead873cd92305f1c9b8302/nn_bus",
         "id": "62afb870-b174-5da9-8122-e3c7b588700b",
-        "materialized_params": {
-          "catalog_item_id": "cb_nn_250a",
-          "catalog_item_version": "2024.1",
-          "conditional_sc_current_ka": null,
-          "device_kind": "WYLACZNIK_ODPLYWOWY",
-          "i_cu_ka": 25.0,
-          "i_n_a": 250.0,
-          "ii_range": [
-            1.5,
-            15.0
-          ],
-          "ir_range": [
-            0.4,
-            1.0
-          ],
-          "isd_range": [
-            1.5,
-            10.0
-          ],
-          "tr_range": [
-            3.0,
-            144.0
-          ],
-          "tsd_range": [
-            0.05,
-            0.8
-          ],
-          "u_n_kv": 0.4
-        },
+        "materialized_params": null,
         "meta": {
-          "catalog_item_version": "2024.1",
           "nn_field_migrowana_rola": "FEEDER",
           "nn_field_migrowany_z": "stn/07997c7ce0ead873cd92305f1c9b8302/nn_feeder/000",
           "nn_promocja_bez_wiazania_katalogowej": true
         },
         "name": "Odpływ nN 1",
         "overrides": [],
-        "parameter_source": "CATALOG",
+        "parameter_source": null,
         "r_ohm": null,
         "ref_id": "nn/7654ee5b447008ca20301b33a0547cfc/feeder_device",
-        "source_mode": "KATALOG",
+        "source_mode": "MIGRACJA",
         "status": "closed",
         "tags": [],
         "to_bus_ref": "nn/7654ee5b447008ca20301b33a0547cfc/feeder_bus",
@@ -1293,9 +1177,9 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "9b878eb4c22bf655c18ae5152974b0ae9149d29b686b8331164c704693893f92",
+      "hash_sha256": "df1fdac47ba21e5fca7de0cfc647a6a519c5d25b52093e6c1e7a37948e3300b8",
       "name": "GPZ — ścieżka danych (pola, CT, zabezpieczenia)",
-      "revision": 12,
+      "revision": 8,
       "updated_at": "2026-09-25T00:00:00Z"
     },
     "junctions": [],

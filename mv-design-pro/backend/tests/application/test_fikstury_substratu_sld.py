@@ -19,7 +19,7 @@ import json
 
 import pytest
 
-from tests.golden.zapis_fikstur import zaokraglij_liczby
+from tests.golden.zapis_fikstur import tresc_z_kotwica, zaokraglij_liczby
 from tests.reference_networks.sld_substrate_fixtures import (
     FRONTEND,
     KATALOGI_FIKSTUR,
@@ -45,8 +45,12 @@ def test_kazda_fikstura_substratu_jest_bajtowo_rowna_generatorowi(
     rozjechane = [
         sciezka
         for sciezka, tresc in sorted(wyrenderowane.items())
+        # Plik = treść generatora PO KOTWICY W SZUMIE (ten sam predykat co zapis `--write`,
+        # `tests/golden/zapis_fikstur.tresc_z_kotwica`): szum numeryki między maszynami nie
+        # zapala testu, każda inna różnica — tak.
         if not (FRONTEND / sciezka).exists()
-        or (FRONTEND / sciezka).read_text(encoding="utf-8") != tresc
+        or (FRONTEND / sciezka).read_text(encoding="utf-8")
+        != tresc_z_kotwica(FRONTEND / sciezka, tresc)
     ]
     assert not rozjechane, (
         f"fikstury substratu ROZJECHANE z generatorem: {rozjechane}. "

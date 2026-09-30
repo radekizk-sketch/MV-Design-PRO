@@ -14,7 +14,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
-import { validateElectricalGraph, type InvariantCode } from '../invariants';
+import { resolveNnApparatusKind, validateElectricalGraph, type InvariantCode } from '../invariants';
 import { buildTerminalGraph, minTransformerCrossings, nonTransformerComponents } from '../terminalGraph';
 import { buildSldViewModel } from '../viewModel';
 import { buildStacjaBFixture, STACJA_B_REFS } from './fixtures/stacjaB';
@@ -207,13 +207,45 @@ describe('P0.12(d) — mutacje fixtury Stacja B, jedna na inwariant', () => {
     expect(codes).toContain('EDGE_VOLTAGE_MISMATCH');
   });
 
-  it('inwariant 7 (UNRESOLVED_ACTIVE_APPARATUS): QF-01 traci namespace/device_kind rozpoznawalny, tor pozostaje ZAMKNIĘTY', () => {
+  // Karta SLD-SUBSTRAT (kontynuacja): intencja inwariantu 7 bez zmian — aparat
+  // W TORZE AKTYWNYM, którego rodzaju NIE DA SIĘ rozstrzygnąć z danych, to HARD
+  // ERROR. Kanon doprecyzowany: „nie da się rozstrzygnąć" dotyczy aparatu Z
+  // wiązaniem katalogowym (dane sprzeczne); aparat BEZ wiązania to jawny brak
+  // katalogu nazwany pozycją gotowości (E061/W061), który blokuje analizy, nie
+  // rysunek. Iloczyn: wiązanie {jest, brak} × tor {zamknięty, otwarty}.
+  it('inwariant 7 (UNRESOLVED_ACTIVE_APPARATUS): QF-01 Z wiązaniem katalogowym traci namespace/device_kind rozpoznawalny, tor pozostaje ZAMKNIĘTY', () => {
     const enm = mutate((m) => {
       const branch = branchByRef(m, STACJA_B_REFS.qf01Ref);
+      (branch as { catalog_ref: string | null }).catalog_ref = 'pozycja-nierozpoznana';
       (branch as { catalog_namespace: string | null }).catalog_namespace = null;
       (branch as { materialized_params: Record<string, unknown> }).materialized_params = {};
     });
     expect(violationCodes(enm)).toContain('UNRESOLVED_ACTIVE_APPARATUS');
+  });
+
+  it('inwariant 7 — aparat BEZ wiązania katalogowego w torze ZAMKNIĘTYM: brak katalogu (pozycja gotowości), NIE naruszenie grafu', () => {
+    const enm = mutate((m) => {
+      const branch = branchByRef(m, STACJA_B_REFS.qf01Ref);
+      (branch as { catalog_ref: string | null }).catalog_ref = null;
+      (branch as { catalog_namespace: string | null }).catalog_namespace = null;
+      (branch as { materialized_params: Record<string, unknown> | null }).materialized_params = null;
+    });
+    const graph = buildTerminalGraph(enm);
+    const edge = graph.edges.find((e) => e.ref === STACJA_B_REFS.qf01Ref)!;
+    expect(resolveNnApparatusKind(edge)).toBe('CATALOG_MISSING');
+    expect(validateElectricalGraph(graph).violations.some((v) => v.code === 'UNRESOLVED_ACTIVE_APPARATUS')).toBe(false);
+  });
+
+  it('inwariant 7 — aparat Z wiązaniem nierozpoznawalnym w torze OTWARTYM nie jest HARD ERROR', () => {
+    const enm = mutate((m) => {
+      const branch = branchByRef(m, STACJA_B_REFS.qf01Ref);
+      (branch as { catalog_ref: string | null }).catalog_ref = 'pozycja-nierozpoznana';
+      (branch as { catalog_namespace: string | null }).catalog_namespace = null;
+      (branch as { materialized_params: Record<string, unknown> }).materialized_params = {};
+      (branch as { status: string }).status = 'open';
+    });
+    const result = validateElectricalGraph(buildTerminalGraph(enm));
+    expect(result.violations.some((v) => v.code === 'UNRESOLVED_ACTIVE_APPARATUS')).toBe(false);
   });
 
   it('inwariant 7 — kontrola negatywna: TEN SAM aparat nierozpoznany, ale tor OTWARTY, nie jest HARD ERROR (plan: „nigdy element w AKTYWNYM torze")', () => {

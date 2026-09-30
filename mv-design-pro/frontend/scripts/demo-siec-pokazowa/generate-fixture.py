@@ -208,9 +208,12 @@ def render_fikstury() -> str:
 
 
 def main() -> None:
+    from tests.golden.zapis_fikstur import tresc_z_kotwica  # noqa: PLC0415
+
     tresc = render_fikstury()
     _WYJSCIE.parent.mkdir(parents=True, exist_ok=True)
-    _WYJSCIE.write_text(tresc, encoding="utf-8")
+    # Kotwica w szumie: szum numeryki między maszynami nie trafia do repozytorium.
+    _WYJSCIE.write_text(tresc_z_kotwica(_WYJSCIE, tresc), encoding="utf-8")
     enm = json.loads(tresc)["enm"]
     stacje = [s for s in enm["substations"] if s.get("station_type") != "gpz"]
     print(f"zapisano: {_WYJSCIE}")

@@ -25,13 +25,13 @@ wiecej niz szosty znak dziesietny i zapala test.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
 
 from tests.reference_networks.station_archetype_substrate import (
     _companions_dir,
+    kanonizuj_artefakt,
     render_companions,
 )
 
@@ -43,13 +43,8 @@ def wyrenderowane() -> dict[str, str]:
     return render_companions()
 
 
-_ULAMEK = re.compile(r"(\d\.\d{5})\d+")
-
-
-def kanonizuj(tekst: str) -> str:
-    """Obcina ulamki do 5 znakow — patrz naglowek modulu (szum ostatniej cyfry
-    miedzy maszynami przy wartosci na granicy zaokraglenia)."""
-    return _ULAMEK.sub(r"\1", tekst)
+# Kanonizacja z JEDNEGO źródła z zapisem `--write` (kotwica w szumie) — patrz nagłówek.
+kanonizuj = kanonizuj_artefakt
 
 
 def test_kazdy_artefakt_generated_jest_bajtowo_rowny_generatorowi(
@@ -110,3 +105,27 @@ def test_fixtura_sld_network_53_jest_bajtowo_rowna_generatorowi() -> None:
         "sldNetwork53.ts ROZJECHANY z substratem — zregeneruj: cd backend && "
         "poetry run python scripts/emit_sld_network_fixture.py"
     )
+
+
+def test_zapis_kotwiczy_szum_ostatniej_cyfry_a_przepisuje_realna_zmiane(
+    wyrenderowane: dict[str, str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Kotwica w szumie `--write` (karta SLD-SUBSTRAT, kontynuacja): plik różniący się od
+    renderu WYŁĄCZNIE szumem ostatniej cyfry zostaje bajtowo nietknięty; plik z realną
+    różnicą (czwarty znak dziesiętny) jest przepisany. Iloczyn: {szum, zmiana} × zapis."""
+    import tests.reference_networks.station_archetype_substrate as generator
+
+    monkeypatch.setattr(generator, "_companions_dir", lambda: str(tmp_path))
+    tresc = wyrenderowane["shortCircuit.ts"]
+    assert "0.50000" in tresc
+    szum = tresc.replace("0.500002", "0.500009").replace("0.500003", "0.500009")
+    assert szum != tresc
+    plik = tmp_path / "shortCircuit.ts"
+    plik.write_text(szum, encoding="utf-8")
+    generator._zapisz_artefakt("shortCircuit.ts")
+    assert plik.read_text(encoding="utf-8") == szum
+
+    zmiana = tresc.replace("0.50000", "0.50010")
+    plik.write_text(zmiana, encoding="utf-8")
+    generator._zapisz_artefakt("shortCircuit.ts")
+    assert plik.read_text(encoding="utf-8") == tresc

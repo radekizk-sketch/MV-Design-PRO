@@ -306,51 +306,22 @@
         "x_ohm": 0.0
       },
       {
-        "catalog_namespace": "APARAT_NN",
-        "catalog_ref": "cb_nn_1000a",
+        "catalog_namespace": null,
+        "catalog_ref": null,
         "from_bus_ref": "stn/ea7925f3c60be93625d327c83798ca44/nn_bus",
         "id": "e575e073-f2fb-5fbb-bf65-2ce9ed9ad606",
-        "materialized_params": {
-          "catalog_item_id": "cb_nn_1000a",
-          "catalog_item_version": "2024.1",
-          "conditional_sc_current_ka": null,
-          "device_kind": "WYLACZNIK_GLOWNY",
-          "i_cu_ka": 50.0,
-          "i_n_a": 1000.0,
-          "ii_range": [
-            1.5,
-            15.0
-          ],
-          "ir_range": [
-            0.4,
-            1.0
-          ],
-          "isd_range": [
-            1.5,
-            10.0
-          ],
-          "tr_range": [
-            3.0,
-            144.0
-          ],
-          "tsd_range": [
-            0.05,
-            0.8
-          ],
-          "u_n_kv": 0.4
-        },
+        "materialized_params": null,
         "meta": {
-          "catalog_item_version": "2024.1",
           "nn_field_migrowana_rola": "IN",
           "nn_field_migrowany_z": "stn/ea7925f3c60be93625d327c83798ca44/nn_main_breaker",
           "nn_promocja_bez_wiazania_katalogowej": true
         },
         "name": "Wyłącznik główny nN",
         "overrides": [],
-        "parameter_source": "CATALOG",
+        "parameter_source": null,
         "r_ohm": null,
         "ref_id": "nn/db593e4b93f2257fb894cbb0da0dc95a/feeder_device",
-        "source_mode": "KATALOG",
+        "source_mode": "MIGRACJA",
         "status": "closed",
         "tags": [],
         "to_bus_ref": "nn/db593e4b93f2257fb894cbb0da0dc95a/feeder_bus",
@@ -566,9 +537,9 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "0d88d84855ecb2faf4fcbba0c9f46c6e25459f489bfa4b2069a1a5c8181b6875",
+      "hash_sha256": "e05e54d720f49885e3fa21a8f9e0106e1a91ddac8a704c571386c8977a49d92c",
       "name": "Stacja z polem pomiarowym",
-      "revision": 6,
+      "revision": 5,
       "updated_at": "2026-09-25T00:00:00Z"
     },
     "junctions": [],
