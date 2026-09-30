@@ -58,7 +58,8 @@ Skrót stanu wycinków (mapa §8, korekta kolejności w `docs/plan/SYNTEZA_DOMKN
 - **Klasy jakości produktu** (plan §7): #135, #140–#145, PL-ZNAKI, ETYKIETY-TR, MAGISTRALA-OCENA, PASMO-1KV,
   NAZWY-JEDNO-ZRODLO, archiwum projektu, PROOFPACK-KONTRAKT, S95-START, #151 (połknięte wyjątki, budżet 0).
 - **Rdzenie FROZEN** (B-01): IEC 60909 (3F/2F/1F, MAX/MIN, wkłady), NR/GS/FD, protection IEC 60255, NC RfG/PTPiREE
-  (T01–T20), FRT/HVRT, `stability_rms`, WLS, phase state SN, V12.6 — zmiany wyłącznie decyzją właściciela.
+  (T01–T20), FRT/HVRT, WLS, phase state SN, V12.6 — zmiany wyłącznie decyzją właściciela (`stability_rms`
+  skasowany 2026-09-30, decyzja B-01 pozycja (i), karta B01-RUNDA-1).
   Wiążąca lista plików: `scripts/rdzenie_b01.py` (samotest `scripts/test_rdzenie_b01.py`); POZOSTAŁE pliki
   `network_model/solvers/**` NIE są rdzeniami B-01 (m.in. `dynamika/**`, `cable_ampacity_derating.py`,
   `fault_loop_builder.py`, `equipment_checks/**`) — edycja jak każdego solvera: WHITE BOX, testy, determinizm.
@@ -69,7 +70,7 @@ Skrót stanu wycinków (mapa §8, korekta kolejności w `docs/plan/SYNTEZA_DOMKN
 
 | Dług | Gdzie zmierzono | Wycinek / karta |
 |---|---|---|
-| Dynamika bez werdyktu: FRT/HVRT i stabilność kątowa „nie ocenione” na E-32 (tryb sieci, poziom UNVALIDATED_MODEL); `stability_rms` i `frt_hvrt` jako rdzenie B-01 do kasacji; regulacja GFL z profilu typowego; bieg synchronicznie w żądaniu HTTP | plan §5, §7 (AB-P1), §12.2 | AB-1b.2 → AB-1d_min → AB-1c → AB-1d; DYNAMIKA-W-TLE; B-01 |
+| Dynamika bez werdyktu: FRT/HVRT i stabilność kątowa „nie ocenione” na E-32 (tryb sieci, poziom UNVALIDATED_MODEL); `frt_hvrt` jako rdzeń B-01 do kasacji w AB-1c (`stability_rms` skasowany 2026-09-30, pozycja (i)); regulacja GFL z profilu typowego; bieg synchronicznie w żądaniu HTTP | plan §5, §7 (AB-P1), §12.2 | AB-1b.2 → AB-1d_min → AB-1c → AB-1d; DYNAMIKA-W-TLE; B-01 |
 | BESS bez stanu energii i sprawności; brak profili maszyny synchronicznej i turbiny typu 2; brak QSTS; flicker w złej warstwie; brak EN 50160 | mapa §3 dom. 5/6, synteza §2 | KATALOG-DYNAMIKI-BRAKI, W6-3…W6-8, AB-2…AB-7 |
 | Zabezpieczenia poza modelem; brak 67/67N/21/87/25/50BF/grup/TRIP; ocena na syntetycznym urządzeniu | mapa dom. 4, synteza §1 p. 20; §7 I | BIEG-ZABEZPIECZEN-Z-MODELU (w toku), W4 |
 | Aparat pola poza torem prądowym (stacja przelotowa i końcowa, wyłącznik główny nN) | §7 I | POLA-W-TORZE (w toku) |
@@ -411,6 +412,8 @@ przepisane do wierszy rejestru planu A/B §7):
 pozycji (a)–(m) w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §12.2 (O-57 pkt 6 — ten pakiet i opis PR do niej
 odsyłają, nie powtarzają jej). Razem z nią jedno pytanie (O-57 pkt 7): czy delegacja z 2026-09-22 (O-5) obejmuje
 kasację `stability_rms` i zdjęcie jego wpisu z listy rdzeni (pozycja (i)) oraz kasację `frt_hvrt/**` w AB-1c.
+Odpowiedź: decyzja ostateczna właściciela z 2026-09-30 (delegacja, O-59); pozycja (i) wykonana w karcie
+B01-RUNDA-1 (solver `stability_rms` skasowany razem z wpisem listy).
 
 **Bramka B-02** (werdykt wizualny wyłącznie właściciela): zrzuty w repo `docs/audit/visual/` — `flow-ekspert/`
 (w tym 26 kadrów przegenerowanych po karcie #145 w `7d3a0a41` i `e32-dynamika-{light,dark}.png` z AB-P1),

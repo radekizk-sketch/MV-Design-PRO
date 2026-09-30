@@ -100,7 +100,9 @@ def test_test_zdejmujacy_moduly_z_sys_modules_musi_je_oddac() -> None:
     wykonany pozniej, ktory przez leniwy import odtworzyl ktorys z nich, dostawal
     SWIEZE klasy — a moduly zaimportowane wczesniej trzymaly stare. Pomiar w pelnym
     biegu: `tests/solvers/test_pr15_pr16_solvers.py` oblewal
-    `isinstance(result, StabilityResult)` na obiekcie, ktory JEST `StabilityResult`.
+    `isinstance(result, StabilityResult)` na obiekcie, ktory JEST `StabilityResult`
+    (plik dzis `tests/solvers/test_frt_hvrt_solver.py`; klasa RMS skasowana razem z
+    solverem `stability_rms` — decyzja B-01 z 2026-09-30, pozycja (i) planu A/B).
 
     Defekt byl PRZYKRYTY podwojna tozsamoscia: dopoki ten test importowal solwery
     przez `src.`, kasowanie nazw `network_model.solvers*` go nie dotykalo. Reprodukcja

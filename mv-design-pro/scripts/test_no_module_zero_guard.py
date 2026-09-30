@@ -57,8 +57,15 @@ def test_drugi_silnik_ncrfg_nie_jest_na_liscie_po_s3() -> None:
 
 
 def test_is_allowlisted_dopasowanie_po_prefiksie_katalogu() -> None:
-    assert _is_allowlisted("network_model/solvers/stability_rms/contracts.py", _ALLOWLIST_BACKEND)
     assert _is_allowlisted("network_model/solvers/frt_hvrt/engine.py", _ALLOWLIST_BACKEND)
+
+
+def test_stability_rms_nie_jest_na_liscie_po_kasacji() -> None:
+    """Decyzja B-01 z 2026-09-30, pozycja (i): solver `stability_rms` skasowany — jego
+    prefiks nie wraca na listę (nowy plik pod tą ścieżką z `no_module` = naruszenie)."""
+    assert not _is_allowlisted(
+        "network_model/solvers/stability_rms/contracts.py", _ALLOWLIST_BACKEND
+    )
 
 
 def test_is_allowlisted_odrzuca_plik_spoza_listy() -> None:

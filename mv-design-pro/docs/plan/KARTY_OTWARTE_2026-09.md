@@ -1240,7 +1240,7 @@ literałów w 105 plikach `backend/src`, ale zostawiła trzy obszary z uzasadnie
 nie broni:
 1. **35 plików `network_model/solvers/**`, 239 literałów** — „rdzenie FROZEN, B-01”. Granica B-01
    to od `525ec765` jedna lista `scripts/rdzenie_b01.py` (IEC 60909 ×3, NR/GS/FD ×4,
-   protection_iec60255, ncrfg_ptpiree/, frt_hvrt/, stability_rms/, state_estimation_wls,
+   protection_iec60255, ncrfg_ptpiree/, frt_hvrt/, state_estimation_wls,
    phase_state_sn, v126_academic, catalog/profiles/nc_rfg/). Pozostałe solvery (np.
    `cable_ampacity_derating.py`, `fault_loop_builder.py`, `cable_voltage_drop.py`) edytuje się
    jak każdy kod. Test `tests/ci/test_polskie_znaki.py` nadal traktuje cały
@@ -1422,7 +1422,8 @@ KATALOG-DYNAMIKI-BRAKI (maszyna synchroniczna), DYNAMIKA-W-TLE (plan §11).
 **Inwentarz kasacji toru `frt_hvrt` (pełniejszy niż O-44):** O-44 wymienia trzy miejsca. Pomiar: 5 plików backendu (`application/calculation_readiness/service.py:66, :90, :595-627, :884, :908`; `application/analyses/frt_trajektorie.py:30-35, :318, :408`; `application/analyses/frt_sekwencja.py:50`; `application/ncrfg_compliance/frt_input.py:14`; `solver_input/provenance.py:312`) i 7 plików frontu (`ui2/oze/api.ts`, `ui2/oze/macierz/MacierzNcRfg.tsx`, `ui/network-build/station-der/readiness.ts`, `ui/network-build/der-configurator/DerConfigurator.tsx`, `ui/workspace/surfaces/DerSurfaces.tsx`, `ui/sld/shared/sldActionExecutor.ts`, `ui/sld/v2/command/SldCommandService.ts`) plus ekran `ui2/oze/frt/` (EkranFrt.tsx, SekcjaSekwencjiZapadow.tsx, WykresTrajektoriiChart.tsx). Karta AB-1c (jeszcze nienapisana) ma nieść ten inwentarz jako klasę.
 
 **Rozstrzygnięcia wejściowe:** (1) kasacja `frt_hvrt/**` i `stability_rms/**` wymaga odpowiedzi właściciela
-o zakres delegacji wobec listy B-01 (O-57 pkt 7; plan §12.2 (i)) — do tego czasu tor T3 zostaje z
+o zakres delegacji wobec listy B-01 (O-57 pkt 7; plan §12.2 (i)) — stan 2026-09-30: `stability_rms/**`
+skasowany w karcie B01-RUNDA-1 (decyzja ostateczna, O-59); `frt_hvrt/**` zostaje do AB-1c — do tego czasu tor T3 zostaje z
 `NIE_OCENIONO`; (2) blok `Generator.dynamika` wyłącznie z materializacji katalogu, `p_dostepna_mw` jako
 wielkość warunków pracy z edytorem w scenariuszu i punkcie pracy (O-57 pkt 8); (3) S_k,min i X/R punktu
 przyłączenia jako dane warunków przyłączenia modułu w `Generator.deklaracje_modulu` z kodem gotowości

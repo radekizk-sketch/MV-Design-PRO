@@ -917,7 +917,7 @@ nieprzekraczającego tolerancji rozwiązania sieci). Naprawa = `phase_deg` bez w
 kryterium rozdzielczości rozwiązania liniowego i opisem pola (zmiana kontraktu wyjścia V12.6 i
 złotych fikstur E-40/SSCI) — wymaga zgody właściciela; do tego czasu E-40 nie orzeka (O-21,
 `NIE_OCENIONO`), a liczby są wyłącznie w widoku audytowym z etykietą „niezwalidowane".
-(i) **Kasacja `stability_rms`** (`network_model/solvers/stability_rms/`) i zdjęcie wpisu „Stabilność RMS”
+(i) **[WYKONANE 2026-09-30, karta B01-RUNDA-1, decyzja ostateczna O-59]** **Kasacja `stability_rms`** (`network_model/solvers/stability_rms/`) i zdjęcie wpisu „Stabilność RMS”
 z `scripts/rdzenie_b01.py` w JEDNYM commicie (samotest listy) — O-5 (b), O-54, O-57 (7); zero
 konsumentów produkcyjnych; kasacja mechaniczna: katalog solvera, `tests/solvers/test_pr15_pr16_solvers.py`,
 wpis `no_module_zero_guard`, `MODEL_ROOTS_POZA_MAPA` w `solver_input_substitute_guard`, wpis w

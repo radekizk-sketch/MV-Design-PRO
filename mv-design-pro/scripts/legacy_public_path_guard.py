@@ -1672,7 +1672,8 @@ def check_uniewazniacz_resurrection() -> list[str]:
 # `_bez_komentarzy_ts` dla TS).
 #
 # POZA ta bramka (NIEskasowane w karcie — z powodem w meldunku Pakietu L): A14
-# `stability_rms` (rdzen B-01, `scripts/rdzenie_b01.py`) i C47
+# `stability_rms` (skasowany w karcie B01-RUNDA-1 — bramka `check_abp1_dynamika_resurrection`,
+# `B01I_*`) i C47
 # `application/stability/voltage_trajectory.py` (C47 skasowany w karcie AB-P1 — bramka
 # `check_abp1_dynamika_resurrection`), B2 reguly
 # `analysis/normative/evaluator.py` (zywy konsument `application/analyses/
@@ -2500,9 +2501,10 @@ def check_pakiet_l_resurrection() -> list[str]:
 #   rzuty profilu katalogowego na slowniki solverow poza rdzeniem
 #        (`to_stability_parameters`, `stability_model_kind`, `to_frt_parameters` — zero
 #        wolajacych produkcyjnych).
-# POZA bramka: T4 — solver `network_model/solvers/stability_rms/**` jest rdzeniem B-01 na
-# liscie `scripts/rdzenie_b01.py`; karta go NIE kasuje (zmiana listy B-01 wymaga decyzji
-# wlasciciela nazwanej w karcie zdejmujacej wpis — zgoda O-5(b)/O-54 czeka na ten krok).
+# T4 — solver `network_model/solvers/stability_rms/**` (zero konsumentow produkcyjnych):
+# SKASOWANY w karcie B01-RUNDA-1 (decyzja B-01 z 2026-09-30, delegacja wlasciciela O-59,
+# pozycja (i) planu A/B §12.2) razem z wpisem „Stabilnosc RMS" listy `scripts/rdzenie_b01.py`;
+# bramka pilnuje, ze sciezka i jej symbole publiczne nie wracaja (`B01I_*` nizej).
 # Pilnowane sa FAKTY: sciezki zrodel, DEFINICJE symboli (AST, dokstring/komentarz nie
 # jest naruszeniem), nazwa `DYNAMIC_STABILITY` jako identyfikator i napisy tras/kodow
 # w kodzie backendu (literaly napisowe poza dokstringami) oraz frontendu (bez komentarzy).
@@ -2568,6 +2570,19 @@ ABP1_NAPISY: tuple[str, ...] = (
 )
 #: Napisy wylacznie frontendowe (import skasowanych fikstur sceny).
 ABP1_NAPISY_FRONTEND: tuple[str, ...] = ("stabilnosc_scena_",)
+#: Pozycja (i) planu A/B §12.2 — skasowany solver RMS bez sprzezenia z siecia (T4).
+B01I_SCIEZKI_BACKEND: tuple[str, ...] = ("network_model/solvers/stability_rms",)
+#: Symbole publiczne skasowanego solvera (nazwy swoiste — definicja nie wraca NIGDZIE
+#: w `backend/src`; nazwy ogolne kontraktu, np. `DisturbanceEvent`, zostaja wolne dla
+#: rdzenia `dynamika`).
+B01I_DEFINICJE_BACKEND: frozenset[str] = frozenset(
+    {
+        "run_stability_rms",
+        "StabilitySolverAdapter",
+        "StabilitySolverInput",
+        "StabilityResult",
+    }
+)
 
 
 def _napisy_kodu_py(tree: ast.Module) -> list[tuple[str, int]]:
@@ -2598,10 +2613,20 @@ def check_abp1_dynamika_resurrection() -> list[str]:
     komentarz nad `ABP1_SCIEZKI_BACKEND`."""
     violations: list[str] = []
     znak = "karta AB-P1 — jedynym torem dynamiki jest bieg kanoniczny dynamika_rms"
+    znak_b01i = (
+        "decyzja B-01 z 2026-09-30, pozycja (i) — solver stability_rms skasowany, "
+        "jedynym torem dynamiki jest bieg kanoniczny dynamika_rms"
+    )
     for sciezka in ABP1_SCIEZKI_BACKEND:
         if zrodlo_istnieje(BACKEND_SRC_DIR / sciezka):
             violations.append(
                 f"[resurrected-module] backend/src/{sciezka}: usuniete ({znak}) — nie odtwarzaj"
+            )
+    for sciezka in B01I_SCIEZKI_BACKEND:
+        if zrodlo_istnieje(BACKEND_SRC_DIR / sciezka):
+            violations.append(
+                f"[resurrected-module] backend/src/{sciezka}: usuniete ({znak_b01i}) — "
+                "nie odtwarzaj"
             )
     for sciezka in ABP1_SCIEZKI_FRONTEND:
         if zrodlo_istnieje(FRONTEND_SRC_DIR / sciezka, ("*.ts", "*.tsx", "*.json", "*.css")):
@@ -2623,6 +2648,10 @@ def check_abp1_dynamika_resurrection() -> list[str]:
                 if nazwa in ABP1_DEFINICJE_BACKEND or nazwa in plikowe:
                     violations.append(
                         f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak})"
+                    )
+                if nazwa in B01I_DEFINICJE_BACKEND:
+                    violations.append(
+                        f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak_b01i})"
                     )
             for node in ast.walk(tree):
                 nazwa_id = (

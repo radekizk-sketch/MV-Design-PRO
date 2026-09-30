@@ -40,7 +40,7 @@ konsumentów.
 | **T1 — LEGACY `DYNAMIC_STABILITY`** | 9 pól wpisanych przez inżyniera (`enm/canonical_analysis.py:1528-1547`) | brak całkowania; porównanie progowe (`application/stability/dynamic_stability.py:183-247`) | `stable/STABLE/UNSTABLE`, `stability_index`, marginesy | ekran `ui2/wyniki/stabilnosc/**` (1 528 linii) |
 | **T2 — RMS/DAE `dynamika_rms`** | migawka efektywna + jawny `pf_run_id` + scenariusz + nastawy (`enm/adapter_dynamiki.py`) | całkowanie DAE (`network_model/solvers/dynamika/**`, 9 589 linii) | `ResultSetDynamicV2` (próbki L/P chwili zdarzenia, AB-1b.1a) + szeregi czasowe w osobnej tabeli | **ŻADEN** — front nie ma ekranu (patrz §3 wiersz T2-UI) |
 | **T3 — FRT/HVRT `frt_hvrt`** | scenariusz zapadu (`network_model/solvers/frt_hvrt/contracts.py`) | funkcja zadana w czasie, bez sprzężenia z siecią (`engine.py:23-60`) | trajektoria V/Iq/P + margines do obwiedni | katalog dynamiczny DER, bramka gotowości |
-| **T4 — `stability_rms` (MARTWY)** | — | `network_model/solvers/stability_rms/**` (603 linie) | — | **ZERO importów produkcyjnych** (weryfikacja poniżej) |
+| **T4 — `stability_rms` (MARTWY → SKASOWANY 2026-09-30)** | — | `network_model/solvers/stability_rms/**` (603 linie; skasowany w karcie B01-RUNDA-1, decyzja B-01 pozycja (i)) | — | **ZERO importów produkcyjnych** (weryfikacja poniżej, stan z dnia macierzy) |
 
 **Dowód martwoty T4:** `grep -rn "stability_rms" backend/src` poza samym pakietem zwraca
 WYŁĄCZNIE wzmianki w komentarzach i docstringach: `api/catalog.py:475`,
@@ -215,7 +215,7 @@ nie rodziny na sieci rzeczywistej, i nie awansują zdolności w rejestrze.
 | N-4 | `resultset_dynamic_v1.py:104-105` | docstring wymienia `cct_s` i `rocof_max_hz_s` jako przykłady metryk | rdzeń NIE liczy ani CCT, ani ROCOF (`silnik.py:633-668`) | **deklaracja bez pokrycia** (§4 reguły KLASA) |
 | N-5 | `application/stability/voltage_trajectory.py` | moduł w warstwie APLIKACJI | zawiera model fizyczny odbudowy napięcia (funkcja wykładnicza) | **naruszenie granicy warstw** (NOT-A-SOLVER) |
 | N-6 | `frt_hvrt/engine.py:1-8` | „Solver FRT/HVRT RMS time-domain" | profil napięcia jest zadany, nie rozwiązywany; stałe czasowe zaszyte w kodzie (`:38-39`) | **nadużycie** (rejestr proweniencji nazywa je uczciwie, nazwa modułu nie) |
-| N-7 | `network_model/solvers/stability_rms/**` | „solver stabilności RMS" | zero importów produkcyjnych — kod nieosiągalny | **martwy kod w katalogu solverów** |
+| N-7 | `network_model/solvers/stability_rms/**` | „solver stabilności RMS" | zero importów produkcyjnych — kod nieosiągalny | **martwy kod w katalogu solverów** — skasowany 2026-09-30 (karta B01-RUNDA-1) |
 
 ---
 
