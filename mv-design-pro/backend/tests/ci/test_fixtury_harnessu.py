@@ -1563,3 +1563,37 @@ def test_krzywe_pq_sceny_niosa_rekord_ocena_bez_statusu_widoku(nazwa: str, statu
         assert widok["punkty"]
     typy = [rekord["id"] for rekord in eksport.krzywe_konwertery_scen()]
     assert widok["typ_katalogowy"]["id"] in typy
+
+
+# ---------------------------------------------------------------------------
+# Tryb `--sprawdz` tylko czyta (inwentarz AUTOTESTY-W-DRZEWIE, 2026-09-30): wcześniej
+# `main` tworzył katalog fikstur przed rozgałęzieniem na zapis i porównanie, więc
+# porównanie na drzewie bez katalogu zostawiało po sobie nowy katalog w repozytorium.
+# Para: tryb zapisu na tym samym brakującym katalogu tworzy go i zapisuje fiksturę.
+# ---------------------------------------------------------------------------
+
+
+def _eksport_na_brakujacym_katalogu(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    katalog = tmp_path / "harness-fixtures" / "generated"
+    monkeypatch.setattr(eksport, "FIXTURES_DIR", katalog)
+    monkeypatch.setattr(eksport, "FIXTURY", {"probka": lambda: {"wartosc": 1}})
+    return katalog
+
+
+def test_sprawdz_na_brakujacym_katalogu_nie_tworzy_go_i_melduje_rozjazd(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    katalog = _eksport_na_brakujacym_katalogu(monkeypatch, tmp_path)
+    assert eksport.main(["--sprawdz"]) == 1
+    assert not katalog.exists()
+    assert not katalog.parent.exists()
+    assert f"[rozjazd] {katalog / 'probka.json'}" in capsys.readouterr().out
+
+
+def test_zapis_na_brakujacym_katalogu_tworzy_go_i_zapisuje(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    katalog = _eksport_na_brakujacym_katalogu(monkeypatch, tmp_path)
+    assert eksport.main([]) == 0
+    assert json.loads((katalog / "probka.json").read_text(encoding="utf-8")) == {"wartosc": 1}
+    assert eksport.main(["--sprawdz"]) == 0
