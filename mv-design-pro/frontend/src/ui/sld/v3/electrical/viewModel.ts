@@ -7,15 +7,28 @@
  * ZAKRES T0 (plan §Fazy, T0): WYŁĄCZNIE struktura danych + budowa — ŻADEN
  * konsument (`compose/station.ts`) NIE czyta jeszcze tego modułu (to jest
  * praca T1: „przebudowa `compose/station.ts` na konsumpcję SLD VIEW MODEL z
- * grafu"). Budowa tutaj jest CELOWO 1:1 z węzłami grafu terminali (jedna
- * sekcja = jedna szyna ENM) — wielosekcyjne RGnN z jawnym `NnSection`
- * (sprzęgło/incoming_refs) to rozszerzenie T1, nie regresja T0 (żadna
- * informacja się dziś nie gubi: `NnSection`/`GPZSection` żyją w
- * `Substation`, poza zakresem tego pliku).
+ * grafu").
+ *
+ * SEKCJA = SZYNA GŁÓWNA (karta SZYNY-STACJI-LUSTRO, commit 2 — kanon toru pola). Zasada toru
+ * pola (`enm/tor_pola.py`, POLA-W-TORZE) przyłącza element, któremu pole służy, do ZACISKU
+ * pola, a aparat pola leży w jego torze prądowym; odpływ nN stoi na szynie ZA aparatem pola nN.
+ * Zacisk pola i szyna za aparatem nie są osobnymi szynami rozdzielnicy — należą do sekcji
+ * szyny głównej swojego pola. Szynę główną wyznacza WYŁĄCZNIE lustro backendu
+ * `szynaGlownaStacji` (`ui/shared/szynyStacji.ts` ← `enm.tor_pola.szyna_glowna_stacji`):
+ *  - szyna główna stacji → ona sama;
+ *  - własny zacisk pola SN → szyna tego pola;
+ *  - koniec aparatu pola nN wychodzącego z szyny głównej → ta szyna główna;
+ *  - szyna, dla której lustro zwraca `null` (szyna spoza stacji: mufa, koniec odcinka;
+ *    szyna za łańcuchem aparatów) → własna sekcja (brak danych ≠ przypisanie).
+ * Stację szyny rozstrzyga `stacjaSzyn` (szyna wspólna → pierwsza stacja modelu). Liczba sekcji
+ * = liczba różnych szyn głównych w tym sensie, NIE liczba węzłów grafu. Granica transformatora
+ * (`hvSectionId`/`lvSectionId`) i przypisania odpływów wskazują sekcję, nie węzeł.
  */
-import type { ConductingEdge, TerminalGraph, TransformerEdge, VoltageLevelId } from './terminalGraph';
+import type { EnergyNetworkModel } from '../../../../types/enm';
+import { stacjaSzyn, szynaGlownaStacji } from '../../../shared/szynyStacji';
+import type { ConductingEdge, TerminalGraph, TerminalNode, TransformerEdge, VoltageLevelId } from './terminalGraph';
 
-/** Jedna sekcja szyny na widoku SLD — 1:1 z węzłem grafu terminali w T0. */
+/** Jedna sekcja szyny na widoku SLD — szyna główna (patrz nagłówek). */
 export interface SldBusSection {
   readonly sectionId: string;
   readonly busRef: string;
@@ -47,39 +60,65 @@ export interface SldViewModel {
   readonly transformerBoundaries: readonly SldTransformerBoundary[];
 }
 
+/** Model ENM czytany przy wyznaczaniu sekcji (stacje i gałęzie — aparaty pól nN). */
+export type ModelSekcji = Pick<EnergyNetworkModel, 'substations' | 'branches'>;
+
 function sectionIdForBus(busRef: string): string {
   return `${busRef}#section`;
 }
 
-function feederAssignmentFor(edge: ConductingEdge): SldFeederAssignment {
-  return {
-    branchRef: edge.ref,
-    sectionId: sectionIdForBus(edge.fromBusRef),
-    farSectionId: sectionIdForBus(edge.toBusRef),
-  };
+/** Szyna główna sekcji, do której należy `busRef` (lustro `szynaGlownaStacji`, nagłówek). */
+function szynaSekcji(
+  busRef: string,
+  stacjaSzyny: ReadonlyMap<string, string>,
+  stacje: ReadonlyMap<string, EnergyNetworkModel['substations'][number]>,
+  galezie: EnergyNetworkModel['branches'],
+): string {
+  const stacjaRef = stacjaSzyny.get(busRef);
+  const stacja = stacjaRef ? stacje.get(stacjaRef) : undefined;
+  return (stacja ? szynaGlownaStacji(stacja, galezie, busRef) : null) ?? busRef;
 }
 
-function transformerBoundaryFor(tr: TransformerEdge): SldTransformerBoundary {
-  return {
-    transformerRef: tr.ref,
-    hvSectionId: sectionIdForBus(tr.hvTerminal.busRef),
-    lvSectionId: sectionIdForBus(tr.lvTerminal.busRef),
+/** Zbuduj SLD VIEW MODEL z grafu terminali i przynależności szyn do stacji. CZYSTA
+ *  projekcja — zero konsumpcji przez `compose/*` w T0 (patrz nagłówek pliku). */
+export function buildSldViewModel(graph: TerminalGraph, model: ModelSekcji): SldViewModel {
+  const galezie = model.branches ?? [];
+  const stacjaSzyny = stacjaSzyn(model.substations ?? [], galezie);
+  const stacje = new Map((model.substations ?? []).map((s) => [s.ref_id, s]));
+  const sekcjaSzyny = new Map<string, string>();
+  const sekcja = (busRef: string): string => {
+    let wynik = sekcjaSzyny.get(busRef);
+    if (wynik === undefined) {
+      wynik = szynaSekcji(busRef, stacjaSzyny, stacje, galezie);
+      sekcjaSzyny.set(busRef, wynik);
+    }
+    return wynik;
   };
-}
 
-/** Zbuduj SLD VIEW MODEL z grafu terminali. CZYSTA projekcja — zero
- *  konsumpcji przez `compose/*` w T0 (patrz nagłówek pliku). */
-export function buildSldViewModel(graph: TerminalGraph): SldViewModel {
-  const sections: SldBusSection[] = [...graph.nodes.values()].map((node) => ({
-    sectionId: sectionIdForBus(node.busRef),
-    busRef: node.busRef,
+  const wezlySekcji = new Map<string, TerminalNode>();
+  for (const node of graph.nodes.values()) {
+    const glowna = sekcja(node.busRef);
+    const wezelGlownej = graph.nodes.get(glowna) ?? node;
+    if (!wezlySekcji.has(glowna)) wezlySekcji.set(glowna, wezelGlownej);
+  }
+  const sections: SldBusSection[] = [...wezlySekcji.entries()].map(([busRef, node]) => ({
+    sectionId: sectionIdForBus(busRef),
+    busRef,
     name: node.name,
     voltageKv: node.voltageKv,
     voltageLevelId: node.voltageLevelId,
   }));
 
-  const feederAssignments = graph.edges.map(feederAssignmentFor);
-  const transformerBoundaries = graph.transformerEdges.map(transformerBoundaryFor);
+  const feederAssignments = graph.edges.map((edge: ConductingEdge): SldFeederAssignment => ({
+    branchRef: edge.ref,
+    sectionId: sectionIdForBus(sekcja(edge.fromBusRef)),
+    farSectionId: sectionIdForBus(sekcja(edge.toBusRef)),
+  }));
+  const transformerBoundaries = graph.transformerEdges.map((tr: TransformerEdge): SldTransformerBoundary => ({
+    transformerRef: tr.ref,
+    hvSectionId: sectionIdForBus(sekcja(tr.hvTerminal.busRef)),
+    lvSectionId: sectionIdForBus(sekcja(tr.lvTerminal.busRef)),
+  }));
 
   return { sections, feederAssignments, transformerBoundaries };
 }

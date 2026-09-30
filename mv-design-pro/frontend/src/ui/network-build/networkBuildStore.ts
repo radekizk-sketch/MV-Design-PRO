@@ -53,6 +53,7 @@ import {
 } from '../workspace/types';
 import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
 import { stacjaSzyn } from '../shared/szynyStacji';
+import { selectStationDistributionTransformers, stationRefOfTransformer } from '../shared/transformatoryStacji';
 
 export type BuildPhase =
   | 'NO_SOURCE'
@@ -1004,7 +1005,7 @@ export function selectStationSummaries(
       const branchBays = stationBays.filter(
         (b) => b.bay_role === 'OUT' || b.bay_role === 'FEEDER' || b.bay_role === 'OZE',
       );
-      const hasTransformer = s.transformer_refs.length > 0;
+      const hasTransformer = selectStationDistributionTransformers(snapshot, s).length > 0;
       const nnBuses = (snapshot.buses ?? []).filter(
         (bus) => isOperationalBus(bus) && wPasmieNn(bus.voltage_kv) && s.bus_refs.includes(bus.ref_id),
       );
@@ -1031,9 +1032,9 @@ export function selectTransformerSummaries(
 
   return (snapshot.transformers ?? [])
     .map((t) => {
-      const station = (snapshot.substations ?? []).find((s) =>
-        s.transformer_refs.includes(t.ref_id),
-      );
+      // SZYNY-STACJI-LUSTRO: stacja transformatora z JEDNEJ reguły „transformatory stacji”.
+      const stationRef = stationRefOfTransformer(snapshot, t.ref_id);
+      const station = (snapshot.substations ?? []).find((s) => s.ref_id === stationRef);
 
       return {
         id: t.ref_id,

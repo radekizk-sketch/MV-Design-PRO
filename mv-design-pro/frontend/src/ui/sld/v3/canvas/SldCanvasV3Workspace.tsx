@@ -123,13 +123,13 @@ import {
   KLASY_UCHWYTU,
   type CanvasMenuSubject,
 } from './canvasMenuSubject';
-import { selectStationDistributionTransformers } from '../../../network-build/stationTransformerSelection';
+import { stacjaPola } from '../../../shared/szynyStacji';
+import { selectStationDistributionTransformers } from '../../../shared/transformatoryStacji';
 import { useMeasuredSize } from '../../shared/useMeasuredSize';
 import {
   buildDerDropDetailDrawerData,
   buildDetailDrawerDataForKind,
   buildStationDetailDrawerData,
-  findBayByRef,
   findSubstationByRef,
   mapKindToMenuKind,
 } from '../../shared/detailDrawerData';
@@ -447,39 +447,15 @@ function elementKindForDrawer(kind: PreviewElementKind | undefined): string | un
 }
 
 /**
- * Rozwiązuje `Substation.ref_id` właściciela bay-a (`Bay.substation_ref`,
- * ENM FK — realna relacja, NIE zgadywanie) z `bayRef`, którą `apparatus`
- * niesie jako `meta.ownerRef` w kompozycji STACJI (`compose/station.ts`,
- * `ownerRef: s.bayRef ?? s.sourceRef`).
- *
- * UDOKUMENTOWANA LUKA (zweryfikowana empirycznie, fixture
- * `sldSubstrate52s.enm.json`): dla `apparatus` GPZ (`compose/gpz.ts`
- * `gpzSymbolToPreview`, `ownerRef: sourceRef ?? bayRef ?? transformerRef ??
- * sectionId` — TEN SAM priorytet `bayRef`) bay GPZ NIE JEST rekordem
- * `snapshot.bays` (`findBayByRef` zwraca `null` — bay GPZ żyje w odrębnej
- * substrukturze GPZ, nie w płaskiej liście `Bay` ENM) — funkcja zwraca wtedy
- * `null`, KOREKTA `stationCode` w `buildDetailDrawerDataForElementKind`
- * niżej cicho nie następuje (budowniczy współdzielony zostaje przy swoim
- * fallbacku `sldData.stations[0]` — potencjalnie NIEPOPRAWNY breadcrumb dla
- * aparatu GPZ, ale `label`/`kind`/`menuKind` drawera są poprawne; drawer się
- * OTWIERA, nie crashuje). Dla aparatu STACJI (bay w `snapshot.bays`) korekta
- * działa poprawnie.
+ * Rozwiązuje `Substation.ref_id` właściciela pola z `bayRef`, którą `apparatus` niesie jako
+ * `meta.ownerRef` w kompozycji STACJI i GPZ (`compose/station.ts`, `compose/gpz.ts`). Jedna
+ * reguła stacji pola `stacjaPola` (dawniej: `Bay.substation_ref`, a w zapasie wzorzec refu
+ * `stn/⟨id⟩`, bez pól GPZ — breadcrumb aparatu GPZ spadał na `sldData.stations[0]`).
  */
 function stationRefForBayOwner(snapshot: EnergyNetworkModel | null, bayRef: string): string | null {
-  const direct = findBayByRef(snapshot, bayRef)?.substation_ref;
-  if (direct) return direct;
-  // Adaptacja flex (2026-07-17, pomiar na modelu z REALNEGO backendu —
-  // fixtura `openTrunkChain.enm.json`): `snapshot.bays` bywa PUSTE (pola
-  // stacji żyją w `meta.field_specs`, nie w płaskiej liście `Bay`), a bay-ref
-  // symbolu jest syntetyczny (`stn/⟨id⟩/sn_field/⟨n⟩`). Wtedy stacja-właściciel
-  // z GRAMATYKI refów: prefiks własności `stn/⟨id⟩` (dwa pierwsze człony
-  // ścieżki — TA SAMA konwencja co `ownerScope` w `scene/crossings.ts`),
-  // dopasowany do realnego rekordu `snapshot.substations` (relacja
-  // potwierdzona rekordem, nie sam string).
-  const scope = bayRef.split('/').slice(0, 2).join('/');
-  if (!scope.startsWith('stn/')) return null;
-  const station = (snapshot?.substations ?? []).find((s) => (s.ref_id ?? '').startsWith(`${scope}/`));
-  return station?.ref_id ?? null;
+  // SZYNY-STACJI-LUSTRO (commit 2): stacja pola z DANYCH (`stacjaPola`: rekord `bays`, potem
+  // `field_specs`/`nn_field_specs` stacji — także GPZ), nie z gramatyki refu `stn/⟨id⟩`.
+  return snapshot ? stacjaPola(snapshot, bayRef) : null;
 }
 
 /**
@@ -530,11 +506,9 @@ function resolveTransformerRefForOwnerRef(snapshot: EnergyNetworkModel | null, o
  * fabrykowany ref. `stationCode`/
  * `parentStationLabel` w budowniczym współdzielonym spadłyby na arbitralny
  * `sldData.stations[0]` (fallback v2, tam martwy, bo `id` tam zawsze
- * rozwiązywalny — tu NIE) — KORYGOWANE tu dla aparatu STACJI, rozwiązanego
- * z `Bay.substation_ref` (realna relacja ENM, nie zgadywanie); dla aparatu
- * GPZ korekta nie następuje (bay GPZ poza `snapshot.bays`, patrz
- * `stationRefForBayOwner` nagłówek) — UDOKUMENTOWANA LUKA, drawer się mimo
- * to otwiera (nie crash, `label` poprawny).
+ * rozwiązywalny — tu NIE) — KORYGOWANE tu dla aparatu stacji i GPZ, stacja pola
+ * z danych (`stationRefForBayOwner` → `stacjaPola`: rekord `bays` albo `field_specs`
+ * stacji). Pole nieznane w danych ⇒ brak korekty (drawer się otwiera, `label` poprawny).
  */
 function buildDetailDrawerDataForElementKind(
   snapshot: EnergyNetworkModel | null,

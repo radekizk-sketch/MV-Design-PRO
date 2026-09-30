@@ -201,10 +201,14 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
     expect(props.hvSystemSource).toBeNull();
   });
 
-  it('brak transformatora W OGÓLE (transformer_refs puste) ⇒ hvSystemSource null I props.transformers puste', () => {
+  // SZYNY-STACJI-LUSTRO (commit 2): transformatory GPZ z JEDNEJ reguły „transformatory stacji” —
+  // przy braku deklaracji `transformer_refs` transformator na szynie GPZ NADAL należy do GPZ
+  // (backend `enm.pole_transformatorowe.transformatory_stacji`). „Brak transformatora W OGÓLE”
+  // to więc brak rekordu transformatora, nie pusta deklaracja (intencja testu zachowana).
+  it('brak transformatora W OGÓLE (brak rekordu i deklaracji) ⇒ hvSystemSource null I props.transformers puste', () => {
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
-      { ...enm, substations: [gpzSubstation({ transformer_refs: [] })] },
+      { ...enm, transformers: [], substations: [gpzSubstation({ transformer_refs: [] })] },
       'gpz-1',
       { x: 0, y: 0 },
     );
@@ -408,7 +412,8 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
 
   it('brak TR w ENM ⇒ adapter nie niesie transformatora, kompozycja bez kolumny WN (missingData)', () => {
     const enm = fullFixture();
-    const props = buildCanonicalGpzProps({ ...enm, substations: [gpzSubstation({ transformer_refs: [] })] }, 'gpz-1', { x: 0, y: 0 });
+    // Brak TR = brak rekordu transformatora (jedna reguła „transformatory stacji”, patrz wyżej).
+    const props = buildCanonicalGpzProps({ ...enm, transformers: [], substations: [gpzSubstation({ transformer_refs: [] })] }, 'gpz-1', { x: 0, y: 0 });
     const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
     expect(composition.symbols.some((s) => s.symbolId === 'transformer2W')).toBe(false);
     expect(composition.missingData).toEqual(expect.arrayContaining(['gpz.hv.missing', 'gpz.transformer.missing']));
@@ -647,5 +652,17 @@ describe('GPZ — punkt neutralny sieci SN (V12K-219)', () => {
     expect(pkt[1].x).toBe(os);
     expect(pkt[2].x).toBe(os);
     expect(pkt[2].y).toBe(symbol.y); // pion kończy się na porcie aparatu
+  });
+});
+
+describe('SZYNY-STACJI-LUSTRO — transformator GPZ bez deklaracji, na szynie GPZ', () => {
+  it('pusta deklaracja `transformer_refs`, rekord TR na szynie WN GPZ ⇒ TR należy do GPZ (jak backend)', () => {
+    const enm = fullFixture();
+    const props = buildCanonicalGpzProps(
+      { ...enm, substations: [gpzSubstation({ transformer_refs: [] })] },
+      'gpz-1',
+      { x: 0, y: 0 },
+    );
+    expect(props.transformers.length).toBeGreaterThan(0);
   });
 });

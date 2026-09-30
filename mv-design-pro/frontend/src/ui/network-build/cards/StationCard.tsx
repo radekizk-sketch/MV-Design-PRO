@@ -15,7 +15,7 @@ import { useAppStateStore } from '../../app-state';
 import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
 import { GpzSectionsEditor } from './GpzSectionsEditor';
 import { stationSnapshotBays, stationSnFieldCount } from '../stationSnFields';
-import { selectStationDistributionTransformers } from '../stationTransformerSelection';
+import { selectStationDistributionTransformers } from '../../shared/transformatoryStacji';
 import { fieldRoleLabelPl } from '../../sld/v2/station-rozdzielnia/contract';
 import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 

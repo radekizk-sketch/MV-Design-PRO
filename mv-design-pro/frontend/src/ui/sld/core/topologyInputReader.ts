@@ -24,6 +24,7 @@ import type {
 import type { AnySldSymbol, BusSymbol, BranchSymbol, SwitchSymbol, SourceSymbol, LoadSymbol } from '../../sld-editor/types';
 import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import { stacjaSzyn, szynyStacji } from '../../shared/szynyStacji';
+import { transformatoryNalezaceDoStacji } from '../../shared/transformatoryStacji';
 import {
   type SourceConnectionVariantInputV1,
   isSupportedSourceConnectionVariant,
@@ -527,7 +528,7 @@ export function readTopologyFromENM(
       busIds: [...szynyStacji(sub, enm.branches)].sort(),
       branchIds: [],
       switchIds: [],
-      transformerIds: [...sub.transformer_refs].sort(),
+      transformerIds: transformatoryNalezaceDoStacji(enm, sub).map((tr) => tr.ref_id).sort(),
       fieldSpecs: renderableFieldSpecs.length > 0
         ? renderableFieldSpecs
         : (!hasExplicitSnFieldSpecs && sub.gpz_sections?.length

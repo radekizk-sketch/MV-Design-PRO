@@ -3,6 +3,8 @@ import type { BranchPointSN, EnergyNetworkModel, LogicalViewsV1, TerminalRef } f
 import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
 import { poleLinioweWolne } from './zajetoscPol';
 import { stacjaSzyn, szynyStacji } from '../shared/szynyStacji';
+import { zaciskPola, zaciskRekorduPola } from '../shared/zaciskPola';
+import { stationRefOfTransformer } from '../shared/transformatoryStacji';
 
 export interface BranchSourceDisplayContext {
   fromRef: string;
@@ -289,7 +291,8 @@ function findStationRefByTransformer(snapshot: EnergyNetworkModel | null, transf
     return null;
   }
 
-  return snapshot.substations.find((station) => station.transformer_refs.includes(transformerRef))?.ref_id ?? null;
+  // SZYNY-STACJI-LUSTRO: stacja transformatora z JEDNEJ reguły „transformatory stacji”.
+  return stationRefOfTransformer(snapshot, transformerRef);
 }
 
 function findBusRefsForStation(station: EnergyNetworkModel['substations'][number] | null | undefined): string[] {
@@ -341,31 +344,6 @@ function fieldSpecsForStation(station: EnergyNetworkModel['substations'][number]
     : [];
 }
 
-function fieldTerminalBusRef(spec: Record<string, unknown>): string | null {
-  const meta = spec.meta;
-  const metaRecord = meta && typeof meta === 'object' ? meta as Record<string, unknown> : null;
-  const template = metaRecord?.sn_field_template;
-  const templateRecord = template && typeof template === 'object' ? template as Record<string, unknown> : null;
-  const templateMeta = templateRecord?.meta;
-  const templateMetaRecord = templateMeta && typeof templateMeta === 'object' ? templateMeta as Record<string, unknown> : null;
-  const candidates: unknown[] = [
-    templateMetaRecord?.field_terminal_bus_ref,
-    metaRecord?.field_terminal_bus_ref,
-    (spec as { field_terminal_bus_ref?: unknown }).field_terminal_bus_ref,
-    templateRecord?.field_terminal_bus_ref,
-    templateMetaRecord?.terminal_bus_ref,
-    metaRecord?.terminal_bus_ref,
-    (spec as { terminal_bus_ref?: unknown }).terminal_bus_ref,
-    templateRecord?.terminal_bus_ref,
-  ];
-  for (const candidate of candidates) {
-    if (typeof candidate === 'string' && candidate.trim()) {
-      return candidate.trim();
-    }
-  }
-  return null;
-}
-
 function fieldRef(spec: Record<string, unknown>): string {
   const meta = spec.meta;
   const metaRecord = meta && typeof meta === 'object' ? meta as Record<string, unknown> : null;
@@ -411,8 +389,8 @@ function findBranchCapableStationField(
     .filter((spec) => (
       fieldRef(spec).length > 0
       && isBranchStartBayRole(spec.bay_role)
-      && fieldTerminalBusRef(spec)
-      && (!preferredBusRef || spec.bus_ref === preferredBusRef || fieldTerminalBusRef(spec) === preferredBusRef)
+      && zaciskPola(spec)
+      && (!preferredBusRef || spec.bus_ref === preferredBusRef || zaciskPola(spec) === preferredBusRef)
       // Karta POLE-ZAJĘTE: zajętość z modelu odczytu backendu, nie z własnego licznika.
       && poleLinioweWolne(logicalViews, fieldRef(spec))
     ))
@@ -727,7 +705,7 @@ export function resolveBranchSourceRef(
   if (
     selectedStationField
     && isBranchStartBayRole(selectedStationField.spec.bay_role)
-    && fieldTerminalBusRef(selectedStationField.spec)
+    && zaciskPola(selectedStationField.spec)
     && poleLinioweWolne(logicalViews, fieldRef(selectedStationField.spec))
   ) {
     return `${fieldRef(selectedStationField.spec)}.BRANCH`; // ui-terminology-ignore
@@ -788,7 +766,7 @@ export function resolveBranchSourceContext(
 
   const stationField = findStationFieldSpec(snapshot, elementRef);
   if (stationField && isLineContinuationBayRole(stationField.spec.bay_role)) {
-    const sourceBusRef = fieldTerminalBusRef(stationField.spec) ?? '';
+    const sourceBusRef = zaciskPola(stationField.spec) ?? '';
     const sourceBus = findBus(snapshot, sourceBusRef);
     return {
       fromRef,
@@ -1112,7 +1090,7 @@ function findStationLineFieldEndpoint(
       || knownFieldRefs.has(bayFieldRef)
       || knownFieldRefs.has(bay.ref_id)
     ) continue;
-    const terminalBusRef = fieldTerminalBusRef(bay as unknown as Record<string, unknown>);
+    const terminalBusRef = zaciskRekorduPola(bay as unknown as Record<string, unknown>);
     if (!terminalBusRef) continue;
     stationFieldSpecs.push({
       field_ref: bayFieldRef,
@@ -1127,7 +1105,7 @@ function findStationLineFieldEndpoint(
   const fieldEndpoint = stationFieldSpecs
     .map((spec) => {
       const lineFieldRef = fieldRef(spec);
-      const terminalBusRef = fieldTerminalBusRef(spec);
+      const terminalBusRef = zaciskPola(spec);
       const terminal = findTerminal(logicalViews, lineFieldRef);
       return {
         fieldRef: lineFieldRef,
@@ -1192,7 +1170,7 @@ export function resolveContinueTrunkSelection(
   const terminalId = terminal?.element_id ?? corridorEndpoint?.terminalId ?? '';
   const terminalBay = findBay(snapshot, terminal?.element_id ?? null);
   const terminalBayBusRef = terminalBay
-    ? fieldTerminalBusRef(terminalBay as unknown as Record<string, unknown>)
+    ? zaciskRekorduPola(terminalBay as unknown as Record<string, unknown>)
     : null;
   const terminalBusRef =
     (typeof terminalBayBusRef === 'string' && terminalBayBusRef.trim() ? terminalBayBusRef.trim() : '')

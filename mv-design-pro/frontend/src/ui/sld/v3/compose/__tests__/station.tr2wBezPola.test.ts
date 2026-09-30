@@ -84,6 +84,8 @@ function trUnit(ref: string, hvBusRef: string | null, lvBusRef: string | null): 
   return {
     ref,
     hvBusRef,
+    // Szyna sekcji = ta sama szyna: w tych przypadkach strona górna stoi na szynie pola.
+    hvSekcjaBusRef: hvBusRef,
     lvBusRef,
     hvVoltageKv: null,
     designation: null,

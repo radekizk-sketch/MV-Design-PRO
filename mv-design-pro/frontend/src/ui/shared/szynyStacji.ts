@@ -55,38 +55,116 @@ function lista(value: unknown): readonly unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+/** Szyny główne stacji (`bus_refs`, niepuste napisy) — jak `glowne` w backendzie. */
+function szynyGlowne(stacja: StacjaDlaSzyn): readonly string[] {
+  return lista(stacja.bus_refs).filter((szyna): szyna is string => napis(szyna) !== null);
+}
+
+/** Pola z WŁASNYM zaciskiem pogrupowane po szynie pola, w kolejności pierwszego wystąpienia
+ *  szyny — lustro `enm.tor_pola._pola_z_zaciskiem_wg_szyny` (szyna pola → zaciski pól). */
+function zaciskiWgSzynyPola(stacja: StacjaDlaSzyn): ReadonlyMap<string, readonly string[]> {
+  const wynik = new Map<string, string[]>();
+  for (const raw of lista(rekord(stacja.meta)?.field_specs)) {
+    const spec = rekord(raw);
+    if (!spec) continue;
+    const szynaPola = napis(spec.bus_ref);
+    const zacisk = zaciskPola(spec);
+    if (szynaPola && zacisk && zacisk !== szynaPola && napis(spec.field_ref)) {
+      wynik.set(szynaPola, [...(wynik.get(szynaPola) ?? []), zacisk]);
+    }
+  }
+  return wynik;
+}
+
+/** Aparaty pól nN stacji — lustro `enm.tor_pola._aparaty_pol_nn_stacji` (znacznik gałęzi
+ *  `meta.nn_field_migrowany_z` wskazuje `field_ref` z `nn_field_specs` TEJ stacji). */
+function aparatyPolNn(stacja: StacjaDlaSzyn, galezie: readonly GalazDlaSzyn[]): readonly GalazDlaSzyn[] {
+  const polaNn = new Set<string>();
+  for (const raw of lista(rekord(stacja.meta)?.nn_field_specs)) {
+    const spec = rekord(raw);
+    if (spec && napis(spec.field_ref)) polaNn.add(String(spec.field_ref));
+  }
+  if (polaNn.size === 0) return [];
+  return galezie.filter((galaz) => {
+    const pole = rekord(galaz.meta)?.[META_POLE_NN_ZRODLOWE];
+    return typeof pole === 'string' && polaNn.has(pole);
+  });
+}
+
 /** Szyny NALEŻĄCE do stacji — lustro `enm.tor_pola.szyny_stacji` (opis reguły: nagłówek). */
 export function szynyStacji(
   stacja: StacjaDlaSzyn,
   galezie: readonly GalazDlaSzyn[],
 ): ReadonlySet<string> {
-  const wynik = new Set<string>();
-  for (const szyna of lista(stacja.bus_refs)) {
-    if (napis(szyna) !== null) wynik.add(szyna as string);
+  const wynik = new Set<string>(szynyGlowne(stacja));
+  for (const zaciski of zaciskiWgSzynyPola(stacja).values()) {
+    for (const zacisk of zaciski) wynik.add(zacisk);
   }
-  const meta = rekord(stacja.meta);
-  for (const raw of lista(meta?.field_specs)) {
-    const spec = rekord(raw);
-    if (!spec) continue;
-    const szynaPola = napis(spec.bus_ref);
-    const zacisk = zaciskPola(spec);
-    if (szynaPola && zacisk && zacisk !== szynaPola && napis(spec.field_ref)) wynik.add(zacisk);
-  }
-  const polaNn = new Set<string>();
-  for (const raw of lista(meta?.nn_field_specs)) {
-    const spec = rekord(raw);
-    if (spec && napis(spec.field_ref)) polaNn.add(String(spec.field_ref));
-  }
-  if (polaNn.size === 0) return wynik;
-  for (const galaz of galezie) {
-    const pole = rekord(galaz.meta)?.[META_POLE_NN_ZRODLOWE];
-    if (typeof pole !== 'string' || !polaNn.has(pole)) continue;
+  for (const galaz of aparatyPolNn(stacja, galezie)) {
     for (const koniec of [galaz.from_bus_ref, galaz.to_bus_ref]) {
       const szyna = napis(koniec);
       if (szyna) wynik.add(szyna);
     }
   }
   return wynik;
+}
+
+/**
+ * Szyna GŁÓWNA stacji, na której stoi pole prowadzące do `szynaRef` — lustro
+ * `enm.tor_pola.szyna_glowna_stacji`: sama `szynaRef`, gdy jest szyną główną; szyna pola,
+ * gdy `szynaRef` jest własnym zaciskiem pola SN; szyna główna na początku aparatu pola nN,
+ * gdy `szynaRef` leży na jego KOŃCU (`to_bus_ref`). `null` — szyna nie należy do stacji
+ * albo leży za łańcuchem aparatów (początek aparatu nie jest szyną główną) — tak samo jak
+ * w backendzie; parytet przypina `szynyStacji.parytet.test.ts`.
+ */
+export function szynaGlownaStacji(
+  stacja: StacjaDlaSzyn,
+  galezie: readonly GalazDlaSzyn[],
+  szynaRef: string,
+): string | null {
+  const glowne = szynyGlowne(stacja);
+  if (glowne.includes(szynaRef)) return szynaRef;
+  for (const [szynaPola, zaciski] of zaciskiWgSzynyPola(stacja)) {
+    if (zaciski.includes(szynaRef)) return szynaPola;
+  }
+  for (const aparat of aparatyPolNn(stacja, galezie)) {
+    const poczatek = aparat.from_bus_ref;
+    if (aparat.to_bus_ref === szynaRef && typeof poczatek === 'string' && glowne.includes(poczatek)) {
+      return poczatek;
+    }
+  }
+  return null;
+}
+
+/**
+ * Stacja pola (SZYNY-STACJI-LUSTRO, ta sama klasa co przynależność szyny) — z DANYCH, nigdy
+ * z wzorca nazwy refu. Kanały w kolejności backendu `enm.domain_operations_v2._field_record`:
+ * rekord `bays` o tym `ref_id` (jego `substation_ref`), potem PIERWSZA stacja modelu, której
+ * `meta.field_specs` albo `meta.nn_field_specs` deklaruje `field_ref`. `null` — pola nie
+ * deklaruje nikt.
+ */
+export function stacjaPola(
+  model: {
+    readonly substations?: readonly StacjaDlaSzyn[] | null;
+    readonly bays?: readonly { readonly ref_id?: unknown; readonly substation_ref?: unknown }[] | null;
+  },
+  fieldRef: string | null | undefined,
+): string | null {
+  const szukany = napis(fieldRef);
+  if (!szukany) return null;
+  for (const bay of model.bays ?? []) {
+    if (napis(bay.ref_id) === szukany) return napis(bay.substation_ref);
+  }
+  for (const stacja of model.substations ?? []) {
+    if (!napis(stacja.ref_id)) continue;
+    const meta = rekord(stacja.meta);
+    for (const klucz of ['field_specs', 'nn_field_specs'] as const) {
+      for (const raw of lista(meta?.[klucz])) {
+        if (napis(rekord(raw)?.field_ref) === szukany) return stacja.ref_id as string;
+      }
+    }
+  }
+  return null;
 }
 
 /**
