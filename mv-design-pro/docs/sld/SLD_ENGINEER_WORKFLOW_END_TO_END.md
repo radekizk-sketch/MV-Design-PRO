@@ -272,6 +272,8 @@ Krok 11 flow inżyniera odblokowany. Per-relay validation (settings, krzywe IDMT
 CT/VT bindings) jest deferred do runtime'u `protection_engine_v1`. 121/121 protection
 testów PASS.
 
+> **Stan 2026-09-30:** `domain/protection_engine_v1.py` skasowany w karcie RESULTSET-MARTWE-MAPPERY (decyzja O-59, 0 importerów); żywy tor zabezpieczeń to `application/protection_analysis/engine.py` (tor `protection_sn`, trasy `/api/projects/{id}/protection-runs`), krzywe IDMT wyłącznie w `network_model/solvers/protection_iec60255.py`.
+
 ### Krok 12 — Wizualizacja wyników na SLD
 
 **Co robi inżynier:**

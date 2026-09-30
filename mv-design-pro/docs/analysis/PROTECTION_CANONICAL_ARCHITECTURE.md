@@ -1,6 +1,15 @@
 # PROTECTION CANONICAL ARCHITECTURE
 
-> **Status**: BINDING (Phase B)
+> **STAN 2026-09-30:** opisywany kod (`domain/protection_engine_v1.py`, `application/result_mapping/protection_to_resultset_v1.py`,
+> `application/result_mapping/short_circuit_to_resultset_v1.py`, `sc_binding_meta.py`, router `api/protection_engine_v1.py`)
+> skasowany — ostatnie pliki w karcie RESULTSET-MARTWE-MAPPERY (zgoda B-01 w decyzji O-59); dokument archiwalny, nie opisuje
+> stanu bieżącego. Żywa implementacja: model przekaźnika i nastaw w ENM (`enm/models.py::ProtectionAssignment`,
+> `ProtectionSetting`, `Measurement`), ocena w `application/protection_analysis/engine.py::ProtectionEvaluationEngine`
+> (tor `protection_sn`, trasy `api/protection_runs.py`), krzywe IDMT wyłącznie w
+> `network_model/solvers/protection_iec60255.py::compute_idmt_generic`, jedyny producent ResultSetV1:
+> `application/result_mapping/canonical_run_to_resultset_v1.py`.
+
+> **Status**: ARCHIWALNY od 2026-09-30 (dawniej BINDING, Phase B)
 > **Date**: 2026-02-12
 > **Scope**: Protection Block (PR-27→PR-32) layer boundaries, contracts, prohibitions
 > **Base**: PR-26 (Protection Engine v1 — 50/51 + IEC curves)

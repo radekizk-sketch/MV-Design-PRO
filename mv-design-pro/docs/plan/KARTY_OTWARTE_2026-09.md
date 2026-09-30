@@ -561,6 +561,8 @@ default selection) i P-05/P-06 oraz wymóg White Box z `PROTECTION_SYSTEM_CANONI
 
    Martwy `domain/protection_engine_v1.py` jest pod `solver_boundary_guard`. Jego kasacja wymaga
    OD-18, więc wpisz go do meldunku z tą zależnością i nie ruszaj.
+   **Stan 2026-09-30:** OD-18 rozstrzygnięte decyzją O-59 — `domain/protection_engine_v1.py` skasowany
+   w karcie RESULTSET-MARTWE-MAPPERY i zdjęty z `solver_boundary_guard.py::WATCHED_PATHS`; punkt nieaktualny.
 4. **Zero wartości domyślnych i połkniętych błędów.**
    - `_extract_setting_value` i każde miejsce inwentarza z domyślnym prądem, TMS, zwłoką, krzywą,
      prądem testowym „10× nastawa” albo progiem 0 (`protection_read_model`) znika.

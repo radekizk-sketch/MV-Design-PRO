@@ -276,11 +276,11 @@ Key components:
 | Component | Location | Purpose |
 |-----------|----------|---------|
 | Protection Analysis | `application/analyses/protection/` | Overcurrent settings, coordination, selectivity |
-| Protection Engine v1 | `domain/protection_engine_v1.py` | ANSI 50/51, IEC IDMT curves (WHITE BOX) |
+| Protection Evaluation Engine | `application/protection_analysis/engine.py` (`ProtectionEvaluationEngine`, tor `protection_sn`) | ANSI 50/51 evaluation; IEC IDMT delegated to the solver kernel `network_model/solvers/protection_iec60255.py::compute_idmt_generic` (WHITE BOX) |
 | Protection Analysis Model | `domain/protection_analysis.py` | Evaluation, trace, summary (interpretation only) |
-| Protection → ResultSet | `application/result_mapping/protection_to_resultset_v1.py` | Mapper to canonical ResultSet |
+| ResultSet v1 producer (all analyses) | `application/result_mapping/canonical_run_to_resultset_v1.py` | Sole producer of `domain.result_contract_v1.ResultSetV1` (SC / PF / Protection), fills `element_ref_id` (V12S-011); guarded by `scripts/resultset_v1_schema_guard.py`. Former `domain/protection_engine_v1.py` and `protection_to_resultset_v1.py` were dead (0 importers) and deleted in card RESULTSET-MARTWE-MAPPERY (2026-09-30, decision O-59) |
 | Protection Library | `application/analyses/protection/catalog/` | Vendor curves (Elektrometal ETango), IDMT |
-| Voltage Analysis | `analysis/voltage/` | Voltage violations, profiles |
+| Voltage Analysis | `analysis/voltage_profile/` | Voltage violations, profiles |
 | Power Flow Interpretation | `analysis/power_flow/` | PF result analysis |
 | Normative Evaluator | `analysis/normative/` | PN-EN compliance rules |
 | Coverage Score | `analysis/coverage_score/` | Analysis completeness assessment |

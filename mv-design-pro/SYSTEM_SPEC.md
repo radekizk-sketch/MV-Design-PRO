@@ -198,8 +198,8 @@ Implemented analyses: Protection, Voltage, Thermal/Overload, Normative Evaluator
 
 Protection is a separate AnalysisType in the execution pipeline. It does NOT reside in the Solver layer — it is purely interpretive.
 
-- **Engine**: Protection Engine v1 (ANSI 50/51, IEC IDMT curves) — `domain/protection_engine_v1.py`
-- **Current source**: Explicit selection — `TEST_POINTS` (user-defined) or `SC_RESULT` (read-only from SC ResultSet)
+- **Engine**: `application/protection_analysis/engine.py::ProtectionEvaluationEngine` (ANSI 50/51, tor `protection_sn`); IEC IDMT curves computed only by `network_model/solvers/protection_iec60255.py::compute_idmt_generic`. The former second engine `domain/protection_engine_v1.py` (0 importers) was deleted in card RESULTSET-MARTWE-MAPPERY (2026-09-30, decision O-59)
+- **Current source**: fault currents read-only from the short-circuit result (`build_fault_from_sc_result` → `FaultPoint`); the former `TEST_POINTS`/`SC_RESULT` selector (`domain/protection_current_source.py`) was deleted in W3-A (2026-09-09)
 - **Coordination**: Explicit relay pairs (upstream/downstream), numerical margins only, no verdicts
 - **Boundary**: Protection READS SC results. Protection NEVER modifies SC solver or SC ResultSet v1.
 - **Contracts**: See [`docs/analysis/PROTECTION_CONTRACTS.md`](docs/analysis/PROTECTION_CONTRACTS.md)

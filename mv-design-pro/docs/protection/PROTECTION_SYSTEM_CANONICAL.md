@@ -5,6 +5,13 @@
 **Data:** 2026-02-17
 **Powiazanie:** SYSTEM_SPEC.md, ARCHITECTURE.md, IEC_IDMT_CANON.md, VENDOR_CURVES.md
 
+> **STAN 2026-09-30:** dawna implementacja referencyjna `domain/protection_engine_v1.py` (drugi silnik zabezpieczeń,
+> 0 importerów w `backend/src`) skasowana w karcie RESULTSET-MARTWE-MAPPERY (zgoda B-01 w decyzji O-59). Wskazania
+> „Implementacja referencyjna” i Dodatek C odsyłają do żywych miejsc: model przekaźnika, nastaw i przekładników w ENM
+> (`enm/models.py`), ocena w `application/protection_analysis/engine.py` (tor `protection_sn`), krzywe IDMT wyłącznie
+> w `network_model/solvers/protection_iec60255.py`. Nazwy pól w tabelach tej specyfikacji (np. `Iinstant_a`) opisują
+> semantykę nastaw, nie nazwy atrybutów żywego kodu.
+
 ---
 
 ## Spis tresci
@@ -60,7 +67,7 @@ $$
 
 **Przyklad:** CT 400/5 A -- przekladnia $\theta_i = 80$, klasa 5P20.
 
-**Implementacja referencyjna:** `domain.protection_engine_v1.CTRatio`
+**Implementacja referencyjna:** `enm.models.Measurement` (`measurement_type="CT"`, znamionowanie `rating`) z typem katalogowym `network_model.catalog.types.CTType` (`ratio_primary_a`, `ratio_secondary_a`, `burden_va`)
 
 **Warunki walidacji:**
 - `ratio_primary_a > 0`
@@ -131,7 +138,7 @@ oraz z aparatem wykonawczym (wylacznikiem).
 | `breaker_id` | string | Identyfikator wylacznika (CB) |
 | `attached_cb_id` | string | Alias: ID aparatu wykonawczego do wyzwalania |
 
-**Implementacja referencyjna:** `domain.protection_engine_v1.RelayV1`
+**Implementacja referencyjna:** `enm.models.ProtectionAssignment` (`breaker_ref`, `ct_ref`, `settings`); wejście oceny: `application.protection_analysis.engine.ProtectionDevice`
 
 **Niezmienniki:**
 - Przekaznik MUSI byc powiazany dokladnie z jednym wylacznikiem (`breaker_binding`)
@@ -169,7 +176,7 @@ Przekaznik nadpradowy realizuje dwie podstawowe funkcje ochronne:
 | Extremely Inverse | EI | 80.0 | 2.0 |
 | Long Time Inverse | LTI | 120.0 | 1.0 |
 
-**Implementacja referencyjna:** `domain.protection_engine_v1.Function51Settings`
+**Implementacja referencyjna:** `enm.models.ProtectionSetting` (`function_type="overcurrent_51"`, `threshold_a`, `time_delay_s`, `curve_type`) oraz `domain.protection_device.OvercurrentStageSettings`; czas zadziałania: `application.protection_analysis.engine.compute_iec_inverse_time` (adapter jądra solvera)
 
 #### 2.1.2 Funkcja 50 -- Zabezpieczenie zwarciowe (I>>)
 
@@ -190,7 +197,7 @@ $$
 Jesli warunek spelniony i `t_trip_s` jest zdefiniowany, wyzwolenie nastepuje
 po czasie `t_trip_s`. Jesli `t_trip_s = None`, wyzwolenie jest bezzwloczne.
 
-**Implementacja referencyjna:** `domain.protection_engine_v1.Function50Settings`
+**Implementacja referencyjna:** `enm.models.ProtectionSetting` (`function_type="overcurrent_50"`, `threshold_a`, `time_delay_s`) oraz `domain.protection_device.OvercurrentStageSettings`; czas zadziałania: `application.protection_analysis.engine.compute_definite_time`
 
 #### 2.1.3 Stopien I>>> (opcjonalny)
 
@@ -393,7 +400,7 @@ Wymagania:
 - Brak wartosci NaN lub Inf w danych wyjsciowych
 - Serializacja JSON kanoniczna (posortowane klucze, konsekwentne formatowanie)
 
-**Implementacja referencyjna:** `domain.protection_engine_v1.iec_curve_time_seconds()`
+**Implementacja referencyjna:** `network_model.solvers.protection_iec60255.compute_idmt_generic()` / `compute_curve_trip_time()` (jądro FROZEN); adapter toru oceny: `application.protection_analysis.engine.compute_iec_inverse_time()`
 
 ### 3.7 Cache krzywych TCC
 
@@ -1006,16 +1013,16 @@ do audytu.
 
 | Element specyfikacji | Modul implementacyjny | Plik |
 |---------------------|----------------------|------|
-| Model CT (CTRatio) | domain.protection_engine_v1 | `backend/src/domain/protection_engine_v1.py` |
-| Model przekaznika (RelayV1) | domain.protection_engine_v1 | `backend/src/domain/protection_engine_v1.py` |
+| Model CT | enm.models.Measurement + network_model.catalog.types.CTType | `backend/src/enm/models.py`, `backend/src/network_model/catalog/types.py` |
+| Model przekaznika | enm.models.ProtectionAssignment (+ ProtectionSetting) | `backend/src/enm/models.py` |
 | Nastawy nadpradowe | domain.protection_device | `backend/src/domain/protection_device.py` |
 | Analiza ochrony (wyniki) | domain.protection_analysis | `backend/src/domain/protection_analysis.py` |
 | Koordynacja selektywnosci | ~~domain.protection_coordination_v1~~ | skasowany w W1 (2026-09-09) (0 konsumentow produkcyjnych); implementacja = wycinek W4 mapy |
 | Krzywe vendor | domain.protection_vendors | `backend/src/domain/protection_vendors.py` |
-| Silnik ochrony (execute) | domain.protection_engine_v1 | `backend/src/domain/protection_engine_v1.py` |
-| Obliczanie IEC IDMT | domain.protection_engine_v1 | `backend/src/domain/protection_engine_v1.py` |
+| Silnik ochrony (ocena) | application.protection_analysis.engine.ProtectionEvaluationEngine | `backend/src/application/protection_analysis/engine.py` |
+| Obliczanie IEC IDMT | network_model.solvers.protection_iec60255 (`compute_idmt_generic`, `compute_curve_trip_time`) | `backend/src/network_model/solvers/protection_iec60255.py` |
 | Trace emitter | ~~application.trace_emitters~~ | skasowany 2026-09-10 (klaster ślad v2 bez konsumenta; ślad kanoniczny = white_box_trace + application/proof_engine) |
-| API ochrony | api.protection_engine_v1 | `backend/src/api/protection_engine_v1.py` |
+| API ochrony | api.protection_runs (router `protection_engine_v1` skasowany 2026-08-08) | `backend/src/api/protection_runs.py` |
 
 ---
 
