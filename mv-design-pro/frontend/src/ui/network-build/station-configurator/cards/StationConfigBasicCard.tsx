@@ -18,7 +18,11 @@ export type StationConstructionType = 'wnetrzowa' | 'kontenerowa' | 'slupowa' | 
 export interface StationConfigBasicCardProps {
   readonly stationName: string;
   readonly designation?: string;
-  readonly topologicalType: StationTopologicalType;
+  /** Rodzaj stacji z jednej reguły produktu (`ui/shared/rodzajStacji.ts`); `null` — stacji nie
+   *  ma w migawce modelu (rodzaj nieustalony, bez domysłu). */
+  readonly topologicalType: StationTopologicalType | null;
+  /** Przyczyna rodzaju w słowach projektanta (liczba pól liniowych, sprzęgło). */
+  readonly topologicalReasonPl?: string | null;
   readonly constructionType?: StationConstructionType | null;
   readonly snVoltageKv: number;
   readonly nnVoltageLevels: readonly number[];
@@ -49,7 +53,7 @@ const CONSTRUCTION_LABEL_PL: Record<StationConstructionType, string> = {
 
 export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.Element {
   const {
-    stationName, designation, topologicalType, constructionType,
+    stationName, designation, topologicalType, topologicalReasonPl, constructionType,
     snVoltageKv, nnVoltageLevels, owner, location, mvNeutralGroundingRef, mvNeutralGroundings, onChange,
   } = props;
 
@@ -78,9 +82,15 @@ export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.
           />
         </label>
         <div>
-          <span className="text-scada-muted">Typ topologiczny: </span>
-          <span data-testid="station-topological-type" className="text-scada-text">{topologicalType}</span>
-          <span className="ml-2 text-[10px] text-scada-muted">(określany z układu pól SN)</span>
+          <span className="text-scada-muted">Rodzaj stacji: </span>
+          <span data-testid="station-topological-type" className="text-scada-text">
+            {topologicalType ?? 'nieustalony — stacji brak w modelu'}
+          </span>
+          {topologicalReasonPl ? (
+            <span data-testid="station-topological-reason" className="ml-2 text-[10px] text-scada-muted">
+              ({topologicalReasonPl})
+            </span>
+          ) : null}
         </div>
         <label className="flex flex-col">
           <span className="text-scada-muted">Typ konstrukcyjny</span>

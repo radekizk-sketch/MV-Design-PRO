@@ -516,6 +516,11 @@ export const STACJA_STRINGS = {
   // Kontrola.
   kontrolaTytul: 'Kontrola stacji',
   wierszTyp: 'Rodzaj',
+  /** Rodzaj wynikający ze składu pól i umiejscowienia (zgodny z deklaracją). */
+  rodzajWynikowy: (rodzaj: string) => `Stacja ${rodzaj} (ze składu pól)`,
+  /** Rodzaj wynikający ze składu pól różni się od deklaracji z kroku „Rodzaj”. */
+  rodzajNiezgodny: (rodzaj: string, deklaracja: string) =>
+    `Stacja ${rodzaj} ze składu pól — zadeklarowano: ${deklaracja}`,
   wierszUmiejscowienie: 'Umiejscowienie',
   wierszTransformator: 'Transformator',
   wierszNn: 'Blok nN',

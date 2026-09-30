@@ -161,7 +161,7 @@ def _zastosuj_szablon(
             {
                 "segment_id": segment_ref,
                 "insert_at": {"mode": "RATIO", "value": insert_at_ratio},
-                "station": {**station_spec, "station_type": _resolve_station_type(template)},
+                "station": {**station_spec, "station_type": _resolve_station_type(role)},
                 "transformer": transformer_spec,
                 "sn_fields": specyfikacje,
                 "nn_block": nn_block,

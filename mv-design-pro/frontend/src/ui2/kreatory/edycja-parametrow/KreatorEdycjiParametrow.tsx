@@ -44,6 +44,7 @@ import {
 } from '../../oze/ncrfg/daneModulu';
 import { SekcjaDanychModulu } from '../../oze/ncrfg/SekcjaDanychModulu';
 import { EDYCJA_PARAMETROW_STRINGS as T } from './strings';
+import { RODZAJE_STACJI, podpisRodzajuStacjiPl } from '../../../ui/shared/rodzajStacji';
 
 interface WierszParametru {
   klucz: string;
@@ -59,6 +60,13 @@ type OpcjaSlownika = { id: string; etykieta: string };
  * Wartość spoza słownika i tak odrzuci backend — lista ma ją uczynić niemożliwą, nie tylko błędną.
  */
 const SLOWNIKI_STATYCZNE: Readonly<Record<string, readonly OpcjaSlownika[]>> = {
+  // Karta ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju stacji SN/nN (akcja naprawcza
+  // walidatora W043 podaje tu rodzaj wyprowadzony z topologii) — ten sam zbiór, który przyjmuje
+  // backend (`TYPY_STACJI_SN_NN`); GPZ i rozdzielnicy nN deklaracji zmienić nie można.
+  station_type: [
+    ...RODZAJE_STACJI.map((id) => ({ id, etykieta: podpisRodzajuStacjiPl(id) })),
+    { id: 'mv_lv', etykieta: 'Stacja SN/nN bez wskazania rodzaju' },
+  ],
   lv_earthing_system: UKLADY_SIECI_NN.map((id) => ({ id, etykieta: id })),
   screen_bonding: UZIEMIENIA_EKRANU_KABLA.map((id) => ({ id, etykieta: `${id} — ${ETYKIETA_PL_UZIEMIENIA_EKRANU[id]}` })),
 };

@@ -214,39 +214,6 @@ export function validatePortVoltages(
 }
 
 /**
- * Wnioskowanie typu topologicznego stacji z portów zewnętrznych.
- *
- * Brief 2 §6 pkt 7 + STATION_INTERNAL_SLD §3 — typ stacji wynika z kombinacji portów.
- */
-export type StationTopologicalType =
-  | 'końcowa'
-  | 'przelotowa'
-  | 'odgałęźna'
-  | 'sekcyjna';
-
-export function classifyStationTopology(externalPorts: readonly SldPort[]): StationTopologicalType {
-  const snInputs = externalPorts.filter((p) => p.kind === 'sn_input').length;
-  const snOutputs = externalPorts.filter((p) => p.kind === 'sn_output').length;
-  const snBranches = externalPorts.filter((p) => p.kind === 'sn_branch').length;
-  const snCouplers = externalPorts.filter((p) => p.kind === 'sn_coupler').length;
-
-  // Sekcyjna: ≥ 2 wejścia z aktywnym sprzęgłem
-  if (snInputs >= 2 && snCouplers >= 1) {
-    return 'sekcyjna';
-  }
-  // Odgałęźna: wejście + wyjście + ≥1 odgałęzienie
-  if (snInputs >= 1 && snOutputs >= 1 && snBranches >= 1) {
-    return 'odgałęźna';
-  }
-  // Przelotowa: wejście + wyjście
-  if (snInputs >= 1 && snOutputs >= 1) {
-    return 'przelotowa';
-  }
-  // Końcowa: tylko wejście (lub wejście + transformator/DER bez wyjścia ciągu)
-  return 'końcowa';
-}
-
-/**
  * Walidacja spójności bay_role ↔ port kind.
  *
  * Reguła PR-3 walidatora ENM: typ portu pola musi być spójny z bay_role.

@@ -7,6 +7,7 @@ import {
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
 import { isOperationalBus, isTerrainSnSegment } from '../shared/enmVisibility';
 import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
+import { rodzajStacji, type RodzajStacji } from '../shared/rodzajStacji';
 import { fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
 import { useSnapshotStore } from '../topology/snapshotStore';
@@ -646,7 +647,9 @@ export interface RingCandidate {
 export interface StationSummary {
   id: string;
   name: string;
-  stationType: string;
+  /** Rodzaj stacji z jednej reguły produktu (`ui/shared/rodzajStacji.ts`); `null` — rodzaj
+   *  nie dotyczy (rozdzielnica nN). */
+  rodzaj: RodzajStacji | null;
   trunkRef: string | null;
   hasTransformer: boolean;
   hasNnPart: boolean;
@@ -1021,7 +1024,7 @@ export function selectStationSummaries(
       return {
         id: s.id,
         name: identity.displayName,
-        stationType: s.station_type,
+        rodzaj: rodzajStacji(snapshot, s.ref_id)?.rodzaj ?? null,
         trunkRef: null,
         hasTransformer,
         hasNnPart: nnBuses.length > 0,
