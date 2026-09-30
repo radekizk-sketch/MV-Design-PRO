@@ -47,7 +47,7 @@ def test_bieg_w_pamieci_liczy_wynik_bez_persystencji_i_bez_zmiany_statusu() -> N
     wariant = _wariant(
         kotwica,
         "short_circuit_sn",
-        {"fault_type": "3F", "c_factor": 0.95, "thermal_time_seconds": 1.0},
+        {"fault_type": "3F", "scenario": "min", "thermal_time_seconds": 1.0},
     )
     status_przed = wariant.status
 
@@ -70,7 +70,7 @@ def test_dyspozycja_wariantu_daje_ten_sam_wynik_co_sciezka_kanoniczna() -> None:
     # rowny (determinizm kanonu: to samo wejscie = ten sam wynik), niezaleznie od
     # tego, ile razy dyspozycja biegnie w pamieci.
     kotwica = _kotwica(_siec_promieniowa())
-    opcje = {"fault_type": "2F", "c_factor": 0.95, "thermal_time_seconds": 1.0}
+    opcje = {"fault_type": "2F", "scenario": "min", "thermal_time_seconds": 1.0}
     pierwszy = _wariant(kotwica, "short_circuit_sn", copy.deepcopy(opcje))
     drugi = _wariant(kotwica, "short_circuit_sn", copy.deepcopy(opcje))
 
@@ -107,7 +107,7 @@ def test_gotowy_graf_poza_rozplywem_to_jawny_blad_kontraktu() -> None:
     wariant = _wariant(
         kotwica,
         "short_circuit_sn",
-        {"fault_type": "3F", "c_factor": 0.95, "thermal_time_seconds": 1.0},
+        {"fault_type": "3F", "scenario": "min", "thermal_time_seconds": 1.0},
     )
     graf = map_enm_to_network_graph(EnergyNetworkModel.model_validate(wariant.snapshot))
     with pytest.raises(ValueError, match="wyłącznie rozpływ mocy"):
@@ -133,7 +133,7 @@ def test_wariant_z_para_audit2_bez_fabryki_to_jawny_blad(analysis_type: str) -> 
     kotwica = _kotwica(_siec_promieniowa())
     opcje = {
         "fault_type": "3F",
-        "c_factor": 0.95,
+        "scenario": "min",
         "thermal_time_seconds": 1.0,
         **_para_audit2(),
     }
@@ -152,7 +152,7 @@ def test_wariant_z_para_audit2_i_fabryka_liczy_bez_zapisanej_konfiguracji(
     kotwica = _kotwica(_siec_promieniowa())
     opcje = {
         "fault_type": "3F",
-        "c_factor": 0.95,
+        "scenario": "min",
         "thermal_time_seconds": 1.0,
         **_para_audit2(),
     }
@@ -179,7 +179,7 @@ def test_fabryka_wolajacego_trafia_do_odczytu_rozszerzen(analysis_type: str, mon
     # kotwicy bez fabryki) nie może wejść do pomiaru wariantu.
     kotwica = _kotwica(_siec_promieniowa())
     monkeypatch.setattr(canonical_analysis, "rozszerzenia_audit2_dla_opcji", _odczyt)
-    opcje = {"fault_type": "3F", "c_factor": 0.95, "thermal_time_seconds": 1.0}
+    opcje = {"fault_type": "3F", "scenario": "min", "thermal_time_seconds": 1.0}
     wariant = _wariant(kotwica, analysis_type, opcje if analysis_type != "PF" else {})
 
     wykonaj_bieg_w_pamieci(wariant, uow_factory=fabryka)

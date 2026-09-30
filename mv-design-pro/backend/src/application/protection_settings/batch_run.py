@@ -102,6 +102,7 @@ from network_model.odmowa_danych import OdmowaDanychError
 #: łączeniowy i transformator NIE są liniami: wzory Hoppela dotyczą przewodu.
 RODZAJE_LINII: frozenset[str] = frozenset({"line_overhead", "cable"})
 
+
 def kotwica_jest_scenariuszem_max(kotwica: CanonicalRun) -> bool:
     """Czy bieg jest gałęzią MAKSYMALNĄ — JEDEN predykat dla dostępności i budowy.
 

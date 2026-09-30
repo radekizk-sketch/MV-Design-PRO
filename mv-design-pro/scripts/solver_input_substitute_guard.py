@@ -1473,8 +1473,10 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "B:ifexp:result.m_factor": 1,
         "B:ifexp:result.n_factor": 1,
     },
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-09-30): `F:dictget:run.c_factor` (1) ZNIKA —
+    # pakiet biegu nie czyta liczby c z opcji (dawne `options.get("c_factor", 1.10)`),
+    # tylko scenariusz i nadpisanie z uzasadnieniem; c dobiera `voltage_factor.dobierz_c`.
     "application/proof_engine/pakiet_biegu.py": {
-        "F:dictget:run.c_factor": 1,
         "F:dictget:run.thermal_time_seconds": 1,
     },
     # Karta W3-C1 (2026-09-09): `dostepnosc_pakietu_nastaw` (bramka dostepnosci
@@ -1497,9 +1499,9 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # OBU stron pary — w tym wnetrza `zbuduj_wejscie_nastaw`, ktorego ta karta
     # NIE dotyka (poza dokladce `oblicz_nastawy` na koncu pliku, patrz diff) —
     # i jest poza jej zakresem; nazwane w meldunku karty, nie ukryte.
-    "application/proof_engine/pakiet_nastaw.py": {
-        "F:dictget:run.c_factor": 1,
-    },
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-09-30): wpis `pakiet_nastaw.py`
+    # (`F:dictget:run.c_factor`, 1) ZNIKA — gałąź maksymalną rozstrzyga przełącznik
+    # scenariusza zapisany na wyniku (`kotwica_jest_scenariuszem_max`), nie liczba c.
     "application/proof_engine/proof_generator.py": {
         "A:or:data.sn_mva": 2,
         "B:ifexp:entry.u_secondary_kv": 1,
@@ -1513,8 +1515,8 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "application/protection_read_model.py": {
         "A:or:setting.threshold_a": 2,
     },
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `F:dictget:kotwica.c_factor` (1) ZNIKA (jak wyżej).
     "application/protection_settings/batch_run.py": {
-        "F:dictget:kotwica.c_factor": 1,
         "F:dictget:kotwica.thermal_time_seconds": 1,
     },
     # Karta GUARD-SUB-2 (2026-09-05), forma H: `ik_max = inp.ik3_max_beginning_a`

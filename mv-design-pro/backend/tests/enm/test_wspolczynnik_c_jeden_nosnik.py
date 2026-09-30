@@ -145,7 +145,10 @@ def test_nadpisanie_bez_uzasadnienia_odmowa_w_kontrakcie_scenariusza(
 ) -> None:
     with pytest.raises(OdmowaNadpisaniaCError) as blad:
         ShortCircuitConfig.from_dict(
-            {"scenariusz": scenariusz, "nadpisanie_c": {"wartosc": 1.05, "uzasadnienie": uzasadnienie}}
+            {
+                "scenariusz": scenariusz,
+                "nadpisanie_c": {"wartosc": 1.05, "uzasadnienie": uzasadnienie},
+            }
         )
     assert blad.value.kod == KOD_NADPISANIE_BEZ_UZASADNIENIA
 

@@ -98,6 +98,7 @@ def _make_pack_input(**kwargs) -> SCAsymmetricalPackInput:
         "solver_version": SOLVER_VERSION,
         "u_n_kv": U_N_KV,
         "c_factor": C_FACTOR,
+        "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
         "u_prefault_kv": U_PREFAULT_KV,
         "z1_ohm": Z1,
         "z2_ohm": Z2,

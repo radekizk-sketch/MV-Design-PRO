@@ -78,9 +78,7 @@ def _graph_for_analysis(
     return zbuduj_graf(snapshot)
 
 
-def _konfiguracja_przypadku(
-    case_id: str, uow_factory: Callable[[], UnitOfWork]
-) -> StudyCaseConfig:
+def _konfiguracja_przypadku(case_id: str, uow_factory: Callable[[], UnitOfWork]) -> StudyCaseConfig:
     """Konfiguracja ZAPISANEGO przypadku obliczeniowego (baza), nie zaślepka.
 
     Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: dotąd koperta budowała się z domyślnego
@@ -95,6 +93,8 @@ def _konfiguracja_przypadku(
             status_code=400, detail=f"Identyfikator przypadku {case_id!r} nie jest UUID"
         ) from exc
     with uow_factory() as uow:
+        if uow.cases is None:
+            raise RuntimeError("UnitOfWork bez repozytorium przypadków — sesja nieotwarta")
         przypadek = uow.cases.get_study_case(identyfikator)
     if przypadek is None:
         raise HTTPException(

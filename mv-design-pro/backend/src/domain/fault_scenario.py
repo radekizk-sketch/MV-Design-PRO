@@ -83,8 +83,6 @@ class FaultScenarioValidationError(Exception):
     pass
 
 
-
-
 @dataclass(frozen=True)
 class FaultImpedance:
     """

@@ -143,7 +143,7 @@ def _scenariusz_zwarciowy(flaga: bool) -> OperatingScenario:
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="b1", location_type="BUS"),
             config=ShortCircuitConfig(
-                c_factor=1.1,
+                scenariusz="MAX",
                 thermal_time_seconds=1.0,
                 include_branch_contributions=flaga,
             ),

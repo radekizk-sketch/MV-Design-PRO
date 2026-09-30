@@ -229,7 +229,7 @@ def test_is2_scenariusz_zwarciowy_projektuje_opcje_a_jawne_opcje_maja_pierwszens
         name="Zwarcie",
         fault_type=FaultType.SC_3F,
         location=FaultLocation(element_ref=szyna, location_type="BUS"),
-        config=ShortCircuitConfig(c_factor=1.05, thermal_time_seconds=0.7),
+        config=ShortCircuitConfig(scenariusz="MIN", thermal_time_seconds=0.7),
     )
     scenariusz = OperatingScenario(
         scenario_id="z1", name="Zwarcie", kind=RodzajScenariusza.FAULT_STUDY, fault_spec=spec
@@ -239,10 +239,11 @@ def test_is2_scenariusz_zwarciowy_projektuje_opcje_a_jawne_opcje_maja_pierwszens
         klucz_twin=KLUCZ,
         analysis_type="short_circuit_sn",
         scenariusz=scenariusz,
-        options={"c_factor": 1.1},
+        options={"scenario": "max"},
     )
     assert run.options["fault_type"] == "SC_3F" and run.options["thermal_time_seconds"] == 0.7
-    assert run.options["c_factor"] == 1.1, "jawna opcja wolajacego ma pierwszenstwo nad projekcja"
+    assert run.options["scenario"] == "max", "jawna opcja wolajacego ma pierwszenstwo nad projekcja"
+    assert "c_factor" not in run.options, "scenariusz niesie przełącznik, nie liczbę c"
     assert run.options["location"]["element_ref"] == szyna
     assert run.snapshot_hash == compute_enm_hash(enm), "scenariusz zwarciowy nie zmienia migawki"
     assert run.koperta is not None and run.koperta.scenario_ref == ("z1", 1)
@@ -296,6 +297,7 @@ def test_is3_update_serwisu_scenariusza_zwarciowego_daje_swiezosc_zmieniony() ->
         name="Zwarcie serwisu",
         fault_type="SC_3F",
         location={"element_ref": szyna, "location_type": "BUS"},
+        config={"scenariusz": "MAX"},
     )
     wpis = OperatingScenario(
         scenario_id=str(scenario.scenario_id),

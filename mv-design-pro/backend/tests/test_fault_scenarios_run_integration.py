@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import pytest
 from api.main import app
+from domain.fault_scenario import ShortCircuitConfig
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
@@ -174,6 +175,7 @@ def _create_scenario(
                 "location_type": "BUS",
                 "position": None,
             },
+            "config": {"scenariusz": "MAX"},
         },
     )
     assert response.status_code == 201
@@ -261,12 +263,14 @@ class TestGoldenFixture:
             name="Det",
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="bus-x", location_type="BUS"),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         second = new_fault_scenario(
             study_case_id=case_uuid,
             name="Det",
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="bus-x", location_type="BUS"),
+            config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert compute_scenario_content_hash(first) == compute_scenario_content_hash(second)
 
@@ -311,6 +315,7 @@ class TestCreateRunLocationOnBranch:
                     "location_type": "BRANCH_POINT",
                     "position": 0.5,
                 },
+                "config": {"scenariusz": "MAX"},
             },
         )
         assert resp.status_code == 201, resp.text

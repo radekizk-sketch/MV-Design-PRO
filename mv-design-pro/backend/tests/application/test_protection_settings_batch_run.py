@@ -40,6 +40,7 @@ from enm.canonical_analysis import (
     _execute_power_flow,
     _execute_short_circuit,
 )
+from enm.mapping import ref_to_graph_id
 from enm.models import (
     BranchRating,
     Bus,
@@ -50,7 +51,6 @@ from enm.models import (
     Source,
     Transformer,
 )
-from enm.mapping import ref_to_graph_id
 from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
 
 

@@ -10,7 +10,7 @@ Kontrakt HTTP + determinizm + iloczyn cech:
 - ta sama brama uprawnień, co pojedynczy bieg (SC_2F bez Z2 → FAILED),
 - jedno źródło wejścia solvera (`solver_input_for_scenario`) dla ścieżki
   pojedynczego biegu i serii, z naprawą klasy: konfiguracja scenariusza
-  (`c_factor`, `thermal_time_seconds`) na WIERZCHU opcji biegu,
+  (`scenario`, `thermal_time_seconds`) na WIERZCHU opcji biegu,
 - TRWAŁOŚĆ: seria przetrwa symulowany restart procesu backendu (rejestr
   `run_batches`, R2 — nie ginie z procesem, jak dawne trzy słowniki w pamięci),
 - WYKONANIE CIĄGŁE: awaria jednej pozycji NIE zatrzymuje pozostałych (status
@@ -219,7 +219,7 @@ def _create_scenario(
     name: str = "Zwarcie testowe",
     fault_type: str = "SC_3F",
     element_ref: str = "bus-1",
-    c_factor: float = 1.1,
+    scenariusz: str = "MAX",
 ) -> dict:
     response = client.post(
         f"{BASE_URL}/study-cases/{case_id}/fault-scenarios",
@@ -232,7 +232,7 @@ def _create_scenario(
                 "position": None,
             },
             "config": {
-                "c_factor": c_factor,
+                "scenariusz": scenariusz,
                 "thermal_time_seconds": 1.0,
                 "include_branch_contributions": False,
             },
@@ -871,7 +871,7 @@ class TestSwiezoscPerPozycja:
 
 class TestSolverInputJednoZrodlo:
     def test_konfiguracja_scenariusza_na_wierzchu_opcji(self):
-        """Naprawa klasy: `c_factor`/`thermal_time_seconds` scenariusza muszą
+        """Naprawa klasy: przełącznik `scenario`/`thermal_time_seconds` scenariusza muszą
         trafiać na WIERZCH opcji biegu (wykonawca kanoniczny czyta z wierzchu;
         dotąd wartości zagnieżdżone pod `config` były cicho ignorowane)."""
         from application.fault_scenario_service import solver_input_for_scenario
@@ -887,12 +887,12 @@ class TestSolverInputJednoZrodlo:
             name="Pin konfiguracji",
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="bus-x", location_type="BUS"),
-            config=ShortCircuitConfig(c_factor=1.05, thermal_time_seconds=0.5),
+            config=ShortCircuitConfig(scenariusz="MIN", thermal_time_seconds=0.5),
         )
         options = solver_input_for_scenario(scenario)
-        assert options["c_factor"] == 1.05
+        assert options["scenario"] == "min" and "c_factor" not in options
         assert options["thermal_time_seconds"] == 0.5
-        assert options["config"]["c_factor"] == 1.05
+        assert options["config"]["scenariusz"] == "MIN"
         assert options["fault_type"] == "SC_3F"
         assert options["location"]["element_ref"] == "bus-x"
 

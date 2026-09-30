@@ -19,6 +19,7 @@ from domain.fault_scenario import (
     FaultScenario,
     FaultScenarioValidationError,
     FaultType,
+    ShortCircuitConfig,
     compute_scenario_content_hash,
     new_fault_scenario,
 )
@@ -37,6 +38,7 @@ def _make_scenario(
         name=name,
         fault_type=fault_type,
         location=FaultLocation(element_ref=element_ref, location_type="BUS"),
+        config=ShortCircuitConfig(scenariusz="MAX"),
     )
 
 
@@ -81,6 +83,7 @@ class TestFaultScenarioDomain:
                 name="",
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="bus-1", location_type="BUS"),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
     def test_validate_whitespace_name_fails(self):
@@ -91,6 +94,7 @@ class TestFaultScenarioDomain:
                 name="   ",
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="bus-1", location_type="BUS"),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
     def test_validate_empty_element_ref_fails(self):
@@ -101,6 +105,7 @@ class TestFaultScenarioDomain:
                 name="Scenariusz",
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="", location_type="BUS"),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
     def test_fault_impedance_type_default(self):
@@ -145,6 +150,7 @@ class TestFaultScenarioDomain:
                 fault_type=FaultType.SC_1F,
                 location=FaultLocation(element_ref="bus-1", location_type="BUS"),
                 z0_bus_data=None,
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
     def test_branch_requires_position(self):
@@ -157,6 +163,7 @@ class TestFaultScenarioDomain:
                 location=FaultLocation(
                     element_ref="branch-1", location_type="BRANCH", position=None
                 ),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
     def test_bus_no_position(self):
@@ -167,4 +174,5 @@ class TestFaultScenarioDomain:
                 name="Bus test",
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="bus-1", location_type="BUS", position=0.5),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )

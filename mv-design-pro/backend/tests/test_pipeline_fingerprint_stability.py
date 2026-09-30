@@ -25,6 +25,7 @@ from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
+from network_model.core.voltage_factor import c_for_node
 from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopInput,
     LoopImpedanceComponent,
@@ -142,7 +143,7 @@ class TestSolverInputFingerprintStability:
         assert len(set(hashes)) == 1, f"Fingerprint drift: {hashes}"
 
     def test_sc3f_payload_fingerprint_changes_with_config(self) -> None:
-        """Zmiana StudyCaseConfig.c_factor_max → różny fingerprint."""
+        """Zmiana scenariusza MAX → MIN (c per szyna z tabeli 1) → różny fingerprint."""
         graph = _make_test_network()
         catalog = _make_test_catalog()
 
@@ -152,7 +153,8 @@ class TestSolverInputFingerprintStability:
             case_id="case-fp",
             enm_revision="rev-1",
             analysis_type=SolverAnalysisType.SHORT_CIRCUIT_3F,
-            config=StudyCaseConfig(c_factor_max=1.10),
+            config=StudyCaseConfig(),
+            scenario="MAX",
         )
         env_b = build_solver_input(
             graph=graph,
@@ -160,11 +162,12 @@ class TestSolverInputFingerprintStability:
             case_id="case-fp",
             enm_revision="rev-1",
             analysis_type=SolverAnalysisType.SHORT_CIRCUIT_3F,
-            config=StudyCaseConfig(c_factor_max=1.05),
+            config=StudyCaseConfig(),
+            scenario="MIN",
         )
         hash_a = _hash_canonical_json(env_a.payload)
         hash_b = _hash_canonical_json(env_b.payload)
-        assert hash_a != hash_b, "Different c_factor should produce different payload"
+        assert hash_a != hash_b, "Different scenario (per-bus c) should produce different payload"
 
     def test_simplified_sc_fingerprint_changes_with_sk(self) -> None:
         """Zmiana sc_simplified_sk_mva → różny fingerprint (P0.9 backend integration)."""
@@ -293,7 +296,7 @@ class TestE2EFingerprintStability:
             result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
                 graph=graph,
                 fault_node_id="load_bus",
-                c_factor=config.c_factor_max,
+                c_factor=c_for_node(graph.nodes["load_bus"].voltage_level, "MAX"),
                 tk_s=1.0,
                 tb_s=0.1,
                 include_branch_contributions=False,

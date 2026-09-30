@@ -38,7 +38,7 @@ class TestOperatorProfileDefaults:
 
     def test_legacy_dict_falls_back_to_enea(self) -> None:
         """Backward-compat: legacy study case JSON without operator_profile_id."""
-        legacy = {"c_factor_max": 1.10}
+        legacy = {"base_mva": 100.0}
         cfg = StudyCaseConfig.from_dict(legacy)
         assert cfg.operator_profile_id == "enea"
 
@@ -76,7 +76,7 @@ class TestScInputModeDefaults:
         assert restored.sc_simplified_r_x_ratio == 0.08
 
     def test_legacy_dict_falls_back_to_simplified(self) -> None:
-        legacy = {"c_factor_max": 1.10}
+        legacy = {"base_mva": 100.0}
         cfg = StudyCaseConfig.from_dict(legacy)
         assert cfg.sc_input_mode == "simplified"
         assert cfg.sc_simplified_sk_mva is None
@@ -92,9 +92,8 @@ class TestCombined:
         assert cfg.sc_input_mode == "simplified"
         assert cfg.sc_simplified_sk_mva is None
         assert cfg.sc_simplified_r_x_ratio == 0.1
-        # Pre-existing defaults preserved
-        assert cfg.c_factor_max == 1.10
-        assert cfg.c_factor_min == 0.95
+        # Pre-existing defaults preserved (c i t_k skasowane z przypadku — karta
+        # WSPOLCZYNNIK-C-JEDEN-NOSNIK, nośnikiem jest scenariusz zwarciowy)
         assert cfg.base_mva == 100.0
 
     def test_full_round_trip_all_p09_fields(self) -> None:

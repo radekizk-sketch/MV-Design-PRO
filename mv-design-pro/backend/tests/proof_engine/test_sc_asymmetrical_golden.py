@@ -149,7 +149,9 @@ def test_verify_sc1_fails_if_c_is_outside_eq_sc1_008(monkeypatch):
 def test_pack_completeness_for_all_fault_types():
     result = SCAsymmetricalProofPack.generate(
         SCAsymmetricalPackInput(
-            case_name="Pack", **{k: v for k, v in _base_kwargs().items() if k != "fault_type"}
+            case_name="Pack",
+            c_zrodlo="IEC 60909-0 tab. 1, pasmo SN, MAX",
+            **{k: v for k, v in _base_kwargs().items() if k != "fault_type"},
         )
     )
     assert SCAsymmetricalProofPack.validate_completeness(result) == []

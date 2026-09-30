@@ -25,32 +25,32 @@ class TestComputeConfigDeltas:
     """Test configuration delta computation."""
 
     def test_no_differences(self):
-        config = {"c_factor_max": 1.10, "base_mva": 100.0}
+        config = {"max_iterations": 50, "base_mva": 100.0}
         deltas = compute_config_deltas(config, config)
         assert deltas == ()
 
     def test_single_difference(self):
-        config_a = {"c_factor_max": 1.10, "base_mva": 100.0}
-        config_b = {"c_factor_max": 1.05, "base_mva": 100.0}
+        config_a = {"max_iterations": 50, "base_mva": 100.0}
+        config_b = {"max_iterations": 30, "base_mva": 100.0}
         deltas = compute_config_deltas(config_a, config_b)
         assert len(deltas) == 1
-        assert deltas[0].field_name == "c_factor_max"
-        assert deltas[0].value_a == 1.10
-        assert deltas[0].value_b == 1.05
-        assert deltas[0].label_pl == "Współczynnik c (max)"
+        assert deltas[0].field_name == "max_iterations"
+        assert deltas[0].value_a == 50
+        assert deltas[0].value_b == 30
+        assert deltas[0].label_pl == "Maks. iteracji"
 
     def test_multiple_differences_sorted(self):
-        config_a = {"c_factor_max": 1.10, "base_mva": 100.0, "tolerance": 1e-6}
-        config_b = {"c_factor_max": 1.05, "base_mva": 200.0, "tolerance": 1e-6}
+        config_a = {"max_iterations": 50, "base_mva": 100.0, "tolerance": 1e-6}
+        config_b = {"max_iterations": 30, "base_mva": 200.0, "tolerance": 1e-6}
         deltas = compute_config_deltas(config_a, config_b)
         assert len(deltas) == 2
         # Sorted by field_name
         assert deltas[0].field_name == "base_mva"
-        assert deltas[1].field_name == "c_factor_max"
+        assert deltas[1].field_name == "max_iterations"
 
     def test_extra_keys_in_b(self):
-        config_a = {"c_factor_max": 1.10}
-        config_b = {"c_factor_max": 1.10, "new_field": 42}
+        config_a = {"max_iterations": 50}
+        config_b = {"max_iterations": 50, "new_field": 42}
         deltas = compute_config_deltas(config_a, config_b)
         assert len(deltas) == 1
         assert deltas[0].field_name == "new_field"
@@ -96,7 +96,7 @@ class TestBuildVariantComparison:
     """Test full variant comparison building."""
 
     def test_build_with_all_sections(self):
-        config_deltas = (VariantConfigDelta("c_factor_max", "Współczynnik c", 1.10, 1.05),)
+        config_deltas = (VariantConfigDelta("max_iterations", "Maks. iteracji", 50, 30),)
         topology = VariantTopologySummary(
             elements_added=2,
             elements_removed=0,
@@ -121,7 +121,7 @@ class TestBuildVariantComparison:
         assert result.comparison_hash != ""
 
     def test_deterministic_hash(self):
-        config_deltas = (VariantConfigDelta("c_factor_max", "c", 1.1, 1.05),)
+        config_deltas = (VariantConfigDelta("max_iterations", "Maks. iteracji", 50, 30),)
         topology = VariantTopologySummary()
         result_deltas = ()
 
@@ -137,10 +137,22 @@ class TestBuildVariantComparison:
     def test_different_inputs_different_hash(self):
         topology = VariantTopologySummary()
         result_1 = build_variant_comparison(
-            "a", "b", "A", "B", (VariantConfigDelta("c_factor_max", "c", 1.1, 1.05),), topology, ()
+            "a",
+            "b",
+            "A",
+            "B",
+            (VariantConfigDelta("max_iterations", "Maks. iteracji", 50, 30),),
+            topology,
+            (),
         )
         result_2 = build_variant_comparison(
-            "a", "b", "A", "B", (VariantConfigDelta("c_factor_max", "c", 1.1, 1.10),), topology, ()
+            "a",
+            "b",
+            "A",
+            "B",
+            (VariantConfigDelta("max_iterations", "Maks. iteracji", 50, 50),),
+            topology,
+            (),
         )
 
         assert result_1.comparison_hash != result_2.comparison_hash

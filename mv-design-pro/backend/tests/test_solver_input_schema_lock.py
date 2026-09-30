@@ -62,8 +62,6 @@ class TestSchemaLock:
             "transformers",
             "inverter_sources",
             "switches",
-            "c_factor",
-            "thermal_time_seconds",
             "include_inverter_contribution",
         ]
         for field in required_fields:
@@ -122,8 +120,6 @@ class TestSchemaLock:
             "transformers",
             "inverter_sources",
             "switches",
-            "c_factor",
-            "thermal_time_seconds",
             "include_inverter_contribution",
             # K3 wizard "Uproszczony" mode (P0.9 V12K K3 toggle): Sk_SN + R/X
             # zamiast pelnego 110 kV + TR + GPZ modelu. Optional field.
@@ -183,10 +179,12 @@ class TestSchemaLock:
             json_str = json.dumps(schema, sort_keys=True)
             assert len(json_str) > 0
 
-    def test_default_c_factor(self):
-        """Default c_factor in ShortCircuitPayload is 1.10 (IEC 60909 MV max)."""
-        payload = ShortCircuitPayload()
-        assert payload.c_factor == 1.10
+    def test_payload_nie_niesie_plaskiego_c_ani_t_k(self):
+        """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: payload nie ma płaskiej liczby c ani t_k
+        przypadku — c jest per szyna (`BusPayload.c_factor_iec60909`), nośnikiem c/t_k
+        biegu jest scenariusz zwarciowy."""
+        props = ShortCircuitPayload.model_json_schema().get("properties", {})
+        assert "c_factor" not in props and "thermal_time_seconds" not in props
 
     def test_default_base_mva(self):
         """Default base_mva in LoadFlowPayload is 100.0."""

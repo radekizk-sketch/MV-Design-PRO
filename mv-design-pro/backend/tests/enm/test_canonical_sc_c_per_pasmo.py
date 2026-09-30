@@ -297,7 +297,9 @@ def test_scenario_min_uses_c_min_per_band_and_temperature_correction():
 
 
 # =============================================================================
-# 3. c_factor jawny w options -> OVERRIDE płaski dla wszystkich węzłów
+# 3. nadpisanie_c z uzasadnieniem -> OVERRIDE płaski dla wszystkich węzłów
+#    (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: dawny klucz `c_factor` jest odmową —
+#    `tests/enm/test_wspolczynnik_c_jeden_nosnik.py`)
 # =============================================================================
 
 
@@ -309,7 +311,7 @@ def test_explicit_c_factor_overrides_auto_for_every_node():
         case_id=case_id,
         klucz_twin=case_id,
         analysis_type="short_circuit_sn",
-        options={"c_factor": 1.2},
+        options={"nadpisanie_c": {"wartosc": 1.2, "uzasadnienie": "Uzgodnienie z OSD"}},
     )
     result = execute_run(run.id)
 
@@ -324,6 +326,7 @@ def test_explicit_c_factor_overrides_auto_for_every_node():
         row = rows[ref_to_graph_id(bus_ref)]
         assert row["c_factor"] == pytest.approx(1.2), bus_ref
         assert row["c_factor_override"] is True, bus_ref
+        assert row["c_zrodlo"] == "nadpisanie ręczne: Uzgodnienie z OSD", bus_ref
         assert row["scenario"] == "MAX", bus_ref
 
 

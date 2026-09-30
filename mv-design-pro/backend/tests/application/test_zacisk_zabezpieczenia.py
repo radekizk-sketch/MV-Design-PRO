@@ -298,7 +298,7 @@ def test_funkcje_pakietu_to_stopnie_ktore_nastawy_wypelniaja() -> None:
 
     kotwica = _kotwica(_siec_110_15(z_polem=False))
     wejscie = zbuduj_wejscie_nastaw(
-        kotwica, line_id="k1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+        kotwica, line_id="k1", next_bus_id="b_b", zacisk_zabezpieczenia="od"
     )
     wymaganie = wymaganie_z_nastaw(ProtectionSettingsEngine.calculate(wejscie.engine_input))
     stopnie = {
@@ -433,7 +433,7 @@ def _bieg(enm: EnergyNetworkModel, rodzaj: str) -> CanonicalRun:
         validation={},
         readiness={},
         options=(
-            {"fault_type": "3F", "c_factor": 1.10, "thermal_time_seconds": 1.0}
+            {"fault_type": "3F", "scenario": "max", "thermal_time_seconds": 1.0}
             if rodzaj == "short_circuit_sn"
             else {}
         ),
@@ -472,12 +472,8 @@ def test_110_15_prad_w_miejscu_zabezpieczenia_od_rozny_od_do_i_orientacja_pakiet
     )
     assert abs(tabela["i_do_a"] - tabela["i_a"]) / tabela["i_a"] > 0.01
 
-    od = zbuduj_wejscie_nastaw(
-        kotwica, line_id="k1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
-    )
-    do = zbuduj_wejscie_nastaw(
-        kotwica, line_id="k1", next_bus_id="b_c", c_min=1.0, zacisk_zabezpieczenia="do"
-    )
+    od = zbuduj_wejscie_nastaw(kotwica, line_id="k1", next_bus_id="b_b", zacisk_zabezpieczenia="od")
+    do = zbuduj_wejscie_nastaw(kotwica, line_id="k1", next_bus_id="b_c", zacisk_zabezpieczenia="do")
     assert (od.zacisk_zabezpieczenia, od.zrodlo_zacisku) == ("od", "wskazanie")
     assert (do.zacisk_zabezpieczenia, do.zrodlo_zacisku) == ("do", "wskazanie")
     assert od.engine_input.i_load_max_a == tabela["i_a"]
@@ -499,7 +495,6 @@ def test_110_15_model_milczy_brak_wskazania_to_odmowa_z_kodem() -> None:
             kotwica,
             line_id="k1",
             next_bus_id="b_b",
-            c_min=1.0,
             zacisk_zabezpieczenia=None,
         )
     assert blad.value.kod == KOD_BRAK_WSKAZANIA
@@ -509,10 +504,10 @@ def test_110_15_model_milczy_brak_wskazania_to_odmowa_z_kodem() -> None:
 def test_110_15_model_rozstrzyga_wskazanie_zbedne_sprzeczne_odmawia() -> None:
     kotwica = _kotwica(_siec_110_15(z_polem=True))
     z_modelu = zbuduj_wejscie_nastaw(
-        kotwica, line_id="k1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia=None
+        kotwica, line_id="k1", next_bus_id="b_b", zacisk_zabezpieczenia=None
     )
     zgodne = zbuduj_wejscie_nastaw(
-        kotwica, line_id="k1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+        kotwica, line_id="k1", next_bus_id="b_b", zacisk_zabezpieczenia="od"
     )
     assert (z_modelu.zacisk_zabezpieczenia, z_modelu.zrodlo_zacisku) == ("od", "model")
     assert zgodne.engine_input == z_modelu.engine_input
@@ -521,7 +516,6 @@ def test_110_15_model_rozstrzyga_wskazanie_zbedne_sprzeczne_odmawia() -> None:
             kotwica,
             line_id="k1",
             next_bus_id="b_b",
-            c_min=1.0,
             zacisk_zabezpieczenia="do",
         )
     assert blad.value.kod == KOD_SPRZECZNY_Z_MODELEM
@@ -624,7 +618,6 @@ def test_predykaty_parami_dostepnosc_rowna_sie_biegowi_na_kazdej_trojce() -> Non
                             kotwica,
                             line_id=linia.ref_id,
                             next_bus_id=szyna,
-                            c_min=1.0,
                             zacisk_zabezpieczenia=wskazanie,
                         )
                         zbudowane, kod = True, None

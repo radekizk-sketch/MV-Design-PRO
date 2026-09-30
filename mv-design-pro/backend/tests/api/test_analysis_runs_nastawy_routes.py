@@ -113,7 +113,7 @@ def _zapisana_kotwica(run_id: UUID, siec: EnergyNetworkModel | None = None) -> C
         snapshot=(siec or _siec()).model_dump(mode="json"),
         validation={},
         readiness={},
-        options={"fault_type": "3F", "c_factor": 1.10, "thermal_time_seconds": 1.0},
+        options={"fault_type": "3F", "scenario": "max", "thermal_time_seconds": 1.0},
     )
     run.finished_at = run.created_at
     _execute_short_circuit(run)
@@ -145,7 +145,6 @@ def test_nastawy_json_parytet_z_pakietem_zip(client: TestClient) -> None:
     params = {
         "linia": "ln1",
         "nastepna_szyna": "b_b",
-        "c_min": 1.0,
         "zacisk_zabezpieczenia": "od",
     }
 
@@ -162,7 +161,6 @@ def test_nastawy_json_parytet_z_pakietem_zip(client: TestClient) -> None:
         run,
         line_id="ln1",
         next_bus_id="b_b",
-        c_min=1.0,
         zacisk_zabezpieczenia="od",
         nazwa_przypadku="Przypadek bazowy — szczyt zimowy",
     )
@@ -182,7 +180,6 @@ def test_nastawy_json_jest_deterministyczny(client: TestClient) -> None:
     params = {
         "linia": "ln1",
         "nastepna_szyna": "b_b",
-        "c_min": 1.0,
         "zacisk_zabezpieczenia": "od",
     }
 
@@ -199,7 +196,6 @@ def test_nastawy_json_422_gdy_szyna_poza_kandydatami(client: TestClient) -> None
         params={
             "linia": "ln1",
             "nastepna_szyna": "b-nieznana",
-            "c_min": 1.0,
             "zacisk_zabezpieczenia": "od",
         },
     )
@@ -217,7 +213,6 @@ def test_nastawy_dopasowanie_json(client: TestClient) -> None:
             "device_id": "ABB_REF601",
             "linia": "ln1",
             "nastepna_szyna": "b_b",
-            "c_min": 1.0,
             "zacisk_zabezpieczenia": "od",
         },
     )
@@ -262,7 +257,7 @@ def test_brak_wskazania_gdy_model_milczy_to_422_z_kodem(client: TestClient, scie
     run = _zapisana_kotwica(uuid4())
     response = client.get(
         f"/api/analysis-runs/{run.id}/{sciezka}",
-        params={"linia": "ln1", "nastepna_szyna": "b_b", "c_min": 1.0},
+        params={"linia": "ln1", "nastepna_szyna": "b_b"},
     )
     assert response.status_code == 422
     detail = response.json()["detail"]

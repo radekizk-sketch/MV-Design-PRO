@@ -68,10 +68,65 @@ def _create_scenario(
                 "location_type": "BUS",
                 "position": None,
             },
+            "config": {"scenariusz": "MAX"},
         },
     )
     assert resp.status_code == 201, resp.text
     return resp.json()
+
+
+class TestWspolczynnikCKontrakt:
+    """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: kontrakt HTTP scenariusza — przełącznik MAX/MIN
+    wymagany, klucz `c_factor` nie istnieje, nadpisanie c tylko z uzasadnieniem (422 z kodem).
+    Iloczyn: {MAX, MIN} × {bez nadpisania, nadpisanie z uzasadnieniem, bez uzasadnienia}."""
+
+    @staticmethod
+    def _post(config: dict | None) -> object:
+        body: dict = {
+            "name": "Zwarcie c",
+            "fault_type": "SC_3F",
+            "location": {"element_ref": "bus-1", "location_type": "BUS", "position": None},
+        }
+        if config is not None:
+            body["config"] = config
+        return client.post(f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios", json=body)
+
+    def test_brak_konfiguracji_to_422(self):
+        assert self._post(None).status_code == 422
+
+    def test_klucz_c_factor_to_422(self):
+        assert self._post({"scenariusz": "MAX", "c_factor": 1.1}).status_code == 422
+        assert self._post({"c_factor": 1.1}).status_code == 422
+
+    @pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
+    def test_bez_nadpisania_i_z_nadpisaniem(self, scenariusz):
+        resp = self._post({"scenariusz": scenariusz})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["config"]["scenariusz"] == scenariusz
+        assert resp.json()["config"]["nadpisanie_c"] is None
+        nadpisanie = {"wartosc": 1.05, "uzasadnienie": "Uzgodnienie z OSD"}
+        resp = self._post({"scenariusz": scenariusz, "nadpisanie_c": nadpisanie})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["config"]["nadpisanie_c"] == nadpisanie
+
+    @pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
+    @pytest.mark.parametrize("uzasadnienie", ["", "   "])
+    def test_nadpisanie_bez_uzasadnienia_to_422_z_kodem(self, scenariusz, uzasadnienie):
+        resp = self._post(
+            {
+                "scenariusz": scenariusz,
+                "nadpisanie_c": {"wartosc": 1.05, "uzasadnienie": uzasadnienie},
+            }
+        )
+        assert resp.status_code == 422
+        assert "fault.c_nadpisanie_bez_uzasadnienia" in resp.text
+
+    def test_nadpisanie_niedodatnie_to_422_z_kodem(self):
+        resp = self._post(
+            {"scenariusz": "MAX", "nadpisanie_c": {"wartosc": 0, "uzasadnienie": "x"}}
+        )
+        assert resp.status_code == 422
+        assert "fault.c_nadpisanie_wartosc_niepoprawna" in resp.text
 
 
 class TestCreateScenario:
@@ -95,6 +150,7 @@ class TestCreateScenario:
                     "element_ref": "bus-1",
                     "location_type": "BUS",
                 },
+                "config": {"scenariusz": "MAX"},
             },
         )
         assert resp.status_code == 422  # Pydantic validation (name required)
@@ -221,6 +277,7 @@ class TestEligibility:
                     "location_type": "BRANCH_POINT",
                     "position": 0.5,
                 },
+                "config": {"scenariusz": "MAX"},
             },
         )
         assert resp.status_code == 201, resp.text

@@ -86,6 +86,7 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
+from network_model.core.voltage_factor import LV_C_MIN
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, prad_z_mocy_pozornej_ka
 from network_model.solvers.cable_ampacity_derating import (
@@ -93,7 +94,6 @@ from network_model.solvers.cable_ampacity_derating import (
     obciazalnosc_skorygowana,
 )
 from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
-from network_model.core.voltage_factor import LV_C_MIN
 from network_model.solvers.fault_loop_iec60364 import FaultLoopResult
 from network_model.solvers.protection_lv_curves import FUSE_GG_IF_MULTIPLIER
 

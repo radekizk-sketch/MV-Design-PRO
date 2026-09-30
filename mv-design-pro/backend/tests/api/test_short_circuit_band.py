@@ -99,7 +99,7 @@ def _zapisz_bieg(
         "thermal_time_seconds": 1.0,
     }
     if c_factor is not None:
-        opcje["c_factor"] = c_factor
+        opcje["nadpisanie_c"] = {"wartosc": c_factor, "uzasadnienie": "uzgodnienie z OSD"}
     utworzony = utworzony or datetime(2026, 1, 1, tzinfo=UTC)
     run = CanonicalRun(
         id=run_id,
