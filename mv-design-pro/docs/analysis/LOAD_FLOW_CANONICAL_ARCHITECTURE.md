@@ -16,6 +16,15 @@
 > `kryteria_napiecia` w wyniku biegu rozpływu i widoku profilu napięcia.
 > Szczegóły → `docs/v12xx/REJESTR_KONFLIKTOW.md` wiersz W3-J.
 >
+> **KOREKTA 2026-09-30 (karta TORY-TYLKO-W-TESTACH):** `analysis/power_flow/solver.py`
+> (`PowerFlowSolver`), `analysis/power_flow/analysis.py` (`assemble_power_flow_result`,
+> naruszenia względem `bus_limits`/`branch_limits`) i `analysis/power_flow/_internal.py`
+> skasowane — ścieżka bez konsumenta w produkcie (tylko testy). Jedyna ścieżka rozpływu
+> produktu to bieg kanoniczny (§7.1, §12 poniżej, poprawione). `AnalysisRunService`
+> i `ExecutionEngineService` (opisane w §7 jako stan dawny i docelowy) nie istnieją.
+> Odchylenie napięć i obciążenie gałęzi ocenia walidacja energetyczna i interpretacja
+> rozpływu (§9.1, poprawione).
+>
 > **Status (pierwotny)**: BINDING
 > **Date**: 2026-02-13
 > **Scope**: Load Flow (Power Flow) analysis — layer boundaries, contracts, determinism, prohibitions
@@ -145,12 +154,12 @@ Load Flow (LF) computes the **steady-state AC power flow** for a balanced three-
 | Solver | `backend/src/network_model/solvers/power_flow_types.py` | `PowerFlowInput`, `SlackSpec`, `PQSpec`, `PVSpec`, `PowerFlowOptions` |
 | Solver | `backend/src/network_model/solvers/power_flow_result.py` | `PowerFlowResultV1` (FROZEN v1.0.0), `build_power_flow_result_v1()` |
 | Solver | `backend/src/network_model/solvers/power_flow_trace.py` | `PowerFlowTrace`, `PowerFlowIterationTrace` (WHITE BOX) |
-| Analysis | `backend/src/analysis/power_flow/analysis.py` | `assemble_power_flow_result()`, violations, balance check |
-| Analysis | `backend/src/analysis/power_flow/violations.py` | `VoltageViolationsDetector`, `VoltageViolationsResult` |
-| Analysis | `backend/src/analysis/power_flow/result.py` | `PowerFlowResult` (analysis-level composite) |
-| Analysis | `backend/src/analysis/power_flow/solver.py` | Deprecated adapter: delegates to `PowerFlowNewtonSolver` |
-| Application | `backend/src/application/analysis_run/service.py` | `AnalysisRunService` — run lifecycle, snapshot, hash |
-| Application | `backend/src/application/execution_engine/service.py` | `ExecutionEngineService` — canonical execution pipeline |
+| Analysis | `backend/src/analysis/power_flow/result.py` | `PowerFlowResult` (typ wyniku interpretacji, FROZEN) |
+| Analysis | `backend/src/analysis/energy_validation/builder.py` | Odchylenie napięć szyn, obciążenie linii i transformatorów |
+| Analysis | `backend/src/analysis/power_flow_interpretation/builder.py` | Ustalenia napięć i obciążenia gałęzi (P22) |
+| Analysis | `backend/src/analysis/obciazenie_galezi.py` | Jedna funkcja obciążenia gałęzi (prąd zacisku / prąd znamionowy zacisku) |
+| Domain/ENM | `backend/src/enm/canonical_analysis.py` | `_execute_power_flow` — bieg kanoniczny rozpływu |
+| Domain/ENM | `backend/src/enm/assembler.py` | `zloz_wejscie_rozplywu` — wejście solvera z migawki ENM |
 | API | `backend/src/api/power_flow_runs.py` | REST endpoints for LF runs |
 
 ### 2.3 Exact File Paths (Frontend)
@@ -405,23 +414,17 @@ class PowerFlowSummary:
 
 ### 7.1 Current State
 
-LF execution flows through `AnalysisRunService`:
+Rozpływ liczy bieg kanoniczny (korekta 2026-09-30 — dawny opis przez `AnalysisRunService`
+i `PowerFlowSolver` nieaktualny, oba moduły skasowane):
 
 ```
-AnalysisRunService.create_power_flow_run()
-    → builds snapshot (network graph + slack + PQ/PV specs + options)
-    → computes input_hash
-    → checks deduplication
-    → persists AnalysisRun (status=CREATED)
-
-AnalysisRunService.execute_run(run_id)
-    → validates ProjectDesignMode (for SC/NN only — LF bypasses this gate)
-    → validates network graph
-    → validates power flow input
-    → _execute_power_flow():
-        → PowerFlowSolver().solve(pf_input)
-        → stores result payload
-        → updates run status FINISHED/FAILED
+enm/canonical_analysis.py::_execute_power_flow(run, graf)
+    → enm/assembler.py::zloz_wejscie_rozplywu()   (migawka ENM → PowerFlowInput per wyspa)
+    → network_model/solvers/power_flow_oltc.py::solve_with_oltc()
+        → NR / GS / FD (metoda jawna z opcji biegu)
+    → enm/rozplyw_wysp.py::scal_rozwiazania_wysp()
+    → network_model/solvers/power_flow_result.py::build_power_flow_result_v1()
+    → run.raw_result / white_box_trace, status FINISHED/FAILED
 ```
 
 ### 7.2 Target State (Unified ExecutionEngine)
@@ -527,16 +530,18 @@ All fields are EXPLICIT. The snapshot is the single source of truth for reproduc
 
 ### 9.1 Violations (Analysis Layer)
 
-Violations are detected AFTER solver execution, in `analysis/power_flow/analysis.py`:
+Korekta 2026-09-30: dawna detekcja w `analysis/power_flow/analysis.py` (względem
+`BusVoltageLimitSpec`/`BranchLimitSpec`) skasowana — żaden producent nie wypełniał
+limitów, a bieg kanoniczny jej nie wołał. W produkcie:
 
-| Violation Type | Condition | Source |
-|----------------|-----------|--------|
-| `bus_voltage` (under) | `v_pu < u_min_pu` | `BusVoltageLimitSpec` |
-| `bus_voltage` (over) | `v_pu > u_max_pu` | `BusVoltageLimitSpec` |
-| `branch_loading` (over) | `max(|S_from|, |S_to|) > s_max_mva` | `BranchLimitSpec` or `TransformerBranch.rated_power_mva` |
-| `branch_current` (over) | `I_ka > i_max_ka` | `BranchLimitSpec` or `LineBranch.rated_current_a` |
+| Kryterium | Miejsce | Podstawa progów |
+|-----------|---------|-----------------|
+| Odchylenie napięcia szyny | `analysis/energy_validation/builder.py::_check_voltage_deviation`, `analysis/power_flow_interpretation/builder.py` | `analysis/normative/kryteria_napiecia.py` |
+| Obciążenie linii i kabli | `analysis/energy_validation/builder.py::_check_branch_loading` | `analysis/obciazenie_galezi.py` (prąd zacisku / In) |
+| Obciążenie transformatora | `analysis/energy_validation/builder.py::_check_transformer_loading` | `analysis/obciazenie_galezi.py` (prąd strony / I_r strony) |
 
-Violations are sorted deterministically: `key=(-severity, type, id)`.
+Pole `PowerFlowResult.violations` (FROZEN) zostaje w kontrakcie; bieg kanoniczny go nie
+wypełnia.
 
 ### 9.2 VoltageViolationsDetector (Standalone Analysis)
 
@@ -619,34 +624,21 @@ NetworkModel (ONE per project)
 StudyCase (config only: base_mva, slack, PQ/PV specs, options)
     │
     ▼
-AnalysisRunService.create_power_flow_run()
-    │ (builds snapshot, computes input_hash)
-    ▼
-AnalysisRun (CREATED, snapshot frozen)
+CanonicalRun (migawka ENM, input_hash)
     │
     ▼
-AnalysisRunService.execute_run()
+enm/canonical_analysis.py::_execute_power_flow()
     │
-    ├── _validate_network_graph() → ValidationReport
-    ├── _validate_power_flow_input() → ValidationReport
-    │   (missing slack → error + FixAction, NaN/Inf → error)
-    │
-    ▼ (if valid)
-PowerFlowSolver().solve(pf_input) → PowerFlowNewtonSolution
-    │
-    ├── Solver: NR / GS / FD (selected explicitly)
-    ├── WHITE BOX trace: ybus_trace, nr_trace[], init_state
-    ├── Result: node voltages, branch flows, losses
+    ├── enm/assembler.py::zloz_wejscie_rozplywu() → PowerFlowInput per wyspa
+    ├── solve_with_oltc() → NR / GS / FD (metoda jawna)
+    │     WHITE BOX: ybus_trace, nr_trace[], init_state
+    ├── scal_rozwiazania_wysp()
     │
     ▼
-assemble_power_flow_result() → PowerFlowResult (analysis composite)
-    │
-    ├── Violations detection (Umin/Umax, branch loading)
-    ├── Power balance check
-    ├── White-box trace assembly
+build_power_flow_result_v1() → PowerFlowResultV1 (FROZEN)
     │
     ▼
-Result persisted → AnalysisRun status = FINISHED
+Result persisted → CanonicalRun status = FINISHED
     │
     ├──▶ API: GET /results → PowerFlowResultV1 (FROZEN)
     ├──▶ API: GET /trace → PowerFlowTrace (WHITE BOX)

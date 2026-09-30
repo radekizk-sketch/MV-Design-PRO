@@ -2631,3 +2631,131 @@ def test_guard_accepts_clean_tree_without_abp1_resurrection(tmp_path, monkeypatc
 def test_guard_accepts_current_repo_state_abp1() -> None:
     """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo musi byc czysta po karcie AB-P1."""
     assert guard.check_abp1_dynamika_resurrection() == []
+
+
+# =============================================================================
+# TORY-TYLKO-W-TESTACH (2026-09-30) — tory obliczen bez konsumenta w produkcie
+# (adapter rozplywu w analizie, `execute_short_circuit`, galaz awaryjna pakietu stanu
+# fazowego SN, pakiet `analysis/machine_short_circuit`) nie wracaja. Iloczyn cech:
+# {sciezka pliku, definicja pod INNA sciezka, definicja per plik, nazwa solvera w
+# pakiecie dowodowym} × {czerwien, para zielona: legalna nazwa w innym pliku}.
+# =============================================================================
+
+
+def _patch_tory_tree(monkeypatch, tmp_path) -> Path:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    return src
+
+
+def _zapisz_tory(src: Path, rel: str, tresc: str) -> None:
+    plik = src / rel
+    plik.parent.mkdir(parents=True, exist_ok=True)
+    plik.write_text(tresc, encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "rel",
+    [
+        "analysis/power_flow/solver.py",
+        "analysis/power_flow/analysis.py",
+        "analysis/power_flow/_internal.py",
+        "analysis/machine_short_circuit/__init__.py",
+    ],
+)
+def test_guard_rejects_resurrected_tory_module(tmp_path, monkeypatch, rel) -> None:
+    src = _patch_tory_tree(monkeypatch, tmp_path)
+    _zapisz_tory(src, rel, "x = 1\n")
+
+    violations = guard.check_tory_testowe_resurrection()
+
+    katalog_albo_plik = rel.removesuffix("/__init__.py")
+    assert any(
+        "[resurrected-module]" in v and f"backend/src/{katalog_albo_plik}" in v for v in violations
+    ), violations
+
+
+@pytest.mark.parametrize(
+    ("rel", "tresc", "nazwa"),
+    [
+        (
+            "analysis/rozplyw/adapter.py",
+            "class PowerFlowSolver:\n    pass\n",
+            "PowerFlowSolver",
+        ),
+        (
+            "analysis/rozplyw/adapter.py",
+            "def solve_power_flow(x):\n    return x\n",
+            "solve_power_flow",
+        ),
+        (
+            "analysis/rozplyw/skladanie.py",
+            "def assemble_power_flow_result(**k):\n    return k\n",
+            "assemble_power_flow_result",
+        ),
+        (
+            "application/zwarcia/wiazanie.py",
+            "def execute_short_circuit(**k):\n    return k\n",
+            "execute_short_circuit",
+        ),
+        (
+            "analysis/maszyny/m.py",
+            "def interpret_machine_contributions(r):\n    return r\n",
+            "interpret_machine_contributions",
+        ),
+        (
+            "application/solvers/short_circuit_binding.py",
+            "def _resolve_c_factor(**k):\n    return k\n",
+            "_resolve_c_factor",
+        ),
+        (
+            "analysis/power_flow/result.py",
+            "def _build_violations(**k):\n    return [], []\n",
+            "_build_violations",
+        ),
+    ],
+)
+def test_guard_rejects_resurrected_tory_definition(
+    tmp_path, monkeypatch, rel, tresc, nazwa
+) -> None:
+    src = _patch_tory_tree(monkeypatch, tmp_path)
+    _zapisz_tory(src, rel, tresc)
+
+    violations = guard.check_tory_testowe_resurrection()
+
+    assert any("[resurrected-definition]" in v and nazwa in v for v in violations), violations
+
+
+def test_guard_accepts_build_violations_outside_power_flow_package(tmp_path, monkeypatch) -> None:
+    """Para zielona: `_build_violations` adekwatnosci mocy biernej jest legalna."""
+    src = _patch_tory_tree(monkeypatch, tmp_path)
+    _zapisz_tory(
+        src,
+        "analysis/reactive_adequacy/builder.py",
+        "class B:\n    def _build_violations(self):\n        return []\n",
+    )
+
+    assert guard.check_tory_testowe_resurrection() == []
+
+
+@pytest.mark.parametrize(
+    "tresc",
+    [
+        "from network_model.solvers.phase_state_sn import PhaseStateSNSolver\n",
+        "from network_model.solvers.phase_state_sn import PhaseStateSNSolver as S\n",
+        "import network_model.solvers.phase_state_sn as m\n\nr = m.PhaseStateSNSolver.solve(x)\n",
+    ],
+)
+def test_guard_rejects_solver_in_phase_state_pack(tmp_path, monkeypatch, tresc) -> None:
+    src = _patch_tory_tree(monkeypatch, tmp_path)
+    _zapisz_tory(src, "application/proof_engine/packs/phase_state_sn.py", tresc)
+
+    violations = guard.check_tory_testowe_resurrection()
+
+    assert any("[resurrected-name]" in v and "PhaseStateSNSolver" in v for v in violations)
+
+
+def test_guard_accepts_current_repo_state_tory() -> None:
+    assert guard.check_tory_testowe_resurrection() == []

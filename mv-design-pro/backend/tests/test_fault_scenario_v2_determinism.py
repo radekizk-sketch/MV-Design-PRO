@@ -292,9 +292,13 @@ class TestSolverUntouched:
         assert isinstance(EXPECTED_SHORT_CIRCUIT_RESULT_KEYS, list)
 
     def test_binding_api_unchanged(self):
-        """Verify binding function signature is unchanged."""
-        from application.solvers.short_circuit_binding import (
-            execute_short_circuit,
-        )
+        """Verify the proof-pack binding entry points exist.
 
-        assert callable(execute_short_circuit)
+        Karta TORY-TYLKO-W-TESTACH (2026-09-30): dawny `execute_short_circuit` skasowany
+        (bez konsumenta w produkcie; bramka wskrzeszenia w `legacy_public_path_guard`).
+        Warstwa wiązania zwarć to dziś wejścia pakietów dowodowych SC1/SC3F."""
+        import application.solvers.short_circuit_binding as wiazanie
+
+        assert callable(wiazanie.wynik_zwarcia_1f_ze_snapshotu)
+        assert callable(wiazanie.zwarcie_3f_ze_snapshotu)
+        assert not hasattr(wiazanie, "execute_short_circuit")

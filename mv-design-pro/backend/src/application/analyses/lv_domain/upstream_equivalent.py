@@ -19,7 +19,7 @@ Reuse-mapa (dowód "zero nowej fizyki"):
   NIETKNIĘTY) → Ik'' z Z1 i współczynnika napięciowego c.
 - `network_model.core.voltage_factor.c_for_node` (JEDNO źródło tabeli c wg
   IEC 60909-0 Tab.1, już używane przez `TransformerBranch.
-  get_voltage_factor_c_max/min` i `short_circuit_binding.py`) → c(MAX/MIN).
+  get_voltage_factor_c_max/min` i assembler zwarć `enm/assembler.py`) → c(MAX/MIN).
 - `enm.mapping.build_zero_sequence_zbus` (sieć Z0 solvera zwarciowego dla
   zwarć 1F/2F+G, NIETKNIĘTA) → Z0 na szynie HV, best-effort (patrz
   `_hv_zero_sequence_ohm`).

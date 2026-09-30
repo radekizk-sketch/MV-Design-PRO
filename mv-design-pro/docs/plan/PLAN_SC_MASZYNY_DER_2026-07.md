@@ -45,7 +45,7 @@ forward-phantom: zdolność backendu bez wpięcia w kanoniczny przepływ.
 | 9 | Bocznik maszyny czytany z `graph.get_synchronous/asynchronous_machine_sources()` | `core/ybus.py:163-167` |
 | 10 | Źródła maszynowe do grafu dodaje **wyłącznie** substrat sieci referencyjnych (nie ENM) | `grep add_*_machine_source src/` → tylko `core/graph.py` (definicje) + `reference_networks/station_archetype_substrate.py` |
 | 11 | Modele źródeł istnieją: `SynchronousMachineSource` (§6.3), `AsynchronousMachineSource` (§6.7, DFIG), `InverterSource` (§6.7 prąd ograniczony) | `core/machine.py`, `core/inverter.py` |
-| 12 | Warstwa analizy interpretuje wkład maszynowy (μ/q §6.6) — gotowa, READ-ONLY | `analysis/machine_short_circuit/contribution.py` |
+| 12 | Warstwa analizy interpretuje wkład maszynowy (μ/q §6.6) — gotowa, READ-ONLY (korekta 2026-09-30: pakiet skasowany kartą TORY-TYLKO-W-TESTACH — bez konsumenta w produkcie; wkłady z wywodem podaje `api/proof_pack.py::sc3f_contributions` i pakiet SC3F) | ~~`analysis/machine_short_circuit/contribution.py`~~ |
 
 **Wniosek:** ogniwa 7–12 (solver, ybus, akcesory grafu, modele, analiza) są kompletne.
 Zerwane jest **jedno** ogniwo: mapa ENM→graf (fakt 3–5). Ścieżka
