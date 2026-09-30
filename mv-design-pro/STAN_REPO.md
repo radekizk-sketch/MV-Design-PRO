@@ -413,7 +413,8 @@ pozycji (a)–(m) w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §12.2 (O-57 pkt
 odsyłają, nie powtarzają jej). Razem z nią jedno pytanie (O-57 pkt 7): czy delegacja z 2026-09-22 (O-5) obejmuje
 kasację `stability_rms` i zdjęcie jego wpisu z listy rdzeni (pozycja (i)) oraz kasację `frt_hvrt/**` w AB-1c.
 Odpowiedź: decyzja ostateczna właściciela z 2026-09-30 (delegacja, O-59); pozycja (i) wykonana w karcie
-B01-RUNDA-1 (solver `stability_rms` skasowany razem z wpisem listy).
+B01-RUNDA-1 (solver `stability_rms` skasowany razem z wpisem listy); pozycja (j) — również (próg χ² WLS
+wyłącznie z `scipy.stats.chi2`, wiersz 11 części I).
 
 **Bramka B-02** (werdykt wizualny wyłącznie właściciela): zrzuty w repo `docs/audit/visual/` — `flow-ekspert/`
 (w tym 26 kadrów przegenerowanych po karcie #145 w `7d3a0a41` i `e32-dynamika-{light,dark}.png` z AB-P1),

@@ -924,7 +924,7 @@ wpis `no_module_zero_guard`, `MODEL_ROOTS_POZA_MAPA` w `solver_input_substitute_
 `werdykt_wyjasnialny_allowlist.json`, pozycja bramki `check_abp1_dynamika_resurrection`. Kasacja
 `frt_hvrt/**` (ta sama lista) — w AB-1c po migracji ekranu toru T3 (konsumenci: 5 plików backendu, 7 plików
 frontu i ekran `ui2/oze/frt/` — inwentarz w szkicu karty AB-1c, `KARTY_OTWARTE_2026-09.md`).
-(j) **Cicha aproksymacja progu χ² w estymacji stanu WLS** (`network_model/solvers/state_estimation_wls.py:493`,
+(j) **[WYKONANE 2026-09-30, karta B01-RUNDA-1, decyzja ostateczna O-59]** **Cicha aproksymacja progu χ² w estymacji stanu WLS** (`network_model/solvers/state_estimation_wls.py:493`,
 `_chi_square_threshold`): przy dowolnym wyjątku z `scipy.stats.chi2` próg testu liczony aproksymacją
 Wilsona–Hilferty’ego, czego ślad obliczeń nie pokazuje (łamie WHITE BOX). Propozycja: jawny import `chi2`
 na poziomie modułu i kasacja ścieżki awaryjnej razem z `_normal_ppf`; po decyzji zdjąć wpis `WYJATKI_B01`
