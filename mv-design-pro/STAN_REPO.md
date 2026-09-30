@@ -414,7 +414,11 @@ odsyłają, nie powtarzają jej). Razem z nią jedno pytanie (O-57 pkt 7): czy d
 kasację `stability_rms` i zdjęcie jego wpisu z listy rdzeni (pozycja (i)) oraz kasację `frt_hvrt/**` w AB-1c.
 Odpowiedź: decyzja ostateczna właściciela z 2026-09-30 (delegacja, O-59); pozycja (i) wykonana w karcie
 B01-RUNDA-1 (solver `stability_rms` skasowany razem z wpisem listy); pozycja (j) — również (próg χ² WLS
-wyłącznie z `scipy.stats.chi2`, wiersz 11 części I).
+wyłącznie z `scipy.stats.chi2`, wiersz 11 części I). Pozycje (d), (k), (l) dla `v126_academic.py` i (m) dla
+`short_circuit_iec60909.py` wykonane w karcie B01-RUNDA-3 (runda tekstowa, zero zmian liczbowych): zapadka mypy
+223/34 → 203/32, odmowy wejścia rdzeni zwarć i rozpływu jako rekordy strukturalne (`network_model/odmowa_danych.py`
+`RekordOdmowy`) ze zdaniem z nazwami z modelu (`enm/zdania_odmow_rdzenia.py`), tytuły kroków śladu zwarciowego
+z nazwą gałęzi.
 
 **Bramka B-02** (werdykt wizualny wyłącznie właściciela): zrzuty w repo `docs/audit/visual/` — `flow-ekspert/`
 (w tym 26 kadrów przegenerowanych po karcie #145 w `7d3a0a41` i `e32-dynamika-{light,dark}.png` z AB-P1),

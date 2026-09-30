@@ -889,7 +889,7 @@ zatrzymanie).** Zgłaszane właścicielowi razem, nie po jednej: (a) migracja bu
 rozpływu (`power_flow_newton_internal.build_ybus_pu`) i zwarć (`core/ybus.py`) na wspólny moduł
 stemplowania gałęzi (O-26) — do tego czasu parytet Y(h=1) jest testem, nie refaktorem; (b) kasacja
 funkcji harmonicznych z `v126_academic.py` po pokryciu E-40 (O-21, z delegacji planu; parytet
-niepożądany); (c) edycje `network_model/solvers/ncrfg_ptpiree/**` (O-5, z delegacji); (d) 20 błędów
+niepożądany); (c) edycje `network_model/solvers/ncrfg_ptpiree/**` (O-5, z delegacji); (d) **[WYKONANE 2026-09-30, karta B01-RUNDA-3, decyzja ostateczna O-59]** 20 błędów
 mypy w rdzeniach FROZEN chronionych `solver_diff_guard`: `power_flow_newton_internal.py` (19),
 `short_circuit_iec60909.py` (1) — naprawa wymaga zgody właściciela; źródło:
 `scripts/mypy_ratchet_pomiar_2026-09-23.md`.
@@ -929,14 +929,14 @@ frontu i ekran `ui2/oze/frt/` — inwentarz w szkicu karty AB-1c, `KARTY_OTWARTE
 Wilsona–Hilferty’ego, czego ślad obliczeń nie pokazuje (łamie WHITE BOX). Propozycja: jawny import `chi2`
 na poziomie modułu i kasacja ścieżki awaryjnej razem z `_normal_ppf`; po decyzji zdjąć wpis `WYJATKI_B01`
 w `scripts/polykanie_wyjatkow_guard.py` (zapadka czerwienieje, gdy handler zniknie, a wpis zostanie).
-(k) **Identyfikatory maszynowe w komunikatach rdzeni** — 14 f-napisów wklejających identyfikator do
+(k) **[WYKONANE 2026-09-30, karta B01-RUNDA-3, decyzja ostateczna O-59]** **Identyfikatory maszynowe w komunikatach rdzeni** — 14 f-napisów wklejających identyfikator do
 treści komunikatu: `short_circuit_iec60909.py` (4: `:1090`, `:1229`, `:1329`, `:1431`),
 `power_flow_newton_internal.py` (8: `:337`, `:387`, `:391`, `:395`, `:399`, `:403`, `:407`, `:1292`),
 `v126_academic.py` (2: `:714`, `:715`) (pomiar karty #144 dawał 13 — pominięty `:1292`; korekta z pomiaru
 2026-09-30, karta B01-RUNDA-1; poza rdzeniami klasę domyka karta KOMUNIKATY-BEZ-ID).
-(l) **Literały tekstu dla projektanta bez polskich znaków w plikach rdzeni** — przypięte zapadką per plik
+(l) **[WYKONANE 2026-09-30 dla `v126_academic.py`, karta B01-RUNDA-3, decyzja ostateczna O-59; pozostałe pliki — karta PL-ZNAKI-2]** **Literały tekstu dla projektanta bez polskich znaków w plikach rdzeni** — przypięte zapadką per plik
 w strażniku klasy PL-ZNAKI (karta PL-ZNAKI-2 §0 pkt 1); poprawa wyłącznie po decyzji.
-(m) **Nazwa elementu z identyfikatora w rdzeniach** — identyfikator gałęzi w tytule kroku śladu
+(m) **[WYKONANE 2026-09-30 dla `short_circuit_iec60909.py`, karta B01-RUNDA-3, decyzja ostateczna O-59; predykaty `ncrfg_ptpiree/engine.py` — z pozycją (c)]** **Nazwa elementu z identyfikatora w rdzeniach** — identyfikator gałęzi w tytule kroku śladu
 (`short_circuit_iec60909.py:985`: „Prąd zwarciowy Thevenina w gałęzi {branch_id}”) i trzy lokalne
 predykaty nazwy w rdzeniach zostawione przez kartę NAZWY-JEDNO-ZRODLO (lista `DOZWOLONE` w
 `tests/enm/test_nazwy_jedno_zrodlo.py`).
