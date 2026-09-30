@@ -42,6 +42,7 @@ export function buildNetworkHierarchyFromSnapshot(snapshot: EnergyNetworkModel |
           name: String(s.name ?? s.ref_id ?? ''),
           station_type: String(s.station_type ?? 'mv_lv'),
           bus_refs: Array.isArray(s.bus_refs) ? (s.bus_refs as string[]) : [],
+          meta: s.meta,
           gpz_sections: Array.isArray(s.gpz_sections)
             ? (s.gpz_sections as EnmInputForHierarchy['substations'][number]['gpz_sections'])
             : undefined,
@@ -80,6 +81,7 @@ export function buildNetworkHierarchyFromSnapshot(snapshot: EnergyNetworkModel |
         };
       },
     ),
+    branches: snapshot.branches ?? [],
     line_runs: [],
     generators: [],
   } satisfies EnmInputForHierarchy;

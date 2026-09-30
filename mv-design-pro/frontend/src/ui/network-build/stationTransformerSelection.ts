@@ -1,5 +1,6 @@
 import type { EnergyNetworkModel, Substation, Transformer } from '../../types/enm';
 import { extractTransformerDesignation } from '../sld/v2/canvas/enmToCanonicalGpzAdapter';
+import { szynyStacji } from '../shared/szynyStacji';
 
 const BLOCK_TRANSFORMER_TOKEN_RE = /(^|[\s_/.-])(block|blokowy|blok|dedicated|dedykowany)([\s_/.-]|$)/u;
 
@@ -11,27 +12,6 @@ function transformerRefs(transformer: Transformer): string[] {
   return [transformer.ref_id, transformer.id].filter(nonEmptyRef);
 }
 
-function stationRefs(station: Substation): Set<string> {
-  return new Set([station.ref_id, station.id].filter(nonEmptyRef));
-}
-
-function collectStationBusRefs(
-  snapshot: EnergyNetworkModel,
-  station: Substation,
-): Set<string> {
-  const refs = new Set((station.bus_refs ?? []).filter(nonEmptyRef));
-  const stationRefSet = stationRefs(station);
-
-  for (const bus of snapshot.buses ?? []) {
-    const record = bus as typeof bus & { readonly substation_ref?: string | null };
-    if (record.substation_ref && stationRefSet.has(record.substation_ref)) {
-      if (bus.ref_id) refs.add(bus.ref_id);
-      if (bus.id) refs.add(bus.id);
-    }
-  }
-
-  return refs;
-}
 
 export function collectDerBlockTransformerRefs(
   snapshot: EnergyNetworkModel | null | undefined,
@@ -85,7 +65,10 @@ export function selectStationDistributionTransformers(
   if (!snapshot || !station) return [];
 
   const explicitRefs = new Set((station.transformer_refs ?? []).filter(nonEmptyRef));
-  const busRefs = collectStationBusRefs(snapshot, station);
+  // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra `szynyStacji` (strona górna
+  // transformatora leży na zacisku pola TR). `Bus` nie ma pola `substation_ref` (F10.3),
+  // więc dawna gałąź „szyna deklaruje stację" była martwa — usunięta.
+  const busRefs = szynyStacji(station, snapshot.branches ?? []);
   const blockTransformerRefs = collectDerBlockTransformerRefs(snapshot);
 
   return (snapshot.transformers ?? []).filter((transformer) => {

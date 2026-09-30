@@ -56,6 +56,7 @@ import { useShellStore } from '../../../ui2/shell/useShellStore';
 import { powyzejPasmaNn } from '../../../ui2/model/pasmaNapieciowe';
 import { maStartOperacjiCiagu } from '../../../ui2/kreatory/magistrala/magistralaModel';
 import { poleLinioweWolne } from '../../network-build/zajetoscPol';
+import { stacjaSzyn } from '../../shared/szynyStacji';
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
@@ -389,9 +390,10 @@ function operationOpenMessage(op: NetworkBuildOperationName, actionId: string): 
  * powodem, zamiast otwierać kreator, którego nie da się zapisać.
  */
 /**
- * Karta S9-5: stacja-właścicielka szyny SN albo źródła — po REALNYCH FK
- * (`substation.bus_refs`, `source.bus_ref`). Potrzebna, żeby menu GPZ/sekcji
- * mogło znaleźć wolne pole liniowe tej rozdzielni.
+ * Karta S9-5: stacja-właścicielka szyny SN albo źródła — szyna z `source.bus_ref`
+ * albo wprost, stacja z jednego lustra przynależności `szynyStacji` (szyny główne,
+ * zaciski pól, końce aparatów pól nN). Potrzebna, żeby menu GPZ/sekcji mogło znaleźć
+ * wolne pole liniowe tej rozdzielni.
  */
 export function stationRefOfBusOrSource(
   snapshot: EnergyNetworkModel | null,
@@ -402,10 +404,8 @@ export function stationRefOfBusOrSource(
     (candidate) => candidate.ref_id === elementId || candidate.id === elementId,
   );
   const busRef = source?.bus_ref ?? elementId;
-  const station = (snapshot.substations ?? []).find((candidate) =>
-    (candidate.bus_refs ?? []).includes(busRef),
-  );
-  return station?.ref_id ?? station?.id ?? null;
+  // SZYNY-STACJI-LUSTRO: szyna (także zacisk pola) → stacja z jednego lustra `szynyStacji`.
+  return stacjaSzyn(snapshot.substations ?? [], snapshot.branches ?? []).get(busRef) ?? null;
 }
 
 /**

@@ -64,6 +64,7 @@ import {
 import { SekcjaDanychModulu } from '../../../ui2/oze/ncrfg/SekcjaDanychModulu';
 import { getTooltip } from '../../shared/engineerTooltips';
 import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
+import { szynyStacji } from '../../shared/szynyStacji';
 
 export interface AddDerWizardProps {
   readonly isOpen: boolean;
@@ -308,7 +309,9 @@ function resolveStationNnBus(
     (candidate) => candidate.ref_id === stationId || candidate.id === stationId,
   );
   if (!station) return null;
-  const busRefs = new Set(station.bus_refs ?? []);
+  // SZYNY-STACJI-LUSTRO: transformator stacji po szynie z jednego lustra `szynyStacji`
+  // (strona górna leży na zacisku pola TR, nie na szynie głównej).
+  const busRefs = szynyStacji(station, snapshot.branches ?? []);
   const busByRef = new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus]));
 
   const transformerRefs = new Set(station.transformer_refs ?? []);
@@ -411,13 +414,15 @@ function readStationTransformers(snapshot: unknown, stationId: string | null): S
     readonly substations?: readonly Record<string, unknown>[];
     readonly transformers?: readonly Record<string, unknown>[];
     readonly generators?: readonly Record<string, unknown>[];
+    readonly branches?: readonly Record<string, unknown>[];
   };
   const station = model.substations?.find((candidate) =>
     candidate.ref_id === stationId || candidate.id === stationId);
   if (!station) return [];
 
   const transformerRefs = new Set(readRefList(station.transformer_refs));
-  const busRefs = new Set(readRefList(station.bus_refs));
+  // SZYNY-STACJI-LUSTRO: przynależność szyny do stacji z jednego lustra `szynyStacji`.
+  const busRefs = szynyStacji(station, model.branches ?? []);
   const blockTransformerRefs = new Set(
     (model.generators ?? [])
       .map((generator) => generator.blocking_transformer_ref)

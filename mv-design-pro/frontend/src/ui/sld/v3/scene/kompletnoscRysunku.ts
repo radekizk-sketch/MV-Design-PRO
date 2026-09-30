@@ -15,8 +15,9 @@
  *    `bus_ref` i porty), gdy SAM punkt jest narysowany;
  *  · `blok-stacji` — szyny (`Substation.bus_refs`) i transformatory
  *    (`transformer_refs`) NARYSOWANEJ stacji albo GPZ, rysowane jako jej blok;
- *  · `agregat-odbioru-stacji` — odbiór na szynie narysowanej stacji albo jej
- *    odpływu nN (`stationLoadBusRefs` — ten sam predykat co tabliczka „Odbiór ΣP");
+ *  · `agregat-odbioru-stacji` — odbiór na szynie narysowanej stacji: szyny stacji z
+ *    jednego lustra backendu `szynyStacji` (szyny główne, zaciski pól SN, oba końce
+ *    aparatów pól nN — to samo źródło co tabliczka „Odbiór ΣP");
  *  · `domena-nn` — szyna/gałąź całkowicie w paśmie nN, odbiór/generator na szynie nN
  *    i rozdzielnica nN wydzielona jako osobna stacja (wszystkie szyny w paśmie nN):
  *    schemat SN pokazuje stronę nN stacji portalem, a jej wnętrze — projekcja nN;
@@ -31,7 +32,7 @@
  */
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
-import { stationLoadBusRefs } from '../../shared/stationBusResolution';
+import { szynyStacji } from '../../../shared/szynyStacji';
 import type { SceneV3 } from './buildScene';
 
 export type KategoriaRysunku =
@@ -132,7 +133,7 @@ export function kompletnoscRysunku(scene: SceneV3, snapshot: EnergyNetworkModel)
     if (!narysowane.has(stacja.ref_id)) continue;
     for (const ref of stacja.bus_refs ?? []) blokStacji.add(ref);
     for (const ref of stacja.transformer_refs ?? []) blokStacji.add(ref);
-    for (const ref of stationLoadBusRefs(stacja, snapshot.branches ?? [])) szynyOdbiorowStacji.add(ref);
+    for (const ref of szynyStacji(stacja, snapshot.branches ?? [])) szynyOdbiorowStacji.add(ref);
   }
 
   const pozycje: PozycjaKompletnosci[] = [];

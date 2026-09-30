@@ -79,7 +79,8 @@ def test_deterministic(model: dict) -> None:
 def test_der_na_szynach_odplywow_nn_nalezy_do_stacji(model: dict) -> None:
     """Karta SLD-SUBSTRAT (kontynuacja): substrat budowany ścieżką produktu ma generatory
     DER na szynach odpływów nN utworzonych promocją pól nN (poza `Substation.bus_refs`).
-    Przynależność szyny odpływu do stacji czyta ten sam predykat co frontendowe
-    `stationLoadBusRefs`; bez niego destylat gubił DER KAŻDEJ stacji (`der: []` na
+    Przynależność szyny odpływu do stacji czyta `enm.tor_pola.szyny_stacji` — ten sam zbiór
+    co lustro frontu `szynyStacji` (parytet przypięty testem `szynyStacji.parytet.test.ts`,
+    karta SZYNY-STACJI-LUSTRO); bez niego destylat gubił DER KAŻDEJ stacji (`der: []` na
     wszystkich 16). POMIAR: 20 generatorów (8 PV, 8 BESS, 4 wiatr) na 16 stacjach."""
     assert sum(1 for s in model["stations"] if s["der"]) == 16

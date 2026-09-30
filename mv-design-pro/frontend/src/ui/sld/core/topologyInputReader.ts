@@ -23,6 +23,7 @@ import type {
 } from '../../../types/enm';
 import type { AnySldSymbol, BusSymbol, BranchSymbol, SwitchSymbol, SourceSymbol, LoadSymbol } from '../../sld-editor/types';
 import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
+import { stacjaSzyn, szynyStacji } from '../../shared/szynyStacji';
 import {
   type SourceConnectionVariantInputV1,
   isSupportedSourceConnectionVariant,
@@ -503,11 +504,10 @@ export function readTopologyFromENM(
   });
 
   // --- Substations ---
-  const stationBusMap = new Map<string, string>(); // busRef → stationId
+  // SZYNY-STACJI-LUSTRO: szyna → stacja z jednego lustra backendu `szynyStacji` (szyny
+  // główne, zaciski pól SN, końce aparatów pól nN); szyna wspólna → pierwsza stacja modelu.
+  const stationBusMap = new Map<string, string>(stacjaSzyn(enm.substations, enm.branches));
   const stations: TopologyStationV1[] = enm.substations.map((sub) => {
-    for (const busRef of sub.bus_refs) {
-      stationBusMap.set(busRef, sub.ref_id);
-    }
     const meta = (sub as { meta?: unknown }).meta;
     const stationKind = enmStationKind(sub);
     const hasExplicitSnFieldSpecs = hasExplicitFieldSpecs(meta, 'field_specs');
@@ -524,7 +524,7 @@ export function readTopologyFromENM(
       voltageKv: sub.bus_refs.length > 0
         ? (busVoltageMap.get(sub.bus_refs[0]) ?? null)
         : null,
-      busIds: [...sub.bus_refs].sort(),
+      busIds: [...szynyStacji(sub, enm.branches)].sort(),
       branchIds: [],
       switchIds: [],
       transformerIds: [...sub.transformer_refs].sort(),
@@ -785,17 +785,7 @@ export function readTopologyFromENM(
   // --- Deklarowana oś magistrali (R2): line_runs main_trunk → kolejność stacji.
   const stationOfBusRef = (busRef: string | null | undefined): string | null => {
     if (!busRef) return null;
-    const direct = stationBusMap.get(busRef);
-    if (direct) return direct;
-    if (busRef.startsWith('stn/')) {
-      const id = busRef.split('/')[1];
-      if (id) return stations.some((st) => st.id === `stn/${id}/station`) ? `stn/${id}/station` : null;
-    }
-    if (busRef.startsWith('gpz/')) {
-      const id = busRef.split('/')[1];
-      if (id) return stations.some((st) => st.id === `gpz/${id}/substation`) ? `gpz/${id}/substation` : null;
-    }
-    return null;
+    return stationBusMap.get(busRef) ?? null;
   };
   const branchByRefId = new Map(enm.branches.map((br) => [br.ref_id, br]));
   const declaredTrunkStationIds: string[] = [];

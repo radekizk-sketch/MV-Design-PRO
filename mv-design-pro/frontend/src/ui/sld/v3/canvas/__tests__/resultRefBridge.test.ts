@@ -170,8 +170,9 @@ describe('resultPointsHiddenByModel — deklaracja modelu „tego nie rysujemy"'
  * ILOCZYN CECH predykatu „punkt w rozdzielnicy nN stacji": rodzaj szyny {szyna
  * odpływu nN tej stacji, szyna nN stacji, szyna SN stacji, szyna GPZ, mufa} ×
  * stan deklaracji {pole w `nn_field_specs` stacji, pole usunięte ze specyfikacji,
- * gałąź wychodząca z obcej szyny}. Źródło prawdy wspólne z agregatem odbioru
- * (`stationLoadBusRefs`) — zbiory nie mogą się rozjechać.
+ * gałąź wychodząca z obcej szyny}. Źródło prawdy wspólne z agregatem odbioru i
+ * szufladą: lustro backendu `szynyStacji` złożone ze stroną nN (`stationSideBusRefs`,
+ * karta SZYNY-STACJI-LUSTRO) — zbiory nie mogą się rozjechać.
  */
 describe('resultPointsInStationNnBoard — szyny odpływów nN stacji (poza schematem SN)', () => {
   const nnBoard = resultPointsInStationNnBoard(enm);
@@ -196,11 +197,19 @@ describe('resultPointsInStationNnBoard — szyny odpływów nN stacji (poza sche
     expect(zbior.size).toBe(5);
   });
 
-  it('aparat pola nN wychodzący z OBCEJ szyny (nie tej stacji) ⇒ jego szyna nie należy do rozdzielnicy stacji', () => {
+  // SZYNY-STACJI-LUSTRO: przynależność rozstrzyga DEKLARACJA pola (`nn_field_migrowany_z` →
+  // `nn_field_specs` stacji), a nie koniec, z którego gałąź wychodzi — tak liczy backend
+  // `enm.tor_pola.szyny_stacji` (oba końce aparatu). Dawna reguła frontu („koniec from musi
+  // być szyną stacji") była połówką rozjechaną z backendem; parytet przypina
+  // `ui/shared/__tests__/szynyStacji.parytet.test.ts`. Obca szyna SN leży po stronie SN, więc
+  // do rozdzielnicy nN stacji nie trafia.
+  it('aparat z deklaracją pola nN TEJ stacji wychodzący z obcej szyny SN ⇒ odpływ zostaje w rozdzielnicy nN, obca szyna SN nie', () => {
     const model = klon();
     const aparat = (model.branches ?? []).find((g) => g.ref_id === aparatyOdplywow[0].ref_id)!;
     aparat.from_bus_ref = GPZ_SEKCJA_BUS;
-    expect(resultPointsInStationNnBoard(model).has(String(aparat.to_bus_ref))).toBe(false);
+    const zbior = resultPointsInStationNnBoard(model);
+    expect(zbior.has(String(aparat.to_bus_ref))).toBe(true);
+    expect(zbior.has(GPZ_SEKCJA_BUS)).toBe(false);
   });
 
   it('zbiory „nierysowane w modelu" i „w rozdzielnicy nN" są rozłączne na tej migawce', () => {

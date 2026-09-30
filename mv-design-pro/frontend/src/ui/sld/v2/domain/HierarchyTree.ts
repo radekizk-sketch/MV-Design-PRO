@@ -9,6 +9,7 @@
  */
 
 import type { PortKind } from '../core/ports';
+import { szynyStacji, type GalazDlaSzyn } from '../../../shared/szynyStacji';
 
 /* ---------------------------------------------------------------------------
    Typy hierarchii
@@ -127,6 +128,8 @@ export interface EnmInputForHierarchy {
     name: string;
     station_type: string;
     bus_refs: readonly string[];
+    /** Metadane stacji (`field_specs`, `nn_field_specs`) — dla lustra `szynyStacji`. */
+    meta?: unknown;
     gpz_sections?: readonly EnmGpzSection[];
     nn_voltage_levels?: readonly number[];
     external_ports?: readonly EnmPort[];
@@ -162,6 +165,8 @@ export interface EnmInputForHierarchy {
     parent_run_ref?: string | null;
     branch_origin_station_ref?: string | null;
   }>;
+  /** Gałęzie modelu — końce aparatów pól nN należą do stacji (lustro `szynyStacji`). */
+  readonly branches?: ReadonlyArray<GalazDlaSzyn>;
   readonly generators: ReadonlyArray<{
     ref_id: string;
     name: string;
@@ -267,9 +272,9 @@ export function buildHierarchy(enm: EnmInputForHierarchy): Hierarchy {
     }
 
     // SC param z source przyłączonego do GPZ (jeżeli istnieje)
-    const gpzSource = enm.sources.find(
-      (s) => s.bus_ref && gpzSub.bus_refs.includes(s.bus_ref),
-    );
+    // SZYNY-STACJI-LUSTRO: źródło na szynie GPZ z jednego lustra `szynyStacji`.
+    const szynyGpz = szynyStacji(gpzSub, enm.branches ?? []);
+    const gpzSource = enm.sources.find((s) => s.bus_ref && szynyGpz.has(s.bus_ref));
 
     gpz.push({
       id: gpzSub.ref_id,

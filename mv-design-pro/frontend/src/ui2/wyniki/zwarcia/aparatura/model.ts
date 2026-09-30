@@ -21,12 +21,15 @@
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
+import { szynyStacji } from '../../../../ui/shared/szynyStacji';
 
 /**
  * Stacje, w których leży punkt zwarcia. Punkt zwarcia to węzeł (szyna) —
- * dopasowanie idzie po `bus_refs` stacji, a zapasowo po polach rozdzielczych
- * (`bays[].bus_ref` → `substation_ref`), bo starsze snapshoty nie zawsze
- * wypełniały `bus_refs`. Kolejność deterministyczna (rosnąco po ref).
+ * przynależność szyny do stacji WYŁĄCZNIE z jednego lustra backendu
+ * `szynyStacji` (SZYNY-STACJI-LUSTRO: szyny główne, zaciski pól SN, końce
+ * aparatów pól nN). Dawna druga droga „szyna pola rozdzielczego → stacja pola"
+ * (zapas dla migawek bez `bus_refs`) była osobną regułą przynależności,
+ * nieznaną backendowi — usunięta. Kolejność deterministyczna (rosnąco po ref).
  *
  * Pusta lista = punkt nie należy do żadnej stacji z modelu — to UCZCIWY BRAK
  * PODSTAWY do sprawdzenia, nie werdykt negatywny.
@@ -44,12 +47,8 @@ export function stacjeDlaPunktu(
   for (const stacja of snapshot.substations ?? []) {
     const ref = stacja.ref_id ?? stacja.id;
     if (!ref) continue;
-    if ((stacja.bus_refs ?? []).some((busRef) => refy.has(busRef))) znalezione.add(ref);
-  }
-  for (const pole of snapshot.bays ?? []) {
-    if (pole.bus_ref && refy.has(pole.bus_ref) && pole.substation_ref) {
-      znalezione.add(pole.substation_ref);
-    }
+    const szyny = szynyStacji(stacja, snapshot.branches ?? []);
+    if ([...refy].some((busRef) => szyny.has(busRef))) znalezione.add(ref);
   }
   return [...znalezione].sort((a, b) => a.localeCompare(b));
 }

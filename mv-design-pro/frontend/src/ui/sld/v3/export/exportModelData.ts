@@ -21,6 +21,7 @@
  */
 import type { Bay, Branch, EnergyNetworkModel, Substation } from '../../../../types/enm';
 import { fieldRoleLabelPl } from '../../v2/station-rozdzielnia/contract';
+import { szynyStacji } from '../../../shared/szynyStacji';
 import type { Iec61850Bay, Iec61850Equipment, Iec61850ExportInput, Iec61850VoltageLevel } from '../../v2/export/exportIec61850';
 import type {
   CimAcLineSegment,
@@ -71,9 +72,10 @@ export function buildIec61850Input(snapshot: EnergyNetworkModel, projectId?: str
 
   const substations = snapshot.substations.map((substation) => {
     const baysOfStation = snapshot.bays.filter((bay) => bay.substation_ref === substation.ref_id);
+    // SZYNY-STACJI-LUSTRO: poziomy napięcia z szyn stacji z jednego lustra `szynyStacji`.
     const voltages = Array.from(
       new Set(
-        substation.bus_refs
+        [...szynyStacji(substation, snapshot.branches)]
           .map((ref) => busVoltage.get(ref))
           .filter((kv): kv is number => typeof kv === 'number'),
       ),
@@ -125,9 +127,13 @@ export function buildCimInput(snapshot: EnergyNetworkModel): CimExportInput {
   const voltageLevels: CimVoltageLevel[] = [];
   const voltageLevelMridByBus = new Map<string, string>();
   for (const substation of snapshot.substations) {
+    // SZYNY-STACJI-LUSTRO: kontener poziomu napięcia obejmuje KAŻDĄ szynę stacji z lustra
+    // `szynyStacji` (pole na zacisku pola trafia do poziomu swojej stacji); szyna wspólna
+    // dwóch stacji należy do pierwszej w kolejności modelu (jak `stacjaSzyn`).
+    const szyny = [...szynyStacji(substation, snapshot.branches)].sort();
     const voltages = Array.from(
       new Set(
-        substation.bus_refs
+        szyny
           .map((ref) => busVoltage.get(ref))
           .filter((kv): kv is number => typeof kv === 'number'),
       ),
@@ -140,8 +146,10 @@ export function buildCimInput(snapshot: EnergyNetworkModel): CimExportInput {
         substation_mrid: substation.ref_id,
         baseVoltage_kv: kv,
       });
-      for (const busRef of substation.bus_refs) {
-        if (busVoltage.get(busRef) === kv) voltageLevelMridByBus.set(busRef, mrid);
+      for (const busRef of szyny) {
+        if (busVoltage.get(busRef) === kv && !voltageLevelMridByBus.has(busRef)) {
+          voltageLevelMridByBus.set(busRef, mrid);
+        }
       }
     }
   }
