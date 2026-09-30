@@ -1903,7 +1903,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta ODMOWA-DANYCH-422 (2026-09-30): 557 -> 558 (+1 `network_model/odmowa_danych.py`
         # — nazwana odmowa danych dla 422, lisc stdlib-only). POMIAR guardem na drzewie karty.
         # Partia integracji 6 po DOWOD-CIEPLNY: 560 + 1 = 561. POMIAR guardem na drzewie partii.
-        "Przeskanowano 561 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta B01-RUNDA-1 (2026-09-30, decyzja B-01 pozycja (i)): 561 -> 558 (-3 skasowany
+        # solver `network_model/solvers/stability_rms/{__init__,contracts,engine}.py`).
+        # POMIAR guardem na drzewie karty.
+        "Przeskanowano 558 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2027,7 +2030,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # POMIAR guardem na drzewie partii.
         # Karta ODMOWA-DANYCH-422: network_model 182 -> 183 (+1 `odmowa_danych.py`); dlug
         # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
-        "  network_model: pliki_skanowane=183, dlug=11 plikow/suma 69, "
+        # Karta B01-RUNDA-1 (decyzja B-01 pozycja (i)): network_model 183 -> 180 (-3 skasowany
+        # `stability_rms/**`); dlug i wykluczenia BEZ ZMIAN (pakiet nie mial wpisow). POMIAR.
+        "  network_model: pliki_skanowane=180, dlug=11 plikow/suma 69, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2262,7 +2267,8 @@ def test_wylaczenie_wygrywa_z_pokryciem_prefiksem() -> None:
     zbiory byly ROZLACZNE: wykluczony modul nie mogl byc objety zadnym wpisem
     `CONTRACT_SOURCES`. Bylo to prawda, dopoki wykluczenie dzialalo „przez
     nieobecnosc". Po dolozeniu `network_model/solvers` jako CALOSCI wykluczony
-    `stability_rms/contracts.py` LEZY pod pokrytym prefiksem — i tak ma byc:
+    `stability_rms/contracts.py` (skasowany w karcie B01-RUNDA-1) LEZAL pod pokrytym
+    prefiksem:
     wykluczenie stalo sie jawnym odjeciem stosowanym w `contract_fields()`.
     Rozlacznosc nazw przestala byc wiec wlasciwym niezmiennikiem; wlasciwym jest
     SKUTECZNOSC odjecia, ktora pilnuje `test_wylaczenie_korzenia_dziala_takze_na_mape_pol`.
@@ -2396,7 +2402,7 @@ def test_kazdy_skanowany_korzen_jest_zrodlem_pol() -> None:
     )
 
 
-def test_wylaczenie_korzenia_dziala_takze_na_mape_pol() -> None:
+def test_wylaczenie_korzenia_dziala_takze_na_mape_pol(tmp_path, monkeypatch) -> None:
     """PREDYKATY PARAMI (regula KLASA §3) — jedno zrodlo prawdy dla wejscia i wyjscia.
 
     Do rundy 4 `MODEL_ROOTS_POZA_MAPA` bylo czytane WYLACZNIE przez pin mapy,
@@ -2406,28 +2412,41 @@ def test_wylaczenie_korzenia_dziala_takze_na_mape_pol() -> None:
     `stability_rms/contracts.py` wrocil do mapy tylnymi drzwiami i przywrocil
     8 kolizji `real`/`imag`. Ten test pilnuje, ze wykluczenie znaczy to samo
     w obu miejscach.
+
+    Od karty B01-RUNDA-1 (decyzja B-01 z 2026-09-30, pozycja (i)) solver `stability_rms`
+    jest skasowany, a rejestr wykluczen PUSTY — mechanizm cwiczony na module syntetycznym
+    pod pokrytym prefiksem, DWUSTRONNIE: bez wpisu pola wchodza do mapy, z wpisem nie.
     """
-    wykluczone = set(guard.MODEL_ROOTS_POZA_MAPA)
-    assert wykluczone, "Brak wykluczen — test bezprzedmiotowy, sprawdz konfiguracje."
-    pola = guard.contract_fields()
-    for rel in wykluczone:
-        sciezka = guard.BACKEND_SRC / rel
-        if not sciezka.is_file():
-            continue
-        wlasne = set()
-        drzewo = ast.parse(sciezka.read_text(encoding="utf-8"))
-        for node in ast.walk(drzewo):
-            if isinstance(node, ast.ClassDef):
-                for stmt in node.body:
-                    if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
-                        wlasne.add(stmt.target.id)
-        # Pola WYLACZNIE tego modulu nie moga trafic do mapy przez zaden inny korzen.
-        tylko_tam = {"real", "imag"} & wlasne
-        assert tylko_tam, f"{rel}: modul nie deklaruje juz kolidujacych pol — zdejmij wpis."
-        assert not (tylko_tam & pola), (
-            f"{rel}: pola {sorted(tylko_tam & pola)} wrocily do mapy mimo wykluczenia — "
-            "warunek wejscia i wyjscia ze zbioru rozjechal sie (regula KLASA §3)."
-        )
+    root = tmp_path / "src"
+    katalog = root / "network_model" / "solvers" / "fazor"
+    katalog.mkdir(parents=True)
+    (katalog / "contracts.py").write_text(
+        "from pydantic import BaseModel\n\n\n"
+        "class Fazor(BaseModel):\n    real: float\n    imag: float\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("network_model/solvers",))
+
+    monkeypatch.setattr(guard, "MODEL_ROOTS_POZA_MAPA", {})
+    assert {"real", "imag"} <= guard.contract_fields(), "Kontrola dwustronna: bez wpisu pola sa."
+
+    monkeypatch.setattr(
+        guard,
+        "MODEL_ROOTS_POZA_MAPA",
+        {"network_model/solvers/fazor/contracts.py": "powod syntetyczny samotestu " * 4},
+    )
+    assert not ({"real", "imag"} & guard.contract_fields()), (
+        "pola wykluczonego modulu wrocily do mapy mimo wykluczenia — warunek wejscia "
+        "i wyjscia ze zbioru rozjechal sie (regula KLASA §3)."
+    )
+
+
+def test_rejestr_wykluczen_pusty_po_kasacji_stability_rms() -> None:
+    """Pozycja (i) planu A/B §12.2: jedyny wpis (`stability_rms/contracts.py`) zdjety razem
+    z solverem, a kolizje `real`/`imag` nie wracaja z zadnego innego kontraktu."""
+    assert guard.MODEL_ROOTS_POZA_MAPA == {}
+    assert not ({"real", "imag"} & guard.contract_fields())
 
 
 def test_jawna_nie_liczba_nie_jest_podstawieniem() -> None:

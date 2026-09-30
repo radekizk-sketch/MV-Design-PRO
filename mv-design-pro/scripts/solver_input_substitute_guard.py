@@ -587,18 +587,12 @@ CONTRACT_SOURCES: tuple[str, ...] = (
 #: albo TUTAJ. Nowy solver na nowym kontrakcie nie moze wiec po cichu wypasc poza
 #: zasieg reguly — musi dostac DECYZJE. Ten sam wzorzec, co
 #: „prezentowane + nieprezentowane = komplet kontraktu".
-MODEL_ROOTS_POZA_MAPA: dict[str, str] = {
-    "network_model/solvers/stability_rms/contracts.py": (
-        "Deklaruje pola `real` i `imag` (fazor jako model danych), a to sa NAZWY "
-        "ATRYBUTOW WBUDOWANEGO typu `complex`. Mapa pol jest plaskim zbiorem NAZW, "
-        "wiec wlaczenie tego korzenia zamienia kazdy odczyt `z.real` / `z.imag` "
-        "w warstwie solverow w trafienie: pomiar dal 8 falszywych alarmow "
-        "(`losses_total.real`, `loss_total.imag`, `voltage.imag`, `z.imag`), czyli "
-        "kolizje nazw, a nie odczyty danych modelu. Zamrozenie ich w budzecie "
-        "byloby dokladnie tym halasem, przed ktorym bronila runda 2. Pola tego "
-        "modulu nie sa danymi wejsciowymi fizyki — to postac wyniku."
-    ),
-}
+MODEL_ROOTS_POZA_MAPA: dict[str, str] = {}
+# Rejestr PUSTY od karty B01-RUNDA-1 (decyzja B-01 z 2026-09-30, pozycja (i) planu A/B §12.2):
+# jedyny wpis, `network_model/solvers/stability_rms/contracts.py` (pola `real`/`imag` —
+# nazwy atrybutow wbudowanego `complex`, 8 falszywych alarmow przy wlaczeniu do mapy),
+# zdjety razem ze skasowanym solverem. Mechanizm zostaje: samotest cwiczy go na module
+# syntetycznym i pilnuje, ze `real`/`imag` nie wracaja do mapy z innego kontraktu.
 
 #: Wywolania, ktore na pewno daja liczbe — galaz zapasowa z nimi jest zastepnikiem.
 _NUMERIC_CALLS: frozenset[str] = frozenset(
@@ -1728,7 +1722,7 @@ def contract_fields() -> set[str]:
     w `CONTRACT_SOURCES`. Dwa niezaleznie utrzymywane warunki, ktore „dzis sie
     zgadzaja", sa defektem czekajacym na dane brzegowe: gdy runda 4 dolozyla
     `network_model/solvers` jako calosc, wykluczony `stability_rms/contracts.py`
-    WROCIL do mapy tylnymi drzwiami i przywrocil 8 kolizji `real`/`imag`.
+    (skasowany w karcie B01-RUNDA-1) WROCIL do mapy tylnymi drzwiami i przywrocil 8 kolizji `real`/`imag`.
     Teraz wejscie i wyjscie ze zbioru pochodza z JEDNEGO zrodla prawdy.
     """
     fields: set[str] = set()

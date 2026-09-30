@@ -29,7 +29,7 @@ Pozycja bez powierzchni UI = luka do zaprojektowania w Programie UI/UX, nie do z
 | S10 | Charakterystyki zabezpieczeń IEC 60255 | Krzywe czasowo-prądowe przekaźników | `protection_iec60255.py` |
 | S11 | Testy NC RfG / PTPiREE | Zgodność przyłączeniowa modułów wytwarzania | `ncrfg_ptpiree/` (pakiet) |
 | S12 | FRT / HVRT | Przejazd przez zapady/wzrosty napięcia | `frt_hvrt/` (pakiet) |
-| S13 | Stabilność RMS | Symulacje stabilności RMS — rdzeń B-01 (`scripts/rdzenie_b01.py`) bez wywołań produkcyjnych po karcie AB-P1 (tor T1 skasowany); dynamika czasowa w toku pracy = S22; kasacja (zgoda O-5(b), decyzja O-54) wymaga zdjęcia wpisu z listy B-01 | `stability_rms/` (pakiet) |
+| S13 | ~~Stabilność RMS~~ | SKASOWANE (karta B01-RUNDA-1, 2026-09-30, decyzja B-01 pozycja (i)): solver `stability_rms` bez sprzężenia z siecią i bez konsumentów produkcyjnych usunięty razem z wpisem listy `scripts/rdzenie_b01.py`; nawrót ścieżki pilnuje `legacy_public_path_guard`; dynamika czasowa w toku pracy = S22 | — |
 | S14 | Estymacja stanu WLS | Weighted Least Squares + benchmark syntetyczny | `state_estimation_wls.py`, `state_estimation_synthetic_benchmark.py` |
 | S15 | Stan fazowy SN | Analiza stanu fazowego sieci SN | `phase_state_sn.py` |
 | S16 | Podgląd źródła sieciowego | Parametry zwarciowe źródła zasilania (preview) | `grid_source_preview.py` |

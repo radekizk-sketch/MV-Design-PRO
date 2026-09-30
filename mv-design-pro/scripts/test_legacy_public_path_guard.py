@@ -2511,6 +2511,35 @@ def test_guard_rejects_resurrected_abp1_backend_path(tmp_path, monkeypatch, scie
     assert any(f"backend/src/{sciezka}" in n for n in naruszenia), naruszenia
 
 
+@pytest.mark.parametrize("sciezka", guard.B01I_SCIEZKI_BACKEND)
+def test_guard_rejects_resurrected_stability_rms_path(tmp_path, monkeypatch, sciezka) -> None:
+    """Pozycja (i) planu A/B §12.2: katalog skasowanego solvera RMS nie wraca."""
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(src / sciezka / "engine.py", "X_ZYWE = 1\n")
+
+    naruszenia = guard.check_abp1_dynamika_resurrection()
+    assert any(f"backend/src/{sciezka}" in n and "pozycja (i)" in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize("symbol", sorted(guard.B01I_DEFINICJE_BACKEND))
+def test_guard_rejects_stability_rms_definition_under_other_path(
+    tmp_path, monkeypatch, symbol
+) -> None:
+    """Symbol skasowanego solvera wraca pod INNA sciezka (np. `network_model/solvers/rms`)."""
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(src / "network_model" / "solvers" / "rms" / "silnik.py", _py_definicja(symbol))
+
+    naruszenia = guard.check_abp1_dynamika_resurrection()
+    assert any(f": {symbol} (" in n and "pozycja (i)" in n for n in naruszenia), naruszenia
+
+
+def test_guard_ignores_orphaned_pycache_only_stability_rms(tmp_path, monkeypatch) -> None:
+    """Katalog z samym `__pycache__` (lokalny klon po kasacji) nie jest nawrotem."""
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(src / "network_model" / "solvers" / "stability_rms" / "__pycache__" / "engine.pyc", "x")
+    assert guard.check_abp1_dynamika_resurrection() == []
+
+
 @pytest.mark.parametrize("sciezka", guard.ABP1_SCIEZKI_FRONTEND)
 def test_guard_rejects_resurrected_abp1_frontend_path(tmp_path, monkeypatch, sciezka) -> None:
     _, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
