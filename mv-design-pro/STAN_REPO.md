@@ -117,8 +117,9 @@ CI. Szczegóły, kolejność i pierwsze uruchomienie wykonawców: §7 E i K.
 ### A. Stan Git
 
 **A.1 Repozytorium i gałęzie.** `radekizk-sketch/MV-Design-PRO`. `main` = `a45c88f9` (PR #476 scalony
-2026-09-24). Gałąź programu `claude/mv-design-pro-twin-audit-u4lhy0` — czubek zdalny: commit karty PRZENOSNOSC-NIEPEWNOSCI
-(poprawka czerwonego CI #474), rodzic `9dd9e589` (pakiet wznowienia nad `9cc212b9` — partia integracji 5 z
+2026-09-24). Gałąź programu `claude/mv-design-pro-twin-audit-u4lhy0` — czubek zdalny: commity karty PRZENOSNOSC-NIEPEWNOSCI
+(poprawka 1 `2be588ea` — naprawa czerwonego CI #474; poprawka 2 — estymata ciągła na progu części
+pewnej residuum) nad `9dd9e589` (pakiet wznowienia nad `9cc212b9` — partia integracji 5 z
 DETERMINIZM-KATA-FAZORA i WATKI-BLAS-E2E); jedyna gałąź, na którą sesja wykonawcza pushuje
 (`git push origin HEAD:claude/mv-design-pro-twin-audit-u4lhy0`, ponowienia 2/4/8/16 s).
 
@@ -147,7 +148,7 @@ bazą; kontynuacja = `git fetch origin <gałąź>` + nowe drzewo robocze z tej g
 
 **A.4 Drzewa robocze lokalne** (katalog `.claude/worktrees/` kontenera — giną z kontenerem; prawdą jest
 tabela A.3): `odbior-p5final` (`int/p5final` — czubek partii 5 z tym pakietem i poprawką 1 karty
-PRZENOSNOSC-NIEPEWNOSCI), `odbior-psi` (`int/psi` — poprawka 2 tej karty, w toku), `odbior-p5` (`int/p5`,
+PRZENOSNOSC-NIEPEWNOSCI), `odbior-p5` (`int/p5`,
 łańcuch p5b na `3840e239`), `odbior-determinizm` (`int/determinizm`, poprawka przed przeniesieniem), `odbior-p6`, `odbior-dowodcieplny`,
 `odbior-odmowa422`, `odbior-polawtorze`, `odbior-sldsubstrat`, `odbior-ab1b3b`, `odbior-nastawy`; pozostałe
 (`odbior-abp1*`, `odbior-proofpack`, `odbior-s95start`, `odbior-e2enazwy`, `odbior-ci`, `r10`, `fable-b02`,
@@ -161,7 +162,7 @@ indeks z plikami FROZEN — **nie commitować z niego**.
 | **DONE + VERIFIED, na gałęzi PR #474** | W1–W3 (w tym W3-J, V12.7), W6-0 (S-1…S-5: stopień dowodowy NC RfG/FRT, koniec `no_module`, autorytet zwarć, jeden tor NC RfG), W5-A i W5-D (uziemienie jedną reprezentacją, model fazowy i rozpływ niesymetryczny jako bieg produktu — `56d1a205`, `d3687ba3`, `ced1b25b`, `03fad2b8`), W6-1…W6-3 (kontrakty czasu, rdzeń dynamiki, urządzenia i adapter), B-02 powierzchnie analityczne; program A/B: AB-0, AB-1a (pakiety 0, A, A2, B, C, D1, D2, E, E1, E2, L), AB-H0 z O-53, AB-1b.1a, AB-1b.1b, AB-1b.3a, AB-P1; klasy jakości #135, #140–#145, PL-ZNAKI, ETYKIETY-TR, MAGISTRALA-OCENA, PASMO-1KV, NAZWY-JEDNO-ZRODLO, archiwum projektu, PROOFPACK-KONTRAKT, S95-START, #151, DETERMINIZM-KATA-FAZORA, WATKI-BLAS-E2E, PRZENOSNOSC-NIEPEWNOSCI (poprawka 1); partie integracji 1–5 (rejestr: `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §7) |
 | **MERGE READY** | PR #474 jako całość — po zielonym komplecie CI na czubku (część H) |
 | **VERIFIED, niezintegrowane** | POLE-ZAJĘTE (`c7e45c33`, gałąź `wip-integracja-p6`), DOWOD-CIEPLNY (`53397f31`, `wip-dowod-cieplny-gotowy`), ODMOWA-DANYCH-422 (`1a235fa3`, `wip-odmowa-422-gotowy`; weryfikacja wykonawcy — odbiór integratora w partii 6) — partia 6 |
-| **IN PROGRESS** | POLA-W-TORZE, SLD-SUBSTRAT faza 2, AB-1b.3b (commit lokalny `f0cabe57` na `int/ab1b3b`, bez nałożonej poprawki determinizmu — partia 7), BIEG-ZABEZPIECZEN-Z-MODELU (tabela A.3), PRZENOSNOSC-NIEPEWNOSCI poprawka 2 (drzewo `odbior-psi`) |
+| **IN PROGRESS** | POLA-W-TORZE, SLD-SUBSTRAT faza 2, AB-1b.3b (commit lokalny `f0cabe57` na `int/ab1b3b`, bez nałożonej poprawki determinizmu — partia 7), BIEG-ZABEZPIECZEN-Z-MODELU (tabela A.3) |
 | **BLOCKED (bramka właściciela)** | B-01: pozycje (a)–(m) planu §12.2 (jedna lista — O-57 pkt 6); B-02: werdykt wizualny zrzutów (część J) |
 | **RESEARCH ONLY** | PR #475 (laboratorium dynamiki) |
 | **NOT STARTED (karta gotowa)** | AB-1b.2 + AB-1d_min, SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, ENDPOINTY-BEZ-KONSUMENTA, KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2, O-53b (treść: `docs/plan/KARTY_OTWARTE_2026-09.md`, `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.md`) |
@@ -184,7 +185,6 @@ AB-1b.3b), `docs/plan/KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md`, karty W6 (
 | AB-H0b | P0 (N-1 V12.6 bez etykiety „szacunek bez rozpływu”, stałe V12.6 bez podstawy) | lista pozycji | — | karta do napisania z `KARTY_OTWARTE` |
 | AB-1b.3b | P1 (ścieżka krytyczna A/B) | w toku | AB-1b.3a | kolizja z determinizmem w `silnik.py`, mutacje M38–M51 |
 | AB-1b.2 + AB-1d_min | P1 (ścieżka krytyczna A/B) | nierozpoczęta | AB-1b.3b | mutacje M52–M66 |
-| PRZENOSNOSC-NIEPEWNOSCI poprawka 2 | P1 (estymata niepewności częstotliwości nieciągła na progu części pewnej residuum i tuż nad nim poniżej dna zaokrągleń — SO-1a próbka 372: 4,6e-15 Hz wobec 1,1e-10 Hz; strona progu zależna od jądra BLAS) | w toku (drzewo `odbior-psi`) | poprawka 1 | `u_V = \|J⁻¹ψ(r)\| + \|J⁻¹ρ\|`, `ψ(r) = sign(r)·max(\|r\| − ρ, 0)`, `u_V̇` — suma dwóch różnic skończonych; mutacje od M73 |
 | ODMOWA-DANYCH-422 | P1 (obcy `ValueError` jako błąd użytkownika) | domknięta przez wykonawcę (`1a235fa3`) | — | odbiór integratora w partii 6; do listy B-01: odmowy wejścia rdzeni jako typ odmowy danych (dziś tłumaczone na granicy warstwy aplikacji w 13 miejscach) |
 | SLD-SUBSTRAT faza 2 | P1 (fikstury SLD bez generatora; element modelu nierysowany) | w toku | — | reguła zapisu liczb w fiksturach (bajty niezależne od maszyny) |
 | O-53b | P1 (reguła mocy źródeł × transformator tylko dla jednego źródła) | nierozpoczęta | — | kasacja tras piszących model z pominięciem operacji |
@@ -252,7 +252,7 @@ Na 4 CPU: do czterech wykonawców naraz plus integrator, jeden ciężki bieg nar
 
 | Tor | Pliki wyłączne | Zakaz |
 |---|---|---|
-| R — rdzeń dynamiki (ścieżka krytyczna; jedna karta naraz) | `backend/src/network_model/solvers/dynamika/**`, `enm/adapter_dynamiki.py`, `enm/dynamika_modele.py`, `enm/dynamika_z_katalogu.py`, `enm/scenariusze.py`, `application/contracts/resultset_dynamic_v2.py`, `backend/tests/walidacja_fizyczna/**` (manifest, harness mutacji: M38–M51 AB-1b.3b, M52–M66 AB-1b.2, M67–M72 zajęte, kolejne od M73), `backend/tests/network_model/dynamika/**`, `frontend/src/ui2/wyniki/dynamika/**` | inne tory nie edytują; AB-H1 nie importuje z `dynamika/` |
+| R — rdzeń dynamiki (ścieżka krytyczna; jedna karta naraz) | `backend/src/network_model/solvers/dynamika/**`, `enm/adapter_dynamiki.py`, `enm/dynamika_modele.py`, `enm/dynamika_z_katalogu.py`, `enm/scenariusze.py`, `application/contracts/resultset_dynamic_v2.py`, `backend/tests/walidacja_fizyczna/**` (manifest, harness mutacji: M38–M51 AB-1b.3b, M52–M66 AB-1b.2, M67–M74 zajęte, kolejne od M75), `backend/tests/network_model/dynamika/**`, `frontend/src/ui2/wyniki/dynamika/**` | inne tory nie edytują; AB-H1 nie importuje z `dynamika/` |
 | H — dziedzina częstotliwości | nowe `network_model/solvers/harmoniczne/**`, `network_model/core/stemplowanie_galezi.py`; `dziedziny/**`, most `solver_input/v126_contracts.py`, `frontend/src/ui2/wyniki/akademickie/**` | `v126_academic.py` (B-01) nietknięty do decyzji §12.2 (b) |
 | M — model ENM | `enm/domain_operations.py`, `enm/domain_operations_v2.py`, `enm/migrations/**`, `enm/validator.py`, `application/field_read_model.py`, adaptery SLD wg listy plików karty | `enm/models.py` — wyłącznie pola addytywne uzgodnione z torem R (wspólne `Load`, `Generator`) |
 | Z — zabezpieczenia | `application/protection_analysis/**`, `application/analyses/protection/**`, `protection/**`, trasy `api/protection_*`, `frontend/src/ui/protection-coordination/**`, `frontend/src/ui2/kreatory/przekaznik/**` | `protection_iec60255.py` (B-01) |
@@ -322,6 +322,9 @@ przepisane do wierszy rejestru planu A/B §7):
 | PRZENOSNOSC-NIEPEWNOSCI (poprawka 1) — harness mutacji | j.w. | M69, M70, M71, M72 — 4/4 zabite |
 | PRZENOSNOSC-NIEPEWNOSCI (poprawka 1) — `guardy_z_ci.py`, vitest, e2e | j.w. | guardy: komplet zielony (105 strażników, black/ruff, `type-check`, `lint`, 2 920 samotestów); vitest `ui2/wyniki/dynamika` 50 passed, `ui2/wyniki/wzorzec` + `ui2/spaces/wyniki` 355 passed; e2e ekranów dynamiki na realnym backendzie 145 passed, zatwierdzone zrzuty bez zmian |
 | PRZENOSNOSC-NIEPEWNOSCI (poprawka 1) — przenośność między jądrami OpenBLAS | j.w. | 12 wariantów {jądro: domyślne SkylakeX, Haswell, Sandybridge, Prescott, Zen} × {1, 2 wątki}: 0 różnic komparatora fikstur (RTOL 1e-4, pasmo zera 1e-8) przy 697–794 liściach różnych w ostatnich cyfrach, maksymalny względny rozrzut `u_f_est_hz` 9,6e-7 (zapas ×104 do RTOL), 0 różnic kodów jakości; fikstura w repo = wariant domyślny (0 różnic). Fikstury wobec `9dd9e589`: 5 różnic komparatora, wszystkie w próbce `t = 0` (`u_f_est_hz` trzech węzłów nN 6,48–6,50e-8 → 5,13–5,14e-9 Hz; `q_do_pu` transformatora stacji i `q_od_pu` odpływu nN −7,07e-8 / 7,25e-8 → −7,19442e-8 / 7,19442e-8 pu — oba końce tej samej gałęzi zgodne po korekcie algebry) oraz odcisk implementacji; 1 092 pozostałe liście — szum ostatnich cyfr w tolerancji |
+| PRZENOSNOSC-NIEPEWNOSCI (poprawka 2) — testy celowane (estymator, próg części pewnej, przenośność, obserwable, kąt prądu, manifest i testy harnessu mutacji) | `2be588ea` + poprawka 2 | 247 passed; pełny zestaw testów rdzenia dynamiki — na drzewie z commitem SKONCZONOSC-CHWILI-ZERO (wiersz niżej) |
+| PRZENOSNOSC-NIEPEWNOSCI (poprawka 2) — harness mutacji | j.w. | M69, M70, M71, M72, M73, M74 — 6/6 zabite; M21 (kontrolna) — nieważna |
+| PRZENOSNOSC-NIEPEWNOSCI (poprawka 2) — przenośność | j.w. | scena harnessu, 12 wariantów {jądro} × {1, 2 wątki}: 0 różnic komparatora, rozrzut `u_f_est_hz` 9,6e-7 bez zmiany wobec poprawki 1 (scena leży na dnie zaokrągleń), 0 różnic kodów; fikstury sceny wobec `2be588ea` — wyłącznie skróty tożsamości (`odcisk_implementacji`, `result_hash`). SO-1a w czterech jądrach (domyślne, Haswell, Prescott, Zen): na `2be588ea` rozrzut `u_f` ×113 (747 z 7 323 wartości ponad 1e-4 względnie; próbka 54 węzła 110 kV 250× pod propagacją granicy), po poprawce ≤ 27,6 % (312 z 7 323, wyłącznie próbki przy dnie; żadna estymata pod dnem); kody jakości identyczne w obu drzewach; czas CPU biegu SO-1a 41,5–44,9 s → 45,2–46,4 s |
 | CI GitHub (9 workflowów) | `82595588` (ostatni czubek wypchnięty przed tym pakietem) | 8/9 zielonych; pełny e2e — 9 czerwonych przypadków, naprawione w partii 5 (`7d3a0a41`, `3840e239`) |
 
 **H.2 Ograniczenia:**

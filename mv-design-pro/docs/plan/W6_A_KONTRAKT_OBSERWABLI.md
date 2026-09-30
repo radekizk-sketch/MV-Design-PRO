@@ -62,11 +62,37 @@ u_{\dot V} = \left| \dot V(y - J_y^{-1} r) - \dot V(y) \right|$$
 >
 > Po poprawce komparator fikstur nie widzi żadnej różnicy między 12 wariantami, a największy
 > względny rozrzut `u_f_est_hz` po wszystkich próbkach spadł z $5{,}7\cdot10^{-3}$ do
-> $7{,}2\cdot10^{-7}$. Testy: `tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py`
+> $9{,}6\cdot10^{-7}$ (pomiar po reinicjalizacji urządzeń; wcześniejszy zapis $7{,}2\cdot10^{-7}$
+> pochodził z drzewa bez niej). Testy: `tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py`
 > (próbka zero w iloczynie {sieć} × {punkt dokładny, zaburzony} × {próbka C, para L/P}; krok
 > różnicy na rzeczywistej ścieżce biegu; odporność `u_V̇` na jednostkę zaokrąglenia) oraz scena
 > w iloczynie {jądro domyślne, Prescott} × {1, 2 wątki}; mutacje M70 (próbka zero bez korekty),
 > M71 (różnica pochodnej bez wydłużenia kroku) i M72 (stan `t = 0` bez reinicjalizacji urządzeń).
+>
+> **KOREKTA 2026-09-30, cz. 2 (ta sama karta — estymata na progu części pewnej residuum).**
+> Rozgałęzienie „`J⁻¹r` przy residuum znaczącym, `J⁻¹ρ` na dnie” z korekty 2026-09-29 było
+> **nieciągłe na progu** i tuż nad nim schodziło **głęboko pod dno** zaokrągleń. Przesunięcie
+> napięcia węzła próbki leżącej na dnie o 1–7 kolejnych liczb zmiennoprzecinkowych wyprowadza
+> jedną składową residuum ponad granicę, reszta residuum pozostaje szumem, a `|J⁻¹r|` spada
+> do 1,4–7,4 % propagacji granicy. W SO-1a (próbka 372 drzewa bez reinicjalizacji urządzeń)
+> `u_f` wyniosło $4{,}6\cdot10^{-15}$ Hz wobec $1{,}1\cdot10^{-10}$ Hz propagacji granicy; na
+> drzewie `2be588ea` w czterech jądrach OpenBLAS próbka 350 węzła przyłącza dała
+> $1{,}59\cdot10^{-11}$ Hz (jądro domyślne, gałąź $J^{-1}r$) i $1{,}80\cdot10^{-9}$ Hz (pozostałe
+> jądra, dno) — to, po której stronie progu wypadła próbka, zależało od jądra BLAS. Po
+> poprawce rozrzut `u_f` SO-1a między jądrami jest ograniczony do 27,6 % (próbki przy dnie),
+> kody jakości są identyczne, a żadna estymata nie schodzi poniżej propagacji granicy. Estymata rozkłada teraz residuum na część **pewnie obecną**
+> $\psi(r) = \operatorname{sign}(r)\max(|r| - \rho, 0)$ (`siec.czesc_pewna_residuum` — jedno
+> źródło także dla predykatu korekty `t = 0`) i resztę mieszczącą się w $\rho$:
+> $u_V = |J_y^{-1}\psi(r)| + |J_y^{-1}\rho|$, a $u_{\dot V}$ to suma różnic skończonych
+> wzdłuż obu składników, każda z krokiem co najmniej $\sqrt u$ względnie. Suma jest ciągła
+> w $r$ ($\psi$ jest 1-lipschitzowska), nigdy nie schodzi poniżej $|J_y^{-1}\rho|$, na dnie
+> ($\psi = 0$) jest dokładnie propagacją granicy, a daleko nad dnem — krokiem Newtona
+> $|J_y^{-1}r|$ z dokładnością do $\rho$. Testy:
+> `tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py` (próg części pewnej
+> wyznaczony spacerem po liczbach zmiennoprzecinkowych z próbek rzeczywistego biegu; estymata
+> przy residuum znaczącym) i `test_przenosnosc_estymaty_niepewnosci.py` (krok każdej z różnic
+> w obu reżimach residuum); mutacje M73 (estymata napięcia bez propagacji dna nad progiem)
+> i M74 (niepewność pochodnej bez różnicy wzdłuż dna nad progiem).
 
 $$\boxed{\;u_{\dot\theta} \;\le\; \frac{u_{\dot V}}{|V| - u_V}
 \;+\; \frac{|\dot V|\,u_V}{|V|\,(|V| - u_V)}\;}, \qquad u_V < |V|$$
@@ -248,11 +274,19 @@ kontraktu obserwabli**, nie adnotacją interfejsu.
 
 Obie niepewności są dziś **mierzone**, każda z wielkości, które solver i tak ma:
 
-$$u_V = \left| J_y^{-1} r \right| \text{ na węźle}, \qquad
-u_{\dot V} = \left| \dot V(y - J_y^{-1} r) - \dot V(y) \right|$$
+$$u_V = \left| J_y^{-1} \psi(r) \right| + \left| J_y^{-1} \rho \right| \text{ na węźle},
+\qquad
+u_{\dot V} = \sum_{d \,\in\, \{J_y^{-1}\psi(r),\; J_y^{-1}\rho\}}
+\frac{\left| \dot V(y - s_d\, d) - \dot V(y) \right|}{s_d}$$
 
-Rozkład LU jest ten sam, którym liczona jest pochodna, więc `u_V` kosztuje jedno dodatkowe
-podstawienie; `u_V̇` wymaga drugiej faktoryzacji (pomiar narzutu: §15 raportu domknięcia).
+gdzie $\psi(r) = \operatorname{sign}(r)\max(|r| - \rho, 0)$ to część residuum pewnie obecna
+ponad granicą błędu jego obliczenia $\rho$ (`siec.granica_zaokraglen_residuum`), a
+$s_d \ge 1$ wydłuża krok do $\sqrt u$ względnie (korekty 2026-09-29 i 2026-09-30 na początku
+dokumentu; daleko nad dnem zaokrągleń $u_V$ to wciąż krok Newtona $|J_y^{-1} r|$).
+
+Rozkład LU jest ten sam, którym liczona jest pochodna, więc `u_V` kosztuje dwa dodatkowe
+podstawienia; `u_V̇` wymaga jednej faktoryzacji na niezerowy składnik — jednej na dnie
+zaokrągleń, dwóch przy residuum z częścią pewną (pomiar narzutu: §15 raportu domknięcia).
 Propagacja jest **wyprowadzona**, nie dobrana:
 
 $$u_{\dot\theta} \le \frac{u_{\dot V}}{|V|} + 3\,\frac{|\dot V|\,u_V}{|V|^2},

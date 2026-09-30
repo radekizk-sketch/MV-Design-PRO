@@ -11,20 +11,25 @@ maszynie o 4 rdzeniach.
 
 REGULA. `siec.granica_zaokraglen_residuum` daje granice bledu, z jakim residuum jest w ogole
 obliczalne: `rho_k = gamma_m (sum_j |Y_kj||V_j| + sum_t |I_t|)` (Higham 2002, lemat 3.1).
-Residuum mieszczace sie w tej granicy w KAZDEJ skladowej nie niesie informacji o bledzie —
-estymata jest wtedy `J^-1 rho` (deterministyczna). Residuum znaczace idzie droga `J^-1 r`
-bez zmian (przypina to `test_obserwable.py::test_a01_punkt_skorygowany_jest_krokiem_w_strone_
-rozwiazania`, a tu dodatkowo iloczyn z sieciami ponizej).
+Residuum rozklada sie na czesc PEWNIE obecna `psi(r) = sign(r) max(|r| - rho, 0)` i reszte
+mieszczaca sie w `rho`; estymata to `|J^-1 psi(r)| + |J^-1 rho|` (korekta 2026-09-30, karta
+PRZENOSNOSC-NIEPEWNOSCI). Na dnie zaokraglen (`psi = 0`) zostaje sama propagacja granicy
+(deterministyczna); daleko nad dnem estymata jest krokiem Newtona `|J^-1 r|` z dokladnoscia
+do `rho`. Dawna regula (`J^-1 r` przy choc jednej skladowej ponad granica) byla nieciagla na
+progu i tuz nad nim spadala do 1,4-7,4 % propagacji granicy (pomiar spacerem po ULP ponizej).
 
-ILOCZYN CECH: {residuum: szum na granicy zaokraglen, znaczace} x {siec: SMIB z odbiorem
-i zwarciem, siec z galezia slepa za przekladnia zespolona, scena harnessu} x {jadro OpenBLAS:
-domyslne, Prescott na x86-64} x {liczba watkow BLAS: 1, 2}. Argumenty estymatora pochodza z RZECZYWISTEJ sciezki biegu (podsluch funkcji
-w czasie biegu), nie z recznie zlozonego punktu.
+ILOCZYN CECH: {residuum: szum na granicy zaokraglen, tuz nad progiem czesci pewnej,
+znaczace} x {siec: SMIB z odbiorem i zwarciem, siec z galezia slepa za przekladnia zespolona,
+scena harnessu} x {jadro OpenBLAS: domyslne, Prescott na x86-64} x {liczba watkow BLAS: 1, 2}.
+Argumenty estymatora pochodza z RZECZYWISTEJ sciezki biegu (podsluch funkcji w czasie biegu),
+nie z recznie zlozonego punktu; punkty tuz nad progiem powstaja z probek na dnie przez
+przesuniecie napiecia wezla o kolejne liczby zmiennoprzecinkowe.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import os
 import platform
 import subprocess
@@ -52,7 +57,7 @@ from network_model.solvers.dynamika.siec import (
 )
 from scipy.sparse import linalg as sparse_linalg
 
-from tests.ci.test_fixtury_harnessu import roznice_z_tolerancja
+from tests.ci.test_fixtury_harnessu import RTOL_FIXTUR, roznice_z_tolerancja
 from tests.network_model.dynamika.uklady import (
     X_ZWARCIA_PLYTKIEGO_OHM,
     nastawy,
@@ -209,12 +214,31 @@ def test_estymata_przy_residuum_szumu_jest_propagacja_granicy(
     assert szum > 0, "bieg nie mial ani jednej probki z residuum na granicy zaokraglen"
 
 
+def _czesc_pewna(reszta: np.ndarray, granica: np.ndarray) -> np.ndarray:
+    """`psi(r) = sign(r) max(|r| - rho, 0)` wprost ze wzoru, bez kodu produkcji."""
+    granica_rzeczywista = np.concatenate((granica, granica))
+    return np.sign(reszta) * np.maximum(np.abs(reszta) - granica_rzeczywista, 0.0)
+
+
 @pytest.mark.parametrize("siec", sorted(SIECI))
-def test_estymata_przy_residuum_znaczacym_jest_krokiem_newtona(
+def test_estymata_przy_residuum_znaczacym_to_czesc_pewna_plus_dno(
     siec: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Residuum ponad granica (punkt przesuniety o 1e-6 pu): `u_V = |J^-1 r|` bez zmian."""
-    for w in _wywolania(SIECI[siec](), monkeypatch)[:3]:
+    """Residuum ponad granica (punkt przesuniety o 1e-6 pu): `u_V = |J^-1 psi(r)| + |J^-1 rho|`,
+    a daleko nad dnem to wciaz krok Newtona `|J^-1 r|` (intencja dawnego testu tej sciezki).
+
+    „Daleko nad dnem" jest wlasnoscia WEZLA, nie punktu: w sieci z galezia slepa skladowa
+    kroku Newtona w jednym wezle ma 1,6e-22 pu przy 1e-6 pu w pozostalych — ponizej
+    rozdzielczosci samego podstawienia LU, ktorego blad jest rzedu `u` razy NAJWIEKSZA
+    skladowa rozwiazania. Odleglosc estymaty od kroku Newtona jest wiec ograniczona
+    propagacja granicy przez modul odwrotnosci plus blad podstawien: `r - psi(r)` i `rho`
+    maja skladowe nie wieksze od `rho`, wiec `| u_V - |J^-1 r| | <= 2 (|J^-1| rho)` na wezle
+    (nierownosc trojkata; `|J^-1|` — modul elementow odwrotnosci gestej, sieci testowe maja
+    po kilka wezlow), z zapasem 1e-9 najwiekszej skladowej kroku na zaokraglenia podstawien.
+    """
+    wywolania = _wywolania(SIECI[siec](), monkeypatch)[:3]
+    monkeypatch.undo()
+    for w in wywolania:
         przesuniete = w.napiecia.copy()
         wolne = [k for k in range(w.model.liczba_wezlow) if k not in set(w.model.pozycje_zerowe)]
         przesuniete[wolne] += 1.0e-6
@@ -222,17 +246,140 @@ def test_estymata_przy_residuum_znaczacym_jest_krokiem_newtona(
         granica = granica_zaokraglen_residuum(
             w.model, w.odbiory, w.urzadzenia, w.stany, przesuniete
         )
-        assert np.any(np.abs(reszta) > np.concatenate((granica, granica))), "residuum nieznaczace"
+        czesc_pewna = _czesc_pewna(reszta, granica)
+        assert np.any(czesc_pewna != 0.0), "residuum nieznaczace"
         pomiar = obserwable.pochodna_napiec_z_niepewnoscia(
             w.model, w.odbiory, w.urzadzenia, w.stany, przesuniete
         )
         przesuniety = _Wywolanie(w.model, w.odbiory, w.urzadzenia, w.stany, przesuniete, pomiar)
+        dno = _estymata_z_wektora(przesuniety, np.concatenate((granica, granica)))
         np.testing.assert_allclose(
             pomiar.niepewnosc_napiecia_pu,
-            _estymata_z_wektora(przesuniety, reszta),
+            _estymata_z_wektora(przesuniety, czesc_pewna) + dno,
             rtol=1e-12,
             atol=0.0,
         )
+        liczba = w.model.liczba_wezlow
+        odwrotnosc = np.abs(
+            np.linalg.inv(
+                jakobian_algebry(w.model, w.odbiory, w.urzadzenia, w.stany, przesuniete).toarray()
+            )
+        )
+        propagacja = odwrotnosc @ np.concatenate((granica, granica))
+        granica_rygorystyczna = 2.0 * np.hypot(propagacja[:liczba], propagacja[liczba:])
+        krok_newtona = _estymata_z_wektora(przesuniety, reszta)
+        odstep = np.abs(pomiar.niepewnosc_napiecia_pu - krok_newtona)
+        assert np.all(
+            odstep <= granica_rygorystyczna + 1.0e-9 * float(np.max(krok_newtona))
+        ), "estymata odbiega od kroku Newtona o wiecej niz propagacja granicy zaokraglen"
+        assert np.any(
+            krok_newtona > 1.0e6 * granica_rygorystyczna
+        ), "zaden wezel nie jest daleko nad dnem — przypadek nie sprawdza drogi Newtona"
+        assert np.all(
+            pomiar.niepewnosc_napiecia_pu >= dno * (1.0 - 1.0e-12)
+        ), "estymata ponizej propagacji dna"
+
+
+#: Najwiecej kolejnych liczb zmiennoprzecinkowych, o ktore przesuwamy czesc rzeczywista
+#: napiecia wezla, szukajac progu czesci pewnej. Pomiar 2026-09-30: prog wypada po 1-7
+#: przesunieciach (residuum rosnie o |Y_kk| ulp(V_k) na krok, a granica to gamma_m razy suma
+#: modulow wiersza, czyli kilka ulp) — zapas trzech rzedow wielkosci.
+NAJWIECEJ_KROKOW_ULP = 4096
+
+
+def _prog_czesci_pewnej(w: _Wywolanie, wezel: int) -> tuple[np.ndarray, np.ndarray] | None:
+    """Para punktow rozniacych sie JEDNA liczba zmiennoprzecinkowa czesci rzeczywistej napiecia
+    wezla: ostatni na dnie zaokraglen (`psi = 0`) i pierwszy z czescia pewna (`psi != 0`)."""
+    ponizej = w.napiecia.copy()
+    for _ in range(NAJWIECEJ_KROKOW_ULP):
+        powyzej = ponizej.copy()
+        powyzej[wezel] = complex(np.nextafter(ponizej[wezel].real, np.inf), ponizej[wezel].imag)
+        reszta = residuum_algebry(w.model, w.odbiory, w.urzadzenia, w.stany, powyzej)
+        granica = granica_zaokraglen_residuum(w.model, w.odbiory, w.urzadzenia, w.stany, powyzej)
+        if np.any(_czesc_pewna(reszta, granica) != 0.0):
+            return ponizej, powyzej
+        ponizej = powyzej
+    return None
+
+
+@pytest.mark.parametrize("siec", sorted(SIECI))
+def test_estymata_tuz_nad_progiem_czesci_pewnej_nie_spada_pod_dno(
+    siec: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Na progu czesci pewnej estymata jest CIAGLA i nie schodzi ponizej propagacji dna.
+
+    DEFEKT (pomiar 2026-09-30). Dawna regula brala `|J^-1 r|`, gdy choc jedna skladowa `r`
+    wyszla ponad granice. Tuz nad progiem reszta residuum jest szumem, a `|J^-1 r|` spadalo
+    do 1,4-7,4 % propagacji granicy w punkcie rozniacym sie JEDNA liczba zmiennoprzecinkowa
+    od punktu na dnie; w SO-1a (probka 372) — do 4,6e-15 Hz wobec 1,1e-10 Hz. Ktora strona
+    progu wypadla w danej probce, zalezalo od jadra BLAS.
+
+    Punkty sa pochodna RZECZYWISTEJ sciezki: kazda probka biegu na dnie x kazdy wezel zywy,
+    przesuniety o kolejne liczby zmiennoprzecinkowe az do progu. Sprawdzamy: `u_V` nad
+    progiem >= propagacji dna, skok `u_V` przez prog <= `|J^-1 psi|` (ciaglosc wzgledem czesci
+    pewnej), `u_Vdot` nad progiem nie mniejsze niz ponizej (w granicy szumu roznicy
+    skonczonej, `RTOL_FIXTUR`). Asercje niepustosci: przypadki istnieja, dawna regula spadalaby
+    w nich pod dno, a `u_Vdot` jest mierzone na probkach, w ktorych jest dodatnie.
+    """
+    wywolania = _wywolania(SIECI[siec](), monkeypatch)
+    # Podsluch zdjety PRZED wlasnymi wywolaniami estymatora — inaczej dopisywalby je do
+    # iterowanej listy i petla nigdy by sie nie skonczyla.
+    monkeypatch.undo()
+    progi = 0
+    z_pochodna = 0
+    najnizsza_dawna = math.inf
+    for w in wywolania:
+        reszta = residuum_algebry(w.model, w.odbiory, w.urzadzenia, w.stany, w.napiecia)
+        granica = granica_zaokraglen_residuum(w.model, w.odbiory, w.urzadzenia, w.stany, w.napiecia)
+        if np.any(_czesc_pewna(reszta, granica) != 0.0):
+            continue
+        zywe = np.abs(w.napiecia) > 0.0
+        zywe[list(w.model.pozycje_zerowe)] = False
+        for wezel in np.flatnonzero(zywe & (w.napiecia.real != 0.0)):
+            para = _prog_czesci_pewnej(w, int(wezel))
+            assert (
+                para is not None
+            ), f"wezel {wezel}: brak progu czesci pewnej w {NAJWIECEJ_KROKOW_ULP} krokach"
+            ponizej, powyzej = para
+            przed = obserwable.pochodna_napiec_z_niepewnoscia(
+                w.model, w.odbiory, w.urzadzenia, w.stany, ponizej
+            )
+            po = obserwable.pochodna_napiec_z_niepewnoscia(
+                w.model, w.odbiory, w.urzadzenia, w.stany, powyzej
+            )
+            reszta_po = residuum_algebry(w.model, w.odbiory, w.urzadzenia, w.stany, powyzej)
+            granica_po = granica_zaokraglen_residuum(
+                w.model, w.odbiory, w.urzadzenia, w.stany, powyzej
+            )
+            punkt_po = _Wywolanie(w.model, w.odbiory, w.urzadzenia, w.stany, powyzej, po)
+            dno_po = _estymata_z_wektora(punkt_po, np.concatenate((granica_po, granica_po)))
+            skladnik_pewny = _estymata_z_wektora(punkt_po, _czesc_pewna(reszta_po, granica_po))
+            dawna = _estymata_z_wektora(punkt_po, reszta_po)
+
+            assert np.all(
+                po.niepewnosc_napiecia_pu[zywe] >= dno_po[zywe] * (1.0 - 1.0e-12)
+            ), "estymata tuz nad progiem ponizej propagacji dna zaokraglen"
+            skok = np.abs(po.niepewnosc_napiecia_pu[zywe] - przed.niepewnosc_napiecia_pu[zywe])
+            assert np.all(
+                skok <= skladnik_pewny[zywe] + 1.0e-9 * przed.niepewnosc_napiecia_pu[zywe]
+            ), "estymata nieciagla na progu czesci pewnej"
+            najnizsza_dawna = min(najnizsza_dawna, float(np.min(dawna[zywe] / dno_po[zywe])))
+
+            baza = przed.niepewnosc_pochodnej_pu_s[zywe]
+            nad = po.niepewnosc_pochodnej_pu_s[zywe]
+            mierzalne = np.isfinite(baza) & np.isfinite(nad) & (baza > 0.0)
+            if np.any(mierzalne):
+                assert np.all(
+                    nad[mierzalne] >= baza[mierzalne] * (1.0 - RTOL_FIXTUR)
+                ), "niepewnosc pochodnej tuz nad progiem ponizej niepewnosci na dnie"
+                z_pochodna += 1
+            progi += 1
+    assert progi > 0, "bieg nie mial probek na dnie zaokraglen — test niczego nie sprawdzil"
+    assert z_pochodna > 0, "zaden prog nie mial dodatniej niepewnosci pochodnej"
+    assert najnizsza_dawna < 0.5, (
+        f"dawna regula nie spadalaby tu pod dno (min {najnizsza_dawna:.3e}) — przypadki nie "
+        "rozrozniaja reguly"
+    )
 
 
 # ---------------------------------------------------------------------------

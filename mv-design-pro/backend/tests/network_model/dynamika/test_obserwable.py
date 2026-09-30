@@ -1228,20 +1228,34 @@ def test_a01_punkt_skorygowany_jest_krokiem_w_strone_rozwiazania() -> None:
     pomiar = pochodna_napiec_z_niepewnoscia(model, odbiory, urzadzenia, stany, rozwiazanie.napiecia)
     # Odtworzenie punktu skorygowanego z opublikowanej niepewnosci nie jest mozliwe (modul
     # gubi kierunek), wiec liczymy korekte tak, jak robi to produkcja, i sprawdzamy OBIE
-    # strony: krok „w dol" ma obnizyc residuum, krok „w gore" — podniesc.
-    from network_model.solvers.dynamika.siec import jakobian_algebry
+    # strony: krok „w dol" ma obnizyc residuum, krok „w gore" — podniesc. Korekta to krok
+    # Newtona z CZESCI PEWNEJ residuum `psi(r) = sign(r) max(|r| - rho, 0)` (karta
+    # PRZENOSNOSC-NIEPEWNOSCI); przy tolerancji 1e-4 residuum jest o jedenascie rzedow nad
+    # granica zaokraglen, wiec `psi` to `r` z dokladnoscia do `rho`, a estymata to modul
+    # korekty plus propagacja granicy `|J^-1 rho|`.
+    from network_model.solvers.dynamika.siec import (
+        granica_zaokraglen_residuum,
+        jakobian_algebry,
+    )
     from scipy.sparse import linalg as sparse_linalg
 
     liczba = model.liczba_wezlow
     reszta = residuum_algebry(model, odbiory, urzadzenia, stany, rozwiazanie.napiecia)
+    granica = np.concatenate(
+        (granica_zaokraglen_residuum(model, odbiory, urzadzenia, stany, rozwiazanie.napiecia),) * 2
+    )
+    czesc_pewna = np.sign(reszta) * np.maximum(np.abs(reszta) - granica, 0.0)
     rozklad = sparse_linalg.splu(
         jakobian_algebry(model, odbiory, urzadzenia, stany, rozwiazanie.napiecia)
     )
-    krok = rozklad.solve(reszta)
+    krok = rozklad.solve(czesc_pewna)
     korekta = krok[:liczba] + 1j * krok[liczba:]
+    dno = rozklad.solve(granica)
     assert np.allclose(
-        np.abs(korekta), pomiar.niepewnosc_napiecia_pu, rtol=1e-12
-    ), "produkcja liczy niepewnosc napiecia z innej wielkosci niz krok Newtona"
+        np.abs(korekta) + np.abs(dno[:liczba] + 1j * dno[liczba:]),
+        pomiar.niepewnosc_napiecia_pu,
+        rtol=1e-12,
+    ), "produkcja liczy niepewnosc napiecia z innej wielkosci niz krok Newtona czesci pewnej"
 
     norma = float(np.linalg.norm(reszta))
     w_dol = float(

@@ -87,16 +87,18 @@ MANIFEST: tuple[Twierdzenie, ...] = (
             "tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py",
             "tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py",
         ),
-        mutacje=("M16", "M17", "M69", "M71"),
+        mutacje=("M16", "M17", "M69", "M71", "M73", "M74"),
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
             "fazor skladowej zgodnej w stanie quasi-ustalonym RMS; przy |V| <= u_V "
             "wielkosc jest NIEDOSTEPNA, a nie przyblizona; poza chwilami zdarzen — w probkach "
             "L i P chwili zdarzenia czestotliwosc jest NIEDOSTEPNA (kod 3, D-18); estymata "
-            "u_V przy residuum miesczacym sie w granicy bledu zaokraglen to |J^-1 rho| "
-            "(siec.granica_zaokraglen_residuum), nie realizacja szumu |J^-1 r|; u_Vdot z "
-            "roznicy skonczonej o kroku wzglednym co najmniej sqrt(u) "
-            "(obserwable.skala_kroku_pochodnej)"
+            "u_V = |J^-1 psi(r)| + |J^-1 rho| z czesci residuum pewnie obecnej ponad granica "
+            "bledu zaokraglen psi(r) = sign(r) max(|r| - rho, 0) "
+            "(siec.granica_zaokraglen_residuum, siec.czesc_pewna_residuum) — ciagla na progu "
+            "i nigdy ponizej propagacji granicy |J^-1 rho|, nie realizacja szumu |J^-1 r|; "
+            "u_Vdot jako suma roznic skonczonych wzdluz obu skladnikow, kazda o kroku "
+            "wzglednym co najmniej sqrt(u) (obserwable.skala_kroku_pochodnej)"
         ),
         poziom="L5",
         uwagi="Zmierzony blad wobec pochodnej analitycznej: 7,105427357601002e-15 Hz = ulp(50 Hz).",
@@ -230,7 +232,7 @@ MANIFEST: tuple[Twierdzenie, ...] = (
             "Determinizm biegu miedzy procesami (PYTHONHASHSEED), miedzy liczbami watkow "
             "BLAS i miedzy jadrami OpenBLAS (katy pradow i kody jakosci czestotliwosci z "
             "kryteriow rozdzielczosci; estymata niepewnosci czestotliwosci w punkcie algebry "
-            "rdzenia i z roznicy pochodnej ponad szumem)"
+            "rdzenia, ciagla na progu czesci pewnej residuum i z roznic pochodnej ponad szumem)"
         ),
         rownanie="brak — wlasnosc implementacji, nie fizyki",
         wyrocznia=(
@@ -249,7 +251,7 @@ MANIFEST: tuple[Twierdzenie, ...] = (
             "::test_scena_dynamiki_nie_zalezy_od_jadra_i_liczby_watkow_blas",
             "tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py",
         ),
-        mutacje=("M67", "M69", "M70", "M71", "M72"),
+        mutacje=("M67", "M69", "M70", "M71", "M72", "M73", "M74"),
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
             "ta sama wersja numpy/scipy/OpenBLAS; liczba watkow BLAS i jadro OpenBLAS "
@@ -262,9 +264,10 @@ MANIFEST: tuple[Twierdzenie, ...] = (
         uwagi=(
             "L4: os PYTHONHASHSEED nadal bez mutacji falsyfikujacej (iniekcja niedeterminizmu "
             "wymagalaby zmiany typu kolekcji); os liczby watkow i jadra BLAS ma mutacje M67 "
-            "(kat pradu), M69 (estymata niepewnosci czestotliwosci), M70 (probka t = 0 w punkcie "
-            "rozplywu), M71 (roznica pochodnej w szumie) i M72 (stan t = 0 bez reinicjalizacji "
-            "urzadzen w punkcie skorygowanym)."
+            "(kat pradu), M69 (estymata niepewnosci czestotliwosci z residuum-szumu), M70 "
+            "(probka t = 0 w punkcie rozplywu), M71 (roznica pochodnej w szumie), M72 (stan "
+            "t = 0 bez reinicjalizacji urzadzen w punkcie skorygowanym), M73 i M74 (estymata "
+            "napiecia i pochodnej bez propagacji dna, gdy residuum ma czesc pewna)."
         ),
     ),
 )

@@ -421,14 +421,13 @@ MUTACJE: tuple[Mutacja, ...] = (
     ),
     Mutacja(
         "M69",
-        "Estymata bledu rozwiazania z residuum-szumu: przy residuum miesczacym sie w granicy "
-        "wlasnego bledu zaokraglen `J^-1 r` zamiast `J^-1 rho` — estymata niepewnosci "
-        "czestotliwosci i jej kod jakosci zaleza od kolejnosci sumowania (liczby watkow BLAS).",
+        "Estymata bledu rozwiazania z residuum-szumu: pelne obliczone residuum `r` zamiast jego "
+        "czesci pewnej `psi(r)` — przy residuum mieszczacym sie w granicy wlasnego bledu "
+        "zaokraglen estymata niepewnosci czestotliwosci i jej kod jakosci zaleza od kolejnosci "
+        "sumowania (liczby watkow BLAS).",
         "network_model/solvers/dynamika/obserwable.py",
-        "            residuum\n"
-        "            if residuum_ponad_granica_zaokraglen(residuum, granica)\n"
-        "            else np.concatenate((granica, granica))\n",
-        "            residuum\n",
+        "    czesc_pewna = czesc_pewna_residuum(residuum, granica)\n",
+        "    czesc_pewna = residuum\n",
         "test estymaty przy residuum na granicy zaokraglen (DETERMINIZM-KATA-FAZORA)",
         bramki=(),
         testy=(
@@ -484,6 +483,42 @@ MUTACJE: tuple[Mutacja, ...] = (
         testy=(
             "tests/walidacja_fizyczna/test_przenosnosc_estymaty_niepewnosci.py"
             "::test_probka_zero_lezy_na_algebrze_rdzenia",
+        ),
+    ),
+    Mutacja(
+        "M73",
+        "Estymata bledu napiecia bez propagacji dna, gdy residuum ma czesc pewna (dawne "
+        "rozgalezienie): tuz nad progiem `u_V = |J^-1 psi(r)|` spada do ulamka procenta "
+        "propagacji granicy, a strona progu zalezy od jadra BLAS.",
+        "network_model/solvers/dynamika/obserwable.py",
+        "    niepewnosc_napiecia = np.abs(blad_czesci_pewnej) + np.abs(blad_dna)\n",
+        "    niepewnosc_napiecia = (\n"
+        "        np.abs(blad_czesci_pewnej)\n"
+        "        if bool(np.any(czesc_pewna != 0.0))\n"
+        "        else np.abs(blad_dna)\n"
+        "    )\n",
+        "test estymaty tuz nad progiem czesci pewnej (PRZENOSNOSC-NIEPEWNOSCI)",
+        bramki=(),
+        testy=(
+            "tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py"
+            "::test_estymata_tuz_nad_progiem_czesci_pewnej_nie_spada_pod_dno",
+        ),
+    ),
+    Mutacja(
+        "M74",
+        "Niepewnosc pochodnej napiec z samej roznicy wzdluz czesci pewnej, gdy ta jest "
+        "niezerowa: tuz nad progiem `u_Vdot` traci skladnik dna i spada ponizej wartosci "
+        "sprzed progu.",
+        "network_model/solvers/dynamika/obserwable.py",
+        "    for blad_napiecia in (blad_czesci_pewnej, blad_dna):\n",
+        "    for blad_napiecia in (\n"
+        "        (blad_czesci_pewnej,) if bool(np.any(czesc_pewna != 0.0)) else (blad_dna,)\n"
+        "    ):\n",
+        "test estymaty tuz nad progiem czesci pewnej (PRZENOSNOSC-NIEPEWNOSCI)",
+        bramki=(),
+        testy=(
+            "tests/walidacja_fizyczna/test_niepewnosc_na_granicy_zaokraglen.py"
+            "::test_estymata_tuz_nad_progiem_czesci_pewnej_nie_spada_pod_dno",
         ),
     ),
     Mutacja(

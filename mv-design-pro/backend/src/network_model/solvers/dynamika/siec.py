@@ -644,21 +644,37 @@ def granica_zaokraglen_residuum(
     return granica
 
 
+def czesc_pewna_residuum(residuum: np.ndarray, granica: np.ndarray) -> np.ndarray:
+    """Czesc residuum `[Re; Im]` PEWNIE obecna ponad bledem jego obliczenia (JEDNO zrodlo).
+
+    Obliczone `r_k` rozni sie od prawdziwego o co najwyzej `rho_k`
+    (`granica_zaokraglen_residuum`, ta sama granica dla czesci rzeczywistej i urojonej
+    wezla), wiec prawdziwe residuum ma ten sam znak i modul co najmniej `|r_k| - rho_k`,
+    gdy `|r_k| > rho_k`, a przy `|r_k| <= rho_k` moze byc zerem:
+
+        psi(r)_k = sign(r_k) max(|r_k| - rho_k, 0) .
+
+    `psi` jest CIAGLA w `r` (miekkie progowanie) i 1-lipschitzowska: realizacja szumu
+    zaokraglen zmienia ja co najwyzej o sam szum, a skladowe na dnie nie wnosza nic.
+    Z tej funkcji wynika zarowno estymata bledu rozwiazania
+    (`obserwable.pochodna_napiec_z_niepewnoscia`), jak i predykat korekty algebry punktu
+    pracy (`residuum_ponad_granica_zaokraglen`) — regula predykatow parami.
+    """
+    rozszerzona = np.concatenate((granica, granica))
+    return np.sign(residuum) * np.maximum(np.abs(residuum) - rozszerzona, 0.0)
+
+
 def residuum_ponad_granica_zaokraglen(residuum: np.ndarray, granica: np.ndarray) -> bool:
-    """Czy residuum `[Re; Im]` niesie informacje o bledzie rozwiazania (JEDEN predykat).
+    """Czy residuum `[Re; Im]` niesie informacje o bledzie rozwiazania — `psi(r) != 0`.
 
     Prawda, gdy CHOC JEDNA skladowa wychodzi poza granice bledu, z jakim residuum jest
-    obliczalne (`granica_zaokraglen_residuum`, ta sama granica dla czesci rzeczywistej
-    i urojonej wezla). Falsz znaczy: punkt lezy na dnie zaokraglen, a obliczone `r` jest
-    realizacja szumu formowania `Y V - I`.
-
-    Rozstrzyga DWIE rzeczy i dlatego zyje w jednym miejscu (regula predykatow parami):
-    droge estymaty bledu w `obserwable.pochodna_napiec_z_niepewnoscia` (`J^-1 r` albo
-    `J^-1 rho`) i korekte algebry punktu pracy w chwili 0
-    (`silnik.SilnikDynamiki._korekta_algebry_t0`) — punkt, ktory estymator uznalby za
-    niosacy informacje o bledzie, jest dokladnie tym, ktory inicjalizacja koryguje.
+    obliczalne. Falsz znaczy: punkt lezy na dnie zaokraglen, a obliczone `r` jest
+    realizacja szumu formowania `Y V - I`. Rozstrzyga korekte algebry punktu pracy w chwili
+    0 (`silnik.SilnikDynamiki._korekta_algebry_t0`) i jest wyprowadzony z TEJ SAMEJ funkcji
+    `czesc_pewna_residuum`, z ktorej estymator liczy blad rozwiazania — punkt, ktorego
+    residuum ma czesc pewna, jest dokladnie tym, ktory inicjalizacja koryguje.
     """
-    return bool(np.any(np.abs(residuum) > np.concatenate((granica, granica))))
+    return bool(np.any(czesc_pewna_residuum(residuum, granica) != 0.0))
 
 
 def jakobian_algebry(
@@ -1025,6 +1041,7 @@ __all__ = [
     "ModelSieci",
     "WynikAlgebry",
     "ZwarcieWGalezi",
+    "czesc_pewna_residuum",
     "czwornik_galezi",
     "galezie_laczace",
     "granica_zaokraglen_residuum",
