@@ -15,7 +15,8 @@
  * TU JEST DOWÓD KOŃCA TEGO DŁUGU, i to na ŻYWYM łańcuchu: realne operacje
  * domenowe → realny backend → realny adapter → realna kanwa v3 → DOM. Sieć
  * budowana JAWNIE BEZ `'TR'` (żadnego obejścia — ten sam kształt danych, który
- * produkują pozostałe specyfikacje).
+ * produkują pozostałe specyfikacje). Od karty POLA-W-TORZE operacja domyka pole TR, więc
+ * ten kształt jest DANYMI ZASTANYMI: spec zapisuje je produkcyjnym autosave (`PUT …/enm`).
  *
  * Bramki:
  *  (a) kanwa niesie symbol transformatora stacji, kluczowany REALNYM refem
@@ -34,6 +35,7 @@
  */
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -142,10 +144,13 @@ async function createProjectAndCase(
  * Zwraca ref transformatora Z MIGAWKI — asercje kanwy sprawdzają, że rysunek
  * kluczuje symbol TYM refem, a nie identyfikatorem wymyślonym przez renderer.
  */
+type Seed = { projectId: string; projectName: string; caseId: string; caseName: string };
+
 async function buildStationNetworkBezPolaTr(
   request: APIRequestContext,
-  caseId: string,
-): Promise<{ transformerRef: string }> {
+  seed: Seed,
+): Promise<{ transformerRef: string; seed: Seed }> {
+  const caseId = seed.caseId;
   await executeDomainOp(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
@@ -166,24 +171,87 @@ async function buildStationNetworkBezPolaTr(
   const segmentRefs = trunk.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
   expect(segmentRefs.length).toBeGreaterThan(0);
 
-  const op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+  await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
     // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
     insert_at: { value: 0.5 },
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
-    // KOMPLETNOSC-POLA-TR (klasa B — CELOWY model niekompletny): TU pola roli
-    // 'TR' NIE MA i mieć nie może. Ten spec jest jedynym miejscem, w ktorym
-    // sprawdzamy uczciwy stan niekompletny: rysunek pokazuje transformator z
-    // markerem braku pola, a bramka gotowosci zglasza ostrzezenie
-    // `transformer.bay_missing`. Dopisanie 'TR' skasowaloby dowod tego zachowania.
+    // KOMPLETNOSC-POLA-TR (klasa B — CELOWY model niekompletny). Od karty POLA-W-TORZE
+    // operacja DOMYKA brakujące pole TR wspólnym aparatem pól (transformator leży na
+    // zacisku pola) — sieci bez pola TR produkt już nie buduje. Stan niekompletny
+    // istnieje wyłącznie jako DANE ZASTANE sprzed tej karty; spec odtwarza je niżej.
     sn_fields: ['IN', 'OUT', 'FEEDER'],
     transformer: {
       create: true,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
     },
   });
+
+  // DANE ZASTANE sprzed POLA-W-TORZE: transformator na szynie głównej stacji, bez pola TR.
+  // Produkt takiej sieci już nie buduje, więc spec odtwarza projekt ZASTANY produkcyjną drogą
+  // przenoszenia projektów: eksport archiwum (`POST /api/projects/{id}/export`) → model w
+  // kształcie sprzed karty (zdjęte pole TR domknięte operacją: specyfikacja, aparat, zacisk;
+  // strona WN transformatora z zacisku pola z powrotem na szynie pola) → import archiwum
+  // (`POST /api/projects/import`). Import bez weryfikacji odcisków (`verify_integrity`,
+  // jawny parametr końcówki): odciski archiwum opisują model PRZED zmianą, a archiwa zastane
+  // tego kształtu (sprzed POLA-W-TORZE) istnieją z własnymi, poprawnymi odciskami.
+  const eksport = await request.post(`${BACKEND_BASE}/api/projects/${seed.projectId}/export`, {
+    timeout: 30000,
+  });
+  expect(eksport.ok(), 'eksport archiwum projektu').toBeTruthy();
+  const pliki = unzipSync(new Uint8Array(await eksport.body()));
+  const archiwum = JSON.parse(strFromU8(pliki['project.json'])) as Record<string, any>;
+  for (const wpis of archiwum.enm.models as Array<{ snapshot: Record<string, any> }>) {
+    const migawka = wpis.snapshot;
+    const stacjaZastana = (migawka.substations as Array<Record<string, any>>).find((s) =>
+      String(s.ref_id).includes('/station'),
+    )!;
+    const specyfikacje = (stacjaZastana.meta.field_specs ?? []) as Array<Record<string, any>>;
+    const poleTr = specyfikacje.find((f) => String(f.bay_role ?? '').toUpperCase() === 'TR');
+    expect(poleTr, 'operacja domknęła pole TR (zasada toru)').toBeTruthy();
+    const szynaPola = String(poleTr!.bus_ref);
+    const zacisk = String(
+      poleTr!.meta?.field_terminal_bus_ref ?? poleTr!.meta?.terminal_bus_ref
+        ?? poleTr!.field_terminal_bus_ref ?? poleTr!.terminal_bus_ref,
+    );
+    const toryPola = (b: Record<string, any>) =>
+      [b.from_bus_ref, b.to_bus_ref].includes(szynaPola) && [b.from_bus_ref, b.to_bus_ref].includes(zacisk);
+    stacjaZastana.meta.field_specs = specyfikacje.filter((f) => f !== poleTr);
+    migawka.branches = (migawka.branches as Array<Record<string, any>>).filter((b) => !toryPola(b));
+    migawka.buses = (migawka.buses as Array<Record<string, any>>).filter((b) => b.ref_id !== zacisk);
+    for (const t of migawka.transformers as Array<Record<string, any>>) {
+      if (t.hv_bus_ref === zacisk) t.hv_bus_ref = szynaPola;
+    }
+  }
+  pliki['project.json'] = strToU8(JSON.stringify(archiwum));
+  const import_ = await request.post(`${BACKEND_BASE}/api/projects/import`, {
+    multipart: {
+      file: { name: 'zastany.mvdp.zip', mimeType: 'application/zip', buffer: Buffer.from(zipSync(pliki)) },
+      new_name: `${seed.projectName} (zastany)`,
+      verify_integrity: 'false',
+    },
+    timeout: 60000,
+  });
+  expect(import_.ok(), 'import archiwum zastanego').toBeTruthy();
+  const zaimportowany = (await import_.json()) as { status: string; project_id: string; errors: string[] };
+  expect(zaimportowany.errors).toEqual([]);
+  const przypadki = await request.get(
+    `${BACKEND_BASE}/api/study-cases/project/${zaimportowany.project_id}`,
+  );
+  expect(przypadki.ok()).toBeTruthy();
+  const [przypadek] = (await przypadki.json()) as Array<{ id: string; name: string }>;
+  const seedZastany = {
+    projectId: zaimportowany.project_id,
+    projectName: `${seed.projectName} (zastany)`,
+    caseId: przypadek.id,
+    caseName: przypadek.name,
+  };
+  const odczyt = await request.get(`${BACKEND_BASE}/api/cases/${przypadek.id}/enm`);
+  expect(odczyt.ok(), 'model zaimportowanego projektu').toBeTruthy();
+  const op = { snapshot: (await odczyt.json()) as DomainOpResponse['snapshot'] };
+
 
   // ZAPADKA NA FIKSTURĘ: bez tych dwóch asercji test mógłby przejść na sieci,
   // która wcale nie ćwiczy defektu (np. gdyby backend zaczął dorzucać pole TR
@@ -206,7 +274,7 @@ async function buildStationNetworkBezPolaTr(
   // Terminal WN transformatora — kotwica topologiczna kolumny na rysunku.
   expect(transformator?.hv_bus_ref, 'terminal WN transformatora').toBeTruthy();
 
-  return { transformerRef: transformator!.ref_id! };
+  return { transformerRef: transformator!.ref_id!, seed: seedZastany };
 }
 
 async function openSldWithActiveCase(
@@ -259,8 +327,10 @@ test.describe('Transformator SN/nN na rysunku BEZ pola roli TR', () => {
     // tego specu dowodzi, ze RYSUNEK pokazuje brak; ten test dowodzi, ze
     // GOTOWOSC go zglasza — parytet marker<->ostrzezenie na ZYWYM backendzie,
     // nie tylko w tablicy decyzyjnej testow jednostkowych.
-    const seed = await createProjectAndCase(request);
-    const { transformerRef } = await buildStationNetworkBezPolaTr(request, seed.caseId);
+    const { transformerRef, seed } = await buildStationNetworkBezPolaTr(
+      request,
+      await createProjectAndCase(request),
+    );
 
     const odpowiedz = await request.get(
       `${BACKEND_BASE}/api/cases/${seed.caseId}/engineering-readiness`,
@@ -296,8 +366,10 @@ test.describe('Transformator SN/nN na rysunku BEZ pola roli TR', () => {
     page,
     request,
   }) => {
-    const seed = await createProjectAndCase(request);
-    const { transformerRef } = await buildStationNetworkBezPolaTr(request, seed.caseId);
+    const { transformerRef, seed } = await buildStationNetworkBezPolaTr(
+      request,
+      await createProjectAndCase(request),
+    );
     await openSldWithActiveCase(page, seed);
 
     const canvas = page.getByTestId('sld-canvas-v3');
@@ -371,8 +443,7 @@ test.describe('Transformator SN/nN na rysunku BEZ pola roli TR', () => {
     page,
     request,
   }) => {
-    const seed = await createProjectAndCase(request);
-    await buildStationNetworkBezPolaTr(request, seed.caseId);
+    const { seed } = await buildStationNetworkBezPolaTr(request, await createProjectAndCase(request));
     await openSldWithActiveCase(page, seed);
 
     // Klik NATYWNY (Zero-Debt pkt 5: test interakcji zaczyna od ścieżki

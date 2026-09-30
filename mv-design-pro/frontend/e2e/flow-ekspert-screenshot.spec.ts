@@ -176,7 +176,7 @@ const POROWNANIE_WYNIK_ZAB = JSON.parse(
 ) as {
   run_a_id: string;
   run_b_id: string;
-  rows: { protected_element_ref: string; state_change: string }[];
+  rows: { protected_element_ref: string; device_id_a: string; state_change: string }[];
   ranking: { issue_code: string; element_ref: string }[];
 };
 
@@ -374,12 +374,15 @@ test.describe('flow-ekspert:screenshot', () => {
           await page.getByTestId('mvd-porzab-przycisk').click();
           const wynikZab = page.getByTestId('mvd-porzab-wynik');
           await expect(wynikZab).toBeVisible();
-          // Element chroniony i element problemu z rankingu — NAZWY z modelu, na którym
+          // Zabezpieczenie wiersza i element problemu z rankingu — NAZWY z modelu, na którym
           // policzono biegi zabezpieczeń (migawka sceny koordynacji serwowana przez magazyn
-          // ENM, z promowanymi polami nN), nie identyfikatory grafu z odpowiedzi.
+          // ENM, z promowanymi polami nN), nie identyfikatory z odpowiedzi. Kolumna
+          // „Zabezpieczenie" nazywa URZĄDZENIE z modelu (karta BIEG-ZABEZPIECZEN-Z-MODELU:
+          // urządzenie = przypisanie zabezpieczenia `protection_assignments`), nie wyłącznik.
           await expect(wynikZab).toContainText(
-            nazwaElementu('koordynacja_scena_migawka', POROWNANIE_WYNIK_ZAB.rows[0].protected_element_ref),
+            nazwaElementu('koordynacja_scena_migawka', POROWNANIE_WYNIK_ZAB.rows[0].device_id_a),
           );
+          await expect(wynikZab).not.toContainText(POROWNANIE_WYNIK_ZAB.rows[0].device_id_a);
           await expect(wynikZab).not.toContainText(POROWNANIE_WYNIK_ZAB.rows[0].protected_element_ref);
           await page.getByTestId('mvd-porzab-tab-ranking').click();
           await expect(wynikZab).toContainText(
