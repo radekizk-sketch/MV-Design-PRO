@@ -240,6 +240,7 @@ W1_LEGACY_RELATIVE_PATHS: dict[str, str] = {
     "api/sld.py": "router diagramów SLD w bazie",
     "diagnostics/diff.py": "porównanie rewizji z tabel network_*",
     "enm/migrations/v_ports_001.py": "automigracja portów bez konsumenta",
+    "enm/migrations/nn_field_specs_promocja.py": "promocja pól nN z meta.nn_field_specs (W5-B: promocja_aparatow_nn.py czyta bays)",
     "domain/protection_report_model.py": "model raportu zabezpieczeń bez konsumenta",
     "domain/protection_coordination_v1.py": "koordynacja zabezpieczeń v1 bez konsumenta",
     "network_model/reporting/short_circuit_report_docx.py": "raport DOCX zwarć z migawki legacy",

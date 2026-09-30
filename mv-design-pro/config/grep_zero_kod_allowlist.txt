@@ -6,3 +6,8 @@ backend/tests/enm/test_store_migracja_uziemienia.py
 # Guard i jego self-test niosą wzorce w treści.
 scripts/grep_zero_guard.py
 scripts/test_grep_zero_guard.py
+# W5-B: JEDYNE miejsca znające dawne klucze pól — migracja przy wczytaniu i jej test.
+backend/src/enm/migrations/field_specs_promocja.py
+backend/tests/enm/migrations/test_field_specs_promocja.py
+scripts/meta_field_specs_resurrection_guard.py
+scripts/test_meta_field_specs_resurrection_guard.py

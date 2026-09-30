@@ -364,3 +364,9 @@ jobs:
 
       - name: Zapadka — suita weryfikacyjna wskazujaca pliki, ktorych nie ma
         run: $GUARD_PY scripts/verification_phantom_paths_guard.py
+
+      # Karta W5-B: dawne slowniki pol (meta.field_specs / nn_field_specs /
+      # switchgear_field_specs) nie wracaja do kodu ani do fikstur — jedynym
+      # nosnikiem pol jest typowana kolekcja `bays`.
+      - name: Wskrzeszenie dawnych slownikow pol (meta.field_specs)
+        run: $GUARD_PY scripts/meta_field_specs_resurrection_guard.py

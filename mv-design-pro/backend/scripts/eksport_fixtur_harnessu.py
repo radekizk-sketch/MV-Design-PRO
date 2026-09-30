@@ -3809,12 +3809,11 @@ def _enm_sceny_lom() -> EnergyNetworkModel:
         },
     )
     pole_wytworcy = next(
-        spec["field_ref"]
-        for stacja_modelu in enm["substations"]
-        for spec in (stacja_modelu.get("meta") or {}).get("field_specs") or []
-        if spec.get("bay_role") == "OUT"
-        and spec.get("bus_ref") == szyna_sn
-        and spec.get("equipment_refs")
+        pole["ref_id"]
+        for pole in enm["bays"]
+        if pole.get("bay_role") == "OUT"
+        and pole.get("bus_ref") == szyna_sn
+        and pole.get("equipment_refs")
     )
     enm = _operacja_domenowa_sceny(
         enm,
@@ -3843,9 +3842,9 @@ def lom_scena_wynik() -> dict[str, Any]:
     HARNESS-RESZTA-2: wcześniej scena liczyła widok na sieci złotej, która NIE MA
     pól przyłączeniowych — widok wracał pusty („moduły bez pola"), więc ekran nie
     miał czego pokazać. Przy okazji naprawiony u źródła defekt klasy:
-    `build_ochrona_lom_view` czytał pola WYŁĄCZNIE z legacy `bays`, a operacje
-    domenowe zapisują je w `substations[].meta.field_specs` — analiza była ślepa
-    na każdy model zbudowany dzisiejszymi operacjami."""
+    `build_ochrona_lom_view` czytał pola z innego nośnika niż ten, do którego pisały
+    operacje domenowe — analiza była ślepa na każdy model zbudowany dzisiejszymi
+    operacjami (od karty W5-B jedynym nośnikiem pól jest kolekcja `bays`)."""
     return canonicalize_json(build_ochrona_lom_view(_enm_sceny_lom()))
 
 

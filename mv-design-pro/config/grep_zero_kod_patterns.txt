@@ -25,3 +25,25 @@ PUNKT_NEUTRALNY_UZIEMIONY
 GpzGroundingType
 # 5. Polskie literały dawnego BayEarthFaultPath.neutral_grounding_mode w kodzie/testach.
 neutral_grounding_mode\s*[:=]\s*["'](izolowany|cewka_petersena|rezystor|bezposrednio_uziemiony|nieznany)["']
+# 6. W5-B (typowany Bay jako jedyny nośnik pól): dawne klucze i skasowane symbole w KODZIE.
+meta\[["'](nn_)?field_specs["']\]
+["'](nn_|switchgear_)?field_specs["']\s*[:=]
+\b(nn_|switchgear_)?field_specs\s*[:=]
+\.(nn_|switchgear_)?field_specs\b
+\b_build_field_spec\b
+\b_build_nn_field_specs\b
+\b_field_specs_by_bus\b
+\b_field_specs_for_substation\b
+\b_zksn_switchgear_field_specs\b
+\b_zksn_field_specs\b
+\bnazwa_pola_ze_specyfikacji\b
+\bcollect_bays\b
+\bKLUCZE_BEZWARUNKOWE_POLA
+\bsn_field_template\b
+\bfield_terminal_bus_ref\b
+nn_field_specs_promocja
+\bfieldSpecs\b
+\bnnFieldSpecs\b
+\bFieldSpecRecord\b
+\bStationFieldSpec\b
+\bTopologyFieldSpecV1\b
