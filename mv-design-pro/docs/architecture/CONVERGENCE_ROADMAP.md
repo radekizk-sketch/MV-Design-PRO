@@ -92,7 +92,7 @@ Każdy wycinek kończy się raportem w formacie §43 konstytucji (A–K) i wpise
 
 **Mapowanie na wycinki mapy domknięcia (2026-09-09, `../plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md` §8):** w. 5–6 = W1 (K2 domyka się po przeniesieniu jądra builderów do `enm/kompilator_grafu.py`; A5 nadal po OD-8), w. 7 rozstrzygnięte = W7 po W5, w. 8 = W5, w. 9 = W8, w. 10 = W3 (duplikaty fizyki) + W4 (zabezpieczenia jako część modelu), w. 11 = W7; W2/W6/W9–W12 = zakres misji poza granicami CV.
 
-Poza kolejnością, bez daty: kasacje legacy z guardami, dokumentacja (archive-first, manifest supersesji), B-01-RI (przemianowanie `RI` → `LONG_TIME_INVERSE` bez zmiany liczb — po zgodzie na edycję rdzenia), D-11 (świadoma migracja danych haszu, nie teraz).
+Poza kolejnością, bez daty: kasacje legacy z guardami, dokumentacja (archive-first, manifest supersesji), B-01-RI (przemianowanie `RI` → `LONG_TIME_INVERSE` bez zmiany liczb — WYKONANE 2026-09-30, karta PROT-LTI, zgoda O-59 OD-15(e)), D-11 (świadoma migracja danych haszu, nie teraz).
 
 ## 5. Raportowanie
 Po każdym wycinku: raport w formacie §43 konstytucji (A–K) i aktualizacja `../evidence/CONVERGENCE_EVIDENCE.md`; granica przechodzi w FROZEN w `DECISION_FREEZE_REGISTER.md` dopiero po dowodzie implementacji, wyroczni, przeglądzie future-capability, przeglądzie adwersaryjnym i bramce CI.
@@ -127,7 +127,7 @@ Warstwa prezentacji trwałej idzie **obok** ENM, kluczowana `ref_id`, poza hasze
 **Dług nazwany przy okazji (Zero-Debt):** wyścig podwójnego wykonania biegu — **NAPRAWIONY**
 w tym mandacie (atomowe `claim_for_execution`); martwy `cadRoutingContract.ts` (7 z 8 eksportów
 bez konsumentów) — karta D-6; drugi mapper `pandapower_bridge.py` bez konsumentów — karta D-7;
-krzywa `RI` będąca w rzeczywistości Long-Time Inverse — **bramka B-01**, decyzja właściciela.
+krzywa `RI` będąca w rzeczywistości Long-Time Inverse — **bramka B-01**, decyzja właściciela (wykonane 2026-09-30, karta PROT-LTI).
 
 **Korekta pomiarowa do §1 (wersja po przeglądzie adwersaryjnym — pierwsza była BŁĘDNA):**
 profil realnego biegu (`cProfile`, substrat 52 stacji, w procesie, 59,14 s) daje:
@@ -148,7 +148,7 @@ w reinterpretacji: D-1 = **konsolidacja** trzech istniejących magazynów prezen
 (nie adopcja i nie czwarta implementacja; `SldBranchSymbolORM` bez `from_node_id`/`to_node_id`,
 tylko `branch_ref` + `waypoints[]`), **nie wcześniej niż po CV-4.4**; D-2 = utwardzenie wyroczni
 pandapower, pierwszy pełny przypadek = **K7** (D-2 wchodzi do DoD K7); D-3 = reużycie istniejącej
-topologii (`znajdz_aparat_chroniacy`), Sandia wyłącznie jako przypadki testowe. B-01-RI aktywna
-z rozstrzygnięciem „liczby bez zmian, przemianowanie później”. D-11 odłożona jako świadoma
+topologii (`znajdz_aparat_chroniacy`), Sandia wyłącznie jako przypadki testowe. B-01-RI
+zamknięta 2026-09-30 (karta PROT-LTI: przemianowanie bez zmiany liczb). D-11 odłożona jako świadoma
 migracja danych. Poprawki Opus weszły fast-forwardem (`5adc958d → 3aaeb772`). Kolejność dalsza: §4.
 

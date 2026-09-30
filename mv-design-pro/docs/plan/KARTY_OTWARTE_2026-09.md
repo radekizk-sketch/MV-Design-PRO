@@ -603,7 +603,7 @@ default selection) i P-05/P-06 oraz wymóg White Box z `PROTECTION_SYSTEM_CANONI
 #### Testy jako iloczyn cech
 
 - {źródło nastaw: model z kompletem, model bez nastaw, nastawa poza zakresem, jednostka nieustalona,
-  brak przekładni CT} × {krzywa: NI, VI, EI, LI, RI, DT, IEEE MI/VI/EI} ×
+  brak przekładni CT} × {krzywa: NI (SI), VI, EI, LTI, DT, IEEE MI/VI/EI} ×
   {punkt zwarcia: w strefie, poza strefą, niejednoznaczny} × {tor: bieg `protection_sn`, koordynacja
   E-28, czas wyłączenia pola, porównanie A/B, raport}.
   - Wyrocznia: czas z rdzenia IEC 60255 dla prądu gałęzi pola i nastawy przeliczonej na stronę

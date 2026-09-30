@@ -299,7 +299,7 @@ $$
 | Standard Inverse | SI | 0.14 | 0.02 | IEC 60255-151:2009 Tabela 1 |
 | Very Inverse | VI | 13.5 | 1.0 | IEC 60255-151:2009 Tabela 1 |
 | Extremely Inverse | EI | 80.0 | 2.0 | IEC 60255-151:2009 Tabela 1 |
-| Long Time Inverse | LTI | 120.0 | 1.0 | IEEE C37.112-2018 |
+| Long Time Inverse | LTI | 120.0 | 1.0 | praktyka BS 142 / IEC 255 (postać wzoru IEC 60255-151; stałe: ABB 1MRS756887 rev. Q, Tab. 1001) — nie IEEE C37.112 |
 
 ### 3.3 Definicje poszczegolnych krzywych
 

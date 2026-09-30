@@ -86,7 +86,7 @@ Przypadek/scenariusz: `Scenario.deltas[]` obejmuje `PROTECTION_SETTING_GROUP_SEL
 
 | Moduł | Zawartość | Stan |
 |---|---|---|
-| `solvers/protection_iec60255.py` | IDMT (NI/VI/EI/LI/RI), IEEE C37.112, DT, I²t, `check_selectivity_pair`, `run_protection_coordination`, `denom_guard` | KEEP (kanon; 1084 LOC testów, tożsamość 1440 kombinacji) |
+| `solvers/protection_iec60255.py` | IDMT (NI/VI/EI/LTI — karta PROT-LTI 2026-09-30: dawne „RI" = LTI, jedna nazwa), generyczna pętla IEEE C37.112, DT, `denom_guard` (I²t, `check_selectivity_pair`, `run_protection_coordination` skasowane w AB-1a Pakiet L) | KEEP (kanon; 1084 LOC testów, tożsamość 1440 kombinacji) |
 | `solvers/protection_lv_curves.py` | pasma gwarancji normy MCB B/C/D (IEC 60898-1), MCCB (Ir/Isd/Ii/tr/tsd), gG bramki (IEC 60269-1), `GwarancjaNormy` 3-stanowa | KEEP |
 | `solvers/protection_directional.py` (NOWY) | kryteria kierunkowe 67/67N: wielkość polaryzująca (3U0 z VT open-delta lub obliczone; prąd neutralny), kąt charakterystyczny RCA, sektor, kryteria sin φ / cos φ dla sieci kompensowanych/rezystorowych, kryteria admitancyjne Y0>/G0>/B0> (sieci z kompensacją — typowe dla OSD w Polsce); wejścia: fazory z SC 1F (składowe) i 3I0/3U0 z `BayMeasurementChain` | NOWY (A4 W3, P0) |
 | `solvers/protection_differential_87t.py` (NOWY) | Id>, charakterystyka nachyleń (slope 1/2), Id>>, blokada 2./5. harmoniczną (parametr, wejście z PQ gdy istnieje), kompensacja grupy połączeń i przekładni CT | NOWY (P1) |

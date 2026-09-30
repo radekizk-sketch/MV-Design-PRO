@@ -16,7 +16,7 @@ czasową między stopniami.
   `ct_ref`, `settings: list[ProtectionSetting]`) oraz `Bay.protection_ref`.
 - `ProtectionSetting` niesie: `function_type` (overcurrent_50/51, earth_fault_50N/51N,
   directional_67/67N), `threshold_a`, `time_delay_s`,
-  `curve_type` (DT, IEC_SI, IEC_VI, IEC_EI, IEC_LI), `is_directional`.
+  `curve_type` (DT, IEC_SI, IEC_VI, IEC_EI, IEC_LI — od karty PROT-LTI 2026-09-30 `IEC_LTI`), `is_directional`.
   **TMS (mnożnik czasowy) NIE jest przechowywany.**
 - Read model: `application/protection_read_model.py` →
   `build_protection_read_model()`; endpoint `GET /api/cases/{case_id}/enm/protection-view`

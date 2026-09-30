@@ -411,6 +411,10 @@ przepisane do wierszy rejestru planu A/B §7):
 pozycji (a)–(m) w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §12.2 (O-57 pkt 6 — ten pakiet i opis PR do niej
 odsyłają, nie powtarzają jej). Razem z nią jedno pytanie (O-57 pkt 7): czy delegacja z 2026-09-22 (O-5) obejmuje
 kasację `stability_rms` i zdjęcie jego wpisu z listy rdzeni (pozycja (i)) oraz kasację `frt_hvrt/**` w AB-1c.
+Nowa pozycja do tej samej listy (karta PROT-LTI, 2026-09-30): krzywa IEC 60255 0,14/0,02 ma dwie nazwy —
+„NI” w jądrze `protection_iec60255.py` i w katalogu analitycznym (`devices_v0.json`: `IEC_NI`) oraz „SI” w modelu
+ENM (`IEC_SI`), adapterze `iec_curves.py`, rejestrze producentów i froncie. Ujednolicenie wymaga wyboru nazwy
+i zgody B-01 na jądro (para „RI”/„LTI” domknięta w PROT-LTI, OD-15(e)).
 
 **Bramka B-02** (werdykt wizualny wyłącznie właściciela): zrzuty w repo `docs/audit/visual/` — `flow-ekspert/`
 (w tym 26 kadrów przegenerowanych po karcie #145 w `7d3a0a41` i `e32-dynamika-{light,dark}.png` z AB-P1),
