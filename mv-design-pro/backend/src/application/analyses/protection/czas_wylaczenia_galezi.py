@@ -48,6 +48,7 @@ from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.switch import SwitchState, SwitchType
 from network_model.core.topologia import przeglad_wszerz_od
+from network_model.nazwy import nazwa_nadana
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
 
 # ---------------------------------------------------------------------------
@@ -305,7 +306,7 @@ def wyznacz_czasy_wylaczenia(
             continue
 
         aparat = graph.switches[aparat_id]
-        nazwa_aparatu = aparat.name or "Wyłącznik bez nazwy"
+        nazwa_aparatu = nazwa_nadana(aparat.name) or "Wyłącznik bez nazwy"
         nastawy = nastawy_aparatow.get(aparat_id)
         if nastawy is None:
             wynik[branch_id] = CzasWylaczeniaGalezi(

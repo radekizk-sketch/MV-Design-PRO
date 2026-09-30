@@ -10,7 +10,7 @@
  */
 
 import { fireEvent, render } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { BayRenderer } from '../renderer/BayRenderer';
 import { DerRenderer } from '../renderer/DerRenderer';

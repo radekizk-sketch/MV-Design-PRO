@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { act } from '@testing-library/react';
 import { usePowerFlowResultsStore } from '../store';
 import type { PowerFlowResultsTab } from '../types';
 import {

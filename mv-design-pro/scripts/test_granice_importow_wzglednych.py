@@ -483,7 +483,9 @@ _BRAMKA = "from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_a
 _POPRAWNE_SC = {
     "application/equipment_proof/proof_pack.py": _BRAMKA
     + "def build():\n    wymagaj_autorytetu((), None)\n",
-    "api/protection_coordination.py": (
+    # Budowniczy wejścia koordynacji (karta BIEG-ZABEZPIECZEN-Z-MODELU): moduł aplikacyjny
+    # z biegów, nie trasa HTTP — ta sama zamknięta lista co `sc_authority_guard`.
+    "application/analyses/protection/coordination/z_biegow.py": (
         "from application.autorytet_biegu_zwarciowego import wejscie_koordynacji_z_biegow\n"
         + _BRAMKA
         + "def run():\n    w = wejscie_koordynacji_z_biegow(a=None)\n"

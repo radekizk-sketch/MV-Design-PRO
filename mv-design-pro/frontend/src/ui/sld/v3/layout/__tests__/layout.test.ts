@@ -23,7 +23,7 @@ import {
   stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../measure';
-import { fieldCaptionAt, fieldFunctionalDesignation } from '../../compose/directions';
+import { fieldCaptionAt } from '../../compose/directions';
 import { BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, computeBands, noBandsOverlap, type StationBandHeights } from '../bands';
 import { allColumnsOnGrid, computeColumns, type ComputeColumnsInput } from '../columns';
 import {

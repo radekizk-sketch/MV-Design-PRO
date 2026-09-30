@@ -1738,9 +1738,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # szablon przypadku `template_fingerprint`, `library_*`, `invalid_count(_delta)`, rejestr
     # krzywych producentow `vendor_curve_code`, `maps_to_iec`, `iec_variant`). PASS bez zmian.
     # Karta BIEG-ZABEZPIECZEN-NA-PARTII-6 (przeniesienie powyzszej na czubek partii 6): 4116 + 1
-    # = 4117 — zbior zmian karty (+63/-62) rozlaczny z POLE-ZAJETE i POLA-W-TORZE; POMIAR
-    # guardem na drzewie przeniesienia.
-    assert "Pol kontraktow wejsciowych: 4117." in wyjscie, wyjscie
+    # = 4117 — zbior zmian karty (+63/-62) rozlaczny z POLE-ZAJETE i POLA-W-TORZE; dalej +1
+    # `punkt_wyniku_ref` (`PunktZwarciaStrefy` w `ocena_nadpradowa.py` — punkt zwarcia na
+    # zacisku pola raportowany pod szyna pola) = 4118. POMIAR guardem na drzewie przeniesienia.
+    assert "Pol kontraktow wejsciowych: 4118." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
