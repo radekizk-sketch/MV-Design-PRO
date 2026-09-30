@@ -16,7 +16,9 @@ Mapping (EQ unless noted; TP = ConnectivityNode/TopologicalNode + Terminals):
   FuseBranch       -> Fuse                                                       [EQ]
   Source           -> ExternalNetworkInjection                                  [EQ]
   Generator(sync)  -> SynchronousMachine                                        [EQ]
-  Generator(IBR)   -> PowerElectronicsConnection (+ Photovoltaic/Battery unit)  [EQ]
+  Generator(SCIG)  -> AsynchronousMachine (asynchronousMachineType=generator)    [EQ]
+  Generator(IBR)   -> PowerElectronicsConnection (+ PhotoVoltaic/Battery/
+                      PowerElectronicsWind unit)                                 [EQ]
   Load             -> EnergyConsumer                                            [EQ]
   Substation       -> Substation + VoltageLevel(s)                              [EQ]
 
@@ -59,7 +61,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING
 
-from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
+from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, liczba_jednostek_zrodla
 from network_model.pochodne import kw_na_w, prad_znamionowy_a
 
 from .mrid import mrid_for, urn
@@ -622,42 +624,125 @@ def _ik_a(sk3_mva: float | None, ik3_ka: float | None, bus_kv: float | None) -> 
 
 
 # ---------------------------------------------------------------------------
-# Generator -> SynchronousMachine | PowerElectronicsConnection
+# Generator -> SynchronousMachine | AsynchronousMachine | PowerElectronicsConnection
 # ---------------------------------------------------------------------------
 
-#: Źródła energoelektroniczne (PowerElectronicsConnection) = kanoniczny zbiór
-#: `enm.models.GEN_TYPES_PRZEKSZTALTNIKOWE` (karta AB-H0 Pakiet D: jedno źródło, parytet
-#: w `tests/enm/test_gen_types_przeksztaltnikowe.py`).
+#: Źródła energoelektroniczne = kanoniczny zbiór `enm.models.GEN_TYPES_PRZEKSZTALTNIKOWE`
+#: (karta AB-H0 Pakiet D: jedno źródło, parytet w `tests/enm/test_gen_types_przeksztaltnikowe.py`).
 _IBR_TYPES = GEN_TYPES_PRZEKSZTALTNIKOWE
+
+#: Rodzaj generatora ENM -> (klasa urządzenia CIM, klasa jednostki PowerElectronicsUnit).
+#: CGMES 3.0 (RDFS, ``pycgmes`` 2.0.6): turbina wiatrowa typu 1/2 (``fw_scig``, maszyna
+#: indukcyjna klatkowa bez przekształtnika) to ``AsynchronousMachine`` (dynamika
+#: ``WindTurbineType1or2Dynamics`` wiąże się z maszyną asynchroniczną), typ 3 (``fw_dfig``)
+#: i typ 4 (``fw_pmsg``, ``wind_inverter``) to ``PowerElectronicsConnection`` z jednostką
+#: ``PowerElectronicsWindUnit`` (``WindTurbineType3or4Dynamics`` wiąże się z PEC). Nazwa
+#: klasy jednostki PV w CGMES 3.0 to ``PhotoVoltaicUnit`` (wielkie V) — stan PRZED
+#: emitował nieistniejącą klasę ``PhotovoltaicUnit``. ``gen_type=None`` (rodzaj
+#: nieokreślony w modelu) -> ``SynchronousMachine`` jak dotąd: CIM nie ma klasy
+#: „generatora nieokreślonego" — to znana utrata (import daje ``synchronous``),
+#: patrz ``GENERATOR_UTRATA_TORU_OBCEGO``.
+_KLASA_CIM_GENERATORA: dict[str | None, tuple[str, str | None]] = {
+    None: ("SynchronousMachine", None),
+    "synchronous": ("SynchronousMachine", None),
+    "fw_scig": ("AsynchronousMachine", None),
+    "pv_inverter": ("PowerElectronicsConnection", "PhotoVoltaicUnit"),
+    "bess": ("PowerElectronicsConnection", "BatteryUnit"),
+    "wind_inverter": ("PowerElectronicsConnection", "PowerElectronicsWindUnit"),
+    "fw_pmsg": ("PowerElectronicsConnection", "PowerElectronicsWindUnit"),
+    "fw_dfig": ("PowerElectronicsConnection", "PowerElectronicsWindUnit"),
+}
+
+#: Sufiks nazwy obiektu jednostki (nazwy sprzed karty dla PV i baterii bez zmian).
+_SUFIKS_JEDNOSTKI: dict[str, str] = {
+    "PhotoVoltaicUnit": "pv",
+    "BatteryUnit": "battery",
+    "PowerElectronicsWindUnit": "wind",
+}
+
+#: Dane generatora, których tor obcy EQ+TP NIE odtworzy (side-car je niesie).
+GENERATOR_UTRATA_TORU_OBCEGO: tuple[str, ...] = (
+    "gen_type fw_pmsg/fw_dfig — EQ zna tylko PowerElectronicsWindUnit (typ 3 od typu 4 "
+    "odróżnia profil DY); import daje wind_inverter z ostrzeżeniem",
+    "gen_type=None — CIM nie ma generatora nieokreślonego; eksport SynchronousMachine, "
+    "import synchronous",
+    "podział mocy znamionowej na jednostki (quantity/n_parallel) — ratedS niesie moc "
+    "CAŁEJ instalacji; import: sn_mva = ratedS, jedna jednostka (ta sama moc łączna)",
+    "limits (GenLimits), catalog_ref, connection_variant/station_ref/blocking_transformer_ref, "
+    "dynamika, modele widmowe, nastawy i deklaracje modułu — brak odpowiednika w EQ",
+    "pozostałe klucze materialized_params poza sn_mva i un_kv",
+)
+
+
+def klasa_cim_generatora(gen: Generator) -> str:
+    """Klasa urządzenia CIM, na którą eksporter mapuje generator (jedno źródło prawdy)."""
+    return _KLASA_CIM_GENERATORA[gen.gen_type][0]
+
+
+def _konwencja_odbiorcza(wartosc_w: float) -> float:
+    """Moc wytwarzana (ENM: dodatnia = oddawana do sieci) -> konwencja odbiorcza CIM
+    (``RotatingMachine.p/q``, ``PowerElectronicsConnection.p/q``: „positive sign means
+    flow out from a node"). ``0.0 - x`` zamiast ``-x``, żeby zero nie stało się ``-0``."""
+    return 0.0 - wartosc_w
+
+
+def _moc_pozorna_znamionowa_mva(gen: Generator) -> float | None:
+    """Moc pozorna znamionowa CAŁEJ instalacji [MVA] — z tabliczki zmaterializowanej karty
+    (``materialized_params["sn_mva"]``, moc JEDNEJ jednostki) × liczba jednostek
+    (``liczba_jednostek_zrodla``, ta sama reguła co ``enm.mapping._gen_rated_apparent_mva``).
+    Brak tabliczki = ``None`` -> atrybut ``ratedS`` POMINIĘTY. Stan PRZED pisał tu moc
+    CZYNNĄ ``p_mw`` (P w miejsce S) — obcy program liczyłby prąd znamionowy zaniżony o cosφ.
+    """
+    sn = (gen.materialized_params or {}).get("sn_mva")
+    if isinstance(sn, bool) or not isinstance(sn, int | float) or sn <= 0:
+        return None
+    return float(sn) * liczba_jednostek_zrodla(gen)
+
+
+def _napiecie_znamionowe_kv(gen: Generator) -> float | None:
+    un = (gen.materialized_params or {}).get("un_kv")
+    if isinstance(un, bool) or not isinstance(un, int | float) or un <= 0:
+        return None
+    return float(un)
 
 
 def _emit_generator(eq: ET.Element, tp: ET.Element, gen: Generator) -> None:
-    is_ibr = gen.gen_type in _IBR_TYPES
-    if not is_ibr:
-        mrid = mrid_for("SynchronousMachine", gen.ref_id)
-        sm = _obj(eq, "SynchronousMachine", mrid)
-        _prop(sm, "IdentifiedObject.name", gen.name)
-        _prop(sm, "RotatingMachine.ratedS", fmt_float(mva_to_va(gen.p_mw)))
-        t1 = _terminal(eq, owner_ref=gen.ref_id, equipment_mrid=mrid, seq=1)
-        _connect_terminal_tp(tp, t1, gen.bus_ref)
-        return
+    """Generator -> urządzenie CIM wg ``_KLASA_CIM_GENERATORA``.
 
-    mrid = mrid_for("PowerElectronicsConnection", gen.ref_id)
-    pec = _obj(eq, "PowerElectronicsConnection", mrid)
-    _prop(pec, "IdentifiedObject.name", gen.name)
-    _prop(pec, "PowerElectronicsConnection.ratedS", fmt_float(mva_to_va(gen.p_mw)))
-    _prop(pec, "PowerElectronicsConnection.p", fmt_float(mw_to_w(gen.p_mw)))
+      p_mw (wytwarzanie > 0)       -> RotatingMachine.p / PowerElectronicsConnection.p
+                                      [SSH, W, konwencja odbiorcza: −P]
+      q_mvar                       -> .q [SSH, var, −Q]; brak = atrybut pominięty
+      sn_mva × liczba jednostek    -> .ratedS [EQ, VA]; brak tabliczki = pominięty
+      un_kv                        -> .ratedU [EQ, V]; brak = pominięty
+      fw_scig                      -> AsynchronousMachine.asynchronousMachineType =
+                                      generator [SSH]
+
+    Atrybuty SSH w członie EQ — ten sam zastany wzorzec co ``EnergyConsumer.p/q``.
+    """
+    klasa, jednostka = _KLASA_CIM_GENERATORA[gen.gen_type]
+    mrid = mrid_for(klasa, gen.ref_id)
+    urzadzenie = _obj(eq, klasa, mrid)
+    _prop(urzadzenie, "IdentifiedObject.name", gen.name)
+    wlasciciel = "PowerElectronicsConnection" if jednostka is not None else "RotatingMachine"
+    moc_s = _moc_pozorna_znamionowa_mva(gen)
+    if moc_s is not None:
+        _prop(urzadzenie, f"{wlasciciel}.ratedS", fmt_float(mva_to_va(moc_s)))
+    un_kv = _napiecie_znamionowe_kv(gen)
+    if un_kv is not None:
+        _prop(urzadzenie, f"{wlasciciel}.ratedU", fmt_float(kv_to_v(un_kv)))
+    _prop(urzadzenie, f"{wlasciciel}.p", fmt_float(_konwencja_odbiorcza(mw_to_w(gen.p_mw))))
     if gen.q_mvar is not None:
-        _prop(pec, "PowerElectronicsConnection.q", fmt_float(mw_to_w(gen.q_mvar)))
-
-    # Attached generating unit (CIM 3.0): PV array or battery.
-    if gen.gen_type == "bess":
-        unit = _obj(eq, "BatteryUnit", mrid_for("BatteryUnit", gen.ref_id))
-        _prop(unit, "IdentifiedObject.name", f"{gen.name}_battery")
-        _ref(unit, "PowerElectronicsUnit.PowerElectronicsConnection", mrid)
-    elif gen.gen_type == "pv_inverter":
-        unit = _obj(eq, "PhotovoltaicUnit", mrid_for("PhotovoltaicUnit", gen.ref_id))
-        _prop(unit, "IdentifiedObject.name", f"{gen.name}_pv")
+        _prop(urzadzenie, f"{wlasciciel}.q", fmt_float(_konwencja_odbiorcza(mw_to_w(gen.q_mvar))))
+    if klasa == "AsynchronousMachine":
+        _enum(
+            urzadzenie,
+            "AsynchronousMachine.asynchronousMachineType",
+            "AsynchronousMachineKind",
+            "generator",
+        )
+    if jednostka is not None:
+        unit = _obj(eq, jednostka, mrid_for(jednostka, gen.ref_id))
+        _prop(unit, "IdentifiedObject.name", f"{gen.name}_{_SUFIKS_JEDNOSTKI[jednostka]}")
         _ref(unit, "PowerElectronicsUnit.PowerElectronicsConnection", mrid)
 
     t1 = _terminal(eq, owner_ref=gen.ref_id, equipment_mrid=mrid, seq=1)
