@@ -1,7 +1,24 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
+import { BRAK_TELEMETRII } from '../../field/fieldLabels';
+
+/**
+ * Karta FAB-J: `InspectorEngineeringView` czyta katalog operatorów NC RfG
+ * (`useNcRfgOperatorCatalog`) przez React Query — bez providera `useQueryClient()`
+ * rzuca "No QueryClient set". Brak podstawienia `fetch` jest zamierzony: zapytanie
+ * ma bezpieczny fallback (`.data ?? []`), więc odrzucone żądanie w środowisku
+ * testowym zostawia katalog operatorów pusty.
+ */
+function render(ui: ReactElement) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 
 const openOperationForm = vi.fn();
 
@@ -550,7 +567,7 @@ describe('InspectorEngineeringView', () => {
               whole_power_path_ok: true,
             },
             earth_fault_path: {
-              neutral_grounding_mode: 'rezystor',
+              neutral_grounding_mode: 'resistor_grounded',
               zero_sequence_current_source: 'suma_ct',
               zero_sequence_voltage_source: 'otwarty_trojkat_vt',
               closure_path_elements: [],
@@ -828,7 +845,7 @@ describe('InspectorEngineeringView', () => {
               whole_power_path_ok: true,
             },
             earth_fault_path: {
-              neutral_grounding_mode: 'rezystor',
+              neutral_grounding_mode: 'resistor_grounded',
               zero_sequence_current_source: 'suma_ct',
               zero_sequence_voltage_source: 'otwarty_trojkat_vt',
               closure_path_elements: [],
@@ -846,7 +863,6 @@ describe('InspectorEngineeringView', () => {
           },
         }],
       ]),
-      itemsByBayId: new Map(),
       isLoading: false,
       error: null,
     };
@@ -871,6 +887,97 @@ describe('InspectorEngineeringView', () => {
     expect(screen.getByText('Wywód pola')).toBeInTheDocument();
     expect(screen.getByText('Schemat Kanoniczny')).toBeInTheDocument();
     expect(screen.getByTestId('bay-svg-renderer')).toBeInTheDocument();
+  });
+
+  // Karta #135 — stan ruchowy pola bez fabrykacji: model odczytu pola bez źródła runtime ma
+  // `runtime_state = null` i łączniki z telemetrią `null`; inspektor pokazuje „brak telemetrii"
+  // (jedna etykieta z `fieldLabels`), a nie „Łączność ograniczona" / „Częściowo dostępne".
+  it('pole bez źródła runtime — sekcja stanu ruchowego pokazuje brak telemetrii', () => {
+    mockSelectedElements = [{ id: 'bay-1', type: 'BaySN', name: 'Pole liniowe 1' }];
+    mockReadinessIssues = [];
+    const pole = {
+      bay_id: 'bay-1',
+      bay_ref: 'bay_ref_1',
+      bay_name: 'Pole liniowe 1',
+      canonical_model: {
+        schema_version: 'v10.bay.1',
+        created_from: 'migracja',
+        integrity_status: 'po_migracji',
+        audit_trail_ref: 'bay:bay_ref_1',
+        base_model: {
+          bay_ref: 'bay_ref_1',
+          bay_role: 'LINIA_OUT',
+          specialization: 'BRAK',
+          substation_ref: 'st-1',
+          gpz_section_id: null,
+          primary_devices: [
+            {
+              device_ref: 'cb-1',
+              linked_ref: 'cb-1',
+              catalog_ref: null,
+              symbol_ref: 'symbol:cb',
+              kind: 'CB',
+              placement: 'MIDSTREAM',
+              section_side: null,
+              is_controllable: true,
+              render_variant: 'kanoniczny',
+              switch_state: {
+                actual_state: 'zamkniety',
+                commanded_state: null,
+                control_mode: null,
+                armed_for_close: null,
+                armed_for_open: null,
+                communication_ok: null,
+                interlock_blocked: false,
+                cause_code: null,
+              },
+              operating_state: {
+                normal_position: 'zamkniety',
+                current_position: 'zamkniety',
+                discrepancy_alarm: false,
+              },
+            },
+          ],
+          measurement_chain: null,
+          secondary_units: [],
+          secondary_architecture: {
+            type: 'brak_urzadzenia_wtornego',
+            measurement_provider: 'brak',
+          },
+          protection_config: null,
+          control_surface: {
+            controllable_device_refs: ['cb-1'],
+            open_requires_confirmation: false,
+            close_requires_confirmation: true,
+            kas_available: false,
+            local_remote_transfer_supported: true,
+          },
+          interlocks: { entries: [] },
+          source_endpoint: null,
+        },
+        runtime_state: null,
+        scenario_state: null,
+        project_results_ref: null,
+      },
+      project_results: null,
+    };
+    mockFieldReadModel = {
+      data: { fields: [pole] },
+      itemsByBayRef: new Map([['bay_ref_1', pole]]),
+      itemsByBayId: new Map([['bay-1', pole]]),
+      isLoading: false,
+      error: null,
+    };
+
+    render(<InspectorEngineeringView />);
+
+    expect(screen.getByText('Stan ruchowy pola')).toBeInTheDocument();
+    // Łączność, dostępność sterowania i pomiarów, chwila ostatniej aktualizacji, stan
+    // polecenia i stan beznapięciowy — wszystkie bez źródła: „brak telemetrii".
+    expect(screen.getAllByText(BRAK_TELEMETRII).length).toBeGreaterThanOrEqual(11);
+    for (const wymyslone of ['Łączność ograniczona', 'Brak łączności', 'Częściowo dostępne', 'Częściowe']) {
+      expect(screen.queryByText(wymyslone)).not.toBeInTheDocument();
+    }
   });
 
   it('pokazuje brak kontraktu pola zamiast skladac pole z legacy snapshotu, gdy read-model nie ma wpisu', () => {

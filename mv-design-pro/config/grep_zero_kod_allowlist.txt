@@ -1,0 +1,8 @@
+# W5-A: JEDYNE miejsca, które muszą znać stare klucze — migracja zastanego zapisu i jej testy.
+# Zapadka tylko w dół: nowe miejsce = naruszenie, nie kolejny wiersz tutaj.
+backend/src/enm/uziemienie.py
+backend/tests/enm/test_uziemienie_migracja.py
+backend/tests/enm/test_store_migracja_uziemienia.py
+# Guard i jego self-test niosą wzorce w treści.
+scripts/grep_zero_guard.py
+scripts/test_grep_zero_guard.py

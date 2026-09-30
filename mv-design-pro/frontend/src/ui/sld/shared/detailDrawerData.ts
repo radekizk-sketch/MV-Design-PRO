@@ -45,8 +45,8 @@
  * `mapKindToDrawerKind`/`mapKindToMenuKind`/`findBusVoltage`/`findBayByRef`/
  * `stationRefFromInternalElement`/`stationDisplayNameForRef`/
  * `stationRefForTransformerSelection`/`describeStationInternalElement` (+
- * stałe `INTERNAL_STATION_BAY_ROLE_LABELS_PL`/
- * `INTERNAL_STATION_DEVICE_LABELS_PL`) PRZENIESIONE razem z budowniczymi,
+ * stała `INTERNAL_STATION_DEVICE_LABELS_PL`; nazwy ról pól bierze z kanonu
+ * `FIELD_ROLE_LABEL_PL`, karta #141) PRZENIESIONE razem z budowniczymi,
  * bo są wołane TAKŻE przez kod, który ZOSTAJE w v2 (selekcja typu elementu,
  * `openDetailFullView`/`openDetailConfiguration`, `detailDrawerActions`) —
  * v2 importuje je z powrotem stąd (wzorzec identyczny jak
@@ -62,14 +62,26 @@
  * `SldDetailDrawerData`, jawnie wyłączony z zakresu tego zadania (task B:
  * „selectElement sekwencje ZOSTAJĄ w kontenerze").
  */
-import type { Bay, Branch, EnergyNetworkModel, Substation } from '../../../types/enm';
+import type {
+  Bay,
+  BayDeviceState,
+  BayPrimaryDevice,
+  BaySwitchState,
+  Branch,
+  Cable,
+  EnergyNetworkModel,
+  OverheadLine,
+  Substation,
+} from '../../../types/enm';
 import type { SelectedElement } from '../../types';
 import { formatStationSwitchgearDescriptionPl } from '../../shared/stationTypeLabels';
 import { publicTechnicalLabel, segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { selectStationDistributionTransformers } from '../../network-build/stationTransformerSelection';
 import { getMetric, formatMetric, type RawOverlayPayload } from '../../sld-overlay/rawResultOverlayStore';
-import { computeLfDerivedMetrics } from '../v2/canvas/lfDerivedMetrics';
 import type { SldDataPayload } from '../v2/canvas/enmToSldAdapter';
+import { projectBayPrimaryDevices, readStationFieldSpecs } from '../v2/canvas/enmToSldAdapter';
+import { apparatusIdentifiers, symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
+import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import type { SldDetailDrawerData } from '../v2/canvas/SldDetailDrawer';
 import type { SldElementKindForMenu } from '../v2/command/SldCommandService';
 
@@ -146,6 +158,19 @@ const GEN_TYPE_TO_DER_KIND: Readonly<Record<string, 'PV' | 'BESS' | 'FW'>> = {
   fw_scig: 'FW',
 };
 
+/** Etykiety PL trybu regulacji mocy biernej — WYŁĄCZNIE prezentacyjne (dowolna wartość
+ *  spoza tej mapy pokazuje się dosłownie: brak → cichej utraty informacji). Wartości
+ *  1:1 z `ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts::REGULACJA_OPCJE` (kontrakt
+ *  backendu `meta.control_mode`); duplikat świadomy — jak `derKindPublicName` powyżej,
+ *  ten moduł nie importuje z `ui2` (granica warstw prezentacji). */
+const CONTROL_MODE_LABEL_PL: Readonly<Record<string, string>> = {
+  STALY_COS_PHI: 'Stały współczynnik mocy cosφ',
+  Q_OD_U: 'Regulacja Q(U)',
+  P_OD_U: 'Regulacja P(U)',
+  REGULACJA_NAPIECIA: 'Regulacja napięcia (U = const)',
+  WYLACZONE: 'Bez regulacji',
+};
+
 /**
  * Buduje `SldDetailDrawerData` dla kliku w STACJĘ (kind='station', K30-72).
  * Odpowiednik gałęzi `drawerKind === 'station'` w
@@ -201,11 +226,11 @@ export function buildStationDetailDrawerData(
       : null;
     transformerSpec = {
       ref: stationForDrawer.transformerRefs?.[0] ?? null,
-      name: stationForDrawer.transformerRefs?.[0] ? 'Transformator SN/nN stacji' : null,
+      name: stationForDrawer.transformerRefs?.[0] ? 'Transformator stacji' : null,
       vectorGroup: stationForDrawer.transformerVectorGroup ?? null,
       snMva: fallbackSnMva,
       uhvKv: stationForDrawer.busVoltageKv ?? null,
-      ulvKv: 0.4,
+      ulvKv: null,
       ukPercent: null,
       pkKw: null,
       catalogRef: null,
@@ -248,12 +273,22 @@ export function buildStationDetailDrawerData(
   const dersOnStation = snapshot ? (snapshot.generators ?? []).filter(
     (g) => g.station_ref === substationRef,
   ) : [];
-  const existingDers: SldDetailDrawerData['existingDers'] = dersOnStation.map((g) => ({
-    id: g.ref_id ?? g.id,
-    kind: g.gen_type ? GEN_TYPE_TO_DER_KIND[g.gen_type] ?? null : null,
-    name: g.name ?? null,
-    pMw: typeof g.p_mw === 'number' ? g.p_mw : null,
-  }));
+  const existingDers: SldDetailDrawerData['existingDers'] = dersOnStation.map((g) => {
+    // Karta CV-4.1b (A3-04): tryb regulacji mocy biernej — etykieta polska WYŁĄCZNIE
+    // gdy generator go deklaruje (`meta.control_mode`); zero drugiej kopii logiki
+    // domenowej — etykiety tu są WYŁĄCZNIE prezentacyjne (ten sam wzorzec jak
+    // `derKindPublicName` obok), liczbę i decyzję o regulacji daje zawsze backend.
+    const controlMode = typeof g.meta?.control_mode === 'string' ? g.meta.control_mode : null;
+    const uSetPu = typeof g.meta?.u_set_pu === 'number' ? g.meta.u_set_pu : null;
+    return {
+      id: g.ref_id ?? g.id,
+      kind: g.gen_type ? GEN_TYPE_TO_DER_KIND[g.gen_type] ?? null : null,
+      name: g.name ?? null,
+      pMw: typeof g.p_mw === 'number' ? g.p_mw : null,
+      controlModePl: controlMode ? CONTROL_MODE_LABEL_PL[controlMode] ?? controlMode : null,
+      voltageSetpointPu: controlMode === 'REGULACJA_NAPIECIA' ? uSetPu : null,
+    };
+  });
 
   return {
     kind: 'station',
@@ -285,22 +320,42 @@ export function findBayByRef(snapshot: EnergyNetworkModel | null, bayRef: string
   return (snapshot?.bays ?? []).find((bay) => bay.ref_id === bayRef || bay.id === bayRef) ?? null;
 }
 
-const INTERNAL_STATION_BAY_ROLE_LABELS_PL: Readonly<Record<string, string>> = {
-  in: 'Pole wejściowe SN',
-  out: 'Pole wyjściowe SN',
-  feeder: 'Pole odgałęźne SN',
-  tr: 'Pole transformatorowe SN',
-  coupler: 'Pole sprzęgłowe SN',
-  measurement: 'Pole pomiarowe SN',
-  oze: 'Pole przyłączeniowe OZE',
-};
+/**
+ * Rekord stanu aparatu ZE ŹRÓDŁA runtime zapisanego w modelu (karta #135) — ta sama kolejność
+ * źródeł co backend `enm.interlock_rules.runtime_state_record`: rekord `switch_state` aparatu
+ * pierwotnego pola, potem `Bay.runtime_state.primary_device_states`. `null` = brak źródła —
+ * szuflada pokazuje wtedy „brak telemetrii", nigdy stanu domyślnego.
+ */
+function rekordStanuAparatu(bay: Bay, deviceRef: string): BaySwitchState | null {
+  const aparat = (bay.primary_devices ?? []).find(
+    (device) => device.device_ref === deviceRef && device.switch_state,
+  );
+  if (aparat?.switch_state) return aparat.switch_state;
+  return bay.runtime_state?.primary_device_states?.[deviceRef] ?? null;
+}
+
+/** Położenie mechaniczne aparatu — ta sama mapa co adaptery SLD (napęd rozbrojony zachowuje
+ *  położenie, `nieznany`/`awaria` → nieznane). */
+function polozenieAparatu(state: BayDeviceState): 'closed' | 'open' | 'unknown' {
+  switch (state) {
+    case 'zamkniety':
+    case 'zamkniety_naped_rozbrojony':
+      return 'closed';
+    case 'otwarty':
+    case 'otwarty_naped_rozbrojony':
+      return 'open';
+    case 'nieznany':
+    case 'awaria':
+      return 'unknown';
+  }
+}
 
 const INTERNAL_STATION_DEVICE_LABELS_PL: Readonly<Record<string, string>> = {
   'switch-disconnector': 'Rozłącznik',
   fuse: 'Bezpiecznik',
   'earthing-switch': 'Uziemnik',
   'cable-head': 'Głowica kablowa',
-  'transformer-device': 'Transformator SN/nN',
+  'transformer-device': 'Transformator',
   breaker: 'Wyłącznik',
   disconnector: 'Odłącznik',
   vt: 'Przekładnik napięciowy',
@@ -356,7 +411,8 @@ export function describeStationInternalElement(
     const bayPath = id.slice(id.indexOf('/internal-bay/') + '/internal-bay/'.length);
     const [bayKey, deviceKey] = bayPath.split('/');
     const roleKey = bayKey?.split('-')[0] ?? '';
-    const bayLabel = INTERNAL_STATION_BAY_ROLE_LABELS_PL[roleKey] ?? 'Pole SN';
+    // Etykieta roli z kanonu słownictwa ról pól (karta #141); rola spoza kanonu — „Pole SN”.
+    const bayLabel = fieldRoleLabelPl(roleKey);
     const deviceLabel = deviceKey ? INTERNAL_STATION_DEVICE_LABELS_PL[deviceKey] ?? 'Aparat pola SN' : null;
     return {
       id,
@@ -414,7 +470,7 @@ export function describeStationInternalElement(
     return {
       id,
       type: 'TransformerBranch',
-      name: `Transformator SN/nN - ${stationName}`,
+      name: `Transformator - ${stationName}`,
     };
   }
 
@@ -458,6 +514,48 @@ export function mapKindToMenuKind(kind: string): SldElementKindForMenu | null {
     return kind;
   }
   return null;
+}
+
+/**
+ * FAB-C (fantom danych katalogowych K30-89, karta „uczciwość w obrębie
+ * jednego pliku"): odcinek SN (`cable_run`) może nieść WYŁĄCZNIE Cable
+ * (kabel) lub OverheadLine (linia napowietrzna) — SwitchBranch/FuseBranch
+ * nie są segmentami liniowymi i nie niosą tych pól. Wyciąga dane katalogowe
+ * (`catalog_ref`/`conductor_material`/`cross_section_mm2`/`insulation`/
+ * `rating.in_a`) WYŁĄCZNIE z ENM Branch — brak pola w modelu = null, NIGDY
+ * wartość zastępcza. JEDNA implementacja dla obu budowniczych cableRunSpec
+ * (`buildCableRunDetailDrawerData` niżej i gałąź `drawerKind==='cable_run'`
+ * w `buildStationBranchDetailDrawerData` — dziś martwa, patrz jej komentarz,
+ * ale KLASA NIE INSTANCJA wymaga jednego mechanizmu, nie dwóch kopii, które
+ * mogłyby się rozjechać, gdyby gałąź kiedyś przestała być martwa).
+ */
+function isCatalogedLineSegment(branch: Branch | undefined): branch is Cable | OverheadLine {
+  return branch?.type === 'cable' || branch?.type === 'line_overhead';
+}
+
+function extractCableCatalogSpec(branch: Branch | undefined): {
+  readonly catalogRef: string | null;
+  readonly conductorMaterial: string | null;
+  readonly crossSectionMm2: number | null;
+  readonly insulation: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | null;
+  readonly ratingInA: number | null;
+} {
+  if (!isCatalogedLineSegment(branch)) {
+    return {
+      catalogRef: branch?.catalog_ref ?? null,
+      conductorMaterial: null,
+      crossSectionMm2: null,
+      insulation: null,
+      ratingInA: null,
+    };
+  }
+  return {
+    catalogRef: branch.catalog_ref ?? null,
+    conductorMaterial: branch.conductor_material ?? null,
+    crossSectionMm2: branch.cross_section_mm2 ?? null,
+    insulation: branch.type === 'cable' ? branch.insulation ?? null : null,
+    ratingInA: branch.rating?.in_a ?? null,
+  };
 }
 
 /**
@@ -525,8 +623,11 @@ export function buildCableRunDetailDrawerData(
       stationCount: null,
       lengthKm,
       segmentKind: kind === 'overhead_line_sn' ? 'overhead_line_sn' : 'cable_sn',
-      maxLoadingPct: null,
-      maxVoltageDropPct: null,
+      // FAB-C: dane katalogowe reprezentatywnego segmentu — TEGO SAMEGO
+      // `branch`, z którego wyżej wyliczono elementRef/elementName (kliknięty
+      // segment, a dla całego ciągu — pierwszy segment; patrz komentarz przy
+      // `elementRef` wyżej). ZERO drugiego źródła danych.
+      ...extractCableCatalogSpec(branch),
     },
     liveMetrics: buildLiveMetrics(overlayPayload, 'cable_run', elementRef, run?.voltageKv ?? null),
   };
@@ -597,12 +698,29 @@ export function buildNodeDetailDrawerData(
  * Samo wywołanie `dropOnStation` (mutacja stanu hooka) ZOSTAJE u wołającego
  * — ta funkcja przyjmuje już gotowy `derKind` z wyniku dropu.
  */
+/**
+ * Karta FAB-K (§0 R3/R4, KLASA NIE INSTANCJA): `nnSpec.busVoltageKv` — REALNA
+ * szyna nN stacji (`selectStationDistributionTransformers` → `lv_bus_ref` →
+ * `buses[].voltage_kv`, ta sama migawka co `buildStationDetailDrawerData`
+ * wyżej), nie zgadywane „zawsze 0,4 kV" (dawny `pointVoltageForVariant` w
+ * `SldDetailDrawer.tsx` ignorował model dla `nn_side` i wpisywał stałą).
+ * Falownik przeciągnięty na stację BEZ transformatora w ENM zostaje z `null` —
+ * `SldDetailDrawer` pokazuje wtedy uczciwy fallback katalogowy, nie fikcyjną
+ * pewność.
+ */
 export function buildDerDropDetailDrawerData(
+  snapshot: EnergyNetworkModel | null,
   sldData: SldDataPayload,
   stationId: string,
   derKind: 'PV' | 'BESS' | 'FW',
 ): SldDetailDrawerData {
   const stationForDrop = sldData.stations.find((s) => s.id === stationId);
+  const substation = findSubstationByRef(snapshot, stationId);
+  const tr = selectStationDistributionTransformers(snapshot, substation ?? null)[0];
+  const lvBusRef = tr?.lv_bus_ref ?? null;
+  const lvBus = lvBusRef && snapshot
+    ? (snapshot.buses ?? []).find((b) => b.ref_id === lvBusRef || b.id === lvBusRef)
+    : null;
   return {
     kind: 'der',
     elementId: stationId,
@@ -615,6 +733,7 @@ export function buildDerDropDetailDrawerData(
     accentColor: derKind === 'PV' ? '#FFD166' : derKind === 'BESS' ? '#7DD3FC' : '#7EE0B5',
     derKind,
     derConnectionVariant: 'nn_side',
+    nnSpec: { busVoltageKv: lvBus?.voltage_kv ?? tr?.ulv_kv ?? null, loads: [] },
   };
 }
 
@@ -643,6 +762,81 @@ export function buildDerDropDetailDrawerData(
  * PRZENIESIONYM Z ORYGINAŁU 1:1 (ta sama martwota istniała w oryginalnym
  * `SldWorkspaceContainer.tsx`, nie jest wprowadzona tym refaktorem).
  */
+/** Pole modelu czytane przez szufladę — wspólny kształt OBU nośników pola w ENM. */
+interface PoleModeluSzuflady {
+  readonly ref_id: string;
+  readonly name: string | null;
+  readonly substation_ref: string | null;
+  readonly bay_number: string | null;
+  readonly equipment_refs: readonly string[];
+  readonly primary_devices: readonly BayPrimaryDevice[] | null;
+}
+
+/**
+ * Pola modelu z OBU nośników ENM, w kolejności rysunku (karta #135, integracja 2026-09-24).
+ * Stacja ze specyfikacjami pól (`meta.field_specs` — pola stacji wstawionej operacją NIE mają
+ * elementu `bays`) daje pola w kolejności specyfikacji, tym samym parserem co rysunek
+ * (`readStationFieldSpecs`); elementy `bays` dochodzą, gdy ich identyfikatora nie ma wśród
+ * specyfikacji. Czytanie wyłącznie `snapshot.bays` gubiło pole każdej stacji wstawionej
+ * w magistralę (szuflada bez stacji, bez pola i bez identyfikatora globalnego).
+ */
+function polaModeluWKolejnosciRysunku(snapshot: EnergyNetworkModel | null): PoleModeluSzuflady[] {
+  const wynik: PoleModeluSzuflady[] = [];
+  const znane = new Set<string>();
+  for (const stacja of snapshot?.substations ?? []) {
+    for (const spec of readStationFieldSpecs(stacja)) {
+      if (!spec.field_ref || znane.has(spec.field_ref)) continue;
+      znane.add(spec.field_ref);
+      wynik.push({
+        ref_id: spec.field_ref,
+        name: spec.name ?? null,
+        substation_ref: stacja.ref_id,
+        bay_number: null,
+        equipment_refs: spec.equipment_refs,
+        primary_devices: spec.primary_devices ?? null,
+      });
+    }
+  }
+  for (const bay of snapshot?.bays ?? []) {
+    if (znane.has(bay.ref_id)) continue;
+    znane.add(bay.ref_id);
+    wynik.push({
+      ref_id: bay.ref_id,
+      name: bay.name ?? null,
+      substation_ref: bay.substation_ref ?? null,
+      bay_number: bay.bay_number ?? null,
+      equipment_refs: bay.equipment_refs ?? [],
+      primary_devices: bay.primary_devices ?? null,
+    });
+  }
+  return wynik;
+}
+
+/**
+ * Nazwa elementu z modelu dla identyfikatora (każda kolekcja ENM z `ref_id` i `name` oraz
+ * specyfikacje pól stacji) — tytuł szuflady nie spada na człon surowego identyfikatora
+ * (np. „000" z `…/sn_field_breaker/000`), gdy model zna nazwę elementu.
+ */
+function nazwaElementuZModelu(
+  snapshot: EnergyNetworkModel | null,
+  id: string,
+  polaModelu: readonly PoleModeluSzuflady[],
+): string | null {
+  const pole = polaModelu.find((p) => p.ref_id === id);
+  if (pole?.name) return pole.name;
+  for (const kolekcja of Object.values(snapshot ?? {})) {
+    if (!Array.isArray(kolekcja)) continue;
+    for (const element of kolekcja as unknown[]) {
+      if (typeof element !== 'object' || element === null) continue;
+      const rekord = element as { ref_id?: unknown; name?: unknown };
+      if (rekord.ref_id === id && typeof rekord.name === 'string' && rekord.name.trim()) {
+        return rekord.name.trim();
+      }
+    }
+  }
+  return null;
+}
+
 export function buildStationBranchDetailDrawerData(
   snapshot: EnergyNetworkModel | null,
   sldData: SldDataPayload,
@@ -716,17 +910,17 @@ export function buildStationBranchDetailDrawerData(
         dataQuality: 'model',
         blockers: transformerBlockers,
       };
-      transformerLabelOverride = tr.name ?? internalElementDescription?.name ?? 'Transformator SN/nN';
+      transformerLabelOverride = tr.name ?? internalElementDescription?.name ?? 'Transformator';
     } else if (stationForInternalElement?.transformerRatedKva != null || stationForInternalElement?.transformerRefs?.length) {
       transformerSpec = {
         ref: stationForInternalElement.transformerRefs?.[0] ?? id,
-        name: internalElementDescription?.name ?? 'Transformator SN/nN stacji',
+        name: internalElementDescription?.name ?? 'Transformator stacji',
         vectorGroup: stationForInternalElement.transformerVectorGroup ?? null,
         snMva: stationForInternalElement.transformerRatedKva != null
           ? stationForInternalElement.transformerRatedKva / 1000
           : null,
         uhvKv: stationForInternalElement.busVoltageKv ?? null,
-        ulvKv: 0.4,
+        ulvKv: null,
         ukPercent: null,
         pkKw: null,
         catalogRef: null,
@@ -735,11 +929,11 @@ export function buildStationBranchDetailDrawerData(
           'Widok SLD ma dane transformatora, ale rekord ENM/katalog nie został znaleziony.',
         ],
       };
-      transformerLabelOverride = internalElementDescription?.name ?? 'Transformator SN/nN';
+      transformerLabelOverride = internalElementDescription?.name ?? 'Transformator';
     } else {
       transformerSpec = {
         ref: id,
-        name: internalElementDescription?.name ?? 'Transformator SN/nN',
+        name: internalElementDescription?.name ?? 'Transformator',
         vectorGroup: null,
         snMva: null,
         uhvKv: null,
@@ -750,11 +944,10 @@ export function buildStationBranchDetailDrawerData(
         dataQuality: 'missing',
         blockers: ['Brak rekordu transformatora w ENM/katalogu.'],
       };
-      transformerLabelOverride = internalElementDescription?.name ?? 'Transformator SN/nN';
+      transformerLabelOverride = internalElementDescription?.name ?? 'Transformator';
     }
   }
   // K30-89: cable run spec (gdy drawer kind='cable_run')
-  // K30-93: + maxLoadingPct + maxVoltageDropPct z lfDerivedMetrics
   let cableRunSpec: SldDetailDrawerData['cableRunSpec'] = null;
   if (drawerKind === 'cable_run') {
     const run = sldData.cableRuns.find((r) => r.id === id);
@@ -774,41 +967,30 @@ export function buildStationBranchDetailDrawerData(
         }
         if (countWithLength > 0) lengthKm = total;
       }
-      // K30-93: pull cable loading from LF derived metrics
-      let maxLoadingPct: number | null = null;
-      let maxVoltageDropPct: number | null = null;
-      if (overlayPayload) {
-        const lfMeta = computeLfDerivedMetrics(
-          overlayPayload,
-          sldData.stations.map((s) => ({ id: s.id, busVoltageKv: s.busVoltageKv })),
-          sldData.cableRuns.map((r) => ({
-            id: r.id,
-            segmentRefs: r.segmentRefs,
-          })),
-        );
-        const loading = lfMeta.cableLoadingPctByRunId.get(run.id);
-        if (typeof loading === 'number') maxLoadingPct = loading;
-        // Voltage drop = max |station deviation| on stations along this run
-        const devs = Array.from(lfMeta.voltageDeviationPctByStationId.values());
-        if (devs.length > 0) {
-          maxVoltageDropPct = Math.max(...devs.map((d) => Math.abs(d)));
-        }
-      }
+      // FAB-C: reprezentatywny segment (pierwszy ref ciągu) dla danych
+      // katalogowych — ta sama konwencja co `buildCableRunDetailDrawerData`
+      // (patrz `extractCableCatalogSpec`). Gałąź jest dziś martwa (patrz
+      // komentarz funkcji wyżej), ale KLASA NIE INSTANCJA: kontrakt musi być
+      // spójny, gdyby kiedyś przestała być martwa.
+      const representativeSegmentRef = run.segmentRefs?.[0];
+      const representativeSegment = representativeSegmentRef
+        ? (snapshot?.branches ?? []).find(
+          (b) => b.ref_id === representativeSegmentRef || b.id === representativeSegmentRef,
+        )
+        : undefined;
       cableRunSpec = {
         runKind: run.runKind ?? null,
         segmentCount: run.segmentRefs?.length ?? null,
         stationCount: null,
         lengthKm,
         segmentKind: run.segmentKind ?? null,
-        maxLoadingPct,
-        maxVoltageDropPct,
+        ...extractCableCatalogSpec(representativeSegment),
       };
     }
   }
   // K30-83: bay apparatus list (gdy drawer kind='bay')
   if (drawerKind === 'bay' && snapshot) {
     const bay = findBayByRef(snapshot, id);
-    const states = bay?.runtime_state?.primary_device_states ?? {};
     const inferKind = (appId: string): 'CB' | 'DS' | 'ES' | 'CT' | 'VT' | 'OTHER' => {
       const lower = appId.toLowerCase();
       if (lower.includes('breaker') || lower.endsWith('#cb')) return 'CB';
@@ -826,127 +1008,103 @@ export function buildStationBranchDetailDrawerData(
       if (k === 'VT') return 'Przekładnik napięciowy';
       return appId.split('#').pop() ?? appId;
     };
-    const mapState = (raw: unknown): 'closed' | 'open' | 'unknown' => {
-      if (raw && typeof raw === 'object' && 'actual_state' in raw) {
-        const v = (raw as { actual_state: string }).actual_state;
-        if (v === 'zamkniety') return 'closed';
-        if (v === 'otwarty') return 'open';
-      }
-      return 'unknown';
-    };
     apparatusSpec = (bay?.equipment_refs ?? []).map((eqId) => {
       const k = inferKind(eqId);
+      const rekord = bay ? rekordStanuAparatu(bay, eqId) : null;
       return {
         id: eqId,
         kind: k,
         label: labelFor(k, eqId),
-        state: mapState(states[eqId]),
+        // Karta #135: brak rekordu źródła = `null` („brak telemetrii"), nie „nieznany".
+        state: rekord ? polozenieAparatu(rekord.actual_state) : null,
       };
     });
   }
-  // K30-97: apparatus state (gdy drawer kind='apparatus')
+  // K30-97: apparatus state (gdy drawer kind='apparatus'). Karta #135: rekord WYŁĄCZNIE ze
+  // źródła runtime pól modelu (`snapshot.bays` — dawniej szukany w nieistniejącym
+  // `substations[].bays`, więc szuflada zawsze pokazywała stan domyślny); wartości
+  // trójstanowe przepisane bez zmian (`null` = brak telemetrii).
   let apparatusState: SldDetailDrawerData['apparatusState'] = null;
   if (drawerKind === 'apparatus' && snapshot) {
-    // Look up state across all bays' primary_device_states
-    let raw: unknown = null;
-    for (const sub of (snapshot.substations ?? []) as Array<{ bays?: Array<{ runtime_state?: { primary_device_states?: Record<string, unknown> } }> }>) {
-      for (const b of sub.bays ?? []) {
-        const ds = b.runtime_state?.primary_device_states ?? {};
-        if (id in ds) { raw = ds[id]; break; }
+    for (const bay of snapshot.bays ?? []) {
+      const rekord = rekordStanuAparatu(bay, id);
+      if (rekord) {
+        apparatusState = {
+          actualState: polozenieAparatu(rekord.actual_state),
+          controlMode: rekord.control_mode ?? null,
+          communicationOk: rekord.communication_ok ?? null,
+          interlockBlocked: rekord.interlock_blocked ?? null,
+          lastChangeAt: rekord.last_state_change_at ?? null,
+        };
+        break;
       }
-      if (raw) break;
-    }
-    if (raw && typeof raw === 'object') {
-      const r = raw as {
-        actual_state?: string;
-        control_mode?: string;
-        communication_ok?: boolean;
-        interlock_blocked?: boolean;
-        last_state_change_at?: string;
-      };
-      const mapState = (v: string | undefined): 'closed' | 'open' | 'unknown' | null =>
-        v === 'zamkniety' ? 'closed' : v === 'otwarty' ? 'open' : v === 'nieznany' ? 'unknown' : null;
-      const mapMode = (v: string | undefined): 'LOKALNY' | 'ZDALNY' | 'AUTO' | 'BLOKADA' | null => {
-        if (!v) return null;
-        const up = v.toUpperCase();
-        if (up === 'LOKALNY' || up === 'ZDALNY' || up === 'AUTO' || up === 'BLOKADA') return up;
-        return null;
-      };
-      apparatusState = {
-        actualState: mapState(r.actual_state),
-        controlMode: mapMode(r.control_mode),
-        communicationOk: r.communication_ok ?? null,
-        interlockBlocked: r.interlock_blocked ?? null,
-        lastChangeAt: r.last_state_change_at ?? null,
-      };
     }
   }
+  // Karta #135 (e)1: identyfikacja pola i aparatu z MODELU, z OBU nośników pola ENM
+  // (`polaModeluWKolejnosciRysunku`): pole stacji wstawionej operacją żyje wyłącznie
+  // w `meta.field_specs` stacji, pole dodane elementem — w `snapshot.bays`. Pole trafione:
+  // szuflada pola → identyfikator pola; aparat → pole, którego `primary_devices` albo
+  // `equipment_refs` zawiera identyfikator, albo samo pole, gdy kanwa niesie identyfikator pola
+  // (symbol aparatu z konwencji dla pola bez aparatów pierwotnych w modelu — zrzut e2e #135).
+  const polaModelu = polaModeluWKolejnosciRysunku(snapshot);
+  const poleTrafione =
+    drawerKind === 'bay'
+      ? polaModelu.find((b) => b.ref_id === id) ?? null
+      : drawerKind === 'apparatus'
+        ? polaModelu.find(
+            (b) =>
+              b.ref_id === id ||
+              (b.primary_devices ?? []).some((d) => d.device_ref === id) ||
+              b.equipment_refs.includes(id),
+          ) ?? null
+        : null;
+  // Stacja pola z MODELU (`Bay.substation_ref` → stacja rysunku o tym samym identyfikatorze).
+  // Dawniej dla pola/aparatu brano `sldData.stations[0]` — PIERWSZĄ stację rysunku, więc pole
+  // w innej stacji dostawało cudzy kod stacji (fałszywa identyfikacja). Brak stacji = `null`.
+  const stacjaPola = poleTrafione
+    ? sldData.stations.find((st) => st.id === poleTrafione.substation_ref)
+    : undefined;
   // K30-98: breadcrumb context dla bay/apparatus selections
   let parentStationLabel: string | null = null;
   let parentBayLabel: string | null = null;
-  if ((drawerKind === 'bay' || drawerKind === 'apparatus') && stationContext) {
-    parentStationLabel = stationContext.stationCode
-      ?? stationContext.name
-      ?? null;
+  if ((drawerKind === 'bay' || drawerKind === 'apparatus') && stacjaPola) {
+    parentStationLabel = stacjaPola.stationCode ?? stacjaPola.name ?? null;
   }
-  if (drawerKind === 'apparatus' && snapshot) {
-    for (const sub of (snapshot.substations ?? []) as Array<{ name?: string; bays?: Array<{ name?: string; ref_id?: string; equipment_refs?: string[] }> }>) {
-      for (const b of sub.bays ?? []) {
-        if (b.equipment_refs?.includes(id)) {
-          parentBayLabel = b.name ?? b.ref_id ?? null;
-          break;
-        }
-      }
-      if (parentBayLabel) break;
-    }
+  if (drawerKind === 'apparatus' && poleTrafione) {
+    // Nazwa pola z modelu; bez nazwy — uczciwy brak, nie surowy identyfikator pola.
+    parentBayLabel = poleTrafione.name;
   }
 
   // Recenzja NO-GO 2026-07-17 pkt 9 (spec §12.5): identyfikator GLOBALNY
-  // ⟨stacja⟩.⟨pole⟩.⟨aparat⟩ (np. „S01.F01.Q2") — w INSPEKTORZE (rysunek
-  // zostaje przy krótkich Q/QE/T w obrębie opisanego pola, per recenzja).
-  // Części: kod stacji (stationCode), oznacznik pola = `Bay.bay_number`
-  // (dane) albo deterministyczna numeracja F⟨nn⟩ wg pozycji pola w stacji
-  // (TA SAMA konwencja co `gpzFieldOrdinalDesignation`, compose/gpz.ts),
-  // aparat = Q/QE/T wg kolejności `equipment_refs` (TA SAMA klasa liter co
-  // §19.1). Brak którejkolwiek części w danych ⇒ `null` (uczciwy brak).
+  // ⟨stacja⟩.⟨pole⟩.⟨aparat⟩ (np. „S01.F01.Q2") — w INSPEKTORZE. Części: kod stacji
+  // (stationCode), oznacznik pola = `Bay.bay_number` (dane) albo numeracja F⟨nn⟩ wg pozycji
+  // pola w stacji (kolejność modelu wśród pól tej samej stacji), aparat = TEN SAM
+  // identyfikator co na rysunku: sekwencja `projectBayPrimaryDevices` (kolejność
+  // `placement`) → symbole `symbolIdForPrimaryDeviceKind` → `apparatusIdentifiers` z
+  // oznaczeniami z danych. Brak którejkolwiek części ⇒ `null` (uczciwy brak); rodzaju
+  // aparatu NIE zgaduje się z napisu identyfikatora (dawna heurystyka skasowana).
   let globalId: string | null = null;
-  if ((drawerKind === 'bay' || drawerKind === 'apparatus') && snapshot) {
-    type BayLite = { ref_id?: string; bay_number?: string | null; equipment_refs?: string[] };
-    const inferKindForId = (eqId: string): 'Q' | 'QE' | 'T' | null => {
-      const tail = eqId.toLowerCase();
-      if (tail.includes('es') || tail.includes('earth')) return 'QE';
-      if (tail.includes('tr') || tail.includes('transformer')) return 'T';
-      if (tail.includes('cb') || tail.includes('ds') || tail.includes('switch') || tail.includes('breaker')) return 'Q';
-      return null;
-    };
-    outer: for (const sub of (snapshot.substations ?? []) as Array<{ bays?: BayLite[] }>) {
-      const bays = sub.bays ?? [];
-      for (let bi = 0; bi < bays.length; bi++) {
-        const b = bays[bi];
-        const isBayHit = drawerKind === 'bay' && b.ref_id === id;
-        const isApparatusHit = drawerKind === 'apparatus' && (b.equipment_refs ?? []).includes(id);
-        if (!isBayHit && !isApparatusHit) continue;
-        const code = stationContext?.stationCode ?? null;
-        if (!code) break outer;
-        const fieldPart = (b.bay_number ?? '').trim() || `F${String(bi + 1).padStart(2, '0')}`;
-        if (isBayHit) {
-          globalId = `${code}.${fieldPart}`;
-        } else {
-          // Numeracja Q/QE/T po kolejności equipment_refs — lustro
-          // `apparatusIdentifiers` (compose/apparatusSequence.ts).
-          const counters: Record<string, number> = { Q: 0, QE: 0, T: 0 };
-          let apparatusPart: string | null = null;
-          for (const eqId of b.equipment_refs ?? []) {
-            const cls = inferKindForId(eqId);
-            if (cls) counters[cls] += 1;
-            if (eqId === id) {
-              apparatusPart = cls ? `${cls}${counters[cls]}` : eqId.split('/').pop() ?? eqId;
-              break;
-            }
-          }
-          globalId = apparatusPart ? `${code}.${fieldPart}.${apparatusPart}` : `${code}.${fieldPart}`;
-        }
-        break outer;
+  const kodStacji = stacjaPola?.stationCode ?? null;
+  if (poleTrafione && kodStacji) {
+    const polaStacji = polaModelu.filter((b) => b.substation_ref === poleTrafione.substation_ref);
+    const pozycjaPola = polaStacji.findIndex((b) => b.ref_id === poleTrafione.ref_id);
+    const fieldPart =
+      (poleTrafione.bay_number ?? '').trim() ||
+      (pozycjaPola >= 0 ? `F${String(pozycjaPola + 1).padStart(2, '0')}` : null);
+    if (fieldPart) {
+      if (drawerKind === 'bay') {
+        globalId = `${kodStacji}.${fieldPart}`;
+      } else {
+        const sekwencja = (projectBayPrimaryDevices(poleTrafione) ?? [])
+          .map((d) => ({ ref: d.deviceRef, symbol: symbolIdForPrimaryDeviceKind(d.kind), oznaczenie: d.designation }))
+          .filter((d): d is { ref: string; symbol: NonNullable<typeof d.symbol>; oznaczenie: string | undefined } => d.symbol != null);
+        const identyfikatory = apparatusIdentifiers(
+          sekwencja.map((d) => d.symbol),
+          sekwencja.map((d) => d.oznaczenie),
+        );
+        const pozycjaAparatu = sekwencja.findIndex((d) => d.ref === id);
+        const apparatusPart = pozycjaAparatu >= 0 ? identyfikatory[pozycjaAparatu] : null;
+        globalId = apparatusPart ? `${kodStacji}.${fieldPart}.${apparatusPart}` : null;
       }
     }
   }
@@ -962,6 +1120,7 @@ export function buildStationBranchDetailDrawerData(
             ? stationForDrawer?.name ?? stationForDrawer?.stationCode
             : stationForDrawer?.stationCode ?? stationForDrawer?.name)
           ?? internalElementDescription?.name
+          ?? nazwaElementuZModelu(snapshot, id, polaModelu)
           ?? id.split('/').pop()
           ?? id,
         voltageKv: transformerSpec?.uhvKv

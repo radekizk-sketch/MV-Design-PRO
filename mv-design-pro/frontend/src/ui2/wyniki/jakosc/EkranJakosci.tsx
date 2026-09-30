@@ -22,10 +22,18 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { MathBlock } from '../../../ui/proof/MathRenderer';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
-import { EkranAnalizy, useAkcjaUruchomObliczenie, usePoprawWModelu } from '../wzorzec';
+import {
+  EkranAnalizy,
+  InformacjeAudytowe,
+  useAkcjaUruchomObliczenie,
+  useNazwaObiektu,
+  usePoprawWModelu,
+} from '../wzorzec';
 import { PrzyciskAkcjiStanu } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 import { PanelDowoduCieplnego } from './PanelDowoduCieplnego';
+import { SekcjaPasmRozplywu } from './SekcjaPasmRozplywu';
+import { SekcjaPorownaniaMetod } from './SekcjaPorownaniaMetod';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
   fetchArcFlash,
@@ -108,9 +116,11 @@ import {
 // Zasób jakości — stan pobierania (brak przebiegu / ładowanie / błąd / gotowe)
 // ---------------------------------------------------------------------------
 
-type StanZasobu = 'brakPrzebiegu' | 'ladowanie' | 'blad' | 'gotowe';
+export type StanZasobu = 'brakPrzebiegu' | 'ladowanie' | 'blad' | 'gotowe';
 
-function useZasobJakosci<T>(
+/** Eksportowany dla sekcji w osobnych plikach (karta W3-G2: „Pasma rozpływu") —
+ * jeden hak pobierania dla WSZYSTKICH sekcji ekranu Jakość, zero duplikacji. */
+export function useZasobJakosci<T>(
   runId: string | null,
   pobierz: (id: string) => Promise<T>,
 ): { stan: StanZasobu; dane: T | null } {
@@ -151,7 +161,7 @@ function useZasobJakosci<T>(
 // Elementy wspólne (tag statusu, chip podsumowania, panele stanu)
 // ---------------------------------------------------------------------------
 
-function TagStatusu({ tekst, istotnosc }: { tekst: string; istotnosc: IstotnoscStatusu }) {
+export function TagStatusu({ tekst, istotnosc }: { tekst: string; istotnosc: IstotnoscStatusu }) {
   return (
     <span className={`mvd-jakosc-tag mvd-jakosc-tag--${istotnosc}`} data-testid="mvd-jakosc-tag">
       {tekst}
@@ -159,7 +169,7 @@ function TagStatusu({ tekst, istotnosc }: { tekst: string; istotnosc: IstotnoscS
   );
 }
 
-function Chip({
+export function Chip({
   etykieta,
   wartosc,
   istotnosc,
@@ -176,7 +186,7 @@ function Chip({
   );
 }
 
-function StanSekcji({
+export function StanSekcji({
   tytul,
   komunikat,
   opis,
@@ -211,7 +221,8 @@ function StanSekcji({
 // Sekcja 1 — Wiarygodność zwarciowa
 // ---------------------------------------------------------------------------
 
-interface SekcjaProps {
+/** Eksportowany dla sekcji w osobnych plikach (karta W3-G2). */
+export interface SekcjaProps {
   przebieg: ExecutionRun | null;
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
@@ -231,6 +242,7 @@ export function SekcjaWiarygodnosci({
   // K6 / H-5: stan zerowy prowadzi do biegu, którego brakuje (zwarcia).
   const akcjaBiegu = useAkcjaUruchomObliczenie('SC_3F');
   const [wybrany, setWybrany] = useState<string | null>(null);
+  const nazwaObiektu = useNazwaObiektu();
 
   const items = dane?.items ?? [];
   const wierszeSelektora = useMemo(
@@ -280,13 +292,21 @@ export function SekcjaWiarygodnosci({
         naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaWiarygodnosc, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaWiarygodnosci()}
         kolumny={KOLUMNY_WIARYGODNOSCI}
-        wiersze={naWierszeWiarygodnosci(items)}
+        wiersze={naWierszeWiarygodnosci(items, nazwaObiektu)}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_WIARYGODNOSCI_WEZEL}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
+        // Karta UI2 p.6: wiarygodność zwarciowa liczona per węzeł (Bus).
+        typElementuWiersza={() => 'Bus'}
+        // Poprawka KLASA NIE INSTANCJA: `KLUCZ_WIARYGODNOSCI_WEZEL` niesie
+        // `target_id` (techniczny), kolumna „Węzeł" pokazuje nazwę z mostu nazw.
+        nazwaElementuWiersza={(klucz) => {
+          const it = wierszeSelektora.get(klucz);
+          return it ? nazwaObiektu(it.target_id, it.target_name) : undefined;
+        }}
       />
       <div className="mvd-jakosc-podsumowanie" data-testid="mvd-jakosc-wiarygodnosc-podsumowanie">
         <Chip etykieta={JAKOSC_STRINGS.podsumZweryfikowane} wartosc={summary.credible_count} istotnosc="ok" />
@@ -306,6 +326,7 @@ function SzczegolWiarygodnosci({
   item: WiarygodnoscItem | null;
   trybZaawansowania: AdvancementMode;
 }) {
+  const nazwaObiektu = useNazwaObiektu();
   if (!item) {
     return (
       <section className="mvd-jakosc-szczegol mvd-jakosc-szczegol--pusty" data-testid="mvd-jakosc-wiarygodnosc-szczegol-pusty">
@@ -318,14 +339,14 @@ function SzczegolWiarygodnosci({
   return (
     <section className="mvd-jakosc-szczegol" data-testid="mvd-jakosc-wiarygodnosc-szczegol">
       <header className="mvd-jakosc-szczegol-head">
-        <h3 className="mvd-jakosc-szczegol-tytul">{item.target_name ?? item.target_id}</h3>
+        <h3 className="mvd-jakosc-szczegol-tytul">{nazwaObiektu(item.target_id, item.target_name)}</h3>
         <TagStatusu tekst={item.status} istotnosc={istotnoscWiarygodnosci(item.status)} />
-        {trybEkspercki && (
-          <span className="mvd-jakosc-szczegol-id mvd-num" aria-label={JAKOSC_STRINGS.kolIdentyfikatorWezla}>
-            {item.target_id}
-          </span>
-        )}
       </header>
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-jakosc-wiarygodnosc-informacje-audytowe"
+        wiersze={[{ etykieta: JAKOSC_STRINGS.kolIdentyfikatorWezla, wartosc: item.target_id }]}
+      />
       <dl className="mvd-jakosc-szczegol-dane">
         <div className="mvd-jakosc-szczegol-para">
           <dt>{JAKOSC_STRINGS.kolNapiecie}</dt>
@@ -365,6 +386,7 @@ export function SekcjaWalidacji({ przebieg, trybZaawansowania, onOtworzDowod, on
   const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
   const [wybrany, setWybrany] = useState<string | null>(null);
   const poprawWModelu = usePoprawWModelu();
+  const nazwaObiektu = useNazwaObiektu();
 
   const items = dane?.items ?? [];
   const wierszeSelektora = useMemo(
@@ -414,13 +436,30 @@ export function SekcjaWalidacji({ przebieg, trybZaawansowania, onOtworzDowod, on
         naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaWalidacja, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaWalidacji(dane.config)}
         kolumny={KOLUMNY_WALIDACJI}
-        wiersze={naWierszeWalidacji(items)}
+        wiersze={naWierszeWalidacji(items, nazwaObiektu)}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_WIERSZA_WALIDACJI}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
+        // Karta UI2 p.6: JEDNA mapa (`wierszeSelektora`) i JEDNO mapowanie
+        // (`typElementuWalidacji`) co akcja „Popraw w modelu" niżej.
+        typElementuWiersza={(klucz) => {
+          const it = wierszeSelektora.get(klucz);
+          return it ? typElementuWalidacji(it.check_type) ?? undefined : undefined;
+        }}
+        // Poprawka KLASA NIE INSTANCJA: `KLUCZ_WIERSZA_WALIDACJI` jest kompozytem
+        // tabeli (`check_type::target_id::index`, `target_id` NIE jest tu
+        // unikatowy — p. `jakoscModel.ts`), NIE identyfikatorem elementu — bez
+        // tego resolvera SLD próbowałoby wycentrować się na kompozycie zamiast
+        // na realnym elemencie. Ten sam `target_id`/`target_name`, którego już
+        // używa `onPoprawWModelu` niżej (JEDNO źródło prawdy — `wierszeSelektora`).
+        elementIdWiersza={(klucz) => wierszeSelektora.get(klucz)?.target_id}
+        nazwaElementuWiersza={(klucz) => {
+          const it = wierszeSelektora.get(klucz);
+          return it ? nazwaObiektu(it.target_id, it.target_name) : undefined;
+        }}
         onPoprawWModelu={(klucz) => {
           const it = wierszeSelektora.get(klucz);
           const typ = it ? typElementuWalidacji(it.check_type) : null;
@@ -430,7 +469,7 @@ export function SekcjaWalidacji({ przebieg, trybZaawansowania, onOtworzDowod, on
             poprawWModelu(
               it.target_id,
               typ,
-              it.target_name ?? it.target_id,
+              nazwaObiektu(it.target_id, it.target_name),
               rodzajPrzekroczeniaWalidacji(it.check_type) ?? undefined,
             );
           }
@@ -464,6 +503,7 @@ function SzczegolWalidacji({
 }) {
   // Ślad WHITE BOX per pozycja (R2-A / K3-G1) — zwijany, tryb ekspercki.
   const [sladWidoczny, setSladWidoczny] = useState(false);
+  const nazwaObiektu = useNazwaObiektu();
   if (!item) {
     return (
       <section className="mvd-jakosc-szczegol mvd-jakosc-szczegol--pusty" data-testid="mvd-jakosc-walidacja-szczegol-pusty">
@@ -479,16 +519,20 @@ function SzczegolWalidacji({
       <header className="mvd-jakosc-szczegol-head">
         <h3 className="mvd-jakosc-szczegol-tytul">{rodzajKontroliPL(item.check_type)}</h3>
         <TagStatusu tekst={statusWalidacjiPL(item.status)} istotnosc={istotnoscWalidacji(item.status)} />
-        {trybEkspercki && (
-          <span className="mvd-jakosc-szczegol-id mvd-num" aria-label={JAKOSC_STRINGS.kolIdentyfikatorObiektu}>
-            {item.target_id}
-          </span>
-        )}
       </header>
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-jakosc-walidacja-informacje-audytowe"
+        wiersze={[{ etykieta: JAKOSC_STRINGS.kolIdentyfikatorObiektu, wartosc: item.target_id }]}
+      />
       <dl className="mvd-jakosc-szczegol-dane">
         <div className="mvd-jakosc-szczegol-para">
           <dt>{JAKOSC_STRINGS.kolObiekt}</dt>
-          <dd>{item.target_name ?? item.target_id}</dd>
+          <dd>
+            {item.target_id === 'network'
+              ? item.target_name ?? JAKOSC_STRINGS.kreska
+              : nazwaObiektu(item.target_id, item.target_name)}
+          </dd>
         </div>
         <div className="mvd-jakosc-szczegol-para">
           <dt>{JAKOSC_STRINGS.kolWartosc}</dt>
@@ -584,6 +628,7 @@ function SzczegolMigotania({
   trybZaawansowania: AdvancementMode;
 }) {
   const [sladWidoczny, setSladWidoczny] = useState(false);
+  const nazwaObiektu = useNazwaObiektu();
   if (!wezel) {
     return (
       <section
@@ -602,9 +647,20 @@ function SzczegolMigotania({
   return (
     <section className="mvd-jakosc-szczegol" data-testid="mvd-jakosc-migotanie-szczegol">
       <header className="mvd-jakosc-szczegol-head">
-        <h3 className="mvd-jakosc-szczegol-tytul">{wezel.bus_ref}</h3>
+        <h3 className="mvd-jakosc-szczegol-tytul">{nazwaObiektu(wezel.bus_ref, wezel.bus_name)}</h3>
         <TagStatusu tekst={wezel.verdict_pl} istotnosc={istotnoscMigotania(wezel.verdict_pl)} />
       </header>
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-jakosc-migotanie-informacje-audytowe"
+        wiersze={[
+          { etykieta: JAKOSC_STRINGS.kolIdentyfikatorWezla, wartosc: wezel.bus_ref },
+          ...wezel.modules.map((modul) => ({
+            etykieta: JAKOSC_STRINGS.audytIdentyfikatorModulu(nazwaObiektu(modul.gen_ref)),
+            wartosc: modul.gen_ref,
+          })),
+        ]}
+      />
       <dl className="mvd-jakosc-szczegol-dane">
         <div className="mvd-jakosc-szczegol-para">
           <dt>{JAKOSC_STRINGS.kolSk}</dt>
@@ -636,7 +692,7 @@ function SzczegolMigotania({
           {wezel.modules.map((modul) => (
             <li key={modul.gen_ref} className="mvd-jakosc-mig-modul">
               <div className="mvd-jakosc-mig-modul-head">
-                <span className="mvd-num">{modul.gen_ref}</span>
+                <span>{nazwaObiektu(modul.gen_ref, modul.gen_name)}</span>
                 <TagStatusu
                   tekst={modul.included ? JAKOSC_STRINGS.modulWliczony : JAKOSC_STRINGS.modulPominiety}
                   istotnosc={modul.included ? 'ok' : 'neutral'}
@@ -702,6 +758,7 @@ export function SekcjaMigotania({
   const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
   const [wybrany, setWybrany] = useState<string | null>(null);
   const poprawWModelu = usePoprawWModelu();
+  const nazwaObiektu = useNazwaObiektu();
 
   const buses = dane?.buses ?? [];
   const wierszeSelektora = useMemo(
@@ -751,15 +808,18 @@ export function SekcjaMigotania({
         naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaMigotanie, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaMigotania(dane.config)}
         kolumny={KOLUMNY_MIGOTANIE}
-        wiersze={naWierszeMigotania(buses)}
+        wiersze={naWierszeMigotania(buses, nazwaObiektu)}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_WIERSZA_MIGOTANIE}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
+        // Karta UI2 p.6: migotanie liczone per węzeł (Bus).
+        typElementuWiersza={() => 'Bus'}
         // K1 / F-E6.3: werdykt tej sekcji = migotanie (Pst/Plt/d%) → rodzaj 'migotanie'.
-        onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', ref, 'migotanie')}
+        nazwaElementuWiersza={(ref) => nazwaObiektu(ref)}
+        onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', nazwaObiektu(ref), 'migotanie')}
       />
       <div className="mvd-jakosc-podsumowanie" data-testid="mvd-jakosc-migotanie-podsumowanie">
         <Chip etykieta={JAKOSC_STRINGS.podsumOcenione} wartosc={summary.assessed_count} istotnosc="ok" />
@@ -810,6 +870,7 @@ function SzczegolArcFlash({
   trybZaawansowania: AdvancementMode;
 }) {
   const [sladWidoczny, setSladWidoczny] = useState(false);
+  const nazwaObiektu = useNazwaObiektu();
   if (!wynik) {
     return (
       <section
@@ -828,9 +889,14 @@ function SzczegolArcFlash({
   return (
     <section className="mvd-jakosc-szczegol" data-testid="mvd-jakosc-af-szczegol">
       <header className="mvd-jakosc-szczegol-head">
-        <h3 className="mvd-jakosc-szczegol-tytul">{wynik.bus_ref}</h3>
+        <h3 className="mvd-jakosc-szczegol-tytul">{nazwaObiektu(wynik.bus_ref, wynik.bus_name)}</h3>
         <TagStatusu tekst={wynik.status_label_pl} istotnosc={istotnoscArcFlash(wynik.status)} />
       </header>
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-jakosc-af-informacje-audytowe"
+        wiersze={[{ etykieta: JAKOSC_STRINGS.kolIdentyfikatorWezla, wartosc: wynik.bus_ref }]}
+      />
       <dl className="mvd-jakosc-szczegol-dane">
         <div className="mvd-jakosc-szczegol-para">
           <dt>{JAKOSC_STRINGS.kolEnergia}</dt>
@@ -915,7 +981,7 @@ function podsumowanieArcFlash(
     soiMap.set(kat, (soiMap.get(kat) ?? 0) + 1);
     if (typeof w.incident_energy_cal_cm2 === 'number' && w.incident_energy_cal_cm2 > najwyzsza) {
       najwyzsza = w.incident_energy_cal_cm2;
-      szyna = w.bus_ref;
+      szyna = w.bus_name;
     }
   }
   if (najwyzsza === -Infinity) return null;
@@ -956,6 +1022,7 @@ export function SekcjaArcFlash({
   const [stan, setStan] = useState<'bezliczenia' | 'ladowanie' | 'blad' | 'gotowe'>('bezliczenia');
   const [dane, setDane] = useState<ArcFlashResponse | null>(null);
   const [wybrany, setWybrany] = useState<string | null>(null);
+  const nazwaObiektu = useNazwaObiektu();
   // Parametry faktycznie użyte do policzenia widoku — raport MUSI ich użyć,
   // aby dokument był spójny z pokazaną tabelą (nawet po zmianie pól formularza).
   const [uzyteParametry, setUzyteParametry] = useState<ParametryArcFlash | null>(null);
@@ -1136,7 +1203,7 @@ export function SekcjaArcFlash({
                   <strong data-testid="mvd-jakosc-af-podsum-max">
                     {fmtCal(podsum.najwyzsza)} cal/cm²
                   </strong>{' '}
-                  ({JAKOSC_STRINGS.afPodsumSzyna} {podsum.szyna})
+                  ({JAKOSC_STRINGS.afPodsumSzyna} {nazwaObiektu(podsum.szyna)})
                 </span>
                 {podsum.soi.length > 0 && (
                   <span className="mvd-jakosc-af-podsum-soi" data-testid="mvd-jakosc-af-podsum-soi">
@@ -1164,13 +1231,16 @@ export function SekcjaArcFlash({
             naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaArcFlash, runId: runId ?? undefined, ...swiezosc }}
             zalozenia={[]}
             kolumny={KOLUMNY_ARC_FLASH}
-            wiersze={naWierszeArcFlash(wyniki)}
+            wiersze={naWierszeArcFlash(wyniki, nazwaObiektu)}
             onOtworzDowod={onOtworzDowod}
             onEksport={onEksport}
             trybZaawansowania={trybZaawansowania}
             kluczWiersza={KLUCZ_WIERSZA_ARC_FLASH}
             onWybierzWiersz={setWybrany}
             wybranyWiersz={wybrany}
+            // Karta UI2 p.6: klucz wiersza = `bus_ref` (arc flash liczony per węzeł).
+            typElementuWiersza={() => 'Bus'}
+            nazwaElementuWiersza={(ref) => nazwaObiektu(ref)}
           />
           <SzczegolArcFlash wynik={wybranyWynik} trybZaawansowania={trybZaawansowania} />
           <div className="mvd-jakosc-af-raport" data-testid="mvd-jakosc-af-raport">
@@ -1347,6 +1417,7 @@ export function SekcjaWytrzymaloscCieplna({
   );
   const [wybrany, setWybrany] = useState<string | null>(null);
   const poprawWModelu = usePoprawWModelu();
+  const nazwaObiektu = useNazwaObiektu();
 
   if (stan === 'brakPrzebiegu') {
     return (
@@ -1406,19 +1477,36 @@ export function SekcjaWytrzymaloscCieplna({
       )}
       <EkranAnalizy
         naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaCieplna, runId: runId ?? undefined, ...swiezosc }}
-        zalozenia={naZalozeniaCieplne(dane.fault_node_id, dane.tk_s, summary, dane.czasy_wylaczenia)}
+        zalozenia={naZalozeniaCieplne(
+          dane.fault_node_id,
+          dane.tk_s,
+          summary,
+          dane.czasy_wylaczenia,
+          nazwaObiektu,
+        )}
         kolumny={KOLUMNY_CIEPLNE}
-        wiersze={naWierszeCieplne(items)}
+        wiersze={naWierszeCieplne(items, nazwaObiektu)}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_CIEPLNA_GALAZ}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
+        // Karta UI2 p.6: ten sam typ co akcja „Popraw w modelu" niżej —
+        // wytrzymałość cieplna przewodów (IEC 60949) dotyczy WYŁĄCZNIE linii/kabli.
+        typElementuWiersza={() => 'LineBranch'}
+        // Poprawka KLASA NIE INSTANCJA: `KLUCZ_CIEPLNA_GALAZ` niesie `branch_id`
+        // (techniczny), kolumna „Przewód" pokazuje nazwę z mostu nazw wyników (ten
+        // sam most co `naWierszeCieplne` wyżej i `onPoprawWModelu` niżej — karta #145).
+        nazwaElementuWiersza={(klucz) => {
+          const pozycja = items.find((it) => it.branch_id === klucz);
+          return pozycja ? nazwaObiektu(pozycja.branch_id, pozycja.branch_name) : undefined;
+        }}
         onPoprawWModelu={(klucz) => {
           // Naruszone kryterium cieplne poprawia się ZMIANA PRZEKROJU tej gałęzi,
           // więc prowadzimy wprost do niej w modelu.
-          poprawWModelu(klucz, 'LineBranch', klucz);
+          const pozycja = items.find((it) => it.branch_id === klucz);
+          poprawWModelu(klucz, 'LineBranch', nazwaObiektu(klucz, pozycja?.branch_name));
         }}
       />
       <DowodCieplnyGalezi
@@ -1459,6 +1547,7 @@ function DowodCieplnyGalezi({
 }) {
   const [dowod, setDowod] = useState<DowodCieplnyResponse | null>(null);
   const [stan, setStan] = useState<'pusty' | 'ladowanie' | 'gotowe' | 'blad'>('pusty');
+  const nazwaObiektu = useNazwaObiektu();
 
   useEffect(() => {
     if (!runId || !branchId) {
@@ -1510,7 +1599,7 @@ function DowodCieplnyGalezi({
       trybZaawansowania={trybZaawansowania}
       ladowanie={stan === 'ladowanie'}
       onPokazNaSchemacie={() =>
-        onPokazNaSchemacie(pozycja.branch_id, pozycja.branch_name || pozycja.branch_id)
+        onPokazNaSchemacie(pozycja.branch_id, nazwaObiektu(pozycja.branch_id, pozycja.branch_name))
       }
     />
   );
@@ -1540,7 +1629,18 @@ export function EkranJakosci({ trybZaawansowania, onOtworzDowod, onEksport }: Ek
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport ? eksport : undefined}
       />
+      {/* W3-G1 (aneks D2): walidacja krzyżowa metod rozpływu NR↔FD — sekcja
+          OSOBNA (nie edytuje sekcji powyżej/poniżej), znajduje własne dwa
+          biegi (nie bierze `przebiegPF`, bo potrzebuje DWÓCH biegów naraz). */}
+      <SekcjaPorownaniaMetod trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
       <SekcjaWarunkowPrzylaczenia
+        przebieg={przebiegPF}
+        trybZaawansowania={trybZaawansowania}
+        onOtworzDowod={onOtworzDowod}
+        onEksport={onEksport ? eksport : undefined}
+      />
+      {/* Karta W3-G2: pasma zdrowego rozsądku rozpływu (napięcia/obciążenia/straty) */}
+      <SekcjaPasmRozplywu
         przebieg={przebiegPF}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}

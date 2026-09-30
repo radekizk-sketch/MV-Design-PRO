@@ -23,6 +23,7 @@
  * podrobiony. Luka nazwana w meldunku karty P0.9.
  */
 
+import { OPCJE_UZIEMIENIA_EKRANU, type UziemienieEkranuKabla } from '../../../types/uziemienie';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
@@ -113,6 +114,7 @@ export function KreatorOdcinkaNn() {
   const [nazwa, setNazwa] = useState('');
   const [dlugoscM, setDlugoscM] = useState<number | null>(null);
   const [nParallel, setNParallel] = useState<number | null>(1);
+  const [screenBonding, setScreenBonding] = useState<UziemienieEkranuKabla | ''>('');
   const [trybUlozenia, setTrybUlozenia] = useState<TrybUlozenia>('katalogowe');
   const [srodowisko, setSrodowisko] = useState<'powietrze' | 'grunt'>('powietrze');
   const [izolacja, setIzolacja] = useState<'PVC' | 'XLPE'>('PVC');
@@ -180,6 +182,7 @@ export function KreatorOdcinkaNn() {
     setFromBusRef(noweFromBusRef);
     setNazwa('');
     setDlugoscM(null);
+    setScreenBonding('');
     setIbPodgladu(null);
   }, []);
 
@@ -200,6 +203,8 @@ export function KreatorOdcinkaNn() {
         catalog_ref: catalogRef,
         name: nazwa.trim() || undefined,
         cable_laying_conditions: layingConditions ?? undefined,
+        // W5-A: deklaracja ekranu tylko gdy wybrana (zero fantomów).
+        screen_bonding: screenBonding || undefined,
       };
       const catalogError = validateCatalogFirst('add_nn_cable_segment', payload as unknown as Record<string, unknown>);
       if (catalogError) {
@@ -239,7 +244,7 @@ export function KreatorOdcinkaNn() {
         setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
       }
     },
-    [activeCaseId, catalogRef, closeForm, dlugoscM, executeDomainOperation, fromBusRef, layingConditions, nazwa, nParallel, resetujFormularz, selekcja, wybranyKabel],
+    [activeCaseId, catalogRef, closeForm, dlugoscM, executeDomainOperation, fromBusRef, layingConditions, nazwa, nParallel, resetujFormularz, screenBonding, selekcja, wybranyKabel],
   );
 
   const wierszeGotowosci: WierszGotowosci[] = [
@@ -365,6 +370,14 @@ export function KreatorOdcinkaNn() {
             krok={1}
             pomoc={T.nParallelPomoc}
             testid="mvd-kreator-odcinek-nn-nparallel"
+          />
+          <PoleWyboru
+            etykieta={T.ekranUziemienie}
+            wartosc={screenBonding}
+            onZmiana={(v) => setScreenBonding(v as UziemienieEkranuKabla | '')}
+            opcje={OPCJE_UZIEMIENIA_EKRANU}
+            pomoc={T.ekranUziemieniePomoc}
+            testid="mvd-kreator-odcinek-nn-ekran"
           />
         </KreatorSiatka>
         <PoleLiczbowe

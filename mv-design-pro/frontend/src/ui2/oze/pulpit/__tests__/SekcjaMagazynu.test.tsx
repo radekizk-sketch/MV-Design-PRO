@@ -5,7 +5,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { derFixture } from '../../macierz/__tests__/fixtures';
 import { SekcjaMagazynu } from '../SekcjaMagazynu';
@@ -45,9 +45,15 @@ describe('SekcjaMagazynu — dopasowanie z katalogu (kryterium 1)', () => {
     expect(await screen.findByTestId('mvd-oze-magazyn-rekord')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-oze-magazyn-ekspert')).not.toBeInTheDocument();
     rerender(<SekcjaMagazynu der={der} trybEkspercki={true} />);
-    expect(await screen.findByTestId('mvd-oze-magazyn-ekspert')).toHaveTextContent(
-      'conv-bess-nn-1mw-0p4kv',
-    );
+    // Karta #145: identyfikator rekordu i pole dopasowania wyłącznie w „Informacjach
+    // audytowych" — zwinięte; pierwszy plan bez identyfikatora.
+    const audyt = await screen.findByTestId('mvd-oze-magazyn-ekspert');
+    expect(audyt).not.toHaveTextContent('conv-bess-nn-1mw-0p4kv');
+    fireEvent.click(screen.getByTestId('mvd-oze-magazyn-ekspert-przelacz'));
+    const lista = screen.getByTestId('mvd-oze-magazyn-ekspert-lista');
+    expect(lista).toHaveTextContent('conv-bess-nn-1mw-0p4kv');
+    expect(lista).toHaveTextContent('Urządzenie wytwórcze');
+    expect(lista).not.toHaveTextContent('device_catalog_ref');
   });
 
   it('BESS bez dopasowania → jawny stan „pozycja katalogowa nieodnaleziona"', async () => {

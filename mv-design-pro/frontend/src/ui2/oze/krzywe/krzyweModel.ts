@@ -2,7 +2,7 @@
  * Model i adaptery okna „Krzywe zdolności P–Q" (karta P41). Czyste, read-only
  * odwzorowanie odpowiedzi końcówki pq-coverage (`../api`) na struktury prezentacji
  * (opcje doboru / wykres / tabela wzorcowa / ślad WHITE BOX). Zero fizyki, zero
- * ocen lokalnych — pokrycie, marginesy i werdykt pochodzą WYŁĄCZNIE z backendu.
+ * ocen lokalnych — zapasy i rekord oceny pochodzą WYŁĄCZNIE z backendu.
  * Zero mutacji, zero wołań API stąd.
  *
  * Ślad WHITE BOX dopasowany ADAPTEREM (nie kopią) do kontraktu `SladAnalizy`
@@ -11,11 +11,11 @@
 
 import type {
   KrokSladuSily,
-  ProfilOperatoraNcRfg,
   PunktPokryciaPQ,
   RekordKonwertera,
   WidokPokryciaPQ,
 } from '../api';
+import type { ProfilOperatoraNcRfg } from '../ncrfg/typy';
 import type { DefinicjaKolumny, WierszTabeli } from '../../wyniki/wzorzec/wzorzecModel';
 import { KRZYWE_STRINGS, fmtMWPQ, fmtMvarPQ } from './strings';
 
@@ -101,12 +101,23 @@ export function kolumnyTabeliPQ(): DefinicjaKolumny[] {
       sortowalna: false,
     },
     {
+      klucz: 'zapasDolny',
+      etykieta: KRZYWE_STRINGS.kolZapasDolny,
+      jednostka: KRZYWE_STRINGS.jednMvar,
+      mono: true,
+    },
+    {
+      klucz: 'zapasGorny',
+      etykieta: KRZYWE_STRINGS.kolZapasGorny,
+      jednostka: KRZYWE_STRINGS.jednMvar,
+      mono: true,
+    },
+    {
       klucz: 'margines',
       etykieta: KRZYWE_STRINGS.kolMargines,
       jednostka: KRZYWE_STRINGS.jednMvar,
       mono: true,
     },
-    { klucz: 'status', etykieta: KRZYWE_STRINGS.kolStatus },
   ];
 }
 
@@ -115,18 +126,19 @@ function pasmoMvar(min: number, max: number): string {
   return `${fmtMvarPQ(min)}${KRZYWE_STRINGS.rozdzielaczPasma}${fmtMvarPQ(max)}`;
 }
 
-/** Adapter jednego punktu pokrycia → wiersz wzorca tabeli (semantyka `ValueRow`). */
+/**
+ * Adapter jednego punktu pokrycia → wiersz wzorca tabeli: WYŁĄCZNIE liczby z backendu
+ * (pasma, zapasy dolny/górny, zapas punktu). Punkt nie ma własnego statusu — ocenę całości
+ * niesie rekord `ocena` widoku; tabela nie wyprowadza z liczby „pokryty/niepokryty".
+ */
 function wierszPunktuPQ(pt: PunktPokryciaPQ): WierszTabeli {
   return {
     moc: { wartosc: fmtMWPQ(pt.p_mw), sortKey: pt.p_mw },
     pasmo: { wartosc: pasmoMvar(pt.q_min_mvar, pt.q_max_mvar) },
     wymaganie: { wartosc: pasmoMvar(pt.q_wymagane_min_mvar, pt.q_wymagane_max_mvar) },
+    zapasDolny: { wartosc: fmtMvarPQ(pt.zapas_dolny_mvar), sortKey: pt.zapas_dolny_mvar },
+    zapasGorny: { wartosc: fmtMvarPQ(pt.zapas_gorny_mvar), sortKey: pt.zapas_gorny_mvar },
     margines: { wartosc: fmtMvarPQ(pt.margines_mvar), sortKey: pt.margines_mvar },
-    // `ostrzezenie` (tag) czyta WYŁĄCZNIE flagę `pokryty` z backendu — bez oceny lokalnej.
-    status: {
-      wartosc: pt.pokryty ? KRZYWE_STRINGS.statusPokryty : KRZYWE_STRINGS.statusNiepokryty,
-      ostrzezenie: !pt.pokryty,
-    },
   };
 }
 
@@ -168,13 +180,4 @@ export function krokiSladuPQ(widok: WidokPokryciaPQ): KrokSladuSily[] {
       result_pl: slad.wynik,
     },
   ];
-}
-
-// ---------------------------------------------------------------------------
-// Werdykt — istotność (dobór koloru banera); tekst wprost z backendu
-// ---------------------------------------------------------------------------
-
-/** Istotność werdyktu do doboru koloru banera (wyłącznie prezentacja). */
-export function istotnoscWerdyktuPQ(widok: WidokPokryciaPQ): 'ok' | 'err' {
-  return widok.werdykt.pokryty ? 'ok' : 'err';
 }

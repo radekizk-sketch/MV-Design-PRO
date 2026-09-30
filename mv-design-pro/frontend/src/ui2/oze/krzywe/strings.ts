@@ -27,18 +27,10 @@ export const KRZYWE_STRINGS = {
   // Stany uczciwe
   ladowanieKatalogu: 'Wczytywanie katalogu typów i operatorów…',
   bladKatalogu: 'Nie udało się wczytać katalogu typów lub operatorów',
-  typBezKrzywej: 'Wybrany typ nie ma krzywej producenta',
-  typBezKrzywejOpis:
-    'Weryfikacja pokrycia P–Q wymaga krzywej zdolności producenta. Wskaż typ '
-    + 'z krzywą (na liście oznaczone bez adnotacji „brak krzywej producenta").',
   brakWyniku: 'Wybierz typ i operatora, następnie uruchom sprawdzenie',
   brakWynikuOpis: 'Jawny bieg pobierze pokrycie krzywej P–Q wymaganiem operatora.',
   ladowanie: 'Sprawdzanie pokrycia krzywej P–Q…',
   blad: 'Nie udało się sprawdzić pokrycia P–Q',
-
-  // Werdykt
-  werdyktPokryte: 'Krzywa producenta pokrywa wymaganie operatora',
-  werdyktNiepokryte: 'Krzywa producenta NIE pokrywa wymagania operatora',
 
   // Założenia (część wyniku)
   zalozeniaTyp: 'Typ falownika',
@@ -53,10 +45,9 @@ export const KRZYWE_STRINGS = {
   kolMoc: 'Moc czynna',
   kolPasmoProducenta: 'Pasmo producenta',
   kolWymaganie: 'Wymaganie operatora',
-  kolMargines: 'Margines',
-  kolStatus: 'Status',
-  statusPokryty: 'Pokryty',
-  statusNiepokryty: 'Niepokryty',
+  kolZapasDolny: 'Zapas dolny',
+  kolZapasGorny: 'Zapas górny',
+  kolMargines: 'Zapas punktu (mniejszy)',
 
   // Wykres
   wykresTytul: 'Krzywa zdolności P–Q — pasmo producenta i wymaganie operatora',
@@ -91,9 +82,14 @@ export const KRZYWE_STRINGS = {
   wiazaniaKrzywaPf: 'Charakterystyka P(f)',
   wiazaniaKrzywaLvrt: 'Krzywa LVRT',
   wiazaniaKrzywaHvrt: 'Krzywa HVRT',
+  // Karta FAB-J: backend niesie JEDNĄ krzywą ride-through na operatora NC RfG
+  // (nie katalog wariantów) — LVRT/HVRT są tu read-only, wywiedzione z profilu
+  // już przypisanego modułowi, nie niezależnym wyborem.
+  wiazaniaBrakProfiluOperatora:
+    'Moduł nie ma jeszcze przypisanego profilu operatora NC RfG — krzywa LVRT/HVRT nieznana.',
   wiazaniaBezZmiany: '— bez zmiany —',
   wiazaniaZapisz: 'Zapisz krzywe w wiązaniach modułu',
-  wiazaniaZadnaZmiana: 'Wybierz przynajmniej jedną krzywą do zapisania.',
+  wiazaniaZadnaZmiana: 'Wybierz krzywą P(f) do zapisania.',
   wiazaniaBrakKontekstu:
     'Wybierz projekt i przypadek obliczeniowy, aby zapisać wiązania w modelu.',
   wiazaniaZapisano: 'Krzywe zapisane w wiązaniach modułu wytwórczego',

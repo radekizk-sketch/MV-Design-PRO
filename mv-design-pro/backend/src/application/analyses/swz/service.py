@@ -6,7 +6,7 @@ Warstwa APLIKACJI: łączy ekstrakcję trasy + solver pętli zwarcia
 (``application.analyses.fault_loop``) z werdyktem SWZ (``.werdykt`` —
 interpretacja). Import prywatnych helperów ``fault_loop.service``
 (``_find_station``, ``resolve_station_transformer``, ``_transformer_loop_impedance``,
-``_upstream_thevenin_lv_component``, ``_system_for_station``) jest ŚWIADOMY —
+``_upstream_thevenin_lv_component``, ``uklad_nn_transformatora``) jest ŚWIADOMY —
 SWZ i widok pętli zwarcia dzielą DOKŁADNIE TĘ SAMĄ fizykę transformatora i
 upstream Thevenina (impedancja u źródła nN jest identyczna niezależnie od
 tego, czy pytamy o „pętlę w punkcie" czy o „SWZ dla obwodu"); duplikowanie
@@ -16,7 +16,6 @@ którym ostrzega reguła KLASA NIE INSTANCJA (dwie ścieżki tej samej fizyki).
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
 from application.analyses.fault_loop.route import (
@@ -25,24 +24,22 @@ from application.analyses.fault_loop.route import (
     route_segments_min_scenario,
 )
 from application.analyses.fault_loop.service import (
-    _DEFAULT_SYSTEM,
-    _NON_TN_SYSTEMS,
-    _SYSTEM_MAP,
     _find_station,
-    _system_for_station,
     _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
+    oblicz_petle_na_trasie,
+    odmowa_analizy_nn,
     resolve_station_transformer,
     resolve_transformer_for_bus,
+    uklad_nn_transformatora,
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
+from network_model.pochodne import kv_na_v, napiecie_fazowe_v
 from network_model.solvers.fault_loop_builder import (
-    FaultLoopBuildRequest,
-    build_fault_loop_input,
     sum_phase_and_return_route,
 )
-from network_model.solvers.fault_loop_iec60364 import compute_fault_loop
+from solver_input.uklad_sieci_nn import typ_sieci_solvera
 
 from .werdykt import AparatZabezpieczajacy, ocen_swz
 
@@ -157,25 +154,13 @@ def build_swz_view(
             "breaker_ref": breaker_ref,
         }
 
-    system = _system_for_station(station)
     context: dict[str, Any] = {
         "station_ref": station_ref,
         "station_name": station.name,
-        "network_system": system,
+        "network_system": None,
         "bus_ref": bus_ref,
         "breaker_ref": breaker_ref,
     }
-
-    if system in _NON_TN_SYSTEMS:
-        return {
-            **context,
-            "status": "nie dotyczy",
-            "reason_pl": (
-                f"Układ {system}: SWZ metodą pętli TN (IEC 60364-4-41) nie dotyczy — "
-                "inny mechanizm ochrony przeciwporażeniowej."
-            ),
-            "missing_data": [],
-        }
 
     trafo, transformer_missing = (
         resolve_transformer_for_bus(enm, station, bus_ref)
@@ -184,6 +169,14 @@ def build_swz_view(
     )
     if trafo is None:
         return {**context, "status": "brak danych", "missing_data": transformer_missing}
+
+    # W5-A: układ sieci nN z transformatora ZASILAJĄCEGO; brak/TT/IT = odmowa nazwana.
+    system = uklad_nn_transformatora(trafo)
+    context["network_system"] = system
+    odmowa = odmowa_analizy_nn(context, trafo)
+    if odmowa is not None:
+        return odmowa
+    assert system is not None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
@@ -218,28 +211,20 @@ def build_swz_view(
         }
 
     phase_component, return_component = sum_phase_and_return_route(segments)
-    net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    net_type, protection = typ_sieci_solvera(system)
+    u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
-    request = FaultLoopBuildRequest(
+    loop_result = oblicz_petle_na_trasie(
+        trafo=trafo,
         fault_node_id=bus_ref,
-        u_nom_v=u_phase_v,
-        network_type=net_type,
-        protection_arrangement=protection,
-        phase_conductor_r_ohm=phase_component.r_ohm,
-        phase_conductor_x_ohm=phase_component.x_ohm,
-        return_conductor_r_ohm=return_component.r_ohm,
-        return_conductor_x_ohm=return_component.x_ohm,
-        transformer_r_ohm=z_tr.r_ohm,
-        transformer_x_ohm=z_tr.x_ohm,
-        transformer_label=f"Transformator SN/nN {trafo.name}",
-        upstream_r_ohm=upstream.r_ohm,
-        upstream_x_ohm=upstream.x_ohm,
-        upstream_label=upstream.label,
-        phase_label=phase_component.label,
-        return_label=return_component.label,
+        u_phase_v=u_phase_v,
+        net_type=net_type,
+        protection=protection,
+        z_tr=z_tr,
+        upstream=upstream,
+        phase_component=phase_component,
+        return_component=return_component,
     )
-    loop_result = compute_fault_loop(build_fault_loop_input(request))
 
     swz = ocen_swz(ik1_min_a=loop_result.ik_min_a, u0_v=u_phase_v, aparat=aparat)
 

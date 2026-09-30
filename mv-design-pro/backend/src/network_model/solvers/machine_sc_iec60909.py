@@ -232,8 +232,8 @@ def compute_machine_contributions(
         kroki: list[dict] = [
             {
                 "tekst": (
-                    f"Impedancja zastepcza maszyny: Z''m = "
-                    f"{z_internal_ohm.real:.4f} + j{z_internal_ohm.imag:.4f} ohm"
+                    f"Impedancja zastępcza maszyny: Z″m = "
+                    f"{z_internal_ohm.real:.4f} + j{z_internal_ohm.imag:.4f} Ω"
                 ),
                 "latex": (
                     rf"Z''_m = {z_internal_ohm.real:.4f} + j\,{z_internal_ohm.imag:.4f}"
@@ -245,8 +245,8 @@ def compute_machine_contributions(
             kroki.append(
                 {
                     "tekst": (
-                        "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu "
-                        "na zaciskach rownowazne c*Un/(sqrt(3)*Z''))"
+                        "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu "
+                        "na zaciskach równoważny c·Un/(√3·Z″))"
                     ),
                     "latex": (
                         rf"I''_{{k,m}} = \frac{{c\,|Z_{{mk}}|}}{{|Z_{{kk}}|\,|Z_m|}}\,"
@@ -261,7 +261,7 @@ def compute_machine_contributions(
         if ir_a > 0:
             kroki.append(
                 {
-                    "tekst": f"Krotnosc pradu znamionowego: I''k/Ir = {ratio:.2f}",
+                    "tekst": f"Krotność prądu znamionowego: I″k/Ir = {ratio:.2f}",
                     "latex": (
                         rf"\frac{{I''_{{k,m}}}}{{I_{{r,m}}}} = "
                         rf"\frac{{{ip_ka:.3f}}}{{{ir_a / 1000.0:.3f}}} = {ratio:.2f}"
@@ -272,8 +272,8 @@ def compute_machine_contributions(
             kroki.append(
                 {
                     "tekst": (
-                        "Wspolczynnik zaniku: I''k/Ir <= 2 -> mu = 1 "
-                        "(zwarcie odlegle od generatora, par. 6.6.1)"
+                        "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 "
+                        "(zwarcie odległe od generatora, § 6.6.1)"
                     ),
                     "latex": r"\mu = 1{,}0 \quad (I''_k/I_r \le 2)",
                 }
@@ -285,8 +285,8 @@ def compute_machine_contributions(
             kroki.append(
                 {
                     "tekst": (
-                        f"Wspolczynnik zaniku mu (krzywa t_min = {t_min_s:.2f} s, "
-                        f"par. 6.6.1): mu = {mu:.3f}"
+                        f"Współczynnik zaniku μ (krzywa t_min = {t_min_s:.2f} s, "
+                        f"§ 6.6.1): μ = {mu:.3f}"
                     ),
                     "latex": (
                         mu_latex
@@ -300,7 +300,7 @@ def compute_machine_contributions(
             if p_per_pole_mw <= 0.0:
                 kroki.append(
                     {
-                        "tekst": "Brak mocy na pare biegunow -> q = 1 (par. 6.6.3)",
+                        "tekst": "Brak mocy na parę biegunów → q = 1 (§ 6.6.3)",
                         "latex": r"q = 1{,}0",
                     }
                 )
@@ -311,8 +311,8 @@ def compute_machine_contributions(
                 kroki.append(
                     {
                         "tekst": (
-                            f"Wspolczynnik q silnika asynchronicznego (m = "
-                            f"{p_per_pole_mw:.3f} MW/pare biegunow, par. 6.6.3): q = {q:.3f}"
+                            f"Współczynnik q silnika asynchronicznego (m = "
+                            f"{p_per_pole_mw:.3f} MW na parę biegunów, § 6.6.3): q = {q:.3f}"
                         ),
                         "latex": (
                             q_latex
@@ -326,15 +326,16 @@ def compute_machine_contributions(
             kroki.append(
                 {
                     "tekst": (
-                        "DFIG (Typ 3): zalozono zadzialanie crowbar (wirnik zwarty) -> "
-                        "model maszyny asynchronicznej (par. 6.7), zachowawczo dla I''k,max"
+                        "Generator asynchroniczny dwustronnie zasilany (typ 3): założono zadziałanie "
+                        "układu zwierającego wirnik → model maszyny asynchronicznej (§ 6.7), "
+                        "zachowawczo dla I″k,max"
                     ),
                     "latex": None,
                 }
             )
         kroki.append(
             {
-                "tekst": f"Prad wylaczeniowy symetryczny: Ib = {ib_ka:.3f} kA",
+                "tekst": f"Prąd wyłączeniowy symetryczny: Ib = {ib_ka:.3f} kA",
                 "latex": (
                     rf"I_b = \mu \cdot q \cdot I''_{{k,m}} = "
                     rf"{mu:.3f} \cdot {q:.3f} \cdot {ip_ka:.3f}\;\mathrm{{kA}}"

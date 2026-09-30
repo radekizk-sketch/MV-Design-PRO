@@ -9,8 +9,19 @@
  *   `analysis_id`/`context`/`items`/`summary`); pojedynczy element =
  *   `ShortCircuitSanityVerdict.to_dict` + `target_id`/`element_id`/`target_name`
  *   (`analysis/sanity_bounds/short_circuit_bounds.py:46-57`). Pole `status`
- *   niesie GOTOWY tekst polski wprost z backendu („zweryfikowany" /
+ *   niesie GOTOWY tekst polski wprost z backendu („w paśmie wiarygodności" /
  *   „poza zakresem wiarygodności" / „dane niekompletne").
+ * - Pasma zdrowego rozsądku rozpływu — TA SAMA końcówka `GET /api/quality/
+ *   sanity-bounds?run_id=`, dispatch wg rodzaju przebiegu (karta W3-G2,
+ *   rozszerzenie ADDYTYWNE): przebieg PF →
+ *   `application/analyses/sanity_bounds.py:build_power_flow_sanity_bounds_view`
+ *   (kształt `analysis_id`/`context`/`converged`/`napiecia`/`obciazenia`/`straty`);
+ *   `napiecia`/`obciazenia` = `{items, summary}` (dla `napiecia` dodatkowo
+ *   `norm_ref`/`band_pct`), pojedynczy element = `VoltageBandSanityVerdict`/
+ *   `BranchLoadingSanityVerdict.to_dict` + `target_id`/`target_name`
+ *   (`analysis/sanity_bounds/power_flow_bounds.py`); `straty` = pojedynczy
+ *   `NetworkLossesSanityVerdict.to_dict` (agregat sieciowy, nie lista). Status
+ *   niesie TEN SAM gotowy tekst polski co wiarygodność zwarciowa (trzy stany).
  * - Walidacja energetyczna — `GET /api/quality/energy-validation?run_id=`:
  *   `quality_analysis_runs.py:50-59` →
  *   `application/analyses/energy_validation/service.py:build_energy_validation_view`
@@ -19,7 +30,7 @@
  *   `analysis/energy_validation/models.py:23-35` (mapowane na polski w `strings`).
  *
  * Warstwa PREZENTACJI: wyłącznie odczyt (GET), zero fizyki, zero mutacji.
- * Wzór pobierania: `ui/ncrfg-tests/api.ts`.
+ * Wzór pobierania: `ui2/oze/ncrfg/api.ts` (jeden klient zgodności NC RfG).
  */
 
 import type { TraceStep } from '../../../ui/results-inspector/types';
@@ -73,6 +84,96 @@ export interface WiarygodnoscResponse {
   readonly context: KontekstJakosci | null;
   readonly items: readonly WiarygodnoscItem[];
   readonly summary: WiarygodnoscSummary;
+}
+
+// ---------------------------------------------------------------------------
+// Pasma zdrowego rozsądku rozpływu (karta W3-G2) — TA SAMA końcówka co powyżej,
+// przebieg PF zamiast SC.
+// ---------------------------------------------------------------------------
+
+/** Podsumowanie trójstanowe (w paśmie/poza zakresem/niekompletne) sekcji. */
+export interface PasmaSummary {
+  readonly credible_count: number;
+  readonly out_of_range_count: number;
+  readonly incomplete_count: number;
+}
+
+/** Ocena wiarygodności napięcia jednej szyny wobec pasma Un ± 10 % (PN-EN 50160). */
+export interface NapieciePasmoItem {
+  readonly target_id: string;
+  readonly target_name: string | null;
+  readonly nominal_kv: number | null;
+  readonly actual_kv: number | null;
+  readonly lower_kv: number | null;
+  readonly upper_kv: number | null;
+  readonly deviation_pct: number | null;
+  readonly in_range: boolean;
+  readonly status: string;
+  readonly why_pl: string;
+}
+
+/** Ocena wiarygodności obciążenia jednej gałęzi (linia/kabel) wobec In katalogu. */
+export interface ObciazeniePasmoItem {
+  readonly target_id: string;
+  readonly target_name: string | null;
+  /** Prąd zacisku DECYDUJĄCEGO [kA] (większy iloraz prąd / prąd znamionowy zacisku). */
+  readonly current_ka: number | null;
+  /** Prąd znamionowy zacisku decydującego [A]. */
+  readonly rated_current_a: number | null;
+  readonly loading_pct: number | null;
+  readonly in_range: boolean;
+  readonly status: string;
+  readonly why_pl: string;
+  /**
+   * Pola ADDYTYWNE (decyzja O-51, klasa P9): zacisk decydujący oraz prądy i prądy
+   * znamionowe OBU zacisków — transformatory i kable z susceptancją mają na końcach
+   * inne prądy. Opcjonalne tylko dla odpowiedzi sprzed pól; `null` = brak danej.
+   */
+  readonly zacisk_decydujacy?: 'od' | 'do' | null;
+  readonly current_od_ka?: number | null;
+  readonly current_do_ka?: number | null;
+  readonly rated_current_od_a?: number | null;
+  readonly rated_current_do_a?: number | null;
+}
+
+/** Ocena wiarygodności strat czynnych sieci wobec sumy mocy czynnej odbiorów. */
+export interface StratyPasmoWerdykt {
+  readonly losses_active_mw: number | null;
+  readonly load_active_total_mw: number | null;
+  readonly losses_pct_of_load: number | null;
+  readonly threshold_pct: number;
+  readonly threshold_why_pl: string;
+  readonly in_range: boolean;
+  readonly status: string;
+  readonly why_pl: string;
+}
+
+/** Pełna odpowiedź `GET /api/quality/sanity-bounds` dla przebiegu PF. */
+export interface PasmaRozplywuResponse {
+  readonly analysis_id: string;
+  readonly context: KontekstJakosci | null;
+  /** Bieg NIEZBIEŻNY ⇒ wszystkie pozycje niżej mają status „dane niekompletne". */
+  readonly converged: boolean;
+  readonly napiecia: {
+    readonly items: readonly NapieciePasmoItem[];
+    /** Cytat normy (PN-EN 50160) — proweniencja progu. */
+    readonly norm_ref: string;
+    readonly band_pct: number;
+    readonly summary: PasmaSummary;
+  };
+  readonly obciazenia: {
+    readonly items: readonly ObciazeniePasmoItem[];
+    readonly summary: PasmaSummary;
+  };
+  readonly straty: StratyPasmoWerdykt;
+}
+
+/** Pobiera pasma zdrowego rozsądku rozpływu dla przebiegu PF (ta sama końcówka
+ * co wiarygodność zwarciowa — dispatch po stronie backendu wg rodzaju biegu). */
+export function fetchPasmaRozplywu(runId: string): Promise<PasmaRozplywuResponse> {
+  return getJson<PasmaRozplywuResponse>(
+    `/api/quality/sanity-bounds?run_id=${encodeURIComponent(runId)}`,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -143,7 +244,7 @@ export interface WalidacjaResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Pobieranie (GET) — wzór `ui/ncrfg-tests/api.ts`
+// Pobieranie (GET) — wzór `ui2/oze/ncrfg/api.ts`
 // ---------------------------------------------------------------------------
 
 async function getJson<T>(url: string): Promise<T> {
@@ -193,6 +294,8 @@ export interface KrokMigotania {
  */
 export interface ModulMigotania {
   readonly gen_ref: string;
+  /** Nazwa modułu z modelu albo opis rodzaju — to widzi projektant (nigdy `gen_ref`). */
+  readonly gen_name: string;
   readonly sn_mva: number | null;
   readonly flicker_c: number | null;
   readonly pst_i: number | null;
@@ -204,6 +307,8 @@ export interface ModulMigotania {
 /** Ocena migotania i szybkiej zmiany napięcia w pojedynczym węźle przyłączenia. */
 export interface WezelMigotania {
   readonly bus_ref: string;
+  /** Nazwa węzła przyłączenia z modelu albo opis rodzaju (nigdy `bus_ref`). */
+  readonly bus_name: string;
   readonly nominal_kv: number | null;
   readonly sk_mva: number | null;
   readonly modules: readonly ModulMigotania[];
@@ -287,6 +392,8 @@ export interface KrokArcFlash {
 /** Wynik Arc Flash dla jednego punktu (szyny/rozdzielnicy). */
 export interface WynikArcFlash {
   readonly bus_ref: string;
+  /** Nazwa szyny z modelu albo opis rodzaju (nigdy identyfikator węzła `bus_ref`). */
+  readonly bus_name: string;
   /** Kod statusu (COMPUTED_IEEE_1584_OPEN_SOURCE / INCOMPLETE_INPUT / …). */
   readonly status: string;
   /** Gotowa polska etykieta statusu wprost z backendu. */

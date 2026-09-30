@@ -97,17 +97,17 @@ METRYKI_WARTOSCI_B: tuple[tuple[str, str, str, str], ...] = (
 #: WSPOLNE; punkty bez odpowiednika nie trafiaja do nakladki w ogole (nie
 #: istnieje dla nich zadna roznica) i sa raportowane LICZBA.
 LEGENDA_ROZNIC = OverlayLegendV1(
-    title="Legenda roznic A/B",
+    title="Legenda różnic A/B",
     entries=[
         OverlayLegendEntryV1(
             severity=OverlaySeverity.INFO,
             label="Bez zmian",
-            description="Wszystkie porownywane wielkosci identyczne w obu przebiegach",
+            description="Wszystkie porównywane wielkości identyczne w obu przebiegach",
         ),
         OverlayLegendEntryV1(
             severity=OverlaySeverity.WARNING,
             label="Zmiana",
-            description="Co najmniej jedna wielkosc rozni sie miedzy przebiegami",
+            description="Co najmniej jedna wielkość różni się między przebiegami",
         ),
     ],
 )

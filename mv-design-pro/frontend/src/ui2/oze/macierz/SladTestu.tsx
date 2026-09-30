@@ -6,10 +6,10 @@
  * Podstawienie → Wynik → Weryfikacja jednostek. Zero ocen własnych.
  */
 
-import type { NcRfgRunResult } from '../../../ui/ncrfg-tests/api';
+import type { KrokSladuNcRfg } from '../ncrfg/typy';
 import { MACIERZ_STRINGS, opiszMetryke } from './strings';
 
-type KrokSladu = NcRfgRunResult['white_box_trace'][number];
+type KrokSladu = KrokSladuNcRfg;
 
 export interface SladTestuProps {
   readonly kroki: readonly KrokSladu[];
@@ -24,7 +24,7 @@ function Pole({ etykieta, dzieci }: { etykieta: string; dzieci: React.ReactNode 
   );
 }
 
-function Wartosci({ dane }: { dane: Record<string, unknown> }) {
+function Wartosci({ dane }: { dane: Readonly<Record<string, unknown>> }) {
   const wpisy = Object.entries(dane);
   if (wpisy.length === 0) return <span className="mvd-oze-panel-etyk">—</span>;
   return (

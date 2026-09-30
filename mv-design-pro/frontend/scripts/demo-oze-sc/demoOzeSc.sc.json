@@ -1,7 +1,7 @@
 {
   "_meta": {
     "analysis_type": "short_circuit_3f",
-    "builder_snapshot_hash": "621a32cb3d167187b6d37fffff50595ca303a00e51056e37fe4c6e7b39d11318",
+    "builder_snapshot_hash": "ae05a2de202f386a32a95d1dae0b2e15ae9e011139c42076c6ab187912c1513e",
     "c_factor": 1.1,
     "note": "Realny bieg zwarciowy; Ik''/ip/Ith/Sk 1:1 z solvera. Regeneracja: scripts/generate-demo-oze-sc.py.",
     "source": "SC IEC 60909 (FROZEN solver) per szyna SN — tor kanoniczny",
@@ -9,128 +9,128 @@
   },
   "bus_count": 15,
   "bus_short_circuit": {
-    "bess/9febfa8ed1bfc0fe0264ad14cca5f7ca/der/block_hv_bus": {
-      "bus_ref": "bess/9febfa8ed1bfc0fe0264ad14cca5f7ca/der/block_hv_bus",
-      "ikss_a": 7992.567,
-      "ip_a": 14253.944,
-      "ith_a": 7992.567,
-      "sk_mva": 207.653,
+    "bess/856cc4b6e0d379b5b28aa4ae75cb45ee/der/block_hv_bus": {
+      "bus_ref": "bess/856cc4b6e0d379b5b28aa4ae75cb45ee/der/block_hv_bus",
+      "ikss_a": 7538.211,
+      "ip_a": 13655.27,
+      "ith_a": 7567.837,
+      "sk_mva": 195.848,
       "voltage_kv": 15.0
     },
     "gpz/898bf4c094fa05a9c12c999755c14897/section/001/bus_sn": {
       "bus_ref": "gpz/898bf4c094fa05a9c12c999755c14897/section/001/bus_sn",
-      "ikss_a": 11155.585,
-      "ip_a": 27544.567,
-      "ith_a": 11155.585,
-      "sk_mva": 289.831,
+      "ikss_a": 10203.92,
+      "ip_a": 25194.691,
+      "ith_a": 10376.515,
+      "sk_mva": 265.106,
       "voltage_kv": 15.0
     },
-    "pv/c16b8f5f2b025299c8c65b8d51fb6461/der/block_hv_bus": {
-      "bus_ref": "pv/c16b8f5f2b025299c8c65b8d51fb6461/der/block_hv_bus",
-      "ikss_a": 9854.533,
-      "ip_a": 19690.011,
-      "ith_a": 9854.533,
-      "sk_mva": 256.028,
+    "pv/c5b3ff6eb9e66ed7bc6702bc26b389d3/der/block_hv_bus": {
+      "bus_ref": "pv/c5b3ff6eb9e66ed7bc6702bc26b389d3/der/block_hv_bus",
+      "ikss_a": 9128.206,
+      "ip_a": 18505.959,
+      "ith_a": 9182.654,
+      "sk_mva": 237.158,
       "voltage_kv": 15.0
     },
-    "stn/0d2463234c01b8ddaf403cc2e55a2ef8/sn_bus": {
-      "bus_ref": "stn/0d2463234c01b8ddaf403cc2e55a2ef8/sn_bus",
-      "ikss_a": 6763.366,
-      "ip_a": 11415.963,
-      "ith_a": 6763.366,
-      "sk_mva": 175.717,
+    "stn/2e9ad8cea5ffb5dae61d214086d2aa29/sn_bus": {
+      "bus_ref": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/sn_bus",
+      "ikss_a": 8056.876,
+      "ip_a": 15427.396,
+      "ith_a": 8095.573,
+      "sk_mva": 209.324,
       "voltage_kv": 15.0
     },
-    "stn/1255443c874a67e09e59e55295b4a633/sn_bus": {
-      "bus_ref": "stn/1255443c874a67e09e59e55295b4a633/sn_bus",
-      "ikss_a": 9964.903,
-      "ip_a": 20102.664,
-      "ith_a": 9964.903,
-      "sk_mva": 258.896,
+    "stn/44385fc6f27c4dbd058bb54e616bb949/sn_bus": {
+      "bus_ref": "stn/44385fc6f27c4dbd058bb54e616bb949/sn_bus",
+      "ikss_a": 6443.456,
+      "ip_a": 11017.144,
+      "ith_a": 6464.006,
+      "sk_mva": 167.406,
       "voltage_kv": 15.0
     },
-    "stn/3d8225a35dae954e085a7a61cf343b2c/sn_bus": {
-      "bus_ref": "stn/3d8225a35dae954e085a7a61cf343b2c/sn_bus",
-      "ikss_a": 10009.677,
-      "ip_a": 20308.596,
-      "ith_a": 10009.677,
-      "sk_mva": 260.059,
+    "stn/500c9efcafdd0c69e4239e5121213746/sn_bus": {
+      "bus_ref": "stn/500c9efcafdd0c69e4239e5121213746/sn_bus",
+      "ikss_a": 9890.776,
+      "ip_a": 22729.766,
+      "ith_a": 9995.437,
+      "sk_mva": 256.97,
       "voltage_kv": 15.0
     },
-    "stn/51fa038c2374b51174660887fe54402a/sn_bus": {
-      "bus_ref": "stn/51fa038c2374b51174660887fe54402a/sn_bus",
-      "ikss_a": 10775.986,
-      "ip_a": 24602.199,
-      "ith_a": 10775.986,
-      "sk_mva": 279.968,
+    "stn/70b011920dfa74cdb26036fe27cc7f31/sn_bus": {
+      "bus_ref": "stn/70b011920dfa74cdb26036fe27cc7f31/sn_bus",
+      "ikss_a": 9220.716,
+      "ip_a": 18866.8,
+      "ith_a": 9277.77,
+      "sk_mva": 239.561,
       "voltage_kv": 15.0
     },
-    "stn/54d9405a8f4ce2608d389f6bf3d4666e/sn_bus": {
-      "bus_ref": "stn/54d9405a8f4ce2608d389f6bf3d4666e/sn_bus",
-      "ikss_a": 7958.535,
-      "ip_a": 14123.213,
-      "ith_a": 7958.535,
-      "sk_mva": 206.769,
+    "stn/7350682d9a38bd995d010426b65f26c3/sn_bus": {
+      "bus_ref": "stn/7350682d9a38bd995d010426b65f26c3/sn_bus",
+      "ikss_a": 9257.86,
+      "ip_a": 19046.261,
+      "ith_a": 9316.414,
+      "sk_mva": 240.526,
       "voltage_kv": 15.0
     },
-    "stn/83a848677fa2f56c670d9d57167669c6/sn_bus": {
-      "bus_ref": "stn/83a848677fa2f56c670d9d57167669c6/sn_bus",
-      "ikss_a": 6739.502,
-      "ip_a": 11356.529,
-      "ith_a": 6739.502,
-      "sk_mva": 175.097,
+    "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_bus": {
+      "bus_ref": "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_bus",
+      "ikss_a": 7578.52,
+      "ip_a": 13755.129,
+      "ith_a": 7608.514,
+      "sk_mva": 196.896,
       "voltage_kv": 15.0
     },
-    "stn/8d0a187f730c120e697bbf21ec6f1c00/sn_bus": {
-      "bus_ref": "stn/8d0a187f730c120e697bbf21ec6f1c00/sn_bus",
-      "ikss_a": 6715.254,
-      "ip_a": 11296.881,
-      "ith_a": 6715.254,
-      "sk_mva": 174.467,
+    "stn/82b9a808f5d77984e6d154f129a6d9b3/sn_bus": {
+      "bus_ref": "stn/82b9a808f5d77984e6d154f129a6d9b3/sn_bus",
+      "ikss_a": 6454.048,
+      "ip_a": 11044.845,
+      "ith_a": 6474.697,
+      "sk_mva": 167.681,
       "voltage_kv": 15.0
     },
-    "stn/abadcfb0f0a539897a912a1ee0412463/sn_bus": {
-      "bus_ref": "stn/abadcfb0f0a539897a912a1ee0412463/sn_bus",
-      "ikss_a": 10695.268,
-      "ip_a": 24063.619,
-      "ith_a": 10695.268,
-      "sk_mva": 277.871,
+    "stn/8fe0aa17d4cd16535a3ade643399d75d/sn_bus": {
+      "bus_ref": "stn/8fe0aa17d4cd16535a3ade643399d75d/sn_bus",
+      "ikss_a": 6411.348,
+      "ip_a": 10934.08,
+      "ith_a": 6431.602,
+      "sk_mva": 166.572,
       "voltage_kv": 15.0
     },
-    "stn/b7594985a5ba20169e15d7fbe93d525b/sn_bus": {
-      "bus_ref": "stn/b7594985a5ba20169e15d7fbe93d525b/sn_bus",
-      "ikss_a": 6751.419,
-      "ip_a": 11386.166,
-      "ith_a": 6751.419,
-      "sk_mva": 175.407,
+    "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_bus": {
+      "bus_ref": "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_bus",
+      "ikss_a": 9183.412,
+      "ip_a": 18690.249,
+      "ith_a": 9239.036,
+      "sk_mva": 238.592,
       "voltage_kv": 15.0
     },
-    "stn/bb940119982d6672dc70ed02f5abac14/sn_bus": {
-      "bus_ref": "stn/bb940119982d6672dc70ed02f5abac14/sn_bus",
-      "ikss_a": 8596.915,
-      "ip_a": 16214.431,
-      "ith_a": 8596.915,
-      "sk_mva": 223.354,
+    "stn/afb4bbd51ef7f159768c15d69ddc97b5/sn_bus": {
+      "bus_ref": "stn/afb4bbd51ef7f159768c15d69ddc97b5/sn_bus",
+      "ikss_a": 6432.889,
+      "ip_a": 10989.586,
+      "ith_a": 6453.339,
+      "sk_mva": 167.131,
       "voltage_kv": 15.0
     },
-    "stn/ef3d8e7660349a685ae9db5b321f946a/sn_bus": {
-      "bus_ref": "stn/ef3d8e7660349a685ae9db5b321f946a/sn_bus",
-      "ikss_a": 8038.671,
-      "ip_a": 14363.537,
-      "ith_a": 8038.671,
-      "sk_mva": 208.851,
+    "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_bus": {
+      "bus_ref": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_bus",
+      "ikss_a": 7509.38,
+      "ip_a": 13536.315,
+      "ith_a": 7538.377,
+      "sk_mva": 195.099,
       "voltage_kv": 15.0
     },
-    "stn/fd19fa5e8c94e13d88b9e6beb3df01ac/sn_bus": {
-      "bus_ref": "stn/fd19fa5e8c94e13d88b9e6beb3df01ac/sn_bus",
-      "ikss_a": 9920.004,
-      "ip_a": 19900.427,
-      "ith_a": 9920.004,
-      "sk_mva": 257.729,
+    "stn/e4c9614abf6ae9acaaaad4c03a97a97b/sn_bus": {
+      "bus_ref": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/sn_bus",
+      "ikss_a": 9824.249,
+      "ip_a": 22273.553,
+      "ith_a": 9920.931,
+      "sk_mva": 255.241,
       "voltage_kv": 15.0
     }
   },
   "converged": true,
-  "ikss_max_ka": 11.156,
-  "ikss_min_ka": 6.715
+  "ikss_max_ka": 10.204,
+  "ikss_min_ka": 6.411
 }

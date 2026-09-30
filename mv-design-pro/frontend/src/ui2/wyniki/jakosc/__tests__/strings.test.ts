@@ -40,8 +40,12 @@ describe('słowniki PL', () => {
     expect(STATUS_WALIDACJI_PL.FAIL).toBe('Przekroczenie');
   });
 
+  // Intencja zachowana: słownik statusów wiarygodności 1:1 z backendem.
+  // Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): „zweryfikowany" →
+  // „w paśmie wiarygodności" (`short_circuit_bounds.CREDIBLE`) — kontrola pasma nie jest
+  // weryfikacją wyrocznią.
   it('utrwala statusy wiarygodności zgodne z backendem', () => {
-    expect(STATUS_WIARYGODNOSCI.zweryfikowany).toBe('zweryfikowany');
+    expect(STATUS_WIARYGODNOSCI.wPasmie).toBe('w paśmie wiarygodności');
     expect(STATUS_WIARYGODNOSCI.pozaZakresem).toBe('poza zakresem wiarygodności');
     expect(STATUS_WIARYGODNOSCI.niekompletne).toBe('dane niekompletne');
   });
@@ -55,8 +59,8 @@ describe('istotność statusu (dobór koloru tagu)', () => {
     expect(istotnoscWalidacji('NOT_COMPUTED')).toBe('neutral');
   });
 
-  it('wiarygodność: zweryfikowany→ok, poza zakresem→err, inne→neutral', () => {
-    expect(istotnoscWiarygodnosci('zweryfikowany')).toBe('ok');
+  it('wiarygodność: w paśmie→ok, poza zakresem→err, inne→neutral', () => {
+    expect(istotnoscWiarygodnosci('w paśmie wiarygodności')).toBe('ok');
     expect(istotnoscWiarygodnosci('poza zakresem wiarygodności')).toBe('err');
     expect(istotnoscWiarygodnosci('dane niekompletne')).toBe('neutral');
   });

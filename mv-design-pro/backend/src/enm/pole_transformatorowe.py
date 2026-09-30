@@ -55,52 +55,16 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TypeAlias
 
+from network_model.pochodne.pasma_napieciowe import szyna_poza_pasmem_sn
+
+from .slownik_komunikatow import opis_nazwy
+
 #: Element migawki ENM: słownik surowej migawki biegu ALBO obiekt modelu
 #: (`enm.models`). Świadomie `object`, nie `Any`: `object` wymusza jawne
 #: zawężenie przed użyciem (i tak robione tu `isinstance`-ami), a `Any`
 #: wyłączyłby kontrolę typów w warstwie domenowej — czego pilnuje niezmiennik
 #: `tests/test_professional_invariants.py::test_no_any_in_domain_types`.
 ElementEnm: TypeAlias = object
-
-# ---------------------------------------------------------------------------
-# Pasma napięciowe domeny — JEDNO miejsce definicji
-# ---------------------------------------------------------------------------
-# Do tej karty progi żyły jako prywatne stałe `enm/validator.py`. Predykat
-# potrzebuje DOKŁADNIE tych samych granic (inaczej „szyna SN" znaczyłaby co
-# innego w ostrzeżeniu niż w reszcie walidacji), więc definicja przenosi się
-# tutaj, a walidator staje się jej konsumentem.
-PASMO_NN_MAX_KV = 1.0
-"""Górna granica pasma nN (wyłącznie): `voltage_kv < 1.0` ⇒ nN."""
-
-PASMO_SN_MAX_KV = 60.0
-"""Górna granica pasma SN (włącznie): `1.0 <= voltage_kv <= 60.0` ⇒ SN."""
-
-
-def pasmo_napieciowe(voltage_kv: float) -> str:
-    """Pasmo napięciowe szyny: ``'nN'``, ``'SN'`` albo ``'WN'``."""
-    if voltage_kv < PASMO_NN_MAX_KV:
-        return "nN"
-    if voltage_kv <= PASMO_SN_MAX_KV:
-        return "SN"
-    return "WN"
-
-
-def szyna_poza_pasmem_sn(voltage_kv: float | None) -> bool:
-    """Czy szyna NA PEWNO leży poza pasmem SN.
-
-    Brak danej napięcia ⇒ ``False`` (nie dyskwalifikuje). Tolerancja jest
-    ŚWIADOMA i lustrzana z rysunkiem: scena SLD bywa budowana z danych, w
-    których napięcie szyny nie dotarło (`busVoltageKv = null` — uczciwy brak,
-    `compose/station.ts` degraduje wtedy etykietę). Gdyby brak napięcia
-    dyskwalifikował, marker znikałby z rysunku dokładnie tam, gdzie danych jest
-    NAJMNIEJ — czyli tam, gdzie ostrzeżenie jest najbardziej potrzebne. Regułę
-    „nieznane nie dyskwalifikuje" stosują OBIE strony (parytet, tablica
-    `pole_transformatorowe_parytet_v1.json`).
-    """
-    if voltage_kv is None:
-        return False
-    return pasmo_napieciowe(float(voltage_kv)) != "SN"
-
 
 # ---------------------------------------------------------------------------
 # Odczyt pól niezależny od nośnika (dict migawki albo model pydantic)
@@ -179,6 +143,10 @@ class TransformatorBezPolaSN:
 
     hv_bus_ref: str
     """Szyna SN, na której leży strona górna transformatora."""
+
+    transformer_name: str = ""
+    """Nazwa transformatora z modelu (pusta, gdy migawka jej nie niesie) — do komunikatu:
+    treść dla projektanta nie niesie identyfikatora (karta #142)."""
 
 
 # ---------------------------------------------------------------------------
@@ -319,6 +287,7 @@ def transformatory_bez_pola_sn(enm: ElementEnm) -> list[TransformatorBezPolaSN]:
                     station_name=_tekst(stacja, "name"),
                     transformer_ref=_ref(transformator),
                     hv_bus_ref=hv,
+                    transformer_name=_tekst(transformator, "name"),
                 )
             )
 
@@ -329,7 +298,7 @@ def transformatory_bez_pola_sn(enm: ElementEnm) -> list[TransformatorBezPolaSN]:
 def komunikat_braku_pola(znalezisko: TransformatorBezPolaSN) -> str:
     """Komunikat OSTRZEŻENIA — brzmienie z dyspozycji recenzenta (§7)."""
     return (
-        f"Transformator '{znalezisko.transformer_ref}' jest połączony elektrycznie "
-        f"z szyną SN, lecz nie posiada kompletnej konfiguracji pola "
-        f"transformatorowego po stronie SN."
+        f"{opis_nazwy(znalezisko.transformer_name, 'Transformator')} jest połączony "
+        "elektrycznie z szyną SN, lecz nie posiada kompletnej konfiguracji pola "
+        "transformatorowego po stronie SN."
     )

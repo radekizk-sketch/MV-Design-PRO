@@ -98,7 +98,8 @@ export function buildContextMenuActions(
   // In service toggle (MODEL_EDIT only)
   actions.push({
     id: 'in_service',
-    label: `W eksploatacji ${inService ? '[OK]' : '[ ]'}`,
+    // Znacznik pola wyboru, nie plakietka „OK” (słowo ze słownika werdyktów — strażnik werdyktu 6b).
+    label: `W eksploatacji ${inService ? '[✓]' : '[ ]'}`,
     enabled: isModelEdit,
     visible: true,
     handler: onToggleInService,
@@ -356,7 +357,6 @@ export function getContextMenuHeader(
     Genset: 'Agregat',
     UPS: 'UPS',
     EnergyMeter: 'Licznik energii',
-    PowerQualityMeter: 'Pomiar jakości',
     SurgeArresterNN: 'Ogranicznik przepięć nN',
     Earthing: 'Uziemienie',
     MeasurementNN: 'Przekładnik nN',

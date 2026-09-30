@@ -26,6 +26,10 @@ import './pulpit.css';
 import type { SpaceId } from '../../shell/spaces';
 import type { ProblemGotowosci } from '../gotowosc/grupowanieCelow';
 import { MapaProcesu, PanelNastepnejAkcji, useNastepnaAkcja } from '../../proces';
+import { isModeAtLeast } from '../../shell/modeModel';
+import { useShellStore } from '../../shell/useShellStore';
+import { InformacjeAudytowe } from '../../wyniki/wzorzec';
+import '../../wyniki/wzorzec/wzorzec.css';
 import { PULPIT_STRINGS } from './strings';
 import { KafelModelu } from './KafelModelu';
 import { KafelGotowosci } from './KafelGotowosci';
@@ -84,6 +88,10 @@ export function PulpitProjektu({
   const wiersze = usePrzypadkiWiersze();
   const nastepnaAkcja = useNastepnaAkcja();
   const [zaznaczonyId, setZaznaczonyId] = useState<string | null>(null);
+  const trybEkspercki = isModeAtLeast(
+    useShellStore((s) => s.advancementMode),
+    'expert',
+  );
 
   const zaznacz = (id: string) => {
     setZaznaczonyId(id);
@@ -150,6 +158,13 @@ export function PulpitProjektu({
         zaznaczonyId={zaznaczonyId}
         onZaznaczPrzypadek={zaznacz}
         onOtworzPrzypadek={onOtworzPrzypadek}
+      />
+
+      {/* Odcisk modelu — metadana produkcyjna (V12.7 §0.3): poza kaflami pierwszego planu. */}
+      <InformacjeAudytowe
+        wiersze={[{ etykieta: PULPIT_STRINGS.odcisk, wartosc: spojnosc.odcisk }]}
+        trybEkspercki={trybEkspercki}
+        testid="pulpit-audyt"
       />
     </div>
   );

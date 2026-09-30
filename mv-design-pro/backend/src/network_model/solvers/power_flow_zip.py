@@ -53,6 +53,13 @@ class ZipCoeffs:
 
     Voltage (ZIP): a=Z, b=I, c=P share (a+b+c=1), referenced to ``v0_pu``.
     Frequency: linear sensitivities ``k_pf``/``k_qf`` referenced to ``f0_hz``.
+
+    NO DEFAULTS (O-49 pt 6, 2026-09-25). ``f0_hz`` used to default to the literal 50 Hz,
+    which fabricated the reference of every load of a 60 Hz study (the frequency factor
+    became ``1 + 0.2 k`` at the study's rated frequency). The single production reader,
+    ``zip_coeffs_from_materialized_params``, resolves an absent ``f0_hz`` to the STUDY
+    frequency and an absent ``v0_pu`` to 1.0 pu (the per-unit reference itself), so every
+    field is explicit here.
     """
 
     a_p: float
@@ -61,10 +68,10 @@ class ZipCoeffs:
     a_q: float
     b_q: float
     c_q: float
-    v0_pu: float = 1.0
-    k_pf: float = 0.0
-    k_qf: float = 0.0
-    f0_hz: float = 50.0
+    v0_pu: float
+    k_pf: float
+    k_qf: float
+    f0_hz: float
 
     def is_constant_power(self) -> bool:
         """True when there is no VOLTAGE dependence (a=b=0) — i.e. no per-iteration
@@ -300,12 +307,24 @@ def apply_zip_frequency(
         q_spec[idx] *= frequency_factor(c.k_qf, f_hz, c.f0_hz)  # type: ignore[index]
 
 
-def zip_coeffs_from_materialized_params(params: dict | None) -> ZipCoeffs | None:
+def zip_coeffs_from_materialized_params(
+    params: dict | None, f_studium_hz: float
+) -> ZipCoeffs | None:
     """Build ZipCoeffs from a Load's catalog-materialized params (Rule #10).
 
     Returns None when the params describe a constant-power, frequency-independent
     load (default), so the solver runs the classic path. Defaults: voltage = pure
-    constant power (c=1), frequency sensitivity = 0."""
+    constant power (c=1), frequency sensitivity = 0.
+
+    References: absent ``v0_pu`` = 1.0 pu (the per-unit base the polynomial is written
+    in); absent ``f0_hz`` = ``f_studium_hz``, the rated frequency of the study
+    (``enm.assembler.czestotliwosc_studium_hz``) — a load declares its base power at the
+    rated frequency of ITS network, so the factor is exactly 1 at the study frequency.
+    The previous literal 50 Hz fabricated that reference for any other network.
+
+    SINGLE SOURCE OF TRUTH for the load model: the power flow (``enm.mapping``), the
+    dynamic adapter (``enm.adapter_dynamiki``) and ``enm.load_zip_model.jest_odbiorem_zip``
+    all read the coefficients through this function (O-49 pt 2)."""
     if not params:
         return None
     coeffs = ZipCoeffs(
@@ -318,7 +337,7 @@ def zip_coeffs_from_materialized_params(params: dict | None) -> ZipCoeffs | None
         v0_pu=float(params.get("v0_pu", 1.0)),
         k_pf=float(params.get("k_pf", 0.0)),
         k_qf=float(params.get("k_qf", 0.0)),
-        f0_hz=float(params.get("f0_hz", 50.0)),
+        f0_hz=float(params["f0_hz"]) if params.get("f0_hz") is not None else f_studium_hz,
     )
     if coeffs.is_constant_power() and not coeffs.has_frequency_dependence():
         return None
@@ -332,9 +351,22 @@ def aggregate_zip(
     """Power-weighted aggregation of several loads on one bus into one ZipCoeffs.
 
     Each component is (p0_mw, q0_mw, coeffs|None); None means constant power.
-    Aggregate share = sum(P0_i * share_i) / sum(P0_i); the polynomial of the sum
-    equals the sum of the polynomials, so this is exact. v0_pu/f0_hz must agree
-    across components (they reference the same system); the first non-None is used.
+    Aggregate share = sum(P0_i * share_i) / sum(P0_i); the reference v0_pu/f0_hz of
+    the aggregate is the one of the first component carrying coefficients.
+
+    EXACT ONLY UNDER A CONDITION (O-49 pt 5, probe S2 of the load-model card). The sum
+    of the polynomials equals the polynomial of the weighted shares only when (i) the
+    components share v0 (otherwise the result depends on the ORDER of the loads),
+    (ii) at the study frequency ``sum P0_i (F_i - F_agg)(a_i, b_i, c_i) = 0`` (different
+    k at f != f0 break it: measured -3.8e-3 of the load at V=0.9, f=49 Hz), (iii) a zero
+    total (sum Q0 = 0) carries identical polynomials (otherwise the aggregate is a silent
+    zero while the loads draw V^2 - 1), and (iv) the weighted shares stay in [0, 1]
+    (inductive + capacitive components give exact shares outside [0, 1], which
+    ``build_zip_table`` rejects). This function does NOT check the condition — the
+    exact per-bus check is ``enm.load_zip_model.reprezentowalnosc_zip_szyny`` and the
+    load-flow assembler refuses a bus that fails it (named refusal
+    ``load.zip_agregat_niereprezentowalny``). Representing several ZIP loads per bus
+    exactly needs the FROZEN NR core (owner gate B-01 (e), plan section 12.2).
 
     A zero total (P0 or Q0 summing to 0 — e.g. a load compensated to cosφ=1)
     carries no weight, so the aggregate falls back to the DEFAULT of each

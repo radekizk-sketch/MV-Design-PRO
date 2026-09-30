@@ -8,16 +8,15 @@ from typing import Any, Literal, cast
 from api.analysis_case_context import build_analysis_case_context
 from api.canonical_run_views import (
     build_analysis_run_summary,
-    build_automation_trace_results_response,
     build_branch_results_response,
     build_bus_results_response,
-    build_dynamic_stability_results_response,
+    build_dynamika_results_response,
     build_extended_trace_response,
     build_phase_state_results_response,
     build_power_flow_export_bundle,
+    build_power_flow_unbalanced_results_response,
     build_results_index_response,
     build_short_circuit_results_response,
-    build_source_compliance_results_response,
 )
 from api.v125_contracts import build_export_artifact, build_export_policy, resolve_proof_pack_ref
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
@@ -28,9 +27,13 @@ from application.dokumentacja_wykonawcza import (
     ocen_gotowosc_dokumentacji_wykonawczej,
 )
 from enm.canonical_analysis import CanonicalRun
+from enm.nazwy_elementow import opis_bez_nazwy
 from fastapi import HTTPException
 from fastapi.responses import Response
+from network_model.nazwy import nazwa_nadana
+from network_model.pochodne import a_na_ka
 from network_model.reporting.czcionki import zarejestruj_czcionki
+from network_model.reporting.missing_value import format_wynik
 
 ReportProfile = Literal["osd", "wykonawczy", "audytowy"]
 ReportDetailLevel = Literal["minimalny", "standardowy", "pelny"]
@@ -42,12 +45,20 @@ ReportFocusTable = (
         "branches",
         "short_circuit",
         "phase_state",
-        "dynamic_stability",
-        "automation_trace",
-        "source_compliance",
+        "dynamika_zdarzenia",
+        "dynamika_przekroczenia",
+        "dynamika_metryki",
         "trace",
     ]
     | None
+)
+
+#: Tabele raportu biegu `dynamika_rms` — JEDNA krotka dla wyboru zakresu, sekcji wyników
+#: i obu formatów (PDF, DOCX); rejestr tabel biegu: `enm.canonical_analysis`.
+TABELE_DYNAMIKI: tuple[str, ...] = (
+    "dynamika_zdarzenia",
+    "dynamika_przekroczenia",
+    "dynamika_metryki",
 )
 
 DEFAULT_REPORT_SECTIONS_BY_DETAIL: dict[ReportDetailLevel, tuple[ReportSection, ...]] = {
@@ -108,9 +119,7 @@ def normalize_report_options(
             "branches",
             "short_circuit",
             "phase_state",
-            "dynamic_stability",
-            "automation_trace",
-            "source_compliance",
+            *TABELE_DYNAMIKI,
             "trace",
         }
         else None
@@ -141,14 +150,14 @@ def normalize_report_options(
 def _analysis_title(run: CanonicalRun) -> str:
     if run.analysis_type == "PF":
         return "Raport rozpływu mocy"
+    if run.analysis_type == "rozplyw_niesymetryczny":
+        return "Raport rozpływu niesymetrycznego"
     if run.analysis_type == "short_circuit_sn":
         return "Raport analizy zwarciowej"
     if run.analysis_type == "phase_state_sn":
         return "Raport stanu fazowego SN"
-    if run.analysis_type == "dynamic_stability":
-        return "Raport stabilności dynamicznej"
-    if run.analysis_type == "source_compliance":
-        return "Raport zgodności źródła"
+    if run.analysis_type == "dynamika_rms":
+        return "Raport dynamiki czasowej RMS"
     return "Raport analizy sieci"
 
 
@@ -171,9 +180,11 @@ def _build_report_results_section(
     branch_results = build_branch_results_response(run)
     short_circuit_results = build_short_circuit_results_response(run)
     phase_state_results = build_phase_state_results_response(run)
-    dynamic_stability_results = build_dynamic_stability_results_response(run)
-    automation_trace_results = build_automation_trace_results_response(run)
-    source_compliance_results = build_source_compliance_results_response(run)
+    # Karta AB-P1: wynik biegu czasowego (metadane bez szeregów, z opisem i ocenami
+    # niewykonanymi) — tylko dla biegu `dynamika_rms`, bo budowniczy odmawia innych.
+    dynamika_results = (
+        build_dynamika_results_response(run) if run.analysis_type == "dynamika_rms" else {}
+    )
 
     if scope != "active_table" or focus_table is None:
         return {
@@ -182,9 +193,7 @@ def _build_report_results_section(
             "branches": branch_results,
             "short_circuit": short_circuit_results,
             "phase_state": phase_state_results,
-            "dynamic_stability": dynamic_stability_results,
-            "automation_trace": automation_trace_results,
-            "source_compliance": source_compliance_results,
+            "dynamika": dynamika_results,
         }
 
     filtered_tables = [
@@ -209,21 +218,7 @@ def _build_report_results_section(
             if focus_table == "phase_state"
             else {"run_id": str(run.id), "rows": []}
         ),
-        "dynamic_stability": (
-            dynamic_stability_results
-            if focus_table == "dynamic_stability"
-            else {"run_id": str(run.id), "rows": []}
-        ),
-        "automation_trace": (
-            automation_trace_results
-            if focus_table == "automation_trace"
-            else {"run_id": str(run.id), "rows": []}
-        ),
-        "source_compliance": (
-            source_compliance_results
-            if focus_table == "source_compliance"
-            else {"run_id": str(run.id), "rows": []}
-        ),
+        "dynamika": (dynamika_results if focus_table in TABELE_DYNAMIKI else {}),
     }
 
 
@@ -321,7 +316,7 @@ def _require_power_flow_bundle(run: CanonicalRun) -> dict[str, Any]:
 
 def _build_short_circuit_export_bundle(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
-        raise ValueError("Przebieg nie jest analiza zwarciowa")
+        raise ValueError("Przebieg nie jest analizą zwarciową")
     analysis_case_context = build_analysis_case_context(run)
     trace_payload = canonicalize_json(build_extended_trace_response(run))
     return {
@@ -376,12 +371,91 @@ def _build_generic_export_bundle(run: CanonicalRun) -> dict[str, Any]:
     }
     if run.analysis_type == "phase_state_sn":
         bundle["phase_state"] = build_phase_state_results_response(run)
-    elif run.analysis_type == "dynamic_stability":
-        bundle["dynamic_stability"] = build_dynamic_stability_results_response(run)
-        bundle["automation_trace"] = build_automation_trace_results_response(run)
-    elif run.analysis_type == "source_compliance":
-        bundle["source_compliance"] = build_source_compliance_results_response(run)
+    elif run.analysis_type == "rozplyw_niesymetryczny":
+        # W5-D: eksport JSON biegu niesie te same wiersze per faza co końcówka wyników.
+        bundle["power_flow_unbalanced"] = build_power_flow_unbalanced_results_response(run)
+    elif run.analysis_type == "dynamika_rms":
+        # Karta AB-P1: eksport JSON biegu czasowego niesie odpowiedź końcówki wyniku
+        # (kontrakt `resultset_dynamic_v2` bez szeregów + opis + oceny niewykonane).
+        bundle["dynamika"] = build_dynamika_results_response(run)
     return bundle
+
+
+#: Element wskazany przez wynik, którego migawka biegu nie nazywa (projektant czyta nazwy,
+#: nigdy identyfikatory — ta sama zasada co ekran dynamiki).
+_BRAK_NAZWY_ELEMENTU = "element bez nazwy w modelu"
+
+
+def _nazwa_elementu_dynamiki(dynamika: dict[str, Any], ref: object) -> str:
+    """Nazwa elementu z opisu wyniku biegu (migawka biegu); element bez nazwy — jawny opis
+    braku, nie identyfikator."""
+    if not ref:
+        return "—"
+    opis = ((dynamika.get("opis_wyniku") or {}).get("elementy") or {}).get(str(ref)) or {}
+    return nazwa_nadana(opis.get("nazwa")) or _BRAK_NAZWY_ELEMENTU
+
+
+def _linie_dynamiki(dynamika: dict[str, Any], table_id: str, limit: int) -> list[str]:
+    """Wiersze tabel raportu biegu `dynamika_rms` (zdarzenia wykonane ze skutkami
+    topologicznymi i przypisaniami stanu, przekroczenia progów detektorów, metryki) — JEDNO
+    źródło treści dla raportu PDF i DOCX. Rodzaje zdarzeń, przyczyny, wielkości i opisy metryk
+    z `opis_wyniku` (po polsku), elementy po nazwach."""
+    opis_wyniku = dynamika.get("opis_wyniku") or {}
+
+    def _nazwy(refy: list[Any]) -> str:
+        return ", ".join(_nazwa_elementu_dynamiki(dynamika, ref) for ref in refy) or "—"
+
+    if table_id == "dynamika_zdarzenia":
+        opisy = opis_wyniku.get("zdarzenia") or []
+        linie = []
+        for i, zdarzenie in enumerate((dynamika.get("zdarzenia_wykonane") or [])[:limit]):
+            opis = opisy[i] if i < len(opisy) else {}
+            odbiory = [o.get("ref") for o in zdarzenie.get("odbiory_odciete") or []]
+            rodzaj = opis.get("rodzaj_pl") or zdarzenie.get("rodzaj")
+            przypisania = [
+                f"{opis_p.get('stan_pl')} "
+                f"„{_nazwa_elementu_dynamiki(dynamika, opis_p.get('element_ref'))}”: "
+                f"{_fmt_liczba(p.get('przed'))} → {_fmt_liczba(p.get('po'))}"
+                for p, opis_p in zip(
+                    zdarzenie.get("przypisania") or [],
+                    opis.get("przypisania") or [],
+                    strict=False,
+                )
+            ]
+            linie.append(
+                f"t={_fmt_liczba(zdarzenie.get('t_wykonany_s'))} s | "
+                f"{rodzaj or '—'} | "
+                f"{_nazwa_elementu_dynamiki(dynamika, zdarzenie.get('ref'))} | "
+                f"przyczyna: {opis.get('przyczyna_pl') or '—'} | "
+                f"szyny beznapięciowe: {_nazwy(zdarzenie.get('obszary_odciete') or [])} | "
+                f"odbiory odcięte: {_nazwy(odbiory)} | "
+                f"zasilone ponownie: {_nazwy(zdarzenie.get('obszary_zasilone_ponownie') or [])} | "
+                f"przypisania stanu: {'; '.join(przypisania) or '—'}"
+            )
+        return linie
+    if table_id == "dynamika_przekroczenia":
+        opisy = opis_wyniku.get("przekroczenia") or []
+        linie = []
+        for i, przekroczenie in enumerate((dynamika.get("przekroczenia") or [])[:limit]):
+            opis = opisy[i] if i < len(opisy) else {}
+            jednostka = opis.get("jednostka") or ""
+            zacisk = f" (zacisk {opis['zacisk']})" if opis.get("zacisk") else ""
+            linie.append(
+                f"t={_fmt_liczba(przekroczenie.get('t_s'))} s | "
+                f"detektor „{przekroczenie.get('dozor')}” | "
+                f"{opis.get('wielkosc_pl') or przekroczenie.get('wielkosc')}{zacisk} | "
+                f"{_nazwa_elementu_dynamiki(dynamika, opis.get('element_ref'))} | "
+                f"próg {_fmt_liczba(przekroczenie.get('prog'))} {jednostka} | "
+                f"{opis.get('kierunek_pl') or przekroczenie.get('kierunek')}"
+            )
+        return linie
+    opisy = {m["klucz"]: m.get("opis_pl") for m in opis_wyniku.get("metryki") or []}
+    return [
+        f"{opisy.get(metryka.get('klucz')) or metryka.get('klucz')}: "
+        f"{_fmt_liczba(metryka.get('wartosc'))} {metryka.get('jednostka') or ''} | "
+        f"{_nazwa_elementu_dynamiki(dynamika, metryka.get('element_ref'))}"
+        for metryka in (dynamika.get("metryki") or [])[:limit]
+    ]
 
 
 def _format_catalog_binding(entry: dict[str, Any]) -> str:
@@ -412,7 +486,7 @@ def _catalog_context_lines(bundle: dict[str, Any], *, max_items: int = 20) -> li
         lines.append(
             " | ".join(
                 [
-                    str(entry.get("element_id") or "-"),
+                    nazwa_nadana(entry.get("name")) or "-",
                     str(entry.get("element_type") or "-"),
                     _format_catalog_binding(entry),
                     str(entry.get("parameter_source") or entry.get("parameter_origin") or "-"),
@@ -492,17 +566,13 @@ def build_analysis_run_export_payload(run: CanonicalRun) -> dict[str, Any]:
     }
     if "phase_state" in bundle:
         payload["phase_state"] = bundle["phase_state"]
-    if "dynamic_stability" in bundle:
-        payload["dynamic_stability"] = bundle["dynamic_stability"]
-    if "automation_trace" in bundle:
-        payload["automation_trace"] = bundle["automation_trace"]
-    if "source_compliance" in bundle:
-        payload["source_compliance"] = bundle["source_compliance"]
+    if "dynamika" in bundle:
+        payload["dynamika"] = bundle["dynamika"]
     return payload
 
 
 def build_analysis_run_trace_export_payload(run: CanonicalRun) -> dict[str, Any]:
-    trace_payload = canonicalize_json(build_extended_trace_response(run))
+    trace_payload: dict[str, Any] = canonicalize_json(build_extended_trace_response(run))
     if not trace_payload.get("white_box_trace"):
         raise ValueError("Ślad obliczeniowy niedostępny dla tego obliczenia.")
     short_circuit_currents = _build_short_circuit_proof_currents(run)
@@ -518,7 +588,7 @@ def _amps_to_ka(value: Any) -> float | None:
     if value is None:
         return None
     try:
-        return float(value) / 1000.0
+        return a_na_ka(float(value))
     except (TypeError, ValueError):
         return None
 
@@ -579,7 +649,7 @@ def _sc_row_glowne_linia(row_data: dict[str, Any]) -> str:
     """Glowna linia wiersza zwarciowego: prady i moc zwarciowa (kanoniczne kA/MVA)."""
     return " | ".join(
         [
-            str(row_data.get("target_name") or row_data.get("target_id") or "—"),
+            nazwa_nadana(row_data.get("target_name")) or "—",
             f"Ik''={_fmt_liczba(row_data.get('ikss_ka'))} kA",
             f"ip={_fmt_liczba(row_data.get('ip_ka'))} kA",
             f"Ith={_fmt_liczba(row_data.get('ith_ka'))} kA",
@@ -626,19 +696,19 @@ def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | N
             {
                 "target_id": target_id,
                 "element_id": node.get("element_id") or target_id,
-                "target_name": node.get("name") or node.get("element_id") or target_id,
+                "target_name": nazwa_nadana(node.get("name")) or opis_bez_nazwy("buses"),
                 "fault_type": item.get("short_circuit_type")
                 or raw_result.get("short_circuit_type"),
                 "I_dyn": {
                     "symbol": "I_dyn",
-                    "label_pl": "Prad dynamiczny do sprawdzenia aparatury",
+                    "label_pl": "Prąd dynamiczny do sprawdzenia aparatury",
                     "value_ka": _amps_to_ka(item.get("ip_a")),
                     "source_field": "ip_a",
                     "source_standard": "IEC 60909",
                 },
                 "I_th": {
                     "symbol": "I_th",
-                    "label_pl": "Prad cieplny zastepczy do sprawdzenia aparatury",
+                    "label_pl": "Prąd cieplny zastępczy do sprawdzenia aparatury",
                     "value_ka": _amps_to_ka(item.get("ith_a")),
                     "source_field": "ith_a",
                     "source_standard": "IEC 60909",
@@ -653,8 +723,8 @@ def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | N
         "standard_basis": "IEC 60909",
         "scope": "SC3F",
         "symbols": {
-            "I_dyn": "Prad dynamiczny porownywany z wytrzymaloscia dynamiczna aparatury.",
-            "I_th": "Prad cieplny zastepczy porownywany z wytrzymaloscia cieplna aparatury.",
+            "I_dyn": "Prąd dynamiczny porównywany z wytrzymałością dynamiczną aparatury.",
+            "I_th": "Prąd cieplny zastępczy porównywany z wytrzymałością cieplną aparatury.",
         },
         "rows": rows,
     }
@@ -850,10 +920,10 @@ def export_run_docx_response(
     add_row("Status zbieżności", "Zbieżny" if result.get("converged") else "Niezbieżny")
     add_row("Liczba iteracji", result.get("iterations_count"))
     add_row("Węzeł bilansujący", result.get("slack_bus_id"))
-    add_row("Całkowite straty P [MW]", f"{summary.get('total_losses_p_mw', 0):.4g}")
-    add_row("Całkowite straty Q [Mvar]", f"{summary.get('total_losses_q_mvar', 0):.4g}")
-    add_row("Min. napięcie [pu]", f"{summary.get('min_v_pu', 0):.4g}")
-    add_row("Max. napięcie [pu]", f"{summary.get('max_v_pu', 0):.4g}")
+    add_row("Całkowite straty P [MW]", format_wynik(summary.get("total_losses_p_mw"), ".4g"))
+    add_row("Całkowite straty Q [Mvar]", format_wynik(summary.get("total_losses_q_mvar"), ".4g"))
+    add_row("Min. napięcie [pu]", format_wynik(summary.get("min_v_pu"), ".4g"))
+    add_row("Max. napięcie [pu]", format_wynik(summary.get("max_v_pu"), ".4g"))
     add_row("Elementy z katalogiem", metadata.get("catalog_context_count"))
 
     doc.add_paragraph()
@@ -897,10 +967,10 @@ def export_run_docx_response(
         for bus in bus_results[:30]:
             row = bus_table.add_row().cells
             row[0].text = str(bus.get("bus_id", "—"))[:16]
-            row[1].text = f"{bus.get('v_pu', 0):.4g}"
-            row[2].text = f"{bus.get('angle_deg', 0):.2f}"
-            row[3].text = f"{bus.get('p_injected_mw', 0):.3g}"
-            row[4].text = f"{bus.get('q_injected_mvar', 0):.3g}"
+            row[1].text = format_wynik(bus.get("v_pu"), ".4g")
+            row[2].text = format_wynik(bus.get("angle_deg"), ".2f")
+            row[3].text = format_wynik(bus.get("p_injected_mw"), ".3g")
+            row[4].text = format_wynik(bus.get("q_injected_mvar"), ".3g")
         if len(bus_results) > 30:
             doc.add_paragraph(f"... oraz {len(bus_results) - 30} dodatkowych węzłów")
     else:
@@ -973,10 +1043,10 @@ def export_run_pdf_response(
     summary = result.get("summary", {})
     summary_lines = [
         f"Węzeł bilansujący: {result.get('slack_bus_id', '—')}",
-        f"Całkowite straty P: {summary.get('total_losses_p_mw', 0):.4g} MW",
-        f"Całkowite straty Q: {summary.get('total_losses_q_mvar', 0):.4g} Mvar",
-        f"Min. napięcie: {summary.get('min_v_pu', 0):.4g} pu",
-        f"Max. napięcie: {summary.get('max_v_pu', 0):.4g} pu",
+        f"Całkowite straty P: {format_wynik(summary.get('total_losses_p_mw'), '.4g')} MW",
+        f"Całkowite straty Q: {format_wynik(summary.get('total_losses_q_mvar'), '.4g')} Mvar",
+        f"Min. napięcie: {format_wynik(summary.get('min_v_pu'), '.4g')} pu",
+        f"Max. napięcie: {format_wynik(summary.get('max_v_pu'), '.4g')} pu",
         f"Elementy z katalogiem: {metadata.get('catalog_context_count', 0)}",
     ]
     for line in summary_lines:
@@ -1044,8 +1114,8 @@ def export_run_pdf_response(
     for bus in result.get("bus_results", [])[:20]:
         text = (
             f"{str(bus.get('bus_id', '—'))[:12]}: "
-            f"V={bus.get('v_pu', 0):.4g} pu, "
-            f"kat={bus.get('angle_deg', 0):.2f} deg"
+            f"V={format_wynik(bus.get('v_pu'), '.4g')} pu, "
+            f"kąt={format_wynik(bus.get('angle_deg'), '.2f')} deg"
         )
         canvas_obj.drawString(left_margin, y, text)
         y -= line_height
@@ -1155,7 +1225,7 @@ def export_run_report_docx_response(
         doc.add_heading("Wyniki tabelaryczne", level=1)
         for table in results_section.get("index", {}).get("tables", []):
             table_id = table.get("table_id")
-            label = table.get("label_pl") or table_id or "Tabela"
+            label = table.get("label_pl") or "Tabela"
             doc.add_heading(str(label), level=2)
             if table_id == "buses":
                 rows = (results_section.get("buses", {}) or {}).get("rows", [])[: limits["rows"]]
@@ -1163,7 +1233,7 @@ def export_run_report_docx_response(
                     doc.add_paragraph(
                         " | ".join(
                             [
-                                str(row_data.get("name") or row_data.get("bus_id") or "—"),
+                                nazwa_nadana(row_data.get("name")) or "—",
                                 f"U={_fmt_liczba(row_data.get('u_pu'))} pu",
                                 f"kąt={_fmt_liczba(row_data.get('angle_deg'))} deg",
                             ]
@@ -1175,7 +1245,7 @@ def export_run_report_docx_response(
                     doc.add_paragraph(
                         " | ".join(
                             [
-                                str(row_data.get("name") or row_data.get("branch_id") or "—"),
+                                nazwa_nadana(row_data.get("name")) or "—",
                                 f"I={row_data.get('i_a') or '—'} A",
                                 f"P={row_data.get('p_mw') or '—'} MW",
                                 f"Q={row_data.get('q_mvar') or '—'} Mvar",
@@ -1201,9 +1271,7 @@ def export_run_report_docx_response(
                     doc.add_paragraph(
                         " | ".join(
                             [
-                                str(
-                                    row_data.get("target_name") or row_data.get("element_id") or "—"
-                                ),
+                                nazwa_nadana(row_data.get("target_name")) or "—",
                                 f"UA={row_data.get('ua_kv') or '—'} kV",
                                 f"UB={row_data.get('ub_kv') or '—'} kV",
                                 f"UC={row_data.get('uc_kv') or '—'} kV",
@@ -1211,52 +1279,11 @@ def export_run_report_docx_response(
                             ]
                         )
                     )
-            elif table_id == "dynamic_stability":
-                rows = (results_section.get("dynamic_stability", {}) or {}).get("rows", [])[
-                    : limits["rows"]
-                ]
-                for row_data in rows:
-                    doc.add_paragraph(
-                        " | ".join(
-                            [
-                                str(row_data.get("source_id") or "—"),
-                                f"Status={row_data.get('status') or '—'}",
-                                f"t_wyl={row_data.get('clearing_time_ms') or '—'} ms",
-                                f"Margines={row_data.get('clearing_margin_ms') or '—'} ms",
-                                f"Indeks={row_data.get('stability_index') or '—'}",
-                            ]
-                        )
-                    )
-            elif table_id == "automation_trace":
-                rows = (results_section.get("automation_trace", {}) or {}).get("rows", [])[
-                    : limits["rows"]
-                ]
-                for row_data in rows:
-                    doc.add_paragraph(
-                        " | ".join(
-                            [
-                                str(row_data.get("event_seq") or "—"),
-                                str(row_data.get("event_type") or "—"),
-                                str(row_data.get("element_id") or "—"),
-                                str(row_data.get("detail") or "—"),
-                            ]
-                        )
-                    )
-            elif table_id == "source_compliance":
-                rows = (results_section.get("source_compliance", {}) or {}).get("rows", [])[
-                    : limits["rows"]
-                ]
-                for row_data in rows:
-                    doc.add_paragraph(
-                        " | ".join(
-                            [
-                                str(row_data.get("source_ref") or "—"),
-                                str(row_data.get("source_type") or "—"),
-                                str(row_data.get("verdict") or "—"),
-                                str(row_data.get("reporting_status") or "—"),
-                            ]
-                        )
-                    )
+            elif table_id in TABELE_DYNAMIKI:
+                for linia in _linie_dynamiki(
+                    results_section.get("dynamika") or {}, str(table_id), limits["rows"]
+                ):
+                    doc.add_paragraph(linia)
             else:
                 doc.add_paragraph("Brak danych tabelarycznych dla wybranego zakresu.")
 
@@ -1269,7 +1296,7 @@ def export_run_report_docx_response(
                 doc.add_paragraph(
                     " | ".join(
                         [
-                            str(entry.get("element_id") or "—"),
+                            nazwa_nadana(entry.get("name")) or "—",
                             str(entry.get("element_type") or "—"),
                             _format_catalog_binding(entry),
                             str(
@@ -1377,7 +1404,7 @@ def export_run_report_pdf_response(
         y -= line_height
         for table in results_section.get("index", {}).get("tables", []):
             draw_line(
-                str(table.get("label_pl") or table.get("table_id") or "Tabela"),
+                str(table.get("label_pl") or "Tabela"),
                 font="DejaVuSans-Bold",
                 size=10,
             )
@@ -1386,14 +1413,14 @@ def export_run_report_pdf_response(
                     : limits["rows"]
                 ]:
                     draw_line(
-                        f"{row_data.get('name') or row_data.get('bus_id')}: U={_fmt_liczba(row_data.get('u_pu'))} pu, kąt={_fmt_liczba(row_data.get('angle_deg'))} deg"
+                        f"{nazwa_nadana(row_data.get('name')) or '—'}: U={_fmt_liczba(row_data.get('u_pu'))} pu, kąt={_fmt_liczba(row_data.get('angle_deg'))} deg"
                     )
             elif table.get("table_id") == "branches":
                 for row_data in (results_section.get("branches", {}) or {}).get("rows", [])[
                     : limits["rows"]
                 ]:
                     draw_line(
-                        f"{row_data.get('name') or row_data.get('branch_id')}: I={row_data.get('i_a') or '—'} A, P={row_data.get('p_mw') or '—'} MW"
+                        f"{nazwa_nadana(row_data.get('name')) or '—'}: I={row_data.get('i_a') or '—'} A, P={row_data.get('p_mw') or '—'} MW"
                     )
             elif table.get("table_id") == "short_circuit":
                 for row_data in (results_section.get("short_circuit", {}) or {}).get("rows", [])[
@@ -1410,29 +1437,15 @@ def export_run_report_pdf_response(
                     : limits["rows"]
                 ]:
                     draw_line(
-                        f"{row_data.get('target_name') or row_data.get('element_id')}: UA={row_data.get('ua_kv') or '—'} kV, UB={row_data.get('ub_kv') or '—'} kV, UC={row_data.get('uc_kv') or '—'} kV"
+                        f"{nazwa_nadana(row_data.get('target_name')) or '—'}: UA={row_data.get('ua_kv') or '—'} kV, UB={row_data.get('ub_kv') or '—'} kV, UC={row_data.get('uc_kv') or '—'} kV"
                     )
-            elif table.get("table_id") == "dynamic_stability":
-                for row_data in (results_section.get("dynamic_stability", {}) or {}).get(
-                    "rows", []
-                )[: limits["rows"]]:
-                    draw_line(
-                        f"{row_data.get('source_id')}: status={row_data.get('status') or '—'}, t_wyl={row_data.get('clearing_time_ms') or '—'} ms, indeks={row_data.get('stability_index') or '—'}"
-                    )
-            elif table.get("table_id") == "automation_trace":
-                for row_data in (results_section.get("automation_trace", {}) or {}).get("rows", [])[
-                    : limits["rows"]
-                ]:
-                    draw_line(
-                        f"{row_data.get('event_seq') or '—'} | {row_data.get('event_type') or '—'} | {row_data.get('element_id') or '—'} | {row_data.get('detail') or '—'}"
-                    )
-            elif table.get("table_id") == "source_compliance":
-                for row_data in (results_section.get("source_compliance", {}) or {}).get(
-                    "rows", []
-                )[: limits["rows"]]:
-                    draw_line(
-                        f"{row_data.get('source_ref') or '—'} | {row_data.get('source_type') or '—'} | {row_data.get('verdict') or '—'} | {row_data.get('reporting_status') or '—'}"
-                    )
+            elif table.get("table_id") in TABELE_DYNAMIKI:
+                for linia in _linie_dynamiki(
+                    results_section.get("dynamika") or {},
+                    str(table.get("table_id")),
+                    limits["rows"],
+                ):
+                    draw_line(linia)
         y -= 2 * mm
 
     if "catalog" in options["sections"]:
@@ -1445,7 +1458,7 @@ def export_run_report_pdf_response(
                 draw_line(
                     " | ".join(
                         [
-                            str(entry.get("element_id") or "—"),
+                            nazwa_nadana(entry.get("name")) or "—",
                             str(entry.get("element_type") or "—"),
                             _format_catalog_binding(entry),
                         ]
@@ -1693,8 +1706,9 @@ def build_nn_circuit_report_section(
     )
     from application.analyses.fault_loop.service import (
         _find_station,
-        _system_for_station,
+        odmowa_pasma_nn,
         resolve_transformer_for_bus,
+        uklad_nn_transformatora,
     )
     from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
     from application.analyses.swz.service import build_swz_view
@@ -1715,11 +1729,16 @@ def build_nn_circuit_report_section(
     trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
         return {"status": "brak danych", "missing_data": transformer_missing, "reason_pl": None}
+    # Sekcja obwodu nN wyłącznie dla transformatora ze stroną dolną w paśmie nN — ta sama
+    # bramka co pętla zwarcia/SWZ/dobór (`odmowa_pasma_nn`), bez sekcji z fikcyjnym U0.
+    odmowa = odmowa_pasma_nn({}, trafo)
+    if odmowa is not None:
+        return {**odmowa, "provenance": provenance}
 
     dane_zrodlowe = {
         "stacja": station.name,
         "station_ref": station_ref,
-        "uklad_sieci": _system_for_station(station),
+        "uklad_sieci": uklad_nn_transformatora(trafo),
         "provenance": provenance,
     }
     transformator = {

@@ -6,8 +6,11 @@
  * UWAGA (decyzja wykonawcza, patrz raport): jest to NOWA taksonomia 7 przestrzeni
  * wg makiety U0.6 v6 i różni się od zastanego rejestru `ui/navigation/areaRegistry`
  * (9 obszarów, inna semantyka). Powłoka utrzymuje aktywną przestrzeń we własnym
- * stanie prezentacji; drzewa kontekstowe i ewentualne mapowanie do zastanych
- * obszarów są zakresem karty E1.2 (TODO-KARTA).
+ * stanie prezentacji. Drzewa kontekstowe (E1.2) są zbudowane w `ui2/nav/**`
+ * (`ContextTree`, `useCasesTree`/`useRunsTree`/`useTopologyTree`) i montowane w
+ * `AppRoot.tsx` (`DrzewoPrzestrzeni`); mapowanie NOWEJ przestrzeni na zastany
+ * obszar mostu (`ObszarKontekstu`, dla panelu kontekstu schematu) jest funkcją
+ * czystą `obszarDlaTrasy` w `ui2/legacy/mostObszarow.ts`, wołaną z `AppRoot.tsx`.
  */
 
 import { SHELL_STRINGS } from './strings';

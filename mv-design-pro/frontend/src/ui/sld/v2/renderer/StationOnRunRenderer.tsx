@@ -23,7 +23,9 @@ import {
   type MiniBlockDerBadge,
 } from './MiniBlockRmuRenderer';
 import type { StationFootprintType } from './MiniBlockFootprints';
+import type { UkladSieciNn } from '../../../../types/uziemienie';
 import type { StationTransformerUnit } from '../../../network-build/stationTransformerSelection';
+import { pasmoNapieciowe } from '../../../../ui2/model/pasmaNapieciowe';
 
 // K30-4: enlarged for industrial readability (24+ px symbols @ LOD-2).
 // Previously: 176/124/120/30/48 (mikroskopijny w widoku K30 30-station chain).
@@ -113,7 +115,7 @@ export interface StationOnRunRendererProps {
    *  0.4kV → błękit nN). Brak → fallback do COLOR_FIELD_TRUNK_ENERGIZED. */
   readonly busVoltageKv?: number | null;
   /** Recenzja NO-GO 2026-07-17 pkt 6 (spec §12.5): napięcie szyny nN stacji
-   *  [kV] — z rekordu szyny nN (`Bus.voltage_kv < 1` w `Substation.bus_refs`).
+   *  [kV] — z rekordu szyny nN (szyna w paśmie nN — `wPasmieNn` z `ui2/model/pasmaNapieciowe` — w `Substation.bus_refs`).
    *  `null`/brak = dana niedostarczona (etykieta szyny nN bez napięcia). */
   readonly nnVoltageKv?: number | null;
   /** Recenzja NO-GO 2026-07-17 pkt 6: ZAGREGOWANY odbiór nN stacji — suma
@@ -123,6 +125,8 @@ export interface StationOnRunRendererProps {
   /** K30-62: vector group transformatora (Dyn5, Yd11, Yzn11) per IEC 60076-1.
    *  Industrial SLD pokazuje vector group obok TR symbol. */
   readonly transformerVectorGroup?: string | null;
+  /** W5-A: układ sieci nN stacji (PN-EN 60364-1 § 312) z `Transformer.lv_earthing_system`. */
+  readonly earthingScheme?: UkladSieciNn | null;
   /** K30-44: aktualne odchylenie napięcia od nominalnego [%] — z LF results.
    *  Renderer dobiera ring colour station code badge per PN-EN 50160:
    *   - |ΔU| ≤ 2%  → green (energized OK)
@@ -192,6 +196,7 @@ export function StationOnRunRenderer(props: StationOnRunRendererProps): JSX.Elem
         busVoltageKv={props.busVoltageKv ?? null}
         isNop={props.isNop ?? false}
         transformerVectorGroup={props.transformerVectorGroup ?? null}
+        earthingScheme={props.earthingScheme ?? null}
         viewportScale={props.viewportScale}
       />
     );
@@ -668,20 +673,19 @@ function classifyVoltageDeviationText(devPct: number | null): string {
 }
 
 /**
- * K30-37: kolor szyny stacji per voltage class, zgodnie z konwencją
- * dyspozytorską OSD (Energa / Tauron / PSE):
- * - 110 kV (WN): czerwień #E74C3C
- * - 15 / 20 / 30 kV (SN): zieleń energized #13C45A (kanon SCADA)
- * - 6 / 10 kV (SN niskie): głębsza zieleń #0A8D43
- * - 0.4 / 1 kV (nN): chłodny błękit #7DD3FC
- * - inne / brak: fallback do COLOR_FIELD_TRUNK_ENERGIZED.
+ * K30-37: kolor szyny stacji per pasmo napięcia (jedno lustro granic
+ * `ui2/model/pasmaNapieciowe`), zgodnie z konwencją dyspozytorską OSD (Energa / Tauron / PSE):
+ * - pasmo WN (od 110 kV): czerwień #E74C3C
+ * - pasmo SN od 12 kV (15 / 20 / 30 kV): zieleń energized #13C45A (kanon SCADA)
+ * - pasmo SN poniżej 12 kV (3 / 6 / 10 kV, SN niskie): głębsza zieleń #0A8D43
+ * - pasmo nN (0,4 / 0,69 / 1 kV): chłodny błękit #7DD3FC
+ * - brak / niefizyczne: fallback do COLOR_FIELD_TRUNK_ENERGIZED.
  */
 function busColorForVoltage(kv: number | null): string {
-  if (kv == null || !Number.isFinite(kv) || kv <= 0) return COLOR_FIELD_TRUNK_ENERGIZED;
-  if (kv >= 100) return '#E74C3C';     // 110 kV WN
-  if (kv >= 12) return COLOR_FIELD_TRUNK_ENERGIZED; // 15-30 kV SN
-  if (kv >= 5) return '#0A8D43';       // 6-10 kV SN niskie
-  if (kv >= 0.2) return '#7DD3FC';     // 0.4 / 1 kV nN
+  const pasmo = pasmoNapieciowe(kv);
+  if (pasmo === 'WN') return '#E74C3C';
+  if (pasmo === 'SN') return (kv as number) >= 12 ? COLOR_FIELD_TRUNK_ENERGIZED : '#0A8D43';
+  if (pasmo === 'nN') return '#7DD3FC';
   return COLOR_FIELD_TRUNK_ENERGIZED;
 }
 

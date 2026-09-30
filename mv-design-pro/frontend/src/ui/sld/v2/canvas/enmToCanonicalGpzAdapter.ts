@@ -42,6 +42,7 @@ import type {
   StatusFlag,
   SwitchState,
 } from '../renderer/GpzCanonicalRenderer';
+import { wPasmieSn, wPasmieWn } from '../../../../ui2/model/pasmaNapieciowe';
 // F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ):
 // reużycie WPROST tych samych projekcji co stacje (`buildExplicitStationMiniBays`,
 // `enmToSldAdapter.ts`) — jedna prawda ENM Bay → aparat/adnotacja zabezpieczeń,
@@ -163,11 +164,11 @@ export function buildCanonicalGpzProps(
     alarms: options.alarms,
     transformers,
     sections: lvSections,
-    // V12K-219: sposób pracy punktu neutralnego sieci SN — z `Bus.grounding`
-    // szyny SN GPZ (jedyna szyna stacji o napięciu z pasma SN). Mapowanie 1:1
-    // z kanonu ENM, zero domysłu: brak `grounding` daje `null`, a schemat wtedy
-    // nie rysuje aparatu uziemiającego.
-    snNeutralEarthing: deriveSnNeutralEarthing(substation, enm.buses ?? []),
+    // V12K-219 / W5-A: sposób pracy punktu neutralnego sieci SN — z
+    // `Source.neutral_grounding` źródła GPZ tej stacji (jedyny nośnik po kasacji
+    // `Bus.grounding`). Mapowanie 1:1 z kanonu ENM, zero domysłu: brak opisu daje
+    // `null`, a schemat wtedy nie rysuje aparatu uziemiającego.
+    snNeutralEarthing: deriveSnNeutralEarthing(substation, enm.buses ?? [], enm.sources ?? []),
     couplers: buildCouplers(substation, allBays),
     hvSections: buildHvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null, protectionCtx),
     // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
@@ -184,7 +185,7 @@ export function buildCanonicalGpzProps(
 }
 
 /**
- * Szyny WN (`voltage_kv > 60`) należące do stacji — JEDNO ŹRÓDŁO PRAWDY dla obu
+ * Szyny WN (pasmo WN, `wPasmieWn` — od 110 kV) należące do stacji — JEDNO ŹRÓDŁO PRAWDY dla obu
  * pytań o stronę WN GPZ: `hvBusRef` (który WĘZEŁ niesie wynik) i
  * `deriveHvSystemSource` (jaki POZIOM napięcia opisuje szynę). Kolejność wprost
  * z `Substation.bus_refs` — dana modelu, nie kolejność listy `buses`, więc
@@ -195,7 +196,7 @@ function gpzHvBuses(substation: Substation, buses: readonly Bus[]): readonly Bus
   const out: Bus[] = [];
   for (const ref of substation.bus_refs ?? []) {
     const bus = byRef.get(ref);
-    if (bus && bus.voltage_kv > 60) out.push(bus);
+    if (bus && wPasmieWn(bus.voltage_kv)) out.push(bus);
   }
   return out;
 }
@@ -227,8 +228,8 @@ function gpzHvBusResultRef(substation: Substation, buses: readonly Bus[]): strin
  * trzech rekordów (TR WN/SN, szyna WN, `Source` na szynie GPZ) ⇒ `null`
  * (uczciwy brak, `compose/gpz.ts` NIE dopisuje etykiety/tabliczki danych).
  *   1. TR WN/SN = `Substation.transformer_refs` → `snapshot.transformers`
- *      z `uhv_kv > 60`.
- *   2. szyna WN = `gpzHvBuses` (wpisy `Substation.bus_refs` o `voltage_kv > 60`)
+ *      ze stroną górną w paśmie WN (`wPasmieWn(uhv_kv)`).
+ *   2. szyna WN = `gpzHvBuses` (wpisy `Substation.bus_refs` w paśmie WN)
  *      — JEDNO źródło prawdy z `hvBusRef`. Etykieta szyny WN opisuje POZIOM
  *      napięcia, więc kilka szyn WN o TYM SAMYM poziomie (GPZ 2×TR: dwie szyny
  *      110 kV) jest tu jednoznaczne; szyny o RÓŻNYCH poziomach ⇒ `null` (karta
@@ -244,7 +245,7 @@ function deriveHvSystemSource(
   gpzTransformers: readonly Transformer[],
   sources: readonly Source[],
 ): CanonicalGpzHvSystemSource | null {
-  const hvTransformer = gpzTransformers.find((tr) => tr.uhv_kv > 60);
+  const hvTransformer = gpzTransformers.find((tr) => wPasmieWn(tr.uhv_kv));
   if (!hvTransformer) return null;
 
   const hvBuses = gpzHvBuses(gpz, buses);
@@ -268,6 +269,9 @@ function deriveHvSystemSource(
     name,
     sk3Mva: source.sk3_mva ?? null,
     ik3Ka: source.ik3_ka ?? null,
+    sk3MinMva: source.sk3_min_mva ?? null,
+    ik3MinKa: source.ik3_min_ka ?? null,
+    uSetPu: source.u_set_pu ?? null,
     voltageKv: sourceBus?.voltage_kv ?? null,
     // WN-WYNIK (uczciwość w obrębie pliku): „czy źródło stoi po stronie WN" to
     // pytanie o ZBIÓR szyn WN stacji, nie o pierwszą z nich — GPZ 2×TR ma dwie
@@ -439,7 +443,7 @@ function buildLvSections(
 
   if (sectionDefs.length === 0 && lvBays.length > 0) {
     // Auto-synteza: 1 sekcja domyślna gdy brak gpz_sections ale są bays.
-    const defaultBus = buses.find((b) => gpz.bus_refs?.includes(b.ref_id) && b.voltage_kv < 60);
+    const defaultBus = buses.find((b) => gpz.bus_refs?.includes(b.ref_id) && !wPasmieWn(b.voltage_kv));
     return [{
       sectionId: `${gpz.ref_id}__synth-section-1`,
       order: 1,
@@ -640,7 +644,7 @@ function mapBayRoleToFieldRole(role: Bay['bay_role']): BayFieldRole {
 function isLvBay(bay: Bay, buses: readonly Bus[]): boolean {
   const bus = buses.find((b) => b.ref_id === bay.bus_ref);
   if (!bus) return false;
-  return bus.voltage_kv < 60;
+  return !wPasmieWn(bus.voltage_kv);
 }
 
 function deriveQDesignations(role: BayFieldRole): CanonicalGpzBay['qDesignations'] {
@@ -797,8 +801,16 @@ export function extractBayMeasurements(
   return { pMw, qMvar, i1A };
 }
 
+/**
+ * Pole „w manipulacji" wyłącznie ze ŹRÓDŁA runtime (karta #135): polecenie w toku albo
+ * blokada `=== true` w rekordzie źródła. Brak źródła i blokada nieustalona (`null`) NIE są
+ * blokadą — adapter nie wymyśla stanu ruchowego.
+ */
 function extractInManipulation(
-  runtime: { pending_command?: unknown; primary_device_states?: Record<string, { interlock_blocked?: boolean }> } | null,
+  runtime: {
+    pending_command?: unknown;
+    primary_device_states?: Record<string, { interlock_blocked?: boolean | null }>;
+  } | null,
 ): boolean {
   if (!runtime) return false;
   if (runtime.pending_command) return true;
@@ -811,9 +823,9 @@ function extractInManipulation(
 /**
  * Sposób pracy punktu neutralnego sieci SN z modelu (V12K-219).
  *
- * Szukamy szyny SN tej stacji (napięcie w pasmie SN: 1 kV < U ≤ 60 kV — ta sama
- * granica co `hvBusRef` powyżej, tylko z drugiej strony) i przepisujemy jej
- * `grounding`. Rozstrzygnięcie należy do MODELU: `isolated` to informacja
+ * Szukamy szyny SN tej stacji (pasmo SN: powyżej 1 kV i poniżej 110 kV — `wPasmieSn`,
+ * to samo lustro granic co `hvBusRef` powyżej) i przepisujemy jej
+ * `Source.neutral_grounding`. Rozstrzygnięcie należy do MODELU: `isolated` to informacja
  * inżynierska (sieć pracuje z izolowanym punktem neutralnym), a BRAK pola to
  * brak danej — te dwa stany nie mogą się zlać, bo prąd zwarcia doziemnego różni
  * się między konfiguracjami o rzędy wielkości.
@@ -821,12 +833,22 @@ function extractInManipulation(
 function deriveSnNeutralEarthing(
   substation: Substation,
   buses: readonly Bus[],
+  sources: readonly Source[],
 ): GpzCanonicalRendererProps['snNeutralEarthing'] {
-  const snBus = buses.find(
-    (b) => substation.bus_refs?.includes(b.ref_id) && b.voltage_kv > 1 && b.voltage_kv <= 60,
+  const stationBusRefs = new Set(substation.bus_refs ?? []);
+  const source = sources.find(
+    (s) =>
+      Boolean(s.neutral_grounding)
+      && (s.substation_ref === substation.ref_id || stationBusRefs.has(s.bus_ref)),
   );
-  const g = snBus?.grounding;
+  const g = source?.neutral_grounding;
   if (!g) return null;
+  // Rysowany przy szynie SN (transformator Yd11 nie ma punktu neutralnego SN) —
+  // szyna SN stacji istnieje niezależnie od tego, czy źródło stoi po stronie 110 kV.
+  const snBus = buses.find(
+    (b) => stationBusRefs.has(b.ref_id) && wPasmieSn(b.voltage_kv),
+  );
+  if (!snBus) return null;
   const kind =
     g.type === 'resistor_grounded'
       ? 'resistor'

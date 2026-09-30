@@ -9,6 +9,7 @@
  * `StartBranchForm`.
  */
 
+import type { UziemienieEkranuKabla } from '../../../types/uziemienie';
 import { normalizeCatalogBinding, normalizeSegmentKind, normalizeSegmentNamespace } from '../../../ui/network-build/forms/catalogPayload';
 
 export type RodzajOdcinka = 'cable' | 'line_overhead';
@@ -18,6 +19,8 @@ export interface OdgaleznieFormData {
   /** Długość odgałęzienia w kilometrach (wejście użytkownika). */
   dlugosc_km: number | null;
   catalog_ref: string | null;
+  /** W5-A: układ uziemienia ekranu kabla (pusty = nie zadeklarowano; tylko dla kabla). */
+  screen_bonding: UziemienieEkranuKabla | '';
 }
 
 export interface BladPola {
@@ -29,6 +32,7 @@ export const DANE_DOMYSLNE: OdgaleznieFormData = {
   segment_type: 'cable',
   dlugosc_km: 1,
   catalog_ref: null,
+  screen_bonding: '',
 };
 
 export interface KontekstOdgalezienia {
@@ -79,6 +83,8 @@ export function zbudujPayload(
       rodzaj: normalizeSegmentKind(rodzaj),
       dlugosc_m: Math.round((data.dlugosc_km ?? 0) * 1000),
       catalog_binding: catalogBinding ?? undefined,
+      // W5-A: deklaracja ekranu tylko dla kabla i tylko gdy wybrana (zero fantomów).
+      ...(rodzaj === 'cable' && data.screen_bonding ? { screen_bonding: data.screen_bonding } : {}),
     },
   };
 }

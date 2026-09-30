@@ -30,6 +30,7 @@ import {
   nonOrthogonalSegmentIndices,
   type SceneV3,
 } from '../buildScene';
+import { LABEL_ROLE_BY_OWNER_KIND } from '../../layout/labels';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -89,6 +90,7 @@ describe('SCHEMAT-10 S2 — kontrola negatywna (wyrocznie nie są martwe)', () =
           ownerRef: 'x',
           ownerKind: 'segment-span',
           labelClass: 't2',
+          labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-span'],
           text: 'OVERHEAD Al 70 mm²',
           slotIndex: 1,
           rect: { x: 0, y: 0, width: 40, height: 16 },
@@ -117,8 +119,8 @@ describe('SCHEMAT-10 S2 — kontrola negatywna (wyrocznie nie są martwe)', () =
       ...base,
       symbols: [],
       labels: [
-        { ownerRef: 'a', ownerKind: 'der', labelClass: 't2', text: 'A', slotIndex: 1, rect: { x: 0, y: 0, width: 40, height: 16 } },
-        { ownerRef: 'b', ownerKind: 'der', labelClass: 't2', text: 'B', slotIndex: 1, rect: { x: 10, y: 4, width: 40, height: 16 } },
+        { ownerRef: 'a', ownerKind: 'der', labelClass: 't2', labelRole: LABEL_ROLE_BY_OWNER_KIND.der, text: 'A', slotIndex: 1, rect: { x: 0, y: 0, width: 40, height: 16 } },
+        { ownerRef: 'b', ownerKind: 'der', labelClass: 't2', labelRole: LABEL_ROLE_BY_OWNER_KIND.der, text: 'B', slotIndex: 1, rect: { x: 10, y: 4, width: 40, height: 16 } },
       ],
     };
     expect(noLabelCollisions(scene)).toBe(false);

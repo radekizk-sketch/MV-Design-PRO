@@ -170,7 +170,7 @@ def test_twarda_brama_napieciowa_iloczyn_cech(
     if przechodzi:
         family_supports_voltage(RODZINA_MODULOWA_REF, napiecie_kv)
     else:
-        with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie obsluguje napiecia"):
+        with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie obsługuje napięcia"):
             family_supports_voltage(RODZINA_MODULOWA_REF, napiecie_kv)
 
 
@@ -178,9 +178,9 @@ def test_komunikat_bledu_mowi_co_karta_deklaruje() -> None:
     """Odmowa bez powodu zmusza projektanta do zgadywania. Komunikat nazywa
     RODZAJ deklaracji, bo od niego zależy, co trzeba zmienić: napięcie sieci
     czy dobór rodziny."""
-    with pytest.raises(NiezgodnoscKonfiguracjiError, match="napiecia sieci: 15, 20 kV"):
+    with pytest.raises(NiezgodnoscKonfiguracjiError, match="napięcia sieci: 15, 20 kV"):
         family_supports_voltage(RODZINA_MODULOWA_REF, 12.0)
-    with pytest.raises(NiezgodnoscKonfiguracjiError, match="klasy napieciowe urzadzenia"):
+    with pytest.raises(NiezgodnoscKonfiguracjiError, match="klasy napięciowe urządzenia"):
         family_supports_voltage(RODZINA_PAKIETU_V1_REF, 30.0)
 
 
@@ -239,12 +239,12 @@ def test_operacja_domenowa_bramkuje_napiecie_iloczyn_cech(
 
     if przechodzi:
         assert not odpowiedz.get("error"), odpowiedz.get("error")
-        assert odpowiedz.get("snapshot"), "Pole zgodne z karta rodziny musi powstac"
+        assert odpowiedz.get("snapshot"), "Pole zgodne z karta rodziny musi powstać"
     else:
         assert odpowiedz.get("error_code") == KOD_NIEZGODNOSCI
-        assert "nie obsluguje napiecia" in str(odpowiedz.get("error"))
-        assert not odpowiedz.get("snapshot"), "Odrzucone pole nie moze zostawic migawki"
-        assert snapshot == przed, "Odrzucona operacja nie moze zmienic modelu"
+        assert "nie obsługuje napięcia" in str(odpowiedz.get("error"))
+        assert not odpowiedz.get("snapshot"), "Odrzucone pole nie może zostawic migawki"
+        assert snapshot == przed, "Odrzucona operacja nie może zmienic modelu"
 
 
 @pytest.mark.parametrize(
@@ -284,7 +284,7 @@ def test_proba_i_wykonanie_daja_ten_sam_werdykt_napieciowy(
     assert odpowiedz["preview"]["werdykt"] == "INVALID"
     # Próba nie zostawia śladu w modelu — brak migawki znaczy brak zapisu.
     assert not odpowiedz.get("snapshot")
-    assert snapshot == przed, "Tryb proby nie moze zmienic modelu"
+    assert snapshot == przed, "Tryb proby nie może zmienic modelu"
 
 
 def test_brak_napiecia_szyny_odbija_wlasnym_kodem_przed_brama_rodziny() -> None:
@@ -313,7 +313,7 @@ def test_brak_napiecia_szyny_odbija_wlasnym_kodem_przed_brama_rodziny() -> None:
 
 def _enm_o_napieciu(napiecie_kv: float) -> EnergyNetworkModel:
     return EnergyNetworkModel(
-        header=ENMHeader(name="Zgodnosc napieciowa rodziny"),
+        header=ENMHeader(name="Zgodność napięciowa rodziny"),
         buses=[Bus(ref_id="bus/sn", name="Szyna SN", voltage_kv=napiecie_kv)],
         substations=[
             Substation(

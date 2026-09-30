@@ -12,7 +12,14 @@ function fieldItem(): FieldReadModelItem {
     bay_ref: 'bay-1',
     bay_name: 'Pole odpływowe',
     canonical_model: {
+      schema_version: 'v10.bay.1',
+      created_from: 'recznie',
+      integrity_status: 'kompletny',
       base_model: {
+        bay_ref: 'bay-1',
+        bay_role: 'LINIA_ODG',
+        specialization: 'BRAK',
+        substation_ref: 'station-1',
         primary_devices: [
           {
             device_ref: 'cb-1',
@@ -41,9 +48,22 @@ function fieldItem(): FieldReadModelItem {
           topology: 'ct_vt',
           measurement_sets: [],
         },
+        secondary_units: [],
+        secondary_architecture: {
+          type: 'zintegrowane_zabezpieczenie_i_sterownik',
+          measurement_provider: 'zabezpieczenie',
+        },
+        control_surface: {
+          controllable_device_refs: ['cb-1'],
+          open_requires_confirmation: true,
+          close_requires_confirmation: true,
+          kas_available: false,
+          local_remote_transfer_supported: false,
+        },
+        interlocks: { entries: [] },
       },
     },
-  } as FieldReadModelItem;
+  };
 }
 
 describe('fieldControlSelectors', () => {

@@ -22,6 +22,7 @@ import {
   type ComparisonRunType,
 } from '../comparison';
 import { useExecutionRunsStore } from '../study-cases/runStore';
+import type { ExecutionAnalysisType } from '../study-cases/types';
 import { useAppStateStore } from '../app-state';
 import { useSelectionStore } from '../selection';
 
@@ -42,6 +43,29 @@ export function AuditTrailSurface({ surface: _surface }: { surface: WorkspaceSur
 }
 
 /**
+ * Rodzaj porównania A/B per rodzaj przebiegu — mapa JAWNA (W5-D, KLASA NIE
+ * INSTANCJA): poprzedni łańcuch warunków kończył się gałęzią „wszystko inne =
+ * 'protection'", więc każdy nowy rodzaj analizy (stabilność dynamiczna,
+ * rozpływ niesymetryczny) trafiał do porównania zabezpieczeń bez żadnego
+ * kontraktu porównania. Rodzaj bez wpisu NIE jest oferowany do porównania —
+ * uczciwy brak zamiast fałszywego rodzaju.
+ */
+const RODZAJ_POROWNANIA_PRZEBIEGU: Partial<Record<ExecutionAnalysisType, ComparisonRunType>> = {
+  SC_3F: 'short_circuit',
+  SC_1F: 'short_circuit',
+  SC_2F: 'short_circuit',
+  SC_2F_G: 'short_circuit',
+  LOAD_FLOW: 'power_flow',
+  PHASE_STATE_SN: 'voltage_profile',
+};
+
+export function rodzajPorownaniaPrzebiegu(
+  analysisType: ExecutionAnalysisType,
+): ComparisonRunType | null {
+  return RODZAJ_POROWNANIA_PRZEBIEGU[analysisType] ?? null;
+}
+
+/**
  * AnalysisSurfaceComparisonWizard — tab "comparison_wizard" w E-35 AnalysisSurface.
  * Renderuje ComparisonWizard A/B (Etap 18 dostawy).
  */
@@ -58,24 +82,18 @@ export function AnalysisSurfaceComparisonWizard({
     () =>
       executionRuns
         .filter((r) => r.status === 'DONE')
-        .map((r) => {
-          const isSc = r.analysis_type.startsWith('SC_');
-          const isLf = r.analysis_type === 'LOAD_FLOW';
-          const isPhase = r.analysis_type === 'PHASE_STATE_SN';
-          const runType: ComparisonRunType = isSc
-            ? 'short_circuit'
-            : isLf
-              ? 'power_flow'
-              : isPhase
-                ? 'voltage_profile'
-                : 'protection';
-          return {
-            id: r.id,
-            label: `${projectName ?? 'Wariant'} — ${r.analysis_type} (${r.finished_at?.slice(0, 16) ?? ''})`,
-            runType,
-            timestamp: r.finished_at ?? r.started_at ?? '',
-            caseRef: r.study_case_id,
-          };
+        .flatMap((r) => {
+          const runType = rodzajPorownaniaPrzebiegu(r.analysis_type);
+          if (!runType) return [];
+          return [
+            {
+              id: r.id,
+              label: `${projectName ?? 'Wariant'} — ${r.analysis_type} (${r.finished_at?.slice(0, 16) ?? ''})`,
+              runType,
+              timestamp: r.finished_at ?? r.started_at ?? '',
+              caseRef: r.study_case_id,
+            },
+          ];
         }),
     [executionRuns, projectName],
   );

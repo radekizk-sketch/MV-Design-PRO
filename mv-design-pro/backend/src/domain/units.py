@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from network_model.pochodne import (
+    impedancja_z_napiecia_i_mocy_ohm,
+    prad_z_mocy_pozornej_ka,
+)
+
 
 @dataclass(frozen=True)
 class BaseQuantities:
@@ -23,11 +28,11 @@ class BaseQuantities:
 
     @property
     def z_base_ohm(self) -> float:
-        return (self.u_base_kv**2) / self.s_base_mva
+        return impedancja_z_napiecia_i_mocy_ohm(self.u_base_kv, self.s_base_mva)
 
     @property
     def i_base_ka(self) -> float:
-        return self.s_base_mva / (self.u_base_kv * 1.7320508075688772)
+        return prad_z_mocy_pozornej_ka(self.s_base_mva, self.u_base_kv)
 
 
 @dataclass(frozen=True)

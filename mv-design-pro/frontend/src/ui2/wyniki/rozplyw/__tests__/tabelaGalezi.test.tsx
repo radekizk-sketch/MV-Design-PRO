@@ -116,9 +116,11 @@ describe('TabelaGalezi — konkretyzacja wzorca na realnym kształcie danych', (
 
   it('identyfikator przebiegu tylko w trybie eksperckim (§2.7)', () => {
     const { rerender } = render(<TabelaGalezi {...props({ trybZaawansowania: 'basic' })} />);
-    expect(screen.queryByTestId('mvd-wyn-run-id')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-wyn-informacje-audytowe')).not.toBeInTheDocument();
     rerender(<TabelaGalezi {...props({ trybZaawansowania: 'expert' })} />);
-    expect(screen.getByTestId('mvd-wyn-run-id')).toHaveTextContent('pf-run-1');
+    // Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych" (zwinięte).
+    fireEvent.click(screen.getByTestId('mvd-wyn-informacje-audytowe-przelacz'));
+    expect(screen.getByTestId('mvd-wyn-informacje-audytowe-lista')).toHaveTextContent('pf-run-1');
   });
 
   it('onEksport przekazany do stopki wzorca', () => {
@@ -220,5 +222,56 @@ describe('TabelaGalezi — werdykt obciążalności z walidacji energetycznej (R
     const sel = useSelectionStore.getState();
     expect(sel.selectedElement).toMatchObject({ id: 'T-1', type: 'TransformerBranch' });
     expect(useShellStore.getState().activeSpace).toBe('schemat');
+  });
+});
+
+describe('TabelaGalezi — typElementuWiersza: klik NATYWNY na wierszu (karta TODO-UI2 p.6, nie przycisk decyzji)', () => {
+  beforeEach(() => ustawWynik());
+
+  it('gałąź z pozycją BRANCH_LOADING → klik wiersza zaznacza LineBranch', async () => {
+    mockedWalidacja.mockResolvedValue(walidacjaResponseFixture());
+    render(<TabelaGalezi {...props({ onWybierzWiersz: vi.fn() })} />);
+    await screen.findByText('92,0');
+
+    fireEvent.click(screen.getByText('L-1'));
+
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'L-1',
+      type: 'LineBranch',
+    });
+  });
+
+  it('gałąź z pozycją TRANSFORMER_LOADING → klik wiersza zaznacza TransformerBranch', async () => {
+    ustawWynik({ branch_results: [branchResultFixture({ branch_id: 'T-1' })] });
+    mockedWalidacja.mockResolvedValue(
+      walidacjaResponseFixture([
+        walidacjaItemFixture({
+          check_type: 'TRANSFORMER_LOADING',
+          target_id: 'T-1',
+          target_name: 'Transformator T-1',
+          observed_value: 104.0,
+          status: 'FAIL',
+        }),
+      ]),
+    );
+    render(<TabelaGalezi {...props({ onWybierzWiersz: vi.fn() })} />);
+    await screen.findByText('104,0');
+
+    fireEvent.click(screen.getByText('T-1'));
+
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'T-1',
+      type: 'TransformerBranch',
+    });
+  });
+
+  it('gałąź BEZ pozycji walidacji (typ nieznany) → klik wiersza NIE zapisuje nic do store (zero zgadywania Line vs Transformer)', async () => {
+    // Domyślny mock z beforeEach: walidacja niedostępna → `obciazenia` pozostaje `null`.
+    render(<TabelaGalezi {...props({ onWybierzWiersz: vi.fn() })} />);
+    await screen.findByText('L-1');
+
+    fireEvent.click(screen.getByText('L-1'));
+
+    expect(useSelectionStore.getState().selectedElement).toBeNull();
   });
 });

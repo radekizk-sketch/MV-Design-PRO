@@ -78,9 +78,21 @@ const SNAPSHOT = {
       meta: {},
       voltage_kv: 15,
       phase_system: '3ph',
-      grounding: { type: 'petersen_coil', x_ohm: 120 },
     },
     { id: 'b2', ref_id: 'bus/st1/sn', name: 'Szyna ST-1', tags: [], meta: {}, voltage_kv: 15, phase_system: '3ph' },
+  ],
+  // W5-A: opis punktu neutralnego sieci SN niesie ŹRÓDŁO na szynie (nie szyna).
+  sources: [
+    {
+      id: 's1',
+      ref_id: 'src/gpz',
+      name: 'GPZ',
+      tags: [],
+      meta: {},
+      bus_ref: 'bus/gpz/sn',
+      model: 'short_circuit_power',
+      neutral_grounding: { type: 'petersen_coil', x_ohm: 120 },
+    },
   ],
   transformers: [
     {
@@ -197,21 +209,22 @@ describe('fmtZespolona — format prezentacji R ± jX (przecinek PL)', () => {
 });
 
 describe('uziemienie punktu neutralnego — z zamrożonej wersji układu', () => {
-  it('uziemieniePunktu znajduje szynę po ref_id i mapuje typ na PL', () => {
+  it('uziemieniePunktu znajduje źródło na szynie punktu (po ref_id szyny) i mapuje typ na PL', () => {
     const wpis = uziemieniePunktu(SNAPSHOT, 'bus/gpz/sn');
-    expect(wpis?.element).toBe('Szyna GPZ');
+    expect(wpis?.element).toBe('GPZ');
+    expect(wpis?.strona).toBe('punkt neutralny sieci SN (źródło)');
     expect(wpis?.opis).toContain('Petersena');
     expect(wpis?.xOhm).toBe(120);
   });
 
-  it('szyna bez pola grounding → null (uczciwy brak)', () => {
+  it('szyna bez źródła z neutral_grounding → null (uczciwy brak)', () => {
     expect(uziemieniePunktu(SNAPSHOT, 'bus/st1/sn')).toBeNull();
   });
 
-  it('uziemieniaSieci zbiera szyny i obie strony transformatora', () => {
+  it('uziemieniaSieci zbiera źródła i obie strony transformatora', () => {
     const wpisy = uziemieniaSieci(SNAPSHOT);
     expect(wpisy).toHaveLength(3);
-    expect(wpisy.map((w) => w.element)).toEqual(['Szyna GPZ', 'TR-1 GPZ', 'TR-1 GPZ']);
+    expect(wpisy.map((w) => w.element)).toEqual(['GPZ', 'TR-1 GPZ', 'TR-1 GPZ']);
     expect(wpisy[1].strona).toBe('strona GN');
     expect(wpisy[1].rOhm).toBe(30);
     expect(wpisy[2].opis).toContain('izolowany');

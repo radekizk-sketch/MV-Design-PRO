@@ -1,29 +1,33 @@
 /*
  * Filtry przeglądarki szablonów (karta §3: „moc, napięcie, liczba pól SN").
- * Funkcje czyste (`pasujeFraza`, `pasujeLiczbaPol`, `filtrujSzablony`) + mały
- * komponent kontrolowany propsami (bez stanu wewnętrznego poza tym, co dostał).
+ * Funkcje czyste (`pasujeFraza`, `pasujeLiczbaPol`, `pasujeMoc`,
+ * `pasujeZastosowanie`, `filtrujSzablony`) + mały komponent kontrolowany
+ * propsami (bez stanu wewnętrznego poza tym, co dostał).
  *
- * TODO-KARTA (brak pól strukturalnych w kontrakcie backendu — zbadano
- * `backend/src/application/station_templates/schema.py:37-269`): `CatalogChoice`
- * (transformator) i `DerKindSpec` (DER) NIE wystawiają osobnych pól liczbowych
- * mocy/napięcia — moc i napięcie są wyłącznie częścią tekstu `label_pl`
- * (np. "TR 630 kVA SN/nN 15/0.4 kV Dyn11"), niespójnie sformatowanego między
- * szablonami (część wpisów pomija napięcie). Wartości `default_p_mw_each`
- * w `DerKindSpec` to STAŁE domyślne danego typu DER ze wspólnej biblioteki
- * (`_choices.py`), NIE realna moc nazwanego wariantu (np. warianty prosumenckie
- * 5/10/30/50/100/250 kW dzielą tę samą stałą `DER_PV_NN.default_p_mw_each`
- * mimo różnych nazw) — parsowanie ich jako liczby filtrowalnej wprowadzałoby
- * fałszywe rozróżnienie. Zamiast zgadywać liczbę z niespójnego tekstu, filtr
- * „moc/napięcie" jest świadomie polem wyszukiwania tekstowego po `name_pl` /
- * `description_pl` / `use_case_pl` / `tags` — polach, w których moc i napięcie
- * SĄ opisane przez autora szablonu (np. „630 kVA", „15/0.4 kV", „0.5 MW").
- * Wprowadzenie ustrukturyzowanych pól mocy/napięcia wymaga delty backendowej
- * (rozszerzenie `TemplateSchema`) — poza granicami tej karty (tylko frontend).
+ * Moc, napięcie i zastosowanie mają pola STRUKTURALNE (`rated_power_kva`,
+ * `sn_voltage_kv`, `category`/`category_label_pl` —
+ * `backend/src/application/station_templates/schema.py::structural_fields`),
+ * z KATALOGU (rekord transformatora albo baterii kondensatorów), NIE z
+ * parsowania `name_pl`/`label_pl`. Filtr mocy jest zakresem liczbowym (jak
+ * „liczba pól SN" — moc jest wielkością ciągłą); filtr napięcia i zastosowania
+ * są listami wyboru zbudowanymi z wartości FAKTYCZNIE obecnych w bieżącej
+ * liście szablonów (napięcie SN jest wielkością dyskretną/znormalizowaną —
+ * lista wyboru, nie zakres; zero fabrykowania wartości, których przeglądarka
+ * nie widzi). `rated_power_kva === null` (katalog nie dał mocy dla domyślnej
+ * opcji) NIE pasuje do ustawionego filtra mocy — uczciwe wykluczenie.
+ * `sn_voltage_kv === null` znaczy co innego: szablon napięciowo OBOJĘTNY
+ * (rozdzielnia sieciowa, rezerwa zasilania — nie wnosi elementu wiążącego
+ * napięcie), więc pasuje do każdego wybranego napięcia.
  *
- * „Liczba pól SN" jest w pełni ustrukturyzowana (`schema.sn_bays_count.default`,
+ * Pole wyszukiwania tekstowego POZOSTAJE (słowa kluczowe, `tags`,
+ * `description_pl`, `use_case_pl`) — to inny wymiar niż moc/zastosowanie,
+ * ustrukturyzowanie go nie było przedmiotem tej karty.
+ *
+ * „Liczba pól SN" pozostaje w pełni ustrukturyzowana (`schema.sn_bays_count.default`,
  * liczba całkowita) — filtrowana zakresem min/max bez żadnego parsowania tekstu.
  */
 
+import { useMemo } from 'react';
 import type { StationTemplateFull } from './szablonyClient';
 import { SZABLONY_STRINGS } from './strings';
 
@@ -32,17 +36,41 @@ export interface FiltrySzablonowStan {
   fraza: string;
   liczbaPolMin: number | null;
   liczbaPolMax: number | null;
+  mocMinKva: number | null;
+  mocMaxKva: number | null;
+  /**
+   * `null` = wszystkie napięcia SN. Filtruje po `sn_voltage_kv` — napięciu SN,
+   * na którym szablon PRACUJE (wymaga go od szyny albo je tworzy), a NIE po
+   * `voltage_hv_kv`, które jest daną transformatora: dla GPZ 110/SN strona
+   * górna to 110 kV, a szablon kompensacji nie ma transformatora wcale.
+   * Korekta z pomiaru 2026-09-17 (czerwony `industrial-template-mass-flow`).
+   */
+  napiecieSnKv: number | null;
+  /** `null` = wszystkie zastosowania (kategorie). */
+  kategoria: string | null;
 }
 
 export const FILTRY_PUSTE: FiltrySzablonowStan = {
   fraza: '',
   liczbaPolMin: null,
   liczbaPolMax: null,
+  mocMinKva: null,
+  mocMaxKva: null,
+  napiecieSnKv: null,
+  kategoria: null,
 };
 
 /** Czy dowolny filtr różni się od stanu pustego. */
 export function filtryAktywne(filtry: FiltrySzablonowStan): boolean {
-  return filtry.fraza.trim() !== '' || filtry.liczbaPolMin != null || filtry.liczbaPolMax != null;
+  return (
+    filtry.fraza.trim() !== '' ||
+    filtry.liczbaPolMin != null ||
+    filtry.liczbaPolMax != null ||
+    filtry.mocMinKva != null ||
+    filtry.mocMaxKva != null ||
+    filtry.napiecieSnKv != null ||
+    filtry.kategoria != null
+  );
 }
 
 /** Liczba pól SN (wartość domyślna edytowalnego parametru) — pole ustrukturyzowane. */
@@ -51,9 +79,9 @@ export function liczbaPolSN(szablon: StationTemplateFull): number {
 }
 
 /**
- * Dopasowanie frazy wyszukiwania (case-insensitive) po polach tekstowych, w
- * których backend opisuje moc/napięcie/zastosowanie (patrz TODO-KARTA powyżej).
- * Pusta fraza dopasowuje wszystko.
+ * Dopasowanie frazy wyszukiwania (case-insensitive) po polach TEKSTOWYCH —
+ * moc i zastosowanie mają własne filtry ustrukturyzowane niżej. Pusta fraza
+ * dopasowuje wszystko.
  */
 export function pasujeFraza(szablon: StationTemplateFull, fraza: string): boolean {
   const f = fraza.trim().toLowerCase();
@@ -73,14 +101,69 @@ export function pasujeLiczbaPol(liczbaPol: number, min: number | null, max: numb
   return true;
 }
 
+/**
+ * Dopasowanie zakresu mocy [kVA] (pole strukturalne `rated_power_kva`).
+ * `moc === null` (katalog niedostępny) NIE pasuje do żadnego ustawionego
+ * zakresu — uczciwe wykluczenie zamiast fabrykowania dopasowania.
+ */
+export function pasujeMoc(moc: number | null, min: number | null, max: number | null): boolean {
+  if (min == null && max == null) return true;
+  if (moc == null) return false;
+  if (min != null && moc < min) return false;
+  if (max != null && moc > max) return false;
+  return true;
+}
+
+/** Dopasowanie zastosowania (kategorii) — `null` = wszystkie. */
+export function pasujeZastosowanie(kategoriaSzablonu: string, kategoriaFiltru: string | null): boolean {
+  return kategoriaFiltru == null || kategoriaSzablonu === kategoriaFiltru;
+}
+
+/**
+ * Dopasowanie napięcia SN szablonu — pole strukturalne `sn_voltage_kv`
+ * (napięcie, na którym szablon pracuje). Wielkość DYSKRETNA (poziomy
+ * znormalizowane, nie zakres ciągły jak moc) — dopasowanie równościowe,
+ * `null` filtru = wszystkie. `napiecie === null` znaczy szablon napięciowo
+ * OBOJĘTNY (rozdzielnia sieciowa, rezerwa zasilania): pasuje do KAŻDEGO
+ * ustawionego napięcia, bo wchodzi na szynę o dowolnym napięciu SN.
+ */
+export function pasujeNapiecie(napiecie: number | null, napiecieFiltru: number | null): boolean {
+  if (napiecieFiltru == null) return true;
+  if (napiecie == null) return true;
+  return napiecie === napiecieFiltru;
+}
+
 /** Filtrowanie listy pełnych szablonów wg stanu filtrów — funkcja czysta. */
 export function filtrujSzablony(
   szablony: readonly StationTemplateFull[],
   filtry: FiltrySzablonowStan,
 ): StationTemplateFull[] {
   return szablony.filter(
-    (s) => pasujeFraza(s, filtry.fraza) && pasujeLiczbaPol(liczbaPolSN(s), filtry.liczbaPolMin, filtry.liczbaPolMax),
+    (s) =>
+      pasujeFraza(s, filtry.fraza) &&
+      pasujeLiczbaPol(liczbaPolSN(s), filtry.liczbaPolMin, filtry.liczbaPolMax) &&
+      pasujeMoc(s.rated_power_kva, filtry.mocMinKva, filtry.mocMaxKva) &&
+      pasujeNapiecie(s.sn_voltage_kv, filtry.napiecieSnKv) &&
+      pasujeZastosowanie(s.category, filtry.kategoria),
   );
+}
+
+/** Kategorie (zastosowania) FAKTYCZNIE obecne w liście, posortowane wg etykiety PL. */
+function kategorieObecne(
+  szablony: readonly StationTemplateFull[],
+): ReadonlyArray<{ id: string; label_pl: string }> {
+  const mapa = new Map<string, string>();
+  for (const s of szablony) mapa.set(s.category, s.category_label_pl);
+  return [...mapa.entries()]
+    .map(([id, label_pl]) => ({ id, label_pl }))
+    .sort((a, b) => a.label_pl.localeCompare(b.label_pl, 'pl'));
+}
+
+/** Napięcia SN FAKTYCZNIE obecne w liście (bez szablonów obojętnych), rosnąco. */
+function napieciaObecne(szablony: readonly StationTemplateFull[]): readonly number[] {
+  const zbior = new Set<number>();
+  for (const s of szablony) if (s.sn_voltage_kv != null) zbior.add(s.sn_voltage_kv);
+  return [...zbior].sort((a, b) => a - b);
 }
 
 function liczbaZWejscia(wartosc: string): number | null {
@@ -90,12 +173,17 @@ function liczbaZWejscia(wartosc: string): number | null {
 }
 
 export interface FiltrySzablonowProps {
+  /** Pełna (nieprzefiltrowana) lista szablonów — źródło opcji kategorii. */
+  szablony: readonly StationTemplateFull[];
   filtry: FiltrySzablonowStan;
   onZmiana: (filtry: FiltrySzablonowStan) => void;
 }
 
 /** Panel kontrolek filtrów — w pełni sterowany propsami (bez stanu wewnętrznego). */
-export function FiltrySzablonow({ filtry, onZmiana }: FiltrySzablonowProps) {
+export function FiltrySzablonow({ szablony, filtry, onZmiana }: FiltrySzablonowProps) {
+  const kategorie = useMemo(() => kategorieObecne(szablony), [szablony]);
+  const napiecia = useMemo(() => napieciaObecne(szablony), [szablony]);
+
   return (
     <div className="mvd-szablony-filtry" role="group" aria-label={SZABLONY_STRINGS.filtryTytul}>
       <label className="mvd-szablony-filtr-pole">
@@ -106,6 +194,71 @@ export function FiltrySzablonow({ filtry, onZmiana }: FiltrySzablonowProps) {
           value={filtry.fraza}
           placeholder={SZABLONY_STRINGS.filtrSzukajPlaceholder}
           onChange={(event) => onZmiana({ ...filtry, fraza: event.target.value })}
+        />
+      </label>
+
+      <label className="mvd-szablony-filtr-pole">
+        <span>{SZABLONY_STRINGS.filtrZastosowanie}</span>
+        <select
+          className="mvd-input"
+          value={filtry.kategoria ?? ''}
+          onChange={(event) => onZmiana({ ...filtry, kategoria: event.target.value || null })}
+          data-testid="mvd-szablony-filtr-zastosowanie"
+        >
+          <option value="">{SZABLONY_STRINGS.filtrZastosowanieWszystkie}</option>
+          {kategorie.map((k) => (
+            <option key={k.id} value={k.id}>
+              {k.label_pl}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {napiecia.length > 0 && (
+        <label className="mvd-szablony-filtr-pole">
+          <span>{SZABLONY_STRINGS.filtrNapiecie}</span>
+          <select
+            className="mvd-input"
+            value={filtry.napiecieSnKv ?? ''}
+            onChange={(event) =>
+              onZmiana({
+                ...filtry,
+                napiecieSnKv: event.target.value === '' ? null : Number(event.target.value),
+              })
+            }
+            data-testid="mvd-szablony-filtr-napiecie"
+          >
+            <option value="">{SZABLONY_STRINGS.filtrZastosowanieWszystkie}</option>
+            {napiecia.map((n) => (
+              <option key={n} value={n}>
+                {n} kV
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      <span className="mvd-szablony-filtr-grupa-etykieta">{SZABLONY_STRINGS.filtrMoc}</span>
+      <label className="mvd-szablony-filtr-pole mvd-szablony-filtr-pole-krotkie">
+        <span>{SZABLONY_STRINGS.filtrMocOd}</span>
+        <input
+          type="number"
+          min={0}
+          className="mvd-input mvd-num"
+          value={filtry.mocMinKva ?? ''}
+          onChange={(event) => onZmiana({ ...filtry, mocMinKva: liczbaZWejscia(event.target.value) })}
+          data-testid="mvd-szablony-filtr-moc-od"
+        />
+      </label>
+      <label className="mvd-szablony-filtr-pole mvd-szablony-filtr-pole-krotkie">
+        <span>{SZABLONY_STRINGS.filtrMocDo}</span>
+        <input
+          type="number"
+          min={0}
+          className="mvd-input mvd-num"
+          value={filtry.mocMaxKva ?? ''}
+          onChange={(event) => onZmiana({ ...filtry, mocMaxKva: liczbaZWejscia(event.target.value) })}
+          data-testid="mvd-szablony-filtr-moc-do"
         />
       </label>
 

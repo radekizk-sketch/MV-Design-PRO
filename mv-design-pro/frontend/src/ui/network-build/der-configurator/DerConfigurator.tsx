@@ -9,6 +9,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 
 import type { GeneratorConnectionVariant } from '../../../types/enm';
+import { punktPrzylaczeniaOpisPl, type ConnectionSide, type SnConnectionPointKind } from '../station-der';
 
 import { DerPccVariantInfo } from './DerPccVariantInfo';
 
@@ -29,13 +30,13 @@ export interface DerStationContext {
   readonly projectName?: string;
   readonly gpzName?: string;
   readonly trunkName?: string;
-  readonly connectionSide?:
-    | 'SN'
-    | 'nN'
-    | 'dedicated_transformer'
-    | 'at_zksn'
-    | 'at_branch_pole'
-    | 'at_cable_joint';
+  readonly connectionSide?: ConnectionSide;
+  /**
+   * Rodzaj punktu SN (pochodna typu elementu modelu, do którego należy szyna
+   * transformatora dedykowanego) — patrz `punktPrzylaczeniaOpisPl`. `null`/
+   * nieustawione dla `connectionSide === 'nN'` (nie dotyczy).
+   */
+  readonly snConnectionPointKind?: SnConnectionPointKind | null;
   readonly busPrzylaczeniaRef?: string | null;
   readonly bayRef?: string | null;
   readonly transformerRef?: string | null;
@@ -92,15 +93,6 @@ const DER_KIND_LABEL_PL: Record<DerKind, string> = {
   PV: 'PV / FV',
   BESS: 'BESS',
   FW: 'Farma wiatrowa',
-};
-
-const CONNECTION_SIDE_LABEL_PL: Record<NonNullable<DerStationContext['connectionSide']>, string> = {
-  SN: 'po stronie SN',
-  nN: 'po stronie nN',
-  dedicated_transformer: 'transformator dedykowany',
-  at_zksn: 'na ZK SN',
-  at_branch_pole: 'na słupie rozgałęźnym',
-  at_cable_joint: 'na mufie kablowej',
 };
 
 const DEFAULT_CARD_HINTS: Record<DerKind, Record<DerCardId, readonly string[]>> = {
@@ -287,7 +279,10 @@ function DerBreadcrumb({
       </span>
       {stationContext.connectionSide && (
         <span className="ml-auto rounded border border-scada-border bg-scada-panel px-2 py-0.5 text-[10px] text-scada-muted">
-          {CONNECTION_SIDE_LABEL_PL[stationContext.connectionSide]}
+          {punktPrzylaczeniaOpisPl({
+            connection_side: stationContext.connectionSide,
+            sn_connection_point_kind: stationContext.snConnectionPointKind ?? null,
+          })}
         </span>
       )}
     </div>

@@ -29,7 +29,6 @@ const REJESTR_GOTOWOSCI = new Map([
         'Przełącznik zaczepów nie ma pasma nieczułości regulatora — bez niego nie '
         + 'wiadomo, jaka odchyłka napięcia jest jeszcze dopuszczalna',
       level: 'WARNING',
-      fix_action_id: 'fix_oltc_deadband',
     },
   ],
   [
@@ -40,7 +39,6 @@ const REJESTR_GOTOWOSCI = new Map([
         'Badanie doboru zaczepów nie ma napięcia docelowego — podaj napięcie, '
         + 'które ma być utrzymywane na szynie regulowanej',
       level: 'WARNING',
-      fix_action_id: 'fix_oltc_target_voltage',
     },
   ],
 ]);
@@ -58,9 +56,9 @@ vi.mock('../../../../ui/study-cases/api', () => ({
 
 /** Wywód dyplomowy {tekst, latex} — kształt 1:1 z `TapSweepResult.to_dict()["wywod"]`. */
 const WYWOD_SWEEP = [
-  { tekst: 'Badanie: przeglad pozycji zaczepow (sweep).', latex: null },
+  { tekst: 'Badanie: przegląd pozycji zaczepów — rozpływ mocy liczony dla każdej ustalonej pozycji zaczepu.', latex: null },
   {
-    tekst: 'Wzor: przekladnia zaczepu t(n) = 1 + (n - n0) * du / 100',
+    tekst: 'Wzór: przekładnia zaczepu t(n) = 1 + (n − n0) · Δu / 100',
     latex: 't(n) = 1 + \\frac{(n - n_{0}) \\cdot \\Delta u}{100}',
   },
   {
@@ -126,7 +124,7 @@ describe('EkranBadanOltc — realna ścieżka', () => {
           ],
           feasibility_criterion: { kind: 'voltage_deviation', available: true, source: 'study_target_kv', target_kv: 15.0 },
           wywod: [
-            { tekst: 'Wzor: funkcja celu utrzymania napiecia.', latex: 'J(n) = \\left|U(n) - U_{cel}\\right|' },
+            { tekst: 'Wzór: funkcja celu utrzymania napięcia.', latex: 'J(n) = \\left|U(n) - U_{cel}\\right|' },
           ],
         },
       },
@@ -156,7 +154,7 @@ describe('EkranBadanOltc — realna ścieżka', () => {
           total_switch_count: 0,
           steps_outside_deadband: 0,
           wywod: [
-            { tekst: 'Wzor: skalowanie obciazen kroku profilu', latex: 'P_{i} = s_{i} \\cdot P_{0}' },
+            { tekst: 'Wzór: skalowanie obciążeń kroku profilu', latex: 'P_{i} = s_{i} \\cdot P_{0}' },
           ],
         },
       },
@@ -187,7 +185,7 @@ describe('EkranBadanOltc — realna ścieżka', () => {
     expect(wzory.length).toBe(2);
     expect(wzory[1].getAttribute('data-latex')).toContain('t(-1) = 1 +');
     // Krok tekstowy (latex=null) pozostaje monospace.
-    expect(slad.textContent).toContain('Badanie: przeglad pozycji zaczepow (sweep).');
+    expect(slad.textContent).toContain('Badanie: przegląd pozycji zaczepów — rozpływ mocy liczony dla każdej ustalonej pozycji zaczepu.');
   });
 
   it('brak wywodu w odpowiedzi → uczciwy brak przycisku śladu', async () => {

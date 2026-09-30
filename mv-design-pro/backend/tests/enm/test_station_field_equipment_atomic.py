@@ -34,7 +34,7 @@ CATALOG_ZRODLO_250 = "src-gpz-15kv-250mva-rx010"
 APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
 CT_REF = "ct_400_5_5p20_15va_abb"
 VT_REF = "vt_15kv_100v_3p_abb"
-RELAY_REF = "ACME_REX100_v1"
+RELAY_REF = "REF-OC-100"
 
 
 def _empty_enm() -> dict[str, Any]:
@@ -57,7 +57,13 @@ def _build_trunk_with_segment() -> tuple[dict[str, Any], str, str]:
     snap = _op(
         snap,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_250},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": CATALOG_ZRODLO_250,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     snap = _op(
         snap,
@@ -255,7 +261,9 @@ def test_invalid_equipment_aborts_whole_station_operation() -> None:
 
     assert result.get("error_code") == "catalog.ref_required"
     komunikat = result.get("error") or ""
-    assert "LINIA_IN" in komunikat
+    # Komunikat wskazuje pole jego nazwą z modelu (karta #140: bez kodu roli i identyfikatora).
+    assert "Pole liniowe wejściowe 1" in komunikat
+    assert "LINIA_IN" not in komunikat
     assert "zabezpieczenia" in komunikat
     # Migawka pusta = do zapisu nie trafia ani stacja, ani wyposażenie.
     assert result.get("snapshot") is None

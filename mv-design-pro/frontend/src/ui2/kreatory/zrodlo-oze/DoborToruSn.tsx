@@ -27,6 +27,7 @@ import {
   type DerSelectionPreviewResponse,
   type ReactiveCharacter,
 } from './derSelectionApi';
+import { OPCJE_UZIEMIENIA_EKRANU, type UziemienieEkranuKabla } from '../../../types/uziemienie';
 import { OZE_STRINGS as T } from './strings';
 import type { DerSnFormData } from './zrodloOzeModel';
 import {
@@ -52,6 +53,8 @@ export interface DoborToruSnProps {
   onVectorGroupChange: (value: string) => void;
   /** V12K-207: wybór warunków ułożenia kabla — jedzie do modelu razem z torem. */
   onLayingConditionsChange: (value: CableLayingConditions | null) => void;
+  /** W5-A: deklaracja układu uziemienia ekranu kabla SN — jedzie do modelu razem z torem. */
+  onScreenBondingChange: (value: UziemienieEkranuKabla | null) => void;
   onZastosuj: (response: DerSelectionPreviewResponse) => void;
   applied: boolean;
   testid?: string;
@@ -65,6 +68,7 @@ export function DoborToruSn({
   onCableLengthChange,
   onVectorGroupChange,
   onLayingConditionsChange,
+  onScreenBondingChange,
   onZastosuj,
   applied,
   testid = 'mvd-kreator-oze-dobor',
@@ -232,6 +236,16 @@ export function DoborToruSn({
         </KreatorSiatka>
       ) : null}
       {warunkiBlad ? <KreatorInfo>{T.doborWarunkiUlozeniaNiedostepne}</KreatorInfo> : null}
+      <KreatorSiatka kolumny={1}>
+        <PoleWyboru
+          etykieta={T.doborEkranUziemienie}
+          wartosc={derSn.mv_cable_screen_bonding ?? ''}
+          onZmiana={(v) => onScreenBondingChange((v || null) as UziemienieEkranuKabla | null)}
+          opcje={OPCJE_UZIEMIENIA_EKRANU}
+          pomoc={T.doborEkranUziemieniePomoc}
+          testid={`${testid}-ekran`}
+        />
+      </KreatorSiatka>
       <KreatorSiatka kolumny={3}>
         <PoleLiczbowe
           etykieta={T.doborJednoczesnosc}

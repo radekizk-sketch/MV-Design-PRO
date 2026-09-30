@@ -12,6 +12,8 @@ from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMHeader
 from solver_input.v126_contracts import build_v126_insulation_from_enm
 
+from tests.enm.model_minimalny import model_minimalny
+
 _ARRESTER_ID = "arrester-abb-polim-d-24kv-10ka"
 
 
@@ -26,28 +28,30 @@ def _binding(item_id: str) -> dict:
 
 
 def _enm_with_field(voltage_kv: float = 20.0) -> dict:
-    return {
-        "buses": [{"ref_id": "BUS_SN", "name": "Szyna SN", "voltage_kv": voltage_kv}],
-        "substations": [
-            {
-                "ref_id": "ST1",
-                "name": "Stacja 1",
-                "station_type": "mv_lv",
-                "bus_refs": ["BUS_SN"],
-                "meta": {
-                    "field_specs": [
-                        {
-                            "field_ref": "POLE-IN",
-                            "name": "Pole liniowe",
-                            "bay_role": "IN",
-                            "bus_ref": "BUS_SN",
-                            "equipment_refs": [],
-                        }
-                    ]
-                },
-            }
-        ],
-    }
+    return model_minimalny(
+        **{
+            "buses": [{"ref_id": "BUS_SN", "name": "Szyna SN", "voltage_kv": voltage_kv}],
+            "substations": [
+                {
+                    "ref_id": "ST1",
+                    "name": "Stacja 1",
+                    "station_type": "mv_lv",
+                    "bus_refs": ["BUS_SN"],
+                    "meta": {
+                        "field_specs": [
+                            {
+                                "field_ref": "POLE-IN",
+                                "name": "Pole liniowe",
+                                "bay_role": "IN",
+                                "bus_ref": "BUS_SN",
+                                "equipment_refs": [],
+                            }
+                        ]
+                    },
+                }
+            ],
+        }
+    )
 
 
 def _add(enm: dict, payload: dict) -> dict:
@@ -105,6 +109,17 @@ def test_bridge_reads_arrester_from_field_spec_channel() -> None:
     result = _add(_enm_with_field(), {"field_ref": "POLE-IN", **_binding(_ARRESTER_ID)})
     snapshot = result["snapshot"]
     snapshot["header"] = ENMHeader(name="spd").model_dump()
+    # W5-D p. 12: most nie podstawia kategorii punktu neutralnego — model niesie uziemienie
+    # (W5-A: nosnikiem jest ZRODLO na szynie SN, `Source.neutral_grounding`).
+    snapshot.setdefault("sources", []).append(
+        {
+            "ref_id": "SRC_SN",
+            "name": "Zasilanie SN",
+            "bus_ref": "BUS_SN",
+            "model": "short_circuit_power",
+            "neutral_grounding": {"type": "petersen_coil", "x_ohm": 120.0},
+        }
+    )
     model = EnergyNetworkModel.model_validate(snapshot)
     rows = build_v126_insulation_from_enm(model)
     assert len(rows) == 1

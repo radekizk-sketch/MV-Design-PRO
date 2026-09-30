@@ -22,6 +22,7 @@ import {
   computeDeclutterMetrics,
   declutterLabels,
 } from '../LabelDeclutter';
+import { zmierzCzasProcesora } from '../../../../../test/czasProcesora';
 
 function label(id: string, priority: number, anchor = { x: 0, y: 0 }, w = 50, h = 16): LabelInput {
   return {
@@ -168,9 +169,9 @@ describe('declutterLabels — max iterations limit', () => {
     const labels: LabelInput[] = Array.from({ length: 100 }, (_, i) =>
       label(`l${i}`, LABEL_PRIORITY.STATION, { x: 0, y: 0 }, 200, 40),
     );
-    const start = Date.now();
-    const result = declutterLabels(labels, 50);
-    const duration = Date.now() - start;
+    // Czas PROCESORA (`src/test/czasProcesora.ts`), nie zegara — limit łapie pętlę bez
+    // końca, nie obciążenie maszyny współdzielonej.
+    const { wynik: result, ms: duration } = zmierzCzasProcesora(() => declutterLabels(labels, 50));
     expect(duration).toBeLessThan(1000); // hard limit nie zawiesi
     // Po 50 iteracjach reszta etykiet (50+ z 100) NIE jest w output
     // (bo break in-loop przerywa pętlę zanim dojdą).

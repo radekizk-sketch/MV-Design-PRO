@@ -1,0 +1,29 @@
+# Warstwa magazynów energii — wymagania krajowe dla magazynów przyłączanych do sieci
+# dystrybucyjnej (plan AB §2.3 O-28).
+#
+# DLACZEGO OSOBNA WARSTWA: rozporządzenie Komisji (UE) 2016/631 (NC RfG) art. 3 ust. 2 lit. d
+# wyłącza z zakresu urządzenia magazynujące energię elektryczną, z wyjątkiem elektrowni
+# szczytowo-pompowych. Samodzielny magazyn (technologia MAGAZYN) nie podlega więc wymaganiom
+# warstwy NC RfG ani warstwy zastanej (ich wymagania mają `technologie: [PPM, SPGM]`), a jego
+# wymagania pochodzą z dokumentów krajowych (IRiESD operatora, warunki przyłączenia, ustawa) —
+# stąd rodzaj podstawy OSD. Instalacja hybrydowa PV+BESS za jednym punktem przyłączenia jest
+# modułem parku energii (PPM) o mocy części wytwórczej (O-28) — to nie jest wymaganie tej warstwy.
+#
+# STAN: dokumenty nie są w repozytorium (OD-21) — katalog wymagań pusty, stan NIEUSTALONE,
+# zero wartości „typowych". Wymaganie dopisane tutaj musi mieć `technologie: [MAGAZYN]` (loader
+# odrzuca inne technologie w tej warstwie i technologię MAGAZYN w warstwach NC RfG i zastanej).
+warstwa: MAGAZYNY
+dokument:
+  tytul: >-
+    Wymagania krajowe dla magazynów energii przyłączanych do sieci dystrybucyjnej (IRiESD /
+    warunki przyłączenia)
+  wydanie: null
+  status: NIEUSTALONE
+  obowiazuje_od: null
+  # Trafia do każdej podstawy wymagania tej warstwy (rodzaj OSD) — nazywa pochodzenie rodzaju.
+  uwagi_pl: >-
+    wymagania krajowe dla magazynów energii (IRiESD operatora, warunki przyłączenia, ustawa) —
+    rodzaj podstawy OSD; magazyn energii poza zakresem rozporządzenia 2016/631 (art. 3 ust. 2
+    lit. d)
+
+wymagania: []

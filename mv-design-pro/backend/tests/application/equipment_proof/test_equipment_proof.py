@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import dataclasses
+
+import pytest
 from application.equipment_proof import (
     DeviceRating,
     EquipmentProofGenerator,
     EquipmentProofInput,
 )
 from application.equipment_proof.proof_pack import build_equipment_proof_pack
+from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
 
 
 def _base_input() -> EquipmentProofInput:
@@ -35,6 +39,8 @@ def _base_input() -> EquipmentProofInput:
         connection_node_id="BoundaryNode-1",
         device=device,
         required_fault_results=required,
+        project_name="Projekt testowy — sieć SN",
+        case_name="Przypadek bazowy",
     )
 
 
@@ -70,6 +76,8 @@ def test_equipment_proof_fail_missing_field():
             meta=device.meta,
         ),
         required_fault_results=proof_input.required_fault_results,
+        project_name="Projekt testowy — sieć SN",
+        case_name="Przypadek bazowy",
     )
     bundle = EquipmentProofGenerator.generate(proof_input)
     check = _find_check(bundle, "Icu")
@@ -90,6 +98,8 @@ def test_equipment_proof_idyn_uses_ip_proxy_when_missing_idyn():
         connection_node_id=proof_input.connection_node_id,
         device=proof_input.device,
         required_fault_results=required,
+        project_name="Projekt testowy — sieć SN",
+        case_name="Przypadek bazowy",
     )
     bundle = EquipmentProofGenerator.generate(proof_input)
     check = _find_check(bundle, "Idyn")
@@ -120,6 +130,8 @@ def _input_with_device(base: EquipmentProofInput, **device_over) -> EquipmentPro
         connection_node_id=base.connection_node_id,
         device=DeviceRating(**fields),
         required_fault_results=base.required_fault_results,
+        project_name="Projekt testowy — sieć SN",
+        case_name="Przypadek bazowy",
     )
 
 
@@ -254,10 +266,44 @@ def test_equipment_proof_determinism_json():
     assert first.proof_document.json_representation == second.proof_document.json_representation
 
 
-def test_equipment_proof_pack_deterministic_zip():
+def test_equipment_proof_pack_fail_closed_default_proweniencja_blocks():
+    """Karta S-2 AUTORYTET: `EquipmentProofInput` skonstruowany BEZ jawnej
+    `proweniencja` (jak w kodzie wywołującym spoza mostu HTTP) dostaje domyślkę
+    `bez_sladu()` — FAIL-CLOSED. `build_equipment_proof_pack` musi odmówić, nie
+    cicho przepuścić."""
+    from network_model.core.autorytet_wyniku_zwarciowego import BrakAutorytetuWyniku
+
     proof_input = _base_input()
+    assert proof_input.proweniencja.zrodlo.value == "BRAK_SLADU"
+    with pytest.raises(BrakAutorytetuWyniku):
+        build_equipment_proof_pack(proof_input)
+
+
+def test_equipment_proof_pack_deterministic_zip():
+    """Karta S-2 AUTORYTET: `build_equipment_proof_pack` bramkuje autorytetem
+    (`wymagaj_autorytetu`) — `_base_input()` niesie domyślną proweniencję
+    ``bez_sladu()`` (fail-closed dla wejścia skonstruowanego wprost w kodzie),
+    więc ten test determinizmu podaje proweniencję MIARODAJNĄ jawnie (sieć bez
+    falowników — puste znaczniki, `ze_znacznikow(())`), tak jak most
+    `application.autorytet_biegu_zwarciowego` zrobiłby to na realnej ścieżce
+    HTTP (`api/equipment_proof_pack.py`)."""
+    proof_input = dataclasses.replace(
+        _base_input(), proweniencja=ProweniencjaWynikuZwarciowego.ze_znacznikow(())
+    )
     first_filename, first_pack = build_equipment_proof_pack(proof_input)
     second_filename, second_pack = build_equipment_proof_pack(proof_input)
 
     assert first_filename == second_filename
     assert first_pack == second_pack
+
+
+def test_naglowek_dowodu_nazywa_projekt_i_przypadek_nazwami_nie_identyfikatorami():
+    """Karta #144: nagłówek dowodu doboru aparatury niesie nazwy projektu i przypadku;
+    identyfikatory `project_id`/`case_id` zostają w danych wejścia (dawniej nagłówek
+    pokazywał „proj-1" i „case-1")."""
+    bundle = EquipmentProofGenerator.generate(_base_input())
+    naglowek = bundle.proof_document.header
+    assert naglowek.project_name == "Projekt testowy — sieć SN"
+    assert naglowek.case_name == "Przypadek bazowy"
+    assert "proj-1" not in naglowek.project_name + naglowek.case_name
+    assert "case-1" not in naglowek.project_name + naglowek.case_name

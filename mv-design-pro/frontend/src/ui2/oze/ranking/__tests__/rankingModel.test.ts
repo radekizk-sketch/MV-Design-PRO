@@ -1,27 +1,34 @@
 /*
  * Testy czystych adapterów okna „Ranking punktów przyłączenia". Weryfikują:
  * przyrost strat przy mocy granicznej (arytmetyka prezentacji + null), scenariusz i
- * skrajne napięcia przy granicy, MAPOWANIE SŁOWNIKOWE klasy NC RfG z progów katalogu,
- * dobór klas operatora oraz budowę kolumn/wierszy wzorca (ranking malejący po mocy).
- * Zero fizyki, zero ocen lokalnych.
+ * skrajne napięcia przy granicy, zapytanie o klasyfikację backendu (moc graniczna × napięcie
+ * węzła) i komórkę typu modułu z jej stanu oraz budowę kolumn/wierszy wzorca (ranking
+ * malejący po mocy). Zero fizyki, zero ocen lokalnych, zero progów po stronie klienta.
  */
 
 import { describe, expect, it } from 'vitest';
 
+import { klasyfikacjaWgKatalogu } from '../../ncrfg/__tests__/atrapaKlasyfikacji';
+import { kluczKlasyfikacji, type StanKlasyfikacji, type ZapytanieKlasyfikacji } from '../../ncrfg/klasyfikacja';
 import {
   KLUCZ_WIERSZA_RANKINGU,
-  klasaNcRfg,
-  klasyOperatora,
   kolumnyRankingu,
   napieciaPrzyGranicy,
   przyrostStratKw,
   scenariuszGraniczny,
   wierszeRankingu,
+  zapytanieKlasyfikacjiWezla,
 } from '../rankingModel';
-import { katalogFixture, widokRankinguFixture } from './fixtures';
+import { widokRankinguFixture } from './fixtures';
 
-const klasy = katalogFixture().operators[0].module_types;
 const napiecie15 = (): number => 15;
+
+/** Odczyt klasyfikacji „po odpowiedzi backendu" (progi z katalogu policzonego backendem). */
+function odczytGotowy(zapytanie: ZapytanieKlasyfikacji): StanKlasyfikacji {
+  const klucz = kluczKlasyfikacji(zapytanie);
+  if ('brak' in klucz) return { stan: 'brak_danych', powod_pl: klucz.brak };
+  return { stan: 'gotowe', klasyfikacja: klasyfikacjaWgKatalogu(klucz.pMaxKw, klucz.napiecieKv) };
+}
 
 function wezel(busRef: string) {
   const w = widokRankinguFixture().nodes.find((n) => n.bus_ref === busRef);
@@ -77,57 +84,25 @@ describe('napieciaPrzyGranicy — skrajne napięcia scenariusza granicznego [p.u
   });
 });
 
-describe('klasaNcRfg — mapowanie słownikowe z progów katalogu operatora', () => {
-  it('0,5 MW (500 kW) → klasa A', () => {
-    expect(klasaNcRfg(0.5, 15, klasy)?.id).toBe('A');
-  });
-
-  it('1,5 MW (1500 kW) → klasa B', () => {
-    expect(klasaNcRfg(1.5, 15, klasy)?.id).toBe('B');
-  });
-
-  it('60 MW (60000 kW) → klasa C, 80 MW → klasa D (najwyższa, bez górnego limitu)', () => {
-    expect(klasaNcRfg(60, 15, klasy)?.id).toBe('C');
-    expect(klasaNcRfg(80, 15, klasy)?.id).toBe('D');
-  });
-
-  it('napięcie ponad limit klasy przenosi do wyższej kategorii (klauzula napięciowa)', () => {
-    // 0,5 MW przy 220 kV: klasy A/B/C mają voltage_kv_max=110 → wypadają; zostaje D.
-    expect(klasaNcRfg(0.5, 220, klasy)?.id).toBe('D');
-  });
-
-  it('brak mocy przyłączalnej (≤ 0) → null', () => {
-    expect(klasaNcRfg(0, 15, klasy)).toBeNull();
-  });
-
-  it('pusty katalog → null', () => {
-    expect(klasaNcRfg(1.5, 15, [])).toBeNull();
-  });
-});
-
-describe('klasyOperatora — dobór klas wybranego operatora', () => {
-  it('zwraca klasy dopasowanego operatora', () => {
-    expect(klasyOperatora(katalogFixture(), 'enea')).toHaveLength(4);
-  });
-
-  it('nieznany operator lub brak katalogu → pusta lista', () => {
-    expect(klasyOperatora(katalogFixture(), 'xxx')).toEqual([]);
-    expect(klasyOperatora(null, 'enea')).toEqual([]);
+describe('zapytanieKlasyfikacjiWezla — moc graniczna węzła × napięcie węzła', () => {
+  it('niesie moc graniczną [MW] i napięcie ze snapshotu (konwersja jednostek w kliencie)', () => {
+    expect(zapytanieKlasyfikacjiWezla(wezel('bus-b'), 15)).toEqual({ mocMw: 1.5, napiecieKv: 15 });
+    expect(zapytanieKlasyfikacjiWezla(wezel('bus-c'), null)).toEqual({ mocMw: 0, napiecieKv: null });
   });
 });
 
 describe('kolumnyRankingu — kolumny wzorca', () => {
-  it('kolumna identyfikatora jest tylko-ekspercka, napięcia niesortowalne', () => {
+  it('identyfikator węzła nie jest kolumną (karta #145), napięcia niesortowalne', () => {
     const kolumny = kolumnyRankingu();
     const id = kolumny.find((k) => k.klucz === KLUCZ_WIERSZA_RANKINGU);
     const napiecia = kolumny.find((k) => k.klucz === 'napiecia');
-    expect(id?.tylkoEkspercki).toBe(true);
+    expect(id).toBeUndefined();
     expect(napiecia?.sortowalna).toBe(false);
   });
 });
 
 describe('wierszeRankingu — ranking malejący po mocy przyłączalnej', () => {
-  const wiersze = wierszeRankingu(widokRankinguFixture().nodes, napiecie15, klasy);
+  const wiersze = wierszeRankingu(widokRankinguFixture().nodes, napiecie15, odczytGotowy);
 
   it('domyślna kolejność: malejąco po mocy (B → A → C)', () => {
     expect(wiersze.map((w) => w[KLUCZ_WIERSZA_RANKINGU].wartosc)).toEqual(['bus-b', 'bus-a', 'bus-c']);
@@ -137,15 +112,27 @@ describe('wierszeRankingu — ranking malejący po mocy przyłączalnej', () => 
     expect(wiersze[0].moc).toEqual({ wartosc: '1,500', sortKey: 1.5 });
   });
 
-  it('przyrost strat i klasa mapowane per węzeł; brak danych → „—"', () => {
+  it('przyrost strat i typ modułu z klasyfikacji backendu per węzeł; brak danych → „—"', () => {
     expect(wiersze[0].straty.wartosc).toBe('150,000');
     expect(wiersze[0].straty.sortKey).toBeCloseTo(150, 6);
+    // Progi WOS (katalog backendu): 1500 kW i 500 kW przy 15 kV → typ B.
     expect(wiersze[0].klasa.wartosc).toBe('B');
-    expect(wiersze[1].klasa.wartosc).toBe('A');
-    // Węzeł C bez granicy: przyrost strat, napięcia i klasa jako „—".
+    expect(wiersze[1].klasa.wartosc).toBe('B');
+    // Węzeł C bez granicy: przyrost strat, napięcia i typ modułu jako „—".
     expect(wiersze[2].straty.wartosc).toBe('—');
     expect(wiersze[2].napiecia.wartosc).toBe('—');
     expect(wiersze[2].klasa.wartosc).toBe('—');
+  });
+
+  it('stany klasyfikacji w komórce: ładowanie → „…", błąd → „—", poniżej progu → tekst', () => {
+    const wezly = widokRankinguFixture().nodes;
+    expect(wierszeRankingu(wezly, napiecie15, () => ({ stan: 'ladowanie' }))[0].klasa.wartosc).toBe('…');
+    expect(wierszeRankingu(wezly, napiecie15, () => ({ stan: 'blad', komunikat: 'x' }))[0].klasa.wartosc).toBe('—');
+    const ponizej = wierszeRankingu(wezly, napiecie15, () => ({
+      stan: 'gotowe',
+      klasyfikacja: klasyfikacjaWgKatalogu(0.5, 0.4),
+    }));
+    expect(ponizej[0].klasa.wartosc).toBe('poniżej progu');
   });
 
   it('skrajne napięcia przy granicy formatowane jako para „min / maks"', () => {

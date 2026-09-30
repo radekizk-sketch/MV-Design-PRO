@@ -1,3 +1,4 @@
+import pytest
 from enm.models import (
     Bus,
     Cable,
@@ -32,7 +33,6 @@ def _sample_enm() -> EnergyNetworkModel:
                 ref_id="bus_b",
                 name="Szyna B",
                 voltage_kv=15.0,
-                grounding=GroundingConfig(type="petersen_coil", x_ohm=120.0),
             ),
         ],
         branches=[
@@ -88,6 +88,8 @@ def _sample_enm() -> EnergyNetworkModel:
                 rx_ratio=0.1,
                 r0_ohm=0.1,
                 x0_ohm=0.8,
+                # W5-A: opis punktu neutralnego sieci SN na ŹRÓDLE (dawniej `bus_b.grounding`).
+                neutral_grounding=GroundingConfig(type="petersen_coil", x_ohm=120.0),
                 catalog_ref="gpz.source",
             )
         ],
@@ -176,7 +178,8 @@ def test_projection_extracts_zero_sequence_configs():
     assert by_ref["cable_1"].quality_status == "pelna"
     assert by_ref["src_1"].x0 == 0.8
     assert by_ref["tr_1"].grounding_type == "resistor_grounded"
-    assert by_ref["bus_b"].grounding_type == "petersen_coil"
+    assert by_ref["src_1"].grounding_type == "petersen_coil"
+    assert "bus_b" not in by_ref  # W5-A: szyna nie niesie uziemienia
 
 
 def test_projection_warns_about_legacy_wind_type_and_missing_catalog():
@@ -207,6 +210,76 @@ def test_projection_materializes_v12_source_profiles_and_precise_wind_type():
     frt_by_source = {profile["source_ref"]: profile for profile in projection.frt_profiles}
     assert frt_by_source["gen_fw_pmsg_1"]["quality_status"] == "pelna"
     assert frt_by_source["gen_fw_1"]["quality_status"] == "czesciowa"
+
+
+# ---------------------------------------------------------------------------
+# Karta W3-I (2026-09-09): `_converter_generator_types()` (kopia lokalna,
+# 6 pozycji pokrywających się z `enm/models.py::GEN_TYPES_PRZEKSZTALTNIKOWE`,
+# pytanie „czy DER") skasowana — generator przekształtnikowy w SENSIE
+# ZWARCIOWYM czyta teraz `catalog.governance.wymagalnosc_katalogu`, który
+# importuje `enm/mapping.py::FULL_CONVERTER_SC_GEN_TYPES` (4 pozycje, BEZ
+# `fw_dfig`/`fw_scig` — maszyny wirujące, nie bounded-current-source). Testy
+# poniżej przypinają tę różnicę jako iloczyn cech (gen_type × catalog_ref):
+# regresja (podstawienie złego zbioru z powrotem) poczerwieni JEDEN z nich.
+# ---------------------------------------------------------------------------
+
+
+def _enm_z_generatorem(gen_type: str, *, catalog_ref: str | None) -> EnergyNetworkModel:
+    return EnergyNetworkModel(
+        header=ENMHeader(name="W3-I gen_type"),
+        buses=[Bus(ref_id="bus_gen", name="Szyna generatora", voltage_kv=0.4)],
+        generators=[
+            Generator(
+                ref_id="gen_pod_testem",
+                name="Generator",
+                bus_ref="bus_gen",
+                p_mw=0.1,
+                gen_type=gen_type,
+                catalog_ref=catalog_ref,
+            )
+        ],
+    )
+
+
+def test_projection_full_converter_bez_katalogu_dostaje_ostrzezenie_i_wymaga_uzupelnienia():
+    """`pv_inverter` (pełny przekształtnik, IEC 60909 §6.7) bez `catalog_ref` —
+    ostrzeżenie V12-MIG-GEN-002 I `readiness_status == "wymaga_uzupelnienia"`."""
+    projection = project_enm_v1_to_v2(_enm_z_generatorem("pv_inverter", catalog_ref=None))
+
+    kody = {w.code for w in projection.migration_warnings}
+    assert "V12-MIG-GEN-002" in kody
+
+    ref = next(r for r in projection.element_refs if r.ref_id == "gen_pod_testem")
+    assert ref.readiness_status == "wymaga_uzupelnienia"
+
+
+@pytest.mark.parametrize("gen_type", ["fw_dfig", "fw_scig"])
+def test_projection_maszyna_wirujaca_bez_katalogu_nie_dostaje_ostrzezenia_generatora(
+    gen_type: str,
+):
+    """`fw_dfig`/`fw_scig` — maszyny WIRUJĄCE w klasyfikacji zwarciowej
+    (`enm.mapping.FULL_CONVERTER_SC_GEN_TYPES` ich NIE zawiera), mimo że
+    `enm.models.GEN_TYPES_PRZEKSZTALTNIKOWE` (INNE pytanie: czy DER) je
+    zawiera — bez `catalog_ref` NIE dostają V12-MIG-GEN-002 ani
+    `readiness_status == "wymaga_uzupelnienia"` z tego powodu (naprawa karty
+    W3-I: PRZED nią `_converter_generator_types()` mylił oba zbiory)."""
+    projection = project_enm_v1_to_v2(_enm_z_generatorem(gen_type, catalog_ref=None))
+
+    kody = {w.code for w in projection.migration_warnings}
+    assert "V12-MIG-GEN-002" not in kody
+
+    ref = next(r for r in projection.element_refs if r.ref_id == "gen_pod_testem")
+    assert ref.readiness_status == "gotowy"
+
+
+def test_projection_synchroniczny_bez_katalogu_nie_dostaje_ostrzezenia_generatora():
+    """Generator synchroniczny (`gen_type="synchronous"`) — nigdy nie jest
+    przekształtnikowy w żadnym sensie; bez `catalog_ref` nie dostaje
+    ostrzeżenia migracji generatora."""
+    projection = project_enm_v1_to_v2(_enm_z_generatorem("synchronous", catalog_ref=None))
+
+    kody = {w.code for w in projection.migration_warnings}
+    assert "V12-MIG-GEN-002" not in kody
 
 
 def test_projection_blocks_precise_wind_type_when_profile_model_mismatches():

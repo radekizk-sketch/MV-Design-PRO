@@ -18,7 +18,7 @@ const ODPOWIEDZ = {
   bay_ref: 'BAY-1',
   fakty: {
     connection_side: 'SN',
-    neutral_grounding_mode: 'cewka_petersena',
+    neutral_grounding_mode: 'petersen_coil',
     zero_sequence_current_source: 'przekladnik_ferrantiego',
     zero_sequence_voltage_source: 'otwarty_trojkat_vt',
   },

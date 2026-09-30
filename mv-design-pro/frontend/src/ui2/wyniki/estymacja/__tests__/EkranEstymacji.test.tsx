@@ -54,7 +54,9 @@ beforeEach(() => {
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
   wym.mockResolvedValue(wymaganiaFixture());
 });
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('EkranEstymacji — stany wejściowe', () => {
   it('bez przebiegu rozpływu → uczciwa instrukcja, bez wołań API', () => {
@@ -168,8 +170,12 @@ describe('EkranEstymacji — estymacja i wynik', () => {
 
     fireEvent.click(screen.getByTestId('mvd-est-slad-otworz'));
     expect(screen.getByTestId('mvd-est-slad')).toBeInTheDocument();
-    // Identyfikator estymaty w trybie eksperckim.
-    expect(screen.getByTestId('mvd-est-eksp')).toHaveTextContent('estymata-hash-abc');
+    // Karta #145: identyfikator estymaty wyłącznie w „Informacjach audytowych" (zwinięte).
+    expect(screen.getByTestId('mvd-est-wynik')).not.toHaveTextContent('estymata-hash-abc');
+    fireEvent.click(screen.getByTestId('mvd-est-informacje-audytowe-przelacz'));
+    expect(screen.getByTestId('mvd-est-informacje-audytowe-lista')).toHaveTextContent(
+      'estymata-hash-abc',
+    );
     // include_trace wysłane jako true (ślad pobierany do audytu).
     expect(post).toHaveBeenCalledWith(expect.objectContaining({ include_trace: true }));
   });

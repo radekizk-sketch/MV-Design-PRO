@@ -18,13 +18,18 @@ export const ODCINEK_NN_STRINGS = {
   kabelPlaceholder: '— wybierz kabel z katalogu —',
   kabelBlad: 'Nie udało się pobrać katalogu kabli nN.',
   nazwa: 'Nazwa odcinka',
-  nazwaPlaceholder: 'np. Kabel nN K1',
+  nazwaPlaceholder: 'np. Kabel nN nr 1',
   szynaZrodlowa: 'Szyna źródłowa',
 
   sekcjaParametryTytul: 'Parametry odcinka',
   dlugosc: 'Długość',
   nParallel: 'Liczba torów równoległych',
   nParallelPomoc: 'Kable ułożone równolegle na tej samej trasie — n torów dzieli prąd obciążenia po równo (Iz′ całkowite = n × Iz′ jednego toru).',
+  ekranUziemienie: 'Uziemienie ekranu kabla',
+  ekranUziemieniePomoc:
+    'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
+    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
+    + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
 
   sekcjaUlozenieTytul: 'Warunki ułożenia (korekta obciążalności)',
   ulozeniePomoc: 'Po co: koryguje obciążalność katalogową kabla do rzeczywistych warunków trasy '

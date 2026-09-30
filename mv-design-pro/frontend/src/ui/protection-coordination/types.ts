@@ -63,6 +63,13 @@ export interface ProtectionDevice {
   name: string;
   device_type: DeviceType;
   location_element_id: string;
+  /**
+   * Zacisk lokalizacji-GAŁĘZI, przy którym stoi urządzenie (decyzja O-51, pkt 7):
+   * `od` — zacisk początkowy, `do` — końcowy. Wskazywany klikiem, gdy model nie
+   * rozstrzyga (lokalizacja-łącznik rozstrzyga go sam — pole zbędne). Brak = prąd
+   * roboczy nieustalony (nazwany brak), nigdy prąd zacisku początkowego domyślnie.
+   */
+  zacisk?: 'od' | 'do';
   settings: OvercurrentSettings;
   manufacturer?: string;
   model?: string;
@@ -225,7 +232,10 @@ export interface RunCoordinationRequest {
   operating_currents: OperatingCurrentData[];
   config?: CoordinationConfig;
   pf_run_id?: string;
+  /** Bieg zwarciowy MAKSYMALNY, którym backend potwierdza `ik_max_3f_a` (karta S-2). */
   sc_run_id?: string;
+  /** Bieg zwarciowy MINIMALNY, którym backend potwierdza `ik_min_3f_a` (karta S-2). */
+  sc_run_id_min?: string;
 }
 
 export interface CoordinationConfig {
@@ -304,6 +314,11 @@ export const LABELS = {
     locationNoModel:
       'Model przypadku nie jest wczytany — nie ma z czego wskazać elementu. '
       + 'Wybierz aktywny wariant pracy, a lista szyn i gałęzi pojawi się tutaj.',
+    // Decyzja O-51 (pkt 7): zacisk, przy którym stoi urządzenie — etykiety zacisków
+    // (nazwy szyn) i odmowy przychodzą z backendu.
+    terminal: 'Zacisk gałęzi (miejsce urządzenia)',
+    terminalFromModel: 'Z modelu (łącznik w szeregu z zaciskiem gałęzi)',
+    terminalLoading: 'Rozstrzyganie miejsca urządzenia…',
     settings: 'Nastawy',
     noDevices: 'Dodaj urządzenia zabezpieczeniowe',
     selectToEdit: 'Wybierz urządzenie do edycji',
@@ -338,6 +353,12 @@ export const LABELS = {
     noContext: 'Wybierz kontekst',
     selectCase: 'Wybierz wariant pracy',
     selectSnapshot: 'Wybierz stan modelu',
+    bezNazwy: 'bez nazwy',
+    stanModeluWczytany: 'wczytany',
+    rewizjaModelu: (rewizja: number) => `rewizja ${rewizja}`,
+    identyfikatorProjektu: 'Identyfikator projektu',
+    identyfikatorWariantu: 'Identyfikator wariantu pracy',
+    identyfikatorStanuModelu: 'Identyfikator stanu modelu',
   },
 
   checks: {
@@ -411,8 +432,10 @@ export const LABELS = {
     description: 'Opis',
     inputs: 'Wejścia',
     outputs: 'Wyjścia',
+    zapisTechnicznyPodpis: 'dane wejściowe i wyjściowe kroku w zapisie silnika koordynacji',
     noSteps: 'Brak kroków obliczeniowych',
     timestamp: 'Znacznik czasu',
+    identyfikatorObliczen: 'Identyfikator obliczeń',
     expandAll: 'Rozwiń wszystkie',
     collapseAll: 'Zwiń wszystkie',
   },
@@ -448,6 +471,8 @@ export const LABELS = {
    * dostawać etykietę wariantu przekaźnikowego.
    */
   brakCharakterystyki: 'brak charakterystyki',
+  /** Kod charakterystyki spoza słownika `curveTypes` — nazwany jawnie, bez kodu (karta #145). */
+  charakterystykaNierozpoznana: 'charakterystyka spoza słownika',
 
   curveTypes: {
     SI: 'Normalna odwrotna (SI)',
@@ -530,6 +555,9 @@ export const LABELS = {
       + 'niesprawdzalna. Prąd maksymalny nie zastąpi minimalnego.',
     brakPraduRoboczego:
       'Brak prądu roboczego z rozpływu mocy — kryterium przeciążenia jest niesprawdzalne.',
+    brakPraduZaciskuWierszu:
+      'Wiersz gałęzi wyniku rozpływu nie niesie prądu wskazanego zacisku — kryterium '
+      + 'przeciążenia jest niesprawdzalne.',
     // V12K-262: lokalizacja urządzenia to element modelu, nie tekst wpisany z ręki.
     brakLokalizacji:
       'Wskaż element modelu dla każdego zabezpieczenia — bez lokalizacji nie da się '
@@ -604,8 +632,8 @@ export const DEFAULT_STAGE_50: StageSettings = {
 export const DEVICE_TEMPLATES: DeviceTemplate[] = [
   {
     id: 'relay-50-51',
-    name: 'Przekaznik 50/51 (typowy)',
-    description_pl: 'Standardowy przekaznik nadpradowy z funkcja 50 i 51',
+    name: 'Przekaźnik 50/51 (typowy)',
+    description_pl: 'Standardowy przekaźnik nadprądowy z funkcją 50 i 51',
     device_type: 'RELAY',
     settings: {
       stage_51: {
@@ -629,8 +657,8 @@ export const DEVICE_TEMPLATES: DeviceTemplate[] = [
   },
   {
     id: 'relay-50-51-51n',
-    name: 'Przekaznik 50/51/51N',
-    description_pl: 'Przekaznik z zabezpieczeniem ziemnozwarciowym',
+    name: 'Przekaźnik 50/51/51N',
+    description_pl: 'Przekaźnik z zabezpieczeniem ziemnozwarciowym',
     device_type: 'RELAY',
     settings: {
       stage_51: {
@@ -674,7 +702,7 @@ export const DEVICE_TEMPLATES: DeviceTemplate[] = [
     // 60282-1) pochodzi wylacznie z karty katalogowej producenta, a nie ze wzoru.
     id: 'fuse-mv',
     name: 'Bezpiecznik SN',
-    description_pl: 'Bezpiecznik sredniego napiecia (pasmo topikowe z karty katalogowej)',
+    description_pl: 'Bezpiecznik średniego napięcia (pasmo topikowe z karty katalogowej)',
     device_type: 'FUSE',
     settings: {
       stage_51: {
@@ -686,8 +714,8 @@ export const DEVICE_TEMPLATES: DeviceTemplate[] = [
   },
   {
     id: 'recloser',
-    name: 'Wylacznik samoczynny',
-    description_pl: 'Reklozer z charakterystyka szybka i wolna',
+    name: 'Wyłącznik samoczynny',
+    description_pl: 'Reklozer z charakterystyką szybką i wolną',
     device_type: 'RECLOSER',
     settings: {
       stage_51: {
@@ -711,8 +739,8 @@ export const DEVICE_TEMPLATES: DeviceTemplate[] = [
   },
   {
     id: 'circuit-breaker',
-    name: 'Wylacznik z wyzwalaczem',
-    description_pl: 'Wylacznik mocy z wyzwalaczem nadpradowym',
+    name: 'Wyłącznik z wyzwalaczem',
+    description_pl: 'Wyłącznik mocy z wyzwalaczem nadprądowym',
     device_type: 'CIRCUIT_BREAKER',
     settings: {
       stage_51: {

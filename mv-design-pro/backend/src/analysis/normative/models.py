@@ -7,6 +7,10 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
+from analysis.normative.kryteria_napiecia import (
+    KRYTERIUM_OSTRZEZENIE_PROCENT,
+    KRYTERIUM_PRZEKROCZENIE_PROCENT,
+)
 from analysis.odcisk_kontekstu import odcisk_kontekstu
 
 
@@ -28,8 +32,9 @@ class NormativeSeverity(StrEnum):
 class NormativeConfig:
     loading_warn_pct: float = 80.0
     loading_fail_pct: float = 100.0
-    voltage_warn_pct: float = 5.0
-    voltage_fail_pct: float = 10.0
+    #: Jedno zrodlo prawdy: `analysis.normative.kryteria_napiecia` (karta W3-J).
+    voltage_warn_pct: float = KRYTERIUM_OSTRZEZENIE_PROCENT
+    voltage_fail_pct: float = KRYTERIUM_PRZEKROCZENIE_PROCENT
     touch_voltage_warn_v: float | None = None
     touch_voltage_fail_v: float | None = None
     selectivity_required: bool = True

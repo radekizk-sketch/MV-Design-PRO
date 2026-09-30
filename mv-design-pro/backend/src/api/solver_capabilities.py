@@ -6,6 +6,7 @@ from application.solvers.solver_capability_registry import (
     solver_capabilities_contract,
 )
 from fastapi import APIRouter, HTTPException
+from network_model.brak_zasobu import BrakZasobuError
 
 router = APIRouter(prefix="/solver-capabilities", tags=["solver-capabilities"])
 
@@ -28,5 +29,5 @@ def get_capabilities_for_analysis_type(analysis_type: str) -> dict[str, object]:
 def get_capability(capability: str) -> dict[str, object]:
     try:
         return get_solver_capability(capability).to_dict()
-    except KeyError as exc:
+    except BrakZasobuError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

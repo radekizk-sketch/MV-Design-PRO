@@ -69,15 +69,8 @@ export type {
   ProtectionTypeUnion,
 } from './protection';
 
-// Issue Panel (Validation Browser)
-export { IssuePanel } from './issue-panel';
-export type { IssuePanelProps } from './issue-panel';
-
 // Inspector (READ-ONLY ReadOnlyPropertyGrid - Canonical parity)
 export {
-  InspectorPanel,
-  InspectorPanelConnected,
-  ReadOnlyPropertyGrid,
   INSPECTOR_SECTION_LABELS,
   FLAG_LABELS as INSPECTOR_FLAG_LABELS,
 } from './inspector';
@@ -89,14 +82,3 @@ export type {
   BranchResultData,
   ShortCircuitResultData,
 } from './inspector';
-
-// Calculation Trace Viewer (READ-ONLY)
-export {
-  TraceViewer,
-  TraceViewerContainer,
-  TraceToc,
-  TraceStepView,
-  TraceStepViewEmpty,
-  TraceMetadataPanel,
-  TraceMetadataPanelEmpty,
-} from './proof';

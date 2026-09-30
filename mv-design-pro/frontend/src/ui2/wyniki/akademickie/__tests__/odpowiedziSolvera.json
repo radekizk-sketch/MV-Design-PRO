@@ -22,7 +22,7 @@
     "sanity": {
       "checks_passed": 2,
       "checks_total": 2,
-      "status": "zweryfikowany",
+      "status": "w paśmie wiarygodności",
       "violations": []
     },
     "settings": {
@@ -47,7 +47,7 @@
     "sanity": {
       "checks_passed": 4,
       "checks_total": 4,
-      "status": "zweryfikowany",
+      "status": "w paśmie wiarygodności",
       "violations": []
     },
     "soil_model": {
@@ -75,14 +75,14 @@
         "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
         "confidence_percent": 95,
         "critical_limit": "U_max",
-        "hosting_capacity_mw": 7.6,
+        "hosting_capacity_mw": 7.8,
         "monte_carlo_n": 64
       }
     ],
     "sanity": {
       "checks_passed": 2,
       "checks_total": 2,
-      "status": "zweryfikowany",
+      "status": "w paśmie wiarygodności",
       "violations": []
     }
   },
@@ -122,8 +122,8 @@
     "status": "dane niekompletne"
   },
   "opf_loss_lcc": {
-    "annual_co2_kg": 67385.92,
-    "annual_losses_kwh": 93591.556,
+    "annual_co2_kg": 119225.92,
+    "annual_losses_kwh": 165591.556,
     "branch_losses": [
       {
         "branch_ref": "corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001",
@@ -136,1263 +136,1369 @@
       "oltc_tap_position": 0,
       "q_set_strategy": "minimize_losses_with_voltage_limits"
     },
-    "lcc_loss_opex_pv_pln": 935175.54,
+    "lcc_loss_opex_pv_pln": 1654606.25,
     "objective": "min_delta_p_losses",
     "sanity": {
       "checks_passed": 5,
       "checks_total": 5,
-      "status": "zweryfikowany",
+      "status": "w paśmie wiarygodności",
       "violations": []
     },
-    "total_losses_kw": 23.39789,
-    "transformer_losses_kw": 18.225
+    "total_losses_kw": 41.39789,
+    "transformer_losses_kw": 36.225
   },
   "power_quality_harmonics": {
-    "nodes": [
-      {
-        "bus_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
-        "compatibility_status": "zgodny",
-        "flicker_plt": null,
-        "flicker_pst": null,
-        "i_h": [],
-        "k_factor": 0.0,
-        "resonance_peaks": [],
-        "tdd_percent": 0.0,
-        "thd_u_percent": 0.0,
-        "u_h": [
-          {
-            "h": 2,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 3,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 5,
-            "magnitude_kv": 0.0,
-            "phase_deg": -0.001
-          },
-          {
-            "h": 7,
-            "magnitude_kv": 0.0,
-            "phase_deg": -0.002
-          },
-          {
-            "h": 11,
-            "magnitude_kv": 0.0,
-            "phase_deg": -0.003
-          },
-          {
-            "h": 13,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 17,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 19,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 23,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 25,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 29,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 31,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 35,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 37,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 41,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 43,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 47,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 49,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          }
-        ],
-        "violated_limits": [],
-        "voltage_unbalance_u2_u1": 0.0,
-        "z_scan": [
-          {
-            "f_hz": 50,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 150,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 250,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 350,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 450,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 550,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 650,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 750,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 850,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 950,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 1050,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 1150,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 1250,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 1350,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 1450,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 1550,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 1650,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 1750,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 1850,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 1950,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 2050,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 2150,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 2250,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 2350,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          },
-          {
-            "f_hz": 2450,
-            "phase_deg": -0.0,
-            "z_ohm": 1e-06
-          }
-        ]
+    "ocena": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "BRAK_METODY",
+        "odniesienie": null,
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
       },
-      {
-        "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
-        "compatibility_status": "niezgodny",
-        "flicker_plt": null,
-        "flicker_pst": null,
-        "i_h": [],
-        "k_factor": 0.3456,
-        "resonance_peaks": [
-          {
-            "f_hz": 1010,
-            "severity": "ALERT",
-            "z_peak_ohm": 9.522507
-          },
-          {
-            "f_hz": 1020,
-            "severity": "ALERT",
-            "z_peak_ohm": 9.616277
-          },
-          {
-            "f_hz": 1030,
-            "severity": "ALERT",
-            "z_peak_ohm": 9.710059
-          },
-          {
-            "f_hz": 1040,
-            "severity": "ALERT",
-            "z_peak_ohm": 9.803853
-          },
-          {
-            "f_hz": 1050,
-            "severity": "ALERT",
-            "z_peak_ohm": 9.897659
-          },
-          {
-            "f_hz": 1060,
-            "severity": "ALERT",
-            "z_peak_ohm": 9.991476
-          },
-          {
-            "f_hz": 1070,
-            "severity": "ALERT",
-            "z_peak_ohm": 10.085305
-          },
-          {
-            "f_hz": 1080,
-            "severity": "ALERT",
-            "z_peak_ohm": 10.179146
-          },
-          {
-            "f_hz": 1090,
-            "severity": "ALERT",
-            "z_peak_ohm": 10.272998
-          },
-          {
-            "f_hz": 1100,
-            "severity": "ALERT",
-            "z_peak_ohm": 10.366861
-          },
-          {
-            "f_hz": 1110,
-            "severity": "ALERT",
-            "z_peak_ohm": 10.460735
-          },
-          {
-            "f_hz": 1120,
-            "severity": "ALERT",
-            "z_peak_ohm": 10.554621
-          },
-          {
-            "f_hz": 1130,
-            "severity": "ALERT",
-            "z_peak_ohm": 10.648517
-          },
-          {
-            "f_hz": 1140,
-            "severity": "ALERT",
-            "z_peak_ohm": 10.742424
-          },
-          {
-            "f_hz": 1150,
-            "severity": "ALERT",
-            "z_peak_ohm": 10.836342
-          },
-          {
-            "f_hz": 1160,
-            "severity": "ALERT",
-            "z_peak_ohm": 10.930271
-          },
-          {
-            "f_hz": 1170,
-            "severity": "ALERT",
-            "z_peak_ohm": 11.024211
-          },
-          {
-            "f_hz": 1180,
-            "severity": "ALERT",
-            "z_peak_ohm": 11.118161
-          },
-          {
-            "f_hz": 1190,
-            "severity": "ALERT",
-            "z_peak_ohm": 11.212122
-          },
-          {
-            "f_hz": 1200,
-            "severity": "ALERT",
-            "z_peak_ohm": 11.306093
-          },
-          {
-            "f_hz": 1210,
-            "severity": "ALERT",
-            "z_peak_ohm": 11.400075
-          },
-          {
-            "f_hz": 1220,
-            "severity": "ALERT",
-            "z_peak_ohm": 11.494067
-          },
-          {
-            "f_hz": 1230,
-            "severity": "ALERT",
-            "z_peak_ohm": 11.58807
-          },
-          {
-            "f_hz": 1240,
-            "severity": "ALERT",
-            "z_peak_ohm": 11.682083
-          },
-          {
-            "f_hz": 1250,
-            "severity": "ALERT",
-            "z_peak_ohm": 11.776106
-          },
-          {
-            "f_hz": 1260,
-            "severity": "ALERT",
-            "z_peak_ohm": 11.870139
-          },
-          {
-            "f_hz": 1270,
-            "severity": "ALERT",
-            "z_peak_ohm": 11.964183
-          },
-          {
-            "f_hz": 1280,
-            "severity": "ALERT",
-            "z_peak_ohm": 12.058237
-          },
-          {
-            "f_hz": 1290,
-            "severity": "ALERT",
-            "z_peak_ohm": 12.152301
-          },
-          {
-            "f_hz": 1300,
-            "severity": "ALERT",
-            "z_peak_ohm": 12.246376
-          },
-          {
-            "f_hz": 1310,
-            "severity": "ALERT",
-            "z_peak_ohm": 12.34046
-          },
-          {
-            "f_hz": 1320,
-            "severity": "ALERT",
-            "z_peak_ohm": 12.434555
-          },
-          {
-            "f_hz": 1330,
-            "severity": "ALERT",
-            "z_peak_ohm": 12.528659
-          },
-          {
-            "f_hz": 1340,
-            "severity": "ALERT",
-            "z_peak_ohm": 12.622774
-          },
-          {
-            "f_hz": 1350,
-            "severity": "ALERT",
-            "z_peak_ohm": 12.716899
-          },
-          {
-            "f_hz": 1360,
-            "severity": "ALERT",
-            "z_peak_ohm": 12.811034
-          },
-          {
-            "f_hz": 1370,
-            "severity": "ALERT",
-            "z_peak_ohm": 12.905179
-          },
-          {
-            "f_hz": 1380,
-            "severity": "ALERT",
-            "z_peak_ohm": 12.999334
-          },
-          {
-            "f_hz": 1390,
-            "severity": "ALERT",
-            "z_peak_ohm": 13.093499
-          },
-          {
-            "f_hz": 1400,
-            "severity": "ALERT",
-            "z_peak_ohm": 13.187674
-          },
-          {
-            "f_hz": 1410,
-            "severity": "ALERT",
-            "z_peak_ohm": 13.281859
-          },
-          {
-            "f_hz": 1420,
-            "severity": "ALERT",
-            "z_peak_ohm": 13.376054
-          },
-          {
-            "f_hz": 1430,
-            "severity": "ALERT",
-            "z_peak_ohm": 13.470259
-          },
-          {
-            "f_hz": 1440,
-            "severity": "ALERT",
-            "z_peak_ohm": 13.564474
-          },
-          {
-            "f_hz": 1450,
-            "severity": "ALERT",
-            "z_peak_ohm": 13.658699
-          },
-          {
-            "f_hz": 1460,
-            "severity": "ALERT",
-            "z_peak_ohm": 13.752935
-          },
-          {
-            "f_hz": 1470,
-            "severity": "ALERT",
-            "z_peak_ohm": 13.84718
-          },
-          {
-            "f_hz": 1480,
-            "severity": "ALERT",
-            "z_peak_ohm": 13.941435
-          },
-          {
-            "f_hz": 1490,
-            "severity": "ALERT",
-            "z_peak_ohm": 14.035701
-          },
-          {
-            "f_hz": 1500,
-            "severity": "ALERT",
-            "z_peak_ohm": 14.129976
-          },
-          {
-            "f_hz": 1510,
-            "severity": "ALERT",
-            "z_peak_ohm": 14.224262
-          },
-          {
-            "f_hz": 1520,
-            "severity": "ALERT",
-            "z_peak_ohm": 14.318558
-          },
-          {
-            "f_hz": 1530,
-            "severity": "ALERT",
-            "z_peak_ohm": 14.412864
-          },
-          {
-            "f_hz": 1540,
-            "severity": "ALERT",
-            "z_peak_ohm": 14.50718
-          },
-          {
-            "f_hz": 1550,
-            "severity": "ALERT",
-            "z_peak_ohm": 14.601506
-          },
-          {
-            "f_hz": 1560,
-            "severity": "ALERT",
-            "z_peak_ohm": 14.695842
-          },
-          {
-            "f_hz": 1570,
-            "severity": "ALERT",
-            "z_peak_ohm": 14.790188
-          },
-          {
-            "f_hz": 1580,
-            "severity": "ALERT",
-            "z_peak_ohm": 14.884545
-          },
-          {
-            "f_hz": 1590,
-            "severity": "ALERT",
-            "z_peak_ohm": 14.978912
-          },
-          {
-            "f_hz": 1600,
-            "severity": "ALERT",
-            "z_peak_ohm": 15.073289
-          },
-          {
-            "f_hz": 1610,
-            "severity": "ALERT",
-            "z_peak_ohm": 15.167676
-          },
-          {
-            "f_hz": 1620,
-            "severity": "ALERT",
-            "z_peak_ohm": 15.262074
-          },
-          {
-            "f_hz": 1630,
-            "severity": "ALERT",
-            "z_peak_ohm": 15.356482
-          },
-          {
-            "f_hz": 1640,
-            "severity": "ALERT",
-            "z_peak_ohm": 15.4509
-          },
-          {
-            "f_hz": 1650,
-            "severity": "ALERT",
-            "z_peak_ohm": 15.545329
-          },
-          {
-            "f_hz": 1660,
-            "severity": "ALERT",
-            "z_peak_ohm": 15.639768
-          },
-          {
-            "f_hz": 1670,
-            "severity": "ALERT",
-            "z_peak_ohm": 15.734217
-          },
-          {
-            "f_hz": 1680,
-            "severity": "ALERT",
-            "z_peak_ohm": 15.828677
-          },
-          {
-            "f_hz": 1690,
-            "severity": "ALERT",
-            "z_peak_ohm": 15.923148
-          },
-          {
-            "f_hz": 1700,
-            "severity": "ALERT",
-            "z_peak_ohm": 16.017628
-          },
-          {
-            "f_hz": 1710,
-            "severity": "ALERT",
-            "z_peak_ohm": 16.11212
-          },
-          {
-            "f_hz": 1720,
-            "severity": "ALERT",
-            "z_peak_ohm": 16.206622
-          },
-          {
-            "f_hz": 1730,
-            "severity": "ALERT",
-            "z_peak_ohm": 16.301134
-          },
-          {
-            "f_hz": 1740,
-            "severity": "ALERT",
-            "z_peak_ohm": 16.395657
-          },
-          {
-            "f_hz": 1750,
-            "severity": "ALERT",
-            "z_peak_ohm": 16.490191
-          },
-          {
-            "f_hz": 1760,
-            "severity": "ALERT",
-            "z_peak_ohm": 16.584735
-          },
-          {
-            "f_hz": 1770,
-            "severity": "ALERT",
-            "z_peak_ohm": 16.67929
-          },
-          {
-            "f_hz": 1780,
-            "severity": "ALERT",
-            "z_peak_ohm": 16.773856
-          },
-          {
-            "f_hz": 1790,
-            "severity": "ALERT",
-            "z_peak_ohm": 16.868432
-          },
-          {
-            "f_hz": 1800,
-            "severity": "ALERT",
-            "z_peak_ohm": 16.96302
-          },
-          {
-            "f_hz": 1810,
-            "severity": "ALERT",
-            "z_peak_ohm": 17.057618
-          },
-          {
-            "f_hz": 1820,
-            "severity": "ALERT",
-            "z_peak_ohm": 17.152227
-          },
-          {
-            "f_hz": 1830,
-            "severity": "ALERT",
-            "z_peak_ohm": 17.246847
-          },
-          {
-            "f_hz": 1840,
-            "severity": "ALERT",
-            "z_peak_ohm": 17.341478
-          },
-          {
-            "f_hz": 1850,
-            "severity": "ALERT",
-            "z_peak_ohm": 17.436119
-          },
-          {
-            "f_hz": 1860,
-            "severity": "ALERT",
-            "z_peak_ohm": 17.530772
-          },
-          {
-            "f_hz": 1870,
-            "severity": "ALERT",
-            "z_peak_ohm": 17.625436
-          },
-          {
-            "f_hz": 1880,
-            "severity": "ALERT",
-            "z_peak_ohm": 17.720111
-          },
-          {
-            "f_hz": 1890,
-            "severity": "ALERT",
-            "z_peak_ohm": 17.814797
-          },
-          {
-            "f_hz": 1900,
-            "severity": "ALERT",
-            "z_peak_ohm": 17.909494
-          },
-          {
-            "f_hz": 1910,
-            "severity": "ALERT",
-            "z_peak_ohm": 18.004203
-          },
-          {
-            "f_hz": 1920,
-            "severity": "ALERT",
-            "z_peak_ohm": 18.098922
-          },
-          {
-            "f_hz": 1930,
-            "severity": "ALERT",
-            "z_peak_ohm": 18.193653
-          },
-          {
-            "f_hz": 1940,
-            "severity": "ALERT",
-            "z_peak_ohm": 18.288395
-          },
-          {
-            "f_hz": 1950,
-            "severity": "ALERT",
-            "z_peak_ohm": 18.383149
-          },
-          {
-            "f_hz": 1960,
-            "severity": "ALERT",
-            "z_peak_ohm": 18.477914
-          },
-          {
-            "f_hz": 1970,
-            "severity": "ALERT",
-            "z_peak_ohm": 18.57269
-          },
-          {
-            "f_hz": 1980,
-            "severity": "ALERT",
-            "z_peak_ohm": 18.667478
-          },
-          {
-            "f_hz": 1990,
-            "severity": "ALERT",
-            "z_peak_ohm": 18.762277
-          },
-          {
-            "f_hz": 2000,
-            "severity": "ALERT",
-            "z_peak_ohm": 18.857088
-          },
-          {
-            "f_hz": 2010,
-            "severity": "ALERT",
-            "z_peak_ohm": 18.951911
-          },
-          {
-            "f_hz": 2020,
-            "severity": "ALERT",
-            "z_peak_ohm": 19.046745
-          },
-          {
-            "f_hz": 2030,
-            "severity": "ALERT",
-            "z_peak_ohm": 19.141591
-          },
-          {
-            "f_hz": 2040,
-            "severity": "ALERT",
-            "z_peak_ohm": 19.236448
-          },
-          {
-            "f_hz": 2050,
-            "severity": "ALERT",
-            "z_peak_ohm": 19.331318
-          },
-          {
-            "f_hz": 2060,
-            "severity": "ALERT",
-            "z_peak_ohm": 19.426199
-          },
-          {
-            "f_hz": 2070,
-            "severity": "ALERT",
-            "z_peak_ohm": 19.521092
-          },
-          {
-            "f_hz": 2080,
-            "severity": "ALERT",
-            "z_peak_ohm": 19.615996
-          },
-          {
-            "f_hz": 2090,
-            "severity": "ALERT",
-            "z_peak_ohm": 19.710913
-          },
-          {
-            "f_hz": 2100,
-            "severity": "ALERT",
-            "z_peak_ohm": 19.805842
-          },
-          {
-            "f_hz": 2110,
-            "severity": "ALERT",
-            "z_peak_ohm": 19.900783
-          },
-          {
-            "f_hz": 2120,
-            "severity": "ALERT",
-            "z_peak_ohm": 19.995736
-          },
-          {
-            "f_hz": 2130,
-            "severity": "ALERT",
-            "z_peak_ohm": 20.0907
-          },
-          {
-            "f_hz": 2140,
-            "severity": "ALERT",
-            "z_peak_ohm": 20.185678
-          },
-          {
-            "f_hz": 2150,
-            "severity": "ALERT",
-            "z_peak_ohm": 20.280667
-          },
-          {
-            "f_hz": 2160,
-            "severity": "ALERT",
-            "z_peak_ohm": 20.375668
-          },
-          {
-            "f_hz": 2170,
-            "severity": "ALERT",
-            "z_peak_ohm": 20.470682
-          },
-          {
-            "f_hz": 2180,
-            "severity": "ALERT",
-            "z_peak_ohm": 20.565708
-          },
-          {
-            "f_hz": 2190,
-            "severity": "ALERT",
-            "z_peak_ohm": 20.660747
-          },
-          {
-            "f_hz": 2200,
-            "severity": "ALERT",
-            "z_peak_ohm": 20.755798
-          },
-          {
-            "f_hz": 2210,
-            "severity": "ALERT",
-            "z_peak_ohm": 20.850861
-          },
-          {
-            "f_hz": 2220,
-            "severity": "ALERT",
-            "z_peak_ohm": 20.945937
-          },
-          {
-            "f_hz": 2230,
-            "severity": "ALERT",
-            "z_peak_ohm": 21.041026
-          },
-          {
-            "f_hz": 2240,
-            "severity": "ALERT",
-            "z_peak_ohm": 21.136127
-          },
-          {
-            "f_hz": 2250,
-            "severity": "ALERT",
-            "z_peak_ohm": 21.231241
-          },
-          {
-            "f_hz": 2260,
-            "severity": "ALERT",
-            "z_peak_ohm": 21.326367
-          },
-          {
-            "f_hz": 2270,
-            "severity": "ALERT",
-            "z_peak_ohm": 21.421506
-          },
-          {
-            "f_hz": 2280,
-            "severity": "ALERT",
-            "z_peak_ohm": 21.516658
-          },
-          {
-            "f_hz": 2290,
-            "severity": "ALERT",
-            "z_peak_ohm": 21.611823
-          },
-          {
-            "f_hz": 2300,
-            "severity": "ALERT",
-            "z_peak_ohm": 21.707001
-          },
-          {
-            "f_hz": 2310,
-            "severity": "ALERT",
-            "z_peak_ohm": 21.802192
-          },
-          {
-            "f_hz": 2320,
-            "severity": "ALERT",
-            "z_peak_ohm": 21.897395
-          },
-          {
-            "f_hz": 2330,
-            "severity": "ALERT",
-            "z_peak_ohm": 21.992612
-          },
-          {
-            "f_hz": 2340,
-            "severity": "ALERT",
-            "z_peak_ohm": 22.087842
-          },
-          {
-            "f_hz": 2350,
-            "severity": "ALERT",
-            "z_peak_ohm": 22.183085
-          },
-          {
-            "f_hz": 2360,
-            "severity": "ALERT",
-            "z_peak_ohm": 22.278341
-          },
-          {
-            "f_hz": 2370,
-            "severity": "ALERT",
-            "z_peak_ohm": 22.37361
-          },
-          {
-            "f_hz": 2380,
-            "severity": "ALERT",
-            "z_peak_ohm": 22.468893
-          },
-          {
-            "f_hz": 2390,
-            "severity": "ALERT",
-            "z_peak_ohm": 22.564189
-          },
-          {
-            "f_hz": 2400,
-            "severity": "ALERT",
-            "z_peak_ohm": 22.659499
-          },
-          {
-            "f_hz": 2410,
-            "severity": "ALERT",
-            "z_peak_ohm": 22.754821
-          },
-          {
-            "f_hz": 2420,
-            "severity": "ALERT",
-            "z_peak_ohm": 22.850158
-          },
-          {
-            "f_hz": 2430,
-            "severity": "ALERT",
-            "z_peak_ohm": 22.945507
-          },
-          {
-            "f_hz": 2440,
-            "severity": "ALERT",
-            "z_peak_ohm": 23.040871
-          },
-          {
-            "f_hz": 2450,
-            "severity": "ALERT",
-            "z_peak_ohm": 23.136248
-          },
-          {
-            "f_hz": 2460,
-            "severity": "ALERT",
-            "z_peak_ohm": 23.231638
-          },
-          {
-            "f_hz": 2470,
-            "severity": "ALERT",
-            "z_peak_ohm": 23.327043
-          },
-          {
-            "f_hz": 2480,
-            "severity": "ALERT",
-            "z_peak_ohm": 23.422461
-          },
-          {
-            "f_hz": 2490,
-            "severity": "ALERT",
-            "z_peak_ohm": 23.517893
-          },
-          {
-            "f_hz": 2500,
-            "severity": "ALERT",
-            "z_peak_ohm": 23.613339
-          }
+      "etykieta": {
+        "etykieta_pl": "Ocena niewykonana",
+        "semantyka": "neutralna"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryterium": {
+        "opis_pl": "Kompatybilność harmoniczna napięć i prądów w węzłach sieci (współczynnik odkształcenia harmonicznego napięcia THD i prądu TDD)",
+        "relacja": "LOGICZNE",
+        "warunek_latex": "",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "kryterium_id": "power_quality_harmonics.kompatybilnosc",
+      "limit": null,
+      "margines": null,
+      "niepewnosc": {
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "brak wielkości rozstrzygającej — liczby solvera są materiałem audytowym, więc niepewność wyniku nie dotyczy",
+        "wartosc": null
+      },
+      "podstawa": {
+        "dokument": "PN-EN 50160",
+        "jednostka_redakcyjna": null,
+        "rodzaj": "NORMA",
+        "status": "NIEUSTALONE",
+        "uwagi_pl": "wydanie i jednostka redakcyjna limitu współczynnika odkształcenia napięcia THD nieustalone w rejestrze wymagań jakości energii",
+        "wydanie": null
+      },
+      "powody_niepelnosci": [
+        "Brak metody dowodu — właściwa metoda dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji) albo pomiar.",
+        "Podstawa „PN-EN 50160” (norma) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+      ],
+      "przedmiot": {
+        "element_ref": null,
+        "nazwa_pl": "Szyny sieci modelu",
+        "opis_pl": "Odkształcenie napięcia i prądu w węzłach sieci modelu"
+      },
+      "slad": [],
+      "status_maszynowy": "NIE_OCENIONO",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "sieć modelu ze źródłami odkształcającymi (przekształtniki)",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+          "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+          "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50160” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wydanie i jednostka redakcyjna limitu współczynnika odkształcenia napięcia THD nieustalone w rejestrze wymagań jakości energii).",
+          "Solver harmoniczny na wspólnej macierzy admitancyjnej z przekładnią transformatora, impedancją źródła zasilania, kondensatorami i odbiorami — obecny solver liczy sieć bez przekładni i zastępuje sieć nadrzędną admitancją 1e6 S na pierwszej szynie modelu; jego liczby są dostępne wyłącznie w sekcji audytowej.",
+          "Niezależna wyrocznia potwierdzająca wynik (obliczenie ręczne sieci dwu- i trzyszynowej, rezonans równoległy, program zewnętrzny).",
+          "Rejestr wymagań jakości energii z dokumentem, wydaniem, poziomem napięcia i punktem oceny.",
+          "Do czasu solvera z wyrocznią: pomiar jakości energii albo obliczenie zewnętrzne w punkcie oceny — decyzji projektowych o harmonicznych nie opiera się na liczbach tego solvera."
         ],
-        "tdd_percent": 5.5549,
-        "thd_u_percent": 0.1048,
-        "u_h": [
-          {
-            "h": 2,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 3,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 5,
-            "magnitude_kv": 0.005964,
-            "phase_deg": 70.87
-          },
-          {
-            "h": 7,
-            "magnitude_kv": 0.005417,
-            "phase_deg": 76.079
-          },
-          {
-            "h": 11,
-            "magnitude_kv": 0.004182,
-            "phase_deg": 81.033
-          },
-          {
-            "h": 13,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 17,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 19,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 23,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 25,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 29,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 31,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 35,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 37,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 41,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 43,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 47,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          },
-          {
-            "h": 49,
-            "magnitude_kv": 0.0,
-            "phase_deg": 0.0
-          }
+        "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
+        "zastrzezenia": [
+          "Podstawa „PN-EN 50160” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie i jednostka redakcyjna limitu współczynnika odkształcenia napięcia THD nieustalone w rejestrze wymagań jakości energii).",
+          "Zakres ważności: Solver harmoniczny V12.6 (niezwalidowany) — wynik nie obejmuje: przekładnia transformatora między poziomami napięcia; impedancja sieci nadrzędnej z mocy zwarciowej źródła; kondensatory, odbiory i admitancja przekształtnika; rzędy harmoniczne spoza 18 zaszytych rzędów."
         ],
-        "violated_limits": [
-          "IEEE 519 TDD > 5%"
-        ],
-        "voltage_unbalance_u2_u1": 0.0,
-        "z_scan": [
-          {
-            "f_hz": 50,
-            "phase_deg": 30.396,
-            "z_ohm": 0.943952
-          },
-          {
-            "f_hz": 150,
-            "phase_deg": 60.0,
-            "z_ohm": 1.628646
-          },
-          {
-            "f_hz": 250,
-            "phase_deg": 70.87,
-            "z_ohm": 2.485085
-          },
-          {
-            "f_hz": 350,
-            "phase_deg": 76.079,
-            "z_ohm": 3.385465
-          },
-          {
-            "f_hz": 450,
-            "phase_deg": 79.086,
-            "z_ohm": 4.302425
-          },
-          {
-            "f_hz": 550,
-            "phase_deg": 81.033,
-            "z_ohm": 5.227399
-          },
-          {
-            "f_hz": 650,
-            "phase_deg": 82.394,
-            "z_ohm": 6.156937
-          },
-          {
-            "f_hz": 750,
-            "phase_deg": 83.397,
-            "z_ohm": 7.089412
-          },
-          {
-            "f_hz": 850,
-            "phase_deg": 84.168,
-            "z_ohm": 8.023974
-          },
-          {
-            "f_hz": 950,
-            "phase_deg": 84.777,
-            "z_ohm": 8.960149
-          },
-          {
-            "f_hz": 1050,
-            "phase_deg": 85.271,
-            "z_ohm": 9.897659
-          },
-          {
-            "f_hz": 1150,
-            "phase_deg": 85.68,
-            "z_ohm": 10.836342
-          },
-          {
-            "f_hz": 1250,
-            "phase_deg": 86.023,
-            "z_ohm": 11.776106
-          },
-          {
-            "f_hz": 1350,
-            "phase_deg": 86.316,
-            "z_ohm": 12.716899
-          },
-          {
-            "f_hz": 1450,
-            "phase_deg": 86.569,
-            "z_ohm": 13.658699
-          },
-          {
-            "f_hz": 1550,
-            "phase_deg": 86.789,
-            "z_ohm": 14.601506
-          },
-          {
-            "f_hz": 1650,
-            "phase_deg": 86.982,
-            "z_ohm": 15.545329
-          },
-          {
-            "f_hz": 1750,
-            "phase_deg": 87.153,
-            "z_ohm": 16.490191
-          },
-          {
-            "f_hz": 1850,
-            "phase_deg": 87.306,
-            "z_ohm": 17.436119
-          },
-          {
-            "f_hz": 1950,
-            "phase_deg": 87.443,
-            "z_ohm": 18.383149
-          },
-          {
-            "f_hz": 2050,
-            "phase_deg": 87.567,
-            "z_ohm": 19.331318
-          },
-          {
-            "f_hz": 2150,
-            "phase_deg": 87.679,
-            "z_ohm": 20.280667
-          },
-          {
-            "f_hz": 2250,
-            "phase_deg": 87.781,
-            "z_ohm": 21.231241
-          },
-          {
-            "f_hz": 2350,
-            "phase_deg": 87.874,
-            "z_ohm": 22.183085
-          },
-          {
-            "f_hz": 2450,
-            "phase_deg": 87.96,
-            "z_ohm": 23.136248
-          }
+        "zdanie_pl": "Kompatybilność harmoniczna napięć i prądów w węzłach sieci (współczynnik odkształcenia harmonicznego napięcia THD i prądu TDD) (Szyny sieci modelu) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+      },
+      "wynik": null,
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Solver harmoniczny V12.6 (niezwalidowany)",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "HARMONIC_FREQUENCY_DOMAIN",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przekładnia transformatora między poziomami napięcia",
+          "impedancja sieci nadrzędnej z mocy zwarciowej źródła",
+          "kondensatory, odbiory i admitancja przekształtnika",
+          "rzędy harmoniczne spoza 18 zaszytych rzędów"
         ]
       }
-    ],
-    "sanity": {
-      "checks_passed": 4,
-      "checks_total": 4,
-      "status": "zweryfikowany",
-      "violations": []
+    },
+    "wynik_audytowy": {
+      "naglowek_pl": "Wynik solvera niezwalidowanego — nie jest wynikiem inżynierskim (sondy audytu harmonicznych z 2026-09-23)",
+      "nodes": [
+        {
+          "bus_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
+          "compatibility_status": "NIE_OCENIONO",
+          "flicker_plt": null,
+          "flicker_pst": null,
+          "i_h": [],
+          "k_factor": 0.0,
+          "resonance_peaks": [],
+          "tdd_percent": 0.0,
+          "thd_u_percent": 0.0,
+          "u_h": [
+            {
+              "h": 2,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 3,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 5,
+              "magnitude_kv": 0.0,
+              "phase_deg": -0.001
+            },
+            {
+              "h": 7,
+              "magnitude_kv": 0.0,
+              "phase_deg": -0.002
+            },
+            {
+              "h": 11,
+              "magnitude_kv": 0.0,
+              "phase_deg": -0.003
+            },
+            {
+              "h": 13,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 17,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 19,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 23,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 25,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 29,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 31,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 35,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 37,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 41,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 43,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 47,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 49,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            }
+          ],
+          "voltage_unbalance_u2_u1": 0.0,
+          "z_scan": [
+            {
+              "f_hz": 50,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 150,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 250,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 350,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 450,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 550,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 650,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 750,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 850,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 950,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 1050,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 1150,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 1250,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 1350,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 1450,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 1550,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 1650,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 1750,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 1850,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 1950,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 2050,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 2150,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 2250,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 2350,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            },
+            {
+              "f_hz": 2450,
+              "phase_deg": -0.0,
+              "z_ohm": 1e-06
+            }
+          ]
+        },
+        {
+          "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
+          "compatibility_status": "NIE_OCENIONO",
+          "flicker_plt": null,
+          "flicker_pst": null,
+          "i_h": [],
+          "k_factor": 0.3456,
+          "resonance_peaks": [
+            {
+              "f_hz": 1010,
+              "severity": "ALERT",
+              "z_peak_ohm": 9.522507
+            },
+            {
+              "f_hz": 1020,
+              "severity": "ALERT",
+              "z_peak_ohm": 9.616277
+            },
+            {
+              "f_hz": 1030,
+              "severity": "ALERT",
+              "z_peak_ohm": 9.710059
+            },
+            {
+              "f_hz": 1040,
+              "severity": "ALERT",
+              "z_peak_ohm": 9.803853
+            },
+            {
+              "f_hz": 1050,
+              "severity": "ALERT",
+              "z_peak_ohm": 9.897659
+            },
+            {
+              "f_hz": 1060,
+              "severity": "ALERT",
+              "z_peak_ohm": 9.991476
+            },
+            {
+              "f_hz": 1070,
+              "severity": "ALERT",
+              "z_peak_ohm": 10.085305
+            },
+            {
+              "f_hz": 1080,
+              "severity": "ALERT",
+              "z_peak_ohm": 10.179146
+            },
+            {
+              "f_hz": 1090,
+              "severity": "ALERT",
+              "z_peak_ohm": 10.272998
+            },
+            {
+              "f_hz": 1100,
+              "severity": "ALERT",
+              "z_peak_ohm": 10.366861
+            },
+            {
+              "f_hz": 1110,
+              "severity": "ALERT",
+              "z_peak_ohm": 10.460735
+            },
+            {
+              "f_hz": 1120,
+              "severity": "ALERT",
+              "z_peak_ohm": 10.554621
+            },
+            {
+              "f_hz": 1130,
+              "severity": "ALERT",
+              "z_peak_ohm": 10.648517
+            },
+            {
+              "f_hz": 1140,
+              "severity": "ALERT",
+              "z_peak_ohm": 10.742424
+            },
+            {
+              "f_hz": 1150,
+              "severity": "ALERT",
+              "z_peak_ohm": 10.836342
+            },
+            {
+              "f_hz": 1160,
+              "severity": "ALERT",
+              "z_peak_ohm": 10.930271
+            },
+            {
+              "f_hz": 1170,
+              "severity": "ALERT",
+              "z_peak_ohm": 11.024211
+            },
+            {
+              "f_hz": 1180,
+              "severity": "ALERT",
+              "z_peak_ohm": 11.118161
+            },
+            {
+              "f_hz": 1190,
+              "severity": "ALERT",
+              "z_peak_ohm": 11.212122
+            },
+            {
+              "f_hz": 1200,
+              "severity": "ALERT",
+              "z_peak_ohm": 11.306093
+            },
+            {
+              "f_hz": 1210,
+              "severity": "ALERT",
+              "z_peak_ohm": 11.400075
+            },
+            {
+              "f_hz": 1220,
+              "severity": "ALERT",
+              "z_peak_ohm": 11.494067
+            },
+            {
+              "f_hz": 1230,
+              "severity": "ALERT",
+              "z_peak_ohm": 11.58807
+            },
+            {
+              "f_hz": 1240,
+              "severity": "ALERT",
+              "z_peak_ohm": 11.682083
+            },
+            {
+              "f_hz": 1250,
+              "severity": "ALERT",
+              "z_peak_ohm": 11.776106
+            },
+            {
+              "f_hz": 1260,
+              "severity": "ALERT",
+              "z_peak_ohm": 11.870139
+            },
+            {
+              "f_hz": 1270,
+              "severity": "ALERT",
+              "z_peak_ohm": 11.964183
+            },
+            {
+              "f_hz": 1280,
+              "severity": "ALERT",
+              "z_peak_ohm": 12.058237
+            },
+            {
+              "f_hz": 1290,
+              "severity": "ALERT",
+              "z_peak_ohm": 12.152301
+            },
+            {
+              "f_hz": 1300,
+              "severity": "ALERT",
+              "z_peak_ohm": 12.246376
+            },
+            {
+              "f_hz": 1310,
+              "severity": "ALERT",
+              "z_peak_ohm": 12.34046
+            },
+            {
+              "f_hz": 1320,
+              "severity": "ALERT",
+              "z_peak_ohm": 12.434555
+            },
+            {
+              "f_hz": 1330,
+              "severity": "ALERT",
+              "z_peak_ohm": 12.528659
+            },
+            {
+              "f_hz": 1340,
+              "severity": "ALERT",
+              "z_peak_ohm": 12.622774
+            },
+            {
+              "f_hz": 1350,
+              "severity": "ALERT",
+              "z_peak_ohm": 12.716899
+            },
+            {
+              "f_hz": 1360,
+              "severity": "ALERT",
+              "z_peak_ohm": 12.811034
+            },
+            {
+              "f_hz": 1370,
+              "severity": "ALERT",
+              "z_peak_ohm": 12.905179
+            },
+            {
+              "f_hz": 1380,
+              "severity": "ALERT",
+              "z_peak_ohm": 12.999334
+            },
+            {
+              "f_hz": 1390,
+              "severity": "ALERT",
+              "z_peak_ohm": 13.093499
+            },
+            {
+              "f_hz": 1400,
+              "severity": "ALERT",
+              "z_peak_ohm": 13.187674
+            },
+            {
+              "f_hz": 1410,
+              "severity": "ALERT",
+              "z_peak_ohm": 13.281859
+            },
+            {
+              "f_hz": 1420,
+              "severity": "ALERT",
+              "z_peak_ohm": 13.376054
+            },
+            {
+              "f_hz": 1430,
+              "severity": "ALERT",
+              "z_peak_ohm": 13.470259
+            },
+            {
+              "f_hz": 1440,
+              "severity": "ALERT",
+              "z_peak_ohm": 13.564474
+            },
+            {
+              "f_hz": 1450,
+              "severity": "ALERT",
+              "z_peak_ohm": 13.658699
+            },
+            {
+              "f_hz": 1460,
+              "severity": "ALERT",
+              "z_peak_ohm": 13.752935
+            },
+            {
+              "f_hz": 1470,
+              "severity": "ALERT",
+              "z_peak_ohm": 13.84718
+            },
+            {
+              "f_hz": 1480,
+              "severity": "ALERT",
+              "z_peak_ohm": 13.941435
+            },
+            {
+              "f_hz": 1490,
+              "severity": "ALERT",
+              "z_peak_ohm": 14.035701
+            },
+            {
+              "f_hz": 1500,
+              "severity": "ALERT",
+              "z_peak_ohm": 14.129976
+            },
+            {
+              "f_hz": 1510,
+              "severity": "ALERT",
+              "z_peak_ohm": 14.224262
+            },
+            {
+              "f_hz": 1520,
+              "severity": "ALERT",
+              "z_peak_ohm": 14.318558
+            },
+            {
+              "f_hz": 1530,
+              "severity": "ALERT",
+              "z_peak_ohm": 14.412864
+            },
+            {
+              "f_hz": 1540,
+              "severity": "ALERT",
+              "z_peak_ohm": 14.50718
+            },
+            {
+              "f_hz": 1550,
+              "severity": "ALERT",
+              "z_peak_ohm": 14.601506
+            },
+            {
+              "f_hz": 1560,
+              "severity": "ALERT",
+              "z_peak_ohm": 14.695842
+            },
+            {
+              "f_hz": 1570,
+              "severity": "ALERT",
+              "z_peak_ohm": 14.790188
+            },
+            {
+              "f_hz": 1580,
+              "severity": "ALERT",
+              "z_peak_ohm": 14.884545
+            },
+            {
+              "f_hz": 1590,
+              "severity": "ALERT",
+              "z_peak_ohm": 14.978912
+            },
+            {
+              "f_hz": 1600,
+              "severity": "ALERT",
+              "z_peak_ohm": 15.073289
+            },
+            {
+              "f_hz": 1610,
+              "severity": "ALERT",
+              "z_peak_ohm": 15.167676
+            },
+            {
+              "f_hz": 1620,
+              "severity": "ALERT",
+              "z_peak_ohm": 15.262074
+            },
+            {
+              "f_hz": 1630,
+              "severity": "ALERT",
+              "z_peak_ohm": 15.356482
+            },
+            {
+              "f_hz": 1640,
+              "severity": "ALERT",
+              "z_peak_ohm": 15.4509
+            },
+            {
+              "f_hz": 1650,
+              "severity": "ALERT",
+              "z_peak_ohm": 15.545329
+            },
+            {
+              "f_hz": 1660,
+              "severity": "ALERT",
+              "z_peak_ohm": 15.639768
+            },
+            {
+              "f_hz": 1670,
+              "severity": "ALERT",
+              "z_peak_ohm": 15.734217
+            },
+            {
+              "f_hz": 1680,
+              "severity": "ALERT",
+              "z_peak_ohm": 15.828677
+            },
+            {
+              "f_hz": 1690,
+              "severity": "ALERT",
+              "z_peak_ohm": 15.923148
+            },
+            {
+              "f_hz": 1700,
+              "severity": "ALERT",
+              "z_peak_ohm": 16.017628
+            },
+            {
+              "f_hz": 1710,
+              "severity": "ALERT",
+              "z_peak_ohm": 16.11212
+            },
+            {
+              "f_hz": 1720,
+              "severity": "ALERT",
+              "z_peak_ohm": 16.206622
+            },
+            {
+              "f_hz": 1730,
+              "severity": "ALERT",
+              "z_peak_ohm": 16.301134
+            },
+            {
+              "f_hz": 1740,
+              "severity": "ALERT",
+              "z_peak_ohm": 16.395657
+            },
+            {
+              "f_hz": 1750,
+              "severity": "ALERT",
+              "z_peak_ohm": 16.490191
+            },
+            {
+              "f_hz": 1760,
+              "severity": "ALERT",
+              "z_peak_ohm": 16.584735
+            },
+            {
+              "f_hz": 1770,
+              "severity": "ALERT",
+              "z_peak_ohm": 16.67929
+            },
+            {
+              "f_hz": 1780,
+              "severity": "ALERT",
+              "z_peak_ohm": 16.773856
+            },
+            {
+              "f_hz": 1790,
+              "severity": "ALERT",
+              "z_peak_ohm": 16.868432
+            },
+            {
+              "f_hz": 1800,
+              "severity": "ALERT",
+              "z_peak_ohm": 16.96302
+            },
+            {
+              "f_hz": 1810,
+              "severity": "ALERT",
+              "z_peak_ohm": 17.057618
+            },
+            {
+              "f_hz": 1820,
+              "severity": "ALERT",
+              "z_peak_ohm": 17.152227
+            },
+            {
+              "f_hz": 1830,
+              "severity": "ALERT",
+              "z_peak_ohm": 17.246847
+            },
+            {
+              "f_hz": 1840,
+              "severity": "ALERT",
+              "z_peak_ohm": 17.341478
+            },
+            {
+              "f_hz": 1850,
+              "severity": "ALERT",
+              "z_peak_ohm": 17.436119
+            },
+            {
+              "f_hz": 1860,
+              "severity": "ALERT",
+              "z_peak_ohm": 17.530772
+            },
+            {
+              "f_hz": 1870,
+              "severity": "ALERT",
+              "z_peak_ohm": 17.625436
+            },
+            {
+              "f_hz": 1880,
+              "severity": "ALERT",
+              "z_peak_ohm": 17.720111
+            },
+            {
+              "f_hz": 1890,
+              "severity": "ALERT",
+              "z_peak_ohm": 17.814797
+            },
+            {
+              "f_hz": 1900,
+              "severity": "ALERT",
+              "z_peak_ohm": 17.909494
+            },
+            {
+              "f_hz": 1910,
+              "severity": "ALERT",
+              "z_peak_ohm": 18.004203
+            },
+            {
+              "f_hz": 1920,
+              "severity": "ALERT",
+              "z_peak_ohm": 18.098922
+            },
+            {
+              "f_hz": 1930,
+              "severity": "ALERT",
+              "z_peak_ohm": 18.193653
+            },
+            {
+              "f_hz": 1940,
+              "severity": "ALERT",
+              "z_peak_ohm": 18.288395
+            },
+            {
+              "f_hz": 1950,
+              "severity": "ALERT",
+              "z_peak_ohm": 18.383149
+            },
+            {
+              "f_hz": 1960,
+              "severity": "ALERT",
+              "z_peak_ohm": 18.477914
+            },
+            {
+              "f_hz": 1970,
+              "severity": "ALERT",
+              "z_peak_ohm": 18.57269
+            },
+            {
+              "f_hz": 1980,
+              "severity": "ALERT",
+              "z_peak_ohm": 18.667478
+            },
+            {
+              "f_hz": 1990,
+              "severity": "ALERT",
+              "z_peak_ohm": 18.762277
+            },
+            {
+              "f_hz": 2000,
+              "severity": "ALERT",
+              "z_peak_ohm": 18.857088
+            },
+            {
+              "f_hz": 2010,
+              "severity": "ALERT",
+              "z_peak_ohm": 18.951911
+            },
+            {
+              "f_hz": 2020,
+              "severity": "ALERT",
+              "z_peak_ohm": 19.046745
+            },
+            {
+              "f_hz": 2030,
+              "severity": "ALERT",
+              "z_peak_ohm": 19.141591
+            },
+            {
+              "f_hz": 2040,
+              "severity": "ALERT",
+              "z_peak_ohm": 19.236448
+            },
+            {
+              "f_hz": 2050,
+              "severity": "ALERT",
+              "z_peak_ohm": 19.331318
+            },
+            {
+              "f_hz": 2060,
+              "severity": "ALERT",
+              "z_peak_ohm": 19.426199
+            },
+            {
+              "f_hz": 2070,
+              "severity": "ALERT",
+              "z_peak_ohm": 19.521092
+            },
+            {
+              "f_hz": 2080,
+              "severity": "ALERT",
+              "z_peak_ohm": 19.615996
+            },
+            {
+              "f_hz": 2090,
+              "severity": "ALERT",
+              "z_peak_ohm": 19.710913
+            },
+            {
+              "f_hz": 2100,
+              "severity": "ALERT",
+              "z_peak_ohm": 19.805842
+            },
+            {
+              "f_hz": 2110,
+              "severity": "ALERT",
+              "z_peak_ohm": 19.900783
+            },
+            {
+              "f_hz": 2120,
+              "severity": "ALERT",
+              "z_peak_ohm": 19.995736
+            },
+            {
+              "f_hz": 2130,
+              "severity": "ALERT",
+              "z_peak_ohm": 20.0907
+            },
+            {
+              "f_hz": 2140,
+              "severity": "ALERT",
+              "z_peak_ohm": 20.185678
+            },
+            {
+              "f_hz": 2150,
+              "severity": "ALERT",
+              "z_peak_ohm": 20.280667
+            },
+            {
+              "f_hz": 2160,
+              "severity": "ALERT",
+              "z_peak_ohm": 20.375668
+            },
+            {
+              "f_hz": 2170,
+              "severity": "ALERT",
+              "z_peak_ohm": 20.470682
+            },
+            {
+              "f_hz": 2180,
+              "severity": "ALERT",
+              "z_peak_ohm": 20.565708
+            },
+            {
+              "f_hz": 2190,
+              "severity": "ALERT",
+              "z_peak_ohm": 20.660747
+            },
+            {
+              "f_hz": 2200,
+              "severity": "ALERT",
+              "z_peak_ohm": 20.755798
+            },
+            {
+              "f_hz": 2210,
+              "severity": "ALERT",
+              "z_peak_ohm": 20.850861
+            },
+            {
+              "f_hz": 2220,
+              "severity": "ALERT",
+              "z_peak_ohm": 20.945937
+            },
+            {
+              "f_hz": 2230,
+              "severity": "ALERT",
+              "z_peak_ohm": 21.041026
+            },
+            {
+              "f_hz": 2240,
+              "severity": "ALERT",
+              "z_peak_ohm": 21.136127
+            },
+            {
+              "f_hz": 2250,
+              "severity": "ALERT",
+              "z_peak_ohm": 21.231241
+            },
+            {
+              "f_hz": 2260,
+              "severity": "ALERT",
+              "z_peak_ohm": 21.326367
+            },
+            {
+              "f_hz": 2270,
+              "severity": "ALERT",
+              "z_peak_ohm": 21.421506
+            },
+            {
+              "f_hz": 2280,
+              "severity": "ALERT",
+              "z_peak_ohm": 21.516658
+            },
+            {
+              "f_hz": 2290,
+              "severity": "ALERT",
+              "z_peak_ohm": 21.611823
+            },
+            {
+              "f_hz": 2300,
+              "severity": "ALERT",
+              "z_peak_ohm": 21.707001
+            },
+            {
+              "f_hz": 2310,
+              "severity": "ALERT",
+              "z_peak_ohm": 21.802192
+            },
+            {
+              "f_hz": 2320,
+              "severity": "ALERT",
+              "z_peak_ohm": 21.897395
+            },
+            {
+              "f_hz": 2330,
+              "severity": "ALERT",
+              "z_peak_ohm": 21.992612
+            },
+            {
+              "f_hz": 2340,
+              "severity": "ALERT",
+              "z_peak_ohm": 22.087842
+            },
+            {
+              "f_hz": 2350,
+              "severity": "ALERT",
+              "z_peak_ohm": 22.183085
+            },
+            {
+              "f_hz": 2360,
+              "severity": "ALERT",
+              "z_peak_ohm": 22.278341
+            },
+            {
+              "f_hz": 2370,
+              "severity": "ALERT",
+              "z_peak_ohm": 22.37361
+            },
+            {
+              "f_hz": 2380,
+              "severity": "ALERT",
+              "z_peak_ohm": 22.468893
+            },
+            {
+              "f_hz": 2390,
+              "severity": "ALERT",
+              "z_peak_ohm": 22.564189
+            },
+            {
+              "f_hz": 2400,
+              "severity": "ALERT",
+              "z_peak_ohm": 22.659499
+            },
+            {
+              "f_hz": 2410,
+              "severity": "ALERT",
+              "z_peak_ohm": 22.754821
+            },
+            {
+              "f_hz": 2420,
+              "severity": "ALERT",
+              "z_peak_ohm": 22.850158
+            },
+            {
+              "f_hz": 2430,
+              "severity": "ALERT",
+              "z_peak_ohm": 22.945507
+            },
+            {
+              "f_hz": 2440,
+              "severity": "ALERT",
+              "z_peak_ohm": 23.040871
+            },
+            {
+              "f_hz": 2450,
+              "severity": "ALERT",
+              "z_peak_ohm": 23.136248
+            },
+            {
+              "f_hz": 2460,
+              "severity": "ALERT",
+              "z_peak_ohm": 23.231638
+            },
+            {
+              "f_hz": 2470,
+              "severity": "ALERT",
+              "z_peak_ohm": 23.327043
+            },
+            {
+              "f_hz": 2480,
+              "severity": "ALERT",
+              "z_peak_ohm": 23.422461
+            },
+            {
+              "f_hz": 2490,
+              "severity": "ALERT",
+              "z_peak_ohm": 23.517893
+            },
+            {
+              "f_hz": 2500,
+              "severity": "ALERT",
+              "z_peak_ohm": 23.613339
+            }
+          ],
+          "tdd_percent": 5.5549,
+          "thd_u_percent": 0.1048,
+          "u_h": [
+            {
+              "h": 2,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 3,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 5,
+              "magnitude_kv": 0.005964,
+              "phase_deg": 70.87
+            },
+            {
+              "h": 7,
+              "magnitude_kv": 0.005417,
+              "phase_deg": 76.079
+            },
+            {
+              "h": 11,
+              "magnitude_kv": 0.004182,
+              "phase_deg": 81.033
+            },
+            {
+              "h": 13,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 17,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 19,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 23,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 25,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 29,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 31,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 35,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 37,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 41,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 43,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 47,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            },
+            {
+              "h": 49,
+              "magnitude_kv": 0.0,
+              "phase_deg": 0.0
+            }
+          ],
+          "voltage_unbalance_u2_u1": 0.0,
+          "z_scan": [
+            {
+              "f_hz": 50,
+              "phase_deg": 30.396,
+              "z_ohm": 0.943952
+            },
+            {
+              "f_hz": 150,
+              "phase_deg": 60.0,
+              "z_ohm": 1.628646
+            },
+            {
+              "f_hz": 250,
+              "phase_deg": 70.87,
+              "z_ohm": 2.485085
+            },
+            {
+              "f_hz": 350,
+              "phase_deg": 76.079,
+              "z_ohm": 3.385465
+            },
+            {
+              "f_hz": 450,
+              "phase_deg": 79.086,
+              "z_ohm": 4.302425
+            },
+            {
+              "f_hz": 550,
+              "phase_deg": 81.033,
+              "z_ohm": 5.227399
+            },
+            {
+              "f_hz": 650,
+              "phase_deg": 82.394,
+              "z_ohm": 6.156937
+            },
+            {
+              "f_hz": 750,
+              "phase_deg": 83.397,
+              "z_ohm": 7.089412
+            },
+            {
+              "f_hz": 850,
+              "phase_deg": 84.168,
+              "z_ohm": 8.023974
+            },
+            {
+              "f_hz": 950,
+              "phase_deg": 84.777,
+              "z_ohm": 8.960149
+            },
+            {
+              "f_hz": 1050,
+              "phase_deg": 85.271,
+              "z_ohm": 9.897659
+            },
+            {
+              "f_hz": 1150,
+              "phase_deg": 85.68,
+              "z_ohm": 10.836342
+            },
+            {
+              "f_hz": 1250,
+              "phase_deg": 86.023,
+              "z_ohm": 11.776106
+            },
+            {
+              "f_hz": 1350,
+              "phase_deg": 86.316,
+              "z_ohm": 12.716899
+            },
+            {
+              "f_hz": 1450,
+              "phase_deg": 86.569,
+              "z_ohm": 13.658699
+            },
+            {
+              "f_hz": 1550,
+              "phase_deg": 86.789,
+              "z_ohm": 14.601506
+            },
+            {
+              "f_hz": 1650,
+              "phase_deg": 86.982,
+              "z_ohm": 15.545329
+            },
+            {
+              "f_hz": 1750,
+              "phase_deg": 87.153,
+              "z_ohm": 16.490191
+            },
+            {
+              "f_hz": 1850,
+              "phase_deg": 87.306,
+              "z_ohm": 17.436119
+            },
+            {
+              "f_hz": 1950,
+              "phase_deg": 87.443,
+              "z_ohm": 18.383149
+            },
+            {
+              "f_hz": 2050,
+              "phase_deg": 87.567,
+              "z_ohm": 19.331318
+            },
+            {
+              "f_hz": 2150,
+              "phase_deg": 87.679,
+              "z_ohm": 20.280667
+            },
+            {
+              "f_hz": 2250,
+              "phase_deg": 87.781,
+              "z_ohm": 21.231241
+            },
+            {
+              "f_hz": 2350,
+              "phase_deg": 87.874,
+              "z_ohm": 22.183085
+            },
+            {
+              "f_hz": 2450,
+              "phase_deg": 87.96,
+              "z_ohm": 23.136248
+            }
+          ]
+        }
+      ],
+      "powody_pl": [
+        "Brak przekładni transformatora: szyny różnych poziomów napięcia liczone są w omach bez sprowadzenia do wspólnej bazy.",
+        "Rezystancja transformatora zaniżona o czynnik kwadratu napięcia znamionowego.",
+        "Sieć nadrzędna zastąpiona admitancją 1e6 S na pierwszej szynie modelu; moc zwarciowa źródła zasilania nie wchodzi do obliczeń harmonicznych.",
+        "Kondensatory, odbiory i admitancja przekształtnika nie są modelowane.",
+        "Liczonych jest wyłącznie 18 zaszytych rzędów (2, 3, 5, 7, 11, 13, 17, 19, 23, 25, 29, 31, 35, 37, 41, 43, 47, 49); pozostałe rzędy widma są cicho pomijane.",
+        "Wszystkie źródła mają fazę zerową — prądy harmoniczne sumują się koherentnie.",
+        "Współczynnik THD odniesiony jest do napięcia znamionowego, nie do składowej podstawowej z rozpływu.",
+        "„Rezonans” to każdy punkt skanu z modułem impedancji ponad 10 razy większym niż przy 50 Hz — jeden rezonans daje dziesiątki wpisów.",
+        "Żadna wielkość nie ma niezależnej wyroczni (obliczenia ręcznego ani programu zewnętrznego)."
+      ],
+      "sanity": {
+        "checks_passed": 4,
+        "checks_total": 4,
+        "status": "w paśmie wiarygodności",
+        "violations": []
+      }
     }
   },
   "reliability_contingency": {
-    "contingency_ranking": [
-      {
-        "contingency": "corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001",
-        "max_loading_percent": 17.59,
-        "order": "N-1",
-        "severity": 10.0
-      }
-    ],
     "indices": {
       "caidi_min_per_interruption": 720.0,
       "maifi_per_year": 0.0018,
       "saidi_min_per_year": 10.8,
       "saifi_per_year": 0.015
     },
+    "ranking_n1": {
+      "ekran": "Wyniki › Kontyngencje",
+      "powod_pl": "ranking liczony z prądu gałęzi bez rozpływu (V12.6); ranking kanoniczny = pełny re-solve",
+      "status": "NIEPREZENTOWANY",
+      "trasa": "/api/insights/n-1-contingency"
+    },
     "sanity": {
       "checks_passed": 4,
       "checks_total": 4,
-      "status": "zweryfikowany",
+      "status": "w paśmie wiarygodności",
       "violations": []
     }
   },
@@ -1401,6 +1507,104 @@
     "missing_fields": [
       "converter"
     ],
+    "ocena": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "BRAK_METODY",
+        "odniesienie": null,
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "UNVALIDATED_MODEL",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Ocena niewykonana",
+        "semantyka": "neutralna"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryterium": {
+        "opis_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista)",
+        "relacja": "LOGICZNE",
+        "warunek_latex": "",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "kryterium_id": "ssci.nyquist.nie_wskazano",
+      "limit": null,
+      "margines": null,
+      "niepewnosc": {
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "brak wielkości rozstrzygającej — metryki L(f) są materiałem audytowym, więc niepewność wyniku nie dotyczy",
+        "wartosc": null
+      },
+      "podstawa": {
+        "dokument": "Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)",
+        "jednostka_redakcyjna": null,
+        "rodzaj": "NIEUSTALONA",
+        "status": "NIEUSTALONE",
+        "uwagi_pl": "kryterium z literatury — brak wymagania normatywnego operatora dla SSCI",
+        "wydanie": null
+      },
+      "powody_niepelnosci": [
+        "Brak metody dowodu — właściwa metoda dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji) albo pomiar.",
+        "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji nie stanowi pełnego dowodu zgodności (wymagany: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany).",
+        "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+      ],
+      "przedmiot": {
+        "element_ref": null,
+        "nazwa_pl": "Przekształtnik (nie wskazano)",
+        "opis_pl": "Interakcja podsynchroniczna przekształtnika z siecią"
+      },
+      "slad": [],
+      "status_maszynowy": "NIE_OCENIONO",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "przekształtnik przyłączony do sieci modelu (źródło przekształtnikowe)",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+          "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+          "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
+          "Tablice impedancji Z_grid(f), Z_conv(f) i L(f) — solver ich nie zwrócił (dane niekompletne).",
+          "Przekształtnik w modelu sieci — model nie ma przekształtnika, którego dotyczy analiza.",
+          "Impedancja sieci Z_grid(f) liczona na wspólnej macierzy admitancyjnej z przekładnią transformatora i impedancją źródła zasilania — impedancja sieci Z_grid(f) obecnego solvera jest liczona na macierzy admitancyjnej bez przekładni transformatora — dla przekształtnika na szynie 0,4 kV wychodzi około 1400 razy za duża — więc wzmocnienie pętli L = Z_grid/Z_conv i każdy wniosek z kryterium Nyquista są niewiarygodne; wynik nie ma też niezależnej wyroczni.",
+          "Niezależna wyrocznia kryterium impedancyjnego (obliczenie ręczne albo program zewnętrzny) dla węzła przyłączenia przekształtnika.",
+          "Do czasu poprawnego Z_grid(f): badanie zewnętrzne interakcji przekształtnik–sieć albo dane producenta; wskaźnik strefy ujemnej rezystancji przekształtnika zależy wyłącznie od jego modelu i pozostaje informacją."
+        ],
+        "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
+        "zastrzezenia": [
+          "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
+          "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
+          "Zakres ważności: Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
+        ],
+        "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik (nie wskazano)) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+      },
+      "wynik": null,
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": null,
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "impedancja sieci z przekładnią transformatora"
+        ]
+      }
+    },
     "sanity": {
       "checks_passed": 0,
       "checks_total": 0,
@@ -1422,7 +1626,7 @@
     "sanity": {
       "checks_passed": 3,
       "checks_total": 3,
-      "status": "zweryfikowany",
+      "status": "w paśmie wiarygodności",
       "violations": []
     },
     "trv_curve": [
@@ -1686,7 +1890,7 @@
     "sanity": {
       "checks_passed": 3,
       "checks_total": 3,
-      "status": "zweryfikowany",
+      "status": "w paśmie wiarygodności",
       "violations": []
     },
     "sensitivity_ranking": [

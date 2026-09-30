@@ -16,22 +16,21 @@
  * `ui/study-cases/types.ts:229` `RunStatus`); brak sygnału ostrzeżenia w
  * modelu przebiegu, więc `ostrzezenia` jest zawsze 0.
  *
- * TODO-KARTA (ograniczenie danych, nie mapowania): `useExecutionRunsStore`
- * trzyma listę `runs` WYŁĄCZNIE dla `activeStudyCaseId` (jeden przypadek na
- * raz — `runStore.ts:29-30,84-92`), nie pełną historię wszystkich
- * przypadków projektu. Funkcja mapująca poniżej jest ogólna (grupuje
- * dowolną listę `ExecutionRun[]` po `study_case_id`) i zadziała poprawnie
- * dla pełnej hierarzchii, gdy tylko dane wielu przypadków będą dostępne
- * jednocześnie (np. po agregacji w karcie integracyjnej / rozszerzeniu
- * store'a) — dziś hook `useRunsTree` zwraca hierarchię ograniczoną do
- * aktywnego przypadku, zgodnie z tym, co store faktycznie przechowuje.
+ * ZAMKNIĘCIE (KARTA-UI2 §1 p. 10): `useExecutionRunsStore.runs` trzyma listę
+ * WYŁĄCZNIE dla `activeStudyCaseId` (jeden przypadek na raz — `runStore.ts:
+ * 29-30,84-92`) — źródłem PEŁNEJ hierarchii (wszystkie przypadki projektu)
+ * jest `useWszystkiePrzebiegiProjektu` (`ui2/adapters/wszystkiePrzebiegiProjektu.ts`,
+ * pętla po per-przypadkowym `GET .../study-cases/{id}/runs`). Funkcja mapująca
+ * poniżej jest ogólna (grupuje dowolną listę `ExecutionRun[]` po
+ * `study_case_id`) — bez zmian od poprzedniej wersji, zmieniło się WYŁĄCZNIE
+ * źródło danych wejściowych.
  */
 
 import { useMemo } from 'react';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { ANALYSIS_TYPE_LABELS, RUN_STATUS_LABELS } from '../../../ui/study-cases/types';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSortedCases } from '../../../ui/study-cases/store';
+import { useWszystkiePrzebiegiProjektu } from '../../adapters/wszystkiePrzebiegiProjektu';
 import { LICZNIKI_ZERO, type WezelDrzewa } from '../treeModel';
 
 function etykietaPrzebiegu(run: ExecutionRun): string {
@@ -82,12 +81,11 @@ export function mapowaniePrzebiegowDoDrzewa(
 }
 
 /**
- * Adapter read-only: `runStore.ts` (`runs`, ograniczone do aktywnego
- * przypadku — patrz TODO-KARTA w komentarzu nagłówkowym) + nazwy przypadków
- * z `study-cases/store.ts`.
+ * Adapter read-only: `useWszystkiePrzebiegiProjektu` (biegi WSZYSTKICH
+ * przypadków projektu) + nazwy przypadków z `study-cases/store.ts`.
  */
 export function useRunsTree(): WezelDrzewa[] {
-  const runs = useExecutionRunsStore((s) => s.runs);
+  const { runs } = useWszystkiePrzebiegiProjektu();
   const cases = useSortedCases();
   const nazwyPrzypadkow = useMemo(() => new Map(cases.map((c) => [c.id, c.name])), [cases]);
   return useMemo(() => mapowaniePrzebiegowDoDrzewa(runs, nazwyPrzypadkow), [runs, nazwyPrzypadkow]);

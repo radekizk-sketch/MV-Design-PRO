@@ -86,9 +86,9 @@ import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { DerSourceKind } from '../compose/sourceKind';
 import type { PreviewElementKind } from '../compose/preview';
 import type { SldElementKindForMenu } from '../../v2/command/SldCommandService';
-import { STATION_LV_VOLTAGE_LIMIT_KV } from '../../shared/stationBusResolution';
 import { LABEL_OWNER_ELEMENT_KIND, type HitObjectClass } from './hitAreas';
 import type { OwnerKind } from '../layout/labels';
+import { powyzejPasmaNn } from '../../../../ui2/model/pasmaNapieciowe';
 
 /**
  * Rodzaj obiektu MODELU, do którego zakotwiczony jest trafiony rysunek.
@@ -438,7 +438,7 @@ function kotwicaRefu(index: CanvasModelIndex, ref: string): Kotwica | null {
  * `substation.bus_refs`.
  *
  * KRYTERIUM: stacja ma DOKŁADNIE JEDNĄ szynę powyżej granicy nN
- * (`STATION_LV_VOLTAGE_LIMIT_KV`, jedna reguła stron stacji z karty S9-2) —
+ * (`powyzejPasmaNn`, jedna reguła stron stacji z karty S9-2 na lustrze granic pasm) —
  * wtedy i tylko wtedy wiadomo, KTÓRĄ szynę przedstawia jeden odcinek szyny
  * rysunku. Więcej niż jedna ⇒ BRAK ZAMIANY (temat zostaje stacją i zostaje
  * odrzucony wyżej) — uczciwa odmowa zamiast podmiany obiektu.
@@ -461,7 +461,7 @@ function szynaSnStacji(index: CanvasModelIndex, stacjaRef: string): string | nul
   let znaleziona: string | null = null;
   for (const busRef of stacja?.bus_refs ?? []) {
     const szyna = index.szyny.get(busRef);
-    if (!szyna || !(szyna.voltage_kv > STATION_LV_VOLTAGE_LIMIT_KV)) continue;
+    if (!szyna || !powyzejPasmaNn(szyna.voltage_kv)) continue;
     const ref = szyna.ref_id ?? busRef;
     if (znaleziona !== null && znaleziona !== ref) return null;
     znaleziona = ref;

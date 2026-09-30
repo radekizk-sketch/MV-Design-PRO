@@ -11,8 +11,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from api.klucz_twin_dep import KluczTwin
 from enm.store import get_enm as _get_enm
 from fastapi import APIRouter, HTTPException, Query
+from network_model.brak_zasobu import BrakZasobuError
 from reference_engine import evaluate_enm, get_reference_pack, list_reference_packs
 
 router = APIRouter(prefix="/api", tags=["reference-engine"])
@@ -40,7 +42,7 @@ async def get_pack(pack_id: str) -> dict[str, Any]:
     """Pełny pakiet referencyjny (profile pól, słownik symboli, reguły)."""
     try:
         pack = get_reference_pack(pack_id)
-    except KeyError as exc:
+    except BrakZasobuError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return pack.model_dump(mode="json")
 
@@ -48,20 +50,21 @@ async def get_pack(pack_id: str) -> dict[str, Any]:
 @router.get("/cases/{case_id}/reference/compliance")
 def get_reference_compliance(
     case_id: str,
+    klucz: KluczTwin,
     packs: str | None = Query(
         default=None,
         description="Opcjonalna lista pack_id po przecinku (domyślnie: wszystkie).",
     ),
 ) -> dict[str, Any]:
     """Raport zgodności referencyjnej + Reference Score dla ENM case'a."""
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     pack_ids: list[str] | None = None
     if packs:
         pack_ids = [p.strip() for p in packs.split(",") if p.strip()]
         try:
             for pack_id in pack_ids:
                 get_reference_pack(pack_id)
-        except KeyError as exc:
+        except BrakZasobuError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
     report = evaluate_enm(enm, pack_ids=pack_ids)
     return report.model_dump(mode="json")

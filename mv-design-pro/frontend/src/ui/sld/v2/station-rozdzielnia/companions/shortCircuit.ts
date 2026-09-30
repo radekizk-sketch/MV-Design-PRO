@@ -4,11 +4,11 @@
  * Per-archetype, per-busbar IEC 60909 SHORT-CIRCUIT companions (gate E). Produced
  * by running the FROZEN ShortCircuitIEC60909Solver on a two-voltage substrate
  * (real SN/nN TransformerBranch) in
- * `backend/src/application/reference_networks/station_archetype_substrate.py`
+ * `backend/tests/reference_networks/station_archetype_substrate.py`
  * (READ-ONLY w.r.t. the solver, B-01). Regenerate with:
  *
  *   cd mv-design-pro/backend && poetry run python -m \
- *     application.reference_networks.station_archetype_substrate --write
+ *     tests.reference_networks.station_archetype_substrate --write
  *
  * Every SN and nN busbar carries Ik''max/min + ip/ib/ith/kappa + Z(R/X) + Sk''
  * + the Ik''max ≤ Icw verification + the solver White Box trace. The renderer
@@ -469,8 +469,8 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
-              "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
+              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
+              "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
             {
@@ -634,8 +634,8 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
-              "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
+              "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
+              "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
             {

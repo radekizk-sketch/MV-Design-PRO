@@ -291,7 +291,11 @@ Key components:
 
 ### 7.3 Design Synthesis
 
-`application/analyses/design_synth/` - Connection study pipeline combining SC + PF + Protection into unified evidence trace.
+`application/analyses/design_synth/` — SKASOWANY (W1 (2026-09-09)): rurociąg studium przyłączenia był atrapą
+(„Deterministic placeholder proposal. No solver execution”, 0 konsumentów produkcyjnych) razem z
+tabelami `design_specs`/`design_proposals`/`design_evidence` i ich repozytoriami; kanoniczny JSON
+odcisku przeniesiony do `application/analyses/kanon_json.py` (jedyne żywe użycie). Bramka wskrzeszenia:
+`scripts/legacy_public_path_guard.py::check_w1_legacy_persistence_resurrection`.
 
 > **Spec chapters:** see [`docs/spec/SPEC_CHAPTER_09_PROTECTION_SYSTEM.md`](docs/spec/SPEC_CHAPTER_09_PROTECTION_SYSTEM.md), [`docs/spec/SPEC_CHAPTER_11_REPORTING_AND_EXPORT.md`](docs/spec/SPEC_CHAPTER_11_REPORTING_AND_EXPORT.md).
 
@@ -303,12 +307,19 @@ Key components:
 
 Sequential controller for model editing. Operates directly on NetworkModel.
 
-Implementation: `application/network_wizard/`, `application/wizard_actions/`, `application/wizard_runtime/`
+Implementation: `application/network_wizard/` (wyłącznie `schema.py`/`step_controller.py`/`validator.py`
+na ENM, konsument `api/enm.py`) i `application/wizard_actions/`. `NetworkWizardService` (CRUD na legacy ORM
+`network_*`, 2228 linii) oraz `application/wizard_runtime/` SKASOWANE (W1 (2026-09-09)) — 0 tras i 0 ekranów;
+edycja modelu idzie wyłącznie operacjami domenowymi (`enm.domain_operations`).
 
 ### 8.2 SLD (Single Line Diagram)
 
-Backend: `application/sld/` (layout, projection)
-Frontend: `ui/sld/` (rendering, symbols, overlays, export)
+Backend: brak silnika i magazynu SLD — `application/sld/**`, `network_model/sld_projection.py`, `api/sld.py`
+i SLD ORM (`sld_diagrams`/`sld_node_symbols`/`sld_branch_symbols`/`sld_annotations`) SKASOWANE (W1 (2026-09-09)):
+0 konsumentów produkcyjnych (pisał je wyłącznie kasowany kreator). Nakładka wyników zabezpieczeń:
+`api/protection_runs.py` (`GET /api/projects/{id}/sld/{diagram_id}/protection-overlay`).
+Frontend: `ui/sld/` (projekcja ENM → SLD po stronie klienta: `ui/sld/v2/canvas/enmToSldAdapter.ts`,
+rendering, symbols, overlays, export); projekcja semantyczna po stronie backendu — wycinek W7 mapy.
 
 SLD Auto-Layout Engine (frontend, 5-phase pipeline):
 1. **Phase 1**: Voltage band assignment

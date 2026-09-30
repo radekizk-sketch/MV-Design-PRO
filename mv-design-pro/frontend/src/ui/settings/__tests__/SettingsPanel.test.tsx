@@ -80,7 +80,7 @@ describe('SettingsPanel UI', () => {
     expect(darkBtn.className).toContain('border-blue-500');
   });
 
-  it('EN język pokazuje warning "w przygotowaniu"', () => {
+  it('EN język pokazuje warning o niepełnym tłumaczeniu', () => {
     render(<SettingsPanel isOpen onClose={vi.fn()} />);
     fireEvent.change(screen.getByTestId('settings-language'), { target: { value: 'EN' } });
     expect(screen.getByText(/Tłumaczenie angielskie jeszcze nieukończone/)).toBeInTheDocument();

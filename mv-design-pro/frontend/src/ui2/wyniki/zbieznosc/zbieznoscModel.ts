@@ -25,8 +25,11 @@
  *   (`enm/mapping.py:_ref_to_uuid`), której kontrakt frontowy nie niesie —
  *   dlatego regulacja przebiegu i założenia modelu to DWIE osobne, uczciwie
  *   opisane tabele (bez zgadywania powiązania po stronie UI).
- * - Kontrakty nie niosą liczbowej rewizji modelu z chwili liczenia → nagłówek
- *   bez znacznika świeżości (jak adapter rozpływu, TODO-KARTA E8.1 pkt 1).
+ *
+ * ZNACZNIK ŚWIEŻOŚCI NAGŁÓWKA: `EkranZbieznosci` woła `useSwiezoscNaglowka(runId)`
+ * (`ui2/freshness`, ten sam hook co `EkranZwarc`/`TabelaSzyn`, V12K-264) i renderuje
+ * współdzielony `FreshnessBadge` — ten model NIE buduje znacznika sam (zero
+ * duplikacji reguły porównania rewizji).
  */
 
 import type { EnergyNetworkModel, Transformer } from '../../../types/enm';
@@ -38,6 +41,7 @@ import type {
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import type { WierszZalozenia } from '../wzorzec';
 import { fmtLiczba, fmtTolerancja, ZBIEZNOSC_STRINGS as T } from './strings';
+import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 
 // ---------------------------------------------------------------------------
 // Wybór przebiegu rozpływu (rejestr przebiegów — `ui/study-cases/types.ts:234-243`)
@@ -69,7 +73,10 @@ export function wybierzPrzebiegRozplywu(
 // ---------------------------------------------------------------------------
 
 /** Tokeny metody solvera z śladu (`enm/canonical_analysis.py:1009-1021`) → PL. */
-export const METODY_SOLVERA_PL: Record<string, string> = {
+/** Metoda solvera rozpływu (`power_flow_newton.py`: `solver_method` Literal). */
+export type MetodaSolveraRozplywu = 'newton-raphson' | 'gauss-seidel' | 'fast-decoupled';
+
+export const METODY_SOLVERA_PL: Readonly<Record<MetodaSolveraRozplywu, string>> = {
   'newton-raphson': 'Newtona–Raphsona (NR)',
   'gauss-seidel': 'Gaussa–Seidla (GS)',
   'fast-decoupled': 'szybka rozprzężona (FD)',
@@ -79,22 +86,58 @@ export const METODY_SOLVERA_PL: Record<string, string> = {
 export function naZalozeniaZbieznosci(
   wynik: PowerFlowResultV1,
   slad: PowerFlowTrace | null,
+  // Karta #145: szyny bilansujące nazwane mostem nazw wyników, nie identyfikatorem grafu.
+  nazwa: (ref: string) => string,
 ): WierszZalozenia[] {
   const metodaToken = slad?.solver_method;
   const metoda = metodaToken
-    ? METODY_SOLVERA_PL[metodaToken] ?? metodaToken
+    ? etykietaZeSlownika(METODY_SOLVERA_PL, metodaToken)
     : T.kreska;
   return [
     { etykieta: T.zalMetoda, wartosc: metoda, uwaga: T.zalMetodaUwaga },
     { etykieta: T.zalTolerancja, wartosc: fmtTolerancja(wynik.tolerance_used) },
     { etykieta: T.zalMocBazowa, wartosc: fmtLiczba(wynik.base_mva, 1), jednostka: T.jednMVA },
-    { etykieta: T.zalSzynaBilansujaca, wartosc: wynik.slack_bus_id },
+    // CV-4.3 K3b: przebieg liczony per wyspa niesie szynę bilansującą KAŻDEJ wyspy;
+    // kontrakt wyniku (`slack_bus_id`) trzyma szynę pierwszej wyspy.
+    slad?.wyspy && slad.wyspy.length >= 2
+      ? {
+          etykieta: T.zalSzynaBilansujaca,
+          wartosc: slad.wyspy.map((w) => nazwa(w.slack_bus_id)).join(', '),
+          uwaga: T.zalSzynyBilansujaceUwaga,
+        }
+      : { etykieta: T.zalSzynaBilansujaca, wartosc: nazwa(wynik.slack_bus_id) },
     {
       etykieta: T.zalMaxIteracji,
       wartosc: slad ? slad.max_iterations : T.kreska,
       uwaga: T.zalMaxIteracjiUwaga,
     },
   ];
+}
+
+// ---------------------------------------------------------------------------
+// Wyspy zasilone (trace.wyspy — rozpływ per wyspa, CV-4.3 K3b)
+// ---------------------------------------------------------------------------
+
+export interface WierszWyspy {
+  szynaBilansujaca: string;
+  zrodloRef: string;
+  liczbaSzynPq: number;
+  liczbaSzynPv: number;
+  iteracje: number;
+  zbiezna: boolean;
+}
+
+/** Wiersze wysp zasilonych — pusta lista, gdy przebieg miał jedną wyspę (brak `wyspy`). */
+export function naWierszeWysp(slad: PowerFlowTrace | null): WierszWyspy[] {
+  if (!slad?.wyspy || slad.wyspy.length < 2) return [];
+  return slad.wyspy.map((w) => ({
+    szynaBilansujaca: w.slack_bus_id,
+    zrodloRef: w.zrodlo_ref,
+    liczbaSzynPq: w.pq_bus_ids.length,
+    liczbaSzynPv: w.pv_bus_ids.length,
+    iteracje: w.final_iterations_count,
+    zbiezna: w.converged,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -156,13 +199,19 @@ export function naWierszeOltcPrzebiegu(oltc: OltcControlTrace): WierszOltcPrzebi
 // Założenia zaczepów modelu (snapshot ENM — bieżąca wersja układu)
 // ---------------------------------------------------------------------------
 
-const RODZAJ_REGULACJI_PL: Record<string, string> = {
+/** Rodzaj regulacji przekładni (`enm/models.py`: `regulation_type` Literal). */
+export type RodzajRegulacjiPrzekladni = 'NONE' | 'DETC' | 'OLTC';
+
+/** Tryb sterowania przełącznikiem zaczepów (`enm/models.py`: `control_mode` Literal). */
+export type TrybSterowaniaZaczepow = 'MANUAL' | 'AUTOMATIC' | 'PROFILE' | 'REMOTE';
+
+export const RODZAJ_REGULACJI_PL: Readonly<Record<RodzajRegulacjiPrzekladni, string>> = {
   NONE: T.regulacjaBrak,
   DETC: T.regulacjaDetc,
   OLTC: T.regulacjaOltc,
 };
 
-const TRYB_STEROWANIA_PL: Record<string, string> = {
+export const TRYB_STEROWANIA_PL: Readonly<Record<TrybSterowaniaZaczepow, string>> = {
   MANUAL: T.trybReczny,
   AUTOMATIC: T.trybAutomatyczny,
   PROFILE: T.trybProfil,
@@ -191,8 +240,8 @@ export function naWierszZaczepowModelu(trafo: Transformer): WierszZaczepowModelu
   return {
     ref: trafo.ref_id,
     nazwa: trafo.name || trafo.ref_id,
-    regulacja: tc ? RODZAJ_REGULACJI_PL[tc.regulation_type] ?? tc.regulation_type : T.kreska,
-    tryb: tc ? TRYB_STEROWANIA_PL[tc.control_mode] ?? tc.control_mode : T.kreska,
+    regulacja: tc ? etykietaZeSlownika(RODZAJ_REGULACJI_PL, tc.regulation_type) : T.kreska,
+    tryb: tc ? etykietaZeSlownika(TRYB_STEROWANIA_PL, tc.control_mode) : T.kreska,
     pozycja: pozycja != null ? String(pozycja) : T.kreska,
     zakres: min != null && max != null ? `${min}…${max}` : T.kreska,
     krok: krok != null ? `${fmtLiczba(krok, 2)} ${T.jednProcent}` : T.kreska,

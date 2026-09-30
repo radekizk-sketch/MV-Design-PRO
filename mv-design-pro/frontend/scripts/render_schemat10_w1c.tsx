@@ -18,6 +18,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { buildSceneV3 } from '../src/ui/sld/v3/scene/buildScene';
 import {
+  FIELD_ROLE_LABEL_PL,
+  FIELD_SOURCE_LABEL_PL,
+  fieldLabelPluralPl,
+} from '../src/ui/sld/v2/station-rozdzielnia/contract';
+import {
   buildW1cMatrixFixture,
   loadCatalog,
   type W1cCase,
@@ -102,12 +107,13 @@ function renderCell(testCase: W1cCase, fieldRef: string, cx: number, cy: number)
   );
 }
 
+// Nazwy grup z kanonu słownictwa ról pól (karta #141) — to samo słowo co w produkcie.
 const GROUP_LABEL: Record<string, string> = {
   liniowe: 'Pola liniowe',
-  transformatorowe: 'Pola transformatorowe',
-  OZE: 'Pola źródłowe OZE',
-  sprzeglowe: 'Pola sprzęgłowe',
-  pomiarowe: 'Pola pomiarowe',
+  transformatorowe: fieldLabelPluralPl(FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE),
+  OZE: fieldLabelPluralPl(FIELD_SOURCE_LABEL_PL),
+  sprzeglowe: fieldLabelPluralPl(FIELD_ROLE_LABEL_PL.SPRZEGLO),
+  pomiarowe: fieldLabelPluralPl(FIELD_ROLE_LABEL_PL.POMIAROWE),
   specjalne: 'Pola specjalne (rezerwowe / potrzeb własnych)',
 };
 const GROUP_ORDER: readonly string[] = [

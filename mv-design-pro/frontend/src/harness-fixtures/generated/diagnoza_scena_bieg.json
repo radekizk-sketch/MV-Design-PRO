@@ -1,0 +1,13 @@
+{
+  "id": "run-lf-scena-diagnoza",
+  "study_case_id": "case-demo",
+  "analysis_type": "LOAD_FLOW",
+  "solver_input_hash": "c28126ed14f11dda972e852cff7c9d060fe1de959ae3c0c04f3cf60c1b718510",
+  "status": "DONE",
+  "started_at": "2026-09-16T09:00:00+00:00",
+  "finished_at": "2026-09-16T09:00:00+00:00",
+  "error_message": null,
+  "model_revision": 1,
+  "created_at": "2026-09-16T09:00:00+00:00",
+  "snapshot_hash": "aea3a675289c7fcac1ee587d2e4b37a48ffeb7dd16ceccc3ecf9ab5f07433727"
+}

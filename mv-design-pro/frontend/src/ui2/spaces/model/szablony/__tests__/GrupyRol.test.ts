@@ -8,23 +8,28 @@ import {
 } from '../GrupyRol';
 import { KATEGORIE_FIXTURE } from './fixtures';
 
-describe('rolaDlaKategorii — mapowanie 10 kategorii backendu na role A–E', () => {
+describe('rolaDlaKategorii — mapowanie 15 kategorii backendu na role A–E', () => {
   it.each([
+    ['gpz_110_sn', 'A'],
+    ['rozdzielnia_sieciowa', 'A'],
     ['typowa_sn_nn', 'B'],
     ['slupowa', 'B'],
     ['zksn_wnetrzowa', 'B'],
     ['przemyslowa', 'C'],
+    ['stacja_abonencka', 'C'],
     ['prosument_pv', 'D'],
     ['farma_pv', 'D'],
     ['bess', 'D'],
     ['hybrydowa', 'D'],
     ['wiatrowa', 'D'],
     ['sekcyjna', 'E'],
+    ['kompensacja', 'E'],
+    ['rezerwa_zasilania', 'E'],
   ] as const)('%s → rola %s', (kategoria, rola) => {
     expect(rolaDlaKategorii(kategoria)).toBe(rola);
   });
 
-  it('kategoria spoza mapy trafia domyślnie do B (fallback, TODO-KARTA)', () => {
+  it('kategoria spoza mapy trafia domyślnie do B (fallback — żaden szablon nie znika)', () => {
     expect(rolaDlaKategorii('nowa_kategoria_z_przyszlosci')).toBe('B');
   });
 });
@@ -43,36 +48,41 @@ describe('ROLA_LABEL — etykiety grup (karta §3, brzmienie zamrożone)', () =>
   });
 });
 
-describe('zbudujDrzewkoRol — drzewko z realnych 10 kategorii /categories', () => {
+describe('zbudujDrzewkoRol — drzewko z realnych 15 kategorii /categories', () => {
   const drzewko = zbudujDrzewkoRol(KATEGORIE_FIXTURE);
 
   it('zwraca dokładnie 5 węzłów ról w kolejności A→E', () => {
     expect(drzewko.map((w) => w.id)).toEqual(['A', 'B', 'C', 'D', 'E']);
   });
 
-  it('rola A (DO DODANIA) ma zero szablonów i zero kategorii — nie gubi się z drzewka', () => {
+  it('rola A (V12T-016, zamknięte) agreguje 2 kategorie = 6 szablonów — już nie licznik zero', () => {
     const rolaA = drzewko.find((w) => w.id === 'A')!;
-    expect(rolaA.liczbaSzablonow).toBe(0);
-    expect(rolaA.kategorie).toEqual([]);
+    expect(rolaA.kategorie.map((k) => k.id)).toEqual(['gpz_110_sn', 'rozdzielnia_sieciowa']);
+    expect(rolaA.liczbaSzablonow).toBe(3 + 3);
   });
 
-  it('rola B agreguje 3 kategorie (typowa_sn_nn, slupowa, zksn_wnetrzowa) = 22 szablony', () => {
+  it('rola B agreguje 3 kategorie (typowa_sn_nn, slupowa, zksn_wnetrzowa) = 24 szablony', () => {
     const rolaB = drzewko.find((w) => w.id === 'B')!;
     expect(rolaB.kategorie.map((k) => k.id)).toEqual(['typowa_sn_nn', 'slupowa', 'zksn_wnetrzowa']);
-    expect(rolaB.liczbaSzablonow).toBe(10 + 6 + 6);
+    expect(rolaB.liczbaSzablonow).toBe(10 + 6 + 8);
   });
 
-  it('rola D agreguje 5 kategorii OZE = 27 szablonów', () => {
+  it('rola D agreguje 5 kategorii OZE = 25 szablonów', () => {
     const rolaD = drzewko.find((w) => w.id === 'D')!;
     expect(rolaD.kategorie).toHaveLength(5);
-    expect(rolaD.liczbaSzablonow).toBe(6 + 6 + 5 + 5 + 4);
+    expect(rolaD.liczbaSzablonow).toBe(6 + 5 + 5 + 5 + 4);
   });
 
-  it('rola C zawiera wyłącznie przemyslowa, rola E wyłącznie sekcyjna', () => {
+  it('rola C zawiera przemyslowa + stacja_abonencka (V12T-016) = 9 szablonów', () => {
     const rolaC = drzewko.find((w) => w.id === 'C')!;
+    expect(rolaC.kategorie.map((k) => k.id)).toEqual(['przemyslowa', 'stacja_abonencka']);
+    expect(rolaC.liczbaSzablonow).toBe(5 + 4);
+  });
+
+  it('rola E zawiera sekcyjna + kompensacja + rezerwa_zasilania (V12T-016) = 9 szablonów', () => {
     const rolaE = drzewko.find((w) => w.id === 'E')!;
-    expect(rolaC.kategorie.map((k) => k.id)).toEqual(['przemyslowa']);
-    expect(rolaE.kategorie.map((k) => k.id)).toEqual(['sekcyjna']);
+    expect(rolaE.kategorie.map((k) => k.id)).toEqual(['sekcyjna', 'kompensacja', 'rezerwa_zasilania']);
+    expect(rolaE.liczbaSzablonow).toBe(3 + 3 + 3);
   });
 
   it('etykiety kategorii i liczniki pochodzą wprost z odpowiedzi backendu (zero zgadywania)', () => {
@@ -82,11 +92,11 @@ describe('zbudujDrzewkoRol — drzewko z realnych 10 kategorii /categories', () 
     expect(typowe.liczbaSzablonow).toBe(10);
   });
 
-  it('suma szablonów wszystkich ról odpowiada sumie liczników wejściowych (57)', () => {
+  it('suma szablonów wszystkich ról odpowiada sumie liczników wejściowych (73)', () => {
     const suma = drzewko.reduce((s, w) => s + w.liczbaSzablonow, 0);
     const sumaWejsciowa = KATEGORIE_FIXTURE.reduce((s, k) => s + k.template_count, 0);
     expect(suma).toBe(sumaWejsciowa);
-    expect(suma).toBe(57);
+    expect(suma).toBe(73);
   });
 });
 
@@ -97,7 +107,7 @@ describe('kategorieRoli — id kategorii przypisanych do roli (do zapytań listy
     expect(kategorieRoli(drzewko, 'D')).toEqual(['prosument_pv', 'farma_pv', 'bess', 'hybrydowa', 'wiatrowa']);
   });
 
-  it('zwraca pustą tablicę dla roli bez kategorii (A)', () => {
-    expect(kategorieRoli(drzewko, 'A')).toEqual([]);
+  it('zwraca id kategorii dla roli A (V12T-016)', () => {
+    expect(kategorieRoli(drzewko, 'A')).toEqual(['gpz_110_sn', 'rozdzielnia_sieciowa']);
   });
 });

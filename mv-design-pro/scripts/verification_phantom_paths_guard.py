@@ -16,7 +16,7 @@ __tests__/ProtectionResultsInspectorPage.test.tsx`, ktorego rowniez nie bylo
 plik UI `V126AcademicSurface.tsx`, ktory nigdy nie istnial. Oba agregatory
 zostaly skasowane tym samym commitem, ktory dopisal ten guard.
 
-CO SPRAWDZA (trzy zakresy, kazdy dowiedziony 0 falszywych trafien na drzewie
+CO SPRAWDZA (cztery zakresy — D dopisany 2026-09-02 (M0-1), kazdy dowiedziony 0 falszywych trafien na drzewie
 repo w chwili napisania):
 
   A. `frontend/package.json` `scripts.*` — kazdy token wygladajacy jak
@@ -139,10 +139,54 @@ def check_verification_scripts(scripts_dir: Path, root: Path) -> list[str]:
     return violations
 
 
+WORKFLOWS_DIR = ROOT.parent / ".github" / "workflows"
+
+_WF_FRONT_TEST = re.compile(r"^(?:src|e2e)/[\w\-./]+\.(?:ts|tsx|js|mjs)$")
+_WF_SCRIPT = re.compile(r"^(?:\.\./)?scripts/[\w\-./]+\.py$")
+_WF_REPO_PATH = re.compile(r"^mv-design-pro/[\w\-./]+\.(?:py|ts|tsx|js|mjs|sh)$")
+_WF_BACKEND_TESTS = re.compile(r"^tests/[\w\-./]+\.py$")
+
+
+def check_workflows(workflows_dir: Path, root: Path) -> list[str]:
+    """Zakres D (M0-1, 2026-09-02): literalne sciezki plikow w krokach `run:`
+    workflowow CI. Precedens: `sld-determinism.yml` przez 3 tygodnie wolal
+    `src/ui/sld/v2/__tests__/StationInternalView.test.tsx` usuniety w `08ccf7c9`
+    — vitest konczyl sie "No test files found, exiting with code 1", a CI na
+    `main` bylo czerwone bez zadnego guarda, ktory by to nazwal. Sprawdzane sa
+    WYLACZNIE tokeny wygladajace jak sciezka pliku: testy frontendu (`src/…`,
+    `e2e/…` — baza `frontend/`), guardy (`scripts/…py` i `../scripts/…py` —
+    baza `mv-design-pro/`), sciezki od korzenia repo (`mv-design-pro/…`) oraz
+    testy backendu (`tests/…py` — baza `backend/`)."""
+    if not workflows_dir.exists():
+        return [f"{workflows_dir}: katalog workflowow nie istnieje"]
+    violations: list[str] = []
+    for path in sorted(workflows_dir.glob("*.yml")):
+        for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = raw_line.strip()
+            if line.startswith("#") or "run:" not in line:
+                continue
+            for raw_token in line.split():
+                token = raw_token.strip("\"'")
+                if _WF_FRONT_TEST.match(token):
+                    base = root / "frontend"
+                elif _WF_SCRIPT.match(token):
+                    base, token = root, token.removeprefix("../")
+                elif _WF_REPO_PATH.match(token):
+                    base = root.parent
+                elif _WF_BACKEND_TESTS.match(token):
+                    base = root / "backend"
+                else:
+                    continue
+                if not (base / token).exists():
+                    violations.append(f"{path.name}: brak pliku {token} (baza {base.name}/)")
+    return violations
+
+
 def run() -> int:
     violations = [
         *check_npm_scripts(PACKAGE_JSON, ROOT / "frontend"),
         *check_verification_scripts(SCRIPTS_DIR, ROOT),
+        *check_workflows(WORKFLOWS_DIR, ROOT),
     ]
 
     if violations:

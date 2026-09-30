@@ -17,6 +17,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { WZORZEC_STRINGS } from '../../wzorzec/strings';
 import {
   KRYTERIA_PL,
   RODZAJE_PL,
@@ -56,10 +57,12 @@ describe('mapy etykiet — zbiory zamknięte kontraktem backendu', () => {
     for (const kod of KRYTERIA_BACKENDU) expect(etykietaKryterium(kod)).not.toBe(kod);
   });
 
-  it('nieznany kod pokazuje się SUROWO (uczciwość zamiast zgadywania)', () => {
-    expect(etykietaStatusu('nowy_status')).toBe('nowy_status');
-    expect(etykietaRodzaju('reactor')).toBe('reactor');
-    expect(etykietaKryterium('LOSS_BUDGET')).toBe('LOSS_BUDGET');
+  // Karta #145 (zmiana kanonu): kod spoza słownika nie trafia na ekran surowo — intencja
+  // „nie zgadujemy nazwy" zostaje, zamiast kodu stoi uczciwe zdanie po polsku.
+  it('nieznany kod → uczciwe zdanie, nie kod i nie zgadnięta nazwa', () => {
+    expect(etykietaStatusu('nowy_status')).toBe(WZORZEC_STRINGS.wartoscSpozaSlownika);
+    expect(etykietaRodzaju('reactor')).toBe(WZORZEC_STRINGS.wartoscSpozaSlownika);
+    expect(etykietaKryterium('LOSS_BUDGET')).toBe(WZORZEC_STRINGS.wartoscSpozaSlownika);
   });
 });
 

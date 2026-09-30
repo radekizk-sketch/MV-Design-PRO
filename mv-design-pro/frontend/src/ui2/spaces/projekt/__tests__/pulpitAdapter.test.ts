@@ -146,7 +146,53 @@ describe('mapujPrzylaczenie — warunki przyłączenia + bilans mocy (E1, B1/B2)
       napiecieKv: 15,
       sk3Mva: 250,
       ik3Ka: 9.6,
+      sk3MinMva: null,
+      ik3MinKa: null,
+      uSetPu: null,
     });
+  });
+
+  // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — ta sama droga
+  // co Sk″/Ik″ maks. powyżej (predykaty parami, jedno źródło prawdy o polach źródła).
+  it('źródło z danymi MIN: sk3MinMva/ik3MinKa z pól źródła (CV-4.3 K7)', () => {
+    const p = mapujPrzylaczenie(
+      snapshotPrzylaczenie({
+        sources: [
+          {
+            ref_id: 'S-GPZ',
+            id: 'S-GPZ',
+            name: 'GPZ 110/15',
+            bus_ref: 'B-GPZ',
+            sk3_mva: 250,
+            ik3_ka: 9.6,
+            sk3_min_mva: 150,
+            ik3_min_ka: 5.8,
+          },
+        ] as never,
+      }),
+    );
+    expect(p.zrodlaSieciowe[0]).toMatchObject({ sk3MinMva: 150, ik3MinKa: 5.8 });
+  });
+
+  // CV-4.3 K7c: napięcie zadane szyny bilansującej — ta sama droga co Sk″/Ik″
+  // MIN powyżej (predykaty parami, jedno źródło prawdy o polach źródła).
+  it('źródło z u_set_pu: uSetPu z pola źródła (CV-4.3 K7c)', () => {
+    const p = mapujPrzylaczenie(
+      snapshotPrzylaczenie({
+        sources: [
+          {
+            ref_id: 'S-GPZ',
+            id: 'S-GPZ',
+            name: 'GPZ 110/15',
+            bus_ref: 'B-GPZ',
+            sk3_mva: 250,
+            ik3_ka: 9.6,
+            u_set_pu: 1.06,
+          },
+        ] as never,
+      }),
+    );
+    expect(p.zrodlaSieciowe[0]).toMatchObject({ uSetPu: 1.06 });
   });
 
   it('bilans mocy: suma znamionowa p_mw generatorów i odbiorów + netto', () => {

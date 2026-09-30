@@ -108,7 +108,7 @@ def test_source_within_range_is_adequate() -> None:
         graph_nodes={"n1": {"element_id": "b1", "name": "B1"}},
     )
     view = build_reactive_adequacy_view(run)
-    assert view["verdict"] == "wystarczajaca rezerwa Q"
+    assert view["verdict"] == "wystarczająca rezerwa Q"
     source = view["sources"][0]
     assert source["q_actual_mvar"] == 0.1
     assert source["is_saturated"] is False
@@ -257,12 +257,12 @@ def test_real_power_flow_run_produces_view_with_provenance() -> None:
     )
     enm = enm.model_copy(update={"generators": gens})
     set_enm("c1", enm)
-    run = execute_run(create_run(case_id="c1", analysis_type="PF").id)
+    run = execute_run(create_run(case_id="c1", klucz_twin="c1", analysis_type="PF").id)
     assert run.status == "FINISHED", run.error_message
 
     view = build_reactive_adequacy_view(run)
     assert view["verdict"] in {
-        "wystarczajaca rezerwa Q",
+        "wystarczająca rezerwa Q",
         "rezerwa Q wyczerpana",
         "dane niekompletne",
     }

@@ -185,6 +185,8 @@ test.describe('Branch points workflow', () => {
       sk3_mva: 250.0,
       rx_ratio: 0.1,
       catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+      hv_voltage_kv: 110.0,
+      transformer_sn_mva: 25.0,
     });
 
     const op = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {
@@ -231,6 +233,8 @@ test.describe('Branch points workflow', () => {
       sk3_mva: 250.0,
       rx_ratio: 0.1,
       catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+      hv_voltage_kv: 110.0,
+      transformer_sn_mva: 25.0,
     });
 
     const op = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {

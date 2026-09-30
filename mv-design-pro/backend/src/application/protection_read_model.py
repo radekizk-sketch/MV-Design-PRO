@@ -35,6 +35,7 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from network_model.nazwy import nazwa_nadana
 from protection.curves.iec_curves import (
     IEC_CURVE_LABELS_PL,
     MIN_TRIPPING_TIME_S,
@@ -749,9 +750,9 @@ def _build_overcurrent_setting(
 
 
 def _resolve_device_name(assignment: ProtectionAssignment) -> str:
-    name = assignment.name.strip()
-    if name:
-        return name
+    nazwa = nazwa_nadana(assignment.name)
+    if nazwa is not None:
+        return nazwa
     label = {
         "overcurrent": "Przekaźnik nadprądowy",
         "earth_fault": "Przekaźnik ziemnozwarciowy",
@@ -760,7 +761,9 @@ def _resolve_device_name(assignment: ProtectionAssignment) -> str:
         "differential": "Przekaźnik różnicowy",
         "custom": "Zabezpieczenie niestandardowe",
     }.get(assignment.device_type, "Zabezpieczenie")
-    return f"{label} ({assignment.ref_id})"
+    # Zabezpieczenie bez nazwy: polski opis rodzaju, nigdy identyfikator przypisania
+    # (karta #144) — tożsamość niesie `device_id` rekordu.
+    return f"{label} bez nazwy"
 
 
 def _derive_curve_type(functions: list[dict[str, Any]]) -> str | None:

@@ -23,7 +23,11 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { notify } from '../../../ui/notifications/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import { TabelaWynikow } from '../../wyniki/wzorzec';
+import {
+  InformacjeAudytowe,
+  TabelaWynikow,
+  nazwaObiektuZMigawki,
+} from '../../wyniki/wzorzec';
 // Zasada wywodów KaTeX: wzory w opisach parametrów renderuje TekstZWzorami (MathInline).
 import { TekstZWzorami } from '../../kreatory/rama';
 import { SladAnalizy } from '../pulpit';
@@ -108,9 +112,11 @@ function StanPanel({
 function WynikOsd({
   dane,
   trybZaawansowania,
+  onOtworzDowod,
 }: {
   dane: WidokOdpowiedziOsd;
   trybZaawansowania: AdvancementMode;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = trybZaawansowania === 'expert';
   const [sladWidoczny, setSladWidoczny] = useState(false);
@@ -125,33 +131,29 @@ function WynikOsd({
       <dl className="mvd-osd-zalozenia" data-testid="mvd-osd-zalozenia">
         <div className="mvd-osd-zal-para">
           <dt>{OSD_STRINGS.zalZrodlo}</dt>
-          <dd>{dane.source.name ?? dane.source.ref_id}</dd>
+          <dd>{nazwaObiektuZMigawki(null, dane.source.ref_id, dane.source.name)}</dd>
         </div>
         <div className="mvd-osd-zal-para">
           <dt>{OSD_STRINGS.zalWezelZrodla}</dt>
-          <dd>{dane.source.bus_name ?? dane.source.bus_ref}</dd>
+          <dd>{nazwaObiektuZMigawki(null, dane.source.bus_ref, dane.source.bus_name)}</dd>
         </div>
         <div className="mvd-osd-zal-para">
           <dt>{OSD_STRINGS.zalPolecenie}</dt>
           <dd>{etykietaPoleceniaOsd(dane.parameters.command)}</dd>
         </div>
-        {trybEkspercki && (
-          <>
-            <div className="mvd-osd-zal-para">
-              <dt>{OSD_STRINGS.zalIdentyfikatorZrodla}</dt>
-              <dd className="mvd-num">{dane.source.ref_id}</dd>
-            </div>
-            <div className="mvd-osd-zal-para">
-              <dt>{OSD_STRINGS.zalPrzebieg}</dt>
-              <dd className="mvd-num">{dane.context.run_id}</dd>
-            </div>
-            <div className="mvd-osd-zal-para" data-testid="mvd-osd-eksp-hash">
-              <dt>{OSD_STRINGS.zalIdentyfikatorSkrot}</dt>
-              <dd className="mvd-num">{dane.input_hash}</dd>
-            </div>
-          </>
-        )}
       </dl>
+
+      {/* Karta #145: identyfikator źródła, przebieg i odcisk wejścia wyłącznie w
+          „Informacjach audytowych" (tryb ekspercki, zwinięte). */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-osd-informacje-audytowe"
+        wiersze={[
+          { etykieta: OSD_STRINGS.zalIdentyfikatorZrodla, wartosc: dane.source.ref_id },
+          { etykieta: OSD_STRINGS.zalPrzebieg, wartosc: dane.context.run_id },
+          { etykieta: OSD_STRINGS.zalIdentyfikatorSkrot, wartosc: dane.input_hash },
+        ]}
+      />
 
       <p className="mvd-osd-porownanie-tytul">{OSD_STRINGS.porownanieTytul}</p>
       <div className="mvd-osd-karty" data-testid="mvd-osd-karty">
@@ -187,7 +189,7 @@ function WynikOsd({
       <TabelaWynikow
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
       />
 
@@ -329,9 +331,12 @@ function SekcjaTrybuPracy({ sourceRef }: { sourceRef: string }) {
 
 export interface EkranOsdProps {
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
+   * z rodzica, `WynikiWarsztat`), nie zaślepka. */
+  onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranOsd({ trybZaawansowania }: EkranOsdProps) {
+export function EkranOsd({ trybZaawansowania, onOtworzDowod }: EkranOsdProps) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
   const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
@@ -647,7 +652,11 @@ export function EkranOsd({ trybZaawansowania }: EkranOsdProps) {
             />
           ) : (
             <>
-              <WynikOsd dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+              <WynikOsd
+                dane={stan.dane}
+                trybZaawansowania={trybZaawansowania}
+                onOtworzDowod={onOtworzDowod}
+              />
               {/* Akcja wyjściowa PO biegu — tryb pracy źródła, którego dotyczyła
                   symulacja (ref z odpowiedzi backendu). */}
               <SekcjaTrybuPracy sourceRef={stan.dane.source.ref_id} />

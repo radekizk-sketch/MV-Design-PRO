@@ -12,7 +12,7 @@
   "cell_configurations": [
     {
       "cell_code": "IF",
-      "name_pl": "Pole dopływowe/odpływowe z wyłącznikiem wysuwnym",
+      "name_pl": "Pole liniowe wejściowe/wyjściowe z wyłącznikiem wysuwnym",
       "apparatus": [
         { "kind": "CB", "requirement": "standard" },
         { "kind": "CT", "requirement": "standard" },
@@ -27,7 +27,7 @@
     },
     {
       "cell_code": "OFM",
-      "name_pl": "Pole odpływowe z pomiarem na szynach",
+      "name_pl": "Pole liniowe wyjściowe z pomiarem na szynach",
       "apparatus": [
         { "kind": "CB", "requirement": "standard" },
         { "kind": "CT", "requirement": "standard" },
@@ -74,7 +74,7 @@
     },
     {
       "cell_code": "IFD",
-      "name_pl": "Pole dopływowe/odpływowe bezpośrednie (bez wyłącznika)",
+      "name_pl": "Pole liniowe wejściowe/wyjściowe bezpośrednie (bez wyłącznika)",
       "apparatus": [
         { "kind": "CABLE_HEAD", "requirement": "standard" },
         { "kind": "CT", "requirement": "optional" },

@@ -116,6 +116,13 @@ Kolejnosc sekcji w inspektorze jest **deterministyczna** i zalezy od typu analiz
 
 ## 3. Struktura TraceArtifactV2
 
+**KOREKTA 2026-09-10 (karta TRACE-V2):** klasa `TraceArtifactV2` i pakiet
+`domain/trace_v2/**` skasowane (klaster "ślad v2" bez konsumenta produkcyjnego,
+pomiar architekta — grep całego repo). Schemat poniżej jest zapisem
+historycznym projektu, nie żywym kontraktem. Rzeczywisty kontrakt eksportu
+śladu to `api/analysis_run_exports.py::build_analysis_run_trace_export_payload`
+(JSON/JSONL) — patrz sekcja 4.1.
+
 ### 3.1. Schemat danych
 
 ```
@@ -208,7 +215,7 @@ Algorytm: **SHA-256** dla wszystkich skrotow.
 | Format            | JSON (pelny artefakt) lub JSONL (jeden krok na linie)         |
 | Zawartosc         | Pelne dane sladu: wzory, wartosci, jednostki, metadane        |
 | Kodowanie         | UTF-8                                                         |
-| Schemat           | Zgodny z TraceArtifactV2 (sekcja 3.1)                        |
+| Schemat           | `api/analysis_run_exports.py::build_analysis_run_trace_export_payload` (KOREKTA 2026-09-10, patrz sekcja 3) |
 
 ### 4.2. PDF
 

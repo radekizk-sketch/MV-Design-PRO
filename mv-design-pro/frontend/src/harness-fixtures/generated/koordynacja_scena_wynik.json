@@ -1,0 +1,1346 @@
+{
+  "created_at": "2026-09-17T08:00:00+00:00",
+  "devices": [
+    {
+      "created_at": "2026-09-17T08:00:00+00:00",
+      "ct_ratio": null,
+      "device_type": "RELAY",
+      "id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
+      "location_description": null,
+      "location_element_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
+      "manufacturer": null,
+      "model": null,
+      "name": "Przekaźnik 50/51 (typowy)",
+      "rated_current_a": null,
+      "settings": {
+        "stage_50": {
+          "curve_settings": null,
+          "directional": false,
+          "enabled": true,
+          "pickup_current_a": 2000.0,
+          "time_s": 0.1
+        },
+        "stage_50_high": null,
+        "stage_50n": null,
+        "stage_51": {
+          "curve_settings": {
+            "definite_time_s": null,
+            "pickup_current_a": 400.0,
+            "reset_time_s": 0.0,
+            "standard": "IEC",
+            "time_multiplier": 0.3,
+            "variant": "SI"
+          },
+          "directional": false,
+          "enabled": true,
+          "pickup_current_a": 400.0,
+          "time_s": null
+        },
+        "stage_51n": null
+      }
+    },
+    {
+      "created_at": "2026-09-17T08:00:00+00:00",
+      "ct_ratio": null,
+      "device_type": "RELAY",
+      "id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
+      "location_description": null,
+      "location_element_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
+      "manufacturer": null,
+      "model": null,
+      "name": "Przekaźnik 50/51 (typowy)",
+      "rated_current_a": null,
+      "settings": {
+        "stage_50": {
+          "curve_settings": null,
+          "directional": false,
+          "enabled": true,
+          "pickup_current_a": 2000.0,
+          "time_s": 0.1
+        },
+        "stage_50_high": null,
+        "stage_50n": null,
+        "stage_51": {
+          "curve_settings": {
+            "definite_time_s": null,
+            "pickup_current_a": 400.0,
+            "reset_time_s": 0.0,
+            "standard": "IEC",
+            "time_multiplier": 0.3,
+            "variant": "SI"
+          },
+          "directional": false,
+          "enabled": true,
+          "pickup_current_a": 400.0,
+          "time_s": null
+        },
+        "stage_51n": null
+      }
+    }
+  ],
+  "fault_markers": [
+    {
+      "current_a": 9621.459235920445,
+      "fault_type": "3F",
+      "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L_ik_max_3f",
+      "label_pl": "Ik\"max 3F (Magistrala GPZ (1))",
+      "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L"
+    },
+    {
+      "current_a": 8746.781124267436,
+      "fault_type": "3F",
+      "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L_ik_min_3f",
+      "label_pl": "Ik\"min 3F (Magistrala GPZ (1))",
+      "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L"
+    },
+    {
+      "current_a": 9056.559147375221,
+      "fault_type": "3F",
+      "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L_ik_max_3f",
+      "label_pl": "Ik\"max 3F (Magistrala GPZ (2) (1))",
+      "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L"
+    },
+    {
+      "current_a": 8034.309745271616,
+      "fault_type": "3F",
+      "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L_ik_min_3f",
+      "label_pl": "Ik\"min 3F (Magistrala GPZ (2) (1))",
+      "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L"
+    }
+  ],
+  "overall_verdict": "FAIL",
+  "overload_checks": [
+    {
+      "device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
+      "i_operating_a": 22.768781749828918,
+      "i_pickup_a": 400.0,
+      "margin_percent": 1656.7914014679577,
+      "notes_pl": "Przeciążalność prawidłowa: I_pickup/I_rob = 17.57 >= 1.2",
+      "verdict": "PASS",
+      "verdict_pl": "Prawidłowa"
+    },
+    {
+      "device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
+      "i_operating_a": 11.384885698880636,
+      "i_pickup_a": 400.0,
+      "margin_percent": 3413.4300912597487,
+      "notes_pl": "Przeciążalność prawidłowa: I_pickup/I_rob = 35.13 >= 1.2",
+      "verdict": "PASS",
+      "verdict_pl": "Prawidłowa"
+    }
+  ],
+  "pf_run_id": "run-lf-scena-koordynacja",
+  "project_id": "projekt-scena-koordynacja",
+  "run_id": "run-koordynacja-scena",
+  "sc_run_id": "run-sc-scena-koordynacja-max",
+  "selectivity_checks": [
+    {
+      "analysis_current_a": 9621.459235920445,
+      "downstream_device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
+      "margin_s": 0.0,
+      "notes_pl": "Brak selektywności! Zabezpieczenie nadrzędne zadziała przed podrzędnym (Δt = 0.000s)",
+      "required_margin_s": 0.2,
+      "t_downstream_s": 0.6395404367732404,
+      "t_upstream_s": 0.6395404367732404,
+      "upstream_device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
+      "verdict": "FAIL",
+      "verdict_pl": "Nieskoordynowane"
+    }
+  ],
+  "sensitivity_checks": [
+    {
+      "device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
+      "i_fault_min_a": 8746.781124267436,
+      "i_pickup_a": 400.0,
+      "margin_percent": 2086.695281066859,
+      "notes_pl": "Czułość wystarczająca: I_min/I_pickup = 21.87 >= 1.5",
+      "verdict": "PASS",
+      "verdict_pl": "Prawidłowa"
+    },
+    {
+      "device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
+      "i_fault_min_a": 8034.309745271616,
+      "i_pickup_a": 400.0,
+      "margin_percent": 1908.5774363179037,
+      "notes_pl": "Czułość wystarczająca: I_min/I_pickup = 20.09 >= 1.5",
+      "verdict": "PASS",
+      "verdict_pl": "Prawidłowa"
+    }
+  ],
+  "summary": {
+    "overall_verdict": "FAIL",
+    "overall_verdict_pl": "Nieskoordynowane",
+    "overload": {
+      "error": 0,
+      "fail": 0,
+      "marginal": 0,
+      "pass": 2
+    },
+    "selectivity": {
+      "error": 0,
+      "fail": 1,
+      "marginal": 0,
+      "pass": 0
+    },
+    "sensitivity": {
+      "error": 0,
+      "fail": 0,
+      "marginal": 0,
+      "pass": 2
+    },
+    "total_checks": 5,
+    "total_devices": 2
+  },
+  "tcc_curves": [
+    {
+      "color": "#2563eb",
+      "curve_type": "IEC_SI",
+      "device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
+      "device_name": "Przekaźnik 50/51 (typowy)",
+      "pickup_current_a": 400.0,
+      "podstawa_kod": "KRZYWA_PRZEKAZNIKOWA",
+      "points": [
+        {
+          "current_a": 440.00000000000006,
+          "current_multiple": 1.1,
+          "time_s": 22.012329914950897
+        },
+        {
+          "current_a": 453.0814541381056,
+          "current_multiple": 1.132703635345264,
+          "time_s": 16.831944106629525
+        },
+        {
+          "current_a": 466.55182746340967,
+          "current_multiple": 1.166379568658524,
+          "time_s": 13.623830163032316
+        },
+        {
+          "current_a": 480.4226827679822,
+          "current_multiple": 1.2010567069199556,
+          "time_s": 11.441784897425231
+        },
+        {
+          "current_a": 494.70592661237987,
+          "current_multiple": 1.2367648165309497,
+          "time_s": 9.861416587775897
+        },
+        {
+          "current_a": 509.4138195460818,
+          "current_multiple": 1.2735345488652046,
+          "time_s": 8.664018944723853
+        },
+        {
+          "current_a": 524.5589866317847,
+          "current_multiple": 1.3113974665794617,
+          "time_s": 7.72542847234366
+        },
+        {
+          "current_a": 540.1544282825911,
+          "current_multiple": 1.3503860707064776,
+          "time_s": 6.969920510496526
+        },
+        {
+          "current_a": 556.213531421394,
+          "current_multiple": 1.390533828553485,
+          "time_s": 6.348687021287919
+        },
+        {
+          "current_a": 572.7500809720366,
+          "current_multiple": 1.4318752024300914,
+          "time_s": 5.828853098689909
+        },
+        {
+          "current_a": 589.778271692109,
+          "current_multiple": 1.4744456792302725,
+          "time_s": 5.387465926220929
+        },
+        {
+          "current_a": 607.3127203575442,
+          "current_multiple": 1.5182818008938606,
+          "time_s": 5.0080141282384885
+        },
+        {
+          "current_a": 625.3684783094654,
+          "current_multiple": 1.5634211957736637,
+          "time_s": 4.678316267800688
+        },
+        {
+          "current_a": 643.9610443740611,
+          "current_multiple": 1.6099026109351529,
+          "time_s": 4.389188821686599
+        },
+        {
+          "current_a": 663.1063781665744,
+          "current_multiple": 1.657765945416436,
+          "time_s": 4.133577382014231
+        },
+        {
+          "current_a": 682.8209137908274,
+          "current_multiple": 1.7070522844770684,
+          "time_s": 3.905973439834773
+        },
+        {
+          "current_a": 703.121573946041,
+          "current_multiple": 1.7578039348651027,
+          "time_s": 3.7020129200715766
+        },
+        {
+          "current_a": 724.0257844530586,
+          "current_multiple": 1.8100644611326464,
+          "time_s": 3.518193650165771
+        },
+        {
+          "current_a": 745.5514892124417,
+          "current_multiple": 1.8638787230311042,
+          "time_s": 3.35167259019804
+        },
+        {
+          "current_a": 767.71716560728,
+          "current_multiple": 1.9192929140182,
+          "time_s": 3.2001177346192553
+        },
+        {
+          "current_a": 790.5418403639345,
+          "current_multiple": 1.9763546009098363,
+          "time_s": 3.061598227599056
+        },
+        {
+          "current_a": 814.0451058843307,
+          "current_multiple": 2.035112764710827,
+          "time_s": 2.9345016627208627
+        },
+        {
+          "current_a": 838.2471370638197,
+          "current_multiple": 2.095617842659549,
+          "time_s": 2.8174710317295983
+        },
+        {
+          "current_a": 863.168708609044,
+          "current_multiple": 2.1579217715226098,
+          "time_s": 2.7093560832274957
+        },
+        {
+          "current_a": 888.8312128706735,
+          "current_multiple": 2.2220780321766838,
+          "time_s": 2.6091753901166754
+        },
+        {
+          "current_a": 915.25667820632,
+          "current_multiple": 2.2881416955158,
+          "time_s": 2.5160864725962915
+        },
+        {
+          "current_a": 942.4677878893899,
+          "current_multiple": 2.3561694697234747,
+          "time_s": 2.4293620491013534
+        },
+        {
+          "current_a": 970.4878995801099,
+          "current_multiple": 2.426219748950275,
+          "time_s": 2.3483709972979185
+        },
+        {
+          "current_a": 999.3410653754362,
+          "current_multiple": 2.4983526634385904,
+          "time_s": 2.2725629701906276
+        },
+        {
+          "current_a": 1029.0520524550595,
+          "current_multiple": 2.572630131137649,
+          "time_s": 2.201455874064361
+        },
+        {
+          "current_a": 1059.6463643412283,
+          "current_multiple": 2.649115910853071,
+          "time_s": 2.1346256058264212
+        },
+        {
+          "current_a": 1091.1502627906375,
+          "current_multiple": 2.7278756569765936,
+          "time_s": 2.0716975880178237
+        },
+        {
+          "current_a": 1123.5907903371774,
+          "current_multiple": 2.8089769758429433,
+          "time_s": 2.012339744542205
+        },
+        {
+          "current_a": 1156.9957935048901,
+          "current_multiple": 2.8924894837622253,
+          "time_s": 1.9562566389293263
+        },
+        {
+          "current_a": 1191.3939467110608,
+          "current_multiple": 2.9784848667776522,
+          "time_s": 1.9031845566894414
+        },
+        {
+          "current_a": 1226.814776879964,
+          "current_multiple": 3.06703694219991,
+          "time_s": 1.8528873589980719
+        },
+        {
+          "current_a": 1263.2886887883853,
+          "current_multiple": 3.1582217219709636,
+          "time_s": 1.805152970160489
+        },
+        {
+          "current_a": 1300.846991164687,
+          "current_multiple": 3.252117477911718,
+          "time_s": 1.759790388642051
+        },
+        {
+          "current_a": 1339.5219235638083,
+          "current_multiple": 3.3488048089095206,
+          "time_s": 1.716627132823925
+        },
+        {
+          "current_a": 1379.3466840412784,
+          "current_multiple": 3.4483667101031963,
+          "time_s": 1.6755070494639492
+        },
+        {
+          "current_a": 1420.3554576499916,
+          "current_multiple": 3.550888644124979,
+          "time_s": 1.636288426163603
+        },
+        {
+          "current_a": 1462.5834457842107,
+          "current_multiple": 3.6564586144605267,
+          "time_s": 1.5988423597528933
+        },
+        {
+          "current_a": 1506.0668963959802,
+          "current_multiple": 3.76516724098995,
+          "time_s": 1.5630513410066698
+        },
+        {
+          "current_a": 1550.843135109896,
+          "current_multiple": 3.87710783777474,
+          "time_s": 1.5288080229525538
+        },
+        {
+          "current_a": 1596.9505972629318,
+          "current_multiple": 3.9923764931573293,
+          "time_s": 1.4960141455734708
+        },
+        {
+          "current_a": 1644.4288608968307,
+          "current_multiple": 4.111072152242077,
+          "time_s": 1.4645795942171296
+        },
+        {
+          "current_a": 1693.3186807313734,
+          "current_multiple": 4.233296701828434,
+          "time_s": 1.4344215727094345
+        },
+        {
+          "current_a": 1743.662023147703,
+          "current_multiple": 4.359155057869257,
+          "time_s": 1.4054638751943607
+        },
+        {
+          "current_a": 1795.5021022117098,
+          "current_multiple": 4.4887552555292745,
+          "time_s": 1.3776362432164833
+        },
+        {
+          "current_a": 1848.8834167684245,
+          "current_multiple": 4.6222085419210615,
+          "time_s": 1.350873796626757
+        },
+        {
+          "current_a": 1903.851788639243,
+          "current_multiple": 4.759629471598108,
+          "time_s": 1.3251165286077797
+        },
+        {
+          "current_a": 1960.454401954776,
+          "current_multiple": 4.90113600488694,
+          "time_s": 1.3003088565454435
+        },
+        {
+          "current_a": 2018.7398436570902,
+          "current_multiple": 5.0468496091427255,
+          "time_s": 1.2763992216718634
+        },
+        {
+          "current_a": 2078.7581452061054,
+          "current_multiple": 5.196895363015264,
+          "time_s": 1.2533397314106287
+        },
+        {
+          "current_a": 2140.560825525939,
+          "current_multiple": 5.351402063814848,
+          "time_s": 1.2310858392034034
+        },
+        {
+          "current_a": 2204.200935228083,
+          "current_multiple": 5.510502338070207,
+          "time_s": 1.2095960573139615
+        },
+        {
+          "current_a": 2269.7331021493446,
+          "current_multiple": 5.674332755373362,
+          "time_s": 1.1888316987137342
+        },
+        {
+          "current_a": 2337.213578243678,
+          "current_multiple": 5.8430339456091955,
+          "time_s": 1.1687566446703868
+        },
+        {
+          "current_a": 2406.7002878681146,
+          "current_multiple": 6.016750719670286,
+          "time_s": 1.149337135101966
+        },
+        {
+          "current_a": 2478.2528775042792,
+          "current_multiple": 6.195632193760698,
+          "time_s": 1.1305415791368898
+        },
+        {
+          "current_a": 2551.932766958143,
+          "current_multiple": 6.379831917395357,
+          "time_s": 1.1123403836435952
+        },
+        {
+          "current_a": 2627.803202081988,
+          "current_multiple": 6.56950800520497,
+          "time_s": 1.0947057977721517
+        },
+        {
+          "current_a": 2705.929309063811,
+          "current_multiple": 6.764823272659528,
+          "time_s": 1.0776117717902547
+        },
+        {
+          "current_a": 2786.378150330798,
+          "current_multiple": 6.965945375826995,
+          "time_s": 1.0610338287031837
+        },
+        {
+          "current_a": 2869.2187821148236,
+          "current_multiple": 7.1730469552870595,
+          "time_s": 1.0449489473272882
+        },
+        {
+          "current_a": 2954.522313729429,
+          "current_multiple": 7.386305784323572,
+          "time_s": 1.0293354556421395
+        },
+        {
+          "current_a": 3042.361968609114,
+          "current_multiple": 7.605904921522784,
+          "time_s": 1.0141729333825888
+        },
+        {
+          "current_a": 3132.8131471633783,
+          "current_multiple": 7.832032867908445,
+          "time_s": 0.999442122949932
+        },
+        {
+          "current_a": 3225.9534914994497,
+          "current_multiple": 8.064883728748624,
+          "time_s": 0.9851248478249724
+        },
+        {
+          "current_a": 3321.862952069249,
+          "current_multiple": 8.304657380173122,
+          "time_s": 0.9712039377561476
+        },
+        {
+          "current_a": 3420.6238562978087,
+          "current_multiple": 8.551559640744522,
+          "time_s": 0.9576631600753658
+        },
+        {
+          "current_a": 3522.3209792520565,
+          "current_multiple": 8.805802448130141,
+          "time_s": 0.9444871565637877
+        },
+        {
+          "current_a": 3627.041616410631,
+          "current_multiple": 9.067604041026577,
+          "time_s": 0.9316613853513676
+        },
+        {
+          "current_a": 3734.8756585971664,
+          "current_multiple": 9.337189146492916,
+          "time_s": 0.9191720673880687
+        },
+        {
+          "current_a": 3845.9156691414073,
+          "current_multiple": 9.614789172853518,
+          "time_s": 0.9070061370724234
+        },
+        {
+          "current_a": 3960.256963334349,
+          "current_multiple": 9.900642408335873,
+          "time_s": 0.8951511966656724
+        },
+        {
+          "current_a": 4077.9976902456488,
+          "current_multiple": 10.194994225614122,
+          "time_s": 0.8835954741570158
+        },
+        {
+          "current_a": 4199.238916973486,
+          "current_multiple": 10.498097292433716,
+          "time_s": 0.8723277842789953
+        },
+        {
+          "current_a": 4324.084715399253,
+          "current_multiple": 10.810211788498131,
+          "time_s": 0.8613374924016689
+        },
+        {
+          "current_a": 4452.642251521475,
+          "current_multiple": 11.131605628803689,
+          "time_s": 0.8506144810604964
+        },
+        {
+          "current_a": 4585.021877445723,
+          "current_multiple": 11.462554693614306,
+          "time_s": 0.8401491188965605
+        },
+        {
+          "current_a": 4721.337226109399,
+          "current_multiple": 11.803343065273497,
+          "time_s": 0.8299322318086755
+        },
+        {
+          "current_a": 4861.705308822763,
+          "current_multiple": 12.154263272056907,
+          "time_s": 0.8199550761357618
+        },
+        {
+          "current_a": 5006.246615709922,
+          "current_multiple": 12.515616539274804,
+          "time_s": 0.8102093137047218
+        },
+        {
+          "current_a": 5155.085219135955,
+          "current_multiple": 12.887713047839888,
+          "time_s": 0.8006869885941652
+        },
+        {
+          "current_a": 5308.348880209031,
+          "current_multiple": 13.270872200522579,
+          "time_s": 0.7913805054778922
+        },
+        {
+          "current_a": 5466.169158448844,
+          "current_multiple": 13.665422896122111,
+          "time_s": 0.7822826094241886
+        },
+        {
+          "current_a": 5628.6815247156055,
+          "current_multiple": 14.071703811789014,
+          "time_s": 0.7733863670380933
+        },
+        {
+          "current_a": 5796.025477496444,
+          "current_multiple": 14.49006369374111,
+          "time_s": 0.7646851488435672
+        },
+        {
+          "current_a": 5968.344662649084,
+          "current_multiple": 14.92086165662271,
+          "time_s": 0.7561726128114875
+        },
+        {
+          "current_a": 6145.786996705566,
+          "current_multiple": 15.364467491763914,
+          "time_s": 0.7478426889474884
+        },
+        {
+          "current_a": 6328.5047938418575,
+          "current_multiple": 15.821261984604645,
+          "time_s": 0.7396895648608947
+        },
+        {
+          "current_a": 6516.6548966223645,
+          "current_multiple": 16.29163724155591,
+          "time_s": 0.7317076722426732
+        },
+        {
+          "current_a": 6710.398810631517,
+          "current_multiple": 16.775997026578793,
+          "time_s": 0.7238916741863003
+        },
+        {
+          "current_a": 6909.902843108047,
+          "current_multiple": 17.274757107770117,
+          "time_s": 0.716236453290844
+        },
+        {
+          "current_a": 7115.338245700963,
+          "current_multiple": 17.788345614252407,
+          "time_s": 0.7087371004905717
+        },
+        {
+          "current_a": 7326.881361469704,
+          "current_multiple": 18.31720340367426,
+          "time_s": 0.7013889045598066
+        },
+        {
+          "current_a": 7544.713776254717,
+          "current_multiple": 18.861784440636793,
+          "time_s": 0.6941873422459113
+        },
+        {
+          "current_a": 7769.022474548376,
+          "current_multiple": 19.42255618637094,
+          "time_s": 0.687128068986967
+        },
+        {
+          "current_a": 8000.000000000002,
+          "current_multiple": 20.000000000000004,
+          "time_s": 0.6802069101741194
+        }
+      ],
+      "powod_pl": null,
+      "time_multiplier": 0.3
+    },
+    {
+      "color": "#dc2626",
+      "curve_type": "IEC_SI",
+      "device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
+      "device_name": "Przekaźnik 50/51 (typowy)",
+      "pickup_current_a": 400.0,
+      "podstawa_kod": "KRZYWA_PRZEKAZNIKOWA",
+      "points": [
+        {
+          "current_a": 440.00000000000006,
+          "current_multiple": 1.1,
+          "time_s": 22.012329914950897
+        },
+        {
+          "current_a": 453.0814541381056,
+          "current_multiple": 1.132703635345264,
+          "time_s": 16.831944106629525
+        },
+        {
+          "current_a": 466.55182746340967,
+          "current_multiple": 1.166379568658524,
+          "time_s": 13.623830163032316
+        },
+        {
+          "current_a": 480.4226827679822,
+          "current_multiple": 1.2010567069199556,
+          "time_s": 11.441784897425231
+        },
+        {
+          "current_a": 494.70592661237987,
+          "current_multiple": 1.2367648165309497,
+          "time_s": 9.861416587775897
+        },
+        {
+          "current_a": 509.4138195460818,
+          "current_multiple": 1.2735345488652046,
+          "time_s": 8.664018944723853
+        },
+        {
+          "current_a": 524.5589866317847,
+          "current_multiple": 1.3113974665794617,
+          "time_s": 7.72542847234366
+        },
+        {
+          "current_a": 540.1544282825911,
+          "current_multiple": 1.3503860707064776,
+          "time_s": 6.969920510496526
+        },
+        {
+          "current_a": 556.213531421394,
+          "current_multiple": 1.390533828553485,
+          "time_s": 6.348687021287919
+        },
+        {
+          "current_a": 572.7500809720366,
+          "current_multiple": 1.4318752024300914,
+          "time_s": 5.828853098689909
+        },
+        {
+          "current_a": 589.778271692109,
+          "current_multiple": 1.4744456792302725,
+          "time_s": 5.387465926220929
+        },
+        {
+          "current_a": 607.3127203575442,
+          "current_multiple": 1.5182818008938606,
+          "time_s": 5.0080141282384885
+        },
+        {
+          "current_a": 625.3684783094654,
+          "current_multiple": 1.5634211957736637,
+          "time_s": 4.678316267800688
+        },
+        {
+          "current_a": 643.9610443740611,
+          "current_multiple": 1.6099026109351529,
+          "time_s": 4.389188821686599
+        },
+        {
+          "current_a": 663.1063781665744,
+          "current_multiple": 1.657765945416436,
+          "time_s": 4.133577382014231
+        },
+        {
+          "current_a": 682.8209137908274,
+          "current_multiple": 1.7070522844770684,
+          "time_s": 3.905973439834773
+        },
+        {
+          "current_a": 703.121573946041,
+          "current_multiple": 1.7578039348651027,
+          "time_s": 3.7020129200715766
+        },
+        {
+          "current_a": 724.0257844530586,
+          "current_multiple": 1.8100644611326464,
+          "time_s": 3.518193650165771
+        },
+        {
+          "current_a": 745.5514892124417,
+          "current_multiple": 1.8638787230311042,
+          "time_s": 3.35167259019804
+        },
+        {
+          "current_a": 767.71716560728,
+          "current_multiple": 1.9192929140182,
+          "time_s": 3.2001177346192553
+        },
+        {
+          "current_a": 790.5418403639345,
+          "current_multiple": 1.9763546009098363,
+          "time_s": 3.061598227599056
+        },
+        {
+          "current_a": 814.0451058843307,
+          "current_multiple": 2.035112764710827,
+          "time_s": 2.9345016627208627
+        },
+        {
+          "current_a": 838.2471370638197,
+          "current_multiple": 2.095617842659549,
+          "time_s": 2.8174710317295983
+        },
+        {
+          "current_a": 863.168708609044,
+          "current_multiple": 2.1579217715226098,
+          "time_s": 2.7093560832274957
+        },
+        {
+          "current_a": 888.8312128706735,
+          "current_multiple": 2.2220780321766838,
+          "time_s": 2.6091753901166754
+        },
+        {
+          "current_a": 915.25667820632,
+          "current_multiple": 2.2881416955158,
+          "time_s": 2.5160864725962915
+        },
+        {
+          "current_a": 942.4677878893899,
+          "current_multiple": 2.3561694697234747,
+          "time_s": 2.4293620491013534
+        },
+        {
+          "current_a": 970.4878995801099,
+          "current_multiple": 2.426219748950275,
+          "time_s": 2.3483709972979185
+        },
+        {
+          "current_a": 999.3410653754362,
+          "current_multiple": 2.4983526634385904,
+          "time_s": 2.2725629701906276
+        },
+        {
+          "current_a": 1029.0520524550595,
+          "current_multiple": 2.572630131137649,
+          "time_s": 2.201455874064361
+        },
+        {
+          "current_a": 1059.6463643412283,
+          "current_multiple": 2.649115910853071,
+          "time_s": 2.1346256058264212
+        },
+        {
+          "current_a": 1091.1502627906375,
+          "current_multiple": 2.7278756569765936,
+          "time_s": 2.0716975880178237
+        },
+        {
+          "current_a": 1123.5907903371774,
+          "current_multiple": 2.8089769758429433,
+          "time_s": 2.012339744542205
+        },
+        {
+          "current_a": 1156.9957935048901,
+          "current_multiple": 2.8924894837622253,
+          "time_s": 1.9562566389293263
+        },
+        {
+          "current_a": 1191.3939467110608,
+          "current_multiple": 2.9784848667776522,
+          "time_s": 1.9031845566894414
+        },
+        {
+          "current_a": 1226.814776879964,
+          "current_multiple": 3.06703694219991,
+          "time_s": 1.8528873589980719
+        },
+        {
+          "current_a": 1263.2886887883853,
+          "current_multiple": 3.1582217219709636,
+          "time_s": 1.805152970160489
+        },
+        {
+          "current_a": 1300.846991164687,
+          "current_multiple": 3.252117477911718,
+          "time_s": 1.759790388642051
+        },
+        {
+          "current_a": 1339.5219235638083,
+          "current_multiple": 3.3488048089095206,
+          "time_s": 1.716627132823925
+        },
+        {
+          "current_a": 1379.3466840412784,
+          "current_multiple": 3.4483667101031963,
+          "time_s": 1.6755070494639492
+        },
+        {
+          "current_a": 1420.3554576499916,
+          "current_multiple": 3.550888644124979,
+          "time_s": 1.636288426163603
+        },
+        {
+          "current_a": 1462.5834457842107,
+          "current_multiple": 3.6564586144605267,
+          "time_s": 1.5988423597528933
+        },
+        {
+          "current_a": 1506.0668963959802,
+          "current_multiple": 3.76516724098995,
+          "time_s": 1.5630513410066698
+        },
+        {
+          "current_a": 1550.843135109896,
+          "current_multiple": 3.87710783777474,
+          "time_s": 1.5288080229525538
+        },
+        {
+          "current_a": 1596.9505972629318,
+          "current_multiple": 3.9923764931573293,
+          "time_s": 1.4960141455734708
+        },
+        {
+          "current_a": 1644.4288608968307,
+          "current_multiple": 4.111072152242077,
+          "time_s": 1.4645795942171296
+        },
+        {
+          "current_a": 1693.3186807313734,
+          "current_multiple": 4.233296701828434,
+          "time_s": 1.4344215727094345
+        },
+        {
+          "current_a": 1743.662023147703,
+          "current_multiple": 4.359155057869257,
+          "time_s": 1.4054638751943607
+        },
+        {
+          "current_a": 1795.5021022117098,
+          "current_multiple": 4.4887552555292745,
+          "time_s": 1.3776362432164833
+        },
+        {
+          "current_a": 1848.8834167684245,
+          "current_multiple": 4.6222085419210615,
+          "time_s": 1.350873796626757
+        },
+        {
+          "current_a": 1903.851788639243,
+          "current_multiple": 4.759629471598108,
+          "time_s": 1.3251165286077797
+        },
+        {
+          "current_a": 1960.454401954776,
+          "current_multiple": 4.90113600488694,
+          "time_s": 1.3003088565454435
+        },
+        {
+          "current_a": 2018.7398436570902,
+          "current_multiple": 5.0468496091427255,
+          "time_s": 1.2763992216718634
+        },
+        {
+          "current_a": 2078.7581452061054,
+          "current_multiple": 5.196895363015264,
+          "time_s": 1.2533397314106287
+        },
+        {
+          "current_a": 2140.560825525939,
+          "current_multiple": 5.351402063814848,
+          "time_s": 1.2310858392034034
+        },
+        {
+          "current_a": 2204.200935228083,
+          "current_multiple": 5.510502338070207,
+          "time_s": 1.2095960573139615
+        },
+        {
+          "current_a": 2269.7331021493446,
+          "current_multiple": 5.674332755373362,
+          "time_s": 1.1888316987137342
+        },
+        {
+          "current_a": 2337.213578243678,
+          "current_multiple": 5.8430339456091955,
+          "time_s": 1.1687566446703868
+        },
+        {
+          "current_a": 2406.7002878681146,
+          "current_multiple": 6.016750719670286,
+          "time_s": 1.149337135101966
+        },
+        {
+          "current_a": 2478.2528775042792,
+          "current_multiple": 6.195632193760698,
+          "time_s": 1.1305415791368898
+        },
+        {
+          "current_a": 2551.932766958143,
+          "current_multiple": 6.379831917395357,
+          "time_s": 1.1123403836435952
+        },
+        {
+          "current_a": 2627.803202081988,
+          "current_multiple": 6.56950800520497,
+          "time_s": 1.0947057977721517
+        },
+        {
+          "current_a": 2705.929309063811,
+          "current_multiple": 6.764823272659528,
+          "time_s": 1.0776117717902547
+        },
+        {
+          "current_a": 2786.378150330798,
+          "current_multiple": 6.965945375826995,
+          "time_s": 1.0610338287031837
+        },
+        {
+          "current_a": 2869.2187821148236,
+          "current_multiple": 7.1730469552870595,
+          "time_s": 1.0449489473272882
+        },
+        {
+          "current_a": 2954.522313729429,
+          "current_multiple": 7.386305784323572,
+          "time_s": 1.0293354556421395
+        },
+        {
+          "current_a": 3042.361968609114,
+          "current_multiple": 7.605904921522784,
+          "time_s": 1.0141729333825888
+        },
+        {
+          "current_a": 3132.8131471633783,
+          "current_multiple": 7.832032867908445,
+          "time_s": 0.999442122949932
+        },
+        {
+          "current_a": 3225.9534914994497,
+          "current_multiple": 8.064883728748624,
+          "time_s": 0.9851248478249724
+        },
+        {
+          "current_a": 3321.862952069249,
+          "current_multiple": 8.304657380173122,
+          "time_s": 0.9712039377561476
+        },
+        {
+          "current_a": 3420.6238562978087,
+          "current_multiple": 8.551559640744522,
+          "time_s": 0.9576631600753658
+        },
+        {
+          "current_a": 3522.3209792520565,
+          "current_multiple": 8.805802448130141,
+          "time_s": 0.9444871565637877
+        },
+        {
+          "current_a": 3627.041616410631,
+          "current_multiple": 9.067604041026577,
+          "time_s": 0.9316613853513676
+        },
+        {
+          "current_a": 3734.8756585971664,
+          "current_multiple": 9.337189146492916,
+          "time_s": 0.9191720673880687
+        },
+        {
+          "current_a": 3845.9156691414073,
+          "current_multiple": 9.614789172853518,
+          "time_s": 0.9070061370724234
+        },
+        {
+          "current_a": 3960.256963334349,
+          "current_multiple": 9.900642408335873,
+          "time_s": 0.8951511966656724
+        },
+        {
+          "current_a": 4077.9976902456488,
+          "current_multiple": 10.194994225614122,
+          "time_s": 0.8835954741570158
+        },
+        {
+          "current_a": 4199.238916973486,
+          "current_multiple": 10.498097292433716,
+          "time_s": 0.8723277842789953
+        },
+        {
+          "current_a": 4324.084715399253,
+          "current_multiple": 10.810211788498131,
+          "time_s": 0.8613374924016689
+        },
+        {
+          "current_a": 4452.642251521475,
+          "current_multiple": 11.131605628803689,
+          "time_s": 0.8506144810604964
+        },
+        {
+          "current_a": 4585.021877445723,
+          "current_multiple": 11.462554693614306,
+          "time_s": 0.8401491188965605
+        },
+        {
+          "current_a": 4721.337226109399,
+          "current_multiple": 11.803343065273497,
+          "time_s": 0.8299322318086755
+        },
+        {
+          "current_a": 4861.705308822763,
+          "current_multiple": 12.154263272056907,
+          "time_s": 0.8199550761357618
+        },
+        {
+          "current_a": 5006.246615709922,
+          "current_multiple": 12.515616539274804,
+          "time_s": 0.8102093137047218
+        },
+        {
+          "current_a": 5155.085219135955,
+          "current_multiple": 12.887713047839888,
+          "time_s": 0.8006869885941652
+        },
+        {
+          "current_a": 5308.348880209031,
+          "current_multiple": 13.270872200522579,
+          "time_s": 0.7913805054778922
+        },
+        {
+          "current_a": 5466.169158448844,
+          "current_multiple": 13.665422896122111,
+          "time_s": 0.7822826094241886
+        },
+        {
+          "current_a": 5628.6815247156055,
+          "current_multiple": 14.071703811789014,
+          "time_s": 0.7733863670380933
+        },
+        {
+          "current_a": 5796.025477496444,
+          "current_multiple": 14.49006369374111,
+          "time_s": 0.7646851488435672
+        },
+        {
+          "current_a": 5968.344662649084,
+          "current_multiple": 14.92086165662271,
+          "time_s": 0.7561726128114875
+        },
+        {
+          "current_a": 6145.786996705566,
+          "current_multiple": 15.364467491763914,
+          "time_s": 0.7478426889474884
+        },
+        {
+          "current_a": 6328.5047938418575,
+          "current_multiple": 15.821261984604645,
+          "time_s": 0.7396895648608947
+        },
+        {
+          "current_a": 6516.6548966223645,
+          "current_multiple": 16.29163724155591,
+          "time_s": 0.7317076722426732
+        },
+        {
+          "current_a": 6710.398810631517,
+          "current_multiple": 16.775997026578793,
+          "time_s": 0.7238916741863003
+        },
+        {
+          "current_a": 6909.902843108047,
+          "current_multiple": 17.274757107770117,
+          "time_s": 0.716236453290844
+        },
+        {
+          "current_a": 7115.338245700963,
+          "current_multiple": 17.788345614252407,
+          "time_s": 0.7087371004905717
+        },
+        {
+          "current_a": 7326.881361469704,
+          "current_multiple": 18.31720340367426,
+          "time_s": 0.7013889045598066
+        },
+        {
+          "current_a": 7544.713776254717,
+          "current_multiple": 18.861784440636793,
+          "time_s": 0.6941873422459113
+        },
+        {
+          "current_a": 7769.022474548376,
+          "current_multiple": 19.42255618637094,
+          "time_s": 0.687128068986967
+        },
+        {
+          "current_a": 8000.000000000002,
+          "current_multiple": 20.000000000000004,
+          "time_s": 0.6802069101741194
+        }
+      ],
+      "powod_pl": null,
+      "time_multiplier": 0.3
+    }
+  ],
+  "trace_steps": [
+    {
+      "description_pl": "Indeksowanie prądów według lokalizacji",
+      "inputs": {
+        "fault_locations": 2,
+        "operating_locations": 2
+      },
+      "outputs": {},
+      "step": "index_currents"
+    },
+    {
+      "description_pl": "Rozpoczęcie sprawdzania czułości zabezpieczeń",
+      "inputs": {
+        "device_count": 2
+      },
+      "outputs": {},
+      "step": "check_sensitivity_start"
+    },
+    {
+      "description_pl": "Sprawdzenie czułości: Przekaźnik 50/51 (typowy)",
+      "inputs": {
+        "i_fault_min_a": 8746.781124267436,
+        "i_pickup_a": 400.0
+      },
+      "outputs": {
+        "margin_percent": 2086.695281066859,
+        "ratio": 21.86695281066859,
+        "verdict": "PASS"
+      },
+      "step": "sensitivity_a135c343"
+    },
+    {
+      "description_pl": "Sprawdzenie czułości: Przekaźnik 50/51 (typowy)",
+      "inputs": {
+        "i_fault_min_a": 8034.309745271616,
+        "i_pickup_a": 400.0
+      },
+      "outputs": {
+        "margin_percent": 1908.5774363179037,
+        "ratio": 20.085774363179038,
+        "verdict": "PASS"
+      },
+      "step": "sensitivity_096dfd8c"
+    },
+    {
+      "description_pl": "Rozpoczęcie sprawdzania przeciążalności",
+      "inputs": {
+        "device_count": 2
+      },
+      "outputs": {},
+      "step": "check_overload_start"
+    },
+    {
+      "description_pl": "Sprawdzenie przeciążalności: Przekaźnik 50/51 (typowy)",
+      "inputs": {
+        "i_operating_a": 22.768781749828918,
+        "i_pickup_a": 400.0
+      },
+      "outputs": {
+        "margin_percent": 1656.7914014679577,
+        "ratio": 17.567914014679577,
+        "verdict": "PASS"
+      },
+      "step": "overload_a135c343"
+    },
+    {
+      "description_pl": "Sprawdzenie przeciążalności: Przekaźnik 50/51 (typowy)",
+      "inputs": {
+        "i_operating_a": 11.384885698880636,
+        "i_pickup_a": 400.0
+      },
+      "outputs": {
+        "margin_percent": 3413.4300912597487,
+        "ratio": 35.13430091259749,
+        "verdict": "PASS"
+      },
+      "step": "overload_096dfd8c"
+    },
+    {
+      "description_pl": "Rozpoczęcie sprawdzania selektywności czasowej",
+      "inputs": {
+        "device_count": 2
+      },
+      "outputs": {},
+      "step": "check_selectivity_start"
+    },
+    {
+      "description_pl": "Selektywność: Przekaźnik 50/51 (typowy) → Przekaźnik 50/51 (typowy)",
+      "inputs": {
+        "analysis_current_a": 9621.459235920445,
+        "min_cti_s": 0.2
+      },
+      "outputs": {
+        "margin_s": 0.0,
+        "t_downstream_s": 0.6395404367732404,
+        "t_upstream_s": 0.6395404367732404,
+        "verdict": "FAIL"
+      },
+      "step": "selectivity_a135c343_096dfd8c"
+    },
+    {
+      "description_pl": "Generowanie krzywych czasowo-prądowych (TCC)",
+      "inputs": {
+        "device_count": 2
+      },
+      "outputs": {},
+      "step": "generate_tcc_curves"
+    },
+    {
+      "description_pl": "Generowanie znaczników prądów zwarciowych",
+      "inputs": {
+        "location_count": 2
+      },
+      "outputs": {},
+      "step": "generate_fault_markers"
+    },
+    {
+      "description_pl": "Finalizacja wyników analizy",
+      "inputs": {},
+      "outputs": {
+        "overall_verdict": "FAIL",
+        "total_checks": 5
+      },
+      "step": "finalize"
+    }
+  ]
+}

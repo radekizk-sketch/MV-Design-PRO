@@ -10,7 +10,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getCoordinationResult } from '../api';
+import { getCoordinationResult, komunikatOdmowyAnalizy, runCoordinationAnalysis } from '../api';
 
 const PELNY_WYNIK = {
   run_id: 'coord-1',
@@ -67,5 +67,48 @@ describe('getCoordinationResult — niepełny kształt jest NAZWANY, nie przepus
   it('odpowiedź nie-obiektowa nie przechodzi', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => odpowiedz([PELNY_WYNIK])));
     await expect(getCoordinationResult('coord-1')).rejects.toThrow(/niepełny kształt/);
+  });
+});
+
+/**
+ * Odmowa `POST …/run` niesie `detail` jako tekst (bramka 400) albo rekord (422 autorytetu
+ * biegów / wejścia niemiarodajnego). Rekord podany wprost do `new Error` dawał
+ * „[object Object]" — iloczyn cech: {tekst, komunikat + niezgodności, blokady, nieznany
+ * kształt}.
+ */
+describe('runCoordinationAnalysis — odmowa backendu czytelna dla inżyniera', () => {
+  it.each([
+    ['tekst bramki 400', 'Analiza koordynacji wymaga co najmniej jednego urzadzenia.', 'Analiza koordynacji wymaga co najmniej jednego urzadzenia.'],
+    [
+      'rekord autorytetu z niezgodnościami',
+      {
+        powod: 'PRADY_NIEZGODNE_Z_BIEGIEM',
+        komunikat_pl: 'Prądy zwarciowe podane w żądaniu różnią się od prądów policzonych w biegach.',
+        niezgodnosci: ['line_1 (szyna bus_1).ik_max_3f_a: podano 1.0 A, bieg maksymalny policzył 8400.0 A'],
+      },
+      'Prądy zwarciowe podane w żądaniu różnią się od prądów policzonych w biegach. line_1 (szyna bus_1).ik_max_3f_a: podano 1.0 A, bieg maksymalny policzył 8400.0 A',
+    ],
+    [
+      'rekord blokad wejścia',
+      { powod: 'WEJSCIE_NIEMIARODAJNE', blokady: [{ kod: 'SI-110', komunikat_pl: 'Wkład falownika z domyślki.' }] },
+      'Wkład falownika z domyślki.',
+    ],
+    ['nieznany kształt', { cos: 1 }, 'Analiza koordynacji odrzucona (HTTP 422).'],
+  ])('%s', (_opis, detail, oczekiwany) => {
+    expect(komunikatOdmowyAnalizy(detail, 422)).toBe(oczekiwany);
+  });
+
+  it('błąd HTTP z rekordem → Error z komunikatem, nie „[object Object]"', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 422,
+        json: async () => ({ detail: { powod: 'X', komunikat_pl: 'Brak biegu minimalnego.' } }),
+      }) as Response),
+    );
+    await expect(
+      runCoordinationAnalysis('proj-1', { devices: [], fault_currents: [], operating_currents: [] }),
+    ).rejects.toThrow('Brak biegu minimalnego.');
   });
 });

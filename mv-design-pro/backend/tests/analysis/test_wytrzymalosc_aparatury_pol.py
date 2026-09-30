@@ -27,6 +27,7 @@ from enm.models import (
     Substation,
     SwitchBranch,
 )
+from enm.rola_pola_sn import NAZWA_ROLI_POLA_SN_PL
 
 # Pozycje REALNEGO katalogu APARAT_SN (nie fixture): wyłącznik z Icw 20 kA/1 s
 # i bezpiecznik, który wytrzymałości krótkotrwałej nie ma.
@@ -104,7 +105,11 @@ def test_stacja_bez_konfiguracji_daje_werdykty_dla_wszystkich_pol_z_modelu() -> 
     assert [p["pole"] for p in widok["pola"]] == ["P-01", "P-02"]
     assert {p["zrodlo"] for p in widok["pola"]} == {ZRODLO_MODEL}
     assert [p["aparat_catalog_ref"] for p in widok["pola"]] == [WYLACZNIK, WYLACZNIK]
-    assert [p["rola_pl"] for p in widok["pola"]] == ["liniowe dopływowe", "transformatorowe"]
+    # Nazwa roli z kanonu słownictwa ról pól (karta #141), nie druga lista słów.
+    assert [p["rola_pl"] for p in widok["pola"]] == [
+        NAZWA_ROLI_POLA_SN_PL["LINIA_IN"],
+        NAZWA_ROLI_POLA_SN_PL["TRANSFORMATOROWE"],
+    ]
 
 
 def test_werdykt_dynamiczny_powstaje_z_pozycji_katalogu_aparat_sn() -> None:

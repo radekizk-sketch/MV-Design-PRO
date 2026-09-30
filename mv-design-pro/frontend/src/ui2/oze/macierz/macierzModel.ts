@@ -1,141 +1,183 @@
 /*
- * Model danych + adaptery okna „Macierz wymogów NC RfG per moduł" (karta P39).
+ * Model danych + adaptery okna „Macierz wymogów NC RfG per moduł" na kontrakcie V2
+ * (karta P39; karta AB-1a Pakiet D2 §2–§3).
  *
- * WARSTWA PREZENTACJI (NOT-A-SOLVER): zero fizyki, zero ocen własnych. Adaptery
- * wyłącznie:
- *   1. `zbudujModuly`  — projektują realne źródło DER (useStationDerStore) na
- *      wejścia biegu; napięcie WYŁĄCZNIE z modelu (poziom napięcia przyłączenia),
- *      brak → jawny stan „brak danych" (ZAKAZ zgadywania — inaczej niż stara
- *      zakładka NcRfgTestsTab.tsx:129-132, która zgadywała 15 kV).
- *   2. `zbudujWejscieModulu` — składa NcRfgModuleInput z opisu modułu + zdolności.
- *   3. `mapujMacierz` — odwzorowują `NcRfgRunResult` na siatkę test × moduł.
+ * WARSTWA PREZENTACJI (NOT-A-SOLVER): zero fizyki, zero ocen własnych, zero agregatów.
+ * Adaptery wyłącznie:
+ *   1. `zbudujModuly` — kolumny macierzy z realnego źródła DER (`useStationDerStore`)
+ *      i formularz biegu „co-jeśli" z WEJŚĆ MODELU odczytanych z backendu
+ *      (`GET …/cases/{id}/wejscia` — ten sam most, który ocenia zgodność przypadku):
+ *      wartości i pochodzenie „z modelu" pól (także liczonych z danych generatora:
+ *      statyzm, martwa strefa, cosφ, zakresy Q, zdolności Q(U) i FRT) pochodzą z mostu,
+ *      klient niczego z modelu nie wyprowadza sam. DER pominięty przez most → jawny powód
+ *      blokady; wejścia niewczytane → blokada „brak wejść modelu" (ZAKAZ zgadywania).
+ *   2. `zbudujWejscieModulu` — składa `WejscieModuluNcRfg` (dokładnie pola kontraktu
+ *      `NcRfgPtpireeModuleInput`, w tym art. 4 i T12): tożsamość modułu z wejścia modelu,
+ *      reszta z formularza; pole puste = `null` (ocena niewykonana z nazwanym brakiem —
+ *      nigdy wartość typowa).
+ *   3. `mapujMacierz` — siatka test × moduł z wyniku biegu: komórka = rekord `ocena`
+ *      (`OcenaKryterium`) testu; etykieta i kolor z rekordu.
  *
- * Determinizm: kolejność modułów = kolejność `selectAllDers` (sort po id);
- * kolejność wierszy = kolejność katalogu testów. Brak `Date.now`/losowości.
+ * Kontrakt V2 nie ma agregatu modułu ani liczników — ten plik ich nie liczy (dawne
+ * `PodsumowanieModulu`/`PodsumowanieProjektu`/`agregujPodsumowania`/`testyNiespelnione`
+ * skasowane). Status powiązania z wykazem PTPiREE nie jest liczony po stronie klienta —
+ * bieg „co-jeśli" nie niesie certyfikatu (dowód wyprowadza serwer z zatwierdzonego modelu).
+ *
+ * Determinizm: kolejność modułów = kolejność `selectAllDers` (sort po id); kolejność wierszy
+ * = kolejność katalogu testów biegu. Brak `Date.now`/losowości.
  */
 
 import type {
-  NcRfgCertificateStatus,
-  NcRfgModuleInput,
-  NcRfgModuleResult,
-  NcRfgRunResult,
-  NcRfgTestCatalogResponse,
-  NcRfgTestDefinition,
-  NcRfgTestResult,
-  NcRfgVerdict,
-} from '../../../ui/ncrfg-tests/api';
-import {
-  getLvVoltageLevel,
-  type DerKindUnified,
-  type StationDerConnection,
+  DerKindUnified,
+  StationDerConnection,
 } from '../../../ui/network-build/station-der';
+import type { Etykieta, StatusWerdyktu } from '../../wyniki/wzorzec/werdykt';
+import {
+  OGRANICZENIA_WEJSCIA,
+  POLA_LICZBOWE_WEJSCIA,
+  modulIstniejacyZeStanu,
+  parsujPole,
+  zbudujNastawy,
+  type FormularzNastaw,
+  type PoleLiczboweWejscia,
+  type StanModuluIstniejacego,
+} from '../ncrfg/formularz';
+import type {
+  BiegNcRfg,
+  DefinicjaTestuNcRfg,
+  OcenaWymaganModulu,
+  PoleNastawy,
+  PowodPominieciaDer,
+  WejsciaPrzypadkuNcRfg,
+  WejscieModuluNcRfg,
+  WynikModuluNcRfg,
+  WynikTestuNcRfg,
+  ZadanieCertyfikatu,
+} from '../ncrfg/typy';
+import {
+  POLA_FLAG_DEKLARACJI,
+  formularzDanychModuluZModelu,
+  jestDataKalendarzowa,
+  tekstLiczby,
+  type PoleFlagiDeklaracji,
+} from '../ncrfg/daneModulu';
 
 // =============================================================================
 // Typy warstwy prezentacji
 // =============================================================================
 
-/** Trzy jawne pochodzenia danej wejściowej (uczciwość źródła danych). */
-export type PochodzenieDanej = 'model' | 'katalog' | 'deklarowane';
+/** Pochodzenie danej wejściowej (uczciwość źródła danych). */
+export type PochodzenieDanej = 'model' | 'deklarowane';
 
-/** Powód, dla którego moduł nie może zostać objęty biegiem. */
-export type PowodBlokady = 'brak_napiecia' | 'brak_mocy';
+/**
+ * Powód, dla którego moduł nie może zostać objęty biegiem: powód pominięcia DER przez most
+ * modelu (ten sam słownik co backend) albo brak wejść modelu (nie wczytano ich — brak
+ * przypadku, operatora, odczyt w toku lub nieudany — albo most nie objął tego DER).
+ */
+export type PowodBlokady = PowodPominieciaDer | 'brak_wejscia_modelu';
 
-/** Zdolności techniczne modułu (odwzorowanie flag `has_*`/`*_enabled` wejścia). */
-export interface ZdolnosciModulu {
-  readonly hasLvrtCurve: boolean;
-  readonly hasHvrtCurve: boolean;
-  readonly hasPfDroop: boolean;
-  readonly hasQuCurve: boolean;
-  readonly hasDynamicModel: boolean;
-  readonly hasScadaCommunication: boolean;
-  readonly hasDisturbanceRecorder: boolean;
-  readonly activePowerControlEnabled: boolean;
-  readonly stopGenerationEnabled: boolean;
-  readonly reductionGenerationEnabled: boolean;
-  readonly islandOperationRequired: boolean;
-  readonly islandOperationCapable: boolean;
-  readonly blackStartRequired: boolean;
-  readonly blackStartCapable: boolean;
-  readonly powerOscillationDampingRequired: boolean;
-  readonly powerOscillationDampingEnabled: boolean;
+/** Flagi zdolności wejścia modułu — nazwy 1:1 z kontraktem (`has_*`/`*_enabled`/…). */
+export const POLA_ZDOLNOSCI = [
+  'has_lvrt_curve',
+  'has_hvrt_curve',
+  'has_pf_droop',
+  'has_qu_curve',
+  'has_dynamic_model',
+  'has_scada_communication',
+  'has_disturbance_recorder',
+  'active_power_control_enabled',
+  'stop_generation_enabled',
+  'reduction_generation_enabled',
+  'island_operation_required',
+  'island_operation_capable',
+  'black_start_required',
+  'black_start_capable',
+  'power_oscillation_damping_required',
+  'power_oscillation_damping_enabled',
+] as const satisfies readonly (keyof WejscieModuluNcRfg)[];
+
+export type PoleZdolnosci = (typeof POLA_ZDOLNOSCI)[number];
+
+/**
+ * Zdolności TRÓJSTANOWE kontraktu (`bool | None`): deklaracje modułu, dla których brak
+ * deklaracji (`null`) daje ocenę niewykonaną z nazwanym brakiem — NIGDY `false`. Lista =
+ * dokładnie flagi deklaracji modułu zapisywane w modelu (`DeklaracjeModulu`) bez wymagań
+ * programu badań (`*_required` — kontrakt `bool`: wymaganie istnieje, gdy program je wskazał).
+ */
+export const POLA_ZDOLNOSCI_TROJSTANOWYCH = POLA_FLAG_DEKLARACJI.filter(
+  (pole): pole is Exclude<PoleFlagiDeklaracji, PoleWymaganiaProgramu> =>
+    !pole.endsWith('_required'),
+) satisfies readonly PoleZdolnosci[];
+
+type PoleWymaganiaProgramu = Extract<PoleFlagiDeklaracji, `${string}_required`>;
+
+export type PoleZdolnosciTrojstanowej = (typeof POLA_ZDOLNOSCI_TROJSTANOWYCH)[number];
+
+export function jestZdolnosciaTrojstanowa(pole: PoleZdolnosci): pole is PoleZdolnosciTrojstanowej {
+  return (POLA_ZDOLNOSCI_TROJSTANOWYCH as readonly string[]).includes(pole);
 }
 
-export type KluczZdolnosci = keyof ZdolnosciModulu;
+/** Zdolności wejścia — typ pola 1:1 z kontraktem (`boolean` albo `boolean | null`). */
+export type ZdolnosciModulu = { readonly [P in PoleZdolnosci]: WejscieModuluNcRfg[P] };
 
-/** Parametry nastaw modułu (łańcuchy z formularza; parsowane przy biegu). */
-export interface NumeryczneModulu {
-  readonly pMinKw: string;
-  readonly droopPercent: string;
-  readonly deadBandHz: string;
-  readonly rampPctPerMin: string;
-  readonly cosPhiMin: string;
-  readonly qMin: string;
-  readonly qMax: string;
-  readonly reactiveCurrentGain: string;
-  readonly pRecoveryTimeS: string;
-  readonly thduPercent: string;
+/** Formularz biegu „co-jeśli" jednego modułu (stan lokalny okna — zero mutacji modelu). */
+export interface FormularzModulu {
+  readonly zdolnosci: ZdolnosciModulu;
+  readonly pochodzenieZdolnosci: Readonly<Record<PoleZdolnosci, PochodzenieDanej>>;
+  readonly liczby: Readonly<Record<PoleLiczboweWejscia, string>>;
+  readonly pochodzenieLiczb: Readonly<Record<PoleLiczboweWejscia, PochodzenieDanej>>;
+  readonly modulIstniejacy: StanModuluIstniejacego;
+  /** Data umowy przyłączeniowej `RRRR-MM-DD` albo pusty łańcuch (nieustalona). */
+  readonly dataUmowy: string;
+  readonly nastawy: FormularzNastaw;
+  /** Pochodzenie art. 4, daty umowy i nastaw — `model`, gdy wartość odczytano z generatora. */
+  readonly pochodzenieModuluIstniejacego: PochodzenieDanej;
+  readonly pochodzenieDatyUmowy: PochodzenieDanej;
+  readonly pochodzenieNastaw: PochodzenieDanej;
 }
 
-export type KluczNumeryczny = keyof NumeryczneModulu;
-
-/** Opis pojedynczego modułu wytwórczego (kolumna macierzy). */
-export interface OpisModulu {
+/** Moduł wytwórczy modelu — tożsamość i dane opisowe z migawki (read-only, bez oceny). */
+export interface OpisModuluModelu {
   readonly derRef: string;
   readonly nazwa: string;
   readonly rodzaj: DerKindUnified;
   readonly mocKw: number | null;
   readonly napiecieKv: number | null;
-  readonly certyfikat: NcRfgCertificateStatus;
+}
+
+/** Kolumna macierzy: moduł modelu + blokada z mostu + wejście modelu + formularz „co-jeśli". */
+export interface OpisModulu extends OpisModuluModelu {
   /** null = moduł gotowy do biegu; wartość = jawny powód braku danych. */
   readonly powodBlokady: PowodBlokady | null;
-  readonly zdolnosci: ZdolnosciModulu;
-  /** Pochodzenie każdej zdolności (katalog / deklarowane). */
-  readonly pochodzenieZdolnosci: Readonly<Record<KluczZdolnosci, PochodzenieDanej>>;
-  readonly numeryczne: NumeryczneModulu;
+  /**
+   * Wejście modułu złożone z modelu przez most backendu (`null` — moduł zablokowany):
+   * źródło tożsamości wejścia biegu (referencja, nazwa, rodzaj, moc, napięcie) i formularza
+   * wstępnego.
+   */
+  readonly wejscieModelu: WejscieModuluNcRfg | null;
+  readonly formularz: FormularzModulu;
 }
 
-/** Stan pojedynczej komórki macierzy (test × moduł). */
-export type StanKomorki = 'brak_biegu' | 'wynik' | 'brak_danych_modul';
+/** Komórka macierzy (test × moduł): rekord oceny z biegu albo nazwany stan jego braku. */
+export type KomorkaMacierzy =
+  | {
+      readonly stan: 'brak_danych_modul';
+      readonly derRef: string;
+      readonly testId: string;
+      readonly powodModulu: PowodBlokady;
+    }
+  | { readonly stan: 'brak_biegu'; readonly derRef: string; readonly testId: string }
+  | {
+      readonly stan: 'wynik';
+      readonly derRef: string;
+      readonly testId: string;
+      readonly wynik: WynikTestuNcRfg;
+    };
 
-export interface KomorkaMacierzy {
-  readonly derRef: string;
-  readonly testId: string;
-  readonly stan: StanKomorki;
-  readonly werdykt: NcRfgVerdict | null;
-  /** Pełny wynik testu (do panelu szczegółu) — tylko gdy stan === 'wynik'. */
-  readonly wynik: NcRfgTestResult | null;
-  /** Powód braku danych modułu (gdy stan === 'brak_danych_modul'). */
-  readonly powodModulu: PowodBlokady | null;
-}
-
-/** Wiersz macierzy = jeden wymóg/test × wszystkie moduły. */
+/** Wiersz macierzy = jeden test katalogu × wszystkie moduły. */
 export interface WierszMacierzy {
-  readonly test: NcRfgTestDefinition;
+  readonly test: DefinicjaTestuNcRfg;
   readonly komorki: readonly KomorkaMacierzy[];
-}
-
-/** Podsumowanie per moduł. */
-export interface PodsumowanieModulu {
-  readonly derRef: string;
-  readonly nazwa: string;
-  readonly overallStatus: string;
-  /** Klasa modułu A/B/C/D z biegu (`module_type`); `null` bez wyniku biegu. */
-  readonly moduleType: string | null;
-  readonly requiredCount: number;
-  readonly passCount: number;
-  readonly failCount: number;
-  readonly noDataCount: number;
-  readonly zablokowany: boolean;
-}
-
-/** Podsumowanie całego projektu. */
-export interface PodsumowanieProjektu {
-  readonly liczbaModulow: number;
-  readonly zgodne: number;
-  readonly niezgodne: number;
-  readonly brakDanych: number;
-  readonly wymaganeRazem: number;
-  readonly spelnioneRazem: number;
 }
 
 // =============================================================================
@@ -143,24 +185,11 @@ export interface PodsumowanieProjektu {
 // =============================================================================
 
 /**
- * Napięcie przyłączenia [kV] z modelu — DWIE realne dane modelowe, w kolejności:
- *   1. `voltage_level_ref` → katalog poziomów napięć nN/SN (`nominal_kv`) — wybór
- *      projektanta zapisany kreatorem stacji,
- *   2. `connection_voltage_kv` — napięcie SZYNY PRZYŁĄCZENIA odczytane z migawki
- *      (wytwórca zapisany kreatorem źródła OZE nie ma referencji poziomu, a katalog
- *      poziomów nie zna np. 0,8 kV falowników string — bez tego kroku moduł obecny
- *      w modelu meldował „brak danych" i bieg zgodności był dla niego zablokowany).
- *
- * Brak obu → `null` (moduł trafi w stan „brak danych"). NIE stosujemy domyślnej
- * wartości 15 kV ani wnioskowania z `connection_side`.
+ * Napięcie przyłączenia [kV] z modelu — `connection_voltage_kv`, napięcie SZYNY
+ * PRZYŁĄCZENIA z migawki. Brak → `null` (moduł w stanie „brak danych"); bez domyślnego
+ * 15 kV i bez wnioskowania ze strony przyłączenia.
  */
 export function rozwiazNapiecieKv(der: StationDerConnection): number | null {
-  if (der.voltage_level_ref) {
-    const poziom = getLvVoltageLevel(der.voltage_level_ref);
-    if (poziom && Number.isFinite(poziom.nominal_kv) && poziom.nominal_kv > 0) {
-      return poziom.nominal_kv;
-    }
-  }
   const zModelu = der.connection_voltage_kv;
   if (typeof zModelu === 'number' && Number.isFinite(zModelu) && zModelu > 0) {
     return zModelu;
@@ -168,282 +197,296 @@ export function rozwiazNapiecieKv(der: StationDerConnection): number | null {
   return null;
 }
 
-/** Status certyfikatu z modelu/katalogu (wzór NcRfgTestsTab.tsx:134-138). */
-export function rozwiazCertyfikat(der: StationDerConnection): NcRfgCertificateStatus {
-  const ref = der.catalogs.ptpiree_certificate_ref;
-  const device = der.catalogs.device_catalog_ref;
-  return ref || device?.includes('ptpiree') ? 'ptpiree_verified' : 'unknown';
-}
-
 // =============================================================================
-// Adapter: realne źródło DER → opisy modułów
+// Adapter: realne źródło DER → opisy modułów i formularze
 // =============================================================================
 
-const DOMYSLNE_NUMERYCZNE: NumeryczneModulu = {
-  pMinKw: '',
-  droopPercent: '5',
-  deadBandHz: '0.2',
-  rampPctPerMin: '10',
-  cosPhiMin: '0.95',
-  qMin: '-0.33',
-  qMax: '0.33',
-  reactiveCurrentGain: '2',
-  pRecoveryTimeS: '1',
-  thduPercent: '',
-};
-
-/** Zdolności wstępne + pochodzenie z realnego DER (read-only, bez mutacji). */
-function zdolnosciWstepne(der: StationDerConnection): {
-  zdolnosci: ZdolnosciModulu;
-  pochodzenie: Record<KluczZdolnosci, PochodzenieDanej>;
-} {
-  const lvrt = Boolean(der.profiles.lvrt_curve_ref);
-  const hvrt = Boolean(der.profiles.hvrt_curve_ref);
-  const pf = Boolean(der.profiles.pf_curve_ref || der.profiles.regulation_profile_ref);
-  const qu = Boolean(der.profiles.regulation_profile_ref);
-  const dyn = Boolean(der.catalogs.dynamic_model_ref);
-
-  const zdolnosci: ZdolnosciModulu = {
-    hasLvrtCurve: lvrt,
-    hasHvrtCurve: hvrt,
-    hasPfDroop: pf,
-    hasQuCurve: qu,
-    hasDynamicModel: dyn,
-    hasScadaCommunication: false,
-    hasDisturbanceRecorder: false,
-    activePowerControlEnabled: false,
-    stopGenerationEnabled: false,
-    reductionGenerationEnabled: false,
-    islandOperationRequired: false,
-    islandOperationCapable: false,
-    blackStartRequired: false,
-    blackStartCapable: false,
-    powerOscillationDampingRequired: false,
-    powerOscillationDampingEnabled: false,
+/**
+ * Formularz wstępny z WEJŚCIA MODELU (odczyt `GET …/cases/{id}/wejscia`): każde pole formularza
+ * = wartość wejścia złożonego przez most backendu (zdolności z wiązań i deklaracji kreatora,
+ * statyzm, martwa strefa, cosφ, zakresy Q, deklaracje modułu, art. 4, data umowy, nastawy);
+ * pochodzenie „z modelu" dokładnie dla pól, które most nazwał w `pola_z_modelu`. Brak danej
+ * w modelu = pole puste / stan nieustalony z pochodzeniem „dane deklarowane" — projektant
+ * deklaruje ją w formularzu; nigdy wartość typowa.
+ */
+export function formularzZWejscia(
+  wejscie: WejscieModuluNcRfg,
+  polaZModelu: readonly (keyof WejscieModuluNcRfg)[],
+): FormularzModulu {
+  const zModelu = new Set<keyof WejscieModuluNcRfg>(polaZModelu);
+  const pochodzenie = (pole: keyof WejscieModuluNcRfg): PochodzenieDanej =>
+    zModelu.has(pole) ? 'model' : 'deklarowane';
+  const dane = formularzDanychModuluZModelu({
+    modul_istniejacy: wejscie.modul_istniejacy,
+    data_umowy_przylaczeniowej: wejscie.data_umowy_przylaczeniowej,
+    nastawy_zabezpieczen: wejscie.nastawy_zabezpieczen_modulu,
+    deklaracje_modulu: null,
+  });
+  return {
+    zdolnosci: Object.fromEntries(
+      POLA_ZDOLNOSCI.map((pole) => [pole, wejscie[pole]]),
+    ) as unknown as ZdolnosciModulu,
+    pochodzenieZdolnosci: Object.fromEntries(
+      POLA_ZDOLNOSCI.map((pole) => [pole, pochodzenie(pole)]),
+    ) as Record<PoleZdolnosci, PochodzenieDanej>,
+    liczby: Object.fromEntries(
+      POLA_LICZBOWE_WEJSCIA.map((pole) => [pole, tekstLiczby(wejscie[pole])]),
+    ) as Record<PoleLiczboweWejscia, string>,
+    pochodzenieLiczb: Object.fromEntries(
+      POLA_LICZBOWE_WEJSCIA.map((pole) => [pole, pochodzenie(pole)]),
+    ) as Record<PoleLiczboweWejscia, PochodzenieDanej>,
+    modulIstniejacy: dane.modulIstniejacy,
+    dataUmowy: dane.dataUmowy,
+    nastawy: dane.nastawy,
+    pochodzenieModuluIstniejacego: pochodzenie('modul_istniejacy'),
+    pochodzenieDatyUmowy: pochodzenie('data_umowy_przylaczeniowej'),
+    pochodzenieNastaw: pochodzenie('nastawy_zabezpieczen_modulu'),
   };
-
-  // Pochodzenie: zdolności odczytane z katalogu/profilu → 'katalog';
-  // pozostałe (nieprzechowywane w modelu) → 'deklarowane'.
-  const pochodzenie: Record<KluczZdolnosci, PochodzenieDanej> = {
-    hasLvrtCurve: lvrt ? 'katalog' : 'deklarowane',
-    hasHvrtCurve: hvrt ? 'katalog' : 'deklarowane',
-    hasPfDroop: pf ? 'katalog' : 'deklarowane',
-    hasQuCurve: qu ? 'katalog' : 'deklarowane',
-    hasDynamicModel: dyn ? 'katalog' : 'deklarowane',
-    hasScadaCommunication: 'deklarowane',
-    hasDisturbanceRecorder: 'deklarowane',
-    activePowerControlEnabled: 'deklarowane',
-    stopGenerationEnabled: 'deklarowane',
-    reductionGenerationEnabled: 'deklarowane',
-    islandOperationRequired: 'deklarowane',
-    islandOperationCapable: 'deklarowane',
-    blackStartRequired: 'deklarowane',
-    blackStartCapable: 'deklarowane',
-    powerOscillationDampingRequired: 'deklarowane',
-    powerOscillationDampingEnabled: 'deklarowane',
-  };
-
-  return { zdolnosci, pochodzenie };
 }
 
 /**
- * Projekcja realnego źródła DER na opisy modułów macierzy. Kolejność wejścia
- * jest już deterministyczna (`selectAllDers` sortuje po id).
+ * Formularz modułu zablokowanego (bez wejścia modelu): stan nieustalony każdego pola —
+ * panel go nie edytuje (blokada nazywa powód), a bieg modułu nie obejmuje.
  */
-export function zbudujModuly(ders: readonly StationDerConnection[]): OpisModulu[] {
-  return ders.map((der) => {
-    const napiecieKv = rozwiazNapiecieKv(der);
-    const mocKw =
+function formularzBezWejscia(): FormularzModulu {
+  const dane = formularzDanychModuluZModelu({
+    modul_istniejacy: null,
+    data_umowy_przylaczeniowej: null,
+    nastawy_zabezpieczen: null,
+    deklaracje_modulu: null,
+  });
+  return {
+    zdolnosci: Object.fromEntries(
+      POLA_ZDOLNOSCI.map((pole) => [pole, jestZdolnosciaTrojstanowa(pole) ? null : false]),
+    ) as unknown as ZdolnosciModulu,
+    pochodzenieZdolnosci: Object.fromEntries(
+      POLA_ZDOLNOSCI.map((pole) => [pole, 'deklarowane']),
+    ) as Record<PoleZdolnosci, PochodzenieDanej>,
+    liczby: Object.fromEntries(POLA_LICZBOWE_WEJSCIA.map((pole) => [pole, ''])) as Record<
+      PoleLiczboweWejscia,
+      string
+    >,
+    pochodzenieLiczb: Object.fromEntries(
+      POLA_LICZBOWE_WEJSCIA.map((pole) => [pole, 'deklarowane']),
+    ) as Record<PoleLiczboweWejscia, PochodzenieDanej>,
+    modulIstniejacy: dane.modulIstniejacy,
+    dataUmowy: dane.dataUmowy,
+    nastawy: dane.nastawy,
+    pochodzenieModuluIstniejacego: 'deklarowane',
+    pochodzenieDatyUmowy: 'deklarowane',
+    pochodzenieNastaw: 'deklarowane',
+  };
+}
+
+/**
+ * Moduły modelu (kolejność `selectAllDers`) — tożsamość i dane opisowe z migawki: moc
+ * znamionowa (brak → `null`) i napięcie szyny przyłączenia (`rozwiazNapiecieKv`). Bez oceny
+ * gotowości: o objęciu modułu biegiem rozstrzyga most modelu po stronie serwera.
+ */
+export function opisyModulow(ders: readonly StationDerConnection[]): OpisModuluModelu[] {
+  return ders.map((der) => ({
+    derRef: der.id,
+    nazwa: der.name,
+    rodzaj: der.der_kind,
+    mocKw:
       typeof der.nominal_power_kw === 'number' && der.nominal_power_kw > 0
         ? der.nominal_power_kw
-        : null;
-    const powodBlokady: PowodBlokady | null =
-      mocKw === null ? 'brak_mocy' : napiecieKv === null ? 'brak_napiecia' : null;
-    const { zdolnosci, pochodzenie } = zdolnosciWstepne(der);
+        : null,
+    napiecieKv: rozwiazNapiecieKv(der),
+  }));
+}
 
+/**
+ * Kolumny macierzy (kolejność `selectAllDers`) z formularzem wstępnym z wejść modelu. Blokada
+ * modułu pochodzi WYŁĄCZNIE z mostu: DER pominięty (`pominiete` — brak mocy / napięcia) →
+ * jego powód; DER, którego most nie objął albo wejścia niewczytane (`wejscia === null`) →
+ * `brak_wejscia_modelu`. Moc i napięcie kolumny — z modelu (migawka), tylko do opisu.
+ */
+export function zbudujModuly(
+  ders: readonly StationDerConnection[],
+  wejscia: WejsciaPrzypadkuNcRfg | null,
+): OpisModulu[] {
+  return opisyModulow(ders).map((opis) => {
+    const wejscie = wejscia?.modules.find((m) => m.der_ref === opis.derRef) ?? null;
+    const pominiety = wejscia?.pominiete.find((p) => p.der_ref === opis.derRef) ?? null;
+    const powodBlokady: PowodBlokady | null =
+      pominiety !== null ? pominiety.powod : wejscie === null ? 'brak_wejscia_modelu' : null;
     return {
-      derRef: der.id,
-      nazwa: der.name,
-      rodzaj: der.der_kind,
-      mocKw,
-      napiecieKv,
-      certyfikat: rozwiazCertyfikat(der),
+      ...opis,
       powodBlokady,
-      zdolnosci,
-      pochodzenieZdolnosci: pochodzenie,
-      numeryczne: DOMYSLNE_NUMERYCZNE,
+      wejscieModelu: wejscie,
+      formularz:
+        wejscie !== null
+          ? formularzZWejscia(wejscie, wejscia?.pola_z_modelu[opis.derRef] ?? [])
+          : formularzBezWejscia(),
     };
   });
 }
 
 // =============================================================================
-// Adapter: opis modułu → NcRfgModuleInput (wejście biegu)
+// Adapter: opis modułu + formularz → wejście biegu (dokładnie pola kontraktu)
 // =============================================================================
 
-function parsujOpcjonalna(value: string): number | null {
-  const trimmed = value.trim().replace(',', '.');
-  if (!trimmed) return null;
-  const parsed = Number(trimmed);
-  return Number.isFinite(parsed) ? parsed : null;
-}
+/** Błędy pól formularza jednego modułu (klucz = nazwa pola kontraktu). */
+export type BledyFormularza = Readonly<
+  Partial<Record<PoleLiczboweWejscia | PoleNastawy | 'zrodlo_pl' | 'data_umowy_przylaczeniowej', string>>
+>;
+
+export type WynikWejscia =
+  | { readonly stan: 'ok'; readonly wejscie: WejscieModuluNcRfg }
+  | { readonly stan: 'blad'; readonly bledy: BledyFormularza }
+  | { readonly stan: 'zablokowany'; readonly powod: PowodBlokady };
 
 /**
- * Składa NcRfgModuleInput z opisu modułu. Zwraca `null`, gdy moduł jest
- * zablokowany (brak mocy lub napięcia) — taki moduł NIE trafia do biegu.
+ * Składa `WejscieModuluNcRfg` z wejścia modelu i formularza. Moduł zablokowany (pominięty
+ * przez most albo bez wejścia modelu) NIE trafia do biegu; pole spoza ograniczeń kontraktu
+ * blokuje żądanie z nazwanym błędem pola (backend odrzuciłby je 422).
  */
-export function zbudujWejscieModulu(
-  opis: OpisModulu,
-  operatorId: string,
-): NcRfgModuleInput | null {
-  if (opis.powodBlokady !== null || opis.mocKw === null || opis.napiecieKv === null) {
-    return null;
+export function zbudujWejscieModulu(opis: OpisModulu, operatorId: string): WynikWejscia {
+  const model = opis.wejscieModelu;
+  if (opis.powodBlokady !== null || model === null) {
+    return { stan: 'zablokowany', powod: opis.powodBlokady ?? 'brak_wejscia_modelu' };
   }
-  const z = opis.zdolnosci;
-  const n = opis.numeryczne;
+  const f = opis.formularz;
+  const bledy: Partial<Record<string, string>> = {};
+  const liczby: Partial<Record<PoleLiczboweWejscia, number | null>> = {};
+  for (const pole of POLA_LICZBOWE_WEJSCIA) {
+    const wynik = parsujPole(f.liczby[pole], OGRANICZENIA_WEJSCIA[pole]);
+    if (wynik.stan === 'blad') bledy[pole] = wynik.komunikat;
+    else liczby[pole] = wynik.wartosc;
+  }
+  const data = f.dataUmowy.trim();
+  if (data !== '' && !jestDataKalendarzowa(data)) {
+    bledy.data_umowy_przylaczeniowej = 'data kalendarzowa w zapisie RRRR-MM-DD';
+  }
+  const nastawy = zbudujNastawy(f.nastawy);
+  if (nastawy.stan === 'blad') Object.assign(bledy, nastawy.bledy);
+  if (Object.keys(bledy).length > 0 || nastawy.stan === 'blad') {
+    return { stan: 'blad', bledy: bledy as BledyFormularza };
+  }
   return {
-    der_ref: opis.derRef,
-    der_name: opis.nazwa,
-    der_kind: opis.rodzaj,
-    module_family: 'PPM',
-    operator_id: operatorId,
-    p_max_kw: opis.mocKw,
-    p_min_kw: parsujOpcjonalna(n.pMinKw),
-    voltage_kv: opis.napiecieKv,
-    certificate_status: opis.certyfikat,
-    has_lvrt_curve: z.hasLvrtCurve,
-    has_hvrt_curve: z.hasHvrtCurve,
-    has_pf_droop: z.hasPfDroop,
-    has_qu_curve: z.hasQuCurve,
-    has_dynamic_model: z.hasDynamicModel,
-    has_scada_communication: z.hasScadaCommunication,
-    has_disturbance_recorder: z.hasDisturbanceRecorder,
-    active_power_control_enabled: z.activePowerControlEnabled,
-    stop_generation_enabled: z.stopGenerationEnabled,
-    reduction_generation_enabled: z.reductionGenerationEnabled,
-    island_operation_required: z.islandOperationRequired,
-    island_operation_capable: z.islandOperationCapable,
-    black_start_required: z.blackStartRequired,
-    black_start_capable: z.blackStartCapable,
-    power_oscillation_damping_required: z.powerOscillationDampingRequired,
-    power_oscillation_damping_enabled: z.powerOscillationDampingEnabled,
-    droop_percent: parsujOpcjonalna(n.droopPercent),
-    dead_band_hz: parsujOpcjonalna(n.deadBandHz),
-    ramp_rate_pct_per_min: parsujOpcjonalna(n.rampPctPerMin),
-    cos_phi_min: parsujOpcjonalna(n.cosPhiMin),
-    q_range_pct_pn_min: parsujOpcjonalna(n.qMin),
-    q_range_pct_pn_max: parsujOpcjonalna(n.qMax),
-    reactive_current_gain: parsujOpcjonalna(n.reactiveCurrentGain),
-    p_recovery_time_s: parsujOpcjonalna(n.pRecoveryTimeS),
-    harmonic_thdu_percent: parsujOpcjonalna(n.thduPercent),
+    stan: 'ok',
+    wejscie: {
+      // Tożsamość modułu z wejścia modelu (most backendu) — formularz jej nie zmienia.
+      der_ref: model.der_ref,
+      der_name: model.der_name,
+      der_kind: model.der_kind,
+      module_family: model.module_family,
+      operator_id: operatorId,
+      p_max_kw: model.p_max_kw,
+      voltage_kv: model.voltage_kv,
+      modul_istniejacy: modulIstniejacyZeStanu(f.modulIstniejacy),
+      data_umowy_przylaczeniowej: data === '' ? null : data,
+      nastawy_zabezpieczen_modulu: nastawy.nastawy,
+      ...f.zdolnosci,
+      p_min_kw: liczby.p_min_kw ?? null,
+      droop_percent: liczby.droop_percent ?? null,
+      dead_band_hz: liczby.dead_band_hz ?? null,
+      ramp_rate_pct_per_min: liczby.ramp_rate_pct_per_min ?? null,
+      cos_phi_min: liczby.cos_phi_min ?? null,
+      q_range_pct_pn_min: liczby.q_range_pct_pn_min ?? null,
+      q_range_pct_pn_max: liczby.q_range_pct_pn_max ?? null,
+      reactive_current_gain: liczby.reactive_current_gain ?? null,
+      p_recovery_time_s: liczby.p_recovery_time_s ?? null,
+      harmonic_thdu_percent: liczby.harmonic_thdu_percent ?? null,
+      cease_generation_time_s: liczby.cease_generation_time_s ?? null,
+    },
   };
 }
 
 // =============================================================================
-// Adapter: NcRfgRunResult → siatka macierzy
+// Adapter: wynik biegu → siatka macierzy
 // =============================================================================
 
-function znajdzWynikModulu(
-  wynik: NcRfgRunResult | null,
+/** Wynik modułu z biegu (po `der_ref`); `null` bez biegu albo gdy moduł nie był w biegu. */
+export function wynikModulu(wynik: BiegNcRfg | null, derRef: string): WynikModuluNcRfg | null {
+  return wynik?.modules.find((m) => m.der_ref === derRef) ?? null;
+}
+
+/** Ocena wymagań modułu z biegu (rekordy W, kolejność profilu). */
+export function ocenaWymaganModulu(
+  wynik: BiegNcRfg | null,
   derRef: string,
-): NcRfgModuleResult | null {
-  if (!wynik) return null;
-  return wynik.modules.find((m) => m.der_ref === derRef) ?? null;
+): OcenaWymaganModulu | null {
+  return wynik?.ocena_wymagan.find((o) => o.der_ref === derRef) ?? null;
 }
 
 /**
- * Buduje siatkę macierzy: wiersze = testy z katalogu procedury, kolumny =
- * moduły. Werdykty pochodzą WYŁĄCZNIE z `NcRfgRunResult`. Moduły zablokowane
- * (brak danych) renderują kolumnę w stanie „brak danych modułu".
+ * Siatka macierzy: wiersze = testy katalogu biegu (przed biegiem — katalog procedury),
+ * kolumny = moduły; komórka = rekord `ocena` testu z biegu. Moduły zablokowane (brak danych
+ * modelu) renderują stan „brak danych modułu" z nazwanym powodem.
  */
 export function mapujMacierz(
-  katalog: NcRfgTestCatalogResponse | null,
-  wynik: NcRfgRunResult | null,
+  definicje: readonly DefinicjaTestuNcRfg[],
+  wynik: BiegNcRfg | null,
   moduly: readonly OpisModulu[],
 ): WierszMacierzy[] {
-  const definicje = katalog?.tests ?? wynik?.test_catalog ?? [];
-  return definicje.map((test) => {
-    const komorki: KomorkaMacierzy[] = moduly.map((modul) => {
+  return definicje.map((test) => ({
+    test,
+    komorki: moduly.map((modul): KomorkaMacierzy => {
       if (modul.powodBlokady !== null) {
         return {
+          stan: 'brak_danych_modul',
           derRef: modul.derRef,
           testId: test.test_id,
-          stan: 'brak_danych_modul',
-          werdykt: null,
-          wynik: null,
           powodModulu: modul.powodBlokady,
         };
       }
-      const wynikModulu = znajdzWynikModulu(wynik, modul.derRef);
-      const wynikTestu = wynikModulu?.tests.find((t) => t.test_id === test.test_id) ?? null;
-      if (!wynikTestu) {
-        return {
-          derRef: modul.derRef,
-          testId: test.test_id,
-          stan: 'brak_biegu',
-          werdykt: null,
-          wynik: null,
-          powodModulu: null,
-        };
-      }
-      return {
-        derRef: modul.derRef,
-        testId: test.test_id,
-        stan: 'wynik',
-        werdykt: wynikTestu.verdict,
-        wynik: wynikTestu,
-        powodModulu: null,
-      };
-    });
-    return { test, komorki };
-  });
+      const wynikTestu = wynikModulu(wynik, modul.derRef)?.tests.find(
+        (t) => t.test_id === test.test_id,
+      );
+      if (!wynikTestu) return { stan: 'brak_biegu', derRef: modul.derRef, testId: test.test_id };
+      return { stan: 'wynik', derRef: modul.derRef, testId: test.test_id, wynik: wynikTestu };
+    }),
+  }));
 }
 
-/** Podsumowanie per moduł (z wyniku biegu; moduł zablokowany → brak danych). */
-export function podsumowanieModulu(
-  opis: OpisModulu,
-  wynik: NcRfgRunResult | null,
-): PodsumowanieModulu {
-  const zablokowany = opis.powodBlokady !== null;
-  const w = zablokowany ? null : znajdzWynikModulu(wynik, opis.derRef);
-  return {
-    derRef: opis.derRef,
-    nazwa: opis.nazwa,
-    overallStatus: zablokowany ? 'brak_danych' : (w?.overall_status ?? 'brak_danych'),
-    moduleType: w?.module_type ?? null,
-    requiredCount: w?.required_count ?? 0,
-    passCount: w?.pass_count ?? 0,
-    failCount: w?.fail_count ?? 0,
-    noDataCount: w?.no_data_count ?? 0,
-    zablokowany,
-  };
+/** Etykieta obecna w biegu (filtr komórek — nawigacja, tekst z rekordu). */
+export interface EtykietaObecna {
+  readonly etykieta: Etykieta;
+  readonly status: StatusWerdyktu;
 }
 
-/** Podsumowanie całego projektu — agregacja z wyniku biegu i modułów. */
-export function podsumowanieProjektu(
-  moduly: readonly OpisModulu[],
-  wynik: NcRfgRunResult | null,
-): PodsumowanieProjektu {
-  let zgodne = 0;
-  let niezgodne = 0;
-  let brakDanych = 0;
-  let wymaganeRazem = 0;
-  let spelnioneRazem = 0;
-
-  for (const modul of moduly) {
-    const p = podsumowanieModulu(modul, wynik);
-    wymaganeRazem += p.requiredCount;
-    spelnioneRazem += p.passCount;
-    if (p.overallStatus === 'zgodny') zgodne += 1;
-    else if (p.overallStatus === 'niezgodny') niezgodne += 1;
-    else brakDanych += 1;
+/**
+ * Etykiety rekordów `ocena` obecne w biegu, w kolejności pierwszego wystąpienia (moduły ×
+ * testy) — opcje filtra komórek. Klucz filtra to tekst etykiety z rekordu (dwa rekordy tego
+ * samego statusu z różną kompletnością dowodu mają różne etykiety — i różne opcje).
+ */
+export function etykietyObecne(wynik: BiegNcRfg | null): EtykietaObecna[] {
+  const widziane = new Set<string>();
+  const wynikowe: EtykietaObecna[] = [];
+  for (const modul of wynik?.modules ?? []) {
+    for (const test of modul.tests) {
+      const tekst = test.ocena.etykieta.etykieta_pl;
+      if (widziane.has(tekst)) continue;
+      widziane.add(tekst);
+      wynikowe.push({ etykieta: test.ocena.etykieta, status: test.ocena.status_maszynowy });
+    }
   }
+  return wynikowe;
+}
 
+// =============================================================================
+// Adapter: identyfikacja + operator → żądanie certyfikatu (dokładnie pola kontraktu)
+// =============================================================================
+
+/**
+ * Ciało `POST /api/oze-analysis/compliance-certificate` (`CertyfikatZgodnosciRequest`):
+ * nazwa projektu (pusta → nazwa zastępcza — pole wymagane, `min_length=1`), nazwa przypadku
+ * albo `null` i operator. Dane modułów NIE są częścią żądania — serwer czyta je z modelu
+ * przypadku (`case_id` w zapytaniu).
+ */
+export function zbudujZadanieCertyfikatu(params: {
+  readonly nazwaProjektu: string | null;
+  readonly nazwaPrzypadku: string | null;
+  readonly operatorId: string;
+  readonly nazwaZastepcza: string;
+}): ZadanieCertyfikatu {
+  const projekt = params.nazwaProjektu?.trim();
+  const przypadek = params.nazwaPrzypadku?.trim();
   return {
-    liczbaModulow: moduly.length,
-    zgodne,
-    niezgodne,
-    brakDanych,
-    wymaganeRazem,
-    spelnioneRazem,
+    nazwa_projektu: projekt ? projekt : params.nazwaZastepcza,
+    nazwa_przypadku: przypadek ? przypadek : null,
+    operator_id: params.operatorId,
   };
 }

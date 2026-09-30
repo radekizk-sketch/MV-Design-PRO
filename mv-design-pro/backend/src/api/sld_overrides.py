@@ -52,16 +52,16 @@ class PutOverridesRequest(BaseModel):
     """Request to save geometry overrides."""
 
     snapshot_hash: str = Field(..., description="Hash snapshotu ENM")
-    items: list[OverrideItemRequest] = Field(default_factory=list, description="Lista nadpisan")
+    items: list[OverrideItemRequest] = Field(default_factory=list, description="Lista nadpisań")
 
 
 class ValidateOverridesRequest(BaseModel):
     """Request to validate overrides without saving."""
 
     snapshot_hash: str = Field(..., description="Hash snapshotu ENM")
-    items: list[OverrideItemRequest] = Field(default_factory=list, description="Lista nadpisan")
-    known_node_ids: list[str] = Field(default_factory=list, description="Znane ID wezlow")
-    known_block_ids: list[str] = Field(default_factory=list, description="Znane ID blokow")
+    items: list[OverrideItemRequest] = Field(default_factory=list, description="Lista nadpisań")
+    known_node_ids: list[str] = Field(default_factory=list, description="Znane ID węzłów")
+    known_block_ids: list[str] = Field(default_factory=list, description="Znane ID bloków")
 
 
 class OverrideItemResponse(BaseModel):
@@ -131,14 +131,14 @@ def _parse_items(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Nieprawidlowy scope: {item.scope}",
+                detail=f"Nieprawidłowy scope: {item.scope}",
             )
         try:
             operation = OverrideOperationV1(item.operation)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Nieprawidlowa operacja: {item.operation}",
+                detail=f"Nieprawidłowa operacja: {item.operation}",
             )
         parsed.append(
             GeometryOverrideItemV1(

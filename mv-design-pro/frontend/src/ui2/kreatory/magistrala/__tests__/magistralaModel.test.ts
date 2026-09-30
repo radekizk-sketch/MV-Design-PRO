@@ -9,18 +9,15 @@ import {
   fmtPct,
   fmtV,
   kontekstKontynuacji,
-  lacznaDlugosc,
-  lacznySpadekPct,
-  LIMIT_SPADKU_PCT,
   maStartCiagu,
-  ocenaDoboru,
   nextStepDozwolony,
+  odcinekOceny,
   parametryZKatalogu,
   podsumujOdcinek,
   segmentKindZRodzaju,
   walidujFormularz,
   zbudujPayload,
-  zbudujZapytaniePodgladu,
+  zbudujZapytanieOceny,
   type MagistralaFormData,
 } from '../magistralaModel';
 
@@ -192,25 +189,52 @@ describe('magistralaModel — katalog i podgląd', () => {
     expect(p?.return_conductor_ith_1s_a).toBeNull();
   });
 
-  it('buduje żądanie podglądu ΔU z prądem znamionowym gdy brak obciążenia', () => {
-    const params = parametryZKatalogu('KABEL', 'kab-1', [kabel], [linia]);
-    const req = zbudujZapytaniePodgladu(dane({ prad_a: null, dlugosc_m: 500, napiecie_kv: 15 }), params);
-    expect(req).toMatchObject({
-      current_a: 255,
-      length_km: 0.5,
-      r_ohm_per_km: 0.253,
-      line_voltage_v: 15000,
+  // Karta MAGISTRALA-OCENA: żądanie oceny niesie WARTOŚCI POL wprost — brak prądu zostaje
+  // brakiem (dawniej UI podstawiał prąd znamionowy typu i sam porównywał wynik z limitem).
+  it('żądanie oceny: brak prądu roboczego zostaje null (backend nazwie brak, UI nie podstawia Iz)', () => {
+    const req = zbudujZapytanieOceny(dane({ prad_a: null, dlugosc_m: 500, napiecie_kv: 15 }), []);
+    expect(req).toEqual({
+      napiecie_kv: 15,
+      odcinek: {
+        rodzaj: 'KABEL',
+        catalog_ref: 'kab-1',
+        dlugosc_m: 500,
+        prad_roboczy_a: null,
+        cos_phi: DANE_DOMYSLNE.cos_phi,
+        nazwa: null,
+      },
+      odcinki_zbudowane: [],
     });
   });
 
-  it('używa podanego prądu obciążenia gdy dostępny', () => {
-    const params = parametryZKatalogu('KABEL', 'kab-1', [kabel], [linia]);
-    const req = zbudujZapytaniePodgladu(dane({ prad_a: 180 }), params);
-    expect(req?.current_a).toBe(180);
+  it('żądanie oceny: brak typu i długości nie blokuje żądania (braki nazywa backend)', () => {
+    const req = zbudujZapytanieOceny(dane({ catalog_ref: null, dlugosc_m: null }), []);
+    expect(req?.odcinek).toMatchObject({ catalog_ref: null, dlugosc_m: null });
   });
 
-  it('zwraca null bez kompletu danych', () => {
-    expect(zbudujZapytaniePodgladu(dane(), null)).toBeNull();
+  it('żądanie oceny: odcinki zbudowane w kolejności od startu, z danymi odcinka', () => {
+    const p = parametryZKatalogu('KABEL', 'kab-1', [kabel], [linia]);
+    const pierwszy = podsumujOdcinek(dane({ dlugosc_m: 1200, prad_a: 180, nazwa: 'A' }), p, 'XRUHAKXS');
+    const req = zbudujZapytanieOceny(dane({ dlugosc_m: 800, prad_a: 150 }), [pierwszy]);
+    expect(req?.odcinki_zbudowane).toEqual([
+      { rodzaj: 'KABEL', catalog_ref: 'kab-1', dlugosc_m: 1200, prad_roboczy_a: 180, cos_phi: 0.95, nazwa: 'A' },
+    ]);
+    expect(req?.odcinek.dlugosc_m).toBe(800);
+  });
+
+  it('żądanie oceny: cosφ poza dziedziną albo napięcie niedodatnie → brak żądania', () => {
+    expect(zbudujZapytanieOceny(dane({ cos_phi: 0 }), [])).toBeNull();
+    expect(zbudujZapytanieOceny(dane({ cos_phi: 1.2 }), [])).toBeNull();
+    expect(zbudujZapytanieOceny(dane({ napiecie_kv: 0 }), [])).toBeNull();
+  });
+
+  it('odcinek oceny normalizuje puste pola do null', () => {
+    expect(odcinekOceny(dane({ catalog_ref: '  ', nazwa: ' ', dlugosc_m: 0, prad_a: -3 }))).toMatchObject({
+      catalog_ref: null,
+      nazwa: null,
+      dlugosc_m: null,
+      prad_roboczy_a: null,
+    });
   });
 });
 
@@ -231,15 +255,6 @@ describe('magistralaModel — builder realnej sieci (M2, V12K-071)', () => {
     expect(o).toMatchObject({ rodzaj: 'KABEL', typLabel: 'XRUHAKXS 1×120', cross_section_mm2: 120, dlugosc_m: 1200 });
   });
 
-  it('sumuje łączną długość magistrali', () => {
-    expect(
-      lacznaDlugosc([
-        { rodzaj: 'KABEL', typLabel: 'a', cross_section_mm2: 120, dlugosc_m: 500 },
-        { rodzaj: 'LINIA', typLabel: 'b', cross_section_mm2: 70, dlugosc_m: 1500 },
-      ]),
-    ).toBe(2000);
-  });
-
   it('formatuje długość w m/km', () => {
     expect(fmtDlugosc(500)).toBe('500 m');
     expect(fmtDlugosc(2500)).toBe('2.50 km');
@@ -253,68 +268,5 @@ describe('magistralaModel — builder realnej sieci (M2, V12K-071)', () => {
     });
     // Start ciągu z tego kontekstu jest ważny (builder może kontynuować).
     expect(maStartCiagu(kontekstKontynuacji('bus/end-1', undefined, undefined))).toBe(true);
-  });
-
-  it('skumulowany spadek sumuje ZNANE skladniki i ZGLASZA niekompletnosc', () => {
-    // Ten test wczesniej nazywal sie „pomija null" i utrwalal defekt: suma z
-    // pominietym skladnikiem byla podawana jako spadek magistrali, a kreator
-    // porownuje ja z limitem 5 %. Niepelne dane wyciszaly ostrzezenie, czyli dawaly
-    // milczacy PASS na kryterium, ktorego nikt nie sprawdzil (V12K-227).
-    // Intencja pomiaru zachowana: suma znanych = 1,2 + 2,1 = 3,3 %.
-    const wynik = lacznySpadekPct([
-      { rodzaj: 'KABEL', typLabel: 'a', cross_section_mm2: 120, dlugosc_m: 500, delta_u_pct: 1.2 },
-      { rodzaj: 'KABEL', typLabel: 'b', cross_section_mm2: 120, dlugosc_m: 800, delta_u_pct: 2.1 },
-      { rodzaj: 'LINIA', typLabel: 'c', cross_section_mm2: 70, dlugosc_m: 300, delta_u_pct: null },
-    ]);
-
-    expect(wynik.sumaZnanychPct).toBeCloseTo(3.3, 5);
-    expect(wynik.odcinkiZeSpadkiem).toBe(2);
-    expect(wynik.odcinkiBezSpadku).toBe(1);
-    expect(wynik.kompletny).toBe(false);
-  });
-
-  it('wszystkie odcinki z wynikiem daja ocene KOMPLETNA', () => {
-    // Kontrola odwrotna: bez niej flaga mogla by byc zawsze falszywa i nic nie znaczyc.
-    const wynik = lacznySpadekPct([
-      { rodzaj: 'KABEL', typLabel: 'a', cross_section_mm2: 120, dlugosc_m: 500, delta_u_pct: 1.2 },
-      { rodzaj: 'KABEL', typLabel: 'b', cross_section_mm2: 120, dlugosc_m: 800, delta_u_pct: 2.1 },
-    ]);
-
-    expect(wynik.kompletny).toBe(true);
-    expect(wynik.odcinkiBezSpadku).toBe(0);
-    expect(wynik.sumaZnanychPct).toBeCloseTo(3.3, 5);
-  });
-
-  it('pusta magistrala jest KOMPLETNA z suma zero — nie ma czego brakowac', () => {
-    const wynik = lacznySpadekPct([]);
-
-    expect(wynik.kompletny).toBe(true);
-    expect(wynik.sumaZnanychPct).toBe(0);
-  });
-});
-
-describe('magistralaModel — asystent doboru przekroju (M3, V12K-072)', () => {
-  const p = parametryZKatalogu('KABEL', 'kab-1', [kabel], [linia]); // Iz 255 A
-
-  it('obciążalność OK gdy prąd ≤ Iz, ostrzeżenie gdy prąd > Iz', () => {
-    expect(ocenaDoboru(p, 1.0, 200).obciazalnosc).toBe('ok');
-    expect(ocenaDoboru(p, 1.0, 300).obciazalnosc).toBe('ostrzezenie');
-    // Bez prądu roboczego → brak oceny obciążalności.
-    expect(ocenaDoboru(p, 1.0, null).obciazalnosc).toBe('brak');
-  });
-
-  it('spadek OK gdy ΔU ≤ limit, ostrzeżenie powyżej', () => {
-    expect(ocenaDoboru(p, 3.0, 200).spadek).toBe('ok');
-    expect(ocenaDoboru(p, LIMIT_SPADKU_PCT + 0.5, 200).spadek).toBe('ostrzezenie');
-    expect(ocenaDoboru(p, null, 200).spadek).toBe('brak');
-  });
-
-  it('zwraca prąd/Iz/ΔU/limit do interpretacji', () => {
-    expect(ocenaDoboru(p, 2.5, 240)).toMatchObject({
-      obciazenieA: 240,
-      izA: 255,
-      spadekPct: 2.5,
-      limitPct: LIMIT_SPADKU_PCT,
-    });
   });
 });

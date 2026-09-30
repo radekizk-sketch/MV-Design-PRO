@@ -3,7 +3,7 @@
 **CANONICAL ALIGNMENT:**
 - `CATALOG_BROWSER_CONTRACT.md`: Type Library Browser specification
 - `SYSTEM_SPEC.md § 4`: Type Catalog (Library)
-- `CANONICAL_COMPLIANCE.md § 14`: Type Catalog UI compliance
+- `docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md § 14` [archiwum]: Type Catalog UI compliance checklist (audyt 2026-01; nie ma zywego odpowiednika)
 
 ## Components
 

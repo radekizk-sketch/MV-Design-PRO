@@ -72,6 +72,7 @@ describe('transformatorModel — walidacja', () => {
 describe('transformatorModel — katalog i podgląd R2', () => {
   it('czyta parametry z katalogu', () => {
     expect(parametryZKatalogu('energen-tonr-1000-15-04', typy)).toMatchObject({
+      vector_group: 'Dyn5',
       rated_power_mva: 1.0,
       voltage_hv_kv: 15,
       voltage_lv_kv: 0.4,
@@ -99,6 +100,11 @@ describe('transformatorModel — katalog i podgląd R2', () => {
 });
 
 describe('transformatorModel — payload', () => {
+  it('grupa połączeń: null = z katalogu (brak w payloadzie), jawny wybór = pole payloadu', () => {
+    expect(zbudujPayload(dane(), {})).not.toHaveProperty('vector_group');
+    expect(zbudujPayload(dane({ vector_group: 'Yzn5' }), {})).toMatchObject({ vector_group: 'Yzn5' });
+  });
+
   it('bez regulacji nie wysyła pól OLTC', () => {
     const payload = zbudujPayload(dane(), { station_ref: 'st-1' });
     expect(payload).toMatchObject({

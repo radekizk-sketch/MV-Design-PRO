@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { TypeLibraryBrowser } from '../TypeLibraryBrowser';
 import * as catalogApi from '../api';
 import type { CatalogListItem } from '../api';
-import type { TypeCategory } from '../types';
+import type { PtpireeGeneratorCertificateCatalogType, TypeCategory } from '../types';
 
 vi.mock('../api');
 
@@ -84,7 +84,6 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       operator_name: 'OSD Północ',
       supply_role: 'GPZ',
       short_circuit_model: 'THEVENIN',
-      earthing_system: 'RESISTIVE',
       voltage_rating_kv: 15,
       sk3_mva: 350,
       rx_ratio: 0.15,
@@ -187,13 +186,26 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       burden_va: 30,
     },
   ],
+  // Kategoria łączy CT+VT (dług V12T-018): `fetchTypesByCategory` zwraca
+  // `[...CTCatalogType, ...VTCatalogType]` (`api.ts`), więc fixture niesie
+  // rekordy w KSZTAŁCIE realnego dostawcy, nie zmyślony wspólny typ.
   MEASUREMENT_TRANSFORMER: [
     {
-      id: 'mt-001',
-      name: 'Zestaw pomiarowy',
+      id: 'mt-ct-001',
+      name: 'PP 400/1 A',
       manufacturer: 'MeasureTech',
-      measurement_kind: 'COMBINED',
-      accuracy_class: '0.5 / 5P20',
+      ratio_primary_a: 400,
+      ratio_secondary_a: 1,
+      accuracy_class: '5P20',
+      burden_va: 15,
+    },
+    {
+      id: 'mt-vt-001',
+      name: 'PN 15 kV',
+      manufacturer: 'MeasureTech',
+      ratio_primary_v: 15000,
+      ratio_secondary_v: 100,
+      accuracy_class: '0.5',
       burden_va: 30,
     },
   ],
@@ -242,6 +254,17 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       notes_pl: 'Dla pola liniowego SN',
     },
   ],
+  // Kategorie bez zakładki w TypeLibraryBrowser (TAB_DEFINITIONS) — Record
+  // wymaga wpisu dla KAŻDEJ TypeCategory, więc pusta lista jest uczciwym
+  // stanem (nikt nie klika tych zakładek w tym pliku testów), nie fikcją.
+  SURGE_ARRESTER: [],
+  SHUNT_CAPACITOR: [],
+  BRANCH_POLE: [],
+  ZKSN: [],
+  // PTPIREE_CERTIFICATE ma WŁASNĄ ścieżkę pobierania (strona serwerowa,
+  // `fetchPtpireeGeneratorCertificatesPage` — patrz drugi `describe` niżej);
+  // `fetchTypesByCategory` jej nie obsługuje w produkcji, więc pusta lista.
+  PTPIREE_CERTIFICATE: [],
 };
 
 describe('TypeLibraryBrowser', () => {
@@ -250,13 +273,15 @@ describe('TypeLibraryBrowser', () => {
     vi.mocked(catalogApi.fetchTypesByCategory).mockImplementation(async (category) => (
       catalogByCategory[category]
     ));
-    vi.mocked(catalogApi.exportTypeLibrary).mockResolvedValue({ ok: true });
-    vi.mocked(catalogApi.importTypeLibrary).mockResolvedValue({
-      success: true,
-      mode: 'merge',
-      added: [],
-      skipped: [],
-      conflicts: [],
+    // Sekcja „Pozycje do przeglądu" jest częścią przeglądarki (karta
+    // KATALOG-NIEZMIENNIKI) i pobiera własny kontrakt z backendu; bez tego
+    // mocka automock zwróciłby `undefined` i sekcja rozbiłaby render.
+    vi.mocked(catalogApi.fetchPrzegladWiarygodnosci).mockResolvedValue({
+      liczba_odstepstw: 0,
+      wedlug_kodu: {},
+      rodziny: [],
+      rodziny_bez_regul: [],
+      reguly: [],
     });
   });
 
@@ -304,6 +329,42 @@ describe('TypeLibraryBrowser', () => {
     expect(screen.getAllByText('OSD Północ').length).toBeGreaterThan(1);
     expect(screen.getByText('Moc zwarciowa Sk3 [MVA]')).toBeInTheDocument();
     expect(screen.getByText('350')).toBeInTheDocument();
+    // CV-4.3 K7: trzy pola scenariusza MIN — „brak danych" gdy null (wzór K1,
+    // `renderLineParams`/`max_temperature_c`), NIE ukryte jak w panelu generycznym.
+    expect(screen.getByText('Moc zwarciowa Sk3 min')).toBeInTheDocument();
+    expect(screen.getByText('Prąd zwarciowy Ik3 min')).toBeInTheDocument();
+    expect(screen.getByText('Stosunek R/X min')).toBeInTheDocument();
+    expect(screen.getAllByText('brak danych')).toHaveLength(3);
+  });
+
+  it('CV-4.3 K7: ZRODLO_SN z danymi scenariusza MIN pokazuje realne wartości (nie "brak danych")', async () => {
+    const user = userEvent.setup();
+    vi.mocked(catalogApi.fetchTypesByCategory).mockImplementation((category: TypeCategory) => {
+      if (category === 'SYSTEM_SOURCE') {
+        return Promise.resolve([
+          {
+            ...catalogByCategory.SYSTEM_SOURCE[0],
+            sk3_min_mva: 210,
+            ik3_min_ka: 8.1,
+            rx_ratio_min: 0.22,
+          },
+        ]);
+      }
+      return Promise.resolve(catalogByCategory[category] ?? []);
+    });
+    render(<TypeLibraryBrowser />);
+
+    await user.click(screen.getByRole('button', { name: /Typy zasilania systemowego SN/i }));
+    await waitFor(() => {
+      expect(catalogApi.fetchTypesByCategory).toHaveBeenCalledWith('SYSTEM_SOURCE');
+    });
+    await user.click(screen.getByText('GPZ 110/15 kV'));
+
+    expect(screen.getByText('Moc zwarciowa Sk3 min')).toBeInTheDocument();
+    expect(screen.getByText('210')).toBeInTheDocument();
+    expect(screen.getByText('8.1')).toBeInTheDocument();
+    expect(screen.getByText('0.22')).toBeInTheDocument();
+    expect(screen.queryByText('brak danych')).not.toBeInTheDocument();
   });
 
   it('filters visible types by search query', async () => {
@@ -385,18 +446,36 @@ describe('TypeLibraryBrowser', () => {
 });
 
 describe('TypeLibraryBrowser — wykaz certyfikatów PTPiREE (strona serwerowa, dług 5 z V12K-321)', () => {
-  const pozycjeStrony: CatalogListItem[] = [
+  const pozycjeStrony: PtpireeGeneratorCertificateCatalogType[] = [
     {
       id: 'wipwc-1-2-w3254',
       name: 'Huawei SUN2000-215KTL-H3',
       manufacturer: 'Huawei Digital Power',
+      model: 'SUN2000-215KTL-H3',
+      device_type: 'Inwerter',
       document_number: 'DEKRA/2025/3254',
+      document_acceptance_date: '31.12.2026',
+      wos_version: '',
+      wipwc_version: '1.2',
+      ppm_scope: 'A,B,C,D',
+      source_url: 'https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-06-Wykaz-urzadzen_1.2.pdf',
+      manufacturer_key: 'HUAWEI DIGITAL POWER',
+      model_key: 'SUN2000 215KTL H3',
     },
     {
       id: 'wipwc-1-2-w0001',
       name: 'Afore HNS3000TL',
       manufacturer: 'Afore New Energy',
+      model: 'HNS3000TL',
+      device_type: 'Inwerter',
       document_number: 'TUV/2024/0001',
+      document_acceptance_date: '31.12.2026',
+      wos_version: 'WOS 2024',
+      wipwc_version: '1.2',
+      ppm_scope: 'A',
+      source_url: 'https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-06-Wykaz-urzadzen_1.2.pdf',
+      manufacturer_key: 'AFORE NEW ENERGY',
+      model_key: 'HNS3000TL',
     },
   ];
 

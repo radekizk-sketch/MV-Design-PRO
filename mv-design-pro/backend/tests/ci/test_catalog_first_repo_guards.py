@@ -178,8 +178,10 @@ def test_repo_hygiene_guard_detects_catalog_guessing_in_sld(tmp_path: Path):
 
 
 def test_repo_hygiene_guard_detects_catalog_guessing_in_active_modal(tmp_path: Path):
+    # Ścieżka syntetyczna w `tmp_path` (guard skanuje wzorcem, nie listą); nazwa
+    # kanonicznego kreatora ui2 — `GridSourceModal.tsx` skasowany (K7c-FE, martwy kod).
     modal_file = (
-        tmp_path / "frontend" / "src" / "ui" / "topology" / "modals" / "GridSourceModal.tsx"
+        tmp_path / "frontend" / "src" / "ui2" / "kreatory" / "zrodlo" / "KreatorZrodloZasilania.tsx"
     )
     modal_file.parent.mkdir(parents=True, exist_ok=True)
     modal_file.write_text(
@@ -190,7 +192,7 @@ def test_repo_hygiene_guard_detects_catalog_guessing_in_active_modal(tmp_path: P
     violations = repo_hygiene_guard.check_catalog_guessing(tmp_path)
 
     assert len(violations) == 1
-    assert violations[0].path == "frontend/src/ui/topology/modals/GridSourceModal.tsx"
+    assert violations[0].path == "frontend/src/ui2/kreatory/zrodlo/KreatorZrodloZasilania.tsx"
     assert "inferCatalogNamespaceFromElement" in violations[0].context
 
 

@@ -82,7 +82,6 @@ export function sanitizeReadinessMessage(
       /ZKSN\s+['"]?bp\/[^\s'"]+['"]?\s+nie\s+ma\s+stanu\s+łącznika\s+\(switch_state\)\.?/gi,
       'ZKSN wymaga wskazania stanu normalnego łącznika.',
     )
-    .replace(/\bOdcinek\s+\/segment\b/gi, 'odcinek SN')
     .replace(/\bodcinek\s+SN\s+SN\b/gi, 'odcinek SN')
     .replace(/Gałąź\s+'([^']+)'/g, (_match, ref: string) => publicElementLabel(snapshot, ref))
     .replace(/Źródło\s+'([^']+)'/g, (_match, ref: string) => publicElementLabel(snapshot, ref))

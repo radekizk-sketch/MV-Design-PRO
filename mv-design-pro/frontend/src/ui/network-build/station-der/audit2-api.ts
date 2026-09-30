@@ -2,18 +2,184 @@
  * API client dla katalogow audytu 2 (Phase 2 backend integration).
  *
  * Pobiera katalogi z backendu (`/api/v1/catalog/audit2/*`) zamiast uzywac
- * frontendowych staticow. Lokalne staticki w `catalogs.ts` / `protection-catalogs.ts`
- * pozostaja jako fallback (gdy backend niedostepny lub w testach).
+ * frontendowych staticow.
+ *
+ * Karta FAB-L: `bess_operation_modes`/`tap_changers`/`mv_neutral_groundings`
+ * dopisane jako typy 1:1 z backendem (dotad `ReadonlyArray<unknown>`) — front
+ * czyta je WYLACZNIE stad, statyczne mirrory (`BESS_OPERATION_MODE_CATALOG`,
+ * `TAP_CHANGER_CATALOG`, `MV_NEUTRAL_GROUNDING_CATALOG`) skasowane z
+ * `catalogs.ts`. Zero fallbacku lokalnego — backend jest jedynym zrodlem;
+ * niedostepnosc backendu jest stanem bledu/ladowania widocznym w UI, nie
+ * cichym podstawieniem drugiej kopii danych.
+ *
+ * Karta FAB-M: `hv_fuses` dopisane jako typ 1:1 z backendem (dotad
+ * `ReadonlyArray<unknown>`) — front czyta je WYLACZNIE stad, statyczny mirror
+ * (`HV_FUSE_CATALOG` w `protection-catalogs.ts`, 4 pozycje identyczne z
+ * backendowym `audit2_catalogs.HV_FUSE_CATALOG`) skasowany. Zero fallbacku
+ * lokalnego — backend jest jedynym zrodlem; niedostepnosc backendu jest
+ * stanem bledu/ladowania widocznym w UI, nie cichym podstawieniem drugiej
+ * kopii danych.
  */
 
-interface AuditCatalogSnapshot {
-  readonly bess_operation_modes: ReadonlyArray<unknown>;
-  readonly tap_changers: ReadonlyArray<unknown>;
-  readonly hv_fuses: ReadonlyArray<unknown>;
+/**
+ * Krzywa P(f) (eng.9, NC RfG art. 13/15) — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::PfCurveItem.to_dict`).
+ * Karta FAB-J: JEDYNE źródło — front nie ma już własnej kopii (`PF_CURVE_CATALOG`
+ * usunięty z `catalogs.ts`).
+ */
+export interface PfCurveItem {
+  readonly id: string;
+  readonly catalog_namespace: string;
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly f_ref_hz: number;
+  readonly droop_percent: number;
+  readonly f_min_hz: number;
+  readonly f_max_hz: number;
+  readonly deadband_hz: number;
+  readonly zrodlo_pl: string;
+}
+
+/**
+ * Transformator dedykowany DER (B.5) — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::BlockTransformerItem.to_dict`).
+ * Karta FAB-J: JEDYNE źródło — front nie ma już własnej kopii
+ * (`BLOCK_TRANSFORMER_CATALOG` usunięty z `catalogs.ts`).
+ */
+export interface BlockTransformerItem {
+  readonly id: string;
+  readonly catalog_namespace: string;
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly transformer_type_ref: string;
+  readonly sn_kva: number;
+  readonly hv_kv: number;
+  readonly lv_kv: number;
+  readonly uk_percent: number;
+  readonly pk_kw: number;
+  readonly p0_kw: number;
+  readonly i0_percent: number;
+  readonly vector_group: string;
+  readonly is_mv_to_mv: boolean;
+  readonly applicable_der_kinds: readonly string[];
+  readonly galvanic_isolation: boolean;
+  readonly source_reference: string;
+  readonly verification_status: string;
+}
+
+/**
+ * Tryb pracy magazynu (BESS) — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::BessOperationModeItem.to_dict`).
+ * Karta FAB-L: JEDYNE źródło — front nie ma już własnej kopii
+ * (`BESS_OPERATION_MODE_CATALOG` usunięty z `catalogs.ts`).
+ */
+export interface BessOperationModeItem {
+  readonly id: string;
+  readonly catalog_namespace: string;
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly description_pl: string;
+  readonly mode_code:
+    | 'peak_shaving'
+    | 'arbitrage'
+    | 'fcr_n'
+    | 'fcr_d_up'
+    | 'fcr_d_down'
+    | 'afrr'
+    | 'mfrr'
+    | 'voltage_support'
+    | 'island_backup'
+    | 'self_consumption';
+  readonly requires_four_quadrant: boolean;
+  readonly requires_grid_forming: boolean;
+}
+
+/**
+ * Przełącznik zaczepów transformatora — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::TapChangerItem.to_dict`).
+ * Karta FAB-L: JEDYNE źródło — front nie ma już własnej kopii
+ * (`TAP_CHANGER_CATALOG` usunięty z `catalogs.ts`).
+ */
+export interface TapChangerItem {
+  readonly id: string;
+  readonly catalog_namespace: string;
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly type: 'oltc' | 'detc';
+  readonly neutral_position: number;
+  readonly tap_count: number;
+  readonly step_percent: number;
+  readonly range_percent: number;
+  readonly regulated_side: 'hv' | 'lv';
+  readonly supports_avr: boolean;
+  readonly applicable_to: readonly string[];
+}
+
+/**
+ * Wariant uziemienia punktu neutralnego SN — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::MvNeutralGroundingItem.to_dict`).
+ * Karta FAB-L: JEDYNE źródło — front nie ma już własnej kopii
+ * (`MV_NEUTRAL_GROUNDING_CATALOG` usunięty z `catalogs.ts`).
+ */
+export interface MvNeutralGroundingItem {
+  readonly id: string;
+  readonly catalog_namespace: string;
+  readonly catalog_version: string;
+  readonly grounding_type: 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded';
+  readonly label_pl: string;
+  readonly description_pl: string;
+  readonly r_ohm: number | null;
+  readonly x_ohm: number | null;
+}
+
+/**
+ * Pasmo czasowo-prądowe wkładki SN — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::HvFusePasmoTcc.to_dict`).
+ */
+export interface HvFusePasmoTcc {
+  readonly zrodlo_url: string;
+  readonly punkty: ReadonlyArray<{ readonly prad_a: number; readonly czas_s: number }>;
+}
+
+/**
+ * Bezpiecznik SN/HV (eng.17) — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::HvFuseItem.to_dict`).
+ * Karta FAB-M: JEDYNE źródło — front nie ma już własnej kopii
+ * (`HV_FUSE_CATALOG` usunięty z `protection-catalogs.ts`, gdzie był DRUGĄ
+ * kopią tych samych 4 pozycji, identyczne identyfikatory `fuse_15kv_50a_full`
+ * i in.). `pasmo_brak_powod_pl`/`pasmo_brak_etykieta_pl` liczone przez backend
+ * per pozycja (`None` gdy `pasmo_tcc` istnieje) — front czyta je wprost,
+ * zamiast trzymać własną kopię tych samych dwóch zdań PL.
+ */
+export interface HvFuseItem {
+  readonly id: string;
+  readonly catalog_namespace: string;
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly nominal_voltage_kv: number;
+  readonly nominal_current_a: number;
+  readonly class: 'general_purpose' | 'full_range' | 'back_up';
+  readonly application: 'transformer' | 'feeder' | 'motor' | 'capacitor';
+  readonly pasmo_tcc: HvFusePasmoTcc | null;
+  readonly pasmo_brak_powod_pl: string | null;
+  readonly pasmo_brak_etykieta_pl: string | null;
+}
+
+/**
+ * `device_withstand` NIE typowane tu: ma już konsumenta typowanego osobno
+ * (`DeviceWithstandCatalogItem` niżej, przez `fetchDeviceWithstandCatalog`, nie
+ * przez snapshot). Karty FAB-L/FAB-M: `bess_operation_modes`/`tap_changers`/
+ * `mv_neutral_groundings`/`hv_fuses` typowane 1:1 z backendem — ZERO `unknown`
+ * tam, gdzie front te dane konsumuje.
+ */
+export interface AuditCatalogSnapshot {
+  readonly bess_operation_modes: readonly BessOperationModeItem[];
+  readonly tap_changers: readonly TapChangerItem[];
+  readonly hv_fuses: readonly HvFuseItem[];
   readonly device_withstand: ReadonlyArray<unknown>;
-  readonly pf_curves: ReadonlyArray<unknown>;
-  readonly block_transformers: ReadonlyArray<unknown>;
-  readonly mv_neutral_groundings: ReadonlyArray<unknown>;
+  readonly pf_curves: readonly PfCurveItem[];
+  readonly block_transformers: readonly BlockTransformerItem[];
+  readonly mv_neutral_groundings: readonly MvNeutralGroundingItem[];
 }
 
 const BASE = '/api/v1/catalog/audit2';
@@ -102,7 +268,8 @@ export interface HostingCapacityExportResponse {
   readonly p_export_kw: number;
   readonly p_import_kw: number;
   readonly p_net_export_kw: number;
-  readonly export_to_import_ratio: number;
+  /** `null` przy imporcie zerowym — stosunek nie istnieje (karta PROOFPACK-KONTRAKT). */
+  readonly export_to_import_ratio: number | null;
   readonly status: 'no_export' | 'normal_export' | 'high_export_warning' | 'requires_ramp_down';
   readonly message_pl: string;
 }
@@ -224,42 +391,74 @@ export async function deleteStationAudit2Config(args: {
 // Phase 10/11: ProofPack + Report API clients
 // =============================================================================
 
-export interface Audit2ProofPackRequest {
-  readonly station_id: string;
-  readonly bess_modes_specs?: readonly Record<string, unknown>[];
-  readonly tap_changer_specs?: readonly Record<string, unknown>[];
-  readonly hosting_capacity_specs?: readonly Record<string, unknown>[];
-  readonly device_withstand_specs?: readonly Record<string, unknown>[];
-  readonly vt_grounding_specs?: readonly Record<string, unknown>[];
-  readonly generated_at_iso?: string;
-}
+/** Rodzaj dowodu walidacji rozszerzeń (kod maszynowy — ekran pokazuje `rodzaj_pl`). */
+export type Audit2ProofType =
+  | 'AUDIT2_BESS_OPERATION_MODES'
+  | 'AUDIT2_TAP_CHANGER_PLAN'
+  | 'AUDIT2_HOSTING_CAPACITY_EXPORT'
+  | 'AUDIT2_DEVICE_WITHSTAND'
+  | 'AUDIT2_VT_GROUNDING_VALIDATION';
 
-export interface Audit2ProofPackResponse {
-  readonly station_id: string;
-  readonly all_pass: boolean;
-  readonly fail_count: number;
-  readonly proof_count: number;
-  readonly proofs: ReadonlyArray<{
-    readonly proof_id: string;
-    readonly proof_type: string;
-    readonly pass_status: boolean;
-    readonly summary_pl: string;
-    readonly details: Record<string, unknown>;
-    readonly formulas_latex: readonly string[];
-    readonly generated_at: string;
-  }>;
+export interface Audit2Proof {
+  readonly proof_id: string;
+  readonly proof_type: Audit2ProofType;
+  /** Polska nazwa rodzaju dowodu (backend, jedno źródło etykiet). */
+  readonly rodzaj_pl: string;
+  readonly pass_status: boolean;
+  readonly summary_pl: string;
+  readonly details: Record<string, unknown>;
+  readonly formulas_latex: readonly string[];
   readonly generated_at: string;
 }
 
-export async function generateAudit2ProofPack(
-  req: Audit2ProofPackRequest,
-): Promise<Audit2ProofPackResponse> {
-  return postJson<Audit2ProofPackResponse>(`${BASE}/generate-proof-pack`, req);
+/** Rodzaj (albo pozycja) dowodu, którego nie da się wygenerować — brak danych ≠ spełnia. */
+export interface Audit2BrakDanych {
+  readonly proof_type: Audit2ProofType;
+  readonly rodzaj_pl: string;
+  readonly przyczyna_pl: string;
+}
+
+/** Pakiet dowodów jednej stacji — kształt 1:1 z `StationAudit2ProofPack.to_dict`. */
+export interface Audit2ProofPackResponse {
+  readonly station_id: string;
+  /** Nazwa stacji z modelu (albo „Stacja spoza modelu") — ekran nigdy nie pokazuje id. */
+  readonly station_nazwa: string;
+  readonly all_pass: boolean;
+  readonly fail_count: number;
+  readonly proof_count: number;
+  readonly proofs: readonly Audit2Proof[];
+  readonly braki_danych: readonly Audit2BrakDanych[];
+  readonly generated_at: string;
+}
+
+/** Pakiety dowodów KAŻDEJ stacji z zapisaną konfiguracją projektu. */
+export interface Audit2ProjectProofPackResponse {
+  readonly project_id: string;
+  readonly all_pass: boolean;
+  readonly station_count: number;
+  readonly per_station: readonly Audit2ProofPackResponse[];
+}
+
+/**
+ * Pakiet dowodów walidacji rozszerzeń projektu — składa go BACKEND z utrwalonych
+ * konfiguracji stacji i z modelu sieci (karta PROOFPACK-KONTRAKT). Dawny klient
+ * `generateAudit2ProofPack` (specyfikacje składane w interfejsie, suma mocy w UI,
+ * identyfikator stacji `configs[0] ?? 'aggregate'`) usunięty razem z końcówką.
+ */
+export async function generateProjectAudit2ProofPack(
+  projectId: string,
+): Promise<Audit2ProjectProofPackResponse> {
+  return postJson<Audit2ProjectProofPackResponse>(
+    `${stationAudit2ConfigUrl(projectId)}/_validate-all`,
+    {},
+  );
 }
 
 export interface Audit2ReportRequest {
   readonly project_name: string;
   readonly station_id: string;
+  /** Nazwa stacji z modelu — raport pokazuje ją projektantowi zamiast identyfikatora. */
+  readonly station_name: string;
   readonly proof_pack: Audit2ProofPackResponse;
   readonly operator_pl?: string;
   readonly generated_at_iso?: string;
@@ -276,45 +475,4 @@ export async function generateAudit2Report(
   req: Audit2ReportRequest,
 ): Promise<Audit2ReportResponse> {
   return postJson<Audit2ReportResponse>(`${BASE}/generate-report`, req);
-}
-
-// =============================================================================
-// Phase 37: Audit2 Power Flow endpoint client
-// =============================================================================
-
-export interface Audit2PowerFlowRequest {
-  readonly case_id: string;
-  readonly project_id: string;
-  readonly station_id: string;
-  readonly base_mva?: number;
-  readonly slack_node_id?: string;
-  readonly snapshot_id?: string;
-}
-
-export interface Audit2PowerFlowResponse {
-  readonly case_id: string;
-  readonly project_id: string;
-  readonly station_id: string;
-  readonly audit2_applied: Record<string, unknown>;
-  readonly solver_attempted: boolean;
-  readonly solver_error: string | null;
-  readonly audit2_extensions_keys: readonly string[];
-  readonly graph_branch_count: number;
-  readonly graph_node_count: number;
-  readonly graph_inverter_source_count: number;
-  readonly snapshot_id_loaded: string | null;
-}
-
-export async function runAudit2PowerFlow(
-  req: Audit2PowerFlowRequest,
-): Promise<Audit2PowerFlowResponse> {
-  const res = await fetch('/api/cases/audit2-power-flow', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(req),
-  });
-  if (!res.ok) {
-    throw new Error(`Audit2 power flow failed: ${res.status} ${res.statusText}`);
-  }
-  return res.json() as Promise<Audit2PowerFlowResponse>;
 }

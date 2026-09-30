@@ -64,7 +64,12 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     /* K5-A (H-4): wejście do kreatora baterii kondensatorów SN — realna
      * operacja add_shunt_compensator_sn (bus_ref = kliknięta szyna). */
     { id: 'add-compensator', labelPl: 'Dodaj kompensator mocy biernej', group: 'budowa' },
-    { id: 'show-sc-data', labelPl: 'Pokaż dane zwarciowe źródła', group: 'widok' },
+    // Karta W2-B: etykieta byla identyczna z 'show-sc-source' menu GPZ
+    // ('Pokaz dane zwarciowe zrodla') mimo innego przedmiotu akcji (sekcja,
+    // nie zrodlo) — naprawione przy okazji wpiecia realnej nawigacji dla obu
+    // akcji (byly wczesniej dwoma zaslepkami roadmapy, jedna dokladnie
+    // skopiowana etykieta z drugiej).
+    { id: 'show-sc-data', labelPl: 'Pokaż dane zwarciowe sekcji', group: 'widok' },
     { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', group: 'widok' },
   ],
   bay: [
@@ -201,6 +206,31 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
   ],
 };
 
+/** S9-10: powód blokady „Rozpocznij odgałęzienie" — jeden tekst dla menu kanwy,
+ *  szuflady i karty technicznej inspektora. */
+export const POWOD_BRAKU_STARTU_ODGALEZIENIA_PL =
+  'Brak wolnego pola odgałęźnego SN z wolnym zaciskiem. Najpierw dodaj pole odgałęźne w rozdzielni.';
+
+/**
+ * KARTA S95-START: uczciwy powód blokady pozycji kontynuacji ciągu SN — po polsku, bez
+ * identyfikatorów, z nazwaniem, co projektant może zrobić. Ten sam tekst pokazuje menu
+ * kanwy, szuflada i wykonawca akcji (gdy akcja przyjdzie inną drogą niż menu).
+ */
+export function powodBrakuStartuCiagu(kind: SldElementKindForMenu): string {
+  switch (kind) {
+    case 'gpz':
+    case 'section':
+      return 'Brak wolnego pola liniowego SN w tej rozdzielni. Dodaj pole liniowe wyjściowe albo kontynuuj ciąg z istniejącego odcinka.';
+    case 'station':
+      return 'Stacja nie ma wolnego pola liniowego wyjściowego SN. Dodaj pole liniowe wyjściowe w konfiguratorze stacji albo kontynuuj ciąg z końca odcinka.';
+    case 'cable_segment_sn':
+    case 'overhead_line_sn':
+      return 'Nie rozpoznano wolnego końca tego ciągu. Kontynuuj ciąg ze stacji albo pola na jego końcu.';
+    default:
+      return 'Ten obiekt nie ma wolnego pola SN, z którego można wyprowadzić ciąg.';
+  }
+}
+
 /**
  * Filtruje akcje menu wg dostępności (np. zakaz "Wyprowadź ciąg główny" gdy
  * pole już ma wyprowadzony ciąg).
@@ -219,11 +249,13 @@ export function getMenuActions(
     /** K5-A: czy stacja ma szynę nN (realne FK substation.bus_refs → bus nN);
      *  `false` blokuje agregat/UPS z uczciwym powodem, `undefined` = brak danych. */
     readonly stationHasNnBus?: boolean;
-    /** Karta S9-5: czy rozdzielnia (GPZ / sekcja) ma WOLNE POLE LINIOWE — czyli
-     *  punkt startu ciągu SN (`resolveGpzTrunkStartFieldRef`). `false` blokuje
-     *  „Wyprowadź ciąg główny SN" z uczciwym powodem zamiast otwierać kreator,
-     *  którego nie da się zapisać; `undefined` = brak danych (bez blokady). */
-    readonly trunkStartFieldAvailable?: boolean;
+    /** Karta S9-5 → S95-START: dostępność punktu startu ciągu SN dla KAŻDEJ pozycji
+     *  kontynuacji ciągu w menu obiektu (klucz = id pozycji). Wartość liczy
+     *  `resolveTrunkStartAvailability` (`shared/sldActionExecutor.ts`) TYM SAMYM
+     *  rozstrzygnięciem, które buduje kontekst operacji i które czyta kreator magistrali
+     *  (`maStartOperacjiCiagu`). `false` blokuje pozycję z uczciwym powodem zamiast
+     *  otwierać kreator bez punktu startu; brak klucza = brak pomiaru (bez blokady). */
+    readonly trunkStartAvailable?: Readonly<Partial<Record<string, boolean>>>;
   },
 ): SldMenuAction[] {
   const baseActions = SLD_MENU_REGISTRY[kind];
@@ -263,20 +295,16 @@ export function getMenuActions(
         disabledReasonPl: 'Stacja nie ma szyny nN. Najpierw dodaj transformator SN/nN z rozdzielnicą nN.',
       };
     }
-    /* Karta S9-5: pozycja budowy MUSI mieć punkt startu. Rozdzielnia bez
-     * wolnego pola liniowego dostaje uczciwą blokadę — kreator magistrali
-     * odmówiłby zapisu (`maStartCiagu`), więc otwarcie go byłoby martwym
-     * klikiem opakowanym w okno. */
-    if (
-      a.id === 'continue-trunk'
-      && (kind === 'gpz' || kind === 'section')
-      && ctx.trunkStartFieldAvailable === false
-    ) {
+    /* Karta S9-5 → S95-START: pozycja budowy ciągu MUSI mieć punkt startu — dla
+     * KAŻDEGO rodzaju obiektu, nie tylko GPZ i sekcji. Kreator magistrali odmówiłby
+     * zapisu (`maStartCiagu`), więc otwarcie go byłoby martwym klikiem opakowanym w
+     * okno. Bramka rodzajowo-agnostyczna: o dostępności decyduje pisarz kontekstu
+     * (`resolveTrunkStartAvailability`), powód — rodzaj obiektu. */
+    if (ctx.trunkStartAvailable?.[a.id] === false) {
       return {
         ...a,
         disabled: true,
-        disabledReasonPl:
-          'Brak wolnego pola liniowego SN w tej rozdzielni. Dodaj pole odpływowe albo kontynuuj ciąg z istniejącego odcinka.',
+        disabledReasonPl: powodBrakuStartuCiagu(kind),
       };
     }
     /* S9-10 (klasa S9-5, predykaty PARAMI): pozycja „Rozpocznij odgałęzienie"
@@ -291,8 +319,7 @@ export function getMenuActions(
       return {
         ...a,
         disabled: true,
-        disabledReasonPl:
-          'Brak wolnego pola odgałęźnego SN (pole roli FEEDER z wolnym zaciskiem). Najpierw dodaj pole odgałęzienia w rozdzielni.',
+        disabledReasonPl: POWOD_BRAKU_STARTU_ODGALEZIENIA_PL,
       };
     }
     if (a.id === 'show-results' && ctx.hasResults === false) {
@@ -356,7 +383,6 @@ export const toastBus = new ToastBus();
 export const COMMAND_FEEDBACK_PL = {
   bayCreated: (designation: string) => `Utworzono pole ${designation}.`,
   segmentSplit: 'Odcinek podzielono na dwa odcinki end-to-end.',
-  transformerAdded: (designation: string) => `Dodano transformator SN/nN ${designation}.`,
   derAttached: (kind: 'PV' | 'BESS' | 'FW', name: string) =>
     `Dodano źródło ${kind} "${name}" z punktem przyłączenia.`,
   missingInverterData: 'Brakuje danych falownika do obliczeń zwarciowych.',

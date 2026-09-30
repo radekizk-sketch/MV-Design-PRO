@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from network_model.brak_zasobu import BrakZasobuError
 from pydantic import BaseModel
 
 
@@ -395,5 +396,7 @@ def list_wind_turbines() -> list[WindTurbineCatalogEntry]:
 def get_turbine(catalog_id: str) -> WindTurbineCatalogEntry:
     if catalog_id not in WIND_TURBINE_CATALOG:
         available = ", ".join(sorted(WIND_TURBINE_CATALOG.keys()))
-        raise KeyError(f"Unknown wind turbine catalog_id: {catalog_id}. Available: {available}")
+        raise BrakZasobuError(
+            f"Unknown wind turbine catalog_id: {catalog_id}. Available: {available}"
+        )
     return WIND_TURBINE_CATALOG[catalog_id]

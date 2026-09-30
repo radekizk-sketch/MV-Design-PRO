@@ -1,0 +1,39 @@
+# Warstwa WOS — krajowe wymogi ogólnego stosowania wynikające z rozporządzenia 2016/631.
+#
+# CO TA WARSTWA NIESIE: wartości krajowe wybrane w granicach warstwy NC RfG. Dziś jedyną
+# wartością krajową są PROGI KLAS MODUŁÓW (decyzja właściciela O-1, plan AB §2.1;
+# rozbieżność opisana jako OD-5 w `docs/evidence/CONVERGENCE_EVIDENCE.md`).
+# Pozostałe parametry krajowe (czasy w pasmach częstotliwości, próg i statyzm LFSM-O, RoCoF,
+# obwiednia FRT, odbudowa P) NIE mają tu wartości, dopóki dokument WOS nie zostanie
+# dołączony (OD-21) — profil efektywny bierze je z warstwy wartości zastanych
+# (`zastane.yaml`) ze stanem NIEUSTALONE, a nie udaje, że pochodzą z WOS.
+#
+# PARAMETRY TECHNICZNE (gdy dokument zostanie dołączony): sekcja `parametry.<grupa>` o tych
+# samych kluczach co `zastane.yaml::parametry` plus proweniencja grupy (`jednostka_redakcyjna`,
+# opcjonalnie `status`, `uwagi_pl`). Pierwszeństwo w profilu efektywnym: OSD > WOS > zastane.
+warstwa: WOS
+dokument:
+  tytul: >-
+    Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG),
+    zatwierdzone decyzją Prezesa URE
+  wydanie: "2018"
+  status: WSKAZANE
+  # Data obowiązywania nieustalona (dokument WOS nie jest w repozytorium) — zero dat z pamięci.
+  obowiazuje_od: null
+
+# Progi mocy maksymalnej modułów typu B, C i D (krajowe). Moduł przyłączony na napięciu
+# >= 110 kV jest typu D niezależnie od mocy (reguła warstwy NC RfG, `napiecie_d_kv`).
+#
+# STAN NIEUSTALONE (przegląd 2026-09-23 #3): dawne pole „jednostka" opisywało parametr
+# („progi mocy maksymalnej modułów typu B, C i D"), a nie wskazywało jednostki redakcyjnej
+# dokumentu WOS — bez niej podstawa nie jest WSKAZANA. Klasyfikacja pozostaje ważna
+# (stosowalność wymagań), a każdy wynik klasyfikacji niesie tę podstawę z zastrzeżeniem.
+progi_klas:
+  jednostka_redakcyjna: null
+  status: NIEUSTALONE
+  uwagi_pl: >-
+    wartości progów wg decyzji właściciela O-1 (plan AB §2.1); jednostka redakcyjna dokumentu
+    WOS do wskazania (plan AB §12.1)
+  b_od_kw: 200
+  c_od_kw: 10000
+  d_od_kw: 75000

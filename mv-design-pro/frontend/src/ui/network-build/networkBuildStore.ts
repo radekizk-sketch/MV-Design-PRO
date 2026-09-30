@@ -7,6 +7,7 @@ import {
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
 import { isOperationalBus, isTerrainSnSegment } from '../shared/enmVisibility';
 import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
+import { fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import type { ElementType } from '../types';
@@ -50,6 +51,7 @@ import {
   SURFACE_REGISTRY,
   validateSurfaceStack,
 } from '../workspace/types';
+import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
 
 export type BuildPhase =
   | 'NO_SOURCE'
@@ -395,8 +397,8 @@ function mapInspectorPanelMeta(
     case 'field_measurements':
       return { screenCode: 'E-11', sizeClass: 'B', titlePl: 'Pomiary pola', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_source_contributions':
-      // P-1: bez wywołujących — BayCard „Wkłady źródeł" prowadzi deep-linkiem
-      // do zakładki zwarć warsztatu Wyników (realny dostawca); wpis zostaje
+      // P-1: bez wywołujących — „Wkłady źródeł" prowadzi deep-linkiem do
+      // zakładki zwarć warsztatu Wyników (realny dostawca); wpis zostaje
       // dla wyczerpującego switcha po unii kindów panelu.
       return { screenCode: 'E-33', sizeClass: 'B', titlePl: 'Wkłady źródeł', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_earth_fault':
@@ -1003,7 +1005,7 @@ export function selectStationSummaries(
       );
       const hasTransformer = s.transformer_refs.length > 0;
       const nnBuses = (snapshot.buses ?? []).filter(
-        (bus) => isOperationalBus(bus) && bus.voltage_kv < 1 && s.bus_refs.includes(bus.ref_id),
+        (bus) => isOperationalBus(bus) && wPasmieNn(bus.voltage_kv) && s.bus_refs.includes(bus.ref_id),
       );
 
       const identity = stationPublicIdentity(snapshot, s);
@@ -1179,8 +1181,9 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+/** Nazwa pola bez własnej nazwy w modelu — nazwa roli z kanonu słownictwa ról pól (karta #141). */
 function defaultConfiguredFieldName(role: 'OUT' | 'FEEDER'): string {
-  return role === 'OUT' ? 'Pole odpływowe SN' : 'Pole liniowe SN';
+  return fieldRoleLabelPl(role);
 }
 
 function listCanonicalFieldSpecs(station: EnergyNetworkModel['substations'][number]): FieldSpecRecord[] {
@@ -1213,7 +1216,7 @@ export function selectConfiguredGridSourceSnFields(
   const stationRefs = new Set([stationRef, station?.ref_id, station?.id].filter(Boolean) as string[]);
   const mediumVoltageBusRefs = new Set(
     (snapshot.buses ?? [])
-      .filter((bus) => typeof bus.voltage_kv === 'number' && bus.voltage_kv >= 1)
+      .filter((bus) => typeof bus.voltage_kv === 'number' && powyzejPasmaNn(bus.voltage_kv))
       .map((bus) => bus.ref_id),
   );
 
@@ -1280,7 +1283,7 @@ export function selectGridSourceSnFieldCandidates(
 
   const mediumVoltageBusRefs = new Set(
     snapshot.buses
-      .filter((bus) => typeof bus.voltage_kv === 'number' && bus.voltage_kv >= 1)
+      .filter((bus) => typeof bus.voltage_kv === 'number' && powyzejPasmaNn(bus.voltage_kv))
       .map((bus) => bus.ref_id),
   );
 

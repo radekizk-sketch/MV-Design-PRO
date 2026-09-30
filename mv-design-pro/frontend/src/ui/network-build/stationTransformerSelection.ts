@@ -152,7 +152,8 @@ export interface StationTransformerUnit {
   /**
    * KOMPLETNOSC-POLA-TR (parytet marker ↔ ostrzeżenie): napięcie znamionowe
    * szyny, na której leży strona GÓRNA transformatora. Reguła bramki gotowości
-   * brzmi „strona górna przyłączona do szyny SN" (`enm/pole_transformatorowe.py`),
+   * brzmi „strona górna przyłączona do szyny SN" (`enm/pole_transformatorowe.py`, pasmo z
+   * `network_model/pochodne/pasma_napieciowe.py`),
    * więc marker rysunku musi znać dokładnie tę samą daną — inaczej dla
    * transformatora 110/15 kV (strona górna WN) rysunek pokazywałby brak pola
    * SN, o którym bramka słusznie milczy.

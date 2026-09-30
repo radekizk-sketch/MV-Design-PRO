@@ -12,7 +12,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-/** Kształt kontraktu 3.0.0 (`docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md` §3):
+/** Kształt kontraktu 4.0.0 (`docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md` §3):
  *  graf ze stanami zacisków, mapą odcinków, rolami urządzeń, sekcjami,
  *  torami zasilania i wyspami; SWZ per transformator; komunikaty walidacji;
  *  tożsamość żądania w `model_snapshot`. Inna wersja = odrzucenie (ten sam

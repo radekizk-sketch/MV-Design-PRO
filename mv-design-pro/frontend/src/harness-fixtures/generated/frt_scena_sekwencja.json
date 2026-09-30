@@ -1,0 +1,415 @@
+{
+  "input_hash": "2cb6ef4958287efd05eea71595f3967357e4fa4e82513d8e97da02eea8ed9ffb",
+  "kontekst_sily_sieci": {
+    "bus_ref": "nn/fe8183d3a3a9f4a8d6fbbd6a3337651c/feeder_bus",
+    "is_weak": false,
+    "missing_data": [],
+    "modules": [
+      {
+        "name": "Farma PV 1 MW",
+        "ref": "pv/cf52e8ef1365b7493495105069afcf67/converter",
+        "sn_mva": 1.1
+      }
+    ],
+    "nominal_kv": 15.0,
+    "s_installed_mva": 1.1,
+    "s_sc_mva": 251.21,
+    "scr": 228.3727,
+    "verdict": "mocna",
+    "white_box": [
+      {
+        "formula_latex": "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
+        "result_pl": "SCR = 228.3727 (–)",
+        "substitution_pl": "SCR = 251.21 MVA / 1.1 MVA",
+        "symbol": "SCR"
+      },
+      {
+        "formula_latex": "\\mathrm{SCR} \\; \\geq \\; 3.0",
+        "result_pl": "sieć mocna",
+        "substitution_pl": "próg słaby = 3.0; próg bardzo słaby = 2.0",
+        "symbol": "werdykt"
+      }
+    ],
+    "why_pl": "SCR = 228.3727 ≥ 3.0 — sieć mocna w węźle; klasyczne założenia pracy źródła falownikowego pozostają ważne."
+  },
+  "kontekst_sily_sieci_powod_pl": null,
+  "liczba_zapadow": 2,
+  "modul_der": {
+    "id": "conv-pv-1mw-15kv",
+    "kind": "PV",
+    "nazwa": "Farma PV 1 MW / 15 kV",
+    "pmax_mw": 1.0,
+    "un_kv": 15.0
+  },
+  "obwiednia_profilu": {
+    "opis": "Wymagana obwiednia LVRT profilu operatora (informacja): dozwolony przebieg napięcia (czas→napięcie) wg profilu NC RfG — nie jest podstawą oceny, bo trajektoria nie jest rozwiązaniem sieci.",
+    "punkty": [
+      {
+        "czas_s": 0.0,
+        "napiecie_pu": 0.05
+      },
+      {
+        "czas_s": 0.15,
+        "napiecie_pu": 0.05
+      },
+      {
+        "czas_s": 0.7,
+        "napiecie_pu": 0.5
+      },
+      {
+        "czas_s": 1.5,
+        "napiecie_pu": 0.85
+      },
+      {
+        "czas_s": 3.0,
+        "napiecie_pu": 0.9
+      }
+    ],
+    "rodzaj": "lvrt"
+  },
+  "ocena": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "BRAK_METODY",
+      "odniesienie": null,
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "UNVALIDATED_MODEL",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Ocena niewykonana",
+      "semantyka": "neutralna"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryterium": {
+      "opis_pl": "Zdolność przejścia przez zapad napięcia (LVRT) nad obwiednią profilu operatora",
+      "relacja": "LOGICZNE",
+      "warunek_latex": "",
+      "warunek_wstepny_pl": null,
+      "warunek_wstepny_podstawa": null
+    },
+    "kryterium_id": "frt_hvrt.sekwencja.conv-pv-1mw-15kv",
+    "limit": null,
+    "margines": null,
+    "niepewnosc": {
+      "metoda_pl": null,
+      "nie_dotyczy": true,
+      "powod_pl": "brak wielkości rozstrzygającej — trajektoria nie jest wynikiem oceny, więc niepewność wyniku nie dotyczy",
+      "wartosc": null
+    },
+    "podstawa": {
+      "dokument": "Profil wymagań przyłączeniowych operatora PSE — Polskie Sieci Elektroenergetyczne, rewizja pliku 2024-Q4 — obwiednia LVRT",
+      "jednostka_redakcyjna": null,
+      "rodzaj": "NIEUSTALONA",
+      "status": "NIEUSTALONE",
+      "uwagi_pl": "profil nie wskazuje dokumentu źródłowego obwiedni — wydanie i jednostka redakcyjna nieustalone",
+      "wydanie": null
+    },
+    "powody_niepelnosci": [
+      "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
+      "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji nie stanowi pełnego dowodu zgodności (wymagany: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany).",
+      "Podstawa „Profil wymagań przyłączeniowych operatora PSE — Polskie Sieci Elektroenergetyczne, rewizja pliku 2024-Q4 — obwiednia LVRT” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+    ],
+    "przedmiot": {
+      "element_ref": "conv-pv-1mw-15kv",
+      "nazwa_pl": "Farma PV 1 MW / 15 kV",
+      "opis_pl": "Moduł DER Farma PV 1 MW / 15 kV w sekwencji 2 zapadów napięcia wobec profilu operatora PSE — Polskie Sieci Elektroenergetyczne"
+    },
+    "slad": [],
+    "status_maszynowy": "NIE_OCENIONO",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "obwiednia LVRT z profilu operatora PSE — Polskie Sieci Elektroenergetyczne dla badanego modułu DER (stosowalność wg typu modułu rozstrzyga ocena zgodności NC RfG)",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Metoda dowodu właściwa dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+        "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+        "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatora PSE — Polskie Sieci Elektroenergetyczne, rewizja pliku 2024-Q4 — obwiednia LVRT” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: profil nie wskazuje dokumentu źródłowego obwiedni — wydanie i jednostka redakcyjna nieustalone).",
+        "Bieg dynamiki RMS modułu na silniku kanonicznym z modelem sieci, zweryfikowany wyrocznią — trajektoria obecnego solvera nie jest rozwiązaniem sieci — napięcie jest zadane profilem wejściowym scenariusza, a kryterium v > 0,05 p.u. liczone wobec tego samego profilu jest spełnione z definicji (zapad do 0,06 p.u. trwający 3 s zostałby uznany za dotrzymanie obwiedni).",
+        "Ocena trajektorii z rozwiązania sieci wobec obwiedni profilu operatora i nastaw zabezpieczeń modułu.",
+        "Do czasu biegu kanonicznego: certyfikat albo raport z badań modułu wykazujący zdolność przejścia przez zakłócenie (trajektoria tego okna nie jest takim dowodem)."
+      ],
+      "przyczyna_pl": "brak metody dowodu, która wykazuje zachowania dynamicznego",
+      "zastrzezenia": [
+        "Podstawa „Profil wymagań przyłączeniowych operatora PSE — Polskie Sieci Elektroenergetyczne, rewizja pliku 2024-Q4 — obwiednia LVRT” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (profil nie wskazuje dokumentu źródłowego obwiedni — wydanie i jednostka redakcyjna nieustalone).",
+        "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
+        "Zakres ważności: Trajektoria uproszczonego solvera prób FRT/HVRT — napięcie zadane profilem wejściowym scenariusza — wynik nie obejmuje: trajektoria wyznaczona z rozwiązania sieci; kryterium utrzymania pracy niezależne od profilu wejściowego."
+      ],
+      "zdanie_pl": "Zdolność przejścia przez zapad napięcia (LVRT) nad obwiednią profilu operatora (Farma PV 1 MW / 15 kV) — ocena niewykonana: brak metody dowodu, która wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar."
+    },
+    "wynik": null,
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Trajektoria uproszczonego solvera prób FRT/HVRT — napięcie zadane profilem wejściowym scenariusza",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": null,
+      "symetria_zaklocenia": null,
+      "technologia": "PV",
+      "wykluczenia": [
+        "trajektoria wyznaczona z rozwiązania sieci",
+        "kryterium utrzymania pracy niezależne od profilu wejściowego"
+      ]
+    }
+  },
+  "ocena_dowodowa": {
+    "audit_ref": "karta_s1_s4_dowod.md §0.9",
+    "capability_id": "frt_hvrt.trajectory",
+    "claim_kind": "DYNAMIC_PERFORMANCE",
+    "claim_kind_pl": "zachowanie dynamiczne",
+    "rationale_pl": "Trajektoria napięcia jest funkcją zadaną parametrami scenariusza próby, a nie rozwiązaniem sieci sprzężonym z resztą modułu wytwórczego.",
+    "regulatory_evidence_eligible": false,
+    "tier": "UNVALIDATED_MODEL",
+    "tier_pl": "model niezwalidowany"
+  },
+  "operator": {
+    "id": "pse",
+    "nazwa": "PSE — Polskie Sieci Elektroenergetyczne"
+  },
+  "sekcja_audytowa_pl": "Wynik uproszczonego solvera trajektorii — nie jest wynikiem inżynierskim (napięcie zadane profilem wejściowym, kryterium utrzymania wobec tego samego profilu)",
+  "status_solvera": "der_dropped",
+  "werdykt_sekwencji_pl": "nie oceniono",
+  "zalozenia_pl": "Stan modułu między zapadami (nagrzewanie, niepełny odzysk mocy) nie jest modelowany: każdy zapad jest liczony od stanu ustalonego. Trajektoria każdego zapadu jest zadana profilem wejściowym, więc ani pojedynczy zapad, ani cała sekwencja nie są oceniane.",
+  "zapady": [
+    {
+      "czas_s": 0.15,
+      "glebokosc_pu": 0.05,
+      "margin_to_curve_pu": 0.0,
+      "margin_to_curve_s": null,
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "BRAK_METODY",
+          "odniesienie": null,
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "UNVALIDATED_MODEL",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Zdolność przejścia przez zapad napięcia (LVRT) nad obwiednią profilu operatora",
+          "relacja": "LOGICZNE",
+          "warunek_latex": "",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "frt_hvrt.sekwencja.conv-pv-1mw-15kv.zapad_1",
+        "limit": null,
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "brak wielkości rozstrzygającej — trajektoria nie jest wynikiem oceny, więc niepewność wyniku nie dotyczy",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Profil wymagań przyłączeniowych operatora PSE — Polskie Sieci Elektroenergetyczne, rewizja pliku 2024-Q4 — obwiednia LVRT",
+          "jednostka_redakcyjna": null,
+          "rodzaj": "NIEUSTALONA",
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "profil nie wskazuje dokumentu źródłowego obwiedni — wydanie i jednostka redakcyjna nieustalone",
+          "wydanie": null
+        },
+        "powody_niepelnosci": [
+          "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
+          "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji nie stanowi pełnego dowodu zgodności (wymagany: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany).",
+          "Podstawa „Profil wymagań przyłączeniowych operatora PSE — Polskie Sieci Elektroenergetyczne, rewizja pliku 2024-Q4 — obwiednia LVRT” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+        ],
+        "przedmiot": {
+          "element_ref": "conv-pv-1mw-15kv",
+          "nazwa_pl": "Farma PV 1 MW / 15 kV",
+          "opis_pl": "Moduł DER Farma PV 1 MW / 15 kV, zapad 1 sekwencji (głębokość 0,05 p.u., czas 0,15 s) wobec profilu operatora PSE — Polskie Sieci Elektroenergetyczne"
+        },
+        "slad": [],
+        "status_maszynowy": "NIE_OCENIONO",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "obwiednia LVRT z profilu operatora PSE — Polskie Sieci Elektroenergetyczne dla badanego modułu DER (stosowalność wg typu modułu rozstrzyga ocena zgodności NC RfG)",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Metoda dowodu właściwa dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+            "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+            "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatora PSE — Polskie Sieci Elektroenergetyczne, rewizja pliku 2024-Q4 — obwiednia LVRT” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: profil nie wskazuje dokumentu źródłowego obwiedni — wydanie i jednostka redakcyjna nieustalone).",
+            "Bieg dynamiki RMS modułu na silniku kanonicznym z modelem sieci, zweryfikowany wyrocznią — trajektoria obecnego solvera nie jest rozwiązaniem sieci — napięcie jest zadane profilem wejściowym scenariusza, a kryterium v > 0,05 p.u. liczone wobec tego samego profilu jest spełnione z definicji (zapad do 0,06 p.u. trwający 3 s zostałby uznany za dotrzymanie obwiedni).",
+            "Ocena trajektorii z rozwiązania sieci wobec obwiedni profilu operatora i nastaw zabezpieczeń modułu.",
+            "Do czasu biegu kanonicznego: certyfikat albo raport z badań modułu wykazujący zdolność przejścia przez zakłócenie (trajektoria tego okna nie jest takim dowodem)."
+          ],
+          "przyczyna_pl": "brak metody dowodu, która wykazuje zachowania dynamicznego",
+          "zastrzezenia": [
+            "Podstawa „Profil wymagań przyłączeniowych operatora PSE — Polskie Sieci Elektroenergetyczne, rewizja pliku 2024-Q4 — obwiednia LVRT” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (profil nie wskazuje dokumentu źródłowego obwiedni — wydanie i jednostka redakcyjna nieustalone).",
+            "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
+            "Zakres ważności: Trajektoria uproszczonego solvera prób FRT/HVRT — napięcie zadane profilem wejściowym scenariusza — wynik nie obejmuje: trajektoria wyznaczona z rozwiązania sieci; kryterium utrzymania pracy niezależne od profilu wejściowego."
+          ],
+          "zdanie_pl": "Zdolność przejścia przez zapad napięcia (LVRT) nad obwiednią profilu operatora (Farma PV 1 MW / 15 kV) — ocena niewykonana: brak metody dowodu, która wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar."
+        },
+        "wynik": null,
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Trajektoria uproszczonego solvera prób FRT/HVRT — napięcie zadane profilem wejściowym scenariusza",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": null,
+          "symetria_zaklocenia": null,
+          "technologia": "PV",
+          "wykluczenia": [
+            "trajektoria wyznaczona z rozwiązania sieci",
+            "kryterium utrzymania pracy niezależne od profilu wejściowego"
+          ]
+        }
+      },
+      "p_recovery_time_s": 0.27,
+      "scenario_id": "zapad_1",
+      "status": "ok",
+      "stayed_connected": true,
+      "wejscie_solvera": {
+        "fault_duration_s": 0.15,
+        "target_der_ref": "conv-pv-1mw-15kv",
+        "test_kind": "lvrt",
+        "voltage_dip_depth_pu": 0.05
+      },
+      "werdykt_pl": "nie oceniono"
+    },
+    {
+      "czas_s": 0.5,
+      "glebokosc_pu": 0.02,
+      "margin_to_curve_pu": -0.03,
+      "margin_to_curve_s": null,
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "BRAK_METODY",
+          "odniesienie": null,
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "UNVALIDATED_MODEL",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Zdolność przejścia przez zapad napięcia (LVRT) nad obwiednią profilu operatora",
+          "relacja": "LOGICZNE",
+          "warunek_latex": "",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "frt_hvrt.sekwencja.conv-pv-1mw-15kv.zapad_2",
+        "limit": null,
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "brak wielkości rozstrzygającej — trajektoria nie jest wynikiem oceny, więc niepewność wyniku nie dotyczy",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Profil wymagań przyłączeniowych operatora PSE — Polskie Sieci Elektroenergetyczne, rewizja pliku 2024-Q4 — obwiednia LVRT",
+          "jednostka_redakcyjna": null,
+          "rodzaj": "NIEUSTALONA",
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "profil nie wskazuje dokumentu źródłowego obwiedni — wydanie i jednostka redakcyjna nieustalone",
+          "wydanie": null
+        },
+        "powody_niepelnosci": [
+          "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
+          "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji nie stanowi pełnego dowodu zgodności (wymagany: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany).",
+          "Podstawa „Profil wymagań przyłączeniowych operatora PSE — Polskie Sieci Elektroenergetyczne, rewizja pliku 2024-Q4 — obwiednia LVRT” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+        ],
+        "przedmiot": {
+          "element_ref": "conv-pv-1mw-15kv",
+          "nazwa_pl": "Farma PV 1 MW / 15 kV",
+          "opis_pl": "Moduł DER Farma PV 1 MW / 15 kV, zapad 2 sekwencji (głębokość 0,02 p.u., czas 0,5 s) wobec profilu operatora PSE — Polskie Sieci Elektroenergetyczne"
+        },
+        "slad": [],
+        "status_maszynowy": "NIE_OCENIONO",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "obwiednia LVRT z profilu operatora PSE — Polskie Sieci Elektroenergetyczne dla badanego modułu DER (stosowalność wg typu modułu rozstrzyga ocena zgodności NC RfG)",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Metoda dowodu właściwa dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+            "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+            "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatora PSE — Polskie Sieci Elektroenergetyczne, rewizja pliku 2024-Q4 — obwiednia LVRT” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: profil nie wskazuje dokumentu źródłowego obwiedni — wydanie i jednostka redakcyjna nieustalone).",
+            "Bieg dynamiki RMS modułu na silniku kanonicznym z modelem sieci, zweryfikowany wyrocznią — trajektoria obecnego solvera nie jest rozwiązaniem sieci — napięcie jest zadane profilem wejściowym scenariusza, a kryterium v > 0,05 p.u. liczone wobec tego samego profilu jest spełnione z definicji (zapad do 0,06 p.u. trwający 3 s zostałby uznany za dotrzymanie obwiedni).",
+            "Ocena trajektorii z rozwiązania sieci wobec obwiedni profilu operatora i nastaw zabezpieczeń modułu.",
+            "Do czasu biegu kanonicznego: certyfikat albo raport z badań modułu wykazujący zdolność przejścia przez zakłócenie (trajektoria tego okna nie jest takim dowodem)."
+          ],
+          "przyczyna_pl": "brak metody dowodu, która wykazuje zachowania dynamicznego",
+          "zastrzezenia": [
+            "Podstawa „Profil wymagań przyłączeniowych operatora PSE — Polskie Sieci Elektroenergetyczne, rewizja pliku 2024-Q4 — obwiednia LVRT” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (profil nie wskazuje dokumentu źródłowego obwiedni — wydanie i jednostka redakcyjna nieustalone).",
+            "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
+            "Zakres ważności: Trajektoria uproszczonego solvera prób FRT/HVRT — napięcie zadane profilem wejściowym scenariusza — wynik nie obejmuje: trajektoria wyznaczona z rozwiązania sieci; kryterium utrzymania pracy niezależne od profilu wejściowego."
+          ],
+          "zdanie_pl": "Zdolność przejścia przez zapad napięcia (LVRT) nad obwiednią profilu operatora (Farma PV 1 MW / 15 kV) — ocena niewykonana: brak metody dowodu, która wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar."
+        },
+        "wynik": null,
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Trajektoria uproszczonego solvera prób FRT/HVRT — napięcie zadane profilem wejściowym scenariusza",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": null,
+          "symetria_zaklocenia": null,
+          "technologia": "PV",
+          "wykluczenia": [
+            "trajektoria wyznaczona z rozwiązania sieci",
+            "kryterium utrzymania pracy niezależne od profilu wejściowego"
+          ]
+        }
+      },
+      "p_recovery_time_s": 0.296,
+      "scenario_id": "zapad_2",
+      "status": "der_dropped",
+      "stayed_connected": false,
+      "wejscie_solvera": {
+        "fault_duration_s": 0.5,
+        "target_der_ref": "conv-pv-1mw-15kv",
+        "test_kind": "lvrt",
+        "voltage_dip_depth_pu": 0.02
+      },
+      "werdykt_pl": "nie oceniono"
+    }
+  ]
+}

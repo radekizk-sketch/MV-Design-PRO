@@ -1,5 +1,6 @@
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
+import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 type Context = Record<string, unknown> | undefined;
 type LegacyBay = EnergyNetworkModel['bays'][number];
@@ -131,22 +132,11 @@ function findStationRefByBus(
 }
 
 function isLowVoltageBus(bus: LegacyBus | null): bus is LegacyBus {
-  return Boolean(
-    bus
-      && typeof bus.voltage_kv === 'number'
-      && Number.isFinite(bus.voltage_kv)
-      && bus.voltage_kv > 0
-      && bus.voltage_kv < 1,
-  );
+  return Boolean(bus && typeof bus.voltage_kv === 'number' && wPasmieNn(bus.voltage_kv));
 }
 
 function isMediumVoltageBus(bus: LegacyBus | null): bus is LegacyBus {
-  return Boolean(
-    bus
-      && typeof bus.voltage_kv === 'number'
-      && Number.isFinite(bus.voltage_kv)
-      && bus.voltage_kv >= 1,
-  );
+  return Boolean(bus && typeof bus.voltage_kv === 'number' && powyzejPasmaNn(bus.voltage_kv));
 }
 
 function readFeederRole(bay: LegacyBay): string {

@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
-import { fetchProtectionDeviceTypes } from '../../../ui/catalog/api';
+import { fetchMvProtectionDeviceTypes } from '../../../ui/catalog/api';
 import { buildCatalogBinding } from '../../../ui/catalog/catalogBinding';
 import type { ProtectionDeviceType } from '../../../ui/catalog/types';
 import {
@@ -121,7 +121,17 @@ export function KreatorPrzekaznika() {
   useEffect(() => {
     let active = true;
     setBladKatalogu(null);
-    void fetchProtectionDeviceTypes()
+    // FAB-F: WYŁĄCZNIE katalog KANONICZNY MV (`/mv-protection-device-types`) —
+    // to jedyny zbiór, który przepuszcza brama katalogowa operacji `add_relay`
+    // (patrz `backend/src/api/catalog.py::list_mv_protection_device_types`).
+    // Biblioteka analityczna koordynacji (`fetchProtectionDeviceTypes`,
+    // `/protection/device-types`) niesie inny — szerszy — zbiór pozycji
+    // producenckich do doboru krzywych TCC, którego brama katalogowa NIE
+    // przyjmuje: picker oferował wybór odrzucany potem przez operację
+    // (fabrykacja wyboru, dokładnie ta klasa błędu co K30-89/FAB-C). Zawężenie
+    // do 12 pozycji katalogu MV jest ŚWIADOME i tymczasowe do czasu konwergencji
+    // trzech katalogów zabezpieczeń (osobna karta architektoniczna).
+    void fetchMvProtectionDeviceTypes()
       .then((items) => {
         if (!active) return;
         setTypy(Array.isArray(items) ? items : []);
@@ -148,10 +158,12 @@ export function KreatorPrzekaznika() {
     [breakerControlOptions],
   );
   const opcjeTypow = useMemo(
-    () => typy.map((t) => ({
-      id: t.id,
-      etykieta: t.manufacturer ? `${t.manufacturer} · ${t.name}` : t.name,
-    })),
+    () => typy.map((t) => {
+      // Katalog MV podaje `name_pl`; ta sama unia typu obsługuje też `name`
+      // biblioteki analitycznej — wzorzec identyczny jak w `KreatorStacjiSnNn`.
+      const nazwa = t.name_pl ?? t.name ?? t.id;
+      return { id: t.id, etykieta: t.vendor ? `${t.vendor} · ${nazwa}` : nazwa };
+    }),
     [typy],
   );
 

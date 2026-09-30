@@ -10,6 +10,7 @@ import type {
   ShortCircuitRow,
   TraceStep,
 } from '../results-inspector/types';
+import { rozpakujWartoscSladu } from '../results-inspector/traceValue';
 import { MathRenderer } from './MathRenderer';
 
 interface ProofSelectedElement {
@@ -191,30 +192,15 @@ function traceLabel(key: string): string {
     .replace(/\bmva\b/gi, 'MVA');
 }
 
-function unwrapTraceValue(value: unknown): { raw: unknown; unit?: string } {
-  if (
-    value
-    && typeof value === 'object'
-    && 'value' in value
-    && !('re' in value)
-    && !('im' in value)
-  ) {
-    const record = value as { value?: unknown; unit?: unknown };
-    return {
-      raw: record.value,
-      unit: typeof record.unit === 'string' ? record.unit : undefined,
-    };
-  }
-
-  return { raw: value };
-}
+// Rozpakowanie surowej wartości kroku śladu WHITE BOX (skalar / {re,im} /
+// opakowany TraceValue) jest WSPÓLNE dla całego frontu — patrz
+// `results-inspector/traceValue.ts::rozpakujWartoscSladu` (KLASA NIE
+// INSTANCJA, karta WB-2). Ten plik tylko formatuje wynik tej funkcji do
+// LaTeX-a (formatowanie zostaje per ekran).
 
 function complexParts(value: unknown): { re: number; im: number } | null {
-  const { raw } = unwrapTraceValue(value);
-  if (!raw || typeof raw !== 'object') return null;
-  const record = raw as Record<string, unknown>;
-  const re = Number(record.re);
-  const im = Number(record.im);
+  const { re, im } = rozpakujWartoscSladu(value);
+  if (typeof re !== 'number' || typeof im !== 'number') return null;
   if (!Number.isFinite(re) || !Number.isFinite(im)) return null;
   return { re, im };
 }
@@ -242,13 +228,13 @@ function textToLatex(value: string): string {
 }
 
 function faultTypeLabel(value: unknown): string {
-  const { raw } = unwrapTraceValue(value);
-  const normalized = String(raw ?? '').toUpperCase();
+  const { wartosc } = rozpakujWartoscSladu(value);
+  const normalized = String(wartosc ?? '').toUpperCase();
   if (normalized === '3F' || normalized === 'SC3F') return 'zwarcie trójfazowe';
   if (normalized === '1F' || normalized === 'SC1F') return 'zwarcie jednofazowe doziemne';
   if (normalized === '2F' || normalized === 'SC2F') return 'zwarcie dwufazowe';
   if (normalized === '2FG' || normalized === 'SC2FG') return 'zwarcie dwufazowe doziemne';
-  return String(raw ?? 'nie podano');
+  return String(wartosc ?? 'nie podano');
 }
 
 function traceValueLatex(key: string, value: unknown): string | null {
@@ -265,20 +251,16 @@ function traceValueLatex(key: string, value: unknown): string | null {
     ].join('');
   }
 
-  const { raw, unit } = unwrapTraceValue(value);
+  const { wartosc, unit } = rozpakujWartoscSladu(value);
   const fallbackUnit = TRACE_UNIT_FALLBACKS[key];
-  if (raw === null || raw === undefined) return '\\mathrm{nie\\ wyznaczono}';
-  if (typeof raw === 'number') return `${formatMathNumber(raw)}${unitToLatex(unit, fallbackUnit)}`;
-  if (typeof raw === 'boolean') return raw ? '\\mathrm{tak}' : '\\mathrm{nie}';
-  if (typeof raw === 'string') {
-    const numeric = Number(raw);
-    if (Number.isFinite(numeric) && raw.trim() !== '') {
-      return `${formatMathNumber(numeric)}${unitToLatex(unit, fallbackUnit)}`;
-    }
-    return textToLatex(raw);
+  if (wartosc === null) return '\\mathrm{nie\\ wyznaczono}';
+  if (typeof wartosc === 'number') return `${formatMathNumber(wartosc)}${unitToLatex(unit, fallbackUnit)}`;
+  if (typeof wartosc === 'boolean') return wartosc ? '\\mathrm{tak}' : '\\mathrm{nie}';
+  const numeric = Number(wartosc);
+  if (Number.isFinite(numeric) && wartosc.trim() !== '') {
+    return `${formatMathNumber(numeric)}${unitToLatex(unit, fallbackUnit)}`;
   }
-
-  return null;
+  return textToLatex(wartosc);
 }
 
 function shouldShowTraceValue(key: string, value: unknown): boolean {
@@ -303,9 +285,9 @@ function firstComplexValue(...values: unknown[]): { re: number; im: number } | n
 
 function firstNumberValue(...values: unknown[]): { value: number; unit?: string } | null {
   for (const item of values) {
-    const { raw, unit } = unwrapTraceValue(item);
-    if (typeof raw === 'number' && Number.isFinite(raw)) {
-      return { value: raw, unit };
+    const { wartosc, unit } = rozpakujWartoscSladu(item);
+    if (typeof wartosc === 'number' && Number.isFinite(wartosc)) {
+      return { value: wartosc, unit };
     }
   }
   return null;

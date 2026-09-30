@@ -1,0 +1,65 @@
+{
+  "comparison_id": "run-zab-scena-a::run-zab-scena-b",
+  "run_a_id": "run-zab-scena-a",
+  "run_b_id": "run-zab-scena-b",
+  "library_fingerprint_a": "template_ref_oc_100@1",
+  "library_fingerprint_b": "template_ref_oc_100@1",
+  "steps": [
+    {
+      "step": "MATCH_EVALUATIONS",
+      "description_pl": "Dopasowanie ocen zabezpieczeń obu biegów po parze (element chroniony, punkt zwarcia)",
+      "inputs": {
+        "evaluations_a_count": 1,
+        "evaluations_b_count": 1
+      },
+      "outputs": {
+        "matched_pairs": 1,
+        "total_rows": 1
+      }
+    },
+    {
+      "step": "COMPUTE_DELTAS",
+      "description_pl": "Obliczanie różnic czasów i prądów",
+      "inputs": {
+        "row_count": 1
+      },
+      "outputs": {
+        "no_change_count": 1,
+        "trip_to_no_trip_count": 0,
+        "no_trip_to_trip_count": 0,
+        "invalid_change_count": 0
+      }
+    },
+    {
+      "step": "CLASSIFY_CHANGES",
+      "description_pl": "Klasyfikacja zmian stanów zadziałania: bez zmiany, utrata zadziałania, nowe zadziałanie, zmiana nieoceniona (stan nieprawidłowy)",
+      "inputs": {
+        "row_count": 1
+      },
+      "outputs": {
+        "no_change_count": 1,
+        "trip_to_no_trip_count": 0,
+        "no_trip_to_trip_count": 0,
+        "invalid_change_count": 0
+      }
+    },
+    {
+      "step": "RANK_ISSUES",
+      "description_pl": "Ranking problemów według wagi (od 5 do 1)",
+      "inputs": {
+        "row_count": 1,
+        "delay_threshold_s": 0.05,
+        "margin_threshold_percent": 5.0
+      },
+      "outputs": {
+        "total_issues": 1,
+        "critical_issues": 0,
+        "major_issues": 0,
+        "moderate_issues": 1,
+        "minor_issues": 0,
+        "informational_issues": 0
+      }
+    }
+  ],
+  "created_at": "2026-09-16T09:00:00+00:00"
+}

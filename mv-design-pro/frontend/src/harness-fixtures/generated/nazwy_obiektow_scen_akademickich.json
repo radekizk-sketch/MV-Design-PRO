@@ -1,0 +1,117 @@
+{
+  "buses": [
+    {
+      "ref_id": "bus_hv",
+      "name": "GPZ 110 kV"
+    },
+    {
+      "ref_id": "bus_nn",
+      "name": "Szyna nN"
+    },
+    {
+      "ref_id": "bus_sn_b",
+      "name": "Stacja B SN"
+    },
+    {
+      "ref_id": "bus_sn_c",
+      "name": "Stacja C SN"
+    },
+    {
+      "ref_id": "bus_sn_main",
+      "name": "Szyna SN"
+    },
+    {
+      "ref_id": "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+      "name": "Szyna SN TR blokowego Farma PV"
+    },
+    {
+      "ref_id": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+      "name": "Szyna nN producenta Farma PV"
+    },
+    {
+      "ref_id": "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+      "name": "Zacisk pola źródłowego SN Farma PV"
+    }
+  ],
+  "branches": [
+    {
+      "ref_id": "cab_main_b",
+      "name": "Kabel SN 1"
+    },
+    {
+      "ref_id": "fuse_c",
+      "name": "Bezpiecznik C"
+    },
+    {
+      "ref_id": "line_b_c",
+      "name": "Linia SN 1"
+    },
+    {
+      "ref_id": "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable",
+      "name": "Kabel SN przyłączeniowy Farma PV"
+    },
+    {
+      "ref_id": "sn/9d008ed355939bef762652554f56b2e4/der/field_device",
+      "name": "Aparat pola źródłowego SN Farma PV"
+    },
+    {
+      "ref_id": "sw_coupler",
+      "name": "Sprzęgło Q1"
+    }
+  ],
+  "transformers": [
+    {
+      "ref_id": "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer",
+      "name": "Transformator blokowy Farma PV"
+    },
+    {
+      "ref_id": "tr_hv_sn",
+      "name": "TR 110/15"
+    },
+    {
+      "ref_id": "tr_sn_nn",
+      "name": "TR 15/0.4"
+    }
+  ],
+  "sources": [
+    {
+      "ref_id": "src_gpz",
+      "name": "System 110 kV"
+    }
+  ],
+  "generators": [
+    {
+      "ref_id": "gen_pv",
+      "name": "Farma PV"
+    },
+    {
+      "ref_id": "gen_sync",
+      "name": "Generator synchroniczny"
+    },
+    {
+      "ref_id": "pv/9d008ed355939bef762652554f56b2e4/converter",
+      "name": "Farma PV"
+    }
+  ],
+  "loads": [
+    {
+      "ref_id": "load_c",
+      "name": "Odbiór C"
+    },
+    {
+      "ref_id": "load_nn",
+      "name": "Odbiór nN"
+    }
+  ],
+  "substations": [
+    {
+      "ref_id": "sub_b",
+      "name": "Stacja B"
+    },
+    {
+      "ref_id": "sub_gpz",
+      "name": "GPZ"
+    }
+  ],
+  "bays": []
+}

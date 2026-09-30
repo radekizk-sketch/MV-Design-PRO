@@ -11,6 +11,7 @@
  * thing a station SLD needs, not a general graph library.
  */
 import type { SldOzeArchetypeCompanion } from '../companions/ozeTypes';
+import { FIELD_ROLE_LABEL_PL } from '../contract';
 
 /** A busbar at one voltage. */
 export interface StationBus {
@@ -81,7 +82,12 @@ export function companionToStationModel(companion: SldOzeArchetypeCompanion): St
     role: 'line',
     label: 'Pole liniowe',
   });
-  bays.push({ id: `${companion.archetype}/metering`, busId: mainBus, role: 'metering', label: 'Pole pomiarowe' });
+  bays.push({
+    id: `${companion.archetype}/metering`,
+    busId: mainBus,
+    role: 'metering',
+    label: FIELD_ROLE_LABEL_PL.POMIAROWE,
+  });
 
   // Single-type archetypes (G5–G8) don't tag each field; fall back to the source meta so the bay
   // gets the right glyph. A MIXED archetype (G9) MUST carry per-field source_kind.

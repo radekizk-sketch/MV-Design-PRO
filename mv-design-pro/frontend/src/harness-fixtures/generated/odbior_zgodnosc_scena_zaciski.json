@@ -1,0 +1,45 @@
+{
+  "run_id": "run-lf-scena-pomiary",
+  "zaciski": {
+    "cab_main_b": {
+      "do": {
+        "etykieta_pl": "Zacisk końcowy — szyna Stacja B SN",
+        "szyna_ref": "bus_sn_b"
+      },
+      "od": {
+        "etykieta_pl": "Zacisk początkowy — szyna Szyna SN",
+        "szyna_ref": "bus_sn_main"
+      }
+    },
+    "line_b_c": {
+      "do": {
+        "etykieta_pl": "Zacisk końcowy — szyna Stacja C SN",
+        "szyna_ref": "bus_sn_c"
+      },
+      "od": {
+        "etykieta_pl": "Zacisk początkowy — szyna Stacja B SN",
+        "szyna_ref": "bus_sn_b"
+      }
+    },
+    "tr_hv_sn": {
+      "do": {
+        "etykieta_pl": "Zacisk końcowy — szyna Szyna SN",
+        "szyna_ref": "bus_sn_main"
+      },
+      "od": {
+        "etykieta_pl": "Zacisk początkowy — szyna GPZ 110 kV",
+        "szyna_ref": "bus_hv"
+      }
+    },
+    "tr_sn_nn": {
+      "do": {
+        "etykieta_pl": "Zacisk końcowy — szyna Szyna nN",
+        "szyna_ref": "bus_nn"
+      },
+      "od": {
+        "etykieta_pl": "Zacisk początkowy — szyna Stacja B SN",
+        "szyna_ref": "bus_sn_b"
+      }
+    }
+  }
+}

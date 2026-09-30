@@ -7,12 +7,13 @@ Brak domyslowania: parametry zwarciowe i napieciowe pochodza z katalogu.
 
 from __future__ import annotations
 
-from math import sqrt
 from typing import Any
+
+from network_model.pochodne import prad_z_mocy_pozornej_ka
 
 from .types import CATALOG_CONTRACT_VERSION, CatalogStatus, CatalogVerificationStatus
 
-_DEFAULT_SOURCE_REFERENCE = "Warunki przylaczenia / standard OSD / matryca katalogowa MV-DESIGN-PRO"
+_DEFAULT_SOURCE_REFERENCE = "Warunki przyłączenia / standard OSD / matryca katalogowa MV-DESIGN-PRO"
 _DEFAULT_VERIFICATION_STATUS = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
 _DEFAULT_CATALOG_STATUS = CatalogStatus.PRODUKCYJNY_V1.value
 
@@ -28,7 +29,7 @@ def _source_quality(note: str) -> dict[str, Any]:
 
 
 def _build_source_record(voltage_kv: float, sk3_mva: float, rx_ratio: float) -> dict[str, Any]:
-    ik3_ka = round(sk3_mva / (sqrt(3.0) * voltage_kv), 2)
+    ik3_ka = round(prad_z_mocy_pozornej_ka(sk3_mva, voltage_kv), 2)
     rx_tag = f"{int(round(rx_ratio * 100)):03d}"
     return {
         "id": f"src-gpz-{int(voltage_kv)}kv-{int(sk3_mva)}mva-rx{rx_tag}",
@@ -38,7 +39,6 @@ def _build_source_record(voltage_kv: float, sk3_mva: float, rx_ratio: float) -> 
             "sk3_mva": sk3_mva,
             "ik3_ka": ik3_ka,
             "rx_ratio": rx_ratio,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
@@ -62,14 +62,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 200.0,
             "ik3_ka": None,
             "rx_ratio": 0.10,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-200-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -83,14 +82,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 250.0,
             "ik3_ka": None,
             "rx_ratio": 0.10,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-250-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -104,14 +102,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 300.0,
             "ik3_ka": None,
             "rx_ratio": 0.10,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-300-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -125,14 +122,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 350.0,
             "ik3_ka": None,
             "rx_ratio": 0.10,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-350-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -146,14 +142,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 400.0,
             "ik3_ka": None,
             "rx_ratio": 0.10,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-400-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -167,14 +162,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 500.0,
             "ik3_ka": None,
             "rx_ratio": 0.10,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-500-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -188,14 +182,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 500.0,
             "ik3_ka": None,
             "rx_ratio": 0.12,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-500-012",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -209,14 +202,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 200.0,
             "ik3_ka": None,
             "rx_ratio": 0.10,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-200-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -230,14 +222,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 250.0,
             "ik3_ka": None,
             "rx_ratio": 0.10,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-250-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -251,14 +242,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 300.0,
             "ik3_ka": None,
             "rx_ratio": 0.10,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-300-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -272,14 +262,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 350.0,
             "ik3_ka": None,
             "rx_ratio": 0.12,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-350-012",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -293,14 +282,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 400.0,
             "ik3_ka": None,
             "rx_ratio": 0.12,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-400-012",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -314,14 +302,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 500.0,
             "ik3_ka": None,
             "rx_ratio": 0.10,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-500-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -335,14 +322,13 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "sk3_mva": 500.0,
             "ik3_ka": None,
             "rx_ratio": 0.12,
-            "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
             "short_circuit_model": "short_circuit_power",
             "operator_name": "OSD",
             "supply_role": "ZASILANIE_SYSTEMOWE",
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-500-012",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -372,7 +358,7 @@ for _source_type in SOURCE_SYSTEM_TYPES:
         and _params.get("voltage_rating_kv")
     ):
         _params["ik3_ka"] = round(
-            float(_params["sk3_mva"]) / (sqrt(3.0) * float(_params["voltage_rating_kv"])),
+            prad_z_mocy_pozornej_ka(float(_params["sk3_mva"]), float(_params["voltage_rating_kv"])),
             2,
         )
     _params.setdefault("verification_status", _DEFAULT_VERIFICATION_STATUS)

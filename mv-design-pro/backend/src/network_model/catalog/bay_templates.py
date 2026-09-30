@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from enm.rola_pola_sn import nazwa_roli_pola_sn, nazwa_roli_pola_sn_z_okresleniem
+from network_model.brak_zasobu import BrakZasobuError
 from pydantic import BaseModel, Field
 
 
@@ -67,7 +69,7 @@ class BayTemplate(BaseModel):
     """
 
     template_id: str
-    name: str  # PL: "Pole liniowe wejściowe", "Pole transformatorowe", ...
+    name: str  # PL: nazwa roli z kanonu `enm.rola_pola_sn` (karta #141) albo nazwa funkcji
     bay_role: Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"]
     description: str
     devices: list[BayDeviceTemplate] = Field(default_factory=list)
@@ -80,7 +82,7 @@ class BayTemplate(BaseModel):
 
 BAY_TEMPLATE_LINE_IN = BayTemplate(
     template_id="bay_template_line_in",
-    name="Pole liniowe wejściowe",
+    name=nazwa_roli_pola_sn("LINIA_IN"),
     bay_role="IN",
     description="Pole liniowe wejściowe SN — kabel/linia od ciągu nadrzędnego.",
     devices=[
@@ -98,7 +100,7 @@ BAY_TEMPLATE_LINE_IN = BayTemplate(
 
 BAY_TEMPLATE_LINE_OUT = BayTemplate(
     template_id="bay_template_line_out",
-    name="Pole liniowe wyjściowe",
+    name=nazwa_roli_pola_sn("LINIA_OUT"),
     bay_role="OUT",
     description="Pole liniowe wyjściowe SN — kabel/linia do ciągu podrzędnego.",
     devices=[
@@ -133,7 +135,10 @@ TRANSFORMER_BAY_PROTECTION_CODES: list[str] = [
 # źródłowego SN. Kierunkowe nadprądowe (67/67N), napięciowe (27/59), częstotliwościowe
 # (81U/81O), ROCOF (df/dt) i ochrona przed pracą wyspową (anti-islanding). PEŁNA ochrona
 # maszyny (87G, 40, 32, 64, 46, 21/25) mieszka na source.protection, NIE na polu interfejsu.
-# Lustro `_PROTECTION_BY_MACHINE["IBG"]` z reference_networks (jedno źródło kanonu interfejsu).
+# Lustro `_PROTECTION_BY_MACHINE["IBG"]` z
+# `backend/tests/reference_networks/station_archetype_substrate.py` (jedno źródło
+# kanonu interfejsu; ścieżka przeniesiona z `application/reference_networks/`
+# karta K2, 2026-09-09).
 OZE_INTERFACE_BAY_PROTECTION_CODES: list[str] = [
     "67",
     "67N",
@@ -221,7 +226,7 @@ def primary_apparatus_kinds_for_bay_role(bay_role: str) -> list[str]:
 
 BAY_TEMPLATE_TRANSFORMER = BayTemplate(
     template_id="bay_template_transformer",
-    name="Pole transformatorowe",
+    name=nazwa_roli_pola_sn("TRANSFORMATOROWE"),
     bay_role="TR",
     description="Pole transformatorowe SN — przyłączenie transformatora SN/nN.",
     devices=[
@@ -239,7 +244,7 @@ BAY_TEMPLATE_TRANSFORMER = BayTemplate(
 
 BAY_TEMPLATE_MEASUREMENT = BayTemplate(
     template_id="bay_template_measurement",
-    name="Pole pomiarowe",
+    name=nazwa_roli_pola_sn("POMIAROWE"),
     bay_role="MEASUREMENT",
     description="Pole pomiarowe SN — boczny tor pomiarowy z przekładnikami napięciowymi.",
     devices=[
@@ -252,7 +257,7 @@ BAY_TEMPLATE_MEASUREMENT = BayTemplate(
 
 BAY_TEMPLATE_COUPLER = BayTemplate(
     template_id="bay_template_coupler",
-    name="Pole sprzęgłowe",
+    name=nazwa_roli_pola_sn("SPRZEGLO"),
     bay_role="COUPLER",
     description="Sprzęgło sekcyjne — łącznik dwóch sekcji szyny SN.",
     devices=[
@@ -269,7 +274,7 @@ BAY_TEMPLATE_COUPLER = BayTemplate(
 
 BAY_TEMPLATE_DER_PV = BayTemplate(
     template_id="bay_template_der_pv",
-    name="Pole źródłowe PV",
+    name=nazwa_roli_pola_sn("PV_SN"),
     bay_role="OZE",
     description="Pole źródłowe SN dla farmy PV — przyłączenie inwerterów + transformatora.",
     devices=[
@@ -288,7 +293,7 @@ BAY_TEMPLATE_DER_PV = BayTemplate(
 
 BAY_TEMPLATE_DER_BESS = BayTemplate(
     template_id="bay_template_der_bess",
-    name="Pole źródłowe BESS",
+    name=nazwa_roli_pola_sn("BESS_SN"),
     bay_role="OZE",
     description="Pole źródłowe SN dla magazynu energii BESS — PCS + transformator.",
     devices=BAY_TEMPLATE_DER_PV.devices.copy(),
@@ -297,7 +302,7 @@ BAY_TEMPLATE_DER_BESS = BayTemplate(
 
 BAY_TEMPLATE_DER_FW = BayTemplate(
     template_id="bay_template_der_fw",
-    name="Pole źródłowe FW",
+    name=nazwa_roli_pola_sn("FW_SN"),
     bay_role="OZE",
     description="Pole źródłowe SN dla farmy wiatrowej — kable kolektorowe + transformator główny.",
     devices=BAY_TEMPLATE_DER_PV.devices.copy(),
@@ -519,7 +524,7 @@ def get_bay_template(template_id: str) -> BayTemplate:
 
     if template_id not in BAY_TEMPLATE_REGISTRY:
         available = ", ".join(sorted(BAY_TEMPLATE_REGISTRY.keys()))
-        raise KeyError(f"Unknown bay_template_id: {template_id}. Available: {available}")
+        raise BrakZasobuError(f"Unknown bay_template_id: {template_id}. Available: {available}")
     return BAY_TEMPLATE_REGISTRY[template_id]
 
 
@@ -674,10 +679,8 @@ def _mv_source_config_entry(
 ) -> dict[str, Any]:
     """Przypadek macierzy z pola źródłowego SN (W2b) — jawna konfiguracja DER-SN."""
     config_ref = config_ref_for_mv_source(switching_device)
-    name = (
-        "Pole źródłowe SN (wyłącznikowe)"
-        if config_ref.endswith("cb")
-        else "Pole źródłowe SN (rozłącznikowe)"
+    name = nazwa_roli_pola_sn_z_okresleniem(
+        "OZE", "(wyłącznikowe)" if config_ref.endswith("cb") else "(rozłącznikowe)"
     )
     primary_devices = mv_source_field_primary_devices(
         config_ref,

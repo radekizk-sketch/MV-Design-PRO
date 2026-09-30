@@ -22,6 +22,7 @@ import type {
   Substation as ENMSubstation,
 } from '../../../types/enm';
 import type { AnySldSymbol, BusSymbol, BranchSymbol, SwitchSymbol, SourceSymbol, LoadSymbol } from '../../sld-editor/types';
+import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import {
   type SourceConnectionVariantInputV1,
   isSupportedSourceConnectionVariant,
@@ -345,25 +346,6 @@ function stringList(value: unknown): string[] {
     .map(item => item.trim());
 }
 
-function defaultFieldSpecName(role: string): string {
-  switch (role.toUpperCase()) {
-    case 'IN':
-      return 'Pole dopływowe SN';
-    case 'OUT':
-      return 'Pole odpływowe SN';
-    case 'TR':
-      return 'Pole transformatorowe SN';
-    case 'COUPLER':
-      return 'Pole sprzęgła SN';
-    case 'MEASUREMENT':
-      return 'Pole pomiarowe SN';
-    case 'OZE':
-      return 'Pole źródłowe SN';
-    default:
-      return 'Pole liniowe SN';
-  }
-}
-
 function sortFieldSpecs(specs: readonly TopologyFieldSpecV1[]): TopologyFieldSpecV1[] {
   return [...specs].sort((a, b) => a.fieldRef.localeCompare(b.fieldRef));
 }
@@ -379,7 +361,7 @@ function normalizeFieldSpec(raw: unknown): TopologyFieldSpecV1 | null {
     ?? firstString(rawMeta.name ?? rawMeta.field_name ?? rawMeta.display_name);
   const name = explicitName && explicitName !== fieldRef
     ? explicitName
-    : defaultFieldSpecName(bayRole);
+    : fieldRoleLabelPl(bayRole); // nazwa roli z kanonu słownictwa ról pól (karta #141)
   return {
     fieldRef,
     name,

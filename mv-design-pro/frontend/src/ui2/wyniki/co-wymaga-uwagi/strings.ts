@@ -16,12 +16,16 @@ export const CO_WYMAGA_UWAGI_STRINGS = {
   // Stany zerowe (uczciwe rozróżnienie źródła)
   brakPrzebiegu: 'Brak zakończonego przebiegu obliczeń.',
   brakPrzebieguKrok: 'Uruchom rozpływ mocy, aby zebrać przekroczenia sieci.',
+  brakKryteriow:
+    'Brak podstaw do oceny napięć — zapisany wynik rozpływu nie niesie kryteriów napięciowych.',
+  brakKryteriowKrok:
+    'Uruchom rozpływ mocy ponownie: bieg zapisze kryteria napięciowe z modelu i rejestr przekroczeń będzie miał podstawę.',
   siecWNormie: 'Sieć w normie — brak przekroczeń w zakończonych analizach.',
   siecWNormieKrok: 'Możesz domknąć dokumentację lub porównać warianty.',
   // Źródła analiz
   analizaRozplyw: 'Rozpływ mocy',
   /** Kryteria projektowe zebrane przez backend z wielu biegów (K6 / H-5 pkt 5). */
-  analizaWerdykt: 'Werdykt projektowy',
+  analizaWerdykt: 'Ocena techniczna wyników',
   // Opisy przekroczeń (rozpływ — napięcie)
   opisNapiecieWysokie: 'Napięcie powyżej dopuszczalnego zakresu',
   opisNapiecieNiskie: 'Napięcie poniżej dopuszczalnego zakresu',

@@ -2,6 +2,8 @@ from enm.domain_operations import execute_domain_operation
 
 
 def _base_enm():
+    # Karta #151: identyfikatory elementów to UUID (kontrakt ENM) — wynik operacji jest
+    # walidowany kontraktem; dawne „id": "1" przechodziło tylko dzięki połkniętej walidacji.
     return {
         "header": {
             "name": "Test",
@@ -13,12 +15,24 @@ def _base_enm():
             "hash_sha256": "",
         },
         "buses": [
-            {"id": "1", "ref_id": "bus/a", "name": "A", "voltage_kv": 15.0, "phase_system": "3ph"},
-            {"id": "2", "ref_id": "bus/b", "name": "B", "voltage_kv": 15.0, "phase_system": "3ph"},
+            {
+                "id": "00000000-0000-0000-0000-000000000001",
+                "ref_id": "bus/a",
+                "name": "A",
+                "voltage_kv": 15.0,
+                "phase_system": "3ph",
+            },
+            {
+                "id": "00000000-0000-0000-0000-000000000002",
+                "ref_id": "bus/b",
+                "name": "B",
+                "voltage_kv": 15.0,
+                "phase_system": "3ph",
+            },
         ],
         "branches": [
             {
-                "id": "3",
+                "id": "00000000-0000-0000-0000-000000000003",
                 "ref_id": "br/ab",
                 "name": "AB",
                 "type": "cable",
@@ -32,7 +46,7 @@ def _base_enm():
         "transformers": [],
         "sources": [
             {
-                "id": "4",
+                "id": "00000000-0000-0000-0000-000000000004",
                 "ref_id": "src/a",
                 "name": "GPZ",
                 "bus_ref": "bus/a",
@@ -45,9 +59,10 @@ def _base_enm():
         "generators": [],
         "substations": [
             {
-                "id": "5",
+                "id": "00000000-0000-0000-0000-000000000005",
                 "ref_id": "sub/a",
                 "name": "Sub A",
+                "station_type": "mv_lv",
                 "kind": "mv_station",
                 "bus_ref": "bus/a",
                 "transformer_refs": [],
@@ -55,7 +70,7 @@ def _base_enm():
         ],
         "bays": [
             {
-                "id": "6",
+                "id": "00000000-0000-0000-0000-000000000006",
                 "ref_id": "bay/a",
                 "name": "Pole A",
                 "bay_role": "OUT",
@@ -68,8 +83,9 @@ def _base_enm():
         "corridors": [
             {
                 "ref_id": "corr/main",
+                "name": "Magistrala główna",
                 "ordered_segment_refs": ["br/ab"],
-                "corridor_type": "TRUNK",
+                "corridor_type": "radial",
                 "no_point_ref": "br/ab",
             }
         ],
@@ -77,7 +93,7 @@ def _base_enm():
         "protection_assignments": [],
         "branch_points": [
             {
-                "id": "7",
+                "id": "00000000-0000-0000-0000-000000000007",
                 "ref_id": "bp/ab",
                 "name": "Punkt AB",
                 "branch_point_type": "branch_pole",

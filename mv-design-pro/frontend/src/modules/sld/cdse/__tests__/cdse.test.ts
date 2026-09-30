@@ -14,7 +14,7 @@
  * - test_catalog_preview: Preview engine shows correct fields
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import {
   resolveContext,
@@ -114,69 +114,98 @@ const MOCK_VIEWS: LogicalViewsProjection = {
 // test_cdse_click_flow
 // ============================================================================
 
-describe('CDSE Click Flow', () => {
-  it('trunk terminal click → AddTrunkSegmentModal', () => {
+describe('CDSE Click Flow — zero fabrykacji (karta W2 pkt 3)', () => {
+  // ŻADEN z 13 kontekstów nie ma dziś modala z realnym komponentem w
+  // `frontend/src` (patrz inwentarz klasy w komentarzu `modalDispatcher.ts`) —
+  // `dispatchModal` zwraca `null` dla KAŻDEGO z nich, nie tylko dla
+  // `PROTECTION_DEVICE` nazwanego w audycie. Iloczyn cech: każdy kontekst
+  // rozwiązywalny z `MOCK_VIEWS` × oczekiwanie „brak fabrykowanego modala".
+
+  it('trunk terminal click → context resolves, ale modal jest null (AddTrunkSegmentModal nie istnieje)', () => {
     // Click on the last terminal of trunk_1
     const context = resolveContext('bus_b', undefined, MOCK_VIEWS);
     expect(context.contextType).toBe('TRUNK_TERMINAL');
     expect(context.trunkId).toBe('trunk_1');
 
-    const modal = dispatchModal(context);
-    expect(modal).not.toBeNull();
-    expect(modal!.modalId).toBe('AddTrunkSegmentModal');
-    expect(modal!.canonicalOp).toBe('continue_trunk_segment_sn');
+    expect(dispatchModal(context)).toBeNull();
   });
 
-  it('trunk segment click → InsertStationModal', () => {
+  it('trunk segment click → context resolves, ale modal jest null (InsertStationModal nie istnieje)', () => {
     const context = resolveContext('cable_1', undefined, MOCK_VIEWS);
     expect(context.contextType).toBe('TRUNK_SEGMENT');
     expect(context.segmentId).toBe('seg_1');
 
-    const modal = dispatchModal(context);
-    expect(modal!.modalId).toBe('InsertStationModal');
-    expect(modal!.canonicalOp).toBe('insert_station_on_segment_sn');
+    expect(dispatchModal(context)).toBeNull();
   });
 
-  it('station device click → EditDeviceModal', () => {
+  it('station device click → context resolves, ale modal jest null (EditDeviceModal nie istnieje)', () => {
     const context = resolveContext('trafo_1', undefined, MOCK_VIEWS);
     expect(context.contextType).toBe('STATION_DEVICE');
     expect(context.stationId).toBe('station_b');
 
-    const modal = dispatchModal(context);
-    expect(modal!.modalId).toBe('EditDeviceModal');
+    expect(dispatchModal(context)).toBeNull();
   });
 
-  it('load click → EditLoadModal', () => {
+  it('load click → context resolves, ale modal jest null (EditLoadModal nie istnieje)', () => {
     const context = resolveContext('load_1', undefined, MOCK_VIEWS);
     expect(context.contextType).toBe('LOAD');
     expect(context.catalogNamespace).toBe('OBCIAZENIE');
 
-    const modal = dispatchModal(context);
-    expect(modal!.modalId).toBe('EditLoadModal');
+    expect(dispatchModal(context)).toBeNull();
   });
 
-  it('PV inverter click → EditInverterSourceModal', () => {
+  it('PV inverter click → context resolves, ale modal jest null (EditInverterSourceModal nie istnieje)', () => {
     const context = resolveContext('pv_1', undefined, MOCK_VIEWS);
     expect(context.contextType).toBe('INVERTER_SOURCE');
     expect(context.catalogNamespace).toBe('ZRODLO_NN_PV');
 
-    const modal = dispatchModal(context);
-    expect(modal!.modalId).toBe('EditInverterSourceModal');
+    expect(dispatchModal(context)).toBeNull();
   });
 
-  it('relay click → EditProtectionModal', () => {
+  it('relay click → context resolves, ale modal jest null (EditProtectionModal nie istnieje, operacja backendu wyłączona)', () => {
     const context = resolveContext('relay_1', undefined, MOCK_VIEWS);
     expect(context.contextType).toBe('PROTECTION_DEVICE');
 
-    const modal = dispatchModal(context);
-    expect(modal!.modalId).toBe('EditProtectionModal');
-    expect(modal!.canonicalOp).toBe('update_relay_settings');
+    expect(dispatchModal(context)).toBeNull();
   });
 
-  it('CT click → EditMeasurementModal', () => {
+  it('CT click → context resolves, ale modal jest null (EditMeasurementModal nie istnieje)', () => {
     const context = resolveContext('ct_1', undefined, MOCK_VIEWS);
     expect(context.contextType).toBe('MEASUREMENT_DEVICE');
     expect(context.catalogNamespace).toBe('CT');
+
+    expect(dispatchModal(context)).toBeNull();
+  });
+
+  it('mapa dyspozytora jest PUSTA — żaden z 13 kontekstów nie ma zarejestrowanego modala', () => {
+    expect(getAllModalMappings()).toEqual([]);
+  });
+
+  it('brak modala → router NIE otwiera modala, spada na SELECTION_ONLY (sldEventRouter.ts, bez zmian)', () => {
+    const context = resolveContext('relay_1', undefined, MOCK_VIEWS);
+    const onOpenModal = vi.fn();
+    const onSelect = vi.fn();
+    const onContextMenu = vi.fn();
+
+    const wynik = routeSldClick(
+      {
+        elementId: 'relay_1',
+        screenX: 10,
+        screenY: 10,
+        shiftKey: false,
+        isContextMenu: false,
+      },
+      MOCK_VIEWS,
+      onOpenModal,
+      onSelect,
+      onContextMenu,
+    );
+
+    expect(onOpenModal).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledWith('relay_1', false);
+    expect(wynik.action).toBe('SELECTION_ONLY');
+    expect(wynik.modalTarget).toBeUndefined();
+    expect(context.contextType).toBe('PROTECTION_DEVICE');
   });
 });
 
@@ -264,16 +293,12 @@ describe('LogicalViews Consistency', () => {
     expect(context.contextType).toBe('UNKNOWN');
   });
 
-  it('all context types have modal mappings', () => {
-    const mappings = getAllModalMappings();
-    const contextTypes = new Set(mappings.map((m) => m.contextType));
-    // All expected types should be covered
-    expect(contextTypes.has('TRUNK_TERMINAL')).toBe(true);
-    expect(contextTypes.has('TRUNK_SEGMENT')).toBe(true);
-    expect(contextTypes.has('BRANCH_PORT')).toBe(true);
-    expect(contextTypes.has('LOAD')).toBe(true);
-    expect(contextTypes.has('SOURCE')).toBe(true);
-    expect(contextTypes.has('PROTECTION_DEVICE')).toBe(true);
+  it('żaden kontekst nie ma modal mappingu — mapa jest PUSTA, dopóki modale nie istnieją (karta W2 pkt 3)', () => {
+    // Zastępuje poprzednie „all context types have modal mappings" (true dla
+    // 13 kontekstów mapujących na komponenty, których nie ma w `frontend/src`).
+    // Ten sam test resolveContext powyżej dowodzi: kontekst rozwiązuje się
+    // poprawnie (`not.toBe('UNKNOWN')`), ale zero fabrykacji = zero modala.
+    expect(getAllModalMappings()).toEqual([]);
   });
 });
 
@@ -599,8 +624,9 @@ describe('SLD Event Router', () => {
     expect(selectedId).toBe('cable_1');
   });
 
-  it('normal click on trunk terminal opens modal', () => {
+  it('normal click on trunk terminal selects only — brak modala AddTrunkSegmentModal (karta W2 pkt 3, nie istnieje)', () => {
     let openedModal: ModalDispatchTarget | null = null;
+    let selectedId: string | null = null;
     const event: SldClickEvent = {
       elementId: 'bus_b',
       screenX: 0,
@@ -613,12 +639,15 @@ describe('SLD Event Router', () => {
       event,
       MOCK_VIEWS,
       (target) => { openedModal = target; },
-      () => {},
+      (id) => { selectedId = id; },
       () => {},
     );
 
-    expect(result.action).toBe('SURFACE_OPENED');
-    expect(openedModal).not.toBeNull();
-    expect(openedModal!.modalId).toBe('AddTrunkSegmentModal');
+    // Zastępuje poprzednie „opens modal" (SURFACE_OPENED z AddTrunkSegmentModal,
+    // komponentem nieistniejącym w `frontend/src`) — router poprawnie spada na
+    // SELECTION_ONLY, gdy dyspozytor nie ma mapowania (zero zmian w sldEventRouter.ts).
+    expect(result.action).toBe('SELECTION_ONLY');
+    expect(openedModal).toBeNull();
+    expect(selectedId).toBe('bus_b');
   });
 });

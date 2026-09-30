@@ -112,7 +112,7 @@ class ZwarciaPorownanieResponse(BaseModel):
 
 class CreateZwarciaPorownanieRequest(BaseModel):
     run_id_a: str = Field(..., description="UUID przebiegu zwarciowego A (odniesienie)")
-    run_id_b: str = Field(..., description="UUID przebiegu zwarciowego B (porownywany)")
+    run_id_b: str = Field(..., description="UUID przebiegu zwarciowego B (porównywany)")
 
 
 def _wiersze_zwarciowe(run_id: str) -> list[dict[str, Any]]:

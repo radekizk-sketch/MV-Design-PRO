@@ -1,5 +1,17 @@
 import type { ReadinessIssue } from '../types';
-import type { ReadinessWorkspaceBlockState } from './ReadinessLivePanel';
+
+/**
+ * Stan blokady przestrzeni roboczej (brak przypadku / modelu / źródła / migawki).
+ * Typ mieszkał w `ReadinessLivePanel.tsx` — panel skasowany w karcie AB-1a
+ * Pakiet L (LEGACY_USUNAC E25: brak konsumenta produkcyjnego), typ ma żywego
+ * czytelnika (`resolveReadinessVisualState` ← `networkBuildStore`), więc zostaje tu.
+ */
+export interface ReadinessWorkspaceBlockState {
+  reason: 'NO_CASE' | 'NO_MODEL' | 'NO_SOURCE' | 'NO_SNAPSHOT';
+  title: string;
+  description: string;
+  nextStep: string;
+}
 
 export type ReadinessVisualState =
   | 'loading'

@@ -10,59 +10,65 @@ from enm.domain_operations import (
     update_gpz_section,
 )
 
+from tests.enm.model_minimalny import model_minimalny
+
 
 def _gpz_with_one_section() -> dict[str, Any]:
-    return {
-        "buses": [
-            {
-                "ref_id": "b15",
-                "name": "B15",
-                "voltage_kv": 15,
-                "phase_system": "3ph",
-                "tags": [],
-                "meta": {},
-            },
-            {
-                "ref_id": "b15-2",
-                "name": "B15-2",
-                "voltage_kv": 15,
-                "phase_system": "3ph",
-                "tags": [],
-                "meta": {},
-            },
-            {
-                "ref_id": "b110",
-                "name": "B110",
-                "voltage_kv": 110,
-                "phase_system": "3ph",
-                "tags": [],
-                "meta": {},
-            },
-        ],
-        "branches": [],
-        "substations": [
-            {
-                "ref_id": "GPZ-1",
-                "name": "GPZ",
-                "tags": [],
-                "meta": {},
-                "station_type": "gpz",
-                "bus_refs": ["b15", "b15-2", "b110"],
-                "transformer_refs": [],
-                "gpz_sections": [
-                    {"section_id": "SEC-A", "order": 1, "name": "sekcja A", "bus_ref": "b15"},
-                ],
-            }
-        ],
-        "bays": [],
-        "transformers": [],
-        "sources": [],
-        "loads": [],
-        "branch_points": [],
-        "generators": [],
-        "events": [],
-        "alarms": [],
-    }
+    # Karta #151: model z nagłówkiem (kontrakt ENM) — wynik operacji jest walidowany
+    # kontraktem, a fikstura bez nagłówka przechodziła tylko dzięki połkniętej walidacji.
+    return model_minimalny(
+        **{
+            "buses": [
+                {
+                    "ref_id": "b15",
+                    "name": "B15",
+                    "voltage_kv": 15,
+                    "phase_system": "3ph",
+                    "tags": [],
+                    "meta": {},
+                },
+                {
+                    "ref_id": "b15-2",
+                    "name": "B15-2",
+                    "voltage_kv": 15,
+                    "phase_system": "3ph",
+                    "tags": [],
+                    "meta": {},
+                },
+                {
+                    "ref_id": "b110",
+                    "name": "B110",
+                    "voltage_kv": 110,
+                    "phase_system": "3ph",
+                    "tags": [],
+                    "meta": {},
+                },
+            ],
+            "branches": [],
+            "substations": [
+                {
+                    "ref_id": "GPZ-1",
+                    "name": "GPZ",
+                    "tags": [],
+                    "meta": {},
+                    "station_type": "gpz",
+                    "bus_refs": ["b15", "b15-2", "b110"],
+                    "transformer_refs": [],
+                    "gpz_sections": [
+                        {"section_id": "SEC-A", "order": 1, "name": "sekcja A", "bus_ref": "b15"},
+                    ],
+                }
+            ],
+            "bays": [],
+            "transformers": [],
+            "sources": [],
+            "loads": [],
+            "branch_points": [],
+            "generators": [],
+            "events": [],
+            "alarms": [],
+        }
+    )
 
 
 # ---------------------------------------------------------------------------

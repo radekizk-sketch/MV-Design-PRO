@@ -265,27 +265,39 @@ Tabela porownawcza z kolumnami:
 | `delete_study_case`     | `delete_study_case(case_id) -> void`                           | Usun wariant i jego artefakty                  |
 | `set_active_case`       | `set_active_case(case_id) -> void`                             | Ustaw wariant jako aktywny                     |
 
-### 6.2. Konfiguracja wariantu
+### 6.2. Konfiguracja wariantu -- USUNIETE (CV-3.2, 58e520ce)
 
-| Operacja                    | Sygnatura                                                          | Opis                                           |
-|-----------------------------|--------------------------------------------------------------------|-------------------------------------------------|
-| `set_case_switch_state`     | `set_case_switch_state(case_id, switch_id, stan) -> void`          | Nadpisz stan lacznika w wariancie              |
-| `set_case_normal_state`     | `set_case_normal_state(case_id) -> void`                           | Przywroc wszystkie laczniki do stanu modelu    |
-| `set_case_source_mode`      | `set_case_source_mode(case_id, source_id, tryb) -> void`          | Ustaw tryb pracy zrodla w wariancie            |
-| `set_case_time_profile`     | `set_case_time_profile(case_id, element_id, profil_id) -> void`   | Przypisz profil czasowy do elementu            |
+Te 4 operacje (`set_case_switch_state`, `set_case_normal_state`, `set_case_source_mode`,
+`set_case_time_profile`) byly czescia 9 operacji C3 (`enm/domain_operations_v2.py`)
+zapisujacych `study_cases[]` do dokumentu ENM -- pole, ktorego `EnergyNetworkModel`
+nigdy nie mialo. Usuniete procedura 7 krokow. Zywy odpowiednik: stan lacznika/zrodla
+w kontekscie obliczenia = `enm/scenariusze.py::OperatingScenario` + `apply_scenario`
+(CV-3.1), nie pole wariantu/przypadku.
 
 ### 6.3. Uruchomienie obliczen
 
+Sekcja opisuje `run_short_circuit(case_id, ...)`/`run_power_flow(case_id) -> RunResult`
+jako operacje domenowe C3 -- ten konkretny ksztalt (case_id -> RunResult jako operacja
+domenowa v2) byl fantomem w rejestrze, usunietym CV-3.2 razem z reszta 9. Zywe
+odpowiedniki tych samych NAZW istnieja w innej warstwie: `api/enm.py::run_short_circuit`/
+`run_power_flow` (E2, koncowki REST) oraz `enm/canonical_analysis.py::create_run`/
+`execute_run` (biegi kanoniczne, CV-3.1) -- zaden z nich nie ma sygnatury z tej tabeli.
+
 | Operacja                | Sygnatura                                                      | Opis                                           |
 |-------------------------|----------------------------------------------------------------|-------------------------------------------------|
-| `run_short_circuit`     | `run_short_circuit(case_id, typ_zwarcia) -> RunResult`         | Uruchom obliczenia zwarciowe                   |
-| `run_power_flow`        | `run_power_flow(case_id) -> RunResult`                         | Uruchom obliczenia przeplywowe                 |
+| ~~`run_short_circuit`~~  | ~~`run_short_circuit(case_id, typ_zwarcia) -> RunResult`~~     | usuniete CV-3.2 -- patrz notatka wyzej         |
+| ~~`run_power_flow`~~     | ~~`run_power_flow(case_id) -> RunResult`~~                     | usuniete CV-3.2 -- patrz notatka wyzej         |
 
-### 6.4. Porownywanie
+### 6.4. Porownywanie -- USUNIETE (CV-3.2, 58e520ce)
+
+`compare_study_cases(case_a_id, case_b_id) -> ComparisonResult` ponizej byla operacja C3
+(rejestr v2), usunieta procedura 7 krokow. Zywy odpowiednik o TEJ SAMEJ nazwie istnieje w
+innej warstwie: `domain/study_case.py::compare_study_cases` (C1, porownuje `StudyCase`
+jako konfiguracje, nie ENM-dict) -- inna sygnatura, inny plik, nietkniety.
 
 | Operacja                | Sygnatura                                                      | Opis                                           |
 |-------------------------|----------------------------------------------------------------|-------------------------------------------------|
-| `compare_study_cases`   | `compare_study_cases(case_a_id, case_b_id) -> ComparisonResult`| Porownaj dwa warianty                          |
+| ~~`compare_study_cases`~~| ~~`compare_study_cases(case_a_id, case_b_id) -> ComparisonResult`~~| usuniete CV-3.2 -- patrz notatka wyzej    |
 
 ---
 

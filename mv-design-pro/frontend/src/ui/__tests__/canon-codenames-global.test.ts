@@ -16,9 +16,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const SRC_DIR = path.join(__dirname, '..', '..');
-const DATA_SOURCE_ALLOWLIST = new Set([
-  path.join('ui', 'network-build', 'station-der', 'ptpireeCertifiedInverters.ts'),
-]);
+// Dawny wyjątek `DATA_SOURCE_ALLOWLIST` (jedyny wpis: `station-der/ptpireeCertifiedInverters.ts`)
+// usunięty razem z RĘCZNĄ listą rekordów wykazu PTPiREE (karta AB-1a Pakiet D1): moduł nie niesie
+// już danych wykazu (nazw modeli w rodzaju „…-P3-…"), tylko kod pobierający je z backendu —
+// skanowany jak każdy inny plik źródłowy, bez wyjątku. Z tego samego powodu zniknął wyjątek
+// sufiksowy dla artefaktów generowanych: jedynym takim plikiem była frontowa kopia wykazu
+// (skasowana), a wyjątek bez celu poszerzałby się po cichu na każdy przyszły plik generowany.
 
 // Codename pattern: P followed by digits (excluding P0 — technical parameter)
 // Matches: P7, P11, P14, P15, P17, P20, P22, P30, etc.
@@ -37,8 +40,6 @@ function getAllTsxFiles(dir: string): string[] {
       results.push(...getAllTsxFiles(fullPath));
     } else if (
       (entry.name.endsWith('.tsx') || entry.name.endsWith('.ts')) &&
-      !entry.name.endsWith('.generated.ts') &&
-      !entry.name.endsWith('.generated.tsx') &&
       !entry.name.endsWith('.test.ts') &&
       !entry.name.endsWith('.test.tsx') &&
       !entry.name.endsWith('.spec.ts') &&
@@ -86,9 +87,6 @@ describe('Canon Guard: Global Codename BAN', () => { // no-codenames-ignore
     const allViolations: { file: string; line: number; content: string }[] = [];
 
     for (const filePath of files) {
-      if (DATA_SOURCE_ALLOWLIST.has(path.relative(SRC_DIR, filePath))) {
-        continue;
-      }
       const violations = findCodenameViolations(filePath);
       for (const v of violations) {
         allViolations.push({

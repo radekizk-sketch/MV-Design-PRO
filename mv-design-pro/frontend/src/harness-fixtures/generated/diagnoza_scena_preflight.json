@@ -1,0 +1,38 @@
+{
+  "blocker_count": 0,
+  "checks": [
+    {
+      "analysis_label_pl": "Zwarcie trójfazowe (SC 3F)",
+      "analysis_type": "SC_3F",
+      "blocking_codes": [],
+      "reason_pl": null,
+      "status": "AVAILABLE"
+    },
+    {
+      "analysis_label_pl": "Zwarcie jednofazowe (SC 1F)",
+      "analysis_type": "SC_1F",
+      "blocking_codes": [
+        "E-D06"
+      ],
+      "reason_pl": "Zwarcie jednofazowe zablokowane: E-D06",
+      "status": "BLOCKED"
+    },
+    {
+      "analysis_label_pl": "Rozpływ mocy (Load Flow)",
+      "analysis_type": "LF",
+      "blocking_codes": [],
+      "reason_pl": null,
+      "status": "AVAILABLE"
+    },
+    {
+      "analysis_label_pl": "Koordynacja zabezpieczeń",
+      "analysis_type": "PROTECTION",
+      "blocking_codes": [],
+      "reason_pl": null,
+      "status": "AVAILABLE"
+    }
+  ],
+  "overall_status": "WARN",
+  "ready": true,
+  "warning_count": 2
+}

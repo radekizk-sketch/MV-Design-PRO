@@ -52,6 +52,8 @@ def _build_source_plus_segments(segment_lengths_m: list[int]) -> dict:
             "sk3_mva": 250.0,
             "catalog_ref": SOURCE_ID,
             "catalog_binding": SOURCE_BINDING,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     for idx, length in enumerate(segment_lengths_m):

@@ -8,6 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
@@ -26,6 +27,20 @@ import {
   widokZdolnosciFixture,
 } from './fixtures';
 
+
+/**
+ * Jawny wybór operatora (krok 2) — operator studium NIE ma wartości domyślnej, więc realna
+ * ścieżka użytkownika przechodzi przez wybór profilu wymagań natywnym `selectOptions`.
+ */
+async function wybierzOperatoraJawnie(operatorId = 'pse') {
+  await userEvent.click(screen.getByTestId('mvd-studium-krok-2'));
+  const operator = await screen.findByTestId('mvd-studium-operator');
+  await waitFor(() =>
+    expect(within(operator).queryByRole('option', { name: /PSE/ })).not.toBeNull(),
+  );
+  await userEvent.selectOptions(operator, operatorId);
+}
+
 const pobierzKonwertery = vi.fn();
 const pobierzKatalog = vi.fn();
 const pobierzZdolnosc = vi.fn();
@@ -34,6 +49,10 @@ const pobierzPokrycie = vi.fn();
 const pobierzDokument = vi.fn();
 const pobierzDokumentDocx = vi.fn();
 const pobierzDokumentPdf = vi.fn();
+
+import { odpowiedzKlasyfikacji } from '../../ncrfg/__tests__/atrapaKlasyfikacji';
+import dokumentStudiumZDowodem from '../../../../harness-fixtures/generated/studium_dokument_scena_macierz.json';
+import type { WidokDokumentuStudium } from '../../api';
 
 vi.mock('../../api', () => {
   class DokumentStudiumBrakiError extends Error {
@@ -46,7 +65,6 @@ vi.mock('../../api', () => {
   }
   return {
     pobierzKonwertery: () => pobierzKonwertery(),
-    pobierzKatalogKlasNcRfg: () => pobierzKatalog(),
     pobierzZdolnoscPrzylaczeniowa: (z: unknown) => pobierzZdolnosc(z),
     pobierzObszarPQ: (z: unknown) => pobierzObszar(z),
     pobierzPokryciePQ: (z: unknown) => pobierzPokrycie(z),
@@ -63,6 +81,18 @@ vi.mock('../../api', () => {
 // Klasa błędu z zamockowanego modułu (ta sama referencja co w komponencie).
 import { DokumentStudiumBrakiError } from '../../api';
 
+// Katalog NC RfG (operatorzy) i klasyfikacja modułu idą PRODUKCYJNYM klientem `ncrfg/api.ts`
+// — atrapa wyłącznie na granicy `fetch` (klasyfikacja: klucze z OpenAPI, progi z katalogu
+// policzonego backendem).
+function atrapaNcRfg(url: string): Response {
+  const klasyfikacja = odpowiedzKlasyfikacji(url);
+  if (klasyfikacja) return klasyfikacja;
+  if (new URL(url, 'http://localhost').pathname === '/api/ncrfg-tests/catalog') {
+    return new Response(JSON.stringify(pobierzKatalog()), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+  throw new Error(`atrapa studium: nieoczekiwane zapytanie ${url}`);
+}
+
 function ustawGotowyRozplyw() {
   useExecutionRunsStore.setState({
     runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
@@ -76,7 +106,8 @@ beforeEach(() => {
   useSnapshotStore.getState().reset();
   useAppStateStore.setState({ activeProjectName: 'Projekt testowy', activeCaseName: 'Wariant bazowy' });
   pobierzKonwertery.mockResolvedValue(rekordyStudiumFixture());
-  pobierzKatalog.mockResolvedValue(katalogStudiumFixture());
+  pobierzKatalog.mockReturnValue(katalogStudiumFixture());
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => atrapaNcRfg(url)));
   pobierzZdolnosc.mockResolvedValue(widokZdolnosciFixture());
   pobierzObszar.mockResolvedValue(widokObszaruFixture());
   pobierzPokrycie.mockResolvedValue(widokPokryciaFixture());
@@ -93,14 +124,16 @@ afterEach(() => {
     activeCaseId: null,
   } as never);
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
 /** Przeprowadź pełny bieg studium dla węzła bus-a i wejdź w przegląd (krok 4). */
 async function przeprowadzBieg() {
   ustawGotowyRozplyw();
-  render(<KreatorStudium trybZaawansowania="basic" />);
+  render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
   fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
+  await wybierzOperatoraJawnie();
   fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
   // Przycisk biegu odblokowuje się dopiero po prefillu typu z katalogu
   // (asynchroniczny montaż) — jak realny użytkownik klikamy AKTYWNY przycisk;
@@ -114,8 +147,8 @@ async function przeprowadzBieg() {
 describe('KreatorStudium — dokument studium (przycisk i dostępność)', () => {
   it('przycisk nieaktywny bez zakończonego biegu, z tytułem PL', async () => {
     ustawGotowyRozplyw();
-    render(<KreatorStudium trybZaawansowania="basic" />);
-    // Montaż kreatora pobiera katalogi (konwertery + klasy NC RfG) — realny
+    render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    // Montaż kreatora pobiera katalogi (konwertery + operatorzy NC RfG) — realny
     // efekt mikrotaskowy, którego skutek (prefill kroku 2) nie ma reprezentacji
     // w UI kroku 4, więc nie ma na co czekać przez findBy*/waitFor. Puste
     // act(async) domyka te mikrotaski w act — bez niego React zgłasza
@@ -156,9 +189,7 @@ describe('KreatorStudium — dokument studium (żądanie i podgląd)', () => {
 
   it('żądania dokumentu niosą aktywny przypadek (bez niego nie ma dowodu PTPiREE)', async () => {
     useAppStateStore.setState({ activeCaseId: 'case-oze-1' } as never);
-    // @ts-expect-error shim jsdom
     if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-    // @ts-expect-error shim jsdom
     if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
@@ -199,8 +230,13 @@ describe('KreatorStudium — dokument studium (żądanie i podgląd)', () => {
     const tabela = screen.getByTestId('mvd-studium-dok-podsumowanie');
     expect(within(tabela).getByText('Szyna A')).toBeInTheDocument();
     expect(within(tabela).getByText('1,500 MW')).toBeInTheDocument();
-    expect(within(tabela).getByText('Niepokryte')).toBeInTheDocument();
-    expect(within(tabela).getByText('C')).toBeInTheDocument();
+    // Ocena pokrycia P–Q wariantu = etykieta rekordu `ocena` (tekst z rekordu backendu).
+    expect(
+      within(tabela).getByText(widokDokumentuFixture().podsumowanie[0].pokrycie_pl),
+    ).toBeInTheDocument();
+    // Typ modułu wariantu 1:1 z `podsumowanie[].klasa` backendu (klasyfikacja WOS: 1,5 MW
+    // przy 15 kV → B) — interfejs nie przelicza klasy.
+    expect(within(tabela).getByText('B')).toBeInTheDocument();
   });
 
   it('brak błędów wariantów → uczciwy komunikat, bez sekcji błędów', async () => {
@@ -220,6 +256,65 @@ describe('KreatorStudium — dokument studium (żądanie i podgląd)', () => {
     const bledy = await screen.findByTestId('mvd-studium-dok-bledy');
     expect(within(bledy).getByText(/Obszar pracy P–Q/)).toBeInTheDocument();
     expect(within(bledy).getByText(/Węzeł spoza wyników rozpływu mocy\./)).toBeInTheDocument();
+  });
+
+  it('sekcja dowodu certyfikatu: urządzenia typu z rekordem wykazu PTPiREE policzonym backendem', async () => {
+    // Dokument z żądania z `case_id` policzony backendem (`studium_dokument_scena_macierz`):
+    // urządzenia modelu o typie katalogowym dokumentu z dowodem z wykazu i wierszami bloku.
+    const dokument = dokumentStudiumZDowodem as unknown as WidokDokumentuStudium;
+    pobierzDokument.mockResolvedValue(dokument);
+    await przeprowadzBieg();
+    fireEvent.click(screen.getByTestId('mvd-studium-dok-przycisk'));
+    const sekcja = await screen.findByTestId('mvd-studium-dok-dowod');
+    const urzadzenia = dokument.zalozenia.dowod_certyfikatu?.urzadzenia ?? [];
+    expect(urzadzenia.length).toBeGreaterThan(0);
+    for (const urzadzenie of urzadzenia) {
+      const pozycja = within(sekcja).getByTestId(`mvd-studium-dok-dowod-${urzadzenie.der_ref}`);
+      expect(pozycja).toHaveAttribute(
+        'data-stan',
+        urzadzenie.dowod ? 'dowod' : urzadzenie.odrzucony ? 'odrzucony' : 'brak',
+      );
+      // Wiersze 1:1 z blokiem backendu (te same zdania co DOCX/PDF) — bez przeformułowania.
+      for (const wiersz of urzadzenie.wiersze) {
+        expect(within(pozycja).getByText(wiersz.etykieta_pl)).toBeInTheDocument();
+        expect(within(pozycja).getByText(wiersz.tresc_pl)).toBeInTheDocument();
+      }
+    }
+    const zDowodem = urzadzenia.find((u) => u.dowod !== null);
+    expect(zDowodem, 'scena musi mieć urządzenie z rekordem wykazu').toBeDefined();
+    expect(
+      within(sekcja).getByTestId(`mvd-studium-dok-dowod-${zDowodem!.der_ref}`),
+    ).toHaveTextContent(zDowodem!.dowod!.numer_dokumentu);
+    expect(screen.queryByTestId('mvd-studium-dok-dowod-brak')).not.toBeInTheDocument();
+  });
+
+  it('sekcja dowodu: brak urządzeń typu w modelu → stan zerowy z rekordu, bez listy', async () => {
+    const dokument = dokumentStudiumZDowodem as unknown as WidokDokumentuStudium;
+    const stanZerowy = 'Stan zerowy przekazany przez backend (stan_pl)';
+    pobierzDokument.mockResolvedValue({
+      ...dokument,
+      zalozenia: {
+        ...dokument.zalozenia,
+        dowod_certyfikatu: {
+          ...dokument.zalozenia.dowod_certyfikatu!,
+          urzadzenia: [],
+          stan_pl: stanZerowy,
+        },
+      },
+    });
+    await przeprowadzBieg();
+    fireEvent.click(screen.getByTestId('mvd-studium-dok-przycisk'));
+    expect(await screen.findByTestId('mvd-studium-dok-dowod-brak')).toHaveTextContent(stanZerowy);
+    expect(screen.queryByTestId('mvd-studium-dok-dowod')).not.toBeInTheDocument();
+  });
+
+  it('dokument bez wskazanego przypadku nie ma sekcji dowodu (klucza brak w kontrakcie)', async () => {
+    await przeprowadzBieg();
+    fireEvent.click(screen.getByTestId('mvd-studium-dok-przycisk'));
+    await screen.findByTestId('mvd-studium-dok-widok');
+    expect(screen.queryByText(STUDIUM_STRINGS.dokDowodTytul)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-studium-dok-dowod')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-studium-dok-dowod-brak')).not.toBeInTheDocument();
   });
 });
 
@@ -251,9 +346,7 @@ describe('KreatorStudium — dokument studium (błędy)', () => {
 
 describe('KreatorStudium — dokument studium (pobrania plików)', () => {
   function przechwycPobranie() {
-    // @ts-expect-error shim jsdom
     if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-    // @ts-expect-error shim jsdom
     if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
     const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});

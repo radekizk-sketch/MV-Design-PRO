@@ -27,4 +27,9 @@ class EquipmentProofRequest(BaseModel):
     run_id: str = Field(..., min_length=1)
     connection_node_id: str = Field(..., min_length=1)
     device: DeviceRatingPayload
-    required_fault_results: dict[str, Any]
+    #: Karta S-2 AUTORYTET: wielkości zwarciowe wchodzą do dowodu WYŁĄCZNIE z
+    #: ``run_id`` (bieg zapisany) — to pole jest teraz ECHEM opcjonalnym, nie
+    #: źródłem danych. Podane — porównywane z biegiem, rozbieżność = 422
+    #: ``WYNIK_NIEZGODNY_Z_BIEGIEM``. Pominięte — dowód powstaje z liczb biegu
+    #: bez porównania.
+    required_fault_results: dict[str, Any] | None = None

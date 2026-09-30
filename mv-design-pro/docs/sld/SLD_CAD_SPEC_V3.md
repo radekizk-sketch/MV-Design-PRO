@@ -746,7 +746,7 @@ jako WARSTWA ADNOTACJI schematu.
   oznaczenia sekcji** (parytet z GPZ, gdzie „Sekcja 1 · 15 kV" już istnieje). Szyny sekcjonowane:
   widoczne pole sprzęgła + jego STAN (otwarty/zamknięty z danych). Zakaz anonimowego odcinka szyny.
 - **Źródło danych:** napięcie znamionowe/sekcja stacji — z poziomów napięć ENM (D7, tab. zależności);
-  stan sprzęgła — `switch_state` istniejącego pola sprzęgłowego.
+  stan sprzęgła — `switch_state` istniejącego pola sprzęgła.
 - **Wyrocznia odbioru:** `busbar_label_probe` — każda szyna SN stacji ma etykietę napięcie+sekcja;
   każde pole sprzęgła ma widoczny stan; parytet gramatyki z GPZ.
 
@@ -782,8 +782,9 @@ jako WARSTWA ADNOTACJI schematu.
 
 ### 19.1 Oznaczenie FUNKCYJNE pola ≠ identyfikator aparatu; zakaz „Q" jako etykiety pola (D2-3)
 
-- **Wymaganie:** pole nosi **własne oznaczenie FUNKCYJNE** (liniowe / transformatorowe / sprzęgłowe /
-  pomiarowe / potrzeb własnych / generatorowe / inne technologiczne) — NIE „Q1/Q2/Q3". Litera „Q"
+- **Wymaganie:** pole nosi **własne oznaczenie FUNKCYJNE** (liniowe / transformatorowe / sprzęgła /
+  pomiarowe / potrzeb własnych / źródłowe PV·BESS·FW / inne technologiczne; słowa ról pól wg kanonu
+  `FIELD_ROLE_LABEL_PL` ↔ `enm/rola_pola_sn.py`, karta #141) — NIE „Q1/Q2/Q3". Litera „Q"
   identyfikuje **konkretny aparat** i występuje przy SYMBOLU tego aparatu; każdy aparat pola
   (wyłącznik/rozłącznik/odłącznik/uziemnik) ma **odrębny identyfikator** przy swoim symbolu
   (np. „Q1" wyłącznik, „Q9" odłącznik szynowy, „QE1" uziemnik, „T1" transformator). Obecny

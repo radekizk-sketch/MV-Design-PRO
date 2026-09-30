@@ -15,8 +15,10 @@ from __future__ import annotations
 import math
 
 import pytest
-from enm.canonical_analysis import (
+from enm.assembler import (
     _build_shunt_specs_from_snapshot,
+)
+from enm.canonical_analysis import (
     create_run,
     execute_run,
     reset_canonical_runs,
@@ -165,7 +167,7 @@ def _voltage_pu_at(result, ref_id: str) -> float:
     assert result.raw_result is not None
     result_v1 = result.raw_result["result_v1"]
     # node ids in result_v1 are the graph uuid5(ref_id) ids
-    from enm.canonical_analysis import _graph_id_from_ref
+    from enm.assembler import _graph_id_from_ref
 
     node_id = _graph_id_from_ref(ref_id)
     buses = result_v1["bus_results"]
@@ -190,7 +192,7 @@ def test_build_shunt_specs_b_pu_from_first_principles():
     assert spec.b_pu > 0.0
     assert math.isclose(spec.b_pu, 2.4 / BASE_MVA, rel_tol=1e-12)
 
-    from enm.canonical_analysis import _graph_id_from_ref
+    from enm.assembler import _graph_id_from_ref
 
     assert spec.node_id == _graph_id_from_ref("b2")
 
@@ -253,9 +255,15 @@ def test_power_flow_capacitor_raises_bus_voltage():
     payload_large["shunt_capacitors"] = [_capacitor_record(rated_mvar=5.0, rated_kv=15.0)]
     set_enm(case_large, EnergyNetworkModel.model_validate(payload_large))
 
-    run_no_cap = execute_run(create_run(case_id=case_no_cap, analysis_type="PF").id)
-    run_small = execute_run(create_run(case_id=case_small, analysis_type="PF").id)
-    run_large = execute_run(create_run(case_id=case_large, analysis_type="PF").id)
+    run_no_cap = execute_run(
+        create_run(case_id=case_no_cap, klucz_twin=case_no_cap, analysis_type="PF").id
+    )
+    run_small = execute_run(
+        create_run(case_id=case_small, klucz_twin=case_small, analysis_type="PF").id
+    )
+    run_large = execute_run(
+        create_run(case_id=case_large, klucz_twin=case_large, analysis_type="PF").id
+    )
 
     assert run_no_cap.status == "FINISHED", run_no_cap.error_message
     assert run_small.status == "FINISHED", run_small.error_message
@@ -292,8 +300,12 @@ def test_power_flow_open_capacitor_has_no_effect():
     payload_open["shunt_capacitors"] = [_capacitor_record(status="open")]
     set_enm(case_open, EnergyNetworkModel.model_validate(payload_open))
 
-    run_none = execute_run(create_run(case_id=case_none, analysis_type="PF").id)
-    run_open = execute_run(create_run(case_id=case_open, analysis_type="PF").id)
+    run_none = execute_run(
+        create_run(case_id=case_none, klucz_twin=case_none, analysis_type="PF").id
+    )
+    run_open = execute_run(
+        create_run(case_id=case_open, klucz_twin=case_open, analysis_type="PF").id
+    )
 
     assert run_none.status == "FINISHED", run_none.error_message
     assert run_open.status == "FINISHED", run_open.error_message
@@ -309,8 +321,8 @@ def test_power_flow_is_deterministic_with_capacitor():
     set_enm("pf-det-1", EnergyNetworkModel.model_validate(payload))
     set_enm("pf-det-2", EnergyNetworkModel.model_validate(payload))
 
-    run1 = execute_run(create_run(case_id="pf-det-1", analysis_type="PF").id)
-    run2 = execute_run(create_run(case_id="pf-det-2", analysis_type="PF").id)
+    run1 = execute_run(create_run(case_id="pf-det-1", klucz_twin="pf-det-1", analysis_type="PF").id)
+    run2 = execute_run(create_run(case_id="pf-det-2", klucz_twin="pf-det-2", analysis_type="PF").id)
 
     assert math.isclose(
         _voltage_pu_at(run1, "b2"), _voltage_pu_at(run2, "b2"), rel_tol=0.0, abs_tol=1e-12

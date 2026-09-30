@@ -48,19 +48,21 @@ vi.mock('../../../../ui/navigation/routes', () => ({
 
 const fetchBayTemplatesMock = vi.fn();
 
-vi.mock('../../../../ui/catalog/api', () => ({
-  getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchMvApparatusTypes: () =>
+// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
+// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const { fetchMvApparatusTypesMock, fetchSwitchgearFamiliesMock } = vi.hoisted(() => ({
+  fetchMvApparatusTypesMock: vi.fn(() =>
     Promise.resolve([
       { id: 'app-1', name: 'Wyłącznik SN', device_kind: 'BREAKER', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
     ]),
+  ),
   /**
    * Rodziny w kształcie ODPOWIEDZI BACKENDU (`GET /api/catalog/switchgear-families`):
    * z klasami znamionowymi, technologią i WYLICZANYM `tor_konfiguracji`.
    * Poprzednia fikstura miała trzy pola, więc ekran nie mógł nawet pokazać, czym
    * wybrana rodzina jest — a właśnie to rozstrzyga o sposobie budowy rozdzielnicy.
    */
-  fetchSwitchgearFamilies: () =>
+  fetchSwitchgearFamiliesMock: vi.fn(() =>
     Promise.resolve([
       {
         switchgear_family_ref: 'fam-1',
@@ -95,6 +97,13 @@ vi.mock('../../../../ui/catalog/api', () => ({
         notes_pl: null,
       },
     ]),
+  ),
+}));
+
+vi.mock('../../../../ui/catalog/api', () => ({
+  getCatalogErrorMessage: () => 'błąd katalogu',
+  fetchMvApparatusTypes: () => fetchMvApparatusTypesMock(),
+  fetchSwitchgearFamilies: () => fetchSwitchgearFamiliesMock(),
   fetchCompleteBayTemplates: (manufacturerRef?: string | null, bayKind?: string | null) =>
     fetchBayTemplatesMock(manufacturerRef, bayKind),
 }));
@@ -116,6 +125,8 @@ describe('KreatorPolaSn — realna ścieżka', () => {
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
     fetchBayTemplatesMock.mockReset();
+    fetchMvApparatusTypesMock.mockClear();
+    fetchSwitchgearFamiliesMock.mockClear();
     fetchBayTemplatesMock.mockResolvedValue([]);
   });
 
@@ -257,6 +268,22 @@ describe('KreatorPolaSn — realna ścieżka', () => {
     render(<KreatorPolaSn />);
     await pick();
     expect(screen.getByTestId('mvd-kreator-pole-zapisz')).toBeDisabled();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) —
+   * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
+   * zapis nie sprawdzał, czy katalog aparatów/rodzin już doszedł.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × szyna dostępna → zapis zablokowany z komunikatem', async () => {
+    fetchMvApparatusTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    fetchSwitchgearFamiliesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorPolaSn />);
+
+    expect(screen.getByTestId('mvd-kreator-pole-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-pole')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

@@ -176,6 +176,12 @@ def _operacja(snapshot: dict[str, Any], nazwa: str, payload: dict[str, Any]) -> 
     if nazwa == "add_grid_source_sn":
         payload = {
             "catalog_ref": CATALOG_ZRODLO_250,
+            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref) —
+            # odtwarzamy jako dana fikstury zalozenie, ktore wczesniej wchodzilo
+            # domyslnie (25 MVA @ 110 kV).
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
             "gpz_line_field_apparatus": {
                 "apparatus_kind": "BREAKER",
                 "catalog_binding": {

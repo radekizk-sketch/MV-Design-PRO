@@ -32,21 +32,18 @@ def build_golden_enm() -> EnergyNetworkModel:
     return EnergyNetworkModel(
         header=ENMHeader(name="CGMES Golden Net"),
         buses=[
-            Bus(ref_id="bus_hv", name="GPZ 110kV", voltage_kv=110.0),
+            Bus(ref_id="bus_hv", name="GPZ 110 kV", voltage_kv=110.0),
             Bus(ref_id="bus_sn_main", name="Szyna SN", voltage_kv=15.0),
             Bus(ref_id="bus_sn_b", name="Stacja B SN", voltage_kv=15.0),
             Bus(ref_id="bus_sn_c", name="Stacja C SN", voltage_kv=15.0),
-            Bus(
-                ref_id="bus_nn",
-                name="Szyna nN",
-                voltage_kv=0.4,
-                grounding=GroundingConfig(type="directly_grounded"),
-            ),
+            # W5-A: punkt neutralny nN niesie `Transformer.lv_neutral` (tr_sn_nn niżej),
+            # `Bus.grounding` skasowane.
+            Bus(ref_id="bus_nn", name="Szyna nN", voltage_kv=0.4),
         ],
         sources=[
             Source(
                 ref_id="src_gpz",
-                name="System 110kV",
+                name="System 110 kV",
                 bus_ref="bus_hv",
                 model="short_circuit_power",
                 sk3_mva=2500.0,
@@ -95,6 +92,10 @@ def build_golden_enm() -> EnergyNetworkModel:
                 uk_percent=4.5,
                 pk_kw=6.5,
                 vector_group="Dyn11",
+                # W5-A: punkt neutralny nN (dawniej `bus_nn.grounding`) i układ sieci nN
+                # (dawniej `substation.meta.nn_earthing_system`) — na transformatorze.
+                lv_neutral=GroundingConfig(type="directly_grounded"),
+                lv_earthing_system="TN-S",
                 catalog_ref="tr-15-04-630kva-dyn11",
                 catalog_namespace="TRAFO_SN_NN",
                 parameter_source="CATALOG",
@@ -142,7 +143,7 @@ def build_golden_enm() -> EnergyNetworkModel:
             ),
             SwitchBranch(
                 ref_id="sw_coupler",
-                name="Sprzeglo Q1",
+                name="Sprzęgło Q1",
                 from_bus_ref="bus_sn_main",
                 to_bus_ref="bus_sn_b",
                 type="breaker",
@@ -159,8 +160,8 @@ def build_golden_enm() -> EnergyNetworkModel:
             ),
         ],
         loads=[
-            Load(ref_id="load_nn", name="Odbior nN", bus_ref="bus_nn", p_mw=0.45, q_mvar=0.15),
-            Load(ref_id="load_c", name="Odbior C", bus_ref="bus_sn_c", p_mw=1.2, q_mvar=0.4),
+            Load(ref_id="load_nn", name="Odbiór nN", bus_ref="bus_nn", p_mw=0.45, q_mvar=0.15),
+            Load(ref_id="load_c", name="Odbiór C", bus_ref="bus_sn_c", p_mw=1.2, q_mvar=0.4),
         ],
         generators=[
             Generator(
@@ -191,11 +192,6 @@ def build_golden_enm() -> EnergyNetworkModel:
                 station_type="mv_lv",
                 bus_refs=["bus_sn_b", "bus_nn"],
                 transformer_refs=["tr_sn_nn"],
-                # P0.1 nN (karta P0.1, E063): stacja z odbiorem/generacja na szynie
-                # nN (load_nn/gen_pv) musi deklarowac uklad uziemienia sieci nN —
-                # TN-S jest zgodny z `bus_nn.grounding.type = "directly_grounded"`
-                # zadeklarowanym wyzej.
-                meta={"nn_earthing_system": "TN-S"},
             ),
             Substation(
                 ref_id="sub_gpz",

@@ -24,6 +24,7 @@ from .types import (
     MATERIALIZATION_CONTRACTS,
     CatalogBinding,
     CatalogNamespace,
+    nazwa_kategorii_katalogu_pl,
 )
 
 # ---------------------------------------------------------------------------
@@ -104,11 +105,13 @@ _NAMESPACE_ACCESSOR: dict[str, str] = {
     CatalogNamespace.ZRODLO_SN.value: "get_source_system_type",
     CatalogNamespace.ZRODLO_NN_PV.value: "get_pv_inverter_type",
     CatalogNamespace.ZRODLO_NN_BESS.value: "get_bess_inverter_type",
+    CatalogNamespace.BATERIA_BESS.value: "get_bess_battery_type",
     CatalogNamespace.ZABEZPIECZENIE.value: "get_protection_device_type",
     CatalogNamespace.NASTAWY_ZABEZPIECZEN.value: "get_protection_setting_template",
     CatalogNamespace.PTPIREE_CERTYFIKAT_GENERATORA.value: "get_ptpiree_generator_certificate",
     CatalogNamespace.CONVERTER.value: "get_converter_type",
-    CatalogNamespace.INVERTER.value: "get_inverter_type",
+    CatalogNamespace.GENERATOR_SN.value: "get_synchronous_generator_type",
+    CatalogNamespace.KARTA_WIDMOWA.value: "get_karta_widmowa",
 }
 
 # Fallbacks for switch equipment
@@ -157,7 +160,10 @@ def materialize_catalog_binding(
             ui_fields=[],
             audit=[],
             error_code="catalog.unknown_namespace",
-            error_message_pl=(f"Nieznana kategoria katalogu: {binding.catalog_namespace}"),
+            error_message_pl=(
+                "Wskazana grupa katalogu nie istnieje — wybierz pozycję z właściwej grupy "
+                "katalogu."
+            ),
         )
 
     # Look up the catalog item
@@ -170,8 +176,9 @@ def materialize_catalog_binding(
             audit=[],
             error_code="catalog.item_not_found",
             error_message_pl=(
-                f"Nie znaleziono rekordu katalogu: {binding.catalog_item_id} "
-                f"w kategorii {binding.catalog_namespace}"
+                "Wskazanej pozycji nie ma w grupie katalogu "
+                f"„{nazwa_kategorii_katalogu_pl(binding.catalog_namespace) or 'wskazanej'}” "
+                "— wybierz pozycję z listy katalogu."
             ),
         )
 
@@ -183,6 +190,10 @@ def materialize_catalog_binding(
     audit_entries: list[MaterializationAuditEntry] = []
     for field_name in contract.solver_fields:
         value = item_dict.get(field_name)
+        if value is None and field_name in contract.pola_opcjonalne:
+            # Pole addytywne bez wartości w katalogu: NIE trafia do migawki
+            # (``MaterializationContract.pola_opcjonalne``) — brak danej to brak klucza.
+            continue
         solver_fields[field_name] = value
         audit_entries.append(
             MaterializationAuditEntry(
@@ -238,6 +249,30 @@ def _lookup_catalog_item(
             if result is not None:
                 return result
 
+    return None
+
+
+def pozycja_w_katalogu(
+    catalog: CatalogRepository,
+    namespace: str | None,
+    item_id: str,
+) -> Any | None:
+    """Pozycja katalogu o identyfikatorze ``item_id`` albo ``None`` (pozycji nie ma).
+
+    Bez kategorii przeszukiwane są wszystkie kategorie w stałej kolejności słownika
+    akcesorów (deterministycznie). Nazwę pozycji do treści dla projektanta daje
+    ``enm.nazwy_elementow.nazwa_nadana_pozycji_katalogu`` (jedno źródło reguły nazwy,
+    karta NAZWY-JEDNO-ZRODLO) — ten moduł tylko wyszukuje.
+    """
+    kategorie = (
+        [namespace]
+        if namespace
+        else list(dict.fromkeys([*_NAMESPACE_ACCESSOR, *_SWITCH_NAMESPACE_ACCESSOR]))
+    )
+    for kategoria in kategorie:
+        pozycja = _lookup_catalog_item(catalog, kategoria, item_id)
+        if pozycja is not None:
+            return pozycja
     return None
 
 
@@ -355,7 +390,10 @@ def validate_catalog_binding(
         errors.append(
             MaterializationError(
                 code="catalog.materialization_required",
-                message_pl="Materializacja jest wymagana (materialize musi być true)",
+                message_pl=(
+                    "Parametry elementu muszą zostać przeniesione z pozycji katalogu "
+                    "(materializacja jest wymagana)."
+                ),
                 element_id=element_id,
             )
         )
@@ -366,7 +404,10 @@ def validate_catalog_binding(
         errors.append(
             MaterializationError(
                 code="catalog.unknown_namespace",
-                message_pl=f"Nieznana kategoria katalogu: {binding.catalog_namespace}",
+                message_pl=(
+                    "Wskazana grupa katalogu nie istnieje — wybierz pozycję z właściwej grupy "
+                    "katalogu."
+                ),
                 element_id=element_id,
                 namespace=binding.catalog_namespace,
             )

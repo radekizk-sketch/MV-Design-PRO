@@ -19,7 +19,7 @@ export const KOMPENSACJA_STRINGS = {
     'Która bateria kondensatorów z katalogu zapewnia wymagany współczynnik mocy '
     + 'w punkcie przyłączenia. Deterministyczny przegląd rekordów katalogu w rosnącej '
     + 'kolejności mocy — na tej samej ścieżce rozpływu, co pozostałe analizy. Wszystkie '
-    + 'wartości pochodzą z backendu.',
+    + 'wartości pochodzą z serwera obliczeń.',
 
   // Dobór węzła i parametrów
   paramWezel: 'Węzeł punktu przyłączenia',

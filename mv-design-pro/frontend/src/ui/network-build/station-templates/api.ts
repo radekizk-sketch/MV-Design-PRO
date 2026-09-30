@@ -94,6 +94,34 @@ export interface StationTemplateSummary {
   nc_rfg_type: 'A' | 'B' | 'C' | 'D' | null;
   tags: readonly string[];
   icon: string;
+  /**
+   * Pola strukturalne (KARTA-UI2 §1 p. 12): zastosowanie/moc/napięcie/role —
+   * z katalogu (`backend/.../schema.py::structural_fields`), NIE z parsowania
+   * `name_pl`. `null` = katalog nie dostarczył wartości dla domyślnej opcji
+   * transformatora szablonu (uczciwy brak, zero fabrykacji).
+   */
+  category_label_pl: string;
+  rated_power_kva: number | null;
+  voltage_hv_kv: number | null;
+  voltage_lv_kv: number | null;
+  /**
+   * Napiecie SN [kV], na ktorym szablon pracuje — WYMAGANIE stosowalnosci, nie
+   * dana transformatora: szablon wpinany w magistrale wymaga szyny o tym
+   * napieciu, szablon GPZ takie napiecie TWORZY, szablon kompensacji bierze je
+   * z rekordu baterii kondensatorow. `null` = szablon napieciowo obojetny
+   * (rozdzielnia sieciowa, rezerwa zasilania) — wchodzi na kazde napiecie SN.
+   * Zrodlo: `backend/.../schema.py::sn_voltage_kv`.
+   */
+  sn_voltage_kv: number | null;
+  /**
+   * Czy szablon wstawia sie w ISTNIEJACY odcinek magistrali SN, czy jest
+   * korzeniem modelu (stacja zasilajaca budowana bez odcinka). Zrodlo:
+   * `backend/.../schema.py::template_wchodzi_w_segment` — front NIE powtarza
+   * u siebie listy kategorii korzenia, bo dwa niezalezne warunki rozjechalyby
+   * sie przy pierwszej nowej kategorii.
+   */
+  wchodzi_w_segment: boolean;
+  bay_role_categories: readonly string[];
 }
 
 export interface StationTemplateFull extends StationTemplateSummary {
@@ -106,6 +134,14 @@ export interface CategoryEntry {
   icon: string;
   description_pl: string;
   template_count: number;
+  /**
+   * Czy kategoria nalezy do toru „wstaw stacje w odcinek magistrali". Stacja
+   * zasilajaca (GPZ 110/SN) jest KORZENIEM modelu — backend buduje ja przez
+   * `add_grid_source_sn` i odmawia wskazanego odcinka kodem
+   * `template.korzen_modelu_nie_wchodzi_w_segment`. Zrodlo:
+   * `backend/.../schema.py::kategoria_wchodzi_w_segment`.
+   */
+  wchodzi_w_segment: boolean;
 }
 
 export interface CategoriesResponse {

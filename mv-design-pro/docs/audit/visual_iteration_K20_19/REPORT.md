@@ -13,8 +13,8 @@ Complete protection workflow dla K20 zweryfikowany:
 |------|-----------|--------|--------|
 | 1 | `add_ct` (CT 300/5 5P10 Siemens) | ✓ DONE | `ct/7c0d2cab.../measurement` |
 | 2 | `add_vt` (VT 15kV/100V ABB) | ✓ DONE | `vt/6d709d75.../measurement` |
-| 3 | `add_relay` (ACME REX-100 v1) | ✓ DONE | `relay/15e33fc2.../assignment` |
-| 4 | `PUT protection-config` (template_rex100_oc) | ✓ DONE | bound_at: 12:31:33 |
+| 3 | `add_relay` (REF-OC-100, profil referencyjny) | ✓ DONE | `relay/15e33fc2.../assignment` |
+| 4 | `PUT protection-config` (template_ref_oc_100) | ✓ DONE | bound_at: 12:31:33 |
 | 5 | `POST protection-runs/{id}/execute` | ✓ DONE | trip @ 165.6 ms |
 
 **5/5 protection operations verified end-to-end dla K20.**
@@ -91,7 +91,7 @@ Complete protection workflow dla K20 zweryfikowany:
 ### Runs DONE
 - SC_3F deterministic (input_hash stable across re-runs)
 - LOAD_FLOW (Newton-Raphson converged)
-- PROTECTION (REX-100 trip @ 165.6 ms, IEC 60255 IDMT)
+- PROTECTION (REF-OC-100 trip @ 165.6 ms, IEC 60255 IDMT)
 
 ### Exports (per SC_3F run)
 - DOCX report: 38 KB (MS Word 2007+)

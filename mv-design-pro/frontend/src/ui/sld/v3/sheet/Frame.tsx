@@ -2,10 +2,14 @@
  * SLD V3 — arkusz widoku sieci (SLD_CAD_SPEC_V3 §2 "Siatka, arkusz,
  * typografia", §10 "Arkusz/OSD"). Czysty komponent SVG: ramka, strefy
  * referencyjne (litery pion / cyfry poziom, co 400px), etykieta skali,
- * legenda symboli i linii. Title block (K30-38, `SldTitleBlock` w v2) NIE
- * jest duplikowany tutaj — komponent przyjmuje go jako slot (`titleBlock`
- * prop), zgodnie z planem F4 ("title block reuse"); wpięcie realnego v2
- * title blocka to zakres cutoveru (F6/F8).
+ * legenda symboli i linii. Title block NIE jest duplikowany tutaj —
+ * komponent przyjmuje go jako opcjonalny slot (`titleBlock` prop, patrz
+ * niżej), zgodnie z planem F4 ("title block reuse"); slot NIE jest jeszcze
+ * wpięty w produkcji — realna tabliczka rysunkowa arkusza v3 to
+ * `export/sheetTitleBlock.tsx::SheetTitleBlock`, pozycjonowana samodzielnie
+ * przez wołającego (`SldCanvasV3Workspace.tsx`). Poprzedni kandydat do
+ * reużycia w tym slocie (`SldTitleBlock` z v2) USUNIĘTY na amen (FAB-F) —
+ * jego `DEFAULTS` fabrykowały dane projektu („K30", „ENEA"…) i kryptonim.
  *
  * Typografia: WYŁĄCZNIE jawne atrybuty SVG (`fontFamily`/`fontSize`/
  * `fontWeight`), NIGDY klasa Tailwind w `<text>` — lekcja z commitu
@@ -189,11 +193,12 @@ export interface SheetFrameProps {
    * niósłby STARE znaczenie licznika (dziś liczy wyłącznie DANE SZCZEGÓŁOWE —
    * tożsamość elementów nie znika). Druga, nieużywana implementacja tego samego
    * komunikatu to gotowa rozbieżność, więc znika razem z gałęzią renderu. */
-  /** Slot na title block (K30-38, `SldTitleBlock` z v2) — Frame NIE
-   *  duplikuje jego zawartości, tylko pozycjonuje jako blok w rogu arkusza. */
+  /** Opcjonalny slot na title block — Frame NIE duplikuje jego zawartości,
+   *  tylko pozycjonuje jako blok w rogu arkusza (patrz nagłówek pliku: w
+   *  produkcji v3 nieużywany, realna tabliczka to `SheetTitleBlock`). */
   readonly titleBlock?: ReactNode;
   /** Pozycja lewego-górnego rogu title blocka WZGLĘDEM obszaru rysunku
-   *  (domyślnie: prawy-dolny róg, przy założeniu typowego footprintu K30-38
+   *  (domyślnie: prawy-dolny róg, przy założeniu przybliżonego footprintu
    *  360×220 — dokładne wymiary zależą od treści danych OSD, więc wołający
    *  może nadpisać). */
   readonly titleBlockOrigin?: { readonly x: number; readonly y: number };
@@ -477,10 +482,10 @@ function ZoneMarkers(props: {
   );
 }
 
-/** Footprint domyślny title blocka K30-38 (`SldTitleBlock` w v2) — przybliżony
- *  (szerokość jest stała 360px w v2; wysokość zależy od treści danych OSD,
- *  więc przyjmujemy typowy rozmiar dla domyślnego pozycjonowania — wołający
- *  z realnymi danymi OSD powinien nadpisać `titleBlockOrigin`). */
+/** Footprint domyślny title blocka (slot `titleBlock`) — wartość przybliżona
+ *  używana tylko, gdy wołający NIE nadpisze `titleBlockOrigin`; dokładne
+ *  wymiary zależą od treści danych OSD, więc wołający z realnymi danymi
+ *  powinien nadpisać `titleBlockOrigin` sam. */
 const DEFAULT_TITLE_BLOCK_FOOTPRINT = { width: 360, height: 220 };
 
 /**

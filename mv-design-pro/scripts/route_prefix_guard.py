@@ -182,16 +182,17 @@ FRONTEND_PATH_EXCEPTIONS: dict[str, str] = {
         "`adresWyniku(runId, rodzaj, '/report')`, realny adres "
         "`/api/analysis-runs/{id}/results/v126/{rodzaj}/report`."
     ),
-    "/test-fixtures/sldSubstrate52s.powerflow.json": (
-        "frontend/src/screenshot-harness-main.tsx: fixtura wizualna serwowana przez "
-        "Vite jako plik statyczny z `frontend/public/test-fixtures/` (harness zrzutow "
-        "ekranu, `screenshot-harness.html`, poza glowna aplikacja SPA) — backend nigdy "
-        "nie serwuje tej sciezki i nie ma jej serwowac."
-    ),
     "/test-fixtures/{p}.enm.json": (
         "frontend/src/screenshot-harness-main.tsx: jak wyzej, nazwa fixtury wybierana "
         "parametrem `?fixture=` (`fetch(`/test-fixtures/${fixtureNameFromQuery()}.enm.json`)`) "
         "— plik statyczny Vite, nie adres backendu."
+    ),
+    "/test-fixtures/sldSubstrate52s.powerflow{p}.json": (
+        "frontend/src/screenshot-harness-main.tsx (E2E-FIX, 2026-09-05): jak "
+        "`/test-fixtures/sldSubstrate52s.powerflow.json` powyzej, sufiks wybierany "
+        "parametrem `?case=` (`fetch(`/test-fixtures/sldSubstrate52s.powerflow${suffix}.json`)`, "
+        "suffix = '' albo '.maintenance') — plik statyczny Vite z drugiego, "
+        "scenariuszowego companiona (konserwacja stacji), nie adres backendu."
     ),
 }
 
@@ -257,14 +258,9 @@ FRONTEND_DEAD_CLIENT_DEBT: dict[str, tuple[tuple[str, ...], str]] = {
         "historia biegow: backend wystawia ja jako /api/projects/{id}/analysis-runs. Modul nie "
         "ma importerow; trzecia funkcja (compareRuns -> /api/comparison/runs) jest poprawna.",
     ),
-    "frontend/src/ui/proof/traceExportApi.ts": (
-        (
-            "/api/projects/{p}/analysis-runs/{p}/trace/export/{p}",
-            "/api/analysis-runs/{p}/trace/export/{p}",
-        ),
-        "backend wystawia slad jako /api/analysis-runs/{id}/trace oraz /trace/summary, bez "
-        "eksportu do pliku. Modul nie ma importerow.",
-    ),
+    # WPIS ZDJETY 2026-09-23 (karta AB-1a Pakiet L): `frontend/src/ui/proof/traceExportApi.ts`
+    # (eksport sladu do pliku na trase, ktorej backend nie wystawia) skasowany razem z
+    # nieosiagalna przegladarka sladu `ui/proof/TraceViewer.tsx` i jej zaleznosciami.
     "frontend/src/ui/topology/api.ts": (
         (
             "/api/cases/{p}/enm/ops",

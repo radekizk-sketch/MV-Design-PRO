@@ -1,0 +1,77 @@
+# Wartości zastane — parametry wymagań o NIEUSTALONYM pochodzeniu.
+#
+# SKĄD: do 2026-09-22 repozytorium niosło pięć plików profili operatorów (pse, energa,
+# enea, pge, tauron; rewizja pliku „2024-Q4") z IDENTYCZNYMI wartościami parametrów
+# (jedyna różnica: krzywa HVRT profili OSD bez punktu 0,50 s — przeniesiona do warstwy
+# OSD jako nadpisanie). Żaden z plików nie wskazywał dokumentu, wydania ani jednostki
+# redakcyjnej (dochodzenie `docs/audit/FRT_PROWENIENCJA_NORMATYWNA.md` §3). Pięć kopii tej
+# samej listy liczb zostało zastąpionych JEDNĄ, ze stanem źródła NIEUSTALONE.
+#
+# PIERWSZEŃSTWO: wartość z warstwy OSD, a pod nią WOS, zastępuje wartość zastaną (plan AB §6
+# p.1; kolejność OSD > WOS > zastane).
+# Wartość zastana NIE jest wymaganiem krajowym ani operatorskim — jest tym, czym narzędzie
+# dysponuje do czasu dołączenia dokumentów (OD-21); każdy wynik liczony z niej niesie stan
+# NIEUSTALONE aż do certyfikatu i wniosku do OSD.
+warstwa: NIEUSTALONA
+dokument:
+  tytul: >-
+    Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych
+    kopii; pochodzenie wartości nieustalone)
+  wydanie: null
+  status: NIEUSTALONE
+  obowiazuje_od: null
+  # Trafia do każdej podstawy tej warstwy (parametry i wymaganie zastane).
+  uwagi_pl: >-
+    wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy
+    nieustalony
+
+parametry:
+  # Odpowiedź częstotliwościowa. `dead_band_hz` = odstęp progu LFSM-O od 50 Hz
+  # (próg 50,2 Hz przy 0,2 Hz); statyzm w % mocy odniesienia.
+  frequency_response:
+    steady_state_hz_min: 49.5
+    steady_state_hz_max: 50.5
+    transient_hz_min: 47.5
+    transient_hz_max: 51.5
+    pf_droop_percent: 5.0
+    dead_band_hz: 0.2
+    ramp_rate_pct_per_min: 10.0
+  reactive_power:
+    q_range_pct_pn_min: -0.33
+    q_range_pct_pn_max: 0.33
+    cos_phi_min: 0.95
+    voltage_control_modes: [cos_phi_constant, q_constant, q_of_u, voltage_control]
+  # Obwiednie FRT jako punkty (czas od początku zwarcia [s], napięcie w punkcie
+  # przyłączenia [pu Un]). Zakres typów: B — typ A nie ma wymagania FRT (NC RfG art. 14
+  # ust. 3 stosuje się od typu B); typy C/D poza zakresem produktu.
+  lvrt:
+    typy: [B]
+    punkty:
+      - { time_s: 0.00, voltage_pu: 0.05 }
+      - { time_s: 0.15, voltage_pu: 0.05 }
+      - { time_s: 0.70, voltage_pu: 0.50 }
+      - { time_s: 1.50, voltage_pu: 0.85 }
+      - { time_s: 3.00, voltage_pu: 0.90 }
+  # HVRT: rozporządzenie 2016/631 nie określa wymagania HVRT dla typu B (wskazanie do
+  # weryfikacji, OD-21) — to wymaganie pochodzi wyłącznie z profilu zastanego.
+  hvrt:
+    typy: [B]
+    punkty:
+      - { time_s: 0.00, voltage_pu: 1.30 }
+      - { time_s: 0.10, voltage_pu: 1.25 }
+      - { time_s: 0.50, voltage_pu: 1.20 }
+      - { time_s: 1.00, voltage_pu: 1.15 }
+      - { time_s: 60.00, voltage_pu: 1.10 }
+  p_recovery_after_fault:
+    required_for_modules: [B]
+    p_recovery_time_s: 1.0
+    p_recovery_rate_pct_per_s: 80.0
+
+# Wymaganie obecne wyłącznie w profilu zastanym (bez odpowiednika w rozporządzeniu dla typu B).
+wymagania:
+  - id: ZASTANE_HVRT
+    nazwa_pl: "Zdolność do pozostania w pracy przy wzroście napięcia (HVRT)"
+    typy: [B]
+    technologie: [PPM, SPGM]
+    jednostka_redakcyjna: null
+    testy: [T15]

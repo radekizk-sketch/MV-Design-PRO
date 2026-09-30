@@ -30,22 +30,16 @@ const BASE_FIXTURE = resolve(
 
 /** Zamknięty łącznik toru (stan jawny — geometria glifu, nie etykieta). */
 function closed(): NonNullable<BayPrimaryDevice['switch_state']> {
-  return {
-    actual_state: 'zamkniety',
-    control_mode: 'zdalne',
-    communication_ok: true,
-    interlock_blocked: false,
-  };
+  // Karta #135: fikstura niesie wyłącznie stan łącznika (geometria glifu). Tryb sterowania,
+  // komunikacja i blokada to telemetria/reguła — bez źródła ich nie ma (nie „zdalne, OK").
+  return { actual_state: 'zamkniety' };
 }
 
 /** Otwarty łącznik toru (stan jawny). */
 function open(): NonNullable<BayPrimaryDevice['switch_state']> {
-  return {
-    actual_state: 'otwarty',
-    control_mode: 'zdalne',
-    communication_ok: true,
-    interlock_blocked: false,
-  };
+  // Karta #135: fikstura niesie wyłącznie stan łącznika (geometria glifu). Tryb sterowania,
+  // komunikacja i blokada to telemetria/reguła — bez źródła ich nie ma (nie „zdalne, OK").
+  return { actual_state: 'otwarty' };
 }
 
 function device(

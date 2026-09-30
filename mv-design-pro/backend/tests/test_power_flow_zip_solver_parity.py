@@ -22,8 +22,8 @@ from network_model.solvers.power_flow_types import (
 )
 from network_model.solvers.power_flow_zip import ZipCoeffs
 
-CONST_Z = ZipCoeffs(1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
-CONST_I = ZipCoeffs(0.0, 1.0, 0.0, 0.0, 1.0, 0.0)
+CONST_Z = ZipCoeffs(1.0, 0.0, 0.0, 1.0, 0.0, 0.0, v0_pu=1.0, k_pf=0.0, k_qf=0.0, f0_hz=50.0)
+CONST_I = ZipCoeffs(0.0, 1.0, 0.0, 0.0, 1.0, 0.0, v0_pu=1.0, k_pf=0.0, k_qf=0.0, f0_hz=50.0)
 
 
 def _net() -> NetworkGraph:
@@ -92,7 +92,7 @@ def test_all_solvers_agree_on_zip(zc: ZipCoeffs) -> None:
 
 
 def test_all_solvers_agree_on_frequency_dependence() -> None:
-    zc = ZipCoeffs(0, 0, 1, 0, 0, 1, k_pf=2.0, k_qf=1.0, f0_hz=50.0)
+    zc = ZipCoeffs(0, 0, 1, 0, 0, 1, k_pf=2.0, k_qf=1.0, f0_hz=50.0, v0_pu=1.0)
     nr, gs, fd = _v_all(zc, f_hz=49.0)
     assert gs == pytest.approx(nr, abs=1e-4)
     assert fd == pytest.approx(nr, abs=1e-4)

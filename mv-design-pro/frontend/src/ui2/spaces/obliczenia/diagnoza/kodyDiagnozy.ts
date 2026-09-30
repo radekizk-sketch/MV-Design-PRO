@@ -76,12 +76,22 @@ export const ZDANIA_PRZYCZYN_PRZERWANIA: Readonly<Record<string, string>> = {
   numerical_issue: 'Solver napotkał wartość niedopuszczalną numerycznie — obliczenie zostało przerwane.',
 };
 
-/** Etykieta wagi problemu — słownik wspólny z przestrzenią „Gotowość". */
-export const ETYKIETY_WAGI: Readonly<Record<string, string>> = {
-  BLOCKER: 'BLOKADA',
-  WARN: 'OSTRZEŻENIE',
-  INFO: 'INFORMACJA',
+/** Waga problemu modelu w raporcie diagnostycznym (`severity` backendu). */
+export type WagaProblemuDiagnozy = 'BLOCKER' | 'WARN' | 'INFO';
+
+/**
+ * Etykieta wagi problemu — polskie słowo, nie wartość wyliczenia pisana wersalikami
+ * (karta #145: plakietka „OSTRZEŻENIE" stojąca sama w linii jest nieodróżnialna od kodu).
+ */
+export const ETYKIETY_WAGI: Readonly<Record<WagaProblemuDiagnozy, string>> = {
+  BLOCKER: 'Blokada',
+  WARN: 'Ostrzeżenie',
+  INFO: 'Informacja',
 };
+
+function jestWaga(waga: string): waga is WagaProblemuDiagnozy {
+  return Object.prototype.hasOwnProperty.call(ETYKIETY_WAGI, waga);
+}
 
 /** Etykieta dostępności analizy w kontroli przed obliczeniem. */
 export const ETYKIETY_DOSTEPNOSCI: Readonly<Record<string, string>> = {
@@ -118,7 +128,7 @@ export function zdaniePrzyczyny(przyczyna: string | null): string | null {
 
 /** Etykieta wagi problemu; nieznana waga renderowana jako informacja. */
 export function etykietaWagi(waga: string): string {
-  return ETYKIETY_WAGI[waga] ?? ETYKIETY_WAGI.INFO;
+  return jestWaga(waga) ? ETYKIETY_WAGI[waga] : ETYKIETY_WAGI.INFO;
 }
 
 /** Etykieta dostępności analizy; nieznana traktowana jak zablokowana. */

@@ -2,11 +2,12 @@
  * SLD Overlay Runtime Types — PR-16
  *
  * CANONICAL ALIGNMENT:
- * - Backend: domain/result_set.py OverlayPayloadV1
  * - sld_rules.md § B: Results as Overlay (never modifies model)
+ * - Producenci w tym module: `RawToTypedOverlayAdapter`, `ShortCircuitFlowOverlayAdapter`.
+ *   Dawny backendowy odpowiednik `domain/result_set.py::OverlayPayloadV1` skasowany
+ *   w karcie AB-1a Pakiet L (LEGACY_USUNAC C55 — tylko re-eksport, zero konsumenta).
  *
  * INVARIANTS:
- * - Types mirror backend OverlayPayloadV1 contract 1:1
  * - NO physics types (no impedance, no power factor, etc.)
  * - NO hex colors — only semantic tokens
  * - All visual decisions made by backend analysis layer
@@ -157,20 +158,6 @@ export interface ShortCircuitOverlayBadges {
 }
 
 /**
- * Protection coverage overlay badges.
- */
-export interface ProtectionCoverageOverlayBadges {
-  /** Whether the element is protected by a relay */
-  is_protected: boolean;
-  /** Relay name (Polish) or null if unprotected */
-  relay_name_pl: string | null;
-  /** Sensitivity ratio (Ik_min / I_pickup) */
-  sensitivity_ratio: number | null;
-  /** Coordination verdict */
-  coordination_verdict: 'OK' | 'NA_GRANICY' | 'NIE_OK' | null;
-}
-
-/**
  * Variant delta overlay badges for A/B comparison.
  */
 export interface VariantDeltaOverlayBadges {
@@ -178,94 +165,4 @@ export interface VariantDeltaOverlayBadges {
   delta_token: 'ADDED' | 'REMOVED' | 'MODIFIED' | 'UNCHANGED';
   /** Change description (Polish) */
   change_description_pl: string | null;
-}
-
-/**
- * Color token → CSS class mapping.
- * Deterministic, no physics, no heuristics.
- * Includes delta overlay tokens (PR-21) and industrial overlay tokens.
- */
-export const COLOR_TOKEN_MAP: Readonly<Record<string, string>> = {
-  ok: 'sld-overlay-ok',
-  warning: 'sld-overlay-warning',
-  critical: 'sld-overlay-critical',
-  inactive: 'sld-overlay-inactive',
-  // Delta overlay tokens (PR-21)
-  delta_none: 'sld-overlay-ok',
-  delta_change: 'sld-overlay-warning',
-  delta_inactive: 'sld-overlay-inactive',
-  // Protection coverage tokens
-  protected: 'sld-overlay-ok',
-  unprotected: 'sld-overlay-critical',
-  marginal: 'sld-overlay-warning',
-  // Variant comparison tokens
-  variant_added: 'sld-overlay-variant-added',
-  variant_removed: 'sld-overlay-variant-removed',
-  variant_modified: 'sld-overlay-variant-modified',
-  variant_unchanged: 'sld-overlay-inactive',
-  // Overload tokens
-  overload_none: 'sld-overlay-ok',
-  overload_warning: 'sld-overlay-warning',
-  overload_critical: 'sld-overlay-critical',
-} as const;
-
-/**
- * Stroke token → CSS class mapping.
- * Deterministic, no physics.
- */
-export const STROKE_TOKEN_MAP: Readonly<Record<string, string>> = {
-  normal: 'sld-overlay-stroke-normal',
-  bold: 'sld-overlay-stroke-bold',
-  dashed: 'sld-overlay-stroke-dashed',
-} as const;
-
-/**
- * Animation token → CSS class mapping.
- * Deterministic, no physics.
- */
-export const ANIMATION_TOKEN_MAP: Readonly<Record<string, string>> = {
-  pulse: 'sld-overlay-anim-pulse',
-  blink: 'sld-overlay-anim-blink',
-} as const;
-
-/**
- * Visual state → tailwind bg class mapping (for legend/badges).
- * Deterministic, derived from token semantics only.
- */
-export const VISUAL_STATE_STYLE: Readonly<
-  Record<OverlayVisualState, { bg: string; text: string; border: string }>
-> = {
-  OK: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-300' },
-  WARNING: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-300' },
-  CRITICAL: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-300' },
-  INACTIVE: { bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-300' },
-} as const;
-
-/**
- * Resolved style for a single overlay element.
- * Pre-computed by OverlayEngine, consumed by rendering layer.
- */
-export interface ResolvedOverlayStyle {
-  /** Element reference (for matching to SLD symbol) */
-  elementRef: string;
-
-  /** CSS class for color (from color_token) */
-  colorClass: string;
-
-  /** CSS class for stroke (from stroke_token) */
-  strokeClass: string;
-
-  /** CSS class for animation (from animation_token, empty if none) */
-  animationClass: string;
-
-  /** Visual state badge style */
-  stateBg: string;
-  stateText: string;
-  stateBorder: string;
-
-  /** Visual state label */
-  visualState: OverlayVisualState;
-
-  /** Numeric badges (display-only) */
-  numericBadges: Record<string, number | null>;
 }

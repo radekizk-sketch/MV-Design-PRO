@@ -132,6 +132,18 @@ describe('BayTemplatePicker', () => {
     expect(onSelect).toHaveBeenCalledWith('CANONICAL_FALLBACK__TRANSFORMER');
   });
 
+  it('opcja nazywa rodzaj i rolę pola słowami kanonu, bez kodu roli (karta #141)', () => {
+    const { container } = render(
+      <BayTemplatePicker templates={CANONICAL_FALLBACK_TEN} onSelect={() => {}} />,
+    );
+    const tekst = container.querySelector(
+      '[data-testid="bay-template-picker-option-CANONICAL_FALLBACK__LINE_OUT"]',
+    )?.textContent ?? '';
+    expect(tekst).toContain('Pole liniowe wyjściowe');
+    expect(tekst).toContain('Rola pola: pole liniowe wyjściowe');
+    expect(tekst).not.toMatch(/\bOUT\b/);
+  });
+
   it('selectedRef oznacza wybrany szablon', () => {
     const { container } = render(
       <BayTemplatePicker

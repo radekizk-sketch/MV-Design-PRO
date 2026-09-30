@@ -368,3 +368,37 @@ def test_lista_rodzajow_odcinka_jest_zamknieta_wzgledem_modelu() -> None:
 
     assert z_modelu, "zapadka na pusty zbiór — pin bez gałęzi przechodziłby zawsze"
     assert RODZAJE_ODCINKA == z_modelu
+
+
+@pytest.mark.parametrize("rodzaj", sorted(RODZAJE_ODCINKA))
+@pytest.mark.parametrize(
+    ("nazwa_w_grafie", "nazwa_w_modelu", "oczekiwana"),
+    [
+        pytest.param("Linia SN", None, "Linia SN", id="nazwa-z-grafu-biegu"),
+        pytest.param(None, "Odcinek L1", "Odcinek L1", id="graf-bez-nazwy-model-z-nazwa"),
+        pytest.param("  ", None, None, id="bez-nazw-opis-rodzaju"),
+    ],
+)
+def test_nazwa_odcinka_nigdy_identyfikator_galezi(
+    rodzaj: str, nazwa_w_grafie: str | None, nazwa_w_modelu: str | None, oczekiwana: str | None
+) -> None:
+    """Karta #144: nazwa odcinka dowodu spadku = nazwa gałęzi z grafu biegu, bez niej nazwa
+    z migawki, a bez obu opis rodzaju gałęzi („Kabel bez nazwy") — nigdy `ln-1` ani `g-1`.
+    Iloczyn: {linia, kabel} × {nazwa w grafie, tylko w modelu, nigdzie}."""
+    galaz_grafu: dict[str, Any] = {
+        "element_id": "ln-1",
+        "from_node_id": "n-a",
+        "to_node_id": "n-b",
+    }
+    if nazwa_w_grafie is not None:
+        galaz_grafu["name"] = nazwa_w_grafie
+    nadpisania: dict[str, Any] = {"type": rodzaj}
+    if nazwa_w_modelu is not None:
+        nadpisania["name"] = nazwa_w_modelu
+    [odcinek] = odcinki_spadku_napiecia(
+        raw_result=_artefakt(galezie_grafu={"g-1": galaz_grafu}),
+        snapshot=_snapshot(**nadpisania),
+    )
+    opis_rodzaju = {"cable": "Kabel bez nazwy", "line_overhead": "Linia napowietrzna bez nazwy"}
+    assert odcinek.nazwa == (oczekiwana or opis_rodzaju[rodzaj])
+    assert "ln-1" not in odcinek.nazwa and "g-1" not in odcinek.nazwa

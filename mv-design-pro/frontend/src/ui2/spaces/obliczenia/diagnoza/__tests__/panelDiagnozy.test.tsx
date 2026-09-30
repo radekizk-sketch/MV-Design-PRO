@@ -249,7 +249,7 @@ describe('kontrola przed obliczeniem z blokadami', () => {
     render(<PanelDiagnozy {...props()} />);
 
     const problemy = await screen.findByTestId('mvd-diagnoza-problemy');
-    expect(within(problemy).getByText('BLOKADA')).toBeInTheDocument();
+    expect(within(problemy).getByText('Blokada')).toBeInTheDocument();
     expect(within(problemy).getByText(/Macierz admitancji będzie osobliwa/)).toBeInTheDocument();
     expect(within(problemy).getByText('Ustaw R i/lub X > 0 [Ω/km]')).toBeInTheDocument();
   });

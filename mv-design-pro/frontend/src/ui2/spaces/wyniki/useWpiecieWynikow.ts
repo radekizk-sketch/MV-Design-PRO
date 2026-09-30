@@ -1,8 +1,7 @@
 /**
- * Wpięcie store'ów wyników w nową powłokę (scalenia U3 #1–#2 — zamyka
- * TODO-KARTA E8.1/E8.2 „populacja store'u"): okna wyników (TabelaSzyn,
- * EkranZwarc) czytają store'y wyłącznie do odczytu, a ładowanie danych
- * uruchamia ta warstwa integracyjna — dokładnie te same akcje store'ów,
+ * Wpięcie store'ów wyników w powłokę (scalenia U3 #1–#2): okna wyników
+ * (TabelaSzyn, EkranZwarc) czytają store'y wyłącznie do odczytu, a ładowanie
+ * danych uruchamia ta warstwa integracyjna — dokładnie te same akcje store'ów,
  * które w starym wejściu wołały okna inspektorów:
  * - rozpływ: `selectRun` + `loadResults` (`ui/power-flow-results/store.ts:109-184`),
  * - zwarcia: `selectRun` + `loadShortCircuitResults`
@@ -60,11 +59,28 @@ function zaladujWynik(runId: string): void {
 /**
  * Hook integracyjny: ładuje wynik aktywnego przebiegu przy montażu oraz na
  * zdarzenie magistrali `wyniki-gotowe`. Zwraca rodzaj wyniku aktywnego
- * przebiegu (do wyboru zakładki startowej warsztatu wyników).
+ * przebiegu (do wyboru zakładki startowej warsztatu wyników) oraz predykat
+ * synchronizacji rejestru przebiegów z aktywnym zakresem obliczeń — dopóki
+ * rejestr nie jest zsynchronizowany, rodzaj `null` NIE znaczy „brak przebiegu"
+ * (warsztat nie może wtedy pokazać zakładki startowej, którą za chwilę zmieni).
  */
-export function useWpiecieWynikow(): { aktywnyRodzaj: RodzajWyniku } {
+export function useWpiecieWynikow(): {
+  aktywnyRodzaj: RodzajWyniku;
+  rejestrZsynchronizowany: boolean;
+} {
   const activeRunId = useAppStateStore((s) => s.activeRunId);
+  const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const przebiegi = useExecutionRunsStore((s) => s.runs);
+  const rejestrCaseId = useExecutionRunsStore((s) => s.activeStudyCaseId);
+  const isLoadingRuns = useExecutionRunsStore((s) => s.isLoadingRuns);
+  // Rejestr przebiegów jest ZSYNCHRONIZOWANY z aktywnym zakresem obliczeń, gdy
+  // został wczytany dla tego zakresu i nie trwa jego wczytywanie. Bez zakresu
+  // nie ma rejestru do wczytania (stan ustalony natychmiast). Przed hydratacją
+  // K2 po zimnym starcie (`useHydratacjaPowloki`: projekt → zakresy → rejestr)
+  // rejestr należy jeszcze do poprzedniego kontekstu (albo do żadnego) — rodzaj
+  // aktywnego przebiegu jest wtedy NIEUSTALONY, a nie „brak przebiegu".
+  const rejestrZsynchronizowany =
+    activeCaseId == null || (rejestrCaseId === activeCaseId && !isLoadingRuns);
   const aktywnyRodzaj =
     activeRunId == null ? null : rodzajPrzebiegu(przebiegi.find((r) => r.id === activeRunId));
 
@@ -81,5 +97,5 @@ export function useWpiecieWynikow(): { aktywnyRodzaj: RodzajWyniku } {
   // Nowe wyniki na magistrali: ładuj wg rodzaju analizy przebiegu.
   useEffect(() => subskrybuj('wyniki-gotowe', (zdarzenie) => zaladujWynik(zdarzenie.runId)), []);
 
-  return { aktywnyRodzaj };
+  return { aktywnyRodzaj, rejestrZsynchronizowany };
 }

@@ -1,5 +1,5 @@
 import type { EnergyNetworkModel } from '../../types/enm';
-import { canonicalRoleLabel } from './fieldLabels';
+import { fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import type { FieldReadModelItem } from './useFieldReadModel';
 
 type LegacyBay = EnergyNetworkModel['bays'][number];
@@ -154,7 +154,7 @@ export function buildFieldReadModelSummaries(
         id: item.bay_id,
         name: item.bay_name,
         bay_role: baseModel.bay_role,
-        bay_role_label: canonicalRoleLabel(baseModel.bay_role),
+        bay_role_label: fieldRoleLabelPl(baseModel.bay_role),
         station_ref: baseModel.substation_ref ?? null,
         station_name: station?.name ?? baseModel.substation_ref ?? 'Stacja nieprzypisana',
         bus_ref: busRef,

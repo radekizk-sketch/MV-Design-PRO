@@ -1,0 +1,62 @@
+# Warstwa procedury PTPiREE — sposób wykazania zgodności (testy, certyfikaty).
+#
+# CO TA WARSTWA NIESIE: wersję procedury testowania oraz KRYTERIA AKCEPTACJI testów
+# kanonu T01–T20 (tolerancje, wartości odniesienia). Do 2026-09-22 te liczby były zaszyte w
+# kodzie solvera `network_model/solvers/ncrfg_ptpiree/engine.py` — solver nie ma już ani
+# jednej liczby kryterium (plan AB §6 p.3). Pochodzenie wartości jest NIEUSTALONE: żaden
+# dokument w repozytorium ich nie wskazuje; potwierdzenie wymaga programów ramowych testów
+# procedury (OD-21). Stan źródła trafia do śladu każdego testu, który z nich korzysta.
+warstwa: PROCEDURA_PTPIREE
+dokument:
+  tytul: "PTPiREE — Procedura testowania modułów wytwarzania energii"
+  wydanie: "3.0"
+  status: WSKAZANE
+  adres: "https://ptpiree.pl/kodeksy-sieci/procedura-testowania/"
+  # Data obowiązywania wydania nieustalona (procedura nie jest w repozytorium) — zero dat z
+  # pamięci; resolver wersji po dacie (plan AB §2.3 O-31) zgłasza to w uwagach.
+  obowiazuje_od: null
+
+kryteria_akceptacji:
+  status: NIEUSTALONE
+  uwagi_pl: >-
+    wartości przeniesione z kodu solvera testów (dawniej zaszyte); do potwierdzenia
+    programami ramowymi testów procedury
+  # T01–T04: dopuszczalna odchyłka nastawionego statyzmu od wartości wymaganej [pp].
+  tolerancja_statyzmu_pp: 1.0
+  # T01–T04: dopuszczalne przekroczenie wymaganej strefy martwej / odstępu progu [Hz].
+  tolerancja_strefy_martwej_hz: 0.05
+  # T04: minimalny udział wymaganego tempa zmiany mocy przy regulacji odbudowy [-].
+  min_udzial_rampy_odbudowy: 0.5
+  # T05: czas ustalenia do 50 % PMAX nie dłuższy niż krotność czasu odniesienia i nie
+  # krótszy od wartości minimalnej [min].
+  krotnosc_czasu_ustalenia: 2.0
+  min_czas_ustalenia_min: 0.1
+  # T05: zadana moc testu regulacji jako udział PMAX [-].
+  udzial_mocy_testu_regulacji: 0.5
+  # T12/T13: czas wykonania komendy zdalnej jako krotność czasu odniesienia [-] i minimum [min].
+  krotnosc_czasu_komendy: 2.0
+  min_czas_komendy_min: 0.1
+  # T13: moc docelowa komendy zmniejszenia generacji jako udział PMAX [-].
+  udzial_mocy_komendy_zmniejszenia: 0.2
+  # T17: minimalne wzmocnienie prądu biernego K_FRT i spadek napięcia punktu testu [pu].
+  k_frt_min: 2.0
+  spadek_napiecia_testu_frt_pu: 0.5
+  # T01/T03 i T02: częstotliwości punktów testu odpowiedzi częstotliwościowej [Hz].
+  czestotliwosc_testu_nad_hz: 50.6
+  czestotliwosc_testu_pod_hz: 49.4
+  # T20: dopuszczalne THD napięcia źródła [%].
+  thd_u_max_pct: 8.0
+
+# Program badań (plan AB §2.3 O-30; kontrakt werdyktu §2.3 pkt 8): zbiór scenariuszy, których
+# pokrycie jest warunkiem stanu SPEŁNIA wymagania wykazywanego biegami (jeden scenariusz nie
+# wykazuje wymagania). Scenariusz: `id`, `test_id` (kanon T01–T20), `opis_pl`, `parametry`
+# (nazwa → wartość) i `jednostki` (te same klucze → jednostka jawna), `jednostka_redakcyjna`
+# programu ramowego testów. Scenariusz bez wskazanej podstawy jest odrzucany przez loader.
+# S_k,min punktu przyłączenia NIE jest parametrem profilu — to dana modelu sieci (O-8).
+# Dziś zbiór jest pusty: programy ramowe testów PTPiREE nie są w repozytorium (OD-21).
+program_badan:
+  status: NIEUSTALONE
+  uwagi_pl: >-
+    zbiór scenariuszy (głębokości i czasy zapadu × poziomy P × Q × punkt pracy sprzed
+    zakłócenia) wymaga programów ramowych testów PTPiREE (plan AB §12.1)
+  scenariusze: []

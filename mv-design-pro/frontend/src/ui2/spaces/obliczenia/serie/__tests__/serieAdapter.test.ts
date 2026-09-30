@@ -21,11 +21,15 @@ function seria(id: string, nadpisz: Partial<BatchJob> = {}): BatchJob {
     analysis_type: 'SC_3F',
     scenario_ids: ['s1', 's2'],
     created_at: '2026-08-07T10:30:00Z',
-    status: 'DONE',
+    finished_at: '2026-08-07T10:30:02Z',
+    status: 'FINISHED',
     batch_input_hash: 'a'.repeat(64),
     run_ids: ['run-1', 'run-2'],
     result_set_ids: ['run-1', 'run-2'],
     errors: [],
+    name: null,
+    envelope: null,
+    items: [],
     ...nadpisz,
   };
 }

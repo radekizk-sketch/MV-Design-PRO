@@ -19,6 +19,10 @@ import './arkusz.css';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { getActiveStudyCase } from '../../../../ui/study-cases/api';
+import { isModeAtLeast } from '../../../shell/modeModel';
+import { useShellStore } from '../../../shell/useShellStore';
+import { InformacjeAudytowe } from '../../../wyniki/wzorzec';
+import '../../../wyniki/wzorzec/wzorzec.css';
 import {
   importujArkusz,
   OdrzucenieArkusza,
@@ -55,6 +59,9 @@ function Podsumowanie({ dane, testid }: { dane: PodsumowanieArkusza; testid: str
 
 /** Adres zastrzeżenia w arkuszu — projektant ma wiedzieć, gdzie poprawić. */
 function adresZastrzezenia(pozycja: ZastrzezenieArkusza): string {
+  // `arkusz === 'model'`: zastrzeżenie kompilatora/walidatora do sieci złożonej ze
+  // wszystkich arkuszy naraz (np. szyna bez zasilania) — nie ma wiersza do wskazania.
+  if (pozycja.arkusz === 'model') return T.zastrzezenieModel;
   const czesci = [`${T.zastrzezenieArkusz} „${pozycja.arkusz}"`];
   czesci.push(
     pozycja.wiersz === null
@@ -85,7 +92,7 @@ function ListaZastrzezen({ pozycje }: { pozycje: readonly ZastrzezenieArkusza[] 
   );
 }
 
-/** Lista komunikatów tekstowych backendu (uwagi / odcinki bez katalogu). */
+/** Lista komunikatów tekstowych backendu (uwagi / elementy z typem z arkusza). */
 function ListaKomunikatow({
   tytul,
   pozycje,
@@ -115,9 +122,6 @@ function werdyktImportu(wynik: WynikImportuArkusza): {
   wariant: 'ok' | 'warn' | 'err';
 } {
   if (wynik.status === 'ZAIMPORTOWANO') return { tekst: T.raportZaimportowano, wariant: 'ok' };
-  if (wynik.status === 'WYMAGA_MAPOWANIA_KATALOGU') {
-    return { tekst: T.raportBramkaKatalogu, wariant: 'warn' };
-  }
   return { tekst: T.raportOdrzucono, wariant: 'err' };
 }
 
@@ -129,6 +133,12 @@ export interface EkranImportuArkuszaProps {
 export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
   const setActiveProject = useAppStateStore((s) => s.setActiveProject);
   const setActiveCase = useAppStateStore((s) => s.setActiveCase);
+  // Odcisk modelu to metadana produkcyjna — tylko w informacjach audytowych,
+  // widocznych w trybie eksperckim (kontrakt prezentacji V12.7 §0.3).
+  const trybEkspercki = isModeAtLeast(
+    useShellStore((s) => s.advancementMode),
+    'expert',
+  );
 
   const [plik, setPlik] = useState<File | null>(null);
   const [nazwa, setNazwa] = useState('');
@@ -308,9 +318,9 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
             testid="mvd-ark-ostrzezenia"
           />
           <ListaKomunikatow
-            tytul={T.bezKataloguTytul}
-            pozycje={podglad.elementy_bez_katalogu}
-            testid="mvd-ark-bez-katalogu"
+            tytul={T.typyProjektuTytul}
+            pozycje={podglad.elementy_typow_projektu}
+            testid="mvd-ark-typy-projektu"
           />
         </section>
       )}
@@ -337,20 +347,15 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
           {wynik.podsumowanie && (
             <Podsumowanie dane={wynik.podsumowanie} testid="mvd-ark-raport-liczby" />
           )}
-          {wynik.odcisk_migawki && (
-            <div className="mvd-ark-kv-siatka">
-              <Wiersz etykieta={T.raportMigawka} wartosc={wynik.odcisk_migawki.slice(0, 16)} />
-            </div>
-          )}
           <ListaKomunikatow
             tytul={T.ostrzezeniaTytul}
             pozycje={wynik.ostrzezenia}
             testid="mvd-ark-raport-ostrzezenia"
           />
           <ListaKomunikatow
-            tytul={T.bezKataloguTytul}
-            pozycje={wynik.elementy_bez_katalogu}
-            testid="mvd-ark-raport-bez-katalogu"
+            tytul={T.typyProjektuTytul}
+            pozycje={wynik.elementy_typow_projektu}
+            testid="mvd-ark-raport-typy-projektu"
           />
           <div className="mvd-ark-akcje">
             {wynik.project_id ? (
@@ -369,11 +374,16 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
           </div>
           {wynik.project_id ? (
             <p className="mvd-ark-nastepny" data-testid="mvd-ark-nastepny-krok">
-              {wynik.mapowanie_katalogowe_wymagane
-                ? T.raportNastepnyKrokKatalog
+              {wynik.elementy_typow_projektu.length > 0
+                ? T.raportNastepnyKrokTypy
                 : T.raportNastepnyKrok}
             </p>
           ) : null}
+          <InformacjeAudytowe
+            wiersze={wynik.enm_hash ? [{ etykieta: T.raportOdcisk, wartosc: wynik.enm_hash }] : []}
+            trybEkspercki={trybEkspercki}
+            testid="mvd-ark-raport-audyt"
+          />
         </section>
       )}
     </div>

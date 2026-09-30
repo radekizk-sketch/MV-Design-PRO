@@ -151,6 +151,62 @@
       },
       "transformator": { "hv": "sn", "lv": "nn" },
       "oczekiwane_znalezisko": false
+    },
+    {
+      "id": "tr-bez-pola-strona-gorna-1kv",
+      "opis_pl": "Strona gorna transformatora na szynie 1,0 kV — pasmo nN (do 1 kV wlacznie), nie SN: brak pola rozdzielni SN nie jest znaleziskiem (granica pasma, karta PASMO-1KV).",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "stacja": {
+        "sn_bus_kv": 1.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": ["IN", "OUT", "FEEDER"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn" },
+      "oczekiwane_znalezisko": false
+    },
+    {
+      "id": "tr-bez-pola-strona-gorna-1001v",
+      "opis_pl": "Strona gorna na szynie 1,001 kV — pasmo SN (powyzej 1 kV): transformator bez pola TR to znalezisko.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "stacja": {
+        "sn_bus_kv": 1.001,
+        "nn_bus_kv": 0.4,
+        "role_pol": ["IN", "OUT", "FEEDER"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn" },
+      "oczekiwane_znalezisko": true
+    },
+    {
+      "id": "tr-bez-pola-strona-gorna-66kv",
+      "opis_pl": "Strona gorna na szynie 66 kV — pasmo SN (ponizej 110 kV wg rozporzadzenia; dawna granica 60 kV nie miala podstawy): brak pola TR to znalezisko.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "stacja": {
+        "sn_bus_kv": 66.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": ["IN", "OUT", "FEEDER"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn" },
+      "oczekiwane_znalezisko": true
+    },
+    {
+      "id": "tr-bez-pola-strona-gorna-109999v",
+      "opis_pl": "Strona gorna na szynie 109,999 kV — ostatnia wartosc pasma SN przed granica WN 110 kV (wylaczna): brak pola TR to znalezisko.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "stacja": {
+        "sn_bus_kv": 109.999,
+        "nn_bus_kv": 0.4,
+        "role_pol": ["IN", "OUT", "FEEDER"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn" },
+      "oczekiwane_znalezisko": true
     }
   ]
 }

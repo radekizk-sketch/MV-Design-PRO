@@ -405,12 +405,16 @@ Nastepujace operacje NIE sa dostepne bezposrednio z SLD -- wymagaja dedykowanego
 
 | Operacja                      | Panel                              |
 |-------------------------------|------------------------------------|
-| `create_study_case`           | Panel przypadkow obliczeniowych    |
-| `set_case_switch_state`       | Panel przypadkow obliczeniowych    |
-| `compare_study_cases`         | Panel porownania przypadkow        |
+| `create_study_case` (C1, `api/study_cases.py`) | Panel przypadkow obliczeniowych    |
+| `compare_study_cases` (C1, `domain/study_case.py`) | Panel porownania przypadkow        |
 | `validate_selectivity`        | Panel koordynacji zabezpieczen     |
 | `calculate_tcc_curve`         | Panel koordynacji zabezpieczen     |
-| `run_time_series_power_flow`  | Panel analiz czasowych             |
+
+Usuniete CV-3.2, 58e520ce (nie dotyczy juz zadnego panelu -- byly fantomem w
+rejestrze `enm/domain_operations_v2.py`, 0 konsumentow): `set_case_switch_state`,
+`run_time_series_power_flow`. Stan lacznika w kontekscie obliczenia -- gdy powstanie
+UI -- nalezy budowac na `enm/scenariusze.py::OperatingScenario` (CV-3.1), nie na
+usunietej operacji.
 
 ---
 

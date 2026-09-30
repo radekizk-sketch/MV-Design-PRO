@@ -25,9 +25,10 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import * as zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { adresHarnessu } from './adresHarnessu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const HARNESS_URL = 'http://127.0.0.1:5173/screenshot-harness.html';
+const HARNESS_URL = adresHarnessu('screenshot-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/sld_audyt');
 
 const POZIOMY = [0, 1, 2] as const;
@@ -345,23 +346,48 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
   }
 
   /**
-   * NIEZMIENNIK MOTYWU (KD-8 poz. 1 + karta Z-3, zamiast komentarza w harnessie).
+   * V12K-234 → KOREKTA KANONU (naprawa regresji CI-D, 2026-09-04): ten
+   * niezmiennik zakładał „kanwa v3 ma STAŁE tło techniczne, rysunek NIE
+   * reaguje na motyw" — prawdziwe DO karty KD-8. Właściciel rozstrzygnął
+   * inaczej (KD-8 §0.1, `docs/v12xx/REJESTR_KONFLIKTOW.md`): „paleta KAŻDEJ
+   * powierzchni, łącznie z kanwą, idzie z motywu" — `ui/sld/v3/theme/
+   * palette.ts::sldPaletteForTheme` daje dziś DWIE różne palety
+   * (`DARK_SCADA_SLD_PALETTE` / `LIGHT_TECHNICAL_SLD_PALETTE`), a
+   * `SldCanvasV3.tsx` czyta ją z `effectiveThemeMode` — dawna decyzja
+   * „SCADA-dark zawsze" jest tym NADPISANA. Zmierzone bezpośrednio (ta karta,
+   * L0/L1/L2): tło, rama arkusza i etykiety zamieniają jasność/kolor między
+   * motywami; WYŁĄCZNIE rodzina barw klasy napięcia (SN zielony) zostaje —
+   * dokładnie kontrakt semantyki z `palette.ts` („wolno zmienić jasność, NIE
+   * WOLNO zmienić przypisania barw do klas"). Ten sam klasowy błąd (asercja
+   * niezmienniczości motywu przeterminowana KD-8) już raz naprawiono w
+   * `creator-screenshot.spec.ts` (rejestr `BUGI-PRODUKTU-E2E`, poz. 2) —
+   * TA kanwa dostała analogiczną poprawkę wtedy pominiętą.
    *
-   * Kanwa v3 ma paletę sterowaną motywem (`sldPaletteForTheme`, ocena właściciela
-   * KD-8: „przy »Motyw: jasny« ciemne pozostają kanwa SLD…" = defekt). Harness
-   * podaje motyw kanwie wprost (`paletteMode`), więc para zrzutów jasny/ciemny
-   * MUSI się różnić, a tło każdego zrzutu musi być tłem palety SWOJEGO motywu.
-   * Dawny niezmiennik („para bajtowo identyczna", V12K-234) opisywał stan sprzed
-   * KD-8/Z-3 i po karcie Z-3 był czerwony — dwa predykaty o jednym fakcie.
-   * Milcząca zmiana w żadną stronę nie przejdzie: kanwa niezależna od motywu
-   * albo tło spoza palety kończą test błędem.
+   * Głębszy niezmiennik (geometria sceny NIEZALEŻNA od palety, rodzina barw
+   * NIEZMIENNA między motywami) ma już dedykowaną, wiążącą bramkę CI:
+   * `ui/sld/v3/theme/__tests__/palette.test.ts` („determinizm geometrii
+   * NIEZALEŻNY od motywu" + „SEMANTYKA klas napięć jest kontraktem") —
+   * jest w liście testów krytycznych `sld-determinism.yml`. Rolą TEGO testu
+   * zostaje więc pilnowanie, że materiał audytowy „light"/„dark" NIE jest
+   * duplikatem w bajtach — inaczej motyw przestał realnie dotrzeć do kanwy
+   * (dokładnie regresja odwrotna do tej, którą łapał stary niezmiennik) — ORAZ
+   * że tło każdego zrzutu jest tłem palety SWOJEGO motywu (piksel narożny vs
+   * `TLO_PALETY`, scalone z gałęzi main, karta Z-3): sama różność pary nie
+   * wyklucza zamiany palet miejscami ani tła spoza palety.
    */
   test('niezmiennik: kanwa techniczna idzie za motywem (tło palety motywu, para różna)', () => {
     for (const lod of POZIOMY) {
       const jasny = fs.readFileSync(path.join(OUTPUT_DIR, `sld_L${lod}_light.png`));
       const ciemny = fs.readFileSync(path.join(OUTPUT_DIR, `sld_L${lod}_dark.png`));
 
-      expect(jasny.equals(ciemny), `L${lod}: zrzuty jasny/ciemny identyczne — kanwa nie reaguje na motyw`).toBe(false);
+      expect(
+        jasny.equals(ciemny),
+        `L${lod}: zrzuty jasny/ciemny są BAJTOWO IDENTYCZNE, a KD-8 wymaga, żeby `
+          + 'paleta kanwy szła z motywu (`ui/sld/v3/theme/palette.ts::sldPaletteForTheme`). '
+          + 'Albo kanwa wróciła do zaszytej palety SCADA-dark (regresja KD-8 — sprawdź '
+          + '`effectiveThemeMode`/`useSldPalette` w `SldCanvasV3.tsx`), albo `screenshot-'
+          + 'harness-main.tsx` przestał ustawiać `data-theme` przed renderem.',
+      ).toBe(false);
       expect(pikselNarozny(jasny), `L${lod}: tło zrzutu jasnego`).toBe(TLO_PALETY.light);
       expect(pikselNarozny(ciemny), `L${lod}: tło zrzutu ciemnego`).toBe(TLO_PALETY.dark);
     }

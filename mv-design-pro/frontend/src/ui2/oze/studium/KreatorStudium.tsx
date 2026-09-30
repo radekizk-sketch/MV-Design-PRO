@@ -17,25 +17,26 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
-import { TabelaWynikow } from '../../wyniki/wzorzec';
+import { InformacjeAudytowe, TabelaWynikow } from '../../wyniki/wzorzec';
 import {
   DokumentStudiumBrakiError,
   pobierzDokumentStudium,
   pobierzDokumentStudiumDocx,
   pobierzDokumentStudiumPdf,
-  pobierzKatalogKlasNcRfg,
   pobierzKonwertery,
   pobierzObszarPQ,
   pobierzPokryciePQ,
   pobierzZdolnoscPrzylaczeniowa,
-  type OdpowiedzKatalogNcRfg,
   type RekordKonwertera,
   type WidokDokumentuStudium,
   type ZadanieDokumentuStudium,
 } from '../api';
 import { wybierzPrzebiegRozplywu } from '../zdolnosc/zdolnoscModel';
 import { PrzylaczZrodloPrzycisk } from '../PrzylaczZrodloPrzycisk';
-import { klasyOperatora } from '../ranking/rankingModel';
+import { pobierzKatalogNcRfg } from '../ncrfg/api';
+import { useKlasyfikacjeModulow, type ZapytanieKlasyfikacji } from '../ncrfg/klasyfikacja';
+import type { KatalogNcRfg } from '../ncrfg/typy';
+import { zapytanieKlasyfikacjiWezla } from '../ranking/rankingModel';
 import { WykresObszaruChart } from '../obszar/WykresObszaruChart';
 import { punktyObszaru, krokiSladuObszar } from '../obszar/obszarModel';
 import { WykresZdolnosciChart } from '../zdolnosc/WykresZdolnosciChart';
@@ -52,6 +53,7 @@ import {
   stanPoczatkowyStudium,
   opcjeRodzajuStudium,
   wariantWToku,
+  wezelWariantu,
   wierszeStudium,
   zastosujZdarzenieStudium,
   type FazaStudium,
@@ -193,11 +195,9 @@ function fazaPL(faza: FazaStudium): string {
 function PostepWariantu({
   wariant,
   nazwaWezla,
-  trybEkspercki,
 }: {
   wariant: WynikWariantuStudium;
   nazwaWezla: string;
-  trybEkspercki: boolean;
 }) {
   const fazy = {
     zdolnosc: wariant.zdolnosc,
@@ -208,9 +208,6 @@ function PostepWariantu({
     <li className="mvd-studium-postep-wariant" data-testid={`mvd-studium-postep-${wariant.busRef}`}>
       <div className="mvd-studium-postep-naglowek">
         <span className="mvd-studium-postep-nazwa">{nazwaWezla}</span>
-        {trybEkspercki && (
-          <span className="mvd-studium-postep-id mvd-num">{wariant.busRef}</span>
-        )}
       </div>
       <ul className="mvd-studium-postep-fazy">
         {FAZY_STUDIUM.map((faza) => {
@@ -265,9 +262,12 @@ function SzczegolWariantu({
     <section className="mvd-studium-szczegol" data-testid="mvd-studium-szczegol">
       <header className="mvd-studium-szczegol-naglowek">
         <h3 className="mvd-studium-szczegol-tytul">{STUDIUM_STRINGS.szczegolTytul}</h3>
-        {trybEkspercki && (
-          <span className="mvd-studium-szczegol-id mvd-num">{wariant.busRef}</span>
-        )}
+        {/* Karta #145: identyfikator węzła wariantu wyłącznie w „Informacjach audytowych". */}
+        <InformacjeAudytowe
+          trybEkspercki={trybEkspercki}
+          testid="mvd-studium-szczegol-audyt"
+          wiersze={[{ etykieta: STUDIUM_STRINGS.ekspIdentyfikatorWezla, wartosc: wariant.busRef }]}
+        />
         {/* K5-B (H-3 pkt 1): pętla studium → model — formularz źródła OZE
             z preselekcją węzła wariantu (bus_ref z biegu studium). */}
         <PrzylaczZrodloPrzycisk
@@ -312,9 +312,12 @@ function SzczegolWariantu({
 
 export interface KreatorStudiumProps {
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
+   * z rodzica, `WynikiWarsztat`), nie zaślepka. */
+  onOtworzDowod: (ref: string) => void;
 }
 
-export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
+export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStudiumProps) {
   const trybEkspercki = trybZaawansowania === 'expert';
 
   const runs = useExecutionRunsStore((s) => s.runs);
@@ -337,7 +340,7 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
   const [rodzaj, setRodzaj] = useState<RodzajZrodlaStudium>('PV');
   const [rekordy, setRekordy] = useState<RekordKonwertera[]>([]);
   const [wybranyTyp, setWybranyTyp] = useState('');
-  const [katalog, setKatalog] = useState<OdpowiedzKatalogNcRfg | null>(null);
+  const [katalog, setKatalog] = useState<KatalogNcRfg | null>(null);
   const [operatorId, setOperatorId] = useState('');
 
   const [stan, setStan] = useState<StanStudium | null>(null);
@@ -373,14 +376,15 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
       .catch(() => {
         if (!anulowane) setRekordy([]);
       });
-    pobierzKatalogKlasNcRfg()
+    pobierzKatalogNcRfg()
       .then((dane) => {
         if (anulowane) return;
+        // Operator (profil wymagań NC RfG) NIGDY nie jest zgadywany — ani pierwszy z listy, ani
+        // z modułów modelu (studium dotyczy źródła, którego w modelu jeszcze nie ma): jawny wybór.
         setKatalog(dane);
-        setOperatorId((biezacy) => biezacy || (dane.operators[0]?.operator_id ?? ''));
       })
       .catch(() => {
-        /* Brak katalogu → klasa/pokrycie pokażą „—"; kreator pozostaje sprawny. */
+        /* Brak katalogu → brak operatorów (pokrycie pokaże „—"); kreator pozostaje sprawny. */
       });
     return () => {
       anulowane = true;
@@ -407,7 +411,6 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
     [rekordyRodzaju, efektywnyTyp],
   );
 
-  const klasy = useMemo(() => klasyOperatora(katalog, operatorId), [katalog, operatorId]);
 
   const przelaczWezel = (ref: string) => {
     setWybraneWezly((biezace) =>
@@ -452,15 +455,27 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
     setKrok(4);
   };
 
-  const kontekstWierszy: KontekstWierszaStudium = useMemo(
-    () => ({
-      nazwaWezla,
-      napiecieWezla,
-      klasy,
-      mocZrodlaMW: rekordTypu?.pmax_mw ?? 0,
-    }),
-    [nazwaWezla, napiecieWezla, klasy, rekordTypu],
-  );
+  // Typ modułu NC RfG wariantów: jedno zapytanie `/modul` na unikalną parę (moc przyłączalna,
+  // napięcie węzła) — klasyfikacja wyłącznie z backendu.
+  const zapytaniaKlasyfikacji = useMemo(() => {
+    if (stan === null) return [];
+    const zapytania: ZapytanieKlasyfikacji[] = [];
+    for (const wariant of stan.values()) {
+      const wezel = wezelWariantu(wariant.zdolnosc.dane, wariant.busRef);
+      if (wezel !== null) {
+        zapytania.push(zapytanieKlasyfikacjiWezla(wezel, napiecieWezla(wariant.busRef)));
+      }
+    }
+    return zapytania;
+  }, [stan, napiecieWezla]);
+  const klasyfikacja = useKlasyfikacjeModulow(zapytaniaKlasyfikacji);
+
+  const kontekstWierszy: KontekstWierszaStudium = {
+    nazwaWezla,
+    napiecieWezla,
+    klasyfikacja,
+    mocZrodlaMW: rekordTypu?.pmax_mw ?? 0,
+  };
 
   // Dokument dostępny wyłącznie z zakończonego biegu z co najmniej jednym wariantem
   // policzonym (dowolna faza „gotowe") — zero martwych klików.
@@ -669,6 +684,7 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
                 onChange={(e) => setOperatorId(e.target.value)}
                 data-testid="mvd-studium-operator"
               >
+                <option value="">{STUDIUM_STRINGS.paramOperatorWybierz}</option>
                 {(katalog?.operators ?? []).map((o) => (
                   <option key={o.operator_id} value={o.operator_id}>
                     {o.operator_name_pl}
@@ -721,7 +737,6 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
                       key={wariant.busRef}
                       wariant={wariant}
                       nazwaWezla={nazwaWezla(wariant.busRef)}
-                      trybEkspercki={trybEkspercki}
                     />
                   ))}
                 </ul>
@@ -749,6 +764,7 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
               trybZaawansowania={trybZaawansowania}
               wybranyWariant={wybranyWariant}
               ustawWariant={setWybranyWariant}
+              onOtworzDowod={onOtworzDowod}
             />
           )}
 
@@ -816,6 +832,7 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
                   pdfLadowanie={pdfLadowanie}
                   onPobierzDocx={() => void pobierzDocx()}
                   onPobierzPdf={() => void pobierzPdf()}
+                  trybEkspercki={trybEkspercki}
                 />
               ) : null}
             </section>
@@ -857,12 +874,14 @@ function PrzegladStudium({
   trybZaawansowania,
   wybranyWariant,
   ustawWariant,
+  onOtworzDowod,
 }: {
   stan: StanStudium;
   kontekst: KontekstWierszaStudium;
   trybZaawansowania: AdvancementMode;
   wybranyWariant: string | null;
   ustawWariant: (busRef: string | null) => void;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const kolumny = useMemo(() => kolumnyStudium(), []);
   const wiersze = useMemo(() => wierszeStudium(stan, kontekst), [stan, kontekst]);
@@ -876,7 +895,7 @@ function PrzegladStudium({
       <TabelaWynikow
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_WIERSZA_STUDIUM}
         onWybierzWiersz={ustawWariant}
@@ -917,8 +936,10 @@ function SekcjaPodgladuDokumentu({
   pdfLadowanie,
   onPobierzDocx,
   onPobierzPdf,
+  trybEkspercki,
 }: {
   dokument: WidokDokumentuStudium;
+  trybEkspercki: boolean;
   docxLadowanie: boolean;
   pdfLadowanie: boolean;
   onPobierzDocx: () => void;
@@ -932,9 +953,6 @@ function SekcjaPodgladuDokumentu({
       }
       if (wariant.obszar_pq.status === 'blad' && wariant.obszar_pq.komunikat_bledu) {
         pozycje.push({ faza: STUDIUM_STRINGS.dokBladObszar, komunikat: wariant.obszar_pq.komunikat_bledu });
-      }
-      if (wariant.pokrycie_pq.status === 'blad' && wariant.pokrycie_pq.komunikat_bledu) {
-        pozycje.push({ faza: STUDIUM_STRINGS.dokBladPokrycie, komunikat: wariant.pokrycie_pq.komunikat_bledu });
       }
       return { busRef: wariant.bus_ref, nazwa: wariant.nazwa_wezla, pozycje };
     })
@@ -962,14 +980,19 @@ function SekcjaPodgladuDokumentu({
           <dd>{dokument.zalozenia.operator.nazwa}</dd>
         </div>
         <div>
-          <dt>{STUDIUM_STRINGS.dokPrzebieg}</dt>
-          <dd className="mvd-num">{dokument.zalozenia.przebieg_bazowy.run_id}</dd>
-        </div>
-        <div>
           <dt>{STUDIUM_STRINGS.dokLiczbaWariantow}</dt>
           <dd className="mvd-num">{dokument.zalozenia.liczba_wariantow}</dd>
         </div>
       </dl>
+
+      {/* Karta #145: przebieg bazowy studium to metadana — „Informacje audytowe". */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-studium-dok-audyt"
+        wiersze={[
+          { etykieta: STUDIUM_STRINGS.dokPrzebieg, wartosc: dokument.zalozenia.przebieg_bazowy.run_id },
+        ]}
+      />
 
       <h5 className="mvd-studium-dok-podtytul">{STUDIUM_STRINGS.dokPodsumowanieTytul}</h5>
       <div className="mvd-studium-dok-tabela-wrap">
@@ -989,13 +1012,45 @@ function SekcjaPodgladuDokumentu({
                 <td>{wiersz.nazwa_wezla}</td>
                 <td className="mvd-num">{fmtMocDok(wiersz.max_moc_mw)}</td>
                 <td>{wiersz.klasa ?? STUDIUM_STRINGS.kreska}</td>
-                <td>{wiersz.pokrycie_pl ?? STUDIUM_STRINGS.kreska}</td>
+                <td>{wiersz.pokrycie_pl}</td>
                 <td className="mvd-num">{wiersz.pasmo_q_pl ?? STUDIUM_STRINGS.kreska}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {dokument.zalozenia.dowod_certyfikatu ? (
+        <>
+          <h5 className="mvd-studium-dok-podtytul">{STUDIUM_STRINGS.dokDowodTytul}</h5>
+          {dokument.zalozenia.dowod_certyfikatu.stan_pl ? (
+            <p className="mvd-studium-hint" data-testid="mvd-studium-dok-dowod-brak">
+              {dokument.zalozenia.dowod_certyfikatu.stan_pl}
+            </p>
+          ) : (
+            <ul className="mvd-studium-dok-dowod" data-testid="mvd-studium-dok-dowod">
+              {dokument.zalozenia.dowod_certyfikatu.urzadzenia.map((urzadzenie) => (
+                <li
+                  key={urzadzenie.der_ref}
+                  data-testid={`mvd-studium-dok-dowod-${urzadzenie.der_ref}`}
+                  data-stan={
+                    urzadzenie.dowod ? 'dowod' : urzadzenie.odrzucony ? 'odrzucony' : 'brak'
+                  }
+                >
+                  <dl className="mvd-studium-dok-meta">
+                    {urzadzenie.wiersze.map((wiersz, i) => (
+                      <div key={`${wiersz.etykieta_pl}-${i}`}>
+                        <dt>{wiersz.etykieta_pl}</dt>
+                        <dd>{wiersz.tresc_pl}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : null}
 
       <h5 className="mvd-studium-dok-podtytul">{STUDIUM_STRINGS.dokSekcjeBledowTytul}</h5>
       {bledyWariantow.length === 0 ? (

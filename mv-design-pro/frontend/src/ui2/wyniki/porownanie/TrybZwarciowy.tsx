@@ -30,9 +30,14 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import './porownanie.css';
-import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
+import type { AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
-import { PrzyciskAkcjiStanu, TabelaWynikow, useAkcjaUruchomObliczenie } from '../wzorzec';
+import {
+  PrzyciskAkcjiStanu,
+  TabelaWynikow,
+  useAkcjaUruchomObliczenie,
+  useNazwaObiektu,
+} from '../wzorzec';
 import { stronaDowodu } from './dowodPorownania';
 import { pobierzPorownanieZwarciowe } from './zwarciaPorownanieApi';
 import { navigateToSld } from '../../../ui/navigation/routes';
@@ -56,7 +61,7 @@ export interface TrybZwarciowyProps {
 }
 
 export function TrybZwarciowy({ trybZaawansowania }: TrybZwarciowyProps) {
-  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
+  const nazwaObiektu = useNazwaObiektu();
 
   // Lista przebiegów zwarciowych — read-only ze store'u przebiegów (runStore),
   // filtr SC_*/DONE. Store zasilany przez szerszy przepływ aplikacji (zero
@@ -105,7 +110,7 @@ export function TrybZwarciowy({ trybZaawansowania }: TrybZwarciowyProps) {
     try {
       // KD-3 poz. 11: delty liczy BACKEND — ekran odczytuje gotowe pola.
       const porownanie = await pobierzPorownanieZwarciowe(runA, runB);
-      setWiersze(naWierszePunktowZwarciowych(porownanie.punkty));
+      setWiersze(naWierszePunktowZwarciowych(porownanie.punkty, nazwaObiektu));
       setParaPorownana({ a: runA, b: runB });
       setPunktowWspolnych(porownanie.liczba_punktow_wspolnych);
       setStan('bezczynny');
@@ -113,7 +118,7 @@ export function TrybZwarciowy({ trybZaawansowania }: TrybZwarciowyProps) {
       setBlad(err instanceof Error ? err.message : SZ.bladPorownania);
       setStan('blad');
     }
-  }, [runA, runB]);
+  }, [runA, runB, nazwaObiektu]);
 
   // Różnice na schemacie: nakładkę liczy backend dla TEJ SAMEJ pary przebiegów,
   // która stoi w tabeli (nie z selektorów — te mogły się zmienić po porównaniu).
@@ -173,7 +178,6 @@ export function TrybZwarciowy({ trybZaawansowania }: TrybZwarciowyProps) {
                 testId="mvd-porz-select-a"
                 przebiegi={przebiegi}
                 wybrany={runA}
-                trybEkspercki={trybEkspercki}
                 nazwyPrzypadkow={nazwyPrzypadkow}
                 onZmiana={setRunA}
               />
@@ -182,7 +186,6 @@ export function TrybZwarciowy({ trybZaawansowania }: TrybZwarciowyProps) {
                 testId="mvd-porz-select-b"
                 przebiegi={przebiegi}
                 wybrany={runB}
-                trybEkspercki={trybEkspercki}
                 nazwyPrzypadkow={nazwyPrzypadkow}
                 onZmiana={setRunB}
               />
@@ -267,7 +270,6 @@ interface SelektorPrzebieguProps {
   testId: string;
   przebiegi: ExecutionRun[];
   wybrany: string;
-  trybEkspercki: boolean;
   nazwyPrzypadkow: Map<string, string>;
   onZmiana: (id: string) => void;
 }
@@ -277,7 +279,6 @@ function SelektorPrzebiegu({
   testId,
   przebiegi,
   wybrany,
-  trybEkspercki,
   nazwyPrzypadkow,
   onZmiana,
 }: SelektorPrzebieguProps) {
@@ -293,11 +294,7 @@ function SelektorPrzebiegu({
         <option value="">{SZ.wyborPusty}</option>
         {przebiegi.map((run) => (
           <option key={run.id} value={run.id}>
-            {etykietaPrzebieguZwarciowego(
-              run,
-              trybEkspercki,
-              nazwyPrzypadkow.get(run.study_case_id) ?? null,
-            )}
+            {etykietaPrzebieguZwarciowego(run, nazwyPrzypadkow.get(run.study_case_id) ?? null)}
           </option>
         ))}
       </select>

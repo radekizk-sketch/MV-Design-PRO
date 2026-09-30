@@ -49,6 +49,19 @@ export const AKCJE_STANU_ZEROWEGO_STRINGS = {
   otworzDokumentacjeOpis: 'Otwiera przestrzeń „Dokumentacja" — raport i dowód obliczeń.',
   porownajWarianty: 'Porównaj warianty',
   porownajWariantyOpis: 'Otwiera okno porównania A/B przebiegów tego projektu.',
+  przejdzDoSchematu: 'Przejdź do schematu',
+  przejdzDoSchematuOpis:
+    'Otwiera schemat (SLD) — stąd uruchomisz obliczenie zwarciowe i bieg zabezpieczeń.',
+  // W3-G1: bieg rozpływu ŚWIADOMIE inną metodą (walidacja krzyżowa NR↔GS↔FD).
+  uruchomMetodaNr: 'Uruchom rozpływ metodą Newtona–Raphsona',
+  uruchomMetodaNrOpis:
+    'Uruchamia przebieg rozpływu mocy metodą Newtona–Raphsona (NR) dla aktywnego zakresu obliczeń.',
+  uruchomMetodaGs: 'Uruchom rozpływ metodą Gaussa–Seidla',
+  uruchomMetodaGsOpis:
+    'Uruchamia przebieg rozpływu mocy metodą Gaussa–Seidla (GS) dla aktywnego zakresu obliczeń.',
+  uruchomMetodaFd: 'Uruchom rozpływ metodą szybką rozprzężoną',
+  uruchomMetodaFdOpis:
+    'Uruchamia przebieg rozpływu mocy metodą szybką rozprzężoną (FD) dla aktywnego zakresu obliczeń.',
 } as const;
 
 /** Etykieta/opis biegu wg rodzaju analizy (jedno miejsce, zero literałów w JSX). */
@@ -66,13 +79,35 @@ function opisBiegu(rodzaj: ExecutionAnalysisType): { etykieta: string; opis: str
 }
 
 /**
+ * Nadpisanie akcji „Uruchom obliczenie" (W3-G1): `solverInput` idzie 1:1 do
+ * `uruchomObliczenie` (pole `solver_input` żądania biegu — istniejący tor,
+ * zero nowego endpointu); `etykieta`/`opis` nadpisują domyślny tekst rodzaju,
+ * gdy akcja uruchamia bieg ze ŚWIADOMIE wybraną konfiguracją (np. metoda
+ * rozpływu inna niż domyślna) — bez nadpisania akcja wygląda 1:1 jak dotąd.
+ */
+export interface NadpisanieAkcjiBiegu {
+  readonly solverInput?: Record<string, unknown>;
+  readonly etykieta?: string;
+  readonly opis?: string;
+}
+
+/**
  * Akcja „Uruchom obliczenie [zwarciowe|rozpływu]" — ten sam tor co przycisk
  * „Oblicz" powłoki (`uruchomObliczenie`), z rodzajem analizy WPROST.
  */
-export function useAkcjaUruchomObliczenie(rodzaj: ExecutionAnalysisType): AkcjaStanuZerowego {
+export function useAkcjaUruchomObliczenie(
+  rodzaj: ExecutionAnalysisType,
+  nadpisanie?: NadpisanieAkcjiBiegu,
+): AkcjaStanuZerowego {
   const { uruchom, wToku } = useUruchomObliczenie();
-  const { etykieta, opis } = opisBiegu(rodzaj);
-  const onKlik = useCallback(() => uruchom(rodzaj), [uruchom, rodzaj]);
+  const domyslne = opisBiegu(rodzaj);
+  const etykieta = nadpisanie?.etykieta ?? domyslne.etykieta;
+  const opis = nadpisanie?.opis ?? domyslne.opis;
+  const solverInput = nadpisanie?.solverInput;
+  const onKlik = useCallback(
+    () => uruchom(rodzaj, solverInput),
+    [uruchom, rodzaj, solverInput],
+  );
   return {
     etykieta: wToku ? AKCJE_STANU_ZEROWEGO_STRINGS.wToku : etykieta,
     opis,
@@ -125,6 +160,26 @@ export function useAkcjaPorownajWarianty(): AkcjaStanuZerowego {
   return {
     etykieta: AKCJE_STANU_ZEROWEGO_STRINGS.porownajWarianty,
     opis: AKCJE_STANU_ZEROWEGO_STRINGS.porownajWariantyOpis,
+    onKlik,
+  };
+}
+
+/**
+ * Akcja „Przejdź do schematu" (karta CV-3.3-B2) — zero-state porównania
+ * zabezpieczeń: bieg zabezpieczeń NIE rusza jednym kliknięciem „Oblicz"
+ * (`useAkcjaUruchomObliczenie` obsługuje `ExecutionAnalysisType`, unię BEZ
+ * `protection_sn` — wymaga uprzedniego biegu zwarciowego i `protection_case_id`,
+ * dwuetapowo). Uczciwa akcja tego stanu zerowego to NAWIGACJA do miejsca,
+ * gdzie operator faktycznie może uruchomić bieg — schemat (SLD), gdzie żyje
+ * obliczenie zwarciowe i przycisk „Uruchom Protection"
+ * (`ui/sld/v2/protection/ProtectionRunButton.tsx`) — zero fabrykacji akcji
+ * bez pokrycia w backendzie.
+ */
+export function useAkcjaPrzejdzDoSchematu(): AkcjaStanuZerowego {
+  const onKlik = useCallback(() => przejdzDoPrzestrzeni('schemat'), []);
+  return {
+    etykieta: AKCJE_STANU_ZEROWEGO_STRINGS.przejdzDoSchematu,
+    opis: AKCJE_STANU_ZEROWEGO_STRINGS.przejdzDoSchematuOpis,
     onKlik,
   };
 }

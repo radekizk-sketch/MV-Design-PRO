@@ -12,7 +12,6 @@ from .field_device import (
 from .field_device import (
     DeviceTypeV1 as FieldDeviceTypeV1,
 )
-from .grounding import Grounding
 from .limits import Limits
 from .models import (
     Network,
@@ -20,7 +19,6 @@ from .models import (
     Project,
     Scenario,
     StudyCase,
-    StudyRun,
 )
 from .project_design_mode import ProjectDesignMode
 from .readiness import (
@@ -45,8 +43,6 @@ from .result_join import (
     SldOverlayTokenV1,
     join_results,
 )
-from .result_set import OverlayElement, OverlayLegendEntry, OverlayPayloadV1
-from .sld import SldAnnotation, SldBranchSymbol, SldDiagram, SldNodeSymbol
 from .sources import Source
 from .station_field_validation import (
     DeviceBindingV1 as StationDeviceBindingV1,
@@ -95,13 +91,9 @@ __all__ = [
     "ElementScopeV1",
     "ElementTypeV1",
     "ExportManifestV1",
-    "Grounding",
     "AnalysisRun",
     "InspectorFactV1",
     "Limits",
-    "OverlayElement",
-    "OverlayLegendEntry",
-    "OverlayPayloadV1",
     "Network",
     "OperatingCase",
     "Project",
@@ -116,12 +108,7 @@ __all__ = [
     "SldOverlayTokenV1",
     "Source",
     "StudyCase",
-    "StudyRun",
     "SubstationMetadata",
-    "SldAnnotation",
-    "SldBranchSymbol",
-    "SldDiagram",
-    "SldNodeSymbol",
     "UnitSystem",
     "ValidationIssue",
     "ValidationReport",

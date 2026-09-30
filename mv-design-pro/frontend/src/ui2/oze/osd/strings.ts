@@ -19,7 +19,7 @@ export const OSD_STRINGS = {
   opisWstep:
     'Jak zmienia się stan sieci, gdy wskazane źródło wykona polecenie operatora '
     + 'systemu (OSD): porównanie dwóch biegów rozpływu — bazowego i z nowym nastawem '
-    + 'źródła. Wszystkie wartości pochodzą z backendu.',
+    + 'źródła. Wszystkie wartości pochodzą z serwera obliczeń.',
 
   // Dobór źródła i polecenia
   wyborZrodlo: 'Źródło',

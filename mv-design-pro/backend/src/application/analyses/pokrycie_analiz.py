@@ -43,8 +43,12 @@ def _najnowszy_zakonczony_pf(biegi: list[CanonicalRun]) -> CanonicalRun | None:
     return max(zakonczone, key=lambda bieg: (bieg.created_at, str(bieg.id)))
 
 
-def build_pokrycie_view(case_id: str) -> dict[str, Any]:
-    """Zbuduj widok pokrycia analizami dla przypadku obliczeniowego."""
+def build_pokrycie_view(case_id: str, *, nazwa_przypadku: str) -> dict[str, Any]:
+    """Zbuduj widok pokrycia analizami dla przypadku obliczeniowego.
+
+    ``nazwa_przypadku`` — nazwa przypadku z bazy (granica API) do nagłówka dowodu
+    spadków napięć, który widok ocenia (karta #144).
+    """
     biegi = list_runs_for_case(case_id)
     bieg_pf = _najnowszy_zakonczony_pf(biegi)
 
@@ -55,7 +59,7 @@ def build_pokrycie_view(case_id: str) -> dict[str, Any]:
     rekomendacje = None
 
     if bieg_pf is not None:
-        dowod, profil, _graf = _zloz_widoki(bieg_pf)
+        dowod, profil, _graf = _zloz_widoki(bieg_pf, nazwa_przypadku=nazwa_przypadku)
         dowody = [dowod]
         raport_normatywny = NormativeEvaluator().evaluate(dowody, NormativeConfig())
         wrazliwosc = SensitivityBuilder().build(dowody, raport_normatywny, profil, None, None)

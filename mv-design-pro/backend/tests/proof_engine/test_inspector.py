@@ -104,8 +104,11 @@ def vdrop_test_input() -> VDROPInput:
                 p_mw=2.0,
                 q_mvar=1.0,
                 u_n_kv=15.0,
+                nazwa_odcinka="Kabel SN odcinek testowy",
             ),
         ],
+        source_bus_name="Szyny SN GPZ",
+        target_bus_name="Szyny nN stacji",
     )
 
 
@@ -941,3 +944,91 @@ class TestInspectorSemanticAliases:
             alias = SEMANTIC_ALIASES[key]
             assert alias.alias_pl != ""
             assert alias.target_key == key
+
+
+# =============================================================================
+# Karta #151 — eksport: nazwana awaria kompilacji PDF vs błąd programu
+# =============================================================================
+
+
+class TestEksportBezPolykaniaWyjatkow:
+    """Iloczyn: {JSON, TEX, PDF, DOCX} × {nazwana awaria tej ścieżki, obcy wyjątek}.
+
+    Dawniej każdy format łapał `Exception` i oddawał `success=False` z treścią wyjątku —
+    błąd programu wyglądał jak „eksport nieudany" i nie trafiał do dziennika. JSON, TEX i
+    DOCX nie mają odmowy danych (wyjątek = błąd programu, wybucha); PDF ma nazwane
+    awarie kompilacji (`BLEDY_KOMPILACJI_PDF`)."""
+
+    class _Zepsuty:
+        @property
+        def json_representation(self) -> str:
+            raise AttributeError("błąd programu")
+
+        @property
+        def latex_representation(self) -> str:
+            raise AttributeError("błąd programu")
+
+    @pytest.mark.parametrize("metoda", ["export_json", "export_tex", "export_pdf"])
+    def test_blad_odczytu_dokumentu_wybucha(self, metoda: str, monkeypatch) -> None:
+        exporter = InspectorExporter(self._Zepsuty())  # type: ignore[arg-type]
+        monkeypatch.setattr(exporter, "_is_pdflatex_available", lambda: True)
+        with pytest.raises(AttributeError, match="błąd programu"):
+            getattr(exporter, metoda)()
+
+    @pytest.mark.parametrize(
+        "blad",
+        [
+            "BladKompilacjiLatex",
+            "TimeoutExpired",
+            "OSError",
+        ],
+    )
+    def test_nazwana_awaria_kompilacji_pdf_to_wynik_z_komunikatem(
+        self, sc3f_proof: ProofDocument, blad: str, monkeypatch
+    ) -> None:
+        import subprocess
+
+        from application.proof_engine.proof_inspector.exporters import BladKompilacjiLatex
+
+        wyjatki = {
+            "BladKompilacjiLatex": BladKompilacjiLatex("! Undefined control sequence."),
+            "TimeoutExpired": subprocess.TimeoutExpired(["pdflatex"], 60),
+            "OSError": OSError(28, "No space left on device"),
+        }
+
+        def _kompiluj(tex: str) -> bytes:
+            raise wyjatki[blad]
+
+        exporter = InspectorExporter(sc3f_proof)
+        monkeypatch.setattr(exporter, "_is_pdflatex_available", lambda: True)
+        monkeypatch.setattr(exporter, "_compile_to_pdf", _kompiluj)
+        wynik = exporter.export_pdf()
+        assert wynik.success is False
+        assert wynik.error_message is not None
+        assert wynik.error_message.startswith("Kompilacja PDF nie powiodła się: ")
+
+    @pytest.mark.parametrize("typ", [AttributeError, KeyError, TypeError])
+    def test_blad_programu_przy_kompilacji_pdf_wybucha(
+        self, sc3f_proof: ProofDocument, typ: type[Exception], monkeypatch
+    ) -> None:
+        def _kompiluj(tex: str) -> bytes:
+            raise typ("błąd programu")
+
+        exporter = InspectorExporter(sc3f_proof)
+        monkeypatch.setattr(exporter, "_is_pdflatex_available", lambda: True)
+        monkeypatch.setattr(exporter, "_compile_to_pdf", _kompiluj)
+        with pytest.raises(typ):
+            exporter.export_pdf()
+
+    def test_blad_programu_przy_budowie_docx_wybucha(
+        self, sc3f_proof: ProofDocument, monkeypatch
+    ) -> None:
+        pytest.importorskip("docx")
+        import network_model.reporting.docx_determinism as determinizm
+
+        def _zepsuty(dane: bytes) -> bytes:
+            raise AttributeError("błąd programu")
+
+        monkeypatch.setattr(determinizm, "make_docx_bytes_deterministic", _zepsuty)
+        with pytest.raises(AttributeError, match="błąd programu"):
+            InspectorExporter(sc3f_proof).export_docx()

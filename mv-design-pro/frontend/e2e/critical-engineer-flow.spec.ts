@@ -15,26 +15,36 @@
 
 import { test, expect } from '@playwright/test';
 
-const API_BASE = process.env.API_BASE ?? 'http://127.0.0.1:8000';
+// Adres backendu z TEJ SAMEJ zmiennej co pozostale specy real-backend i runner
+// (`scripts/playwright-run-real.mjs`): wlasna zmienna `API_BASE` sprawiala, ze przy biegu
+// na innym porcie testy API tego pliku trafialy w cudzy/zastany backend na 8000.
+const API_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 
-test.describe('K30-28 critical engineer flow — station templates end-to-end', () => {
-  test('GET /api/station-templates returns 57+ templates across 10 categories', async ({ request }) => {
+test.describe('critical engineer flow — station templates end-to-end', () => {
+  test('GET /api/station-templates returns 73+ templates across 15 categories', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/station-templates`);
     expect(response.ok()).toBe(true);
     const data = await response.json();
-    expect(data.total).toBeGreaterThanOrEqual(57);
+    expect(data.total).toBeGreaterThanOrEqual(73);
     expect(data.templates.length).toBe(data.total);
-    // Verify all 10 categories represented
+    // Verify all 15 categories represented (K30-16's 10 + V12T-016's 5: rola
+    // A GPZ_110_SN/ROZDZIELNIA_SIECIOWA, rola C STACJA_ABONENCKA, rola E
+    // KOMPENSACJA/REZERWA_ZASILANIA).
     const categories = new Set(data.templates.map((t: { category: string }) => t.category));
-    expect(categories.size).toBe(10);
+    expect(categories.size).toBe(15);
+    expect(categories.has('gpz_110_sn')).toBe(true);
+    expect(categories.has('rozdzielnia_sieciowa')).toBe(true);
+    expect(categories.has('stacja_abonencka')).toBe(true);
+    expect(categories.has('kompensacja')).toBe(true);
+    expect(categories.has('rezerwa_zasilania')).toBe(true);
   });
 
-  test('GET /api/station-templates/categories returns 10 categories', async ({ request }) => {
+  test('GET /api/station-templates/categories returns 15 categories incl. rola A', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/station-templates/categories`);
     expect(response.ok()).toBe(true);
     const data = await response.json();
-    expect(data.categories.length).toBe(10);
-    expect(data.total_templates).toBeGreaterThanOrEqual(57);
+    expect(data.categories.length).toBe(15);
+    expect(data.total_templates).toBeGreaterThanOrEqual(73);
 
     // Verify icons present per category
     for (const cat of data.categories) {
@@ -43,6 +53,14 @@ test.describe('K30-28 critical engineer flow — station templates end-to-end', 
       expect(cat.icon).toBeTruthy();
       expect(cat.template_count).toBeGreaterThan(0);
     }
+
+    // V12T-016 (rola A „Zasilanie sieci" — licznik ZERO przed tą kartą):
+    // GPZ_110_SN musi mieć ≥1 szablon, żeby przeglądarka nie pokazała
+    // ponownie zerowego licznika roli A.
+    const gpz = data.categories.find((c: { id: string }) => c.id === 'gpz_110_sn');
+    expect(gpz).toBeTruthy();
+    expect(gpz.template_count).toBeGreaterThanOrEqual(1);
+    expect(gpz.label_pl).toBe('GPZ 110/SN');
   });
 
   test('GET /api/station-templates/{id} returns full schema z editable params', async ({ request }) => {
@@ -89,9 +107,22 @@ test.describe('K30-28 critical engineer flow — station templates end-to-end', 
     const data = await response.json();
     expect(data.element_type).toBe('transformer');
     expect(data.suggestions.length).toBeGreaterThan(0);
-    // First suggestion has highest confidence
-    if (data.suggestions.length >= 2) {
-      expect(data.suggestions[0].confidence).toBeGreaterThanOrEqual(data.suggestions[1].confidence);
+    // Kontrakt FAB-D2 (D9): dopasowanie jest KATEGORYCZNE (PELNE przed CZESCIOWE),
+    // certyfikat PTPiREE osobna flaga — nie ma juz liczby `confidence` bez definicji.
+    // Porzadek listy = klucz sortowania backendu (dopasowanie, certyfikat, catalog_ref).
+    const ranga: Record<string, number> = { PELNE: 0, CZESCIOWE: 1 };
+    for (const sugestia of data.suggestions) {
+      expect(Object.keys(ranga)).toContain(sugestia.dopasowanie);
+      expect(typeof sugestia.certyfikat_ptpiree).toBe('boolean');
+      expect(typeof sugestia.catalog_ref).toBe('string');
+    }
+    for (let i = 1; i < data.suggestions.length; i += 1) {
+      const poprzednia = data.suggestions[i - 1];
+      const biezaca = data.suggestions[i];
+      const kluczPoprzedniej = [ranga[poprzednia.dopasowanie], poprzednia.certyfikat_ptpiree ? 0 : 1];
+      const kluczBiezacej = [ranga[biezaca.dopasowanie], biezaca.certyfikat_ptpiree ? 0 : 1];
+      const porownanie = kluczPoprzedniej[0] - kluczBiezacej[0] || kluczPoprzedniej[1] - kluczBiezacej[1];
+      expect(porownanie).toBeLessThanOrEqual(0);
     }
   });
 
@@ -122,12 +153,76 @@ test.describe('K30-28 critical engineer flow — station templates end-to-end', 
     expect(refs.some((r) => r.includes('yhakxs') || r.includes('150'))).toBe(true);
   });
 
+  // V12T-016 (karta SZABLONY-ROLA-A): dokumentacja u góry pliku obiecuje
+  // krok „4. Template apply endpoint (creates station)" od K30-28, ale ŻADEN
+  // test w tym pliku nigdy nie wywoływał `/apply` — luka między deklaracją a
+  // pokryciem. GPZ_110_SN (rola A) jest tu wybrany CELOWO: to jedyna
+  // kategoria, dla której `target_segment_id` jest opcjonalny (GPZ jest
+  // korzeniem modelu — `add_grid_source_sn`, nie wcięcie w istniejący
+  // segment) — test dowodzi końca do końca, że kontrakt API (`target_
+  // segment_id: str | None`) i domena (`apply_template_to_case`) działają
+  // razem na PRAWDZIWYM backendzie, nie tylko w testach jednostkowych.
+  test('POST /api/station-templates/tpl_gpz_110_15_2x16mva_h5/apply creates GPZ without target_segment_id', async ({
+    request,
+  }) => {
+    const suffix = String(Date.now());
+    const projectResponse = await request.post(`${API_BASE}/api/projects`, {
+      data: {
+        name: `E2E GPZ ${suffix}`,
+        description: 'V12T-016 rola A — apply GPZ_110_SN na pustym projekcie',
+        mode: 'TO-BE',
+        voltage_level_kv: 15.0,
+        frequency_hz: 50.0,
+      },
+    });
+    expect(projectResponse.ok()).toBe(true);
+    const project = (await projectResponse.json()) as { id: string };
+
+    const caseResponse = await request.post(`${API_BASE}/api/study-cases`, {
+      data: {
+        project_id: project.id,
+        name: `Przypadek GPZ ${suffix}`,
+        description: '',
+        config: {},
+        set_active: true,
+      },
+    });
+    expect(caseResponse.ok()).toBe(true);
+    const studyCase = (await caseResponse.json()) as { id: string };
+
+    const applyResponse = await request.post(
+      `${API_BASE}/api/station-templates/tpl_gpz_110_15_2x16mva_h5/apply`,
+      {
+        data: {
+          case_id: studyCase.id,
+          target_segment_id: null,
+          params_override: {},
+        },
+      },
+    );
+    expect(applyResponse.ok(), await applyResponse.text()).toBe(true);
+    const result = await applyResponse.json();
+    expect(result.template_id).toBe('tpl_gpz_110_15_2x16mva_h5');
+    expect(typeof result.station_ref).toBe('string');
+    expect(result.station_ref.length).toBeGreaterThan(0);
+    expect(result.created_element_refs.length).toBeGreaterThan(0);
+    expect(result.snapshot_hash).toBeTruthy();
+  });
+
+  // Endpoint zweryfikowany jako WPIĘTY (karta FE-HIGIENA, 2026-09-05):
+  // `backend/src/api/catalog.py::list_protection_device_types`
+  // (`@router.get("/protection/device-types")`) odpowiada 200 na żywym
+  // backendzie i — gdy aktywna biblioteka jest pusta — spada na katalog
+  // analityczny `backend/src/application/analyses/protection/catalog/
+  // catalog_store.py::list_devices` (źródło danych: `data/devices_v0.json`,
+  // 51 urządzeń / 10 nazwanych producentów + 1 profil referencyjny bez marki
+  // = 11 unikalnych wartości `vendor` łącznie z `None`). Dawny bezwarunkowy
+  // skip wewnątrz testu (gałąź „if (!response.ok())") maskował to na stałe
+  // niezależnie od realnej odpowiedzi backendu — usunięty; test wywołuje
+  // końcówkę naprawdę.
   test('protection database covers 51+ devices / 10 vendors', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/catalog/protection/device-types`);
-    if (!response.ok()) {
-      test.skip(true, 'Protection device-types endpoint not exposed; skipping (covered by unit tests)');
-      return;
-    }
+    expect(response.ok()).toBe(true);
     const data = await response.json();
     expect(data.length).toBeGreaterThanOrEqual(51);
     const vendors = new Set(data.map((d: { vendor?: string; params?: { vendor?: string } }) =>

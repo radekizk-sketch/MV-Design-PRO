@@ -1,210 +1,56 @@
 /*
- * Fixtures okna „Krzywe zdolności P–Q" (karta P41). Kształty 1:1 z serializacją
- * `application/analyses/pq_coverage.py::build_pq_coverage_view`, katalogiem
- * konwerterów (`ConverterType.to_dict`) i katalogiem NC RfG (`operators[]`).
- * Deterministyczne, bez losowości. Liczby odwzorowują central PV Sungrow
- * SG3150U-MV (Pn 3,15 MW; krzywa ±0,6·Sn ze zwężeniem przy p_max) vs operator
- * PSE (udział Q ±0,33·Pn ⇒ wymaganie ±1,0395 Mvar) — punkt p_max niepokryty.
+ * Fixtures okna „Krzywe zdolności P–Q" (karta P41; kontrakt werdyktu — odbiór Pakietu C).
+ * WSZYSTKIE policzone backendem (`backend/scripts/eksport_fixtur_harnessu.py`, test kształtu
+ * `tests/ci/test_fixtury_harnessu.py`) — zero ręcznie pisanych kopii odpowiedzi:
+ *   - rekordy katalogu przekształtników — ta sama serializacja co `GET /api/catalog/converter-types`
+ *     (typ PV z krzywą producenta, typ PV bez krzywej, magazyn energii z krzywą);
+ *   - widoki pokrycia — ta sama funkcja co `GET /api/oze-analysis/pq-coverage`
+ *     (`build_pq_coverage_view`): rekord `ocena` (`OcenaKryterium`) + zapasy per punkt.
+ * Iloczyn cech scen: porównanie wykonane (profil bez zweryfikowanej podstawy) × brak krzywej
+ * producenta („nie oceniono" z nazwanym brakiem) × magazyn energii („nie dotyczy").
  */
 
-import type { OdpowiedzKatalogNcRfg, RekordKonwertera, WidokPokryciaPQ } from '../../api';
+import katalogNcRfg from '../../../../harness-fixtures/generated/ncrfg_katalog.json';
+import konwertery from '../../../../harness-fixtures/generated/krzywe_konwertery_scen.json';
+import pokrycieBezKrzywej from '../../../../harness-fixtures/generated/krzywe_pokrycie_scena_bez_krzywej.json';
+import pokrycieMagazynu from '../../../../harness-fixtures/generated/krzywe_pokrycie_scena_magazyn.json';
+import pokryciePv from '../../../../harness-fixtures/generated/krzywe_pokrycie_scena_pv.json';
+import type { RekordKonwertera, WidokPokryciaPQ } from '../../api';
+import type { KatalogNcRfg } from '../../ncrfg/typy';
 
-/** Katalog konwerterów: jeden typ z krzywą producenta, jeden bez krzywej. */
+/** Katalog konwerterów scen: [PV z krzywą producenta, PV bez krzywej, magazyn z krzywą]. */
 export function rekordyKonwerterowFixture(): RekordKonwertera[] {
-  return [
-    {
-      id: 'conv-pv-card-sungrow-sg3150u-mv',
-      name: 'Karta falownika central PV Sungrow SG3150U-MV 3.15 MW / 0.69 kV',
-      kind: 'PV',
-      un_kv: 0.69,
-      sn_mva: 3.15,
-      pmax_mw: 3.15,
-      qmin_mvar: -1.89,
-      qmax_mvar: 1.89,
-      cosphi_min: 0.8,
-      cosphi_max: 1.0,
-      e_kwh: null,
-      control_mode: 'Q_OF_U',
-      pq_curve: [
-        [0.0, -1.89, 1.89],
-        [1.575, -1.89, 1.89],
-        [2.52, -1.89, 1.89],
-        [3.15, -0.63, 0.63],
-      ],
-    },
-    {
-      id: 'conv-pv-generic-1mw',
-      name: 'Falownik PV generyczny 1 MW / 0.4 kV',
-      kind: 'PV',
-      un_kv: 0.4,
-      sn_mva: 1.0,
-      pmax_mw: 1.0,
-      qmin_mvar: -0.4,
-      qmax_mvar: 0.4,
-      cosphi_min: 0.9,
-      cosphi_max: 1.0,
-      e_kwh: null,
-      control_mode: null,
-      // brak pola pq_curve ⇒ „brak krzywej producenta"
-    },
-  ];
-}
-
-/** Katalog NC RfG: dwóch operatorów (progi klas nieistotne dla okna P–Q). */
-export function katalogNcRfgFixture(): OdpowiedzKatalogNcRfg {
-  return {
-    operators: [
-      {
-        operator_id: 'pse',
-        operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
-        module_types: [],
-      },
-      {
-        operator_id: 'pge',
-        operator_name_pl: 'PGE Dystrybucja',
-        module_types: [],
-      },
-    ],
-  };
+  return konwertery as unknown as RekordKonwertera[];
 }
 
 /**
- * Widok pokrycia 1:1 z backendem: 3 z 4 punktów pokrytych; punkt p_max (3,15 MW)
- * niepokryty (deficyt 0,4095 Mvar po stronie górnej/indukcyjnej) — werdykt NIEPOKRYTE.
+ * Katalog NC RfG policzony backendem (`GET /api/ncrfg-tests/catalog`, fikstura generowana
+ * `ncrfg_katalog.json`) zawężony do dwóch operatorów w stałej kolejności (PSE, PGE) —
+ * okno P–Q czyta z niego wyłącznie listę operatorów, więc podzbiór jest 1:1 z kontraktem.
  */
-export function widokPokryciaFixture(): WidokPokryciaPQ {
+export function katalogNcRfgFixture(): KatalogNcRfg {
+  const katalog = katalogNcRfg as unknown as KatalogNcRfg;
   return {
-    typ_katalogowy: {
-      id: 'conv-pv-card-sungrow-sg3150u-mv',
-      nazwa: 'Karta falownika central PV Sungrow SG3150U-MV 3.15 MW / 0.69 kV',
-      kind: 'PV',
-      pmax_mw: 3.15,
-      sn_mva: 3.15,
-    },
-    operator: {
-      id: 'pse',
-      nazwa: 'PSE — Polskie Sieci Elektroenergetyczne',
-      udzial_q_min_pct_pn: -0.33,
-      udzial_q_max_pct_pn: 0.33,
-    },
-    wymaganie: {
-      pn_mw: 3.15,
-      q_wymagane_min_mvar: -1.0395,
-      q_wymagane_max_mvar: 1.0395,
-      opis:
-        'Prostokatne wymaganie zakresu Q operatora: '
-        + '[udzial_min * Pn, udzial_max * Pn] w kazdym punkcie pracy.',
-    },
-    punkty: [
-      {
-        p_mw: 0.0,
-        q_min_mvar: -1.89,
-        q_max_mvar: 1.89,
-        q_wymagane_min_mvar: -1.0395,
-        q_wymagane_max_mvar: 1.0395,
-        zapas_dolny_mvar: 0.8505,
-        zapas_gorny_mvar: 0.8505,
-        margines_mvar: 0.8505,
-        pokryty: true,
-        uwaga: 'pokryty',
-      },
-      {
-        p_mw: 1.575,
-        q_min_mvar: -1.89,
-        q_max_mvar: 1.89,
-        q_wymagane_min_mvar: -1.0395,
-        q_wymagane_max_mvar: 1.0395,
-        zapas_dolny_mvar: 0.8505,
-        zapas_gorny_mvar: 0.8505,
-        margines_mvar: 0.8505,
-        pokryty: true,
-        uwaga: 'pokryty',
-      },
-      {
-        p_mw: 2.52,
-        q_min_mvar: -1.89,
-        q_max_mvar: 1.89,
-        q_wymagane_min_mvar: -1.0395,
-        q_wymagane_max_mvar: 1.0395,
-        zapas_dolny_mvar: 0.8505,
-        zapas_gorny_mvar: 0.8505,
-        margines_mvar: 0.8505,
-        pokryty: true,
-        uwaga: 'pokryty',
-      },
-      {
-        p_mw: 3.15,
-        q_min_mvar: -0.63,
-        q_max_mvar: 0.63,
-        q_wymagane_min_mvar: -1.0395,
-        q_wymagane_max_mvar: 1.0395,
-        zapas_dolny_mvar: -0.4095,
-        zapas_gorny_mvar: -0.4095,
-        margines_mvar: -0.4095,
-        pokryty: false,
-        uwaga: 'niepokryty: brak 0.4095 Mvar po stronie gornej (indukcyjnej)',
-      },
-    ],
-    werdykt: {
-      pokryty: false,
-      liczba_punktow: 4,
-      liczba_pokrytych: 3,
-      min_margines_mvar: -0.4095,
-      opis_pl:
-        'Krzywa producenta NIE pokrywa wymagania operatora: 1 z 4 punktow niepokrytych; '
-        + 'najwiekszy deficyt 0.4095 Mvar przy p=3.15 MW.',
-    },
-    slad_whitebox: {
-      // K10: wzór śladu z backendu jest czystym LaTeX-em (konwencja Proof Engine).
-      wzor:
-        '\\text{punkt pokryty} \\iff q_{\\min,\\text{prod}} \\le q_{\\text{wym,min}} '
-        + '\\;\\wedge\\; q_{\\max,\\text{prod}} \\ge q_{\\text{wym,max}};\\quad '
-        + '\\text{margines} = \\min(q_{\\text{wym,min}} - q_{\\min,\\text{prod}},\\; '
-        + 'q_{\\max,\\text{prod}} - q_{\\text{wym,max}});\\quad '
-        + 'q_{\\text{wym,min}} = u_{\\min} \\cdot P_{n},\\; '
-        + 'q_{\\text{wym,max}} = u_{\\max} \\cdot P_{n}',
-      dane: {
-        pn_mw: 3.15,
-        udzial_q_min_pct_pn: -0.33,
-        udzial_q_max_pct_pn: 0.33,
-        q_wymagane_min_mvar: -1.0395,
-        q_wymagane_max_mvar: 1.0395,
-        liczba_punktow_krzywej: 4,
-      },
-      podstawienie: [
-        'p=0.0 MW: min(0.8505, 0.8505) = 0.8505 Mvar -> pokryty',
-        'p=1.575 MW: min(0.8505, 0.8505) = 0.8505 Mvar -> pokryty',
-        'p=2.52 MW: min(0.8505, 0.8505) = 0.8505 Mvar -> pokryty',
-        'p=3.15 MW: min(-0.4095, -0.4095) = -0.4095 Mvar -> niepokryty',
-      ],
-      wynik: 'NIEPOKRYTE: 3/4 punktow.',
-    },
+    ...katalog,
+    operators: ['pse', 'pge'].map((id) => {
+      const operator = katalog.operators.find((o) => o.operator_id === id);
+      if (!operator) throw new Error(`fikstura katalogu NC RfG: brak operatora ${id}`);
+      return operator;
+    }),
   };
 }
 
-/** Wariant pełnego pokrycia (werdykt POKRYTE) — do testów banera werdyktu ok. */
-export function widokPokryteFixture(): WidokPokryciaPQ {
-  const bazowy = widokPokryciaFixture();
-  return {
-    ...bazowy,
-    punkty: bazowy.punkty.map((pt) => ({
-      ...pt,
-      q_min_mvar: -1.89,
-      q_max_mvar: 1.89,
-      zapas_dolny_mvar: 0.8505,
-      zapas_gorny_mvar: 0.8505,
-      margines_mvar: 0.8505,
-      pokryty: true,
-      uwaga: 'pokryty',
-    })),
-    werdykt: {
-      pokryty: true,
-      liczba_punktow: 4,
-      liczba_pokrytych: 4,
-      min_margines_mvar: 0.8505,
-      opis_pl:
-        'Krzywa producenta pokrywa wymaganie operatora we wszystkich 4 punktach '
-        + '(najmniejszy margines 0.8505 Mvar).',
-    },
-  };
+/** Pokrycie typu PV z krzywą producenta wymaganiem PSE (porównanie wykonane, 4 punkty). */
+export function widokPokryciaFixture(): WidokPokryciaPQ {
+  return pokryciePv as unknown as WidokPokryciaPQ;
+}
+
+/** Pokrycie typu PV BEZ krzywej producenta — rekord „nie oceniono", zero punktów. */
+export function widokBezKrzywejFixture(): WidokPokryciaPQ {
+  return pokrycieBezKrzywej as unknown as WidokPokryciaPQ;
+}
+
+/** Pokrycie magazynu energii — rekord „nie dotyczy" (magazyn poza rozporządzeniem 2016/631). */
+export function widokMagazynuFixture(): WidokPokryciaPQ {
+  return pokrycieMagazynu as unknown as WidokPokryciaPQ;
 }

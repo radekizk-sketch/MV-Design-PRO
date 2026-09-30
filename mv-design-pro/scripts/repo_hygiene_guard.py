@@ -76,22 +76,28 @@ ACTIVE_LEGACY_PATTERNS = [
 ]
 
 CRITICAL_TODO_TARGETS = [
-    "backend/src/api/analysis_runs.py",
-    "backend/src/api/catalog.py",
-    "backend/src/api/domain_ops_policy.py",
-    "backend/src/api/enm.py",
-    "backend/src/api/main.py",
-    "backend/src/api/sld.py",
-    "backend/src/domain",
-    "backend/src/enm",
-    "frontend/src/App.tsx",
-    "frontend/src/ui/catalog",
-    "frontend/src/ui/network-build/forms",
-    "frontend/src/ui/proof",
-    "frontend/src/ui/results-inspector",
-    "frontend/src/ui/sld",
-    "frontend/src/ui/topology",
+    # Karta TODO-UI2 (2026-09-16, klasa "stany zastępcze w ui2"): zapadka
+    # zeszła z listy DZIEWIĘCIU wybranych ścieżek na CAŁY aktywny kod źródłowy
+    # (bez testów) — ograniczony wykaz przepuszczał 50+ znaczników TODO-KARTA/
+    # TODO:/FIXME poza dziewięcioma katalogami (zmierzone: WSZYSTKIE ~56 trafień
+    # klasy siedziały w `frontend/src/ui2/**`, poza jedynym wykazem). Zero
+    # wykluczeń poza `TODO_FIXME_FILE_EXEMPTIONS` (fałszywe trafienia literału,
+    # nie instancje długu — patrz niżej).
+    "backend/src",
+    "frontend/src",
 ]
+
+# Plik będący DEFINICJĄ kanonu zakazanych słów etykiet PL (np. 'TODO',
+# 'Placeholder', 'Coming soon' jako literały-wzorce dla INNEGO guarda —
+# `ui/canon/labelGuards.ts`), nie instancją naruszenia. Dopasowanie `\bTODO\b`
+# do własnego wpisu słownika wzorców jest tautologicznym fałszywym trafieniem
+# (analogia: grep dopasowujący plik z własnymi wzorcami) — wyjątek PER PLIK,
+# nazwany i uzasadniony, nie osłabienie samego wzorca `TODO_PATTERNS`.
+TODO_FIXME_FILE_EXEMPTIONS = frozenset(
+    {
+        "frontend/src/ui/canon/labelGuards.ts",
+    }
+)
 
 TODO_PATTERNS = [
     (re.compile(r"\bTODO\b", re.IGNORECASE), "TODO marker"),
@@ -102,6 +108,12 @@ NO_GUESSING_TARGETS = [
     "frontend/src/ui/network-build/forms",
     "frontend/src/ui/sld",
     "frontend/src/ui/topology/modals",
+    # Odbior K7 (2026-09-09): kreatory ui2 sa od programu UI/UX 2026-07 AKTYWNYMI formularzami
+    # operacji domenowych (zrodlo, magistrala, pierscien, stacja, OZE) - lista celow zostala
+    # przy katalogach legacy, wiec kanoniczne kreatory NIE byly skanowane (ten sam dryf, co
+    # test hygiene czytajacy skasowany `GridSourceModal.tsx`). Klasa: cel = kazdy katalog
+    # aktywnych formularzy, nie migawka sprzed migracji.
+    "frontend/src/ui2/kreatory",
 ]
 
 NO_GUESSING_PATTERNS = [
@@ -238,12 +250,13 @@ def check_backend_main_mounts(root: Path = PROJECT_ROOT) -> list[Violation]:
 
 
 def check_todo_fixme(root: Path = PROJECT_ROOT) -> list[Violation]:
-    return scan_targets(
+    violations = scan_targets(
         root,
         CRITICAL_TODO_TARGETS,
         TODO_PATTERNS,
         skip_comment_lines=False,
     )
+    return [v for v in violations if v.path not in TODO_FIXME_FILE_EXEMPTIONS]
 
 
 def check_catalog_guessing(root: Path = PROJECT_ROOT) -> list[Violation]:

@@ -38,6 +38,8 @@ wypełnia `width_mm`:
 
 from __future__ import annotations
 
+from enm.rola_pola_sn import nazwa_roli_pola_sn_z_okresleniem
+from network_model.brak_zasobu import BrakZasobuError
 from pydantic import BaseModel, Field, computed_field
 
 from .complete_mv_bay_template import BayKind
@@ -586,7 +588,9 @@ _8DJH_R = FactoryConfigurationUnit(
 )
 _8DJH_T = FactoryConfigurationUnit(
     unit_code="T",
-    unit_name_pl="Pole transformatorowe (rozłącznik z bezpiecznikami)",
+    unit_name_pl=nazwa_roli_pola_sn_z_okresleniem(
+        "TRANSFORMATOROWE", "(rozłącznik z bezpiecznikami)"
+    ),
     bay_kind="transformatorowe",
     apparatus_kinds=["switch_disconnector", "fuse_set"],
     width_mm=430,
@@ -600,14 +604,14 @@ _8DJH_L = FactoryConfigurationUnit(
 )
 _8DJH_S = FactoryConfigurationUnit(
     unit_code="S",
-    unit_name_pl="Pole sprzęgłowe z rozłącznikiem",
+    unit_name_pl=nazwa_roli_pola_sn_z_okresleniem("SPRZEGLO", "z rozłącznikiem"),
     bay_kind="sprzeglowe_poprzeczne",
     apparatus_kinds=["switch_disconnector"],
     width_mm=430,
 )
 _8DJH_H = FactoryConfigurationUnit(
     unit_code="H",
-    unit_name_pl="Pole sprzęgłowe z rozłącznikiem bezpiecznikowym",
+    unit_name_pl=nazwa_roli_pola_sn_z_okresleniem("SPRZEGLO", "z rozłącznikiem bezpiecznikowym"),
     bay_kind="sprzeglowe_poprzeczne",
     apparatus_kinds=["switch_disconnector", "fuse_set"],
     width_mm=430,
@@ -665,8 +669,8 @@ _NAZWA_JEDNOSTKI_8DJH = {
     "R": "pierścieniowe",
     "T": "transformatorowe",
     "L": "wyłącznikowe",
-    "S": "sprzęgłowe",
-    "H": "sprzęgłowe bezpiecznikowe",
+    "S": "sprzęgła",
+    "H": "sprzęgła z bezpiecznikami",
 }
 
 
@@ -687,8 +691,8 @@ def _8djh_configuration(
             "Litery pól wg legendy katalogu: K — pole kablowe, K(E) — pole "
             "kablowe z uziemnikiem zwarciowym, R — pole liniowe pierścieniowe, "
             "T — pole transformatorowe (rozłącznik z bezpiecznikami), L — pole "
-            "wyłącznikowe, S — pole sprzęgłowe z rozłącznikiem, H — pole "
-            "sprzęgłowe z rozłącznikiem bezpiecznikowym. Szerokości jednostek "
+            "wyłącznikowe, S — pole sprzęgła z rozłącznikiem, H — pole "
+            "sprzęgła z rozłącznikiem bezpiecznikowym. Szerokości jednostek "
             "pochodzą z tabeli „Panel type / Width” tego samego katalogu, więc "
             "szerokość całkowita bloku jest realną sumą (zgodność z podaną "
             "osobno szerokością bloku jest przypięta testem)."
@@ -732,7 +736,7 @@ def get_factory_configuration(configuration_ref: str) -> FactoryConfiguration:
     """Konfiguracja po ref. `KeyError` gdy brak (spójnie z resztą pakietu)."""
     if configuration_ref not in FACTORY_CONFIGURATION_REGISTRY:
         available = ", ".join(sorted(FACTORY_CONFIGURATION_REGISTRY))
-        raise KeyError(
+        raise BrakZasobuError(
             f"Unknown factory configuration_ref: {configuration_ref}. Available: {available}"
         )
     return FACTORY_CONFIGURATION_REGISTRY[configuration_ref]

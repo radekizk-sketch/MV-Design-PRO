@@ -136,7 +136,7 @@ def _minimal_net(
 
 def _run(net: EnergyNetworkModel) -> CanonicalRun:
     set_enm("c", net)
-    return execute_run(create_run(case_id="c", analysis_type="PF").id)
+    return execute_run(create_run(case_id="c", klucz_twin="c", analysis_type="PF").id)
 
 
 def _measure(net: EnergyNetworkModel) -> dict[str, float]:

@@ -10,9 +10,6 @@
 import { describe, expect, it } from 'vitest';
 
 import type {
-  WidokObszaruPQ,
-  WidokPokryciaPQ,
-  WidokZdolnosci,
   ZapytanieObszaruPQ,
   ZapytaniePokryciaPQ,
   ZapytanieZdolnosci,
@@ -27,7 +24,7 @@ import {
   przeprowadzStudium,
   stanPoczatkowyStudium,
   wariantWToku,
-  werdyktPokryciaPL,
+  etykietaPokryciaPL,
   wezelWariantu,
   wierszeStudium,
   wierzcholekNajblizszy,
@@ -37,8 +34,9 @@ import {
   type StanStudium,
   type ZdarzenieStudium,
 } from '../studiumModel';
+import { klasyfikacjaWgKatalogu } from '../../ncrfg/__tests__/atrapaKlasyfikacji';
+import { kluczKlasyfikacji } from '../../ncrfg/klasyfikacja';
 import {
-  katalogStudiumFixture,
   rekordyStudiumFixture,
   widokObszaruFixture,
   widokPokryciaFixture,
@@ -221,10 +219,10 @@ describe('studiumModel — stan i reducer zdarzeń', () => {
       typ: 'blad',
       busRef: 'bus-a',
       faza: 'pokrycie',
-      komunikat: 'Typ nie ma krzywej producenta',
+      komunikat: "Typ katalogowy 'x' nie istnieje w katalogu przekształtników.",
     });
     expect(nowy.get('bus-a')!.pokrycie.status).toBe('blad');
-    expect(nowy.get('bus-a')!.pokrycie.komunikat).toBe('Typ nie ma krzywej producenta');
+    expect(nowy.get('bus-a')!.pokrycie.komunikat).toBe("Typ katalogowy 'x' nie istnieje w katalogu przekształtników.");
   });
 
   it('zdarzenie dla nieznanego wariantu zwraca stan bez zmian', () => {
@@ -268,9 +266,10 @@ describe('studiumModel — odczyty (wierzchołek najbliższy, pasmo Q, werdykt)'
     expect(pasmoQwPunkcie(null, 1.0)).toBe('—');
   });
 
-  it('werdyktPokryciaPL czyta wyłącznie flagę werdyktu', () => {
-    expect(werdyktPokryciaPL(widokPokryciaFixture())).toBe('Niepokryte');
-    expect(werdyktPokryciaPL(null)).toBe('—');
+  it('etykietaPokryciaPL = etykieta rekordu `ocena` backendu (bez przemapowania)', () => {
+    const widok = widokPokryciaFixture();
+    expect(etykietaPokryciaPL(widok)).toBe(widok.ocena.etykieta.etykieta_pl);
+    expect(etykietaPokryciaPL(null)).toBe('—');
   });
 
   it('wezelWariantu odnajduje węzeł po bus_ref', () => {
@@ -299,34 +298,38 @@ function stanZWynikami(): StanStudium {
 const kontekst: KontekstWierszaStudium = {
   nazwaWezla: (busRef) => (busRef === 'bus-a' ? 'Szyna A' : 'Szyna B'),
   napiecieWezla: () => 15,
-  klasy: katalogStudiumFixture().operators[0].module_types,
+  klasyfikacja: (zapytanie) => {
+    const klucz = kluczKlasyfikacji(zapytanie);
+    if ('brak' in klucz) return { stan: 'brak_danych', powod_pl: klucz.brak };
+    return { stan: 'gotowe', klasyfikacja: klasyfikacjaWgKatalogu(klucz.pMaxKw, klucz.napiecieKv) };
+  },
   mocZrodlaMW: 2.0,
 };
 
 describe('studiumModel — tabela przeglądu', () => {
-  it('kolumny obejmują moc, straty, klasę, pokrycie i pasmo Q; identyfikator ekspercki', () => {
+  it('kolumny obejmują moc, straty, klasę, pokrycie i pasmo Q; bez kolumny identyfikatora', () => {
     const kolumny = kolumnyStudium();
     const klucze = kolumny.map((k) => k.klucz);
     expect(klucze).toEqual([
       'wariant',
-      'identyfikator',
       'moc',
       'straty',
       'klasa',
       'pokrycie',
       'pasmoQ',
     ]);
-    expect(kolumny.find((k) => k.klucz === 'identyfikator')?.tylkoEkspercki).toBe(true);
+    // Karta #145: identyfikator węzła jest kluczem wiersza, nie kolumną pierwszego planu.
+    expect(kolumny.find((k) => k.klucz === 'identyfikator')).toBeUndefined();
   });
 
   it('wiersze w kolejności wyboru; wartości wyłącznie z odpowiedzi backendu', () => {
     const wiersze = wierszeStudium(stanZWynikami(), kontekst);
     expect(wiersze).toHaveLength(2);
-    // bus-a: moc 1,5 MW; klasa C (1500 kW ∈ [1000, 50000)); werdykt Niepokryte.
+    // bus-a: moc 1,5 MW; typ B z klasyfikacji backendu (1500 kW ∈ [200; 10000) wg WOS).
     expect(wiersze[0].wariant.wartosc).toBe('Szyna A');
     expect(wiersze[0].moc.wartosc).toBe('1,500');
-    expect(wiersze[0].klasa.wartosc).toBe('C');
-    expect(wiersze[0].pokrycie.wartosc).toBe('Niepokryte');
+    expect(wiersze[0].klasa.wartosc).toBe('B');
+    expect(wiersze[0].pokrycie.wartosc).toBe(widokPokryciaFixture().ocena.etykieta.etykieta_pl);
     // Pasmo Q w punkcie mocy typu (2,0 MW → wierzchołek 1,0 niedopuszczalny) → Brak pasma.
     expect(wiersze[0].pasmoQ.wartosc).toBe('Brak pasma');
   });

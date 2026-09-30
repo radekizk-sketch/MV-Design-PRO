@@ -1,9 +1,11 @@
-"""Builder werdyktu stabilności SSCI — warstwa interpretacji (Z15).
+"""Builder widoku stabilności SSCI — warstwa interpretacji (Z15).
 
 Czysta interpretacja gotowego wyniku solvera D-03 SSCI: NIE liczy fizyki
 (tablice ``z_grid(f)``/``z_conv(f)``/``L(f)`` pochodzą z solvera), wylicza
-metryki kryterium impedancyjnego Nyquista (Sun 2011, Wen 2016) i wydaje werdykt
-z pełnym wywodem White Box (Wzór→Dane→Podstawienie→Wynik→Jednostka).
+metryki kryterium impedancyjnego Nyquista (Sun 2011, Wen 2016) z wywodem White Box
+(Wzór→Dane→Podstawienie→Wynik→Jednostka) jako materiał AUDYTOWY i NIE wydaje werdyktu:
+Z_grid(f) solvera jest liczone bez przekładni transformatora (``models.BRAKI_OCENY_SSCI``),
+więc status to ``NIE_OCENIONO`` z wyjaśnieniem, czego brakuje.
 
 Granica warstw (arch_guard): moduł konsumuje ZSERIALIZOWANY słownik wyniku
 solvera (``result["result"]``) oraz kartę przekształtnika (``ConverterType``)
@@ -12,19 +14,15 @@ do proweniencji — NIE importuje solvera.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from analysis.ssci_stability.models import (
     DEFAULT_GAIN_CROSSOVER_MAG,
-    DEFAULT_PM_RISK_DEG,
-    DEFAULT_PM_UNSTABLE_DEG,
     SOLVER_INCOMPLETE_STATUS,
     SSCI_MANDATORY_FIELDS,
     SSCI_OPTIONAL_FIELDS,
-    VERDICT_NO_DATA,
-    VERDICT_RISK,
-    VERDICT_STABLE,
-    VERDICT_UNSTABLE,
+    VERDICT_NIE_OCENIONO,
     CrossoverPoint,
     NyquistPoint,
     ProvenanceTag,
@@ -33,6 +31,7 @@ from analysis.ssci_stability.models import (
     SsciStabilityView,
     WhiteBoxStep,
     compute_ssci_stability_id,
+    ocena_ssci_niewykonana,
     worst_field_quality,
 )
 
@@ -47,25 +46,18 @@ def _phase_margin(phase_deg: float) -> float:
 
 
 class SsciStabilityBuilder:
-    """Wydaje werdykt stabilności SSCI z wywodem White Box."""
+    """Buduje widok stabilności SSCI: metryki audytowe + ocena niewykonana (bez werdyktu)."""
 
-    def __init__(
-        self,
-        gain_crossover_mag: float = DEFAULT_GAIN_CROSSOVER_MAG,
-        pm_risk_deg: float = DEFAULT_PM_RISK_DEG,
-        pm_unstable_deg: float = DEFAULT_PM_UNSTABLE_DEG,
-    ) -> None:
-        if pm_unstable_deg > pm_risk_deg:
-            raise ValueError("pm_unstable_deg nie może być większy niż pm_risk_deg")
+    def __init__(self, gain_crossover_mag: float = DEFAULT_GAIN_CROSSOVER_MAG) -> None:
         self.gain_crossover_mag = float(gain_crossover_mag)
-        self.pm_risk_deg = float(pm_risk_deg)
-        self.pm_unstable_deg = float(pm_unstable_deg)
 
     def build(
         self,
         solver_payload: dict[str, Any],
         converter: Any | None = None,
         context: SsciStabilityContext | None = None,
+        *,
+        nazwy: Mapping[str, str],
     ) -> SsciStabilityView:
         """Buduje widok werdyktu z gotowego payloadu solvera.
 
@@ -74,36 +66,31 @@ class SsciStabilityBuilder:
             converter: karta przekształtnika (``ConverterType``) do proweniencji;
                 opcjonalna — przy braku werdykt nie nosi etykiety jakości.
             context: kontekst raportu (deterministyczny identyfikator).
+            nazwy: indeks ``ref_id -> nazwa`` modelu biegu (``enm.nazwy_elementow``) —
+                przedmiot oceny nazywa przekształtnik i szynę nazwami z modelu.
         """
-        verdict = self._build_verdict(solver_payload, converter)
-        analysis_id = compute_ssci_stability_id(
-            context,
-            self.gain_crossover_mag,
-            self.pm_risk_deg,
-            self.pm_unstable_deg,
-            verdict,
-        )
+        verdict = self._build_verdict(solver_payload, converter, nazwy)
+        analysis_id = compute_ssci_stability_id(context, self.gain_crossover_mag, verdict)
         return SsciStabilityView(
             analysis_id=analysis_id,
             context=context,
             gain_crossover_mag=self.gain_crossover_mag,
-            pm_risk_deg=self.pm_risk_deg,
-            pm_unstable_deg=self.pm_unstable_deg,
             verdict=verdict,
         )
 
     # ------------------------------------------------------------------
 
     def _build_provenance(self, converter: Any | None) -> ProvenanceTag | None:
-        """Najgorsza (najniższa) jakość pól karty, od których zależał werdykt.
+        """Najgorsza (najniższa) jakość pól karty, od których zależą metryki.
 
         Pola obowiązkowe: ``current_loop_bandwidth_hz``, ``pll_bandwidth_hz``,
         ``filter_l_pu``; pola opcjonalne dołączane TYLKO gdy obecne na karcie.
-        Kolejność DATASHEET ≻ ESTIMATED ≻ SYSTEM_DEFAULT; werdykt nosi najgorszą.
+        Kolejność DATASHEET ≻ ESTIMATED ≻ SYSTEM_DEFAULT; widok nosi najgorszą.
         """
         if converter is None:
             return None
-        from solver_input.provenance import FieldQuality, resolve_card_field_quality_map
+        from solver_input.provenance import resolve_card_field_quality_map
+        from werdykt import FieldQuality
 
         quality_map = resolve_card_field_quality_map(converter)
         consumed: list[str] = list(SSCI_MANDATORY_FIELDS)
@@ -119,11 +106,11 @@ class SsciStabilityBuilder:
 
         is_estimated = worst is FieldQuality.ESTIMATED
         if is_estimated:
-            tag_pl = "werdykt oparty na oszacowanych pasmach regulatora"
+            tag_pl = "metryki oparte na oszacowanych pasmach regulatora"
         elif worst is FieldQuality.SYSTEM_DEFAULT:
-            tag_pl = "werdykt oparty na domyślnych technicznych polach karty falownika"
+            tag_pl = "metryki oparte na domyślnych technicznych polach karty falownika"
         else:  # DATASHEET
-            tag_pl = "werdykt oparty na danych z karty technicznej (wszystkie pola)"
+            tag_pl = "metryki oparte na danych z karty technicznej (wszystkie pola)"
 
         return ProvenanceTag(
             worst_quality=worst.value,
@@ -134,23 +121,25 @@ class SsciStabilityBuilder:
         )
 
     def _no_data_verdict(
-        self, solver_payload: dict[str, Any], converter: Any | None
+        self, solver_payload: dict[str, Any], converter: Any | None, nazwy: Mapping[str, str]
     ) -> SsciStabilityVerdict:
         missing = list(solver_payload.get("missing_fields") or ())
-        why = (
-            "Brak werdyktu — solver SSCI zwrócił status „"
-            + SOLVER_INCOMPLETE_STATUS
-            + "”. Kryterium impedancyjne wymaga tablic Z_grid(f)/Z_conv(f)/L(f), "
-            "które powstają tylko przy komplecie pól karty falownika."
+        # Brak tablic impedancji: ocena niewykonana z brakiem tablic i brakami danych
+        # nazwanymi przez solver — nigdy „brak ryzyka".
+        ocena = ocena_ssci_niewykonana(
+            converter_ref=solver_payload.get("converter_ref"),
+            bus_ref=solver_payload.get("bus_ref"),
+            nazwy=nazwy,
+            tablice_obecne=False,
+            braki_danych=missing,
         )
-        if missing:
-            why += " Brakuje: " + ", ".join(missing) + "."
         return SsciStabilityVerdict(
             converter_ref=solver_payload.get("converter_ref"),
             bus_ref=solver_payload.get("bus_ref"),
-            verdict=VERDICT_NO_DATA,
-            is_risk=False,
-            why_pl=why,
+            verdict=VERDICT_NIE_OCENIONO,
+            is_risk=None,
+            why_pl=ocena["wyjasnienie"]["zdanie_pl"],
+            ocena=ocena,
             max_minor_loop_gain=None,
             has_magnitude_crossover=False,
             gain_crossover=None,
@@ -161,21 +150,22 @@ class SsciStabilityBuilder:
             encirclement_count=0,
             negative_resistance_present=False,
             negative_resistance_f_hz=None,
+            negative_resistance_re_min_ohm=None,
             provenance=self._build_provenance(converter),
             missing_data=tuple(missing) if missing else (SOLVER_INCOMPLETE_STATUS,),
             white_box=(),
         )
 
     def _build_verdict(
-        self, solver_payload: dict[str, Any], converter: Any | None
+        self, solver_payload: dict[str, Any], converter: Any | None, nazwy: Mapping[str, str]
     ) -> SsciStabilityVerdict:
         # Przepływ „brak danych”: solver zwrócił niekompletne dane.
         if solver_payload.get("status") == SOLVER_INCOMPLETE_STATUS:
-            return self._no_data_verdict(solver_payload, converter)
+            return self._no_data_verdict(solver_payload, converter, nazwy)
         rows = solver_payload.get("minor_loop_gain")
         if not rows:
             return self._no_data_verdict(
-                {**solver_payload, "status": SOLVER_INCOMPLETE_STATUS}, converter
+                {**solver_payload, "status": SOLVER_INCOMPLETE_STATUS}, converter, nazwy
             )
 
         provenance = self._build_provenance(converter)
@@ -193,34 +183,17 @@ class SsciStabilityBuilder:
         neg = solver_payload.get("z_conv_negative_resistance") or {}
         neg_present = bool(neg.get("present"))
         neg_f = float(neg["f_at_re_min_hz"]) if neg.get("f_at_re_min_hz") is not None else None
+        neg_re_min = float(neg["re_min_ohm"]) if neg.get("re_min_ohm") is not None else None
 
-        # --- klasyfikacja ---
-        # niestabilny: okrążenie −1 lub margines różnicy faz ≤ 0 przy |L| ≥ 1.
-        unstable_by_pm = has_crossover and worst_pm is not None and worst_pm <= self.pm_unstable_deg
-        if encirclements >= 1 or unstable_by_pm:
-            verdict = VERDICT_UNSTABLE
-        elif has_crossover:
-            verdict = VERDICT_RISK
-        else:
-            verdict = VERDICT_STABLE
-
-        is_risk = verdict in (VERDICT_RISK, VERDICT_UNSTABLE)
-        # Częstotliwość winna: punkt najgorszego marginesu w paśmie |L| ≥ 1
-        # (najbliżej warunku −1). Przy braku przecięcia — brak częstotliwości.
+        # Metryki L(f) zostają materiałem AUDYTOWYM (wywód White Box), ale NIE składają
+        # się w werdykt: Z_grid(f) solvera jest liczone bez przekładni transformatora.
+        # Częstotliwość najgorszego marginesu w paśmie |L| ≥ 1 — przy braku przecięcia brak.
         offending = worst_pm_f if has_crossover else None
-
-        why = self._why_text(
-            verdict=verdict,
-            max_mag=max_mag,
-            max_row=max_row,
-            gain_crossover=gain_crossover,
-            worst_pm=worst_pm,
-            offending=offending,
-            nearest=nearest,
-            encirclements=encirclements,
-            neg_present=neg_present,
-            neg_f=neg_f,
-            provenance=provenance,
+        ocena = ocena_ssci_niewykonana(
+            converter_ref=solver_payload.get("converter_ref"),
+            bus_ref=solver_payload.get("bus_ref"),
+            nazwy=nazwy,
+            tablice_obecne=True,
         )
 
         white_box = self._white_box(
@@ -231,15 +204,15 @@ class SsciStabilityBuilder:
             worst_pm_f=worst_pm_f,
             nearest=nearest,
             encirclements=encirclements,
-            verdict=verdict,
         )
 
         return SsciStabilityVerdict(
             converter_ref=solver_payload.get("converter_ref"),
             bus_ref=solver_payload.get("bus_ref"),
-            verdict=verdict,
-            is_risk=is_risk,
-            why_pl=why,
+            verdict=VERDICT_NIE_OCENIONO,
+            is_risk=None,
+            why_pl=ocena["wyjasnienie"]["zdanie_pl"],
+            ocena=ocena,
             max_minor_loop_gain=_round(max_mag),
             has_magnitude_crossover=has_crossover,
             gain_crossover=gain_crossover,
@@ -250,6 +223,9 @@ class SsciStabilityBuilder:
             encirclement_count=encirclements,
             negative_resistance_present=neg_present,
             negative_resistance_f_hz=(_round(neg_f, 4) if neg_f is not None else None),
+            negative_resistance_re_min_ohm=(
+                _round(neg_re_min, 6) if neg_re_min is not None else None
+            ),
             provenance=provenance,
             missing_data=(),
             white_box=white_box,
@@ -332,89 +308,7 @@ class SsciStabilityBuilder:
                     count += 1
         return count
 
-    # --- opis i White Box ------------------------------------------------
-
-    def _why_text(
-        self,
-        *,
-        verdict: str,
-        max_mag: float,
-        max_row: dict[str, Any],
-        gain_crossover: CrossoverPoint | None,
-        worst_pm: float | None,
-        offending: float | None,
-        nearest: NyquistPoint,
-        encirclements: int,
-        neg_present: bool,
-        neg_f: float | None,
-        provenance: ProvenanceTag | None,
-    ) -> str:
-        neg_txt = ""
-        if neg_present and neg_f is not None:
-            neg_txt = (
-                f" Strefa ujemnej rezystancji Re(Z_conv)<0 przy f≈{_round(neg_f, 2)} Hz "
-                "(poniżej pasma PLL) tworzy mechanizm umożliwiający SSCI."
-            )
-
-        if verdict == VERDICT_STABLE:
-            base = (
-                f"Stabilny: max|L| = {_round(max_mag)} < {self.gain_crossover_mag} — moduły "
-                "impedancji NIE przecinają się w całym paśmie (|Z_grid| < |Z_conv| dla każdej "
-                "częstotliwości). Zgodnie z kryterium Sun (2011) sieć jest mocna, a układ "
-                f"stabilny BEZWARUNKOWO niezależnie od fazy. Najbliższe podejście do −1: "
-                f"|L+1| = {nearest.distance_to_minus_one} przy f = {nearest.f_hz} Hz."
-            )
-        elif verdict == VERDICT_RISK:
-            pm_txt = (
-                f"margines różnicy faz Δφ = {_round(worst_pm, 2)}° w paśmie przecięcia"
-                if worst_pm is not None
-                else "margines różnicy faz nieokreślony"
-            )
-            sev = (
-                " Margines NISKI (poniżej progu " f"{self.pm_risk_deg}°) — podwyższone ryzyko."
-                if (worst_pm is not None and worst_pm < self.pm_risk_deg)
-                else ""
-            )
-            xover = (
-                f" Przecięcie |L|=1 przy f = {gain_crossover.f_hz} Hz, "
-                f"∠L = {gain_crossover.phase_l_deg}° (Δφ = {gain_crossover.phase_margin_deg}°)."
-                if gain_crossover
-                else ""
-            )
-            base = (
-                f"Ryzyko SSCI: max|L| = {_round(max_mag)} ≥ {self.gain_crossover_mag} — moduły "
-                "impedancji PRZECINAJĄ się, więc stabilność jest WARUNKOWA (kryterium Sun 2011 / "
-                f"Wen 2016). {pm_txt[0].upper() + pm_txt[1:]}.{sev}{xover} Częstotliwość winna "
-                f"≈ {_round(offending, 2) if offending is not None else '—'} Hz "
-                f"(najbliżej warunku −1; |L+1|_min = {nearest.distance_to_minus_one} przy "
-                f"f = {nearest.f_hz} Hz). Zalecana weryfikacja stabilności impedancyjnej / "
-                "pasywności i strojenia PLL.{neg}"
-            ).replace("{neg}", neg_txt)
-        elif verdict == VERDICT_UNSTABLE:
-            enc_txt = (
-                f" Wykryto {encirclements} okrążenie/okrążenia punktu −1 (przybliżenie "
-                "skończonego skanu)."
-                if encirclements >= 1
-                else ""
-            )
-            pm_txt = (
-                f" Margines różnicy faz Δφ = {_round(worst_pm, 2)}° ≤ {self.pm_unstable_deg}° "
-                "przy |L| ≥ 1 (∠L osiąga ±180°)."
-                if (worst_pm is not None and worst_pm <= self.pm_unstable_deg)
-                else ""
-            )
-            base = (
-                f"Niestabilny: kryterium Nyquista naruszone.{enc_txt}{pm_txt} max|L| = "
-                f"{_round(max_mag)} przy f = {_round(float(max_row['f_hz']), 2)} Hz; "
-                f"|L+1|_min = {nearest.distance_to_minus_one} przy f = {nearest.f_hz} Hz. "
-                "Wymagane przeprojektowanie regulatora / wzmocnienie sieci.{neg}"
-            ).replace("{neg}", neg_txt)
-        else:  # pragma: no cover - obsłużone wcześniej
-            base = ""
-
-        if provenance is not None and provenance.is_estimated:
-            base += f" Uwaga proweniencji: {provenance.tag_pl}."
-        return base
+    # --- White Box (materiał audytowy) ------------------------------------
 
     def _white_box(
         self,
@@ -426,7 +320,6 @@ class SsciStabilityBuilder:
         worst_pm_f: float | None,
         nearest: NyquistPoint,
         encirclements: int,
-        verdict: str,
     ) -> tuple[WhiteBoxStep, ...]:
         steps: list[WhiteBoxStep] = []
 
@@ -477,10 +370,7 @@ class SsciStabilityBuilder:
                         f"min po paśmie |L| ≥ {self.gain_crossover_mag}; "
                         f"f = {_round(worst_pm_f, 2) if worst_pm_f is not None else '—'} Hz"
                     ),
-                    result_pl=(
-                        f"Δφ_min = {_round(worst_pm, 3)}° "
-                        f"(próg ryzyka {self.pm_risk_deg}°, próg niestabilności {self.pm_unstable_deg}°)"
-                    ),
+                    result_pl=f"Δφ_min = {_round(worst_pm, 3)}°",
                     unit_check_pl="stopnie; Δφ ≤ 0° ⟺ ∠L osiąga ±180° ⟺ okrążenie −1.",
                 )
             )
@@ -511,20 +401,4 @@ class SsciStabilityBuilder:
             )
         )
 
-        # 5) Werdykt.
-        steps.append(
-            WhiteBoxStep(
-                symbol="werdykt",
-                formula_latex=(
-                    r"\text{stabilny} \Leftarrow \max|L| < 1;\;"
-                    r"\text{niestabilny} \Leftarrow N\geq 1 \vee \Delta\varphi_{min}\leq 0"
-                ),
-                substitution_pl=(
-                    f"max|L| = {_round(max_mag)}; N = {encirclements}; "
-                    f"Δφ_min = {_round(worst_pm, 3) if worst_pm is not None else '—'}°"
-                ),
-                result_pl=f"werdykt: {verdict}",
-                unit_check_pl="klasyfikacja jakościowa wg kryterium impedancyjnego Sun 2011.",
-            )
-        )
         return tuple(steps)

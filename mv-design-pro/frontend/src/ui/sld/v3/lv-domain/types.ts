@@ -1,5 +1,5 @@
 /**
- * Kontrakty danych projekcji nN — `LvDomainProjectionV1` w wersji 3.0.0
+ * Kontrakty danych projekcji nN — `LvDomainProjectionV1` w wersji 4.0.0
  * (kanon `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md` §3; mandat „profesjonalizacja
  * SLD nN" §5/§6/§10/§14/§32/§34). Mirror 1:1 JSON zwracanego przez backend
  * (snake_case — konwencja tego API, ta sama co `types/enm.ts`): pola TS NIE
@@ -66,7 +66,7 @@ export interface LvDomainBus extends LvTerminalState {
 export interface LvNeutralReference {
   readonly system: string | null;
   readonly source_ref: string | null;
-  readonly status: 'OK' | 'brak_ukladu' | 'brak_zrodla';
+  readonly status: 'ustalone' | 'brak_ukladu' | 'brak_zrodla';
   readonly status_pl: string;
   readonly swz_evaluable: boolean;
 }
@@ -417,7 +417,7 @@ export interface LvDomainSwzSnapshotV1 {
 }
 
 /** Wersja ładunku przypięta wprost — inna wersja = odrzucenie (`projectionApi.ts`). */
-export const LV_DOMAIN_PROJECTION_CONTRACT_VERSION = '3.0.0' as const;
+export const LV_DOMAIN_PROJECTION_CONTRACT_VERSION = '4.0.0' as const;
 
 export interface LvDomainProjectionV1 {
   readonly contract: 'LvDomainProjectionV1';

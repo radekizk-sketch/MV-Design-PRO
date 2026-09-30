@@ -20,7 +20,7 @@ import {
  *
  * INWARIANT NACZELNY:
  *   • brak danych nigdy nie jest renderowany jako '0.00' / '0,00'
- *   • status obliczeń ≠ 'ok' nigdy nie zwraca wartości liczbowej zamiast etykiety
+ *   • status obliczeń ≠ 'pelny' nigdy nie zwraca wartości liczbowej zamiast etykiety
  *
  * Każdy nowy widok powinien używać formatPolishValue / formatCurrent / ...
  * Bezpośrednie `(value ? 0).toFixed(...)` jest niedopuszczalne.
@@ -182,7 +182,7 @@ describe('helpery jednostkowe', () => {
 
 describe('formatStatusLabel', () => {
   it('zwraca pełne polskie etykiety w long', () => {
-    expect(formatStatusLabel('ok', 'long')).toBe(POLISH_STATUS_LABEL.ok);
+    expect(formatStatusLabel('pelny', 'long')).toBe(POLISH_STATUS_LABEL.pelny);
     expect(formatStatusLabel('partial', 'long')).toBe('wynik częściowy');
     expect(formatStatusLabel('error', 'long')).toBe('wynik błędny');
     expect(formatStatusLabel('none', 'long')).toBe('brak obliczeń');
@@ -198,7 +198,7 @@ describe('formatStatusLabel', () => {
   });
 
   it('etykiety statusu nigdy nie zawierają "0.00" ani "0,00"', () => {
-    for (const status of ['ok', 'partial', 'error', 'none', 'n_a', 'pending'] as const) {
+    for (const status of ['pelny', 'partial', 'error', 'none', 'n_a', 'pending'] as const) {
       expect(POLISH_STATUS_LABEL[status]).not.toMatch(/0[.,]00/);
       expect(POLISH_STATUS_SHORT[status]).not.toMatch(/0[.,]00/);
     }
@@ -211,7 +211,7 @@ describe('inwariant naczelny — zakaz "0.00 spam"', () => {
    * brak danych NIGDY nie produkuje '0,00 <unit>' ani '0.00 <unit>'.
    */
   it('fuzz: null + status × jednostki nigdy nie produkuje "0,00"', () => {
-    const statuses = ['ok', 'partial', 'error', 'none', 'n_a', 'pending'] as const;
+    const statuses = ['pelny', 'partial', 'error', 'none', 'n_a', 'pending'] as const;
     const units = ['A', 'kV', 'kW', 'kvar', 'kVA', 'km', '%', 'Hz', undefined];
     const placeholders = ['short', 'long'] as const;
 
@@ -227,7 +227,7 @@ describe('inwariant naczelny — zakaz "0.00 spam"', () => {
   });
 
   it('fuzz: NaN nigdy nie produkuje "0,00"', () => {
-    const result = formatPolishValue(Number.NaN, { unit: 'A', status: 'ok' });
+    const result = formatPolishValue(Number.NaN, { unit: 'A', status: 'pelny' });
     expect(result).not.toMatch(/0[.,]00/);
   });
 });

@@ -21,10 +21,7 @@ ARCHITECTURE:
 
 from __future__ import annotations
 
-from application.analyses.fault_loop.service import (
-    _NON_TN_SYSTEMS,
-    _transformer_loop_impedance,
-)
+from application.analyses.fault_loop.service import _transformer_loop_impedance
 from domain.eligibility_models import (
     AnalysisEligibilityIssue,
     AnalysisEligibilityMatrix,
@@ -42,12 +39,17 @@ from enm.models import (
     OverheadLine,
     SwitchBranch,
 )
-from enm.pole_transformatorowe import pasmo_napieciowe
+from enm.slownik_komunikatow import opis_obiektu
+from enm.uklad_sieci_nn import transformatory_bez_ukladu_nn
 from enm.validator import ReadinessResult
+from enm.zrodlo_zwarcie import dane_zwarciowe_zrodla
+from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
+from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, w_pasmie_nn
+from solver_input.uklad_sieci_nn import uklad_tn
 
 # Karta G-22: FAULT_LOOP_NN/SWZ_NN reużywają `_transformer_loop_impedance`
-# (kompletność danych transformatora dla impedancji pętli L-PE/L-PEN) i
-# `_NON_TN_SYSTEMS` z `fault_loop.service` zamiast duplikować tę samą logikę
+# (kompletność danych transformatora dla impedancji pętli L-PE/L-PEN) z
+# `fault_loop.service` i `uklad_tn` z `solver_input` zamiast duplikować tę samą logikę
 # strukturalną pod inną nazwą — DOKŁADNIE ten sam wzorzec reużycia, jaki
 # `swz.service` już stosuje wobec `fault_loop.service` (zob. docstring tamtego
 # modułu, reguła KLASA NIE INSTANCJA). Eligibility NIE liczy Z-bus/solvera —
@@ -448,8 +450,24 @@ class EligibilityService:
         enm: EnergyNetworkModel,
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
+        """Katalog wymagany dla gałęzi/transformatorów/źródeł — czyta JEDYNE
+        źródło prawdy (`catalog.governance.wymagalnosc_katalogu`, oś
+        `walidacja`, karta W3-I), wspólne z walidatorem E009, bramką ZIP i
+        CGMES. Karta W3-I (2026-09-09): SIÓDME, wcześniej nienazwane miejsce
+        powielające dosłownie ten sam warunek dla gałęzi/transformatorów —
+        nazwane w meldunku karty, naprawione tu. Sprawdzenie źródeł ZYSKUJE
+        (wcześniej ten kontrolny punkt sprawdzał WYŁĄCZNIE gałęzie i
+        transformatory) — w praktyce nieobserwowalne osobno, bo reguła A
+        (globalna bramka `readiness.ready`) już blokuje cały model, gdy E009
+        zgłasza źródło bez katalogu; dopisane dla spójności z pozostałymi
+        sześcioma miejscami, nie jako nowe zachowanie.
+        """
         for branch in enm.branches:
-            if isinstance(branch, OverheadLine | Cable) and not branch.catalog_ref:
+            if not isinstance(branch, OverheadLine | Cable):
+                continue
+            if brakuje_wymaganej_referencji(
+                wymagalnosc_katalogu(branch.type).walidacja, branch.catalog_ref
+            ):
                 blockers.append(
                     AnalysisEligibilityIssue(
                         code="ELIG_SC3_MISSING_CATALOG_REF",
@@ -470,7 +488,9 @@ class EligibilityService:
                 )
 
         for trafo in enm.transformers:
-            if not trafo.catalog_ref:
+            if brakuje_wymaganej_referencji(
+                wymagalnosc_katalogu("transformer").walidacja, trafo.catalog_ref
+            ):
                 blockers.append(
                     AnalysisEligibilityIssue(
                         code="ELIG_SC3_MISSING_CATALOG_REF",
@@ -485,6 +505,30 @@ class EligibilityService:
                             action_type="SELECT_CATALOG",
                             element_ref=trafo.ref_id,
                             modal_type="TransformerModal",
+                            payload_hint={"required": "catalog_ref"},
+                        ),
+                    )
+                )
+
+        for source in enm.sources:
+            poziom = wymagalnosc_katalogu(
+                "source", parameter_source=source.parameter_source
+            ).walidacja
+            if brakuje_wymaganej_referencji(poziom, source.catalog_ref):
+                blockers.append(
+                    AnalysisEligibilityIssue(
+                        code="ELIG_SC3_MISSING_CATALOG_REF",
+                        severity=IssueSeverity.BLOCKER,
+                        message_pl=(
+                            f"Źródło '{source.ref_id}' nie ma referencji katalogowej (catalog_ref). "
+                            f"Wybierz źródło systemowe z katalogu."
+                        ),
+                        element_ref=source.ref_id,
+                        element_type="source",
+                        fix_action=FixAction(
+                            action_type="SELECT_CATALOG",
+                            element_ref=source.ref_id,
+                            modal_type="SourceModal",
                             payload_hint={"required": "catalog_ref"},
                         ),
                     )
@@ -548,15 +592,9 @@ class EligibilityService:
         enm: EnergyNetworkModel,
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
+        # CV-4.3 K7: predykat wspólny z mapperem i walidatorem (`enm/zrodlo_zwarcie.py`).
         for source in enm.sources:
-            has_sk = source.sk3_mva is not None and source.sk3_mva > 0
-            has_rx = (
-                source.r_ohm is not None
-                and source.x_ohm is not None
-                and (source.r_ohm > 0 or source.x_ohm > 0)
-            )
-            has_ik = source.ik3_ka is not None and source.ik3_ka > 0
-            if not (has_sk or has_rx or has_ik):
+            if not dane_zwarciowe_zrodla(source).policzalne:
                 blockers.append(
                     AnalysisEligibilityIssue(
                         code="ELIG_SC3_SOURCE_NO_SC_PARAMS",
@@ -613,10 +651,7 @@ class EligibilityService:
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
         for source in enm.sources:
-            has_z0 = (
-                source.r0_ohm is not None and source.x0_ohm is not None
-            ) or source.z0_z1_ratio is not None
-            if not has_z0:
+            if not dane_zwarciowe_zrodla(source).z0:
                 blockers.append(
                     AnalysisEligibilityIssue(
                         code="ELIG_SC1_MISSING_Z0",
@@ -667,12 +702,15 @@ class EligibilityService:
         zapowiadał blokadę. Stan sprzed poprawki dopuszczał uruchomienie SC_1F
         bez podstawy fizycznej — to fabrykacja wyniku, nie ułatwienie.
 
-        Model uziemienia uznajemy za obecny, gdy niesie go SZYNA (``bus.grounding``)
-        ALBO punkt neutralny transformatora (``hv_neutral``/``lv_neutral``) — w
-        praktyce krajowej punkt neutralny sieci SN uziemia się właśnie po stronie
-        dolnej transformatora GPZ, więc obie drogi są równoprawne.
+        Model uziemienia uznajemy za obecny, gdy niesie go ZRODLO
+        (``Source.neutral_grounding`` — punkt neutralny sieci SN zasilanej z
+        rownowaznika GPZ) ALBO punkt neutralny transformatora
+        (``hv_neutral``/``lv_neutral``) — w praktyce krajowej punkt neutralny
+        sieci SN uziemia sie po stronie dolnej transformatora GPZ albo
+        transformatorem uziemiajacym na szynie, wiec obie drogi sa rownoprawne.
+        W5-A: `Bus.grounding` skasowane — szyna nie jest nosnikiem uziemienia.
         """
-        has_grounding = any(bus.grounding is not None for bus in enm.buses)
+        has_grounding = any(source.neutral_grounding is not None for source in enm.sources)
         has_trafo_neutral = any(
             trafo.hv_neutral is not None or trafo.lv_neutral is not None
             for trafo in enm.transformers
@@ -686,13 +724,13 @@ class EligibilityService:
                     message_pl=(
                         "Dane niekompletne: brak modelu uziemienia. "
                         "Zwarcie jednofazowe wymaga sposobu uziemienia punktu "
-                        "neutralnego — uzupełnij uziemienie szyny lub punkt "
-                        "neutralny transformatora, aby uruchomić obliczenie."
+                        "neutralnego — uzupełnij punkt neutralny źródła (GPZ) lub "
+                        "transformatora, aby uruchomić obliczenie."
                     ),
                     fix_action=FixAction(
                         action_type="OPEN_MODAL",
-                        modal_type="NodeModal",
-                        payload_hint={"required": "grounding"},
+                        modal_type="SourceModal",
+                        payload_hint={"required": "neutral_grounding"},
                     ),
                 )
             )
@@ -787,29 +825,30 @@ class EligibilityService:
 
         transformers_by_ref = {t.ref_id: t for t in enm.transformers}
 
-        for station in mv_lv_stations:
-            system = str((station.meta or {}).get("nn_earthing_system") or "")
-            if not system:
-                blockers.append(
-                    AnalysisEligibilityIssue(
-                        code="ELIG_FLNN_MISSING_EARTHING_SYSTEM",
-                        severity=IssueSeverity.BLOCKER,
-                        message_pl=(
-                            f"Stacja '{station.ref_id}' nie deklaruje układu "
-                            f"uziemienia sieci nN (TN-S/TN-C-S/TN-C/TT/IT). "
-                            f"Pętla zwarcia nN wymaga tej informacji."
-                        ),
-                        element_ref=station.ref_id,
-                        element_type="station",
-                        fix_action=FixAction(
-                            action_type="OPEN_MODAL",
-                            element_ref=station.ref_id,
-                            modal_type="StationModal",
-                            payload_hint={"required": "nn_earthing_system"},
-                        ),
-                    )
+        # W5-A §1 p. 2: JEDEN predykat braku ukladu nN (`enm/uklad_sieci_nn.py`),
+        # nosnik `Transformer.lv_earthing_system` — ten sam warunek co E063.
+        for station, trafo_bez_ukladu in transformatory_bez_ukladu_nn(enm, mv_lv_stations):
+            blockers.append(
+                AnalysisEligibilityIssue(
+                    code="ELIG_FLNN_MISSING_EARTHING_SYSTEM",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=(
+                        f"Transformator '{trafo_bez_ukladu.ref_id}' stacji '{station.ref_id}' "
+                        f"nie deklaruje układu uziemienia sieci nN (TN-S/TN-C-S/TN-C/TT/IT). "
+                        f"Pętla zwarcia nN wymaga tej informacji."
+                    ),
+                    element_ref=trafo_bez_ukladu.ref_id,
+                    element_type="transformer",
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=trafo_bez_ukladu.ref_id,
+                        modal_type="TransformerModal",
+                        payload_hint={"required": "lv_earthing_system"},
+                    ),
                 )
+            )
 
+        for station in mv_lv_stations:
             trafo = next(
                 (
                     transformers_by_ref[ref]
@@ -840,7 +879,35 @@ class EligibilityService:
                 )
                 continue
 
-            if system in _NON_TN_SYSTEMS:
+            # Ta sama bramka pasma co analizy nN (`fault_loop.service.odmowa_pasma_nn`,
+            # predykat `w_pasmie_nn`): transformator ze stroną dolną spoza pasma nN nie
+            # zasila sieci nN — pre-kontrola nie może zgłaszać gotowości, której analiza
+            # potem odmówi.
+            if not w_pasmie_nn(trafo.ulv_kv):
+                blockers.append(
+                    AnalysisEligibilityIssue(
+                        code="ELIG_FLNN_TRANSFORMER_LV_NOT_NN_BAND",
+                        severity=IssueSeverity.BLOCKER,
+                        message_pl=(
+                            f"{opis_obiektu(trafo, 'Transformator')} "
+                            f"({opis_obiektu(station, 'stacja')}) ma stronę dolną "
+                            f"{trafo.ulv_kv:g} kV — poza pasmem nN ({OPIS_PASMA_NN}). Pętla zwarcia "
+                            "nN i SWZ dotyczą wyłącznie sieci nN."
+                        ),
+                        element_ref=trafo.ref_id,
+                        element_type="transformer",
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=trafo.ref_id,
+                            modal_type="TransformerModal",
+                            payload_hint={"required": "ulv_kv"},
+                        ),
+                    )
+                )
+                continue
+
+            uklad = trafo.lv_earthing_system
+            if uklad is not None and not uklad_tn(uklad):
                 # TT/IT: solver pętli TN uczciwie zwraca "nie dotyczy" — dla
                 # TEJ stacji dalsze dane transformatora nie są wymagane.
                 continue
@@ -875,15 +942,15 @@ class EligibilityService:
     ) -> None:
         """Warunek P0.6: pętla zwarcia/SWZ liczy się na TRASIE kablowej nN —
         `fault_loop_builder.sum_phase_and_return_route` czyta katalog i żyłę
-        powrotną z odcinków `Cable` w paśmie nN (reuse granicy pasma z
-        `enm.pole_transformatorowe.pasmo_napieciowe` — JEDNO miejsce
-        definicji progu ≤1 kV, zamiast drugiej kopii tej samej stałej).
+        powrotną z odcinków `Cable` w paśmie nN (predykat `w_pasmie_nn` z jednego
+        źródła granic pasm `network_model.pochodne.pasma_napieciowe`, zamiast drugiej
+        kopii tej samej stałej).
         """
         bus_by_ref = {b.ref_id: b for b in enm.buses}
 
         def _is_nn_bus(bus_ref: str) -> bool:
             bus = bus_by_ref.get(bus_ref)
-            return bus is not None and pasmo_napieciowe(bus.voltage_kv) == "nN"
+            return bus is not None and w_pasmie_nn(bus.voltage_kv)
 
         nn_cables = [
             b
@@ -897,7 +964,7 @@ class EligibilityService:
                     code="ELIG_FLNN_MISSING_NN_ROUTE",
                     severity=IssueSeverity.BLOCKER,
                     message_pl=(
-                        "Brak odcinków kablowych nN (<1 kV) w modelu sieci. "
+                        f"Brak odcinków kablowych nN ({OPIS_PASMA_NN}) w modelu sieci. "
                         "Pętla zwarcia i SWZ liczą się na trasie kablowej "
                         "obwodu nN — dodaj co najmniej jeden odcinek."
                     ),

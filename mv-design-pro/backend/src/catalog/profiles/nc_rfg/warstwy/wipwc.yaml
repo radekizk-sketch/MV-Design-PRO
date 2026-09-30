@@ -1,0 +1,68 @@
+# Warstwa WiPWC — Warunki i Procedury Wykorzystania Certyfikatów PTPiREE (plan AB §2.2 O-17).
+#
+# CO TA WARSTWA NIESIE: regułę „certyfikat urządzenia z wykazu PTPiREE pokrywa wymaganie dla
+# typu modułu X" (dawne pole `certyfikat_pokrywa_typy` wymagań warstw NC RfG i zastanej),
+# wersje wykazu certyfikowanych urządzeń oraz WSKAZANIE rejestru tych urządzeń. To NIE jest
+# procedura testowania (ta żyje w `procedura_ptpiree.yaml`).
+#
+# REJESTR JEST JEDEN: znormalizowany snapshot wykazu PTPiREE w backendzie
+# (`network_model/catalog/ptpiree_wykaz_snapshot.json`, czytany przez
+# `network_model/catalog/mv_ptpiree_catalog.py` i końcówki `/api/catalog/ptpiree/*`). Ta warstwa
+# go WSKAZUJE — kopia rekordów w YAML jest zabroniona (przegląd 2026-09-23 #16).
+#
+# WERSJE WYKAZU (`wersje`): wersja WiPWC i data publikacji wykazu DOKŁADNIE z pól `sources[]`
+# snapshotu (`source_version`, `publication_date`); parytet pilnuje test
+# `tests/catalog/test_profil_nc_rfg_warstwy.py`. Okna akceptacji: `akceptowana_od` wykazu 1.3 =
+# stała `PTPIREE_ACCEPTED_FROM` modułu `mv_ptpiree_catalog.py` (data, od której OSD akceptują
+# wykaz); `akceptowana_do` wykazu 1.2 = nagłówek wykazu PTPiREE „Wykaz urządzeń akceptowany do
+# 31.12.2026", spisany dotąd wyłącznie w interfejsie (`ptpireeCertifiedInverters.ts`,
+# `acceptedUntil`) — od tej warstwy backend jest jego nośnikiem. Snapshot NIE niesie okien
+# akceptacji na poziomie wersji (pole `acceptance_date` rekordu to data akceptacji dokumentu
+# certyfikatu, różna per rekord).
+warstwa: WIPWC
+dokument:
+  tytul: >-
+    Warunki i Procedury Wykorzystania Certyfikatów w procesie przyłączenia modułów wytwarzania
+    energii do sieci elektroenergetycznych (WiPWC)
+  # Dokument i wydanie wskazane (wykaz 1.3 jest publikowany pod tym wydaniem); treść WiPWC nie
+  # jest w repozytorium.
+  wydanie: "1.3"
+  status: WSKAZANE
+  adres: "https://ptpiree.pl/kodeksy-sieci/wykaz-certyfikatow/"
+  # = `akceptowana_od` wykazu wydania 1.3 (loader odrzuca rozbieżność).
+  obowiazuje_od: "2024-11-01"
+
+wersje:
+  - wersja: "1.2"
+    data_publikacji: "2026-05-06"
+    akceptowana_od: null
+    akceptowana_do: "2026-12-31"
+  - wersja: "1.3"
+    data_publikacji: "2026-05-08"
+    akceptowana_od: "2024-11-01"
+    akceptowana_do: null
+
+rejestr:
+  plik: "network_model/catalog/ptpiree_wykaz_snapshot.json"
+  schemat: "ptpiree_wykaz_snapshot/v1"
+
+# Reguła pokrycia wymagania certyfikatem urządzenia per typ modułu. Wartości przeniesione 1:1 z
+# dawnego pola `certyfikat_pokrywa_typy` (`nc_rfg.yaml`, `zastane.yaml`) — żadnej nowej reguły.
+# Wymaganie bez wpisu = pokrycie puste (dawne `certyfikat_pokrywa_typy: []`: RFG_14_3, RFG_14_4,
+# RFG_17_2, RFG_17_3, RFG_20_2A, RFG_20_2B, RFG_20_3, ZASTANE_HVRT). Stan NIEUSTALONE do czasu
+# wskazania punktu WiPWC per wpis — przeniesienie do tej warstwy nie podnosi stanu (przegląd
+# 2026-09-23 #3), więc sam certyfikat daje dziś BRAK_DOWODU z wyjaśnieniem, a nie SPEŁNIA.
+pokrycie_certyfikatem:
+  status: NIEUSTALONE
+  uwagi_pl: >-
+    pokrycie przeniesione z dawnego pola certyfikat_pokrywa_typy bez wskazania punktu WiPWC;
+    do wskazania per wymaganie (plan AB §12.1)
+  wymagania:
+    RFG_13_1A: [A, B]
+    RFG_13_1B: [A, B]
+    RFG_13_2: [A, B]
+    RFG_13_3: [A, B]
+    RFG_13_4: [A, B]
+    RFG_13_6: [A]
+    RFG_13_7: [A, B]
+    RFG_14_2: [B]

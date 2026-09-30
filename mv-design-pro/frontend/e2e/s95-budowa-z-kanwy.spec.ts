@@ -30,8 +30,9 @@ const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:800
  * żywej aplikacji — każde ogniwo łańcucha wykonane natywnym prawym klikiem na
  * rysunku, z realnym zapisem do modelu przez backend. POWTARZALNOŚĆ do 15
  * stacji mierzy sonda odbioru `scripts/sld_v3_acceptance.mjs`
- * (`menu_chain_probe`): na sieci referencyjnej 54 stacje i 115 odcinków mają
- * realne wejście budowy, przy progu karty 15. Rozdzielenie jest świadome —
+ * (`menu_chain_probe`): na sieci referencyjnej 53 stacje i 115 odcinków mają
+ * realne wejście budowy, przy progu karty 15 (pomiar po karcie S95-START; dawne 54
+ * liczyło też GPZ bez wolnego pola liniowego). Rozdzielenie jest świadome —
  * pętla 15 kreatorów w e2e mierzyłaby czas kreatorów, nie dostępność operacji
  * z rysunku (dług `S9-5-DLUG-E2E-PETLA` w rejestrze).
  */
@@ -40,6 +41,15 @@ type Snapshot = {
   substations?: Array<{ ref_id: string; station_type?: string | null }>;
   branches?: Array<{ ref_id: string; type?: string }>;
   corridors?: Array<{ ordered_segment_refs?: string[] }>;
+  // CV-4.3 K7 (karta K7-FE): źródła sieciowe niosą dane scenariusza MIN.
+  // CV-4.3 K7c (karta K7c-FE): + napięcie zadane szyny bilansującej.
+  sources?: Array<{
+    ref_id: string;
+    sk3_mva?: number | null;
+    sk3_min_mva?: number | null;
+    rx_ratio_min?: number | null;
+    u_set_pu?: number | null;
+  }>;
 };
 
 async function pobierzEnm(request: APIRequestContext, caseId: string): Promise<Snapshot> {
@@ -283,7 +293,7 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
 
     // ---- Ogniwo 4: cykl domknięty — KOLEJNY odcinek ZE STACJI ---------------
     // Uchwytem stacji na pełnym szczególe jest etykieta jej nazwy (lekcja
-    // pomiaru nr 2). Dostępność wejść budowy NA SKALĘ (54 stacje / 115
+    // pomiaru nr 2). Dostępność wejść budowy NA SKALĘ (53 stacje / 115
     // odcinków, próg 15) mierzy nadal sonda odbioru `menu_chain_probe` —
     // tutaj domykamy PĘTLĘ: stacja zapisana ogniwem 3 jest źródłem ogniwa 4.
     const enmPoStacji = await pobierzEnm(request, caseId);
@@ -312,6 +322,122 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
     );
     expect(stacjeSnNn.length).toBeGreaterThanOrEqual(1);
     expect((enm.branches ?? []).some((b) => b.type === 'cable' || b.type === 'line_overhead')).toBe(true);
+  });
+
+  /**
+   * CV-4.3 K7 (karta K7-FE) — scenariusz MIN źródła sieciowego (warunki
+   * przyłączenia OSD). Ogniwo 1 (GPZ z menu tła), tryb ręczny (ekspercki),
+   * Sk″min/R-X(MIN) wpisane NATYWNĄ klawiaturą (Zero-Debt pkt 5 — zero
+   * `fill()` na store, zero dispatchEvent). Sprawdzenie końcowe PRZEZ API:
+   * źródło w ENM musi naprawdę nieść `sk3_min_mva`.
+   */
+  test('scenariusz MIN (CV-4.3 K7): tryb ręczny wprowadza Sk″min, źródło w ENM niesie sk3_min_mva', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(180000);
+    const { caseId } = await otworzAplikacje(page, request);
+
+    const kanwa = page.getByTestId('sld-canvas-v3');
+    await expect(kanwa).toBeVisible({ timeout: 30000 });
+    await kanwa.click({ button: 'right', position: { x: 40, y: 40 } });
+    await page.getByRole('menu').getByTestId('sld-menu-insert-gpz').click();
+
+    const kreator = page.getByTestId('mvd-kreator-zrodlo');
+    await expect(kreator).toBeVisible({ timeout: 20000 });
+
+    // Krok „Źródło i strona WN" → tryb ręczny (ekspercki) → moc zwarciowa MAX
+    // + scenariusz MIN, wpisane natywnie.
+    await page.getByTestId('mvd-kreator-zrodlo-dalej').click();
+    await page.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny').click();
+    await expect(page.getByTestId('mvd-kreator-zrodlo-min')).toBeVisible({ timeout: 10000 });
+
+    await page.getByTestId('mvd-kreator-zrodlo-sk3').fill('250');
+    await page.getByTestId('mvd-kreator-zrodlo-rx').fill('0.1');
+    await page.getByTestId('mvd-kreator-zrodlo-sk3min').fill('150');
+    await page.getByTestId('mvd-kreator-zrodlo-rxmin').fill('0.2');
+
+    // Dowód wizualny (ZASADA NR 2): podgląd IEC 60909 backendu domyka
+    // scenariusz MIN (blok `scenariusz_min`) obok wartości MAX.
+    await expect(page.getByTestId('mvd-kreator-zrodlo-podsum-sk-min')).toBeVisible({ timeout: 20000 });
+    await expect(page.getByTestId('mvd-kreator-zrodlo-podsum-ik3-min')).toBeVisible({ timeout: 20000 });
+    const zrzutyDir = process.env.K7_FE_SCREENSHOT_DIR;
+    if (zrzutyDir) {
+      await page.screenshot({ path: `${zrzutyDir}/k7-fe-kreator-manual-min.png`, fullPage: true });
+    }
+
+    // Krok „Sekcje i pola": czeka na REALNĄ gotowość aparatu z katalogu
+    // (wzorzec `zapiszZrodlo` — ślepe ponawianie zapisu maskowałoby defekt).
+    await page.getByRole('button', { name: 'Sekcje i pola', exact: false }).first().click();
+    const aparat = page.getByTestId('mvd-kreator-zrodlo-aparat-katalog');
+    await expect(aparat).toBeVisible({ timeout: 60000 });
+    await expect.poll(async () => (await aparat.inputValue()).trim(), { timeout: 60000 }).not.toBe('');
+
+    await page.getByTestId('mvd-kreator-zrodlo-zapisz').click();
+    await expect(kreator).toBeHidden({ timeout: 60000 });
+
+    const enm = await pobierzEnm(request, caseId);
+    const zrodlo = (enm.sources ?? [])[0];
+    expect(zrodlo, 'model ma źródło sieciowe po zapisie kreatora').toBeTruthy();
+    expect(zrodlo?.sk3_mva).toBe(250);
+    expect(zrodlo?.sk3_min_mva).toBe(150);
+    expect(zrodlo?.rx_ratio_min).toBe(0.2);
+  });
+
+  /**
+   * CV-4.3 K7c (karta K7c-FE) — napięcie zadane szyny bilansującej
+   * (`Source.u_set_pu`). Ogniwo 1 (GPZ z menu tła), tryb ręczny (ekspercki),
+   * napięcie zadane wpisane NATYWNĄ klawiaturą (Zero-Debt pkt 5 — zero
+   * `fill()` na store, zero dispatchEvent — `fill()` Playwrighta tu jest
+   * natywną sekwencją klawiatury na realnym polu `<input>`, ten sam wzorzec
+   * co scenariusz MIN powyżej). Sprawdzenie końcowe PRZEZ API: źródło w ENM
+   * musi naprawdę nieść `u_set_pu === 1.06`.
+   */
+  test('napięcie zadane szyny bilansującej (CV-4.3 K7c): tryb ręczny wprowadza u_set_pu=1.06, źródło w ENM je niesie', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(180000);
+    const { caseId } = await otworzAplikacje(page, request);
+
+    const kanwa = page.getByTestId('sld-canvas-v3');
+    await expect(kanwa).toBeVisible({ timeout: 30000 });
+    await kanwa.click({ button: 'right', position: { x: 40, y: 40 } });
+    await page.getByRole('menu').getByTestId('sld-menu-insert-gpz').click();
+
+    const kreator = page.getByTestId('mvd-kreator-zrodlo');
+    await expect(kreator).toBeVisible({ timeout: 20000 });
+
+    // Krok „Źródło i strona WN" → tryb ręczny (ekspercki) → moc zwarciowa MAX
+    // + napięcie zadane szyny bilansującej, wpisane natywnie.
+    await page.getByTestId('mvd-kreator-zrodlo-dalej').click();
+    await page.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny').click();
+    await expect(page.getByTestId('mvd-kreator-zrodlo-uset')).toBeVisible({ timeout: 10000 });
+
+    await page.getByTestId('mvd-kreator-zrodlo-sk3').fill('250');
+    await page.getByTestId('mvd-kreator-zrodlo-rx').fill('0.1');
+    await page.getByTestId('mvd-kreator-zrodlo-uset').fill('1.06');
+
+    const zrzutyDir = process.env.K7_FE_SCREENSHOT_DIR;
+    if (zrzutyDir) {
+      await page.screenshot({ path: `${zrzutyDir}/k7c-fe-kreator-u-set-pu.png`, fullPage: true });
+    }
+
+    // Krok „Sekcje i pola": czeka na REALNĄ gotowość aparatu z katalogu
+    // (wzorzec `zapiszZrodlo` — ślepe ponawianie zapisu maskowałoby defekt).
+    await page.getByRole('button', { name: 'Sekcje i pola', exact: false }).first().click();
+    const aparat = page.getByTestId('mvd-kreator-zrodlo-aparat-katalog');
+    await expect(aparat).toBeVisible({ timeout: 60000 });
+    await expect.poll(async () => (await aparat.inputValue()).trim(), { timeout: 60000 }).not.toBe('');
+
+    await page.getByTestId('mvd-kreator-zrodlo-zapisz').click();
+    await expect(kreator).toBeHidden({ timeout: 60000 });
+
+    const enm = await pobierzEnm(request, caseId);
+    const zrodlo = (enm.sources ?? [])[0];
+    expect(zrodlo, 'model ma źródło sieciowe po zapisie kreatora').toBeTruthy();
+    expect(zrodlo?.sk3_mva).toBe(250);
+    expect(zrodlo?.u_set_pu).toBe(1.06);
   });
 });
 
@@ -354,7 +480,15 @@ async function zapiszMagistrale(page: Page): Promise<void> {
   const dlugosc = page.getByTestId('mvd-kreator-magistrala-dlugosc');
   await expect(dlugosc).toBeVisible({ timeout: 30000 });
   await dlugosc.fill('300');
-  await expect(page.getByTestId('mvd-kreator-magistrala-zapisz')).toBeEnabled({ timeout: 30000 });
+  // KARTA S9-5 (klasa: bramka enable bez sygnału gotowości formularza):
+  // czekamy na JAWNY sygnał gotowości (`data-status="gotowy"`, jedno źródło
+  // prawdy z `disabled` przycisku — `KreatorMagistralaSn.tsx`), NIE na sam
+  // atrybut `disabled` z gołym limitem czasu — ten nie odróżnia „zaraz się
+  // odblokuje" od „utknęło". Po zaobserwowaniu sygnału asercja `toBeEnabled`
+  // korzysta z DOMYŚLNEGO limitu (konfiguracja Playwrighta) — jest wtedy
+  // faktycznością potwierdzającą, nie oczekiwaniem na zbieg zdarzeń.
+  await expect(kreator).toHaveAttribute('data-status', 'gotowy', { timeout: 30000 });
+  await expect(page.getByTestId('mvd-kreator-magistrala-zapisz')).toBeEnabled();
   await page.getByTestId('mvd-kreator-magistrala-zapisz').click();
   const zakoncz = page.getByTestId('mvd-kreator-magistrala-zakoncz');
   if (await zakoncz.isVisible({ timeout: 15000 }).catch(() => false)) {
@@ -433,10 +567,18 @@ async function zapiszStacje(page: Page, numer: number): Promise<void> {
   // odczyt `.all()` zaraz po `toBeVisible` bywał wyścigiem (pomiar: 1 opcja
   // w chwili odczytu, komplet ułamek sekundy później). Czekamy na realny
   // stan zamiast liczyć na szczęśliwy timing.
-  await expect
-    .poll(async () => wybor.locator('option').count(), { timeout: 60000 })
-    .toBeGreaterThan(1);
-  await wybor.selectOption({ index: 1 });
+  //
+  // S95-START: szablon WBUDOWANY wskazany po źródle w etykiecie, nie „pozycja nr 1".
+  // Lista miesza bibliotekę wbudowaną z szablonami użytkownika i obie dojeżdżają
+  // osobnymi żądaniami; pozycja nr 1 bywała szablonem użytkownika zapisanym przez
+  // inny spec (zmierzone: stacja odgałęźna z jednym polem wejściowym, bez pola
+  // wyjściowego — ogniwo 4 nie miałoby z czego kontynuować ciągu). Ten sam wzorzec
+  // co w `kreator-stacji-max.spec.ts`.
+  const szablonWbudowany = wybor.locator('option', { hasText: '(wbudowany)' }).first();
+  await expect(szablonWbudowany).toHaveCount(1, { timeout: 60000 });
+  const idSzablonu = await szablonWbudowany.getAttribute('value');
+  expect(idSzablonu, 'lista ma szablon wbudowany').toBeTruthy();
+  await wybor.selectOption(idSzablonu!);
   await page.getByTestId('mvd-kreator-stacja-szablon-zastosuj').click();
   await expect(page.getByTestId('mvd-kreator-stacja-szablon-zastosowany')).toBeVisible({
     timeout: 30000,

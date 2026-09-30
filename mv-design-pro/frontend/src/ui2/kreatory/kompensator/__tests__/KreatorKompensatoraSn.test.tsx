@@ -47,12 +47,19 @@ vi.mock('../../../../ui/navigation/routes', () => ({
   navigateToSld: () => navigateToSldMock(),
 }));
 
-vi.mock('../../../../ui/catalog/api', () => ({
-  getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchShuntCapacitorTypes: () =>
+// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
+// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const { fetchShuntCapacitorTypesMock } = vi.hoisted(() => ({
+  fetchShuntCapacitorTypesMock: vi.fn(() =>
     Promise.resolve([
       { id: 'KOMP_SN_1V2_15KV', name: 'Bateria 1,2 Mvar 15 kV', rated_mvar: 1.2, rated_kv: 15, loss_kw: 0.6 },
     ]),
+  ),
+}));
+
+vi.mock('../../../../ui/catalog/api', () => ({
+  getCatalogErrorMessage: () => 'błąd katalogu',
+  fetchShuntCapacitorTypes: () => fetchShuntCapacitorTypesMock(),
 }));
 
 vi.mock('../../../../ui/network-build/forms/shuntCompensatorPreviewApi', () => ({
@@ -83,6 +90,7 @@ describe('KreatorKompensatoraSn — realna ścieżka', () => {
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
+    fetchShuntCapacitorTypesMock.mockClear();
   });
 
   afterEach(() => cleanup());
@@ -131,6 +139,7 @@ describe('KreatorKompensatoraSn — realna ścieżka', () => {
     await screen.findByRole('option', { name: /Bateria 1,2 Mvar 15 kV/ });
     expect(screen.getByTestId('mvd-kreator-kompensator-brak-szyny')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-kompensator-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-kompensator')).toHaveAttribute('data-status', 'zablokowany');
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -139,6 +148,22 @@ describe('KreatorKompensatoraSn — realna ścieżka', () => {
     render(<KreatorKompensatoraSn />);
     await pickType();
     expect(screen.getByTestId('mvd-kreator-kompensator-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-kompensator')).toHaveAttribute('data-status', 'zablokowany');
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) —
+   * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
+   * `zapisZablokowany` nie sprawdzał, czy katalog baterii już doszedł.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × szyna dostępna → zapis zablokowany z komunikatem', async () => {
+    fetchShuntCapacitorTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorKompensatoraSn />);
+
+    expect(screen.getByTestId('mvd-kreator-kompensator-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-kompensator')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 

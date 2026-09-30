@@ -70,14 +70,14 @@ export function validateBay(ctx: BayValidationContext): BayValidationResult {
     if (!ctx.derAttachmentPointPl) {
       errors.push({
         ruleId: 'R3',
-        descriptionPl: 'Pole DER wymaga jasno określonego punktu przyłączenia (port pola lub szyna nN).',
+        descriptionPl: 'Pole źródłowe wymaga jasno określonego punktu przyłączenia (port pola lub szyna nN).',
         fixActionPl: 'Wskaż punkt przyłączenia',
       });
     }
     if (!ctx.derKind) {
       errors.push({
         ruleId: 'R3',
-        descriptionPl: 'Pole DER nie ma określonego typu źródła (PV / BESS / FW).',
+        descriptionPl: 'Pole źródłowe nie ma określonego typu źródła (PV / BESS / FW).',
         fixActionPl: 'Wybierz typ źródła',
       });
     }

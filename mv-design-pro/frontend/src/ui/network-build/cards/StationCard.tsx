@@ -16,6 +16,8 @@ import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
 import { GpzSectionsEditor } from './GpzSectionsEditor';
 import { stationSnapshotBays, stationSnFieldCount } from '../stationSnFields';
 import { selectStationDistributionTransformers } from '../stationTransformerSelection';
+import { fieldRoleLabelPl } from '../../sld/v2/station-rozdzielnia/contract';
+import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
 // =============================================================================
 // Helpers
@@ -32,27 +34,6 @@ function buildConverterSourceContext(
     source_technology: sourceTechnology,
     connection_variant: 'nn_side',
   };
-}
-
-function bayRoleLabel(role: string): string {
-  switch (role) {
-    case 'IN':
-      return 'Zasilające (wejście)';
-    case 'OUT':
-      return 'Odgałęźne (wyjście)';
-    case 'TR':
-      return 'Transformatorowe';
-    case 'COUPLER':
-      return 'Sprzęgło sekcji';
-    case 'FEEDER':
-      return 'Zasilające odgałęźne';
-    case 'MEASUREMENT':
-      return 'Pomiarowe';
-    case 'OZE':
-      return 'OZE / źródło';
-    default:
-      return role;
-  }
 }
 
 function statusDotFromReadiness(
@@ -102,12 +83,12 @@ export function StationCard({ elementId }: { elementId: string }) {
   );
 
   const nnBuses = useMemo(
-    () => stationBuses.filter((b) => b.voltage_kv < 1),
+    () => stationBuses.filter((b) => wPasmieNn(b.voltage_kv)),
     [stationBuses],
   );
 
   const snBuses = useMemo(
-    () => stationBuses.filter((b) => b.voltage_kv >= 1),
+    () => stationBuses.filter((b) => powyzejPasmaNn(b.voltage_kv)),
     [stationBuses],
   );
 
@@ -189,7 +170,9 @@ export function StationCard({ elementId }: { elementId: string }) {
     const bayFields = stationBays.map((bay) => ({
       key: `bay_${bay.id}`,
       label: bay.name,
-      value: bayRoleLabel(bay.bay_role),
+      // Nazwa roli z kanonu słownictwa ról pól (karta #141): dawna lokalna mapa nazywała pole
+      // wyjściowe „odgałęźnym”, a rolę spoza mapy pokazywała kodem.
+      value: fieldRoleLabelPl(bay.bay_role),
     }));
 
     const baysSection: CardSection = {

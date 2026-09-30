@@ -11,6 +11,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from enm.load_zip_model import zip_odbioru_z_parametrow_materializacji
+from enm.nazwy_elementow import nazwa_elementu
+from enm.zrodlo_zwarcie import dane_zerowe, tryb_danych
+from network_model.nazwy import jest_nazwa
+
 from .schema import (
     AnalysisReadiness,
     ElementCounts,
@@ -28,8 +33,7 @@ def _eval_k1(enm: dict[str, Any]) -> StepState:
     issues: list[WizardIssue] = []
     completion = 0
     header = enm.get("header", {})
-    name = header.get("name", "")
-    if name and name.strip():
+    if jest_nazwa(header.get("name")):
         completion += 50
     else:
         issues.append(
@@ -77,6 +81,37 @@ def _eval_k2(enm: dict[str, Any]) -> StepState:
         )
     if sources:
         completion += 33
+        # CV-4.3 K7: parytet z bramką domenową E008 (`sources.no_short_circuit_params`,
+        # ten sam warunek fizyczny, ten sam wizard_step_hint="K2") — predykat z JEDNEGO
+        # źródła prawdy (`enm/zrodlo_zwarcie.py`), nie własny warunek „czy jest Sk''".
+        # Bez tej kontroli krok K2 meldował „complete", choć źródło bez Sk''/Ik''/R+jX
+        # nie jest policzalne (ten sam warunek walidator ENM blokuje na ścieżce operacji).
+        for source in sources:
+            if (
+                tryb_danych(
+                    r_ohm=source.get("r_ohm"),
+                    x_ohm=source.get("x_ohm"),
+                    sk3_mva=source.get("sk3_mva"),
+                    ik3_ka=source.get("ik3_ka"),
+                )
+                is None
+            ):
+                issues.append(
+                    WizardIssue(
+                        code="K2_SOURCE_NO_SHORT_CIRCUIT_PARAMS",
+                        severity=IssueSeverity.BLOCKER,
+                        message_pl=(
+                            f"Źródło '{nazwa_elementu(source, 'sources')}' "
+                            "nie ma parametrów zwarciowych (brak Sk'', Ik'' lub R/X)."
+                        ),
+                        element_ref=source.get("ref_id"),
+                        wizard_step_hint="K2",
+                        suggested_fix=(
+                            "Wprowadź moc zwarciową Sk'' (lub prąd Ik'') albo impedancję "
+                            "R+jX źródła."
+                        ),
+                    )
+                )
     else:
         issues.append(
             WizardIssue(
@@ -132,7 +167,7 @@ def _eval_k4(enm: dict[str, Any]) -> StepState:
                 WizardIssue(
                     code="K4_DANGLING_FROM",
                     severity=IssueSeverity.BLOCKER,
-                    message_pl=f"Gałąź {ln.get('name', '?')}: szyna źródłowa nie istnieje",
+                    message_pl=f"Gałąź {nazwa_elementu(ln, 'branches')}: szyna źródłowa nie istnieje",
                     element_ref=ln.get("ref_id"),
                     wizard_step_hint="K4",
                 )
@@ -142,7 +177,7 @@ def _eval_k4(enm: dict[str, Any]) -> StepState:
                 WizardIssue(
                     code="K4_DANGLING_TO",
                     severity=IssueSeverity.BLOCKER,
-                    message_pl=f"Gałąź {ln.get('name', '?')}: szyna docelowa nie istnieje",
+                    message_pl=f"Gałąź {nazwa_elementu(ln, 'branches')}: szyna docelowa nie istnieje",
                     element_ref=ln.get("ref_id"),
                     wizard_step_hint="K4",
                 )
@@ -165,7 +200,7 @@ def _eval_k5(enm: dict[str, Any]) -> StepState:
                 WizardIssue(
                     code="K5_UK_ZERO",
                     severity=IssueSeverity.BLOCKER,
-                    message_pl=f"Trafo {t.get('name', '?')}: uk% = 0",
+                    message_pl=f"Trafo {nazwa_elementu(t, 'transformers')}: uk% = 0",
                     element_ref=t.get("ref_id"),
                     wizard_step_hint="K5",
                 )
@@ -175,7 +210,7 @@ def _eval_k5(enm: dict[str, Any]) -> StepState:
                 WizardIssue(
                     code="K5_SN_ZERO",
                     severity=IssueSeverity.BLOCKER,
-                    message_pl=f"Trafo {t.get('name', '?')}: Sn = 0",
+                    message_pl=f"Trafo {nazwa_elementu(t, 'transformers')}: Sn = 0",
                     element_ref=t.get("ref_id"),
                     wizard_step_hint="K5",
                 )
@@ -202,7 +237,22 @@ def _eval_k6(enm: dict[str, Any]) -> StepState:
                 WizardIssue(
                     code="K6_LOAD_DANGLING",
                     severity=IssueSeverity.BLOCKER,
-                    message_pl=f"Odbiór {ld.get('name', '?')}: szyna nie istnieje",
+                    message_pl=f"Odbiór {nazwa_elementu(ld, 'loads')}: szyna nie istnieje",
+                    element_ref=ld.get("ref_id"),
+                    wizard_step_hint="K6",
+                )
+            )
+        # Kreator sieci jest piątym pisarzem odbioru (obok `add_nn_load`, `add_load_sn`,
+        # `create_device`, `update_element_parameters`): ten sam kontrakt ZIP — tabliczka,
+        # której rozpływ nie policzy, nie wchodzi do modelu (wycofanie kroku). Pole `model`
+        # kreator wyprowadza ze współczynników (`step_controller._apply_k6`).
+        blad_zip = zip_odbioru_z_parametrow_materializacji(ld.get("materialized_params"))
+        if blad_zip is not None:
+            issues.append(
+                WizardIssue(
+                    code="K6_LOAD_ZIP_INVALID",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=f"Odbiór {nazwa_elementu(ld, 'loads')}: {blad_zip}",
                     element_ref=ld.get("ref_id"),
                     wizard_step_hint="K6",
                 )
@@ -228,7 +278,9 @@ def _eval_k7(enm: dict[str, Any]) -> StepState:
     src_no_z0 = [
         s
         for s in sources
-        if s.get("r0_ohm") is None and s.get("x0_ohm") is None and s.get("z0_z1_ratio") is None
+        if not dane_zerowe(
+            r0_ohm=s.get("r0_ohm"), x0_ohm=s.get("x0_ohm"), z0_z1_ratio=s.get("z0_z1_ratio")
+        )
     ]
     if lines_no_z0:
         issues.append(
@@ -292,9 +344,9 @@ def _compute_readiness(enm: dict[str, Any], prereq_steps: list[StepState]) -> Re
     )
     all_src_z0 = (
         all(
-            s.get("r0_ohm") is not None
-            or s.get("x0_ohm") is not None
-            or s.get("z0_z1_ratio") is not None
+            dane_zerowe(
+                r0_ohm=s.get("r0_ohm"), x0_ohm=s.get("x0_ohm"), z0_z1_ratio=s.get("z0_z1_ratio")
+            )
             for s in sources
         )
         if sources

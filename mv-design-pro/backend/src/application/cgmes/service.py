@@ -20,6 +20,7 @@ import json
 import zipfile
 from typing import TYPE_CHECKING, Any
 
+from enm.nazwy_elementow import NAZWA_MODELU_BEZ_NAZWY
 from infrastructure.cgmes.cgmes_exporter import export_eq_tp_bytes
 from infrastructure.cgmes.cgmes_importer import (
     CgmesImportResult,
@@ -41,6 +42,7 @@ from infrastructure.cgmes.refmap import (
     REFMAP_SCHEMA_VERSION,
     CgmesRefMap,
 )
+from network_model.nazwy import nazwa_nadana
 
 if TYPE_CHECKING:
     from enm.models import EnergyNetworkModel
@@ -84,11 +86,6 @@ def _enm_canonical_dict(enm: EnergyNetworkModel) -> dict[str, Any]:
                 "updated_at",
                 "created_at",
                 "hash_sha256",
-                "semantic_hash",
-                "input_hash",
-                "case_hash",
-                "variant_hash",
-                "switching_snapshot_hash",
             }
         },
     )
@@ -133,8 +130,13 @@ def _primary_class(branch: Any) -> str:
 
 
 def _gen_class(gen: Any) -> str:
-    ibr = {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
-    return "PowerElectronicsConnection" if gen.gen_type in ibr else "SynchronousMachine"
+    # Kanoniczny zbiór przekształtnikowy (karta AB-H0 Pakiet D) — ten sam, którym
+    # eksporter klasyfikuje PowerElectronicsConnection (`cgmes_exporter._IBR_TYPES`).
+    from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
+
+    if gen.gen_type in GEN_TYPES_PRZEKSZTALTNIKOWE:
+        return "PowerElectronicsConnection"
+    return "SynchronousMachine"
 
 
 # ---------------------------------------------------------------------------
@@ -218,21 +220,21 @@ def import_cgmes(archive_bytes: bytes, *, prefer_side_car: bool = True) -> Cgmes
             refmap: CgmesRefMap | None = None
             if _REFMAP_NAME in names:
                 refmap = CgmesRefMap.from_dict(json.loads(zf.read(_REFMAP_NAME)))
-            model_name = "Imported CGMES"
+            model_name = NAZWA_MODELU_BEZ_NAZWY
             if _MANIFEST_NAME in names:
                 manifest = json.loads(zf.read(_MANIFEST_NAME))
-                model_name = manifest.get("model_name", model_name)
+                model_name = nazwa_nadana(manifest.get("model_name")) or NAZWA_MODELU_BEZ_NAZWY
     except zipfile.BadZipFile:
         return CgmesImportResult(
             status=CgmesImportStatus.FAILED,
             enm=None,
-            errors=["Nieprawidlowy format archiwum ZIP."],
+            errors=["Nieprawidłowy format archiwum ZIP."],
         )
     except json.JSONDecodeError as exc:
         return CgmesImportResult(
             status=CgmesImportStatus.FAILED,
             enm=None,
-            errors=[f"Blad parsowania JSON side-car/manifest: {exc}"],
+            errors=[f"Błąd parsowania JSON side-car/manifest: {exc}"],
         )
 
     if prefer_side_car and refmap is not None and refmap.enm:
@@ -258,13 +260,13 @@ def verify_cgmes_integrity(archive_bytes: bytes) -> list[str]:
             recomputed: dict[str, str] = {}
             for name, stored_hash in sorted(stored_files.items()):
                 if name not in names:
-                    errors.append(f"Brak pliku '{name}' wymienionego w manifescie.")
+                    errors.append(f"Brak pliku '{name}' wymienionego w manifeście.")
                     continue
                 actual = _sha256(zf.read(name))
                 recomputed[name] = actual
                 if actual != stored_hash:
                     errors.append(
-                        f"Blad integralnosci '{name}': oczekiwano {stored_hash}, "
+                        f"Błąd integralności '{name}': oczekiwano {stored_hash}, "
                         f"obliczono {actual}."
                     )
             stored_archive = manifest.get("archive_hash", "")
@@ -273,11 +275,11 @@ def verify_cgmes_integrity(archive_bytes: bytes) -> list[str]:
             )
             if recomputed == stored_files and computed_archive != stored_archive:
                 errors.append(
-                    f"Blad integralnosci archiwum: oczekiwano {stored_archive}, "
+                    f"Błąd integralności archiwum: oczekiwano {stored_archive}, "
                     f"obliczono {computed_archive}."
                 )
     except zipfile.BadZipFile:
-        return ["Nieprawidlowy format archiwum ZIP."]
+        return ["Nieprawidłowy format archiwum ZIP."]
     except json.JSONDecodeError as exc:
-        return [f"Blad parsowania manifest.json: {exc}"]
+        return [f"Błąd parsowania manifest.json: {exc}"]
     return errors

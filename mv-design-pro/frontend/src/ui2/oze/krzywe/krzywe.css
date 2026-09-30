@@ -112,28 +112,15 @@
   outline-offset: 2px;
 }
 
-/* Werdykt całości */
+/* Ocena pokrycia — rekord `OcenaKryterium` (kolor wyłącznie z `KartaWerdyktu`) */
 .mvd-krzywe-werdykt {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  border: 1px solid var(--mvd-line);
-  border-left-width: 4px;
-  border-radius: 8px;
-  padding: 12px 16px;
-}
-
-.mvd-krzywe-werdykt--ok {
-  border-left-color: var(--mvd-ok);
-  background: var(--mvd-ok-bg);
-}
-
-.mvd-krzywe-werdykt--err {
-  border-left-color: var(--mvd-err);
-  background: var(--mvd-err-bg);
 }
 
 .mvd-krzywe-werdykt-tytul {
+  margin: 0;
   font-weight: 600;
 }
 
@@ -223,29 +210,7 @@
   font-size: 13px;
 }
 
-/* Tryb ekspercki */
-.mvd-krzywe-eksp {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 24px;
-  margin: 0;
-  padding: 8px 16px;
-  border: 1px dashed var(--mvd-line);
-  border-radius: 8px;
-  color: var(--mvd-muted);
-  font-size: 12px;
-}
-
-.mvd-krzywe-eksp-para {
-  display: flex;
-  gap: 8px;
-}
-
-.mvd-krzywe-eksp-para dd {
-  margin: 0;
-  font-family: var(--mvd-font-mono);
-}
-
+/* Liczby */
 .mvd-num {
   font-family: var(--mvd-font-mono);
   font-variant-numeric: tabular-nums;

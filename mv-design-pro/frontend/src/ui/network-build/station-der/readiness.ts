@@ -21,6 +21,35 @@ import {
   type StationDerConnection,
 } from './types';
 
+/**
+ * Opis punktu przyłączenia po polsku (dla komunikatów bloków, nie surowy identyfikator).
+ *
+ * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): JEDYNE miejsce tego tłumaczenia —
+ * eksportowana i reużywana przez `DerConfigurator.tsx` (nagłówek karty DER),
+ * zamiast trzymać DRUGĄ, osobno starzejącą się kopię (`CONNECTION_SIDE_LABEL_PL`
+ * w tamtym pliku niosła cztery martwe klucze sprzed R3 — `SN`/`at_zksn`/
+ * `at_branch_pole`/`at_cable_joint` — nieosiągalne przez żadną realną wartość
+ * `ConnectionSide`, więc ekran nagłówka NIGDY nie pokazywał rodzaju punktu SN,
+ * tylko zawsze ten sam ogólnik „transformator dedykowany").
+ */
+export function punktPrzylaczeniaOpisPl(
+  der: Pick<StationDerConnection, 'connection_side' | 'sn_connection_point_kind'>,
+): string {
+  if (der.connection_side === 'nN') return 'po stronie nN';
+  switch (der.sn_connection_point_kind) {
+    case 'zksn':
+      return 'przez transformator dedykowany na złączu kablowym SN';
+    case 'branch_pole':
+      return 'przez transformator dedykowany na słupie rozgałęźnym';
+    case 'junction':
+      return 'przez transformator dedykowany na odgałęzieniu';
+    case 'station_bus':
+      return 'przez transformator dedykowany na szynie SN stacji';
+    default:
+      return 'przez transformator dedykowany';
+  }
+}
+
 export interface AggregatedReadinessAxis {
   readonly axis: keyof DerReadinessMatrix;
   readonly label_pl: string;
@@ -52,85 +81,20 @@ export const READINESS_AXIS_LABELS_PL: Record<keyof DerReadinessMatrix, string> 
   report_technical: 'Raport techniczny',
 };
 
-// =============================================================================
-// Naprawa B.3 + B.4 — walidacje hosting capacity + min Sk w PCC
-// =============================================================================
-
-export interface HostingCapacityValidationResult {
-  readonly station_id: string;
-  readonly busbar_kind: 'mv_section' | 'lv_busbar';
-  readonly busbar_ref: string;
-  readonly p_total_der_kw: number;
-  readonly capacity_limit_kw: number;
-  readonly utilization_percent: number;
-  readonly status: 'ok' | 'warning' | 'exceeded';
-  readonly message_pl: string;
-}
-
-/**
- * Naprawa B.3: walidacja hosting capacity szyny.
- * Reguła operatora: Σ P_DER ≤ 1.0 × Sn_transformer (transformator zasilający
- * szynę nN) lub Σ P_DER ≤ 0.5 × Sk_busbar (dla szyny SN).
- *
- * Zwraca status:
- *   - ok: utilizacja ≤ 80%
- *   - warning: utilizacja 80-100%
- *   - exceeded: utilizacja > 100%
- */
-export function validateHostingCapacity(args: {
-  readonly station_id: string;
-  readonly busbar_kind: 'mv_section' | 'lv_busbar';
-  readonly busbar_ref: string;
-  readonly ders: readonly StationDerConnection[];
-  readonly capacity_limit_kw: number;
-}): HostingCapacityValidationResult {
-  const dersOnBusbar = args.ders.filter((d) => {
-    if (args.busbar_kind === 'lv_busbar') return d.lv_busbar_ref === args.busbar_ref;
-    return d.bay_ref === args.busbar_ref || d.connection_node_ref === args.busbar_ref;
-  });
-  const p_total = dersOnBusbar.reduce((sum, d) => sum + (d.nominal_power_kw ?? 0), 0);
-  const utilization = args.capacity_limit_kw > 0 ? (p_total / args.capacity_limit_kw) * 100 : 0;
-
-  let status: 'ok' | 'warning' | 'exceeded';
-  let message_pl: string;
-  if (utilization > 100) {
-    status = 'exceeded';
-    message_pl =
-      `Przekroczona zdolność szyny: ${p_total.toFixed(0)} kW DER vs limit `
-      + `${args.capacity_limit_kw.toFixed(0)} kW (${utilization.toFixed(0)}%). `
-      + `Wymagane: dodatkowy transformator albo redukcja mocy DER.`;
-  } else if (utilization > 80) {
-    status = 'warning';
-    message_pl =
-      `Wysoka utylizacja szyny: ${p_total.toFixed(0)} / ${args.capacity_limit_kw.toFixed(0)} kW `
-      + `(${utilization.toFixed(0)}%). Sprawdź margines pracy szczytowej.`;
-  } else {
-    status = 'ok';
-    message_pl =
-      `OK: ${p_total.toFixed(0)} / ${args.capacity_limit_kw.toFixed(0)} kW `
-      + `(${utilization.toFixed(0)}% utylizacja).`;
-  }
-
-  return {
-    station_id: args.station_id,
-    busbar_kind: args.busbar_kind,
-    busbar_ref: args.busbar_ref,
-    p_total_der_kw: p_total,
-    capacity_limit_kw: args.capacity_limit_kw,
-    utilization_percent: utilization,
-    status,
-    message_pl,
-  };
-}
+// `validateHostingCapacity` (Naprawa B.3, „OK: …" z progami 80/100 % liczonymi w UI) USUNIĘTE
+// kartą AB-1a Pakiet D1 (inwentarz werdyktów lakonicznych, wiersz 50: LEGACY_USUNAC) — zero
+// konsumenta produkcyjnego, tylko własny test. Zdolność przyłączeniowa szyny jest oceną sieci
+// (rozpływ/zwarcia w backendzie), nie sumą mocy z tabliczek porównaną z progiem w przeglądarce.
 
 /**
  * Wylicza macierz readiness dla DER na podstawie obecności catalog_refs
  * i profile_refs. Brak danych → 'blocked', częściowy → 'partial', kompletny
  * → 'ready'. Reguły:
  *
- *  - SC3F: wymaga device_catalog_ref + bus_przylaczenia_ref.
- *  - SC1F/SC2FG: dodatkowo wymaga fault_current_data_ref (R₀/X₀/Z₀Z₁ —
- *    Naprawa A.1, IEC 60909-3).
+ *  - SC3F/SC1F/SC2F/SC2FG: device_catalog_ref + bus_przylaczenia_ref (karta
+ *    FAB-L: solver nie wymaga od TEGO wytwórcy żadnej dodatkowej danej dla
+ *    zwarć z udziałem ziemi — kompletność Z₀ sieci jest bramką MODELU, złożoną
+ *    osobno przez `zlozZBramkaModelu`, nie osią per-DER).
  *  - VDROP: device_catalog_ref + bus_przylaczenia_ref + nominal_power_kw.
  *  - Q_U: nc_rfg_profile_ref.
  *  - EQUIPMENT: device_catalog_ref + (block_transformer_catalog_ref jeśli
@@ -192,8 +156,6 @@ export function computeDerReadinessMatrix(
   // zadna sciezke produkcyjna (kreator, konfigurator stacji i odczyt ze snapshotu pisza
   // `block_transformer_catalog_ref`). Warunek nie mial wiec szans byc spelniony.
   const hasDedicatedTrafo = der.catalogs.block_transformer_catalog_ref !== null;
-  // Naprawa A.1: dane zwarciowe składowych zerowej/ujemnej dla SC1F/SC2FG.
-  const hasFaultCurrentData = der.catalogs.fault_current_data_ref !== null;
   // Naprawa A.5: model dynamiczny dla FRT/HVRT.
   const hasDynamicModel = der.catalogs.dynamic_model_ref !== null;
   // Naprawa eng.5: klasa CT musi byc zabezpieczeniowa (5P/10P) dla protection axis.
@@ -230,13 +192,18 @@ export function computeDerReadinessMatrix(
     full ? 'ready' : any ? 'partial' : 'blocked';
 
   const sc3f = allOk(hasDevice, hasPcc);
-  // Naprawa A.1: SC1F/SC2FG wymagają składowych Z₀ — bez fault_current_data
-  // status partial nawet z pełnym device + pcc.
-  const sc_asymmetric: ReadinessAxisStatus = (() => {
-    if (!hasDevice || !hasPcc) return 'blocked';
-    if (!hasFaultCurrentData) return 'partial';
-    return 'ready';
-  })();
+  // Karta FAB-L (inwentarz solvera IEC 60909, `enm/mapping.py`): SC1F/SC2FG NIE
+  // mają osobnego wejścia PER-DER — solver bierze te same dane co SC3F/SC2F
+  // (`k_sc`), a składową zerową falownika modeluje STAŁĄ solvera
+  // (`contributes_zero_sequence=False`) niezależnie od jakiejkolwiek karty
+  // katalogowej urządzenia. Dawne `fault_current_data_ref` (R₀/X₀/Z₀·Z₁⁻¹ z
+  // katalogu frontu, `DER_FAULT_CURRENT_DATA_CATALOG`) nie miało ŻADNEGO
+  // solvera, który by je czytał — druga fizyka bez konsumenta, usunięta razem
+  // z katalogiem. Kompletność Z₀ CAŁEJ sieci (r0/x0 gałęzi, grupy połączeń
+  // transformatorów, uziemienie punktu neutralnego) jest bramką MODELU
+  // (`analysis-eligibility` SC_1F), złożoną osobno niżej (`zlozZBramkaModelu`),
+  // nie drugim predykatem per-DER dla tej samej fizyki.
+  const sc_asymmetric: ReadinessAxisStatus = sc3f;
   const sc2f = sc3f; // 2-fazowe nie wymaga Z₀
   const vdrop = partialOk(hasDevice && hasPcc && hasPower, hasDevice || hasPcc);
   const q_u = hasNcRfg ? 'ready' : 'blocked';
@@ -333,7 +300,7 @@ function buildBlockersForAxis(
   der: StationDerConnection,
   status: ReadinessAxisStatus,
 ): AggregatedReadinessAxis['blockers'] {
-  if (status === 'ready' || status === 'not_applicable' || status === 'no_module') return [];
+  if (status === 'ready' || status === 'not_applicable') return [];
   const blockers: MutableBlocker[] = [];
 
   switch (axis) {
@@ -359,26 +326,12 @@ function buildBlockersForAxis(
           target_tab: 'topology',
         });
       }
-      // V12K-226: osie NIESYMETRYCZNE potrzebują składowej zerowej (Naprawa A.1,
-      // IEC 60909-3), a status to uwzględniał — brakowało tylko POWODU na liście.
-      // Skutek: oś SC1F/SC2F/SC2FG z kompletnym urządzeniem i PWP kończyła się
-      // stanem „częściowo" z PUSTĄ listą blokerów, czyli projektant widział
-      // „niegotowe" bez żadnej akcji naprawczej (ślepy zaułek w torze pracy).
-      // Tylko zwarcia Z UDZIAŁEM ZIEMI potrzebują składowej zerowej. Zwarcie
-      // dwufazowe bez ziemi rozkłada się na składową zgodną i przeciwną (Z₁, Z₂),
-      // więc żądanie od niego danych Z₀ byłoby FAŁSZYWYM BRAKIEM — status w tym
-      // pliku ma to poprawnie (`sc2f = sc3f`), lista blokerów musi się zgadzać.
-      if ((axis === 'sc_1f' || axis === 'sc_2fg') && !der.catalogs.fault_current_data_ref) {
-        blockers.push({
-          code: 'der.fault_current_data.missing',
-          message_pl:
-            'Brak modelu zwarciowego urządzenia (R₀/X₀/Z₀·Z₁⁻¹) — bez składowej '
-            + 'zerowej zwarcia niesymetrycznego nie da się policzyć.',
-          object_ref: der.id,
-          target_screen: derKindToScreen(der.der_kind),
-          target_tab: 'ncrfg',
-        });
-      }
+      // Karta FAB-L: SC1F/SC2F/SC2FG dzielą DOKŁADNIE te same powody co SC3F —
+      // solver nie wymaga od TEGO wytwórcy żadnej dodatkowej danej dla zwarć z
+      // udziałem ziemi (patrz komentarz przy `sc_asymmetric` w
+      // `computeDerReadinessMatrix`). Dawny trzeci bloker
+      // (`der.fault_current_data.missing`) czytał pole bez żadnego solvera —
+      // usunięty razem z `fault_current_data_ref`/`DER_FAULT_CURRENT_DATA_CATALOG`.
       break;
     case 'vdrop':
       if (der.nominal_power_kw === null) {
@@ -495,17 +448,27 @@ function buildBlockersForAxis(
           }
         }
       }
-      // Naprawa eng.11: anti-islanding (27/59/81U/81O) dla DER po nN/ZK/słupie.
+      // Naprawa eng.11: anti-islanding (27/59/81U/81O) dla DER po nN/ZK/słupie/odgałęzieniu.
+      //
+      // Karta FAB-K: dawne warianty `at_zksn`/`at_branch_pole`/`at_cable_joint` złożyły się
+      // w JEDEN poziom `dedicated_transformer` + osobny `sn_connection_point_kind` (rodzaj
+      // punktu SN). Wyłączenie „szyna SN stacji" (`station_bus`) z tej kontroli PRZETRWAŁO
+      // 1:1 — ten punkt ma WŁASNE pole SN z zabezpieczeniem w wymaganiach wariantu (inna,
+      // ogólniejsza reguła tej samej sekcji sprawdza `protection_catalog_ref` dla KAŻDEGO
+      // `dedicated_transformer` niezależnie od rodzaju punktu). ZK SN / słup / odgałęzienie
+      // to połączenia BEZ własnego pola stacyjnego — anti-islanding jest tu jedynym
+      // zabezpieczeniem przeciw wyspie, więc kontrola zostaje jawna.
       if (
-        (der.connection_side === 'nN' || der.connection_side === 'at_zksn'
-          || der.connection_side === 'at_branch_pole' || der.connection_side === 'at_cable_joint')
+        (der.connection_side === 'nN'
+          || (der.connection_side === 'dedicated_transformer'
+            && der.sn_connection_point_kind !== 'station_bus'))
         && (der.der_kind === 'PV' || der.der_kind === 'FW')
         && !der.catalogs.protection_catalog_ref
       ) {
         blockers.push({
           code: 'der.anti_islanding.required',
           message_pl:
-            `DER ${der.der_kind} po stronie ${der.connection_side} wymaga zabezpieczeń `
+            `DER ${der.der_kind} przyłączony ${punktPrzylaczeniaOpisPl(der)} wymaga zabezpieczeń `
             + `anti-islanding (27/59/81U/81O — IEEE 1547 / NC RfG Art. 14). `
             + `Brak zabezpieczeń uniemożliwia ochronę przed pracą wyspową.`,
           object_ref: der.id,
@@ -607,53 +570,10 @@ export function emptyReadinessMatrix(): DerReadinessMatrix {
 // Import mocy stacji — dana wejściowa oceny kierunku przepływu (V12K-226)
 // =============================================================================
 
-/**
- * Suma mocy czynnej ODBIORÓW przypisanych do stacji [kW], albo `null`, gdy
- * przypisania nie da się ustalić.
- *
- * DLACZEGO TA FUNKCJA ISTNIEJE (defekt, który ją wymusił). Ekran liczył import
- * stacji w miejscu wywołania, dwoma ZGADNIĘTYMI nazwami pól pod rzutowaniem
- * `as`, które wyłączyło kontrolę typów: filtrował odbiory po `station_ref`
- * (tego pola `Load` nie ma — należy do źródła z wariantem `nn_side`) i sumował
- * `nominal_power_kw ?? 0` (tego pola `Load` też nie ma — niesie `p_mw`).
- * Oba rzutowania dawały `undefined`, więc lista odbiorów była ZAWSZE pusta,
- * a import ZAWSZE zerowy. Ocena kierunku przepływu dzieli eksport przez import,
- * a przy imporcie zerowym stosunek jest nieskończony — więc KAŻDA stacja z DER
- * dostawała werdykt „krytyczny eksport" z żądaniem studium NC RfG ramp-down
- * i uzgodnienia z OSD, niezależnie od rzeczywistych odbiorów.
- *
- * PRZYPISANIE ODBIORU DO STACJI idzie prawdziwą drogą modelu: `Substation`
- * niesie `bus_refs`, a `Load` niesie `bus_ref` — odbiór należy do stacji, gdy
- * jego szyna jest jedną z szyn tej stacji.
- *
- * `null` ZNACZY „NIE WIEM", NIE „ZERO". Brak snapshotu albo stacja nieobecna w
- * modelu daje `null`, a wtedy oceny kierunku przepływu NIE WOLNO policzyć:
- * zero importu jest twierdzeniem o sieci (stacja bez odbiorów, cała generacja
- * idzie na eksport), a nie zapisem braku wiedzy.
- */
-export function sumStationLoadImportKw(
-  snapshot: {
-    readonly substations?: ReadonlyArray<{ readonly ref_id?: string; readonly bus_refs?: readonly string[] }>;
-    readonly loads?: ReadonlyArray<{ readonly bus_ref?: string; readonly p_mw?: number }>;
-  } | null,
-  stationId: string,
-): number | null {
-  if (!snapshot) return null;
-  const stacja = (snapshot.substations ?? []).find((s) => s.ref_id === stationId);
-  if (!stacja) return null;
-  const szyny = new Set(stacja.bus_refs ?? []);
-  if (szyny.size === 0) return null;
-
-  let sumaMw = 0;
-  for (const odbior of snapshot.loads ?? []) {
-    if (odbior.bus_ref === undefined || !szyny.has(odbior.bus_ref)) continue;
-    // `p_mw` jest w kontrakcie wymagane; brak wartości oznacza model niezgodny z
-    // kontraktem, więc nie zgadujemy zera — cały import staje się nieznany.
-    if (typeof odbior.p_mw !== 'number' || !Number.isFinite(odbior.p_mw)) return null;
-    sumaMw += odbior.p_mw;
-  }
-  return sumaMw * 1000;
-}
+// `sumStationLoadImportKw` USUNIĘTE kartą PROOFPACK-KONTRAKT: import mocy
+// stacji sumuje backend (`audit2_skladanie.moce_odbiorow_stacji_kw`) — ta sama reguła
+// (odbiór należy do stacji przez szyny `Substation.bus_refs`; stacja spoza modelu albo bez
+// szyn = import NIEZNANY, nie zero), przypięta testami backendu.
 
 // =============================================================================
 // Złożenie oceny DER z bramką MODELU (V12K-231, karta F-K8 faza 1)
@@ -720,10 +640,9 @@ export function zlozZBramkaModelu(
     }));
     return {
       ...os,
-      // Gorsza z dwóch ocen. `not_applicable` / `no_module` zostawiamy — bramka
-      // modelu nie czyni analizy DOTYCZĄCĄ wytwórcy, którego ona nie dotyczy.
-      status:
-        os.status === 'not_applicable' || os.status === 'no_module' ? os.status : 'blocked',
+      // Gorsza z dwóch ocen. `not_applicable` zostawiamy — bramka modelu nie
+      // czyni analizy DOTYCZĄCĄ wytwórcy, którego ona nie dotyczy.
+      status: os.status === 'not_applicable' ? os.status : 'blocked',
       blockers: [...os.blockers, ...powodyModelu],
     };
   });

@@ -1,20 +1,29 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
+from application.analyses.ocena_doboru_magistrali import (
+    OdcinekMagistrali,
+    ocen_dobor_magistrali,
+)
+from domain.generator_validation import (
+    BEZ_REDUKCJI,
+    JawneWejsciaKontroliMocy,
+    blad_wejsc_kontroli_mocy,
+    moc_pozorna_z_nastawy_mva,
+)
 from enm.der_sn_validation import (
-    DEFAULT_SIMULTANEITY_FACTOR,
-    DEFAULT_TRANSFORMER_LOADABILITY_PU,
     NN_VOLTAGE_TOLERANCE_KV,
     SN_VOLTAGE_TOLERANCE_KV,
-    converter_apparent_power_mva,
     rated_current_a,
 )
+from enm.nazwy_elementow import nazwa_pozycji_katalogu
 from fastapi import APIRouter, HTTPException
 from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
 from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
 from network_model.catalog.mv_transformer_catalog import get_sn_nn_transformer_types
+from network_model.pochodne import ka_na_a, kv_na_v, moc_zwarciowa_z_pradu_mva
 from network_model.solvers.cable_ampacity_derating import (
     NAZWA_WARUNKI_KATALOGOWE,
     NAZWA_WLASNE,
@@ -53,6 +62,7 @@ from network_model.solvers.transformer_rated_currents import (
     compute_transformer_rated_currents,
 )
 from pydantic import BaseModel, Field, model_validator
+from werdykt import OcenaKryterium
 
 router = APIRouter(tags=["grid-source-preview"])
 
@@ -69,12 +79,34 @@ class GridSourcePreviewRequest(BaseModel):
     rx_ratio: float | None = Field(default=None, ge=0)
     r_ohm: float | None = Field(default=None, ge=0)
     x_ohm: float | None = Field(default=None, gt=0)
+    # CV-4.3 K7: dane scenariusza MIN (addytywne) — podgląd oddaje blok ``min`` z DRUGIEGO
+    # wywołania tej samej zamrożonej funkcji; tryb impedancyjny nie ma wariantu MIN.
+    sk3_min_mva: float | None = Field(default=None, gt=0)
+    ik3_min_ka: float | None = Field(default=None, gt=0)
+    rx_ratio_min: float | None = Field(default=None, ge=0)
     zero_sequence_enabled: bool = False
     r0_ohm: float | None = Field(default=None, ge=0)
     x0_ohm: float | None = Field(default=None, gt=0)
     z0_z1_ratio: float | None = Field(default=None, gt=0)
     tk_s: float = Field(default=1.0, gt=0)
     tb_s: float = Field(default=0.1, gt=0)
+
+
+class GridSourcePreviewMinResponse(BaseModel):
+    """Blok scenariusza MIN podglądu (CV-4.3 K7): te same wielkości co dla MAX, policzone
+    zamrożonym solverem podglądu z S''_kQmin (albo S''_kQmin = √3·U·I''_kQmin dla danych
+    prądowych) i R/X = rx_ratio_min → rx_ratio."""
+
+    sk_mva: float
+    ik3_ka: float
+    ik1_ka: float | None
+    ip_ka: float
+    ith_ka: float
+    kappa: float
+    z1_ohm: ComplexOhmResponse
+    z0_ohm: ComplexOhmResponse | None
+    tryb_danych: Literal["MOC_ZWARCIOWA", "PRAD_ZWARCIOWY"]
+    rx_ratio_zrodlo: Literal["MODEL_MIN", "MODEL_MAX"]
 
 
 class GridSourcePreviewResponse(BaseModel):
@@ -87,6 +119,75 @@ class GridSourcePreviewResponse(BaseModel):
     z1_ohm: ComplexOhmResponse
     z0_ohm: ComplexOhmResponse | None
     formula_ref: str
+    #: CV-4.3 K7: ``None`` = nie podano danych MIN (scenariusz MIN biegu liczony z danych
+    #: MAX z jawnym założeniem ``source.sk_min_missing``). Nazwa ``scenariusz_min`` (nie
+    #: ``min``): nazwy pól kontraktów trafiają do inwentarza guarda podstawień.
+    scenariusz_min: GridSourcePreviewMinResponse | None = None
+
+
+def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinResponse | None:
+    if request.sk3_min_mva is None and request.ik3_min_ka is None:
+        if request.rx_ratio_min is not None:
+            raise ValueError(
+                "rx_ratio_min bez sk3_min_mva/ik3_min_ka nie ma zastosowania — scenariusz MIN "
+                "bez własnej mocy zwarciowej liczy się z danych MAX."
+            )
+        return None
+    if request.short_circuit_mode == "IMPEDANCE":
+        raise ValueError(
+            "Tryb impedancyjny (R+jX) nie ma wariantu MIN: dane sk3_min_mva/ik3_min_ka/"
+            "rx_ratio_min podaj w trybie mocy zwarciowej albo je usuń."
+        )
+    if request.sk3_min_mva is not None:
+        sk_min_mva = request.sk3_min_mva
+        tryb: Literal["MOC_ZWARCIOWA", "PRAD_ZWARCIOWY"] = "MOC_ZWARCIOWA"
+    else:
+        assert request.ik3_min_ka is not None
+        sk_min_mva = moc_zwarciowa_z_pradu_mva(
+            kv_na_v(request.voltage_kv), ka_na_a(request.ik3_min_ka)
+        )
+        tryb = "PRAD_ZWARCIOWY"
+    if request.sk3_mva is not None and sk_min_mva > request.sk3_mva:
+        raise ValueError(
+            f"Sk3 min ({sk_min_mva:g} MVA) przekracza Sk3 max ({request.sk3_mva:g} MVA) — dane "
+            "scenariusza minimalnego muszą być nie większe niż maksymalnego."
+        )
+    rx_min: float | None
+    rx_zrodlo: Literal["MODEL_MIN", "MODEL_MAX"]
+    if request.rx_ratio_min is not None:
+        rx_min, rx_zrodlo = request.rx_ratio_min, "MODEL_MIN"
+    else:
+        rx_min, rx_zrodlo = request.rx_ratio, "MODEL_MAX"
+    wynik = compute_grid_source_preview(
+        GridSourcePreviewInput(
+            voltage_kv=request.voltage_kv,
+            short_circuit_mode="SHORT_CIRCUIT_POWER",
+            sk3_mva=sk_min_mva,
+            rx_ratio=rx_min,
+            zero_sequence_enabled=request.zero_sequence_enabled,
+            r0_ohm=request.r0_ohm,
+            x0_ohm=request.x0_ohm,
+            z0_z1_ratio=request.z0_z1_ratio,
+            tk_s=request.tk_s,
+            tb_s=request.tb_s,
+        )
+    )
+    return GridSourcePreviewMinResponse(
+        sk_mva=wynik.sk_mva,
+        ik3_ka=wynik.ik3_ka,
+        ik1_ka=wynik.ik1_ka,
+        ip_ka=wynik.ip_ka,
+        ith_ka=wynik.ith_ka,
+        kappa=wynik.kappa,
+        z1_ohm=ComplexOhmResponse(r_ohm=wynik.z1_ohm.real, x_ohm=wynik.z1_ohm.imag),
+        z0_ohm=(
+            ComplexOhmResponse(r_ohm=wynik.z0_ohm.real, x_ohm=wynik.z0_ohm.imag)
+            if wynik.z0_ohm is not None
+            else None
+        ),
+        tryb_danych=tryb,
+        rx_ratio_zrodlo=rx_zrodlo,
+    )
 
 
 @router.post("/api/solver/grid-source-preview", response_model=GridSourcePreviewResponse)
@@ -110,6 +211,7 @@ def preview_grid_source_short_circuit(
                 tb_s=request.tb_s,
             )
         )
+        blok_min = _podglad_min(request)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -127,6 +229,7 @@ def preview_grid_source_short_circuit(
             else None
         ),
         formula_ref=result.formula_ref,
+        scenariusz_min=blok_min,
     )
 
 
@@ -236,6 +339,132 @@ def preview_cable_rated_current(
         apparent_power_kva=result.apparent_power_kva,
         formula_ref=result.formula_ref,
         assumptions=list(result.assumptions),
+    )
+
+
+class OdcinekMagistraliRequest(BaseModel):
+    """Odcinek magistrali SN z kreatora: typ z katalogu, długość, prąd roboczy, cosφ.
+
+    Parametry R, X i obciążalność NIE przychodzą z klienta — backend czyta je z katalogu po
+    `catalog_ref` (reguła katalogu). Pole puste = projektant nie podał wartości; ocena nazywa
+    brak (`NIE_OCENIONO`), niczego nie zgaduje.
+    """
+
+    rodzaj: Literal["KABEL", "LINIA"]
+    catalog_ref: str | None = None
+    dlugosc_m: float | None = Field(default=None, gt=0)
+    prad_roboczy_a: float | None = Field(default=None, gt=0)
+    cos_phi: float = Field(gt=0, le=1)
+    nazwa: str | None = None
+
+
+class OcenaDoboruMagistraliRequest(BaseModel):
+    """Ocena doboru przekroju odcinka bieżącego i ciągu (karta MAGISTRALA-OCENA).
+
+    `odcinki_zbudowane` — odcinki zapisane wcześniej w tej sesji kreatora, w kolejności od
+    startu ciągu; odcinek bieżący domyka ciąg.
+    """
+
+    napiecie_kv: float = Field(gt=0)
+    odcinek: OdcinekMagistraliRequest
+    odcinki_zbudowane: list[OdcinekMagistraliRequest] = Field(default_factory=list)
+
+
+class SpadekOdcinkaMagistraliResponse(BaseModel):
+    """Spadek napięcia odcinka bieżącego (WHITE BOX solvera) i prąd, przy którym policzony."""
+
+    prad_obliczeniowy_a: float
+    prad_z_obciazalnosci: bool
+    delta_u_v: float
+    delta_u_pct: float
+    r_total_ohm: float
+    x_total_ohm: float
+    delta_u_resistive_v: float
+    delta_u_reactive_v: float
+    formula_ref: str
+    assumptions: list[str]
+
+
+class CiagMagistraliResponse(BaseModel):
+    """Ciąg budowany w kreatorze: liczba odcinków, długość i spadek skumulowany (albo brak)."""
+
+    liczba_odcinkow: int
+    dlugosc_m: float | None
+    delta_u_v: float | None
+    delta_u_pct: float | None
+    formula_ref: str | None
+    assumptions: list[str]
+
+
+class OcenaDoboruMagistraliResponse(BaseModel):
+    """Podgląd liczb odcinka i ciągu + rekordy werdyktu wyjaśnialnego (poziom K).
+
+    `oceny_odcinka`: obciążalność długotrwała i spadek napięcia odcinka bieżącego;
+    `ocena_ciagu`: spadek skumulowany ciągu. Interfejs renderuje rekordy kartą werdyktu —
+    nie liczy statusu, progu ani sumy.
+    """
+
+    spadek_odcinka: SpadekOdcinkaMagistraliResponse | None
+    ciag: CiagMagistraliResponse
+    oceny_odcinka: list[OcenaKryterium]
+    ocena_ciagu: OcenaKryterium
+
+
+def _odcinek_magistrali(odcinek: OdcinekMagistraliRequest) -> OdcinekMagistrali:
+    return OdcinekMagistrali(
+        rodzaj=odcinek.rodzaj,
+        catalog_ref=odcinek.catalog_ref,
+        dlugosc_m=odcinek.dlugosc_m,
+        prad_roboczy_a=odcinek.prad_roboczy_a,
+        cos_phi=odcinek.cos_phi,
+        nazwa=odcinek.nazwa,
+    )
+
+
+@router.post(
+    "/api/solver/trunk-sizing-assessment",
+    response_model=OcenaDoboruMagistraliResponse,
+)
+def assess_trunk_sizing(request: OcenaDoboruMagistraliRequest) -> OcenaDoboruMagistraliResponse:
+    """Ocena doboru przekroju odcinka i ciągu magistrali SN rekordami werdyktu wyjaśnialnego."""
+    try:
+        ocena = ocen_dobor_magistrali(
+            napiecie_kv=request.napiecie_kv,
+            odcinek=_odcinek_magistrali(request.odcinek),
+            odcinki_zbudowane=[_odcinek_magistrali(o) for o in request.odcinki_zbudowane],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    spadek = ocena.spadek_odcinka
+    ciag = ocena.ciag
+    return OcenaDoboruMagistraliResponse(
+        spadek_odcinka=(
+            SpadekOdcinkaMagistraliResponse(
+                prad_obliczeniowy_a=spadek.prad_obliczeniowy_a,
+                prad_z_obciazalnosci=spadek.prad_z_obciazalnosci,
+                delta_u_v=spadek.wynik.delta_u_v,
+                delta_u_pct=spadek.wynik.delta_u_pct,
+                r_total_ohm=spadek.wynik.r_total_ohm,
+                x_total_ohm=spadek.wynik.x_total_ohm,
+                delta_u_resistive_v=spadek.wynik.delta_u_resistive_v,
+                delta_u_reactive_v=spadek.wynik.delta_u_reactive_v,
+                formula_ref=spadek.wynik.formula_ref,
+                assumptions=list(spadek.wynik.assumptions),
+            )
+            if spadek is not None
+            else None
+        ),
+        ciag=CiagMagistraliResponse(
+            liczba_odcinkow=ciag.liczba_odcinkow,
+            dlugosc_m=ciag.dlugosc_m,
+            delta_u_v=ciag.spadek.delta_u_v if ciag.spadek is not None else None,
+            delta_u_pct=ciag.spadek.delta_u_pct if ciag.spadek is not None else None,
+            formula_ref=ciag.spadek.formula_ref if ciag.spadek is not None else None,
+            assumptions=list(ciag.spadek.assumptions) if ciag.spadek is not None else [],
+        ),
+        oceny_odcinka=list(ocena.oceny_odcinka),
+        ocena_ciagu=ocena.ocena_ciagu,
     )
 
 
@@ -538,12 +767,17 @@ class FieldApparatusSelectionResponse(BaseModel):
 
 class DerSelectionPreviewRequest(BaseModel):
     sum_active_power_mw: float = Field(gt=0)
-    cos_phi: float | None = Field(default=None, gt=0, le=1)
+    # Decyzja O-53: dziedzinę cosφ, k_j i k_obc sprawdza JEDNA funkcja domenowa
+    # (`blad_wejsc_kontroli_mocy`, ta sama co w operacji dodania źródła) — nie osobne
+    # ograniczenia pól, które dawniej przepuszczały k_j > 1 odrzucane potem przez operację.
+    cos_phi: float | None = None
     inverter_output_kv: float = Field(gt=0)
     sn_bus_voltage_kv: float = Field(gt=0)
     cable_length_km: float = Field(gt=0)
-    simultaneity_factor: float = Field(default=DEFAULT_SIMULTANEITY_FACTOR, gt=0)
-    loadability_pu: float = Field(default=DEFAULT_TRANSFORMER_LOADABILITY_PU, gt=0)
+    # Decyzja O-53: brak jawnego współczynnika = 1,0, element neutralny (bez redukcji i bez
+    # ulgi) — ta sama stała co kontrola mocy operacji domenowych.
+    simultaneity_factor: float = BEZ_REDUKCJI
+    loadability_pu: float = BEZ_REDUKCJI
     transformer_reserve_pu: float = Field(default=0.0, ge=0)
     cable_reserve_pu: float = Field(default=0.0, ge=0)
     field_reserve_pu: float = Field(default=0.0, ge=0)
@@ -583,6 +817,21 @@ def _rejected_response(
     ]
 
 
+def _cos_phi_doboru_kabla(
+    zrodlo: DerSelectionPreviewRequest | JawneWejsciaKontroliMocy,
+) -> float:
+    """cosφ prądu toru w doborze kabla (ΔU): jawny cosφ falownika, a bez niego 1,0
+    (sama moc czynna — człon bierny ΔU znika).
+
+    JEDNA reguła dla podglądu kreatora (żądanie podglądu) i dla sprawdzenia odstępstw
+    dokumentu DER-SN (jawne wejścia zapisane przez tor tworzenia, `api/der_sn_documents.py`)
+    — dokument liczy propozycję kabla ponownie i porównuje ją z zastosowanym przekrojem;
+    przy innym cosφ niż w doborze (dawniej zaszyte 0,95) zgłaszałby odstępstwo od
+    propozycji, której kreator nigdy nie pokazał. Podstawienie 1,0 za brak cosφ jest
+    długiem nazwanym w `solver_input_substitute_guard` (jeden wpis dla obu miejsc)."""
+    return zrodlo.cos_phi if zrodlo.cos_phi is not None else 1.0
+
+
 def _block_transformer_candidates() -> tuple[BlockTransformerCandidate, ...]:
     candidates: list[BlockTransformerCandidate] = []
     for record in get_sn_nn_transformer_types():
@@ -595,7 +844,7 @@ def _block_transformer_candidates() -> tuple[BlockTransformerCandidate, ...]:
         candidates.append(
             BlockTransformerCandidate(
                 catalog_ref=str(record["id"]),
-                name=str(record.get("name", record["id"])),
+                name=nazwa_pozycji_katalogu(record),
                 sn_mva=float(sn_mva),
                 primary_kv=float(primary_kv),
                 secondary_kv=float(secondary_kv),
@@ -627,7 +876,7 @@ def _cable_candidates() -> tuple[CableCandidate, ...]:
         candidates.append(
             CableCandidate(
                 catalog_ref=str(record["id"]),
-                name=str(record.get("name", record["id"])),
+                name=nazwa_pozycji_katalogu(record),
                 cross_section_mm2=float(cross),
                 rated_current_a=float(ampacity),
                 r_ohm_per_km=float(r_km),
@@ -672,7 +921,7 @@ def _field_apparatus_candidates() -> tuple[FieldApparatusCandidate, ...]:
         candidates.append(
             FieldApparatusCandidate(
                 catalog_ref=str(record["id"]),
-                name=str(record.get("name", record["id"])),
+                name=nazwa_pozycji_katalogu(record),
                 equipment_kind=str(kind),
                 un_kv=float(un_kv),
                 in_a=float(in_a),
@@ -695,7 +944,10 @@ def list_cable_laying_conditions() -> CableLayingConditionsResponse:
     """
     view = widok_zestawow()
     return CableLayingConditionsResponse(
-        sets=[CableLayingConditionsSetResponse(**item) for item in view["sets"]],  # type: ignore[arg-type]
+        sets=[
+            CableLayingConditionsSetResponse(**item)
+            for item in cast(list[dict[str, Any]], view["sets"])
+        ],
         custom_name=str(view["custom_name"]),
         default_name=str(view["default_name"]),
         limitation_pl=str(view["limitation_pl"]),
@@ -711,12 +963,24 @@ def preview_der_selection(
 ) -> DerSelectionPreviewResponse:
     """Kaskadowy dobór toru DER-SN: TR blokowy → kabel SN → aparat pola SN.
 
-    ΣS liczy D1 `converter_apparent_power_mva` (ΣP·/cosφ). Prąd znamionowy TR
+    ΣS liczy człon nastawy kontroli mocy O-53 (`moc_pozorna_z_nastawy_mva`: ΣP/cosφ).
+    Podgląd nie zna karty jednostki ani liczby jednostek, więc człon S_n,jedn·n kontroli
+    operacji nie wchodzi tu do wymagania — operacja dodania źródła sprawdza go osobno.
+    Prąd znamionowy TR
     (strona SN) z D1 `rated_current_a`. Kabel i pole dobierane od prądu SN
     zaproponowanego TR (kaskada I_TR ≤ Iz ≤ In). Zero fizyki rozpływu/zwarcia.
     """
+    odmowa = blad_wejsc_kontroli_mocy(
+        JawneWejsciaKontroliMocy(
+            cos_phi=request.cos_phi,
+            wspolczynnik_jednoczesnosci=request.simultaneity_factor,
+            przeciazalnosc_transformatora_pu=request.loadability_pu,
+        )
+    )
+    if odmowa is not None:
+        raise HTTPException(status_code=422, detail=odmowa.komunikat_pl)
     try:
-        sum_apparent_power_mva = converter_apparent_power_mva(
+        sum_apparent_power_mva = moc_pozorna_z_nastawy_mva(
             request.sum_active_power_mw, request.cos_phi
         )
         tr_result = propose_block_transformer(
@@ -775,7 +1039,7 @@ def preview_der_selection(
             detail="Nie można wyznaczyć prądu znamionowego TR (moc/napięcie).",
         )
 
-    cos_phi_load = request.cos_phi if request.cos_phi is not None else 1.0
+    cos_phi_load = _cos_phi_doboru_kabla(request)
     try:
         # F-K7: nazwa zestawu / współczynniki własne → współczynniki. Nieznany zestaw i
         # brak opisu warunków własnych kończą się 422 (fail-closed), nie cichym
@@ -792,7 +1056,7 @@ def preview_der_selection(
             CableSelectionInput(
                 transformer_current_a=transformer_current_a,
                 length_km=request.cable_length_km,
-                line_voltage_v=request.sn_bus_voltage_kv * 1000.0,
+                line_voltage_v=kv_na_v(request.sn_bus_voltage_kv),
                 cos_phi=cos_phi_load,
                 candidates=_cable_candidates(),
                 reserve_pu=request.cable_reserve_pu,

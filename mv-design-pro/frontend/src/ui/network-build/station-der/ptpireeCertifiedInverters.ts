@@ -1,387 +1,219 @@
 /**
- * Rejestr certyfikatow PTPiREE dla falownikow i konwerterow DER.
+ * Rejestr certyfikowanych urządzeń PTPiREE (wykaz WiPWC) — WYŁĄCZNIE z backendu.
  *
- * To nie jest karta katalogowa urzadzenia. Wykaz PTPiREE potwierdza wpis
- * certyfikatu NC RfG/WOS w procesie przylaczeniowym, ale nie zastepuje danych
- * wykonawczych: Un, Sn, Ik, modelu dynamicznego, przekladnikow ani nastaw.
+ * JEDNA PRAWDA WYKAZU. Wykaz żyje w backendzie jeden raz
+ * (`network_model/catalog/ptpiree_wykaz_snapshot.json`, `mv_ptpiree_catalog.py`) i jest
+ * wystawiany końcówkami `GET /api/catalog/ptpiree/manifest` (źródła: wersje WiPWC, daty
+ * publikacji, liczności) oraz `GET /api/catalog/ptpiree/generator-certificates` (rekordy).
+ * Dawna druga kopia we froncie (artefakt generowany z PDF-ów, ~5 MB, druga projekcja
+ * generatora wykazu), trzecia — ręczna lista czternastu rekordów o identyfikatorach niezgodnych
+ * z backendem — i stałe źródeł z liczbami wpisanymi z ręki (suma „9077 pozycji źródłowych",
+ * nieodpowiadająca artefaktowi) zostały USUNIĘTE (karta AB-1a Pakiet D1, plan AB O-17).
+ *
+ * To nie jest karta katalogowa urządzenia. Wykaz PTPiREE potwierdza wpis certyfikatu
+ * NC RfG/WOS w procesie przyłączeniowym, ale nie zastępuje danych wykonawczych: Un, Sn, Ik,
+ * modelu dynamicznego, przekładników ani nastaw. Status certyfikatu urządzenia w modelu
+ * wyprowadza backend (`annotate_with_ptpiree_status`, relacja równości na znormalizowanych
+ * kluczach) — ten moduł niczego nie dopasowuje, tylko pokazuje wykaz.
+ *
+ * Kształt rekordów = odpowiedź API (`snake_case`), bez przepisywania nazw pól. Stan zapytania
+ * jest JAWNY (`ladowanie` / `blad` / `gotowy`): brak odpowiedzi backendu to „rejestr
+ * niedostępny", NIGDY pusta lista udająca „brak certyfikatów".
  */
 
-export type PtpireeSourceVersion = 'WiPWC 1.2' | 'WiPWC 1.3';
-export type PtpireeWosVersion = 'WOS 2018' | 'WOS 2025';
-export type PtpireeModuleType = 'A' | 'B' | 'C' | 'D';
+import { useMemo } from 'react';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-export interface PtpireeCertifiedDeviceSource {
-  readonly id: string;
-  readonly version: PtpireeSourceVersion;
-  readonly titlePl: string;
-  readonly publishedAt: string;
-  readonly acceptedFrom?: string;
-  readonly acceptedUntil?: string;
-  readonly sourceUrl: string;
-  readonly sourcePageUrl: string;
-  readonly sourceRecordCount: number;
-}
+// =============================================================================
+// Kontrakt API (lustro `backend/src/api/catalog.py` + `mv_ptpiree_catalog.py`)
+// =============================================================================
 
+export const PTPIREE_MANIFEST_URL = '/api/catalog/ptpiree/manifest';
+export const PTPIREE_CERTYFIKATY_URL = '/api/catalog/ptpiree/generator-certificates';
+
+/**
+ * Rekord wykazu — 1:1 `network_model/catalog/types.py::PtpireeGeneratorCertificate.to_dict()`.
+ * `ppm_scope` to typy modułów po przecinku (np. „A,B"); `wos_version` bywa puste (wykaz 1.2 nie
+ * podaje wersji WOS — backend jej nie zgaduje); `verification_note` (warunek ważności
+ * certyfikatu z wiersza wykazu) występuje tylko wtedy, gdy wiersz go niesie.
+ */
 export interface PtpireeCertifiedInverterItem {
   readonly id: string;
-  readonly sourceId: string;
-  readonly sourceVersion: PtpireeSourceVersion;
-  readonly sourceUrl: string;
-  readonly sourcePage: number;
-  readonly sourceRow: number;
-  readonly documentNumber: string;
-  readonly acceptanceDate: string;
-  readonly wosVersion?: PtpireeWosVersion;
+  readonly name: string;
   readonly manufacturer: string;
-  readonly deviceKind: string;
   readonly model: string;
-  readonly moduleTypes: readonly PtpireeModuleType[];
-  readonly firmware: string | null;
-  readonly sourceExcerpt?: string;
-  readonly certificateStatus: 'ptpiree_verified';
-  readonly electricalDataStatus: 'requires_datasheet';
+  readonly device_type: string;
+  readonly document_number: string;
+  readonly document_acceptance_date: string;
+  readonly wos_version: string;
+  readonly wipwc_version: string;
+  readonly ppm_scope: string;
+  readonly firmware_version: string | null;
+  readonly source_url: string;
+  readonly publication_date: string | null;
+  readonly accepted_from: string | null;
+  readonly manufacturer_key: string;
+  readonly model_key: string;
+  readonly verification_status: string;
+  readonly source_reference: string;
+  readonly catalog_status: string;
+  readonly contract_version: string;
+  readonly verification_note?: string;
 }
 
-const SOURCE_PAGE_URL = 'https://ptpiree.pl/kodeksy-sieci/wykaz-certyfikatow/';
-const WIPWC_1_3_URL = 'https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-08-Wykaz-urzadzen_1.3.pdf';
-const WIPWC_1_2_URL = 'https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-06-Wykaz-urzadzen_1.2.pdf';
+/** Źródło wykazu — 1:1 `get_ptpiree_catalog_manifest()["sources"][i]`. */
+export interface PtpireeManifestSource {
+  readonly source_id: string;
+  readonly wipwc_version: string;
+  readonly source_url: string;
+  readonly publication_date: string;
+  readonly record_count: number;
+}
 
-export const PTPIREE_CERTIFIED_DEVICE_SOURCES: readonly PtpireeCertifiedDeviceSource[] = Object.freeze([
-  {
-    id: 'ptpiree-wipwc-1-3-2026-05-08',
-    version: 'WiPWC 1.3',
-    titlePl: 'Wykaz urządzeń akceptowany od 01.11.2024',
-    publishedAt: '2026-05-08',
-    acceptedFrom: '2024-11-01',
-    sourceUrl: WIPWC_1_3_URL,
-    sourcePageUrl: SOURCE_PAGE_URL,
-    sourceRecordCount: 727,
-  },
-  {
-    id: 'ptpiree-wipwc-1-2-2026-05-06',
-    version: 'WiPWC 1.2',
-    titlePl: 'Wykaz urządzeń akceptowany do 31.12.2026',
-    publishedAt: '2026-05-06',
-    acceptedUntil: '2026-12-31',
-    sourceUrl: WIPWC_1_2_URL,
-    sourcePageUrl: SOURCE_PAGE_URL,
-    sourceRecordCount: 8350,
-  },
-]);
+/** Manifest wykazu — 1:1 `mv_ptpiree_catalog.get_ptpiree_catalog_manifest()`. */
+export interface PtpireeManifest {
+  readonly source: string;
+  readonly source_page_url: string;
+  readonly current_wipwc_version: string;
+  readonly publication_date: string;
+  readonly accepted_from: string;
+  readonly record_count: number;
+  readonly sources: readonly PtpireeManifestSource[];
+  readonly update_policy: string;
+  readonly integration_policy: string;
+}
 
-const MANUAL_PTPIREE_CERTIFIED_INVERTERS: readonly PtpireeCertifiedInverterItem[] = Object.freeze([
-  {
-    id: 'ptpiree-1-3-altenergy-ezhi',
-    sourceId: 'ptpiree-wipwc-1-3-2026-05-08',
-    sourceVersion: 'WiPWC 1.3',
-    sourceUrl: WIPWC_1_3_URL,
-    sourcePage: 1,
-    sourceRow: 8,
-    documentNumber: '4479923053408',
-    acceptanceDate: '05.02.2029',
-    wosVersion: 'WOS 2025',
-    manufacturer: 'ALTENERGY POWER SYSTEM INC.',
-    deviceKind: 'Falownik',
-    model: 'EZHI - tylko z modułem zdalnego pozyskiwania danych VCB-5131LN-WB',
-    moduleTypes: ['A'],
-    firmware: 'REV 1.0',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-  {
-    id: 'ptpiree-1-3-altenergy-ezhi-m',
-    sourceId: 'ptpiree-wipwc-1-3-2026-05-08',
-    sourceVersion: 'WiPWC 1.3',
-    sourceUrl: WIPWC_1_3_URL,
-    sourcePage: 1,
-    sourceRow: 9,
-    documentNumber: '4479923053408',
-    acceptanceDate: '05.02.2029',
-    wosVersion: 'WOS 2025',
-    manufacturer: 'ALTENERGY POWER SYSTEM INC.',
-    deviceKind: 'Falownik',
-    model: 'EZHI-M - tylko z modułem zdalnego pozyskiwania danych VCB-5131LN-WB',
-    moduleTypes: ['A'],
-    firmware: 'REV 1.0',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-  {
-    id: 'ptpiree-1-3-altenergy-ezhi-l',
-    sourceId: 'ptpiree-wipwc-1-3-2026-05-08',
-    sourceVersion: 'WiPWC 1.3',
-    sourceUrl: WIPWC_1_3_URL,
-    sourcePage: 1,
-    sourceRow: 10,
-    documentNumber: '4479923053408',
-    acceptanceDate: '05.02.2029',
-    wosVersion: 'WOS 2025',
-    manufacturer: 'ALTENERGY POWER SYSTEM INC.',
-    deviceKind: 'Falownik',
-    model: 'EZHI-L - tylko z modułem zdalnego pozyskiwania danych VCB-5131LN-WB',
-    moduleTypes: ['A'],
-    firmware: 'REV 1.0',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-  {
-    id: 'ptpiree-1-3-dunext-dn3h-25k-h3',
-    sourceId: 'ptpiree-wipwc-1-3-2026-05-08',
-    sourceVersion: 'WiPWC 1.3',
-    sourceUrl: WIPWC_1_3_URL,
-    sourcePage: 3,
-    sourceRow: 27,
-    documentNumber: '25-377-00',
-    acceptanceDate: '31.12.2026',
-    wosVersion: 'WOS 2018',
-    manufacturer: 'Dunext Technology Suzhou Co., Ltd.',
-    deviceKind: 'Falownik fotowoltaiczny z opcją akumulatora',
-    model: 'DN3H-25K-H3',
-    moduleTypes: ['A'],
-    firmware: 'V1.00',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-  {
-    id: 'ptpiree-1-3-ecoflow-powerocean-plus-29k9',
-    sourceId: 'ptpiree-wipwc-1-3-2026-05-08',
-    sourceVersion: 'WiPWC 1.3',
-    sourceUrl: WIPWC_1_3_URL,
-    sourcePage: 4,
-    sourceRow: 35,
-    documentNumber: '4929471.01COC V2.0',
-    acceptanceDate: '31.12.2026',
-    wosVersion: 'WOS 2018',
-    manufacturer: 'EcoFlow Inc.',
-    deviceKind: 'Inwerter hybrydowy',
-    model: 'EcoFlow PowerOcean Plus EF HD-P3-29K9-S1',
-    moduleTypes: ['A'],
-    firmware: '3.0.4.5',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-  {
-    id: 'ptpiree-1-3-solax-x3-aelio-50k',
-    sourceId: 'ptpiree-wipwc-1-3-2026-05-08',
-    sourceVersion: 'WiPWC 1.3',
-    sourceUrl: WIPWC_1_3_URL,
-    sourcePage: 61,
-    sourceRow: 660,
-    documentNumber: 'A3 50720988 0001',
-    acceptanceDate: '27.03.2031',
-    wosVersion: 'WOS 2025',
-    manufacturer: 'SolaX Power Network Technology (Zhejiang) Co., Ltd',
-    deviceKind: 'Hybrydowy falownik fotowoltaiczny',
-    model: 'X3-AELIO-50K',
-    moduleTypes: ['A', 'B'],
-    firmware: 'Master: 1.00, Manager: 1.00',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-  {
-    id: 'ptpiree-1-3-solax-x3-aelio-60k',
-    sourceId: 'ptpiree-wipwc-1-3-2026-05-08',
-    sourceVersion: 'WiPWC 1.3',
-    sourceUrl: WIPWC_1_3_URL,
-    sourcePage: 61,
-    sourceRow: 661,
-    documentNumber: 'A3 50720988 0001',
-    acceptanceDate: '27.03.2031',
-    wosVersion: 'WOS 2025',
-    manufacturer: 'SolaX Power Network Technology (Zhejiang) Co., Ltd',
-    deviceKind: 'Hybrydowy falownik fotowoltaiczny',
-    model: 'X3-AELIO-60K',
-    moduleTypes: ['A', 'B'],
-    firmware: 'Master: 1.00, Manager: 1.00',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-  {
-    id: 'ptpiree-1-3-srne-hesp4880shd3',
-    sourceId: 'ptpiree-wipwc-1-3-2026-05-08',
-    sourceVersion: 'WiPWC 1.3',
-    sourceUrl: WIPWC_1_3_URL,
-    sourcePage: 62,
-    sourceRow: 675,
-    documentNumber: '4487623053405',
-    acceptanceDate: '31.09.2029',
-    wosVersion: 'WOS 2025',
-    manufacturer: 'SRNE Solar Co., Ltd',
-    deviceKind: 'Falownik hybrydowy',
-    model: 'HESP4880SHD3',
-    moduleTypes: ['A'],
-    firmware: 'V9.40',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-  {
-    id: 'ptpiree-1-3-sungrow-sg250hx-20-logger4000',
-    sourceId: 'ptpiree-wipwc-1-3-2026-05-08',
-    sourceVersion: 'WiPWC 1.3',
-    sourceUrl: WIPWC_1_3_URL,
-    sourcePage: 63,
-    sourceRow: 690,
-    documentNumber: 'LS260035GCC-0',
-    acceptanceDate: '15.02.2031',
-    wosVersion: 'WOS 2025',
-    manufacturer: 'SUNGROW POWER SUPPLY CO., LTD.',
-    deviceKind: 'Falownik fotowoltaiczny z interfejsem komunikacyjnym',
-    model: 'SG250HX-20 + Logger4000',
-    moduleTypes: ['B'],
-    firmware: 'LCD_MALACHITE-S_V11_V01_A; MDSP_MALACHITE-S_V11_V01_A',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-  {
-    id: 'ptpiree-1-3-sungrow-sg250hx-20-cd',
-    sourceId: 'ptpiree-wipwc-1-3-2026-05-08',
-    sourceVersion: 'WiPWC 1.3',
-    sourceUrl: WIPWC_1_3_URL,
-    sourcePage: 64,
-    sourceRow: 697,
-    documentNumber: 'LS260036GCC-0',
-    acceptanceDate: '15.02.2031',
-    wosVersion: 'WOS 2025',
-    manufacturer: 'SUNGROW POWER SUPPLY CO., LTD.',
-    deviceKind: 'Falownik fotowoltaiczny',
-    model: 'SG250HX-20',
-    moduleTypes: ['C', 'D'],
-    firmware: 'LCD_MALACHITE-S_V11_V01_A; MDSP_MALACHITE-S_V11_V01_A',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-  {
-    id: 'ptpiree-1-3-weco-smart-3ph-15k',
-    sourceId: 'ptpiree-wipwc-1-3-2026-05-08',
-    sourceVersion: 'WiPWC 1.3',
-    sourceUrl: WIPWC_1_3_URL,
-    sourcePage: 65,
-    sourceRow: 709,
-    documentNumber: 'A3 50706748 0001',
-    acceptanceDate: '31.12.2026',
-    wosVersion: 'WOS 2018',
-    manufacturer: 'WeCo SRL',
-    deviceKind: 'Falownik hybrydowy',
-    model: 'SMART-3PH-15K',
-    moduleTypes: ['A'],
-    firmware: 'V0.1',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-  {
-    id: 'ptpiree-1-3-wuxi-wattsonic-matic-10kw-50a',
-    sourceId: 'ptpiree-wipwc-1-3-2026-05-08',
-    sourceVersion: 'WiPWC 1.3',
-    sourceUrl: WIPWC_1_3_URL,
-    sourcePage: 66,
-    sourceRow: 715,
-    documentNumber: '6179601.01COC V1.1',
-    acceptanceDate: '31.12.2026',
-    wosVersion: 'WOS 2018',
-    manufacturer: 'Wuxi Wattsonic Energy Technology Co., LTD.',
-    deviceKind: 'Inwerter hybrydowy',
-    model: 'MATIC-10KW-50A',
-    moduleTypes: ['A'],
-    firmware: 'V01.0.0',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-  {
-    id: 'ptpiree-1-2-zucchetti-azzurro-3ph-100ktl-v4',
-    sourceId: 'ptpiree-wipwc-1-2-2026-05-06',
-    sourceVersion: 'WiPWC 1.2',
-    sourceUrl: WIPWC_1_2_URL,
-    sourcePage: 832,
-    sourceRow: 8348,
-    documentNumber: 'U24-0355',
-    acceptanceDate: '31.12.2026',
-    manufacturer: 'Zucchetti Centro Sistemi SpA',
-    deviceKind: 'Falownik fotowoltaiczny',
-    model: 'AZZURRO 3PH 100KTL-V4',
-    moduleTypes: ['A', 'B', 'C', 'D'],
-    firmware: 'V000001',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-  {
-    id: 'ptpiree-1-2-zucchetti-azzurro-3ph-110ktl-v4',
-    sourceId: 'ptpiree-wipwc-1-2-2026-05-06',
-    sourceVersion: 'WiPWC 1.2',
-    sourceUrl: WIPWC_1_2_URL,
-    sourcePage: 833,
-    sourceRow: 8349,
-    documentNumber: 'U24-0355',
-    acceptanceDate: '31.12.2026',
-    manufacturer: 'Zucchetti Centro Sistemi SpA',
-    deviceKind: 'Falownik fotowoltaiczny',
-    model: 'AZZURRO 3PH 110KTL-V4',
-    moduleTypes: ['A', 'B', 'C', 'D'],
-    firmware: 'V000001',
-    certificateStatus: 'ptpiree_verified',
-    electricalDataStatus: 'requires_datasheet',
-  },
-]);
+/** Wykaz gotowy do użycia: manifest źródeł i pełna lista rekordów. */
+export interface RejestrPtpiree {
+  readonly manifest: PtpireeManifest;
+  readonly rejestr: readonly PtpireeCertifiedInverterItem[];
+}
 
-function mergePtpireeInverters(
-  items: readonly PtpireeCertifiedInverterItem[],
-): readonly PtpireeCertifiedInverterItem[] {
-  const seen = new Set<string>();
-  const merged: PtpireeCertifiedInverterItem[] = [];
-  for (const item of items) {
-    const sourceKey = `${item.sourceId}:${item.sourceRow}`;
-    if (seen.has(sourceKey)) continue;
-    seen.add(sourceKey);
-    merged.push(item);
+/** Jawny stan zapytania — konsument MUSI obsłużyć ładowanie i błąd (brak cichej pustej listy). */
+export type StanRejestruPtpiree<T> =
+  | { readonly stan: 'ladowanie' }
+  | { readonly stan: 'blad'; readonly komunikat: string }
+  | { readonly stan: 'gotowy'; readonly dane: T };
+
+async function pobierzJson(url: string): Promise<unknown> {
+  const odpowiedz = await fetch(url);
+  if (!odpowiedz.ok) {
+    throw new Error(
+      `Rejestr PTPiREE niedostępny: ${url} → HTTP ${odpowiedz.status} ${odpowiedz.statusText}`.trim(),
+    );
   }
-  return Object.freeze(merged);
+  return odpowiedz.json();
 }
 
-export const PTPIREE_CERTIFIED_INVERTERS: readonly PtpireeCertifiedInverterItem[] =
-  MANUAL_PTPIREE_CERTIFIED_INVERTERS;
+function jestObiektem(wartosc: unknown): wartosc is Record<string, unknown> {
+  return typeof wartosc === 'object' && wartosc !== null && !Array.isArray(wartosc);
+}
 
-let loadedPtpireeInverters: readonly PtpireeCertifiedInverterItem[] | null = null;
+/**
+ * Manifest wykazu. Odpowiedź spoza kontraktu (brak liczności albo listy źródeł) jest BŁĘDEM —
+ * nie „pustym wykazem".
+ */
+export async function fetchPtpireeManifest(): Promise<PtpireeManifest> {
+  const dane = await pobierzJson(PTPIREE_MANIFEST_URL);
+  if (!jestObiektem(dane) || typeof dane.record_count !== 'number' || !Array.isArray(dane.sources)) {
+    throw new Error('Rejestr PTPiREE niedostępny: manifest wykazu ma kształt spoza kontraktu API.');
+  }
+  return dane as unknown as PtpireeManifest;
+}
 
-export async function loadPtpireeCertifiedInverters(): Promise<
+/**
+ * Pełna lista rekordów wykazu. Odpowiedź niebędąca listą rekordów jest BŁĘDEM, nie pustym
+ * wykazem. Front zawęża listę lokalnie (`filterPtpireeCertifiedInverters`) — parametr `?search=`
+ * końcówki backendu służy klientom API, interfejs go nie używa.
+ */
+export async function fetchPtpireeCertifiedInverters(): Promise<
   readonly PtpireeCertifiedInverterItem[]
 > {
-  if (loadedPtpireeInverters) return loadedPtpireeInverters;
-  const generated = await import('./ptpireeCertifiedInverters.generated');
-  loadedPtpireeInverters = mergePtpireeInverters([
-    ...MANUAL_PTPIREE_CERTIFIED_INVERTERS,
-    ...generated.PTPIREE_GENERATED_CERTIFIED_INVERTERS,
-  ]);
-  return loadedPtpireeInverters;
+  const dane = await pobierzJson(PTPIREE_CERTYFIKATY_URL);
+  if (!Array.isArray(dane) || !dane.every((rekord) => jestObiektem(rekord) && typeof rekord.id === 'string')) {
+    throw new Error('Rejestr PTPiREE niedostępny: lista certyfikatów ma kształt spoza kontraktu API.');
+  }
+  return dane as unknown as readonly PtpireeCertifiedInverterItem[];
 }
+
+// =============================================================================
+// Hooki (React Query — ten sam wzorzec co `derRemoteCatalogs.ts`)
+// =============================================================================
+
+/** JEDNA definicja zapytania o manifest — wspólna dla obu hooków (ten sam klucz pamięci). */
+const ZAPYTANIE_MANIFESTU = {
+  queryKey: ['catalog', 'ptpiree', 'manifest'],
+  queryFn: fetchPtpireeManifest,
+  staleTime: Infinity,
+  gcTime: 60 * 60_000,
+} as const;
+
+function stanZapytania<T>(zapytanie: UseQueryResult<T, Error>): StanRejestruPtpiree<T> {
+  if (zapytanie.isError) return { stan: 'blad', komunikat: zapytanie.error.message };
+  if (zapytanie.data === undefined) return { stan: 'ladowanie' };
+  return { stan: 'gotowy', dane: zapytanie.data };
+}
+
+/** Manifest wykazu (źródła, daty, liczności) — bez pobierania rekordów. */
+export function usePtpireeManifest(): StanRejestruPtpiree<PtpireeManifest> {
+  return stanZapytania(useQuery(ZAPYTANIE_MANIFESTU));
+}
+
+/**
+ * Wykaz certyfikowanych urządzeń PTPiREE: manifest + pełna lista rekordów (potrzebna do odczytu
+ * pozycji po identyfikatorze `ptpiree_certificate_ref` z modelu i do filtra lokalnego). Wynik
+ * jest stabilny między renderami, dopóki odpowiedzi się nie zmienią.
+ */
+export function usePtpireeCertifiedInverters(): StanRejestruPtpiree<RejestrPtpiree> {
+  const manifest = useQuery(ZAPYTANIE_MANIFESTU);
+  const rekordy = useQuery({
+    queryKey: ['catalog', 'ptpiree', 'generator-certificates'],
+    queryFn: fetchPtpireeCertifiedInverters,
+    staleTime: Infinity,
+    gcTime: 60 * 60_000,
+  });
+  const stanManifestu = stanZapytania(manifest);
+  const stanRekordow = stanZapytania(rekordy);
+  const dane = useMemo<RejestrPtpiree | null>(
+    () =>
+      manifest.data !== undefined && rekordy.data !== undefined
+        ? { manifest: manifest.data, rejestr: rekordy.data }
+        : null,
+    [manifest.data, rekordy.data],
+  );
+  if (stanManifestu.stan === 'blad') return stanManifestu;
+  if (stanRekordow.stan === 'blad') return stanRekordow;
+  if (dane === null) return { stan: 'ladowanie' };
+  return { stan: 'gotowy', dane };
+}
+
+// =============================================================================
+// Funkcje czyste na rejestrze podanym przez wołającego (z hooka)
+// =============================================================================
 
 export function getPtpireeCertifiedInverter(
   id: string | null | undefined,
-  registry: readonly PtpireeCertifiedInverterItem[] = PTPIREE_CERTIFIED_INVERTERS,
+  registry: readonly PtpireeCertifiedInverterItem[],
 ): PtpireeCertifiedInverterItem | null {
   if (!id) return null;
   return registry.find((item) => item.id === id) ?? null;
 }
 
-export function getPtpireeSource(id: string): PtpireeCertifiedDeviceSource | null {
-  return PTPIREE_CERTIFIED_DEVICE_SOURCES.find((item) => item.id === id) ?? null;
-}
-
-export function getPtpireeSourceRecordCount(): number {
-  return PTPIREE_CERTIFIED_DEVICE_SOURCES.reduce(
-    (sum, source) => sum + source.sourceRecordCount,
-    0,
-  );
-}
-
+/**
+ * Etykieta pozycji wykazu. `null` = urządzenie w modelu nie ma powiązania z wykazem — tekst
+ * mówi to wprost (dawny tekst „certyfikat PTPiREE z pakietu katalogowego" sugerował
+ * certyfikat, którego model nie niesie).
+ */
 export function formatPtpireeCertificateLabel(
   item: PtpireeCertifiedInverterItem | null,
 ): string {
-  if (!item) return 'certyfikat PTPiREE z pakietu katalogowego';
-  return `${item.manufacturer} ${item.model} (${item.documentNumber})`;
+  if (!item) return 'brak powiązania z wykazem PTPiREE';
+  return `${item.manufacturer} ${item.model} (${item.document_number})`;
 }
 
 export function filterPtpireeCertifiedInverters(
   query: string,
-  registry: readonly PtpireeCertifiedInverterItem[] = PTPIREE_CERTIFIED_INVERTERS,
+  registry: readonly PtpireeCertifiedInverterItem[],
 ): readonly PtpireeCertifiedInverterItem[] {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return registry;
@@ -390,11 +222,12 @@ export function filterPtpireeCertifiedInverters(
     const haystack = [
       item.manufacturer,
       item.model,
-      item.documentNumber,
-      item.deviceKind,
-      item.sourceVersion,
-      item.sourceExcerpt ?? '',
-      item.moduleTypes.join(' '),
+      item.document_number,
+      item.device_type,
+      item.wipwc_version,
+      item.wos_version,
+      item.ppm_scope,
+      item.verification_note ?? '',
     ].join(' ').toLowerCase();
     const compactHaystack = haystack.replace(/[^a-z0-9]+/g, '');
     return haystack.includes(normalized) || compactHaystack.includes(compactQuery);

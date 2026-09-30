@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, within, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { KrokDowodu } from '../KrokDowodu';
 import { mapujKroki } from '../dowodModel';
 import { DOWOD_STRINGS } from '../strings';
@@ -49,6 +50,16 @@ describe('KrokDowodu — kanon pięciu pól', () => {
     expect(screen.queryByTestId('mvd-dowod-pole-uwagi')).not.toBeInTheDocument();
   });
 
+  it('krok TYLKO z prozą podstawienia (V12.6, bez substitution_latex) — proza renderuje się jako tekst, NIGDY przez MathBlock (karta V12.7 §0.1)', () => {
+    render(<KrokDowodu krok={model()[3]} trybZaawansowania="basic" />);
+    // Pole LaTeX (MathBlock) nie renderuje się dla prozy.
+    expect(screen.queryByTestId('mvd-dowod-pole-podstawienie')).not.toBeInTheDocument();
+    const poleTekst = screen.getByTestId('mvd-dowod-pole-podstawienie-tekst');
+    expect(poleTekst).toHaveTextContent('Macierz admitancyjna');
+    // Renderowana jako zwykły akapit — brak kontenera KaTeX/`data-latex`.
+    expect(poleTekst.querySelector('[data-latex]')).toBeNull();
+  });
+
   it('jednostka renderowana przy wartości', () => {
     render(<KrokDowodu krok={model()[1]} trybZaawansowania="basic" />);
     const wynik = screen.getByTestId('mvd-dowod-wynik');
@@ -72,11 +83,17 @@ describe('KrokDowodu — klucze nieznane a tryb zaawansowania', () => {
     expect(within(dane).queryByText('wspolczynnik_x')).not.toBeInTheDocument();
   });
 
-  it('tryb ekspercki: surowy klucz nieznany pokazany', () => {
+  // Karta #145: surowy klucz nie wraca na pierwszy plan nawet w trybie eksperckim —
+  // ekspert znajduje go w zwiniętych „Informacjach audytowych" kroku.
+  it('tryb ekspercki: klucz nieznany wyłącznie w informacjach audytowych kroku', async () => {
     render(<KrokDowodu krok={model()[1]} trybZaawansowania="expert" />);
     const dane = screen.getByTestId('mvd-dowod-dane');
-    expect(within(dane).getAllByTestId('mvd-dowod-wielkosc')).toHaveLength(4);
-    expect(within(dane).getByText('wspolczynnik_x')).toBeInTheDocument();
+    expect(within(dane).getAllByTestId('mvd-dowod-wielkosc')).toHaveLength(3);
+    expect(within(dane).queryByText('wspolczynnik_x')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('mvd-dowod-krok-informacje-audytowe-przelacz'));
+    expect(screen.getByTestId('mvd-dowod-krok-informacje-audytowe-lista').textContent).toContain(
+      'wspolczynnik_x',
+    );
   });
 });
 

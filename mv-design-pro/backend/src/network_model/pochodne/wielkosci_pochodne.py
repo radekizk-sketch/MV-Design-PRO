@@ -1,0 +1,424 @@
+"""Wielkości pochodne — jedno recenzowane miejsce dla formuł algebraicznych
+wyprowadzających JEDNĄ wielkość znamionową z DRUGIEJ, poza rdzeniami solverów
+(CV-4.3 K4, konstytucja C.2.3, karta ``karta_cv43_a3.md``).
+
+Po co: inwentarz klasy (``scratchpad/inwentarz_cv43.md``, sekcja D) zmierzył
+59 miejsc poza ``network_model/solvers/**``, które liczyły WŁASNYM wzorem
+jedną z rodzin: √3 (napięcie fazowe, prąd znamionowy z mocy pozornej),
+κ = 1,02 + 0,98·e^(−3R/X) (narracja podstawienia dowodu SC — WYŁĄCZNIE do
+LaTeX, K4.2), I²t / całka Joule'a, R·(1 + α·(θ−20)) (korekta temperaturowa
+IEC 60909-0), P/(√3·U·cosφ) i S = P/cosφ (moc/prąd znamionowy z cosφ),
+Z = U²/S (impedancja/prąd bazowy) — do 6 kopii DOSŁOWNIE tej samej linii
+(``u_phase_v = trafo.ulv_kv*1000.0/math.sqrt(3.0)``) w różnych plikach.
+
+Każda funkcja tutaj jest URUCHAMIALNĄ, PRZETESTOWANĄ kopią JEDNEGO zmierzonego
+oryginalnego wyrażenia — z DOKŁADNIE tą samą kolejnością działań zmienno-
+przecinkowych (patrz test tożsamości w
+``backend/tests/network_model/pochodne/test_wielkosci_pochodne.py``),
+więc podmiana inline → wywołanie funkcji jest bit w bit identyczna z kodem
+sprzed karty na wejściach z rejestru sieci i na wartościach brzegowych.
+
+Reguły (K4.1/K4.5, wiążące):
+- Moduł ADDYTYWNY: `git diff --stat` na ``network_model/solvers/**`` względem
+  bazy karty jest PUSTY — pakiet nie leży pod ``solvers/`` w ogóle (relokacja
+  architekta 2026-09-06, patrz niżej), więc drzewo rdzeni solverów zostaje
+  dosłownie nietknięte, nie tylko "addytywnie rozszerzone". Import z
+  ``pochodne/`` DO rdzeni solverów jest ZABRONIONY — rdzenie
+  (``short_circuit_iec60909.py``, ``power_flow_newton.py``, ...) nie mogą
+  zależeć od nowego kodu. Ten moduł importuje WYŁĄCZNIE ``math`` — jest
+  liściem grafu importów, więc może być bezpiecznie importowany NA POZIOMIE
+  MODUŁU z KAŻDEJ warstwy (domena, aplikacja, analiza, enm, api,
+  infrastructure, a także ``network_model/core/**``) bez ryzyka cyklu.
+- Dlaczego siostrzany katalog ``network_model/pochodne/``, a NIE
+  ``network_model/solvers/pochodne/``: ``network_model/solvers/__init__.py``
+  (FROZEN) gorliwie importuje WSZYSTKIE solvery, a solvery zależą od
+  ``network_model.core.graph.NetworkGraph``. Gdyby ``pochodne/`` leżało pod
+  ``solvers/``, import ``from network_model.solvers.pochodne import ...`` w
+  dowolnym pliku ``network_model/core/*.py`` (importowanym W TRAKCIE
+  inicjalizacji ``core/__init__.py``, PRZED pełnym zdefiniowaniem
+  ``NetworkGraph``) uruchamiałby ``solvers/__init__.py`` i wpadał w cykl —
+  jedynym obejściem byłby import odroczony do wnętrza funkcji (prowizorka,
+  zakazana przez „Zasady inżynierskie" pkt 7). Jako SIOSTRA ``core/`` i
+  ``solvers/`` (a nie potomek żadnego z nich), ``pochodne/`` nie zależy od
+  ``core`` ani nie jest importowana przez ``network_model/__init__.py``
+  (które importuje wyłącznie ``.core``) — więc jest prawdziwym liściem grafu
+  importów i każda warstwa, WŁĄCZNIE z ``network_model/core/**``, importuje
+  ją na poziomie modułu, bez odroczenia.
+- Czyste funkcje: bez efektów ubocznych, bez odczytu I/O, bez znajomości
+  domeny (Bus/Branch/ENM) — WYŁĄCZNIE liczby na wejściu i liczba na wyjściu.
+  Walidacja/decyzja (guard ``if x <= 0``, wybór trybu, zaokrąglenie wyniku do
+  wyświetlenia) zostaje u WOŁAJĄCEGO — tu jest wyłącznie sam wzór.
+- Kryterium (porównanie ``x <= y`` dwóch JUŻ policzonych wielkości) NIE jest
+  formułą i zostaje w analizie/aplikacji (K4.3) — np. ``equipment_proof/
+  generator.py`` woła ``calka_joule_ka2s`` stąd, ale werdykt PASS/FAIL liczy
+  sam (kryterialne porównanie, zgoda właściciela, Karta S-C 2026-07-22).
+- Kilka funkcji poniżej liczy TĘ SAMĄ wielkość fizyczną (np. prąd znamionowy
+  z mocy pozornej i napięcia) różnymi ścieżkami skalowania jednostek
+  (×1000 vs ×1e6/×1e3) — to NIE jest przypadkowa duplikacja: to dwie
+  NIEZALEŻNE sekwencje operacji zmiennoprzecinkowych zmierzone w oryginalnym
+  kodzie w różnych plikach, a wymóg bit w bit (karta CV-4.3-A3) zabrania
+  scalenia ich w jedną bez zmiany ostatniego bitu wyniku dla części wołających
+  (mnożenie/dzielenie w IEEE 754 jest przemienne, ale NIE łączne — inna
+  kolejność działań może dać inny wynik o 1 ULP). Docstring każdej takiej
+  funkcji nazywa siostrzaną funkcję i różnicę.
+"""
+
+from __future__ import annotations
+
+import math
+
+#: √3 — stała trójfazowa IEC 60909 (napięcie międzyprzewodowe ↔ fazowe, moc
+#: pozorna ↔ prąd). Eksportowana dla narracji podstawienia dowodu (K4.2) —
+#: `application/proof_engine/proof_generator.py` potrzebuje WARTOŚCI do
+#: wyrenderowania kroku LaTeX (Result i tak pochodzi ze śladu solvera).
+SQRT3: float = math.sqrt(3.0)
+
+#: √2 — stała szczytowa (i_p = κ·√2·I_k''). Jak wyżej: WYŁĄCZNIE narracja.
+SQRT2: float = math.sqrt(2.0)
+
+
+# =============================================================================
+# Rodzina A — napięcie fazowe i prąd z mocy pozornej/zwarciowej (√3)
+# =============================================================================
+
+
+def napiecie_fazowe_v(napiecie_miedzyprzewodowe_v: float) -> float:
+    """Napięcie fazowe z międzyprzewodowego: U_f = U_LL / √3 (dowolna spójna
+    jednostka napięcia — wołający skaluje ARGUMENT, nie wynik, żeby zachować
+    kolejność działań oryginału, np. ``napiecie_fazowe_v(ulv_kv * 1000.0)``).
+
+    Było 6 kopii DOSŁOWNIE tej samej linii (D.9 inwentarza CV-4.3):
+    ``u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)`` w
+    ``lv_circuit_verification_binding.py``, ``nn_device_selection.py``,
+    ``fault_loop/service.py`` (×3), ``swz/service.py`` — plus warianty w
+    ``domain/dobor_przekladnika.py`` i ``enm/canonical_analysis.py``.
+    """
+    return napiecie_miedzyprzewodowe_v / SQRT3
+
+
+def prad_z_mocy_pozornej_ka(moc_pozorna_mva: float, napiecie_miedzyprzewodowe_kv: float) -> float:
+    """Prąd z mocy pozornej: I = S / (√3·U), S[MVA], U[kV] → I[kA].
+
+    Ta sama formuła algebraiczna liczy zarówno prąd roboczy z mocy pozornej
+    (``proof_generator.py``, ``domain/units.py::i_base_ka``) jak i prąd
+    zwarciowy z mocy zwarciowej Ik'' = Sk''/(√3·Un) (``mv_source_catalog.py``,
+    ``enm/validator.py``) — to DOKŁADNIE ta sama para wielkości S i U, tylko
+    inne fizyczne pochodzenie S. Siostrzane funkcje dla INNEGO skalowania
+    jednostek (bit w bit RÓŻNE ścieżki zmiennoprzecinkowe): ``prad_roboczy_a``
+    (×1000, wynik w A) i ``prad_znamionowy_a`` (×1e6/×1e3, wynik w A).
+    """
+    return moc_pozorna_mva / (SQRT3 * napiecie_miedzyprzewodowe_kv)
+
+
+def prad_roboczy_a(moc_pozorna_mva: float, napiecie_miedzyprzewodowe_kv: float) -> float:
+    """Prąd roboczy z mocy pozornej: I = S·1000/(√3·U), S[MVA], U[kV] → I[A].
+
+    Wariant skalowania jednostek DOSŁOWNIE zmierzony w
+    ``application/analyses/nn_circuit_sheet.py::_ib_z_tabliczki`` (komentarz
+    ARKUSZ-NN: "Ib = S/(√3·U_LL)") i
+    ``application/analyses/protection/base_values/resolver.py`` (komentarz:
+    "Sn [MVA], Un [kV] → In [kA], więc ×1000 dla [A]"). Patrz
+    ``prad_z_mocy_pozornej_ka`` dla wariantu bez ×1000 (wynik w kA) i
+    ``prad_znamionowy_a`` dla wariantu ×1e6/×1e3 — trzy formuły matematycznie
+    równoważne, ale NIE bit-identyczne między sobą (inna kolejność
+    zaokrągleń), więc zostają trzema osobnymi funkcjami.
+    """
+    return moc_pozorna_mva * 1000.0 / (SQRT3 * napiecie_miedzyprzewodowe_kv)
+
+
+def prad_znamionowy_a(moc_pozorna_mva: float, napiecie_miedzyprzewodowe_kv: float) -> float:
+    """Prąd znamionowy z mocy pozornej: I = S·1e6/(√3·U·1e3), S[MVA], U[kV] →
+    I[A] (S→VA przez ×1e6, U→V przez ×1e3, osobno — inna ścieżka
+    zmiennoprzecinkowa niż ``prad_roboczy_a``'s ×1000 zbiorcze).
+
+    Współdzielona przez: prąd znamionowy maszyny synchronicznej/asynchronicznej
+    IEC 60909-0 §6.3/§6.7 (``network_model/core/machine.py::ir_a``), prąd
+    znamionowy z tabliczki DER (``enm/der_sn_validation.py::rated_current_a``),
+    prąd znamionowy generatora pełnoprzekształtnikowego
+    (``enm/mapping.py``) i prąd zwarciowy Ik''=Sk''/(√3·Un) w amperach dla
+    eksportu CGMES (``infrastructure/cgmes/cgmes_exporter.py::_ik_a`` —
+    ta sama formuła algebraiczna z inną fizyczną etykietą S, bit-identyczna
+    kolejność działań zweryfikowana testem tożsamości).
+    """
+    return moc_pozorna_mva * 1.0e6 / (SQRT3 * napiecie_miedzyprzewodowe_kv * 1.0e3)
+
+
+def prad_znamionowy_z_mocy_czynnej_a(
+    moc_czynna_w: float, napiecie_miedzyprzewodowe_v: float, cos_phi: float
+) -> float:
+    """Prąd znamionowy z mocy czynnej: In = P/(√3·U·cosφ), P[W], U[V] → I[A]
+    (rodzina F karty CV-4.3-A3 — kombinacja √3 i cosφ w jednym mianowniku).
+
+    Zmierzone w ``network_model/core/generator.py::GeneratorSN.
+    get_rated_current_a`` (jedyne miejsce z tą DOKŁADNĄ postacią poza
+    solverami — sprawdzone grepem na całym ``backend/src``).
+    """
+    return moc_czynna_w / (SQRT3 * napiecie_miedzyprzewodowe_v * cos_phi)
+
+
+def moc_zwarciowa_z_pradu_mva(napiecie_v: float, prad_a: float) -> float:
+    """Moc zwarciowa z prądu: Sk'' = √3·U·I / 1e6, U[V], I[A] → S[MVA]
+    (odwrotność ``prad_z_mocy_pozornej_ka``/``prad_znamionowy_a`` — tu
+    wyprowadzamy S z U i I, nie I z S i U).
+
+    Zmierzone w ``application/analyses/lv_domain/upstream_equivalent.py``
+    (rekonstrukcja mocy zwarciowej górnego poziomu z prądu Ikss policzonego
+    przez solver, do celów sprawozdawczych — sam Ikss pochodzi ze śladu SC).
+    """
+    return (SQRT3 * napiecie_v * prad_a) / 1_000_000.0
+
+
+def prad_fazy_z_mocy_i_napiecia_a(moc_pozorna_fazy_mva: float, napiecie_fazowe_kv: float) -> float:
+    """Prąd fazy z mocy pozornej JEDNEJ fazy i napięcia fazowego: I = S_f·1000/U_f,
+    S_f[MVA], U_f[kV] → I[A] (jednofazowy odpowiednik ``prad_roboczy_a``: bez √3,
+    bo moc i napięcie są już wielkościami jednej fazy).
+
+    Karta W5-D: prąd fazowy gałęzi rozpływu niesymetrycznego — solver FROZEN
+    ``power_flow_unbalanced.py`` oddaje moc S_f każdej fazy na początku gałęzi i
+    napięcie fazowe węzła w p.u.; wołający skaluje napięcie do kV (``napiecie_fazowe_v``
+    na U_LL·u_pu) i woła tę funkcję. Wynik jest MODUŁEM prądu (|S|/|U|).
+    """
+    return moc_pozorna_fazy_mva * 1000.0 / napiecie_fazowe_kv
+
+
+def impedancja_z_napiecia_i_pradu_ohm(napiecie_v: float, prad_a: float) -> float:
+    """Impedancja z napięcia międzyprzewodowego i prądu: Z = U/(√3·I), U[V],
+    I[A] → Z[Ω] (napięcie fazowe podzielone przez prąd — Ohm na fazę).
+
+    Zmierzone w ``network_model/core/machine.py::AsynchronousMachineSource.
+    z_abs_ohm`` jako część |Z_M| = (1/(I_LR/I_rM))·(U_rM/(√3·I_rM)) — ten
+    czynnik jest WEWNĘTRZNYM podwyrażeniem (U_rM·1e3)/(√3·I_rM); mnożnik
+    zewnętrzny (1/i_lr_ratio) zostaje u wołającego, żeby zachować dokładną
+    kolejność działań oryginału.
+    """
+    return napiecie_v / (SQRT3 * prad_a)
+
+
+# =============================================================================
+# Rodzina B — narracja podstawienia κ (WYŁĄCZNIE do LaTeX dowodu SC, K4.2)
+# =============================================================================
+
+
+def czlon_wykladniczy_kappa(stosunek_r_x: float) -> float:
+    """Człon wykładniczy współczynnika udaru κ: e^(−3·R/X).
+
+    UWAGA (K4.2): κ SAMO liczy WYŁĄCZNIE solver FROZEN
+    (``network_model/solvers/short_circuit_iec60909.py``) — ta funkcja
+    istnieje TYLKO po to, żeby Proof Engine pokazał liczbowe podstawienie w
+    LaTeX kroku dowodu (``\\kappa = 1.02 + 0.98 · e^{-3·R/X} = ...``); wynik
+    kroku (``ProofValue``) zawsze bierze κ z PARAMETRU (wynik solvera), nigdy
+    z tej funkcji. Luka śladu solvera (brak `exp_term` w White Box) zgłoszona
+    w meldunku karty jako B-01.
+    """
+    return math.exp(-3 * stosunek_r_x)
+
+
+def wspolczynnik_kappa(stosunek_r_x: float) -> float:
+    """Współczynnik udaru IEC 60909: κ = 1,02 + 0,98·e^(−3·R/X).
+
+    Formuła kanoniczna (IEC 60909-0:2016 §4.3.1.1), referencyjna — jedyna
+    implementacja κ poza solverem powinna istnieć TUTAJ; solver liczy κ we
+    własnym torze (frozen), a ta funkcja służy WYŁĄCZNIE narracji podstawienia
+    dowodu (patrz ``czlon_wykladniczy_kappa``), nigdy jako zamiennik wyniku
+    solvera.
+    """
+    return 1.02 + 0.98 * czlon_wykladniczy_kappa(stosunek_r_x)
+
+
+# =============================================================================
+# Rodzina C — całka Joule'a I²t
+# =============================================================================
+
+
+def calka_joule_ka2s(prad_ka: float, czas_s: float) -> float:
+    """Całka Joule'a (prąd zastępczy cieplny): I²t = I²·t, I[kA], t[s] →
+    [kA²s] (IEC 60909-0 §12 — definicja prądu zastępczego cieplnego I_th).
+
+    Formuła BEZ kryterium: porównanie ``wymagane <= dostępne`` zostaje u
+    wołającego (K4.3 — ``application/equipment_proof/generator.py`` liczy
+    werdykt PASS/FAIL z DWÓCH wywołań tej funkcji, zgoda właściciela Karta
+    S-C 2026-07-22).
+    """
+    return prad_ka**2 * czas_s
+
+
+# =============================================================================
+# Rodzina D — korekta temperaturowa rezystancji (IEC 60909-0)
+# =============================================================================
+
+
+def rezystancja_w_temperaturze(
+    rezystancja_w_20c_ohm: float,
+    wspolczynnik_alpha: float,
+    temperatura_c: float,
+    temperatura_odniesienia_c: float = 20.0,
+) -> float:
+    """Korekta temperaturowa rezystancji IEC 60909-0: R_θ = R20·[1 + α·(θ−20)].
+
+    Karta P0.3 (``application/solvers/lv_temperature_correction.py``,
+    scenariusz SHORT_CIRCUIT_MIN) — dekoruje WEJŚCIE solvera (kopiuje gałąź
+    z poprawionym R przed przekazaniem do FROZEN IEC 60909), nie jest
+    solverem. α domyślnie 0,004 [1/°C] dla miedzi/aluminium (stała u
+    wołającego, nie tutaj — formuła jest ogólna).
+    """
+    return rezystancja_w_20c_ohm * (
+        1.0 + wspolczynnik_alpha * (temperatura_c - temperatura_odniesienia_c)
+    )
+
+
+# =============================================================================
+# Rodzina E — moc pozorna/bierna z mocy czynnej i cosφ
+# =============================================================================
+
+
+def moc_pozorna_z_czynnej_mva(moc_czynna_mw: float, cos_phi: float) -> float:
+    """Moc pozorna z czynnej i cosφ: S = P/cosφ (tabliczka znamionowa, nie
+    fizyka pola — przybliżenie P≈S·cosφ używane przy materializacji katalogu,
+    walidacji DER i doborze przyłącza; kryterium ``cos_phi > 0`` zostaje u
+    wołającego).
+    """
+    return moc_czynna_mw / cos_phi
+
+
+def tan_phi_z_cos_phi(cos_phi: float) -> float:
+    """tanφ z cosφ: tanφ = tan(acos(cosφ)) — nastawa mocy biernej z zadanego
+    współczynnika mocy (polecenie OSD, tabliczka znamionowa katalogu).
+    """
+    return math.tan(math.acos(cos_phi))
+
+
+def moc_bierna_z_czynnej_i_cos_phi(moc_czynna_mw: float, cos_phi: float) -> float:
+    """Moc bierna z czynnej i cosφ: Q = P·tan(acos(cosφ)) (tabliczka
+    znamionowa katalogu — uzupełnienie Q, gdy katalog niesie WYŁĄCZNIE P i
+    cosφ znamionowy).
+
+    Zmierzone w ``enm/catalog_completion.py``, ``enm/domain_operations_v2.py
+    ::add_nn_load`` i ``enm/domain_operations.py`` (potrzeby własne stacji —
+    ta sama formuła, dwa niezależne dyspozytory V1/V2).
+    """
+    return moc_czynna_mw * tan_phi_z_cos_phi(cos_phi)
+
+
+# =============================================================================
+# Rodzina G — impedancja/moc bazowa Z = U²/S
+# =============================================================================
+
+
+def impedancja_z_napiecia_i_mocy_ohm(napiecie_kv: float, moc_mva: float) -> float:
+    """Impedancja z napięcia i mocy: Z = U²/S, U[kV], S[MVA] → Z[Ω].
+
+    Formuła bazy per-unit (Zbase = U²/Sbase, ``network_model/core/ybus.py``,
+    ``domain/units.py``, ``enm/zero_sequence_transformer.py``) i formuła
+    impedancji zastępczej źródła sieciowego z mocy zwarciowej
+    (Z = U²/Sk'', ``enm/mapping.py``) — TA SAMA formuła algebraiczna,
+    inna fizyczna etykieta S.
+    """
+    return napiecie_kv**2 / moc_mva
+
+
+def moc_bazowa_fazy_mva(moc_bazowa_trojfazowa_mva: float) -> float:
+    """Baza mocy JEDNEJ fazy z bazy trójfazowej: S_b,φ = S_b/3 [MVA].
+
+    Karta W5-D: solver FROZEN ``power_flow_unbalanced.py`` liczy na wielkościach
+    jednej fazy (``s_pu = p_mw_a/base_mva``), więc dostaje bazę jednej fazy —
+    S_b/3 razem z U_LL/√3 (``napiecie_fazowe_v``); Z_b = U_LL²/S_b jest wtedy
+    ta sama co w rozpływie trójfazowym (pomiar: baza trójfazowa dawała spadki 3× za
+    małe, `scratchpad/w5d_baza_solvera.py`).
+    """
+    return moc_bazowa_trojfazowa_mva / 3.0
+
+
+def impedancja_z_jednostek_wzglednych_ohm(
+    impedancja_pu: complex, napiecie_bazowe_kv: float, moc_bazowa_mva: float
+) -> complex:
+    """Impedancja w omach z jednostek względnych: Z[Ω] = z[pu]·U_base²/S_base
+    (U[kV], S[MVA]) — odwrotność ``impedancja_z_napiecia_i_mocy_ohm`` jako bazy
+    per-unit, TA SAMA baza co ``_ohm_to_pu`` solvera FROZEN
+    ``power_flow_unbalanced.py`` (``z_ohm / (base_kv**2 / base_mva)``). Tor
+    ``pu → Ω → pu`` (mnożenie i dzielenie przez tę samą bazę) NIE jest tożsamością
+    co do bitu — IEEE 754 daje do 1 ULP różnicy (pomiar w
+    ``tests/network_model/pochodne/test_skladowe_symetryczne.py``: błąd względny
+    ≤ 2,3·10⁻¹⁶ na siatce baz 0,4–110 kV × 1–100 MVA); to jest dokładność
+    reprezentacji, nie fizyki (karta W5-D: impedancja transformatora z IR w pu
+    podana solverowi BFS w Ω).
+    """
+    return impedancja_pu * (napiecie_bazowe_kv**2 / moc_bazowa_mva)
+
+
+def impedancja_odniesiona_do_napiecia_ohm(
+    impedancja_ohm: complex, napiecie_wlasne_kv: float, napiecie_odniesienia_kv: float
+) -> complex:
+    """Impedancja przeliczona na inny poziom napięcia: Z' = Z·(U_odn/U_wł)²
+    (przekładnia znamionowa transformatora idealnego; U w kV, wynik w Ω).
+
+    Karta W5-D: solver FROZEN ``power_flow_unbalanced.py`` ma JEDNĄ bazę napięcia
+    dla całej sieci, więc gałęzie nN sieci SN/nN muszą być podane w omach
+    odniesionych do bazy SN (a napięcia węzłów nN wracają w p.u. własnego
+    napięcia znamionowego) — standardowy rachunek per-unit z przekładnią
+    znamionową (Grainger & Stevenson, „Power System Analysis", §2.3).
+    """
+    return impedancja_ohm * (napiecie_odniesienia_kv / napiecie_wlasne_kv) ** 2
+
+
+# =============================================================================
+# Rodzina H — susceptancja z pojemności, B = 2πf·C (karta W3-F §0.6)
+# =============================================================================
+
+
+def susceptancja_z_pojemnosci_s_per_km(
+    pojemnosc_nf_per_km: float, czestotliwosc_hz: float
+) -> float:
+    """Susceptancja poprzeczna linii/kabla z pojemności jednostkowej:
+    B = 2π·f·C, C[nF/km], f[Hz] → B[S/km] (przelicznik nF→F wliczony: ×1e-9).
+
+    Do karty W3-F (2026-09-09) trzy NIEZALEŻNE kopie tej samej fizyki żyły
+    poza solverami, z π zaszytym jako literał ``3.14159`` w jednej z nich i
+    f = 50 Hz zaszytym literałem we WSZYSTKICH trzech:
+    ``network_model/catalog/types.py::CableType.b_us_per_km``
+    (``2 * 3.14159 * 50 * c_nf_per_km * 1e-3``, wynik w µS/km — inna ścieżka
+    skalowania, patrz niżej), ``enm/catalog_completion.py:451`` i
+    ``enm/domain_operations.py:2714`` (obie: ``2 * math.pi * 50.0 *
+    float(c_nf_per_km) * 1e-9``, wynik w S/km).
+
+    Ta funkcja jest KOPIĄ BIT W BIT toru ENM: ``math.pi`` (nie przybliżenie
+    dziesiętne 3,14159) i DOKŁADNIE ta sama kolejność działań
+    ``2 * math.pi * f * C * 1e-9`` co w ``catalog_completion.py``/
+    ``domain_operations.py`` dla f = 50,0 — patrz test tożsamości.
+    Częstotliwość NIE jest zaszyta tutaj — wołający przekazuje częstotliwość
+    studium (``header.defaults.frequency_hz`` ENM), więc przy f = 50 Hz wynik
+    jest bit w bit identyczny ze stanem sprzed karty, a przy f = 60 Hz (albo
+    innej częstotliwości studium) wynik odzwierciedla RZECZYWISTĄ fizykę
+    zamiast milcząco zakładać 50 Hz.
+
+    Była własność katalogowa ``CableType.b_us_per_km`` (µS/km, inny punkt
+    odniesienia jednostki niż S/km tej funkcji) usunięta w tej karcie: typ
+    katalogowy nie zna częstotliwości, więc nie mógł poprawnie liczyć B bez
+    zaszycia f — datum kabla to WYŁĄCZNIE ``c_nf_per_km``. Zamiast niej
+    metoda ``CableType.susceptancja_us_per_km(czestotliwosc_hz)`` woła TĘ
+    funkcję i skaluje wynik przez ``pochodne.jednostki.simens_na_mikrosimens``
+    — DOKŁADNIE ta sama sekwencja co tor ENM → ``enm/mapping.py:1016``.
+    """
+    return 2 * math.pi * czestotliwosc_hz * pojemnosc_nf_per_km * 1e-9
+
+
+# =============================================================================
+# Rodzina I — udział mocy w bazie znamionowej, q = Q/Pn (karta S-3 W6-0)
+# =============================================================================
+
+
+def udzial_mocy_biernej_pu(moc_bierna_mvar: float, moc_bazowa_mw: float) -> float:
+    """Udział mocy biernej w bazie mocy znamionowej: q = Q/Pn, Q[Mvar], Pn[MW]
+    → q[p.u. Pn] (bezwymiarowy, ze znakiem Q).
+
+    Normalizacja tabliczkowa (nie fizyka pola): solver testów NC RfG / PTPiREE
+    (``network_model/solvers/ncrfg_ptpiree/engine.py::_reactive_voltage_test``)
+    porównuje zakres Q modułu z profilem operatora W BAZIE Pn
+    (``q_range_pct_pn_min/max``, ``Qmin,kvar = Pmax,kW · q``). Model ENM
+    przechowuje granice Q generatora w Mvar bezwzględnych
+    (``generator.meta.q_min_mvar``/``q_max_mvar``, ta sama baza całkowita co
+    ``generator.p_mw`` — patrz ``enm/assembler.py`` granice węzła PV), więc most
+    model → wejście solvera (``application/ncrfg_compliance/model_bridge.py``)
+    liczy udział TĄ funkcją. Kryterium ``moc_bazowa_mw > 0`` zostaje u
+    wołającego (brak mocy = brak wejścia, nie dzielenie przez zero).
+    """
+    return moc_bierna_mvar / moc_bazowa_mw

@@ -1,0 +1,9 @@
+# KATALOG-NIEZMIENNIKI: aktywne sciezki KODU i aktywnych kontraktow (grupa `katalog_`).
+backend/src
+backend/tests
+frontend/src
+frontend/e2e
+scripts
+docs/system
+docs/domain
+docs/ui

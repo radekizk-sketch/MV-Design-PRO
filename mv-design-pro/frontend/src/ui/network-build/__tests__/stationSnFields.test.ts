@@ -8,10 +8,11 @@ import {
   stationSnFieldSpecs,
 } from '../stationSnFields';
 
-const station = {
+const station: Substation & { meta: Record<string, unknown> } = {
   id: 'st-1',
   ref_id: 'stn/st-1/station',
   name: 'Stacja testowa',
+  tags: [],
   station_type: 'mv_lv',
   bus_refs: ['bus-sn', 'bus-nn'],
   transformer_refs: [],
@@ -22,19 +23,20 @@ const station = {
       { field_ref: 'st-1/sn/tr', name: 'TR', bay_role: 'TR', bus_ref: 'bus-sn' },
     ],
   },
-} as Substation & { meta: Record<string, unknown> };
+};
 
 function bay(ref: string, role: Bay['bay_role']): Bay {
   return {
     id: ref,
     ref_id: ref,
     name: ref,
-    type: 'bay',
+    tags: [],
+    meta: {},
     substation_ref: station.ref_id,
     bay_role: role,
     bus_ref: 'bus-sn',
     equipment_refs: [],
-  } as Bay;
+  };
 }
 
 function readModelField(ref: string): FieldReadModelItem {
@@ -68,10 +70,10 @@ describe('stationSnFields', () => {
   });
 
   it('zostawia fallback do read-modelu, gdy stacja nie ma field_specs ani legacy bays', () => {
-    const stationWithoutSpecs = {
+    const stationWithoutSpecs: Substation & { meta: Record<string, unknown> } = {
       ...station,
       meta: {},
-    } as Substation & { meta: Record<string, unknown> };
+    };
     const fieldItems = Array.from({ length: 5 }, (_, index) =>
       readModelField(`field-${index + 1}`),
     );

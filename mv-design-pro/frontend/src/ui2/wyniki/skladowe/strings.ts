@@ -1,3 +1,5 @@
+import { etykietaPunktuNeutralnegoPL } from '../../../types/uziemienie';
+
 /*
  * Teksty PL ekranu „Składowe symetryczne i sieć zerowa" (dostawca E-29,
  * karta P-3, FLOW §0.3 „kontrakt ekranu prowadzącego"). Wyłącznie polski
@@ -70,11 +72,12 @@ export const SKLADOWE_STRINGS = {
 
   // Sekcja uziemienia punktu neutralnego.
   uziemienieTytul: 'Sposób uziemienia punktu neutralnego',
-  uziemienieOpis: 'Konfiguracja uziemienia z ZAMROŻONEJ wersji układu tego przebiegu '
-    + '(pola `grounding` szyn i `hv_neutral`/`lv_neutral` transformatorów modelu).',
-  uziemieniePunktu: 'Uziemienie wybranego punktu (szyna)',
+  uziemienieOpis: 'Konfiguracja uziemienia z zamrożonej wersji układu tego przebiegu '
+    + '(sposób uziemienia szyn oraz punktów neutralnych górnego i dolnego napięcia '
+    + 'transformatorów modelu).',
+  uziemieniePunktu: 'Uziemienie wybranego punktu (źródło na szynie)',
   uziemienieBrakPunktu: 'Model nie określa konfiguracji uziemienia dla szyny wybranego punktu.',
-  uziemienieSiec: 'Punkty neutralne w sieci (szyny i transformatory)',
+  uziemienieSiec: 'Punkty neutralne w sieci (źródła i transformatory)',
   uziemienieBrakSieci: 'Zamrożona wersja układu nie zawiera żadnej jawnej konfiguracji '
     + 'uziemienia punktu neutralnego. Uzupełnij dane uziemienia w modelu sieci, '
     + 'aby raport sieci zerowej był kompletny.',
@@ -83,6 +86,7 @@ export const SKLADOWE_STRINGS = {
   uziemienieAkcjaModel: 'Przejdź do modelu sieci',
   uziemienieStronaGN: 'strona GN',
   uziemienieStronaDN: 'strona DN',
+  uziemienieZrodlo: 'punkt neutralny sieci SN (źródło)',
   uziemienieRezystancja: 'R',
   uziemienieReaktancja: 'X',
 
@@ -108,19 +112,8 @@ export const SKLADOWE_STRINGS = {
   kreska: '—',
 } as const;
 
-/**
- * Słownik PL sposobów uziemienia punktu neutralnego. Klucze = tokeny
- * `GroundingConfig.type` z ENM (enm/models.py:21-24 / types/enm.ts:12-16).
- * Token nierozpoznany pokazywany dosłownie (dane, nie literał UI).
- */
-const UZIEMIENIE_PL: Record<string, string> = {
-  isolated: 'punkt neutralny izolowany',
-  petersen_coil: 'cewka Petersena (kompensacja ziemnozwarciowa)',
-  directly_grounded: 'uziemiony bezpośrednio',
-  resistor_grounded: 'uziemiony przez rezystor',
-};
-
-/** Mapuje token uziemienia ENM na polską nazwę (read-only, bez fizyki). */
+/** Mapuje token uziemienia ENM na polską nazwę — JEDEN słownik (`types/uziemienie.ts`,
+ *  W5-A); token nierozpoznany pokazywany dosłownie (dane, nie literał UI). */
 export function uziemieniePL(token: string): string {
-  return UZIEMIENIE_PL[token] ?? token;
+  return etykietaPunktuNeutralnegoPL(token);
 }

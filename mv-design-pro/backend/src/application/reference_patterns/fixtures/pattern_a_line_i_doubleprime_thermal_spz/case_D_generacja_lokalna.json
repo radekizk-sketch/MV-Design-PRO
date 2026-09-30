@@ -1,0 +1,55 @@
+{
+  "_description": "Wzorzec A — Przypadek D: GRANICZNE przez ryzyko blokady ZSZ od generacji lokalnej (E-L)",
+  "_pattern_id": "RP-LINE-I2-THERMAL-SPZ",
+  "_expected_verdict": "GRANICZNE",
+  "_notes_pl": "Nowy przypadek (karta W3-C2) — jedyny fixture wzorca A wykorzystujacy rozszerzenie `generacja_lokalna` silnika Hoppla. Okno nastaw I>> szerokie i prawidlowe (jak w case A), SPZ dozwolone — jedynym powodem GRANICZNE jest ryzyko blokady ZSZ: wklad generatora synchronicznego stanowi 32% laczonego pradu zwarciowego, powyzej jawnie podanego progu 30%.",
+
+  "line_id": "linia-ref-d-generacja-lokalna",
+  "line_name": "Linia SN 15kV GPZ Zachod - stacja z generatorem synchronicznym (referencja generacja lokalna E-L)",
+
+  "cross_section_mm2": 150.0,
+  "conductor_material": "Al",
+  "length_km": 5.0,
+  "i_nominal_a": 300.0,
+
+  "ik3_max_beginning_a": 10000.0,
+  "ik3_min_beginning_a": 3000.0,
+  "ik3_max_end_a": 5000.0,
+  "ik3_min_end_a": 1600.0,
+  "ik2_min_end_a": 1400.0,
+  "ik_max_next_bus_a": 1200.0,
+
+  "i_load_max_a": 160.0,
+
+  "delta_t_s": 0.3,
+  "k_b": 1.2,
+  "k_bth": 1.1,
+  "t_upstream_s": 0.0,
+  "spz_enabled": true,
+  "spz_pause_s": 0.5,
+
+  "lokalna_generacja_aktywna": true,
+  "lokalna_generacja_typ_zrodla": "SYNCHRONICZNE",
+  "lokalna_generacja_wklad_a": 3200.0,
+  "lokalna_generacja_prog_udzialu_zsz": 0.3,
+
+  "_expected_results": {
+    "_comment": "Z faktycznego przebiegu ProtectionSettingsEngine.calculate() (karta W3-C2)",
+    "i_min_sel_primary_a": 1440.0,
+    "i_max_sens_primary_a": 2500.0,
+    "window_i_min_primary_a": 1440.0,
+    "window_i_max_primary_a": 2500.0,
+    "window_valid": true,
+    "spz_allowed": true,
+    "generacja_lokalna_udzial_el": 0.32,
+    "generacja_lokalna_ryzyko_zsz": true,
+    "verdict": "GRANICZNE"
+  },
+
+  "_calculation_trace": {
+    "_step_1_window": "Identyczne dane oknowe jak case A => okno [1440, 2500] A, szerokie, prawidlowe",
+    "_step_2_spz": "ik3_max_beginning_a=10000 A, t_total=0.6s, Ithdop=18201.7 A => 10000 <= 18201.7 => SPZ dozwolone",
+    "_step_3_generacja_lokalna": "wklad_el=3200 A, prad_lacznie=10000 A => udzial_el=0.32 (32%) >= prog 0.30 (30%) => ryzyko_blokady_zsz=True",
+    "_step_4_verdict": "Okno prawidlowe i szerokie, SPZ dozwolone, ALE ryzyko blokady ZSZ => GRANICZNE (jedyny powod)"
+  }
+}

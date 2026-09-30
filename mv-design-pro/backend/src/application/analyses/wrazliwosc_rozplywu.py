@@ -46,15 +46,16 @@ from analysis.normative.models import NormativeConfig
 from analysis.sensitivity.builder import SensitivityBuilder
 from analysis.voltage_profile.builder import VoltageProfileBuilder
 from analysis.voltage_profile.models import VoltageProfileContext, VoltageProfileView
+from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 
 # Jedno źródło odtwarzania wyniku FROZEN i grafu ze snapshotu przebiegu
 # (KLASA-NIE-INSTANCJA: druga kopia mapowania byłaby defektem oczekującym
 # na rozjazd konwencji — import świadomy, funkcje współdzielone w pakiecie).
-from application.analyses.energy_validation.service import (
-    _graph,
-    _reconstruct_power_flow_result,
-)
-from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
+# Karta W3-G2: wyodrębnione z energy_validation.service do dedykowanego modułu
+# (sanity-bounds rozpływu potrzebuje dokładnie tej samej pary wynik/graf).
+from application.analyses.power_flow_reconstruction import graf_z_biegu, wynik_rozplywu_z_biegu
+from application.nazwy_biegu import nazwa_projektu_z_migawki
 from application.proof_engine.proof_generator import (
     LoadFlowBusInput,
     LoadFlowElementInput,
@@ -63,27 +64,28 @@ from application.proof_engine.proof_generator import (
 )
 from application.proof_engine.types import LoadElementKind, ProofDocument
 from enm.canonical_analysis import CanonicalRun
+from enm.nazwy_elementow import nazwa_galezi_bez_nazwy, opis_bez_nazwy
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.nazwy import nazwa_nadana
 
 
 def _wymagaj_biegu_rozplywu(run: CanonicalRun) -> None:
     if run.analysis_type != "PF":
         raise ValueError(
             "Analiza wrażliwości wymaga przebiegu rozpływu mocy; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik rozpływu mocy nie jest dostępny."
         )
 
 
 def _nazwa_projektu(run: CanonicalRun) -> str | None:
     header = (run.snapshot or {}).get("header") or {}
-    nazwa = header.get("name")
-    return str(nazwa) if nazwa else None
+    return nazwa_nadana(header.get("name"))
 
 
 def _kontekst_profilu(run: CanonicalRun) -> VoltageProfileContext:
@@ -99,6 +101,18 @@ def _kontekst_profilu(run: CanonicalRun) -> VoltageProfileContext:
     )
 
 
+def _nazwa_galezi_grafu(branch: Any) -> str:
+    """Nazwa gałęzi grafu biegu (z modelu) albo opis jej rodzaju — nigdy identyfikator."""
+    nazwa = nazwa_nadana(branch.name)
+    if nazwa is not None:
+        return nazwa
+    if branch.branch_type == BranchType.TRANSFORMER:
+        return opis_bez_nazwy("transformers")
+    if branch.branch_type == BranchType.CABLE:
+        return nazwa_galezi_bez_nazwy("cable")
+    return nazwa_galezi_bez_nazwy("line_overhead")
+
+
 def _rodzaj_elementu(branch_type: BranchType) -> LoadElementKind:
     if branch_type == BranchType.CABLE:
         return LoadElementKind.CABLE
@@ -112,6 +126,8 @@ def _zloz_wejscie_dowodu(
     graph: NetworkGraph,
     node_voltage_kv: dict[str, float],
     branch_s_to_mva: dict[str, complex],
+    *,
+    nazwa_przypadku: str,
 ) -> LoadFlowVoltageInput:
     """Złóż wejście dowodu spadków napięć z danych przebiegu (czyste mapowanie)."""
     buses: list[LoadFlowBusInput] = []
@@ -119,7 +135,15 @@ def _zloz_wejscie_dowodu(
         node = graph.nodes[node_id]
         u_nom = float(node.voltage_level) if node.voltage_level > 0 else None
         u_ll = node_voltage_kv.get(node_id)
-        buses.append(LoadFlowBusInput(bus_id=node_id, u_ll_kv=u_ll, u_nom_kv=u_nom))
+        buses.append(
+            LoadFlowBusInput(
+                bus_id=node_id,
+                u_ll_kv=u_ll,
+                u_nom_kv=u_nom,
+                # Nazwa szyny z grafu biegu (z modelu) albo opis rodzaju (karta #144).
+                nazwa=nazwa_nadana(node.name) or opis_bez_nazwy("buses"),
+            )
+        )
 
     elements: list[LoadFlowElementInput] = []
     for branch_id in sorted(graph.branches):
@@ -160,13 +184,16 @@ def _zloz_wejscie_dowodu(
                 q_mvar=q_mvar,
                 u_nom_kv=u_nom_kv,
                 u_ll_kv=node_voltage_kv.get(branch.to_node_id),
+                nazwa=_nazwa_galezi_grafu(branch),
             )
         )
 
     result_v1 = (run.raw_result or {}).get("result_v1") or {}
     return LoadFlowVoltageInput(
-        project_name=_nazwa_projektu(run) or "",
-        case_name=str(run.case_id) if run.case_id else "",
+        # Nagłówek dowodu: nazwa modelu z migawki i nazwa przypadku z bazy (od wołającego),
+        # nigdy identyfikator przypadku ani pusty napis (karta #144).
+        project_name=nazwa_projektu_z_migawki(run.snapshot),
+        case_name=nazwa_przypadku,
         run_timestamp=run.created_at,
         solver_version=str(result_v1.get("solver_version") or ""),
         buses=buses,
@@ -175,11 +202,14 @@ def _zloz_wejscie_dowodu(
 
 
 def _zloz_widoki(
-    run: CanonicalRun,
+    run: CanonicalRun, *, nazwa_przypadku: str
 ) -> tuple[ProofDocument, VoltageProfileView, NetworkGraph]:
-    """Wspólny fundament: dowód spadków napięć + profil napięć z przebiegu PF."""
-    pf_result = _reconstruct_power_flow_result(run)
-    graph = _graph(run)
+    """Wspólny fundament: dowód spadków napięć + profil napięć z przebiegu PF.
+
+    ``nazwa_przypadku`` — nazwa przypadku do nagłówka dowodu (z bazy u wołającego).
+    """
+    pf_result = wynik_rozplywu_z_biegu(run)
+    graph = graf_z_biegu(run)
 
     profil = VoltageProfileBuilder(graph=graph, context=_kontekst_profilu(run)).build(
         pf_result,
@@ -190,6 +220,7 @@ def _zloz_widoki(
         graph,
         pf_result.node_voltage_kv,
         pf_result.branch_s_to_mva,
+        nazwa_przypadku=nazwa_przypadku,
     )
     # artifact_id = run.id → determinizm dowodu per przebieg (dwa wywołania
     # identyczne), bez losowego uuid4 wewnątrz generatora.
@@ -197,15 +228,18 @@ def _zloz_widoki(
     return dowod, profil, graph
 
 
-def build_wrazliwosc_view(run: CanonicalRun) -> dict[str, Any]:
+def build_wrazliwosc_view(run: CanonicalRun, *, nazwa_przypadku: str) -> dict[str, Any]:
     """Zbuduj widok wrażliwości (LF + ogólna) dla przebiegu rozpływu.
+
+    ``nazwa_przypadku`` — nazwa przypadku obliczeniowego z bazy (granica API), do nagłówka
+    dowodu spadków napięć, z którego wrażliwość bierze kontekst (karta #144).
 
     Raises:
         ValueError: gdy przebieg nie jest rozpływem (``PF``) lub nie został
             zakończony — komunikat w języku polskim.
     """
     _wymagaj_biegu_rozplywu(run)
-    dowod, profil, graph = _zloz_widoki(run)
+    dowod, profil, graph = _zloz_widoki(run, nazwa_przypadku=nazwa_przypadku)
 
     lf = LFSensitivityBuilder().build(dowod, profil, None)
     # Wejścia zabezpieczeniowe i raport normatywny nieprodukowalne z biegu PF —
@@ -216,7 +250,7 @@ def build_wrazliwosc_view(run: CanonicalRun) -> dict[str, Any]:
     # w UI; identyfikator zostaje dla trybu eksperckiego).
     wezly = {
         node_id: {
-            "name": node.name or None,
+            "name": nazwa_nadana(node.name),
             "u_nom_kv": float(node.voltage_level) if node.voltage_level > 0 else None,
         }
         for node_id, node in sorted(graph.nodes.items())

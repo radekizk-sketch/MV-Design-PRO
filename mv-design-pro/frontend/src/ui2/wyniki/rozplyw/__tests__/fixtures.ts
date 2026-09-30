@@ -8,12 +8,39 @@
  */
 
 import type {
+  KryteriaNapieciowe,
   PowerFlowBranchResult,
   PowerFlowBusResult,
   PowerFlowResultV1,
   PowerFlowRunHeader,
 } from '../../../../ui/power-flow-results/types';
 import type { WalidacjaItem, WalidacjaResponse } from '../../jakosc/api';
+
+/**
+ * Fixture kryteriów napięciowych (karta W3-J) — 1:1 z kontraktem
+ * `KryteriaNapieciowe` (`analysis/normative/kryteria_napiecia.py`
+ * ::zbuduj_kryteria_napiecia().to_dict()`). Wartości domyślne = liczby
+ * z jednego źródła prawdy (5 % ostrzeżenie, 10 % przekroczenie).
+ */
+export function kryteriaNapieciaFixture(
+  over: Partial<KryteriaNapieciowe> = {},
+): KryteriaNapieciowe {
+  return {
+    ostrzezenie_pct: 5.0,
+    przekroczenie_pct: 10.0,
+    ostrzezenie_min_pu: 0.95,
+    ostrzezenie_max_pu: 1.05,
+    przekroczenie_min_pu: 0.9,
+    przekroczenie_max_pu: 1.1,
+    podstawa_ostrzezenie_pl:
+      'Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby ' +
+      'napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un.',
+    podstawa_przekroczenie_pl:
+      'PN-EN 50160 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %.',
+    pasmo_wiarygodnosci_pct: 10.0,
+    ...over,
+  };
+}
 
 export function busResultFixture(over: Partial<PowerFlowBusResult> = {}): PowerFlowBusResult {
   return {
@@ -88,6 +115,7 @@ export function powerFlowResultFixture(
       slack_p_mw: 10.5,
       slack_q_mvar: 2.4,
     },
+    kryteria_napiecia: kryteriaNapieciaFixture(),
     ...over,
   };
 }
@@ -110,11 +138,15 @@ export function walidacjaItemFixture(over: Partial<WalidacjaItem> = {}): Walidac
     margin_pct: 8.0,
     status: 'WARNING',
     why_pl: 'Obciążenie gałęzi 92% — powyżej progu ostrzeżenia 80%.',
+    // Ksztalt 1:1 z buildera (R3-D): { tekst, latex } — patrz `jakosc/__tests__/fixtures.ts`.
     white_box: [
-      'Wzor: obciazenie = S / S_dop * 100%',
-      'Wynik: obciazenie = 92.00 %',
-      'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %',
-      'Werdykt: OSTRZEZENIE',
+      { tekst: 'Wzor: obciazenie = S / S_dop * 100%', latex: '\\text{obciazenie} = \\frac{S}{S_{dop}} \\cdot 100\\%' },
+      {
+        tekst: 'Wynik: obciazenie = 92.00 %',
+        latex: '\\text{obciazenie} = \\frac{S}{S_{dop}} \\cdot 100\\% = 92.00\\%',
+      },
+      { tekst: 'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %', latex: null },
+      { tekst: 'Werdykt: OSTRZEZENIE', latex: null },
     ],
     ...over,
   };
@@ -136,10 +168,13 @@ export function walidacjaResponseFixture(
       status: 'PASS',
       why_pl: 'Obciążenie gałęzi 65% — poniżej progu ostrzeżenia 80%.',
       white_box: [
-        'Wzor: obciazenie = S / S_dop * 100%',
-        'Wynik: obciazenie = 65.00 %',
-        'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %',
-        'Werdykt: ZGODNE',
+        { tekst: 'Wzor: obciazenie = S / S_dop * 100%', latex: '\\text{obciazenie} = \\frac{S}{S_{dop}} \\cdot 100\\%' },
+        {
+          tekst: 'Wynik: obciazenie = 65.00 %',
+          latex: '\\text{obciazenie} = \\frac{S}{S_{dop}} \\cdot 100\\% = 65.00\\%',
+        },
+        { tekst: 'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %', latex: null },
+        { tekst: 'Werdykt: ZGODNE', latex: null },
       ],
     }),
   ],
@@ -152,9 +187,10 @@ export function walidacjaResponseFixture(
     context: {
       project_name: 'Sieć testowa',
       case_name: 'sc-1',
+      case_id: 'case-1',
       run_timestamp: '2026-07-15T10:00:05+00:00',
-      snapshot_id: 'snap-pf-1',
-      trace_id: 'pf-run-1',
+      snapshot_hash: 'snap-pf-1',
+      run_id: 'pf-run-1',
     },
     config: {
       loading_warn_pct: 80.0,

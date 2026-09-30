@@ -34,8 +34,8 @@
  *     „Q0/Q1/T1" na CAŁE pole — to naruszało spec §19.1 („«Q» identyfikuje
  *     KONKRETNY aparat, NIE pole"). Funkcja USUNIĘTA; zastąpiona DWOMA
  *     odrębnymi warstwami: `fieldFunctionalDesignation` niżej (oznaczenie
- *     FUNKCYJNE pola — liniowe/transformatorowe/sprzęgłowe/pomiarowe/
- *     generatorowe, spec §19.1) i `apparatusIdentifiers` (`./apparatusSequence`
+ *     FUNKCYJNE pola — liniowe/transformatorowe/sprzęgła/pomiarowe/źródłowe,
+ *     spec §19.1, słownictwo z kanonu ról pól) i `apparatusIdentifiers` (`./apparatusSequence`
  *     — identyfikator PER-APARAT Q/QE/T przy symbolu; `BayPrimaryDevice.
  *     designation` DOMAIN, F10.6, gdy obecny WYGRYWA nad tekstem konwencji
  *     — `data-designation-source="dane"`; fallback konwencji ze znacznikiem
@@ -49,6 +49,7 @@
  */
 
 import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
+import { FIELD_ROLE_LABEL_PL, fieldLabelInSentencePl } from '../../v2/station-rozdzielnia/contract';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 import type { LineRunV1 } from '../../../../types/enm';
 
@@ -65,15 +66,16 @@ export const FORBIDDEN_RAW_DIRECTION_TOKENS = /\b(WE|WY|ODG)\b/;
  * F10.2 (spec §19.1, V12K-035): oznaczenie FUNKCYJNE pola — CZYSTA funkcja
  * roli, zero zależności od danych (`bay.designation` NIE jest już czytane
  * tutaj — sidecar pola przestał nieść identyfikator aparatu, spec §19.1
- * „«Q» identyfikuje aparat, NIE pole"). Słownik (spec §19.1: „liniowe /
- * transformatorowe / sprzęgłowe / pomiarowe / potrzeb własnych / generatorowe
- * / inne technologiczne") ograniczony do kategorii REALNIE reprezentowanych
- * w `FieldRole` (§A3-DEC-5 — zero ról-atrap, zakaz rozszerzania `FieldRole`
- * bez danych; inwentaryzacja w raporcie F10.2): „potrzeb własnych"/„inne
- * technologiczne" NIE mają odpowiednika w obecnym enumie — nie są zwracane.
- * DER (`DER_PV`/`DER_BESS`/`DER_FW`) mapowane na „pole generatorowe" (spec
- * §19.1 dopuszcza tę kategorię wprost; rozróżnienie PV/BESS/farma wiatrowa
- * niesie już SYMBOL źródła, nie etykieta funkcyjna pola).
+ * „«Q» identyfikuje aparat, NIE pole"). Kategorie ograniczone do REALNIE
+ * reprezentowanych w `FieldRole` (§A3-DEC-5 — zero ról-atrap, zakaz rozszerzania
+ * `FieldRole` bez danych): „potrzeb własnych"/„inne technologiczne" NIE mają
+ * odpowiednika w obecnym enumie — nie są zwracane.
+ * SŁOWNICTWO (karta #141): nazwa roli pola pochodzi z kanonu słownictwa ról pól
+ * (`FIELD_ROLE_LABEL_PL`) — to samo słowo co w kreatorze, szufladzie i nazwie
+ * pola nadanej przez backend („pole sprzęgła", nie „sprzęgłowe"; pola DER to
+ * „pole źródłowe PV/BESS/FW" z kanonu, nie osobne „generatorowe"). Wyjątkiem
+ * jest klasa pól liniowych: spec §9 zakazuje na rysunku semantyki wejścia/wyjścia,
+ * więc oznaczenie funkcyjne jest ogólne („pole liniowe"), a kierunek niesie podpis.
  *
  * UŻYWANA w DWÓCH miejscach, które MUSZĄ się zgadzać (wzór F6b-1):
  * `layout/measure.ts` (`bayColumnRequiredWidth` — rezerwacja szerokości
@@ -87,18 +89,22 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
     case FIELD_ROLE.LINE_BRANCH:
     case FIELD_ROLE.RMU_LINE:
     case FIELD_ROLE.GPZ_LINE_BAY:
+      // Spec §9: na rysunku pole liniowe identyfikuje KIERUNEK (podpis `kier./odg.`), nie
+      // rola wejściowa/wyjściowa — oznaczenie funkcyjne jest więc ogólne dla całej klasy.
       return 'pole liniowe';
     case FIELD_ROLE.TRANSFORMER:
     case FIELD_ROLE.RMU_TRANSFORMER:
-      return 'pole transformatorowe';
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE);
     case FIELD_ROLE.COUPLER:
-      return 'pole sprzęgłowe';
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.SPRZEGLO);
     case FIELD_ROLE.MEASUREMENT:
-      return 'pole pomiarowe';
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.POMIAROWE);
     case FIELD_ROLE.DER_PV:
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.PV_SN);
     case FIELD_ROLE.DER_BESS:
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.BESS_SN);
     case FIELD_ROLE.DER_FW:
-      return 'pole generatorowe';
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.FW_SN);
     default:
       return 'pole';
   }
@@ -133,8 +139,8 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
  * jest narysowana, tą samą literą, którą projektant zobaczy w inspektorze.
  *
  * KONWENCJA (jedna dla całego rysunku): `F01`, `F02`… pola liniowe · `FT1`…
- * transformatorowe · `FS1`… sprzęgłowe · `FP1`… pomiarowe · `FG1`…
- * generatorowe (DER). Liczniki są ODRĘBNE per klasa roli, więc dodanie pola
+ * transformatorowe · `FS1`… sprzęgła · `FP1`… pomiarowe · `FG1`… źródłowe
+ * (DER). Liczniki są ODRĘBNE per klasa roli, więc dodanie pola
  * jednej klasy nie przenumerowuje pozostałych.
  */
 export function fieldOrdinalDesignation(role: FieldRole, counters: Map<string, number>): string {
@@ -175,10 +181,10 @@ export function fieldOrdinalDesignation(role: FieldRole, counters: Map<string, n
  * dopasowania spada 0,168 → 0,131 (−22%) — czyli cena za powtórzony rzeczownik
  * to CAŁY dodatkowy wiersz arkusza i utrata czytelności przeglądu. Forma
  * „F01 · liniowe" kosztuje 64 j.św. na cały arkusz (8280 → 8344, +0,8%) i
- * NIE zmienia liczby wierszy. Słownik kategorii §19.1 (liniowe /
- * transformatorowe / sprzęgłowe / pomiarowe / generatorowe) zostaje CO DO
- * SŁOWA; odpada wyłącznie rzeczownik „pole", który niesie już sama litera
- * oznacznika (F = pole) i pozycja etykiety przy kolumnie pola.
+ * NIE zmienia liczby wierszy. Człon roli zostaje CO DO SŁOWA z oznaczenia
+ * funkcyjnego (kanon ról pól, karta #141: liniowe / transformatorowe / sprzęgła /
+ * pomiarowe / źródłowe PV·BESS·FW); odpada wyłącznie rzeczownik „pole", który
+ * niesie już sama litera oznacznika (F = pole) i pozycja etykiety przy kolumnie.
  */
 export function fieldCaptionAt(
   snBays: readonly MiniBlockBayDescriptor[],

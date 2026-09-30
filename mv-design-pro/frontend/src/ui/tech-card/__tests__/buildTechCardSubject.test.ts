@@ -194,6 +194,40 @@ describe('buildTechCardSubject', () => {
     expect(fields.find((field) => field.key === 'transformatory')?.value).toBe(1);
   });
 
+  /**
+   * Karta S95-START (znalezisko uboczne): stacja zbudowana operacją domenową niesie pola
+   * WYŁĄCZNIE jako `meta.field_specs` (`bays` puste) — karta techniczna liczyła tylko
+   * `bays` i pokazywała zero pól każdej roli. Iloczyn źródeł: {specyfikacje, pola bays}.
+   */
+  it.each([
+    ['specyfikacje pól stacji (meta.field_specs)', 'specy'],
+    ['pola bays (bez specyfikacji)', 'bays'],
+  ])('liczność pól wg roli z %s', (_nazwa, zrodlo) => {
+    const role = ['IN', 'OUT', 'FEEDER', 'TR'];
+    const station = {
+      id: 'stn/2',
+      ref_id: 'stn/2',
+      name: 'Stacja na odcinku',
+      station_type: 'mv_lv',
+      bus_refs: ['bus/sn2'],
+      transformer_refs: [],
+      meta: zrodlo === 'specy'
+        ? { field_specs: role.map((rola, i) => ({ field_ref: `stn/2/sn_field/00${i}`, bay_role: rola, bus_ref: 'bus/sn2' })) }
+        : {},
+    } as unknown as Substation;
+    const snapshot = snapshotWith({
+      substations: [station],
+      bays: zrodlo === 'bays'
+        ? role.map((rola, i) => ({ id: `bay/${i}`, ref_id: `bay/${i}`, bay_role: rola, substation_ref: 'stn/2', bus_ref: 'bus/sn2', equipment_refs: [] }) as never)
+        : [],
+    });
+    const fields = buildTechCardSubject(snapshot, selected(station.ref_id, 'Station'))!.sections.flatMap((s) => s.fields);
+    expect(fields.find((field) => field.key === 'pole_we')?.value).toBe(1);
+    expect(fields.find((field) => field.key === 'pole_wy')?.value).toBe(1);
+    expect(fields.find((field) => field.key === 'pole_odg')?.value).toBe(1);
+    expect(fields.find((field) => field.key === 'pole_tr')?.value).toBe(1);
+  });
+
   it('rozpoznaje GPZ jako kind=gpz', () => {
     const gpz: Substation = {
       id: 'gpz/main',
@@ -218,7 +252,7 @@ describe('buildTechCardSubject', () => {
       gen_type: 'pv_inverter',
       connection_variant: 'nn_side',
       nc_rfg_module: 'A',
-    } as Generator;
+    } as unknown as Generator;
     const snapshot = snapshotWith({ generators: [pv] });
     const subject = buildTechCardSubject(snapshot, selected(pv.ref_id, 'PVInverter'));
     expect(subject?.kind).toBe('der');
@@ -226,6 +260,63 @@ describe('buildTechCardSubject', () => {
     const fields = subject!.sections.flatMap((section) => section.fields);
     expect(fields.find((field) => field.key === 'p_mw')?.value).toBe(0.5);
     expect(fields.find((field) => field.key === 'modul_nc_rfg')?.value).toBe('A');
+    // Bez `meta.control_mode` — brak sekcji regulacji Q (zero fantomu: nic do pokazania).
+    expect(fields.find((field) => field.key === 'tryb_regulacji_q')).toBeUndefined();
+  });
+
+  it.each([
+    ['STALY_COS_PHI', { control_mode: 'STALY_COS_PHI', cos_phi: 0.93 }, 'cos_phi_nastawa', 0.93],
+    [
+      'Q_OD_U',
+      { control_mode: 'Q_OD_U', qu_slope_pu_per_pu: 4.5 },
+      'nachylenie_regulacji',
+      4.5,
+    ],
+    [
+      'REGULACJA_NAPIECIA',
+      { control_mode: 'REGULACJA_NAPIECIA', u_set_pu: 1.02 },
+      'u_set_pu',
+      1.02,
+    ],
+  ] as const)(
+    'karta techniczna DER pokazuje tryb regulacji Q i jego nastawę — %s (karta CV-4.1b, A3-04)',
+    (_controlMode, meta, pomocniczyKlucz, pomocniczaWartosc) => {
+      const pv: Generator = {
+        id: 'gen/pv/2',
+        ref_id: 'gen/pv/2',
+        name: 'Falownik PV regulowany',
+        bus_ref: 'bus/nn',
+        p_mw: 0.5,
+        gen_type: 'pv_inverter',
+        connection_variant: 'nn_side',
+        meta,
+      } as unknown as Generator;
+      const snapshot = snapshotWith({ generators: [pv] });
+      const subject = buildTechCardSubject(snapshot, selected(pv.ref_id, 'PVInverter'));
+      const fields = subject!.sections.flatMap((section) => section.fields);
+      expect(fields.find((field) => field.key === 'tryb_regulacji_q')?.value).toBeTruthy();
+      expect(fields.find((field) => field.key === pomocniczyKlucz)?.value).toBe(pomocniczaWartosc);
+    },
+  );
+
+  it('karta techniczna DER: control_mode WYLACZONE nie pokazuje nastawy pomocniczej', () => {
+    const pv: Generator = {
+      id: 'gen/pv/3',
+      ref_id: 'gen/pv/3',
+      name: 'Falownik PV bez regulacji',
+      bus_ref: 'bus/nn',
+      p_mw: 0.5,
+      gen_type: 'pv_inverter',
+      connection_variant: 'nn_side',
+      meta: { control_mode: 'WYLACZONE' },
+    } as unknown as Generator;
+    const snapshot = snapshotWith({ generators: [pv] });
+    const subject = buildTechCardSubject(snapshot, selected(pv.ref_id, 'PVInverter'));
+    const fields = subject!.sections.flatMap((section) => section.fields);
+    expect(fields.find((field) => field.key === 'tryb_regulacji_q')?.value).toBe('Bez regulacji');
+    expect(fields.find((field) => field.key === 'cos_phi_nastawa')).toBeUndefined();
+    expect(fields.find((field) => field.key === 'nachylenie_regulacji')).toBeUndefined();
+    expect(fields.find((field) => field.key === 'u_set_pu')).toBeUndefined();
   });
 
   it('semantyczna klasyfikacja MV_OVERHEAD_SEGMENT nadpisuje branch.type=cable', () => {

@@ -3,15 +3,17 @@
 Status: wiazacy dla aktualnego stosu SLD.
 
 Kod:
-- `backend/src/api/sld.py`
 - `backend/src/api/canonical_run_views.py`
+- `backend/src/api/protection_runs.py` (nakładka zabezpieczeń na SLD)
 - `frontend/src/ui/sld/SldEditorPage.tsx`
 - `frontend/src/ui/sld/SLDView.tsx`
 - `frontend/src/ui/sld/enmSnapshotToSldSymbols.ts`
 
 Dwie aktywne warstwy:
 - live SLD w frontendzie jest budowany z `snapshot` ENM,
-- backendowy endpoint SLD wystawia tylko read-only overlay wynikowy dla istniejacego diagramu.
+- backend nie ma silnika ani magazynu SLD (W1 (2026-09-09): `api/sld.py`, SLD ORM i `application/sld/**`
+  skasowane — 0 konsumentow; bramka wskrzeszenia `legacy_public_path_guard`); jedyna nakladka
+  wynikowa z backendu to read-only nakladka zabezpieczen z `api/protection_runs.py`.
 
 Backend:
 - aktywny endpoint to `GET /projects/{project_id}/sld/{diagram_id}/overlay?run_id=...`,

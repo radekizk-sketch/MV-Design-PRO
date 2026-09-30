@@ -4,7 +4,7 @@
  * DLACZEGO HOOK, A NIE POWTÓRZENIE W KAŻDYM EKRANIE. Ekranów analizy budujących
  * `NaglowekAnalizy` jest kilkanaście (`EkranZwarc`, `TabelaSzyn`, `TabelaGalezi`,
  * `EkranJakosci` ×6, `EkranOdbioru`, `EkranEstymacji`, `EkranSkladowych`,
- * `EkranStabilnosci`, `EkranRankingu`…). Wklejenie do każdego z nich tej samej
+ * `EkranRankingu`…). Wklejenie do każdego z nich tej samej
  * logiki „skąd wziąć rewizję" oznaczałoby kilkanaście kopii reguły, które
  * rozjadą się przy pierwszej zmianie kontraktu — dokładnie ten mechanizm dał
  * defekt V12K-256 (trzy kopie jednej reguły normowej z różnymi progami).
@@ -16,7 +16,12 @@
  *    PRZEBIEGU — porównanie z nią wychodziło „aktualne" zawsze, niezależnie od
  *    tego, jak daleko pojechał żywy model, i przeczyło chipowi paska przypadku
  *    („trzy prawdy stanu" z pomiaru audytu). Ta sama konwencja co
- *    `useSwiezoscWynikow` i chip (`shellStatus.useRewizjeSwiezosci`).
+ *    `useSwiezoscWynikow`. CV-2-W: chip PASKA PRZYPADKU nie liczy już świeżości
+ *    sam — pokazuje werdykt, który backend wyprowadza z biegów przypadku i
+ *    koperty rewizji (`ui2/shell/znacznikSwiezosci.ts`). Tutaj podmiotem jest
+ *    JEDEN PRZEBIEG, więc porównanie rewizji zostaje; że oba wskaźniki nigdy nie
+ *    mówią rzeczy przeciwnych, pilnuje
+ *    `freshness/__tests__/jednaPrawdaStanuWynikow.test.tsx`.
  *  - `rewizjaDanych` — rewizja, NA KTÓREJ policzono bieg, z kontraktu przebiegu
  *    (`analysisCaseContext.rewizjaModelu`, backend: `analysis_case_context`).
  *    Do V12K-264 kontrakt tej liczby NIE NIÓSŁ, więc znacznik świeżości był

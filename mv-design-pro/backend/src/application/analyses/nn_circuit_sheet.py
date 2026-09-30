@@ -16,10 +16,10 @@ ZERO NOWEJ FIZYKI — czysta KOMPOZYCJA istniejących dostawców:
                             niej — SWZ/Ik1_min/dobór — nie samo istnienie
                             wiersza odpływu).
   - Ib (bieg rozpływu):    `enm.canonical_analysis.build_branch_results`
-                            (metryka `i_a`, ta sama, którą frontend T2-WYNIKI
-                            czyta jako `I_A` z overlay — `nnCircuitResults.ts`
-                            dokumentuje wzorzec, tu czytamy PROSTO z wyniku
-                            biegu, bez pośredniej warstwy overlay HTTP).
+                            (prąd ZACISKU od strony rozdzielnicy: `i_a` dla
+                            zacisku `od`, `i_do_a` dla `do` — orientacja z trasy
+                            od szyny rozdzielnicy, decyzja O-51; gałąź poza
+                            trasą = odmowa nazwana, nie `i_a`).
   - Ib (tabliczka):         S=√3·U·I na sumie Load.p_mw/q_mvar odbiorów
                             odpływu — arytmetyka JAWNIE nazwana wzorcem
                             (docs/nn/ARKUSZ_OBLICZEN_NN_2026-08.md, wiersz
@@ -93,7 +93,7 @@ sortowania w odpowiedzi.
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, Literal
 
 from application.analyses.fault_loop.route import (
     LvBusPath,
@@ -111,13 +111,13 @@ from application.analyses.fault_loop.route import (
 # transformator/układ sieci nN są wyławiane IDENTYCZNIE niezależnie od tego,
 # KTO o nie pyta — czwarte miejsce reużycia tej samej ekstrakcji, nie nowa.
 from application.analyses.fault_loop.service import (
-    _NON_TN_SYSTEMS,
     _find_station,
-    _system_for_station,
     assign_station_lv_buses,
     build_feeder_fault_loop_view,
+    odmowa_pasma_nn,
     resolve_transformer_for_bus,
     station_transformers,
+    uklad_nn_transformatora,
 )
 from application.analyses.nn_device_selection import (
     KIND_FUSE_SWITCH,
@@ -132,6 +132,7 @@ from application.proof_engine.lv_circuit_verification_binding import (
     resolve_urzadzenie_ochronne,
 )
 from application.proof_engine.packs.lv_circuit_verification import UrzadzenieOchronneNn
+from domain.canonical_operations import opisy_kodow_gotowosci_pl
 from enm.canonical_analysis import (
     CanonicalRun,
     build_branch_results,
@@ -139,8 +140,18 @@ from enm.canonical_analysis import (
 )
 from enm.hash import compute_enm_hash
 from enm.mapping import ref_to_graph_id
-from enm.models import Cable, EnergyNetworkModel, Substation, Transformer
+from enm.models import (
+    Cable,
+    EnergyNetworkModel,
+    FuseBranch,
+    Substation,
+    SwitchBranch,
+    Transformer,
+)
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
+from enm.uklad_sieci_nn import uklad_nn_stacji
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
+from network_model.pochodne import ka_na_a, km_na_m, prad_roboczy_a
 from network_model.solvers.cable_ampacity_derating import (
     obciazalnosc_skorygowana,
     wspolczynniki_nn,
@@ -150,6 +161,7 @@ from network_model.solvers.conductor_thermal_withstand import (
     check_conductor_thermal_withstand,
 )
 from network_model.solvers.protection_lv_curves import FUSE_GG_IF_MULTIPLIER, MCCB_I2_MULTIPLIER
+from solver_input.uklad_sieci_nn import uklad_tn
 
 # Rodzaje gałęzi rozpoznawane jako „aparat" u początku odpływu — DOKŁADNIE ten
 # sam zestaw co `EkranSwzNn.tsx::TYPY_APARATU` (frontend nN STUDIO), żeby
@@ -257,8 +269,8 @@ def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
             "rozklad": None,
             "status": "brak danych",
             "reason_pl": (
-                f"Kabel '{cable.ref_id}' bez zmaterializowanej obciążalności katalogowej "
-                "(materialized_params.i_max_a) — brak wiązania z katalogiem KABEL_NN."
+                f"Kabel '{nazwa_elementu(cable, 'branches')}' bez zmaterializowanej obciążalności katalogowej "
+                "(obciążalność długotrwała z karty typu) — brak wiązania z katalogiem kabli nN."
             ),
         }
     iz_katalogowe = float(iz_katalogowe)
@@ -299,7 +311,10 @@ def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
             "iz_prime_a": None,
             "rozklad": None,
             "status": "nierozstrzygalne",
-            "reason_pl": f"Warunki ułożenia kabla '{cable.ref_id}' niekompletne/niepoprawne: {exc}",
+            "reason_pl": (
+                f"Warunki ułożenia kabla '{nazwa_elementu(cable, 'branches')}' "
+                f"niekompletne/niepoprawne: {exc}"
+            ),
         }
     iz_prime = obciazalnosc_skorygowana(iz_katalogowe, wspolczynniki)
     return {
@@ -351,20 +366,50 @@ def _ib_z_tabliczki(p_mw: float, q_mvar: float, u_ll_kv: float) -> float:
     s_mva = math.hypot(p_mw, q_mvar)
     if u_ll_kv <= 0:
         return 0.0
-    return s_mva * 1000.0 / (math.sqrt(3.0) * u_ll_kv)
+    return prad_roboczy_a(s_mva, u_ll_kv)
 
 
 # =============================================================================
-# Ib z biegu rozpływu — metryka `i_a` gałęzi (REUSE build_branch_results,
-# ten sam wynik, który T2-WYNIKI/nnCircuitResults czyta jako `I_A` z overlay).
+# Ib z biegu rozpływu — prąd ZACISKU gałęzi od strony rozdzielnicy (decyzja O-51,
+# klasa P9, miejsce 11): orientacja z TRASY od szyny rozdzielnicy, nie z konwencji
+# `from` rdzenia rozpływu. Kolumny `i_a` (zacisk `od`) i `i_do_a` (zacisk `do`)
+# tabeli gałęzi (REUSE build_branch_results — ta sama tabela co T2-WYNIKI).
 # =============================================================================
 
 
-def _ib_z_rozplywu(run: CanonicalRun, branch_ref: str) -> float | None:
+def _zacisk_od_strony_rozdzielnicy(
+    path: LvBusPath | None, szyna_rozdzielnicy: str, branch_ref: str
+) -> Literal["od", "do"] | None:
+    """Zacisk gałęzi `branch_ref` BLIŻSZY rozdzielnicy wzdłuż trasy `path` (od szyny
+    `szyna_rozdzielnicy`): `od`, gdy trasa wchodzi w gałąź jej zaciskiem początkowym,
+    `do` — końcowym (odcinek zamodelowany „pod prąd"). `None` — gałęzi nie ma na trasie
+    (albo trasy nie ma): orientacji nie da się ustalić bez domysłu."""
+    if path is None:
+        return None
+    wezel = szyna_rozdzielnicy
+    for galaz in path.branches:
+        if galaz.from_bus_ref == wezel:
+            zacisk: Literal["od", "do"] = "od"
+            nastepny = galaz.to_bus_ref
+        elif galaz.to_bus_ref == wezel:
+            zacisk = "do"
+            nastepny = galaz.from_bus_ref
+        else:
+            return None  # trasa niespójna z modelem — brak orientacji, nie domysł
+        if galaz.ref_id == branch_ref:
+            return zacisk
+        wezel = nastepny
+    return None
+
+
+def _ib_z_rozplywu(run: CanonicalRun, branch_ref: str, zacisk: Literal["od", "do"]) -> float | None:
+    """Prąd zacisku `zacisk` gałęzi `branch_ref` [A] z tabeli gałęzi biegu; `None` —
+    gałęzi nie ma w wyniku (aparat bez impedancji) albo prąd zacisku nie jest wynikiem.
+    """
     for row in build_branch_results(run).get("rows", []):
         if (row.get("element_id") or row.get("branch_id")) == branch_ref:
-            i_a = row.get("i_a")
-            return float(i_a) if i_a is not None else None
+            wartosc = row.get("i_a" if zacisk == "od" else "i_do_a")
+            return float(wartosc) if wartosc is not None else None
     return None
 
 
@@ -449,7 +494,7 @@ def _i2t_dla_kabla(
         )
     wynik = check_conductor_thermal_withstand(
         ConductorThermalInput(
-            ith_a=ith_ka * 1000.0,
+            ith_a=ka_na_a(ith_ka),
             fault_duration_s=fault_duration_s,
             ith_1s_a=cable.ith_1s_a,
             jth_1s_a_per_mm2=cable.jth_1s_a_per_mm2,
@@ -463,7 +508,10 @@ def _i2t_dla_kabla(
     if wynik.status == "UNAVAILABLE":
         return _nierozstrzygalne(
             wynik.decision_reason_pl
-            or ("Dane cieplne przewodu niekompletne: " + ", ".join(wynik.readiness_codes))
+            or (
+                "Dane cieplne przewodu niekompletne: "
+                + opisy_kodow_gotowosci_pl(wynik.readiness_codes)
+            )
         )
     return _wartosc(
         {
@@ -491,7 +539,7 @@ def _kable_na_trasie(path: LvBusPath) -> tuple[Cable, ...]:
 
 
 def _dlugosc_calkowita_m(kable: tuple[Cable, ...]) -> float:
-    return sum(c.length_km for c in kable) * 1000.0
+    return km_na_m(sum(c.length_km for c in kable))
 
 
 def _przewod_z_kabla(cable: Cable) -> dict[str, Any]:
@@ -511,7 +559,7 @@ def _build_row(
     enm: EnergyNetworkModel,
     station: Substation,
     trafo: Transformer,
-    system: str,
+    system: str | None,
     root_branch_ref: str,
     bus_refs_odplywu: list[str],
     hop_counts: dict[str, int],
@@ -523,7 +571,13 @@ def _build_row(
     provenance: dict[str, Any],
 ) -> dict[str, Any]:
     root_branch = _znajdz_galaz(enm, root_branch_ref)
-    ma_aparat = root_branch is not None and getattr(root_branch, "type", None) in _TYPY_APARATU
+    # Aparat u początku odpływu: łącznik albo bezpiecznik z listy rodzajów aparatu. Zawężenie
+    # przez typ (a nie tylko przez pole `type`) — resolver aparatu przyjmuje wyłącznie te klasy.
+    aparat_korzenia = (
+        root_branch
+        if isinstance(root_branch, SwitchBranch | FuseBranch) and root_branch.type in _TYPY_APARATU
+        else None
+    )
 
     # Punkt „najgorszy" tego odpływu: impedancyjny (pętla TN), gdy dostępny;
     # w przeciwnym razie topologiczny (najdalszy hop) — TN-niezależne, patrz
@@ -547,28 +601,61 @@ def _build_row(
     dlugosc_m = _dlugosc_calkowita_m(kable) if kable else None
 
     # --- Obciążenie (Load) / Ib ---------------------------------------
+    # Decyzja O-51 (klasa P9, miejsce 11): Ib = prąd zacisku gałęzi od strony
+    # rozdzielnicy — orientacja z TRASY od szyny rozdzielnicy (`path`), nie z
+    # konwencji `from`. Gałąź poza trasą = odmowa nazwana (wiersz bez Ib), nigdy
+    # prąd zacisku początkowego „na wszelki wypadek".
     obciazenie = _obciazenie_odplywu(enm, set(bus_refs_odplywu))
     zrodlo_ib = "tabliczka"
     zrodlo_ib_pl = "tabliczka (Σ odbiorów odpływu, S=√3·U·I)"
     ib_a: float | None = None
+    zacisk_ib: Literal["od", "do"] | None = None
+    galaz_ib_ref: str | None = None
+    ib_odmowa_pl: str | None = None
     if load_flow_run is not None:
-        ib_a = _ib_z_rozplywu(load_flow_run, root_branch_ref)
-        if ib_a is None and kable:
-            # Aparat (switch/fuse) jest gałęzią BEZIMPEDANCYJNĄ dla solvera
-            # rozpływu — `enm.mapping.map_enm_to_network_graph` go nie
-            # emituje jako osobną gałąź `PowerFlowResultV1.branch_results`
-            # (ten sam wzorzec „near-zero" co `fault_loop.route.
-            # route_segments`, zob. docstring modułu tam). Prąd przez aparat
-            # RÓWNA SIĘ prądowi pierwszego kabla trasy za nim (zachowanie
-            # prądu na gałęzi bezimpedancyjnej — tożsamość, nie nowa fizyka).
-            ib_a = _ib_z_rozplywu(load_flow_run, kable[0].ref_id)
+        zacisk_korzenia = _zacisk_od_strony_rozdzielnicy(path, trafo.lv_bus_ref, root_branch_ref)
+        if zacisk_korzenia is None:
+            ib_odmowa_pl = route_error or (
+                f"Gałąź {root_branch_ref} nie leży na trasie od szyny rozdzielnicy "
+                f"{trafo.lv_bus_ref} do punktu {worst_bus_ref} — zacisk od strony "
+                "rozdzielnicy nie jest ustalony, więc prąd w miejscu aparatu nie jest "
+                "wynikiem rozpływu (orientacja gałęzi wynika z trasy, nie z konwencji "
+                "zacisku początkowego)."
+            )
+        else:
+            galaz_ib_ref, zacisk_ib = root_branch_ref, zacisk_korzenia
+            ib_a = _ib_z_rozplywu(load_flow_run, root_branch_ref, zacisk_korzenia)
+            if ib_a is None and kable:
+                # Aparat (switch/fuse) jest gałęzią BEZIMPEDANCYJNĄ dla solvera
+                # rozpływu — `enm.mapping.map_enm_to_network_graph` go nie
+                # emituje jako osobną gałąź `PowerFlowResultV1.branch_results`
+                # (ten sam wzorzec „near-zero" co `fault_loop.route.
+                # route_segments`, zob. docstring modułu tam). Prąd przez aparat
+                # RÓWNA SIĘ prądowi zacisku pierwszego kabla trasy od strony
+                # rozdzielnicy (zachowanie prądu na gałęzi bezimpedancyjnej —
+                # tożsamość, nie nowa fizyka).
+                zacisk_kabla = _zacisk_od_strony_rozdzielnicy(
+                    path, trafo.lv_bus_ref, kable[0].ref_id
+                )
+                if zacisk_kabla is not None:
+                    galaz_ib_ref, zacisk_ib = kable[0].ref_id, zacisk_kabla
+                    ib_a = _ib_z_rozplywu(load_flow_run, kable[0].ref_id, zacisk_kabla)
         if ib_a is not None:
             zrodlo_ib = "rozpływ"
-            zrodlo_ib_pl = f"bieg rozpływu mocy ({load_flow_run.id})"
-    if ib_a is None:
-        zrodlo_ib = "tabliczka"
-        ib_a = _ib_z_tabliczki(obciazenie["p_mw"], obciazenie["q_mvar"], trafo.ulv_kv)
-    ib_sekcja = _wartosc(ib_a, zrodlo_ib_pl)
+            zrodlo_ib_pl = (
+                f"bieg rozpływu mocy ({load_flow_run.id}) — prąd zacisku {zacisk_ib} "
+                f"gałęzi {galaz_ib_ref} od strony rozdzielnicy"
+            )
+    if ib_odmowa_pl is not None:
+        zrodlo_ib = "brak"
+        zacisk_ib = galaz_ib_ref = None
+        ib_sekcja = _nierozstrzygalne(ib_odmowa_pl)
+    else:
+        if ib_a is None:
+            zrodlo_ib = "tabliczka"
+            zacisk_ib = galaz_ib_ref = None
+            ib_a = _ib_z_tabliczki(obciazenie["p_mw"], obciazenie["q_mvar"], trafo.ulv_kv)
+        ib_sekcja = _wartosc(ib_a, zrodlo_ib_pl)
 
     # --- Iz′ (min po kablach trasy — najsłabsze ogniwo) -----------------
     if kable:
@@ -614,7 +701,16 @@ def _build_row(
 
     # --- Dobór aparatu (Ik1_min/U0/status z wybierz_aparat_dla_obwodu_nn) --
     dobor_wejscie = None
-    if system in _NON_TN_SYSTEMS:
+    if ib_a is None:
+        dobor_status = "brak danych"
+        dobor_reason: str | None = f"Ib nieustalone — {ib_odmowa_pl}"
+    elif system is None:
+        dobor_status = "brak danych"
+        dobor_reason = (
+            "Transformator zasilający nie deklaruje układu uziemienia sieci nN — "
+            "SWZ/pętla TN nie jest liczona (brak danej nie jest zastępowany układem domyślnym)."
+        )
+    elif not uklad_tn(system):
         dobor_status = "nie dotyczy"
         dobor_reason = (
             f"Układ {system}: SWZ/pętla TN (IEC 60364-4-41) nie dotyczy — inny mechanizm "
@@ -655,14 +751,14 @@ def _build_row(
         )
         if dobor_wejscie is not None
         else (
-            _nie_dotyczy(dobor_reason)
+            _nie_dotyczy(dobor_reason or "")
             if dobor_status == "nie dotyczy"
             else _brak(dobor_reason or "Ik1_min niedostępne.")
         )
     )
 
     # --- Aparat / nastawy / kryteria (i)-(iv) — REUSE oceniaj_kandydata ---
-    if not ma_aparat:
+    if aparat_korzenia is None:
         aparat_sekcja = _brak(
             "Brak zamodelowanego aparatu zabezpieczającego u początku odpływu — pierwsza "
             "gałąź trasy nie jest wyłącznikiem/rozłącznikiem/bezpiecznikiem."
@@ -674,7 +770,7 @@ def _build_row(
         swz_sekcja = _brak("Wymaga rozpoznanego aparatu zabezpieczającego.")
         status_doboru_sekcja = _brak("Wymaga rozpoznanego aparatu zabezpieczającego.")
     else:
-        urzadzenie, reason = resolve_urzadzenie_ochronne(root_branch)
+        urzadzenie, reason = resolve_urzadzenie_ochronne(aparat_korzenia)
         if urzadzenie is None:
             aparat_sekcja = _brak(reason or "Aparat bez wiązania katalogowego.")
             zapas_sekcja = _brak("Wymaga rozwiązanego aparatu.")
@@ -697,26 +793,33 @@ def _build_row(
                 f"materialized_params gałęzi '{root_branch_ref}' (Catalog Binding)",
             )
             zapas_sekcja = (
-                _wartosc((ir_a - ib_a) / ir_a * 100.0, "(Ir−Ib)/Ir")
-                if ir_a is not None and ir_a != 0
-                else _nierozstrzygalne("Ir nierozwiązane (MCCB bez ir_range materializacji).")
+                _nierozstrzygalne(f"Ib nieustalone — {ib_odmowa_pl}")
+                if ib_a is None
+                else (
+                    _wartosc((ir_a - ib_a) / ir_a * 100.0, "(Ir−Ib)/Ir")
+                    if ir_a is not None and ir_a != 0
+                    else _nierozstrzygalne("Ir nierozwiązane (MCCB bez ir_range materializacji).")
+                )
             )
 
             kandydat_blad: str | None = None
+            kandydat: KandydatAparatuNn | None
             try:
                 kandydat = _kandydat_z_urzadzenia(urzadzenie)
             except ValueError as exc:
                 kandydat = None
                 kandydat_blad = f"Dane katalogowe aparatu niespójne: {exc}"
 
-            if kandydat_blad is not None:
-                zle = _nierozstrzygalne(kandydat_blad)
+            if kandydat is None:
+                zle = _nierozstrzygalne(kandydat_blad or "Dane katalogowe aparatu niespójne.")
                 k2_i2_sekcja = zle
                 kryterium_i_sekcja = zle
                 kryterium_ii_sekcja = zle
                 swz_sekcja = zle
                 status_doboru_sekcja = zle
-            elif dobor_wejscie is None:
+            # `ib_a is None` => `dobor_wejscie is None` (dobór liczony wyłącznie przy
+            # ustalonym Ib, gałąź wyżej) — warunek jawny, żeby gałąź oceny miała Ib.
+            elif dobor_wejscie is None or ib_a is None:
                 brak_wej = (
                     _brak(dobor_reason or "Ik1_min/U0 niedostępne dla tego obwodu.")
                     if dobor_status == "brak danych"
@@ -794,8 +897,10 @@ def _build_row(
     else:
         delta_u_sekcja = _delta_u_dla_trasy(load_flow_run, path.branches, worst_bus_ref)
 
+    # Wiersz arkusza nazywa obwód nazwą odpływu z modelu albo opisem rodzaju — nigdy
+    # identyfikatorem gałęzi (ten zostaje w `feeder_root_branch_ref`).
     wyszczegolnienie = (
-        root_branch.name if root_branch is not None and root_branch.name else root_branch_ref
+        nazwa_elementu(root_branch, "branches") if root_branch is not None else ELEMENT_SPOZA_MODELU
     )
 
     return {
@@ -814,6 +919,11 @@ def _build_row(
         "obciazenie": obciazenie,
         "ib": ib_sekcja,
         "zrodlo_ib": zrodlo_ib,
+        # Decyzja O-51 (klasa P9): gałąź i zacisk (od strony rozdzielnicy), których
+        # prąd jest Ib z biegu rozpływu; `None`, gdy Ib pochodzi z tabliczki albo
+        # zacisk jest nieustalony (odmowa w sekcji `ib`).
+        "galaz_ib_ref": galaz_ib_ref,
+        "zacisk_ib": zacisk_ib,
         "aparat": aparat_sekcja,
         "zapas_zabezpieczenia_procent": zapas_sekcja,
         "iz": iz_sekcja,
@@ -907,7 +1017,27 @@ def build_nn_circuit_sheet(
             "reason_pl": None,
         }
 
-    system = _system_for_station(station)
+    # Arkusz obwodów nN liczy wyłącznie odpływy transformatorów ze stroną dolną w paśmie
+    # nN (ta sama bramka co pętla zwarcia/SWZ/dobór — `odmowa_pasma_nn`). Transformator
+    # spoza pasma nie znika po cichu: jego kod odmowy trafia do `missing_data`.
+    odmowy_pasma = {
+        t.ref_id: odmowa for t in transformatory if (odmowa := odmowa_pasma_nn({}, t)) is not None
+    }
+    if len(odmowy_pasma) == len(transformatory):
+        pierwsza = odmowy_pasma[transformatory[0].ref_id]
+        return {
+            "status": "nie dotyczy",
+            "kod_odmowy": pierwsza["kod_odmowy"],
+            "station_ref": station_ref,
+            "station_name": station.name,
+            "wiersze": [],
+            "missing_data": [],
+            "reason_pl": pierwsza["reason_pl"],
+        }
+    braki_pasma = sorted(f"{ref}:{o['kod_odmowy']}" for ref, o in odmowy_pasma.items())
+    transformatory = [t for t in transformatory if t.ref_id not in odmowy_pasma]
+
+    system = uklad_nn_stacji(enm, station)
     provenance = _build_provenance(
         enm=enm,
         load_flow_run=load_flow_run,
@@ -938,11 +1068,12 @@ def build_nn_circuit_sheet(
             }
 
     worst_impedancyjny: dict[str, str | None] = {}
-    if system not in _NON_TN_SYSTEMS:
-        widok_petli = build_feeder_fault_loop_view(enm, station_ref)
-        if widok_petli.get("status") == "OK":
-            for f in widok_petli.get("feeders", []):
-                worst_impedancyjny[f["feeder_root_branch_ref"]] = f.get("worst_point_bus_ref")
+    # Widok pętli sam odmawia (brak układu / TT / IT) per transformator — tu
+    # zbieramy wyłącznie policzone punkty najgorsze.
+    widok_petli = build_feeder_fault_loop_view(enm, station_ref)
+    if widok_petli.get("status") == "OK":
+        for f in widok_petli.get("feeders", []):
+            worst_impedancyjny[f["feeder_root_branch_ref"]] = f.get("worst_point_bus_ref")
 
     # Kolejność wierszy: po `feeder_root_branch_ref` w obrębie CAŁEJ stacji
     # (jak dotąd), niezależnie od transformatora — numeracja `nr` ciągła.
@@ -970,7 +1101,7 @@ def build_nn_circuit_sheet(
             "station_name": station.name,
             "network_system": system,
             "wiersze": [],
-            "missing_data": [],
+            "missing_data": braki_pasma,
             "reason_pl": None,
             "provenance": provenance,
         }
@@ -982,7 +1113,7 @@ def build_nn_circuit_sheet(
                 enm=enm,
                 station=station,
                 trafo=trafo,
-                system=system,
+                system=uklad_nn_transformatora(trafo),
                 root_branch_ref=root_branch_ref,
                 bus_refs_odplywu=bus_refs_odplywu,
                 hop_counts=hop_counts,
@@ -1001,7 +1132,7 @@ def build_nn_circuit_sheet(
         "station_name": station.name,
         "network_system": system,
         "wiersze": wiersze,
-        "missing_data": [],
+        "missing_data": braki_pasma,
         "reason_pl": None,
         "provenance": provenance,
     }
@@ -1034,7 +1165,10 @@ def build_nn_circuit_sheet_row_for_breaker(
     trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
         return {"status": "brak danych", "missing_data": transformer_missing, "reason_pl": None}
-    system = _system_for_station(station)
+    odmowa = odmowa_pasma_nn({}, trafo)
+    if odmowa is not None:
+        return odmowa
+    system = uklad_nn_transformatora(trafo)
     try:
         hop_count = len(path_to_bus(enm, trafo.lv_bus_ref, bus_ref).branches)
     except RouteExtractionError as exc:

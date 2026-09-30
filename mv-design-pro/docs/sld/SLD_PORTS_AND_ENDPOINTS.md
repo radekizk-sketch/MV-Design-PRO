@@ -136,7 +136,9 @@ Walidator: `enm/validator.py` (rozszerzenie w PR-3) + `frontend/.../core/sldSema
 | 1× `sn_input` + 1× `sn_output` + ≥1× `sn_branch` | odgałęźna |
 | ≥2× porty z aktywnym sprzęgłem/NOP | sekcyjna |
 
-Implementacja w `application/sld/topology_classifier.py` (PR-5).
+Implementacja backendowa (`application/sld/topology_classifier.py`, PR-5) skasowana w W1 (2026-09-09) —
+0 konsumentów produkcyjnych; tabela powyżej pozostaje kontraktem semantycznym bez implementacji
+po stronie backendu (projekcja SLD na ENM: wycinek W7 mapy domknięcia).
 
 ---
 

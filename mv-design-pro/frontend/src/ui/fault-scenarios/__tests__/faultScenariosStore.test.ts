@@ -5,25 +5,6 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useFaultScenariosStore } from '../store';
-import type { FaultScenario } from '../types';
-
-function makeScenario(overrides: Partial<FaultScenario> = {}): FaultScenario {
-  return {
-    scenario_id: 'test-id-1',
-    study_case_id: 'case-1',
-    name: 'Scenariusz testowy',
-    analysis_type: 'SC_3F',
-    fault_type: 'SC_3F',
-    location: { element_ref: 'bus-1', location_type: 'BUS', position: null },
-    config: { c_factor: 1.1, thermal_time_seconds: 1.0, include_branch_contributions: false },
-    fault_impedance_type: 'METALLIC',
-    z0_bus_data: null,
-    created_at: '2024-01-01T00:00:00+00:00',
-    updated_at: '2024-01-01T00:00:00+00:00',
-    content_hash: 'abc123',
-    ...overrides,
-  };
-}
 
 describe('FaultScenariosStore', () => {
   beforeEach(() => {

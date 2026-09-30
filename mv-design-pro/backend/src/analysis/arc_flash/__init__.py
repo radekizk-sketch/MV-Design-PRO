@@ -48,7 +48,6 @@ from analysis.arc_flash.models import (
     ARC_FLASH_TABLE_INCOMPLETE_STATUS,
     INCIDENT_ENERGY_AFB_CAL_CM2,
     INCIDENT_ENERGY_AFB_JOULE_CM2,
-    OSD_ARC_FLASH_BLOCKER_CODE,
     PPE_CATEGORY_INCOMPLETE,
     PRODUCTION_NFPA_70E_PPE_TABLE,
     VALIDITY_IBF_MAX_KA_HV,
@@ -77,7 +76,6 @@ from analysis.arc_flash.models import (
     compute_arc_flash_id,
     empty_ieee_1584_table,
     empty_nfpa_70e_ppe_table,
-    osd_arc_flash_gate,
 )
 
 __all__ = [
@@ -90,7 +88,6 @@ __all__ = [
     "ARC_FLASH_TABLE_INCOMPLETE_STATUS",
     "INCIDENT_ENERGY_AFB_CAL_CM2",
     "INCIDENT_ENERGY_AFB_JOULE_CM2",
-    "OSD_ARC_FLASH_BLOCKER_CODE",
     "PPE_CATEGORY_INCOMPLETE",
     "PRODUCTION_IEEE_1584_TABLE",
     "PRODUCTION_NFPA_70E_PPE_TABLE",
@@ -124,5 +121,4 @@ __all__ = [
     "empty_nfpa_70e_ppe_table",
     "load_ieee_1584_table",
     "load_production_ieee_1584_table",
-    "osd_arc_flash_gate",
 ]

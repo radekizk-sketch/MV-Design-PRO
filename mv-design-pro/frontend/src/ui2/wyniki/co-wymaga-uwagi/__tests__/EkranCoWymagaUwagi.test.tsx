@@ -72,6 +72,23 @@ describe('EkranCoWymagaUwagi — skonsolidowany rejestr przekroczeń', () => {
     expect(screen.queryByTestId('mvd-cwu-brak-przebiegu')).not.toBeInTheDocument();
   });
 
+  it('wynik bez kryteriów napięciowych → „brak podstaw do oceny", NIE „sieć w normie" (klasa: pusta lista bez progu to nie dowód)', () => {
+    // Odkryte w CI run 444 (2026-09-16): scena harnessu „uwaga" bez `kryteria_napiecia`
+    // (starszy zasiew) renderowała „sieć w normie" — fałszywy sukces bez podstawy.
+    usePowerFlowResultsStore.setState({
+      results: powerFlowResultFixture({
+        kryteria_napiecia: undefined,
+        bus_results: [busResultFixture({ bus_id: 'SZ-ST7', v_pu: 0.941 })],
+      }),
+    });
+    render(<EkranCoWymagaUwagi />);
+    expect(screen.getByTestId('mvd-cwu-brak-kryteriow')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-cwu-brak-kryteriow')).toHaveTextContent('Brak podstaw do oceny');
+    expect(screen.queryByTestId('mvd-cwu-w-normie')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-cwu-lista')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-cwu-brak-przebiegu')).not.toBeInTheDocument();
+  });
+
   it('przekroczenia → lista z podsumowaniem liczby pozycji', () => {
     usePowerFlowResultsStore.setState({
       results: powerFlowResultFixture({

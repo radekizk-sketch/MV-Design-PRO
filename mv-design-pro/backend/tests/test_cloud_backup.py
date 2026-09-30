@@ -536,6 +536,39 @@ class TestHashVerification:
 # ============================================================================
 
 
+class TestCloudBackupEntrySizeBytesOptional:
+    """FAB-E (E1): size_bytes nieznany (np. GCS Blob.size=None) to None, nigdy
+    fabrykowane 0 B (wygladaloby jak pusty/uszkodzony plik kopii). Zero
+    chmury tutaj — konstrukcja dataclass/pydantic wprost, zgodnie z
+    konwencja tego pliku ("Wyłącznie LocalBackupProvider (zero chmury w
+    testach)")."""
+
+    def test_cloud_backup_entry_accepts_none_size_bytes(self) -> None:
+        entry = CloudBackupEntry(
+            backup_id="20240101-000000+0000_abcd1234",
+            project_id="proj-1",
+            archive_hash="abcd1234",
+            timestamp="2024-01-01T00:00:00+00:00",
+            size_bytes=None,
+            url="gs://bucket/key.mvdp.zip",
+            key="backups/proj-1/20240101-000000+0000_abcd1234.mvdp.zip",
+        )
+        assert entry.size_bytes is None
+
+    def test_backup_entry_response_accepts_none_size_bytes(self) -> None:
+        from api.cloud_backup import BackupEntryResponse
+
+        response = BackupEntryResponse(
+            backup_id="20240101-000000+0000_abcd1234",
+            project_id="proj-1",
+            archive_hash="abcd1234",
+            timestamp="2024-01-01T00:00:00+00:00",
+            size_bytes=None,
+            url="gs://bucket/key.mvdp.zip",
+        )
+        assert response.size_bytes is None
+
+
 class TestCreateBackupProvider:
     """Testy funkcji fabrykującej."""
 
@@ -770,3 +803,237 @@ class TestErrorHandling:
         # Powinien być parsowany jako ISO 8601
         dt = datetime.fromisoformat(result.timestamp)
         assert dt.tzinfo is not None
+
+
+# =============================================================================
+# Karta #151 — tłumaczenie błędów SDK chmury: wyłącznie nazwane typy SDK
+# =============================================================================
+#
+# SDK (boto3/botocore, google-cloud-storage) jest opcjonalne i nie ma go w środowisku
+# testów — typy błędów podstawiamy modułami o TYCH SAMYCH ścieżkach importu, co realne
+# SDK (`botocore.exceptions`, `google.api_core.exceptions`, `google.auth.exceptions`).
+# Iloczyn: {S3, GCS} × {upload, download, list, delete} × {odmowa dostępu, brak zasobu,
+# inny błąd SDK, awaria sieci/transportu, obcy wyjątek programu}.
+
+import types  # noqa: E402
+
+from infrastructure.cloud_backup import (  # noqa: E402
+    CloudBackupDownloadError,
+    CloudBackupError,
+    CloudBackupPermissionError,
+    CloudBackupUploadError,
+)
+
+
+class _ClientError(Exception):
+    def __init__(self, kod: str) -> None:
+        super().__init__(f"An error occurred ({kod})")
+        self.response = {"Error": {"Code": kod}}
+
+
+class _BotoCoreError(Exception):
+    pass
+
+
+class _GoogleAPIError(Exception):
+    pass
+
+
+class _Forbidden(_GoogleAPIError):
+    pass
+
+
+class _NotFound(_GoogleAPIError):
+    pass
+
+
+class _GoogleAuthError(Exception):
+    pass
+
+
+@pytest.fixture()
+def sdk_chmury(monkeypatch: pytest.MonkeyPatch) -> None:
+    botocore = types.ModuleType("botocore")
+    botocore_exc = types.ModuleType("botocore.exceptions")
+    botocore_exc.ClientError = _ClientError  # type: ignore[attr-defined]
+    botocore_exc.BotoCoreError = _BotoCoreError  # type: ignore[attr-defined]
+    google = types.ModuleType("google")
+    api_core = types.ModuleType("google.api_core")
+    api_core_exc = types.ModuleType("google.api_core.exceptions")
+    api_core_exc.GoogleAPIError = _GoogleAPIError  # type: ignore[attr-defined]
+    api_core_exc.Forbidden = _Forbidden  # type: ignore[attr-defined]
+    api_core_exc.NotFound = _NotFound  # type: ignore[attr-defined]
+    auth = types.ModuleType("google.auth")
+    auth_exc = types.ModuleType("google.auth.exceptions")
+    auth_exc.GoogleAuthError = _GoogleAuthError  # type: ignore[attr-defined]
+    for nazwa, modul in {
+        "botocore": botocore,
+        "botocore.exceptions": botocore_exc,
+        "google": google,
+        "google.api_core": api_core,
+        "google.api_core.exceptions": api_core_exc,
+        "google.auth": auth,
+        "google.auth.exceptions": auth_exc,
+    }.items():
+        monkeypatch.setitem(sys.modules, nazwa, modul)
+
+
+class _NoSuchBucket(Exception):
+    pass
+
+
+class _NoSuchKey(Exception):
+    pass
+
+
+class _KlientS3:
+    exceptions = types.SimpleNamespace(NoSuchBucket=_NoSuchBucket, NoSuchKey=_NoSuchKey)
+
+    def __init__(self, blad: Exception) -> None:
+        self._blad = blad
+
+    def put_object(self, **kwargs: object) -> None:
+        raise self._blad
+
+    def get_object(self, **kwargs: object) -> None:
+        raise self._blad
+
+    def list_objects_v2(self, **kwargs: object) -> None:
+        raise self._blad
+
+    def delete_object(self, **kwargs: object) -> None:
+        raise self._blad
+
+
+class _BlobGCS:
+    def __init__(self, blad: Exception) -> None:
+        self._blad = blad
+        self.content_type = None
+        self.metadata = None
+
+    def upload_from_string(self, *args: object, **kwargs: object) -> None:
+        raise self._blad
+
+    def download_as_bytes(self) -> bytes:
+        raise self._blad
+
+    def delete(self) -> None:
+        raise self._blad
+
+
+class _KlientGCS:
+    def __init__(self, blad: Exception) -> None:
+        self._blad = blad
+
+    def bucket(self, nazwa: str) -> object:
+        blad = self._blad
+        return types.SimpleNamespace(blob=lambda klucz: _BlobGCS(blad))
+
+    def list_blobs(self, *args: object, **kwargs: object) -> object:
+        # Iterator LENIWY jak w SDK — błąd pojawia się dopiero przy iteracji.
+        blad = self._blad
+
+        def _generator():  # type: ignore[no-untyped-def]
+            raise blad
+            yield  # pragma: no cover
+
+        return _generator()
+
+
+def _operacja(dostawca: object, nazwa: str) -> object:
+    dane = b"archiwum"
+    if nazwa == "upload":
+        return dostawca.upload(dane, "projekt", compute_file_hash(dane))  # type: ignore[attr-defined]
+    if nazwa == "download":
+        return dostawca.download("kopia", "projekt")  # type: ignore[attr-defined]
+    if nazwa == "list":
+        return dostawca.list_backups("projekt")  # type: ignore[attr-defined]
+    return dostawca.delete_backup("kopia", "projekt")  # type: ignore[attr-defined]
+
+
+_BLAD_OGOLNY = {
+    "upload": CloudBackupUploadError,
+    "download": CloudBackupDownloadError,
+    "list": CloudBackupDownloadError,
+    "delete": CloudBackupUploadError,
+}
+OPERACJE = ("upload", "download", "list", "delete")
+
+
+def _s3(blad: Exception) -> S3BackupProvider:
+    config = CloudBackupConfig(
+        backend=CloudBackendType.S3, bucket_name="kosz", region="eu-central-1"
+    )
+    return S3BackupProvider(config, s3_client=_KlientS3(blad))
+
+
+def _gcs(blad: Exception) -> GCSBackupProvider:
+    config = CloudBackupConfig(backend=CloudBackendType.GCS, bucket_name="kosz")
+    return GCSBackupProvider(config, storage_client=_KlientGCS(blad))
+
+
+@pytest.mark.usefixtures("sdk_chmury")
+class TestTlumaczenieBledowSdkS3:
+    @pytest.mark.parametrize("operacja", OPERACJE)
+    @pytest.mark.parametrize("blad", [_ClientError("InternalError"), _BotoCoreError("brak sieci")])
+    def test_blad_sdk_to_nazwany_blad_kopii(self, operacja: str, blad: Exception) -> None:
+        with pytest.raises(_BLAD_OGOLNY[operacja]) as info:
+            _operacja(_s3(blad), operacja)
+        assert info.value.__cause__ is blad
+
+    @pytest.mark.parametrize("kod", ["AccessDenied", "AllAccessDisabled", "403"])
+    def test_odmowa_dostepu_przy_przesylaniu(self, kod: str) -> None:
+        with pytest.raises(CloudBackupPermissionError):
+            _operacja(_s3(_ClientError(kod)), "upload")
+
+    @pytest.mark.parametrize(
+        ("operacja", "blad"), [("upload", _NoSuchBucket()), ("download", _NoSuchKey())]
+    )
+    def test_brak_zasobu_ma_przyczyne(self, operacja: str, blad: Exception) -> None:
+        with pytest.raises(CloudBackupNotFoundError) as info:
+            _operacja(_s3(blad), operacja)
+        assert info.value.__cause__ is blad
+
+    @pytest.mark.parametrize("operacja", OPERACJE)
+    @pytest.mark.parametrize("typ", [AttributeError, KeyError, TypeError])
+    def test_blad_programu_wybucha(self, operacja: str, typ: type[Exception]) -> None:
+        with pytest.raises(typ) as info:
+            _operacja(_s3(typ("błąd programu")), operacja)
+        assert not isinstance(info.value, CloudBackupError)
+
+
+@pytest.mark.usefixtures("sdk_chmury")
+class TestTlumaczenieBledowSdkGcs:
+    @pytest.mark.parametrize("operacja", OPERACJE)
+    @pytest.mark.parametrize(
+        "blad",
+        [_GoogleAPIError("500"), _GoogleAuthError("token"), ConnectionError("reset")],
+    )
+    def test_blad_sdk_to_nazwany_blad_kopii(self, operacja: str, blad: Exception) -> None:
+        with pytest.raises(_BLAD_OGOLNY[operacja]) as info:
+            _operacja(_gcs(blad), operacja)
+        assert info.value.__cause__ is blad
+
+    def test_odmowa_dostepu_przy_przesylaniu(self) -> None:
+        with pytest.raises(CloudBackupPermissionError):
+            _operacja(_gcs(_Forbidden("403")), "upload")
+
+    @pytest.mark.parametrize("operacja", ["upload", "download", "delete"])
+    def test_brak_zasobu_ma_przyczyne(self, operacja: str) -> None:
+        blad = _NotFound("404")
+        with pytest.raises(CloudBackupNotFoundError) as info:
+            _operacja(_gcs(blad), operacja)
+        assert info.value.__cause__ is blad
+
+    @pytest.mark.parametrize("operacja", OPERACJE)
+    @pytest.mark.parametrize("typ", [AttributeError, KeyError, TypeError])
+    def test_blad_programu_wybucha(self, operacja: str, typ: type[Exception]) -> None:
+        with pytest.raises(typ) as info:
+            _operacja(_gcs(typ("błąd programu")), operacja)
+        assert not isinstance(info.value, CloudBackupError)
+
+    def test_komunikat_z_liczba_403_w_tresci_nie_jest_juz_odmowa_dostepu(self) -> None:
+        """Dawna klasyfikacja po tekście (`"403" in str(exc)`) myliła błąd o treści
+        zawierającej „403" z odmową dostępu. Rozstrzyga typ SDK, nie napis."""
+        with pytest.raises(CloudBackupUploadError):
+            _operacja(_gcs(_GoogleAPIError("obiekt 403.zip: błąd 500")), "upload")

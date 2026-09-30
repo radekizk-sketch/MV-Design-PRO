@@ -43,6 +43,10 @@ def _build_graph() -> NetworkGraph:
                 "branch_type": "LINE",
                 "from_node_id": "node-b",
                 "to_node_id": "node-a",
+                "r_ohm_per_km": 0.206,
+                "x_ohm_per_km": 0.118,
+                "length_km": 2.5,
+                "rated_current_a": 300.0,
             }
         )
     )
@@ -54,6 +58,10 @@ def _build_graph() -> NetworkGraph:
                 "branch_type": "LINE",
                 "from_node_id": "node-a",
                 "to_node_id": "node-b",
+                "r_ohm_per_km": 0.206,
+                "x_ohm_per_km": 0.118,
+                "length_km": 2.5,
+                "rated_current_a": 300.0,
             }
         )
     )

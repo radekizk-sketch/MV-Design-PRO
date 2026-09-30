@@ -2,16 +2,17 @@
  * Fixtures okna „Ranking punktów przyłączenia". Kształty 1:1 z serializacją
  * `application/analyses/hosting_capacity.py::build_hosting_capacity_view` (z polami
  * D3a: `total_losses_p_mw`/`min_voltage_pu`/`max_voltage_pu` per scenariusz oraz
- * `losses_baseline_p_mw`/`losses_at_limit_p_mw` per węzeł) i katalogiem NC RfG
- * (`api/ncrfg_ptpiree_tests.py::get_ncrfg_test_catalog`). Deterministyczne, bez losowości.
+ * `losses_baseline_p_mw`/`losses_at_limit_p_mw` per węzeł). Deterministyczne, bez losowości.
+ * Typ modułu NC RfG NIE pochodzi z fixtury — ekran pyta `/api/ncrfg-tests/modul` (atrapa
+ * `ncrfg/__tests__/atrapaKlasyfikacji.ts`: progi z katalogu policzonego backendem).
  *
- * Węzły: B (1,5 MW, klasa B), A (0,5 MW, klasa A, ograniczony napięciem), C (0 MW —
- * brak dopuszczalnego scenariusza: przyrost strat i napięcia „—", klasa „—").
+ * Węzły: B (1,5 MW), A (0,5 MW, ograniczony napięciem), C (0 MW — brak dopuszczalnego
+ * scenariusza: przyrost strat, napięcia i typ modułu „—", bez zapytania o klasyfikację).
  */
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
-import type { OdpowiedzKatalogNcRfg, WidokZdolnosci } from '../../api';
+import type { WidokZdolnosci } from '../../api';
 
 /** Przebieg wykonania (domyślnie zakończony rozpływ mocy). */
 export function przebiegFixture(over: Partial<ExecutionRun> & { id: string }): ExecutionRun {
@@ -36,22 +37,6 @@ export function snapshotFixture(): EnergyNetworkModel {
       { ref_id: 'bus-c', name: 'Szyna C', voltage_kv: 15 },
     ],
   } as unknown as EnergyNetworkModel;
-}
-
-/** Katalog NC RfG (progi klas A/B/C/D dla dwóch operatorów) — podzbiór z backendu. */
-export function katalogFixture(): OdpowiedzKatalogNcRfg {
-  const module_types = [
-    { id: 'A', threshold_kw_min: 0.8, threshold_kw_max: 1000, voltage_kv_max: 110, description_pl: 'Moduły mikro/mini' },
-    { id: 'B', threshold_kw_min: 1000, threshold_kw_max: 50000, voltage_kv_max: 110, description_pl: 'Moduły małe i średnie' },
-    { id: 'C', threshold_kw_min: 50000, threshold_kw_max: 75000, voltage_kv_max: 110, description_pl: 'Moduły duże' },
-    { id: 'D', threshold_kw_min: 75000, threshold_kw_max: null, voltage_kv_max: null, description_pl: 'Moduły bardzo duże' },
-  ];
-  return {
-    operators: [
-      { operator_id: 'enea', operator_name_pl: 'ENEA Operator', module_types },
-      { operator_id: 'pse', operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne', module_types },
-    ],
-  };
 }
 
 /** Widok zdolności przyłączeniowej 1:1 z backendem (pola D3a wypełnione). */

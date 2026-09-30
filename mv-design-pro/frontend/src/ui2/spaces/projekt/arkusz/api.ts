@@ -3,21 +3,19 @@
  *
  * Kontrakt backendu 1:1 (`backend/src/api/xlsx_import.py`, router z prefiksem
  * `/api/import`):
- *  - POST /api/import/xlsx/preview (multipart: file) → podgląd BEZ zapisu,
- *  - POST /api/import/xlsx         (multipart: file, nazwa_projektu?) → nowy projekt.
+ *  - POST /api/import/xlsx/preview (multipart: file) → podgląd BEZ zapisu
+ *    (model zbudowany w pamięci: liczby z ENM, zastrzeżenia, typy z arkusza),
+ *  - POST /api/import/xlsx         (multipart: file, nazwa_projektu?) → nowy projekt
+ *    + pierwszy przypadek obliczeniowy + model sieci projektu (`enm_hash`).
  *
  * ZERO fabrykacji i ZERO parsowania modelu w przeglądarce: wszystkie liczby
- * („ile czego wejdzie do modelu") i wszystkie zastrzeżenia do wierszy pochodzą
+ * („ile czego weszło do modelu") i wszystkie zastrzeżenia do wierszy pochodzą
  * z odpowiedzi backendu. Front nie otwiera arkusza — wysyła plik i pokazuje,
  * co powiedział serwer.
- *
- * DEFEKT ZASTANY (karta XLSX-IMPORT, pomiar 2026-08-07): w całym froncie nie
- * było ANI JEDNEGO odwołania do `/api/import`; końcówka istniała, była wpięta
- * w `main.py` i nie miała konsumenta — a sama zwracała 422 „Brak biblioteki
- * openpyxl" i niczego nie zapisywała.
  */
 
-/** Zastrzeżenie do zawartości arkusza (kontrakt `BladArkuszaModel`). */
+/** Zastrzeżenie do zawartości arkusza (kontrakt `BladArkuszaModel`);
+ *  `arkusz === 'model'` = zastrzeżenie kompilatora/walidatora do całej sieci. */
 export interface ZastrzezenieArkusza {
   readonly arkusz: string;
   readonly wiersz: number | null;
@@ -25,7 +23,7 @@ export interface ZastrzezenieArkusza {
   readonly komunikat: string;
 }
 
-/** Liczby elementów rozpoznanych w arkuszu (kontrakt `PodsumowanieArkuszaModel`). */
+/** Liczby elementów MODELU zbudowanego z arkusza (kontrakt `PodsumowanieArkuszaModel`). */
 export interface PodsumowanieArkusza {
   readonly szyny: number;
   readonly odcinki: number;
@@ -40,24 +38,24 @@ export interface PodgladArkusza {
   readonly podsumowanie: PodsumowanieArkusza | null;
   readonly bledy: readonly ZastrzezenieArkusza[];
   readonly ostrzezenia: readonly string[];
-  readonly elementy_bez_katalogu: readonly string[];
-  readonly mapowanie_katalogowe_wymagane: boolean;
+  /** Elementy, których typ powstał z tabliczki arkusza (pozycja katalogu projektu
+   *  o statusie „niezweryfikowany") — do weryfikacji przez projektanta. */
+  readonly elementy_typow_projektu: readonly string[];
 }
 
 /** Status importu wg backendu. */
-export type StatusImportuArkusza = 'ZAIMPORTOWANO' | 'WYMAGA_MAPOWANIA_KATALOGU' | 'ODRZUCONO';
+export type StatusImportuArkusza = 'ZAIMPORTOWANO' | 'ODRZUCONO';
 
 /** Odpowiedź importu (`ImportArkuszaResponse`). */
 export interface WynikImportuArkusza {
   readonly status: StatusImportuArkusza;
   readonly project_id: string | null;
-  readonly snapshot_id: string | null;
-  readonly odcisk_migawki: string | null;
+  readonly case_id: string | null;
+  readonly enm_hash: string | null;
   readonly podsumowanie: PodsumowanieArkusza | null;
   readonly bledy: readonly ZastrzezenieArkusza[];
   readonly ostrzezenia: readonly string[];
-  readonly elementy_bez_katalogu: readonly string[];
-  readonly mapowanie_katalogowe_wymagane: boolean;
+  readonly elementy_typow_projektu: readonly string[];
 }
 
 const BAZA = '/api/import';

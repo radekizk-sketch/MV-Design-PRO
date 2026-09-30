@@ -1,8 +1,10 @@
 """Guards for V12.xx draft UI vs committed ENM isolation."""
 
 import pytest
-from enm.canonical_analysis import (
+from enm.assembler import (
     _short_circuit_type_from_options,
+)
+from enm.canonical_analysis import (
     build_execution_result_set,
     build_short_circuit_results,
     create_run,
@@ -179,9 +181,9 @@ def reset_state():
 
 def test_execute_run_uses_frozen_snapshot_not_post_creation_enm_mutation():
     case_id = "draft-isolation-sc"
-    set_enm(case_id, EnergyNetworkModel.model_validate(_valid_enm_payload("Siec pierwotna")))
+    set_enm(case_id, EnergyNetworkModel.model_validate(_valid_enm_payload("Sieć pierwotna")))
 
-    run = create_run(case_id=case_id, analysis_type="short_circuit_sn")
+    run = create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn")
     frozen_hash = run.snapshot_hash
     frozen_name = run.snapshot["header"]["name"]
 
@@ -195,7 +197,7 @@ def test_execute_run_uses_frozen_snapshot_not_post_creation_enm_mutation():
     assert result.status == "FINISHED", result.error_message
     assert result.snapshot_hash == frozen_hash
     assert result.snapshot["header"]["name"] == frozen_name
-    assert result.snapshot["header"]["name"] == "Siec pierwotna"
+    assert result.snapshot["header"]["name"] == "Sieć pierwotna"
     assert result.raw_result is not None
     assert result.raw_result["enm_hash"] == frozen_hash
 
@@ -209,7 +211,7 @@ def test_short_circuit_does_not_report_helper_field_terminals():
         ),
     )
 
-    run = create_run(case_id=case_id, analysis_type="short_circuit_sn")
+    run = create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn")
     result = execute_run(run.id)
 
     assert result.status == "FINISHED", result.error_message
@@ -234,6 +236,7 @@ def test_execute_run_supports_1f_when_z0_is_committed_in_enm():
 
     run = create_run(
         case_id=case_id,
+        klucz_twin=case_id,
         analysis_type="short_circuit_sn",
         options={"fault_type": "1F"},
     )
@@ -285,6 +288,7 @@ def test_execute_run_supports_2fg_when_z0_is_committed_in_enm():
 
     run = create_run(
         case_id=case_id,
+        klucz_twin=case_id,
         analysis_type="short_circuit_sn",
         options={"fault_type": "2F+Z"},
     )
@@ -321,9 +325,10 @@ def test_create_1f_run_blocks_without_committed_z0():
     case_id = "canonical-sc-1f-missing-z0"
     set_enm(case_id, EnergyNetworkModel.model_validate(_valid_enm_payload("Siec bez Z0")))
 
-    with pytest.raises(ValueError, match="skladowej zerowej Z0"):
+    with pytest.raises(ValueError, match="składowej zerowej Z0"):
         create_run(
             case_id=case_id,
+            klucz_twin=case_id,
             analysis_type="short_circuit_sn",
             options={"fault_type": "1F"},
         )

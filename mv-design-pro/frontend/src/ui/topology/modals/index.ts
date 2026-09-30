@@ -27,8 +27,6 @@ export type { PVInverterFormData } from './PVInverterModal';
 export type { BESSInverterFormData } from './BESSInverterModal';
 
 // Modale wizarda SN
-export { GridSourceModal } from './GridSourceModal';
 export { SectionSwitchModal } from './SectionSwitchModal';
 
-export type { GridSourceFormData } from './GridSourceModal';
 export type { SectionSwitchFormData, SwitchKind, SwitchState } from './SectionSwitchModal';

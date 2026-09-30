@@ -39,7 +39,7 @@ VT_20KV_FZ = "vt_20kv_fz_100_3_05_3p_siemens"
 def tor(**nadpisania) -> WymaganiaToruNapieciowego:
     baza = {
         "napiecie_sieci_v": 20000.0,
-        "tryb_uziemienia": "cewka_petersena",
+        "tryb_uziemienia": "petersen_coil",
         "zwarcie_doziemne_wylaczane_automatycznie": False,
         "napiecia_wejsc_przekaznika_v": (100.0, 110.0),
         "obciazenie_obwodu_va": 20.0,
@@ -125,7 +125,7 @@ class TestWspolczynnikNapieciowy:
             sprawdz_dobor_vt(
                 typ(VT_20KV_FZ),
                 tor(
-                    tryb_uziemienia="bezposrednio_uziemiony",
+                    tryb_uziemienia="directly_grounded",
                     zwarcie_doziemne_wylaczane_automatycznie=None,
                 ),
             ),
@@ -139,13 +139,13 @@ class TestWspolczynnikNapieciowy:
         # Siec uziemiona przez rezystor NIE jest siecia skutecznie uziemiona — to byl
         # rozjazd z `audit2_catalogs`, ktory dopuszczal tam 1,5 (V12K-256).
         k = kryterium(
-            sprawdz_dobor_vt(typ(VT_20KV_FZ), tor(tryb_uziemienia="rezystor")),
+            sprawdz_dobor_vt(typ(VT_20KV_FZ), tor(tryb_uziemienia="resistor_grounded")),
             "vt.wspolczynnik_napieciowy",
         )
         assert "1.9" in (k.wymagane or "")
 
     def test_nieznany_sposob_uziemienia_daje_BRAK_DANYCH_nie_zgodnosc(self) -> None:
-        wynik = sprawdz_dobor_vt(typ(VT_20KV_FZ), tor(tryb_uziemienia="nieznany"))
+        wynik = sprawdz_dobor_vt(typ(VT_20KV_FZ), tor(tryb_uziemienia=None))
         k = kryterium(wynik, "vt.wspolczynnik_napieciowy")
         assert k.werdykt == "brak_danych"
         assert "sposób uziemienia" in (k.komentarz_pl or "")

@@ -37,7 +37,6 @@ from analysis.arc_flash import (
     ARC_FLASH_OPEN_SOURCE_PROVENANCE,
     ARC_FLASH_RALPH_LEE_LABEL,
     ARC_FLASH_TABLE_INCOMPLETE_STATUS,
-    OSD_ARC_FLASH_BLOCKER_CODE,
     PPE_CATEGORY_INCOMPLETE,
     PRODUCTION_IEEE_1584_TABLE,
     ArcCurrentCoeffs,
@@ -59,7 +58,6 @@ from analysis.arc_flash import (
     VoltageAnchor,
     empty_ieee_1584_table,
     load_ieee_1584_table,
-    osd_arc_flash_gate,
 )
 from analysis.arc_flash.loader import DATA_FILE, build_table_from_payload
 from analysis.arc_flash.models import INCIDENT_ENERGY_AFB_JOULE_CM2
@@ -963,61 +961,3 @@ def test_structure_runs_end_to_end_from_short_circuit_result() -> None:
     assert r.i_bf_ka == pytest.approx(25.0)
     assert r.voltage_kv == pytest.approx(13.8)
     assert r.i_arc_ka is not None and r.i_arc_ka < r.i_bf_ka  # realny prąd łuku
-
-
-def test_osd_gate_blocks_open_source_result_without_acceptance() -> None:
-    """Wynik open-source (COMPUTED_IEEE_1584_OPEN_SOURCE, audit-pending) BLOKUJE
-    użycie certyfikowane/OSD bez świadomej akceptacji proweniencji open-source —
-    mimo że liczy realny wynik (to sedno: realny wynik, ale weryfikacja wymagana)."""
-    view = ArcFlashBuilder().build([_in_range_input()])
-    assert view.status is ArcFlashStatus.COMPUTED_IEEE_1584_OPEN_SOURCE
-    ready, blockers = osd_arc_flash_gate(view, accepted=False)
-    assert ready is False
-    assert len(blockers) == 1
-    assert blockers[0].code == OSD_ARC_FLASH_BLOCKER_CODE
-    assert blockers[0].severity == "BLOKUJACE"
-
-
-def test_osd_gate_blocks_ralph_lee_result_without_acceptance() -> None:
-    """Wynik Ralpha Lee (poza zakresem IEEE) też wymaga świadomej akceptacji OSD."""
-    view = ArcFlashBuilder().build([_in_range_input(voltage_kv=20.0)])
-    ready, blockers = osd_arc_flash_gate(view, accepted=False)
-    assert ready is False
-    assert blockers[0].code == OSD_ARC_FLASH_BLOCKER_CODE
-
-
-def test_osd_gate_passes_with_conscious_acceptance() -> None:
-    """Z jawną akceptacją inżyniera (świadoma akceptacja proweniencji open-source)
-    wynik audit-pending może wejść do pakietu OSD."""
-    view = ArcFlashBuilder().build([_in_range_input()])
-    ready, blockers = osd_arc_flash_gate(view, accepted=True)
-    assert ready is True
-    assert blockers == []
-
-
-def test_osd_gate_passes_only_for_verified_norm_result() -> None:
-    """Bramka OSD przechodzi BEZ akceptacji TYLKO dla wyniku ZWERYFIKOWANEGO z
-    licencjonowaną normą (COMPUTED_IEEE_1584). Symulujemy stan docelowy:
-    tablica z proweniencją norma_IEEE_1584 (po weryfikacji)."""
-    import json
-    from pathlib import Path
-
-    payload = json.loads(Path(DATA_FILE).read_text(encoding="utf-8"))
-    verified_table = build_table_from_payload(payload, provenance=TableProvenance.NORMA_IEEE_1584)
-    # Builder oznacza wynik jako zweryfikowany tylko gdy tablica jest zweryfikowana.
-    # (Bieżący builder zwraca OPEN_SOURCE; ten test dokumentuje wymóg bramki:
-    # przejście bez akceptacji wymaga statusu COMPUTED_IEEE_1584.)
-    view = ArcFlashBuilder(coefficient_table=verified_table).build([_in_range_input()])
-    # Dopóki builder nie rozróżnia proweniencji tablicy w statusie, wynik pozostaje
-    # open-source i bramka blokuje — co jest BEZPIECZNYM domyślnym zachowaniem.
-    ready, _ = osd_arc_flash_gate(view, accepted=False)
-    assert ready is (view.status is ArcFlashStatus.COMPUTED_IEEE_1584)
-
-
-def test_osd_blocker_uses_readiness_blocker_model() -> None:
-    """Bramka używa istniejącego modelu ReadinessBlocker (bez drugiej prawdy)."""
-    from enm.domain_ops_models import ReadinessBlocker
-
-    view = ArcFlashBuilder().build([_in_range_input()])
-    _, blockers = osd_arc_flash_gate(view, accepted=False)
-    assert all(isinstance(b, ReadinessBlocker) for b in blockers)

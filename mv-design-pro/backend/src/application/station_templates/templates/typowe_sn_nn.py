@@ -27,9 +27,9 @@ from application.station_templates.schema import (
 
 def _base_bay_roles() -> tuple[BayRoleSpec, ...]:
     return (
-        BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),
-        BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT"),
-        BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
+        BayRoleSpec(role="IN"),
+        BayRoleSpec(role="OUT"),
+        BayRoleSpec(role="TR"),
     )
 
 
@@ -84,7 +84,7 @@ TYPOWE_SN_NN_TEMPLATES = (
     _typowa(
         "tpl_sn_nn_100kva",
         "Stacja SN/nN 100 kVA, 1 pole, 2 odpływy",
-        "Mała stacja terenowa 100 kVA z pojedynczym polem liniowym IN.",
+        "Mała stacja terenowa 100 kVA z pojedynczym polem liniowym wejściowym.",
         tr_options=TR_OPTIONS_SMALL,
         default_feeders=2,
         default_bays=1,
@@ -92,7 +92,7 @@ TYPOWE_SN_NN_TEMPLATES = (
     _typowa(
         "tpl_sn_nn_160kva",
         "Stacja SN/nN 160 kVA, 2 pola, 2 odpływy",
-        "Standardowa 160 kVA z polami IN/OUT (przelot).",
+        "Standardowa 160 kVA z polami liniowymi wejściowym i wyjściowym (przelot).",
         tr_options=TR_OPTIONS_SMALL,
         default_feeders=2,
         default_bays=2,
@@ -138,10 +138,10 @@ TYPOWE_SN_NN_TEMPLATES = (
         # standard Enei: przekładniki pola pomiarowego 5/5–15/5 A to prądy
         # przyłącza klienta, nie magistrali.) Pole TR chroni reguła keep-TR.
         bay_roles=(
-            BayRoleSpec(role="IN", label_pl="Pole liniowe dopływowe"),
-            BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe (VT)"),
-            BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
-            BayRoleSpec(role="OUT", label_pl="Pole odpływowe rezerwowe"),
+            BayRoleSpec(role="IN"),
+            BayRoleSpec(role="MEASUREMENT", okreslenie_pl="(VT)"),
+            BayRoleSpec(role="TR"),
+            BayRoleSpec(role="OUT", okreslenie_pl="rezerwowe"),
         ),
     ),
     _typowa(
@@ -162,11 +162,11 @@ TYPOWE_SN_NN_TEMPLATES = (
         # Jak wyżej (V12K-333, klasa B): stacja abonencka bez tranzytu OSD —
         # dopływ → pomiar → TR → dwie rezerwy odpływowe.
         bay_roles=(
-            BayRoleSpec(role="IN", label_pl="Pole liniowe dopływowe"),
-            BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe (VT)"),
-            BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
-            BayRoleSpec(role="OUT", label_pl="Pole odpływowe rezerwowe"),
-            BayRoleSpec(role="OUT", label_pl="Pole odpływowe rezerwowe 2"),
+            BayRoleSpec(role="IN"),
+            BayRoleSpec(role="MEASUREMENT", okreslenie_pl="(VT)"),
+            BayRoleSpec(role="TR"),
+            BayRoleSpec(role="OUT", okreslenie_pl="rezerwowe"),
+            BayRoleSpec(role="OUT", okreslenie_pl="rezerwowe 2"),
         ),
     ),
     _typowa(

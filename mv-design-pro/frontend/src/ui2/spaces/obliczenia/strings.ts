@@ -33,6 +33,18 @@ export const PRZYPADKI_STRINGS = {
   uruchomRodzaj: 'Rodzaj analizy',
   uruchomOpis:
     'Uruchamia przebieg wybranego rodzaju dla aktywnego zakresu obliczeń i otwiera wyniki.',
+  // W3-G1: metoda rozpływu mocy — opcja WIDOCZNA wyłącznie dla rodzaju „Rozpływ
+  // mocy" (zwarcie trójfazowe nie ma metody NR/GS/FD). Domyślnie NR; GS/FD są
+  // wyborem ŚWIADOMYM (etykieta + krótkie „po co" pod selektorem).
+  uruchomMetoda: 'Metoda rozpływu',
+  uruchomMetodaOpis:
+    'Metoda numeryczna rozwiązania równań rozpływu mocy. Wysyłana do solvera i widoczna w śladzie przebiegu (ekran „Zbieżność").',
+  uruchomMetodaNrOpis:
+    'Newtona–Raphsona (NR) — domyślna. Zbieżność kwadratowa (3–5 iteracji), stabilna dla większości sieci SN.',
+  uruchomMetodaGsOpis:
+    'Gaussa–Seidla (GS) — zbieżność liniowa (dużo więcej iteracji), prostsza numerycznie. Do walidacji krzyżowej wyniku NR.',
+  uruchomMetodaFdOpis:
+    'Szybka rozprzężona (FD) — przybliżenie NR dla sieci z dominującą reaktancją. Do walidacji krzyżowej wyniku NR; mniej stabilna dla sieci SN o dużym R/X.',
   porownajZaznaczone: 'Porównaj zaznaczone',
   wrocDoKarty: 'Wróć do karty przypadku',
 
@@ -63,13 +75,12 @@ export const PRZYPADKI_STRINGS = {
   kolWartosc: 'Wartość',
   kolPochodzenie: 'Pochodzenie',
 
-  // Założenia — etykiety pierwszoplanowe
+  // Założenia — etykiety pierwszoplanowe (KARTA-UI2 §1 p. 10: temperatura/stan
+  // łączeń SKASOWANE — StudyCaseConfig ich nie niesie i nie będzie nosić;
+  // kontrolka bez dostawcy w kontrakcie = fantom, nie „wkrótce")
   zalozenieCMax: 'Współczynnik napięciowy c (max)',
   zalozenieCMin: 'Współczynnik napięciowy c (min)',
-  zalozenieTemperatura: 'Temperatura przewodów',
-  zalozenieStanLaczen: 'Stan łączeń (konfiguracja pól)',
   pochodzenieKonfiguracja: 'Konfiguracja przypadku (IEC 60909)',
-  pochodzenieWkrotce: 'Wkrótce — brak źródła w konfiguracji przypadku',
 
   // Porównanie konfiguracji
   porownanieTytul: 'Porównanie konfiguracji przypadków',

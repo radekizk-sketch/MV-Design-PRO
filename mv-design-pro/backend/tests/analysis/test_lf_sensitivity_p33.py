@@ -31,6 +31,7 @@ def _build_p32_proof() -> ProofDocument:
                 bus_id="BUS_01",
                 u_ll_kv=9.8,
                 u_nom_kv=10.0,
+                nazwa="Szyna SN testowa",
             )
         ],
         elements=[
@@ -45,6 +46,7 @@ def _build_p32_proof() -> ProofDocument:
                 q_mvar=0.5,
                 u_nom_kv=10.0,
                 u_ll_kv=10.0,
+                nazwa="Linia SN testowa",
             )
         ],
     )

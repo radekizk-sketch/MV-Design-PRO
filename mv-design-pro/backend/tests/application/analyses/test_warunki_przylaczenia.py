@@ -62,7 +62,8 @@ def test_przekroczony_limit_mocy_oddawanej_daje_fail() -> None:
     assert pozycja.wymagana == pytest.approx(5.0)
     assert ocena.kierunek == KIERUNEK_ODDAWANIE
     assert ocena.status_ogolny == STATUS_FAIL
-    assert "PRZEKROCZONY" in pozycja.opis_pl
+    # Karta #145: zdanie dla inżyniera — polski zapis liczb i słowny stan limitu.
+    assert pozycja.opis_pl == "Moc oddawana do sieci 6,2 MW wobec limitu 5 MW (limit przekroczony)."
 
 
 def test_limit_dotrzymany_w_obu_kierunkach() -> None:

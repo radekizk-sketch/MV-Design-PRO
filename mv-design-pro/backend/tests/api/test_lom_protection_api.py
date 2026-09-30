@@ -58,14 +58,14 @@ def _seed_case(case_id: str) -> None:
 
 def test_unknown_case_returns_404() -> None:
     with pytest.raises(HTTPException) as exc:
-        get_lom_protection(case_id="brak-przypadku")
+        get_lom_protection(case_id="brak-przypadku", klucz="brak-przypadku")
     assert exc.value.status_code == 404
     assert "ENM" in exc.value.detail
 
 
 def test_known_case_returns_view() -> None:
     _seed_case("case-lom-1")
-    view = get_lom_protection(case_id="case-lom-1")
+    view = get_lom_protection(case_id="case-lom-1", klucz="case-lom-1")
     assert view["analysis"] == "ochrona_lom"
     assert view["summary"]["fields_total"] == 1
     rocof = [c for field in view["fields"] for c in field["checks"] if c["function_ansi"] == "81R"]

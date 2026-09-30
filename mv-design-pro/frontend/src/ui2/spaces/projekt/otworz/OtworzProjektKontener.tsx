@@ -31,10 +31,11 @@
  *   przechodzi przez potwierdzenie w ekranie.
  *
  * Sekcja „gotowe przykłady" (P-01…P-05): NIE renderuje się — brak realnego
- * dostawcy. Zmierzone: `api/reference_patterns.py` (walidacje nastaw I>>),
- * `api/reference_networks.py` (biblioteka read-only + run in-memory) ani
+ * dostawcy. Zmierzone: `api/reference_patterns.py` (walidacje nastaw I>>) ani
  * `api/reference_engine.py` (packi zgodności) NIE materializują przykładowej
- * sieci do NOWEGO projektu jednym wywołaniem. Dług nazwany w meldunku karty.
+ * sieci do NOWEGO projektu jednym wywołaniem (dawny `api/reference_networks.py`
+ * — biblioteka read-only + run in-memory — usunięty kartą K2, 2026-09-09,
+ * nigdy nie był tym dostawcą). Dług nazwany w meldunku karty.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -79,11 +80,16 @@ export interface OtworzProjektKontenerProps {
   onWrocDoPulpitu?: () => void;
   /** Wywoływane po skutecznym otwarciu / utworzeniu projektu (zamyka tryb zmiany). */
   onProjektOtwarty?: () => void;
+  /** Inne drogi zdobycia projektu (E1) — okna importu z arkusza i archiwum. */
+  onOtworzImportArkusza?: () => void;
+  onOtworzArchiwum?: () => void;
 }
 
 export function OtworzProjektKontener({
   onWrocDoPulpitu,
   onProjektOtwarty,
+  onOtworzImportArkusza,
+  onOtworzArchiwum,
 }: OtworzProjektKontenerProps = {}) {
   const setActiveProject = useAppStateStore((s) => s.setActiveProject);
   const setActiveCase = useAppStateStore((s) => s.setActiveCase);
@@ -249,6 +255,8 @@ export function OtworzProjektKontener({
       }
       onWrocDoPulpitu={onWrocDoPulpitu}
       wToku={wToku}
+      onOtworzImportArkusza={onOtworzImportArkusza}
+      onOtworzArchiwum={onOtworzArchiwum}
       onWczytajPrzyklad={() => {
         // Nieosiągalne przy pustej liście przykładów — celowo bez akcji
         // (żadnego udawania materializacji; dostawca = przyszła karta).

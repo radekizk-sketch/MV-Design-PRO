@@ -14,16 +14,10 @@ from tests.catalog_test_helpers import gpz_payload
 
 
 def _reset_runtime_state() -> None:
-    from api.execution_runs import get_engine
     from api.power_flow_runs import _interpretation_cache
     from enm.canonical_analysis import reset_canonical_runs
     from enm.store import reset_enm_store
 
-    engine = get_engine()
-    engine._runs.clear()
-    engine._result_sets.clear()
-    engine._study_cases.clear()
-    engine._case_runs.clear()
     _interpretation_cache.clear()
     reset_canonical_runs()
     reset_enm_store()
@@ -123,22 +117,11 @@ def test_power_flow_router_ignores_legacy_analysis_run_rows(client: TestClient) 
     assert client.get(f"/api/power-flow-runs/{legacy_run.id}/interpretation").status_code == 404
 
 
-def test_sld_overlay_rejects_legacy_run_ids(client: TestClient) -> None:
-    project_id, case_id = _seed_project_and_case(client)
-    legacy_run = _insert_legacy_run(
-        client,
-        project_id=project_id,
-        case_id=case_id,
-        analysis_type="short_circuit_sn",
-    )
-
-    response = client.get(
-        f"/api/projects/{project_id}/sld/{uuid4()}/overlay",
-        params={"run_id": str(legacy_run.id)},
-    )
-
-    assert response.status_code == 404
-    assert response.json()["detail"] == f"Run {legacy_run.id} not found"
+# W1 (2026-09-09): `test_sld_overlay_rejects_legacy_run_ids` usunięty razem z trasą
+# `GET /api/projects/{id}/sld/{diagram_id}/overlay` (SLD ORM + nakładka biegu
+# kanonicznego skasowane — 0 konsumentów; bramka wskrzeszenia w
+# `legacy_public_path_guard`). Własność „tylko tor kanoniczny” dla nakładki jest
+# teraz trywialna: trasy nie ma.
 
 
 def test_main_app_no_longer_exposes_noncanonical_routers(client: TestClient) -> None:
@@ -176,7 +159,19 @@ def test_main_app_no_longer_exposes_noncanonical_routers(client: TestClient) -> 
 
 
 def test_production_enm_has_single_public_write_path(client: TestClient) -> None:
-    case_id = str(uuid4())
+    # `domain-ops` jest jedyna produkcyjna sciezka zapisu — musi wiec dzialac
+    # naprawde, na REALNYM przypadku (CV-1-W: przypadek bez wiersza w bazie
+    # dostaje 404 z magazynu ENM, inwariant I-2). `project_id` ponizej zostaje
+    # NIEZALEZNYM, nieistniejacym identyfikatorem — te asercje pilnuja tras
+    # katalogu dla tresci, ktorej NIGDY nie utworzono, nie tego przypadku.
+    project_resp = client.post("/api/projects", json={"name": "Produkcyjna sciezka — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    case_resp = client.post(
+        "/api/study-cases",
+        json={"project_id": project_resp.json()["id"], "name": "Przypadek testu"},
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    case_id = str(case_resp.json()["id"])
     project_id = str(uuid4())
     branch_id = str(uuid4())
     transformer_id = str(uuid4())

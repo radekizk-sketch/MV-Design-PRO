@@ -201,7 +201,7 @@ _STATION_CONFIGS: list[dict[str, Any]] = [
     },
     {
         "key": "PV_NN_1",
-        "label_pl": "Duza PV za transformatorem (nN, 1.0 MW)",
+        "label_pl": "Duża PV za transformatorem (nN, 1.0 MW)",
         "trafo": _TRAFO_DER_LARGE,
         "ders": [("PV", "nn_side", _PV_1P0, _PV_NS, 1.0)],
     },
@@ -234,7 +234,7 @@ _STATION_CONFIGS: list[dict[str, Any]] = [
     },
     {
         "key": "BESS_NN_1",
-        "label_pl": "Duzy magazyn BESS za transformatorem (nN, 1.0 MW)",
+        "label_pl": "Duży magazyn BESS za transformatorem (nN, 1.0 MW)",
         "trafo": _TRAFO_DER_LARGE,
         "ders": [("BESS", "nn_side", _BESS_1P0, _BESS_NS, 1.0)],
     },
@@ -250,7 +250,7 @@ _STATION_CONFIGS: list[dict[str, Any]] = [
     },
     {
         "key": "BEZ_OZE",
-        "label_pl": "Stacja odniesienia bez OZE (tylko odbior)",
+        "label_pl": "Stacja odniesienia bez OZE (tylko odbiór)",
         "trafo": _TRAFO_STANDARD,
         "ders": [],
     },
@@ -272,7 +272,10 @@ def _attach_ders(
     records: list[dict[str, Any]] = []
     errors: list[str] = []
     for di, (tech, variant, cat, ns, power) in enumerate(config["ders"], start=1):
-        name = f"{config['key']}_{tech}_{seq}_{di}"
+        # Nazwa źródła jak u projektanta: technologia + stacja + numer porządkowy. Dawniej
+        # sklejka kluczy konfiguracji (`BESS_SN_BLOCK_BESS_8_1`) — nazwa o kształcie kodu, która
+        # wędrowała do nazw aparatu, kabla i szyny bloku (karta NAZWY-JEDNO-ZRODLO).
+        name = f"{tech} stacji S{seq} nr {di}"
         if variant == "block_transformer":
             new_enm, err = _add_der_sn_block(enm, station_ref, tech, cat, ns, power, name)
         else:
@@ -303,7 +306,7 @@ def build_demo_oze_sc_network() -> dict[str, Any]:
     identyczny hash przy powtorzeniu (brak losowosci / czasu).
     """
     enm = _empty_enm()
-    enm["header"]["name"] = "Siec demonstracyjna OZE + zwarcia"
+    enm["header"]["name"] = "Sieć demonstracyjna OZE + zwarcia"
 
     # 1. GPZ / zrodlo SN.
     enm = _op(
@@ -315,6 +318,8 @@ def build_demo_oze_sc_network() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": _GPZ_SOURCE_REF,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
 
@@ -369,7 +374,7 @@ def build_demo_oze_sc_network() -> dict[str, Any]:
 
         p_kw = 400.0 if config["ders"] else 700.0
         enm, lerr = _add_station_load(
-            enm, station_ref, p_kw, p_kw * 0.33, f"Odbior stacja S{i + 1}"
+            enm, station_ref, p_kw, p_kw * 0.33, f"Odbiór stacja S{i + 1}"
         )
         if lerr:
             load_errors.append(f"S{i + 1}: {lerr}")
@@ -393,8 +398,8 @@ def build_demo_oze_sc_network() -> dict[str, Any]:
     return {
         "name": "DEMO_OZE_SC",
         "description": (
-            "Siec demonstracyjna: magistrala SN od GPZ, kazda stacja z inna "
-            "konfiguracja OZE + stacja odniesienia bez OZE."
+            "Sieć demonstracyjna: magistrala SN od GPZ, każda stacja z inną "
+            "konfiguracją OZE + stacja odniesienia bez OZE."
         ),
         "enm": enm,
         "station_configs": station_configs,

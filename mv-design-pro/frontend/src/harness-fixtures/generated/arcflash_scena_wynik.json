@@ -1,0 +1,1105 @@
+{
+  "analysis_id": "5fce0b7bd11b0a856d31a4b91aa3670442a98db625634d3bbae4e7034ce7c86d",
+  "context": {
+    "project_name": "CGMES Golden Net",
+    "case_name": null,
+    "case_id": "case-demo",
+    "run_timestamp": "2026-09-16T09:00:00+00:00",
+    "snapshot_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+    "run_id": "run-sc-scena-zwarcia"
+  },
+  "status": "COMPUTED_RALPH_LEE",
+  "status_label_pl": "metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018)",
+  "coefficient_table": {
+    "provenance": "open_source_IEEE_1584",
+    "provenance_label_pl": "open-source MIT rwl/arcflash (IEEE 1584-2018; NIE zweryfikowane z licencjonowaną normą)",
+    "is_empty": false,
+    "source_note_pl": "Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018",
+    "source_urls": [
+      "https://standards.ieee.org/ieee/1584/5802/",
+      "https://ieee-dataport.org/open-access/arc-flash-ie-and-iarc-calculators",
+      "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table1.rs",
+      "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table2.rs",
+      "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table3_4_5.rs",
+      "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table7.rs",
+      "https://webstore.iec.ch/en/publication/3709",
+      "https://webstore.iec.ch/en/publication/3711",
+      "https://webstore.iec.ch/en/publication/3712"
+    ],
+    "arc_current": {
+      "HCB|V14300": {
+        "k": [
+          0.008693,
+          0.999,
+          -0.02,
+          0.0,
+          -5.043e-11,
+          2.233e-08,
+          -3.046e-06,
+          0.000116,
+          -0.001145,
+          0.9839
+        ],
+        "present": true,
+        "marker": null
+      },
+      "HCB|V2700": {
+        "k": [
+          0.001011,
+          1.003,
+          -0.0249,
+          0.0,
+          0.0,
+          4.859e-10,
+          -1.814e-07,
+          -9.128e-06,
+          -0.0007,
+          0.9881
+        ],
+        "present": true,
+        "marker": null
+      },
+      "HCB|V600": {
+        "k": [
+          0.054922,
+          0.988,
+          -0.11,
+          0.0,
+          0.0,
+          -5.382e-09,
+          2.316e-06,
+          -0.000302,
+          0.0091,
+          0.9725
+        ],
+        "present": true,
+        "marker": null
+      },
+      "HOA|V14300": {
+        "k": [
+          0.000904,
+          0.999,
+          -0.02,
+          0.0,
+          0.0,
+          7.859e-10,
+          -1.914e-07,
+          -9.128e-06,
+          -0.0007,
+          0.9981
+        ],
+        "present": true,
+        "marker": null
+      },
+      "HOA|V2700": {
+        "k": [
+          0.000435,
+          1.006,
+          -0.038,
+          0.0,
+          0.0,
+          7.859e-10,
+          -1.914e-07,
+          -9.128e-06,
+          -0.0007,
+          0.9981
+        ],
+        "present": true,
+        "marker": null
+      },
+      "HOA|V600": {
+        "k": [
+          0.111147,
+          1.008,
+          -0.24,
+          0.0,
+          0.0,
+          -3.895e-09,
+          1.641e-06,
+          -0.000197,
+          0.002615,
+          1.1
+        ],
+        "present": true,
+        "marker": null
+      },
+      "VCB|V14300": {
+        "k": [
+          0.005795,
+          1.015,
+          -0.011,
+          -1.557e-12,
+          4.556e-10,
+          -4.186e-08,
+          8.346e-07,
+          5.482e-05,
+          -0.003191,
+          0.9729
+        ],
+        "present": true,
+        "marker": null
+      },
+      "VCB|V2700": {
+        "k": [
+          0.0065,
+          1.001,
+          -0.024,
+          -1.557e-12,
+          4.556e-10,
+          -4.186e-08,
+          8.346e-07,
+          5.482e-05,
+          -0.003191,
+          0.9729
+        ],
+        "present": true,
+        "marker": null
+      },
+      "VCB|V600": {
+        "k": [
+          -0.04287,
+          1.035,
+          -0.083,
+          0.0,
+          0.0,
+          -4.783e-09,
+          1.962e-06,
+          -0.000229,
+          0.003141,
+          1.092
+        ],
+        "present": true,
+        "marker": null
+      },
+      "VCBB|V14300": {
+        "k": [
+          0.014827,
+          1.01,
+          -0.01,
+          0.0,
+          -9.204e-11,
+          2.901e-08,
+          -3.262e-06,
+          0.0001569,
+          -0.004003,
+          0.9825
+        ],
+        "present": true,
+        "marker": null
+      },
+      "VCBB|V2700": {
+        "k": [
+          0.002823,
+          0.995,
+          -0.0125,
+          0.0,
+          -9.204e-11,
+          2.901e-08,
+          -3.262e-06,
+          0.0001569,
+          -0.004003,
+          0.9825
+        ],
+        "present": true,
+        "marker": null
+      },
+      "VCBB|V600": {
+        "k": [
+          -0.017432,
+          0.98,
+          -0.05,
+          0.0,
+          0.0,
+          -5.767e-09,
+          2.524e-06,
+          -0.00034,
+          0.01187,
+          1.013
+        ],
+        "present": true,
+        "marker": null
+      },
+      "VOA|V14300": {
+        "k": [
+          0.005371,
+          1.0102,
+          -0.029,
+          -1.557e-12,
+          4.556e-10,
+          -4.186e-08,
+          8.346e-07,
+          5.482e-05,
+          -0.003191,
+          0.9729
+        ],
+        "present": true,
+        "marker": null
+      },
+      "VOA|V2700": {
+        "k": [
+          -0.02395,
+          1.006,
+          -0.0188,
+          -1.557e-12,
+          4.556e-10,
+          -4.186e-08,
+          8.346e-07,
+          5.482e-05,
+          -0.003191,
+          0.9729
+        ],
+        "present": true,
+        "marker": null
+      },
+      "VOA|V600": {
+        "k": [
+          0.043785,
+          1.04,
+          -0.18,
+          0.0,
+          0.0,
+          -4.783e-09,
+          1.962e-06,
+          -0.000229,
+          0.003141,
+          1.092
+        ],
+        "present": true,
+        "marker": null
+      }
+    },
+    "arc_variation": {
+      "HCB": {
+        "k": [
+          0.0,
+          -3.097e-06,
+          0.00016405,
+          -0.0033609,
+          0.033308,
+          -0.16182,
+          0.34627
+        ],
+        "present": true,
+        "marker": null
+      },
+      "HOA": {
+        "k": [
+          0.0,
+          -3.1555e-06,
+          0.0001682,
+          -0.0034607,
+          0.034124,
+          -0.1599,
+          0.34629
+        ],
+        "present": true,
+        "marker": null
+      },
+      "VCB": {
+        "k": [
+          0.0,
+          -1.4269e-06,
+          8.3137e-05,
+          -0.0019382,
+          0.022366,
+          -0.12645,
+          0.30226
+        ],
+        "present": true,
+        "marker": null
+      },
+      "VCBB": {
+        "k": [
+          1.138e-06,
+          -6.0287e-05,
+          0.0012758,
+          -0.013778,
+          0.080217,
+          -0.24066,
+          0.33524
+        ],
+        "present": true,
+        "marker": null
+      },
+      "VOA": {
+        "k": [
+          9.5606e-07,
+          -5.1543e-05,
+          0.0011161,
+          -0.01242,
+          0.075125,
+          -0.23584,
+          0.33696
+        ],
+        "present": true,
+        "marker": null
+      }
+    },
+    "incident_energy": {
+      "HCB|V14300": {
+        "k": [
+          3.044516,
+          0.125,
+          0.245106,
+          0.0,
+          -5.043e-11,
+          2.233e-08,
+          -3.046e-06,
+          0.000116,
+          -0.001145,
+          0.9839,
+          0.0,
+          -1.655,
+          1.084
+        ],
+        "distance_exponent_k12": -1.655,
+        "present": true,
+        "marker": null
+      },
+      "HCB|V2700": {
+        "k": [
+          3.486391,
+          0.177,
+          -0.193101,
+          0.0,
+          0.0,
+          4.859e-10,
+          -1.814e-07,
+          -9.128e-06,
+          -0.0007,
+          0.9881,
+          0.027,
+          -1.723,
+          1.055
+        ],
+        "distance_exponent_k12": -1.723,
+        "present": true,
+        "marker": null
+      },
+      "HCB|V600": {
+        "k": [
+          4.073745,
+          0.344,
+          -0.370259,
+          0.0,
+          0.0,
+          -5.382e-09,
+          2.316e-06,
+          -0.000302,
+          0.0091,
+          0.9725,
+          0.0,
+          -2.03,
+          1.036
+        ],
+        "distance_exponent_k12": -2.03,
+        "present": true,
+        "marker": null
+      },
+      "HOA|V14300": {
+        "k": [
+          2.04049,
+          0.177,
+          1.005092,
+          0.0,
+          0.0,
+          7.859e-10,
+          -1.914e-07,
+          -9.128e-06,
+          -0.0007,
+          0.9981,
+          -0.05,
+          -1.633,
+          1.151
+        ],
+        "distance_exponent_k12": -1.633,
+        "present": true,
+        "marker": null
+      },
+      "HOA|V2700": {
+        "k": [
+          3.616266,
+          0.149,
+          -0.761561,
+          0.0,
+          0.0,
+          7.859e-10,
+          -1.914e-07,
+          -9.128e-06,
+          -0.0007,
+          0.9981,
+          0.0,
+          -1.639,
+          1.078
+        ],
+        "distance_exponent_k12": -1.639,
+        "present": true,
+        "marker": null
+      },
+      "HOA|V600": {
+        "k": [
+          3.470417,
+          0.465,
+          -0.261863,
+          0.0,
+          0.0,
+          -3.895e-09,
+          1.641e-06,
+          -0.000197,
+          0.002615,
+          1.1,
+          0.0,
+          -1.99,
+          1.04
+        ],
+        "distance_exponent_k12": -1.99,
+        "present": true,
+        "marker": null
+      },
+      "VCB|V14300": {
+        "k": [
+          3.825917,
+          0.11,
+          -0.999749,
+          -1.557e-12,
+          4.556e-10,
+          -4.186e-08,
+          8.346e-07,
+          5.482e-05,
+          -0.003191,
+          0.9729,
+          0.0,
+          -1.568,
+          0.99
+        ],
+        "distance_exponent_k12": -1.568,
+        "present": true,
+        "marker": null
+      },
+      "VCB|V2700": {
+        "k": [
+          2.40021,
+          0.165,
+          0.354202,
+          -1.557e-12,
+          4.556e-10,
+          -4.186e-08,
+          8.346e-07,
+          5.482e-05,
+          -0.003191,
+          0.9729,
+          0.0,
+          -1.569,
+          0.9778
+        ],
+        "distance_exponent_k12": -1.569,
+        "present": true,
+        "marker": null
+      },
+      "VCB|V600": {
+        "k": [
+          0.753364,
+          0.566,
+          1.752636,
+          0.0,
+          0.0,
+          -4.783e-09,
+          1.962e-06,
+          -0.000229,
+          0.003141,
+          1.092,
+          0.0,
+          -1.598,
+          0.957
+        ],
+        "distance_exponent_k12": -1.598,
+        "present": true,
+        "marker": null
+      },
+      "VCBB|V14300": {
+        "k": [
+          3.644309,
+          0.215,
+          -0.585522,
+          0.0,
+          -9.204e-11,
+          2.901e-08,
+          -3.262e-06,
+          0.0001569,
+          -0.004003,
+          0.9825,
+          0.0,
+          -1.677,
+          1.06
+        ],
+        "distance_exponent_k12": -1.677,
+        "present": true,
+        "marker": null
+      },
+      "VCBB|V2700": {
+        "k": [
+          3.870592,
+          0.185,
+          -0.736618,
+          0.0,
+          -9.204e-11,
+          2.901e-08,
+          -3.262e-06,
+          0.0001569,
+          -0.004003,
+          0.9825,
+          0.0,
+          -1.742,
+          1.09
+        ],
+        "distance_exponent_k12": -1.742,
+        "present": true,
+        "marker": null
+      },
+      "VCBB|V600": {
+        "k": [
+          3.068459,
+          0.26,
+          -0.098107,
+          0.0,
+          0.0,
+          -5.767e-09,
+          2.524e-06,
+          -0.00034,
+          0.01187,
+          1.013,
+          -0.06,
+          -1.809,
+          1.19
+        ],
+        "distance_exponent_k12": -1.809,
+        "present": true,
+        "marker": null
+      },
+      "VOA|V14300": {
+        "k": [
+          3.405454,
+          0.12,
+          -0.93245,
+          -1.557e-12,
+          4.556e-10,
+          -4.186e-08,
+          8.346e-07,
+          5.482e-05,
+          -0.003191,
+          0.9729,
+          0.0,
+          -1.534,
+          0.979
+        ],
+        "distance_exponent_k12": -1.534,
+        "present": true,
+        "marker": null
+      },
+      "VOA|V2700": {
+        "k": [
+          3.880724,
+          0.105,
+          -1.906033,
+          -1.557e-12,
+          4.556e-10,
+          -4.186e-08,
+          8.346e-07,
+          5.482e-05,
+          -0.003191,
+          0.9729,
+          0.0,
+          -1.515,
+          1.115
+        ],
+        "distance_exponent_k12": -1.515,
+        "present": true,
+        "marker": null
+      },
+      "VOA|V600": {
+        "k": [
+          0.679294,
+          0.746,
+          1.222636,
+          0.0,
+          0.0,
+          -4.783e-09,
+          1.962e-06,
+          -0.000229,
+          0.003141,
+          1.092,
+          0.0,
+          -1.598,
+          0.997
+        ],
+        "distance_exponent_k12": -1.598,
+        "present": true,
+        "marker": null
+      }
+    },
+    "enclosure_correction": {
+      "Shallow|HCB": {
+        "b": [
+          -0.0005556,
+          0.03722,
+          0.4778
+        ],
+        "present": true,
+        "marker": null
+      },
+      "Shallow|VCB": {
+        "b": [
+          0.002222,
+          -0.02556,
+          0.6222
+        ],
+        "present": true,
+        "marker": null
+      },
+      "Shallow|VCBB": {
+        "b": [
+          -0.002778,
+          0.1194,
+          -0.2778
+        ],
+        "present": true,
+        "marker": null
+      },
+      "Typical|HCB": {
+        "b": [
+          -0.0001923,
+          0.01935,
+          0.6899
+        ],
+        "present": true,
+        "marker": null
+      },
+      "Typical|VCB": {
+        "b": [
+          -0.000302,
+          0.03441,
+          0.4325
+        ],
+        "present": true,
+        "marker": null
+      },
+      "Typical|VCBB": {
+        "b": [
+          -0.0002976,
+          0.032,
+          0.479
+        ],
+        "present": true,
+        "marker": null
+      }
+    }
+  },
+  "ppe_table": {
+    "provenance": "norma_NFPA_70E",
+    "provenance_label_pl": "norma NFPA 70E (progi kategorii ŚOI)",
+    "is_empty": true,
+    "boundaries": [],
+    "over_limit_label_pl": null,
+    "source_note_pl": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela"
+  },
+  "results": [
+    {
+      "bus_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "status": "COMPUTED_IEEE_1584_OPEN_SOURCE",
+      "status_label_pl": "policzony (IEEE 1584-2018, współczynniki open-source — weryfikacja z normą wymagana)",
+      "method": "IEEE_1584_2018",
+      "electrode_config": "VCB",
+      "i_bf_ka": 8.97,
+      "voltage_kv": 15.0,
+      "arc_time_s": 0.2,
+      "conductor_gap_mm": 104.0,
+      "working_distance_mm": 455.0,
+      "coefficient_table_provenance": "open_source_IEEE_1584",
+      "coefficient_table_marker": null,
+      "provenance": "IEEE 1584-2018 via open-source MIT impl rwl/arcflash; NOT licensed-norm-verified",
+      "provenance_caveat_pl": "Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018",
+      "source_urls": [
+        "https://standards.ieee.org/ieee/1584/5802/",
+        "https://ieee-dataport.org/open-access/arc-flash-ie-and-iarc-calculators",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table1.rs",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table2.rs",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table3_4_5.rs",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table7.rs",
+        "https://webstore.iec.ch/en/publication/3709",
+        "https://webstore.iec.ch/en/publication/3711",
+        "https://webstore.iec.ch/en/publication/3712"
+      ],
+      "i_arc_ka": 8.5156,
+      "i_arc_min_ka": 8.4232,
+      "i_arc_at_anchors_ka": {
+        "V600": 6.5839,
+        "V2700": 7.7468,
+        "V14300": 8.4719
+      },
+      "arc_variation_cf": 0.0217,
+      "enclosure_correction_cf": 0.9999,
+      "incident_energy_cal_cm2": 7.6885,
+      "incident_energy_joule_cm2": 32.1686,
+      "arc_flash_boundary_mm": 1487.7103,
+      "ppe_category": "dane niekompletne — tablice NFPA 70E",
+      "ppe_table_provenance": null,
+      "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 8.52 kA (I_arc_min ≈ 8.42 kA), energia incydentu E ≈ 7.69 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1487.7 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
+      "missing_data": [],
+      "white_box": [
+        {
+          "symbol": "I_arc",
+          "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
+          "substitution_pl": "I_bf=8.97 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=8.4719 kA, V2700=7.7468 kA, V600=6.5839 kA; VarCf=0.0217",
+          "result_pl": "I_arc = 8.5156 kA, I_arc_min = 8.4232 kA (IEEE 1584-2018, współczynniki open-source)",
+          "unit_check_pl": "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].",
+          "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
+        },
+        {
+          "symbol": "CF",
+          "formula_latex": "CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})",
+          "substitution_pl": "konfiguracja VCB (w obudowie Typical)",
+          "result_pl": "CF = 0.9999",
+          "unit_check_pl": "CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
+          "table_ref": "CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584"
+        },
+        {
+          "symbol": "E",
+          "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
+          "substitution_pl": "I_bf=8.97 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=31.9609 J/cm², V2700=28.5185 J/cm², V600=19.8501 J/cm²",
+          "result_pl": "E = 32.1686 J/cm² = 7.6885 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
+          "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
+          "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
+        },
+        {
+          "symbol": "AFB",
+          "formula_latex": "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
+          "substitution_pl": "E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm",
+          "result_pl": "AFB = 1487.7103 mm (IEEE 1584-2018, współczynniki open-source)",
+          "unit_check_pl": "D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
+          "table_ref": "E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
+        },
+        {
+          "symbol": "ŚOI",
+          "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
+          "substitution_pl": "E = 7.6885 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
+          "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
+          "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+          "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
+        }
+      ],
+      "bus_name": "Szyna SN"
+    },
+    {
+      "bus_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "status": "COMPUTED_RALPH_LEE",
+      "status_label_pl": "metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018)",
+      "method": "RALPH_LEE",
+      "electrode_config": "VCB",
+      "i_bf_ka": 13.9866,
+      "voltage_kv": 110.0,
+      "arc_time_s": 0.2,
+      "conductor_gap_mm": 104.0,
+      "working_distance_mm": 455.0,
+      "coefficient_table_provenance": "RALPH_LEE",
+      "coefficient_table_marker": null,
+      "provenance": null,
+      "provenance_caveat_pl": null,
+      "source_urls": [],
+      "i_arc_ka": null,
+      "i_arc_min_ka": null,
+      "i_arc_at_anchors_ka": null,
+      "arc_variation_cf": null,
+      "enclosure_correction_cf": null,
+      "incident_energy_cal_cm2": 3183.7004,
+      "incident_energy_joule_cm2": 13320.6023,
+      "arc_flash_boundary_mm": 23436.1823,
+      "ppe_category": "dane niekompletne — tablice NFPA 70E",
+      "ppe_table_provenance": null,
+      "why_pl": "POZA zakresem ważności IEEE 1584-2018 (U=110.0 kV, I_bf=13.99 kA; zakres: 208 V–15 kV, I_bf 200 A–65 kA (600 V<U<=15 kV) dla tej klasy napięcia). Zastosowano metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018): E ≈ 3183.7 cal/cm², AFB ≈ 23436.2 mm, ŚOI = dane niekompletne — tablice NFPA 70E. To NIE jest wynik IEEE 1584 — metoda Lee jest teoretyczna (maksymalna moc łuku).",
+      "missing_data": [],
+      "white_box": [
+        {
+          "symbol": "E_Lee",
+          "formula_latex": "E = 2{,}142\\times10^{6}\\cdot V\\cdot I_{bf}\\cdot t \\big/ D^{2}",
+          "substitution_pl": "V=110.0 kV, I_bf=13.9866 kA, t=0.2 s, D=455.0 mm [poza zakresem IEEE 1584-2018]",
+          "result_pl": "E = 3183.7004 cal/cm² (metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018))",
+          "unit_check_pl": "V w kV, I_bf w kA, t w s, D w mm; E w cal/cm² (postać Lee).",
+          "table_ref": "metoda Ralpha Lee — postać zamknięta (bez tablicy IEEE 1584)"
+        },
+        {
+          "symbol": "AFB_Lee",
+          "formula_latex": "D_{AFB} = \\sqrt{2{,}142\\times10^{6}\\cdot V\\cdot I_{bf}\\cdot t \\big/ 1{,}2}",
+          "substitution_pl": "V=110.0 kV, I_bf=13.9866 kA, t=0.2 s; E_próg = 1.2 cal/cm²",
+          "result_pl": "AFB = 23436.1823 mm (metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018))",
+          "unit_check_pl": "D_AFB w mm; odległość, na której E = 1,2 cal/cm².",
+          "table_ref": "metoda Ralpha Lee — postać zamknięta (bez tablicy IEEE 1584)"
+        },
+        {
+          "symbol": "ŚOI",
+          "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
+          "substitution_pl": "E = 3183.7004 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
+          "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
+          "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+          "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
+        }
+      ],
+      "bus_name": "GPZ 110 kV"
+    },
+    {
+      "bus_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "status": "COMPUTED_IEEE_1584_OPEN_SOURCE",
+      "status_label_pl": "policzony (IEEE 1584-2018, współczynniki open-source — weryfikacja z normą wymagana)",
+      "method": "IEEE_1584_2018",
+      "electrode_config": "VCB",
+      "i_bf_ka": 21.0926,
+      "voltage_kv": 0.4,
+      "arc_time_s": 0.2,
+      "conductor_gap_mm": 104.0,
+      "working_distance_mm": 455.0,
+      "coefficient_table_provenance": "open_source_IEEE_1584",
+      "coefficient_table_marker": null,
+      "provenance": "IEEE 1584-2018 via open-source MIT impl rwl/arcflash; NOT licensed-norm-verified",
+      "provenance_caveat_pl": "Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018",
+      "source_urls": [
+        "https://standards.ieee.org/ieee/1584/5802/",
+        "https://ieee-dataport.org/open-access/arc-flash-ie-and-iarc-calculators",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table1.rs",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table2.rs",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table3_4_5.rs",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table7.rs",
+        "https://webstore.iec.ch/en/publication/3709",
+        "https://webstore.iec.ch/en/publication/3711",
+        "https://webstore.iec.ch/en/publication/3712"
+      ],
+      "i_arc_ka": 12.3832,
+      "i_arc_min_ka": 10.8035,
+      "i_arc_at_anchors_ka": {
+        "V600": 15.5285
+      },
+      "arc_variation_cf": 0.2551,
+      "enclosure_correction_cf": 0.9999,
+      "incident_energy_cal_cm2": 9.4221,
+      "incident_energy_joule_cm2": 39.4221,
+      "arc_flash_boundary_mm": 1652.2107,
+      "ppe_category": "dane niekompletne — tablice NFPA 70E",
+      "ppe_table_provenance": null,
+      "why_pl": "Arc Flash LV (konfiguracja VCB, IEEE 1584-2018, U<=600 V — Eq.25): prąd łuku I_arc,600 (Eq.1) ≈ 15.53 kA skorygowany do U=0.4 kV ⇒ I_arc ≈ 12.38 kA (I_arc_min ≈ 10.8 kA), energia incydentu E ≈ 9.42 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1652.2 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
+      "missing_data": [],
+      "white_box": [
+        {
+          "symbol": "I_arc",
+          "formula_latex": "I_{arc,600} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\quad(\\text{Eq.1, kotwa }600\\text{ V});\\quadI_{arc} = \\left[\\left(\\tfrac{0{,}6}{U}\\right)^{2}\\!\\left(\\tfrac{1}{I_{arc,600}^{2}}-\\tfrac{0{,}6^{2}-U^{2}}{0{,}6^{2}\\,I_{bf}^{2}}\\right)\\right]^{-1/2}\\quad(\\text{Eq.25});\\quadI_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
+          "substitution_pl": "I_bf=21.0926 kA, G=104.0 mm, U=0.4 kV [VCB, ścieżka LV — U<=600 V, BEZ interpolacji kotew]; I_arc,600(Eq.1)=15.5285 kA; VarCf=0.2551",
+          "result_pl": "I_arc = 12.3832 kA (Eq.25, skorygowany do U=0.4 kV), I_arc_min = 10.8035 kA (IEEE 1584-2018, współczynniki open-source)",
+          "unit_check_pl": "I_bf,I_arc,I_arc,600 w kA; G w mm; U w kV; Eq.25 koryguje prąd łuku kotwy 600 V do RZECZYWISTEGO napięcia układu (≤600 V).",
+          "table_ref": "I_arc,600[VCB,V600] (Tab.1) = open_source_IEEE_1584; Eq.25 publiczna postać zamknięta (bez tablicy)"
+        },
+        {
+          "symbol": "CF",
+          "formula_latex": "CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})",
+          "substitution_pl": "konfiguracja VCB (w obudowie Typical)",
+          "result_pl": "CF = 0.9999",
+          "unit_check_pl": "CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
+          "table_ref": "CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584"
+        },
+        {
+          "symbol": "E",
+          "formula_latex": "E = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_3 = k_3\\,I_{arc,600}/\\mathrm{denom}(I_{bf})\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;[\\mathrm{J/cm^2}]",
+          "substitution_pl": "I_bf=21.0926 kA, I_arc,600=15.5285 kA (nieskorygowany, człon x3), I_arc=12.3832 kA (Eq.25, człon x4), G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999 [wiersz kotwy 600 V, U rzeczywiste=0.4 kV]",
+          "result_pl": "E = 39.4221 J/cm² = 9.4221 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
+          "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; BEZ interpolacji po U (ścieżka LV liczy bezpośrednio dla U rzeczywistego).",
+          "table_ref": "E[VCB,V600] (Tab.3) = open_source_IEEE_1584"
+        },
+        {
+          "symbol": "AFB",
+          "formula_latex": "D_{AFB} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\text{wiersz 600 V});\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
+          "substitution_pl": "E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=0.4 kV, D=455.0 mm",
+          "result_pl": "AFB = 1652.2107 mm (IEEE 1584-2018, współczynniki open-source)",
+          "unit_check_pl": "D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
+          "table_ref": "E[VCB,V600] (odwrócone wzgl. D) (Tab.3) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
+        },
+        {
+          "symbol": "ŚOI",
+          "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
+          "substitution_pl": "E = 9.4221 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
+          "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
+          "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+          "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
+        }
+      ],
+      "bus_name": "Szyna nN"
+    },
+    {
+      "bus_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "status": "COMPUTED_IEEE_1584_OPEN_SOURCE",
+      "status_label_pl": "policzony (IEEE 1584-2018, współczynniki open-source — weryfikacja z normą wymagana)",
+      "method": "IEEE_1584_2018",
+      "electrode_config": "VCB",
+      "i_bf_ka": 8.97,
+      "voltage_kv": 15.0,
+      "arc_time_s": 0.2,
+      "conductor_gap_mm": 104.0,
+      "working_distance_mm": 455.0,
+      "coefficient_table_provenance": "open_source_IEEE_1584",
+      "coefficient_table_marker": null,
+      "provenance": "IEEE 1584-2018 via open-source MIT impl rwl/arcflash; NOT licensed-norm-verified",
+      "provenance_caveat_pl": "Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018",
+      "source_urls": [
+        "https://standards.ieee.org/ieee/1584/5802/",
+        "https://ieee-dataport.org/open-access/arc-flash-ie-and-iarc-calculators",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table1.rs",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table2.rs",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table3_4_5.rs",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table7.rs",
+        "https://webstore.iec.ch/en/publication/3709",
+        "https://webstore.iec.ch/en/publication/3711",
+        "https://webstore.iec.ch/en/publication/3712"
+      ],
+      "i_arc_ka": 8.5156,
+      "i_arc_min_ka": 8.4232,
+      "i_arc_at_anchors_ka": {
+        "V600": 6.5839,
+        "V2700": 7.7468,
+        "V14300": 8.4719
+      },
+      "arc_variation_cf": 0.0217,
+      "enclosure_correction_cf": 0.9999,
+      "incident_energy_cal_cm2": 7.6885,
+      "incident_energy_joule_cm2": 32.1686,
+      "arc_flash_boundary_mm": 1487.7103,
+      "ppe_category": "dane niekompletne — tablice NFPA 70E",
+      "ppe_table_provenance": null,
+      "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 8.52 kA (I_arc_min ≈ 8.42 kA), energia incydentu E ≈ 7.69 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1487.7 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
+      "missing_data": [],
+      "white_box": [
+        {
+          "symbol": "I_arc",
+          "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
+          "substitution_pl": "I_bf=8.97 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=8.4719 kA, V2700=7.7468 kA, V600=6.5839 kA; VarCf=0.0217",
+          "result_pl": "I_arc = 8.5156 kA, I_arc_min = 8.4232 kA (IEEE 1584-2018, współczynniki open-source)",
+          "unit_check_pl": "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].",
+          "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
+        },
+        {
+          "symbol": "CF",
+          "formula_latex": "CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})",
+          "substitution_pl": "konfiguracja VCB (w obudowie Typical)",
+          "result_pl": "CF = 0.9999",
+          "unit_check_pl": "CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
+          "table_ref": "CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584"
+        },
+        {
+          "symbol": "E",
+          "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
+          "substitution_pl": "I_bf=8.97 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=31.9609 J/cm², V2700=28.5185 J/cm², V600=19.8501 J/cm²",
+          "result_pl": "E = 32.1686 J/cm² = 7.6885 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
+          "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
+          "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
+        },
+        {
+          "symbol": "AFB",
+          "formula_latex": "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
+          "substitution_pl": "E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm",
+          "result_pl": "AFB = 1487.7103 mm (IEEE 1584-2018, współczynniki open-source)",
+          "unit_check_pl": "D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
+          "table_ref": "E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
+        },
+        {
+          "symbol": "ŚOI",
+          "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
+          "substitution_pl": "E = 7.6885 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
+          "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
+          "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+          "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
+        }
+      ],
+      "bus_name": "Stacja B SN"
+    },
+    {
+      "bus_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "status": "COMPUTED_IEEE_1584_OPEN_SOURCE",
+      "status_label_pl": "policzony (IEEE 1584-2018, współczynniki open-source — weryfikacja z normą wymagana)",
+      "method": "IEEE_1584_2018",
+      "electrode_config": "VCB",
+      "i_bf_ka": 4.6115,
+      "voltage_kv": 15.0,
+      "arc_time_s": 0.2,
+      "conductor_gap_mm": 104.0,
+      "working_distance_mm": 455.0,
+      "coefficient_table_provenance": "open_source_IEEE_1584",
+      "coefficient_table_marker": null,
+      "provenance": "IEEE 1584-2018 via open-source MIT impl rwl/arcflash; NOT licensed-norm-verified",
+      "provenance_caveat_pl": "Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018",
+      "source_urls": [
+        "https://standards.ieee.org/ieee/1584/5802/",
+        "https://ieee-dataport.org/open-access/arc-flash-ie-and-iarc-calculators",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table1.rs",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table2.rs",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table3_4_5.rs",
+        "https://raw.githubusercontent.com/rwl/arcflash/master/src/tables/table7.rs",
+        "https://webstore.iec.ch/en/publication/3709",
+        "https://webstore.iec.ch/en/publication/3711",
+        "https://webstore.iec.ch/en/publication/3712"
+      ],
+      "i_arc_ka": 4.3795,
+      "i_arc_min_ka": 4.332,
+      "i_arc_at_anchors_ka": {
+        "V600": 3.3029,
+        "V2700": 4.0235,
+        "V14300": 4.3593
+      },
+      "arc_variation_cf": 0.0217,
+      "enclosure_correction_cf": 0.9999,
+      "incident_energy_cal_cm2": 4.0755,
+      "incident_energy_joule_cm2": 17.0519,
+      "arc_flash_boundary_mm": 992.4605,
+      "ppe_category": "dane niekompletne — tablice NFPA 70E",
+      "ppe_table_provenance": null,
+      "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 4.38 kA (I_arc_min ≈ 4.33 kA), energia incydentu E ≈ 4.08 cal/cm² na odległości roboczej, granica łuku AFB ≈ 992.5 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
+      "missing_data": [],
+      "white_box": [
+        {
+          "symbol": "I_arc",
+          "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
+          "substitution_pl": "I_bf=4.6115 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=4.3593 kA, V2700=4.0235 kA, V600=3.3029 kA; VarCf=0.0217",
+          "result_pl": "I_arc = 4.3795 kA, I_arc_min = 4.332 kA (IEEE 1584-2018, współczynniki open-source)",
+          "unit_check_pl": "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].",
+          "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
+        },
+        {
+          "symbol": "CF",
+          "formula_latex": "CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})",
+          "substitution_pl": "konfiguracja VCB (w obudowie Typical)",
+          "result_pl": "CF = 0.9999",
+          "unit_check_pl": "CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
+          "table_ref": "CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584"
+        },
+        {
+          "symbol": "E",
+          "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
+          "substitution_pl": "I_bf=4.6115 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=16.9364 J/cm², V2700=15.0214 J/cm², V600=9.6431 J/cm²",
+          "result_pl": "E = 17.0519 J/cm² = 4.0755 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
+          "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
+          "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
+        },
+        {
+          "symbol": "AFB",
+          "formula_latex": "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
+          "substitution_pl": "E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm",
+          "result_pl": "AFB = 992.4605 mm (IEEE 1584-2018, współczynniki open-source)",
+          "unit_check_pl": "D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
+          "table_ref": "E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
+        },
+        {
+          "symbol": "ŚOI",
+          "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
+          "substitution_pl": "E = 4.0755 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
+          "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
+          "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+          "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
+        }
+      ],
+      "bus_name": "Stacja C SN"
+    }
+  ]
+}

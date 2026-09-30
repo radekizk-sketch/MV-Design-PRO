@@ -139,13 +139,6 @@ async function fetchCatalogJson<T>(endpoint: string): Promise<T> {
   return requestCatalog<T>(endpoint);
 }
 
-async function postCatalogJson<T>(endpoint: string, body: unknown): Promise<T> {
-  return requestCatalog<T>(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-}
 
 export async function fetchLineTypes(): Promise<LineType[]> {
   return fetchCatalogJson<LineType[]>('/api/catalog/line-types');
@@ -229,6 +222,16 @@ export async function fetchCableTypes(): Promise<CableType[]> {
 
 export async function fetchTransformerTypes(): Promise<TransformerType[]> {
   return fetchCatalogJson<TransformerType[]>('/api/catalog/transformer-types');
+}
+
+/**
+ * W5-A (F-4/G6): slownik grup polaczen transformatora wg IEC 60076-1 — JEDNO zrodlo
+ * (`enm/grupa_polaczen.py`: walidator E-W5-02, OpenAPI, ta lista). Front nie niesie
+ * wlasnej kopii literalow grup.
+ */
+export async function fetchGrupyPolaczen(): Promise<string[]> {
+  const body = await fetchCatalogJson<{ grupy: string[] }>('/api/catalog/grupy-polaczen');
+  return Array.isArray(body?.grupy) ? body.grupy : [];
 }
 
 export async function fetchTapChangers(): Promise<TapChangerCatalogType[]> {
@@ -369,6 +372,21 @@ function resolveConverterVoltageKv(
     : null;
 }
 
+/**
+ * Znormalizowana lista przekształtników (PV + BESS + wiatr) dla pickerów kreatorów.
+ *
+ * MAPOWANIE MUSI BYĆ PEŁNE (karta KATALOG-NIEZMIENNIKI §5 p.2). Karta S-2 wykryła,
+ * że to mapowanie po cichu gubiło `k_sc` — pole, bez którego wynik zwarciowy opiera
+ * się na domyślce i przestaje być miarodajny dla doboru. Naprawa INSTANCJI (dopisanie
+ * jednego pola) zostawiłaby KLASĘ defektu: pomiar 2026-09-17 pokazał jeszcze dwanaście
+ * pól kontraktu gubionych tą samą drogą (`control_mode`, `grid_code`,
+ * `dynamic_profile_id`, pięć pól PTPiREE i trzy pola statusu katalogu).
+ *
+ * Od teraz KAŻDE pole zadeklarowane w typie `ConverterType`, które rekord backendu
+ * potrafi podać, musi być tu przypisane — pilnuje tego
+ * `scripts/katalog_parytet_pol_guard.py` (pola świadomie nienoszone mają w guardzie
+ * nazwany powód, nie milczenie).
+ */
 export async function fetchConverterTypes(): Promise<ConverterType[]> {
   const [pvTypes, bessTypes, windTypes] = await Promise.all([
     fetchPvInverterTypes(),
@@ -389,13 +407,24 @@ export async function fetchConverterTypes(): Promise<ConverterType[]> {
       pmax_mw: item.p_max_kw / 1000,
       cosphi_min: item.cos_phi_min,
       cosphi_max: item.cos_phi_max,
+      k_sc: item.k_sc ?? null,
+      control_mode: item.control_mode ?? null,
+      grid_code: item.grid_code ?? null,
+      dynamic_profile_id: item.dynamic_profile_id ?? null,
       // Certyfikat PTPiREE — z rekordu katalogowego (backend annotate_with_ptpiree_status)
       // → materialized_params + ocena zgodności NC RfG. Bez tego link certyfikatu ginął.
       ptpiree_status: item.ptpiree_status,
       ptpiree_certificate_ref: item.ptpiree_certificate_ref ?? null,
       ptpiree_document_number: item.ptpiree_document_number ?? null,
+      ptpiree_document_acceptance_date: item.ptpiree_document_acceptance_date ?? null,
       ptpiree_wos_version: item.ptpiree_wos_version ?? null,
+      ptpiree_wipwc_version: item.ptpiree_wipwc_version ?? null,
+      ptpiree_ppm_scope: item.ptpiree_ppm_scope ?? null,
       ptpiree_source_url: item.ptpiree_source_url ?? null,
+      ptpiree_publication_date: item.ptpiree_publication_date ?? null,
+      verification_status: item.verification_status ?? null,
+      source_reference: item.source_reference ?? null,
+      catalog_status: item.catalog_status ?? null,
     }];
   });
   const bessConverters: ConverterType[] = bessTypes.flatMap((item) => {
@@ -410,11 +439,20 @@ export async function fetchConverterTypes(): Promise<ConverterType[]> {
       sn_mva: (item.s_n_kva ?? Math.max(item.p_charge_kw, item.p_discharge_kw)) / 1000,
       pmax_mw: item.p_discharge_kw / 1000,
       e_kwh: item.e_kwh,
+      k_sc: item.k_sc ?? null,
+      dynamic_profile_id: item.dynamic_profile_id ?? null,
       ptpiree_status: item.ptpiree_status,
       ptpiree_certificate_ref: item.ptpiree_certificate_ref ?? null,
       ptpiree_document_number: item.ptpiree_document_number ?? null,
+      ptpiree_document_acceptance_date: item.ptpiree_document_acceptance_date ?? null,
       ptpiree_wos_version: item.ptpiree_wos_version ?? null,
+      ptpiree_wipwc_version: item.ptpiree_wipwc_version ?? null,
+      ptpiree_ppm_scope: item.ptpiree_ppm_scope ?? null,
       ptpiree_source_url: item.ptpiree_source_url ?? null,
+      ptpiree_publication_date: item.ptpiree_publication_date ?? null,
+      verification_status: item.verification_status ?? null,
+      source_reference: item.source_reference ?? null,
+      catalog_status: item.catalog_status ?? null,
     }];
   });
 
@@ -431,6 +469,64 @@ export async function fetchConverterTypes(): Promise<ConverterType[]> {
 
 export async function fetchSourceSystemTypes(): Promise<SourceSystemCatalogType[]> {
   return fetchCatalogJson<SourceSystemCatalogType[]>('/api/catalog/source-system-types');
+}
+
+/**
+ * Przegląd wiarygodności katalogu — pozycje DO PRZEGLĄDU, nie odmowy.
+ *
+ * Kształt odpowiedzi jest KONTRAKTEM backendu
+ * (`network_model/catalog/niezmienniki_katalogu.py`, trasa
+ * `GET /api/catalog/przeglad-wiarygodnosci`). Front NIE trzyma własnej kopii
+ * uzasadnień ani progów reguł — wszystko, co pokazuje, przychodzi w tej
+ * odpowiedzi. Zero fizyki w UI: przegląd liczy backend.
+ */
+export interface OdstepstwoWiarygodnosci {
+  readonly kod: string;
+  readonly regula: string;
+  readonly pozycja_id: string;
+  readonly opis_wartosci: string;
+}
+
+export interface PokrycieReguly {
+  readonly kod: string;
+  readonly policzone: number;
+  readonly pominiete: number;
+  readonly powod_pominiecia: string;
+}
+
+export interface RodzinaPrzegladu {
+  readonly rodzina: string;
+  readonly etykieta_pl: string;
+  readonly liczba_pozycji: number;
+  readonly sprawdzone_reguly: readonly string[];
+  readonly pokrycie: readonly PokrycieReguly[];
+  readonly liczba_odstepstw: number;
+  readonly wedlug_kodu: Readonly<Record<string, number>>;
+  readonly odstepstwa: readonly OdstepstwoWiarygodnosci[];
+}
+
+export interface RegulaWiarygodnosci {
+  readonly kod: string;
+  readonly nazwa: string;
+  readonly podstawa: string;
+  readonly uzasadnienie: string;
+}
+
+export interface RodzinaBezRegul {
+  readonly rodzina: string;
+  readonly powod: string;
+}
+
+export interface PrzegladWiarygodnosci {
+  readonly liczba_odstepstw: number;
+  readonly wedlug_kodu: Readonly<Record<string, number>>;
+  readonly rodziny: readonly RodzinaPrzegladu[];
+  readonly rodziny_bez_regul: readonly RodzinaBezRegul[];
+  readonly reguly: readonly RegulaWiarygodnosci[];
+}
+
+export async function fetchPrzegladWiarygodnosci(): Promise<PrzegladWiarygodnosci> {
+  return fetchCatalogJson<PrzegladWiarygodnosci>('/api/catalog/przeglad-wiarygodnosci');
 }
 
 export async function fetchBranchPointTypes(
@@ -678,29 +774,3 @@ export async function clearEquipmentTypeFromSwitch(
   throw new Error(DECATALOGING_BLOCKED_MESSAGE);
 }
 
-export async function exportTypeLibrary(params?: {
-  library_name_pl?: string;
-  vendor?: string;
-  series?: string;
-  revision?: string;
-  description_pl?: string;
-}): Promise<any> {
-  const queryParams = new URLSearchParams();
-  if (params?.library_name_pl) queryParams.set('library_name_pl', params.library_name_pl);
-  if (params?.vendor) queryParams.set('vendor', params.vendor);
-  if (params?.series) queryParams.set('series', params.series);
-  if (params?.revision) queryParams.set('revision', params.revision);
-  if (params?.description_pl) queryParams.set('description_pl', params.description_pl);
-
-  const queryString = queryParams.toString();
-  const endpoint = `/api/catalog/export${queryString ? `?${queryString}` : ''}`;
-  return fetchCatalogJson<any>(endpoint);
-}
-
-export async function importTypeLibrary(
-  data: any,
-  mode: 'merge' | 'replace' = 'merge',
-): Promise<any> {
-  const endpoint = `/api/catalog/import?mode=${mode}`;
-  return postCatalogJson<any>(endpoint, data);
-}

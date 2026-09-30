@@ -1,0 +1,75 @@
+{
+  "converter-modes": {
+    "items": [
+      "GFL",
+      "GFM_droop",
+      "VSM",
+      "Grid_Supporting"
+    ],
+    "namespace": "converter-modes"
+  },
+  "harmonic-limits": {
+    "items": {
+      "individual_percent": {
+        "11": 3.5,
+        "13": 3.0,
+        "5": 6.0,
+        "7": 5.0
+      },
+      "tdd_ieee519_default_percent": 5.0,
+      "thdu_ieee519_percent": 5.0,
+      "thdu_pnen50160_percent": 8.0
+    },
+    "namespace": "harmonic-limits"
+  },
+  "insulation-levels": {
+    "items": [
+      {
+        "bil_kv": 75.0,
+        "short_duration_50hz_kv": 28.0,
+        "u_m_kv": 12.0
+      },
+      {
+        "bil_kv": 95.0,
+        "short_duration_50hz_kv": 38.0,
+        "u_m_kv": 17.5
+      },
+      {
+        "bil_kv": 125.0,
+        "short_duration_50hz_kv": 50.0,
+        "u_m_kv": 24.0
+      },
+      {
+        "bil_kv": 170.0,
+        "short_duration_50hz_kv": 70.0,
+        "u_m_kv": 36.0
+      }
+    ],
+    "namespace": "insulation-levels"
+  },
+  "reliability-defaults": {
+    "items": [
+      {
+        "element": "linia_napowietrzna_sn",
+        "lambda_per_km_year": 0.08,
+        "mttr_h": 3.5
+      },
+      {
+        "element": "kabel_sn",
+        "lambda_per_km_year": 0.015,
+        "mttr_h": 12.0
+      },
+      {
+        "element": "transformator_sn_nn",
+        "lambda_per_year": 0.008,
+        "mttr_h": 48.0
+      },
+      {
+        "element": "pole_sn",
+        "lambda_per_year": 0.015,
+        "mttr_h": 4.0
+      }
+    ],
+    "namespace": "reliability-defaults"
+  }
+}

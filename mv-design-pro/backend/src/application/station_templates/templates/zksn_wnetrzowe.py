@@ -35,17 +35,17 @@ def _zksn(
     manufacturer: str = "ZPUE_WLOSZCZOWA",
 ) -> StationTemplate:
     bay_roles = [
-        BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),
-        BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT"),
+        BayRoleSpec(role="IN"),
+        BayRoleSpec(role="OUT"),
     ]
     # Klasa C kontraktu `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`
     # (V12K-330/333): ZK-SN = zlacze kablowe z petla OSD (IN/OUT) i polem
     # POMIAROWYM jako polem ODPLYWOWYM galezi klienta; czesc kliencka (TR-y)
     # lezy ZA pomiarem. Tranzyt petli NIE przechodzi przez pomiar.
     if bays > len(bay_roles) + tr_count:
-        bay_roles.append(BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe"))
+        bay_roles.append(BayRoleSpec(role="MEASUREMENT"))
     for i in range(tr_count):
-        bay_roles.append(BayRoleSpec(role="TR", label_pl=f"Pole TR {i+1}"))
+        bay_roles.append(BayRoleSpec(role="TR", okreslenie_pl=str(i + 1)))
     return StationTemplate(
         id=tpl_id,
         name_pl=name_pl,

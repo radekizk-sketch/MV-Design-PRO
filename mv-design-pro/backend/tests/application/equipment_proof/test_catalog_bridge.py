@@ -28,7 +28,6 @@ def _mini_repo(
         transformer_types={},
         switch_equipment_types=switch_equipment_types or {},
         converter_types={},
-        inverter_types={},
         lv_apparatus_types=lv_apparatus_types or {},
     )
 

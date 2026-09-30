@@ -9,23 +9,31 @@ import { GpzConfiguratorSurface } from '../GpzConfiguratorSurface';
 import { BayConfiguratorSurface } from '../BayConfiguratorSurface';
 import { StationConfiguratorSurface } from '../StationConfiguratorSurface';
 import { renderWithQueryClient as render } from '../../../../test/queryClientTestUtils';
+import type { WorkspaceSurfaceDescriptor } from '../../types';
+import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL } from '../../../sld/v2/station-rozdzielnia/contract';
 
-const minimalSurface = {
+// Kompletny `WorkspaceSurfaceDescriptor` (nie `as never`) — `never` przechodzi
+// bezposrednie przypisanie do propa `surface`, ale `{ ...minimalSurface, ... }`
+// wymaga realnego typu obiektowego (TS2698), wiec kazde uzycie musi byc
+// prawdziwie typowane, nie obchodzone rzutowaniem.
+const minimalSurface: WorkspaceSurfaceDescriptor = {
   surfaceId: 'surface-test',
-  screenCode: 'E-10' as const,
+  screenCode: 'E-10',
+  surfaceKind: 'pomocniczy',
   titlePl: 'Test',
   entityRef: null,
   entityType: null,
-  routeState: { payload: {} },
+  parentSurfaceId: null,
+  tabId: null,
+  routeState: { route: 'unknown', payload: {} },
   breadcrumbs: [],
   supportsMiniSld: false,
-  supportsChildren: false,
-  sizeClass: 'C' as const,
-  stackLevel: 0 as const,
-  openMode: 'expand_workspace' as const,
-  subjectKind: 'helper_context' as const,
+  sizeClass: 'C',
+  stackLevel: 0,
+  openMode: 'expand_workspace',
+  subjectKind: 'helper_context',
   subjectRef: null,
-} as never;
+};
 
 describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
   beforeEach(() => {
@@ -70,6 +78,29 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       render(<GpzConfiguratorSurface surface={minimalSurface} />);
       expect(screen.getByTestId('gpz-card-content-identification')).toBeInTheDocument();
       expect(screen.queryByTestId('gpz-card-content-transformer')).not.toBeInTheDocument();
+    });
+
+    // Karta W2-B (klasa ACTION_ROADMAP_HINT_PL): deep-link 'show-sc-source'/
+    // 'show-sc-data' z sldActionExecutor.ts otwiera E-10 z `payload.defaultCard:
+    // 'hv-side'` zamiast marnego toastu — wzorzec `defaultCard` identyczny jak
+    // StationConfiguratorSurface (der-sources, patrz test niżej w tym pliku).
+    it('payload.defaultCard="hv-side" otwiera od razu kartę Strona 110 kV (deep-link show-sc-source/show-sc-data)', () => {
+      render(
+        <GpzConfiguratorSurface
+          surface={{ ...minimalSurface, routeState: { route: 'unknown', payload: { defaultCard: 'hv-side' } } }}
+        />,
+      );
+      expect(screen.getByTestId('gpz-card-content-hv-side')).toBeInTheDocument();
+      expect(screen.queryByTestId('gpz-card-content-identification')).not.toBeInTheDocument();
+    });
+
+    it('payload.defaultCard nieznane/puste wraca do karty Identyfikacja (uczciwy domyślny start)', () => {
+      render(
+        <GpzConfiguratorSurface
+          surface={{ ...minimalSurface, routeState: { route: 'unknown', payload: { defaultCard: 'nie-taka-karta' } } }}
+        />,
+      );
+      expect(screen.getByTestId('gpz-card-content-identification')).toBeInTheDocument();
     });
 
     it('zmiana karty wyświetla nową zawartość', () => {
@@ -261,6 +292,88 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
           terminal_port_id: 'station_out',
         }),
       );
+    });
+
+    // Karta #141: układ szyn (sprzęgło → dwie sekcje) i nazwy pól wynikają z ROLI pola, nigdy
+    // z tekstu etykiety. Iloczyn cech: {sprzęgło jest, nie ma} × {źródło pól: specyfikacje pól
+    // w meta stacji, elementy `bays` migawki}.
+    it.each([
+      { sprzeglo: true, zrodlo: 'field_specs' },
+      { sprzeglo: false, zrodlo: 'field_specs' },
+      { sprzeglo: true, zrodlo: 'bays' },
+      { sprzeglo: false, zrodlo: 'bays' },
+    ] as const)('układ szyn i nazwy pól z roli pola: sprzęgło=$sprzeglo, źródło=$zrodlo', ({ sprzeglo, zrodlo }) => {
+      const role = sprzeglo ? ['IN', 'COUPLER', 'TR', 'OZE'] : ['IN', 'OUT', 'TR', 'OZE'];
+      // Nazwy własne pól celowo NIE zawierają słów roli — rola musi przyjść z `bay_role`.
+      const specyfikacje = role.map((rola, i) => ({ field_ref: `f-${i}`, name: `Q${i + 1}`, bay_role: rola }));
+      const bays = role.map((rola, i) => ({
+        id: `bay-${i}`,
+        ref_id: `bay-${i}`,
+        name: `Q${i + 1}`,
+        tags: [],
+        meta: {},
+        bay_role: rola,
+        substation_ref: 'stn/s1/station',
+        bus_ref: 'stn/s1/sn_bus',
+        equipment_refs: [],
+      }));
+      useSnapshotStore.setState({
+        snapshot: {
+          header: {
+            enm_version: '1.0',
+            name: 'Siec testowa',
+            created_at: '2026-05-28T00:00:00Z',
+            updated_at: '2026-05-28T00:00:00Z',
+            revision: 1,
+            hash_sha256: `snapshot-role-${sprzeglo}-${zrodlo}`,
+            defaults: { frequency_hz: 50, unit_system: 'SI' },
+          },
+          buses: [
+            { id: 'sn-bus', ref_id: 'stn/s1/sn_bus', name: 'Szyna SN', voltage_kv: 15, tags: [], meta: {} },
+          ],
+          branches: [],
+          transformers: [],
+          sources: [],
+          loads: [],
+          substations: [
+            {
+              id: 's1',
+              ref_id: 'stn/s1/station',
+              name: 'Stacja S1',
+              tags: [],
+              meta: zrodlo === 'field_specs' ? { field_specs: specyfikacje } : {},
+              station_type: 'mv_lv',
+              bus_refs: ['stn/s1/sn_bus'],
+              transformer_refs: [],
+            },
+          ],
+          generators: [],
+          bays: zrodlo === 'bays' ? bays : [],
+          junctions: [],
+          corridors: [],
+          measurements: [],
+          protection_assignments: [],
+          branch_points: [],
+          line_runs: [],
+          connection_nodes: [],
+        } as never,
+        logicalViews: { trunks: [], branches: [], terminals: [] } as never,
+      });
+
+      render(<StationConfiguratorSurface surface={{ ...minimalSurface, entityRef: 'stn/s1/station' }} />);
+
+      fireEvent.click(screen.getByTestId('station-config-tab-sn-switchgear'));
+      expect((screen.getByTestId('sn-switchgear-layout') as HTMLSelectElement).value).toBe(
+        sprzeglo ? 'sectioned_busbar' : 'single_busbar',
+      );
+
+      fireEvent.click(screen.getByTestId('station-config-tab-bays'));
+      const tabela = screen.getByTestId('station-config-bays').textContent ?? '';
+      expect(tabela).toContain(FIELD_ROLE_LABEL_PL.LINIA_IN);
+      expect(tabela).toContain(FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE);
+      expect(tabela).toContain(FIELD_SOURCE_LABEL_PL);
+      expect(tabela).toContain(sprzeglo ? FIELD_ROLE_LABEL_PL.SPRZEGLO : FIELD_ROLE_LABEL_PL.LINIA_OUT);
+      expect(tabela).not.toMatch(/\b(?:IN|OUT|COUPLER|OZE)\b/);
     });
 
     it('karta Transformator otwiera formularz dodania TR SN/nN z katalogu dla stacji bez transformatora', () => {
@@ -916,7 +1029,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               ref_id: 'pv/station-15/converter',
               name: 'PV S15',
               tags: [],
-              meta: { voltage_level_ref: 'lv_0_4kV' },
+              meta: {},
               bus_ref: 'stn/station-15/nn_bus',
               p_mw: 0.185,
               q_mvar: 0,
@@ -947,20 +1060,15 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
         connection_side: 'nN',
         bus_przylaczenia_ref: 'stn/station-15/nn_bus',
         lv_busbar_ref: 'stn/station-15/nn_bus',
-        voltage_level_ref: 'lv_0_4kV',
+        connection_voltage_kv: 0.4,
         catalogs: { device_catalog_ref: 'pv_inv_huawei_185' },
         profiles: {},
         nominal_power_kw: 185,
-        completeness: {
-          pcc: true,
-          catalogs: true,
-          profiles: true,
-          protections: true,
-          voltage_level: true,
-        },
-        readiness: { status: 'ready', blockers: [], warnings: [] },
+        // `completeness`/`readiness`/`updated_at` NIE sa czescia `AttachDerInput`
+        // — `attachDer` liczy je sam (`computeDerCompleteness` z `catalogs`/
+        // `profiles`/`connection_side`/`connection_voltage_kv` powyzej), wiec te
+        // pola bylyby i tak zignorowane; usuniete u zrodla zamiast wyciszone.
         created_at: '2026-05-22T00:00:00Z',
-        updated_at: '2026-05-22T00:00:00Z',
       });
 
       render(
@@ -1039,7 +1147,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
           surface={{
             ...minimalSurface,
             entityRef: 'stn/station-01/station',
-            routeState: { payload: { defaultCard: 'der-sources' } },
+            routeState: { route: 'unknown', payload: { defaultCard: 'der-sources' } },
           }}
         />,
       );

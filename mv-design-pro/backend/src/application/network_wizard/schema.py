@@ -121,9 +121,16 @@ class SourcePayload(BaseModel):
     bus_ref: str
     model: str = "short_circuit_power"
     sk3_mva: float | None = None
+    ik3_ka: float | None = None
     rx_ratio: float | None = None
     r_ohm: float | None = None
     x_ohm: float | None = None
+    # CV-4.3 K7: dane zwarciowe scenariusza MIN (IEC 60909-0:2016 §6.2.1 eq. 6 z c_min),
+    # na TEJ SAMEJ szynie/stronie co sk3_mva/ik3_ka. Brak = scenariusz MIN liczony z
+    # danych MAX i jawnym założeniem `source.sk_min_missing` (`enm/zrodlo_zwarcie.py`).
+    sk3_min_mva: float | None = None
+    ik3_min_ka: float | None = None
+    rx_ratio_min: float | None = None
 
 
 class BranchPayload(BaseModel):

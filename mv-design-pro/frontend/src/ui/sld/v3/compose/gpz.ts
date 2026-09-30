@@ -834,12 +834,34 @@ function switchStateOrUndefined(state: CanonicalGpzBay['esState'] | undefined): 
 
 /** F13.1 (spec §21.1/§21.2, D3-8/D3-10): tabliczka danych systemu — „Sk″ 250
  *  MVA · Ik″ 9,62 kA · 110 kV" — WYŁĄCZNIE człony, dla których ENM niesie
- *  wartość (brak = brak członu, zero atrap/zer fabrykowanych). */
+ *  wartość (brak = brak członu, zero atrap/zer fabrykowanych).
+ *
+ *  CV-4.3 K7: gdy ENM niesie też dane scenariusza MIN (warunki przyłączenia
+ *  OSD), człon staje się „Sk″maks 250 / Sk″min 150 MVA" (ta sama reguła dla
+ *  Ik″) — bez danych MIN człon zostaje „Sk″ 250 MVA" jak dotychczas (zero
+ *  fabrykacji: MIN doklejany WYŁĄCZNIE gdy ENM go faktycznie niesie).
+ *
+ *  CV-4.3 K7c: gdy ENM niesie napięcie zadane szyny bilansującej
+ *  (`Source.u_set_pu`), doklejany jest CZWARTY, niezależny człon „Uzad 1,06
+ *  pu" — brak wartości = brak członu, ta sama reguła zero fabrykacji. */
 function gpzSystemSourceDataplateText(source: CanonicalGpzHvSystemSource): string | null {
   const parts: string[] = [];
-  if (source.sk3Mva != null) parts.push(`Sk″ ${liczbaRysunkuPl(source.sk3Mva)} MVA`);
-  if (source.ik3Ka != null) parts.push(`Ik″ ${liczbaRysunkuPl(source.ik3Ka)} kA`);
+  if (source.sk3Mva != null) {
+    parts.push(
+      source.sk3MinMva != null
+        ? `Sk″maks ${liczbaRysunkuPl(source.sk3Mva)} / Sk″min ${liczbaRysunkuPl(source.sk3MinMva)} MVA`
+        : `Sk″ ${liczbaRysunkuPl(source.sk3Mva)} MVA`,
+    );
+  }
+  if (source.ik3Ka != null) {
+    parts.push(
+      source.ik3MinKa != null
+        ? `Ik″maks ${liczbaRysunkuPl(source.ik3Ka)} / Ik″min ${liczbaRysunkuPl(source.ik3MinKa)} kA`
+        : `Ik″ ${liczbaRysunkuPl(source.ik3Ka)} kA`,
+    );
+  }
   if (source.voltageKv != null) parts.push(`${liczbaRysunkuPl(source.voltageKv)} kV`);
+  if (source.uSetPu != null) parts.push(`Uzad ${liczbaRysunkuPl(source.uSetPu)} pu`);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 

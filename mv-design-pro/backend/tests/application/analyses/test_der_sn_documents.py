@@ -3,8 +3,9 @@ materiałowa (BOM) toru DER-SN.
 
 Tor budujemy REALNĄ operacją domenową ``add_converter_source`` (materializacja
 kompletnego toru DER-SN), a następnie generatory dokumentów czytają snapshot ENM —
-zero payloadu kreatora, zero fizyki. Przykład: falownik ~0,998 MW, TR blokowy
-1000 kVA Dyn11, kabel SN toru.
+zero payloadu kreatora, zero fizyki. Przykład: falownik ~0,998 MW (jednostka 1 MW,
+S_n 1,1 MVA), TR blokowy 1250 kVA Dyn11, kabel SN toru. Decyzja O-53: moc TR blokowego
+≥ max(S_n,jedn·n, P/cosφ) — dawny TR 1000 kVA był mniejszy od mocy pozornej falownika.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from application.analyses.raport_zgodnosci import (
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
-_TR_BLOCK = "tr-sn-nn-15-04-1000kva-dyn11"
+_TR_BLOCK = "tr-sn-nn-15-04-1250kva-dyn11"
 _CABLE = "cable-base-epr-al-1c-240"
 #: Aparat pola SN — RZECZYWISTA pozycja katalogu (dawne „ap-sn-cb-630" nie
 #: istniało w katalogu; operacja przyjmowała je bez sprawdzenia — defekt G).
@@ -170,7 +171,7 @@ def test_bom_from_materialized_track_lists_all_elements() -> None:
 
     tr = bom["pozycje"][0]
     assert tr["catalog_ref"] == _TR_BLOCK
-    assert tr["parametry"]["sn_mva"] == 1.0
+    assert tr["parametry"]["sn_mva"] == 1.25
     assert tr["parametry"]["grupa_polaczen"] == "Dyn11"
     assert tr["parametry"]["uhv_kv"] == 15.0 and tr["parametry"]["ulv_kv"] == 0.4
 
@@ -255,10 +256,9 @@ def test_compliance_report_reports_d1_failure_1to1() -> None:
 
     report = build_compliance_report_from_track(track)
     fail = [i for i in report["pozycje"] if i["status"] == "FAIL"]
-    assert any(i["code"] == "converter.der_sn.moc_transformatora_niewystarczajaca" for i in fail)
-    assert any(
-        i["message_pl"].startswith("❌ Moc transformatora jest niewystarczająca") for i in fail
-    )
+    # Decyzja O-53: jeden kod i jeden komunikat kontroli mocy dla wszystkich torów.
+    assert any(i["code"] == "converter.transformer_capacity_exceeded" for i in fail)
+    assert any(i["message_pl"].startswith("Moc wymagana źródła PV") for i in fail)
     assert report["werdykt"] == "NIEZGODNY"
     assert report["komunikat_krytyczny"] == KOMUNIKAT_KRYTYCZNY
 

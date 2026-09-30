@@ -7,9 +7,24 @@ from application.proof_engine.proof_pack import (
     ProofPackContext,
     resolve_mv_design_pro_version,
 )
+from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 
 
 def build_equipment_proof_pack(proof_input: EquipmentProofInput) -> tuple[str, bytes]:
+    """Pakiet dowodowy doboru aparatury — bramkowany autorytetem wyniku zwarciowego.
+
+    Karta S-2 AUTORYTET: pakiet jest jednocześnie dowodem doboru zdolności
+    wyłączalnej (`BREAKING_CAPACITY_SELECTION`) i dowodem wytrzymałości
+    zwarciowej (`SC_WITHSTAND_EVIDENCE`) — obie zdolności są zależne od wkładu
+    zwarciowego falownika (`ZDOLNOSCI_ZALEZNE_OD_WKLADU_ZWARCIOWEGO`), więc obie
+    muszą przejść bramkę. Podnosi `BrakAutorytetuWyniku` (mapowane na HTTP 422 w
+    `api/equipment_proof_pack.py`) zanim jakikolwiek bajt pakietu powstanie.
+    """
+    wymagaj_autorytetu(
+        (ZdolnoscMiarodajna.BREAKING_CAPACITY_SELECTION, ZdolnoscMiarodajna.SC_WITHSTAND_EVIDENCE),
+        proof_input.proweniencja,
+    )
     bundle = EquipmentProofGenerator.generate(proof_input)
     snapshot_id = _snapshot_id_from_connection_node(proof_input.connection_node_id)
     context = ProofPackContext(

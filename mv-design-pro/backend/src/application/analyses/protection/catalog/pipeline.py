@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from datetime import UTC, datetime
 from typing import Any
 
-from application.analyses.design_synth.canonical import canonicalize_json
-from application.analyses.design_synth.fingerprint import fingerprint_json
 from application.analyses.protection.catalog.catalog_store import load_device_capability
-from application.analyses.protection.catalog.envelope_adapter import to_run_envelope
 from application.analyses.protection.catalog.mapper import map_requirement_to_device
 from application.analyses.protection.catalog.models import (
     DeviceCapability,
@@ -37,20 +32,19 @@ from application.analyses.protection.catalog.vendors.generic_v1 import (
     build_ziad_adapter,
     build_zpas_adapter,
 )
-from application.analyses.run_envelope import AnalysisRunEnvelope
-from application.analyses.run_index import index_run
-from infrastructure.persistence.unit_of_work import UnitOfWork
 
 
-def run_device_mapping_v0(
-    *,
-    protection_run_id: str,
-    device_id: str,
-    uow_factory: Callable[[], UnitOfWork],
-) -> AnalysisRunEnvelope:
-    protection_entry = _read_protection_index_entry(protection_run_id, uow_factory=uow_factory)
-    requirement = _extract_requirement(protection_entry.meta_json)
+def dopasuj_do_aparatu(requirement: ProtectionRequirementV0, *, device_id: str) -> dict[str, Any]:
+    """Dobór aparatu dla WYMAGANIA już policzonego (karta W3-C1).
 
+    Czysta funkcja: żadnego biegu, żadnej koperty, żadnego zapisu — trasa
+    `GET .../nastawy/dopasowanie` woła ją wprost z wymaganiem wyprowadzonym z
+    wyniku Hoppela (`mapper.wymaganie_z_nastaw`). Zastępuje dawny
+    `run_device_mapping_v0` (V12K-189, indeks doboru urządzeń), którego JEDYNYM
+    dostawcą wymagania był indeks biegu starej metodyki nastaw (ta sama kasacja
+    V12K-189) — tor skasowany razem z resztą V12K-189 (zero konsumentów
+    produkcyjnych).
+    """
     capability = load_device_capability(device_id)
     if capability is None:
         mapping_result = DeviceMappingResult(
@@ -69,193 +63,20 @@ def run_device_mapping_v0(
         else:
             status = "SUCCEEDED" if mapping_result.compatible else "DEGRADED"
 
-    requirement_payload = requirement.to_dict()
-    requirement_hash = fingerprint_json(requirement_payload)
-
-    report = _build_mapping_report(
-        protection_run_id=protection_run_id,
-        device_id=device_id,
-        requirement=requirement_payload,
-        capability=capability.to_dict() if capability else None,
-        mapping=mapping_result.to_dict(),
-        vendor_mapping=vendor_mapping,
-        status=status,
-    )
-    report_fingerprint = report["fingerprint"]
-
-    trace_inline = _build_trace_inline(
-        protection_entry=protection_entry,
-        requirement=requirement_payload,
-        capability=capability.to_dict() if capability else None,
-        mapping=mapping_result.to_dict(),
-        vendor_mapping=vendor_mapping,
-        report_fingerprint=report_fingerprint,
-        status=status,
-    )
-
-    created_at_utc = datetime.now(UTC).isoformat()
-    envelope = to_run_envelope(
-        protection_run_id=protection_run_id,
-        device_id=device_id,
-        requirement_hash=requirement_hash,
-        capability_id=capability.device_id if capability else None,
-        mapping_report_fingerprint=report_fingerprint,
-        case_id=protection_entry.case_id,
-        base_snapshot_id=protection_entry.base_snapshot_id,
-        trace_inline=trace_inline,
-        created_at_utc=created_at_utc,
-    )
-
-    entry = index_run(
-        envelope,
-        primary_artifact_type="device_mapping_report_v0",
-        primary_artifact_id=f"device_mapping_report_v0:{report_fingerprint}",
-        base_snapshot_id=protection_entry.base_snapshot_id,
-        case_id=protection_entry.case_id,
-        status=status,
-        meta={
-            "protection_run_id": protection_run_id,
-            "device_id": device_id,
-            "requirement_hash": requirement_hash,
-            "device_mapping_report_v0": report,
-        },
-    )
-    with uow_factory() as uow:
-        if uow.analysis_runs_index.get(entry.run_id) is None:
-            uow.analysis_runs_index.add(entry)
-    return envelope
-
-
-def _read_protection_index_entry(run_id: str, *, uow_factory: Callable[[], UnitOfWork]) -> Any:
-    with uow_factory() as uow:
-        entry = uow.analysis_runs_index.get(run_id)
-    if entry is None:
-        raise ValueError("Protection run not found")
-    if entry.analysis_type != "protection.overcurrent.v0":
-        raise ValueError("Unsupported protection run type")
-    return entry
-
-
-def _extract_requirement(meta_json: dict[str, Any] | None) -> ProtectionRequirementV0:
-    if isinstance(meta_json, dict):
-        report = meta_json.get("protection_report_v0")
-        if isinstance(report, dict):
-            settings = report.get("settings")
-            if isinstance(settings, dict):
-                return _settings_to_requirement(settings)
-        settings = meta_json.get("protection_settings_v0")
-        if isinstance(settings, dict):
-            return _settings_to_requirement(settings)
-    raise ValueError("Protection requirements not available")
-
-
-def _nastawa_opcjonalna(wartosc: Any) -> float | None:
-    """Nastawa NIEDOSTĘPNA pozostaje ``None`` — nigdy 0,0 ani wyjątek (V12K-189).
-
-    Defekt naprawiony w karcie F-K5: adapter wymuszał ``float(...)`` na każdym polu,
-    więc po V12K-189 (nastawy ``float | None``) niedostępna nastawa albo wywalała
-    ``TypeError`` w środku doboru aparatu, albo — gdyby klucza brakowało — cicho
-    stawała się zerem, czyli wymaganiem, którego projekt nie policzył.
-    """
-    if wartosc is None:
-        return None
-    return float(wartosc)
-
-
-def _settings_to_requirement(settings: dict[str, Any]) -> ProtectionRequirementV0:
-    return ProtectionRequirementV0(
-        curve=str(settings.get("curve", "")),
-        i_pickup_51_a=_nastawa_opcjonalna(settings.get("i_pickup_51_a")),
-        tms_51=float(settings.get("tms_51", 0.0)),
-        i_inst_50_a=_nastawa_opcjonalna(settings.get("i_inst_50_a")),
-        i_pickup_51n_a=_nastawa_opcjonalna(settings.get("i_pickup_51n_a")),
-        tms_51n=float(settings.get("tms_51n", 0.0)),
-        i_inst_50n_a=_nastawa_opcjonalna(settings.get("i_inst_50n_a")),
-    )
-
-
-def _build_mapping_report(
-    *,
-    protection_run_id: str,
-    device_id: str,
-    requirement: dict[str, Any],
-    capability: dict[str, Any] | None,
-    mapping: dict[str, Any],
-    vendor_mapping: dict[str, Any],
-    status: str,
-) -> dict[str, Any]:
-    report_body = {
-        "analysis_type": "protection.device_mapping.v0",
-        "inputs": {
-            "protection_run_id": protection_run_id,
-            "device_id": device_id,
-            "requirement": requirement,
-        },
-        "capability": capability,
-        "mapping": mapping,
-        "vendor_mapping": vendor_mapping,
+    return {
         "status": status,
+        "compatible": mapping_result.compatible,
+        "violations": mapping_result.violations,
+        "mapped_settings": mapping_result.mapped_settings,
+        "assumptions": mapping_result.assumptions,
+        "vendor_mapping": vendor_mapping,
+        "wymaganie": requirement.to_dict(),
+        "device_id": device_id,
+        "capability": capability.to_dict() if capability is not None else None,
     }
-    report_body = canonicalize_json(report_body)
-    report_fingerprint = fingerprint_json(report_body)
-    return canonicalize_json({**report_body, "fingerprint": report_fingerprint})
 
 
-def _build_trace_inline(
-    *,
-    protection_entry: Any,
-    requirement: dict[str, Any],
-    capability: dict[str, Any] | None,
-    mapping: dict[str, Any],
-    vendor_mapping: dict[str, Any],
-    report_fingerprint: str,
-    status: str,
-) -> dict[str, Any]:
-    steps = [
-        {
-            "step": "read_protection_run",
-            "run_id": protection_entry.run_id,
-            "analysis_type": protection_entry.analysis_type,
-            "case_id": protection_entry.case_id,
-            "base_snapshot_id": protection_entry.base_snapshot_id,
-        },
-        {
-            "step": "extract_requirement",
-            "requirement": requirement,
-        },
-        {
-            "step": "load_device_capability",
-            "device_id": capability.get("device_id") if capability else None,
-            "found": capability is not None,
-        },
-        {
-            "step": "validate_and_map",
-            "compatible": mapping.get("compatible"),
-            "violations": mapping.get("violations"),
-            "mapped_settings": mapping.get("mapped_settings"),
-            "assumptions": mapping.get("assumptions"),
-        },
-        {
-            "step": "vendor_validate_and_map",
-            "vendor": vendor_mapping.get("vendor"),
-            "device_id": capability.get("device_id") if capability else None,
-            "logical_keys": sorted(mapping.get("mapped_settings", {}).keys()),
-            "vendor_violations": vendor_mapping.get("vendor_violations"),
-            "vendor_setting_keys": sorted(vendor_mapping.get("vendor_settings", {}).keys()),
-        },
-        {
-            "step": "build_report",
-            "report_fingerprint": report_fingerprint,
-        },
-        {
-            "step": "index_run",
-            "status": status,
-        },
-    ]
-    return {"steps": canonicalize_json(steps)}
-
-
-def _resolve_vendor_adapter(vendor: str) -> VendorAdapter | None:
+def _resolve_vendor_adapter(vendor: str | None) -> VendorAdapter | None:
     # K30-16: rozszerzona rodzina vendor-adapterów po expansion catalogów
     # (E2Tango full + SIPROTEC + Relion + Easergy + SEL + GE Multilin + Polish).
     if vendor == ABB_VENDOR:
@@ -292,6 +113,18 @@ def _build_vendor_mapping(
             "vendor_settings": {},
             "vendor_violations": ["VENDOR_DEVICE_NOT_FOUND"],
             "vendor_assumptions": [],
+        }
+    if capability.vendor is None:
+        # Profil REFERENCYJNY bez marki (karta FAB-A/D-33): brak producenta jest
+        # ZAMIERZONY, nie brakiem adaptera do zarejestrowania — nastawy logiczne
+        # (I51/TMS51/...) sa juz w `mapping_result.mapped_settings`; wymyslanie
+        # tu nienazwanej konwencji kluczy producenta byloby ta sama klasa
+        # fabrykacji, ktora ta karta usuwa. Brak mapowania NIE jest naruszeniem.
+        return {
+            "vendor": None,
+            "vendor_settings": {},
+            "vendor_violations": [],
+            "vendor_assumptions": ["VENDOR_MAPPING_NOT_APPLICABLE_REFERENCE_PROFILE"],
         }
     adapter = _resolve_vendor_adapter(capability.vendor)
     if adapter is None:

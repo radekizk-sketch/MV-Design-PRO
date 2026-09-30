@@ -201,8 +201,10 @@ def test_build_analysis_run_report_payload_filters_to_active_bus_table() -> None
     assert reproducibility["case_ref"] == "case-pf"
     assert reproducibility["snapshot_ref"] == "snapshot-pf"
     assert reproducibility["enm_hash"] == "snapshot-pf"
-    assert reproducibility["variant_ref"] == "variant.uklad_normalny"
-    assert reproducibility["switching_snapshot_ref"] == "switching.uklad_normalny.base"
+    # CV-2 (H3): bieg bez wybranego wariantu/migawki lacznikowej oddaje UCZCIWY brak
+    # (`None`), nie etykiete „uklad normalny" bez encji za nia.
+    assert reproducibility["variant_ref"] is None
+    assert reproducibility["switching_snapshot_ref"] is None
     assert reproducibility["catalog_materialization_status"] == "materialized"
     assert reproducibility["catalog_materialization_ref"].startswith("catalog-materialization:")
     assert len(reproducibility["catalog_materialization_hash"]) == 64
@@ -283,6 +285,37 @@ def test_export_run_report_docx_includes_full_iec60909_balance() -> None:
     assert "c=1.1 | Un=15 kV | tk=1 s | tb=0.1 s | I2t=22.09 kA2s" in text
 
 
+def test_export_run_docx_response_shows_missing_fields_as_brak_danych() -> None:
+    """FAB-E (E1): brak pola WYNIKU w DOCX to napis „brak danych", nie 0.
+
+    ``_build_pf_run`` ma podsumowanie BEZ ``total_losses_q_mvar`` i wiersze
+    szyn BEZ ``p_injected_mw``/``q_injected_mvar`` — przed poprawka te
+    kolumny renderowaly sfabrykowane „0.000"/„0" (`.get(pole, 0)`), co w
+    raporcie inzynierskim wygladalo jak realny wynik obliczen.
+    """
+    import dataclasses
+    import io as _io
+
+    from api.analysis_run_exports import export_run_docx_response
+    from docx import Document as _Document
+
+    run = dataclasses.replace(_build_pf_run(), power_flow_trace={})
+    response = export_run_docx_response(run, filename_stem="power_flow")
+
+    document = _Document(_io.BytesIO(response.body))
+    cell_texts = [
+        cell.text for table in document.tables for row in table.rows for cell in row.cells
+    ]
+
+    assert "brak danych" in cell_texts, (
+        "brakujace total_losses_q_mvar/p_injected_mw/q_injected_mvar musza renderowac "
+        "sie jako 'brak danych', nie jako sfabrykowane 0"
+    )
+    # Pole OBECNE (total_losses_p_mw=0.1) MUSI zostac wyswietlone normalnie —
+    # poprawka nie moze ukryc prawdziwych wartosci za "brak danych".
+    assert "0.1" in cell_texts
+
+
 def test_export_run_report_pdf_generates_for_short_circuit_run() -> None:
     """ZWARCIA-PRO F5: raport PDF z pelnym bilansem generuje sie deterministycznie."""
     response = export_run_report_pdf_response(
@@ -343,99 +376,6 @@ def _build_phase_state_run() -> CanonicalRun:
                 "step": 1,
                 "title": "Krok stanu fazowego",
                 "proof_ref": "proof:phase-state-sn:bus-load",
-                "proof_status": "complete",
-                "reporting_status": "reportable",
-            }
-        ],
-    )
-
-
-def _build_dynamic_stability_run() -> CanonicalRun:
-    return CanonicalRun(
-        id=uuid4(),
-        case_id="case-dyn",
-        project_id="project-1",
-        analysis_type="dynamic_stability",
-        status="FINISHED",
-        created_at=datetime.now(UTC),
-        snapshot_hash="snapshot-dyn",
-        input_hash="hash-dyn",
-        snapshot={"sources": [{"ref_id": "src-main"}]},
-        validation={},
-        readiness={},
-        result_status="VALID",
-        raw_result={
-            "analysis_type": "dynamic_stability",
-            "proof_ref": "proof:dynamic-stability:dyn-1",
-            "proof_status": "complete",
-            "reporting_status": "reportable",
-            "result": {
-                "scenario_id": "dyn-1",
-                "source_id": "src-main",
-                "faulted_element_id": "line-1",
-                "status": "STABLE",
-                "stability_index": 0.66,
-                "clearing_time_ms": 120.0,
-                "clearing_margin_ms": 30.0,
-                "angle_swing_deg": 65.0,
-                "post_fault_voltage_pu": 0.97,
-                "post_fault_frequency_pu": 0.99,
-                "limiting_factor": "clearing_time",
-            },
-            "automation_trace": {
-                "topology_effect": {"network_state": "RECONFIGURED"},
-                "events": [
-                    {"event_seq": 1, "event_type": "AUTOMATION_STARTED", "detail": "Start"},
-                    {"event_seq": 5, "event_type": "DYNAMIC_STABILITY_EVALUATED", "detail": "Eval"},
-                ],
-            },
-        },
-        white_box_trace=[
-            {
-                "step": 1,
-                "title": "Krok stabilnosci",
-                "proof_ref": "proof:dynamic-stability:dyn-1",
-                "proof_status": "complete",
-                "reporting_status": "reportable",
-            }
-        ],
-    )
-
-
-def _build_source_compliance_run() -> CanonicalRun:
-    return CanonicalRun(
-        id=uuid4(),
-        case_id="case-comp",
-        project_id="project-1",
-        analysis_type="source_compliance",
-        status="FINISHED",
-        created_at=datetime.now(UTC),
-        snapshot_hash="snapshot-comp",
-        input_hash="hash-comp",
-        snapshot={"sources": [{"ref_id": "src-main"}]},
-        validation={},
-        readiness={},
-        result_status="VALID",
-        raw_result={
-            "analysis_type": "source_compliance",
-            "source_ref": "src-main",
-            "proof_ref": "proof:source-compliance:src-main",
-            "proof_status": "complete",
-            "reporting_status": "reportable",
-            "result": {
-                "source_type": "PV",
-                "verdict": "compliant",
-                "reporting_status": "reportable",
-                "proof_status": "complete",
-                "limitations": [],
-                "checks": {"frt": {"verdict": "compliant"}},
-            },
-        },
-        white_box_trace=[
-            {
-                "step": 1,
-                "title": "Krok zgodnosci zrodla",
-                "proof_ref": "proof:source-compliance:src-main",
                 "proof_status": "complete",
                 "reporting_status": "reportable",
             }
@@ -545,24 +485,6 @@ def test_report_payload_supports_phase_state_focus_table() -> None:
     assert payload["trace"]["white_box_trace"][0]["proof_ref"].startswith("proof:phase-state-sn:")
 
 
-def test_export_payload_supports_dynamic_stability_bundle() -> None:
-    payload = build_analysis_run_export_payload(_build_dynamic_stability_run())
-
-    assert payload["report_type"] == "dynamic_stability"
-    assert payload["dynamic_stability"]["rows"][0]["status"] == "STABLE"
-    assert payload["automation_trace"]["rows"][-1]["event_type"] == "DYNAMIC_STABILITY_EVALUATED"
-    assert payload["metadata"]["proof_status"] == "complete"
-
-
-def test_export_payload_supports_source_compliance_bundle() -> None:
-    payload = build_analysis_run_export_payload(_build_source_compliance_run())
-
-    assert payload["report_type"] == "source_compliance"
-    assert payload["source_compliance"]["rows"][0]["verdict"] == "compliant"
-    assert payload["source_compliance"]["rows"][0]["reporting_status"] == "reportable"
-    assert payload["metadata"]["analysis_type"] == "source_compliance"
-
-
 def test_report_payload_marks_readiness_blockers_as_partial_with_missing_prerequisites() -> None:
     run = _build_pf_run()
     run.readiness = {"blockers": [{"code": "catalog.binding.missing"}]}
@@ -590,3 +512,86 @@ def test_export_artifact_includes_run_lineage_for_reproducible_exports() -> None
         "input_hash": run.input_hash,
         "result_hash": artifact["result_hash"],
     }
+
+
+def _build_dynamika_run() -> CanonicalRun:
+    """Bieg `dynamika_rms` z ładunkiem REALNEGO biegu sceny harnessu (fixtura policzona
+    skryptem `eksport_fixtur_harnessu.py` tą samą ścieżką co końcówka wyniku) — bez bloków
+    dokładanych przez końcówkę (opis, oceny, kontekst), które eksport składa sam."""
+    import json as _json
+    from pathlib import Path as _Path
+
+    fixtura = (
+        _Path(__file__).resolve().parents[3]
+        / "frontend"
+        / "src"
+        / "harness-fixtures"
+        / "generated"
+        / "dynamika_scena_wyniki.json"
+    )
+    ladunek = _json.loads(fixtura.read_text(encoding="utf-8"))
+    for klucz in ("opis_wyniku", "oceny", "analysis_case_context", "run_id"):
+        ladunek.pop(klucz)
+    from tests.golden.enm_builders.dynamika_projektanta import build_dynamika_projektanta_enm
+
+    return CanonicalRun(
+        id=uuid4(),
+        case_id="case-dyn",
+        project_id="project-1",
+        analysis_type="dynamika_rms",
+        status="FINISHED",
+        created_at=datetime.now(UTC),
+        snapshot_hash="snapshot-dyn",
+        input_hash="hash-dyn",
+        snapshot=build_dynamika_projektanta_enm(z_modelem_pv=True),
+        validation={},
+        readiness={},
+        result_status="VALID",
+        raw_result=ladunek,
+        white_box_trace=[],
+    )
+
+
+def test_eksport_biegu_dynamiki_niesie_zdarzenia_metryki_i_oceny_niewykonane() -> None:
+    """Karta AB-P1: raport biegu czasowego (JSON, PDF, DOCX) niesie zdarzenia wykonane
+    i metryki z NAZWAMI elementów migawki biegu oraz oceny niewykonane — tor echa kątów
+    (dawny eksport „stabilność dynamiczna") skasowany."""
+    import io as _io
+
+    from docx import Document as _Document
+
+    run = _build_dynamika_run()
+    payload = build_analysis_run_export_payload(run)
+    assert [o["status_maszynowy"] for o in payload["dynamika"]["oceny"]] == ["NIE_OCENIONO"] * 2
+    assert "dynamic_stability" not in payload
+
+    raport = build_analysis_run_report_payload(run, report_options={"sections": ["results"]})
+    tabele = [t["table_id"] for t in raport["results"]["index"]["tables"]]
+    assert [t for t in tabele if t.startswith("dynamika_")] == [
+        "dynamika_zdarzenia",
+        "dynamika_przekroczenia",
+        "dynamika_metryki",
+    ]
+
+    docx = export_run_report_docx_response(
+        run, filename_stem="raport", report_options={"sections": ["results"]}
+    )
+    tekst = "\n".join(p.text for p in _Document(_io.BytesIO(docx.body)).paragraphs)
+    assert "Raport dynamiki czasowej RMS" in tekst or "Zdarzenia wykonane" in tekst
+    # Nazwy z migawki biegu, rodzaje zdarzeń po polsku, skutki topologiczne — bez identyfikatorów.
+    assert "Odcinek 2" in tekst and "Zwarcie w gałęzi (miejsce x·L)" in tekst
+    assert "szyny beznapięciowe: Zacisk końcowy Odcinek 2" in tekst
+    assert "odbiory odcięte: Odbiór" in tekst
+    assert "zwarcie_galezi" not in tekst and "seg/" not in tekst and "bus/" not in tekst
+    assert "Najniższe napięcie szyny w przebiegu" in tekst
+    assert "przyczyna: zadane w harmonogramie scenariusza" in tekst
+    # Przekroczenie progu detektora scenariusza: nazwa detektora, wielkość po polsku, szyna
+    # po nazwie, próg z jednostką i kierunek po polsku (bez klucza kanału).
+    assert "detektor „Zapad napięcia szyny PV” | Moduł napięcia | " in tekst
+    assert "próg 0.8 pu | spadek poniżej progu" in tekst
+    assert "u_pu@" not in tekst and "nn_bus" not in tekst
+
+    pdf = export_run_report_pdf_response(
+        run, filename_stem="raport", report_options={"sections": ["results"]}
+    )
+    assert pdf.body.startswith(b"%PDF")

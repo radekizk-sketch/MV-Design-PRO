@@ -1,0 +1,151 @@
+{
+  "generator_ref": "pv/cf52e8ef1365b7493495105069afcf67/converter",
+  "bay_ref": null,
+  "wejscia": {
+    "napiecie_sieci_v": 15000.0,
+    "prad_roboczy_a": 38.490017945975055,
+    "ik_ka": 9.669077408208393,
+    "ip_ka": 23.875074532311423,
+    "run_ref_zwarciowy": "run-sc-scena-pole-oze",
+    "tryb_uziemienia": null,
+    "zrodlo_napiecia_zerowego": "brak",
+    "zrodlo_wejsc_urzadzenia": "szereg_preferowany_IEC_60255_1"
+  },
+  "przekladnik_pradowy": {
+    "catalog_ref": "ct_200_5_5p10_10va_abb",
+    "nazwa": "CT 200/5 A kl. 5P10 10 VA",
+    "typ": {
+      "id": "ct_200_5_5p10_10va_abb",
+      "name": "CT 200/5 A kl. 5P10 10 VA",
+      "ratio_primary_a": 200.0,
+      "ratio_secondary_a": 5.0,
+      "accuracy_class": "5P10",
+      "burden_va": 10.0,
+      "manufacturer": "ABB",
+      "ith_ka_1s": 20.0,
+      "idyn_ka_peak": 50.0,
+      "fs_safety_factor": null,
+      "rct_ohm": null,
+      "application": "protection",
+      "accuracy_limit_factor": 10.0,
+      "verification_status": "REFERENCYJNY",
+      "source_reference": "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzeń, ALF, Idyn=2,5·Ith, Fs) / IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN)",
+      "catalog_status": "REFERENCYJNY_V1",
+      "contract_version": "2.0",
+      "verification_note": "Rekord referencyjny do doboru CT. Ith podano jako WYMAGANĄ wytrzymałość cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, 25 kA/1 s dla >= 1200 A); Idyn wyprowadzany normowo (2,5·Ith), Fs wg znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla konkretnego wyrobu potwierdza karta producenta."
+    },
+    "wynik": {
+      "kryteria": [
+        {
+          "kod": "ct.przekladnia",
+          "nazwa_pl": "Przekładnia wobec prądu roboczego toru",
+          "podstawa_pl": "Prąd pierwotny przekładnika musi pokryć prąd roboczy toru.",
+          "werdykt": "spelnione",
+          "wymagane": "38.5 A",
+          "dostepne": "200.0 A",
+          "komentarz_pl": null,
+          "kody_gotowosci": [],
+          "slad": []
+        },
+        {
+          "kod": "ct.wykorzystanie_przekladni",
+          "nazwa_pl": "Wykorzystanie przekładni",
+          "podstawa_pl": "Przy bardzo niskim wykorzystaniu zakresu rośnie błąd względny pomiaru (praktyka projektowa, nie wymaganie normy).",
+          "werdykt": "informacja",
+          "wymagane": "≥ 20% prądu pierwotnego",
+          "dostepne": "19%",
+          "komentarz_pl": "Rozważ przekładnik o niższym prądzie pierwotnym.",
+          "kody_gotowosci": [],
+          "slad": []
+        },
+        {
+          "kod": "ct.rodzaj_rdzenia",
+          "nazwa_pl": "Rodzaj rdzenia",
+          "podstawa_pl": "Funkcje zabezpieczeniowe wymagają rdzenia zabezpieczeniowego (IEC 61869-2).",
+          "werdykt": "spelnione",
+          "wymagane": "rdzeń zabezpieczeniowy (klasa z literą P)",
+          "dostepne": "5P10",
+          "komentarz_pl": null,
+          "kody_gotowosci": [],
+          "slad": []
+        },
+        {
+          "kod": "ct.alf_katalogowy",
+          "nazwa_pl": "ALF katalogowy wobec prądu zwarciowego",
+          "podstawa_pl": "Warunek KONIECZNY ALF ≥ Ik″/I1n, bez obciążenia wtórnego (IEC 61869-2) — nie rozstrzyga nasycenia rdzenia.",
+          "werdykt": "informacja",
+          "wymagane": "ALF ≥ 48.3 (Ik″ 9.67 kA / In 200 A)",
+          "dostepne": "ALF 10",
+          "komentarz_pl": "Nasycenie rdzenia zależy od rzeczywistego obciążenia obwodu wtórnego (S2obl) — rozstrzyga je kryterium „Nasycenie rdzenia” (ct.alf) niżej, nie ten warunek konieczny.",
+          "kody_gotowosci": [],
+          "slad": []
+        },
+        {
+          "kod": "ct.alf",
+          "nazwa_pl": "Nasycenie rdzenia (bilans mocy wtórnej)",
+          "podstawa_pl": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+          "werdykt": "brak_danych",
+          "wymagane": "ALF_eff ≥ 48.3",
+          "dostepne": null,
+          "komentarz_pl": "Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej",
+          "kody_gotowosci": [
+            "ct.secondary_circuit_missing"
+          ],
+          "slad": []
+        },
+        {
+          "kod": "ct.wytrzymalosc_cieplna",
+          "nazwa_pl": "Wytrzymałość cieplna zwarciowa",
+          "podstawa_pl": "Ith ≥ Ik″·√tk — równoważność cieplna prądu zwarcia (IEC 61869-2).",
+          "werdykt": "brak_danych",
+          "wymagane": null,
+          "dostepne": "20.0 kA / 1 s",
+          "komentarz_pl": "Brakuje prądu zwarciowego, czasu jego trwania albo prądu cieplnego przekładnika.",
+          "kody_gotowosci": [],
+          "slad": []
+        },
+        {
+          "kod": "ct.wytrzymalosc_dynamiczna",
+          "nazwa_pl": "Wytrzymałość dynamiczna",
+          "podstawa_pl": "Idyn ≥ ip — siły elektrodynamiczne od prądu szczytowego (IEC 61869-2).",
+          "werdykt": "spelnione",
+          "wymagane": "23.88 kA",
+          "dostepne": "50.0 kA",
+          "komentarz_pl": null,
+          "kody_gotowosci": [],
+          "slad": []
+        },
+        {
+          "kod": "ct.prad_wtorny",
+          "nazwa_pl": "Zgodność prądu wtórnego z wejściem przekaźnika",
+          "podstawa_pl": "Prąd wtórny przekładnika musi być jedną z wartości znamionowych wejścia prądowego urządzenia (IEC 60255-1).",
+          "werdykt": "spelnione",
+          "wymagane": "1 A / 5 A",
+          "dostepne": "5 A",
+          "komentarz_pl": "Podstawa danych o wejściu: szereg_preferowany_IEC_60255_1.",
+          "kody_gotowosci": [],
+          "slad": []
+        },
+        {
+          "kod": "ct.obciazalnosc",
+          "nazwa_pl": "Obciążalność wobec obwodu wtórnego",
+          "podstawa_pl": "Moc znamionowa rdzenia ≥ obciążenie obwodu (przewody + urządzenie).",
+          "werdykt": "brak_danych",
+          "wymagane": null,
+          "dostepne": "10 VA",
+          "komentarz_pl": "Obciążenie obwodu wtórnego jest daną projektową — podaj sumę rezystancji przewodów i poboru urządzenia.",
+          "kody_gotowosci": [],
+          "slad": []
+        }
+      ],
+      "dobor_potwierdzony": false,
+      "liczba_niespelnionych": 0,
+      "liczba_bez_danych": 3
+    }
+  },
+  "przekladnik_napieciowy": {
+    "catalog_ref": null,
+    "nazwa": null,
+    "wynik": null
+  }
+}

@@ -31,7 +31,7 @@ _BACKEND = _REPO / "backend"
 sys.path.insert(0, str(_BACKEND / "src"))
 sys.path.insert(0, str(_BACKEND))
 
-from enm.canonical_analysis import _build_snapshot_graph_element_context  # noqa: E402
+from enm.assembler import _build_snapshot_graph_element_context  # noqa: E402
 from enm.mapping import map_enm_to_network_graph  # noqa: E402
 from enm.models import EnergyNetworkModel  # noqa: E402
 from network_model.solvers.short_circuit_iec60909 import (  # noqa: E402

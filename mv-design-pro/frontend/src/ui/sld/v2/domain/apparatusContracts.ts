@@ -11,6 +11,7 @@
  */
 
 import type { BayPrimaryDeviceKind } from '../../../../types/enm';
+import { FIELD_ROLE_LABEL_PL } from '../station-rozdzielnia/contract';
 
 // =============================================================================
 // 1. ApparatusKind — kanoniczne 12 typów (V2)
@@ -57,7 +58,7 @@ export const APPARATUS_KIND_LABELS_PL: Readonly<Record<ApparatusKind, string>> =
   transformer: 'Transformator',
   lv_breaker: 'Wyłącznik nN',
   cable_head: 'Głowica kablowa',
-  metering_cubicle: 'Pole pomiarowe',
+  metering_cubicle: FIELD_ROLE_LABEL_PL.POMIAROWE,
 };
 
 /**

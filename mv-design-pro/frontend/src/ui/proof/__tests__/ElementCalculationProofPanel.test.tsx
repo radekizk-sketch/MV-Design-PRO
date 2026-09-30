@@ -21,8 +21,8 @@ const tracePayload: ExtendedTrace = {
       selection_refs: ['bus-sn-1'],
       formula_latex: 'Z_k = R_k + jX_k',
       inputs: {
-        fault_node_id: 'internal-node-ref',
-        short_circuit_type: 'SC3F',
+        fault_node_id: { value: 'internal-node-ref' },
+        short_circuit_type: { value: 'SC3F' },
         z1_ohm: { re: 0.07577657110710738, im: 0.029949123506463678 },
         z2_ohm: { re: 0.07577657110710738, im: 0.029949123506463678 },
         r_ohm: { value: 0.12, unit: 'Ω' },

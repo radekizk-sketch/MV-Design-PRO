@@ -29,12 +29,21 @@
  */
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+// Ten sam dostawca React Query co `main.tsx` (jeden klient z `./query-client`):
+// komponenty montowane w harnessie czytają katalogi backendu przez `useQuery`
+// (od karty FAB-J m.in. kreator OZE i snapshot audytu 2) — bez dostawcy strona
+// harnessu padała przy montażu i korzeń z `data-status` nigdy nie powstawał
+// (5 czerwonych specyfikacji `creator-screenshot` w CI). Klasa: KAŻDE wejście
+// `*-harness-main.tsx`, nie tylko kreatora.
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './query-client';
 import { SldCanvasV3 } from './ui/sld/v3/canvas/SldCanvasV3';
 import type { ThemeMode } from './ui2/theme/themeMode';
 import type { SldV3Overlay, SegmentFlowOverlay } from './ui/sld/v3/canvas/overlay';
 import type { SceneLod } from './ui/sld/v3/scene/buildScene';
 import { buildSldDataFromSnapshot, type SldDataPayload } from './ui/sld/v2/canvas/enmToSldAdapter';
 import type { ShortCircuitFlowOverlayInput } from './ui/sld-overlay/ShortCircuitFlowOverlayAdapter';
+import falownikiRozplywScenyGpzFeederWynik from './harness-fixtures/generated/falowniki_rozplyw_scena_gpz_feeder_wynik.json';
 import type { EnergyNetworkModel, LogicalViewsV1 } from './types/enm';
 
 const EMPTY_LOGICAL_VIEWS: LogicalViewsV1 = {
@@ -95,9 +104,22 @@ function overlayModeFromQuery(): OverlayMode {
   return raw === 'pf' || raw === 'faultflow' ? raw : null;
 }
 
+/** Przypadek towarzysza rozpływu z `?case=` (E2E-FIX) — `normal` (domyślny,
+ *  stan radialny) albo `maintenance` (druga migawka: stacja wyłączona do
+ *  konserwacji, `select_ring_maintenance_scenario` / `compute_substrate_
+ *  power_flow_maintenance`, backend). Nazwa pliku fixtury niesie sufiks
+ *  `.maintenance` — SAME dwie lokalizacje co companion normalny. */
+type PowerFlowCase = 'normal' | 'maintenance';
+
+function powerFlowCaseFromQuery(): PowerFlowCase {
+  const raw = new URLSearchParams(window.location.search).get('case');
+  return raw === 'maintenance' ? 'maintenance' : 'normal';
+}
+
 async function loadPowerFlowCompanion(mode: OverlayMode): Promise<PowerFlowCompanion | null> {
   if (mode !== 'pf') return null; // rysunek bazowy / inny tryb nakładki
-  const resp = await fetch('/test-fixtures/sldSubstrate52s.powerflow.json');
+  const suffix = powerFlowCaseFromQuery() === 'maintenance' ? '.maintenance' : '';
+  const resp = await fetch(`/test-fixtures/sldSubstrate52s.powerflow${suffix}.json`);
   if (!resp.ok) return null; // brak companion = rysunek bazowy bez nakładki
   return await resp.json() as PowerFlowCompanion;
 }
@@ -110,43 +132,27 @@ async function loadPowerFlowCompanion(mode: OverlayMode): Promise<PowerFlowCompa
 // realnej scenie: zero fabrykacji topologii). Punkt zwarcia: Stacja S01
 // (`ownerRef` symbolu stacji na LOD0 = `Substation.ref_id`). Tor Thevenina
 // (sieć nadrzędna) płynie GPZ→S01 (odpływ zasilający punkt zwarcia wprost);
-// tor maszyny (falownik za Stacją S02) płynie ZWROTNIE S02→GPZ (kierunek
-// `to_from` na JEJ WŁASNYM odpływie) — jedna strzałka na gałąź (kontrakt
-// `buildFaultFlowOverlayFromScene`), więc oba tory muszą leżeć na RÓŻNYCH
-// gałęziach, co ta topologia daje naturalnie (bez fabrykacji drugiej gałęzi).
-// Liczby [kA] przepisane z realnego wyniku IEC 60909 solvera na fixturze
-// testu TH-1 (patrz nagłówek pliku) — `ik_thevenin_ka` toru sieci nadrzędnej
-// oraz wkład falownika `INV-B`, NIE wymyślone.
-const FAULT_FLOW_DEMO_STATION_S01 = 'stn/980a625dd13777cd339a1a173a2a2864/station';
-const FAULT_FLOW_DEMO_INPUT: ShortCircuitFlowOverlayInput = {
-  run_id: 'run-sc-th1-demo',
-  fault_type: '3F',
-  fault_element_ref: FAULT_FLOW_DEMO_STATION_S01,
-  flows: [
-    {
-      branch_id: 'seg/ac2e267391eabbcc94c58ee4ace01e6f/segment_L',
-      branch_name: 'Odpływ GPZ → Stacja S01',
-      source_id: 'THEVENIN_GRID',
-      from_node_id: 'gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn',
-      from_node_name: 'Szyna GPZ S1 15 kV',
-      to_node_id: 'stn/980a625dd13777cd339a1a173a2a2864/sn_bus',
-      to_node_name: 'Stacja S01 (typ B)',
-      i_ka: 5.552132022553349,
-      direction: 'from_to',
-    },
-    {
-      branch_id: 'seg/c65b9d08fb6c84a5c80c518b45111a42/branch_segment_L',
-      branch_name: 'Odpływ GPZ → Stacja S02',
-      source_id: 'INV-B',
-      from_node_id: 'gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn',
-      from_node_name: 'Szyna GPZ S1 15 kV',
-      to_node_id: 'stn/0188f98f1309b5535301f05ec09e6133/sn_bus',
-      to_node_name: 'Stacja S02 (typ B)',
-      i_ka: 0.024,
-      direction: 'to_from',
-    },
-  ],
-};
+// tor falownika (Stacja S02) płynie ZWROTNIE S02→GPZ (kierunek `to_from` na
+// JEJ WŁASNYM odpływie) — jedna strzałka na gałąź (kontrakt
+// `buildFaultFlowOverlayFromScene`), więc oba tory leżą na RÓŻNYCH gałęziach,
+// co ta topologia daje naturalnie (bez fabrykacji drugiej gałęzi).
+//
+// Karta HARNESS-RESZTA (kontynuacja, 2026-09-16) — NAPRAWA klasy defektu:
+// liczby [kA] były dawniej przepisane z INNEJ sieci (test TH-1,
+// `test_thevenin_addition_preserves_inverter_entries_byte_for_byte`,
+// `test_short_circuit_iec60909.py`) — refy węzłów/gałęzi się zgadzały (ta sama
+// fixtura gpzFeeder), ale WARTOŚCI prądu i etykieta źródła (`INV-B`) NIE
+// pochodziły z biegu NA TEJ sieci (gpzFeeder nie ma ani jednego generatora).
+// Fixtura niżej to REALNY bieg `short_circuit_sn` na KOPII gpzFeeder Z
+// DOŁOŻONYM falownikiem PV Stacji S02 (`scripts/eksport_fixtur_harnessu.py::
+// falowniki_rozplyw_scena_gpz_feeder_wynik`, parytet
+// `tests/ci/test_fixtury_harnessu.py`) — `gpzFeeder.enm.json` sam pozostaje
+// NIETKNIĘTY (kanwa niżej nadal renderuje ORYGINAŁ; `enm` renderowany i
+// `input` rozpływu to dwa niezależne argumenty
+// `buildFaultFlowOverlayForSnapshot` — falownik istnieje wyłącznie w kopii
+// biegu backendu, nie w topologii na ekranie).
+const FAULT_FLOW_DEMO_INPUT: ShortCircuitFlowOverlayInput =
+  falownikiRozplywScenyGpzFeederWynik as ShortCircuitFlowOverlayInput;
 
 /** Czysty builder (zero fizyki): REUŻYWA `buildFaultFlowOverlayForSnapshot`
  *  produkcyjne (`SldCanvasV3Workspace.tsx`) dla strzałki kierunku, dokłada
@@ -312,4 +318,8 @@ function SubstrateHarness(): JSX.Element {
 
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('screenshot-harness: brak elementu #root');
-createRoot(rootEl).render(<SubstrateHarness />);
+createRoot(rootEl).render(
+  <QueryClientProvider client={queryClient}>
+    <SubstrateHarness />
+  </QueryClientProvider>,
+);

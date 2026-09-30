@@ -341,8 +341,8 @@ describe('V3 compose/directions — property: żaden podpis nie zawiera surowego
 
 // ---------------------------------------------------------------------------
 // F10.2 (spec §19.1, V12K-035): `fieldFunctionalDesignation` — oznaczenie
-// FUNKCYJNE pola (liniowe/transformatorowe/sprzęgłowe/pomiarowe/
-// generatorowe), zastępuje dawny `bayApparatusDesignation` (Q/T jako etykieta
+// FUNKCYJNE pola (liniowe/transformatorowe/sprzęgła/pomiarowe/źródłowe — słownictwo
+// z kanonu ról pól, karta #141), zastępuje dawny `bayApparatusDesignation` (Q/T jako etykieta
 // CAŁEGO pola — USUNIĘTY, przeniesiony na identyfikator PER-APARAT,
 // `compose/apparatusSequence.ts` `apparatusIdentifiers`).
 // ---------------------------------------------------------------------------
@@ -365,15 +365,15 @@ describe('fieldFunctionalDesignation (spec §19.1 — oznaczenie funkcyjne pola,
     expect(fieldFunctionalDesignation(FIELD_ROLE.RMU_TRANSFORMER)).toBe('pole transformatorowe');
   });
 
-  it('COUPLER ⇒ "pole sprzęgłowe"; MEASUREMENT ⇒ "pole pomiarowe"', () => {
-    expect(fieldFunctionalDesignation(FIELD_ROLE.COUPLER)).toBe('pole sprzęgłowe');
+  it('COUPLER ⇒ "pole sprzęgła"; MEASUREMENT ⇒ "pole pomiarowe" (kanon ról pól)', () => {
+    expect(fieldFunctionalDesignation(FIELD_ROLE.COUPLER)).toBe('pole sprzęgła');
     expect(fieldFunctionalDesignation(FIELD_ROLE.MEASUREMENT)).toBe('pole pomiarowe');
   });
 
-  it('DER_PV/DER_BESS/DER_FW ⇒ "pole generatorowe"', () => {
-    expect(fieldFunctionalDesignation(FIELD_ROLE.DER_PV)).toBe('pole generatorowe');
-    expect(fieldFunctionalDesignation(FIELD_ROLE.DER_BESS)).toBe('pole generatorowe');
-    expect(fieldFunctionalDesignation(FIELD_ROLE.DER_FW)).toBe('pole generatorowe');
+  it('DER_PV/DER_BESS/DER_FW ⇒ "pole źródłowe PV/BESS/FW" (kanon ról pól, nie „generatorowe”)', () => {
+    expect(fieldFunctionalDesignation(FIELD_ROLE.DER_PV)).toBe('pole źródłowe PV');
+    expect(fieldFunctionalDesignation(FIELD_ROLE.DER_BESS)).toBe('pole źródłowe BESS');
+    expect(fieldFunctionalDesignation(FIELD_ROLE.DER_FW)).toBe('pole źródłowe FW');
   });
 
   it('zero surowych "Q\\d+"/"T\\d+" (zakaz §19.1) — oznaczenie jest ZAWSZE tekstem funkcyjnym', () => {

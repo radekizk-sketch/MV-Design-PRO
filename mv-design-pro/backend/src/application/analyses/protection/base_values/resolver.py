@@ -28,8 +28,6 @@ ZASADA KLUCZOWA:
 
 from __future__ import annotations
 
-import math
-
 from application.analyses.protection.base_values.models import (
     BaseValues,
     BaseValueSourceIn,
@@ -38,6 +36,7 @@ from application.analyses.protection.base_values.models import (
     ProtectedElementType,
     TransformerSide,
 )
+from network_model.pochodne import prad_roboczy_a
 
 
 def resolve_base_values(ctx: ProtectedElementContext) -> BaseValues:
@@ -107,7 +106,7 @@ def _resolve_un(
             return (
                 ctx.connection_voltage_kv,
                 BaseValueSourceUn.BoundaryNode,
-                f"Un = {ctx.connection_voltage_kv} kV (BoundaryNode – punkt wspolnego przylaczenia)",
+                f"Un = {ctx.connection_voltage_kv} kV (BoundaryNode – punkt wspólnego przyłączenia)",
             )
 
     # Fallback na BoundaryNode voltage jeśli dostępne
@@ -119,7 +118,7 @@ def _resolve_un(
         )
 
     # Brak danych
-    return (None, BaseValueSourceUn.UNKNOWN, "Un nieznane – brak danych napieciowych")
+    return (None, BaseValueSourceUn.UNKNOWN, "Un nieznane – brak danych napięciowych")
 
 
 def _resolve_in(
@@ -153,9 +152,9 @@ def _resolve_in(
             return (
                 ctx.breaker_rated_current_a,
                 BaseValueSourceIn.BREAKER,
-                f"In = {ctx.breaker_rated_current_a:.1f} A (wylacznik)",
+                f"In = {ctx.breaker_rated_current_a:.1f} A (wyłącznik)",
             )
-        return (None, BaseValueSourceIn.UNKNOWN, "In nieznane – brak rated_current_a wylacznika")
+        return (None, BaseValueSourceIn.UNKNOWN, "In nieznane – brak rated_current_a wyłącznika")
 
     # TRANSFORMER
     if element_type == ProtectedElementType.TRANSFORMER:
@@ -167,7 +166,7 @@ def _resolve_in(
             return (
                 ctx.connection_rated_current_a,
                 BaseValueSourceIn.BoundaryNode,
-                f"In = {ctx.connection_rated_current_a:.1f} A (BoundaryNode – punkt wspolnego przylaczenia)",
+                f"In = {ctx.connection_rated_current_a:.1f} A (BoundaryNode – punkt wspólnego przyłączenia)",
             )
         return (None, BaseValueSourceIn.UNKNOWN, "In nieznane – brak rated_current_a BoundaryNode")
 
@@ -178,7 +177,7 @@ def _resolve_in(
             return (
                 ctx.breaker_rated_current_a,
                 BaseValueSourceIn.BREAKER,
-                f"In = {ctx.breaker_rated_current_a:.1f} A (wylacznik pola)",
+                f"In = {ctx.breaker_rated_current_a:.1f} A (wyłącznik pola)",
             )
         # Fallback: line (jeśli szyna ma przypisaną linię)
         if ctx.line_rated_current_a is not None and ctx.line_rated_current_a > 0:
@@ -194,10 +193,10 @@ def _resolve_in(
                 BaseValueSourceIn.BoundaryNode,
                 f"In = {ctx.connection_rated_current_a:.1f} A (BoundaryNode)",
             )
-        return (None, BaseValueSourceIn.UNKNOWN, "In nieznane – brak danych pradowych szyny")
+        return (None, BaseValueSourceIn.UNKNOWN, "In nieznane – brak danych prądowych szyny")
 
     # UNKNOWN element type
-    return (None, BaseValueSourceIn.UNKNOWN, "In nieznane – nieobslugiwany typ elementu")
+    return (None, BaseValueSourceIn.UNKNOWN, "In nieznane – nieobsługiwany typ elementu")
 
 
 def _resolve_in_transformer(
@@ -236,20 +235,20 @@ def _resolve_in_transformer(
         un_side = ctx.transformer_voltage_lv_kv
         if un_side is None or un_side <= 0:
             un_side = ctx.transformer_voltage_hv_kv
-            side_label = "WN (domyslnie)"
+            side_label = "WN (domyślnie)"
         else:
-            side_label = "nN (domyslnie)"
+            side_label = "nN (domyślnie)"
 
     if un_side is None or un_side <= 0:
         return (
             None,
             BaseValueSourceIn.UNKNOWN,
-            "In nieznane – brak napiecia strony transformatora",
+            "In nieznane – brak napięcia strony transformatora",
         )
 
     # Oblicz In = Sn / (√3 × Un)
     # Sn [MVA], Un [kV] → In [kA], więc ×1000 dla [A]
-    in_a = (sn * 1000.0) / (math.sqrt(3) * un_side)
+    in_a = prad_roboczy_a(sn, un_side)
 
     return (
         in_a,

@@ -1,0 +1,254 @@
+/*
+ * Style KARTY WERDYKTU (kontrakt werdyktu wyjaśnialnego §9). Kolory WYŁĄCZNIE tokenami
+ * --mvd-* (theme/tokens.css) — zero literałów koloru. Kolor semantyki etykiety przychodzi
+ * z JEDYNEJ mapy `SEMANTYKA_KOLOR` (KartaWerdyktu.tsx) jako własność `--mvd-werdykt-kolor`
+ * ustawiona na karcie; ten plik NIE zna semantyki ani statusu — używa tylko tej własności.
+ * KaTeX dziedziczy `color` z kontenera (kontrakt prezentacji V12.7 §9) — karta ustawia
+ * `color: var(--mvd-ink)`.
+ */
+
+.mvd-werdykt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--mvd-line);
+  border-left: 4px solid var(--mvd-werdykt-kolor, var(--mvd-muted));
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  box-shadow: var(--mvd-shadow);
+  color: var(--mvd-ink);
+  font-family: var(--mvd-font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  /* Karta jest kontenerem zapytań o SZEROKOŚĆ: układ pól (niżej) zależy od miejsca, w którym
+     karta stoi (panel boczny 320 px, lista rekordów, ekran pełnej szerokości), nie od okna.
+     Każdy rodzic karty jest blokiem albo kolumną flex (szerokość z rodzica), więc zawieranie
+     szerokości nie zmienia jej rozmiaru. */
+  container-type: inline-size;
+}
+
+.mvd-werdykt :focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+.mvd-werdykt-zagniezdzona {
+  box-shadow: none;
+  background: var(--mvd-panel-2);
+}
+
+/* ---- nagłówek ---- */
+.mvd-werdykt-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-werdykt-nadtytul {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mvd-werdykt-tytul {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.mvd-werdykt-zagniezdzona .mvd-werdykt-tytul {
+  font-size: 14px;
+}
+.mvd-werdykt-meta {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 11.5px;
+}
+
+/* ---- pola (lista definicji) ---- */
+.mvd-werdykt-pola {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-werdykt-pole {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-werdykt-pole:last-child {
+  border-bottom: none;
+}
+.mvd-werdykt-pole-etykieta {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-weight: 600;
+}
+.mvd-werdykt-pole-tresc {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mvd-werdykt-pola-wewnetrzne {
+  border-top: none;
+}
+
+/* Wąska karta: etykieta NAD treścią. Kolumna etykiet 170 px ma sens dopiero, gdy treść dostaje
+   obok niej co najmniej ~300 px. Próg liczony od szerokości KARTY — dawny próg od okna
+   (`@media max-width: 640px`) zostawiał kartę w panelu bocznym macierzy (320 px, okno 1220 px)
+   z treścią ~80 px: tekst łamał się po słowie, a ekran rósł do ~35 000 px wysokości. */
+@container (max-width: 480px) {
+  .mvd-werdykt-pole {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
+/* ---- ocena: etykieta z rekordu, kolor z semantyki ---- */
+.mvd-werdykt-ocena {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: baseline;
+  padding: 2px 10px;
+  border: 1px solid var(--mvd-werdykt-kolor, var(--mvd-muted));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--mvd-werdykt-kolor, var(--mvd-muted)) 14%, var(--mvd-panel));
+  color: var(--mvd-werdykt-kolor, var(--mvd-muted));
+  font-weight: 700;
+}
+
+/* ---- treść pól ---- */
+.mvd-werdykt-akapit {
+  display: block;
+  margin: 0;
+}
+.mvd-werdykt-para {
+  display: block;
+}
+.mvd-werdykt-para-nazwa {
+  color: var(--mvd-muted);
+}
+.mvd-werdykt-warunek {
+  padding: 2px 0;
+}
+.mvd-werdykt-zdanie {
+  margin: 0;
+  font-weight: 600;
+}
+.mvd-werdykt-podsekcja {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+.mvd-werdykt-lista {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-werdykt-podstawa {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.mvd-werdykt-stan-zrodla {
+  font-weight: 600;
+}
+
+/* ---- obwiednia limitu ---- */
+.mvd-werdykt-obwiednia {
+  align-self: flex-start;
+  margin: 4px 0;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.mvd-werdykt-obwiednia th,
+.mvd-werdykt-obwiednia td {
+  padding: 2px 10px;
+  border: 1px solid var(--mvd-line);
+  text-align: right;
+}
+.mvd-werdykt-obwiednia th {
+  background: var(--mvd-panel-2);
+  color: var(--mvd-muted);
+  font-weight: 600;
+}
+
+/* ---- sekcje rozwijane (zakres ważności, ślad) ---- */
+.mvd-werdykt-rozwijana {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  overflow: hidden;
+}
+.mvd-werdykt-rozwijana-przycisk {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.mvd-werdykt-rozwijana-przycisk:hover {
+  background: var(--mvd-sel);
+}
+.mvd-werdykt-rozwijana-tytul {
+  flex: 1;
+  font-weight: 600;
+}
+.mvd-werdykt-rozwijana-zwijak {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mvd-werdykt-rozwijana-tresc {
+  padding: 6px 10px 8px;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-werdykt-slad .mvd-werdykt-meta {
+  display: block;
+}
+
+/* ---- oceny składowe (zawsze widoczne) ---- */
+.mvd-werdykt-skladowe {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+.mvd-werdykt-skladowe-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---- plakietka etykiety (EtykietaWerdyktu: komórki macierzy, listy rekordów) ---- */
+.mvd-werdykt-plakietka {
+  display: inline-flex;
+  align-items: baseline;
+  padding: 1px 8px;
+  border: 1px solid var(--mvd-werdykt-kolor, var(--mvd-muted));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--mvd-werdykt-kolor, var(--mvd-muted)) 14%, var(--mvd-panel));
+  color: var(--mvd-werdykt-kolor, var(--mvd-muted));
+  font-family: var(--mvd-font-sans);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: normal;
+}

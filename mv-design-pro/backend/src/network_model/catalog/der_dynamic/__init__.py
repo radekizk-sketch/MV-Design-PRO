@@ -1,17 +1,19 @@
-"""Katalog dynamicznych modeli DER (PV/BESS/FW) — produkcyjny end-to-end.
+"""Katalog dynamicznych modeli DER (PV/BESS/FW).
 
-Każdy DER wymaga modelu dynamicznego (`InverterDynamicProfile` lub
-`WindTurbineDynamicProfile`). Resolver `resolve_der_dynamic_profile` zawsze
-zwraca model — łańcuch: katalog → profil operatora → default per kind.
+Każdy DER MOŻE mieć model dynamiczny (`InverterDynamicProfile` lub
+`WindTurbineDynamicProfile`). Resolver `resolve_der_dynamic_profile` zwraca
+model WYŁĄCZNIE po jawnym wyborze (parametr wywołania albo wpis katalogu z
+`dynamic_profile_id`) — karta W6-1 SS0 p.3 skasowała łańcuch "katalog → profil
+operatora → default per kind": brak jawnego wyboru jest brakiem danej
+(`source="brak"`), nigdy cichym podstawieniem.
 
 Integracja:
 - `PVInverterType.dynamic_model_id` / `BESSInverterType.dynamic_model_id` /
   `WindTurbineCatalogEntry.dynamic_model_id` — opcjonalna referencja
   do profilu w tym katalogu.
-- `network_model.solvers.stability_rms` — konsumuje
-  `profile.to_stability_parameters()`.
-- `network_model.solvers.frt_hvrt` — konsumuje
-  `profile.to_frt_parameters()`.
+- `enm.dynamika_z_katalogu` — JEDYNA materializacja profilu do kopii
+  `Generator.dynamika` (`profile.to_parametry_dynamiczne(s_n_mva=...)`), wołana przez
+  operację domenową wiązania `set_der_catalog_bindings` (karta AB-P1).
 """
 
 from network_model.catalog.der_dynamic.defaults import (

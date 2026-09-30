@@ -152,6 +152,10 @@ def _payload_nn_load_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "feeder_ref": _pole_nn_ref(snapshot),
         "active_power_kw": 30.0,
+        # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
+        # (FAB-D1 D5) — ten test sprawdza znacznik pochodzenia katalogowego,
+        # nie moc bierną.
+        "cos_phi": 0.9,
         "catalog_binding": _wiazanie(REF_ODBIOR),
     }
 
@@ -196,6 +200,28 @@ def _payload_ogranicznik_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
         "station_ref": _stacja_ref(snapshot),
         "field_ref": _pole_sn_ref(snapshot),
         "catalog_binding": _wiazanie(REF_OGRANICZNIK),
+    }
+
+
+def _payload_odbior_sn_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """CV-4.3 K1: `add_load_sn` — ten sam mechanizm co `add_nn_load` powyżej,
+    tylko `bus_ref` zamiast `feeder_ref` (odbiór wprost na szynie, bez pola)."""
+    return {
+        "bus_ref": _szyna_sn_ref(snapshot),
+        "p_mw": 0.03,
+        "cos_phi": 0.9,
+        "catalog_binding": _wiazanie(REF_ODBIOR),
+    }
+
+
+def _payload_generator_sn_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """CV-4.3 K1: `add_generator_sn` — katalog WYMAGANY (GENERATOR_SN, nie
+    opcjonalny jak odbiór); `bench_ozepvbess_pv2` (15 kV) pasuje napięciowo do
+    szyny SN fikstury stacji tego pliku."""
+    return {
+        "bus_ref": _szyna_sn_ref(snapshot),
+        "p_mw": 0.5,
+        "catalog_binding": _wiazanie("bench_ozepvbess_pv2"),
     }
 
 
@@ -324,6 +350,21 @@ def _znaczniki_ogranicznika(snapshot: dict[str, Any]) -> dict[str, str | None]:
     raise AssertionError("Brak ogranicznika przepięć w migawce")
 
 
+def _znaczniki_odbioru_sn(snapshot: dict[str, Any]) -> dict[str, str | None]:
+    odbior = _jedyny(snapshot.get("loads") or [], "load")
+    return {
+        "element": _znacznik(odbior),
+        "meta.catalog_binding": (odbior.get("meta") or {})
+        .get("catalog_binding", {})
+        .get("catalog_namespace"),
+    }
+
+
+def _znaczniki_generatora_sn(snapshot: dict[str, Any]) -> dict[str, str | None]:
+    generator = _jedyny(snapshot.get("generators") or [], "generator")
+    return {"element": _znacznik(generator)}
+
+
 # ---------------------------------------------------------------------------
 # INWENTARZ ZNACZNIKÓW POCHODZENIA (reguła KLASA, NIE INSTANCJA)
 # ---------------------------------------------------------------------------
@@ -432,6 +473,22 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
         _payload_ogranicznik_obca,
         _znaczniki_ogranicznika,
         {"element": "OGRANICZNIK_SN"},
+    ),
+    ZnacznikPochodzenia(
+        "add_load_sn",
+        "add_load_sn",
+        ("add_load_sn",),
+        _payload_odbior_sn_obca,
+        _znaczniki_odbioru_sn,
+        {"element": "OBCIAZENIE", "meta.catalog_binding": "OBCIAZENIE"},
+    ),
+    ZnacznikPochodzenia(
+        "add_generator_sn",
+        "add_generator_sn",
+        ("add_generator_sn",),
+        _payload_generator_sn_obca,
+        _znaczniki_generatora_sn,
+        {"element": "GENERATOR_SN"},
     ),
 )
 
@@ -671,7 +728,10 @@ def test_odbior_ekspercki_nie_deklaruje_kategorii_katalogu() -> None:
     wynik = execute_domain_operation(
         snapshot,
         "add_nn_load",
-        {"feeder_ref": _pole_nn_ref(snapshot), "active_power_kw": 12.0},
+        # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
+        # (FAB-D1 D5) — ten test sprawdza brak deklaracji kategorii katalogu,
+        # nie moc bierną.
+        {"feeder_ref": _pole_nn_ref(snapshot), "active_power_kw": 12.0, "cos_phi": 0.9},
     )
 
     assert not wynik.get("error"), wynik.get("error")

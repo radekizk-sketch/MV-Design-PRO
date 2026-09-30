@@ -27,11 +27,12 @@ WSZYSTKICH jednostkach WSZYSTKICH bloków fabrycznych — nie po jednym przykła
 from __future__ import annotations
 
 import copy
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
 import pytest
-from enm.domain_operations import execute_domain_operation
+from enm.domain_operations import execute_domain_operation, nazwa_roli_pola_sn
 from enm.pole_katalogowe import (
     OZNACZENIE_KANONICZNE_APARATU,
     RODZAJ_ENM_DLA_APARATU_KATALOGU,
@@ -40,6 +41,7 @@ from enm.pole_katalogowe import (
     rodzaj_enm_aparatu,
     rozwiaz_plan_pola,
 )
+from enm.slownik_komunikatow import pole
 from network_model.catalog.bay_templates import (
     _TEMPLATE_DEVICE_KIND_TO_PRIMARY_KIND,
 )
@@ -54,6 +56,7 @@ from network_model.catalog.switchgear import (
 from network_model.catalog.switchgear.apparatus_vocabulary import (
     APPARATUS_KIND_FOR_TEMPLATE_KIND,
 )
+from network_model.catalog.switchgear.device_instance import nazwa_rodzaju_aparatu_pl
 
 from tests.enm.test_brama_katalogowa_operacji_v2 import (
     _siec_ze_stacja,
@@ -483,7 +486,10 @@ def test_aparat_bez_odpowiednika_w_modelu_jest_twardym_bledem(apparatus_kind: st
     """
     with pytest.raises(NiezgodnoscKonfiguracjiError) as blad:
         rodzaj_enm_aparatu(apparatus_kind)
-    assert apparatus_kind in str(blad.value)
+    # Karta #142: aparat nazwany słowami katalogu (np. „wskaźnik napięcia”),
+    # kod rodzaju aparatu zostaje w danych katalogowego pola.
+    assert f"„{nazwa_rodzaju_aparatu_pl(apparatus_kind)}”" in str(blad.value)
+    assert apparatus_kind not in str(blad.value)
 
 
 def test_wyposazenie_pola_odpowiada_wyposazeniu_katalogowemu() -> None:
@@ -555,7 +561,12 @@ def test_rodzina_rmu_nie_daje_sie_zbudowac_pojedyncza_celka() -> None:
             {"complete_bay_template_ref": "ABB__SAFERING__TRANSFORMER"},
             field_ref="pole-testowe",
         )
-    assert "BLOK" in str(blad.value)
+    # Karta #142: komunikat wskazuje drogę bloku słowami formularza kreatora
+    # („Blok fabryczny”, „Jednostki bloku…”), a nie kodem toru konfiguracji.
+    assert pole("factory_configuration_ref") in str(blad.value)
+    assert pole("factory_unit_index") in str(blad.value)
+    assert "BLOK_RMU" not in str(blad.value)
+    assert "factory_configuration_ref" not in str(blad.value)
 
 
 def test_blok_fabryczny_w_rodzinie_modulowej_jest_odrzucony(
@@ -593,7 +604,7 @@ def test_blok_fabryczny_w_rodzinie_modulowej_jest_odrzucony(
 
 @pytest.mark.parametrize(
     ("numer", "fragment"),
-    [(0, "poza zakresem"), (4, "poza zakresem"), (None, "numeru jednostki")],
+    [(0, "poza zakresem"), (4, "poza zakresem"), (None, "wymaga wskazania jednostki")],
 )
 def test_numer_jednostki_bloku_musi_wskazywac_istniejaca_jednostke(
     numer: object, fragment: str
@@ -621,7 +632,14 @@ def test_rola_pola_wynika_z_katalogu_a_nie_z_deklaracji() -> None:
         },
     )
     assert wynik["error_code"] == KOD_NIEZGODNOSCI
-    assert "TR" in str(wynik["error"])
+    # Karta #142: obie role nazwane jedną mapą nazw ról pól SN — katalogowa
+    # („pole transformatorowe”) i wskazana w formularzu („pole sprzęgła”);
+    # kody ról (TR, COUPLER) zostają w danych katalogu i payloadu.
+    komunikat = str(wynik["error"])
+    assert f"„{nazwa_roli_pola_sn('TR')}”" in komunikat
+    assert f"„{nazwa_roli_pola_sn('COUPLER')}”" in komunikat
+    assert "COUPLER" not in komunikat
+    assert re.search(r"\bTR\b", komunikat) is None
 
 
 def test_blok_nie_koliduje_ze_slotem_szablonu_ktory_sam_wypelnia() -> None:

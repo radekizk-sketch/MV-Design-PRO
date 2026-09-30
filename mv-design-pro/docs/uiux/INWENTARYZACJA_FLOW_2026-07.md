@@ -123,28 +123,33 @@ ale frontendowa biała lista (`types/domainOps.ts:53-81`) NIE zawiera tej nazwy 
 przez `executeDomainOp` rzuci wyjątek w runtime, więc ŻADEN ekran nie może jej wywołać tą
 drogą:**
 
+> Korekta (CV-3.2, 58e520ce): 9 operacji z pierwotnej listy 17
+> (`create_study_case`, `set_case_switch_state`, `set_case_normal_state`,
+> `set_case_source_mode`, `set_case_time_profile`, `run_short_circuit`,
+> `run_power_flow`, `run_time_series_power_flow`, `compare_study_cases`) —
+> zapisujących `study_cases[]` do dokumentu ENM (zapis w próżnię, pole nigdy
+> nie istniało w `EnergyNetworkModel`) — usunięte procedurą 7 kroków. Nie są
+> już "widmem w rejestrze" (rejestr ich w ogóle nie zawiera), tylko usuniętym
+> kodem; pozostałe 8 operacji poniżej są nadal aktualnym, potwierdzonym
+> ustaleniem audytu (nie dotyczy tej karty).
+
 `update_relay_settings`, `link_relay_to_field`, `calculate_tcc_curve`, `validate_selectivity`,
-`create_study_case`, `set_case_switch_state`, `set_case_normal_state`, `set_case_source_mode`,
-`set_case_time_profile`, `run_short_circuit`, `run_power_flow`, `run_time_series_power_flow`,
-`compare_study_cases`, `set_source_operating_mode`, `set_dynamic_profile`, `rename_element`,
-`set_label` (17 operacji; `set_connection_conditions` opisana osobno w C.3 — TA operacja
+`set_source_operating_mode`, `set_dynamic_profile`, `rename_element`,
+`set_label` (8 operacji; `set_connection_conditions` opisana osobno w C.3 — TA operacja
 MA realnego wywołującego, mimo tej samej blokady).
 
-Dla części z tych 17 zweryfikowano, że **funkcjonalność istnieje pod inną, nie-kanoniczną
-ścieżką REST** (czyli operacja jest tylko wpisem-widmem w `canonical_operations.py`, a
-realny mechanizm jest gdzie indziej):
+Cztery z pierwotnej listy 17 miały funkcjonalność pod inną, nie-kanoniczną ścieżką REST
+(`run_short_circuit`/`run_power_flow` — `enm.py:508/567`, przycisk „Oblicz"; `create_study_case`/
+`compare_study_cases` — `backend/src/api/study_cases.py:166/371`, `ui2/spaces/obliczenia/
+{NowyPrzypadek,PorownanieKonfiguracji}.tsx`) — usunięte razem z resztą 9 (CV-3.2); żywy kod
+pod tymi REST-owymi ścieżkami NIE został ruszony, tylko martwy wpis-widmo w rejestrze.
+Piąty przypadek tego wzorca (nie dotyczy CV-3.2, poza zakresem tej karty): `run_protection_study`
+(też Poziom 1) ma realną ścieżkę `backend/src/api/protection_runs.py:96,140`
+(`create_protection_run`, `execute_protection_run`) i ekran ochrony jako wywołującego
+(nie zweryfikowano dokładnego pliku wywołującego — NIE USTALONO).
 
-| Operacja (widmo w rejestrze) | Realna ścieżka REST | Realny wywołujący UI |
-|---|---|---|
-| `run_short_circuit` | `POST /{case_id}/runs/short-circuit` — `enm.py:508` | przycisk „Oblicz" (`handleCalculate`, `ui2/AppRoot.tsx:100`, `ui/App.tsx`-owy odpowiednik legacy) |
-| `run_power_flow` | `POST /{case_id}/runs/power-flow` — `enm.py:567` | jw. |
-| `create_study_case` | dedykowany endpoint REST — `backend/src/api/study_cases.py:166` (nie odwołuje się w ogóle do `canonical_operations.py` — 0 wystąpień, sprawdzono grepem) | `ui2/spaces/obliczenia/NowyPrzypadek.tsx` |
-| `compare_study_cases` | `backend/src/api/study_cases.py:371` (jw., własna ścieżka REST) | `ui2/spaces/obliczenia/PorownanieKonfiguracji.tsx` (nie zweryfikowano 1:1 wywołania — patrz NIE USTALONO) |
-| `run_protection_study` (też Poziom 1) | `backend/src/api/protection_runs.py:96,140` (`create_protection_run`, `execute_protection_run`) | ekran ochrony (nie zweryfikowano dokładnego pliku wywołującego — NIE USTALONO) |
-
-Dla pozostałych z tej siedemnastki (`update_relay_settings`, `link_relay_to_field`,
-`calculate_tcc_curve`, `validate_selectivity`, `set_case_switch_state`, `set_case_normal_state`,
-`set_case_source_mode`, `set_case_time_profile`, `run_time_series_power_flow`,
+Dla pozostałej ósemki (`update_relay_settings`, `link_relay_to_field`,
+`calculate_tcc_curve`, `validate_selectivity`,
 `set_source_operating_mode`, `set_dynamic_profile`, `rename_element`, `set_label`) — literał
 nazwy operacji **nie występuje ani razu** w `frontend/src` (grep, poza jednym wystąpieniem
 `rename_element` jako klucz tablicy komunikatów sukcesu w
@@ -219,6 +224,12 @@ pojawia, to właśnie ten odczyt właściwości.
 ---
 
 ## D. KODY GOTOWOŚCI (`READINESS_CODES`) W UI
+
+> **Nota (2026-09-05, karta FIX-ACTION-KASACJA, `docs/v12xx/REJESTR_KONFLIKTOW.md`
+> V12K-338):** pole `fix_action_id` opisane niżej jako fantom bez konsumenta zostało
+> odtąd USUNIĘTE z `ReadinessCodeSpec` — `fix_navigation` jest jedyną realną ścieżką
+> naprawczą. Treść tej sekcji pozostaje zapisem stanu z 2026-07 (42 kody) i nie opisuje
+> obecnego kontraktu.
 
 `READINESS_CODES` (`backend/src/domain/canonical_operations.py:487-930`) ma **42 kody**
 (zweryfikowano programowo — nie 37 jak wstępnie zakładano w poleceniu zadania), każdy z
@@ -364,14 +375,16 @@ selectElement|navigateToSld|pokazNaSchemacie`) bez ich dopasowania — nie jest 
    opisanymi w tabeli F — nie zweryfikowano w dostępnym budżecie czasu.
 2. **Realna ścieżka wywołania (jeśli istnieje) dla operacji**: `update_relay_settings`,
    `link_relay_to_field`, `calculate_tcc_curve`, `validate_selectivity`,
-   `set_case_switch_state`, `set_case_normal_state`, `set_case_source_mode`,
-   `set_case_time_profile`, `run_time_series_power_flow`, `set_source_operating_mode`,
-   `set_dynamic_profile`, `rename_element`, `set_label` — potwierdzono TYLKO że literał
+   `set_source_operating_mode`, `set_dynamic_profile`, `rename_element`, `set_label`
+   (5 operacji z pierwotnej listy — `set_case_switch_state`, `set_case_normal_state`,
+   `set_case_source_mode`, `set_case_time_profile`, `run_time_series_power_flow` — usunięte
+   CV-3.2, patrz sekcja C.1) — potwierdzono TYLKO że literał
    nazwy kanonicznej nigdzie nie występuje we frontendzie i że frontendowa biała lista by
    go odrzuciła w runtime; NIE zweryfikowano wyczerpująco, czy każda z tych operacji ma
    funkcjonalny odpowiednik pod inną nazwą/endpointem (zweryfikowano to tylko dla
-   `run_short_circuit`, `run_power_flow`, `create_study_case`, `compare_study_cases`,
-   `run_protection_study`, `export_project_artifacts`).
+   `run_protection_study`, `export_project_artifacts`; `run_short_circuit`/`run_power_flow`/
+   `create_study_case`/`compare_study_cases` miały odpowiednik — usunięte CV-3.2 razem z
+   resztą 9, żywy kod pod ich REST-owymi ścieżkami nietknięty).
 3. **Docelowe wywołanie API** dla identyfikatorów akcji menu kontekstowego `calc_tcc`,
    `validate_selectivity`, `set_switch_states`, `set_normal_states`, `set_source_modes`,
    `edit_label`, `rename` (`ui/context-menu/actionMenuBuilders.ts`) — handlery są

@@ -42,11 +42,16 @@ vi.mock('../../../../ui/selection', () => ({
     selector({ selectElement: selectElementMock, centerSldOnElement: centerSldOnElementMock }),
 }));
 
+// FAB-F: katalog KANONICZNY MV (`fetchMvProtectionDeviceTypes`), nie biblioteka
+// analityczna (`fetchProtectionDeviceTypes`) — jedyny zbiór, który przyjmuje
+// brama katalogowa `add_relay`. Kształt rekordu jak w prawdziwym katalogu MV:
+// `name_pl` + `vendor` (NIE `name`/`manufacturer` biblioteki analitycznej) —
+// gdyby etykieta w komponencie czytała złe pola, ten fixture by to ujawnił.
 vi.mock('../../../../ui/catalog/api', () => ({
-  fetchProtectionDeviceTypes: () =>
+  fetchMvProtectionDeviceTypes: () =>
     Promise.resolve([
-      { id: 'relay-1', name: 'REF615', manufacturer: 'ABB' },
-      { id: 'relay-2', name: '7SJ82', manufacturer: 'Siemens' },
+      { id: 'relay-1', name_pl: 'Przekaźnik REF615', vendor: 'ABB' },
+      { id: 'relay-2', name_pl: 'Przekaźnik 7SJ82', vendor: 'Siemens' },
     ]),
 }));
 
@@ -79,7 +84,7 @@ vi.mock('../../../../ui/field/fieldControlSelectors', () => ({
  * Wybór pozycji katalogowej przekaźnika.
  *
  * CZEKAMY NA OPCJĘ, NIE NA SAM `<select>` (naprawa chwiejności, 2026-08-08).
- * Lista pozycji przychodzi z asynchronicznego `fetchProtectionDeviceTypes`, a
+ * Lista pozycji przychodzi z asynchronicznego `fetchMvProtectionDeviceTypes`, a
  * pole `<select>` renderuje się PRZED jej rozwiązaniem — więc warunek „element
  * jest w dokumencie" spełniał się na PUSTEJ liście i `selectOptions` wywracał
  * się z „Value »relay-1« not found in options". Objaw wychodził wyłącznie

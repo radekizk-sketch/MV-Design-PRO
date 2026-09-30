@@ -169,3 +169,26 @@
 .mvd-serie-bieg-analiza {
   min-width: 16ch;
 }
+
+/* Nazwa serii — pole przy tworzeniu i etykieta na karcie (karta CV-3.3-C, C1). */
+.mvd-serie-nazwa {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0 6px;
+  max-width: 48ch;
+}
+
+.mvd-serie-nazwa-etykieta {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.mvd-serie-nazwa input {
+  font: inherit;
+  padding: 4px 8px;
+}
+
+.mvd-serie-karta-nazwa {
+  font-weight: 600;
+}

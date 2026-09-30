@@ -1,0 +1,15 @@
+# KATALOG-NIEZMIENNIKI: JEDYNE miejsca dopuszczone do niesienia skasowanych nazw.
+# Zapadka tylko w dol: nowe miejsce = naruszenie, nie kolejny wiersz tutaj.
+#
+# Guard i jego self-test niosa wzorzec w tresci.
+scripts/grep_zero_guard.py
+scripts/test_grep_zero_guard.py
+# Migracja modelu zastanego zna nazwe TABELI `inverter_types` w bazie legacy —
+# musi ja znac, zeby ja przeniesc; to nie jest wskrzeszenie rejestru katalogu.
+backend/src/infrastructure/persistence/migracja_legacy_db.py
+# Meldunek kasacji tabel typow w bazie (W1) cytuje nazwe tabeli legacy.
+backend/tests/network_model/catalog/test_governance.py
+# Zakaz tabel legacy (`FORBIDDEN_W1_TABLE_NAMES`) musi WYMIENIC nazwe tabeli
+# `inverter_types`, zeby jej zakazac — to inna dziedzina (nazwa tabeli w bazie
+# zastanej), nie rejestr katalogu.
+scripts/legacy_public_path_guard.py

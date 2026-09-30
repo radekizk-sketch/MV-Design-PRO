@@ -7,6 +7,7 @@ import json
 from typing import Any, Literal
 
 from enm.hash import compute_enm_hash
+from enm.load_zip_model import jest_odbiorem_zip
 from enm.models import (
     BranchPointSN,
     Cable,
@@ -22,6 +23,9 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from enm.nazwy_elementow import nazwa_elementu
+from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
+from network_model.nazwy import nazwa_nadana
 from pydantic import BaseModel, Field
 
 ProjectionQuality = Literal["pelna", "czesciowa", "wymaga_decyzji"]
@@ -73,7 +77,7 @@ class V2SwitchingStateSnapshot(BaseModel):
 
 class V2ZeroSequenceConfig(BaseModel):
     element_ref: str
-    element_kind: Literal["branch", "source", "transformer", "bus"]
+    element_kind: Literal["branch", "source", "transformer"]
     r0: float | None = None
     x0: float | None = None
     b0: float | None = None
@@ -156,7 +160,7 @@ def project_enm_v1_to_v2(enm: EnergyNetworkModel) -> EnergyNetworkModelV2Project
         operating_variants=[
             V2OperatingVariant(
                 ref_id="variant.uklad_normalny",
-                name="Uklad normalny",
+                name="Układ normalny",
                 variant_type="uklad_normalny",
                 switching_snapshot_ref=switching_snapshot.ref_id,
             )
@@ -263,7 +267,7 @@ def _build_base_switching_snapshot(enm: EnergyNetworkModel) -> V2SwitchingStateS
         )
     return V2SwitchingStateSnapshot(
         ref_id="switching.uklad_normalny.base",
-        name="Migawka lacznikowa ukladu normalnego",
+        name="Migawka łącznikowa układu normalnego",
         variant_ref="variant.uklad_normalny",
         switch_states=switch_states,
     )
@@ -296,6 +300,9 @@ def _build_zero_sequence_configs(enm: EnergyNetworkModel) -> list[V2ZeroSequence
                 element_kind="source",
                 r0=source.r0_ohm,
                 x0=source.x0_ohm,
+                grounding_type=(
+                    source.neutral_grounding.type if source.neutral_grounding else None
+                ),
                 quality_status=(
                     "pelna"
                     if source.r0_ohm is not None and source.x0_ohm is not None
@@ -312,20 +319,6 @@ def _build_zero_sequence_configs(enm: EnergyNetworkModel) -> list[V2ZeroSequence
                 element_kind="transformer",
                 grounding_type=grounding.type if grounding else None,
                 quality_status="pelna" if transformer.vector_group and grounding else "czesciowa",
-            )
-        )
-
-    for bus in sorted(enm.buses, key=lambda item: item.ref_id):
-        if bus.grounding is None:
-            continue
-        configs.append(
-            V2ZeroSequenceConfig(
-                element_ref=bus.ref_id,
-                element_kind="bus",
-                r0=bus.grounding.r_ohm,
-                x0=bus.grounding.x_ohm,
-                grounding_type=bus.grounding.type,
-                quality_status="pelna",
             )
         )
 
@@ -346,7 +339,8 @@ def _build_operator_profiles(enm: EnergyNetworkModel) -> list[dict]:
         )
         profiles_by_ref[profile_ref] = {
             "ref_id": profile_ref,
-            "name": str(operator_profile.get("name") or f"Profil operatora {generator.name}"),
+            "name": nazwa_nadana(operator_profile.get("name"))
+            or f"Profil operatora {nazwa_elementu(generator, 'generators')}",
             "source_ref": generator.ref_id,
             "quality_status": "pelna",
             "profile_source": _profile_source(generator),
@@ -413,13 +407,16 @@ def _build_load_profiles(enm: EnergyNetworkModel) -> list[dict]:
     profiles: list[dict] = []
     for load in sorted(enm.loads, key=lambda item: item.ref_id):
         load_profile = _materialized_section(load, "load_profile")
-        if load_profile is None and load.model != "zip":
+        zip_odbior = jest_odbiorem_zip(
+            load.materialized_params, float(enm.header.defaults.frequency_hz)
+        )
+        if load_profile is None and not zip_odbior:
             continue
         profiles.append(
             {
                 "ref_id": f"load_profile.{load.ref_id}",
                 "load_ref": load.ref_id,
-                "model": load.model,
+                "model": "zip" if zip_odbior else "pq",
                 "quality_status": "pelna" if load_profile else "czesciowa",
                 "profile_source": _profile_source(load),
                 "profile": load_profile or {},
@@ -463,17 +460,20 @@ def _build_migration_warnings(enm: EnergyNetworkModel) -> list[V2MigrationWarnin
                     element_ref=generator.ref_id,
                     message_pl=(
                         "Generator wiatrowy ma typ legacy 'wind_inverter'. "
-                        "Migracja V12.xx wymaga rozroznienia PMSG, DFIG albo SCIG."
+                        "Migracja V12.xx wymaga rozróżnienia PMSG, DFIG albo SCIG."
                     ),
                 )
             )
-        if generator.gen_type in _converter_generator_types() and not generator.catalog_ref:
+        if brakuje_wymaganej_referencji(
+            wymagalnosc_katalogu("generator", gen_type=generator.gen_type).import_,
+            generator.catalog_ref,
+        ):
             warnings.append(
                 V2MigrationWarning(
                     code="V12-MIG-GEN-002",
                     severity="ostrzezenie",
                     element_ref=generator.ref_id,
-                    message_pl="Zrodlo przeksztaltnikowe nie ma referencji katalogowej.",
+                    message_pl="Źródło przekształtnikowe nie ma referencji katalogowej.",
                 )
             )
         source_type = _source_type_for_generator(generator)
@@ -488,20 +488,20 @@ def _build_migration_warnings(enm: EnergyNetworkModel) -> list[V2MigrationWarnin
                         severity="blokada_migracji",
                         element_ref=generator.ref_id,
                         message_pl=(
-                            "Zrodlo wiatrowe V12.xx wymaga zgodnego profilu "
+                            "Źródło wiatrowe V12.xx wymaga zgodnego profilu "
                             f"generatora {expected}."
                         ),
                     )
                 )
 
     for load in sorted(enm.loads, key=lambda item: item.ref_id):
-        if load.model == "zip":
+        if jest_odbiorem_zip(load.materialized_params, float(enm.header.defaults.frequency_hz)):
             warnings.append(
                 V2MigrationWarning(
                     code="V12-MIG-LOAD-001",
                     severity="informacja",
                     element_ref=load.ref_id,
-                    message_pl="Odbior ZIP wymaga pelnego kontraktu profilu obciazenia w ENM v2.0.",
+                    message_pl="Odbiór ZIP wymaga pełnego kontraktu profilu obciążenia w ENM v2.0.",
                 )
             )
 
@@ -525,15 +525,14 @@ def _readiness_for_element(element: object) -> ReadinessStatus:
     if isinstance(element, OverheadLine | Cable | Transformer | Source):
         return "gotowy" if getattr(element, "catalog_ref", None) else "wymaga_uzupelnienia"
     if isinstance(element, Generator):
-        if element.gen_type in _converter_generator_types() and not element.catalog_ref:
+        if brakuje_wymaganej_referencji(
+            wymagalnosc_katalogu("generator", gen_type=element.gen_type).walidacja,
+            element.catalog_ref,
+        ):
             return "wymaga_uzupelnienia"
     if isinstance(element, ProtectionAssignment) and not element.ct_ref:
         return "wymaga_uzupelnienia"
     return "gotowy"
-
-
-def _converter_generator_types() -> set[str]:
-    return {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
 
 
 def _source_type_for_generator(generator: Generator) -> str:
@@ -604,7 +603,10 @@ def _source_profile_quality(
     generator: Generator,
     source_profile: dict | None,
 ) -> ProjectionQuality:
-    if not generator.catalog_ref:
+    if brakuje_wymaganej_referencji(
+        wymagalnosc_katalogu("generator", gen_type=generator.gen_type).walidacja,
+        generator.catalog_ref,
+    ):
         return "czesciowa"
     if source_profile is None:
         return "czesciowa"

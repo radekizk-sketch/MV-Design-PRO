@@ -6,7 +6,6 @@ import { useCallback, useEffect, useState, type MouseEvent } from 'react';
 import { clsx } from 'clsx';
 import { CreateCaseDialog } from './CreateCaseDialog';
 import type { StudyCase, StudyCaseListItem, StudyCaseResultStatus } from './types';
-import { RESULT_STATUS_TOOLTIPS } from './types';
 import { useSortedCases, useStudyCasesStore } from './store';
 
 function hashRequestsCaseCreation(): boolean {
@@ -248,7 +247,7 @@ function StudyCaseRow({ caseItem, onClick, onContextMenu, onDoubleClick }: Study
 
       <span
         className={clsx('mr-2 h-2 w-2 flex-shrink-0 rounded-full', STATUS_DOT_COLORS[caseItem.result_status])}
-        title={RESULT_STATUS_TOOLTIPS[caseItem.result_status]}
+        title={caseItem.result_status_reason_pl}
       />
 
       <span className="flex-1 truncate text-sm" title={caseItem.name}>

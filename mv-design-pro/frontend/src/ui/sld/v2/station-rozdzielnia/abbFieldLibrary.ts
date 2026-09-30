@@ -16,7 +16,7 @@
  */
 
 import type { BayPrimaryDeviceKind } from '../../../../types/enm';
-import type { StationFieldRole } from './contract';
+import { FIELD_ROLE_LABEL_PL, type StationFieldRole } from './contract';
 import type { StationDetailLevel } from './geometry';
 
 /**
@@ -29,7 +29,7 @@ import type { StationDetailLevel } from './geometry';
  * - BRC  — Pole wzniosu szynowego (bus riser: 3-pos switch + riser)
  * - SEC  — Pole sekcjonujące (sectionaliser: 3-pos switch)
  * - SBC  — Pole sekcjonujące z wyłącznikiem (sectionaliser with breaker)
- * - SMC  — Pole sprzęgłowe (coupler = CBC cell + BRC cell across two sections)
+ * - SMC  — Pole sprzęgła (coupler = CBC cell + BRC cell across two sections)
  * - SDM_V — Pole pomiaru napięcia (voltage metering: VT + fuses)
  * - SDM_C — Pole pomiaru prądu (current metering: CT only)
  */
@@ -118,7 +118,8 @@ export const ABB_CELL_LIBRARY: Readonly<Record<AbbCellType, AbbCellTypeMeta>> = 
   },
   SMC: {
     code: 'SMC',
-    namePl: 'Pole sprzęgłowe',
+    // Nazwa roli z kanonu słownictwa ról pól (karta #141) — nie druga lista słów.
+    namePl: FIELD_ROLE_LABEL_PL.SPRZEGLO,
     functionPl: 'Sprzęgło: pole z wyłącznikiem (CBC) + pole wzniosu szynowego (BRC)',
     apparatusOrder: ['CB', 'LOAD_SWITCH'],
     roles: ['SPRZEGLO'],

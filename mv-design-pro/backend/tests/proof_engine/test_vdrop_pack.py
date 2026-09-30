@@ -43,9 +43,12 @@ def vdrop_pack_input() -> VDROPPackInput:
                 p_mw=0.500,
                 q_mvar=0.250,
                 u_n_kv=15.0,
+                nazwa_odcinka="Kabel SN odcinek testowy",
             )
         ],
         u_source_kv=15.0,
+        source_bus_name="Szyny SN GPZ",
+        target_bus_name="Szyny SN stacji odbiorczej",
     )
 
 
@@ -113,6 +116,8 @@ def test_vdrop_pack_empty_segments_raises() -> None:
         solver_version="v1",
         segments=[],
         u_source_kv=15.0,
+        source_bus_name="Szyny SN GPZ",
+        target_bus_name="Szyny SN stacji odbiorczej",
     )
     with pytest.raises(ValueError, match="at least one segment"):
         generate_vdrop_pack(bad_input)

@@ -21,15 +21,15 @@ from typing import Any
 from application.analyses.der_sn_track import (
     DerSnTrack,
     extract_der_sn_track,
-    sum_apparent_power_mva,
     transformer_current_a,
 )
+from domain.generator_validation import sprawdz_moc_generatora
 from enm.der_sn_validation import (
     build_current_cascade_warnings,
     validate_inverter_lv_voltage,
     validate_sn_voltage,
-    validate_transformer_power,
 )
+from enm.models import liczba_torow
 
 # Kanoniczny komunikat błędu krytycznego (RECENZJA_DER_SN_DOBORY_2026-07, wymaganie 13).
 KOMUNIKAT_KRYTYCZNY = "Nie można wygenerować projektu."
@@ -100,17 +100,18 @@ def _d1_items(track: DerSnTrack) -> list[dict[str, Any]]:
             else _pass("napiecie_sn", "Strona SN TR blokowego zgodna z napięciem szyny SN.")
         )
 
-    # 3. Moc TR blokowego ≥ ΣS falowników (wymaganie 5).
+    # 3. Moc TR blokowego (wymaganie 5 = decyzja O-53): TA SAMA kontrola co operacje
+    # zapisu, z jawnymi wejściami zapisanymi przez tor tworzenia (`meta.kontrola_mocy_zrodla`).
     if tr is not None:
-        error = validate_transformer_power(
-            sum_apparent_power_mva=sum_apparent_power_mva(track),
-            transformer_sn_mva=_as_float(tr.get("sn_mva")) or 0.0,
-            loadability_pu=None,
-            simultaneity_factor=None,
+        sn_tr = _as_float(tr.get("sn_mva"))
+        odmowa = sprawdz_moc_generatora(
+            track.generator,
+            moc_transformatorow_mva=None if sn_tr is None else sn_tr * liczba_torow(tr),
+            sprawdz_nastawe=False,
         )
         items.append(
-            _fail("moc_transformatora", error.code, error.message_pl)
-            if error
+            _fail("moc_transformatora", odmowa.kod, odmowa.komunikat_pl)
+            if odmowa
             else _pass("moc_transformatora", "Moc transformatora blokowego wystarczająca.")
         )
         # 4. Układ połączeń = parametr modelu z typu katalogowego (wymaganie 7).
@@ -166,6 +167,21 @@ def _d2_items(d2_deviations: list[dict[str, Any]] | None) -> list[dict[str, Any]
         return []
     items: list[dict[str, Any]] = []
     for deviation in d2_deviations:
+        if deviation.get("nieoceniono"):
+            # Odmowa danych przy liczeniu propozycji D2 (karta #151) — sekcja nie
+            # została oceniona i raport mówi to wprost, z powodem, zamiast milczeć.
+            items.append(
+                {
+                    "check_id": "d2.nieoceniono",
+                    "kategoria": "zgodnosc_D2",
+                    "status": _STATUS_WARN,
+                    "code": "der_sn.d2.nieoceniono",
+                    "message_pl": (
+                        "⚠️ Zgodności z propozycją D2 nie oceniono: " f"{deviation.get('powod_pl')}"
+                    ),
+                }
+            )
+            continue
         parametr = str(deviation.get("parametr") or "")
         zastosowano = deviation.get("zastosowano")
         propozycja = deviation.get("propozycja")
@@ -209,7 +225,7 @@ def _run_item(run_status: str | None, readiness_codes: list[str] | None) -> dict
         message = "❌ Bieg analiz nieudany — wyniki niedostępne."
     else:
         status = _STATUS_WARN
-        message = f"⚠️ Bieg analiz w toku (status: {run_status})."
+        message = "⚠️ Bieg analiz w toku — wyniki jeszcze niedostępne."
     return {
         "check_id": "bieg_analiz",
         "kategoria": "bieg_analiz",

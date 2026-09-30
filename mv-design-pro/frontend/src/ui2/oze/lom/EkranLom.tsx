@@ -5,29 +5,28 @@
  * ekranu analizy (`EkranAnalizy`/`TabelaWynikow`):
  *   1. tabela pól przyłączeniowych (wiersz = pole, status kolorem tokenów --mvd-*),
  *   2. rozwinięcie wiersza → porównania (checks) z oknami normatywnymi i źródłami,
- *   3. chipy podsumowania (OK/INFO/WARN/ERROR), moduły bez pola (uczciwie), założenia,
+ *   3. chipy podsumowania (liczniki `summary.statusy` z etykietą rekordu pola) i karta
+ *      rekordu wymagania sieci, moduły bez pola (uczciwie), założenia,
  *   4. źródła normatywne funkcji LoM.
  *
- * Zero fizyki, zero ocen lokalnych — statusy, okna i werdykty pochodzą WYŁĄCZNIE
- * z backendu. Bez aktywnego przypadku → uczciwy stan pusty (bez wołań API).
- * Identyfikatory (pole, hasze) wyłącznie w trybie eksperckim.
+ * Zero fizyki, zero ocen lokalnych — KAŻDE porównanie, pole i całość niosą rekord kontraktu
+ * werdyktu z backendu (`ocena`), pokazywany JEDYNĄ kartą werdyktu (`KartaWerdyktu`); etykiety
+ * pochodzą z rekordu, interfejs dobiera tylko kolor po semantyce. Bez aktywnego przypadku →
+ * uczciwy stan pusty (bez wołań API).
+ * Nazwy pól, szyn i modułów — z modelu przez JEDEN most identyfikator → nazwa
+ * (`useNazwaObiektu`); odciski danych wyłącznie w „Informacjach audytowych" (karta #145).
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import './lom.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { useActiveCase } from '../../../ui/study-cases/store';
-import { EkranAnalizy, SladWywodu } from '../../wyniki/wzorzec';
+import { EkranAnalizy, SladWywodu, useNazwaObiektu } from '../../wyniki/wzorzec';
+import { KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
+import type { Etykieta, RekordWerdyktu, WynikWymagania } from '../../wyniki/wzorzec/werdykt';
 import { pobierzOchronaLom, type PoleLom, type WidokOchronyLom } from '../api';
 import { KLUCZ_WIERSZA_LOM, KOLUMNY_LOM, naWierszeLom, naZalozeniaLom } from './lomModel';
-import {
-  LOM_STRINGS,
-  fmtNastawaLom,
-  fmtOknoLom,
-  istotnoscLom,
-  statusLomPL,
-  type IstotnoscTaguLom,
-} from './strings';
+import { LOM_STRINGS, fmtNastawaLom, fmtOknoLom, istotnoscLom } from './strings';
 import { PrzyciskAkcjiStanu, useAkcjaPrzejdzDoPrzypadkow } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
@@ -37,28 +36,69 @@ type StanZasobu = 'brakPrzypadku' | 'ladowanie' | 'blad' | 'gotowe';
 // Elementy wspólne (tag statusu, chip, panel stanu)
 // ---------------------------------------------------------------------------
 
-function TagStatusu({ tekst, istotnosc }: { tekst: string; istotnosc: IstotnoscTaguLom }) {
+/** Tag statusu — tekst i semantyka z rekordu backendu; kolor wyłącznie z semantyki. */
+function TagStatusu({ etykieta }: { etykieta: Etykieta }) {
   return (
-    <span className={`mvd-lom-tag mvd-lom-tag--${istotnosc}`} data-testid="mvd-lom-tag">
-      {tekst}
+    <span
+      className={`mvd-lom-tag mvd-lom-tag--${istotnoscLom(etykieta)}`}
+      data-testid="mvd-lom-tag"
+      data-semantyka={etykieta.semantyka}
+    >
+      {etykieta.etykieta_pl}
     </span>
   );
 }
 
-function Chip({
-  etykieta,
-  wartosc,
-  istotnosc,
-}: {
-  etykieta: string;
-  wartosc: number;
-  istotnosc: IstotnoscTaguLom;
-}) {
+/** Chip podsumowania — licznik + etykieta z rekordu backendu. */
+function Chip({ etykieta, wartosc }: { etykieta: Etykieta; wartosc: number }) {
   return (
-    <div className={`mvd-lom-chip mvd-lom-chip--${istotnosc}`} data-testid="mvd-lom-chip">
+    <div
+      className={`mvd-lom-chip mvd-lom-chip--${istotnoscLom(etykieta)}`}
+      data-testid="mvd-lom-chip"
+      data-semantyka={etykieta.semantyka}
+    >
       <span className="mvd-lom-chip-liczba mvd-num">{wartosc}</span>
-      <span className="mvd-lom-chip-etykieta">{etykieta}</span>
+      <span className="mvd-lom-chip-etykieta">{etykieta.etykieta_pl}</span>
     </div>
+  );
+}
+
+/** Rekord oceny w JEDYNEJ karcie werdyktu, w opakowaniu z identyfikatorem i statusem. */
+function RekordOceny({ rekord, testid }: { rekord: RekordWerdyktu; testid: string }) {
+  return (
+    <div
+      data-testid={testid}
+      data-status={rekord.status_maszynowy}
+      data-semantyka={rekord.etykieta.semantyka}
+    >
+      <KartaWerdyktu rekord={rekord} />
+    </div>
+  );
+}
+
+/**
+ * Ocena całej sieci — etykieta rekordu wymagania sieci zawsze widoczna; karta rekordu
+ * (wyjaśnienie z brakami wszystkich pól) rozwijana świadomie, żeby nie przykryć tabeli pól.
+ */
+function OcenaSieci({ ocena }: { ocena: WynikWymagania }) {
+  const [otwarta, setOtwarta] = useState(false);
+  return (
+    <section className="mvd-lom-ocena-sieci" data-testid="mvd-lom-ocena-sieci-sekcja">
+      <div className="mvd-lom-szczegol-head">
+        <h3 className="mvd-lom-bez-pola-tytul">{LOM_STRINGS.ocenaSieciTytul}</h3>
+        <TagStatusu etykieta={ocena.etykieta} />
+        <button
+          type="button"
+          className="mvd-lom-przelacz"
+          aria-expanded={otwarta}
+          data-testid="mvd-lom-ocena-sieci-przelacz"
+          onClick={() => setOtwarta((stan) => !stan)}
+        >
+          {otwarta ? LOM_STRINGS.ocenaSieciUkryj : LOM_STRINGS.ocenaSieciPokaz}
+        </button>
+      </div>
+      {otwarta && <RekordOceny rekord={ocena} testid="mvd-lom-ocena-sieci" />}
+    </section>
   );
 }
 
@@ -93,7 +133,13 @@ function StanPanel({
 // Szczegół pola — porównania (checks) + moduły wytwórcze
 // ---------------------------------------------------------------------------
 
-function SzczegolPola({ pole }: { pole: PoleLom | null }) {
+function SzczegolPola({
+  pole,
+  nazwaObiektu,
+}: {
+  pole: PoleLom | null;
+  nazwaObiektu: (ref: string) => string;
+}) {
   if (!pole) {
     return (
       <section
@@ -108,8 +154,10 @@ function SzczegolPola({ pole }: { pole: PoleLom | null }) {
     <section className="mvd-lom-szczegol" data-testid="mvd-lom-szczegol">
       <header className="mvd-lom-szczegol-head">
         <h3 className="mvd-lom-szczegol-tytul">{pole.bay_name}</h3>
-        <TagStatusu tekst={statusLomPL(pole.status)} istotnosc={istotnoscLom(pole.status)} />
+        <TagStatusu etykieta={pole.ocena.etykieta} />
       </header>
+
+      <RekordOceny rekord={pole.ocena} testid="mvd-lom-ocena" />
 
       <p className="mvd-lom-szczegol-sekcja-tytul">{LOM_STRINGS.szczegolPorownania}</p>
       <ul className="mvd-lom-checks" data-testid="mvd-lom-checks">
@@ -119,10 +167,7 @@ function SzczegolPola({ pole }: { pole: PoleLom | null }) {
               <span className="mvd-lom-check-tytul">
                 {check.function_label_pl ?? LOM_STRINGS.kreska}
               </span>
-              <TagStatusu
-                tekst={statusLomPL(check.severity)}
-                istotnosc={istotnoscLom(check.severity)}
-              />
+              <TagStatusu etykieta={check.ocena.etykieta} />
             </div>
             <dl className="mvd-lom-check-dane">
               <div className="mvd-lom-check-para">
@@ -152,9 +197,7 @@ function SzczegolPola({ pole }: { pole: PoleLom | null }) {
       ) : (
         <ul className="mvd-lom-moduly">
           {pole.generating_module_refs.map((ref) => (
-            <li key={ref} className="mvd-num">
-              {ref}
-            </li>
+            <li key={ref}>{nazwaObiektu(ref)}</li>
           ))}
         </ul>
       )}
@@ -169,11 +212,13 @@ function SzczegolPola({ pole }: { pole: PoleLom | null }) {
 function WynikLom({
   dane,
   trybZaawansowania,
+  onOtworzDowod,
 }: {
   dane: WidokOchronyLom;
   trybZaawansowania: AdvancementMode;
+  onOtworzDowod: (ref: string) => void;
 }) {
-  const trybEkspercki = trybZaawansowania === 'expert';
+  const nazwaObiektu = useNazwaObiektu();
   const [wybrany, setWybrany] = useState<string | null>(null);
 
   const wierszeSelektora = useMemo(
@@ -182,7 +227,6 @@ function WynikLom({
   );
   const wybranePole = wybrany ? wierszeSelektora.get(wybrany) ?? null : null;
 
-  const { by_status } = dane.summary;
 
   if (dane.fields.length === 0 && dane.modules_without_field.length === 0) {
     return (
@@ -201,22 +245,33 @@ function WynikLom({
         naglowek={{ analizaPL: LOM_STRINGS.tytul }}
         zalozenia={naZalozeniaLom(dane.zalozenia_pl)}
         kolumny={KOLUMNY_LOM}
-        wiersze={naWierszeLom(dane.fields)}
-        onOtworzDowod={() => undefined}
+        wiersze={naWierszeLom(dane.fields, nazwaObiektu)}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
+        informacjeAudytowe={[
+          { etykieta: LOM_STRINGS.audytOdciskWejscia, wartosc: dane.input_hash },
+          ...(dane.context.enm_hash
+            ? [{ etykieta: LOM_STRINGS.audytOdciskModelu, wartosc: dane.context.enm_hash }]
+            : []),
+        ]}
         kluczWiersza={KLUCZ_WIERSZA_LOM}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
       />
 
       <div className="mvd-lom-podsumowanie" data-testid="mvd-lom-podsumowanie">
-        <Chip etykieta={LOM_STRINGS.podsumOk} wartosc={by_status.OK} istotnosc="ok" />
-        <Chip etykieta={LOM_STRINGS.podsumInfo} wartosc={by_status.INFO} istotnosc="neutral" />
-        <Chip etykieta={LOM_STRINGS.podsumWarn} wartosc={by_status.WARN} istotnosc="warn" />
-        <Chip etykieta={LOM_STRINGS.podsumError} wartosc={by_status.ERROR} istotnosc="err" />
+        {dane.summary.statusy.map((licznik) => (
+          <Chip
+            key={`${licznik.status}-${licznik.etykieta.etykieta_pl}`}
+            etykieta={licznik.etykieta}
+            wartosc={licznik.liczba}
+          />
+        ))}
       </div>
 
-      <SzczegolPola pole={wybranePole} />
+      <OcenaSieci ocena={dane.summary.ocena} />
+
+      <SzczegolPola pole={wybranePole} nazwaObiektu={nazwaObiektu} />
 
       {dane.modules_without_field.length > 0 && (
         <section className="mvd-lom-bez-pola" data-testid="mvd-lom-bez-pola">
@@ -224,9 +279,7 @@ function WynikLom({
           <p className="mvd-lom-bez-pola-opis">{LOM_STRINGS.bezPolaOpis}</p>
           <ul className="mvd-lom-moduly">
             {dane.modules_without_field.map((ref) => (
-              <li key={ref} className="mvd-num">
-                {ref}
-              </li>
+              <li key={ref}>{nazwaObiektu(ref)}</li>
             ))}
           </ul>
         </section>
@@ -244,18 +297,6 @@ function WynikLom({
         </dl>
       </section>
 
-      {trybEkspercki && (
-        <dl className="mvd-lom-eksp" data-testid="mvd-lom-eksp">
-          <div className="mvd-lom-eksp-para">
-            <dt>{LOM_STRINGS.ekspHash}</dt>
-            <dd className="mvd-num">{dane.input_hash}</dd>
-          </div>
-          <div className="mvd-lom-eksp-para">
-            <dt>{LOM_STRINGS.ekspEnmHash}</dt>
-            <dd className="mvd-num">{dane.context.enm_hash}</dd>
-          </div>
-        </dl>
-      )}
     </div>
   );
 }
@@ -266,9 +307,12 @@ function WynikLom({
 
 export interface EkranLomProps {
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
+   * z rodzica, `WynikiWarsztat`), nie zaślepka. */
+  onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranLom({ trybZaawansowania }: EkranLomProps) {
+export function EkranLom({ trybZaawansowania, onOtworzDowod }: EkranLomProps) {
   const aktywnyPrzypadek = useActiveCase();
   const caseId = aktywnyPrzypadek?.id ?? null;
   // K6 / H-5: bez aktywnego zakresu obliczeń jedyny sensowny krok to jego wybór.
@@ -328,7 +372,7 @@ export function EkranLom({ trybZaawansowania }: EkranLomProps) {
           testid="mvd-lom-blad"
         />
       ) : (
-        <WynikLom dane={dane} trybZaawansowania={trybZaawansowania} />
+        <WynikLom dane={dane} trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
       )}
     </div>
   );

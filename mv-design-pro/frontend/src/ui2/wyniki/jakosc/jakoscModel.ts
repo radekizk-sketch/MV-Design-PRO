@@ -13,6 +13,7 @@ import type { ExecutionRun } from '../../../ui/study-cases/types';
 import type { ElementType } from '../../../ui/types';
 import type {
   DefinicjaKolumny,
+  NazwaObiektu,
   RodzajPrzekroczenia,
   WartoscKomorki,
   WierszTabeli,
@@ -101,7 +102,7 @@ export function przebiegRozplywu(
  * do śladu innego przebiegu byłoby fałszywym dowodem (zero fabrykacji).
  * Komórka `null` → „—" bez dowodu (nie ma liczby, nie ma wywodu).
  */
-function komorkaLiczba(
+export function komorkaLiczba(
   wartosc: number | null,
   format: (n: number) => string,
   opcje?: { jednostka?: string; ostrzezenie?: boolean; dowodRef?: string },
@@ -133,22 +134,17 @@ export const KOLUMNY_WIARYGODNOSCI: DefinicjaKolumny[] = [
   { klucz: 'gorna', etykieta: JAKOSC_STRINGS.kolGranicaGorna, jednostka: JAKOSC_STRINGS.jednKA, mono: true },
   { klucz: 'status', etykieta: JAKOSC_STRINGS.kolStatusWiarygodnosci, wyrownanie: 'lewo' },
   { klucz: 'blokada', etykieta: JAKOSC_STRINGS.kolBlokadaOsd, wyrownanie: 'lewo', sortowalna: false },
-  {
-    klucz: KLUCZ_WIARYGODNOSCI_WEZEL,
-    etykieta: JAKOSC_STRINGS.kolIdentyfikatorWezla,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
+  // Karta #145: identyfikator węzła jest kluczem wiersza (komórka poza listą kolumn),
+  // nie kolumną — węzeł pokazuje kolumna „Węzeł" nazwą z modelu.
 ];
 
 /** Adapter: pozycja wiarygodności → wiersz tabeli wzorca (bez ocen lokalnych).
  * `dowodRef` na Ik" (K3/C1): wartość pochodzi wprost z przebiegu zwarciowego —
  * ref = `element_id ?? target_id` (wzorzec `zwarciaModel.ts`). Napięcie (dana
  * modelu) i granice pasm (konfiguracja normatywna) to WEJŚCIA oceny — bez dowodu. */
-export function mapujWierszWiarygodnosci(item: WiarygodnoscItem): WierszTabeli {
+export function mapujWierszWiarygodnosci(item: WiarygodnoscItem, nazwa: NazwaObiektu): WierszTabeli {
   return {
-    wezel: { wartosc: item.target_name ?? item.target_id },
+    wezel: { wartosc: nazwa(item.target_id, item.target_name) },
     napiecie: komorkaLiczba(item.voltage_kv, fmtKV),
     pasmo: { wartosc: item.voltage_band ?? JAKOSC_STRINGS.kreska },
     // Tag „poza zakresem" mapowany na wartość Ik" wprost z flagi backendu (in_range).
@@ -167,8 +163,11 @@ export function mapujWierszWiarygodnosci(item: WiarygodnoscItem): WierszTabeli {
 }
 
 /** Mapuje pozycje wiarygodności na wiersze tabeli wzorca (kolejność źródłowa). */
-export function naWierszeWiarygodnosci(items: readonly WiarygodnoscItem[]): WierszTabeli[] {
-  return items.map(mapujWierszWiarygodnosci);
+export function naWierszeWiarygodnosci(
+  items: readonly WiarygodnoscItem[],
+  nazwa: NazwaObiektu,
+): WierszTabeli[] {
+  return items.map((item) => mapujWierszWiarygodnosci(item, nazwa));
 }
 
 /** Buduje sekcję ZAŁOŻENIA sekcji wiarygodności (metoda + pasma napięciowe). */
@@ -213,13 +212,8 @@ export const KOLUMNY_WALIDACJI: DefinicjaKolumny[] = [
   { klucz: 'progPrzekr', etykieta: JAKOSC_STRINGS.kolProgPrzekroczenia, mono: true },
   { klucz: 'margines', etykieta: JAKOSC_STRINGS.kolMargines, jednostka: JAKOSC_STRINGS.jednProcent, mono: true },
   { klucz: 'status', etykieta: JAKOSC_STRINGS.kolStatusWalidacji, wyrownanie: 'lewo' },
-  {
-    klucz: KLUCZ_WALIDACJI_OBIEKT,
-    etykieta: JAKOSC_STRINGS.kolIdentyfikatorObiektu,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
+  // Karta #145: identyfikator obiektu zostaje w komórce klucza (poza listą kolumn) —
+  // obiekt pokazuje kolumna „Obiekt" nazwą z modelu.
 ];
 
 /**
@@ -271,11 +265,17 @@ export function rodzajPrzekroczeniaWalidacji(
 }
 
 /** Adapter: pozycja walidacji → wiersz tabeli wzorca (statusy wyłącznie z backendu). */
-export function mapujWierszWalidacji(item: WalidacjaItem, index: number): WierszTabeli {
+export function mapujWierszWalidacji(
+  item: WalidacjaItem,
+  index: number,
+  nazwa: NazwaObiektu,
+): WierszTabeli {
   const przekroczony = item.status === 'WARNING' || item.status === 'FAIL';
   return {
     rodzaj: { wartosc: rodzajKontroliPL(item.check_type) },
-    obiekt: { wartosc: item.target_name ?? item.target_id },
+    obiekt: {
+      wartosc: item.target_id === 'network' ? item.target_name ?? JAKOSC_STRINGS.kreska : nazwa(item.target_id, item.target_name),
+    },
     wartosc: komorkaLiczba(item.observed_value, fmtWartosc, {
       jednostka: item.unit,
       ostrzezenie: przekroczony,
@@ -290,8 +290,11 @@ export function mapujWierszWalidacji(item: WalidacjaItem, index: number): Wiersz
 }
 
 /** Mapuje pozycje walidacji na wiersze tabeli wzorca (kolejność źródłowa). */
-export function naWierszeWalidacji(items: readonly WalidacjaItem[]): WierszTabeli[] {
-  return items.map((item, index) => mapujWierszWalidacji(item, index));
+export function naWierszeWalidacji(
+  items: readonly WalidacjaItem[],
+  nazwa: NazwaObiektu,
+): WierszTabeli[] {
+  return items.map((item, index) => mapujWierszWalidacji(item, index, nazwa));
 }
 
 /** Buduje sekcję ZAŁOŻENIA sekcji walidacji z konfiguracji progów backendu. */
@@ -311,7 +314,9 @@ export function naZalozeniaWalidacji(config: WalidacjaConfig): WierszZalozenia[]
 // Sekcja 3 — Migotanie i szybkie zmiany napięcia (P37)
 // ---------------------------------------------------------------------------
 
-export const KLUCZ_WIERSZA_MIGOTANIE = 'wezel';
+/** Klucz wiersza = identyfikator węzła (unikalny, wiąże wybór); kolumna „Węzeł" pokazuje
+ * nazwę z modelu (karta #144), identyfikator — informacje audytowe szczegółu (karta #145). */
+export const KLUCZ_WIERSZA_MIGOTANIE = 'identyfikator';
 
 export const KOLUMNY_MIGOTANIE: DefinicjaKolumny[] = [
   { klucz: 'wezel', etykieta: JAKOSC_STRINGS.kolWezelMig, wyrownanie: 'lewo' },
@@ -320,15 +325,17 @@ export const KOLUMNY_MIGOTANIE: DefinicjaKolumny[] = [
   { klucz: 'plt', etykieta: JAKOSC_STRINGS.kolPlt, mono: true },
   { klucz: 'd', etykieta: JAKOSC_STRINGS.kolDpercent, jednostka: JAKOSC_STRINGS.jednProcent, mono: true },
   { klucz: 'werdykt', etykieta: JAKOSC_STRINGS.kolWerdyktMig, wyrownanie: 'lewo', sortowalna: false },
+  // Karta #145: identyfikator węzła jest kluczem wiersza (komórka poza listą kolumn), nie
+  // kolumną w żadnym trybie — widać go w „Informacjach audytowych" szczegółu węzła.
 ];
 
 /** Adapter: węzeł migotania → wiersz tabeli wzorca (limity/werdykt z backendu).
  * `dowodRef` na Sk" (K3/C1): wartość wprost z przebiegu zwarciowego (ref = `bus_ref`).
  * Pst/Plt/d(%) liczy builder migotania — ich ślad WHITE BOX renderuje sekcja
  * ekranu (`SladMigotania`), nie zakładka dowodu przebiegu (bez ref). */
-export function mapujWierszMigotania(wezel: WezelMigotania): WierszTabeli {
+export function mapujWierszMigotania(wezel: WezelMigotania, nazwa: NazwaObiektu): WierszTabeli {
   return {
-    wezel: { wartosc: wezel.bus_ref },
+    wezel: { wartosc: nazwa(wezel.bus_ref, wezel.bus_name) },
     sk: komorkaLiczba(wezel.sk_mva, fmtMva, { dowodRef: wezel.bus_ref }),
     pst: komorkaLiczba(wezel.pst, fmtPst, {
       ostrzezenie: wezel.pst !== null && wezel.pst > wezel.pst_limit,
@@ -338,12 +345,16 @@ export function mapujWierszMigotania(wezel: WezelMigotania): WierszTabeli {
     }),
     d: komorkaLiczba(wezel.d_percent, fmtProcent),
     werdykt: { wartosc: wezel.verdict_pl },
+    [KLUCZ_WIERSZA_MIGOTANIE]: { wartosc: wezel.bus_ref },
   };
 }
 
 /** Mapuje węzły migotania na wiersze tabeli wzorca (kolejność źródłowa). */
-export function naWierszeMigotania(buses: readonly WezelMigotania[]): WierszTabeli[] {
-  return buses.map(mapujWierszMigotania);
+export function naWierszeMigotania(
+  buses: readonly WezelMigotania[],
+  nazwa: NazwaObiektu,
+): WierszTabeli[] {
+  return buses.map((wezel) => mapujWierszMigotania(wezel, nazwa));
 }
 
 /** Buduje sekcję ZAŁOŻENIA sekcji migotania z konfiguracji normatywnej backendu. */
@@ -368,7 +379,10 @@ export function naZalozeniaMigotania(config: KonfiguracjaMigotania): WierszZaloz
 // Sekcja 4 — Arc Flash (IEEE 1584-2018), audyt V12K-059 poz. A
 // ---------------------------------------------------------------------------
 
-export const KLUCZ_WIERSZA_ARC_FLASH = 'punkt';
+/** Klucz wiersza = identyfikator węzła (unikalny, wiąże wybór); kolumna „Punkt (szyna)"
+ * pokazuje nazwę z modelu (karta #144), identyfikator — informacje audytowe szczegółu
+ * (karta #145). */
+export const KLUCZ_WIERSZA_ARC_FLASH = 'identyfikator';
 
 export const KOLUMNY_ARC_FLASH: DefinicjaKolumny[] = [
   { klucz: 'punkt', etykieta: JAKOSC_STRINGS.kolWezelAf, wyrownanie: 'lewo' },
@@ -387,26 +401,32 @@ export const KOLUMNY_ARC_FLASH: DefinicjaKolumny[] = [
   },
   { klucz: 'ppe', etykieta: JAKOSC_STRINGS.kolPpe, wyrownanie: 'lewo', sortowalna: false },
   { klucz: 'status', etykieta: JAKOSC_STRINGS.kolStatusAf, wyrownanie: 'lewo', sortowalna: false },
+  // Karta #145: identyfikator węzła jest kluczem wiersza (komórka poza listą kolumn), nie
+  // kolumną w żadnym trybie — widać go w „Informacjach audytowych" szczegółu węzła.
 ];
 
 /** Adapter: wynik Arc Flash → wiersz tabeli wzorca (wartości WYŁĄCZNIE z backendu).
  * `dowodRef` na I_bf (K3/C1): prąd zwarcia trójfazowego wprost z przebiegu
  * zwarciowego (ref = `bus_ref`). Energia incydentu i granica łuku to wyniki
  * buildera IEEE 1584 — ich ślad WHITE BOX renderuje sekcja ekranu (bez ref). */
-export function mapujWierszArcFlash(wynik: WynikArcFlash): WierszTabeli {
+export function mapujWierszArcFlash(wynik: WynikArcFlash, nazwa: NazwaObiektu): WierszTabeli {
   return {
-    punkt: { wartosc: wynik.bus_ref },
+    punkt: { wartosc: nazwa(wynik.bus_ref, wynik.bus_name) },
     ibf: komorkaLiczba(wynik.i_bf_ka, fmtKA, { dowodRef: wynik.bus_ref }),
     energia: komorkaLiczba(wynik.incident_energy_cal_cm2, fmtCal),
     granica: komorkaLiczba(wynik.arc_flash_boundary_mm, fmtMm),
     ppe: { wartosc: wynik.ppe_category ?? JAKOSC_STRINGS.kreska },
     status: { wartosc: wynik.status_label_pl },
+    [KLUCZ_WIERSZA_ARC_FLASH]: { wartosc: wynik.bus_ref },
   };
 }
 
 /** Mapuje wyniki Arc Flash na wiersze tabeli wzorca (kolejność źródłowa). */
-export function naWierszeArcFlash(wyniki: readonly WynikArcFlash[]): WierszTabeli[] {
-  return wyniki.map(mapujWierszArcFlash);
+export function naWierszeArcFlash(
+  wyniki: readonly WynikArcFlash[],
+  nazwa: NazwaObiektu,
+): WierszTabeli[] {
+  return wyniki.map((wynik) => mapujWierszArcFlash(wynik, nazwa));
 }
 
 // ---------------------------------------------------------------------------
@@ -530,7 +550,7 @@ export const KOLUMNY_CIEPLNE: DefinicjaKolumny[] = [
   },
   { klucz: 'ocena', etykieta: JAKOSC_STRINGS.kolOcena, wyrownanie: 'lewo' },
   { klucz: 'powodDecyzji', etykieta: JAKOSC_STRINGS.kolPowodDecyzji, wyrownanie: 'lewo' },
-  { klucz: KLUCZ_CIEPLNA_GALAZ, etykieta: JAKOSC_STRINGS.kolIdentyfikatorObiektu, mono: true },
+  // Karta #145: identyfikator gałęzi jest kluczem wiersza (komórka poza listą kolumn).
 ];
 
 /**
@@ -562,9 +582,12 @@ export function zrodloCzasuPL(zrodlo: string | undefined): string {
   return JAKOSC_STRINGS.kreska;
 }
 
-export function naWierszeCieplne(pozycje: readonly PozycjaCieplna[]): WierszTabeli[] {
+export function naWierszeCieplne(
+  pozycje: readonly PozycjaCieplna[],
+  nazwa: NazwaObiektu,
+): WierszTabeli[] {
   return pozycje.map((pozycja) => ({
-    przewod: { wartosc: pozycja.branch_name || pozycja.branch_id },
+    przewod: { wartosc: nazwa(pozycja.branch_id, pozycja.branch_name) },
     pradCieplny: komorkaLiczba(pozycja.i_fault_a, fmtWartosc, {
       ostrzezenie: pozycja.status === 'FAIL',
     }),
@@ -597,7 +620,10 @@ export function naZalozeniaCieplne(
   podsumowanie: PodsumowanieCieplne,
   // Opcjonalne: odpowiedź sprzed karty F-K1 faza 5 nie niesie pochodzenia czasu.
   // Wtedy mówimy „nie wiadomo" zamiast wywracać sekcję albo zgadywać proporcję.
-  czasy?: PodsumowanieCzasow,
+  czasy: PodsumowanieCzasow | undefined,
+  // Karta #145: miejsce zwarcia nazwane mostem nazw wyników (identyfikator węzła grafu
+  // → nazwa szyny z modelu), nigdy identyfikatorem.
+  nazwa: (ref: string) => string,
 ): WierszZalozenia[] {
   return [
     {
@@ -607,7 +633,7 @@ export function naZalozeniaCieplne(
     },
     {
       etykieta: 'Miejsce zwarcia',
-      wartosc: faultNodeId || JAKOSC_STRINGS.kreska,
+      wartosc: faultNodeId ? nazwa(faultNodeId) : JAKOSC_STRINGS.kreska,
       uwaga: 'Prąd gałęzi z rozbicia wkładów źródeł (solver zwarciowy).',
     },
     {

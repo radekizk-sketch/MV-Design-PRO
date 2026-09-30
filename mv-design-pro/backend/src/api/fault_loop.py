@@ -124,10 +124,12 @@ def compute_fault_loop_endpoint(
             phase_label=request.phase_conductor.label,
             return_label=request.return_conductor.label,
             transformer_label=request.transformer_impedance.label,
+            # Bez składowej sieci zasilającej builder nie tworzy jej etykiety — zostaje
+            # wartość domyślna żądania (sama rola, bez klasy napięciowej).
             upstream_label=(
                 request.upstream_impedance.label
                 if request.upstream_impedance
-                else "Sieć SN (upstream Thevenin)"
+                else FaultLoopBuildRequest.upstream_label
             ),
         )
         fault_loop_input = build_fault_loop_input(build_req)

@@ -20,7 +20,29 @@ import math
 import uuid
 from dataclasses import dataclass, field
 
-_SQRT3 = math.sqrt(3.0)
+from network_model.pochodne import (
+    impedancja_z_napiecia_i_pradu_ohm,
+    kv_na_v,
+    prad_znamionowy_a,
+)
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
+
+
+def _pasmo_maszyny(ur_kv: float) -> str:
+    """Pasmo napięcia znamionowego maszyny albo nazwana odmowa (bez domysłu wiersza nN).
+
+    Tabele R/X IEC 60909-0 (§6.3 maszyny synchroniczne, §6.7 asynchroniczne) rozróżniają
+    maszyny do 1 kV i powyżej; napięcie niefizyczne nie należy do żadnego wiersza, a ciche
+    przyjęcie wiersza nN (zachowanie sprzed 2026-09-25) robiło z błędnej danej wiarygodnie
+    wyglądające R/X.
+    """
+    pasmo = pasmo_napieciowe(ur_kv)
+    if pasmo is None:
+        raise ValueError(
+            f"Napięcie znamionowe maszyny {ur_kv!r} kV nie leży w żadnym paśmie napięć — "
+            "stosunku R/X (IEC 60909-0, §6.3/§6.7) nie da się dobrać."
+        )
+    return pasmo
 
 
 def _synchronous_r_over_x(ur_kv: float, sr_mva: float) -> float:
@@ -28,10 +50,14 @@ def _synchronous_r_over_x(ur_kv: float, sr_mva: float) -> float:
 
     R_Gf is a FICTITIOUS resistance used only to obtain ip via κ; it is larger than
     the real R_G so that κ (hence ip) is not overestimated for near-generator faults.
+
+    Raises:
+        ValueError: U_rG is not a physical rated voltage (non-finite, zero or negative) —
+            the norm has no row for it; the low-voltage row would be a guess.
     """
-    if ur_kv > 1.0:
-        return 0.05 if sr_mva >= 100.0 else 0.07
-    return 0.15  # LV generators (U_rG ≤ 1 kV)
+    if _pasmo_maszyny(ur_kv) == "nN":
+        return 0.15  # LV generators (U_rG ≤ 1 kV)
+    return 0.05 if sr_mva >= 100.0 else 0.07
 
 
 @dataclass
@@ -88,7 +114,7 @@ class SynchronousMachineSource:
     @property
     def ir_a(self) -> float:
         """Rated current I_rG [A]."""
-        return self.sr_mva * 1.0e6 / (_SQRT3 * self.ur_kv * 1.0e3)
+        return prad_znamionowy_a(self.sr_mva, self.ur_kv)
 
     def white_box(self) -> dict[str, float | complex | str]:
         """Auditable derivation (WHITE BOX) — every factor pinned to a clause."""
@@ -109,10 +135,14 @@ class SynchronousMachineSource:
 
 
 def _asynchronous_r_over_x(ur_kv: float, p_per_pole_mw: float) -> float:
-    """R_M/X_M for asynchronous motors (IEC 60909-0:2016 §6.7 / Table)."""
-    if ur_kv > 1.0:
-        return 0.10 if p_per_pole_mw >= 1.0 else 0.15  # MV motors
-    return 0.42  # LV motors / motor groups
+    """R_M/X_M for asynchronous motors (IEC 60909-0:2016 §6.7 / Table).
+
+    Raises:
+        ValueError: U_rM is not a physical rated voltage (non-finite, zero or negative).
+    """
+    if _pasmo_maszyny(ur_kv) == "nN":
+        return 0.42  # LV motors / motor groups
+    return 0.10 if p_per_pole_mw >= 1.0 else 0.15  # MV motors
 
 
 @dataclass
@@ -151,12 +181,14 @@ class AsynchronousMachineSource:
     @property
     def ir_a(self) -> float:
         """Rated current I_rM [A]."""
-        return self.sr_mva * 1.0e6 / (_SQRT3 * self.ur_kv * 1.0e3)
+        return prad_znamionowy_a(self.sr_mva, self.ur_kv)
 
     @property
     def z_abs_ohm(self) -> float:
         """|Z_M| = (1/(I_LR/I_rM))·(U_rM/(√3·I_rM))."""
-        return (1.0 / self.i_lr_ratio) * (self.ur_kv * 1.0e3 / (_SQRT3 * self.ir_a))
+        return (1.0 / self.i_lr_ratio) * impedancja_z_napiecia_i_pradu_ohm(
+            kv_na_v(self.ur_kv), self.ir_a
+        )
 
     @property
     def p_per_pole_mw(self) -> float:

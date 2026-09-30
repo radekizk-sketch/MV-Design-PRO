@@ -8,7 +8,6 @@ export { EnmInspectorPage } from './EnmInspectorPage';
 export { EnmTree } from './EnmTree';
 export { DiagnosticsPanel } from './DiagnosticsPanel';
 export { PreflightMatrix } from './PreflightMatrix';
-export { EnmDiffView } from './EnmDiffView';
 export { useEnmInspectorStore } from './store';
 export type {
   DiagnosticReport,
@@ -17,7 +16,6 @@ export type {
   DiagnosticStatus,
   PreflightReport,
   PreflightCheckEntry,
-  EnmDiffReport,
   AnalysisType,
   AnalysisAvailability,
 } from './types';

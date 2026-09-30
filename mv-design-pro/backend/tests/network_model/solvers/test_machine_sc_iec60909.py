@@ -340,7 +340,56 @@ def test_wywod_asynchronous_q_curve_and_dfig_note():
     teksty = " ".join(k["tekst"] for k in c.wywod)
     # Krzywa q dla t_min = 0.10 s: q = 0.57 + 0.12 ln m, z podstawieniem m.
     assert r"q = 0.57 + 0.12\,\ln" in latexy
-    assert "crowbar" in teksty
+    assert "zwierającego wirnik" in teksty
     # Determinizm wywodu.
     res2 = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
     assert list(res2.contributions[0].wywod) == list(c.wywod)
+
+
+#: Zapisy, które wywód maszyn niósł przed kartą #145 (transliteracja bez znaków, skróty
+#: ASCII zamiast symboli) — tekst kroku bez wzoru trafia na ekran wyników zwarć wprost.
+_ZAPISY_SPOZA_JEZYKA_INZYNIERA = (
+    "zastepcza",
+    "Prad ",
+    "czesciowy",
+    "rownowazne",
+    "Krotnosc",
+    "pradu",
+    "Wspolczynnik",
+    "odlegle",
+    "pare biegunow",
+    "zalozono",
+    "zadzialanie",
+    "wylaczeniowy",
+    "par. 6",
+    " ohm",
+    "->",
+    "<=",
+    "sqrt",
+    "Z-bus",
+    "DFIG",
+    "crowbar",
+)
+
+
+@pytest.mark.parametrize(
+    ("maszyna", "t_min_s"),
+    [("synchroniczna", 0.10), ("asynchroniczna", 0.10), ("dfig", 0.10), ("dfig", 0.25)],
+)
+def test_wywod_po_polsku_ze_znakami_dla_kazdego_rodzaju_maszyny(maszyna: str, t_min_s: float):
+    """Karta #145: iloczyn {maszyna synchroniczna, asynchroniczna, dwustronnie zasilana}
+    × {krzywa t_min} — każdy krok wywodu (także krok bez wzoru, pokazywany jako tekst)
+    jest zdaniem po polsku ze znakami, bez transliteracji i skrótów ASCII."""
+    g = _slack_line_bus()
+    if maszyna == "synchroniczna":
+        g.add_synchronous_machine_source(_sync())
+    elif maszyna == "asynchroniczna":
+        g.add_asynchronous_machine_source(_async())
+    else:
+        g.add_asynchronous_machine_source(_dfig())
+    res = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=t_min_s)
+    teksty = [k["tekst"] for k in res.contributions[0].wywod]
+    for tekst in teksty:
+        for zapis in _ZAPISY_SPOZA_JEZYKA_INZYNIERA:
+            assert zapis not in tekst, (zapis, tekst)
+    assert any(znak in " ".join(teksty) for znak in "ąćęłńóśźż")

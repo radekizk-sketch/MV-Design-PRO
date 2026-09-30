@@ -157,7 +157,7 @@ function evaluateSegmentEndpoint(
     return {
       endpointBusRef,
       isFree: false,
-      reasonPl: 'Końcowy zacisk należy już do układu stacyjnego. Wybierz stację i kontynuuj ciąg z jej pola wyjściowego.',
+      reasonPl: 'Końcowy zacisk należy już do układu stacyjnego. Wybierz stację i kontynuuj ciąg z jej pola liniowego wyjściowego.',
       station: null,
     };
   }

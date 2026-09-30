@@ -68,6 +68,7 @@ import {
 } from './geometry';
 import type { ScBus } from './companions/shortCircuitTypes';
 import type { VfBus, VfBranch } from './companions/voltageFlowTypes';
+import { pasmoNapieciowe, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 
 // =============================================================================
 // Props
@@ -95,11 +96,13 @@ export interface StationRozdzielniaSNProps {
 // Busbar tint per voltage class (dispatcher convention)
 // =============================================================================
 
+// Pasmo z jednego lustra granic (`ui2/model/pasmaNapieciowe`): WN czerwień, SN od 12 kV
+// zieleń energized, SN poniżej 12 kV głębsza zieleń, nN błękit.
 function busColorForVoltage(kv: number): string {
-  if (kv >= 100) return '#E74C3C';
-  if (kv >= 12) return COLOR_FIELD_TRUNK_ENERGIZED;
-  if (kv >= 5) return '#0A8D43';
-  if (kv >= 0.2) return '#7DD3FC';
+  const pasmo = pasmoNapieciowe(kv);
+  if (pasmo === 'WN') return '#E74C3C';
+  if (pasmo === 'SN') return kv >= 12 ? COLOR_FIELD_TRUNK_ENERGIZED : '#0A8D43';
+  if (pasmo === 'nN') return '#7DD3FC';
   return COLOR_FIELD_TRUNK_ENERGIZED;
 }
 
@@ -960,7 +963,7 @@ function BusbarVoltageBadge(props: { vf: VfBus; x: number; y: number; anchor?: '
     <g data-testid={`sr-vf-badge-${vf.bus_ref}`} data-vf-bus={vf.bus_ref} pointerEvents="none">
       <circle cx={dotX} cy={y - 3} r={2.4} fill={within ? '#5BE08A' : '#FFB020'} />
       <text x={x} y={y} textAnchor={anchor} fill="#CFE9FF" fontFamily={FONT_MONO} fontSize={7.5} fontWeight={800}>
-        {`U=${vf.u_kv.toFixed(vf.un_kv < 1 ? 3 : 2)} kV`}
+        {`U=${vf.u_kv.toFixed(wPasmieNn(vf.un_kv) ? 3 : 2)} kV`}
       </text>
       <text x={x} y={y + 9} textAnchor={anchor} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={6.6} fontWeight={600}>
         {`${vf.u_pu.toFixed(3)} pu · ${vf.deviation_percent >= 0 ? '+' : ''}${vf.deviation_percent.toFixed(2)} %`}

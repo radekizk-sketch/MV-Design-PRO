@@ -17,6 +17,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from enm.nazwy_elementow import nazwa_elementu
+
 
 def _as_float(value: Any) -> float | None:
     try:
@@ -51,7 +53,7 @@ class DerSnTrack:
 
     @property
     def source_name(self) -> str:
-        return str(self.generator.get("name") or self.source_ref)
+        return nazwa_elementu(self.generator, "generators")
 
 
 def _index_by_ref(items: list[Any]) -> dict[str, dict[str, Any]]:
@@ -156,7 +158,12 @@ def extract_der_sn_track(
         generator=generator,
         producer_bus=bus_index.get(str(meta.get("der_producer_bus_ref") or "")),
         block_hv_bus=bus_index.get(str(meta.get("der_block_hv_bus_ref") or "")),
-        block_transformer=tr_index.get(str(meta.get("block_transformer_ref") or "")),
+        # Decyzja O-53 (predykaty parami): transformator blokowy z POLA MODELU
+        # `blocking_transformer_ref` — tego samego, które czyta kontrola mocy operacji
+        # (`enm.domain_operations_v2._transformatory_zasilajace`). Kopia w `meta` zostaje
+        # po zmianie przyłączenia aktualizacją; raport liczony z niej oceniałby inny
+        # transformator niż operacja, która model przyjęła.
+        block_transformer=tr_index.get(str(generator.get("blocking_transformer_ref") or "")),
         mv_cable=branch_index.get(str(meta.get("der_mv_cable_ref") or "")),
         field_spec=field_spec,
         apparatus=_apparatus_for(branch_index, field_ref if isinstance(field_ref, str) else None),
@@ -179,12 +186,10 @@ def transformer_current_a(track: DerSnTrack) -> float | None:
     return rated_current_a(sn_mva, primary_kv)
 
 
-def sum_apparent_power_mva(track: DerSnTrack) -> float:
-    """ΣS falowników toru z ΣP i cosφ znamionowego (D1 ``converter_apparent_power_mva``)."""
-    from enm.der_sn_validation import converter_apparent_power_mva
+def sum_apparent_power_mva(track: DerSnTrack) -> float | None:
+    """Moc pozorna wymagana toru — max(S_n,jedn·n, |P|/cosφ), TA SAMA wielkość, którą
+    kontrola mocy O-53 porównuje z TR blokowym (`domain.generator_validation`).
+    ``None`` — generator nie jest źródłem przekształtnikowym albo nie niesie mocy."""
+    from domain.generator_validation import moc_pozorna_wymagana_generatora_mva
 
-    p_mw = _as_float(track.generator.get("p_mw")) or 0.0
-    materialized_raw = track.generator.get("materialized_params")
-    materialized: dict[str, Any] = materialized_raw if isinstance(materialized_raw, dict) else {}
-    cos_phi = _as_float(materialized.get("cosphi"))
-    return converter_apparent_power_mva(p_mw, cos_phi)
+    return moc_pozorna_wymagana_generatora_mva(track.generator)

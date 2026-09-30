@@ -129,23 +129,22 @@ def list_pattern_a_fixtures() -> list[FixtureMetadata]:
         return fixtures
 
     for filepath in sorted(fixtures_dir.glob("*.json")):
-        try:
-            with open(filepath, encoding="utf-8") as f:
-                data = json.load(f)
+        # Fikstury wzorca są częścią produktu (karta #151): plik nieczytelny albo
+        # niepoprawny JSON to defekt wydania, nie powód do cichego pominięcia pozycji
+        # z listy — wybucha (500 z pełnym śladem w dzienniku).
+        with open(filepath, encoding="utf-8") as f:
+            data = json.load(f)
 
-            fixture_id = filepath.stem
-            fixtures.append(
-                FixtureMetadata(
-                    fixture_id=fixture_id,
-                    filename=filepath.name,
-                    description=data.get("_description"),
-                    expected_verdict=data.get("_expected_verdict"),
-                    notes_pl=data.get("_notes_pl"),
-                )
+        fixture_id = filepath.stem
+        fixtures.append(
+            FixtureMetadata(
+                fixture_id=fixture_id,
+                filename=filepath.name,
+                description=data.get("_description"),
+                expected_verdict=data.get("_expected_verdict"),
+                notes_pl=data.get("_notes_pl"),
             )
-        except (json.JSONDecodeError, OSError):
-            # Skip invalid files
-            continue
+        )
 
     return fixtures
 
@@ -229,14 +228,9 @@ def run_pattern(request: PatternRunRequest) -> PatternRunResponse:
         return result_to_response(result, run_id)
 
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Błąd wykonania wzorca: {str(e)}",
-        )
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/fixtures/{fixture_file}", response_model=PatternRunResponse)
@@ -256,14 +250,9 @@ def run_pattern_with_fixture(fixture_file: str) -> PatternRunResponse:
         result = run_pattern_a(fixture_file=fixture_file)
         return result_to_response(result, run_id)
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Błąd wykonania wzorca: {str(e)}",
-        )
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 # =============================================================================
@@ -290,24 +279,19 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
         from reportlab.pdfgen import canvas
-    except ImportError:
+    except ImportError as exc:
         raise HTTPException(
             status_code=501,
             detail="Eksport PDF wymaga biblioteki reportlab. Zainstaluj: pip install reportlab",
-        )
+        ) from exc
 
     try:
         result = run_pattern_a(fixture_file=fixture_file)
         data = result.to_dict()
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Błąd wykonania wzorca: {str(e)}",
-        )
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     # Create PDF in memory
     buffer = io.BytesIO()
@@ -359,21 +343,21 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
 
     # Artifacts section
     c.setFont("DejaVuSans-Bold", 12)
-    c.drawString(left_margin, y, "Wartosci posrednie")
+    c.drawString(left_margin, y, "Wartości pośrednie")
     y -= 6 * mm
 
     c.setFont("DejaVuSans", 9)
     artifacts = data.get("artifacts", {})
     artifact_items = [
         ("Czas zwarcia sumaryczny (tk)", artifacts.get("tk_total_s"), "s"),
-        ("Prad znamionowy cieplny (Ithn)", artifacts.get("ithn_a"), "A"),
-        ("Prad dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A"),
+        ("Prąd znamionowy cieplny (Ithn)", artifacts.get("ithn_a"), "A"),
+        ("Prąd dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A"),
         ("I_min okna nastaw (pierwotna)", artifacts.get("window_i_min_primary_a"), "A"),
         ("I_max okna nastaw (pierwotna)", artifacts.get("window_i_max_primary_a"), "A"),
-        ("Zalecana nastawa (wtorna)", artifacts.get("recommended_setting_secondary_a"), "A"),
-        ("Okno nastaw prawidlowe", "Tak" if artifacts.get("window_valid") else "Nie", ""),
-        ("Kryterium limitujace I_min", artifacts.get("limiting_criterion_min"), ""),
-        ("Kryterium limitujace I_max", artifacts.get("limiting_criterion_max"), ""),
+        ("Zalecana nastawa I>>", artifacts.get("recommended_setting_primary_a"), "A"),
+        ("Okno nastaw prawidłowe", "Tak" if artifacts.get("window_valid") else "Nie", ""),
+        ("Kryterium limitujące I_min", artifacts.get("limiting_criterion_min"), ""),
+        ("Kryterium limitujące I_max", artifacts.get("limiting_criterion_max"), ""),
     ]
 
     for label, value, unit in artifact_items:
@@ -394,7 +378,7 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
     trace = data.get("trace", [])
     if trace:
         c.setFont("DejaVuSans-Bold", 12)
-        c.drawString(left_margin, y, f"Slad obliczen ({len(trace)} krokow)")
+        c.drawString(left_margin, y, f"Ślad obliczeń ({len(trace)} kroków)")
         y -= 6 * mm
 
         c.setFont("DejaVuSans", 8)
@@ -409,7 +393,7 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
                 y = top_margin
 
         if len(trace) > 20:
-            c.drawString(left_margin, y, f"... oraz {len(trace) - 20} dodatkowych krokow")
+            c.drawString(left_margin, y, f"... oraz {len(trace) - 20} dodatkowych kroków")
             y -= line_height
 
     # Footer
@@ -456,24 +440,19 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
         from docx import Document
         from docx.enum.text import WD_ALIGN_PARAGRAPH
         from docx.shared import Pt
-    except ImportError:
+    except ImportError as exc:
         raise HTTPException(
             status_code=501,
             detail="Eksport DOCX wymaga biblioteki python-docx. Zainstaluj: pip install python-docx",
-        )
+        ) from exc
 
     try:
         result = run_pattern_a(fixture_file=fixture_file)
         data = result.to_dict()
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Błąd wykonania wzorca: {str(e)}",
-        )
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     # Create DOCX document
     doc = Document()
@@ -522,12 +501,12 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
     doc.add_paragraph()
 
     # Artifacts section
-    doc.add_heading("Wartosci posrednie", level=1)
+    doc.add_heading("Wartości pośrednie", level=1)
 
     artifacts = data.get("artifacts", {})
 
     # Time and thermal
-    doc.add_heading("Czas zwarcia i wytrzymalosc cieplna", level=2)
+    doc.add_heading("Czas zwarcia i wytrzymałość cieplna", level=2)
     thermal_table = doc.add_table(rows=1, cols=2)
     thermal_table.style = "Table Grid"
     hdr = thermal_table.rows[0].cells
@@ -550,9 +529,9 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
     add_artifact_row(
         thermal_table, "Czas zwarcia sumaryczny (tk)", artifacts.get("tk_total_s"), "s"
     )
-    add_artifact_row(thermal_table, "Prad znamionowy cieplny (Ithn)", artifacts.get("ithn_a"), "A")
+    add_artifact_row(thermal_table, "Prąd znamionowy cieplny (Ithn)", artifacts.get("ithn_a"), "A")
     add_artifact_row(
-        thermal_table, "Prad dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A"
+        thermal_table, "Prąd dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A"
     )
 
     doc.add_paragraph()
@@ -571,7 +550,7 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
 
     add_artifact_row(
         window_table,
-        "I_min (selektywnosc, pierwotna)",
+        "I_min (selektywność, pierwotna)",
         artifacts.get("window_i_min_primary_a"),
         "A",
     )
@@ -580,18 +559,18 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
     )
     add_artifact_row(
         window_table,
-        "Zalecana nastawa (wtorna)",
-        artifacts.get("recommended_setting_secondary_a"),
+        "Zalecana nastawa I>>",
+        artifacts.get("recommended_setting_primary_a"),
         "A",
     )
     add_artifact_row(
-        window_table, "Okno nastaw prawidlowe", "Tak" if artifacts.get("window_valid") else "Nie"
+        window_table, "Okno nastaw prawidłowe", "Tak" if artifacts.get("window_valid") else "Nie"
     )
     add_artifact_row(
-        window_table, "Kryterium limitujace I_min", artifacts.get("limiting_criterion_min")
+        window_table, "Kryterium limitujące I_min", artifacts.get("limiting_criterion_min")
     )
     add_artifact_row(
-        window_table, "Kryterium limitujace I_max", artifacts.get("limiting_criterion_max")
+        window_table, "Kryterium limitujące I_max", artifacts.get("limiting_criterion_max")
     )
 
     doc.add_paragraph()
@@ -599,7 +578,7 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
     # Trace section
     trace = data.get("trace", [])
     if trace:
-        doc.add_heading(f"Slad obliczen ({len(trace)} krokow)", level=1)
+        doc.add_heading(f"Ślad obliczeń ({len(trace)} kroków)", level=1)
 
         for step in trace[:30]:  # Limit to first 30 steps
             step_para = doc.add_paragraph()
@@ -608,7 +587,7 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
             step_para.add_run(step["description_pl"])
 
         if len(trace) > 30:
-            doc.add_paragraph(f"... oraz {len(trace) - 30} dodatkowych krokow")
+            doc.add_paragraph(f"... oraz {len(trace) - 30} dodatkowych kroków")
 
     doc.add_paragraph()
 

@@ -1,0 +1,54 @@
+{
+  "bay_ref": null,
+  "dobor": {
+    "kwestie_otwarte": [
+      {
+        "kod": "protection.earth_current_source_missing",
+        "opis_pl": "Pole nie ma opisanego toru pomiaru prądu zerowego, więc żadnej funkcji ziemnozwarciowej nie da się wymagać ani nastawić.",
+        "skutek_pl": "Wskaż sumę prądów fazowych albo przekładnik ziemnozwarciowy — bez tego zwarcie doziemne pozostaje niewykrywane."
+      },
+      {
+        "kod": "protection.neutral_grounding_unknown",
+        "opis_pl": "Sposób uziemienia punktu neutralnego sieci nie jest w modelu określony, więc potrzeby kryterium kierunkowego nie da się rozstrzygnąć.",
+        "skutek_pl": "Uzupełnij tryb uziemienia (izolowana / kompensowana / rezystor / bezpośrednio uziemiona) w danych pola."
+      },
+      {
+        "kod": "protection.osd_requirements_not_modelled",
+        "opis_pl": "Model nie niesie wymagań zabezpieczeniowych operatora sieci (warunki przyłączenia). Funkcje wymagane wyłącznie decyzją OSD — w szczególności 78 (kryterium skokowej zmiany wektora) — nie są tu wyprowadzane.",
+        "skutek_pl": "Zweryfikuj listę z warunkami przyłączenia; jeśli OSD wymaga funkcji spoza tego zestawu, dopisz ją w projekcie zabezpieczeń."
+      }
+    ],
+    "wymagane": [
+      {
+        "chroniony_obiekt_pl": "pole wytwórcy Farma PV 1 MW",
+        "kod": "50",
+        "nazwa_pl": "Nadprądowe zwłoczne bezzwłoczne (I>>)",
+        "podstawa_pl": "Szybkie wyłączenie zwarć międzyfazowych w polu wytwórcy (IEC 60255-151).",
+        "zrodlo_pomiaru_pl": "przekładniki prądowe fazowe pola"
+      },
+      {
+        "chroniony_obiekt_pl": "pole wytwórcy Farma PV 1 MW",
+        "kod": "51",
+        "nazwa_pl": "Nadprądowe zależnoczasowe (IDMT)",
+        "podstawa_pl": "Selektywność czasowo-prądowa wobec zabezpieczeń nadrzędnych i odpływowych (IEC 60255-151).",
+        "zrodlo_pomiaru_pl": "przekładniki prądowe fazowe pola"
+      }
+    ]
+  },
+  "fakty": {
+    "connection_side": "dedicated_transformer",
+    "neutral_grounding_mode": null,
+    "zero_sequence_current_source": "brak",
+    "zero_sequence_voltage_source": "brak"
+  },
+  "generator_ref": "pv/cf52e8ef1365b7493495105069afcf67/converter",
+  "urzadzenie": {
+    "brakujace_funkcje": [],
+    "nazwa": "ABB Relion REB670",
+    "ostrzezenia_przeznaczenia": [
+      "ABB Relion REB670 deklaruje funkcję 87BB (różnicowe szyn zbiorczych), która należy do innej strefy zabezpieczeniowej niż pole wytwórcy. Potwierdź przeznaczenie aplikacyjne urządzenia i wskaż chronioną strefę."
+    ],
+    "pokrywa_wymagania": true,
+    "protection_catalog_ref": "ABB_REB670"
+  }
+}

@@ -37,7 +37,6 @@ export {
   useCanCreateCase,
   useCanManageCases,
   useCanEditCaseConfig,
-  useNotifyModelChange,
   useCaseModeConstraints,
   useCanActivateCase,
 } from './modeGating';
@@ -50,7 +49,6 @@ export * as studyCasesApi from './api';
 export { StudyCaseList } from './StudyCaseList';
 export { CaseCompareView } from './CaseCompareView';
 export { CreateCaseDialog } from './CreateCaseDialog';
-export { ProtectionCaseConfigPanel } from './ProtectionCaseConfigPanel';
 
 // PR-14: Execution Components
 export { RunButton } from './RunButton';

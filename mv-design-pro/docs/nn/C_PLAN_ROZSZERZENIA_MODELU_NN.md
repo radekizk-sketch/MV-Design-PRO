@@ -3,8 +3,9 @@
 **Decyzja naczelna (architekt):** sieć nN jest reprezentowana przez **istniejące, generyczne
 elementy ENM** w paśmie napięcia ≤ 1 kV. Nie wprowadzamy równoległej rodziny klas `Lv*` —
 wprowadzenie ich stworzyłoby drugi model (złamanie Single Model Rule) i wymusiło duplikację
-walidatora, topologii, mapowań solverów i SLD. Pasmo napięcia (`_voltage_band`,
-`enm/validator.py:38-53`) + wiązanie katalogowe + rola elementu dają pełną semantykę nN.
+walidatora, topologii, mapowań solverów i SLD. Pasmo napięcia (`pasmo_napieciowe` /
+`w_pasmie_nn`, jedno źródło `network_model/pochodne/pasma_napieciowe.py`, nN ⇔ 0 < Uₙ ≤ 1 kV)
++ wiązanie katalogowe + rola elementu dają pełną semantykę nN.
 
 ## 1. Mapowanie typów domenowych ze zlecenia (§3) na ENM
 

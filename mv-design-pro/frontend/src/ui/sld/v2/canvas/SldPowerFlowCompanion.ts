@@ -4,7 +4,9 @@
  * GOVERNING PRINCIPLE (P-A): the SLD is a PROJECTION of the math model. Direction
  * and energization shown on the diagram MUST equal what the FROZEN power-flow
  * solver computed — never re-derived in the SLD. This companion is produced by the
- * backend (`application.reference_networks.sld_substrate_power_flow`) by RUNNING the
+ * backend (`tests.golden.sld_substrate_power_flow` — relocated from
+ * `application.reference_networks.sld_substrate_power_flow` card K2, 2026-09-09)
+ * by RUNNING the
  * production load-flow solver on the committed ENM, and committed next to the ENM
  * fixture. The SLD reads it; it does NOT compute direction/energization itself.
  *

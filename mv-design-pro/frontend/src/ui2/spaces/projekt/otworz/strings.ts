@@ -71,6 +71,16 @@ export const OTWORZ_STRINGS = {
   zmianaSkutek: 'Model, warianty obliczeń i wyniki bieżącego projektu pozostaną nienaruszone na serwerze.',
   zmianaPotwierdz: 'Otwórz wskazany projekt',
   wrocDoPulpitu: 'Wróć do pulpitu projektu',
+
+  // Inne drogi zdobycia projektu (etap E1: dane wejściowe / przekazanie) — bez
+  // otwartego projektu pulpit z kaflami nie istnieje, więc wejścia muszą być tutaj.
+  inneDrogiTytul: 'Masz już dane sieci?',
+  drogaArkusz: 'Import z arkusza (XLSX)',
+  drogaArkuszOpis: 'Utwórz projekt z danych sieci otrzymanych w arkuszu kalkulacyjnym.',
+  drogaArkuszAkcja: 'Otwórz import z arkusza',
+  drogaArchiwum: 'Odtwórz z archiwum (ZIP)',
+  drogaArchiwumOpis: 'Odtwórz projekt z paczki archiwum otrzymanej od innego projektanta.',
+  drogaArchiwumAkcja: 'Otwórz archiwum projektu',
 } as const;
 
 /** Gotowy przykład galerii startowej (SPEC_KREATORY_2026-07.md §4, tabela P-01…P-05). */

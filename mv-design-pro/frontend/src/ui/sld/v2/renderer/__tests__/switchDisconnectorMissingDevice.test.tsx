@@ -11,7 +11,7 @@ import { FIELD_ROLE, APPARATUS_KIND } from '../../domain/apparatusContracts';
 
 afterEach(() => cleanup());
 
-describe('K30-111 — ApparatusSwitchDisconnector IEC 60617-7-13-04', () => {
+describe('ApparatusSwitchDisconnector IEC 60617-7-13-04', () => {
   it('rendered z size 12 (większy niż DS 9 i CB 9)', () => {
     const { container } = render(
       <svg><ApparatusSwitchDisconnector cx={50} cy={50} state="closed" energized /></svg>,
@@ -47,7 +47,7 @@ describe('K30-111 — ApparatusSwitchDisconnector IEC 60617-7-13-04', () => {
   });
 });
 
-describe('K30-114 — CT mandatory w RMU_TRANSFORMER_ORDER (PN-EN 62271-202)', () => {
+describe('CT mandatory w RMU_TRANSFORMER_ORDER (PN-EN 62271-202)', () => {
   it('CT slot ma optional: false (mandatory)', () => {
     const order = BAY_DEVICE_ORDER_POLICY[FIELD_ROLE.RMU_TRANSFORMER];
     const ctSlot = order.find((s) => s.apparatusKind === APPARATUS_KIND.CT);

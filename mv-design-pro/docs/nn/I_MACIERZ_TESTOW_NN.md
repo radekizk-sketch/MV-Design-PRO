@@ -76,4 +76,4 @@ któregokolwiek kroku = integracja nN niegotowa (twarda bramka fazy).
 arch_guard · solver_boundary/diff (FROZEN nietknięte) · catalog_binding/enforcement/gate ·
 pcc_zero (LvPcc nie wchodzi do modelu) · overlay_no_physics · ui_no_physics (ui2) ·
 no_codenames · forbidden_ui_terms (po N-D9 z ui2) · dead_click · dialog_completeness ·
-sld_determinism · trace_determinism · resultset_v1_schema · canonical_ops (po N-D8 twardy).
+sld_determinism · resultset_v1_schema · canonical_ops (po N-D8 twardy).

@@ -2,19 +2,20 @@
  * Fixtures kreatora studium przyłączenia (karta P35). Reużywają 1:1 kształtów
  * z fixtures sąsiednich okien OZE (zdolność/obszar/krzywe) — te same serializery
  * backendu. Dodają wyłącznie listę konwerterów z rodzajami PV/BESS/WIND (do testu
- * filtrowania po rodzaju) oraz katalog NC RfG z progami klas (do testu klasy).
- * Deterministyczne, bez losowości.
+ * filtrowania po rodzaju) oraz podzbiór operatorów z katalogu NC RfG policzonego backendem
+ * (`harness-fixtures/generated/ncrfg_katalog.json`). Typ modułu wariantów kreator bierze
+ * z `/api/ncrfg-tests/modul` (atrapa `ncrfg/__tests__/atrapaKlasyfikacji.ts`), nie z progów
+ * katalogu. Deterministyczne, bez losowości.
  */
 
-import type {
-  OdpowiedzKatalogNcRfg,
-  RekordKonwertera,
-  WidokDokumentuStudium,
-} from '../../api';
+import katalogNcRfg from '../../../../harness-fixtures/generated/ncrfg_katalog.json';
+import type { RekordKonwertera, WidokDokumentuStudium } from '../../api';
+import type { KatalogNcRfg } from '../../ncrfg/typy';
 
 export { przebiegFixture, snapshotFixture, widokObszaruFixture } from '../../obszar/__tests__/fixtures';
 export { widokZdolnosciFixture } from '../../zdolnosc/__tests__/fixtures';
-export { widokPokryciaFixture, widokPokryteFixture } from '../../krzywe/__tests__/fixtures';
+export { widokPokryciaFixture } from '../../krzywe/__tests__/fixtures';
+import { widokPokryciaFixture } from '../../krzywe/__tests__/fixtures';
 
 /** Katalog konwerterów z trzema rodzajami (PV/BESS/WIND) — do testu filtra rodzaju. */
 export function rekordyStudiumFixture(): RekordKonwertera[] {
@@ -83,26 +84,15 @@ export function rekordyStudiumFixture(): RekordKonwertera[] {
   ];
 }
 
-/** Katalog NC RfG z progami klas (operator PSE) — do testu mapowania klasy modułu. */
-export function katalogStudiumFixture(): OdpowiedzKatalogNcRfg {
+/**
+ * Katalog NC RfG policzony backendem, zawężony do operatorów PSE i PGE (w tej kolejności —
+ * kreator wstępnie wybiera pierwszego operatora z listy).
+ */
+export function katalogStudiumFixture(): KatalogNcRfg {
+  const katalog = katalogNcRfg as unknown as KatalogNcRfg;
   return {
-    operators: [
-      {
-        operator_id: 'pse',
-        operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
-        module_types: [
-          { id: 'A', threshold_kw_min: 0, threshold_kw_max: 50, voltage_kv_max: null, description_pl: 'Moduł typu A' },
-          { id: 'B', threshold_kw_min: 50, threshold_kw_max: 1000, voltage_kv_max: null, description_pl: 'Moduł typu B' },
-          { id: 'C', threshold_kw_min: 1000, threshold_kw_max: 50000, voltage_kv_max: null, description_pl: 'Moduł typu C' },
-          { id: 'D', threshold_kw_min: 50000, threshold_kw_max: null, voltage_kv_max: null, description_pl: 'Moduł typu D' },
-        ],
-      },
-      {
-        operator_id: 'pge',
-        operator_name_pl: 'PGE Dystrybucja',
-        module_types: [],
-      },
-    ],
+    ...katalog,
+    operators: ['pse', 'pge'].map((id) => katalog.operators.find((o) => o.operator_id === id)!),
   };
 }
 
@@ -150,14 +140,15 @@ export function widokDokumentuFixture(): WidokDokumentuStudium {
           liczba_wierzcholkow: 3,
           komunikat_bledu: null,
         },
-        pokrycie_pq: {
-          status: 'ok',
-          pokryty: false,
-          werdykt_pl: 'Niepokryte',
-          opis_pl: 'Pokryto 2 z 3 punktów krzywej.',
-          komunikat_bledu: null,
+        // Faza 3 dokumentu = rekord `ocena` pokrycia P–Q (ta sama funkcja co okno krzywych;
+        // rekord policzony backendem — fikstura `krzywe_pokrycie_scena_pv`).
+        pokrycie_pq: { ocena: widokPokryciaFixture().ocena },
+        klasa_nc_rfg: {
+          modul: 'B',
+          powod_pl: 'moc 1500 kW w przedziale [200; 10000) kW przy napięciu 15 kV < 110 kV → typ B',
+          podstawa: null,
+          podstawa_pl: null,
         },
-        klasa_nc_rfg: { klasa: 'C', opis_pl: 'Moduł typu C' },
         odcisk_sekcji_sha256: 'sekcja-bus-a',
       },
     ],
@@ -166,8 +157,8 @@ export function widokDokumentuFixture(): WidokDokumentuStudium {
         bus_ref: 'bus-a',
         nazwa_wezla: 'Szyna A',
         max_moc_mw: 1.5,
-        klasa: 'C',
-        pokrycie_pl: 'Niepokryte',
+        klasa: 'B',
+        pokrycie_pl: widokPokryciaFixture().ocena.etykieta.etykieta_pl,
         pasmo_q_pl: '-1,00 … 1,00 Mvar',
       },
     ],

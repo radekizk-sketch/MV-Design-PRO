@@ -10,7 +10,7 @@
  *    prowadzącą we właściwą przestrzeń (`useShellStore.setActiveSpace`), NIE pusta tabela,
  *  - sekcja ZABEZPIECZENIA: tabela pól z przypisaniami zabezpieczeń (ENM) + akcja
  *    wiersza „Otwórz kartę pola" → istniejący panel E-11 `field_protection`
- *    (`networkBuildStore.openInspectorPanel`, ta sama akcja, której używa BayCard),
+ *    (`networkBuildStore.openInspectorPanel`),
  *  - sekcja AUTOMATYKA: tabela sterowników polowych (`BayProtectionControlUnit`) —
  *    chipy funkcji z `automation_features` i stan SPZ; braki jako „nie skonfigurowano",
  *  - następny krok: koordynacja zabezpieczeń (E-28, `openRouteSurface('E-28')`).

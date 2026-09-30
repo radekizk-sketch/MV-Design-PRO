@@ -8,6 +8,8 @@ export { EkranPorownania } from './EkranPorownania';
 export type { EkranPorownaniaProps } from './EkranPorownania';
 export { TrybZwarciowy } from './TrybZwarciowy';
 export type { TrybZwarciowyProps } from './TrybZwarciowy';
+export { TrybZabezpieczen } from './TrybZabezpieczen';
+export type { TrybZabezpieczenProps } from './TrybZabezpieczen';
 export {
   KOLUMNY_SZYN_DIFF,
   KOLUMNY_GALEZI,
@@ -19,6 +21,14 @@ export {
   naWierszeRankingu,
   naZalozeniaPorownania,
   etykietaPrzebiegu,
+  KOLUMNY_STANOW_ZABEZPIECZEN,
+  KOLUMNY_RANKINGU_ZABEZPIECZEN,
+  mapaWagWierszyZabezpieczen,
+  naWierszeStanowZabezpieczen,
+  tylkoZmianyStanowZabezpieczen,
+  naWierszeRankinguZabezpieczen,
+  naZalozeniaPorownaniaZabezpieczen,
+  etykietaPrzebieguZabezpieczen,
 } from './porownanieModel';
 export {
   KOLUMNY_PUNKTOW_ZWARCIOWYCH,
@@ -41,4 +51,10 @@ export {
   fmtMoc,
   fmtDeltaMoc,
   fmtData,
+  ZABEZPIECZENIA_POROWNANIE_STRINGS,
+  rodzajProblemuZabezpieczenPL,
+  stanZadzialaniaPL,
+  fmtCzasZadzialania,
+  fmtPradZwarciowy,
+  fmtMarginesProcent,
 } from './strings';

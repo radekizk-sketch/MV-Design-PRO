@@ -54,10 +54,14 @@ describe('układ paska zakładek warsztatu Wyników (V126-JEZYK)', () => {
     expect(tresc).toMatch(/overflow:\s*auto/);
   });
 
-  it('grupy zakładek też zawijają się wewnętrznie', () => {
-    const tresc = regula('.mvd-wyniki-grupa');
+  it('pasek obszarów (pierwszy poziom nawigacji B-02) też zawija się i nie ściska pozycji', () => {
+    const tresc = regula('.mvd-wyniki-obszary');
     expect(tresc).toMatch(/flex-wrap:\s*wrap/);
     expect(tresc).toMatch(/min-width:\s*0/);
+    expect(tresc).toMatch(/flex:\s*0\s+0\s+auto/);
+    const obszar = regula('.mvd-wyniki-obszar');
+    expect(obszar).toMatch(/white-space:\s*nowrap/);
+    expect(obszar).toMatch(/flex:\s*0\s+0\s+auto/);
   });
 
   it('kontrola dodatnia: parser reguł widzi treść, a nie pustkę', () => {

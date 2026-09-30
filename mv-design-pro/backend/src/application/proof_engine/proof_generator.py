@@ -13,7 +13,7 @@ Generuje ProofDocument na podstawie:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
@@ -39,10 +39,6 @@ from application.proof_engine.equation_registry import (
     EQ_LF_005,
     EQ_LF_006,
     EQ_LF_007,
-    EQ_PR_001,
-    EQ_PR_002,
-    EQ_PR_003,
-    EQ_PR_004,
     EQ_QU_001,
     EQ_QU_002,
     EQ_QU_003,
@@ -92,13 +88,20 @@ from application.proof_engine.types import (
     ProofSummary,
     ProofType,
     ProofValue,
-    ProtectionProofInput,
-    ProtectionSelectivityInput,
     QUCounterfactualInput,
     QUInput,
     UnitCheckResult,
 )
 from application.proof_engine.unit_verifier import UnitVerifier
+from network_model.pochodne import (
+    SQRT2,
+    SQRT3,
+    a_na_ka,
+    calka_joule_ka2s,
+    czlon_wykladniczy_kappa,
+    prad_z_mocy_pozornej_ka,
+    v_na_kv,
+)
 from network_model.solvers.machine_sc_iec60909 import (
     MachinePartialContribution,
     MachineShortCircuitResult,
@@ -198,18 +201,18 @@ class SC3FInput:
             run_timestamp=datetime.utcnow(),
             solver_version=solver_version,
             c_factor=result.c_factor,
-            u_n_kv=result.un_v / 1000.0,
+            u_n_kv=v_na_kv(result.un_v),
             z_thevenin_ohm=result.zkk_ohm,
-            ikss_ka=result.ikss_a / 1000.0,
-            ip_ka=result.ip_a / 1000.0,
-            ith_ka=result.ith_a / 1000.0,
+            ikss_ka=a_na_ka(result.ikss_a),
+            ip_ka=a_na_ka(result.ip_a),
+            ith_ka=a_na_ka(result.ith_a),
             sk_mva=result.sk_mva,
             kappa=result.kappa,
             rx_ratio=result.rx_ratio,
             tk_s=result.tk_s,
             m_factor=m_factor,
             n_factor=n_factor,
-            ib_ka=result.ib_a / 1000.0,
+            ib_ka=a_na_ka(result.ib_a),
             tb_s=result.tb_s,
         )
 
@@ -219,6 +222,9 @@ class VDROPSegmentInput:
     """Dane wejściowe dla pojedynczego odcinka VDROP (linia/kabel)."""
 
     segment_id: str
+    #: Nazwa odcinka z modelu — tytuły kroków dowodu; identyfikator zostaje w
+    #: `segment_id` (karta #144).
+    nazwa_odcinka: str
     from_bus_id: str
     to_bus_id: str
     r_ohm_per_km: float
@@ -243,6 +249,8 @@ class VDROPTransformerBoundaryInput:
     """
 
     segment_id: str
+    #: Nazwa transformatora z modelu — tytuł kroku dowodu (karta #144).
+    nazwa_odcinka: str
     from_bus_id: str
     to_bus_id: str
     u_primary_kv: float
@@ -268,6 +276,10 @@ class VDROPInput:
     solver_version: str
     segments: list[VDROPSegmentInput | VDROPTransformerBoundaryInput]
     u_source_kv: float
+    #: Nazwy szyn źródłowej i docelowej z modelu — nagłówek dowodu („Szyna źródłowa",
+    #: „Szyna docelowa"); identyfikatory zostają w `*_bus_id` (karta #144).
+    source_bus_name: str
+    target_bus_name: str
 
 
 @dataclass
@@ -277,6 +289,9 @@ class LoadFlowBusInput:
     bus_id: str
     u_ll_kv: float | None
     u_nom_kv: float | None
+    #: Nazwa szyny z modelu — tytuły kroków dowodu; identyfikator zostaje w `bus_id`
+    #: (karta #144).
+    nazwa: str = field(kw_only=True)
 
 
 @dataclass
@@ -295,6 +310,9 @@ class LoadFlowElementInput:
     q_mvar: float | None = None
     u_nom_kv: float | None = None
     u_ll_kv: float | None = None
+    #: Nazwa elementu z modelu — tytuły kroków dowodu; identyfikator zostaje w
+    #: `element_id` (karta #144).
+    nazwa: str = field(kw_only=True)
 
 
 @dataclass
@@ -408,7 +426,7 @@ class ProofGenerator:
             i_ka = None
             u_ll_kv = resolved.u_ll_kv or resolved.u_nom_kv
             if s_mva is not None and u_ll_kv:
-                i_ka = s_mva / (math.sqrt(3.0) * u_ll_kv)
+                i_ka = prad_z_mocy_pozornej_ka(s_mva, u_ll_kv)
 
             delta_u_r = None
             if resolved.r_ohm is not None and resolved.p_mw is not None and resolved.u_nom_kv:
@@ -699,7 +717,7 @@ class ProofGenerator:
         # formatujący wielkości już obecne w dowodzie (ith, tk); ta sama
         # projekcja co kanoniczny pełny bilans wierszy wyników (i2t_ka2s).
         # =====================================================================
-        i2t_ka2s = data.ith_ka**2 * data.tk_s
+        i2t_ka2s = calka_joule_ka2s(data.ith_ka, data.tk_s)
         step_number += 1
         steps.append(
             cls._create_sc3f_step_i2t(
@@ -738,7 +756,7 @@ class ProofGenerator:
                     steps.append(cls._create_sc3f_step_machine_q(step_number, machine, t_min_s))
                 step_number += 1
                 steps.append(cls._create_sc3f_step_machine_ib(step_number, machine))
-            ib_machines_ka = data.machine_result.ib_machines_a / 1000.0
+            ib_machines_ka = a_na_ka(data.machine_result.ib_machines_a)
 
         # =====================================================================
         # Podsumowanie
@@ -1019,7 +1037,7 @@ class ProofGenerator:
         )
 
         if fault_type == "SC1FZ":
-            sqrt3 = math.sqrt(3.0)
+            sqrt3 = SQRT3
             substitution = (
                 f"I_k'' = \\frac{{\\sqrt{{3}} \\cdot {c_factor:.4f} \\cdot {u_n_kv:.4f}}}"
                 f"{{|Z_k|}} = "
@@ -1072,7 +1090,7 @@ class ProofGenerator:
         """Step: κ (impact coefficient)."""
         equation = EQ_SC1_009
         rx_ratio = r_equiv / x_equiv if x_equiv != 0 else 0.0
-        exp_term = math.exp(-3 * rx_ratio)
+        exp_term = czlon_wykladniczy_kappa(rx_ratio)
 
         input_values = (
             ProofValue.create("R_k", r_equiv, "Ω", "r_equiv_ohm"),
@@ -1118,7 +1136,7 @@ class ProofGenerator:
     ) -> ProofStep:
         """Step: ip (peak impulse current)."""
         equation = EQ_SC1_010
-        sqrt2 = math.sqrt(2.0)
+        sqrt2 = SQRT2
 
         input_values = (
             ProofValue.create("\\kappa", kappa, "—", "kappa"),
@@ -1591,7 +1609,7 @@ class ProofGenerator:
         """Krok 2: Początkowy prąd zwarciowy I_k'' (c TUTAJ — jedyne miejsce)."""
         equation = EQ_SC3F_004
 
-        sqrt3 = math.sqrt(3)
+        sqrt3 = SQRT3
 
         input_values = (
             ProofValue.create("c", c_factor, "—", "c_factor"),
@@ -1664,8 +1682,8 @@ class ProofGenerator:
         """Krok maszynowy: współczynnik zanikania μ (§6.6.1)."""
         equation = EQ_SC3F_011
         ratio = machine.ratio_ik_ir
-        ikss_p = machine.ikss_partial_a / 1000.0
-        ir = machine.ir_a / 1000.0
+        ikss_p = a_na_ka(machine.ikss_partial_a)
+        ir = a_na_ka(machine.ir_a)
         if ratio <= 2.0:
             substitution = (
                 f"\\mu = 1 \\quad (I_k''/I_r = {ratio:.3f} \\leq 2,\\ "
@@ -1732,8 +1750,8 @@ class ProofGenerator:
     ) -> ProofStep:
         """Krok maszynowy: prąd wyłączeniowy symetryczny i_b = μ·q·I″k (§6.6)."""
         equation = EQ_SC3F_013
-        ikss_p = machine.ikss_partial_a / 1000.0
-        ib = machine.ib_a / 1000.0
+        ikss_p = a_na_ka(machine.ikss_partial_a)
+        ib = a_na_ka(machine.ib_a)
         substitution = (
             f"i_b = {machine.mu:.4f} \\cdot {machine.q:.4f} \\cdot {ikss_p:.4f} = "
             f"{ib:.4f}\\,\\text{{kA}}"
@@ -1773,7 +1791,7 @@ class ProofGenerator:
         equation = EQ_SC3F_005
 
         rx_ratio = r_th / x_th if x_th != 0 else 0
-        exp_term = math.exp(-3 * rx_ratio)
+        exp_term = czlon_wykladniczy_kappa(rx_ratio)
 
         input_values = (
             ProofValue.create("R_{th}", r_th, "Ω", "r_thevenin_ohm"),
@@ -1820,7 +1838,7 @@ class ProofGenerator:
         """Krok 4: Prąd udarowy i_p."""
         equation = EQ_SC3F_006
 
-        sqrt2 = math.sqrt(2)
+        sqrt2 = SQRT2
 
         input_values = (
             ProofValue.create("\\kappa", kappa, "—", "kappa"),
@@ -2072,7 +2090,7 @@ class ProofGenerator:
         """Krok 7: Moc zwarciowa S_k''."""
         equation = EQ_SC3F_007
 
-        sqrt3 = math.sqrt(3)
+        sqrt3 = SQRT3
 
         input_values = (
             ProofValue.create("U_n", u_n_kv, "kV", "u_n_kv"),
@@ -2194,13 +2212,21 @@ class ProofGenerator:
             step_number += 1
             steps.append(
                 cls._create_vdrop_step_r(
-                    step_number, segment.r_ohm_per_km, segment.length_km, r_ohm, segment.segment_id
+                    step_number,
+                    segment.r_ohm_per_km,
+                    segment.length_km,
+                    r_ohm,
+                    segment.nazwa_odcinka,
                 )
             )
             step_number += 1
             steps.append(
                 cls._create_vdrop_step_x(
-                    step_number, segment.x_ohm_per_km, segment.length_km, x_ohm, segment.segment_id
+                    step_number,
+                    segment.x_ohm_per_km,
+                    segment.length_km,
+                    x_ohm,
+                    segment.nazwa_odcinka,
                 )
             )
             step_number += 1
@@ -2211,7 +2237,7 @@ class ProofGenerator:
                     segment.p_mw,
                     segment.u_n_kv,
                     delta_u_r,
-                    segment.segment_id,
+                    segment.nazwa_odcinka,
                 )
             )
             step_number += 1
@@ -2222,13 +2248,13 @@ class ProofGenerator:
                     segment.q_mvar,
                     segment.u_n_kv,
                     delta_u_x,
-                    segment.segment_id,
+                    segment.nazwa_odcinka,
                 )
             )
             step_number += 1
             steps.append(
                 cls._create_vdrop_step_du(
-                    step_number, delta_u_r, delta_u_x, delta_u, segment.segment_id
+                    step_number, delta_u_r, delta_u_x, delta_u, segment.nazwa_odcinka
                 )
             )
 
@@ -2282,8 +2308,8 @@ class ProofGenerator:
             case_name=data.case_name,
             run_timestamp=data.run_timestamp,
             solver_version=data.solver_version,
-            source_bus=data.source_bus_id,
-            target_bus=data.target_bus_id,
+            source_bus=data.source_bus_name,
+            target_bus=data.target_bus_name,
         )
 
         return ProofDocument.create(
@@ -2306,7 +2332,7 @@ class ProofGenerator:
         r_per_km: float,
         length_km: float,
         r_ohm: float,
-        segment_id: str,
+        nazwa_odcinka: str,
     ) -> ProofStep:
         """Rezystancja odcinka R."""
         equation = EQ_VDROP_001
@@ -2329,7 +2355,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id("VDROP", step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (odcinek {segment_id})",
+            title_pl=f"{equation.name_pl} (odcinek {nazwa_odcinka})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -2345,7 +2371,7 @@ class ProofGenerator:
         x_per_km: float,
         length_km: float,
         x_ohm: float,
-        segment_id: str,
+        nazwa_odcinka: str,
     ) -> ProofStep:
         """Reaktancja odcinka X."""
         equation = EQ_VDROP_002
@@ -2368,7 +2394,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id("VDROP", step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (odcinek {segment_id})",
+            title_pl=f"{equation.name_pl} (odcinek {nazwa_odcinka})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -2385,7 +2411,7 @@ class ProofGenerator:
         p_mw: float,
         u_n_kv: float,
         delta_u_r: float,
-        segment_id: str,
+        nazwa_odcinka: str,
     ) -> ProofStep:
         """Składowa czynna spadku ΔU_R."""
         equation = EQ_VDROP_003
@@ -2412,7 +2438,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id("VDROP", step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (odcinek {segment_id})",
+            title_pl=f"{equation.name_pl} (odcinek {nazwa_odcinka})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -2434,7 +2460,7 @@ class ProofGenerator:
         q_mvar: float,
         u_n_kv: float,
         delta_u_x: float,
-        segment_id: str,
+        nazwa_odcinka: str,
     ) -> ProofStep:
         """Składowa bierna spadku ΔU_X."""
         equation = EQ_VDROP_004
@@ -2461,7 +2487,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id("VDROP", step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (odcinek {segment_id})",
+            title_pl=f"{equation.name_pl} (odcinek {nazwa_odcinka})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -2482,7 +2508,7 @@ class ProofGenerator:
         delta_u_r: float,
         delta_u_x: float,
         delta_u: float,
-        segment_id: str,
+        nazwa_odcinka: str,
     ) -> ProofStep:
         """Spadek na odcinku ΔU."""
         equation = EQ_VDROP_005
@@ -2505,7 +2531,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id("VDROP", step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (odcinek {segment_id})",
+            title_pl=f"{equation.name_pl} (odcinek {nazwa_odcinka})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -2670,7 +2696,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id("VDROP", step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (odcinek {boundary.segment_id})",
+            title_pl=f"{equation.name_pl} (odcinek {boundary.nazwa_odcinka})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -3127,158 +3153,6 @@ class ProofGenerator:
         )
 
     # =========================================================================
-    # P18: Protection Overcurrent & Selectivity
-    # =========================================================================
-
-    @classmethod
-    def generate_protection_proof(
-        cls,
-        data: ProtectionProofInput,
-        artifact_id: UUID | None = None,
-    ) -> ProofDocument:
-        """
-        Generuje dowód P18: zabezpieczenia nadprądowe i selektywność.
-
-        Braki danych → ostrzeżenia zamiast FAIL (BINDING).
-        """
-        if artifact_id is None:
-            artifact_id = uuid4()
-
-        warnings: list[str] = []
-
-        breaking_ok, breaking_margin = cls._compare_limit(
-            data.ikss_ka,
-            data.icu_ka,
-            "Warunek wyłączalności: brak I_k'' lub I_cu.",
-            warnings,
-        )
-
-        dynamic_ok, dynamic_margin = cls._compare_limit(
-            data.ip_ka,
-            data.idyn_ka,
-            "Warunek dynamiczny: brak i_p lub I_dyn.",
-            warnings,
-        )
-
-        fault_i2t = cls._resolve_fault_i2t(data)
-        device_i2t = cls._resolve_device_i2t(data)
-
-        thermal_ok, thermal_margin = cls._compare_limit(
-            fault_i2t,
-            device_i2t,
-            "Warunek cieplny: brak danych ∫i²dt lub I_th.",
-            warnings,
-        )
-
-        selectivity_ok, selectivity_margin = cls._compare_selectivity(
-            data.selectivity,
-            warnings,
-        )
-
-        steps = cls._build_protection_steps(
-            data=data,
-            fault_i2t=fault_i2t,
-            device_i2t=device_i2t,
-            breaking_ok=breaking_ok,
-            dynamic_ok=dynamic_ok,
-            thermal_ok=thermal_ok,
-            selectivity_ok=selectivity_ok,
-        )
-
-        unit_checks_passed = all(step.unit_check.passed for step in steps)
-
-        key_results: dict[str, ProofValue] = {
-            "breaking_ok": cls._status_value("OK_{breaking}", breaking_ok, "breaking_ok"),
-            "dynamic_ok": cls._status_value("OK_{dynamic}", dynamic_ok, "dynamic_ok"),
-            "thermal_ok": cls._status_value("OK_{thermal}", thermal_ok, "thermal_ok"),
-            "selectivity_ok": cls._status_value(
-                "OK_{selectivity}", selectivity_ok, "selectivity_ok"
-            ),
-        }
-
-        key_results["ikss_ka"] = cls._value_or_missing("I_k''", data.ikss_ka, "kA", "ikss_ka")
-        key_results["icu_ka"] = cls._value_or_missing("I_{cu}", data.icu_ka, "kA", "icu_ka")
-        key_results["ip_ka"] = cls._value_or_missing("i_p", data.ip_ka, "kA", "ip_ka")
-        key_results["idyn_ka"] = cls._value_or_missing("I_{dyn}", data.idyn_ka, "kA", "idyn_ka")
-        key_results["i2t_ka2s"] = cls._value_or_missing(
-            "\\int i^{2} dt", fault_i2t, "kA²s", "i2t_ka2s"
-        )
-        key_results["ith_limit_ka2s"] = cls._value_or_missing(
-            "I_{th}", device_i2t, "kA²s", "ith_limit_ka2s"
-        )
-
-        if breaking_margin is not None:
-            key_results["breaking_margin_ka"] = ProofValue.create(
-                "\\Delta I_{cu}", breaking_margin, "kA", "breaking_margin_ka"
-            )
-        if dynamic_margin is not None:
-            key_results["dynamic_margin_ka"] = ProofValue.create(
-                "\\Delta I_{dyn}", dynamic_margin, "kA", "dynamic_margin_ka"
-            )
-        if thermal_margin is not None:
-            key_results["thermal_margin_ka2s"] = ProofValue.create(
-                "\\Delta I_{th}", thermal_margin, "kA²s", "thermal_margin_ka2s"
-            )
-
-        if data.selectivity is not None:
-            key_results["selectivity_current_ka"] = cls._value_or_missing(
-                "I_{sel}",
-                data.selectivity.current_ka,
-                "kA",
-                "selectivity_current_ka",
-            )
-            key_results["selectivity_downstream_max_s"] = cls._value_or_missing(
-                "t_{down,max}",
-                data.selectivity.downstream_max_s,
-                "s",
-                "selectivity_downstream_max_s",
-            )
-            key_results["selectivity_upstream_min_s"] = cls._value_or_missing(
-                "t_{up,min}",
-                data.selectivity.upstream_min_s,
-                "s",
-                "selectivity_upstream_min_s",
-            )
-            key_results["selectivity_margin_setting_s"] = ProofValue.create(
-                "\\Delta t",
-                data.selectivity.margin_s,
-                "s",
-                "selectivity_margin_setting_s",
-            )
-            if selectivity_margin is not None:
-                key_results["selectivity_margin_s"] = ProofValue.create(
-                    "\\Delta t_{sel}",
-                    selectivity_margin,
-                    "s",
-                    "selectivity_margin_s",
-                )
-
-        summary = ProofSummary(
-            key_results=key_results,
-            unit_check_passed=unit_checks_passed,
-            total_steps=len(steps),
-            warnings=tuple(warnings),
-        )
-
-        header = ProofHeader(
-            project_name=data.project_name,
-            case_name=data.case_name,
-            run_timestamp=data.run_timestamp,
-            solver_version="P18 Protection Overcurrent",
-            target_id=data.target_id,
-            element_kind="PROTECTION",
-        )
-
-        return ProofDocument.create(
-            artifact_id=artifact_id,
-            proof_type=ProofType.PROTECTION_OVERCURRENT,
-            title_pl="Dowód: zabezpieczenia nadprądowe i selektywność",
-            header=header,
-            steps=steps,
-            summary=summary,
-        )
-
-    # =========================================================================
     # P19: Earthing / Ground Fault (SN)
     # =========================================================================
 
@@ -3399,276 +3273,6 @@ class ProofGenerator:
             header=header,
             steps=steps,
             summary=summary,
-        )
-
-    @classmethod
-    def _resolve_fault_i2t(cls, data: ProtectionProofInput) -> float | None:
-        if data.i2t_ka2s is not None:
-            return data.i2t_ka2s
-        if data.ith_ka is None or data.tk_s is None:
-            return None
-        return data.ith_ka**2 * data.tk_s
-
-    @classmethod
-    def _resolve_device_i2t(cls, data: ProtectionProofInput) -> float | None:
-        if data.ith_limit_ka2s is not None:
-            return data.ith_limit_ka2s
-        if data.ith_device_ka is None or data.t_th_s is None:
-            return None
-        return data.ith_device_ka**2 * data.t_th_s
-
-    @classmethod
-    def _compare_limit(
-        cls,
-        measured: float | None,
-        limit: float | None,
-        warning: str,
-        warnings: list[str],
-    ) -> tuple[str, float | None]:
-        if measured is None or limit is None:
-            warnings.append(warning)
-            return "NOT_EVALUATED", None
-        return ("OK" if measured <= limit else "NOT_OK"), (limit - measured)
-
-    @classmethod
-    def _compare_selectivity(
-        cls,
-        selectivity: ProtectionSelectivityInput | None,
-        warnings: list[str],
-    ) -> tuple[str, float | None]:
-        if selectivity is None:
-            warnings.append("Selektywność: brak danych charakterystyk.")
-            return "NOT_EVALUATED", None
-        if selectivity.downstream_max_s is None or selectivity.upstream_min_s is None:
-            warnings.append("Selektywność: brak granic czasowych t_down/t_up.")
-            return "NOT_EVALUATED", None
-        margin = selectivity.upstream_min_s - (selectivity.downstream_max_s + selectivity.margin_s)
-        return ("OK" if margin >= 0 else "NOT_OK"), margin
-
-    @classmethod
-    def _build_protection_steps(
-        cls,
-        data: ProtectionProofInput,
-        fault_i2t: float | None,
-        device_i2t: float | None,
-        breaking_ok: str,
-        dynamic_ok: str,
-        thermal_ok: str,
-        selectivity_ok: str,
-    ) -> list[ProofStep]:
-        steps: list[ProofStep] = []
-        step_number = 0
-        for eq_id in EquationRegistry.get_pr_step_order():
-            step_number += 1
-            if eq_id == "EQ_PR_001":
-                steps.append(
-                    cls._create_pr_step_breaking(
-                        step_number=step_number,
-                        ikss_ka=data.ikss_ka,
-                        icu_ka=data.icu_ka,
-                        status=breaking_ok,
-                    )
-                )
-            elif eq_id == "EQ_PR_002":
-                steps.append(
-                    cls._create_pr_step_dynamic(
-                        step_number=step_number,
-                        ip_ka=data.ip_ka,
-                        idyn_ka=data.idyn_ka,
-                        status=dynamic_ok,
-                    )
-                )
-            elif eq_id == "EQ_PR_003":
-                steps.append(
-                    cls._create_pr_step_thermal(
-                        step_number=step_number,
-                        i2t_ka2s=fault_i2t,
-                        ith_limit_ka2s=device_i2t,
-                        status=thermal_ok,
-                    )
-                )
-            elif eq_id == "EQ_PR_004":
-                steps.append(
-                    cls._create_pr_step_selectivity(
-                        step_number=step_number,
-                        selectivity=data.selectivity,
-                        status=selectivity_ok,
-                    )
-                )
-        return steps
-
-    @classmethod
-    def _create_pr_step_breaking(
-        cls,
-        step_number: int,
-        ikss_ka: float | None,
-        icu_ka: float | None,
-        status: str,
-    ) -> ProofStep:
-        equation = EQ_PR_001
-        input_values = (
-            cls._value_or_missing("I_k''", ikss_ka, "kA", "ikss_ka"),
-            cls._value_or_missing("I_{cu}", icu_ka, "kA", "icu_ka"),
-        )
-        substitution = cls._protection_substitution(
-            "OK_{breaking}",
-            "I_k''",
-            ikss_ka,
-            "I_{cu}",
-            icu_ka,
-            status,
-        )
-        result = cls._status_value("OK_{breaking}", status, "breaking_ok")
-        unit_check = UnitVerifier.verify_step(
-            equation_id=equation.equation_id,
-            inputs=[("I_k''", "kA"), ("I_{cu}", "kA")],
-            result_unit="—",
-        )
-        return ProofStep(
-            step_id=ProofStep.generate_step_id("PR", step_number),
-            step_number=step_number,
-            title_pl=equation.name_pl,
-            equation=equation,
-            input_values=input_values,
-            substitution_latex=substitution,
-            result=result,
-            unit_check=unit_check,
-            source_keys={"I_k''": "ikss_ka", "I_{cu}": "icu_ka"},
-        )
-
-    @classmethod
-    def _create_pr_step_dynamic(
-        cls,
-        step_number: int,
-        ip_ka: float | None,
-        idyn_ka: float | None,
-        status: str,
-    ) -> ProofStep:
-        equation = EQ_PR_002
-        input_values = (
-            cls._value_or_missing("i_p", ip_ka, "kA", "ip_ka"),
-            cls._value_or_missing("I_{dyn}", idyn_ka, "kA", "idyn_ka"),
-        )
-        substitution = cls._protection_substitution(
-            "OK_{dynamic}",
-            "i_p",
-            ip_ka,
-            "I_{dyn}",
-            idyn_ka,
-            status,
-        )
-        result = cls._status_value("OK_{dynamic}", status, "dynamic_ok")
-        unit_check = UnitVerifier.verify_step(
-            equation_id=equation.equation_id,
-            inputs=[("i_p", "kA"), ("I_{dyn}", "kA")],
-            result_unit="—",
-        )
-        return ProofStep(
-            step_id=ProofStep.generate_step_id("PR", step_number),
-            step_number=step_number,
-            title_pl=equation.name_pl,
-            equation=equation,
-            input_values=input_values,
-            substitution_latex=substitution,
-            result=result,
-            unit_check=unit_check,
-            source_keys={"i_p": "ip_ka", "I_{dyn}": "idyn_ka"},
-        )
-
-    @classmethod
-    def _create_pr_step_thermal(
-        cls,
-        step_number: int,
-        i2t_ka2s: float | None,
-        ith_limit_ka2s: float | None,
-        status: str,
-    ) -> ProofStep:
-        equation = EQ_PR_003
-        input_values = (
-            cls._value_or_missing("\\int i^{2} dt", i2t_ka2s, "kA²s", "i2t_ka2s"),
-            cls._value_or_missing("I_{th}", ith_limit_ka2s, "kA²s", "ith_limit_ka2s"),
-        )
-        substitution = cls._protection_substitution(
-            "OK_{thermal}",
-            "\\int i^{2} dt",
-            i2t_ka2s,
-            "I_{th}",
-            ith_limit_ka2s,
-            status,
-        )
-        result = cls._status_value("OK_{thermal}", status, "thermal_ok")
-        unit_check = UnitVerifier.verify_step(
-            equation_id=equation.equation_id,
-            inputs=[("\\int i^{2} dt", "kA²s"), ("I_{th}", "kA²s")],
-            result_unit="—",
-        )
-        return ProofStep(
-            step_id=ProofStep.generate_step_id("PR", step_number),
-            step_number=step_number,
-            title_pl=equation.name_pl,
-            equation=equation,
-            input_values=input_values,
-            substitution_latex=substitution,
-            result=result,
-            unit_check=unit_check,
-            source_keys={
-                "\\int i^{2} dt": "i2t_ka2s",
-                "I_{th}": "ith_limit_ka2s",
-            },
-        )
-
-    @classmethod
-    def _create_pr_step_selectivity(
-        cls,
-        step_number: int,
-        selectivity: ProtectionSelectivityInput | None,
-        status: str,
-    ) -> ProofStep:
-        equation = EQ_PR_004
-        downstream_max = selectivity.downstream_max_s if selectivity else None
-        upstream_min = selectivity.upstream_min_s if selectivity else None
-        margin_s = selectivity.margin_s if selectivity else None
-
-        input_values = (
-            cls._value_or_missing(
-                "t_{down,max}", downstream_max, "s", "selectivity_downstream_max_s"
-            ),
-            cls._value_or_missing("t_{up,min}", upstream_min, "s", "selectivity_upstream_min_s"),
-            cls._value_or_missing(
-                "\\Delta t",
-                margin_s,
-                "s",
-                "selectivity_margin_setting_s",
-            ),
-        )
-        substitution = cls._protection_substitution(
-            "OK_{selectivity}",
-            "t_{down,max}+\\Delta t",
-            (None if downstream_max is None or margin_s is None else downstream_max + margin_s),
-            "t_{up,min}",
-            upstream_min,
-            status,
-        )
-        result = cls._status_value("OK_{selectivity}", status, "selectivity_ok")
-        unit_check = UnitVerifier.verify_step(
-            equation_id=equation.equation_id,
-            inputs=[("t_{down,max}", "s"), ("Δt", "s"), ("t_{up,min}", "s")],
-            result_unit="—",
-        )
-        return ProofStep(
-            step_id=ProofStep.generate_step_id("PR", step_number),
-            step_number=step_number,
-            title_pl=equation.name_pl,
-            equation=equation,
-            input_values=input_values,
-            substitution_latex=substitution,
-            result=result,
-            unit_check=unit_check,
-            source_keys={
-                "t_{down,max}": "selectivity_downstream_max_s",
-                "t_{up,min}": "selectivity_upstream_min_s",
-                "Δt": "selectivity_margin_setting_s",
-            },
         )
 
     @classmethod
@@ -3897,8 +3501,8 @@ class ProofGenerator:
             data.element_kind in (LoadElementKind.LINE, LoadElementKind.CABLE)
             or data.in_a is not None
         )
-        i_ka = s_mva / (math.sqrt(3) * data.u_ll_kv) if compute_current else None
-        in_ka = data.in_a / 1000.0 if data.in_a is not None else None
+        i_ka = prad_z_mocy_pozornej_ka(s_mva, data.u_ll_kv) if compute_current else None
+        in_ka = a_na_ka(data.in_a) if data.in_a is not None else None
 
         k_i_percent = 100.0 * (i_ka / in_ka) if i_ka is not None and in_ka is not None else None
 
@@ -3968,6 +3572,15 @@ class ProofGenerator:
                     cls._create_lc_step_k_s(
                         step_number=step_number,
                         s_mva=s_mva,
+                        # FAB-E (E1): `or 0.0` tu jest MARTWY, nie fabrykacja —
+                        # data.sn_mva jest juz zweryfikowane non-None wyzej
+                        # (linia ~3884: raise dla TRANSFORMER bez sn_mva), a ten
+                        # branch wykonuje sie TYLKO dla TRANSFORMER, wiec
+                        # sn_mva/k_s_percent sa tu zawsze rzeczywistymi liczbami.
+                        # `or 0.0` zostaje wylacznie, zeby mypy zwezil
+                        # `float | None` na `float` bez lokalnej zmiennej
+                        # posredniej (usuniecie go daje blad mypy arg-type —
+                        # zweryfikowane, nie hipoteza).
                         sn_mva=data.sn_mva or 0.0,
                         k_s_percent=k_s_percent or 0.0,
                     )
@@ -4259,6 +3872,7 @@ class ProofGenerator:
             q_mvar=element.q_mvar,
             u_nom_kv=element.u_nom_kv,
             u_ll_kv=element.u_ll_kv,
+            nazwa=element.nazwa,
         )
 
     @classmethod
@@ -4294,7 +3908,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (element {element.element_id})",
+            title_pl=f"{equation.name_pl} (element {element.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -4346,7 +3960,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (element {element.element_id})",
+            title_pl=f"{equation.name_pl} (element {element.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -4397,7 +4011,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (element {element.element_id})",
+            title_pl=f"{equation.name_pl} (element {element.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -4449,7 +4063,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (element {element.element_id})",
+            title_pl=f"{equation.name_pl} (element {element.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -4501,7 +4115,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (element {element.element_id})",
+            title_pl=f"{equation.name_pl} (element {element.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -4551,7 +4165,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (BUS {bus.bus_id})",
+            title_pl=f"{equation.name_pl} (szyna {bus.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -4598,7 +4212,7 @@ class ProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
-            title_pl=f"{equation.name_pl} (BUS {bus.bus_id})",
+            title_pl=f"{equation.name_pl} (szyna {bus.nazwa})",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -4639,24 +4253,6 @@ class ProofGenerator:
                 source_key=source_key,
             )
         return ProofValue.create(symbol, value, unit, source_key)
-
-    @staticmethod
-    def _protection_substitution(
-        result_symbol: str,
-        left_symbol: str,
-        left_value: float | None,
-        right_symbol: str,
-        right_value: float | None,
-        status: str,
-    ) -> str:
-        if left_value is None or right_value is None:
-            return (
-                f"{result_symbol} = ({left_symbol} \\le {right_symbol})"
-                r"\quad\text{(brak danych)}"
-            )
-        return (
-            f"{result_symbol} = ({left_value:.4f} \\le {right_value:.4f})" rf" = \text{{{status}}}"
-        )
 
     @classmethod
     def _create_earth_current_step(

@@ -93,7 +93,7 @@
     },
     {
       "cell_code": "GAM",
-      "name_pl": "Przyłącze kablowe dopływowe z uziemnikiem",
+      "name_pl": "Przyłącze kablowe wejściowe z uziemnikiem",
       "apparatus": [
         { "kind": "ES", "requirement": "standard" },
         { "kind": "CABLE_HEAD", "requirement": "standard" },
@@ -103,7 +103,7 @@
     },
     {
       "cell_code": "GAM2",
-      "name_pl": "Przyłącze kablowe dopływowe (bez aparatu)",
+      "name_pl": "Przyłącze kablowe wejściowe (bez aparatu)",
       "apparatus": [
         { "kind": "CABLE_HEAD", "requirement": "standard" },
         { "kind": "SURGE_ARRESTER", "requirement": "optional" }

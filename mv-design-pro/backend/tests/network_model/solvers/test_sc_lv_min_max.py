@@ -18,10 +18,8 @@ Covers:
 from __future__ import annotations
 
 import math
-from uuid import uuid4
 
 import pytest
-from application.execution_engine.service import ExecutionEngineService
 from application.solvers.short_circuit_binding import (
     ShortCircuitBindingResult,
     execute_short_circuit,
@@ -66,6 +64,39 @@ class TestCForNode:
     def test_unknown_scenario_raises(self):
         with pytest.raises(ValueError, match="MAX/MIN"):
             c_for_node(15.0, "NOMINAL")  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("scenario", ["MAX", "MIN"])
+    @pytest.mark.parametrize(
+        "voltage_kv", [0.0, -0.4, -15.0, float("nan"), float("inf"), float("-inf")]
+    )
+    def test_non_physical_voltage_is_refused_not_lv_row(self, voltage_kv, scenario):
+        """Napięcie spoza każdego pasma × scenariusz: odmowa nazwana, nie wiersz nN.
+
+        Przed 2026-09-25 napięcie zerowe, ujemne albo nieskończone dawało po cichu wiersz
+        niskiego napięcia (1,05/0,95) — domysł, który z błędnej danej robił wiarygodnie
+        wyglądające c. Tabela 1 IEC 60909-0 nie ma wiersza dla takiego napięcia.
+        """
+        with pytest.raises(ValueError, match="IEC 60909-0, tabela 1"):
+            c_for_node(voltage_kv, scenario)
+
+    @pytest.mark.parametrize(
+        ("voltage_kv", "c_max", "c_min"),
+        [
+            (0.23, 1.05, 0.95),
+            (0.4, 1.05, 0.95),
+            (0.69, 1.05, 0.95),
+            (1.0, 1.05, 0.95),
+            (1.001, 1.10, 1.00),
+            (15.0, 1.10, 1.00),
+            (109.999, 1.10, 1.00),
+            (110.0, 1.10, 1.00),
+            (400.0, 1.10, 1.00),
+        ],
+    )
+    def test_every_band_boundary_both_scenarios(self, voltage_kv, c_max, c_min):
+        """Granice pasm (nN do 1 kV włącznie, SN poniżej 110 kV, WN) × oba scenariusze."""
+        assert c_for_node(voltage_kv, "MAX") == c_max
+        assert c_for_node(voltage_kv, "MIN") == c_min
 
 
 # =============================================================================
@@ -516,60 +547,3 @@ class TestDispatchInputHashDifferentiatesScenario:
         hash_min = compute_solver_input_hash(payload_min)
 
         assert hash_max != hash_min
-
-    def test_engine_create_run_gets_separate_cache_entries_per_scenario(self):
-        """ExecutionEngineService.create_run (PR-18 dispatch) — a Run created
-        with scenario='MIN' in its solver_input dict is a DIFFERENT cache
-        entry (different solver_input_hash) than the same request with
-        scenario='MAX', even though every other field is identical."""
-        engine = ExecutionEngineService()
-        from domain.study_case import new_study_case
-
-        case = new_study_case(
-            project_id=uuid4(), name="P0.3 dispatch test", config=_golden_config()
-        )
-        engine.register_study_case(case)
-
-        common = {"analysis_type": "SC_3F", "fault_node_id": N2, "c_factor_max": 1.10}
-
-        run_max = engine.create_run(
-            study_case_id=case.id,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            solver_input={**common, "scenario": "MAX"},
-        )
-        run_min = engine.create_run(
-            study_case_id=case.id,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            solver_input={**common, "scenario": "MIN"},
-        )
-
-        assert run_max.solver_input_hash != run_min.solver_input_hash
-        assert run_max.id != run_min.id
-
-    def test_engine_execute_run_sc_min_scenario_end_to_end(self):
-        """execute_run_sc(scenario='MIN') runs to completion and the
-        ResultSet v1 carries scenario='MIN' in its global_results (meta)."""
-        engine = ExecutionEngineService()
-        from domain.study_case import new_study_case
-
-        case = new_study_case(project_id=uuid4(), name="P0.3 MIN run", config=_golden_config())
-        engine.register_study_case(case)
-        run = engine.create_run(
-            study_case_id=case.id,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            solver_input={"fault_node_id": N2, "scenario": "MIN"},
-        )
-
-        graph = _build_golden_mv_lv_graph()
-        _, result_set = engine.execute_run_sc(
-            run.id,
-            graph=graph,
-            config=_golden_config(),
-            fault_node_id=N2,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"valid": True},
-            scenario="MIN",
-        )
-
-        assert result_set.global_results["scenario"] == "MIN"
-        assert result_set.global_results["c_factor"] == pytest.approx(0.95)

@@ -1,14 +1,14 @@
 /*
  * Testy czystych adapterów okna „Krzywe zdolności P–Q" (karta P41). Weryfikują
  * odwzorowanie odpowiedzi backendu na struktury prezentacji (opcje doboru, punkty
- * wykresu, kolumny/wiersze wzorca tabeli, kroki śladu WHITE BOX, istotność
- * werdyktu) — bez ocen lokalnych, deterministycznie, z formaterem PL (przecinek).
+ * wykresu, kolumny/wiersze wzorca tabeli, kroki śladu WHITE BOX) — bez ocen lokalnych
+ * (punkt nie ma statusu; ocenę niesie rekord `ocena` backendu), deterministycznie, z
+ * formaterem PL (przecinek). Dane: fixtury policzone backendem.
  */
 
 import { describe, expect, it } from 'vitest';
 
 import {
-  istotnoscWerdyktuPQ,
   kolumnyTabeliPQ,
   krokiSladuPQ,
   opcjeOperatorowPQ,
@@ -20,8 +20,8 @@ import {
 import {
   katalogNcRfgFixture,
   rekordyKonwerterowFixture,
+  widokBezKrzywejFixture,
   widokPokryciaFixture,
-  widokPokryteFixture,
 } from './fixtures';
 
 describe('typMaKrzywaPQ / opcjeTypowPQ', () => {
@@ -65,30 +65,34 @@ describe('punktyWykresuPQ', () => {
 });
 
 describe('kolumnyTabeliPQ / wierszeTabeliPQ', () => {
-  it('kolumny wzorca mają jednostki i klucze zgodne z kartą', () => {
+  it('kolumny wzorca: liczby z jednostkami, bez kolumny statusu punktu', () => {
     const klucze = kolumnyTabeliPQ().map((k) => k.klucz);
-    expect(klucze).toEqual(['moc', 'pasmo', 'wymaganie', 'margines', 'status']);
-    const margines = kolumnyTabeliPQ().find((k) => k.klucz === 'margines');
-    expect(margines?.jednostka).toBe('Mvar');
+    expect(klucze).toEqual(['moc', 'pasmo', 'wymaganie', 'zapasDolny', 'zapasGorny', 'margines']);
+    for (const klucz of ['zapasDolny', 'zapasGorny', 'margines']) {
+      expect(kolumnyTabeliPQ().find((k) => k.klucz === klucz)?.jednostka).toBe('Mvar');
+    }
   });
 
-  it('wiersz punktu pokrytego: margines bez tagu, status „Pokryty"', () => {
-    const wiersze = wierszeTabeliPQ(widokPokryciaFixture());
+  it('wiersz punktu = liczby backendu (zapasy dolny/górny i zapas punktu), bez statusu i tagu', () => {
+    const widok = widokPokryciaFixture();
+    const wiersze = wierszeTabeliPQ(widok);
+    expect(wiersze).toHaveLength(widok.punkty.length);
+    widok.punkty.forEach((pt, i) => {
+      expect(wiersze[i].margines.sortKey).toBe(pt.margines_mvar);
+      expect(wiersze[i].zapasDolny.sortKey).toBe(pt.zapas_dolny_mvar);
+      expect(wiersze[i].zapasGorny.sortKey).toBe(pt.zapas_gorny_mvar);
+      expect(Object.keys(wiersze[i])).not.toContain('status');
+      expect(Object.values(wiersze[i]).some((k) => 'ostrzezenie' in k)).toBe(false);
+    });
     expect(wiersze[0].moc.wartosc).toBe('0,000');
     expect(wiersze[0].pasmo.wartosc).toBe('-1,890 … 1,890');
     expect(wiersze[0].wymaganie.wartosc).toBe('-1,040 … 1,040');
-    expect(wiersze[0].margines.sortKey).toBe(0.8505);
-    expect(wiersze[0].status.wartosc).toBe('Pokryty');
-    expect(wiersze[0].status.ostrzezenie).toBe(false);
+    expect(wiersze[3].margines.wartosc).toBe('-0,409');
   });
 
-  it('wiersz punktu niepokrytego: tag ostrzeżenia z flagi backendu (bez oceny lokalnej)', () => {
-    const wiersze = wierszeTabeliPQ(widokPokryciaFixture());
-    const ostatni = wiersze[3];
-    expect(ostatni.status.wartosc).toBe('Niepokryty');
-    expect(ostatni.status.ostrzezenie).toBe(true);
-    expect(ostatni.margines.wartosc).toBe('-0,409');
-    expect(ostatni.margines.sortKey).toBe(-0.4095);
+  it('typ bez krzywej producenta: zero wierszy (brak nazywa rekord oceny)', () => {
+    expect(wierszeTabeliPQ(widokBezKrzywejFixture())).toEqual([]);
+    expect(widokBezKrzywejFixture().ocena.wyjasnienie.czego_brakuje.join(' ')).toContain('pq_curve');
   });
 });
 
@@ -100,16 +104,10 @@ describe('krokiSladuPQ (adapter do SladAnalizy)', () => {
     expect(kroki[0].result_pl).toContain('Mvar');
     expect(kroki[1].symbol).toBe('pokrycie');
     // formuła i wynik przenoszone dosłownie z backendu
-    expect(kroki[1].formula_latex).toContain('punkt pokryty');
-    expect(kroki[1].result_pl).toBe('NIEPOKRYTE: 3/4 punktow.');
+    const slad = widokPokryciaFixture().slad_whitebox;
+    expect(kroki[1].formula_latex).toBe(slad.wzor);
+    expect(kroki[1].result_pl).toBe(slad.wynik);
     // podstawienie łączy wszystkie punkty (ślad audytu)
     expect(kroki[1].substitution_pl).toContain('p=3.15 MW');
-  });
-});
-
-describe('istotnoscWerdyktuPQ', () => {
-  it('niepokryte → err, pokryte → ok (czyta flagę backendu)', () => {
-    expect(istotnoscWerdyktuPQ(widokPokryciaFixture())).toBe('err');
-    expect(istotnoscWerdyktuPQ(widokPokryteFixture())).toBe('ok');
   });
 });

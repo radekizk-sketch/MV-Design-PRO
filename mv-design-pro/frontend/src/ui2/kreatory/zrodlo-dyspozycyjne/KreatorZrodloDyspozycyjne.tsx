@@ -89,6 +89,11 @@ export function KreatorZrodloDyspozycyjne() {
   const [zrodloKatalog, setZrodloKatalog] = useState<SourceSystemCatalogType[]>([]);
   const [aparatKatalog, setAparatKatalog] = useState<LVApparatusType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jawny znacznik
+  // ładowania OBU katalogów (system źródła + aparat nN), niezależny od
+  // długości tablic (katalog pusty PO wczytaniu wygląda inaczej niż katalog
+  // W TRAKCIE wczytywania).
+  const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
   // Ustal szynę, gdy kontekst/model dostarczy domyślną dopiero po montażu.
   useEffect(() => {
@@ -99,6 +104,7 @@ export function KreatorZrodloDyspozycyjne() {
   useEffect(() => {
     let active = true;
     setBladKatalogu(null);
+    setKatalogLadowanie(true);
     Promise.all([fetchSourceSystemTypes(), fetchLvApparatusTypes()])
       .then(([src, lv]) => {
         if (!active) return;
@@ -110,6 +116,9 @@ export function KreatorZrodloDyspozycyjne() {
         setZrodloKatalog([]);
         setAparatKatalog([]);
         setBladKatalogu(getCatalogErrorMessage(e));
+      })
+      .finally(() => {
+        if (active) setKatalogLadowanie(false);
       });
     return () => {
       active = false;
@@ -157,7 +166,16 @@ export function KreatorZrodloDyspozycyjne() {
   );
 
   const isNewField = dane.placement === 'NEW_FIELD';
-  const zapisMozliwy = Boolean(dane.bus_nn_ref) && Boolean(activeCaseId);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
+  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
+  // karta i ten sam mechanizm powtórzony w tym pliku).
+  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
+    !dane.bus_nn_ref || !activeCaseId
+      ? 'zablokowany'
+      : katalogLadowanie
+        ? 'ladowanie'
+        : 'gotowy';
+  const zapisMozliwy = stanGotowosci === 'gotowy';
 
   const onZapisz = useCallback(async () => {
     const walid = walidujFormularz(dane, kind);
@@ -245,7 +263,14 @@ export function KreatorZrodloDyspozycyjne() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={bledy.length > 0 ? T.walidacjaStopka : null}
+      walidacja={
+        stanGotowosci === 'ladowanie'
+          ? T.katalogLadowanieStopka
+          : bledy.length > 0
+            ? T.walidacjaStopka
+            : null
+      }
+      status={stanGotowosci}
       akcjaGlowna={{ etykieta: tk.zapisz, onClick: onZapisz, zablokowana: !zapisMozliwy, testid: 'mvd-kreator-zrodlo-dysp-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-zrodlo-dysp-anuluj' }}
       krokWstecz={

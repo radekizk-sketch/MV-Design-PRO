@@ -10,7 +10,7 @@
  * - IEC 60255 and IEEE C37.112 curve standards
  */
 
-import { useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type {
   ProtectionDevice,
   StageSettings,
@@ -21,6 +21,7 @@ import type {
 import { LABELS, DEFAULT_CURVE_SETTINGS, DEFAULT_STAGE_51 } from './types';
 import { etykietaLokalizacji } from './lokalizacjeZModelu';
 import type { LokalizacjaModelu } from './lokalizacjeZModelu';
+import { fetchMiejsceUrzadzenia, type MiejsceUrzadzenia } from './miejsceUrzadzenia';
 
 // =============================================================================
 // Types
@@ -38,6 +39,12 @@ interface ProtectionSettingsEditorProps {
   lokalizacje?: readonly LokalizacjaModelu[] | null;
   /** Powód, dla którego lista elementów jest niedostępna (komunikat backendu). */
   bladLokalizacji?: string | null;
+  /**
+   * Przypadek, którego model rozstrzyga miejsce prądu urządzenia (decyzja O-51 pkt 7):
+   * etykiety zacisków gałęzi i zacisk z modelu dla lokalizacji-łącznika pochodzą z
+   * backendu. `null` = bez przypadku nie ma czego rozstrzygać.
+   */
+  caseId?: string | null;
 }
 
 // =============================================================================
@@ -344,8 +351,31 @@ export function ProtectionSettingsEditor({
   onCancel,
   lokalizacje = null,
   bladLokalizacji = null,
+  caseId = null,
 }: ProtectionSettingsEditorProps) {
   const [localDevice, setLocalDevice] = useState<ProtectionDevice>({ ...device });
+  // Rozstrzygnięcie miejsca prądu dla WYBRANEJ lokalizacji (bez wskazania — etykiety
+  // zacisków gałęzi albo zacisk z modelu dla łącznika); wskazanie wybiera inżynier.
+  const [miejsce, setMiejsce] = useState<MiejsceUrzadzenia | null>(null);
+  const [bladMiejsca, setBladMiejsca] = useState<string | null>(null);
+  const lokalizacjaUrzadzenia = localDevice.location_element_id;
+
+  useEffect(() => {
+    setMiejsce(null);
+    setBladMiejsca(null);
+    if (!caseId || lokalizacjaUrzadzenia.trim() === '') return;
+    const controller = new AbortController();
+    fetchMiejsceUrzadzenia(caseId, lokalizacjaUrzadzenia, null, { signal: controller.signal })
+      .then((wynik) => {
+        if (!controller.signal.aborted) setMiejsce(wynik);
+      })
+      .catch((err: unknown) => {
+        if (!controller.signal.aborted) {
+          setBladMiejsca(err instanceof Error ? err.message : String(err));
+        }
+      });
+    return () => controller.abort();
+  }, [caseId, lokalizacjaUrzadzenia]);
 
   const handleSave = useCallback(() => {
     onChange(localDevice);
@@ -426,7 +456,10 @@ export function ProtectionSettingsEditor({
               id="protection-device-location"
               data-testid="device-location-select"
               value={localDevice.location_element_id}
-              onChange={(e) => updateDevice({ location_element_id: e.target.value })}
+              // Zmiana lokalizacji kasuje wskazany zacisk — dotyczył poprzedniej gałęzi.
+              onChange={(e) =>
+                updateDevice({ location_element_id: e.target.value, zacisk: undefined })
+              }
               className="w-full rounded border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="">{LABELS.devices.locationPrompt}</option>
@@ -445,6 +478,58 @@ export function ProtectionSettingsEditor({
             </p>
           )}
         </div>
+
+        {/* Zacisk gałęzi — miejsce prądu urządzenia (decyzja O-51 pkt 7). Etykiety
+            (nazwy szyn) i odmowy z backendu; brak wyboru nie jest zastępowany żadnym
+            zaciskiem domyślnym. */}
+        {localDevice.location_element_id !== '' && caseId ? (
+          <fieldset className="md:col-span-2" data-testid="device-terminal">
+            <legend className="mb-1 block text-sm font-medium text-slate-700">
+              {LABELS.devices.terminal}
+            </legend>
+            {bladMiejsca ? (
+              <p className="text-sm text-rose-800" data-testid="device-terminal-error">
+                {bladMiejsca}
+              </p>
+            ) : miejsce === null ? (
+              <p className="text-sm text-slate-600">{LABELS.devices.terminalLoading}</p>
+            ) : miejsce.rodzaj_lokalizacji === 'galaz' && miejsce.zaciski ? (
+              <div className="space-y-1">
+                {(['od', 'do'] as const).map((z) => (
+                  <label key={z} className="flex items-center gap-2 text-sm text-slate-800">
+                    <input
+                      type="radio"
+                      name="protection-device-terminal"
+                      value={z}
+                      checked={localDevice.zacisk === z}
+                      onChange={() => updateDevice({ zacisk: z })}
+                      data-testid={`device-terminal-${z}`}
+                    />
+                    {miejsce.zaciski?.[z].etykieta_pl}
+                  </label>
+                ))}
+                {!localDevice.zacisk && miejsce.odmowa_zacisku ? (
+                  <p className="text-sm text-amber-900" data-testid="device-terminal-missing">
+                    {miejsce.odmowa_zacisku.powod_pl}
+                  </p>
+                ) : null}
+              </div>
+            ) : miejsce.rodzaj_lokalizacji === 'lacznik' ? (
+              miejsce.odmowa_zacisku ? (
+                <p className="text-sm text-amber-900" data-testid="device-terminal-refusal">
+                  {miejsce.odmowa_zacisku.powod_pl}
+                </p>
+              ) : (
+                <p className="text-sm text-slate-800" data-testid="device-terminal-model">
+                  {miejsce.zacisk && miejsce.zaciski
+                    ? miejsce.zaciski[miejsce.zacisk].etykieta_pl
+                    : ''}{' '}
+                  ({miejsce.galaz_ref}) — {LABELS.devices.terminalFromModel}
+                </p>
+              )
+            ) : null}
+          </fieldset>
+        ) : null}
 
         {/* Manufacturer */}
         <div>

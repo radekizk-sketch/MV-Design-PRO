@@ -42,7 +42,17 @@ export function SekcjaZalozen({ zalozenia, domyslnieRozwinieta = true }: SekcjaZ
             <p className="mvd-wyn-zalozenia-brak">{WZORZEC_STRINGS.brakZalozen}</p>
           ) : (
             <div className="mvd-wyn-zalozenia-lista" data-testid="mvd-wyn-zalozenia-lista">
-              {zalozenia.map((z, i) => (
+              {zalozenia.map((z, i) =>
+                z.zdanie ? (
+                  <p
+                    key={`zdanie-${i}`}
+                    className="mvd-wyn-zalozenie mvd-wyn-zalozenie--zdanie"
+                    title={z.uwaga}
+                    data-testid="mvd-wyn-zalozenie"
+                  >
+                    <TekstZWzorami tekst={String(z.wartosc)} />
+                  </p>
+                ) : (
                 <div
                   key={`${z.etykieta}-${i}`}
                   className="mvd-wyn-zalozenie"
@@ -60,7 +70,8 @@ export function SekcjaZalozen({ zalozenia, domyslnieRozwinieta = true }: SekcjaZ
                     {z.jednostka && <span className="mvd-wyn-unit">{z.jednostka}</span>}
                   </span>
                 </div>
-              ))}
+                ),
+              )}
             </div>
           )}
         </>

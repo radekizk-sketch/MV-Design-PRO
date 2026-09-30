@@ -3,7 +3,7 @@
 **Version:** 1.0  
 **Status:** CANONICAL  
 **Phase:** 2.x.6  
-**Reference:** SYSTEM_SPEC.md, ARCHITECTURE.md, PLANS.md, CANONICAL_COMPLIANCE.md  
+**Reference:** SYSTEM_SPEC.md, ARCHITECTURE.md, PLANS.md, `docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md` [archiwum]  
 **Standard:** DIgSILENT benchmark / benchmark parity
 
 ---

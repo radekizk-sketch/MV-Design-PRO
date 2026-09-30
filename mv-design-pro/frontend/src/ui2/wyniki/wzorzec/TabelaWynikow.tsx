@@ -6,14 +6,25 @@
  * bez fizyki i bez heurystyk w warstwie prezentacji). Identyfikatory-kolumny
  * (`tylkoEkspercki`) widoczne wyłącznie w trybie eksperckim (MODEL_INTERAKCJI §2.7).
  *
- * TODO-KARTA (poza zakresem E8.1): WIRTUALIZACJA listy przy > 500 wierszy nie jest
- * realizowana w tej karcie. Dla dużych zbiorów (np. rozpływ sieci przemysłowej
- * z setkami szyn) należy w osobnej karcie U3 dołożyć okno widoczności (windowing)
- * BEZ zmiany kontraktu propsów — sortowanie i mapowanie pozostają czyste.
+ * WIRTUALIZACJA (karta UI2 p.5, DOMKNIĘTA — wcześniej jawnie POZA zakresem E8.1):
+ * powyżej `PROG_WIRTUALIZACJI` wierszy renderuje się WYŁĄCZNIE okno widoczne +
+ * zapas (`@tanstack/react-virtual`, `useVirtualizer`), okalone dwoma wierszami-
+ * przekładkami o wysokości domykającej sumę do rzeczywistej wysokości listy —
+ * `<table>`/`<tbody>` zostaje jedną, prawidłową tabelą (bez `position: absolute`
+ * na `<tr>`, co złamałoby układ tabelaryczny). Poniżej progu — pełny render 1:1,
+ * bez żadnej maszynerii wirtualizatora (kontrakt propsów bez zmian; sortowanie
+ * i mapowanie pozostają czyste). Wysokość okna widoczności (`WYSOKOSC_WIDOKU_PX`)
+ * jest DETERMINISTYCZNA — zamiast realnego pomiaru DOM (zależnego od layoutu
+ * przeglądarki, niedostępnego w jsdom) wzorzec podaje wirtualizatorowi tę samą
+ * stałą, którą sam narzuca kontenerowi przez `maxHeight` (custom
+ * `observeElementRect`) — więc zmierzona i wymuszona wysokość to JEDNO źródło
+ * prawdy, nigdy dwie niezależne liczby.
  */
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type UIEvent } from 'react';
+import { useMemo, useRef, useEffect, useState, type KeyboardEvent } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import type { AdvancementMode } from '../../shell/modeModel';
+import { useGlobalSelectionSync } from '../../../ui/selection';
 import type {
   DefinicjaKolumny,
   StanSortowania,
@@ -52,14 +63,24 @@ export const WYSOKOSC_WIDOKU_PX = 480;
 interface TabelaWynikowProps {
   kolumny: DefinicjaKolumny[];
   wiersze: WierszTabeli[];
-  onOtworzDowod: (ref: string) => void;
+  onOtworzDowod?: (ref: string) => void;
   trybZaawansowania: AdvancementMode;
   /** Klucz kolumny identyfikującej wiersz (domyślnie klucz pierwszej kolumny). */
   kluczWiersza?: string;
-  /** Natywny wybór wiersza (klik/Enter) — delta API, TODO-KARTA E8.2. */
+  /** Natywny wybór wiersza (klik/Enter) — delta API E8.2. */
   onWybierzWiersz?: (klucz: string) => void;
   /** Wartość klucza wybranego wiersza (podświetlenie + aria-selected). */
   wybranyWiersz?: string | null;
+  /** Typ elementu wiersza → synchronizacja z JEDNYM store'em zaznaczenia
+   * (`ui/selection`) na klik/Enter — patrz `wzorzecModel.ts`. */
+  typElementuWiersza?: (klucz: string) => import('../../../ui/types').ElementType | undefined;
+  /** Identyfikator REALNEGO elementu modelu (gdy różny od klucza wiersza tabeli)
+   * dla store'u zaznaczenia — patrz `wzorzecModel.ts` (WYMAGANY przy kluczu
+   * kompozytowym, np. walidacja energetyczna). */
+  elementIdWiersza?: (klucz: string) => string | undefined;
+  /** Nazwa czytelna elementu wiersza dla store'u zaznaczenia — patrz `wzorzecModel.ts`
+   * (WYMAGANA, gdy kolumna-klucz wiersza NIE jest już czytelną nazwą). */
+  nazwaElementuWiersza?: (klucz: string) => string | undefined;
   /** Pętla decyzji (F-E6.1): akcja „Popraw w modelu" na wierszach z ostrzeżeniem. */
   onPoprawWModelu?: (klucz: string) => void;
   /** Predykat naprawialności wiersza (F-E6.2) — brak = każdy wiersz z ostrzeżeniem. */
@@ -129,17 +150,23 @@ export function TabelaWynikow({
   kluczWiersza,
   onWybierzWiersz,
   wybranyWiersz,
+  typElementuWiersza,
+  elementIdWiersza,
+  nazwaElementuWiersza,
   onPoprawWModelu,
   wierszDecyzyjny,
   rodzajWiersza,
   trybDecyzji = 'przy-ostrzezeniu',
 }: TabelaWynikowProps) {
   const [sort, setSort] = useState<StanSortowania | null>(null);
-  const [scrollTop, setScrollTop] = useState(0);
+  const { selectFromResults } = useGlobalSelectionSync();
   // D-2 (deep-link SLD → preselekcja wiersza): mapa klucz wiersza → węzeł DOM,
   // do przewinięcia widoku na wybrany wiersz. Ref (nie state) — nie wywołuje
   // dodatkowych renderów, wyłącznie odczyt w efekcie poniżej.
   const wierszeDom = useRef<Map<string, HTMLTableRowElement>>(new Map());
+  // Kontener przewijalny (karta UI2 p.5) — ten sam węzeł DOM dostaje
+  // `virtualizer.getScrollElement()` I atrybut `ref` na wrapperze niżej.
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const kolumnyWidoczne = useMemo(
     () => kolumny.filter((k) => !k.tylkoEkspercki || trybZaawansowania === 'expert'),
@@ -156,28 +183,47 @@ export function TabelaWynikow({
   // Wirtualizacja WYŁĄCZNIE powyżej progu; poniżej — pełny render 1:1 (bez zmian DOM).
   const wirtualizacja = wierszePosortowane.length > PROG_WIRTUALIZACJI;
 
-  const okno = useMemo(() => {
-    if (!wirtualizacja) {
-      return { pierwszy: 0, ostatni: wierszePosortowane.length, wysGora: 0, wysDol: 0 };
-    }
-    const liczbaWidocznych = Math.ceil(WYSOKOSC_WIDOKU_PX / WYSOKOSC_WIERSZA_PX);
-    const indexStart = Math.floor(scrollTop / WYSOKOSC_WIERSZA_PX);
-    const pierwszy = Math.max(0, indexStart - ZAPAS_WIERSZY);
-    const ostatni = Math.min(
-      wierszePosortowane.length,
-      indexStart + liczbaWidocznych + ZAPAS_WIERSZY,
-    );
-    return {
-      pierwszy,
-      ostatni,
-      wysGora: pierwszy * WYSOKOSC_WIERSZA_PX,
-      wysDol: (wierszePosortowane.length - ostatni) * WYSOKOSC_WIERSZA_PX,
-    };
-  }, [wirtualizacja, scrollTop, wierszePosortowane.length]);
+  const virtualizer = useVirtualizer({
+    count: wierszePosortowane.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => WYSOKOSC_WIERSZA_PX,
+    overscan: ZAPAS_WIERSZY,
+    enabled: wirtualizacja,
+    // Wysokość okna jest NARZUCONA przez nas samych (`maxHeight` na wrapperze
+    // niżej), więc podajemy ją wprost zamiast mierzyć DOM — bez tego jsdom
+    // (bez realnego layoutu) zmierzyłby 0px i okno wyszłoby puste; w przeglądarce
+    // dałoby to dokładnie tę samą liczbę z opóźnieniem jednej klatki ResizeObserver.
+    initialRect: { width: 0, height: WYSOKOSC_WIDOKU_PX },
+    observeElementRect: (_instance, callback) => {
+      callback({ width: 0, height: WYSOKOSC_WIDOKU_PX });
+    },
+  });
 
-  const onScroll = (e: UIEvent<HTMLDivElement>) => {
-    setScrollTop(e.currentTarget.scrollTop);
-  };
+  // Okno widoczne + zapas → kształt {pierwszy, ostatni, wysGora, wysDol} — te
+  // same cztery liczby, którymi renderujTabelę sterowała PRZED tą kartą (klucz
+  // p.5: zamiana ŹRÓDŁA liczb na `@tanstack/react-virtual`, bez zmiany kształtu
+  // DOM przekładek niżej). Bez `useMemo`: `virtualizer` mutuje się w miejscu
+  // (nie zmienia referencji na scroll), więc memoizacja po nim nie wykryłaby
+  // zmiany przewinięcia — a samo liczenie jest tanie (rozmiar okna widoczności).
+  let okno: { pierwszy: number; ostatni: number; wysGora: number; wysDol: number };
+  if (!wirtualizacja) {
+    okno = { pierwszy: 0, ostatni: wierszePosortowane.length, wysGora: 0, wysDol: 0 };
+  } else {
+    const elementy = virtualizer.getVirtualItems();
+    const calkowitaWysokosc = virtualizer.getTotalSize();
+    if (elementy.length === 0) {
+      okno = { pierwszy: 0, ostatni: 0, wysGora: 0, wysDol: calkowitaWysokosc };
+    } else {
+      const pierwszyEl = elementy[0];
+      const ostatniEl = elementy[elementy.length - 1];
+      okno = {
+        pierwszy: pierwszyEl.index,
+        ostatni: ostatniEl.index + 1,
+        wysGora: pierwszyEl.start,
+        wysDol: calkowitaWysokosc - ostatniEl.end,
+      };
+    }
+  }
 
   // D-2: podświetlenie wiersza (`wybrany`, wyżej) niesie sam komponent od
   // dawna (karta E8.2) — dopełnienie to przewinięcie widoku na preselekcjonowany
@@ -214,6 +260,29 @@ export function TabelaWynikow({
     const rowKey = idKom ? String(idKom.wartosc) : `wiersz-${globalnyIndex}`;
     const wybieralny = onWybierzWiersz != null;
     const wybrany = wybieralny && wybranyWiersz != null && wybranyWiersz === rowKey;
+    // Karta UI2 p.6: klik/Enter DODATKOWO synchronizuje JEDEN store
+    // zaznaczenia (SLD ↔ inspektor ↔ drzewo), gdy wiersz mapuje na element
+    // sieci — obok istniejącego lokalnego podświetlenia (`onWybierzWiersz`),
+    // nie zamiast niego (oba mechanizmy współistnieją, bez drugiego store'u
+    // dla samego zaznaczenia elementu — `selectFromResults` pisze do
+    // `useSelectionStore`, jedynego źródła prawdy).
+    const wybierzWiersz = () => {
+      onWybierzWiersz?.(rowKey);
+      const typ = typElementuWiersza?.(rowKey);
+      if (typ) {
+        // Identyfikator elementu: resolver dedykowany ma pierwszeństwo — klucz
+        // wiersza bywa kompozytem tabeli (React key), nie refem elementu (np.
+        // walidacja energetyczna: `check_type::target_id::index`).
+        const elementId = elementIdWiersza?.(rowKey) ?? rowKey;
+        // Nazwa czytelna: resolver dedykowany (gdy kolumna-klucz jest
+        // identyfikatorem technicznym) ma pierwszeństwo; spadek na wartość
+        // kolumny-klucza WYŁĄCZNIE gdy ekran nie dostarczył resolvera (poprawne
+        // tylko tam, gdzie ta kolumna już jest czytelną nazwą — p. `wzorzecModel.ts`).
+        const nazwa =
+          nazwaElementuWiersza?.(rowKey) ?? (idKom ? String(idKom.wartosc) : rowKey);
+        selectFromResults(elementId, typ, nazwa);
+      }
+    };
     return (
       <tr
         key={rowKey}
@@ -231,13 +300,13 @@ export function TabelaWynikow({
         }
         aria-selected={wybieralny ? wybrany : undefined}
         tabIndex={wybieralny ? 0 : undefined}
-        onClick={wybieralny ? () => onWybierzWiersz(rowKey) : undefined}
+        onClick={wybieralny ? wybierzWiersz : undefined}
         onKeyDown={
           wybieralny
             ? (e: KeyboardEvent<HTMLTableRowElement>) => {
                 if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
                   e.preventDefault();
-                  onWybierzWiersz(rowKey);
+                  wybierzWiersz();
                 }
               }
             : undefined
@@ -279,13 +348,13 @@ export function TabelaWynikow({
 
   return (
     <div
+      ref={scrollRef}
       className="mvd-wyn-tabela-wrap"
       style={
         wirtualizacja
           ? { maxHeight: WYSOKOSC_WIDOKU_PX, overflowY: 'auto' }
           : undefined
       }
-      onScroll={wirtualizacja ? onScroll : undefined}
       data-testid="mvd-wyn-tabela-wrap"
     >
       <table className="mvd-wyn-tabela" data-testid="mvd-wyn-tabela">
@@ -372,7 +441,7 @@ function Komorka({
 }: {
   kolumna: DefinicjaKolumny;
   komorka: WartoscKomorki | undefined;
-  onOtworzDowod: (ref: string) => void;
+  onOtworzDowod?: (ref: string) => void;
 }) {
   const wyr = wyrownanieKolumny(kolumna);
   const klasyTd = [
@@ -387,10 +456,15 @@ function Komorka({
   }
 
   const { wartosc, jednostka, dowodRef, ostrzezenie } = komorka;
-  const maDowod = dowodRef !== undefined;
+  // Afordancja dowodu istnieje tylko wtedy, gdy komorka NIESIE odwolanie i
+  // ekran MA dostawce dowodu. Ekran bez dowodow (np. ranking przylaczen —
+  // wiersz rankingu nie jest wynikiem pojedynczego elementu) po prostu nie
+  // podaje `onOtworzDowod`, zamiast przekazywac pusta funkcje: zaslepka
+  // udawalaby zdolnosc, ktorej nie ma (dyrektywa zero fabrykacji).
+  const maDowod = dowodRef !== undefined && onOtworzDowod !== undefined;
 
   const otworz = () => {
-    if (dowodRef !== undefined) onOtworzDowod(dowodRef);
+    if (dowodRef !== undefined) onOtworzDowod?.(dowodRef);
   };
   const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {

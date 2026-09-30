@@ -18,23 +18,29 @@ import { useEffect, useMemo, useState } from 'react';
 import './odbior.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
-import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
+import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { EkranAnalizy, InformacjeAudytowe, useNazwaObiektu, usePoprawWModelu } from '../wzorzec';
 import { przebiegRozplywu } from '../jakosc';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
+  fetchZaciskiGalezi,
   postZgodnoscPowykonawcza,
   type WidokZgodnosci,
   type WielkoscPomiaru,
   type WierszZgodnosci,
+  type ZaciskiGaleziBiegu,
   type ZgodnoscZadanie,
 } from './api';
 import {
   KLUCZ_WIERSZA_ZGODNOSCI,
   KOLUMNY_ZGODNOSCI,
+  OPCJA_ELEMENTU_SPOZA_MODELU,
   WIERSZ_EDYTORA_DOMYSLNY,
   kluczWierszaZgodnosci,
   naWierszeZgodnosci,
   naZalozeniaZgodnosci,
+  opcjeElementowPomiaru,
+  wielkoscNaZacisku,
   zbudujZadanie,
   type TrybWejscia,
   type WierszEdytora,
@@ -132,6 +138,7 @@ function SzczegolWiersza({
   trybZaawansowania: AdvancementMode;
 }) {
   const [sladWidoczny, setSladWidoczny] = useState(false);
+  const nazwaObiektu = useNazwaObiektu();
   if (!wiersz) {
     return (
       <section
@@ -155,7 +162,7 @@ function SzczegolWiersza({
     <section className="mvd-odbior-szczegol" data-testid="mvd-odbior-szczegol">
       <header className="mvd-odbior-szczegol-head">
         <h3 className="mvd-odbior-szczegol-tytul">
-          {wiersz.element_ref} · {wielkoscPL(wiersz.wielkosc)}
+          {nazwaObiektu(wiersz.element_ref)} · {wielkoscPL(wiersz.wielkosc)}
         </h3>
         <TagWerdyktu tekst={wiersz.werdykt} istotnosc={istotnoscWerdyktu(wiersz.werdykt)} />
       </header>
@@ -231,6 +238,7 @@ function WynikZgodnosci({
 }) {
   const [wybrany, setWybrany] = useState<string | null>(null);
   const poprawWModelu = usePoprawWModelu();
+  const nazwaObiektu = useNazwaObiektu();
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
   const wierszeSelektora = useMemo(
@@ -248,7 +256,7 @@ function WynikZgodnosci({
       ? ODBIOR_STRINGS.kreska
       : `${fmtProcent(p.najwieksza_odchylka_pct)} ${ODBIOR_STRINGS.jednProcent}`
         + (p.najwieksza_odchylka_element_ref
-          ? ` (${p.najwieksza_odchylka_element_ref}`
+          ? ` (${nazwaObiektu(p.najwieksza_odchylka_element_ref)}`
             + (p.najwieksza_odchylka_wielkosc ? ` · ${wielkoscPL(p.najwieksza_odchylka_wielkosc)}` : '')
             + ')'
           : '');
@@ -259,7 +267,7 @@ function WynikZgodnosci({
         naglowek={{ analizaPL: ODBIOR_STRINGS.tytul, runId, ...swiezosc }}
         zalozenia={naZalozeniaZgodnosci(dane)}
         kolumny={KOLUMNY_ZGODNOSCI}
-        wiersze={naWierszeZgodnosci(dane.wiersze)}
+        wiersze={naWierszeZgodnosci(dane.wiersze, nazwaObiektu)}
         // K3/C1: 2× klik na wartości z modelu → dowód przebiegu rozpływu
         // (ref = element_ref z kontraktu; odbiorca: zakładka „Dowód obliczeń").
         onOtworzDowod={onOtworzDowod}
@@ -272,7 +280,9 @@ function WynikZgodnosci({
           // Tylko napięcie (U) mapuje jednoznacznie na węzeł (Bus). Pomiar P/Q
           // nie niesie jednoznacznego typu elementu w kontrakcie → nie zgadujemy.
           // K1 / F-E6.3: pomiar U = przekroczenie rodzaju 'napiecie'.
-          if (w && w.wielkosc === 'U') poprawWModelu(w.element_ref, 'Bus', w.element_ref, 'napiecie');
+          if (w && w.wielkosc === 'U') {
+            poprawWModelu(w.element_ref, 'Bus', nazwaObiektu(w.element_ref), 'napiecie');
+          }
         }}
         wierszDecyzyjny={(klucz) => wierszeSelektora.get(klucz)?.wielkosc === 'U'}
       />
@@ -290,6 +300,11 @@ function WynikZgodnosci({
           wartosc={p.brak_wyniku}
           istotnosc="warn"
         />
+        <Chip
+          etykieta={ODBIOR_STRINGS.podsumBrakMiejsca}
+          wartosc={p.brak_miejsca_pomiaru}
+          istotnosc="warn"
+        />
       </div>
       <p className="mvd-odbior-najwieksza" data-testid="mvd-odbior-najwieksza">
         <span className="mvd-odbior-najwieksza-etyk">{ODBIOR_STRINGS.podsumNajwieksza}:</span>{' '}
@@ -298,14 +313,11 @@ function WynikZgodnosci({
 
       <SzczegolWiersza wiersz={wybranyWiersz} trybZaawansowania={trybZaawansowania} />
 
-      {trybZaawansowania === 'expert' && (
-        <dl className="mvd-odbior-eksp" data-testid="mvd-odbior-eksp">
-          <div className="mvd-odbior-eksp-para">
-            <dt>{ODBIOR_STRINGS.ekspHash}</dt>
-            <dd className="mvd-num">{dane.input_hash}</dd>
-          </div>
-        </dl>
-      )}
+      <InformacjeAudytowe
+        trybEkspercki={trybZaawansowania === 'expert'}
+        testid="mvd-odbior-eksp"
+        wiersze={[{ etykieta: ODBIOR_STRINGS.ekspHash, wartosc: dane.input_hash }]}
+      />
     </div>
   );
 }
@@ -314,7 +326,71 @@ function WynikZgodnosci({
 // Formularz wejścia — tryb (CSV / wiersze) + tolerancje
 // ---------------------------------------------------------------------------
 
+/** Etykiety zacisków gałęzi przebiegu (backend) albo stan ich pobierania. */
+type StanZaciskow =
+  | { readonly rodzaj: 'ladowanie' }
+  | { readonly rodzaj: 'blad' }
+  | { readonly rodzaj: 'gotowe'; readonly dane: ZaciskiGaleziBiegu['zaciski'] };
+
+/**
+ * Wybór zacisku pomiaru mocy gałęzi (decyzja O-51) — etykiety z nazwami szyn z backendu,
+ * bez zaznaczenia domyślnego. Element spoza gałęzi przebiegu: jawna informacja.
+ */
+function WyborZacisku({
+  indeks,
+  wiersz,
+  zaciski,
+  onZacisk,
+}: {
+  indeks: number;
+  wiersz: WierszEdytora;
+  zaciski: StanZaciskow;
+  onZacisk: (z: 'od' | 'do') => void;
+}) {
+  if (!wielkoscNaZacisku(wiersz.wielkosc) || wiersz.element_ref.trim() === '') return null;
+  if (zaciski.rodzaj === 'ladowanie') return null;
+  if (zaciski.rodzaj === 'blad') {
+    return (
+      <p className="mvd-odbior-zacisk-info" data-testid={`mvd-odbior-zacisk-blad-${indeks}`}>
+        {ODBIOR_STRINGS.edytorZaciskBlad}
+      </p>
+    );
+  }
+  const galaz = zaciski.dane[wiersz.element_ref.trim()];
+  if (!galaz) {
+    return (
+      <p className="mvd-odbior-zacisk-info" data-testid={`mvd-odbior-zacisk-nie-galaz-${indeks}`}>
+        {ODBIOR_STRINGS.edytorZaciskNieGalaz}
+      </p>
+    );
+  }
+  return (
+    <fieldset className="mvd-odbior-zacisk" data-testid={`mvd-odbior-zacisk-${indeks}`}>
+      <legend>{ODBIOR_STRINGS.edytorZacisk}</legend>
+      {(['od', 'do'] as const).map((z) => (
+        <label key={z} className="mvd-odbior-zacisk-opcja">
+          <input
+            type="radio"
+            name={`mvd-odbior-zacisk-${indeks}`}
+            value={z}
+            checked={wiersz.zacisk === z}
+            onChange={() => onZacisk(z)}
+            data-testid={`mvd-odbior-zacisk-${indeks}-${z}`}
+          />
+          {galaz[z].etykieta_pl}
+        </label>
+      ))}
+      {wiersz.zacisk === null && (
+        <p className="mvd-odbior-zacisk-info" data-testid={`mvd-odbior-zacisk-brak-${indeks}`}>
+          {ODBIOR_STRINGS.edytorZaciskBrak}
+        </p>
+      )}
+    </fieldset>
+  );
+}
+
 interface FormularzProps {
+  zaciski: StanZaciskow;
   tryb: TrybWejscia;
   onTryb: (t: TrybWejscia) => void;
   csv: string;
@@ -328,6 +404,7 @@ interface FormularzProps {
 }
 
 function Formularz({
+  zaciski,
   tryb,
   onTryb,
   csv,
@@ -339,6 +416,8 @@ function Formularz({
   tolMoc,
   onTolMoc,
 }: FormularzProps) {
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const nazwaObiektu = useNazwaObiektu();
   return (
     <div className="mvd-odbior-formularz">
       <section className="mvd-odbior-sekcja">
@@ -387,27 +466,65 @@ function Formularz({
               <div key={i} className="mvd-odbior-wiersz" data-testid="mvd-odbior-wiersz">
                 <div className="mvd-odbior-pole">
                   <label htmlFor={`mvd-odbior-element-${i}`}>{ODBIOR_STRINGS.edytorElement}</label>
-                  <input
+                  <select
                     id={`mvd-odbior-element-${i}`}
-                    type="text"
-                    value={w.element_ref}
-                    onChange={(e) =>
+                    value={w.spozaModelu ? OPCJA_ELEMENTU_SPOZA_MODELU : w.element_ref}
+                    // Zmiana elementu kasuje wskazany zacisk — dotyczył poprzedniej gałęzi.
+                    onChange={(e) => {
+                      const spozaModelu = e.target.value === OPCJA_ELEMENTU_SPOZA_MODELU;
+                      const element_ref = spozaModelu ? '' : e.target.value;
                       onWiersze((poprz) =>
-                        poprz.map((x, j) => (j === i ? { ...x, element_ref: e.target.value } : x)),
-                      )
-                    }
+                        poprz.map((x, j) =>
+                          j === i ? { ...x, element_ref, spozaModelu, zacisk: null } : x,
+                        ),
+                      );
+                    }}
                     data-testid={`mvd-odbior-element-${i}`}
-                  />
+                  >
+                    <option value="">{ODBIOR_STRINGS.edytorElementWybierz}</option>
+                    {opcjeElementowPomiaru(
+                      snapshot,
+                      w.wielkosc,
+                      nazwaObiektu,
+                      w.spozaModelu ? '' : w.element_ref,
+                    ).map((o) => (
+                      <option key={o.ref} value={o.ref}>
+                        {o.nazwa}
+                      </option>
+                    ))}
+                    <option value={OPCJA_ELEMENTU_SPOZA_MODELU}>
+                      {ODBIOR_STRINGS.edytorElementSpozaModelu}
+                    </option>
+                  </select>
+                  {w.spozaModelu && (
+                    <input
+                      type="text"
+                      aria-label={ODBIOR_STRINGS.edytorElementProtokol}
+                      placeholder={ODBIOR_STRINGS.edytorElementProtokol}
+                      value={w.element_ref}
+                      onChange={(e) =>
+                        onWiersze((poprz) =>
+                          poprz.map((x, j) =>
+                            j === i ? { ...x, element_ref: e.target.value, zacisk: null } : x,
+                          ),
+                        )
+                      }
+                      data-testid={`mvd-odbior-element-protokol-${i}`}
+                    />
+                  )}
                 </div>
                 <div className="mvd-odbior-pole">
                   <label htmlFor={`mvd-odbior-wielkosc-${i}`}>{ODBIOR_STRINGS.edytorWielkosc}</label>
                   <select
                     id={`mvd-odbior-wielkosc-${i}`}
                     value={w.wielkosc}
+                    // Napięcie mierzy się w węźle — zmiana wielkości kasuje zacisk.
                     onChange={(e) =>
                       onWiersze((poprz) =>
                         poprz.map((x, j) =>
-                          j === i ? { ...x, wielkosc: e.target.value as WielkoscPomiaru } : x,
+                          j === i
+                            ? { ...x, wielkosc: e.target.value as WielkoscPomiaru, zacisk: null }
+                            : x,
                         ),
                       )
                     }
@@ -441,6 +558,14 @@ function Formularz({
                     {JEDNOSTKA_WIELKOSCI[w.wielkosc]}
                   </span>
                 </div>
+                <WyborZacisku
+                  indeks={i}
+                  wiersz={w}
+                  zaciski={zaciski}
+                  onZacisk={(z) =>
+                    onWiersze((poprz) => poprz.map((x, j) => (j === i ? { ...x, zacisk: z } : x)))
+                  }
+                />
                 <button
                   type="button"
                   className="mvd-odbior-usun"
@@ -535,6 +660,25 @@ export function EkranOdbioru({ trybZaawansowania, onOtworzDowod }: EkranOdbioruP
   const [stan, setStan] = useState<StanZasobu>({ rodzaj: 'idle' });
 
   const runId = przebieg?.id ?? null;
+  const [zaciski, setZaciski] = useState<StanZaciskow>({ rodzaj: 'ladowanie' });
+
+  // Etykiety zacisków gałęzi migawki TEGO przebiegu (decyzja O-51) — do wskazania
+  // miejsca pomiaru mocy gałęzi.
+  useEffect(() => {
+    if (runId === null) return;
+    let anulowane = false;
+    setZaciski({ rodzaj: 'ladowanie' });
+    fetchZaciskiGalezi(runId)
+      .then((dane) => {
+        if (!anulowane) setZaciski({ rodzaj: 'gotowe', dane: dane.zaciski });
+      })
+      .catch(() => {
+        if (!anulowane) setZaciski({ rodzaj: 'blad' });
+      });
+    return () => {
+      anulowane = true;
+    };
+  }, [runId]);
 
   // Zmiana przebiegu unieważnia poprzedni raport (stale-result guard).
   useEffect(() => {
@@ -604,14 +748,17 @@ export function EkranOdbioru({ trybZaawansowania, onOtworzDowod }: EkranOdbioruP
       <header className="mvd-odbior-naglowek">
         <h2 className="mvd-odbior-tytul">{ODBIOR_STRINGS.tytul}</h2>
         <p className="mvd-odbior-opis">{ODBIOR_STRINGS.opisWstep}</p>
-        {trybEkspercki && (
-          <span className="mvd-odbior-run mvd-num" aria-label={ODBIOR_STRINGS.przebiegRunId}>
-            {przebieg.id}
-          </span>
-        )}
       </header>
 
+      {/* Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych". */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-odbior-przebieg-informacje-audytowe"
+        wiersze={[{ etykieta: ODBIOR_STRINGS.przebiegRunId, wartosc: przebieg.id }]}
+      />
+
       <Formularz
+        zaciski={zaciski}
         tryb={tryb}
         onTryb={(t) => {
           setTryb(t);

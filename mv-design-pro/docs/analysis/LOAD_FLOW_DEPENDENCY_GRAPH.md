@@ -1,6 +1,14 @@
 ﻿# LOAD FLOW DEPENDENCY GRAPH — RUN #2A
 
-> **Status**: BINDING
+> **KOREKTA 2026-09-05 (karta CV-3.3-A2):** dokument sprzed kanonu V12.xx, poza
+> hierarchią `CLAUDE.md`. `load_flow_to_resultset_v1.py` (mapper opisany niżej,
+> wpinany w krok 9 `execution_engine/service.py`) skasowany razem z celem wpięcia
+> — `ExecutionEngineService` (E3) skasowany, zero konsumenta produkcyjnego. Żywy
+> producent kontraktu `ResultSet v1` dla rozpływu:
+> `application/result_mapping/canonical_run_to_resultset_v1.py`. Szczegóły →
+> `docs/architecture/CONVERGENCE_ROADMAP.md` CV-3.3-A2.
+>
+> **Status (pierwotny)**: BINDING
 > **Date**: 2026-02-13
 > **Scope**: PR-LF-01 through PR-LF-05 dependency order, gating rules, merge blockers
 > **Phase**: Load Flow closure (RUN #2A)

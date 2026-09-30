@@ -31,19 +31,14 @@ export type {
   CurvePoint,
   FaultMarker,
   ProtectionCurve,
-  CoordinationStatus,
-  CoordinationResult,
   TimeCurrentChartConfig,
   ProtectionCurvesEditorState,
-  CurveAnalysisResponse,
-  FaultAnalysisResult,
 } from './types';
 
 // Constants
 export {
   DEFAULT_CHART_CONFIG,
   PROTECTION_CURVES_LABELS,
-  COORDINATION_STATUS_COLORS,
   CURVE_COLORS,
   IEC_CURVE_OPTIONS,
   IEEE_CURVE_OPTIONS,

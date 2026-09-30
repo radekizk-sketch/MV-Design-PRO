@@ -145,3 +145,46 @@ describe('OtworzProjekt — ekran W-102 (cel → przykłady → istniejące proj
     expect(screen.getByText(OTWORZ_STRINGS.brakProjektow)).toBeInTheDocument();
   });
 });
+
+describe('OtworzProjekt — inne drogi zdobycia projektu (E1: arkusz XLSX, archiwum ZIP)', () => {
+  // Bez otwartego projektu pulpit z kaflami nie istnieje, więc wejścia do importu
+  // z arkusza i odtworzenia z archiwum MUSZĄ być osiągalne z tego ekranu —
+  // inaczej projektant z arkuszem od operatora nie ma gdzie kliknąć.
+  it('renderuje wejścia do importu z arkusza i archiwum, gdy wołający je dostarcza', () => {
+    const arkusz = vi.fn();
+    const archiwum = vi.fn();
+    render(
+      <OtworzProjekt
+        projekty={[]}
+        onOtworzProjekt={() => {}}
+        onNowyProjekt={() => {}}
+        onWczytajPrzyklad={() => {}}
+        onOtworzImportArkusza={arkusz}
+        onOtworzArchiwum={archiwum}
+      />,
+    );
+    expect(screen.getByTestId('mvd-projekty-inne-drogi')).toHaveTextContent(
+      OTWORZ_STRINGS.inneDrogiTytul,
+    );
+    fireEvent.click(screen.getByTestId('mvd-projekty-droga-arkusz'));
+    expect(arkusz).toHaveBeenCalledTimes(1);
+    expect(archiwum).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('mvd-projekty-droga-archiwum'));
+    expect(archiwum).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: OTWORZ_STRINGS.drogaArkuszAkcja })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: OTWORZ_STRINGS.drogaArchiwumAkcja })).toBeInTheDocument();
+  });
+
+  it('bez dostawców wejścia się nie renderują (zero martwych kontrolek)', () => {
+    render(
+      <OtworzProjekt
+        projekty={[]}
+        onOtworzProjekt={() => {}}
+        onNowyProjekt={() => {}}
+        onWczytajPrzyklad={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId('mvd-projekty-inne-drogi')).toBeNull();
+    expect(screen.queryByTestId('mvd-projekty-droga-arkusz')).toBeNull();
+  });
+});

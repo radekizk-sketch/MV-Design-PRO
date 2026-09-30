@@ -2,109 +2,45 @@
  * P20c — Power Flow Comparison Frontend Tests
  *
  * Smoke tests for:
- * - Type exports work correctly
- * - Constants are defined
- * - No mutations in types
- * - Polish labels coverage
+ * - Type exports work correctly (contract shape compiles)
+ *
+ * Historia (karta CV-3.3-B2, D3): `ISSUE_CODE_LABELS`/`SEVERITY_LABELS`/
+ * `SEVERITY_COLORS`/`PowerFlowComparisonTab`/`COMPARISON_TAB_LABELS`/
+ * `CONVERGENCE_LABELS`/`getDeltaColor`/`getVoltageDeltaColor` skasowane z
+ * `../types` jako martwe eksporty — jedyny konsument, `PowerFlowComparisonPage.tsx`,
+ * jest skasowany (ekran ui2 ma własny, żywy mechanizm zakładek/zbieżności/tagów,
+ * patrz `ui2/wyniki/porownanie`). Testy tych stałych/funkcji poszły z nimi —
+ * test istniejący wyłącznie po to, by przetestować martwą stałą, jest sam
+ * martwym testem.
  */
 
-import {
-  ISSUE_CODE_LABELS,
-  SEVERITY_LABELS,
-  SEVERITY_COLORS,
-  COMPARISON_TAB_LABELS,
-  CONVERGENCE_LABELS,
-  getDeltaColor,
-  getVoltageDeltaColor,
-  type PowerFlowIssueCode,
-  type IssueSeverity,
-  type PowerFlowComparisonResult,
-  type PowerFlowRankingIssue,
-  type PowerFlowComparisonTab,
+import { describe, expect, it } from 'vitest';
+
+import type {
+  PowerFlowComparisonResult,
+  PowerFlowRankingIssue,
+  RunProvenance,
 } from '../types';
 
+/**
+ * Proweniencja biegu R1 minimalna do testu kształtu typu (B1, karta CV-3.3-B).
+ * `PowerFlowComparisonResult.provenance_a/b` jest polem WYMAGANYM (dowód CO
+ * było porównywane) — ten fixture istnieje wyłącznie po to, by literał niżej
+ * pozostał zgodny z kontraktem, nie testuje treści proweniencji.
+ */
+function provenanceFixture(runId: string): RunProvenance {
+  return {
+    run_id: runId,
+    analysis_type: 'PF',
+    status: 'FINISHED',
+    snapshot_hash: 'snap-hash',
+    input_hash: 'hash',
+    finished_at: '2024-01-01T00:00:00Z',
+    envelope: null,
+  };
+}
+
 describe('P20c Power Flow Comparison Types', () => {
-  describe('ISSUE_CODE_LABELS', () => {
-    it('should have all issue code labels in Polish', () => {
-      expect(ISSUE_CODE_LABELS.NON_CONVERGENCE_CHANGE).toBe('Zmiana zbieznosci');
-      expect(ISSUE_CODE_LABELS.VOLTAGE_DELTA_HIGH).toBe('Duza zmiana napiecia');
-      expect(ISSUE_CODE_LABELS.ANGLE_SHIFT_HIGH).toBe('Duze przesuniecie kata');
-      expect(ISSUE_CODE_LABELS.LOSSES_INCREASED).toBe('Wzrost strat');
-      expect(ISSUE_CODE_LABELS.LOSSES_DECREASED).toBe('Spadek strat');
-      expect(ISSUE_CODE_LABELS.SLACK_POWER_CHANGED).toBe('Zmiana mocy bilansowej');
-    });
-
-    it('should cover all issue codes', () => {
-      const codes: PowerFlowIssueCode[] = [
-        'NON_CONVERGENCE_CHANGE',
-        'VOLTAGE_DELTA_HIGH',
-        'ANGLE_SHIFT_HIGH',
-        'LOSSES_INCREASED',
-        'LOSSES_DECREASED',
-        'SLACK_POWER_CHANGED',
-      ];
-      codes.forEach((code) => {
-        expect(ISSUE_CODE_LABELS[code]).toBeDefined();
-      });
-    });
-  });
-
-  describe('SEVERITY_LABELS', () => {
-    it('should have Polish labels for all severity levels', () => {
-      expect(SEVERITY_LABELS[1]).toBe('Informacyjny');
-      expect(SEVERITY_LABELS[2]).toBe('Niski');
-      expect(SEVERITY_LABELS[3]).toBe('Umiarkowany');
-      expect(SEVERITY_LABELS[4]).toBe('Wysoki');
-      expect(SEVERITY_LABELS[5]).toBe('Krytyczny');
-    });
-
-    it('should cover all severity levels 1-5', () => {
-      const severities: IssueSeverity[] = [1, 2, 3, 4, 5];
-      severities.forEach((severity) => {
-        expect(SEVERITY_LABELS[severity]).toBeDefined();
-        expect(SEVERITY_COLORS[severity]).toBeDefined();
-      });
-    });
-  });
-
-  describe('SEVERITY_COLORS', () => {
-    it('should have progressively more severe colors', () => {
-      // Level 5 (Critical) should be red
-      expect(SEVERITY_COLORS[5]).toContain('red');
-      // Level 1 (Informational) should be neutral/slate
-      expect(SEVERITY_COLORS[1]).toContain('slate');
-    });
-
-    it('should have Tailwind classes for all severities', () => {
-      expect(SEVERITY_COLORS[1]).toContain('bg-');
-      expect(SEVERITY_COLORS[2]).toContain('bg-');
-      expect(SEVERITY_COLORS[3]).toContain('bg-');
-      expect(SEVERITY_COLORS[4]).toContain('bg-');
-      expect(SEVERITY_COLORS[5]).toContain('bg-');
-    });
-  });
-
-  describe('COMPARISON_TAB_LABELS', () => {
-    it('should have Polish labels for all tabs', () => {
-      expect(COMPARISON_TAB_LABELS.BUSES).toBe('Szyny - roznice');
-      expect(COMPARISON_TAB_LABELS.BRANCHES).toBe('Galezie - roznice');
-      expect(COMPARISON_TAB_LABELS.RANKING).toBe('Ranking problemow');
-      expect(COMPARISON_TAB_LABELS.TRACE).toBe('Slad porownania');
-    });
-
-    it('should have deterministic tab order', () => {
-      const tabs = Object.keys(COMPARISON_TAB_LABELS);
-      expect(tabs).toEqual(['BUSES', 'BRANCHES', 'RANKING', 'TRACE']);
-    });
-  });
-
-  describe('CONVERGENCE_LABELS', () => {
-    it('should have Polish labels for convergence states', () => {
-      expect(CONVERGENCE_LABELS['true']).toBe('Zbiezny');
-      expect(CONVERGENCE_LABELS['false']).toBe('Niezbiezny');
-    });
-  });
-
   describe('Type Structure', () => {
     it('should allow creating PowerFlowComparisonResult', () => {
       const result: PowerFlowComparisonResult = {
@@ -132,6 +68,8 @@ describe('P20c Power Flow Comparison Types', () => {
           minor_issues: 0,
         },
         input_hash: 'hash',
+        provenance_a: provenanceFixture('run-a'),
+        provenance_b: provenanceFixture('run-b'),
         created_at: '2024-01-01T00:00:00Z',
       };
 
@@ -151,81 +89,5 @@ describe('P20c Power Flow Comparison Types', () => {
       expect(issue.issue_code).toBe('VOLTAGE_DELTA_HIGH');
       expect(issue.severity).toBe(4);
     });
-  });
-
-  describe('Helper Functions', () => {
-    describe('getDeltaColor', () => {
-      it('should return rose for positive values', () => {
-        expect(getDeltaColor(0.1)).toContain('rose');
-      });
-
-      it('should return green for negative values', () => {
-        expect(getDeltaColor(-0.1)).toContain('green');
-      });
-
-      it('should return slate for values near zero', () => {
-        expect(getDeltaColor(0)).toContain('slate');
-      });
-
-      it('should respect threshold parameter', () => {
-        expect(getDeltaColor(0.001, 0.01)).toContain('slate');
-        expect(getDeltaColor(0.02, 0.01)).toContain('rose');
-      });
-    });
-
-    describe('getVoltageDeltaColor', () => {
-      it('should return red for large voltage deltas', () => {
-        expect(getVoltageDeltaColor(0.06)).toContain('red');
-        expect(getVoltageDeltaColor(-0.06)).toContain('red');
-      });
-
-      it('should return orange for moderate voltage deltas', () => {
-        expect(getVoltageDeltaColor(0.03)).toContain('orange');
-      });
-
-      it('should return amber for small voltage deltas', () => {
-        expect(getVoltageDeltaColor(0.015)).toContain('amber');
-      });
-
-      it('should return empty for very small deltas', () => {
-        expect(getVoltageDeltaColor(0.005)).toBe('');
-      });
-    });
-  });
-
-  describe('Determinism', () => {
-    it('should have consistent label mappings', () => {
-      // Running multiple times should produce same results
-      for (let i = 0; i < 10; i++) {
-        expect(ISSUE_CODE_LABELS.VOLTAGE_DELTA_HIGH).toBe('Duza zmiana napiecia');
-        expect(SEVERITY_LABELS[5]).toBe('Krytyczny');
-      }
-    });
-
-    it('should have consistent tab order', () => {
-      for (let i = 0; i < 10; i++) {
-        const tabs = Object.keys(COMPARISON_TAB_LABELS);
-        expect(tabs[0]).toBe('BUSES');
-        expect(tabs[1]).toBe('BRANCHES');
-        expect(tabs[2]).toBe('RANKING');
-        expect(tabs[3]).toBe('TRACE');
-      }
-    });
-  });
-});
-
-describe('P20c Read-Only Contract', () => {
-  it('should not allow mutation of ISSUE_CODE_LABELS', () => {
-    // TypeScript would prevent this at compile time
-    // Runtime check that object is defined
-    expect(Object.keys(ISSUE_CODE_LABELS)).toHaveLength(6);
-  });
-
-  it('should not allow mutation of SEVERITY_LABELS', () => {
-    expect(Object.keys(SEVERITY_LABELS)).toHaveLength(5);
-  });
-
-  it('should not allow mutation of COMPARISON_TAB_LABELS', () => {
-    expect(Object.keys(COMPARISON_TAB_LABELS)).toHaveLength(4);
   });
 });

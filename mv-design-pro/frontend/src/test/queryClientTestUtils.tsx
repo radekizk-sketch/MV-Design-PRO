@@ -2,13 +2,21 @@
  * Test utilities for React Query (Phase 8 backend integration).
  *
  * Wraps tested components with QueryClientProvider so hooks like
- * useStationAudit2Config, useGenerateAudit2ProofPack work in vitest.
+ * useStationAudit2Config, useGenerateProjectAudit2ProofPack work in vitest.
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render as rtlRender, type RenderOptions } from '@testing-library/react';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { vi } from 'vitest';
+
+/** Pusty pakiet dowodów projektu (`POST …/audit2-station-config/_validate-all`). */
+const EMPTY_AUDIT2_PROJECT_PACK = {
+  project_id: 'stub',
+  all_pass: true,
+  station_count: 0,
+  per_station: [],
+};
 
 const EMPTY_AUDIT2_SNAPSHOT = {
   bess_operation_modes: [],
@@ -32,6 +40,9 @@ export function stubAudit2Fetch(): void {
         ok: true,
         json: async () => EMPTY_AUDIT2_SNAPSHOT,
       });
+    }
+    if (urlStr.endsWith('/audit2-station-config/_validate-all')) {
+      return Promise.resolve({ ok: true, json: async () => EMPTY_AUDIT2_PROJECT_PACK });
     }
     // GET list /audit2-station-config (no station_id) -> empty array.
     // Pattern: /api/v1/projects/{pid}/audit2-station-config (no trailing /<sid>)
@@ -69,6 +80,9 @@ export function renderWithQueryClient(
     if (urlStr.includes('audit2/snapshot')) {
       return Promise.resolve({ ok: true, json: async () => EMPTY_AUDIT2_SNAPSHOT });
     }
+    if (urlStr.endsWith('/audit2-station-config/_validate-all')) {
+      return Promise.resolve({ ok: true, json: async () => EMPTY_AUDIT2_PROJECT_PACK });
+    }
     const matchListEnd = urlStr.match(/\/audit2-station-config\/?$/);
     const isGet = !init || init.method === undefined || init.method === 'GET';
     if (matchListEnd && isGet) {
@@ -92,5 +106,18 @@ export function renderWithQueryClient(
       mutations: { retry: false },
     },
   });
-  return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>, options);
+  // Dostawca jako `wrapper` RTL, nie ręczne opakowanie `ui`: tylko wtedy
+  // `rerender(<Inny />)` zwrócony przez render trzyma ten sam QueryClient.
+  // Ręczne `<Provider>{ui}</Provider>` gubiło dostawcę przy pierwszym
+  // `rerender` (etap10-acceptance H: PV → BESS → FW na jednym korzeniu) —
+  // komponent czytający snapshot audytu 2 przez React Query padał z
+  // „No QueryClient set”. Zewnętrzny `options.wrapper` jest zachowany
+  // (składany wewnątrz dostawcy).
+  const ZewnetrznyWrapper = options?.wrapper;
+  const Wrapper = ({ children }: { children: ReactNode }): ReactElement => (
+    <QueryClientProvider client={qc}>
+      {ZewnetrznyWrapper ? <ZewnetrznyWrapper>{children}</ZewnetrznyWrapper> : children}
+    </QueryClientProvider>
+  );
+  return rtlRender(ui, { ...options, wrapper: Wrapper });
 }

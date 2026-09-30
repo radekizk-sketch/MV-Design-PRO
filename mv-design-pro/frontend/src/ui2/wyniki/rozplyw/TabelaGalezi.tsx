@@ -22,13 +22,13 @@
 import { useEffect, useState } from 'react';
 import './rozplyw.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
+import { EkranAnalizy, useNazwaObiektu, usePoprawWModelu } from '../wzorzec';
 import { fetchWalidacjaEnergetyczna } from '../jakosc/api';
 import { rodzajPrzekroczeniaWalidacji, typElementuWalidacji } from '../jakosc/jakoscModel';
 import { ROZPLYW_STRINGS } from './strings';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
-  KLUCZ_GALAZ,
+  KLUCZ_ID_GALEZI,
   KOLUMNY_GALEZI,
   naMapeObciazen,
   naSumeStratGalezi,
@@ -91,6 +91,7 @@ export function TabelaGalezi({
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ, wspolnej derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
   const poprawWModelu = usePoprawWModelu();
+  const nazwaObiektu = useNazwaObiektu();
   const obciazenia = useWalidacjaObciazen(runId);
 
   if (!wynik) {
@@ -111,15 +112,25 @@ export function TabelaGalezi({
     <div data-testid="mvd-rozplyw-galezie">
       <EkranAnalizy
         naglowek={{ analizaPL: ROZPLYW_STRINGS.analizaGalezie, runId: runId ?? undefined, ...swiezosc }}
-        zalozenia={naZalozeniaRozplywu(wynik)}
+        zalozenia={naZalozeniaRozplywu(wynik, nazwaObiektu)}
         kolumny={KOLUMNY_GALEZI}
-        wiersze={naWierszeGalezi(wynik.branch_results, obciazenia)}
+        wiersze={naWierszeGalezi(wynik.branch_results, nazwaObiektu, obciazenia)}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
-        kluczWiersza={KLUCZ_GALAZ}
+        kluczWiersza={KLUCZ_ID_GALEZI}
+        nazwaElementuWiersza={(ref) => nazwaObiektu(ref)}
         wybranyWiersz={wybranyWiersz}
         onWybierzWiersz={onWybierzWiersz}
+        // Karta UI2 p.6: typ elementu DLA SYNCHRONIZACJI Z SLD — reużywa
+        // DOKŁADNIE tę samą mapę obciążeń/`typElementuWalidacji` co akcja
+        // „Popraw w modelu" niżej (jedno źródło prawdy o typie gałęzi w tej
+        // tabeli). Gałąź bez pozycji walidacji → `undefined` (zero zgadywania
+        // Line vs Transformer bez realnych danych).
+        typElementuWiersza={(ref) => {
+          const poz = obciazenia?.get(ref);
+          return poz ? typElementuWalidacji(poz.checkType) ?? undefined : undefined;
+        }}
         // K1 / F-E6.3 + R3-A: rodzaj i typ elementu z REALNEGO `check_type`
         // pozycji walidacji (reuse mapowań `jakosc/jakoscModel.ts`):
         // BRANCH_LOADING → LineBranch/'obciazalnosc-galezi',
@@ -131,7 +142,7 @@ export function TabelaGalezi({
           const poz = obciazenia?.get(ref);
           const typ = poz ? typElementuWalidacji(poz.checkType) : null;
           const rodzaj = poz ? rodzajPrzekroczeniaWalidacji(poz.checkType) : null;
-          poprawWModelu(ref, typ ?? 'LineBranch', ref, rodzaj ?? 'obciazalnosc-galezi');
+          poprawWModelu(ref, typ ?? 'LineBranch', nazwaObiektu(ref), rodzaj ?? 'obciazalnosc-galezi');
         }}
         rodzajWiersza={(ref) => {
           const poz = obciazenia?.get(ref);

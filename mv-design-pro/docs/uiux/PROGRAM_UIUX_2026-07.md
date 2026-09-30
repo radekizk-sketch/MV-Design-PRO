@@ -12,6 +12,7 @@
 - `docs/uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md` — rozszerzenia P1–P22 (zatwierdzone zasadą „na max")
 - `docs/uiux/AUDYT_RADY_SPECJALISTOW_2026-07.md` — audyt 13 perspektyw: rozbudowa każdego okna + delta rejestru (+16 okien)
 - `docs/uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md` — karta styku z wątkiem SLD (tokeny motywów)
+- `docs/uiux/KONTRAKT_PREZENTACJI_INZYNIERSKIEJ_V12_7.md` — KANON prezentacji inżynierskiej (V12.7): matematyka wyłącznie KaTeX (nigdy ASCII), metadane produkcyjne poza pierwszym planem, werdykt nie szerszy niż zakres kryterium, wiarygodność ≠ spełnienie, hierarchia jawności obliczeń — obowiązuje przy KAŻDEJ nowej analizie/kryterium na ekranach wyników
 - `docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md` — prompt zarządcy programu (Fable)
 - `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` — program inżynieryjny 10x (perymetr, jakość, współbieżność)
 - `docs/plan/PLAN_SLD_REWORK.md` + `docs/sld/SLD_INDUSTRIAL_SPEC_v1.md` — rework SLD (OSOBNY WĄTEK)
@@ -165,7 +166,7 @@ wykonawca (O=Opus, S=Sonnet, G=Codex GPT, F=Fable-zarządca; szczegóły w promp
 | E2 Pulpit projektu | projekty, archiwum ZIP, diff archiwów, kopie | projects, project-archive | S | U1 |
 | E3 Kreator sieci i stacji | kreator od GPZ: magistrale, stacje, rozdzielnice, DER (PV/BESS/FW), szablony stacji, wzorce referencyjne, podgląd źródła; tryb ekspercki; WIĄŻĄCE: `SPEC_KREATORY_2026-07.md` (zero pustych pól, podpowiedź per pole, gotowe przykłady P-01…P-05) | designer, network-build, reference-patterns, wizard (kontrakty `docs/ui/UX_KREATOR_SIECI_SN_OD_GPZ.md`, `docs/ui/KANON_KREATOR_SN_NN_NA_ZYWO.md`) | O | U2 |
 | E4 Katalog-first | przeglądarka katalogu, karta techniczna, wiązanie typów, kompletność danych | catalog, tech-card, property-grid | S | U2 |
-| E5 Dane i topologia | drzewo topologii, inspektor ENM, menedżer danych, property grid multi-edit | topology, enm-inspector, data-manager, property-grid, schema-completeness | S | U2 |
+| E5 Dane i topologia | drzewo topologii, inspektor ENM, menedżer danych, property grid multi-edit | topology, enm-inspector, property-grid, schema-completeness | S | U2 |
 | E6 Gotowość i walidacja | readiness gate, panel problemów, fix-actions, eligibility | engineering-readiness, issue-panel, analysis-eligibility, mode-gate | S | U2 |
 | E7 Przypadki i przebiegi | study cases, aktywny przypadek, scenariusze zwarć, przebiegi wsadowe, cykl życia wyników | study-cases, active-case-bar, fault-scenarios | O | U3 |
 | E8 Wyniki analiz | przeglądarka wyników, inspektor, LF/profil napięć/rozdział mocy/wrażliwość; NOWE powierzchnie: rozpływ niesymetryczny, estymacja stanu, stan fazowy, sanity bounds, walidacja energetyczna | results, results-inspector, power-flow-results, voltage-profile, power-distribution, sensitivity | O+S | U3 |
@@ -234,7 +235,7 @@ Improwizacja = odrzucenie PR.
 Przed każdym mergem: `npm run type-check`, `npm run lint`, pełny `vitest run --no-file-parallelism`,
 `npm run guard:codenames`, guardy: `forbidden_ui_terms_guard.py`, `ui_terminology_guard.py`,
 `dialog_completeness_guard.py`, `dead_click_guard.py`, `overlay_no_physics_guard.py`,
-`trace_ui_leak_guard.py`, `utf8_mojibake_guard.py`, `docs_guard.py` (przy zmianach doc).
+`utf8_mojibake_guard.py`, `docs_guard.py` (przy zmianach doc).
 Zmiany wizualne: artefakt renderu + samoocena vs makieta zatwierdzona w U0.6.
 Backend (tylko gdy karta jawnie obejmuje API): pełny pytest + guardy backendowe.
 

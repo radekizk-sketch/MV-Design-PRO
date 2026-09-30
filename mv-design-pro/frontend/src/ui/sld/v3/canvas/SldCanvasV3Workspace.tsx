@@ -89,6 +89,7 @@ import {
   useRawResultOverlayStore,
   type RawOverlayPayload,
 } from '../../../sld-overlay/rawResultOverlayStore';
+import { wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 // Karta S-B (ZWARCIA-PRO pkt 7): kanał KIERUNKU rozpływu prądu zwarciowego —
 // zasilany przez ekran zwarć (`ui2/wyniki/zwarcia/pokazNaSchemacie.ts`,
 // `loadFaultFlow` PO `loadOverlay`), czyszczony automatycznie przy podmianie
@@ -136,8 +137,7 @@ import {
   DRAWER_ACTION_LABEL_PL,
   parseGpzApparatusSelectionId,
   resolveBranchStartAvailability,
-  resolveGpzTrunkStartFieldRef,
-  stationRefOfBusOrSource,
+  resolveTrunkStartAvailability,
   useSldActionExecutor,
 } from '../../shared/sldActionExecutor';
 // F12-B (spec §10.1 ARCH-4, plan §F12): sześć ostatnich osiągalnych funkcji
@@ -1931,46 +1931,48 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // K5-A + S9-5: kontekst dostępności akcji menu liczony z TEMATU (jedno
   // źródło prawdy o obiekcie), nie z ponownego dopasowania `elementId`.
   // Dla stacji sprawdzamy realne FK `substation.bus_refs` → szyna nN
-  // (0 < U < 1 kV); bez stacji = `undefined` (brak danych, zero zgadywania).
+  // (pasmo nN, `wPasmieNn`); bez stacji = `undefined` (brak danych, zero zgadywania).
   const contextMenuAvailability = useMemo<SldMenuContext | undefined>(() => {
-    // Karta S9-5: wejścia budowy ciągu (GPZ / szyna sekcji) są dostępne tylko
-    // wtedy, gdy rozdzielnia ma WOLNE POLE LINIOWE — inaczej kreator otwarłby
-    // się bez punktu startu i zapis byłby w nim trwale zablokowany.
+    if (!contextSubject) return undefined;
+    // Karta S9-5 → S95-START (predykaty PARAMI): pozycje kontynuacji ciągu SN są
+    // dostępne tylko wtedy, gdy kontekst operacji ma PUNKT STARTU — liczone TYM
+    // SAMYM rozstrzygnięciem, które wykonawca poda kreatorowi magistrali
+    // (`resolveTrunkStartAvailability` → `buildSldOperationContext`), dla KAŻDEJ
+    // kotwicy tematu (GPZ, szyna, stacja, odcinek, pole, aparat), nie tylko GPZ.
+    const trunkStartAvailable = resolveTrunkStartAvailability(
+      snapshot,
+      logicalViews,
+      contextSubject.menuKind,
+      contextSubject.modelRef,
+    );
     // S9-10 (ta sama klasa, predykaty PARAMI): „Rozpocznij odgałęzienie"
     // bramkowane TYM SAMYM resolverem, którego użyje kreator odgałęzienia
     // (`resolveBranchStartAvailability`) — dla KAŻDEJ kotwicy tematu, która ma
     // tę pozycję w menu (zrodlo/szyna/stacja).
-    if (contextSubject && (contextSubject.kotwica === 'zrodlo' || contextSubject.kotwica === 'szyna')) {
-      const stationRef = stationRefOfBusOrSource(snapshot, contextSubject.modelRef);
-      return {
-        trunkStartFieldAvailable: resolveGpzTrunkStartFieldRef(snapshot, stationRef) !== null,
-        branchStartAvailable: resolveBranchStartAvailability(
-          snapshot,
-          contextSubject.menuKind,
-          contextSubject.modelRef,
-        ),
-      };
+    const branchStartAvailable = resolveBranchStartAvailability(
+      snapshot,
+      contextSubject.menuKind,
+      contextSubject.modelRef,
+    );
+    if (contextSubject.kotwica !== 'stacja') {
+      return { trunkStartAvailable, branchStartAvailable };
     }
-    if (!contextSubject || contextSubject.kotwica !== 'stacja') return undefined;
     const station = (snapshot?.substations ?? []).find(
       (candidate) => candidate.ref_id === contextSubject.modelRef || candidate.id === contextSubject.modelRef,
     );
-    if (!station) return undefined;
+    if (!station) return { trunkStartAvailable, branchStartAvailable };
     const hasNnBus = (station.bus_refs ?? []).some((busRef) => {
       const bus = (snapshot?.buses ?? []).find(
         (candidate) => candidate.ref_id === busRef || candidate.id === busRef,
       );
-      return bus != null && bus.voltage_kv > 0 && bus.voltage_kv < 1;
+      return bus != null && wPasmieNn(bus.voltage_kv);
     });
     return {
       stationHasNnBus: hasNnBus,
-      branchStartAvailable: resolveBranchStartAvailability(
-        snapshot,
-        contextSubject.menuKind,
-        contextSubject.modelRef,
-      ),
+      trunkStartAvailable,
+      branchStartAvailable,
     };
-  }, [contextSubject, snapshot]);
+  }, [contextSubject, logicalViews, snapshot]);
   // F11.4-B / ARCH-3 (spec §10.1: „wykonawca akcji domenowych na v3: BRAMKA
   // REALNA, wdrażana"): `onAction` woła TEN SAM wykonawca co v2
   // (`useSldActionExecutor`, `shared/sldActionExecutor.ts`) — nawigacja
@@ -2003,6 +2005,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // S9-10 (predykaty parami): akcje szuflady czytają TĘ SAMĄ prawdę o
       // punkcie startu odgałęzienia co menu kanwy i kreator.
       branchStartAvailable: resolveBranchStartAvailability(snapshot, menuKind, detailDrawerData.elementId),
+      // S95-START: szuflada czyta TĘ SAMĄ prawdę o punkcie startu ciągu co menu kanwy.
+      trunkStartAvailable: resolveTrunkStartAvailability(
+        snapshot,
+        logicalViews,
+        menuKind,
+        detailDrawerData.elementId,
+      ),
     }).map((action) => ({
       id: action.id,
       labelPl: DRAWER_ACTION_LABEL_PL[action.id] ?? action.labelPl,
@@ -2010,7 +2019,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       disabledReasonPl: action.disabled ? action.disabledReasonPl ?? 'Akcja niedostępna dla bieżącego obiektu.' : undefined,
       onClick: () => handleAction(action.id, menuKind, detailDrawerData.elementId),
     }));
-  }, [activeCaseResultStatus, detailDrawerData, handleAction, snapshot]);
+  }, [activeCaseResultStatus, detailDrawerData, handleAction, logicalViews, snapshot]);
 
   // F8c pkt 4: paleta DER — hook + przycisk RENDER-AGNOSTYCZNE (v2
   // `useDerDragDrop`/`DerPaletteButton`, zero zmian), reużyte wprost.
@@ -2553,7 +2562,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           if (dropResult) {
             // F11.4-B: `buildDerDropDetailDrawerData` — WSPÓŁDZIELONA z v2
             // (dawniej zduplikowana tu, patrz nagłówek modułu współdzielonego).
-            setDetailDrawerData(buildDerDropDetailDrawerData(sldData, id, dropResult.kind));
+            setDetailDrawerData(buildDerDropDetailDrawerData(snapshot, sldData, id, dropResult.kind));
           }
         } else {
           derDrag.cancel();

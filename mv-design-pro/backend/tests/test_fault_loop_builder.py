@@ -106,7 +106,8 @@ class TestBuildFaultLoopInput:
         result = build_fault_loop_input(_make_basic_request())
         assert "Przewód fazowy" in result.phase_conductor.label
         assert "PE/PEN" in result.return_conductor.label
-        assert "SN/NN" in result.transformer_impedance.label
+        # Karta ETYKIETY-TR: domyślna etykieta niesie rolę, nie zgadniętą klasę napięciową.
+        assert result.transformer_impedance.label == "Transformator"
 
     def test_custom_labels_used(self) -> None:
         req = FaultLoopBuildRequest(

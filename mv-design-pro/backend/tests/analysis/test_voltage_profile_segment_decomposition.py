@@ -14,7 +14,6 @@ import math
 
 import pytest
 from analysis.voltage_profile.segment_decomposition import (
-    PASMO_NN_MAX_KV,
     VoltageProfileSegmentBuilder,
     VoltageProfileSegmentPathError,
     find_worst_nn_bus,
@@ -315,15 +314,29 @@ class TestSegmentDecompositionSwitchOnPath:
             VoltageProfileSegmentBuilder(graph).build_path(result_v1, "ISOLATED")
 
 
-def test_pasmo_nn_threshold_matches_enm_validator_band() -> None:
-    """`PASMO_NN_MAX_KV` lokalny musi zgadzać się z granicą pasma nN, którą
-    faktycznie stosuje `enm.validator._voltage_band` (jedna prawda progu
-    pasma — patrz uzasadnienie braku importu stałej w
-    `segment_decomposition.py`, gdzie próg jest prywatny w `enm.validator`)."""
-    from enm.validator import _voltage_band
+@pytest.mark.parametrize(
+    ("napiecie_kv", "w_pasmie_nn"),
+    [(0.4, True), (0.999, True), (1.0, True), (1.001, False), (15.0, False), (0.0, False)],
+)
+def test_najgorsza_szyna_nn_z_jednego_zrodla_pasma(napiecie_kv: float, w_pasmie_nn: bool) -> None:
+    """Karta PASMO-1KV: dekompozycja profilu napięć kwalifikuje szynę nN predykatem
+    `w_pasmie_nn` (jedno źródło granic, nN ⇔ 0 < U ≤ 1 kV) — szyna 1,0 kV jest nN,
+    1,001 kV już nie. Dawniej moduł trzymał własną kopię granicy (`< 1.0`)."""
+    from types import SimpleNamespace
 
-    assert _voltage_band(PASMO_NN_MAX_KV - 0.001) == "nN"
-    assert _voltage_band(PASMO_NN_MAX_KV) == "SN"
+    graph = NetworkGraph()
+    graph.add_node(_slack("A", 15.0))
+    graph.add_node(_pq("B", napiecie_kv))
+    wynik = SimpleNamespace(
+        bus_results=[
+            SimpleNamespace(bus_id="A", v_pu=1.0),
+            SimpleNamespace(bus_id="B", v_pu=0.97),
+        ]
+    )
+    najgorsza = find_worst_nn_bus(graph, wynik)  # type: ignore[arg-type]
+    assert (najgorsza == ("B", 0.97)) is w_pasmie_nn
+    if not w_pasmie_nn:
+        assert najgorsza is None
 
 
 def test_find_worst_nn_bus_returns_none_without_nn_buses() -> None:

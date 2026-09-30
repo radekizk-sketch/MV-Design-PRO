@@ -95,6 +95,7 @@
  */
 
 import type { BayPrimaryDeviceKind, EnergyNetworkModel, LineRunV1 } from '../../../../types/enm';
+import { powyzejPasmaNn } from '../../../../ui2/model/pasmaNapieciowe';
 // T1 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.3/§0.4): graf elektryczny
 // jest ŹRÓDŁEM PRAWDY dla klasyfikacji domeny krawędzi sceny (§0.2) i dla
 // statusu SLD_VALID/SLD_INVALID sceny (§0.3) — budowany RAZ na wejściu tej
@@ -2899,7 +2900,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   for (const edge of electricalGraph.edges) {
     const fromNode = electricalGraph.nodes.get(edge.fromBusRef);
     if (!fromNode) continue; // nierozwiązane — inwariant 4 już to zgłasza, zero domysłu domeny tutaj.
-    edgeDomainByRef.set(edge.ref, fromNode.voltageKv <= 1 ? 'lv' : 'sn');
+    edgeDomainByRef.set(edge.ref, powyzejPasmaNn(fromNode.voltageKv) ? 'sn' : 'lv');
   }
   for (const violation of electricalGraphValidation.violations) {
     stopNotes.push(`Graf elektryczny (${violation.code}): ${violation.messagePl}`);

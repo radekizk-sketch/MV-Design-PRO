@@ -19,6 +19,7 @@ import {
 } from '../../canon/sldCanonKit';
 import type { FeederRoute, NetworkLayout, StationPlacement } from './networkLayout';
 import type { SldNetworkModel } from './networkModel';
+import { powyzejPasmaNn } from '../../../../../../ui2/model/pasmaNapieciowe';
 
 const DER_BADGE: Record<string, { t: string; c: string }> = {
   pv_inverter: { t: 'PV', c: '#FFD23F' },
@@ -87,7 +88,7 @@ export function NetworkAutoRenderer({ layout, model }: { layout: NetworkLayout; 
       {layout.bands.map((b) => (
         <g key={`band-${b.kv}`}>
           <line x1={layout.bbox.x} y1={b.y} x2={layout.bbox.x + layout.bbox.width} y2={b.y} stroke="#13435A" strokeWidth={1} strokeDasharray="2 6" />
-          {lbl(layout.bbox.x + 6, b.y - 6, `${fmt(b.kv, b.kv >= 1 ? 0 : 2)} kV`, TXT2, 10, 700)}
+          {lbl(layout.bbox.x + 6, b.y - 6, `${fmt(b.kv, powyzejPasmaNn(b.kv) ? 0 : 2)} kV`, TXT2, 10, 700)}
         </g>
       ))}
 

@@ -2,13 +2,10 @@
  * P20b — Power Flow Results Inspector Module
  *
  * Exports:
- * - PowerFlowResultsInspectorPage: Main results inspector page
  * - Store: usePowerFlowResultsStore and derived hooks
  * - Types: PowerFlowResultV1, PowerFlowTrace, etc.
  */
 
-export { PowerFlowResultsInspectorPage } from './PowerFlowResultsInspectorPage';
-export { PowerFlowSldOverlay } from './PowerFlowSldOverlay';
 export {
   usePowerFlowResultsStore,
   useHasSelectedRun,

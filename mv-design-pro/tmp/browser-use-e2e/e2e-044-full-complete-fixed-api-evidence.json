@@ -261,14 +261,14 @@
     "seg/b79fc95ce4f69727d63ed3280bc22c7e/segment"
   ],
   "protection_config": {
-    "template_ref": "template_rex500_oc",
-    "template_fingerprint": "e2e-044-template-rex500",
+    "template_ref": "template_ref_oc_ef_500",
+    "template_fingerprint": "e2e-044-template-ref-oc-ef-500",
     "library_manifest_ref": {
       "library_id": "default_mv_catalog",
       "revision": "2024.1"
     },
     "overrides": {
-      "device_type_ref": "ACME_REX500_v1",
+      "device_type_ref": "REF-OC-EF-500",
       "curve_ref": "IEC_SI",
       "ct_ratio": "400/5",
       "vt_ratio": "15000/100",

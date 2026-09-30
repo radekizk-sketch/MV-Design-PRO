@@ -65,3 +65,12 @@ jobs:
       - name: Run KD-11 identity labels E2E (real backend)
         working-directory: mv-design-pro/frontend
         run: node ./scripts/playwright-run-real.mjs e2e/kd11-tozsamosc-etykiet.spec.ts
+
+      # W5-D: model fazowy i rozplyw niesymetryczny jako bieg produktu (klasa D).
+      # Spec buduje na zywym backendzie siec z odbiorem JEDNOFAZOWYM nN (pole
+      # `Load.phases`), uruchamia bieg PF_UNBALANCED natywnym klikiem z przestrzeni
+      # "Obliczenia", sprawdza wynik per faza + zalozenia biegu na koncowce API
+      # i czyta go na ekranie "Stan fazowy SN" jako drugie zrodlo wyniku.
+      - name: Run W5-D unbalanced power flow E2E (real backend)
+        working-directory: mv-design-pro/frontend
+        run: node ./scripts/playwright-run-real.mjs e2e/rozplyw-niesymetryczny.spec.ts

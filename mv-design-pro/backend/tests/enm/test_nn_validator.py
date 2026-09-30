@@ -19,6 +19,7 @@ from enm.models import (
     Source,
     Substation,
     SwitchBranch,
+    Transformer,
 )
 from enm.validator import ENMValidator
 
@@ -302,16 +303,37 @@ def test_e062_nie_strzela_gdy_rozdzielone_transformatorem() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _transformator_nn(uklad: str | None) -> Transformer:
+    """Transformator SN/nN — W5-A: nośnik układu sieci nN (`lv_earthing_system`)."""
+    return Transformer(
+        ref_id="tr1",
+        name="tr1",
+        hv_bus_ref="bsn",
+        lv_bus_ref="b0",
+        sn_mva=0.4,
+        uhv_kv=15.0,
+        ulv_kv=0.4,
+        uk_percent=4.0,
+        pk_kw=4.6,
+        vector_group="Dyn11",
+        lv_earthing_system=uklad,
+    )
+
+
 def test_e063_nie_strzela_gdy_zadeklarowany_uklad_uziemienia() -> None:
     model = _model(
-        buses=[Bus(ref_id="b0", name="b0", voltage_kv=0.4)],
+        buses=[
+            Bus(ref_id="bsn", name="bsn", voltage_kv=15.0),
+            Bus(ref_id="b0", name="b0", voltage_kv=0.4),
+        ],
+        transformers=[_transformator_nn("TN-S")],
         substations=[
             Substation(
                 ref_id="st1",
                 name="st1",
-                station_type="rozdzielnica_nn",
-                bus_refs=["b0"],
-                meta={"nn_earthing_system": "TN-S"},
+                station_type="mv_lv",
+                bus_refs=["bsn", "b0"],
+                transformer_refs=["tr1"],
             )
         ],
         loads=[Load(ref_id="l1", name="l1", bus_ref="b0", p_mw=0.01, q_mvar=0.0)],
@@ -320,6 +342,36 @@ def test_e063_nie_strzela_gdy_zadeklarowany_uklad_uziemienia() -> None:
 
 
 def test_e063_strzela_gdy_brak_ukladu_uziemienia() -> None:
+    """W5-A: nośnikiem układu jest transformator — E063 wskazuje transformator I stację,
+    a akcja naprawcza otwiera transformator (pole `lv_earthing_system`)."""
+    model = _model(
+        buses=[
+            Bus(ref_id="bsn", name="bsn", voltage_kv=15.0),
+            Bus(ref_id="b0", name="b0", voltage_kv=0.4),
+        ],
+        transformers=[_transformator_nn(None)],
+        substations=[
+            Substation(
+                ref_id="st1",
+                name="st1",
+                station_type="mv_lv",
+                bus_refs=["bsn", "b0"],
+                transformer_refs=["tr1"],
+            )
+        ],
+        loads=[Load(ref_id="l1", name="l1", bus_ref="b0", p_mw=0.01, q_mvar=0.0)],
+    )
+    issues = ENMValidator().validate(model).issues
+    e063 = [i for i in issues if i.code == "E063"]
+    assert len(e063) == 1
+    assert e063[0].element_refs == ["tr1", "st1"]
+    assert e063[0].fix_action is not None
+    assert e063[0].fix_action.modal_type == "TransformerModal"
+    assert e063[0].fix_action.payload_hint == {"required": "lv_earthing_system"}
+
+
+def test_e063_milczy_gdy_stacja_bez_transformatora_nn() -> None:
+    """Bez transformatora nN nie ma nośnika układu — brak zasilania nazywa E060, nie E063."""
     model = _model(
         buses=[Bus(ref_id="b0", name="b0", voltage_kv=0.4)],
         substations=[
@@ -327,10 +379,7 @@ def test_e063_strzela_gdy_brak_ukladu_uziemienia() -> None:
         ],
         loads=[Load(ref_id="l1", name="l1", bus_ref="b0", p_mw=0.01, q_mvar=0.0)],
     )
-    issues = ENMValidator().validate(model).issues
-    e063 = [i for i in issues if i.code == "E063"]
-    assert len(e063) == 1
-    assert e063[0].element_refs == ["st1"]
+    assert "E063" not in _codes(model)
 
 
 def test_e063_nie_strzela_gdy_stacja_bez_odbiorow_nn() -> None:

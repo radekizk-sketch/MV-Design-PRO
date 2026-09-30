@@ -18,7 +18,7 @@
 import type { PunktPorownaniaZwarciowego } from './zwarciaPorownanieApi';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { ANALYSIS_TYPE_LABELS } from '../../../ui/study-cases/types';
-import type { DefinicjaKolumny, WartoscKomorki, WierszTabeli } from '../wzorzec';
+import type { DefinicjaKolumny, NazwaObiektu, WartoscKomorki, WierszTabeli } from '../wzorzec';
 import { refDowoduPorownania } from './dowodPorownania';
 import {
   ZWARCIA_POROWNANIE_STRINGS as SZ,
@@ -107,19 +107,16 @@ export function przebiegiZwarciowe(runs: ExecutionRun[]): ExecutionRun[] {
 /**
  * Polska etykieta przebiegu zwarciowego dla selektora A/B: rodzaj zwarcia + data
  * (+ nazwa przypadku, gdy znana ze store'u). Brak nazwy → etykieta bez niej
- * (zero zgadywania). Identyfikatory (id przypadku/przebiegu) WYŁĄCZNIE w trybie
- * eksperckim (MODEL_INTERAKCJI §2.7).
+ * (zero zgadywania). Identyfikatory przypadku i przebiegu nie trafiają do tekstu
+ * opcji w żadnym trybie (karta #145) — przebieg jest wyłącznie wartością opcji.
  */
 export function etykietaPrzebieguZwarciowego(
   run: ExecutionRun,
-  trybEkspercki: boolean,
   nazwaPrzypadku?: string | null,
 ): string {
   const czlony = [ANALYSIS_TYPE_LABELS[run.analysis_type], fmtData(dataPrzebiegu(run))];
   if (nazwaPrzypadku) czlony.push(nazwaPrzypadku);
-  const podstawa = czlony.join(' · ');
-  if (!trybEkspercki) return podstawa;
-  return `${podstawa} · ${run.study_case_id} · ${run.id}`;
+  return czlony.join(' · ');
 }
 
 // ---------------------------------------------------------------------------
@@ -183,6 +180,7 @@ function trio(
  */
 export function naWierszePunktowZwarciowych(
   punkty: readonly PunktPorownaniaZwarciowego[],
+  nazwa: NazwaObiektu,
 ): WierszTabeli[] {
   return punkty.map((p) => {
     const sufiks = p.obecny_w === 'A' ? SZ.tylkoA : p.obecny_w === 'B' ? SZ.tylkoB : '';
@@ -283,7 +281,9 @@ export function naWierszePunktowZwarciowych(
     );
 
     return {
-      punkt: { wartosc: `${p.target_name}${sufiks}` },
+      // Karta #145: nazwa punktu z mostu nazw wyników (migawka modelu), nazwa z wyniku
+      // tylko dla obiektu spoza migawki — nigdy identyfikator.
+      punkt: { wartosc: `${nazwa(p.target_id, p.target_name)}${sufiks}` },
       ikssA: ikss.a,
       ikssB: ikss.b,
       ikssD: ikss.d,

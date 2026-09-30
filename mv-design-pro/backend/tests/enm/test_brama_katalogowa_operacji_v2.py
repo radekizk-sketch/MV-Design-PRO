@@ -51,6 +51,7 @@ from enm.domain_operations_v2 import (
     V2_CATALOG_REF_PAYLOAD_KEYS,
 )
 from enm.dziennik_zmian import wyczysc_dziennik
+from enm.katalog_projektu import kontekst_katalogu
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
@@ -65,7 +66,7 @@ REF_APARAT_NN = "cb_nn_630a"
 REF_KABEL_NN = "kab_nn_4x120_al"
 REF_CT = "ct_400_5_5p20_15va_abb"
 REF_VT = "vt_15kv_100v_3p_abb"
-REF_PRZEKAZNIK = "ACME_REX100_v1"
+REF_PRZEKAZNIK = "REF-OC-100"
 REF_ODBIOR = "load_mieszk_15kw"
 
 #: Magazyn energii nN 2 MW / 0,4 kV: katalog deklaruje 2000 kW rozładowania
@@ -136,7 +137,13 @@ def _siec_ze_stacja(nn_block: dict[str, Any] | None = None) -> dict[str, Any]:
     snapshot = _wykonaj(
         _pusty_enm(),
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": REF_ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     snapshot = _wykonaj(
         snapshot,
@@ -327,6 +334,9 @@ def _payload_nn_load(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "feeder_ref": _pole_nn_ref(snapshot),
         "active_power_kw": 30.0,
+        # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
+        # (FAB-D1 D5) — ten test sprawdza bramę katalogową, nie moc bierną.
+        "cos_phi": 0.9,
         "catalog_ref": REF_ODBIOR,
     }
 
@@ -435,6 +445,31 @@ def _payload_kompensator(snapshot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _payload_odbior_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """CV-4.3 K1: `add_load_sn` — odbiór wprost na szynie SN (bez feeder_ref)."""
+    return {
+        "bus_ref": _szyna_sn_ref(snapshot),
+        "p_mw": 0.03,
+        "cos_phi": 0.9,
+        "catalog_ref": REF_ODBIOR,
+    }
+
+
+def _payload_generator_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """CV-4.3 K1: `add_generator_sn` — generator synchroniczny wprost na SN.
+
+    `bench_ozepvbess_pv2` (GENERATOR_SN, 15 kV) — jedyna pozycja katalogu
+    benchmarku CV-4.3-A1 na napięciu zgodnym z fikstura stacji tego testu.
+    """
+    return {
+        "bus_ref": _szyna_sn_ref(snapshot),
+        "p_mw": 0.5,
+        "catalog_ref": "bench_ozepvbess_pv2",
+        "control_mode": "REGULACJA_NAPIECIA",
+        "u_set_pu": 1.0,
+    }
+
+
 def _payload_ogranicznik(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "station_ref": _stacja_ref(snapshot),
@@ -536,6 +571,38 @@ def _zepsuj_klucz(payload: dict[str, Any], klucz: str) -> None:
     payload[klucz] = str(payload[klucz]) + LITEROWKA
 
 
+#: Karta AB-H0 §0.7: karta widmowa PROJEKTU typu magazynu z `_payload_konwerter`
+#: (dane testowe kontraktu z `tests/dziedziny/fabryki.py`).
+KARTA_PROJEKTU = "karta-widmowa-projektu-1"
+
+
+def _rekord_karty_projektu() -> dict[str, Any]:
+    from tests.dziedziny import fabryki as f
+
+    return f.karta(
+        id=KARTA_PROJEKTU,
+        urzadzenie_ref=REF_BESS,
+        verification_status="NIEWERYFIKOWANY",
+        catalog_status="PROJEKTOWY_V1",
+    ).model_dump(mode="json")
+
+
+def _payload_karty_projektu(_snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {"karta": _rekord_karty_projektu()}
+
+
+def _payload_wiazania_kart(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {"generator_ref": _generator(snapshot)["ref_id"], "karty_widmowe_ref": [KARTA_PROJEKTU]}
+
+
+def _zepsuj_karte(payload: dict[str, Any]) -> None:
+    payload["karta"]["urzadzenie_ref"] = str(payload["karta"]["urzadzenie_ref"]) + LITEROWKA
+
+
+def _zepsuj_liste_kart(payload: dict[str, Any]) -> None:
+    payload["karty_widmowe_ref"] = [str(payload["karty_widmowe_ref"][0]) + LITEROWKA]
+
+
 INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
     PrzypadekIniekcji(
         "catalog_ref", "add_ct", _payload_ct, lambda p: _zepsuj_klucz(p, "catalog_ref")
@@ -629,6 +696,23 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         lambda p: p["catalog_binding"].update({"catalog_item_id": REF_KOMPENSATOR + LITEROWKA}),
         oczekiwany_kod="shunt.catalog_not_found",
     ),
+    # CV-4.3 K1: `add_load_sn` (odbiór wprost na szynie, bez feeder_ref) — ta
+    # sama brama katalogowa co `add_nn_load` (opcjonalny, ale wskazana pozycja
+    # musi istnieć — `_pozycja_katalogu`, kod jak przy `add_nn_load` powyżej).
+    PrzypadekIniekcji(
+        "catalog_binding",
+        "add_load_sn",
+        _payload_odbior_sn,
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    # CV-4.3 K1: `add_generator_sn` (generator synchroniczny wprost na SN) —
+    # katalog OBOWIĄZKOWY, weryfikowany przez `_pozycja_katalogu`.
+    PrzypadekIniekcji(
+        "catalog_binding",
+        "add_generator_sn",
+        _payload_generator_sn,
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
     PrzypadekIniekcji(
         "catalog_binding",
         "add_surge_arrester_sn",
@@ -685,6 +769,27 @@ INIEKCJE_WIAZAN_DER: tuple[PrzypadekIniekcji, ...] = tuple(
         oczekiwany_kod="der_bindings.catalog_ref_unknown",
     )
     for klucz in ("protection_catalog_ref", "ct_catalog_ref", "vt_catalog_ref")
+) + (
+    # Karta AB-H0 §0.7.6: karta widmowa istnieje w katalogu PROJEKTU modelu (dołożona
+    # operacją `dodaj_karte_widmowa_projektu` w `_przygotowana_siec`).
+    PrzypadekIniekcji(
+        "karty_widmowe_ref",
+        "set_der_catalog_bindings",
+        _payload_wiazania_kart,
+        _zepsuj_liste_kart,
+        oczekiwany_kod="der_bindings.catalog_ref_unknown",
+    ),
+)
+
+#: Karta AB-H0 §0.7.3: typ przekształtnika wskazany przez kartę widmową projektu.
+INIEKCJE_KART_WIDMOWYCH: tuple[PrzypadekIniekcji, ...] = (
+    PrzypadekIniekcji(
+        "karta.urzadzenie_ref",
+        "dodaj_karte_widmowa_projektu",
+        _payload_karty_projektu,
+        _zepsuj_karte,
+        oczekiwany_kod="karta_widmowa.urzadzenie_nieznane",
+    ),
 )
 
 #: Pozycje inwentarza pokryte NIE iniekcją referencji, lecz osobnym dowodem —
@@ -703,7 +808,37 @@ POKRYCIE_POZA_INIEKCJAMI: dict[str, str] = {
         "pozycja NIEBRAMKOWANA — brak kategorii katalogu dla UPS; "
         "uzasadnienie pilnowane testem `pozycje_niebramkowane_maja_uzasadnienie`"
     ),
+    "add_converter_source|battery_catalog_ref": (
+        "karta FAB-K (R2): bramkowana w WARSTWIE DOMENOWEJ "
+        "(`_materializuj_bateria_bess`), CELOWO NIE w bramie API — kod "
+        "`converter.battery_catalog_ref_unknown`/`_not_applicable` jest bogatszy "
+        "od generycznego `catalog.item_not_found` (rozróżnia nieznaną pozycję od "
+        "pola użytego dla PV/FW) i to JEGO pilnuje "
+        "`test_generators_api.py::TestBateriaBess` (materializacja tabliczki, "
+        "nieznany ref → 422, PV → 422) — droga produkcyjna "
+        "`POST …/generators` i tak kończy każdy błąd domeny kodem 422 "
+        "(`api/generators.py`), więc nie ma tu luki PARYTETU KONTRAKTU HTTP, "
+        "którą ta brama naprawia; iniekcja przez `/enm/domain-ops` dublowałaby "
+        "dowód, zastępując bogatszy kod ogólnym."
+    ),
 }
+
+
+def _nowy_przypadek(klient: TestClient) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2), więc testy bramy katalogowej potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego napisu.
+    """
+    project_resp = klient.post("/api/projects", json={"name": "Brama katalogowa — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = klient.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
 
 
 def _operacja_api(
@@ -729,7 +864,13 @@ def _zasiej_siec_przez_api(klient: TestClient, case_id: str) -> dict[str, Any]:
         klient,
         case_id,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": REF_ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     snapshot = _operacja_api(
         klient,
@@ -747,11 +888,17 @@ def _zasiej_siec_przez_api(klient: TestClient, case_id: str) -> dict[str, Any]:
 
 
 @pytest.fixture()
-def klient(tmp_path, monkeypatch) -> TestClient:
+def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:
+    from api.dependencies import get_uow_factory
+
     monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path))
     reset_enm_store()
     wyczysc_dziennik()
+    app.dependency_overrides[get_uow_factory] = lambda: uow_factory
+    app.state.uow_factory = uow_factory
     yield TestClient(app)
+    app.dependency_overrides.pop(get_uow_factory, None)
+    app.state.uow_factory = None
     reset_enm_store()
     wyczysc_dziennik()
 
@@ -763,7 +910,10 @@ def klient(tmp_path, monkeypatch) -> TestClient:
 
 def test_kazda_pozycja_inwentarza_ma_pokrycie() -> None:
     """Asercja NA LIŚCIE: żadna pozycja inwentarza nie zostaje bez dowodu."""
-    z_iniekcji = {f"{p.operacja}|{p.sciezka}" for p in (*INIEKCJE, *INIEKCJE_WIAZAN_DER)}
+    z_iniekcji = {
+        f"{p.operacja}|{p.sciezka}"
+        for p in (*INIEKCJE, *INIEKCJE_WIAZAN_DER, *INIEKCJE_KART_WIDMOWYCH)
+    }
     z_inwentarza = {f"{p.operacja}|{p.sciezka}" for p in V2_CATALOG_GATE_INVENTORY}
     pokryte = z_iniekcji | set(POKRYCIE_POZA_INIEKCJAMI)
     assert z_inwentarza <= pokryte, (
@@ -792,7 +942,15 @@ def test_inwentarz_i_zbiory_kluczy_pochodza_z_jednego_zrodla() -> None:
     # Każda pozycja inwentarza jest albo referencją, albo wiązaniem, albo jawnie
     # nazwaną tabliczką/specyfikacją (te dwie ostatnie nie są kanałem wskazania).
     pozostale = klucze_inwentarza - referencje - wiazania
-    assert pozostale == {"materialized_params", "genset_spec", "ups_spec"}, sorted(pozostale)
+    # Karta AB-H0: `karty_widmowe_ref` (lista id kart widmowych) i `urzadzenie_ref` (typ
+    # przekształtnika karty projektu) — referencje o nazwach spoza wzorca `*catalog_ref`.
+    assert pozostale == {
+        "materialized_params",
+        "genset_spec",
+        "ups_spec",
+        "karty_widmowe_ref",
+        "urzadzenie_ref",
+    }, sorted(pozostale)
 
 
 def test_operacje_v2_nie_czytaja_referencji_spoza_inwentarza() -> None:
@@ -903,7 +1061,8 @@ def test_pozycje_niebramkowane_maja_uzasadnienie_merytoryczne() -> None:
 
 
 PRZYPADKI = [
-    pytest.param(p, id=f"{p.operacja}|{p.sciezka}") for p in (*INIEKCJE, *INIEKCJE_WIAZAN_DER)
+    pytest.param(p, id=f"{p.operacja}|{p.sciezka}")
+    for p in (*INIEKCJE, *INIEKCJE_WIAZAN_DER, *INIEKCJE_KART_WIDMOWYCH)
 ]
 
 
@@ -920,6 +1079,10 @@ def _przygotowana_siec(przypadek: PrzypadekIniekcji) -> dict[str, Any]:
         snapshot = _wykonaj(snapshot, "add_ct", _payload_ct(snapshot))
     if przypadek.operacja == "set_der_catalog_bindings":
         snapshot = _wykonaj(snapshot, "add_converter_source", _payload_konwerter(snapshot))
+    if przypadek.sciezka == "karty_widmowe_ref":
+        snapshot = _wykonaj(
+            snapshot, "dodaj_karte_widmowa_projektu", _payload_karty_projektu(snapshot)
+        )
     if przypadek.operacja == "add_nn_switch_device":
         snapshot = _wykonaj(
             snapshot,
@@ -971,13 +1134,17 @@ def test_literowka_odrzucona_w_torze_payloadu(
     `der_bindings.catalog_ref_unknown`) zostaje kodem WARSTWY DOMENOWEJ i jest
     pilnowany osobnym testem wyżej.
     """
-    case_id = f"v2-brama-{abs(hash((przypadek.operacja, przypadek.sciezka)))}"
+    case_id = _nowy_przypadek(klient)
     snapshot = _zasiej_siec_przez_api(klient, case_id)
     if przypadek.wymaga_ct:
         snapshot = _operacja_api(klient, case_id, "add_ct", _payload_ct(snapshot))
     if przypadek.operacja == "set_der_catalog_bindings":
         snapshot = _operacja_api(
             klient, case_id, "add_converter_source", _payload_konwerter(snapshot)
+        )
+    if przypadek.sciezka == "karty_widmowe_ref":
+        snapshot = _operacja_api(
+            klient, case_id, "dodaj_karte_widmowa_projektu", _payload_karty_projektu(snapshot)
         )
     if przypadek.operacja == "add_nn_switch_device":
         snapshot = _operacja_api(
@@ -1019,7 +1186,10 @@ def test_komplet_poprawnych_referencji_przechodzi_oba_tory(przypadek: PrzypadekI
     snapshot = _przygotowana_siec(przypadek)
     payload = przypadek.zbuduj(snapshot)
 
-    blad, _ = validate_and_materialize_catalog_binding(przypadek.operacja, payload)
+    # Brama w kontekście katalogu MODELU — dokładnie jak końcówka `domain-ops`
+    # (`api/enm.py`): pozycje projektu (karty widmowe) istnieją wyłącznie w modelu.
+    with kontekst_katalogu(snapshot):
+        blad, _ = validate_and_materialize_catalog_binding(przypadek.operacja, payload)
     assert blad is None, blad
 
     wynik = execute_domain_operation(copy.deepcopy(snapshot), przypadek.operacja, payload)
@@ -1144,7 +1314,10 @@ def test_tabliczka_z_zawyzona_moca_jest_odrzucana() -> None:
 
     assert wynik.get("error_code") == "catalog.nameplate_mismatch", wynik.get("error")
     assert wynik.get("snapshot") is None
-    assert "pmax_mw" in str(wynik.get("error"))
+    # Karta #142: pole tabliczki etykietą i pozycja katalogu nazwą — bez klucza i ref.
+    tresc = str(wynik.get("error"))
+    assert "„Pmax [MW]”" in tresc and "„PCS BESS 2 MW / 0.4 kV nN”" in tresc, tresc
+    assert "pmax_mw" not in tresc and REF_BESS not in tresc, tresc
 
 
 def test_tabliczka_nie_obchodzi_kontroli_zgodnosci_napiec() -> None:
@@ -1223,7 +1396,12 @@ def test_zabezpieczenie_niesie_tozsamosc_z_katalogu() -> None:
 
     przypisanie = wynik["protection_assignments"][0]
     assert przypisanie["source_mode"] == "KATALOG"
-    assert przypisanie["materialized_params"]["vendor"] == "ABB"
+    # Karta FAB-A/D-33: REF_PRZEKAZNIK to profil referencyjny bez marki —
+    # `vendor` jest jawnie None (nigdy tekst udajacy producenta). Tozsamosc
+    # z katalogu dowodzi `name_pl` (niepusta wartosc pochodzaca z rekordu),
+    # nie `vendor` (ktory dla tej pozycji jest legalnie nieobecny).
+    assert przypisanie["materialized_params"]["vendor"] is None
+    assert przypisanie["materialized_params"]["name_pl"]
     assert przypisanie["materialized_params"]["catalog_item_id"] == REF_PRZEKAZNIK
 
 
@@ -1274,7 +1452,9 @@ def test_brama_api_porownuje_swoja_materializacje_z_modelem() -> None:
     rozbieznosc = rozbieznosc_wobec_bramy(pola_bramy, wiazanie, skazona, utworzone)
     assert rozbieznosc is not None
     assert rozbieznosc["code"] == "catalog.gate_result_mismatch"
-    assert "un_kv" in rozbieznosc["message_pl"]
+    # Karta #142: parametr etykietą tabliczki, bez klucza kontraktu.
+    assert "„Un [kV]”" in rozbieznosc["message_pl"]
+    assert "un_kv" not in rozbieznosc["message_pl"]
 
     # ZAKRES: ten sam skażony element POZA listą zmian tej operacji nie może
     # blokować zapisu — kontrola pilnuje bieżącego zapisu, nie długu rewizji.
@@ -1296,7 +1476,7 @@ def test_koncowka_domain_ops_odrzuca_rozjazd_bramy_i_modelu(
     stan, przed którym kontrola ma bronić; reszta drogi (operacja, zapis, migawka)
     jest prawdziwa.
     """
-    case_id = "v2-brama-rozjazd"
+    case_id = _nowy_przypadek(klient)
     snapshot = _zasiej_siec_przez_api(klient, case_id)
     hash_przed = klient.get(f"/api/cases/{case_id}/enm").json()["header"]["hash_sha256"]
 
@@ -1327,7 +1507,9 @@ def test_koncowka_domain_ops_odrzuca_rozjazd_bramy_i_modelu(
     assert odpowiedz.status_code == 422, odpowiedz.text
     szczegol = odpowiedz.json()["detail"]
     assert szczegol["code"] == "catalog.gate_result_mismatch", szczegol
-    assert "un_kv" in szczegol["message_pl"]
+    # Karta #142: parametr etykietą tabliczki, bez klucza kontraktu.
+    assert "„Un [kV]”" in szczegol["message_pl"]
+    assert "un_kv" not in szczegol["message_pl"]
     # Odrzucenie BEZ SKUTKU: model nie drgnął.
     po = klient.get(f"/api/cases/{case_id}/enm").json()
     assert po["header"]["hash_sha256"] == hash_przed
@@ -1336,7 +1518,7 @@ def test_koncowka_domain_ops_odrzuca_rozjazd_bramy_i_modelu(
 
 def test_produkcyjna_droga_zapisu_utrwala_tabliczke_katalogowa(klient: TestClient) -> None:
     """`POST /enm/domain-ops` — jedyna produkcyjna droga zapisu — zapisuje katalog."""
-    case_id = "v2-brama-produkcyjna"
+    case_id = _nowy_przypadek(klient)
     snapshot = _zasiej_siec_przez_api(klient, case_id)
 
     odpowiedz = klient.post(

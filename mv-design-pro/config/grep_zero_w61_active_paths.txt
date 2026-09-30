@@ -1,0 +1,10 @@
+# W6-1: aktywne ścieżki KODU i aktywnych kontraktów (grupa `w61_`).
+backend/src
+backend/tests
+frontend/src
+frontend/e2e
+scripts
+docs/system
+docs/domain
+docs/ui
+docs/architecture

@@ -1,0 +1,207 @@
+# Warstwa NC RfG — rozporządzenie Komisji (UE) 2016/631 (kodeks sieci RfG).
+#
+# CO TA WARSTWA NIESIE: istnienie i stosowalność wymagań (typ modułu, technologia) oraz
+# GRANICE DOPUSZCZALNE parametrów, w których warstwy krajowe (WOS) i operatorskie (OSD)
+# wybierają swoje wartości. Warstwa NIE niesie wartości krajowych — te żyją w `wos.yaml`.
+#
+# STAN ŹRÓDŁA: treść rozporządzenia nie jest przechowywana w repozytorium, więc każda
+# jednostka redakcyjna ma stan WSKAZANE (dokument wskazany, brzmienie niepotwierdzone w
+# repo). Podniesienie do ZWERYFIKOWANE wymaga dołączenia tekstu źródłowego (decyzja OD-21,
+# plan AB §2 O-2′) — bez zmiany kodu. Pole `jednostka_redakcyjna` niesie WYŁĄCZNIE artykuł /
+# ustęp / literę / tabelę; wpis bez niej (albo z jednostką do potwierdzenia) ma stan
+# NIEUSTALONE z uwagą — loader nigdy nie nadaje WSKAZANE podstawie bez jednostki redakcyjnej.
+#
+# ZAKRES PRODUKTU: moduły typu A i B w sieciach nN/SN (mandat A/B, plan AB §1). Wymagania
+# typów C i D nie są tu modelowane; lista typów w polu `typy` jest zbiorem otwartym, więc
+# dopisanie C/D nie wymaga zmiany kontraktu.
+warstwa: NC_RFG
+dokument:
+  tytul: >-
+    Rozporządzenie Komisji (UE) 2016/631 z dnia 14 kwietnia 2016 r. ustanawiające kodeks
+    sieci dotyczący wymogów w zakresie przyłączenia jednostek wytwórczych do sieci (NC RfG)
+  wydanie: "2016/631"
+  status: WSKAZANE
+  # Data obowiązywania wersji warstwy (resolver wersji po dacie umowy przyłączeniowej, plan AB
+  # §2.3 O-31). Nieustalona: tekst rozporządzenia nie jest w repozytorium — zero dat z pamięci.
+  obowiazuje_od: null
+
+# Częstotliwość znamionowa obszaru synchronicznego Europy kontynentalnej — odniesienie
+# odchyłek częstotliwości w wymaganiach art. 13.
+czestotliwosc_znamionowa_hz: 50.0
+
+# Art. 5 — granice, w których OSP ustala krajowe progi klas (obszar synchroniczny Europy
+# kontynentalnej). Klasa D obejmuje też każdy moduł przyłączony na napięciu >= 110 kV.
+# `jednostka_progu_istotnosci` i `jednostka_reguly_napieciowej` trafiają do powodu
+# klasyfikacji modułu (moduł poniżej progu istotności; typ D z napięcia przyłączenia).
+granice_progow_klas:
+  jednostka_redakcyjna: "art. 5 ust. 2 i ust. 3 (tabela 1, Europa kontynentalna)"
+  jednostka_progu_istotnosci: "art. 5 ust. 2 lit. a"
+  jednostka_reguly_napieciowej: "art. 5 ust. 2 lit. d"
+  status: WSKAZANE
+  a_min_kw: 0.8
+  b_prog_max_kw: 1000
+  c_prog_max_kw: 50000
+  d_prog_max_kw: 75000
+  napiecie_d_kv: 110
+
+# Art. 13 ust. 1 lit. a, tabela 2 — minimalne czasy pracy bez odłączenia (Europa kontynentalna).
+# `czas_min_s: null` = praca nieograniczona.
+zakresy_czestotliwosci:
+  jednostka_redakcyjna: "art. 13 ust. 1 lit. a (tabela 2)"
+  status: WSKAZANE
+  pasma:
+    - f_min_hz: 47.5
+      f_max_hz: 48.5
+      czas_min_s: 1800
+      opis_pl: "czas określa OSP, nie krótszy niż 30 min"
+    - f_min_hz: 48.5
+      f_max_hz: 49.0
+      czas_min_s: 1800
+      opis_pl: "czas określa OSP, nie krótszy niż czas dla pasma 47,5–48,5 Hz"
+    - f_min_hz: 49.0
+      f_max_hz: 51.0
+      czas_min_s: null
+      opis_pl: "praca nieograniczona"
+    - f_min_hz: 51.0
+      f_max_hz: 51.5
+      czas_min_s: 1800
+      opis_pl: "30 min"
+
+# Art. 13 ust. 2 — granice parametrów LFSM-O, w których OSP ustala wartości krajowe.
+lfsm_o_granice:
+  jednostka_redakcyjna: "art. 13 ust. 2 lit. c i d"
+  status: WSKAZANE
+  prog_hz_min: 50.2
+  prog_hz_max: 50.5
+  statyzm_pct_min: 2.0
+  statyzm_pct_max: 12.0
+
+# Art. 13 ust. 6 — interfejs logiczny: zaprzestanie generacji mocy czynnej po poleceniu.
+zaprzestanie_generacji:
+  jednostka_redakcyjna: "art. 13 ust. 6"
+  status: WSKAZANE
+  czas_max_s: 5.0
+
+# Katalog wymagań stosowalnych do typów A i B.
+#
+# `technologie`: PPM (moduł parku energii) i SPGM (moduł synchroniczny). Magazyn energii
+# (technologia MAGAZYN) NIE występuje w żadnym wymaganiu tej warstwy — rozporządzenie
+# 2016/631 art. 3 ust. 2 lit. d wyłącza urządzenia magazynujące (poza elektrowniami
+# szczytowo-pompowymi); wymagania krajowe dla magazynów żyją w `magazyny.yaml` (plan AB O-28).
+# `testy`: testy procedury PTPiREE (kanon T01–T20) wykazujące wymaganie; pusta lista = w tej
+# wersji narzędzia nie ma testu ani symulacji wykazującej wymaganie.
+# `prawo_operatora`: rozporządzenie przyznaje właściwemu operatorowi PRAWO określenia
+# wymagania („właściwy operator systemu ma prawo określić…") — fakt strukturalny tekstu, stan
+# jak reszta wpisu. Czy operator z prawa skorzystał, niesie warstwa OSD (`wykonanie_prawa`).
+# Reguła pokrycia wymagania certyfikatem urządzenia żyje w warstwie WiPWC (`wipwc.yaml`),
+# nie tutaj (plan AB O-17).
+wymagania:
+  - id: RFG_13_1A
+    nazwa_pl: "Praca w zakresach częstotliwości przez wymagany czas"
+    typy: [A, B]
+    technologie: [PPM, SPGM]
+    jednostka_redakcyjna: "art. 13 ust. 1 lit. a (tabela 2)"
+    testy: []
+    prawo_operatora: false
+  - id: RFG_13_1B
+    nazwa_pl: "Odporność na szybkość zmian częstotliwości (RoCoF)"
+    typy: [A, B]
+    technologie: [PPM, SPGM]
+    jednostka_redakcyjna: "art. 13 ust. 1 lit. b"
+    testy: []
+    prawo_operatora: false
+  - id: RFG_13_2
+    nazwa_pl: "LFSM-O — ograniczanie mocy czynnej przy nadczęstotliwości"
+    typy: [A, B]
+    technologie: [PPM, SPGM]
+    jednostka_redakcyjna: "art. 13 ust. 2"
+    testy: [T01]
+    prawo_operatora: false
+  - id: RFG_13_3
+    nazwa_pl: "Utrzymanie zadanej mocy czynnej niezależnie od zmian częstotliwości"
+    typy: [A, B]
+    technologie: [PPM, SPGM]
+    jednostka_redakcyjna: "art. 13 ust. 3"
+    testy: []
+    prawo_operatora: false
+  - id: RFG_13_4
+    nazwa_pl: "Dopuszczalne obniżenie mocy czynnej przy spadku częstotliwości"
+    typy: [A, B]
+    technologie: [PPM, SPGM]
+    jednostka_redakcyjna: "art. 13 ust. 4 i ust. 5"
+    testy: []
+    prawo_operatora: false
+  - id: RFG_13_6
+    nazwa_pl: "Zaprzestanie generacji mocy czynnej na polecenie (interfejs logiczny)"
+    typy: [A]
+    technologie: [PPM, SPGM]
+    jednostka_redakcyjna: "art. 13 ust. 6"
+    testy: [T12]
+    prawo_operatora: false
+  - id: RFG_13_7
+    nazwa_pl: "Warunki automatycznego przyłączenia do sieci"
+    typy: [A, B]
+    technologie: [PPM, SPGM]
+    jednostka_redakcyjna: "art. 13 ust. 7"
+    testy: []
+    prawo_operatora: false
+  - id: RFG_14_2
+    nazwa_pl: "Zmniejszenie mocy czynnej na polecenie (port wejściowy)"
+    typy: [B]
+    technologie: [PPM, SPGM]
+    jednostka_redakcyjna: "art. 14 ust. 2"
+    testy: [T05, T13]
+    prawo_operatora: false
+  - id: RFG_14_3
+    nazwa_pl: "Zdolność do pozostania w pracy podczas zwarcia (FRT)"
+    typy: [B]
+    technologie: [PPM, SPGM]
+    jednostka_redakcyjna: "art. 14 ust. 3"
+    testy: [T14]
+    prawo_operatora: false
+  - id: RFG_14_4
+    nazwa_pl: "Automatyczne ponowne przyłączenie po przypadkowym odłączeniu"
+    typy: [B]
+    technologie: [PPM, SPGM]
+    jednostka_redakcyjna: "art. 14 ust. 4"
+    testy: []
+    prawo_operatora: false
+  - id: RFG_17_2
+    nazwa_pl: "Zdolność do generacji mocy biernej (moduł synchroniczny)"
+    typy: [B]
+    technologie: [SPGM]
+    jednostka_redakcyjna: "art. 17 ust. 2"
+    testy: [T09]
+    prawo_operatora: true
+  - id: RFG_17_3
+    nazwa_pl: "Odbudowa mocy czynnej po zwarciu (moduł synchroniczny)"
+    typy: [B]
+    technologie: [SPGM]
+    # Jednostka redakcyjna niepotwierdzona z tekstem rozporządzenia — stan NIEUSTALONE z uwagą
+    # (przegląd 2026-09-23 #3: wskazanie „do potwierdzenia" nie jest wskazaniem).
+    jednostka_redakcyjna: "art. 17 ust. 3"
+    status: NIEUSTALONE
+    uwagi_pl: "jednostka redakcyjna do potwierdzenia z tekstem rozporządzenia"
+    testy: [T16]
+    prawo_operatora: false
+  - id: RFG_20_2A
+    nazwa_pl: "Zdolność do generacji mocy biernej (moduł parku energii)"
+    typy: [B]
+    technologie: [PPM]
+    jednostka_redakcyjna: "art. 20 ust. 2 lit. a"
+    testy: [T09]
+    prawo_operatora: true
+  - id: RFG_20_2B
+    nazwa_pl: "Szybki prąd zwarciowy przy zwarciach symetrycznych (moduł parku energii)"
+    typy: [B]
+    technologie: [PPM]
+    jednostka_redakcyjna: "art. 20 ust. 2 lit. b"
+    testy: [T17]
+    prawo_operatora: true
+  - id: RFG_20_3
+    nazwa_pl: "Odbudowa mocy czynnej po zwarciu (moduł parku energii)"
+    typy: [B]
+    technologie: [PPM]
+    jednostka_redakcyjna: "art. 20 ust. 3"
+    testy: [T16]
+    prawo_operatora: false

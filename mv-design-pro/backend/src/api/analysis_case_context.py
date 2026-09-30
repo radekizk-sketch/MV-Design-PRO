@@ -18,14 +18,15 @@ def _infer_case_kind(run: CanonicalRun) -> str:
         return explicit
     if run.analysis_type == "PF":
         return "ROZPLYW_MAX_OBC"
+    if run.analysis_type == "rozplyw_niesymetryczny":
+        return "ROZPLYW_NIESYMETRYCZNY"
     if run.analysis_type == "short_circuit_sn":
         return "ZWARCIOWY_MAKS"
     if run.analysis_type == "phase_state_sn":
         return "STAN_FAZOWY_SN"
-    if run.analysis_type == "dynamic_stability":
-        return "PRACA_PO_ZAKLOCENIU"
-    if run.analysis_type == "source_compliance":
-        return "ZGODNOSC_PRZYLACZENIOWA"
+    if run.analysis_type == "dynamika_rms":
+        # Karta AB-P1: bieg czasowy RMS (tryb sieci) na punkcie pracy wskazanego rozpływu.
+        return "DYNAMIKA_CZASOWA"
     return "RAPORTOWY_BAZOWY"
 
 
@@ -47,14 +48,16 @@ def _infer_quality_gate(run: CanonicalRun) -> str:
 def _infer_applicability_scope(run: CanonicalRun) -> list[str]:
     if run.analysis_type == "PF":
         return ["PF", "REPORT"]
+    if run.analysis_type == "rozplyw_niesymetryczny":
+        return ["PF_UNBALANCED", "REPORT"]
     if run.analysis_type == "short_circuit_sn":
         return ["SC", "REPORT"]
     if run.analysis_type == "phase_state_sn":
         return ["PHASE_STATE_SN", "REPORT"]
-    if run.analysis_type == "dynamic_stability":
-        return ["DYNAMIC_STABILITY", "AUTOMATION", "REPORT"]
-    if run.analysis_type == "source_compliance":
-        return ["SOURCE_COMPLIANCE", "REPORT"]
+    if run.analysis_type == "dynamika_rms":
+        # Bez "REPORT": stopień dowodowy biegu (`UNVALIDATED_MODEL`) nie dopuszcza wyniku
+        # do dokumentu raportowego jako dowodu.
+        return ["DYNAMIKA_RMS"]
     return ["REPORT"]
 
 
@@ -69,13 +72,9 @@ def _build_assumptions(run: CanonicalRun) -> dict[str, Any]:
                 "phase_state_source_snapshot"
                 if run.analysis_type == "phase_state_sn"
                 else (
-                    "dynamic_fault_source_state"
-                    if run.analysis_type == "dynamic_stability"
-                    else (
-                        "source_profile_snapshot"
-                        if run.analysis_type == "source_compliance"
-                        else "pf_source_nominal"
-                    )
+                    "punkt_pracy_rozplywu"
+                    if run.analysis_type == "dynamika_rms"
+                    else "pf_source_nominal"
                 )
             )
         ),
@@ -86,10 +85,17 @@ def _build_assumptions(run: CanonicalRun) -> dict[str, Any]:
             else (
                 "phase_state_load_snapshot"
                 if run.analysis_type == "phase_state_sn"
-                else "sc_load_snapshot"
+                else (
+                    "punkt_pracy_rozplywu"
+                    if run.analysis_type == "dynamika_rms"
+                    else "sc_load_snapshot"
+                )
             )
         ),
-        "switching_state_ref": options.get("switching_state_ref") or "snapshot_switching_state",
+        # CV-2 (H3): brak jawnej migawki lacznikowej = `None`, nie etykieta
+        # „snapshot_switching_state" udajaca referencje (stan lacznikow biegu
+        # kanonicznego JEST w migawce biegu — `CanonicalRun.snapshot`).
+        "switching_state_ref": options.get("switching_state_ref"),
         "grounding_assumptions_ref": options.get("grounding_assumptions_ref")
         or "network_grounding_snapshot",
         "temperature_assumptions_ref": options.get("temperature_assumptions_ref")

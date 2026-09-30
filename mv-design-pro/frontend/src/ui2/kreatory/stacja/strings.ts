@@ -1,3 +1,6 @@
+import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
+import { OPIS_PASMA_NN } from '../../model/pasmaNapieciowe';
+
 /** Teksty PL kreatora „Dodaj stację SN/nN" (Audyt D, faza D2). Język inżynierski. */
 
 export const STACJA_STRINGS = {
@@ -233,7 +236,7 @@ export const STACJA_STRINGS = {
     { id: 'sectional', etykieta: 'Sekcyjna (ze sprzęgłem)' },
   ],
   typStacjiPomoc:
-    'Końcowa zamyka ciąg jednym polem zasilającym (bez pól wyjściowych/odgałęźnych); '
+    'Końcowa zamyka ciąg jednym polem liniowym wejściowym (bez pól liniowych wyjściowych/odgałęźnych); '
     + 'odgałęźna oddaje odczep w bok (wejście + wyjście + odgałęzienie); przelotowa wcina się '
     + 'w ciąg (wejście + wyjście); sekcyjna dzieli szynę sprzęgłem. '
     + 'Rodzaj decyduje o polach rozdzielnicy SN.',
@@ -310,7 +313,7 @@ export const STACJA_STRINGS = {
       poleWartosc: 'ZRODLO_NN_PV (falownik) + odpływy odbiorcze',
       wyborBrak: 'Wybierz falownik PV z katalogu w kroku „Transformator i strona nN".',
       katalogBrak:
-        'Brak w katalogu falowników PV zdatnych na źródło nN stacji (napięcie strony nN ≤ 1 kV). '
+        `Brak w katalogu falowników PV zdatnych na źródło nN stacji (napięcie strony nN: ${OPIS_PASMA_NN}). `
         + 'Uzupełnij katalog falowników PV.',
     },
     BESS_INVERTER: {
@@ -319,7 +322,7 @@ export const STACJA_STRINGS = {
       poleWartosc: 'ZRODLO_NN_BESS (falownik) + odpływy odbiorcze',
       wyborBrak: 'Wybierz falownik magazynu BESS z katalogu w kroku „Transformator i strona nN".',
       katalogBrak:
-        'Brak w katalogu falowników magazynu BESS zdatnych na źródło nN stacji (napięcie strony nN ≤ 1 kV). '
+        `Brak w katalogu falowników magazynu BESS zdatnych na źródło nN stacji (napięcie strony nN: ${OPIS_PASMA_NN}). `
         + 'Uzupełnij katalog falowników BESS.',
     },
     FW_INVERTER: {
@@ -328,7 +331,7 @@ export const STACJA_STRINGS = {
       poleWartosc: 'ZRODLO_NN_FW (falownik) + odpływy odbiorcze',
       wyborBrak: 'Wybierz falownik elektrowni wiatrowej z katalogu w kroku „Transformator i strona nN".',
       katalogBrak:
-        'Brak w katalogu falowników elektrowni wiatrowej zdatnych na źródło nN stacji (napięcie strony nN ≤ 1 kV). '
+        `Brak w katalogu falowników elektrowni wiatrowej zdatnych na źródło nN stacji (napięcie strony nN: ${OPIS_PASMA_NN}). `
         + 'Uzupełnij katalog falowników.',
     },
   },
@@ -399,7 +402,8 @@ export const STACJA_STRINGS = {
     + 'a projekt nie przejdzie do dokumentacji wykonawczej. Praca koncepcyjna i obliczenia '
     + 'działają bez zmian — to legalny stan roboczy.',
   polaPrzywrocTr: 'Dodaj pole transformatorowe',
-  wierszPoleTr: 'Pole transformatorowe',
+  // Nazwa roli z kanonu słownictwa ról pól (karta #141).
+  wierszPoleTr: FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE,
   wierszPoleTrJest: 'W rozdzielnicy',
   wierszPoleTrBrak: 'Brak — konfiguracja niekompletna',
   podgladTytul: 'Podgląd pól rozdzielnicy SN',
@@ -523,7 +527,7 @@ export const STACJA_STRINGS = {
   teoriaRodzajOpis:
     'Stacja transformatorowa SN/nN transformuje napięcie średnie na niskie i zasila odbiory. Jej rodzaj '
     + 'odzwierciedla miejsce w topologii: stacja odbiorcza (odgałęźna) kończy odgałęzienie, przelotowa '
-    + 'wcina się w ciąg magistrali (pole wejściowe i wyjściowe), a sekcyjna dzieli szynę SN sprzęgłem '
+    + 'wcina się w ciąg magistrali (pole liniowe wejściowe i wyjściowe), a sekcyjna dzieli szynę SN sprzęgłem '
     + '(umożliwia rezerwowanie i sekcjonowanie). Sposób osadzenia — zakończenie wolnego końca ciągu albo '
     + 'świadomy podział istniejącego odcinka — jest operacją topologiczną: stacja zawsze powstaje na '
     + 'węźle, a nie „w powietrzu". Podział odcinka rozdziela go na dwie części o zachowanej długości.',
@@ -548,7 +552,7 @@ export const STACJA_STRINGS = {
     'Rozdzielnica SN grupuje pola przyłączone do wspólnej szyny. Pole liniowe wejściowe (WE) doprowadza '
     + 'zasilanie z magistrali, pole liniowe wyjściowe (WY) prowadzi je dalej wzdłuż ciągu, pole odgałęźne '
     + '(ODG) zasila odgałęzienie, a pole transformatorowe (TR) łączy szynę SN z transformatorem stacji. '
-    + 'W stacji sekcyjnej pole sprzęgłowe (sprzęgło) łączy sekcje szyny, umożliwiając rezerwowanie i '
+    + 'W stacji sekcyjnej pole sprzęgła łączy sekcje szyny, umożliwiając rezerwowanie i '
     + 'sekcjonowanie. Zestaw pól wynika z rodzaju stacji, a każde pole nosi kompletny szablon katalogowy '
     + '(rozłącznik/wyłącznik, przekładniki, zabezpieczenia) — parametry pochodzą z katalogu producenta.',
   teoriaRozdzielnicaWymog:
@@ -669,11 +673,12 @@ export const STACJA_STRINGS = {
   uziemieniePunktPomoc:
     'Bezpośrednio uziemiony ⇒ duży prąd zwarcia doziemnego (układy TN). Rezystor/cewka '
     + 'ograniczają prąd doziemny. Izolowany ⇒ mały prąd pojemnościowy (układ IT).',
-  uziemienieRezystancja: 'Rezystancja uziemienia punktu neutralnego [Ω]',
+  uziemienieRezystancja: 'Rezystancja uziemienia R_N [Ω]',
+  uziemienieReaktancja: 'Reaktancja dławika Petersena X_N [Ω]',
   uziemienieRezystancjaPlaceholder: 'np. 10',
   uziemienieRezystancjaPomoc:
-    'Podaj tylko dla uziemienia impedancyjnego (rezystor / cewka). Puste — backend przyjmuje '
-    + 'model bez jawnej impedancji (nie zgadujemy wartości).',
+    'Wymagana dla uziemienia impedancyjnego: rezystor — R_N, cewka Petersena — X_N. '
+    + 'Backend odrzuca konfigurację bez składowej dominującej (nie podstawia zera).',
   teoriaUziemienieTytul: 'Teoria: uziemienie punktu neutralnego a zwarcie doziemne',
   teoriaUziemienieOpis:
     'Sposób pracy punktu neutralnego wyznacza charakter zwarcia doziemnego: sieć bezpośrednio '
@@ -684,8 +689,9 @@ export const STACJA_STRINGS = {
     + 'ziemnozwarciowych (51N/67N) i na napięcia dotyku.',
   teoriaUziemienieWymog:
     'Dobierz układ uziemienia i punkt neutralny do wymagań ochrony przeciwporażeniowej (czas wyłączenia '
-    + 'pętli zwarcia) oraz ciągłości zasilania. Wartość rezystancji podawaj tylko wtedy, gdy jest znana '
-    + 'z projektu — inaczej pozostaw pole puste.',
+    + 'pętli zwarcia) oraz ciągłości zasilania. Impedancję punktu neutralnego (R_N rezystora, '
+    + 'X_N dławika) podaj z projektu — bez niej uziemienie impedancyjne nie jest konfiguracją '
+    + '(odmowa, nie zero).',
   teoriaUziemieniePodstawa:
     'Podstawa: PN-HD 60364-4-41 (ochrona przeciwporażeniowa), IEC 60364-4-41 (pętla zwarcia), '
     + 'N SEP-E-001, IRiESD.',

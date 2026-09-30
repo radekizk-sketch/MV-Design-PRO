@@ -7,12 +7,18 @@ to, ze zadna wielkosc znamionowa nie przychodzi z zewnatrz (catalog binding).
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, get_args
 
 import pytest
+from api.equipment_checks import StatusSprawdzenia
 from api.main import app
 from fastapi.testclient import TestClient
 from network_model.catalog.repository import get_default_mv_catalog
+from network_model.solvers.equipment_checks.slad import (
+    STATUS_FAIL,
+    STATUS_PASS,
+    STATUS_UNAVAILABLE,
+)
 from network_model.solvers.equipment_checks.vt_burden_voltage_drop import kategoria_z_klasy
 
 
@@ -370,3 +376,10 @@ def test_koncowki_sa_deterministyczne(klient: TestClient) -> None:
     a = klient.post("/api/solver/ct-burden-check", json=payload).json()
     b = klient.post("/api/solver/ct-burden-check", json=payload).json()
     assert a == b
+
+
+def test_typ_statusu_sprawdzenia_to_dokladnie_stale_sladu() -> None:
+    """Typ kontraktu HTTP i stale `slad` solvera to jeden slownik — dopisanie stanu w jednym
+    miejscu bez drugiego czerwieni tutaj, a nie odpowiedz 500 walidacji (predykaty parami)."""
+    assert set(get_args(StatusSprawdzenia)) == {STATUS_PASS, STATUS_FAIL, STATUS_UNAVAILABLE}
+    assert len(get_args(StatusSprawdzenia)) == 3

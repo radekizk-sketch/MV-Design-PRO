@@ -67,11 +67,11 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
       'backend/src/domain/analysis_run.py',
     ],
     tests: [
-      'poetry run pytest tests/test_advanced_solver_capability_registry.py tests/test_frt_lvrt_hvrt_compliance.py tests/test_dynamic_stability_reference.py tests/test_load_flow_canonical_solver_modes.py -q',
+      'poetry run pytest tests/test_advanced_solver_capability_registry.py tests/test_frt_lvrt_hvrt_compliance.py tests/uczciwosc/test_dynamika_rms_bez_werdyktu.py tests/test_load_flow_canonical_solver_modes.py -q',
       'poetry run pytest tests/test_power_flow_gauss_seidel.py tests/test_power_flow_fast_decoupled.py tests/test_short_circuit_iec60909.py -q',
     ],
     confirmation:
-      'Rejestr zdolnosci nie zawiera stanu niedostepnosci; kazda zdolnosc jest implemented, proof_supported i reportable.',
+      'Rejestr zdolnosci nie zawiera stanu niedostepnosci; zdolnosc niezwalidowana (np. dynamika czasowa RMS) jest nieraportowalna — test rejestru przypina te pare.',
   },
   {
     code: 'PHASE-0-DONE-E39-AUDIT-SCREEN',
@@ -176,8 +176,43 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
       'Dalsza dekompozycja na 5-step stepper / 10-files-per-area to architectural redesign, ' +
       'nie pure decompose — wymagałoby zmiany React state machine struktury.',
   },
+  {
+    code: 'K2-DONE-REFERENCE-NETWORKS-SURFACE',
+    owner: 'MV-DESIGN-PRO backend/architecture',
+    risk: 'medium',
+    status: 'ZAMKNIĘTY',
+    closedAt: '2026-09-09',
+    scope:
+      'Kod ekranu K2 (drugie przydzielenie, kasacja CV-4.3): E-39 „Walidacja sieci referencyjnych" (ReferenceNetworkSurface) — ' +
+      'drugie przydzielenie tego kodu (po Phase 0 #1 usunięciu „Historia i audyt") — USUŃ ' +
+      'razem z całym backendem, którego był jedynym produkcyjnym ekranem.',
+    decision:
+      'application/reference_networks/** (dawny dialekt benchmarków: builders/, computation.py, ' +
+      'library.py, frozen_solver_input.py, pandapower_bridge.py, report_export.py, ' +
+      'similarity_matcher.py, benchmark_wiring.py — druga ścieżka budowy wejścia solwerów, ' +
+      'równoległa do kanonicznej ENM) i api/reference_networks.py (9 tras ' +
+      '/api/v1/reference-networks/*) usunięte w całości; ekran E-39 USUNIĘTY z registry/type ' +
+      'union/matrix/transitions (LUKA w numeracji — E-40..E-50 zajęte, bez renumeracji). ' +
+      'E-49 („Walidacja benchmarkowa profesorska", już visibleInNavigation=false od ' +
+      'V126-WYGASZENIE 2026-08-07) miał E-39 jako rodzica nawigacyjnego — przepięty na E-35, ' +
+      'jak siostrzane ekrany akademickie E-40..E-48/E-50. Walidacja solverów vs publikowane ' +
+      'benchmarki żyje dalej jako zdolność WERYFIKACYJNA (nie tok pracy projektanta): ' +
+      'backend/tests/golden/enm_builders/** + tests/golden/registry.py + ' +
+      'tests/golden/parytet_benchmarkow/test_wyrocznia_a_expected_json.py.',
+    changedFiles: [
+      'frontend/src/ui/workspace/screenCanonRegistry.ts',
+      'frontend/src/ui/workspace/types.ts',
+      'frontend/src/ui/workspace/WorkspaceSurfaceRouter.tsx',
+      'frontend/src/ui2/wyniki/analizy/model.ts',
+      'frontend/src/ui/reference-networks/** (katalog usunięty)',
+      'frontend/src/ui/workspace/surfaces/ReferenceNetworkSurface.tsx (usunięty)',
+    ],
+    tests: [
+      'npm run type-check',
+      'npm test -- --run src/ui/workspace src/ui2/wyniki/analizy',
+    ],
+    confirmation:
+      'E-39/ReferenceNetworkSurface usunięte z kodu i rejestru kanonu. Backend dialektu ' +
+      'benchmarków skasowany w całości — patrz meldunek karty K2 dla pełnego inwentarza.',
+  },
 ];
-
-export function hasRegisteredDebt(code: string): boolean {
-  return TECHNICAL_DEBT_REGISTRY.some((item) => item.code === code);
-}

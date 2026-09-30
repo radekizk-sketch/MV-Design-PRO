@@ -61,13 +61,18 @@ Odbiorca:     border #059669 (zielony), fill rgba(5,150,105,0.06)
 ```
 
 ### Kolory napięć (dynamiczne zakresy)
+
+Granice pasm z jednego źródła `backend/src/network_model/pochodne/pasma_napieciowe.py`
+(lustro `frontend/src/ui2/model/pasmaNapieciowe.ts`): nN ⇔ 0 < Uₙ ≤ 1 kV,
+SN ⇔ 1 kV < Uₙ < 110 kV, WN ⇔ Uₙ ≥ 110 kV (IEC 60038 tab. 1; rozporządzenie w sprawie
+szczegółowych warunków funkcjonowania systemu elektroenergetycznego, zał. 1 cz. I).
 ```
-220+ kV:   #CC0000 (NN)
-60-200 kV: #CC3333 (WN)
-16-60 kV:  #9933CC (SN)
-1-16 kV:   #00AACC (SN)
-0.1-1 kV:  #FF8800 (nN)
-0-0.1 kV:  #3366FF (DC)
+≥ 220 kV:          #CC0000 (najwyższe napięcie; w produkcie pasmo WN)
+110 – < 220 kV:    #CC3333 (WN)
+16 – < 110 kV:     #9933CC (SN)
+> 1 – < 16 kV:     #00AACC (SN)
+> 0,1 – ≤ 1 kV:    #FF8800 (nN)
+0 – 0,1 kV:        #3366FF (DC)
 ```
 
 ## 4. REGUŁY ESTETYKI PRZEMYSŁOWEJ

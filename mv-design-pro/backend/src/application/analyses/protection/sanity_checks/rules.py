@@ -200,7 +200,7 @@ def check_negative_setpoint(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.ERROR,
                     code=SanityCheckCode.GEN_NEGATIVE_SETPOINT,
-                    message_pl=f"Nastawa {fn.label_pl} ({sp.display_pl}) jest ujemna — wartosc niefizyczna",
+                    message_pl=f"Nastawa {fn.label_pl} ({sp.display_pl}) jest ujemna — wartość niefizyczna",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi=fn.ansi[0] if fn.ansi else None,
@@ -235,7 +235,7 @@ def check_missing_base_values(
             ProtectionSanityCheckResult(
                 severity=SanityCheckSeverity.INFO,
                 code=SanityCheckCode.GEN_PARTIAL_ANALYSIS,
-                message_pl="Brak wartosci Un — analiza napieciowa czesciowa",
+                message_pl="Brak wartości Un — analiza napięciowa częściowa",
                 element_id=ctx.element_id,
                 element_type=ctx.element_type,
                 evidence={"missing": "Un", "source_un": base_values.source_un.value},
@@ -247,7 +247,7 @@ def check_missing_base_values(
             ProtectionSanityCheckResult(
                 severity=SanityCheckSeverity.INFO,
                 code=SanityCheckCode.GEN_PARTIAL_ANALYSIS,
-                message_pl="Brak wartosci In — analiza pradowa czesciowa",
+                message_pl="Brak wartości In — analiza prądowa częściowa",
                 element_id=ctx.element_id,
                 element_type=ctx.element_type,
                 evidence={"missing": "In", "source_in": base_values.source_in.value},
@@ -289,7 +289,7 @@ def check_voltage_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.ERROR,
                     code=SanityCheckCode.VOLT_MISSING_UN,
-                    message_pl=f"Brak wartosci Un dla nastawy {fn.label_pl} ({fn.setpoint.display_pl})",
+                    message_pl=f"Brak wartości Un dla nastawy {fn.label_pl} ({fn.setpoint.display_pl})",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi=fn.ansi[0] if fn.ansi else None,
@@ -308,7 +308,7 @@ def check_voltage_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.ERROR,
                     code=SanityCheckCode.VOLT_OVERLAP,
-                    message_pl=f"Prog U< ({undervoltage_fn.setpoint.display_pl}) jest wiekszy lub rowny progowi U> ({overvoltage_fn.setpoint.display_pl})",
+                    message_pl=f"Próg U< ({undervoltage_fn.setpoint.display_pl}) jest większy lub równy progowi U> ({overvoltage_fn.setpoint.display_pl})",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="27/59",
@@ -325,7 +325,7 @@ def check_voltage_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.WARN,
                     code=SanityCheckCode.VOLT_U_LT_TOO_LOW,
-                    message_pl=f"Prog U< ({undervoltage_fn.setpoint.display_pl}) jest zbyt niski (< 0,5×Un)",
+                    message_pl=f"Próg U< ({undervoltage_fn.setpoint.display_pl}) jest zbyt niski (< 0,5×Un)",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="27",
@@ -342,7 +342,7 @@ def check_voltage_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.WARN,
                     code=SanityCheckCode.VOLT_U_GT_TOO_HIGH,
-                    message_pl=f"Prog U> ({overvoltage_fn.setpoint.display_pl}) jest zbyt wysoki (> 1,2×Un)",
+                    message_pl=f"Próg U> ({overvoltage_fn.setpoint.display_pl}) jest zbyt wysoki (> 1,2×Un)",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="59",
@@ -386,7 +386,7 @@ def check_frequency_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.ERROR,
                     code=SanityCheckCode.FREQ_OVERLAP,
-                    message_pl=f"Prog f< ({underfreq_fn.setpoint.display_pl}) jest wiekszy lub rowny progowi f> ({overfreq_fn.setpoint.display_pl})",
+                    message_pl=f"Próg f< ({underfreq_fn.setpoint.display_pl}) jest większy lub równy progowi f> ({overfreq_fn.setpoint.display_pl})",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="81U/81O",
@@ -403,7 +403,7 @@ def check_frequency_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.WARN,
                     code=SanityCheckCode.FREQ_F_LT_TOO_LOW,
-                    message_pl=f"Prog f< ({underfreq_fn.setpoint.display_pl}) jest zbyt niski (< 45 Hz)",
+                    message_pl=f"Próg f< ({underfreq_fn.setpoint.display_pl}) jest zbyt niski (< 45 Hz)",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="81U",
@@ -420,7 +420,7 @@ def check_frequency_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.WARN,
                     code=SanityCheckCode.FREQ_F_GT_TOO_HIGH,
-                    message_pl=f"Prog f> ({overfreq_fn.setpoint.display_pl}) jest zbyt wysoki (> 55 Hz)",
+                    message_pl=f"Próg f> ({overfreq_fn.setpoint.display_pl}) jest zbyt wysoki (> 55 Hz)",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="81O",
@@ -519,7 +519,7 @@ def check_overcurrent_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.ERROR,
                     code=SanityCheckCode.OC_MISSING_IN,
-                    message_pl=f"Brak wartosci In dla nastawy {fn.label_pl} ({fn.setpoint.display_pl})",
+                    message_pl=f"Brak wartości In dla nastawy {fn.label_pl} ({fn.setpoint.display_pl})",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi=fn.ansi[0] if fn.ansi else None,
@@ -538,7 +538,7 @@ def check_overcurrent_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.ERROR,
                     code=SanityCheckCode.OC_OVERLAP,
-                    message_pl=f"Prog I> ({oc_time_fn.setpoint.display_pl}) jest wiekszy lub rowny progowi I>> ({oc_inst_fn.setpoint.display_pl})",
+                    message_pl=f"Próg I> ({oc_time_fn.setpoint.display_pl}) jest większy lub równy progowi I>> ({oc_inst_fn.setpoint.display_pl})",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="50/51",
@@ -555,7 +555,7 @@ def check_overcurrent_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.WARN,
                     code=SanityCheckCode.OC_I_GT_TOO_LOW,
-                    message_pl=f"Prog I> ({oc_time_fn.setpoint.display_pl}) jest zbyt niski (< 1,0×In)",
+                    message_pl=f"Próg I> ({oc_time_fn.setpoint.display_pl}) jest zbyt niski (< 1,0×In)",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="51",
@@ -572,7 +572,7 @@ def check_overcurrent_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.WARN,
                     code=SanityCheckCode.OC_I_INST_TOO_LOW,
-                    message_pl=f"Prog I>> ({oc_inst_fn.setpoint.display_pl}) jest zbyt niski (< 1,5×In)",
+                    message_pl=f"Próg I>> ({oc_inst_fn.setpoint.display_pl}) jest zbyt niski (< 1,5×In)",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="50",
@@ -610,7 +610,7 @@ def check_spz_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.WARN,
                     code=SanityCheckCode.SPZ_NO_TRIP_FUNCTION,
-                    message_pl="SPZ (Samoczynne Ponowne Zalaczenie) jest aktywne, ale brak funkcji wyzwalajacej",
+                    message_pl="SPZ (Samoczynne Ponowne Załączenie) jest aktywne, ale brak funkcji wyzwalającej",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="79",
@@ -625,7 +625,7 @@ def check_spz_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.INFO,
                     code=SanityCheckCode.SPZ_MISSING_CYCLE_DATA,
-                    message_pl="Brak danych cyklu SPZ (liczba prob, czasy przerw)",
+                    message_pl="Brak danych cyklu SPZ (liczba prób, czasy przerw)",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="79",

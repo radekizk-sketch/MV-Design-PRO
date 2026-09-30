@@ -16,7 +16,7 @@ import { render } from '@testing-library/react';
 
 import { SldLegendOverlay } from '../SldLegendOverlay';
 
-describe('SldLegendOverlay — K30-39 klucz palet SLD', () => {
+describe('SldLegendOverlay — klucz palet SLD', () => {
   it('visible=true (default) → root group renderowany', () => {
     const { container } = render(<svg><SldLegendOverlay /></svg>);
     expect(container.querySelector('[data-testid="sld-v2-legend-overlay"]')).toBeTruthy();
@@ -70,7 +70,7 @@ describe('SldLegendOverlay — K30-39 klucz palet SLD', () => {
     expect(getByText(/FW \(farma wiatrowa\)/u)).toBeInTheDocument();
   });
 
-  it('kolory voltage palette zgodne z K30-37/K30-41 paletą OSD', () => {
+  it('kolory voltage palette zgodne z paletą OSD', () => {
     const { container } = render(<svg><SldLegendOverlay /></svg>);
     const voltageSection = container.querySelector('[data-testid="sld-v2-legend-voltage"]');
     const lines = voltageSection?.querySelectorAll('line');

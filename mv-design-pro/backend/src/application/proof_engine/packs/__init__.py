@@ -36,12 +36,6 @@ from application.proof_engine.packs.protection_settings import (
     ProtectionSettingsProofPack,
     ProtectionSettingsProofResult,
 )
-from application.proof_engine.packs.qu_regulation import (
-    QUCharacteristicPoint,
-    QURegulationProofInput,
-    QURegulationProofPack,
-    QURegulationProofResult,
-)
 from application.proof_engine.packs.sc_asymmetrical import (
     SCAsymmetricalPackInput,
     SCAsymmetricalPackResult,
@@ -74,10 +68,6 @@ __all__ = [
     "ProtectionSettingsProofInput",
     "ProtectionSettingsProofPack",
     "ProtectionSettingsProofResult",
-    "QUCharacteristicPoint",
-    "QURegulationProofInput",
-    "QURegulationProofPack",
-    "QURegulationProofResult",
     # VDROP pack (V12K-015, 2026-05; łańcuch multi-segment: karta P0.5b, 2026-08-13)
     "VDROPPackInput",
     "VDROPPackSegment",

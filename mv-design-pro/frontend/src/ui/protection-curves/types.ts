@@ -98,45 +98,6 @@ export interface ProtectionCurve {
 }
 
 // =============================================================================
-// Coordination Analysis Types
-// =============================================================================
-
-/**
- * Coordination analysis status.
- */
-export type CoordinationStatus =
-  | 'COORDINATED'
-  | 'MARGIN_LOW'
-  | 'NOT_COORDINATED'
-  | 'UNKNOWN';
-
-/**
- * Result of coordination analysis between two curves.
- */
-export interface CoordinationResult {
-  /** Upstream (backup) curve ID */
-  upstream_curve_id: string;
-  /** Downstream (primary) curve ID */
-  downstream_curve_id: string;
-  /** Coordination status */
-  status: CoordinationStatus;
-  /** Time margin [s] */
-  margin_s: number;
-  /** Margin as percentage */
-  margin_percent: number;
-  /** Analysis current [A] */
-  analysis_current_a: number;
-  /** Upstream trip time [s] */
-  upstream_trip_time_s: number;
-  /** Downstream trip time [s] */
-  downstream_trip_time_s: number;
-  /** Polish recommendation text */
-  recommendation_pl: string;
-  /** Minimum required margin [s] */
-  min_required_margin_s: number;
-}
-
-// =============================================================================
 // Chart Configuration
 // =============================================================================
 
@@ -181,45 +142,12 @@ export interface ProtectionCurvesEditorState {
   selectedCurveId: string | null;
   /** Fault markers */
   faultMarkers: FaultMarker[];
-  /** Coordination results */
-  coordinationResults: CoordinationResult[];
   /** Chart configuration */
   chartConfig: TimeCurrentChartConfig;
   /** Loading state */
   loading: boolean;
   /** Error message */
   error: string | null;
-}
-
-// =============================================================================
-// API Response Types
-// =============================================================================
-
-/**
- * API response for curve analysis.
- */
-export interface CurveAnalysisResponse {
-  /** Curves with computed points */
-  curves: ProtectionCurve[];
-  /** Coordination analysis results */
-  coordination: CoordinationResult[];
-  /** Fault analysis results */
-  fault_analysis: FaultAnalysisResult[];
-}
-
-/**
- * Single fault point analysis result.
- */
-export interface FaultAnalysisResult {
-  /** Fault marker info */
-  marker: FaultMarker;
-  /** Trip times for each curve */
-  trip_times: {
-    curve_id: string;
-    curve_name: string;
-    trip_time_s: number | null;
-    will_trip: boolean;
-  }[];
 }
 
 // =============================================================================
@@ -300,13 +228,6 @@ export const PROTECTION_CURVES_LABELS = {
     refresh: 'Odswiez',
   },
 
-  status: {
-    COORDINATED: 'Skoordynowane',
-    MARGIN_LOW: 'Margines niski',
-    NOT_COORDINATED: 'Nieskoordynowane',
-    UNKNOWN: 'Nieznane',
-  },
-
   curveTypes: {
     // IEC 60255
     SI: 'Normalna odwrotna (SI)',
@@ -331,17 +252,6 @@ export const PROTECTION_CURVES_LABELS = {
     curvesUpdated: 'Krzywe zaktualizowane',
   },
 } as const;
-
-// =============================================================================
-// Status Colors (Tailwind)
-// =============================================================================
-
-export const COORDINATION_STATUS_COLORS: Record<CoordinationStatus, string> = {
-  COORDINATED: 'bg-emerald-100 text-emerald-700',
-  MARGIN_LOW: 'bg-amber-100 text-amber-700',
-  NOT_COORDINATED: 'bg-rose-100 text-rose-700',
-  UNKNOWN: 'bg-slate-100 text-slate-700',
-};
 
 /**
  * Default curve colors for chart.

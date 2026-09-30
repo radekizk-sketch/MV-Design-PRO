@@ -68,6 +68,23 @@ CompartmentModel = Literal[
 
 TorKonfiguracji = Literal["MODULARNY", "BLOK_RMU"]
 
+#: Tor konfiguracji rodziny → nazwa w treści dla projektanta (karta #142). Słowa = kreator
+#: stacji (``ui2/kreatory/stacja/strings.ts::torModularnyTytul``/``torBlokTytul``).
+NAZWY_TOROW_KONFIGURACJI_PL: dict[str, str] = {
+    "MODULARNY": "Tor modułowy — rozdzielnica składana z pól",
+    "BLOK_RMU": "Tor blokowy (RMU) — blok fabryczny",
+}
+
+#: Status rodziny, który wyklucza budowanie konfiguracji → powód dla projektanta (karta
+#: #142). Słowa = przeglądarka rodzin frontu
+#: (``ui/catalog/SwitchgearFamilyPicker.tsx::POWOD_BLOKADY_PL``); kod statusu zostaje w danych.
+POWODY_BLOKADY_RODZINY_PL: dict[str, str] = {
+    "requires_catalog": (
+        "wymaga karty katalogowej producenta — brak potwierdzonych klas znamionowych"
+    ),
+    "deprecated": "rodzina wycofana z oferty producenta",
+}
+
 #: Tor konfiguracji rodziny WYPROWADZONY z `construction_type` — bez osobnego
 #: pola „architektura" (dwa pola o tej samej treści to dwie ścieżki tej samej
 #: prawdy; `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §8).

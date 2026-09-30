@@ -61,12 +61,14 @@ export const STUDIUM_STRINGS = {
     + 'odczytujemy pasmo mocy biernej z obszaru bezpiecznej pracy P–Q.',
   paramNapiecieTypu: 'Napięcie znamionowe typu',
   paramOperator: 'Operator sieci (wymagania NC RfG)',
+  paramOperatorWybierz: '— wybierz operatora —',
   paramOperatorHint:
     'Co to jest: operator systemu dystrybucyjnego, którego wymagania mocy biernej '
     + 'sprawdzamy. Zakres typowy: profile klas A/B/C/D wg katalogu operatora. Skąd '
-    + 'wartość: wstępnie wybrany pierwszy operator z katalogu. Konsekwencja: wyznacza '
-    + 'prostokątne wymaganie zakresu Q i klasę modułu wg mocy przyłączalnej.',
-  paramOperatorBrak: 'Brak operatorów w katalogu — pokrycie i klasa pokażą „—".',
+    + 'wartość: jawny wybór projektanta — bez wartości domyślnej (studium dotyczy źródła, którego w modelu jeszcze nie ma). Konsekwencja: wyznacza '
+    + 'prostokątne wymaganie zakresu Q (typ modułu NC RfG wyznacza klasyfikacja art. 5 '
+    + 'backendu z mocy przyłączalnej i napięcia węzła).',
+  paramOperatorBrak: 'Brak operatorów w katalogu — pokrycie pokaże „—".',
 
   // Krok 3 — analizy
   krok3Naglowek: 'Przeprowadź sekwencję analiz dla każdego wariantu',
@@ -102,11 +104,9 @@ export const STUDIUM_STRINGS = {
   kolIdentyfikator: 'Identyfikator węzła',
   kolMoc: 'Moc przyłączalna',
   kolStraty: 'Przyrost strat przy mocy granicznej',
-  kolKlasa: 'Klasa NC RfG',
+  kolKlasa: 'Typ modułu NC RfG',
   kolPokrycie: 'Pokrycie P–Q',
   kolPasmoQ: 'Pasmo Q w punkcie mocy źródła',
-  pokryciePokryte: 'Pokryte',
-  pokrycieNiepokryte: 'Niepokryte',
   brakPasma: 'Brak pasma',
   brakWynikow: 'Brak przeprowadzonych analiz — wróć do kroku analiz.',
 
@@ -115,7 +115,9 @@ export const STUDIUM_STRINGS = {
   zalTyp: 'Typ źródła',
   zalMocZrodla: 'Moc znamionowa źródła',
   zalLiczbaWariantow: 'Liczba wariantów',
-  zalKlasaUwaga: 'Klasa NC RfG: mapowanie słownikowe z progów katalogu operatora (nie ocena).',
+  zalKlasaUwaga:
+    'Typ modułu NC RfG: klasyfikacja art. 5 backendu (progi warstwy WOS) z mocy przyłączalnej '
+    + 'i napięcia węzła wariantu.',
   zalStratyUwaga:
     'Przyrost strat: różnica strat scenariusza granicznego i bazowego (arytmetyka prezentacji).',
   zalPasmoUwaga:
@@ -159,13 +161,13 @@ export const STUDIUM_STRINGS = {
   dokPodsumowanieTytul: 'Podsumowanie porównawcze wariantów',
   dokKolWezel: 'Węzeł',
   dokKolMoc: 'Moc przyłączalna',
-  dokKolKlasa: 'Klasa NC RfG',
+  dokKolKlasa: 'Typ modułu NC RfG',
+  dokDowodTytul: 'Dowód certyfikacji PTPiREE urządzeń modelu tego typu',
   dokKolPokrycie: 'Pokrycie P–Q',
   dokKolPasmoQ: 'Pasmo Q',
   dokSekcjeBledowTytul: 'Błędy wariantów',
   dokBladZdolnosc: 'Zdolność przyłączeniowa',
   dokBladObszar: 'Obszar pracy P–Q',
-  dokBladPokrycie: 'Pokrycie wymagań P–Q',
   dokBezBledow: 'Wszystkie warianty policzone bez błędów.',
   dokProjektBezNazwy: 'Projekt bez nazwy',
 

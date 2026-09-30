@@ -20,8 +20,10 @@ import math
 from typing import Any
 
 import pytest
-from enm.canonical_analysis import (
+from enm.assembler import (
     _graph_id_from_ref,
+)
+from enm.canonical_analysis import (
     create_run,
     execute_run,
     reset_canonical_runs,
@@ -91,7 +93,13 @@ def _siec_referencyjna(nazwa: str, *, liczba_odplywow_nn: int = 3) -> dict[str, 
     snap = _op(
         snap,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_250},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": CATALOG_ZRODLO_250,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     for _ in range(2):
         snap = _op(
@@ -230,6 +238,31 @@ def test_odbior_nie_powstaje_gdy_katalog_nie_rozstrzyga_mocy_biernej(
     assert completed.loads == []
 
 
+def test_odbior_nie_powstaje_gdy_katalog_nie_rozstrzyga_mocy_czynnej(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Karta FAB-D1 (D8): usunięta fabrykacja `DEFAULT_LOAD_KW` jako ŹRÓDŁO mocy
+    czynnej. Gdy pozycja katalogowa nie niesie rozstrzygalnego p_kw (<=0), migracja
+    NIE dokłada odbioru w ogóle — ta sama reguła, co już obowiązująca dla mocy
+    biernej powyżej (`test_odbior_nie_powstaje_gdy_katalog_nie_rozstrzyga_mocy_
+    biernej`), teraz też dla P."""
+    enm = EnergyNetworkModel.model_validate(_siec_referencyjna("bez-mocy-czynnej"))
+    assert not enm.loads
+
+    bez_mocy_czynnej = LoadType(
+        id=DEFAULT_LOAD_CATALOG_REF, name="Bez P", p_kw=0.0, cos_phi=0.92, cos_phi_mode="IND"
+    )
+    katalog = get_default_mv_catalog()
+    monkeypatch.setattr(
+        type(katalog), "get_load_type", lambda self, type_id: bez_mocy_czynnej, raising=True
+    )
+
+    completed, changed = complete_station_loads_from_nn_feeders(enm)
+
+    assert changed is False
+    assert completed.loads == []
+
+
 def test_odbiory_stacji_dostaja_moc_bierna_z_katalogu() -> None:
     """Trzy odpływy nN ⇒ trzy odbiory, każdy z Q wyprowadzonym z cosφ 0,92."""
     completed = _model_z_odbiorami("odbiory-stacji")
@@ -271,7 +304,9 @@ def test_rozplyw_na_sieci_referencyjnej_daje_pelny_spadek_napiecia_nn() -> None:
     bus_nn = _szyna_nn(completed)
     set_enm("case-d7-pf", completed)
 
-    run = execute_run(create_run(case_id="case-d7-pf", analysis_type="PF").id)
+    run = execute_run(
+        create_run(case_id="case-d7-pf", klucz_twin="case-d7-pf", analysis_type="PF").id
+    )
     v_pu = _v_pu(run, bus_nn)
 
     assert v_pu == pytest.approx(V_PU_SZYNY_NN_OCZEKIWANE, abs=TOLERANCJA_V_PU)
@@ -284,7 +319,9 @@ def test_szyna_nn_pobiera_moc_bierna_odbiorow() -> None:
     completed = _model_z_odbiorami("rozplyw-moc-bierna")
     set_enm("case-d7-q", completed)
 
-    run = execute_run(create_run(case_id="case-d7-q", analysis_type="PF").id)
+    run = execute_run(
+        create_run(case_id="case-d7-q", klucz_twin="case-d7-q", analysis_type="PF").id
+    )
     wyniki = {b["bus_id"]: b for b in run.raw_result["result_v1"]["bus_results"]}
 
     # P0.1 nN (LV-INV-12): `create_run` czyta model przez `get_enm`, który
@@ -327,8 +364,14 @@ def test_dwukrotny_bieg_sc_i_pf_daje_identyczne_odciski() -> None:
 
     odciski: list[tuple[str, str]] = []
     for _ in range(2):
-        pf = execute_run(create_run(case_id="case-d7-det", analysis_type="PF").id)
-        sc = execute_run(create_run(case_id="case-d7-det", analysis_type="short_circuit_sn").id)
+        pf = execute_run(
+            create_run(case_id="case-d7-det", klucz_twin="case-d7-det", analysis_type="PF").id
+        )
+        sc = execute_run(
+            create_run(
+                case_id="case-d7-det", klucz_twin="case-d7-det", analysis_type="short_circuit_sn"
+            ).id
+        )
         assert pf.status == "FINISHED", pf.error_message
         assert sc.status == "FINISHED", sc.error_message
         odciski.append(

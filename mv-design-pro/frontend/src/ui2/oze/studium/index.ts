@@ -20,7 +20,7 @@ export {
   pustyWariantStudium,
   stanPoczatkowyStudium,
   wariantWToku,
-  werdyktPokryciaPL,
+  etykietaPokryciaPL,
   wezelWariantu,
   wierszStudium,
   wierszeStudium,

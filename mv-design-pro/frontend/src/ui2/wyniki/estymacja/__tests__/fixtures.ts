@@ -39,8 +39,8 @@ export function wymaganiaFixture(): WymaganiaEstymacji {
     ],
     measurement_types: TYPY_POMIAROW,
     note_pl:
-      'Pomiary muszą być w jednostkach względnych (pu) na tej samej bazie mocy '
-      + '(base_mva) co macierz Y-bus.',
+      'Pomiary muszą być w jednostkach względnych (pu) na tej samej bazie mocy co macierz '
+      + 'admitancyjna Y-bus.',
   };
 }
 
@@ -48,7 +48,7 @@ export function widokEstymacjiFixture(): WidokEstymacji {
   return {
     analysis_id: 'run-lf-1',
     context: wymaganiaFixture().context,
-    status: 'OK',
+    status: 'ZBIEZNY',
     status_pl: 'zbieżny',
     missing_data: [{ code: 'wezly_bez_pomiaru', bus_refs: ['BUS-3'] }],
     solver_version: 'state_estimation_wls@1.0.0',

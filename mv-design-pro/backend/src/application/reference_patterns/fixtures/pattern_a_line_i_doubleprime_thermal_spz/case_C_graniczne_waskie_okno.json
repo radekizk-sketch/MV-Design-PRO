@@ -2,79 +2,64 @@
   "_description": "Wzorzec A — Przypadek C: GRANICZNE (bardzo waskie okno nastaw, < 5% szerokosci wzglednej)",
   "_pattern_id": "RP-LINE-I2-THERMAL-SPZ",
   "_expected_verdict": "GRANICZNE",
-  "_notes_pl": "Linia SN zasilajaca stacje transformatorowa w poblizy duzego odbioru z silnikami. Warunki sieciowe powoduja, ze okno nastaw jest bardzo waskie. Dobor nastawy techniczne mozliwy, ale wymaga szczegolnej uwagi i precyzji. Kazda zmiana parametrow sieci moze spowodowac przejscie do stanu NIEZGODNE. UWAGA: Kryterium czulosci uzywa ik_min_2f_busbars_a (prad minimalny 2-fazowy) jako wartosci limitujacej.",
+  "_notes_pl": "Linia SN zasilajaca stacje transformatorowa w poblizu duzego odbioru z silnikami. Warunki sieciowe powoduja, ze okno nastaw jest bardzo waskie. Dobor nastawy technicznie mozliwy, ale wymaga szczegolnej uwagi i precyzji. Silnik: ProtectionSettingsEngine (Hoppel/IRiESD), karta W3-C2.",
 
-  "line_id": "line-ref-C-graniczne",
+  "line_id": "linia-ref-c-graniczne",
   "line_name": "Linia SN 15kV GPZ Poludnie - RS Fabryka (referencja GRANICZNE)",
-  "ct_ratio": 80.0,
 
-  "conductor": {
-    "material": "XLPE_AL",
-    "cross_section_mm2": 150.0,
-    "jthn_a_mm2": 94.0,
-    "theta_b_deg": 40.0,
-    "theta_k_deg": 250.0
-  },
+  "cross_section_mm2": 150.0,
+  "conductor_material": "Al",
+  "length_km": 6.0,
+  "i_nominal_a": 300.0,
 
-  "spz_config": {
-    "mode": "SINGLE",
-    "t_dead_1_s": 0.5,
-    "t_dead_2_s": 15.0,
-    "t_fault_max_s": 0.5
-  },
+  "ik3_max_beginning_a": 3500.0,
+  "ik3_min_beginning_a": 2496.0,
+  "ik3_max_end_a": 1800.0,
+  "ik3_min_end_a": 1400.0,
+  "ik2_min_end_a": 1200.0,
+  "ik_max_next_bus_a": 1666.67,
 
-  "local_generation": {
-    "enabled": false
-  },
+  "i_load_max_a": 140.0,
 
-  "ik_max_busbars_a": 3500.0,
-  "ik_min_busbars_a": 3500.0,
-  "ik_max_next_protection_a": 1666.67,
-  "ik_min_2f_busbars_a": 3120.0,
+  "delta_t_s": 0.3,
+  "k_b": 1.2,
+  "k_bth": 1.1,
+  "t_upstream_s": 0.0,
+  "spz_enabled": true,
+  "spz_pause_s": 0.5,
 
-  "t_nast_1_s": 0.5,
-  "t_nast_2_s": 0.0,
-  "t_breaker_s": 0.05,
-
-  "kb": 1.2,
-  "kc": 1.5,
-  "kbth": 0.9,
+  "lokalna_generacja_aktywna": false,
+  "lokalna_generacja_typ_zrodla": null,
+  "lokalna_generacja_wklad_a": 0.0,
+  "lokalna_generacja_prog_udzialu_zsz": null,
 
   "_expected_results": {
-    "_comment": "Obliczenia referencyjne — waskie okno (< 5%). UWAGA: czulosc uzywa ik_min_2f_busbars_a = 3120 A",
+    "_comment": "Z faktycznego przebiegu ProtectionSettingsEngine.calculate() (karta W3-C2) — waskie okno (< 5%)",
     "i_min_sel_primary_a": 2000.0,
     "i_max_sens_primary_a": 2080.0,
-    "ithn_a": 14100.0,
-    "tk_s": 1.1,
-    "ithdop_a": 13442.0,
-    "i_max_th_primary_a": 12098.0,
-    "i_max_primary_a": 2080.0,
-    "window_width_a": 80.0,
-    "relative_window_width_pct": 4.0,
+    "i_max_th_primary_a": 57324.7,
+    "window_i_min_primary_a": 2000.0,
+    "window_i_max_primary_a": 2080.0,
     "window_valid": true,
+    "limiting_criterion_max": "sensitivity",
     "verdict": "GRANICZNE"
   },
 
   "_calculation_trace": {
-    "_step_1_selectivity": "I_min_sel = kb * Ik_max_next = 1.2 * 1666.67 = 2000 A",
-    "_step_2_sensitivity": "I_max_sens = Ik_min_2f / kc = 3120 / 1.5 = 2080 A (uzyto ik_min_2f_busbars_a)",
-    "_step_3_thermal_tk": "tk = n_cycles * (t_fault + t_breaker) = 2 * (0.5 + 0.05) = 1.1 s",
-    "_step_4_thermal_ithn": "Ithn = S * jthn = 150 * 94 = 14100 A",
-    "_step_5_thermal_ithdop": "Ithdop = Ithn / sqrt(tk) = 14100 / sqrt(1.1) = 13442 A",
-    "_step_6_thermal_imax": "I_max_th = kbth * Ithdop = 0.9 * 13442 = 12098 A",
-    "_step_7_window": "[I_min, I_max] = [I_min_sel, min(I_max_sens, I_max_th)] = [2000, min(2080, 12098)] = [2000, 2080] A",
-    "_step_8_window_valid": "I_max (2080) > I_min (2000) => okno prawidlowe",
-    "_step_9_relative_width": "(2080 - 2000) / 2000 = 4.0% < 5% => WASKIE OKNO",
-    "_step_10_verdict": "Okno prawidlowe, ale bardzo waskie (< 5%) => GRANICZNE"
+    "_step_1_selectivity": "I_min_sel = k_b * Ik_max_next = 1.2 * 1666.67 = 2000 A",
+    "_step_2_sensitivity": "I_max_sens = Ik3_min_beginning / k_b = 2496 / 1.2 = 2080 A",
+    "_step_3_thermal_window": "I_max_th = (150*94/sqrt(0.05)) / 1.1 = 57324.7 A (nie limituje)",
+    "_step_4_window": "[I_min, I_max] = [2000, min(2080, 57324.7)] = [2000, 2080] A",
+    "_step_5_relative_width": "(2080 - 2000) / 2000 = 4.0% < 5% => WASKIE OKNO",
+    "_step_6_verdict": "Okno prawidlowe, ale bardzo waskie (< 5%) => GRANICZNE"
   },
 
   "_engineering_notes": {
     "_warning": "Waskie okno nastaw wskazuje na ograniczone mozliwosci doboru. Zalecana weryfikacja przy kazdej zmianie parametrow sieci.",
     "_recommendations": [
-      "1. Rozwazyc zmiane wspolczynnikow kb/kc w uzgodnieniu z operatorem",
+      "1. Rozwazyc zmiane wspolczynnika k_b w uzgodnieniu z operatorem",
       "2. Monitorowac zmiany pradow zwarciowych przy modyfikacjach sieci",
-      "3. Ustawic nastawe w srodku okna: (2000 + 2080) / 2 = 2040 A (pierwotna)",
-      "4. W przypadku SPZ dwukrotnego rozwazyc blokade SPZ od I>>"
+      "3. Ustawic nastawe w srodku okna (silnik liczy to automatycznie)"
     ]
   }
 }

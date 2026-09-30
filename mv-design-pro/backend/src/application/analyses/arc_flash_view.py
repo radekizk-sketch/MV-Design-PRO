@@ -29,7 +29,9 @@ from analysis.arc_flash import (
     ElectrodeConfig,
     EnclosureType,
 )
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
+from network_model.nazwy import nazwa_nadana
 
 
 def _voltage_by_target(run: CanonicalRun) -> dict[str, float | None]:
@@ -46,7 +48,7 @@ def _voltage_by_target(run: CanonicalRun) -> dict[str, float | None]:
 def _context(run: CanonicalRun) -> ArcFlashContext:
     header = (run.snapshot or {}).get("header") or {}
     return ArcFlashContext(
-        project_name=str(header.get("name")) if header.get("name") else None,
+        project_name=nazwa_nadana(header.get("name")),
         case_name=None,
         case_id=str(run.case_id) if run.case_id else None,
         run_timestamp=run.created_at,
@@ -74,11 +76,11 @@ def build_arc_flash_view(
     if run.analysis_type != "short_circuit_sn":
         raise ValueError(
             "Analiza Arc Flash wymaga przebiegu zwarciowego; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )
     try:
@@ -97,10 +99,14 @@ def build_arc_flash_view(
 
     voltage_by_target = _voltage_by_target(run)
     inputs: list[ArcFlashInput] = []
+    # Nazwa szyny z tabeli wyników zwarć (nazwa z modelu albo opis rodzaju) — wiersz
+    # widoku i raportu nazywa szynę nią, nie identyfikatorem węzła (karta #144).
+    nazwy_szyn: dict[str, str] = {}
     for row in build_short_circuit_results(run).get("rows", []):
         target_id = row.get("target_id")
         if not target_id:
             continue
+        nazwy_szyn[str(target_id)] = str(row.get("target_name"))
         inputs.append(
             ArcFlashInput(
                 bus_ref=str(target_id),
@@ -114,5 +120,7 @@ def build_arc_flash_view(
             )
         )
 
-    view = ArcFlashBuilder().build(inputs, context=_context(run))
-    return view.to_dict()
+    view = ArcFlashBuilder().build(inputs, context=_context(run)).to_dict()
+    for wynik in view.get("results") or []:
+        wynik["bus_name"] = nazwy_szyn[str(wynik["bus_ref"])]
+    return view

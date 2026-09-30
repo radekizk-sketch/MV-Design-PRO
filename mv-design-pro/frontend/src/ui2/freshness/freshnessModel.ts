@@ -8,9 +8,10 @@
  * wyniku bez znacznika — to reguła twarda.").
  *
  * `rewizjaDanej` jest opcjonalna: dla stanu 'brak' dana pochodna jeszcze nie istnieje
- * (nie ma rewizji, z której powstała). Może być również nieznana dla stanu 'nieaktualne'
- * przy starcie hooka, gdy jedynym dostępnym sygnałem jest status 'OUTDATED' bez pary
- * rewizji (patrz useSwiezoscWynikow.ts — TODO-KARTA).
+ * (nie ma rewizji, z której powstała). Dla stanu 'nieaktualne' pochodzi od startu
+ * hooka z koperty rewizji przypadku (CV-2, `StudyCase.rewizja_biegu` —
+ * `useSwiezoscWynikow.ts`); pozostaje nieznana WYŁĄCZNIE, gdy przypadek nie ma
+ * jeszcze żadnego zakończonego biegu (uczciwy brak, nie zgadywanie).
  */
 
 /** Stan świeżości danej pochodnej względem bieżącej rewizji modelu. */

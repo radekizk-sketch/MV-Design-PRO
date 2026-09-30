@@ -16,7 +16,31 @@ from enm.models import (
 from enm.store import set_enm
 
 
-def _seed_enm(case_id: str) -> None:
+def _nowy_przypadek(client) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tego pliku potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego napisu.
+    """
+    project_resp = client.post("/api/projects", json={"name": "Reference Engine — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
+def _klucz(client, case_id: str) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+
+
+def _seed_enm(client, case_id: str) -> None:
     enm = EnergyNetworkModel(
         header=ENMHeader(name="API zgodności referencyjnej"),
         buses=[Bus(ref_id="bus/sn", name="Szyna SN", voltage_kv=15.0)],
@@ -58,7 +82,7 @@ def _seed_enm(case_id: str) -> None:
             )
         ],
     )
-    set_enm(case_id, enm)
+    set_enm(_klucz(client, case_id), enm)
 
 
 class TestReferencePacksApi:
@@ -93,8 +117,9 @@ class TestReferencePacksApi:
 
 class TestReferenceComplianceApi:
     def test_compliance_report_with_scores(self, app_client) -> None:
-        _seed_enm("case-ref-api")
-        response = app_client.get("/api/cases/case-ref-api/reference/compliance")
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
+        response = app_client.get(f"/api/cases/{case_id}/reference/compliance")
         assert response.status_code == 200
         report = response.json()
         by_id = {p["pack_id"]: p for p in report["packs"]}
@@ -103,9 +128,10 @@ class TestReferenceComplianceApi:
         assert by_id["iec62271"]["failed"] == 0
 
     def test_compliance_packs_filter(self, app_client) -> None:
-        _seed_enm("case-ref-api-filter")
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
         response = app_client.get(
-            "/api/cases/case-ref-api-filter/reference/compliance",
+            f"/api/cases/{case_id}/reference/compliance",
             params={"packs": "iec62271,osd_enea"},
         )
         assert response.status_code == 200
@@ -115,9 +141,14 @@ class TestReferenceComplianceApi:
         ]
 
     def test_compliance_unknown_pack_is_404(self, app_client) -> None:
-        _seed_enm("case-ref-api-404")
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
         response = app_client.get(
-            "/api/cases/case-ref-api-404/reference/compliance",
+            f"/api/cases/{case_id}/reference/compliance",
             params={"packs": "nie-ma-takiego"},
         )
         assert response.status_code == 404
+        # Przypina WŁAŚCIWY powód (pakiet, nie tłumaczenie case_id) — bez tego
+        # dwa różne 404 (case bez projektu vs. nieznany pakiet) byłyby
+        # nierozróżnialne dla tego testu (test maskujący defekt).
+        assert "nie-ma-takiego" in response.json()["detail"]

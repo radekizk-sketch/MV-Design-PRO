@@ -391,7 +391,7 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
     const svgStr = String(blobCtorSpy.mock.calls[0][0][0]);
     expect(svgStr).toContain('sld-sheet-legend');
-    expect(svgStr).toContain('Transformator SN/nN');
+    expect(svgStr).toContain('Transformator dwuuzwojeniowy');
     // Kanwa EKRANOWA (nie eksportowany string) zostaje BEZ legendy — opcja
     // eksportu nie włącza legendy na żywym widoku.
     expect(document.querySelector('[data-testid="sld-sheet-legend"]')).toBeNull();

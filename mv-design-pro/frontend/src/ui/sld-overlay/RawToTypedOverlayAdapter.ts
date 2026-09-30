@@ -3,8 +3,8 @@
  *
  * Produkcyjny backend `/results/v1` zwraca `overlay_payload` z `elements` jako
  * SŁOWNIK (RawOverlayPayload: ref_id → RawOverlayElement). Typowana warstwa
- * runtime (OverlayPayloadV1 + useOverlayStore + V12OverlayModeController +
- * useOverlayRuntime) oczekuje `elements` jako TABLICY (OverlayElement). Dotąd
+ * runtime (OverlayPayloadV1 + useOverlayStore + V12OverlayModeController)
+ * oczekuje `elements` jako TABLICY (OverlayElement). Dotąd
  * `loadOverlay` NIE był wołany w produkcji (`void useOverlayStore; // future`),
  * więc typowana rodzina adapterów (LoadFlow/ZeroSequence/OLTC) nie miała
  * producenta. Ten czysty adapter zamyka lukę: raw → typed.

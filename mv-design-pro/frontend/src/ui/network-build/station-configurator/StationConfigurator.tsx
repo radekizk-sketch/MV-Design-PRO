@@ -50,7 +50,11 @@ import {
   type StationConfigReadinessCardProps,
 } from './cards/StationConfigReadinessCard';
 import type { StationConfigMeasurementsCardProps } from './cards/StationConfigMeasurementsCard';
-import { MV_NEUTRAL_GROUNDING_CATALOG } from '../station-der/catalogs';
+import {
+  canonicalFieldRole,
+  fieldRoleLabelPl,
+  isSourceFieldRole,
+} from '../../sld/v2/station-rozdzielnia/contract';
 
 export type StationConfigVisibleCardId =
   | 'basic'
@@ -399,7 +403,7 @@ function StationConnectionPanel({
       <TechnicalPanel title="Identyfikacja i wariant stacji" subtitle="Dane ruchowe i wariant katalogowy stacji SN/nN.">
         <StationConfigBasicCard {...basic} />
       </TechnicalPanel>
-      <TechnicalPanel title="Wpięcie w ciąg SN" subtitle="Porty, pola wejściowe i wyjściowe oraz ciągłość terminali.">
+      <TechnicalPanel title="Wpięcie w ciąg SN" subtitle="Porty, pola liniowe wejściowe i wyjściowe oraz ciągłość terminali.">
         <StationConfigTopologyCard {...topology} />
       </TechnicalPanel>
     </TwoColumn>
@@ -418,8 +422,8 @@ function StationBayTechnicalPanel({ bays }: { readonly bays: StationConfigBaysCa
           </div>
         ) : (
           <GuidanceBox>
-            Wybierz wariant rozdzielni SN z katalogu stacji. Pakiet powinien zawierać pola wejściowe,
-            wyjściowe, transformatorowe i pomiarowe zgodnie z typem stacji.
+            Wybierz wariant rozdzielni SN z katalogu stacji. Pakiet powinien zawierać pola liniowe
+            wejściowe i wyjściowe, transformatorowe i pomiarowe zgodnie z typem stacji.
           </GuidanceBox>
         )}
       </TechnicalPanel>
@@ -431,9 +435,10 @@ function StationBayTechnicalPanel({ bays }: { readonly bays: StationConfigBaysCa
 }
 
 function BayMiniSld({ bay }: { readonly bay: StationConfigBaysCardProps['bays'][number] }): JSX.Element {
-  const tone = bay.bayTypePl.includes('transformator')
+  // Barwa pola z ROLI (kanon ról pól, karta #141), nie z tekstu etykiety.
+  const tone = canonicalFieldRole(bay.bayRole) === 'TRANSFORMATOROWE'
     ? 'border-emerald-400 text-emerald-200'
-    : bay.bayTypePl.includes('PV') || bay.bayTypePl.includes('BESS') || bay.bayTypePl.includes('FW')
+    : isSourceFieldRole(bay.bayRole)
       ? 'border-amber-400 text-amber-200'
       : 'border-scada-sn text-scada-sn';
   return (
@@ -443,7 +448,7 @@ function BayMiniSld({ bay }: { readonly bay: StationConfigBaysCardProps['bays'][
       <div className="mx-auto h-4 w-4 rotate-45 border border-current bg-scada-bg" />
       <div className="mx-auto h-8 w-px bg-current" />
       <div className="border-t border-current pt-1 text-center text-[10px] leading-tight text-scada-text">
-        {bay.bayTypePl}
+        {fieldRoleLabelPl(bay.bayRole)}
       </div>
       <div className="mt-1 truncate text-center text-[9px] text-scada-muted">
         {bay.attachedObjectPl ?? 'rezerwa katalogowa'}
@@ -585,7 +590,7 @@ function StationEarthingPanel({
   readonly basic: StationConfigBasicCardProps;
   readonly protection: StationConfigProtectionCardProps;
 }): JSX.Element {
-  const selected = MV_NEUTRAL_GROUNDING_CATALOG.find((item) => item.id === basic.mvNeutralGroundingRef);
+  const selected = basic.mvNeutralGroundings.find((item) => item.id === basic.mvNeutralGroundingRef);
   const requires67N = selected
     ? selected.grounding_type === 'isolated' || selected.grounding_type === 'petersen_coil'
     : false;
@@ -601,7 +606,7 @@ function StationEarthingPanel({
             className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-scada-text"
           >
             <option value="">wybierz wariant z katalogu</option>
-            {MV_NEUTRAL_GROUNDING_CATALOG.map((item) => (
+            {basic.mvNeutralGroundings.map((item) => (
               <option key={item.id} value={item.id}>{item.label_pl}</option>
             ))}
           </select>
@@ -638,14 +643,33 @@ function StationPowerQualityPanel({
   readonly ders: StationConfigDerSourcesCardProps['ders'];
   readonly loads: readonly LoadRow[];
 }): JSX.Element {
+  // Brak mocy NIE jest zerem (karta PROOFPACK-KONTRAKT): suma z pominiętym brakiem
+  // zaniżałaby wartość bez ostrzeżenia, więc wartość niesie liczbę pozycji bez danej.
+  // Bilans eksportu wobec importu (ocena) liczy wyłącznie backend w pakiecie dowodów.
+  const derBezMocy = ders.filter((der) => der.nominal_power_kw === null).length;
   const totalDerKw = ders.reduce((sum, der) => sum + (der.nominal_power_kw ?? 0), 0);
+  const odbioryBezMocy = loads.filter((load) => load.pMw === null).length;
   const totalLoadMw = loads.reduce((sum, load) => sum + (load.pMw ?? 0), 0);
   const profiles = new Set(ders.map((der) => der.profiles.nc_rfg_profile_ref).filter(Boolean));
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-3">
-        <MetricCard label="Moc DER" value={`${totalDerKw.toFixed(0)} kW`} />
-        <MetricCard label="Odbiory" value={`${totalLoadMw.toFixed(3)} MW`} />
+        <MetricCard
+          label="Moc DER"
+          value={
+            derBezMocy === 0
+              ? `${totalDerKw.toFixed(0)} kW`
+              : `${totalDerKw.toFixed(0)} kW + ${derBezMocy} bez mocy z katalogu`
+          }
+        />
+        <MetricCard
+          label="Odbiory"
+          value={
+            odbioryBezMocy === 0
+              ? `${totalLoadMw.toFixed(3)} MW`
+              : `${totalLoadMw.toFixed(3)} MW + ${odbioryBezMocy} bez mocy`
+          }
+        />
         <MetricCard label="Profile NC RfG" value={String(profiles.size)} />
       </div>
       <TechnicalPanel title="Bilans i jakość energii" subtitle="Dane wejściowe do oceny napięcia, cosφ, profili Q(U) i wpływu źródeł.">

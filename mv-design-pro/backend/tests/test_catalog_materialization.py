@@ -43,8 +43,8 @@ class TestMaterializationContracts:
     """Test MaterializationContract coverage and correctness."""
 
     def test_all_namespaces_have_contracts(self) -> None:
-        """Every CatalogNamespace (except CONVERTER/INVERTER) has a contract."""
-        exempt = {"CONVERTER", "INVERTER"}
+        """Every CatalogNamespace (except CONVERTER) has a contract."""
+        exempt = {"CONVERTER"}
         for ns in CatalogNamespace:
             if ns.value in exempt:
                 continue

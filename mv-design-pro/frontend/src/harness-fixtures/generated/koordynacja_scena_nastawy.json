@@ -1,0 +1,290 @@
+{
+  "dostepnosc_pakietu": true,
+  "wejscie": {
+    "c_max": null,
+    "c_min": 1.0,
+    "case_name": "Wariant zimowy",
+    "engine_input": {
+      "conductor_material": "AL",
+      "cross_section_mm2": 120.0,
+      "delta_t_s": 0.3,
+      "i_load_max_a": 22.768781749828918,
+      "i_nominal_a": 230.0,
+      "ik2_min_end_a": 7130.191175002978,
+      "ik3_max_beginning_a": 9621.459235920445,
+      "ik3_max_end_a": 9056.559147375221,
+      "ik3_min_beginning_a": 8746.78112356404,
+      "ik3_min_end_a": 8233.235588522928,
+      "ik_max_next_bus_a": 8767.005250876473,
+      "k_b": 1.2,
+      "k_bth": 1.1,
+      "length_km": 0.45
+    },
+    "kotwica_run_id": "run-sc-scena-koordynacja-max",
+    "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
+    "line_name": "Magistrala GPZ (1)",
+    "next_bus_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
+    "project_name": "Magistrala SN — scena koordynacji",
+    "run_timestamp": "2026-09-16T09:00:00+00:00",
+    "solver_version": "IEC_60909;load-flow-newton-raphson-v1",
+    "zacisk_zabezpieczenia": "od",
+    "zrodlo_zacisku": "wskazanie"
+  },
+  "wynik": {
+    "delayed": {
+      "i_load_max_a": 22.768781749828918,
+      "i_setting_a": 27.3,
+      "is_valid": true,
+      "k_b": 1.2,
+      "sensitivity_ratio": 260.96,
+      "t_setting_s": 0.3,
+      "trace": [
+        {
+          "formula": "I_{>} = k_b \\cdot I_{obc,max}",
+          "inputs": {
+            "I_obc_max_A": 22.768781749828918,
+            "k_b": 1.2
+          },
+          "result": {
+            "I_setting_A": 27.3
+          },
+          "step": "Obliczenie nastawy I>",
+          "substitution": "1.2 * 22.8"
+        },
+        {
+          "formula": "t_{>} = t_{upstream} + \\Delta t",
+          "inputs": {
+            "delta_t_s": 0.3,
+            "t_upstream_s": 0.0
+          },
+          "result": {
+            "t_setting_s": 0.3
+          },
+          "step": "Stopniowanie czasowe I>",
+          "substitution": "0.0 + 0.3"
+        },
+        {
+          "formula": "k_{cz} = I_{k2,min,end} / I_{>}",
+          "inputs": {
+            "I_k2_min_end_A": 7130.191175002978,
+            "I_setting_A": 27.3
+          },
+          "passed": true,
+          "requirement": "k_cz >= 1.5",
+          "result": {
+            "sensitivity_ratio": 260.96
+          },
+          "step": "Sprawdzenie czułości I>",
+          "substitution": "7130.2 / 27.3"
+        }
+      ],
+      "validation_notes": []
+    },
+    "generacja_lokalna": {
+      "aktywna": false,
+      "prad_widziany_lacznie_a": 0.0,
+      "prog_udzialu_zsz": null,
+      "ryzyko_blokady_zsz": null,
+      "trace": [
+        {
+          "result": {
+            "lokalna_generacja_aktywna": false
+          },
+          "step": "Generacja lokalna nieaktywna"
+        }
+      ],
+      "typ_zrodla": null,
+      "udzial_el": null,
+      "uwagi_pl": [
+        "Generacja lokalna (E-L) nieaktywna."
+      ],
+      "wklad_el_a": 0.0,
+      "wklad_systemu_a": 0.0
+    },
+    "instantaneous": {
+      "i_max_sensitivity_a": 7289.0,
+      "i_max_thermal_a": 45859.7,
+      "i_min_selectivity_a": 10520.4,
+      "i_setting_a": 10520.4,
+      "is_valid": false,
+      "k_b": 1.2,
+      "k_bth": 1.1,
+      "range_valid": false,
+      "trace": [
+        {
+          "formula": "I_{>>} \\geq k_b \\cdot I_{k,max,next}",
+          "inputs": {
+            "I_k_max_next_A": 8767.005250876473,
+            "k_b": 1.2
+          },
+          "result": {
+            "I_min_selectivity_A": 10520.4
+          },
+          "step": "Warunek selektywności I>>",
+          "substitution": "1.2 * 8767.0"
+        },
+        {
+          "formula": "I_{>>} \\leq \\frac{I_{th,dop}}{k_{bth}} = \\frac{s \\cdot j_{thn}}{k_{bth} \\cdot \\sqrt{t_k}}",
+          "inputs": {
+            "j_thn_A_mm2": 94.0,
+            "k_bth": 1.1,
+            "s_mm2": 120.0,
+            "t_fault_s": 0.05
+          },
+          "result": {
+            "I_max_thermal_A": 45859.7,
+            "I_th_dop_A": 50445.7
+          },
+          "step": "Warunek wytrzymałości cieplnej I>>",
+          "substitution": "(120.0 * 94.0) / (1.1 * sqrt(0.05))"
+        },
+        {
+          "formula": "I_{>>} < \\frac{I_{k,min,bus}}{k_b}",
+          "inputs": {
+            "I_k_min_bus_A": 8746.78112356404,
+            "k_b": 1.2
+          },
+          "result": {
+            "I_max_sensitivity_A": 7289.0
+          },
+          "step": "Warunek czułości I>>",
+          "substitution": "8746.8 / 1.2"
+        },
+        {
+          "formula": "I_{min,sel} \\leq I_{>>} \\leq \\min(I_{max,th}, I_{max,cz})",
+          "inputs": {
+            "I_max_sensitivity_A": 7289.0,
+            "I_max_thermal_A": 45859.7,
+            "I_min_selectivity_A": 10520.4
+          },
+          "result": {
+            "I_setting_A": 10520.4,
+            "range_valid": false
+          },
+          "step": "Wyznaczenie nastawy I>>"
+        }
+      ],
+      "validation_notes": [
+        "Brak dopuszczalnego zakresu nastaw I>>: I_min_sel = 10520 A > min(I_max_th, I_max_cz) = 7289 A"
+      ]
+    },
+    "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
+    "line_name": "Magistrala GPZ (1)",
+    "okno_nastaw": {
+      "conflict_pl": "Konflikt kryteriów: dolna granica 10.52 kA (selektywność) przewyższa górną 7.29 kA (czułość) o 3.23 kA — żadna nastawa I>> nie spełnia obu warunków jednocześnie.",
+      "i_max_a": 7289.0,
+      "i_min_a": 10520.4,
+      "limiting_criterion_max": "sensitivity",
+      "limiting_criterion_min": "selectivity",
+      "recommendations_pl": [
+        "Okno nastaw jest sprzeczne (I_min = 10.52 kA > I_max = 7.29 kA).",
+        "Możliwe rozwiązania: obniż współczynnik k_b, zwiększ zapas wobec kolejnej strefy selektywności, lub przenieś punkt kolejnego zabezpieczenia (next_bus_id)."
+      ],
+      "trace": [
+        {
+          "inputs": {
+            "i_max_sensitivity_a": 7289.0,
+            "i_max_thermal_a": 45859.7,
+            "i_min_selectivity_a": 10520.4
+          },
+          "result": {
+            "i_max_a": 7289.0,
+            "i_min_a": 10520.4,
+            "limiting_criterion_max": "sensitivity",
+            "window_valid": false
+          },
+          "step": "Nazwanie kryteriów granic okna I>>"
+        },
+        {
+          "inputs": {
+            "i_max_a": 7289.0,
+            "i_min_a": 10520.4
+          },
+          "outputs": {
+            "deficit_a": 3231.4,
+            "limiting_criterion_max": "sensitivity",
+            "notes_pl": "Konflikt kryteriów: dolna granica 10.52 kA (selektywność) przewyższa górną 7.29 kA (czułość) o 3.23 kA — żadna nastawa I>> nie spełnia obu warunków jednocześnie."
+          },
+          "step": "Konflikt okna nastaw I>>"
+        }
+      ],
+      "window_valid": false
+    },
+    "overall_valid": false,
+    "spz": {
+      "blocking_recommended": false,
+      "i_th_available_a": 14562.4,
+      "i_th_required_a": 9621.5,
+      "spz_allowed": true,
+      "total_fault_time_s": 0.6,
+      "trace": [
+        {
+          "formula": "t_{total} = t_{trip} + t_{SPZ,pause} + t_{trip}",
+          "inputs": {
+            "i_instantaneous_setting_a": 10520.4,
+            "t_spz_pause_s": 0.5,
+            "t_trip_s": 0.05
+          },
+          "result": {
+            "t_total_s": 0.6
+          },
+          "step": "Czas cyklu SPZ",
+          "substitution": "0.05 + 0.5 + 0.05"
+        },
+        {
+          "formula": "I_{k,max} \\leq \\frac{s \\cdot j_{thn}}{\\sqrt{t_{total}}}",
+          "inputs": {
+            "I_instantaneous_setting_A": 10520.4,
+            "I_k_max_A": 9621.5,
+            "I_th_available_A": 14562.4
+          },
+          "result": {
+            "blocking_recommended": false,
+            "spz_allowed": true
+          },
+          "step": "Sprawdzenie wytrzymałości cieplnej w cyklu SPZ"
+        }
+      ]
+    },
+    "summary_notes": [
+      "Nastawa I>> nie spełnia warunków"
+    ],
+    "thermal": {
+      "cross_section_mm2": 120.0,
+      "i_th_dop_a": 18544.2,
+      "ik_max_a": 9621.5,
+      "is_adequate": true,
+      "j_thn": 94.0,
+      "margin_percent": 48.1,
+      "t_fault_s": 0.37,
+      "trace": [
+        {
+          "formula": "I_{th,dop} = \\frac{s \\cdot j_{thn}}{\\sqrt{t_k}}",
+          "inputs": {
+            "j_thn_A_mm2": 94.0,
+            "material": "AL",
+            "s_mm2": 120.0,
+            "t_fault_s": 0.37
+          },
+          "result": {
+            "I_th_dop_A": 18544.2
+          },
+          "step": "Obliczenie dopuszczalnego prądu cieplnego",
+          "substitution": "120.0 * 94.0 / sqrt(0.370)"
+        },
+        {
+          "formula": "I_{k,max} \\leq I_{th,dop}",
+          "inputs": {
+            "I_k_max_A": 9621.5,
+            "I_th_dop_A": 18544.2
+          },
+          "result": {
+            "is_adequate": true,
+            "margin_percent": 48.1
+          },
+          "step": "Sprawdzenie wytrzymałości cieplnej"
+        }
+      ]
+    }
+  }
+}

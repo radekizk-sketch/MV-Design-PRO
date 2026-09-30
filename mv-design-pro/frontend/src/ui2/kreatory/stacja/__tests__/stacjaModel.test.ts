@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { at } from '../../../../test/arrayAt';
+
 import type { CompleteMvBayTemplateSummary } from '../../../../ui/catalog/BayTemplatePicker';
 import type { ConverterType, TransformerType } from '../../../../ui/catalog/types';
 import {
@@ -366,7 +368,7 @@ describe('stacjaModel — payload', () => {
 
   it('blok nn_earthing niesie układ sieci nN + typ punktu neutralnego (G-STK-1)', () => {
     const payload = zbudujPayload(
-      dane({ nn_earthing_system: 'IT', neutral_point: 'isolated' }),
+      dane({ uklad_sieci_nn: 'IT', neutral_point: 'isolated' }),
       kontekst(),
       rozdzielnica('branch'),
     );
@@ -401,22 +403,42 @@ describe('stacjaModel — payload', () => {
     expect(zPw.station_auxiliary).toEqual({ active_power_kw: 5, cos_phi: 0.9 });
   });
 
-  it('rezystancja uziemienia tylko dla wariantu impedancyjnego (rezystor/cewka)', () => {
+  it('impedancja uziemienia tylko dla wariantu impedancyjnego: rezystor → lv_r_ohm, cewka → lv_x_ohm', () => {
     // Rezystor + R podane → lv_r_ohm w payloadzie (przecinek PL → liczba).
     const zRezystorem = zbudujPayload(
-      dane({ neutral_point: 'resistor_grounded', neutral_r_ohm: '12,5' }),
+      dane({ neutral_point: 'resistor_grounded', neutral_impedance_ohm: '12,5' }),
       kontekst(),
       rozdzielnica('branch'),
     );
     expect((zRezystorem.nn_earthing as Record<string, unknown>).lv_r_ohm).toBe(12.5);
+    expect(zRezystorem.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_x_ohm');
 
-    // Bezpośrednio uziemiony + R w polu → R IGNOROWANE (nie dotyczy tego wariantu).
+    // W5-A: cewka Petersena → reaktancja dławika pod `lv_x_ohm` (składowa dominująca),
+    // nigdy jako rezystancja — backend liczy Z_N = R_N + jX_N z właściwych kluczy.
+    const zCewka = zbudujPayload(
+      dane({ neutral_point: 'petersen_coil', neutral_impedance_ohm: '150' }),
+      kontekst(),
+      rozdzielnica('branch'),
+    );
+    expect((zCewka.nn_earthing as Record<string, unknown>).lv_x_ohm).toBe(150);
+    expect(zCewka.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_r_ohm');
+
+    // Bezpośrednio uziemiony + wartość w polu → IGNOROWANA (nie dotyczy tego wariantu).
     const bezposredni = zbudujPayload(
-      dane({ neutral_point: 'directly_grounded', neutral_r_ohm: '12,5' }),
+      dane({ neutral_point: 'directly_grounded', neutral_impedance_ohm: '12,5' }),
       kontekst(),
       rozdzielnica('branch'),
     );
     expect(bezposredni.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_r_ohm');
+  });
+
+  it('walidacja: uziemienie impedancyjne bez składowej dominującej = błąd nazwany (ten sam predykat co backend)', () => {
+    const bledyRezystor = walidujFormularz(dane({ neutral_point: 'resistor_grounded', neutral_impedance_ohm: '' }));
+    expect(bledyRezystor.some((b) => b.field === 'neutral_impedance_ohm' && b.message.includes('R_N'))).toBe(true);
+    const bledyCewka = walidujFormularz(dane({ neutral_point: 'petersen_coil', neutral_impedance_ohm: '0' }));
+    expect(bledyCewka.some((b) => b.field === 'neutral_impedance_ohm' && b.message.includes('X_N'))).toBe(true);
+    const bezBledu = walidujFormularz(dane({ neutral_point: 'directly_grounded', neutral_impedance_ohm: '' }));
+    expect(bezBledu.some((b) => b.field === 'neutral_impedance_ohm')).toBe(false);
   });
 
   it('payload niesie sn_fields i station.switchgear z wyboru rozdzielnicy', () => {
@@ -681,13 +703,13 @@ describe('stacjaModel — pełny parytet nN (5 wariantów vs legacy)', () => {
       feeder_role: string;
       catalog_bindings: { source_converter?: { catalog_namespace?: string } } | null;
     }>;
-    expect(feeders.at(-1)?.feeder_role).toBe('ZRODLO_NN_FW');
-    expect(feeders.at(-1)?.catalog_bindings?.source_converter?.catalog_namespace).toBe('CONVERTER');
+    expect(at(feeders, -1)?.feeder_role).toBe('ZRODLO_NN_FW');
+    expect(at(feeders, -1)?.catalog_bindings?.source_converter?.catalog_namespace).toBe('CONVERTER');
   });
 
   it('payload CUSTOM_NN: własne napięcie nN w payloadzie, bez źródła i pola źródłowego', () => {
     const payload = zbudujPayload(
-      dane({ nn_configuration: 'CUSTOM_NN', nn_voltage_kv: 6.3, catalog_ref: 'trafo-630-15-04' }),
+      dane({ nn_configuration: 'CUSTOM_NN', nn_voltage_kv: 0.69, catalog_ref: 'trafo-630-15-04' }),
       kontekst({ snVoltageKv: 15 }),
       rozdzielnica('branch'),
     );
@@ -696,7 +718,7 @@ describe('stacjaModel — pełny parytet nN (5 wariantów vs legacy)', () => {
     expect(nnBlock).not.toHaveProperty('source_converter_catalog_ref');
     expect(nnBlock).not.toHaveProperty('source_protection');
     // Własne napięcie strony nN spływa do station.nn_voltage_kv (nie z falownika).
-    expect((payload.station as Record<string, unknown>).nn_voltage_kv).toBe(6.3);
+    expect((payload.station as Record<string, unknown>).nn_voltage_kv).toBe(0.69);
     const feeders = nnBlock.outgoing_feeders_nn as Array<{ feeder_role: string }>;
     expect(feeders.every((f) => f.feeder_role === 'ODPLYW_NN')).toBe(true);
   });
@@ -756,6 +778,67 @@ describe('B-3 — wyposażenie pola w payloadzie operacji stacyjnej', () => {
       VT,
     );
     expect(wyposazenie).toBeNull();
+  });
+
+  describe('karta W3-B — obwód wtórny CT/VT w payloadzie (koniec liczenia „na kartce")', () => {
+    it('obwód wtórny CT trafia do equipment.ct.obwod_wtorny 1:1 z wpisu', () => {
+      const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
+        nowyWpisWyposazenia({
+          ct_catalog_ref: 'ct-400-5',
+          ct_dlugosc_m: 30,
+          ct_przekroj_mm2: 2.5,
+          ct_moc_aparatow_va: 3,
+          ct_moc_stykow_va: 0.5,
+        }),
+        CT,
+        VT,
+      );
+      expect(wyposazenie?.ct).toMatchObject({
+        obwod_wtorny: {
+          dlugosc_przewodu_m: 30,
+          przekroj_przewodu_mm2: 2.5,
+          obciazenia_aparatow: [{ nazwa: expect.any(String), moc_va: 3 }],
+          moc_stykow_va: 0.5,
+        },
+      });
+    });
+
+    it('obwód wtórny VT trafia do equipment.vt.obwod_wtorny razem z vt_uzwojenie', () => {
+      const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
+        nowyWpisWyposazenia({
+          vt_catalog_ref: 'vt-15-100',
+          vt_dlugosc_m: 12,
+          vt_przekroj_mm2: 1.5,
+          vt_uzwojenie: 'ZABEZPIECZENIOWE',
+        }),
+        CT,
+        VT,
+      );
+      expect(wyposazenie?.vt).toMatchObject({
+        obwod_wtorny: { dlugosc_przewodu_m: 12, przekroj_przewodu_mm2: 1.5 },
+        vt_uzwojenie: 'ZABEZPIECZENIOWE',
+      });
+    });
+
+    it('brak jakiejkolwiek wielkości obwodu = brak klucza obwod_wtorny (addytywne)', () => {
+      const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
+        nowyWpisWyposazenia({ ct_catalog_ref: 'ct-400-5' }),
+        CT,
+        VT,
+      );
+      expect(wyposazenie?.ct).not.toHaveProperty('obwod_wtorny');
+    });
+
+    it('częściowy obwód (tylko długość) niesie WYŁĄCZNIE podane pole — zero domysłu', () => {
+      const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
+        nowyWpisWyposazenia({ ct_catalog_ref: 'ct-400-5', ct_dlugosc_m: 15 }),
+        CT,
+        VT,
+      );
+      const obwod = (wyposazenie?.ct as { obwod_wtorny?: Record<string, unknown> })
+        ?.obwod_wtorny;
+      expect(obwod).toEqual({ dlugosc_przewodu_m: 15 });
+    });
   });
 
   it('wyposażenie trafia do WŁAŚCIWEGO wpisu pola (dopasowanie po identyfikatorze)', () => {

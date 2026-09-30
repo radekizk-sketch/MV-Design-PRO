@@ -141,13 +141,17 @@ class CloudBackupEntry:
     Wpis kopii zapasowej na liście.
 
     Reprezentuje pojedynczą kopię zapasową w chmurze.
+
+    FAB-E (E1): size_bytes to ``int | None`` — GCS ``Blob.size`` bywa ``None``
+    (metadane nie zawsze wypełnione zależnie od SDK), a rozmiar nieznany NIGDY
+    nie jest fabrykowanym 0 B (wyglądałoby jak pusty/uszkodzony plik kopii).
     """
 
     backup_id: str
     project_id: str
     archive_hash: str
     timestamp: str  # ISO 8601
-    size_bytes: int
+    size_bytes: int | None
     url: str
     key: str  # Pełna ścieżka/klucz w storage
 
@@ -507,6 +511,30 @@ class LocalBackupProvider(CloudBackupProvider):
 # ============================================================================
 
 
+#: Kody odpowiedzi S3 oznaczające odmowę dostępu (`ClientError.response["Error"]["Code"]`).
+_KODY_ODMOWY_DOSTEPU_S3 = frozenset({"AccessDenied", "AllAccessDisabled", "Forbidden", "403"})
+
+
+def _bledy_sdk_s3() -> tuple[type[Exception], ...]:
+    """Nazwane błędy SDK AWS (karta #151): odpowiedź usługi z kodem błędu (`ClientError`)
+    i awaria transportu/konfiguracji klienta (`BotoCoreError`, m.in. brak połączenia z
+    punktem końcowym, brak poświadczeń). Import leniwy — `botocore` jest zależnością
+    `boto3`, opcjonalną dla projektu; wyrażenie jest wartościowane dopiero, gdy wyjątek
+    już leci. Każdy inny wyjątek jest błędem programu i wybucha."""
+    from botocore.exceptions import BotoCoreError, ClientError
+
+    return (ClientError, BotoCoreError)
+
+
+def _kod_bledu_s3(blad: Exception) -> str | None:
+    """Kod błędu usługi S3 z `ClientError` (`None` dla błędu transportu)."""
+    odpowiedz = getattr(blad, "response", None)
+    if not isinstance(odpowiedz, dict):
+        return None
+    kod = (odpowiedz.get("Error") or {}).get("Code")
+    return str(kod) if kod is not None else None
+
+
 class S3BackupProvider(CloudBackupProvider):
     """
     Dostawca kopii zapasowych Amazon S3.
@@ -587,11 +615,12 @@ class S3BackupProvider(CloudBackupProvider):
                 Body=archive_bytes,
                 **extra_args,
             )
-        except self._client.exceptions.NoSuchBucket:
-            raise CloudBackupNotFoundError(f"Bucket nie istnieje: {self._config.bucket_name}")
-        except Exception as exc:
-            exc_name = type(exc).__name__
-            if "AccessDenied" in exc_name or "Forbidden" in str(exc):
+        except self._client.exceptions.NoSuchBucket as exc:
+            raise CloudBackupNotFoundError(
+                f"Bucket nie istnieje: {self._config.bucket_name}"
+            ) from exc
+        except _bledy_sdk_s3() as exc:
+            if _kod_bledu_s3(exc) in _KODY_ODMOWY_DOSTEPU_S3:
                 raise CloudBackupPermissionError(
                     f"Brak uprawnień do bucket'a: " f"{self._config.bucket_name}"
                 ) from exc
@@ -622,11 +651,11 @@ class S3BackupProvider(CloudBackupProvider):
                 Key=key,
             )
             data = response["Body"].read()
-        except self._client.exceptions.NoSuchKey:
+        except self._client.exceptions.NoSuchKey as exc:
             raise CloudBackupNotFoundError(
                 f"Kopia zapasowa nie znaleziona w S3: " f"project={project_id}, backup={backup_id}"
-            )
-        except Exception as exc:
+            ) from exc
+        except _bledy_sdk_s3() as exc:
             raise CloudBackupDownloadError(f"Błąd pobierania z S3: {exc}") from exc
 
         return data
@@ -639,7 +668,7 @@ class S3BackupProvider(CloudBackupProvider):
                 Bucket=self._config.bucket_name,
                 Prefix=list_prefix,
             )
-        except Exception as exc:
+        except _bledy_sdk_s3() as exc:
             raise CloudBackupDownloadError(f"Błąd listowania kopii S3: {exc}") from exc
 
         entries: list[CloudBackupEntry] = []
@@ -659,7 +688,8 @@ class S3BackupProvider(CloudBackupProvider):
                     project_id=project_id,
                     archive_hash=archive_hash_short,
                     timestamp=ts_part.replace("-", ":", 2).replace("p", "+"),
-                    size_bytes=obj.get("Size", 0),
+                    # Brak rozmiaru w odpowiedzi S3 -> None, nie fikcyjne 0 B (jak GCS).
+                    size_bytes=obj.get("Size"),
                     url=f"s3://{self._config.bucket_name}/{key}",
                     key=key,
                 )
@@ -677,7 +707,7 @@ class S3BackupProvider(CloudBackupProvider):
                 Bucket=self._config.bucket_name,
                 Key=key,
             )
-        except Exception as exc:
+        except _bledy_sdk_s3() as exc:
             raise CloudBackupUploadError(f"Błąd usuwania z S3: {exc}") from exc
 
         return CloudBackupResult(
@@ -693,6 +723,28 @@ class S3BackupProvider(CloudBackupProvider):
 # ============================================================================
 # DOSTAWCA GCS
 # ============================================================================
+
+
+def _bledy_sdk_gcs() -> tuple[type[Exception], ...]:
+    """Nazwane błędy SDK Google Cloud (karta #151): odpowiedź API (`GoogleAPIError` —
+    w tym `Forbidden` 403 i `NotFound` 404), błąd uwierzytelnienia (`GoogleAuthError`)
+    i awaria sieci (`OSError` — `requests.RequestException` jest jego podklasą). Import
+    leniwy jak w `_bledy_sdk_s3`. Każdy inny wyjątek jest błędem programu i wybucha."""
+    from google.api_core.exceptions import GoogleAPIError
+    from google.auth.exceptions import GoogleAuthError
+
+    return (GoogleAPIError, GoogleAuthError, OSError)
+
+
+def _rodzaj_bledu_gcs(blad: Exception) -> str | None:
+    """`"odmowa"` dla 403, `"brak"` dla 404, `None` dla pozostałych błędów SDK."""
+    from google.api_core.exceptions import Forbidden, NotFound
+
+    if isinstance(blad, Forbidden):
+        return "odmowa"
+    if isinstance(blad, NotFound):
+        return "brak"
+    return None
 
 
 class GCSBackupProvider(CloudBackupProvider):
@@ -774,13 +826,13 @@ class GCSBackupProvider(CloudBackupProvider):
                 archive_bytes,
                 content_type="application/zip",
             )
-        except Exception as exc:
-            exc_str = str(exc)
-            if "403" in exc_str or "Forbidden" in exc_str:
+        except _bledy_sdk_gcs() as exc:
+            rodzaj = _rodzaj_bledu_gcs(exc)
+            if rodzaj == "odmowa":
                 raise CloudBackupPermissionError(
                     f"Brak uprawnień do bucket'a GCS: " f"{self._config.bucket_name}"
                 ) from exc
-            if "404" in exc_str or "Not Found" in exc_str:
+            if rodzaj == "brak":
                 raise CloudBackupNotFoundError(
                     f"Bucket GCS nie istnieje: " f"{self._config.bucket_name}"
                 ) from exc
@@ -808,13 +860,12 @@ class GCSBackupProvider(CloudBackupProvider):
         try:
             blob = self._bucket.blob(key)
             data = blob.download_as_bytes()
-        except Exception as exc:
-            exc_str = str(exc)
-            if "404" in exc_str or "Not Found" in exc_str:
+        except _bledy_sdk_gcs() as exc:
+            if _rodzaj_bledu_gcs(exc) == "brak":
                 raise CloudBackupNotFoundError(
                     f"Kopia zapasowa nie znaleziona w GCS: "
                     f"project={project_id}, backup={backup_id}"
-                )
+                ) from exc
             raise CloudBackupDownloadError(f"Błąd pobierania z GCS: {exc}") from exc
 
         return data
@@ -823,11 +874,15 @@ class GCSBackupProvider(CloudBackupProvider):
         list_prefix = f"{self._config.prefix}/{project_id}/"
 
         try:
-            blobs = self._client.list_blobs(
-                self._config.bucket_name,
-                prefix=list_prefix,
+            # `list_blobs` zwraca iterator leniwy — zapytania do API biegną przy iteracji,
+            # więc lista powstaje tutaj, pod nazwaną reakcją, a nie w pętli niżej.
+            blobs = list(
+                self._client.list_blobs(
+                    self._config.bucket_name,
+                    prefix=list_prefix,
+                )
             )
-        except Exception as exc:
+        except _bledy_sdk_gcs() as exc:
             raise CloudBackupDownloadError(f"Błąd listowania kopii GCS: {exc}") from exc
 
         entries: list[CloudBackupEntry] = []
@@ -847,7 +902,9 @@ class GCSBackupProvider(CloudBackupProvider):
                     project_id=project_id,
                     archive_hash=archive_hash_short,
                     timestamp=ts_part.replace("-", ":", 2).replace("p", "+"),
-                    size_bytes=blob.size or 0,
+                    # FAB-E (E1): brak rozmiaru w metadanych GCS -> None, nie
+                    # fikcyjne 0 B (wygladaloby jak pusty/uszkodzony plik).
+                    size_bytes=blob.size,
                     url=f"gs://{self._config.bucket_name}/{key}",
                     key=key,
                 )
@@ -863,13 +920,12 @@ class GCSBackupProvider(CloudBackupProvider):
         try:
             blob = self._bucket.blob(key)
             blob.delete()
-        except Exception as exc:
-            exc_str = str(exc)
-            if "404" in exc_str or "Not Found" in exc_str:
+        except _bledy_sdk_gcs() as exc:
+            if _rodzaj_bledu_gcs(exc) == "brak":
                 raise CloudBackupNotFoundError(
                     f"Kopia zapasowa nie znaleziona w GCS: "
                     f"project={project_id}, backup={backup_id}"
-                )
+                ) from exc
             raise CloudBackupUploadError(f"Błąd usuwania z GCS: {exc}") from exc
 
         return CloudBackupResult(

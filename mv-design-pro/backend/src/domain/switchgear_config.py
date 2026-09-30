@@ -374,7 +374,7 @@ _VALIDATION_MESSAGES_PL: dict[str, str] = {
         "Aparat {device_id} ({device_type}): brak wymaganego parametru"
     ),
     SwitchgearConfigValidationCode.PROTECTION_BINDING_MISSING: (
-        "Zabezpieczenie {device_id}: brak powiazania z wylacznikiem (CB)"
+        "Zabezpieczenie {device_id}: brak powiązania z wyłącznikiem (CB)"
     ),
     SwitchgearConfigValidationCode.PV_BESS_TRANSFORMER_MISSING: (
         "Pole {field_id} ({pole_type}): generator PV/BESS wymaga transformatora"
@@ -383,10 +383,10 @@ _VALIDATION_MESSAGES_PL: dict[str, str] = {
     SwitchgearConfigValidationCode.DEVICE_DUPLICATE_ID: ("Zduplikowane ID aparatu: {device_id}"),
     SwitchgearConfigValidationCode.DEVICE_ORPHAN: ("Aparat {device_id}: brak pola o ID {field_id}"),
     SwitchgearConfigValidationCode.CATALOG_BINDING_ORPHAN: (
-        "Powiazanie katalogowe: brak aparatu o ID {device_id}"
+        "Powiązanie katalogowe: brak aparatu o ID {device_id}"
     ),
     SwitchgearConfigValidationCode.PROTECTION_BINDING_ORPHAN: (
-        "Powiazanie ochronne: brak aparatu o ID {device_id}"
+        "Powiązanie ochronne: brak aparatu o ID {device_id}"
     ),
 }
 
@@ -617,7 +617,7 @@ def validate_switchgear_config(
                     code=SwitchgearConfigValidationCode.PROTECTION_BINDING_MISSING,
                     severity=ConfigIssueSeverity.BLOCKER,
                     message_pl=(
-                        f"Zabezpieczenie {relay.device_id}: " f"brak powiazania z wylacznikiem (CB)"
+                        f"Zabezpieczenie {relay.device_id}: " f"brak powiązania z wyłącznikiem (CB)"
                     ),
                     element_id=relay.device_id,
                     field_id=relay.field_id,
@@ -628,7 +628,7 @@ def validate_switchgear_config(
                 ConfigFixActionV1(
                     code=SwitchgearConfigValidationCode.PROTECTION_BINDING_MISSING,
                     action=FixActionType.NAVIGATE_TO_WIZARD_PROTECTION,
-                    message_pl=(f"Przypisz zabezpieczenie {relay.device_id} " f"do wylacznika CB"),
+                    message_pl=(f"Przypisz zabezpieczenie {relay.device_id} " f"do wyłącznika CB"),
                     station_id=config.station_id,
                     field_id=relay.field_id,
                     device_id=relay.device_id,
@@ -650,8 +650,8 @@ def validate_switchgear_config(
                         severity=ConfigIssueSeverity.BLOCKER,
                         message_pl=(
                             f"Pole {f.field_id} ({f.pole_type.value}): "
-                            f"zrodlo PV/BESS wymaga transformatora — "
-                            f"brak transformatora w torze przylaczenia"
+                            f"źródło PV/BESS wymaga transformatora — "
+                            f"brak transformatora w torze przyłączenia"
                         ),
                         element_id=f.field_id,
                         field_id=f.field_id,
@@ -674,7 +674,7 @@ def validate_switchgear_config(
                 ConfigValidationIssueV1(
                     code=SwitchgearConfigValidationCode.CATALOG_BINDING_ORPHAN,
                     severity=ConfigIssueSeverity.WARNING,
-                    message_pl=(f"Powiazanie katalogowe: brak aparatu o ID {b.device_id}"),
+                    message_pl=(f"Powiązanie katalogowe: brak aparatu o ID {b.device_id}"),
                     element_id=b.device_id,
                     device_id=b.device_id,
                 )
@@ -687,7 +687,7 @@ def validate_switchgear_config(
                 ConfigValidationIssueV1(
                     code=SwitchgearConfigValidationCode.PROTECTION_BINDING_ORPHAN,
                     severity=ConfigIssueSeverity.WARNING,
-                    message_pl=(f"Powiazanie ochronne: brak aparatu o ID " f"{p.relay_device_id}"),
+                    message_pl=(f"Powiązanie ochronne: brak aparatu o ID " f"{p.relay_device_id}"),
                     element_id=p.relay_device_id,
                     device_id=p.relay_device_id,
                 )
@@ -697,7 +697,7 @@ def validate_switchgear_config(
                 ConfigValidationIssueV1(
                     code=SwitchgearConfigValidationCode.PROTECTION_BINDING_ORPHAN,
                     severity=ConfigIssueSeverity.WARNING,
-                    message_pl=(f"Powiazanie ochronne: brak aparatu o ID " f"{p.cb_device_id}"),
+                    message_pl=(f"Powiązanie ochronne: brak aparatu o ID " f"{p.cb_device_id}"),
                     element_id=p.cb_device_id,
                     device_id=p.cb_device_id,
                 )

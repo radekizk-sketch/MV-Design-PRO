@@ -89,16 +89,19 @@ describe('Kotwica systemu SN (§10/§11) — jedna kreska na tożsamość zasila
     expect(s.edges.filter((e) => e.kind === 'anchorDrop')).toHaveLength(2);
   });
 
-  it('[05] niezależne systemy SN: DWIE kotwice (po jednej na system), każda z powodem braku równoważnika po polsku', () => {
+  it('[05] niezależne systemy SN: DWIE kotwice (po jednej na system), każda z własnym równoważnikiem Thevenina (Sk″ SN)', () => {
+    // CV-4.3 K3b: dwa niezależne źródła SN = dwa węzły SLACK w IR (po jednym na źródło),
+    // więc każda kotwica niesie równoważnik swojej wyspy — do K3b obie meldowały
+    // „brak danych" z odmowy IR (jeden węzeł bilansujący na cały graf).
     const s = scena(scenariusz('05_independent_upstream'));
     const kotwice = s.nodes.filter((n) => n.kind === 'anchorBar').sort((a, b) => a.x - b.x);
     expect(kotwice).toHaveLength(2);
     expect(kotwice.map((k) => k.meta?.systemId)).toEqual(['sn', 'sn2']);
     expect(kotwice.map((k) => k.meta?.systemCount)).toEqual([2, 2]);
     for (const k of kotwice) {
-      expect(k.meta?.status).toBe('brak danych');
-      expect(String(k.meta?.opisLabel)).toContain('brak danych');
-      expect(String(k.meta?.opisLabel)).not.toContain('upstream_network_topology_invalid');
+      expect(k.meta?.status).toBe('OK');
+      expect(String(k.meta?.opisLabel)).toContain('Sk″ SN =');
+      expect(String(k.meta?.opisLabel)).not.toContain('brak danych');
       expect(typeof k.meta?.labelMaxWidth).toBe('number');
     }
     // Pas etykiety pierwszej kotwicy kończy się PRZED drugą kotwicą.

@@ -55,7 +55,8 @@ export interface AppShellProps {
   renderSearchDialog?: (otwarta: boolean, zamknij: () => void) => ReactNode;
   /** Stan ładowania — renderuje szkielet powłoki. */
   loading?: boolean;
-  /** Status połączenia z serwerem (klient health wpinany w E1.4 — TODO-KARTA). */
+  /** Status połączenia z serwerem (klient health: `AppRoot.tsx` woła `useBackendHealth`
+   *  z `./backendHealth.ts` i przekazuje wynik tym propsem — wpięte w E1.4). */
   backendStatus?: BackendStatus;
   /** Etykieta ostatniego zakończonego przebiegu (K6/H-6 R3 — z rejestru przebiegów). */
   lastRunLabel?: string | null;

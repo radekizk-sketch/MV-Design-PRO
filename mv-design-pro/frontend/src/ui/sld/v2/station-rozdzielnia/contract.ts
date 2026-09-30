@@ -100,15 +100,111 @@ export const FIELD_ROLE_SHORT_TAG: Readonly<Record<StationFieldRole, string>> = 
   POMIAROWE: 'POM',
 };
 
-/** Full Polish label shown on close zoom. */
-export const FIELD_ROLE_LABEL_PL: Readonly<Record<StationFieldRole, string>> = {
+// =============================================================================
+// Field role vocabulary — THE canon of SN field role names (karta #141)
+// =============================================================================
+
+/**
+ * Full Polish label of an SN field role — the ONE vocabulary of the whole product (wizard,
+ * schematic, drawer, context panel, bay-template catalog, exports, results). Mirrored by the
+ * backend canon `backend/src/enm/rola_pola_sn.py::NAZWA_ROLI_POLA_SN_PL` (parity pinned by
+ * `backend/tests/enm/test_nazwy_pol_bez_kodow.py`). Every other role vocabulary (model
+ * `Bay.bay_role` IN/OUT/FEEDER/TR/COUPLER/MEASUREMENT/OZE, catalog `BayKind`, SLD roles) maps
+ * to a canonical role FIRST and takes its label from here — no second list of Polish role
+ * labels anywhere else (guard: `backend/tests/ci/test_etykiety_rol_pol_sn.py`).
+ */
+export const FIELD_ROLE_LABEL_PL: Readonly<Record<BayCanonicalRole, string>> = {
   LINIA_IN: 'Pole liniowe wejściowe',
   LINIA_OUT: 'Pole liniowe wyjściowe',
   TRANSFORMATOROWE: 'Pole transformatorowe',
   LINIA_ODG: 'Pole odgałęźne',
   SPRZEGLO: 'Pole sprzęgła',
   POMIAROWE: 'Pole pomiarowe',
+  PV_SN: 'Pole źródłowe PV',
+  BESS_SN: 'Pole źródłowe BESS',
+  FW_SN: 'Pole źródłowe FW',
 };
+
+/** Source field whose technology is not known (model role `OZE`). */
+export const FIELD_SOURCE_LABEL_PL = 'Pole źródłowe SN';
+
+/** Field without a role or with a role outside the canon — generic name, no role guessing. */
+export const FIELD_GENERIC_LABEL_PL = 'Pole SN';
+
+/**
+ * Model field role (`Bay.bay_role`, `field_specs[].bay_role`) → canonical role. Mirror of the
+ * backend alias map `ROLA_POLA_SN_Z_ALIASU` (parity pinned by the same backend test). The model
+ * source role `OZE` has NO canonical role: its technology is known only from the generator.
+ */
+export const MODEL_BAY_ROLE_TO_CANONICAL: Readonly<Record<string, BayCanonicalRole>> = {
+  IN: 'LINIA_IN',
+  OUT: 'LINIA_OUT',
+  FEEDER: 'LINIA_ODG',
+  TR: 'TRANSFORMATOROWE',
+  COUPLER: 'SPRZEGLO',
+  MEASUREMENT: 'POMIAROWE',
+};
+
+const MODEL_SOURCE_ROLE = 'OZE';
+
+function normalizedRole(raw: string | null | undefined): string {
+  return typeof raw === 'string' ? raw.trim().toUpperCase() : '';
+}
+
+function isCanonicalRole(role: string): role is BayCanonicalRole {
+  return Object.prototype.hasOwnProperty.call(FIELD_ROLE_LABEL_PL, role);
+}
+
+/**
+ * Canonical role of a field given canonically (`LINIA_IN`) or by a model alias (`IN`, also
+ * lower case — SLD internal ids use `in`/`tr`/…). `null` = empty role, source role without a
+ * known technology (`OZE`) or a role outside the canon — the function never guesses.
+ */
+export function canonicalFieldRole(raw: string | null | undefined): BayCanonicalRole | null {
+  const role = normalizedRole(raw);
+  if (isCanonicalRole(role)) return role;
+  return MODEL_BAY_ROLE_TO_CANONICAL[role] ?? null;
+}
+
+/** Is the role a source (generation) field: model `OZE` or `PV_SN`/`BESS_SN`/`FW_SN`. */
+export function isSourceFieldRole(raw: string | null | undefined): boolean {
+  const role = normalizedRole(raw);
+  return role === MODEL_SOURCE_ROLE || role === 'PV_SN' || role === 'BESS_SN' || role === 'FW_SN';
+}
+
+/** Canon label of the role, or `null` when the role is empty or outside the canon. */
+export function fieldRoleLabelOrNullPl(raw: string | null | undefined): string | null {
+  if (normalizedRole(raw) === MODEL_SOURCE_ROLE) return FIELD_SOURCE_LABEL_PL;
+  const role = canonicalFieldRole(raw);
+  return role ? FIELD_ROLE_LABEL_PL[role] : null;
+}
+
+/** Canon label of the role; empty role or role outside the canon → generic „Pole SN”. */
+export function fieldRoleLabelPl(raw: string | null | undefined): string {
+  return fieldRoleLabelOrNullPl(raw) ?? FIELD_GENERIC_LABEL_PL;
+}
+
+/**
+ * Dispatcher tag of the role (`FIELD_ROLE_SHORT_TAG`: WE/WY/TR/ODG/SPR/POM) for a role given
+ * canonically or by a model alias; `null` for source fields and roles outside the canon — the
+ * role code itself (`OUT`, `LINIA_OUT`) is never shown in its place.
+ */
+export function fieldRoleShortTagPl(raw: string | null | undefined): string | null {
+  const role = canonicalFieldRole(raw);
+  return role && Object.prototype.hasOwnProperty.call(FIELD_ROLE_SHORT_TAG, role)
+    ? FIELD_ROLE_SHORT_TAG[role as StationFieldRole]
+    : null;
+}
+
+/** The same label inside a sentence („Pole sprzęgła” → „pole sprzęgła”). */
+export function fieldLabelInSentencePl(label: string): string {
+  return label.charAt(0).toLowerCase() + label.slice(1);
+}
+
+/** Plural of a canon label („Pole transformatorowe” → „Pola transformatorowe”). */
+export function fieldLabelPluralPl(label: string): string {
+  return label.replace(/^Pole /, 'Pola ');
+}
 
 // =============================================================================
 // Apparatus — projection of ENM BayPrimaryDevice

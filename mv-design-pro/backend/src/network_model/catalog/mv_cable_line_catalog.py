@@ -95,11 +95,11 @@ CABLE_MANUFACTURER_SOURCE_REFERENCE = (
 )
 ENEA_OPERATOR_CABLE_SOURCE_REFERENCE = (
     "ENEA Operator - standard projektowy kabli SN; parametry elektryczne z "
-    "bazowej matrycy MV-DESIGN-PRO i kart producentow, do pelnej weryfikacji "
-    "wymagane jest podpiecie aktualnego dokumentu standardu ENEA Operator"
+    "bazowej matrycy MV-DESIGN-PRO i kart producentów, do pełnej weryfikacji "
+    "wymagane jest podpięcie aktualnego dokumentu standardu ENEA Operator"
 )
 CATALOG_TEST_SOURCE_REFERENCE = (
-    "Rekord testowy MV-DESIGN-PRO - nie stosowac w katalogu produkcyjnym"
+    "Rekord testowy MV-DESIGN-PRO - nie stosować w katalogu produkcyjnym"
 )
 RETURN_CONDUCTOR_RHO_OHM_MM2_PER_KM_20C = {
     "CU": 17.241,
@@ -318,8 +318,8 @@ def _cable_records_with_quality() -> list[dict[str, Any]]:
             verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value,
             catalog_status=CatalogStatus.PRODUKCYJNY_V1.value,
             verification_note=(
-                "Pozycja priorytetowa OSD dla projektanta. Nie oznacza pelnej "
-                "oficjalnej weryfikacji ENEA bez dolaczonego source_ref dokumentu operatora."
+                "Pozycja priorytetowa OSD dla projektanta. Nie oznacza pełnej "
+                "oficjalnej weryfikacji ENEA bez dołączonego source_ref dokumentu operatora."
             ),
         )
         for record in CABLE_ENEA_OPERATOR_STANDARD_TYPES

@@ -1,7 +1,7 @@
 /*
  * Publiczny interfejs pulpitu instalacji OZE (ui2/oze/pulpit, karta P47).
- * Werdykty i klasa modułu pochodzą wyłącznie z solvera (ui/ncrfg-tests/api);
- * warstwa tylko agreguje i prezentuje (NOT-A-SOLVER).
+ * Klasyfikacja modułu, dowód certyfikatu i rekordy wymagań pochodzą wyłącznie z biegu
+ * backendu (klient V2 `ui2/oze/ncrfg`); warstwa tylko zestawia i prezentuje (NOT-A-SOLVER).
  */
 
 export { PulpitOze } from './PulpitOze';
@@ -21,18 +21,15 @@ export type { SladAnalizyProps } from './SladAnalizy';
 export {
   zbudujPozycje,
   daneModulu,
-  zgodnoscModulu,
   pracaMagazynu,
   dopasujMagazyn,
   wybierzPrzebiegZwarciowy,
   wybierzPrzebiegRozplywu,
 } from './pulpitModel';
 export type {
-  StatusPulpitu,
   PozycjaModulu,
   OdnosnikKatalogowy,
   DaneModulu,
-  ZgodnoscModulu,
   PracaMagazynu,
   DopasowanieMagazynu,
 } from './pulpitModel';

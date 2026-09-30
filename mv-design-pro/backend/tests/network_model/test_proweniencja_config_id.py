@@ -233,8 +233,10 @@ def _enm_z_odcinkiem() -> dict[str, Any]:
                 "from_bus_ref": "bus-a",
                 "to_bus_ref": "bus-b",
                 "length_km": 1.0,
-                "r_ohm": 0.2,
-                "x_ohm": 0.1,
+                # Karta #151: pola kontraktu ENM kabla to r/x NA KILOMETR (dawne "r_ohm"/"x_ohm"
+                # nie istnieją w modelu — fikstura przechodziła dzięki połkniętej walidacji).
+                "r_ohm_per_km": 0.2,
+                "x_ohm_per_km": 0.1,
             }
         ],
         "transformers": [],
@@ -265,6 +267,10 @@ def _uruchom(tor: str, pole_ref: str, rodzina_ref: str | None) -> dict[str, Any]
                 }
             ],
             "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref).
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         }
         if rodzina_ref:
             payload["switchgear_family_ref"] = rodzina_ref

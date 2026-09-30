@@ -83,18 +83,21 @@ kolejności najmniejszego ``bus_ref`` w wyspie.
 
 from __future__ import annotations
 
-from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from enm.models import Branch, EnergyNetworkModel, Generator, Substation
 from enm.severity import SEVERITY_BLOCKER, SEVERITY_IMPORTANT, SEVERITY_INFO
+from network_model.core.topologia import przeglad_wszerz, skladowe_spojne
 
 EnergizationState = Literal["ENERGIZED", "DEENERGIZED", "UNKNOWN", "CONFLICT", "MULTISOURCE"]
 ConnectivityState = Literal["CLOSED", "OPEN"]
 DerIslandCapability = Literal["GRID_FOLLOWING", "GRID_FORMING", "DUAL_MODE", "UNKNOWN"]
 PowerBalanceState = Literal["z_sieci", "nadwyzka", "deficyt", "zrownowazony", "brak_danych"]
-NeutralReferenceStatus = Literal["OK", "brak_ukladu", "brak_zrodla"]
+#: Stan danych odniesienia N/PE wyspy: `ustalone` (układ i element wnoszący znane; dawniej
+#: „OK” — słowo ze słownika werdyktów, a to stan danych, nie ocena; plan AB §8 F16),
+#: `brak_ukladu`, `brak_zrodla`. Kontrakt projekcji nN 4.0.0.
+NeutralReferenceStatus = Literal["ustalone", "brak_ukladu", "brak_zrodla"]
 
 #: Stany, w których szyna JEST pod napięciem (``is_energized`` = True).
 ENERGIZED_STATES: frozenset[str] = frozenset({"ENERGIZED", "MULTISOURCE", "CONFLICT"})
@@ -394,31 +397,18 @@ class EnergizationView:
 
 
 def _components(bus_refs: set[str], adjacency: dict[str, set[str]]) -> dict[str, frozenset[str]]:
-    """Spójne składowe grafu nieskierowanego — składowa per szyna."""
+    """Spójne składowe grafu nieskierowanego — składowa per szyna.
+
+    Liczone JEDYNYM jądrem topologii (``network_model.core.topologia.skladowe_spojne``,
+    CV-4.3); sąsiedztwo spoza ``bus_refs`` jest pomijane jak dotąd.
+    """
+    krawedzie = [(a, b) for a in sorted(adjacency) for b in sorted(adjacency[a])]
     component_of: dict[str, frozenset[str]] = {}
-    for start in sorted(bus_refs):
-        if start in component_of:
-            continue
-        seen = {start}
-        queue: deque[str] = deque([start])
-        while queue:
-            current = queue.popleft()
-            for neighbor in sorted(adjacency.get(current, set())):
-                if neighbor not in seen:
-                    seen.add(neighbor)
-                    queue.append(neighbor)
-        frozen = frozenset(seen)
-        for ref in seen:
+    for skladowa in skladowe_spojne(sorted(bus_refs), krawedzie):
+        frozen = frozenset(skladowa)
+        for ref in skladowa:
             component_of[ref] = frozen
     return component_of
-
-
-def _earthing_system(station: Substation | None) -> str | None:
-    if station is None:
-        return None
-    meta = station.meta if isinstance(station.meta, dict) else {}
-    value = meta.get("nn_earthing_system")
-    return str(value) if value else None
 
 
 def build_energization_view(
@@ -533,7 +523,6 @@ def build_energization_view(
         component = energized_component.get(bus_ref, frozenset({bus_ref}))
         grouped.setdefault(component, []).append(bus_ref)
 
-    earthing_system = _earthing_system(station)
     islands: list[Island] = []
     island_of_bus: dict[str, Island] = {}
     terminals: dict[str, TerminalState] = {}
@@ -725,14 +714,22 @@ def build_energization_view(
             neutral_source = declared[0] if declared else feeding_transformers[0]
         elif not is_islanded and nn_source_refs:
             neutral_source = nn_source_refs[0]
-        if earthing_system is None:
+        # W5-A: uklad sieci nN niesie TRANSFORMATOR wnoszacy odniesienie N/PE
+        # (`lv_earthing_system`), nie worek meta stacji.
+        earthing_system = (
+            transformer_by_ref[neutral_source].lv_earthing_system
+            if neutral_source in transformer_by_ref
+            else None
+        )
+        if neutral_source is not None and earthing_system is None:
             neutral = NeutralReference(
                 system=None,
                 source_ref=neutral_source,
                 status="brak_ukladu",
                 status_pl=(
-                    "Stacja nie deklaruje układu uziemienia sieci nN "
-                    "(meta.nn_earthing_system) — odniesienie N/PE nieokreślone."
+                    f"Element {neutral_source} wnoszący odniesienie N/PE nie deklaruje "
+                    "układu uziemienia sieci nN (lv_earthing_system) — odniesienie N/PE "
+                    "nieokreślone."
                 ),
                 swz_evaluable=False,
             )
@@ -752,14 +749,14 @@ def build_energization_view(
             neutral = NeutralReference(
                 system=earthing_system,
                 source_ref=neutral_source,
-                status="OK",
+                status="ustalone",
                 status_pl=f"Układ {earthing_system}; punkt neutralny: {neutral_source}.",
                 swz_evaluable=earthing_system != "IT",
             )
         # Komunikat N/PE wyłącznie dla wyspy POD NAPIĘCIEM: wyspa niezasilona nie
         # ma czego odnosić, a wyspa o stanie NIEZNANYM ma już komunikat o
         # nieznanej zdolności źródła — drugi komunikat o skutku byłby szumem.
-        if neutral.status != "OK" and island_state in ENERGIZED_STATES:
+        if neutral.status != "ustalone" and island_state in ENERGIZED_STATES:
             messages.append(
                 ValidationMessage(
                     code="NN-AUD-08",
@@ -805,7 +802,7 @@ def build_energization_view(
         else:
             island_operation_allowed = (
                 island_state in ENERGIZED_STATES
-                and neutral.status == "OK"
+                and neutral.status == "ustalone"
                 and balance_state != "deficyt"
             )
 
@@ -879,15 +876,7 @@ def build_energization_view(
 
     supply_paths: list[SupplyPath] = []
     for source_ref, root_bus in sorted(supply_roots):
-        parent: dict[str, tuple[str, str] | None] = {root_bus: None}
-        queue: deque[str] = deque([root_bus])
-        while queue:
-            current = queue.popleft()
-            for branch_ref, neighbor in sorted(section_edges.get(current, [])):
-                if neighbor in parent:
-                    continue
-                parent[neighbor] = (branch_ref, current)
-                queue.append(neighbor)
+        parent = przeglad_wszerz(root_bus, lambda szyna: sorted(section_edges.get(szyna, [])))
         for bus_ref in sorted(domain_bus_refs):
             if bus_ref not in parent:
                 continue

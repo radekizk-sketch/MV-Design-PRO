@@ -19,6 +19,7 @@ import './zmiany.css';
 import { useEffect, useState } from 'react';
 
 import { pobierzDziennikZmian, podsumowaniePl } from './dziennikApi';
+import { useNazwaObiektu } from '../wyniki/wzorzec/useNazwaObiektu';
 import type { DziennikZmian } from './dziennikApi';
 
 type Stan = 'ladowanie' | 'gotowe' | 'blad';
@@ -44,6 +45,9 @@ export function PanelCoSieZmienilo({
   rewizjaDanych,
   onPokazElement,
 }: PanelCoSieZmieniloProps): JSX.Element | null {
+  // Karta #145: element dotknięty zmianą nazwany mostem nazw wyników (nazwa z modelu;
+  // element usunięty — polska etykieta rodzaju), nigdy referencją.
+  const nazwaObiektu = useNazwaObiektu();
   const [stan, setStan] = useState<Stan>('ladowanie');
   const [dziennik, setDziennik] = useState<DziennikZmian | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
@@ -133,13 +137,13 @@ export function PanelCoSieZmienilo({
                       data-testid={`mvd-zmiana-element-${ref}`}
                       onClick={() => onPokazElement(ref)}
                     >
-                      {rodzaj}: <span className="mvd-mono">{ref}</span>
+                      {rodzaj}: {nazwaObiektu(ref)}
                     </button>
                   ) : (
                     // Element USUNIĘTY nie ma dokąd prowadzić — przycisk byłby
                     // martwym klikiem, więc go nie ma.
                     <span className="mvd-zmiany-element" data-nieklikalny="true">
-                      {rodzaj}: <span className="mvd-mono">{ref}</span>
+                      {rodzaj}: {nazwaObiektu(ref)}
                     </span>
                   )}
                 </li>

@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import type { RawOverlayElement, RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
-import { buildSceneV3 } from '../../scene/buildScene';
+import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
 import {
   buildFaultFlowOverlayFromScene,
   buildFlowOverlayFromScene,
@@ -326,7 +326,7 @@ describe('overlay.ts — isFlowOverlayEmpty', () => {
 describe('overlay.ts — F-3 (recenzja Opusa): allowlista analysis_type', () => {
   it('payload typu NIEZNANEGO (nie-LOAD_FLOW) z poprawnym P_MW ⇒ nakładka pusta (uczciwe nic zamiast czytania P z niewiadomego przebiegu)', () => {
     const ref = realSegmentOwnerRefs[0];
-    for (const unknownType of ['PHASE_STATE_SN', 'DYNAMIC_STABILITY', 'SOURCE_COMPLIANCE', 'przyszly_typ_x', '']) {
+    for (const unknownType of ['PHASE_STATE_SN', 'DYNAMIKA_RMS', 'SOURCE_COMPLIANCE', 'przyszly_typ_x', '']) {
       const payload = payloadOf(
         { [ref]: elementWithMetrics(ref, { P_MW: { code: 'P_MW', value: 3, unit: 'MW' } }) },
         unknownType,

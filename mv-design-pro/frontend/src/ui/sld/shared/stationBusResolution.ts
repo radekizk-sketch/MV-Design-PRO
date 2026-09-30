@@ -17,15 +17,16 @@
  * (dana modelu), bez żadnego przeliczania.
  */
 import type { Bus, Substation } from '../../../types/enm';
+import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 
-/** Granica stron stacji [kV] — wartość rozdzielająca stronę SN od nN w rekordach
- *  `Bus`. Ta sama liczba, którą adapter v2 stosował od K30-37 („0.4 kV LV-side
- *  wykluczamy z main"); wydzielona, żeby obie strony czytały ją z jednego
- *  miejsca. */
-export const STATION_LV_VOLTAGE_LIMIT_KV = 0.5;
+/* Granica stron stacji — jedno lustro granic pasm (`ui2/model/pasmaNapieciowe`).
+ * Do karty PASMO-1KV strony dzieliła tu własna liczba 0,5 kV (od K30-37: „0.4 kV
+ * LV-side wykluczamy z main"), więc szyna nN 0,69 kV albo 1 kV trafiała na stronę
+ * SN stacji, podczas gdy walidator, analizy nN i operacje strony dolnej uznawały ją
+ * za nN. Obie strony biorą teraz parę predykatów z jednego źródła. */
 
-/** Strona stacji: `sn` = szyna średniego napięcia (voltage_kv > granica),
- *  `nn` = szyna niskiego napięcia (0 < voltage_kv ≤ granica). */
+/** Strona stacji: `sn` = szyna powyżej pasma nN (`powyzejPasmaNn`),
+ *  `nn` = szyna w paśmie nN (`wPasmieNn`, 0 < voltage_kv ≤ 1 kV). */
 export type StationBusSide = 'sn' | 'nn';
 
 /**
@@ -47,7 +48,7 @@ export interface StationBusPick {
 const EMPTY_PICK: StationBusPick = { ref: null, voltageKv: null, ambiguous: false };
 
 function belongsToSide(voltageKv: number, side: StationBusSide): boolean {
-  return side === 'sn' ? voltageKv > STATION_LV_VOLTAGE_LIMIT_KV : voltageKv > 0 && voltageKv <= STATION_LV_VOLTAGE_LIMIT_KV;
+  return side === 'sn' ? powyzejPasmaNn(voltageKv) : wPasmieNn(voltageKv);
 }
 
 /**

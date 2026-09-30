@@ -3,19 +3,24 @@ import { render, screen } from '@testing-library/react';
 import { ProfilNapiecChart } from '../ProfilNapiecChart';
 import { ROZPLYW_STRINGS } from '../strings';
 import { naProfilNapiec } from '../adapters/rozplywAdapter';
-import { powerFlowResultFixture } from './fixtures';
+import { kryteriaNapieciaFixture, powerFlowResultFixture } from './fixtures';
 
-const punkty = naProfilNapiec(powerFlowResultFixture().bus_results);
+/** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
+const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
+  nazwaZWyniku ?? `nazwa ${ref}`;
+
+const punkty = naProfilNapiec(powerFlowResultFixture().bus_results, NAZWA);
+const kryteria = kryteriaNapieciaFixture();
 
 describe('ProfilNapiecChart — wykres Recharts (tokeny --mvd-*, deterministyczny)', () => {
   it('renderuje tytuł wykresu i kontener', () => {
-    render(<ProfilNapiecChart punkty={punkty} />);
+    render(<ProfilNapiecChart punkty={punkty} kryteria={kryteria} />);
     expect(screen.getByTestId('mvd-rozplyw-wykres')).toBeInTheDocument();
     expect(screen.getByText(ROZPLYW_STRINGS.wykresTytul)).toBeInTheDocument();
   });
 
   it('kolory wyłącznie przez tokeny var(--mvd-*) — zero literałów hex w SVG', () => {
-    const { container } = render(<ProfilNapiecChart punkty={punkty} />);
+    const { container } = render(<ProfilNapiecChart punkty={punkty} kryteria={kryteria} />);
     const svg = container.querySelector('svg');
     expect(svg).not.toBeNull();
     const html = svg!.outerHTML;
@@ -31,18 +36,26 @@ describe('ProfilNapiecChart — wykres Recharts (tokeny --mvd-*, deterministyczn
     // to artefakt biblioteki, nie danych. Normalizacja id izoluje test na
     // GEOMETRII i WARTOŚCIACH (Determinism Rule: same wejście → same wyjście).
     const normalizuj = (svg: string) => svg.replace(/recharts\d+/g, 'recharts-id');
-    const a = render(<ProfilNapiecChart punkty={punkty} />);
+    const a = render(<ProfilNapiecChart punkty={punkty} kryteria={kryteria} />);
     const svgA = normalizuj(a.container.querySelector('svg')!.outerHTML);
     a.unmount();
-    const b = render(<ProfilNapiecChart punkty={punkty} />);
+    const b = render(<ProfilNapiecChart punkty={punkty} kryteria={kryteria} />);
     const svgB = normalizuj(b.container.querySelector('svg')!.outerHTML);
     expect(svgA).toBe(svgB);
   });
 
   it('oś X niesie identyfikatory szyn z danych (zero losowości)', () => {
-    const { container } = render(<ProfilNapiecChart punkty={punkty} />);
+    const { container } = render(<ProfilNapiecChart punkty={punkty} kryteria={kryteria} />);
     const tekstSvg = container.querySelector('svg')!.textContent ?? '';
     expect(tekstSvg).toContain('SZ-GPZ');
     expect(tekstSvg).toContain('SZ-ST2');
+  });
+
+  it('karta W3-J: bez kryteriów (starszy zapisany wynik) → wykres BEZ linii odniesienia, nie z domyślnymi liczbami', () => {
+    const { container } = render(<ProfilNapiecChart punkty={punkty} />);
+    const svg = container.querySelector('svg')!;
+    expect(svg.querySelectorAll('.recharts-reference-line').length).toBe(0);
+    // Sama linia profilu i osie zostają — tylko odniesienie normatywne znika.
+    expect(svg.querySelector('.recharts-line')).not.toBeNull();
   });
 });

@@ -295,7 +295,7 @@ export function TransformerCard({ elementId }: { elementId: string }) {
   return (
     <ObjectCard
       elementName={transformer.name}
-      elementType="Transformator SN/nN"
+      elementType="Transformator"
       elementId={elementId}
       statusDot={dot}
       sections={sections}

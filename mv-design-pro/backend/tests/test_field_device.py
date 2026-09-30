@@ -13,7 +13,6 @@ from domain.field_device import (
     DEVICE_TYPE_TO_APARAT,
     FIELD_ROLE_TO_POLE,
     POLE_TO_FIELD_ROLE,
-    POLE_TYPE_LABELS_PL,
     AparatTypeV1,
     DeviceTypeV1,
     FieldRoleV1,
@@ -130,12 +129,11 @@ class TestAparatToDeviceTypeMapping:
 
 
 class TestPolishLabels:
-    """Every enum member has a Polish label."""
+    """Every apparatus type has a Polish label.
 
-    def test_all_pole_types_have_label(self) -> None:
-        for pole in PoleTypeV1:
-            assert pole in POLE_TYPE_LABELS_PL, f"Missing label for {pole}"
-            assert len(POLE_TYPE_LABELS_PL[pole]) > 0
+    Nazwy RÓL pól nie mają tu własnej listy (karta #141): jedyny kanon słownictwa ról pól SN
+    to `enm.rola_pola_sn.NAZWA_ROLI_POLA_SN_PL` (parytet z etykietami schematu przypięty w
+    `tests/enm/test_nazwy_pol_bez_kodow.py`)."""
 
     def test_all_aparat_types_have_label(self) -> None:
         for aparat in AparatTypeV1:

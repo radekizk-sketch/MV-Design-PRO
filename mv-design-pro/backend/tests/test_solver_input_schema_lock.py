@@ -27,9 +27,11 @@ def _normalize_schema(schema: dict) -> str:
 class TestSchemaLock:
     """Schema snapshot tests for solver-input contract v1.0."""
 
-    def test_contract_version_is_1_0(self):
-        """Contract version is 1.0."""
-        assert SOLVER_INPUT_CONTRACT_VERSION == "1.0"
+    def test_contract_version_is_1_1(self):
+        """Contract version is 1.1 (karta FAB-D2, D2: TransformerPayload
+        i0_percent/p0_kw/vector_group stają się Optional — brak danej
+        materializowany jako None, nie 0.0/"Dyn11")."""
+        assert SOLVER_INPUT_CONTRACT_VERSION == "1.1"
 
     def test_envelope_schema_has_required_fields(self):
         """SolverInputEnvelope schema has all required top-level fields."""

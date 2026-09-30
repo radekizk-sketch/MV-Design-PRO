@@ -141,6 +141,10 @@ def _zbuduj(klient: TestClient) -> dict[str, Any]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
+            # Transformator WN/SN GPZ z pozycji katalogu (karta FAB-G: jawna para
+            # napięcie WN + moc, bez domyślnych 25 MVA @ 110 kV po stronie operacji).
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
             "catalog_binding": _wiazanie("ZRODLO_SN", "src-gpz-15kv-250mva-rx010"),
         },
     )

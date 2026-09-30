@@ -21,6 +21,8 @@ UI (PR 5 frontend):
 
 from __future__ import annotations
 
+from network_model.brak_zasobu import BrakZasobuError
+
 from .manufacturer import Manufacturer
 
 # ---------------------------------------------------------------------------
@@ -128,7 +130,7 @@ SCHNEIDER_ELECTRIC = Manufacturer(
     ),
     notes_pl=(
         "Międzynarodowy producent rozdzielnic SN. Dodany w programie "
-        "Reference Engine V1 (REFERENCE_ENGINE_SPEC_V1.md) — rodzina SM6-24 "
+        "Reference Engine V1 (specyfikacja silnika referencyjnego, wersja 1) — rodzina SM6-24 "
         "w rejestrze rodzin ze statusem repo_verified. Status producenta "
         "requires_catalog do czasu zatwierdzenia oficjalnych kart PDF."
     ),
@@ -160,7 +162,9 @@ def get_manufacturer(manufacturer_ref: str) -> Manufacturer:
     """Pobiera producenta po ref. Raises KeyError gdy brak."""
     if manufacturer_ref not in MANUFACTURER_REGISTRY:
         available = ", ".join(sorted(MANUFACTURER_REGISTRY.keys()))
-        raise KeyError(f"Unknown manufacturer_ref: {manufacturer_ref}. Available: {available}")
+        raise BrakZasobuError(
+            f"Unknown manufacturer_ref: {manufacturer_ref}. Available: {available}"
+        )
     return MANUFACTURER_REGISTRY[manufacturer_ref]
 
 

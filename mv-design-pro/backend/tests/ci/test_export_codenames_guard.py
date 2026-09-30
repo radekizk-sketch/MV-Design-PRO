@@ -75,6 +75,38 @@ def test_guard_nie_flaguje_identyfikatorow_regul(tmp_path: Path) -> None:
     assert guard.main([str(plik)]) == 0
 
 
+def test_guard_czerwony_na_kodzie_k(tmp_path: Path) -> None:
+    """Klasa kryptonimów obejmuje tez K<cyfry> (FAB-F, 2026-09-05) — K30
+    to fabrykacja usunieta z SldTitleBlock.tsx v2 (DEFAULTS.revision)."""
+    plik = tmp_path / "renderer_regresja_k.py"
+    plik.write_text(
+        'def naglowek() -> str:\n    return "Schemat K30-38 (rewizja)"\n',
+        encoding="utf-8",
+    )
+    assert guard.main([str(plik)]) == 1
+
+
+def test_guard_male_k_nie_jest_kodenamem(tmp_path: Path) -> None:
+    """Male `k<cyfry>` to fizyka (I_k1/I_k2/I_k3, wspolczynniki k1..k4 wg
+    IEC 60364-5-52), nie kryptonim — inaczej niz male `p<cyfry>` (P). Guard
+    lapie WYLACZNIE wielka litere K."""
+    plik = tmp_path / "renderer_prad_zwarciowy.py"
+    plik.write_text(
+        'def wzor() -> str:\n    return "Prad I_k1 oraz wspolczynnik k2"\n',
+        encoding="utf-8",
+    )
+    assert guard.main([str(plik)]) == 0
+
+
+def test_guard_k0_nie_jest_wylaczony(tmp_path: Path) -> None:
+    """K0 NIE ma wykluczenia (w przeciwienstwie do P0) — brak zmierzonego
+    technicznego odpowiednika w tym repo; jesli sie pojawi w tresci
+    eksportu, to naruszenie."""
+    plik = tmp_path / "renderer_k0.py"
+    plik.write_text('def naglowek() -> str:\n    return "Etap K0 wstepny"\n', encoding="utf-8")
+    assert guard.main([str(plik)]) == 1
+
+
 def test_guard_allowlista_wymaga_uzasadnienia(tmp_path: Path) -> None:
     """Wpis allowlisty z uzasadnieniem wyłącza dokładnie jeden token/linię."""
     plik = tmp_path / "renderer_allow.py"

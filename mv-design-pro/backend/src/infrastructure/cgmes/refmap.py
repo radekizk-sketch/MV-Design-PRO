@@ -40,7 +40,7 @@ LOSSY_BOUNDARY: tuple[str, ...] = (
     "ENM topology helpers: Junction, Corridor, BranchPointSN, LineRun, "
     "ConnectionNode, CableJoint, Bay, Measurement, ProtectionAssignment",
     "GPZ sections (gpz_sections / gpz_hv_sections) and Substation external_ports",
-    "Bus grounding/limits beyond BaseVoltage, transformer neutrals/tap metadata",
+    "Source neutral grounding, bus limits beyond BaseVoltage, transformer neutrals/tap metadata",
 )
 
 

@@ -3,8 +3,8 @@
  *
  * KONTRAKT (BINDING):
  *   • brak wartości (null / undefined / NaN) → '—' (lub etykieta tekstowa wybrana przez wywołującego)
- *   • status obliczeń ≠ 'ok' → tekstowa etykieta polskojęzyczna, NIGDY '0.00'
- *   • wartość 0 z statusem 'ok' jest jedynym przypadkiem, w którym wolno wyrenderować '0.00'
+ *   • status obliczeń ≠ 'pelny' → tekstowa etykieta polskojęzyczna, NIGDY '0.00'
+ *   • wartość 0 z statusem 'pelny' jest jedynym przypadkiem, w którym wolno wyrenderować '0.00'
  *
  * Cel: wyeliminować chaos „ściany zer” w SLD i panelach inżynierskich
  * w sytuacjach, gdy obliczenia nie zostały uruchomione, dane są niekompletne,
@@ -18,9 +18,13 @@
  * @see docs/audits/SLD_REBUILD_CAD_SCADA_AUDIT.md PR-1
  */
 
-/** Status wyniku obliczeń wg kanonu V12.x. */
+/**
+ * Status KOMPLETNOŚCI wyniku obliczeń (stan danych, nie werdykt). Wynik pełny nazywa się
+ * `pelny` — dawne `ok` należało do słownika werdyktów (plan AB §8 F18, karta AB-1a
+ * Pakiet E2), a mapa etykiet po nim była nieodróżnialna od zakazanej mapy werdyktu.
+ */
 export type CalculationStatus =
-  | 'ok'
+  | 'pelny'
   | 'partial'
   | 'error'
   | 'none'
@@ -29,7 +33,7 @@ export type CalculationStatus =
 
 /** Etykiety polskojęzyczne dla statusów. */
 export const POLISH_STATUS_LABEL: Readonly<Record<CalculationStatus, string>> = {
-  ok: 'wynik pełny',
+  pelny: 'wynik pełny',
   partial: 'wynik częściowy',
   error: 'wynik błędny',
   none: 'brak obliczeń',
@@ -39,7 +43,7 @@ export const POLISH_STATUS_LABEL: Readonly<Record<CalculationStatus, string>> = 
 
 /** Skrócone etykiety placeholdera (dla SLD i wąskich kolumn). */
 export const POLISH_STATUS_SHORT: Readonly<Record<CalculationStatus, string>> = {
-  ok: '—', // przy ok wartość renderuje wywołujący
+  pelny: '—', // przy wyniku pełnym wartość renderuje wywołujący
   partial: 'cz.',
   error: 'bł.',
   none: '—',
@@ -63,7 +67,7 @@ export interface FormatPolishValueOptions {
   unit?: string;
   /**
    * Status obliczeń. Steruje renderowaniem braków:
-   *   • 'ok'      → renderuje value
+   *   • 'pelny'   → renderuje value
    *   • 'partial' → renderuje value z badge 'cz.'
    *   • 'error'   → renderuje 'wynik błędny'
    *   • 'none'    → renderuje 'brak obliczeń'
@@ -90,8 +94,8 @@ export interface FormatPolishValueOptions {
  *
  * Niezmienniki:
  *   • value === null / undefined / NaN  ⇒  zwraca placeholder bez '0.00'
- *   • status !== 'ok' i status !== 'partial'  ⇒  zwraca tekst statusu
- *   • value === 0 i status === 'ok'  ⇒  renderuje '0,00 <unit>'
+ *   • status !== 'pelny' i status !== 'partial'  ⇒  zwraca tekst statusu
+ *   • value === 0 i status === 'pelny'  ⇒  renderuje '0,00 <unit>'
  */
 export function formatPolishValue(
   value: number | null | undefined,
@@ -111,9 +115,9 @@ export function formatPolishValue(
     Number.isNaN(value as number) ||
     !Number.isFinite(value as number);
 
-  // Jeżeli status jest podany jawnie i nie jest 'ok'/'partial', zwracamy etykietę
+  // Jeżeli status jest podany jawnie i nie jest 'pelny'/'partial', zwracamy etykietę
   // statusu (np. 'brak obliczeń', 'nie dotyczy') — niezależnie od value.
-  if (status && status !== 'ok' && status !== 'partial') {
+  if (status && status !== 'pelny' && status !== 'partial') {
     return placeholder === 'long'
       ? POLISH_STATUS_LABEL[status]
       : POLISH_STATUS_SHORT[status];
@@ -124,7 +128,7 @@ export function formatPolishValue(
     return placeholder === 'long' ? MISSING_LABEL : MISSING_DASH;
   }
 
-  const effectiveStatus: CalculationStatus = status ?? 'ok';
+  const effectiveStatus: CalculationStatus = status ?? 'pelny';
 
   const rawNumeric = (value as number).toLocaleString(locale, {
     minimumFractionDigits: decimals,

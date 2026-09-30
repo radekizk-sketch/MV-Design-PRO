@@ -1,7 +1,7 @@
 # MV-DESIGN-PRO Operational Plan
 
 **Version:** 5.1
-**Status:** LIVING DOCUMENT
+**Status:** LIVING DOCUMENT — **SUPERSEDOWANY OPERACYJNIE (2026-09-16):** stan operacyjny prowadzą `docs/evidence/CONVERGENCE_EVIDENCE.md` §A, `docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md` §8 i `docs/plan/SYNTEZA_DOMKNIECIA_PRODUKTU_2026-09.md`; sekcje poniżej opisują stan z 2026-08-05 i nie są źródłem prawdy o stanie repo.
 **Last updated:** 2026-08-05
 **Stan operacyjny śledzi rejestr [`docs/v12xx/REJESTR_KONFLIKTOW.md`](docs/v12xx/REJESTR_KONFLIKTOW.md) (do V12K-322); poniższe sekcje statusowe mogą być starsze niż rejestr.**
 **Reference (canon):** [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) (binding), [`docs/system/`](docs/system/) (binding specs), [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) (executive overview).

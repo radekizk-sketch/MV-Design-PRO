@@ -21,7 +21,7 @@ import zipfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, TypeVar
 
 from domain.project_archive import (
     ArchiveError,
@@ -30,6 +30,9 @@ from domain.project_archive import (
     archive_to_dict,
     canonicalize,
     dict_to_archive,
+    obiekt_json,
+    odciski_ze_slownika,
+    odczytaj_wpisy_zip,
 )
 
 # ============================================================================
@@ -39,15 +42,20 @@ from domain.project_archive import (
 INCREMENTAL_FORMAT_ID = "MV-DESIGN-PRO-INCREMENTAL"
 INCREMENTAL_SCHEMA_VERSION = "1.0.0"
 
-# Mapowanie nazw sekcji na pola ArchiveFingerprints i klucze dict
+# Mapowanie nazw sekcji na pola ArchiveFingerprints i klucze dict.
+#
+# W1-B-ARCH: `network_model`/`sld_diagrams`/`proofs` skasowane razem z sekcjami
+# `ProjectArchive` formatu 3.0.0, którym odpowiadały (W1 skasował tabele ORM,
+# które je zasilały — nie ma już dla nich źródła danych). Ten moduł operuje
+# WYŁĄCZNIE na `ProjectArchive`/`ArchiveFingerprints` (zawsze format 3.0.0,
+# bo powstają z `dict_to_archive`, która te sekcje już pomija) — bez gałęzi
+# „jeśli stara wersja" (§0.5): eksport przyrostowy nigdy nie produkuje/konsumuje
+# archiwum 2.x wprost.
 SECTION_NAMES: tuple[str, ...] = (
     "project_meta",
-    "network_model",
-    "sld_diagrams",
     "cases",
     "runs",
     "results",
-    "proofs",
     "interpretations",
     "issues",
     "enm",
@@ -55,12 +63,9 @@ SECTION_NAMES: tuple[str, ...] = (
 
 _FINGERPRINT_FIELD_MAP: dict[str, str] = {
     "project_meta": "project_meta_hash",
-    "network_model": "network_model_hash",
-    "sld_diagrams": "sld_hash",
     "cases": "cases_hash",
     "runs": "runs_hash",
     "results": "results_hash",
-    "proofs": "proofs_hash",
     "interpretations": "interpretations_hash",
     "issues": "issues_hash",
     "enm": "enm_hash",
@@ -90,9 +95,10 @@ class BaseHashMismatchError(IncrementalArchiveError):
 
 
 class IncrementalStructureError(IncrementalArchiveError):
-    """Błąd struktury archiwum przyrostowego."""
+    """Błąd struktury paczki zmian — `sciezka` nazywa pole (jak `ArchiveStructureError`)."""
 
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: str, sciezka: str | None = None) -> None:
+        self.sciezka = sciezka
         super().__init__(f"Błąd struktury archiwum przyrostowego: {message}")
 
 
@@ -225,12 +231,9 @@ def _compute_deterministic_signature(
         "fingerprints": {
             "archive_hash": fingerprints.archive_hash,
             "project_meta_hash": fingerprints.project_meta_hash,
-            "network_model_hash": fingerprints.network_model_hash,
-            "sld_hash": fingerprints.sld_hash,
             "cases_hash": fingerprints.cases_hash,
             "runs_hash": fingerprints.runs_hash,
             "results_hash": fingerprints.results_hash,
-            "proofs_hash": fingerprints.proofs_hash,
             "interpretations_hash": fingerprints.interpretations_hash,
             "issues_hash": fingerprints.issues_hash,
             "enm_hash": fingerprints.enm_hash,
@@ -408,12 +411,9 @@ def apply_incremental_archive(
     base_dict["fingerprints"] = {
         "archive_hash": incremental.fingerprints.archive_hash,
         "project_meta_hash": incremental.fingerprints.project_meta_hash,
-        "network_model_hash": incremental.fingerprints.network_model_hash,
-        "sld_hash": incremental.fingerprints.sld_hash,
         "cases_hash": incremental.fingerprints.cases_hash,
         "runs_hash": incremental.fingerprints.runs_hash,
         "results_hash": incremental.fingerprints.results_hash,
-        "proofs_hash": incremental.fingerprints.proofs_hash,
         "interpretations_hash": incremental.fingerprints.interpretations_hash,
         "issues_hash": incremental.fingerprints.issues_hash,
         "enm_hash": incremental.fingerprints.enm_hash,
@@ -430,42 +430,21 @@ def _empty_section_data(section_name: str) -> dict[str, Any]:
             "name": "",
             "description": None,
             "schema_version": "",
-            "active_network_snapshot_id": None,
             "connection_node_id": None,
             "sources": [],
             "created_at": "",
             "updated_at": "",
         },
-        "network_model": {
-            "nodes": [],
-            "branches": [],
-            "sources": [],
-            "loads": [],
-            "snapshots": [],
-        },
-        "sld_diagrams": {
-            "diagrams": [],
-            "node_symbols": [],
-            "branch_symbols": [],
-            "annotations": [],
-        },
         "cases": {
             "study_cases": [],
             "operating_cases": [],
-            "switching_states": [],
             "settings": None,
         },
         "runs": {
-            "analysis_runs": [],
+            "canonical_runs": [],
             "analysis_runs_index": [],
-            "study_runs": [],
         },
-        "results": {"study_results": []},
-        "proofs": {
-            "design_specs": [],
-            "design_proposals": [],
-            "design_evidence": [],
-        },
+        "results": {},
         "interpretations": {"cached": []},
         "issues": {"snapshot": []},
         "enm": {"models": []},
@@ -500,12 +479,9 @@ def _incremental_to_dict(archive: IncrementalArchive) -> dict[str, Any]:
             "fingerprints": {
                 "archive_hash": archive.fingerprints.archive_hash,
                 "project_meta_hash": archive.fingerprints.project_meta_hash,
-                "network_model_hash": archive.fingerprints.network_model_hash,
-                "sld_hash": archive.fingerprints.sld_hash,
                 "cases_hash": archive.fingerprints.cases_hash,
                 "runs_hash": archive.fingerprints.runs_hash,
                 "results_hash": archive.fingerprints.results_hash,
-                "proofs_hash": archive.fingerprints.proofs_hash,
                 "interpretations_hash": (archive.fingerprints.interpretations_hash),
                 "issues_hash": archive.fingerprints.issues_hash,
                 "enm_hash": archive.fingerprints.enm_hash,
@@ -516,65 +492,109 @@ def _incremental_to_dict(archive: IncrementalArchive) -> dict[str, Any]:
 
 
 def _dict_to_incremental(data: dict[str, Any]) -> IncrementalArchive:
-    """Konwersja dict (z JSON) do IncrementalArchive."""
-    # Walidacja struktury
-    required_keys = [
-        "format_id",
-        "schema_version",
-        "base_archive_hash",
-        "base_timestamp",
-        "export_type",
-        "deltas",
-        "fingerprints",
-        "deterministic_signature",
-    ]
-    for key in required_keys:
+    """Konwersja dict (z JSON) do IncrementalArchive.
+
+    Każdy brak i zły typ — na KAŻDYM poziomie (pola główne, `fingerprints.*`,
+    `deltas[i].*`) — to nazwany `IncrementalStructureError` ze ścieżką pola,
+    nigdy surowy `KeyError`/`ValueError` z odwołania do słownika albo enumu.
+    """
+    for key in _WYMAGANE_POLA_PACZKI:
         if key not in data:
-            raise IncrementalStructureError(f"Brak wymaganego pola: {key}")
+            raise IncrementalStructureError(f"Brak wymaganego pola: {key}", key)
 
-    if data["format_id"] != INCREMENTAL_FORMAT_ID:
-        raise IncrementalStructureError(f"Nieprawidłowy identyfikator formatu: {data['format_id']}")
+    format_id = _tekst_paczki(data, "format_id")
+    if format_id != INCREMENTAL_FORMAT_ID:
+        raise IncrementalStructureError(
+            f"Nieprawidłowy identyfikator formatu: {format_id}", "format_id"
+        )
 
-    version = data["schema_version"]
+    version = _tekst_paczki(data, "schema_version")
     if not _is_compatible_version(version):
         raise IncrementalVersionError(INCREMENTAL_SCHEMA_VERSION, version)
 
-    fp = data["fingerprints"]
-    fingerprints = ArchiveFingerprints(
-        archive_hash=fp["archive_hash"],
-        project_meta_hash=fp["project_meta_hash"],
-        network_model_hash=fp["network_model_hash"],
-        sld_hash=fp["sld_hash"],
-        cases_hash=fp["cases_hash"],
-        runs_hash=fp["runs_hash"],
-        results_hash=fp["results_hash"],
-        proofs_hash=fp["proofs_hash"],
-        interpretations_hash=fp.get("interpretations_hash", ""),
-        issues_hash=fp.get("issues_hash", ""),
-        enm_hash=fp.get("enm_hash", ""),
+    fingerprints = odciski_ze_slownika(
+        data["fingerprints"], "fingerprints", IncrementalStructureError
     )
 
-    deltas: list[SectionDelta] = []
-    for d in data["deltas"]:
-        deltas.append(
-            SectionDelta(
-                section_name=d["section_name"],
-                status=SectionChangeStatus(d["status"]),
-                old_hash=d.get("old_hash"),
-                new_hash=d.get("new_hash"),
-                data=d.get("data"),
-            )
-        )
+    surowe_delty = data["deltas"]
+    if not isinstance(surowe_delty, list):
+        raise IncrementalStructureError("Pole deltas nie jest listą", "deltas")
+    deltas = tuple(_delta_ze_slownika(d, f"deltas[{i}]") for i, d in enumerate(surowe_delty))
 
     return IncrementalArchive(
-        format_id=data["format_id"],
-        schema_version=data["schema_version"],
-        base_archive_hash=data["base_archive_hash"],
-        base_timestamp=data["base_timestamp"],
-        export_type=IncrementalExportType(data["export_type"]),
-        deltas=tuple(deltas),
+        format_id=format_id,
+        schema_version=version,
+        base_archive_hash=_tekst_paczki(data, "base_archive_hash"),
+        base_timestamp=_tekst_paczki(data, "base_timestamp"),
+        export_type=_wartosc_enum(IncrementalExportType, data["export_type"], "export_type"),
+        deltas=deltas,
         fingerprints=fingerprints,
-        deterministic_signature=data["deterministic_signature"],
+        deterministic_signature=_tekst_paczki(data, "deterministic_signature"),
+    )
+
+
+_WYMAGANE_POLA_PACZKI: tuple[str, ...] = (
+    "format_id",
+    "schema_version",
+    "base_archive_hash",
+    "base_timestamp",
+    "export_type",
+    "deltas",
+    "fingerprints",
+    "deterministic_signature",
+)
+
+
+def _tekst_paczki(obiekt: dict[str, Any], klucz: str, sciezka_obiektu: str = "") -> str:
+    sciezka = f"{sciezka_obiektu}.{klucz}" if sciezka_obiektu else klucz
+    if klucz not in obiekt:
+        raise IncrementalStructureError(f"Brak wymaganego pola: {sciezka}", sciezka)
+    wartosc = obiekt[klucz]
+    if not isinstance(wartosc, str):
+        raise IncrementalStructureError(f"Pole {sciezka} nie jest tekstem", sciezka)
+    return wartosc
+
+
+def _hash_lub_brak(obiekt: dict[str, Any], klucz: str, sciezka_obiektu: str) -> str | None:
+    wartosc = obiekt.get(klucz)
+    if wartosc is None or isinstance(wartosc, str):
+        return wartosc
+    sciezka = f"{sciezka_obiektu}.{klucz}"
+    raise IncrementalStructureError(f"Pole {sciezka} nie jest tekstem", sciezka)
+
+
+_Wyliczenie = TypeVar("_Wyliczenie", bound=StrEnum)
+
+
+def _wartosc_enum(typ: type[_Wyliczenie], wartosc: object, sciezka: str) -> _Wyliczenie:
+    dozwolone = ", ".join(e.value for e in typ)
+    if isinstance(wartosc, str) and wartosc in {e.value for e in typ}:
+        return typ(wartosc)
+    raise IncrementalStructureError(
+        f"Pole {sciezka} ma nieznaną wartość {wartosc!r} (dozwolone: {dozwolone})", sciezka
+    )
+
+
+def _delta_ze_slownika(d: object, sciezka: str) -> SectionDelta:
+    """Jedna delta sekcji; sekcja spoza `SECTION_NAMES` to błąd, nie nowy klucz archiwum."""
+    if not isinstance(d, dict):
+        raise IncrementalStructureError(f"Pole {sciezka} nie jest obiektem", sciezka)
+    section_name = _tekst_paczki(d, "section_name", sciezka)
+    if section_name not in SECTION_NAMES:
+        raise IncrementalStructureError(
+            f"Pole {sciezka}.section_name wskazuje nieznaną sekcję {section_name!r}",
+            f"{sciezka}.section_name",
+        )
+    if "status" not in d:
+        raise IncrementalStructureError(
+            f"Brak wymaganego pola: {sciezka}.status", f"{sciezka}.status"
+        )
+    return SectionDelta(
+        section_name=section_name,
+        status=_wartosc_enum(SectionChangeStatus, d["status"], f"{sciezka}.status"),
+        old_hash=_hash_lub_brak(d, "old_hash", sciezka),
+        new_hash=_hash_lub_brak(d, "new_hash", sciezka),
+        data=d.get("data"),
     )
 
 
@@ -612,20 +632,13 @@ def deserialize_incremental(data: bytes) -> IncrementalArchive:
     Raises:
         IncrementalStructureError: Nieprawidłowa struktura pliku.
     """
-    try:
-        buf = io.BytesIO(data)
-        with zipfile.ZipFile(buf, "r") as zf:
-            if "incremental.json" not in zf.namelist():
-                raise IncrementalStructureError("Brak pliku incremental.json w archiwum ZIP")
-            json_str = zf.read("incremental.json").decode("utf-8")
-    except zipfile.BadZipFile:
-        raise IncrementalStructureError("Plik nie jest prawidłowym archiwum ZIP")
-
-    try:
-        archive_dict = json.loads(json_str)
-    except json.JSONDecodeError as e:
-        raise IncrementalStructureError(f"Nieprawidłowy JSON w archiwum: {e}")
-
+    # Ten sam dekoder ZIP co archiwum projektu (`odczytaj_wpisy_zip`) — każde
+    # uszkodzenie pliku jest nazwanym błędem paczki zmian, nie surowym
+    # `zlib.error` / `UnicodeDecodeError`.
+    wpisy = odczytaj_wpisy_zip(data, "incremental.json", blad=IncrementalStructureError)
+    archive_dict = obiekt_json(
+        wpisy["incremental.json"], "incremental.json", "paczki zmian", IncrementalStructureError
+    )
     return _dict_to_incremental(archive_dict)
 
 

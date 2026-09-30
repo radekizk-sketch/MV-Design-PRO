@@ -4,8 +4,8 @@
  * Reguła KLASA, nie instancja: każdy test iteruje po CAŁYM rejestrze
  * (`CAD_SYMBOL_IDS`) i po iloczynie „symbol × stan", nie po przykładzie.
  */
-import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
 import { CadSymbol } from '../CadSymbol';
 import {

@@ -7,7 +7,8 @@
  *      norma). Tylko pola z jednoznacznym znaczeniem normowym (słownik definicji) —
  *      pola niejednoznaczne pomijane (zero zgadywania, karta E4.1 §2).
  *   3. Pochodzenie danych: źródło / status weryfikacji / status katalogu / norma /
- *      nota — jeśli API je niesie; w przeciwnym razie „wkrótce".
+ *      nota — KAŻDE pole tylko, gdy API je niesie (zero fabrykacji); brak pola =
+ *      brak wiersza (uczciwy stan zerowy, jak pozostałe pola tej sekcji).
  *
  * Tylko odczyt — katalog jest niezmienny (kanon katalog-first).
  */
@@ -60,7 +61,9 @@ function zbudujPochodzenie(pozycja: KatalogPozycja): WierszPochodzenia[] {
   const wiersze: WierszPochodzenia[] = [];
 
   const zrodlo = czytajTekst(pozycja, 'source_reference');
-  wiersze.push({ etykieta: STRINGS.pochodzenieZrodlo, wartosc: zrodlo ?? STRINGS.wkrotce });
+  if (zrodlo) {
+    wiersze.push({ etykieta: STRINGS.pochodzenieZrodlo, wartosc: zrodlo });
+  }
 
   const weryfikacja = czytajTekst(pozycja, 'verification_status');
   if (weryfikacja) {

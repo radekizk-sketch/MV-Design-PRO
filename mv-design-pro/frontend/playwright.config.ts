@@ -18,6 +18,9 @@
  */
 
 import { defineConfig, devices } from '@playwright/test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveChromiumExecutable } from './scripts/playwright-env.mjs';
 
@@ -34,13 +37,100 @@ const backendHealthUrl = process.env.PLAYWRIGHT_BACKEND_HEALTH_URL
 const frontendUrl = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
 const frontendCwd = fileURLToPath(new URL('.', import.meta.url));
 const backendCwd = fileURLToPath(new URL('../backend/', import.meta.url));
+
+// WŁASNOŚĆ SERWERÓW I IZOLACJA STANU (2026-09-05, karta FE-HIGIENA — odbiór).
+// Porty są WYPROWADZANE z adresów (PLAYWRIGHT_BACKEND_URL / PLAYWRIGHT_FRONTEND_URL),
+// więc bieg na innych portach nie wymaga żadnej innej zmiany — do tej pory komenda
+// backendu miała zaszyte `--port 8000` niezależnie od adresu, a serwer frontendu
+// zaszyte 5173 w `dev:e2e`; dwa równoległe biegi na jednej maszynie były niemożliwe.
+// `reuseExistingServer` domyślnie WYŁĄCZONE: przy `true` Playwright adoptował KAŻDY
+// serwer zastany na porcie — cudzy worktree, stary kod, cudza baza z projektami — a
+// gdy właściciel tamtego serwera go ubijał w trakcie biegu, specy padały na
+// `ERR_CONNECTION_REFUSED` (pomiar 2026-09-05: 9/17 czerwonych w jednym biegu z tej
+// przyczyny; wcześniejszy precedens w CONVERGENCE_EVIDENCE §E E2E-FIX). Teraz zajęty
+// port to JAWNY błąd startu serwera, nie cichy bieg na cudzym kodzie; świadome
+// współdzielenie serwera wymaga `PLAYWRIGHT_REUSE_SERVER=1`. Backend realny dostaje
+// ŚWIEŻĄ bazę i ŚWIEŻY magazyn ENM w katalogu tymczasowym biegu (spec „SLD render bez
+// ENM — empty state" zakłada pustą bazę; stan z poprzednich biegów w `./mv_design_pro.db`
+// łamał to założenie), chyba że wołający poda własne `PLAYWRIGHT_BACKEND_DATABASE_URL`
+// / `PLAYWRIGHT_ENM_STORE_DIR`. W CI (świeży runner, wolne porty) zachowanie jest
+// identyczne jak dotąd.
+const backendPort = new URL(withTrailingSlash(backendUrl)).port || '8000';
+const frontendPort = new URL(withTrailingSlash(frontendUrl)).port || '5173';
+const reuseExistingServer = process.env.PLAYWRIGHT_REUSE_SERVER === '1';
+function e2eTempDir(): string {
+  // Ustalany raz w procesie uruchamiającym; workery Playwrighta dziedziczą env,
+  // więc widzą TEN SAM katalog zamiast tworzyć własne.
+  if (!process.env.PLAYWRIGHT_E2E_TMP) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mvd-e2e-'));
+    process.env.PLAYWRIGHT_E2E_TMP = dir;
+    // Katalog należy do procesu, który go utworzył (runner Playwrighta; workery
+    // dziedziczą zmienną i nie wchodzą w tę gałąź). Sprzątanie przy wyjściu runnera,
+    // czyli PO zatrzymaniu serwerów `webServer` — baza jednego biegu z realnym backendem
+    // ma do ~3 GB (pomiar 2026-09-06: 41 osieroconych katalogów, ~10 GB, po biegach
+    // bez sprzątania na maszynie o stałym przydziale dysku).
+    process.once('exit', () => fs.rmSync(dir, { recursive: true, force: true }));
+  }
+  return process.env.PLAYWRIGHT_E2E_TMP;
+}
+const backendServerEnv: Record<string, string> = useRealBackend
+  ? {
+    ...(process.env as Record<string, string>),
+    // Kod backendu importuje pakiety absolutnie (`api.*`, `enm.*`), więc `src/`
+    // musi być na PYTHONPATH — w CI zapewniał to `poetry run` z instalacją
+    // edytowalną, przy jawnym interpreterze (worktree) trzeba to podać wprost.
+    PYTHONPATH: [path.join(backendCwd, 'src'), process.env.PYTHONPATH]
+      .filter((segment): segment is string => Boolean(segment))
+      .join(path.delimiter),
+    DATABASE_URL: process.env.PLAYWRIGHT_BACKEND_DATABASE_URL
+      ?? `sqlite+pysqlite:///${path.join(e2eTempDir(), 'mv_design_pro_e2e.db')}`,
+    ENM_STORE_DIR: process.env.PLAYWRIGHT_ENM_STORE_DIR ?? path.join(e2eTempDir(), 'enm_store'),
+    // KARTA S95-START (klasa FE-HIGIENA: KAŻDY trwały magazyn backendu w katalogu biegu).
+    // Szablony stacji użytkownika (`application/station_templates/user_store.py`) miały
+    // domyślny katalog W DRZEWIE (`backend/.station_templates`), więc szablon zapisany
+    // przez spec kreatora stacji przeżywał bieg i trafiał na listę kroku 0 KAŻDEGO
+    // późniejszego biegu w tym drzewie. Zmierzone 2026-09-25: drzewa integracji niosły
+    // szablon „Stacja K9-B MAX" (stacja odgałęźna z jednym polem wejściowym), spec S9-5
+    // wybierał go jako pierwszą pozycję listy i ogniwo 4 padało — na czystym runnerze CI
+    // ten sam spec był zielony. Kopie zapasowe w trybie LOCAL domyślnie lądują we
+    // wspólnym `/tmp/mv-design-pro-backups` (wspólnym dla wszystkich drzew i biegów) —
+    // ta sama klasa, ten sam środek.
+    STATION_USER_TEMPLATES_DIR: process.env.PLAYWRIGHT_STATION_USER_TEMPLATES_DIR
+      ?? path.join(e2eTempDir(), 'station_templates'),
+    CLOUD_BACKUP_BACKEND: 'LOCAL',
+    CLOUD_BACKUP_BUCKET: process.env.PLAYWRIGHT_CLOUD_BACKUP_BUCKET
+      ?? path.join(e2eTempDir(), 'cloud_backups'),
+    // KARTA WATKI-BLAS-E2E (2026-09-30, klasa: czas biegu backendu zależny od obcego
+    // obciążenia maszyny). numpy i scipy liczą przez OpenBLAS, który w KAŻDYM procesie
+    // startuje tyle wątków, ile rdzeni; przy obcym obciążeniu (równoległe biegi pytest
+    // i vitest, Chromium) wątki jednego wywołania czekają na siebie nawzajem. Zmierzone na
+    // maszynie 4-CPU: bieg zwarciowy sieci 50 stacji w specu `industrial-template-mass-flow`
+    // trwał 866 049 ms przy wątkach domyślnych i obcym obciążeniu (limit speku 240 s
+    // przekroczony), 19 553,4 ms przy jednym wątku i load average 9–12, 6 130,7 ms w innym
+    // biegu na tym samym `backend/src` (obciążenia wtedy nie mierzono). Wyniki od liczby
+    // wątków nie zależą (karta DETERMINIZM-KATA-FAZORA), więc jeden wątek zmienia tylko czas.
+    OPENBLAS_NUM_THREADS: '1',
+    OMP_NUM_THREADS: '1',
+  }
+  : {};
 const frontendServerCommand = process.env.PLAYWRIGHT_DISABLE_WEBSERVER
   ? 'echo "skip webserver"'
-  : 'npm run dev:e2e';
-const backendServerCommand = 'poetry run python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000';
+  : `npx vite --host 127.0.0.1 --port ${frontendPort} --strictPort`;
+// Interpreter backendu: domyślnie `poetry run python` (CI, pojedynczy checkout). W git
+// worktree Poetry wyprowadza NAZWĘ venv ze ścieżki projektu, więc `poetry run` trafia
+// w pusty venv bez uvicorna i serwer pada na starcie („No module named uvicorn") —
+// dotąd niewidoczne, bo Playwright adoptował cudzy serwer z portu 8000. Ten sam
+// mechanizm i to samo lekarstwo co w `scripts/mypy_ratchet_guard.py` (interpreter
+// podany jawnie): `PLAYWRIGHT_BACKEND_PYTHON=/sciezka/do/venv/bin/python`.
+const backendPython = process.env.PLAYWRIGHT_BACKEND_PYTHON ?? 'poetry run python';
+const backendServerCommand =
+  `${backendPython} -m uvicorn src.api.main:app --host 127.0.0.1 --port ${backendPort}`;
 
 export default defineConfig({
   testDir: './e2e',
+
+  // Rozgrzewka aplikacji po starcie serwerów (koszt zimnego startu Vite poza testami).
+  globalSetup: './e2e/global-setup.ts',
 
   // Run tests sequentially for determinism
   fullyParallel: false,
@@ -62,11 +152,16 @@ export default defineConfig({
   // Global timeout for each test (60s max per test)
   timeout: 60000,
 
-  // Expect timeout (for assertions). 20 s: zimny rozruch aplikacji w vite dev
-  // na wolniejszych kontenerach mierzy ~12 s (app-ready), a część speców
-  // asertuje bezpośrednio po goto bez czekania na app-ready.
+  // Expect timeout (for assertions). Z POMIARU, nie z głowy: zimny rozruch
+  // aplikacji w vite dev mierzył ~12 s (app-ready) przy poprzednim grafie modułów;
+  // 2026-09-16 (odbiór W3-J + V12.7, KaTeX w kolejnych ekranach wyników) zimna
+  // kompilacja sceny harnessu `?creator=wyniki-warsztat` (cały graf ekranów
+  // wyników) zmierzona bezpośrednio: 31,7 s przy load average ~10, ciepła 1,8 s.
+  // Część speców asertuje bezpośrednio po goto bez czekania na app-ready, więc
+  // limit asercji musi mieścić zimną kompilację NAJWIĘKSZEGO grafu; 45 s zostawia
+  // zapas pod wolniejszy runner CI, a `timeout: 60000` testu nadal ogranicza całość.
   expect: {
-    timeout: 20000,
+    timeout: 45000,
     // Visual regression tolerance (V12K-013 SLD F5 — PLAN_SLD_REWORK § 7.4)
     // Threshold 0.5% per snapshot to allow minor antialiasing differences
     // across CI environments while catching real visual regressions.
@@ -135,7 +230,8 @@ export default defineConfig({
         command: backendServerCommand,
         cwd: backendCwd,
         url: backendHealthUrl,
-        reuseExistingServer: true,
+        reuseExistingServer,
+        env: backendServerEnv,
         timeout: 120000,
         stdout: 'pipe',
         stderr: 'pipe',
@@ -144,7 +240,7 @@ export default defineConfig({
         command: frontendServerCommand,
         cwd: frontendCwd,
         url: frontendUrl,
-        reuseExistingServer: true,
+        reuseExistingServer,
         timeout: 120000,
         stdout: 'pipe',
         stderr: 'pipe',
@@ -154,7 +250,7 @@ export default defineConfig({
       command: frontendServerCommand,
       cwd: frontendCwd,
       url: frontendUrl,
-      reuseExistingServer: true,
+      reuseExistingServer,
       timeout: 120000,
       // Capture server output for debugging
       stdout: 'pipe',

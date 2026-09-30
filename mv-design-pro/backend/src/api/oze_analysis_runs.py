@@ -19,10 +19,12 @@
 
 Dokumenty formalne (każdy w wariancie JSON oraz ``.docx`` i ``.pdf``):
 ``POST /api/oze-analysis/compliance-certificate``, ``…/osd-application``,
-``…/connection-study``. Wszystkie przyjmują opcjonalny ``case_id`` (semantyka jak
-``POST /api/ncrfg-tests/run``) — wskazanie przypadku dopina DOWÓD certyfikacji
-PTPiREE z tabliczek urządzeń modelu. Bez ``case_id`` widok jest dokładnie taki
-jak przed dodaniem dowodu (odciski sekcji i ``input_hash`` bez zmian).
+``…/connection-study``. Certyfikat zgodności i wniosek do OSD powstają WYŁĄCZNIE z
+zatwierdzonego modelu przypadku: ``case_id`` w zapytaniu jest WYMAGANY, a ocena zgodności
+NC RfG (moduły, dowody certyfikatu urządzeń, rekordy wymagań) pochodzi z
+``application.ncrfg_compliance.zgodnosc_ncrfg_przypadku`` — ciało żądania nie ma pól modułów
+ani certyfikatu (plan AB O-27). Dokument studium przyjmuje ``case_id`` opcjonalnie —
+wskazanie przypadku dopina weryfikację certyfikatu urządzeń typu w wykazie PTPiREE.
 
 Warstwa PREZENTACJI/API: ładuje przebieg (404 gdy brak), deleguje mapowanie do
 serwisów aplikacyjnych (ZERO fizyki) i zwraca zserializowany widok 1:1 z buildera
@@ -31,10 +33,13 @@ interpretacji. Zły rodzaj przebiegu → 422 z komunikatem w języku polskim.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
+from api.dependencies import get_uow_factory
 from api.document_store import store_generated_document_from_response
+from api.klucz_twin_dep import KluczTwin, klucz_twin_z_sciezki
 from application.analyses.certyfikat_zgodnosci import (
     CertyfikatBrakiError,
     CertyfikatZgodnosciRequest,
@@ -49,10 +54,6 @@ from application.analyses.dokument_studium import (
     build_dokument_studium_view,
     render_dokument_studium_docx,
     render_dokument_studium_pdf,
-)
-from application.analyses.dowod_certyfikatu import (
-    dowody_certyfikatu,
-    dowody_certyfikatu_typu,
 )
 from application.analyses.frt_sekwencja import build_frt_sekwencja_view
 from application.analyses.frt_trajektorie import build_frt_trajectories_view
@@ -84,18 +85,22 @@ from application.analyses.wniosek_osd import (
     render_wniosek_osd_docx,
     render_wniosek_pdf,
 )
-from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile
+from application.ncrfg_compliance import (
+    NcRfgCaseComplianceResponse,
+    weryfikacje_certyfikatow_typu,
+    zgodnosc_ncrfg_przypadku,
+)
+from catalog.profiles.nc_rfg.loader import list_available_operators, load_nc_rfg_profile
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
 from enm.store import get_enm, has_enm
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.repository import get_default_mv_catalog
-from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeRunRequest, NcRfgPtpireeSolver
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 router = APIRouter(tags=["oze-analysis"])
-_ncrfg_solver = NcRfgPtpireeSolver()
 
 
 def _require_run(run_id: UUID) -> CanonicalRun:
@@ -108,19 +113,56 @@ def _require_run(run_id: UUID) -> CanonicalRun:
     return run
 
 
+def _klucz_opcjonalny(case_id: UUID | None, request: Request) -> str | None:
+    """Klucz magazynu ENM dla `case_id` OPCJONALNEGO (dokument studium: weryfikacja
+    certyfikatu urządzeń typu).
+
+    `None` zostaje `None` (bez sekcji dowodu); podany `case_id` tłumaczy się TĄ SAMĄ funkcją
+    co reszta API (CV-1-W, 404 gdy przypadek nie należy do żadnego projektu) — patrz
+    `api/klucz_twin_dep.py`.
+    """
+    if case_id is None:
+        return None
+    return klucz_twin_z_sciezki(str(case_id), request)
+
+
+def _require_enm_klucz(case_id: UUID, klucz: str) -> None:
+    if not has_enm(klucz):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Przypadek {case_id} nie ma dokumentu ENM.",
+        )
+
+
+def _zgodnosc_z_modelu(
+    case_id: UUID, operator_id: str, request: Request
+) -> NcRfgCaseComplianceResponse:
+    """Ocena zgodności NC RfG zatwierdzonego modelu przypadku — JEDYNE wejście certyfikatu
+    zgodności i wniosku do OSD (plan AB O-27). 404: przypadek bez projektu, przypadek bez
+    dokumentu ENM, nieznany operator."""
+    klucz = klucz_twin_z_sciezki(str(case_id), request)
+    _require_enm_klucz(case_id, klucz)
+    if operator_id not in set(list_available_operators()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Nieznany operator NC RfG: {operator_id}.",
+        )
+    return zgodnosc_ncrfg_przypadku(get_enm(klucz), operator_id=operator_id, case_id=str(case_id))
+
+
 @router.get("/api/oze-analysis/lom-protection")
-def get_lom_protection(case_id: str = Query(...)) -> dict[str, Any]:
+def get_lom_protection(klucz: KluczTwin, case_id: str = Query(...)) -> dict[str, Any]:
     """Weryfikacja ochrony przed pracą wyspową (LoM) dla modułów wytwórczych.
 
     Ładuje dokument ENM przypadku (404 gdy przypadek nieznany) i deleguje ocenę
     do serwisu interpretacji (ZERO fizyki). 200 z uczciwymi INFO przy brakach danych.
     """
-    if not has_enm(case_id):
+    if not has_enm(klucz):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Przypadek {case_id} nie ma dokumentu ENM.",
         )
-    enm = get_enm(case_id)
+    enm = get_enm(klucz)
     return build_ochrona_lom_view(enm)
 
 
@@ -154,6 +196,7 @@ def get_hosting_capacity(
     candidate_bus_refs: list[str] | None = Query(default=None),
     step_mw: float = Query(default=DEFAULT_STEP_MW),
     max_steps: int = Query(default=DEFAULT_MAX_STEPS),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
@@ -162,6 +205,7 @@ def get_hosting_capacity(
             candidate_bus_refs=candidate_bus_refs,
             step_mw=step_mw,
             max_steps=max_steps,
+            uow_factory=uow_factory,
         )
     except ValueError as exc:
         raise HTTPException(
@@ -178,6 +222,7 @@ def get_pq_area(
     step_q_mvar: float = Query(default=DEFAULT_STEP_Q_MVAR),
     max_steps_p: int = Query(default=DEFAULT_MAX_STEPS_P),
     max_steps_q: int = Query(default=DEFAULT_MAX_STEPS_Q),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
@@ -188,6 +233,7 @@ def get_pq_area(
             step_q_mvar=step_q_mvar,
             max_steps_p=max_steps_p,
             max_steps_q=max_steps_q,
+            uow_factory=uow_factory,
         )
     except ValueError as exc:
         raise HTTPException(
@@ -350,6 +396,9 @@ def get_pq_coverage(
     catalog_item_id: str = Query(...),
     operator_id: str = Query(...),
 ) -> dict[str, Any]:
+    """Pokrycie wymaganego zakresu mocy biernej profilu operatora obszarem zdolności P–Q typu
+    przekształtnika — widok z rekordem ``ocena`` (``OcenaKryterium``). 404: nieznany typ albo
+    operator. Typ bez krzywej producenta daje rekord ``NIE_OCENIONO`` z nazwanym brakiem."""
     converter = get_default_mv_catalog().get_converter_type(catalog_item_id)
     if converter is None:
         raise HTTPException(
@@ -363,72 +412,48 @@ def get_pq_coverage(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    try:
-        return build_pq_coverage_view(converter, profile)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_pq_coverage_view(converter, profile)
 
 
 def _certyfikat_view(
-    request: CertyfikatZgodnosciRequest, case_id: UUID | None = None
+    request: CertyfikatZgodnosciRequest, case_id: UUID, http_request: Request
 ) -> dict[str, Any]:
-    """Zbuduj widok certyfikatu tą samą ścieżką co macierz frontendu.
+    """Zbuduj widok certyfikatu z oceny zgodności zatwierdzonego modelu przypadku.
 
-    Uruchamia deterministyczny solver NC RfG/PTPiREE (``POST /api/ncrfg-tests/run``
-    używa tego samego solvera), po czym komponuje certyfikat z gotowych werdyktów.
-    Nieznany profil operatora → 404 PL; braki kompletności → 422 z listą PL.
-
-    ``case_id`` (semantyka jak ``POST /api/ncrfg-tests/run``) dopina dowód
-    certyfikacji PTPiREE z tabliczek urządzeń modelu. Bez niego widok jest
-    dokładnie taki jak przed dodaniem dowodu.
+    404: przypadek bez projektu, bez dokumentu ENM, nieznany operator. 422: braki — rekordy
+    ``WynikWymagania`` wymagań stosowalnych bez ``SPELNIA`` (``braki`` + ``braki_pl`` ze
+    zdaniami rekordów), źródła modelu pominięte przez most, model bez źródła objętego NC RfG.
     """
-    try:
-        run_result = _ncrfg_solver.run(request.run_request)
-    except FileNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
-    dowody = (
-        None
-        if case_id is None
-        else dowody_certyfikatu(case_id, [module.der_ref for module in run_result.modules])
-    )
+    zgodnosc = _zgodnosc_z_modelu(case_id, request.operator_id, http_request)
     try:
         return build_certyfikat_view(
-            run_result,
+            zgodnosc,
             nazwa_projektu=request.nazwa_projektu,
             nazwa_przypadku=request.nazwa_przypadku,
-            dowody=dowody,
         )
     except CertyfikatBrakiError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "komunikat": "Certyfikat nie może powstać — dane zgodności "
-                "niekompletne. Uzupełnij braki i powtórz generację.",
-                "braki": exc.braki,
-            },
+            detail=exc.detail(),
         ) from exc
 
 
 @router.post("/api/oze-analysis/compliance-certificate")
 def post_compliance_certificate(
     request: CertyfikatZgodnosciRequest,
-    case_id: UUID | None = Query(default=None),
+    http_request: Request,
+    case_id: UUID = Query(...),
 ) -> dict[str, Any]:
-    return _certyfikat_view(request, case_id)
+    return _certyfikat_view(request, case_id, http_request)
 
 
 @router.post("/api/oze-analysis/compliance-certificate.docx")
 def post_compliance_certificate_docx(
     request: CertyfikatZgodnosciRequest,
-    case_id: UUID | None = Query(default=None),
+    http_request: Request,
+    case_id: UUID = Query(...),
 ) -> Response:
-    view = _certyfikat_view(request, case_id)
+    view = _certyfikat_view(request, case_id, http_request)
     docx_bytes = render_certyfikat_docx(view)
     return Response(
         content=docx_bytes,
@@ -440,9 +465,10 @@ def post_compliance_certificate_docx(
 @router.post("/api/oze-analysis/compliance-certificate.pdf")
 def post_compliance_certificate_pdf(
     request: CertyfikatZgodnosciRequest,
-    case_id: UUID | None = Query(default=None),
+    http_request: Request,
+    case_id: UUID = Query(...),
 ) -> Response:
-    view = _certyfikat_view(request, case_id)
+    view = _certyfikat_view(request, case_id, http_request)
     pdf_bytes = render_certyfikat_pdf(view)
     return Response(
         content=pdf_bytes,
@@ -452,7 +478,12 @@ def post_compliance_certificate_pdf(
 
 
 class WniosekOsdRequest(BaseModel):
-    """Wejście generatora wniosku OSD: identyfikacja + odwołania do przebiegów."""
+    """Wejście generatora wniosku OSD: identyfikacja, odwołania do przebiegów i operator.
+
+    Zgodność NC RfG pochodzi WYŁĄCZNIE z zatwierdzonego modelu przypadku (``case_id`` w
+    zapytaniu) — ciało żądania nie ma pól modułów ani certyfikatu."""
+
+    model_config = ConfigDict(extra="forbid")
 
     nazwa_projektu: str = Field(min_length=1)
     nazwa_przypadku: str | None = None
@@ -461,34 +492,22 @@ class WniosekOsdRequest(BaseModel):
     pf_run_id: UUID
     sc_run_id: UUID
     bus_ref: str = Field(min_length=1)
-    run_request: NcRfgPtpireeRunRequest
+    operator_id: str = Field(min_length=1)
 
 
-def _wniosek_osd_view(request: WniosekOsdRequest, case_id: UUID | None = None) -> dict[str, Any]:
-    """Zbuduj widok wniosku OSD z gotowych przebiegów i macierzy NC RfG.
+def _wniosek_osd_view(
+    request: WniosekOsdRequest, case_id: UUID, http_request: Request
+) -> dict[str, Any]:
+    """Zbuduj widok wniosku OSD z gotowych przebiegów i oceny zgodności NC RfG zatwierdzonego
+    modelu przypadku.
 
-    Ładuje przebieg rozpływu i zwarciowy (404 gdy brak), uruchamia deterministyczny
-    solver NC RfG (404 gdy nieznany profil operatora), po czym komponuje wniosek.
-    Braki kompletności → 422 z listą po polsku (wniosek nie powstaje).
-
-    ``case_id`` (semantyka jak ``POST /api/ncrfg-tests/run``) dopina dowód
-    certyfikacji PTPiREE z tabliczek urządzeń modelu. Bez niego widok jest
-    dokładnie taki jak przed dodaniem dowodu (odciski sekcji bez zmian).
+    404: brak przebiegu, przypadek bez projektu albo bez dokumentu ENM, nieznany operator.
+    422: braki bilansu i zwarć (lista po polsku), rekordy W zgodności NC RfG bez ``SPELNIA``
+    (``braki_ncrfg`` + ``braki_ncrfg_pl``), źródła modelu pominięte przez most.
     """
     pf_run = _require_run(request.pf_run_id)
     sc_run = _require_run(request.sc_run_id)
-    try:
-        ncrfg_run_result = _ncrfg_solver.run(request.run_request)
-    except FileNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
-    dowody = (
-        None
-        if case_id is None
-        else dowody_certyfikatu(case_id, [module.der_ref for module in ncrfg_run_result.modules])
-    )
+    zgodnosc = _zgodnosc_z_modelu(case_id, request.operator_id, http_request)
     identyfikacja = WniosekOsdIdentyfikacja(
         nazwa_projektu=request.nazwa_projektu,
         nazwa_przypadku=request.nazwa_przypadku,
@@ -499,36 +518,33 @@ def _wniosek_osd_view(request: WniosekOsdRequest, case_id: UUID | None = None) -
         return build_wniosek_osd_view(
             pf_run,
             sc_run,
-            ncrfg_run_result,
+            zgodnosc,
             bus_ref=request.bus_ref,
             identyfikacja=identyfikacja,
-            dowody=dowody,
         )
     except WniosekOsdBrakiError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "komunikat": "Wniosek nie może powstać — dane przyłączeniowe "
-                "niekompletne. Uzupełnij braki i powtórz generację.",
-                "braki": exc.braki,
-            },
+            detail=exc.detail(),
         ) from exc
 
 
 @router.post("/api/oze-analysis/osd-application")
 def post_osd_application(
     request: WniosekOsdRequest,
-    case_id: UUID | None = Query(default=None),
+    http_request: Request,
+    case_id: UUID = Query(...),
 ) -> dict[str, Any]:
-    return _wniosek_osd_view(request, case_id)
+    return _wniosek_osd_view(request, case_id, http_request)
 
 
 @router.post("/api/oze-analysis/osd-application.docx")
 def post_osd_application_docx(
     request: WniosekOsdRequest,
-    case_id: UUID | None = Query(default=None),
+    http_request: Request,
+    case_id: UUID = Query(...),
 ) -> Response:
-    view = _wniosek_osd_view(request, case_id)
+    view = _wniosek_osd_view(request, case_id, http_request)
     docx_bytes = render_wniosek_osd_docx(view)
     return Response(
         content=docx_bytes,
@@ -540,9 +556,10 @@ def post_osd_application_docx(
 @router.post("/api/oze-analysis/osd-application.pdf")
 def post_osd_application_pdf(
     request: WniosekOsdRequest,
-    case_id: UUID | None = Query(default=None),
+    http_request: Request,
+    case_id: UUID = Query(...),
 ) -> Response:
-    view = _wniosek_osd_view(request, case_id)
+    view = _wniosek_osd_view(request, case_id, http_request)
     pdf_bytes = render_wniosek_pdf(view)
     return Response(
         content=pdf_bytes,
@@ -601,7 +618,7 @@ class DokumentStudiumRequest(BaseModel):
 
 
 def _dokument_studium_view(
-    request: DokumentStudiumRequest, case_id: UUID | None = None
+    request: DokumentStudiumRequest, case_id: UUID | None, http_request: Request
 ) -> dict[str, Any]:
     """Zbuduj widok dokumentu studium serwerową kompozycją sekwencji kreatora.
 
@@ -610,11 +627,10 @@ def _dokument_studium_view(
     Braki twarde → 422 z listą po polsku (dokument nie powstaje). Błąd pojedynczego
     wariantu jest odnotowany w sekcji wariantu i nie przerywa dokumentu.
 
-    ``case_id`` (semantyka jak ``POST /api/ncrfg-tests/run``) dopina dowód
-    certyfikacji PTPiREE urządzeń modelu związanych z TYPEM katalogowym dokumentu
-    (tożsamość urządzenia w studium to typ przekształtnika, nie moduł biegu — ten
-    dokument nie uruchamia macierzy NC RfG). Bez niego widok jest dokładnie taki
-    jak przed dodaniem dowodu (odcisk sekcji założeń bez zmian).
+    ``case_id`` (opcjonalny; klucz magazynu ENM tłumaczony na granicy API — CV-1-W) dopina
+    weryfikację certyfikatu urządzeń modelu związanych z TYPEM katalogowym dokumentu w
+    wykazie PTPiREE (``weryfikacje_certyfikatow_typu`` — ta sama weryfikacja tabliczki co
+    moduły zgodności NC RfG). Przypadek bez dokumentu ENM → 404.
     """
     run = _require_run(request.run_id)
     converter = get_default_mv_catalog().get_converter_type(request.catalog_item_id)
@@ -622,6 +638,13 @@ def _dokument_studium_view(
         profile = load_nc_rfg_profile(request.operator_id)
     except FileNotFoundError:
         profile = None
+    klucz_twin = _klucz_opcjonalny(case_id, http_request)
+    dowody = None
+    if case_id is not None and klucz_twin is not None and profile is not None:
+        _require_enm_klucz(case_id, klucz_twin)
+        dowody = weryfikacje_certyfikatow_typu(
+            get_enm(klucz_twin), request.catalog_item_id, operator_id=request.operator_id
+        )
     identyfikacja = DokumentStudiumIdentyfikacja(
         nazwa_projektu=request.nazwa_projektu,
         nazwa_przypadku=request.nazwa_przypadku,
@@ -637,11 +660,7 @@ def _dokument_studium_view(
             operator_id=request.operator_id,
             warianty=list(request.warianty),
             identyfikacja=identyfikacja,
-            dowody=(
-                None
-                if case_id is None
-                else dowody_certyfikatu_typu(case_id, request.catalog_item_id)
-            ),
+            dowody=dowody,
         )
     except DokumentStudiumBrakiError as exc:
         raise HTTPException(
@@ -657,18 +676,20 @@ def _dokument_studium_view(
 @router.post("/api/oze-analysis/connection-study")
 def post_connection_study(
     request: DokumentStudiumRequest,
+    http_request: Request,
     case_id: UUID | None = Query(default=None),
 ) -> dict[str, Any]:
-    return _dokument_studium_view(request, case_id)
+    return _dokument_studium_view(request, case_id, http_request)
 
 
 @router.post("/api/oze-analysis/connection-study.docx")
 def post_connection_study_docx(
     request: DokumentStudiumRequest,
+    http_request: Request,
     zapisz_do_magazynu: bool = Query(default=False),
     case_id: UUID | None = Query(default=None),
 ) -> Response:
-    view = _dokument_studium_view(request, case_id)
+    view = _dokument_studium_view(request, case_id, http_request)
     docx_bytes = render_dokument_studium_docx(view)
     response = Response(
         content=docx_bytes,
@@ -690,10 +711,11 @@ def post_connection_study_docx(
 @router.post("/api/oze-analysis/connection-study.pdf")
 def post_connection_study_pdf(
     request: DokumentStudiumRequest,
+    http_request: Request,
     zapisz_do_magazynu: bool = Query(default=False),
     case_id: UUID | None = Query(default=None),
 ) -> Response:
-    view = _dokument_studium_view(request, case_id)
+    view = _dokument_studium_view(request, case_id, http_request)
     pdf_bytes = render_dokument_studium_pdf(view)
     response = Response(
         content=pdf_bytes,

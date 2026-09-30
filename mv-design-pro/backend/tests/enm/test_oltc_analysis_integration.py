@@ -11,8 +11,10 @@ trace, final positions and switch counts are surfaced on the run result.
 from __future__ import annotations
 
 import pytest
-from enm.canonical_analysis import (
+from enm.assembler import (
     _graph_id_from_ref,
+)
+from enm.canonical_analysis import (
     create_run,
     execute_run,
     reset_canonical_runs,
@@ -175,8 +177,10 @@ def test_oltc_regulates_sn_bus_through_analysis():
     set_enm("oltc-off", EnergyNetworkModel.model_validate(_payload("bez OLTC", with_oltc=False)))
     set_enm("oltc-on", EnergyNetworkModel.model_validate(_payload("z OLTC", with_oltc=True)))
 
-    run_off = execute_run(create_run(case_id="oltc-off", analysis_type="PF").id)
-    run_on = execute_run(create_run(case_id="oltc-on", analysis_type="PF").id)
+    run_off = execute_run(
+        create_run(case_id="oltc-off", klucz_twin="oltc-off", analysis_type="PF").id
+    )
+    run_on = execute_run(create_run(case_id="oltc-on", klucz_twin="oltc-on", analysis_type="PF").id)
 
     assert run_off.status == "FINISHED", run_off.error_message
     assert run_on.status == "FINISHED", run_on.error_message
@@ -229,7 +233,12 @@ def test_oltc_regulates_sn_bus_through_analysis():
 def test_oltc_sweep_study_surfaced_on_run():
     set_enm("oltc-sweep", EnergyNetworkModel.model_validate(_payload("sweep", with_oltc=True)))
     run = execute_run(
-        create_run(case_id="oltc-sweep", analysis_type="PF", options={"oltc_study": "sweep"}).id
+        create_run(
+            case_id="oltc-sweep",
+            klucz_twin="oltc-sweep",
+            analysis_type="PF",
+            options={"oltc_study": "sweep"},
+        ).id
     )
     assert run.status == "FINISHED", run.error_message
     sweep = run.raw_result["oltc_sweep"]
@@ -255,6 +264,7 @@ def test_oltc_optimize_study_surfaced_on_run():
     run = execute_run(
         create_run(
             case_id="oltc-opt",
+            klucz_twin="oltc-opt",
             analysis_type="PF",
             options={"oltc_study": "optimize", "oltc_objective": "minimize_losses"},
         ).id
@@ -271,6 +281,7 @@ def test_oltc_annual_profile_study_surfaced_on_run():
     run = execute_run(
         create_run(
             case_id="oltc-prof",
+            klucz_twin="oltc-prof",
             analysis_type="PF",
             options={
                 "oltc_study": "annual_profile",
@@ -293,7 +304,12 @@ def test_oltc_study_surfaced_in_execution_result_set():
 
     set_enm("oltc-rs", EnergyNetworkModel.model_validate(_payload("rs", with_oltc=True)))
     run = execute_run(
-        create_run(case_id="oltc-rs", analysis_type="PF", options={"oltc_study": "sweep"}).id
+        create_run(
+            case_id="oltc-rs",
+            klucz_twin="oltc-rs",
+            analysis_type="PF",
+            options={"oltc_study": "sweep"},
+        ).id
     )
     assert run.status == "FINISHED", run.error_message
     result_set = build_execution_result_set(get_run(run.id))
@@ -306,7 +322,9 @@ def test_oltc_study_surfaced_in_execution_result_set():
 
 def test_pf_run_without_study_option_has_no_study_keys():
     set_enm("oltc-nostudy", EnergyNetworkModel.model_validate(_payload("nostudy", with_oltc=True)))
-    run = execute_run(create_run(case_id="oltc-nostudy", analysis_type="PF").id)
+    run = execute_run(
+        create_run(case_id="oltc-nostudy", klucz_twin="oltc-nostudy", analysis_type="PF").id
+    )
     assert run.status == "FINISHED", run.error_message
     assert "oltc_sweep" not in run.raw_result
     assert "oltc_optimization" not in run.raw_result
@@ -316,8 +334,8 @@ def test_pf_run_without_study_option_has_no_study_keys():
 def test_oltc_analysis_is_deterministic():
     set_enm("oltc-d1", EnergyNetworkModel.model_validate(_payload("det1", with_oltc=True)))
     set_enm("oltc-d2", EnergyNetworkModel.model_validate(_payload("det2", with_oltc=True)))
-    run1 = execute_run(create_run(case_id="oltc-d1", analysis_type="PF").id)
-    run2 = execute_run(create_run(case_id="oltc-d2", analysis_type="PF").id)
+    run1 = execute_run(create_run(case_id="oltc-d1", klucz_twin="oltc-d1", analysis_type="PF").id)
+    run2 = execute_run(create_run(case_id="oltc-d2", klucz_twin="oltc-d2", analysis_type="PF").id)
     assert run1.raw_result["oltc_control"]["final_positions"] == (
         run2.raw_result["oltc_control"]["final_positions"]
     )

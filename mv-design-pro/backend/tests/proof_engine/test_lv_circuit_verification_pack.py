@@ -107,6 +107,7 @@ def _input(
         bus_ref="b1",
         breaker_ref="ap1",
         segment_ref="c1",
+        nazwa_odcinka="Kabel nN obwodu 1",
         p_mw=p_mw,
         q_mvar=q_mvar,
         u_ll_kv=0.4,

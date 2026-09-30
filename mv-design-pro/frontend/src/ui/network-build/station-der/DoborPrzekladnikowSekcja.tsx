@@ -14,11 +14,32 @@
  * ZERO REGUŁY I ZERO FIZYKI W PREZENTACJI: wszystkie werdykty, rachunki i wymagania
  * przychodzą z reguły domenowej (`domain/dobor_przekladnika.py`) przez endpoint
  * `.../instrument-transformers`. Ten plik nic nie liczy i niczego nie rozstrzyga.
+ *
+ * KARTA W3-B (mapa 4 #3): kryterium `ct.alf` niesie teraz `kody_gotowosci` (czipy
+ * z kanonicznym komunikatem PL, ten sam rejestr co ekran bilansu) i `slad` WHITE
+ * BOX z jądra — rozwijany, nie liczony tutaj.
  */
 
 import { useEffect, useState } from 'react';
 
+import {
+  komunikatyKodow,
+  pobierzRejestrGotowosci,
+  type WpisRejestruGotowosci,
+} from '../../../ui2/kryteria';
+
 export type WerdyktKryterium = 'spelnione' | 'niespelnione' | 'informacja' | 'brak_danych';
+
+/** Krok śladu WHITE BOX jądra (kanon pięciu pól) — ten sam kształt, co ekran
+ *  bilansu CT/VT (`ui2/kryteria/wyposazenieApi.ts::KrokSladu`). */
+export interface KrokSladuDoboru {
+  readonly step: number;
+  readonly key: string;
+  readonly title: string;
+  readonly formula_latex: string;
+  readonly substitution: string;
+  readonly notes: string;
+}
 
 export interface KryteriumDoboru {
   readonly kod: string;
@@ -28,6 +49,9 @@ export interface KryteriumDoboru {
   readonly wymagane: string | null;
   readonly dostepne: string | null;
   readonly komentarz_pl: string | null;
+  /** Karta W3-B — addytywne, puste dla kryteriów bez własnego jądra. */
+  readonly kody_gotowosci: readonly string[];
+  readonly slad: readonly KrokSladuDoboru[];
 }
 
 export interface WynikDoboru {
@@ -93,7 +117,28 @@ function maKsztaltGniazda(wartosc: unknown): boolean {
   if (!('catalog_ref' in gniazdo) || !('wynik' in gniazdo)) return false;
   if (gniazdo.wynik === null) return true;
   const wynik = gniazdo.wynik as Record<string, unknown>;
-  return Array.isArray(wynik.kryteria) && typeof wynik.dobor_potwierdzony === 'boolean';
+  return (
+    Array.isArray(wynik.kryteria)
+    && typeof wynik.dobor_potwierdzony === 'boolean'
+    && wynik.kryteria.every(maKsztaltKryterium)
+  );
+}
+
+/**
+ * Kryterium niesie pola addytywne karty W3-B (`kody_gotowosci`, `slad`) ZAWSZE —
+ * kontrakt `KryteriumDoboru.to_dict` (`domain/dobor_przekladnika.py`). Odpowiedź
+ * bez nich (dryf atrapy albo starsza wersja API) wywracała CAŁĄ kartę gotowości
+ * wytwórcy (`kryterium.slad.length` na `undefined` — biały ekran w harnessie
+ * scen, E2E-FULL-FIX-3, 2026-09-10); teraz jest nazwanym błędem kształtu sekcji.
+ */
+function maKsztaltKryterium(wartosc: unknown): boolean {
+  if (typeof wartosc !== 'object' || wartosc === null) return false;
+  const kryterium = wartosc as Record<string, unknown>;
+  return (
+    typeof kryterium.kod === 'string'
+    && Array.isArray(kryterium.kody_gotowosci)
+    && Array.isArray(kryterium.slad)
+  );
 }
 
 export function werdyktPl(werdykt: WerdyktKryterium): string {
@@ -137,10 +182,12 @@ function Gniazdo({
   tytul,
   gniazdo,
   prefiks,
+  rejestr,
 }: {
   readonly tytul: string;
   readonly gniazdo: GniazdoPrzekladnika;
   readonly prefiks: string;
+  readonly rejestr: ReadonlyMap<string, WpisRejestruGotowosci> | null;
 }): JSX.Element {
   if (gniazdo.catalog_ref === null) {
     return (
@@ -202,6 +249,47 @@ function Gniazdo({
             {kryterium.komentarz_pl !== null && (
               <p className={`text-xs ${klasaWerdyktu(kryterium.werdykt)}`}>{kryterium.komentarz_pl}</p>
             )}
+            {/* Karta W3-B: kody gotowości jako czipy — akcja naprawcza (ekran bilansu
+                CT/VT / kreator) jest nazwana w kanonicznym komunikacie PL kodu, nie
+                zmyślona tutaj. Kod bez odpowiednika w rejestrze jest pomijany (zero
+                surowych identyfikatorów produkcyjnych na ekranie inżyniera) — bramka
+                na WYNIKU `komunikatyKodow` (nie na surowym `kody_gotowosci`), inaczej
+                rejestr niedostępny zostawiałby pusty kontener zamiast go pominąć. */}
+            {(() => {
+              const komunikaty = komunikatyKodow(kryterium.kody_gotowosci, rejestr);
+              return (
+                komunikaty.length > 0 && (
+                  <ul
+                    className="mt-1 flex flex-wrap gap-1"
+                    data-testid={`kryterium-kody-gotowosci-${kryterium.kod}`}
+                  >
+                    {komunikaty.map((tekst, i) => (
+                      <li
+                        key={`${kryterium.kod}-${i}`}
+                        className="rounded border border-scada-border/60 px-1.5 py-0.5 text-[11px] text-scada-grounded"
+                      >
+                        {tekst}
+                      </li>
+                    ))}
+                  </ul>
+                )
+              );
+            })()}
+            {kryterium.slad.length > 0 && (
+              <details className="mt-1" data-testid={`kryterium-slad-${kryterium.kod}`}>
+                <summary className="cursor-pointer text-xs text-scada-muted">
+                  Rachunek krok po kroku ({kryterium.slad.length})
+                </summary>
+                <ol className="mt-1 space-y-1 pl-4 text-xs text-scada-muted">
+                  {kryterium.slad.map((krok) => (
+                    <li key={krok.key}>
+                      <span className="text-scada-text">{krok.title}.</span> {krok.substitution}
+                      {krok.notes ? <span className="block text-[11px]">{krok.notes}</span> : null}
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            )}
           </li>
         ))}
       </ul>
@@ -222,6 +310,26 @@ export function DoborPrzekladnikowSekcja({
 }: DoborPrzekladnikowSekcjaProps): JSX.Element {
   const [dane, setDane] = useState<DoborPrzekladnikow | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
+  const [rejestr, setRejestr] = useState<ReadonlyMap<string, WpisRejestruGotowosci> | null>(null);
+
+  useEffect(() => {
+    // Bramkowane KONTEKSTEM (jak zapytanie o dobór) — bez projektu/przypadku
+    // sekcja pokazuje wyłącznie stan zerowy, więc pobranie rejestru byłoby
+    // zapytaniem bez odbiorcy (ta sama zasada, co „zapytania o dobór nie ma").
+    if (!projectId || !caseId) return undefined;
+    let aktywne = true;
+    pobierzRejestrGotowosci()
+      .then((mapa) => {
+        if (aktywne) setRejestr(mapa);
+      })
+      .catch(() => {
+        // Brak rejestru = brak zdań dla kodów; readout rachunku działa dalej.
+        if (aktywne) setRejestr(null);
+      });
+    return () => {
+      aktywne = false;
+    };
+  }, [caseId, projectId]);
 
   useEffect(() => {
     if (!projectId || !caseId) return;
@@ -305,11 +413,13 @@ export function DoborPrzekladnikowSekcja({
         tytul="Przekładnik prądowy"
         gniazdo={dane.przekladnik_pradowy}
         prefiks="przekladnik-pradowy"
+        rejestr={rejestr}
       />
       <Gniazdo
         tytul="Przekładnik napięciowy"
         gniazdo={dane.przekladnik_napieciowy}
         prefiks="przekladnik-napieciowy"
+        rejestr={rejestr}
       />
     </section>
   );

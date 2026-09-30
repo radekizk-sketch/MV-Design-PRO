@@ -7,7 +7,6 @@
 import type {
   DiagnosticReport,
   PreflightReport,
-  EnmDiffReport,
   ReferenceComplianceReport,
 } from './types';
 import type { EnergyNetworkModelV2Projection } from '../../types/enm';
@@ -32,27 +31,6 @@ export async function fetchPreflight(caseId: string): Promise<PreflightReport> {
   const response = await fetch(`${API_BASE}/cases/${caseId}/diagnostics/preflight`);
   if (!response.ok) {
     throw new Error(`Błąd pobierania pre-flight: ${response.statusText}`);
-  }
-  return response.json();
-}
-
-/**
- * Pobierz diff dwóch rewizji ENM.
- */
-export async function fetchEnmDiff(
-  caseId: string,
-  fromSnapshotId: string,
-  toSnapshotId: string,
-): Promise<EnmDiffReport> {
-  const params = new URLSearchParams({
-    from: fromSnapshotId,
-    to: toSnapshotId,
-  });
-  const response = await fetch(
-    `${API_BASE}/cases/${caseId}/enm/diff?${params.toString()}`,
-  );
-  if (!response.ok) {
-    throw new Error(`Błąd pobierania diff ENM: ${response.statusText}`);
   }
   return response.json();
 }

@@ -1,0 +1,21 @@
+# W6-1: JEDYNE miejsca dopuszczone do niesienia skasowanego klucza.
+# Zapadka tylko w dół: nowe miejsce = naruszenie, nie kolejny wiersz tutaj.
+#
+# Trzy fixtury SLD (CI-critical determinism, patrz CLAUDE.md "Critical contract
+# tests") wygenerowane PRZED tą kartą przez `add_nn_load`, gdy pole jeszcze
+# istniało — każdy Load w tych sieciach niesie `"load_profile_ref": null` w
+# `meta` (residualny klucz nieużywanego dict-a, `Load.meta: dict` toleruje
+# nieznane klucze bezwarunkowo — brak defektu funkcjonalnego). Edycja treści
+# tych fixtur (41 wystąpień w 3 plikach, zmierzone) jest poza zakresem tej
+# karty: ryzyko regresji SLD determinism CI dla zerowej korzyści
+# funkcjonalnej — decyzja świadoma, nazwana w meldunku karty W6-1.
+frontend/src/ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json
+frontend/src/ui/sld/v3/scene/__tests__/fixtures/pomiarOdgalezienie.enm.json
+frontend/src/ui/sld/v3/canvas/__tests__/fixtures/s92Bieg.enm.json
+# Guard i jego self-test niosą wzorzec w treści.
+scripts/grep_zero_guard.py
+scripts/test_grep_zero_guard.py
+# Regresja kasacji: dowodzi, że backend NIE wskrzesza pola nawet gdy wołający
+# (legacy caller) wciąż je podaje w payloadzie — musi napisać literał, żeby
+# udowodnić jego nieobecność w wyniku (test_load_profile_ref_kasacja_w6_1).
+backend/tests/enm/test_add_nn_load_cosphi.py

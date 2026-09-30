@@ -14,6 +14,12 @@
  */
 
 import { clsx } from 'clsx';
+import type { BayCanonicalRole } from '../../types/enm';
+import {
+  FIELD_ROLE_LABEL_PL,
+  fieldLabelInSentencePl,
+  fieldRoleLabelPl,
+} from '../sld/v2/station-rozdzielnia/contract';
 
 export type BayKind =
   | 'liniowe_doplywowe'
@@ -203,24 +209,46 @@ const SOURCE_STATUS_BADGE: Record<BayTemplateSourceStatus, { class: string; labe
   },
 };
 
-const BAY_KIND_LABELS_PL: Record<BayKind, string> = {
-  liniowe_doplywowe: 'Pole liniowe wejściowe',
-  liniowe_odplywowe: 'Pole liniowe wyjściowe',
-  transformatorowe: 'Pole transformatorowe',
-  pomiarowe: 'Pole pomiarowe',
-  sprzeglowe_podluzne: 'Pole sprzęgłowe podłużne',
-  sprzeglowe_poprzeczne: 'Pole sprzęgłowe poprzeczne',
-  sekcyjne: 'Pole sekcyjne',
-  potrzeb_wlasnych: 'Pole potrzeb własnych',
-  odgromnikowe: 'Pole odgromnikowe',
-  pv: 'Pole DER — PV',
-  bess: 'Pole DER — BESS',
-  fw: 'Pole DER — FW',
-  rezerwowe: 'Pole rezerwowe',
-  kablowe: 'Pole kablowe',
-  napowietrzne: 'Pole napowietrzne',
-  nop_lacznikowe: 'Pole łącznikowe NOP',
+/**
+ * Rodzaj pola katalogu (`BayKind`) → rola kanoniczna pola + określenie rodzaju (karta #141).
+ * Rodzaj z rolą kanonu bierze nazwę z kanonu słownictwa ról (`FIELD_ROLE_LABEL_PL`) — ten sam
+ * termin co na schemacie, w kreatorze i w szufladzie; rodzaje sprzęgła dokładają określenie
+ * („Pole sprzęgła podłużnego”). Rodzaje bez roli kanonu (funkcje pomocnicze rozdzielnicy,
+ * pole sekcyjne, wykonanie kablowe/napowietrzne bez kierunku, rezerwa) mają własną nazwę —
+ * zgodnie z odwzorowaniem funkcji na rolę operacji w kreatorze stacji
+ * (`ui2/kreatory/stacja/konfiguratorRozdzielnicy.ts::ROLA_Z_FUNKCJI_POLA`, parytet przypięty
+ * testem). Tablica jest totalna względem `BayKind` (sprawdzenie kompilatora).
+ */
+type OpisRodzajuPola =
+  | { readonly rola: BayCanonicalRole; readonly okreslenie?: string }
+  | { readonly nazwaBezRoli: string };
+
+const OPIS_RODZAJU_POLA: Readonly<Record<BayKind, OpisRodzajuPola>> = {
+  liniowe_doplywowe: { rola: 'LINIA_IN' },
+  liniowe_odplywowe: { rola: 'LINIA_OUT' },
+  transformatorowe: { rola: 'TRANSFORMATOROWE' },
+  pomiarowe: { rola: 'POMIAROWE' },
+  sprzeglowe_podluzne: { rola: 'SPRZEGLO', okreslenie: 'podłużnego' },
+  sprzeglowe_poprzeczne: { rola: 'SPRZEGLO', okreslenie: 'poprzecznego' },
+  sekcyjne: { nazwaBezRoli: 'Pole sekcyjne' },
+  potrzeb_wlasnych: { nazwaBezRoli: 'Pole potrzeb własnych' },
+  odgromnikowe: { nazwaBezRoli: 'Pole odgromnikowe' },
+  pv: { rola: 'PV_SN' },
+  bess: { rola: 'BESS_SN' },
+  fw: { rola: 'FW_SN' },
+  rezerwowe: { nazwaBezRoli: 'Pole rezerwowe' },
+  kablowe: { nazwaBezRoli: 'Pole kablowe' },
+  napowietrzne: { nazwaBezRoli: 'Pole napowietrzne' },
+  nop_lacznikowe: { nazwaBezRoli: 'Pole łącznikowe NOP' },
 };
+
+/** Nazwa rodzaju pola katalogu — z kanonu ról pól, a dla rodzaju bez roli — jego własna. */
+export function bayKindLabelPl(kind: BayKind): string {
+  const opis = OPIS_RODZAJU_POLA[kind];
+  if ('nazwaBezRoli' in opis) return opis.nazwaBezRoli;
+  const nazwaRoli = FIELD_ROLE_LABEL_PL[opis.rola];
+  return opis.okreslenie ? `${nazwaRoli} ${opis.okreslenie}` : nazwaRoli;
+}
 
 export function BayTemplatePicker({
   templates,
@@ -252,7 +280,7 @@ export function BayTemplatePicker({
       {filtered.map((t) => {
         const isSelected = t.template_ref === selectedRef;
         const badge = SOURCE_STATUS_BADGE[t.source_status];
-        const kindLabel = BAY_KIND_LABELS_PL[t.bay_kind];
+        const kindLabel = bayKindLabelPl(t.bay_kind);
         return (
           <li key={t.template_ref}>
             <button
@@ -287,7 +315,7 @@ export function BayTemplatePicker({
                 </span>
               )}
               <span className="text-[11px] text-gray-500">
-                Rola pola: <span className="font-mono">{t.bay_role}</span> · Wersja: {t.version}
+                Rola pola: {fieldLabelInSentencePl(fieldRoleLabelPl(t.bay_role))} · Wersja: {t.version}
               </span>
               {t.notes_pl && (
                 <span className="mt-1 text-[11px] text-gray-600">{t.notes_pl}</span>

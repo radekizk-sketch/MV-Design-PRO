@@ -1,63 +1,32 @@
 /*
  * Model i adaptery okna „Stabilność SSCI" (ui2/wyniki/ssci). Wyłącznie MAPOWANIE
- * gotowego werdyktu backendu na model prezentacji (chip werdyktu, wiersze metryk),
- * ZERO fizyki i ZERO ocen lokalnych — werdykt, metryki, flagi i istotność pochodzą
- * z pól obliczonych przez builder warstwy analizy. Kolory (istotność) to czysta
- * prezentacja wyprowadzona z FLAG backendu (przecięcie modułów, okrążenia,
- * rezystancja ujemna) — nie z ponownego liczenia kryterium.
+ * widoku backendu na model prezentacji — ZERO fizyki i ZERO ocen lokalnych.
  *
- * Formatery (przecinek PL) należą do `strings.ts`; tu tylko dobór etykiet, kolejność
- * i istotność. Helpery są czyste (wejście→wyjście) i pokryte testem `model.test.ts`.
+ * UCZCIWOŚĆ (2026-09-23): werdyktu SSCI nie ma — Z_grid(f) solvera liczone jest bez
+ * przekładni transformatora (dla szyny 0,4 kV około 1400 razy za duże), więc każdy
+ * wniosek z L = Z_grid/Z_conv jest niewiarygodny. Dawne mapy „werdykt → kolor /
+ * etykieta" skasowane; metryki kryterium impedancyjnego to materiał audytowy BEZ
+ * koloru (kolor z flag byłby oceną). Wskaźnik strefy ujemnej rezystancji
+ * przekształtnika (Re_min, częstotliwość) zależy wyłącznie od modelu przekształtnika
+ * i zostaje informacją na pierwszym planie.
+ *
+ * Formatery (przecinek PL) należą do `strings.ts`; helpery są czyste
+ * (wejście→wyjście) i pokryte testem `model.test.ts`.
  */
 
-import type { WerdyktKod, WerdyktSsci } from './api';
-import { SSCI_STRINGS as S, fmtGain, fmtHz, fmtStopnie, type IstotnoscStanu } from './strings';
+import type { WerdyktSsci } from './api';
+import { SSCI_STRINGS as S, fmtGain, fmtHz, fmtOhm, fmtStopnie } from './strings';
 
 // ---------------------------------------------------------------------------
-// Werdykt → istotność (kolor chipu) i etykieta PL
+// Metryki kryterium impedancyjnego (materiał audytowy, bez koloru)
 // ---------------------------------------------------------------------------
 
-/** Istotność chipu werdyktu (dobór koloru — wyłącznie prezentacja). */
-export function istotnoscWerdyktu(verdict: WerdyktKod): IstotnoscStanu {
-  switch (verdict) {
-    case 'stabilny':
-      return 'ok';
-    case 'ryzyko SSCI':
-      return 'warn';
-    case 'niestabilny':
-      return 'err';
-    case 'brak danych':
-    default:
-      return 'neutral';
-  }
-}
-
-/** Etykieta PL werdyktu (kod backendu → tekst UI). */
-export function etykietaWerdyktu(verdict: WerdyktKod): string {
-  switch (verdict) {
-    case 'stabilny':
-      return S.werdyktStabilny;
-    case 'ryzyko SSCI':
-      return S.werdyktRyzyko;
-    case 'niestabilny':
-      return S.werdyktNiestabilny;
-    case 'brak danych':
-    default:
-      return S.werdyktBrakDanych;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Wiersze metryk kryterium impedancyjnego (grid)
-// ---------------------------------------------------------------------------
-
-/** Pojedynczy wiersz metryki (etykieta + wartość PL + opcjonalny opis/istotność). */
+/** Pojedynczy wiersz metryki (etykieta + wartość PL + opcjonalny opis). */
 export interface WierszMetryki {
   readonly klucz: string;
   readonly etykieta: string;
   readonly wartosc: string;
   readonly opis?: string;
-  readonly istotnosc: IstotnoscStanu;
 }
 
 /** Formatuje częstotliwość [Hz] lub kreskę, gdy brak (null). */
@@ -66,10 +35,8 @@ function fmtCzest(f: number | null): string {
 }
 
 /**
- * Mapuje werdykt na wiersze metryk (kolejność stała, deterministyczna). Wartości
- * i flagi pochodzą z backendu; istotność koloru wyprowadzona z FLAG (przecięcie
- * modułów, liczba okrążeń, obecność rezystancji ujemnej) — nie z liczenia fizyki.
- * Przy „brak danych" metryki liczbowe są puste (null) → renderowane jako „—".
+ * Mapuje wynik na wiersze metryk audytowych (kolejność stała, deterministyczna).
+ * Wartości WPROST z backendu; przy braku tablic metryki są puste (null) → „—".
  */
 export function naMetryki(werdykt: WerdyktSsci): WierszMetryki[] {
   const margines =
@@ -80,57 +47,63 @@ export function naMetryki(werdykt: WerdyktSsci): WierszMetryki[] {
     werdykt.nearest_to_minus_one === null
       ? S.kreska
       : fmtGain(werdykt.nearest_to_minus_one.distance_to_minus_one);
-  const rezystancja = werdykt.negative_resistance_present
-    ? werdykt.negative_resistance_f_hz === null
-      ? S.metrRezystancjaObecna
-      : `${S.metrRezystancjaObecna} (${S.metrPrzyF} ${fmtHz(werdykt.negative_resistance_f_hz)} ${S.jednHz})`
-    : S.metrRezystancjaBrak;
-
   return [
     {
       klucz: 'max-gain',
       etykieta: S.metrMaxGain,
       opis: S.metrMaxGainOpis,
       wartosc: werdykt.max_minor_loop_gain === null ? S.kreska : fmtGain(werdykt.max_minor_loop_gain),
-      istotnosc: werdykt.has_magnitude_crossover ? 'warn' : 'ok',
     },
     {
       klucz: 'margines',
       etykieta: S.metrMargines,
       opis: S.metrMarginesOpis,
       wartosc: margines,
-      istotnosc: 'neutral',
     },
     {
       klucz: 'czest-winna',
       etykieta: S.metrCzestWinna,
       opis: S.metrCzestWinnaOpis,
       wartosc: fmtCzest(werdykt.offending_frequency_hz),
-      istotnosc: werdykt.offending_frequency_hz === null ? 'neutral' : 'warn',
     },
     {
       klucz: 'odleglosc',
       etykieta: S.metrOdlegloscMinusJeden,
       opis: S.metrOdlegloscOpis,
       wartosc: odleglosc,
-      istotnosc: 'neutral',
     },
     {
       klucz: 'okrazenia',
       etykieta: S.metrOkrazenia,
       wartosc: String(werdykt.encirclement_count),
-      istotnosc: werdykt.encirclement_count >= 1 ? 'err' : 'ok',
-    },
-    {
-      klucz: 'rezystancja-ujemna',
-      etykieta: S.metrRezystancjaUjemna,
-      wartosc: rezystancja,
-      istotnosc: werdykt.negative_resistance_present ? 'warn' : 'ok',
     },
   ];
 }
 
-/** Identyfikacja przekształtnika/węzła werdyktu (etykieta chipu) — może być pusta. */
+// ---------------------------------------------------------------------------
+// Wskaźnik strefy ujemnej rezystancji przekształtnika (pierwszy plan, informacja)
+// ---------------------------------------------------------------------------
+
+/**
+ * Opis strefy ujemnej rezystancji Re(Z_conv) < 0 — WPROST z pól backendu: obecność,
+ * częstotliwość i najmniejsza wartość Re(Z_conv). Informacja o modelu przekształtnika,
+ * nie ocena interakcji z siecią.
+ */
+export function opisRezystancjiUjemnej(werdykt: WerdyktSsci): string {
+  if (!werdykt.negative_resistance_present) return S.metrRezystancjaBrak;
+  const czesci: string[] = [];
+  if (werdykt.negative_resistance_f_hz !== null) {
+    czesci.push(`${S.metrPrzyF} ${fmtHz(werdykt.negative_resistance_f_hz)} ${S.jednHz}`);
+  }
+  if (werdykt.negative_resistance_re_min_ohm !== null) {
+    czesci.push(`${S.metrReMin} ${fmtOhm(werdykt.negative_resistance_re_min_ohm)} ${S.jednOhm}`);
+  }
+  return czesci.length > 0
+    ? `${S.metrRezystancjaObecna} (${czesci.join(', ')})`
+    : S.metrRezystancjaObecna;
+}
+
+/** Identyfikacja przekształtnika wyniku — może być pusta. */
 export function etykietaPrzekształtnika(werdykt: WerdyktSsci): string | null {
   return werdykt.converter_ref ?? null;
 }

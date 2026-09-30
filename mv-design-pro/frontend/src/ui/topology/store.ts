@@ -12,7 +12,12 @@ import type {
   TopologyGraphSummary,
   TopologyOpIssue,
 } from '../../types/enm';
-import { executeTopologyOp, fetchTopologySummary } from './api';
+import {
+  executeTopologyOp,
+  fetchTopologyStructure,
+  fetchTopologySummary,
+  type TopologyStructure,
+} from './api';
 import { useSnapshotStore } from './snapshotStore';
 
 // ---------------------------------------------------------------------------
@@ -22,6 +27,11 @@ import { useSnapshotStore } from './snapshotStore';
 export interface TopologyState {
   /** Podsumowanie topologiczne (null = nie załadowane). */
   summary: TopologyGraphSummary | null;
+  /**
+   * Struktura topologiczna (stacje/pola/węzły/magistrale, null = nie załadowana) —
+   * KARTA-UI2 §1 p. 11: źródło trybów drzewa „administracyjny"/„obwodowy".
+   */
+  structure: TopologyStructure | null;
   /** Czy trwa ładowanie. */
   loading: boolean;
   /** Ostatni błąd. */
@@ -31,6 +41,7 @@ export interface TopologyState {
 
   // Actions
   loadSummary: (caseId: string) => Promise<void>;
+  loadStructure: (caseId: string) => Promise<void>;
   executeOp: (
     caseId: string,
     op: string,
@@ -69,6 +80,7 @@ export function selectIsRadial(summary: TopologyGraphSummary | null): boolean {
 
 export const useTopologyStore = create<TopologyState>((set) => ({
   summary: null,
+  structure: null,
   loading: false,
   error: null,
   lastOpIssues: [],
@@ -80,6 +92,19 @@ export const useTopologyStore = create<TopologyState>((set) => ({
       set({ summary, loading: false });
     } catch (err) {
       set({ loading: false, error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+
+  loadStructure: async (caseId: string) => {
+    try {
+      const structure = await fetchTopologyStructure(caseId);
+      set({ structure });
+    } catch (err) {
+      // Struktura zasila WYŁĄCZNIE tryby „administracyjny"/„obwodowy" drzewa —
+      // błąd tego pobrania nie może zablokować trybu „zasilania" (summary ma
+      // własny stan błędu). Pusta struktura = drzewo tych trybów pokazuje
+      // uczciwy stan zerowy (adapter czyta `structure`, nie zgaduje).
+      set({ error: err instanceof Error ? err.message : String(err) });
     }
   },
 

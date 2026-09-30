@@ -1,10 +1,11 @@
-"""Serializacja widoku werdyktu stabilności SSCI do dict/JSON."""
+"""Serializacja widoku stabilności SSCI (ocena niewykonana + metryki audytowe) do dict/JSON."""
 
 from __future__ import annotations
 
 from typing import Any
 
 from analysis.ssci_stability.models import (
+    SEKCJA_AUDYTOWA_SSCI_PL,
     CrossoverPoint,
     NyquistPoint,
     SsciStabilityContext,
@@ -56,8 +57,9 @@ def verdict_to_dict(verdict: SsciStabilityVerdict) -> dict[str, Any]:
         "converter_ref": verdict.converter_ref,
         "bus_ref": verdict.bus_ref,
         "verdict": verdict.verdict,
-        "is_risk": bool(verdict.is_risk),
+        "is_risk": verdict.is_risk,
         "why_pl": verdict.why_pl,
+        "ocena": dict(verdict.ocena),
         "max_minor_loop_gain": (
             float(verdict.max_minor_loop_gain) if verdict.max_minor_loop_gain is not None else None
         ),
@@ -86,6 +88,11 @@ def verdict_to_dict(verdict: SsciStabilityVerdict) -> dict[str, Any]:
             if verdict.negative_resistance_f_hz is not None
             else None
         ),
+        "negative_resistance_re_min_ohm": (
+            float(verdict.negative_resistance_re_min_ohm)
+            if verdict.negative_resistance_re_min_ohm is not None
+            else None
+        ),
         "provenance": verdict.provenance.to_dict() if verdict.provenance else None,
         "missing_data": list(verdict.missing_data),
         "white_box": [white_box_to_dict(step) for step in verdict.white_box],
@@ -97,7 +104,10 @@ def view_to_dict(view: SsciStabilityView) -> dict[str, Any]:
         "analysis_id": view.analysis_id,
         "context": context_to_dict(view.context),
         "gain_crossover_mag": float(view.gain_crossover_mag),
-        "pm_risk_deg": float(view.pm_risk_deg),
-        "pm_unstable_deg": float(view.pm_unstable_deg),
         "verdict": verdict_to_dict(view.verdict),
+        # Ocena na poziomie widoku (ten sam rekord co w `verdict.ocena`) — wspólny kształt
+        # powierzchni uczciwości natychmiastowej: `ocena` obok danych.
+        "ocena": dict(view.verdict.ocena),
+        # Nagłówek sekcji audytowej metryk L(f) — materiał audytowy, nie wynik inżynierski.
+        "sekcja_audytowa_pl": SEKCJA_AUDYTOWA_SSCI_PL,
     }

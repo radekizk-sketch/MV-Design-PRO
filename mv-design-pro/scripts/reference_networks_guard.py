@@ -20,15 +20,30 @@ REQUIRED_REFERENCE_CODES = {
         ROOT / "backend" / "tests" / "proof_engine" / "test_phase_state_sn_pack.py",
     ),
     "V12-GN-004": (
-        ROOT / "backend" / "tests" / "application" / "test_source_compliance.py",
+        # "test_source_compliance.py" USUNIETY (karta W3-D, 2026-09-09). Karta AB-P1
+        # (2026-09-24): dawny zastepca `test_dynamic_stability.py` (echo katow wpisanych
+        # recznie) SKASOWANY razem z torem — FRT i prace po zakloceniu sieci z PV dowodzi
+        # bieg kanoniczny `dynamika_rms` (zwarcie w kablu x·L usuniete izolacja, PV
+        # z katalogowym modelem dynamicznym, przebiegi po zakloceniu).
+        ROOT / "backend" / "tests" / "api" / "test_dynamika_api.py",
         ROOT / "backend" / "tests" / "test_oze_generators.py",
     ),
     "V12-GN-005": (
-        ROOT / "backend" / "tests" / "application" / "test_automation_trace.py",
+        # Karta AB-P1: `test_automation_trace.py` (efekt topologii ZADEKLAROWANY w opcjach
+        # toru echa) skasowany — eliminacje (predykat izolacji miejsca zwarcia) i restytucje
+        # (ponowne zasilenie obszaru beznapieciowego) wykonuje rdzen kanoniczny.
+        ROOT / "backend" / "tests" / "walidacja_fizyczna" / "test_zdarzenia_rdzenia.py",
         ROOT / "frontend" / "e2e" / "branch-points-workflow.spec.ts",
     ),
-    "V12-GN-006": (ROOT / "backend" / "tests" / "application" / "test_dynamic_stability.py",),
-    "V12-GN-007": (ROOT / "backend" / "tests" / "application" / "test_dynamic_stability.py",),
+    # Karta AB-P1: siec stabilna i niestabilna dynamicznie — bisekcja czasu usuniecia
+    # zwarcia na rdzeniu kanonicznym (stabilny przy 0,05 s, niestabilny przy 0,6 s) wobec
+    # kryterium rownych pol (`test_cct_z_bisekcji_zgadza_sie_z_kryterium_rownych_pol`).
+    "V12-GN-006": (
+        ROOT / "backend" / "tests" / "network_model" / "dynamika" / "test_walidacja_smib.py",
+    ),
+    "V12-GN-007": (
+        ROOT / "backend" / "tests" / "network_model" / "dynamika" / "test_walidacja_smib.py",
+    ),
 }
 
 

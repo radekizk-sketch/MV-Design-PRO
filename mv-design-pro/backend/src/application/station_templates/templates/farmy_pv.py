@@ -46,8 +46,8 @@ def _farma(
                 default=2, min_value=1, max_value=4, label_pl="Liczba pól SN"
             ),
             sn_bay_roles=(
-                BayRoleSpec(role="IN", label_pl="Pole liniowe IN (kierunek OSD)"),
-                BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe (taryfa)"),
+                BayRoleSpec(role="IN", okreslenie_pl="(kierunek OSD)"),
+                BayRoleSpec(role="MEASUREMENT", okreslenie_pl="(taryfa)"),
             ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,

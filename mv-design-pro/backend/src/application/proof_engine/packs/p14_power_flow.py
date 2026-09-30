@@ -210,21 +210,21 @@ class P14PowerFlowProof:
     TITLE_PL = "Dowód poprawności rozpływu mocy"
 
     THEORY = r"""
-    \section{Rownania rozplywu mocy}
+    \section{Równania rozpływu mocy}
 
-    Dla wezla $i$ typu PQ:
+    Dla węzła $i$ typu PQ:
     \begin{align}
     P_i &= |V_i| \sum_{j=1}^{n} |V_j| (G_{ij} \cos\delta_{ij} + B_{ij} \sin\delta_{ij}) \\
     Q_i &= |V_i| \sum_{j=1}^{n} |V_j| (G_{ij} \sin\delta_{ij} - B_{ij} \cos\delta_{ij})
     \end{align}
 
-    \section{Kryterium zbieznosci}
+    \section{Kryterium zbieżności}
 
-    Solver osiaga zbieznosc gdy:
+    Solver osiąga zbieżność gdy:
     \begin{equation}
     \max(|\Delta P|, |\Delta Q|) < \epsilon
     \end{equation}
-    gdzie $\epsilon$ to tolerancja (domyslnie $10^{-8}$).
+    gdzie $\epsilon$ to tolerancja (domyślnie $10^{-8}$).
 
     \section{Weryfikacja bilansu}
 
@@ -392,11 +392,13 @@ class P14PowerFlowProof:
         )
 
         passed = data.max_mismatch_pu < data.tolerance
-        status = "PASS" if passed else "FAIL"
+        # Stan ZBIEŻNOŚCI iteracji (fakt procesu obliczeniowego), nie plakietka PASS/FAIL
+        # (karta AB-1a Pakiet E2, strażnik werdyktu reguła 6b).
+        stan_zbieznosci = "zbieżny" if passed else "niezbieżny"
 
         substitution = (
             f"|{data.max_mismatch_pu:.2e}| < {data.tolerance:.2e} "
-            f"\\Rightarrow \\text{{{status}}} "
+            f"\\Rightarrow \\text{{{stan_zbieznosci}}} "
             f"\\text{{ po {data.iterations_count} iteracjach}}"
         )
 
@@ -608,12 +610,18 @@ class P14PowerFlowProof:
 
         # Check if voltages are in typical range
         in_range = 0.9 <= data.v_min_pu and data.v_max_pu <= 1.1
-        status = "OK" if in_range else "WARN"
+        # Relacja do pasma typowego NAZWANA wprost (pasmo i jego granice), nie plakietka
+        # „OK/WARN” (inwentarz werdyktów C45: atrybut jakości numerycznej, nie drukować jako
+        # werdykt; karta AB-1a Pakiet E2). Pasmo 0,9–1,1 p.u. nie ma tu podstawy normatywnej —
+        # regułę oceny odchylenia napięcia z podstawą wprowadza fala WW-1 (plan AB §8).
+        polozenie = (
+            "w typowym paśmie 0,9–1,1 p.u." if in_range else "poza typowym pasmem 0,9–1,1 p.u."
+        )
 
         substitution = (
             f"U_{{min}} = {data.v_min_pu:.4f} \\text{{ p.u.}}, \\quad "
             f"U_{{max}} = {data.v_max_pu:.4f} \\text{{ p.u.}} \\quad "
-            f"\\Rightarrow \\text{{{status}}}"
+            f"\\Rightarrow \\text{{{polozenie}}}"
         )
 
         result = ProofValue.create(

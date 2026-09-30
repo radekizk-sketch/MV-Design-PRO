@@ -17,18 +17,17 @@ const RESULTS_INSPECTOR_DIR = path.join(__dirname, '..', '..', 'results-inspecto
 // Regex dla nazw kodowych - wyklucza komentarze
 const CODENAME_REGEX = /['"`].*?(P11|P14|P17).*?['"`]/g; // no-codenames-ignore
 
-// Pliki do sprawdzenia
+// Pliki do sprawdzenia. Karta AB-1a Pakiet L (2026-09-23): przeglądarka śladu
+// (`TraceViewer`, `TraceToc`, `TraceStepView`, `TraceMetadataPanel`,
+// `traceUrlState`, `export/**`) skasowana — symbolowo nieosiągalna od `main.tsx`
+// i wszystkich wejść harnessu; z listy zeszły razem z nią. Żywe pliki modułu
+// zostają sprawdzane.
 const UI_FILES = [
-  path.join(PROOF_DIR, 'TraceViewer.tsx'),
-  path.join(PROOF_DIR, 'TraceToc.tsx'),
-  path.join(PROOF_DIR, 'TraceStepView.tsx'),
-  path.join(PROOF_DIR, 'TraceMetadataPanel.tsx'),
   path.join(PROOF_DIR, 'MathRenderer.tsx'),
-  path.join(PROOF_DIR, 'traceUrlState.ts'),
+  path.join(PROOF_DIR, 'ProofLatexPanel.tsx'),
+  path.join(PROOF_DIR, 'ElementCalculationProofPanel.tsx'),
+  path.join(PROOF_DIR, 'proofLatexApi.ts'),
   path.join(PROOF_DIR, 'index.ts'),
-  path.join(PROOF_DIR, 'export', 'exportTraceJsonl.ts'),
-  path.join(PROOF_DIR, 'export', 'exportTracePdf.ts'),
-  path.join(PROOF_DIR, 'export', 'index.ts'),
   path.join(RESULTS_INSPECTOR_DIR, 'types.ts'),
 ];
 

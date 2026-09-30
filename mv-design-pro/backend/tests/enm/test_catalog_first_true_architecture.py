@@ -23,7 +23,13 @@ def _seed_with_segment(rodzaj: str = "LINIA_NAPOWIETRZNA") -> tuple[dict, str]:
     s1 = execute_domain_operation(
         s0,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )["snapshot"]
     s2 = execute_domain_operation(
         s1,
@@ -65,7 +71,13 @@ def test_continue_trunk_segment_accepts_explicit_zero_sequence_data() -> None:
     s1 = execute_domain_operation(
         s0,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )["snapshot"]
     resp = execute_domain_operation(
         s1,

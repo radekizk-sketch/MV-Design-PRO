@@ -11,9 +11,20 @@ into SldCanvasV3Workspace). The legacy engineering path (actionMenuBuilders.ts
 The dead-click rule enforced here: every action id rendered from
 SLD_MENU_REGISTRY MUST have a handler branch in the executor — an entry in
 opByAction (domain-operation form), ACTION_TO_SCREEN (navigation),
-ACTION_ROADMAP_HINT_PL (honest roadmap toast), DELETE_ACTION_OBJECT_LABEL_PL
-(delete with confirmation), or one of the dedicated special branches. A
-registry entry without coverage is a dead click and fails the build.
+DELETE_ACTION_OBJECT_LABEL_PL (delete with confirmation), or one of the
+dedicated special branches. A registry entry without coverage is a dead
+click and fails the build.
+
+Karta W2-B (2026-09-09): the fifth coverage category this guard used to
+accept — an entry in ACTION_ROADMAP_HINT_PL ("honest roadmap toast") — is
+GONE. That table was removed from the executor entirely: every one of its 24
+keys turned out to have a real provider already (19 were dead/unreachable
+code sitting behind an earlier handler branch, 5 were redirects to a real
+screen now wired as navigation) — see the inventory comment above
+DELETE_ACTION_OBJECT_LABEL_PL in sldActionExecutor.ts. A roadmap toast was
+never real coverage (the model/screen the user asked for never opens); this
+guard now requires a REAL provider for every registry action, not just the
+'budowa' group the old hint_only check singled out below.
 """
 from __future__ import annotations
 
@@ -118,7 +129,6 @@ def check_sld_menu_path() -> list[str]:
     for token in [
         "buildSldOperationContext",
         "ACTION_TO_SCREEN",
-        "ACTION_ROADMAP_HINT_PL",
         "openOperationForm",
         "openRouteSurface",
     ]:
@@ -140,31 +150,37 @@ def check_sld_menu_path() -> list[str]:
 
     op_ids = extract_string_set(executor_content, "const opByAction")
     screen_ids = extract_string_set(executor_content, "const ACTION_TO_SCREEN")
-    hint_ids = extract_string_set(executor_content, "const ACTION_ROADMAP_HINT_PL")
     delete_ids = extract_string_set(executor_content, "const DELETE_ACTION_OBJECT_LABEL_PL")
     # Dedykowane galezie wykonawcy poza tabelami routingu (np. 'add-source',
     # 'show-ncrfg', 'show-results', 'insert-gpz') — czytane Z KODU wykonawcy,
     # nie z recznej listy w guardzie (karta S9-5).
     special_ids = extract_dedicated_branch_ids(executor_content)
-    covered = op_ids | screen_ids | hint_ids | delete_ids | special_ids
+    # Karta W2-B: ACTION_ROADMAP_HINT_PL usunieta z wykonawcy w calosci — nie
+    # ma juz kategorii "uczciwy toast roadmapy". Kazdy zarejestrowany klik
+    # MUSI miec realnego dostawce (operacje domenowa, nawigacje, usuniecie
+    # albo dedykowana galaz) — dokladnie to samo kryterium co dawny
+    # `real_providers` ponizej, teraz jedyne i wspolne dla WSZYSTKICH grup
+    # menu, nie tylko 'budowa'.
+    covered = op_ids | screen_ids | delete_ids | special_ids
 
     # SLD actions that are rendered but have neither navigation, operation,
-    # hint, nor special branch in the executor are actual dead clicks.
+    # nor a dedicated branch in the executor are actual dead clicks.
     uncovered = sorted(registry_ids - covered)
     if uncovered:
         errors.append(
-            "SLD_MENU_REGISTRY action(s) without route/operation/hint: " + ", ".join(uncovered[:60])
+            "SLD_MENU_REGISTRY action(s) without route/operation/dedicated branch: "
+            + ", ".join(uncovered[:60])
         )
 
-    # Karta S9-5 — pozycje BUDOWY musza miec realnego dostawce zmiany modelu.
-    # Sam wpis w ACTION_ROADMAP_HINT_PL nie jest pokryciem: klik konczy sie
-    # komunikatem, a model zostaje bez zmian (martwa pozycja menu).
+    # Karta S9-5 (zawezone przez Karta W2-B do samego pomiaru: `covered` juz
+    # wymaga realnego dostawcy dla kazdej pozycji, wiec `hint_only` dla grupy
+    # 'budowa' jest teraz zawsze podzbiorem `uncovered` powyzej — zostaje jako
+    # pomiar informacyjny/diagnostyczny per grupa, nie jako osobna bramka).
     build_ids = extract_sld_build_action_ids()
-    real_providers = op_ids | screen_ids | delete_ids | special_ids
-    hint_only = sorted(build_ids - real_providers)
+    hint_only = sorted(build_ids - covered)
     if hint_only:
         errors.append(
-            "SLD_MENU_REGISTRY build action(s) covered ONLY by a roadmap toast "
+            "SLD_MENU_REGISTRY build action(s) without a real provider "
             "(no domain operation, no screen, no dedicated branch): " + ", ".join(hint_only[:60])
         )
 
@@ -191,8 +207,15 @@ def check_modal_registry() -> list[str]:
         ids.update(match.group(1) for match in component_pattern.finditer(content))
 
     print(f"  Registered modal ids/components: {len(ids)}")
-    if len(ids) < 10:
-        return [f"Modal registry has only {len(ids)} entries/components; expected at least 10"]
+    # Próg sanity (nie dokładny pin) — chroni przed katastroficznym
+    # wyczyszczeniem rejestru, nie przed pojedynczą, zweryfikowaną kasacją.
+    # Karta K7c-FE: `GridSourceModal` usunięty jako martwy kod (zero
+    # konsumentów w `src`/`e2e`, potwierdzone grepem przed kasacją — kreator
+    # `KreatorZrodloZasilania` (ui2) jest jedynym, żywym dostawcą operacji
+    # `add_grid_source_sn`, patrz `dialog_completeness_guard.py`), więc próg
+    # zmierzony do NOWEJ, poprawnej liczby (10 → 9) zamiast zamrożenia starej.
+    if len(ids) < 9:
+        return [f"Modal registry has only {len(ids)} entries/components; expected at least 9"]
     return []
 
 

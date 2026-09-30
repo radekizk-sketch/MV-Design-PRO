@@ -148,12 +148,11 @@ class SummaryView:
     warnings: tuple[str, ...] = ()
     overall_status: str | None = None
     failed_checks: tuple[str, ...] = ()
-    protection_comparisons: ProtectionComparisonView | None = None
 
     def to_dict(self) -> dict[str, Any]:
         # Sortowanie key_results alfabetycznie (determinizm)
         sorted_results = dict(sorted(self.key_results.items()))
-        payload = {
+        return {
             "key_results": {k: v.to_dict() for k, v in sorted_results.items()},
             "unit_check_passed": self.unit_check_passed,
             "total_steps": self.total_steps,
@@ -161,58 +160,6 @@ class SummaryView:
             "overall_status": self.overall_status,
             "failed_checks": list(self.failed_checks),
         }
-        if self.protection_comparisons is not None:
-            payload["protection_comparisons"] = self.protection_comparisons.to_dict()
-        return payload
-
-
-@dataclass(frozen=True)
-class ProtectionComparisonRow:
-    """
-    Wiersz tabeli porównawczej P18.
-
-    Attributes:
-        name: Nazwa porównania
-        left: Wartość lewa (np. I_k'')
-        right: Wartość prawa (np. I_cu)
-        margin: Margines porównania (opcjonalnie)
-        status: Status porównania (OK/NOT_OK/NOT_EVALUATED)
-        why_pl: Uzasadnienie (WHY)
-    """
-
-    name: str
-    left: ValueView
-    right: ValueView
-    margin: ValueView | None
-    status: str
-    why_pl: str
-
-    def to_dict(self) -> dict[str, Any]:
-        payload = {
-            "name": self.name,
-            "left": self.left.to_dict(),
-            "right": self.right.to_dict(),
-            "status": self.status,
-            "why_pl": self.why_pl,
-        }
-        if self.margin is not None:
-            payload["margin"] = self.margin.to_dict()
-        return payload
-
-
-@dataclass(frozen=True)
-class ProtectionComparisonView:
-    """
-    Tabela porównań dla P18.
-
-    Attributes:
-        rows: Wiersze porównań (deterministycznie)
-    """
-
-    rows: tuple[ProtectionComparisonRow, ...]
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"rows": [row.to_dict() for row in self.rows]}
 
 
 @dataclass(frozen=True)

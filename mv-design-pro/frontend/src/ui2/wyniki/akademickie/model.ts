@@ -14,7 +14,15 @@
  */
 
 import type { OpisSwiezosci } from '../../freshness/freshnessModel';
-import type { KrokDowodu, KrokSladu, RaportAnalizy, SekcjaRaportu } from './api';
+import type { WierszInformacjiAudytowych } from '../wzorzec/InformacjeAudytowe';
+import type {
+  KluczMetrykiRaportu,
+  KrokDowodu,
+  KrokSladu,
+  PolitykaEksportuRaportu,
+  RaportAnalizy,
+} from './api';
+import { AKADEMICKIE_STRINGS as S } from './strings';
 
 // ---------------------------------------------------------------------------
 // Spłaszczenie wyniku
@@ -71,32 +79,6 @@ export function splaszczWynik(payload: unknown): WierszWyniku[] {
   return wyjscie;
 }
 
-/** Grupa wierszy wyniku (pierwszy segment ścieżki). */
-export interface GrupaWyniku {
-  readonly klucz: string;
-  readonly wiersze: readonly WierszWyniku[];
-}
-
-/**
- * Grupuje pełną listę wierszy po pierwszym segmencie ścieżki, zachowując kolejność
- * pierwszego wystąpienia. Grupowanie jest wyłącznie układem widoku — ŻADEN wiersz
- * nie znika (suma liczności grup == długość wejścia; przypięte testem).
- */
-export function pogrupujWynik(wiersze: readonly WierszWyniku[]): GrupaWyniku[] {
-  const kolejnosc: string[] = [];
-  const mapa = new Map<string, WierszWyniku[]>();
-  wiersze.forEach((wiersz) => {
-    const istniejaca = mapa.get(wiersz.grupa);
-    if (istniejaca) {
-      istniejaca.push(wiersz);
-      return;
-    }
-    kolejnosc.push(wiersz.grupa);
-    mapa.set(wiersz.grupa, [wiersz]);
-  });
-  return kolejnosc.map((klucz) => ({ klucz, wiersze: mapa.get(klucz) ?? [] }));
-}
-
 // ---------------------------------------------------------------------------
 // Ślad, dowód, raport — przekazanie BEZ limitu
 // ---------------------------------------------------------------------------
@@ -115,14 +97,56 @@ export function krokiDowoduDoWidoku(kroki: readonly KrokDowodu[]): readonly Krok
   return kroki;
 }
 
-/** Sekcje raportu do wyświetlenia — komplet kontraktu `AcademicReportV1`. */
-export function sekcjeRaportuDoWidoku(raport: RaportAnalizy): readonly SekcjaRaportu[] {
-  return raport.sections;
+// ---------------------------------------------------------------------------
+// Raport — tożsamość w „Informacjach audytowych" (karta #145)
+// ---------------------------------------------------------------------------
+
+/**
+ * Polskie etykiety STAŁYCH kluczy metryk raportu — mapa typowana unią kontraktu:
+ * nowy klucz w backendzie nie skompiluje się tu bez etykiety (parytet z fiksturą
+ * backendu pilnuje `__tests__/model.test.ts`).
+ */
+export const ETYKIETY_METRYK_RAPORTU: Readonly<Record<KluczMetrykiRaportu, string>> = {
+  proof_id: S.dowodId,
+  proof_hash: S.dowodOdcisk,
+  trace_step_count: S.raportKrokowSladu,
+  result_hash: S.raportOdciskWyniku,
+  solver_version: S.wersjaSolwera,
+  input_hash: S.odciskWejscia,
+};
+
+/** Polska nazwa polityki eksportu raportu. */
+export const POLITYKI_EKSPORTU_RAPORTU: Readonly<Record<PolitykaEksportuRaportu, string>> = {
+  frozen_result_and_proof_only: S.raportPolitykaZamrozona,
+};
+
+/** Liczba kroków śladu dowodu z metryki raportu (`null`, gdy raport jej nie niesie). */
+export function liczbaKrokowSladuRaportu(raport: RaportAnalizy): number | null {
+  for (const sekcja of raport.sections) {
+    for (const metryka of sekcja.metrics) {
+      if (metryka.label === 'trace_step_count' && typeof metryka.value === 'number') {
+        return metryka.value;
+      }
+    }
+  }
+  return null;
 }
 
-/** Suma metryk wszystkich sekcji raportu (jawna liczba dla nagłówka). */
-export function licznikMetrykRaportu(raport: RaportAnalizy): number {
-  return raport.sections.reduce((suma, sekcja) => suma + sekcja.metrics.length, 0);
+/**
+ * Wiersze „Informacji audytowych" raportu: identyfikator i odcisk raportu oraz każda
+ * metryka sekcji z polską etykietą stałego klucza — komplet, w kolejności kontraktu.
+ */
+export function wierszeAudytoweRaportu(raport: RaportAnalizy): WierszInformacjiAudytowych[] {
+  return [
+    { etykieta: S.raportId, wartosc: raport.report_id },
+    { etykieta: S.raportOdcisk, wartosc: raport.report_hash },
+    ...raport.sections.flatMap((sekcja) =>
+      sekcja.metrics.map((metryka) => ({
+        etykieta: ETYKIETY_METRYK_RAPORTU[metryka.label],
+        wartosc: metryka.value === null ? S.kreska : String(metryka.value),
+      })),
+    ),
+  ];
 }
 
 // ---------------------------------------------------------------------------

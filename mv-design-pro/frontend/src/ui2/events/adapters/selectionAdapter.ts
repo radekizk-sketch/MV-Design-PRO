@@ -7,24 +7,24 @@
  * naglowek pliku: "Single source of truth for selection state and cross-view
  * synchronization").
  *
- * TODO-KARTA (pytanie do zarzadcy — patrz raport E15.1 pkt 4 "mapowanie
- * adapterow -> store zrodlowy"):
- * Kontrakt karty (§3) wymaga pola `zrodlo` = "id okna emitujacego" zmiane
- * selekcji. `useSelectionStore` NIE przechowuje tej informacji: akcja
- * `selectElement(element)` (i pochodne: selectElements/toggleElement/...) nie
- * przyjmuje parametru zrodla, a magistrala w tej karcie WYLACZNIE obserwuje
- * istniejacy store (subscribe) — nie wolno jej pisac do store'u ani zgadywac.
- * W repo nie istnieje jeszcze rejestr "window id"/"surface id" (powloka
- * ui2/shell dopiero powstaje w rownoleglej karcie E1.1, ktorej nie wolno tu
- * dotykac). Zamiast zgadywac wartosc per-wywolanie, adapter emituje `zrodlo`
- * jako udokumentowana, stala wartosc ZRODLO_STORE_SELEKCJI ('selection-store')
- * — jawnie oznaczajaca "zmiana zaobserwowana przez pasywna subskrypcje
- * globalnego store'u selekcji, bez atrybucji konkretnego okna". Docelowo, gdy
- * powstana karty poszczegolnych okien (patrz SPEC_POWIAZANIA_WARSTW_2026-07.md
- * §5 wzorzec deklaracji), okna powinny emitowac wlasne zdarzenia 'selekcja'
- * z prawdziwym `zrodlo` bezposrednio przy interakcji uzytkownika (klik), a
- * ten adapter pozostanie fallbackiem tlumaczacym zmiany store'u pochodzace
- * z miejsc jeszcze nie zmigrowanych na bezposrednia emisje.
+ * STAN FAKTYCZNY (karta §3, pole `zrodlo` = "id okna emitujacego" zmiane
+ * selekcji; rejestr wywolan zweryfikowany grepem `emituj({ typ: 'selekcja'`
+ * w `frontend/src/ui2`): `useSelectionStore` (`selectElement`/pochodne) nadal
+ * NIE przyjmuje parametru zrodla, wiec ta magistrala — ktora WYLACZNIE
+ * obserwuje istniejacy store (subscribe), nigdy do niego nie pisze i niczego
+ * nie zgaduje — nie moze odtworzyc atrybucji z samej zmiany store'u. Rejestr
+ * "window id"/"surface id" nie powstal jako osobna abstrakcja; zamiast tego
+ * przyjeta droga (SPEC_POWIAZANIA_WARSTW_2026-07.md §5) jest juz w produkcji:
+ * okna interaktywne emituja WLASNE zdarzenia 'selekcja' z prawdziwym `zrodlo`
+ * bezposrednio przy interakcji uzytkownika, np. `AppRoot.tsx`
+ * (`zrodlo: 'inspektor'`, `'drzewo-kontekstowe'`, `'pulpit-projektu'`).
+ * Ten adapter pozostaje udokumentowanym FALLBACKIEM: tlumaczy zmiany store'u
+ * pochodzace z miejsc, ktore jeszcze nie emituja bezposrednio (np. zmiana
+ * selekcji z wnetrza kanwy SLD), pod stala, jawna wartoscia
+ * ZRODLO_STORE_SELEKCJI ('selection-store') — "zmiana zaobserwowana przez
+ * pasywna subskrypcje globalnego store'u selekcji, bez atrybucji konkretnego
+ * okna". Oba mechanizmy (emisja bezposrednia + fallback obserwacyjny) sa
+ * DOCELOWYM stanem, nie etapem przejsciowym do zastapienia.
  */
 
 import { useSelectionStore } from '../../../ui/selection/store';

@@ -103,7 +103,7 @@ export const screenIconRegistry = {
   'ikona-ekran-siec-zerowa': 'Sieć zerowa i składowe symetryczne',
   'ikona-ekran-rozplyw-mocy': 'Rozpływ mocy',
   'ikona-ekran-stan-fazowy': 'Stan fazowy SN',
-  'ikona-ekran-stabilnosc-dynamiczna': 'Stabilność dynamiczna',
+  'ikona-ekran-stabilnosc-dynamiczna': 'Dynamika czasowa RMS',
   'ikona-ekran-wklady-zrodel': 'Wkłady źródeł',
   'ikona-ekran-weryfikacja-cieplna-dynamiczna': 'Weryfikacja cieplna i dynamiczna',
   'ikona-ekran-wyniki-porownania': 'Wyniki i porównania',
@@ -112,6 +112,10 @@ export const screenIconRegistry = {
   'ikona-ekran-katalogi-techniczne': 'Katalogi techniczne',
   'ikona-ekran-historia-audyt': 'Historia i audyt',
 } as const;
+
+/** Podzbior ikon dozwolonych w polu `icon` rejestru ekranow (jedno zrodlo
+ *  prawdy — patrz `ui/workspace/screenCanonRegistry.ts::ScreenCanonDefinition`). */
+export type ScreenIconName = keyof typeof screenIconRegistry;
 
 export const technicalIconRegistry = {
   ...areaIconRegistry,

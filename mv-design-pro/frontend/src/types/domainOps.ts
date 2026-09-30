@@ -4,6 +4,8 @@
  */
 
 import type { FixActionSurfaceDescriptor } from './fixActionSurface';
+import type { DeklaracjeModulu, NastawyZabezpieczenModulu, PhaseSet } from './enm';
+import type { UziemienieEkranuKabla } from './uziemienie';
 
 // --- Envelope ---
 export interface DomainOpEnvelope {
@@ -339,6 +341,8 @@ export interface AddNNCableSegmentPayload {
   catalog_ref?: string | null;
   cable_laying_conditions?: NNCableLayingConditionsPayload | null;
   name?: string | null;
+  /** W5-A: układ uziemienia ekranu kabla (deklaracja projektanta; brak = układ odniesienia katalogu). */
+  screen_bonding?: UziemienieEkranuKabla | null;
 }
 
 export interface AddNNDistributionBoardPayload {
@@ -515,6 +519,8 @@ export interface DerMvFieldConfigurationSpec {
   cable_catalog_ref: string | null;
   cable_catalog_binding: CatalogBindingPayload | null;
   cable_length_km: number | null;
+  /** W5-A: układ uziemienia ekranu kabla SN (deklaracja; null = układ odniesienia katalogu). */
+  cable_screen_bonding?: UziemienieEkranuKabla | null;
   /**
    * V12K-207 (karta F-K7): warunki UŁOŻENIA kabla przyjęte w doborze obciążalności —
    * ADDYTYWNE (brak/null → backend przyjmuje warunki katalogowe, czyli zachowanie
@@ -574,6 +580,13 @@ export interface AddConverterSourcePayload {
   materialized_params: Record<string, unknown> | null;
   // W2b-DANE: kompletny tor DER-SN (ADDYTYWNY — brak = dotychczasowe zachowanie).
   der_topology?: DerTopologyPayload | null;
+  // Plan AB O-50 pkt 5: pola NC RfG modułu zapisywane razem z wytwórcą (ten sam walidator co
+  // `update_element_parameters`: `enm/deklaracje_modulu.py::pola_nc_rfg_generatora`; kody
+  // odmowy `generator.{modul_istniejacy,data_umowy,nastawy_zabezpieczen,deklaracje_modulu}_invalid`).
+  modul_istniejacy?: boolean | null;
+  data_umowy_przylaczeniowej?: string | null;
+  nastawy_zabezpieczen?: NastawyZabezpieczenModulu | null;
+  deklaracje_modulu?: DeklaracjeModulu | null;
 }
 
 export interface AddGensetNNPayload {
@@ -604,8 +617,13 @@ export interface AddNNLoadPayload {
   active_power_kw: number;
   reactive_power_kvar: number | null;
   cos_phi: number | null;
-  load_profile_ref: string | null;
   connection_type: NNConnectionType;
+  /**
+   * Fazy przyłączenia (W5-D, `AddNnLoad.phases` w `enm/domain_ops_models.py`):
+   * pomijane = trójfazowy symetryczny; `A`/`B`/`C` = jednofazowy faza–N;
+   * `AB`/`BC`/`CA` = międzyfazowy. Czyta je rozpływ niesymetryczny.
+   */
+  phases?: PhaseSet | null;
   load_name: string | null;
   load_label: string | null;
 }
@@ -618,6 +636,12 @@ export interface AddGridSourceSNPayload {
   sk3_mva?: number;
   ik3_ka?: number;
   rx_ratio?: number;
+  /** Dane scenariusza MIN (CV-4.3 K7) — po tej samej stronie co sk3_mva/ik3_ka. */
+  sk3_min_mva?: number;
+  ik3_min_ka?: number;
+  rx_ratio_min?: number;
+  /** Napięcie zadane szyny bilansującej [p.u.]; 0,8–1,2; brak = 1,0. */
+  u_set_pu?: number;
   catalog_binding?: CatalogBindingPayload | null;
   /** @deprecated Pole kompatybilności; kanonicznie używaj catalog_binding. */
   catalog_ref?: string | null;

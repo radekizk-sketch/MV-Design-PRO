@@ -158,6 +158,8 @@ async function zbudujSiecGotowaDoObliczen(request: APIRequestContext, caseId: st
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   for (const [idx, length] of [300, 250, 200].entries()) {
@@ -320,8 +322,8 @@ test('zimny deep-link #analysis?run= ląduje w warsztacie ui2, nie w moście leg
     await expect(strona.getByTestId('mvd-zwarcia-ekran-pusty')).toHaveCount(0);
     await expect(strona.locator('[data-testid="mvd-wyn-ekran"]').first()).toBeVisible();
 
-    // Hub mostu („Analizy techniczne") nie jest lądowiskiem deep-linku.
-    await expect(strona.getByTestId('mvd-analizy-techniczne')).toHaveCount(0);
+    // Rejestr „Widoki klasyczne" (dawny hub mostu) nie jest lądowiskiem deep-linku.
+    await expect(strona.getByTestId('mvd-analizy-widoki-klasyczne')).toHaveCount(0);
   } finally {
     await kontekst.close();
   }

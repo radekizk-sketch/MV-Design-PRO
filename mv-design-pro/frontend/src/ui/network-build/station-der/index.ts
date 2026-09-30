@@ -21,5 +21,6 @@ export * from './ctZKatalogu';
 // R3 (2026-07-18) zamknęło `tmsCoordination.ts`.
 export * from './audit2-api';
 export * from './audit2-hooks';
+export * from './derRemoteCatalogs';
 export { AddDerWizard } from './AddDerWizard';
 export type { AddDerWizardProps } from './AddDerWizard';

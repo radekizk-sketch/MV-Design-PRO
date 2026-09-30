@@ -10,10 +10,10 @@ osobnym adapterem.
 from __future__ import annotations
 
 from application.analyses.protection.catalog.models import DeviceCapability
-from application.analyses.protection.catalog.vendors.base import VendorAdapter
-
-_REQUIRED_LOGICAL_KEYS = ("I51", "TMS51", "I50", "I51N", "TMS51N", "I50N", "CURVE")
-_REQUIRED_FUNCTIONS = ("50", "51", "50N", "51N")
+from application.analyses.protection.catalog.vendors.base import (
+    VendorAdapter,
+    validate_common_vendor_support,
+)
 
 
 class GenericVendorAdapter:
@@ -36,17 +36,7 @@ class GenericVendorAdapter:
         *,
         device: DeviceCapability,
     ) -> tuple[bool, tuple[str, ...]]:
-        violations: list[str] = []
-        for key in _REQUIRED_LOGICAL_KEYS:
-            if key not in mapped_settings:
-                violations.append(f"VENDOR_MISSING_LOGICAL_KEY_{key}")
-        for function_code in _REQUIRED_FUNCTIONS:
-            if function_code not in device.functions_supported:
-                violations.append(f"VENDOR_UNSUPPORTED_FUNCTION_{function_code}")
-        curve = mapped_settings.get("CURVE")
-        if curve is not None and curve not in device.curves_supported:
-            violations.append("VENDOR_UNSUPPORTED_CURVE")
-        return (len(violations) == 0, tuple(violations))
+        return validate_common_vendor_support(mapped_settings, device)
 
     def map_logical_to_vendor(
         self,
@@ -54,21 +44,33 @@ class GenericVendorAdapter:
         *,
         device: DeviceCapability,
     ) -> dict[str, float | str | bool]:
+        # Karta W3-C1: KAZDA grupa (fazowa 51/50, ziemnozwarciowa 51N/50N) trafia
+        # do wyniku TYLKO gdy jej klucz logiczny jest niesiony przez wymaganie —
+        # metoda Hoppela nigdy nie stawia 51N/50N, wiec bezwarunkowe indeksowanie
+        # `mapped_settings["I51N"]` wywalaloby KeyError na kazdym takim wymaganiu.
         p = self._prefix
-        return {
-            f"{p}.OC.51.ENABLED": True,
-            f"{p}.OC.51.PICKUP_A": mapped_settings["I51"],
-            f"{p}.OC.51.TMS": mapped_settings["TMS51"],
-            f"{p}.OC.50.ENABLED": True,
-            f"{p}.OC.50.PICKUP_A": mapped_settings["I50"],
-            f"{p}.EF.51N.ENABLED": True,
-            f"{p}.EF.51N.PICKUP_A": mapped_settings["I51N"],
-            f"{p}.EF.51N.TMS": mapped_settings["TMS51N"],
-            f"{p}.EF.50N.ENABLED": True,
-            f"{p}.EF.50N.PICKUP_A": mapped_settings["I50N"],
-            f"{p}.OC.CURVE": mapped_settings["CURVE"],
-            f"{p}.EF.CURVE": mapped_settings["CURVE"],
-        }
+        wynik: dict[str, float | str | bool] = {}
+        if "I51" in mapped_settings:
+            wynik[f"{p}.OC.51.ENABLED"] = True
+            wynik[f"{p}.OC.51.PICKUP_A"] = mapped_settings["I51"]
+            if "TMS51" in mapped_settings:
+                wynik[f"{p}.OC.51.TMS"] = mapped_settings["TMS51"]
+            if "T51" in mapped_settings:
+                wynik[f"{p}.OC.51.T_DELAY_S"] = mapped_settings["T51"]
+            wynik[f"{p}.OC.CURVE"] = mapped_settings["CURVE"]
+        if "I50" in mapped_settings:
+            wynik[f"{p}.OC.50.ENABLED"] = True
+            wynik[f"{p}.OC.50.PICKUP_A"] = mapped_settings["I50"]
+        if "I51N" in mapped_settings:
+            wynik[f"{p}.EF.51N.ENABLED"] = True
+            wynik[f"{p}.EF.51N.PICKUP_A"] = mapped_settings["I51N"]
+            if "TMS51N" in mapped_settings:
+                wynik[f"{p}.EF.51N.TMS"] = mapped_settings["TMS51N"]
+            wynik[f"{p}.EF.CURVE"] = mapped_settings["CURVE"]
+        if "I50N" in mapped_settings:
+            wynik[f"{p}.EF.50N.ENABLED"] = True
+            wynik[f"{p}.EF.50N.PICKUP_A"] = mapped_settings["I50N"]
+        return wynik
 
 
 # =============================================================================
@@ -116,34 +118,34 @@ ZIAD_DEVICES = ("ZIAD_ZPRO",)
 
 
 def build_siemens_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="SIEMENS", prefix="SIPROTEC", device_ids=SIEMENS_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="SIEMENS", prefix="SIPROTEC", device_ids=SIEMENS_DEVICES)
 
 
 def build_schneider_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="SCHNEIDER", prefix="EASERGY", device_ids=SCHNEIDER_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="SCHNEIDER", prefix="EASERGY", device_ids=SCHNEIDER_DEVICES)
 
 
 def build_sel_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="SEL", prefix="SEL", device_ids=SEL_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="SEL", prefix="SEL", device_ids=SEL_DEVICES)
 
 
 def build_ge_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="GE", prefix="GE_MULTILIN", device_ids=GE_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="GE", prefix="GE_MULTILIN", device_ids=GE_DEVICES)
 
 
 def build_zpas_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="ZPAS", prefix="ZPAS", device_ids=ZPAS_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="ZPAS", prefix="ZPAS", device_ids=ZPAS_DEVICES)
 
 
 def build_elester_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="ELESTER", prefix="ELESTER", device_ids=ELESTER_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="ELESTER", prefix="ELESTER", device_ids=ELESTER_DEVICES)
 
 
 def build_energotest_adapter() -> VendorAdapter:
     return GenericVendorAdapter(
         vendor="ENERGOTEST", prefix="ENERGOTEST", device_ids=ENERGOTEST_DEVICES
-    )  # type: ignore[return-value]
+    )
 
 
 def build_ziad_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="ZIAD", prefix="ZIAD", device_ids=ZIAD_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="ZIAD", prefix="ZIAD", device_ids=ZIAD_DEVICES)

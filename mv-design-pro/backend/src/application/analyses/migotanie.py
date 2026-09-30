@@ -2,8 +2,9 @@
 
 Warstwa APPLICATION (mapowanie + normatywna arytmetyka oceny emisji, NIE fizyka).
 Odczytuje GOTOWY wynik przebiegu zwarciowego (``short_circuit_sn``) — moc
-zwarciową Sk'' w punkcie przyłączenia — oraz z katalogu przekształtnika moc
-znamionową Sn i współczynnik emisji migotania c(ψk); wylicza emisję migotania
+zwarciową Sk'' w punkcie przyłączenia — oraz z karty przekształtnika
+zmaterializowanej w elemencie ENM moc znamionową Sn i współczynnik emisji migotania
+c(ψk); wylicza emisję migotania
 źródeł falownikowych (FW/PV/BESS) w węźle przyłączenia wg IEC/TR 61000-3-7.
 ZERO fizyki: Sk'' pochodzi z solvera IEC 60909, Sn i c z katalogu — formuły to
 deterministyczna arytmetyka normatywnej oceny emisji (interpretacja), analogicznie
@@ -13,10 +14,15 @@ Odwzorowania (plik:linia w kodzie źródłowym):
 - ``sk_mva`` ← ``build_short_circuit_results(run)`` → wiersz ``sk_mva`` per węzeł
   (``enm.canonical_analysis.build_short_circuit_results``), tak jak
   ``grid_strength._sk_mva_by_bus``,
-- ``sn_mva`` ← ``materialized_params.sn_mva`` lub ``ConverterType.sn_mva``,
-- ``flicker_c`` ← ``materialized_params.flicker_c`` lub ``ConverterType.flicker_c``
-  (współczynnik emisji migotania z certyfikatu urządzenia; brak → moduł pomijany
-  w sumowaniu z jawnym wpisem INFO).
+- ``sn_mva`` ← ``materialized_params.sn_mva``,
+- ``flicker_c`` ← ``materialized_params.flicker_c`` (współczynnik emisji migotania z
+  certyfikatu urządzenia; brak → moduł pomijany w sumowaniu z jawnym wpisem INFO).
+  Oba WYŁĄCZNIE z migawki modelu przebiegu (karta AB-H0 Pakiet D). Skasowany odczyt
+  zapasowy ``ConverterType`` z katalogu STATYCZNEGO po ``catalog_ref`` omijał
+  materializację i katalog projektu modelu: wynik zależał od stanu katalogu w chwili
+  odczytu, a nie od modelu, na którym liczono zwarcie. Materializacja niesie
+  ``flicker_c`` w każdej przestrzeni przekształtników (``CONVERTER``, ``ZRODLO_NN_PV``,
+  ``ZRODLO_NN_BESS`` — ``types.POLA_KARTY_PROJEKCJI``).
 
 Źródła stałych normatywnych (KAŻDA stała z cytatem — brak cytatu → None + INFO):
 - prawo sumowania emisji migotania wielu źródeł: ``Pst = (Σ Pst_i^m)^(1/m)`` z
@@ -37,9 +43,12 @@ import hashlib
 import json
 from typing import Any
 
-from application.analyses.grid_strength import IBG_GEN_TYPES, resolve_n_parallel
+from application.analyses.grid_strength import resolve_n_parallel
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
+from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
+from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
+from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 
 # --- Stałe normatywne (KAŻDA ze źródłem powyżej w docstringu modułu) -----------
 
@@ -71,31 +80,17 @@ def _r(value: float | None) -> float | None:
     return round(float(value), _ROUND)
 
 
-def _resolve_converter(catalog_ref: str | None) -> Any | None:
-    """Rozwiąż ``ConverterType`` z katalogu domyślnego po ``catalog_ref``.
-
-    Zwraca ``None`` gdy ref pusty lub pozycja nie jest przekształtnikiem
-    (uczciwie — bez fabrykowania mocy ani współczynnika emisji).
-    """
-    if not catalog_ref:
-        return None
-    from network_model.catalog.repository import get_default_mv_catalog
-
-    return get_default_mv_catalog().get_converter_type(str(catalog_ref))
-
-
 def _sn_and_flicker_for_generator(gen: dict[str, Any]) -> tuple[float | None, float | None]:
     """Moc znamionowa Sn [MVA] i współczynnik emisji migotania c źródła IBG.
 
-    Priorytet: ``materialized_params`` (zmaterializowany parametr katalogowy) →
-    ``ConverterType`` z katalogu. Brak danej → None (jawnie, bez fabrykowania).
+    Wyłącznie ``materialized_params`` elementu (karta zmaterializowana w modelu).
+    Brak danej → None (jawnie, bez fabrykowania).
 
     Sn to moc zainstalowana grupy jednostek równoległych: znamionowa moc
     pojedynczej jednostki przemnożona przez ``n_parallel`` (``resolve_n_parallel``;
     brak/None → 1), spójnie z ``grid_strength._installed_mva_for_generator``.
     """
     materialized = gen.get("materialized_params") or {}
-    converter = _resolve_converter(gen.get("catalog_ref"))
 
     sn_mva: float | None = None
     raw_sn = materialized.get("sn_mva")
@@ -104,10 +99,6 @@ def _sn_and_flicker_for_generator(gen: dict[str, Any]) -> tuple[float | None, fl
             candidate = float(raw_sn)
         except (TypeError, ValueError):
             candidate = 0.0
-        if candidate > 0.0:
-            sn_mva = candidate
-    if sn_mva is None and converter is not None and getattr(converter, "sn_mva", None):
-        candidate = float(converter.sn_mva)
         if candidate > 0.0:
             sn_mva = candidate
     if sn_mva is not None:
@@ -120,10 +111,6 @@ def _sn_and_flicker_for_generator(gen: dict[str, Any]) -> tuple[float | None, fl
             candidate_c = float(raw_c)
         except (TypeError, ValueError):
             candidate_c = 0.0
-        if candidate_c > 0.0:
-            flicker_c = candidate_c
-    if flicker_c is None and converter is not None and getattr(converter, "flicker_c", None):
-        candidate_c = float(converter.flicker_c)
         if candidate_c > 0.0:
             flicker_c = candidate_c
 
@@ -139,7 +126,7 @@ def _ibg_by_bus(snapshot: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     for gen in snapshot.get("generators") or []:
         if not isinstance(gen, dict):
             continue
-        if str(gen.get("gen_type") or "") not in IBG_GEN_TYPES:
+        if str(gen.get("gen_type") or "") not in GEN_TYPES_PRZEKSZTALTNIKOWE:
             continue
         bus_ref = gen.get("bus_ref")
         if not isinstance(bus_ref, str):
@@ -402,11 +389,11 @@ def build_migotanie_view(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
         raise ValueError(
             "Ocena migotania (Pst/Plt) wymaga przebiegu zwarciowego; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
+            f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )
 
@@ -419,6 +406,13 @@ def build_migotanie_view(run: CanonicalRun) -> dict[str, Any]:
         _bus_entry(bus_ref, kv_by_bus.get(bus_ref), sk_by_bus.get(bus_ref), modules)
         for bus_ref, modules in sorted(ibg_by_bus.items(), key=lambda item: item[0])
     ]
+    # Nazwy węzła przyłączenia i modułu z modelu biegu (albo opis rodzaju) — ekran nazywa
+    # nimi wiersze; identyfikatory zostają w `bus_ref`/`gen_ref` do wiązania (karta #144).
+    nazwy = zbuduj_indeks_nazw(snapshot)
+    for entry in entries:
+        entry["bus_name"] = nazwa_po_identyfikatorze(entry["bus_ref"], indeks=nazwy)
+        for module in entry["modules"]:
+            module["gen_name"] = nazwa_po_identyfikatorze(module["gen_ref"], indeks=nazwy)
 
     config = {
         "flicker_summation_exponent_m": FLICKER_SUMMATION_EXPONENT_M,

@@ -39,6 +39,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
+from network_model.core.uziemienie import TypPunktuNeutralnego
+from network_model.pochodne import mva_na_kva
+from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn, w_pasmie_nn
+
 #: Wersja katalogow audytu 2 = DATA PRZEGLADU PROWENIENCJI (ISO-8601).
 #:
 #: Do karty K-Q pozycje deklarowaly `catalog_version = "2024.1"` — numer, ktory
@@ -367,6 +372,45 @@ def get_tap_changer(tc_id: str) -> TapChangerItem | None:
     return next((tc for tc in TAP_CHANGER_CATALOG if tc.id == tc_id), None)
 
 
+#: Klasa transformatora w rozumieniu pola `applicable_to` przelacznika zaczepow.
+KlasaTransformatoraPrzelacznika = Literal[
+    "transformer_110_15", "transformer_110_20", "transformer_15_04", "block_transformer"
+]
+
+#: Polska nazwa klasy transformatora — tekst dowodu nazywa klase, nigdy jej kod.
+ETYKIETY_KLAS_TRANSFORMATORA: dict[str, str] = {
+    "transformer_110_15": "110/15 kV",
+    "transformer_110_20": "110/20 kV",
+    "transformer_15_04": "SN/nN",
+    "block_transformer": "blokowy",
+}
+
+
+def klasa_transformatora_przelacznika(
+    uhv_kv: float | None, ulv_kv: float | None
+) -> KlasaTransformatoraPrzelacznika | None:
+    """Klasa transformatora (napiecia z modelu) dla pola `applicable_to` przelacznika zaczepow.
+
+    JEDNA REGULA NA DWIE STRONY (karta PROOFPACK-KONTRAKT). Ta sama klasyfikacja wybiera we
+    froncie przelaczniki OFEROWANE transformatorowi (`klasaTransformatoraPrzelacznika`
+    w `StationConfigTransformerCard.tsx`) i tutaj — przelacznik SPRAWDZANY w pakiecie dowodow.
+    Obie strony czytaja jedna tabele przypadkow (`klasy_transformatora_przelacznika.json`,
+    test parytetu po obu stronach): oferta i dowod nie moga sie rozjechac.
+
+    Transformator spoza czterech klas daje `None` — jawny brak klasy, a nie domysl
+    („blokowy") wybierajacy dowolny przelacznik.
+    """
+    if uhv_kv is None or ulv_kv is None:
+        return None
+    if 100 <= uhv_kv < 130 and abs(ulv_kv - 15) < 1:
+        return "transformer_110_15"
+    if 100 <= uhv_kv < 130 and abs(ulv_kv - 20) < 1:
+        return "transformer_110_20"
+    if powyzej_pasma_nn(uhv_kv) and w_pasmie_nn(ulv_kv):
+        return "transformer_15_04"
+    return None
+
+
 def tap_changer_fields_from_catalog(
     item: TapChangerItem, *, current_position: int | None = None
 ) -> dict:
@@ -447,9 +491,11 @@ class HvFusePasmoTcc:
 
     def __post_init__(self) -> None:
         if not self.zrodlo_url.startswith(("http://", "https://")):
-            raise ValueError("Pasmo wkladki wymaga adresu http(s) tabeli producenta.")
+            odmowa_twarda("KAT-T-023", "Pasmo wkładki wymaga adresu http(s) tabeli producenta.")
         if not self.punkty:
-            raise ValueError("Pasmo bez punktow nie jest pasmem — uzyj `pasmo_tcc = None`.")
+            odmowa_twarda(
+                "KAT-T-024", "Pasmo bez punktów nie jest pasmem — użyj `pasmo_tcc = None`."
+            )
 
     def to_dict(self) -> dict:
         return {
@@ -517,7 +563,7 @@ HV_FUSE_CATALOG: tuple[HvFuseItem, ...] = (
         id="fuse_20kv_25a_gp",
         catalog_namespace="hv_fuse",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Bezpiecznik SN 20 kV / 25 A · general-purpose · pole odpływowe",
+        label_pl="Bezpiecznik SN 20 kV / 25 A · general-purpose · pole liniowe",
         nominal_voltage_kv=20,
         nominal_current_a=25,
         fuse_class="general_purpose",
@@ -607,14 +653,16 @@ class DeviceWithstandItem:
 
     def __post_init__(self) -> None:
         if self.i_th_1s_ka not in IEC_62271_1_SZEREG_I_TH_KA:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-025",
                 f"{self.id}: I_th = {self.i_th_1s_ka} kA jest spoza znormalizowanego "
-                f"szeregu IEC 62271-1 {IEC_62271_1_SZEREG_I_TH_KA}."
+                f"szeregu IEC 62271-1 {IEC_62271_1_SZEREG_I_TH_KA}.",
             )
         if self.i_th_duration_s not in IEC_62271_1_CZASY_ZWARCIA_S:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-026",
                 f"{self.id}: czas trwania zwarcia {self.i_th_duration_s} s jest spoza "
-                f"znormalizowanego szeregu IEC 62271-1 {IEC_62271_1_CZASY_ZWARCIA_S}."
+                f"znormalizowanego szeregu IEC 62271-1 {IEC_62271_1_CZASY_ZWARCIA_S}.",
             )
 
     @property
@@ -767,20 +815,23 @@ class PfCurveItem:
     def __post_init__(self) -> None:
         statyzm_min, statyzm_max = NC_RFG_STATYZM_ZAKRES_PROCENT
         if not statyzm_min <= self.droop_percent <= statyzm_max:
-            raise ValueError(
-                f"{self.id}: statyzm {self.droop_percent} % jest poza przedzialem "
-                f"nastawialnym {statyzm_min}-{statyzm_max} % (NC RfG art. 13 ust. 2)."
+            odmowa_twarda(
+                "KAT-T-027",
+                f"{self.id}: statyzm {self.droop_percent} % jest poza przedziałem "
+                f"nastawialnym {statyzm_min}-{statyzm_max} % (NC RfG art. 13 ust. 2).",
             )
         strefa_min, strefa_max = NC_RFG_STREFA_NIECZULOSCI_ZAKRES_HZ
         if not strefa_min <= self.deadband_hz <= strefa_max:
-            raise ValueError(
-                f"{self.id}: strefa nieczulosci {self.deadband_hz} Hz jest poza "
-                f"przedzialem {strefa_min}-{strefa_max} Hz (NC RfG art. 13 ust. 2)."
+            odmowa_twarda(
+                "KAT-T-028",
+                f"{self.id}: strefa nieczułości {self.deadband_hz} Hz jest poza "
+                f"przedziałem {strefa_min}-{strefa_max} Hz (NC RfG art. 13 ust. 2).",
             )
         if (self.f_min_hz, self.f_max_hz) != NC_RFG_ZAKRES_PRACY_HZ:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-029",
                 f"{self.id}: zakres pracy {self.f_min_hz}-{self.f_max_hz} Hz nie jest "
-                f"zakresem z zalacznika II tab. 2 {NC_RFG_ZAKRES_PRACY_HZ}."
+                f"zakresem z załącznika II tab. 2 {NC_RFG_ZAKRES_PRACY_HZ}.",
             )
 
     def to_dict(self) -> dict:
@@ -795,8 +846,8 @@ class PfCurveItem:
             "f_max_hz": self.f_max_hz,
             "deadband_hz": self.deadband_hz,
             "zrodlo_pl": (
-                "Rozporzadzenie (UE) 2016/631 (NC RfG): art. 13 ust. 2 (statyzm "
-                "nastawialny 2-12 %, prog 50,2-50,5 Hz) oraz zalacznik II tab. 2 "
+                "Rozporządzenie (UE) 2016/631 (NC RfG): art. 13 ust. 2 (statyzm "
+                "nastawialny 2-12 %, próg 50,2-50,5 Hz) oraz załącznik II tab. 2 "
                 f"(zakres pracy 47,5-51,5 Hz); {NC_RFG_URL}"
             ),
         }
@@ -922,7 +973,7 @@ class BlockTransformerItem:
                 return record
         raise KeyError(
             f"{self.id}: typ '{self.transformer_type_ref}' nie istnieje w katalogu "
-            "transformatorow — pozycja transformatora dedykowanego bez pokrycia."
+            "transformatorów — pozycja transformatora dedykowanego bez pokrycia."
         )
 
     @property
@@ -931,7 +982,7 @@ class BlockTransformerItem:
 
     @property
     def sn_kva(self) -> float:
-        return float(self._params["rated_power_mva"]) * 1000.0
+        return mva_na_kva(float(self._params["rated_power_mva"]))
 
     @property
     def hv_kv(self) -> float:
@@ -963,8 +1014,8 @@ class BlockTransformerItem:
 
     @property
     def is_mv_to_mv(self) -> bool:
-        """Transformator SN/SN — strona dolna powyzej 1 kV (a nie deklaracja)."""
-        return self.lv_kv > 1.0
+        """Transformator SN/SN — strona dolna powyzej pasma nN (a nie deklaracja)."""
+        return powyzej_pasma_nn(self.lv_kv)
 
     @property
     def galvanic_isolation(self) -> bool:
@@ -1121,15 +1172,12 @@ def get_block_transformer(btr_id: str) -> BlockTransformerItem | None:
 # parytet obu warstw pilnuje `tests/network_model/test_audit2_katalogi_parytet.py`.
 
 
-GroundingType = Literal["isolated", "petersen_coil", "resistor_grounded", "directly_grounded"]
-
-
 @dataclass(frozen=True)
 class MvNeutralGroundingItem:
     id: str
     catalog_namespace: str
     catalog_version: str
-    grounding_type: GroundingType
+    grounding_type: TypPunktuNeutralnego
     label_pl: str
     description_pl: str
     #: Rezystancja uziemienia [Ohm] definiujaca wariant (gdy resistor_grounded).
@@ -1267,7 +1315,7 @@ def select_block_transformers_for_der(
 
 
 def is_vt_voltage_factor_valid_for_grounding(
-    voltage_factor: float, grounding_type: GroundingType
+    voltage_factor: float, grounding_type: TypPunktuNeutralnego
 ) -> tuple[bool, str]:
     """Walidacja F_v przekladnika napieciowego wobec uziemienia sieci (IEC 61869-3 tab. 2).
 
@@ -1285,13 +1333,8 @@ def is_vt_voltage_factor_valid_for_grounding(
     """
     from domain.dobor_przekladnika import wymagany_wspolczynnik_napieciowy
 
-    tryb = {
-        "isolated": "izolowany",
-        "petersen_coil": "cewka_petersena",
-        "resistor_grounded": "rezystor",
-        "directly_grounded": "bezposrednio_uziemiony",
-    }.get(grounding_type)
-    wymagany = wymagany_wspolczynnik_napieciowy(tryb, "faza_ziemia")
+    # W5-A: jeden slownik typow punktu neutralnego — bez mapowania na literaly PL.
+    wymagany = wymagany_wspolczynnik_napieciowy(grounding_type, "faza_ziemia")
     if wymagany is None:
         return False, f"Nieznany typ uziemienia: {grounding_type}"
     if voltage_factor < wymagany:
@@ -1299,10 +1342,10 @@ def is_vt_voltage_factor_valid_for_grounding(
             "isolated": "izolowana",
             "petersen_coil": "skompensowana (Petersena)",
             "resistor_grounded": "uziemiona przez rezystor",
-            "directly_grounded": "bezposrednio uziemiona",
+            "directly_grounded": "bezpośrednio uziemiona",
         }[grounding_type]
         return False, (
-            f"Siec {etykieta} wymaga VT (faza-ziemia) z U_th >= {wymagany} wg IEC 61869-3. "
+            f"Sieć {etykieta} wymaga VT (faza-ziemia) z U_th >= {wymagany} wg IEC 61869-3. "
             f"Wybrany VT ma U_th = {voltage_factor}."
         )
     return True, ""
@@ -1394,7 +1437,7 @@ def ocen_wytrzymalosc_aparatu(
     else:
         message = (
             f"OK: aparatura „{etykieta_pl}” wytrzymała "
-            f"(wykorzystanie I_dyn {util_dyn:.0f}%, I_th {util_th:.0f}%)."  # type: ignore[str-format]
+            f"(wykorzystanie I_dyn {util_dyn:.0f}%, I_th {util_th:.0f}%)."
         )
 
     return {
@@ -1437,7 +1480,8 @@ def validate_device_withstand(
             "ok": False,
             "i_dyn_ok": False,
             "i_th_ok": False,
-            "message_pl": f"Brak aparatury w katalogu (id={device_id}).",
+            # Identyfikator zostaje w żądaniu — zdanie dla człowieka go nie powtarza.
+            "message_pl": "Brak aparatury w katalogu wytrzymałości zwarciowej.",
             "utilization_dyn_percent": 0,
             "utilization_th_percent": 0,
         }
@@ -1467,48 +1511,45 @@ def validate_device_withstand(
 # w dowod NIEZALICZONY z nazwanym powodem.
 
 
-def estimate_der_power_kw(
-    *, der_kind: str, block_transformer_catalog_ref: str | None = None
-) -> float:
-    """
-    Estymuje moc DER na podstawie block-trafo (gdy dedicated_transformer)
-    lub typowych wartosci dla der_kind.
-
-    Phase 15: zastepuje hardcoded 1MW placeholder.
-
-    Logika:
-    1. Jesli block_transformer wskazany, uzywamy sn_kva (deterministic, real catalog).
-    2. W przeciwnym wypadku typowe wartosci per kind (PV: 500 kW, BESS: 1000, FW: 2300).
-
-    Te typowe wartosci bazuja na medianie z PV_INVERTER_CATALOG / BESS_PCS_CATALOG /
-    WIND_TURBINE_CATALOG (frontendowe staticki). Brak mozliwosci znania konkretnego
-    device_catalog z poziomu audit2 (DER specs nie ma device_ref) — uzywamy median.
-    """
-    if block_transformer_catalog_ref:
-        btr = get_block_transformer(block_transformer_catalog_ref)
-        if btr is not None:
-            return float(btr.sn_kva)
-    # Median per kind based on typowe katalogowe wartosci.
-    if der_kind == "PV":
-        return 500.0
-    if der_kind == "BESS":
-        return 1000.0
-    if der_kind == "FW":
-        return 2300.0
-    return 0.0
-
-
 def validate_hosting_capacity_export(
     *, station_id: str, p_export_kw: float, p_import_kw: float
 ) -> dict:
-    """Naprawa eng.15: walidacja kierunku przeplywu mocy w stacji."""
+    """Naprawa eng.15: walidacja kierunku przeplywu mocy w stacji.
+
+    STACJA BEZ ODBIOROW (karta PROOFPACK-KONTRAKT). Przy `p_import_kw <= 0` stosunek
+    eksportu do importu NIE ISTNIEJE: dawniej liczony jako `inf`, dawal w tekscie
+    „stosunek infx", a stacja bez zrodel i bez odbiorow (0/0) dostawala werdykt
+    „krytyczny eksport 0 kW". Teraz: brak mocy zrodel to brak eksportu; zrodla bez
+    odbiorow w stacji to eksport calej mocy (najwyzsza klasa) ze stosunkiem `None`
+    i zdaniem, ktore mowi, dlaczego stosunku nie ma.
+    """
     net = p_export_kw - p_import_kw
-    ratio = (p_export_kw / p_import_kw) if p_import_kw > 0 else float("inf")
+    if p_import_kw <= 0:
+        if p_export_kw <= 0:
+            status = "no_export"
+            message = "Brak mocy źródeł i odbiorów w stacji — nie ma eksportu do OSD."
+        else:
+            status = "requires_ramp_down"
+            message = (
+                f"Krytyczny eksport: {net:.0f} kW przy braku odbiorów w stacji — cała moc "
+                "źródeł trafia do sieci OSD (stosunek eksportu do importu nieokreślony). "
+                "WYMAGANE: studium NC RfG ramp-down + curtailment + uzgodnienie z OSD."
+            )
+        return {
+            "station_id": station_id,
+            "p_export_kw": p_export_kw,
+            "p_import_kw": p_import_kw,
+            "p_net_export_kw": net,
+            "export_to_import_ratio": None,
+            "status": status,
+            "message_pl": message,
+        }
+    ratio = p_export_kw / p_import_kw
 
     if net < 0 or ratio < 0.8:
         status = "no_export"
         message = (
-            f"Lokalna autokonsumpcja: {p_export_kw:.0f} kW DER vs {p_import_kw:.0f} kW odbiorow. "
+            f"Lokalna autokonsumpcja: {p_export_kw:.0f} kW DER vs {p_import_kw:.0f} kW odbiorów. "
             "Brak eksportu netto do OSD."
         )
     elif ratio <= 1.5:
@@ -1521,7 +1562,7 @@ def validate_hosting_capacity_export(
         status = "high_export_warning"
         message = (
             f"Wysoki eksport: {net:.0f} kW (stosunek {ratio:.2f}x). "
-            "Zalecane curtailment 70% w godzinach poludniowych."
+            "Zalecane curtailment 70% w godzinach południowych."
         )
     else:
         status = "requires_ramp_down"

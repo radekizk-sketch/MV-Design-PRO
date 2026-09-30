@@ -205,7 +205,7 @@ def audit_lv_domain_graph(graph: dict[str, Any]) -> list[ValidationMessage]:
                 _msg(
                     "NN-AUD-07",
                     SEVERITY_IMPORTANT,
-                    f"Transformator {trafo['name']} ({trafo['ref_id']}) bez wyłącznika głównego "
+                    f"Transformator „{trafo['name']}” ({trafo['ref_id']}) bez wyłącznika głównego "
                     "nN — zacisk nN wchodzi na szynę bez aparatu.",
                     [trafo["ref_id"]],
                 )

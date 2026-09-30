@@ -3,7 +3,7 @@
 export const MAGISTRALA_STRINGS = {
   eyebrow: 'MODEL SIECI · MAGISTRALA SN',
   cel:
-    'Wyprowadź ciąg SN z pola odpływowego GPZ — pierwszy odcinek kabla lub linii. '
+    'Wyprowadź ciąg SN z pola liniowego GPZ — pierwszy odcinek kabla lub linii. '
     + 'Parametry bierzesz z katalogu; spadek napięcia i prąd liczy backend. '
     + 'Na końcu odcinka zawiesisz stację, odbiory albo kolejny odcinek.',
   odznaka: 'Nowy odcinek SN',
@@ -22,13 +22,20 @@ export const MAGISTRALA_STRINGS = {
   typKabelBlad: 'Nie udało się pobrać katalogu kabli SN.',
   typLiniaBlad: 'Nie udało się pobrać katalogu linii SN.',
   typPomoc: 'Typ wnosi rezystancję, reaktancję i prąd znamionowy — wartości z katalogu, nie z ręki.',
+  ekranUziemienie: 'Uziemienie ekranu kabla',
+  ekranUziemieniePomoc:
+    'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
+    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
+    + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
 
   nazwa: 'Nazwa odcinka',
   nazwaPlaceholder: 'np. Magistrala A / odcinek 1',
   dlugosc: 'Długość odcinka',
   napiecie: 'Napięcie ciągu',
-  prad: 'Prąd obciążenia (do podglądu ΔU)',
-  pradPomoc: 'Domyślnie prąd znamionowy typu. Podaj przewidywane obciążenie, aby zobaczyć realny spadek.',
+  prad: 'Prąd roboczy odcinka I_B',
+  pradPomoc:
+    'Prąd płynący przez odcinek (z odbiorami dalej w ciągu). Bez niego obciążalność nie zostanie '
+    + 'oceniona, a spadek napięcia backend policzy przy prądzie równym obciążalności typu.',
   cosPhi: 'Współczynnik mocy cosφ',
 
   // Parametry katalogu (odczyt).
@@ -48,25 +55,22 @@ export const MAGISTRALA_STRINGS = {
 
   // Podgląd (backend R1).
   podgladTytul: 'Podgląd doboru (backend)',
+  podgladPrad: 'Prąd obliczeniowy',
+  podgladPradZObciazalnosci:
+    'Prąd roboczy nie podany — spadek policzony przy prądzie równym obciążalności typu (dana przyjęta).',
   podgladDeltaU: 'Spadek napięcia ΔU',
   podgladDeltaUpct: 'ΔU względne',
   podgladRtotal: 'R odcinka',
   podgladXtotal: 'X odcinka',
   podgladZrodlo: 'Źródło wyniku',
-  podgladZrodloWartosc: 'Obliczenie ΔU po stronie serwera (R1)',
+  podgladZrodloWartosc: 'Obliczenie ΔU po stronie serwera (solver spadku napięcia)',
   podgladBrak: 'Uzupełnij typ i długość, aby zobaczyć podgląd ΔU.',
-  podgladBlad: 'Nie udało się wyznaczyć podglądu ΔU.',
-  podgladOstrzezenieIznam: 'Prąd obciążenia przekracza prąd znamionowy typu — dobierz większy przekrój.',
 
   // Kontrola / gotowość.
   kontrolaTytul: 'Kontrola odcinka',
   wierszTyp: 'Typ z katalogu',
   wierszDlugosc: 'Długość',
   wierszDeltaU: 'Spadek ΔU',
-  wierszObciazenie: 'Obciążalność',
-  stanKompletne: 'Kompletne',
-  stanBrak: 'Do uzupełnienia',
-  stanOstrzezenie: 'Sprawdź',
 
   nastepnyOpis:
     'Po zapisie odcinka aplikacja od razu otworzy wybrany krok na jego końcu — '
@@ -94,23 +98,15 @@ export const MAGISTRALA_STRINGS = {
   builderZakoncz: 'Zakończ budowę',
   builderZakonczTitle: 'Zakończ budowę magistrali i wróć do schematu',
   builderDodaj: 'Dodaj odcinek',
-  builderSkumulowany: 'Skumulowany spadek ΔU',
-  builderSkumulowanyOstrzezenie: (limit: number) => `Skumulowany spadek przekracza ${limit}% — rozważ większy przekrój lub krótszy ciąg.`,
-  builderSkumulowanyNiepelny: (bez: number) =>
-    `Ocena niepełna: ${bez} ${bez === 1 ? 'odcinek nie ma' : 'odcinki nie mają'} policzonego spadku `
-    + 'napięcia, więc suma jest zaniżona i limitu nie da się sprawdzić.',
+  builderSkumulowany: 'Skumulowany spadek ΔU (z odcinkiem bieżącym)',
 
-  // Asystent doboru przekroju (M3, V12K-072).
+  // Ocena doboru przekroju (karta MAGISTRALA-OCENA): rekordy werdyktu z backendu —
+  // interfejs nie zna progu, nie porównuje i nie sumuje; etykiety niesie rekord.
   ocenaTytul: 'Ocena doboru przekroju',
-  ocenaObciazalnosc: 'Obciążalność (Iz ≥ prąd)',
-  ocenaSpadek: 'Spadek napięcia (≤ limit)',
-  ocenaOK: 'OK',
-  ocenaOstrzezenie: 'Do sprawdzenia',
-  ocenaBrak: 'Podaj prąd i długość',
-  ocenaObciazalnoscZle: (prad: number, iz: number) =>
-    `Prąd roboczy ${prad.toFixed(0)} A przekracza obciążalność ${iz.toFixed(0)} A — dobierz większy przekrój.`,
-  ocenaSpadekZle: (pct: number, limit: number) =>
-    `Spadek ${pct.toFixed(2)}% przekracza limit ${limit}% — większy przekrój lub krótszy odcinek.`,
+  ocenaKartyTytul: 'Ocena doboru przekroju — kryteria, wyniki, limity i podstawy (backend)',
+  ocenaPusto: 'Ocena doboru pojawi się po odpowiedzi backendu (typ z katalogu, długość i prąd roboczy odcinka).',
+  ocenaBlad: 'Nie udało się pobrać oceny doboru odcinka.',
+  ocenaWskazowka: 'Pełne karty oceny (wynik, limit z podstawą, margines, zakres ważności): krok „Długość i podgląd".',
   ocenaIthPomoc:
     'Wytrzymałość cieplna zwarciowa ($I_{th} \\ge I_k \\cdot \\sqrt{t_k}$) — sprawdzana po biegu zwarciowym; katalog podaje Ith żyły powrotnej.',
 
@@ -120,7 +116,7 @@ export const MAGISTRALA_STRINGS = {
     'Wybrana stacja nie ma wolnego portu wyjściowego SN. Wskaż stację na końcu ciągu '
     + 'albo głowicę odpływową pola SN na schemacie.',
   brakStartuOgolny:
-    'Zaznacz na schemacie głowicę pola odpływowego SN albo wolny koniec istniejącego ciągu, '
+    'Zaznacz na schemacie głowicę pola liniowego SN albo wolny koniec istniejącego ciągu, '
     + 'z którego chcesz wyprowadzić magistralę.',
 
   wstecz: '← Wstecz',
@@ -130,6 +126,15 @@ export const MAGISTRALA_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem odcinka.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać odcinek.',
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — katalog kabli/linii
+  // ładuje się asynchronicznie z backendu; bez typu z katalogu zapis nie ma
+  // z czego policzyć odcinka, więc zapis jest w tym oknie ŚWIADOMIE
+  // zablokowany, a nie milczący.
+  katalogLadowanieStopka: 'Ładowanie katalogu typów odcinków SN — zapis będzie dostępny po wczytaniu.',
+  // S9-5: druga jawna przyczyna blokady zapisu — pole „Długość odcinka" bez
+  // dodatniej wartości (klasa: zapis musi ODZWIERCIEDLAĆ to, co realnie
+  // wpisano, nie być klikalny niezależnie od stanu pola).
+  dlugoscWymaganaStopka: 'Podaj dodatnią długość odcinka, aby odblokować zapis.',
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: magistrala SN — odcinek linii/kabla i spadek napięcia',
@@ -152,14 +157,14 @@ export const MAGISTRALA_STRINGS = {
     + 'cieplnie ($I_{th} \\ge I_k \\cdot \\sqrt{t_k}$); spadek napięcia na całej magistrali powinien mieścić się w '
     + 'dopuszczalnym zakresie (typowo kilka %).',
   teoriaPodstawa: 'Podstawa: PN-EN 50160 (napięcie), N SEP-E-004 (linie i kable), IEC 60909 (zwarcia), IRiESD.',
-  teoriaJakCzytac:
-    'Linia = napięcie wzdłuż magistrali od źródła (1,0 pu) do końca odcinka. Nachylenie zależy '
-    + 'poglądowo od cosφ (niższy cosφ → stromszy spadek: większy udział składowej biernej na '
-    + 'reaktancji). Pasmo poniżej limitu = poza dopuszczalnym zakresem napięcia. Rzeczywisty ΔU '
-    + '(z katalogowego R/X, długości i obciążenia) liczy rozpływ mocy.',
-  wykresAria: 'Poglądowy profil napięcia wzdłuż magistrali w funkcji cosφ',
-  wykresOsX: 'Pozycja wzdłuż magistrali',
-  wykresOsU: 'Napięcie U [pu]',
-  wykresLimit: 'dopuszczalny limit',
-  wykresZrodlo: 'źródło',
+  // Karta W3-J (2026-09-16): usunięto fabrykowaną krzywą poglądową (SVG liczący
+  // „spadek 4% × (cosφ+sinφ)" bez podstawy fizycznej — R≈X to założenie
+  // WYMYŚLONE dla ilustracji, nie parametr katalogowy odcinka). Kreator NIE ma
+  // dostępu do wyniku rozpływu dla jeszcze niezapisanej magistrali, więc
+  // pokazuje uczciwy stan zamiast liczyć cokolwiek w UI.
+  spadekNiedostepnyTytul: 'Spadek napięcia policzy rozpływ mocy po zapisaniu magistrali.',
+  spadekNiedostepnyOpis:
+    'Rzeczywisty spadek napięcia (ΔU) na tym odcinku zależy od katalogowych parametrów R/X, '
+    + 'długości i obciążenia — wyznacza go solver rozpływu mocy dla zapisanego modelu sieci, '
+    + 'nie ten formularz. Zapisz magistralę, a następnie uruchom rozpływ, aby zobaczyć wynik.',
 } as const;

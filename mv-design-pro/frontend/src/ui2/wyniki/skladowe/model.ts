@@ -15,6 +15,12 @@
  * - Uziemienie punktu neutralnego: ZAMROŻONA wersja układu przebiegu
  *   (`GET /analysis-runs/{id}/snapshot` → EnergyNetworkModel): `Bus.grounding`
  *   oraz `Transformer.hv_neutral`/`lv_neutral` (types/enm.ts:117,232-233).
+ *
+ * ROZPOZNANIE LICZBY ZESPOLONEJ (karta WB-2, KLASA NIE INSTANCJA — czwarte
+ * miejsce znalezione przy inwentarzu klasy): `naZespolona` woła WSPÓLNE
+ * miejsce duck-typingu `{re, im}` całego frontu,
+ * `ui/results-inspector/traceValue.ts::rozpakujWartoscSladu`, zamiast
+ * własnej, osobnej kopii sprawdzenia kształtu.
  */
 
 import type { EnergyNetworkModel, GroundingConfig } from '../../../types/enm';
@@ -31,6 +37,7 @@ import {
   fmtWspolczynnik,
   rodzajZwarciaPL,
 } from '../zwarcia/strings';
+import { rozpakujWartoscSladu } from '../../../ui/results-inspector/traceValue';
 import { SKLADOWE_STRINGS as T, uziemieniePL } from './strings';
 
 // ---------------------------------------------------------------------------
@@ -116,13 +123,6 @@ export const KOLUMNY_SKLADOWYCH: DefinicjaKolumny[] = [
   { klucz: 'kappa', etykieta: T.kolKappa, mono: true, tylkoEkspercki: true },
   { klucz: 'ikss', etykieta: T.kolIkss, jednostka: T.jednKA, mono: true },
   { klucz: 'werdykt', etykieta: T.kolWerdykt, wyrownanie: 'lewo', sortowalna: false },
-  {
-    klucz: KLUCZ_PUNKT,
-    etykieta: T.kolIdentyfikator,
-    mono: true,
-    wyrownanie: 'lewo',
-    tylkoEkspercki: true,
-  },
 ];
 
 function komorka(
@@ -136,9 +136,9 @@ function komorka(
   return { wartosc: format(wartosc), sortKey: wartosc, dowodRef };
 }
 
-/** Werdykt raportowalności wiersza — PL z backendu; starszy wynik → kreska. */
+/** Werdykt raportowalności wiersza — PL z backendu; brak etykiety → kreska, nigdy kod (#145). */
 export function werdyktPL(row: ShortCircuitRow): string {
-  return row.reporting_status_pl ?? row.reporting_status ?? T.kreska;
+  return row.reporting_status_pl ?? T.kreska;
 }
 
 export function naWierszeSkladowych(rows: readonly ShortCircuitRow[]): WierszTabeli[] {
@@ -179,9 +179,7 @@ export interface SkladoweSladu {
 }
 
 export function naZespolona(wartosc: unknown): Zespolona | null {
-  if (typeof wartosc !== 'object' || wartosc === null) return null;
-  const re = (wartosc as Record<string, unknown>)['re'];
-  const im = (wartosc as Record<string, unknown>)['im'];
+  const { re, im } = rozpakujWartoscSladu(wartosc);
   if (typeof re !== 'number' || typeof im !== 'number') return null;
   return { re, im };
 }
@@ -276,27 +274,35 @@ function wpisUziemienia(
   };
 }
 
-/** Uziemienie szyny wybranego punktu (dopasowanie po ref_id/element_id). */
+/**
+ * Uziemienie punktu neutralnego sieci SN zasilanej ze ŹRÓDŁA stojącego na szynie
+ * wybranego punktu (W5-A: `Source.neutral_grounding` — `Bus.grounding` skasowane;
+ * dopasowanie po ref_id/element_id szyny).
+ */
 export function uziemieniePunktu(
   snapshot: EnergyNetworkModel | null,
   elementId: string | null,
 ): UziemienieWpis | null {
   if (!snapshot || !elementId) return null;
   const szyna = snapshot.buses.find((bus) => bus.ref_id === elementId || bus.id === elementId);
-  if (!szyna || !szyna.grounding) return null;
-  return wpisUziemienia(szyna.name || szyna.ref_id, null, szyna.grounding);
+  if (!szyna) return null;
+  const zrodlo = snapshot.sources.find((s) => s.bus_ref === szyna.ref_id && s.neutral_grounding);
+  if (!zrodlo?.neutral_grounding) return null;
+  return wpisUziemienia(zrodlo.name || zrodlo.ref_id, T.uziemienieZrodlo, zrodlo.neutral_grounding);
 }
 
 /**
  * Wszystkie jawne konfiguracje punktu neutralnego w zamrożonej wersji układu:
- * szyny z polem `grounding` oraz strony GN/DN transformatorów. Pusta lista =
+ * źródła z `neutral_grounding` oraz strony GN/DN transformatorów. Pusta lista =
  * model bez jawnego uziemienia (uczciwy komunikat z akcją naprawczą).
  */
 export function uziemieniaSieci(snapshot: EnergyNetworkModel | null): UziemienieWpis[] {
   if (!snapshot) return [];
   const wpisy: UziemienieWpis[] = [];
-  for (const bus of snapshot.buses) {
-    if (bus.grounding) wpisy.push(wpisUziemienia(bus.name || bus.ref_id, null, bus.grounding));
+  for (const zrodlo of snapshot.sources) {
+    if (zrodlo.neutral_grounding) {
+      wpisy.push(wpisUziemienia(zrodlo.name || zrodlo.ref_id, T.uziemienieZrodlo, zrodlo.neutral_grounding));
+    }
   }
   for (const trafo of snapshot.transformers) {
     if (trafo.hv_neutral) {

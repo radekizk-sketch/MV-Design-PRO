@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { resolveReadinessVisualState } from '../readinessVisualState';
 import type { ReadinessIssue } from '../../types';
-import type { ReadinessWorkspaceBlockState } from '../ReadinessLivePanel';
+import type { ReadinessWorkspaceBlockState } from '../readinessVisualState';
 
 function makeIssue(severity: 'BLOCKER' | 'IMPORTANT' | 'INFO' = 'BLOCKER'): ReadinessIssue {
   return {

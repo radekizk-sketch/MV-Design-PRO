@@ -9,6 +9,8 @@ import { render, screen } from '@testing-library/react';
 
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { SekcjaAdekwatnosciQ } from '../SekcjaAdekwatnosciQ';
+import { BRAKI_DANYCH_Q, WERDYKTY_ADEKWATNOSCI_Q } from '../strings';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { adekwatnoscQFixture, przebiegFixture } from './analizyFixtures';
 
 const pobierzAdekwatnoscQ = vi.fn();
@@ -55,9 +57,38 @@ describe('SekcjaAdekwatnosciQ — wynik z rozpływu (kryterium 3)', () => {
     render(<SekcjaAdekwatnosciQ trybEkspercki={false} />);
     expect(await screen.findByTestId('mvd-oze-adekw-wynik')).toBeInTheDocument();
     expect(pobierzAdekwatnoscQ).toHaveBeenCalledWith('lf-run');
-    expect(screen.getByTestId('mvd-oze-adekw-werdykt')).toHaveTextContent('wystarczajaca rezerwa Q');
+    // Karta #145: werdykt maszynowy backendu nie trafia na ekran — polska etykieta.
+    expect(screen.getByTestId('mvd-oze-adekw-werdykt')).toHaveTextContent(
+      WERDYKTY_ADEKWATNOSCI_Q['wystarczająca rezerwa Q'],
+    );
+    expect(screen.getByTestId('mvd-oze-adekw-werdykt')).not.toHaveTextContent('rezerwa Q');
     expect(screen.getByTestId('mvd-oze-adekw-nasycenie-src-2')).toHaveTextContent('przy granicy');
     expect(screen.getByTestId('mvd-oze-adekw-naruszenie-bus-pcc-2')).toBeInTheDocument();
+  });
+
+  it('karta #145: źródło i węzeł nazwane z modelu, braki danych po polsku — bez referencji i kodów', async () => {
+    useSnapshotStore.setState({
+      snapshot: {
+        buses: [{ ref_id: 'bus-pcc-2', id: 'b2', name: 'Szyna PCC farmy 2', voltage_kv: 15 }],
+        generators: [{ ref_id: 'src-2', id: 'g2', name: 'Falownik farmy 2' }],
+      },
+    } as never);
+    const dane = adekwatnoscQFixture();
+    pobierzAdekwatnoscQ.mockResolvedValue({
+      ...dane,
+      sources: dane.sources.map((zrodlo) =>
+        zrodlo.ref === 'src-2' ? { ...zrodlo, missing_data: ['q_min_mvar', 'q_max_mvar'] } : zrodlo,
+      ),
+    });
+    render(<SekcjaAdekwatnosciQ trybEkspercki={false} />);
+    const zrodlo = await screen.findByTestId('mvd-oze-adekw-zrodlo-src-2');
+    expect(zrodlo).toHaveTextContent('Falownik farmy 2');
+    expect(zrodlo).toHaveTextContent(BRAKI_DANYCH_Q.q_min_mvar);
+    expect(zrodlo).toHaveTextContent(BRAKI_DANYCH_Q.q_max_mvar);
+    expect(zrodlo).not.toHaveTextContent('src-2');
+    expect(zrodlo).not.toHaveTextContent('q_min_mvar');
+    expect(screen.getByTestId('mvd-oze-adekw-naruszenie-bus-pcc-2')).toHaveTextContent('Szyna PCC farmy 2');
+    useSnapshotStore.setState({ snapshot: null } as never);
   });
 
   it('pokazuje proweniencję werdyktu (jakość pól Q-granic)', async () => {

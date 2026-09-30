@@ -19,6 +19,11 @@ export const TRANSFORMATOR_STRINGS = {
   typKatalogPlaceholder: '— wybierz typ transformatora —',
   typBlad: 'Nie udało się pobrać katalogu transformatorów SN/nN.',
   typPomoc: 'Typ wnosi moc [MVA], napięcia [kV], uk% i zakres zaczepów — z katalogu, nie z ręki.',
+  grupaPolaczen: 'Grupa połączeń (IEC 60076-1)',
+  grupaZKatalogu: (grupa: string | null) => (grupa ? `z katalogu (${grupa})` : 'z katalogu (rekord nie deklaruje grupy)'),
+  grupaPomoc:
+    'Grupa połączeń decyduje o przesunięciu fazowym i o dostępności punktu neutralnego (litera N/n). '
+    + 'Domyślnie z rekordu katalogu; zmiana wyłącznie ze słownika IEC 60076-1 z backendu.',
   nazwa: 'Nazwa transformatora',
   nazwaPlaceholder: 'np. TR1 stacji ST-3',
 
@@ -26,6 +31,7 @@ export const TRANSFORMATOR_STRINGS = {
   paramMoc: 'Moc znamionowa',
   paramNapiecia: 'Napięcia HV/LV',
   paramUk: 'Napięcie zwarcia uk',
+  paramGrupa: 'Grupa połączeń',
   paramZaczepy: 'Zakres zaczepów',
 
   // Regulacja.
@@ -89,6 +95,10 @@ export const TRANSFORMATOR_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem transformatora.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać transformator.',
+  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
+  // katalog transformatorów ładuje się asynchronicznie; zapis bez niego
+  // byłby cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
+  katalogLadowanieStopka: 'Ładowanie katalogu transformatorów SN/nN — zapis będzie dostępny po wczytaniu.',
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaSzynyTytul: 'Teoria: transformator SN/nN — przekładnia i impedancja zwarcia',

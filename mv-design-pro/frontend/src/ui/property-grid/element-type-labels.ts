@@ -30,7 +30,6 @@ const ELEMENT_TYPE_LABELS_PL: Partial<Record<ElementType, string>> = {
   Genset: 'Agregat prądotwórczy',
   UPS: 'UPS',
   EnergyMeter: 'Licznik energii',
-  PowerQualityMeter: 'Miernik jakości energii',
   SurgeArresterNN: 'Ogranicznik przepięć nN',
   Earthing: 'Uziemienie',
   MeasurementNN: 'Przekładnik nN',

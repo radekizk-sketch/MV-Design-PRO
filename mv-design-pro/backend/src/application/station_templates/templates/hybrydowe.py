@@ -45,9 +45,9 @@ def _hybrid(
                 default=3, min_value=2, max_value=6, label_pl="Liczba pól SN"
             ),
             sn_bay_roles=(
-                BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),
-                BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe + EMS"),
-                BayRoleSpec(role="OUT", label_pl="Pole wyjściowe do BESS"),
+                BayRoleSpec(role="IN"),
+                BayRoleSpec(role="MEASUREMENT", okreslenie_pl="+ EMS"),
+                BayRoleSpec(role="OUT", okreslenie_pl="do BESS"),
             ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,

@@ -1,47 +1,29 @@
 /*
- * Klienci formalnych dokumentów OZE doklejają WSKAZANIE PRZYPADKU (`case_id`).
+ * Klienci dokumentu studium przyłączeniowego doklejają WSKAZANIE PRZYPADKU (`case_id`),
+ * gdy wywołujący go zna.
  *
- * PO CO. Certyfikat zgodności, wniosek OSD i dokument studium przyłączeniowego
- * niosą dowód certyfikacji PTPiREE tylko wtedy, gdy backend zna przypadek —
- * z niego czyta tabliczki urządzeń modelu. Klient bez `case_id` dostaje dokument
- * bez sekcji dowodu, czyli dokładnie ten brak, który ta karta zamyka.
+ * PO CO. Dokument studium niesie dowód certyfikacji PTPiREE urządzeń typu tylko wtedy,
+ * gdy backend zna przypadek — z niego czyta tabliczki urządzeń modelu (`case_id` jest tu
+ * OPCJONALNE). Certyfikat zgodności i wniosek do OSD mają `case_id` WYMAGANE (zgodność
+ * wyłącznie z zatwierdzonego modelu — karta AB-1a Pakiet D2); ich adres pilnuje klasa
+ * testów `ncrfg/__tests__/kontraktZadan.test.ts` (parametry zapytania ⊆ OpenAPI, wymagane
+ * obecne) i `ncrfg/__tests__/api.test.ts`.
  *
- * INWENTARZ KLASY: 7 klientów dokumentów (certyfikat JSON/DOCX, wniosek
- * JSON/DOCX, studium JSON/DOCX/PDF) — każdy sprawdzony w obu wariantach
- * (z przypadkiem i bez), bo brak przypadku MUSI zostawić ścieżkę nietkniętą.
- * `fetch` mockowany; wzorzec `runNcRfgPtpireeTests` z `ui/ncrfg-tests/api.ts`.
+ * INWENTARZ KLASY: 3 klienci dokumentu studium (JSON/DOCX/PDF) — każdy w obu wariantach
+ * (z przypadkiem i bez), bo brak przypadku MUSI zostawić ścieżkę nietkniętą. `fetch`
+ * mockowany na granicy sieci.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  pobierzCertyfikat,
-  pobierzCertyfikatDocx,
   pobierzDokumentStudium,
   pobierzDokumentStudiumDocx,
   pobierzDokumentStudiumPdf,
-  pobierzWniosek,
-  pobierzWniosekDocx,
-  type ZadanieCertyfikatu,
   type ZadanieDokumentuStudium,
-  type ZadanieWniosku,
 } from '../api';
 
 const CASE_ID = 'a1b2c3d4-0000-4000-8000-000000000001';
-
-const ZADANIE_CERTYFIKATU: ZadanieCertyfikatu = {
-  run_request: { modules: [], procedure_version: 'PTPiREE Procedura testowania v3.0' },
-  nazwa_projektu: 'Sieć testowa',
-  nazwa_przypadku: 'Wariant bazowy',
-};
-
-const ZADANIE_WNIOSKU: ZadanieWniosku = {
-  nazwa_projektu: 'Sieć testowa',
-  pf_run_id: 'run-pf',
-  sc_run_id: 'run-sc',
-  bus_ref: 'bus_nn',
-  run_request: { modules: [] },
-};
 
 const ZADANIE_STUDIUM: ZadanieDokumentuStudium = {
   nazwa_projektu: 'Sieć testowa',
@@ -59,62 +41,31 @@ interface PrzypadekKlienta {
   readonly klient: Klient;
   readonly zadanie: unknown;
   readonly sciezka: string;
-  readonly plik: boolean;
 }
 
 const KLIENCI: readonly PrzypadekKlienta[] = [
-  {
-    nazwa: 'certyfikat zgodności (widok JSON)',
-    klient: pobierzCertyfikat as unknown as Klient,
-    zadanie: ZADANIE_CERTYFIKATU,
-    sciezka: '/api/oze-analysis/compliance-certificate',
-    plik: false,
-  },
-  {
-    nazwa: 'certyfikat zgodności (DOCX)',
-    klient: pobierzCertyfikatDocx as unknown as Klient,
-    zadanie: ZADANIE_CERTYFIKATU,
-    sciezka: '/api/oze-analysis/compliance-certificate.docx',
-    plik: true,
-  },
-  {
-    nazwa: 'wniosek o warunki przyłączenia (widok JSON)',
-    klient: pobierzWniosek as unknown as Klient,
-    zadanie: ZADANIE_WNIOSKU,
-    sciezka: '/api/oze-analysis/osd-application',
-    plik: false,
-  },
-  {
-    nazwa: 'wniosek o warunki przyłączenia (DOCX)',
-    klient: pobierzWniosekDocx as unknown as Klient,
-    zadanie: ZADANIE_WNIOSKU,
-    sciezka: '/api/oze-analysis/osd-application.docx',
-    plik: true,
-  },
   {
     nazwa: 'dokument studium przyłączeniowego (widok JSON)',
     klient: pobierzDokumentStudium as unknown as Klient,
     zadanie: ZADANIE_STUDIUM,
     sciezka: '/api/oze-analysis/connection-study',
-    plik: false,
   },
   {
     nazwa: 'dokument studium przyłączeniowego (DOCX)',
     klient: pobierzDokumentStudiumDocx as unknown as Klient,
     zadanie: ZADANIE_STUDIUM,
     sciezka: '/api/oze-analysis/connection-study.docx',
-    plik: true,
   },
   {
     nazwa: 'dokument studium przyłączeniowego (PDF)',
     klient: pobierzDokumentStudiumPdf as unknown as Klient,
     zadanie: ZADANIE_STUDIUM,
     sciezka: '/api/oze-analysis/connection-study.pdf',
-    plik: true,
   },
 ];
 
-function zamockujOdpowiedz(plik: boolean) {
+/** Odpowiedź 200 niosąca i JSON, i plik — ten sam mock dla klientów widoku i pobrań. */
+function zamockujOdpowiedz() {
   const fn = vi.fn(() =>
     Promise.resolve({
       ok: true,
@@ -133,9 +84,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe.each(KLIENCI)('$nazwa', ({ klient, zadanie, sciezka, plik }) => {
+describe.each(KLIENCI)('$nazwa', ({ klient, zadanie, sciezka }) => {
   it('ze wskazanym przypadkiem dokleja ?case_id=', async () => {
-    const fn = zamockujOdpowiedz(plik);
+    const fn = zamockujOdpowiedz();
 
     await klient(zadanie as never, CASE_ID);
 
@@ -146,7 +97,7 @@ describe.each(KLIENCI)('$nazwa', ({ klient, zadanie, sciezka, plik }) => {
   });
 
   it('bez przypadku wysyła gołą ścieżkę (kontrakt sprzed dowodu nietknięty)', async () => {
-    const fn = zamockujOdpowiedz(plik);
+    const fn = zamockujOdpowiedz();
 
     await klient(zadanie as never);
 
@@ -154,7 +105,7 @@ describe.each(KLIENCI)('$nazwa', ({ klient, zadanie, sciezka, plik }) => {
   });
 
   it('pusty przypadek nie tworzy ścieżki z pustym parametrem', async () => {
-    const fn = zamockujOdpowiedz(plik);
+    const fn = zamockujOdpowiedz();
 
     await klient(zadanie as never, null);
 
@@ -164,12 +115,12 @@ describe.each(KLIENCI)('$nazwa', ({ klient, zadanie, sciezka, plik }) => {
 
 describe('kodowanie wskazania przypadku', () => {
   it('identyfikator przypadku jest kodowany do adresu (bez surowych znaków specjalnych)', async () => {
-    const fn = zamockujOdpowiedz(false);
+    const fn = zamockujOdpowiedz();
 
-    await (pobierzCertyfikat as unknown as Klient)(ZADANIE_CERTYFIKATU as never, 'a b&c');
+    await (pobierzDokumentStudium as unknown as Klient)(ZADANIE_STUDIUM as never, 'a b&c');
 
     expect((fn.mock.calls[0] as unknown as [string])[0]).toBe(
-      '/api/oze-analysis/compliance-certificate?case_id=a%20b%26c',
+      '/api/oze-analysis/connection-study?case_id=a%20b%26c',
     );
   });
 });

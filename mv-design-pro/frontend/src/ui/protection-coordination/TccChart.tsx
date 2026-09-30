@@ -28,6 +28,19 @@ import type {
   SelectivityCheck,
 } from './types';
 import { LABELS, VERDICT_STYLES, maPodstawePrzekaznikowa } from './types';
+import { useNazwaObiektu, type NazwaObiektu } from '../../ui2/wyniki/wzorzec/useNazwaObiektu';
+
+/**
+ * Etykieta znacznika prądu zwarciowego z NAZWĄ miejsca zwarcia (karta #145).
+ *
+ * Analizator koordynacji składa `label_pl` z identyfikatorem miejsca w nawiasie
+ * (`Ik"max 3F (<location>)`). Ekran podstawia w tym nawiasie nazwę elementu z modelu —
+ * zamienia DOKŁADNIE wartość pola `location` rekordu, nie zgaduje wzorca tekstu.
+ */
+export function etykietaZnacznikaZwarcia(marker: FaultMarker, nazwa: NazwaObiektu): string {
+  if (marker.location === '') return marker.label_pl;
+  return marker.label_pl.split(`(${marker.location})`).join(`(${nazwa(marker.location)})`);
+}
 
 // =============================================================================
 // Types
@@ -116,14 +129,14 @@ function getSelectivityAssessmentTexts(verdict: TccSelectivityVerdict): {
   switch (verdict) {
     case 'OK':
       return {
-        status: 'OK',
+        status: 'SELEKTYWNOŚĆ ZAPEWNIONA',
         dlaczego:
           'Selektywność zapewniona: zabezpieczenie w polu odpływowym działa wcześniej niż zabezpieczenie w polu zasilającym w całym analizowanym zakresie.',
         coDalej: 'Brak wymaganych działań.',
       };
     case 'NA_GRANICY':
       return {
-        status: 'NA GRANICY',
+        status: 'REZERWA NA GRANICY',
         dlaczego:
           'Rezerwa selektywności jest niewielka: krzywe czasowo-prądowe są zbliżone w części analizowanego zakresu.',
         coDalej:
@@ -131,7 +144,7 @@ function getSelectivityAssessmentTexts(verdict: TccSelectivityVerdict): {
       };
     case 'NIE_OK':
       return {
-        status: 'NIE OK',
+        status: 'BRAK SELEKTYWNOŚCI',
         dlaczego:
           'Brak selektywności: w analizowanym zakresie możliwe jest zadziałanie zabezpieczenia w polu zasilającym przed zabezpieczeniem w polu odpływowym (przecięcie lub brak jednoznacznej separacji krzywych).',
         coDalej:
@@ -149,10 +162,24 @@ interface SelectivityAssessmentProps {
 }
 
 /**
+ * Polska nazwa charakterystyki czasowo-prądowej z kodu krzywej backendu
+ * (`IEC_SI`, `IEEE_MI` — norma + wariant). Karta #145: kod krzywej nie jest tekstem
+ * legendy; wariant spoza słownika `LABELS.curveTypes` nazwany jawnie jako nierozpoznany.
+ */
+function nazwaCharakterystykiPL(kod: string): string {
+  const [norma, wariant] = kod.split('_');
+  const nazwa = LABELS.curveTypes[wariant as keyof typeof LABELS.curveTypes];
+  return nazwa === undefined
+    ? LABELS.charakterystykaNierozpoznana
+    : `${nazwa}${norma ? `, ${norma}` : ''}`;
+}
+
+/**
  * SelectivityAssessment — Ocena selektywności zabezpieczeń dla wykresu TCC
  *
  * Wyświetla blok tekstowy pod wykresem z:
- * - WERDYKT (OK / NA GRANICY / NIE OK)
+ * - WERDYKT (SELEKTYWNOŚĆ ZAPEWNIONA / REZERWA NA GRANICY / BRAK SELEKTYWNOŚCI — karta
+ *   #145: werdykt słowami inżyniera, nie skrótem „OK")
  * - DLACZEGO (1-2 zdania, inżyniersko)
  * - CO DALEJ (konkretne zalecenie operacyjne)
  *
@@ -339,7 +366,7 @@ function Legend({ curves, selectedDeviceId, onDeviceClick, devices }: LegendProp
           </span>
           <span className="text-xs text-slate-400">
             ({maPodstawePrzekaznikowa(curve)
-              ? curve.curve_type
+              ? nazwaCharakterystykiPL(curve.curve_type)
               : LABELS.brakCharakterystyki})
           </span>
         </button>
@@ -359,6 +386,7 @@ interface MarkerListProps {
 
 function MarkerList({ faultMarkers, operatingCurrents }: MarkerListProps) {
   const labels = LABELS.tcc;
+  const nazwaObiektu = useNazwaObiektu();
 
   if (faultMarkers.length === 0 && (!operatingCurrents || operatingCurrents.length === 0)) {
     return null;
@@ -378,7 +406,7 @@ function MarkerList({ faultMarkers, operatingCurrents }: MarkerListProps) {
                   className="inline-flex items-center gap-1 rounded bg-rose-50 px-2 py-0.5 text-rose-700"
                 >
                   <span className="h-2 w-2 rounded-full bg-rose-500" />
-                  {marker.label_pl}: {marker.current_a.toFixed(0)} A
+                  {etykietaZnacznikaZwarcia(marker, nazwaObiektu)}: {marker.current_a.toFixed(0)} A
                 </span>
               ))}
             </div>
@@ -396,7 +424,7 @@ function MarkerList({ faultMarkers, operatingCurrents }: MarkerListProps) {
                   className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-blue-700"
                 >
                   <span className="h-2 w-2 rounded-full bg-blue-500" />
-                  {oc.location}: {oc.current_a.toFixed(0)} A
+                  {nazwaObiektu(oc.location)}: {oc.current_a.toFixed(0)} A
                 </span>
               ))}
             </div>
@@ -423,6 +451,7 @@ export function TccChart({
   selectivityChecks = [],
 }: TccChartProps) {
   const labels = LABELS.tcc;
+  const nazwaObiektu = useNazwaObiektu();
 
   // Chart configuration state
   const [config, setConfig] = useState<TimeCurrentChartConfig>({
@@ -461,12 +490,12 @@ export function TccChart({
   const chartFaultMarkers: ChartFaultMarker[] = useMemo(() => {
     return faultMarkers.map((m) => ({
       id: m.id,
-      label_pl: m.label_pl,
+      label_pl: etykietaZnacznikaZwarcia(m, nazwaObiektu),
       current_a: m.current_a,
       fault_type: m.fault_type,
       location: m.location,
     }));
-  }, [faultMarkers]);
+  }, [faultMarkers, nazwaObiektu]);
 
   // Handle curve click
   const handleCurveClick = useCallback(

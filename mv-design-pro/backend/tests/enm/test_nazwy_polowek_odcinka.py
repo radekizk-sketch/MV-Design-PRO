@@ -8,6 +8,7 @@ z ref-u zamiast dziedziczona) siedziała w OBU operacjach tnących odcinek:
 `insert_station_on_segment_sn` i `insert_section_switch_sn` — cztery miejsca,
 jeden helper `_nazwa_polowki_odcinka`. Testy pokrywają iloczyn cech:
 (operacja stacji × operacja łącznika) × (rodzic z nazwą × rodzic bez nazwy).
+Rodzic bez nazwy od karty #144 daje opis rodzaju, nie identyfikator.
 """
 
 from __future__ import annotations
@@ -35,6 +36,16 @@ def op(snap: dict[str, Any], name: str, payload: dict[str, Any]) -> dict[str, An
     if name == "add_grid_source_sn":
         payload = {
             **({"catalog_ref": CATALOG_ZRODLO_250} if "catalog_ref" not in payload else {}),
+            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref) —
+            # odtwarzamy jako dana fikstury zalozenie, ktore wczesniej wchodzilo
+            # domyslnie (25 MVA @ 110 kV).
+            **(
+                {"hv_voltage_kv": 110.0, "transformer_sn_mva": 25.0}
+                if "transformer_catalog_ref" not in payload
+                and "transformer_catalog_binding" not in payload
+                else {}
+            ),
             "gpz_line_field_apparatus": {
                 "apparatus_kind": "BREAKER",
                 "catalog_binding": {
@@ -123,13 +134,15 @@ def test_polowki_po_wstawieniu_lacznika_dziedzicza_nazwe_rodzica() -> None:
     ]
 
 
-def test_rodzic_bez_nazwy_zachowuje_jawny_wariant_zapasowy() -> None:
-    """Brak nazwy rodzica NIE jest zmyślany — zostaje jawny wariant z ref-em.
+def test_rodzic_bez_nazwy_dostaje_opis_rodzaju_nigdy_identyfikator() -> None:
+    """Brak nazwy rodzica NIE jest zmyślany ani zastępowany identyfikatorem.
 
-    Jedyne wejście do nazwy połówki to `_nazwa_polowki_odcinka` (jedno źródło
-    prawdy dla obu operacji), więc wariant zapasowy wystarczy przypiąć na
-    helperze.
+    Karta #144 (§0.1) odwróciła dawny wariant zapasowy „Odcinek <ref>" (to była ta sama
+    klasa defektu, którą ten plik usuwał dla rodzica z nazwą): rodzic bez nazwy daje
+    polski opis rodzaju z numerem połówki. Jedyne wejście do nazwy połówki to
+    `_nazwa_polowki_odcinka` (jedno źródło prawdy dla obu operacji), więc wariant
+    wystarczy przypiąć na helperze — łącznie z nazwą z samych spacji.
     """
-    assert _nazwa_polowki_odcinka({"name": ""}, "seg/x/segment_L", 1) == "Odcinek seg/x/segment_L"
-    assert _nazwa_polowki_odcinka({}, "abc_SR", 2) == "Odcinek abc_SR"
-    assert _nazwa_polowki_odcinka({"name": "  "}, "abc_SL", 1) == "Odcinek abc_SL"
+    assert _nazwa_polowki_odcinka({"name": ""}, 1) == "Odcinek bez nazwy (1)"
+    assert _nazwa_polowki_odcinka({}, 2) == "Odcinek bez nazwy (2)"
+    assert _nazwa_polowki_odcinka({"name": "  "}, 1) == "Odcinek bez nazwy (1)"

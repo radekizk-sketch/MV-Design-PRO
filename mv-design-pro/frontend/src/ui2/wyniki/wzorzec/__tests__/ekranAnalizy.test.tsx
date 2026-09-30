@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import { EkranAnalizy } from '../EkranAnalizy';
 import { WZORZEC_STRINGS } from '../strings';
 import { INSPECTOR_STRINGS, znacznikNieaktualne } from '../../../inspector';
@@ -87,7 +87,7 @@ describe('EkranAnalizy — identyfikatory i akcje (§2.7)', () => {
         })}
       />,
     );
-    expect(screen.queryByTestId('mvd-wyn-run-id')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-wyn-informacje-audytowe')).not.toBeInTheDocument();
     rerender(
       <EkranAnalizy
         {...propsFixture({
@@ -96,7 +96,9 @@ describe('EkranAnalizy — identyfikatory i akcje (§2.7)', () => {
         })}
       />,
     );
-    expect(screen.getByTestId('mvd-wyn-run-id')).toHaveTextContent('run-77');
+    // Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych" (zwinięte).
+    fireEvent.click(screen.getByTestId('mvd-wyn-informacje-audytowe-przelacz'));
+    expect(screen.getByTestId('mvd-wyn-informacje-audytowe-lista')).toHaveTextContent('run-77');
   });
 
   it('onEksport podany → przycisk eksportu woła callback; brak → brak przycisku', () => {

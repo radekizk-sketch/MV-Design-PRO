@@ -9,17 +9,15 @@
  *   (`id`, `name`, `description`, `created_at`, `updated_at`).
  * - `listProjects()` (jedyna funkcja zwracająca listę) — `ui/projects/api.ts:82-86`.
  *
- * TODO-KARTA (źródło niejednoznaczne — karta §2: „brak jednoznacznego źródła
- * → adapter-szkielet TODO-KARTA + lista z propsów, NIE zgaduj i NIE wołaj
- * API"): `ui/projects/api.ts` NIE wystawia store'a read-only (Zustand ani
- * inny) z listą projektów — jedyna funkcja `listProjects()` wykonuje `fetch`
- * do backendu (`ui/projects/api.ts:82-86`) przy każdym wywołaniu, czyli jest
- * efektem ubocznym, nie odczytem stanu. Karta E2.2 zakazuje wołania API z tego
- * modułu. Do czasu wprowadzenia store'a projektów (kolejna faza programu —
- * karta zarządcy wpina hook `use*` analogiczny do `usePrzypadkiWiersze` w
- * `pulpitAdapter.ts`), lista trafia do `OtworzProjekt` WYŁĄCZNIE przez props
- * `projekty`. Funkcja `mapujProjekty` poniżej jest czystą projekcją gotową do
- * wpięcia w przyszły hook, testowalną fixture'ami o kształcie `Project`.
+ * STAN (karta E2.2 zakazywała wołania API z TEGO modułu — „adapter = czysta
+ * projekcja, zero efektów ubocznych"; karta K4 dostarczyła kontener): wołanie
+ * `listProjects()` (`ui/projects/api.ts:82-86`, efekt uboczny — `fetch` przy
+ * każdym wywołaniu, nie odczyt stanu) żyje w `OtworzProjektKontener.tsx`, KTÓRY
+ * importuje `mapujProjekty` stąd i podaje wynik do `OtworzProjekt` przez props
+ * `projekty` (ten sam podział jak `pulpitAdapter.ts` + kontener
+ * `PulpitProjektu.tsx`: adapter jest czystą, testowalną projekcją; wołanie API
+ * i cykl życia żyją w kontenerze). Ten moduł POZOSTAJE bez `fetch` — to
+ * zamierzony podział warstw, nie luka.
  */
 
 import type { Project } from '../../../../../ui/projects/api';

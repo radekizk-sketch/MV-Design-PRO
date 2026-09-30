@@ -178,6 +178,15 @@ export function EkranSkladowych() {
               kluczWiersza={KLUCZ_PUNKT}
               onWybierzWiersz={setWybranyPunkt}
               wybranyWiersz={aktywnyPunkt}
+              // Karta UI2 p.6: ten sam typ 'Bus' co akcja „Pokaż na
+              // schemacie" niżej (punkty składowych = punkty zwarciowe = węzły).
+              typElementuWiersza={() => 'Bus'}
+              // Poprawka KLASA NIE INSTANCJA: `KLUCZ_PUNKT` niesie `target_id`
+              // (techniczny) — ta sama para pól, którą `onPoprawWModelu` niżej
+              // już rozwiązuje poprawnie przez `target_name ?? ref`.
+              nazwaElementuWiersza={(klucz) =>
+                rows.find((r) => r.target_id === klucz)?.target_name ?? undefined
+              }
               onPoprawWModelu={(klucz) => {
                 const wiersz = rows.find((r) => r.target_id === klucz);
                 const ref = wiersz?.element_id ?? klucz;
@@ -307,13 +316,13 @@ export function EkranSkladowych() {
                   </div>
                   <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-raport-dowod">
                     <dt>{T.raportUzasadnienie}</dt>
-                    <dd>{wierszAktywny.proof_status_pl ?? wierszAktywny.proof_status ?? T.kreska}</dd>
+                    <dd>{wierszAktywny.proof_status_pl ?? T.kreska}</dd>
                   </div>
                   <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-raport-ograniczenia">
                     <dt>{T.raportOgraniczenia}</dt>
                     <dd>
-                      {(wierszAktywny.reporting_limitations ?? []).length > 0
-                        ? (wierszAktywny.reporting_limitations ?? []).join(', ')
+                      {(wierszAktywny.reporting_limitations_pl ?? []).length > 0
+                        ? (wierszAktywny.reporting_limitations_pl ?? []).join(' ')
                         : T.raportBrakOgraniczen}
                     </dd>
                   </div>

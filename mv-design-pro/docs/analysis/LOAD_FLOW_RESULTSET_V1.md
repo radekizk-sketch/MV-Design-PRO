@@ -1,6 +1,18 @@
 # LOAD FLOW RESULTSET V1 CONTRACT
 
-> **Status**: BINDING (CANONICAL)
+> **Status**: HISTORICZNY — nadpisany kanonem V12.xx (korekta 2026-09-05, karta CV-3.3-A2).
+> Ten dokument nie jest w hierarchii dokumentów `CLAUDE.md` (spisany przed jej wprowadzeniem,
+> 2026-02-13). Mapper opisany niżej jako kanoniczny (`load_flow_to_resultset_v1.py`, docelowo
+> wpinany w krok 9 `execution_engine/service.py` — patrz `LOAD_FLOW_DEPENDENCY_GRAPH.md`) miał
+> ZERO konsumenta produkcyjnego po kasacji E3 i został skasowany razem z dedykowanym testem
+> (`CONVERGENCE_ROADMAP.md` CV-3.3-A2). Dzisiejszy jedyny, żywy, analiz-typ-agnostyczny
+> producent kontraktu `ResultSet v1` to `domain/result_contract_v1.py::ResultSetV1` przez
+> `application/result_mapping/canonical_run_to_resultset_v1.py::build_resultset_v1_from_canonical_run`
+> — INNY typ niż `domain/execution.py::ResultSet`, do którego mapuje ten dokument. Treść
+> poniżej zostaje jako zapis historyczny projektu z RUN #2A/2B (przed CV-0…CV-6), nie jako
+> obowiązujący kontrakt.
+>
+> **Status (pierwotny)**: BINDING (CANONICAL)
 > **Version**: 1.0.0
 > **Date**: 2026-02-13
 > **Scope**: Canonical ResultSet contract for Load Flow analysis — maps PowerFlowResultV1 (frozen solver output) to the unified ResultSet domain model

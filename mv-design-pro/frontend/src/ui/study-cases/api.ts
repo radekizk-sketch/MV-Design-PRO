@@ -27,6 +27,9 @@ function buildCreateRunBody(request: CreateRunRequest): CreateRunRequest {
   if (request.solver_input !== undefined) {
     body.solver_input = request.solver_input;
   }
+  if (request.scenario_id !== undefined) {
+    body.scenario_id = request.scenario_id;
+  }
   if (request.readiness !== undefined) {
     body.readiness = request.readiness;
   }
@@ -157,26 +160,6 @@ export async function compareStudyCases(
     body: JSON.stringify({ case_a_id: caseAId, case_b_id: caseBId }),
   });
   return handleResponse<StudyCaseComparison>(response);
-}
-
-/**
- * Invalidate all cases in a project (mark as OUTDATED).
- */
-export async function invalidateAllCases(projectId: string): Promise<{ affected_count: number }> {
-  const response = await fetch(`${API_BASE}/project/${projectId}/invalidate-all`, {
-    method: 'POST',
-  });
-  return handleResponse<{ affected_count: number }>(response);
-}
-
-/**
- * Invalidate a single case (mark as OUTDATED).
- */
-export async function invalidateCase(caseId: string): Promise<{ result_status: string }> {
-  const response = await fetch(`${API_BASE}/${caseId}/invalidate`, {
-    method: 'POST',
-  });
-  return handleResponse<{ result_status: string }>(response);
 }
 
 /**

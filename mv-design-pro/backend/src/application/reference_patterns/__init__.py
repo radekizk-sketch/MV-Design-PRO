@@ -45,13 +45,6 @@ from .pattern_line_i_doubleprime_thermal_spz import (
     # Public API
     run_pattern_a,
 )
-from .reporting import (
-    # Metadata type
-    ReportMetadata,
-    # Report generators
-    export_reference_pattern_to_docx,
-    export_reference_pattern_to_pdf,
-)
 from .wzorzec_c_generacja_lokalna import (
     PATTERN_C_FIXTURES_SUBDIR,
     # Constants
@@ -115,8 +108,4 @@ __all__ = [
     "load_fixture_c",
     "fixture_to_input_c",
     "get_pattern_c_fixtures_dir",
-    # Reporting
-    "export_reference_pattern_to_docx",
-    "export_reference_pattern_to_pdf",
-    "ReportMetadata",
 ]

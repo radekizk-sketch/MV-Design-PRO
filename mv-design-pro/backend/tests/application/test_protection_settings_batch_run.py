@@ -12,10 +12,17 @@ Pokrycie jako ILOCZYN CECH (nie jeden przyklad z karty):
 
 ZERO nowej fizyki w tescie: zwarcie i rozplyw licza istniejace solvery przez
 istniejaca sciezke wykonania (`enm.canonical_analysis`).
+
+Zacisk zabezpieczenia (decyzja O-51, wariant (b)): sieci tego modulu nie przypinaja
+zabezpieczen do wylacznikow (model milczy), wiec kazde wywolanie niesie JAWNE wskazanie
+`zacisk_zabezpieczenia="od"` — orientacja, ktora pakiet przyjmowal przed decyzja.
+Iloczyn cech resolvera (przypiecie x wskazanie x zgodnosc) i orientacja `do` —
+`tests/application/test_zacisk_zabezpieczenia.py`.
 """
 
 from __future__ import annotations
 
+import copy
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
@@ -26,7 +33,11 @@ from application.protection_settings.batch_run import (
     linie_kandydujace,
     zbuduj_wejscie_nastaw,
 )
-from enm.canonical_analysis import CanonicalRun, _execute_power_flow, _execute_short_circuit
+from enm.canonical_analysis import (
+    CanonicalRun,
+    _execute_power_flow,
+    _execute_short_circuit,
+)
 from enm.models import (
     BranchRating,
     Bus,
@@ -36,6 +47,7 @@ from enm.models import (
     OverheadLine,
     Source,
 )
+from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
 
 
 def _zrodlo(bus_ref: str = "b_src") -> Source:
@@ -148,7 +160,11 @@ def _kotwica(
         snapshot=enm.model_dump(mode="json"),
         validation={},
         readiness={},
-        options={"fault_type": fault_type, "c_factor": c_factor, "thermal_time_seconds": 1.0},
+        options={
+            "fault_type": fault_type,
+            "c_factor": c_factor,
+            "thermal_time_seconds": 1.0,
+        },
     )
     run.finished_at = run.created_at
     if wykonaj:
@@ -181,13 +197,13 @@ def test_linie_kandydujace_wyklucza_galaz_bez_danych_katalogowych() -> None:
 
 def test_kandydaci_nastepnej_szyny_rozgalezienie() -> None:
     enm = _siec_rozgalezienie()
-    kandydaci = kandydaci_nastepnej_szyny(enm.model_dump(mode="json"), "ln1")
+    kandydaci = kandydaci_nastepnej_szyny(enm.model_dump(mode="json"), "ln1", "od")
     assert kandydaci == ["b_b", "b_c"]
 
 
 def test_kandydaci_nastepnej_szyny_slepy_koniec_jest_pusty() -> None:
     enm = _siec_slepy_koniec()
-    kandydaci = kandydaci_nastepnej_szyny(enm.model_dump(mode="json"), "ln1")
+    kandydaci = kandydaci_nastepnej_szyny(enm.model_dump(mode="json"), "ln1", "od")
     assert kandydaci == []
 
 
@@ -198,7 +214,9 @@ def test_kandydaci_nastepnej_szyny_slepy_koniec_jest_pusty() -> None:
 
 def test_zbuduj_wejscie_nastaw_wypelnia_wszystkie_dziewiec_wczesniej_brakujacych_pol() -> None:
     kotwica = _kotwica(_siec_promieniowa())
-    wejscie = zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+    wejscie = zbuduj_wejscie_nastaw(
+        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+    )
     ei = wejscie.engine_input
 
     # Galaz c_min (3 pola) — inna niz c_max, bo c=1.0 != c=1.10 na TEJ SAMEJ sieci.
@@ -227,8 +245,20 @@ def test_zbuduj_wejscie_nastaw_wypelnia_wszystkie_dziewiec_wczesniej_brakujacych
 def test_zbuduj_wejscie_nastaw_deterministyczny_dla_tych_samych_wejsc() -> None:
     kotwica1 = _kotwica(_siec_promieniowa(), run_id=UUID(int=1))
     kotwica2 = _kotwica(_siec_promieniowa(), run_id=UUID(int=1))
-    w1 = zbuduj_wejscie_nastaw(kotwica1, line_id="ln1", next_bus_id="b_b", c_min=1.0)
-    w2 = zbuduj_wejscie_nastaw(kotwica2, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+    w1 = zbuduj_wejscie_nastaw(
+        kotwica1,
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.0,
+        zacisk_zabezpieczenia="od",
+    )
+    w2 = zbuduj_wejscie_nastaw(
+        kotwica2,
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.0,
+        zacisk_zabezpieczenia="od",
+    )
     assert w1.engine_input == w2.engine_input
 
 
@@ -248,6 +278,7 @@ def test_k_b_k_bth_delta_t_s_pochodza_z_parametrow_wywolania_nie_z_opcji_kotwicy
         delta_t_s=0.45,
         k_b=1.35,
         k_bth=1.18,
+        zacisk_zabezpieczenia="od",
     )
     assert wejscie.engine_input.k_b == 1.35
     assert wejscie.engine_input.k_bth == 1.18
@@ -262,37 +293,74 @@ def test_k_b_k_bth_delta_t_s_pochodza_z_parametrow_wywolania_nie_z_opcji_kotwicy
 def test_kotwica_niezakonczona_odmawia() -> None:
     kotwica = _kotwica(_siec_promieniowa(), status_="RUNNING", wykonaj=False)
     with pytest.raises(BrakDanychNastawError, match="nie jest zakończony"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_kotwica_rodzaju_rozplyw_odmawia() -> None:
     kotwica = _kotwica(_siec_promieniowa(), analysis_type="PF")
-    with pytest.raises(BrakDanychNastawError, match="short_circuit_sn"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+    # Karta #145: rodzaj wskazanego przebiegu słowami, nie kodem rodzaju analizy.
+    with pytest.raises(BrakDanychNastawError, match="wskazany przebieg: rozpływ mocy"):
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_kotwica_zwarcia_dwufazowego_odmawia_bo_to_nie_galaz_maksymalna() -> None:
     kotwica = _kotwica(_siec_promieniowa(), fault_type="2F")
     with pytest.raises(BrakDanychNastawError, match="TRÓJFAZOWYM"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_kotwica_c_factor_ponizej_progu_odmawia() -> None:
     kotwica = _kotwica(_siec_promieniowa(), c_factor=0.95)
     with pytest.raises(BrakDanychNastawError, match="galezi maksymalnej|maksymalnej"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 @pytest.mark.parametrize("c_min", [0.0, -1.0, 1.20])
 def test_c_min_poza_dopuszczalnym_zakresem_odmawia(c_min: float) -> None:
     kotwica = _kotwica(_siec_promieniowa(), c_factor=1.10)
     with pytest.raises(BrakDanychNastawError, match="c_min"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=c_min)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=c_min,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_c_min_rowny_c_max_jest_dopuszczalny_brzeg() -> None:
     kotwica = _kotwica(_siec_promieniowa(), c_factor=1.10)
-    wejscie = zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.10)
+    wejscie = zbuduj_wejscie_nastaw(
+        kotwica,
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.10,
+        zacisk_zabezpieczenia="od",
+    )
     assert wejscie.engine_input.ik3_min_beginning_a == pytest.approx(
         wejscie.engine_input.ik3_max_beginning_a
     )
@@ -301,7 +369,13 @@ def test_c_min_rowny_c_max_jest_dopuszczalny_brzeg() -> None:
 def test_linia_nieznana_odmawia() -> None:
     kotwica = _kotwica(_siec_promieniowa())
     with pytest.raises(BrakDanychNastawError, match="ln_nieznana"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln_nieznana", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln_nieznana",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_linia_bez_danych_katalogowych_odmawia() -> None:
@@ -309,13 +383,25 @@ def test_linia_bez_danych_katalogowych_odmawia() -> None:
     enm2 = enm.model_copy(update={"branches": [*enm.branches, _linia_bez_danych_katalogowych()]})
     kotwica = _kotwica(enm2)
     with pytest.raises(BrakDanychNastawError, match="katalogowych"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln_bez_katalogu", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln_bez_katalogu",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_nastepna_szyna_spoza_migawki_odmawia() -> None:
     kotwica = _kotwica(_siec_promieniowa())
     with pytest.raises(BrakDanychNastawError, match="b_nieznana"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_nieznana", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_nieznana",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_nastepna_szyna_bez_zwarcia_odmawia() -> None:
@@ -330,32 +416,169 @@ def test_nastepna_szyna_bez_zwarcia_odmawia() -> None:
         wiersz for wiersz in kotwica.raw_result["results"] if wiersz.get("fault_node_id") != graf_b
     ]
     with pytest.raises(BrakDanychNastawError, match="nie zawiera prądu zwarcia 3F"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
-def test_kazdy_wariant_niesie_snapshot_hash_kotwicy_pin_spojnosci() -> None:
-    """Pin deklaracji architektonicznej karty PACK-NASTAWY (dopisany w odbiorze).
+def test_zbuduj_wejscie_nastaw_nie_mutuje_migawki_kotwicy_pin_spojnosci() -> None:
+    """Pin architektoniczny karty PACK-NASTAWY, PRZEPISANY na kanon CV-3-W
+    (karta CV-3-W, 2026-09-05 — zmiana kanonu, nie regresja testu, zob. Zero-Debt
+    pkt 2 CLAUDE.md).
 
     Znalezisko nadzoru (2026-08-14, czwarta instancja klasy deklaracja-bez-testu
-    w tej fali): docstring i meldunek twierdza, ze trzy warianty sa GWARANTOWANIE
-    spojne z ta sama migawka kotwicy (ten sam snapshot_hash), ale podmiana hasha
-    wariantu na obcy nie czerwienila ZADNEGO z 25 testow. Ten pin przypina
-    spojnosc WPROST na konstruktorach wariantow — kazdy wariant musi niesc
-    snapshot_hash i input_hash kotwicy oraz kopie (nie referencje) jej migawki.
+    w tej fali): docstring i meldunek twierdzily, ze trzy warianty w pamieci sa
+    GWARANTOWANIE spojne z ta sama migawka kotwicy, ale podmiana migawki wariantu
+    na obca nie czerwienila ZADNEGO z 25 testow. Ten pin przypinal spojnosc WPROST
+    na konstruktorach wariantow `_wariant_zwarciowy`/`_wariant_rozplywu`
+    (rekonstruowanych bezposrednio w tescie) — CV-3-W USUNELA te prywatne
+    konstruktory: trzy warianty (SC 3F@c_min, SC 2F@c_min, PF) powstaja dzis
+    WYLACZNIE przez fabryke rdzenia CV-3.1 `enm.canonical_analysis.bieg_wariantu`
+    na migawce `enm.scenariusze.apply_scenario(model_kotwicy, SCENARIUSZ_NORMALNY)`.
+
+    INTENCJA oryginalnego pinu BEZ ZMIAN: trzy warianty licza sie na TEJ SAMEJ
+    tresci modelu co kotwica, z KOPII (nie referencji) — wywolanie
+    `zbuduj_wejscie_nastaw` NIE mutuje snapshotu/wyniku kotwicy w pamieci (Case
+    Immutability). Literalna rownosc `snapshot_hash`/`input_hash` wariantu z
+    kotwica PRZESTAJE byc kontraktem po migracji: `bieg_wariantu` liczy OBA
+    hashe uczciwie z migawki i WLASNYCH opcji wariantu (inny `fault_type`/
+    `c_factor` per wariant daje inny, poprawny `input_hash` — to POPRAWA
+    architektoniczna, nie regresja), wiec ten pin sprawdza TRESC migawki, nie
+    bookkeeping biegu.
     """
-    from application.protection_settings.batch_run import (
-        _wariant_rozplywu,
-        _wariant_zwarciowy,
+    kotwica = _kotwica(_siec_promieniowa())
+    snapshot_przed = copy.deepcopy(kotwica.snapshot)
+    raw_result_przed = copy.deepcopy(kotwica.raw_result)
+
+    # Ta sama fabryka migawki, ktorej `zbuduj_wejscie_nastaw` uzywa WEWNATRZ dla
+    # wszystkich trzech wariantow — dowod, ze wariant liczy sie na TRESCI kotwicy.
+    enm_kotwicy = EnergyNetworkModel.model_validate(kotwica.snapshot)
+    migawka = apply_scenario(enm_kotwicy, SCENARIUSZ_NORMALNY)
+    assert migawka.snapshot == kotwica.snapshot, "wariant liczy sie na tej samej tresci co kotwica"
+    assert migawka.snapshot is not kotwica.snapshot, "migawka wariantu to KOPIA, nie referencja"
+
+    wejscie = zbuduj_wejscie_nastaw(
+        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
     )
 
+    assert wejscie.engine_input.ik3_min_beginning_a > 0  # dowod, ze warianty faktycznie policzono
+    assert kotwica.snapshot == snapshot_przed, "kotwica bazowa NIETKNIETA (Case Immutability)"
+    assert kotwica.raw_result == raw_result_przed, "zamrozony wynik kotwicy NIETKNIETY"
+
+
+# ---------------------------------------------------------------------------
+# W3-G1 (2026-09-10): wariant rozplywu pakietu nastaw liczy sie ZAWSZE metoda
+# Newtona-Raphsona — jawnie w opcjach wariantu (`batch_run.py`), nie z domyslu
+# solvera ani z opcji kotwicy.
+# ---------------------------------------------------------------------------
+
+
+def test_wariant_rozplywu_nastaw_zawsze_metoda_nr_niezaleznie_od_opcji_kotwicy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Recenzja W3-G1 (odbior fali 3 W3): `batch_run.py` deklaruje w komentarzu,
+    ze metoda wariantu PF audytu 2 jest jawnie NR (powtarzalny dowod pakietu
+    nastaw, niezalezny od wyboru operatora gdzie indziej) — deklaracja bez
+    testu = falszywa pewnosc. Iloczyn cech: {kotwica z OBCA metoda w opcjach
+    (`solver_method: gauss-seidel`, jakby operator wybral GS gdzie indziej)} x
+    {wariant PF} — przechwycony wariant ma NR w opcjach, w kopercie wyniku
+    (`raw_result.solver_method`) i w sladzie (`power_flow_trace.solver_method`),
+    a warianty zwarciowe nie dziedzicza obcej metody (klucze jawne w
+    `_opcje_wariantu_zwarciowego`)."""
+    from application.protection_settings import batch_run as modul
+
+    przechwycone: list[CanonicalRun] = []
+    oryginal = modul.wykonaj_bieg_w_pamieci
+
+    def _szpieg(run: CanonicalRun, *args: object, **kwargs: object) -> object:
+        przechwycone.append(run)
+        return oryginal(run, *args, **kwargs)
+
+    monkeypatch.setattr(modul, "wykonaj_bieg_w_pamieci", _szpieg)
     kotwica = _kotwica(_siec_promieniowa())
-    warianty = [
-        _wariant_zwarciowy(kotwica, fault_type="LLL", c_factor=0.95),
-        _wariant_zwarciowy(kotwica, fault_type="LL", c_factor=0.95),
-        _wariant_rozplywu(kotwica),
-    ]
-    for wariant in warianty:
-        assert wariant.snapshot_hash == kotwica.snapshot_hash
-        assert wariant.input_hash == kotwica.input_hash
-        assert wariant.snapshot == kotwica.snapshot
-        assert wariant.snapshot is not kotwica.snapshot
+    kotwica.options = {**kotwica.options, "solver_method": "gauss-seidel"}
+
+    wejscie = zbuduj_wejscie_nastaw(
+        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+    )
+
+    assert wejscie.engine_input.i_load_max_a > 0
+    warianty_pf = [run for run in przechwycone if run.analysis_type == "PF"]
+    assert len(warianty_pf) == 1
+    wariant_pf = warianty_pf[0]
+    assert wariant_pf.options["solver_method"] == "newton-raphson"
+    assert wariant_pf.raw_result is not None
+    assert wariant_pf.raw_result["solver_method"] == "newton-raphson"
+    assert wariant_pf.raw_result["result_v1"]["converged"] is True
+    assert wariant_pf.power_flow_trace is not None
+    assert wariant_pf.power_flow_trace["solver_method"] == "newton-raphson"
+    warianty_sc = [run for run in przechwycone if run.analysis_type == "short_circuit_sn"]
+    assert len(warianty_sc) == 2
+    assert all("solver_method" not in run.options for run in warianty_sc)
+
+
+# ---------------------------------------------------------------------------
+# CV-4.2b: warianty nastaw licza TEN SAM model stacji co kotwica (para audytu 2
+# dziedziczona), a bez fabryki wolajacego odmawiaja jawnie.
+# ---------------------------------------------------------------------------
+
+
+def test_warianty_nastaw_dziedzicza_pare_audit2_kotwicy() -> None:
+    from application.protection_settings.batch_run import (
+        _opcje_audit2_kotwicy,
+        _opcje_wariantu_zwarciowego,
+    )
+
+    kotwica = _kotwica(_siec_promieniowa(), wykonaj=False)
+    assert _opcje_audit2_kotwicy(kotwica) == {}
+    bez_pary = _opcje_wariantu_zwarciowego(kotwica, fault_type="3F", c_factor=1.0)
+    assert "audit2_project_id" not in bez_pary and "audit2_station_id" not in bez_pary
+
+    para = {"audit2_project_id": str(uuid4()), "audit2_station_id": "stacja-nastaw"}
+    kotwica.options = {**kotwica.options, **para}
+    assert _opcje_audit2_kotwicy(kotwica) == para
+    z_para = _opcje_wariantu_zwarciowego(kotwica, fault_type="2F", c_factor=1.0)
+    assert {k: z_para[k] for k in para} == para
+    assert z_para["fault_type"] == "2F" and z_para["c_factor"] == 1.0
+
+
+def test_kotwica_z_para_audit2_bez_fabryki_odmawia_jawnie() -> None:
+    kotwica = _kotwica(_siec_promieniowa())
+    kotwica.options = {
+        **kotwica.options,
+        "audit2_project_id": str(uuid4()),
+        "audit2_station_id": "stacja-nastaw",
+    }
+
+    with pytest.raises(BrakDanychNastawError, match="nie dostał fabryki UnitOfWork"):
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
+
+
+def test_kotwica_z_para_audit2_i_fabryka_liczy_komplet_wariantow(uow_factory) -> None:
+    kotwica = _kotwica(_siec_promieniowa())
+    kotwica.options = {
+        **kotwica.options,
+        "audit2_project_id": str(uuid4()),
+        "audit2_station_id": "stacja-nastaw",
+    }
+
+    wejscie = zbuduj_wejscie_nastaw(
+        kotwica,
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.0,
+        uow_factory=uow_factory,
+        zacisk_zabezpieczenia="od",
+    )
+
+    assert wejscie.engine_input is not None

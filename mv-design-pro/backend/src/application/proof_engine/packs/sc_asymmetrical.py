@@ -41,6 +41,7 @@ from application.proof_engine.proof_pack import (
     zbuduj_zip_zbiorczy,
 )
 from application.proof_engine.types import ProofDocument
+from network_model.pochodne import v_na_kv
 from network_model.solvers.short_circuit_asymmetrical_quantities import (
     compute_sc1_asymmetrical_quantities,
 )
@@ -260,7 +261,7 @@ class SCAsymmetricalProofPack:
                 "Wynik zwarcia nie niesie impedancji składowych Z1/Z2/Z0 — "
                 "pakietu zwarć niesymetrycznych nie da się złożyć dla tego punktu"
             )
-        u_n_kv = result.un_v / 1000.0
+        u_n_kv = v_na_kv(result.un_v)
         return SCAsymmetricalPackInput(
             project_name=project_name,
             case_name=case_name,

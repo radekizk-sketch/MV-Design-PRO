@@ -7,6 +7,7 @@ export { TabelaSzyn } from './TabelaSzyn';
 export type { TabelaSzynProps } from './TabelaSzyn';
 export { TabelaGalezi } from './TabelaGalezi';
 export type { TabelaGaleziProps } from './TabelaGalezi';
+export { RegulacjaOze } from './RegulacjaOze';
 export { EkranRozplywu } from './EkranRozplywu';
 export type { EkranRozplywuProps } from './EkranRozplywu';
 export { ProfilNapiecChart } from './ProfilNapiecChart';
@@ -30,9 +31,4 @@ export type {
   WynikRozplywu,
   PodsumowanieStratGalezi,
 } from './adapters/rozplywAdapter';
-export {
-  ROZPLYW_STRINGS,
-  NAPIECIE_MIN_PU,
-  NAPIECIE_MAX_PU,
-  napiecePozaZakresem,
-} from './strings';
+export { ROZPLYW_STRINGS, napiecePozaZakresem } from './strings';

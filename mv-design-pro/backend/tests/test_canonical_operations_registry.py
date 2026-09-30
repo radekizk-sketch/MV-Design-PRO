@@ -64,21 +64,17 @@ class TestCanonicalOperationsRegistry:
             "add_relay",
             "update_relay_settings",
             "link_relay_to_field",
-            "calculate_tcc_curve",
             "validate_selectivity",
         }
         for op in prot_ops:
             assert op in CANONICAL_OP_NAMES, f"Missing protection operation: {op}"
 
-    def test_all_study_case_operations_present(self):
-        case_ops = {
-            "create_study_case",
-            "run_short_circuit",
-            "run_power_flow",
-            "compare_study_cases",
-        }
-        for op in case_ops:
-            assert op in CANONICAL_OP_NAMES, f"Missing study case operation: {op}"
+    def test_calculate_tcc_curve_removed_w3a(self):
+        """W3-A: zaslepka `calculate_tcc_curve` (`tcc.legacy_write_disabled`,
+        bez fizyki) skasowana razem z rejestracja — rodzina IDMT KLASA-NIE-
+        INSTANCJA, karta KARTA_W3_KONWERGENCJA_FIZYKI_2026-09.md §0.1."""
+        assert "calculate_tcc_curve" not in CANONICAL_OP_NAMES
+        assert not is_canonical_operation("calculate_tcc_curve")
 
     def test_all_universal_operations_present(self):
         universal_ops = {
@@ -167,12 +163,14 @@ class TestReadinessCodes:
             assert spec.message_pl, f"Code {code} missing message_pl"
             assert len(spec.message_pl) > 5, f"Code {code} message_pl too short"
 
-    def test_each_blocker_has_fix_action(self):
+    def test_each_blocker_has_fix_navigation(self):
+        # `fix_navigation` is the ONLY real remediation path (the remediation-action
+        # identifier field was removed from ReadinessCodeSpec as a phantom nobody
+        # executed — REJESTR_KONFLIKTOW.md V12K-338). Every BLOCKER, including
+        # metakody like analysis.blocked_by_readiness, already carries it.
         for code, spec in READINESS_CODES.items():
             if spec.level == ReadinessLevel.BLOCKER:
-                # Most blockers should have fix actions
-                if spec.code != "analysis.blocked_by_readiness":
-                    assert spec.fix_action_id, f"Blocker {code} missing fix_action_id"
+                assert spec.fix_navigation, f"Blocker {code} missing fix_navigation"
 
     def test_no_duplicate_priorities_in_same_area(self):
         # Within same area, priorities should be deterministic

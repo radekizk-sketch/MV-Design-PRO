@@ -1,8 +1,22 @@
 /**
- * KARTA V126-OKNA — ZRZUTY DOWODOWE z ŻYWEJ aplikacji: okno „Analizy akademickie"
- * (ui2/wyniki/akademickie) w obu motywach, na REALNYM biegu solvera V12.6.
+ * KARTA B-02 / W3-E (2026-09-10; wcześniej V126-OKNA) — ZRZUTY DOWODOWE z ŻYWEJ
+ * aplikacji: okno „Analizy specjalistyczne" (ui2/wyniki/akademickie) w obu motywach,
+ * na REALNYM backendzie — katalog kart z `GET /api/catalog/v126/analysis-catalog`,
+ * gotowość z `GET /api/cases/{id}/v126/gotowosc` (ta sama funkcja, która odmawia 422),
+ * bieg z `POST /api/cases/{id}/runs/v126/{rodzaj}` na committed ENM.
  *
- * Zrzuty trafiają do `docs/sld/audyt-2026-08/v126-*.png`.
+ * Zrzuty trafiają do `docs/sld/audyt-2026-08/v126-*.png`:
+ *   1. katalog-kart — karty pogrupowane inżyniersko, ze stanem danych per karta,
+ *   2. analiza-uziom-niepotwierdzona — widok analizy (przedmiot → pytanie → dane →
+ *      gotowość NIEPOTWIERDZONA z listą braków → kryteria → zakres → uruchomienie
+ *      zablokowane),
+ *   3. analiza-uziom-potwierdzona — po wypełnieniu formularza uziomu wartościami z
+ *      fixtury backendu: GOTOWOŚĆ POTWIERDZONA + lista sprawdzonych warunków,
+ *   4. wynik-uziom — REALNY bieg bezpieczeństwa uziemień (werdykt, wielkości),
+ *   5. slad-whitebox — ślad obliczeń rozwinięty (komplet kroków),
+ *   6. wynik-<rodzaj> — bieg rodzaju liczącego WPROST z modelu (bez parametrów);
+ *      rodzaj wybrany z REALNEJ gotowości backendu (pierwszy prezentowany
+ *      POTWIERDZONY, preferowana propagacja niepewności), a nie założony.
  *
  * Uczciwość zrzutu (metoda z audytu §1): motyw przełączany REALNYM przyciskiem
  * powłoki (`mvd-theme-toggle`) z asercją na `data-theme` — zasiew `localStorage`
@@ -17,6 +31,8 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
+import { otworzAnalize, uruchomAnalize, wypelnijUziomIPotwierdz } from './formularzV126';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -57,12 +73,12 @@ async function siecTla(
   request: APIRequestContext,
 ): Promise<{ caseId: string; projectId: string; projectName: string; caseName: string }> {
   const suffix = Date.now().toString(36);
-  const projectName = `Analizy akademickie ${suffix}`;
+  const projectName = `Analizy specjalistyczne ${suffix}`;
   const caseName = `Przypadek analiz ${suffix}`;
   const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
     data: {
       name: projectName,
-      description: 'V126-OKNA zrzuty okna analiz akademickich',
+      description: 'B-02 zrzuty okna analiz specjalistycznych',
       mode: 'TO-BE',
       voltage_level_kv: 15.0,
       frequency_hz: 50.0,
@@ -81,6 +97,8 @@ async function siecTla(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: katalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
   for (const [idx, dlugosc] of [400, 300].entries()) {
     await operacja(request, studyCase.id, 'continue_trunk_segment_sn', {
@@ -93,6 +111,29 @@ async function siecTla(
     });
   }
   return { caseId: studyCase.id, projectId: project.id, projectName, caseName };
+}
+
+/**
+ * Rodzaj liczący WPROST z modelu, POTWIERDZONY przez REALNĄ gotowość backendu na sieci
+ * tła (nie założony w specu). Preferowana propagacja niepewności; brak jakiegokolwiek
+ * prezentowanego rodzaju POTWIERDZONEGO bez parametrów jest jawnym niepowodzeniem.
+ */
+async function rodzajPotwierdzonyBezParametrow(request: APIRequestContext, caseId: string): Promise<string> {
+  const katalog = await request.get(`${BACKEND_BASE}/api/catalog/v126/analysis-catalog`);
+  expect(katalog.ok()).toBeTruthy();
+  const prezentowane = new Set(
+    ((await katalog.json()) as { items: { kod: string; prezentowany: boolean }[] }).items
+      .filter((karta) => karta.prezentowany)
+      .map((karta) => karta.kod),
+  );
+  const gotowosc = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/v126/gotowosc`);
+  expect(gotowosc.ok()).toBeTruthy();
+  const potwierdzone = ((await gotowosc.json()) as { analizy: { kod: string; gotowosc: string }[] }).analizy
+    .filter((analiza) => analiza.gotowosc === 'POTWIERDZONA' && prezentowane.has(analiza.kod))
+    .map((analiza) => analiza.kod);
+  const wybrany = potwierdzone.includes('uncertainty_sensitivity') ? 'uncertainty_sensitivity' : potwierdzone[0];
+  expect(wybrany, 'żaden prezentowany rodzaj nie jest POTWIERDZONY bez parametrów na sieci tła').toBeTruthy();
+  return wybrany as string;
 }
 
 async function otworzAplikacje(
@@ -154,93 +195,101 @@ async function ustawPrzelacznik(page: Page, testid: string, otwarty: boolean): P
   await expect(przycisk).toHaveAttribute('aria-expanded', otwarty ? 'true' : 'false');
 }
 
-/** Otwiera zakładkę „Analizy akademickie" warsztatu Wyników (realne kliki). */
-async function otworzOknoAkademickie(page: Page): Promise<void> {
+/** Otwiera zakładkę „Analizy specjalistyczne" warsztatu Wyników (realne kliki). */
+async function otworzOknoSpecjalistyczne(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 30000 });
-  // NAPRAWA (karta TESTY-DRYF-E2E poz. 4, 2026-08-12; przepisanie wg zmiany
-  // kanonu — CLAUDE.md Zero-Debt): karta V126-JEZYK (ocena właściciela
-  // 2026-08-07) przeniosła zakładkę „Analizy akademickie" z toru
-  // podstawowego do trybu EKSPERCKIEGO (`WynikiWarsztat.tsx`,
-  // `MIN_TRYB_ZAKLADKI.akademickie = 'expert'`) — lista zakładek jest
-  // FILTROWANA wg trybu PRZED renderem, więc `mvd-wyniki-zakladka-akademickie`
-  // po prostu nie istnieje w DOM w trybie Podstawowy (domyślnym), stąd
-  // martwy timeout kliknięcia. Test przełącza tryb REALNYM przyciskiem
-  // powłoki (grupa „Tryb"), tak jak inne asercje w tym pliku przełączają
-  // motyw realnym `mvd-theme-toggle` (uczciwość zrzutu — bez zasiewu stanu).
+  // Obszar „Analizy specjalistyczne" istnieje wyłącznie w trybie EKSPERCKIM
+  // (`MIN_TRYB_ZAKLADKI.akademickie = 'expert'`, `ui2/spaces/wyniki/obszary.ts`) —
+  // tryb przełączany REALNYM przyciskiem powłoki (grupa „Tryb"), bez zasiewu stanu.
   const przyciskEkspercki = page.locator('[data-mvd-mode="expert"]');
   await expect(przyciskEkspercki).toBeVisible({ timeout: 15000 });
   if ((await przyciskEkspercki.getAttribute('aria-pressed')) !== 'true') {
     await przyciskEkspercki.click();
     await expect(przyciskEkspercki).toHaveAttribute('aria-pressed', 'true');
   }
-  await page.getByTestId('mvd-wyniki-zakladka-akademickie').click();
+  await otworzZakladkeWynikow(page, 'akademickie');
   await expect(page.getByTestId('mvd-akad-ekran')).toBeVisible({ timeout: 30000 });
 }
 
-test('V126-OKNA — zrzuty okna analiz akademickich (oba motywy)', async ({ page, request }) => {
+/** Powrót do katalogu kart (jeśli okno jest w widoku analizy). */
+async function wrocDoKatalogu(page: Page): Promise<void> {
+  const powrot = page.getByTestId('mvd-akad-powrot');
+  if (await powrot.isVisible()) await powrot.click();
+  await expect(page.getByTestId('mvd-akad-katalog-kart')).toBeVisible({ timeout: 15000 });
+}
+
+test('B-02 — zrzuty okna „Analizy specjalistyczne" na realnym backendzie (oba motywy)', async ({ page, request }) => {
   test.setTimeout(600000);
   mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
   const seed = await siecTla(request);
+  const rodzajZModelu = await rodzajPotwierdzonyBezParametrow(request, seed.caseId);
   await otworzAplikacje(page, seed);
-  await otworzOknoAkademickie(page);
+  await otworzOknoSpecjalistyczne(page);
 
   for (const motyw of [
     { klucz: 'ciemny', theme: 'dark_scada' as const },
     { klucz: 'jasny', theme: 'light_technical' as const },
   ]) {
     await ustawMotyw(page, motyw.theme);
-    await expect(page.getByTestId('mvd-akad-rodzaj')).toBeVisible({ timeout: 30000 });
+    await wrocDoKatalogu(page);
 
-    // 1. Wybór rodzaju — lista z katalogu backendu (komplet rodzajów kontraktu).
+    // 1. Katalog kart — grupy inżynierskie z backendu, stan danych per karta.
+    await expect(page.locator('[data-testid^="mvd-akad-karta-otworz-"]').first()).toBeVisible({ timeout: 30000 });
     await page.screenshot({
-      path: resolve(KATALOG_ZRZUTOW, `v126-wybor-rodzaju-${motyw.klucz}.png`),
+      path: resolve(KATALOG_ZRZUTOW, `v126-katalog-kart-${motyw.klucz}.png`),
       fullPage: true,
     });
 
-    // 2. Bieg rodzaju liczącego wprost z modelu — wynik, ślad, dowód, raport.
-    //
-    // NAPRAWA (karta TESTY-DRYF-E2E poz. 4, 2026-08-12; przepisanie wg zmiany
-    // kanonu — CLAUDE.md Zero-Debt): `voltage_stability` ŚWIADOMIE wycofany
-    // z toru projektanta kartą QU-FABRYKACJA (2026-08-08,
-    // `ui2/wyniki/akademickie/nieprezentowane.ts` — solver nie liczy już
-    // żadnej wielkości tej analizy z realnego modelu). Intencja bez zmian
-    // (dowód biegu rodzaju liczącego WPROST z modelu, bez formularza
-    // parametrów — kontrast z krokiem 4 niżej, `earthing_safety`, który
-    // wymaga danych spoza modelu): `power_quality_harmonics` ma równie puste
-    // parametry (`parametry.ts: power_quality_harmonics: PUSTY`) i własny
-    // ekran wyniku.
-    await page.getByTestId('mvd-akad-rodzaj').selectOption('power_quality_harmonics');
-    await page.getByTestId('mvd-akad-uruchom').click();
-    await expect(page.getByTestId('mvd-akad-wyniki')).toBeVisible({ timeout: 60000 });
+    // 2. Widok analizy wymagającej danych spoza modelu — gotowość NIEPOTWIERDZONA z brakami.
+    await otworzAnalize(page, 'earthing_safety');
+    await expect(page.getByTestId('mvd-akad-gotowosc')).toHaveAttribute('data-gotowosc', 'NIEPOTWIERDZONA', {
+      timeout: 30000,
+    });
+    await expect(page.getByTestId('mvd-akad-uruchom')).toBeDisabled();
     await page.screenshot({
-      path: resolve(KATALOG_ZRZUTOW, `v126-wynik-stabilnosc-napieciowa-${motyw.klucz}.png`),
+      path: resolve(KATALOG_ZRZUTOW, `v126-analiza-uziom-niepotwierdzona-${motyw.klucz}.png`),
       fullPage: true,
     });
 
-    // 3. Ślad WHITE BOX rozwinięty — komplet kroków (bez zaszytego limitu).
+    // 3. Formularz uziomu wypełniony (wartości z fixtury backendu) — REALNA gotowość POTWIERDZONA.
+    await wypelnijUziomIPotwierdz(page);
+    // Panel warsztatu przewija się WEWNĘTRZNIE (kontener), więc `fullPage` nie rozwija
+    // treści — badana sekcja jest przewijana do kadru przed zrzutem (dowód „widoczne",
+    // nie „gdzieś niżej").
+    await page.getByTestId('mvd-akad-gotowosc').scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: resolve(KATALOG_ZRZUTOW, `v126-analiza-uziom-potwierdzona-${motyw.klucz}.png`),
+      fullPage: true,
+    });
+
+    // 4. REALNY bieg bezpieczeństwa uziemień — werdykt, wielkości z jednostkami.
+    await uruchomAnalize(page, 120000);
+    await page.getByTestId('mvd-akad-wyniki').scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: resolve(KATALOG_ZRZUTOW, `v126-wynik-uziom-${motyw.klucz}.png`),
+      fullPage: true,
+    });
+
+    // 5. Ślad WHITE BOX rozwinięty — komplet kroków (bez zaszytego limitu).
     await ustawPrzelacznik(page, 'mvd-akad-slad-przelacz', true);
+    await page.getByTestId('mvd-akad-slad').scrollIntoViewIfNeeded();
     await page.screenshot({
       path: resolve(KATALOG_ZRZUTOW, `v126-slad-whitebox-${motyw.klucz}.png`),
       fullPage: true,
     });
     await ustawPrzelacznik(page, 'mvd-akad-slad-przelacz', false);
 
-    // 4. Formularz parametrów projektowych — rodzaj wymagający danych spoza modelu.
-    await page.getByTestId('mvd-akad-rodzaj').selectOption('earthing_safety');
-    await ustawPrzelacznik(page, 'mvd-akad-parametry-przelacz', true);
-    await expect(page.getByTestId('mvd-akad-uziom')).toBeVisible({ timeout: 15000 });
-    await page.screenshot({
-      path: resolve(KATALOG_ZRZUTOW, `v126-parametry-uziom-${motyw.klucz}.png`),
-      fullPage: true,
+    // 6. Rodzaj liczący wprost z modelu (bez formularza) — POTWIERDZONY przez backend.
+    await wrocDoKatalogu(page);
+    await otworzAnalize(page, rodzajZModelu);
+    await expect(page.getByTestId('mvd-akad-gotowosc')).toHaveAttribute('data-gotowosc', 'POTWIERDZONA', {
+      timeout: 30000,
     });
-
-    // 5. Rodzaj bez ekranu trasowego — dobór uziemienia punktu neutralnego.
-    await page.getByTestId('mvd-akad-rodzaj').selectOption('neutral_earthing_design');
-    await page.getByTestId('mvd-akad-uruchom').click();
-    await expect(page.getByTestId('mvd-akad-wyniki')).toBeVisible({ timeout: 60000 });
+    await uruchomAnalize(page, 120000);
+    await page.getByTestId('mvd-akad-wyniki').scrollIntoViewIfNeeded();
     await page.screenshot({
-      path: resolve(KATALOG_ZRZUTOW, `v126-uziemienie-neutralnego-${motyw.klucz}.png`),
+      path: resolve(KATALOG_ZRZUTOW, `v126-wynik-${rodzajZModelu.replace(/_/g, '-')}-${motyw.klucz}.png`),
       fullPage: true,
     });
   }

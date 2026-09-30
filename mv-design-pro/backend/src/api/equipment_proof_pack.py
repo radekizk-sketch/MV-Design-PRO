@@ -1,10 +1,23 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from uuid import UUID
+
+from api.dependencies import get_uow_factory
 from api.schemas.equipment_proof import DeviceRatingPayload, EquipmentProofRequest
+from application.autorytet_biegu_zwarciowego import (
+    BiegNiemiarodajnyError,
+    wejscie_zwarciowe_z_biegu,
+    wielkosci_kontraktu_klienta,
+)
 from application.equipment_proof.catalog_bridge import resolve_um_icu_from_catalog
 from application.equipment_proof.proof_pack import build_equipment_proof_pack
 from application.equipment_proof.types import DeviceRating, EquipmentProofInput
-from fastapi import APIRouter, Response
+from application.nazwy_biegu import nazwa_projektu_z_migawki, nazwa_przypadku_z_bazy
+from enm.canonical_analysis import get_run
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.core.autorytet_wyniku_zwarciowego import BrakAutorytetuWyniku
 
 router = APIRouter(prefix="/api/equipment-proof", tags=["equipment-proof"])
 
@@ -46,15 +59,76 @@ def _device_rating_from_payload(payload_device: DeviceRatingPayload) -> DeviceRa
 
 
 @router.post("/pack")
-def download_equipment_proof_pack(payload: EquipmentProofRequest) -> Response:
+def download_equipment_proof_pack(
+    payload: EquipmentProofRequest,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> Response:
+    """Pakiet dowodowy doboru aparatury — WYŁĄCZNIE z liczb ZAPISANEGO BIEGU.
+
+    OBEJŚCIE, KTÓRE TO ZAMYKA (karta S-2 AUTORYTET, odtworzone na HEAD
+    `c307e95f`): to żądanie przyjmowało ``required_fault_results`` jako gołe
+    liczby i wystawiało kompletny pakiet dowodowy, nie pytając, skąd pochodzą.
+    Przy ``run_id`` wskazującym bieg, którego nigdy nie było, dowód powstawał
+    tak samo dla 12,5 kA jak dla 999 kA.
+
+    DWIE RÓŻNE BRAMKI, OBIE KONIECZNE:
+    1. wielkości pochodzą z BIEGU wskazanego przez ``run_id`` (nie z żądania), a
+       liczby przysłane przez klienta są wyłącznie ECHEM — rozbieżność jest odmową;
+    2. proweniencja ``k_sc`` wyprowadzona ze znaczników TEGO biegu (nie z
+       migawki dołączonej do żądania) musi być miarodajna.
+
+    Pierwsza bramka bez drugiej przepuściłaby liczby policzone z domyślki
+    systemowej; druga bez pierwszej — liczby z powietrza policzone na dobrym
+    modelu. Dlatego są obie.
+    """
+    try:
+        wejscie = wejscie_zwarciowe_z_biegu(
+            run_id=payload.run_id, punkt_zwarcia=payload.connection_node_id
+        )
+    except BiegNiemiarodajnyError as brak:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"powod": brak.powod, "komunikat_pl": brak.komunikat_pl},
+        ) from brak
+
+    niezgodnosci = wejscie.niezgodnosci_z_echem(payload.required_fault_results)
+    if niezgodnosci:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "powod": "WYNIK_NIEZGODNY_Z_BIEGIEM",
+                "komunikat_pl": (
+                    "Wielkości zwarciowe podane w żądaniu różnią się od wielkości policzonych "
+                    "w biegu. Dowód powstaje z wyniku solvera — popraw dane w żądaniu albo "
+                    "przelicz bieg ponownie."
+                ),
+                "niezgodnosci": list(niezgodnosci),
+            },
+        )
+
+    # Nagłówek dowodu: nazwa modelu z migawki biegu i nazwa przypadku z bazy — nigdy
+    # identyfikatory z żądania (karta #144). Bieg istnieje: bramka wyżej go wczytała.
+    bieg = get_run(UUID(str(payload.run_id)))
     proof_input = EquipmentProofInput(
         project_id=payload.project_id,
         case_id=payload.case_id,
         run_id=payload.run_id,
         connection_node_id=payload.connection_node_id,
         device=_device_rating_from_payload(payload.device),
-        required_fault_results=payload.required_fault_results,
+        required_fault_results=wielkosci_kontraktu_klienta(wejscie.wielkosci),
+        proweniencja=wejscie.proweniencja,
+        project_name=nazwa_projektu_z_migawki(bieg.snapshot if bieg is not None else None),
+        case_name=nazwa_przypadku_z_bazy(payload.case_id, uow_factory),
     )
-    filename, pack_bytes = build_equipment_proof_pack(proof_input)
+    try:
+        filename, pack_bytes = build_equipment_proof_pack(proof_input)
+    except BrakAutorytetuWyniku as brak:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "powod": "WEJSCIE_NIEMIARODAJNE",
+                "blokady": [b.to_dict() for b in brak.blokady],
+            },
+        ) from brak
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return Response(content=pack_bytes, media_type="application/zip", headers=headers)

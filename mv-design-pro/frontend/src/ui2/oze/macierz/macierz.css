@@ -236,28 +236,6 @@
   color: var(--mvd-muted);
 }
 
-/* ---- legenda ---- */
-.mvd-oze-legenda {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  padding: 8px 12px;
-  font-size: 11px;
-  color: var(--mvd-muted);
-}
-.mvd-oze-legenda-poz {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.mvd-oze-legenda-znak {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-  display: inline-block;
-}
-
 /* ---- podsumowania ---- */
 .mvd-oze-podsum {
   display: flex;
@@ -356,13 +334,22 @@
   color: var(--mvd-muted);
   margin-bottom: 6px;
 }
-.mvd-oze-field input {
+.mvd-oze-field input,
+.mvd-oze-field select {
   background: var(--mvd-panel);
   border: 1px solid var(--mvd-line);
   color: var(--mvd-ink);
   border-radius: 4px;
   padding: 4px 8px;
   font: inherit;
+}
+.mvd-oze-field input[aria-invalid="true"] {
+  border-color: var(--mvd-err);
+}
+/* Błąd walidacji pola formularza „co-jeśli" (lustro ograniczeń kontraktu wejścia biegu). */
+.mvd-oze-pole-blad {
+  color: var(--mvd-err);
+  font-size: 11px;
 }
 .mvd-oze-slad-btn {
   align-self: flex-start;
@@ -406,12 +393,6 @@
 }
 .mvd-oze-cert-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .mvd-oze-cert-tytul { margin: 0; font-size: 14px; color: var(--mvd-ink); }
-.mvd-oze-cert-werdykt {
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-weight: 600;
-  font-size: 14px;
-}
 .mvd-oze-cert-meta {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -432,49 +413,41 @@
 .mvd-oze-cert-braki ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .mvd-oze-cert-widok { display: flex; flex-direction: column; gap: 10px; }
 
-/* K5-B: wynik walidacji FRT/HVRT przy module (kolor wg istotności werdyktu) */
-.mvd-oze-podsum-frt--ok {
-  color: var(--mvd-ok);
-}
-
-.mvd-oze-podsum-frt--warn {
-  color: var(--mvd-warn);
-}
-
-.mvd-oze-podsum-frt--err {
-  color: var(--mvd-err);
-}
-
-/* Dowód certyfikatu PTPiREE przy module (z tabliczki urządzenia w modelu) */
-.mvd-oze-podsum-dowod {
-  color: var(--mvd-ok);
-}
-
-.mvd-oze-podsum-dowod--brak {
-  color: var(--mvd-warn);
-}
-
-/* Dowód certyfikacji PTPiREE w podglądzie certyfikatu — wiersz per moduł */
-.mvd-oze-cert-dowody {
-  margin: 8px 0;
-}
-
-.mvd-oze-cert-dowody h5 {
-  margin: 0 0 4px;
+/* ---- opis biegu „co-jeśli" i filtr etykiet (kontrakt V2, karta AB-1a D2) ---- */
+.mvd-oze-opis-biegu {
+  padding: 8px 12px;
   font-size: 12px;
-  font-weight: 600;
+}
+.mvd-oze-filtr {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 0;
 }
 
-.mvd-oze-cert-dowody ul {
+/* ---- zgodność przypadku: sekcja per moduł (nagłówek + rekordy wymagań) ---- */
+.mvd-oze-przekroj {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mvd-oze-przekroj-modul {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-oze-przekroj-naglowek {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mvd-oze-przekroj-tytul {
   margin: 0;
-  padding-left: 18px;
-}
-
-.mvd-oze-cert-dowod {
-  font-size: 12px;
-  color: var(--mvd-ok);
-}
-
-.mvd-oze-cert-dowod--brak {
-  color: var(--mvd-warn);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
 }

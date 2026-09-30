@@ -40,7 +40,7 @@ describe('pobierzAdekwatnoscQ', () => {
     const fn = mockFetchOk(adekwatnoscQFixture());
     const widok = await pobierzAdekwatnoscQ('def-456');
     expect(fn).toHaveBeenCalledWith('/api/oze-analysis/reactive-adequacy?run_id=def-456');
-    expect(widok.verdict).toBe('wystarczajaca rezerwa Q');
+    expect(widok.verdict).toBe('wystarczająca rezerwa Q');
     expect(widok.sources).toHaveLength(2);
   });
 });

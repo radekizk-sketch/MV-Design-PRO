@@ -53,6 +53,21 @@
   padding: 4px 8px;
   font: inherit;
 }
+/* W3-G1: metoda rozpływu — blok widoczny wyłącznie dla rodzaju "Rozpływ mocy". */
+.mvd-uruchom-metoda {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mvd-uruchom-metoda-opis {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--mvd-muted);
+  max-width: 480px;
+}
 .mvd-przebiegi-tytul {
   margin: 0;
   font-size: 16px;

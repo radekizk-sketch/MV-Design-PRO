@@ -21,6 +21,7 @@ import json
 from collections.abc import Iterable
 from pathlib import Path
 
+from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.switchgear import SWITCHGEAR_FAMILY_REGISTRY, SwitchgearFamily
 
 from .models import ReferenceFieldProfile, ReferencePack
@@ -103,7 +104,7 @@ def get_reference_pack(pack_id: str) -> ReferencePack:
     """Pobiera pakiet po id. KeyError z listą dostępnych gdy brak."""
     if pack_id not in REFERENCE_PACK_REGISTRY:
         available = ", ".join(sorted(REFERENCE_PACK_REGISTRY.keys()))
-        raise KeyError(f"Unknown reference pack: {pack_id}. Available: {available}")
+        raise BrakZasobuError(f"Unknown reference pack: {pack_id}. Available: {available}")
     return REFERENCE_PACK_REGISTRY[pack_id]
 
 

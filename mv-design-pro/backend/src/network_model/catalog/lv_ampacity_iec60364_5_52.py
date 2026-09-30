@@ -46,6 +46,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
+
 
 @dataclass(frozen=True)
 class WpisNormyNN:
@@ -61,12 +63,13 @@ class WpisNormyNN:
 
     def __post_init__(self) -> None:
         if not 0.0 < self.wartosc <= 1.3:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-032",
                 f"Wartość współczynnika tablicowego musi leżeć w zakresie (0; 1,3] — "
-                f"otrzymano {self.wartosc}."
+                f"otrzymano {self.wartosc}.",
             )
         if not self.podstawa or not self.podstawa.strip():
-            raise ValueError("Wpis tablicy normy wymaga podstawy (proweniencji).")
+            odmowa_twarda("KAT-T-033", "Wpis tablicy normy wymaga podstawy (proweniencji).")
 
 
 # ---------------------------------------------------------------------------
@@ -193,10 +196,12 @@ TABLICA_GRUPOWANIA_GRUNTU_NN: dict[int, WpisNormyNN] = {
 }
 
 # Powod, dla ktorego rejestry sa czesciowe — zapisany w kodzie, zeby nie
-# wygladaly na przeoczenie (patrz tez lista brakow w docstringu modulu).
+# wygladaly na przeoczenie (patrz tez lista brakow w docstringu modulu). Tresc czyta
+# projektant (kreator źródła OZE, odmowa operacji kabla nN) — bez nazw kart i kodów
+# (karta #142).
 OGRANICZENIE_TABLIC_PL = (
-    "Rejestry zawierają wyłącznie wpisy tablic PN-HD 60364-5-52 zweryfikowane w DWÓCH "
-    "niezależnych publikowanych źródłach (karta P0.5a). Braki: korekta temperatury "
+    "Rejestry zawierają wyłącznie wpisy tablic PN-HD 60364-5-52 zweryfikowane w dwóch "
+    "niezależnych publikowanych źródłach. Braki: korekta temperatury "
     "powietrza poniżej 30°C, grupowanie w powietrzu dla 5 obwodów, grupowanie w "
     "gruncie dla 5–6 obwodów, metody ułożenia inne niż uproszczone „powietrze”/„grunt” "
     "— system nie fabrykuje współczynników z jednego źródła ani z pamięci."

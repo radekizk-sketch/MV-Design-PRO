@@ -1,0 +1,107 @@
+{
+  "analysis": "compensation_sizing",
+  "context": {
+    "run_id": "run-lf-scena-kompensacja",
+    "snapshot_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+    "case_id": "case-demo"
+  },
+  "parameters": {
+    "bus_ref": "bus_sn_b",
+    "bus_name": "Stacja B SN",
+    "bus_voltage_kv": 15.0,
+    "cos_phi_min": 0.95,
+    "uwzglednij_noc": false
+  },
+  "input_hash": "9bbad02ad760a8ea31a478dbfffa0796b994288903c570b7df494910e4ce85c6",
+  "baseline": {
+    "cosfi_przekroju_dzien": 0.996592,
+    "cosfi_przekroju_noc": null,
+    "cosfi_punktu_dzien": 0.996592,
+    "cosfi_punktu_noc": null
+  },
+  "candidates": [
+    {
+      "catalog_ref": "KOMP_SN_0V6_15KV",
+      "name": "Bateria kondensatorów SN 0,6 Mvar 15 kV",
+      "rated_mvar": 0.6,
+      "rated_kv": 15.0,
+      "cosfi_przekroju_dzien": 0.996598,
+      "cosfi_przekroju_noc": null,
+      "cosfi_punktu_dzien": 0.996598,
+      "cosfi_punktu_noc": null,
+      "p_point_day_mw": 0.746494,
+      "q_przekroju_dzien_mvar": 0.061737,
+      "q_cap_eff_dzien_mvar": 0.604076,
+      "q_netto_punktu_dzien_mvar": 0.061737,
+      "p_point_night_mw": null,
+      "q_przekroju_noc_mvar": null,
+      "q_cap_eff_noc_mvar": null,
+      "q_netto_punktu_noc_mvar": null,
+      "spelnia_dzien": true,
+      "spelnia_noc": null,
+      "spelnia": true
+    },
+    {
+      "catalog_ref": "KOMP_SN_1V2_15KV",
+      "name": "Bateria kondensatorów SN 1,2 Mvar 15 kV",
+      "rated_mvar": 1.2,
+      "rated_kv": 15.0,
+      "cosfi_przekroju_dzien": 0.996604,
+      "cosfi_przekroju_noc": null,
+      "cosfi_punktu_dzien": 0.996604,
+      "cosfi_punktu_noc": null,
+      "p_point_day_mw": 0.746473,
+      "q_przekroju_dzien_mvar": 0.061679,
+      "q_cap_eff_dzien_mvar": 1.215157,
+      "q_netto_punktu_dzien_mvar": 0.061679,
+      "p_point_night_mw": null,
+      "q_przekroju_noc_mvar": null,
+      "q_cap_eff_noc_mvar": null,
+      "q_netto_punktu_noc_mvar": null,
+      "spelnia_dzien": true,
+      "spelnia_noc": null,
+      "spelnia": true
+    },
+    {
+      "catalog_ref": "KOMP_SN_2V4_15KV",
+      "name": "Bateria kondensatorów SN 2,4 Mvar 15 kV",
+      "rated_mvar": 2.4,
+      "rated_kv": 15.0,
+      "cosfi_przekroju_dzien": 0.996616,
+      "cosfi_przekroju_noc": null,
+      "cosfi_punktu_dzien": 0.996616,
+      "cosfi_punktu_noc": null,
+      "p_point_day_mw": 0.746431,
+      "q_przekroju_dzien_mvar": 0.06156,
+      "q_cap_eff_dzien_mvar": 2.458698,
+      "q_netto_punktu_dzien_mvar": 0.06156,
+      "p_point_night_mw": null,
+      "q_przekroju_noc_mvar": null,
+      "q_cap_eff_noc_mvar": null,
+      "q_netto_punktu_noc_mvar": null,
+      "spelnia_dzien": true,
+      "spelnia_noc": null,
+      "spelnia": true
+    }
+  ],
+  "dobor": {
+    "catalog_ref": "KOMP_SN_0V6_15KV",
+    "name": "Bateria kondensatorów SN 0,6 Mvar 15 kV",
+    "rated_mvar": 0.6,
+    "rated_kv": 15.0,
+    "cosfi_punktu_dzien": 0.996598,
+    "cosfi_punktu_noc": null,
+    "cosfi_przekroju_dzien": 0.996598,
+    "cosfi_przekroju_noc": null
+  },
+  "powod_braku": null,
+  "whitebox": {
+    "pq_source": "wypadkowy przepływ gałęzi zasilających punkt z wyniku rozpływu (koniec przy punkcie, suma po gałęziach incydentnych) przełożony na znak kanoniczny przez adapter konwencji mocy biernej",
+    "cosfi_przekroju": "cosφ przepływu w przekroju sieciowym: $\\cos\\varphi_{\\text{przekroju}} = \\dfrac{|P|}{\\sqrt{P^{2} + Q_{\\text{przekroju}}^{2}}}$; opisuje przekrój sieci, NIE stopień skompensowania odbioru",
+    "cosfi_punktu": "cosφ punktu kompensowanego: $\\cos\\varphi_{\\text{punktu}} = \\dfrac{|P|}{\\sqrt{P^{2} + Q_{\\text{netto}}^{2}}}$, $Q_{\\text{netto}} = Q_{\\text{odb}} - Q_{\\text{bat}}$, $Q_{\\text{bat}} = \\sum Q_{\\text{zn}} \\cdot V^{2}$ (moc znamionowa baterii z katalogu, nie fizyka pola); PODSTAWA DOBORU",
+    "konwencja_kanoniczna": "$P>0$ — pobór mocy czynnej, $Q>0$ — pobór mocy biernej (indukcyjny), $Q<0$ — moc pojemnościowa",
+    "decyzja": "wynik rozpływu pozostaje nienaruszony (tylko odczyt); znak mocy biernej interpretuje adapter konwencji — dobór nie modyfikuje solvera ani wyniku",
+    "candidate_count": 3,
+    "night_scenario": null
+  }
+}

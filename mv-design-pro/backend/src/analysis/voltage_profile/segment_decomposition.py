@@ -30,20 +30,11 @@ numerycznej, a nie równości bitowej.
 
 from __future__ import annotations
 
-from collections import deque
-
 from analysis.voltage_profile.models import VoltageProfileSegment, VoltageProfileSegmentPath
 from network_model.core.graph import NetworkGraph
+from network_model.core.topologia import przeglad_wszerz
+from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from network_model.solvers.power_flow_result import PowerFlowResultV1
-
-# Pasmo nN: `voltage_kv < 1.0` (ta sama granica co prywatna
-# `enm.validator._voltage_band`/`_VOLTAGE_BAND_NN_MAX` — nie importowana
-# wprost, żeby nie wiązać `analysis/` runtime z prywatnym symbolem `enm/` dla
-# jednej stałej; wartość przypięta 1:1 i pilnowana testem przeciw rozjazdowi,
-# patrz `test_voltage_profile_segment_decomposition.py::
-# test_pasmo_nn_threshold_matches_enm_validator_band`).
-PASMO_NN_MAX_KV = 1.0
-
 
 # Tolerancja telescoping-sum (§0.2 karty P0.4): suma delta_u segmentów musi
 # odpowiadać u_source_kv - u_node_kv. Łączniki zamknięte na trasie (pomijane
@@ -175,22 +166,23 @@ class VoltageProfileSegmentBuilder:
         if source_id == target_id:
             return []
 
-        visited = {source_id}
-        queue: deque[str] = deque([source_id])
-        predecessor: dict[str, tuple[str, str, str]] = {}
-        while queue:
-            current = queue.popleft()
-            if current == target_id:
-                break
+        def _sasiedzi(current: str) -> list[tuple[tuple[str, str], str]]:
+            wynik: list[tuple[tuple[str, str], str]] = []
             for neighbor in sorted(nx_graph.neighbors(current)):
-                if neighbor in visited:
-                    continue
                 edge_data = nx_graph.get_edge_data(current, neighbor)
                 edge_key = sorted(edge_data.keys())[0]
                 edge_kind = edge_data[edge_key].get("edge_kind", "branch")
-                visited.add(neighbor)
-                predecessor[neighbor] = (current, edge_key, edge_kind)
-                queue.append(neighbor)
+                wynik.append(((edge_key, edge_kind), neighbor))
+            return wynik
+
+        # Jedyne jądro przeglądu (``network_model.core.topologia.przeglad_wszerz``, CV-4.3):
+        # poprzednik z PIERWSZEJ drogi w kolejności posortowanych sąsiadów — jak dotąd.
+        drzewo = przeglad_wszerz(source_id, _sasiedzi)
+        predecessor: dict[str, tuple[str, str, str]] = {
+            wezel: (rodzic[1], rodzic[0][0], rodzic[0][1])
+            for wezel, rodzic in drzewo.items()
+            if rodzic is not None
+        }
 
         if target_id not in predecessor:
             raise VoltageProfileSegmentPathError(
@@ -211,7 +203,7 @@ class VoltageProfileSegmentBuilder:
 def find_worst_nn_bus(
     graph: NetworkGraph, pf_result: PowerFlowResultV1
 ) -> tuple[str, float] | None:
-    """Węzeł o najniższym |V| p.u. w paśmie nN (``voltage_kv < 1.0``).
+    """Węzeł o najniższym |V| p.u. w paśmie nN (jedno źródło granicy: ``w_pasmie_nn``).
 
     Zwraca ``(bus_id, v_pu)`` albo ``None`` gdy sieć nie ma żadnej rozwiązanej
     szyny nN (uczciwy brak — zero fabrykacji). Wykluczone: szyny bez wyniku
@@ -222,7 +214,7 @@ def find_worst_nn_bus(
     candidates = [
         (bus_v_pu[node_id], node_id)
         for node_id, node in graph.nodes.items()
-        if 0.0 < node.voltage_level < PASMO_NN_MAX_KV
+        if w_pasmie_nn(node.voltage_level)
         and node_id in bus_v_pu
         and bus_v_pu[node_id] == bus_v_pu[node_id]  # odrzuć NaN (not_solved)
     ]

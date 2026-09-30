@@ -10,7 +10,8 @@ import { useEffect, useState } from 'react';
 
 import type { StationDerConnection } from '../../../ui/network-build/station-der';
 import { pobierzKonwertery, type RekordKonwertera } from '../api';
-import { dopasujMagazyn, pracaMagazynu } from './pulpitModel';
+import { InformacjeAudytowe } from '../../wyniki/wzorzec';
+import { dopasujMagazyn, etykietaOdnosnika, pracaMagazynu } from './pulpitModel';
 import {
   formatEnergia,
   formatMvar,
@@ -111,18 +112,18 @@ export function SekcjaMagazynu({ der, trybEkspercki }: SekcjaMagazynuProps): JSX
               {dopasowanie.rekord.control_mode ?? PULPIT_STRINGS.magazynBrakTrybu}
             </span>
           </div>
-          {trybEkspercki ? (
-            <div className="mvd-oze-panel-blok" data-testid="mvd-oze-magazyn-ekspert">
-              <div className="mvd-oze-metryka">
-                <span>{PULPIT_STRINGS.magazynModel}</span>
-                <span className="mvd-oze-num">{dopasowanie.rekord.id}</span>
-              </div>
-              <div className="mvd-oze-metryka">
-                <span>{PULPIT_STRINGS.magazynDopasowanoPo}</span>
-                <span className="mvd-oze-num">{dopasowanie.dopasowanoPo}</span>
-              </div>
-            </div>
-          ) : null}
+          {/* Karta #145: identyfikator rekordu katalogu wyłącznie w „Informacjach audytowych". */}
+          <InformacjeAudytowe
+            trybEkspercki={trybEkspercki}
+            testid="mvd-oze-magazyn-ekspert"
+            wiersze={[
+              { etykieta: PULPIT_STRINGS.magazynModel, wartosc: dopasowanie.rekord.id },
+              {
+                etykieta: PULPIT_STRINGS.magazynDopasowanoPo,
+                wartosc: etykietaOdnosnika(dopasowanie.dopasowanoPo),
+              },
+            ]}
+          />
         </div>
       ) : (
         <div data-testid="mvd-oze-magazyn-nieodnaleziona">
@@ -130,12 +131,15 @@ export function SekcjaMagazynu({ der, trybEkspercki }: SekcjaMagazynuProps): JSX
           <p style={{ margin: '6px 0 0' }} className="mvd-oze-panel-etyk">
             {PULPIT_STRINGS.magazynNieodnalezionaOpis}
           </p>
-          {trybEkspercki && praca?.bateriaRef ? (
-            <div className="mvd-oze-metryka" style={{ marginTop: 6 }}>
-              <span>{PULPIT_STRINGS.magazynBateria}</span>
-              <span className="mvd-oze-num">{praca.bateriaRef}</span>
-            </div>
-          ) : null}
+          <InformacjeAudytowe
+            trybEkspercki={trybEkspercki}
+            testid="mvd-oze-magazyn-bateria-audyt"
+            wiersze={
+              praca?.bateriaRef
+                ? [{ etykieta: PULPIT_STRINGS.magazynBateria, wartosc: praca.bateriaRef }]
+                : []
+            }
+          />
         </div>
       )}
 

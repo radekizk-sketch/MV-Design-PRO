@@ -1,79 +1,66 @@
 {
-  "_description": "Wzorzec A — Przypadek B: NIEZGODNE (konflikt selektywnosc vs czulosc/cieplne, I_min > I_max)",
+  "_description": "Wzorzec A — Przypadek B: NIEZGODNE (konflikt selektywnosc vs czulosc, I_min > I_max)",
   "_pattern_id": "RP-LINE-I2-THERMAL-SPZ",
   "_expected_verdict": "NIEZGODNE",
-  "_notes_pl": "Konfiguracja sieci z duzym pradem zwarciowym na zabezpieczeniu nastepnym (linia prowadzaca do duzego odbioru przemyslowego z silnikami synchronicznymi). Kryterium selektywnosci wymaga wysokiej nastawy, ale kryterium czulosci ogranicza maksymalna nastawe. Okno nastaw sprzeczne - NIE MOZNA DOBRAC NASTAWY spelnijacej jednoczesnie wszystkie kryteria.",
+  "_notes_pl": "Konfiguracja sieci z duzym pradem zwarciowym na kolejnym zabezpieczeniu (linia prowadzaca do duzego odbioru przemyslowego z silnikami synchronicznymi). Kryterium selektywnosci wymaga wysokiej nastawy, ale kryterium czulosci ogranicza maksymalna nastawe. Silnik: ProtectionSettingsEngine (Hoppel/IRiESD), karta W3-C2. Okno nastaw sprzeczne - NIE MOZNA DOBRAC NASTAWY spelniajacej jednoczesnie oba warunki.",
 
-  "line_id": "line-ref-B-niezgodne",
+  "line_id": "linia-ref-b-niezgodne",
   "line_name": "Linia SN 15kV GPZ Wschod - Zaklad Przemyslowy (referencja NIEZGODNE)",
-  "ct_ratio": 100.0,
 
-  "conductor": {
-    "material": "XLPE_AL",
-    "cross_section_mm2": 150.0,
-    "jthn_a_mm2": 94.0,
-    "theta_b_deg": 40.0,
-    "theta_k_deg": 250.0
-  },
+  "cross_section_mm2": 150.0,
+  "conductor_material": "Al",
+  "length_km": 4.0,
+  "i_nominal_a": 300.0,
 
-  "spz_config": {
-    "mode": "SINGLE",
-    "t_dead_1_s": 0.5,
-    "t_dead_2_s": 15.0,
-    "t_fault_max_s": 0.5
-  },
+  "ik3_max_beginning_a": 8000.0,
+  "ik3_min_beginning_a": 6000.0,
+  "ik3_max_end_a": 5000.0,
+  "ik3_min_end_a": 4200.0,
+  "ik2_min_end_a": 3600.0,
+  "ik_max_next_bus_a": 6000.0,
 
-  "local_generation": {
-    "enabled": false
-  },
+  "i_load_max_a": 180.0,
 
-  "ik_max_busbars_a": 8000.0,
-  "ik_min_busbars_a": 6000.0,
-  "ik_max_next_protection_a": 6000.0,
-  "ik_min_2f_busbars_a": 5200.0,
+  "delta_t_s": 0.3,
+  "k_b": 1.2,
+  "k_bth": 1.1,
+  "t_upstream_s": 0.0,
+  "spz_enabled": true,
+  "spz_pause_s": 0.5,
 
-  "t_nast_1_s": 0.5,
-  "t_nast_2_s": 0.0,
-  "t_breaker_s": 0.05,
-
-  "kb": 1.2,
-  "kc": 1.5,
-  "kbth": 0.9,
+  "lokalna_generacja_aktywna": false,
+  "lokalna_generacja_typ_zrodla": null,
+  "lokalna_generacja_wklad_a": 0.0,
+  "lokalna_generacja_prog_udzialu_zsz": null,
 
   "_expected_results": {
-    "_comment": "Obliczenia referencyjne — konflikt nastaw",
+    "_comment": "Z faktycznego przebiegu ProtectionSettingsEngine.calculate() (karta W3-C2) — konflikt nastaw",
     "i_min_sel_primary_a": 7200.0,
-    "i_max_sens_primary_a": 4000.0,
-    "ithn_a": 14100.0,
-    "tk_s": 1.1,
-    "ithdop_a": 13442.0,
-    "i_max_th_primary_a": 12098.0,
-    "i_max_primary_a": 4000.0,
-    "window_width_a": -3200.0,
+    "i_max_sens_primary_a": 5000.0,
+    "i_max_th_primary_a": 57324.7,
+    "window_i_min_primary_a": 7200.0,
+    "window_i_max_primary_a": 5000.0,
     "window_valid": false,
+    "limiting_criterion_max": "sensitivity",
     "verdict": "NIEZGODNE"
   },
 
   "_calculation_trace": {
-    "_step_1_selectivity": "I_min_sel = kb * Ik_max_next = 1.2 * 6000 = 7200 A",
-    "_step_2_sensitivity": "I_max_sens = Ik_min / kc = 6000 / 1.5 = 4000 A",
-    "_step_3_thermal_tk": "tk = n_cycles * (t_fault + t_breaker) = 2 * (0.5 + 0.05) = 1.1 s",
-    "_step_4_thermal_ithn": "Ithn = S * jthn = 150 * 94 = 14100 A",
-    "_step_5_thermal_ithdop": "Ithdop = Ithn / sqrt(tk) = 14100 / sqrt(1.1) = 13442 A",
-    "_step_6_thermal_imax": "I_max_th = kbth * Ithdop = 0.9 * 13442 = 12098 A",
-    "_step_7_window": "[I_min, I_max] = [I_min_sel, min(I_max_sens, I_max_th)] = [7200, min(4000, 12098)] = [7200, 4000] A",
-    "_step_8_window_invalid": "I_min (7200) > I_max (4000) => OKNO SPRZECZNE",
-    "_step_9_verdict": "Okno sprzeczne, brak mozliwosci doboru nastawy => NIEZGODNE"
+    "_step_1_selectivity": "I_min_sel = k_b * Ik_max_next = 1.2 * 6000 = 7200 A",
+    "_step_2_sensitivity": "I_max_sens = Ik3_min_beginning / k_b = 6000 / 1.2 = 5000 A",
+    "_step_3_thermal_window": "I_max_th = (150*94/sqrt(0.05)) / 1.1 = 57324.7 A (nie limituje)",
+    "_step_4_window": "[I_min, I_max] = [7200, min(5000, 57324.7)] = [7200, 5000] A => OKNO SPRZECZNE (I_min > I_max)",
+    "_step_5_deficit": "deficyt = 7200 - 5000 = 2200 A = 2.2 kA",
+    "_step_6_verdict": "Okno sprzeczne, brak mozliwosci doboru nastawy => NIEZGODNE"
   },
 
   "_engineering_notes": {
-    "_problem": "Konfiguracja sieci uniemozliwia dobor nastawy I>> spelniecej jednoczesnie kryterium selektywnosci i czulosci.",
+    "_problem": "Konfiguracja sieci uniemozliwia dobor nastawy I>> spelniajacej jednoczesnie kryterium selektywnosci i czulosci.",
     "_possible_solutions": [
-      "1. Zmiana przekladnika pradowego (wiekszy przekladnik, np. 400/5 zamiast 600/5)",
+      "1. Obnizenie wspolczynnika k_b (za zgoda operatora)",
       "2. Zastosowanie zabezpieczenia z charakterystyka zalezna (I> zamiast I>>)",
       "3. Zmiana topologii sieci (podzial obciazenia na wiecej odprowadzen)",
-      "4. Zastosowanie zabezpieczenia odleglosciowego",
-      "5. Zmiana wspolczynnikow kb/kc (za zgoda operatora)"
+      "4. Przesuniecie punktu kolejnego zabezpieczenia (next_bus_id)"
     ]
   }
 }

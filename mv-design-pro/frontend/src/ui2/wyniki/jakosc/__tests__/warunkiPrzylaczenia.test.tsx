@@ -72,7 +72,7 @@ describe('SekcjaWarunkowPrzylaczenia — realna ścieżka do końcówki', () => 
               wartosc: 6.2,
               wymagana: 5,
               jednostka: 'MW',
-              opis_pl: 'Moc oddawana do sieci 6.200 MW wobec limitu 5.000 MW (PRZEKROCZONY).',
+              opis_pl: 'Moc oddawana do sieci 6,2 MW wobec limitu 5 MW (limit przekroczony).',
               readiness_codes: [],
             },
           ],
@@ -125,7 +125,7 @@ describe('SekcjaWarunkowPrzylaczenia — werdykt', () => {
               wartosc: 6.2,
               wymagana: 5,
               jednostka: 'MW',
-              opis_pl: 'Moc oddawana do sieci 6.200 MW wobec limitu 5.000 MW (PRZEKROCZONY).',
+              opis_pl: 'Moc oddawana do sieci 6,2 MW wobec limitu 5 MW (limit przekroczony).',
               readiness_codes: [],
             },
             {

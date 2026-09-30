@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Literal
+
+#: Stan próby agenta w chwili jej utworzenia — cykl życia próby, nie werdykt (plan AB §8 F11).
+StanProby = Literal["running"]
 
 
 @dataclass(frozen=True)
@@ -60,7 +64,7 @@ class RunAttempt:
     attempt: int | None
     workspace_path: str
     started_at: datetime
-    status: str
+    status: StanProby
     error: str | None = None
 
 

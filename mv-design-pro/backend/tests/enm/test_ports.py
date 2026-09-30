@@ -417,77 +417,10 @@ def test_json_round_trip_with_ports() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 10 — automigracja v_ports_001
+# Test 10 — automigracja v_ports_001: SKASOWANY (W1, 2026-09-09). Moduł
+# `enm/migrations/v_ports_001.py` nie miał konsumenta produkcyjnego — żaden tor
+# odczytu/zapisu modelu go nie wołał; jedynym czytelnikiem był ten test.
 # ---------------------------------------------------------------------------
-
-
-def test_migration_v_ports_001_idempotent() -> None:
-    from enm.migrations.v_ports_001 import migrate, needs_migration
-
-    model = EnergyNetworkModel(
-        header=_make_minimal_header(),
-        buses=[Bus(ref_id="bus_1", name="B1", voltage_kv=15.0)],
-        substations=[
-            Substation(ref_id="sub_gpz", name="GPZ", station_type="gpz"),
-        ],
-        bays=[
-            Bay(
-                ref_id="bay_in",
-                name="Bay IN",
-                bay_role="IN",
-                substation_ref="sub_gpz",
-                bus_ref="bus_1",
-            ),
-            Bay(
-                ref_id="bay_out",
-                name="Bay OUT",
-                bay_role="OUT",
-                substation_ref="sub_gpz",
-                bus_ref="bus_1",
-            ),
-            Bay(
-                ref_id="bay_tr",
-                name="Bay TR",
-                bay_role="TR",
-                substation_ref="sub_gpz",
-                bus_ref="bus_1",
-            ),
-            Bay(
-                ref_id="bay_oze",
-                name="Bay OZE",
-                bay_role="OZE",
-                substation_ref="sub_gpz",
-                bus_ref="bus_1",
-            ),
-        ],
-    )
-
-    assert needs_migration(model) is True
-
-    migrated, stats = migrate(model)
-    assert stats["bays_migrated"] == 4
-    assert stats["ports_added"] == 4
-    assert stats["connection_nodes_added"] == 4
-    assert stats["substations_extended"] == 1
-
-    # Każdy Bay ma 1 port wygenerowany z bay_role
-    for bay in migrated.bays:
-        assert len(bay.ports) == 1
-        assert bay.ports[0].nominal_voltage_kv == 15.0
-        assert bay.ports[0].meta.get("migrated_from") == "v_ports_001"
-
-    # Mapping bay_role → port kind
-    role_to_kind = {b.bay_role: b.ports[0].kind for b in migrated.bays}
-    assert role_to_kind["IN"] == "sn_input"
-    assert role_to_kind["OUT"] == "sn_output"
-    assert role_to_kind["TR"] == "sn_transformer"
-    assert role_to_kind["OZE"] == "sn_der_pv"
-
-    # Idempotency: drugi run nic nie zmienia
-    assert needs_migration(migrated) is False
-    migrated2, stats2 = migrate(migrated)
-    assert stats2["bays_migrated"] == 0
-    assert stats2["skipped_reason"] == "already_migrated"
 
 
 # ---------------------------------------------------------------------------

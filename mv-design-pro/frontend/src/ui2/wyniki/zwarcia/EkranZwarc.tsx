@@ -9,19 +9,21 @@
  *
  * Zero fizyki, zero mutacji; store czytany wyłącznie do odczytu
  * (`useWynikZwarciowy`). Wybór punktu zwarcia: NATYWNY wybór wiersza tabeli
- * (delta API wzorca zrealizowana — scalenie U3 #4 zamyka TODO-KARTĘ E8.2 A);
- * wiersz wybrany steruje sekcją wkładów.
+ * (delta API wzorca, scalenie U3 #4); wiersz wybrany steruje sekcją wkładów.
  */
 
 import { useMemo, useState } from 'react';
 import './zwarcia.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
+import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie, useNazwaObiektu } from '../wzorzec';
 import { useRozplywZwarciowy, useWkladyZwarciowe } from './api';
 import { useOtworzKonfiguracjeStacji, WeryfikacjaAparatury } from './aparatura';
 import { BilansIEC } from './BilansIEC';
+import { PasmoMinMax } from './PasmoMinMax';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
 import { RozplywZwarciowy } from './RozplywZwarciowy';
+import { SladPodzialuPradu } from './SladPodzialuPradu';
+import { SladZrodelSieciowych } from './SladZrodelSieciowych';
 import { WkladyZwarciowe } from './WkladyZwarciowe';
 import { WykresZwarc } from './WykresZwarc';
 import { ZWARCIA_STRINGS } from './strings';
@@ -29,6 +31,7 @@ import { useSwiezoscNaglowka } from '../../freshness';
 import {
   KLUCZ_PUNKT,
   KOLUMNY_ZWARC,
+  nazwaPunktuZwarcia,
   naWierszeZwarc,
   naZalozeniaZwarc,
   useWynikZwarciowy,
@@ -39,14 +42,11 @@ export interface EkranZwarcProps {
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
   onEksport?: () => void;
-  /** Współczynnik napięciowy c z konfiguracji przebiegu (TODO-KARTA 3). */
-  wspolczynnikC?: number;
-  /** Czas cieplny [s] z konfiguracji przebiegu (TODO-KARTA 3). */
-  czasCieplnyS?: number;
   /**
-   * Wkłady źródeł per punkt zwarcia (klucz = target_id). Brak wpisu → sekcja
-   * wkładów pokazuje stan „dane niedostępne" (dane spoza kontraktu read-only —
-   * TODO-KARTA 1 w `zwarciaModel.ts`).
+   * Wkłady źródeł per punkt zwarcia (klucz = target_id) — nadpisanie TESTOWE,
+   * pierwszeństwo przed realnym dostawcą (`useWkladyZwarciowe`, endpoint
+   * `POST /api/proof/sc3f/contributions`). Produkcyjnie ekran pobiera wkłady
+   * sam; prop istnieje wyłącznie dla fixture'ów testów.
    */
   wklady?: Record<string, WkladZwarciowy[]>;
 }
@@ -55,11 +55,10 @@ export function EkranZwarc({
   trybZaawansowania,
   onOtworzDowod,
   onEksport,
-  wspolczynnikC,
-  czasCieplnyS,
   wklady,
 }: EkranZwarcProps) {
   const { wynik, runId } = useWynikZwarciowy();
+  const nazwaObiektu = useNazwaObiektu();
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ, wspolnej derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
   const rows = wynik?.rows ?? [];
@@ -105,7 +104,7 @@ export function EkranZwarc({
   }
 
   const wierszAktywny = rows.find((r) => r.target_id === aktywnyPunkt) ?? rows[0];
-  const nazwaAktywnego = wierszAktywny.target_name ?? wierszAktywny.target_id;
+  const nazwaAktywnego = nazwaPunktuZwarcia(wierszAktywny, nazwaObiektu);
   const wkladyAktywne =
     aktywnyPunkt && wklady ? wklady[aktywnyPunkt] ?? null : wkladyPobrane?.wklady ?? null;
   // Wywod {tekst, latex} z backendu (zasada KaTeX) — tylko od realnego dostawcy;
@@ -120,9 +119,9 @@ export function EkranZwarc({
     <div data-testid="mvd-zwarcia-ekran">
       <EkranAnalizy
         naglowek={{ analizaPL: ZWARCIA_STRINGS.analiza, runId: runId ?? undefined, ...swiezosc }}
-        zalozenia={naZalozeniaZwarc(wspolczynnikC, czasCieplnyS)}
+        zalozenia={naZalozeniaZwarc(wynik.konfiguracja_biegu, wynik.zalozenia, (ref) => nazwaObiektu(ref))}
         kolumny={KOLUMNY_ZWARC}
-        wiersze={naWierszeZwarc(rows)}
+        wiersze={naWierszeZwarc(rows, nazwaObiektu)}
         wykres={<WykresZwarc rows={rows} />}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
@@ -130,6 +129,17 @@ export function EkranZwarc({
         kluczWiersza={KLUCZ_PUNKT}
         onWybierzWiersz={setWybranyPunkt}
         wybranyWiersz={aktywnyPunkt}
+        // Karta UI2 p.6: punkty zwarciowe toru kanonicznego SĄ węzłami
+        // sieci — ten sam typ, którego już używa siostrzana akcja „Pokaż na
+        // schemacie" tego ekranu (`pokazNaSchemacie.ts`: `type: 'Bus'`).
+        typElementuWiersza={() => 'Bus'}
+        // Poprawka KLASA NIE INSTANCJA: klucz wiersza (`KLUCZ_PUNKT`) niesie
+        // `target_id` (techniczny), a widoczna kolumna „Punkt" pokazuje nazwę z
+        // mostu nazw wyników — inspektor dostaje tę samą nazwę (karta #145).
+        nazwaElementuWiersza={(punktId) => {
+          const wiersz = rows.find((r) => r.target_id === punktId);
+          return wiersz ? nazwaPunktuZwarcia(wiersz, nazwaObiektu) : undefined;
+        }}
       />
 
       <div className="mvd-zwarcia-akcje" data-testid="mvd-zwarcia-akcje">
@@ -137,11 +147,24 @@ export function EkranZwarc({
           type="button"
           className="mvd-zwarcia-wykres-btn"
           data-testid="mvd-zwarcia-pokaz-sld"
-          onClick={() => pokazNaSchemacie(wierszAktywny, runId, rozplyw)}
+          onClick={() => pokazNaSchemacie(wierszAktywny, runId, rozplyw.flows)}
         >
           {ZWARCIA_STRINGS.pokazNaSchemacie}
         </button>
       </div>
+
+      {/* Ślad Z_Q (CV-4.3 K6/K7) — właściwość CAŁEGO biegu (nie wybranego punktu):
+          renderuje się wyżej, obok tabeli głównej, przed sekcjami per-punkt. */}
+      <SladZrodelSieciowych
+        zrodlaSieciowe={wynik.zrodla_sieciowe}
+        trybZaawansowania={trybZaawansowania}
+        onOtworzDowod={onOtworzDowod}
+      />
+
+      {/* Karta W3-G3 (aneks D7): pasmo MIN/MAX — właściwość CAŁEGO biegu (jak
+          ślad Z_Q wyżej), oba scenariusze c_max/c_min JEDNEGO przypadku obok
+          siebie, z proweniencją każdej strony. */}
+      <PasmoMinMax runId={runId} trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
 
       <BilansIEC row={wierszAktywny} punktNazwa={nazwaAktywnego} />
 
@@ -155,9 +178,18 @@ export function EkranZwarc({
 
       <RozplywZwarciowy
         punktNazwa={nazwaAktywnego}
-        flows={rozplyw}
+        flows={rozplyw.flows}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}
+      />
+
+      {/* Karta WB-ROZPLYW: ślad WHITE BOX podziału prądu zwarciowego (TH-1) —
+          ta sama odpowiedź co tabela rozpływu wyżej (jedno wywołanie), pod nią. */}
+      <SladPodzialuPradu
+        punktNazwa={nazwaAktywnego}
+        trace={rozplyw.trace}
+        blad={rozplyw.blad}
+        trybZaawansowania={trybZaawansowania}
       />
 
       <WkladyZwarciowe

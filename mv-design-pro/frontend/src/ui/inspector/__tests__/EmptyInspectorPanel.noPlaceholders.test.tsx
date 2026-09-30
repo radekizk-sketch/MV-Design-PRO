@@ -57,4 +57,16 @@ describe('EmptyInspectorPanel — brak placeholder "—"', () => {
     render(<EmptyInspectorPanel selectedElement={elem} />);
     expect(screen.getByText(/TR-01 Stacja Włoszczowa/)).toBeInTheDocument();
   });
+
+  // Karta ETYKIETY-TR: typ TransformerBranch obejmuje też transformatory WN/SN GPZ —
+  // etykieta typu nie może zakładać klasy SN/nN (jak w siatce właściwości i menu).
+  it.each(['Transformator SN/nN', 'TR1 110/15 kV'])(
+    'transformator „%s” → typ układu „Transformator”, bez zaszytej klasy',
+    (name) => {
+      render(<EmptyInspectorPanel selectedElement={{ id: 'tr-1', type: 'TransformerBranch', name }} />);
+      const wiersz = screen.getByText('Typ układu').parentElement;
+      expect(wiersz?.textContent).toContain('Transformator');
+      expect(wiersz?.textContent).not.toMatch(/SN\/nN|WN\/SN/);
+    },
+  );
 });

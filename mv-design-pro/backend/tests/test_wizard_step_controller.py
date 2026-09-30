@@ -249,6 +249,68 @@ class TestAtomicity:
         assert len(result.enm["buses"]) > 0
         assert len(result.enm["sources"]) > 0
 
+    def test_apply_k2_carries_ik_and_min_fields_when_given(self):
+        """CV-4.3 K7: ik3_ka/sk3_min_mva/ik3_min_ka/rx_ratio_min przechodzą do źródła
+        BEZ domyślnych wartości — obecne w danych kroku, obecne w źródle."""
+        enm = _enm_with_name()
+        result = apply_step(
+            enm,
+            "K2",
+            {
+                "bus_name": "Szyna główna SN",
+                "voltage_kv": 15,
+                "sk3_mva": 250,
+                "ik3_ka": 9.6,
+                "rx_ratio": 0.1,
+                "sk3_min_mva": 150,
+                "ik3_min_ka": 6.0,
+                "rx_ratio_min": 0.2,
+            },
+        )
+        assert result.success is True
+        zrodlo = result.enm["sources"][0]
+        assert zrodlo["ik3_ka"] == 9.6
+        assert zrodlo["sk3_min_mva"] == 150
+        assert zrodlo["ik3_min_ka"] == 6.0
+        assert zrodlo["rx_ratio_min"] == 0.2
+
+    def test_apply_k2_omits_ik_and_min_fields_when_not_given(self):
+        """Zero fabrykacji: brak pola w danych kroku => brak klucza w źródle (nie
+        None, nie domyślna liczba)."""
+        enm = _enm_with_name()
+        result = apply_step(
+            enm,
+            "K2",
+            {"bus_name": "Szyna główna SN", "voltage_kv": 15, "sk3_mva": 250, "rx_ratio": 0.1},
+        )
+        assert result.success is True
+        zrodlo = result.enm["sources"][0]
+        for pole in ("ik3_ka", "sk3_min_mva", "ik3_min_ka", "rx_ratio_min"):
+            assert pole not in zrodlo
+
+    def test_apply_k2_upsert_preserves_min_fields_not_resent(self):
+        """Drugie wywołanie K2 bez pól MIN NIE kasuje wcześniej zapisanych danych MIN
+        (upsert częściowy — ten sam wzorzec co dla pozostałych pól źródła)."""
+        enm = _enm_with_name()
+        po_pierwszym = apply_step(
+            enm,
+            "K2",
+            {
+                "bus_name": "Szyna główna SN",
+                "voltage_kv": 15,
+                "sk3_mva": 250,
+                "sk3_min_mva": 150,
+            },
+        ).enm
+        po_drugim = apply_step(
+            po_pierwszym,
+            "K2",
+            {"bus_name": "Szyna główna SN", "voltage_kv": 15, "sk3_mva": 260},
+        ).enm
+        zrodlo = po_drugim["sources"][0]
+        assert zrodlo["sk3_mva"] == 260
+        assert zrodlo["sk3_min_mva"] == 150
+
     def test_apply_preserves_original_on_failure(self):
         """apply_step uses copy-on-write — original ENM never modified."""
         enm = _enm_with_name()

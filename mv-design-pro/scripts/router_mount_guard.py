@@ -114,7 +114,11 @@ MIN_MODULOW_Z_ROUTEREM = 45
 #: ZAMONTOWANY pod /api (7 tras zywych + 2 nowe eksporty PDF/DOCX, poza budzetem
 #: bo nie sa juz odstawione) — budzet zmalal o 7: archive_diff 2 + cloud_backup 4
 #: + incremental_archive 3 = 9.
-BUDZET_ODSTAWIONYCH_TRAS = 9
+#: POMIAR PO NAPRAWIE (karta ARCHIWUM PROJEKTU, 2026-09-24): archive_diff (2 trasy)
+#: i incremental_archive ZAMONTOWANE pod /api z konsumentem (okno „Archiwum
+#: projektu (ZIP)"); incremental_archive przebudowany bez stanu w procesie (2 trasy,
+#: historia eksportow z pamieci skasowana) — zostaje wylacznie cloud_backup 4 = 4.
+BUDZET_ODSTAWIONYCH_TRAS = 4
 
 # --------------------------------------------------------------------------
 # ROUTERY SWIADOMIE ODSTAWIONE (nie wpiete i nie usuniete).
@@ -134,26 +138,8 @@ SWIADOMIE_ODSTAWIONE: dict[str, tuple[tuple[str, ...], str]] = {
     # 2 nowe eksporty PDF/DOCX pod /api/protection-coordination w api/main.py.
     # Wpis USUNIETY z tej listy — zapadka [router-nieaktualny-wpis] wymuszalaby
     # jego zdjecie, gdyby zostal (modul juz nie jest odstawiony).
-    "archive_diff": (
-        ("router",),
-        "Roznicowanie dwoch archiwow projektu (ZIP) — zdolnosc odnotowana w "
-        "WIAZACYM inwentarzu `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md` (wiersz "
-        "„Archiwum projektu (ZIP)”, ocena ◐) jako SWIADOMA luka: „poza UI zostaja "
-        "roznicowanie i archiwum przyrostowe”. Warstwa domenowa "
-        "(`domain/archive_diff.py` + `tests/test_archive_diff.py`) jest kompletna i "
-        "przetestowana; brakuje wejscia w UI. Usuniecie zabralo by zdolnosc, ktora "
-        "inwentarz sledzi jako zaplanowana — wpiecie bez ekranu dalo by trase bez "
-        "konsumenta. Decyzja: karta domykajaca archiwum end-to-end.",
-    ),
-    "incremental_archive": (
-        ("router",),
-        "Eksport/import przyrostowy archiwum + historia eksportow — ta sama "
-        "odnotowana luka inwentarza co `archive_diff` („poza UI zostaja roznicowanie "
-        "i archiwum przyrostowe”). Dodatkowo modul jest CZYNNYM przedmiotem programu "
-        "10x (`docs/plan/10X_WSP_INWENTARZ.md`: pozycja P2 wspolbieznosci, cykl "
-        "odczyt-przeliczenie-zapis naprawiony w §7 pkt 2) — kasacja tutaj kolidowala "
-        "by z inna karta. Decyzja razem z `archive_diff`.",
-    ),
+    # archive_diff i incremental_archive ZAMONTOWANE (karta ARCHIWUM PROJEKTU,
+    # 2026-09-24) — konsument: okno „Archiwum projektu (ZIP)" przestrzeni Projekt.
     "cloud_backup": (
         ("router",),
         "Kopie zapasowe archiwow w chmurze (4 koncowki + dostawcy w "

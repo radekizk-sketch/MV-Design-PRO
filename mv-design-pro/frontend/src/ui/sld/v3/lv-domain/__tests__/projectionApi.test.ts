@@ -1,5 +1,5 @@
 /**
- * Klient atomowej projekcji nN (kontrakt 3.0.0, kanon
+ * Klient atomowej projekcji nN (kontrakt 4.0.0, kanon
  * `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md` §3): JEDNO żądanie, odpowiedź
  * przyjęta WYŁĄCZNIE gdy (a) ma obsługiwaną wersję i kształt, (b) jej
  * tożsamość (przypadek/stacja/scenariusz) jest tożsamością żądania. Iloczyn
@@ -27,9 +27,9 @@ function odpowiedz(body: unknown, status = 200): void {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe('isLvDomainProjectionV1 — wersja i kształt kontraktu 3.0.0', () => {
-  it('fixtura z backendu ma kształt 3.0.0', () => {
-    expect(LV_DOMAIN_PROJECTION_CONTRACT_VERSION).toBe('3.0.0');
+describe('isLvDomainProjectionV1 — wersja i kształt kontraktu 4.0.0', () => {
+  it('fixtura z backendu ma kształt 4.0.0', () => {
+    expect(LV_DOMAIN_PROJECTION_CONTRACT_VERSION).toBe('4.0.0');
     expect(isLvDomainProjectionV1(PROJEKCJA)).toBe(true);
   });
 
@@ -42,7 +42,7 @@ describe('isLvDomainProjectionV1 — wersja i kształt kontraktu 3.0.0', () => {
     expect(isLvDomainProjectionV1({ ...PROJEKCJA, swz_snapshot: { ...bezTransformatorow, feeders: [] } })).toBe(false);
   });
 
-  it('graf OK bez `islands` / `devices` / `segments` / `supply_paths` = odrzucenie (3.0.0 wymaga stanów i ról)', () => {
+  it('graf OK bez `islands` / `devices` / `segments` / `supply_paths` = odrzucenie (4.0.0 wymaga stanów i ról)', () => {
     if (PROJEKCJA.graph.status !== 'OK') throw new Error('fixtura musi mieć graf OK');
     for (const klucz of ['islands', 'devices', 'segments', 'supply_paths', 'sections', 'measurements', 'protection_assignments'] as const) {
       const graf: Record<string, unknown> = { ...PROJEKCJA.graph };
@@ -97,7 +97,7 @@ describe('fetchLvDomainProjectionV1 — jedno żądanie, odpowiedź przyjęta al
 
   it('odpowiedź z inną wersją → błąd z nazwą obsługiwanej wersji', async () => {
     odpowiedz({ ...PROJEKCJA, contract_version: '2.0.0' });
-    await expect(fetchLvDomainProjectionV1(REQUEST)).rejects.toThrow('3.0.0');
+    await expect(fetchLvDomainProjectionV1(REQUEST)).rejects.toThrow('4.0.0');
   });
 
   it('odpowiedź dla innej stacji (np. z pamięci podręcznej) → błąd tożsamości, nie cudzy rysunek', async () => {

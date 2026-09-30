@@ -22,7 +22,6 @@ export interface ProtectionRow {
   readonly typePl: string;
   readonly functionsPl: readonly string[];  // np. ["50/51", "51N", "67"]
   readonly settingsCount: number;
-  readonly selectivityStatus: 'kompletna' | 'częściowa' | 'błędna' | 'brak danych';
   /** Naprawa eng.20: catalog_ref VT używanego dla pól zabezpieczeniowych. */
   readonly vtCatalogRef?: string | null;
 }
@@ -54,20 +53,6 @@ export interface StationConfigProtectionCardProps {
   /** Phase 18: VT onChange (per bay). */
   readonly onChangeVt?: (bayDesignation: string, vtId: string | null) => void;
 }
-
-const SELECTIVITY_CLASS: Record<ProtectionRow['selectivityStatus'], string> = {
-  kompletna: 'text-status-ok',
-  'częściowa': 'text-status-warn',
-  błędna: 'text-status-error',
-  'brak danych': 'text-scada-muted',
-};
-
-const SELECTIVITY_LABEL: Record<ProtectionRow['selectivityStatus'], string> = {
-  kompletna: 'kompletna',
-  'częściowa': 'do konfiguracji',
-  błędna: 'do weryfikacji',
-  'brak danych': 'do konfiguracji',
-};
 
 export function StationConfigProtectionCard(
   props: StationConfigProtectionCardProps,
@@ -122,7 +107,6 @@ export function StationConfigProtectionCard(
                 <th className="text-left">Typ</th>
                 <th className="text-left">Funkcje</th>
                 <th className="text-right">Nastawy</th>
-                <th className="text-left">Selektywność</th>
                 <th className="text-left">Przekł. napięciowy pola</th>
               </tr>
             </thead>
@@ -133,9 +117,6 @@ export function StationConfigProtectionCard(
                   <td>{r.typePl}</td>
                   <td className="font-mono text-[10px]">{r.functionsPl.join(', ')}</td>
                   <td className="text-right font-mono">{r.settingsCount}</td>
-                  <td className={SELECTIVITY_CLASS[r.selectivityStatus]}>
-                    {SELECTIVITY_LABEL[r.selectivityStatus]}
-                  </td>
                   <td>
                     {/* Phase 18: VT select per row gdy onChangeVt dostarczony. */}
                     {onChangeVt ? (

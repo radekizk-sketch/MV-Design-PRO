@@ -29,7 +29,7 @@ export const APARAT_NN_STRINGS = {
   typPlaceholder: '— wybierz aparat z katalogu (APARAT_NN) —',
   typBlad: 'Nie udało się pobrać katalogu aparatów nN.',
   nazwa: 'Nazwa aparatu',
-  nazwaPlaceholder: 'np. Wyłącznik odpływu K1',
+  nazwaPlaceholder: 'np. Wyłącznik odpływu nr 1',
 
   paramSekcjaNormowa: 'Parametry z katalogu',
   paramIn: 'Prąd znamionowy In',

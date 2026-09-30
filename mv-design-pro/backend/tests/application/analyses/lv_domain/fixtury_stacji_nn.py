@@ -37,7 +37,13 @@ from enm.models import (
 REF_STACJA = "stn"
 
 
-def _transformator(ref_id: str, name: str, lv_bus_ref: str, sn_mva: float = 0.63) -> Transformer:
+def _transformator(
+    ref_id: str,
+    name: str,
+    lv_bus_ref: str,
+    sn_mva: float = 0.63,
+    uklad: str | None = "TN-C-S",
+) -> Transformer:
     return Transformer(
         ref_id=ref_id,
         name=name,
@@ -50,6 +56,8 @@ def _transformator(ref_id: str, name: str, lv_bus_ref: str, sn_mva: float = 0.63
         pk_kw=6.5,
         vector_group="Dyn11",
         catalog_ref="tr-15-04-630kva-dyn11",
+        # W5-A: uklad sieci nN niesie transformator zasilajacy (jedyny nosnik).
+        lv_earthing_system=uklad,
     )
 
 
@@ -91,7 +99,7 @@ def zbuduj_stacje_nn(
     pv_na_nn: bool = False,
     wyspa_odcieta: bool = False,
     pv_na_wyspie: bool = False,
-    uklad_uziemienia: str = "TN-C-S",
+    uklad_uziemienia: str | None = "TN-C-S",
     dlugosc_kabla_b_km: float = 0.05,
     moc_tr2_mva: float = 0.63,
     zdolnosc_pv: str | None = None,
@@ -136,7 +144,7 @@ def zbuduj_stacje_nn(
         Bus(ref_id="a1", name="A1", voltage_kv=0.4),
         Bus(ref_id="a2", name="A2", voltage_kv=0.4),
     ]
-    transformers = [_transformator("tr1", "TR1", "nn_a")]
+    transformers = [_transformator("tr1", "TR1", "nn_a", uklad=uklad_uziemienia)]
     branches: list = [_aparat("ap_a", "nn_a", "a1"), _kabel("c_a", "a1", "a2")]
     loads = [Load(ref_id="load_a", name="Odbiór A", bus_ref="a2", p_mw=0.05, q_mvar=0.01)]
     generators: list[Generator] = []
@@ -155,7 +163,7 @@ def zbuduj_stacje_nn(
     transformer_refs = ["tr1"]
 
     if transformatory == 2:
-        tr2 = _transformator("tr2", "TR2", druga_szyna, sn_mva=moc_tr2_mva)
+        tr2 = _transformator("tr2", "TR2", druga_szyna, sn_mva=moc_tr2_mva, uklad=uklad_uziemienia)
         if niezalezny_system_sn_tr2:
             buses.append(Bus(ref_id="sn2", name="SN drugi system", voltage_kv=15.0))
             tr2 = tr2.model_copy(update={"hv_bus_ref": "sn2"})
@@ -258,7 +266,6 @@ def zbuduj_stacje_nn(
                 station_type="mv_lv",
                 bus_refs=station_bus_refs,
                 transformer_refs=transformer_refs,
-                meta={"nn_earthing_system": uklad_uziemienia},
             )
         ],
     )

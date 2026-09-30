@@ -5,8 +5,11 @@
  * Decyzje architektoniczne karty §2:
  * - selekcja: drzewo emituje zdarzenie `selekcja` z prawdziwym źródłem
  *   ('drzewo-kontekstowe'); adapter store'a selekcji pozostaje fallbackiem;
- * - tryby drzewa topologii „administracyjny"/„obwodowy": UKRYTE w U1 (brak źródła
- *   danych — zero martwego UI); dane drzewa: tryb „zasilania";
+ * - tryby drzewa topologii „administracyjny" (grupowanie po `Bay.substation_ref`)
+ *   i „obwodowy" (grupowanie po odejściach ze źródła w drzewie zasilania) mają
+ *   źródło od KARTA-UI2 §1 p. 11 (`useTopologyStore.structure`,
+ *   `topologyTreeAdapter.ts`); przełącznik trybu w `DrzewoPrzestrzeni` niżej,
+ *   domyślny tryb „zasilania" (dotychczasowe zachowanie 1:1);
  * - hierarchia przebiegów: zakres = aktywny przypadek (agregacja wielu przypadków = E7.x).
  *
  * E1.7b/c (przełączenie powłoki): AppRoot jest PRODUKCYJNYM wejściem aplikacji.
@@ -32,9 +35,13 @@ import {
   useTopologyTree,
   useZasilanieDrzewaTopologii,
 } from './nav';
-import type { AkcjaPusty } from './nav';
+import type { AkcjaPusty, TrybDrzewaTopologii } from './nav';
 import { InspectorPanel } from './inspector';
-import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapter';
+import {
+  otworzDowodInspektora,
+  useObiektInspektora,
+  useRewizjaModelu,
+} from './adapters/inspectorAdapter';
 import { emituj, subskrybuj, startEventBusAdapters } from './events';
 import {
   CommandPalette,
@@ -116,7 +123,13 @@ function DrzewoPrzestrzeni({
   zaznaczonyId: string | null;
   onZaznacz: (id: string) => void;
 }) {
-  const topologia = useTopologyTree('zasilania');
+  // KARTA-UI2 §1 p. 11: przełącznik trybu widoczny WYŁĄCZNIE dla drzewa
+  // topologii (przestrzeń „Model") — `administracyjny`/`obwodowy` mają teraz
+  // realne źródło (`useTopologyStore.structure`, `topologyTreeAdapter.ts`),
+  // więc przełącznik `ContextTree` (dotąd nigdy niewpięty — `tryb` zawsze
+  // `undefined`) dostaje stan i wybór użytkownika.
+  const [trybTopologii, setTrybTopologii] = useState<TrybDrzewaTopologii>('zasilania');
+  const topologia = useTopologyTree(trybTopologii);
   const przypadki = useCasesTree();
   const przebiegi = useRunsTree();
 
@@ -132,6 +145,8 @@ function DrzewoPrzestrzeni({
       onOtworz={(id) => onZaznacz(id)}
       filtrProblemy={false}
       akcjaPusty={akcjaPustegoDrzewa(space)}
+      tryb={space === 'model' ? trybTopologii : undefined}
+      onZmienTryb={space === 'model' ? setTrybTopologii : undefined}
     />
   );
 }
@@ -407,6 +422,8 @@ export function AppRoot() {
                   activeProjectId == null ? undefined : () => setZmianaProjektu(false)
                 }
                 onProjektOtwarty={() => setZmianaProjektu(false)}
+                onOtworzImportArkusza={() => setZadanieArkusza(true)}
+                onOtworzArchiwum={() => setZadanieArchiwum(true)}
               />
             ) : (
               <PulpitProjektu
@@ -458,7 +475,7 @@ export function AppRoot() {
               obiekt={obiekt}
               rewizjaModelu={rewizjaModelu}
               trybZaawansowania={advancementMode}
-              onOtworzDowod={() => undefined /* TODO-KARTA: przestrzeń Wyniki (E9) */}
+              onOtworzDowod={otworzDowodInspektora}
               onNawiguj={(cel) => emituj({ typ: 'selekcja', obiektId: cel.id, zrodlo: 'inspektor' })}
               onPrzelicz={() => void handleCalculate()}
             />

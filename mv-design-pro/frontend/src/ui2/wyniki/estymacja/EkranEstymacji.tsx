@@ -22,7 +22,13 @@ import { useEffect, useMemo, useState } from 'react';
 import './estymacja.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
-import { akcjaNaprawcza, EkranAnalizy, usePoprawWModelu } from '../wzorzec';
+import {
+  akcjaNaprawcza,
+  EkranAnalizy,
+  InformacjeAudytowe,
+  useNazwaObiektu,
+  usePoprawWModelu,
+} from '../wzorzec';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
   fetchWymaganiaEstymacji,
@@ -134,6 +140,7 @@ function PanelWymagan({
   wym: WymaganiaEstymacji;
   trybEkspercki: boolean;
 }) {
+  const nazwaObiektu = useNazwaObiektu();
   return (
     <section className="mvd-est-wymagania" data-testid="mvd-est-wymagania">
       <h3 className="mvd-est-sekcja-tytul">{S.wymaganiaTytul}</h3>
@@ -146,7 +153,7 @@ function PanelWymagan({
         </div>
         <div className="mvd-est-wym-para">
           <dt>{S.wymWezelBilansujacy}</dt>
-          <dd>{wym.slack_bus_ref}</dd>
+          <dd>{nazwaObiektu(wym.slack_bus_ref)}</dd>
         </div>
         <div className="mvd-est-wym-para">
           <dt>{S.wymLiczbaWezlow}</dt>
@@ -178,7 +185,7 @@ function PanelWymagan({
           <tbody>
             {wym.buses.map((b) => (
               <tr key={b.bus_ref}>
-                <td>{b.name ?? b.bus_ref}</td>
+                <td>{nazwaObiektu(b.bus_ref, b.name)}</td>
                 {trybEkspercki && <td className="mvd-num">{b.index}</td>}
                 <td className="mvd-num mvd-est-td-prawo">
                   {b.voltage_kv !== null ? `${fmtKV(b.voltage_kv)} ${S.jednKV}` : S.kreska}
@@ -198,12 +205,15 @@ function PanelWymagan({
 // ---------------------------------------------------------------------------
 
 function OpcjeWezlow({ buses }: { buses: readonly WezelWymagan[] }) {
+  // Karta #145: opcja nazywa węzeł mostem nazw wyników — identyfikator jest wyłącznie
+  // wartością opcji, nigdy jej tekstem.
+  const nazwaObiektu = useNazwaObiektu();
   return (
     <>
       <option value="">{S.pomiarWezelPusty}</option>
       {buses.map((b) => (
         <option key={b.bus_ref} value={b.bus_ref}>
-          {b.name ? `${b.name} (${b.bus_ref})` : b.bus_ref}
+          {nazwaObiektu(b.bus_ref, b.name)}
         </option>
       ))}
     </>
@@ -400,6 +410,7 @@ function PanelZlychDanych({
 }) {
   const bad = dane.bad_data;
   const poprawWModelu = usePoprawWModelu();
+  const nazwaObiektu = useNazwaObiektu();
   const chiIstotnosc: IstotnoscStanu = bad.chi_square_flag ? 'err' : 'ok';
   const lnrIstotnosc: IstotnoscStanu = bad.lnr_flag ? 'err' : 'ok';
   return (
@@ -430,8 +441,8 @@ function PanelZlychDanych({
       {bad.lnr_measurement ? (
         <p className="mvd-est-bad-podejrzany" data-testid="mvd-est-podejrzany">
           {S.badPodejrzany}: {typPomiaruPL(bad.lnr_measurement.meas_type, typy)} ·{' '}
-          {bad.lnr_measurement.bus_ref}
-          {bad.lnr_measurement.bus_j_ref ? ` → ${bad.lnr_measurement.bus_j_ref}` : ''}
+          {nazwaObiektu(bad.lnr_measurement.bus_ref)}
+          {bad.lnr_measurement.bus_j_ref ? ` → ${nazwaObiektu(bad.lnr_measurement.bus_j_ref)}` : ''}
           {/* F-K4 (znalezisko Z4): odrzucony pomiar prowadzi do SZYNY, w ktorej go
               wykonano — inaczej projektant wie, ze cos jest zle, i nie ma stad
               drogi do miejsca. Przycisk tylko przy przekroczonym progu LNR. */}
@@ -445,7 +456,7 @@ function PanelZlychDanych({
                 poprawWModelu(
                   bad.lnr_measurement!.bus_ref,
                   'Bus',
-                  bad.lnr_measurement!.bus_ref,
+                  nazwaObiektu(bad.lnr_measurement!.bus_ref),
                   'zle-dane-pomiarowe',
                 )
               }
@@ -529,6 +540,7 @@ function WynikEstymacji({
   onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = trybZaawansowania === 'expert';
+  const nazwaObiektu = useNazwaObiektu();
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
   const wezleZbioru = new Set<string>();
@@ -571,9 +583,9 @@ function WynikEstymacji({
 
       <EkranAnalizy
         naglowek={{ analizaPL: S.wezlyTytul, runId, ...swiezosc }}
-        zalozenia={naZalozeniaEstymacji(dane)}
+        zalozenia={naZalozeniaEstymacji(dane, nazwaObiektu)}
         kolumny={KOLUMNY_WEZLY}
-        wiersze={naWierszeWezlow(dane.buses)}
+        wiersze={naWierszeWezlow(dane.buses, nazwaObiektu)}
         onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_WIERSZA_WEZLY}
@@ -586,7 +598,7 @@ function WynikEstymacji({
           naglowek={{ analizaPL: S.pomiaryWynikTytul, runId, ...swiezosc }}
           zalozenia={[]}
           kolumny={KOLUMNY_POMIARY}
-          wiersze={naWierszePomiarow(dane.measurements, typy)}
+          wiersze={naWierszePomiarow(dane.measurements, typy, nazwaObiektu)}
           onOtworzDowod={onOtworzDowod}
           trybZaawansowania={trybZaawansowania}
           kluczWiersza={KLUCZ_WIERSZA_POMIARY}
@@ -597,28 +609,25 @@ function WynikEstymacji({
         <section className="mvd-est-braki" data-testid="mvd-est-braki">
           <h3 className="mvd-est-sekcja-tytul">{S.brakiTytul}</h3>
           <p className="mvd-est-pole-opis">{S.brakiOpis}</p>
-          <p className="mvd-num mvd-est-braki-lista">{brakiWezlow.join(', ')}</p>
+          <p className="mvd-est-braki-lista">
+            {brakiWezlow.map((ref) => nazwaObiektu(ref)).join(', ')}
+          </p>
         </section>
       )}
 
       {trybEkspercki && dane.white_box && <SladWls kroki={dane.white_box} />}
 
-      {trybEkspercki && (
-        <dl className="mvd-est-eksp" data-testid="mvd-est-eksp">
-          <div className="mvd-est-eksp-para">
-            <dt>{S.ekspEstymateId}</dt>
-            <dd className="mvd-num">{dane.estimate_id}</dd>
-          </div>
-          <div className="mvd-est-eksp-para">
-            <dt>{S.ekspWersjaSolvera}</dt>
-            <dd className="mvd-num">{dane.solver_version}</dd>
-          </div>
-          <div className="mvd-est-eksp-para">
-            <dt>{S.ekspWalidacja}</dt>
-            <dd className="mvd-num">{dane.validation_status}</dd>
-          </div>
-        </dl>
-      )}
+      {/* Karta #145: identyfikator estymaty, wersja solvera i kod walidacji wyłącznie w
+          „Informacjach audytowych" (tryb ekspercki, zwinięte). */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-est-informacje-audytowe"
+        wiersze={[
+          { etykieta: S.ekspEstymateId, wartosc: dane.estimate_id },
+          { etykieta: S.ekspWersjaSolvera, wartosc: dane.solver_version },
+          { etykieta: S.ekspWalidacja, wartosc: dane.validation_status },
+        ]}
+      />
     </div>
   );
 }
@@ -763,12 +772,14 @@ export function EkranEstymacji({ trybZaawansowania, onOtworzDowod }: EkranEstyma
       <header className="mvd-est-naglowek">
         <h2 className="mvd-est-tytul">{S.tytul}</h2>
         <p className="mvd-est-opis">{S.opisWstep}</p>
-        {trybEkspercki && (
-          <span className="mvd-est-run mvd-num" aria-label={S.runId}>
-            {przebieg.id}
-          </span>
-        )}
       </header>
+
+      {/* Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych". */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-est-przebieg-informacje-audytowe"
+        wiersze={[{ etykieta: S.runId, wartosc: przebieg.id }]}
+      />
 
       {stanWym.rodzaj === 'ladowanie' && (
         <StanPanel

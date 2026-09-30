@@ -36,9 +36,9 @@ from application.station_templates.apply import (
     _resolve_station_type,
     _resolve_transformer_ref_for_template,
     _szyna_nn_stacji,
-    _transformer_lv_voltage_kv,
     _zabuduj_stacje_w_odgalezieniu,
 )
+from application.station_templates.schema import transformer_voltages_kv
 from enm.domain_operations import execute_domain_operation
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
@@ -83,6 +83,8 @@ def _magistrala(liczba_odcinkow: int = 3) -> tuple[dict[str, Any], list[str]]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_binding": _binding("ZRODLO_SN", "src-gpz-15kv-250mva-rx010"),
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )["snapshot"]
     odcinki: list[str] = []
@@ -127,7 +129,7 @@ def _zastosuj_szablon(
     transformator = _resolve_transformer_ref_for_template(
         template, overrides=overrides, catalog_profile=None
     )
-    nn_kv = _transformer_lv_voltage_kv(transformator) or 0.4
+    nn_kv = transformer_voltages_kv(transformator)[1] or 0.4
     station_spec = {"name_pl": template.name_pl, "sn_voltage_kv": 15, "nn_voltage_kv": nn_kv}
     transformer_spec = {"transformer_catalog_ref": transformator}
     nn_block = {"outgoing_feeders_nn_count": 2, "outgoing_feeders_nn": []}

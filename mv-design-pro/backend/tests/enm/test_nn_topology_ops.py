@@ -113,7 +113,14 @@ def test_lancuch_rgnn_kabel_podrozdzielnica_odbior() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_load",
-        {"feeder_ref": field_ref, "active_power_kw": 12.0, "load_name": "Odbiór K1"},
+        {
+            "feeder_ref": field_ref,
+            "active_power_kw": 12.0,
+            "load_name": "Odbiór K1",
+            # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
+            # (FAB-D1 D5) — ten test sprawdza łańcuch RGnN, nie moc bierną.
+            "cos_phi": 0.9,
+        },
     )
     snap = wynik["snapshot"]
     odbior = snap["loads"][-1]
@@ -145,6 +152,41 @@ def test_add_nn_cable_segment_odrzuca_nieistniejaca_pozycje_katalogowa() -> None
         {"from_bus_ref": bus1, "length_m": 10.0, "catalog_ref": REF_KABEL_NN + LITEROWKA},
     )
     assert wynik["error_code"] == "catalog.item_not_found"
+
+
+def test_add_nn_cable_segment_brak_length_m_odrzucony_kodem_pola_brakujacego() -> None:
+    """Karta FAB-D1 (D6): brak length_m nie fabrykuje 0 m (zerowa impedancja) —
+    reużycie `_wymagane_pola_odcinka` z karty CI-A, ten sam kod błędu."""
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+    wynik = _blad(snap, "add_nn_cable_segment", {"from_bus_ref": bus1})
+    assert wynik["error_code"] == "nn.segment_field_missing"
+
+
+def test_add_nn_cable_segment_length_m_zero_odrzucony_kodem_wartosci_niepoprawnej() -> None:
+    """Dana JAWNA, ale niepoprawna (<=0), zostaje osobnym, już istniejącym kodem —
+    nie jest to ten sam przypadek co brak danej."""
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+    wynik = _blad(
+        snap,
+        "add_nn_cable_segment",
+        {"from_bus_ref": bus1, "length_m": 0.0, "catalog_ref": REF_KABEL_NN},
+    )
+    assert wynik["error_code"] == "nn.cable_length_invalid"
+
+
+def test_add_nn_cable_segment_length_m_jawne_przechodzi_bez_zmian() -> None:
+    """Dana JAWNA (length_m > 0) przechodzi bez zmian — regresja przeciw D6."""
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+    wynik = _wykonaj(
+        snap,
+        "add_nn_cable_segment",
+        {"from_bus_ref": bus1, "length_m": 42.5, "catalog_ref": REF_KABEL_NN},
+    )
+    kabel = wynik["snapshot"]["branches"][-1]
+    assert kabel["length_km"] == pytest.approx(0.0425)
 
 
 def test_add_nn_cable_segment_tworzy_nowa_szyne_gdy_brak_to_bus_ref() -> None:
@@ -207,7 +249,13 @@ def test_add_nn_cable_segment_odrzuca_szyne_poza_pasmem_nn() -> None:
     wynik = _wykonaj(
         snap,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 100.0, "catalog_ref": REF_ZRODLO_SN},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 100.0,
+            "catalog_ref": REF_ZRODLO_SN,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     snap = wynik["snapshot"]
     bus_sn = snap["buses"][0]["ref_id"]
@@ -261,6 +309,44 @@ def test_add_nn_cable_segment_n_parallel_dzieli_impedancje_w_grafie() -> None:
     assert branch_2x.r_ohm_per_km == pytest.approx(branch_1x.r_ohm_per_km / 2.0)
     assert branch_2x.x_ohm_per_km == pytest.approx(branch_1x.x_ohm_per_km / 2.0)
     assert branch_2x.rated_current_a == pytest.approx(branch_1x.rated_current_a * 2.0)
+
+
+def test_add_nn_cable_segment_n_parallel_nieobecny_rowny_jawnemu_1() -> None:
+    """Karta CI-A: brak `n_parallel` w payloadzie NIE jest zamieniany na
+    liczbę 1 w słowniku gałęzi (model niesie `None`, hash bez zmian) —
+    dokładnie tak samo, jak jawne `n_parallel=1` (`1 != 1` w warunku zapisu
+    klucza jest fałszywe w obu przypadkach). Parytet wymagany decyzją §0.3
+    karty CI-A."""
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+
+    brak = _branch_by_name(
+        _wykonaj(
+            snap,
+            "add_nn_cable_segment",
+            {"from_bus_ref": bus1, "length_m": 50.0, "catalog_ref": REF_KABEL_NN, "name": "Brak"},
+        )["snapshot"],
+        "Brak",
+    )
+    jawne = _branch_by_name(
+        _wykonaj(
+            snap,
+            "add_nn_cable_segment",
+            {
+                "from_bus_ref": bus1,
+                "length_m": 50.0,
+                "catalog_ref": REF_KABEL_NN,
+                "n_parallel": 1,
+                "name": "Jawne1",
+            },
+        )["snapshot"],
+        "Jawne1",
+    )
+
+    assert "n_parallel" not in brak
+    assert "n_parallel" not in jawne
+    assert brak["r_ohm_per_km"] == jawne["r_ohm_per_km"]
+    assert brak["x_ohm_per_km"] == jawne["x_ohm_per_km"]
 
 
 # ---------------------------------------------------------------------------
@@ -443,7 +529,13 @@ def test_add_nn_section_coupler_odrzuca_stacje_zlego_typu() -> None:
     snap = _wykonaj(
         _pusty_enm(),
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 100.0, "catalog_ref": REF_ZRODLO_SN},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 100.0,
+            "catalog_ref": REF_ZRODLO_SN,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )["snapshot"]
     stacje_gpz = [s for s in snap["substations"] if s.get("station_type") == "gpz"]
     assert stacje_gpz
@@ -453,6 +545,27 @@ def test_add_nn_section_coupler_odrzuca_stacje_zlego_typu() -> None:
         {"station_ref": stacje_gpz[0]["ref_id"], "catalog_ref": REF_APARAT_NN},
     )
     assert wynik["error_code"] == "nn.coupler_station_wrong_type"
+
+
+def test_add_nn_section_coupler_odrzuca_sekcje_bez_pola_order() -> None:
+    """Karta CI-A: `NnSection.order` jest polem WYMAGANYM modelu — sekcja bez
+    niego (dane uszkodzone/spoza operacji domenowych) melduje jawny błąd
+    zamiast `s.get("order", 0)` fabrykować kolejność zerem."""
+    snap = _board()
+    stacja = _stacja(snap)
+    station_ref = stacja["ref_id"]
+
+    wynik = _wykonaj(
+        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+    )
+    snap = wynik["snapshot"]
+    stacja = _stacja(snap)
+    del stacja["nn_sections"][0]["order"]  # symuluje dane uszkodzone/spoza operacji domenowych
+
+    wynik = _blad(
+        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+    )
+    assert wynik["error_code"] == "nn.section_order_missing"
 
 
 # ---------------------------------------------------------------------------
@@ -470,6 +583,9 @@ def test_split_nn_segment_zachowuje_sume_dlugosci() -> None:
     )
     snap = wynik["snapshot"]
     segment_ref = snap["branches"][-1]["ref_id"]
+    oryginal = _branch_by_name(snap, "Odcinek")
+    r_oryginal = oryginal["r_ohm_per_km"]
+    x_oryginal = oryginal["x_ohm_per_km"]
 
     wynik = _wykonaj(snap, "split_nn_segment", {"segment_ref": segment_ref, "split_at_m": 37.0})
     snap = wynik["snapshot"]
@@ -483,6 +599,13 @@ def test_split_nn_segment_zachowuje_sume_dlugosci() -> None:
     assert lewy["catalog_ref"] == REF_KABEL_NN
     assert prawy["catalog_ref"] == REF_KABEL_NN
     assert lewy["to_bus_ref"] == prawy["from_bus_ref"]
+    # Karta CI-A: r/x na km są WYMAGANE modelu, czytane teraz przez
+    # `_wymagane_pola_odcinka` zamiast `segment.get(pole, 0.0)` — oba odcinki
+    # muszą nieść dokładnie te same, niepodstawione wartości oryginału.
+    assert lewy["r_ohm_per_km"] == r_oryginal
+    assert prawy["r_ohm_per_km"] == r_oryginal
+    assert lewy["x_ohm_per_km"] == x_oryginal
+    assert prawy["x_ohm_per_km"] == x_oryginal
 
 
 @pytest.mark.parametrize("split_at_m", [0.0, -5.0, 100.0, 150.0])
@@ -501,6 +624,28 @@ def test_split_nn_segment_odrzuca_zly_zakres(split_at_m: float) -> None:
     assert wynik["error_code"] == "nn.split_at_out_of_range"
 
 
+@pytest.mark.parametrize("brakujace_pole", ["r_ohm_per_km", "x_ohm_per_km", "length_km"])
+def test_split_nn_segment_odrzuca_odcinek_bez_wymaganego_pola(brakujace_pole: str) -> None:
+    """Karta CI-A: `Cable.r_ohm_per_km`/`x_ohm_per_km`/`length_km` są polami
+    WYMAGANYMI modelu — odcinek bez jednego z nich (dane uszkodzone/spoza
+    operacji domenowych) melduje jawny błąd zamiast `segment.get(pole, 0.0)`
+    fabrykować zerową rezystancję/reaktancję/długość. Iloczyn cech: split ×
+    brak KAŻDEGO z trzech pól czytanych przez `_wymagane_pola_odcinka`."""
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+    wynik = _wykonaj(
+        snap,
+        "add_nn_cable_segment",
+        {"from_bus_ref": bus1, "length_m": 100.0, "catalog_ref": REF_KABEL_NN, "name": "Odcinek"},
+    )
+    snap = wynik["snapshot"]
+    segment = _branch_by_name(snap, "Odcinek")
+    del segment[brakujace_pole]  # symuluje dane uszkodzone/spoza operacji domenowych
+
+    wynik = _blad(snap, "split_nn_segment", {"segment_ref": segment["ref_id"], "split_at_m": 37.0})
+    assert wynik["error_code"] == "nn.segment_field_missing"
+
+
 def test_merge_nn_segments_odwraca_split() -> None:
     snap = _board()
     bus1 = _stacja(snap)["bus_refs"][0]
@@ -511,6 +656,9 @@ def test_merge_nn_segments_odwraca_split() -> None:
     )
     snap = wynik["snapshot"]
     segment_ref = snap["branches"][-1]["ref_id"]
+    oryginal = _branch_by_name(snap, "Odcinek")
+    r_oryginal = oryginal["r_ohm_per_km"]
+    x_oryginal = oryginal["x_ohm_per_km"]
 
     snap = _wykonaj(snap, "split_nn_segment", {"segment_ref": segment_ref, "split_at_m": 40.0})[
         "snapshot"
@@ -536,6 +684,70 @@ def test_merge_nn_segments_odwraca_split() -> None:
     assert scalony["length_km"] == pytest.approx(0.1)
     assert scalony["from_bus_ref"] == bus1
     assert scalony["catalog_ref"] == REF_KABEL_NN
+    # Karta CI-A: r/x scalonego odcinka pochodzą teraz z `_wymagane_pola_odcinka`
+    # (segment_a) zamiast `segment_a.get(pole, 0.0)` — wynik dla poprawnych
+    # danych musi być IDENTYCZNY jak przed zmianą (bajtowo te same wartości).
+    assert scalony["r_ohm_per_km"] == r_oryginal
+    assert scalony["x_ohm_per_km"] == x_oryginal
+
+
+@pytest.mark.parametrize("brakujace_pole", ["r_ohm_per_km", "x_ohm_per_km", "length_km"])
+def test_merge_nn_segments_odrzuca_odcinek_bez_wymaganego_pola(brakujace_pole: str) -> None:
+    """Karta CI-A: jak wyżej dla split — iloczyn cech: merge × brak KAŻDEGO
+    z trzech wymaganych pól, sprawdzone NA OBU odcinkach (segment_a/segment_b)."""
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+    wynik = _wykonaj(
+        snap,
+        "add_nn_cable_segment",
+        {"from_bus_ref": bus1, "length_m": 100.0, "catalog_ref": REF_KABEL_NN, "name": "Odcinek"},
+    )
+    snap = wynik["snapshot"]
+    segment_ref = snap["branches"][-1]["ref_id"]
+    snap = _wykonaj(snap, "split_nn_segment", {"segment_ref": segment_ref, "split_at_m": 40.0})[
+        "snapshot"
+    ]
+    lewy = _branch_by_name(snap, "Odcinek (A)")
+    prawy = _branch_by_name(snap, "Odcinek (B)")
+    del prawy[brakujace_pole]  # symuluje dane uszkodzone/spoza operacji domenowych
+
+    wynik = _blad(
+        snap,
+        "merge_nn_segments",
+        {"segment_a_ref": lewy["ref_id"], "segment_b_ref": prawy["ref_id"]},
+    )
+    assert wynik["error_code"] == "nn.segment_field_missing"
+
+
+def test_merge_nn_segments_odrzuca_rozne_parametry_na_km() -> None:
+    """Karta CI-A (§0.1 decyzja merge): scalenie dwóch odcinków o TYM SAMYM
+    catalog_ref (przechodzi `_ta_sama_niepusta_pozycja_katalogowa`), ale
+    RÓŻNYCH parametrach na km (np. manualne nadpisanie po podziale) jest
+    fabrykacją fizyki jednego wspólnego kabla — odmowa, nie cichy wybór
+    wartości segment_a."""
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+    wynik = _wykonaj(
+        snap,
+        "add_nn_cable_segment",
+        {"from_bus_ref": bus1, "length_m": 100.0, "catalog_ref": REF_KABEL_NN, "name": "Odcinek"},
+    )
+    snap = wynik["snapshot"]
+    segment_ref = snap["branches"][-1]["ref_id"]
+    snap = _wykonaj(snap, "split_nn_segment", {"segment_ref": segment_ref, "split_at_m": 40.0})[
+        "snapshot"
+    ]
+    lewy = _branch_by_name(snap, "Odcinek (A)")
+    prawy = _branch_by_name(snap, "Odcinek (B)")
+    assert lewy["catalog_ref"] == prawy["catalog_ref"]  # oba odcinki wciąż tego samego typu
+    prawy["x_ohm_per_km"] = lewy["x_ohm_per_km"] + 1.0  # rozjazd danych mimo tego samego typu
+
+    wynik = _blad(
+        snap,
+        "merge_nn_segments",
+        {"segment_a_ref": lewy["ref_id"], "segment_b_ref": prawy["ref_id"]},
+    )
+    assert wynik["error_code"] == "nn.merge_segments_type_mismatch"
 
 
 def test_merge_nn_segments_odrzuca_gdy_wspolna_szyna_ma_inne_przylacza() -> None:
@@ -783,7 +995,13 @@ def test_remove_nn_element_usuwa_odbior() -> None:
     wynik = _wykonaj(snap, "add_nn_outgoing_field", {"bus_nn_ref": bus1, "field_name": "Odpływ"})
     snap = wynik["snapshot"]
     field_ref = wynik["changes"]["created_element_ids"][0]
-    wynik = _wykonaj(snap, "add_nn_load", {"feeder_ref": field_ref, "active_power_kw": 2.0})
+    wynik = _wykonaj(
+        snap,
+        "add_nn_load",
+        # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
+        # (FAB-D1 D5) — ten test sprawdza usuwanie odbioru, nie moc bierną.
+        {"feeder_ref": field_ref, "active_power_kw": 2.0, "cos_phi": 0.9},
+    )
     snap = wynik["snapshot"]
     load_ref = snap["loads"][-1]["ref_id"]
 
@@ -965,7 +1183,7 @@ def test_split_nn_segment_melduje_brak_danej_odcinka(pole: str) -> None:
     snap, segment_ref = _odcinek_nn(_board())
     _usun_pole(snap, segment_ref, pole)
     wynik = _blad(snap, "split_nn_segment", {"segment_ref": segment_ref, "split_at_m": 40.0})
-    assert wynik["error_code"] == "nn.split_segment_data_missing"
+    assert wynik["error_code"] == "nn.segment_field_missing"
 
 
 @pytest.mark.parametrize(
@@ -990,7 +1208,7 @@ def test_merge_nn_segments_melduje_brak_danej_odcinka(ktory: str, pole: str) -> 
         "merge_nn_segments",
         {"segment_a_ref": lewy["ref_id"], "segment_b_ref": prawy["ref_id"]},
     )
-    assert wynik["error_code"] == "nn.merge_segment_data_missing"
+    assert wynik["error_code"] == "nn.segment_field_missing"
 
 
 def test_split_nn_segment_przenosi_impedancje_jednostkowa_odcinka() -> None:
@@ -1016,7 +1234,23 @@ def test_add_nn_section_coupler_melduje_sekcje_bez_kolejnosci() -> None:
     wynik = _blad(
         snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
     )
-    assert wynik["error_code"] == "nn.coupler_section_order_missing"
+    assert wynik["error_code"] == "nn.section_order_missing"
+
+
+@pytest.mark.parametrize("order", [None, "2", 1.5, True])
+def test_add_nn_section_coupler_melduje_kolejnosc_sekcji_nie_calkowita(order: Any) -> None:
+    """Klasa „brak kolejności” obejmuje wartość obecną, ale nie całkowitą —
+    `max()` po niej wysypałby operację wyjątkiem zamiast nazwanego błędu."""
+    snap = _board()
+    station_ref = _stacja(snap)["ref_id"]
+    snap = _wykonaj(
+        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+    )["snapshot"]
+    _stacja(snap)["nn_sections"][-1]["order"] = order
+    wynik = _blad(
+        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+    )
+    assert wynik["error_code"] == "nn.section_order_missing"
 
 
 def test_add_nn_cable_segment_bez_n_parallel_nie_zapisuje_liczby() -> None:
@@ -1025,12 +1259,49 @@ def test_add_nn_cable_segment_bez_n_parallel_nie_zapisuje_liczby() -> None:
     assert kabel.get("n_parallel") is None
 
 
-@pytest.mark.parametrize("length_m", [None, "abc", 0.0, -1.0])
-def test_add_nn_cable_segment_melduje_brak_lub_zla_dlugosc(length_m: Any) -> None:
+@pytest.mark.parametrize(
+    ("length_m", "kod"),
+    [
+        # Brak danej i dana jawnie niepoprawna to dwa różne kody (jedna funkcja
+        # `_wymagane_pola_odcinka` dla wszystkich operacji na odcinku nN).
+        (None, "nn.segment_field_missing"),
+        ("abc", "nn.segment_field_invalid"),
+        (float("nan"), "nn.segment_field_invalid"),
+        (float("inf"), "nn.segment_field_invalid"),
+        (0.0, "nn.cable_length_invalid"),
+        (-1.0, "nn.cable_length_invalid"),
+    ],
+)
+def test_add_nn_cable_segment_melduje_brak_lub_zla_dlugosc(length_m: Any, kod: str) -> None:
     snap = _board()
     bus1 = _stacja(snap)["bus_refs"][0]
     payload: dict[str, Any] = {"from_bus_ref": bus1, "catalog_ref": REF_KABEL_NN}
     if length_m is not None:
         payload["length_m"] = length_m
     wynik = _blad(snap, "add_nn_cable_segment", payload)
-    assert wynik["error_code"] == "nn.cable_length_invalid"
+    assert wynik["error_code"] == kod
+
+
+@pytest.mark.parametrize("operacja", ["split_nn_segment", "merge_nn_segments"])
+@pytest.mark.parametrize("pole", ["length_km", "r_ohm_per_km", "x_ohm_per_km"])
+@pytest.mark.parametrize("wartosc", ["abc", float("nan"), float("-inf")])
+def test_operacje_odcinka_nn_melduja_wartosc_nieliczbowa_nazwanym_bledem(
+    operacja: str, pole: str, wartosc: Any
+) -> None:
+    """Iloczyn cech: operacja {rozcięcie, scalenie} × pole modelu kabla × wartość
+    nieliczbowa/nieskończona — nazwany błąd, nigdy wyjątek `float()`."""
+    snap, segment_ref = _odcinek_nn(_board())
+    if operacja == "split_nn_segment":
+        next(b for b in snap["branches"] if b["ref_id"] == segment_ref)[pole] = wartosc
+        wynik = _blad(snap, operacja, {"segment_ref": segment_ref, "split_at_m": 40.0})
+    else:
+        snap = _wykonaj(snap, "split_nn_segment", {"segment_ref": segment_ref, "split_at_m": 40.0})[
+            "snapshot"
+        ]
+        lewy = _branch_by_name(snap, "Odcinek (A)")
+        prawy = _branch_by_name(snap, "Odcinek (B)")
+        lewy[pole] = wartosc
+        wynik = _blad(
+            snap, operacja, {"segment_a_ref": lewy["ref_id"], "segment_b_ref": prawy["ref_id"]}
+        )
+    assert wynik["error_code"] == "nn.segment_field_invalid"

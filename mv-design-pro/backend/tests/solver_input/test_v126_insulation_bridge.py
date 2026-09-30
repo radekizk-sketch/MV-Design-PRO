@@ -5,6 +5,7 @@ from network_model.catalog.mv_surge_arrester_catalog import get_all_surge_arrest
 from solver_input.v126_contracts import (
     build_v126_input_from_enm,
     build_v126_insulation_from_enm,
+    ograniczniki_bez_uziemienia_sieci,
 )
 
 _ARRESTER_ID = "arrester-abb-polim-d-24kv-10ka"
@@ -17,19 +18,40 @@ def _arrester_params(item_id: str) -> dict:
     raise AssertionError(f"Brak rekordu katalogu ogranicznika: {item_id}")
 
 
+#: W5-D p. 12: most NIE podstawia kategorii punktu neutralnego — model testowy niesie
+#: uziemienie (sieć skompensowana), chyba że test JAWNIE przekaże `bus_grounding=None`
+#: (przypadek „model milczy" → brak wiersza + szyna nazwana).
+_UZIEMIENIE_TESTU: dict = {"type": "petersen_coil", "x_ohm": 120.0}
+_BRAK = object()
+
+
 def _model(
     *,
     devices: list[dict],
     bus_voltage_kv: float = 20.0,
-    bus_grounding: dict | None = None,
+    bus_grounding: dict | None | object = _BRAK,
 ) -> EnergyNetworkModel:
     bus: dict = {"ref_id": "BUS_SN", "name": "Szyna SN", "voltage_kv": bus_voltage_kv}
-    if bus_grounding is not None:
-        bus["grounding"] = bus_grounding
+    # W5-A: opis punktu neutralnego sieci SN niesie ŹRÓDŁO na szynie
+    # (`Source.neutral_grounding`), nie szyna — `Bus.grounding` skasowane.
+    # W5-D p. 12: domyślnie model NIESIE uziemienie; `bus_grounding=None` = model milczy.
+    uziemienie = _UZIEMIENIE_TESTU if bus_grounding is _BRAK else bus_grounding
+    sources: list[dict] = []
+    if uziemienie is not None:
+        sources.append(
+            {
+                "ref_id": "SRC_SN",
+                "name": "Zasilanie SN",
+                "bus_ref": "BUS_SN",
+                "model": "short_circuit_power",
+                "neutral_grounding": uziemienie,
+            }
+        )
     return EnergyNetworkModel.model_validate(
         {
             "header": ENMHeader(name="test-insulation").model_dump(),
             "buses": [bus],
+            "sources": sources,
             "substations": [
                 {
                     "ref_id": "ST1",
@@ -80,16 +102,16 @@ def test_arrester_with_catalog_ref_maps_all_card_params() -> None:
     assert row.predicted_energy_kj_per_kv == params["energy_absorption_kj_per_kv"]
 
 
-def test_network_neutral_from_bus_grounding_petersen_is_isolated() -> None:
+def test_network_neutral_from_source_grounding_petersen_is_isolated() -> None:
     model = _model(
         devices=[_arrester_device("QA1", _ARRESTER_ID)],
-        bus_grounding={"type": "petersen_coil"},
+        bus_grounding={"type": "petersen_coil", "x_ohm": 120.0},
     )
     rows = build_v126_insulation_from_enm(model)
     assert rows[0].network_neutral == "isolated"
 
 
-def test_network_neutral_from_bus_grounding_resistor_is_earthed() -> None:
+def test_network_neutral_from_source_grounding_resistor_is_earthed() -> None:
     model = _model(
         devices=[_arrester_device("QA1", _ARRESTER_ID)],
         bus_grounding={"type": "resistor_grounded", "r_ohm": 40.0},
@@ -98,10 +120,13 @@ def test_network_neutral_from_bus_grounding_resistor_is_earthed() -> None:
     assert rows[0].network_neutral == "earthed"
 
 
-def test_no_grounding_data_falls_back_to_contract_default() -> None:
-    model = _model(devices=[_arrester_device("QA1", _ARRESTER_ID)])
-    rows = build_v126_insulation_from_enm(model)
-    assert rows[0].network_neutral == "isolated"
+def test_no_grounding_data_emits_no_row_and_names_the_bus() -> None:
+    """Karta W5-D p. 12 (OD-24): do W5-D most podstawiał `"isolated"` za brak
+    uziemienia w modelu (fabrykacja kategorii TOV); teraz wiersz nie powstaje,
+    a szyna jest nazwana w `ograniczniki_bez_uziemienia_sieci` (gotowość blokuje)."""
+    model = _model(devices=[_arrester_device("QA1", _ARRESTER_ID)], bus_grounding=None)
+    assert build_v126_insulation_from_enm(model) == []
+    assert ograniczniki_bez_uziemienia_sieci(model) == ("BUS_SN",)
 
 
 def test_no_arrester_yields_empty_insulation() -> None:
@@ -163,25 +188,38 @@ def test_bridge_is_deterministic() -> None:
 def test_insulation_coordination_run_reads_arresters_from_model() -> None:
     """Łańcuch end-to-end: aparat SURGE_ARRESTER modelu → analiza IEC 60071
     bez żadnych ręcznych parametrów (pusty ``parameters``)."""
-    from uuid import UUID
-
     from api.main import app
+    from application.twin_key import klucz_twin_dla_przypadku
     from enm.store import reset_enm_store, set_enm
     from fastapi.testclient import TestClient
 
     reset_enm_store()
-    case_id = UUID("22222222-2222-2222-2222-222222222222")
-    set_enm(str(case_id), _model(devices=[_arrester_device("QA1", _ARRESTER_ID)]))
+    # CV-1-W: przypadek bez wiersza w bazie dostaje 404 z magazynu ENM
+    # (inwariant I-2) — realny projekt+przypadek zamiast dowolnego UUID-a,
+    # `with` uruchamia lifespan (realne `uow_factory`, wymagane do tłumaczenia).
+    with TestClient(app) as client:
+        project_resp = client.post("/api/projects", json={"name": "V12.6 izolacja — test"})
+        assert project_resp.status_code == 201, project_resp.text
+        project_id = project_resp.json()["id"]
+        case_resp = client.post(
+            "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+        )
+        assert case_resp.status_code == 201, case_resp.text
+        case_id = case_resp.json()["id"]
 
-    client = TestClient(app)
-    created = client.post(
-        f"/api/cases/{case_id}/runs/v126/insulation_coordination",
-        json={"parameters": {}},
-    )
-    assert created.status_code == 200, created.text
-    result = client.get(created.json()["result_url"])
-    assert result.status_code == 200
-    arresters = result.json()["result"]["result"]["arresters"]
-    assert len(arresters) == 1
-    assert arresters[0]["location_bus_ref"] == "BUS_SN"
-    assert arresters[0]["bil_margin_percent"] is not None
+        klucz = klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+        # W5-D p. 12: model MUSI nieść uziemienie punktu neutralnego — bez niego most
+        # nie buduje wiersza (nie podstawia „isolated"), a gotowość blokuje.
+        set_enm(klucz, _model(devices=[_arrester_device("QA1", _ARRESTER_ID)]))
+
+        created = client.post(
+            f"/api/cases/{case_id}/runs/v126/insulation_coordination",
+            json={"parameters": {}},
+        )
+        assert created.status_code == 200, created.text
+        result = client.get(created.json()["result_url"])
+        assert result.status_code == 200
+        arresters = result.json()["result"]["result"]["arresters"]
+        assert len(arresters) == 1
+        assert arresters[0]["location_bus_ref"] == "BUS_SN"
+        assert arresters[0]["bil_margin_percent"] is not None

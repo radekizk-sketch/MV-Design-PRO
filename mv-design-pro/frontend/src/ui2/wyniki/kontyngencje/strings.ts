@@ -7,6 +7,9 @@
  * (`__tests__/strings.test.ts`), więc nowy kod bez etykiety zapala czerwień.
  */
 
+import { nazwaObiektuZMigawki } from '../wzorzec/useNazwaObiektu';
+import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
+
 export const KONTYNGENCJE_STRINGS = {
   tytul: 'Kontyngencje N-1',
   opisWstep:
@@ -20,12 +23,12 @@ export const KONTYNGENCJE_STRINGS = {
     + 'rozpływu. Uruchom obliczenie rozpływu, aby wskazać zakres kontyngencji.',
   ladowanieZakresu: 'Wczytywanie zakresu kontyngencji…',
   bladZakresu: 'Nie udało się pobrać zakresu kontyngencji.',
-  bladZakresuOpis: 'Spróbuj ponownie; jeśli błąd wraca, sprawdź dziennik backendu.',
+  bladZakresuOpis: 'Spróbuj ponownie; jeśli błąd wraca, sprawdź dziennik serwera obliczeń.',
   liczenie: 'Liczenie kontyngencji…',
   liczenieOpis:
     'Każda kontyngencja to osobny bieg rozpływu — okno czeka na komplet wyników.',
   bladMacierzy: 'Nie udało się policzyć macierzy kontyngencji.',
-  bladMacierzyOpis: 'Spróbuj ponownie; jeśli błąd wraca, sprawdź dziennik backendu.',
+  bladMacierzyOpis: 'Spróbuj ponownie; jeśli błąd wraca, sprawdź dziennik serwera obliczeń.',
 
   // Zakres biegu -----------------------------------------------------------
   zakresTytul: 'Zakres enumeracji',
@@ -135,9 +138,9 @@ export const KRYTERIA_PL: Readonly<Record<string, string>> = {
   VOLTAGE_DEVIATION: 'Odchylenie napięcia',
 };
 
-/** Etykieta kodu; nieznany kod SUROWO (nie zgadujemy, czego nie znamy). */
+/** Etykieta kodu; kod spoza słownika → uczciwe zdanie, nie kod (karta #145). */
 function etykieta(mapa: Readonly<Record<string, string>>, kod: string): string {
-  return mapa[kod] ?? kod;
+  return etykietaZeSlownika(mapa, kod);
 }
 
 export function etykietaStatusu(kod: string): string {
@@ -154,7 +157,8 @@ export function etykietaKryterium(kod: string): string {
 
 /** Nazwa elementu dla czytelnika; bez nazwy — identyfikator (zero zmyślania). */
 export function nazwaElementu(nazwa: string | null, ref: string): string {
-  return nazwa ?? ref;
+  // Karta #145: brak nazwy → polska etykieta rodzaju z mostu nazw, nigdy identyfikator.
+  return nazwaObiektuZMigawki(null, ref, nazwa);
 }
 
 /**

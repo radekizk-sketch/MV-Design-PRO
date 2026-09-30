@@ -97,7 +97,20 @@ const SNAPSHOT_ODPOWIEDZ = {
         meta: {},
         voltage_kv: 15,
         phase_system: '3ph',
-        grounding: { type: 'petersen_coil', x_ohm: 120 },
+      },
+    ],
+    // W5-A: uziemienie punktu neutralnego sieci SN żyje na ŹRÓDLE stojącym na szynie
+    // (`Source.neutral_grounding`), nie na szynie — `Bus.grounding` skasowane.
+    sources: [
+      {
+        id: 's1',
+        ref_id: 'src/gpz',
+        name: 'Zasilanie GPZ',
+        tags: [],
+        meta: {},
+        bus_ref: 'bus/gpz/sn',
+        model: 'short_circuit_power',
+        neutral_grounding: { type: 'petersen_coil', x_ohm: 120 },
       },
     ],
     transformers: [],
@@ -183,7 +196,7 @@ describe('EkranSkladowych — dane przebiegu 1F (fetch 1:1 z endpointami)', () =
     render(<EkranSkladowych />);
     const sekcja = await screen.findByTestId('mvd-skladowe-uziemienie-punktu');
     expect(sekcja).toHaveTextContent('cewka Petersena');
-    expect(screen.getByTestId('mvd-skladowe-uziemienie-siec')).toHaveTextContent('Szyna GPZ');
+    expect(screen.getByTestId('mvd-skladowe-uziemienie-siec')).toHaveTextContent('Zasilanie GPZ');
   });
 
   it('werdykt raportowalności wybranego punktu (PL z backendu)', async () => {
@@ -192,6 +205,34 @@ describe('EkranSkladowych — dane przebiegu 1F (fetch 1:1 z endpointami)', () =
     expect(screen.getByTestId('mvd-skladowe-raport-ograniczenia')).toHaveTextContent(
       T.raportBrakOgraniczen,
     );
+  });
+
+  it('karta #145: ograniczenia raportowe i status uzasadnienia po polsku — nigdy kod', async () => {
+    const zdanie =
+      'Wynik obliczenia nie ma sensu fizycznego (wartość nieskończona albo współczynnik '
+      + 'udaru κ poza zakresem normy IEC 60909) — liczby tego wyniku nie są raportowane.';
+    const wiersz = {
+      ...WYNIK.rows[0],
+      proof_status: 'partial',
+      proof_status_pl: undefined,
+      reporting_limitations: ['solver_result_non_physical'],
+      reporting_limitations_pl: [zdanie],
+    };
+    const bazowy = vi.mocked(fetch);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).endsWith('/results/short-circuit')
+          ? ({ ok: true, status: 200, json: async () => ({ ...WYNIK, rows: [wiersz] }) } as Response)
+          : bazowy(input),
+      ),
+    );
+    render(<EkranSkladowych />);
+    const ograniczenia = await screen.findByTestId('mvd-skladowe-raport-ograniczenia');
+    expect(ograniczenia).toHaveTextContent(zdanie);
+    expect(ograniczenia).not.toHaveTextContent('solver_result_non_physical');
+    // Brak etykiety PL statusu uzasadnienia → kreska, nie kod `partial`.
+    expect(screen.getByTestId('mvd-skladowe-raport')).not.toHaveTextContent('partial');
   });
 
   it('akcja „Otwórz pełny dowód obliczeń" (natywny klik) otwiera zakładkę dowodu przebiegu', async () => {

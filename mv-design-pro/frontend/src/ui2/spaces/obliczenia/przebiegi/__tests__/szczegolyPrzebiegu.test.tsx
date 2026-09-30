@@ -47,16 +47,40 @@ describe('SzczegolyPrzebiegu — parametry wejściowe (odtwarzalność, W-503)',
     expect(odcisk).toHaveTextContent(formatOdcisk(w.odcisk));
   });
 
-  it('pola nieobecne w rekordzie przebiegu → wiersze „wkrótce" (bez zgadywania)', () => {
+  it('bieg BEZ model_revision (sprzed rejestru koperty) → wiersz „Rewizja modelu" pokazuje jawny powód braku', () => {
     render(
-      <SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={false} onPokazWyniki={() => {}} />,
+      <SzczegolyPrzebiegu
+        przebieg={wiersz({ model_revision: null })}
+        trybEkspercki={false}
+        onPokazWyniki={() => {}}
+      />,
     );
-    expect(screen.getByTestId('mvd-przebieg-wkrotce-rewizja')).toHaveTextContent(
-      T.pochodzenieWkrotce,
+    const rewizja = screen.getByTestId('mvd-przebieg-rewizja');
+    expect(rewizja).toHaveTextContent(T.brakWartosci);
+    expect(within(rewizja).getByText(T.brakWartosci)).toHaveAttribute(
+      'title',
+      T.pochodzenieBrakWRekordzie,
     );
-    expect(screen.getByTestId('mvd-przebieg-wkrotce-parametry')).toHaveTextContent(
-      T.pochodzenieWkrotce,
+  });
+
+  it('bieg Z model_revision → wiersz „Rewizja modelu" pokazuje liczbę (kontrakt CV-2), bez tytułu „brak"', () => {
+    render(
+      <SzczegolyPrzebiegu
+        przebieg={wiersz({ model_revision: 7 })}
+        trybEkspercki={false}
+        onPokazWyniki={() => {}}
+      />,
     );
+    const rewizja = screen.getByTestId('mvd-przebieg-rewizja');
+    expect(rewizja).toHaveTextContent('7');
+    expect(within(rewizja).getByText('7')).not.toHaveAttribute('title');
+  });
+
+  it('„Wartości parametrów wejściowych solvera" nie jest renderowana (kontrolka bez dostawcy = fantom, TODO-UI2 §1 p. 10)', () => {
+    render(
+      <SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />,
+    );
+    expect(screen.queryByText('Wartości parametrów wejściowych solvera')).toBeNull();
   });
 
   it('przebieg z błędem → widoczny komunikat błędu (role=alert)', () => {

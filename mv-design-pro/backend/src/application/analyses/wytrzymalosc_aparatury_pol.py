@@ -36,6 +36,8 @@ from typing import Any
 from application.analyses.aparaty_pol import aparaty_pol_stacji, znajdz_stacje
 from application.field_read_model import collect_bays
 from enm.models import Bay, EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_elementu
+from enm.rola_pola_sn import nazwa_roli_pola_sn
 from network_model.catalog import get_default_mv_catalog
 from network_model.catalog.audit2_catalogs import (
     get_device_withstand,
@@ -57,17 +59,6 @@ READINESS_CZAS_NIEUSTALONY = "aparatura.czas_wylaczenia_nieustalony"
 ZRODLO_MODEL = "model"
 ZRODLO_KONFIGURACJA = "konfiguracja"
 
-#: Rola pola → nazwa po polsku (strefa pierwszoplanowa mówi po polsku, nie kodem).
-_ROLA_PL: dict[str, str] = {
-    "IN": "liniowe dopływowe",
-    "OUT": "liniowe odpływowe",
-    "FEEDER": "odpływowe",
-    "TR": "transformatorowe",
-    "COUPLER": "sprzęgłowe",
-    "MEASUREMENT": "pomiarowe",
-    "OZE": "źródłowe OZE",
-}
-
 
 def _oznaczenia_pola(bay: Bay) -> list[str]:
     """Wszystkie napisy, którymi to pole może być zapisane w konfiguracji stacji.
@@ -82,7 +73,9 @@ def _oznaczenia_pola(bay: Bay) -> list[str]:
 
 
 def _oznaczenie_glowne(bay: Bay) -> str:
-    return (bay.bay_number or bay.name or bay.ref_id).strip()
+    """Oznaczenie pola w wyniku: numer wpisany przez inżyniera albo nazwa z modelu — nigdy
+    referencja pola (karta #144; pole bez nazwy dostaje opis rodzaju)."""
+    return (bay.bay_number or nazwa_elementu(bay, "bays")).strip()
 
 
 def _znamiona_z_aparat_sn(catalog_ref: str) -> tuple[dict[str, Any] | None, str | None]:
@@ -151,7 +144,7 @@ def _wiersz(
         if czas.get("t_clearing_s") is None:
             kody.append(READINESS_CZAS_NIEUSTALONY)
         werdykt = ocen_wytrzymalosc_aparatu(
-            etykieta_pl=etykieta or catalog_ref,
+            etykieta_pl=etykieta or "pozycja katalogu aparatów bez nazwy",
             i_dyn_ka=znamiona["i_dyn_ka"],
             i_th_ka=znamiona["i_th_ka"],
             i_th_duration_s=znamiona["i_th_duration_s"],
@@ -164,7 +157,9 @@ def _wiersz(
         "pole": oznaczenie,
         "pole_ref": pole_ref,
         "rola": rola,
-        "rola_pl": _ROLA_PL.get(str(rola)) if rola else None,
+        # Nazwa roli z kanonu słownictwa ról pól (karta #141) — strefa pierwszoplanowa mówi
+        # tym samym słowem co schemat, kreator i szuflada, nie kodem roli.
+        "rola_pl": nazwa_roli_pola_sn(rola) if rola else None,
         "zrodlo": zrodlo,
         "aparat_ref": aparat_ref,
         "aparat_nazwa": aparat_nazwa,

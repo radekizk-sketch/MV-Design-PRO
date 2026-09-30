@@ -91,8 +91,10 @@ def _enm_z_odcinkiem() -> dict[str, Any]:
                 "from_bus_ref": "bus-a",
                 "to_bus_ref": "bus-b",
                 "length_km": 1.0,
-                "r_ohm": 0.2,
-                "x_ohm": 0.1,
+                # Karta #151: pola kontraktu ENM kabla to r/x NA KILOMETR (dawne "r_ohm"/"x_ohm"
+                # nie istnieją w modelu — fikstura przechodziła dzięki połkniętej walidacji).
+                "r_ohm_per_km": 0.2,
+                "x_ohm_per_km": 0.1,
             }
         ],
         "transformers": [],
@@ -351,7 +353,9 @@ def test_blok_bez_numeru_jednostki_konczy_sie_twardym_bledem(operacja: str) -> N
 
     odpowiedz = _uruchom(operacja, [wpis])
     assert odpowiedz.get("error_code") == KOD_BLEDU_POLA_KATALOGOWEGO, odpowiedz
-    assert "numeru jednostki" in str(odpowiedz.get("error"))
+    # Karta #142: brak jednostki nazywa pole formularza („Jednostki bloku”), nie klucz.
+    assert "wymaga wskazania jednostki" in str(odpowiedz.get("error"))
+    assert POLE_JEDNOSTKI_BLOKU not in str(odpowiedz.get("error"))
     assert odpowiedz.get("snapshot") is None
 
 

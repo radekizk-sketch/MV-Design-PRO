@@ -4,6 +4,7 @@ import { StationCard } from '../cards/StationCard';
 import { BranchPoleCard } from '../cards/BranchPoleCard';
 import { ZksnCard } from '../cards/ZksnCard';
 import { RenewableSourceCard } from '../cards/RenewableSourceCard';
+import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL } from '../../sld/v2/station-rozdzielnia/contract';
 
 let lastProps: Record<string, unknown> | null = null;
 
@@ -130,6 +131,38 @@ describe('Karty obiektów - aktywne wejścia do edycji', () => {
       element_ref: 'st-1',
       element_type: 'substation',
     });
+  });
+
+  it('StationCard nazywa rolę każdego pola SN słowem kanonu ról pól, nigdy kodem (karta #141)', () => {
+    // Iloczyn cech: każda rola modelu `Bay.bay_role` → nazwa z kanonu. Dawna lokalna mapa karty
+    // nazywała pole wyjściowe „Odgałęźne (wyjście)”, a rolę spoza mapy pokazywała kodem.
+    const role = ['IN', 'OUT', 'FEEDER', 'TR', 'COUPLER', 'MEASUREMENT', 'OZE'] as const;
+    currentSnapshot = {
+      ...currentSnapshot,
+      bays: role.map((rola, i) => ({
+        id: `bay-${i}`,
+        ref_id: `bay-${i}`,
+        name: `Q${i + 1}`,
+        bay_role: rola,
+        substation_ref: 'st-1',
+        bus_ref: 'bus/sn',
+        equipment_refs: [],
+      })),
+    };
+    render(<StationCard elementId="st-1" />);
+
+    const sekcje = (lastProps as { sections?: Array<{ id: string; fields: Array<{ label: string; value: unknown }> }> })
+      .sections ?? [];
+    const pola = sekcje.find((sekcja) => sekcja.id === 'bays')?.fields ?? [];
+    expect(pola.map((pole) => pole.value)).toEqual([
+      FIELD_ROLE_LABEL_PL.LINIA_IN,
+      FIELD_ROLE_LABEL_PL.LINIA_OUT,
+      FIELD_ROLE_LABEL_PL.LINIA_ODG,
+      FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE,
+      FIELD_ROLE_LABEL_PL.SPRZEGLO,
+      FIELD_ROLE_LABEL_PL.POMIAROWE,
+      FIELD_SOURCE_LABEL_PL,
+    ]);
   });
 
   it('BranchPoleCard otwiera edycję słupa przez update_element_parameters', () => {

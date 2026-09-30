@@ -51,12 +51,21 @@ vi.mock('../../../../ui/network-build/forms/enmResolvers', () => ({
   listNnSourceFieldOptions: () => [],
 }));
 
+// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
+// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const { fetchSourceSystemTypesMock, fetchLvApparatusTypesMock } = vi.hoisted(() => ({
+  fetchSourceSystemTypesMock: vi.fn(() =>
+    Promise.resolve([{ id: 'gs-1', name: 'Agregat 250 kVA', voltage_rating_kv: 0.4, sk3_mva: 2 }]),
+  ),
+  fetchLvApparatusTypesMock: vi.fn(() =>
+    Promise.resolve([{ id: 'lv-1', name: 'Wyłącznik nN', u_n_kv: 0.4, i_n_a: 400, device_kind: 'WYLACZNIK' }]),
+  ),
+}));
+
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchSourceSystemTypes: () =>
-    Promise.resolve([{ id: 'gs-1', name: 'Agregat 250 kVA', voltage_rating_kv: 0.4, sk3_mva: 2 }]),
-  fetchLvApparatusTypes: () =>
-    Promise.resolve([{ id: 'lv-1', name: 'Wyłącznik nN', u_n_kv: 0.4, i_n_a: 400, device_kind: 'WYLACZNIK' }]),
+  fetchSourceSystemTypes: () => fetchSourceSystemTypesMock(),
+  fetchLvApparatusTypes: () => fetchLvApparatusTypesMock(),
 }));
 
 describe('KreatorZrodloDyspozycyjne — realna ścieżka (agregat)', () => {
@@ -69,6 +78,8 @@ describe('KreatorZrodloDyspozycyjne — realna ścieżka (agregat)', () => {
     navigateToSldMock.mockReset();
     selectElementMock.mockReset();
     centerMock.mockReset();
+    fetchSourceSystemTypesMock.mockClear();
+    fetchLvApparatusTypesMock.mockClear();
   });
 
   afterEach(() => cleanup());
@@ -131,6 +142,25 @@ describe('KreatorZrodloDyspozycyjne — realna ścieżka (agregat)', () => {
     await userEvent.click(screen.getByTestId('mvd-kreator-zrodlo-dysp-zapisz'));
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
     expect((await screen.findAllByText(/Uzupełnij wymagane pola, aby zapisać źródło\./)).length).toBeGreaterThan(0);
+  });
+
+  /**
+   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) —
+   * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
+   * `zapisMozliwy` nie sprawdzał, czy katalogi (system źródła + aparat nN)
+   * już doszły.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × szyna nN dostępna → zapis zablokowany z komunikatem', async () => {
+    fetchSourceSystemTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    fetchLvApparatusTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorZrodloDyspozycyjne />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-zrodlo-dysp')).toHaveAttribute('data-status', 'ladowanie');
+    });
+    expect(screen.getByTestId('mvd-kreator-zrodlo-dysp-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });
 

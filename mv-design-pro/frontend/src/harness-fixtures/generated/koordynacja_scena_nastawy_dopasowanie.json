@@ -1,0 +1,112 @@
+{
+  "assumptions": [
+    "MAPPING_SKIPPED_INCOMPATIBLE"
+  ],
+  "capability": {
+    "curves_supported": [
+      "IEC_NI",
+      "IEC_VI",
+      "IEC_EI",
+      "DT"
+    ],
+    "device_id": "ABB_REF601",
+    "functions_supported": [
+      "50",
+      "51",
+      "50N",
+      "51N",
+      "79"
+    ],
+    "i_inst_50_a_max": 2000.0,
+    "i_inst_50_a_min": 0.5,
+    "i_inst_50n_a_max": 800.0,
+    "i_inst_50n_a_min": 0.2,
+    "i_pickup_51_a_max": 200.0,
+    "i_pickup_51_a_min": 0.05,
+    "i_pickup_51n_a_max": 80.0,
+    "i_pickup_51n_a_min": 0.02,
+    "meta": {
+      "catalog_status": "REFERENCYJNY_V1",
+      "contract_version": "2.0",
+      "model_code": "REF601",
+      "rated": 200,
+      "series": "Relion 615",
+      "source_ref": "ABB Relion 615/620/630/650/670 series — technical manuals",
+      "source_reference": "ABB Relion 615/620/630/650/670 series — technical manuals",
+      "unverified": false,
+      "unverified_ranges": false,
+      "verification_note": "Rekord referencyjny; zakresy zgodne z dokumentacja techniczna producenta.",
+      "verification_status": "CZESCIOWO_ZWERYFIKOWANY"
+    },
+    "model": "Relion REF601",
+    "rated_current_inputs_a": [
+      1.0,
+      5.0
+    ],
+    "rated_inputs_source": "szereg_preferowany_IEC_60255_1",
+    "rated_voltage_inputs_v": [
+      100.0,
+      110.0
+    ],
+    "t_51_s_max": null,
+    "t_51_s_min": null,
+    "tms_51_max": 1.0,
+    "tms_51_min": 0.05,
+    "tms_51n_max": 1.0,
+    "tms_51n_min": 0.05,
+    "vendor": "ABB"
+  },
+  "compatible": false,
+  "device_id": "ABB_REF601",
+  "mapped_settings": {},
+  "proweniencja_nastaw": {
+    "c_max": null,
+    "c_min": 1.0,
+    "case_name": "Wariant zimowy",
+    "engine_input": {
+      "conductor_material": "AL",
+      "cross_section_mm2": 120.0,
+      "delta_t_s": 0.3,
+      "i_load_max_a": 22.768781749828918,
+      "i_nominal_a": 230.0,
+      "ik2_min_end_a": 7130.191175002978,
+      "ik3_max_beginning_a": 9621.459235920445,
+      "ik3_max_end_a": 9056.559147375221,
+      "ik3_min_beginning_a": 8746.78112356404,
+      "ik3_min_end_a": 8233.235588522928,
+      "ik_max_next_bus_a": 8767.005250876473,
+      "k_b": 1.2,
+      "k_bth": 1.1,
+      "length_km": 0.45
+    },
+    "kotwica_run_id": "run-sc-scena-koordynacja-max",
+    "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
+    "line_name": "Magistrala GPZ (1)",
+    "next_bus_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
+    "project_name": "Magistrala SN — scena koordynacji",
+    "run_timestamp": "2026-09-16T09:00:00+00:00",
+    "solver_version": "IEC_60909;load-flow-newton-raphson-v1",
+    "zacisk_zabezpieczenia": "od",
+    "zrodlo_zacisku": "wskazanie"
+  },
+  "status": "DEGRADED",
+  "vendor_mapping": {
+    "vendor": "ABB",
+    "vendor_assumptions": [],
+    "vendor_settings": {},
+    "vendor_violations": []
+  },
+  "violations": [
+    "I50_OUT_OF_RANGE"
+  ],
+  "wymaganie": {
+    "curve": "DT",
+    "i_inst_50_a": 10520.4,
+    "i_inst_50n_a": null,
+    "i_pickup_51_a": 27.3,
+    "i_pickup_51n_a": null,
+    "t_51_s": 0.3,
+    "tms_51": null,
+    "tms_51n": null
+  }
+}

@@ -104,8 +104,11 @@ def vdrop_test_input() -> VDROPInput:
                 p_mw=2.0,
                 q_mvar=1.0,
                 u_n_kv=15.0,
+                nazwa_odcinka="Kabel SN odcinek testowy",
             ),
         ],
+        source_bus_name="Szyny SN GPZ",
+        target_bus_name="Szyny nN stacji",
     )
 
 
@@ -575,6 +578,7 @@ class TestVDROPPodstawaKonca:
             p_mw=2.0,
             q_mvar=1.0,
             u_n_kv=u_n_kv,
+            nazwa_odcinka="Kabel SN odcinek testowy",
         )
 
     def _input(self, *, u_source_kv: float, u_n_kv: float = 15.0) -> VDROPInput:
@@ -587,6 +591,8 @@ class TestVDROPPodstawaKonca:
             solver_version="1.0.0-test",
             u_source_kv=u_source_kv,
             segments=[self._segment(u_n_kv=u_n_kv)],
+            source_bus_name="Szyny SN GPZ",
+            target_bus_name="Szyny nN stacji",
         )
 
     def test_krok_007_odejmuje_w_kv_a_nie_mnozy_przez_procent(self) -> None:
@@ -725,6 +731,7 @@ class TestVDROPLancuchWieloodcinkowy:
                 p_mw=odc["p"],
                 q_mvar=odc["q"],
                 u_n_kv=odc["u_n"],
+                nazwa_odcinka=f"Kabel nN obwodu odbiorczego {i + 1}",
             )
             for i, odc in enumerate(self._ODCINKI_NN)
         ]
@@ -737,6 +744,8 @@ class TestVDROPLancuchWieloodcinkowy:
             solver_version="1.0.0-test",
             u_source_kv=u_source_kv,
             segments=segments,
+            source_bus_name="Szyny SN GPZ",
+            target_bus_name="Szyny nN stacji",
         )
 
     def test_lancuch_trzech_odcinkow_nn_dowod_liczbowy(self) -> None:
@@ -793,15 +802,20 @@ class TestVDROPLancuchWieloodcinkowy:
         assert oczekiwany_total_kv == pytest.approx(0.0015375, abs=1e-12)
         assert oczekiwany_u_end == pytest.approx(0.4134625, abs=1e-9)
 
-    def test_lancuch_trzech_odcinkow_nn_kroki_maja_wlasciwe_id_gniazda(self) -> None:
-        """Każdy krok odcinka jest podpisany WŁAŚCIWYM ``segment_id`` w tytule —
-        łańcuch nie zlepia trzech odcinków w jeden nienazwany zestaw kroków."""
+    def test_lancuch_trzech_odcinkow_nn_kroki_maja_wlasciwa_nazwe_odcinka(self) -> None:
+        """Każdy krok odcinka jest podpisany WŁAŚCIWĄ nazwą odcinka z modelu w tytule —
+        łańcuch nie zlepia trzech odcinków w jeden nienazwany zestaw kroków. Karta #144
+        (zmiana kanonu): dawniej tytuł niósł ``segment_id``; identyfikator nie trafia już
+        do tytułu, a nagłówek nazywa szyny nazwami (nie ``*_bus_id``)."""
         proof = ProofGenerator.generate_vdrop_proof(self._lancuch_nn(0.415))
         for i in range(3):
-            segment_id = f"NN{i + 1}"
+            nazwa = f"Kabel nN obwodu odbiorczego {i + 1}"
             kroki_odcinka = proof.steps[i * 5 : i * 5 + 5]
             for krok in kroki_odcinka:
-                assert segment_id in krok.title_pl, (segment_id, krok.title_pl)
+                assert f"(odcinek {nazwa})" in krok.title_pl, (nazwa, krok.title_pl)
+                assert f"NN{i + 1}" not in krok.title_pl
+        assert proof.header.source_bus == "Szyny SN GPZ"
+        assert proof.header.target_bus == "Szyny nN stacji"
 
     def _lancuch_mieszany(self, u_source_kv: float, u_secondary_tr_kv: float) -> VDROPInput:
         seg_sn = VDROPSegmentInput(
@@ -814,6 +828,7 @@ class TestVDROPLancuchWieloodcinkowy:
             p_mw=0.5,
             q_mvar=0.2,
             u_n_kv=15.0,
+            nazwa_odcinka="Kabel SN odcinek testowy",
         )
         _pct_sn, kv_sn = _klasyczny_spadek(
             r_ohm_per_km=0.2, x_ohm_per_km=0.08, length_km=2.0, p_mw=0.5, q_mvar=0.2, u_n_kv=15.0
@@ -824,6 +839,7 @@ class TestVDROPLancuchWieloodcinkowy:
             to_bus_id="TR_WTORNE",
             u_primary_kv=u_source_kv - kv_sn,
             u_secondary_kv=u_secondary_tr_kv,
+            nazwa_odcinka="Transformator SN/nN testowy",
         )
         seg_nn = VDROPSegmentInput(
             segment_id="NN_KABEL",
@@ -835,6 +851,7 @@ class TestVDROPLancuchWieloodcinkowy:
             p_mw=0.01,
             q_mvar=0.003,
             u_n_kv=0.4,
+            nazwa_odcinka="Kabel SN odcinek testowy",
         )
         return VDROPInput(
             project_name="Test SN+TR+nN",
@@ -845,6 +862,8 @@ class TestVDROPLancuchWieloodcinkowy:
             solver_version="1.0.0-test",
             u_source_kv=u_source_kv,
             segments=[seg_sn, granica_tr, seg_nn],
+            source_bus_name="Szyny SN GPZ",
+            target_bus_name="Szyny nN stacji",
         )
 
     def test_lancuch_mieszany_sn_tr_nn_nazywa_zmiane_podstawy_jawnie(self) -> None:
@@ -879,7 +898,10 @@ class TestVDROPLancuchWieloodcinkowy:
 
         krok_tr = proof.steps[5]
         assert krok_tr.equation.equation_id == "EQ_VDROP_010"
-        assert "TR_SN_NN" in krok_tr.title_pl
+        # Karta #144: granica transformatora podpisana NAZWĄ transformatora z modelu,
+        # nie identyfikatorem (dawniej test szukał „TR_SN_NN" w tytule).
+        assert "Transformator SN/nN testowy" in krok_tr.title_pl
+        assert "TR_SN_NN" not in krok_tr.title_pl
         assert (
             "podstaw" in krok_tr.title_pl.lower() or "podstaw" in krok_tr.equation.name_pl.lower()
         )
@@ -932,6 +954,7 @@ class TestVDROPLancuchWieloodcinkowy:
             to_bus_id="TR_WTORNE",
             u_primary_kv=u_primary_wspolny,
             u_secondary_kv=0.39,
+            nazwa_odcinka="Transformator SN/nN testowy",
         )
         dane_b.segments[1] = VDROPTransformerBoundaryInput(
             segment_id="TR_SN_NN",
@@ -939,6 +962,7 @@ class TestVDROPLancuchWieloodcinkowy:
             to_bus_id="TR_WTORNE",
             u_primary_kv=u_primary_wspolny,
             u_secondary_kv=0.39,
+            nazwa_odcinka="Transformator SN/nN testowy",
         )
 
         proof_a = ProofGenerator.generate_vdrop_proof(dane_a)

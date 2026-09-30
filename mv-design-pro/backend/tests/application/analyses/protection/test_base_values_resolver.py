@@ -337,7 +337,7 @@ class TestFrequencyProtection:
         assert computed is not None
         assert computed.value == 47.5
         assert computed.unit == "Hz"
-        assert computed.computed_from == "wartosc bezwzgledna"
+        assert computed.computed_from == "wartość bezwzględna"
 
     def test_overfrequency_abs(self) -> None:
         """f> (81O) = 51.5 Hz."""
@@ -360,7 +360,7 @@ class TestFrequencyProtection:
         assert computed is not None
         assert computed.value == 51.5
         assert computed.unit == "Hz"
-        assert computed.computed_from == "wartosc bezwzgledna"
+        assert computed.computed_from == "wartość bezwzględna"
 
     def test_rocof_abs(self) -> None:
         """df/dt (81R) = 2 Hz/s."""
@@ -383,7 +383,7 @@ class TestFrequencyProtection:
         assert computed is not None
         assert computed.value == 2.0
         assert computed.unit == "Hz/s"
-        assert computed.computed_from == "wartosc bezwzgledna"
+        assert computed.computed_from == "wartość bezwzględna"
 
 
 # =============================================================================
@@ -508,7 +508,7 @@ class TestBreakerProtection:
 
         assert base.in_a == 1250.0
         assert base.source_in == BaseValueSourceIn.BREAKER
-        assert "wylacznik" in base.notes_pl.lower()
+        assert "wyłącznik" in base.notes_pl.lower()
 
 
 # =============================================================================

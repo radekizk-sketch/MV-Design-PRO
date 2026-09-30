@@ -34,6 +34,35 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+#: Rodzaj aparatu katalogu rozdzielnic → nazwa w treści dla projektanta (karta #142);
+#: kompletność względem ``ApparatusKind`` przypięta testem.
+NAZWY_RODZAJOW_APARATU_PL: dict[str, str] = {
+    "circuit_breaker": "wyłącznik",
+    "switch_disconnector": "rozłącznik",
+    "disconnector_busbar": "odłącznik szynowy",
+    "disconnector_line": "odłącznik liniowy",
+    "earthing_switch": "uziemnik",
+    "fuse_set": "zestaw bezpieczników",
+    "current_transformer": "przekładnik prądowy",
+    "voltage_transformer": "przekładnik napięciowy",
+    "surge_arrester": "ogranicznik przepięć",
+    "cable_head": "głowica kablowa",
+    "busbar": "szyny zbiorcze",
+    "bus_coupler": "sprzęgło szyn",
+    "voltage_indicator": "wskaźnik napięcia",
+    "protection_relay": "przekaźnik zabezpieczeniowy",
+    "meter": "licznik energii",
+    "transformer": "transformator",
+    "lv_breaker": "wyłącznik nN",
+    "interlock": "blokada",
+}
+
+
+def nazwa_rodzaju_aparatu_pl(rodzaj: object) -> str:
+    """Nazwa rodzaju aparatu; rodzaj spoza słownika = „aparat innego rodzaju"."""
+    return NAZWY_RODZAJOW_APARATU_PL.get(str(rodzaj), "aparat innego rodzaju")
+
+
 ApparatusKind = Literal[
     "circuit_breaker",
     "switch_disconnector",

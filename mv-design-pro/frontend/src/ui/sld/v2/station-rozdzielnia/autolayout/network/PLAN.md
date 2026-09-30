@@ -21,7 +21,8 @@ ciężkiego `core/layoutPipeline`. Dane z ENM (distill), glify E0/E1.
 
 ## Dane (most backend→frontend)
 
-- Backend `application/reference_networks/sld_network_model.py` `distill_sld_network(enm)` (pure):
+- Backend `backend/tests/golden/sld_network_model.py` (przeniesiony z
+  `application/reference_networks/` kartą K2, 2026-09-09) `distill_sld_network(enm)` (pure):
   BFS po grafie szyn (kabel+linia+wyłącznik+łącznik, **każdy status** → NO-ORPHAN) z szyny SN GPZ →
   drzewo stacji {id S01..S53, kind trunk/lateral, parent, depth, sn/nn_kv, trafo_mva, der[], nop}.
 - `scripts/emit_sld_network_fixture.py` → `network/sldNetwork53.ts` (fixture, sort_keys, +source_hash).

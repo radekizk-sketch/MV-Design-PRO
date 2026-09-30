@@ -11,6 +11,7 @@
  * (`krzyweModel.ts::krokiSladuPQ`).
  */
 
+import { nazwaObiektuZMigawki } from '../../wyniki/wzorzec/useNazwaObiektu';
 import { rodzajKontroliPL } from '../../wyniki/jakosc/strings';
 import type { RodzajKontroli } from '../../wyniki/jakosc/api';
 import type { DefinicjaKolumny, WierszTabeli } from '../../wyniki/wzorzec/wzorzecModel';
@@ -51,10 +52,14 @@ export function rodzajGranicyPL(binding: KryteriumWiazaceZdolnosci): string {
   }
 }
 
-/** Element wiążący (nazwa na pierwszym planie, ref jako rezerwa); brak → null. */
+/**
+ * Element wiążący — nazwa z mostu nazw wyników (brak nazwy → polska etykieta rodzaju,
+ * nigdy identyfikator, karta #145); brak elementu → null.
+ */
 export function elementGranicy(binding: KryteriumWiazaceZdolnosci): string | null {
   if (binding.kind !== 'voltage' && binding.kind !== 'loading') return null;
-  return binding.element_name ?? binding.element_id ?? null;
+  if (!binding.element_id) return binding.element_name ?? null;
+  return nazwaObiektuZMigawki(null, binding.element_id, binding.element_name);
 }
 
 /** Wartość obserwowana kryterium z jednostką z backendu; brak danych → null. */

@@ -1,0 +1,77 @@
+{
+  "analysis_matrix": {
+    "entries": [
+      {
+        "analysis_type": "SC_3F",
+        "availability": "AVAILABLE",
+        "blocking_codes": [],
+        "reason_pl": null
+      },
+      {
+        "analysis_type": "SC_1F",
+        "availability": "BLOCKED",
+        "blocking_codes": [
+          "E-D06"
+        ],
+        "reason_pl": "Zwarcie jednofazowe zablokowane: E-D06"
+      },
+      {
+        "analysis_type": "LF",
+        "availability": "AVAILABLE",
+        "blocking_codes": [],
+        "reason_pl": null
+      },
+      {
+        "analysis_type": "PROTECTION",
+        "availability": "AVAILABLE",
+        "blocking_codes": [],
+        "reason_pl": null
+      }
+    ]
+  },
+  "blocker_count": 0,
+  "info_count": 2,
+  "issues": [
+    {
+      "affected_refs": [
+        "39aa2231-26fb-59c4-87e3-39a81c06367c",
+        "9d39ac30-f6b6-56bb-b1fe-3841951e2a85"
+      ],
+      "code": "E-D06",
+      "hints": [
+        "Uzupełnij dane impedancji zerowej (R0, X0) dla gałęzi",
+        "Lub przypisz typ z katalogu zawierający dane Z0"
+      ],
+      "message_pl": "Zwarcie jednofazowe niedostępne — 2 gałęzi bez danych Z0 (impedancja zerowa)",
+      "severity": "WARN"
+    },
+    {
+      "affected_refs": [
+        "39aa2231-26fb-59c4-87e3-39a81c06367c",
+        "9d39ac30-f6b6-56bb-b1fe-3841951e2a85"
+      ],
+      "code": "W-D01",
+      "hints": [
+        "Uzupełnij dane Z0 lub przypisz typy z katalogu"
+      ],
+      "message_pl": "2 gałęzi bez danych impedancji zerowej (Z0). Analiza zwarcia jednofazowego może być niedostępna",
+      "severity": "WARN"
+    },
+    {
+      "affected_refs": [],
+      "code": "I-D01",
+      "hints": [],
+      "message_pl": "Wszystkie analizy dostępne — model jest kompletny",
+      "severity": "INFO"
+    },
+    {
+      "affected_refs": [],
+      "code": "I-D02",
+      "hints": [],
+      "message_pl": "Topologia sieci: oczkowa (pierścieniowa) (5 szyn, 5 połączeń)",
+      "severity": "INFO"
+    }
+  ],
+  "status": "WARN",
+  "warning_count": 2
+}

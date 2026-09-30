@@ -24,15 +24,21 @@ class TestBus:
         assert bus.phase_system == "3ph"
         assert bus.zone is None
 
-    def test_bus_with_grounding(self):
-        bus = Bus(
-            ref_id="bus_1",
-            name="Szyna 1",
-            voltage_kv=15.0,
-            grounding=GroundingConfig(type="petersen_coil", x_ohm=100.0),
+    def test_bus_bez_pola_grounding(self):
+        """W5-A: `Bus.grounding` skasowane — opis punktu neutralnego niesie
+        `Source.neutral_grounding` (poniżej) albo `Transformer.*_neutral`."""
+        assert "grounding" not in Bus.model_fields
+
+    def test_source_with_neutral_grounding(self):
+        source = Source(
+            ref_id="src_1",
+            name="GPZ",
+            bus_ref="bus_1",
+            model="short_circuit_power",
+            neutral_grounding=GroundingConfig(type="petersen_coil", x_ohm=100.0),
         )
-        assert bus.grounding is not None
-        assert bus.grounding.type == "petersen_coil"
+        assert source.neutral_grounding is not None
+        assert source.neutral_grounding.type == "petersen_coil"
 
 
 class TestBranches:

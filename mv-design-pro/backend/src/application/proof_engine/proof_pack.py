@@ -291,10 +291,7 @@ def zbuduj_zip_zbiorczy(pakiety: dict[str, bytes]) -> bytes:
 
 
 def resolve_mv_design_pro_version() -> str | None:
-    try:
-        import tomllib
-    except ModuleNotFoundError:
-        return None
+    import tomllib  # biblioteka standardowa od Pythona 3.11 (wymaganie projektu)
 
     for parent in Path(__file__).resolve().parents:
         candidate = parent / "pyproject.toml"

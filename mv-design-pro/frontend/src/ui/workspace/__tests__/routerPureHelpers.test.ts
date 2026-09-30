@@ -6,19 +6,39 @@ import {
 
 describe('auditProofPackStatus', () => {
   it('zwraca "Brak dowodów" gdy proof_count = 0', () => {
-    const r = auditProofPackStatus({ proof_count: 0, all_pass: true } as never);
+    const r = auditProofPackStatus({ proof_count: 0, all_pass: true, braki_danych: [] } as never);
     expect(r.label).toContain('Brak dowodów');
     expect(r.className).toContain('amber');
   });
 
   it('zwraca "Weryfikacja pozytywna" gdy all_pass=true', () => {
-    const r = auditProofPackStatus({ proof_count: 5, all_pass: true } as never);
+    const r = auditProofPackStatus({ proof_count: 5, all_pass: true, braki_danych: [] } as never);
     expect(r.label).toContain('pozytywna');
     expect(r.className).toContain('emerald');
   });
 
+  it('pakiet z brakami danych nie jest "Weryfikacja pozytywna" (brak danych ≠ spełnia)', () => {
+    const r = auditProofPackStatus({
+      proof_count: 1,
+      all_pass: true,
+      braki_danych: [{ proof_type: 'AUDIT2_TAP_CHANGER_PLAN', rodzaj_pl: 'x', przyczyna_pl: 'y' }],
+    } as never);
+    expect(r.label).toContain('Niekompletny');
+    expect(r.label).not.toContain('pozytywna');
+    expect(r.className).toContain('amber');
+  });
+
+  it('dowód niezaliczony ma pierwszeństwo przed brakami danych', () => {
+    const r = auditProofPackStatus({
+      proof_count: 1,
+      all_pass: false,
+      braki_danych: [{ proof_type: 'AUDIT2_TAP_CHANGER_PLAN', rodzaj_pl: 'x', przyczyna_pl: 'y' }],
+    } as never);
+    expect(r.label).toContain('sprawdzenia');
+  });
+
   it('zwraca "Wymaga sprawdzenia" gdy all_pass=false', () => {
-    const r = auditProofPackStatus({ proof_count: 5, all_pass: false } as never);
+    const r = auditProofPackStatus({ proof_count: 5, all_pass: false, braki_danych: [] } as never);
     expect(r.label).toContain('sprawdzenia');
     expect(r.className).toContain('rose');
   });

@@ -41,18 +41,19 @@ export const PRZEBIEGI_STRINGS = {
   // Szczegóły przebiegu
   szczegolyBrakWyboru: 'Wybierz przebieg z listy, aby zobaczyć jego szczegóły.',
   sekcjaParametry: 'Parametry przebiegu (odtwarzalność)',
-  sekcjaWkrotce: 'Dane niedostępne w rekordzie przebiegu',
   sekcjaTechniczna: 'Szczegóły techniczne',
   etykietaPoczatek: 'Początek',
   etykietaZakonczenie: 'Zakończenie',
   etykietaCzasTrwania: 'Czas trwania',
   etykietaOdcisk: 'Odcisk danych wejściowych (SHA-256)',
   etykietaRewizjaModelu: 'Rewizja modelu w chwili liczenia',
-  etykietaParametryWejsciowe: 'Wartości parametrów wejściowych solvera',
   etykietaBlad: 'Komunikat błędu',
   etykietaId: 'Identyfikator przebiegu',
   etykietaPrzypadekId: 'Identyfikator przypadku',
-  pochodzenieWkrotce: 'Wkrótce — brak źródła w rekordzie przebiegu',
+  // KARTA-UI2 §1 p. 10: „Rewizja modelu" ma teraz kontrakt (`ExecutionRun.model_revision`,
+  // koperta CV-2) — `null` opisuje KONKRETNY zapisany bieg sprzed rejestru koperty,
+  // nie brak funkcji ("wkrótce" byłoby fałszywe: kontrakt istnieje i jest czytany).
+  pochodzenieBrakWRekordzie: 'Brak w rekordzie przebiegu (sprzed rejestru koperty rewizji)',
   wToku: 'w toku',
   brakWartosci: '—',
 
@@ -64,8 +65,8 @@ export const PRZEBIEGI_STRINGS = {
   grupaOgolne: 'Kontekst ogólny',
   grupaRozplyw: 'Założenia rozpływu i zbieżności',
   grupaZwarcie: 'Założenia zwarciowo-sieciowe',
-  // Fala W3: grupa dla cienkich paneli stanu fazowego SN i stabilności
-  // dynamicznej (most: PhaseStateSurface, DynamicStabilitySurface).
+  // Fala W3: grupa kontekstu przypadku (stan fazowy SN, dynamika czasowa RMS) —
+  // pola kontraktu `analysis_case_context`.
   grupaStanyWarianty: 'Stany i warianty',
   etykietaTypAnalizy: 'Typ analizy',
   etykietaWaznoscWyniku: 'Ważność wyniku',
@@ -83,7 +84,7 @@ export const PRZEBIEGI_STRINGS = {
   etykietaTemperatura: 'Temperatura',
   etykietaZalozeniaObciazen: 'Założenia obciążeń',
   etykietaZalozeniaZrodel: 'Założenia źródeł',
-  // Fala W3: wiersze paneli stanu fazowego SN i stabilności dynamicznej.
+  // Fala W3: wiersze kontekstu przypadku (stan fazowy SN, dynamika czasowa RMS).
   etykietaIdentyfikatorPrzypadku: 'Identyfikator przypadku',
   etykietaBramaJakosci: 'Brama jakości',
   etykietaKompletnoscPrzejsciowa: 'Kompletność zgodności przejściowej',

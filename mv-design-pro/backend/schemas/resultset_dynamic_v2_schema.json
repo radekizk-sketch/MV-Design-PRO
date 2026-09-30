@@ -1,0 +1,708 @@
+{
+  "$defs": {
+    "KanalDynamicznyV2": {
+      "additionalProperties": false,
+      "description": "Opis jednego kanalu szeregu czasowego (bez probek — te w API na zadanie).",
+      "properties": {
+        "element_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Ref_id elementu ENM, gdy dotyczy.",
+          "title": "Element Ref"
+        },
+        "jednostka": {
+          "description": "Jednostka fizyczna (pu, Hz, s, MW, Mvar...).",
+          "minLength": 1,
+          "title": "Jednostka",
+          "type": "string"
+        },
+        "klucz": {
+          "description": "Klucz kanału (np. 'u_pu@b12', 'omega_pu@g1').",
+          "minLength": 1,
+          "title": "Klucz",
+          "type": "string"
+        },
+        "opis_pl": {
+          "description": "Opis po polsku (bez kodów projektowych).",
+          "minLength": 1,
+          "title": "Opis Pl",
+          "type": "string"
+        },
+        "przestrzen": {
+          "enum": [
+            "siec",
+            "urzadzenie",
+            "regulator",
+            "magazyn",
+            "obserwabla"
+          ],
+          "title": "Przestrzen",
+          "type": "string"
+        }
+      },
+      "required": [
+        "klucz",
+        "przestrzen",
+        "jednostka",
+        "opis_pl"
+      ],
+      "title": "KanalDynamicznyV2",
+      "type": "object"
+    },
+    "MetrykaDynamicznaV2": {
+      "additionalProperties": false,
+      "description": "Skalarna metryka wyprowadzona z przebiegu (np. u_min_pu, cct_s, rocof_max_hz_s).",
+      "properties": {
+        "element_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Element Ref"
+        },
+        "jednostka": {
+          "minLength": 1,
+          "title": "Jednostka",
+          "type": "string"
+        },
+        "klucz": {
+          "minLength": 1,
+          "title": "Klucz",
+          "type": "string"
+        },
+        "wartosc": {
+          "title": "Wartosc",
+          "type": "number"
+        },
+        "wzor_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Odniesienie do wzoru/równania (WHITE BOX).",
+          "title": "Wzor Ref"
+        }
+      },
+      "required": [
+        "klucz",
+        "wartosc",
+        "jednostka"
+      ],
+      "title": "MetrykaDynamicznaV2",
+      "type": "object"
+    },
+    "OdbiorOdcietyV2": {
+      "additionalProperties": false,
+      "description": "Odbior, ktory w chwili zdarzenia stracil obwod (obszar beznapieciowy).",
+      "properties": {
+        "p_pu": {
+          "description": "Moc czynna zadana sprzed odcięcia (pu, konwencja poboru).",
+          "title": "P Pu",
+          "type": "number"
+        },
+        "q_pu": {
+          "description": "Moc bierna zadana sprzed odcięcia (pu, konwencja poboru).",
+          "title": "Q Pu",
+          "type": "number"
+        },
+        "ref": {
+          "minLength": 1,
+          "title": "Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref",
+        "p_pu",
+        "q_pu"
+      ],
+      "title": "OdbiorOdcietyV2",
+      "type": "object"
+    },
+    "PrzekroczenieV2": {
+      "additionalProperties": false,
+      "description": "Chwila przekroczenia progu przez wielkosc DETEKTORA scenariusza (bez akcji).",
+      "properties": {
+        "dozor": {
+          "description": "Identyfikator detektora ze scenariusza.",
+          "minLength": 1,
+          "title": "Dozor",
+          "type": "string"
+        },
+        "iteracje": {
+          "description": "Liczba prób kroku lokalizacji.",
+          "minimum": 0,
+          "title": "Iteracje",
+          "type": "integer"
+        },
+        "kierunek": {
+          "enum": [
+            "w_dol",
+            "w_gore"
+          ],
+          "title": "Kierunek",
+          "type": "string"
+        },
+        "prog": {
+          "description": "Próg w jednostce kanału.",
+          "title": "Prog",
+          "type": "number"
+        },
+        "szerokosc_przedzialu_s": {
+          "description": "Szerokosc przedziału lokalizacji (0 dla chwili zdarzenia).",
+          "minimum": 0.0,
+          "title": "Szerokosc Przedzialu S",
+          "type": "number"
+        },
+        "t_s": {
+          "description": "Chwila przekroczenia (strona po przekroczeniu). Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
+          "title": "T S",
+          "type": "number"
+        },
+        "wielkosc": {
+          "description": "Klucz kanału wyniku, który detektor czyta (ta sama funkcja).",
+          "minLength": 1,
+          "title": "Wielkosc",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dozor",
+        "wielkosc",
+        "prog",
+        "kierunek",
+        "t_s",
+        "szerokosc_przedzialu_s",
+        "iteracje"
+      ],
+      "title": "PrzekroczenieV2",
+      "type": "object"
+    },
+    "PrzypisanieWykonaneV2": {
+      "additionalProperties": false,
+      "description": "Przypisanie stanu wykonane w chwili zdarzenia (przypisanie, komenda regulacji).",
+      "properties": {
+        "adres": {
+          "description": "Adres stanu `urzadzenie.stan`.",
+          "minLength": 1,
+          "title": "Adres",
+          "type": "string"
+        },
+        "po": {
+          "description": "Wartość zadana, przypisana dokładnie.",
+          "title": "Po",
+          "type": "number"
+        },
+        "przed": {
+          "description": "Wartość stanu tuz przed przypisaniem.",
+          "title": "Przed",
+          "type": "number"
+        }
+      },
+      "required": [
+        "adres",
+        "przed",
+        "po"
+      ],
+      "title": "PrzypisanieWykonaneV2",
+      "type": "object"
+    },
+    "StopienDowodowyV2": {
+      "additionalProperties": false,
+      "description": "Mirror JSON `solver_input.provenance.CapabilityEvidence` (rejestr A-2).",
+      "properties": {
+        "audit_ref": {
+          "minLength": 1,
+          "title": "Audit Ref",
+          "type": "string"
+        },
+        "capability_id": {
+          "minLength": 1,
+          "title": "Capability Id",
+          "type": "string"
+        },
+        "claim_kind": {
+          "minLength": 1,
+          "title": "Claim Kind",
+          "type": "string"
+        },
+        "claim_kind_pl": {
+          "minLength": 1,
+          "title": "Claim Kind Pl",
+          "type": "string"
+        },
+        "rationale_pl": {
+          "minLength": 1,
+          "title": "Rationale Pl",
+          "type": "string"
+        },
+        "regulatory_evidence_eligible": {
+          "title": "Regulatory Evidence Eligible",
+          "type": "boolean"
+        },
+        "tier": {
+          "minLength": 1,
+          "title": "Tier",
+          "type": "string"
+        },
+        "tier_pl": {
+          "minLength": 1,
+          "title": "Tier Pl",
+          "type": "string"
+        }
+      },
+      "required": [
+        "capability_id",
+        "tier",
+        "tier_pl",
+        "claim_kind",
+        "claim_kind_pl",
+        "regulatory_evidence_eligible",
+        "rationale_pl",
+        "audit_ref"
+      ],
+      "title": "StopienDowodowyV2",
+      "type": "object"
+    },
+    "TozsamoscBieguDynamicznegoV2": {
+      "additionalProperties": false,
+      "description": "Piec odciskow tozsamosci biegu — determinizm (ta sama piatka => ten sam wynik).",
+      "properties": {
+        "odcisk_harmonogramu": {
+          "minLength": 1,
+          "title": "Odcisk Harmonogramu",
+          "type": "string"
+        },
+        "odcisk_implementacji": {
+          "minLength": 1,
+          "title": "Odcisk Implementacji",
+          "type": "string"
+        },
+        "odcisk_migawki": {
+          "minLength": 1,
+          "title": "Odcisk Migawki",
+          "type": "string"
+        },
+        "odcisk_nastaw_solvera": {
+          "minLength": 1,
+          "title": "Odcisk Nastaw Solvera",
+          "type": "string"
+        },
+        "odcisk_punktu_pracy": {
+          "minLength": 1,
+          "title": "Odcisk Punktu Pracy",
+          "type": "string"
+        },
+        "wersja_solvera": {
+          "minLength": 1,
+          "title": "Wersja Solvera",
+          "type": "string"
+        }
+      },
+      "required": [
+        "odcisk_migawki",
+        "odcisk_punktu_pracy",
+        "odcisk_nastaw_solvera",
+        "odcisk_harmonogramu",
+        "odcisk_implementacji",
+        "wersja_solvera"
+      ],
+      "title": "TozsamoscBieguDynamicznegoV2",
+      "type": "object"
+    },
+    "WlasnosciBieguV2": {
+      "additionalProperties": false,
+      "description": "Wlasnosci numeryczne biegu (zbieznosc, kroki, residua, integrator).",
+      "properties": {
+        "czas_obliczen_s": {
+          "minimum": 0.0,
+          "title": "Czas Obliczen S",
+          "type": "number"
+        },
+        "dt_s": {
+          "exclusiveMinimum": 0.0,
+          "title": "Dt S",
+          "type": "number"
+        },
+        "integrator": {
+          "minLength": 1,
+          "title": "Integrator",
+          "type": "string"
+        },
+        "kroki": {
+          "minimum": 0,
+          "title": "Kroki",
+          "type": "integer"
+        },
+        "kroki_odrzucone": {
+          "minimum": 0,
+          "title": "Kroki Odrzucone",
+          "type": "integer"
+        },
+        "max_residuum_f": {
+          "description": "Maks. residuum równań różniczkowych ||f||.",
+          "minimum": 0.0,
+          "title": "Max Residuum F",
+          "type": "number"
+        },
+        "max_residuum_g": {
+          "description": "Maks. residuum równań algebraicznych ||g||.",
+          "minimum": 0.0,
+          "title": "Max Residuum G",
+          "type": "number"
+        },
+        "tolerancja": {
+          "exclusiveMinimum": 0.0,
+          "title": "Tolerancja",
+          "type": "number"
+        },
+        "zbiegl": {
+          "title": "Zbiegl",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "zbiegl",
+        "kroki",
+        "kroki_odrzucone",
+        "max_residuum_f",
+        "max_residuum_g",
+        "czas_obliczen_s",
+        "integrator",
+        "dt_s",
+        "tolerancja"
+      ],
+      "title": "WlasnosciBieguV2",
+      "type": "object"
+    },
+    "ZdarzenieWykonaneV2": {
+      "additionalProperties": false,
+      "description": "Zdarzenie harmonogramu FAKTYCZNIE wykonane przez solver (nie zaplanowane).\n\nSkutki topologiczne CHWILI (wspolne dla zdarzen rownoczesnych, jak pomiar\nre-inicjalizacji): wezly, ktore w tej chwili staly sie beznapieciowe, odbiory,\nktore stracily obwod, i wezly zasilone ponownie. Przypisania stanu (komendy\nregulacji, przypisania) z pomiarem ciaglosci stanow NIEprzypisanych. Zdarzenie\nWARUNKOWE (akcja dozoru) niesie przyczyne `dozor:<ident>` i pomiar lokalizacji.",
+      "properties": {
+        "delta_x_nieprzypisane_max": {
+          "description": "Maks. skok stanu różniczkowego NIEprzypisanego w tej chwili, wobec stanow sprzed całej chwili — 0,0 dokładnie (ciągłość stanow mierzona, nie deklarowana).",
+          "title": "Delta X Nieprzypisane Max",
+          "type": "number"
+        },
+        "delta_y_max": {
+          "description": "Maks. skok stanu algebraicznego przy re-inicjalizacji.",
+          "title": "Delta Y Max",
+          "type": "number"
+        },
+        "g_po": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Wielkość minus próg na prawym koncu przedziału lokalizacji.",
+          "title": "G Po"
+        },
+        "g_przed": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Wielkość minus próg na lewym koncu przedziału lokalizacji.",
+          "title": "G Przed"
+        },
+        "iteracje_lokalizacji": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Liczba prób kroku lokalizacji pobudzenia; None dla planowanego.",
+          "title": "Iteracje Lokalizacji"
+        },
+        "obszary_odciete": {
+          "description": "Węzły, które w tej chwili stały się beznapięciowe.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Obszary Odciete",
+          "type": "array"
+        },
+        "obszary_zasilone_ponownie": {
+          "description": "Węzły, które w tej chwili przestały być beznapięciowe.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Obszary Zasilone Ponownie",
+          "type": "array"
+        },
+        "odbiory_odciete": {
+          "description": "Odbiory, które w tej chwili straciły obwód.",
+          "items": {
+            "$ref": "#/$defs/OdbiorOdcietyV2"
+          },
+          "title": "Odbiory Odciete",
+          "type": "array"
+        },
+        "przyczyna": {
+          "description": "`harmonogram` albo `dozor:<ident>` (zdarzenie warunkowe).",
+          "minLength": 1,
+          "title": "Przyczyna",
+          "type": "string"
+        },
+        "przypisania": {
+          "description": "Przypisania stanu wykonane przez ten wpis (adres, przed, po).",
+          "items": {
+            "$ref": "#/$defs/PrzypisanieWykonaneV2"
+          },
+          "title": "Przypisania",
+          "type": "array"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ref"
+        },
+        "residuum_kcl_max": {
+          "description": "Maks. residuum bilansu prądowego po re-inicjalizacji.",
+          "title": "Residuum Kcl Max",
+          "type": "number"
+        },
+        "rodzaj": {
+          "minLength": 1,
+          "title": "Rodzaj",
+          "type": "string"
+        },
+        "szerokosc_przedzialu_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Szerokosc przedziału lokalizacji pobudzenia; None dla planowanego.",
+          "title": "Szerokosc Przedzialu S"
+        },
+        "t_wykonany_s": {
+          "description": "Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
+          "title": "T Wykonany S",
+          "type": "number"
+        },
+        "t_zaplanowany_s": {
+          "description": "Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
+          "title": "T Zaplanowany S",
+          "type": "number"
+        },
+        "t_zlokalizowany_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Chwila pobudzenia dozoru (zdarzenie warunkowe); None dla planowanego. Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
+          "title": "T Zlokalizowany S"
+        }
+      },
+      "required": [
+        "t_zaplanowany_s",
+        "t_wykonany_s",
+        "rodzaj",
+        "przyczyna",
+        "delta_x_nieprzypisane_max",
+        "delta_y_max",
+        "residuum_kcl_max",
+        "obszary_odciete",
+        "odbiory_odciete",
+        "obszary_zasilone_ponownie",
+        "przypisania",
+        "t_zlokalizowany_s",
+        "szerokosc_przedzialu_s",
+        "iteracje_lokalizacji",
+        "g_przed",
+        "g_po"
+      ],
+      "title": "ZdarzenieWykonaneV2",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Kanoniczny wynik czasowy — kontener najwyzszego poziomu (SS0 p.6).\n\nINVARIANTS:\n- `kontrakt` = \"resultset_dynamic_v2\" (bump wersji = nowy plik/kontrakt).\n- `strona_probki` ma DOKLADNIE dlugosc `os_czasu_s`, a kazdy szereg `probki` —\n  te sama dlugosc (walidator); `None` w probce to wartosc NIEDOSTEPNA (przyczyne\n  niesie kanal jakosci albo stan elementu), nigdy liczba podstawiona.\n- `dziedzina_fizyki` wyprowadzona z mapy dziedzin produktu (walidator odrzuca inna).\n- `probki` domyslnie PUSTE w kontenerze zapisanym w `CanonicalRun.raw_result`\n  (szeregi czasowe zyja w `canonical_run_time_series`) — kontener z\n  niepustymi `probki` istnieje WYLACZNIE w odpowiedzi endpointu\n  `.../time-series`, nigdy w wierszu biegu.\n- Kazdy `float` skwantyzowany do 9 cyfr znaczacych na granicy kontraktu\n  (`zbuduj_resultset_dynamiczny_v2`), zero NaN/Inf (fail-closed).\n- Kazdy model kontraktu odrzuca pola nieznane (`extra = forbid`): schemat JSON\n  `backend/schemas/resultset_dynamic_v2_schema.json` jest scisly i przypiety\n  testem do modelu.",
+  "properties": {
+    "analysis_type": {
+      "const": "dynamika_rms",
+      "default": "dynamika_rms",
+      "title": "Analysis Type",
+      "type": "string"
+    },
+    "dziedzina_fizyki": {
+      "items": {
+        "enum": [
+          "POWER_FLOW",
+          "SHORT_CIRCUIT",
+          "RMS_DYNAMICS",
+          "SEQUENCE_DOMAIN",
+          "HARMONIC_FREQUENCY_DOMAIN",
+          "SUPRAHARMONIC_FREQUENCY_DOMAIN"
+        ],
+        "type": "string"
+      },
+      "title": "Dziedzina Fizyki",
+      "type": "array"
+    },
+    "kanaly": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/KanalDynamicznyV2"
+      },
+      "title": "Kanaly",
+      "type": "array"
+    },
+    "kontrakt": {
+      "const": "resultset_dynamic_v2",
+      "default": "resultset_dynamic_v2",
+      "title": "Kontrakt",
+      "type": "string"
+    },
+    "metryki": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/MetrykaDynamicznaV2"
+      },
+      "title": "Metryki",
+      "type": "array"
+    },
+    "os_czasu_s": {
+      "default": [],
+      "description": "Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
+      "items": {
+        "type": "number"
+      },
+      "title": "Os Czasu S",
+      "type": "array"
+    },
+    "probki": {
+      "additionalProperties": {
+        "items": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": "array"
+      },
+      "title": "Probki",
+      "type": "object"
+    },
+    "przekroczenia": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/PrzekroczenieV2"
+      },
+      "title": "Przekroczenia",
+      "type": "array"
+    },
+    "run_id": {
+      "minLength": 1,
+      "title": "Run Id",
+      "type": "string"
+    },
+    "stopien_dowodowy": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/StopienDowodowyV2"
+      },
+      "title": "Stopien Dowodowy",
+      "type": "array"
+    },
+    "strona_probki": {
+      "default": [],
+      "items": {
+        "enum": [
+          "C",
+          "L",
+          "P"
+        ],
+        "type": "string"
+      },
+      "title": "Strona Probki",
+      "type": "array"
+    },
+    "tozsamosc": {
+      "$ref": "#/$defs/TozsamoscBieguDynamicznegoV2"
+    },
+    "tryb_scenariusza": {
+      "enum": [
+        "siec",
+        "stanowisko"
+      ],
+      "title": "Tryb Scenariusza",
+      "type": "string"
+    },
+    "wlasnosci_biegu": {
+      "$ref": "#/$defs/WlasnosciBieguV2"
+    },
+    "zalozenia": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Zalozenia",
+      "type": "array"
+    },
+    "zdarzenia_wykonane": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ZdarzenieWykonaneV2"
+      },
+      "title": "Zdarzenia Wykonane",
+      "type": "array"
+    }
+  },
+  "required": [
+    "run_id",
+    "dziedzina_fizyki",
+    "tryb_scenariusza",
+    "wlasnosci_biegu",
+    "tozsamosc"
+  ],
+  "title": "ResultSetDynamicV2",
+  "type": "object"
+}

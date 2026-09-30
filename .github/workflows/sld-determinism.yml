@@ -65,9 +65,6 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts --reporter=verbose
 
-      # StationInternalView (v2) usunieto razem z testem w 08ccf7c9 (martwe legacy);
-      # widok wnetrza stacji pokrywaja kontrakty v3 ponizej.
-
       - name: Run SldCommandService tests (PR-13)
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v2/command/__tests__/SldCommandService.test.ts --reporter=verbose

@@ -392,27 +392,6 @@ class UnitVerifier:
             "inputs": {"P_{loss}": "kW", "t": "h"},
             "output": "kWh",
         },
-        # P18: Protection Overcurrent & Selectivity
-        "EQ_PR_001": {
-            "rule": "kA ≤ kA = —",
-            "inputs": {"I_k''": "kA", "I_{cu}": "kA"},
-            "output": "—",
-        },
-        "EQ_PR_002": {
-            "rule": "kA ≤ kA = —",
-            "inputs": {"i_p": "kA", "I_{dyn}": "kA"},
-            "output": "—",
-        },
-        "EQ_PR_003": {
-            "rule": "kA²s ≤ kA²s = —",
-            "inputs": {"∫ i^2 dt": "kA²s", "I_{th}": "kA²s"},
-            "output": "—",
-        },
-        "EQ_PR_004": {
-            "rule": "s + s ≤ s = —",
-            "inputs": {"t_{down,max}": "s", "Δt": "s", "t_{up,min}": "s"},
-            "output": "—",
-        },
         # P19: Earthing / Ground Fault (SN)
         "EQ_EARTH_001": {
             "rule": "V / Ω = A",
