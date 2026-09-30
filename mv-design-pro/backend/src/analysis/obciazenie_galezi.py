@@ -25,7 +25,6 @@ Konsumenci — jedyne miejsca liczenia obciążenia gałęzi z wyniku rozpływu:
 `enm/canonical_analysis.py::build_branch_results` (tabela gałęzi),
 `analysis/energy_validation/builder.py` (kontrole obciążenia linii i transformatorów),
 `application/analyses/sanity_bounds.py` (pasma wiarygodności obciążenia),
-`analysis/power_flow/analysis.py::_build_violations` (naruszenia prądowe),
 `analysis/power_flow_interpretation/builder.py` (ustalenia obciążenia gałęzi).
 
 Prąd ZACISKU (bez obciążenia) czytają z tabeli gałęzi (kolumny `i_a` — zacisk `od`,

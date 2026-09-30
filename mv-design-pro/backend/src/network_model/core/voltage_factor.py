@@ -17,9 +17,9 @@ before 2026-09-25) was a guess that turned invalid input into a plausible-lookin
 
 This module is the ONE place that encodes the c values of the table. ``TransformerBranch.
 get_voltage_factor_c_max``/``get_voltage_factor_c_min`` (network_model/core/
-branch.py) delegate here instead of duplicating the thresholds, and
-``application/solvers/short_circuit_binding.py`` uses ``c_for_node`` directly
-to pick c for the actual short-circuit fault node.
+branch.py) delegate here instead of duplicating the thresholds, and the canonical
+short-circuit assembler (``enm/assembler.py::zloz_wejscie_zwarcia``) uses ``c_for_node``
+directly to pick c for the actual short-circuit fault node.
 
 NOT a solver: pure lookup, no physics computation, no network state.
 """

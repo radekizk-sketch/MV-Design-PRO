@@ -737,8 +737,8 @@ The system is fully functional with:
   models, IEC 60364 fault loop, IEC 60255 protection, NC RfG/PTPiREE, FRT/HVRT, RMS stability,
   WLS state estimation, phase state SN, grid source preview, V12.6 academic)
 - 8+ proof packs (SC3F, VDROP, Equipment, PF, Losses, Protection, Earthing, LF Voltage, V12.6 academic)
-- 19 analysis modules (incl. Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds,
-  Energy Validation — see inventory)
+- 18 analysis modules (incl. Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds,
+  Energy Validation — see inventory; `machine_short_circuit` skasowany 2026-09-30)
 - Full frontend (63 UI modules): SLD editor, Results, Study Cases, Proof Inspector, Protection, NC RfG tests
 - 10 792 backend test functions (`grep -rn "def test_" backend/tests --include=*.py`, 2026-09-30,
   partia integracji 5 z DETERMINIZM-KATA-FAZORA); 12 716 frontend tests in 879 files (full

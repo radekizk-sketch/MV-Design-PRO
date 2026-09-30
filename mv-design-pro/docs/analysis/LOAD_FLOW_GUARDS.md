@@ -18,6 +18,15 @@
 > kryteria_napiecia.py`. Szczegóły → `docs/v12xx/REJESTR_KONFLIKTOW.md` wiersz
 > W3-J.
 >
+> **KOREKTA 2026-09-30 (karta TORY-TYLKO-W-TESTACH):** `analysis/power_flow/solver.py`
+> (`PowerFlowSolver`), `analysis/power_flow/analysis.py` (`assemble_power_flow_result`,
+> detekcja naruszeń względem `bus_limits`/`branch_limits`) i `analysis/power_flow/_internal.py`
+> skasowane — adapter wołał solver NR w warstwie interpretacji i nie miał konsumenta
+> w produkcie (tylko testy). Z pakietu zostały `result.py` (`PowerFlowResult`, FROZEN)
+> i `types.py`. Lista skanowana przez §3.3 poprawiona wg drzewa (`SCAN_DIRS` skryptu).
+> Granica importów warstwy analizy (`network_model.solvers*` wyłącznie przez listę
+> zamkniętą typów wyników i kontraktów): `scripts/arch_guard.py`.
+>
 > **Status (pierwotny)**: BINDING (RUN #2A -- Load Flow closure)
 > **Date**: 2026-02-13
 > **Scope**: CI guards i invarianty dla bloku Load Flow
@@ -366,23 +375,17 @@ wartosci, automatycznego wyboru, ani ukrytych korekcji.
 
 ### 3.2 Script
 
-`scripts/lf_no_heuristics_guard.py`
+`scripts/load_flow_no_heuristics_guard.py` (dawna nazwa w tym dokumencie
+`lf_no_heuristics_guard.py` nie istnieje — korekta W3-J).
 
 ### 3.3 Scanned Paths
 
+Skrypt skanuje rekurencyjnie katalogi `SCAN_DIRS` (stan drzewa 2026-09-30):
+
 ```
-backend/src/application/analysis_run/orchestrator.py
-backend/src/application/analysis_run/service.py
-backend/src/application/analysis_run/dtos.py
-backend/src/application/analysis_run/read_model.py
-backend/src/domain/power_flow_comparison.py
-backend/src/analysis/power_flow/_internal.py
-backend/src/analysis/power_flow/types.py
-backend/src/analysis/power_flow/violations.py
-backend/src/analysis/power_flow/result.py
-backend/src/analysis/power_flow/solver.py
-backend/src/analysis/power_flow/analysis.py
-backend/src/analysis/power_flow/violations_report.py
+backend/src/application/analysis_run/     # __init__.py, read_model.py
+backend/src/domain/                       # m.in. power_flow_comparison.py
+backend/src/analysis/power_flow/          # __init__.py, result.py, types.py
 ```
 
 ### 3.4 Banned Patterns

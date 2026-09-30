@@ -1512,11 +1512,11 @@ def check_w3j_voltage_criteria_resurrection() -> list[str]:
     `FORBIDDEN_W3J_FUNCTION_NAMES` nie wraca jako DEFINICJA gdziekolwiek w
     `backend/src`, (3) `frontend/src/ui/voltage-profile/**` nie istnieje,
     (4) `VoltageProfileChart`/`VoltageHeatmapLegend` nie wracaja pod INNA
-    sciezka frontendu. `analysis/power_flow/{result,solver,types,analysis}.py`
-    (pozostala czesc pakietu PF v2 — `PowerFlowSolver`, `PowerFlowResult`,
-    limity `BusVoltageLimitSpec` skonfigurowane PRZEZ wolajacego) ZOSTAJA —
-    celowo POZA zakresem tego sprawdzenia, bo karta kasuje wylacznie
-    detektor/eksport z zaszytymi DOMYSLNYMI progami, nie caly pakiet."""
+    sciezka frontendu. Z pakietu PF v2 zostaja `analysis/power_flow/{result,types}.py`
+    (`PowerFlowResult` FROZEN i reeksport kontraktu wejscia solvera). Adapter
+    `solver.py`/`analysis.py`/`_internal.py` (`PowerFlowSolver`, detekcja naruszen
+    wzgledem `bus_limits`/`branch_limits`) skasowany kartą TORY-TYLKO-W-TESTACH
+    (2026-09-30) — jego bramka: `check_tory_testowe_resurrection`."""
     violations: list[str] = []
     for rel, label in W3J_BACKEND_MODULE_RELATIVE_PATHS.items():
         path = BACKEND_SRC_DIR / rel
@@ -1560,6 +1560,89 @@ def check_w3j_voltage_criteria_resurrection() -> list[str]:
                     violations.append(
                         f"[resurrected-component] {rel_path}: export VoltageHeatmapLegend "
                         "(usuniety kartą W3-J) nie może wrócić"
+                    )
+    return violations
+
+
+# Karta TORY-TYLKO-W-TESTACH (2026-09-30) — tory obliczen bez konsumenta w produkcie
+# (tylko testy) skasowane; w produkcie jedna sciezka kazdego obliczenia (bieg kanoniczny):
+#   (1) adapter rozplywu w warstwie interpretacji `analysis/power_flow/{solver,analysis,
+#       _internal}.py` (`PowerFlowSolver`, `solve_power_flow`, `assemble_power_flow_result`,
+#       detekcja naruszen wzgledem `bus_limits`/`branch_limits`, ktorych zaden producent
+#       nie wypelnial),
+#   (2) `application/solvers/short_circuit_binding.py::execute_short_circuit` z wlasna
+#       regula c (`_resolve_c_factor`) — rownolegle do `enm/assembler.py::
+#       zloz_wejscie_zwarcia`,
+#   (3) galaz awaryjna pakietu dowodowego stanu fazowego SN (pakiet liczyl solver, gdy
+#       wynik nie byl podany),
+#   (4) pakiet `analysis/machine_short_circuit/` (interpretacja wkladow maszyn bez
+#       konsumenta; wklady z wywodem daje `api/proof_pack.py::sc3f_contributions`).
+TORY_TESTOWE_SCIEZKI_BACKEND = {
+    "analysis/power_flow/solver.py": "adapter PowerFlowSolver wolajacy solver NR w analizie",
+    "analysis/power_flow/analysis.py": "assemble_power_flow_result i martwa detekcja naruszen",
+    "analysis/power_flow/_internal.py": "reeksport gwiazdka wnetrza solvera NR",
+    "analysis/machine_short_circuit": "interpretacja wkladow maszyn bez konsumenta",
+}
+#: Definicje zakazane w calym `backend/src` (nazwy jednoznaczne dla skasowanych torow).
+TORY_TESTOWE_DEFINICJE = frozenset(
+    {
+        "PowerFlowSolver",
+        "solve_power_flow",
+        "assemble_power_flow_result",
+        "execute_short_circuit",
+        "interpret_machine_contributions",
+        "MachineContributionInterpretation",
+        "MachineContributionFinding",
+    }
+)
+#: Definicje zakazane PER PLIK (nazwy, ktore gdzie indziej sa legalne — np. metoda
+#: `_build_violations` adekwatnosci mocy biernej).
+TORY_TESTOWE_DEFINICJE_PLIKOWE: dict[str, frozenset[str]] = {
+    "analysis/power_flow/__init__.py": frozenset({"_build_violations", "_summarize_violations"}),
+    "analysis/power_flow/result.py": frozenset({"_build_violations", "_summarize_violations"}),
+    "analysis/power_flow/types.py": frozenset({"_build_violations", "_summarize_violations"}),
+    "application/solvers/short_circuit_binding.py": frozenset({"_resolve_c_factor"}),
+}
+#: Pakiet dowodowy stanu fazowego SN nie wola solvera (pakiet opisuje wynik).
+TORY_TESTOWE_PAKIET_FAZOWY = "application/proof_engine/packs/phase_state_sn.py"
+
+
+def check_tory_testowe_resurrection() -> list[str]:
+    """Karta TORY-TYLKO-W-TESTACH (2026-09-30): skasowane tory obliczen bez konsumenta
+    nie wracaja — patrz komentarz nad `TORY_TESTOWE_SCIEZKI_BACKEND`."""
+    violations: list[str] = []
+    znak = "karta TORY-TYLKO-W-TESTACH — jedna sciezka obliczenia: bieg kanoniczny"
+    for sciezka, opis in TORY_TESTOWE_SCIEZKI_BACKEND.items():
+        if zrodlo_istnieje(BACKEND_SRC_DIR / sciezka):
+            violations.append(
+                f"[resurrected-module] backend/src/{sciezka}: {opis} ({znak}) — nie odtwarzaj"
+            )
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        rel_src = py_file.relative_to(BACKEND_SRC_DIR).as_posix()
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        plikowe = TORY_TESTOWE_DEFINICJE_PLIKOWE.get(rel_src, frozenset())
+        for nazwa, lineno in _definicje_py(tree):
+            if nazwa in TORY_TESTOWE_DEFINICJE or nazwa in plikowe:
+                violations.append(f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak})")
+        if rel_src == TORY_TESTOWE_PAKIET_FAZOWY:
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom):
+                    trafienie = any(alias.name == "PhaseStateSNSolver" for alias in node.names)
+                elif isinstance(node, ast.Name):
+                    trafienie = node.id == "PhaseStateSNSolver"
+                elif isinstance(node, ast.Attribute):
+                    trafienie = node.attr == "PhaseStateSNSolver"
+                else:
+                    trafienie = False
+                if trafienie:
+                    violations.append(
+                        f"[resurrected-name] {rel_path}:{node.lineno}: PhaseStateSNSolver — "
+                        f"pakiet dowodowy nie liczy solvera, wynik podaje wolajacy ({znak})"
                     )
     return violations
 
@@ -2672,6 +2755,7 @@ def main() -> int:
         + check_trace_v2_resurrection()
         + check_w3g1_run_trigger_orphan_resurrection()
         + check_w3j_voltage_criteria_resurrection()
+        + check_tory_testowe_resurrection()
         + check_s3_ncrfg_second_engine_resurrection()
         + check_uniewazniacz_resurrection()
         + check_pakiet_l_resurrection()

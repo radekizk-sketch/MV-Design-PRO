@@ -40,8 +40,17 @@ def _build_pack_input() -> PhaseStateSNProofPackInput:
     )
 
 
+def _materialize(pack_input: PhaseStateSNProofPackInput) -> dict:
+    """Karta TORY-TYLKO-W-TESTACH (2026-09-30): pakiet nie liczy już solvera sam (dawna
+    gałąź awaryjna istniała tylko w testach) — wynik podaje wołający, jak bieg kanoniczny.
+    """
+    return PhaseStateSNProofPack.materialize_payload(
+        pack_input, solver_result=PhaseStateSNSolver.solve(pack_input.solver_input)
+    )
+
+
 def test_phase_state_sn_pack_materializes_payload_without_http() -> None:
-    payload = PhaseStateSNProofPack.materialize_payload(_build_pack_input())
+    payload = _materialize(_build_pack_input())
 
     assert payload["result_type"] == "phase_state_sn_proof"
     assert payload["proof_type"] == PHASE_STATE_SN_PROOF_TYPE
@@ -72,7 +81,7 @@ def test_phase_state_sn_pack_accepts_precomputed_solver_result() -> None:
 def test_phase_state_sn_pack_is_deterministic() -> None:
     pack_input = _build_pack_input()
 
-    first = PhaseStateSNProofPack.materialize_payload(pack_input)
-    second = PhaseStateSNProofPack.materialize_payload(pack_input)
+    first = _materialize(pack_input)
+    second = _materialize(pack_input)
 
     assert first == second

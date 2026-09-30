@@ -1,23 +1,41 @@
-from analysis.power_flow import (
-    BusVoltageLimitSpec,
+"""Rozpływ mocy NR v2 — PV z limitami Q (przełączanie PV→PQ), zaczepy, bocznik, brak
+zbieżności (WHITE BOX solvera).
+
+Karta TORY-TYLKO-W-TESTACH (2026-09-30): testy wołały adapter warstwy analizy
+(`analysis.power_flow.PowerFlowSolver`) bez konsumenta w produkcie — skasowany. Asercje
+sprawdzają te same zjawiska na rozwiązaniu `PowerFlowNewtonSolver` wprost. Dawna flaga
+śladu `v2_feature_flags.pv_enabled` była wyprowadzana z samego wejścia (`bool(pf_input.pv)`)
+— tautologia; zastępuje ją dowód z solvera, że węzeł PV był regulowany (napięcie zadane
+utrzymane albo jawne przełączenie PV→PQ). Test rankingu naruszeń napięć względem
+`bus_limits` zdjęty razem z martwą detekcją: w produkcie odchylenie napięcia szyn ocenia
+walidacja energetyczna (`analysis/energy_validation/builder.py::_check_voltage_deviation`)
+i interpretacja rozpływu (`analysis/power_flow_interpretation/builder.py`) — tam są ich
+testy.
+"""
+
+from network_model.core.branch import BranchType, LineBranch, TransformerBranch
+from network_model.core.graph import NetworkGraph
+from network_model.core.node import Node, NodeType
+from network_model.solvers.power_flow_newton import (
+    PowerFlowNewtonSolution,
+    PowerFlowNewtonSolver,
+)
+from network_model.solvers.power_flow_types import (
     PowerFlowInput,
     PowerFlowOptions,
-    PowerFlowSolver,
     PQSpec,
     PVSpec,
     ShuntSpec,
     SlackSpec,
     TransformerTapSpec,
 )
-from network_model.core.branch import BranchType, LineBranch, TransformerBranch
-from network_model.core.graph import NetworkGraph
-from network_model.core.node import Node, NodeType
 
 
-def _assert_basic_trace(result: object) -> None:
-    trace = result.white_box_trace
-    for key in ("ybus", "nr_iterations", "power_balance", "islands", "v2_feature_flags"):
-        assert key in trace
+def _assert_basic_trace(solution: PowerFlowNewtonSolution) -> None:
+    """WHITE BOX: Y-bus, ślad iteracji NR i wyspa bilansująca są jawne (u źródła)."""
+    assert solution.ybus_trace
+    assert solution.nr_trace
+    assert solution.slack_island_nodes
 
 
 def _make_slack_node(node_id: str, voltage_kv: float = 10.0) -> Node:
@@ -118,15 +136,14 @@ def test_pv_stays_pv_when_q_within_limits() -> None:
         options=PowerFlowOptions(max_iter=30),
     )
 
-    result = PowerFlowSolver().solve(pf_input)
+    result = PowerFlowNewtonSolver().solve(pf_input)
 
     assert result.converged is True
     assert result.iterations <= pf_input.options.max_iter
     assert result.pv_to_pq_switches == []
-    assert result.white_box_trace["v2_feature_flags"]["pv_enabled"] is True
-    assert all(
-        not entry.get("pv_to_pq_optional") for entry in result.white_box_trace["nr_iterations"]
-    )
+    # PV regulowany: Q w granicach, więc solver utrzymał napięcie zadane węzła PV.
+    assert abs(result.node_u_mag["B"] - 1.02) < 1e-6
+    assert all(not entry.get("pv_to_pq_optional") for entry in result.nr_trace)
     _assert_basic_trace(result)
 
 
@@ -155,13 +172,12 @@ def test_pv_q_limits_trigger_pv_to_pq_switch() -> None:
         options=PowerFlowOptions(max_iter=30),
     )
 
-    result = PowerFlowSolver().solve(pf_input)
+    result = PowerFlowNewtonSolver().solve(pf_input)
 
     assert result.converged is True
     assert result.iterations <= pf_input.options.max_iter
     assert any(switch["node_id"] == "B" for switch in result.pv_to_pq_switches)
-    assert any(entry.get("pv_to_pq_optional") for entry in result.white_box_trace["nr_iterations"])
-    assert result.white_box_trace["v2_feature_flags"]["pv_enabled"] is True
+    assert any(entry.get("pv_to_pq_optional") for entry in result.nr_trace)
     _assert_basic_trace(result)
 
 
@@ -178,7 +194,7 @@ def test_transformer_tap_ratio_changes_secondary_voltage() -> None:
         pq=[PQSpec(node_id="B", p_mw=2.0, q_mvar=1.0)],
         options=PowerFlowOptions(max_iter=25),
     )
-    base_result = PowerFlowSolver().solve(base_input)
+    base_result = PowerFlowNewtonSolver().solve(base_input)
 
     tap_input = PowerFlowInput(
         graph=graph,
@@ -188,12 +204,12 @@ def test_transformer_tap_ratio_changes_secondary_voltage() -> None:
         taps=[TransformerTapSpec(branch_id="T1", tap_ratio=1.1)],
         options=PowerFlowOptions(max_iter=25),
     )
-    tap_result = PowerFlowSolver().solve(tap_input)
+    tap_result = PowerFlowNewtonSolver().solve(tap_input)
 
     assert tap_result.converged is True
     assert tap_result.iterations <= tap_input.options.max_iter
-    assert tap_result.node_u_mag_pu["B"] < base_result.node_u_mag_pu["B"]
-    assert tap_result.white_box_trace["applied_taps"]
+    assert tap_result.node_u_mag["B"] < base_result.node_u_mag["B"]
+    assert tap_result.applied_taps
     _assert_basic_trace(tap_result)
 
 
@@ -210,7 +226,7 @@ def test_shunt_increases_voltage_magnitude() -> None:
         pq=[PQSpec(node_id="B", p_mw=2.0, q_mvar=1.0)],
         options=PowerFlowOptions(max_iter=25),
     )
-    base_result = PowerFlowSolver().solve(base_input)
+    base_result = PowerFlowNewtonSolver().solve(base_input)
 
     shunt_input = PowerFlowInput(
         graph=graph,
@@ -220,40 +236,13 @@ def test_shunt_increases_voltage_magnitude() -> None:
         shunts=[ShuntSpec(node_id="B", b_pu=0.2)],
         options=PowerFlowOptions(max_iter=25),
     )
-    shunt_result = PowerFlowSolver().solve(shunt_input)
+    shunt_result = PowerFlowNewtonSolver().solve(shunt_input)
 
     assert shunt_result.converged is True
     assert shunt_result.iterations <= shunt_input.options.max_iter
-    assert shunt_result.node_u_mag_pu["B"] > base_result.node_u_mag_pu["B"]
-    assert shunt_result.white_box_trace["applied_shunts"]
+    assert shunt_result.node_u_mag["B"] > base_result.node_u_mag["B"]
+    assert shunt_result.applied_shunts
     _assert_basic_trace(shunt_result)
-
-
-def test_voltage_limit_violation_ranking() -> None:
-    graph = NetworkGraph()
-    graph.add_node(_make_slack_node("A"))
-    graph.add_node(_make_pq_node("B"))
-    _add_line(graph, "L1", "A", "B")
-
-    pf_input = PowerFlowInput(
-        graph=graph,
-        base_mva=10.0,
-        slack=SlackSpec(node_id="A", u_pu=1.0, angle_rad=0.0),
-        pq=[PQSpec(node_id="B", p_mw=3.0, q_mvar=1.5)],
-        bus_limits=[BusVoltageLimitSpec(node_id="B", u_min_pu=1.02, u_max_pu=1.1)],
-        options=PowerFlowOptions(max_iter=25),
-    )
-    result = PowerFlowSolver().solve(pf_input)
-
-    assert result.converged is True
-    assert result.iterations <= pf_input.options.max_iter
-    assert result.violations
-    violation = result.violations[0]
-    for key in ("type", "id", "value", "limit", "severity", "direction"):
-        assert key in violation
-    assert violation["type"] == "bus_voltage"
-    assert result.violations[0]["severity"] >= result.violations[-1]["severity"]
-    _assert_basic_trace(result)
 
 
 def test_non_convergence_returns_best_effort_and_cause() -> None:
@@ -269,14 +258,14 @@ def test_non_convergence_returns_best_effort_and_cause() -> None:
         pq=[PQSpec(node_id="B", p_mw=20.0, q_mvar=10.0)],
         options=PowerFlowOptions(max_iter=5, damping=0.0),
     )
-    result = PowerFlowSolver().solve(pf_input)
+    result = PowerFlowNewtonSolver().solve(pf_input)
 
     assert result.converged is False
     assert result.iterations <= pf_input.options.max_iter
-    assert result.node_voltage_pu
-    assert result.white_box_trace["nr_iterations"]
-    assert result.white_box_trace["nr_iterations"][-1]["cause_if_failed_optional"]
-    assert result.white_box_trace["nr_iterations"][-1]["max_mismatch_pu"] >= 0.0
+    assert result.node_voltage
+    assert result.nr_trace
+    assert result.nr_trace[-1]["cause_if_failed_optional"]
+    assert result.nr_trace[-1]["max_mismatch_pu"] >= 0.0
     _assert_basic_trace(result)
 
 
@@ -293,9 +282,11 @@ def test_v2_regression_with_basic_slack_pq_case() -> None:
         pq=[PQSpec(node_id="B", p_mw=1.0, q_mvar=0.3)],
         options=PowerFlowOptions(max_iter=25),
     )
-    result = PowerFlowSolver().solve(pf_input)
+    result = PowerFlowNewtonSolver().solve(pf_input)
 
     assert result.converged is True
     assert result.iterations <= pf_input.options.max_iter
-    assert result.white_box_trace["v2_feature_flags"]["pv_enabled"] is False
+    # Bez węzłów PV: żadnego przełączenia PV→PQ w śladzie solvera.
+    assert result.pv_to_pq_switches == []
+    assert all(not entry.get("pv_to_pq_optional") for entry in result.nr_trace)
     _assert_basic_trace(result)

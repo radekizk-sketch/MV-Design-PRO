@@ -282,9 +282,13 @@ _SOLVER_SC = (
     "    def compute_3ph_short_circuit(graph, fault_node_id):\n        return None\n"
 )
 _SOLVER_MASZYN = "def compute_machine_contributions(graph, fault_node_id):\n    return None\n"
+# Karta TORY-TYLKO-W-TESTACH (2026-09-30): pakiet `analysis.machine_short_circuit` (dawniej
+# drugi prefiks warstwy solvera bramki) skasowany — formy względne ćwiczone są na module
+# solvera maszyn w `network_model/solvers/`, z tym samym iloczynem {pozycyjnie, moduł
+# sprowadzony z pakietu}.
 _WARSTWA_SOLVERA = {
     "network_model/solvers/short_circuit_iec60909.py": _SOLVER_SC,
-    "analysis/machine_short_circuit/__init__.py": _SOLVER_MASZYN,
+    "network_model/solvers/machine_sc_iec60909.py": _SOLVER_MASZYN,
 }
 _WYWOLANIE_A = "(graph=g, fault_node_id=n)\n"
 
@@ -324,8 +328,8 @@ SCENARIUSZE_ZWARCIE: list[Scenariusz] = [
     (
         "c-wzgledny-pozycyjnie",
         {
-            "analysis/x.py": (
-                "from .machine_short_circuit import compute_machine_contributions\n"
+            "network_model/core/x.py": (
+                "from ..solvers.machine_sc_iec60909 import compute_machine_contributions\n"
                 "r = compute_machine_contributions(g, n)\n"
             )
         },
@@ -334,9 +338,9 @@ SCENARIUSZE_ZWARCIE: list[Scenariusz] = [
     (
         "a-modul-z-pakietu-wzgledny",
         {
-            "analysis/x.py": (
-                "from . import machine_short_circuit\n"
-                "r = machine_short_circuit.compute_machine_contributions(g, fault_node_id=n)\n"
+            "network_model/core/x.py": (
+                "from ..solvers import machine_sc_iec60909\n"
+                "r = machine_sc_iec60909.compute_machine_contributions(g, fault_node_id=n)\n"
             )
         },
         True,
