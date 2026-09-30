@@ -93,6 +93,12 @@ class KontekstKroku:
         )
 
     @property
+    def adresy_algebry(self) -> tuple[str, ...]:
+        """Adresy skladowych residuum algebry w ukladzie `[Re; Im]` (ident wezla i czesc)."""
+        identy = self.model.identy_wezlow
+        return tuple(f"{ident}.Re" for ident in identy) + tuple(f"{ident}.Im" for ident in identy)
+
+    @property
     def granice_stanow(self) -> tuple[np.ndarray, np.ndarray]:
         """Dolne i gorne granice ZLACZONEGO wektora stanow (`-inf`/`+inf` = wolny).
 

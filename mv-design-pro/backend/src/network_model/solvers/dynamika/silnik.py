@@ -134,7 +134,7 @@ from .siec import (
     zloz_model_sieci,
     zwarcia_galezi_modelu,
 )
-from .skonczonosc import sprawdz_napiecia
+from .skonczonosc import sprawdz_napiecia, sprawdz_wektor
 from .tozsamosc import kwantyzuj, skrot_kanoniczny, zbuduj_tozsamosc
 from .urzadzenia.fabryka import RODZINY_OBSLUGIWANE
 from .urzadzenia.zrodlo_testowe import ZrodloTestowe
@@ -791,10 +791,19 @@ class SilnikDynamiki:
         i dla stanu `t = 0` po spojnej inicjalizacji (`_korekta_algebry_t0`); `przedmiot`
         nazywa oceniany stan w tresci odmowy."""
         nastawy = kontekst.nastawy
+        # SKONCZONOSC W CHWILI POWSTANIA (karta SKONCZONOSC-CHWILI-ZERO). Straznik petli
+        # krokow dziala od pierwszego kroku, a porownanie norm z `eps_init` nizej przepuszcza
+        # NaN (NaN nie jest wiekszy od niczego) — stan urzadzen z `stan_poczatkowy` (punkt
+        # rozplywu albo reinicjalizacja w punkcie skorygowanym) i residuum algebry z pradow
+        # urzadzen sa sprawdzane TU, z adresem, zanim cokolwiek je porowna. Napiecia t = 0
+        # pochodza z kontraktu `PunktPracy` (skonczonosc przy konstrukcji) albo z kroku
+        # Newtona korekty (straznik kandydata w `siec`).
+        sprawdz_wektor(spakuj_stany(stany), kontekst.adresy_stanow, "stany rownowagi", 0.0)
         pochodne = pochodne_ukladu(kontekst, stany, napiecia, 0.0)
         reszta_algebry = residuum_algebry(
             kontekst.model, kontekst.odbiory, kontekst.urzadzenia, stany, napiecia
         )
+        sprawdz_wektor(reszta_algebry, kontekst.adresy_algebry, "residuum algebry", 0.0)
         # Stany zgloszone jako `stany_bez_rownowagi` (SS0 p.3 + kontrakt protokolu)
         # sa wylaczone z NORMY bramki, ale NIE ze sladu: ich residua wchodza do
         # diagnostyki z jawna etykieta, zeby czytelnik widzial, ktora wielkosc
