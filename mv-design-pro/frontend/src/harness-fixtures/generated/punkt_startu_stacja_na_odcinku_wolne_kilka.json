@@ -27,8 +27,10 @@
         "bay_role": "IN",
         "corridor_refs": [],
         "field_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field/000",
-        "occupied": false,
-        "segment_refs": [],
+        "occupied": true,
+        "segment_refs": [
+          "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_L"
+        ],
         "station_ref": "stn/298177b52cf4013c836740b86946c50f/station"
       },
       {
@@ -36,8 +38,10 @@
         "bay_role": "OUT",
         "corridor_refs": [],
         "field_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field/001",
-        "occupied": false,
-        "segment_refs": [],
+        "occupied": true,
+        "segment_refs": [
+          "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R"
+        ],
         "station_ref": "stn/298177b52cf4013c836740b86946c50f/station"
       },
       {
@@ -45,6 +49,24 @@
         "bay_role": "FEEDER",
         "corridor_refs": [],
         "field_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field/002",
+        "occupied": false,
+        "segment_refs": [],
+        "station_ref": "stn/298177b52cf4013c836740b86946c50f/station"
+      },
+      {
+        "attachment_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/003",
+        "bay_role": "FEEDER",
+        "corridor_refs": [],
+        "field_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field/003",
+        "occupied": false,
+        "segment_refs": [],
+        "station_ref": "stn/298177b52cf4013c836740b86946c50f/station"
+      },
+      {
+        "attachment_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/004",
+        "bay_role": "TR",
+        "corridor_refs": [],
+        "field_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field/004",
         "occupied": false,
         "segment_refs": [],
         "station_ref": "stn/298177b52cf4013c836740b86946c50f/station"
@@ -56,7 +78,7 @@
         "branch_id": null,
         "element_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
         "port_id": "trunk_start",
-        "status": "OTWARTY",
+        "status": "ZAJETY",
         "trunk_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01"
       },
       {
@@ -82,7 +104,7 @@
             "branch_id": null,
             "element_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
             "port_id": "trunk_start",
-            "status": "OTWARTY",
+            "status": "ZAJETY",
             "trunk_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01"
           },
           {
@@ -98,7 +120,8 @@
   },
   "pola_liniowe_elementu": [
     "stn/298177b52cf4013c836740b86946c50f/sn_field/001",
-    "stn/298177b52cf4013c836740b86946c50f/sn_field/002"
+    "stn/298177b52cf4013c836740b86946c50f/sn_field/002",
+    "stn/298177b52cf4013c836740b86946c50f/sn_field/003"
   ],
   "snapshot": {
     "bays": [],
@@ -136,6 +159,41 @@
           "station_field_device"
         ],
         "to_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/000",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_bus",
+        "id": "333e2944-1644-5f39-9005-ab8f50faa815",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "FEEDER",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field/003",
+          "field_role": "LINIA_ODG",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/298177b52cf4013c836740b86946c50f/station"
+        },
+        "name": "Wyłącznik pola SN 4",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/298177b52cf4013c836740b86946c50f/sn_field_breaker/003",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/003",
         "type": "breaker",
         "x_ohm": 0.0
       },
@@ -227,7 +285,7 @@
         "cross_section_mm2": 120.0,
         "endpoint_a_port": null,
         "endpoint_b_port": null,
-        "from_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_bus",
+        "from_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/001",
         "id": "6b57fcfa-fdb6-5019-b93d-0b34b5da8d98",
         "insulation": "XLPE",
         "ith_1s_a": null,
@@ -371,7 +429,7 @@
         "status": "closed",
         "tags": [],
         "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-        "to_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_bus",
+        "to_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/000",
         "type": "cable",
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
@@ -416,6 +474,41 @@
           "gpz_field_device"
         ],
         "to_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_bus",
+        "id": "a8dec872-a09e-55f6-89d1-aaa946f0a0c2",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "TR",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field/004",
+          "field_role": "TRANSFORMATOROWE",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/298177b52cf4013c836740b86946c50f/station"
+        },
+        "name": "Wyłącznik pola SN 5",
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/298177b52cf4013c836740b86946c50f/sn_field_breaker/004",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/004",
         "type": "breaker",
         "x_ohm": 0.0
       },
@@ -626,6 +719,48 @@
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/002",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "dc7bd095-9f9a-5e4a-b86a-581e384694eb",
+        "meta": {
+          "field_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field/003",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/298177b52cf4013c836740b86946c50f/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 4",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/003",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "05df3e64-35b8-519b-8888-8bde28d72105",
+        "meta": {
+          "field_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field/004",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/298177b52cf4013c836740b86946c50f/station",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk techniczny pola SN 5",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/004",
         "tags": [
           "helper_bus",
           "field_terminal"
@@ -951,6 +1086,62 @@
               "tags": [
                 "station_sn_field"
               ]
+            },
+            {
+              "bay_role": "FEEDER",
+              "bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_bus",
+              "equipment_refs": [
+                "stn/298177b52cf4013c836740b86946c50f/sn_field_breaker/003"
+              ],
+              "field_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field/003",
+              "meta": {
+                "default_device_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_breaker/003",
+                "field_role": "LINIA_ODG",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/003"
+              },
+              "name": "Pole odgałęźne 4",
+              "protection_codes": [
+                "51",
+                "50",
+                "51N",
+                "67N"
+              ],
+              "protection_ref": null,
+              "tags": [
+                "station_sn_field"
+              ]
+            },
+            {
+              "bay_kind": "transformatorowe",
+              "bay_role": "TR",
+              "bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_bus",
+              "equipment_refs": [
+                "stn/298177b52cf4013c836740b86946c50f/sn_field_breaker/004",
+                "stn/298177b52cf4013c836740b86946c50f/transformer"
+              ],
+              "field_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field/004",
+              "meta": {
+                "default_device_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_breaker/004",
+                "field_role": "TRANSFORMATOROWE",
+                "requires_catalog_binding": true,
+                "terminal_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/004"
+              },
+              "name": "Pole transformatorowe 5",
+              "protection_codes": [
+                "87T",
+                "51",
+                "50",
+                "51N",
+                "Buchholz",
+                "temp",
+                "ciśnienie"
+              ],
+              "protection_ref": null,
+              "source_status": "catalog_solution",
+              "tags": [
+                "station_sn_field"
+              ]
             }
           ],
           "nn_field_specs": [
@@ -959,7 +1150,9 @@
               "bus_ref": "stn/298177b52cf4013c836740b86946c50f/nn_bus",
               "equipment_refs": [],
               "field_ref": "stn/298177b52cf4013c836740b86946c50f/nn_main_breaker",
-              "meta": {},
+              "meta": {
+                "transformer_ref": "stn/298177b52cf4013c836740b86946c50f/transformer"
+              },
               "name": "Wyłącznik główny nN",
               "protection_ref": null,
               "tags": [
@@ -1037,7 +1230,7 @@
       {
         "catalog_namespace": "TRAFO_SN_NN",
         "catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
-        "hv_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_bus",
+        "hv_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/004",
         "hv_neutral": null,
         "i0_percent": 1.5,
         "id": "9e51f738-6903-5931-a037-915f69c965e4",

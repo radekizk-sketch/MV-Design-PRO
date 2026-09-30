@@ -21,6 +21,10 @@
       "graph_id": "87a3a1b2-5383-59fa-9eeb-0d17c1e97651"
     },
     {
+      "ref_id": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/002",
+      "graph_id": "515f9384-3d72-5322-b098-28eed13c2c55"
+    },
+    {
       "ref_id": "bus/5a810eceaf6c7d13cff44e2be46f4ea8/downstream",
       "graph_id": "6392b5f5-3d91-548f-a0f2-79267771567a"
     },
@@ -235,6 +239,10 @@
     {
       "ref_id": "stn/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_apparatus/001",
       "graph_id": "85ddfd3a-fd5e-52de-be82-281fac720990"
+    },
+    {
+      "ref_id": "stn/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_apparatus/002",
+      "graph_id": "7ac60866-828a-50f6-91b0-8c91f2728841"
     },
     {
       "ref_id": "sub/44936bf0357b61ace2fcd8cd13ccbaac/substation",

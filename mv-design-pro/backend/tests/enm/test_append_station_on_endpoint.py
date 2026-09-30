@@ -332,7 +332,15 @@ def test_full_station_creates_transformer_and_nn_bus() -> None:
     transformers = [t for t in new_snap["transformers"] if t["ref_id"] == tr_ref]
     assert len(transformers) == 1
     transformer = transformers[0]
-    assert transformer["hv_bus_ref"] == endpoint
+    # POLA-W-TORZE: strona górna transformatora leży na ZACISKU pola transformatorowego,
+    # którego aparat wychodzi z szyny końca ciągu (szyny głównej stacji).
+    assert transformer["hv_bus_ref"] != endpoint
+    aparat_pola_tr = next(
+        b
+        for b in new_snap["branches"]
+        if b.get("to_bus_ref") == transformer["hv_bus_ref"] and b.get("from_bus_ref") == endpoint
+    )
+    assert aparat_pola_tr["catalog_namespace"] == "APARAT_SN"
     # Bus nN wśród bus_refs
     nn_bus_ref = transformer["lv_bus_ref"]
     assert nn_bus_ref in sub["bus_refs"]
@@ -346,6 +354,7 @@ def test_full_station_creates_transformer_and_nn_bus() -> None:
     ]
     assert len(bays_tr) == 1
     assert tr_ref in bays_tr[0]["equipment_refs"]
+    assert aparat_pola_tr["ref_id"] in bays_tr[0]["equipment_refs"]
 
 
 def test_endpoint_append_materializes_requested_station_sn_fields_without_splitting_segment() -> (
@@ -532,10 +541,14 @@ def test_continue_trunk_from_appended_station_uses_line_field_terminal_not_stati
         for spec in sub.get("meta", {}).get("field_specs", [])
         if spec.get("field_role") == "LINIA_OUT"
     )
-    main_bus_ref = out_field["meta"]["terminal_bus_ref"]
+    # POLA-W-TORZE: szyna pola (`bus_ref`) to szyna główna stacji (dawny koniec ciągu), a zacisk
+    # pola (`field_terminal_bus_ref` i `terminal_bus_ref` — jedna wartość, jak we wcięciu
+    # stacji w odcinek) leży ZA aparatem pola.
+    main_bus_ref = out_field["bus_ref"]
     field_terminal_ref = out_field["meta"]["field_terminal_bus_ref"]
     assert main_bus_ref == endpoint
     assert field_terminal_ref != main_bus_ref
+    assert out_field["meta"]["terminal_bus_ref"] == field_terminal_ref
 
     response_continue = execute_domain_operation(
         appended,

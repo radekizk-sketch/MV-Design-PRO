@@ -72,6 +72,7 @@ describe('ProtectionSettingsEditor — zacisk gałęzi z rozstrzygnięcia backen
     zaciski: ZACISKI,
     galaz_ref: null,
     zacisk: null,
+    szyna_zwarcia_ref: null,
     zrodlo_zacisku: null,
     wymaga_wskazania_zacisku: true,
     odmowa_zacisku: {

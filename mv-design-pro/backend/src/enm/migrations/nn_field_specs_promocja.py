@@ -42,6 +42,22 @@ i ze znacznikiem `META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA`, który walidator
 WARNING (W061) tylko dla gałęzi z TĄ migracją — ręcznie tworzona gałąź nN bez
 wiązania zostaje BLOCKER.
 
+ZASADA TORU (karta POLA-W-TORZE, §0 pkt 1). Aparat pola nN leży w torze prądowym
+elementu, któremu pole służy — promocja PRZEPINA ten element na zacisk pola (szynę za
+aparatem), zamiast stawiać martwy aparat obok elementu wiszącego na szynie stacji.
+Reguły ról (jedno źródło — `_elementy_toru_pola`):
+- odpływ (`FEEDER`, rola odpływu odbiorczego): odbiory z `Load.meta.feeder_ref == field_ref`;
+- pole źródła (`FEEDER` z rolą `ZRODLO_NN_PV/BESS/FW` albo `OZE`): źródła z
+  `Generator.meta.field_ref == field_ref`, a źródło stacyjne bez tej relacji (tor budowy
+  stacji z bloku nN) — jedyne źródło stacji danej technologii na szynie pola;
+- wyłącznik główny nN (`IN`, pole transformatorowe nN): strona dolna transformatora —
+  `meta.transformer_ref` pola, a bez tej relacji transformatory stacji ze stroną dolną na
+  szynie pola, gdy pole jest JEDYNYM polem `IN` tej szyny (inaczej przypisanie nie wynika
+  z danych i promocja transformatora nie przepina — walidator wskazuje stan).
+Przepięcie działa także dla wpisów promowanych WCZEŚNIEJ (aparat istnieje, szyna za nim
+pusta, element nadal na szynie stacji) — to ta sama reguła, nie druga droga: element ma
+leżeć za aparatem swojego pola, niezależnie od chwili promocji.
+
 SKUTEK DLA HASZY — jak przy migracji punktu przyłączenia: migracja zmienia
 model (nowe szyny/gałęzie, przeniesione `bus_ref` odbiorów), więc podnosi
 rewizję (przez `set_enm` w `enm/store.py`). To uczciwa konsekwencja realnej
@@ -114,14 +130,101 @@ def _already_promoted_field_refs(enm: EnergyNetworkModel) -> set[str]:
     return znane
 
 
+#: Role odpływu nN (`nn_field_specs[].meta.feeder_role`) pola ŹRÓDŁA → rodzaj generatora
+#: (`Generator.gen_type`) źródła stacyjnego, któremu pole służy.
+ROLA_POLA_ZRODLA_NA_RODZAJ_GENERATORA: dict[str, str] = {
+    "ZRODLO_NN_PV": "pv_inverter",
+    "ZRODLO_NN_BESS": "bess",
+    "ZRODLO_NN_FW": "wind_inverter",
+}
+
+
+def _aparaty_promowane(enm: EnergyNetworkModel) -> dict[str, SwitchBranch]:
+    """`field_ref` wpisu → aparat pola nN utworzony przez promocję."""
+    wynik: dict[str, SwitchBranch] = {}
+    for branch in enm.branches:
+        znacznik = (branch.meta or {}).get(META_KLUCZ_GALAZ_ZRODLO_FIELD_REF)
+        if isinstance(znacznik, str) and znacznik and isinstance(branch, SwitchBranch):
+            wynik[znacznik] = branch
+    return wynik
+
+
+def _elementy_toru_pola(
+    enm: EnergyNetworkModel, substation: Substation, spec: dict[str, Any], szyna_stacji: str
+) -> tuple[list[Any], list[Any], list[Any]]:
+    """Elementy, którym pole nN służy: (odbiory, źródła, transformatory) — reguły ról z opisu
+    modułu. Zwraca wyłącznie elementy wskazane JAWNYMI danymi."""
+    field_ref = spec["field_ref"]
+    meta = spec.get("meta") or {}
+    rola = str(spec.get("bay_role") or "").upper()
+    odbiory = [ld for ld in enm.loads if (ld.meta or {}).get("feeder_ref") == field_ref]
+    zrodla = [g for g in enm.generators if (g.meta or {}).get("field_ref") == field_ref]
+    rodzaj = ROLA_POLA_ZRODLA_NA_RODZAJ_GENERATORA.get(str(meta.get("feeder_role") or ""))
+    if rodzaj is not None and not zrodla:
+        kandydaci = [
+            g
+            for g in enm.generators
+            if g.gen_type == rodzaj
+            and g.bus_ref == szyna_stacji
+            and not (g.meta or {}).get("field_ref")
+            and substation.ref_id in (g.station_ref, (g.meta or {}).get("station_ref"))
+        ]
+        if len(kandydaci) == 1:
+            zrodla = kandydaci
+    transformatory: list[Any] = []
+    if rola == "IN":
+        wskazany = meta.get("transformer_ref")
+        if isinstance(wskazany, str) and wskazany:
+            transformatory = [t for t in enm.transformers if t.ref_id == wskazany]
+        else:
+            pola_in_szyny = [
+                s
+                for s in _promotable_specs(substation)
+                if str(s.get("bay_role") or "").upper() == "IN" and s.get("bus_ref") == szyna_stacji
+            ]
+            if len(pola_in_szyny) == 1:
+                refy_stacji = set(substation.transformer_refs)
+                transformatory = [
+                    t
+                    for t in enm.transformers
+                    if t.ref_id in refy_stacji and t.lv_bus_ref == szyna_stacji
+                ]
+    return odbiory, zrodla, transformatory
+
+
+def _do_przepiecia(enm: EnergyNetworkModel) -> list[tuple[Any, str, str, str]]:
+    """Elementy leżące jeszcze na szynie stacji, choć ich pole ma aparat: (element, atrybut
+    szyny, szyna docelowa, field_ref) — deterministycznie."""
+    aparaty = _aparaty_promowane(enm)
+    wynik: list[tuple[Any, str, str, str]] = []
+    for substation in sorted(enm.substations, key=lambda s: s.ref_id):
+        for spec in _promotable_specs(substation):
+            aparat = aparaty.get(spec["field_ref"])
+            szyna_stacji = spec.get("bus_ref")
+            if aparat is None or not isinstance(szyna_stacji, str):
+                continue
+            odbiory, zrodla, transformatory = _elementy_toru_pola(
+                enm, substation, spec, szyna_stacji
+            )
+            for element in (*odbiory, *zrodla):
+                if element.bus_ref == aparat.from_bus_ref:
+                    wynik.append((element, "bus_ref", aparat.to_bus_ref, spec["field_ref"]))
+            for transformator in transformatory:
+                if transformator.lv_bus_ref == aparat.from_bus_ref:
+                    wynik.append(
+                        (transformator, "lv_bus_ref", aparat.to_bus_ref, spec["field_ref"])
+                    )
+    return wynik
+
+
 def wymaga_migracji(enm: EnergyNetworkModel) -> bool:
-    """Czy istnieje choć jeden wpis `nn_field_specs` bez odpowiadającego aparatu."""
+    """Czy istnieje wpis `nn_field_specs` bez aparatu albo element poza torem aparatu pola."""
     promowane = _already_promoted_field_refs(enm)
     for substation in enm.substations:
         for spec in _promotable_specs(substation):
             if spec["field_ref"] not in promowane:
                 return True
-    return False
+    return bool(_do_przepiecia(enm))
 
 
 def _materializuj_aparat(
@@ -251,30 +354,22 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
             zmieniono = True
             stacja_zmieniona = True
 
-            # Odbiory podpięte pod ten wpis (Load.meta.feeder_ref == field_ref)
-            # przenoszą się z szyny stacji na NOWĄ szynę odpływu — LV-INV-12
-            # (odbiór wisi za aparatem odpływowym, nie wprost na szynie stacji).
-            for load in zmigrowany.loads:
-                if (load.meta or {}).get("feeder_ref") == field_ref:
-                    load.bus_ref = downstream_bus_ref
-
-            # KLASA, NIE INSTANCJA (przegląd 2026-08-01): odbiory NIE SĄ jedynym
-            # elementem wiszącym na wpisie `nn_field_specs` — źródło przekształtnikowe
-            # (`add_converter_source`, wariant `nn_side`) zapisuje TĘ SAMĄ referencję
-            # jako `Generator.meta.field_ref` (`_append_converter_field_if_needed`,
-            # `enm/domain_operations_v2.py`), pod INNYM kluczem meta (`field_ref`, nie
-            # `feeder_ref`). Bez tego bloku migracja zostawiała generator wprost na
-            # szynie stacji RÓWNOLEGLE do nowo utworzonego, martwego aparatu pola —
-            # graf i deklarowane pole rozjeżdżały się (naruszenie LV-INV-12 dla
-            # źródeł, nie tylko odbiorów).
-            for generator in zmigrowany.generators:
-                if (generator.meta or {}).get("field_ref") == field_ref:
-                    generator.bus_ref = downstream_bus_ref
-
         if stacja_zmieniona:
             meta = dict(substation.meta) if isinstance(substation.meta, dict) else {}
             meta[META_KLUCZ_STACJA_PROMOWANA] = True
             substation.meta = meta
+
+    # ZASADA TORU: element, któremu pole służy (odbiór odpływu, źródło pola źródłowego,
+    # transformator wyłącznika głównego nN), przechodzi z szyny stacji na szynę ZA aparatem
+    # pola — dla wpisów promowanych teraz i wcześniej (reguły ról: `_elementy_toru_pola`).
+    # KLASA, NIE INSTANCJA (przegląd 2026-08-01): odbiory wiszą na wpisie przez
+    # `Load.meta.feeder_ref`, źródła przez `Generator.meta.field_ref`, transformator przez rolę
+    # IN pola — jeden mechanizm przepięcia dla wszystkich trzech.
+    for element, atrybut, szyna_docelowa, field_ref in _do_przepiecia(zmigrowany):
+        setattr(element, atrybut, szyna_docelowa)
+        if atrybut == "bus_ref" and element in zmigrowany.generators:
+            element.meta = {**(element.meta or {}), "field_ref": field_ref}
+        zmieniono = True
 
     if not zmieniono:
         return enm, False

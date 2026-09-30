@@ -191,7 +191,9 @@ class TestGpzFeederDedicatedField:
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
-                "sn_fields": ["IN", "OUT"],
+                # POLA-W-TORZE: pole wyjściowe niesie dalszą połówkę odcinka (zajęte) —
+                # odgałęzienie ze stacji wychodzi z wolnego pola odgałęźnego.
+                "sn_fields": ["IN", "OUT", "FEEDER"],
                 "transformer": {
                     "create": True,
                     "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
@@ -206,7 +208,7 @@ class TestGpzFeederDedicatedField:
         station_field = next(
             spec
             for spec in station.get("meta", {}).get("field_specs", [])
-            if str(spec.get("bay_role", "")).upper() in {"OUT", "FEEDER"}
+            if str(spec.get("bay_role", "")).upper() == "FEEDER"
         )
         result = _start_branch_from_field(snapshot, station_field["field_ref"])
         assert not result.get("error"), result.get("error")

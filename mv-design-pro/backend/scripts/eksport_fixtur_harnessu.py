@@ -208,6 +208,7 @@ from enm.scenariusze import (  # noqa: E402
     zapisz_scenariusz,
 )
 from enm.store import get_enm, reset_enm_store, set_enm  # noqa: E402
+from enm.tor_pola import szyny_stacji  # noqa: E402
 from infrastructure.persistence.db import (  # noqa: E402
     create_engine_from_url,
     create_session_factory,
@@ -2832,10 +2833,18 @@ def _lokalizacje_zabezpieczen_koordynacji(
     zasilające szyny SN obu stacji (GPZ → S01, S01 → S02), każde przy zacisku
     POCZĄTKOWYM — przekaźnik w polu liniowym strony zasilania. Posortowane —
     kolejność deterministyczna, niezależna od kolejności budowy."""
+    # Karta POLA-W-TORZE: odcinek dochodzi do ZACISKU pola wejściowego stacji, nie do jej szyny
+    # głównej — przynależność szyn do stacji z jednego źródła (`enm.tor_pola.szyny_stacji`).
+    szyny_stacji_sn = {
+        szyna
+        for stacja in model.substations
+        if stacja.station_type != "gpz"
+        for szyna in szyny_stacji(stacja, model.branches)
+    }
     return sorted(
         (galaz.ref_id, ZACISK_ZABEZPIECZEN_SCENY_KOORD)
         for galaz in model.branches
-        if galaz.type == "cable" and galaz.to_bus_ref.endswith("/sn_bus")
+        if galaz.type == "cable" and galaz.to_bus_ref in szyny_stacji_sn
     )
 
 

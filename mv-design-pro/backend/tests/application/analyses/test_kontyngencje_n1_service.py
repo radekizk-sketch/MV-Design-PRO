@@ -857,8 +857,14 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # („Odcinek /segment" → „Magistrala 01 — odcinek 0N", połówki „… (1)"/„… (2)"); jedyna
     # różnica modelu to nazwy tych 4 odcinków (nazwa ciągu + numer z istniejącej numeracji,
     # karta #144). Wynik kontyngencji identyczny.
-    "gn01_promieniowa": "9a2933f595b709eafedc6d81654218259ad5df7c564bc976c79eb341846cc822",
-    "gn03_pierscien": "a19dcb6d6bdce7b3e5efd580ba70c6fb9c648ca7fb2d86ded961690b59fe5229",
+    # 2026-09-30 (karta POLA-W-TORZE): gn01 9a2933f5… → f1cbcb35…, gn03 a19dcb6d… → 2cacc16c….
+    # Pełne widoki z kodu bazy `e8756f42` (odtwarzają dokładnie poprzednie piny) i po karcie
+    # porównane liść po liściu: różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`.
+    # Różnica modelu wejściowego: połówki odcinków i strona górna transformatora stacji leżą
+    # na zaciskach pól (aparat pola w torze), pole TR domknięte przy wstawieniu stacji.
+    # Enumeracja kontyngencji, dotkliwości, odbiory bez zasilania i ranking identyczne.
+    "gn01_promieniowa": "f1cbcb3509f5315e0da61529238bfbfb41d7f8b062d98dc3125aa126c7ec38cd",
+    "gn03_pierscien": "2cacc16c88dac3b7d044900dae16f6a950888c76a06dacda99863139a87407ef",
 }
 
 

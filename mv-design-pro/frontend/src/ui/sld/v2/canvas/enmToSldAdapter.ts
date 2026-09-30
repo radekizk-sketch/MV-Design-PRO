@@ -44,6 +44,7 @@ import type {
 import type { UkladSieciNn } from '../../../../types/uziemienie';
 import { buildOltcAnnotation } from './oltcGlyph';
 import { pickStationBus } from '../../shared/stationBusResolution';
+import { szynaNalezyDoStacji, wlasnyZaciskPola, zaciskiPolStacji } from '../../../shared/zaciskPola';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import {
@@ -2235,6 +2236,11 @@ function stationBusRefMap(substations: readonly Substation[]): Map<string, strin
       out.set(busRef, station.ref_id);
     }
   }
+  // POLA-W-TORZE: zacisk pola stacji należy do stacji (odcinek, połówka odcinka i transformator
+  // leżą na zacisku pola, nie na szynie głównej) — przynależność z danych `field_specs`.
+  for (const [zacisk, { stationRef }] of zaciskiPolStacji({ substations: [...substations] })) {
+    if (!out.has(zacisk)) out.set(zacisk, stationRef);
+  }
   return out;
 }
 
@@ -3284,7 +3290,8 @@ function resolveFieldStationRefForBus(
 ): string | null {
   if (!busRef) return null;
   for (const station of fieldStationByRef.values()) {
-    if ((station.bus_refs ?? []).includes(busRef)) return station.ref_id;
+    // POLA-W-TORZE: szyna główna ALBO własny zacisk pola stacji (z danych `field_specs`).
+    if (szynaNalezyDoStacji(station, busRef)) return station.ref_id;
     const baseRef = station.ref_id.endsWith('/station')
       ? station.ref_id.slice(0, -'/station'.length)
       : station.ref_id;
@@ -4981,6 +4988,15 @@ function inferLineRunsFromMvBusGraph(
       `${baseRef}/bus_sn`,
       `${baseRef}/sn_bus_in`,
       `${baseRef}/sn_bus_out`,
+      // KARTA POLA-W-TORZE: własne zaciski pól SN należą do stacji — odcinek przyłączony
+      // do zacisku pola (zasada toru) wchodzi do stacji, a nie „wisi” bez niej.
+      ...(Array.isArray(substation.meta?.field_specs) ? substation.meta.field_specs : [])
+        .map((spec: unknown) =>
+          spec !== null && typeof spec === 'object'
+            ? wlasnyZaciskPola(spec as Record<string, unknown>)
+            : null,
+        )
+        .filter((ref: string | null): ref is string => ref !== null),
     ]).filter((busRef) => {
       const voltageKv = busVoltageByRef.get(busRef);
       return voltageKv === undefined || powyzejPasmaNn(voltageKv);

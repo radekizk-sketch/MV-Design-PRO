@@ -5,6 +5,7 @@ from enum import StrEnum
 from typing import Any
 
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, Cable, EnergyNetworkModel, OverheadLine
+from enm.tor_pola import szyny_stacji
 from network_model.pochodne import kva_na_mva, prad_roboczy_a
 from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
 from pydantic import BaseModel, Field
@@ -276,7 +277,11 @@ def _wejscia_izolacji(
     bez_uziemienia: list[str] = []
 
     def _stacja_szyny(bus_ref: str) -> str | None:
-        return next((s.ref_id for s in enm.substations if bus_ref in s.bus_refs), None)
+        # POLA-W-TORZE: ogranicznik na zacisku pola należy do stacji tego pola.
+        return next(
+            (s.ref_id for s in enm.substations if bus_ref in szyny_stacji(s, enm.branches)),
+            None,
+        )
 
     def _resolve_network_neutral(bus_ref: str) -> str | None:
         # W5-A: opis punktu neutralnego sieci SN niesie ZRODLO (GPZ) — na tej szynie

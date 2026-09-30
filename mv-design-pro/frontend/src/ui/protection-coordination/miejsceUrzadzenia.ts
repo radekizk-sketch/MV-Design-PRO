@@ -35,6 +35,12 @@ export interface MiejsceUrzadzenia {
   readonly zaciski: Readonly<Record<ZaciskUrzadzenia, ZaciskMiejsca>> | null;
   readonly galaz_ref: string | null;
   readonly zacisk: ZaciskUrzadzenia | null;
+  /**
+   * Szyna, pod którą bieg zwarciowy raportuje prąd w miejscu urządzenia (backend
+   * `szyna_zwarcia_miejsca`): szyna zacisku, a dla zacisku na zacisku pola stacji — szyna
+   * pola (ten sam węzeł elektryczny za zamkniętym aparatem pola).
+   */
+  readonly szyna_zwarcia_ref: string | null;
   readonly zrodlo_zacisku: 'model' | 'wskazanie' | null;
   readonly wymaga_wskazania_zacisku: boolean;
   readonly odmowa_zacisku: OdmowaMiejsca | null;

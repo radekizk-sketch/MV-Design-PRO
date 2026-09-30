@@ -30,7 +30,7 @@
             "bay_ref": "bay/44936bf0357b61ace2fcd8cd13ccbaac/in",
             "created_by": "append_station_on_endpoint",
             "field_terminal_bus_ref": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/001",
-            "terminal_bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream"
+            "terminal_bus_ref": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/001"
           },
           "protection_codes": [
             "51",
@@ -59,6 +59,7 @@
       "bay_template_ref": null,
       "bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
       "equipment_refs": [
+        "stn/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_apparatus/002",
         "tr/44936bf0357b61ace2fcd8cd13ccbaac/transformer"
       ],
       "feeder_short_name": null,
@@ -73,14 +74,18 @@
           "bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
           "catalog_bindings": null,
           "equipment_refs": [
+            "stn/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_apparatus/002",
             "tr/44936bf0357b61ace2fcd8cd13ccbaac/transformer"
           ],
           "field_ref": "field/44936bf0357b61ace2fcd8cd13ccbaac/2",
           "field_role": "TRANSFORMATOROWE",
           "manufacturer_ref": null,
           "meta": {
+            "apparatus_ref": "stn/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_apparatus/002",
+            "bay_ref": "bay/44936bf0357b61ace2fcd8cd13ccbaac/tr",
             "created_by": "append_station_on_endpoint",
-            "terminal_bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
+            "field_terminal_bus_ref": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/002",
+            "terminal_bus_ref": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/002",
             "transformer_ref": "tr/44936bf0357b61ace2fcd8cd13ccbaac/transformer"
           },
           "protection_codes": [
@@ -241,7 +246,7 @@
       "status": "closed",
       "tags": [],
       "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-      "to_bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
+      "to_bus_ref": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/001",
       "type": "cable",
       "x0_ohm_per_km": 0.3,
       "x_ohm_per_km": 0.1
@@ -304,6 +309,42 @@
       "to_bus_ref": "nn/09b96c1c27651e7b615c59e7199e4391/feeder_bus",
       "type": "breaker",
       "x_ohm": null
+    },
+    {
+      "catalog_namespace": "APARAT_SN",
+      "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "from_bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
+      "id": "dab71af4-636e-525f-b2f9-1284a6239c27",
+      "materialized_params": {
+        "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+        "catalog_item_version": "2024.1",
+        "i_n_a": 630.0,
+        "u_n_kv": 17.5
+      },
+      "meta": {
+        "bay_ref": "bay/44936bf0357b61ace2fcd8cd13ccbaac/tr",
+        "bay_role": "TR",
+        "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+        "field_ref": "field/44936bf0357b61ace2fcd8cd13ccbaac/2",
+        "field_role": "TRANSFORMATOROWE",
+        "render_on_sld": false,
+        "requires_catalog_binding": false,
+        "show_in_project_tree": false,
+        "station_ref": "sub/44936bf0357b61ace2fcd8cd13ccbaac/substation"
+      },
+      "name": "Wyłącznik pola SN 2",
+      "overrides": [],
+      "parameter_source": "CATALOG",
+      "r_ohm": 0.0,
+      "ref_id": "stn/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_apparatus/002",
+      "source_mode": "KATALOG",
+      "status": "closed",
+      "tags": [
+        "station_field_device"
+      ],
+      "to_bus_ref": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/002",
+      "type": "breaker",
+      "x_ohm": 0.0
     }
   ],
   "buses": [
@@ -378,6 +419,28 @@
       "nominal_limits": null,
       "phase_system": "3ph",
       "ref_id": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/001",
+      "tags": [
+        "helper_bus",
+        "field_terminal"
+      ],
+      "voltage_kv": 15.0,
+      "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "16afbb82-656f-56d0-bc59-8dcc62b66cca",
+      "meta": {
+        "bay_ref": "bay/44936bf0357b61ace2fcd8cd13ccbaac/tr",
+        "field_ref": "field/44936bf0357b61ace2fcd8cd13ccbaac/2",
+        "render_on_sld": false,
+        "show_in_project_tree": false,
+        "station_ref": "sub/44936bf0357b61ace2fcd8cd13ccbaac/substation",
+        "visual_role": "FIELD_TERMINAL"
+      },
+      "name": "Zacisk pola SN 2",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/002",
       "tags": [
         "helper_bus",
         "field_terminal"
@@ -676,7 +739,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "15028acb5e0bef9feaab3e9eea0429c4fda4ab33b07c4a86baa5a8f06f41fa30",
+    "hash_sha256": "e778352b44573746709d4d247eb7c21092c3decfea788d3d621e25f5c6f45972",
     "name": "Scena analiz OZE",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -699,12 +762,7 @@
       ],
       "starting_bay_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
       "starting_port_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
-      "stations": [
-        {
-          "order": 1,
-          "substation_ref": "sub/44936bf0357b61ace2fcd8cd13ccbaac/substation"
-        }
-      ]
+      "stations": []
     }
   ],
   "loads": [
@@ -904,7 +962,7 @@
               "bay_ref": "bay/44936bf0357b61ace2fcd8cd13ccbaac/in",
               "created_by": "append_station_on_endpoint",
               "field_terminal_bus_ref": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/001",
-              "terminal_bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream"
+              "terminal_bus_ref": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/001"
             },
             "protection_codes": [
               "51",
@@ -923,14 +981,18 @@
             "bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
             "catalog_bindings": null,
             "equipment_refs": [
+              "stn/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_apparatus/002",
               "tr/44936bf0357b61ace2fcd8cd13ccbaac/transformer"
             ],
             "field_ref": "field/44936bf0357b61ace2fcd8cd13ccbaac/2",
             "field_role": "TRANSFORMATOROWE",
             "manufacturer_ref": null,
             "meta": {
+              "apparatus_ref": "stn/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_apparatus/002",
+              "bay_ref": "bay/44936bf0357b61ace2fcd8cd13ccbaac/tr",
               "created_by": "append_station_on_endpoint",
-              "terminal_bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
+              "field_terminal_bus_ref": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/002",
+              "terminal_bus_ref": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/002",
               "transformer_ref": "tr/44936bf0357b61ace2fcd8cd13ccbaac/transformer"
             },
             "protection_codes": [
@@ -953,7 +1015,9 @@
             "bus_ref": "bus/44936bf0357b61ace2fcd8cd13ccbaac/nn",
             "equipment_refs": [],
             "field_ref": "stn/44936bf0357b61ace2fcd8cd13ccbaac/nn_main_breaker",
-            "meta": {},
+            "meta": {
+              "transformer_ref": "tr/44936bf0357b61ace2fcd8cd13ccbaac/transformer"
+            },
             "name": "Wyłącznik główny nN",
             "protection_ref": null,
             "tags": [
@@ -1058,11 +1122,11 @@
     {
       "catalog_namespace": "TRAFO_SN_NN",
       "catalog_ref": "tr-sn-nn-15-0p8-2p5mva-dyn11-inverter",
-      "hv_bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
+      "hv_bus_ref": "bus/44936bf0357b61ace2fcd8cd13ccbaac/sn_field_terminal/002",
       "hv_neutral": null,
       "i0_percent": 1.0,
       "id": "8f974346-eae8-5505-9594-143e2a08c9cd",
-      "lv_bus_ref": "bus/44936bf0357b61ace2fcd8cd13ccbaac/nn",
+      "lv_bus_ref": "nn/09b96c1c27651e7b615c59e7199e4391/feeder_bus",
       "lv_earthing_system": null,
       "lv_neutral": null,
       "materialized_params": {

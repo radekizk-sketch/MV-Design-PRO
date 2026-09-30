@@ -439,13 +439,28 @@ export interface JednostkaRozlozona {
   readonly pozycja: number;
 }
 
-/** Rozkłada blok fabryczny na jednostki z rolami kontraktu (kolejność wyrobu). */
+/**
+ * Rozkłada blok fabryczny na jednostki z rolami kontraktu (kolejność wyrobu).
+ *
+ * TOR BLOKU (karta POLA-W-TORZE): jednostki liniowe bloku RMU są symetryczne — katalog
+ * klasyfikuje je jako `liniowe_odplywowe`, bo to ten sam wyrób po obu stronach. Kierunek
+ * zasilania wynika z umiejscowienia stacji, nie z wyrobu, a operacja stacyjna przyłącza
+ * odcinek od strony zasilania do zacisku pola WEJŚCIOWEGO. Blok bez jednostki dopływowej
+ * oddaje więc rolę wejściową PIERWSZEJ jednostce liniowej w sekwencji wyrobu (ta sama
+ * pozycja, na której operacja domyka pole wejściowe); pozostałe zostają odpływowe.
+ * Projektant nadal widzi rolę każdej jednostki na karcie bloku.
+ */
 export function rozlozBlok(blok: BlokFabryczny | null | undefined): JednostkaRozlozona[] {
-  return (blok?.units ?? []).map((jednostka, index) => ({
+  const jednostki = (blok?.units ?? []).map((jednostka, index) => ({
     jednostka,
     rola: ROLA_Z_FUNKCJI_POLA[jednostka.bay_kind],
     pozycja: index + 1,
   }));
+  if (!jednostki.some((wpis) => wpis.rola === 'LINIA_IN')) {
+    const pierwszaLiniowa = jednostki.find((wpis) => wpis.rola === 'LINIA_OUT');
+    if (pierwszaLiniowa) pierwszaLiniowa.rola = 'LINIA_IN';
+  }
+  return jednostki;
 }
 
 /**
@@ -471,7 +486,10 @@ export function polaZBloku(
     .map((wpis) => ({
       id: `blok-${blok?.configuration_ref ?? ''}-${wpis.pozycja}-${wpis.jednostka.unit_code}`,
       field_role: wpis.rola,
-      bay_template_ref: szablonDlaRoli(wpis.rola),
+      // Karta katalogowa z FUNKCJI jednostki (wyrobu), nie z roli toru: jednostka liniowa
+      // w roli wejściowej to nadal ta sama celka rodziny (operacja sprawdza zgodność slotu
+      // z polem wyliczonym z jednostki bloku).
+      bay_template_ref: szablonDlaRoli(ROLA_Z_FUNKCJI_POLA[wpis.jednostka.bay_kind] ?? wpis.rola),
       apparatus_catalog_ref: aparatDlaRoli(wpis.rola),
       // Tożsamość wyrobu jedzie NA WPISIE pola, nie obok listy: operacja
       // stacyjna materializuje pole z JEDNOSTKI bloku (blok CCF z rozłącznikiem

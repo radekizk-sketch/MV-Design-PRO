@@ -122,12 +122,13 @@ export function zbudujPradyKoordynacji(params: {
   for (const urzadzenie of urzadzenia) {
     const lokalizacja = urzadzenie.location_element_id;
     const miejsce = miejsca?.get(urzadzenie.id);
-    // Prąd zwarciowy W MIEJSCU urządzenia: szyna ZACISKU gałęzi rozstrzygniętego przez
-    // backend (ten sam zacisk co prąd roboczy) albo szyna wskazana wprost jako lokalizacja.
-    // Wiersze biegu zwarciowego są per szyna — lokalizacja-gałąź bez zacisku nie ma
-    // prądu zwarciowego (jawny brak), zamiast prądu „którejś" szyny.
+    // Prąd zwarciowy W MIEJSCU urządzenia: szyna zwarcia rozstrzygnięta przez backend
+    // (`szyna_zwarcia_ref` — szyna zacisku gałęzi, a dla zacisku pola stacji szyna pola: ten
+    // sam węzeł elektryczny) albo szyna wskazana wprost jako lokalizacja. Wiersze biegu
+    // zwarciowego są per szyna — lokalizacja-gałąź bez zacisku nie ma prądu zwarciowego
+    // (jawny brak), zamiast prądu „którejś" szyny.
     const szynaZwarcia =
-      miejsce?.zacisk && miejsce.zaciski ? miejsce.zaciski[miejsce.zacisk].szyna_ref : lokalizacja;
+      miejsce?.zacisk && miejsce.szyna_zwarcia_ref ? miejsce.szyna_zwarcia_ref : lokalizacja;
     const ikMax = mapaMax.get(szynaZwarcia);
     const ikMin = mapaMin.get(szynaZwarcia);
     const robocze = wierszeGalezi ? pradRoboczyZWiersza(wierszeGalezi, miejsce) : { powod: null };

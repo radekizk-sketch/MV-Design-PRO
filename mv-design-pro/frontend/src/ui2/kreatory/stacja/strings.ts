@@ -397,15 +397,28 @@ export const STACJA_STRINGS = {
   polaBrakTrTytul: 'Stacja z transformatorem bez pola transformatorowego',
   polaBrakTrOpis:
     'Ta stacja tworzy transformator SN/nN, a lista pól nie zawiera pola transformatorowego. '
-    + 'Odejście od szyny SN realizuje się polem, więc konfiguracja pozostanie niekompletna: '
-    + 'na schemacie transformator dostanie znacznik braku pola, panel gotowości zgłosi ostrzeżenie, '
-    + 'a projekt nie przejdzie do dokumentacji wykonawczej. Praca koncepcyjna i obliczenia '
-    + 'działają bez zmian — to legalny stan roboczy.',
+    + 'Transformator przyłącza się do zacisku pola transformatorowego — aparat tego pola leży '
+    + 'w jego torze prądowym, więc wyłączenie pola odłącza transformator. Bez tego pola stacji '
+    + 'nie da się zapisać: dodaj pole transformatorowe (w rozdzielnicy blokowej wybierz blok '
+    + 'z jednostką transformatorową).',
+  polaToruBrakTytul: 'Brak pola liniowego w torze odcinka',
+  polaToruBrakOpis: (nazwy: string, koniecOdcinka: boolean): string =>
+    (koniecOdcinka
+      ? 'Stacja zamyka odcinek: odcinek dochodzi do zacisku pola liniowego wejściowego, '
+        + 'a aparat tego pola leży w jego torze. '
+      : 'Stacja jest wstawiana w odcinek: część od strony zasilania kończy się na zacisku pola '
+        + 'liniowego wejściowego, a dalsza część wychodzi z zacisku pola liniowego wyjściowego — '
+        + 'aparaty tych pól leżą w torze odcinka. ')
+    + `Lista pól nie zawiera: ${nazwy}. Bez tych pól stacji nie da się zapisać `
+    + '(w rozdzielnicy blokowej wybierz blok z takimi jednostkami).',
+  polaDodajPoleToru: (nazwa: string): string => `Dodaj: ${nazwa.toLowerCase()}`,
+  polaToruBrakStopka: (nazwy: string): string =>
+    `Stacja wymaga pól toru: ${nazwy} — dodaj je w kroku „Pola rozdzielnicy SN”.`,
   polaPrzywrocTr: 'Dodaj pole transformatorowe',
   // Nazwa roli z kanonu słownictwa ról pól (karta #141).
   wierszPoleTr: FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE,
   wierszPoleTrJest: 'W rozdzielnicy',
-  wierszPoleTrBrak: 'Brak — konfiguracja niekompletna',
+  wierszPoleTrBrak: 'Brak — wymagane do zapisu',
   podgladTytul: 'Podgląd pól rozdzielnicy SN',
   // SLD-GEN-POLA — opisy schematu jednokreskowego rozdzielnicy w kroku pól.
   podgladOpisRysunku:

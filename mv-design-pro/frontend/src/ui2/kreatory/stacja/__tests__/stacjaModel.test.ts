@@ -40,11 +40,17 @@ import {
   type KontekstStacji,
   type StacjaFormData,
   type WyborRozdzielnicy,
+  brakujacePolaToru,
+  type SnFieldRole,
+  type TrybUmiejscowienia,
 } from '../stacjaModel';
 
 function szablon(over: Partial<CompleteMvBayTemplateSummary> = {}): CompleteMvBayTemplateSummary {
   return {
     template_ref: 'tpl-in',
+    // Kontrakt wymaga kompozycji aparatów pola (`base_template`); testy modelu kreatora
+    // nie czytają jej składu, więc wystarcza pusta, poprawna kompozycja.
+    base_template: { template_id: 'tpl-in', name: 'Pole', bay_role: 'IN', devices: [] },
     manufacturer_ref: 'ZPUE_WLOSZCZOWA',
     switchgear_family_ref: 'ZPUE_ROTOBLOK',
     bay_kind: 'liniowe_doplywowe',
@@ -249,6 +255,31 @@ describe('stacjaModel — walidacja', () => {
     expect(
       walidujFormularz(dane(), rozdzielnica('branch').snFields).some((e) => e.field === 'sn_fields'),
     ).toBe(false);
+  });
+
+  it.each([
+    // tryb × skład pól → brakujące pola toru (ten sam zbiór, który operacja domyka)
+    ['SPLIT', ['LINIA_IN', 'LINIA_OUT', 'TRANSFORMATOROWE'], []],
+    ['SPLIT', ['LINIA_IN', 'LINIA_ODG', 'TRANSFORMATOROWE'], ['LINIA_OUT']],
+    ['SPLIT', ['LINIA_OUT', 'TRANSFORMATOROWE'], ['LINIA_IN']],
+    ['SPLIT', ['LINIA_IN', 'LINIA_OUT'], ['TRANSFORMATOROWE']],
+    ['SPLIT', ['LINIA_ODG'], ['LINIA_IN', 'LINIA_OUT', 'TRANSFORMATOROWE']],
+    ['ENDPOINT_APPEND', ['LINIA_IN', 'TRANSFORMATOROWE'], []],
+    ['ENDPOINT_APPEND', ['LINIA_IN'], ['TRANSFORMATOROWE']],
+    ['ENDPOINT_APPEND', ['LINIA_OUT', 'TRANSFORMATOROWE'], ['LINIA_IN']],
+  ] as const satisfies ReadonlyArray<
+    readonly [TrybUmiejscowienia, readonly SnFieldRole[], readonly SnFieldRole[]]
+  >)('pola toru: tryb %s, skład %j → brak %j', (tryb, role, brak) => {
+    expect(brakujacePolaToru(role.map((field_role) => ({ field_role })), tryb)).toEqual(brak);
+    // Walidacja zapisu korzysta z TEGO SAMEGO predykatu (jedno źródło): błąd pól toru
+    // pojawia się dokładnie wtedy, gdy predykat zgłasza brak.
+    const sklad = new Set<SnFieldRole>(role);
+    const bledy = walidujFormularz(
+      dane(),
+      rozdzielnica('branch').snFields.filter((f) => sklad.has(f.field_role)),
+      tryb,
+    ).filter((e) => e.field === 'sn_fields_tor');
+    expect(bledy.length > 0).toBe(brak.length > 0);
   });
 
   it('blokuje zapis, gdy pole nie ma wskazanego aparatu (B-12)', () => {

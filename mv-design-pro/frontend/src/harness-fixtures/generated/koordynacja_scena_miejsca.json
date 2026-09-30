@@ -5,6 +5,7 @@
       "lokalizacja_ref": "bus/9704d44d1ae3394b377910d77a80b97c/downstream",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "szyna",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
@@ -15,6 +16,7 @@
       "lokalizacja_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "szyna",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
@@ -25,6 +27,7 @@
       "lokalizacja_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/bus_110",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "szyna",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
@@ -38,6 +41,7 @@
         "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/wn_sn: Zacisk początkowy — szyna Szyna 110 kV TR1 albo Zacisk końcowy — szyna Szyna GPZ S1 15 kV."
       },
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": true,
       "zacisk": null,
       "zaciski": {
@@ -57,6 +61,7 @@
       "lokalizacja_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/wn_sn",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn",
       "wymaga_wskazania_zacisku": true,
       "zacisk": "do",
       "zaciski": {
@@ -76,6 +81,7 @@
       "lokalizacja_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/wn_sn",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/bus_110",
       "wymaga_wskazania_zacisku": true,
       "zacisk": "od",
       "zaciski": {
@@ -95,15 +101,16 @@
       "lokalizacja_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
       "odmowa_zacisku": {
         "kod": "protection.relay_terminal_indication_missing",
-        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_L: Zacisk początkowy — szyna Szyna GPZ S1 15 kV albo Zacisk końcowy — szyna Stacja S01."
+        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_L: Zacisk początkowy — szyna Szyna GPZ S1 15 kV albo Zacisk końcowy — szyna Zacisk techniczny pola SN 1."
       },
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": true,
       "zacisk": null,
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Stacja S01",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/000"
         },
         "od": {
           "etykieta_pl": "Zacisk początkowy — szyna Szyna GPZ S1 15 kV",
@@ -117,12 +124,13 @@
       "lokalizacja_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
       "wymaga_wskazania_zacisku": true,
       "zacisk": "do",
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Stacja S01",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/000"
         },
         "od": {
           "etykieta_pl": "Zacisk początkowy — szyna Szyna GPZ S1 15 kV",
@@ -136,12 +144,13 @@
       "lokalizacja_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn",
       "wymaga_wskazania_zacisku": true,
       "zacisk": "od",
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Stacja S01",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/000"
         },
         "od": {
           "etykieta_pl": "Zacisk początkowy — szyna Szyna GPZ S1 15 kV",
@@ -155,19 +164,20 @@
       "lokalizacja_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
       "odmowa_zacisku": {
         "kod": "protection.relay_terminal_indication_missing",
-        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L: Zacisk początkowy — szyna Stacja S01 albo Zacisk końcowy — szyna Stacja S02."
+        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L: Zacisk początkowy — szyna Zacisk techniczny pola SN 2 albo Zacisk końcowy — szyna Zacisk techniczny pola SN 1."
       },
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": true,
       "zacisk": null,
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Stacja S02",
-          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Stacja S01",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/001"
         }
       },
       "zrodlo_zacisku": null
@@ -177,16 +187,17 @@
       "lokalizacja_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
       "wymaga_wskazania_zacisku": true,
       "zacisk": "do",
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Stacja S02",
-          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Stacja S01",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/001"
         }
       },
       "zrodlo_zacisku": "wskazanie"
@@ -196,16 +207,17 @@
       "lokalizacja_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
       "wymaga_wskazania_zacisku": true,
       "zacisk": "od",
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Stacja S02",
-          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Stacja S01",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/001"
         }
       },
       "zrodlo_zacisku": "wskazanie"
@@ -215,9 +227,10 @@
       "lokalizacja_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R",
       "odmowa_zacisku": {
         "kod": "protection.relay_terminal_indication_missing",
-        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R: Zacisk początkowy — szyna Stacja S02 albo Zacisk końcowy — szyna Zacisk końcowy Magistrala GPZ."
+        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R: Zacisk początkowy — szyna Zacisk techniczny pola SN 2 albo Zacisk końcowy — szyna Zacisk końcowy Magistrala GPZ."
       },
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": true,
       "zacisk": null,
       "zaciski": {
@@ -226,8 +239,8 @@
           "szyna_ref": "bus/9704d44d1ae3394b377910d77a80b97c/downstream"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Stacja S02",
-          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/001"
         }
       },
       "zrodlo_zacisku": null
@@ -237,6 +250,7 @@
       "lokalizacja_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": "bus/9704d44d1ae3394b377910d77a80b97c/downstream",
       "wymaga_wskazania_zacisku": true,
       "zacisk": "do",
       "zaciski": {
@@ -245,8 +259,8 @@
           "szyna_ref": "bus/9704d44d1ae3394b377910d77a80b97c/downstream"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Stacja S02",
-          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/001"
         }
       },
       "zrodlo_zacisku": "wskazanie"
@@ -256,6 +270,7 @@
       "lokalizacja_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
       "wymaga_wskazania_zacisku": true,
       "zacisk": "od",
       "zaciski": {
@@ -264,8 +279,8 @@
           "szyna_ref": "bus/9704d44d1ae3394b377910d77a80b97c/downstream"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Stacja S02",
-          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/001"
         }
       },
       "zrodlo_zacisku": "wskazanie"
@@ -275,6 +290,7 @@
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_bus",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "szyna",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
@@ -285,133 +301,180 @@
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "szyna",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
       "zrodlo_zacisku": null
     },
     "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000|": {
-      "galaz_ref": null,
+      "galaz_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000",
-      "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
-      },
+      "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
       "wymaga_wskazania_zacisku": false,
-      "zacisk": null,
-      "zaciski": null,
-      "zrodlo_zacisku": null
+      "zacisk": "do",
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/001"
+        }
+      },
+      "zrodlo_zacisku": "model"
     },
     "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000|do": {
-      "galaz_ref": null,
+      "galaz_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000",
-      "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
-      },
+      "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
       "wymaga_wskazania_zacisku": false,
-      "zacisk": null,
-      "zaciski": null,
-      "zrodlo_zacisku": null
+      "zacisk": "do",
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/001"
+        }
+      },
+      "zrodlo_zacisku": "model"
     },
     "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000|od": {
       "galaz_ref": null,
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000",
       "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
+        "kod": "protection.relay_terminal_contradicts_model",
+        "powod_pl": "Wskazany zacisk nie odpowiada żadnemu zabezpieczeniu z modelu — wyłącznik z przypiętym zabezpieczeniem stoi w szeregu z drugim zaciskiem gałęzi — łącznik stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/000 stoi w szeregu z zaciskiem do gałęzi seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L (stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000), wskazano od."
       },
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
       "zrodlo_zacisku": null
     },
     "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001|": {
-      "galaz_ref": null,
+      "galaz_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R",
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001",
-      "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
-      },
+      "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
       "wymaga_wskazania_zacisku": false,
-      "zacisk": null,
-      "zaciski": null,
-      "zrodlo_zacisku": null
+      "zacisk": "od",
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk końcowy Magistrala GPZ",
+          "szyna_ref": "bus/9704d44d1ae3394b377910d77a80b97c/downstream"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/001"
+        }
+      },
+      "zrodlo_zacisku": "model"
     },
     "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001|do": {
       "galaz_ref": null,
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001",
       "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
+        "kod": "protection.relay_terminal_contradicts_model",
+        "powod_pl": "Wskazany zacisk nie odpowiada żadnemu zabezpieczeniu z modelu — wyłącznik z przypiętym zabezpieczeniem stoi w szeregu z drugim zaciskiem gałęzi — łącznik stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001 stoi w szeregu z zaciskiem od gałęzi seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R (stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/001), wskazano do."
       },
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
       "zrodlo_zacisku": null
     },
     "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001|od": {
-      "galaz_ref": null,
+      "galaz_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R",
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001",
-      "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/001: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
-      },
+      "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
       "wymaga_wskazania_zacisku": false,
-      "zacisk": null,
-      "zaciski": null,
-      "zrodlo_zacisku": null
+      "zacisk": "od",
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk końcowy Magistrala GPZ",
+          "szyna_ref": "bus/9704d44d1ae3394b377910d77a80b97c/downstream"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/001"
+        }
+      },
+      "zrodlo_zacisku": "model"
     },
     "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002|": {
-      "galaz_ref": null,
+      "galaz_ref": "stn/01bb98b8035012aa5698e4fc47869f83/transformer",
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002",
-      "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
-      },
+      "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
       "wymaga_wskazania_zacisku": false,
-      "zacisk": null,
-      "zaciski": null,
-      "zrodlo_zacisku": null
+      "zacisk": "od",
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Wyłącznik główny nN",
+          "szyna_ref": "nn/2f39a65f39de991048ec48520d37e059/feeder_bus"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 3",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/002"
+        }
+      },
+      "zrodlo_zacisku": "model"
     },
     "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002|do": {
       "galaz_ref": null,
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002",
       "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
+        "kod": "protection.relay_terminal_contradicts_model",
+        "powod_pl": "Wskazany zacisk nie odpowiada żadnemu zabezpieczeniu z modelu — wyłącznik z przypiętym zabezpieczeniem stoi w szeregu z drugim zaciskiem gałęzi — łącznik stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002 stoi w szeregu z zaciskiem od gałęzi stn/01bb98b8035012aa5698e4fc47869f83/transformer (stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/002), wskazano do."
       },
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
       "zrodlo_zacisku": null
     },
     "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002|od": {
-      "galaz_ref": null,
+      "galaz_ref": "stn/01bb98b8035012aa5698e4fc47869f83/transformer",
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002",
-      "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/01bb98b8035012aa5698e4fc47869f83/sn_field_breaker/002: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
-      },
+      "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
       "wymaga_wskazania_zacisku": false,
-      "zacisk": null,
-      "zaciski": null,
-      "zrodlo_zacisku": null
+      "zacisk": "od",
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Wyłącznik główny nN",
+          "szyna_ref": "nn/2f39a65f39de991048ec48520d37e059/feeder_bus"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 3",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/002"
+        }
+      },
+      "zrodlo_zacisku": "model"
     },
     "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000|": {
       "galaz_ref": null,
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "szyna",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
@@ -422,6 +485,7 @@
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/001",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "szyna",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
@@ -432,6 +496,7 @@
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/002",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "szyna",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
@@ -442,19 +507,20 @@
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/transformer",
       "odmowa_zacisku": {
         "kod": "protection.relay_terminal_indication_missing",
-        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź stn/01bb98b8035012aa5698e4fc47869f83/transformer: Zacisk początkowy — szyna Stacja S02 albo Zacisk końcowy — szyna Szyna nN stacji."
+        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź stn/01bb98b8035012aa5698e4fc47869f83/transformer: Zacisk początkowy — szyna Zacisk techniczny pola SN 3 albo Zacisk końcowy — szyna Wyłącznik główny nN."
       },
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": true,
       "zacisk": null,
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Szyna nN stacji",
-          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_bus"
+          "etykieta_pl": "Zacisk końcowy — szyna Wyłącznik główny nN",
+          "szyna_ref": "nn/2f39a65f39de991048ec48520d37e059/feeder_bus"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Stacja S02",
-          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 3",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/002"
         }
       },
       "zrodlo_zacisku": null
@@ -464,16 +530,17 @@
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/transformer",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": "nn/2f39a65f39de991048ec48520d37e059/feeder_bus",
       "wymaga_wskazania_zacisku": true,
       "zacisk": "do",
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Szyna nN stacji",
-          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_bus"
+          "etykieta_pl": "Zacisk końcowy — szyna Wyłącznik główny nN",
+          "szyna_ref": "nn/2f39a65f39de991048ec48520d37e059/feeder_bus"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Stacja S02",
-          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 3",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/002"
         }
       },
       "zrodlo_zacisku": "wskazanie"
@@ -483,16 +550,17 @@
       "lokalizacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/transformer",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
       "wymaga_wskazania_zacisku": true,
       "zacisk": "od",
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Szyna nN stacji",
-          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_bus"
+          "etykieta_pl": "Zacisk końcowy — szyna Wyłącznik główny nN",
+          "szyna_ref": "nn/2f39a65f39de991048ec48520d37e059/feeder_bus"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Stacja S02",
-          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 3",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/002"
         }
       },
       "zrodlo_zacisku": "wskazanie"
@@ -502,6 +570,7 @@
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_bus",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "szyna",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
@@ -512,133 +581,180 @@
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "szyna",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
       "zrodlo_zacisku": null
     },
     "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000|": {
-      "galaz_ref": null,
+      "galaz_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000",
-      "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
-      },
+      "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
       "wymaga_wskazania_zacisku": false,
-      "zacisk": null,
-      "zaciski": null,
-      "zrodlo_zacisku": null
+      "zacisk": "do",
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/000"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Szyna GPZ S1 15 kV",
+          "szyna_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn"
+        }
+      },
+      "zrodlo_zacisku": "model"
     },
     "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000|do": {
-      "galaz_ref": null,
+      "galaz_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000",
-      "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
-      },
+      "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
       "wymaga_wskazania_zacisku": false,
-      "zacisk": null,
-      "zaciski": null,
-      "zrodlo_zacisku": null
+      "zacisk": "do",
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/000"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Szyna GPZ S1 15 kV",
+          "szyna_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn"
+        }
+      },
+      "zrodlo_zacisku": "model"
     },
     "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000|od": {
       "galaz_ref": null,
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000",
       "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
+        "kod": "protection.relay_terminal_contradicts_model",
+        "powod_pl": "Wskazany zacisk nie odpowiada żadnemu zabezpieczeniu z modelu — wyłącznik z przypiętym zabezpieczeniem stoi w szeregu z drugim zaciskiem gałęzi — łącznik stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/000 stoi w szeregu z zaciskiem do gałęzi seg/9704d44d1ae3394b377910d77a80b97c/segment_L (stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/000), wskazano od."
       },
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
       "zrodlo_zacisku": null
     },
     "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001|": {
-      "galaz_ref": null,
+      "galaz_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001",
-      "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
-      },
+      "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
       "wymaga_wskazania_zacisku": false,
-      "zacisk": null,
-      "zaciski": null,
-      "zrodlo_zacisku": null
+      "zacisk": "od",
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/001"
+        }
+      },
+      "zrodlo_zacisku": "model"
     },
     "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001|do": {
       "galaz_ref": null,
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001",
       "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
+        "kod": "protection.relay_terminal_contradicts_model",
+        "powod_pl": "Wskazany zacisk nie odpowiada żadnemu zabezpieczeniu z modelu — wyłącznik z przypiętym zabezpieczeniem stoi w szeregu z drugim zaciskiem gałęzi — łącznik stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001 stoi w szeregu z zaciskiem od gałęzi seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L (stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/001), wskazano do."
       },
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
       "zrodlo_zacisku": null
     },
     "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001|od": {
-      "galaz_ref": null,
+      "galaz_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001",
-      "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/001: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
-      },
+      "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
       "wymaga_wskazania_zacisku": false,
-      "zacisk": null,
-      "zaciski": null,
-      "zrodlo_zacisku": null
+      "zacisk": "od",
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Zacisk techniczny pola SN 1",
+          "szyna_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 2",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/001"
+        }
+      },
+      "zrodlo_zacisku": "model"
     },
     "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002|": {
-      "galaz_ref": null,
+      "galaz_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer",
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002",
-      "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
-      },
+      "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
       "wymaga_wskazania_zacisku": false,
-      "zacisk": null,
-      "zaciski": null,
-      "zrodlo_zacisku": null
+      "zacisk": "od",
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Wyłącznik główny nN",
+          "szyna_ref": "nn/69c475718a63e9514b29e811faf73892/feeder_bus"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 3",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/002"
+        }
+      },
+      "zrodlo_zacisku": "model"
     },
     "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002|do": {
       "galaz_ref": null,
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002",
       "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
+        "kod": "protection.relay_terminal_contradicts_model",
+        "powod_pl": "Wskazany zacisk nie odpowiada żadnemu zabezpieczeniu z modelu — wyłącznik z przypiętym zabezpieczeniem stoi w szeregu z drugim zaciskiem gałęzi — łącznik stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002 stoi w szeregu z zaciskiem od gałęzi stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer (stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/002), wskazano do."
       },
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
       "zrodlo_zacisku": null
     },
     "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002|od": {
-      "galaz_ref": null,
+      "galaz_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer",
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002",
-      "odmowa_zacisku": {
-        "kod": "protection.device_breaker_not_in_series",
-        "powod_pl": "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia — łącznik stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_breaker/002: po obu stronach szyna z innymi przyłączeniami, odbiór albo źródło."
-      },
+      "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "lacznik",
+      "szyna_zwarcia_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
       "wymaga_wskazania_zacisku": false,
-      "zacisk": null,
-      "zaciski": null,
-      "zrodlo_zacisku": null
+      "zacisk": "od",
+      "zaciski": {
+        "do": {
+          "etykieta_pl": "Zacisk końcowy — szyna Wyłącznik główny nN",
+          "szyna_ref": "nn/69c475718a63e9514b29e811faf73892/feeder_bus"
+        },
+        "od": {
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 3",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/002"
+        }
+      },
+      "zrodlo_zacisku": "model"
     },
     "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/000|": {
       "galaz_ref": null,
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/000",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "szyna",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
@@ -649,6 +765,7 @@
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/001",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "szyna",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
@@ -659,6 +776,7 @@
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/002",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "szyna",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": false,
       "zacisk": null,
       "zaciski": null,
@@ -669,19 +787,20 @@
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer",
       "odmowa_zacisku": {
         "kod": "protection.relay_terminal_indication_missing",
-        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer: Zacisk początkowy — szyna Stacja S01 albo Zacisk końcowy — szyna Szyna nN stacji."
+        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer: Zacisk początkowy — szyna Zacisk techniczny pola SN 3 albo Zacisk końcowy — szyna Wyłącznik główny nN."
       },
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": null,
       "wymaga_wskazania_zacisku": true,
       "zacisk": null,
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Szyna nN stacji",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_bus"
+          "etykieta_pl": "Zacisk końcowy — szyna Wyłącznik główny nN",
+          "szyna_ref": "nn/69c475718a63e9514b29e811faf73892/feeder_bus"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Stacja S01",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 3",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/002"
         }
       },
       "zrodlo_zacisku": null
@@ -691,16 +810,17 @@
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": "nn/69c475718a63e9514b29e811faf73892/feeder_bus",
       "wymaga_wskazania_zacisku": true,
       "zacisk": "do",
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Szyna nN stacji",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_bus"
+          "etykieta_pl": "Zacisk końcowy — szyna Wyłącznik główny nN",
+          "szyna_ref": "nn/69c475718a63e9514b29e811faf73892/feeder_bus"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Stacja S01",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 3",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/002"
         }
       },
       "zrodlo_zacisku": "wskazanie"
@@ -710,16 +830,17 @@
       "lokalizacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer",
       "odmowa_zacisku": null,
       "rodzaj_lokalizacji": "galaz",
+      "szyna_zwarcia_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
       "wymaga_wskazania_zacisku": true,
       "zacisk": "od",
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Szyna nN stacji",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_bus"
+          "etykieta_pl": "Zacisk końcowy — szyna Wyłącznik główny nN",
+          "szyna_ref": "nn/69c475718a63e9514b29e811faf73892/feeder_bus"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Stacja S01",
-          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
+          "etykieta_pl": "Zacisk początkowy — szyna Zacisk techniczny pola SN 3",
+          "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/002"
         }
       },
       "zrodlo_zacisku": "wskazanie"

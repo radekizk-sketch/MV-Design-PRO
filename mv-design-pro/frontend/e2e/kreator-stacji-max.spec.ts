@@ -332,6 +332,20 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   await aparat1.selectOption(APARAT_ZMIENIONY);
   await expect(aparat1).toHaveValue(APARAT_ZMIENIONY);
 
+  // POLA-W-TORZE: stacja wstawiana w odcinek prowadzi odcinek przez pole liniowe wejściowe
+  // i wyjściowe, a transformator przez pole transformatorowe (aparat pola w torze elementu).
+  // Szablon farmy PV niesie samo pole wejściowe — kreator NAZYWA brak pól toru i blokuje
+  // zapis, a projektant dokłada je natywnym kliknięciem (pole z doborem domyślnym roli).
+  await expect(page.getByTestId('mvd-kreator-stacja-brak-pol-toru')).toBeVisible();
+  await expect(page.getByTestId('mvd-kreator-stacja-brak-pola-tr')).toBeVisible();
+  await expect(page.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled();
+  await page.getByTestId('mvd-kreator-stacja-dodaj-pole-toru-LINIA_OUT').click();
+  await page.getByTestId('mvd-kreator-stacja-przywroc-pole-tr').click();
+  await expect(page.getByTestId('mvd-kreator-stacja-brak-pol-toru')).toHaveCount(0);
+  await expect(page.getByTestId('mvd-kreator-stacja-brak-pola-tr')).toHaveCount(0);
+  // Pole wejściowe zostaje pierwsze — wybór aparatu z pickera nie przepadł.
+  await expect(aparat1).toHaveValue(APARAT_ZMIENIONY);
+
   // ---------------------------------------------------------------- krok 4
   await przejdzDoKroku(page, 'Pomiar i zabezpieczenia pól');
   const ct1 = page.getByTestId('mvd-kreator-stacja-ct-1');

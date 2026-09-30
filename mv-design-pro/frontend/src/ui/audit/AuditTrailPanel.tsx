@@ -29,6 +29,7 @@ const OPERATION_LABELS_PL: Record<string, string> = {
   insert_zksn_on_segment_sn: 'Wstawienie ZKSN',
   insert_section_switch_sn: 'Wstawienie sprzęgła',
   set_normal_open_point: 'Ustawienie punktu rozłączenia',
+  przepnij_element_na_pole: 'Przepięcie elementu na pole stacji',
   add_transformer_sn_nn: 'Dodanie transformatora',
   assign_catalog_to_element: 'Przypisanie typu katalogowego',
   update_element_parameters: 'Aktualizacja parametrów',

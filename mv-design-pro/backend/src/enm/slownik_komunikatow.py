@@ -187,6 +187,8 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "station_auxiliary.cos_phi": "cosφ potrzeb własnych",  # stacja/strings.ts potrzebyWlasneCosphi
     "add_nn_section_coupler:station_ref": "Rozdzielnica nN",  # rozdzielnica-nn/strings.ts stacja
     "stop_generation_enabled": "Zaprzestanie generacji na polecenie",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
+    "przepnij_element_na_pole:element_ref": "Element do przepięcia",  # przepiecie-na-pole/strings.ts element
+    "przepnij_element_na_pole:field_ref": "Pole docelowe",  # przepiecie-na-pole/strings.ts pole
     "set_normal_open_point:switch_ref": "Punkt normalnie otwarty (NOP)",  # pierscien/strings.ts nopTytul
     "tap_changer.control_mode": "Tryb sterowania",  # zrodlo/strings.ts oltcTryb
     "tap_changer.regulated_winding": "Regulowane uzwojenie",  # zrodlo/strings.ts oltcUzwojenie

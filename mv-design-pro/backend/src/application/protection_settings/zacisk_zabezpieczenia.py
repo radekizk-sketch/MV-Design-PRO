@@ -50,6 +50,7 @@ from application.analyses.protection.catalog.catalog_store import load_device_ca
 from domain.canonical_operations import READINESS_CODES
 from enm.nazwy_elementow import SPOZA_MODELU, nazwa_po_identyfikatorze
 from enm.slownik_komunikatow import opis_nazwy
+from enm.tor_pola import szyna_raportowa
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.nazwy import nazwa_nadana
 
@@ -556,6 +557,10 @@ def opis_miejsca_urzadzenia(
         "zaciski": zaciski_opisu.to_dict() if zaciski_opisu is not None else None,
         "galaz_ref": wynik.galaz_ref if isinstance(wynik, MiejsceUrzadzenia) else None,
         "zacisk": wynik.zacisk if isinstance(wynik, MiejsceUrzadzenia) else None,
+        # Szyna prądu zwarciowego miejsca (addytywne; `szyna_zwarcia_miejsca`).
+        "szyna_zwarcia_ref": (
+            szyna_zwarcia_miejsca(snapshot, wynik) if isinstance(wynik, MiejsceUrzadzenia) else None
+        ),
         "zrodlo_zacisku": (wynik.zrodlo if isinstance(wynik, MiejsceUrzadzenia) else None),
         "wymaga_wskazania_zacisku": rodzaj == "galaz",
         "odmowa_zacisku": wynik.to_dict() if isinstance(wynik, OdmowaZacisku) else None,
@@ -584,6 +589,14 @@ def zaciski_galezi_migawki(snapshot: dict[str, Any] | None) -> dict[str, dict[st
         if zaciski is not None:
             wynik[ref] = zaciski.to_dict()
     return wynik
+
+
+def szyna_zwarcia_miejsca(snapshot: dict[str, Any] | None, miejsce: MiejsceUrzadzenia) -> str:
+    """Szyna, pod którą bieg zwarciowy raportuje prąd w miejscu urządzenia: szyna zacisku
+    gałęzi, a gdy zacisk leży na zacisku pola stacji (szyna pomocnicza za zamkniętym aparatem
+    pola — karta POLA-W-TORZE) — szyna pola, ten sam węzeł elektryczny
+    (`enm.tor_pola.szyna_raportowa`). JEDNO źródło dla końcówki koordynacji i ekranu."""
+    return szyna_raportowa(snapshot or {}, miejsce.zaciski.szyna(miejsce.zacisk))
 
 
 def szyny_zwarcia_lokalizacji(
@@ -617,7 +630,7 @@ def szyny_zwarcia_lokalizacji(
             szyny.pop(lokalizacja, None)
             odmowy[lokalizacja] = wynik.powod_pl
             continue
-        szyna = wynik.zaciski.szyna(wynik.zacisk)
+        szyna = szyna_zwarcia_miejsca(snapshot, wynik)
         poprzednia = szyny.get(lokalizacja)
         if poprzednia is not None and poprzednia != szyna:
             del szyny[lokalizacja]
@@ -705,6 +718,7 @@ __all__ = [
     "opis_miejsca_urzadzenia",
     "rodzaj_lokalizacji",
     "rozstrzygnij_zacisk",
+    "szyna_zwarcia_miejsca",
     "szyny_zwarcia_lokalizacji",
     "zacisk_lacznika_w_szeregu",
     "zaciski_galezi",
