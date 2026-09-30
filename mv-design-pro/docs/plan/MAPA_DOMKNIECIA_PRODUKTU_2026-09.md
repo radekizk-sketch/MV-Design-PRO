@@ -740,6 +740,8 @@ komentarza, ale plik leży pod B-01; (f) do pozycji (d) dochodzą stałe V12.6: 
 
 ## 8. Kolejność wycinków W1–W12 (decyzja architekta; misja §29: zależność → ryzyko → wartość, pionowo)
 
+> **Aktualizacja 2026-09-30 (plan A/B, decyzja O-57 — synteza architekta zweryfikowana z repozytorium):** kolejność wykonawcza biegnie w torach równoległych opisanych w `STAN_REPO.md` §7 D. W5-A i W5-D oraz W6-1…W6-3 są wykonane; W6-4/W6-5 wchłonął program A/B (AB-1b.1, AB-1c); zawartość W6-6 przeszła do przyrostu AB-6b; W6-8 zostaje torem W zależnym od danych OD-17; W4 dzieli się na W4-1 (ocena z nastaw modelu) i W4-2 (funkcje 67/67N, 21, 87T, 25, 50BF, grupy, TRIP — po W5-B); W10 na W10-1 (dobór przekroju z pakietem dowodowym) i W10-2 (BOM, koszty OD-16, `NetworkVariation`).
+
 | W | Wycinek | Zakres (klasy defektów) | Domeny | Zależy od | Dlaczego w tym miejscu | Mapowanie na W-8 / CV |
 |---|---|---|---|---|---|---|
 | **W1** | **Jedna prawda sieci od pierwszego bajtu** | K-A (ORM, XLSX, ZIP, governance, wizard, SLD ORM), K-F (przegląd kasacyjny), e2e klasy A przez import | 1, 2, 8, 10 | — (aktywna granica CV-4) | jedyna wada, przez którą dane użytkownika znikają; domyka aktywną granicę CV-4 bez jej przerywania (§29) | CV-4.4 + K2 (jądro przeniesione) — roadmapa §4 w. 5–6 |
