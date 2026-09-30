@@ -740,12 +740,13 @@ The system is fully functional with:
 - 19 analysis modules (incl. Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds,
   Energy Validation — see inventory)
 - Full frontend (63 UI modules): SLD editor, Results, Study Cases, Proof Inspector, Protection, NC RfG tests
-- 10 686 backend test functions (`grep -rn "def test_" backend/tests --include=*.py`, 2026-09-25,
-  partia integracji 4); 12 644 frontend tests in 878 files (full vitest run, 2026-09-25);
-  101 guard scripts + 57 guard self-test files (`ls scripts/*_guard.py scripts/*_guards.py`,
-  `ls scripts/test_*guard*.py`) — full backend regression `-m "not pandapower and not andes"`:
-  **26 165 passed** (2026-09-25, partia integracji 4; jedyny czerwony test — pin strażnika
-  fizyki w UI po kasacji stałej granicy stron stacji — naprawiony w `f434e1cb`)
+- 10 792 backend test functions (`grep -rn "def test_" backend/tests --include=*.py`, 2026-09-30,
+  partia integracji 5 z DETERMINIZM-KATA-FAZORA); 12 716 frontend tests in 879 files (full
+  vitest run, 2026-09-30, łańcuch partii 5); 102 guard scripts + 58 guard self-test files
+  (`ls scripts/*_guard.py scripts/*_guards.py`, `ls scripts/test_*guard*.py`) — full backend regression
+  `-m "not pandapower and not andes"`: **26 608 passed** (2026-09-29, łańcuch partii 5 na `e233886a`;
+  `backend/src` identyczny z `3840e239`; rdzeń dynamiki po poprawce determinizmu — testy celowane w wierszu
+  partii 5 rejestru planu A/B §7)
 - Project import/export (ZIP, deterministic, versioned), CAD geometry editing in SLD,
   PDF/DOCX report generation, ENM v1.0 (EnergyNetworkModel)
 

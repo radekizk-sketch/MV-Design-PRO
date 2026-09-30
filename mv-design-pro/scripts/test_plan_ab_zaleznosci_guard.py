@@ -30,9 +30,11 @@ DAWNA_SEKWENCJA = (
 )
 
 #: Przyrosty dopisane do planu PO stanie historycznym, który odtwarza `_plan_sprzed_podzialu_bess`
-#: (korekta O-20) — ich wierszy §11 w tamtym planie nie było, więc kopia historyczna ich nie niesie.
-#: Nowy przyrost w planie bez wpisu tutaj zatrzyma test komunikatem „przyrost bez miejsca”.
-NOWSZE_OD_STANU_HISTORYCZNEGO = frozenset({"AB-P1"})  # O-54 (2026-09-24)
+#: (korekta O-20) — ich wierszy §11 w tamtym planie nie było, więc kopia historyczna ich nie niesie:
+#: AB-P1 (O-54, 2026-09-24), AB-1b.2 (wiersz warunku Pakietu E — DYNAMIKA-W-TLE) i AB-6b (O-57,
+#: 2026-09-30). Nowy przyrost w planie bez wpisu tutaj zatrzyma test komunikatem „przyrost bez
+#: miejsca”; nowy wiersz przyrostu z dawnej sekwencji — nadmiarowym cyklem (licznik cykli niżej).
+NOWSZE_OD_STANU_HISTORYCZNEGO = frozenset({"AB-P1", "AB-1b.2", "AB-6b"})
 
 
 def _zamien_sekwencje(tekst: str, nowa: str) -> str:
@@ -102,6 +104,9 @@ def test_dawna_sekwencja_daje_cykl_ab4_ab_h2(
     # „Stawiała AB-4 przed OBIEMA jego zależnościami" (O-20): także AB-H1 przez wiersz `AB-H1:`.
     assert "cykl sekwencja ↔ zależność: AB-4 ↔ AB-H1" in wyjscie
     assert "przyrost bez miejsca" not in wyjscie
+    # Kopia historyczna niesie DOKŁADNIE dwa dawne cykle — trzeci znaczy, że wiersz §11 dopisany po
+    # stanie historycznym przeciekł do kopii (2026-09-30: wiersz AB-1b.2 z O-57 dał AB-1b.2 ↔ AB-1b.3).
+    assert wyjscie.count("cykl sekwencja ↔ zależność:") == 2, wyjscie
 
 
 def test_przyrost_bez_miejsca(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

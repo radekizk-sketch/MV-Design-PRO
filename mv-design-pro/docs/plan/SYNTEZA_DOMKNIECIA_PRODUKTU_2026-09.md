@@ -574,6 +574,8 @@ nie produkt), **ODRZUCIĆ**.
 
 ## 5. Aktualizacja roadmapy (mapa §8 pozostaje jedyną tabelą wycinków; poniższe zmiany są wiążące)
 
+> **Aktualizacja 2026-09-30 (plan A/B, decyzja O-57 — synteza architekta zweryfikowana z repozytorium):** kolejność wykonawcza biegnie w torach równoległych opisanych w `STAN_REPO.md` §7 D. W5-A i W5-D oraz W6-1…W6-3 są wykonane; W6-4/W6-5 wchłonął program A/B (AB-1b.1, AB-1c); zawartość W6-6 przeszła do przyrostu AB-6b; W6-8 zostaje torem W zależnym od danych OD-17; W4 dzieli się na W4-1 (ocena z nastaw modelu) i W4-2 (funkcje 67/67N, 21, 87T, 25, 50BF, grupy, TRIP — po W5-B); W10 na W10-1 (dobór przekroju z pakietem dowodowym) i W10-2 (BOM, koszty OD-16, `NetworkVariation`).
+
 1. **Kolejność:** W1 → W2 → W3 (w odbiorze) → **W6-0 (S-1…S-5, natychmiast, równolegle z domknięciem W3)** → W5 → W4 →
    **W6-1/W6-2 (fundament czasu — projekt architekta, równolegle z W5)** → W8 → W6-3…W6-8 → W7 → W9 → W10 → W11 → W12.
    Uzasadnienie zmiany względem §8 (W6 po W8): bezpieczniki W6-0 usuwają fałsz widoczny DZIŚ w dokumentach
