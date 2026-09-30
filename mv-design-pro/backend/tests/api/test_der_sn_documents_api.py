@@ -13,6 +13,7 @@ from enm.store import reset_enm_store, set_enm
 from infrastructure.persistence.repositories.document_store_repository import (
     document_store_repository_scope,
 )
+from network_model.odmowa_danych import OdmowaDanychError
 
 #: Decyzja O-53: TR blokowy ≥ max(S_n,jedn·n, P/cosφ) — falownik 1 MW ma S_n 1,1 MVA.
 _TR_BLOCK = "tr-sn-nn-15-04-1250kva-dyn11"
@@ -379,22 +380,25 @@ def test_brak_przekroju_kabla_pomija_sekcje_d2_nie_fabrykuje_zera(app_client) ->
     assert "cross_section_mm2" in nieocenione[0]["message_pl"]
 
 
+@pytest.mark.parametrize("typ", [AttributeError, ValueError])
 def test_blad_programu_przy_propozycji_d2_wybucha_zamiast_pominiecia_sekcji(
-    app_client, monkeypatch
+    app_client, monkeypatch, typ: type[Exception]
 ) -> None:
     """Karta #151, iloczyn {odmowa danych, obcy wyjątek} × trasa raportu: obcy wyjątek
-    solvera doboru nie znika w „sekcja D2 pominięta" — dociera do wołającego (500)."""
+    solvera doboru nie znika w „sekcja D2 pominięta" — dociera do wołającego (500).
+    Karta ODMOWA-DANYCH-422: także zwykły `ValueError` jest obcym wyjątkiem — sekcję D2
+    „nieocenioną" daje wyłącznie nazwana odmowa `OdmowaDanychError`."""
     import network_model.solvers.der_selection_preview as dobor
 
     def _zepsuty(*args, **kwargs):
-        raise AttributeError("błąd programu")
+        raise typ("błąd programu")
 
     monkeypatch.setattr(dobor, "propose_block_transformer", _zepsuty)
     case_id = _nowy_przypadek(app_client)
     _seed_case_4mva(
         app_client, case_id, cable_ref="cable-polish-yhakxs-1c-50", laying_conditions=None
     )
-    with pytest.raises(AttributeError, match="błąd programu"):
+    with pytest.raises(typ, match="błąd programu"):
         app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
 
 
@@ -402,7 +406,7 @@ def test_odmowa_solvera_doboru_to_sekcja_d2_nieoceniona_z_powodem(app_client, mo
     import network_model.solvers.der_selection_preview as dobor
 
     def _odmowa(*args, **kwargs):
-        raise ValueError("ΣS falowników musi być dodatnie.")
+        raise OdmowaDanychError("ΣS falowników musi być dodatnie.")
 
     monkeypatch.setattr(dobor, "propose_block_transformer", _odmowa)
     case_id = _nowy_przypadek(app_client)

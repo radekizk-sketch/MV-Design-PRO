@@ -440,9 +440,7 @@ def ocen_odmowy(
     naruszenia: list[tuple[str, int, str]], raise_aplikacji: int, pin: int
 ) -> list[str]:
     """Komunikaty błędów drugiej połowy (pusta lista = zielony)."""
-    bledy = [
-        f"backend/src/{sciezka}:{linia}: {opis}." for sciezka, linia, opis in naruszenia
-    ]
+    bledy = [f"backend/src/{sciezka}:{linia}: {opis}." for sciezka, linia, opis in naruszenia]
     if raise_aplikacji > pin:
         bledy.append(
             f"backend/src/application: {raise_aplikacji} × `raise ValueError`, pin {pin} — "

@@ -331,7 +331,20 @@ def test_operacja_domenowa_przez_trase(
     with caplog.at_level(logging.WARNING, logger="mv_design_pro"):
         odpowiedz = klient.post(
             f"/api/cases/{case_id}/enm/domain-ops",
-            json={"operation": {"name": "add_grid_source_sn", "payload": {}}},
+            json={
+                "operation": {
+                    "name": "add_grid_source_sn",
+                    # Ładunek przechodzący bramę katalogową trasy (`catalog.ref_required`
+                    # sprawdza ją PRZED operacją) — wyjątek ma powstać w operacji.
+                    "payload": {
+                        "voltage_kv": 15.0,
+                        "sk3_mva": 250.0,
+                        "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                        "hv_voltage_kv": 110.0,
+                        "transformer_sn_mva": 25.0,
+                    },
+                }
+            },
         )
     _sprawdz_wyrocznie(odpowiedz, wyjatek, kod, caplog)
 
@@ -352,9 +365,7 @@ def test_operacja_domenowa_przez_trase(
     ],
     ids=["valueerror", "lin_alg_error", "key_error", "type_error", "zero_division"],
 )
-def test_granica_b01_tlumaczy_wylacznie_valueerror(
-    wyjatek: Exception, tlumaczony: bool
-) -> None:
+def test_granica_b01_tlumaczy_wylacznie_valueerror(wyjatek: Exception, tlumaczony: bool) -> None:
     with pytest.raises(Exception) as info:
         with odmowa_rdzenia_b01():
             raise wyjatek

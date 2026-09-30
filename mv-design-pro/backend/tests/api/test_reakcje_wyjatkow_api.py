@@ -192,7 +192,9 @@ def test_uszkodzona_fikstura_wzorca_nie_znika_z_listy_po_cichu(
     monkeypatch.setattr(wzorce, "get_pattern_a_fixtures_dir", lambda: tmp_path)
     with pytest.raises(json.JSONDecodeError):
         wzorce.list_pattern_a_fixtures()
-    odpowiedz = _surowy_klient().get("/api/reference-patterns/patterns/RP-LINE-I2-THERMAL-SPZ/fixtures")
+    odpowiedz = _surowy_klient().get(
+        "/api/reference-patterns/patterns/RP-LINE-I2-THERMAL-SPZ/fixtures"
+    )
     assert odpowiedz.status_code == 500, odpowiedz.text
     assert odpowiedz.json()["error_type"] == "JSONDecodeError"
 
