@@ -1380,6 +1380,7 @@ function buildTerminalBindings(
   // SZYNY-STACJI-LUSTRO: szyna → stacja z jednego lustra; wszystkie wyszukiwania końcówek
   // policzone raz dla wszystkich końcówek (`indeksKoncowek`).
   const koncowki = indeksKoncowek(snapshot);
+  const sciezkiOdcinkow = indeksSciezekOdcinkow(rendered.cableRuns);
   const runBySegmentRef = new Map<string, SldTopologyRun>();
   for (const run of topologyRuns) {
     for (const segmentRef of run.segmentRefs) {
@@ -1393,8 +1394,8 @@ function buildTerminalBindings(
       const branch = branchByRef.get(segmentRef);
       if (!branch) continue;
       const topologyRun = runBySegmentRef.get(segmentRef) ?? null;
-      const pointA = findSegmentEndpointPoint(rendered.cableRuns, segmentRef, 'A');
-      const pointB = findSegmentEndpointPoint(rendered.cableRuns, segmentRef, 'B');
+      const pointA = punktKoncaOdcinka(sciezkiOdcinkow, segmentRef, 'A');
+      const pointB = punktKoncaOdcinka(sciezkiOdcinkow, segmentRef, 'B');
       bindings.push({
         id: `${segmentRef}:A`,
         elementRef: segmentRef,
@@ -1779,19 +1780,51 @@ function uniqueRoutePoints(points: readonly { x: number; y: number }[]): readonl
   return out;
 }
 
+/**
+ * Ścieżka narysowanego odcinka: z ciągu, który NIESIE ten odcinek — jego ścieżka odcinka
+ * (`segmentPaths`), a gdy ciąg nie ma ścieżek odcinków — ścieżka całego ciągu, o ile ciąg
+ * deklaruje odcinek w `segmentRefs`. Pierwszy taki ciąg w kolejności rysunku.
+ *
+ * Karta PARTIA-6-FRONT (znalezisko uboczne): dawniej przy braku ścieżki odcinka w ciągu
+ * brano ścieżkę CAŁEGO pierwszego ciągu z niepustą ścieżką — każdy odcinek spoza pierwszego
+ * ciągu dostawał końce cudzego ciągu (sieć referencyjna: 108 ze 176 współrzędnych wiązań
+ * końcówek). Odcinek bez ścieżki w żadnym niosącym go ciągu nie ma punktu (`null`), nigdy
+ * punktu pożyczonego.
+ */
+function indeksSciezekOdcinkow(
+  cableRuns: readonly CableRunRendererPropsLight[],
+): ReadonlyMap<string, ReadonlyArray<{ x: number; y: number }>> {
+  const wynik = new Map<string, ReadonlyArray<{ x: number; y: number }>>();
+  for (const run of cableRuns) {
+    const zeSciezka = new Set<string>();
+    for (const path of run.segmentPaths ?? []) {
+      zeSciezka.add(path.segmentRef);
+      if (!wynik.has(path.segmentRef) && path.pathPoints.length > 0) wynik.set(path.segmentRef, path.pathPoints);
+    }
+    if ((run.segmentPaths ?? []).length > 0 || run.pathPoints.length === 0) continue;
+    for (const segmentRef of run.segmentRefs ?? []) {
+      if (!zeSciezka.has(segmentRef) && !wynik.has(segmentRef)) wynik.set(segmentRef, run.pathPoints);
+    }
+  }
+  return wynik;
+}
+
+function punktKoncaOdcinka(
+  sciezki: ReadonlyMap<string, ReadonlyArray<{ x: number; y: number }>>,
+  segmentRef: string,
+  side: 'A' | 'B',
+): { x: number; y: number } | null {
+  const points = sciezki.get(segmentRef);
+  if (!points || points.length === 0) return null;
+  return (side === 'A' ? points[0] : points[points.length - 1]) ?? null;
+}
+
 function findSegmentEndpointPoint(
   cableRuns: readonly CableRunRendererPropsLight[],
   segmentRef: string,
   side: 'A' | 'B',
 ): { x: number; y: number } | null {
-  for (const run of cableRuns) {
-    const segmentPath = run.segmentPaths?.find((path) => path.segmentRef === segmentRef);
-    const points = segmentPath?.pathPoints ?? run.pathPoints;
-    if (!points || points.length === 0) continue;
-    const point = side === 'A' ? points[0] : points[points.length - 1];
-    if (point) return point;
-  }
-  return null;
+  return punktKoncaOdcinka(indeksSciezekOdcinkow(cableRuns), segmentRef, side);
 }
 
 function buildBranchPointMarkers(
