@@ -493,7 +493,7 @@ class PunktPracy:
                 opis = ", ".join(f"{ident}={complex(wartosci[ident])}" for ident in zle)
                 raise OdmowaDynamiki(
                     KOD_WARTOSC_NIESKONCZONA,
-                    f"Wartosc nieskonczona w punkcie pracy rozplywu ({kontekst}): {opis}",
+                    f"Wartość nieskończona w punkcie pracy rozpływu ({kontekst}): {opis}",
                     kontekst=kontekst,
                     t_s=0.0,
                     adresy=zle,

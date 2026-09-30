@@ -660,7 +660,7 @@ def test_nieskonczony_stan_poczatkowy_konczy_sie_odmowa_bramki_z_adresem_w_chwil
     with pytest.raises(OdmowaDynamiki) as blad:
         SilnikDynamiki(_wejscie_smib_z(atrapa)).uruchom()
     assert blad.value.kod == KOD_WARTOSC_NIESKONCZONA
-    assert blad.value.szczegoly["kontekst"] == "stany rownowagi"
+    assert blad.value.szczegoly["kontekst"] == "stany równowagi"
     assert blad.value.szczegoly["t_s"] == 0.0
     assert blad.value.szczegoly["adresy"] == (f"{uklad.maszyna.ident}.pomocniczy_pu",)
 

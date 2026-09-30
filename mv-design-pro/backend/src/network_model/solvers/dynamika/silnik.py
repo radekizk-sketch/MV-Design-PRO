@@ -798,7 +798,7 @@ class SilnikDynamiki:
         # urzadzen sa sprawdzane TU, z adresem, zanim cokolwiek je porowna. Napiecia t = 0
         # pochodza z kontraktu `PunktPracy` (skonczonosc przy konstrukcji) albo z kroku
         # Newtona korekty (straznik kandydata w `siec`).
-        sprawdz_wektor(spakuj_stany(stany), kontekst.adresy_stanow, "stany rownowagi", 0.0)
+        sprawdz_wektor(spakuj_stany(stany), kontekst.adresy_stanow, "stany równowagi", 0.0)
         pochodne = pochodne_ukladu(kontekst, stany, napiecia, 0.0)
         reszta_algebry = residuum_algebry(
             kontekst.model, kontekst.odbiory, kontekst.urzadzenia, stany, napiecia
