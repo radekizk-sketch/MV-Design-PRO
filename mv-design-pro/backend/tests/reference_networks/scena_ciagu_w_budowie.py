@@ -35,7 +35,11 @@ ZRODLO = "src-gpz-15kv-250mva-rx010"
 #: Kryterium odbioru karty S9-5: 15 kolejnych ogniw ciągu z kanwy.
 LICZBA_OGNIW = 15
 
-_ROLE_POL_STACJI = ({"field_role": "LINIA_IN"}, {"field_role": "LINIA_OUT"}, {"field_role": "LINIA_ODG"})
+_ROLE_POL_STACJI = (
+    {"field_role": "LINIA_IN"},
+    {"field_role": "LINIA_OUT"},
+    {"field_role": "LINIA_ODG"},
+)
 
 
 def _op(enm: dict[str, Any], nazwa: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -91,7 +95,13 @@ def zbuduj_etapy() -> list[Etap]:
     etapy: list[Etap] = []
     for numer in range(LICZBA_OGNIW + 1):
         ostatni = numer == LICZBA_OGNIW
-        pole = None if ostatni else _wolne_pole_liniowe(enm, stacja_startu, frozenset({"OUT"}) if numer else frozenset({"OUT", "FEEDER"}))
+        pole = (
+            None
+            if ostatni
+            else _wolne_pole_liniowe(
+                enm, stacja_startu, frozenset({"OUT"}) if numer else frozenset({"OUT", "FEEDER"})
+            )
+        )
         etapy.append(
             Etap(
                 liczba_stacji=numer,
@@ -135,5 +145,5 @@ def zbuduj_etapy() -> list[Etap]:
             },
         )
         enm = odpowiedz["snapshot"]
-        (stacja_startu,) = [s["ref_id"] for s in enm["substations"] if s["ref_id"] not in przed]
+        (stacja_startu,) = (s["ref_id"] for s in enm["substations"] if s["ref_id"] not in przed)
     return etapy
