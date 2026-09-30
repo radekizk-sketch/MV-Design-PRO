@@ -82,7 +82,7 @@ eksporcie/imporcie projektu**.
 | Ik_min z kanonicznej ścieżki | **MISSING (dead data)** | `.c_factor_min` — 0 odczytów poza serializacją |
 | Korekta temperaturowa R dla Ik_min | MISSING | `LineBranch.get_total_impedance()` bez członu temperatury (`core/branch.py:416-432`) |
 | Test SC na węźle 0,4 kV (regresja) | MISSING | zero testów `compute_*_short_circuit` przy voltage_level=0.4 |
-| Pętla zwarcia IEC 60364-4-41 (TN-S/TN-C-S/TN-C) | PARTIAL (MVP „u źródła", przewody R=X=0; TT/IT→501=D-11; ręczne R/X na surowym endpoincie) | `fault_loop_iec60364.py`; `fault_loop/service.py:119-122` |
+| Pętla zwarcia IEC 60364-4-41 (TN-S/TN-C-S/TN-C) | PARTIAL (MVP „u źródła", przewody R=X=0; TT/IT→501=D-11; ręczne R/X na surowym endpoincie) | `fault_loop_iec60364.py`; `fault_loop/service.py:119-122` **2026-09-30 (O-68):** TT/IT → W5-E-TTIT (jedno wejście fizyki, `NotImplementedError` :199 skasowany); 501 DOCX → API-DOCX-501 |
 | Rozpływ NR/GS/FD wielonapięciowy (`_base_scale`) | EXISTS (mechanizm) / PARTIAL (0 testów PF przy 0,4 kV; ryzyko zbieżności przy R/X≥1 niezbadane) | `power_flow_newton_internal.py:882-901` |
 | ZIP + falowniki Q(U)/P(f) + reverse flow | EXISTS (backend end-to-end) | `power_flow_zip.py`, `power_flow_inverter.py`; ZIP bez UI |
 | Rozpływ niesymetryczny (BFS 3-fazowy) | PARTIAL→odcięty (tylko harness IEEE 13/34) | `power_flow_unbalanced.py`; brak buildera z ENM i dispatchu |

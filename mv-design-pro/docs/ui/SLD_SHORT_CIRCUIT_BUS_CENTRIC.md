@@ -44,7 +44,7 @@ Dokument jest **BINDING** dla:
 | **BUS-centric** | Prezentacja wyników skupiona wokół szyn (węzłów), nie na liniach | Wyniki zwarciowe **tylko przy BUS** |
 | **Case** | Przypadek obliczeniowy zwarciowy zgodny z IEC/PN-EN 60909 | MAX / MIN / N-1 |
 | **Wkład** (contribution) | Udział poszczególnych elementów w prądzie zwarciowym w danym BUS | Wkład transformatora T-01 do `Ik″` w BUS B-02: 3.5 kA |
-| **BoundaryNode** | Węzeł przyłączenia (Point of Common Coupling) | Granica między siecią operatora a instalacją użytkownika |
+| **Punkt przyłączenia** (`GridConnectionPoint`) | Obiekt umowny na terminalu (ADR-027, K-19 V12K-347) — granica między siecią operatora a instalacją użytkownika; nie węzeł fizyki, nie parametr solvera | **BoundaryNode** = wyłącznie interpretacja warstwy analizy (`BoundaryIdentifier`), w SLD tylko nakładka wyniku |
 
 ### 2.2 Norma IEC/PN-EN 60909
 

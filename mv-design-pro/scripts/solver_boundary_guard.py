@@ -100,7 +100,19 @@ SANCTIONED_CHANGES = {
         "AST poza stylem; pre-existing konflikt bramki black --check z "
         "ochrona pliku. Dowod: pelny pytest 6609 passed + "
         "trace_determinism_guard 0 na drzewie z ta zmiana. Wpis do "
-        "usuniecia po scaleniu do main."
+        "usuniecia po scaleniu do main. "
+        "V12K-341 (OD-18, O-59/O-69/O-74, 2026-09-30): SANKCJA KASACJI pliku "
+        "na amen razem z application/result_mapping/protection_to_resultset_v1.py "
+        "(jedyny importer, :25), tests/test_protection_engine_v1.py i martwymi "
+        "mapperami ResultSet v1 (short_circuit_to_resultset_v1.py, sc_binding_meta.py; "
+        "0 importerow, zywy producent = canonical_run_to_resultset_v1.py) — karta "
+        "W3-A-DOMKNIECIE; zgoda B-01 wydana w ramach delegacji O-59. W commicie "
+        "kasacji ten klucz znika z WATCHED_PATHS i z SANCTIONED_CHANGES, a "
+        "resultset_v1_schema_guard.PROTECTED_FILES traci oba mappery; piec guardow "
+        "(protection_no_heuristics, backend_no_physics, solver_input_substitute, "
+        "legacy_public_path, v12xx_canon) traci wyjatki i dostaje test negatywny "
+        "z iniekcja fizyki IDMT poza solverami. Zero warstwy zgodnosci dla "
+        "ProtectionResultSetV1."
     ),
 }
 

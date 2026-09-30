@@ -97,7 +97,10 @@ guardy_z_ci, vitest, e2e) na drzewie gałęzi + push + CI 9/9.
    poza `ZASTANE` (a `ZASTANE` puste dla tych rodzin — z JEDNYM trwałym wyjątkiem architektonicznym odkrytym w W3-F:
    `application/result_mapping/short_circuit_to_resultset_v1.py`, 2× `J_skalowanie_jednostek`, plik pod
    `PROTECTED_FILES` `resultset_v1_schema_guard.py` (B-01) — te dwa literały `/1000.0` nigdy nie trafią do `pochodne/`;
-   zdjęcie wyjątku wyłącznie decyzją właściciela, jak OD-18).
+   zdjęcie wyjątku wyłącznie decyzją właściciela, jak OD-18). **Rozstrzygnięte 2026-09-30 (O-74 (2), V12K-341):**
+   martwe mappery `short_circuit_to_resultset_v1.py`, `protection_to_resultset_v1.py` i `sc_binding_meta.py` KASOWANE
+   razem z OD-18 (0 importerów; żywy producent ResultSet v1 = `canonical_run_to_resultset_v1.py`) — wyjątek znika
+   z plikiem.
 2. Trzy metodyki nastaw → jedna (Hoppel) z pakietem dowodowym osiągalnym z ekranu koordynacji; wzorzec
    referencyjny liczony tą samą metodyką.
 3. V12.6: `hosting_capacity`/`opf_loss_lcc` niedostępne jako nowe biegi (410 z odesłaniem), ranking N-1 poza
@@ -140,6 +143,7 @@ w `backend_no_physics_guard.py` (inline, `math.pow`, zmienna pośrednia do 2 poz
 guarda + 8 self-testów bramki + 1 w rejestrze kanonicznym. Pętli IDMT poza solverami: 4 → 2 (obie nazwane).
 
 **B-01 STOP (zatrzymanie dozwolone, nie odroczenie):** karta literalnie kazała skasować 4 pliki „drugiego silnika";
+**[Rozstrzygnięte 2026-09-30 — V12K-341: sankcja kasacji wydana w ramach O-59; patrz wiersz niżej i :433.]**
 `guardy_z_ci.py` ujawnił, że `domain/protection_engine_v1.py` leży pod `solver_boundary_guard.py::WATCHED_PATHS`,
 a `application/result_mapping/protection_to_resultset_v1.py` pod `resultset_v1_schema_guard.py::PROTECTED_FILES`
 (docstring guarda: kasacja pliku chronionego = edycja zamrożonego rdzenia). Oba pliki + `tests/test_protection_engine_v1.py`
@@ -430,7 +434,10 @@ deklaracją „nigdy cichy" bez testu → test × {kotwica MAX, MIN} (atrapa `wy
 `act(...)` „celowo zaakceptowane" w `9611fca9` zdjęte u źródła (klasa: 3 pliki testów renderujące `EkranZwarc` — wspólny
 `renderEkranZwarc.tsx`, 0 ostrzeżeń, 155 passed). Znalezisko: `application/solvers/short_circuit_binding.py::execute_short_circuit`
 — 0 konsumentów produkcyjnych, 5 harnessów testowych parytetu; typ wyniku konsumowany przez chroniony `short_circuit_to_resultset_v1.py`
-→ ten sam klaster B-01 co OD-18 (addendum OD-18 w mapie §7), nie kasacja jednostronna.
+→ ten sam klaster B-01 co OD-18 (addendum OD-18 w mapie §7), nie kasacja jednostronna. **Zgoda wydana
+2026-09-30 w ramach delegacji O-59 (V12K-341, O-69/O-74):** kasacja na amen w karcie W3-A-DOMKNIĘCIE — wpis
+`SANCTIONED_CHANGES` w `solver_boundary_guard.py` z tym numerem rejestru; zdjęcie z `WATCHED_PATHS` i `PROTECTED_FILES`
+w commicie kasacji; pięć guardów traci wyjątki i dostaje testy negatywne z iniekcją fizyki IDMT poza solverami.
 
 #### W3-G2 (2026-09-10) — pasma zdrowego rozsądku rozpływu — UCZCIWOŚĆ
 Wykonane: `analysis/sanity_bounds/power_flow_bounds.py` (napięcia ±10 % Un PN-EN 50160 — pasmo WIARYGODNOŚCI, obciążenia ≤ In

@@ -5,13 +5,19 @@
 
 > **Cel:** Doprowadzić MV-DESIGN-PRO do systemu klasy przemysłowej SCADA/CAD (ETAP/DIgSILENT/ABB grade) — **nie atrapy z klocków**.
 
-> **Hierarchia kanonu** (po rozstrzygnięciu konfliktu V12K-001 / V12K-011 w 2026-05-13):
-> 1. `docs/v12xx/KANON_V12_XX.md` — kanon kierunkowy V12.xx (binding)
+> **Hierarchia kanonu** (po rozstrzygnięciu konfliktu V12K-001 / V12K-011 w 2026-05-13; poziom 1b i wiersz `docs/twin` dodane 2026-09-30 decyzją K-20 — O-63, V12K-339). Ta lista i tabela „Document Hierarchy” w `CLAUDE.md` (katalog główny repo) są JEDNĄ listą: `scripts/docs_guard.py` sprawdza identyczność ścieżek per poziom i istnienie każdej ścieżki.
+> 1. `docs/v12xx/KANON_V12_XX.md` — kanon kierunkowy V12.xx (binding; prawo PRODUKTU)
+> 1b. `docs/architecture/PRODUCT_CAPABILITY_CONSTITUTION.md`, `docs/architecture/CAPABILITY_ARCHITECTURE_MATRIX.md`, `docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md`, `docs/architecture/CONVERGENCE_ROADMAP.md`, `docs/architecture/DECISION_FREEZE_REGISTER.md` — prawo PROGRAMU konwergencji (konstytucja właściciela 2026-09-04); sprzeczność z kanonem → `docs/v12xx/REJESTR_KONFLIKTOW.md`, rozstrzyga późniejszy dokument właściciela
 > 2. `docs/system/SPEC_*.md` — wiążące specyfikacje systemowe
-> 3. `docs/domain/*.md`, `docs/sld/SLD_CONTRACT_FLOW_V1.md`, `docs/sld/SLD_INDUSTRIAL_SPEC_v1.md` — aktywne kontrakty
-> 4. `mv-design-pro/SYSTEM_SPEC.md`, `ARCHITECTURE.md`, `AGENTS.md`, `PLANS.md` — executive overview
-> 5. `docs/spec/SPEC_CHAPTER_*.md` (18 rozdziałów) — **ARCHIWALNE** (V11 reference; nie aktywny kanon)
-> 6. `docs/audit/archive/` + `docs/audit/historical_execplans/` — archiwum
+> 3. `docs/domain/*.md`, `docs/sld/SLD_CONTRACT_FLOW_V1.md`, `docs/sld/SLD_SEMANTIC_MODEL_CANONICAL_V1.md` — aktywne kontrakty operacyjne i semantyczne
+> 4. `SYSTEM_SPEC.md` — executive overview
+> 5. `ARCHITECTURE.md` — architektura techniczna
+> 6. `AGENTS.md` — zasady pracy agentów
+> 7. `PLANS.md` — status operacyjny (LIVING)
+> 8. `docs/INDEX.md`, `docs/INDEX_KANONICZNY.md` — aktywne indeksy kanonu
+> 9. `docs/spec/SPEC_CHAPTER_*.md` (18 rozdziałów) — **ARCHIWALNE** (V11 reference; nie aktywny kanon)
+> 10. `docs/audit/archive/`, `docs/audit/historical_execplans/` — archiwum
+> —. `docs/twin/` — **NIE kanon**: materiał wejściowy i dowodowy pakietu Digital Twin (K-20); werdykt „M1–M7: STOP do odbioru M0” wiąże wyłącznie plan migracji z `docs/twin`, program wiążący to misja 2026-09-09 z wycinkami W1–W12 (ADR-012, V12K-340); `PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md` nie istnieje i nie powstaje
 
 ---
 
@@ -28,9 +34,9 @@ Kontrakt „MAX PLATFORM ARCHITECTURE & CONVERGENCE CONTRACT" i „FINAL PRODUCT
 - [evidence/CONVERGENCE_EVIDENCE.md](./evidence/CONVERGENCE_EVIDENCE.md) — dowody: CI, ochrona `main` (owner action), determinizm, Definition of Done, karty, P0/P1, decyzje właściciela
 - [evidence/RAPORT_FAZY_CV_2026-09-05.md](./evidence/RAPORT_FAZY_CV_2026-09-05.md) — raport fazy konwergencji CV-0 → CV-4.2b (format §42 A–J): stan faktyczny, werdykt architektoniczny, wpływ na zdolności, wdrożenia, skasowane legacy, dowody, ustalenia adwersaryjne, P0/P1, decyzje właściciela, następny wycinek
 
-## Program Digital Twin SN+nN 2026-09 (PROPOZYCJA — pakiet do przeglądu właściciela)
+## Program Digital Twin SN+nN 2026-09 (materiał wejściowy i dowodowy — NIE kanon, K-20)
 
-Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Nic z tego programu nie jest jeszcze wdrożone ani wiążące; hierarchia kanonu powyżej pozostaje w mocy do decyzji właściciela.
+Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Dokumenty `docs/twin/` są materiałem wejściowym; decyzje z nich wynikające żyją w ADR (statusy niżej) i w rejestrze decyzji `plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3 (O-60…O-75). Bramka M0/M1 z tego pakietu nie wiąże wycinków W misji domknięcia (ADR-012, V12K-340).
 
 - [twin/INDEX_TWIN.md](./twin/INDEX_TWIN.md) — indeks programu i kolejność czytania
 - [twin/OWNER_REVIEW_PACKAGE.md](./twin/OWNER_REVIEW_PACKAGE.md) — pakiet §179, wymagania dodatkowe §177, konflikty §178, decyzje
@@ -46,7 +52,11 @@ Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Ni
 - [twin/SLD_SYMBOL_SYSTEM_PLAN.md](./twin/SLD_SYMBOL_SYSTEM_PLAN.md) — plan pakietu symboli R3
 - [twin/MV_DESIGN_PRO_PERFORMANCE_PLAN.md](./twin/MV_DESIGN_PRO_PERFORMANCE_PLAN.md) — plan wydajności
 - [twin/MV_DESIGN_PRO_MIGRATION_PLAN.md](./twin/MV_DESIGN_PRO_MIGRATION_PLAN.md) — plan migracji strangler (FAZA F)
-- ADR-012…ADR-028 (PROPOSED) w [adr/](./adr/)
+- ADR w [adr/](./adr/) — statusy po decyzji O-63 (2026-09-30, karta STATUSY-ADR):
+  - ACCEPTED (z korektą przy przyjęciu): [ADR-012](./adr/ADR-012-canonical-digital-twin-model.md), [ADR-014](./adr/ADR-014-connectivity-vs-topology.md), [ADR-015](./adr/ADR-015-phase-model-and-lv-earthing.md), [ADR-016](./adr/ADR-016-scenario-as-typed-delta.md), [ADR-017](./adr/ADR-017-effective-state-resolution.md), [ADR-021](./adr/ADR-021-frozen-core-extensions-and-lv-four-wire-solver.md) (zgody B-01 per pozycja w ramach O-59; K3 skreślona), [ADR-022](./adr/ADR-022-protection-domain-in-model.md), [ADR-024](./adr/ADR-024-sn-nn-projections-from-one-model.md), [ADR-025](./adr/ADR-025-validation-readiness-constraints-separation.md), [ADR-027](./adr/ADR-027-grid-connection-point-contractual-object.md) (bez `sk_max/min` i `agreed_*`), [ADR-029](./adr/ADR-029-mcp-lokalna-plaszczyzna-sterowania.md) (nowy, OD-13)
+  - SUPERSEDED: [ADR-013](./adr/ADR-013-terminals-and-connectivity-nodes.md) by ADR-014; starsze: [ADR-003](./adr/ADR-003-pcc-and-sources-persistence.md) i [ADR-006](./adr/ADR-006-persistence-pcc-sources-loads-grounding-limits.md) by ADR-027, [ADR-005 (SLD)](./adr/ADR-005-sld-enm-canonical-projection.md) by ADR-024, [ADR-008](./adr/ADR-008-per-case-switching-state.md) by ADR-016/017; [ADR-002](./adr/ADR-002-unit-system-base-quantities.md) EXTENDED by K-05
+  - PROPOSED (decyzja przy wycinku W-x; warunek: konsument w kodzie): [ADR-018](./adr/ADR-018-result-provenance-freshness-and-canonical-hash.md), [ADR-019](./adr/ADR-019-catalog-revision-asset-provenance.md), [ADR-020](./adr/ADR-020-solver-adapters-snapshot-assembler-orchestrator.md), [ADR-026](./adr/ADR-026-selective-invalidation-dependency-graph.md), [ADR-028](./adr/ADR-028-revision-store-single-run-registry-persistence.md)
+  - PROPOSED zależny od werdyktu B-02 właściciela: [ADR-023](./adr/ADR-023-presentation-policies-cad-scada-engineering.md)
 
 ---
 

@@ -1,6 +1,6 @@
 # ADR-012: Kanoniczny model cyfrowego bliźniaka (node-breaker, terminal-centric, zgodny z CIM)
 
-**Status:** PROPOSED (program Digital Twin 2026-09; do decyzji właściciela)
+**Status:** ACCEPTED (2026-09-30, decyzja doradcy z delegacją właściciela O-59 — rejestr O-63 w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3; z korektą 2026-09-04 poniżej: ENM = Canonical Project Twin, bez klasy `TwinModel`; DT-1 EVIDENCE-GATED, FROZEN po CV-5 i przeglądzie adwersaryjnym; bramka M0/M1 z docs/twin nie wiąże wycinków W — V12K-340)
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` §1–§5
 
@@ -26,5 +26,15 @@ Canonical Project Twin = `EnergyNetworkModel` rozwinięty addytywnie (`docs/arch
 (T-1…T-4), `PhaseSet`, `EarthingSystem`, `NeutralGrounding` jako encje (F-1…F-4). `network_model/core` jest
 pochodnym, niemutowalnym IR (`docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md`), nie drugim modelem projektu.
 Kontenery CIM (`Substation/VoltageLevel/Bay`) mapują się na istniejące `Substation`/`GPZSection`/`NnSection`/`Bay`.
-Kasacja legacy SQL wyłącznie procedurą kasacji (D-03 warunkowo). Status ADR pozostaje PROPOSED do zamrożenia
-po CV-1/CV-5 z przeglądem adwersaryjnym.
+Kasacja legacy SQL wyłącznie procedurą kasacji (D-03 warunkowo). Status ADR: ACCEPTED 2026-09-30 (O-63, opcja C);
+wpis DT-1 w `docs/architecture/DECISION_FREEZE_REGISTER.md` pozostaje EVIDENCE-GATED i staje się FROZEN dopiero po CV-5
+i przeglądzie adwersaryjnym.
+
+## Rozstrzygnięcie bramki M0/M1 (2026-09-30, O-63, V12K-340)
+Werdykt właściciela 2026-09-02 „M1–M7: STOP do odbioru M0” (`../twin/OWNER_REVIEW_PACKAGE.md` §4a) dotyczy planu
+migracji z `docs/twin`, który wg K-20 jest materiałem wejściowym i dowodowym, nie kanonem (`../INDEX.md`). Programem
+wiążącym jest misja domknięcia 2026-09-09 z wycinkami W1–W12 (`../plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md` nie
+zawiera faz M — grep `M0|M1–M7` = 0). Decyzje ADR-012…028 nie „odblokowują M1+”, lecz działają w wycinkach W; czy M0
+formalnie odebrano — NIEZMIERZONE i nieistotne dla wycinków W. Zmiana wyłącznie dokumentowa: zero kodu; deklaracja
+„ENM jedynym źródłem prawdy” ma przypięte testy `tests/invariants/test_wlasnosc_modelu_projektu_adwersaryjne.py`
+i `enm_store_key_guard`.

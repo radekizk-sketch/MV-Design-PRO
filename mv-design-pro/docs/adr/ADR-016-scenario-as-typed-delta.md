@@ -1,6 +1,6 @@
 # ADR-016: Scenariusz jako typowana delta; warianty jako gałęzie rewizji
 
-**Status:** PROPOSED (program Digital Twin 2026-09; do decyzji właściciela)
+**Status:** ACCEPTED (2026-09-30, decyzja doradcy z delegacją właściciela O-59 — rejestr O-63 w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3; w formie wdrożonej CV-3.1: `OperatingScenario` (`enm/scenariusze.py`) jako typowana delta, `apply_scenario` → `EffectiveNetworkSnapshot`, `bieg_wariantu` jedyną fabryką wariantu; rejestr rodzajów delt otwarty wyłącznie z konsumentem; `VariantBranch` z pierwszym konsumentem (WARIANTY-PORÓWNANIE); ADR-008 SUPERSEDED by ADR-016/017)
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` §11, §20; `../twin/MV_DESIGN_PRO_DATA_VERSIONING_PROVENANCE.md` §2
 

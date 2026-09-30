@@ -1,6 +1,6 @@
 # ADR-013: Terminale i węzły łączności (Terminal / ConnectivityNode)
 
-**Status:** PROPOSED (program Digital Twin 2026-09; do decyzji właściciela)
+**Status:** SUPERSEDED by ADR-014 (2026-09-30, O-63/O-64): łączność = terminale T-2 + łączniki w istniejącym `enm/topology.py::derive` → `TopologyView`; encja `ConnectivityNode` i klasa `TopologyService` nie powstają
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` §6
 

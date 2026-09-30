@@ -112,9 +112,17 @@ Status: karta architekta (projekt kontraktów i kolejności), 2026-09-16. Nadrz�
    `selektywny: bool`, `catalog_ref`) i `earth_electrode_r_ohm: float | None` (R_A instalacji odbiorczej, TT/IT);
    `Transformer.lv_neutral.r_ohm` pełni rolę R_B. Katalog RCD typowany, bez domyślnych wartości. Fizyka: solver
    `fault_loop_iec60364.py` (FROZEN) podnosi `NotImplementedError` dla TT/IT → **OD-25** (B-01): nowy moduł
-   `solvers/petla_zwarcia_tt_it.py` (TT: `R_A · I_Δn ≤ 50 V` i czas wyłączenia wg IEC 60364-4-41 411.5.3 / tab. 41.1; IT:
-   pierwsze zwarcie `R_A · I_d ≤ 50 V` 411.6.2, drugie zwarcie jak TN/TT 411.6.4). Do decyzji: gotowość odmawia nazwanym
-   kodem `fault_loop.tt_it_not_supported` — nigdy domyślnym TN-C-S. `POST /api/fault-loop/compute` (ręczne R+X, 0
+   `solvers/petla_zwarcia_tt_it.py` wołany WYŁĄCZNIE przez dyspozycję po `network_type` w `fault_loop_iec60364.py` (jedno
+   wejście fizyki Ik1 nN — O-68/ADR-015; `NotImplementedError` :199 skasowany; Z_s drugiego zwarcia IT tym samym jądrem
+   pętli co TN, test tożsamości TN bit w bit). Solver liczy fizykę jawnie (U_dotyk = R_A · I_Δn, I_d z 3ωC_e·U_f per
+   odpływ, Z_s drugiego zwarcia; White Box + LaTeX) i porównuje t_a RCD z tabelą repo
+   (`lv_disconnection_times_iec60364_4_41.py:119-120`, status REFERENCYJNY :77 — do potwierdzenia właściciela); granica
+   napięcia dotykowego TT (R_A · I_Δn ≤ limit) i reguły IT (pierwsze zwarcie, drugie zwarcie z/bez rozprowadzonego N) NIE
+   są w repo → dane właściciela (P-C w `DANE_WLASCICIELA_O59_2026-09.md`): do dostawy werdykt `BRAK_PODSTAWY` z kodem
+   `swz.limit_tt_it_brak_tekstu_normy` — żadnej liczby z pamięci (poprzednie brzmienie tego wiersza z wartościami
+   „≤ 50 V” i numerami punktów normy unieważnione 2026-09-30, O-68). Kod `fault_loop.tt_it_not_supported` (brak solvera)
+   znika razem z solverem w W5-E-TTIT; `swz.limit_tt_it_brak_tekstu_normy` (brak limitu) zostaje do danych — dwa stany, nie
+   dwie nazwy; gotowość nigdy nie podstawia domyślnego TN-C-S. `POST /api/fault-loop/compute` (ręczne R+X, 0
    konsumentów, 0 testów) — kasacja procedurą 7 kroków; żywa trasa `station-fault-loop` (z modelu) zostaje.
 9. **Terminale (W5-T; T-2).** Akcesor `enm/topology.terminals(enm) → tuple[Terminal, ...]`,
    `Terminal = (equipment_ref, sequence, cn_ref, phases)`, tożsamość `"{equipment_ref}:t{sequence}"`, wyprowadzany

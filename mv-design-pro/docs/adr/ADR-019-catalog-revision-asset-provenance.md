@@ -1,6 +1,6 @@
 # ADR-019: Pozycja katalogu vs zainstalowany asset; przypięta rewizja katalogu; provenance parametru
 
-**Status:** PROPOSED (program Digital Twin 2026-09; do decyzji właściciela)
+**Status:** PROPOSED (2026-09-30, O-63: decyzja przy wycinku W-x; warunek wejścia = konsument w kodzie, nie „M1–M7 STOP” — bramka M0 wiąże tylko plan docs/twin, V12K-340)
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` §15; `../twin/MV_DESIGN_PRO_DATA_VERSIONING_PROVENANCE.md` §3–§4
 

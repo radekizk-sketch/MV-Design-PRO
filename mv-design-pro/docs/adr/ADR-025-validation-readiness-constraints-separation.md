@@ -1,6 +1,6 @@
 # ADR-025: Rozdzielenie walidacji modelu, gotowości analiz i ograniczeń projektowych
 
-**Status:** PROPOSED (program Digital Twin 2026-09; do decyzji właściciela)
+**Status:** ACCEPTED (2026-09-30, decyzja doradcy z delegacją właściciela O-59 — rejestr O-63 w `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §2.3; na istniejących nośnikach (O-65): jedyny walidator modelu = `enm/validator.py`; pakiet `network_model/validation` kasowany po teście tożsamości kodów reguł (0 konsumentów produkcyjnych; jedyny import spoza pakietu `enm/domain_operations.py:11959`); gotowość = `CalculationReadinessService` jedynym rejestrem kodów z akcją naprawczą; ograniczenia = `werdykt_projektowy` z klasą kryterium, bez `ConstraintEngine`; reguła „NEVER bypass NetworkValidator” przepisana w `CLAUDE.md`, `ARCHITECTURE.md`, `SYSTEM_SPEC.md`, `AGENTS.md`)
 **Data:** 2026-09-02
 **Dokument źródłowy:** `../twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` §18; `../twin/MV_DESIGN_PRO_DESIGN_OPTIMIZATION_ARCHITECTURE.md` §3
 

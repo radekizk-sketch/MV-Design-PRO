@@ -1,7 +1,7 @@
 # ZADANIE BIEŻĄCE — WERYFIKACJA WIZUALNA (ZASADA NR 2)
 
 **Typ:** efemeryczny work package · **Priorytet:** najwyższy (przed dosypywaniem nowych modułów)
-**Kanon:** `PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md` §7.9, §7B.9, ZASADA NR 2
+**Kanon:** ZASADA NR 2 (`CLAUDE.md` „ZASADY NADRZĘDNE”); dawne odwołanie do `PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md` §7.9/§7B.9 jest martwe — plik nie istnieje i nie powstaje (K-20, O-63, V12K-339); kanon programu: `../architecture/PRODUCT_CAPABILITY_CONSTITUTION.md`
 **Stan wejściowy:** `STAN_REPO.md` (audyt 2026-05-28) — backend zielony (5249 testów), V12.6 wdrożone, render NIEZWERYFIKOWANY
 **Dlaczego najpierw to:** dosypywanie modułów do interfejsu, którego nikt nie wyrenderował, powtarza błąd V12.2 (kod się zmieniał, SLD pozostawał nieczytelny przez wiele iteracji). Najpierw zobacz prawdę na ekranie.
 
