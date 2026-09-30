@@ -1765,7 +1765,7 @@ def _blad_pozycji_katalogu(blad_materializacji: dict[str, Any], opis_pl: str) ->
     """
     return _error_response(
         f"{opis_pl}: {blad_materializacji['error']} {_AKCJA_NAPRAWCZA_KATALOG_PL}",
-        str(blad_materializacji.get("error_code") or "catalog.item_not_found"),
+        str(blad_materializacji["error_code"]),
     )
 
 

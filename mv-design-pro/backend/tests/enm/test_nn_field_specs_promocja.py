@@ -537,3 +537,24 @@ def test_w061_nazywa_pole_i_stacje_a_akcja_wskazuje_aparat_i_pole() -> None:
         "catalog_namespace": "APARAT_NN",
         "field_ref": "nn/legacy/outgoing-1",
     }
+
+
+# Iloczyn {nazwa pola: nadana, same spacje, brak} × {nazwa stacji: nadana, same spacje}.
+# Walidator pyta o nazwę moduł nazw (`network_model.nazwy`, zapadka NAZWY-JEDNO-ZRODLO):
+# napis z samych spacji nie jest nazwą, więc W061 nie opisuje pola cudzysłowem wokół pustki.
+@pytest.mark.parametrize("nazwa_pola", ["Odpływ 1", "   ", None])
+@pytest.mark.parametrize("nazwa_stacji", ["ST-1", "   "])
+def test_w061_opisuje_pole_tylko_gdy_pole_i_stacja_maja_nazwe(
+    nazwa_pola: str | None, nazwa_stacji: str
+) -> None:
+    stary = _stary_model()
+    stary.substations[0].name = nazwa_stacji
+    stary.substations[0].meta["nn_field_specs"][0]["name"] = nazwa_pola
+    zmigrowany, _ = migruj(stary)
+    w061 = [i for i in ENMValidator().validate(zmigrowany).issues if i.code == "W061"]
+    assert len(w061) == 1
+    opisuje = nazwa_pola == "Odpływ 1" and nazwa_stacji == "ST-1"
+    assert (" — pole „" in w061[0].message_pl) is opisuje
+    assert "„   ”" not in w061[0].message_pl
+    if opisuje:
+        assert "„Odpływ 1”" in w061[0].message_pl and "„ST-1”" in w061[0].message_pl

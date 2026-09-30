@@ -233,8 +233,8 @@ def _zastosuj_gpz_pod_blokada(
     )
     if result.get("error"):
         raise TemplateApplyError(
-            code=result.get("error_code", "template.gpz_insert_failed"),
-            message_pl=result.get("error") or "Utworzenie GPZ z szablonu nie powiodło się.",
+            code=result["error_code"],
+            message_pl=result["error"],
         )
     enm_dict = result.get("snapshot") or enm_dict
     created_refs = (result.get("changes") or {}).get("created_element_ids") or []
@@ -410,8 +410,8 @@ def _zastosuj_szablon_pod_blokada(
 
         if insert_result.get("error"):
             raise TemplateApplyError(
-                code=insert_result.get("error_code", "template.insert_failed"),
-                message_pl=insert_result.get("error") or "Wstawienie stacji nie powiodło się.",
+                code=insert_result["error_code"],
+                message_pl=insert_result["error"],
             )
 
         enm_dict = insert_result.get("snapshot") or enm_dict
@@ -442,9 +442,8 @@ def _zastosuj_szablon_pod_blokada(
             )
             if feeder_result.get("error"):
                 raise TemplateApplyError(
-                    code=feeder_result.get("error_code", "template.nn_feeder_failed"),
-                    message_pl=feeder_result.get("error")
-                    or "Materializacja odpływu nN z szablonu nie powiodła się.",
+                    code=feeder_result["error_code"],
+                    message_pl=feeder_result["error"],
                 )
             enm_dict = feeder_result.get("snapshot") or enm_dict
             new_feeder_ids = (feeder_result.get("changes") or {}).get("created_element_ids") or []
@@ -484,9 +483,8 @@ def _zastosuj_szablon_pod_blokada(
             )
             if load_result.get("error"):
                 raise TemplateApplyError(
-                    code=load_result.get("error_code", "template.nn_load_failed"),
-                    message_pl=load_result.get("error")
-                    or "Materializacja odbioru nN z szablonu nie powiodła się.",
+                    code=load_result["error_code"],
+                    message_pl=load_result["error"],
                 )
             enm_dict = load_result.get("snapshot") or enm_dict
             new_load_ids = (load_result.get("changes") or {}).get("created_element_ids") or []
@@ -544,9 +542,8 @@ def _zastosuj_szablon_pod_blokada(
             )
             if der_result.get("error"):
                 raise TemplateApplyError(
-                    code=der_result.get("error_code", "template.der_failed"),
-                    message_pl=der_result.get("error")
-                    or "Materializacja źródła przekształtnikowego z szablonu nie powiodła się.",
+                    code=der_result["error_code"],
+                    message_pl=der_result["error"],
                 )
             enm_dict = der_result.get("snapshot") or enm_dict
             new_der_ids = (der_result.get("changes") or {}).get("created_element_ids") or []
@@ -596,9 +593,8 @@ def _zastosuj_szablon_pod_blokada(
             )
             if ct_result.get("error"):
                 raise TemplateApplyError(
-                    code=ct_result.get("error_code", "template.ct_failed"),
-                    message_pl=ct_result.get("error")
-                    or "Materializacja przekładnika CT z szablonu nie powiodła się.",
+                    code=ct_result["error_code"],
+                    message_pl=ct_result["error"],
                 )
             enm_dict = ct_result.get("snapshot") or enm_dict
             new_ct_ids = (ct_result.get("changes") or {}).get("created_element_ids") or []
@@ -627,9 +623,8 @@ def _zastosuj_szablon_pod_blokada(
             )
             if vt_result.get("error"):
                 raise TemplateApplyError(
-                    code=vt_result.get("error_code", "template.vt_failed"),
-                    message_pl=vt_result.get("error")
-                    or "Materializacja przekładnika VT z szablonu nie powiodła się.",
+                    code=vt_result["error_code"],
+                    message_pl=vt_result["error"],
                 )
             enm_dict = vt_result.get("snapshot") or enm_dict
             new_vt_ids = (vt_result.get("changes") or {}).get("created_element_ids") or []
@@ -655,9 +650,8 @@ def _zastosuj_szablon_pod_blokada(
             )
             if shunt_result.get("error"):
                 raise TemplateApplyError(
-                    code=shunt_result.get("error_code", "template.shunt_failed"),
-                    message_pl=shunt_result.get("error")
-                    or "Materializacja baterii kondensatorów z szablonu nie powiodła się.",
+                    code=shunt_result["error_code"],
+                    message_pl=shunt_result["error"],
                 )
             enm_dict = shunt_result.get("snapshot") or enm_dict
             new_shunt_ids = (shunt_result.get("changes") or {}).get("created_element_ids") or []
@@ -859,8 +853,6 @@ def _zabuduj_stacje_w_odgalezieniu(
             "insert_at": {"mode": "RATIO", "value": insert_at_ratio},
             "catalog_ref": punkt_catalog_ref,
         },
-        kod_bledu="template.branch_point_failed",
-        komunikat="Utworzenie punktu odgałęzienia na magistrali nie powiodło się.",
     )
     enm_dict = wynik_punktu.get("snapshot") or enm_dict
     ids_punktu = (wynik_punktu.get("changes") or {}).get("created_element_ids") or []
@@ -909,8 +901,6 @@ def _zabuduj_stacje_w_odgalezieniu(
                 ),
             },
         },
-        kod_bledu="template.branch_segment_failed",
-        komunikat="Utworzenie odcinka odgałęzienia do stacji klienta nie powiodło się.",
     )
     enm_dict = wynik_galezi.get("snapshot") or enm_dict
     ids_galezi = (wynik_galezi.get("changes") or {}).get("created_element_ids") or []
@@ -945,8 +935,6 @@ def _zabuduj_stacje_w_odgalezieniu(
             "nn_block": nn_block_spec,
             **({"field_apparatus_catalog_ref": wspolny_aparat_pol} if wspolny_aparat_pol else {}),
         },
-        kod_bledu="template.branch_station_failed",
-        komunikat="Utworzenie stacji abonenckiej na końcu odgałęzienia nie powiodło się.",
     )
     enm_dict = wynik_stacji.get("snapshot") or enm_dict
     ids_stacji = (wynik_stacji.get("changes") or {}).get("created_element_ids") or []
@@ -964,21 +952,16 @@ def _wykonaj_operacje(
     enm_dict: dict[str, Any],
     op_name: str,
     payload: dict[str, Any],
-    *,
-    kod_bledu: str,
-    komunikat: str,
 ) -> dict[str, Any]:
     """Wykonaj operację domenową; błąd operacji = błąd zastosowania szablonu.
 
-    Komunikat operacji domenowej ma PIERWSZEŃSTWO — mówi projektantowi, co
-    konkretnie odrzuciła domena (np. zajęty port odgałęzienia).
+    Kod i komunikat pochodzą z odmowy domeny — mówią projektantowi, co konkretnie
+    odrzuciła (np. zajęty port odgałęzienia). Każda odmowa operacji domenowej niesie
+    `error_code` (`_error_response` wymaga kodu), więc zapasu tu nie ma.
     """
     wynik = execute_domain_operation(enm_dict=enm_dict, op_name=op_name, payload=payload)
     if wynik.get("error"):
-        raise TemplateApplyError(
-            code=wynik.get("error_code", kod_bledu),
-            message_pl=wynik.get("error") or komunikat,
-        )
+        raise TemplateApplyError(code=wynik["error_code"], message_pl=wynik["error"])
     return wynik
 
 
