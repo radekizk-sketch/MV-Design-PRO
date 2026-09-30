@@ -175,6 +175,14 @@ tożsamości z lakonicznym werdyktem" RC=0; `npm run type-check` RC=0; `npm run 
 `solver_diff_guard` PASS (7 plików). Samotesty strażników biegu 1 i pełny powtórny bieg łańcucha z
 `node_modules` — wynik w §5b (dopisany osobnym commitem meldunku po zakończeniu biegu).
 
+### 5b. Strażniki CI — wynik końcowy
+
+Bieg 1 dokończony: samotesty strażników (`python -m pytest ../scripts`) **3 343 passed** (7:36); RC=1
+wyłącznie z dwóch strażników środowiskowych i kroków npm bez `node_modules` (§5a). **Bieg 2 — pełny
+powtórny `guardy_z_ci.py` po `npm ci`: „Uruchomiono 106 guardów z 106 wołanych przez CI", 0 czerwonych,
+kroki npm (type-check, lint) zielone, black/ruff jak CI zielone, samotesty 3 343 passed (7:32) —
+„KOMPLET ZIELONY", RC=0.** Drzewo w tym biegu = commit `00beaca12` + meldunek.
+
 ## 6. Znaleziska dla właściciela (poza zakresem zgody OD-19 — nie ruszane)
 
 1. **Defekt fikstury speca e2e** `pasma-rozplywu-jakosc.spec.ts:284-299`: pętla po wszystkich
@@ -249,4 +257,4 @@ repo (ten meldunek).
 | Commit | Treść |
 |---|---|
 | `00beaca12` | diagnoza OD-19 poza rdzeniem: budowniczy sieci W3-G2 przez API (`tests/reference_networks/w3g2_pasma_rozplywu.py`), test przypięcia pomiaru (19), wyrocznia pandapower (3, marker), korekta docstringu testu punktu startowego |
-| (ten) | `MELDUNEK_PF_OD19.md` |
+| `5eac36548` + (ten) | `MELDUNEK_PF_OD19.md` (drugi commit meldunku: §5b — wynik pełnego biegu strażników) |
