@@ -2612,6 +2612,133 @@ def check_abp1_dynamika_resurrection() -> list[str]:
     return violations
 
 
+# Karta AB-1b.3b (modele odbiorow, 2026-09-25, decyzja O-55): blok `Load.dynamika` (profil
+# katalogu z napieciem przejscia `U_min` i stala pomiaru czestotliwosci `T_f`) jest WYMAGANY
+# dla kazdego odbioru biegu `dynamika_rms`, a odbior czuly czestotliwosciowo ma estymator
+# katowy. Tym samym znikaja, bez powrotu:
+#   * odmowa `dynamika.odbior_stalej_mocy_przy_zerowym_napieciu` (odbior bez `U_min` w wezle
+#     zwarcia metalicznego — brak `U_min` jest dzis brakiem danych PRZED biegiem);
+#   * bramka G8 (`g8_granica_odmowy`, `ZAPADY_G8_PU`, pomiar `G8_granica_odmowy_zlamana`) —
+#     opisywala granice odmowy odbioru bez przejscia, a takiego odbioru nie ma;
+#   * wariant `u_min_pu = None` odbioru nie-impedancyjnego (`charakterystyka_stalej_mocy`
+#     z `u_min_pu=None` albo z adnotacja dopuszczajaca `None`);
+#   * odmowa `dynamika.odbior_czuly_czestotliwosciowo_nieobslugiwany` (w jej miejscu estymator).
+# Komentarz/dokstring nazywajacy kasacje NIE jest naruszeniem (AST; `_bez_komentarzy_ts`).
+AB1B3B_KODY: tuple[str, ...] = (
+    "dynamika.odbior_stalej_mocy_przy_zerowym_napieciu",
+    "dynamika.odbior_czuly_czestotliwosciowo_nieobslugiwany",
+)
+AB1B3B_IDENTYFIKATORY: frozenset[str] = frozenset(
+    {
+        "KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU",
+        "KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO",
+        "g8_granica_odmowy",
+        "ZAPADY_G8_PU",
+    }
+)
+AB1B3B_NAPISY_BRAMKI: tuple[str, ...] = ("G8_granica_odmowy_zlamana",)
+#: Katalog testow backendu — bramka G8 zyla w `tests/walidacja_fizyczna`.
+BACKEND_TESTS_DIR = ROOT / "backend" / "tests"
+
+
+def _nazwy_wezla(node: ast.AST) -> list[str]:
+    """Nazwy, ktore wezel AST wprowadza albo czyta: zmienna, atrybut, definicja, import."""
+    if isinstance(node, ast.Name):
+        return [node.id]
+    if isinstance(node, ast.Attribute):
+        return [node.attr]
+    if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+        return [node.name]
+    if isinstance(node, ast.ImportFrom | ast.Import):
+        return [alias.asname or alias.name for alias in node.names]
+    return []
+
+
+def _wariant_u_min_none(node: ast.AST) -> bool:
+    """`charakterystyka_stalej_mocy(u_min_pu=None)` albo jej definicja dopuszczajaca `None`."""
+    if isinstance(node, ast.Call):
+        funkcja = node.func
+        nazwa = (
+            funkcja.id
+            if isinstance(funkcja, ast.Name)
+            else funkcja.attr if isinstance(funkcja, ast.Attribute) else None
+        )
+        return nazwa == "charakterystyka_stalej_mocy" and any(
+            slowo.arg == "u_min_pu"
+            and isinstance(slowo.value, ast.Constant)
+            and slowo.value.value is None
+            for slowo in node.keywords
+        )
+    if isinstance(node, ast.FunctionDef) and node.name == "charakterystyka_stalej_mocy":
+        argumenty = [*node.args.args, *node.args.kwonlyargs]
+        return any(
+            argument.arg == "u_min_pu"
+            and argument.annotation is not None
+            and any(slowo in ast.unparse(argument.annotation) for slowo in ("None", "Optional"))
+            for argument in argumenty
+        )
+    return False
+
+
+def check_ab1b3b_odbiory_resurrection() -> list[str]:
+    """Karta AB-1b.3b: kasacje z decyzji O-55 nie wracaja — patrz komentarz nad
+    `AB1B3B_KODY`."""
+    violations: list[str] = []
+    znak = "karta AB-1b.3b — model dynamiczny odbioru z katalogu, estymator czestotliwosci"
+    pliki = [
+        *(sorted(BACKEND_SRC_DIR.rglob("*.py")) if BACKEND_SRC_DIR.exists() else []),
+        *(sorted(BACKEND_TESTS_DIR.rglob("*.py")) if BACKEND_TESTS_DIR.exists() else []),
+    ]
+    # Filtr tekstowy PRZED drzewem skladniowym: plik bez zadnego z tokenow nie moze zawierac
+    # naruszenia (nazwy, napisy i wywolanie maja te tokeny doslownie), a parsowanie calego
+    # drzewa testow kosztowaloby sekundy przy kazdym biegu straznika.
+    tokeny = (
+        *AB1B3B_IDENTYFIKATORY,
+        *AB1B3B_KODY,
+        *AB1B3B_NAPISY_BRAMKI,
+        "charakterystyka_stalej_mocy",
+    )
+    for py_file in pliki:
+        tekst = read_text(py_file)
+        if not any(token in tekst for token in tokeny):
+            continue
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        tree = ast.parse(tekst, filename=str(py_file))
+        for node in ast.walk(tree):
+            for nazwa in _nazwy_wezla(node):
+                if nazwa in AB1B3B_IDENTYFIKATORY:
+                    violations.append(
+                        f"[resurrected-name] {rel_path}:{node.lineno}: {nazwa} ({znak})"
+                    )
+            if _wariant_u_min_none(node):
+                violations.append(
+                    f"[resurrected-pattern] {rel_path}:{node.lineno}: odbior stalej mocy bez "
+                    f"napiecia przejscia (u_min_pu=None) ({znak})"
+                )
+        for napis, lineno in _napisy_kodu_py(tree):
+            for zakazany in AB1B3B_KODY + AB1B3B_NAPISY_BRAMKI:
+                if zakazany in napis:
+                    violations.append(
+                        f"[resurrected-string] {rel_path}:{lineno}: {zakazany!r} ({znak})"
+                    )
+    if FRONTEND_SRC_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                surowy = read_text(ts_file)
+                if not any(zakazany in surowy for zakazany in AB1B3B_KODY):
+                    continue
+                tekst = _bez_komentarzy_ts(surowy)
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                for zakazany in AB1B3B_KODY:
+                    if zakazany in tekst:
+                        violations.append(
+                            f"[resurrected-pattern] {rel_path}: {zakazany!r} ({znak})"
+                        )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -2634,6 +2761,7 @@ def main() -> int:
         + check_uniewazniacz_resurrection()
         + check_pakiet_l_resurrection()
         + check_abp1_dynamika_resurrection()
+        + check_ab1b3b_odbiory_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

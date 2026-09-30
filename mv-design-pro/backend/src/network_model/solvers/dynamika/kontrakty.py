@@ -24,8 +24,9 @@ wycinka; ten pakiet definiuje kontrakt, ktorego adapter ma dotrzymac.
 ZERO FABRYKACJI. Zadne pole liczbowe nie ma wartosci domyslnej — brak danej jest
 brakiem pola wymaganego (`TypeError` konstruktora zamrozonej dataklasy), nigdy
 cicha domyslka. Pilnuje `scripts/dynamika_zero_default_guard.py` (ten plik jest
-na jego liscie skanu razem z `enm/dynamika_modele.py` i katalogiem `der_dynamic`
-— KLASA, nie instancja: kontrakt danych dynamiki zyje w trzech miejscach).
+na jego liscie skanu razem z `enm/dynamika_modele.py` i katalogami profili `der_dynamic`
+i `load_dynamic` — KLASA, nie instancja: kontrakt danych dynamiki zyje w czterech
+miejscach, dla dwoch rodzin elementow: zrodel i odbiorow).
 """
 
 from __future__ import annotations
@@ -114,27 +115,18 @@ KOD_ZWARCIE_NIEODIZOLOWANE = "dynamika.zwarcie_nieodizolowane"
 #: Zwarcie w miejscu x*L galezi, ktora nie jest linia ani kablem (transformator,
 #: lacznik) — dlugosc elektryczna takiej galezi nie istnieje.
 KOD_ZWARCIE_GALEZI_NIEOBSLUGIWANE = "dynamika.zwarcie_galezi_nieobslugiwane"
-#: Odbior BEZ ZADEKLAROWANEGO napiecia przejscia `U_min` (skladowa stalopradowa albo
-#: stalomocowa bez galezi impedancyjnej — `odbiory.wymaga_napiecia_niezerowego`) w wezle,
-#: ktoremu wiersz ograniczenia narzuca napiecie zerowe (zwarcie metaliczne w wezle): prad
-#: charakterystyki `-conj(S)/conj(V)` nie istnieje przy U = 0. Odbior z zadeklarowanym
-#: `U_min` (i odbior czysto impedancyjny) liczy sie w takim wezle bez odmowy — prad zero.
-KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU = "dynamika.odbior_stalej_mocy_przy_zerowym_napieciu"
 #: Charakterystyka odbioru albo jego moc bazowa sprzeczne z kontraktem: pole bez znaczenia
-#: w danym ksztalcie wielomianu podane (fantom) albo pole potrzebne nieobecne, udzial spoza
-#: [0, 1], suma udzialow rozna od 1, moc czynna bazowa ujemna (odbior pasywny — ujemny pobor
-#: to wytworca, nie odbior), liczba nieskonczona.
+#: w danym ksztalcie wielomianu podane (fantom) albo pole potrzebne nieobecne (`v0`, `f0`,
+#: napiecie przejscia `U_min`, stala czasowa pomiaru czestotliwosci `T_f` — reguly jednej
+#: funkcji `wymagane_parametry_odbioru`), udzial spoza [0, 1], suma udzialow rozna od 1,
+#: moc czynna bazowa ujemna (odbior pasywny — ujemny pobor to wytworca, nie odbior), liczba
+#: nieskonczona.
 KOD_PARAMETRY_ODBIORU_SPRZECZNE = "dynamika.parametry_odbioru_sprzeczne"
 #: Napiecie punktu pracy w wezle odbioru ponizej zadeklarowanego napiecia przejscia `U_min`:
 #: rozplyw liczyl charakterystyke BEZ przejscia, a model dynamiczny jest tam w galezi
 #: impedancyjnej — punkt pracy nie jest rownowaga modelu, wiec odmowa pada PRZED bramka
 #: rownowagi (z wezlem, |V_pf| i U_min), a nie jako „inicjalizacja niezbiezna".
 KOD_ODBIOR_PONIZEJ_NAPIECIA_PRZEJSCIA = "dynamika.odbior_ponizej_napiecia_przejscia"
-#: Odbior czuly czestotliwosciowo (`k_pf`/`k_qf` rozne od zera): rdzen nie ma modelu
-#: czestotliwosci widzianej przez odbior (estymatora), a bieg z czestotliwoscia zamrozona
-#: na znamionowej dalby zly pobor przy kazdej odchylce czestotliwosci — odmowa nazwana
-#: zamiast cichego zlego wyniku.
-KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO = "dynamika.odbior_czuly_czestotliwosciowo_nieobslugiwany"
 #: Dwa rozne warunki narzucajace napiecie w JEDNYM wezle (zwarcie metaliczne na
 #: zaciskach idealnego zrodla napieciowego, dwa zrodla napieciowe w jednym wezle):
 #: uklad jest sprzeczny — pierwsze prawo Kirchhoffa zadaloby nieskonczonego pradu.
@@ -173,9 +165,7 @@ KODY_ODMOW: tuple[str, ...] = (
     KOD_NAPIECIE_NARZUCONE_SPRZECZNE,
     KOD_NASTAWA_NIEOBSLUGIWANA,
     KOD_NASTAWY_SPRZECZNE,
-    KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO,
     KOD_ODBIOR_PONIZEJ_NAPIECIA_PRZEJSCIA,
-    KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU,
     KOD_PARAMETRY_ODBIORU_SPRZECZNE,
     KOD_PARAMETRY_SPRZECZNE,
     KOD_PETLA_ZDARZEN_WARUNKOWYCH,
@@ -213,6 +203,8 @@ class OdmowaDynamiki(ValueError):
             )
         super().__init__(f"{komunikat} (kod: {kod})")
         self.kod = kod
+        #: Treść bez kodu — warstwa aplikacji zamienia w niej identyfikatory na nazwy.
+        self.komunikat = komunikat
         self.szczegoly = dict(szczegoly)
 
 
@@ -294,9 +286,96 @@ def _odmowa_charakterystyki(komunikat: str, **szczegoly: object) -> OdmowaDynami
 
 
 @dataclass(frozen=True)
+class WymaganiaOdbioru:
+    """Ktore parametry opcjonalne charakterystyki odbioru SA UZYTE w jego rownaniach.
+
+    Regula „pole uzyte <=> pole wymagane" (zero fantomow): kazda flaga mowi, ze rownanie
+    modelu czyta to pole — wtedy musi byc podane; gdy nie czyta, podanie go jest bledem
+    danych (fantom), a nie ignorowanym nadmiarem.
+    """
+
+    #: Napiecie odniesienia wielomianu `v0` — czyta je skladowa Z albo I (`r = |V|/v0`).
+    v0_pu: bool
+    #: Czestotliwosc odniesienia `f0` — czyta ja czynnik czestotliwosciowy (`k != 0`).
+    f0_hz: bool
+    #: Napiecie przejscia `U_min` — czyta je przejscie skladowej I albo P w stala impedancje.
+    u_min_pu: bool
+    #: Stala czasowa pomiaru czestotliwosci `T_f` — czyta ja estymator (`k != 0`).
+    t_pomiaru_czestotliwosci_s: bool
+
+
+def wymagane_parametry_odbioru(
+    *,
+    a_p: float,
+    b_p: float,
+    c_p: float,
+    a_q: float,
+    b_q: float,
+    c_q: float,
+    k_pf: float,
+    k_qf: float,
+) -> WymaganiaOdbioru:
+    """JEDNO miejsce regul kompletnosci modelu odbioru — wyprowadzone z rownan `odbiory.py`.
+
+    * `v0` <=> skladowa impedancyjna albo pradowa (`a != 0` albo `b != 0` dla P albo Q):
+      tylko one czytaja `r = |V|/v0`;
+    * `f0` i `T_f` <=> czulosc czestotliwosciowa (`k_pf != 0` albo `k_qf != 0`): tylko wtedy
+      istnieje czynnik czestotliwosciowy i estymator czestotliwosci widzianej przez odbior;
+    * `U_min` <=> skladowa pradowa albo mocowa (`b != 0` albo `c != 0` dla P albo Q): prad
+      tych skladowych nie istnieje przy `V = 0` (`-conj(S)/conj(V)`, kierunek `V/|V|`), wiec
+      ponizej `U_min` przechodza w stala impedancje; odbior CZYSTO impedancyjny jest
+      impedancja przy kazdym napieciu i przejscia nie ma.
+
+    Te same reguly czyta kontrakt rdzenia (`CharakterystykaOdbioru.__post_init__`) i bramka
+    danych biegu w warstwie modelu sieci (`enm/adapter_dynamiki.braki_modelu_dynamiki` —
+    blok `Load.dynamika` wobec wspolczynnikow rozpływu): gotowosc i bieg mowia jedno.
+    """
+    zalezny_od_napiecia = any(udzial != 0.0 for udzial in (a_p, b_p, a_q, b_q))
+    czuly_czestotliwosciowo = k_pf != 0.0 or k_qf != 0.0
+    czysta_impedancja = all(udzial == 0.0 for udzial in (b_p, c_p, b_q, c_q))
+    return WymaganiaOdbioru(
+        v0_pu=zalezny_od_napiecia,
+        f0_hz=czuly_czestotliwosciowo,
+        u_min_pu=not czysta_impedancja,
+        t_pomiaru_czestotliwosci_s=czuly_czestotliwosciowo,
+    )
+
+
+#: Opis kazdego pola opcjonalnego dla komunikatu odmowy — dlaczego pole jest wymagane albo
+#: dlaczego jego podanie jest fantomem (ta sama regula, dwa kierunki).
+_POWOD_POLA_ODBIORU: dict[str, tuple[str, str]] = {
+    "v0_pu": (
+        "napięcie odniesienia wielomianu v0 jest wymagane, bo odbiór ma składową impedancyjną "
+        "albo prądową",
+        "napięcie odniesienia wielomianu v0 podane przy odbiorze bez składowej impedancyjnej "
+        "i prądowej — pole bez znaczenia (fantom)",
+    ),
+    "f0_hz": (
+        "częstotliwość odniesienia f0 jest wymagana, bo odbiór ma czułość częstotliwościową "
+        "k_pf/k_qf",
+        "częstotliwość odniesienia f0 podana przy odbiorze bez czułości częstotliwościowej — "
+        "pole bez znaczenia (fantom)",
+    ),
+    "u_min_pu": (
+        "napięcie przejścia U_min jest wymagane, bo odbiór ma składową prądową albo mocową, "
+        "której prąd nie istnieje przy zerowym napięciu",
+        "napięcie przejścia U_min podane przy odbiorze czysto impedancyjnym — przejście do "
+        "stałej impedancji nie ma treści (fantom)",
+    ),
+    "t_pomiaru_czestotliwosci_s": (
+        "stała czasowa pomiaru częstotliwości T_f jest wymagana, bo odbiór ma czułość "
+        "częstotliwościową k_pf/k_qf",
+        "stała czasowa pomiaru częstotliwości T_f podana przy odbiorze bez czułości "
+        "częstotliwościowej — pole bez znaczenia (fantom)",
+    ),
+}
+
+
+@dataclass(frozen=True)
 class CharakterystykaOdbioru:
-    """Charakterystyka STATYCZNA odbioru: wielomian ZIP x liniowy czynnik czestotliwosciowy,
-    z przejsciem skladowych nieimpedancyjnych w stala impedancje ponizej `u_min_pu`.
+    """Charakterystyka odbioru: wielomian ZIP x liniowy czynnik czestotliwosciowy, z
+    przejsciem skladowych nieimpedancyjnych w stala impedancje ponizej `u_min_pu` i ze
+    stala czasowa pomiaru czestotliwosci widzianej przez odbior.
 
     Wzory (te same, ktorymi liczy rozplyw — `power_flow_zip.py`), `r = |V|/v0`:
 
@@ -305,17 +384,18 @@ class CharakterystykaOdbioru:
 
     a ponizej `u_min_pu` (galaz impedancyjna): `S(V) = S(U_min) * (|V|/U_min)^2`, czyli
     stala admitancja `Y = conj(S(U_min))/U_min^2` — prad `-Y V` nie dzieli przez napiecie,
-    wiec w `V = 0` jest zerem. Fizyka tych wzorow zyje w `odbiory.py`; tu jest wylacznie
+    wiec w `V = 0` jest zerem. Czestotliwosc `f` jest czestotliwoscia WIDZIANA PRZEZ ODBIOR:
+    estymator katowy o stalej czasowej `t_pomiaru_czestotliwosci_s` (inercja 1. rzedu
+    czestotliwosci szyny). Fizyka tych wzorow zyje w `odbiory.py`; tu jest wylacznie
     ksztalt danych i jego spojnosc.
 
-    ZERO FANTOMOW (pole bez znaczenia w danym ksztalcie jest `None`, nie liczba):
-      * `v0_pu is None` <=> `a_p = b_p = a_q = b_q = 0` (brak zaleznosci od napiecia),
-      * `f0_hz is None` <=> `k_pf = k_qf = 0` (brak zaleznosci od czestotliwosci),
-      * `u_min_pu` podane przy odbiorze CZYSTO IMPEDANCYJNYM (`b = c = 0` dla P i Q) jest
-        fantomem — przejscie nie ma tam tresci (charakterystyka juz jest impedancja).
-    `u_min_pu is None` przy skladowej stalopradowej albo stalomocowej znaczy „przejscie
-    NIEZADEKLAROWANE": charakterystyka obowiazuje przy kazdym |V| > 0, a napiecie narzucone
-    zerem w wezle takiego odbioru jest odmowa nazwana (`odbiory.wymaga_napiecia_niezerowego`).
+    ZERO FANTOMOW i ZERO BRAKOW — pole opcjonalne jest podane wtedy i tylko wtedy, gdy
+    rownanie modelu je czyta (`wymagane_parametry_odbioru`, jedno zrodlo regul):
+      * `v0_pu` <=> skladowa Z albo I,
+      * `f0_hz` i `t_pomiaru_czestotliwosci_s` <=> czulosc czestotliwosciowa,
+      * `u_min_pu` <=> skladowa I albo P (odbior czysto impedancyjny jest impedancja przy
+        kazdym napieciu; kazdy inny odbior MUSI deklarowac napiecie przejscia — bez niego
+        jego prad nie istnieje przy zerowym napieciu).
     ZERO DOMYSLEK: kazde pole wymagane (straz `dynamika_zero_default_guard`).
     """
 
@@ -330,6 +410,7 @@ class CharakterystykaOdbioru:
     k_qf: float
     f0_hz: float | None
     u_min_pu: float | None
+    t_pomiaru_czestotliwosci_s: float | None
 
     def __post_init__(self) -> None:
         liczby = {
@@ -342,7 +423,7 @@ class CharakterystykaOdbioru:
             "k_pf": self.k_pf,
             "k_qf": self.k_qf,
         }
-        for opcjonalne in ("v0_pu", "f0_hz", "u_min_pu"):
+        for opcjonalne in ("v0_pu", "f0_hz", "u_min_pu", "t_pomiaru_czestotliwosci_s"):
             wartosc = getattr(self, opcjonalne)
             if wartosc is not None:
                 liczby[opcjonalne] = wartosc
@@ -373,57 +454,59 @@ class CharakterystykaOdbioru:
                     f"{sum(udzialy)!r}, a suma musi wynosić 1.",
                     os=os,
                 )
-        zalezny_od_napiecia = any(
-            udzial != 0.0 for udzial in (self.a_p, self.b_p, self.a_q, self.b_q)
+        wymagania = wymagane_parametry_odbioru(
+            a_p=self.a_p,
+            b_p=self.b_p,
+            c_p=self.c_p,
+            a_q=self.a_q,
+            b_q=self.b_q,
+            c_q=self.c_q,
+            k_pf=self.k_pf,
+            k_qf=self.k_qf,
         )
-        if zalezny_od_napiecia != (self.v0_pu is not None):
-            raise _odmowa_charakterystyki(
-                "Napięcie odniesienia wielomianu v0 "
-                + (
-                    "jest wymagane, bo odbiór ma składową impedancyjną albo prądową."
-                    if zalezny_od_napiecia
-                    else "podane przy odbiorze o stałej mocy — pole bez znaczenia (fantom)."
-                ),
-                pole="v0_pu",
-            )
+        # Wymagania sa funkcja pol zamrozonej dataklasy — liczone RAZ (tor gorący rdzenia
+        # pyta o ksztalt charakterystyki przy kazdej ewaluacji pradu); nie sa polem, wiec
+        # nie wchodza do rownosci, skrotu ani odcisku.
+        object.__setattr__(self, "_wymagania", wymagania)
+        for pole, (powod_brak, powod_fantom) in _POWOD_POLA_ODBIORU.items():
+            wymagane = bool(getattr(wymagania, pole))
+            podane = getattr(self, pole) is not None
+            if wymagane != podane:
+                tresc = powod_brak if wymagane else powod_fantom
+                raise _odmowa_charakterystyki(
+                    tresc[0].upper() + tresc[1:] + ".",
+                    pole=pole,
+                    rodzaj="brak" if wymagane else "fantom",
+                )
         if self.v0_pu is not None and self.v0_pu <= 0.0:
             raise _odmowa_charakterystyki(
                 f"Napięcie odniesienia wielomianu v0 = {self.v0_pu} pu musi być dodatnie.",
                 pole="v0_pu",
-            )
-        zalezny_od_czestotliwosci = self.k_pf != 0.0 or self.k_qf != 0.0
-        if zalezny_od_czestotliwosci != (self.f0_hz is not None):
-            raise _odmowa_charakterystyki(
-                "Częstotliwość odniesienia f0 "
-                + (
-                    "jest wymagana, bo odbiór ma czułość częstotliwościową k_pf/k_qf."
-                    if zalezny_od_czestotliwosci
-                    else "podana przy odbiorze bez czułości częstotliwościowej — pole bez "
-                    "znaczenia (fantom)."
-                ),
-                pole="f0_hz",
             )
         if self.f0_hz is not None and self.f0_hz <= 0.0:
             raise _odmowa_charakterystyki(
                 f"Częstotliwość odniesienia f0 = {self.f0_hz} Hz musi być dodatnia.",
                 pole="f0_hz",
             )
-        czysta_impedancja = all(
-            udzial == 0.0 for udzial in (self.b_p, self.c_p, self.b_q, self.c_q)
-        )
-        if self.u_min_pu is not None:
-            if czysta_impedancja:
-                raise _odmowa_charakterystyki(
-                    f"Napięcie przejścia U_min = {self.u_min_pu} pu podane przy odbiorze czysto "
-                    "impedancyjnym — przejście do stałej impedancji nie ma treści (fantom).",
-                    pole="u_min_pu",
-                )
-            if not 0.0 < self.u_min_pu < 1.0:
-                raise _odmowa_charakterystyki(
-                    f"Napięcie przejścia U_min = {self.u_min_pu} pu musi leżeć w przedziale "
-                    "otwartym (0, 1).",
-                    pole="u_min_pu",
-                )
+        if self.u_min_pu is not None and not 0.0 < self.u_min_pu < 1.0:
+            raise _odmowa_charakterystyki(
+                f"Napięcie przejścia U_min = {self.u_min_pu} pu musi leżeć w przedziale "
+                "otwartym (0, 1).",
+                pole="u_min_pu",
+            )
+        if self.t_pomiaru_czestotliwosci_s is not None and self.t_pomiaru_czestotliwosci_s <= 0.0:
+            raise _odmowa_charakterystyki(
+                f"Stała czasowa pomiaru częstotliwości T_f = {self.t_pomiaru_czestotliwosci_s} s "
+                "musi być dodatnia — pomiar natychmiastowy (T_f = 0) wprowadziłby pochodną "
+                "napięcia do równania algebraicznego.",
+                pole="t_pomiaru_czestotliwosci_s",
+            )
+
+    @property
+    def wymagania(self) -> WymaganiaOdbioru:
+        """`wymagane_parametry_odbioru` tej charakterystyki (policzone przy konstrukcji)."""
+        wymagania: WymaganiaOdbioru = self.__dict__["_wymagania"]
+        return wymagania
 
 
 @dataclass(frozen=True)
@@ -505,9 +588,9 @@ def _sprawdz_usuniecie(
     if (t_usuniecia_s is None) != (sposob is None):
         raise OdmowaDynamiki(
             KOD_ZDARZENIE_SPRZECZNE,
-            f"Zwarcie {miejsce} w t={t_s} s: chwila usuniecia ({t_usuniecia_s}) i sposob "
-            f"usuniecia ({sposob}) musza byc podane razem albo wcale — usuniecie bez "
-            "jawnego sposobu nie mowi, czy luk zgasl po odcieciu, czy pod napieciem",
+            f"Zwarcie {miejsce} w t = {t_s} s: chwila usunięcia ({t_usuniecia_s}) i sposób "
+            f"usunięcia ({sposob}) muszą być podane razem albo wcale — usunięcie bez "
+            "jawnego sposobu nie mówi, czy łuk zgasł po odcięciu, czy pod napięciem.",
             t_s=t_s,
             t_usuniecia_s=t_usuniecia_s,
             sposob_usuniecia=sposob,
@@ -515,14 +598,14 @@ def _sprawdz_usuniecie(
     if sposob is not None and sposob not in ("izolacja", "samoczynne"):
         raise OdmowaDynamiki(
             KOD_ZDARZENIE_SPRZECZNE,
-            f"Zwarcie {miejsce}: nieznany sposob usuniecia {sposob!r}",
+            f"Zwarcie {miejsce}: nieznany sposób usunięcia „{sposob}”.",
             sposob_usuniecia=sposob,
         )
     if t_usuniecia_s is not None and t_usuniecia_s <= t_s:
         raise OdmowaDynamiki(
             KOD_ZDARZENIE_SPRZECZNE,
-            f"Zwarcie {miejsce}: usuniecie w t={t_usuniecia_s} s nie jest pozniejsze niz "
-            f"zalozenie w t={t_s} s",
+            f"Zwarcie {miejsce}: usunięcie w t = {t_usuniecia_s} s nie jest późniejsze niż "
+            f"założenie w t = {t_s} s.",
             t_s=t_s,
             t_usuniecia_s=t_usuniecia_s,
         )
@@ -552,7 +635,7 @@ class ZwarcieWezla:
 
     def __post_init__(self) -> None:
         _sprawdz_usuniecie(
-            self.t_s, self.t_usuniecia_s, self.sposob_usuniecia, f"w wezle {self.wezel!r}"
+            self.t_s, self.t_usuniecia_s, self.sposob_usuniecia, f"w węźle {self.wezel}"
         )
 
 
@@ -588,9 +671,9 @@ class ZwarcieGalezi:
         if not 0.0 < self.polozenie_wzgledne < 1.0:
             raise OdmowaDynamiki(
                 KOD_ZDARZENIE_SPRZECZNE,
-                f"Zwarcie w galezi {self.galaz!r}: polozenie wzgledne "
-                f"{self.polozenie_wzgledne} poza przedzialem otwartym (0, 1) — zwarcie na "
-                "zacisku galezi zadaje sie jako zwarcie w wezle",
+                f"Zwarcie w gałęzi {self.galaz}: położenie względne "
+                f"{self.polozenie_wzgledne} poza przedziałem otwartym (0, 1) — zwarcie na "
+                "zacisku gałęzi zadaje się jako zwarcie w węźle.",
                 galaz=self.galaz,
                 polozenie_wzgledne=self.polozenie_wzgledne,
             )
@@ -598,7 +681,7 @@ class ZwarcieGalezi:
             self.t_s,
             self.t_usuniecia_s,
             self.sposob_usuniecia,
-            f"w galezi {self.galaz!r} (x = {self.polozenie_wzgledne})",
+            f"w gałęzi {self.galaz} (x = {self.polozenie_wzgledne})",
         )
 
 
@@ -733,9 +816,9 @@ class UtrataCzesciowaZrodla:
         if not 0.0 < self.udzial_pozostaly < 1.0:
             raise OdmowaDynamiki(
                 KOD_UDZIAL_ZRODLA_NIEDOZWOLONY,
-                f"Częściowa utrata źródła {self.zrodlo!r} w t={self.t_s} s: udział pozostaly "
+                f"Częściowa utrata źródła {self.zrodlo!r} w t={self.t_s} s: udział pozostały "
                 f"{self.udzial_pozostaly} spoza przedziału otwartego (0, 1) — udział 1 to brak "
-                "utraty, udział 0 to odlaczenie całego źródła (`OdlaczenieZrodla`)",
+                "utraty, a utrata całego źródła to osobne zdarzenie odłączenia źródła.",
                 zrodlo=self.zrodlo,
                 udzial_pozostaly=self.udzial_pozostaly,
             )
@@ -832,15 +915,15 @@ class NastawySolvera:
             if wartosc <= 0.0:
                 raise OdmowaDynamiki(
                     KOD_NASTAWY_SPRZECZNE,
-                    f"{nazwa}={wartosc} musi byc dodatnie",
+                    f"Nastawa `{nazwa}` = {wartosc} musi być dodatnia.",
                     pole=nazwa,
                     wartosc=wartosc,
                 )
         if self.max_iteracji_newtona < 1 or self.max_nawrotow < 0:
             raise OdmowaDynamiki(
                 KOD_NASTAWY_SPRZECZNE,
-                f"max_iteracji_newtona={self.max_iteracji_newtona} musi byc >= 1, "
-                f"max_nawrotow={self.max_nawrotow} musi byc >= 0",
+                f"Nastawa `max_iteracji_newtona` = {self.max_iteracji_newtona} musi być ≥ 1, "
+                f"a `max_nawrotow` = {self.max_nawrotow} musi być ≥ 0.",
                 max_iteracji_newtona=self.max_iteracji_newtona,
                 max_nawrotow=self.max_nawrotow,
             )
@@ -909,8 +992,21 @@ class NastawaRegulacji:
 
 
 @runtime_checkable
-class Urzadzenie(Protocol):
-    """Urzadzenie dynamiczne przylaczone do wezla sieci.
+class ElementStanowy(Protocol):
+    """CZESC DAE wspolna dla urzadzen i odbiorow: stany rozniczkowe, ich rownania i prad.
+
+    Rdzen ma DWIE rodziny elementow przylaczonych do wezla — urzadzenia (zrodla: maszyny,
+    przeksztaltniki, magazyny, turbiny, szyna sztywna) i odbiory — i JEDEN protokol ich
+    czesci stanowej. Integrator, reinicjalizacja, bramka rownowagi, obserwable i analiza
+    malosygnalowa czytaja wylacznie ten protokol, wiec element z nowym stanem (estymator
+    czestotliwosci odbioru, w przyszlosci silnik indukcyjny) wchodzi tym samym torem bez
+    zmian w integratorze. Kolejnosc kanoniczna elementow: najpierw odbiory (kolejnosc
+    wejscia), potem urzadzenia — dokladnie ta, w ktorej siec sumuje prady w wezle.
+
+    Dlaczego odbior nie jest urzadzeniem: predykat „wnosi do algebry" (`wyspy.py`) uznalby
+    wyspe samych odbiorow czulych czestotliwosciowo za zasilana, a moc punktu pracy,
+    odlaczenie zrodla i podzial mocy wezla wymagalyby dyskryminatora roli w kazdym
+    miejscu. Osobne rodziny + wspolny protokol czesci DAE = zero rozgalezien roli.
 
     WSZYSTKIE skladowe sa WLASCIWOSCIAMI TYLKO DO ODCZYTU. To nie jest kosmetyka:
     dlug zmierzony w watku badawczym (21 bledow mypy w szesciu modulach) mial
@@ -922,7 +1018,7 @@ class Urzadzenie(Protocol):
     UKLAD ODNIESIENIA. `prad_pu` zwraca prad WSTRZYKIWANY do wezla w konwencji
     generacji (dodatni = do sieci), we wspolnym ukladzie sieciowym. Przejscie
     miedzy ukladem wirnika (dq) a sieciowym robi `konwencje.dq_na_siec` —
-    urzadzenie nie ma wlasnej kopii tej transformacji.
+    element nie ma wlasnej kopii tej transformacji.
     """
 
     @property
@@ -1023,6 +1119,44 @@ class Urzadzenie(Protocol):
         Wiekszosc urzadzen zwraca krotke pusta — kazdy ich stan ma byc rownowaga.
         """
 
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Parametry urzadzenia wchodzace do `tozsamosc.odcisk_migawki` — JAWNIE, bez refleksji.
+
+        Kazde pole dataklasy urzadzenia jest tutaj ALBO na liscie `POLA_POZA_ODCISKIEM`
+        klasy (z uzasadnieniem) — przypina to `test_tozsamosc_urzadzen`. Bloki
+        zagniezdzone (rdzen regulacji, regulatory, zasobnik) oddaja SWOJE
+        `parametry_tozsamosci()`. Bez tego dwa biegi rozniace sie stala H albo
+        wzmocnieniem petli synchronizacji mialy identyczna piatke odciskow przy
+        ROZNYCH wynikach (defekt `odcisk_migawki`, karta AB-1b.1 par. 0 pkt 13).
+        """
+
+    def pochodne(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        """f(x, y) — pochodne stanow roznicowych (1/s)."""
+
+    def jakobian_stan_stan(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        """∂f/∂x — macierz (n, n)."""
+
+    def jakobian_stan_napiecie(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        """∂f/∂(Re V, Im V) — macierz (n, 2)."""
+
+    def prad_pu(self, stan: np.ndarray, napiecie_pu: complex) -> complex:
+        """Prad wstrzykiwany do wezla (pu, konwencja generacji)."""
+
+    def jakobian_prad_napiecie(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        """∂(Re I, Im I)/∂(Re V, Im V) — macierz (2, 2)."""
+
+    def jakobian_prad_stan(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
+        """∂(Re I, Im I)/∂x — macierz (2, n)."""
+
+
+@runtime_checkable
+class Urzadzenie(ElementStanowy, Protocol):
+    """Urzadzenie dynamiczne (zrodlo) przylaczone do wezla sieci — czesc DAE z
+    `ElementStanowy` plus elementy zrodlowe: sposob sprzezenia z algebra, stan
+    poczatkowy z mocy punktu pracy, napiecie jalowe, stany przypisywalne i nastawy
+    regulacji, agregat jednostek.
+    """
+
     @property
     def sprzezenie(self) -> SprzezenieUrzadzenia:
         """Jak urzadzenie wchodzi do algebry sieci — deklaracja JAWNA w kazdej klasie.
@@ -1069,31 +1203,8 @@ class Urzadzenie(Protocol):
         nie sa agregatami — ich „czesciowa utrata" nie opisuje zadnego zjawiska.
         """
 
-    def parametry_tozsamosci(self) -> dict[str, object]:
-        """Parametry urzadzenia wchodzace do `tozsamosc.odcisk_migawki` — JAWNIE, bez refleksji.
-
-        Kazde pole dataklasy urzadzenia jest tutaj ALBO na liscie `POLA_POZA_ODCISKIEM`
-        klasy (z uzasadnieniem) — przypina to `test_tozsamosc_urzadzen`. Bloki
-        zagniezdzone (rdzen regulacji, regulatory, zasobnik) oddaja SWOJE
-        `parametry_tozsamosci()`. Bez tego dwa biegi rozniace sie stala H albo
-        wzmocnieniem petli synchronizacji mialy identyczna piatke odciskow przy
-        ROZNYCH wynikach (defekt `odcisk_migawki`, karta AB-1b.1 par. 0 pkt 13).
-        """
-
     def stan_poczatkowy(self, napiecie_pu: complex, moc_pu: complex) -> np.ndarray:
         """Stan rownowagi dla zadanego punktu pracy (napiecie zaciskow + moc oddawana)."""
-
-    def pochodne(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
-        """f(x, y) — pochodne stanow roznicowych (1/s)."""
-
-    def jakobian_stan_stan(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
-        """∂f/∂x — macierz (n, n)."""
-
-    def jakobian_stan_napiecie(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
-        """∂f/∂(Re V, Im V) — macierz (n, 2)."""
-
-    def prad_pu(self, stan: np.ndarray, napiecie_pu: complex) -> complex:
-        """Prad wstrzykiwany do wezla (pu, konwencja generacji)."""
 
     def jakobian_napiecia_bez_obciazenia(self, stan: np.ndarray) -> np.ndarray:
         """∂(Re E_jalowe, Im E_jalowe)/∂x — macierz (2, n).
@@ -1118,11 +1229,58 @@ class Urzadzenie(Protocol):
         daje to dokladnie `I = 0` i `P_e = 0`, bez zadnego przyblizenia.
         """
 
-    def jakobian_prad_napiecie(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
-        """∂(Re I, Im I)/∂(Re V, Im V) — macierz (2, 2)."""
 
-    def jakobian_prad_stan(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
-        """∂(Re I, Im I)/∂x — macierz (2, n)."""
+@runtime_checkable
+class ModelOdbioru(ElementStanowy, Protocol):
+    """Model odbioru w rdzeniu — czesc DAE z `ElementStanowy` plus elementy odbiorcze.
+
+    Implementacja: `odbiory.OdbiorCharakterystyczny` (charakterystyka ZIP x czynnik
+    czestotliwosciowy z przejsciem PQ -> Z; odbior czuly czestotliwosciowo ma JEDEN stan —
+    kat estymatora czestotliwosci widzianej przez odbior). Krotka odbiorow chwili obejmuje
+    KAZDY odbior wejscia, takze odlaczony zdarzeniem i odciety w obszarze beznapieciowym:
+    ich prad jest zerem (brak obwodu), ale stan estymatora istnieje dalej, wiec krotka
+    stanow ma staly uklad przez caly bieg.
+    """
+
+    @property
+    def przylaczony(self) -> bool:
+        """Czy odbior ma obwod (przylaczony i poza obszarem beznapieciowym) — tylko wtedy
+        pobiera prad i wchodzi do bilansu wezla."""
+
+    @property
+    def moc_bazowa_pu(self) -> complex:
+        """Moc bazowa `P0 + jQ0` chwili (skala charakterystyki, konwencja poboru)."""
+
+    def stan_poczatkowy_odbioru(self, napiecie_pu: complex) -> np.ndarray:
+        """Stan rownowagi odbioru w napieciu punktu pracy (pusty dla odbioru bez stanow)."""
+
+    def moc_poboru_pu(self, stan: np.ndarray, napiecie_pu: complex) -> complex:
+        """Moc POBIERANA przy napieciu `V` (konwencja poboru); zero bez obwodu."""
+
+    def tryb(self, napiecie_pu: complex) -> float:
+        """Kod kanalu `tryb_odbioru@` — ten sam predykat galezi co prad i jakobian."""
+
+    def czestotliwosc_widziana_hz(self, stan: np.ndarray, napiecie_pu: complex) -> float | None:
+        """Czestotliwosc widziana przez odbior (estymator); `None` bez czulosci albo bez obwodu."""
+
+
+def rozdziel_stany(
+    odbiory: tuple[ModelOdbioru, ...],
+    urzadzenia: tuple[Urzadzenie, ...],
+    stany: tuple[np.ndarray, ...],
+) -> tuple[tuple[np.ndarray, ...], tuple[np.ndarray, ...]]:
+    """(stany odbiorow, stany urzadzen) z krotki wyrownanej z elementami `(*odbiory, *urzadzenia)`.
+
+    Kolejnosc kanoniczna elementow stanowych: najpierw odbiory, potem urzadzenia — ta sama,
+    w ktorej siec sumuje prady w wezle. Krotka innej dlugosci niz liczba elementow jest bledem
+    programu (element bez stanu ma krotke pusta, nie brak pozycji).
+    """
+    if len(stany) != len(odbiory) + len(urzadzenia):
+        raise AssertionError(
+            f"Krotka stanów ma {len(stany)} pozycji wobec {len(odbiory)} odbiorów i "
+            f"{len(urzadzenia)} urządzeń — stany są wyrównane z (*odbiory, *urządzenia)."
+        )
+    return stany[: len(odbiory)], stany[len(odbiory) :]
 
 
 @dataclass(frozen=True)
@@ -1157,9 +1315,7 @@ __all__ = [
     "KOD_NAPIECIE_NARZUCONE_SPRZECZNE",
     "KOD_NASTAWA_NIEOBSLUGIWANA",
     "KOD_NASTAWY_SPRZECZNE",
-    "KOD_ODBIOR_CZULY_CZESTOTLIWOSCIOWO",
     "KOD_ODBIOR_PONIZEJ_NAPIECIA_PRZEJSCIA",
-    "KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU",
     "KOD_PARAMETRY_ODBIORU_SPRZECZNE",
     "KOD_PARAMETRY_SPRZECZNE",
     "KOD_PETLA_ZDARZEN_WARUNKOWYCH",
@@ -1181,8 +1337,10 @@ __all__ = [
     "WIELKOSCI_NASTAW",
     "GalazDynamiki",
     "CharakterystykaOdbioru",
+    "ElementStanowy",
     "HarmonogramDynamiki",
     "KomendaRegulacji",
+    "ModelOdbioru",
     "NastawaRegulacji",
     "NastawySolvera",
     "NazwaIntegratora",
@@ -1202,6 +1360,7 @@ __all__ = [
     "WejscieDynamiki",
     "WezelDynamiki",
     "WielkoscNastawy",
+    "WymaganiaOdbioru",
     "ZdarzenieDynamiki",
     "ZmianaGalezi",
     "ZmianaOdbioru",
@@ -1209,4 +1368,6 @@ __all__ = [
     "ZwarcieGalezi",
     "ZwarcieWezla",
     "odmowa_braku_pola",
+    "rozdziel_stany",
+    "wymagane_parametry_odbioru",
 ]

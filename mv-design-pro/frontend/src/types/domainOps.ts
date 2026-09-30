@@ -68,6 +68,9 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_relay',
   // Warunki przyłączenia OSD (nagłówek modelu, krok E1 flow projektanta)
   'set_connection_conditions',
+  // Karta modeli odbiorów: wiązanie odbioru z profilem modelu dynamicznego (ekran dynamiki,
+  // akcja naprawcza `load.dynamika_missing`) — operacja w V2_CANONICAL_OPS backendu.
+  'set_load_dynamic_binding',
   // Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
   'add_gpz_section',
   'update_gpz_section',

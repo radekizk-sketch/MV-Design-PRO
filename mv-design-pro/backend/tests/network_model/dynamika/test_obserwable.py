@@ -46,10 +46,16 @@ from tests.network_model.dynamika.uklady import (
     nastawy,
     zbuduj_smib,
 )
+from tests.walidacja_fizyczna.stanowisko import (
+    U_MIN_TESTOWE_PU,
+    modele_odbiorow,
+    stany_z_odbiorami,
+)
 
-#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
-#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
-STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
+#: Odbior STALEJ MOCY z napieciem przejscia `U_min` — DANA TESTU ponizej wszystkich
+#: iteratow Newtona biegow tego modulu (`stanowisko.U_MIN_TESTOWE_PU`, pomiar licznikiem
+#: wejsc w galaz impedancyjna), wiec wzorzec liczy dotychczasowa charakterystyke stalej mocy.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=U_MIN_TESTOWE_PU)
 
 #: Niepewnosc napiecia uzywana w testach jednostkowych czestotliwosci — WEJSCIE
 #: funkcji, nie nastawa solvera (od korekty par. 5 niepewnosc jest mierzona).
@@ -301,7 +307,7 @@ def test_kody_jakosci_sa_zamknietym_zbiorem_z_opisem() -> None:
     assert set(OPIS_JAKOSCI_PL) == kody
     assert len(kody) == 5
     # Trzy przyczyny niedostepnosci sa rozlaczne i nazwane (karta AB-1b.1 par. 0 pkt 7).
-    assert all(OPIS_JAKOSCI_PL[kod].startswith("niedostepna") for kod in kody if kod >= 2.0)
+    assert all(OPIS_JAKOSCI_PL[kod].startswith("niedostępna") for kod in kody if kod >= 2.0)
 
 
 # ---------------------------------------------------------------------------
@@ -684,8 +690,9 @@ def _uklad_z_odbiorem(p_odbioru_pu: float) -> tuple[object, ...]:
         ra_pu=0.0,
         omega_bazowa_rad_s=2.0 * math.pi * F_BAZOWA_HZ,
     )
-    stany = (np.array([0.0, 1.002, p_odbioru_pu, 1.10], dtype=float),)
-    return model, odbiory, (maszyna,), stany
+    modele = modele_odbiorow(odbiory)
+    stany = stany_z_odbiorami(modele, (np.array([0.0, 1.002, p_odbioru_pu, 1.10], dtype=float),))
+    return model, modele, (maszyna,), stany
 
 
 def test_niepewnosc_ogranicza_rzeczywisty_blad_takze_blisko_granicy_obciazalnosci() -> None:
@@ -798,7 +805,10 @@ def test_niepewnosc_rosnie_gdy_jakobian_algebry_staje_sie_gorzej_uwarunkowany() 
                 omega_bazowa_rad_s=2.0 * math.pi * F_BAZOWA_HZ,
             ),
         )
-        stany = (np.array([0.0, 1.002, p_odbioru_pu, 1.10], dtype=float),)
+        odbiory = modele_odbiorow(odbiory)
+        stany = stany_z_odbiorami(
+            odbiory, (np.array([0.0, 1.002, p_odbioru_pu, 1.10], dtype=float),)
+        )
         rozwiazanie = rozwiaz_algebre(
             model,
             odbiory,

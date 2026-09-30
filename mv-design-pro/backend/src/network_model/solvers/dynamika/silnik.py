@@ -64,14 +64,13 @@ from .calkowanie import (
     blad_lokalny,
     pochodne_ukladu,
     spakuj_stany,
-    zakresy_waznosci_urzadzen,
+    zakresy_waznosci_elementow,
 )
 from .dozory import AkcjaOczekujaca, Lokalizacja, NadzorDozorow, StanUkladu, StronaOceny
 from .kontrakty import (
     KOD_INICJALIZACJA_NIEZBIEZNA,
     KOD_KROK_NIEZBIEZNY,
     KOD_NASTAWY_SPRZECZNE,
-    KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU,
     KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
     KOD_ZWARCIE_NIEODIZOLOWANE,
     HarmonogramDynamiki,
@@ -83,6 +82,7 @@ from .kontrakty import (
     ZwarcieGalezi,
     ZwarcieWezla,
     odmowa_braku_pola,
+    rozdziel_stany,
 )
 from .obserwable import (
     JAKOSC_CHWILA_ZDARZENIA,
@@ -93,14 +93,15 @@ from .obserwable import (
     wielkosci_galezi,
 )
 from .odbiory import (
+    STAN_KATA_POMIARU,
     TRYB_ODCIETY,
     TRYB_ODLACZONY,
-    moc_poboru_pu,
+    OdbiorCharakterystyczny,
+    jest_czuly_czestotliwosciowo,
+    model_odbioru,
     opis_odbioru_sladu,
-    sprawdz_odbior_biegu,
     sprawdz_punkt_pracy_odbioru,
-    tryb_odbioru,
-    wymaga_napiecia_niezerowego,
+    sprawdz_zakres_waznosci,
 )
 from .reinicjalizacja import reinicjalizuj
 from .siec import (
@@ -123,9 +124,12 @@ from .wynik import (
     Metryka,
     Przekroczenie,
     PrzypisanieWykonane,
+    WielkoscZalozenia,
     WlasnosciBiegu,
     WynikDynamiki,
+    ZalozenieRdzenia,
     ZdarzenieWykonane,
+    rekord_zalozenia,
 )
 from .wyspy import klasyfikuj_wyspy, przydzial_wysp, urzadzenie_wnosi_do_algebry
 from .zdarzenia import (
@@ -168,20 +172,26 @@ class _Chwila:
     indeks_wpisu: int
     stan_scenariusza: StanScenariusza
     model: ModelSieci
-    odbiory: tuple[OdbiorDynamiki, ...]
+    #: KAZDY odbior wejscia jako model chwili (bez obwodu: prad zero, stan estymatora
+    #: istnieje dalej) — krotka `stany` jest wyrownana z `(*odbiory, *urzadzenia)`.
+    odbiory: tuple[OdbiorCharakterystyczny, ...]
     urzadzenia: tuple[Urzadzenie, ...]
     #: Stany rozniczkowe PO chwili — rowne stanom sprzed niej poza pozycjami przypisanymi
-    #: (przypisanie stanu, komenda regulacji); pomiar `delta_x_nieprzypisane_max`.
+    #: (przypisanie stanu, komenda regulacji, kat estymatora odbioru po ponownym
+    #: zasileniu); pomiar `delta_x_nieprzypisane_max`.
     stany: tuple[np.ndarray, ...]
     napiecia: np.ndarray
     kontekst: KontekstKroku
     bylo_zdarzenie: bool
     residuum_kcl_max: float
-    #: Odbiory ODCIETE (w obszarze beznapieciowym) — nie wchodza do `odbiory`.
+    #: Odbiory ODCIETE (w obszarze beznapieciowym) — w `odbiory` z trybem 3, bez pradu.
     odbiory_odciete: frozenset[str]
     #: Czy w tej chwili ktorys wezel startowal Newtona od napiecia sasiada (ponowne
     #: zasilenie) — wchodzi do `zalozenia` wyniku.
     start_od_sasiada: bool
+    #: Czy w tej chwili estymator czestotliwosci ktoregos odbioru dostal `x := arg V+`
+    #: (ponowne zasilenie) — wchodzi do `zalozenia` wyniku.
+    reset_estymatorow: bool
 
 
 @dataclass(frozen=True)
@@ -208,39 +218,50 @@ class SilnikDynamiki:
             horyzont_s=nastawy.horyzont_s,
         )
 
-        # Warunek biegu odbiorow (czulosc czestotliwosciowa bez modelu czestotliwosci
-        # widzianej przez odbior) — JEDEN predykat z bramka gotowosci adaptera.
-        for odbior in wejscie.odbiory:
-            sprawdz_odbior_biegu(odbior)
         urzadzenia = tuple(wejscie.urzadzenia)
-        stany = self._stany_poczatkowe(urzadzenia)
+        stany_urzadzen = self._stany_poczatkowe(urzadzenia)
         stan_scenariusza = stan_poczatkowy_scenariusza(
             wejscie.galezie, wejscie.odsprzegi, wejscie.odbiory
         )
-        napiecia, beznapieciowe = self._napiecia_poczatkowe(stan_scenariusza, urzadzenia, stany)
+        napiecia, beznapieciowe = self._napiecia_poczatkowe(
+            stan_scenariusza, urzadzenia, stany_urzadzen
+        )
         model = self._model_dla(stan_scenariusza, beznapieciowe)
-        odbiory, odciete = _rozdziel_odbiory(
-            odbiory_po_zdarzeniach(wejscie.odbiory, stan_scenariusza, t_s=0.0), beznapieciowe
+        odbiory = self._modele_odbiorow(stan_scenariusza, beznapieciowe, 0.0, frozenset())
+        # Stan estymatora czestotliwosci odbioru czulego: `x(0) = arg V_pf` (e(0) = 0, f = f_n).
+        stany = (
+            *(
+                odbior.stan_poczatkowy_odbioru(complex(napiecia[model.indeks_wezla[odbior.wezel]]))
+                for odbior in odbiory
+            ),
+            *stany_urzadzen,
         )
         self._sprawdz_wezly_zerowe(0.0, model, odbiory, urzadzenia, stany)
         # Punkt pracy ponizej napiecia przejscia nie jest rownowaga modelu odbioru — odmowa
         # NAZWANA przed bramka rownowagi (inaczej wyszlaby jako „inicjalizacja niezbiezna").
         for odbior in odbiory:
-            sprawdz_punkt_pracy_odbioru(odbior, complex(napiecia[model.indeks_wezla[odbior.wezel]]))
+            if odbior.przylaczony:
+                sprawdz_punkt_pracy_odbioru(
+                    odbior.odbior, complex(napiecia[model.indeks_wezla[odbior.wezel]])
+                )
+        _sprawdz_odbiory(model, odbiory, stany, napiecia, 0.0, bledy_fazy_przed=None)
         kontekst = KontekstKroku(model, odbiory, urzadzenia, nastawy)
         slad_inicjalizacji = self._bramka_rownowagi(kontekst, stany, napiecia)
-        zasilane_t0 = {odbior.ident for odbior in odbiory}
         slad_odbiorow = [
             opis_odbioru_sladu(
-                odbior,
+                odbior.odbior,
                 (
                     complex(napiecia[model.indeks_wezla[odbior.wezel]])
-                    if odbior.ident in zasilane_t0
+                    if odbior.przylaczony
                     else None
                 ),
+                wejscie.f_bazowa_hz,
             )
-            for odbior in wejscie.odbiory
+            for odbior in odbiory
         ]
+        odciete = tuple(
+            odbior.odbior for odbior in odbiory if odbior.tryb_poza_obwodem == TRYB_ODCIETY
+        )
         slad_inicjalizacji["wezly_beznapieciowe"] = [
             ident for ident in model.identy_wezlow if ident in beznapieciowe
         ]
@@ -277,6 +298,7 @@ class SilnikDynamiki:
             residuum_kcl_max=0.0,
             odbiory_odciete=frozenset(odbior.ident for odbior in odciete),
             start_od_sasiada=False,
+            reset_estymatorow=False,
         )
 
         probkowanie = _Probkowanie(probki, os_czasu, strony, miejsca_zwarc)
@@ -369,6 +391,7 @@ class SilnikDynamiki:
         max_residuum_g = max(max_residuum_g, chwila.residuum_kcl_max)
         odciecia_w_biegu = odciecia_w_biegu or bool(model.wezly_beznapieciowe)
         starty_od_sasiada = starty_od_sasiada or chwila.start_od_sasiada
+        resety_estymatorow = chwila.reset_estymatorow
         indeks_probki = 1
 
         dt_biezace = nastawy.dt_s
@@ -395,9 +418,9 @@ class SilnikDynamiki:
                         if krok <= nastawy.dt_min_s + TOLERANCJA_CZASU_S:
                             raise OdmowaDynamiki(
                                 KOD_KROK_NIEZBIEZNY,
-                                f"Blad lokalny {blad} przekracza tolerancje "
+                                f"Błąd lokalny kroku {blad} przekracza tolerancję "
                                 f"{nastawy.tolerancja_kroku} przy najmniejszym dopuszczalnym "
-                                f"kroku {nastawy.dt_min_s} s (t={t_s} s)",
+                                f"kroku {nastawy.dt_min_s} s (t = {t_s} s).",
                                 t_s=t_s,
                                 dt_s=krok,
                                 blad_lokalny=blad,
@@ -429,6 +452,9 @@ class SilnikDynamiki:
                     if ladowanie is not None:
                         t_konca = ladowanie
                     kroki_szczegolne.extend(_zapisy_nadzoru(nadzor, t_konca))
+                # Blad fazy estymatorow odbiorow z POCZATKU kroku — kontrola poslizgu (przejscie
+                # `e` przez +-pi miedzy krokami) po jego przyjeciu.
+                bledy_fazy_przed = _bledy_fazy(model, odbiory, stany, napiecia)
                 stany = wynik_kroku.stany
                 napiecia = wynik_kroku.napiecia
                 t_s = t_konca
@@ -441,6 +467,9 @@ class SilnikDynamiki:
                     kontekst.adresy_stanow,
                     nastawy,
                     t_s,
+                )
+                _sprawdz_odbiory(
+                    model, odbiory, stany, napiecia, t_s, bledy_fazy_przed=bledy_fazy_przed
                 )
                 kroki += 1
                 iteracje_max = max(iteracje_max, wynik_kroku.iteracje)
@@ -461,6 +490,7 @@ class SilnikDynamiki:
             max_residuum_g = max(max_residuum_g, chwila.residuum_kcl_max)
             odciecia_w_biegu = odciecia_w_biegu or bool(model.wezly_beznapieciowe)
             starty_od_sasiada = starty_od_sasiada or chwila.start_od_sasiada
+            resety_estymatorow = resety_estymatorow or chwila.reset_estymatorow
             if na_siatce:
                 indeks_probki += 1
 
@@ -479,27 +509,24 @@ class SilnikDynamiki:
         if indeks_wpisu != len(wpisy):
             pominiete = [(wpis.rodzaj, wpis.ref, wpis.t_s) for wpis in wpisy[indeks_wpisu:]]
             raise AssertionError(
-                "Bieg zakonczyl sie z NIEWYKONANYMI zdarzeniami harmonogramu: "
-                f"{pominiete}. Kazde zdarzenie w horyzoncie musi zostac wykonane — "
-                "cichy skip jest defektem silnika, nie wlasnoscia scenariusza."
+                "Bieg zakończył się z NIEWYKONANYMI zdarzeniami harmonogramu: "
+                f"{pominiete}. Każde zdarzenie w horyzoncie musi zostać wykonane — "
+                "ciche pominięcie jest defektem silnika, nie własnością scenariusza."
             )
 
         zalozenia_biegu = (
             zalozenia_trybu(wejscie.urzadzenia)
             + zalozenia_harmonogramu(wejscie.harmonogram)
-            + (
-                ((ZALOZENIE_OBSZARU_BEZNAPIECIOWEGO,) if odciecia_w_biegu else ())
-                + ((ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA,) if starty_od_sasiada else ())
-                + (
-                    (ZALOZENIE_PRZYPISANIA_STANU,)
-                    if any(zdarzenie.przypisania for zdarzenie in wykonane)
-                    else ()
-                )
-                + (
-                    (ZALOZENIE_UTRATY_CZESCIOWEJ,)
-                    if any(zdarzenie.rodzaj == "utrata_czesciowa_zrodla" for zdarzenie in wykonane)
-                    else ()
-                )
+            + _zalozenia_warunkowe(
+                obszar_beznapieciowy=odciecia_w_biegu,
+                start_ponownego_zasilenia=starty_od_sasiada,
+                reinicjalizacja_estymatora=resety_estymatorow,
+                przypisanie_stanu=any(
+                    zdarzenie.rodzaj in RODZAJE_PRZYPISAN for zdarzenie in wykonane
+                ),
+                utrata_czesciowa=any(
+                    zdarzenie.rodzaj == "utrata_czesciowa_zrodla" for zdarzenie in wykonane
+                ),
             )
         )
         wlasnosci = WlasnosciBiegu(
@@ -524,7 +551,7 @@ class SilnikDynamiki:
             wlasnosci=wlasnosci,
             tozsamosc=zbuduj_tozsamosc(wejscie),
             metryki=self._metryki(kanaly, probki, os_czasu),
-            zalozenia=ZALOZENIA_RDZENIA + zalozenia_biegu,
+            zalozenia=zalozenia_modelu(wejscie.odbiory) + zalozenia_biegu,
             slad_white_box=self._slad(
                 slad_inicjalizacji,
                 model,
@@ -547,13 +574,13 @@ class SilnikDynamiki:
             if urzadzenie.wezel not in punkt.napiecia_pu:
                 raise odmowa_braku_pola(
                     "punkt_pracy_napiecie",
-                    f"Punkt pracy nie ma napiecia wezla {urzadzenie.wezel!r} "
-                    f"(urzadzenie {urzadzenie.ident!r})",
+                    f"Punkt pracy nie ma napięcia węzła {urzadzenie.wezel} "
+                    f"(urządzenie {urzadzenie.ident}).",
                 )
             if urzadzenie.ident not in punkt.moce_zrodel_pu:
                 raise odmowa_braku_pola(
                     "punkt_pracy_moc",
-                    f"Punkt pracy nie ma mocy zrodla {urzadzenie.ident!r}",
+                    f"Punkt pracy nie ma mocy źródła {urzadzenie.ident}.",
                 )
             stany.append(
                 urzadzenie.stan_poczatkowy(
@@ -590,7 +617,7 @@ class SilnikDynamiki:
         for wezel in wezly:
             if wezel.ident not in punkt.napiecia_pu and wezel.ident not in beznapieciowe:
                 raise odmowa_braku_pola(
-                    "punkt_pracy_napiecie", f"Punkt pracy nie ma napiecia wezla {wezel.ident!r}"
+                    "punkt_pracy_napiecie", f"Punkt pracy nie ma napięcia węzła {wezel.ident}."
                 )
         return wartosci, beznapieciowe
 
@@ -598,21 +625,19 @@ class SilnikDynamiki:
         self,
         t_s: float,
         model: ModelSieci,
-        odbiory: tuple[OdbiorDynamiki, ...],
+        odbiory: tuple[OdbiorCharakterystyczny, ...],
         urzadzenia: tuple[Urzadzenie, ...],
         stany: tuple[np.ndarray, ...],
     ) -> None:
         """NAZWANE odmowy modeli, ktore nie maja rozwiazania przy napieciu narzuconym zerem.
 
-        * Odbior BEZ zadeklarowanego napiecia przejscia `U_min` (skladowa stalopradowa albo
-          stalomocowa, moc niezerowa — `odbiory.wymaga_napiecia_niezerowego`) w wezle zwartym
-          metalicznie: prad charakterystyki nie istnieje przy `U = 0`. Odbior z `U_min`
-          (i czysto impedancyjny) liczy sie tu bez odmowy — galaz impedancyjna, prad zero.
-          Odbiory obszaru beznapieciowego sa ODCIETE wczesniej (brak obwodu), wiec tu nie
-          trafiaja.
-        * Urzadzenie, ktorego rownania nie maja okreslonej wartosci przy `U = 0`
-          (regulacja czytajaca modul napiecia, petla synchronizacji fazowej) — odmowa
-          urzadzenia przenoszona z KONTEKSTEM: wezel, urzadzenie, chwila.
+        Urzadzenie, ktorego rownania nie maja okreslonej wartosci przy `U = 0` (regulacja
+        czytajaca modul napiecia, petla synchronizacji fazowej) — odmowa urzadzenia
+        przenoszona z KONTEKSTEM: wezel, urzadzenie, chwila. Odbiory nie maja tu odmowy:
+        kazdy odbior ze skladowa pradowa albo mocowa deklaruje napiecie przejscia `U_min`
+        (kontrakt), wiec w wezle zwartym metalicznie jest w galezi impedancyjnej i pobiera
+        prad zero dokladnie; odbior czysto impedancyjny jest impedancja; estymator
+        czestotliwosci przy `V = 0` trzyma stan (`e := 0`).
 
         Sprawdzenie jest w chwili NARZUCENIA zera, a nie w pierwszym kroku calkowania:
         odmowa w srodku kroku mowilaby o „kroku niezbieznym", a nie o przyczynie. Z tego
@@ -624,28 +649,8 @@ class SilnikDynamiki:
         if not model.pozycje_zerowe:
             return
         zerowe = {model.identy_wezlow[pozycja] for pozycja in model.pozycje_zerowe}
-        for wezel in model.identy_wezlow:
-            if wezel not in model.zwarcia_metaliczne or wezel in model.wezly_beznapieciowe:
-                continue
-            bez_przejscia = tuple(
-                odbior.ident
-                for odbior in odbiory
-                if odbior.wezel == wezel and wymaga_napiecia_niezerowego(odbior)
-            )
-            if bez_przejscia:
-                raise OdmowaDynamiki(
-                    KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU,
-                    f"Zwarcie metaliczne w węźle {wezel!r} (t = {t_s} s) narzuca U = 0, a węzeł "
-                    f"zasila odbiory {bez_przejscia} bez zadeklarowanego napięcia przejścia U_min "
-                    "— prąd charakterystyki stałoprądowej albo stałomocowej nie istnieje przy "
-                    "zerowym napięciu (odbiór z zadeklarowanym napięciem przejścia przechodzi w "
-                    "stałą impedancję i liczy się w takim węźle bez odmowy). Podaj impedancję "
-                    "zwarcia (R_f, X_f) albo odłącz odbiór przed zwarciem.",
-                    wezel=wezel,
-                    odbiory=bez_przejscia,
-                    t_s=t_s,
-                )
-        for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
+        _, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
+        for urzadzenie, stan in zip(urzadzenia, stany_urzadzen, strict=True):
             if urzadzenie.wezel not in zerowe:
                 continue
             try:
@@ -660,8 +665,8 @@ class SilnikDynamiki:
                 )
                 raise OdmowaDynamiki(
                     odmowa.kod,
-                    f"Urzadzenie {urzadzenie.ident!r} w wezle {urzadzenie.wezel!r} o napieciu "
-                    f"narzuconym zerem (t={t_s} s) nie ma okreslonego modelu przy U = 0: "
+                    f"Urządzenie {urzadzenie.ident} w węźle {urzadzenie.wezel} o napięciu "
+                    f"narzuconym zerem (t = {t_s} s) nie ma określonego modelu przy U = 0: "
                     f"{odmowa}",
                     **szczegoly,
                 ) from odmowa
@@ -768,31 +773,38 @@ class SilnikDynamiki:
         # calka zasobu wymagaloby edycji rdzenia.
         maska_rownowagi = np.ones(pochodne.shape[0], dtype=bool)
         przesuniecie = 0
-        for urzadzenie in kontekst.urzadzenia:
-            bez_rownowagi = set(urzadzenie.stany_bez_rownowagi)
-            for pozycja, nazwa in enumerate(urzadzenie.nazwy_stanow):
+        for element in kontekst.elementy:
+            bez_rownowagi = set(element.stany_bez_rownowagi)
+            for pozycja, nazwa in enumerate(element.nazwy_stanow):
                 if nazwa in bez_rownowagi:
                     maska_rownowagi[przesuniecie + pozycja] = False
-            przesuniecie += len(urzadzenie.nazwy_stanow)
+            przesuniecie += len(element.nazwy_stanow)
         pochodne_rownowagi = pochodne[maska_rownowagi]
 
         norma_f = float(np.max(np.abs(pochodne_rownowagi))) if pochodne_rownowagi.size else 0.0
         norma_g = float(np.max(np.abs(reszta_algebry))) if reszta_algebry.size else 0.0
 
+        # Residua per ELEMENT: urzadzenia (kazde, jak dotad) i odbiory ZE STANEM (estymator
+        # czestotliwosci) — odbior bez stanow nie ma czego raportowac, wiec slad biegu bez
+        # odbiorow czulych jest taki jak przed wprowadzeniem stanow odbiorow.
         residua_urzadzen: list[tuple[str, tuple[tuple[str, float], ...]]] = []
+        residua_odbiorow: list[tuple[str, tuple[tuple[str, float], ...]]] = []
         przesuniecie = 0
-        for urzadzenie in kontekst.urzadzenia:
-            wymiar = len(urzadzenie.nazwy_stanow)
+        liczba_odbiorow = len(kontekst.odbiory)
+        for indeks, element in enumerate(kontekst.elementy):
+            wymiar = len(element.nazwy_stanow)
             wycinek = pochodne[przesuniecie : przesuniecie + wymiar]
-            residua_urzadzen.append(
-                (
-                    urzadzenie.ident,
-                    tuple(
-                        (nazwa, kwantyzuj(float(wartosc)))
-                        for nazwa, wartosc in zip(urzadzenie.nazwy_stanow, wycinek, strict=True)
-                    ),
-                )
+            wpis = (
+                element.ident,
+                tuple(
+                    (nazwa, kwantyzuj(float(wartosc)))
+                    for nazwa, wartosc in zip(element.nazwy_stanow, wycinek, strict=True)
+                ),
             )
+            if indeks >= liczba_odbiorow:
+                residua_urzadzen.append(wpis)
+            elif wymiar:
+                residua_odbiorow.append(wpis)
             przesuniecie += wymiar
         # MODUL residuum ZESPOLONEGO wezla (Re i Im). Korekta 2026-09-23 (karta AB-1b.1):
         # dawny zapis `abs(reszta_algebry[pozycja])` czytal wylacznie czesc RZECZYWISTA
@@ -818,15 +830,16 @@ class SilnikDynamiki:
         if norma_f > nastawy.eps_init or norma_g > nastawy.eps_init:
             raise OdmowaDynamiki(
                 KOD_INICJALIZACJA_NIEZBIEZNA,
-                "Punkt pracy nie jest rownowaga ukladu: "
+                "Punkt pracy nie jest równowagą układu: "
                 f"||f|| = {norma_f}, ||g|| = {norma_g}, eps_init = {nastawy.eps_init}",
                 residuum_f=norma_f,
                 residuum_g=norma_g,
                 eps_init=nastawy.eps_init,
                 residua_urzadzen=tuple(residua_urzadzen),
+                residua_odbiorow=tuple(residua_odbiorow),
                 residua_wezlow=residua_wezlow,
             )
-        return {
+        slad: dict[str, Any] = {
             "residuum_f": kwantyzuj(norma_f),
             "residuum_g": kwantyzuj(norma_g),
             "eps_init": kwantyzuj(nastawy.eps_init),
@@ -841,6 +854,12 @@ class SilnikDynamiki:
             ],
             "wezly": [list(pozycja) for pozycja in residua_wezlow],
         }
+        if residua_odbiorow:
+            slad["odbiory_ze_stanem"] = [
+                {"odbior": ident, "residua_stanow": [list(pozycja) for pozycja in residua]}
+                for ident, residua in residua_odbiorow
+            ]
+        return slad
 
     # -- zdarzenia --------------------------------------------------------
 
@@ -976,20 +995,24 @@ class SilnikDynamiki:
                 residuum_kcl_max=0.0,
                 odbiory_odciete=poprzednia.odbiory_odciete,
                 start_od_sasiada=False,
+                reset_estymatorow=False,
             )
 
         stany_przed_chwila = tuple(np.array(stan, dtype=float, copy=True) for stan in stany)
+        stany_odbiorow, stany_urzadzen = rozdziel_stany(
+            poprzednia.odbiory, poprzednia.urzadzenia, stany
+        )
         nowy_stan = poprzednia.stan_scenariusza
         for wpis in do_wykonania:
             nowy_stan = zastosuj(wpis, nowy_stan)
         urzadzenia_po = urzadzenia_w_stanie(wejscie.urzadzenia, nowy_stan)
-        stany_po, przypisania_wpisow, przypisane = self._przypisz(
-            t_s, do_wykonania, urzadzenia_po, stany
+        stany_urzadzen_po, przypisania_wpisow, przypisane_urzadzen = self._przypisz(
+            t_s, do_wykonania, urzadzenia_po, stany_urzadzen
         )
-        if przypisane:
-            dolne_wazne, gorne_wazne = zakresy_waznosci_urzadzen(urzadzenia_po)
+        if przypisane_urzadzen:
+            dolne_wazne, gorne_wazne = zakresy_waznosci_elementow(urzadzenia_po)
             sprawdz_zakresy_waznosci(
-                spakuj_stany(stany_po),
+                spakuj_stany(stany_urzadzen_po),
                 dolne_wazne,
                 gorne_wazne,
                 KontekstKroku(poprzednia.model, (), urzadzenia_po, wejscie.nastawy).adresy_stanow,
@@ -997,7 +1020,7 @@ class SilnikDynamiki:
                 t_s,
             )
         beznapieciowe, przydzial = self._obszary_beznapieciowe(
-            nowy_stan, urzadzenia_po, stany_po, napiecia
+            nowy_stan, urzadzenia_po, stany_urzadzen_po, napiecia
         )
         self._sprawdz_izolacje(
             t_s,
@@ -1006,31 +1029,10 @@ class SilnikDynamiki:
             beznapieciowe,
             przydzial,
             urzadzenia_po,
-            stany_po,
+            stany_urzadzen_po,
             napiecia,
         )
         model = self._model_dla(nowy_stan, beznapieciowe)
-        odbiory, odciete = _rozdziel_odbiory(
-            odbiory_po_zdarzeniach(wejscie.odbiory, nowy_stan, t_s=t_s), beznapieciowe
-        )
-        self._sprawdz_wezly_zerowe(t_s, model, odbiory, urzadzenia_po, stany_po)
-        napiecia_startowe, start_od_sasiada, start_od_sem = self._napiecia_startowe(
-            poprzednia.model, model, napiecia, urzadzenia_po, stany_po
-        )
-
-        napiecia_po, raport = reinicjalizuj(
-            model,
-            odbiory,
-            urzadzenia_po,
-            stany_po,
-            napiecia,
-            nastawy=wejscie.nastawy,
-            t_s=t_s,
-            napiecia_startowe=napiecia_startowe,
-        )
-        delta_x_nieprzypisane = _skok_stanow_nieprzypisanych(
-            stany_przed_chwila, stany_po, przypisane
-        )
         przed_martwe = poprzednia.model.wezly_beznapieciowe
         obszary_odciete = tuple(
             ident
@@ -1042,24 +1044,64 @@ class SilnikDynamiki:
             for ident in model.identy_wezlow
             if ident in przed_martwe and ident not in beznapieciowe
         )
+        # Algebra chwili liczy odbiory wezlow PONOWNIE ZASILONYCH z estymatorem wyzerowanym
+        # (czestotliwosc widziana = f_n): odbior odciety nie mierzyl, a jego stan dostaje po
+        # tej algebrze wartosc `arg V+` (regula ponownego zasilenia).
+        odbiory_algebry = self._modele_odbiorow(
+            nowy_stan, beznapieciowe, t_s, frozenset(obszary_zasilone)
+        )
+        stany_po = (*stany_odbiorow, *stany_urzadzen_po)
+        self._sprawdz_wezly_zerowe(t_s, model, odbiory_algebry, urzadzenia_po, stany_po)
+        napiecia_startowe, start_od_sasiada, start_od_sem = self._napiecia_startowe(
+            poprzednia.model, model, napiecia, urzadzenia_po, stany_urzadzen_po
+        )
+
+        napiecia_po, raport = reinicjalizuj(
+            model,
+            odbiory_algebry,
+            urzadzenia_po,
+            stany_po,
+            napiecia,
+            nastawy=wejscie.nastawy,
+            t_s=t_s,
+            napiecia_startowe=napiecia_startowe,
+        )
+        odbiory = self._modele_odbiorow(nowy_stan, beznapieciowe, t_s, frozenset())
+        stany_odbiorow_po, przypisania_estymatorow, przypisane_odbiorow = _reinicjalizuj_estymatory(
+            model, odbiory_algebry, stany_odbiorow, napiecia_po
+        )
+        stany_po = (*stany_odbiorow_po, *stany_urzadzen_po)
+        przypisane = frozenset(
+            {(len(odbiory) + indeks, pozycja) for indeks, pozycja in przypisane_urzadzen}
+            | przypisane_odbiorow
+        )
+        if przypisania_estymatorow:
+            # Przypisanie wynika ze stanu PO wszystkich zdarzeniach chwili (ponowne zasilenie
+            # jest skutkiem chwili, nie jednego wpisu) — zapis przy ostatnim wpisie chwili.
+            przypisania_wpisow = (
+                *przypisania_wpisow[:-1],
+                (*przypisania_wpisow[-1], *przypisania_estymatorow),
+            )
+        _sprawdz_odbiory(model, odbiory, stany_po, napiecia_po, t_s, bledy_fazy_przed=None)
+        delta_x_nieprzypisane = _skok_stanow_nieprzypisanych(
+            stany_przed_chwila, stany_po, przypisane
+        )
         # „Moc sprzed odciecia" = moc POBIERANA tuz przed chwila (probka L) wg modelu odbioru
-        # sprzed chwili (`odbiory.moc_poboru_pu` przy napieciu L); odbior, ktory przed chwila
-        # nie pobieral (byl odlaczony zdarzeniem), nie mial czego stracic — zero dokladne.
-        pobierajace_przed = {odbior.ident: odbior for odbior in poprzednia.odbiory}
+        # sprzed chwili (`moc_poboru_pu` przy napieciu L i stanie estymatora L); odbior, ktory
+        # przed chwila nie pobieral (byl odlaczony zdarzeniem), nie mial czego stracic — zero.
         odbiory_odciete = tuple(
             (
-                odbior.ident,
-                (
-                    moc_poboru_pu(
-                        pobierajace_przed[odbior.ident],
-                        complex(napiecia[poprzednia.model.indeks_wezla[odbior.wezel]]),
-                    )
-                    if odbior.ident in pobierajace_przed
-                    else 0j
+                odbior_przed.ident,
+                odbior_przed.moc_poboru_pu(
+                    stan_przed,
+                    complex(napiecia[poprzednia.model.indeks_wezla[odbior_przed.wezel]]),
                 ),
             )
-            for odbior in odciete
-            if odbior.ident not in poprzednia.odbiory_odciete
+            for odbior_przed, stan_przed, odbior in zip(
+                poprzednia.odbiory, stany_odbiorow, odbiory, strict=True
+            )
+            if odbior.ident in _odbiory_odciete(odbiory, nowy_stan)
+            and odbior.ident not in poprzednia.odbiory_odciete
         )
         for wpis, przypisania, lokalizacja in zip(
             do_wykonania, przypisania_wpisow, lokalizacje, strict=True
@@ -1098,7 +1140,9 @@ class SilnikDynamiki:
                 "nawroty": raport.nawroty,
                 "obszary_odciete": list(obszary_odciete),
                 "odbiory_odciete": _opis_odbiorow(
-                    tuple(odbior for odbior in odciete if odbior.ident in dict(odbiory_odciete))
+                    tuple(
+                        odbior.odbior for odbior in odbiory if odbior.ident in dict(odbiory_odciete)
+                    )
                 ),
                 "obszary_zasilone_ponownie": list(obszary_zasilone),
                 "wezly_ograniczone": list(raport.wezly_ograniczone),
@@ -1122,9 +1166,51 @@ class SilnikDynamiki:
             kontekst=KontekstKroku(model, odbiory, urzadzenia_po, wejscie.nastawy),
             bylo_zdarzenie=True,
             residuum_kcl_max=raport.residuum_kcl_max,
-            odbiory_odciete=frozenset(odbior.ident for odbior in odciete),
+            odbiory_odciete=_odbiory_odciete(odbiory, nowy_stan),
             start_od_sasiada=bool(start_od_sasiada or start_od_sem),
+            reset_estymatorow=bool(przypisania_estymatorow),
         )
+
+    def _modele_odbiorow(
+        self,
+        stan: StanScenariusza,
+        beznapieciowe: frozenset[str],
+        t_s: float,
+        zasilone_ponownie: frozenset[str],
+    ) -> tuple[OdbiorCharakterystyczny, ...]:
+        """Model KAZDEGO odbioru wejscia w stanie scenariusza (kolejnosc wejscia).
+
+        Odbior w obszarze beznapieciowym -> tryb 3 (odciety — TEN SAM predykat, co
+        `stan_zasilania@ = 0`); odbior odlaczony zdarzeniem na zywej szynie -> tryb 2;
+        pozostale maja obwod, z naniesionymi skokami mocy bazowej
+        (`zdarzenia.odbiory_po_zdarzeniach`). Odbior bez obwodu zachowuje DANE (moc bazowa i
+        charakterystyka), bo jego stan estymatora istnieje dalej, a przy ponownym
+        zalaczeniu jego skoki mocy wracaja razem z nim. `zasilone_ponownie` — wezly, ktore
+        w tej chwili przestaly byc beznapieciowe: odbiory z obwodem w tych wezlach licza
+        algebre chwili z estymatorem wyzerowanym.
+        """
+        wejscie = self.wejscie
+        przylaczone = {
+            odbior.ident: odbior
+            for odbior in odbiory_po_zdarzeniach(wejscie.odbiory, stan, t_s=t_s)
+        }
+        modele: list[OdbiorCharakterystyczny] = []
+        for odbior in wejscie.odbiory:
+            if odbior.wezel in beznapieciowe:
+                tryb: float | None = TRYB_ODCIETY
+            elif odbior.ident not in przylaczone:
+                tryb = TRYB_ODLACZONY
+            else:
+                tryb = None
+            modele.append(
+                model_odbioru(
+                    przylaczone.get(odbior.ident, odbior),
+                    wejscie.f_bazowa_hz,
+                    tryb_poza_obwodem=tryb,
+                    estymator_wyzerowany=tryb is None and odbior.wezel in zasilone_ponownie,
+                )
+            )
+        return tuple(modele)
 
     @staticmethod
     def _przypisz(
@@ -1283,11 +1369,11 @@ class SilnikDynamiki:
             )
             raise OdmowaDynamiki(
                 KOD_ZWARCIE_NIEODIZOLOWANE,
-                f"Usuniecie zwarcia {miejsce} w t={t_s} s zadeklarowane jako `izolacja`, ale "
-                f"w stanie po zdarzeniach tej chwili miejsce zwarcia nadal lezy w wyspie "
-                f"zasilanej {wyspa} przez {wnoszace}. Zaden aparat nie przerwal pradu zwarcia: "
-                "dodaj otwarcie galezi odcinajacych miejsce zwarcia w tej chwili albo "
-                "zadeklaruj usuniecie `samoczynne` (idealizacja zwarcia przemijajacego).",
+                f"Usunięcie zwarcia {miejsce} w t = {t_s} s zadeklarowane jako `izolacja`, ale "
+                f"w stanie po zdarzeniach tej chwili miejsce zwarcia nadal leży w wyspie "
+                f"zasilanej {wyspa} przez {wnoszace}. Żaden aparat nie przerwał prądu zwarcia: "
+                "dodaj otwarcie gałęzi odcinających miejsce zwarcia w tej chwili albo "
+                "zadeklaruj usunięcie `samoczynne` (idealizacja zwarcia przemijającego).",
                 t_s=t_s,
                 wyspa=wyspa,
                 urzadzenia_wnoszace=wnoszace,
@@ -1459,7 +1545,7 @@ class SilnikDynamiki:
                     przestrzen="siec",
                     jednostka="pu",
                     element_ref=ident,
-                    opis_pl=f"Modul napiecia na szynie {ident}",
+                    opis_pl="Moduł napięcia szyny",
                 )
             )
             kanaly.append(
@@ -1468,7 +1554,7 @@ class SilnikDynamiki:
                     przestrzen="siec",
                     jednostka="deg",
                     element_ref=ident,
-                    opis_pl=f"Kat napiecia na szynie {ident}",
+                    opis_pl="Kąt napięcia szyny",
                 )
             )
         for urzadzenie in urzadzenia:
@@ -1479,7 +1565,7 @@ class SilnikDynamiki:
                         przestrzen="urzadzenie",
                         jednostka=jednostka_stanu(nazwa),
                         element_ref=urzadzenie.ident,
-                        opis_pl=f"Stan {nazwa} urzadzenia {urzadzenie.ident}",
+                        opis_pl="Zmienna stanu urządzenia",
                     )
                 )
             kanaly.append(
@@ -1488,7 +1574,7 @@ class SilnikDynamiki:
                     przestrzen="urzadzenie",
                     jednostka="pu",
                     element_ref=urzadzenie.ident,
-                    opis_pl=f"Moc czynna oddawana do sieci przez {urzadzenie.ident}",
+                    opis_pl="Moc czynna oddawana do sieci przez urządzenie",
                 )
             )
             kanaly.append(
@@ -1497,7 +1583,7 @@ class SilnikDynamiki:
                     przestrzen="urzadzenie",
                     jednostka="pu",
                     element_ref=urzadzenie.ident,
-                    opis_pl=f"Moc bierna oddawana do sieci przez {urzadzenie.ident}",
+                    opis_pl="Moc bierna oddawana do sieci przez urządzenie",
                 )
             )
         kanaly.extend(self._kanaly_obserwabli(model))
@@ -1508,7 +1594,7 @@ class SilnikDynamiki:
                     przestrzen="obserwabla",
                     jednostka="pu",
                     element_ref=miejsce.element,
-                    opis_pl=f"Modul pradu do ziemi w miejscu zwarcia {miejsce.opis_pl}",
+                    opis_pl=f"Moduł prądu do ziemi w miejscu zwarcia {miejsce.opis_pl}",
                 )
             )
             kanaly.append(
@@ -1517,7 +1603,7 @@ class SilnikDynamiki:
                     przestrzen="obserwabla",
                     jednostka="pu",
                     element_ref=miejsce.element,
-                    opis_pl=f"Modul napiecia w miejscu zwarcia {miejsce.opis_pl}",
+                    opis_pl=f"Moduł napięcia w miejscu zwarcia {miejsce.opis_pl}",
                 )
             )
             kanaly.append(
@@ -1527,8 +1613,8 @@ class SilnikDynamiki:
                     jednostka="deg",
                     element_ref=miejsce.element,
                     opis_pl=(
-                        f"Kat fazora pradu do ziemi w miejscu zwarcia {miejsce.opis_pl} "
-                        "(brak wartosci przy pradzie zerowym)"
+                        f"Kąt fazora prądu do ziemi w miejscu zwarcia {miejsce.opis_pl} "
+                        "(brak wartości przy prądzie zerowym)"
                     ),
                 )
             )
@@ -1553,8 +1639,8 @@ class SilnikDynamiki:
                     jednostka="kod",
                     element_ref=ident,
                     opis_pl=(
-                        f"Stan zasilania szyny {ident}: 1 zasilana, 0 beznapieciowa, "
-                        "2 napiecie narzucone (zwarcie metaliczne albo zrodlo idealne)"
+                        "Stan zasilania szyny: 1 zasilana, 0 beznapięciowa, "
+                        "2 napięcie narzucone (zwarcie metaliczne albo źródło idealne)"
                     ),
                 )
             )
@@ -1565,12 +1651,12 @@ class SilnikDynamiki:
                     przestrzen="siec",
                     jednostka="kod",
                     element_ref=galaz.ident,
-                    opis_pl=f"Stan galezi {galaz.ident}: 1 zalaczona, 0 wylaczona",
+                    opis_pl="Stan gałęzi: 1 załączona, 0 wyłączona",
                 )
             )
             for przyrostek, zacisk in (
-                ("i_od_kat_deg", "poczatkowego"),
-                ("i_do_kat_deg", "koncowego"),
+                ("i_od_kat_deg", "początkowego"),
+                ("i_do_kat_deg", "końcowego"),
             ):
                 kanaly.append(
                     KanalWyniku(
@@ -1579,9 +1665,8 @@ class SilnikDynamiki:
                         jednostka="deg",
                         element_ref=galaz.ident,
                         opis_pl=(
-                            f"Kat fazora pradu zacisku {zacisk} galezi {galaz.ident} "
-                            f"({galaz.wezel_od} -> {galaz.wezel_do}); brak wartosci przy "
-                            "pradzie zerowym"
+                            f"Kąt fazora prądu zacisku {zacisk} gałęzi; brak wartości przy "
+                            "prądzie zerowym"
                         ),
                     )
                 )
@@ -1603,7 +1688,7 @@ class SilnikDynamiki:
                     przestrzen="obserwabla",
                     jednostka="Hz",
                     element_ref=ident,
-                    opis_pl=f"Czestotliwosc elektryczna szyny {ident}",
+                    opis_pl="Częstotliwość elektryczna szyny",
                 )
             )
             kanaly.append(
@@ -1612,7 +1697,7 @@ class SilnikDynamiki:
                     przestrzen="obserwabla",
                     jednostka="Hz",
                     element_ref=ident,
-                    opis_pl=f"Oszacowanie bledu numerycznego czestotliwosci szyny {ident}",
+                    opis_pl="Oszacowanie błędu numerycznego częstotliwości szyny",
                 )
             )
             kanaly.append(
@@ -1621,17 +1706,17 @@ class SilnikDynamiki:
                     przestrzen="obserwabla",
                     jednostka="kod",
                     element_ref=ident,
-                    opis_pl=f"Rozroznialnosc odchylki czestotliwosci szyny {ident}",
+                    opis_pl="Rozróżnialność odchyłki częstotliwości szyny",
                 )
             )
         for galaz in model.galezie:
             for przyrostek, opis in (
-                ("i_od_pu", "Modul pradu zacisku poczatkowego"),
-                ("i_do_pu", "Modul pradu zacisku koncowego"),
-                ("p_od_pu", "Moc czynna wplywajaca do galezi zaciskiem poczatkowym"),
-                ("q_od_pu", "Moc bierna wplywajaca do galezi zaciskiem poczatkowym"),
-                ("p_do_pu", "Moc czynna wplywajaca do galezi zaciskiem koncowym"),
-                ("q_do_pu", "Moc bierna wplywajaca do galezi zaciskiem koncowym"),
+                ("i_od_pu", "Moduł prądu zacisku początkowego gałęzi"),
+                ("i_do_pu", "Moduł prądu zacisku końcowego gałęzi"),
+                ("p_od_pu", "Moc czynna wpływająca do gałęzi zaciskiem początkowym"),
+                ("q_od_pu", "Moc bierna wpływająca do gałęzi zaciskiem początkowym"),
+                ("p_do_pu", "Moc czynna wpływająca do gałęzi zaciskiem końcowym"),
+                ("q_do_pu", "Moc bierna wpływająca do gałęzi zaciskiem końcowym"),
             ):
                 kanaly.append(
                     KanalWyniku(
@@ -1639,10 +1724,7 @@ class SilnikDynamiki:
                         przestrzen="obserwabla",
                         jednostka="pu",
                         element_ref=galaz.ident,
-                        opis_pl=(
-                            f"{opis} galezi {galaz.ident} "
-                            f"({galaz.wezel_od} -> {galaz.wezel_do})"
-                        ),
+                        opis_pl=opis,
                     )
                 )
         return tuple(kanaly)
@@ -1653,7 +1735,7 @@ class SilnikDynamiki:
         strona: str,
         t_s: float,
         model: ModelSieci,
-        odbiory: tuple[OdbiorDynamiki, ...],
+        odbiory: tuple[OdbiorCharakterystyczny, ...],
         urzadzenia: tuple[Urzadzenie, ...],
         stany: tuple[np.ndarray, ...],
         napiecia: np.ndarray,
@@ -1662,11 +1744,12 @@ class SilnikDynamiki:
         probki = probkowanie.probki
         probkowanie.os_czasu.append(t_s)
         probkowanie.strony.append(strona)
+        stany_odbiorow, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
         for pozycja, ident in enumerate(model.identy_wezlow):
             napiecie = complex(napiecia[pozycja])
             probki[f"u_pu@{ident}"].append(abs(napiecie))
             probki[f"kat_deg@{ident}"].append(_kat_deg(napiecie))
-        for indeks, (urzadzenie, stan) in enumerate(zip(urzadzenia, stany, strict=True)):
+        for indeks, (urzadzenie, stan) in enumerate(zip(urzadzenia, stany_urzadzen, strict=True)):
             for nazwa, wartosc in zip(urzadzenie.nazwy_stanow, stan, strict=True):
                 probki[f"{nazwa}@{urzadzenie.ident}"].append(float(wartosc))
             moc = moc_urzadzenia_pu(model, odbiory, urzadzenia, stany, napiecia, indeks)
@@ -1677,7 +1760,7 @@ class SilnikDynamiki:
             probki, model, odbiory, urzadzenia, stany, napiecia, probkowanie.miejsca_zwarc
         )
         self._probkuj_stany_i_katy(probki, model, urzadzenia, napiecia)
-        _probkuj_odbiory(probki, model, odbiory, self.wejscie.odbiory, napiecia)
+        _probkuj_odbiory(probki, model, odbiory, stany_odbiorow, napiecia)
 
     def _probkuj_stany_i_katy(
         self,
@@ -1710,7 +1793,7 @@ class SilnikDynamiki:
         self,
         probki: dict[str, list[float | None]],
         model: ModelSieci,
-        odbiory: tuple[OdbiorDynamiki, ...],
+        odbiory: tuple[OdbiorCharakterystyczny, ...],
         urzadzenia: tuple[Urzadzenie, ...],
         stany: tuple[np.ndarray, ...],
         napiecia: np.ndarray,
@@ -1773,7 +1856,7 @@ class SilnikDynamiki:
         probki: dict[str, list[float | None]],
         strona: str,
         model: ModelSieci,
-        odbiory: tuple[OdbiorDynamiki, ...],
+        odbiory: tuple[OdbiorCharakterystyczny, ...],
         urzadzenia: tuple[Urzadzenie, ...],
         stany: tuple[np.ndarray, ...],
         napiecia: np.ndarray,
@@ -1874,7 +1957,7 @@ class SilnikDynamiki:
         kroki: int,
         kroki_odrzucone: int,
         iteracje_max: int,
-        idealizacje: tuple[str, ...],
+        idealizacje: tuple[ZalozenieRdzenia, ...],
         odbiory: list[dict[str, object]],
     ) -> dict[str, Any]:
         """Slad WHITE BOX biegu — BEZ szeregow czasowych.
@@ -1928,9 +2011,9 @@ class SilnikDynamiki:
                 ),
             },
             "kroki_szczegolne": kroki_szczegolne,
-            # Idealizacje zadeklarowane w harmonogramie (usuniecie zwarcia `samoczynne`)
-            # — te same zdania, co w `zalozenia` wyniku; slad nie moze ich przemilczec.
-            "idealizacje_harmonogramu": list(idealizacje),
+            # Zalozenia BIEGU (idealizacje harmonogramu, tryb stanowiska, mechanizmy uzyte w
+            # biegu) — te same rekordy, co w `zalozenia` wyniku; slad nie moze ich przemilczec.
+            "idealizacje_harmonogramu": [rekord_zalozenia(zalozenie) for zalozenie in idealizacje],
             "podsumowanie_krokow": {
                 "kroki": kroki,
                 "kroki_odrzucone": kroki_odrzucone,
@@ -1940,34 +2023,55 @@ class SilnikDynamiki:
         }
 
 
-#: Zalozenia modelu — wchodza do wyniku, zeby czytelnik przebiegu wiedzial, co
-#: model OBEJMUJE, a czego nie, bez siegania do dokumentacji.
+#: Zalozenia modelu — wchodza do wyniku, zeby czytelnik przebiegu wiedzial, co model
+#: OBEJMUJE, a czego nie, bez siegania do dokumentacji. Rdzen oddaje je jako REKORDY
+#: (`wynik.ZalozenieRdzenia`: kod, elementy, wielkosci, pozycje), a zdania z nazwami
+#: elementow modelu sklada warstwa aplikacji (`application.dynamika.zalozenia`).
 #:
-#: WIERSZ O URZADZENIACH JEST WYPROWADZONY Z REJESTRU, NIE PRZEPISANY. POMIAR,
-#: NIE OSTROZNOSC (2026-09-18): zdanie brzmialo „maszyna klasyczna 2. rzedu i
-#: szyna sztywna" jeszcze po karcie W6-3A, ktora dolozyla piec rodzin — a trafia
-#: ono do pola `zalozenia` KAZDEGO wyniku, czyli wprost do projektanta. Deklaracja
-#: przepisana recznie rozjezdza sie z kodem przy pierwszym rozszerzeniu; zrodlem
-#: jest wiec `RODZINY_OBSLUGIWANE` fabryki, a zgodnosc w OBIE STRONY pilnuje
+#: WIERSZ O URZADZENIACH JEST WYPROWADZONY Z REJESTRU, NIE PRZEPISANY. POMIAR, NIE
+#: OSTROZNOSC (2026-09-18): zdanie brzmialo „maszyna klasyczna 2. rzedu i szyna sztywna"
+#: jeszcze po karcie W6-3A, ktora dolozyla piec rodzin. Pozycje rekordu `rodziny_urzadzen`
+#: to `RODZINY_OBSLUGIWANE` fabryki, a zgodnosc w OBIE STRONY pilnuje
 #: `test_zalozenia_wymieniaja_dokladnie_rodziny_fabryki`.
-ZALOZENIA_RDZENIA: tuple[str, ...] = (
-    "Model RMS skladowej zgodnej: os czasu niesie obwiednie fazorow, nie przebiegi chwilowe.",
-    "Odbiory: charakterystyka statyczna z rozpływu (wielomian ZIP: składowe stałej "
-    "impedancji, stałego prądu i stałej mocy) liczona przy częstotliwości znamionowej; "
-    "poniżej zadeklarowanego napięcia przejścia U_min składowe prądowa i mocowa przechodzą "
-    "w stałą impedancję (moc i prąd ciągłe w U_min, pochodna mocy po napięciu ma tam "
-    "załamanie), więc przy zapadzie do zera prąd odbioru maleje do zera. Odbiór bez "
-    "zadeklarowanego U_min liczy się charakterystyką przy każdym napięciu dodatnim — przy "
-    "głębokim zapadzie układ algebraiczny może nie mieć rozwiązania (odmowa nazwana), a "
-    "zwarcie metaliczne w jego węźle jest odmową. Odbiory jednofazowe wchodzą jako "
-    "symetryczne, jak w rozpływie symetrycznym; odbiór czuły częstotliwościowo jest odmową.",
-    "Zwarcia wylacznie trojfazowe; niesymetria wymaga skladowych symetrycznych.",
-    "Rodziny urzadzen skladane przez rdzen: " + ", ".join(RODZINY_OBSLUGIWANE) + ".",
-    "W chwili kazdego zdarzenia wynik niesie dwie probki: L (stan przed naniesieniem "
-    "zdarzen tej chwili) i P (stan po zdarzeniach i jednej re-inicjalizacji algebry); "
-    "czestotliwosc w obu jest niedostepna (chwila nieciaglosci), a strone kazdej probki "
-    "niesie strona_probki.",
-)
+def zalozenia_modelu(odbiory: tuple[OdbiorDynamiki, ...]) -> tuple[ZalozenieRdzenia, ...]:
+    """Zalozenia STALE modelu (kazdy wynik) plus estymator czestotliwosci odbiorow czulych."""
+    stale = (
+        ZalozenieRdzenia("model_rms_skladowej_zgodnej", (), (), ()),
+        ZalozenieRdzenia("model_odbiorow", (), (), ()),
+        ZalozenieRdzenia("zwarcia_trojfazowe", (), (), ()),
+        ZalozenieRdzenia("rodziny_urzadzen", (), (), tuple(RODZINY_OBSLUGIWANE)),
+        ZalozenieRdzenia("probki_obustronne", (), (), ()),
+    )
+    czule = tuple(
+        odbior.ident for odbior in odbiory if jest_czuly_czestotliwosciowo(odbior.charakterystyka)
+    )
+    if not czule:
+        return stale
+    return stale + (ZalozenieRdzenia("estymator_czestotliwosci_odbiorow", czule, (), ()),)
+
+
+def _zalozenia_warunkowe(
+    *,
+    obszar_beznapieciowy: bool,
+    start_ponownego_zasilenia: bool,
+    reinicjalizacja_estymatora: bool,
+    przypisanie_stanu: bool,
+    utrata_czesciowa: bool,
+) -> tuple[ZalozenieRdzenia, ...]:
+    """Zalozenia mechanizmow UZYTYCH w biegu — rekord jest obecny wtedy i tylko wtedy, gdy
+    mechanizm zadzialal (wynik bez mechanizmu rozni sie wylacznie brakiem rekordu)."""
+    return tuple(
+        ZalozenieRdzenia(kod, (), (), ())
+        for kod, uzyty in (
+            ("obszar_beznapieciowy", obszar_beznapieciowy),
+            ("start_ponownego_zasilenia", start_ponownego_zasilenia),
+            ("reinicjalizacja_estymatora_odbioru", reinicjalizacja_estymatora),
+            ("przypisanie_stanu", przypisanie_stanu),
+            ("utrata_czesciowa_zrodla", utrata_czesciowa),
+        )
+        if uzyty
+    )
+
 
 #: Kody `stan_zasilania@` (karta AB-1b.1 par. 0 pkt 8) — zbior ZAMKNIETY, przypiety testem.
 STAN_ZASILANIA_BEZNAPIECIOWY = 0.0
@@ -2004,41 +2108,6 @@ def _max_liczb(szereg: list[float | None]) -> float:
     return max(wartosc for wartosc in szereg if wartosc is not None)
 
 
-#: Zalozenie dopisywane do wyniku, gdy w biegu wystapil obszar beznapieciowy (w t = 0
-#: albo po zdarzeniu). Zdanie jest stale, wiec wynik z tym mechanizmem i bez niego
-#: roznia sie wylacznie obecnoscia tego wiersza.
-ZALOZENIE_OBSZARU_BEZNAPIECIOWEGO = (
-    "Obszar beznapieciowy (wyspa, w ktorej zadne urzadzenie nie wnosi pradu ani pochodnej "
-    "pradu po napieciu) ma napiecie rowne zeru dokladnie, a jego odbiory nie pobieraja "
-    "pradu — obwod bez drogi do zrodla nie przewodzi; wykaz odcietych wezlow i odbiorow "
-    "niesie kazde wykonane zdarzenie."
-)
-#: Zalozenie dopisywane do wyniku, gdy ktorys wezel startowal Newtona od napiecia sasiada.
-ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA = (
-    "Wezel ponownie zasilony (albo po zdjeciu zwarcia metalicznego) startuje obliczenie "
-    "rozplywu chwili od napiecia najblizszego wezla zywego (przeszukiwanie wszerz w "
-    "kolejnosci indeksow), a gdy takiego nie ma — od napiecia jalowego (SEM) urzadzenia "
-    "przylaczonego w tym wezle; to jest wybor punktu startowego Newtona, nie korekta "
-    "rozwiazania; przy odbiorach o stalej mocy prowadzi do rozwiazania o wyzszym napieciu."
-)
-#: Zalozenie dopisywane do wyniku, gdy w biegu wykonano przypisanie stanu albo komende
-#: regulacji (karta AB-1b.1 par. 0 pkt 9).
-ZALOZENIE_PRZYPISANIA_STANU = (
-    "Przypisanie stanu i komenda regulacji zmieniaja w chwili zdarzenia wyłącznie nastawy "
-    "wymienione w zdarzeniu (wartość zadana dokładnie, bez dociagania i bez ponownego "
-    "wyznaczania stanu urządzenia z punktu pracy); pozostale stany rozniczkowe są ciagle, "
-    "a algebra jest rozwiazywana od nowa raz na chwile; kazde przypisanie (adres, przed, po) "
-    "i zmierzony skok stanow nieprzypisanych niesie wykonane zdarzenie."
-)
-#: Zalozenie dopisywane do wyniku, gdy w biegu wykonano czesciowa utrate zrodla
-#: (karta AB-1b.1 par. 0 pkt 10).
-ZALOZENIE_UTRATY_CZESCIOWEJ = (
-    "Częściowa utrata źródła: źródło jest agregatem identycznych jednostek rownoleglych; "
-    "ubytek jednostek zmienia wyłącznie prąd oddawany do sieci (mnozony przez udział "
-    "pozostaly) i nie zmienia stanu na jednostkę (prądu zadanego, katow regulatorów, "
-    "predkosci, stanu naladowania); nastawa mocy wydana po utracie dotyczy jednostek "
-    "pozostałych."
-)
 #: Tryby scenariusza (karta AB-1b.1 par. 0 pkt 11) — wyprowadzane z urzadzen biegu,
 #: nie deklarowane: `stanowisko`, gdy siec zasila zrodlo testowe, inaczej `siec`.
 TRYB_SIEC = "siec"
@@ -2051,26 +2120,23 @@ def tryb_scenariusza(urzadzenia: tuple[Urzadzenie, ...]) -> str:
     return TRYB_STANOWISKO if jest_trybem_stanowiska(urzadzenia) else TRYB_SIEC
 
 
-def zalozenia_trybu(urzadzenia: tuple[Urzadzenie, ...]) -> tuple[str, ...]:
-    """Zdanie trybu STANOWISKA dla kazdego zrodla testowego (kolejnosc urzadzen wejscia)."""
-    zdania: list[str] = []
-    for urzadzenie in urzadzenia:
-        if not isinstance(urzadzenie, ZrodloTestowe):
-            continue
-        sprzezenie = (
-            "jako idealne źródło napięciowe (impedancja zerowa, napięcie punktu przyłączenia "
-            "narzucone rowne SEM)"
-            if urzadzenie.impedancja_pu is None
-            else "za impedancja zastępcza sieci (sprzężenie prądowe)"
+def zalozenia_trybu(urzadzenia: tuple[Urzadzenie, ...]) -> tuple[ZalozenieRdzenia, ...]:
+    """Zalozenie trybu STANOWISKA dla kazdego zrodla testowego (kolejnosc urzadzen wejscia).
+
+    Elementy: zrodlo testowe i wezel przylaczenia; pozycja: `idealne` (impedancja zerowa,
+    napiecie punktu przylaczenia narzucone rowne SEM) albo `za_impedancja` (sprzezenie
+    pradowe przez impedancje zastepcza sieci).
+    """
+    return tuple(
+        ZalozenieRdzenia(
+            "tryb_stanowiska",
+            (urzadzenie.ident, urzadzenie.wezel),
+            (),
+            ("idealne" if urzadzenie.impedancja_pu is None else "za_impedancja",),
         )
-        zdania.append(
-            f"Tryb stanowiska badawczego: źródło testowe {urzadzenie.ident} w węźle "
-            f"{urzadzenie.wezel} zadaje SEM o profilu amplitudy, częstotliwości i fazy "
-            f"{sprzezenie}; przebieg jest odpowiedzia sieci i badanych urządzeń na profil "
-            "stanowiska, nie na zaklocenie sieci; profil jest calkowany bez błędu "
-            "dyskretyzacji (równania liniowe, przebiegi odcinkami wielomianowe)."
-        )
-    return tuple(zdania)
+        for urzadzenie in urzadzenia
+        if isinstance(urzadzenie, ZrodloTestowe)
+    )
 
 
 def _skok_stanow_nieprzypisanych(
@@ -2153,8 +2219,8 @@ class _MiejsceZwarcia:
     @property
     def opis_pl(self) -> str:
         if self.polozenie is None:
-            return f"na szynie {self.element}"
-        return f"w galezi {self.element} (x = {self.polozenie!r} dlugosci od zacisku poczatkowego)"
+            return "na szynie"
+        return f"w gałęzi (x = {self.polozenie!r} długości od zacisku początkowego)"
 
 
 def _miejsca_zwarc(wpisy: tuple[WpisHarmonogramu, ...]) -> tuple[_MiejsceZwarcia, ...]:
@@ -2173,13 +2239,93 @@ def _miejsca_zwarc(wpisy: tuple[WpisHarmonogramu, ...]) -> tuple[_MiejsceZwarcia
     return tuple(miejsca)
 
 
-def _rozdziel_odbiory(
-    odbiory: tuple[OdbiorDynamiki, ...], beznapieciowe: frozenset[str]
-) -> tuple[tuple[OdbiorDynamiki, ...], tuple[OdbiorDynamiki, ...]]:
-    """(odbiory zasilane, odbiory ODCIETE) — odciety to odbior w obszarze beznapieciowym."""
-    zasilane = tuple(odbior for odbior in odbiory if odbior.wezel not in beznapieciowe)
-    odciete = tuple(odbior for odbior in odbiory if odbior.wezel in beznapieciowe)
-    return zasilane, odciete
+def _odbiory_odciete(
+    odbiory: tuple[OdbiorCharakterystyczny, ...], stan: StanScenariusza
+) -> frozenset[str]:
+    """Odbiory ODCIETE: przylaczone w scenariuszu, a lezace w obszarze beznapieciowym.
+
+    Odbior odlaczony zdarzeniem nie ma obwodu juz wczesniej, wiec nie „traci" go przy
+    odcieciu obszaru (jego tryb w probkach jest 3 — wezel beznapieciowy — ale nie wchodzi
+    do wykazu odbiorow odcietych zdarzenia).
+    """
+    return frozenset(
+        odbior.ident
+        for odbior in odbiory
+        if odbior.tryb_poza_obwodem == TRYB_ODCIETY and odbior.ident in stan.odbiory_aktywne
+    )
+
+
+def _reinicjalizuj_estymatory(
+    model: ModelSieci,
+    odbiory_algebry: tuple[OdbiorCharakterystyczny, ...],
+    stany_odbiorow: tuple[np.ndarray, ...],
+    napiecia: np.ndarray,
+) -> tuple[tuple[np.ndarray, ...], tuple[PrzypisanieWykonane, ...], frozenset[tuple[int, int]]]:
+    """Regula PONOWNEGO ZASILENIA estymatora czestotliwosci odbioru: `x := arg V+`.
+
+    Odbior odciety nie mierzyl; faza napiecia po przerwie beznapieciowej jest dowolna,
+    wiec bez tej reguly `e+ = wrap(theta+ - x_sprzed_odciecia)` dalby skok czestotliwosci
+    widzianej do `pi/(w_n T_f)` z samego faktu przerwy. Algebra tej chwili liczyla odbior z
+    estymatorem wyzerowanym (`f = f_n`); po przypisaniu `e = 0`, wiec prad odbioru jest
+    ten sam. Zwraca (stany odbiorow po chwili, przypisania do zapisu w zdarzeniu, pozycje
+    przypisane — wylaczone z pomiaru skoku stanow nieprzypisanych).
+    """
+    nowe: list[np.ndarray] = []
+    przypisania: list[PrzypisanieWykonane] = []
+    pozycje: set[tuple[int, int]] = set()
+    for indeks, (odbior, stan) in enumerate(zip(odbiory_algebry, stany_odbiorow, strict=True)):
+        if not (odbior.estymator_wyzerowany and odbior.nazwy_stanow):
+            nowe.append(stan)
+            continue
+        napiecie = complex(napiecia[model.indeks_wezla[odbior.wezel]])
+        nowy = odbior.stan_poczatkowy_odbioru(napiecie)
+        przypisania.append(
+            PrzypisanieWykonane(
+                adres=f"{odbior.ident}.{STAN_KATA_POMIARU}",
+                przed=float(stan[0]),
+                po=float(nowy[0]),
+            )
+        )
+        pozycje.add((indeks, 0))
+        nowe.append(nowy)
+    return tuple(nowe), tuple(przypisania), frozenset(pozycje)
+
+
+def _bledy_fazy(
+    model: ModelSieci,
+    odbiory: tuple[OdbiorCharakterystyczny, ...],
+    stany: tuple[np.ndarray, ...],
+    napiecia: np.ndarray,
+) -> tuple[float | None, ...]:
+    """Blad fazy estymatora (`e`) kazdego odbioru czulego; `None` dla odbioru bez stanu."""
+    stany_odbiorow = stany[: len(odbiory)]
+    return tuple(
+        (
+            odbior.blad_fazy_rad(stan, complex(napiecia[model.indeks_wezla[odbior.wezel]]))
+            if odbior.nazwy_stanow
+            else None
+        )
+        for odbior, stan in zip(odbiory, stany_odbiorow, strict=True)
+    )
+
+
+def _sprawdz_odbiory(
+    model: ModelSieci,
+    odbiory: tuple[OdbiorCharakterystyczny, ...],
+    stany: tuple[np.ndarray, ...],
+    napiecia: np.ndarray,
+    t_s: float,
+    *,
+    bledy_fazy_przed: tuple[float | None, ...] | None,
+) -> None:
+    """Zakres waznosci modeli odbiorow (`odbiory.sprawdz_zakres_waznosci`) w punkcie `(x, V)`."""
+    sprawdz_zakres_waznosci(
+        odbiory,
+        stany[: len(odbiory)],
+        tuple(complex(napiecia[model.indeks_wezla[odbior.wezel]]) for odbior in odbiory),
+        t_s,
+        bledy_fazy_przed=bledy_fazy_przed,
+    )
 
 
 def _opis_odbiorow(odbiory: tuple[OdbiorDynamiki, ...]) -> list[list[Any]]:
@@ -2196,11 +2342,14 @@ def _opis_odbiorow(odbiory: tuple[OdbiorDynamiki, ...]) -> list[list[Any]]:
 
 def _kanaly_odbiorow(odbiory: tuple[OdbiorDynamiki, ...]) -> tuple[KanalWyniku, ...]:
     """Kanaly odbiorow (karta modeli odbiorow): moc POBIERANA i tryb modelu, dla kazdego
-    odbioru WEJSCIA (zestaw kanalow znany w t = 0, niezalezny od przebiegu).
+    odbioru WEJSCIA (zestaw kanalow znany w t = 0, niezalezny od przebiegu), a dla odbioru
+    czulego czestotliwosciowo takze czestotliwosc widziana przez odbior i stan estymatora.
 
     Dopisane ZA wszystkimi dotychczasowymi kanalami — dawna lista jest bitowo prefiksem nowej.
     Przedrostek `p_pobor_`/`q_pobor_` (nie `p_pu@`), bo identyfikatory odbiorow i urzadzen
     nie sa rozlaczne z konstrukcji, a znak jest konwencja POBORU (urzadzenia: moc oddawana).
+    `f_odbioru_hz@` to czestotliwosc WIDZIANA PRZEZ ODBIOR (inercja `T_f`), nigdy zamiennik
+    `f_hz@` szyny; `None` wtedy i tylko wtedy, gdy odbior nie ma obwodu (tryb 2 albo 3).
     """
     kanaly: list[KanalWyniku] = []
     for odbior in odbiory:
@@ -2210,10 +2359,7 @@ def _kanaly_odbiorow(odbiory: tuple[OdbiorDynamiki, ...]) -> tuple[KanalWyniku, 
                 przestrzen="obserwabla",
                 jednostka="pu",
                 element_ref=odbior.ident,
-                opis_pl=(
-                    f"Moc czynna pobierana przez odbiór {odbior.ident} (0 dla odbioru "
-                    "odłączonego albo odciętego)"
-                ),
+                opis_pl="Moc czynna pobierana przez odbiór (zero dla odbioru bez obwodu)",
             )
         )
         kanaly.append(
@@ -2222,10 +2368,7 @@ def _kanaly_odbiorow(odbiory: tuple[OdbiorDynamiki, ...]) -> tuple[KanalWyniku, 
                 przestrzen="obserwabla",
                 jednostka="pu",
                 element_ref=odbior.ident,
-                opis_pl=(
-                    f"Moc bierna pobierana przez odbiór {odbior.ident} (0 dla odbioru "
-                    "odłączonego albo odciętego)"
-                ),
+                opis_pl="Moc bierna pobierana przez odbiór (zero dla odbioru bez obwodu)",
             )
         )
         kanaly.append(
@@ -2235,68 +2378,99 @@ def _kanaly_odbiorow(odbiory: tuple[OdbiorDynamiki, ...]) -> tuple[KanalWyniku, 
                 jednostka="kod",
                 element_ref=odbior.ident,
                 opis_pl=(
-                    f"Tryb modelu odbioru {odbior.ident}: 0 charakterystyka, 1 stała impedancja "
-                    "(napięcie poniżej napięcia przejścia), 2 odłączony zdarzeniem, 3 odcięty "
-                    "(obszar beznapięciowy)"
+                    "Tryb modelu odbioru: 0 charakterystyka, 1 stała impedancja (napięcie "
+                    "poniżej napięcia przejścia), 2 odłączony zdarzeniem, 3 odcięty (obszar "
+                    "beznapięciowy)"
                 ),
             )
         )
+        if jest_czuly_czestotliwosciowo(odbior.charakterystyka):
+            kanaly.append(
+                KanalWyniku(
+                    klucz=f"f_odbioru_hz@{odbior.ident}",
+                    przestrzen="obserwabla",
+                    jednostka="Hz",
+                    element_ref=odbior.ident,
+                    opis_pl=(
+                        "Częstotliwość widziana przez odbiór (estymator o stałej czasowej "
+                        "pomiaru); brak wartości dla odbioru bez obwodu"
+                    ),
+                )
+            )
+            kanaly.append(
+                KanalWyniku(
+                    klucz=f"{STAN_KATA_POMIARU}@{odbior.ident}",
+                    przestrzen="odbior",
+                    jednostka=jednostka_stanu(STAN_KATA_POMIARU),
+                    element_ref=odbior.ident,
+                    opis_pl="Stan estymatora częstotliwości odbioru (kąt śledzący fazę napięcia)",
+                )
+            )
     return tuple(kanaly)
 
 
 def _probkuj_odbiory(
     probki: dict[str, list[float | None]],
     model: ModelSieci,
-    zasilane: tuple[OdbiorDynamiki, ...],
-    wszystkie: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[OdbiorCharakterystyczny, ...],
+    stany_odbiorow: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
 ) -> None:
-    """Probka kanalow odbiorow. `zasilane` = odbiory tej chwili (przylaczone, poza obszarem
-    beznapieciowym, z naniesionymi skokami mocy bazowej); `wszystkie` = odbiory wejscia.
+    """Probka kanalow odbiorow z modeli chwili (kazdy odbior wejscia, tryb z modelu).
 
     Kod 3 (odciety) <=> wezel odbioru jest beznapieciowy — TEN SAM predykat, co
-    `stan_zasilania@ = 0`; kod 2 — odbior poza chwila, a wezel zywy (odlaczony zdarzeniem).
-    Moc odbioru bez obwodu jest zerem DOKLADNIE (fakt, nie wartosc niedostepna).
+    `stan_zasilania@ = 0` (`_modele_odbiorow`); kod 2 — odbior odlaczony zdarzeniem na zywej
+    szynie. Moc odbioru bez obwodu jest zerem DOKLADNIE (fakt, nie wartosc niedostepna), a
+    czestotliwosc widziana — brakiem (`None`), bo odbior bez obwodu niczego nie pobiera.
+    Stan estymatora jest publikowany zawsze (istnieje takze bez obwodu).
     """
-    biezace = {odbior.ident: odbior for odbior in zasilane}
-    for odbior in wszystkie:
-        if odbior.wezel in model.wezly_beznapieciowe:
-            moc, tryb = 0j, TRYB_ODCIETY
-        elif odbior.ident not in biezace:
-            moc, tryb = 0j, TRYB_ODLACZONY
-        else:
-            napiecie = complex(napiecia[model.indeks_wezla[odbior.wezel]])
-            moc = moc_poboru_pu(biezace[odbior.ident], napiecie)
-            tryb = tryb_odbioru(biezace[odbior.ident], napiecie)
+    for odbior, stan in zip(odbiory, stany_odbiorow, strict=True):
+        napiecie = complex(napiecia[model.indeks_wezla[odbior.wezel]])
+        moc = odbior.moc_poboru_pu(stan, napiecie)
         probki[f"p_pobor_pu@{odbior.ident}"].append(float(moc.real))
         probki[f"q_pobor_pu@{odbior.ident}"].append(float(moc.imag))
-        probki[f"tryb_odbioru@{odbior.ident}"].append(tryb)
+        probki[f"tryb_odbioru@{odbior.ident}"].append(odbior.tryb(napiecie))
+        if odbior.nazwy_stanow:
+            probki[f"f_odbioru_hz@{odbior.ident}"].append(
+                odbior.czestotliwosc_widziana_hz(stan, napiecie)
+            )
+            probki[f"{STAN_KATA_POMIARU}@{odbior.ident}"].append(float(stan[0]))
 
 
-def zalozenia_harmonogramu(harmonogram: HarmonogramDynamiki) -> tuple[str, ...]:
+def zalozenia_harmonogramu(harmonogram: HarmonogramDynamiki) -> tuple[ZalozenieRdzenia, ...]:
     """Idealizacje ZADEKLAROWANE w harmonogramie biegu — dopisywane do zalozen wyniku.
 
     Usuniecie zwarcia `samoczynne` (karta AB-1b.1 par. 0 pkt 4) nie jest wykonywane
     przez zaden aparat: zwarcie znika pod napieciem. To jest jawna IDEALIZACJA
     zwarcia przemijajacego i czytelnik przebiegu musi ja widziec obok wyniku, a nie
-    wylacznie w danych wejsciowych. Kolejnosc = kolejnosc zapisu harmonogramu.
+    wylacznie w danych wejsciowych. Kolejnosc = kolejnosc zapisu harmonogramu. Rekord:
+    element (wezel albo galaz), pozycja `wezel`/`galaz`, wielkosci: chwila zalozenia i
+    usuniecia [s] oraz — dla galezi — polozenie wzgledne miejsca zwarcia.
     """
-    zdania: list[str] = []
+    zalozenia: list[ZalozenieRdzenia] = []
     for zdarzenie in harmonogram.zdarzenia:
-        if isinstance(zdarzenie, ZwarcieWezla) and zdarzenie.sposob_usuniecia == "samoczynne":
-            zdania.append(
-                f"Zwarcie w wezle {zdarzenie.wezel} (t = {zdarzenie.t_s} s) usuniete samoczynnie "
-                f"w t = {zdarzenie.t_usuniecia_s} s — idealizacja zwarcia przemijajacego: luk "
-                "gasnie pod napieciem, bez zmiany topologii i bez dzialania aparatu."
+        if (
+            isinstance(zdarzenie, ZwarcieWezla | ZwarcieGalezi)
+            and zdarzenie.sposob_usuniecia == "samoczynne"
+        ):
+            assert zdarzenie.t_usuniecia_s is not None  # kontrakt: sposob <=> chwila
+            wielkosci = [
+                WielkoscZalozenia("t_s", zdarzenie.t_s, "s"),
+                WielkoscZalozenia("t_usuniecia_s", zdarzenie.t_usuniecia_s, "s"),
+            ]
+            if isinstance(zdarzenie, ZwarcieGalezi):
+                wielkosci.append(
+                    WielkoscZalozenia("polozenie_wzgledne", zdarzenie.polozenie_wzgledne, "1")
+                )
+            zalozenia.append(
+                ZalozenieRdzenia(
+                    "zwarcie_usuniete_samoczynnie",
+                    (zdarzenie.wezel if isinstance(zdarzenie, ZwarcieWezla) else zdarzenie.galaz,),
+                    tuple(wielkosci),
+                    ("wezel" if isinstance(zdarzenie, ZwarcieWezla) else "galaz",),
+                )
             )
-        elif isinstance(zdarzenie, ZwarcieGalezi) and zdarzenie.sposob_usuniecia == "samoczynne":
-            zdania.append(
-                f"Zwarcie w galezi {zdarzenie.galaz} w x = {zdarzenie.polozenie_wzgledne!r} "
-                f"(t = {zdarzenie.t_s} s) usuniete samoczynnie w t = {zdarzenie.t_usuniecia_s} s "
-                "— idealizacja zwarcia przemijajacego: luk gasnie pod napieciem, bez zmiany "
-                "topologii i bez dzialania aparatu."
-            )
-    return tuple(zdania)
+    return tuple(zalozenia)
 
 
 def jednostka_stanu(nazwa: str) -> str:
@@ -2331,16 +2505,12 @@ __all__ = [
     "STAN_ZASILANIA_NARZUCONE",
     "STAN_ZASILANIA_ZASILANY",
     "TOLERANCJA_CZASU_S",
-    "ZALOZENIA_RDZENIA",
-    "ZALOZENIE_OBSZARU_BEZNAPIECIOWEGO",
-    "ZALOZENIE_PRZYPISANIA_STANU",
-    "ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA",
-    "ZALOZENIE_UTRATY_CZESCIOWEJ",
     "TRYB_SIEC",
     "TRYB_STANOWISKO",
     "SilnikDynamiki",
     "jednostka_stanu",
     "tryb_scenariusza",
     "zalozenia_harmonogramu",
+    "zalozenia_modelu",
     "zalozenia_trybu",
 ]

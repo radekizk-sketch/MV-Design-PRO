@@ -109,6 +109,10 @@ import dynamikaScenyOpis from './harness-fixtures/generated/dynamika_scena_opis.
 import dynamikaScenyMigawka from './harness-fixtures/generated/dynamika_scena_migawka.json';
 import dynamikaScenyGotowosc from './harness-fixtures/generated/dynamika_scena_gotowosc.json';
 import dynamikaScenyGotowoscBrak from './harness-fixtures/generated/dynamika_scena_gotowosc_brak.json';
+// Karta modeli odbiorów: wariant E-32 z PV związanym i ODBIOREM bez modelu dynamicznego —
+// akcja naprawcza `load.dynamika_missing` (wiązanie profilu katalogu odbiorów) w tej samej
+// sekcji ekranu co modele źródeł; odpowiedź końcówki gotowości liczona tą samą funkcją.
+import dynamikaScenyGotowoscOdbiorBrak from './harness-fixtures/generated/dynamika_scena_gotowosc_odbior_brak.json';
 import dynamikaScenyScenariusze from './harness-fixtures/generated/dynamika_scena_scenariusze.json';
 import dynamikaScenyWyniki from './harness-fixtures/generated/dynamika_scena_wyniki.json';
 import dynamikaScenyPrzebiegi from './harness-fixtures/generated/dynamika_scena_przebiegi.json';
@@ -888,10 +892,20 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       // tego, czego model NIE niesie. Wcześniej cała lista była wpisana ręcznie.
       return jsonOK(wiazaniaScenyFunkcjeZabezpieczen);
     }
-  } else if (creator === 'wyniki-dynamika' || creator === 'wyniki-dynamika-brak') {
+  } else if (
+    creator === 'wyniki-dynamika' ||
+    creator === 'wyniki-dynamika-brak' ||
+    creator === 'wyniki-dynamika-odbior-brak'
+  ) {
     if (url.endsWith('/api/dynamika/opis-scenariusza')) return jsonOK(dynamikaScenyOpis);
     if (url.includes('/api/dynamika/study-cases/') && url.endsWith('/gotowosc')) {
-      return jsonOK(creator === 'wyniki-dynamika' ? dynamikaScenyGotowosc : dynamikaScenyGotowoscBrak);
+      return jsonOK(
+        creator === 'wyniki-dynamika'
+          ? dynamikaScenyGotowosc
+          : creator === 'wyniki-dynamika-brak'
+            ? dynamikaScenyGotowoscBrak
+            : dynamikaScenyGotowoscOdbiorBrak,
+      );
     }
     if (url.includes('/api/dynamika/study-cases/') && url.endsWith('/scenariusze')) {
       return jsonOK(creator === 'wyniki-dynamika' ? dynamikaScenyScenariusze : { scenariusze: [], count: 0 });
@@ -1999,7 +2013,11 @@ if (creator === 'arcflash') {
       } as unknown as ExecutionRun,
     ],
   } as never);
-} else if (creator === 'wyniki-dynamika' || creator === 'wyniki-dynamika-brak') {
+} else if (
+  creator === 'wyniki-dynamika' ||
+  creator === 'wyniki-dynamika-brak' ||
+  creator === 'wyniki-dynamika-odbior-brak'
+) {
   // Scena E-32 (karta AB-P1): model sceny (migawka po wiązaniu PV) i — w wariancie
   // z wynikiem — zakończony bieg `DYNAMIKA_RMS` z fixtury REALNEGO biegu backendu.
   useShellStore.setState({ advancementMode: 'expert' });
@@ -2249,7 +2267,11 @@ function Harness() {
   else if (creator === 'wyniki-skladowe') node = <EkranSkladowych />;
   else if (creator === 'wyniki-zbieznosc') node = <EkranZbieznosci />;
   else if (creator === 'wyniki-stan-fazowy') node = <EkranStanuFazowego />;
-  else if (creator === 'wyniki-dynamika' || creator === 'wyniki-dynamika-brak')
+  else if (
+    creator === 'wyniki-dynamika' ||
+    creator === 'wyniki-dynamika-brak' ||
+    creator === 'wyniki-dynamika-odbior-brak'
+  )
     node = <EkranDynamiki trybZaawansowania="expert" />;
   else if (creator === 'kompensacja-wynik')
     // V-B: bez preselekcji — spec wybiera wezel i klika „Oblicz" natywnie.
@@ -2350,7 +2372,7 @@ function Harness() {
         // informacyjne + werdykt) — szerszy kadr eliminuje przycięcie z prawej.
         width: [
           'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie', 'cieplna',
-          'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-dynamika', 'wyniki-dynamika-brak', 'akademickie',
+          'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-dynamika', 'wyniki-dynamika-brak', 'wyniki-dynamika-odbior-brak', 'akademickie',
           'ocena', 'ocena-przekroczenia',
         ].includes(creator)
           ? 1400

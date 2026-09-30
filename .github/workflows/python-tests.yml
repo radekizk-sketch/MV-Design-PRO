@@ -379,8 +379,14 @@ jobs:
     # jest zawezony do bramek, ktore deklaruje dana mutacja. POMIAR 2026-09-24 (karta
     # AB-1b.1b, M10-M37 = 28 mutacji, bramki G1-G21): harness 630 s CPU, aparat z jednego
     # wejscia (`uruchom`) 823 s CPU — razem ~24 min obliczen + instalacja; prognoza < 35 min,
-    # wiec jeden job (podzial na dwa — parzyste/nieparzyste numery mutacji — dopiero, gdy
-    # pomiar przekroczy 35 min). Job jest ODDZIELNY od `pytest`, zeby nie wydluzac bramki
+    # wiec jeden job (podzial na dwa — dopiero, gdy pomiar przekroczy 35 min).
+    # POMIAR 2026-09-30 (karta modeli odbiorow AB-1b.3b, M10-M51 = 42 mutacje, bramki
+    # G1-G25 bez skasowanej G8; ten sam sposob pomiaru — CPU procesu z potomkami, 1 watek
+    # BLAS): harness 1020 s user + 65 s sys = 1085 s CPU, aparat `uruchom` 1243 s user +
+    # 24 s sys = 1267 s CPU — razem ~39 min > 35 min, wiec PODZIAL na dwa joby wzdluz
+    # granicy krokow (deterministyczny i zrownowazony: ~18 min i ~21 min): ten job niesie
+    # pelny zestaw mutacji, job `aparat-dowodowy-dynamiki` — aparat z jednego wejscia.
+    # Job jest ODDZIELNY od `pytest`, zeby nie wydluzac bramki
     # obowiazkowej kazdego PR — ale jest bramka, a nie „przebiegiem na zyczenie":
     # samokontrola harnessu i trzy szybkie zabicia biegna RAZEM z reszta suity
     # (`tests/walidacja_fizyczna/test_mutacje.py`), wiec regresja harnessu jest
@@ -429,6 +435,40 @@ jobs:
               )
               sys.exit(1)
           PY
+
+  aparat-dowodowy-dynamiki:
+    name: Walidacja fizyczna dynamiki — aparat dowodowy z jednego wejscia
+    runs-on: ubuntu-latest
+    # Wydzielony z `mutacje-dynamiki` po pomiarze 2026-09-30 (komentarz tamtego joba):
+    # manifest, bramki G1-G25 i reszta `tests/walidacja_fizyczna` uruchamiane jednym
+    # wejsciem jak z czystego klonu — 1267 s CPU lokalnie.
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.x'
+          cache: pip
+          cache-dependency-path: mv-design-pro/backend/poetry.lock
+      - name: Install Poetry
+        run: pipx install poetry
+      - name: Cache Poetry and virtualenv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            ~/.cache/pypoetry/virtualenvs
+          key: poetry-${{ runner.os }}-${{ hashFiles('mv-design-pro/backend/poetry.lock') }}
+          restore-keys: |
+            poetry-${{ runner.os }}-
+      - name: Install dependencies
+        working-directory: mv-design-pro/backend
+        run: poetry install --no-interaction --with dev
       - name: Aparat dowodowy z jednego wejscia (jak z czystego klonu)
         working-directory: mv-design-pro/backend
         run: poetry run python -m tests.walidacja_fizyczna.uruchom

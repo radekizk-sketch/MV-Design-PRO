@@ -1704,7 +1704,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `enm/dynamika_z_katalogu.py::StanDynamikiGeneratora`: `odmowa_kod`, `odmowa_komunikat`,
     # `odniesienie_proweniencji`, `profil_typu`, `profile_zgodne`, `zrodlo_proweniencji`).
     # PASS bramki niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4097." in wyjscie, wyjscie
+    # Karta modeli odbiorow AB-1b.3b (2026-09-29): 4097 -> 4105 — POMIAR `contract_fields()` na
+    # `509c4776` i na drzewie karty, roznica zbiorow: -0, +8 (katalog profili modelu
+    # dynamicznego odbiorow `network_model/catalog/load_dynamic`: `podstawa_t_pomiaru_pl`,
+    # `podstawa_u_min_pl`, `t_pomiaru_czestotliwosci_s`; stan kopii odbioru
+    # `enm/dynamika_z_katalogu.py`: `czuly_czestotliwosciowo`; stan modelu odbioru w rdzeniu
+    # `dynamika/odbiory.py`: `estymator_wyzerowany`, `tryb_poza_obwodem`; `dynamika/silnik.py`:
+    # `reset_estymatorow`; kontrakt wyniku `resultset_dynamic_v2`: `zalozenia_rdzenia`). PASS
+    # bramki niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4105." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1864,7 +1872,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/dynamika/**`, -3 skasowane `application/stability/{dynamic_stability,
         # voltage_trajectory}.py` i `application/automation/trace.py`, +1 `api/dynamika.py`).
         # POMIAR guardem na drzewie karty.
-        "Przeskanowano 555 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta modeli odbiorow AB-1b.3b (2026-09-29): 555 -> 558 (+1 `network_model/catalog/
+        # load_dynamic/__init__.py` — katalog profili modelu dynamicznego odbiorow, +2
+        # `application/dynamika/{zalozenia,odmowy}.py` — zdania zalozen z rekordow rdzenia
+        # i komunikaty odmow z nazwami); zero plikow skasowanych, zapadka dlugu i
+        # wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        "Przeskanowano 558 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1977,7 +1990,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta AB-P1 na partii 4: network_model dlug 12/70 -> 11/69 (wpis
         # `catalog/der_dynamic/models.py` zdjety z martwym rzutem `to_stability_parameters`;
         # solver `stability_rms/**` zostaje — rdzen B-01). Pliki 181 bez zmiany. Pomiar.
-        "  network_model: pliki_skanowane=181, dlug=11 plikow/suma 69, "
+        # Karta modeli odbiorow AB-1b.3b (2026-09-29): network_model 181 -> 182 (+1
+        # `catalog/load_dynamic/__init__.py`); dlug i wykluczenia BEZ ZMIANY. POMIAR guardem.
+        "  network_model: pliki_skanowane=182, dlug=11 plikow/suma 69, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2067,7 +2082,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta AB-P1 na partii 4: application 242 -> 243 (+4 `application/dynamika/**`,
         # -3 skasowane pliki toru T1); api 63 -> 64 (+1 `api/dynamika.py`). Dlug i wykluczenia
         # BEZ ZMIANY — pomiar guardem na drzewie karty.
-        "  application: pliki_skanowane=243, dlug=30 plikow/suma 91, "
+        # Karta modeli odbiorow AB-1b.3b (2026-09-29): application 243 -> 245 (+2
+        # `application/dynamika/{zalozenia,odmowy}.py`); dlug i wykluczenia BEZ ZMIANY. POMIAR.
+        "  application: pliki_skanowane=245, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=64, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]

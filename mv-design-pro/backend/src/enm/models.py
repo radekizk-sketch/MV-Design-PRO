@@ -21,7 +21,7 @@ from network_model.core.uziemienie import (
 from pydantic import BaseModel, Field, model_validator
 
 from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
-from .dynamika_modele import ParametryDynamiczne
+from .dynamika_modele import ModelDynamicznyOdbioru, ParametryDynamiczne
 from .nastawy_modulu import NastawyZabezpieczenModulu
 from .uziemienie import migruj_uziemienie_slownika
 
@@ -517,6 +517,14 @@ class Load(ENMElement):
     source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] | None = None
     materialized_params: dict | None = None
     overrides: list[ParameterOverride] = []
+    # Karta modeli odbiorow (O-49 pkt 2, O-56): model dynamiczny odbioru — KOPIA profilu
+    # katalogu `network_model.catalog.load_dynamic` wskazanego wiazaniem
+    # `materialized_params.dynamic_model_ref`, budowana WYLACZNIE przez
+    # `enm.dynamika_z_katalogu.materializuj_dynamike_odbioru` (operacja domenowa
+    # `set_load_dynamic_binding` i synchronizacja kazdej odpowiedzi operacji). Wymagany
+    # dla kazdego odbioru w biegu `dynamika_rms` (bramka `braki_modelu_dynamiki`).
+    # Pole addytywne: `None` poza odciskiem (`enm/hash.py`).
+    dynamika: ModelDynamicznyOdbioru | None = None
 
 
 # ---------------------------------------------------------------------------

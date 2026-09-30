@@ -67,9 +67,10 @@ describe('grupujKanaly — kanał × grupa', () => {
     expect(new Set(wszystkie)).toEqual(new Set(WYNIK.kanaly.map((k) => k.klucz)));
   });
 
-  it('wszystkie cztery grupy występują w biegu ze zwarciem x·L', () => {
+  it('wszystkie pięć grup występuje w biegu ze zwarciem x·L i odbiorem', () => {
+    // Karta modeli odbiorów: kanały odbioru (pobór, tryb modelu) są osobną grupą elementu.
     expect(new Set(grupy.map((g) => g.grupa))).toEqual(
-      new Set(['szyna', 'galaz', 'miejsce_zwarcia', 'urzadzenie']),
+      new Set(['szyna', 'galaz', 'miejsce_zwarcia', 'urzadzenie', 'odbior']),
     );
   });
 

@@ -45,11 +45,13 @@ from network_model.solvers.dynamika.urzadzenia import (
 )
 
 from tests.network_model.dynamika import uklady
+from tests.walidacja_fizyczna.stanowisko import U_MIN_TESTOWE_PU
 from tests.walidacja_fizyczna.wyrocznia_zdarzen import profil_zamkniety
 
-#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
-#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
-STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
+#: Odbior STALEJ MOCY z napieciem przejscia `U_min` — DANA TESTU ponizej wszystkich
+#: iteratow Newtona biegow tego modulu (`stanowisko.U_MIN_TESTOWE_PU`, pomiar licznikiem
+#: wejsc w galaz impedancyjna), wiec wzorzec liczy dotychczasowa charakterystyke stalej mocy.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=U_MIN_TESTOWE_PU)
 
 F_N_HZ = 50.0
 Z_NORTONA_PU = complex(0.001, 0.02)
@@ -145,7 +147,7 @@ def test_profil_wobec_postaci_zamknietej(impedancja: complex | None, nazwa: str)
         )
     assert blad <= 1e-12, blad
     assert wynik.tryb_scenariusza == TRYB_STANOWISKO
-    assert any(zdanie.startswith("Tryb stanowiska badawczego") for zdanie in wynik.zalozenia)
+    assert "tryb_stanowiska" in {zalozenie.kod for zalozenie in wynik.zalozenia}
     assert {z.delta_x_nieprzypisane_max for z in wynik.zdarzenia_wykonane} == {0.0}
 
 
@@ -301,7 +303,7 @@ def test_bieg_bez_zrodla_testowego_jest_trybem_sieci() -> None:
         uklady.zbuduj_smib().wejscie(HarmonogramDynamiki(()), uklady.nastawy(horyzont_s=0.05))
     ).uruchom()
     assert wynik.tryb_scenariusza == TRYB_SIEC
-    assert not any(zdanie.startswith("Tryb stanowiska") for zdanie in wynik.zalozenia)
+    assert "tryb_stanowiska" not in {zalozenie.kod for zalozenie in wynik.zalozenia}
 
 
 def test_zerowa_impedancja_nortona_to_odmowa_nazwana() -> None:

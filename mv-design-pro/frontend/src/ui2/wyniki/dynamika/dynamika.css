@@ -112,6 +112,26 @@
   background: var(--mvd-sel);
 }
 
+.mvd-dynamika-parametry {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+}
+
+.mvd-dynamika-podstawa {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-dynamika-podstawa summary {
+  cursor: pointer;
+}
+
+.mvd-dynamika-podstawa p {
+  margin: 4px 0;
+}
+
 .mvd-dynamika-stan[data-stan],
 .mvd-dynamika-stan-biegu {
   font-size: 12.5px;

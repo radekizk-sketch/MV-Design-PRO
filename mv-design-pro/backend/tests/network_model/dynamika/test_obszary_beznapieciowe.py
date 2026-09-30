@@ -49,7 +49,6 @@ from network_model.solvers.dynamika import (
 from network_model.solvers.dynamika.calkowanie import KontekstKroku, _jakobian_sprzezony
 from network_model.solvers.dynamika.kontrakty import (
     KOD_NAPIECIE_NARZUCONE_SPRZECZNE,
-    KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU,
     KOD_WARTOSC_NIESKONCZONA,
 )
 from network_model.solvers.dynamika.obserwable import JAKOSC_NIEDOSTEPNA
@@ -65,10 +64,13 @@ from network_model.solvers.dynamika.urzadzenia import zbuduj_maszyne_klasyczna
 
 from tests.network_model.dynamika import biblioteka_urzadzen as biblioteka
 from tests.network_model.dynamika import uklady
+from tests.walidacja_fizyczna import stanowisko
+from tests.walidacja_fizyczna.stanowisko import U_MIN_TESTOWE_PU
 
-#: Odbior STALEJ MOCY bez zadeklarowanego napiecia przejscia (karta modeli odbiorow):
-#: dokladnie dotychczasowy model tego wzorca — charakterystyka przy kazdym |V| > 0.
-STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=None)
+#: Odbior STALEJ MOCY z napieciem przejscia `U_min` — DANA TESTU ponizej wszystkich
+#: iteratow Newtona biegow tego modulu (`stanowisko.U_MIN_TESTOWE_PU`, pomiar licznikiem
+#: wejsc w galaz impedancyjna), wiec wzorzec liczy dotychczasowa charakterystyke stalej mocy.
+STALA_MOC = charakterystyka_stalej_mocy(u_min_pu=U_MIN_TESTOWE_PU)
 
 
 def _indeks_probki_p(wynik, t_s: float) -> int:
@@ -344,18 +346,39 @@ def test_zwarcie_metaliczne_przy_maszynie_liczy_sie_z_V_rownym_zero() -> None:
     assert wynik.probki["u_pu@GEN"][-1] > 0.5
 
 
-def test_odbior_stalej_mocy_w_wezle_zwartym_metalicznie_to_odmowa_nazwana() -> None:
+def test_odbior_w_wezle_zwartym_metalicznie_liczy_sie_z_poborem_zero() -> None:
+    """Zwarcie metaliczne w wezle odbioru stalej mocy: BIEG, pobor dokladnie 0,0, tryb 1.
+
+    Przepisane z intencja (karta modeli odbiorow, kasacja odmowy
+    `dynamika.odbior_stalej_mocy_przy_zerowym_napieciu`): kazdy odbior ze skladowa mocowa
+    deklaruje napiecie przejscia `U_min` (kontrakt), wiec przy `V = 0` jest w galezi
+    impedancyjnej i jego prad istnieje (zero). Intencja dawnego testu — zwarcie metaliczne
+    w wezle odbioru nie konczy sie cichym zlym wynikiem — zostaje: pobor raportowany w
+    kanale jest DOKLADNIE zerem przy napieciu zerowym (moc zgodna z pradem), nie moca
+    bazowa charakterystyki.
+    """
     uklad = uklady.zbuduj_smib_z_odbiorem()
-    with pytest.raises(OdmowaDynamiki) as blad:
-        SilnikDynamiki(
-            uklad.wejscie(
-                HarmonogramDynamiki((_zwarcie_metaliczne(None),)),
-                uklady.nastawy(dt_s=0.001, horyzont_s=0.1, krok_wyjscia_s=0.01),
-            )
-        ).uruchom()
-    assert blad.value.kod == KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU
-    assert blad.value.szczegoly["wezel"] == "GEN"
-    assert blad.value.szczegoly["odbiory"] == ("ODB1",)
+    wynik = SilnikDynamiki(
+        uklad.wejscie(
+            HarmonogramDynamiki((_zwarcie_metaliczne(0.1),)),
+            uklady.nastawy(dt_s=0.001, horyzont_s=0.2, krok_wyjscia_s=0.01),
+        )
+    ).uruchom()
+    w_zwarciu = [
+        i
+        for i, (t, strona) in enumerate(zip(wynik.os_czasu_s, wynik.strona_probki, strict=True))
+        # Okno zwarcia po STRONIE probki: od `P` chwili zwarcia do `L` chwili zdjecia.
+        if (T_ODCIECIA_S < t < 0.1)
+        or (t == T_ODCIECIA_S and strona == "P")
+        or (t == 0.1 and strona == "L")
+    ]
+    assert len(w_zwarciu) >= 3
+    for i in w_zwarciu:
+        assert wynik.probki["u_pu@GEN"][i] == 0.0
+        assert wynik.probki["p_pobor_pu@ODB1"][i] == 0.0
+        assert wynik.probki["q_pobor_pu@ODB1"][i] == 0.0
+        assert wynik.probki["tryb_odbioru@ODB1"][i] == 1.0
+    assert wynik.probki["tryb_odbioru@ODB1"][-1] == 0.0
 
 
 def test_przeksztaltnik_nadazny_w_wezle_zwartym_metalicznie_to_odmowa_nazwana() -> None:
@@ -495,18 +518,25 @@ def test_jakobian_sprzezony_wiersza_ograniczenia_zgodny_z_roznica_skonczona() ->
     """Blok `dR_y/dx` wiersza ograniczenia to `-dE/dx` (detektor mutacji M37)."""
     wejscie = _uklad_zrodla(complex(-0.2, 0.05))
     model = _zloz(wejscie.wezly, wejscie.galezie, ())
-    kontekst = KontekstKroku(model, wejscie.odbiory, wejscie.urzadzenia, wejscie.nastawy)
-    stan = (np.array([1.01, 0.02]),)
+    odbiory = stanowisko.modele_odbiorow(wejscie.odbiory)
+    kontekst = KontekstKroku(model, odbiory, wejscie.urzadzenia, wejscie.nastawy)
+    stan = stanowisko.stany_z_odbiorami(odbiory, (np.array([1.01, 0.02]),))
     napiecia = np.array([1.01 + 0.02j, 0.97 - 0.03j])
     jakobian = _jakobian_sprzezony(kontekst, stan, napiecia, 0.01).toarray()
 
     def reszta(x: np.ndarray) -> np.ndarray:
-        return residuum_algebry(model, wejscie.odbiory, wejscie.urzadzenia, (x,), napiecia)
+        return residuum_algebry(
+            model,
+            odbiory,
+            wejscie.urzadzenia,
+            stanowisko.stany_z_odbiorami(odbiory, (x,)),
+            napiecia,
+        )
 
     krok = 1e-7
     for kolumna in range(2):
-        plus = stan[0].copy()
-        minus = stan[0].copy()
+        plus = stan[-1].copy()
+        minus = stan[-1].copy()
         plus[kolumna] += krok
         minus[kolumna] -= krok
         roznica = (reszta(plus) - reszta(minus)) / (2 * krok)
@@ -517,8 +547,14 @@ def test_prad_wezla_ograniczonego_jest_bilansem_wezla() -> None:
     wejscie = _uklad_zrodla(complex(0.0, 0.0))
     model = _zloz(wejscie.wezly, wejscie.galezie, ())
     napiecia = np.array([1.0 + 0.0j, wejscie.punkt_pracy.napiecia_pu["ODB"]])
+    odbiory = stanowisko.modele_odbiorow(wejscie.odbiory)
     prad = prad_wezla_ograniczonego(
-        model, wejscie.odbiory, wejscie.urzadzenia, (np.array([1.0, 0.0]),), napiecia, "SRC"
+        model,
+        odbiory,
+        wejscie.urzadzenia,
+        stanowisko.stany_z_odbiorami(odbiory, (np.array([1.0, 0.0]),)),
+        napiecia,
+        "SRC",
     )
     assert prad == pytest.approx((model.ybus @ napiecia)[0], abs=1e-15)
 
@@ -587,19 +623,24 @@ def test_predykaty_parami_klasyfikacja_silnika_i_odmowa_algebry(wariant: str) ->
         )
         for urzadzenie in urzadzenia
     )
-    odbiory = (OdbiorDynamiki("O", "A", 0.05, 0.01, charakterystyka=STALA_MOC),)
+    odbiory = stanowisko.modele_odbiorow(
+        (OdbiorDynamiki("O", "A", 0.05, 0.01, charakterystyka=STALA_MOC),)
+    )
     napiecia = np.array([napiecie])
     zywe, martwe = klasyfikuj_wyspy((0,), {"A": 0}, urzadzenia, stany, napiecia)
     assert zywe | martwe == frozenset({0}) and not zywe & martwe
     assert (0 in zywe) == (wariant in ("maszyna", "zrodlo_napieciowe"))
+    stany_elementow = stanowisko.stany_z_odbiorami(odbiory, stany)
     if 0 in martwe:
         with pytest.raises(OdmowaDynamiki) as blad:
             sprawdz_zasilanie_wysp(
-                ("A",), {"A": 0}, (0,), odbiory, urzadzenia, stany, napiecia, 0.0
+                ("A",), {"A": 0}, (0,), odbiory, urzadzenia, stany_elementow, napiecia, 0.0
             )
         assert blad.value.kod == KOD_WYSPA_BEZ_ZRODLA
     else:
-        sprawdz_zasilanie_wysp(("A",), {"A": 0}, (0,), odbiory, urzadzenia, stany, napiecia, 0.0)
+        sprawdz_zasilanie_wysp(
+            ("A",), {"A": 0}, (0,), odbiory, urzadzenia, stany_elementow, napiecia, 0.0
+        )
 
 
 def test_niezerowe_napiecie_wezla_martwego_w_punkcie_pracy_to_niespojnosc_wejscia() -> None:
@@ -631,8 +672,6 @@ def test_wezel_bez_sasiada_zywego_startuje_od_sem_urzadzenia(z_odbiorem_zerowej_
     detektorem klasy „start od zera w wezle odbioru": przed ta regula konczyl sie surowym
     `ZeroDivisionError` z `prad_odbioru_pu` (0/0), a nie wynikiem ani nazwana odmowa.
     """
-    from network_model.solvers.dynamika.silnik import ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA
-
     maszyna = zbuduj_maszyne_klasyczna(
         ident="G",
         wezel="GEN",
@@ -674,39 +713,40 @@ def test_wezel_bez_sasiada_zywego_startuje_od_sem_urzadzenia(z_odbiorem_zerowej_
     zdjecie = [krok for krok in wynik.slad_white_box["kroki_szczegolne"] if krok.get("t_s") == 0.1]
     assert zdjecie and zdjecie[0]["wezly_start_od_sasiada"] == []
     assert zdjecie[0]["wezly_start_od_sem_urzadzenia"] == ["GEN"]
-    assert ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA in wynik.zalozenia
+    assert "start_ponownego_zasilenia" in [zalozenie.kod for zalozenie in wynik.zalozenia]
 
 
-def test_zerowy_start_w_wezle_odbioru_to_odmowa_nazwana_a_nie_dzielenie_przez_zero() -> None:
-    """`rozwiaz_algebre` z V = 0 w wezle odbioru o stalej mocy: kod, nie `ZeroDivisionError`."""
-    from network_model.solvers.dynamika.kontrakty import KOD_ALGEBRA_NIEZBIEZNA
+def test_zerowy_start_w_wezle_odbioru_zbiega_bez_dzielenia_przez_zero() -> None:
+    """`rozwiaz_algebre` z V = 0 w wezle odbioru: Newton startuje i zbiega (nigdy 0/0).
+
+    Przepisane z intencja (karta modeli odbiorow, kasacja wariantu `u_min_pu = None` dla
+    odbiorow nieimpedancyjnych): dawniej odbior stalej mocy BEZ napiecia przejscia nie mial
+    pradu w V = 0 i ten test przypinal nazwana odmowe zamiast `ZeroDivisionError`. Kontrakt
+    wymaga dzis `U_min` od kazdego odbioru ze skladowa pradowa albo mocowa, wiec w V = 0
+    KAZDY odbior ma prad (zero, galaz impedancyjna) i skonczony jakobian — intencja „start z
+    zera nie konczy sie surowym wyjatkiem" jest spelniona z konstrukcji dla kazdego ksztaltu.
+    """
     from network_model.solvers.dynamika.siec import rozwiaz_algebre
 
     wejscie = _uklad_zrodla(complex(0.0, 0.0))
     model = _zloz(wejscie.wezly, wejscie.galezie, ())
 
     def rozwiaz(odbior: OdbiorDynamiki):
+        odbiory = stanowisko.modele_odbiorow((odbior,))
         return rozwiaz_algebre(
             model,
-            (odbior,),
+            odbiory,
             wejscie.urzadzenia,
-            (np.array([1.0, 0.0]),),
+            stanowisko.stany_z_odbiorami(odbiory, (np.array([1.0, 0.0]),)),
             np.array([1.0 + 0.0j, 0.0j]),
             tolerancja=1e-11,
-            max_iteracji=20,
+            max_iteracji=40,
             max_nawrotow=10,
             t_s=0.3,
         )
 
-    with pytest.raises(OdmowaDynamiki) as blad:
-        rozwiaz(OdbiorDynamiki("O1", "ODB", 0.3, 0.1, charakterystyka=STALA_MOC))
-    assert blad.value.kod == KOD_ALGEBRA_NIEZBIEZNA
-    assert blad.value.szczegoly["wezly"] == ("ODB",)
-    # Przepisane z intencja (karta modeli odbiorow): odmowa dotyczy WYLACZNIE odbioru, ktorego
-    # prad w V = 0 nie istnieje (`odbiory.wymaga_napiecia_niezerowego`). Odbior o mocy
-    # zerowej ma prad zero dokladnie, a odbior z zadeklarowanym U_min jest w V = 0 w galezi
-    # impedancyjnej (prad zero, jakobian skonczony) — oba startuja Newtona bez odmowy.
     for odbior in (
+        OdbiorDynamiki("O1", "ODB", 0.3, 0.1, charakterystyka=STALA_MOC),
         OdbiorDynamiki("O1", "ODB", 0.0, 0.0, charakterystyka=STALA_MOC),
         OdbiorDynamiki("O1", "ODB", 0.3, 0.1, charakterystyka_stalej_mocy(u_min_pu=0.7)),
     ):

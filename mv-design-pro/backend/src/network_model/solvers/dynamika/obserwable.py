@@ -9,7 +9,11 @@ TRZY ROZLACZNE PRZESTRZENIE (zamrozenie W6-A par. 2).
 
 Obserwabla NIGDY nie zostaje stanem. Dodanie czestotliwosci jako stanu rozniczkowego, zeby
 „miec pochodna za darmo", wprowadziloby do macierzy stanu dodatkowa wartosc wlasna, ktorej
-uklad fizycznie nie ma — i zaklamalo analize malosygnalowa.
+uklad fizycznie nie ma — i zaklamalo analize malosygnalowa. Estymator czestotliwosci
+ODBIORU (`odbiory.py`) nie jest ta obserwabla: to stan MODELU odbioru (odbiorniki reaguja
+na czestotliwosc z inercja `T_f`), z wlasna, fizyczna wartoscia wlasna `-1/T_f`; `f_hz@`
+szyny zostaje obserwabla liczona z tego rozniczkowania, a stan estymatora wchodzi do jej
+prawej strony jak kazdy stan (`_prawa_strona_dae`).
 
 CZESTOTLIWOSC WEZLA — SKAD SIE BIERZE POCHODNA KATA.
 
@@ -110,9 +114,10 @@ from scipy.sparse import linalg as sparse_linalg
 from .kontrakty import (
     KOD_ALGEBRA_NIEZBIEZNA,
     GalazDynamiki,
-    OdbiorDynamiki,
+    ModelOdbioru,
     OdmowaDynamiki,
     Urzadzenie,
+    rozdziel_stany,
 )
 from .siec import (
     ModelSieci,
@@ -150,11 +155,11 @@ JAKOSC_BEZ_NAPIECIA = 4.0
 #: jest ZAMKNIETY (przypiety testem): wartosc niedostepna to `None` z jednym z kodow 2-4,
 #: nigdy liczba podstawiona (W6-A par. 4: zakaz zastepowania czestotliwoscia znamionowa).
 OPIS_JAKOSCI_PL: dict[float, str] = {
-    JAKOSC_ROZROZNIALNA: "odchylka rozroznialna numerycznie",
-    JAKOSC_NIEROZROZNIALNA: "odchylka nierozroznialna od bledu numerycznego",
-    JAKOSC_NIEDOSTEPNA: "niedostepna — nieokreslona numerycznie",
-    JAKOSC_CHWILA_ZDARZENIA: "niedostepna — chwila nieciaglosci zdarzenia",
-    JAKOSC_BEZ_NAPIECIA: "niedostepna — wezel bez napiecia",
+    JAKOSC_ROZROZNIALNA: "odchyłka rozróżnialna numerycznie",
+    JAKOSC_NIEROZROZNIALNA: "odchyłka nierozróżnialna od błędu numerycznego",
+    JAKOSC_NIEDOSTEPNA: "niedostępna — nieokreślona numerycznie",
+    JAKOSC_CHWILA_ZDARZENIA: "niedostępna — chwila nieciągłości zdarzenia",
+    JAKOSC_BEZ_NAPIECIA: "niedostępna — węzeł bez napięcia",
 }
 
 #: Propagacja skonczona NIE ma dobieranej stalej: wspolczynniki `1/(|V| - u_V)` oraz
@@ -203,25 +208,41 @@ class PochodnaZNiepewnoscia:
 
 def _prawa_strona_dae(
     model: ModelSieci,
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
 ) -> np.ndarray:
-    """`(dI/dx) xdot` — wklady urzadzen do prawej strony zroznikowanej algebry.
+    """`(dI/dx) xdot` — wklady ELEMENTOW STANOWYCH do prawej strony zroznikowanej algebry.
 
-    Odbiory (charakterystyka statyczna, `odbiory.py`) nie maja stanow, wiec nie wnosza tu
-    nic — wnosza wylacznie do jakobianu po lewej stronie.
+    Odbior czuly czestotliwosciowo ma stan (estymator czestotliwosci widzianej), od ktorego
+    zalezy jego prad — wnosi wiec `(dI_odb/dx) xdot` tak samo jak urzadzenie; bez tego
+    czlonu `f_hz@` szyny z takim odbiorem bylaby liczona z niepelnej pochodnej napiec.
+    Odbior bez stanow nie wnosi tu nic (jego wklad jest wylacznie w jakobianie po lewej).
 
     Wiersz OGRANICZENIA `V_k - E_k(x) = 0` zrozniczkowany po czasie daje
     `Vdot_k = (dE/dx) xdot` — prawa strona tego wiersza to wklad urzadzenia o
     sprzezeniu napieciowym, a dla `E = 0` (obszar beznapieciowy, zwarcie metaliczne)
-    zero. Urzadzenie pradowe w wezle ograniczonym nie wnosi nic (jego wiersz KCL nie
-    istnieje).
+    zero. Element pradowy w wezle ograniczonym nie wnosi nic (jego wiersz KCL nie
+    istnieje), odbior bez obwodu tez nie (prad zero).
     """
     liczba = model.liczba_wezlow
     prawa_strona = np.zeros(2 * liczba, dtype=float)
     ograniczone = {pozycja for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)}
-    for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
+    stany_odbiorow, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
+    for odbior, stan_odbioru in zip(odbiory, stany_odbiorow, strict=True):
+        if not odbior.nazwy_stanow or not odbior.przylaczony:
+            continue
+        pozycja = model.indeks_wezla[odbior.wezel]
+        if pozycja in ograniczone:
+            continue
+        napiecie = complex(napiecia[pozycja])
+        wklad = odbior.jakobian_prad_stan(stan_odbioru, napiecie) @ odbior.pochodne(
+            stan_odbioru, napiecie
+        )
+        prawa_strona[pozycja] += float(wklad[0])
+        prawa_strona[pozycja + liczba] += float(wklad[1])
+    for urzadzenie, stan in zip(urzadzenia, stany_urzadzen, strict=True):
         pozycja = model.indeks_wezla[urzadzenie.wezel]
         napiecie = complex(napiecia[pozycja])
         if urzadzenie.sprzezenie == "napieciowe":
@@ -251,8 +272,8 @@ def _rozloz_jakobian(jakobian: Any, t_s: float | None = None) -> Any:
     except RuntimeError as blad:
         raise OdmowaDynamiki(
             KOD_ALGEBRA_NIEZBIEZNA,
-            "Jakobian czesci algebraicznej osobliwy przy wyznaczaniu pochodnej napiec"
-            + (f" (t={t_s} s)" if t_s is not None else "")
+            "Jakobian części algebraicznej osobliwy przy wyznaczaniu pochodnej napięć"
+            + (f" (t = {t_s} s)" if t_s is not None else "")
             + f": {blad}",
             t_s=t_s,
         ) from blad
@@ -264,7 +285,7 @@ def _zespolone(rozwiazanie: np.ndarray, liczba: int) -> np.ndarray:
 
 def pochodna_napiec(
     model: ModelSieci,
-    odbiory: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
@@ -278,12 +299,14 @@ def pochodna_napiec(
     liczba = model.liczba_wezlow
     jakobian = jakobian_algebry(model, odbiory, urzadzenia, stany, napiecia)
     rozklad = _rozloz_jakobian(jakobian)
-    return _zespolone(rozklad.solve(_prawa_strona_dae(model, urzadzenia, stany, napiecia)), liczba)
+    return _zespolone(
+        rozklad.solve(_prawa_strona_dae(model, odbiory, urzadzenia, stany, napiecia)), liczba
+    )
 
 
 def pochodna_napiec_z_niepewnoscia(
     model: ModelSieci,
-    odbiory: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
@@ -316,7 +339,7 @@ def pochodna_napiec_z_niepewnoscia(
     jakobian = jakobian_algebry(model, odbiory, urzadzenia, stany, napiecia)
     rozklad = _rozloz_jakobian(jakobian)
     pochodna = _zespolone(
-        rozklad.solve(_prawa_strona_dae(model, urzadzenia, stany, napiecia)), liczba
+        rozklad.solve(_prawa_strona_dae(model, odbiory, urzadzenia, stany, napiecia)), liczba
     )
     blad_napiecia = _zespolone(
         rozklad.solve(residuum_algebry(model, odbiory, urzadzenia, stany, napiecia)), liczba
@@ -370,7 +393,7 @@ def czestotliwosc_niedostepna(jakosc: float) -> CzestotliwoscWezla:
     tego wprost: wartosc niedostepna jest BRAKIEM (`None`), a przyczyne niesie kod.
     """
     if jakosc not in (JAKOSC_NIEDOSTEPNA, JAKOSC_CHWILA_ZDARZENIA, JAKOSC_BEZ_NAPIECIA):
-        raise AssertionError(f"Kod {jakosc!r} nie jest kodem niedostepnosci czestotliwosci")
+        raise AssertionError(f"Kod {jakosc!r} nie jest kodem niedostępności częstotliwości.")
     return CzestotliwoscWezla(f_hz=None, niepewnosc_hz=None, jakosc=jakosc)
 
 
@@ -455,7 +478,7 @@ def czestotliwosc_wezla(
 
 def czestotliwosci_wezlow(
     model: ModelSieci,
-    odbiory: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
@@ -493,7 +516,7 @@ def czestotliwosci_wezlow(
 
 def moc_urzadzenia_pu(
     model: ModelSieci,
-    odbiory: tuple[OdbiorDynamiki, ...],
+    odbiory: tuple[ModelOdbioru, ...],
     urzadzenia: tuple[Urzadzenie, ...],
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
@@ -507,10 +530,11 @@ def moc_urzadzenia_pu(
     """
     urzadzenie = urzadzenia[indeks]
     napiecie = complex(napiecia[model.indeks_wezla[urzadzenie.wezel]])
+    _, stany_urzadzen = rozdziel_stany(odbiory, urzadzenia, stany)
     prad = (
         prad_wezla_ograniczonego(model, odbiory, urzadzenia, stany, napiecia, urzadzenie.wezel)
         if urzadzenie.sprzezenie == "napieciowe"
-        else urzadzenie.prad_pu(stany[indeks], napiecie)
+        else urzadzenie.prad_pu(stany_urzadzen[indeks], napiecie)
     )
     return napiecie * prad.conjugate()
 

@@ -72,7 +72,8 @@ const SCENY = [
   'oltc', 'pole-nn', 'pomiar', 'porownanie', 'przekaznik', 'przypisanie-katalogu', 'pulpit',
   'pulpit-oze',
   'rozplyw', 'sila-sieci', 'slup-odgalezny', 'ssci', 'swiezosc', 'uwaga', 'walidacja',
-  'wniosek', 'wniosek-braki', 'wyniki-skladowe', 'wyniki-dynamika', 'wyniki-dynamika-brak', 'wyniki-stan-fazowy',
+  'wniosek', 'wniosek-braki', 'wyniki-skladowe', 'wyniki-dynamika', 'wyniki-dynamika-brak', 'wyniki-dynamika-odbior-brak',
+  'wyniki-stan-fazowy',
   'wyniki-zbieznosc', 'zksn',
   'zrodlo', 'zrodlo-dyspozycyjne', 'zwarcia', 'zwarcia-rozplyw',
 ].filter((s) => !JUZ_KADROWANE.has(s));
