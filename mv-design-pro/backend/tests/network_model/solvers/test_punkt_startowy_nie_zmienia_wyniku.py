@@ -23,6 +23,18 @@ METODA: ILOCZYN CECH {plaski start · cieply start z kompletem napiec · cieply 
 z BRAKIEM napiec (galaz podstawienia) · cieply start z napieciami ODLEGLYMI od
 rozwiazania}. Ostatni punkt jest najwazniejszy: gdyby punkt startowy przeciekal do
 wyniku, to wlasnie tam byloby to widac.
+
+KOREKTA ZAKRESU TWIERDZENIA (karta PF-OD19, 2026-09-30). „Wynik zbiezny nie zalezy
+od punktu startowego" zachodzi dla szyny OBCIAZONEJ z tego pliku w zmierzonym
+zakresie startow (0,85…1,15 pu). Nie jest to wlasnosc ogolna rownan rozplywu:
+(1) szyna PQ o ZEROWEJ mocy ma rozwiazanie trywialne U = 0 (S = U·I* = 0 przy
+dowolnym pradzie), na ktore NR zbiega ze startu ponizej ok. 0,5 pu i raportuje
+`converged=True`; (2) szyna obciazona ze startu bliskiego zera zbiega do DOLNEJ
+galezi krzywej P-U (tu: |U| = 0,0074 pu przy 2 MW). Oba przypadki sa przypiete w
+`test_od19_diagnoza_rozwiazania_zerowego.py`; uzasadnienie wpisu budzetowego
+zapadki (podstawienie 1,0 pu / 0 rad jako start) pozostaje w mocy WYLACZNIE dlatego,
+ze podstawiany start plaski 1,0 pu lezy w basenie galezi roboczej — a nie dlatego, ze
+wynik „nie pamieta" startu.
 """
 
 from __future__ import annotations
