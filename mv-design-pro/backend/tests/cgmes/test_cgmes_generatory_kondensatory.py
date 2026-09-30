@@ -11,9 +11,10 @@ Stan PRZED:
   turbina SCIG jako ``PowerElectronicsConnection`` (maszyna klatkowa nie ma przekształtnika),
 - tor obcy EQ+TP nie importował generatorów, kondensatorów ani stacji.
 
-Iloczyn cech generatora: rodzaj {None, synchronous, pv_inverter, bess, wind_inverter,
+Iloczyn cech generatora: rodzaj {synchronous, pv_inverter, bess, wind_inverter,
 fw_pmsg, fw_dfig, fw_scig} × Q {brak, podane} × S z tabliczki {brak, podana} × U_n
-{brak, podane} × liczba jednostek {brak, 3} = 128 przypadków; kondensator: Q {0,6; 1,2}
+{brak, podane} × liczba jednostek {brak, 3} = 112 przypadków (rodzaj nieokreślony =
+odmowa eksportu, karta C3 — osobne testy); kondensator: Q {0,6; 1,2}
 Mvar × U_n {15; 0,4} kV × stan {załączony, otwarty} = 8.
 """
 
@@ -58,7 +59,6 @@ _SN_MVA = 2.5
 _UN_KV = 0.69
 
 _RODZAJE = (
-    None,
     "synchronous",
     "pv_inverter",
     "bess",
@@ -70,7 +70,6 @@ _RODZAJE = (
 
 #: Rodzaj po torze obcym — typ z KLASY CIM (utraty nazwane w GENERATOR_UTRATA_TORU_OBCEGO).
 _RODZAJ_PO_IMPORCIE = {
-    None: "synchronous",
     "synchronous": "synchronous",
     "pv_inverter": "pv_inverter",
     "bess": "bess",
@@ -148,7 +147,7 @@ def _po_torze_obcym(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, list[s
 
 
 # ---------------------------------------------------------------------------
-# Iloczyn cech generatora (128 przypadków)
+# Iloczyn cech generatora (112 przypadków)
 # ---------------------------------------------------------------------------
 
 _ILOCZYN_GEN = list(
@@ -241,7 +240,7 @@ def test_mapa_klas_pokrywa_caly_literal_gen_type() -> None:
 
     adnotacja = Generator.model_fields["gen_type"].annotation
     literal = next(a for a in get_args(adnotacja) if a is not type(None))
-    assert set(_KLASA_CIM_GENERATORA) == set(get_args(literal)) | {None}
+    assert set(_KLASA_CIM_GENERATORA) == set(get_args(literal))
     # Klasy przekształtnikowe CIM tylko dla rodzajów z kanonicznego zbioru DER.
     assert {
         r for r, (k, _j) in _KLASA_CIM_GENERATORA.items() if k == "PowerElectronicsConnection"
@@ -250,7 +249,7 @@ def test_mapa_klas_pokrywa_caly_literal_gen_type() -> None:
 
 def test_utraty_generatora_nazwane() -> None:
     assert any("fw_pmsg/fw_dfig" in u for u in GENERATOR_UTRATA_TORU_OBCEGO)
-    assert any("gen_type=None" in u for u in GENERATOR_UTRATA_TORU_OBCEGO)
+    assert not any("gen_type=None" in u for u in GENERATOR_UTRATA_TORU_OBCEGO)
     assert any("quantity" in u for u in GENERATOR_UTRATA_TORU_OBCEGO)
 
 
@@ -463,3 +462,136 @@ def test_model_bez_generatorow_i_kondensatorow_bajty_bazy() -> None:
     assert hashlib.sha256(tp).hexdigest() == (
         "017360fa12246b715487abf123f4c19b7fc08c1148262d72f3ef776d6f1d520b"
     )
+
+
+# ---------------------------------------------------------------------------
+# Karta C3: jeden predykat klasy generatora, odmowa rodzaju nieokreślonego
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("rodzaj", _RODZAJE)
+def test_side_car_wskazuje_obiekt_obecny_w_eq(rodzaj: str) -> None:
+    """mRID generatora w side-carze = rdf:ID obiektu w EQ (stan PRZED: SCIG wskazywał PEC)."""
+    import json
+
+    with zipfile.ZipFile(io.BytesIO(export_cgmes(_siec([_generator(rodzaj)])))) as zf:
+        refmap = json.loads(zf.read("refmap.json"))
+        eq = zf.read("EQ.xml").decode("utf-8")
+    assert f'rdf:ID="{refmap["ref_to_mrid"]["g1"]}"' in eq
+
+
+@pytest.mark.parametrize("wejscie", ["zip", "eq_tp", "drzewo"])
+def test_generator_bez_rodzaju_odmowa_nazwana(wejscie: str) -> None:
+    from network_model.odmowa_danych import OdmowaDanychError
+
+    enm = _siec([_generator(None).model_copy(update={"name": "PV Łąka"})])
+    eksport = {"zip": export_cgmes, "eq_tp": export_eq_tp_bytes, "drzewo": build_eq_tp_trees}
+    with pytest.raises(OdmowaDanychError) as blad:
+        eksport[wejscie](enm)
+    assert str(blad.value) == (
+        "Generator „PV Łąka” nie ma określonego rodzaju — uzupełnij rodzaj generatora "
+        "przed eksportem CGMES."
+    )
+
+
+def test_odmowa_eksportu_to_422_z_trescia_w_api() -> None:
+    """Kontrakt odpowiedzi: odmowa eksportu CGMES przechodzi przez PRAWDZIWY rejestr
+    handlerów API (`api.exception_handlers.register_exception_handlers`) jako 422 z treścią,
+    nie 500. UWAGA: eksport CGMES NIE MA dziś trasy API ani ekranu (mapa domknięcia K2,
+    wycinek W12) — trasa sondy poniżej istnieje wyłącznie w teście."""
+    from api.exception_handlers import register_exception_handlers
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    app = FastAPI()
+    register_exception_handlers(app)
+    enm = _siec([_generator(None)])
+
+    @app.get("/sonda-eksportu-cgmes")
+    def _sonda() -> dict[str, int]:
+        return {"bajty": len(export_cgmes(enm))}
+
+    odpowiedz = TestClient(app, raise_server_exceptions=False).get("/sonda-eksportu-cgmes")
+    assert odpowiedz.status_code == 422
+    assert "nie ma określonego rodzaju" in odpowiedz.json()["detail"]
+
+
+def _bateria(q: float, u: float) -> EnergyNetworkModel:
+    return EnergyNetworkModel(
+        header=ENMHeader(name="x"),
+        buses=[Bus(ref_id="b", name="b", voltage_kv=u)],
+        shunt_capacitors=[
+            ShuntCapacitor(ref_id="c", name="c", bus_ref="b", rated_mvar=q, rated_kv=u)
+        ],
+    )
+
+
+def test_bateria_bajty_eq_takie_jak_przed_przeniesieniem_wzoru() -> None:
+    """Karta C3: B = 1/Z(U, Q) z `pochodne` zamiast Q/U² w infrastrukturze. Skrót EQ
+    zmierzony PRZED zmianą (siatka 7×7 Q × U: 48 z 49 bajtowo identycznych)."""
+    import hashlib
+
+    eq, _tp = export_eq_tp_bytes(_bateria(0.6, 15.0))
+    assert hashlib.sha256(eq).hexdigest() == (
+        "1b3c8b4d4c226acbe4e444d3ed5a6bfb2567b7f1168bb0c77ea0a5ca25fd6d9a"
+    )
+
+
+def test_bateria_susceptancja_poprawnie_zaokraglona() -> None:
+    """Jedyny rozjazd siatki (Q = 0,123456789 Mvar, U = 0,4 kV): dawny wzór
+    (Q·10⁶)/(U·10³)² dawał 0,77160493125000**01** -> „0.7716049313"; dokładna wartość
+    Q/U² (ułamki) to 0,7716049312499998 -> „0.7716049312" — nowy wynik jest poprawny."""
+    from fractions import Fraction
+
+    obiekty = _eq_obiekty(_bateria(0.123456789, 0.4))
+    dokladna = float(Fraction(0.123456789) / Fraction(0.4) ** 2)
+    assert _tekst(obiekty["LinearShuntCompensator"], "LinearShuntCompensator.bPerSection") == (
+        f"{dokladna:.10g}"
+    )
+
+
+def test_bateria_zerowa_susceptancja_zero() -> None:
+    obiekty = _eq_obiekty(_bateria(0.0, 15.0))
+    assert _tekst(obiekty["LinearShuntCompensator"], "LinearShuntCompensator.bPerSection") == "0"
+
+
+def test_bateria_bez_napiecia_odmowa() -> None:
+    from network_model.odmowa_danych import OdmowaDanychError
+
+    with pytest.raises(OdmowaDanychError, match="napięcie znamionowe 0.0 kV"):
+        export_eq_tp_bytes(_bateria(0.6, 0.0))
+
+
+@pytest.mark.parametrize(
+    ("sn", "pk", "fragment"),
+    [
+        (0.63, 120.0, "dane sprzeczne"),  # R_k > Z_k: dawniej X = 0 po cichu
+        (0.0, 6.5, "muszą być dodatnie"),  # S_n = 0: dawniej Z = 0 po cichu
+    ],
+)
+def test_transformator_sprzeczny_odmowa(sn: float, pk: float, fragment: str) -> None:
+    from enm.models import Transformer
+    from network_model.odmowa_danych import OdmowaDanychError
+
+    enm = EnergyNetworkModel(
+        header=ENMHeader(name="x"),
+        buses=[
+            Bus(ref_id="a", name="a", voltage_kv=15.0),
+            Bus(ref_id="b", name="b", voltage_kv=0.4),
+        ],
+        transformers=[
+            Transformer(
+                ref_id="t",
+                name="TR",
+                hv_bus_ref="a",
+                lv_bus_ref="b",
+                sn_mva=sn,
+                uhv_kv=15.0,
+                ulv_kv=0.4,
+                uk_percent=4.5,
+                pk_kw=pk,
+            )
+        ],
+    )
+    with pytest.raises(OdmowaDanychError, match=fragment):
+        export_eq_tp_bytes(enm)

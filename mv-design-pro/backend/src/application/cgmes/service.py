@@ -21,7 +21,7 @@ import zipfile
 from typing import TYPE_CHECKING, Any
 
 from enm.nazwy_elementow import NAZWA_MODELU_BEZ_NAZWY
-from infrastructure.cgmes.cgmes_exporter import export_eq_tp_bytes
+from infrastructure.cgmes.cgmes_exporter import export_eq_tp_bytes, klasa_cim_generatora
 from infrastructure.cgmes.cgmes_importer import (
     CgmesImportResult,
     CgmesImportStatus,
@@ -130,13 +130,11 @@ def _primary_class(branch: Any) -> str:
 
 
 def _gen_class(gen: Any) -> str:
-    # Kanoniczny zbiór przekształtnikowy (karta AB-H0 Pakiet D) — ten sam, którym
-    # eksporter klasyfikuje PowerElectronicsConnection (`cgmes_exporter._IBR_TYPES`).
-    from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
-
-    if gen.gen_type in GEN_TYPES_PRZEKSZTALTNIKOWE:
-        return "PowerElectronicsConnection"
-    return "SynchronousMachine"
+    # Karta C3: JEDEN predykat klasy CIM generatora — ten, którym eksporter wystawia obiekt
+    # w EQ. Stan PRZED: własna kopia (zbiór przekształtnikowy -> PEC) rozjechała się z
+    # eksporterem dla SCIG (AsynchronousMachine), więc side-car wskazywał mRID obiektu,
+    # którego nie ma w EQ. Rodzaj nieokreślony = odmowa nazwana (jak w eksporterze).
+    return klasa_cim_generatora(gen)
 
 
 # ---------------------------------------------------------------------------

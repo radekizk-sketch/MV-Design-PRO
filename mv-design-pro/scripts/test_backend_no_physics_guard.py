@@ -319,11 +319,33 @@ def test_rodzina_g_wykrywa_u2_przez_s(kod: str) -> None:
     assert _wzorce(kod).get("G_z_u2_s", 0) == 1
 
 
-def test_rodzina_g_nie_liczy_gdy_kwadrat_nie_jest_wprost_licznikiem() -> None:
-    """Formuły wieloczłonowe (np. `x_pu * U**2 / S` — reaktancja z pu i mocy)
-    są poza zakresem karty (dokumentowane jako znalezisko, nie naprawiane) —
-    kwadrat musi być WPROST licznikiem dzielenia, nie częścią mnożenia."""
-    kod = "x = xd_pu * (u_kv ** 2) / s_mva\n"
+@pytest.mark.parametrize(
+    "kod",
+    [
+        # Karta C3: dawniej poza zasięgiem (kwadrat ukryty w iloczynie) — tak przeszły
+        # formuły eksportera CGMES. Kwadrat NAPIĘCIA jako czynnik licznika albo mianownika.
+        "x = xd_pu * (u_kv ** 2) / s_mva\n",
+        "z = trafo.uk_percent / 100.0 * uhv_v ** 2 / sn_va\n",
+        "r = pk_w * uhv_v ** 2 / sn_va ** 2\n",
+        "b = mva_to_va(cap.rated_mvar) / kv_to_v(cap.rated_kv) ** 2\n",
+        "b = q_mvar / u_kv ** 2\n",
+        "d = (r * p + x * q) / segment.u_n_kv ** 2\n",
+    ],
+)
+def test_rodzina_g_wykrywa_kwadrat_napiecia_jako_czynnik(kod: str) -> None:
+    assert _wzorce(kod).get("G_z_u2_s", 0) == 1
+
+
+@pytest.mark.parametrize(
+    "kod",
+    [
+        "e = c * v * i * t / working_distance ** 2\n",
+        "y = 1.0 / i_arc_ka ** 2\n",
+        "k = numerator / sum_sn ** 2\n",
+        "z = a * b / c\n",
+    ],
+)
+def test_rodzina_g_nie_liczy_kwadratu_bez_markera_napiecia(kod: str) -> None:
     assert _wzorce(kod).get("G_z_u2_s", 0) == 0
 
 
@@ -679,7 +701,13 @@ def test_pin_stanu_repozytorium() -> None:
     na stałe, karta CV-3.3-A2), więc te dwa literały `/1000.0` nigdy nie
     trafią do `pochodne/jednostki.py` (B-01, CLAUDE.md)."""
     assert porownaj_z_zapadka(zmierz(), ZASTANE) == []
-    assert set(ZASTANE) == {"application/result_mapping/short_circuit_to_resultset_v1.py"}
+    assert set(ZASTANE) == {
+        "application/result_mapping/short_circuit_to_resultset_v1.py",
+        # Karta C3: rodzina G poszerzona — trzy zmierzone miejsca poza granicą karty.
+        "analysis/lf_sensitivity/builder.py",
+        "application/proof_engine/proof_generator.py",
+        "network_model/core/machine.py",
+    }
 
 
 def test_rodzina_e_zastane_jest_pusta_po_w3c1() -> None:

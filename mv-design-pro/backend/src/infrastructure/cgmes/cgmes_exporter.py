@@ -62,7 +62,12 @@ import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING
 
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, liczba_jednostek_zrodla
-from network_model.pochodne import kw_na_w, prad_znamionowy_a
+from network_model.odmowa_danych import OdmowaDanychError
+from network_model.pochodne import (
+    impedancja_z_napiecia_i_mocy_ohm,
+    kw_na_mw,
+    prad_znamionowy_a,
+)
 
 from .mrid import mrid_for, urn
 from .profiles import NS_CIM, RDF_ABOUT, RDF_ID, RDF_RESOURCE
@@ -323,17 +328,29 @@ def _emit_transformer(eq: ET.Element, tp: ET.Element, trafo: Transformer) -> Non
 
     hv_kind, lv_kind, clock = _vector_group_kinds(trafo.vector_group)
 
-    # IEC 60909 short-circuit equivalent (referred to HV end):
-    #   Z_uk = uk% / 100 * U_hv^2 / S_n ; R = pk / (3 * I_hv^2) but per-end we use
-    #   the standard lumped HV-end split. We keep it deterministic + documented.
+    # Impedancja zwarciowa odniesiona do strony GN (IEC 60076-1): Z_k = uk%/100 · Z_b,
+    # R_k = ΔP_Cu/S_n · Z_b, X_k = √(Z_k² − R_k²), Z_b = U_GN²/S_n — baza z recenzowanej
+    # formuły ``pochodne`` (karta C3: wzór Z = U²/S nie żyje w infrastrukturze). Stan PRZED
+    # podstawiał po cichu Z = 0 przy S_n = 0 i X = 0 przy R_k > Z_k — dane sprzeczne
+    # zapisane jako transformator bez reaktancji. Teraz: nazwana odmowa eksportu.
     sn_va = mva_to_va(trafo.sn_mva)
     uhv_v = kv_to_v(trafo.uhv_kv)
     ulv_v = kv_to_v(trafo.ulv_kv)
-    z_hv_ohm = (trafo.uk_percent / 100.0) * (uhv_v**2) / sn_va if sn_va else 0.0
-    # R from copper losses pk (kW -> W), referred to HV.
-    pk_w = kw_na_w(trafo.pk_kw)
-    r_hv_ohm = pk_w * (uhv_v**2) / (sn_va**2) if sn_va else 0.0
-    x_hv_ohm = (z_hv_ohm**2 - r_hv_ohm**2) ** 0.5 if z_hv_ohm > r_hv_ohm else 0.0
+    if trafo.sn_mva <= 0 or trafo.uhv_kv <= 0:
+        raise OdmowaDanychError(
+            f"Transformator „{trafo.name}”: moc znamionowa {trafo.sn_mva} MVA i napięcie "
+            f"strony GN {trafo.uhv_kv} kV muszą być dodatnie — eksport CGMES niemożliwy."
+        )
+    z_bazowa_ohm = impedancja_z_napiecia_i_mocy_ohm(trafo.uhv_kv, trafo.sn_mva)
+    z_hv_ohm = (trafo.uk_percent / 100.0) * z_bazowa_ohm
+    r_hv_ohm = kw_na_mw(trafo.pk_kw) / trafo.sn_mva * z_bazowa_ohm
+    if r_hv_ohm > z_hv_ohm:
+        raise OdmowaDanychError(
+            f"Transformator „{trafo.name}”: straty obciążeniowe {trafo.pk_kw} kW dają "
+            f"rezystancję większą niż impedancja zwarciowa (uk = {trafo.uk_percent} %) — dane "
+            "sprzeczne; popraw parametry przed eksportem CGMES."
+        )
+    x_hv_ohm = (z_hv_ohm**2 - r_hv_ohm**2) ** 0.5
 
     # End 1 = HV (carries the lumped impedance), End 2 = LV (zero impedance).
     for seq, (bus_ref, rated_u_v, kind, r_ohm, x_ohm) in enumerate(
@@ -639,11 +656,10 @@ _IBR_TYPES = GEN_TYPES_PRZEKSZTALTNIKOWE
 #: ``PowerElectronicsWindUnit`` (``WindTurbineType3or4Dynamics`` wiąże się z PEC). Nazwa
 #: klasy jednostki PV w CGMES 3.0 to ``PhotoVoltaicUnit`` (wielkie V) — stan PRZED
 #: emitował nieistniejącą klasę ``PhotovoltaicUnit``. ``gen_type=None`` (rodzaj
-#: nieokreślony w modelu) -> ``SynchronousMachine`` jak dotąd: CIM nie ma klasy
-#: „generatora nieokreślonego" — to znana utrata (import daje ``synchronous``),
-#: patrz ``GENERATOR_UTRATA_TORU_OBCEGO``.
-_KLASA_CIM_GENERATORA: dict[str | None, tuple[str, str | None]] = {
-    None: ("SynchronousMachine", None),
+#: nieokreślony w modelu) -> nazwana ODMOWA eksportu (karta C3): CIM nie ma klasy
+#: „generatora nieokreślonego", a każda wybrana klasa zmienia fizykę u odbiorcy (wkład
+#: zwarciowy maszyny wirującej albo przekształtnika) — pominięcie zgubiłoby wtrysk mocy.
+_KLASA_CIM_GENERATORA: dict[str, tuple[str, str | None]] = {
     "synchronous": ("SynchronousMachine", None),
     "fw_scig": ("AsynchronousMachine", None),
     "pv_inverter": ("PowerElectronicsConnection", "PhotoVoltaicUnit"),
@@ -664,8 +680,6 @@ _SUFIKS_JEDNOSTKI: dict[str, str] = {
 GENERATOR_UTRATA_TORU_OBCEGO: tuple[str, ...] = (
     "gen_type fw_pmsg/fw_dfig — EQ zna tylko PowerElectronicsWindUnit (typ 3 od typu 4 "
     "odróżnia profil DY); import daje wind_inverter z ostrzeżeniem",
-    "gen_type=None — CIM nie ma generatora nieokreślonego; eksport SynchronousMachine, "
-    "import synchronous",
     "podział mocy znamionowej na jednostki (quantity/n_parallel) — ratedS niesie moc "
     "CAŁEJ instalacji; import: sn_mva = ratedS, jedna jednostka (ta sama moc łączna)",
     "limits (GenLimits), catalog_ref, connection_variant/station_ref/blocking_transformer_ref, "
@@ -675,8 +689,21 @@ GENERATOR_UTRATA_TORU_OBCEGO: tuple[str, ...] = (
 
 
 def klasa_cim_generatora(gen: Generator) -> str:
-    """Klasa urządzenia CIM, na którą eksporter mapuje generator (jedno źródło prawdy)."""
-    return _KLASA_CIM_GENERATORA[gen.gen_type][0]
+    """Klasa urządzenia CIM, na którą eksporter mapuje generator (jedno źródło prawdy —
+    ten sam predykat czyta ``application.cgmes.service`` dla mapy tożsamości side-cara).
+
+    Rodzaj nieokreślony (``gen_type=None``) = ``OdmowaDanychError`` (patrz
+    ``_KLASA_CIM_GENERATORA``)."""
+    return _klasa_i_jednostka(gen)[0]
+
+
+def _klasa_i_jednostka(gen: Generator) -> tuple[str, str | None]:
+    if gen.gen_type is None:
+        raise OdmowaDanychError(
+            f"Generator „{gen.name}” nie ma określonego rodzaju — uzupełnij rodzaj generatora "
+            "przed eksportem CGMES."
+        )
+    return _KLASA_CIM_GENERATORA[gen.gen_type]
 
 
 def _konwencja_odbiorcza(wartosc_w: float) -> float:
@@ -719,7 +746,7 @@ def _emit_generator(eq: ET.Element, tp: ET.Element, gen: Generator) -> None:
 
     Atrybuty SSH w członie EQ — ten sam zastany wzorzec co ``EnergyConsumer.p/q``.
     """
-    klasa, jednostka = _KLASA_CIM_GENERATORA[gen.gen_type]
+    klasa, jednostka = _klasa_i_jednostka(gen)
     mrid = mrid_for(klasa, gen.ref_id)
     urzadzenie = _obj(eq, klasa, mrid)
     _prop(urzadzenie, "IdentifiedObject.name", gen.name)
@@ -772,16 +799,25 @@ def _emit_load(eq: ET.Element, tp: ET.Element, load: Load) -> None:
 def _emit_shunt(eq: ET.Element, tp: ET.Element, cap: ShuntCapacitor) -> None:
     """ShuntCapacitor -> LinearShuntCompensator (D-06c).
 
-    Susceptancja na sekcję z pierwszych zasad: B = Q_rated / U_rated² [S].
-    Modelujemy jeden stopień (maximumSections=1, sections=1 gdy załączona).
+    Susceptancja na sekcję: B = 1/X_C, X_C = U_n²/Q_n — recenzowana formuła U²/S z
+    ``pochodne`` (karta C3; stan PRZED liczył Q/U² w infrastrukturze). Bateria 0 Mvar ma
+    B = 0 (reaktancja nieskończona — granica wzoru, nie podstawienie). Napięcie ≤ 0 =
+    nazwana odmowa (stan PRZED zapisywał po cichu B = 0). Jeden stopień
+    (maximumSections=1, sections=1 gdy załączona).
     """
+    if cap.rated_kv <= 0:
+        raise OdmowaDanychError(
+            f"Bateria kondensatorów „{cap.name}”: napięcie znamionowe {cap.rated_kv} kV musi "
+            "być dodatnie — eksport CGMES niemożliwy."
+        )
     mrid = mrid_for("LinearShuntCompensator", cap.ref_id)
     lsc = _obj(eq, "LinearShuntCompensator", mrid)
     _prop(lsc, "IdentifiedObject.name", cap.name)
-    b_per_section = 0.0
-    if cap.rated_kv and cap.rated_kv > 0:
-        # B [S] = Q [VAr] / U² [V²]; Q_rated in Mvar -> VAr, U_rated in kV -> V.
-        b_per_section = mva_to_va(cap.rated_mvar) / (kv_to_v(cap.rated_kv) ** 2)
+    b_per_section = (
+        1.0 / impedancja_z_napiecia_i_mocy_ohm(cap.rated_kv, cap.rated_mvar)
+        if cap.rated_mvar != 0
+        else 0.0
+    )
     _prop(lsc, "LinearShuntCompensator.bPerSection", fmt_float(b_per_section))
     _prop(lsc, "LinearShuntCompensator.gPerSection", fmt_float(0.0))
     _prop(lsc, "ShuntCompensator.nomU", fmt_float(kv_to_v(cap.rated_kv)))
